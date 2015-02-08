@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <title>ble - Bash Line Editor</title>
+  <link rel="stylesheet" type="text/css" charset="utf-8" href="http://padparadscha/~murase/agh/mwg.slide.css" />
+  <link rel="stylesheet" type="text/css" charset="utf-8" href="http://padparadscha/~murase/agh/prog.std.css" />
+  <meta name="agh-fly-type" content="color" />
+  <script type="text/javascript" charset="utf-8" src="http://padparadscha/~murase/agh/agh.fly.js"></script>
+</head>
+<body>
+<h1>Bash Line Editor</h1>
+
+<h3>ble-decode</h3>
+<p>ble-decode は端末からの入力を処理する部分である。
+端末から送信されたデータは、先ずバイト単位で ble-decode-byte に渡される。
+ble-decode-byte は現在の文字符号化方法に従って受け取った byte を unicode 値に変換し、ble-decode-char に渡す。
+更に ble-decode-char は、制御文字を通常文字に対する修飾として解釈したり、
+エスケープシーケンスを復号して Function キー として解釈したりする等の加工を行って、
+その結果を ble-decode-key に渡す。
+ble-decode-key は受け取ったキー入力を組み立て、登録されたコマンドが在ればそれを実行する。
+</p>
+<dl>
+<dt>関数 <dfn>ble-decode-byte</dfn> <strong>(</strong> <var>byte</var> <strong>)+</strong></dt>
+<dt>関数 <dfn>ble-decode-char</dfn> <var>charcode</var></dt>
+<dt>関数 <dfn>ble-decode-key</dfn> <var>keycode</var></dt>
+<dd>
+  
+</dd>
+<dt>形式 <var>keycode</var></dt>
+<dt>定数 <dfn>ble_decode_Erro</dfn>=0x40000000</dt>
+<dt>定数 <dfn>ble_decode_Meta</dfn>=0x08000000</dt>
+<dt>定数 <dfn>ble_decode_Ctrl</dfn>=0x04000000</dt>
+<dt>定数 <dfn>ble_decode_Shft</dfn>=0x02000000</dt>
+<dt>定数 <dfn>ble_decode_Hypr</dfn>=0x01000000</dt>
+<dt>定数 <dfn>ble_decode_Supr</dfn>=0x00800000</dt>
+<dt>定数 <dfn>ble_decode_Altr</dfn>=0x00400000</dt>
+<dt>定数 <dfn>ble_decode_MaskChar</dfn>=0x001FFFFF</dt>
+<dt>定数 <dfn>ble_decode_MaskFlag</dfn>=0x7FC00000</dt>
+<dd>
+  <p><var>keycode</var> はキー入力などの操作を表現する整数である。
+  <code class="agh-prog-cpp"><var>flag</var> = keycode&amp;ble_decode_MaskFlag</code>
+  は修飾キーを表すフラグの部分であり、
+  <code class="agh-prog-cpp"><var>key</var> = keycode&amp;ble_decode_MaskChar</code>
+  の部分が操作を表す部分である。
+  <var>flag</var> は ble_decode_Shft (Shift), ble_decode_Ctrl (Control),
+  ble_decode_Meta (Meta), ble_decode_Altr (Alter), ble_decode_Supr (Super),
+  ble_decode_Hypr (Hyper), ble_decode_Erro (文字復号エラー) の
+  任意の組合せの論理和であり、それぞれの修飾キーを伴って <var>key</var> の操作が行われた事を意味する。
+  <var>key</var> は <code class="agh-prog-cpp">0&lt;=key&amp;&amp;key&lt;0x110000</code> の時は文字コードを表し、
+  対応する文字が入力された事を示す。
+  それ以外の値を持つ場合は、マウスによる文字列を表す。
+  </p>
+</dd>
+<dt>形式 <var>keyspec</var> := <strong>(</strong> <var>keymod</var> '-' <strong>)*</strong> <var>keyname</var></dt>
+<dt>関数 <dfn>ble-decode-kbd</dfn> <var>keyspecs</var> # ret=<var>keycodes</var></dt>
+<dt>関数 <dfn>ble-decode-unkbd</dfn> <var>keycodes</var> # ret=<var>keyspecs</var></dt>
+<dd>
+  <p><var>keyspec</var> は入力操作を分かり易い名前で表した物である。
+  <var>keymod</var> は入力に対する修飾キーを表す。
+  <var>keymod</var> = 'S' は Shift 修飾を表し、
+  <var>keymod</var> = 'M' は Meta 修飾を表し、
+  <var>keymod</var> = 'C' は Control 修飾を表し、
+  <var>keymod</var> = 'A' は Alter 修飾を表し、
+  <var>keymod</var> = 's' は Super 修飾を表し、
+  <var>keymod</var> = 'H' は Hyper 修飾を表す。
+  <var>keyname</var> は、文字の入力に対してはその文字自体を用いる。
+  例えば文字 a の入力は <var>keyname</var> = 'a' で表される。
+  但し、空白文字や制御文字になどに対しては以下の表の様な名前が割り当てられている。
+  一部の空白文字・制御文字については <var>keyname</var> = '^A' 等の形式で指定する事も可能である。
+  表中の HT 及び CR は TAB 及び RET の別名であり、
+  <var>keycode</var> から <var>keyspec</var> の変換では TAB 及び RET の名称が優先される。
+  また、Function キーの入力などその他の操作の場合には C 識別子名で名前が割り当てられている。
+  </p>
+  <table class="normal center">
+  <tr><th colspan="8">空白類</th></tr>
+  <tr><th>keyname</th><th>16進値</th><th>keyname</th><th>16進値</th><th>keyname</th><th>16進値</th><th>keyname</th><th>16進値</th></tr>
+  <tr><td>SP ^`</td><td>0x32</td><td>DEL ^?</td><td>0x7F</td><td>TAB ^I</td><td>0x09</td><td>RET ^M</td><td>0x0D</td></tr>
+  <tr><th colspan="8">制御文字</th></tr>
+  <tr><th>keyname</th><th>16進値</th><th>keyname</th><th>16進値</th><th>keyname</th><th>16進値</th><th>keyname</th><th>16進値</th></tr>
+  <tr><td>NUL ^@</td><td>0x00</td><td>DLE ^P</td><td>0x10</td><td>PAD</td><td>0x80</td><td>DCS </td><td>0x90</td></tr>
+  <tr><td>SOH ^A</td><td>0x01</td><td>DC1 ^Q</td><td>0x11</td><td>HOP</td><td>0x81</td><td>PU1 </td><td>0x91</td></tr>
+  <tr><td>STX ^B</td><td>0x02</td><td>DC2 ^R</td><td>0x12</td><td>BPH</td><td>0x82</td><td>PU2 </td><td>0x92</td></tr>
+  <tr><td>ETX ^C</td><td>0x03</td><td>DC3 ^S</td><td>0x13</td><td>NBH</td><td>0x83</td><td>STS </td><td>0x93</td></tr>
+  <tr><td>EOT ^D</td><td>0x04</td><td>DC4 ^T</td><td>0x14</td><td>IND</td><td>0x84</td><td>CCH </td><td>0x94</td></tr>
+  <tr><td>ENQ ^E</td><td>0x05</td><td>NAK ^U</td><td>0x15</td><td>NEL</td><td>0x85</td><td>MW  </td><td>0x95</td></tr>
+  <tr><td>ACK ^F</td><td>0x06</td><td>SYN ^V</td><td>0x16</td><td>SSA</td><td>0x86</td><td>SPA </td><td>0x96</td></tr>
+  <tr><td>BEL ^G</td><td>0x07</td><td>ETB ^W</td><td>0x17</td><td>ESA</td><td>0x87</td><td>EPA </td><td>0x97</td></tr>
+  <tr><td>BS  ^H</td><td>0x08</td><td>CAN ^X</td><td>0x18</td><td>HTS</td><td>0x88</td><td>SOS </td><td>0x98</td></tr>
+  <tr><td>HT  ^I</td><td>0x09</td><td>EM  ^Y</td><td>0x19</td><td>HTJ</td><td>0x89</td><td>SGCI</td><td>0x99</td></tr>  
+  <tr><td>LF  ^J</td><td>0x0A</td><td>SUB ^Z</td><td>0x1A</td><td>VTS</td><td>0x8A</td><td>SCI </td><td>0x9A</td></tr>
+  <tr><td>VT  ^K</td><td>0x0B</td><td>ESC ^[</td><td>0x1B</td><td>PLD</td><td>0x8B</td><td>CSI </td><td>0x9B</td></tr>
+  <tr><td>FF  ^L</td><td>0x0C</td><td>FS  ^~</td><td>0x1C</td><td>PLU</td><td>0x8C</td><td>ST  </td><td>0x9C</td></tr>
+  <tr><td>CR  ^M</td><td>0x0D</td><td>GS  ^]</td><td>0x1D</td><td>RI </td><td>0x8D</td><td>OSC </td><td>0x9D</td></tr>
+  <tr><td>SO  ^N</td><td>0x0E</td><td>RS  ^\</td><td>0x1E</td><td>SS2</td><td>0x8E</td><td>PM  </td><td>0x9E</td></tr>
+  <tr><td>SI  ^O</td><td>0x0F</td><td>US  ^_</td><td>0x1F</td><td>SS3</td><td>0x8F</td><td>APC </td><td>0x9F</td></tr>
+  <tr><th colspan="8">その他の操作</th></tr>
+  <tr><th>keyname</th><th>操作</th><th>keyname</th><th>操作</th><th>keyname</th><th>操作</th><th>keyname</th><th>操作</th></tr>
+  <tr><td>up</td><td>↑ Key</td><td>down</td><td>↓ Key</td><td>right</td><td>→ Key</td><td>left</td><td>← Key</td></tr>
+  <tr><td>home</td><td>Home Key</td><td>end</td><td>End Key</td><td>prior</td><td>PageUp Key</td><td>next</td><td>PageDown Key</td></tr>
+  <tr><td>insert</td><td>Insert Key</td><td>delete</td><td>Delete Key</td><td></td><td></td><td></td><td></td></tr>
+  <tr><td>f1</td><td>F1 Key</td><td>f7</td> <td>F7 Key</td> <td>f13</td><td>F13 Key</td><td>f19</td><td>F19 Key</td></tr>
+  <tr><td>f2</td><td>F2 Key</td><td>f8</td> <td>F8 Key</td> <td>f14</td><td>F14 Key</td><td>f20</td><td>F20 Key</td></tr>
+  <tr><td>f3</td><td>F3 Key</td><td>f9</td> <td>F9 Key</td> <td>f15</td><td>F15 Key</td><td>f21</td><td>F21 Key</td></tr>
+  <tr><td>f4</td><td>F4 Key</td><td>f10</td><td>F10 Key</td><td>f16</td><td>F16 Key</td><td>f22</td><td>F22 Key</td></tr>
+  <tr><td>f5</td><td>F5 Key</td><td>f11</td><td>F11 Key</td><td>f17</td><td>F17 Key</td><td>f23</td><td>F23 Key</td></tr>
+  <tr><td>f6</td><td>F6 Key</td><td>f12</td><td>F12 Key</td><td>f18</td><td>F18 Key</td><td>f24</td><td>F24 Key</td></tr>
+  <tr><td>kp0</td><td>KeyPad 0</td><td>kp4</td><td>KeyPad 4</td><td>kp8</td><td>KeyPad 8</td><td>kpsep</td><td>KeyPad ,</td></tr>
+  <tr><td>kp1</td><td>KeyPad 1</td><td>kp5</td><td>KeyPad 5</td><td>kp9</td><td>KeyPad 9</td><td>kpsub</td><td>KeyPad -</td></tr>
+  <tr><td>kp2</td><td>KeyPad 2</td><td>kp6</td><td>KeyPad 6</td><td>kpmul</td><td>KeyPad *</td><td>kpdec</td><td>KeyPad .</td></tr>
+  <tr><td>kp3</td><td>KeyPad 3</td><td>kp7</td><td>KeyPad 7</td><td>kpadd</td><td>KeyPad +</td><td>kpdiv</td><td>KeyPad /</td></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+  <p>ble-decode-kbd と ble-decode-unkbd は、
+  それぞれ <var>keyspec</var> から <var>keycode</var> への変換とその逆変換を行う関数である。
+  ble-decode-kbd は引数に <var>keyspec</var> の列を空白で区切った物を受け取って、
+  対応する <var>keycode</var> の列を空白で区切って ret シェル変数に代入する。
+  ble-decode-unkbd は引数に <var>keycode</var> の列を空白で区切った物を受け取って、
+  対応する <var>keyspec</var> の列を空白で区切って ret シェル変数に代入する。
+  </p>
+</dd>
+<dt>関数 <dfn>ble-bind</dfn> [-xc] -k <var>charspecs</var> [<var>keyspec</var>]</dt>
+<dt>関数 <dfn>ble-bind</dfn> [-m <var>kmap</var>] [-xc] -f <var>keyspecs</var> [<var>command</var>]</dt>
+<dd>
+  <p>簡易メモ</p>
+  <dl>
+  <dt><var>keyspecs</var></dt>
+  <dd></dd>
+  <dt><var>command</var></dt>
+  <dd>空文字列または省略した場合は、設定を削除する。</dd>
+  <dt>オプション -m 文字列を定義する対象を指定する</dt>
+  <dt>オプション -f (未実装)</dt>
+  <dd><var>command</var> がキーシーケンスを引数に受け取る関数である事を表す</dd>
+  <dt>オプション -x (未実装)</dt>
+  <dd><var>command</var> で編集文字列に対して操作を行う事を示す。
+    これを設定した場合 BLE_LINE, BLE_POINT 環境変数に現在の編集文字列とカーソルの位置が指定される。
+    BLE_LINE, BLE_POINT に対する操作は現在の編集文字列及びカーソルの位置に反映される。
+  </dd>
+  <dt></dt>
+  <dd></dd>
+  <dt></dt>
+  <dd></dd>
+  </dl>
+</dd>
+<dt>関数 <dfn>ble-decode-bind</dfn></dt>
+<dd>
+  <p>bash の bind -x を用いて bash に対する全入力にフックします。</p>
+</dd>
+</dl>
+
+<h3>ble-text</h3>
+<dl>
+<dt>関数 <dfn>.ble-text.c2s</dfn> <var>charcode</var> # ret=<var>char</var></dt>
+<dt>関数 <dfn>.ble-text.s2c</dfn> <var>string</var> [<var>index</var>] # ret=<var>charcode</var></dt>
+<dt>関数 <dfn>.ble-text.c2w</dfn> <var>charcode</var> # ret=<var>width</var></dt>
+<dt>関数 <dfn>.ble-text.s2w</dfn> <var>string</var> [<var>index</var>] # ret=<var>width</var></dt>
+<dd></dd>
+<dt>設定 <dfn>ble_opt_char_width_mode</dfn> := 'west' <strong>|</strong> 'east' <strong>|</strong> 'emacs' <strong>|</strong> <var>char_width_mode</var> [ default = emacs ]</dt>
+<dt>関数 <dfn>.ble-text.c2w+</dfn><var>char_width_mode</var> <var>charcode</var> # ret=<var>width</var> (ユーザ定義関数)</dt>
+<dd>
+  <p>ble_opt_char_width_mode には端末が文字幅 (半角・全角) をどの様に判定するかを指定する。
+  'west' を指定すると、Unicode East_Asian_Width A の文字幅 (曖昧文字幅) を 1 とする。
+  'east' を指定すると、Unicode East_Asian_Width A の文字幅を 2 とする。
+  'emacs' を指定すると emacs-24.2.1 char-width-table から抜き出した文字幅を使用する。
+  </p>
+  <p>文字幅の判定方式を追加したければ、
+  .ble-text.c2w+<var>char_width_mode</var> という名前の関数を定義し、
+  <var>char_width_mode</var> を ble_opt_char_width_mode に設定する。
+  このユーザ定義関数は第一引数に文字コード (Unicode) を受け取り、ret 変数に文字幅を設定して返る。
+  </p>
+</dd>
+<dt></dt>
+<dd></dd>
+</dl>
+
+<h2>BLE 編集関数</h2>
+<dl>
+<dt>編集関数 <dfn>redraw-line</dfn></dt>
+<dt>編集関数 <dfn>clear-screen</dfn></dt>
+<dt>編集関数 <dfn>bell</dfn></dt>
+<dt>編集関数 <dfn>insert-string</dfn> <var>str</var></dt>
+<dt>編集関数 <dfn>discard-line</dfn></dt>
+<dt>編集関数 <dfn>accept-line</dfn></dt>
+<dt>編集関数 <dfn>complete</dfn></dt>
+<!--<dt>編集関数 <dfn>complete-F</dfn></dt>-->
+<dt>編集関数 <dfn>command-help</dfn></dt>
+<dt>編集関数 <dfn>display-shell-version</dfn></dt>
+</dl>
+
+<h3>mark, kill, yank</h3>
+<dl>
+<dt>編集関数 <dfn>set-mark</dfn></dt>
+<dt>編集関数 <dfn>marked</dfn> <var>edit-function</var></dt>
+<dt>編集関数 <dfn>nomarked</dfn> <var>edit-function</var></dt>
+<dt>編集関数 <dfn>exchange-point-and-mark</dfn></dt>
+<dt>編集関数 <dfn>yank</dfn></dt>
+<dt>編集関数 <dfn>delete-region</dfn></dt>
+<dt>編集関数 <dfn>kill-region</dfn></dt>
+<dt>編集関数 <dfn>copy-region</dfn></dt>
+<dt>編集関数 <dfn>delete-region-or</dfn> <var>edit-function</var></dt>
+<dt>編集関数 <dfn>kill-region-or</dfn> <var>edit-function</var></dt>
+<dt>編集関数 <dfn>copy-region-or</dfn> <var>edit-function</var></dt>
+</dl>
+
+<h3>文字単位の操作</h3>
+<dl>
+<dt>編集関数 <dfn>self-insert</dfn></dt>
+<dt>編集関数 <dfn>quoted-insert</dfn></dt>
+<dt>編集関数 <dfn>transpose-chars</dfn></dt>
+<dt>編集関数 <dfn>forward-char</dfn></dt>
+<dt>編集関数 <dfn>backward-char</dfn></dt>
+<dt>編集関数 <dfn>delete-forward-char</dfn></dt>
+<dt>編集関数 <dfn>delete-backward-char</dfn></dt>
+<dt>編集関数 <dfn>delete-forward-char-or-exit</dfn></dt>
+<dt>編集関数 <dfn>delete-forward-backward-char</dfn></dt>
+</dl>
+
+<h3>unix word</h3>
+<p>IFS (空白文字) で区切られた単語を単位とする操作。
+  IFS が空の場合は SP HT LF を区切り文字として使用する。
+</p>
+<dl>
+<dt>編集関数 <dfn>forward-uword</dfn></dt>
+<dt>編集関数 <dfn>backward-uword</dfn></dt>
+<dt>編集関数 <dfn>delete-forward-uword</dfn></dt>
+<dt>編集関数 <dfn>delete-backward-uword</dfn></dt>
+<dt>編集関数 <dfn>delete-uword</dfn></dt>
+<dt>編集関数 <dfn>kill-forward-uword</dfn></dt>
+<dt>編集関数 <dfn>kill-backward-uword</dfn></dt>
+<dt>編集関数 <dfn>kill-uword</dfn></dt>
+<dt>編集関数 <dfn>copy-forward-uword</dfn></dt>
+<dt>編集関数 <dfn>copy-backward-uword</dfn></dt>
+<dt>編集関数 <dfn>copy-uword</dfn></dt>
+</dl>
+
+<h3>C word</h3>
+<p>[_a-zA-Z0-9]+ の形式の単語を単位とする操作。</p>
+<dl>
+<dt>編集関数 <dfn>forward-cword</dfn></dt>
+<dt>編集関数 <dfn>backward-cword</dfn></dt>
+<dt>編集関数 <dfn>delete-forward-cword</dfn></dt>
+<dt>編集関数 <dfn>delete-backward-cword</dfn></dt>
+<dt>編集関数 <dfn>delete-cword</dfn></dt>
+<dt>編集関数 <dfn>kill-forward-cword</dfn></dt>
+<dt>編集関数 <dfn>kill-backward-cword</dfn></dt>
+<dt>編集関数 <dfn>kill-cword</dfn></dt>
+<dt>編集関数 <dfn>copy-forward-cword</dfn></dt>
+<dt>編集関数 <dfn>copy-backward-cword</dfn></dt>
+<dt>編集関数 <dfn>copy-cword</dfn></dt>
+</dl>
+
+<h3>shell word</h3>
+<p>シェルのメタ文字 (SP HT LF | &amp; ; ( ) &lt; &gt;) で区切られた単語を単位とする操作。</p>
+<dl>
+<dt>編集関数 <dfn>forward-sword</dfn></dt>
+<dt>編集関数 <dfn>backward-sword</dfn></dt>
+<dt>編集関数 <dfn>delete-forward-sword</dfn></dt>
+<dt>編集関数 <dfn>delete-backward-sword</dfn></dt>
+<dt>編集関数 <dfn>delete-sword</dfn></dt>
+<dt>編集関数 <dfn>kill-forward-sword</dfn></dt>
+<dt>編集関数 <dfn>kill-backward-sword</dfn></dt>
+<dt>編集関数 <dfn>kill-sword</dfn></dt>
+<dt>編集関数 <dfn>copy-forward-sword</dfn></dt>
+<dt>編集関数 <dfn>copy-backward-sword</dfn></dt>
+<dt>編集関数 <dfn>copy-sword</dfn></dt>
+</dl>
+
+<h3>filename</h3>
+<p>空白または / で区切られた文字を単位とする操作。</p>
+<dl>
+<dt>編集関数 <dfn>forward-fword</dfn></dt>
+<dt>編集関数 <dfn>backward-fword</dfn></dt>
+<dt>編集関数 <dfn>delete-forward-fword</dfn></dt>
+<dt>編集関数 <dfn>delete-backward-fword</dfn></dt>
+<dt>編集関数 <dfn>delete-fword</dfn></dt>
+<dt>編集関数 <dfn>kill-forward-fword</dfn></dt>
+<dt>編集関数 <dfn>kill-backward-fword</dfn></dt>
+<dt>編集関数 <dfn>kill-fword</dfn></dt>
+<dt>編集関数 <dfn>copy-forward-fword</dfn></dt>
+<dt>編集関数 <dfn>copy-backward-fword</dfn></dt>
+<dt>編集関数 <dfn>copy-fword</dfn></dt>
+</dl>
+
+<h3>行</h3>
+<dl>
+<dt>編集関数 <dfn>end-of-line</dfn></dt>
+<dt>編集関数 <dfn>beginning-of-line</dfn></dt>
+<dt>編集関数 <dfn>kill-forward-line</dfn></dt>
+<dt>編集関数 <dfn>kill-backward-line</dfn></dt>
+</dl>
+
+<h3>history</h3>
+<dl>
+<dt>編集関数 <dfn>history-next</dfn></dt>
+<dt>編集関数 <dfn>history-prev</dfn></dt>
+<dt>編集関数 <dfn>history-isearch-backward</dfn></dt>
+<dt>編集関数 <dfn>history-isearch-forward</dfn></dt>
+<dt>編集関数 <dfn>history-expand-line</dfn></dt>
+<dt>編集関数 <dfn>isearch/next</dfn></dt>
+<dt>編集関数 <dfn>isearch/prev</dfn></dt>
+<dt>編集関数 <dfn>isearch/forward</dfn></dt>
+<dt>編集関数 <dfn>isearch/backward</dfn></dt>
+<dt>編集関数 <dfn>isearch/self-insert</dfn></dt>
+<dt>編集関数 <dfn>isearch/exit</dfn></dt>
+<dt>編集関数 <dfn>isearch/cancel</dfn></dt>
+<dt>編集関数 <dfn>isearch/exit-default</dfn></dt>
+<dt>編集関数 <dfn>isearch/accept</dfn></dt>
+<dt>編集関数 <dfn>isearch/exit-delete-forward-char</dfn></dt>
+</dl>
+
+<h2>便利なコマンド</h2>
+<h3>ble-getopt</h3>
+
+<dl>
+<dt>配列 <dfn>ble_getopt_vars</dfn></dt>
+<dt>関数 <dfn>ble-getopt-begin</dfn> <var>progname</var> <var>optspec</var> <strong>(</strong> <var>arg</var> <strong>)*</strong></dt>
+<dt>関数 <dfn>ble-getopt</dfn></dt>
+<dt>配列 <dfn>OPTARGS</dfn> (local)</dt>
+<dd>
+  <p>ble_getopt_vars は ble-getopt が内部で使用する一時変数の一覧を保持する配列である。
+  コマンド外部の環境に影響を与えないようにする為に、
+  ble-getopt-begin, ble-getopt を使用する前に local "${ble_getopt_vars[@]}" の様に宣言を行う。
+  </p>
+  <p>ble-getopt-begin 関数は ble-getopt の初期化を行う。
+  <var>progname</var> には引数を処理するコマンドの名前を指定する。
+  <var>optspec</var> には対応しているオプションとオプション引数の定義を与えたリストを指定する。
+  <var>arg</var> には処理する引数の列を指定する。
+  <var>optspec</var> は空白区切のリストで、各単語 <var>optdef</var> は一つのオプションの定義を与える。
+  <var>optdef</var> は <code><var>optname</var> <strong>(</strong> ':' <var>optparam</var> <strong>)*</strong></code> の形式を持つ。
+  <var>optname</var> はオプション文字または長形式のオプション名である。
+  オプションが引数を取る場合は、引数の数だけ <var>optparam</var> を指定する。
+  <var>optparam</var> はオプション引数の種類を表す文字を指定する。
+  </p>
+  <ul>
+  <li><code class="agh-prog-cpp"><var>optparam</var> := 'n'</code> :
+    非空白のオプション引数を受け取る。オプション引数が空白の場合 ble-getopt は失敗する。
+  </li>
+  <li><code class="agh-prog-cpp"><var>optparam</var> := '?' <var>defaultValue</var></code> :
+    引数があればそれを引数とする。引数がなければ既定の値として <var>defaultValue</var> を用いる。
+    引数がなく <var>defaultValue</var> も指定されていない場合は、引数は設定されていないとする
+    (引数が空文字列か設定されていないかを判別する為には、
+    後述の ${#OPTARGS[@]} の値を見ればよい)。
+  </li>
+  <li><code class="agh-prog-cpp"><var>optparam</var> := '*'</code> :
+    任意の引数を受け取る。
+  </li>
+  </ul>
+  <p>ble-getopt 関数は次の引数またはオプションを取得し、その結果を OPTARGS に設定して戻る。
+  全ての引数を処理し終わり次の引数が存在しない時は OPTARGS を unset して終了状態 2 を返す。
+  オプションの読み取りに失敗した場合、エラーメッセージを出力して終了状態 1 を返す。
+  </p>
+  <p>OPTARGS には ble-getopt の実行結果が格納される。
+  OPTARGS の第0要素 ${OPTARGS[0]} にはオプションの名前が格納される。
+  そのオプションがオプション引数を持つ場合は、それらは ${OPTARGS[1]} 以降に格納される。
+  </p>
+  <p>ble-getopt を利用して引数を処理する関数の定義は、典型的には以下の様な構造になる。</p>
+<pre class="agh-prog-bash">
+function my_command {
+  # 1 内部変数を local に閉じ込める
+  local "${ble_getopt_vars[@]}"
+
+  # 2 ble-getopt の初期化を行う
+  ble-getopt-begin 'my_command' 'a foo:*:*' "$@"
+
+  # 3 引数の走査
+  while ble-getopt; do
+    case "${OPTARGS[0]}" in
+    (a)
+      # 引数 -a に対する処理
+      ;;
+    (foo)
+      # 引数 --foo に対する処理
+      # オプション引数1 は ${OPTARGS[1]} に、
+      # オプション引数2 は ${OPTARGS[2]} に格納されている。
+      ;;
+    ()
+      # 通常の引数に対する処理
+      ;;
+    esac
+  done
+
+  # 4 引数走査が正常に終了したか確認
+  test -n "${OPTARGS+set}" &amp;&amp; return 1
+
+  # 5 処理の実行
+  :
+}
+</pre>
+  <p></p>
+
+  <p>TODO: optname := optchar,longname の形式に対応する?</p>
+  <p>TODO: optname を空にする事で、通常の引数の形式も指定できる様にする。</p>
+  <p>TODO: ヘルプ用オプションリスト生成機構 (80文字幅, 各オプションに対する説明の指定)</p>
+</dd>
+</dl>
+
+
+</body>
+</html>
