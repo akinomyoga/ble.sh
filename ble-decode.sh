@@ -845,53 +845,63 @@ function ble-decode-bind {
 
   # ESC で始まる既存の binding を全て削除
   local line
-  while read -r line; do
+  while IFS= read -r line; do
     bind -r "${line%x}"
-  done < <(bind -sp | fgrep '"\e' | awk '{match($0,/"([^"]+)"/,_capt);print _capt[1] "x";}')
+  done < <(bind -sp | fgrep -a '"\e' | awk '{match($0,/"([^"]+)"/,_capt);print _capt[1] "x";}')
 
   # bind -x '"?":ble-decode-byte:bind ?'
   local i ret
   for ((i=0;i<256;i++)); do
-    .ble-text.c2s "$i"
 
+    # リテラル "～" 内で特別な表記にする必要がある物
     case "$i" in
-    (0)
-      # C-@
-      bind -x "\"\\C-@\":ble-decode-byte:bind $i"
-      # C-x C-@
-      bind -x "\"\\C-@\":ble-decode-byte:bind 24 $i" ;;
-    (27)
-      # ESC
-      bind -x "\"$ret\":ble-decode-byte:bind $i"
+    (0) # \0
+      ret='\C-@' ;;
+    (34|92) # \\ or \"
+      ret='\'"$ret" ;;
+    # (39) # ' 特に何もしなくて良い
+    #   ;;
+    (*)
+      if ((i>=128)); then
+        .ble-text.sprintf ret '\\%03o' "$i"
+      else
+        .ble-text.c2s "$i"
+      fi ;;
+    esac
 
-      # C-x ESC
-      bind -x "\"\":ble-decode-byte:bind 24 24"
+    # * C-x (24) は直接 bind すると何故か bash が crash する。
+    #   なので C-x は割り当てないで、
+    #   代わりに C-x ? の組合せを全て登録する事にする。
+    # * bash-4.1 では ESC ESC に bind すると
+    #   bash_execute_unix_command: cannot find keymap for command
+    #   が出るので ESC [ ^ に適当に redirect して ESC [ ^ を
+    #   ESC ESC として解釈する様にする。
+    # * bash-4.3 では ESC ? と ESC [ ? も割り当てる必要がある (2015-02-09)
+    #   bash-4.3 では ESC ?, ESC [ ? も全て割り当てないと以下のエラーになる。
+    #   bash_execute_unix_command: cannot find keymap for command
+
+    # ?
+    ((i!=24)) && bind -x "\"$ret\":\"ble-decode-byte:bind $i\""
+
+    # C-x ?
+    bind -x "\"$ret\":\"ble-decode-byte:bind 24 $i\""
+
+    if ((_ble_bash>=40300)); then
+      # もしかすると bash-4.1 以下でもこれで良いのかも。
+
+      # ESC ?
+      bind -x "\"\e$ret\":\"ble-decode-byte:bind 27 $i\""
+
+      # ESC [ ?
+      bind -x "\"\e[$ret\":\"ble-decode-byte:bind 27 91 $i\""
+    else
+      # bash-4.1: not tested in other versions
 
       # ESC ESC
       bind '"\e\e":"\e[^"'
       ble-bind -k 'ESC [ ^' __esc__
-      ble-bind -f __esc__ .ble-decode-char.__esc__ ;;
-    (24)
-      # C-x: 直接 bind すると死
-
-      # C-x C-x
-      bind -x "\"\":ble-decode-byte:bind 24 24" ;;
-    (34|92) # \ or "
-      # C-"     or C-\
-      bind -x "\"\\$ret\":ble-decode-byte:bind $i"
-      # C-x C-" or C-x C-\
-      bind -x "\"\\$ret\":ble-decode-byte:bind 24 $i" ;;
-    (39)
-      # C-'
-      bind -x "\"$ret\":ble-decode-byte:bind $i"
-      # C-x C-'
-      bind -x "\"$ret\":ble-decode-byte:bind 24 $i" ;;
-    (*)
-      # C-?
-      bind -x "\"$ret\":ble-decode-byte:bind $i"
-      # C-x C-?
-      bind -x "\"$ret\":ble-decode-byte:bind 24 $i" ;;
-    esac
+      ble-bind -f __esc__ .ble-decode-char.__esc__
+    fi
   done
 }
 

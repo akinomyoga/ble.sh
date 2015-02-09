@@ -1367,7 +1367,7 @@ function .ble-edit.locate-current-cword {
   r="$a"
   .ble-edit.locate-forward-cword "$r"
 }
-#%m localte-xword (
+#%m locate-xword (
 ## 関数 .ble-edit.locate-backward-xword; a b c
 ##   後方の generic word を探索します。
 ##   <a> *<b>w*<c> *<x>

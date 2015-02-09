@@ -113,6 +113,19 @@ function .ble-term.visible-bell.cancel-erasure {
 # String manipulations
 
 if test "${_ble_bash:-0}" -ge 40100; then
+  function .ble-text.sprintf {
+    printf -v "$@"
+  }
+else
+  function .ble-text.sprintf {
+    local _var="$1"
+    shift
+    local _value="$(printf "$@")"
+    eval "$_var=\"\$_value\""
+  }
+fi
+
+if test "${_ble_bash:-0}" -ge 40100; then
   function .ble-text.s2c {
     printf -v ret '%d' "'${1:$2:1}"
   }
