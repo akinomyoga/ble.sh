@@ -1615,20 +1615,56 @@ function .ble-edit.accept-line.exec.recursive {
 }
 declare _ble_edit_exec_replacedDeclare=
 declare _ble_edit_exec_replacedTypeset=
+function .ble_edit/exec/isGlobalContext {
+  local offset="$1"
+
+  local path
+  for path in "${FUNCNAME[@]:offset+1}"; do
+    # source or . が続く限りは遡る (. で呼び出しても FUNCNAME には source が入る様だ。)
+    if [[ $path = .ble-edit.accept-line.exec.eval ]]; then
+      return 0
+    elif [[ $path != source ]]; then
+      # source という名の関数を定義して呼び出している場合、source と区別が付かない。
+      # しかし関数と組込では、組込という判定を優先する。
+      # (理由は (1) 関数内では普通 local を使う事
+      # (2) local になるべき物が global になるのと、
+      # global になるべき物が local になるのでは前者の方がまし、という事)
+      return 1
+    fi
+  done
+
+  # BASH_SOURCE は source が関数か builtin か判定するのには使えない
+  # local i iN=${#FUNCNAME[@]}
+  # for ((i=offset;i<iN;i++)); do
+  #   local func="${FUNCNAME[i]}"
+  #   local path="${BASH_SOURCE[i]}"
+  #   if [[ $func = .ble-edit.accept-line.exec.eval && $path = $BASH_SOURCE ]]; then
+  #     return 0
+  #   elif [[ $path != source && $path != $BASH_SOURCE ]]; then
+  #     # source ble.sh の中の declare が全て local になるので上だと駄目。
+  #     # しかしそもそも二重にロードしても大丈夫な物かは謎。
+  #     return 1
+  #   fi
+  # done
+
+  return 0
+}
 function .ble-edit.accept-line.exec {
   test ${#_ble_edit_accept_line[@]} -eq 0 && return
 
   # コマンド内部で declare してもグローバルに定義されない。
   # bash-4.2 以降では -g オプションがあるので declare を上書きする。
   #
-  # - コマンド内部で、更に関数を定義してその中で declare をすると問題になるが、
-  #   関数の中では declare ではなく local を使うと仮定する。
   # - -g は変数の作成・変更以外の場合は無視されると man に書かれているので、
   #   変数定義の参照などの場合に影響は与えない。
   # - 既に declare が定義されている場合には上書きはしない。
   #   custom declare に -g を渡す様に書き換えても良いが、
   #   custom declare に -g を指定した時に何が起こるか分からない。
   #   また、custom declare を待避・定義しなければならず実装が面倒。
+  # - コマンド内で直接 declare をしているのか、
+  #   関数内で declare をしているのかを判定する為に FUNCNAME 変数を使っている。
+  #   但し、source という名の関数を定義して呼び出している場合は
+  #   source している場合と区別が付かない。この場合は source しているとの解釈を優先させる。
   #
   # ※内部で declare() を上書きされた場合に対応していない。
   # ※builtin declare と呼び出された場合に対しては流石に対応しない
@@ -1636,11 +1672,25 @@ function .ble-edit.accept-line.exec {
   if ((_ble_bash>=40200)); then
     if ! builtin declare -f declare &>/dev/null; then
       _ble_edit_exec_replacedDeclare=1
-      declare() { builtin declare -g "$@"; }
+      # declare() { builtin declare -g "$@"; }
+      declare() {
+        if .ble_edit/exec/isGlobalContext 1; then
+          builtin declare -g "$@"
+        else
+          builtin declare "$@"
+        fi
+      }
     fi
     if ! builtin declare -f typeset &>/dev/null; then
       _ble_edit_exec_replacedTypeset=1
-      typeset() { builtin typeset -g "$@"; }
+      # typeset() { builtin typeset -g "$@"; }
+      typeset() {
+        if .ble_edit/exec/isGlobalContext 1; then
+          builtin typeset -g "$@"
+        else
+          builtin typeset "$@"
+        fi
+      }
     fi
   fi
 
