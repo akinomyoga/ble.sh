@@ -643,10 +643,10 @@ function ble-decode-kbd {
   for key in $@; do
     if test "x${key: -1}" = 'x-'; then
       # -, C--
-      IFS=- eval 'keymods=(${key%-})'
+      GLOBIGNORE='*' IFS=- eval 'keymods=(${key%-})'
       keymods+=("${key: -1}")
     else
-      IFS=- eval 'keymods=($key)'
+      GLOBIGNORE='*' IFS=- eval 'keymods=($key)'
     fi
 
     .ble-decode-kbd.single-key "${keymods[@]}"
@@ -751,7 +751,9 @@ function ble-bind {
     help)
       cat <<EOF
 ble-bind -k charspecs [keyspec]
-ble-bind [-m kmapname] [-sxc@] -f keyspecs [command]
+ble-bind [-m kmapname] [-scx@] -f keyspecs [command]
+ble-bind -D
+ble-bind -d
 
 EOF
       return 0 ;;

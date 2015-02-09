@@ -68,7 +68,7 @@ function .ble-getopt.process-option {
   for ((i=0;i<${#_getopt_odefs[@]};i++)); do
     if [ "$name" = "${_getopt_odefs[$i]%%:*}" ]; then
       f_found=1
-      IFS=: eval 'adef=(${_getopt_odefs[$i]})'
+      GLOBIGNORE='*' IFS=: eval 'adef=(${_getopt_odefs[$i]})'
       break
     fi
   done
@@ -157,7 +157,7 @@ function ble-getopt {
       # short options
       local f_longname=
 
-      IFS=: eval 'local arr=($_getopt_opt)'
+      GLOBIGNORE='*' IFS=: eval 'local arr=($_getopt_opt)'
       _getopt_oarg=("${arr[@]}")
       _getopt_olen="${#_getopt_oarg[@]}"
       _getopt_oind=1
@@ -168,5 +168,5 @@ function ble-getopt {
     # 通常の引数
     OPTARGS=('' "$arg")
   fi
- 
+
 }

@@ -30,9 +30,21 @@
       それでも未だ全体の半分が history 読み取りである
       (しかし history を 16k も溜めている場合は少ないから、実際は無視できるかも)。
 
+  * 改めて初期化の時間を調べる:
+    多少なりとも時間が掛かっているのは以下の phase
+    - ble-core.sh                     58ms
+    - ble-edit.sh                    629ms (554ms が history, 75ms が他)
+    - ble-decode-bind.cmap            52ms
+    - ble-decode-bind                105ms
+    - .ble-edit.default-key-bindings 229ms
+    - .ble-edit-draw.redraw           35ms
+
+    default-key-bindings を見るに ble-bind に平均 229/75 ms かかっている様だ。
+    これを考えると ble-edit.sh の中の 33ms も ble-bind の遅さに起因する。
+
 2013-06-13
 
-  * 制限: bash-3 では C-d を捕捉する事が出来ない。
+  * 制限: bash-3 では C-d を捕捉する事ができない。
 
   [Done]
 

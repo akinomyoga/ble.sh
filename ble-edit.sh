@@ -1782,7 +1782,7 @@ function .ble-edit.history-add {
   local cmd="$1"
   if test -n "$HISTIGNORE"; then
     local i pats pat
-    IFS=: eval 'pats=($HISTIGNORE)'
+    GLOBIGNORE='*' IFS=: eval 'pats=($HISTIGNORE)'
     for pat in "${pats[@]}"; do
       test -z "${cmd/$pat/}" && return
     done
@@ -2086,7 +2086,7 @@ function .ble-edit-comp.initialize-vars {
   # COMP_WORDS, COMP_CWORD
   local _default_wordbreaks=' 	
 "'"'"'><=;|&(:}'
-  IFS="${COMP_WORDBREAKS-$_default_wordbreaks}" eval '
+  GLOBIGNORE='*' IFS="${COMP_WORDBREAKS-$_default_wordbreaks}" eval '
     COMP_WORDS=($COMP_LINE)
     local _tmp=(${COMP_LINE::COMP_POINT}x)
     COMP_CWORD=$((${#_tmp[@]}-1))
