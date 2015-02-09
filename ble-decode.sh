@@ -858,6 +858,7 @@ function ble-decode-bind {
     (0) # \0
       ret='\C-@' ;;
     (34|92) # \\ or \"
+      .ble-text.c2s "$i"
       ret='\'"$ret" ;;
     # (39) # ' 特に何もしなくて良い
     #   ;;

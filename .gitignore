@@ -1,0 +1,4 @@
+# output files
+out
+ble.sh
+ble.d/*.dump
