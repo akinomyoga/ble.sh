@@ -298,8 +298,8 @@ function .ble-cursor.construct-prompt.initialize {
   _ble_cursor_prompt__string_u="${USER}"
 
   # bash versions
-  _ble_cursor_prompt__string_v="$(printf '%d.%d' ${BASH_VERSINFO[0]} ${BASH_VERSINFO[1]})"
-  _ble_cursor_prompt__string_V="$(printf '%d.%d.%d' ${BASH_VERSINFO[0]} ${BASH_VERSINFO[1]} ${BASH_VERSINFO[2]})"
+  .ble-text.sprintf _ble_cursor_prompt__string_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
+  .ble-text.sprintf _ble_cursor_prompt__string_V '%d.%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" "${BASH_VERSINFO[2]}"
 
   # uid
   if test "$EUID" -eq 0; then
@@ -1558,6 +1558,7 @@ function .ble-edit.accept-line.exec.setexit {
   # $? 変数の設定
   return "$_ble_edit_accept_line_lastexit"
 }
+
 function .ble-edit.accept-line.exec.eval {
   set -H
 
@@ -1612,8 +1613,36 @@ function .ble-edit.accept-line.exec.recursive {
 
   .ble-edit.accept-line.exec.recursive "$(($1+1))"
 }
+declare _ble_edit_exec_replacedDeclare=
+declare _ble_edit_exec_replacedTypeset=
 function .ble-edit.accept-line.exec {
   test ${#_ble_edit_accept_line[@]} -eq 0 && return
+
+  # コマンド内部で declare してもグローバルに定義されない。
+  # bash-4.2 以降では -g オプションがあるので declare を上書きする。
+  #
+  # - コマンド内部で、更に関数を定義してその中で declare をすると問題になるが、
+  #   関数の中では declare ではなく local を使うと仮定する。
+  # - -g は変数の作成・変更以外の場合は無視されると man に書かれているので、
+  #   変数定義の参照などの場合に影響は与えない。
+  # - 既に declare が定義されている場合には上書きはしない。
+  #   custom declare に -g を渡す様に書き換えても良いが、
+  #   custom declare に -g を指定した時に何が起こるか分からない。
+  #   また、custom declare を待避・定義しなければならず実装が面倒。
+  #
+  # ※内部で declare() を上書きされた場合に対応していない。
+  # ※builtin declare と呼び出された場合に対しては流石に対応しない
+  #
+  if ((_ble_bash>=40200)); then
+    if ! builtin declare -f declare &>/dev/null; then
+      _ble_edit_exec_replacedDeclare=1
+      declare() { builtin declare -g "$@"; }
+    fi
+    if ! builtin declare -f typeset &>/dev/null; then
+      _ble_edit_exec_replacedTypeset=1
+      typeset() { builtin typeset -g "$@"; }
+    fi
+  fi
 
   # ローカル変数を宣言すると実行されるコマンドから見えてしまう。
   # また、実行されるコマンドで定義される変数のスコープを制限する事にもなるので、
@@ -1626,6 +1655,17 @@ function .ble-edit.accept-line.exec {
   .ble-edit.accept-line.exec.recursive 0
 
   _ble_edit_accept_line=()
+
+  # C-c で中断した場合など以下が実行されないかもしれないが
+  # 次の呼出の際にここが実行されるのでまあ許容する。
+  if test -n "$_ble_edit_exec_replacedDeclare"; then
+    _ble_edit_exec_replacedDeclare=
+    unset declare
+  fi
+  if test -n "$_ble_edit_exec_replacedTypeset"; then
+    _ble_edit_exec_replacedTypeset=
+    unset typeset
+  fi
 }
 
 function ble-edit+accept-line {
@@ -1695,18 +1735,37 @@ _ble_edit_history=()
 _ble_edit_history_edit=()
 _ble_edit_history_ind=0
 function .ble-edit.history-load {
-  local sep='__ble_lf__' lf=$'\n'
-  _ble_edit_history=()
-  local line
-  while read -r line; do
-    _ble_edit_history[${#_ble_edit_history[@]}]="${line//$sep/$lf}"
-  done < <(
-    HISTTIMEFORMAT=__ble_ext__
-    history | awk '
-      function p(){if(n!=""){print t;n="";}}
-      /^ *[0-9]+\*? +__ble_ext__/{p();n=$1;t=$0;sub(/^ *[0-9]+\*? +__ble_ext__/,"",t);next}
-      {t=t "'"$sep"'" $0;}
-      END{p();}
+  HISTTIMEFORMAT=__ble_ext__
+
+  # プロセス置換にしてもファイルに書き出しても大した違いはない
+  # 270ms for 16437 entries
+  source <(
+    # 285ms for 16437 entries
+    history | awk -v apos="'" '
+      BEGIN{
+        print "_ble_edit_history=("
+      }
+      /^ *[0-9]+\*? +__ble_ext__/{
+        if(n!=""){
+          n="";
+          gsub(apos,apos "\\" apos apos,t);
+          print "  " apos t apos;
+        }
+
+        n=$1;
+        t=$0;sub(/^ *[0-9]+\*? +__ble_ext__/,"",t);
+        next
+      }
+      {t=t "\n" $0;}
+      END{
+        if(n!=""){
+          n="";
+          gsub(apos,apos "\\" apos apos,t);
+          print "  " apos t apos;
+        }
+
+        print ")"
+      }
     '
   )
 

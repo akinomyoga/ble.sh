@@ -27,6 +27,22 @@ function .ble-shopt-extglob-pop-all {
 }
 
 #------------------------------------------------------------------------------
+# util
+
+if test "${_ble_bash:-0}" -ge 40100; then
+  function .ble-text.sprintf {
+    printf -v "$@"
+  }
+else
+  function .ble-text.sprintf {
+    local _var="$1"
+    shift
+    local _value="$(printf "$@")"
+    eval "$_var=\"\$_value\""
+  }
+fi
+
+#------------------------------------------------------------------------------
 # **** terminal controls ****
 
 : ${ble_opt_vbell_default_message=' Wuff, -- Wuff!! '}
@@ -111,19 +127,6 @@ function .ble-term.visible-bell.cancel-erasure {
 }
 #------------------------------------------------------------------------------
 # String manipulations
-
-if test "${_ble_bash:-0}" -ge 40100; then
-  function .ble-text.sprintf {
-    printf -v "$@"
-  }
-else
-  function .ble-text.sprintf {
-    local _var="$1"
-    shift
-    local _value="$(printf "$@")"
-    eval "$_var=\"\$_value\""
-  }
-fi
 
 if test "${_ble_bash:-0}" -ge 40100; then
   function .ble-text.s2c {

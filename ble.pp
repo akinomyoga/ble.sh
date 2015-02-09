@@ -47,7 +47,6 @@ if test ! -d "$_ble_base/ble.d/tmp"; then
   chmod a+rwxt "$_ble_base/ble.d/tmp"
 fi
 
-
 #%x inc.r/@/getopt/
 #%x inc.r/@/core/
 #%x inc.r/@/decode/
