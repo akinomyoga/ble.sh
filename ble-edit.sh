@@ -997,7 +997,7 @@ function ble-edit+clear-screen {
   .ble-term.visible-bell.cancel-erasure
 }
 function ble-edit+display-shell-version {
-  .ble-edit.bind.command echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"
+  .ble-edit.bind.command 'echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
 }
 
 # 
@@ -1763,16 +1763,21 @@ function ble-edit+accept-and-next {
 }
 
 function .ble-edit.bind.command {
-  local CMD=("$@")
+  local BASH_COMMAND=("$*")
   .ble-line-info.clear
   .ble-edit-draw.update
   .ble-edit-draw.goto-xy '' "$_ble_line_endx" "$_ble_line_endy"
   echo 1>&2
   ((LINENO=++_ble_edit_LINENO))
 
-  "${CMD[@]}"
+  # eval "$BASH_COMMAND"
+  # .ble-edit.accept-line.exec.adjust-eol
 
-  .ble-edit.accept-line.exec.adjust-eol
+  # やはり通常コマンドはちゃんとした環境で評価するべき
+  if test -n "${BASH_COMMAND//[ 	]/}"; then
+    .ble-edit.accept-line.add "$BASH_COMMAND"
+  fi
+
   .ble-edit-draw.set-dirty -1
 }
 
@@ -2392,7 +2397,8 @@ function .ble-edit.default-key-bindings {
 
   ble-bind -f 'C-x C-v'   display-shell-version
   # ble-bind -f 'C-x' bell
-  ble-bind -f 'C-z' bell
+  ble-bind -cf 'C-z' fg
+  ble-bind -cf 'M-z' fg
   ble-bind -f 'C-[' bell
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell

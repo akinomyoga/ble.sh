@@ -27,6 +27,8 @@ function _ble_base.initialize {
   if test "$dir" != "$src"; then
     if test -z "$dir"; then
       _ble_base=/
+    elif test "x${dir::1}" != x/; then
+      _ble_base="$PWD/$dir"
     else
       _ble_base="$dir"
     fi
