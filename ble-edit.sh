@@ -22,6 +22,8 @@
 # @bind
 # @bind.bind
 
+: ${ble_opt_suppress_bash_output=1}
+
 # 
 #------------------------------------------------------------------------------
 # **** char width ****                                                @text.c2w
@@ -978,7 +980,9 @@ function .ble-edit-draw.update-adjusted {
     READLINE_POINT=0
   else
     .ble-text.c2w "$lc"
-    ((ret>0)) && echo -n "[${ret}D"
+    if test -z "$ble_opt_suppress_bash_output"; then
+      ((ret>0)) && echo -n "[${ret}D"
+    fi
     .ble-text.c2bc "$lc"
     READLINE_POINT="$ret"
   fi
@@ -1615,7 +1619,7 @@ function .ble-edit.accept-line.exec.recursive {
 }
 declare _ble_edit_exec_replacedDeclare=
 declare _ble_edit_exec_replacedTypeset=
-function .ble_edit/exec/isGlobalContext {
+function .ble-edit/exec/isGlobalContext {
   local offset="$1"
 
   local path
@@ -1674,7 +1678,7 @@ function .ble-edit.accept-line.exec {
       _ble_edit_exec_replacedDeclare=1
       # declare() { builtin declare -g "$@"; }
       declare() {
-        if .ble_edit/exec/isGlobalContext 1; then
+        if .ble-edit/exec/isGlobalContext 1; then
           builtin declare -g "$@"
         else
           builtin declare "$@"
@@ -1685,7 +1689,7 @@ function .ble-edit.accept-line.exec {
       _ble_edit_exec_replacedTypeset=1
       # typeset() { builtin typeset -g "$@"; }
       typeset() {
-        if .ble_edit/exec/isGlobalContext 1; then
+        if .ble-edit/exec/isGlobalContext 1; then
           builtin typeset -g "$@"
         else
           builtin typeset "$@"
@@ -1790,7 +1794,10 @@ _ble_edit_history=()
 _ble_edit_history_edit=()
 _ble_edit_history_ind=0
 function .ble-edit.history-load {
-  HISTTIMEFORMAT=__ble_ext__
+  # rcfile として起動すると history が未だロードされていない。
+  history -n
+
+  local HISTTIMEFORMAT=__ble_ext__
 
   # プロセス置換にしてもファイルに書き出しても大した違いはない
   # 270ms for 16437 entries
@@ -2271,10 +2278,58 @@ function ble-edit+command-help {
 
 # **** binder ****                                                   @bind.bind
 
+function .ble-edit/stdout/on  ((1))
+function .ble-edit/stdout/off ((1))
+
+if test -n "$ble_opt_suppress_bash_output"; then
+  # ■bash-3 では test していないので off になっている。
+  #   確認事項 = カーソル位置がずれていないか、vbell が正しく消えるか
+
+  declare _ble_edit_io_stdout
+  declare _ble_edit_io_stderr
+  exec {_ble_edit_io_stdout}>&1
+  exec {_ble_edit_io_stderr}>&2
+  # declare _ble_edit_io_fname1=/dev/null
+  # declare _ble_edit_io_fname2=/dev/null
+  declare _ble_edit_io_fname1="$_ble_base/ble.d/tmp/$$.stdout"
+  declare _ble_edit_io_fname2="$_ble_base/ble.d/tmp/$$.stderr"
+
+  function .ble-edit/stdout/on {
+    exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr
+  }
+  function .ble-edit/stdout/off {
+    .ble-edit/bash-output/check
+    exec 1>>$_ble_edit_io_fname1 2>>$_ble_edit_io_fname2
+  }
+
+  function .ble-edit/bash-output/check {
+    # bash が stderr にエラーを出力したかチェックし表示する
+    if declare -f .ble-term.visible-bell &>/dev/null; then
+      # /dev/null の様なデバイスではなく、中身があるファイルの場合
+      if test -f "$_ble_edit_io_fname2" -a -s "$_ble_edit_io_fname2"; then
+        local message=
+        while IFS= read -r line; do
+          if [[ $line =~ ^'bash: ' ]]; then
+            message+="${message:+; }$line"
+          fi
+        done < "$_ble_edit_io_fname2"
+        
+        test -n "$message" && .ble-term.visible-bell "$message"
+        :> "$_ble_edit_io_fname2"
+      fi
+    fi
+  }
+fi
+
 if ((_ble_bash>=40000)); then
+  :>1.tmp
   function ble-decode-byte:bind {
     local dbg="$*"
-    .ble-edit-draw.redraw-cache # bash-4 以降では呼出直前にプロンプトが消される
+    echo "$dbg" >> 1.tmp
+    .ble-edit/stdout/on
+    if test -z "$ble_opt_suppress_bash_output"; then
+      .ble-edit-draw.redraw-cache # bash-4 以降では呼出直前にプロンプトが消される
+    fi
     .ble-decode-bind.uvw
     .ble-stty.enter
 
@@ -2285,6 +2340,7 @@ if ((_ble_bash>=40000)); then
 
     .ble-edit.accept-line.exec
     .ble-edit-draw.update-adjusted
+    .ble-edit/stdout/off
     return 0
   }
 else

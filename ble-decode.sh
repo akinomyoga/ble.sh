@@ -726,7 +726,7 @@ function ble-bind {
 
           # check if is function
           local a=($command)
-          if ! type -t "${a[0]}" &>/dev/null; then
+          if ! declare -f "${a[0]}" &>/dev/null; then
             echo "unknown ble edit function \`${a[0]#ble-edit+}'" 1>&2
             return 1
           fi
@@ -849,7 +849,7 @@ function ble-decode-bind {
   local line
   while IFS= read -r line; do
     bind -r "${line%x}"
-  done < <(bind -sp | fgrep -a '"\e' | awk '{match($0,/"([^"]+)"/,_capt);print _capt[1] "x";}')
+  done < <(bind -sp | grep -Fa '"\e' | awk '{match($0,/"([^"]+)"/,_capt);print _capt[1] "x";}')
 
   # bind -x '"?":ble-decode-byte:bind ?'
   local i ret

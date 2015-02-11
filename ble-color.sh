@@ -147,6 +147,16 @@ function ble-region_highlight-append {
 
 #------------------------------------------------------------------------------
 
+function ble-syntax-highlight+region {
+  if test -n "$_ble_edit_mark_active"; then
+    if ((_ble_edit_mark>_ble_edit_ind)); then
+      ble-region_highlight-append "$_ble_edit_ind $_ble_edit_mark bg=60,fg=white"
+    elif ((_ble_edit_mark<_ble_edit_ind)); then
+      ble-region_highlight-append "$_ble_edit_mark $_ble_edit_ind bg=60,fg=white"
+    fi
+  fi
+}
+
 .ble-shopt-extglob-push
 
 function ble-syntax-highlight+test {
@@ -212,13 +222,8 @@ function ble-syntax-highlight+test {
 
   .ble-shopt-extglob-pop
 
-  if test -n "$_ble_edit_mark_active"; then
-    if ((_ble_edit_mark>_ble_edit_ind)); then
-      ble-region_highlight-append "$_ble_edit_ind $_ble_edit_mark bg=60,fg=white"
-    elif ((_ble_edit_mark<_ble_edit_ind)); then
-      ble-region_highlight-append "$_ble_edit_mark $_ble_edit_ind bg=60,fg=white"
-    fi
-  fi
+  ble-syntax-highlight+region
+
   # ble-region_highlight-append "${#text1} $((${#text1}+1)) standout"
 }
 
@@ -383,4 +388,6 @@ function ble-syntax-highlight+default {
     ((i++))
     # a[]=... の引数は、${} や "" を考慮に入れるだけでなく [] の数を数える。
   done
+
+  ble-syntax-highlight+region
 }
