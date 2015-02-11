@@ -1306,7 +1306,7 @@ function ble-edit+delete-forward-char-or-exit {
 
   #_ble_edit_detach_flag=exit
   
-  .ble-term.visible-bell ' Bye!! '
+  #.ble-term.visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   echo '[94m[ble: exit][m' 1>&2
   exit
 }
@@ -2340,16 +2340,14 @@ fi
 _ble_edit_detach_flag=
 function .ble-decode-byte:bind/exit-trap {
   # シグナルハンドラの中では stty は bash によって設定されている。
-  stty echo -nl \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
+  .ble-stty.exit-trap
   exit 0
 }
 function .ble-decode-byte:bind/check-detach {
   if test -n "$_ble_edit_detach_flag"; then
     type="$_ble_edit_detach_flag"
     _ble_edit_detach_flag=
-    .ble-term.visible-bell ' Bye!! '
+    #.ble-term.visible-bell ' Bye!! '
     .ble-edit-finalize
     ble-decode-unbind
     .ble-stty.finalize
@@ -2459,6 +2457,7 @@ function .ble-edit.default-key-bindings {
 
   # kill
   ble-bind -f 'C-@'      set-mark
+  ble-bind -f 'M-SP'     set-mark
   ble-bind -f 'C-x C-x'  exchange-point-and-mark
   ble-bind -f 'C-w'      'kill-region-or uword'
   ble-bind -f 'M-w'      'copy-region-or uword'

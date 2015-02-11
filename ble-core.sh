@@ -72,7 +72,7 @@ function .ble-term.initialize {
 
   # 過去の .time ファイルを削除
   local now= file
-  for file in "$_ble_base"/ble.d/tmp/visible-bell.*.time; do
+  for file in "$_ble_base"/ble.d/tmp/*.visible-bell.time; do
     if test -f "$file"; then
       test -z "$now" && now="$(date +%s)"
       local ft="$(date +%s -r "$file")"
@@ -80,7 +80,7 @@ function .ble-term.initialize {
     fi
   done
 
-  _ble_term_visible_bell__ftime="$_ble_base/ble.d/tmp/visible-bell.$$.time"
+  _ble_term_visible_bell__ftime="$_ble_base/ble.d/tmp/$$.visible-bell.time"
 }
 .ble-term.initialize
 
@@ -113,7 +113,7 @@ function .ble-term.visible-bell {
       sleep $sec
 
       # check and clear
-      declare time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime"))
+      declare time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
       declare time2=($(date +'%s %N'))
       if (((time2[0]-time1[0])*1000+(1${time2[1]::3}-1${time1[1]::3})>=msec)); then
         echo -n "$_sc[1;1H[2K$_rc" 1>&2

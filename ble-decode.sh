@@ -810,7 +810,7 @@ function .ble-stty.exit-trap {
   stty echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
-  _ble_stty_stat=
+  rm -f "$_ble_base/ble.d/tmp/$$".*
 }
 trap .ble-stty.exit-trap EXIT
 
@@ -841,6 +841,71 @@ function .ble-decode-bind.uvw {
 
 # **** ble-decode-bind ****                                   @decode.bind.main
 
+## 関数 .ble-decode.c2dqs code; ret
+##   bash builtin bind で用いる事のできるキー表記
+function .ble-decode.c2dqs {
+  local i="$1"
+
+  # bind で用いる
+  # リテラル "～" 内で特別な表記にする必要がある物
+  if ((0<=i&&i<32)); then
+    # C0 characters
+    if ((1<=i&&i<=26)); then
+      .ble-text.c2s $((i+96))
+      ret="\\C-$ret"
+    elif ((i==27)); then
+      ret="\\e"
+    else
+      .ble-decode.c2dqs $((i+64))
+      ret="\\C-$ret"
+    fi
+  elif ((i==34||i==92)); then
+    # \" and \\
+    .ble-text.c2s "$i"
+    ret='\'"$ret"
+  elif ((128<=i&&i<160)); then
+    # C1 characters
+    .ble-text.sprintf ret '\\%03o' "$i"
+  else
+    # others
+    .ble-text.c2s "$i"
+  fi
+}
+
+## 関数 binder; .ble-decode-bind/from-cmap-source
+##   3文字以上の bind -x を _ble_decode_cmap から自動的に行うソースを生成
+##   binder には bind を行う関数を指定する。
+function .ble-decode-bind/from-cmap-source {
+  local tseq="$1" qseq="$2" nseq="$3" depth="${4:-1}" ccode
+  local apos="'" escapos="'\\''"
+  eval "local -a ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
+  for ccode in "${ccodes[@]}"; do
+    local ret
+    .ble-decode.c2dqs "$ccode"
+    qseq1="$qseq$ret"
+    nseq1="$nseq $ccode"
+
+    eval "local ent=\${_ble_decode_cmap_$tseq[$ccode]}"
+    if test -n "${ent%_}"; then
+      if ((depth>=3)); then
+        echo "\$binder \"$qseq1\" \"${nseq1# }\""
+      fi
+      #echo "bind -x '\"${qseq1//$apos/$escapos}\":\"ble-decode-char:bind$nseq\"'"
+    fi
+
+    if test "${ent//[0-9]/}" = _; then
+      .ble-decode-bind/from-cmap-source "${tseq}_$ccode" "$qseq1" "$nseq1" $((depth+1))
+    fi
+  done
+}
+
+function .ble-decode-bind.cmap/emit-bindx {
+  local ap="'" eap="'\\''"
+  echo "bind -x '\"${1//$ap/$eap}\":\"ble-decode-byte:bind $2\"'"
+}
+function .ble-decode-bind.cmap/emit-bindr {
+  echo "bind -r \"$1\""
+}
 function ble-decode-bind.cmap {
   local init="$_ble_base/ble.d/cmap+default.sh"
   local dump="$_ble_base/ble.d/cmap+default.$_ble_decode_kbd_ver.dump"
@@ -856,15 +921,27 @@ function ble-decode-bind.cmap {
       s/["'"'"']//g
     ' > "$dump"
   fi
+
+  # 3文字以上 bind/unbind ソースの生成
+  local fbinder="$_ble_base/ble.d/cmap+default.binder-source"
+  _ble_decode_bind_fbinder="$fbinder"
+  if ! test "$_ble_decode_bind_fbinder" -nt "$init"; then
+    echo -n 'ble.sh: initializing multichar sequence binders... '
+    .ble-decode-bind/from-cmap-source > "$fbinder"
+    binder=.ble-decode-bind.cmap/emit-bindx source "$fbinder" > "$fbinder.bind"
+    binder=.ble-decode-bind.cmap/emit-bindr source "$fbinder" > "$fbinder.unbind"
+    echo 'done'
+  fi
 }
 
-_ble_decode_bind_bound=0
 function .ble-decode-bind/bind {
   bind -x "\"$1\":\"ble-decode-byte:bind $2\""
 }
 function .ble-decode-bind/unbind {
   bind -r "$1"
 }
+
+_ble_decode_bind_bound=0
 function .ble-decode-bind {
   local mode="$1"
 
@@ -909,25 +986,9 @@ function .ble-decode-bind {
   fi
 
   # bind -x '"?":ble-decode-byte:bind ?'
-  local i ret
+  local i
   for ((i=0;i<256;i++)); do
-
-    # リテラル "～" 内で特別な表記にする必要がある物
-    case "$i" in
-    (0) # \0
-      ret='\C-@' ;;
-    (34|92) # \\ or \"
-      .ble-text.c2s "$i"
-      ret='\'"$ret" ;;
-    # (39) # ' 特に何もしなくて良い
-    #   ;;
-    (*)
-      if ((i>=128)); then
-        .ble-text.sprintf ret '\\%03o' "$i"
-      else
-        .ble-text.c2s "$i"
-      fi ;;
-    esac
+    local ret; .ble-decode.c2dqs "$i"
 
     # * C-x (24) は直接 bind すると何故か bash が crash する。
     #   なので C-x は割り当てないで、
@@ -954,8 +1015,20 @@ function .ble-decode-bind {
       # ESC ?
       $binder "\\e$ret" "27 $i"
 
-      # ESC [ ?
-      $binder "\\e[$ret" "27 91 $i"
+      # if ((_ble_bash>=40300)); then
+      #   # ESC [ ?
+      #   $binder "\\e[$ret" "27 91 $i"
+
+      #   # これらは実際には決まったパターンでしか来ないので全て登録する必要はない気がする:
+      #   $binder "\\e[1$ret" "27 91 49 $i"
+      #   $binder "\\e[2$ret" "27 91 50 $i"
+      #   $binder "\\e[3$ret" "27 91 51 $i"
+      #   $binder "\\e[4$ret" "27 91 52 $i"
+      #   $binder "\\e[5$ret" "27 91 53 $i"
+      #   $binder "\\e[6$ret" "27 91 54 $i"
+      #   $binder "\\e[1;$ret" "27 91 49 59 $i"
+      #   $binder "\\e[1;5$ret" "27 91 49 59 53 $i"
+      # fi
     else
       # bash-4.1: not tested in other versions
       if ((i==27)); then
@@ -970,6 +1043,18 @@ function .ble-decode-bind {
       fi
     fi
   done
+
+  # 決まったパターンのキーシーケンスは全て登録
+  #   bash-4.3 で keymap が見付かりませんのエラーが出るので。
+  # ※3文字以上の bind -x ができるのは bash-4.3 以降
+  #   (bash-4.3-alpha で bugfix が入っている)
+  if ((_ble_bash>=40300)); then
+    if [[ $mode == unbind ]]; then
+      source "$_ble_decode_bind_fbinder.unbind"
+    else
+      source "$_ble_decode_bind_fbinder.bind"
+    fi
+  fi
 
   # unbind: 元のキー割り当ての復元
   if [[ $mode == unbind && -s "$_ble_base/ble.d/tmp/$$.bind.save" ]]; then

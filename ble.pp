@@ -56,12 +56,14 @@ fi
 #%x inc.r/@/color/
 
 #------------------------------------------------------------------------------
+# function .ble-time { echo "$*"; time "$@"; }
+function .ble-time { eval "$@"; }
 
-ble-decode-bind.cmap
-ble-decode-bind
-.ble-edit-initialize
-.ble-edit.default-key-bindings
-.ble-edit-draw.redraw
-.ble-edit/stdout/off
+.ble-time ble-decode-bind.cmap
+.ble-time ble-decode-bind
+.ble-time .ble-edit-initialize
+.ble-time .ble-edit.default-key-bindings
+.ble-time .ble-edit-draw.redraw
+.ble-time .ble-edit/stdout/off
 
 ###############################################################################
