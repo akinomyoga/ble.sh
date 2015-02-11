@@ -59,6 +59,7 @@ fi
 
 ble-decode-bind.cmap
 ble-decode-bind
+.ble-edit-initialize
 .ble-edit.default-key-bindings
 .ble-edit-draw.redraw
 .ble-edit/stdout/off

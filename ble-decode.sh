@@ -777,7 +777,7 @@ EOF
 ## 変数 _ble_stty_stat
 ##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
 
-function .ble-stty.setup {
+function .ble-stty.initialize {
   stty -ixon    \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
@@ -797,6 +797,22 @@ function .ble-stty.enter {
     intr   undef  quit   undef  susp   undef
   _ble_stty_stat=1
 }
+function .ble-stty.finalize {
+  test -z "$_ble_stty_stat" && return
+  # detach の場合 -echo を指定する
+  stty -echo -nl \
+    kill   ''  lnext  ''  werase ''  erase  '' \
+    intr   ''  quit   ''  susp   ''
+  _ble_stty_stat=
+}
+function .ble-stty.exit-trap {
+  # exit の場合は echo
+  stty echo -nl \
+    kill   ''  lnext  ''  werase ''  erase  '' \
+    intr   ''  quit   ''  susp   ''
+  _ble_stty_stat=
+}
+trap .ble-stty.exit-trap EXIT
 
 # **** ESC ESC ****                                           @decode.bind.esc2
 
@@ -842,14 +858,55 @@ function ble-decode-bind.cmap {
   fi
 }
 
-function ble-decode-bind {
-  .ble-stty.setup
+_ble_decode_bind_bound=0
+function .ble-decode-bind/bind {
+  bind -x "\"$1\":\"ble-decode-byte:bind $2\""
+}
+function .ble-decode-bind/unbind {
+  bind -r "$1"
+}
+function .ble-decode-bind {
+  local mode="$1"
 
-  # ESC で始まる既存の binding を全て削除
-  local line
-  while IFS= read -r line; do
-    bind -r "${line%x}"
-  done < <(bind -sp | grep -Fa '"\e' | awk '{match($0,/"([^"]+)"/,_capt);print _capt[1] "x";}')
+  if [[ $mode == unbind ]]; then
+    ((_ble_decode_bind_bound==1)) || return
+    _ble_decode_bind_bound=0
+    .ble-stty.finalize
+    local binder=.ble-decode-bind/unbind
+  else
+    ((_ble_decode_bind_bound==0)) || return
+    _ble_decode_bind_bound=1
+    .ble-stty.initialize
+    local binder=.ble-decode-bind/bind
+  fi
+
+  # bind: 元のキー割り当ての保存
+  if [[ $mode != unbind ]]; then
+    # 1 ESC で始まる既存の binding を全て削除
+    # 2 bind を全て記録 at $$.bind.save
+    source <(
+      bind -sp 2>/dev/null | awk -v apos="'" '
+        /^"\\e/{match($0,/^("[^"]+")/,_capt);print "bind -r " _capt[1];}
+        /^"/{gsub(apos,apos "\\" apos apos);print "bind " apos $0 apos >"/dev/stderr";}
+      ' 2> "$_ble_base/ble.d/tmp/$$.bind.save"
+
+      if ((_ble_bash>=40300)); then
+        bind -X 2>/dev/null | awk -v apos="'" '
+          # ※bash-4.3 では bind -r しても bind -X に残る。
+          #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
+          $0~/^"/&&!($0~/\yble-decode-bind\y/){
+            gsub(apos,apos "\\" apos apos);
+            print "bind -x " apos $0 apos;
+          }
+        ' >> "$_ble_base/ble.d/tmp/$$.bind.save" 2>/dev/null
+      fi
+    )
+
+    # local line
+    # while IFS= read -r line; do
+    #   bind -r "${line%x}"
+    # done < <(bind -sp | grep -Fa '"\e' | awk '{match($0,/"([^"]+)"/,_capt);print _capt[1] "x";}')
+  fi
 
   # bind -x '"?":ble-decode-byte:bind ?'
   local i ret
@@ -884,28 +941,49 @@ function ble-decode-bind {
     #   bash_execute_unix_command: cannot find keymap for command
 
     # ?
-    ((i!=24)) && bind -x "\"$ret\":\"ble-decode-byte:bind $i\""
+    ((i!=24)) && $binder "$ret" "$i"
 
     # C-x ?
-    bind -x "\"$ret\":\"ble-decode-byte:bind 24 $i\""
+    $binder "$ret" "24 $i"
+    # C-@ ? (2015-02-11)
+    $binder "\\C-@$ret" "0 $i"
 
     if ((_ble_bash>=40300)); then
       # もしかすると bash-4.1 以下でもこれで良いのかも。
 
       # ESC ?
-      bind -x "\"\e$ret\":\"ble-decode-byte:bind 27 $i\""
+      $binder "\\e$ret" "27 $i"
 
       # ESC [ ?
-      bind -x "\"\e[$ret\":\"ble-decode-byte:bind 27 91 $i\""
+      $binder "\\e[$ret" "27 91 $i"
     else
       # bash-4.1: not tested in other versions
-
-      # ESC ESC
-      bind '"\e\e":"\e[^"'
-      ble-bind -k 'ESC [ ^' __esc__
-      ble-bind -f __esc__ .ble-decode-char.__esc__
+      if ((i==27)); then
+        # ESC ESC
+        if [[ $mode == unbind ]]; then
+          bind -r '\e\e'
+        else
+          bind '"\e\e":"\e[^"'
+          ble-bind -k 'ESC [ ^' __esc__
+          ble-bind -f __esc__ .ble-decode-char.__esc__
+        fi
+      fi
     fi
   done
+
+  # unbind: 元のキー割り当ての復元
+  if [[ $mode == unbind && -s "$_ble_base/ble.d/tmp/$$.bind.save" ]]; then
+    source "$_ble_base/ble.d/tmp/$$.bind.save"
+    rm -f "$_ble_base/ble.d/tmp/$$.bind.save"
+  fi
+}
+
+function ble-decode-bind {
+  .ble-decode-bind
+}
+
+function ble-decode-unbind {
+  .ble-decode-bind unbind
 }
 
 #------------------------------------------------------------------------------

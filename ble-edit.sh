@@ -284,6 +284,7 @@ function .ble-cursor.construct-prompt.append {
   fi
 }
 
+## called by .ble-edit-initialize
 function .ble-cursor.construct-prompt.initialize {
   # hostname
   _ble_cursor_prompt__string_h="${HOSTNAME%%.*}"
@@ -310,8 +311,6 @@ function .ble-cursor.construct-prompt.initialize {
     _ble_cursor_prompt__string_root='$'
   fi
 }
-
-.ble-cursor.construct-prompt.initialize
 
 _ble_line_prompt=("" 0 0 32 "")
 ## 変数 _ble_line_prompt
@@ -753,7 +752,8 @@ _ble_edit_kill_ring=
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
 
-function .ble-edit.initialize {
+## called by .ble-edit-initialize
+function .ble-edit/edit/initialize {
   if test -z "${_ble_edit_LINENO+x}"; then
     _ble_edit_LINENO="${BASH_LINENO[*]: -1}"
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
@@ -767,7 +767,9 @@ function .ble-edit.initialize {
   fi
 }
 
-.ble-edit.initialize
+function .ble-edit/edit/finalize {
+  PS1="$_ble_edit_PS1"
+}
 
 # **** .ble-edit-draw ****                                           @edit.draw
 
@@ -1291,14 +1293,22 @@ function ble-edit+delete-backward-char {
   .ble-edit.delete-char -1 || .ble-edit.bell
 }
 function ble-edit+delete-forward-char-or-exit {
-  if [ -z "$_ble_edit_str" ]; then
-    .ble-term.visible-bell ' Bye!! '
-    echo '[94m[ble: exit][m' 1>&2
-    .ble-stty.leave
-    exit
-  else
+  if [[ -n "$_ble_edit_str" ]]; then
     ble-edit+delete-forward-char
+    return
   fi
+
+  # job が残っている場合
+  if jobs % &>/dev/null; then
+    .ble-edit.bell "(exit) ジョブが残っています!"
+    return
+  fi
+
+  #_ble_edit_detach_flag=exit
+  
+  .ble-term.visible-bell ' Bye!! '
+  echo '[94m[ble: exit][m' 1>&2
+  exit
 }
 function ble-edit+delete-forward-backward-char {
   .ble-edit.delete-char 0 || .ble-edit.bell
@@ -1793,21 +1803,23 @@ function .ble-edit.bind.command {
 _ble_edit_history=()
 _ble_edit_history_edit=()
 _ble_edit_history_ind=0
+## called by .ble-edit-initialize
 function .ble-edit.history-load {
-  # rcfile として起動すると history が未だロードされていない。
-  history -n
-
-  local HISTTIMEFORMAT=__ble_ext__
-
   # プロセス置換にしてもファイルに書き出しても大した違いはない
   # 270ms for 16437 entries
   source <(
+    # rcfile として起動すると history が未だロードされていない。
+    history -n
+    HISTTIMEFORMAT=__ble_ext__
+    
     # 285ms for 16437 entries
     history | awk -v apos="'" '
       BEGIN{
         print "_ble_edit_history=("
       }
-      /^ *[0-9]+\*? +__ble_ext__/{
+
+      # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
+      /^ *[0-9]+\*? +(__ble_ext__|\?\?)/{
         if(n!=""){
           n="";
           gsub(apos,apos "\\" apos apos,t);
@@ -1815,7 +1827,7 @@ function .ble-edit.history-load {
         }
 
         n=$1;
-        t=$0;sub(/^ *[0-9]+\*? +__ble_ext__/,"",t);
+        t=$0;sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/,"",t);
         next
       }
       {t=t "\n" $0;}
@@ -1833,8 +1845,6 @@ function .ble-edit.history-load {
 
   _ble_edit_history_ind=${#_ble_edit_history[@]}
 }
-
-.ble-edit.history-load
 
 function .ble-edit.history-add {
   # 登録・不登録に拘わらず取り敢えず初期化
@@ -2280,6 +2290,7 @@ function ble-edit+command-help {
 
 function .ble-edit/stdout/on  ((1))
 function .ble-edit/stdout/off ((1))
+function .ble-edit/stdout/finalize ((1))
 
 if test -n "$ble_opt_suppress_bash_output"; then
   # ■bash-3 では test していないので off になっている。
@@ -2301,6 +2312,11 @@ if test -n "$ble_opt_suppress_bash_output"; then
     .ble-edit/bash-output/check
     exec 1>>$_ble_edit_io_fname1 2>>$_ble_edit_io_fname2
   }
+  function .ble-edit/stdout/finalize {
+    .ble-edit/stdout/on
+    test -f "$_ble_edit_io_fname1" && rm -f "$_ble_edit_io_fname1"
+    test -f "$_ble_edit_io_fname2" && rm -f "$_ble_edit_io_fname2"
+  }
 
   function .ble-edit/bash-output/check {
     # bash が stderr にエラーを出力したかチェックし表示する
@@ -2321,11 +2337,51 @@ if test -n "$ble_opt_suppress_bash_output"; then
   }
 fi
 
+_ble_edit_detach_flag=
+function .ble-decode-byte:bind/exit-trap {
+  # シグナルハンドラの中では stty は bash によって設定されている。
+  stty echo -nl \
+    kill   ''  lnext  ''  werase ''  erase  '' \
+    intr   ''  quit   ''  susp   ''
+  exit 0
+}
+function .ble-decode-byte:bind/check-detach {
+  if test -n "$_ble_edit_detach_flag"; then
+    type="$_ble_edit_detach_flag"
+    _ble_edit_detach_flag=
+    .ble-term.visible-bell ' Bye!! '
+    .ble-edit-finalize
+    ble-decode-unbind
+    .ble-stty.finalize
+
+    READLINE_LINE="" READLINE_POINT=0
+
+    if [[ "$type" == exit ]]; then
+      # ※この部分は現在使われていない。
+      #   exit 時の処理は trap EXIT を用いて行う事に決めた為。
+      #   一応 _ble_edit_detach_flag=exit と直に入力する事で呼び出す事はできる。
+
+      # exit
+      echo '[94m[ble: exit][m' 1>&2
+      .ble-edit-draw.update
+
+      # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
+      # シグナルハンドラの中から exit すれば stty がそのままの状態で抜けられる様なのでそうする。
+      trap '.ble-decode-byte:bind/exit-trap' RTMAX
+      kill -RTMAX $$
+    else
+      echo '[94m[ble: detached][m' 1>&2
+      .ble-edit-draw.update
+    fi
+    return 0
+  else
+    return 1
+  fi
+}
+
 if ((_ble_bash>=40000)); then
-  :>1.tmp
   function ble-decode-byte:bind {
     local dbg="$*"
-    echo "$dbg" >> 1.tmp
     .ble-edit/stdout/on
     if test -z "$ble_opt_suppress_bash_output"; then
       .ble-edit-draw.redraw-cache # bash-4 以降では呼出直前にプロンプトが消される
@@ -2337,8 +2393,9 @@ if ((_ble_bash>=40000)); then
       "ble-decode-byte+$ble_opt_input_encoding" "$1"
       shift
     done
-
     .ble-edit.accept-line.exec
+    .ble-decode-byte:bind/check-detach && return 0
+
     .ble-edit-draw.update-adjusted
     .ble-edit/stdout/off
     return 0
@@ -2359,8 +2416,9 @@ else
       "ble-decode-byte+$ble_opt_input_encoding" "$1"
       shift
     done
-
     .ble-edit.accept-line.exec
+    .ble-decode-byte:bind/check-detach && return 0
+
     .ble-edit-draw.update # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
     #echo "DBG: line=($READLINE_LINE) point=($READLINE_POINT)" >>~/a
     return 0
@@ -2459,6 +2517,16 @@ function .ble-edit.default-key-bindings {
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
+}
+
+function .ble-edit-initialize {
+  .ble-cursor.construct-prompt.initialize
+  .ble-edit/edit/initialize
+  .ble-edit.history-load
+}
+function .ble-edit-finalize {
+  .ble-edit/stdout/finalize
+  .ble-edit/edit/finalize
 }
 
 # Note#1

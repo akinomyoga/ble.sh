@@ -326,17 +326,16 @@ function ble-syntax-highlight+default {
         esac
 
         ((i+=${#BASH_REMATCH[0]}))
-        case "$type:$cmd" in
-        (keyword:time|keyword:!|keyword:do|builtin:eval|keyword:\{)
-          mode=cmd ;;
-        (*)
-          mode=arg ;;
-        esac
+        if [[ "$type:$cmd" =~ ^keyword:([\!\{]|time|do|if|then|else|while|until)$|^builtin:eval$ ]]; then
+          mode=cmd
+        else
+          mode=arg
+        fi
 
         continue
       fi
     elif [[ "$mode" =~ arg ]]; then
-      if [[ "$tail" =~ ^([^"$IFS|&;()<>'\"\`\\"]|\\.)+ ]]; then
+      if [[ "$tail" =~ ^([^"\$$IFS|&;()<>'\"\`\\"]|\\.)+ ]]; then
         # ■ time'hello' 等の場合に time だけが切り出されてしまう
         local arg="${BASH_REMATCH[0]}"
 
@@ -357,7 +356,7 @@ function ble-syntax-highlight+default {
       fi
     fi
 
-    if [[ "$tail" =~ ^\'([^\'])*\'|^\$\'([^\']|\\.)*\'|^\`([^\`]|\\.)*\` ]]; then
+    if [[ "$tail" =~ ^\'([^\'])*\'|^\$\'([^\\\']|\\.)*\'|^\`([^\`]|\\.)*\`|^\\. ]]; then
       ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) fg=green"
       ((i+=${#BASH_REMATCH[0]}))
       mode=arg_
@@ -371,12 +370,17 @@ function ble-syntax-highlight+default {
         [[ "$mode" = arg_ ]] && mode=arg
       fi
       continue
-    elif [[ "$tail" =~ ^\;\;?|^\&\&?|^\|\|? ]]; then
+    elif [[ "$tail" =~ ^\;\;?|^';;&'$|^\&\&?|^\|\|? ]]; then
       if [[ $mode = cmd ]]; then
         ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) bg=224"
       fi
       ((i+=${#BASH_REMATCH[0]}))
       mode=cmd
+      continue
+    elif [[ "$tail" =~ ^(\&?>>?|<>?|[<>]\&) ]]; then
+      ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) bold"
+      ((i+=${#BASH_REMATCH[0]}))
+      mode=arg
       continue
     elif [[ "$tail" =~ ^\( ]]; then
       ((i+=${#BASH_REMATCH[0]}))
