@@ -2288,9 +2288,9 @@ function ble-edit+command-help {
 
 # **** binder ****                                                   @bind.bind
 
-function .ble-edit/stdout/on  ((1))
-function .ble-edit/stdout/off ((1))
-function .ble-edit/stdout/finalize ((1))
+function .ble-edit/stdout/on { :; }
+function .ble-edit/stdout/off { :; }
+function .ble-edit/stdout/finalize { :; }
 
 if test -n "$ble_opt_suppress_bash_output"; then
   # ■bash-3 では test していないので off になっている。
