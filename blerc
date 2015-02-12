@@ -1,0 +1,2 @@
+source $HOME/prog/ble/ble.sh
+source $HOME/.bashrc

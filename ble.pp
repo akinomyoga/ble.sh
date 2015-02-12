@@ -10,7 +10,16 @@
 #%% include ble-@.sh
 #%%)
 #%)
-# bash script to be sourced from interactive shell
+# bash script to source from interactive shell
+#
+# ble - bash line editor
+#
+# Author: K. Murase <myoga.murase@gmail.com>
+#
+if test -n "${-##*i*}"; then
+  echo "ble.sh: this is not an interactive session."
+  return 1
+fi
 
 [ -n "$_ble_bash" ] || declare -ir _ble_bash='BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]'
 

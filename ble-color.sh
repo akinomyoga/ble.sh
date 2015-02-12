@@ -222,7 +222,7 @@ function ble-syntax-highlight+test {
 
   .ble-shopt-extglob-pop
 
-  ble-syntax-highlight+region
+  ble-syntax-highlight+region "$@"
 
   # ble-region_highlight-append "${#text1} $((${#text1}+1)) standout"
 }
@@ -393,5 +393,5 @@ function ble-syntax-highlight+default {
     # a[]=... の引数は、${} や "" を考慮に入れるだけでなく [] の数を数える。
   done
 
-  ble-syntax-highlight+region
+  ble-syntax-highlight+region "$@"
 }

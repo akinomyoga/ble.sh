@@ -602,8 +602,8 @@ function .ble-line-text.construct {
   # TODO: ps1 の最後の文字の SGR フラグはここで g0 に代入する
   for ((i=0;i<iN;i++)); do
     # カーソル移動時、このループが重い
-      # _ble_line_text_cache_ei[i]=elen,
-      # _ble_line_text_cache_g[i]=g0,
+    # _ble_line_text_cache_ei[i]=elen,
+    # _ble_line_text_cache_g[i]=g0,
     ((
       i==index&&(peind=elen),
       i==lk&&(lg=g0),
@@ -1301,6 +1301,7 @@ function ble-edit+delete-forward-char-or-exit {
   # job が残っている場合
   if jobs % &>/dev/null; then
     .ble-edit.bell "(exit) ジョブが残っています!"
+    .ble-edit.bind.command jobs
     return
   fi
 
