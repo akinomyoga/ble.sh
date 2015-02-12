@@ -146,13 +146,16 @@ if test "${_ble_bash:-0}" -ge 40200; then
     eval "ret=\$'$ret'"
   }
 else
-  if [ "$(/usr/bin/printf '\U00000041' 2>/dev/null)" = A ]; then
+  if [ "$(/usr/bin/printf '\U00003042' 2>/dev/null)" = 'あ' ]; then
     # /bin/printf of GNU coreutils supports \uXXXX and \UXXXXXXXX
     # when it is compiled with glibc-2.2 or later version.
     function .ble-text.c2s-hex {
       local hex="$1"
-      ret="$(/usr/bin/printf "$hex")"
+      ret="$(/usr/bin/printf "\\U$hex")"
     }
+    # Note: $(/usr/bin/printf '\U00000041') becomes error.
+    # it seems that ordinary ascii characters do not allowed to
+    # be specified with the universal character sequences in /usr/bin/printf.
   elif [ "$(awk 'BEGIN{printf "%c",12354}' /dev/null)" = 'あ' ]; then
     function .ble-text.c2s-hex {
       local hex="$1"
