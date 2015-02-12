@@ -2,3 +2,8 @@
 out
 ble.sh
 ble.d/*.dump
+ble.d/cmap+default.binder-source
+ble.d/cmap+default.binder-source.bind
+ble.d/cmap+default.binder-source.unbind
+ble.d/tmp
+dist

@@ -263,7 +263,7 @@ function ble-syntax-highlight+default {
   local i iN=${#text} w
   local mode=cmd
   for ((i=0;i<iN;)); do
-    tail="${text:i}"
+    local tail="${text:i}"
     if [[ "$mode" = cmd ]]; then
       if [[ "$tail" =~ ^([_a-zA-Z][_a-zA-Z0-9]*)\+?= ]]; then
         # local var="${BASH_REMATCH[0]::-1}"
