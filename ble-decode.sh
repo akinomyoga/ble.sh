@@ -235,9 +235,23 @@ fi
 declare _ble_decode_key__seq # /(_\d+)*/
 declare _ble_decode_key__kmap
 
+: ${ble_opt_default_keymap:=emacs}
+declare -a _ble_decode_keymap_stack=()
+## 関数 .ble-decode/keymap/push kmap
+function .ble-decode/keymap/push {
+  _ble_decode_keymap_stack+=("$_ble_decode_key__kmap")
+  _ble_decode_key__kmap="$1"
+}
+## 関数 .ble-decode/keymap/pop
+function .ble-decode/keymap/pop {
+  local last=$((${#_ble_decode_keymap_stack[*]}-1))
+  _ble_decode_key__kmap="${_ble_decode_keymap_stack[last]}"
+  unset _ble_decode_keymap_stack[last]
+}
+
 function .ble-decode-key {
   local key="$1"
-  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+  local dicthead=_ble_decode_${_ble_decode_key__kmap:-$ble_opt_default_keymap}_kmap_
 
   eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
   if [ "${ent%%:*}" = 1 ]; then
@@ -266,7 +280,7 @@ function .ble-decode-key {
   return 0
 }
 function .ble-decode-key.emit {
-  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+  local dicthead=_ble_decode_${_ble_decode_key__kmap:-$ble_opt_default_keymap}_kmap_
 
   local fail="$1"
   if [ -n "$_ble_decode_key__seq" ]; then
@@ -402,9 +416,10 @@ function .ble-decode-key.unbind {
 }
 function .ble-decode-key.dump {
   # 引数の無い場合: 全ての kmap を dump
+  local kmap
   if test $# -eq 0; then
-    .ble-decode-key.dump ''
-    for kmap in ${_ble_decode_kmaps//:/}; do
+    for kmap in ${_ble_decode_kmaps//:/ }; do
+      echo "# keymap $kmap"
       .ble-decode-key.dump "$kmap"
     done
     return
@@ -426,9 +441,11 @@ function .ble-decode-key.dump {
       case "$cmd" in
       # ble-edit+insert-string *)
       #   echo "ble-bind -sf '${knames[*]}' '${cmd#ble-edit+insert-string }'" ;;
-      ble-edit+*)
+      (ble-edit+*)
         echo "ble-bind$kmapopt -f '${knames[*]}' '${cmd#ble-edit+}'" ;;
-      *)
+      ('.ble-edit.bind.command '*)
+        echo "ble-bind$kmapopt -cf '${knames[*]}' '${cmd#.ble-edit.bind.command }'" ;;
+      (*)
         echo "ble-bind$kmapopt -xf '${knames[*]}' '${cmd}'" ;;
       esac
     fi
@@ -688,7 +705,7 @@ function ble-decode-unkbd {
 
 # **** ble-bind ****
 function ble-bind {
-  local kmap= fX= fC= ret
+  local kmap="$ble_opt_default_keymap" fX= fC= ret
 
   local "${ble_getopt_vars[@]}"
   ble-getopt-begin ble-bind 'D d k:n:? m:n x c f:.:? help' "$@"

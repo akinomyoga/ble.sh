@@ -2079,7 +2079,7 @@ function ble-edit+isearch/self-insert {
   ble-edit+isearch/next "$_ble_edit_isearch_str$ret" 1
 }
 function ble-edit+isearch/exit {
-  _ble_decode_key__kmap=
+  .ble-decode/keymap/pop
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
   _ble_edit_isearch_str=
@@ -2109,29 +2109,34 @@ function ble-edit+isearch/exit-delete-forward-char {
   ble-edit+delete-forward-char
 }
 
-ble-bind -m isearch -f __defchar__ isearch/self-insert
-ble-bind -m isearch -f C-r         isearch/backward
-ble-bind -m isearch -f C-s         isearch/forward
-ble-bind -m isearch -f C-h         isearch/prev
-ble-bind -m isearch -f DEL         isearch/prev
+function ble-edit-setup-keymap+isearch {
+  local ble_opt_default_keymap=isearch
 
-ble-bind -m isearch -f __default__ isearch/exit-default
-ble-bind -m isearch -f M-C-j       isearch/exit
-ble-bind -m isearch -f C-d         isearch/exit-delete-forward-char
-ble-bind -m isearch -f C-g         isearch/cancel
-ble-bind -m isearch -f C-j         isearch/accept
-ble-bind -m isearch -f C-m         isearch/accept
+  ble-bind -f __defchar__ isearch/self-insert
+  ble-bind -f C-r         isearch/backward
+  ble-bind -f C-s         isearch/forward
+  ble-bind -f C-h         isearch/prev
+  ble-bind -f DEL         isearch/prev
+
+  ble-bind -f __default__ isearch/exit-default
+  ble-bind -f M-C-j       isearch/exit
+  ble-bind -f C-d         isearch/exit-delete-forward-char
+  ble-bind -f C-g         isearch/cancel
+  ble-bind -f C-j         isearch/accept
+  ble-bind -f C-m         isearch/accept
+}
+
 
 function ble-edit+history-isearch-backward {
+  .ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=-
-  _ble_decode_key__kmap=isearch
   .ble-edit-isearch.draw-line
 }
 function ble-edit+history-isearch-forward {
+  .ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=+
-  _ble_decode_key__kmap=isearch
   .ble-edit-isearch.draw-line
 }
 
@@ -2424,7 +2429,9 @@ else
   }
 fi
 
-function .ble-edit.default-key-bindings {
+function ble-edit-setup-keymap+emacs {
+  local ble_opt_default_keymap=emacs
+
   # ins
   ble-bind -f __defchar__ self-insert
   ble-bind -f 'C-q'       quoted-insert
@@ -2488,12 +2495,17 @@ function .ble-edit.default-key-bindings {
   ble-bind -f 'S-C-left'  'marked backward-cword'
   ble-bind -f 'S-M-right' 'marked forward-sword'
   ble-bind -f 'S-M-left'  'marked backward-sword'
-  ble-bind -f 'M-d'       kill-forward-sword
-  ble-bind -f 'M-h'       kill-backward-sword
-  ble-bind -f 'C-delete'  delete-forward-sword  # C-delete
-  ble-bind -f 'C-_'       delete-backward-sword # C-BS
+  ble-bind -f 'M-d'       kill-forward-cword
+  ble-bind -f 'M-h'       kill-backward-cword
+  ble-bind -f 'C-delete'  delete-forward-cword  # C-delete
+  ble-bind -f 'C-_'       delete-backward-cword # C-BS
   ble-bind -f 'M-delete'  copy-forward-sword    # M-delete
   ble-bind -f 'M-DEL'     copy-backward-sword   # M-BS
+
+  ble-bind -f 'M-f'       'nomarked forward-cword'
+  ble-bind -f 'M-b'       'nomarked backward-cword'
+  ble-bind -f 'M-F'       'marked forward-cword'
+  ble-bind -f 'M-B'       'marked backward-cword'
 
   # linewise operations
   ble-bind -f 'C-a'       'nomarked beginning-of-line'
@@ -2517,6 +2529,11 @@ function .ble-edit.default-key-bindings {
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
+}
+
+function .ble-edit.default-key-bindings {
+  ble-edit-setup-keymap+emacs
+  ble-edit-setup-keymap+isearch
 }
 
 function .ble-edit-initialize {
