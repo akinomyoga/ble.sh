@@ -1574,22 +1574,70 @@ function .ble-edit.accept-line.exec.setexit {
   return "$_ble_edit_accept_line_lastexit"
 }
 
-function .ble-edit.accept-line.exec.eval {
-  set -H
-
-  # C-c に対して
-  trap '_ble_edit_accept_line_INT=128; return' INT
-  # trap '_ble_edit_accept_line_INT=126; return' TSTP
-
-  # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
-  eval "$BASH_COMMAND"
-}
 function .ble-edit.accept-line.exec.adjust-eol {
   # 文末調整
   local eof="[94m[ble: EOF][m"
   local cols=${COLUMNS:-80} xenl=$_ble_term_xenl
   echo -n "$_ble_term_sc${eof}$_ble_term_rc[$((xenl?cols-2:cols-3))C  [2K"
   _ble_line_x=0 _ble_line_y=0
+}
+
+function .ble-edit/exec/eval-prologue {
+  .ble-stty.leave
+
+  set -H
+
+  # C-c に対して
+  trap '.ble-edit/exec/eval-TRAPINT; return 128' INT
+  # trap '_ble_edit_accept_line_INT=126; return 126' TSTP
+}
+function .ble-edit/exec/eval {
+  local _ble_edit_exec_in_eval=1
+  # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
+  .ble-edit.accept-line.exec.setexit
+  eval "$BASH_COMMAND"
+}
+function .ble-edit/exec/eval-TRAPINT {
+  echo
+  # echo "SIGINT ${FUNCNAME[1]}"
+  if ((_ble_bash>=40300)); then
+    _ble_edit_accept_line_INT=130
+  else
+    _ble_edit_accept_line_INT=128
+  fi
+  trap '.ble-edit/exec/eval-TRAPDEBUG SIGINT "$*" && return' DEBUG
+}
+function .ble-edit/exec/eval-TRAPDEBUG {
+  # 一旦 DEBUG を設定すると bind -x を抜けるまで削除できない様なので、
+  # _ble_edit_accept_line_INT のチェックと _ble_edit_exec_in_eval のチェックを行う。
+  if ((_ble_edit_accept_line_INT&&_ble_edit_exec_in_eval)); then
+    echo "$1: return ${FUNCNAME[1]} $2"
+    return 0
+  else
+    trap - DEBUG # 何故か効かない
+    return 1
+  fi
+}
+function .ble-edit/exec/eval-epilogue {
+  trap - INT DEBUG # DEBUG 削除が何故か効かない
+
+  .ble-stty.enter
+  _ble_edit_PS1="$PS1"
+
+  .ble-edit.accept-line.exec.adjust-eol
+
+  # lastexit
+  if ((_ble_edit_accept_line_lastexit==0)); then
+    _ble_edit_accept_line_lastexit="$_ble_edit_accept_line_INT"
+  fi
+  if [ "$_ble_edit_accept_line_lastexit" -ne 0 ]; then
+    # SIGERR処理
+    if type -t TRAPERR &>/dev/null; then
+      TRAPERR
+    else
+      echo "[91m[ble: exit $_ble_edit_accept_line_lastexit][m" 2>&1
+    fi
+  fi
 }
 ## 関数 .ble-edit.accept-line.exec.recursive index
 ##   index 番目のコマンドを実行し、引数 index+1 で自己再帰します。
@@ -1604,30 +1652,15 @@ function .ble-edit.accept-line.exec.recursive {
     # 実行
     local PS1="$_ble_edit_PS1" HISTCMD="${#_ble_edit_history[@]}"
     local _ble_edit_accept_line_INT=0
-    .ble-stty.leave
-    .ble-edit.accept-line.exec.setexit
-    .ble-edit.accept-line.exec.eval
+    .ble-edit/exec/eval-prologue
+    .ble-edit/exec/eval
     _ble_edit_accept_line_lastexit="$?"
-    if test "$_ble_edit_accept_line_lastexit" -eq 0; then
-      _ble_edit_accept_line_lastexit="$_ble_edit_accept_line_INT"
-    fi
-    .ble-stty.enter
-    _ble_edit_PS1="$PS1"
-
-    .ble-edit.accept-line.exec.adjust-eol
-
-    # SIGERR処理
-    if [ "$_ble_edit_accept_line_lastexit" -ne 0 ]; then
-      if type -t TRAPERR &>/dev/null; then
-        TRAPERR
-      else
-        echo "[91m[ble: exit $_ble_edit_accept_line_lastexit][m" 2>&1
-      fi
-    fi
+    .ble-edit/exec/eval-epilogue
   fi
 
   .ble-edit.accept-line.exec.recursive "$(($1+1))"
 }
+
 declare _ble_edit_exec_replacedDeclare=
 declare _ble_edit_exec_replacedTypeset=
 function .ble-edit/exec/isGlobalContext {
@@ -1636,7 +1669,7 @@ function .ble-edit/exec/isGlobalContext {
   local path
   for path in "${FUNCNAME[@]:offset+1}"; do
     # source or . が続く限りは遡る (. で呼び出しても FUNCNAME には source が入る様だ。)
-    if [[ $path = .ble-edit.accept-line.exec.eval ]]; then
+    if [[ $path = .ble-edit/exec/eval ]]; then
       return 0
     elif [[ $path != source ]]; then
       # source という名の関数を定義して呼び出している場合、source と区別が付かない。
@@ -1653,7 +1686,7 @@ function .ble-edit/exec/isGlobalContext {
   # for ((i=offset;i<iN;i++)); do
   #   local func="${FUNCNAME[i]}"
   #   local path="${BASH_SOURCE[i]}"
-  #   if [[ $func = .ble-edit.accept-line.exec.eval && $path = $BASH_SOURCE ]]; then
+  #   if [[ $func = .ble-edit/exec/eval && $path = $BASH_SOURCE ]]; then
   #     return 0
   #   elif [[ $path != source && $path != $BASH_SOURCE ]]; then
   #     # source ble.sh の中の declare が全て local になるので上だと駄目。
@@ -1718,6 +1751,7 @@ function .ble-edit.accept-line.exec {
   # ループ構文を使うと、ループ構文自体がユーザの入力した C-z (SIGTSTP)
   # を受信して(?)停止してしまう様なので、再帰でループする必要がある。
   .ble-edit.accept-line.exec.recursive 0
+  # .ble-edit/exec2/recursive 0 # test
 
   _ble_edit_accept_line=()
 
@@ -2355,7 +2389,7 @@ function .ble-decode-byte:bind/check-detach {
     _ble_edit_detach_flag=
     #.ble-term.visible-bell ' Bye!! '
     .ble-edit-finalize
-    ble-decode-unbind
+    ble-decode-detach
     .ble-stty.finalize
 
     READLINE_LINE="" READLINE_POINT=0

@@ -916,14 +916,14 @@ function .ble-decode-bind/from-cmap-source {
   done
 }
 
-function .ble-decode-bind.cmap/emit-bindx {
+function .ble-decode-initialize-cmap/emit-bindx {
   local ap="'" eap="'\\''"
   echo "bind -x '\"${1//$ap/$eap}\":\"ble-decode-byte:bind $2\"'"
 }
-function .ble-decode-bind.cmap/emit-bindr {
+function .ble-decode-initialize-cmap/emit-bindr {
   echo "bind -r \"$1\""
 }
-function ble-decode-bind.cmap {
+function .ble-decode-initialize-cmap {
   local init="$_ble_base/ble.d/cmap+default.sh"
   local dump="$_ble_base/ble.d/cmap+default.$_ble_decode_kbd_ver.dump"
   if test "$dump" -nt "$init"; then
@@ -945,8 +945,8 @@ function ble-decode-bind.cmap {
   if ! test "$_ble_decode_bind_fbinder" -nt "$init"; then
     echo -n 'ble.sh: initializing multichar sequence binders... '
     .ble-decode-bind/from-cmap-source > "$fbinder"
-    binder=.ble-decode-bind.cmap/emit-bindx source "$fbinder" > "$fbinder.bind"
-    binder=.ble-decode-bind.cmap/emit-bindr source "$fbinder" > "$fbinder.unbind"
+    binder=.ble-decode-initialize-cmap/emit-bindx source "$fbinder" > "$fbinder.bind"
+    binder=.ble-decode-initialize-cmap/emit-bindr source "$fbinder" > "$fbinder.unbind"
     echo 'done'
   fi
 }
@@ -1080,11 +1080,13 @@ function .ble-decode-bind {
   fi
 }
 
-function ble-decode-bind {
-  .ble-decode-bind
+function ble-decode-initialize {
+  .ble-decode-initialize-cmap
 }
-
-function ble-decode-unbind {
+function ble-decode-attach {
+  .ble-decode-bind bind
+}
+function ble-decode-detach {
   .ble-decode-bind unbind
 }
 

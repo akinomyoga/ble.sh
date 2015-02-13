@@ -68,8 +68,8 @@ fi
 # function .ble-time { echo "$*"; time "$@"; }
 function .ble-time { eval "$@"; }
 
-.ble-time ble-decode-bind.cmap
-.ble-time ble-decode-bind
+.ble-time ble-decode-initialize
+.ble-time ble-decode-attach
 .ble-time .ble-edit-initialize
 .ble-time .ble-edit.default-key-bindings
 .ble-time .ble-edit-draw.redraw

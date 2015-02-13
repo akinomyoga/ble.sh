@@ -18,9 +18,58 @@
     ToDo
 -------------------------------------------------------------------------------
 
+2015-02-13
+  * グローバルで実行するという事?
+
+    % 次の様な関数で eval すればグローバルで評価できるかも。
+    % 少し試した段階では問題は生じていない。
+    % 
+    % geval () { trap -- "$*" RTMAX; kill -RTMAX $$; }
+    % 
+    % + 何とジョブ管理にも正しく登録される様である。
+    %   グローバルな変数は勿論定義される。
+    % 
+    % + 返却値については流石に kill の戻り値としては入っていないが中で適当に拾えば良い。
+    %   geval () { trap -- "$*"$'\n'"echo exit=\$?" RTMAX; kill -RTMAX $$; }
+    %   (改行で区切る様にしないと $* が & や ; で終わっていた時に文法エラーになる。)
+    % 
+    %   後 trap の内容を復元する為に
+    %   | originalTrap="$(trap -p RTMAX INT)"
+    %   | ...
+    %   | trap - RTMAX INT
+    %   | test -n "$originalTrap" && eval "$originalTrap"
+    %   等とすると良いかもしれない。
+    % 
+    %   但し、この様にコマンド実行中だけ ble の用意した trap を実行していると、
+    %   コマンド実行中はユーザの trap した内容が実行されないという事に注意する。
+    %   (外部コマンドの場合には bash ではなく外部コマンドがシグナルを受け取れるので問題ないが、
+    %   シェル関数の場合にはユーザが予め設定した trap でシグナルを受け取る筈だ。)
+    % 
+    % + C-z 時の返却値 → OK 拾える
+    %   C-c 時の返却値 → 駄目。拾えない。これは今迄と同じ。なので INT に trap する。
+    %   INT の復元もした方が良い? → $(trap -p RTMAX INT) とするだけなので気にしなくて良い。
+    % 
+    % + jobs で kill -RTMAX $$ と表示される。
+    %   といっても kill -RTMAX の待ち状態という訳ではないようだ。
+    %   証拠に geval の次のコマンドは geval 内のコマンドで C-z した直後に実行されるし、
+    %   また、geval 内部で二つの less を呼び出して両方とも C-z しても正しく実行される。
+
+    と思ったら幻想だった。そもそもグローバルで実行していない。
+    現在の文脈のままでシグナルハンドラが呼び出されている様だ。
+    つまり、シグナルハンドラが関数内の環境に影響を与えられるという事。
+
+    今の所グローバルで実行できるのは bind -x だけしかない気がする。
+    しかし bind -x した物を呼び出す為にはユーザに何か入力をして貰わないといけない。
+    (入力を再現する方法が有れば良いがそれをシェル内から実行する方法はない気がする)。
+    或いは何とかして readline の accept-line を呼び出す事ができればよいが。
+
+    うーん。汚い方法ではあるが、
+    bind -x で "ble-decode-byte:bind 1 2 3; eval \"$_ble_onafter_bind\""
+    等として任意の物を外で実行できる様にしておくとか。。
+
 2015-02-11
 
-  * C-@ を受信できていない
+  * C-@ を受信できていない @ bash-4.3
 
     bind -X を見ると確かに
       "\C-@": "ble-decode-byte:bind 0"
@@ -316,6 +365,168 @@
 *******************************************************************************
     ChangeLog
 -------------------------------------------------------------------------------
+
+2015-02-13
+  * <完> 現在の C-c のトラップの実装に関する疑問
+
+    return で良いのか? return が使えない場合があるかも?
+    →サブシェルを作らずに同じプロセスで実行する場合、
+      内側の環境になるのは関数か source しかない。
+      つまり、一番外側でない限りは return が使える。
+      つまり、現状の様に関数内で実行している限りは return は常に使えるという事。
+
+    return で正しく抜ける事ができるのか?
+    一番内側の 関数/source しか抜けられないのでは?
+    或いは、入れ子になっている場合に誰が受信するのか?
+
+    | 実験
+    |
+    | trap INT はどの様な場合に働くのか?
+    | 直接 $ sleep 10 に対して C-c しても trap されない。trap が動く条件は? 色々試した。
+    | 何か変だ。殆どの場合で動かない様に思われる。
+    | bind -x の中からだとまた違った結果になるのか、それとも現在の実装は問題があるのか…。
+    | $ trap -- 'echo INT $a' SIGINT
+    | $ sleep 10 →×
+    | $ : $(sleep 10) →○
+    | $ echo 10 && sleep 10 →×
+    | $ sleep 10 && echo 10 →×
+    | $ (sleep 10) && echo 10 →×
+    | $ func1() { sleep 10;}; func1→×
+    | $ プロンプトが表示されている時に C-c→○
+    | $ for ((i=0;i<100000;i++)); do :; done→○中断する
+    |   ループ内では trap できて、しかも自動的に中断されるという事
+    | $ fib1() { (($1<=1)) && eval $2=1 && return; fib1 $(($1-1)) ${2}L ; fib1 $(($1-2)) ${2}R; let $2=${2}L+${2}R; }; fib 20 x→○中断する
+    |   関数の再帰呼び出しも trap できて、しかも自動的に中断されるという事
+    | $ trap 'echo INT $2=${!2};return' INT; fib 20 x→○中断しない
+    |   →何度 C-c を押しても最後まで抜けられない…。return があるかないかで動作が異なる様だ。
+    | $ for ((i=0;i<100000;i++)); do :; done→○中断する
+    |   →これは単純に return ができない為に return をしなかった場合と同じ動作をしているという事。
+    |     結局 trap の動作は return コマンドを書いたか書かなかったかではなく、実際に return しているかしていないかを見ている。
+    | 
+    | 分かった事
+    | - trap INT は現在の文脈 (関数内/source内) で最大1回だけ実行される
+    |   子プロセスが INT を受け取った場合などには受け取らない。
+    | - 唯単に trap INT するだけの場合、シェル内で行われている全ての処理が自動的に中断される
+    | - trap INT の中で return 等を実行した場合は、return の後で処理が続行される
+    | 
+    | これを受けて C-c を受信した時にどの階層まで抜けるかをコントロールする方法は:
+    | - 一気にシェルの処理を終了したい場合には trap の中で return 等を書かない。
+    | - 一つ上の関数・source に戻りたい場合は trap の中で return を書く。
+    | - 但し、関数呼出を沢山行っている場合 C-c で抜ける事ができなくなる可能性がある。従って return は書かない方が良い。
+    |   任意の階数の関数・source を抜ける方法はない。
+
+    結論
+
+    現在の実装は関数の再帰呼び出しなどを C-c で停止する事ができない。
+    →実際に試してみた for ループは抜けるが再帰呼び出しはその場では抜けられない。
+      (一応各再帰呼び出しは抜けている様である。その為に、
+      C-c をすると fib1 の結果が変わる (前回の呼出の時の結果が残っていると正しい結果になるが))
+    →これは C-c によってシェル内の無限ループを止める事ができなくなる可能性がある事を示す。よくない。
+
+      trap で $_ble_hook_INT 等として後処理をする関数を付け加え、return はしない様にするべき?
+      →これだと local で変数が被覆されている場合などに正しく対処できない。
+        まあ _ble_... を宣言しなければ大丈夫である。
+
+    実際にその様に実装してみたら問題がある。
+    どうやら bind -x の中で実行している場合には return しないとそのまま実行が継続する様である。
+    return すると現在の呼出階層だけは抜ける事ができるので以前はその様に実装していたという事か。
+    以下はその前提で書いてみたコード。結局これは使えないという事になった。
+    > &pre(agh-prog-bash){
+    > function .ble-edit/exec2/eval-prologue {
+    >   .ble-stty.leave
+    > 
+    >   # 履歴置換
+    >   set -H
+    > 
+    >   # C-c に対する trap
+    >   _ble_edit_exec_original_trapint="$(trap -p INT)"
+    >   trap .ble-edit/exec/eval-TRAPINT INT
+    >   trap 'echo INT' INT
+    > }
+    > function .ble-edit/exec2/eval {
+    >   # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
+    >   .ble-edit.accept-line.exec.setexit
+    >   eval "$BASH_COMMAND"
+    > }
+    > function .ble-edit/exec2/eval-TRAPINT {
+    >   # eval 中にシェルの処理で C-c (SIGINT) が来るとここに入る
+    > 
+    >   # シェルが C-c で中断した時の終了値
+    >   if ((_ble_bash>=40300)); then
+    >     _ble_edit_accept_line_lastexit=130
+    >   else
+    >     _ble_edit_accept_line_lastexit=128
+    >   fi
+    > 
+    >   .ble-edit/exec2/eval-epilogue
+    > 
+    >   # 未だ残っていれば続きを実行
+    >   # (今迄実行していたコマンドは _ble_edit_accept_line[] から既に削除済)
+    >   .ble-edit.accept-line.exec
+    > }
+    > function .ble-edit/exec2/eval-epilogue {
+    >   # C-c trap を削除
+    >   trap - INT
+    >   eval "$_ble_edit_exec_original_trapint"
+    > 
+    >   .ble-stty.enter
+    >   _ble_edit_PS1="$PS1"
+    > 
+    >   .ble-edit.accept-line.exec.adjust-eol
+    > 
+    >   # SIGERR処理
+    >   if [ "$_ble_edit_accept_line_lastexit" -ne 0 ]; then
+    >     if declare -f TRAPERR &>/dev/null; then
+    >       TRAPERR
+    >     else
+    >       echo "[91m[ble: exit $_ble_edit_accept_line_lastexit][m" 2>&1
+    >     fi
+    >   fi
+    > }
+    > function .ble-edit/exec2/recursive {
+    >   (($1>=${#_ble_edit_accept_line})) && return
+    > 
+    >   local BASH_COMMAND="${_ble_edit_accept_line[$1]}"
+    >   _ble_edit_accept_line[$1]=
+    >   if test -n "${BASH_COMMAND//[ 	]/}"; then
+    >     # 実行
+    >     local PS1="$_ble_edit_PS1" HISTCMD="${#_ble_edit_history[@]}"
+    >     local _ble_edit_exec_original_trapint=
+    >     .ble-edit/exec2/eval-prologue
+    >     .ble-edit/exec2/eval
+    >     _ble_edit_accept_line_lastexit="$?"
+    >     .ble-edit/exec2/eval-epilogue
+    >   fi
+    > 
+    >   .ble-edit/exec2/recursive "$(($1+1))"
+    > }
+    > }
+
+    ここで trap - RETURN という物を発見する。関数やソースを抜けるたびに実行されるという物のようだ。
+    正にこれを使えるのではないか…? と思って trap '((_ble_edit_accept_line_INT)) && return' RETURN
+    等としてみたら無限ループになる。それどころかメモリを食い荒らしている。
+    ${FUNCNAME[*]} で確認すると RETURN が評価されるのは抜ける関数やソースの中である様だ。
+    そこで return を呼び出すと再び trap RETURN が反応してしまうという事になっている様だ。
+    つまり、trap - RETURN を用いても呼出元の文脈で評価される訳ではないので呼出元を更に抜ける事はできず、
+    その上無限ループになってしまうという事になる。
+    #trap '((_ble_edit_accept_line_INT)) && return' RETURN # 無限returnループになる
+
+    今度は trap ERR して見ようとしたが…そもそも呼び出されないようだ。
+    (それに trap ERR だと条件式の内部にあるコマンドについては呼び出されないというし確実に抜ける事は出来ない)
+    #trap '((_ble_edit_accept_line_INT)) && echo hello && return 128' ERR # 呼び出されない
+
+    或いは trap DEBUG というのを使う事ができるかもしれない。
+    DEBUG について色々試してみた。
+    - 先ず、trap 'command' DEBUG した command の中では DEBUG は一切発生しない。
+      (もし発生していたら無限ループになってしまう。)
+    - また、bind -x 関数の中で trap - DEBUG しても bind -x の関数を抜けると消える。
+    - trap - DEBUG 等を用いて削除しようとしても何故かできない。trap -p でも何故か一覧に出ない
+      | 更に、trap 'command' DEBUG の command の中で trap - DEBUG しようとしても消えない。
+      | trap 'echo 123' DEBUG 等と DEBUG を上書きする事もできない。
+      | というか trap の中でなくても上書きできない様だ。それどころか trap -p の一覧に出ない。
+      | (通常のシェル環境で実行している場合にはちゃんと trap -p で出るのだが)。
+      | trap DEBUG した関数内では trap -p の一覧にも出るし trap 'echo 123' DEBUG で後から書き換える事も出来る様だ。
+    trap DEBUG をその場で削除できないという謎があるが取り敢えず動く様になったので良しとする。
 
 2015-02-09
   * git repos
