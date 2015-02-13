@@ -53,6 +53,8 @@ _ble_term_xenl=1
 _ble_term_it=8
 _ble_term_sc='[s'
 _ble_term_rc='[u'
+_ble_term_sgr_fghr='[91m'
+_ble_term_sgr_fghb='[94m'
 _ble_term_sgr0='[m'
 
 function .ble-term.initialize {

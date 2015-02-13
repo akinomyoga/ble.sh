@@ -22,13 +22,53 @@
 # @bind
 # @bind.bind
 
-: ${ble_opt_suppress_bash_output=1}
+## オプション bleopt_exec_type
+##   コマンドの実行の方法を指定します。
+## bleopt_exec_type=exec
+##   関数内で実行します (従来の方法です。将来的に削除されます)
+## bleopt_exec_type=gexec
+##   グローバルな文脈で実行します (新しい方法です。現在テスト中です)
+## 定義 .ble-edit+accept-line/process+$bleopt_exec_type
+: ${bleopt_exec_type:=gexec}
+
+## オプション bleopt_suppress_bash_output
+##   bash 自体の出力を抑制するかどうかを指定します。
+## bleopt_suppress_bash_output=1
+##   抑制します。bash のエラーメッセージは visible-bell で表示します。
+## bleopt_suppress_bash_output=
+##   抑制しません。bash の出力を制御するためにちらつきが発生する事があります。
+: ${bleopt_suppress_bash_output=1}
+
+## オプション bleopt_char_width_mode
+##   文字の表示幅の計算方法を指定します。
+## bleopt_char_width_mode=east
+##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を 2 とします
+## bleopt_char_width_mode=west
+##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を 1 とします
+## bleopt_char_width_mode=emacs
+##   emacs で用いられている文字幅の設定です
+## 定義 .ble-text.c2w+$bleopt_char_width_mode
+: ${bleopt_char_width_mode:=emacs}
+
+## オプション bleopt_edit_vbell
+##   編集時の visible bell の有効・無効を設定します。
+## bleopt_edit_vbell=1
+##   有効です。
+## bleopt_edit_vbell=
+##   無効です。
+: ${bleopt_edit_vbell=1}
+
+## オプション bleopt_edit_abell
+##   編集時の audible bell (BEL 文字出力) の有効・無効を設定します。
+## bleopt_edit_abell=1
+##   有効です。
+## bleopt_edit_abell=
+##   無効です。
+: ${bleopt_edit_abell=}
 
 # 
 #------------------------------------------------------------------------------
 # **** char width ****                                                @text.c2w
-
-: ${ble_opt_char_width_mode:=emacs}
 
 declare -a _ble_text_c2w__table=()
 
@@ -36,13 +76,13 @@ declare -a _ble_text_c2w__table=()
 function .ble-text.c2w {
   # ret="${_ble_text_c2w__table[$1]}"
   # test -n "$ret" && return
-  ".ble-text.c2w+$ble_opt_char_width_mode" "$1"
+  ".ble-text.c2w+$bleopt_char_width_mode" "$1"
   # _ble_text_c2w__table[$1]="$ret"
 }
 ## \param [out] ret
 function .ble-text.s2w {
   .ble-text.s2c "$1" "$2"
-  ".ble-text.c2w+$ble_opt_char_width_mode" "$ret"
+  ".ble-text.c2w+$bleopt_char_width_mode" "$ret"
 }
 
 ## 関数 .ble-text.c2w+emacs
@@ -982,7 +1022,7 @@ function .ble-edit-draw.update-adjusted {
     READLINE_POINT=0
   else
     .ble-text.c2w "$lc"
-    if test -z "$ble_opt_suppress_bash_output"; then
+    if test -z "$bleopt_suppress_bash_output"; then
       ((ret>0)) && echo -n "[${ret}D"
     fi
     .ble-text.c2bc "$lc"
@@ -1176,11 +1216,9 @@ function ble-edit+copy-region-or {
 # 
 # **** bell ****                                                     @edit.bell
 
-: ${ble_opt_edit_vbell=1}
-: ${ble_opt_edit_abell=}
 function .ble-edit.bell {
-  [ -n "$ble_opt_edit_vbell" ] && .ble-term.visible-bell "$1"
-  [ -n "$ble_opt_edit_abell" ] && .ble-term.audible-bell
+  [ -n "$bleopt_edit_vbell" ] && .ble-term.visible-bell "$1"
+  [ -n "$bleopt_edit_abell" ] && .ble-term.audible-bell
 }
 function ble-edit+bell {
   .ble-edit.bell
@@ -1545,23 +1583,7 @@ function ble-edit+backward-uword {
 #%x forward-word.r/uword/cword/.r/unix word/c word/
 #%x forward-word.r/uword/sword/.r/unix word/shell word/
 
-# **** accept-line ****                                            @edit.accept
-
-function ble-edit+discard-line {
-  # 行更新
-  .ble-line-info.clear
-  .ble-edit-draw.update
-  .ble-edit-draw.goto-xy '' "$_ble_line_endx" "$_ble_line_endy"
-
-  # 新しい行
-  echo 1>&2
-  ((LINENO=++_ble_edit_LINENO))
-  _ble_edit_str=
-  _ble_edit_ind=0
-  _ble_edit_mark=0
-  _ble_edit_mark_active=
-  _ble_edit_dirty=-1
-}
+# **** .ble-edit/exec ****                                           @edit.exec
 
 declare -a _ble_edit_accept_line=()
 declare _ble_edit_accept_line_lastexit=0
@@ -1569,33 +1591,16 @@ function .ble-edit.accept-line.add {
   local BASH_COMMAND="$1"
   _ble_edit_accept_line+=("$1")
 }
-function .ble-edit.accept-line.exec.setexit {
+function .ble-edit/exec/setexit {
   # $? 変数の設定
   return "$_ble_edit_accept_line_lastexit"
 }
-
-function .ble-edit.accept-line.exec.adjust-eol {
+function .ble-edit/exec/adjust-eol {
   # 文末調整
   local eof="[94m[ble: EOF][m"
   local cols=${COLUMNS:-80} xenl=$_ble_term_xenl
   echo -n "$_ble_term_sc${eof}$_ble_term_rc[$((xenl?cols-2:cols-3))C  [2K"
   _ble_line_x=0 _ble_line_y=0
-}
-
-function .ble-edit/exec/eval-prologue {
-  .ble-stty.leave
-
-  set -H
-
-  # C-c に対して
-  trap '.ble-edit/exec/eval-TRAPINT; return 128' INT
-  # trap '_ble_edit_accept_line_INT=126; return 126' TSTP
-}
-function .ble-edit/exec/eval {
-  local _ble_edit_exec_in_eval=1
-  # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
-  .ble-edit.accept-line.exec.setexit
-  eval "$BASH_COMMAND"
 }
 function .ble-edit/exec/eval-TRAPINT {
   echo
@@ -1611,12 +1616,28 @@ function .ble-edit/exec/eval-TRAPDEBUG {
   # 一旦 DEBUG を設定すると bind -x を抜けるまで削除できない様なので、
   # _ble_edit_accept_line_INT のチェックと _ble_edit_exec_in_eval のチェックを行う。
   if ((_ble_edit_accept_line_INT&&_ble_edit_exec_in_eval)); then
-    echo "$1: return ${FUNCNAME[1]} $2"
+    echo "$_ble_term_sgr_fghr[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2"
     return 0
   else
     trap - DEBUG # 何故か効かない
     return 1
   fi
+}
+
+function .ble-edit/exec/eval-prologue {
+  .ble-stty.leave
+
+  set -H
+
+  # C-c に対して
+  trap '.ble-edit/exec/eval-TRAPINT; return 128' INT
+  # trap '_ble_edit_accept_line_INT=126; return 126' TSTP
+}
+function .ble-edit/exec/eval {
+  local _ble_edit_exec_in_eval=1
+  # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
+  .ble-edit/exec/setexit
+  eval "$BASH_COMMAND"
 }
 function .ble-edit/exec/eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
@@ -1624,7 +1645,7 @@ function .ble-edit/exec/eval-epilogue {
   .ble-stty.enter
   _ble_edit_PS1="$PS1"
 
-  .ble-edit.accept-line.exec.adjust-eol
+  .ble-edit/exec/adjust-eol
 
   # lastexit
   if ((_ble_edit_accept_line_lastexit==0)); then
@@ -1635,15 +1656,16 @@ function .ble-edit/exec/eval-epilogue {
     if type -t TRAPERR &>/dev/null; then
       TRAPERR
     else
-      echo "[91m[ble: exit $_ble_edit_accept_line_lastexit][m" 2>&1
+      echo "$_ble_term_sgr_fghr[ble: exit $_ble_edit_accept_line_lastexit]$_ble_term_sgr0" 2>&1
     fi
   fi
 }
-## 関数 .ble-edit.accept-line.exec.recursive index
+
+## 関数 .ble-edit/exec/recursive index
 ##   index 番目のコマンドを実行し、引数 index+1 で自己再帰します。
 ##   コマンドがこれ以上ない場合は何もせずに終了します。
 ## \param [in] index
-function .ble-edit.accept-line.exec.recursive {
+function .ble-edit/exec/recursive {
   (($1>=${#_ble_edit_accept_line})) && return
 
   local BASH_COMMAND="${_ble_edit_accept_line[$1]}"
@@ -1658,7 +1680,7 @@ function .ble-edit.accept-line.exec.recursive {
     .ble-edit/exec/eval-epilogue
   fi
 
-  .ble-edit.accept-line.exec.recursive "$(($1+1))"
+  .ble-edit/exec/recursive "$(($1+1))"
 }
 
 declare _ble_edit_exec_replacedDeclare=
@@ -1697,6 +1719,7 @@ function .ble-edit/exec/isGlobalContext {
 
   return 0
 }
+
 function .ble-edit.accept-line.exec {
   test ${#_ble_edit_accept_line[@]} -eq 0 && return
 
@@ -1750,8 +1773,7 @@ function .ble-edit.accept-line.exec {
   # 以下、配列 _ble_edit_accept_line に登録されている各コマンドを順に実行する。
   # ループ構文を使うと、ループ構文自体がユーザの入力した C-z (SIGTSTP)
   # を受信して(?)停止してしまう様なので、再帰でループする必要がある。
-  .ble-edit.accept-line.exec.recursive 0
-  # .ble-edit/exec2/recursive 0 # test
+  .ble-edit/exec/recursive 0
 
   _ble_edit_accept_line=()
 
@@ -1765,6 +1787,141 @@ function .ble-edit.accept-line.exec {
     _ble_edit_exec_replacedTypeset=
     unset typeset
   fi
+}
+
+function .ble-edit+accept-line/process+exec {
+  .ble-edit.accept-line.exec
+  .ble-decode-byte:bind/check-detach
+  return $?
+}
+
+# **** .ble-edit/gexec ****                                         @edit.gexec
+
+function .ble-edit/gexec/eval-TRAPINT {
+  echo
+  if ((_ble_bash>=40300)); then
+    _ble_edit_accept_line_INT=130
+  else
+    _ble_edit_accept_line_INT=128
+  fi
+  trap '.ble-edit/gexec/eval-TRAPDEBUG SIGINT "$*" && { return &>/dev/null || break &>/dev/null;}' DEBUG
+}
+function .ble-edit/gexec/eval-TRAPDEBUG {
+  if ((_ble_edit_accept_line_INT!=0)); then
+    # エラーが起きている時
+
+    local depth="${#FUNCNAME[*]}"
+    if ((depth>=2)) && ! [[ "${FUNCNAME[*]:depth-1}" =~ ^\.ble-edit/gexec/ ]]; then
+      # 関数内にいるが、.ble-edit/gexec/ の中ではない時
+      echo "$_ble_term_sgr_fghr[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2"
+      return 0
+    fi
+    
+    if ((depth==1)) && ! [[ "$BASH_COMMAND" =~ ^(\.ble-edit/gexec/|'trap - ') ]]; then
+      # 一番外側で、.ble-edit/gexec/ 関数ではない時
+      echo "$_ble_term_sgr_fghr[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2"
+      return 0
+    fi
+  fi
+
+  trap - DEBUG # 何故か効かない
+  return 1
+}
+function .ble-edit/gexec/begin {
+  _ble_decode_bind_hook=
+  .ble-edit/stdout/on
+  set -H
+
+  # C-c に対して
+  trap '.ble-edit/gexec/eval-TRAPINT' INT
+}
+function .ble-edit/gexec/end {
+  trap - INT DEBUG # DEBUG: 何故か効かない
+
+  .ble-decode-byte:bind/check-detach && return 0
+  .ble-decode-byte:bind/tail
+}
+function .ble-edit/gexec/eval-prologue {
+  # unset HISTCMD
+  BASH_COMMAND="$1"
+  PS1="$_ble_edit_PS1"
+  HISTCMD="${#_ble_edit_history[@]}"
+  _ble_edit_accept_line_INT=0
+  .ble-stty.leave
+  .ble-edit/exec/setexit
+}
+function .ble-edit/gexec/eval-epilogue {
+  # lastexit
+  _ble_edit_accept_line_lastexit="$?"
+  if ((_ble_edit_accept_line_lastexit==0)); then
+    _ble_edit_accept_line_lastexit="$_ble_edit_accept_line_INT"
+  fi
+  _ble_edit_accept_line_INT=0
+
+  trap - DEBUG # DEBUG 削除が何故か効かない
+
+  .ble-stty.enter
+  _ble_edit_PS1="$PS1"
+  PS1=
+  .ble-edit/exec/adjust-eol
+
+  if [ "$_ble_edit_accept_line_lastexit" -ne 0 ]; then
+    # SIGERR処理
+    if type -t TRAPERR &>/dev/null; then
+      TRAPERR
+    else
+      echo "$_ble_term_sgr_fghr[ble: exit $_ble_edit_accept_line_lastexit]$_ble_term_sgr0" 2>&1
+    fi
+  fi
+}
+function .ble-edit/gexec/setup {
+  ((${#_ble_edit_accept_line[@]}==0)) && return 1
+
+  local apos=\' APOS="'\\''"
+  local cmd
+  local -a buff
+  local count=0
+  buff[${#buff[@]}]=.ble-edit/gexec/begin
+  for cmd in "${_ble_edit_accept_line[@]}"; do
+    if [[ "$cmd" =~ [^' 	'] ]]; then
+      buff[${#buff[@]}]=".ble-edit/gexec/eval-prologue '${cmd//$apos/$APOS}'"
+      buff[${#buff[@]}]="$cmd"
+      buff[${#buff[@]}]=".ble-edit/gexec/eval-epilogue"
+      ((count++))
+    fi
+  done
+  _ble_edit_accept_line=()
+
+  ((count==0)) && return 1
+
+  buff[${#buff[@]}]='trap - INT DEBUG' # trap - は一番外側でないと効かない様だ
+  buff[${#buff[@]}]=.ble-edit/gexec/end
+
+  IFS=$'\n' eval '_ble_decode_bind_hook="${buff[*]}"'
+  return 0
+}
+
+function .ble-edit+accept-line/process+gexec {
+  .ble-edit/gexec/setup
+  return $?
+}
+
+# **** accept-line ****                                            @edit.accept
+
+function ble-edit+discard-line {
+  # 行更新
+  .ble-line-info.clear
+  .ble-edit-draw.update
+  .ble-edit-draw.goto-xy '' "$_ble_line_endx" "$_ble_line_endy"
+
+  # 新しい行
+  echo 1>&2
+  ((LINENO=++_ble_edit_LINENO))
+  _ble_edit_str=
+  _ble_edit_ind=0
+  _ble_edit_mark=0
+  _ble_edit_mark_active=
+  _ble_edit_dirty=-1
 }
 
 function ble-edit+accept-line {
@@ -1785,7 +1942,7 @@ function ble-edit+accept-line {
   fi
   if test "$hist_expanded" != "$BASH_COMMAND"; then
     BASH_COMMAND="$hist_expanded"
-    echo "[94m[ble: expand][m $BASH_COMMAND" 1>&2
+    echo "$_ble_term_sgr_fghb[ble: expand]$_ble_term_sgr0 $BASH_COMMAND" 1>&2
   fi
 
   _ble_edit_str=
@@ -1820,7 +1977,7 @@ function .ble-edit.bind.command {
   ((LINENO=++_ble_edit_LINENO))
 
   # eval "$BASH_COMMAND"
-  # .ble-edit.accept-line.exec.adjust-eol
+  # .ble-edit/exec/adjust-eol
 
   # やはり通常コマンドはちゃんとした環境で評価するべき
   if test -n "${BASH_COMMAND//[ 	]/}"; then
@@ -2328,11 +2485,11 @@ function ble-edit+command-help {
 
 # **** binder ****                                                   @bind.bind
 
-function .ble-edit/stdout/on { :; }
-function .ble-edit/stdout/off { :; }
-function .ble-edit/stdout/finalize { :; }
+function .ble-edit/stdout/on { :;}
+function .ble-edit/stdout/off { :;}
+function .ble-edit/stdout/finalize { :;}
 
-if test -n "$ble_opt_suppress_bash_output"; then
+if test -n "$bleopt_suppress_bash_output"; then
   # ■bash-3 では test していないので off になっている。
   #   確認事項 = カーソル位置がずれていないか、vbell が正しく消えるか
 
@@ -2400,7 +2557,7 @@ function .ble-decode-byte:bind/check-detach {
       #   一応 _ble_edit_detach_flag=exit と直に入力する事で呼び出す事はできる。
 
       # exit
-      echo '[94m[ble: exit][m' 1>&2
+      echo '$_ble_term_sgr_fghb[ble: exit]$_ble_term_sgr0' 1>&2
       .ble-edit-draw.update
 
       # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
@@ -2408,7 +2565,7 @@ function .ble-decode-byte:bind/check-detach {
       trap '.ble-decode-byte:bind/exit-trap' RTMAX
       kill -RTMAX $$
     else
-      echo '[94m[ble: detached][m' 1>&2
+      echo '$_ble_term_sgr_fghb[ble: detached]$_ble_term_sgr0' 1>&2
       .ble-edit-draw.update
     fi
     return 0
@@ -2418,50 +2575,55 @@ function .ble-decode-byte:bind/check-detach {
 }
 
 if ((_ble_bash>=40000)); then
-  function ble-decode-byte:bind {
-    local dbg="$*"
-    .ble-edit/stdout/on
-    if test -z "$ble_opt_suppress_bash_output"; then
+  function .ble-decode-byte:bind/head {
+    if test -z "$bleopt_suppress_bash_output"; then
       .ble-edit-draw.redraw-cache # bash-4 以降では呼出直前にプロンプトが消される
     fi
-    .ble-decode-bind.uvw
-    .ble-stty.enter
-
-    while test $# -gt 0; do
-      "ble-decode-byte+$ble_opt_input_encoding" "$1"
-      shift
-    done
-    .ble-edit.accept-line.exec
-    .ble-decode-byte:bind/check-detach && return 0
-
+  }
+  function .ble-decode-byte:bind/tail {
     .ble-edit-draw.update-adjusted
     .ble-edit/stdout/off
-    return 0
   }
 else
   IGNOREEOF=10000
-  function ble-decode-byte:bind {
-    local dbg="$*"
-
+  function .ble-decode-byte:bind/head {
     # bash-3 では呼出直前に次の行に移動する
     ((_ble_line_y++,_ble_line_x=0))
     .ble-edit-draw.goto-xy '' "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
-
-    .ble-decode-bind.uvw
-    .ble-stty.enter
-
-    while test $# -gt 0; do
-      "ble-decode-byte+$ble_opt_input_encoding" "$1"
-      shift
-    done
-    .ble-edit.accept-line.exec
-    .ble-decode-byte:bind/check-detach && return 0
-
+  }
+  function .ble-decode-byte:bind/tail {
     .ble-edit-draw.update # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
-    #echo "DBG: line=($READLINE_LINE) point=($READLINE_POINT)" >>~/a
-    return 0
+    .ble-edit/stdout/off
   }
 fi
+
+## 関数 _ble_edit_accept_line= .ble-edit+accept-line/process+$bleopt_exec_type;
+##   指定したコマンドを実行します。
+## @param[in,out] _ble_edit_accept_line
+##   実行するコマンドの配列を指定します。実行したコマンドは削除するか空文字列を代入します。
+## @return
+##   戻り値が 0 の場合、終端 (.ble-decode-byte:bind/tail) に対する処理も行われた事を意味します。
+##   つまり、そのまま ble-decode-byte:bind から抜ける事を期待します。
+##   それ以外の場合には終端処理をしていない事を表します。
+
+function ble-decode-byte:bind {
+  local dbg="$*"
+  .ble-edit/stdout/on
+  .ble-decode-byte:bind/head
+  .ble-decode-bind.uvw
+  .ble-stty.enter
+
+  while test $# -gt 0; do
+    "ble-decode-byte+$ble_opt_input_encoding" "$1"
+    shift
+  done
+
+  ".ble-edit+accept-line/process+$bleopt_exec_type" && return 0
+
+  .ble-decode-byte:bind/tail
+  return 0
+}
+
 
 function ble-edit-setup-keymap+emacs {
   local ble_opt_default_keymap=emacs

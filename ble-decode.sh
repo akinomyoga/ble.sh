@@ -850,13 +850,15 @@ function .ble-decode-bind.uvw {
   _ble_decode_bind__uvwflag=1
 
   # 何故か stty 設定直後には bind できない物たち
-  bind -x "\"\":ble-decode-byte:bind 21"
-  bind -x "\"\":ble-decode-byte:bind 22"
-  bind -x "\"\":ble-decode-byte:bind 23"
-  bind -x "\"\":ble-decode-byte:bind 127"
+  bind -x '"":ble-decode-byte:bind 21; eval "$_ble_decode_bind_hook"'
+  bind -x '"":ble-decode-byte:bind 22; eval "$_ble_decode_bind_hook"'
+  bind -x '"":ble-decode-byte:bind 23; eval "$_ble_decode_bind_hook"'
+  bind -x '"":ble-decode-byte:bind 127; eval "$_ble_decode_bind_hook"'
 }
 
 # **** ble-decode-bind ****                                   @decode.bind.main
+
+_ble_decode_bind_hook=
 
 ## 関数 .ble-decode.c2dqs code; ret
 ##   bash builtin bind で用いる事のできるキー表記
@@ -907,7 +909,6 @@ function .ble-decode-bind/from-cmap-source {
       if ((depth>=3)); then
         echo "\$binder \"$qseq1\" \"${nseq1# }\""
       fi
-      #echo "bind -x '\"${qseq1//$apos/$escapos}\":\"ble-decode-char:bind$nseq\"'"
     fi
 
     if test "${ent//[0-9]/}" = _; then
@@ -918,7 +919,7 @@ function .ble-decode-bind/from-cmap-source {
 
 function .ble-decode-initialize-cmap/emit-bindx {
   local ap="'" eap="'\\''"
-  echo "bind -x '\"${1//$ap/$eap}\":\"ble-decode-byte:bind $2\"'"
+  echo "bind -x '\"${1//$ap/$eap}\":ble-decode-byte:bind $2; eval \"\$_ble_decode_bind_hook\"'"
 }
 function .ble-decode-initialize-cmap/emit-bindr {
   echo "bind -r \"$1\""
@@ -952,24 +953,24 @@ function .ble-decode-initialize-cmap {
 }
 
 function .ble-decode-bind/bind {
-  bind -x "\"$1\":\"ble-decode-byte:bind $2\""
+  bind -x "\"$1\":ble-decode-byte:bind $2; eval \"\$_ble_decode_bind_hook\""
 }
 function .ble-decode-bind/unbind {
   bind -r "$1"
 }
 
-_ble_decode_bind_bound=0
+_ble_decode_bind_attached=0
 function .ble-decode-bind {
   local mode="$1"
 
   if [[ $mode == unbind ]]; then
-    ((_ble_decode_bind_bound==1)) || return
-    _ble_decode_bind_bound=0
+    ((_ble_decode_bind_attached==1)) || return
+    _ble_decode_bind_attached=0
     .ble-stty.finalize
     local binder=.ble-decode-bind/unbind
   else
-    ((_ble_decode_bind_bound==0)) || return
-    _ble_decode_bind_bound=1
+    ((_ble_decode_bind_attached==0)) || return
+    _ble_decode_bind_attached=1
     .ble-stty.initialize
     local binder=.ble-decode-bind/bind
   fi
@@ -1027,7 +1028,7 @@ function .ble-decode-bind {
     $binder "\\C-@$ret" "0 $i"
 
     if ((_ble_bash>=40300)); then
-      # もしかすると bash-4.1 以下でもこれで良いのかも。
+      # bash-4.3 以降は bind -x がこれまでと色々と違う様だ
 
       # ESC ?
       $binder "\\e$ret" "27 $i"
