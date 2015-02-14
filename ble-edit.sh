@@ -463,7 +463,11 @@ function .ble-cursor.construct-prompt {
     (w) # PWD
       .ble-cursor.construct-prompt.append "$param_wd" ;;
     (W) # PWD短縮
-      .ble-cursor.construct-prompt.append "${param_wd##*/}" ;;
+      if test "$PWD" = /; then
+        .ble-cursor.construct-prompt.append /
+      else
+        .ble-cursor.construct-prompt.append "${param_wd##*/}"
+      fi ;;
     ($) # # or $
       .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_root" ;;
     ('"') # '\"' は一旦 '"' に戻す。後で '\"' に置換される。
@@ -613,16 +617,16 @@ function .ble-line-text.update-positions {
 }
 
 ## 関数 x y lc lg; .ble-line.construct-text; x y cx cy lc lg
-## \param [in    ] text
-## \param [in    ] dirty
-## \param [in    ] index
-## \param [   out] ret
-## \param [in,out] x
-## \param [in,out] y
-## \param [   out] cx
-## \param [   out] cy
-## \param [in,out] lc
-## \param [in,out] lg
+## \param [in    ] text  編集文字列
+## \param [in    ] dirty 編集によって変更のあった最初の index
+## \param [in    ] index カーソルの index
+## \param [   out] ret   編集文字列を(色付きで)表示する為の出力。
+## \param [in,out] x     編集文字列開始位置、終了位置。
+## \param [in,out] y     編集文字列開始位置、終了位置。
+## \param [   out] cx    カーソル位置。
+## \param [   out] cy    カーソル位置。
+## \param [in,out] lc    カーソル左の文字のコード。初期は編集文字列開始位置の左(プロンプトの最後の文字)について記述。
+## \param [in,out] lg    カーソル左の文字の gflag。初期は編集文字列開始位置の左(プロンプトの最後の文字)について記述。
 function .ble-line-text.construct {
   # text dirty x y lc [update-positions] x y
   .ble-line-text.update-positions
@@ -642,6 +646,11 @@ function .ble-line-text.construct {
   # TODO: ps1 の最後の文字の SGR フラグはここで g0 に代入する
   for ((i=0;i<iN;i++)); do
     # カーソル移動時、このループが重い
+    # ※region を反転する場合カーソル移動で highlight を再計算する必要がある
+    #   その為、_ble_term_sc でカーソル位置を指定するには、
+    #   毎回文字列内のカーソル位置を計算する必要がある。
+    #   最悪でもカーソル位置がずれない様に _ble_term_sc を用いたい。
+    #   
     # _ble_line_text_cache_ei[i]=elen,
     # _ble_line_text_cache_g[i]=g0,
     ((
@@ -679,13 +688,27 @@ function .ble-line-text.construct {
 # 
 # **** information pane ****                                         @line.info
 
+## 関数 x y cols out ; .ble-line-cur.xyo/add-atomic ( nchar text )+ ; x y out
+##   指定した文字列を out に追加しつつ、現在位置を更新します。
+##   文字列は幅 1 の文字で構成されていると仮定します。
+function .ble-line-cur.xyo/add-simple {
+  local nchar="$1"
+
+  # assert ((x<=cols))
+  out="$out$2"
+  ((
+    x+=nchar%cols,
+    y+=nchar/cols,
+    (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)
+  ))
+}
 ## 関数 x y cols out ; .ble-line-cur.xyo/add-atomic ( w char )+ ; x y out
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
 function .ble-line-cur.xyo/add-atomic {
   local w c
   w="$1"
 
-  # その行に入りきらない文字は次の行へ
+  # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
   if ((x<cols&&cols<x+w)); then
     ((x=cols))
     local _spaces='                '
@@ -718,17 +741,27 @@ function .ble-line-info.construct-info {
 
   local text="$1" out=
   local i iN=${#text}
-  for ((i=0;i<iN;i++)); do
-    .ble-text.s2c "$text" "$i"
-    local code="$ret" w=0
-    if ((code<32)); then
-      .ble-text.c2s "$((code+64))"
-      .ble-line-cur.xyo/add-atomic 2 "[7m^$ret[m"
-    elif ((code==127)); then
-      .ble-line-cur.xyo/add-atomic 2 '[7m^?[m'
+  for ((i=0;i<iN;)); do
+    local tail="${text:i}"
+
+    # 正規表現は _ble_bash>=30000
+    if [[ "$tail" =~ ^([\ -~]+) ]]; then
+      .ble-line-cur.xyo/add-simple "${#BASH_REMATCH[0]}" "${BASH_REMATCH[0]}"
+      ((i+=${#BASH_REMATCH[0]})) 
     else
-      .ble-text.c2w "$code"
-      .ble-line-cur.xyo/add-atomic "$ret" "${text:i:1}"
+      .ble-text.s2c "$text" "$i"
+      local code="$ret" w=0
+      if ((code<32)); then
+        .ble-text.c2s "$((code+64))"
+        .ble-line-cur.xyo/add-atomic 2 "[7m^$ret[m"
+      elif ((code==127)); then
+        .ble-line-cur.xyo/add-atomic 2 '[7m^?[m'
+      else
+        .ble-text.c2w "$code"
+        .ble-line-cur.xyo/add-atomic "$ret" "${text:i:1}"
+      fi
+
+      ((i++))
     fi
   done
 
@@ -1597,7 +1630,7 @@ function .ble-edit/exec/setexit {
 }
 function .ble-edit/exec/adjust-eol {
   # 文末調整
-  local eof="[94m[ble: EOF][m"
+  local eof="$_ble_term_sgr_fghb[ble: EOF]$_ble_term_sgr0"
   local cols=${COLUMNS:-80} xenl=$_ble_term_xenl
   echo -n "$_ble_term_sc${eof}$_ble_term_rc[$((xenl?cols-2:cols-3))C  [2K"
   _ble_line_x=0 _ble_line_y=0
@@ -1875,6 +1908,14 @@ function .ble-edit/gexec/eval-epilogue {
   fi
 }
 function .ble-edit/gexec/setup {
+  # コマンドを _ble_decode_bind_hook に設定してグローバルで評価する。
+  #
+  # ※ユーザの入力したコマンドをグローバルではなく関数内で評価すると
+  #   declare した変数がコマンドローカルになってしまう。
+  #   配列でない単純な変数に関しては declare を上書きする事で何とか誤魔化していたが、
+  #   declare -a arr=(a b c) の様な特殊な構文の物は上書きできない。
+  #   この所為で、例えば source 内で declare した配列などが壊れる。
+  #
   ((${#_ble_edit_accept_line[@]}==0)) && return 1
 
   local apos=\' APOS="'\\''"
@@ -2389,7 +2430,8 @@ function .ble-edit-comp.common-part {
 
 function .ble-edit-comp.complete-filename {
   local fhead="${_ble_edit_str::_ble_edit_ind}"
-  fhead="${fhead##*[$IFS]}"
+  local sword_sep=$'|&;()<> \t\n'
+  fhead="${fhead##*[$sword_sep]}"
 
   # local files=(* .*)
   # local cands=($(compgen -W '"${files[@]}"' -- "$fhead"))
@@ -2418,7 +2460,12 @@ function .ble-edit-comp.complete-filename {
   fi
 
   if ((${#cands[@]}>1)); then
-    .ble-line-info.draw "${cands[*]}"
+    local dir="${fhead%/*}"
+    if test "$fhead" != "$dir"; then
+      .ble-line-info.draw "${cands[*]#$dir/}"
+    else
+      .ble-line-info.draw "${cands[*]}"
+    fi
   fi
 }
 
@@ -2576,6 +2623,8 @@ function .ble-decode-byte:bind/check-detach {
 
 if ((_ble_bash>=40000)); then
   function .ble-decode-byte:bind/head {
+    .ble-edit/stdout/on
+
     if test -z "$bleopt_suppress_bash_output"; then
       .ble-edit-draw.redraw-cache # bash-4 以降では呼出直前にプロンプトが消される
     fi
@@ -2587,6 +2636,8 @@ if ((_ble_bash>=40000)); then
 else
   IGNOREEOF=10000
   function .ble-decode-byte:bind/head {
+    .ble-edit/stdout/on
+
     # bash-3 では呼出直前に次の行に移動する
     ((_ble_line_y++,_ble_line_x=0))
     .ble-edit-draw.goto-xy '' "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
@@ -2608,7 +2659,6 @@ fi
 
 function ble-decode-byte:bind {
   local dbg="$*"
-  .ble-edit/stdout/on
   .ble-decode-byte:bind/head
   .ble-decode-bind.uvw
   .ble-stty.enter
