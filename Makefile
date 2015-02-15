@@ -3,7 +3,7 @@
 all: ble.sh
 .PHONY: all dist
 
-ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh
+ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh ble-syntax.sh
 	mwg_pp.awk $< >/dev/null
 
 dist:

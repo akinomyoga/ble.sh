@@ -10,52 +10,66 @@ declare -i _ble_color_gflags_Revert=0x04
 
 declare -a _ble_color_g2seq__table=()
 function .ble-color.g2seq {
-  ret="${_ble_color_g2seq__table[$1]}"
-  test -n "$ret" && return
-
-  local -i g="$1"
-  local fg="$((g>> 8&0xFF))"
-  local bg="$((g>>16&0xFF))"
-
-  local sgr=0
-  ((g&_ble_color_gflags_Bold))      && sgr="$sgr;1"
-  ((g&_ble_color_gflags_Underline)) && sgr="$sgr;4"
-  ((g&_ble_color_gflags_Revert))    && sgr="$sgr;7"
-  if ((fg)); then
-    .ble-color.color2sgrfg "$fg"
-    sgr="$sgr;$ret"
+  local _var=ret _ret
+  if [[ $1 == -v ]]; then
+    _var="$2"
+    shift 2
   fi
-  if ((bg)); then
-    .ble-color.color2sgrbg "$bg"
-    sgr="$sgr;$ret"
+
+  _ret="${_ble_color_g2seq__table[$1]}"
+  if [[ -z $_ret ]]; then
+    local -i g="$1"
+    local fg="$((g>> 8&0xFF))"
+    local bg="$((g>>16&0xFF))"
+
+    local sgr=0
+    ((g&_ble_color_gflags_Bold))      && sgr="$sgr;1"
+    ((g&_ble_color_gflags_Underline)) && sgr="$sgr;4"
+    ((g&_ble_color_gflags_Revert))    && sgr="$sgr;7"
+    if ((fg)); then
+      .ble-color.color2sgrfg -v "$_var" "$fg"
+      sgr="$sgr;${!_var}"
+    fi
+    if ((bg)); then
+      .ble-color.color2sgrbg -v "$_var" "$bg"
+      sgr="$sgr;${!_var}"
+    fi
+    
+    _ret="[${sgr}m"
+    #_ble_color_g2seq__table[$1]="$_ret"
+  fi
+
+  eval "$_var=\"\$_ret\""
+}
+function ble-color-gspec2g {
+  local _var=ret
+  if [[ $1 == -v ]]; then
+    _var=$2
+    shift 2
   fi
   
-  ret="[${sgr}m"
-  _ble_color_g2seq__table[$1]="$ret"
-}
-function .ble-color.gspec2g {
-  local g=0
+  local g=0 entry
   for entry in ${1//,/ }; do
     case "$entry" in
     bold)      ((g|=_ble_color_gflags_Bold)) ;;
     underline) ((g|=_ble_color_gflags_Underline)) ;;
     standout)  ((g|=_ble_color_gflags_Revert)) ;;
-    fg=*)
-      .ble-color.name2color "${entry:3}"
-      (('g|=ret<<8')) ;;
-    bg=*)
-      .ble-color.name2color "${entry:3}"
-      (('g|=ret<<16')) ;;
-    none)
+    (fg=*)
+      .ble-color.name2color -v "$_var" "${entry:3}"
+      (("g|=$_var<<8")) ;;
+    (bg=*)
+      .ble-color.name2color -v "$_var" "${entry:3}"
+      (("g|=$_var<<16")) ;;
+    (none)
       g=0 ;;
     esac
   done
 
-  ret="$g"
+  eval "$_var=\"\$g\""
 }
 
 function ble-color-getseq {
-  local ret sgr=0
+  local ret sgr=0 entry
   for entry in ${1//,/ }; do
     case "$entry" in
     bold)      sgr="$sgr;1" ;;
@@ -78,57 +92,81 @@ function ble-color-getseq {
 }
 
 function .ble-color.name2color {
-  local colorName="$1"
+  local _var=ret
+  if [[ $1 == -v ]]; then
+    _var=$2
+    shift 2
+  fi
+
+  local colorName="$1" _ret
   if [ -z "${colorName//[0-9]/}" ]; then
-    ret=${colorName--1}
+    _ret=${colorName--1}
   else
     case "$colorName" in
-    (black)   ret=0 ;;
-    (brown)   ret=1 ;;
-    (green)   ret=2 ;;
-    (olive)   ret=3 ;;
-    (navy)    ret=4 ;;
-    (purple)  ret=5 ;;
-    (teal)    ret=6 ;;
-    (silver)  ret=7 ;;
+    (black)   _ret=0 ;;
+    (brown)   _ret=1 ;;
+    (green)   _ret=2 ;;
+    (olive)   _ret=3 ;;
+    (navy)    _ret=4 ;;
+    (purple)  _ret=5 ;;
+    (teal)    _ret=6 ;;
+    (silver)  _ret=7 ;;
 
-    (gray)    ret=8 ;;
-    (red)     ret=9 ;;
-    (lime)    ret=10 ;;
-    (yellow)  ret=11 ;;
-    (blue)    ret=12 ;;
-    (magenta) ret=13 ;;
-    (cyan)    ret=14 ;;
-    (white)   ret=15 ;;
+    (gray)    _ret=8 ;;
+    (red)     _ret=9 ;;
+    (lime)    _ret=10 ;;
+    (yellow)  _ret=11 ;;
+    (blue)    _ret=12 ;;
+    (magenta) _ret=13 ;;
+    (cyan)    _ret=14 ;;
+    (white)   _ret=15 ;;
 
-    (orange)  ret=202 ;;
-    (*)       ret=-1 ;;
+    (orange)  _ret=202 ;;
+    (*)       _ret=-1 ;;
     esac
   fi
+
+  eval "$_var=\"\$_ret\""
 }
 function .ble-color.color2sgrfg {
+  local _var=ret _ret
+  if [[ $1 == -v ]]; then
+    _var=$2
+    shift 2
+  fi
+
   local ccode="$1"
   if ((ccode<0)); then
-    ret=39
+    _ret=39
   elif ((ccode<8)); then
-    ret="3$ccode"
+    _ret="3$ccode"
   elif ((ccode<16)); then
-    ret="9$((ccode-8))"
+    _ret="9$((ccode-8))"
   elif ((ccode<256)); then
-    ret="38;5;$ccode"
+    _ret="38;5;$ccode"
   fi
+
+  eval "$_var=\"\$_ret\""
 }
 function .ble-color.color2sgrbg {
+  local _var=ret _ret
+  if [[ $1 == -v ]]; then
+    _var=$2
+    shift 2
+  fi
+
   local ccode="$1"
   if ((ccode<0)); then
-    ret=49
+    _ret=49
   elif ((ccode<8)); then
-    ret="4$ccode"
+    _ret="4$ccode"
   elif ((ccode<16)); then
-    ret="10$((ccode-8))"
+    _ret="10$((ccode-8))"
   elif ((ccode<256)); then
-    ret="48;5;$ccode"
+    _ret="48;5;$ccode"
   fi
+
+  eval "$_var=\"\$_ret\""
 }
 
 
@@ -136,7 +174,7 @@ function .ble-color.color2sgrbg {
 function ble-region_highlight-append {
   while [ $# -gt 0 ]; do
     local -a triplet=($1)
-    local ret; .ble-color.gspec2g "${triplet[2]}"; local g="$ret"
+    local ret; ble-color-gspec2g "${triplet[2]}"; local g="$ret"
     local -i i="${triplet[0]}" iN="${triplet[1]}"
     for ((;i<iN;i++)); do
       _ble_region_highlight_table[$i]="$g"

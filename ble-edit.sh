@@ -489,7 +489,8 @@ function .ble-cursor.construct-prompt {
 # **** text ****                                                     @line.text
 
 declare -a _ble_region_highlight_table
-: ${ble_opt_syntax_highlight_mode=default}
+#: ${bleopt_syntax_highlight_mode=default}
+: ${bleopt_syntax_highlight_mode=syntax}
 
 ## 配列 _ble_line_text_cache_*
 ## 要素 = "x y lc lg"
@@ -638,8 +639,8 @@ function .ble-line-text.construct {
 
   # highlight
   _ble_region_highlight_table=()
-  if test -n "$ble_opt_syntax_highlight_mode"; then
-    "ble-syntax-highlight+$ble_opt_syntax_highlight_mode" "$text"
+  if test -n "$bleopt_syntax_highlight_mode"; then
+    "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
   fi
 
   local g g0= buff=() elen=0 peind="$iN"
