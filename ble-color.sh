@@ -7,6 +7,8 @@ declare -i _ble_color_gflags_MaskBg=0x00FF0000
 declare -i _ble_color_gflags_Bold=0x01
 declare -i _ble_color_gflags_Underline=0x02
 declare -i _ble_color_gflags_Revert=0x04
+declare -i _ble_color_gflags_BackColor=0x40
+declare -i _ble_color_gflags_ForeColor=0x80
 
 declare -a _ble_color_g2seq__table=()
 function .ble-color.g2seq {
@@ -48,24 +50,24 @@ function ble-color-gspec2g {
     shift 2
   fi
   
-  local g=0 entry
+  local _g=0 entry
   for entry in ${1//,/ }; do
     case "$entry" in
-    bold)      ((g|=_ble_color_gflags_Bold)) ;;
-    underline) ((g|=_ble_color_gflags_Underline)) ;;
-    standout)  ((g|=_ble_color_gflags_Revert)) ;;
+    bold)      ((_g|=_ble_color_gflags_Bold)) ;;
+    underline) ((_g|=_ble_color_gflags_Underline)) ;;
+    standout)  ((_g|=_ble_color_gflags_Revert)) ;;
     (fg=*)
       .ble-color.name2color -v "$_var" "${entry:3}"
-      (("g|=$_var<<8")) ;;
+      ((_g|=_var<<8|_ble_color_gflags_BackColor)) ;;
     (bg=*)
       .ble-color.name2color -v "$_var" "${entry:3}"
-      (("g|=$_var<<16")) ;;
+      ((_g|=_var<<16|_ble_color_gflags_ForeColor)) ;;
     (none)
-      g=0 ;;
+      _g=0 ;;
     esac
   done
 
-  eval "$_var=\"\$g\""
+  eval "$_var=\"\$_g\""
 }
 
 function ble-color-getseq {

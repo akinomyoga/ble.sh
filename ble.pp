@@ -17,7 +17,7 @@
 # Author: K. Murase <myoga.murase@gmail.com>
 #
 if test -n "${-##*i*}"; then
-  echo "ble.sh: this is not an interactive session."
+  echo "ble.sh: this is not an interactive session." >&2
   return 1
 fi
 

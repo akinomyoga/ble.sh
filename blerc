@@ -1,2 +1,8 @@
-source $HOME/prog/ble/ble.sh
-source $HOME/.bashrc
+# -*- mode:sh -*-
+
+. "$HOME/prog/ble/ble.sh"
+
+# test -f /etc/profile && . /etc/profile
+# test -f /etc/bashrc  && . /etc/bashrc
+
+. "$HOME/.bashrc"

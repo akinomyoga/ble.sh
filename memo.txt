@@ -12,11 +12,29 @@
 : ${ble_opt_error_kseq_vbell=1}
 : ${ble_opt_error_kseq_discard=1}
 
-
 
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
+
+2015-02-17
+  * history --
+  * for 等の末端が赤くならない
+  * bg=black を設定しても反映されない。
+  * ;& は ;; ;;& 等と同じ
+
+2015-02-16
+  * ble-syntax.sh: bugfix, incremental に更新した時に word の長さが更新されない。
+    _ble_syntax_word への格納の際に失敗していた。
+
+  * ble-syntax.sh ToDo
+    * 対応していない物
+      - extglob
+      - 履歴展開
+      - case構文の中の文法
+      - [[]] の中の文法
+      - a=(arr) b=([x]=123 [y]=321) a+=
+      - ${ ... } 内の文法チェック
 
 2015-02-13
 
@@ -52,7 +70,7 @@
     (但し、bind -r しても bind -X のリストには残ってしまう様だ @bash-4.3.33
     リストには残っているが実際には削除されている。)
 
-  * 現在のボトルネックは圧倒的に history である
+  * 現在の初期化のボトルネックは圧倒的に history である
     →.ble-edit.history-load を多少最適化した。読み取り時間が約半分になった。
       それでも未だ全体の半分が history 読み取りである
       (しかし history を 16k も溜めている場合は少ないから、実際は無視できるかも)。
@@ -131,7 +149,6 @@
     case パターンが続く
 
   ※incremental に解析できる様に再帰呼び出しなどは避けたい。
-
 
 
 2013-06-10
@@ -318,6 +335,396 @@
 *******************************************************************************
     ChangeLog
 -------------------------------------------------------------------------------
+
+2015-02-17
+  * ble-edit.sh (ble-edit/dirty-range): 範囲更新の仕組みを追加。
+      _ble_edit_dirty はプロンプト再描画の判定も兼ねているので取り敢えず残す。
+  * ble-edit.sh: 変数リーク (グローバル変数の汚染) の修正。line i
+  * ble-syntax.sh (ctx-command/check-word-end): 単語終了判定の処理タイミングを変更。
+  * ble-syntax.sh: context の追加。CTX_CMDXF CTX_CMDX1 CTX_CMDXV CTX_ARGX0
+    より正確な文脈判定・エラー検知。
+  * ble-syntax.sh: 他にも多くの修正がある。未だ修正が続きそうなので一旦 commit する。
+
+2015-02-15
+  * ble-synatax.sh: bash の文法に従った incremental な解析と色付け。
+
+2015-02-14
+  * ble-edit.sh (.ble-line-info.draw): 表示が遅いので修正。
+    ASCII 文字は特別扱いする様に改良。劇的に速くなった。
+
+2015-02-13
+  * ble-edit.sh (keymap emacs): 既定の keymap に emacs の名を付与。
+  * ble-edit.sh (accept-line.exec): bugfix, C-c で再帰呼び出しのループから抜けられない。
+    trap DEBUG を用いて再帰呼び出しから抜けられる様に exec 周りを整理・実装し直し。
+  * ble-edit.sh: オプション名の変更、各オプションの整理・説明の追加。
+  * ble-edit.sh (.ble-edit/gexec): グローバルな文脈でコマンドを実行する仕組み。
+    再帰呼出に対する C-c にも対応。bleopt_exec_type で実行の方法を切り替えられる様に。
+    exec が従来の方法で gexec がこの新しい方法。
+
+2015-02-12
+  * ble-decode.sh: bugfix, exit 後に stty が壊れているのを修正
+    これに伴って ble の detach 機能の実装も行った。
+  * ble-decode.sh: bugfix, bash-4.3 で三文字以上のシーケンスが悉く聞かない。
+    keymap が見付からないエラーになってしまうので全てのシーケンスについて bind -x する事にした。
+  * ble-core.sh: bugfix, builtin printf \U.... の使えない環境で command printf fallback が働かない。
+    printf のパスを修正。また ASCII に対しては printf は使わない様に変更。
+  * ble-color.sh (ble-syntax-highlight+default):
+    追加・修正。また選択範囲の反転を ble-syntax-highlight+region として実装し、それを呼び出す形に。
+  * ble.pp: 起動時に interactive モードかどうかのチェックを行う様に。
+
+2015-02-11
+  * ble-edit.sh (_ble_edit_io_*): ちらつきを抑える為に stdout/stderr を切り替える事にした。
+    ちらつくのは bash の既定の出力によって ble の表示がクリアされ、bash の表示したい物が表示されるから。
+    これに対抗して ble は bash の出力の直後に上書き再描画して何とか表示していた。
+    bash の既定の出力を抑える為に、exec で出力先を切り替える事にした。
+    bash の出力はファイルに書き込まれる様にし向ける。出力先ファイルを逐次確認して、
+    エラーが出力されていれば visible-bell で表示する事にした。
+    bleopt_suppress_bash_output=1 の時にこの新しい方法を実験的に用いる。
+    bleopt_suppress_bash_output= の時は従来のちらつく方法。
+
+2015-02-10
+  * ble-edit.sh (accept-line.exec): bash-4.3 で内部からグローバル変数を定義できる様に
+    declare 及び typeset を上書きして -g オプションを指定する様に変更。
+    また、これに関係する注意点を ble.htm に記述。
+  * ble-edit.sh (history): ロードに時間が掛かるので最適化。
+  * 全般: bugfix, 文字列分割で GLOBIGNORE='*' を設定していないとパス名展開されて危険
+  * ble-color.sh (ble-syntax-highlight+default): より良い色づけ。
+  * ble-edit.sh (accept-line.exec): ble-bind -cf で bind されたコマンドの実行コンテキストを変更。
+    accept-line で実行されるのと同じコンテキストで実行する。
+  * ble-edit.sh (keymap default): C-z M-z を fg に bind。
+
+2015-02-09
+  * git repos
+  * ble-edit: bugfix, locate-xword マクロが展開されていなかった
+  * ble-decode: bash-4.3 に対応する為に色々変更
+    - bind 指定の場合分けを整理
+    - bugfix, ESC ?, ESC [ ? に対して全て bind
+    - bugfix, 場合によって全く bind -r できていない
+      →"bind -sp | fgrep" が "バイナリ" という結果になる事がある様だ。
+        fgrep に -a を指定する。
+    - bugfix, 日本語が入力できない。8bit 文字が認識されない。
+      →8bit 文字はエスケープシーケンスで bind に指定する様に変更。
+
+2013-06-12
+  * ble-edit: history-beginning, history-end, accept-and-next
+
+2013-06-12
+  * ble-edit:
+    kill-forward-fword, kill-backward-fword, kill-fword,
+    copy-forward-fword, copy-backward-fword, copy-fword,
+    delete-forward-fword, delete-backward-fword, delete-fword,
+    forward-fword, backward-fword
+  * ble-edit: history-expand-line, display-shell-version
+
+2013-06-10
+  * ble-edit:
+    kill-forward-uword, kill-backward-uword, kill-uword, kill-region-or-uword,
+    copy-forward-uword, copy-backward-uword, copy-uword, copy-region-or-uword,
+    forward-uword, backward-uword
+
+  * ble-edit:
+    delete-forward-uword, delete-backward-uword, delete-uword, delete-region-or-uword,
+    delete-forward-sword, delete-backward-sword, delete-sword, delete-region-or-sword,
+    delete-forward-cword, delete-backward-cword, delete-cword, delete-region-or-cword
+
+  * ble-edit:
+    以下の編集関数を廃止:
+      delete-region-or-uword, kill-region-or-uword, copy-region-or-uword,
+      delete-region-or-sword, kill-region-or-sword, copy-region-or-sword,
+      delete-region-or-cword, kill-region-or-cword, copy-region-or-cword.
+    代わりに以下の編集関数を用いる:
+      delete-region-or type, kill-region-or type, copy-region-or type.
+
+2013-06-09
+  * ble-edit: kill-region, copy-region
+  * ble-edit:
+    kill-forward-sword, kill-backward-sword, kill-sword, kill-region-or-sword,
+    copy-forward-sword, copy-backward-sword, copy-sword, copy-region-or-sword
+  * ble-edit:
+    kill-forward-cword, kill-backward-cword, kill-cword, kill-region-or-cword,
+    copy-forward-cword, copy-backward-cword, copy-cword, copy-region-or-cword
+  * ble-edit: forward-sword, backward-sword, forward-cword, backward-cword
+
+2013-06-06
+  * ble-edit-bind: 全ての文字・キーが入力可能に。
+  * complete: 候補一覧の表示 (簡易版)
+  * ble-color.sh: 色付け機能を highlight.sh から移植
+
+2013-06-05
+  * ble-edit: history-isearch-backward, history-isearch-forward,
+    isearch/self-insert,
+    isearch/next, isearch/forward, isearch/backward,
+    isearch/exit, isearch/cancel, isearch/default,
+    isearch/prev, isearch/accept
+  * ble-edit: yank
+  * ble-bind -d で今迄に bind した物を表示できる様に。
+  * ble-edit: complete, 取り敢えずファイル名補完だけ
+  * ble-edit: command-help
+
+2013-06-04
+  * ble-edit: discard-line, accept-line
+  * ble-edit: history-prev, history-next
+  * ble-edit: set-mark, kill-line, kill-backward-line, exchange-point-and-mark
+  * ble-edit: clear-screen
+  * ble-edit: transpose-chars
+  * ble-edit: insert-string
+
+2013-06-03
+  * ble-edit: bell, self-insert, redraw-line,
+  * ble-edit: delete-char, delete-backward-char, delete-char-or-exit,
+    delete-forward-backward-char
+  * ble-edit: forward-char, backward-char, end-of-line, beginning-of-line
+  * ble-edit: quoted-insert
+  * ble.sh: 取り敢えず簡単に文字列を入力できる程度までは完成
+
+2013-06-02
+  * ble-getopt.sh: bugfixes
+  * ble-getopt.sh: 無事に完了した場合に OPTARGS を unset する様に変更
+  * ble-decode-kbd, ble-decode-unkbd
+
+2013-05-31
+  * ble-getopt.sh: created
+  * ble-decode: 大枠が完成
+
+2013-05-30
+  * highlight.sh: 取り敢えず簡単な色付け
+  * ble.sh:
+
+    -- 経緯 --
+    highlight.sh の方針だと bash が表示する編集中の内容を消す事が出来ないし、
+    カーソルの位置も bash が表示する物の場所を指している。
+    色を付けて表示した物は、補助的に bash が表示する物の下に並べて表示する
+    ぐらいしか方法がない。
+
+    また readline 関数をスクリプトから呼び出す事が出来ないので、
+    結局、色付けを更新したいタイミングで READLINE_LINE や READLINE_POINT の動作を
+    スクリプトの側で全て模倣して再現しなければならない。
+    READLINE_LINE, READLINE_POINT の bash の仕様が変な所為で、日本語など
+    のマルチバイトで正しく処理する為に、色々と汚い事をしなければならない。
+
+    以上の事から、文字列の編集などの操作からスクリプトの実行まで
+    全部自分で好きな様に実装して bash readline の機能を全て上書きする事にした。
+    その為に、スクリプトを新しく書き直す。zle を真似て ble (bash line editor)
+    と名付ける。
+
+    -- 方針としては --
+    a. read -n 1 を用いて 1 文字ずつ標準入力から文字を取り出してそれを処理していく
+    b. bash の bind で全ての文字に ble のバイト受信関数を繋げて、
+       バイト列を受信しながら処理する。
+
+    highlight.sh の延長線上で b. の方針にしたが、
+    もしかすると a. の方針も可能かも知れない。
+
+2013-05-29
+  * highlight.sh: 作成
+
+
+*******************************************************************************
+    実装ログ
+-------------------------------------------------------------------------------
+
+2015-02-17
+
+  * <bug> ble-syntax.sh: 1"$1" と入力してから先頭の 1 を消すと単語情報が壊れる。
+    単語の長さが再計算されていない事による物と思われるが良く分からない。
+
+    落ち着いて現在の実装でどの様な振る舞いになるはずかについて考える。
+    1"$1" の時は 1 の部分に単語情報が格納されている。
+    ここで 1 を削除すると単語情報も消えて無くなる。
+    次に 1 の部分から解析が始まるがこの時に新しく単語の開始点が設置される。(長さ 0)
+    所が (単語の開始点が前回と一緒である為) 単語の末端に達する前に解析が終了する。
+
+    さて後段で前方の単語への参照を保持しているはずで、
+    参照している単語開始点が編集の対象だった時は dirty 範囲をそこまで拡大する手はずになっていた筈だが。
+    見てみると編集の対象かどうかの判定が [i1,i2) になっている。
+    これは単語の先頭で編集が行われた場合にその単語は編集されていないという判定である。
+    これについてはもう少し考え他方がよいのかも知れないが
+    単純そうな [i1,i2] に変更する事にする。(単純な物の方が大概自然である。)
+
+    % どの様にしなければならないかというと。
+    % 単語情報を削除してその場に新しく単語情報を追加する場合、
+
+  * <bug> ble-syntax.sh: ${1}1${1} の状態で真ん中の 1 の直前に空白を入れると壊れる。
+    他の部分に空白を入れたり空白以外の文字を入れても何も起こらないが、
+    該当箇所に 1 を入れた時にだけ壊れる。
+
+    試行錯誤
+    > これについても現在の実装でどうなっているのかについて調べる。
+    >
+    > 先ず shift の際に何が起こるかについて。${1}2${3} → ${1} 2${3}
+    > とずらした事で単語の先頭 (${1}の前) に対する参照が更新される事は無い。
+    > 単語の先頭は編集位置よりも前にあるからである。
+    > …よく考えたら、${3 を読み取ろうとした時点で inest/wbegin の値が一致してしまうので
+    > 其処で単語の読み取りが終了してしまう事になる。
+    > 別の単語の中にいながら局所的に同一の文法状態になる事が原因で途中で解析が終了しているという事だ。
+    >
+    > 本当か? ではなぜ echo ""2${3} → echo "" 2${3} の時には問題が発生しないのか?
+    > 残っている情報
+    >   ${ を読み取る直前の wbegin は "" の先頭にある。
+    >   ${ を読み取る直前の inest は -1 である。
+    >   ${ まで読み取った時の wbegin は -1 である。
+    >   ${ まで読み取った時の inest は ${ の先頭の位置にある。
+    > 新しい解析
+    >   ${ を読み取る直前の wbegin は 2 の先頭にある。
+    >   ${ を読み取る直前の inest は -1 である。ここは不一致なのでここで停止する事は無い。
+    >   ${ まで読み取った時の wbegin は -1 である。
+    >   ${ まで読み取った時の inest は ${ の先頭の位置にある。ここで一致する気がするのだが…。
+    > dirty-range の拡大も考慮に入れる事にする。
+    >   dirty-range の拡大は wbegin/inest の参照先が編集範囲内にある時に発生する。
+    >   ${ の外側では wbegin inest は常に wbegin=0 inest=-1 になっている。
+    >   これは dirty range の拡大には寄与しない。
+    >   ${ の内側では wbegin inest は -1 及び ${} の先頭になっている。
+    >   そしてこの先頭 of ${ は編集の対象ではない。つまり dirty-range の拡大は起きない。
+    > →もっと色々試してみた結果
+    >   (字句単位1)(字句単位2)(字句単位N)${3} の時に、
+    >   字句単位1 の直後に空白を挿入する場合は OK で、
+    >   字句単位2以後の直後に空白を挿入する場合に駄目になるという事が分かった。
+
+    原因
+    "(字句単位1)(字句単位2)(字句単位N)${3}" に空白挿入 の際:
+    - 字句単位1の直後に空白を挿入する場合には再開点が単語の先頭になり、
+      単語の先頭も編集対象としてマークされる為に単語全体が更新対象になり問題が発生しないという事の様だ。
+    - しかし、字句単位2 の直後に空白を挿入する場合には再開点は字句単位2の先頭になり、
+      単語全体は更新の対象とは見做されない事になる(ここまでは期待している動作である)。
+      所が、その後で内側のネスト状態に入った所で局所的に前回の解析と同じ状態になり停止するという事のようだ。
+    - また、字句単位N の直後に空白を挿入した場合には ${3} 全体が更新対象になるのでやはり問題は発生しない。
+
+    対処
+
+    局所的な文脈の一致ではなくて全体的な文脈の一致まで考慮しないと問題が残る。
+    例えば現在の実装ではネストレベルが異なる場合でもネストの開始位置さえ同じであれば文脈が一致したと解釈してしまう。
+    実装当初には「ネストの開始位置さえ一致していれば文脈的には同じ構造に戻ったと見做しても良い」
+    という想定を行っていたが実際にはネストの開始位置が同じであっても文脈の構造が変化した可能性があるという事だ。
+
+    例えば (CTX_EXPR の中で) ( を上書きして [ にした場合などがこれに含まれるのではないかと思う。
+    これは類似のまた別の問題だ。現在の文脈情報に開始括弧の情報を含めていない事による。
+    開始括弧の対応まで一致しているかどうかを確認する為には [inest] の type が同じかどうかまで確認しなければならない。
+    これの比較を怠っている事は結構不味い。
+
+    結局、細心の注意を払ってすれすれで実装するのではなく、安全確実な方法を採る方が良い。
+    つまり、現在のネスト情報を親まで全部含めた形で記録して一致するか確認を行う。
+    その為のネスト情報をどの様に記録するのが良いか?
+
+    > 一番簡単なのは stat に全ての情報を入れてしまう事である。しかしもう少し効率化できないだろうか。
+    > 再開の為に必要なのは stat に現在記録している 3 つ組だけである。
+    > 後は自動的に pop によって情報が復元されていく。
+    > さて、stat には3つ組しか記録しない様にして、
+    > 更に比較を行う為にその場で inest を辿って stat を掘り返す事にするのは非効率である。
+    > 代わりに初期の nest 状態だけ復元して、
+    > その後は push/pop する時に nest 状態を更新するというのはどうだろう。
+    > しかし、この方法で現在の解析の nest 状態を更新する事は出来るが、
+    > 前回の解析の nest 状態を追跡する事は出来ない。push/pop の情報は記録していないからだ。
+    > 
+    > 仕方がないので stat に全てを記録してしまう事にする。
+    > 幸い _ble_syntax_stat を参照しているのは殆ど ble-syntax/parse だけなので、
+    > この関数内での取り扱い方法だけ変更すればOKである。
+    > と思ったが…もし stat にネストの全階層を記録していると shift が滅茶苦茶な事になる。
+    > 
+    > というか現在 _ble_syntax_nest に対しては shift を実行していないがこれについても shift する必要があるという事か。
+    > 前回使った _ble_syntax_nest は今回は使わないので shift を実行する意味はなかったのである。
+
+    うーん。面倒だ。取り敢えず動くようにする為には
+    1. _ble_syntax_nest もシフトする様にする
+    2. _ble_syntax_nest を掘り返して文脈が一致するかどうか確認する
+    という事になる。掘り返すのは効率的かどうかは疑問だが取り敢えず実装する。
+    (今迄問題にならなかった事から、そもそもそんなに掘り返さなくてもすぐに不一致になるのかも。
+    改めて考えてみるに其処まで性能の劣化になる様にも思われないのでこれで良い事にする)。
+
+2015-02-16
+
+  * ble-syntax.sh: 単語終了判定の処理の変更
+
+    ble-syntax/parse/word-end の判定は
+    字句単位の開始時ではなくて字句単位の読み取りの終了時にするべき?
+    というのも単語を部分編集するとその単語の長さが 0 になってしまうから。
+    これは単語を部分編集した時の更新範囲が典型的にその単語の末端までになるので、
+    解析もその単語の末端までで終了してしまう事が多いから。
+    然し乍ら、word-end は次の字句単位の読み取りの際に呼び出されるので
+    その字句単位の終端を設定する機会がないという事になる。
+    
+    % しかし、もし word-end の判定を字句単位の終端時に行う事にすると
+    % 別の問題が発生する。単語の末尾に字句を追加した時に単語が伸張してくれない。
+    % というのも字句の直前で既に単語が終了している事になっているからである。
+    
+    再開した時に正しく再開できる様にする為の簡単な条件は、
+    その点での解析状態が次の文字に依存してはならない、という事である。
+    しかしそれは少々無理がある。次の文字が分からなければ
+    字句単位がそこで終わるのかどうかさえ定かではない為である。
+    そこで、現在は解析の再開は変更のあった点ではなく「その点よりも前の最近の再開点」としている。
+    
+    従って、其処で単語が終了するかどうかの判定もやり直されるのではないかという気がする。
+    例えば、単語の末尾に文字を追加する事を考える。文字を追加した時に解析の再開は
+    追加した文字の箇所で起こる訳ではない。追加位置の一つ前の再開点から開始される。
+    そして一つ前の再開点の時点では未だ単語は終了していない事になっている筈だから、
+    正しく単語は伸張されると期待される。
+    なので、取り敢えず字句単位の終わりの時点で単語の終了を判定する様に書き換えてみて動くか見る。
+
+    呆気なく動いている。此方の方が実装としても単純だし自然である。
+    →初めは CTX_CMDI の類の文脈が成功した時しか単語の終了判定をしていなかったが、
+      実際に色々やってみると、nest から抜けた場合や
+      CTX_CMDI の文脈で認識されないエラー文字があった場合にも
+      そこに単語の終了が来る可能性があるという事に気付いたので、
+      任意の ctx の処理の後に単語終了判定を置く事にした。
+    →今後、"ctx の処理の後の ctx" に応じて適切な単語終了判定を行える様に
+      WORDEND[ctx] 的な配列に関数を入れる事にしても良いかも知れない。
+
+  * ble-edit.sh (_ble_edit_str, ble-edit/dirty-range): 変更範囲の合成について
+
+    入力文字列に対する部分変更があった時に、全体を計算し直すのは非効率である。
+    どの様な変更があったのかを記録しておき、変更がなかった部分の計算については省略するのが得策である。
+    その為には部分変更を何らかの方法で表現・記録しておかなければならない。
+    ここでは str1 → str2 への変更操作を
+      str2="${str1::beg0}$ins${str1:end0}"
+    の形に一般化して考える事にする。
+    この時 str1 の [beg0,end0] の範囲が str2 の [beg,end] になったと考える。
+    beg=beg0 であり end=beg0+${#ins} である。この時変更範囲を
+      (beg, end, end0) の三つ組みで表す事ができる。
+
+    今考えたいのはこの様な変更操作を 2 回行って str3 を得た時に、
+    str1 から str3 への部分変更をどの様な三つ組みで表せるかという事である。
+    ※勿論自明な解として (0, ${#str3}, ${#str1}) 等を考える事ができるが、
+      今はできるだけ共通部分を長くしたい、
+      つまり、変更部分の長さ end-beg を最小にしたいのである。
+
+    式で考えようとしたが式の上での場合分けが面倒だ。
+      str1 -(dbeg dend dend0)→ str2 -(beg end end0)→ str3 の時
+      i2 = i1<begA?i1: i1<endA0?-1: i1+(endA-endA0)
+      i3 = i2<begB?i2: i2<endB0?-1: i2+(endB-endB0)
+
+    記号的に場合分けするのではなく、もう少し具体的に場合分けを考えた方が良い。
+      str1 = A [ B ] C → str2 = A | X | C となったとする。
+      更に str3 に入る時に何処に切れ目が入るか ("[]" で表す) で分類できる。
+      (1) str3 = A0 [A1] A2 |     X      |     C
+      (2) str3 = A0 [A1     | X0]     X1 |     C
+      (3) str3 = A0 [A1     |     X      | C0] C1
+      (4) str3 = A          | X0 [X1] X2 |     C
+      (5) str3 = A          | X0     [X1 | C0] C1
+      (6) str3 = A          |     X      | C0 [C1] C2
+      先ず beg は明らかに min(begA, begB) である。
+      次に end は max(endA-endB0+endB, endB) である。
+      end0 は end から逆算できる。或いは end の由来を考えて場合分けすれば良い。
+      end が endA-endB0+endB の時は endA0 がそのまま end になる。
+      end が endB の時は end0 = endB0-endA+endA0 になる。
+
+      式で書くと:
+      beg = min(begA,begB)
+      end = endB + max(endA-endB0,0)
+      end0= endA>endB0? endA0 : endB0-endA+endA0
+          = endA0 - (endA-endB0>0?0:endA-endB0)
+
+      整理すると:
+      beg = min(begA,begB)
+      end = endB
+      end0= endA0
+      if((del=endA-endB0)>0)
+        end+=del;
+      else
+        end0-=del;
+
+    数式での間接参照?
+      alpha=111 beta=alpha*2 pref=bet
+      echo $((${pref}a))
+      → ちゃんと 222 になる。。bash-4.3, bash-4.1, bash-3.1 で確認した。
 
 2015-02-13
 
@@ -530,136 +937,6 @@
       | (通常のシェル環境で実行している場合にはちゃんと trap -p で出るのだが)。
       | trap DEBUG した関数内では trap -p の一覧にも出るし trap 'echo 123' DEBUG で後から書き換える事も出来る様だ。
     trap DEBUG をその場で削除できないという謎があるが取り敢えず動く様になったので良しとする。
-
-2015-02-09
-  * git repos
-  * ble-edit: bugfix, locate-xword マクロが展開されていなかった
-  * ble-decode: bash-4.3 に対応する為に色々変更
-    - bind 指定の場合分けを整理
-    - bugfix, ESC ?, ESC [ ? に対して全て bind
-    - bugfix, 場合によって全く bind -r できていない
-      →"bind -sp | fgrep" が "バイナリ" という結果になる事がある様だ。
-        fgrep に -a を指定する。
-    - bugfix, 日本語が入力できない。8bit 文字が認識されない。
-      →8bit 文字はエスケープシーケンスで bind に指定する様に変更。
-
-2013-06-12
-  * ble-edit: history-beginning, history-end, accept-and-next
-
-2013-06-12
-  * ble-edit:
-    kill-forward-fword, kill-backward-fword, kill-fword,
-    copy-forward-fword, copy-backward-fword, copy-fword,
-    delete-forward-fword, delete-backward-fword, delete-fword,
-    forward-fword, backward-fword
-  * ble-edit: history-expand-line, display-shell-version
-
-2013-06-10
-  * ble-edit:
-    kill-forward-uword, kill-backward-uword, kill-uword, kill-region-or-uword,
-    copy-forward-uword, copy-backward-uword, copy-uword, copy-region-or-uword,
-    forward-uword, backward-uword
-
-  * ble-edit:
-    delete-forward-uword, delete-backward-uword, delete-uword, delete-region-or-uword,
-    delete-forward-sword, delete-backward-sword, delete-sword, delete-region-or-sword,
-    delete-forward-cword, delete-backward-cword, delete-cword, delete-region-or-cword
-
-  * ble-edit:
-    以下の編集関数を廃止:
-      delete-region-or-uword, kill-region-or-uword, copy-region-or-uword,
-      delete-region-or-sword, kill-region-or-sword, copy-region-or-sword,
-      delete-region-or-cword, kill-region-or-cword, copy-region-or-cword.
-    代わりに以下の編集関数を用いる:
-      delete-region-or type, kill-region-or type, copy-region-or type.
-
-2013-06-09
-  * ble-edit: kill-region, copy-region
-  * ble-edit:
-    kill-forward-sword, kill-backward-sword, kill-sword, kill-region-or-sword,
-    copy-forward-sword, copy-backward-sword, copy-sword, copy-region-or-sword
-  * ble-edit:
-    kill-forward-cword, kill-backward-cword, kill-cword, kill-region-or-cword,
-    copy-forward-cword, copy-backward-cword, copy-cword, copy-region-or-cword
-  * ble-edit: forward-sword, backward-sword, forward-cword, backward-cword
-
-2013-06-06
-  * ble-edit-bind: 全ての文字・キーが入力可能に。
-  * complete: 候補一覧の表示 (簡易版)
-  * ble-color.sh: 色付け機能を highlight.sh から移植
-
-2013-06-05
-  * ble-edit: history-isearch-backward, history-isearch-forward,
-    isearch/self-insert,
-    isearch/next, isearch/forward, isearch/backward,
-    isearch/exit, isearch/cancel, isearch/default,
-    isearch/prev, isearch/accept
-  * ble-edit: yank
-  * ble-bind -d で今迄に bind した物を表示できる様に。
-  * ble-edit: complete, 取り敢えずファイル名補完だけ
-  * ble-edit: command-help
-
-2013-06-04
-  * ble-edit: discard-line, accept-line
-  * ble-edit: history-prev, history-next
-  * ble-edit: set-mark, kill-line, kill-backward-line, exchange-point-and-mark
-  * ble-edit: clear-screen
-  * ble-edit: transpose-chars
-  * ble-edit: insert-string
-
-2013-06-03
-  * ble-edit: bell, self-insert, redraw-line,
-  * ble-edit: delete-char, delete-backward-char, delete-char-or-exit,
-    delete-forward-backward-char
-  * ble-edit: forward-char, backward-char, end-of-line, beginning-of-line
-  * ble-edit: quoted-insert
-  * ble.sh: 取り敢えず簡単に文字列を入力できる程度までは完成
-
-2013-06-02
-  * ble-getopt.sh: bugfixes
-  * ble-getopt.sh: 無事に完了した場合に OPTARGS を unset する様に変更
-  * ble-decode-kbd, ble-decode-unkbd
-
-2013-05-31
-  * ble-getopt.sh: created
-  * ble-decode: 大枠が完成
-
-2013-05-30
-  * highlight.sh: 取り敢えず簡単な色付け
-  * ble.sh:
-
-    -- 経緯 --
-    highlight.sh の方針だと bash が表示する編集中の内容を消す事が出来ないし、
-    カーソルの位置も bash が表示する物の場所を指している。
-    色を付けて表示した物は、補助的に bash が表示する物の下に並べて表示する
-    ぐらいしか方法がない。
-
-    また readline 関数をスクリプトから呼び出す事が出来ないので、
-    結局、色付けを更新したいタイミングで READLINE_LINE や READLINE_POINT の動作を
-    スクリプトの側で全て模倣して再現しなければならない。
-    READLINE_LINE, READLINE_POINT の bash の仕様が変な所為で、日本語など
-    のマルチバイトで正しく処理する為に、色々と汚い事をしなければならない。
-
-    以上の事から、文字列の編集などの操作からスクリプトの実行まで
-    全部自分で好きな様に実装して bash readline の機能を全て上書きする事にした。
-    その為に、スクリプトを新しく書き直す。zle を真似て ble (bash line editor)
-    と名付ける。
-
-    -- 方針としては --
-    a. read -n 1 を用いて 1 文字ずつ標準入力から文字を取り出してそれを処理していく
-    b. bash の bind で全ての文字に ble のバイト受信関数を繋げて、
-       バイト列を受信しながら処理する。
-
-    highlight.sh の延長線上で b. の方針にしたが、
-    もしかすると a. の方針も可能かも知れない。
-
-2013-05-29
-  * highlight.sh: 作成
-
-
-*******************************************************************************
-    実装ログ
--------------------------------------------------------------------------------
 
 2015-02-11
 

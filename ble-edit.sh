@@ -643,7 +643,7 @@ function .ble-line-text.construct {
     "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
   fi
 
-  local g g0= buff=() elen=0 peind="$iN"
+  local i g g0= buff=() elen=0 peind="$iN"
   # TODO: ps1 の最後の文字の SGR フラグはここで g0 に代入する
   for ((i=0;i<iN;i++)); do
     # カーソル移動時、このループが重い
@@ -674,6 +674,9 @@ function .ble-line-text.construct {
 
   if ((index<iN)); then
     # Note#1
+    #   二重引用符で囲まれた文字列を "" で分割しているのは、
+    #   bash-3.1 の「${a::} の展開結果が空で、かつ、別の文字列に接している時に stray ^? を生む」
+    #   というバグに対する work around.
     ret="${_ble_line_text_cache::peind}""$_ble_term_sc""${_ble_line_text_cache:peind}""$_ble_term_rc"
   else
     ret="$_ble_line_text_cache"
@@ -813,11 +816,78 @@ function .ble-line-info.clear {
 #------------------------------------------------------------------------------
 # **** edit ****                                                          @edit
 
+# 現在の編集状態は以下の変数で表現される
 _ble_edit_str=
 _ble_edit_ind=0
 _ble_edit_mark=0
 _ble_edit_mark_active=
 _ble_edit_kill_ring=
+
+# _ble_edit_str は以下の関数を通して変更する。
+# 変更範囲を追跡する為。
+function _ble_edit_str.replace {
+  local -i beg="$1" end="$2"
+  local ins="$3"
+
+  # c.f. Note#1
+  _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
+  ble-edit/dirty-range/update "$beg" "$((beg+${#ins}))" "$end"
+  .ble-edit-draw.set-dirty "$beg"
+}
+function _ble_edit_str.reset {
+  local str="$1"
+  ble-edit/dirty-range/update 0 "${#str}" "${#_ble_edit_str}"
+  .ble-edit-draw.set-dirty 0
+  _ble_edit_str="$str"
+}
+
+# 変更範囲
+_ble_edit_str_dbeg=-1
+_ble_edit_str_dend=-1
+_ble_edit_str_dend0=-1
+function ble-edit/dirty-range/clear {
+  _ble_edit_str_dbeg=-1
+  _ble_edit_str_dend=-1
+  _ble_edit_str_dend0=-1
+}
+
+## 関数 ble-edit/dirty-range/update [--prefix=PREFIX] beg end end0
+## @param[out] PREFIX
+## @param[in]  beg    変更開始点。beg<0 は変更がない事を表す
+## @param[in]  end    変更終了点。end<0 は変更が末端までである事を表す
+## @param[in]  end0   変更前の end に対応する位置。
+function ble-edit/dirty-range/update {
+  local _prefix=_ble_edit_str_d
+  if [[ $1 =~ ^--prefix= ]]; then
+    _prefix="${1:9}"
+    shift
+  fi
+
+  local begB="$1" endB="$2" endB0="$3"
+  ((begB<0)) && return
+
+  local begA endA endA0
+  ((begA=${_prefix}beg,endA=${_prefix}end,endA0=${_prefix}beg))
+
+  local beg end end0 delta
+  if ((begA<0)); then
+    ((beg=begB,
+      end=endB,
+      end0=endB0))
+  else
+    ((beg=begA<begB?begA:begB))
+    if ((endA<0||endB<0)); then
+      ((end=-1,end0=-1))
+    else
+      ((end=endB,end0=endA0,
+        (delta=endA-endB0)>0?(end+=del):(end0-=del)))
+    fi
+  fi
+  
+  ((${_prefix}beg=beg,
+    ${_prefix}end=end,
+    ${_prefix}end0=end0))
+}
 
 # **** PS1/LINENO ****                                                @edit.ps1
 #
@@ -866,6 +936,17 @@ _ble_line_x=0 _ble_line_y=0
 
 _ble_line_endx=0
 _ble_line_endy=0
+
+## 変数 _ble_edit_dirty
+##   編集文字列の変更開始点を記録します。
+##   編集文字列の位置計算は、この点以降に対して実行されます。
+##   .ble-edit-draw.update 関数内で使用されクリアされます。
+##   @value _ble_edit_dirty=
+##     再描画の必要がない事を表します。
+##   @value _ble_edit_dirty=-1
+##     プロンプトも含めて内容の再計算をする必要がある事を表します。
+##   @value _ble_edit_dirty=(整数)
+##     編集文字列の指定した位置以降に対し再計算する事を表します。
 _ble_edit_dirty=-1
 
 ## 変数 _ble_line_cache_ind := inds ':' mark ':' mark_active
@@ -994,6 +1075,9 @@ function .ble-edit-draw.update {
   .ble-cursor.construct-prompt # x y lc ret
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
+  local BLELINE_RANGE_UPDATE=("$_ble_edit_str_dbeg" "$_ble_edit_str_dend" "$_ble_edit_str_dend0")
+  ble-edit/dirty-range/clear
+
   local cx="$x" cy="$y"
   local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_edit_dirty"
   .ble-line-text.construct # ret x y cx cy lc lg
@@ -1091,17 +1175,15 @@ function ble-edit+kill-forward-line {
   ((_ble_edit_ind>=${#_ble_edit_str})) && return
 
   _ble_edit_kill_ring="${_ble_edit_str:_ble_edit_ind}"
-  _ble_edit_str="${_ble_edit_str::_ble_edit_ind}"
+  _ble_edit_str.replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
-  .ble-edit-draw.set-dirty
 }
 function ble-edit+kill-backward-line {
   ((_ble_edit_ind==0)) && return
   _ble_edit_kill_ring="${_ble_edit_str::_ble_edit_ind}"
-  _ble_edit_str="${_ble_edit_str:_ble_edit_ind}"
+  _ble_edit_str.replace 0 _ble_edit_ind ''
   ((_ble_edit_mark=_ble_edit_mark<=_ble_edit_ind?0:_ble_edit_mark-_ble_edit_ind))
   _ble_edit_ind=0
-  .ble-edit-draw.set-dirty
 }
 function ble-edit+exchange-point-and-mark {
   local m="$_ble_edit_mark" p="$_ble_edit_ind"
@@ -1155,9 +1237,7 @@ function .ble-edit.delete-range {
     _ble_edit_mark>p1? (_ble_edit_mark-=len):
     _ble_edit_mark>p0&&(_ble_edit_mark=p0)
   ))
-  # Note#1
-  _ble_edit_str="${_ble_edit_str::p0}""${_ble_edit_str:p1}"
-  .ble-edit-draw.set-dirty
+  _ble_edit_str.replace p0 p1 ''
 }
 ## 関数 .ble-edit.kill-range P0 P1
 function .ble-edit.kill-range {
@@ -1174,9 +1254,7 @@ function .ble-edit.kill-range {
     _ble_edit_mark>p1? (_ble_edit_mark-=len):
     _ble_edit_mark>p0&&(_ble_edit_mark=p0)
   ))
-  # Note#1
-  _ble_edit_str="${_ble_edit_str::p0}""${_ble_edit_str:p1}"
-  .ble-edit-draw.set-dirty
+  _ble_edit_str.replace p0 p1 ''
 }
 ## 関数 .ble-edit.copy-range P0 P1
 function .ble-edit.copy-range {
@@ -1266,35 +1344,24 @@ function ble-edit+insert-string {
   local ins="$*"
   test -z "$ins" && return
 
-  local ind0 dx="${#ins}"
-  # Note#1
-  _ble_edit_str="${_ble_edit_str::_ble_edit_ind}""$ins""${_ble_edit_str:_ble_edit_ind}"
+  local dx="${#ins}"
+  _ble_edit_str.replace _ble_edit_ind _ble_edit_ind "$ins"
   (('
-    ind0=_ble_edit_ind,
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
     _ble_edit_ind+=dx
   '))
   _ble_edit_mark_active=
-
-  .ble-edit-draw.set-dirty "$ind0"
 }
 function ble-edit+self-insert {
   local code="$((KEYS[0]&ble_decode_MaskChar))"
   ((code==0)) && return
 
-  # echo -n "_ble_edit_str=($_ble_edit_str) " >>~/a
-
   local ret
   .ble-text.c2s "$code"
-  # Note#1
-  _ble_edit_str="${_ble_edit_str::_ble_edit_ind}""$ret""${_ble_edit_str:_ble_edit_ind}"
+  _ble_edit_str.replace _ble_edit_ind _ble_edit_ind "$ret"
   ((_ble_edit_mark>_ble_edit_ind&&_ble_edit_mark++))
   ((_ble_edit_ind++))
   _ble_edit_mark_active=
-
-  .ble-edit-draw.set-dirty "$((_ble_edit_ind-1))"
-
-  # echo "-> _ble_edit_str=($_ble_edit_str)" >>~/a
 }
 
 # quoted insert
@@ -1313,9 +1380,7 @@ function ble-edit+transpose-chars {
   else
     local a="${_ble_edit_str:_ble_edit_ind-1:1}"
     local b="${_ble_edit_str:_ble_edit_ind:1}"
-    # Note#1
-    _ble_edit_str="${_ble_edit_str::_ble_edit_ind-1}""$b$a""${_ble_edit_str:_ble_edit_ind+1}"
-    .ble-edit-draw.set-dirty $((ble_edit_ind-1))
+    _ble_edit_str.replace _ble_edit_ind-1 _ble_edit_ind+1 "$b$a"
     ((_ble_edit_ind++))
   fi
 }
@@ -1324,22 +1389,20 @@ function ble-edit+transpose-chars {
 # **** delete-char ****                                            @edit.delete
 
 function .ble-edit.delete-char {
-  # Note#1
-
   local a="${1:-1}"
   if ((a>0)); then
     # delete-forward-char
     if ((_ble_edit_ind>=${#_ble_edit_str})); then
       return 1
     else
-      _ble_edit_str="${_ble_edit_str::_ble_edit_ind}""${_ble_edit_str:_ble_edit_ind+1}"
+      _ble_edit_str.replace _ble_edit_ind _ble_edit_ind+1 ''
     fi
   elif ((a<0)); then
     # delete-backward-char
     if ((_ble_edit_ind<=0)); then
       return 1
     else
-      _ble_edit_str="${_ble_edit_str::_ble_edit_ind-1}""${_ble_edit_str:_ble_edit_ind}"
+      _ble_edit_str.replace _ble_edit_ind-1 _ble_edit_ind ''
       ((_ble_edit_ind--))
     fi
   else
@@ -1347,14 +1410,13 @@ function .ble-edit.delete-char {
     if ((${#_ble_edit_str}==0)); then
       return 1
     elif ((_ble_edit_ind<${#_ble_edit_str})); then
-      _ble_edit_str="${_ble_edit_str::_ble_edit_ind}""${_ble_edit_str:_ble_edit_ind+1}"
+      _ble_edit_str.replace _ble_edit_ind _ble_edit_ind+1 ''
     else
-      _ble_edit_str="${_ble_edit_str::${#_ble_edit_str}-1}"
       _ble_edit_ind="${#_ble_edit_str}"
+      _ble_edit_str.replace _ble_edit_ind-1 _ble_edit_ind ''
     fi
   fi
 
-  .ble-edit-draw.set-dirty
   ((_ble_edit_mark>_ble_edit_ind&&_ble_edit_mark--))
   return 0
 }
@@ -1927,9 +1989,12 @@ function .ble-edit/gexec/setup {
   for cmd in "${_ble_edit_accept_line[@]}"; do
     if [[ "$cmd" =~ [^' 	'] ]]; then
       buff[${#buff[@]}]=".ble-edit/gexec/eval-prologue '${cmd//$apos/$APOS}'"
-      buff[${#buff[@]}]="$cmd"
+      buff[${#buff[@]}]="eval '${cmd//$apos/$APOS}'"
       buff[${#buff[@]}]=".ble-edit/gexec/eval-epilogue"
       ((count++))
+
+      # ※直接 "$cmd" とすると文法的に破綻した物を入れた時に
+      #   下の行を巻き込んでしまう。
     fi
   done
   _ble_edit_accept_line=()
@@ -1959,7 +2024,7 @@ function ble-edit+discard-line {
   # 新しい行
   echo 1>&2
   ((LINENO=++_ble_edit_LINENO))
-  _ble_edit_str=
+  _ble_edit_str.reset ''
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
@@ -1987,7 +2052,7 @@ function ble-edit+accept-line {
     echo "$_ble_term_sgr_fghb[ble: expand]$_ble_term_sgr0 $BASH_COMMAND" 1>&2
   fi
 
-  _ble_edit_str=
+  _ble_edit_str.reset ''
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
@@ -2152,11 +2217,10 @@ function .ble-edit.history-goto {
   # restore
   _ble_edit_history_ind="$index1"
   if test -n "${_ble_edit_history_edit[$index1]+set}"; then
-    _ble_edit_str="${_ble_edit_history_edit[$index1]}"
+    _ble_edit_str.reset "${_ble_edit_history_edit[$index1]}"
   else
-    _ble_edit_str="${_ble_edit_history[$index1]}"
+    _ble_edit_str.reset "${_ble_edit_history[$index1]}"
   fi
-  .ble-edit-draw.set-dirty 0
 
   # point
   if test -n "$ble_opt_history_preserve_point"; then
@@ -2187,11 +2251,10 @@ function ble-edit+history-expand-line {
   hist_expanded="$(history -p "$_ble_edit_str" 2>&1)" || return
   test "x$_ble_edit_str" = "x$hist_expanded" && return
 
-  _ble_edit_str="$hist_expanded"
+  _ble_edit_str.reset "$hist_expanded"
   _ble_edit_ind="${#hist_expanded}"
   _ble_edit_mark=0
   _ble_edit_mark_active=
-  .ble-edit-draw.set-dirty 0
 }
 
 # 
@@ -2568,7 +2631,7 @@ if test -n "$bleopt_suppress_bash_output"; then
     if declare -f .ble-term.visible-bell &>/dev/null; then
       # /dev/null の様なデバイスではなく、中身があるファイルの場合
       if test -f "$_ble_edit_io_fname2" -a -s "$_ble_edit_io_fname2"; then
-        local message=
+        local message= line
         while IFS= read -r line; do
           if [[ $line =~ ^'bash: ' ]]; then
             message+="${message:+; }$line"
@@ -2792,8 +2855,3 @@ function .ble-edit-finalize {
   .ble-edit/stdout/finalize
   .ble-edit/edit/finalize
 }
-
-# Note#1
-#   二重引用符で囲まれた文字列を "" で分割しているのは、
-#   bash-3.1 の「${a::} の展開結果が空で、かつ、別の文字列に接している時に stray ^? を生む」
-#   というバグに対する work around.
