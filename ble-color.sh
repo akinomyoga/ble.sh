@@ -28,11 +28,11 @@ function .ble-color.g2seq {
     ((g&_ble_color_gflags_Bold))      && sgr="$sgr;1"
     ((g&_ble_color_gflags_Underline)) && sgr="$sgr;4"
     ((g&_ble_color_gflags_Revert))    && sgr="$sgr;7"
-    if ((fg)); then
+    if ((g&_ble_color_gflags_ForeColor)); then
       .ble-color.color2sgrfg -v "$_var" "$fg"
       sgr="$sgr;${!_var}"
     fi
-    if ((bg)); then
+    if ((g&_ble_color_gflags_BackColor)); then
       .ble-color.color2sgrbg -v "$_var" "$bg"
       sgr="$sgr;${!_var}"
     fi
@@ -53,15 +53,23 @@ function ble-color-gspec2g {
   local _g=0 entry
   for entry in ${1//,/ }; do
     case "$entry" in
-    bold)      ((_g|=_ble_color_gflags_Bold)) ;;
-    underline) ((_g|=_ble_color_gflags_Underline)) ;;
-    standout)  ((_g|=_ble_color_gflags_Revert)) ;;
+    (bold)      ((_g|=_ble_color_gflags_Bold)) ;;
+    (underline) ((_g|=_ble_color_gflags_Underline)) ;;
+    (standout)  ((_g|=_ble_color_gflags_Revert)) ;;
     (fg=*)
       .ble-color.name2color -v "$_var" "${entry:3}"
-      ((_g|=_var<<8|_ble_color_gflags_BackColor)) ;;
+      if ((_var<0)); then
+        ((_g&=~(_ble_color_gflags_ForeColor|_ble_color_gflags_MaskFg)))
+      else
+        ((_g|=_var<<8|_ble_color_gflags_ForeColor))
+      fi ;;
     (bg=*)
       .ble-color.name2color -v "$_var" "${entry:3}"
-      ((_g|=_var<<16|_ble_color_gflags_ForeColor)) ;;
+      if ((_var<0)); then
+        ((_g&=~(_ble_color_gflags_BackColor|_ble_color_gflags_MaskBg)))
+      else
+        ((_g|=_var<<16|_ble_color_gflags_BackColor))
+      fi ;;
     (none)
       _g=0 ;;
     esac
@@ -70,27 +78,32 @@ function ble-color-gspec2g {
   eval "$_var=\"\$_g\""
 }
 
-function ble-color-getseq {
-  local ret sgr=0 entry
+function ble-color-gspec2seq {
+  local _var=ret sgr=0 entry
+  if [[ $1 == -v ]]; then
+    _var=$2
+    shift 2
+  fi
+
   for entry in ${1//,/ }; do
     case "$entry" in
-    bold)      sgr="$sgr;1" ;;
-    underline) sgr="$sgr;4" ;;
-    standout)  sgr="$sgr;7" ;;
-    fg=*)
+    (bold)      sgr="$sgr;1" ;;
+    (underline) sgr="$sgr;4" ;;
+    (standout)  sgr="$sgr;7" ;;
+    (fg=*)
       .ble-color.name2color "${entry:3}"
       .ble-color.color2sgrfg "$ret"
       sgr="$sgr;$ret" ;;
-    bg=*)
+    (bg=*)
       .ble-color.name2color "${entry:3}"
       .ble-color.color2sgrbg "$ret"
       sgr="$sgr;$ret" ;;
-    none)
+    (none)
       sgr=0 ;;
     esac
   done
 
-  seq="[${sgr}m"
+  eval "$_var=\"[\${sgr}m\""
 }
 
 function .ble-color.name2color {
@@ -101,8 +114,8 @@ function .ble-color.name2color {
   fi
 
   local colorName="$1" _ret
-  if [ -z "${colorName//[0-9]/}" ]; then
-    _ret=${colorName--1}
+  if [[ $colorName == $((colorName)) ]]; then
+    ((_ret=colorName<0?-1:colorName))
   else
     case "$colorName" in
     (black)   _ret=0 ;;
@@ -124,6 +137,7 @@ function .ble-color.name2color {
     (white)   _ret=15 ;;
 
     (orange)  _ret=202 ;;
+    (transparent) _ret=-1 ;;
     (*)       _ret=-1 ;;
     esac
   fi
@@ -299,19 +313,20 @@ function ble-syntax-highlight+default/type {
 }
 
 function ble-syntax-highlight+default {
+  local rex IFS=$' \t\n'
   local text="$1"
   local i iN=${#text} w
   local mode=cmd
   for ((i=0;i<iN;)); do
     local tail="${text:i}"
-    if [[ "$mode" = cmd ]]; then
-      if [[ "$tail" =~ ^([_a-zA-Z][_a-zA-Z0-9]*)\+?= ]]; then
+    if [[ "$mode" == cmd ]]; then
+      if rex='^([_a-zA-Z][_a-zA-Z0-9]*)\+?=' && [[ $tail =~ $rex ]]; then
         # local var="${BASH_REMATCH[0]::-1}"
         ble-region_highlight-append "$i $((i+${#BASH_REMATCH[1]})) fg=orange"
         ((i+=${#BASH_REMATCH[0]}))
         mode=rhs
         continue
-      elif [[ "$tail" =~ ^([^"$IFS|&;()<>'\"\\"]|\\.)+ ]]; then
+      elif rex='^([^'"$IFS"'|&;()<>'\''"\]|\\.)+' && [[ $tail =~ $rex ]]; then
         # ■ time'hello' 等の場合に time だけが切り出されてしまう
 
         local _0="${BASH_REMATCH[0]}"
@@ -366,7 +381,7 @@ function ble-syntax-highlight+default {
         esac
 
         ((i+=${#BASH_REMATCH[0]}))
-        if [[ "$type:$cmd" =~ ^keyword:([\!\{]|time|do|if|then|else|while|until)$|^builtin:eval$ ]]; then
+        if rex='^keyword:([!{]|time|do|if|then|else|while|until)$|^builtin:eval$' && [[ "$type:$cmd" =~ $rex ]]; then
           mode=cmd
         else
           mode=arg
@@ -374,13 +389,13 @@ function ble-syntax-highlight+default {
 
         continue
       fi
-    elif [[ "$mode" =~ arg ]]; then
-      if [[ "$tail" =~ ^([^"\$$IFS|&;()<>'\"\`\\"]|\\.)+ ]]; then
+    elif [[ $mode == arg ]]; then
+      if rex='^([^"$'"$IFS"'|&;()<>'\''"`\]|\\.)+' && [[ $tail =~ $rex ]]; then
         # ■ time'hello' 等の場合に time だけが切り出されてしまう
         local arg="${BASH_REMATCH[0]}"
 
         local file="$arg"
-        [[ ! -e "$file" && "$file" =~ ^\~ ]] && file="$HOME${file:1}"
+        rex='^~' && [[ ! -e $file && $file =~ $rex ]] && file="$HOME${file:1}"
         if test -d "$file"; then
           ble-region_highlight-append "$i $((i+${#arg})) fg=navy,underline"
         elif test -h "$file"; then
@@ -396,12 +411,13 @@ function ble-syntax-highlight+default {
       fi
     fi
 
-    if [[ "$tail" =~ ^\'([^\'])*\'|^\$\'([^\\\']|\\.)*\'|^\`([^\`]|\\.)*\`|^\\. ]]; then
+    # /^'([^'])*'|^\$'([^\']|\\.)*'|^`([^\`]|\\.)*`|^\\./
+    if rex='^'\''([^'\''])*'\''|^\$'\''([^\'\'']|\\.)*'\''|^`([^\`]|\\.)*`|^\\.' && [[ $tail =~ $rex ]]; then
       ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) fg=green"
       ((i+=${#BASH_REMATCH[0]}))
       mode=arg_
       continue
-    elif [[ "$tail" =~ ^[$IFS]+ ]]; then
+    elif rex='^['"$IFS"']+' && [[ $tail =~ $rex ]]; then
       ((i+=${#BASH_REMATCH[0]}))
       local spaces="${BASH_REMATCH[0]}"
       if [[ "$spaces" =~ $'\n' ]]; then
@@ -410,19 +426,19 @@ function ble-syntax-highlight+default {
         [[ "$mode" = arg_ ]] && mode=arg
       fi
       continue
-    elif [[ "$tail" =~ ^\;\;?|^';;&'$|^\&\&?|^\|\|? ]]; then
+    elif rex='^;;?|^;;&$|^&&?|^\|\|?' && [[ $tail =~ $rex ]]; then
       if [[ $mode = cmd ]]; then
         ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) bg=224"
       fi
       ((i+=${#BASH_REMATCH[0]}))
       mode=cmd
       continue
-    elif [[ "$tail" =~ ^(\&?>>?|<>?|[<>]\&) ]]; then
+    elif rex='^(&?>>?|<>?|[<>]&)' && [[ $tail =~ $rex ]]; then
       ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) bold"
       ((i+=${#BASH_REMATCH[0]}))
       mode=arg
       continue
-    elif [[ "$tail" =~ ^\( ]]; then
+    elif rex='^(' && [[ $tail =~ $rex ]]; then
       ((i+=${#BASH_REMATCH[0]}))
       mode=cmd
       continue

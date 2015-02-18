@@ -741,6 +741,9 @@ function .ble-line-cur.xyo/eol2nl {
 ## 関数 x y; .ble-line-info.construct-info text ; ret
 ##   指定した文字列を表示する為の制御系列に変換します。
 function .ble-line-info.construct-info {
+  # 正規表現は _ble_bash>=30000
+  local rex_ascii='^[ -~]+'
+
   local cols=${COLUMNS-80}
 
   local text="$1" out=
@@ -748,8 +751,7 @@ function .ble-line-info.construct-info {
   for ((i=0;i<iN;)); do
     local tail="${text:i}"
 
-    # 正規表現は _ble_bash>=30000
-    if [[ "$tail" =~ ^([\ -~]+) ]]; then
+    if [[ $tail =~ $rex_ascii ]]; then
       .ble-line-cur.xyo/add-simple "${#BASH_REMATCH[0]}" "${BASH_REMATCH[0]}"
       ((i+=${#BASH_REMATCH[0]})) 
     else
@@ -858,7 +860,7 @@ function ble-edit/dirty-range/clear {
 ## @param[in]  end0   変更前の end に対応する位置。
 function ble-edit/dirty-range/update {
   local _prefix=_ble_edit_str_d
-  if [[ $1 =~ ^--prefix= ]]; then
+  if [[ $1 == --prefix=* ]]; then
     _prefix="${1:9}"
     shift
   fi
@@ -1733,7 +1735,7 @@ function .ble-edit/exec/eval {
   local _ble_edit_exec_in_eval=1
   # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
   .ble-edit/exec/setexit
-  eval "$BASH_COMMAND"
+  eval -- "$BASH_COMMAND"
 }
 function .ble-edit/exec/eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
@@ -1907,13 +1909,15 @@ function .ble-edit/gexec/eval-TRAPDEBUG {
     # エラーが起きている時
 
     local depth="${#FUNCNAME[*]}"
-    if ((depth>=2)) && ! [[ "${FUNCNAME[*]:depth-1}" =~ ^\.ble-edit/gexec/ ]]; then
+    local rex='^\.ble-edit/gexec/'
+    if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
       # 関数内にいるが、.ble-edit/gexec/ の中ではない時
       echo "$_ble_term_sgr_fghr[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2"
       return 0
     fi
     
-    if ((depth==1)) && ! [[ "$BASH_COMMAND" =~ ^(\.ble-edit/gexec/|'trap - ') ]]; then
+    local rex='^(\.ble-edit/gexec/|trap - )'
+    if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、.ble-edit/gexec/ 関数ではない時
       echo "$_ble_term_sgr_fghr[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2"
       return 0
@@ -1987,14 +1991,14 @@ function .ble-edit/gexec/setup {
   local count=0
   buff[${#buff[@]}]=.ble-edit/gexec/begin
   for cmd in "${_ble_edit_accept_line[@]}"; do
-    if [[ "$cmd" =~ [^' 	'] ]]; then
+    if [[ "$cmd" == *[^' 	']* ]]; then
       buff[${#buff[@]}]=".ble-edit/gexec/eval-prologue '${cmd//$apos/$APOS}'"
-      buff[${#buff[@]}]="eval '${cmd//$apos/$APOS}'"
+      buff[${#buff[@]}]="eval -- '${cmd//$apos/$APOS}'"
       buff[${#buff[@]}]=".ble-edit/gexec/eval-epilogue"
       ((count++))
 
-      # ※直接 "$cmd" とすると文法的に破綻した物を入れた時に
-      #   下の行を巻き込んでしまう。
+      # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に
+      #   下の行が実行されない事になってしまう。
     fi
   done
   _ble_edit_accept_line=()
@@ -2031,6 +2035,12 @@ function ble-edit+discard-line {
   _ble_edit_dirty=-1
 }
 
+## @var[out] hist_expand
+function ble-edit+accept-line/.histexpand {
+  # ※"-" で始まるコマンドがオプションと解釈されない様に ": " を前置して history に渡す。
+  hist_expanded="$(history -p ": $1" 2>/dev/null)" &&
+    hist_expanded="${hist_expanded#: }"
+}
 function ble-edit+accept-line {
   local BASH_COMMAND="$_ble_edit_str"
 
@@ -2043,7 +2053,7 @@ function ble-edit+accept-line {
 
   # 履歴展開
   local hist_expanded
-  if ! hist_expanded="$(history -p "$BASH_COMMAND")"; then
+  if ! hist_expanded="$(history -p -- "$BASH_COMMAND" 2>/dev/null)"; then
     .ble-edit-draw.set-dirty -1
     return
   fi
@@ -2189,7 +2199,7 @@ function .ble-edit.history-add {
     done
   fi
 
-  history -s "$cmd"
+  history -s -- "$cmd"
   _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
   _ble_edit_history_ind=${#_ble_edit_history[@]}
 }
@@ -2248,7 +2258,7 @@ function ble-edit+history-end {
 
 function ble-edit+history-expand-line {
   local hist_expanded
-  hist_expanded="$(history -p "$_ble_edit_str" 2>&1)" || return
+  hist_expanded="$(history -p -- "$_ble_edit_str" 2>/dev/null)" || return
   test "x$_ble_edit_str" = "x$hist_expanded" && return
 
   _ble_edit_str.reset "$hist_expanded"
@@ -2633,7 +2643,7 @@ if test -n "$bleopt_suppress_bash_output"; then
       if test -f "$_ble_edit_io_fname2" -a -s "$_ble_edit_io_fname2"; then
         local message= line
         while IFS= read -r line; do
-          if [[ $line =~ ^'bash: ' ]]; then
+          if [[ $line == 'bash: '* ]]; then
             message+="${message:+; }$line"
           fi
         done < "$_ble_edit_io_fname2"
