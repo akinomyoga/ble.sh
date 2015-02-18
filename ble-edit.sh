@@ -37,6 +37,7 @@
 ##   抑制します。bash のエラーメッセージは visible-bell で表示します。
 ## bleopt_suppress_bash_output=
 ##   抑制しません。bash の出力を制御するためにちらつきが発生する事があります。
+##   (bash-3 ではこちらは調整していないので使えない。)
 : ${bleopt_suppress_bash_output=1}
 
 ## オプション bleopt_char_width_mode
@@ -65,6 +66,11 @@
 ## bleopt_edit_abell=
 ##   無効です。
 : ${bleopt_edit_abell=}
+
+## オプション bleopt_ignoreeof_message
+##   bash-3.0 の時に使用する。C-d を捕捉するのに用いるメッセージ。
+##   これは自分の bash の設定に合わせる必要がある。
+: ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
 
 # 
 #------------------------------------------------------------------------------
@@ -2112,45 +2118,49 @@ function .ble-edit.bind.command {
 _ble_edit_history=()
 _ble_edit_history_edit=()
 _ble_edit_history_ind=0
+
+function .ble-edit/history/generate-source-to-load-history {
+  # rcfile として起動すると history が未だロードされていない。
+  history -n
+  HISTTIMEFORMAT=__ble_ext__
+  
+  # 285ms for 16437 entries
+  history | awk -v apos="'" '
+    BEGIN{
+      print "_ble_edit_history=("
+    }
+  
+    # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
+    /^ *[0-9]+\*? +(__ble_ext__|\?\?)/{
+      if(n!=""){
+        n="";
+        gsub(apos,apos "\\" apos apos,t);
+        print "  " apos t apos;
+      }
+  
+      n=$1;
+      t=$0;sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/,"",t);
+      next
+    }
+    {t=t "\n" $0;}
+    END{
+      if(n!=""){
+        n="";
+        gsub(apos,apos "\\" apos apos,t);
+        print "  " apos t apos;
+      }
+  
+      print ")"
+    }
+  '
+}
+
 ## called by .ble-edit-initialize
 function .ble-edit.history-load {
-  # プロセス置換にしてもファイルに書き出しても大した違いはない
-  # 270ms for 16437 entries
-  source <(
-    # rcfile として起動すると history が未だロードされていない。
-    history -n
-    HISTTIMEFORMAT=__ble_ext__
-    
-    # 285ms for 16437 entries
-    history | awk -v apos="'" '
-      BEGIN{
-        print "_ble_edit_history=("
-      }
-
-      # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
-      /^ *[0-9]+\*? +(__ble_ext__|\?\?)/{
-        if(n!=""){
-          n="";
-          gsub(apos,apos "\\" apos apos,t);
-          print "  " apos t apos;
-        }
-
-        n=$1;
-        t=$0;sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/,"",t);
-        next
-      }
-      {t=t "\n" $0;}
-      END{
-        if(n!=""){
-          n="";
-          gsub(apos,apos "\\" apos apos,t);
-          print "  " apos t apos;
-        }
-
-        print ")"
-      }
-    '
-  )
+  # * プロセス置換にしてもファイルに書き出しても大した違いはない。
+  #   270ms for 16437 entries (generate-source の時間は除く)
+  # * プロセス置換×source は bash-3 で動かない。eval に変更する。
+  eval -- "$(.ble-edit/history/generate-source-to-load-history)"
 
   _ble_edit_history_ind=${#_ble_edit_history[@]}
 }
@@ -2616,8 +2626,17 @@ if test -n "$bleopt_suppress_bash_output"; then
 
   declare _ble_edit_io_stdout
   declare _ble_edit_io_stderr
-  exec {_ble_edit_io_stdout}>&1
-  exec {_ble_edit_io_stderr}>&2
+  if ((_ble_bash>40100)); then
+    exec {_ble_edit_io_stdout}>&1
+    exec {_ble_edit_io_stderr}>&2
+  else
+    ble/util/openat _ble_edit_io_stdout '>&1'
+    ble/util/openat _ble_edit_io_stderr '>&2'
+    # _ble_edit_io_stdout=30
+    # _ble_edit_io_stderr=31
+    # exec 30>&1
+    # exec 31>&2
+  fi
   # declare _ble_edit_io_fname1=/dev/null
   # declare _ble_edit_io_fname2=/dev/null
   declare _ble_edit_io_fname1="$_ble_base/ble.d/tmp/$$.stdout"
@@ -2627,7 +2646,7 @@ if test -n "$bleopt_suppress_bash_output"; then
     exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr
   }
   function .ble-edit/stdout/off {
-    .ble-edit/bash-output/check
+    .ble-edit/stdout/check-stderr
     exec 1>>$_ble_edit_io_fname1 2>>$_ble_edit_io_fname2
   }
   function .ble-edit/stdout/finalize {
@@ -2636,23 +2655,75 @@ if test -n "$bleopt_suppress_bash_output"; then
     test -f "$_ble_edit_io_fname2" && rm -f "$_ble_edit_io_fname2"
   }
 
-  function .ble-edit/bash-output/check {
+  function .ble-edit/stdout/check-stderr {
+    local file="${1:-$_ble_edit_io_fname2}"
     # bash が stderr にエラーを出力したかチェックし表示する
-    if declare -f .ble-term.visible-bell &>/dev/null; then
+    if ble/util/isfunction .ble-term.visible-bell; then
       # /dev/null の様なデバイスではなく、中身があるファイルの場合
-      if test -f "$_ble_edit_io_fname2" -a -s "$_ble_edit_io_fname2"; then
+      if test -f "$file" -a -s "$file"; then
         local message= line
         while IFS= read -r line; do
           if [[ $line == 'bash: '* ]]; then
             message+="${message:+; }$line"
           fi
-        done < "$_ble_edit_io_fname2"
+        done < "$file"
         
         test -n "$message" && .ble-term.visible-bell "$message"
-        :> "$_ble_edit_io_fname2"
+        :> "$file"
       fi
     fi
   }
+
+  # * bash-3.0 では C-d は直接検知できない。
+  #   IGNOREEOF を設定しておくと C-d を押した時に
+  #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
+  if ((_ble_bash<40100)); then
+    function .ble-edit/stdout/trap-SIGUSR1 {
+      local file="$_ble_edit_io_fname2.proc"
+      if test -s "$file"; then
+        content="$(< $file)"
+        : > "$file"
+        for cmd in $content; do
+          case "$cmd" in
+          (eof)
+            # C-d
+            ble-decode-byte:bind 4 ;;
+          esac
+        done
+      fi
+    }
+
+    trap -- '.ble-edit/stdout/trap-SIGUSR1' USR1
+
+    rm -f "$_ble_edit_io_fname2.pipe"
+    mkfifo "$_ble_edit_io_fname2.pipe"
+    {
+      while IFS= read -r line; do
+        SPACE=$' \n\t'
+        if [[ $line == *[^$SPACE]* ]]; then
+          echo "$line" >> "$_ble_edit_io_fname2"
+        fi
+
+        if [[ $line = *'Use "exit" to leave the shell.'* ||
+                $line = *'ログアウトする為には exit を入力して下さい'* ||
+                $line = *'シェルから脱出するには "exit" を使用してください。'* ||
+                $bleopt_ignoreeof_message && $line = *$bleopt_ignoreeof_message* ]]
+        then
+          echo eof >> "$_ble_edit_io_fname2.proc"
+          kill -USR1 $$
+          sleep 0.05 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
+        fi
+      done < "$_ble_edit_io_fname2.pipe" &>/dev/null &
+      disown $!
+    } &>/dev/null
+    
+    ble/util/openat _ble_edit_fd_stderr_pipe '> "$_ble_edit_io_fname2.pipe"'
+
+    function .ble-edit/stdout/off {
+      .ble-edit/stdout/check-stderr
+      exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_fd_stderr_pipe
+    }
+  fi
 fi
 
 _ble_edit_detach_flag=
@@ -2712,9 +2783,11 @@ else
   function .ble-decode-byte:bind/head {
     .ble-edit/stdout/on
 
-    # bash-3 では呼出直前に次の行に移動する
-    ((_ble_line_y++,_ble_line_x=0))
-    .ble-edit-draw.goto-xy '' "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+    if [[ -z $bleopt_suppress_bash_output ]]; then
+      # bash-3 では呼出直前に次の行に移動する
+      ((_ble_line_y++,_ble_line_x=0))
+      .ble-edit-draw.goto-xy '' "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+    fi
   }
   function .ble-decode-byte:bind/tail {
     .ble-edit-draw.update # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅

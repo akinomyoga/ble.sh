@@ -743,7 +743,7 @@ function ble-bind {
 
           # check if is function
           local a=($command)
-          if ! declare -f "${a[0]}" &>/dev/null; then
+          if ! ble/util/isfunction "${a[0]}"; then
             echo "unknown ble edit function \`${a[0]#ble-edit+}'" 1>&2
             return 1
           fi
@@ -839,6 +839,13 @@ trap .ble-stty.exit-trap EXIT
 function ble-edit+.ble-decode-char.__esc__ {
   .ble-decode-char 27
   .ble-decode-char 27
+}
+
+function ble-edit+.ble-decode-char {
+  while (($#)); do
+    .ble-decode-char "$1"
+    shift
+  done
 }
 
 
@@ -959,6 +966,42 @@ function .ble-decode-bind/unbind {
   bind -r "$1"
 }
 
+## 関数 .ble-decode-bind/generate-source-to-unbind-default
+##   既存の ESC で始まる binding を削除するコードを生成し標準出力に出力します。
+##   更に、既存の binding を復元する為のコードを同時に生成し tmp/$$.bind.save に保存します。
+function .ble-decode-bind/generate-source-to-unbind-default {
+  # 1 ESC で始まる既存の binding を全て削除
+  # 2 bind を全て記録 at $$.bind.save
+  bind -sp 2>/dev/null | awk -v apos="'" -v APOS="'\\''" '
+    /^"(\\e|\\M-)/{
+      match($0,/^"(([^"]|\\.)+)"/,_capt);
+      seq=_capt[1];
+
+      # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
+      #   bind -r では \M- ではなく \e と指定しなければ削除できない。
+      gsub(/\\M-/,"\\e",seq);
+
+      gsub(apos,APOS,seq);
+      print "bind -r " apos seq apos;
+    }
+    /^"/{
+      gsub(apos,APOS);
+      print "bind " apos $0 apos >"/dev/stderr";
+    }
+  ' 2> "$_ble_base/ble.d/tmp/$$.bind.save"
+
+  if ((_ble_bash>=40300)); then
+    bind -X 2>/dev/null | awk -v apos="'" '
+      # ※bash-4.3 では bind -r しても bind -X に残る。
+      #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
+      $0~/^"/&&!($0~/\yble-decode-bind\y/){
+        gsub(apos,apos "\\" apos apos);
+        print "bind -x " apos $0 apos;
+      }
+    ' >> "$_ble_base/ble.d/tmp/$$.bind.save" 2>/dev/null
+  fi
+}
+
 _ble_decode_bind_attached=0
 function .ble-decode-bind {
   local mode="$1"
@@ -977,25 +1020,7 @@ function .ble-decode-bind {
 
   # bind: 元のキー割り当ての保存
   if [[ $mode != unbind ]]; then
-    # 1 ESC で始まる既存の binding を全て削除
-    # 2 bind を全て記録 at $$.bind.save
-    source <(
-      bind -sp 2>/dev/null | awk -v apos="'" '
-        /^"\\e/{match($0,/^("[^"]+")/,_capt);print "bind -r " _capt[1];}
-        /^"/{gsub(apos,apos "\\" apos apos);print "bind " apos $0 apos >"/dev/stderr";}
-      ' 2> "$_ble_base/ble.d/tmp/$$.bind.save"
-
-      if ((_ble_bash>=40300)); then
-        bind -X 2>/dev/null | awk -v apos="'" '
-          # ※bash-4.3 では bind -r しても bind -X に残る。
-          #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
-          $0~/^"/&&!($0~/\yble-decode-bind\y/){
-            gsub(apos,apos "\\" apos apos);
-            print "bind -x " apos $0 apos;
-          }
-        ' >> "$_ble_base/ble.d/tmp/$$.bind.save" 2>/dev/null
-      fi
-    )
+    eval -- "$(.ble-decode-bind/generate-source-to-unbind-default)"
 
     # local line
     # while IFS= read -r line; do
@@ -1032,23 +1057,8 @@ function .ble-decode-bind {
 
       # ESC ?
       $binder "\\e$ret" "27 $i"
-
-      # if ((_ble_bash>=40300)); then
-      #   # ESC [ ?
-      #   $binder "\\e[$ret" "27 91 $i"
-
-      #   # これらは実際には決まったパターンでしか来ないので全て登録する必要はない気がする:
-      #   $binder "\\e[1$ret" "27 91 49 $i"
-      #   $binder "\\e[2$ret" "27 91 50 $i"
-      #   $binder "\\e[3$ret" "27 91 51 $i"
-      #   $binder "\\e[4$ret" "27 91 52 $i"
-      #   $binder "\\e[5$ret" "27 91 53 $i"
-      #   $binder "\\e[6$ret" "27 91 54 $i"
-      #   $binder "\\e[1;$ret" "27 91 49 59 $i"
-      #   $binder "\\e[1;5$ret" "27 91 49 59 53 $i"
-      # fi
-    else
-      # bash-4.1: not tested in other versions
+    elif ((_ble_bash>=40100)); then
+      # for bash-4.1
       if ((i==27)); then
         # ESC ESC
         if [[ $mode == unbind ]]; then
@@ -1059,14 +1069,31 @@ function .ble-decode-bind {
           ble-bind -f __esc__ .ble-decode-char.__esc__
         fi
       fi
+    else
+      # for bash-3.1
+      if ((i==91)); then
+        # どうも ESC [ を bind -x で捕まえようとしてもエラーになるので、
+        # ESC [ を CSI (encoded in utf-8) に変換して受信する。
+        # 受信した後で CSI を ESC [ に戻す。
+        # CSI = \u009B = utf8{\xC2\x9B} = utf8{\302\233}
+        if [[ $mode == unbined ]]; then
+          bind -r '\e['
+        else
+          bind '"\e[":"\302\233"'
+          ble-bind -f 'CSI' '.ble-decode-char 27 91'
+        fi
+      else
+        # ESC ?
+        $binder "\\e$ret" "27 $i"
+      fi
     fi
   done
 
-  # 決まったパターンのキーシーケンスは全て登録
-  #   bash-4.3 で keymap が見付かりませんのエラーが出るので。
-  # ※3文字以上の bind -x ができるのは bash-4.3 以降
-  #   (bash-4.3-alpha で bugfix が入っている)
   if ((_ble_bash>=40300)); then
+    # 決まったパターンのキーシーケンスは全て登録
+    #   bash-4.3 で keymap が見付かりませんのエラーが出るので。
+    # ※3文字以上の bind -x ができるのは bash-4.3 以降
+    #   (bash-4.3-alpha で bugfix が入っている)
     if [[ $mode == unbind ]]; then
       source "$_ble_decode_bind_fbinder.unbind"
     else

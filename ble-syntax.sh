@@ -94,7 +94,7 @@ function ble-syntax/parse/nest-type {
 ##   現在のネスト状態と前回のネスト状態が一致するか判定します。
 ## @var i1                     更新開始点
 ## @var i2                     更新終了点
-## @var tail_syntax_stat[i-i2] i2 以降の更新前状態
+## @var _tail_syntax_stat[i-i2] i2 以降の更新前状態
 ## @var _ble_syntax_stat[i]    新しい状態
 function ble-syntax/parse/nest-equals {
   local parent_inest="$1"
@@ -102,7 +102,7 @@ function ble-syntax/parse/nest-equals {
     ((parent_inest<i1)) && return 0 # 変更していない範囲 または -1
     ((parent_inest<i2)) && return 1 # 変更によって消えた範囲
 
-    local _onest="${tail_syntax_nest[parent_inest-i2]}"
+    local _onest="${_tail_syntax_nest[parent_inest-i2]}"
     local _nnest="${_ble_syntax_nest[parent_inest]}"
     [[ $_onest != $_nnest ]] && return 1
 
@@ -610,13 +610,18 @@ function ble-syntax/parse {
       # (1) shift の修正
       # (2) [i1,i2) 内を参照している場合 dirty を拡大
       local stat=(${_ble_syntax_stat[j]})
-      ((stat[1]>=end0&&(stat[1]+=shift),
-        stat[2]>=end0&&(stat[2]+=shift)))
       _ble_syntax_stat[j]="${stat[*]}"
+      ((stat[1]+=stat[1]>=end0?shift:0,
+        stat[2]+=stat[2]>=end0?shift:0))
+      # ※bash-3.1 では、bug で分岐内で配列を参照すると必ずそちらに分岐してしまう
+      # ((stat[1]>=end0&&(stat[1]+=shift),
+      #   stat[2]>=end0&&(stat[2]+=shift)))
 
       local nest=(${_ble_syntax_nest[j]})
-      ((nest[1]>=end0&&(nest[1]+=shift),
-        nest[2]>=end0&&(nest[2]+=shift)))
+      ((nest[1]+=nest[1]>=end0?shift:0,
+        nest[2]+=nest[2]>=end0?shift:0))
+      # ((nest[1]>=end0&&(nest[1]+=shift),
+      #   nest[2]>=end0&&(nest[2]+=shift)))
       _ble_syntax_nest[j]="${nest[*]}"
 
       (((i1<=stat[1]&&stat[1]<=i2||i1<=stat[2]&&stat[2]<=i2)&&(i2=i+1,j2=j+1)))
@@ -822,7 +827,7 @@ function ble-syntax/highlight/cmdtype2 {
       # (% という名の関数を呼び出す方法はない?)
       # でも % で始まる物が keyword になる事はそもそも無いような。
       ((type=ATTR_CMD_JOBS))
-    elif declare -f "$cmd" &>/dev/null; then
+    elif ble/util/isfunction "$cmd"; then
       ((type=ATTR_CMD_FUNCTION))
     elif enable -p | fgrep -xq "enable $cmd" &>/dev/null; then
       ((type=ATTR_CMD_BUILTIN))

@@ -3,6 +3,13 @@
 
 : ${ble_opt_input_encoding:=UTF-8}
 
+
+## オプション bleopt_openat_base
+##   bash-4.1 未満で exec {var}>foo が使えない時に ble.sh で内部的に fd を割り当てる。
+##   この時の fd の base を指定する。bleopt_openat_base, bleopt_openat_base+1, ...
+##   という具合に順番に使用される。既定値は 30 である。
+: ${bleopt_openat_base:=30}
+
 shopt -s checkwinsize
 
 _ble_shopt_extglob__level=0
@@ -29,7 +36,7 @@ function .ble-shopt-extglob-pop-all {
 #------------------------------------------------------------------------------
 # util
 
-if test "${_ble_bash:-0}" -ge 40100; then
+if ((_ble_bash>=40100)); then
   function .ble-text.sprintf {
     printf -v "$@"
   }
@@ -39,6 +46,33 @@ else
     shift
     local _value="$(printf "$@")"
     eval "$_var=\"\$_value\""
+  }
+fi
+
+if ((_ble_bash>=30200)); then
+  function ble/util/isfunction {
+    builtin declare -f "$1" &>/dev/null
+  }
+else
+  # bash-3.1 has bug in declare -f.
+  # it does not accept a function name containing non-alnum chars.
+  function ble/util/isfunction {
+    [[ $(type -t $1) == function ]]
+  }
+fi
+
+# exec {var}>foo
+if ((_ble_bash>=40100)); then
+  function ble/util/openat {
+    local _fdvar="$1" _redirect="$2"
+    eval "exec {$_fdvar}$_redirect"
+  }
+else
+  _ble_util_openat_nextfd="$bleopt_openat_base"
+  function ble/util/openat {
+    local _fdvar="$1" _redirect="$2"
+    (($_fdvar=_ble_util_openat_nextfd++))
+    eval "exec ${!_fdvar}$_redirect"
   }
 fi
 

@@ -350,7 +350,7 @@ function ble-syntax-highlight+default {
             # (% という名の関数を呼び出す方法はない?)
             # でも % で始まる物が keyword になる事はそもそも無いような。
             type=jobs
-          elif declare -f "$cmd" &>/dev/null; then
+          elif ble/util/isfunction "$cmd"; then
             type=function
           elif enable -p | fgrep -xq "enable $cmd" &>/dev/null; then
             type=builtin
