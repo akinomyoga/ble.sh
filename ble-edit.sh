@@ -22,32 +22,14 @@
 # @bind
 # @bind.bind
 
-## オプション bleopt_exec_type
-##   コマンドの実行の方法を指定します。
-## bleopt_exec_type=exec
-##   関数内で実行します (従来の方法です。将来的に削除されます)
-## bleopt_exec_type=gexec
-##   グローバルな文脈で実行します (新しい方法です。現在テスト中です)
-## 定義 .ble-edit+accept-line/process+$bleopt_exec_type
-: ${bleopt_exec_type:=gexec}
-
-## オプション bleopt_suppress_bash_output
-##   bash 自体の出力を抑制するかどうかを指定します。
-## bleopt_suppress_bash_output=1
-##   抑制します。bash のエラーメッセージは visible-bell で表示します。
-## bleopt_suppress_bash_output=
-##   抑制しません。bash の出力を制御するためにちらつきが発生する事があります。
-##   (bash-3 ではこちらは調整していないので使えない。)
-: ${bleopt_suppress_bash_output=1}
-
 ## オプション bleopt_char_width_mode
 ##   文字の表示幅の計算方法を指定します。
 ## bleopt_char_width_mode=east
-##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を 2 とします
+##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 2 とします
 ## bleopt_char_width_mode=west
-##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を 1 とします
+##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 1 とします
 ## bleopt_char_width_mode=emacs
-##   emacs で用いられている文字幅の設定です
+##   emacs で用いられている既定の文字幅の設定です
 ## 定義 .ble-text.c2w+$bleopt_char_width_mode
 : ${bleopt_char_width_mode:=emacs}
 
@@ -67,9 +49,27 @@
 ##   無効です。
 : ${bleopt_edit_abell=}
 
-## オプション bleopt_ignoreeof_message
-##   bash-3.0 の時に使用する。C-d を捕捉するのに用いるメッセージ。
-##   これは自分の bash の設定に合わせる必要がある。
+## オプション bleopt_exec_type (内部使用)
+##   コマンドの実行の方法を指定します。
+## bleopt_exec_type=exec
+##   関数内で実行します (従来の方法です。将来的に削除されます)
+## bleopt_exec_type=gexec
+##   グローバルな文脈で実行します (新しい方法です。現在テスト中です)
+## 定義 .ble-edit+accept-line/process+$bleopt_exec_type
+: ${bleopt_exec_type:=gexec}
+
+## オプション bleopt_suppress_bash_output (内部使用)
+##   bash 自体の出力を抑制するかどうかを指定します。
+## bleopt_suppress_bash_output=1
+##   抑制します。bash のエラーメッセージは visible-bell で表示します。
+## bleopt_suppress_bash_output=
+##   抑制しません。bash の出力を制御するためにちらつきが発生する事があります。
+##   (bash-3 ではこちらは調整していないので使えません。)
+: ${bleopt_suppress_bash_output=1}
+
+## オプション bleopt_ignoreeof_message (内部使用)
+##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
+##   これは自分の bash の設定に合わせる必要があります。
 : ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
 
 # 
@@ -2639,8 +2639,8 @@ if test -n "$bleopt_suppress_bash_output"; then
   fi
   # declare _ble_edit_io_fname1=/dev/null
   # declare _ble_edit_io_fname2=/dev/null
-  declare _ble_edit_io_fname1="$_ble_base/ble.d/tmp/$$.stdout"
-  declare _ble_edit_io_fname2="$_ble_base/ble.d/tmp/$$.stderr"
+  declare _ble_edit_io_fname1="$_ble_base/tmp/$$.stdout"
+  declare _ble_edit_io_fname2="$_ble_base/tmp/$$.stderr"
 
   function .ble-edit/stdout/on {
     exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr

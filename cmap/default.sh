@@ -49,7 +49,7 @@ function ble-bind-function-key+default {
   # print = f16 [xterm]
   # deleteline = A-delete
 
-  echo -n "cmap+default.sh: registering SS3 sequences... " 1>&2
+  echo -n "cmap/default.sh: registering SS3 sequences... " 1>&2
   # vt100, xterm, application mode
   .ble-bind.function-key.SS3/CSI 'A' up
   .ble-bind.function-key.SS3/CSI 'B' down
@@ -82,7 +82,7 @@ function ble-bind-function-key+default {
   .ble-bind.function-key.SS3/CSI 'y' kp9
   echo "done" 1>&2
 
-  echo -n "cmap+default.sh: registering CSI function-key sequences... " 1>&2
+  echo -n "cmap/default.sh: registering CSI function-key sequences... " 1>&2
   # # vt52, xterm, rxvt
   # .ble-bind.function-key.CSI-CMS '1' '~' find
   # .ble-bind.function-key.CSI-CMS '2' '~' insert
@@ -109,8 +109,7 @@ function ble-bind-function-key+default {
   # .ble-bind.function-key.CSI-CMS '5' '~' prior
   # .ble-bind.function-key.CSI-CMS '6' '~' next
 
-  local kend="$(tput kend)"
-  if test "$kend" = "[5~"; then
+  if [[ $(tput kend) == "[5~" ]]; then
     .ble-bind.function-key.CSI-CMS '1' '~' insert
     .ble-bind.function-key.CSI-CMS '2' '~' home
     .ble-bind.function-key.CSI-CMS '3' '~' prior
@@ -151,7 +150,7 @@ function ble-bind-function-key+default {
   .ble-bind.function-key.CSI-CMS '3 4' '~' f20
   echo "done" 1>&2
 
-  echo -n "cmap+default.sh: registering rxvt CSI modified-function-key sequences... " 1>&2
+  echo -n "cmap/default.sh: registering rxvt CSI modified-function-key sequences... " 1>&2
   # rxvt: 'CSI Fp $' 'CSI Fp ^' 'CSI Fp @'
   .ble-bind.function-key.CSI-FtCS   '1' insert
   .ble-bind.function-key.CSI-FtCS   '2' home
@@ -183,7 +182,7 @@ function ble-bind-function-key+default {
   .ble-bind.function-key.CSI-FtCS '3 4' f20
   echo "done" 1>&2
 
-  echo -n "cmap+default.sh: registering xterm CSI 27 sequences... " 1>&2
+  echo -n "cmap/default.sh: registering xterm CSI 27 sequences... " 1>&2
   # xterm, rosaterm
   .ble-bind.function-key.CSI-CMS '2 7'     '; 8 ~' BS
   .ble-bind.function-key.CSI-CMS '2 7'     '; 9 ~' TAB
@@ -259,14 +258,13 @@ function ble-bind-function-key+default {
   .ble-bind.function-key.CSI-CMS '2 7' '; 1 2 6 ~' '~'
   echo "done" 1>&2
 
-  echo -n "cmap+default.sh: registering cygwin f1-f4... " 1>&2
+  echo -n "cmap/default.sh: registering cygwin f1-f4... " 1>&2
   # cygwin specific
   ble-bind -k 'ESC [ [ A' f1
   ble-bind -k 'ESC [ [ B' f2
   ble-bind -k 'ESC [ [ C' f3
   ble-bind -k 'ESC [ [ D' f4
   echo "done" 1>&2
-
 }
 
 ble-bind-function-key+default

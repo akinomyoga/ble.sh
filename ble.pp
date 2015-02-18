@@ -1,5 +1,5 @@
 #!/bin/bash
-#%$> ble.sh
+#%$> out/ble.sh
 #%m inc (
 #%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
 #%%if @_included!=1 (
@@ -16,12 +16,29 @@
 #
 # Author: K. Murase <myoga.murase@gmail.com>
 #
-if test -n "${-##*i*}"; then
-  echo "ble.sh: this is not an interactive session." >&2
-  return 1
+
+#------------------------------------------------------------------------------
+# check shell
+
+if [ -z "$BASH_VERSION" ]; then
+  echo "ble.sh: This is not a bash. Please use this script with bash." >&2
+  return 1 &>/dev/null || exit 1
 fi
 
-[ -n "$_ble_bash" ] || declare -ir _ble_bash='BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]'
+if [ -n "${-##*i*}" ]; then
+  echo "ble.sh: This is not an interactive session." >&2
+  return 1 &>/dev/null || exit 1
+fi
+
+_ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
+
+if [ "$_ble_bash" -lt 30100 ]; then
+  _ble_bash=0
+  echo "ble.sh: A bash with a version lower than 3.1 is not supported" >&2
+  return 1 &>/dev/null || exit 1
+fi
+
+#------------------------------------------------------------------------------
 
 function _ble_base.initialize {
   local src="$1"
@@ -46,16 +63,15 @@ function _ble_base.initialize {
   fi
 }
 _ble_base.initialize "${BASH_SOURCE[0]}"
-if test ! -d "$_ble_base/ble.d"; then
-  echo "ble.sh: ble.d not found!" 1>&2
+if test ! -d "$_ble_base"; then
+  echo "ble.sh: ble base directory not found!" 1>&2
   return 1
-  #mkdir -p "$_ble_base/ble.d"
 fi
 
 # tmpdir
-if test ! -d "$_ble_base/ble.d/tmp"; then
-  mkdir -p "$_ble_base/ble.d/tmp"
-  chmod a+rwxt "$_ble_base/ble.d/tmp"
+if test ! -d "$_ble_base/tmp"; then
+  mkdir -p "$_ble_base/tmp"
+  chmod a+rwxt "$_ble_base/tmp"
 fi
 
 #%x inc.r/@/getopt/

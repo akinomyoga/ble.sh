@@ -108,7 +108,7 @@ function .ble-term.initialize {
 
   # 過去の .time ファイルを削除
   local now= file
-  for file in "$_ble_base"/ble.d/tmp/*.visible-bell.time; do
+  for file in "$_ble_base"/tmp/*.visible-bell.time; do
     if test -f "$file"; then
       test -z "$now" && now="$(date +%s)"
       local ft="$(date +%s -r "$file")"
@@ -116,7 +116,7 @@ function .ble-term.initialize {
     fi
   done
 
-  _ble_term_visible_bell__ftime="$_ble_base/ble.d/tmp/$$.visible-bell.time"
+  _ble_term_visible_bell__ftime="$_ble_base/tmp/$$.visible-bell.time"
 }
 .ble-term.initialize
 

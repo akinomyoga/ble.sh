@@ -1,42 +1,61 @@
 #! /bin/bash
 
-function ble-decode-byte {
-  while [ $# -gt 0 ]; do
-    "ble-decode-byte+$ble_opt_input_encoding" "$1"
-    shift
-  done
+: ${ble_opt_error_char_abell=}
+: ${ble_opt_error_char_vbell=1}
+: ${ble_opt_error_char_discard=}
+: ${ble_opt_error_kseq_abell=1}
+: ${ble_opt_error_kseq_vbell=1}
+: ${ble_opt_error_kseq_discard=1}
+: ${ble_opt_default_keymap:=emacs}
 
-  .ble-edit.accept-line.exec
-}
+# function ble-decode-byte {
+#   while [ $# -gt 0 ]; do
+#     "ble-decode-byte+$ble_opt_input_encoding" "$1"
+#     shift
+#   done
 
-function ble-decode-char {
-  .ble-decode-char "$1"
-  .ble-edit.accept-line.exec
-}
+#   .ble-edit.accept-line.exec
+# }
 
-function ble-decode-key {
-  .ble-decode-key "$1"
-  .ble-edit.accept-line.exec
-}
+# function ble-decode-char {
+#   .ble-decode-char "$1"
+#   .ble-edit.accept-line.exec
+# }
+
+# function ble-decode-key {
+#   .ble-decode-key "$1"
+#   .ble-edit.accept-line.exec
+# }
 
 # **** ble-decode-byte ****
 
+## 関数 .ble-decode-byte bytes...
+##   バイト値を整数で受け取って、現在の文字符号化方式に従ってデコードをします。
+##   デコードした結果得られた文字は .ble-decode-char を呼び出す事によって処理します。
 function .ble-decode-byte {
-  while [ $# -gt 0 ]; do
+  while (($#)); do
     "ble-decode-byte+$ble_opt_input_encoding" "$1"
     shift
   done
 }
 
 # **** ble-decode-char ****
-: ${ble_opt_error_char_abell=}
-: ${ble_opt_error_char_vbell=1}
-: ${ble_opt_error_char_discard=}
 declare _ble_decode_char__hook=
 declare _ble_decode_char__mod_meta=
 declare _ble_decode_char__seq # /(_\d+)*/
+
+## 関数 .ble-decode-char char
+##   文字をユニコード値 (整数) で受け取って、端末のキー入力の列に翻訳します。
+##   デコードした結果得られたキー入力は .ble-decode-key を呼び出す事によって処理します。
 function .ble-decode-char {
   local char="$1"
+
+  if ((char==155)); then
+    # CSI → ESC [
+    .ble-decode-char 27
+    .ble-decode-char 91
+    return
+  fi
 
   # decode error character
   if ((char&ble_decode_Erro)); then
@@ -228,14 +247,9 @@ if [ -z "$ble_decode_Erro" ]; then
   declare -ir ble_decode_MaskFlag=0x7FC00000
 fi
 
-: ${ble_opt_error_kseq_abell=1}
-: ${ble_opt_error_kseq_vbell=1}
-: ${ble_opt_error_kseq_discard=1}
-
 declare _ble_decode_key__seq # /(_\d+)*/
 declare _ble_decode_key__kmap
 
-: ${ble_opt_default_keymap:=emacs}
 declare -a _ble_decode_keymap_stack=()
 ## 関数 .ble-decode/keymap/push kmap
 function .ble-decode/keymap/push {
@@ -827,20 +841,15 @@ function .ble-stty.exit-trap {
   stty echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
-  rm -f "$_ble_base/ble.d/tmp/$$".*
+  rm -f "$_ble_base/tmp/$$".*
 }
 trap .ble-stty.exit-trap EXIT
 
 # **** ESC ESC ****                                           @decode.bind.esc2
 
-## 関数 ble-edit+.ble-decode-byte.__esc__
+## 関数 ble-edit+.ble-decode-byte 27 27
 ##   ESC ESC を直接受信できないので
 ##   '' → '[27^[27^' → '__esc__ __esc__' と変換して受信する。
-function ble-edit+.ble-decode-char.__esc__ {
-  .ble-decode-char 27
-  .ble-decode-char 27
-}
-
 function ble-edit+.ble-decode-char {
   while (($#)); do
     .ble-decode-char "$1"
@@ -901,6 +910,13 @@ function .ble-decode.c2dqs {
 ## 関数 binder; .ble-decode-bind/from-cmap-source
 ##   3文字以上の bind -x を _ble_decode_cmap から自動的に行うソースを生成
 ##   binder には bind を行う関数を指定する。
+#
+# ※この関数は bash-3.1 では使えない。
+#   bash-3.1 ではバグで呼出元と同名の配列を定義できないので
+#   local -a ccodes が空になってしまう。
+#   幸いこの関数は bash-3.1 では使っていないのでこのままにしてある。
+#   追記: 公開されている patch を見たら bash-3.1.4 で修正されている様だ。
+#
 function .ble-decode-bind/from-cmap-source {
   local tseq="$1" qseq="$2" nseq="$3" depth="${4:-1}" ccode
   local apos="'" escapos="'\\''"
@@ -932,30 +948,35 @@ function .ble-decode-initialize-cmap/emit-bindr {
   echo "bind -r \"$1\""
 }
 function .ble-decode-initialize-cmap {
-  local init="$_ble_base/ble.d/cmap+default.sh"
-  local dump="$_ble_base/ble.d/cmap+default.$_ble_decode_kbd_ver.dump"
+  test ! -d "$_ble_base/cache" && mkdir -p "$_ble_bash/cache"
+
+  local init="$_ble_base/cmap/default.sh"
+  local dump="$_ble_base/cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump"
   if test "$dump" -nt "$init"; then
     source "$dump"
   else
-    echo 'ble.sh: There is not the file "ble.d/cmap+default.dump".' 1>&2
-    echo '  This is possibly first time to load ble.sh.' 1>&2
-    echo '  Now initializing cmap...' 1>&2
+    echo 'ble.sh: There is no file "'"$dump"'".' 1>&2
+    echo '  This is the first time to run ble.sh with TERM='"$TERM." 1>&2
+    echo '  Now initializing cmap... ' 1>&2
     source "$init"
     ble-bind -D | sed '
       s/^declare \+\(-[aAfFgilrtux]\+ \+\)\?//
+      s/^-- //
       s/["'"'"']//g
     ' > "$dump"
   fi
 
-  # 3文字以上 bind/unbind ソースの生成
-  local fbinder="$_ble_base/ble.d/cmap+default.binder-source"
-  _ble_decode_bind_fbinder="$fbinder"
-  if ! test "$_ble_decode_bind_fbinder" -nt "$init"; then
-    echo -n 'ble.sh: initializing multichar sequence binders... '
-    .ble-decode-bind/from-cmap-source > "$fbinder"
-    binder=.ble-decode-initialize-cmap/emit-bindx source "$fbinder" > "$fbinder.bind"
-    binder=.ble-decode-initialize-cmap/emit-bindr source "$fbinder" > "$fbinder.unbind"
-    echo 'done'
+  if ((_ble_bash>=40300)); then
+    # 3文字以上 bind/unbind ソースの生成
+    local fbinder="$_ble_base/cache/cmap+default.binder-source"
+    _ble_decode_bind_fbinder="$fbinder"
+    if ! test "$_ble_decode_bind_fbinder" -nt "$init"; then
+      echo -n 'ble.sh: initializing multichar sequence binders... '
+      .ble-decode-bind/from-cmap-source > "$fbinder"
+      binder=.ble-decode-initialize-cmap/emit-bindx source "$fbinder" > "$fbinder.bind"
+      binder=.ble-decode-initialize-cmap/emit-bindr source "$fbinder" > "$fbinder.unbind"
+      echo 'done'
+    fi
   fi
 }
 
@@ -988,7 +1009,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
       gsub(apos,APOS);
       print "bind " apos $0 apos >"/dev/stderr";
     }
-  ' 2> "$_ble_base/ble.d/tmp/$$.bind.save"
+  ' 2> "$_ble_base/tmp/$$.bind.save"
 
   if ((_ble_bash>=40300)); then
     bind -X 2>/dev/null | awk -v apos="'" '
@@ -998,7 +1019,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
         gsub(apos,apos "\\" apos apos);
         print "bind -x " apos $0 apos;
       }
-    ' >> "$_ble_base/ble.d/tmp/$$.bind.save" 2>/dev/null
+    ' >> "$_ble_base/tmp/$$.bind.save" 2>/dev/null
   fi
 }
 
@@ -1066,7 +1087,7 @@ function .ble-decode-bind {
         else
           bind '"\e\e":"\e[^"'
           ble-bind -k 'ESC [ ^' __esc__
-          ble-bind -f __esc__ .ble-decode-char.__esc__
+          ble-bind -f __esc__ '.ble-decode-char 27 27'
         fi
       fi
     else
@@ -1080,7 +1101,7 @@ function .ble-decode-bind {
           bind -r '\e['
         else
           bind '"\e[":"\302\233"'
-          ble-bind -f 'CSI' '.ble-decode-char 27 91'
+          # ble-bind -f 'CSI' '.ble-decode-char 27 91'
         fi
       else
         # ESC ?
@@ -1102,9 +1123,9 @@ function .ble-decode-bind {
   fi
 
   # unbind: 元のキー割り当ての復元
-  if [[ $mode == unbind && -s "$_ble_base/ble.d/tmp/$$.bind.save" ]]; then
-    source "$_ble_base/ble.d/tmp/$$.bind.save"
-    rm -f "$_ble_base/ble.d/tmp/$$.bind.save"
+  if [[ $mode == unbind && -s "$_ble_base/tmp/$$.bind.save" ]]; then
+    source "$_ble_base/tmp/$$.bind.save"
+    rm -f "$_ble_base/tmp/$$.bind.save"
   fi
 }
 

@@ -1,10 +1,25 @@
 # -*- mode:makefile-gmake -*-
 
-all: ble.sh
+all:
 .PHONY: all dist
 
-ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh ble-syntax.sh
+outfiles+=out
+out:
+	mkdir -p $@
+
+outfiles+=out/ble.sh
+out/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh ble-syntax.sh
 	mwg_pp.awk $< >/dev/null
+
+outfiles+=out/cmap
+out/cmap:
+	mkdir -p $@
+
+outfiles+=out/cmap/default.sh
+out/cmap/default.sh: cmap/default.sh
+	cp -p $< $@
+
+all: $(outfiles)
 
 dist:
 	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble --exclude=./ble/backup --exclude=*~ --exclude=./ble/.git
