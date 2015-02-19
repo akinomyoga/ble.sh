@@ -56,13 +56,14 @@ CTX_PARAM=14 # context,attr: inside of parameter expansion
 CTX_PWORD=15 # context,attr: inside of parameter expansion
 CTX_RDRF=19 # リダイレクト対象のファイル。
 CTX_RDRD=20 # リダイレクト対象のファイルディスクリプタ。
+ATTR_HISTX=21
 
 _BLE_SYNTAX_CSPACE=$' \t\n'
 _BLE_SYNTAX_CSPECIAL=()
-_BLE_SYNTAX_CSPECIAL[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'"
-_BLE_SYNTAX_CSPECIAL[CTX_QUOT]="\$\"\`\\"   # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ
-_BLE_SYNTAX_CSPECIAL[CTX_EXPR]="][}()\$\"\`\\'" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
-_BLE_SYNTAX_CSPECIAL[CTX_PWORD]="}\$\"\`\\" # パラメータ展開 ${～}
+_BLE_SYNTAX_CSPECIAL[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'!^"
+_BLE_SYNTAX_CSPECIAL[CTX_QUOT]="\$\"\`\\!"   # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ
+_BLE_SYNTAX_CSPECIAL[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
+_BLE_SYNTAX_CSPECIAL[CTX_PWORD]="}\$\"\`\\!" # パラメータ展開 ${～}
 
 # 属性値の変更範囲
 
@@ -125,6 +126,9 @@ function ble-syntax/parse/nest-equals {
     parent_inest="${onest[2]}"
   done
 }
+
+
+# 共通の字句
 
 function ble-syntax/parse/check-dollar {
   local rex
@@ -223,6 +227,85 @@ function ble-syntax/parse/check-process-subst {
   return 1
 }
 
+# histchars には対応していない
+#   histchars を変更した時に変更するべき所:
+#   - _ble_syntax_rex_histexpand.init
+#   - ble-syntax/parse/check-history-expansion
+#   - _BLE_SYNTAX_CSPECIAL の中の !^ の部分
+_ble_syntax_rex_histexpand_event=
+_ble_syntax_rex_histexpand_word=
+_ble_syntax_rex_histexpand_mods=
+_ble_syntax_rex_histexpand_quicksub=
+function _ble_syntax_rex_histexpand.init {
+  local spaces=$' \t\n' nl=$'\n'
+  local rex_event='-?[0-9]+|[!#]|[^-$^*%:'"$spaces"'=?!#;&|<>()]+|\?[^?'"$nl"']*\??'
+  _ble_syntax_rex_histexpand_event='^!('"$rex_event"')'
+
+  local rex_word1='([0-9]+|[$%^])'
+  local rex_wordsA=':('"$rex_word1"'?-'"$rex_word1"'?|\*|'"$rex_word1"'\*?)'
+  local rex_wordsB='([$%^]?-'"$rex_word1"'?|\*|[$^%][*-]?)'
+  _ble_syntax_rex_histexpand_word='('"$rex_wordsA|$rex_wordsB"')?'
+
+  # ※本当は /s(.)([^\]|\\.)*?\1([^\]|\\.)*?\1/ 等としたいが *? は ERE にない。
+  #   正しく対応しようと思ったら一回の正規表現でやろうとせずに繰り返し適用する?
+  local rex_modifier=':[htrepqx&gG]|:s(/([^\/]|\\.)*){0,2}(/|$)'
+  _ble_syntax_rex_histexpand_mods='('"$rex_modifier"')*'
+
+  _ble_syntax_rex_histexpand_quicksub='\^([^\^]|\\.)*\^([^\^]|\\.)*\^'
+}
+
+_ble_syntax_rex_histexpand.init
+
+function ble-syntax/parse/check-history-expansion {
+  local spaces=$' \t\n'
+  if [[ $tail == '!'[^"=$spaces"]* ]]; then
+    ((_ble_syntax_attr[i]=ATTR_HISTX))
+    if [[ $tail =~ $_ble_syntax_rex_histexpand_event ]]; then
+      ((i+=${#BASH_REMATCH[0]}))
+    elif [[ $tail =~ '!'['-:0-9^$%*']* ]]; then
+      ((_ble_syntax_attr[i]=ATTR_HISTX,i++))
+    else
+      # ErrMsg 'unrecognized event'
+      ((_ble_syntax_attr[i+1]=ATTR_ERR,i+=2))
+      return 0
+    fi
+    
+    # word-designator
+    [[ ${text:i} =~ $_ble_syntax_rex_histexpand_word ]] &&
+      ((i+=${#BASH_REMATCH[0]}))
+
+    # modifiers
+    [[ ${text:i} =~ $_ble_syntax_rex_histexpand_mods ]] &&
+      ((i+=${#BASH_REMATCH[0]}))
+
+    # ErrMsg 'unrecognized modifier'
+    [[ ${text:i} == ':'* ]] &&
+      ((_ble_syntax_attr[i]=ATTR_ERR,i++))
+    return 0
+  elif ((i==0)) && [[ $tail == '^'* ]]; then
+    ((_ble_syntax_attr[i]=ATTR_HISTX))
+    if [[ $tail =~ $_ble_syntax_rex_histexpand_quicksub ]]; then
+      ((i+=${#BASH_REMATCH[0]}))
+
+      # modifiers
+      [[ ${text:i} =~ $_ble_syntax_rex_histexpand_mods ]] &&
+        ((i+=${#BASH_REMATCH[0]}))
+
+      # ErrMsg 'unrecognized modifier'
+      [[ ${text:i} == ':'* ]] &&
+        ((_ble_syntax_attr[i]=ATTR_ERR,i++))
+      return 0
+    else
+      # 末端まで
+      ((i+=${#tail}))
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+
 #------------------------------------------------------------------------------
 # 文脈: 各種文脈
 
@@ -245,6 +328,10 @@ function ble-syntax/parse/ctx-quot {
   elif ble-syntax/parse/check-quotes; then
     return 0
   elif ble-syntax/parse/check-dollar; then
+    return 0
+  elif [[ $tail == ['!^']* ]]; then
+    ble-syntax/parse/check-history-expansion ||
+      ((_ble_syntax_attr[i]=ctx,i++))
     return 0
   fi
 
@@ -287,6 +374,10 @@ function ble-syntax/parse/ctx-pword {
     return 0
   elif ble-syntax/parse/check-dollar; then
     return 0
+  elif [[ $tail == ['!^']* ]]; then
+    ble-syntax/parse/check-history-expansion ||
+      ((_ble_syntax_attr[i]=ctx,i++))
+    return 0
   fi
 
   return 1
@@ -296,6 +387,7 @@ _BLE_SYNTAX_FCTX[CTX_EXPR]=ble-syntax/parse/ctx-expr
 function ble-syntax/parse/ctx-expr {
   # 式の中身
   local rex
+
   if rex='^([^'"${_BLE_SYNTAX_CSPECIAL[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH[0]}))
@@ -382,6 +474,11 @@ function ble-syntax/parse/ctx-expr {
   elif ble-syntax/parse/check-quotes; then
     return 0
   elif ble-syntax/parse/check-dollar; then
+    return 0
+  elif [[ $tail == ['!^']* ]]; then
+    # 恐ろしい事に数式中でも履歴展開が有効…。
+    ble-syntax/parse/check-history-expansion ||
+      ((_ble_syntax_attr[i]=ctx,i++))
     return 0
   fi
 
@@ -573,6 +670,10 @@ function ble-syntax/parse/ctx-command {
     flagConsume=1
   elif ble-syntax/parse/check-dollar; then
     flagConsume=1
+  elif [[ $tail == ['!^']* ]]; then
+    ble-syntax/parse/check-history-expansion ||
+      ((_ble_syntax_attr[i]=ctx,i++))
+    flagConsume=1
   fi
 
   if ((flagConsume)); then
@@ -644,6 +745,10 @@ function ble-syntax/parse/ctx-redirect {
   elif ble-syntax/parse/check-quotes; then
     return 0
   elif ble-syntax/parse/check-dollar; then
+    return 0
+  elif [[ $tail == ['!^']* ]]; then
+    ble-syntax/parse/check-history-expansion ||
+      ((_ble_syntax_attr[i]=ctx,i++))
     return 0
   fi
 
@@ -856,6 +961,8 @@ ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_DEF] none
 ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_DEL] bold
 ble-color-gspec2g -v _ble_syntax_attr2g[CTX_PARAM] fg=purple
 ble-color-gspec2g -v _ble_syntax_attr2g[CTX_PWORD] none
+
+ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_HISTX] bg=94,fg=231
 
 # filetype
 

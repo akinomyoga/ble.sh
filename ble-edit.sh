@@ -47,7 +47,7 @@
 ##   有効です。
 ## bleopt_edit_abell=
 ##   無効です。
-: ${bleopt_edit_abell=}
+: ${bleopt_edit_abell=1}
 
 ## オプション bleopt_exec_type (内部使用)
 ##   コマンドの実行の方法を指定します。
@@ -64,7 +64,7 @@
 ##   抑制します。bash のエラーメッセージは visible-bell で表示します。
 ## bleopt_suppress_bash_output=
 ##   抑制しません。bash の出力を制御するためにちらつきが発生する事があります。
-##   (bash-3 ではこちらは調整していないので使えません。)
+##   bash-3 ではこちらを使用している場合に C-d を捕捉できません。
 : ${bleopt_suppress_bash_output=1}
 
 ## オプション bleopt_ignoreeof_message (内部使用)
@@ -330,7 +330,7 @@ function .ble-cursor.construct-prompt.append {
   fi
 }
 
-## called by .ble-edit-initialize
+## called by ble-edit-initialize
 function .ble-cursor.construct-prompt.initialize {
   # hostname
   _ble_cursor_prompt__string_h="${HOSTNAME%%.*}"
@@ -512,14 +512,14 @@ declare -a _ble_region_highlight_table
 ##   cs  文字#i の表示文字列
 ##   ei  境界#i の出力系列中での index
 declare -a _ble_line_text_cache=()
-declare -a _ble_line_text_cache_lc=()
-declare -a _ble_line_text_cache_lk=()
 declare -a _ble_line_text_cache_x=()
 declare -a _ble_line_text_cache_y=()
-declare -a _ble_line_text_cache_lj=()
-declare -a _ble_line_text_cache_g=()
+declare -a _ble_line_text_cache_lc=()
 declare -a _ble_line_text_cache_cs=()
-declare -a _ble_line_text_cache_ei=()
+declare -a _ble_line_text_cache_lk=() # 内部使用
+declare -a _ble_line_text_cache_lj=() # 内部使用
+declare -a _ble_line_text_cache_g=()  # 未使用
+declare -a _ble_line_text_cache_ei=() # 未使用
 
 ## 関数 i x y lc0 lc1 lj; .ble-line-text.construct.save-cursor; lj
 function .ble-line-text.construct.save-cursor {
@@ -557,6 +557,15 @@ function .ble-line-text.update-positions {
   fi
 
   local i lj lc0 lc1
+  # lc1 が現在処理している境界の左に隣接する文字。
+  # lc0 は前回の境界の右側に隣接する文字。
+  #   行頭文字の為に処理を遅延させている時に使う。
+  #   仮に行頭にある文字 ESC が表示上 <ESC> と表示されるとする。
+  #   この場合 <ESC> の処理をする時には、現在の境界は <ESC> の右側にあり、
+  #   |<ESC>|
+  #   という事になる。<ESC> の左側が前回の境界である。
+  #   そしてこの時の両変数の値は lc0 == '<', lc1 == '>' である。
+
   if ((dirty<=0)); then
     # save initial state
     lj=0 i=0 lc0=32 lc1="$lc"
@@ -650,7 +659,7 @@ function .ble-line-text.construct {
   fi
 
   local i g g0= buff=() elen=0 peind="$iN"
-  # TODO: ps1 の最後の文字の SGR フラグはここで g0 に代入する
+  # TODO: ps1 の最後の文字の SGR フラグはここで g0 に代入する?
   for ((i=0;i<iN;i++)); do
     # カーソル移動時、このループが重い
     # ※region を反転する場合カーソル移動で highlight を再計算する必要がある
@@ -904,8 +913,12 @@ function ble-edit/dirty-range/update {
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
 
-## called by .ble-edit-initialize
-function .ble-edit/edit/initialize {
+## called by ble-edit-attach
+_ble_edit_attached=0
+function .ble-edit/edit/attach {
+  ((_ble_edit_attached)) && return
+  _ble_edit_attached=1
+
   if test -z "${_ble_edit_LINENO+x}"; then
     _ble_edit_LINENO="${BASH_LINENO[*]: -1}"
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
@@ -913,14 +926,16 @@ function .ble-edit/edit/initialize {
     _ble_edit_CMD="$_ble_edit_LINENO"
   fi
 
-  if test -z "${_ble_edit_PS1+x}"; then
-    _ble_edit_PS1="$PS1"
-    PS1=
-  fi
+  # if test -z "${_ble_edit_PS1+set}"; then
+  # fi
+  _ble_edit_PS1="$PS1"
+  PS1=
 }
 
-function .ble-edit/edit/finalize {
+function .ble-edit/edit/detach {
+  ((!_ble_edit_attached)) && return
   PS1="$_ble_edit_PS1"
+  _ble_edit_attached=0
 }
 
 # **** .ble-edit-draw ****                                           @edit.draw
@@ -1083,6 +1098,7 @@ function .ble-edit-draw.update {
   .ble-cursor.construct-prompt # x y lc ret
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
+  # BLELINE_RANGE_UPDATE → .ble-line-text.construct 内でこれを見て update を済ませる
   local BLELINE_RANGE_UPDATE=("$_ble_edit_str_dbeg" "$_ble_edit_str_dend" "$_ble_edit_str_dend0")
   ble-edit/dirty-range/clear
 
@@ -1147,8 +1163,8 @@ function .ble-edit-draw.update-adjusted {
   if ((_ble_line_cur[0]==0)); then
     READLINE_POINT=0
   else
-    .ble-text.c2w "$lc"
     if test -z "$bleopt_suppress_bash_output"; then
+      .ble-text.c2w "$lc"
       ((ret>0)) && echo -n "[${ret}D"
     fi
     .ble-text.c2bc "$lc"
@@ -2042,11 +2058,7 @@ function ble-edit+discard-line {
 }
 
 ## @var[out] hist_expand
-function ble-edit+accept-line/.histexpand {
-  # ※"-" で始まるコマンドがオプションと解釈されない様に ": " を前置して history に渡す。
-  hist_expanded="$(history -p ": $1" 2>/dev/null)" &&
-    hist_expanded="${hist_expanded#: }"
-}
+
 function ble-edit+accept-line {
   local BASH_COMMAND="$_ble_edit_str"
 
@@ -2155,7 +2167,7 @@ function .ble-edit/history/generate-source-to-load-history {
   '
 }
 
-## called by .ble-edit-initialize
+## called by ble-edit-initialize
 function .ble-edit.history-load {
   # * プロセス置換にしてもファイルに書き出しても大した違いはない。
   #   270ms for 16437 entries (generate-source の時間は除く)
@@ -2621,9 +2633,6 @@ function .ble-edit/stdout/off { :;}
 function .ble-edit/stdout/finalize { :;}
 
 if test -n "$bleopt_suppress_bash_output"; then
-  # ■bash-3 では test していないので off になっている。
-  #   確認事項 = カーソル位置がずれていないか、vbell が正しく消えるか
-
   declare _ble_edit_io_stdout
   declare _ble_edit_io_stderr
   if ((_ble_bash>40100)); then
@@ -2632,10 +2641,6 @@ if test -n "$bleopt_suppress_bash_output"; then
   else
     ble/util/openat _ble_edit_io_stdout '>&1'
     ble/util/openat _ble_edit_io_stderr '>&2'
-    # _ble_edit_io_stdout=30
-    # _ble_edit_io_stderr=31
-    # exec 30>&1
-    # exec 31>&2
   fi
   # declare _ble_edit_io_fname1=/dev/null
   # declare _ble_edit_io_fname2=/dev/null
@@ -2655,15 +2660,24 @@ if test -n "$bleopt_suppress_bash_output"; then
     test -f "$_ble_edit_io_fname2" && rm -f "$_ble_edit_io_fname2"
   }
 
+  ## 関数 .ble-edit/stdout/check-stderr
+  ##   bash が stderr にエラーを出力したかチェックし表示する。
   function .ble-edit/stdout/check-stderr {
     local file="${1:-$_ble_edit_io_fname2}"
-    # bash が stderr にエラーを出力したかチェックし表示する
+
+    # if the visible bell function is already defined.
     if ble/util/isfunction .ble-term.visible-bell; then
-      # /dev/null の様なデバイスではなく、中身があるファイルの場合
+
+      # checks if "$file" is an ordinary non-empty file
+      #   since the $file might be /dev/null depending on the configuration.
+      #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if test -f "$file" -a -s "$file"; then
         local message= line
         while IFS= read -r line; do
-          if [[ $line == 'bash: '* ]]; then
+          # * The head of error messages seems to be ${BASH##*/}.
+          #   例えば ~/bin/bash-3.1 等から実行していると
+          #   "bash-3.1: ～" 等というエラーメッセージになる。
+          if [[ $line == 'bash: '* || $line == "${BASH##*/}: "* ]]; then
             message+="${message:+; }$line"
           fi
         done < "$file"
@@ -2674,10 +2688,10 @@ if test -n "$bleopt_suppress_bash_output"; then
     fi
   }
 
-  # * bash-3.0 では C-d は直接検知できない。
+  # * bash-3.1, bash-3.2 では C-d は直接検知できない。
   #   IGNOREEOF を設定しておくと C-d を押した時に
   #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
-  if ((_ble_bash<40100)); then
+  if ((_ble_bash<40000)); then
     function .ble-edit/stdout/trap-SIGUSR1 {
       local file="$_ble_edit_io_fname2.proc"
       if test -s "$file"; then
@@ -2757,7 +2771,7 @@ function .ble-decode-byte:bind/check-detach {
       trap '.ble-decode-byte:bind/exit-trap' RTMAX
       kill -RTMAX $$
     else
-      echo '$_ble_term_sgr_fghb[ble: detached]$_ble_term_sgr0' 1>&2
+      echo "$_ble_term_sgr_fghb[ble: detached]$_ble_term_sgr0" 1>&2
       .ble-edit-draw.update
     fi
     return 0
@@ -2929,12 +2943,18 @@ function .ble-edit.default-key-bindings {
   ble-edit-setup-keymap+isearch
 }
 
-function .ble-edit-initialize {
+function ble-edit-initialize {
   .ble-cursor.construct-prompt.initialize
-  .ble-edit/edit/initialize
+}
+function ble-edit-attach {
+  # * history-load は initialize ではなく attach で行う。
+  #   detach してから attach する間に
+  #   追加されたエントリがあるかもしれないので。
   .ble-edit.history-load
+
+  .ble-edit/edit/attach
 }
 function .ble-edit-finalize {
   .ble-edit/stdout/finalize
-  .ble-edit/edit/finalize
+  .ble-edit/edit/detach
 }

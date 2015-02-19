@@ -993,7 +993,8 @@ function .ble-decode-bind/unbind {
 function .ble-decode-bind/generate-source-to-unbind-default {
   # 1 ESC で始まる既存の binding を全て削除
   # 2 bind を全て記録 at $$.bind.save
-  bind -sp 2>/dev/null | awk -v apos="'" -v APOS="'\\''" '
+  bind -sp 2>/dev/null | awk -v apos="'" '
+    BEGIN{APOS=apos "\\" apos apos;}
     /^"(\\e|\\M-)/{
       match($0,/^"(([^"]|\\.)+)"/,_capt);
       seq=_capt[1];
@@ -1012,12 +1013,56 @@ function .ble-decode-bind/generate-source-to-unbind-default {
   ' 2> "$_ble_base/tmp/$$.bind.save"
 
   if ((_ble_bash>=40300)); then
-    bind -X 2>/dev/null | awk -v apos="'" '
-      # ※bash-4.3 では bind -r しても bind -X に残る。
-      #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
-      $0~/^"/&&!($0~/\yble-decode-bind\y/){
-        gsub(apos,apos "\\" apos apos);
-        print "bind -x " apos $0 apos;
+    bind -X 2>/dev/null | gawk -v apos="'" '
+      BEGIN{APOS=apos "\\" apos apos;}
+
+      function unescape_control_modifier(str,_i,_esc){
+        for(_i=0;_i<32;_i++){
+          if(i==0||i==31)
+            _esc=sprintf("\\\\C-%c",i+64);
+          else if(27<=i&&i<=30)
+            _esc=sprintf("\\\\C-\\%c",i+64);
+          else
+            _esc=sprintf("\\\\C-%c",i+96);
+
+          _chr=sprintf("%c",i);
+          gsub(_esc,_chr,str);
+        }
+        gsub(/\\C-\?/,sprintf("%c",127));
+        return str;
+      }
+      function unescape(str){
+        if(str ~ /\\C-/)
+          str=unescape_control_modifier(str);
+        gsub(/\\e/,sprintf("%c",27),str);
+        gsub(/\\"/,"\"",str);
+        gsub(/\\\\/,"\\",str);
+        return str;
+      }
+
+      $0~/^"/{
+        line=$0;
+
+        # ※bash-4.3 では bind -r しても bind -X に残る。
+        #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
+        if(line~/\yble-decode-byte:bind\y/)next;
+
+        # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
+        #   コマンド部分の "" を外して中の escape を外す必要がある。
+        #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
+        #     \n\r\f\t\v\b\a 等は使われない様だ。
+        if(match(line,/^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/,captures)>0){
+          sequence=captures[1];
+          command=captures[3];
+
+          if(command ~ /\\/)
+            command=unescape(command);
+
+          line=sequence command;
+        }
+
+        gsub(apos,APOS,line);
+        print "bind -x " apos line apos;
       }
     ' >> "$_ble_base/tmp/$$.bind.save" 2>/dev/null
   fi
@@ -1070,14 +1115,15 @@ function .ble-decode-bind {
 
     # C-x ?
     $binder "$ret" "24 $i"
-    # C-@ ? (2015-02-11)
-    $binder "\\C-@$ret" "0 $i"
 
     if ((_ble_bash>=40300)); then
       # bash-4.3 以降は bind -x がこれまでと色々と違う様だ
 
       # ESC ?
       $binder "\\e$ret" "27 $i"
+
+      # # C-@ ? (2015-02-11) 無駄?
+      # $binder "\\C-@$ret" "0 $i"
     elif ((_ble_bash>=40100)); then
       # for bash-4.1
       if ((i==27)); then

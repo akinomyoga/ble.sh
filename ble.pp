@@ -83,12 +83,26 @@ fi
 
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
-function .ble-time { eval "$@"; }
-.ble-time ble-decode-initialize
-.ble-time ble-decode-attach
-.ble-time .ble-edit-initialize
-.ble-time .ble-edit.default-key-bindings
-.ble-time .ble-edit-draw.redraw
-.ble-time .ble-edit/stdout/off
+
+function ble-initialize {
+  ble-decode-initialize
+  .ble-edit.default-key-bindings
+  ble-edit-initialize
+}
+
+function ble-attach {
+  _ble_edit_detach_flag=
+  ble-decode-attach
+  ble-edit-attach
+  .ble-edit-draw.redraw
+  .ble-edit/stdout/off
+}
+
+function ble-detach {
+  _ble_edit_detach_flag=detach
+}
+
+ble-initialize
+[[ $1 != noattach ]] && ble-attach
 
 ###############################################################################

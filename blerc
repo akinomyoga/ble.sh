@@ -1,8 +1,10 @@
 # -*- mode:sh -*-
 
-. "$HOME/prog/ble/ble.sh"
+. "$HOME/prog/ble/ble.sh" noattach
 
 # test -f /etc/profile && . /etc/profile
 # test -f /etc/bashrc  && . /etc/bashrc
 
 . "$HOME/.bashrc"
+
+ble-attach
