@@ -50,18 +50,11 @@ declare _ble_decode_char__seq # /(_\d+)*/
 function .ble-decode-char {
   local char="$1"
 
-  if ((char==155)); then
-    # CSI → ESC [
-    .ble-decode-char 27
-    .ble-decode-char 91
-    return
-  fi
-
   # decode error character
   if ((char&ble_decode_Erro)); then
     ((char&=~ble_decode_Erro))
     [ -n "$ble_opt_error_char_vbell" ] && .ble-term.visible-bell "received a misencoded char $(printf '\\u%04x' $char)"
-    [ -n "$ble_opt_error_char_abell" ] && .ble-term.audible-bell 
+    [ -n "$ble_opt_error_char_abell" ] && .ble-term.audible-bell
     [ -n "$ble_opt_error_char_discard" ] && return
     # ((char&ble_decode_Erro)) : 最適化(過去 sequence は全部吐く)?
   fi
@@ -247,105 +240,32 @@ if [ -z "$ble_decode_Erro" ]; then
   declare -ir ble_decode_MaskFlag=0x7FC00000
 fi
 
-declare _ble_decode_key__seq # /(_\d+)*/
-declare _ble_decode_key__kmap
-
-declare -a _ble_decode_keymap_stack=()
-## 関数 .ble-decode/keymap/push kmap
-function .ble-decode/keymap/push {
-  _ble_decode_keymap_stack+=("$_ble_decode_key__kmap")
-  _ble_decode_key__kmap="$1"
-}
-## 関数 .ble-decode/keymap/pop
-function .ble-decode/keymap/pop {
-  local last=$((${#_ble_decode_keymap_stack[*]}-1))
-  _ble_decode_key__kmap="${_ble_decode_keymap_stack[last]}"
-  unset _ble_decode_keymap_stack[last]
-}
-
-function .ble-decode-key {
-  local key="$1"
-  local dicthead=_ble_decode_${_ble_decode_key__kmap:-$ble_opt_default_keymap}_kmap_
-
-  eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
-  if [ "${ent%%:*}" = 1 ]; then
-    # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
-    local command="${ent:2}"
-    .ble-decode-key.invoke
-  elif [ "${ent%%:*}" = _ ]; then
-    # /_(:command)?/ (続き (1つ以上の有効なシーケンス) がある事を示す)
-    _ble_decode_key__seq="${_ble_decode_key__seq}_$key"
-  else
-    # 既定の動作
-    .ble-decode-key.invoke-default "$key" && return
-
-    # 他     (一致に失敗した事を表す)
-    local kcseq="${_ble_decode_key__seq}_$key" ret
-    ble-decode-unkbd "${kcseq//_/}"
-    local kbd="$ret"
-    [ -n "$ble_opt_error_kseq_vbell" ] && .ble-term.visible-bell "unbound keyseq: $kbd"
-    [ -n "$ble_opt_error_kseq_abell" ] && .ble-term.audible-bell
-    if [ -n "$ble_opt_error_kseq_discard" ]; then
-      _ble_decode_key__seq=
-    else
-      .ble-decode-key.emit "$key"
-    fi
-  fi
-  return 0
-}
-function .ble-decode-key.emit {
-  local dicthead=_ble_decode_${_ble_decode_key__kmap:-$ble_opt_default_keymap}_kmap_
-
-  local fail="$1"
-  if [ -n "$_ble_decode_key__seq" ]; then
-    local key="${_ble_decode_key__seq##*_}"
-    _ble_decode_key__seq="${_ble_decode_key__seq%_*}"
-
-    eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
-    if [ "${ent:0:2}" = _: ]; then
-      local command="${ent:2}"
-      .ble-decode-key.invoke
-    else # ent = _
-      .ble-decode-key.emit "$key"
-    fi
-
-    .ble-decode-key "$fail"
-  else
-    # $fail 単体でも設定がない場合
-
-    # 既定動作が設定されている場合
-    .ble-decode-key.invoke-default "$fail" && return
-
-    # 既定動作もない場合: 無視 (エラーは既に出力している)
-  fi
-}
-## \param [in] command
-## \param [in] _ble_decode_key__seq
-## \param [in] key
-function .ble-decode-key.invoke {
-  if [ -n "$command" ]; then
-    local KEYS=(${_ble_decode_key__seq//_/} $key)
-    _ble_decode_key__seq=
-    eval "$command"
-    return 0
-  else
-    _ble_decode_key__seq=
-    return 1
-  fi
-}
-
-## \param [in] command
-function .ble-decode-key.invoke-default {
-  local key="$1"
-  if (((key&ble_decode_MaskFlag)==0&&32<=key&&key<ble_decode_function_key_base)); then
-    eval "local command=\"\${${dicthead}[$_ble_decode_KC_DEFCHAR]:2}\""
-    .ble-decode-key.invoke && return 0
-  fi
-  eval "local command=\"\${${dicthead}[$_ble_decode_KC_DEFAULT]:2}\""
-  .ble-decode-key.invoke && return 0
-
-  return 1
-}
+## 配列 _ble_decode_${keymap}_kmap_${_ble_decode_key__seq}[key]
+##   各 keymap は (キーシーケンス, コマンド) の集合と等価です。
+##   この配列は keymap の内容を以下の形式で格納します。
+##
+##   @param[in] keymap
+##     対象の keymap の名称を指定します。
+##
+##   @param[in] _ble_decode_key__seq
+##   @param[in] key
+##     _ble_decode_key__seq key の組合せでキーシーケンスを表します。
+##
+##   @value
+##     以下の形式の何れかです。
+##     - "_"
+##     - "_:command"
+##     - "1:command"
+##
+##     始めの文字が "_" の場合はキーシーケンスに続きがある事を表します。
+##     つまり、このキーシーケンスを prefix とするより長いキーシーケンスが登録されている事を表します。
+##     command が指定されている場合には、より長いシーケンスでの一致に全て失敗した時点で
+##     command が実行されます。シーケンスを受け取った段階では実行されません。
+##
+##     初めの文字が "1" の場合はキーシーケンスが確定的である事を表します。
+##     つまり、このキーシーケンスを prefix とするより長いシーケンスが登録されてなく、
+##     このシーケンスを受け取った段階で command を実行する事が確定する事を表します。
+##
 
 ## 変数 _ble_decode_kmaps := ( ':' kmap ':' )+
 ##   存在している kmap の名前の一覧を保持します。
@@ -387,6 +307,7 @@ function .ble-decode-key.bind {
     fi
   done
 }
+
 function .ble-decode-key.unbind {
   local dicthead=_ble_decode_${kmap}_kmap_
   local seq=($1)
@@ -428,6 +349,7 @@ function .ble-decode-key.unbind {
     tseq="${tseq%_*}"
   done
 }
+
 function .ble-decode-key.dump {
   # 引数の無い場合: 全ての kmap を dump
   local kmap
@@ -468,6 +390,186 @@ function .ble-decode-key.dump {
       .ble-decode-key.dump "$kmap" "${tseq}_$kcode" "${knames[*]}"
     fi
   done
+}
+
+
+## 現在選択されている keymap
+declare _ble_decode_key__kmap
+##
+declare -a _ble_decode_keymap_stack=()
+
+## 関数 .ble-decode/keymap/push kmap
+function .ble-decode/keymap/push {
+  _ble_decode_keymap_stack+=("$_ble_decode_key__kmap")
+  _ble_decode_key__kmap="$1"
+}
+## 関数 .ble-decode/keymap/pop
+function .ble-decode/keymap/pop {
+  local last=$((${#_ble_decode_keymap_stack[*]}-1))
+  _ble_decode_key__kmap="${_ble_decode_keymap_stack[last]}"
+  unset _ble_decode_keymap_stack[last]
+}
+
+
+## 今迄に入力された未処理のキーの列を保持します
+declare _ble_decode_key__seq # /(_\d+)*/
+
+## 関数 .ble-decode-key key
+##   キー入力の処理を行います。登録されたキーシーケンスに一致した場合、
+##   関連付けられたコマンドを実行します。
+##   登録されたキーシーケンスの前方部分に一致する場合、即座に処理は行わず
+##   入力されたキーの列を _ble_decode_key__seq に記録します。
+##
+##   @var[in] key
+##     入力されたキー
+##
+function .ble-decode-key {
+  local key="$1"
+  local dicthead=_ble_decode_${_ble_decode_key__kmap:-$ble_opt_default_keymap}_kmap_
+
+  eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
+  if [ "${ent%%:*}" = 1 ]; then
+    # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
+    local command="${ent:2}"
+    .ble-decode-key/invoke-command || _ble_decode_key__seq=
+  elif [ "${ent%%:*}" = _ ]; then
+    # /_(:command)?/ (続き (1つ以上の有効なシーケンス) がある事を示す)
+    _ble_decode_key__seq="${_ble_decode_key__seq}_$key"
+  else
+    # 遡って適用 (部分一致、または、既定動作)
+    .ble-decode-key/invoke-partial-match "$key" && return
+
+    # エラーの表示
+    local kcseq="${_ble_decode_key__seq}_$key" ret
+    ble-decode-unkbd "${kcseq//_/ }"
+    local kbd="$ret"
+    [[ $ble_opt_error_kseq_vbell ]] && .ble-term.visible-bell "unbound keyseq: $kbd"
+    [[ $ble_opt_error_kseq_abell ]] && .ble-term.audible-bell
+
+    # 残っている文字の処理
+    if [[ $_ble_decode_key__seq ]]; then
+      if [[ $ble_opt_error_kseq_discard ]]; then
+        _ble_decode_key__seq=
+      else
+        local keys=(${_ble_decode_key__seq//_/ } $key) i iN
+        _ble_decode_key__seq=
+        for ((i=1,iN=${#keys[*]};i<iN;i++)); do
+          # 2文字目以降を処理
+          .ble-decode-key "${keys[i]}"
+        done
+      fi
+    fi
+  fi
+  return 0
+}
+
+## 関数 .ble-decode-key/invoke-partial-match fail
+##   これまでのキー入力に対する部分一致を試みます。
+##   登録されている部分一致がない場合には単体のキーに対して既定の動作を呼び出します。
+##   既定の動作も登録されていない場合には関数は失敗します。
+##   @var[in,out] _ble_decode_key__seq
+##   @var[in]     next
+##     _ble_decode_key__seq は既に入力された未処理のキー列を指定します。
+##     next には今回入力されたキーの列を指定します。
+##     この関数は _ble_decode_key__seq next からなるキー列に対する部分一致を試みます。
+##
+##   この関数は以下の様に動作します。
+##   1 先ず、_ble_decode_key__seq に対して部分一致がないか確認し、部分一致する
+##     binding があればそれを実行します。
+##     - _ble_decode_key__seq + key の全体に対する一致は試みない事に注意して下
+##       さい。全体一致については既にチェックして失敗しているという前提です。
+##       何故なら部分一致を試みるのは常に最長一致が失敗した時だけだからです。
+##   2 _ble_decode_key__seq に対する部分一致が存在しない場合には、
+##     ch = _ble_decode_key__seq + key の最初のキーについて登録されている既定の
+##     動作を実行します。ch はつまり、_ble_decode_key__seq が空でない時はその先
+##     頭で、空の場合は key になります。
+##   3 一致が存在して処理が実行された場合には、その後一旦 _ble_decode_key__seq
+##     がクリアされ、一致しなかった残りの部分に対して再度 .ble-decode-key を呼
+##     び出して再解釈が行われます。
+##     1, 2 のいずれでも一致が見付からなかった場合には、_ble_decode_key__seq を
+##     呼出時の状態に戻し関数は失敗します。つまり、この場合 _ble_decode_key__seq
+##     は、呼出元からは変化していない様に見えます。
+##
+function .ble-decode-key/invoke-partial-match {
+  local dicthead=_ble_decode_${_ble_decode_key__kmap:-$ble_opt_default_keymap}_kmap_
+
+  local next="$1"
+  if [[ $_ble_decode_key__seq ]]; then
+    local last="${_ble_decode_key__seq##*_}"
+    _ble_decode_key__seq="${_ble_decode_key__seq%_*}"
+
+    eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$last]}\""
+    if [ "${ent:0:2}" = _: ]; then
+      local command="${ent:2}"
+      .ble-decode-key/invoke-command || _ble_decode_key__seq=
+      .ble-decode-key "$next"
+      return 0
+    else # ent = _
+      if .ble-decode-key/invoke-partial-match "$last"; then
+        .ble-decode-key "$next"
+        return 0
+      else
+        # 元に戻す
+        _ble_decode_key__seq="${_ble_decode_key__seq}_$last"
+        return 1
+      fi
+    fi
+  else
+    # ここでは指定した単体のキーに対する既定の処理を実行する
+    # $next 単体でも設定がない場合はここに来る。
+    # 通常の文字などは全てここに流れてくる事になる。
+
+    # 既定の文字ハンドラ
+    local key="$1"
+    if (((key&ble_decode_MaskFlag)==0&&32<=key&&key<ble_decode_function_key_base)); then
+      eval "local command=\"\${${dicthead}[$_ble_decode_KC_DEFCHAR]:2}\""
+      .ble-decode-key/invoke-command && return 0
+    fi
+
+    # 既定のキーハンドラ
+    eval "local command=\"\${${dicthead}[$_ble_decode_KC_DEFAULT]:2}\""
+    .ble-decode-key/invoke-command && return 0
+
+    return 1
+  fi
+}
+
+## 関数 .ble-decode-key/invoke-command
+##   コマンドが有効な場合に、指定したコマンドを適切な環境で実行します。
+##   @var[in] command
+##     起動するコマンドを指定します。空の場合コマンドは実行されません。
+##   @var[in] _ble_decode_key__seq
+##   @var[in] key
+##     _ble_decode_key__seq は前回までに受け取ったキーの列です。
+##     key は今回新しく受け取ったキーの列です。
+##     _ble_decode_key__seq と key の組合せで現在入力されたキーシーケンスになります。
+##     コマンドを実行した場合 _ble_decode_key__seq はクリアされます。
+##     コマンドを実行しなかった場合
+##   @return
+##     コマンドが実行された場合に 0 を返します。それ以外の場合は 1 です。
+##
+##   コマンドの実行時に次の変数が定義されます。
+##   これらの変数はコマンドの内部から参照する事ができます。
+##   @var[out] KEYS
+##     このコマンドの起動に用いられたキーシーケンスが格納されます。
+##
+#
+# 実装の注意
+#
+#   呼び出したコマンドの内部で keymap の switch があっても良い様に、
+#   _ble_decode_key__seq + key は厳密に現在のコマンドに対応するシーケンスである必要がある事、
+#   コマンドを呼び出す時には常に _ble_decode_key__seq が空になっている事に注意。
+#   部分一致などの場合に後続のキーが存在する場合には、それらは呼出元で管理しなければならない。
+#
+function .ble-decode-key/invoke-command {
+  if [[ $command ]]; then
+    local KEYS=(${_ble_decode_key__seq//_/ } $key)
+    _ble_decode_key__seq=
+    eval "$command"
+    return 0
+  else
+    return 1
+  fi
 }
 
 # **** key names ****
@@ -794,7 +896,7 @@ EOF
       ;;
     esac
   done
-  
+
   [ -n "${OPTARGS+set}" ] && return 1
 
   return 0
@@ -894,18 +996,20 @@ function .ble-decode.c2dqs {
       .ble-decode.c2dqs $((i+64))
       ret="\\C-$ret"
     fi
-  elif ((i==34||i==92)); then
-    # \" and \\
+  elif ((32<=i&&i<127)); then
     .ble-text.c2s "$i"
-    ret='\'"$ret"
+
+    # \" and \\
+    if ((i==34||i==92)); then
+      ret='\'"$ret"
+    fi
   elif ((128<=i&&i<160)); then
     # C1 characters
     .ble-text.sprintf ret '\\%03o' "$i"
   else
     # others
     .ble-text.sprintf ret '\\%03o' "$i"
-
-    # .ble-text.c2s "$i" # これだと UTF-8 encode されてしまうので駄目
+    # .ble-text.c2s だと UTF-8 encode されてしまうので駄目
   fi
 }
 
@@ -1090,53 +1194,100 @@ function .ble-decode-bind {
   # bind: 元のキー割り当ての保存
   if [[ $mode != unbind ]]; then
     eval -- "$(.ble-decode-bind/generate-source-to-unbind-default)"
-
-    # local line
-    # while IFS= read -r line; do
-    #   bind -r "${line%x}"
-    # done < <(bind -sp | grep -Fa '"\e' | awk '{match($0,/"([^"]+)"/,_capt);print _capt[1] "x";}')
   fi
 
-  # * C-x (24) は直接 bind すると何故か bash が crash する。
+  # ※bash-4.3 以降は bind -x の振る舞いがこれまでと色々と違う様だ
+  #   何より 3 byte 以上の物にも bind できる様になった点が大きい (が ble.sh では使っていない)
+
+  # * C-@ (0) は bash-4.3 では何故か bind -x すると
+  #   bash: bash_execute_unix_command: コマンドのキーマップがありません
+  #   bash_execute_unix_command: cannot find keymap for command
+  #   になってしまう。"C-@ *" に全て割り当てても駄目である。
+  #   bind '"\C-@":""' は使える様なので、UTF-8 の別表現に翻訳してしまう。
+  local esc00="$((_ble_bash>=40300))"
+
+  # * C-x (24) は直接 bind -x すると何故か bash が crash する。
   #   なので C-x は割り当てないで、
   #   代わりに C-x ? の組合せを全て登録する事にする。
-  local bash42bug="$((_ble_bash<40300))"
+  #   bash-3.1 ～ bash-4.2 で再現する。bash-4.3 では問題ない。
+  local bind18XX="$((_ble_bash<40300))"
 
-  # bind -x '"?":ble-decode-byte:bind ?'
+  # * bash-3 では "ESC *" の組合せも全部登録しておかないと駄目??
+  #   (もしかすると bind -r 等に失敗していただけかも知れないが)
+  # * bash-4.3 では ESC * と ESC [ * も割り当てる必要がある (2015-02-09)
+  #   bash-4.3 では ESC *, ESC [ * も全て割り当てないと以下のエラーになる。
+  #   bash_execute_unix_command: cannot find keymap for command
+  #   というかあらゆる物を登録しておかないとうまく行かない。。
+  local bind1BXX="$((_ble_bash<40100||40300<=_ble_bash))"
+
+  # * bash-3.1
+  #   ESC [ を bind -x で捕まえようとしてもエラーになるので、
+  #   一旦 "ESC [" の ESC を UTF-8 2-byte code にしてから受信し直す。
+  #   bash-3.1 で確認。bash-4.1 ではOK。他は未確認。
+  local esc1B5B="$((_ble_bash<40100))"
+
+  # * bash-4.1 では ESC ESC に bind すると
+  #   bash_execute_unix_command: cannot find keymap for command
+  #   が出るので ESC [ ^ に適当に redirect して ESC [ ^ を
+  #   ESC ESC として解釈する様にする。
+  local esc1B1B="$((40100<=_ble_bash&&_ble_bash<40300))"
+
   local i
   for ((i=0;i<256;i++)); do
     local ret; .ble-decode.c2dqs "$i"
 
-    # * bash-4.1 では ESC ESC に bind すると
-    #   bash_execute_unix_command: cannot find keymap for command
-    #   が出るので ESC [ ^ に適当に redirect して ESC [ ^ を
-    #   ESC ESC として解釈する様にする。
-    # * bash-4.3 では ESC ? と ESC [ ? も割り当てる必要がある (2015-02-09)
-    #   bash-4.3 では ESC ?, ESC [ ? も全て割り当てないと以下のエラーになる。
-    #   bash_execute_unix_command: cannot find keymap for command
-
-    if ((bash42bug)); then
-      # ?
-      ((i!=24)) && $binder "$ret" "$i"
-
-      # C-x ?
-      $binder "$ret" "24 $i"
+    # *
+    if ((i==0)); then
+      # C-@
+      if ((esc00)); then
+        if [[ $mode == unbind ]]; then
+          bind -r '\C-@'
+        else
+          # UTF-8 2-byte code of 0 (■UTF-8依存)
+          bind '"\C-@":"\xC0\x80"'
+        fi
+      else
+        $binder "$ret" "$i"
+      fi
+    elif ((i==24)); then
+      # C-x
+      ((bind18XX)) || $binder "$ret" "$i"
     else
-      # ?
       $binder "$ret" "$i"
     fi
 
-    if ((_ble_bash>=40300)); then
-      # bash-4.3 以降は bind -x がこれまでと色々と違う様だ
+    # # C-@ * for bash-4.3 (2015-02-11) 無駄?
+    # $binder "\\C-@$ret" "0 $i"
 
-      # ESC ?
-      $binder "\\e$ret" "27 $i"
+    # C-x *
+    ((bind18XX)) && $binder "$ret" "24 $i"
 
-      # # C-@ ? (2015-02-11) 無駄?
-      # $binder "\\C-@$ret" "0 $i"
-    elif ((_ble_bash>=40100)); then
+    # ESC *
+    if ((bind1BXX)); then
+      # ESC [
+      if ((i==91&&esc1B5B)); then
+        if [[ $mode == unbined ]]; then
+          bind -r '\e['
+        else
+          # * obsoleted work around
+          #   ESC [ を CSI (encoded in utf-8) に変換して受信する。
+          #   受信した後で CSI を ESC [ に戻す。
+          #   CSI = \u009B = utf8{\xC2\x9B} = utf8{\302\233}
+          # bind '"\e[":"\302\233"'
+          # ble-bind -f 'CSI' '.ble-decode-char 27 91'
+
+          bind '"\e[":"\xC0\x9B["' # (■UTF-8依存)
+        fi
+      else
+        $binder "\\e$ret" "27 $i"
+      fi
+    fi
+
+    # ESC ESC
+    if ((i==27&&esc1B1B)); then
       # for bash-4.1
       if ((i==27)); then
+
         # ESC ESC
         if [[ $mode == unbind ]]; then
           bind -r '\e\e'
@@ -1145,23 +1296,6 @@ function .ble-decode-bind {
           ble-bind -k 'ESC [ ^' __esc__
           ble-bind -f __esc__ '.ble-decode-char 27 27'
         fi
-      fi
-    else
-      # for bash-3.1
-      if ((i==91)); then
-        # どうも ESC [ を bind -x で捕まえようとしてもエラーになるので、
-        # ESC [ を CSI (encoded in utf-8) に変換して受信する。
-        # 受信した後で CSI を ESC [ に戻す。
-        # CSI = \u009B = utf8{\xC2\x9B} = utf8{\302\233}
-        if [[ $mode == unbined ]]; then
-          bind -r '\e['
-        else
-          bind '"\e[":"\302\233"'
-          # ble-bind -f 'CSI' '.ble-decode-char 27 91'
-        fi
-      else
-        # ESC ?
-        $binder "\\e$ret" "27 $i"
       fi
     fi
   done
@@ -1201,7 +1335,6 @@ function ble-decode-detach {
 _ble_decode_byte__utf_8__mode=0
 _ble_decode_byte__utf_8__code=0
 function ble-decode-byte+UTF-8 {
-  echo "$*" >> 1.tmp
   local code=$_ble_decode_byte__utf_8__code
   local mode=$_ble_decode_byte__utf_8__mode
   local byte="$1"

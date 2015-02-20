@@ -63,8 +63,9 @@
 ## bleopt_suppress_bash_output=1
 ##   抑制します。bash のエラーメッセージは visible-bell で表示します。
 ## bleopt_suppress_bash_output=
-##   抑制しません。bash の出力を制御するためにちらつきが発生する事があります。
-##   bash-3 ではこちらを使用している場合に C-d を捕捉できません。
+##   抑制しません。bash のメッセージは全て端末に出力されます。
+##   これはデバグ用の設定です。bash の出力を制御するためにちらつきが発生する事があります。
+##   bash-3 ではこの設定では C-d を捕捉できません。
 : ${bleopt_suppress_bash_output=}
 
 ## オプション bleopt_ignoreeof_message (内部使用)
@@ -2949,15 +2950,15 @@ if test -n "$bleopt_suppress_bash_output"; then
           echo "$line" >> "$_ble_edit_io_fname2"
         fi
 
-        if [[ $line = *'Use "exit" to leave the shell.'* ||
-                $line = *'ログアウトする為には exit を入力して下さい'* ||
-                $line = *'シェルから脱出するには "exit" を使用してください。'* ||
-                $line = *'シェルから脱出するのに "exit" を使いなさい.'* ||
-                $bleopt_ignoreeof_message && $line = *$bleopt_ignoreeof_message* ]]
+        if [[ $bleopt_ignoreeof_message && $line = *$bleopt_ignoreeof_message* ||
+                  $line = *'Use "exit" to leave the shell.'* ||
+                  $line = *'ログアウトする為には exit を入力して下さい'* ||
+                  $line = *'シェルから脱出するには "exit" を使用してください。'* ||
+                  $line = *'シェルから脱出するのに "exit" を使いなさい.'* ]]
         then
           echo eof >> "$_ble_edit_io_fname2.proc"
           kill -USR1 $$
-          sleep 0.05 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
+          sleep 0.1 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
         fi
       done < "$_ble_edit_io_fname2.pipe" &>/dev/null &
       disown $!

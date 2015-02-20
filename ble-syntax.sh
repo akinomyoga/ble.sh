@@ -267,6 +267,8 @@ function _ble_syntax_rex_histexpand.init {
 _ble_syntax_rex_histexpand.init
 
 function ble-syntax/parse/check-history-expansion {
+  [[ $- == *H* ]] || return 1
+
   local spaces=$' \t\n'
   if [[ $tail == '!'[^"=$spaces"]* ]]; then
     ((_ble_syntax_attr[i]=ATTR_HISTX))
