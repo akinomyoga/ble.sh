@@ -76,6 +76,14 @@ else
   }
 fi
 
+_ble_util_array_prototype=()
+function _ble_util_array_prototype.reserve {
+  local n="$1" i
+  for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
+    _ble_util_array_prototype[i]=
+  done
+}
+
 #------------------------------------------------------------------------------
 # **** terminal controls ****
 
@@ -164,67 +172,76 @@ function .ble-term.visible-bell.cancel-erasure {
 #------------------------------------------------------------------------------
 # String manipulations
 
-if test "${_ble_bash:-0}" -ge 40100; then
+if ((_ble_bash>=40100)); then
+  # - printf "'c" で unicode が読める
   function .ble-text.s2c {
     printf -v ret '%d' "'${1:$2:1}"
   }
-else
+elif ((_ble_bash>=40000)); then
+  # - 連想配列にキャッシュできる
+  # - printf "'c" で unicode が読める
+  declare -A _ble_text_s2c_table
   function .ble-text.s2c {
+    local s="${1:$2:1}"
+    ret="${_ble_text_s2c_table[x$s]}"
+    [[ $ret ]] && return
+
     ret=$(printf '%d' "'${1:$2:1}")
+    _ble_text_s2c_table[x$s]="$ret"
+  }
+else
+  # bash-3 では printf %d "'あ" 等としても
+  # "あ" を構成する先頭バイトの値が表示されるだけである。
+  # 何とかして unicode 値に変換するコマンドを見つけるか、
+  # 各バイトを取り出して unicode に変換するかする必要がある。
+  # bash-3 では read -n 1 を用いてバイト単位で読み取れる。これを利用する。
+  function .ble-text.s2c {
+    local s="${1:$2:1}"
+    if [[ $s == [''-''] ]]; then
+      ret=$(printf '%d' "'$s")
+      return
+    fi
+
+    "ble-text-b2c+$ble_opt_input_encoding" $(
+      while IFS= read -r -n 1 byte; do
+        printf '%d ' "'$byte"
+      done <<<$s
+    )
   }
 fi
 
 # .ble-text.c2s
-if test "${_ble_bash:-0}" -ge 40200; then
+if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
   function .ble-text.c2s-impl {
     printf -v ret '\\U%08x' "$1"
     eval "ret=\$'$ret'"
   }
 else
-  if [ "$(/usr/bin/printf '\U00003042' 2>/dev/null)" = 'あ' ]; then
-    # /bin/printf of GNU coreutils supports \uXXXX and \UXXXXXXXX
-    # when it is compiled with glibc-2.2 or later version.
-    function .ble-text.c2s-hex {
-      local hex="$1"
-      ret="$(/usr/bin/printf "\\U$hex")"
-    }
-    # Note: $(/usr/bin/printf '\U00000041') becomes error.
-    # it seems that ordinary ascii characters do not allowed to
-    # be specified with the universal character sequences in /usr/bin/printf.
-  elif [ "$(awk 'BEGIN{printf "%c",12354}' /dev/null)" = 'あ' ]; then
-    function .ble-text.c2s-hex {
-      local hex="$1"
-      ret="$(awk 'BEGIN{printf "%c",0x'$hex'}' /dev/null)"
-    }
-  else
-    echo "ble.sh: there is no way to convert an unicode to the character!" 1>&2
-    return 1
-  fi
+  _ble_text_xdigit=(0 1 2 3 4 5 6 7 8 9 A B C D E F)
+  _ble_text_hexmap=()
+  for((i=0;i<256;i++)); do
+    _ble_text_hexmap[i]="${_ble_text_xdigit[i>>4&0xF]}${_ble_text_xdigit[i&0xF]}"
+  done
 
-  if [ "${_ble_bash:-0}" -ge 40100 ]; then
-    function .ble-text.c2s-impl {
-      if ((${1:-0}<0x100)); then
-        printf -v ret '\\%03o' "$1"
-        eval "ret=\$'$ret'"
-      else
-        printf -v ret '%08x' "$1"
-        .ble-text.c2s-hex "$ret"
-      fi
-    }
-  else
-    function .ble-text.c2s-impl {
-      if ((${1:-0}<0x100)); then
-        ret=$(printf '\\%03o' "$1")
-        eval "ret=\$'$ret'"
-      else
-        ret=$(printf '%08x' "$1")
-        .ble-text.c2s-hex "$ret"
-      fi
-    }
-  fi
+  # 動作確認済 3.1, 3.2, 4.0, 4.2, 4.3
+  function .ble-text.c2s-impl {
+    if (($1<0x80)); then
+      eval "ret=\$'\\x${_ble_text_hexmap[$1]}'"
+      return
+    fi
+
+    local bytes i iN seq=
+    ble-text-c2b+UTF-8 "$1"
+    for ((i=0,iN=${#bytes[@]};i<iN;i++)); do
+      seq="$seq\\x${_ble_text_hexmap[bytes[i]&0xFF]}"
+    done
+    eval "ret=\$'$seq'"
+  }
 fi
 
+
+# どうもキャッシュするのが一番速い様だ
 declare -a _ble_text_c2s_table
 function .ble-text.c2s {
   ret="${_ble_text_c2s_table[$1]}"
@@ -243,3 +260,39 @@ function .ble-text.c2bc {
 }
 
 #------------------------------------------------------------------------------
+
+## @var[out] ret
+function ble-text-b2c+UTF-8 {
+  local bytes=("$@")
+  local b0 n i
+  ret=0
+  ((b0=bytes[0]&0xFF,
+    n=b0>0xF0
+    ?(b0>0xFC?5:(b0>0xF8?4:3))
+    :(b0>0xE0?2:(b0>0xC0?1:0)),
+    ret=b0&0x3F>>n))
+  for ((i=1;i<=n;i++)); do
+    ((ret=ret<<6|0x3F&bytes[i]))
+  done
+}
+
+## @var[out] bytes[]
+function ble-text-c2b+UTF-8 {
+  local code="$1" n i
+  ((code=code&0x7FFFFFFF,
+    n=code<0x80?0:(
+      code<0x800?1:(
+        code<0x10000?2:(
+          code<0x200000?3:(
+            code<0x4000000?4:5))))))
+  if ((n==0)); then
+    bytes=(code)
+  else
+    bytes=()
+    for ((i=n;i;i--)); do
+      ((bytes[i]=0x80|code&0x3F,
+        code>>=6))
+    done
+    ((bytes[0]=code&0x3F>>n|0xFF80>>n))
+  fi
+}

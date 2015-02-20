@@ -65,7 +65,7 @@
 ## bleopt_suppress_bash_output=
 ##   抑制しません。bash の出力を制御するためにちらつきが発生する事があります。
 ##   bash-3 ではこちらを使用している場合に C-d を捕捉できません。
-: ${bleopt_suppress_bash_output=1}
+: ${bleopt_suppress_bash_output=}
 
 ## オプション bleopt_ignoreeof_message (内部使用)
 ##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
@@ -75,6 +75,11 @@
 # 
 #------------------------------------------------------------------------------
 # **** char width ****                                                @text.c2w
+
+# ※注意 [ -~] の範囲の文字は全て幅1であるという事を仮定したコードが幾らかある
+#   もしこれらの範囲の文字を幅1以外で表示する端末が有ればそれらのコードを実装し
+#   直す必要がある。その様な変な端末があるとは思えないが。
+
 
 declare -a _ble_text_c2w__table=()
 
@@ -103,7 +108,14 @@ declare -a _ble_text_c2w__emacs_wranges=(
  1591 1593 1595 1597 1599 1600 1602 1603 1611 1612 1696 1698 1714 1716 1724 1726 1734 1736 1739 1740
  1742 1744 1775 1776 1797 1799 1856 1857 1858 1859 1898 1899 1901 1902 1903 1904)
 function .ble-text.c2w+emacs {
-  local code="$1" al ah tIndex
+  local code="$1" al=0 ah=0 tIndex=
+
+  # bash-4.0 bug workaround
+  #   中で使用している変数に日本語などの文字列が入っているとエラーになる。
+  #   その値を参照していなくても、その分岐に入らなくても関係ない。
+  #   なので ret に予め適当な値を設定しておく事にする。
+  ret=1
+
   (('
     code<0xA0?(
       ret=1
@@ -158,6 +170,7 @@ function .ble-text.c2w+emacs {
 ## 関数 .ble-text.c2w+west
 function .ble-text.c2w.ambiguous {
   local code="$1"
+  ret=1
   (('
     (code<0xA0)?(
       ret=1
@@ -511,7 +524,7 @@ declare -a _ble_region_highlight_table
 ##   g   境界#i の SGR 系列、即ち、文字#(i-1) の SGR 系列
 ##   cs  文字#i の表示文字列
 ##   ei  境界#i の出力系列中での index
-declare -a _ble_line_text_cache=()
+declare _ble_line_text_cache=
 declare -a _ble_line_text_cache_x=()
 declare -a _ble_line_text_cache_y=()
 declare -a _ble_line_text_cache_lc=()
@@ -703,6 +716,224 @@ function .ble-line-text.construct {
   lc="${_ble_line_text_cache_lc[index]}"
   # lg="${_ble_line_text_cache_g[lk]}" ##-OPTI-1##
 }
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+# declare _ble_line_text_cache=
+declare -a _ble_line_text_cache_pos=()
+declare -a _ble_line_text_cache_cs=()
+
+## 関数 text dirty x y; .ble-line-text.update-positions; x y
+function .ble-line-text.update-positions2 {
+  local iN=${#text}
+  if test -z "$dirty"; then
+    local pos=(${_ble_line_text_cache_pos[iN]})
+    ((x=pos[0]))
+    ((y=pos[1]))
+    return
+  fi
+
+  local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl" _spaces='                '
+
+  local dbeg dend dend0
+  ((dbeg=BLELINE_RANGE_UPDATE[0]))
+  ((dend=BLELINE_RANGE_UPDATE[1]))
+  ((dend0=BLELINE_RANGE_UPDATE[2]))
+
+  local i
+  if ((dirty<=0)); then
+    _ble_line_text_cache_pos[0]="$x $y"
+  else
+    # load intermediate state
+    local pos=(${_ble_line_text_cache_pos[dbeg]})
+    ((i=dbeg))
+    ((x=pos[0]))
+    ((y=pos[1]))
+    
+    # shift cached data
+    _ble_util_array_prototype.reserve "$iN"
+    _ble_line_text_cache_pos=(
+      "${_ble_line_text_cache_pos[@]::dbeg+1}"
+      "${_ble_util_array_prototype[@]::dend-dbeg}"
+      "${_ble_line_text_cache_pos[@]:dend0+1:iN-dend+1}")
+    _ble_line_text_cache_cs=(
+      "${_ble_line_text_cache_cs[@]::dbeg+1}"
+      "${_ble_util_array_prototype[@]::dend-dbeg}"
+      "${_ble_line_text_cache_cs[@]:dend0+1:iN-dend+1}")
+  fi
+  
+  local rex_ascii='^[ -~]+'
+  for ((;i<iN;)); do
+    # if [[ ${text:i} =~ $rex_ascii ]]; then
+    #   local w="${BASH_REMATCH[0]}"
+
+    #   ((x+=w))
+    #   while ((x>cols)); do
+    #     ((y++,x-=cols))
+    #   done
+    #   if ((x==cols)); then
+    #     ((xenl)) && cs="$cs"$'\n'
+    #     ((y++,x=0))
+    #   fi
+
+    #   i+=w
+    # fi
+
+    .ble-text.s2c "$text" "$i"
+    local code="$ret"
+
+    local w=0 cs=
+    if ((code<32)); then
+      if ((code==9)); then
+        if (((w=(x+it)/it*it-x)>0)); then
+          cs="${_spaces::w}"
+        fi
+      elif ((code==10)); then
+        ((y++,x=0))
+        cs=$'\n'
+      else
+        ((w=2))
+        .ble-text.c2s "$((code+64))"
+        cs="^$ret"
+      fi
+    elif ((code==127)); then
+      w=2 cs="^?"
+    else
+      .ble-text.c2w "$code"
+      w="$ret" cs="${text:i:1}"
+      if ((x<cols&&cols<x+w)); then
+        ((x=cols))
+        cs="${_spaces:0:cols-x}$cs"
+      fi
+    fi
+
+    if ((w>0)); then
+      ((x+=w))
+      while ((x>cols)); do
+        ((y++,x-=cols))
+      done
+      if ((x==cols)); then
+        ((xenl)) && cs="$cs"$'\n'
+        ((y++,x=0))
+      fi
+    fi
+
+    _ble_line_text_cache_cs[i]="$cs"
+    ((i++))
+
+    local _pos="$x $y"
+    if ((i>=dend)) && [[ ${_ble_line_text_cache_pos[i]} == "$_pos" ]]; then
+      # 後は同じなので計算を省略
+      local pos=(${_ble_line_text_cache_pos[iN]})
+      ((x=pos[0]))
+      ((y=pos[1]))
+      return
+    fi
+    _ble_line_text_cache_pos[i]="$_pos"
+  done
+}
+
+## 関数 .ble-line.construct-text
+## @var[in    ] text dirty index
+## @var[in,out] x y lc lg
+## @var[   out] ret cx cy
+function .ble-line-text.construct {
+  # text dirty x y [update-positions] x y
+  .ble-line-text.update-positions2
+
+  # cursor point
+  local iN=${#text}
+  ((index<0?(index=0):index>iN&&(index=iN)))
+
+  # highlight
+  _ble_region_highlight_table=()
+  if test -n "$bleopt_syntax_highlight_mode"; then
+    "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
+  fi
+
+  local i g g0= buff=() elen=0 peind="$iN"
+  # TODO: ps1 の最後の文字の SGR フラグはここで g0 に代入する?
+  for ((i=0;i<iN;i++)); do
+    ((
+      i==index&&(peind=elen),
+      g=_ble_region_highlight_table[i],
+      g!=g0
+    )) && {
+      .ble-color.g2seq "$g"
+      buff[${#buff[@]}]="$ret"
+      ((elen+=${#ret},g0=g))
+    }
+
+    ((elen+=${#_ble_line_text_cache_cs[$i]}))
+    buff[${#buff[@]}]="${_ble_line_text_cache_cs[$i]}"
+  done
+  IFS= eval '_ble_line_text_cache="${buff[*]}"'
+
+  if ((index<iN)); then
+    # Note#1
+    #   二重引用符で囲まれた文字列を "" で分割しているのは、
+    #   bash-3.1 の「${a::} の展開結果が空で、かつ、別の文字列に接している時に stray ^? を生む」
+    #   というバグに対する work around.
+    ret="${_ble_line_text_cache::peind}""$_ble_term_sc""${_ble_line_text_cache:peind}""$_ble_term_rc"
+  else
+    ret="$_ble_line_text_cache"
+    lg="$g0"
+  fi
+
+  local pos=(${_ble_line_text_cache_pos[index]})
+  ((cx=pos[0]))
+  ((cy=pos[1]))
+
+  # update lc, lg
+  #
+  #   lc, lg は bleopt_suppress_bash_output= の時に bash に出力させる文字と
+  #   その属性を表す。READLINE_LINE が空だと C-d を押した時にその場でログアウト
+  #   してしまったり、エラーメッセージが表示されたりする。その為 READLINE_LINE
+  #   に有限の長さの文字列を設定したいが、そうするとそれが画面に出てしまう。
+  #   そこで、ble.sh では現在のカーソル位置にある文字と同じ文字を READLINE_LINE
+  #   に設定する事で、bash が文字を出力しても見た目に問題がない様にしている。
+  #
+  #   cx==0 の時には現在のカーソル位置の右にある文字を READLINE_LINE に設定し
+  #   READLINE_POINT=0 とする。cx>0 の時には現在のカーソル位置の左にある文字を
+  #   READLINE_LINE に設定し READLINE_POINT=(左の文字のバイト数) とする。
+  #   (READLINE_POINT は文字数ではなくバイトオフセットである事に注意する。)
+  #
+  if [[ $bleopt_suppress_bash_output ]]; then
+    lc=32 lg=0
+  else
+    if ((index>0)); then
+      # index == 0 の場合は受け取った lc lg をそのまま返す
+
+      local lcs ret
+      if ((cx==0)); then
+        # 次の文字
+        if ((index==iN)); then
+          # 次の文字がない時は空白
+          ret=32
+        else
+          lcs="${_ble_line_text_cache_cs[index]}"
+          .ble-text.s2c "$lcs" 0
+        fi
+
+        # 次が改行の時は空白にする
+        ((lg=_ble_region_highlight_table[index]))
+        ((lc=ret==10?32:ret))
+      else
+        # 前の文字
+        lcs="${_ble_line_text_cache_cs[index-1]}"
+        .ble-text.s2c "$lcs" "$((${#lcs}-1))"
+        ((lg=_ble_region_highlight_table[index-1]))
+        ((lc=ret))
+      fi
+    fi
+  fi
+}
+
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 # 
 # **** information pane ****                                         @line.info
@@ -2688,7 +2919,7 @@ if test -n "$bleopt_suppress_bash_output"; then
     fi
   }
 
-  # * bash-3.1, bash-3.2 では C-d は直接検知できない。
+  # * bash-3.1, bash-3.2, bash-4.0 では C-d は直接検知できない。
   #   IGNOREEOF を設定しておくと C-d を押した時に
   #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
   if ((_ble_bash<40000)); then
@@ -2721,6 +2952,7 @@ if test -n "$bleopt_suppress_bash_output"; then
         if [[ $line = *'Use "exit" to leave the shell.'* ||
                 $line = *'ログアウトする為には exit を入力して下さい'* ||
                 $line = *'シェルから脱出するには "exit" を使用してください。'* ||
+                $line = *'シェルから脱出するのに "exit" を使いなさい.'* ||
                 $bleopt_ignoreeof_message && $line = *$bleopt_ignoreeof_message* ]]
         then
           echo eof >> "$_ble_edit_io_fname2.proc"
@@ -2780,29 +3012,33 @@ function .ble-decode-byte:bind/check-detach {
   fi
 }
 
-if ((_ble_bash>=40000)); then
+if ((_ble_bash>=40100)); then
   function .ble-decode-byte:bind/head {
     .ble-edit/stdout/on
 
-    if test -z "$bleopt_suppress_bash_output"; then
-      .ble-edit-draw.redraw-cache # bash-4 以降では呼出直前にプロンプトが消される
+    if [[ -z $bleopt_suppress_bash_output ]]; then
+      .ble-edit-draw.redraw-cache # bash-4.1 以降では呼出直前にプロンプトが消される
     fi
   }
+else
+  function .ble-decode-byte:bind/head {
+    .ble-edit/stdout/on
+
+    if [[ -z $bleopt_suppress_bash_output ]]; then
+      # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
+      ((_ble_line_y++,_ble_line_x=0))
+      .ble-edit-draw.goto-xy '' "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+    fi
+  }
+fi
+
+if ((_ble_bash>40000)); then
   function .ble-decode-byte:bind/tail {
     .ble-edit-draw.update-adjusted
     .ble-edit/stdout/off
   }
 else
   IGNOREEOF=10000
-  function .ble-decode-byte:bind/head {
-    .ble-edit/stdout/on
-
-    if [[ -z $bleopt_suppress_bash_output ]]; then
-      # bash-3 では呼出直前に次の行に移動する
-      ((_ble_line_y++,_ble_line_x=0))
-      .ble-edit-draw.goto-xy '' "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
-    fi
-  }
   function .ble-decode-byte:bind/tail {
     .ble-edit-draw.update # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
     .ble-edit/stdout/off

@@ -5,14 +5,22 @@ function .ble-assert {
   echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
 }
 #%)
-#%m main (
-_ble_syntax_array_prototype=()
-function _ble_syntax_array_prototype.reserve {
+#%(
+
+_ble_util_array_prototype=()
+function _ble_util_array_prototype.reserve {
   local n="$1"
-  for ((i=${#_ble_syntax_array_prototype[@]};i<n;i++)); do
-    _ble_syntax_array_prototype[i]=
+  for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
+    _ble_util_array_prototype[i]=
   done
 }
+
+.ble-shopt-extglob-push() { shopt -s extglob;}
+.ble-shopt-extglob-pop()  { shopt -u extglob;}
+source ble-color.sh
+
+#%)
+#%m main (
 
 ## @var _ble_syntax_stat[i]
 ##   文字 #i を解釈しようとする直前の状態を記録する。
@@ -90,7 +98,9 @@ function ble-syntax/parse/nest-push {
 function ble-syntax/parse/nest-pop {
   ((inest<0)) && return 1
   local parent=(${_ble_syntax_nest[inest]})
-  ((ctx=parent[0],wbegin=parent[1],inest=parent[2]))
+  ((ctx=parent[0]))
+  ((wbegin=parent[1]))
+  ((inest=parent[2]))
   #echo pop inest=$inest
 }
 function ble-syntax/parse/nest-type {
@@ -180,11 +190,11 @@ function ble-syntax/parse/check-dollar {
 function ble-syntax/parse/check-quotes {
   local rex
 
-  if rex='^`([^`\]|\\.)*(`?)|^'\''[^'\'']*('\''?)' && [[ $tail =~ $rex ]]; then
+  if rex='^`([^`\]|\\(.|$))*(`?)|^'\''[^'\'']*('\''?)' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ATTR_QDEL,
       _ble_syntax_attr[i+1]=CTX_QUOT,
       i+=${#BASH_REMATCH[0]},
-      _ble_syntax_attr[i-1]=${#BASH_REMATCH[2]}||${#BASH_REMATCH[3]}?ATTR_QDEL:ATTR_ERR))
+      _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}||${#BASH_REMATCH[4]}?ATTR_QDEL:ATTR_ERR))
     return 0
   fi
 
@@ -204,11 +214,11 @@ function ble-syntax/parse/check-quotes {
           i+=${#BASH_REMATCH[0]}))
       fi
       return 0
-    elif rex='^\$'\''([^'\''\]|\\.)*('\''?)' && [[ $tail =~ $rex ]]; then
+    elif rex='^\$'\''([^'\''\]|\\(.|$))*('\''?)' && [[ $tail =~ $rex ]]; then
       ((_ble_syntax_attr[i]=ATTR_QDEL,
         _ble_syntax_attr[i+2]=CTX_QUOT,
         i+=${#BASH_REMATCH[0]},
-        _ble_syntax_attr[i-1]=${#BASH_REMATCH[2]}?ATTR_QDEL:ATTR_ERR))
+        _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}?ATTR_QDEL:ATTR_ERR))
       return 0
     fi
   fi
@@ -348,8 +358,8 @@ function ble-syntax/parse/ctx-param {
       ctx=CTX_EXPR,i++))
     return 0
   elif [[ $tail == '}'* ]]; then
-    ((_ble_syntax_attr[i]=_ble_syntax_attr[inest],
-     i+=1))
+    ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
+    ((i+=1))
     ble-syntax/parse/nest-pop
     return 0
   else
@@ -366,8 +376,8 @@ function ble-syntax/parse/ctx-pword {
       i+=${#BASH_REMATCH[0]}))
     return 0
   elif [[ $tail == '}'* ]]; then
-    ((_ble_syntax_attr[i]=_ble_syntax_attr[inest],
-     i+=1))
+    ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
+    ((i+=1))
     ble-syntax/parse/nest-pop
     return 0
   elif ble-syntax/parse/check-quotes; then
@@ -398,8 +408,8 @@ function ble-syntax/parse/ctx-expr {
       ble-syntax/parse/nest-type -v type
       if [[ $type == '((' ]]; then
         if [[ $tail == '))'* ]]; then
-          ((_ble_syntax_attr[i]=_ble_syntax_attr[inest],
-            i+=2))
+          ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
+          ((i+=2))
           ble-syntax/parse/nest-pop
         else
           ble-syntax/parse/nest-pop
@@ -459,7 +469,8 @@ function ble-syntax/parse/ctx-expr {
       local type
       ble-syntax/parse/nest-type -v type
       if [[ $type == '${' ]]; then
-        ((_ble_syntax_attr[i]=_ble_syntax_attr[inest],i++))
+        ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
+        ((i++))
         ble-syntax/parse/nest-pop
         return 0
       else
@@ -868,11 +879,11 @@ function ble-syntax/parse {
   local _tail_syntax_word=("${_ble_syntax_word[@]:j2:iN-i2}")
   local _tail_syntax_nest=("${_ble_syntax_nest[@]:j2:iN-i2}")
   local _tail_syntax_attr=("${_ble_syntax_attr[@]:j2:iN-i2}")
-  _ble_syntax_array_prototype.reserve $iN
-  _ble_syntax_stat=("${_ble_syntax_stat[@]::i1}" "${_ble_syntax_array_prototype[@]:i1:iN-i1}") # 再開用データ
-  _ble_syntax_word=("${_ble_syntax_word[@]::i1}" "${_ble_syntax_array_prototype[@]:i1:iN-i1}") # 単語
-  _ble_syntax_nest=("${_ble_syntax_nest[@]::i1}" "${_ble_syntax_array_prototype[@]:i1:iN-i1}") # 入れ子の親
-  _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_syntax_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
+  _ble_util_array_prototype.reserve $iN
+  _ble_syntax_stat=("${_ble_syntax_stat[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 再開用データ
+  _ble_syntax_word=("${_ble_syntax_word[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 単語
+  _ble_syntax_nest=("${_ble_syntax_nest[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 入れ子の親
+  _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
 
   # 解析
   for ((i=i1;i<iN;)); do
@@ -903,7 +914,7 @@ function ble-syntax/parse {
 
 #%if debug (
   ((${#_ble_syntax_stat[@]}==iN)) ||
-    .ble-assert "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_syntax_array_prototype[@]} should be >= $iN"
+    .ble-assert "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_util_array_prototype[@]} should be >= $iN"
 #%)
 
   (((_ble_syntax_ubeg<0||_ble_syntax_ubeg>i1)&&(_ble_syntax_ubeg=i1),
@@ -935,12 +946,6 @@ function ble-syntax/parse {
 # syntax-highlight
 #
 #==============================================================================
-
-#%(
-.ble-shopt-extglob-push() { shopt -s extglob;}
-.ble-shopt-extglob-pop()  { shopt -u extglob;}
-source ble-color.sh
-#%)
 
 _ble_syntax_attr2g=()
 ble-color-gspec2g -v _ble_syntax_attr2g[CTX_ARGX]  none

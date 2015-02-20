@@ -903,7 +903,9 @@ function .ble-decode.c2dqs {
     .ble-text.sprintf ret '\\%03o' "$i"
   else
     # others
-    .ble-text.c2s "$i"
+    .ble-text.sprintf ret '\\%03o' "$i"
+
+    # .ble-text.c2s "$i" # これだと UTF-8 encode されてしまうので駄目
   fi
 }
 
@@ -995,18 +997,19 @@ function .ble-decode-bind/generate-source-to-unbind-default {
   # 2 bind を全て記録 at $$.bind.save
   bind -sp 2>/dev/null | awk -v apos="'" '
     BEGIN{APOS=apos "\\" apos apos;}
-    /^"(\\e|\\M-)/{
-      match($0,/^"(([^"]|\\.)+)"/,_capt);
-      seq=_capt[1];
-
-      # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
-      #   bind -r では \M- ではなく \e と指定しなければ削除できない。
-      gsub(/\\M-/,"\\e",seq);
-
-      gsub(apos,APOS,seq);
-      print "bind -r " apos seq apos;
-    }
+    #/^"(\\e|\\M-)/{
     /^"/{
+      if(match($0,/^"(([^"]|\\.)+)"/,_capt)>0){
+        seq=_capt[1];
+
+        # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
+        #   bind -r では \M- ではなく \e と指定しなければ削除できない。
+        gsub(/\\M-/,"\\e",seq);
+
+        gsub(apos,APOS,seq);
+        print "bind -r " apos seq apos;
+      }
+
       gsub(apos,APOS);
       print "bind " apos $0 apos >"/dev/stderr";
     }
@@ -1094,14 +1097,16 @@ function .ble-decode-bind {
     # done < <(bind -sp | grep -Fa '"\e' | awk '{match($0,/"([^"]+)"/,_capt);print _capt[1] "x";}')
   fi
 
+  # * C-x (24) は直接 bind すると何故か bash が crash する。
+  #   なので C-x は割り当てないで、
+  #   代わりに C-x ? の組合せを全て登録する事にする。
+  local bash42bug="$((_ble_bash<40300))"
+
   # bind -x '"?":ble-decode-byte:bind ?'
   local i
   for ((i=0;i<256;i++)); do
     local ret; .ble-decode.c2dqs "$i"
 
-    # * C-x (24) は直接 bind すると何故か bash が crash する。
-    #   なので C-x は割り当てないで、
-    #   代わりに C-x ? の組合せを全て登録する事にする。
     # * bash-4.1 では ESC ESC に bind すると
     #   bash_execute_unix_command: cannot find keymap for command
     #   が出るので ESC [ ^ に適当に redirect して ESC [ ^ を
@@ -1110,11 +1115,16 @@ function .ble-decode-bind {
     #   bash-4.3 では ESC ?, ESC [ ? も全て割り当てないと以下のエラーになる。
     #   bash_execute_unix_command: cannot find keymap for command
 
-    # ?
-    ((i!=24)) && $binder "$ret" "$i"
+    if ((bash42bug)); then
+      # ?
+      ((i!=24)) && $binder "$ret" "$i"
 
-    # C-x ?
-    $binder "$ret" "24 $i"
+      # C-x ?
+      $binder "$ret" "24 $i"
+    else
+      # ?
+      $binder "$ret" "$i"
+    fi
 
     if ((_ble_bash>=40300)); then
       # bash-4.3 以降は bind -x がこれまでと色々と違う様だ
@@ -1191,6 +1201,7 @@ function ble-decode-detach {
 _ble_decode_byte__utf_8__mode=0
 _ble_decode_byte__utf_8__code=0
 function ble-decode-byte+UTF-8 {
+  echo "$*" >> 1.tmp
   local code=$_ble_decode_byte__utf_8__code
   local mode=$_ble_decode_byte__utf_8__mode
   local byte="$1"
