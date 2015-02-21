@@ -39,7 +39,7 @@
 ##   有効です。
 ## bleopt_edit_vbell=
 ##   無効です。
-: ${bleopt_edit_vbell=1}
+: ${bleopt_edit_vbell=}
 
 ## オプション bleopt_edit_abell
 ##   編集時の audible bell (BEL 文字出力) の有効・無効を設定します。
@@ -66,7 +66,7 @@
 ##   抑制しません。bash のメッセージは全て端末に出力されます。
 ##   これはデバグ用の設定です。bash の出力を制御するためにちらつきが発生する事があります。
 ##   bash-3 ではこの設定では C-d を捕捉できません。
-: ${bleopt_suppress_bash_output=}
+: ${bleopt_suppress_bash_output=1}
 
 ## オプション bleopt_ignoreeof_message (内部使用)
 ##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
@@ -722,7 +722,7 @@ function .ble-line-text.construct {
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 #@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-# declare _ble_line_text_cache=
+declare _ble_line_text_cache=
 declare -a _ble_line_text_cache_pos=()
 declare -a _ble_line_text_cache_cs=()
 
@@ -736,104 +736,214 @@ function .ble-line-text.update-positions2 {
     return
   fi
 
-  local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl" _spaces='                '
+  local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl"
+  # local cols="80" it="$_ble_term_it" xenl="1"
+  local _spaces='                ' nl=$'\n'
 
   local dbeg dend dend0
   ((dbeg=BLELINE_RANGE_UPDATE[0]))
   ((dend=BLELINE_RANGE_UPDATE[1]))
   ((dend0=BLELINE_RANGE_UPDATE[2]))
 
-  local i
-  if ((dirty<=0)); then
-    _ble_line_text_cache_pos[0]="$x $y"
-  else
-    # load intermediate state
-    local pos=(${_ble_line_text_cache_pos[dbeg]})
-    ((i=dbeg))
+  # 初期位置
+  local _pos="$x $y"
+  if [[ ${_ble_line_text_cache_pos[0]} != "$_pos" ]]; then
+    # 初期位置の変更がある場合は初めから計算し直し
+    dbeg=0
+    _ble_line_text_cache_pos[0]="$_pos"
+  elif ((dbeg<0)); then
+    # 初期位置も内容も変更がない場合はOK
+    local pos=(${_ble_line_text_cache_pos[iN]})
     ((x=pos[0]))
     ((y=pos[1]))
-    
-    # shift cached data
-    _ble_util_array_prototype.reserve "$iN"
-    _ble_line_text_cache_pos=(
-      "${_ble_line_text_cache_pos[@]::dbeg+1}"
-      "${_ble_util_array_prototype[@]::dend-dbeg}"
-      "${_ble_line_text_cache_pos[@]:dend0+1:iN-dend+1}")
-    _ble_line_text_cache_cs=(
-      "${_ble_line_text_cache_cs[@]::dbeg+1}"
-      "${_ble_util_array_prototype[@]::dend-dbeg}"
-      "${_ble_line_text_cache_cs[@]:dend0+1:iN-dend+1}")
+    return
+  elif ((dbeg>0)); then
+    # 途中から計算を再開
+    local pos=(${_ble_line_text_cache_pos[dbeg]})
+    ((x=pos[0]))
+    ((y=pos[1]))
   fi
   
-  local rex_ascii='^[ -~]+'
-  for ((;i<iN;)); do
-    # if [[ ${text:i} =~ $rex_ascii ]]; then
-    #   local w="${BASH_REMATCH[0]}"
-
-    #   ((x+=w))
-    #   while ((x>cols)); do
-    #     ((y++,x-=cols))
-    #   done
-    #   if ((x==cols)); then
-    #     ((xenl)) && cs="$cs"$'\n'
-    #     ((y++,x=0))
-    #   fi
-
-    #   i+=w
-    # fi
-
-    .ble-text.s2c "$text" "$i"
-    local code="$ret"
-
-    local w=0 cs=
-    if ((code<32)); then
-      if ((code==9)); then
-        if (((w=(x+it)/it*it-x)>0)); then
-          cs="${_spaces::w}"
-        fi
-      elif ((code==10)); then
-        ((y++,x=0))
-        cs=$'\n'
-      else
-        ((w=2))
-        .ble-text.c2s "$((code+64))"
-        cs="^$ret"
-      fi
-    elif ((code==127)); then
-      w=2 cs="^?"
-    else
-      .ble-text.c2w "$code"
-      w="$ret" cs="${text:i:1}"
-      if ((x<cols&&cols<x+w)); then
-        ((x=cols))
-        cs="${_spaces:0:cols-x}$cs"
-      fi
-    fi
-
-    if ((w>0)); then
-      ((x+=w))
-      while ((x>cols)); do
-        ((y++,x-=cols))
+  # shift cached data
+  _ble_util_array_prototype.reserve "$iN"
+  local old_pos=("${_ble_line_text_cache_pos[@]:dend0:iN-dend+1}")
+  _ble_line_text_cache_pos=(
+    "${_ble_line_text_cache_pos[@]::dbeg+1}"
+    "${_ble_util_array_prototype[@]::dend-dbeg}"
+    "${_ble_line_text_cache_pos[@]:dend0+1:iN-dend}")
+  _ble_line_text_cache_cs=(
+    "${_ble_line_text_cache_cs[@]::dbeg}"
+    "${_ble_util_array_prototype[@]::dend-dbeg}"
+    "${_ble_line_text_cache_cs[@]:dend0:iN-dend}")
+  
+  local i rex_ascii='^[ -~]+'
+  for ((i=dbeg;i<iN;)); do
+    if [[ ${text:i} =~ $rex_ascii ]]; then
+      local w="${#BASH_REMATCH[0]}"
+      local n
+      for ((n=i+w;i<n;i++)); do
+        cs="${text:i:1}"
+        (((++x==cols)&&(y++,x=0,xenl))) && cs="$cs$nl"
+        _ble_line_text_cache_cs[i]="$cs"
+        _ble_line_text_cache_pos[i+1]="$x $y"
       done
-      if ((x==cols)); then
-        ((xenl)) && cs="$cs"$'\n'
-        ((y++,x=0))
+    else
+      .ble-text.s2c "$text" "$i"
+      local code="$ret"
+
+      local w=0 cs=
+      if ((code<32)); then
+        if ((code==9)); then
+          if (((w=(x+it)/it*it-x)>0)); then
+            cs="${_spaces::w}"
+          fi
+        elif ((code==10)); then
+          ((y++,x=0))
+          cs=$'\n'
+        else
+          ((w=2))
+          .ble-text.c2s "$((code+64))"
+          cs="^$ret"
+        fi
+      elif ((code==127)); then
+        w=2 cs="^?"
+      else
+        .ble-text.c2w "$code"
+        w="$ret" cs="${text:i:1}"
+        if ((x<cols&&cols<x+w)); then
+          ((x=cols))
+          cs="${_spaces:0:cols-x}$cs"
+        fi
       fi
-    fi
 
-    _ble_line_text_cache_cs[i]="$cs"
-    ((i++))
+      if ((w>0)); then
+        ((x+=w))
+        while ((x>cols)); do
+          ((y++,x-=cols))
+        done
+        if ((x==cols)); then
+          ((xenl)) && cs="$cs"$'\n'
+          ((y++,x=0))
+        fi
+      fi
 
-    local _pos="$x $y"
-    if ((i>=dend)) && [[ ${_ble_line_text_cache_pos[i]} == "$_pos" ]]; then
-      # 後は同じなので計算を省略
-      local pos=(${_ble_line_text_cache_pos[iN]})
-      ((x=pos[0]))
-      ((y=pos[1]))
-      return
+      _ble_line_text_cache_cs[i]="$cs"
+      _ble_line_text_cache_pos[i+1]="$x $y"
+      ((i++))
     fi
-    _ble_line_text_cache_pos[i]="$_pos"
+    
+    # 後は同じなので計算を省略
+    ((i>=dend)) && [[ ${old_pos[i-dend]} == ${_ble_line_text_cache_pos[i]} ]] && break
   done
+
+  if ((i<iN)); then
+    # 途中で一致して中断した場合は、前の iN 番目の位置を読む
+    local pos=(${_ble_line_text_cache_pos[iN]})
+    ((x=pos[0]))
+    ((y=pos[1]))
+  fi
+
+  POS_UMIN="$dbeg" POS_UMAX="$i"
+}
+
+_ble_line_text_cache_layer=
+_ble_line_text_cache_layer_indices=()
+
+## 関数 .ble-line-text/update-highlight-layer
+##   _ble_line_text_cache_layer 及び
+##   _ble_line_text_cache_layer_indices を更新します。
+function .ble-line-text/update-highlight-layer {
+  # ■ _ble_line_text_cache_cs から独立させる
+
+  local dbeg dend dend0 iN="${#text}"
+  ((dbeg=BLELINE_RANGE_UPDATE[0]))
+  ((dend=BLELINE_RANGE_UPDATE[1]))
+  ((dend0=BLELINE_RANGE_UPDATE[2]))
+
+  # shift
+  if ((dbeg>=0)); then
+    _ble_util_array_prototype.reserve "$((dend-dbeg))"
+    _ble_region_highlight_table=(
+      "${_ble_region_highlight_table[@]::dbeg}"
+      "${_ble_util_array_prototype[@]::dend-dbeg}"
+      "${_ble_region_highlight_table[@]:dend0}")
+  fi
+
+  # LAYER_UMIN - LAYER_UMAX: shift 以外の変更があった範囲
+  local LAYER_UMIN LAYER_UMAX
+
+  # 色付けの実行
+  if test -n "$bleopt_syntax_highlight_mode"; then
+    LAYER_UMIN=0 LAYER_UMAX="$iN"
+    "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
+  else
+    LAYER_UMIN="$iN" LAYER_UMAX=0
+  fi
+
+  # 編集文字列の変更もなく、色の変更もない場合は何もせず抜ける。
+  # 編集文字列が変わっていなくても色が変わっている事がある事に注意する
+  # (選択範囲の変更や括弧の対応など)。
+  ((dbeg<0&&LAYER_UMIN>=LAYER_UMAX)) && return
+  
+  if ((dbeg>=0)); then
+    ((LAYER_UMIN>dbeg&&(LAYER_UMIN=dbeg),
+      LAYER_UMAX<dend&&(LAYER_UMAX=dend)))
+  fi
+
+  if ((POS_UMAX>POS_UMIN)); then
+    ((LAYER_UMIN>POS_UMIN&&(LAYER_UMIN=POS_UMIN),
+      LAYER_UMAX<POS_UMAX&&(LAYER_UMAX=POS_UMAX)))
+  fi
+
+  local old_line="$_ble_line_text_cache_layer"
+  local old_umin_elen="${_ble_line_text_cache_layer_indices[LAYER_UMIN]}"
+  local old_umax_elen="${_ble_line_text_cache_layer_indices[LAYER_UMAX]}"
+
+  _ble_util_array_prototype.reserve "$((dend-dbeg))"
+  _ble_line_text_cache_layer_indices=(
+    "${_ble_line_text_cache_layer_indices[@]::dbeg+1}"
+    "${_ble_util_array_prototype[@]::dend-dbeg}"
+    "${_ble_line_text_cache_layer_indices[@]:dend0+1:iN-dend}")
+
+  local buff=("${old_line::old_umin_elen}")
+  local i elen="${_ble_line_text_cache_layer_indices[LAYER_UMIN]:=0}"
+  local g gprev ret
+  if ((LAYER_UMIN==0)); then
+    gprev=-1
+  else
+    ((gprev=_ble_region_highlight_table[LAYER_UMIN-1]))
+  fi
+  for ((i=LAYER_UMIN;i<LAYER_UMAX;i++)); do
+    if ((g=_ble_region_highlight_table[i],g!=gprev)); then
+      .ble-color.g2seq "$g"
+      buff[${#buff[@]}]="$ret"
+      ((elen+=${#ret},gprev=g))
+    fi
+
+    buff[${#buff[@]}]="${_ble_line_text_cache_cs[$i]}"
+    ((elen+=${#_ble_line_text_cache_cs[i]},
+      _ble_line_text_cache_layer_indices[i+1]=elen))
+  done
+
+  ((i==LAYER_UMAX)) || .ble-assert 'bug'
+
+  if ((i<iN)); then
+    # つなぎ目の SGR の調整
+    if ((g=_ble_region_highlight_table[i],g!=gprev)); then
+      .ble-color.g2seq "$g"
+      buff[${#buff[@]}]="$ret"
+      ((elen+=${#ret},gprev=g))
+    fi
+    buff[${#buff[@]}]="${old_line:old_umax_elen}"
+
+    # i+1 番目以降の境界のずれ
+    local elen_shift="$((elen-old_umax_elen))"
+    for((;i<iN;i++)); do
+      ((_ble_line_text_cache_layer_indices[i+1]+=elen_shift))
+    done
+  fi
+
+  IFS= eval '_ble_line_text_cache_layer="${buff[*]}"'
 }
 
 ## 関数 .ble-line.construct-text
@@ -842,6 +952,7 @@ function .ble-line-text.update-positions2 {
 ## @var[   out] ret cx cy
 function .ble-line-text.construct {
   # text dirty x y [update-positions] x y
+  local POS_UMIN=-1 POS_UMAX=-1
   .ble-line-text.update-positions2
 
   # cursor point
@@ -849,28 +960,14 @@ function .ble-line-text.construct {
   ((index<0?(index=0):index>iN&&(index=iN)))
 
   # highlight
-  _ble_region_highlight_table=()
-  if test -n "$bleopt_syntax_highlight_mode"; then
-    "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
+  .ble-line-text/update-highlight-layer
+  peind="${_ble_line_text_cache_layer_indices[index]}"
+  _ble_line_text_cache="$_ble_line_text_cache_layer"
+  if ((iN==0)); then
+    g0=0
+  else
+    g0="${_ble_region_highlight_table[iN-1]}"
   fi
-
-  local i g g0= buff=() elen=0 peind="$iN"
-  # TODO: ps1 の最後の文字の SGR フラグはここで g0 に代入する?
-  for ((i=0;i<iN;i++)); do
-    ((
-      i==index&&(peind=elen),
-      g=_ble_region_highlight_table[i],
-      g!=g0
-    )) && {
-      .ble-color.g2seq "$g"
-      buff[${#buff[@]}]="$ret"
-      ((elen+=${#ret},g0=g))
-    }
-
-    ((elen+=${#_ble_line_text_cache_cs[$i]}))
-    buff[${#buff[@]}]="${_ble_line_text_cache_cs[$i]}"
-  done
-  IFS= eval '_ble_line_text_cache="${buff[*]}"'
 
   if ((index<iN)); then
     # Note#1
@@ -1333,6 +1430,9 @@ function .ble-edit-draw.update {
   # BLELINE_RANGE_UPDATE → .ble-line-text.construct 内でこれを見て update を済ませる
   local BLELINE_RANGE_UPDATE=("$_ble_edit_str_dbeg" "$_ble_edit_str_dend" "$_ble_edit_str_dend0")
   ble-edit/dirty-range/clear
+
+  # local graphic_dbeg graphic_dend graphic_dend0
+  # ble-edit/dirty-range/update --prefix=graphic_d
 
   local cx="$x" cy="$y"
   local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_edit_dirty"

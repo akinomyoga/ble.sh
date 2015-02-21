@@ -75,10 +75,21 @@ _BLE_SYNTAX_CSPECIAL[CTX_PWORD]="}\$\"\`\\!" # パラメータ展開 ${～}
 
 # 属性値の変更範囲
 
-_ble_syntax_ubeg=-1 _ble_syntax_uend=-1
-function ble-syntax/parse/updated-touch {
-  (((_ble_syntax_ubeg<0||_ble_syntax_ubeg>$1)&&(
-      _ble_syntax_ubeg=$1)))
+## @var _ble_syntax_attr_umin, _ble_syntax_attr_uend は更新された文法属性の範囲を記録する。
+## @var _ble_syntax_word_umin, _ble_syntax_word_umax は更新された単語の先頭位置の範囲を記録する。
+##   attr については [_ble_syntax_attr_umin, _ble_syntax_attr_uend) が範囲である。
+##   word については [_ble_syntax_word_umin, _ble_syntax_word_umax] が範囲である。
+_ble_syntax_attr_umin=-1 _ble_syntax_attr_uend=-1
+_ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
+function ble-syntax/parse/touch-updated-attr {
+  (((_ble_syntax_attr_umin<0||_ble_syntax_attr_umin>$1)&&(
+      _ble_syntax_attr_umin=$1)))
+}
+function ble-syntax/parse/touch-updated-word {
+  (((_ble_syntax_word_umin<0||_ble_syntax_word_umin>$1)&&(
+      _ble_syntax_word_umin=$1)))
+  (((_ble_syntax_word_umax<0||_ble_syntax_word_umax<$1)&&(
+      _ble_syntax_word_umax=$1)))
 }
 
 # 入れ子構造の管理
@@ -443,6 +454,9 @@ function ble-syntax/parse/ctx-expr {
         else
           # a[...]... という唯のコマンドの場合。
           if ((wbegin>=0)); then
+            ble-syntax/parse/touch-updated-attr "$wbegin"
+            ble-syntax/parse/touch-updated-word "$wbegin"
+
             # 式としての解釈を取り消し。
             local j
             for ((j=wbegin+1;j<i;j++)); do
@@ -451,11 +465,11 @@ function ble-syntax/parse/ctx-expr {
               _ble_syntax_attr[j]=
             done
 
-            ble-syntax/parse/updated-touch "$wbegin"
+            # コマンド
+            ((_ble_syntax_attr[wbegin]=CTX_CMDI))
           fi
 
-          # コマンド
-          ((_ble_syntax_attr[wbegin]=CTX_CMDI,i++))
+          ((i++))
         fi
         return 0
       elif [[ $type == 'v[' ]]; then
@@ -531,6 +545,7 @@ function ble-syntax/parse/ctx-command/check-word-end {
 #%if debug (
   [[ ${_ble_syntax_word[wbegin]} ]] || .ble-assert "invalid wbegin"
 #%)
+  ble-syntax/parse/touch-updated-word "$wbegin"
   local rword=(${_ble_syntax_word[wbegin]})
   ((rword[1]=wlen))
 
@@ -538,7 +553,7 @@ function ble-syntax/parse/ctx-command/check-word-end {
     case "$word" in
     ('[[')
       # 条件コマンド開始 (■CTX_COND (~ ARGX/ARGI) 的な物を作った方が良い。中での改行など色々違う)
-      ble-syntax/parse/updated-touch "$wbegin"
+      ble-syntax/parse/touch-updated-attr "$wbegin"
       ((_ble_syntax_attr[wbegin]=ATTR_DEL,
         ctx=CTX_ARGX0))
 
@@ -560,7 +575,7 @@ function ble-syntax/parse/ctx-command/check-word-end {
       local type
       ble-syntax/parse/nest-type -v type
       if [[ $type == '[[' ]]; then
-        ble-syntax/parse/updated-touch "$wbegin"
+        ble-syntax/parse/touch-updated-attr "$wbegin"
         ((_ble_syntax_attr[wbegin]=ATTR_CMD_KEYWORD))
 
         _ble_syntax_word[wbegin]="${rword[*]}"
@@ -655,6 +670,7 @@ function ble-syntax/parse/ctx-command {
     ((flagWbeginErr=ctx==CTX_ARGX0,
       wbegin=i,
       ctx=(ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_CMDXF)?CTX_ARGI:CTX_CMDI))
+    ble-syntax/parse/touch-updated-word "$i"
     _ble_syntax_word[i]="$ctx 0"
   fi
 
@@ -690,7 +706,10 @@ function ble-syntax/parse/ctx-command {
   fi
 
   if ((flagConsume)); then
-    ((flagWbeginErr&&(_ble_syntax_attr[wbegin]=ATTR_ERR)))
+    if ((flagWbeginErr&&wbegin>=0)); then
+      ble-syntax/parse/touch-updated-attr "$wbegin"
+      ((_ble_syntax_attr[wbegin]=ATTR_ERR))
+    fi
     return 0
   else
     return 1
@@ -709,6 +728,7 @@ function ble-syntax/parse/ctx-redirect/check-word-begin {
     # ※ここで ctx==CTX_RDRF か ctx==CTX_RDRD かの情報が使われるので
     #   CTX_RDRF と CTX_RDRD は異なる二つの文脈として管理している。
     ((wbegin=i))
+    ble-syntax/parse/touch-updated-word "$i"
     _ble_syntax_word[i]="$ctx 0"
   fi
 }
@@ -725,6 +745,7 @@ function ble-syntax/parse/ctx-redirect/check-word-end {
   ((rword[1]=i-wbegin))
   _ble_syntax_word[wbegin]="${rword[*]}"
   ((wbegin=-1))
+  ble-syntax/parse/touch-updated-word "$wbegin"
 
   # pop
   ble-syntax/parse/nest-pop
@@ -796,12 +817,13 @@ _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 ## @var  [in,out] _ble_syntax_word[] シェル単語の情報を記録
 ##   これらの変数には解析結果が格納される。
 ##
-## @var  [out]    _ble_syntax_ubeg
-## @var  [out]    _ble_syntax_uend
-##   今回の呼出によって文法的な解釈の変更が行われた範囲を返します。
+## @var  [in,out] _ble_syntax_attr_umin
+## @var  [in,out] _ble_syntax_attr_uend
+## @var  [in,out] _ble_syntax_word_umin
+## @var  [in,out] _ble_syntax_word_umax
+##   今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
 ##
 function ble-syntax/parse {
-  _ble_syntax_ubeg=-1 _ble_syntax_uend=-1
   local -r text="$1" beg="${2:-0}" end="${3:-${#text}}"
   local end0="${4:-$end}"
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
@@ -828,26 +850,33 @@ function ble-syntax/parse {
   for ((i=i2,j=j2=i2-shift;i<iN;i++,j++)); do
     if [[ ${_ble_syntax_stat[j]} ]]; then
       # (1) shift の修正
+      if ((end!=end0)); then
+        local stat=(${_ble_syntax_stat[j]})
+        _ble_syntax_stat[j]="${stat[*]}"
+        ((stat[1]>=end0)) && ((stat[1]+=shift))
+        ((stat[2]>=end0)) && ((stat[2]+=shift))
+        # ※bash-3.2 では、bug で分岐内で配列を参照すると必ずそちらに分岐してしまう。
+        #   そのため以下は失敗する。必ず shift が加算されてしまう。
+        # ((stat[1]>=end0&&(stat[1]+=shift),
+        #   stat[2]>=end0&&(stat[2]+=shift)))
+
+        local nest=(${_ble_syntax_nest[j]})
+        ((nest[1]>=end0)) && ((nest[1]+=shift))
+        ((nest[2]>=end0)) && ((nest[2]+=shift))
+        _ble_syntax_nest[j]="${nest[*]}"
+      fi
+
       # (2) [i1,i2) 内を参照している場合 dirty を拡大
-      local stat=(${_ble_syntax_stat[j]})
-      _ble_syntax_stat[j]="${stat[*]}"
-      ((stat[1]+=stat[1]>=end0?shift:0,
-        stat[2]+=stat[2]>=end0?shift:0))
-      # ※bash-3.1 では、bug で分岐内で配列を参照すると必ずそちらに分岐してしまう
-      # ((stat[1]>=end0&&(stat[1]+=shift),
-      #   stat[2]>=end0&&(stat[2]+=shift)))
-
-      local nest=(${_ble_syntax_nest[j]})
-      ((nest[1]+=nest[1]>=end0?shift:0,
-        nest[2]+=nest[2]>=end0?shift:0))
-      # ((nest[1]>=end0&&(nest[1]+=shift),
-      #   nest[2]>=end0&&(nest[2]+=shift)))
-      _ble_syntax_nest[j]="${nest[*]}"
-
       (((i1<=stat[1]&&stat[1]<=i2||i1<=stat[2]&&stat[2]<=i2)&&(i2=i+1,j2=j+1)))
     fi
   done
   if ((end!=end0)); then
+    # 更新範囲の shift
+    ((_ble_syntax_attr_umin>=end0&&(_ble_syntax_attr_umin+=shift),
+      _ble_syntax_attr_uend>end0&&(_ble_syntax_attr_uend+=shift),
+      _ble_syntax_word_umin>=end0&&(_ble_syntax_word_umin+=shift),
+      _ble_syntax_word_umax>=end0&&(_ble_syntax_word_umax+=shift)))
+
     # 単語の長さの更新
     for ((i=0;i<beg;i++)); do
       if [[ ${_ble_syntax_word[i]} ]]; then
@@ -855,6 +884,7 @@ function ble-syntax/parse {
         if ((end0<i+word[1])); then
           ((word[1]+=end-end0))
           _ble_syntax_word[i]="${word[*]}"
+          ble-syntax/parse/touch-updated-word "$i"
           #echo "word [$((word[1]-end+end0)) -> ${word[1]}]" >&2
         fi
       fi
@@ -919,8 +949,12 @@ function ble-syntax/parse {
     .ble-assert "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_util_array_prototype[@]} should be >= $iN"
 #%)
 
-  (((_ble_syntax_ubeg<0||_ble_syntax_ubeg>i1)&&(_ble_syntax_ubeg=i1),
-    (_ble_syntax_uend<0||_ble_syntax_uend<i)&&(_ble_syntax_uend=i),
+  # 全て記録している筈なので、更新範囲を反映して無くても良い…はず
+  # (_ble_syntax_word_umin<0||_ble_syntax_word_umin>_ble_syntax_attr_umin)&&(_ble_syntax_word_umin=_ble_syntax_attr_umin),
+  # (_ble_syntax_word_umax<0||_ble_syntax_word_umax<_ble_syntax_attr_uend)&&(_ble_syntax_word_umax=_ble_syntax_attr_uend),
+
+  (((_ble_syntax_attr_umin<0||_ble_syntax_attr_umin>i1)&&(_ble_syntax_attr_umin=i1),
+    (_ble_syntax_attr_uend<0||_ble_syntax_attr_uend<i)&&(_ble_syntax_attr_uend=i),
     (i>=i2)?(
       _ble_syntax_dbeg=_ble_syntax_dend=-1
     ):(
@@ -971,8 +1005,12 @@ ble-color-gspec2g -v _ble_syntax_attr2g[CTX_PWORD] none
 
 ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_HISTX] bg=94,fg=231
 
-# filetype
 
+# region
+ATTR_REGION_SEL=91
+ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_REGION_SEL] bg=60,fg=white
+
+# filetype
 ATTR_CMD_BOLD=101
 ATTR_CMD_BUILTIN=102
 ATTR_CMD_ALIAS=103
@@ -1119,17 +1157,38 @@ function ble-syntax/highlight/filetype {
 
 # highlighter
 
+function ble-syntax/highlight/set-attribute {
+  local i="$1" g="$2"
+  if ((_ble_region_highlight_table[i]!=g)); then
+    ((LAYER_UMIN>i&&(LAYER_UMIN=i),
+      LAYER_UMAX<i&&(LAYER_UMAX=i),
+      _ble_region_highlight_table[i]=g))
+  fi
+}
+
 function ble-syntax/highlight/fill-g {
   local g="$1" i
   if [[ $3 ]]; then
     for ((i=$2;i<$3;i++)); do
-      _ble_region_highlight_table[i]="$g"
+      ble-syntax/highlight/set-attribute "$i" "$g"
     done
   else
     for ((i=$2;i<iN;i++)); do
-      _ble_region_highlight_table[i]="$g"
+      ble-syntax/highlight/set-attribute "$i" "$g"
       [[ ${_ble_syntax_attr[i+1]} ]] && break
     done
+  fi
+}
+
+# ■後で一個のレイヤーとして独立
+function ble-syntax/highlight/region-layer {
+  if [[ $_ble_edit_mark_active ]] && ((_ble_edit_mark!=_ble_edit_ind)); then
+    local g="${_ble_syntax_attr2g[ATTR_REGION_SEL]}"
+    if ((_ble_edit_mark>_ble_edit_ind)); then
+      ble-syntax/highlight/fill-g "$g" "$_ble_edit_ind" "$_ble_edit_mark"
+    elif ((_ble_edit_mark<_ble_edit_ind)); then
+      ble-syntax/highlight/fill-g "$g" "$_ble_edit_mark" "$_ble_edit_ind"
+    fi
   fi
 }
 
@@ -1148,15 +1207,48 @@ function ble-syntax-highlight+syntax {
     ble-syntax/parse "$text" "${BLELINE_RANGE_UPDATE[0]}" "${BLELINE_RANGE_UPDATE[1]}" "${BLELINE_RANGE_UPDATE[2]}"
   fi
 
-  # [[ $dirty ]] && ble-syntax/parse "$text" "$((dirty<0?0:dirty))"
-  #[[ $dirty ]] && ble-syntax/parse "$text"
-  local i iN=${#text} g=0
-  for ((i=0;i<iN;i++)); do
-    if ((${_ble_syntax_attr[i]})); then
-      g="${_ble_syntax_attr2g[_ble_syntax_attr[i]]:-0}"
-    fi
-    _ble_region_highlight_table[i]="$g"
-  done
+  LAYER_UMIN="${#text}"
+  LAYER_UMAX=0
+
+  # _ble_syntax_attr 適用 (word の方と別レイヤーにしないと駄目では?)
+  local i iN=${#text}
+  if ((_ble_syntax_attr_umin>=0)); then
+    local g=0
+    for ((i=_ble_syntax_attr_umin;i<_ble_syntax_attr_uend;i++)); do
+      if ((${_ble_syntax_attr[i]})); then
+        g="${_ble_syntax_attr2g[_ble_syntax_attr[i]]:-0}"
+      fi
+      ble-syntax/highlight/set-attribute "$i" "$g"
+    done
+    _ble_syntax_attr_umin=-1 _ble_syntax_attr_uend=-1
+  fi
+
+  # _ble_syntax_word 適用
+  if ((_ble_syntax_word_umin>=0)); then
+    for ((i=_ble_syntax_word_umin;i<=_ble_syntax_word_umax;i++)); do
+      if [[ ${_ble_syntax_word[i]} ]]; then
+        local wrec=(${_ble_syntax_word[i]})
+        local word="${text:i:wrec[1]}"
+        if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
+          local value type=
+          eval "value=$word"
+          if ((wrec[0]==CTX_CMDI)); then
+            ble-syntax/highlight/cmdtype "$value" "$word"
+          elif ((wrec[0]==CTX_ARGI||wrec[0]==CTX_RDRF)); then
+            ble-syntax/highlight/filetype "$value" "$word"
+
+            # エラー: ディレクトリにリダイレクトはできない
+            ((wrec[0]==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
+          fi
+          if [[ $type ]]; then
+            g="${_ble_syntax_attr2g[type]}"
+            ble-syntax/highlight/fill-g "$g" "$i" "$((i+wrec[1]))"
+          fi
+        fi
+      fi
+    done
+    _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
+  fi
 
   # 末端の非終端エラー
   if [[ ${_ble_syntax_stat[iN]} ]]; then
@@ -1164,7 +1256,7 @@ function ble-syntax-highlight+syntax {
     local i ctx="${stat[0]}" wbegin="${stat[1]}" inest="${stat[2]}"
     local gErr="${_ble_syntax_attr2g[ATTR_ERR]}"
     if((inest>=0)); then
-      _ble_region_highlight_table[iN-1]="$gErr"
+      ble-syntax/highlight/set-attribute "$((iN-1))" "$gErr"
       while ((inest>=0)); do
         ble-syntax/highlight/fill-g "$gErr" "$inest"
         ((i=inest))
@@ -1173,50 +1265,27 @@ function ble-syntax-highlight+syntax {
       done
     fi
     if ((ctx==CTX_CMDX1||ctx==CTX_CMDXF)); then
-      _ble_region_highlight_table[iN-1]="$gErr"
+      ble-syntax/highlight/set-attribute "$((iN-1))" "$gErr"
     fi
   fi
 
-  for ((i=0;i<iN;i++)); do
-    if [[ ${_ble_syntax_word[i]} ]]; then
-      local wrec=(${_ble_syntax_word[i]})
-      local word="${text:i:wrec[1]}"
-      if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
-        local value type=
-        eval "value=$word"
-        if ((wrec[0]==CTX_CMDI)); then
-          ble-syntax/highlight/cmdtype "$value" "$word"
-        elif ((wrec[0]==CTX_ARGI||wrec[0]==CTX_RDRF)); then
-          ble-syntax/highlight/filetype "$value" "$word"
+  ble-syntax/highlight/region-layer
 
-          # エラー: ディレクトリにリダイレクトはできない
-          ((wrec[0]==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
-        fi
-        if [[ $type ]]; then
-          g="${_ble_syntax_attr2g[type]}"
-          ble-syntax/highlight/fill-g "$g" "$i" "$((i+wrec[1]))"
-        fi
-      fi
-    fi
-  done
-
-  ble-syntax-highlight+region "$@"
-
-  # 以下は単語の分割のデバグ用
-  local words=()
-  for ((i=0;i<iN;i++)); do
-    if [[ ${_ble_syntax_word[i]} ]]; then
-      local wrec=(${_ble_syntax_word[i]})
-      local word="${text:i:wrec[1]}"
-      if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
-        eval "value=$word"
-      else
-        local value="? ($word)"
-      fi
-      words+=("[$value ${wrec[*]}]")
-    fi
-  done
-  .ble-line-info.draw "${words[*]}"
+  # # 以下は単語の分割のデバグ用
+  # local words=()
+  # for ((i=0;i<iN;i++)); do
+  #   if [[ ${_ble_syntax_word[i]} ]]; then
+  #     local wrec=(${_ble_syntax_word[i]})
+  #     local word="${text:i:wrec[1]}"
+  #     if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
+  #       eval "value=$word"
+  #     else
+  #       local value="? ($word)"
+  #     fi
+  #     words+=("[$value ${wrec[*]}]")
+  #   fi
+  # done
+  # .ble-line-info.draw "${words[*]}"
 
   # 以下は check code for BLELINE_RANGE_UPDATE
   # if ((BLELINE_RANGE_UPDATE[0]>=0)); then
@@ -1284,12 +1353,12 @@ function mytest {
   # # insertion test
   # text="${text::5}""hello; echo""${text:5}"
   # ble-syntax/parse "$text" 5 16 5
-  # echo update $_ble_syntax_ubeg-$_ble_syntax_uend
+  # echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_uend
 
   # # delete test
   # text="${text::5}""${text:10}"
   # ble-syntax/parse "$text" 5 5 10
-  # echo update $_ble_syntax_ubeg-$_ble_syntax_uend
+  # echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_uend
 
   local buff=()
 
