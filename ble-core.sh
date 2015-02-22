@@ -78,9 +78,16 @@ fi
 
 _ble_util_array_prototype=()
 function _ble_util_array_prototype.reserve {
-  local n="$1" i
+  local -i n="$1" i
   for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
     _ble_util_array_prototype[i]=
+  done
+}
+_ble_util_string_prototype='        '
+function _ble_util_string_prototype.reserve {
+  local -i n="$1" c
+  for ((c=${#_ble_util_string_prototype};c<n;c*=2)); do
+    _ble_util_string_prototype="$_ble_util_string_prototype$_ble_util_string_prototype"
   done
 }
 
@@ -111,6 +118,7 @@ function .ble-term.initialize {
   # tab width
   local tmp=$(tput it)
   _ble_term_it="${tmp-8}"
+  _ble_util_string_prototype.reserve "$_ble_term_it"
 
   # for visible-bell
 
@@ -127,6 +135,8 @@ function .ble-term.initialize {
   _ble_term_visible_bell__ftime="$_ble_base/tmp/$$.visible-bell.time"
 }
 .ble-term.initialize
+
+
 
 # **** vbell/abell ****
 

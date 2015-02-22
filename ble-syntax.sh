@@ -565,6 +565,8 @@ function ble-syntax/parse/ctx-command/check-word-end {
       ((ctx=CTX_CMDX1)) ;;
     ('for')
       ((ctx=CTX_CMDXF)) ;;
+    ('}'|'done'|'fi'|'esac')
+      ((ctx=CTX_ARGX0)) ;;
     (*)
       ((ctx=CTX_ARGX)) ;;
     esac
@@ -1180,18 +1182,6 @@ function ble-syntax/highlight/fill-g {
   fi
 }
 
-# ■後で一個のレイヤーとして独立
-function ble-syntax/highlight/region-layer {
-  if [[ $_ble_edit_mark_active ]] && ((_ble_edit_mark!=_ble_edit_ind)); then
-    local g="${_ble_syntax_attr2g[ATTR_REGION_SEL]}"
-    if ((_ble_edit_mark>_ble_edit_ind)); then
-      ble-syntax/highlight/fill-g "$g" "$_ble_edit_ind" "$_ble_edit_mark"
-    elif ((_ble_edit_mark<_ble_edit_ind)); then
-      ble-syntax/highlight/fill-g "$g" "$_ble_edit_mark" "$_ble_edit_ind"
-    fi
-  fi
-}
-
 _ble_syntax_rex_simple_word=
 function ble-syntax-initialize-rex {
   local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/\'}"
@@ -1269,7 +1259,7 @@ function ble-syntax-highlight+syntax {
     fi
   fi
 
-  ble-syntax/highlight/region-layer
+  # ble-syntax/highlight/region-layer
 
   # # 以下は単語の分割のデバグ用
   # local words=()

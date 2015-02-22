@@ -508,226 +508,24 @@ function .ble-cursor.construct-prompt {
 # 
 # **** text ****                                                     @line.text
 
+# 廃止予定
 declare -a _ble_region_highlight_table
 #: ${bleopt_syntax_highlight_mode=default}
 : ${bleopt_syntax_highlight_mode=syntax}
 
-## 配列 _ble_line_text_cache_*
-## 要素 = "x y lc lg"
-##   x   境界#i の x 座標
-##   y   境界#i の y 座標
-##   lc  境界#i の (x!=0 なら左、x==0 なら右) に表示される文字のコード
-##   lk  境界#i の (x!=0 なら左、x==0 なら右) に表示される文字の index+1
-##     つまり、境界#i に就いて、x!=0 ならば i であり、
-##     x==0 ならば同じ行で次に x!=0 となる境界の番号となる。
-##     その行で x!=0 となる文字が以降に存在しない場合には i+1 とする。
-##   lj  次に設定するべき (未設定の) lc の index
-##   g   境界#i の SGR 系列、即ち、文字#(i-1) の SGR 系列
-##   cs  文字#i の表示文字列
-##   ei  境界#i の出力系列中での index
-declare _ble_line_text_cache=
-declare -a _ble_line_text_cache_x=()
-declare -a _ble_line_text_cache_y=()
-declare -a _ble_line_text_cache_lc=()
-declare -a _ble_line_text_cache_cs=()
-declare -a _ble_line_text_cache_lk=() # 内部使用
-declare -a _ble_line_text_cache_lj=() # 内部使用
-declare -a _ble_line_text_cache_g=()  # 未使用
-declare -a _ble_line_text_cache_ei=() # 未使用
 
-## 関数 i x y lc0 lc1 lj; .ble-line-text.construct.save-cursor; lj
-function .ble-line-text.construct.save-cursor {
-  if ((x!=0)); then
-    for ((;lj<i;lj++)); do
-      if ((y!=_ble_line_text_cache_y[lj])); then
-        # 行頭の文字が無い場合
-        _ble_line_text_cache_lc[lj]=32
-        _ble_line_text_cache_lk[lj]="$((lj+1))"
-      else
-        # 行頭の文字は 文字#i
-        _ble_line_text_cache_lc[lj]="$lc0"
-        _ble_line_text_cache_lk[lj]="$i"
-      fi
-    done
-    _ble_line_text_cache_lc[lj]="$lc1"
-    _ble_line_text_cache_lk[lj]="$i"
-    ((lj++))
-  fi
-
-  _ble_line_text_cache_x[i]="$x"
-  _ble_line_text_cache_y[i]="$y"
-  _ble_line_text_cache_lj[i]="$lj"
-}
-
-## 関数 text dirty x y lc; .ble-line-text.update-positions; x y
-function .ble-line-text.update-positions {
-  local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl" _spaces='                '
-  local iN=${#text}
-
-  if test -z "$dirty"; then
-    x=${_ble_line_text_cache_x[iN]}
-    y=${_ble_line_text_cache_y[iN]}
-    return
-  fi
-
-  local i lj lc0 lc1
-  # lc1 が現在処理している境界の左に隣接する文字。
-  # lc0 は前回の境界の右側に隣接する文字。
-  #   行頭文字の為に処理を遅延させている時に使う。
-  #   仮に行頭にある文字 ESC が表示上 <ESC> と表示されるとする。
-  #   この場合 <ESC> の処理をする時には、現在の境界は <ESC> の右側にあり、
-  #   |<ESC>|
-  #   という事になる。<ESC> の左側が前回の境界である。
-  #   そしてこの時の両変数の値は lc0 == '<', lc1 == '>' である。
-
-  if ((dirty<=0)); then
-    # save initial state
-    lj=0 i=0 lc0=32 lc1="$lc"
-    .ble-line-text.construct.save-cursor
-    # ※ !(lj<i) なので lc0 は参照されない
-  else
-    # load intermediate state
-    i="$dirty"
-    x=${_ble_line_text_cache_x[i]}
-    y=${_ble_line_text_cache_y[i]}
-    lj=${_ble_line_text_cache_lj[i]}
-  fi
-
-  for ((;i<iN;)); do
-    .ble-text.s2c "$text" "$i"
-    local code="$ret"
-
-    local w=0 lc0=32 lc1=32 cs=
-    if ((code<32)); then
-      if ((code==9)); then
-        if (((w=(x+it)/it*it-x)>0)); then
-          lc0=32 lc1=32 cs="${_spaces::w}"
-        fi
-      elif ((code==10)); then
-        ((y++,x=0))
-        cs=$'\n'
-      else
-        ((w=2,lc0=94,lc1=code+64))
-        .ble-text.c2s "$lc1"
-        cs="^$ret"
-      fi
-    elif ((code==127)); then
-      w=2 lc0=94 lc1=63 cs="^?"
-    else
-      .ble-text.c2w "$code"
-      w="$ret" lc0="$code" lc1="$code" cs="${text:i:1}"
-      if ((x<cols&&cols<x+w)); then
-        ((x=cols))
-        cs="${_spaces:0:cols-x}$cs"
-      fi
-    fi
-
-    if ((w>0)); then
-      ((x+=w))
-      while ((x>cols)); do
-        ((y++,x-=cols))
-      done
-      if ((x==cols)); then
-        ((xenl)) && cs="$cs"$'\n'
-        ((y++,x=0))
-      fi
-    fi
-
-    _ble_line_text_cache_cs[i]="$cs"
-
-    ((i++))
-    .ble-line-text.construct.save-cursor
-  done
-
-  local lk
-  for ((;lj<=iN;lj++)); do
-    _ble_line_text_cache_lc[lj]=32
-    _ble_line_text_cache_lk[lj]="$((lk=lj+1,lk<iN?lk:iN))"
-  done
-}
-
-## 関数 x y lc lg; .ble-line.construct-text; x y cx cy lc lg
-## \param [in    ] text  編集文字列
-## \param [in    ] dirty 編集によって変更のあった最初の index
-## \param [in    ] index カーソルの index
-## \param [   out] ret   編集文字列を(色付きで)表示する為の出力。
-## \param [in,out] x     編集文字列開始位置、終了位置。
-## \param [in,out] y     編集文字列開始位置、終了位置。
-## \param [   out] cx    カーソル位置。
-## \param [   out] cy    カーソル位置。
-## \param [in,out] lc    カーソル左の文字のコード。初期は編集文字列開始位置の左(プロンプトの最後の文字)について記述。
-## \param [in,out] lg    カーソル左の文字の gflag。初期は編集文字列開始位置の左(プロンプトの最後の文字)について記述。
-function .ble-line-text.construct {
-  # text dirty x y lc [update-positions] x y
-  .ble-line-text.update-positions
-
-  # cursor point
-  local iN=${#text}
-  ((index<0?(index=0):index>iN&&(index=iN)))
-  local lk="${_ble_line_text_cache_lk[index]}"
-
-  # highlight
-  _ble_region_highlight_table=()
-  if test -n "$bleopt_syntax_highlight_mode"; then
-    "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
-  fi
-
-  local i g g0= buff=() elen=0 peind="$iN"
-  # TODO: ps1 の最後の文字の SGR フラグはここで g0 に代入する?
-  for ((i=0;i<iN;i++)); do
-    # カーソル移動時、このループが重い
-    # ※region を反転する場合カーソル移動で highlight を再計算する必要がある
-    #   その為、_ble_term_sc でカーソル位置を指定するには、
-    #   毎回文字列内のカーソル位置を計算する必要がある。
-    #   最悪でもカーソル位置がずれない様に _ble_term_sc を用いたい。
-    #   
-    # _ble_line_text_cache_ei[i]=elen,
-    # _ble_line_text_cache_g[i]=g0,
-    ((
-      i==index&&(peind=elen),
-      i==lk&&(lg=g0),
-      g=_ble_region_highlight_table[i],
-      g!=g0
-    )) && {
-      .ble-color.g2seq "$g"
-      buff[${#buff[@]}]="$ret"
-      ((elen+=${#ret},g0=g))
-    }
-
-    ((elen+=${#_ble_line_text_cache_cs[$i]}))
-    buff[${#buff[@]}]="${_ble_line_text_cache_cs[$i]}"
-  done
-  # _ble_line_text_cache_ei[iN]="$elen" ##-OPTI-1##
-  # _ble_line_text_cache_g[iN]="$seq0" ##-OPTI-1##
-  IFS= eval '_ble_line_text_cache="${buff[*]}"'
-
-  if ((index<iN)); then
-    # Note#1
-    #   二重引用符で囲まれた文字列を "" で分割しているのは、
-    #   bash-3.1 の「${a::} の展開結果が空で、かつ、別の文字列に接している時に stray ^? を生む」
-    #   というバグに対する work around.
-    ret="${_ble_line_text_cache::peind}""$_ble_term_sc""${_ble_line_text_cache:peind}""$_ble_term_rc"
-  else
-    ret="$_ble_line_text_cache"
-    lg="$g0"
-  fi
-
-  cx="${_ble_line_text_cache_x[index]}"
-  cy="${_ble_line_text_cache_y[index]}"
-  lc="${_ble_line_text_cache_lc[index]}"
-  # lg="${_ble_line_text_cache_g[lk]}" ##-OPTI-1##
-}
-
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-
-declare _ble_line_text_cache=
+## @var _ble_line_text_cache_pos[]
+## @var _ble_line_text_cache_cs[]
+##   編集文字列の各文字に対応する位置と表示文字列の配列です。
 declare -a _ble_line_text_cache_pos=()
 declare -a _ble_line_text_cache_cs=()
 
+## @var _ble_line_text_cache_ichg[]
+##   表示文字に変更のあった物の index の一覧です。
+declare -a _ble_line_text_cache_ichg=()
+
 ## 関数 text dirty x y; .ble-line-text.update-positions; x y
-function .ble-line-text.update-positions2 {
+function .ble-line-text.update-positions {
   local iN=${#text}
   if test -z "$dirty"; then
     local pos=(${_ble_line_text_cache_pos[iN]})
@@ -738,7 +536,7 @@ function .ble-line-text.update-positions2 {
 
   local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl"
   # local cols="80" it="$_ble_term_it" xenl="1"
-  local _spaces='                ' nl=$'\n'
+  local nl=$'\n'
 
   local dbeg dend dend0
   ((dbeg=BLELINE_RANGE_UPDATE[0]))
@@ -775,6 +573,8 @@ function .ble-line-text.update-positions2 {
     "${_ble_line_text_cache_cs[@]::dbeg}"
     "${_ble_util_array_prototype[@]::dend-dbeg}"
     "${_ble_line_text_cache_cs[@]:dend0:iN-dend}")
+  local old_ichg=("${_ble_line_text_cache_ichg[@]}")
+  _ble_line_text_cache_ichg=()
   
   local i rex_ascii='^[ -~]+'
   for ((i=dbeg;i<iN;)); do
@@ -791,11 +591,12 @@ function .ble-line-text.update-positions2 {
       .ble-text.s2c "$text" "$i"
       local code="$ret"
 
-      local w=0 cs=
+      local w=0 cs= changed=0
       if ((code<32)); then
         if ((code==9)); then
           if (((w=(x+it)/it*it-x)>0)); then
-            cs="${_spaces::w}"
+            cs="${_ble_util_string_prototype::w}"
+            ((w!=it)) && changed=1
           fi
         elif ((code==10)); then
           ((y++,x=0))
@@ -812,7 +613,8 @@ function .ble-line-text.update-positions2 {
         w="$ret" cs="${text:i:1}"
         if ((x<cols&&cols<x+w)); then
           ((x=cols))
-          cs="${_spaces:0:cols-x}$cs"
+          cs="${_ble_util_string_prototype::cols-x}$cs"
+          changed=1
         fi
       fi
 
@@ -822,12 +624,16 @@ function .ble-line-text.update-positions2 {
           ((y++,x-=cols))
         done
         if ((x==cols)); then
-          ((xenl)) && cs="$cs"$'\n'
+          if ((xenl)); then
+            cs="$cs"$'\n'
+            changed=1
+          fi
           ((y++,x=0))
         fi
       fi
 
       _ble_line_text_cache_cs[i]="$cs"
+      ((changed)) && _ble_line_text_cache_ichg+=("$i")
       _ble_line_text_cache_pos[i+1]="$x $y"
       ((i++))
     fi
@@ -843,146 +649,73 @@ function .ble-line-text.update-positions2 {
     ((y=pos[1]))
   fi
 
+  # 前回までの文字修正位置を shift&add
+  local j jN ichg
+  for ((j=0,jN=${#old_ichg[@]};j<jN;j++)); do
+    if ((ichg=old_ichg[j],
+         (ichg>=dend0)&&(ichg+=dend-dend0),
+         (0<=ichg&&ichg<dbeg||dend<=i&&ichg<iN)))
+    then
+      _ble_line_text_cache_ichg+=("$ichg")
+    fi
+  done
+  
   POS_UMIN="$dbeg" POS_UMAX="$i"
 }
 
-_ble_line_text_cache_layer=
-_ble_line_text_cache_layer_indices=()
-
-## 関数 .ble-line-text/update-highlight-layer
-##   _ble_line_text_cache_layer 及び
-##   _ble_line_text_cache_layer_indices を更新します。
-function .ble-line-text/update-highlight-layer {
-  # ■ _ble_line_text_cache_cs から独立させる
-
-  local dbeg dend dend0 iN="${#text}"
-  ((dbeg=BLELINE_RANGE_UPDATE[0]))
-  ((dend=BLELINE_RANGE_UPDATE[1]))
-  ((dend0=BLELINE_RANGE_UPDATE[2]))
-
-  # shift
-  if ((dbeg>=0)); then
-    _ble_util_array_prototype.reserve "$((dend-dbeg))"
-    _ble_region_highlight_table=(
-      "${_ble_region_highlight_table[@]::dbeg}"
-      "${_ble_util_array_prototype[@]::dend-dbeg}"
-      "${_ble_region_highlight_table[@]:dend0}")
-  fi
-
-  # LAYER_UMIN - LAYER_UMAX: shift 以外の変更があった範囲
-  local LAYER_UMIN LAYER_UMAX
-
-  # 色付けの実行
-  if test -n "$bleopt_syntax_highlight_mode"; then
-    LAYER_UMIN=0 LAYER_UMAX="$iN"
-    "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
-  else
-    LAYER_UMIN="$iN" LAYER_UMAX=0
-  fi
-
-  # 編集文字列の変更もなく、色の変更もない場合は何もせず抜ける。
-  # 編集文字列が変わっていなくても色が変わっている事がある事に注意する
-  # (選択範囲の変更や括弧の対応など)。
-  ((dbeg<0&&LAYER_UMIN>=LAYER_UMAX)) && return
-  
-  if ((dbeg>=0)); then
-    ((LAYER_UMIN>dbeg&&(LAYER_UMIN=dbeg),
-      LAYER_UMAX<dend&&(LAYER_UMAX=dend)))
-  fi
-
-  if ((POS_UMAX>POS_UMIN)); then
-    ((LAYER_UMIN>POS_UMIN&&(LAYER_UMIN=POS_UMIN),
-      LAYER_UMAX<POS_UMAX&&(LAYER_UMAX=POS_UMAX)))
-  fi
-
-  local old_line="$_ble_line_text_cache_layer"
-  local old_umin_elen="${_ble_line_text_cache_layer_indices[LAYER_UMIN]}"
-  local old_umax_elen="${_ble_line_text_cache_layer_indices[LAYER_UMAX]}"
-
-  _ble_util_array_prototype.reserve "$((dend-dbeg))"
-  _ble_line_text_cache_layer_indices=(
-    "${_ble_line_text_cache_layer_indices[@]::dbeg+1}"
-    "${_ble_util_array_prototype[@]::dend-dbeg}"
-    "${_ble_line_text_cache_layer_indices[@]:dend0+1:iN-dend}")
-
-  local buff=("${old_line::old_umin_elen}")
-  local i elen="${_ble_line_text_cache_layer_indices[LAYER_UMIN]:=0}"
-  local g gprev ret
-  if ((LAYER_UMIN==0)); then
-    gprev=-1
-  else
-    ((gprev=_ble_region_highlight_table[LAYER_UMIN-1]))
-  fi
-  for ((i=LAYER_UMIN;i<LAYER_UMAX;i++)); do
-    if ((g=_ble_region_highlight_table[i],g!=gprev)); then
-      .ble-color.g2seq "$g"
-      buff[${#buff[@]}]="$ret"
-      ((elen+=${#ret},gprev=g))
-    fi
-
-    buff[${#buff[@]}]="${_ble_line_text_cache_cs[$i]}"
-    ((elen+=${#_ble_line_text_cache_cs[i]},
-      _ble_line_text_cache_layer_indices[i+1]=elen))
-  done
-
-  ((i==LAYER_UMAX)) || .ble-assert 'bug'
-
-  if ((i<iN)); then
-    # つなぎ目の SGR の調整
-    if ((g=_ble_region_highlight_table[i],g!=gprev)); then
-      .ble-color.g2seq "$g"
-      buff[${#buff[@]}]="$ret"
-      ((elen+=${#ret},gprev=g))
-    fi
-    buff[${#buff[@]}]="${old_line:old_umax_elen}"
-
-    # i+1 番目以降の境界のずれ
-    local elen_shift="$((elen-old_umax_elen))"
-    for((;i<iN;i++)); do
-      ((_ble_line_text_cache_layer_indices[i+1]+=elen_shift))
-    done
-  fi
-
-  IFS= eval '_ble_line_text_cache_layer="${buff[*]}"'
-}
-
-## 関数 .ble-line.construct-text
-## @var[in    ] text dirty index
-## @var[in,out] x y lc lg
-## @var[   out] ret cx cy
+## 関数 x y lc lg; .ble-line.construct-text; x y cx cy lc lg
+## \param [in    ] text  編集文字列
+## \param [in    ] dirty 編集によって変更のあった最初の index
+## \param [in    ] index カーソルの index
+## \param [in,out] x     編集文字列開始位置、終了位置。
+## \param [in,out] y     編集文字列開始位置、終了位置。
+## \param [   out] ret   編集文字列を(色付きで)表示する為の出力。
+## \param [   out] xret  ret 出力後の位置。
+## \param [   out] yret  ret 出力後の位置。
+## \param [   out] cx    カーソル位置。
+## \param [   out] cy    カーソル位置。
+## \param [in,out] lc    カーソル左の文字のコード。初期は編集文字列開始位置の左(プロンプトの最後の文字)について記述。
+## \param [in,out] lg    カーソル左の文字の gflag。初期は編集文字列開始位置の左(プロンプトの最後の文字)について記述。
 function .ble-line-text.construct {
   # text dirty x y [update-positions] x y
   local POS_UMIN=-1 POS_UMAX=-1
-  .ble-line-text.update-positions2
+  .ble-line-text.update-positions
 
-  # cursor point
+  # cursor position
   local iN=${#text}
   ((index<0?(index=0):index>iN&&(index=iN)))
-
-  # highlight
-  .ble-line-text/update-highlight-layer
-  peind="${_ble_line_text_cache_layer_indices[index]}"
-  _ble_line_text_cache="$_ble_line_text_cache_layer"
-  if ((iN==0)); then
-    g0=0
-  else
-    g0="${_ble_region_highlight_table[iN-1]}"
-  fi
-
-  if ((index<iN)); then
-    # Note#1
-    #   二重引用符で囲まれた文字列を "" で分割しているのは、
-    #   bash-3.1 の「${a::} の展開結果が空で、かつ、別の文字列に接している時に stray ^? を生む」
-    #   というバグに対する work around.
-    ret="${_ble_line_text_cache::peind}""$_ble_term_sc""${_ble_line_text_cache:peind}""$_ble_term_rc"
-  else
-    ret="$_ble_line_text_cache"
-    lg="$g0"
-  fi
-
   local pos=(${_ble_line_text_cache_pos[index]})
   ((cx=pos[0]))
   ((cy=pos[1]))
+
+  # highlight -> HIGHLIGHT_BUFF
+  local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
+  ble-highlight-layer/update "$text"
+  #.ble-line-info.draw "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
+
+  # 変更文字の適用
+  if ((${#_ble_line_text_cache_ichg[@]})); then
+    local buff ichg g sgr
+    eval "buff=(\"\${$HIGHLIGHT_BUFF[@]}\")"
+    HIGHLIGHT_BUFF=buff
+    for ichg in "${_ble_line_text_cache_ichg[@]}"; do
+      ble-highlight-layer/getg "$ichg"
+      ble-color-g2sgr "$g"
+      buff[ichg]="$sgr${_ble_line_text_cache_cs[ichg]}"
+    done
+  fi
+
+  # # SCOSC/SCORC で復帰する場合はこちら。
+  # if ((index<iN)); then
+  #   # Note#1
+  #   IFS= eval "ret=\"\${$HIGHLIGHT_BUFF[*]::index}\"\"\$_ble_term_sc\"\"\${$HIGHLIGHT_BUFF[*]:index}\"\"\$_ble_term_rc\""
+  # else
+  #   IFS= eval "ret=\"\${$HIGHLIGHT_BUFF[*]}\""
+  # fi
+  # ((xret=cx,yret=cy))
+
+  IFS= eval "ret=\"\${$HIGHLIGHT_BUFF[*]}\""
+  ((xret=x,yret=y))
 
   # update lc, lg
   #
@@ -1016,22 +749,18 @@ function .ble-line-text.construct {
         fi
 
         # 次が改行の時は空白にする
-        ((lg=_ble_region_highlight_table[index]))
+        ble-highlight-layer/getg -v lg "$index"
         ((lc=ret==10?32:ret))
       else
         # 前の文字
         lcs="${_ble_line_text_cache_cs[index-1]}"
         .ble-text.s2c "$lcs" "$((${#lcs}-1))"
-        ((lg=_ble_region_highlight_table[index-1]))
+        ble-highlight-layer/getg -v lg "$((index-1))"
         ((lc=ret))
       fi
     fi
   fi
 }
-
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
 # 
 # **** information pane ****                                         @line.info
@@ -1267,6 +996,71 @@ function .ble-edit/edit/detach {
   _ble_edit_attached=0
 }
 
+# **** ble-edit/draw ****                                            @edit/draw
+
+# 出力のための新しい関数群
+
+function ble-edit/draw/put {
+  DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
+}
+function ble-edit/draw/flush {
+  IFS= eval 'echo -n "${DRAW_BUFF[*]}"'
+}
+function ble-edit/draw/goto {
+  local x="$1" y="$2"
+  ble-edit/draw/put "$_ble_term_sgr0"
+
+  local -i dy=y-_ble_line_y
+  if ((dy!=0)); then
+    if ((dy>0)); then
+      ble-edit/draw/put "[${dy}B"
+    else
+      ble-edit/draw/put "[$((-dy))A"
+    fi
+  fi
+
+  local -i dx=x-_ble_line_x
+  if ((dx!=0)); then
+    if ((x==0)); then
+      ble-edit/draw/put ""
+    elif ((dx>0)); then
+      ble-edit/draw/put "[${dx}C"
+    else
+      ble-edit/draw/put "[$((-dx))D"
+    fi
+  fi
+
+  _ble_line_x="$x" _ble_line_y="$y"
+}
+## 関数 ble-edit/draw/clear-line
+##   プロンプト原点に移動して、既存のプロンプト表示内容を空白にする制御系列を生成します。
+function ble-edit/draw/clear-line {
+  ble-edit/draw/goto 0 0
+  if ((_ble_line_endy>0)); then
+    local height=$((_ble_line_endy+1))
+    ble-edit/draw/put "[${height}M[${height}L"
+  else
+    ble-edit/draw/put "[2K"
+  fi
+}
+## 関数 ble-edit/draw/clear-line-after x y
+##   指定した x y 位置に移動して、
+##   更に、以降の内容を空白にする制御系列を生成します。
+## \param [in] x
+## \param [in] y
+function ble-edit/draw/clear-line-after {
+  local x="$1" y="$2"
+
+  ble-edit/draw/goto "$x" "$y"
+  if ((_ble_line_endy>y)); then
+    local height=$((_ble_line_endy-y))
+    ble-edit/draw/put "D[${height}M[${height}LM"
+  fi
+  ble-edit/draw/put "[K"
+
+  _ble_line_x="$x" _ble_line_y="$y"
+}
+
 # **** .ble-edit-draw ****                                           @edit.draw
 
 ## 配列 _ble_line_cur
@@ -1373,44 +1167,7 @@ function .ble-edit-draw.goto-xy {
     _ble_line_x="$x" _ble_line_y="$y"
   fi
 }
-## 関数 .ble-edit-draw.clear var
-##   プロンプト原点に移動して、既存のプロンプト表示内容を空白にする制御系列を生成します。
-## \param [out] var
-##   制御系列の書込先変数名を指定します。指定した変数に制御系列を追記します。
-##   var が指定されていない場合は、標準出力に制御系列を出力します。
-function .ble-edit-draw.clear {
-  local _v3=
-  .ble-edit-draw.goto-xy _v3 0 0
-  if ((_ble_line_endy>0)); then
-    local height=$((_ble_line_endy+1))
-    _v3="$_v3[${height}M[${height}L"
-  else
-    _v3="$_v3[2K"
-  fi
 
-  .ble-edit-draw.put "$1" "$_v3"
-}
-## 関数 .ble-edit-draw.clear-after var x y
-##   指定した x y 位置に移動して、
-##   更に、以降の内容を空白にする制御系列を生成します。
-## \param [out] var
-##   制御系列の書込先変数名を指定します。指定した変数に制御系列を追記します。
-##   var が指定されていない場合は、標準出力に制御系列を出力します。
-## \param [in] x
-## \param [in] y
-function .ble-edit-draw.clear-after {
-  local var="$1" x="$2" y="$3" _v3=
-
-  .ble-edit-draw.goto-xy _v3 "$x" "$y"
-  if ((_ble_line_endy>y)); then
-    local height=$((_ble_line_endy-y))
-    _v3="$_v3D[${height}M[${height}LM"
-  fi
-  _v3="$_v3[K"
-
-  .ble-edit-draw.put "$var" "$_v3"
-  _ble_line_x="$x" _ble_line_y="$y"
-}
 ## 関数 .ble-edit-draw.update
 ##   要件: カーソル位置 (x y) = (_ble_line_cur[0] _ble_line_cur[1]) に移動する
 ##   要件: 編集文字列部分の再描画を実行する
@@ -1421,7 +1178,7 @@ function .ble-edit-draw.update {
     return
   fi
 
-  local ret out=
+  local ret
 
   local x y lc lg=
   .ble-cursor.construct-prompt # x y lc ret
@@ -1434,23 +1191,29 @@ function .ble-edit-draw.update {
   # local graphic_dbeg graphic_dend graphic_dend0
   # ble-edit/dirty-range/update --prefix=graphic_d
 
-  local cx="$x" cy="$y"
-  local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_edit_dirty"
-  .ble-line-text.construct # ret x y cx cy lc lg
-  local esc_line="$ret"
-
   # 移動・前回の内容の消去
+  local DRAW_BUFF=()
   if ((_ble_edit_dirty>=0)); then
     # prompt の再描画をしない場合
-    .ble-edit-draw.clear-after out "$prox" "$proy"
+    ble-edit/draw/clear-line-after "$prox" "$proy"
   else
-    .ble-edit-draw.clear out
-    out="$out$esc_prompt"
+    ble-edit/draw/clear-line
+    ble-edit/draw/put "$esc_prompt"
   fi
 
-  # echo
-  echo -n "$out$esc_line" 1>&2
-  _ble_line_x="$cx" _ble_line_y="$cy"
+  # 編集内容の構築
+  local cx="$x" cy="$y"
+  local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_edit_dirty"
+  local xret= yret=
+  .ble-line-text.construct # ret x y cx cy lc lg
+  local esc_line="$ret"
+  ble-edit/draw/put "$esc_line"
+
+  # 出力
+  _ble_line_x="${xret:-$cx}" _ble_line_y="${yret:-$cy}"
+  ble-edit/draw/goto "$cx" "$cy"
+  ble-edit/draw/flush 1>&2
+
   _ble_line_cur=("$cx" "$cy" "$lc" "$lg")
   _ble_line_endx="$x" _ble_line_endy="$y"
   _ble_line_cache=(
@@ -1466,8 +1229,10 @@ function .ble-edit-draw.redraw {
 function .ble-edit-draw.redraw-cache {
   if test -n "${_ble_line_cache[0]+set}"; then
     local -a d=("${_ble_line_cache[@]}")
-    .ble-edit-draw.clear
-    echo -n "${d[0]}" 1>&2
+    local DRAW_BUFF=()
+    ble-edit/draw/clear-line
+    ble-edit/draw/put "${d[0]}"
+    ble-edit/draw/flush 1>&2
     _ble_line_x="${d[1]}" _ble_line_y="${d[2]}"
     _ble_line_cur=("${d[@]:1:4}")
     _ble_line_endx="${d[5]}" _ble_line_endy="${d[6]}"
@@ -1503,7 +1268,7 @@ function .ble-edit-draw.update-adjusted {
     READLINE_POINT="$ret"
   fi
 
-  .ble-color.g2seq "$lg"
+  ble-color-g2sgr "$lg"
   echo -n "$ret"
 }
 function ble-edit+redraw-line {

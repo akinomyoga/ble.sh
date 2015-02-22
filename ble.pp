@@ -14,7 +14,7 @@
 #
 # ble - bash line editor
 #
-# Author: K. Murase <myoga.murase@gmail.com>
+# Author: 2013, 2015, K. Murase <myoga.murase@gmail.com>
 #
 
 #------------------------------------------------------------------------------
@@ -22,20 +22,20 @@
 
 if [ -z "$BASH_VERSION" ]; then
   echo "ble.sh: This is not a bash. Please use this script with bash." >&2
-  return 1 &>/dev/null || exit 1
+  return 1 2>/dev/null || exit 1
 fi
 
 if [ -n "${-##*i*}" ]; then
   echo "ble.sh: This is not an interactive session." >&2
-  return 1 &>/dev/null || exit 1
+  return 1 2>/dev/null || exit 1
 fi
 
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
 if [ "$_ble_bash" -lt 30100 ]; then
   _ble_bash=0
-  echo "ble.sh: A bash with a version lower than 3.1 is not supported" >&2
-  return 1 &>/dev/null || exit 1
+  echo "ble.sh: A bash with a version under 3.1 is not supported" >&2
+  return 1 2>/dev/null || exit 1
 fi
 
 #------------------------------------------------------------------------------
