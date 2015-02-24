@@ -24,20 +24,20 @@ function ble-color-g2sgr {
     local fg="$((g>> 8&0xFF))"
     local bg="$((g>>16&0xFF))"
 
-    local sgr=0
-    ((g&_ble_color_gflags_Bold))      && sgr="$sgr;1"
-    ((g&_ble_color_gflags_Underline)) && sgr="$sgr;4"
-    ((g&_ble_color_gflags_Revert))    && sgr="$sgr;7"
+    local _sgr=0
+    ((g&_ble_color_gflags_Bold))      && _sgr="$_sgr;1"
+    ((g&_ble_color_gflags_Underline)) && _sgr="$_sgr;4"
+    ((g&_ble_color_gflags_Revert))    && _sgr="$_sgr;7"
     if ((g&_ble_color_gflags_ForeColor)); then
       .ble-color.color2sgrfg -v "$_var" "$fg"
-      sgr="$sgr;${!_var}"
+      _sgr="$_sgr;${!_var}"
     fi
     if ((g&_ble_color_gflags_BackColor)); then
       .ble-color.color2sgrbg -v "$_var" "$bg"
-      sgr="$sgr;${!_var}"
+      _sgr="$_sgr;${!_var}"
     fi
     
-    _ret="[${sgr}m"
+    _ret="[${_sgr}m"
     _ble_color_g2sgr__table[$1]="$_ret"
   fi
 
@@ -869,4 +869,5 @@ function ble-highlight-layer:RandomColor2/getg {
   ble-color-gspec2g -v g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
 }
 
-_ble_highlight_layer__list=(plain adapter region)
+#_ble_highlight_layer__list=(plain adapter region)
+_ble_highlight_layer__list=(plain syntax region)

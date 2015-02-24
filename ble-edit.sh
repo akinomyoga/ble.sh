@@ -904,17 +904,18 @@ function .ble-line-info.draw {
   .ble-line-info.construct-info "$text"
   local content="$ret"
 
+  local DRAW_BUFF=()
+
   # (1) 移動・領域確保
-  local out=
-  .ble-edit-draw.goto-xy out 0 _ble_line_endy
-  out="$outD"
-  test -n "${_ble_line_info[2]}" && out="$out[$((_ble_line_info[1]+1))M"
-  test -n "$content" && out="$out[$((y+1))L"
+  ble-edit/draw/goto 0 _ble_line_endy
+  ble-edit/draw/put $'\e[D'
+  [[ ${_ble_line_info[2]} ]] && ble-edit/draw/put "[$((_ble_line_info[1]+1))M"
+  [[ $content ]] && ble-edit/draw/put "[$((y+1))L"
 
   # (2) 内容
-  out="$out$content"
+  ble-edit/draw/put "$content"
+  ble-edit/draw/flush >&2
 
-  echo -n "$out"
   _ble_line_y="$((_ble_line_endy+1+y))"
   _ble_line_x="$x"
   _ble_line_info=("$x" "$y" "$content")
@@ -1065,7 +1066,7 @@ function ble-edit/draw/flush {
   IFS= eval 'echo -n "${DRAW_BUFF[*]}"'
 }
 function ble-edit/draw/goto {
-  local x="$1" y="$2"
+  local -i x="$1" y="$2"
   ble-edit/draw/put "$_ble_term_sgr0"
 
   local -i dy=y-_ble_line_y
@@ -1763,7 +1764,8 @@ function ble-edit+beginning-of-line {
 
 ## 関数 .ble-edit.locate-backward-cword; a b c
 ##   後方の c word を探索します。
-##   <a> *<b>w*<c> *<x>
+##   |---|www|---|
+##   a   b   c   x
 function .ble-edit.locate-backward-cword {
   local x="${1:-$_ble_edit_ind}"
   c="${_ble_edit_str::x}"; c="${c##*[_a-zA-Z0-9]}" ; c=$((x-${#c}))
@@ -1772,7 +1774,8 @@ function .ble-edit.locate-backward-cword {
 }
 ## 関数 .ble-edit.locate-backward-cword; s t u
 ##   前方の c word を探索します。
-##   <x> *<s>w*<t> *<u>
+##   |---|www|---|
+##   x   s   t   u
 function .ble-edit.locate-forward-cword {
   local x="${1:-$_ble_edit_ind}"
   s="${_ble_edit_str:x}"; s="${s%%[_a-zA-Z0-9]*}" ; s=$((x+${#s}))
@@ -1781,7 +1784,9 @@ function .ble-edit.locate-forward-cword {
 }
 ## 関数 .ble-edit.locate-backward-cword; s t u
 ##   現在位置の c word を探索します。
-##   <r> *<s>w*<t> *<u>
+##   |---|wwww|---|
+##   r   s    t   u
+##        <- x --->
 function .ble-edit.locate-current-cword {
   local x="${1:-$_ble_edit_ind}"
 
@@ -1794,7 +1799,8 @@ function .ble-edit.locate-current-cword {
 #%m locate-xword (
 ## 関数 .ble-edit.locate-backward-xword; a b c
 ##   後方の generic word を探索します。
-##   <a> *<b>w*<c> *<x>
+##   |---|www|---|
+##   a   b   c   x
 function .ble-edit.locate-backward-xword {
   local x="${1:-$_ble_edit_ind}" FS=%FS%
   c="${_ble_edit_str::x}"; c="${c##*[^$FS]}"; c=$((x-${#c}))
@@ -1803,7 +1809,8 @@ function .ble-edit.locate-backward-xword {
 }
 ## 関数 .ble-edit.locate-backward-xword; s t u
 ##   前方の generic word を探索します。
-##   <x> *<s>w*<t> *<u>
+##   |---|www|---|
+##   x   s   t   u
 function .ble-edit.locate-forward-xword {
   local x="${1:-$_ble_edit_ind}" FS=%FS%
   s="${_ble_edit_str:x}"; s="${s%%[^$FS]*}"; s=$((x+${#s}))
@@ -1812,7 +1819,9 @@ function .ble-edit.locate-forward-xword {
 }
 ## 関数 .ble-edit.locate-backward-xword; s t u
 ##   現在位置の generic word を探索します。
-##   <r> *<s>w*<t> *<u>
+##   |---|wwww|---|
+##   r   s    t   u
+##        <- x --->
 function .ble-edit.locate-current-xword {
   local x="${1:-$_ble_edit_ind}"
 
@@ -1834,7 +1843,8 @@ function .ble-edit.locate-current-xword {
 ## 関数 ble-edit+delete-forward-uword
 ##   前方の unix word を削除します。
 function ble-edit+delete-forward-uword {
-  # <x> *<s>w*<t> *<u>
+  # |---|www|---|
+  # x   s   t   u
   local x="${1:-$_ble_edit_ind}" s t u
   .ble-edit.locate-forward-uword
   if ((x!=t)); then
@@ -1846,11 +1856,12 @@ function ble-edit+delete-forward-uword {
 ## 関数 ble-edit+delete-backward-uword
 ##   後方の unix word を削除します。
 function ble-edit+delete-backward-uword {
-  # <a> *<b>w*<c> *<x>
+  # |---|www|---|
+  # a   b   c   x
   local a b c x="${1:-$_ble_edit_ind}"
   .ble-edit.locate-backward-uword
-  if ((x>c&&(c=x),a!=c)); then
-    .ble-edit.delete-range "$a" "$c"
+  if ((x>c&&(c=x),b!=c)); then
+    .ble-edit.delete-range "$b" "$c"
   else 
     .ble-edit.bell
   fi
@@ -1884,8 +1895,8 @@ function ble-edit+kill-backward-uword {
   # <a> *<b>w*<c> *<x>
   local a b c x="${1:-$_ble_edit_ind}"
   .ble-edit.locate-backward-uword
-  if ((x>c&&(c=x),a!=c)); then
-    .ble-edit.kill-range "$a" "$c"
+  if ((x>c&&(c=x),b!=c)); then
+    .ble-edit.kill-range "$b" "$c"
   else 
     .ble-edit.bell
   fi
@@ -1915,7 +1926,7 @@ function ble-edit+copy-backward-uword {
   # <a> *<b>w*<c> *<x>
   local a b c x="${1:-$_ble_edit_ind}"
   .ble-edit.locate-backward-uword
-  .ble-edit.copy-range "$a" "$((c>x?c:x))"
+  .ble-edit.copy-range "$b" "$((c>x?c:x))"
 }
 ## 関数 ble-edit+copy-uword
 ##   現在位置の unix word を転写します。

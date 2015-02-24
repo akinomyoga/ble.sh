@@ -1204,47 +1204,55 @@ function ble-syntax-initialize-rex {
 }
 ble-syntax-initialize-rex
 
-function ble-syntax-highlight+syntax {
-  LAYER_UMIN="${#text}"
-  LAYER_UMAX=0
-  if ((BLELINE_RANGE_UPDATE[0]>=0)); then
-    ble-syntax/parse "$text" "${BLELINE_RANGE_UPDATE[0]}" "${BLELINE_RANGE_UPDATE[1]}" "${BLELINE_RANGE_UPDATE[2]}"
-    
-    # 少なくともこの範囲は文字が変わっているので再描画する必要がある
-    LAYER_UMIN="${BLELINE_RANGE_UPDATE[0]}"
-    LAYER_UMAX="${BLELINE_RANGE_UPDATE[1]}"
-  fi
+# adapter に頼らず直接実装したい
+function ble-highlight-layer:syntax/touch-range {
+  local -i p1="$1" p2="${2:-$1}"
+  (((umin<0||umin>p1)&&(umin=p1),
+    (umax<0||umax<p2)&&(umax=p2)))
+}
+function ble-highlight-layer:syntax/fill {
+  local _i _arr="$1" _i1="$2" _i2="$3" _v="$4"
+  for ((_i=_i1;_i<_i2;_i++)); do
+    eval "$_arr[_i]=\"\$_v\""
+  done
+}
 
-  .ble-line-info.draw "ble-syntax/parse attr_urange = $_ble_syntax_attr_umin-$_ble_syntax_attr_uend, word_urange = $_ble_syntax_word_umin-$_ble_syntax_word_umax"
+_ble_highlight_layer_syntax_buff=()
+_ble_highlight_layer_syntax1_table=()
+_ble_highlight_layer_syntax2_table=()
+_ble_highlight_layer_syntax3_list=()
+_ble_highlight_layer_syntax3_table=() # errors
 
-  # _ble_syntax_attr 適用 (word の方と別レイヤーにしないと駄目では?)
-  local i iN=${#text}
+function ble-highlight-layer:syntax/update-attribute-table {
+  ble-highlight-layer/update/shift _ble_highlight_layer_syntax1_table
   if ((_ble_syntax_attr_umin>=0)); then
-    local g=0
+    ble-highlight-layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_umax
 
-    # 初期位置の g を取得
-    for ((i=_ble_syntax_attr_umin-1;i>=0;i--)); do
-      if ((${_ble_syntax_attr[i]})); then
-        g="${_ble_syntax_attr2g[_ble_syntax_attr[i]]:-0}"
-        break
-      fi
-    done
+    local i g=0
+    ((_ble_syntax_attr_umin>0)) &&
+      ((g=_ble_highlight_layer_syntax1_table[_ble_syntax_attr_umin-1]))
 
     for ((i=_ble_syntax_attr_umin;i<_ble_syntax_attr_uend;i++)); do
       if ((${_ble_syntax_attr[i]})); then
         g="${_ble_syntax_attr2g[_ble_syntax_attr[i]]:-0}"
       fi
-      ble-syntax/highlight/set-attribute "$i" "$g"
+      _ble_highlight_layer_syntax1_table[i]="$g"
     done
+    
     _ble_syntax_attr_umin=-1 _ble_syntax_attr_uend=-1
   fi
-
-  # _ble_syntax_word 適用
+}
+function ble-highlight-layer:syntax/update-word-table {
+  # update table2 (単語の削除に関しては後で考える)
+  ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
   if ((_ble_syntax_word_umin>=0)); then
+    local i g
     for ((i=_ble_syntax_word_umin;i<=_ble_syntax_word_umax;i++)); do
       if [[ ${_ble_syntax_word[i-1]} ]]; then
         local word=(${_ble_syntax_word[i-1]})
+        local wbeg="${word[1]}" wend="$i"
         local wtxt="${text:word[1]:i-word[1]}"
+        local set=
         if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
           local value type=
           eval "value=$wtxt"
@@ -1256,34 +1264,144 @@ function ble-syntax-highlight+syntax {
             # エラー: ディレクトリにリダイレクトはできない
             ((word[0]==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
           fi
+
           if [[ $type ]]; then
             g="${_ble_syntax_attr2g[type]}"
-            ble-syntax/highlight/fill-g "$g" "${word[1]}" "$i"
+            ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$g"
+            set=1
           fi
         fi
+
+        [[ $set ]] || ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
+
+        ble-highlight-layer:syntax/touch-range "$wbeg" "$wend"
       fi
     done
     _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
   fi
+}
 
-  # 末端の非終端エラー
+function ble-highlight-layer:syntax/update-error-table/set {
+  local i1="$1" i2="$2" g="$3"
+  if ((i1<i2)); then
+    ble-highlight-layer:syntax/touch-range "$i1" "$i2"
+    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax3_table "$i1" "$i2" "$g"
+    _ble_highlight_layer_syntax3_list+=("$i1 $i2")
+  fi
+}
+function ble-highlight-layer:syntax/update-error-table {
+  ble-highlight-layer/update/shift _ble_highlight_layer_syntax3_table
+
+  # clear old errors
+  #   shift の前の方が簡単に更新できるが、
+  #   umin umax を更新する為に shift の後で処理する。
+  local j=0 jN="${#_ble_highlight_layer_syntax3_list[*]}"
+  if ((jN)); then
+    for ((j=0;j<jN;j++)); do
+      local range=(${_ble_highlight_layer_syntax3_list[j]})
+
+      local a="${range[0]}" b="${range[1]}"
+      ((a>=DMAX0?(a+=DMAX-DMAX0):(a>=DMIN&&(a=DMIN)),
+        b>=DMAX0?(b+=DMAX-DMAX0):(b>=DMIN&&(b=DMIN))))
+      echo remove-range "$a-$b" >> 1.tmp
+      if ((a<b)); then
+        ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax3_table "$a" "$b" ''
+        ble-highlight-layer:syntax/touch-range "$a" "$b"
+      fi
+    done
+    _ble_highlight_layer_syntax3_list=()
+  fi
+
+  # この実装では毎回全てのエラーを設定するので
+  # 実は下の様にすれば良いだけ…
+  #_ble_highlight_layer_syntax3_table=()
+
+  # set errors
   if [[ ${_ble_syntax_stat[iN]} ]]; then
-    local stat=(${_ble_syntax_stat[iN]})
-    local i ctx="${stat[0]}" wbegin="${stat[1]}" inest="${stat[3]}"
     local gErr="${_ble_syntax_attr2g[ATTR_ERR]}"
+    
+    # 入れ子が閉じていないエラー
+    local stat=(${_ble_syntax_stat[iN]})
+    local ctx="${stat[0]}" wbegin="${stat[1]}" wtype="${stat[2]}" inest="${stat[3]}"
+    local i
     if((inest>=0)); then
-      ble-syntax/highlight/set-attribute "$((iN-1))" "$gErr"
+      # 終端点の着色
+      ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$gErr"
+
       while ((inest>=0)); do
-        ble-syntax/highlight/fill-g "$gErr" "$inest"
+        # 開始字句の着色
+        local inest2
+        for((inest2=inest+1;inest2<iN;inest2++)); do
+          [[ ${_ble_syntax_attr[inest2]} ]] && break
+        done
+        ble-highlight-layer:syntax/update-error-table/set "$inest" "$inest2" "$gErr"
+
         ((i=inest))
         ble-syntax/parse/nest-pop
         ((inest>=i&&(inest=i-1)))
       done
     fi
+
+    # コマンド欠落
     if ((ctx==CTX_CMDX1||ctx==CTX_CMDXF)); then
-      ble-syntax/highlight/set-attribute "$((iN-1))" "$gErr"
+      # 終端点の着色
+      ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$gErr"
     fi
   fi
+}
+
+function ble-highlight-layer:syntax/getg {
+  local i="$1"
+  if [[ ${_ble_highlight_layer_syntax3_table[i]} ]]; then
+    g="${_ble_highlight_layer_syntax3_table[i]}"
+  elif [[ ${_ble_highlight_layer_syntax2_table[i]} ]]; then
+    g="${_ble_highlight_layer_syntax2_table[i]}"
+  elif [[ ${_ble_highlight_layer_syntax1_table[i]} ]]; then
+    g="${_ble_highlight_layer_syntax1_table[i]}"
+  else
+    g=
+  fi
+}
+
+function ble-highlight-layer:syntax/update {
+  local text="$1" player="$2"
+  local i iN="${#text}"
+
+  local umin=-1 umax=-1
+  if ((DMIN>=0)); then
+    ble-syntax/parse "$text" "${BLELINE_RANGE_UPDATE[0]}" "${BLELINE_RANGE_UPDATE[1]}" "${BLELINE_RANGE_UPDATE[2]}"
+
+    # 少なくともこの範囲は文字が変わっているので再描画する必要がある
+    umin="$DMIN" umax="$DMAX"
+  fi
+
+  # .ble-line-info.draw "ble-syntax/parse attr_urange = $_ble_syntax_attr_umin-$_ble_syntax_attr_uend, word_urange = $_ble_syntax_word_umin-$_ble_syntax_word_umax"
+
+  ble-highlight-layer:syntax/update-attribute-table
+  ble-highlight-layer:syntax/update-word-table
+  ble-highlight-layer:syntax/update-error-table
+
+  ble-highlight-layer/update/shift _ble_highlight_layer_syntax_buff
+  local i j g gprev=0
+  if ((umin>0)); then
+    ble-highlight-layer:syntax/getg "$((umin-1))"
+    gprev="$g"
+  fi
+
+  local sgr
+  for ((i=umin;i<umax;i++)); do
+    local ch="${_ble_highlight_layer_plain_buff[i]}"
+    ble-highlight-layer/getg "$i"
+    if ((gprev!=g)); then
+      ble-color-g2sgr -v sgr "$g"
+      ch="$sgr$ch"
+      ((gprev=g))
+    fi
+    _ble_highlight_layer_syntax_buff[i]="$ch"
+  done
+
+  PREV_UMIN="$umin" PREV_UMAX="$umax"
+  PREV_BUFF=_ble_highlight_layer_syntax_buff
 
   # # 以下は単語の分割のデバグ用
   # local words=()
@@ -1300,23 +1418,7 @@ function ble-syntax-highlight+syntax {
   #   fi
   # done
   # .ble-line-info.draw "${words[*]}"
-
-  # 以下は check code for BLELINE_RANGE_UPDATE
-  # if ((BLELINE_RANGE_UPDATE[0]>=0)); then
-  #   local g
-  #   ble-color-gspec2g -v g standout
-  #   ble-syntax/highlight/fill-g "$g" "${BLELINE_RANGE_UPDATE[0]}" "${BLELINE_RANGE_UPDATE[1]}"
-  #   .ble-line-info.draw "range_update=${BLELINE_RANGE_UPDATE[*]} g=$g"
-  # fi
 }
-
-
-# ## 文法に従った着色1
-# _ble_syntax_highlight_layer1=()
-# ## 単語の着色
-# _ble_syntax_highlight_layer2=()
-# ## 適用されているエラー表示の情報
-# _ble_syntax_highlight_layer3=()
 
 #%#----------------------------------------------------------------------------
 #%# test codes
