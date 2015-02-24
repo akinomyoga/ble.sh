@@ -382,12 +382,96 @@ _ble_line_prompt=("" 0 0 32 "")
 ## _ble_line_prompt[4] ret prompt として出力する制御シーケンス
 ## _ble_line_prompt[5] txt prompt として出力する文字列 (制御部分 \[...\] を除いた物)
 
+## @var[in,out] tail
+## @var[in,out] i
+## @var[in,out] _suprress
+function .ble-cursor.construct-prompt/process-backslash {
+  ((i+=2))
+
+  # \\ の次の文字
+  local c="${tail:1:1}"
+  case "$c" in
+  (\[) _suppress=1 ;;
+  (\]) _suppress= ;;
+  ('#') # コマンド番号 (本当は history に入らない物もある…)
+    .ble-cursor.construct-prompt.append "$_ble_edit_CMD" ;;
+  (\!) # 履歴番号
+    .ble-cursor.construct-prompt.append "${#_ble_edit_history[@]}" ;;
+  ([0-7]) # 8進表現
+    local rex='^\\[0-7]{1,3}'
+    if [[ $tail =~ $rex ]]; then
+      local seq="${BASH_REMATCH[0]}"
+      ((i+=${#seq}-2))
+      eval "c=\$'$seq'"
+    fi
+    .ble-cursor.construct-prompt.append "$c" ;;
+  (a) # 0 BEL
+    .ble-cursor.construct-prompt.append "" ;;
+  (d) # ? 日付
+    test -z "$date_d" && date_d="$(date +'%a %b %d')"
+    .ble-cursor.construct-prompt.append "$date_d" ;;
+  (t) # 8 時刻
+    test -z "$date_t" && date_t="$(date +'%H:%M:%S')"
+    .ble-cursor.construct-prompt.append "$date_t" ;;
+  (A) # 5 時刻
+    test -z "$date_A" && date_A="$(date +'%H:%M')"
+    .ble-cursor.construct-prompt.append "$date_A" ;;
+  (T) # 8 時刻
+    test -z "$date_T" && date_T="$(date +'%I:%M:%S')"
+    .ble-cursor.construct-prompt.append "$date_T" ;;
+  ('@')  # ? 時刻
+    test -z "$date_at" && date_at="$(date +'%I:%M %p')"
+    .ble-cursor.construct-prompt.append "$date_at" ;;
+  (e) 
+    .ble-cursor.construct-prompt.append "" ;;
+  (h) # = ホスト名
+    .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_h" ;;
+  (H) # = ホスト名
+    .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_H" ;;
+  (j) #   ジョブの数
+    if test -z "$jobc"; then
+      local joblist
+      IFS=$'\n' GLOBIGNORE='*' eval 'joblist=($(jobs))'
+      jobc=${#joblist[@]}
+    fi
+    .ble-cursor.construct-prompt.append "$jobc" ;;
+  (l) #   tty basename
+    .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_l" ;;
+  (n)
+    .ble-cursor.construct-prompt.append $'\n' ;;
+  (r)
+    .ble-cursor.construct-prompt.append "" ;;
+  (s) # 4 "bash"
+    .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_s" ;;
+  (u) # = ユーザ名
+    .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_u" ;;
+  (v) # = bash version %d.%d
+    .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_w" ;;
+  (V) # = bash version %d.%d.%d
+    .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_V" ;;
+  (w) # PWD
+    .ble-cursor.construct-prompt.append "$param_wd" ;;
+  (W) # PWD短縮
+    if test "$PWD" = /; then
+      .ble-cursor.construct-prompt.append /
+    else
+      .ble-cursor.construct-prompt.append "${param_wd##*/}"
+    fi ;;
+  ($) # # or $
+    .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_root" ;;
+  ('"') # '\"' は一旦 '"' に戻す。後で '\"' に置換される。
+    .ble-cursor.construct-prompt.append "$c" ;;
+  (*) # '\$' '\\' '\`' 及びその他の文字の場合はそのまま出力。
+    .ble-cursor.construct-prompt.append "\\$c" "$c";;
+  esac
+}
+
 ## 関数 .ble-cursor.construct-prompt ; x y lc
 ## \param [out] ret=(x y lc ps1esc)
 function .ble-cursor.construct-prompt {
   local ps1="${_ble_edit_PS1}"
   local version="$_ble_edit_LINENO"
-  if [ "${_ble_line_prompt[0]}" = "$version" ]; then
+  if [[ ${_ble_line_prompt[0]} == "$version" ]]; then
     x="${_ble_line_prompt[1]}"
     y="${_ble_line_prompt[2]}"
     lc="${_ble_line_prompt[3]}"
@@ -401,100 +485,27 @@ function .ble-cursor.construct-prompt {
   x=0 y=0 lc=0
   local _suppress= _ps1txt= _ps1esc="$_ble_term_sgr0"
   local i iN=${#ps1}
-  local joblist jobc date_d date_t date_A date_T date_at
-  for ((i=0;i<iN;i++)); do
-    local c="${ps1:i:1}"
-    if [ "$c" != '\' ]; then
-      .ble-cursor.construct-prompt.append "$c"
-      continue
+  local jobc date_d date_t date_A date_T date_at
+  local rex_ascii='^[]-~ -[]+'
+  local rex_csi='^\[[ -?]*[]-~@-[]' # 無条件でゼロ幅と解釈する
+  # 中に展開して欲しい \\ があるかもしれないので正規表現で跳ばす事はできない
+  # local rex_esc='^[ -/]+([]-~@-[]|\\\\)|^([]-~@-[]|\\\\)'
+  # local rex_osc='^[]PX^_]([^]|+\\?[^\])*(\\\\||)'
+  for ((i=0;i<iN;)); do
+    local tail="${ps1:i}"
+    if [[ $tail == '\'?* ]]; then
+      .ble-cursor.construct-prompt/process-backslash
+    elif [[ $tail =~ $rex_ascii ]]; then
+      .ble-cursor.construct-prompt.append "${BASH_REMATCH[0]}"
+      ((i+=${#BASH_REMATCH[0]}))
+    elif [[ $tail =~ $rex_csi ]]; then # || [[ $tail =~ $rex_esc ]] || [[ $tail =~ $rex_osc ]]
+      # さすがに escape seq を解釈するのは…。
+      _ps1esc="$_ps1esc${BASH_REMATCH[0]}"
+      ((i+=${#BASH_REMATCH[0]}))
+    else
+      .ble-cursor.construct-prompt.append "${tail::1}"
+      ((i++))
     fi
-
-    if ((++i>=iN)); then
-      .ble-cursor.construct-prompt.append "$c"
-      break
-    fi
-
-    # ESC の次の文字
-    c="${ps1:i:1}"
-    case "$c" in
-    (\[) _suppress=1 ;;
-    (\]) _suppress= ;;
-    ('#') # コマンド番号 (本当は history に入らない物もある…)
-      .ble-cursor.construct-prompt.append "$_ble_edit_CMD" ;;
-    (!) # 履歴番号
-      .ble-cursor.construct-prompt.append "${#_ble_edit_history[@]}" ;;
-    ([0-7]) # 8進表現
-      local seq="\\$c"
-      c="${ps1:i+1:1}"
-      if test -n "$c" -a -z "${c#[0-7]}"; then
-        seq="$seq$c"
-        ((i++))
-        c="${ps1:i+1:1}"
-        if test -n "$c" -a -z "${c#[0-7]}"; then
-          seq="$seq$c"
-          ((i++))
-        fi
-      fi
-      eval "c=\$'$seq'"
-      .ble-cursor.construct-prompt.append "$c" ;;
-    (a) # 0 BEL
-      .ble-cursor.construct-prompt.append "" ;;
-    (d) # ? 日付
-      test -z "$date_d" && date_d="$(date +'%a %b %d')"
-      .ble-cursor.construct-prompt.append "$date_d" ;;
-    (t) # 8 時刻
-      test -z "$date_t" && date_t="$(date +'%H:%M:%S')"
-      .ble-cursor.construct-prompt.append "$date_t" ;;
-    (A) # 5 時刻
-      test -z "$date_A" && date_A="$(date +'%H:%M')"
-      .ble-cursor.construct-prompt.append "$date_A" ;;
-    (T) # 8 時刻
-      test -z "$date_T" && date_T="$(date +'%I:%M:%S')"
-      .ble-cursor.construct-prompt.append "$date_T" ;;
-    ('@')  # ? 時刻
-      test -z "$date_at" && date_at="$(date +'%I:%M %p')"
-      .ble-cursor.construct-prompt.append "$date_at" ;;
-    (e) 
-      .ble-cursor.construct-prompt.append "" ;;
-    (h) # = ホスト名
-      .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_h" ;;
-    (H) # = ホスト名
-      .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_H" ;;
-    (j) #   ジョブの数
-      if test -z "$jobc"; then
-        IFS=$'\n' GLOBIGNORE='*' eval 'joblist=($(jobs))'
-        jobc=${#joblist[@]}
-      fi
-      .ble-cursor.construct-prompt.append "$jobc" ;;
-    (l) #   tty basename
-      .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_l" ;;
-    (n)
-      .ble-cursor.construct-prompt.append $'\n' ;;
-    (r)
-      .ble-cursor.construct-prompt.append "" ;;
-    (s) # 4 "bash"
-      .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_s" ;;
-    (u) # = ユーザ名
-      .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_u" ;;
-    (v) # = bash version %d.%d
-      .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_w" ;;
-    (V) # = bash version %d.%d.%d
-      .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_V" ;;
-    (w) # PWD
-      .ble-cursor.construct-prompt.append "$param_wd" ;;
-    (W) # PWD短縮
-      if test "$PWD" = /; then
-        .ble-cursor.construct-prompt.append /
-      else
-        .ble-cursor.construct-prompt.append "${param_wd##*/}"
-      fi ;;
-    ($) # # or $
-      .ble-cursor.construct-prompt.append "$_ble_cursor_prompt__string_root" ;;
-    ('"') # '\"' は一旦 '"' に戻す。後で '\"' に置換される。
-      .ble-cursor.construct-prompt.append "$c" ;;
-    (*) # '\$' '\\' '\`' 及びその他の文字の場合はそのまま出力。
-      .ble-cursor.construct-prompt.append "\\$c" "$c";;
-    esac
   done
 
   local dq='"' bsdq='\"'
@@ -523,44 +534,55 @@ declare -a _ble_line_text_cache_cs=()
 ## @var _ble_line_text_cache_ichg[]
 ##   表示文字に変更のあった物の index の一覧です。
 declare -a _ble_line_text_cache_ichg=()
+_ble_line_text_cache_length=
 
-## 関数 text dirty x y; .ble-line-text.update-positions; x y
-function .ble-line-text.update-positions {
-  local iN=${#text}
-  if test -z "$dirty"; then
-    local pos=(${_ble_line_text_cache_pos[iN]})
-    ((x=pos[0]))
-    ((y=pos[1]))
-    return
+## 関数 text x y; .ble-line-text/update/position; x y
+##   @var[in    ] text
+##   @var[in,out] x y
+##   @var[in    ] BLELINE_RANGE_UPDATE[]
+##   @var[   out] POS_UMIN POS_UMAX
+##   @var[   out] _ble_line_text_cache_length
+##   @var[   out] _ble_line_text_cache_pos[]
+##   @var[   out] _ble_line_text_cache_cs[]
+##   @var[   out] _ble_line_text_cache_ichg[]
+function .ble-line-text/update/position {
+  local dbeg dend dend0
+  ((dbeg=BLELINE_RANGE_UPDATE[0]))
+  ((dend=BLELINE_RANGE_UPDATE[1]))
+  ((dend0=BLELINE_RANGE_UPDATE[2]))
+
+  local iN="${#text}"
+  ((_ble_line_text_cache_length=iN))
+
+  # 初期位置 x y
+  local _pos="$x $y"
+  if [[ ${_ble_line_text_cache_pos[0]} != "$_pos" ]]; then
+    # 初期位置の変更がある場合は初めから計算し直し
+    ((dbeg<0&&(dend=dend0=0),
+      dbeg=0))
+    _ble_line_text_cache_pos[0]="$_pos"
+  else
+    if ((dbeg<0)); then
+      # 初期位置も内容も変更がない場合はOK
+      local pos=(${_ble_line_text_cache_pos[iN]})
+      ((x=pos[0]))
+      ((y=pos[1]))
+      return
+    elif ((dbeg>0)); then
+      # 途中から計算を再開
+      local pos=(${_ble_line_text_cache_pos[dbeg]})
+      ((x=pos[0]))
+      ((y=pos[1]))
+    fi
   fi
 
   local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl"
   # local cols="80" it="$_ble_term_it" xenl="1"
   local nl=$'\n'
 
-  local dbeg dend dend0
-  ((dbeg=BLELINE_RANGE_UPDATE[0]))
-  ((dend=BLELINE_RANGE_UPDATE[1]))
-  ((dend0=BLELINE_RANGE_UPDATE[2]))
-
-  # 初期位置
-  local _pos="$x $y"
-  if [[ ${_ble_line_text_cache_pos[0]} != "$_pos" ]]; then
-    # 初期位置の変更がある場合は初めから計算し直し
-    dbeg=0
-    _ble_line_text_cache_pos[0]="$_pos"
-  elif ((dbeg<0)); then
-    # 初期位置も内容も変更がない場合はOK
-    local pos=(${_ble_line_text_cache_pos[iN]})
-    ((x=pos[0]))
-    ((y=pos[1]))
-    return
-  elif ((dbeg>0)); then
-    # 途中から計算を再開
-    local pos=(${_ble_line_text_cache_pos[dbeg]})
-    ((x=pos[0]))
-    ((y=pos[1]))
-  fi
+#%if debug (
+  ble-assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- (${BLELINE_RANGE_UPDATE[*]})"
+#%)
   
   # shift cached data
   _ble_util_array_prototype.reserve "$iN"
@@ -600,7 +622,7 @@ function .ble-line-text.update-positions {
           fi
         elif ((code==10)); then
           ((y++,x=0))
-          cs=$'\n'
+          cs=$'\e[K\n'
         else
           ((w=2))
           .ble-text.c2s "$((code+64))"
@@ -659,9 +681,11 @@ function .ble-line-text.update-positions {
       _ble_line_text_cache_ichg+=("$ichg")
     fi
   done
-  
-  POS_UMIN="$dbeg" POS_UMAX="$i"
+
+  ((dbeg<i)) && POS_UMIN="$dbeg" POS_UMAX="$i"
 }
+
+_ble_line_text_buffName=
 
 ## 関数 x y lc lg; .ble-line.construct-text; x y cx cy lc lg
 ## \param [in    ] text  編集文字列
@@ -669,24 +693,17 @@ function .ble-line-text.update-positions {
 ## \param [in    ] index カーソルの index
 ## \param [in,out] x     編集文字列開始位置、終了位置。
 ## \param [in,out] y     編集文字列開始位置、終了位置。
-## \param [   out] ret   編集文字列を(色付きで)表示する為の出力。
-## \param [   out] xret  ret 出力後の位置。
-## \param [   out] yret  ret 出力後の位置。
-## \param [   out] cx    カーソル位置。
-## \param [   out] cy    カーソル位置。
-## \param [in,out] lc    カーソル左の文字のコード。初期は編集文字列開始位置の左(プロンプトの最後の文字)について記述。
-## \param [in,out] lg    カーソル左の文字の gflag。初期は編集文字列開始位置の左(プロンプトの最後の文字)について記述。
-function .ble-line-text.construct {
-  # text dirty x y [update-positions] x y
+## \param [in,out] lc lg
+##   カーソル左の文字のコードと gflag を返します。
+##   カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
+## @var   [   out] umin umax
+##   umin,umax は再描画の必要な範囲を文字インデックスで返します。
+function .ble-line-text/update {
+  # text dirty x y [.ble-line-text/update/position] x y
   local POS_UMIN=-1 POS_UMAX=-1
-  .ble-line-text.update-positions
+  .ble-line-text/update/position
 
-  # cursor position
-  local iN=${#text}
-  ((index<0?(index=0):index>iN&&(index=iN)))
-  local pos=(${_ble_line_text_cache_pos[index]})
-  ((cx=pos[0]))
-  ((cy=pos[1]))
+  local iN="${#text}"
 
   # highlight -> HIGHLIGHT_BUFF
   local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
@@ -705,17 +722,14 @@ function .ble-line-text.construct {
     done
   fi
 
-  # # SCOSC/SCORC で復帰する場合はこちら。
-  # if ((index<iN)); then
-  #   # Note#1
-  #   IFS= eval "ret=\"\${$HIGHLIGHT_BUFF[*]::index}\"\"\$_ble_term_sc\"\"\${$HIGHLIGHT_BUFF[*]:index}\"\"\$_ble_term_rc\""
-  # else
-  #   IFS= eval "ret=\"\${$HIGHLIGHT_BUFF[*]}\""
-  # fi
-  # ((xret=cx,yret=cy))
+  _ble_line_text_buffName="$HIGHLIGHT_BUFF"
 
-  IFS= eval "ret=\"\${$HIGHLIGHT_BUFF[*]}\""
-  ((xret=x,yret=y))
+  # umin, umax
+  ((umin=HIGHLIGHT_UMIN,
+    umax=HIGHLIGHT_UMAX,
+    POS_UMIN>=0&&(umin<0||umin>POS_UMIN)&&(umin=POS_UMIN),
+    POS_UMAX>=0&&(umax<0||umax<POS_UMAX)&&(umax=POS_UMAX)))
+  # .ble-line-info.draw "position $POS_UMIN-$POS_UMAX, highlight $HIGHLIGHT_UMIN-$HIGHLIGHT_UMAX"
 
   # update lc, lg
   #
@@ -762,6 +776,38 @@ function .ble-line-text.construct {
   fi
 }
 
+## 関数 .ble-line-text/getxy iN
+##   @var[out] x
+##   @var[out] y
+function .ble-line-text/getxy {
+  local _prefix=
+  if [[ $1 == --prefix=* ]]; then
+    _prefix="${1#--prefix=}"
+    shift
+  fi
+
+  local _pos=(${_ble_line_text_cache_pos[$1]})
+  ((${_prefix}x=_pos[0]))
+  ((${_prefix}y=_pos[1]))
+}
+## 関数 .ble-line-text/slice [beg [end]]
+##   @var [out] ret
+function .ble-line-text/slice {
+  local iN="$_ble_line_text_cache_length"
+  local i1="${1:-0}" i2="${2:-$iN}"
+  ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
+    i2<0&&(i2+=iN)))
+  if ((i1<i2&&i1<iN)); then
+    local g sgr
+    ble-highlight-layer/getg -v g "$i1"
+    ble-color-g2sgr -v sgr "$g"
+    IFS= eval "ret=\"\$sgr\${$_ble_line_text_buffName[*]:i1:i2-i1}\""
+  else
+    ret=
+  fi
+}
+
+
 # 
 # **** information pane ****                                         @line.info
 
@@ -787,9 +833,9 @@ function .ble-line-cur.xyo/add-atomic {
 
   # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
   if ((x<cols&&cols<x+w)); then
+    _ble_util_string_prototype.reserve "$((cols-x))"
+    out="$out${_ble_util_string_prototype::cols-x}"
     ((x=cols))
-    local _spaces='                '
-    out="$out${_spaces::cols-x}"
   fi
 
   out="$out$2"
@@ -971,6 +1017,16 @@ function ble-edit/dirty-range/update {
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
 
+
+function .ble-edit/edit/attach/TRAPWINCH {
+  if ((_ble_edit_attached)); then
+    _ble_line_text_cache_pos=()
+    .ble-edit/stdout/on
+    .ble-edit-draw.redraw
+    .ble-edit/stdout/off
+  fi
+}
+
 ## called by ble-edit-attach
 _ble_edit_attached=0
 function .ble-edit/edit/attach {
@@ -983,6 +1039,8 @@ function .ble-edit/edit/attach {
     unset LINENO; LINENO="$_ble_edit_LINENO"
     _ble_edit_CMD="$_ble_edit_LINENO"
   fi
+
+  trap .ble-edit/edit/attach/TRAPWINCH WINCH
 
   # if test -z "${_ble_edit_PS1+set}"; then
   # fi
@@ -1099,18 +1157,6 @@ _ble_edit_dirty=-1
 ##   現在の表示内容のカーソル位置・ポイント位置の情報を保持します。
 _ble_line_cache_ind=::
 
-## 配列 _ble_line_cache
-##   現在表示している内容のキャッシュです。
-##   .ble-edit-draw.redraw-cache はこの情報を元に再描画を行います。
-## _ble_line_cache[0]:        表示内容
-## _ble_line_cache[1]: curx   カーソル位置 x
-## _ble_line_cache[2]: cury   カーソル位置 y
-## _ble_line_cache[3]: curlc  カーソル位置の文字の文字コード
-## _ble_line_cache[3]: curlg  カーソル位置の文字の SGR フラグ
-## _ble_line_cache[4]: endx   末端位置 x
-## _ble_line_cache[5]: endy   末端位置 y
-_ble_line_cache=()
-
 function .ble-edit-draw.set-dirty {
   local d2="${1:-$_ble_edit_ind}"
   if test -z "$_ble_edit_dirty"; then
@@ -1178,64 +1224,172 @@ function .ble-edit-draw.update {
     return
   fi
 
+  #-------------------
+  # 内容の再計算
+
   local ret
 
   local x y lc lg=
   .ble-cursor.construct-prompt # x y lc ret
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
-  # BLELINE_RANGE_UPDATE → .ble-line-text.construct 内でこれを見て update を済ませる
+  # BLELINE_RANGE_UPDATE → .ble-line-text/update 内でこれを見て update を済ませる
   local BLELINE_RANGE_UPDATE=("$_ble_edit_str_dbeg" "$_ble_edit_str_dend" "$_ble_edit_str_dend0")
   ble-edit/dirty-range/clear
+#%if debug (
+  ble-assert '((BLELINE_RANGE_UPDATE[0]<0||(
+       BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[1]&&
+       BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[2])))' "(${BLELINE_RANGE_UPDATE[*]})"
+#%)
 
   # local graphic_dbeg graphic_dend graphic_dend0
   # ble-edit/dirty-range/update --prefix=graphic_d
 
-  # 移動・前回の内容の消去
+  # 編集内容の構築
+  local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_edit_dirty"
+  local iN="${#text}"
+  ((index<0?(index=0):(index>iN&&(index=iN))))
+
+  local umin=-1 umax=-1
+  .ble-line-text/update # text index dirty -> x y lc lg
+
+  #-------------------
+  # 出力
+
   local DRAW_BUFF=()
+
+  local partial_update=1
+  local ret retx=-1 rety=-1 esc_line=
+
   if ((_ble_edit_dirty>=0)); then
-    # prompt の再描画をしない場合
-    ble-edit/draw/clear-line-after "$prox" "$proy"
+    # 部分更新
+
+    # # 編集文字列全体の描画
+    # local ret
+    # .ble-line-text/slice # → ret
+    # local esc_line="$ret"
+    # ble-edit/draw/clear-line-after "$prox" "$proy"
+    # ble-edit/draw/put "$ret"
+    # .ble-line-text/getxy --prefix=ret "$iN" # → retx rety
+    # _ble_line_x="$retx" _ble_line_y="$rety"
+
+    # 編集文字列の一部を描画する場合
+    if ((umin<umax)); then
+      local uminx uminy umaxx umaxy
+      .ble-line-text/getxy --prefix=umin "$umin"
+      .ble-line-text/getxy --prefix=umax "$umax"
+
+      # if ((umax>=iN)); then
+      #   ble-edit/draw/clear-line-after "$uminx" "$umaxx"
+      # else
+      #   ble-edit/draw/clear-line-range "$uminx" "$uminy" "$umaxx" "$umaxy"
+      # fi
+      ble-edit/draw/goto "$uminx" "$uminy"
+      .ble-line-text/slice "$umin" "$umax"
+      ble-edit/draw/put "$ret"
+      _ble_line_x="$umaxx" _ble_line_y="$umaxy"
+    fi
+
+    if ((BLELINE_RANGE_UPDATE[0]>=0)); then
+      local endx endy
+      .ble-line-text/getxy --prefix=end "$iN"
+      ble-edit/draw/clear-line-after "$endx" "$endy"
+    fi
   else
+    # 全体更新
+
+    # プロンプト描画
     ble-edit/draw/clear-line
     ble-edit/draw/put "$esc_prompt"
+    _ble_line_x="$prox" _ble_line_y="$proy"
+
+    # 2 表示内容
+
+    # # SCOSC/SCORC で復帰する場合はこちら。
+    # local ret esc_line
+    # if ((index<iN)); then
+    #   .ble-line-text/slice 0 "$index"
+    #   esc_line="$ret$_ble_term_sc"
+    #   .ble-line-text/slice "$index"
+    #   esc_line="$esc_line$ret$_ble_term_rc"
+    #   ble-edit/draw/put "$esc_line"
+    #   .ble-line-text/getxy --prefix=ret "$index"
+    #   _ble_line_x="$retx" _ble_line_y="$rety"
+    # else
+    #   .ble-line-text/slice
+    #   esc_line="$ret"
+    #   ble-edit/draw/put "$esc_line"
+    #   .ble-line-text/getxy --prefix=ret "$iN"
+    #   _ble_line_x="$retx" _ble_line_y="$rety"
+    # fi
+
+    # 全体を描画する場合
+    local ret esc_line
+    .ble-line-text/slice # → ret
+    esc_line="$ret"
+    ble-edit/draw/put "$ret"
+    .ble-line-text/getxy --prefix=ret "$iN" # → retx rety
+    _ble_line_x="$retx" _ble_line_y="$rety"
   fi
 
-  # 編集内容の構築
-  local cx="$x" cy="$y"
-  local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_edit_dirty"
-  local xret= yret=
-  .ble-line-text.construct # ret x y cx cy lc lg
-  local esc_line="$ret"
-  ble-edit/draw/put "$esc_line"
-
-  # 出力
-  _ble_line_x="${xret:-$cx}" _ble_line_y="${yret:-$cy}"
+  # 3 移動
+  local cx cy
+  .ble-line-text/getxy --prefix=c "$index" # → cx cy
   ble-edit/draw/goto "$cx" "$cy"
   ble-edit/draw/flush 1>&2
 
+  # 4 後で使う情報の記録
   _ble_line_cur=("$cx" "$cy" "$lc" "$lg")
-  _ble_line_endx="$x" _ble_line_endy="$y"
-  _ble_line_cache=(
-    "$esc_prompt$esc_line"
-    "${_ble_line_cur[@]}"
-    "$_ble_line_endx" "$_ble_line_endy")
+  .ble-line-text/getxy --prefix=_ble_line_end "$iN" # → _ble_line_endx _ble_line_endy
   _ble_edit_dirty= _ble_line_cache_ind="$indices"
+
+  if [[ -z $bleopt_suppress_bash_output ]]; then
+    if ((retx<0)); then
+      .ble-line-text/slice
+      esc_line="$ret"
+      .ble-line-text/getxy --prefix=ret "$iN"
+    fi
+
+    _ble_line_cache=(
+      "$esc_prompt$esc_line"
+      "${_ble_line_cur[@]}"
+      "$_ble_line_endx" "$_ble_line_endy"
+      "$retx" "$rety")
+  fi
 }
 function .ble-edit-draw.redraw {
   _ble_edit_dirty=-1
   .ble-edit-draw.update
 }
+
+## 配列 _ble_line_cache
+##   現在表示している内容のキャッシュです。
+##   .ble-edit-draw.update で値が設定されます。
+##   .ble-edit-draw.redraw-cache はこの情報を元に再描画を行います。
+## _ble_line_cache[0]:        表示内容
+## _ble_line_cache[1]: curx   カーソル位置 x
+## _ble_line_cache[2]: cury   カーソル位置 y
+## _ble_line_cache[3]: curlc  カーソル位置の文字の文字コード
+## _ble_line_cache[3]: curlg  カーソル位置の文字の SGR フラグ
+## _ble_line_cache[4]: endx   末端位置 x
+## _ble_line_cache[5]: endy   末端位置 y
+_ble_line_cache=()
+
 function .ble-edit-draw.redraw-cache {
   if test -n "${_ble_line_cache[0]+set}"; then
     local -a d=("${_ble_line_cache[@]}")
+
     local DRAW_BUFF=()
+
     ble-edit/draw/clear-line
     ble-edit/draw/put "${d[0]}"
-    ble-edit/draw/flush 1>&2
-    _ble_line_x="${d[1]}" _ble_line_y="${d[2]}"
-    _ble_line_cur=("${d[@]:1:4}")
+    _ble_line_x="${d[7]}" _ble_line_y="${d[8]}"
     _ble_line_endx="${d[5]}" _ble_line_endy="${d[6]}"
+
+    _ble_line_cur=("${d[@]:1:4}")
+    ble-edit/draw/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
+
+    ble-edit/draw/flush 1>&2
   else
     .ble-edit-draw.redraw
   fi
@@ -2893,7 +3047,9 @@ else
     if [[ -z $bleopt_suppress_bash_output ]]; then
       # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
       ((_ble_line_y++,_ble_line_x=0))
-      .ble-edit-draw.goto-xy '' "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+      local DRAW_BUFF=()
+      ble-edit/draw/goto "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+      ble-edit/draw/flush
     fi
   }
 fi

@@ -1,5 +1,6 @@
 #!/bin/bash
 #%$> out/ble.sh
+#%[debug=1]
 #%m inc (
 #%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
 #%%if @_included!=1 (

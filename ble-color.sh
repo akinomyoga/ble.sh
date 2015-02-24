@@ -505,7 +505,7 @@ function ble-highlight-layer/update {
 function ble-highlight-layer/update/shift {
   local __dstArray="$1"
   local __srcArray="${2:-$__dstArray}"
-  if ((DMIN>=0)); then
+  if ((DMIN>=0&&DMAX!=DMAX0)); then
     _ble_util_array_prototype.reserve "$((DMAX-DMIN))"
     eval "
     $__dstArray=(
@@ -633,6 +633,8 @@ function ble-highlight-layer:plain/update {
       if [[ $ch == [-] ]]; then
         if [[ $ch == $'\t' ]]; then
           ch="${_ble_util_string_prototype::it}"
+        elif [[ $ch == $'\n' ]]; then
+          ch=$'\e[K\n'
         elif [[ $ch != $'\n' ]]; then
           .ble-text.s2c "$ch" 0
           .ble-text.c2s $((64+ret))
@@ -688,7 +690,9 @@ function ble-highlight-layer:adapter/update {
   # update char buffer
   ble-highlight-layer/update/shift _ble_highlight_layer_adapter_buff
   local i g gprev=0 ctx=0 ret
-  for ((i=LAYER_UMIN;i<=i2;i++)); do
+  ((i1>0)) && ble-highlight-layer/getg -v gprev "$((i1-1))"
+  # .ble-line-info.draw "layer:adapter u = $i1-$i2"
+  for ((i=i1;i<=i2;i++)); do
     local ch
     if [[ ${_ble_region_highlight_table[i]} ]]; then
       ch="${_ble_highlight_layer_plain_buff[i]}"

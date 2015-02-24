@@ -91,6 +91,26 @@ function _ble_util_string_prototype.reserve {
   done
 }
 
+_ble_stackdump_title=stackdump
+_ble_term_NL=$'\n'
+function ble-stackdump {
+  # echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
+  local i nl=$'\n'
+  local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
+  for ((i=1;i<${#FUNCNAME[*]};i++)); do
+    message+="  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
+  done
+  echo -n "$message" >&2
+}
+function ble-assert {
+  local expr="$1"
+  local _ble_stackdump_title='assertion failure'
+  if ! eval -- "$expr"; then
+    shift
+    ble-stackdump "$expr$_ble_term_NL$*"
+  fi
+}
+
 #------------------------------------------------------------------------------
 # **** terminal controls ****
 

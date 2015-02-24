@@ -21,8 +21,16 @@ out/cmap/default.sh: cmap/default.sh
 
 all: $(outfiles)
 
+dist_excludes= \
+	--exclude=./ble/backup \
+	--exclude=*~ \
+	--exclude=./ble/.git \
+	--exclude=./ble/out \
+	--exclude=./ble/dist \
+	--exclude=./ble/ble.sh
+
 dist:
-	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble --exclude=./ble/backup --exclude=*~ --exclude=./ble/.git
+	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble $(dist_excludes)
 
 listf:
 	awk '/^[[:space:]]*function/{sub(/^[[:space:]]*function[[:space:]]*/,"");sub(/[[:space:]]*\{[[:space:]]*$$/,"");print $$0}' ble.sh |sort
