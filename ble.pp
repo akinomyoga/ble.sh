@@ -64,15 +64,19 @@ function _ble_base.initialize {
   fi
 }
 _ble_base.initialize "${BASH_SOURCE[0]}"
-if test ! -d "$_ble_base"; then
+if [[ ! -d $_ble_base ]]; then
   echo "ble.sh: ble base directory not found!" 1>&2
   return 1
 fi
 
 # tmpdir
-if test ! -d "$_ble_base/tmp"; then
+if [[ ! -d $_ble_base/tmp ]]; then
   mkdir -p "$_ble_base/tmp"
   chmod a+rwxt "$_ble_base/tmp"
+fi
+
+if [[ ! -d $_ble_base/cache ]]; then
+  mkdir -p "$_ble_base/cache"
 fi
 
 #%x inc.r/@/getopt/

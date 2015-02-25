@@ -408,20 +408,29 @@ function .ble-cursor.construct-prompt/process-backslash {
   (a) # 0 BEL
     .ble-cursor.construct-prompt.append "" ;;
   (d) # ? 日付
-    test -z "$date_d" && date_d="$(date +'%a %b %d')"
+    [[ $date_d ]] || ble/util/strftime -v date_d '%a %b %d'
     .ble-cursor.construct-prompt.append "$date_d" ;;
   (t) # 8 時刻
-    test -z "$date_t" && date_t="$(date +'%H:%M:%S')"
+    [[ $date_t ]] || ble/util/strftime -v date_t '%H:%M:%S'
     .ble-cursor.construct-prompt.append "$date_t" ;;
   (A) # 5 時刻
-    test -z "$date_A" && date_A="$(date +'%H:%M')"
+    [[ $date_A ]] || ble/util/strftime -v date_A '%H:%M'
     .ble-cursor.construct-prompt.append "$date_A" ;;
   (T) # 8 時刻
-    test -z "$date_T" && date_T="$(date +'%I:%M:%S')"
+    [[ $date_T ]] || ble/util/strftime -v date_T '%I:%M:%S'
     .ble-cursor.construct-prompt.append "$date_T" ;;
   ('@')  # ? 時刻
-    test -z "$date_at" && date_at="$(date +'%I:%M %p')"
+    [[ $date_at ]] || ble/util/strftime -v date_at '%I:%M %p'
     .ble-cursor.construct-prompt.append "$date_at" ;;
+  (D)
+    local rex='^\\D\{([^{}]*)\}' date_D
+    if [[ $tail =~ $rex ]]; then
+      ble/util/strftime -v date_D "${BASH_REMATCH[1]}"
+      .ble-cursor.construct-prompt.append "$date_D"
+      ((i+=${#BASH_REMATCH[0]}-2))
+    else
+      .ble-cursor.construct-prompt.append "\\$c" "$c"
+    fi ;;
   (e) 
     .ble-cursor.construct-prompt.append "" ;;
   (h) # = ホスト名
@@ -521,8 +530,7 @@ function .ble-cursor.construct-prompt {
 
 # 廃止予定
 declare -a _ble_region_highlight_table
-#: ${bleopt_syntax_highlight_mode=default}
-: ${bleopt_syntax_highlight_mode=syntax}
+: ${bleopt_syntax_highlight_mode=default}
 
 
 ## @var _ble_line_text_cache_pos[]
@@ -807,6 +815,31 @@ function .ble-line-text/slice {
   fi
 }
 
+## 関数 .ble-line-text/get-index-at x y
+##   指定した位置 x y に対応する index を求めます。
+function .ble-line-text/get-index-at {
+  local _var=index
+  if [[ $1 == -v ]]; then
+    _var="$2"
+    shift 2
+  fi
+
+  local _x="$1" _y="$2"
+  if ((_y>_ble_line_endy)); then
+    (($_var=_ble_line_text_cache_length))
+  elif ((_y<0)); then
+    (($_var=0))
+  else
+    # 2分法
+    local _l=0 _u="$((_ble_line_text_cache_length+1))" _m
+    while ((_l+1<_u)); do
+      local _pos=(${_ble_line_text_cache_pos[_m=(_l+_u)/2]})
+      (((_y<_pos[1]||_y==_pos[1]&&_x<_pos[0])?(_u=_m):(_l=_m)))
+    done
+    (($_var=_l))
+  fi
+}
+
 
 # 
 # **** information pane ****                                         @line.info
@@ -907,8 +940,8 @@ function .ble-line-info.draw {
   local DRAW_BUFF=()
 
   # (1) 移動・領域確保
-  ble-edit/draw/goto 0 _ble_line_endy
-  ble-edit/draw/put $'\e[D'
+  ble-edit/draw/goto 0 "$_ble_line_endy"
+  ble-edit/draw/put "$_ble_term_ind"
   [[ ${_ble_line_info[2]} ]] && ble-edit/draw/put "[$((_ble_line_info[1]+1))M"
   [[ $content ]] && ble-edit/draw/put "[$((y+1))L"
 
@@ -1072,9 +1105,9 @@ function ble-edit/draw/goto {
   local -i dy=y-_ble_line_y
   if ((dy!=0)); then
     if ((dy>0)); then
-      ble-edit/draw/put "[${dy}B"
+      ble-edit/draw/put "${_ble_term_cud//%d/$dy}"
     else
-      ble-edit/draw/put "[$((-dy))A"
+      ble-edit/draw/put "${_ble_term_cuu//%d/$((-dy))}"
     fi
   fi
 
@@ -1083,9 +1116,9 @@ function ble-edit/draw/goto {
     if ((x==0)); then
       ble-edit/draw/put ""
     elif ((dx>0)); then
-      ble-edit/draw/put "[${dx}C"
+      ble-edit/draw/put "${_ble_term_cuf//%d/$dx}"
     else
-      ble-edit/draw/put "[$((-dx))D"
+      ble-edit/draw/put "${_ble_term_cub//%d/$((-dx))}"
     fi
   fi
 
@@ -1097,9 +1130,9 @@ function ble-edit/draw/clear-line {
   ble-edit/draw/goto 0 0
   if ((_ble_line_endy>0)); then
     local height=$((_ble_line_endy+1))
-    ble-edit/draw/put "[${height}M[${height}L"
+    ble-edit/draw/put "${_ble_term_dl//%d/$height}${_ble_term_il//%d/$height}"
   else
-    ble-edit/draw/put "[2K"
+    ble-edit/draw/put "$_ble_term_el2"
   fi
 }
 ## 関数 ble-edit/draw/clear-line-after x y
@@ -1113,9 +1146,9 @@ function ble-edit/draw/clear-line-after {
   ble-edit/draw/goto "$x" "$y"
   if ((_ble_line_endy>y)); then
     local height=$((_ble_line_endy-y))
-    ble-edit/draw/put "D[${height}M[${height}LM"
+    ble-edit/draw/put "$_ble_term_ind${_ble_term_dl//%d/$height}${_ble_term_il//%d/$height}$_ble_term_ri"
   fi
-  ble-edit/draw/put "[K"
+  ble-edit/draw/put "$_ble_term_el"
 
   _ble_line_x="$x" _ble_line_y="$y"
 }
@@ -1259,11 +1292,25 @@ function .ble-edit-draw.update {
 
   local DRAW_BUFF=()
 
-  local partial_update=1
+  # 1 描画領域の確保 (高さの調整)
+  local endx endy
+  .ble-line-text/getxy --prefix=end "$iN"
+  local delta
+  if (((delta=endy-_ble_line_endy)!=0)); then
+    if((delta>0)); then
+      ble-edit/draw/goto 0 "$((_ble_line_endy+1))"
+      ble-edit/draw/put "${_ble_term_il//%d/$delta}"
+    else
+      ble-edit/draw/goto 0 "$((_ble_line_endy+1+delta))"
+      ble-edit/draw/put "${_ble_term_dl//%d/$((-delta))}"
+    fi
+  fi
+  _ble_line_endx="$endx" _ble_line_endy="$endy"
+  
+  # 2 表示内容
   local ret retx=-1 rety=-1 esc_line=
-
   if ((_ble_edit_dirty>=0)); then
-    # 部分更新
+    # 部分更新の場合
 
     # # 編集文字列全体の描画
     # local ret
@@ -1280,11 +1327,6 @@ function .ble-edit-draw.update {
       .ble-line-text/getxy --prefix=umin "$umin"
       .ble-line-text/getxy --prefix=umax "$umax"
 
-      # if ((umax>=iN)); then
-      #   ble-edit/draw/clear-line-after "$uminx" "$umaxx"
-      # else
-      #   ble-edit/draw/clear-line-range "$uminx" "$uminy" "$umaxx" "$umaxy"
-      # fi
       ble-edit/draw/goto "$uminx" "$uminy"
       .ble-line-text/slice "$umin" "$umax"
       ble-edit/draw/put "$ret"
@@ -1292,8 +1334,6 @@ function .ble-edit-draw.update {
     fi
 
     if ((BLELINE_RANGE_UPDATE[0]>=0)); then
-      local endx endy
-      .ble-line-text/getxy --prefix=end "$iN"
       ble-edit/draw/clear-line-after "$endx" "$endy"
     fi
   else
@@ -1304,9 +1344,7 @@ function .ble-edit-draw.update {
     ble-edit/draw/put "$esc_prompt"
     _ble_line_x="$prox" _ble_line_y="$proy"
 
-    # 2 表示内容
-
-    # # SCOSC/SCORC で復帰する場合はこちら。
+    # # SC/RC で復帰する場合はこちら。
     # local ret esc_line
     # if ((index<iN)); then
     #   .ble-line-text/slice 0 "$index"
@@ -1341,7 +1379,6 @@ function .ble-edit-draw.update {
 
   # 4 後で使う情報の記録
   _ble_line_cur=("$cx" "$cy" "$lc" "$lg")
-  .ble-line-text/getxy --prefix=_ble_line_end "$iN" # → _ble_line_endx _ble_line_endy
   _ble_edit_dirty= _ble_line_cache_ind="$indices"
 
   if [[ -z $bleopt_suppress_bash_output ]]; then
@@ -1447,14 +1484,14 @@ function ble-edit+set-mark {
   _ble_edit_mark="$_ble_edit_ind"
   _ble_edit_mark_active=1
 }
-function ble-edit+kill-forward-line {
+function ble-edit+kill-forward-text {
   ((_ble_edit_ind>=${#_ble_edit_str})) && return
 
   _ble_edit_kill_ring="${_ble_edit_str:_ble_edit_ind}"
   _ble_edit_str.replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
-function ble-edit+kill-backward-line {
+function ble-edit+kill-backward-text {
   ((_ble_edit_ind==0)) && return
   _ble_edit_kill_ring="${_ble_edit_str::_ble_edit_ind}"
   _ble_edit_str.replace 0 _ble_edit_ind ''
@@ -1752,11 +1789,56 @@ function ble-edit+forward-char {
 function ble-edit+backward-char {
   .ble-edit.forward-char -1 || .ble-edit.bell
 }
-function ble-edit+end-of-line {
+function ble-edit+end-of-text {
   .ble-edit.goto-char ${#_ble_edit_str}
 }
-function ble-edit+beginning-of-line {
+function ble-edit+beginning-of-text {
   .ble-edit.goto-char 0
+}
+
+function ble-edit+beginning-of-line {
+  local x y index
+  .ble-line-text/getxy "$_ble_edit_ind"
+  .ble-line-text/get-index-at 0 "$y"
+  .ble-edit.goto-char "$index"
+}
+function ble-edit+end-of-line {
+  local x y index ax ay
+  .ble-line-text/getxy "$_ble_edit_ind"
+  .ble-line-text/get-index-at 0 "$((y+1))"
+  .ble-line-text/getxy --prefix=a "$index"
+  ((ay>y&&index--))
+  .ble-edit.goto-char "$index"
+}
+
+function ble-edit+kill-backward-line {
+  local x y index
+  .ble-line-text/getxy "$_ble_edit_ind"
+  .ble-line-text/get-index-at 0 "$y"
+  .ble-edit.kill-range "$index" "$_ble_edit_ind"
+}
+function ble-edit+kill-forward-line {
+  local x y index ax ay
+  .ble-line-text/getxy "$_ble_edit_ind"
+  .ble-line-text/get-index-at 0 "$((y+1))"
+  .ble-line-text/getxy --prefix=a "$index"
+  ((_ble_edit_ind+1<index&&ay>y&&index--))
+  .ble-edit.kill-range "$_ble_edit_ind" "$index"
+}
+
+function ble-edit+forward-line {
+  local x y index
+  .ble-line-text/getxy "$_ble_edit_ind"
+  .ble-line-text/get-index-at "$x" "$((y+1))"
+  .ble-edit.goto-char "$index"
+  ((_ble_edit_mark_active||y<_ble_line_endy))
+}
+function ble-edit+backward-line {
+  local x y index
+  .ble-line-text/getxy "$_ble_edit_ind"
+  .ble-line-text/get-index-at "$x" "$((y-1))"
+  .ble-edit.goto-char "$index"
+  ((_ble_edit_mark_active||y>0))
 }
 
 # 
@@ -2319,10 +2401,9 @@ function ble-edit+discard-line {
   _ble_edit_dirty=-1
 }
 
-## @var[out] hist_expand
-
 function ble-edit+accept-line {
   local BASH_COMMAND="$_ble_edit_str"
+  local nl=$'\n'
 
   # 行更新
   .ble-line-info.clear
@@ -2333,12 +2414,12 @@ function ble-edit+accept-line {
 
   # 履歴展開
   local hist_expanded
-  if ! hist_expanded="$(history -p -- "$BASH_COMMAND" 2>/dev/null)"; then
+  if ! hist_expanded="$(history -p -- "$BASH_COMMAND" 2>/dev/null;echo -n :)"; then
     .ble-edit-draw.set-dirty -1
     return
   fi
-  if test "$hist_expanded" != "$BASH_COMMAND"; then
-    BASH_COMMAND="$hist_expanded"
+  if test "${hist_expanded%$nl:}" != "$BASH_COMMAND"; then
+    BASH_COMMAND="${hist_expanded%$nl:}"
     echo "$_ble_term_sgr_fghb[ble: expand]$_ble_term_sgr0 $BASH_COMMAND" 1>&2
   fi
 
@@ -2363,6 +2444,16 @@ function ble-edit+accept-and-next {
   local hist_ind=$((_ble_edit_history_ind+1))
   ble-edit+accept-line
   .ble-edit.history-goto $hist_ind
+}
+function ble-edit+newline {
+  KEYS=(10) ble-edit+self-insert
+}
+function ble-edit+accept-single-line-or-newline {
+  if [[ $_ble_edit_str == *$'\n'* ]]; then
+    ble-edit+newline
+  else
+    ble-edit+accept-line
+  fi
 }
 
 function .ble-edit.bind.command {
@@ -2399,6 +2490,7 @@ function .ble-edit/history/generate-source-to-load-history {
   HISTTIMEFORMAT=__ble_ext__
   
   # 285ms for 16437 entries
+  local apos="'"
   history | awk -v apos="'" '
     BEGIN{
       print "_ble_edit_history=("
@@ -2408,22 +2500,27 @@ function .ble-edit/history/generate-source-to-load-history {
     /^ *[0-9]+\*? +(__ble_ext__|\?\?)/{
       if(n!=""){
         n="";
-        gsub(apos,apos "\\" apos apos,t);
         print "  " apos t apos;
       }
-  
-      n=$1;
-      t=$0;sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/,"",t);
-      next
+
+      n=$1;t="";
+      sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/,"",$0);
     }
-    {t=t "\n" $0;}
+    {
+      line=$0;
+      if(line~/^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+        line=apos substr(line,9) apos;
+      else
+        gsub(apos,apos "\\" apos apos,line);
+
+      t=t!=""?t "\n" line:line;
+    }
     END{
       if(n!=""){
         n="";
-        gsub(apos,apos "\\" apos apos,t);
         print "  " apos t apos;
       }
-  
+
       print ")"
     }
   '
@@ -2482,10 +2579,18 @@ function .ble-edit.history-add {
       esac
     done
   fi
-
-  history -s -- "$cmd"
+  
   _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
   _ble_edit_history_ind=${#_ble_edit_history[@]}
+
+  if [[ $cmd == *$'\n'* ]]; then
+    if ((_ble_bash>=40100)); then
+      printf -v cmd 'eval -- %q' "$cmd"
+    else
+      cmd="$(printf 'eval -- %q' "$cmd")"
+    fi
+  fi
+  history -s -- "$cmd"
 }
 
 function .ble-edit.history-goto {
@@ -2550,6 +2655,14 @@ function ble-edit+history-expand-line {
   _ble_edit_mark=0
   _ble_edit_mark_active=
 }
+
+function ble-edit+forward-line-or-history-next {
+  ble-edit+forward-line || ble-edit+history-next
+}
+function ble-edit+backward-line-or-history-prev {
+  ble-edit+backward-line || ble-edit+history-prev
+}
+
 
 # 
 # **** incremental search ****                                 @history.isearch
@@ -3116,8 +3229,8 @@ function ble-edit-setup-keymap+emacs {
   # shell function
   ble-bind -f 'C-c'    discard-line
   ble-bind -f 'C-j'    accept-line
-  ble-bind -f 'C-m'    accept-line
-  ble-bind -f 'RET'    accept-line
+  ble-bind -f 'C-m'    accept-single-line-or-newline
+  ble-bind -f 'RET'    accept-single-line-or-newline
   ble-bind -f 'C-o'    accept-and-next
   ble-bind -f 'C-g'    bell
   ble-bind -f 'C-l'    clear-screen
@@ -3129,13 +3242,7 @@ function ble-edit-setup-keymap+emacs {
   # history
   ble-bind -f 'C-r'    history-isearch-backward
   ble-bind -f 'C-s'    history-isearch-forward
-  ble-bind -f 'C-p'    history-prev
-  ble-bind -f 'C-n'    history-next
-  ble-bind -f 'up'     history-prev
-  ble-bind -f 'down'   history-next
   ble-bind -f 'C-RET'  history-expand-line
-  ble-bind -f 'C-home' history-beginning
-  ble-bind -f 'C-end'  history-end
   ble-bind -f 'M-<'    history-beginning
   ble-bind -f 'M->'    history-end
 
@@ -3196,6 +3303,20 @@ function ble-edit-setup-keymap+emacs {
   ble-bind -f 'S-M-m'     'marked beginning-of-line'
   ble-bind -f 'C-k'       kill-forward-line
   ble-bind -f 'C-u'       kill-backward-line
+
+  ble-bind -f 'C-p'    'nomarked backward-line-or-history-prev'
+  ble-bind -f 'up'     'nomarked backward-line-or-history-prev'
+  ble-bind -f 'C-n'    'nomarked forward-line-or-history-next'
+  ble-bind -f 'down'   'nomarked forward-line-or-history-next'
+  ble-bind -f 'S-C-p'  'marked backward-line'
+  ble-bind -f 'S-up'   'marked backward-line'
+  ble-bind -f 'S-C-n'  'marked forward-line'
+  ble-bind -f 'S-down' 'marked forward-line'
+
+  ble-bind -f 'C-home'   'nomarked beginning-of-text'
+  ble-bind -f 'C-end'    'nomarked end-of-text'
+  ble-bind -f 'S-C-home' 'marked beginning-of-text'
+  ble-bind -f 'S-C-end'  'marked end-of-text'
 
   ble-bind -f 'C-x C-v'   display-shell-version
   # ble-bind -f 'C-x' bell

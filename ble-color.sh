@@ -869,5 +869,4 @@ function ble-highlight-layer:RandomColor2/getg {
   ble-color-gspec2g -v g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
 }
 
-#_ble_highlight_layer__list=(plain adapter region)
 _ble_highlight_layer__list=(plain syntax region)

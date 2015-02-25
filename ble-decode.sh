@@ -60,7 +60,7 @@ function .ble-decode-char {
   fi
 
   # hook for quoted-insert, etc
-  if test -n "$_ble_decode_char__hook"; then
+  if [[ $_ble_decode_char__hook ]]; then
     local hook="$_ble_decode_char__hook"
     _ble_decode_char__hook=
     $hook "$char"
@@ -412,7 +412,9 @@ function .ble-decode/keymap/pop {
 
 
 ## 今迄に入力された未処理のキーの列を保持します
-declare _ble_decode_key__seq # /(_\d+)*/
+declare _ble_decode_key__seq= # /(_\d+)*/
+
+declare _ble_decode_key__hook=
 
 ## 関数 .ble-decode-key key
 ##   キー入力の処理を行います。登録されたキーシーケンスに一致した場合、
@@ -425,6 +427,14 @@ declare _ble_decode_key__seq # /(_\d+)*/
 ##
 function .ble-decode-key {
   local key="$1"
+
+  if [[ $_ble_decode_key__hook ]]; then
+    local hook="$_ble_decode_key__hook"
+    _ble_decode_key__hook=
+    $hook "$key"
+    return 0
+  fi
+
   local dicthead=_ble_decode_${_ble_decode_key__kmap:-$ble_opt_default_keymap}_kmap_
 
   eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
@@ -910,8 +920,15 @@ EOF
 ## 変数 _ble_stty_stat
 ##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
 
+#
+# 改行 (C-m, C-j) の取り扱いについて
+#   入力の C-m が C-j に勝手に変換されない様に -icrnl を指定する必要がある。
+#   (-nl の設定の中に icrnl が含まれているので、これを取り消さなければならない)
+#   一方で、出力の LF は CR LF に変換されて欲しいので onlcr は保持する。
+#   (これは -nl の設定に含まれている)
+# 
 function .ble-stty.initialize {
-  stty -ixon    \
+  stty -ixon -nl -icrnl \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_stty_stat=1
@@ -925,7 +942,7 @@ function .ble-stty.leave {
 }
 function .ble-stty.enter {
   test -n "$_ble_stty_stat" && return
-  stty -echo -nl \
+  stty -echo -nl -icrnl \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_stty_stat=1
@@ -968,10 +985,10 @@ function .ble-decode-bind.uvw {
   _ble_decode_bind__uvwflag=1
 
   # 何故か stty 設定直後には bind できない物たち
-  bind -x '"":ble-decode-byte:bind 21; eval "$_ble_decode_bind_hook"'
-  bind -x '"":ble-decode-byte:bind 22; eval "$_ble_decode_bind_hook"'
-  bind -x '"":ble-decode-byte:bind 23; eval "$_ble_decode_bind_hook"'
-  bind -x '"":ble-decode-byte:bind 127; eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode-byte:bind 21; eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode-byte:bind 22; eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode-byte:bind 23; eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode-byte:bind 127; eval "$_ble_decode_bind_hook"'
 }
 
 # **** ble-decode-bind ****                                   @decode.bind.main
@@ -1048,14 +1065,14 @@ function .ble-decode-bind/from-cmap-source {
 
 function .ble-decode-initialize-cmap/emit-bindx {
   local ap="'" eap="'\\''"
-  echo "bind -x '\"${1//$ap/$eap}\":ble-decode-byte:bind $2; eval \"\$_ble_decode_bind_hook\"'"
+  echo "builtin bind -x '\"${1//$ap/$eap}\":ble-decode-byte:bind $2; eval \"\$_ble_decode_bind_hook\"'"
 }
 function .ble-decode-initialize-cmap/emit-bindr {
-  echo "bind -r \"$1\""
+  echo "builtin bind -r \"$1\""
 }
 function .ble-decode-initialize-cmap {
-  test ! -d "$_ble_base/cache" && mkdir -p "$_ble_bash/cache"
-
+  [[ -d $_ble_base/cache ]] || mkdir -p "$_ble_base/cache"
+  
   local init="$_ble_base/cmap/default.sh"
   local dump="$_ble_base/cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump"
   if test "$dump" -nt "$init"; then
@@ -1087,10 +1104,10 @@ function .ble-decode-initialize-cmap {
 }
 
 function .ble-decode-bind/bind {
-  bind -x "\"$1\":ble-decode-byte:bind $2; eval \"\$_ble_decode_bind_hook\""
+  builtin bind -x "\"$1\":ble-decode-byte:bind $2; eval \"\$_ble_decode_bind_hook\""
 }
 function .ble-decode-bind/unbind {
-  bind -r "$1"
+  builtin bind -r "$1"
 }
 
 ## 関数 .ble-decode-bind/generate-source-to-unbind-default
@@ -1099,7 +1116,7 @@ function .ble-decode-bind/unbind {
 function .ble-decode-bind/generate-source-to-unbind-default {
   # 1 ESC で始まる既存の binding を全て削除
   # 2 bind を全て記録 at $$.bind.save
-  bind -sp 2>/dev/null | awk -v apos="'" '
+  builtin bind -sp 2>/dev/null | awk -v apos="'" '
     BEGIN{APOS=apos "\\" apos apos;}
     #/^"(\\e|\\M-)/{
     /^"/{
@@ -1111,16 +1128,16 @@ function .ble-decode-bind/generate-source-to-unbind-default {
         gsub(/\\M-/,"\\e",seq);
 
         gsub(apos,APOS,seq);
-        print "bind -r " apos seq apos;
+        print "builtin bind -r " apos seq apos;
       }
 
       gsub(apos,APOS);
-      print "bind " apos $0 apos >"/dev/stderr";
+      print "builtin bind " apos $0 apos >"/dev/stderr";
     }
   ' 2> "$_ble_base/tmp/$$.bind.save"
 
   if ((_ble_bash>=40300)); then
-    bind -X 2>/dev/null | gawk -v apos="'" '
+    builtin bind -X 2>/dev/null | gawk -v apos="'" '
       BEGIN{APOS=apos "\\" apos apos;}
 
       function unescape_control_modifier(str,_i,_esc){
@@ -1169,7 +1186,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
         }
 
         gsub(apos,APOS,line);
-        print "bind -x " apos line apos;
+        print "builtin bind -x " apos line apos;
       }
     ' >> "$_ble_base/tmp/$$.bind.save" 2>/dev/null
   fi
@@ -1241,10 +1258,10 @@ function .ble-decode-bind {
       # C-@
       if ((esc00)); then
         if [[ $mode == unbind ]]; then
-          bind -r '\C-@'
+          builtin bind -r '\C-@'
         else
           # UTF-8 2-byte code of 0 (■UTF-8依存)
-          bind '"\C-@":"\xC0\x80"'
+          builtin bind '"\C-@":"\xC0\x80"'
         fi
       else
         $binder "$ret" "$i"
@@ -1267,7 +1284,7 @@ function .ble-decode-bind {
       # ESC [
       if ((i==91&&esc1B5B)); then
         if [[ $mode == unbined ]]; then
-          bind -r '\e['
+          builtin bind -r '\e['
         else
           # * obsoleted work around
           #   ESC [ を CSI (encoded in utf-8) に変換して受信する。
@@ -1276,7 +1293,7 @@ function .ble-decode-bind {
           # bind '"\e[":"\302\233"'
           # ble-bind -f 'CSI' '.ble-decode-char 27 91'
 
-          bind '"\e[":"\xC0\x9B["' # (■UTF-8依存)
+          builtin bind '"\e[":"\xC0\x9B["' # (■UTF-8依存)
         fi
       else
         $binder "\\e$ret" "27 $i"
@@ -1290,9 +1307,9 @@ function .ble-decode-bind {
 
         # ESC ESC
         if [[ $mode == unbind ]]; then
-          bind -r '\e\e'
+          builtin bind -r '\e\e'
         else
-          bind '"\e\e":"\e[^"'
+          builtin bind '"\e\e":"\e[^"'
           ble-bind -k 'ESC [ ^' __esc__
           ble-bind -f __esc__ '.ble-decode-char 27 27'
         fi
@@ -1328,6 +1345,14 @@ function ble-decode-attach {
 function ble-decode-detach {
   .ble-decode-bind unbind
 }
+
+# function bind {
+#   if ((_ble_decode_bind_attached)); then
+#     echo Error
+#   else
+#     builtin bind "$@"
+#   fi
+# }
 
 #------------------------------------------------------------------------------
 # **** encoding = UTF-8 ****

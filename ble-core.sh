@@ -76,6 +76,25 @@ else
   }
 fi
 
+if ((_ble_bash>=40200)); then
+  function ble/util/strftime {
+    if [[ $1 = -v ]]; then
+      printf -v "$2" "%($3)T" "${4:--1}"
+    else
+      printf "%($1)T" "${2:--1}"
+    fi
+  }
+else
+  function ble/util/strftime {
+    if [[ $1 = -v ]]; then
+      local _result="$(date +"$3" $4)"
+      eval "$2=\"\$_result\""
+    else
+      date +"$1" $2
+    fi
+  }
+fi
+
 _ble_util_array_prototype=()
 function _ble_util_array_prototype.reserve {
   local -i n="$1" i
@@ -118,30 +137,37 @@ function ble-assert {
 #: ${ble_opt_vbell_default_message=' (>ω<)/ わふー, わふー!! '}
 : ${ble_opt_vbell_duration=2000}
 
-_ble_term_xenl=1
-_ble_term_it=8
-_ble_term_sc='[s'
-_ble_term_rc='[u'
-_ble_term_sgr_fghr='[91m'
-_ble_term_sgr_fghb='[94m'
-_ble_term_sgr0='[m'
-
 function .ble-term.initialize {
-
-  # end of line behavior
-  if tput xenl &>/dev/null; then
-    _ble_term_xenl=1
+  if [[ $_ble_base/term.sh -nt $_ble_base/cache/$TERM.term ]]; then
+    source "$_ble_base/term.sh"
   else
-    _ble_term_xenl=0
+    source "$_ble_base/cache/$TERM.term"
   fi
 
-  # tab width
-  local tmp=$(tput it)
-  _ble_term_it="${tmp-8}"
   _ble_util_string_prototype.reserve "$_ble_term_it"
+}
 
-  # for visible-bell
+.ble-term.initialize
 
+function ble-term/put {
+  BUFF[${#BUFF[@]}]="$1"
+}
+function ble-term/cup {
+  local x="$1" y="$2" esc="$_ble_term_cup"
+  esc="${esc//%x/$x}"
+  esc="${esc//%y/$y}"
+  esc="${esc//%c/$((x+1))}"
+  esc="${esc//%l/$((y+1))}"
+  BUFF[${#BUFF[@]}]="$esc"
+}
+function ble-term/flush {
+  IFS= eval 'echo -n "${BUFF[*]}"'
+  BUFF=()
+}
+
+# **** vbell/abell ****
+
+function .ble-term/visible-bell/initialize {
   # 過去の .time ファイルを削除
   local now= file
   for file in "$_ble_base"/tmp/*.visible-bell.time; do
@@ -153,28 +179,38 @@ function .ble-term.initialize {
   done
 
   _ble_term_visible_bell__ftime="$_ble_base/tmp/$$.visible-bell.time"
+
+  local BUFF=()
+  ble-term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
+  ble-term/cup 0 0
+  ble-term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//%d/1}"
+  IFS= eval '_ble_term_visible_bell_show="${BUFF[*]}"'
+  
+  BUFF=()
+  ble-term/put "$_ble_term_sc$_ble_term_sgr0"
+  ble-term/cup 0 0
+  ble-term/put "$_ble_term_el2$_ble_term_rc"
+  IFS= eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
 }
-.ble-term.initialize
 
+.ble-term/visible-bell/initialize
 
-
-# **** vbell/abell ****
 
 function .ble-term.audible-bell {
   echo -n '' 1>&2
 }
 function .ble-term.visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
-  local cols="${LINES:-25}" _sc="$_ble_term_sc$_ble_term_sgr0" _rc="$_ble_term_rc"
+  local cols="${LINES:-25}"
   local lines="${COLUMNS:-80}"
   local message="$*"
-  local message="${message:-$ble_opt_vbell_default_message}"
-  echo -n "M$_sc[1;1H[K[32;7m${message::cols}[m$_rc[B" 1>&2
-  # echo -n "D$_sc[${lines};1H[K[7m${message::cols}[m$_rc[A" 1>&2
+  message="${message:-$ble_opt_vbell_default_message}"
+
+  echo -n "${_ble_term_visible_bell_show//%message%/$_ble_term_setaf2$_ble_term_rev${message::cols}}" >&2
   (
     {
       sleep 0.05
-      echo -n "M$_sc[1;1H[K[7m${message::cols}[m$_rc[B" 1>&2
+      echo -n "${_ble_term_visible_bell_show//%message%/$_ble_term_rev${message::cols}}" >&2
 
       # load time duration settings
       declare msec=$ble_opt_vbell_duration
@@ -190,8 +226,7 @@ function .ble-term.visible-bell {
       declare time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
       declare time2=($(date +'%s %N'))
       if (((time2[0]-time1[0])*1000+(1${time2[1]::3}-1${time1[1]::3})>=msec)); then
-        echo -n "$_sc[1;1H[2K$_rc" 1>&2
-        # echo -n "$_sc[${lines};1H[2K$_rc" 1>&2
+        echo -n "$_ble_term_visible_bell_clear" >&2
       fi
     } &
   )

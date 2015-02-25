@@ -11,6 +11,10 @@ outfiles+=out/ble.sh
 out/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh ble-syntax.sh
 	mwg_pp.awk $< >/dev/null
 
+outfiles+=out/term.sh
+out/term.sh: term.sh
+	cp -p $< $@
+
 outfiles+=out/cmap
 out/cmap:
 	mkdir -p $@
