@@ -1022,10 +1022,10 @@ function .ble-decode.c2dqs {
     fi
   elif ((128<=i&&i<160)); then
     # C1 characters
-    .ble-text.sprintf ret '\\%03o' "$i"
+    ble/util/sprintf ret '\\%03o' "$i"
   else
     # others
-    .ble-text.sprintf ret '\\%03o' "$i"
+    ble/util/sprintf ret '\\%03o' "$i"
     # .ble-text.c2s だと UTF-8 encode されてしまうので駄目
   fi
 }

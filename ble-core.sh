@@ -37,11 +37,11 @@ function .ble-shopt-extglob-pop-all {
 # util
 
 if ((_ble_bash>=40100)); then
-  function .ble-text.sprintf {
+  function ble/util/sprintf {
     printf -v "$@"
   }
 else
-  function .ble-text.sprintf {
+  function ble/util/sprintf {
     local _var="$1"
     shift
     local _value="$(printf "$@")"
@@ -108,6 +108,59 @@ function _ble_util_string_prototype.reserve {
   for ((c=${#_ble_util_string_prototype};c<n;c*=2)); do
     _ble_util_string_prototype="$_ble_util_string_prototype$_ble_util_string_prototype"
   done
+}
+
+## 関数 ble-autoload scriptfile functions...
+##   関数が定義されたファイルを自動で読み取る設定を行います。
+##   scriptfile には functions の実体を定義します。
+##   functions に指定した関数が初めて呼び出された時に、
+##   scriptfile が自動的に source されます。
+##
+##   @param[in] scriptfile
+##     functions が定義されているファイル
+##
+##     注意: このファイル内でグローバルに変数を定義する際は
+##     declare/typeset を用いないで下さい。
+##     autoload を行う関数内から source されるので、
+##     その関数のローカル変数として扱われてしまいます。
+##     連想配列などの特殊変数を定義したい場合は ble-autoload
+##     の設定時に同時に行って下さい。
+##     ※declare -g は bash-4.3 以降です
+##
+##   @param[in] functions...
+##     定義する関数名のリスト
+##
+##     scriptfile の source の起点となる関数です。
+##     scriptfile に定義される関数名を全て列挙する必要はなく、
+##     scriptfile 呼出の起点として使用する関数のみで充分です。
+##
+function ble-autoload {
+  local apos="'" APOS="'\\''" file="$1" funcname
+  shift
+
+  # ※$FUNCNAME は元から環境変数に設定されている場合、
+  #   特別変数として定義されない。
+  #   この場合無闇にコマンドとして実行するのは危険である。
+
+  for funcname in "$@"; do
+    eval "function $funcname {
+      unset -f $funcname
+      ble-load '${file//$apos/$APOS}'
+      $funcname \"\$@\"
+    }"
+  done
+}
+function ble-load {
+  local file="$1"
+  if [[ $file == /* ]]; then
+    source "$file"
+  elif [[ -f $_ble_base/local/$file ]]; then
+    source "$_ble_base/local/$file"
+  elif [[ -f $_ble_base/share/$file ]]; then
+    source "$_ble_base/share/$file"
+  else
+    return 1
+  fi
 }
 
 _ble_stackdump_title=stackdump

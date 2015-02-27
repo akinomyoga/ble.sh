@@ -736,16 +736,15 @@ function ble-syntax/parse/ctx-command {
     return 0
   fi
 
-  local flagWbeginErr=0
+  local unexpectedWbegin=-1
   if ((wbegin<0)); then
-
     # case CTX_ARGX | CTX_ARGX0 | CTX_CMDXF
     #   ctx=CTX_ARGI
     # case CTX_CMDX | CTX_CMDX1 | CTX_CMDXV
     #   ctx=CTX_CMDI
     # case CTX_ARGI | CTX_CMDI | CTX_VRHS
     #   エラー...
-    ((flagWbeginErr=ctx==CTX_ARGX0,
+    ((ctx==CTX_ARGX0&&(unexpectedWbegin=i),
       ctx=(ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_CMDXF)?CTX_ARGI:CTX_CMDI,
       wbegin=i,wtype=ctx))
   fi
@@ -762,7 +761,13 @@ function ble-syntax/parse/ctx-command {
       _ble_syntax_attr[i-${#BASH_REMATCH[1]}]=CTX_EXPR,
       ctx=CTX_VRHS))
     if [[ ${BASH_REMATCH[1]} == '[' ]]; then
+      # arr[
       i=$((i-1)) ble-syntax/parse/nest-push "$CTX_EXPR" 'a['
+    elif [[ ${text:i} == '('* ]]; then
+      # var=( var+=(
+      ((ctx=CTX_CMDXV,wbegin=-1,wtype=-1)) # pop したら直ぐにコマンドが来て良い
+      ble-syntax/parse/nest-push "$CTX_VALX" 'A('
+      ((_ble_syntax_attr[i]=ATTR_DEL,i+=1))
     fi
     flagConsume=1
   elif rex='^([^'"${_BLE_SYNTAX_CSPECIAL[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
@@ -782,9 +787,9 @@ function ble-syntax/parse/ctx-command {
   fi
 
   if ((flagConsume)); then
-    if ((flagWbeginErr&&wbegin>=0)); then
-      ble-syntax/parse/touch-updated-attr "$wbegin"
-      ((_ble_syntax_attr[wbegin]=ATTR_ERR))
+    if ((unexpectedWbegin>=0)); then
+      ble-syntax/parse/touch-updated-attr "$unexpectedWbegin"
+      ((_ble_syntax_attr[unexpectedWbegin]=ATTR_ERR))
     fi
     return 0
   else
@@ -1204,6 +1209,129 @@ function ble-syntax/parse {
 #%)
 }
 
+## 関数 ble-syntax/getattr index
+function ble-syntax/getattr {
+  local i
+  attr=
+  for ((i=$1;i>=0;i--)); do
+    if [[ ${_ble_syntax_attr[i]} ]]; then
+      ((attr=_ble_syntax_attr[i]))
+      return
+    fi
+  done
+}
+
+## 関数 ble-syntax/getstat index
+function ble-syntax/getstat {
+  local i
+  for ((i=$1;i>=0;i--)); do
+    if [[ ${_ble_syntax_stat[i]} ]]; then
+      stat=(${_ble_syntax_stat[i]})
+      return
+    fi
+  done
+}
+
+
+## 関数 ble-syntax/completion-context/check-prefix
+##   @var[in] text
+##   @var[in] index
+##   @var[out] context
+function ble-syntax/completion-context/check-prefix {
+  local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
+  local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
+
+  local i stat=()
+  for ((i=index-1;i>=0;i--)); do
+    if [[ ${_ble_syntax_stat[i]} ]]; then
+      stat=(${_ble_syntax_stat[i]})
+      break
+    fi
+  done
+
+  if [[ ${stat[0]} ]]; then
+    local wbegin="${stat[1]}"
+    if ((stat[0]==CTX_CMDI)); then
+      # CTX_CMDI  → コマンドの続き
+      context+=("command $wbegin")
+      if [[ ${text:wbegin:index-wbegin} =~ $rex_param ]]; then
+        context+=("variable $wbegin")
+      fi
+    elif ((stat[0]==CTX_ARGI)); then
+      # CTX_ARGI  → 引数の続き
+      context+=("file $wbegin")
+      local sub="${text:wbegin:index-wbegin}"
+      if [[ $sub == *=* ]]; then
+        sub="${sub##*=}"
+        context+=("file $((index-${#sub}))")
+      fi
+    elif ((stat[0]==CTX_CMDX||
+              stat[0]==CTX_CMDX1||
+              stat[0]==CTX_CMDXV)); then
+      # 直前の再開点が CMDX だった場合、
+      # 現在地との間にコマンド名があればそれはコマンドである。
+      # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
+      local word="${text:i:index-i}"
+      if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
+        context+=("command $i")
+        if [[ $word =~ $rex_param ]]; then
+          context+=("variable $i")
+        fi
+      fi
+    elif ((stat[0]==CTX_CMDXF)); then
+      # CTX_CMDXF → (( でなければ 変数名
+      if [[ ${text:i:index-1} =~ $rex_param ]]; then
+        context+=("variable $wbegin")
+      fi
+    elif ((stat[0]==CTX_ARGX)); then
+      local sub="${text:i:index-i}"
+      if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
+        context+=("file $i")
+        local rex="^([^'\"\$\\]|\\.)*="
+        if [[ $sub =~ $rex ]]; then
+          sub="${sub:${#BASH_REMATCH[0]}}"
+          context+=("file $((index-${#sub}))")
+        fi
+      fi
+    fi
+  fi
+}
+
+## 関数 ble-syntax/completion-context/check-here
+##   現在地点を開始点とする補完の可能性を列挙します
+##   @var[in]  text
+##   @var[in]  index
+##   @var[out] context
+function ble-syntax/completion-context/check-here {
+  ((${#context[*]})) && return
+  local stat=(${_ble_syntax_stat[index]})
+  if [[ ${stat[0]} ]]; then
+    # ここで CTX_CMDI や CTX_ARGI は処理しない。
+    # 既に check-prefix で引っかかっている筈だから。
+
+    if ((stat[0]==CTX_CMDX||
+            stat[0]==CTX_CMDXV||
+            stat[0]==CTX_CMDX1)); then
+      context+=("command $index" "variable $index")
+    elif ((stat[0]==CTX_CMDXF)); then
+      context+=("variable $index")
+    elif ((stat[0]==CTX_ARGX)); then
+      context+=("file $index")
+    fi
+  fi
+}
+
+## 関数 ble-syntax/completion-context
+##   @var[out] context[]
+function ble-syntax/completion-context {
+  local text="$1" index="$2"
+  context=()
+  ((index<0&&(index=0)))
+
+  ble-syntax/completion-context/check-prefix
+  ble-syntax/completion-context/check-here
+}
+
 #==============================================================================
 #
 # syntax-highlight
@@ -1411,12 +1539,15 @@ function ble-syntax/highlight/fill-g {
 }
 
 _ble_syntax_rex_simple_word=
+_ble_syntax_rex_simple_word_element=
 function ble-syntax-initialize-rex {
   local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/\'}"
   local rex_dquot='\$?"([^'"${_BLE_SYNTAX_CSPECIAL[CTX_QUOT]}"']|\\.)*"'
   local rex_param='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
   local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
-  _ble_syntax_rex_simple_word='^([^'"${_BLE_SYNTAX_CSPECIAL[CTX_ARGI]}"']|\\.|'"$rex_squot"'|'"$rex_dquot"'|'"$rex_param"'|'"$rex_param2"')+$'
+  local rex_letter='[^'"${_BLE_SYNTAX_CSPECIAL[CTX_ARGI]}"']'
+  _ble_syntax_rex_simple_word_element='('"$rex_letter"'|\\.|'"$rex_squot"'|'"$rex_dquot"'|'"$rex_param"'|'"$rex_param2"')'
+  _ble_syntax_rex_simple_word='^'"$_ble_syntax_rex_simple_word_element"'+$'
 }
 ble-syntax-initialize-rex
 
@@ -1471,7 +1602,16 @@ function ble-highlight-layer:syntax/update-word-table {
         local set=
         if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
           local value type=
-          eval "value=$wtxt"
+
+          # 単語を展開
+          if [[ $wtxt == '['* ]]; then
+            # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
+            eval "value=(''$wtxt)"
+          else
+            # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
+            eval "value=($wtxt)"
+          fi
+
           if ((word[0]==CTX_CMDI)); then
             ble-syntax/highlight/cmdtype "$value" "$wtxt"
           elif ((word[0]==CTX_ARGI||word[0]==CTX_RDRF)); then
@@ -1571,13 +1711,11 @@ function ble-highlight-layer:syntax/update {
   local text="$1" player="$2"
   local i iN="${#text}"
 
-  local umin=-1 umax=-1
-  if ((DMIN>=0)); then
-    ble-syntax/parse "$text" "${BLELINE_RANGE_UPDATE[0]}" "${BLELINE_RANGE_UPDATE[1]}" "${BLELINE_RANGE_UPDATE[2]}"
+  _ble_edit_str.update-syntax
 
-    # 少なくともこの範囲は文字が変わっているので再描画する必要がある
-    umin="$DMIN" umax="$DMAX"
-  fi
+  local umin=-1 umax=-1
+  # 少なくともこの範囲は文字が変わっているので再描画する必要がある
+  ((DMIN>=0)) && umin="$DMIN" umax="$DMAX"
 
   # .ble-line-info.draw "ble-syntax/parse attr_urange = $_ble_syntax_attr_umin-$_ble_syntax_attr_uend, word_urange = $_ble_syntax_word_umin-$_ble_syntax_word_umax"
 

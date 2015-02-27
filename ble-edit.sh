@@ -361,8 +361,8 @@ function .ble-cursor.construct-prompt.initialize {
   _ble_cursor_prompt__string_u="${USER}"
 
   # bash versions
-  .ble-text.sprintf _ble_cursor_prompt__string_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
-  .ble-text.sprintf _ble_cursor_prompt__string_V '%d.%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" "${BASH_VERSINFO[2]}"
+  ble/util/sprintf _ble_cursor_prompt__string_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
+  ble/util/sprintf _ble_cursor_prompt__string_V '%d.%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" "${BASH_VERSINFO[2]}"
 
   # uid
   if test "$EUID" -eq 0; then
@@ -986,24 +986,72 @@ function _ble_edit_str.replace {
 
   # c.f. Note#1
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
-  ble-edit/dirty-range/update "$beg" "$((beg+${#ins}))" "$end"
+  _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end"
   .ble-edit-draw.set-dirty "$beg"
 }
 function _ble_edit_str.reset {
   local str="$1"
-  ble-edit/dirty-range/update 0 "${#str}" "${#_ble_edit_str}"
+  _ble_edit_str/update-dirty-range 0 "${#str}" "${#_ble_edit_str}"
   .ble-edit-draw.set-dirty 0
   _ble_edit_str="$str"
 }
 
-# 変更範囲
-_ble_edit_str_dbeg=-1
-_ble_edit_str_dend=-1
-_ble_edit_str_dend0=-1
+_ble_edit_dirty_draw_beg=-1
+_ble_edit_dirty_draw_end=-1
+_ble_edit_dirty_draw_end0=-1
+
+_ble_edit_dirty_syntax_beg=0
+_ble_edit_dirty_syntax_end=0
+_ble_edit_dirty_syntax_end0=1
+
+function _ble_edit_str/update-dirty-range {
+  ble-edit/dirty-range/update --prefix=_ble_edit_dirty_draw_ "$@"
+  ble-edit/dirty-range/update --prefix=_ble_edit_dirty_syntax_ "$@"
+}
+
+function _ble_edit_str.update-syntax {
+  local beg end end0
+  ble-edit/dirty-range/load --prefix=_ble_edit_dirty_syntax_
+  if ((beg>=0)); then
+    ble-edit/dirty-range/clear --prefix=_ble_edit_dirty_syntax_
+
+    ble-syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
+    # ※状態変数
+    # _ble_syntax_dbeg
+    # _ble_syntax_dend
+    # _ble_syntax_stat[]
+    # _ble_syntax_nest[]
+    # _ble_syntax_attr[]
+    # _ble_syntax_word[]
+    # _ble_syntax_attr_umin
+    # _ble_syntax_attr_uend
+    # _ble_syntax_word_umin
+    # _ble_syntax_word_umax
+  fi
+}
+
+# **** edit/dirty ****                                              @edit.dirty
+
+function ble-edit/dirty-range/load {
+  local _prefix=
+  if [[ $1 == --prefix=* ]]; then
+    _prefix="${1#--prefix=}"
+    ((beg=${_prefix}beg,
+      end=${_prefix}end,
+      end0=${_prefix}end0))
+  fi
+}
+
 function ble-edit/dirty-range/clear {
-  _ble_edit_str_dbeg=-1
-  _ble_edit_str_dend=-1
-  _ble_edit_str_dend0=-1
+  local _prefix=
+  if [[ $1 == --prefix=* ]]; then
+    _prefix="${1#--prefix=}"
+    shift
+  fi
+
+  ((${_prefix}beg=-1,
+    ${_prefix}end=-1,
+    ${_prefix}end0=-1))
 }
 
 ## 関数 ble-edit/dirty-range/update [--prefix=PREFIX] beg end end0
@@ -1012,9 +1060,9 @@ function ble-edit/dirty-range/clear {
 ## @param[in]  end    変更終了点。end<0 は変更が末端までである事を表す
 ## @param[in]  end0   変更前の end に対応する位置。
 function ble-edit/dirty-range/update {
-  local _prefix=_ble_edit_str_d
+  local _prefix=_ble_edit_dirty_draw_
   if [[ $1 == --prefix=* ]]; then
-    _prefix="${1:9}"
+    _prefix="${1#--prefix=}"
     shift
   fi
 
@@ -1268,8 +1316,8 @@ function .ble-edit-draw.update {
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
   # BLELINE_RANGE_UPDATE → .ble-line-text/update 内でこれを見て update を済ませる
-  local BLELINE_RANGE_UPDATE=("$_ble_edit_str_dbeg" "$_ble_edit_str_dend" "$_ble_edit_str_dend0")
-  ble-edit/dirty-range/clear
+  local BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
+  ble-edit/dirty-range/clear --prefix=_ble_edit_dirty_draw_
 #%if debug (
   ble-assert '((BLELINE_RANGE_UPDATE[0]<0||(
        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[1]&&
@@ -2965,6 +3013,8 @@ function ble-edit+complete-F {
     .ble-edit.bell
   fi
 }
+
+ble-autoload "$_ble_base/complete.sh" ble-edit+complete
 
 function ble-edit+command-help {
   local args=($_ble_edit_str)
