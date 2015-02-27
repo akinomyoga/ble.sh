@@ -155,9 +155,9 @@ function ble-getopt {
       return
     else
       # short options
-      local f_longname=
+      local f_longname= arr
 
-      GLOBIGNORE='*' IFS=: eval 'local arr=($_getopt_opt)'
+      GLOBIGNORE='*' IFS=: eval 'arr=($_getopt_opt)'
       _getopt_oarg=("${arr[@]}")
       _getopt_olen="${#_getopt_oarg[@]}"
       _getopt_oind=1

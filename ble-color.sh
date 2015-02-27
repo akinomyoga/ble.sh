@@ -205,7 +205,8 @@ function ble-color-face2sgr {
 ## 関数 _ble_region_highlight_table;  ble-region_highlight-append triplets ; _ble_region_highlight_table
 function ble-region_highlight-append {
   while [ $# -gt 0 ]; do
-    local -a triplet=($1)
+    local -a triplet
+    triplet=($1)
     local ret; ble-color-gspec2g "${triplet[2]}"; local g="$ret"
     local -i i="${triplet[0]}" iN="${triplet[1]}"
     for ((;i<iN;i++)); do
@@ -337,9 +338,12 @@ function ble-syntax-highlight+default {
     local tail="${text:i}"
     if [[ "$mode" == cmd ]]; then
       if rex='^([_a-zA-Z][_a-zA-Z0-9]*)\+?=' && [[ $tail =~ $rex ]]; then
+        # for bash-3.1 ${#arr[n]} bug
+        local rematch1="${BASH_REMATCH[1]}"
+
         # local var="${BASH_REMATCH[0]::-1}"
-        ble-region_highlight-append "$i $((i+${#BASH_REMATCH[1]})) fg=orange"
-        ((i+=${#BASH_REMATCH[0]}))
+        ble-region_highlight-append "$i $((i+$rematch1)) fg=orange"
+        ((i+=${#BASH_REMATCH}))
         mode=rhs
         continue
       elif rex='^([^'"$IFS"'|&;()<>'\''"\]|\\.)+' && [[ $tail =~ $rex ]]; then
@@ -396,7 +400,7 @@ function ble-syntax-highlight+default {
           ble-region_highlight-append "$i $((i+${#_0})) bg=224" ;;
         esac
 
-        ((i+=${#BASH_REMATCH[0]}))
+        ((i+=${#BASH_REMATCH}))
         if rex='^keyword:([!{]|time|do|if|then|else|while|until)$|^builtin:eval$' && [[ "$type:$cmd" =~ $rex ]]; then
           mode=cmd
         else
@@ -429,12 +433,12 @@ function ble-syntax-highlight+default {
 
     # /^'([^'])*'|^\$'([^\']|\\.)*'|^`([^\`]|\\.)*`|^\\./
     if rex='^'\''([^'\''])*'\''|^\$'\''([^\'\'']|\\.)*'\''|^`([^\`]|\\.)*`|^\\.' && [[ $tail =~ $rex ]]; then
-      ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) fg=green"
-      ((i+=${#BASH_REMATCH[0]}))
+      ble-region_highlight-append "$i $((i+${#BASH_REMATCH})) fg=green"
+      ((i+=${#BASH_REMATCH}))
       mode=arg_
       continue
     elif rex='^['"$IFS"']+' && [[ $tail =~ $rex ]]; then
-      ((i+=${#BASH_REMATCH[0]}))
+      ((i+=${#BASH_REMATCH}))
       local spaces="${BASH_REMATCH[0]}"
       if [[ "$spaces" =~ $'\n' ]]; then
         mode=cmd
@@ -444,18 +448,18 @@ function ble-syntax-highlight+default {
       continue
     elif rex='^;;?|^;;&$|^&&?|^\|\|?' && [[ $tail =~ $rex ]]; then
       if [[ $mode = cmd ]]; then
-        ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) bg=224"
+        ble-region_highlight-append "$i $((i+${#BASH_REMATCH})) bg=224"
       fi
-      ((i+=${#BASH_REMATCH[0]}))
+      ((i+=${#BASH_REMATCH}))
       mode=cmd
       continue
     elif rex='^(&?>>?|<>?|[<>]&)' && [[ $tail =~ $rex ]]; then
-      ble-region_highlight-append "$i $((i+${#BASH_REMATCH[0]})) bold"
-      ((i+=${#BASH_REMATCH[0]}))
+      ble-region_highlight-append "$i $((i+${#BASH_REMATCH})) bold"
+      ((i+=${#BASH_REMATCH}))
       mode=arg
       continue
     elif rex='^(' && [[ $tail =~ $rex ]]; then
-      ((i+=${#BASH_REMATCH[0]}))
+      ((i+=${#BASH_REMATCH}))
       mode=cmd
       continue
     fi

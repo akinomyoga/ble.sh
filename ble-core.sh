@@ -95,6 +95,16 @@ else
   }
 fi
 
+if ((_ble_bash>=30100)); then
+  function ble/util/array-push {
+    eval "$1+=(\"\$2\")"
+  }
+else
+  function ble/util/array-push {
+    eval "$1[\${#$1[@]}]=\"\$2\""
+  }
+fi
+
 _ble_util_array_prototype=()
 function _ble_util_array_prototype.reserve {
   local -i n="$1" i
@@ -170,7 +180,7 @@ function ble-stackdump {
   local i nl=$'\n'
   local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
-    message+="  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
+    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
   done
   echo -n "$message" >&2
 }
@@ -207,10 +217,10 @@ function ble-term/put {
 }
 function ble-term/cup {
   local x="$1" y="$2" esc="$_ble_term_cup"
-  esc="${esc//%x/$x}"
-  esc="${esc//%y/$y}"
-  esc="${esc//%c/$((x+1))}"
-  esc="${esc//%l/$((y+1))}"
+  esc="${esc//'%x'/$x}"
+  esc="${esc//'%y'/$y}"
+  esc="${esc//'%c'/$((x+1))}"
+  esc="${esc//'%l'/$((y+1))}"
   BUFF[${#BUFF[@]}]="$esc"
 }
 function ble-term/flush {
@@ -233,10 +243,10 @@ function .ble-term/visible-bell/initialize {
 
   _ble_term_visible_bell__ftime="$_ble_base/tmp/$$.visible-bell.time"
 
-  local BUFF=()
+  local -a BUFF=()
   ble-term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
   ble-term/cup 0 0
-  ble-term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//%d/1}"
+  ble-term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//'%d'/1}"
   IFS= eval '_ble_term_visible_bell_show="${BUFF[*]}"'
   
   BUFF=()
@@ -259,11 +269,11 @@ function .ble-term.visible-bell {
   local message="$*"
   message="${message:-$ble_opt_vbell_default_message}"
 
-  echo -n "${_ble_term_visible_bell_show//%message%/$_ble_term_setaf2$_ble_term_rev${message::cols}}" >&2
+  echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_setaf2$_ble_term_rev${message::cols}}" >&2
   (
     {
       sleep 0.05
-      echo -n "${_ble_term_visible_bell_show//%message%/$_ble_term_rev${message::cols}}" >&2
+      echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
 
       # load time duration settings
       declare msec=$ble_opt_vbell_duration
@@ -276,8 +286,9 @@ function .ble-term.visible-bell {
       sleep $sec
 
       # check and clear
-      declare time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
-      declare time2=($(date +'%s %N'))
+      declare -a time1 time2
+      time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
+      time2=($(date +'%s %N'))
       if (((time2[0]-time1[0])*1000+(1${time2[1]::3}-1${time1[1]::3})>=msec)); then
         echo -n "$_ble_term_visible_bell_clear" >&2
       fi
@@ -381,8 +392,8 @@ function .ble-text.c2bc {
 
 ## @var[out] ret
 function ble-text-b2c+UTF-8 {
-  local bytes=("$@")
-  local b0 n i
+  local bytes b0 n i
+  bytes=("$@")
   ret=0
   ((b0=bytes[0]&0xFF,
     n=b0>0xF0

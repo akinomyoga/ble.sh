@@ -7,28 +7,33 @@ else
   function ble/term.sh/tput { return 1; }
 fi
 
+function ble/term.sh/register-varname {
+  local name="$1"
+  varnames[${#varnames[@]}]="$name"
+}
+
 function ble/term.sh/define-cap {
   local name="$1" def="$2"
   shift 2
   eval "$name=\"\$(ble/term.sh/tput $@ || echo -n \"\$def\")\""
-  varnames+=("$name")
+  ble/term.sh/register-varname "$name"
 }
 function ble/term.sh/define-cap.2 {
   local name="$1" def="$2"
   shift 2
   eval "$name=\"\$(echo -n x;ble/term.sh/tput $@ || echo -n \"\$def\";echo -n x)\"; $name=\${$name#x}; $name=\${$name%x}"
-  varnames+=("$name")
+  ble/term.sh/register-varname "$name"
 }
 
 function ble/term.sh/initialize {
-  local varnames=()
+  local -a varnames=()
 
   # xenl (end of line behavior)
   _ble_term_xenl=1
   [[ $_ble_term_hasput ]] &&
     ! tput xenl &>/dev/null &&
     _ble_term_xenl=0
-  varnames+=(_ble_term_xenl)
+  ble/term.sh/register-varname _ble_term_xenl
 
   # tab width
   _ble_term_it=8
@@ -36,7 +41,7 @@ function ble/term.sh/initialize {
     _ble_term_it="$(tput it 2>/dev/null)"
     _ble_term_it="${_ble_term_it:-8}"
   fi
-  varnames+=(_ble_term_it)
+  ble/term.sh/register-varname _ble_term_it
 
   # CUU/CUD/CUF/CUB
   ble/term.sh/define-cap _ble_term_cuu $'\e[%dA' cuu 123
@@ -77,7 +82,7 @@ function ble/term.sh/initialize {
   else
     _ble_term_el2="$_ble_term_el1$_ble_term_el"
   fi
-  varnames+=(_ble_term_el2)
+  ble/term.sh/register-varname _ble_term_el2
 
   # SC/RC or SCOSC/SCORC
   ble/term.sh/define-cap _ble_term_sc $'\e[s' sc
@@ -92,9 +97,17 @@ function ble/term.sh/initialize {
   ble/term.sh/define-cap _ble_term_setaf2 $'\e[32m' setaf 2
   ble/term.sh/define-cap _ble_term_rev $'\e[7m' rev
 
-  declare -p "${varnames[@]}" | sed '
-    s/^declare \(-- \)\{0,1\}//
-  ' > "$_ble_base/cache/$TERM.term"
+  if ((_ble_bash>=30100)); then
+    declare -p "${varnames[@]}" | sed '
+      s/^declare \(-- \)\{0,1\}//
+    ' > "$_ble_base/cache/$TERM.term"
+  else
+    # bash-3.0 の declare -p は改行について誤った出力をする。
+    local var
+    for var in "${varnames[@]}"; do
+      eval "printf '$var=%q' \"\${$var}\""
+    done > "$_ble_base/cache/$TERM.term"
+  fi
 }
 
 echo -n "ble/term.sh: updating tput cache for TERM=$TERM..." >&2

@@ -143,7 +143,8 @@ function .ble-decode-char.sendkey-mod {
 }
 
 function .ble-decode-char.bind {
-  local seq=($1) kc="$2"
+  local -a seq=($1)
+  local kc="$2"
 
   local i iN=${#seq[@]} char tseq=
   for ((i=0;i<iN;i++)); do
@@ -167,7 +168,7 @@ function .ble-decode-char.bind {
   done
 }
 function .ble-decode-char.unbind {
-  local seq=($1)
+  local -a seq=($1)
 
   local char="${seq[$((iN-1))]}"
   local tseq=
@@ -211,7 +212,8 @@ function .ble-decode-char.dump {
   eval "local -a ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
   for ccode in "${ccodes[@]}"; do
     local ret; ble-decode-unkbd "$ccode"
-    local cnames=($nseq $ret)
+    local cnames
+    cnames=($nseq $ret)
 
     eval "local ent=\${_ble_decode_cmap_$tseq[$ccode]}"
     if test -n "${ent%_}"; then
@@ -275,7 +277,8 @@ _ble_decode_kmaps=
 ## 関数 kmap ; .ble-decode-key.bind keycodes command
 function .ble-decode-key.bind {
   local dicthead=_ble_decode_${kmap}_kmap_
-  local seq=($1) cmd="$2"
+  local -a seq=($1)
+  local cmd="$2"
 
   # register to the kmap list
   if test -n "$kmap" -a "${_ble_decode_kmaps/:$kmap:/}" = "${_ble_decode_kmaps}"; then
@@ -310,7 +313,7 @@ function .ble-decode-key.bind {
 
 function .ble-decode-key.unbind {
   local dicthead=_ble_decode_${kmap}_kmap_
-  local seq=($1)
+  local -a seq=($1)
 
   local key="${seq[$((iN-1))]}"
   local tseq=
@@ -366,11 +369,12 @@ function .ble-decode-key.dump {
   local kmapopt=
   test -n "$kmap" && kmapopt=" -m '$kmap'"
 
-  local kcode
-  eval "local kcodes=(\${!$dicthead$tseq[@]})"
+  local kcode kcodes
+  eval "kcodes=(\${!$dicthead$tseq[@]})"
   for kcode in "${kcodes[@]}"; do
     local ret; ble-decode-unkbd "$kcode"
-    local knames=($nseq $ret)
+    local -a knames
+    knames=($nseq $ret)
     eval "local ent=\${$dicthead$tseq[$kcode]}"
     if test -n "${ent:2}"; then
       local cmd="${ent:2}"
@@ -400,12 +404,14 @@ declare -a _ble_decode_keymap_stack=()
 
 ## 関数 .ble-decode/keymap/push kmap
 function .ble-decode/keymap/push {
-  _ble_decode_keymap_stack+=("$_ble_decode_key__kmap")
+  local count="${#_ble_decode_keymap_stack[@]}"
+  _ble_decode_keymap_stack[count]=("$_ble_decode_key__kmap")
   _ble_decode_key__kmap="$1"
 }
 ## 関数 .ble-decode/keymap/pop
 function .ble-decode/keymap/pop {
-  local last=$((${#_ble_decode_keymap_stack[*]}-1))
+  local count="${#_ble_decode_keymap_stack[@]}"
+  local last="$((count-1))"
   _ble_decode_key__kmap="${_ble_decode_keymap_stack[last]}"
   unset _ble_decode_keymap_stack[last]
 }
@@ -461,7 +467,8 @@ function .ble-decode-key {
       if [[ $ble_opt_error_kseq_discard ]]; then
         _ble_decode_key__seq=
       else
-        local keys=(${_ble_decode_key__seq//_/ } $key) i iN
+        local -a keys=(${_ble_decode_key__seq//_/ } $key)
+        local i iN
         _ble_decode_key__seq=
         for ((i=1,iN=${#keys[*]};i<iN;i++)); do
           # 2文字目以降を処理
@@ -573,7 +580,7 @@ function .ble-decode-key/invoke-partial-match {
 #
 function .ble-decode-key/invoke-command {
   if [[ $command ]]; then
-    local KEYS=(${_ble_decode_key__seq//_/ } $key)
+    local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
     _ble_decode_key__seq=
     eval "$command"
     return 0
@@ -782,12 +789,13 @@ function .ble-decode-kbd.single-key {
 
 function ble-decode-kbd {
   local GLOBIGNORE='*'
-  local key keymods codes=()
+  local key keymods
+  local -a codes=()
   for key in $@; do
-    if test "x${key: -1}" = 'x-'; then
+    if [[ ${key: -1} == - ]]; then
       # -, C--
       GLOBIGNORE='*' IFS=- eval 'keymods=(${key%-})'
-      keymods+=("${key: -1}")
+      ble/util/array-push keymods '-'
     else
       GLOBIGNORE='*' IFS=- eval 'keymods=($key)'
     fi
@@ -832,13 +840,12 @@ function ble-decode-unkbd {
 # **** ble-bind ****
 function ble-bind {
   local kmap="$ble_opt_default_keymap" fX= fC= ret
-
   local "${ble_getopt_vars[@]}"
   ble-getopt-begin ble-bind 'D d k:n:? m:n x c f:.:? help' "$@"
   while ble-getopt; do
     case "${OPTARGS[0]}" in
     D) # dump cmap raw
-      local vars=("${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}")
+      local -a vars=("${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}")
       ((${#vars[@]})) && declare -p "${vars[@]}"
       ;;
     d) # dump ble-bind settings
@@ -868,9 +875,10 @@ function ble-bind {
           command="ble-edit+$command"
 
           # check if is function
-          local a=($command)
+          local -a a
+          a=($command)
           if ! ble/util/isfunction "${a[0]}"; then
-            echo "unknown ble edit function \`${a[0]#ble-edit+}'" 1>&2
+            echo "unknown ble edit function \`${a[0]#'ble-edit+'}'" 1>&2
             return 1
           fi
         else

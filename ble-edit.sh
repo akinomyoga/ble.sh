@@ -427,7 +427,7 @@ function .ble-cursor.construct-prompt/process-backslash {
     if [[ $tail =~ $rex ]]; then
       ble/util/strftime -v date_D "${BASH_REMATCH[1]}"
       .ble-cursor.construct-prompt.append "$date_D"
-      ((i+=${#BASH_REMATCH[0]}-2))
+      ((i+=${#BASH_REMATCH}-2))
     else
       .ble-cursor.construct-prompt.append "\\$c" "$c"
     fi ;;
@@ -506,11 +506,11 @@ function .ble-cursor.construct-prompt {
       .ble-cursor.construct-prompt/process-backslash
     elif [[ $tail =~ $rex_ascii ]]; then
       .ble-cursor.construct-prompt.append "${BASH_REMATCH[0]}"
-      ((i+=${#BASH_REMATCH[0]}))
+      ((i+=${#BASH_REMATCH}))
     elif [[ $tail =~ $rex_csi ]]; then # || [[ $tail =~ $rex_esc ]] || [[ $tail =~ $rex_osc ]]
       # さすがに escape seq を解釈するのは…。
       _ps1esc="$_ps1esc${BASH_REMATCH[0]}"
-      ((i+=${#BASH_REMATCH[0]}))
+      ((i+=${#BASH_REMATCH}))
     else
       .ble-cursor.construct-prompt.append "${tail::1}"
       ((i++))
@@ -564,6 +564,7 @@ function .ble-line-text/update/position {
 
   # 初期位置 x y
   local _pos="$x $y"
+  local -a pos
   if [[ ${_ble_line_text_cache_pos[0]} != "$_pos" ]]; then
     # 初期位置の変更がある場合は初めから計算し直し
     ((dbeg<0&&(dend=dend0=0),
@@ -572,13 +573,13 @@ function .ble-line-text/update/position {
   else
     if ((dbeg<0)); then
       # 初期位置も内容も変更がない場合はOK
-      local pos=(${_ble_line_text_cache_pos[iN]})
+      pos=(${_ble_line_text_cache_pos[iN]})
       ((x=pos[0]))
       ((y=pos[1]))
       return
     elif ((dbeg>0)); then
       # 途中から計算を再開
-      local pos=(${_ble_line_text_cache_pos[dbeg]})
+      pos=(${_ble_line_text_cache_pos[dbeg]})
       ((x=pos[0]))
       ((y=pos[1]))
     fi
@@ -594,7 +595,9 @@ function .ble-line-text/update/position {
   
   # shift cached data
   _ble_util_array_prototype.reserve "$iN"
-  local old_pos=("${_ble_line_text_cache_pos[@]:dend0:iN-dend+1}")
+  local -a old_pos old_ichg
+  old_pos=("${_ble_line_text_cache_pos[@]:dend0:iN-dend+1}")
+  old_ichg=("${_ble_line_text_cache_ichg[@]}")
   _ble_line_text_cache_pos=(
     "${_ble_line_text_cache_pos[@]::dbeg+1}"
     "${_ble_util_array_prototype[@]::dend-dbeg}"
@@ -603,13 +606,12 @@ function .ble-line-text/update/position {
     "${_ble_line_text_cache_cs[@]::dbeg}"
     "${_ble_util_array_prototype[@]::dend-dbeg}"
     "${_ble_line_text_cache_cs[@]:dend0:iN-dend}")
-  local old_ichg=("${_ble_line_text_cache_ichg[@]}")
   _ble_line_text_cache_ichg=()
   
   local i rex_ascii='^[ -~]+'
   for ((i=dbeg;i<iN;)); do
     if [[ ${text:i} =~ $rex_ascii ]]; then
-      local w="${#BASH_REMATCH[0]}"
+      local w="${#BASH_REMATCH}"
       local n
       for ((n=i+w;i<n;i++)); do
         cs="${text:i:1}"
@@ -663,7 +665,7 @@ function .ble-line-text/update/position {
       fi
 
       _ble_line_text_cache_cs[i]="$cs"
-      ((changed)) && _ble_line_text_cache_ichg+=("$i")
+      ((changed)) && ble/util/array-push _ble_line_text_cache_ichg "$i"
       _ble_line_text_cache_pos[i+1]="$x $y"
       ((i++))
     fi
@@ -674,7 +676,8 @@ function .ble-line-text/update/position {
 
   if ((i<iN)); then
     # 途中で一致して中断した場合は、前の iN 番目の位置を読む
-    local pos=(${_ble_line_text_cache_pos[iN]})
+    local -a pos
+    pos=(${_ble_line_text_cache_pos[iN]})
     ((x=pos[0]))
     ((y=pos[1]))
   fi
@@ -686,13 +689,14 @@ function .ble-line-text/update/position {
          (ichg>=dend0)&&(ichg+=dend-dend0),
          (0<=ichg&&ichg<dbeg||dend<=i&&ichg<iN)))
     then
-      _ble_line_text_cache_ichg+=("$ichg")
+      ble/util/array-push _ble_line_text_cache_ichg "$ichg"
     fi
   done
 
   ((dbeg<i)) && POS_UMIN="$dbeg" POS_UMAX="$i"
 }
 
+_ble_line_text_buff=()
 _ble_line_text_buffName=
 
 ## 関数 x y lc lg; .ble-line.construct-text; x y cx cy lc lg
@@ -720,13 +724,13 @@ function .ble-line-text/update {
 
   # 変更文字の適用
   if ((${#_ble_line_text_cache_ichg[@]})); then
-    local buff ichg g sgr
-    eval "buff=(\"\${$HIGHLIGHT_BUFF[@]}\")"
-    HIGHLIGHT_BUFF=buff
+    local ichg g sgr
+    eval "_ble_line_text_buff=(\"\${$HIGHLIGHT_BUFF[@]}\")"
+    HIGHLIGHT_BUFF=_ble_line_text_buff
     for ichg in "${_ble_line_text_cache_ichg[@]}"; do
       ble-highlight-layer/getg "$ichg"
-      ble-color-g2sgr "$g"
-      buff[ichg]="$sgr${_ble_line_text_cache_cs[ichg]}"
+      ble-color-g2sgr -v sgr "$g"
+      _ble_line_text_buff[ichg]="$sgr${_ble_line_text_cache_cs[ichg]}"
     done
   fi
 
@@ -794,7 +798,8 @@ function .ble-line-text/getxy {
     shift
   fi
 
-  local _pos=(${_ble_line_text_cache_pos[$1]})
+  local -a _pos
+  _pos=(${_ble_line_text_cache_pos[$1]})
   ((${_prefix}x=_pos[0]))
   ((${_prefix}y=_pos[1]))
 }
@@ -832,8 +837,9 @@ function .ble-line-text/get-index-at {
   else
     # 2分法
     local _l=0 _u="$((_ble_line_text_cache_length+1))" _m
+    local -a _pos
     while ((_l+1<_u)); do
-      local _pos=(${_ble_line_text_cache_pos[_m=(_l+_u)/2]})
+      _pos=(${_ble_line_text_cache_pos[_m=(_l+_u)/2]})
       (((_y<_pos[1]||_y==_pos[1]&&_x<_pos[0])?(_u=_m):(_l=_m)))
     done
     (($_var=_l))
@@ -904,8 +910,8 @@ function .ble-line-info.construct-info {
     local tail="${text:i}"
 
     if [[ $tail =~ $rex_ascii ]]; then
-      .ble-line-cur.xyo/add-simple "${#BASH_REMATCH[0]}" "${BASH_REMATCH[0]}"
-      ((i+=${#BASH_REMATCH[0]})) 
+      .ble-line-cur.xyo/add-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
+      ((i+=${#BASH_REMATCH})) 
     else
       .ble-text.s2c "$text" "$i"
       local code="$ret" w=0
@@ -937,7 +943,7 @@ function .ble-line-info.draw {
   .ble-line-info.construct-info "$text"
   local content="$ret"
 
-  local DRAW_BUFF=()
+  local -a DRAW_BUFF=()
 
   # (1) 移動・領域確保
   ble-edit/draw/goto 0 "$_ble_line_endy"
@@ -1153,9 +1159,9 @@ function ble-edit/draw/goto {
   local -i dy=y-_ble_line_y
   if ((dy!=0)); then
     if ((dy>0)); then
-      ble-edit/draw/put "${_ble_term_cud//%d/$dy}"
+      ble-edit/draw/put "${_ble_term_cud//'%d'/$dy}"
     else
-      ble-edit/draw/put "${_ble_term_cuu//%d/$((-dy))}"
+      ble-edit/draw/put "${_ble_term_cuu//'%d'/$((-dy))}"
     fi
   fi
 
@@ -1164,9 +1170,9 @@ function ble-edit/draw/goto {
     if ((x==0)); then
       ble-edit/draw/put ""
     elif ((dx>0)); then
-      ble-edit/draw/put "${_ble_term_cuf//%d/$dx}"
+      ble-edit/draw/put "${_ble_term_cuf//'%d'/$dx}"
     else
-      ble-edit/draw/put "${_ble_term_cub//%d/$((-dx))}"
+      ble-edit/draw/put "${_ble_term_cub//'%d'/$((-dx))}"
     fi
   fi
 
@@ -1178,7 +1184,7 @@ function ble-edit/draw/clear-line {
   ble-edit/draw/goto 0 0
   if ((_ble_line_endy>0)); then
     local height=$((_ble_line_endy+1))
-    ble-edit/draw/put "${_ble_term_dl//%d/$height}${_ble_term_il//%d/$height}"
+    ble-edit/draw/put "${_ble_term_dl//'%d'/$height}${_ble_term_il//'%d'/$height}"
   else
     ble-edit/draw/put "$_ble_term_el2"
   fi
@@ -1194,7 +1200,7 @@ function ble-edit/draw/clear-line-after {
   ble-edit/draw/goto "$x" "$y"
   if ((_ble_line_endy>y)); then
     local height=$((_ble_line_endy-y))
-    ble-edit/draw/put "$_ble_term_ind${_ble_term_dl//%d/$height}${_ble_term_il//%d/$height}$_ble_term_ri"
+    ble-edit/draw/put "$_ble_term_ind${_ble_term_dl//'%d'/$height}${_ble_term_il//'%d'/$height}$_ble_term_ri"
   fi
   ble-edit/draw/put "$_ble_term_el"
 
@@ -1316,7 +1322,7 @@ function .ble-edit-draw.update {
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
   # BLELINE_RANGE_UPDATE → .ble-line-text/update 内でこれを見て update を済ませる
-  local BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
+  local -a BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
   ble-edit/dirty-range/clear --prefix=_ble_edit_dirty_draw_
 #%if debug (
   ble-assert '((BLELINE_RANGE_UPDATE[0]<0||(
@@ -1338,7 +1344,7 @@ function .ble-edit-draw.update {
   #-------------------
   # 出力
 
-  local DRAW_BUFF=()
+  local -a DRAW_BUFF=()
 
   # 1 描画領域の確保 (高さの調整)
   local endx endy
@@ -1347,10 +1353,10 @@ function .ble-edit-draw.update {
   if (((delta=endy-_ble_line_endy)!=0)); then
     if((delta>0)); then
       ble-edit/draw/goto 0 "$((_ble_line_endy+1))"
-      ble-edit/draw/put "${_ble_term_il//%d/$delta}"
+      ble-edit/draw/put "${_ble_term_il//'%d'/$delta}"
     else
       ble-edit/draw/goto 0 "$((_ble_line_endy+1+delta))"
-      ble-edit/draw/put "${_ble_term_dl//%d/$((-delta))}"
+      ble-edit/draw/put "${_ble_term_dl//'%d'/$((-delta))}"
     fi
   fi
   _ble_line_endx="$endx" _ble_line_endy="$endy"
@@ -1463,9 +1469,10 @@ _ble_line_cache=()
 
 function .ble-edit-draw.redraw-cache {
   if test -n "${_ble_line_cache[0]+set}"; then
-    local -a d=("${_ble_line_cache[@]}")
+    local -a d
+    d=("${_ble_line_cache[@]}")
 
-    local DRAW_BUFF=()
+    local -a DRAW_BUFF=()
 
     ble-edit/draw/clear-line
     ble-edit/draw/put "${d[0]}"
@@ -1727,7 +1734,7 @@ function ble-edit+self-insert {
 
 # quoted insert
 function .ble-edit.quoted-insert.hook {
-  local KEYS=("$1")
+  local -a KEYS=("$1")
   ble-edit+self-insert
 }
 function ble-edit+quoted-insert {
@@ -2101,7 +2108,7 @@ declare -a _ble_edit_accept_line=()
 declare _ble_edit_accept_line_lastexit=0
 function .ble-edit.accept-line.add {
   local BASH_COMMAND="$1"
-  _ble_edit_accept_line+=("$1")
+  ble/util/array-push _ble_edit_accept_line "$1"
 }
 function .ble-edit/exec/setexit {
   # $? 変数の設定
@@ -2505,7 +2512,8 @@ function ble-edit+accept-single-line-or-newline {
 }
 
 function .ble-edit.bind.command {
-  local BASH_COMMAND=("$*")
+  local -a BASH_COMMAND
+  BASH_COMMAND=("$*")
   .ble-line-info.clear
   .ble-edit-draw.update
   .ble-edit-draw.goto-xy '' "$_ble_line_endx" "$_ble_line_endy"
@@ -2790,7 +2798,7 @@ function ble-edit+isearch/next {
   if test -n "$pop"; then
     unset "_ble_edit_isearch_arr[$ilast]"
   else
-    _ble_edit_isearch_arr+=("$_ble_edit_history_ind:$_ble_edit_isearch_dir:$_ble_edit_isearch_str")
+    ble/util/array-push _ble_edit_isearch_arr "$_ble_edit_history_ind:$_ble_edit_isearch_dir:$_ble_edit_isearch_str"
   fi
 
   _ble_edit_isearch_str="$needle"
@@ -2915,9 +2923,10 @@ function .ble-edit-comp.initialize-vars {
   # COMP_WORDS, COMP_CWORD
   local _default_wordbreaks=' 	
 "'"'"'><=;|&(:}'
+  local -a _tmp
   GLOBIGNORE='*' IFS="${COMP_WORDBREAKS-$_default_wordbreaks}" eval '
     COMP_WORDS=($COMP_LINE)
-    local _tmp=(${COMP_LINE::COMP_POINT}x)
+    _tmp=(${COMP_LINE::COMP_POINT}x)
     COMP_CWORD=$((${#_tmp[@]}-1))
   '
 
@@ -2952,9 +2961,11 @@ function .ble-edit-comp.complete-filename {
   local sword_sep=$'|&;()<> \t\n'
   fhead="${fhead##*[$sword_sep]}"
 
-  # local files=(* .*)
-  # local cands=($(compgen -W '"${files[@]}"' -- "$fhead"))
-  local cands=($(compgen -f -- "$fhead"))
+  # local -a files cands
+  # files=(* .*)
+  # cands=($(compgen -W '"${files[@]}"' -- "$fhead"))
+  local -a cands
+  cands=($(compgen -f -- "$fhead"))
   if test ${#cands[@]} -eq 0; then
     .ble-edit.bell
     .ble-line-info.clear
@@ -3017,7 +3028,8 @@ function ble-edit+complete-F {
 ble-autoload "$_ble_base/complete.sh" ble-edit+complete
 
 function ble-edit+command-help {
-  local args=($_ble_edit_str)
+  local -a args
+  args=($_ble_edit_str)
   local cmd="${args[0]}"
 
   if test -z "$cmd"; then
@@ -3103,7 +3115,7 @@ if test -n "$bleopt_suppress_bash_output"; then
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。
           if [[ $line == 'bash: '* || $line == "${BASH##*/}: "* ]]; then
-            message+="${message:+; }$line"
+            message="$message${message:+; }$line"
           fi
         done < "$file"
         
@@ -3221,7 +3233,7 @@ else
     if [[ -z $bleopt_suppress_bash_output ]]; then
       # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
       ((_ble_line_y++,_ble_line_x=0))
-      local DRAW_BUFF=()
+      local -a DRAW_BUFF=()
       ble-edit/draw/goto "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
       ble-edit/draw/flush
     fi
