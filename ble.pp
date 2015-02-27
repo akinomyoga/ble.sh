@@ -35,7 +35,7 @@ _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
 if [ "$_ble_bash" -lt 30000 ]; then
   _ble_bash=0
-  echo "ble.sh: A bash with a version under 3.1 is not supported" >&2
+  echo "ble.sh: A bash with a version under 3.0 is not supported" >&2
   return 1 2>/dev/null || exit 1
 fi
 

@@ -509,7 +509,7 @@ function ble-highlight-layer/update {
 function ble-highlight-layer/update/shift {
   local __dstArray="$1"
   local __srcArray="${2:-$__dstArray}"
-  if ((DMIN>=0&&DMAX!=DMAX0)); then
+  if ((DMIN>=0)); then
     _ble_util_array_prototype.reserve "$((DMAX-DMIN))"
     eval "
     $__dstArray=(

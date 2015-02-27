@@ -404,8 +404,7 @@ declare -a _ble_decode_keymap_stack=()
 
 ## 関数 .ble-decode/keymap/push kmap
 function .ble-decode/keymap/push {
-  local count="${#_ble_decode_keymap_stack[@]}"
-  _ble_decode_keymap_stack[count]=("$_ble_decode_key__kmap")
+  ble/util/array-push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
   _ble_decode_key__kmap="$1"
 }
 ## 関数 .ble-decode/keymap/pop
@@ -788,7 +787,6 @@ function .ble-decode-kbd.single-key {
 }
 
 function ble-decode-kbd {
-  local GLOBIGNORE='*'
   local key keymods
   local -a codes=()
   for key in $@; do

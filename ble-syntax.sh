@@ -1303,6 +1303,7 @@ function ble-syntax/completion-context/check-prefix {
       if [[ ${text:wbegin:index-wbegin} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$wbegin"
       fi
+      ble-syntax/completion-context/check/parameter-expansion
     elif ((stat[0]==CTX_ARGI)); then
       # CTX_ARGI  → 引数の続き
       ble-syntax/completion-context/add file "$wbegin"
@@ -1311,6 +1312,7 @@ function ble-syntax/completion-context/check-prefix {
         sub="${sub##*=}"
         ble-syntax/completion-context/add file "$((index-${#sub}))"
       fi
+      ble-syntax/completion-context/check/parameter-expansion
     elif ((stat[0]==CTX_CMDX||
               stat[0]==CTX_CMDX1||
               stat[0]==CTX_CMDXV)); then
@@ -1324,6 +1326,7 @@ function ble-syntax/completion-context/check-prefix {
           ble-syntax/completion-context/add variable "$i"
         fi
       fi
+      ble-syntax/completion-context/check/parameter-expansion
     elif ((stat[0]==CTX_CMDXF)); then
       # CTX_CMDXF → (( でなければ 変数名
       if [[ ${text:i:index-1} =~ $rex_param ]]; then
@@ -1339,6 +1342,7 @@ function ble-syntax/completion-context/check-prefix {
           ble-syntax/completion-context/add file "$((index-${#sub}))"
         fi
       fi
+      ble-syntax/completion-context/check/parameter-expansion
     fi
   fi
 }

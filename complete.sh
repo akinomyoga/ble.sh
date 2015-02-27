@@ -132,7 +132,7 @@ function ble-edit+complete {
 
   local rex_raw_paramx='^('"$_ble_syntax_rex_simple_word_element"'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
 
-  local ctx head vhead cand
+  local ctx cand
   for ctx in "${context[@]}"; do
     # initialize completion range
     ctx=($ctx)

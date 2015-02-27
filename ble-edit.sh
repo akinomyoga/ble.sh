@@ -49,6 +49,13 @@
 ##   無効です。
 : ${bleopt_edit_abell=1}
 
+## オプション bleopt_history_lazyload
+## bleopt_history_lazyload=1
+##   ble-attach 後、初めて必要になった時に履歴の読込を行います。
+## bleopt_history_lazyload=
+##   ble-attach 時に履歴の読込を行います。
+: ${bleopt_history_lazyload=1}
+
 ## オプション bleopt_exec_type (内部使用)
 ##   コマンドの実行の方法を指定します。
 ## bleopt_exec_type=exec
@@ -396,7 +403,9 @@ function .ble-cursor.construct-prompt/process-backslash {
   ('#') # コマンド番号 (本当は history に入らない物もある…)
     .ble-cursor.construct-prompt.append "$_ble_edit_CMD" ;;
   (\!) # 履歴番号
-    .ble-cursor.construct-prompt.append "${#_ble_edit_history[@]}" ;;
+    local count
+    .ble-edit/history/getcount -v count
+    .ble-cursor.construct-prompt.append "$count" ;;
   ([0-7]) # 8進表現
     local rex='^\\[0-7]{1,3}'
     if [[ $tail =~ $rex ]]; then
@@ -1104,7 +1113,6 @@ function ble-edit/dirty-range/update {
 ## 変数 _ble_edit_PS1
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
-
 
 function .ble-edit/edit/attach/TRAPWINCH {
   if ((_ble_edit_attached)); then
@@ -2191,7 +2199,9 @@ function .ble-edit/exec/recursive {
   _ble_edit_accept_line[$1]=
   if test -n "${BASH_COMMAND//[ 	]/}"; then
     # 実行
-    local PS1="$_ble_edit_PS1" HISTCMD="${#_ble_edit_history[@]}"
+    local PS1="$_ble_edit_PS1" HISTCMD
+    .ble-edit/history/getcount -v HISTCMD
+
     local _ble_edit_accept_line_INT=0
     .ble-edit/exec/eval-prologue
     .ble-edit/exec/eval
@@ -2363,10 +2373,9 @@ function .ble-edit/gexec/end {
   .ble-decode-byte:bind/tail
 }
 function .ble-edit/gexec/eval-prologue {
-  # unset HISTCMD
   BASH_COMMAND="$1"
   PS1="$_ble_edit_PS1"
-  HISTCMD="${#_ble_edit_history[@]}"
+  unset HISTCMD; .ble-edit/history/getcount -v HISTCMD
   _ble_edit_accept_line_INT=0
   .ble-stty.leave
   .ble-edit/exec/setexit
@@ -2496,9 +2505,10 @@ function ble-edit+accept-line {
 }
 
 function ble-edit+accept-and-next {
-  local hist_ind=$((_ble_edit_history_ind+1))
+  local hist_ind 
+  .ble-edit/history/getindex -v hist_ind
   ble-edit+accept-line
-  .ble-edit.history-goto $hist_ind
+  .ble-edit.history-goto $((hist_ind+1))
 }
 function ble-edit+newline {
   KEYS=(10) ble-edit+self-insert
@@ -2540,11 +2550,40 @@ _ble_edit_history=()
 _ble_edit_history_edit=()
 _ble_edit_history_ind=0
 
+_ble_edit_history_loaded=
+_ble_edit_history_count=
+
+function .ble-edit/history/getindex {
+  local _var=index _ret
+  [[ $1 == -v ]] && { _var="$2"; shift 2; }
+  if [[ $_ble_edit_history_loaded ]]; then
+    (($_var=_ble_edit_history_ind))
+  else
+    .ble-edit/history/getcount -v "$_var"
+  fi
+}
+
+function .ble-edit/history/getcount {
+  local _var=count _ret
+  [[ $1 == -v ]] && { _var="$2"; shift 2; }
+  
+  if [[ $_ble_edit_history_loaded ]]; then
+    _ret="${#_ble_edit_history[@]}"
+  else
+    if [[ ! $_ble_edit_history_count ]]; then
+      _ble_edit_history_count=($(history 1))
+    fi
+    _ret="$_ble_edit_history_count"
+  fi
+
+  (($_var=_ret))
+}
+
 function .ble-edit/history/generate-source-to-load-history {
   # rcfile として起動すると history が未だロードされていない。
   history -n
   HISTTIMEFORMAT=__ble_ext__
-  
+
   # 285ms for 16437 entries
   local apos="'"
   history | awk -v apos="'" '
@@ -2584,72 +2623,93 @@ function .ble-edit/history/generate-source-to-load-history {
 
 ## called by ble-edit-initialize
 function .ble-edit.history-load {
+  [[ $_ble_edit_history_loaded ]] && return
+  _ble_edit_history_loaded=1
+  
   # * プロセス置換にしてもファイルに書き出しても大した違いはない。
   #   270ms for 16437 entries (generate-source の時間は除く)
   # * プロセス置換×source は bash-3 で動かない。eval に変更する。
+  ((_ble_edit_attached)) && .ble-line-info.draw "loading history..."
   eval -- "$(.ble-edit/history/generate-source-to-load-history)"
-
-  _ble_edit_history_ind=${#_ble_edit_history[@]}
+  _ble_edit_history_count="${#_ble_edit_history[@]}"
+  _ble_edit_history_ind="$_ble_edit_history_count"
+  ((_ble_edit_attached)) && .ble-line-info.clear
 }
 
 function .ble-edit.history-add {
-  # 登録・不登録に拘わらず取り敢えず初期化
-  _ble_edit_history_ind=${#_ble_edit_history[@]}
-  _ble_edit_history_edit=()
+  if [[ $_ble_edit_history_loaded ]]; then
+    # 登録・不登録に拘わらず取り敢えず初期化
+    _ble_edit_history_ind=${#_ble_edit_history[@]}
+    _ble_edit_history_edit=()
+  fi
 
   local cmd="$1"
-  if test -n "$HISTIGNORE"; then
+  if [[ $HISTIGNORE ]]; then
     local i pats pat
     GLOBIGNORE='*' IFS=: eval 'pats=($HISTIGNORE)'
     for pat in "${pats[@]}"; do
-      test -z "${cmd/$pat/}" && return
+      [[ $cmd == $pat ]] && return
     done
   fi
 
-  if test -n "$HISTCONTROL"; then
-    local lastIndex=$((${#_ble_edit_history[@]}-1)) spec
-    for spec in ${HISTCONTROL//:/}; do
-      case "$spec" in
-      ignorespace)
-        test "${cmd#[ 	]}" != "$cmd" && return ;;
-      ignoredups)
-        if test "$lastIndex" -ge 0; then
-          test "$cmd" = "${_ble_edit_history[$lastIndex]}" && return
-        fi ;;
-      ignoreboth)
-        test "${cmd#[ 	]}" != "$cmd" && return
-        if test "$lastIndex" -ge 0; then
-          test "$cmd" = "${_ble_edit_history[$lastIndex]}" && return
-        fi ;;
-      erasedups)
-        local i n=-1
-        for ((i=0;i<=lastIndex;i++)); do
-          if test "${_ble_edit_history[$i]}" != "$cmd"; then
-            ((++n!=i)) && _ble_edit_history[$n]=_ble_edit_history[$i]
-          fi
-        done
-        for ((i=lastIndex;i>n;i--)); do
-          unset '_ble_edit_history[$i]'
-        done
-        ;;
-      esac
-    done
+  if [[ $_ble_edit_history_loaded ]]; then
+    if [[ $HISTCONTROL ]]; then
+      local lastIndex=$((${#_ble_edit_history[@]}-1)) spec
+      for spec in ${HISTCONTROL//:/}; do
+        case "$spec" in
+        ignorespace)
+          test "${cmd#[ 	]}" != "$cmd" && return ;;
+        ignoredups)
+          if test "$lastIndex" -ge 0; then
+            test "$cmd" = "${_ble_edit_history[$lastIndex]}" && return
+          fi ;;
+        ignoreboth)
+          test "${cmd#[ 	]}" != "$cmd" && return
+          if test "$lastIndex" -ge 0; then
+            test "$cmd" = "${_ble_edit_history[$lastIndex]}" && return
+          fi ;;
+        erasedups)
+          local i n=-1
+          for ((i=0;i<=lastIndex;i++)); do
+            if test "${_ble_edit_history[$i]}" != "$cmd"; then
+              ((++n!=i)) && _ble_edit_history[$n]=_ble_edit_history[$i]
+            fi
+          done
+          for ((i=lastIndex;i>n;i--)); do
+            unset '_ble_edit_history[$i]'
+          done
+          ;;
+        esac
+      done
+    fi
+
+    _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
+    _ble_edit_history_count="${#_ble_edit_history[@]}"
+    _ble_edit_history_ind="$_ble_edit_history_count"
+  else
+    if [[ $HISTCONTROL ]]; then
+      # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
+      # history -s でも HISTCONTROL に対するフィルタはされる。
+      # history -s で項目が追加されたかどうかはスクリプトからは分からないので
+      # _ble_edit_history_count は一旦クリアする。
+      _ble_edit_history_count=
+    else
+      # HISTCONTROL がなければ多分 history -s で必ず追加される。
+      # _ble_edit_history_count 取得済ならば更新。
+      [[ $_ble_edit_history_count ]] &&
+        ((_ble_edit_history_count++))
+    fi
   fi
-  
-  _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
-  _ble_edit_history_ind=${#_ble_edit_history[@]}
 
   if [[ $cmd == *$'\n'* ]]; then
-    if ((_ble_bash>=40100)); then
-      printf -v cmd 'eval -- %q' "$cmd"
-    else
-      cmd="$(printf 'eval -- %q' "$cmd")"
-    fi
+    ble/util/sprintf cmd 'eval -- %q' "$cmd"
   fi
   history -s -- "$cmd"
 }
 
 function .ble-edit.history-goto {
+  .ble-edit.history-load
+
   local histlen=${#_ble_edit_history[@]}
   local index0="$_ble_edit_history_ind"
   local index1="$1"
@@ -2689,15 +2749,19 @@ function .ble-edit.history-goto {
 }
 
 function ble-edit+history-next {
+  .ble-edit.history-load
   .ble-edit.history-goto $((_ble_edit_history_ind+1))
 }
 function ble-edit+history-prev {
+  .ble-edit.history-load
   .ble-edit.history-goto $((_ble_edit_history_ind-1))
 }
 function ble-edit+history-beginning {
+  .ble-edit.history-load
   .ble-edit.history-goto 0
 }
 function ble-edit+history-end {
+  .ble-edit.history-load
   .ble-edit.history-goto "${#_ble_edit_history[@]}"
 }
 
@@ -2887,12 +2951,14 @@ function ble-edit-setup-keymap+isearch {
 
 
 function ble-edit+history-isearch-backward {
+  .ble-edit.history-load
   .ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=-
   .ble-edit-isearch.draw-line
 }
 function ble-edit+history-isearch-forward {
+  .ble-edit.history-load
   .ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=+
@@ -3399,10 +3465,14 @@ function ble-edit-initialize {
   .ble-cursor.construct-prompt.initialize
 }
 function ble-edit-attach {
-  # * history-load は initialize ではなく attach で行う。
-  #   detach してから attach する間に
-  #   追加されたエントリがあるかもしれないので。
-  .ble-edit.history-load
+  if [[ $bleopt_history_lazyload ]]; then
+    _ble_edit_history_loaded=
+  else
+    # * history-load は initialize ではなく attach で行う。
+    #   detach してから attach する間に
+    #   追加されたエントリがあるかもしれないので。
+    .ble-edit.history-load
+  fi
 
   .ble-edit/edit/attach
 }
