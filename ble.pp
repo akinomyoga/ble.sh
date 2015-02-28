@@ -79,28 +79,33 @@ if [[ ! -d $_ble_base/cache ]]; then
   mkdir -p "$_ble_base/cache"
 fi
 
-# time {}
-#%x inc.r/@/getopt/
+# loading time
+#   core    2ms
+#   decode  8ms
+#   edit    7ms
+#   color   3ms
+#   syntax 19ms
+
+##%x inc.r/@/getopt/
 #%x inc.r/@/core/
 #%x inc.r/@/decode/
 #%x inc.r/@/edit/
 #%x inc.r/@/color/
 #%x inc.r/@/syntax/
-
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
 
 function ble-initialize {
-  ble-decode-initialize
-  .ble-edit.default-key-bindings
-  ble-edit-initialize
+  ble-decode-initialize # 54ms
+  .ble-edit.default-key-bindings # 4ms
+  ble-edit-initialize # 4ms
 }
 
 function ble-attach {
   _ble_edit_detach_flag=
-  ble-decode-attach
-  ble-edit-attach
-  .ble-edit-draw.redraw
+  ble-decode-attach # 53ms
+  ble-edit-attach # 0ms
+  .ble-edit-draw.redraw # 34ms
   .ble-edit/stdout/off
 }
 

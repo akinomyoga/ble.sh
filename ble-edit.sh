@@ -245,43 +245,6 @@ function .ble-text.c2w+east {
 
 # 
 #------------------------------------------------------------------------------
-# **** cursor position ****                                           @line.pos
-
-# function _medit.movePositionWithEditText {
-#   # 編集文字列は bash によって加工されてから出力される
-#   local text="$1"
-#   local cols=${COLUMNS-80} it=$_ble_term_it xenl=$_ble_term_xenl
-#   local i iN=${#text} code ret _x
-#   for ((i=0;i<iN;i++)); do
-#     .ble-text.s2c "$text" "$i"
-
-#     local cw=0
-#     if ((code<32)); then
-#       if ((code==9)); then
-#         # \t 右端に行った時も以下の式で良い様だ
-#         ((cw=(x+it)/it*it-x))
-#       elif ((code==10)); then
-#         # \n
-#         ((y++,x=0))
-#         continue
-#       else
-#         cw=2
-#       fi
-#     elif ((code==127)); then
-#       cw=2
-#     else
-#       .ble-text.c2w "$code"
-#       cw=$ret
-#     fi
-
-#     ((x+=cw))
-#     while ((x>=cols)); do
-#       ((y++,x-=cols))
-#     done
-#   done
-# }
-
-# 
 # **** prompt ****                                                    @line.ps1
 
 ## 関数 x y lc; .ble-line-cur.xyc/add-text text ; x y lc
@@ -957,8 +920,8 @@ function .ble-line-info.draw {
   # (1) 移動・領域確保
   ble-edit/draw/goto 0 "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_ind"
-  [[ ${_ble_line_info[2]} ]] && ble-edit/draw/put "[$((_ble_line_info[1]+1))M"
-  [[ $content ]] && ble-edit/draw/put "[$((y+1))L"
+  [[ ${_ble_line_info[2]} ]] && ble-edit/draw/put.dl '_ble_line_info[1]+1'
+  [[ $content ]] && ble-edit/draw/put.il y+1
 
   # (2) 内容
   ble-edit/draw/put "$content"
@@ -969,16 +932,16 @@ function .ble-line-info.draw {
   _ble_line_info=("$x" "$y" "$content")
 }
 function .ble-line-info.clear {
-  test -z "${_ble_line_info[2]}" && return
+  [[ ${_ble_line_info[2]} ]] || return
 
-  # (1) 移動・削除
-  local out=
-  .ble-edit-draw.goto-xy out 0 _ble_line_endy
-  out="$outD[$((_ble_line_info[1]+1))M"
+  local -a DRAW_BUFF=()
+  ble-edit/draw/goto 0 _ble_line_endy
+  ble-edit/draw/put "$_ble_term_ind"
+  ble-edit/draw/put.dl '_ble_line_info[1]+1'
+  ble-edit/draw/flush >&2
 
-  echo -n "$out"
-  _ble_line_y="$((_ble_line_endy+1+y))"
-  _ble_line_x="$x"
+  _ble_line_y="$((_ble_line_endy+1))"
+  _ble_line_x=0
   _ble_line_info=(0 0 "")
 }
 
@@ -1156,6 +1119,14 @@ function .ble-edit/edit/detach {
 
 function ble-edit/draw/put {
   DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
+}
+function ble-edit/draw/put.il {
+  local -i value="${1-1}"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_il//'%d'/$value}"
+}
+function ble-edit/draw/put.dl {
+  local -i value="${1-1}"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_dl//'%d'/$value}"
 }
 function ble-edit/draw/flush {
   IFS= eval 'echo -n "${DRAW_BUFF[*]}"'

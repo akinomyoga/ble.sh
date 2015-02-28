@@ -161,7 +161,7 @@ function ble-edit+complete {
       if [[ ${COMPV+set} ]]; then
         [[ $COMPV =~ ^.+/ ]] &&
           COMP_PREFIX="${BASH_REMATCH[0]}"
-        IFS=$'\n' eval 'arr=($(compgen -c -- "$COMPV"))'
+        IFS=$'\n' eval 'arr=($(compgen -c -- "$COMPV"; [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"))'
         for cand in "${arr[@]}"; do
           ble-complete/yield-candidate "$cand" ble-complete/action/word
         done

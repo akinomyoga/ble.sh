@@ -30,7 +30,7 @@ fi
 
 if ((_ble_bash>=30200)); then
   function ble/util/isfunction {
-    builtin declare -f "$1" &>/dev/null
+    builtin declare -F "$1" &>/dev/null
   }
 else
   # bash-3.1 has bug in declare -f.
@@ -328,7 +328,7 @@ if ((_ble_bash>=40200)); then
 else
   _ble_text_xdigit=(0 1 2 3 4 5 6 7 8 9 A B C D E F)
   _ble_text_hexmap=()
-  for((i=0;i<256;i++)); do
+  for ((i=0;i<256;i++)); do
     _ble_text_hexmap[i]="${_ble_text_xdigit[i>>4&0xF]}${_ble_text_xdigit[i&0xF]}"
   done
 
@@ -353,7 +353,7 @@ fi
 declare -a _ble_text_c2s_table
 function .ble-text.c2s {
   ret="${_ble_text_c2s_table[$1]}"
-  if [  -z "$ret" ]; then
+  if [[ ! $ret ]]; then
     .ble-text.c2s-impl "$1"
     _ble_text_c2s_table[$1]="$ret"
   fi

@@ -161,38 +161,35 @@ bashbug: 実装上で注意するべき事
     ToDo
 -------------------------------------------------------------------------------
 
-COMMITLOG
+Commit
+
+2015-03-01
 
 2015-02-28
 
-  * ble-decode.sh: CSI Function Key Sequence を別扱いにする?
+  * ble-decode.sh: CSI Function Key Sequence を特別扱いする?
+
+    現在の登録作業は些か無駄な事をしている様な気がする。
+    ble-bind の出力も exaustive になっているし、
+    テーブルも巨大な物になっていて declare や set の時に見苦しい。
 
   Done
-  * ble-decode.sh: bash-4.3 でも ESC [ を utf-8 2-byte code で受信する様に変更。
-  * ble-decode.sh (.ble-decode-bind/generate-source-to-unbind-default): awk 呼出を一回に統合。
-  * ble-decode.sh (.ble-decode-key.bind/unbind): [[ ]] による書き換え、bugfix。
-  * ble-decode.sh, bind.sh: bind -x を生成する為のコードを bind.sh に分離。
-  * ble-edit.sh, keymap.emacs.sh: keymap 初期化部分の分離、キャッシュ化。
-
-  * ble-edit.sh: history 遅延ロード対応
+  * 初期化の最適化
+    - ble-decode.sh: ble-decode-kbd 書き直し、ble-bind 書き直し
+    - ble-getopt.sh: 多少最適化
+    - ble-decode.sh: bash-4.3 でも ESC [ を utf-8 2-byte code で受信する様に変更。
+    - ble-decode.sh (.ble-decode-bind/generate-source-to-unbind-default): awk 呼出を一回に統合。
+    - ble-decode.sh (.ble-decode-key.bind/unbind): [[ ]] による書き換え、bugfix。
+    - ble-decode.sh, bind.sh: bind -x を生成する為のコードを bind.sh に分離。
+    - ble-edit.sh, keymap.emacs.sh: keymap 初期化部分の分離、キャッシュ化。
+    - ble-edit.sh: history 遅延ロード対応
   * ble-core.sh, ble-color.sh: .ble-shopt-extglob-push/pop/pop-all 廃止
+  * ble-edit.sh: bugfix, .ble-line-info.clear で位置がずれる
+  * ble-edit.sh: ble-edit/draw/put.il, ble-edit/draw/put.dl
+  * ble-color.sh (ble-highlight-layer/update/shift): 長さが変わらない場合でも shift する。
+  * ble.pp (include ble-getopt.sh): 現在使っている所がないので取り敢えず外す。
 
 2015-02-27
-
-  * <bug> 履歴項目を移動中色が更新されない例を発見
-
-    "[[ ; == \; ]]" から "arr=(a b<a c)" に移動した時、初めの 2 文字の色がそのままだ。
-    これは良く考えたら word による着色を消していない事と関係がある。
-    特に上の二つの文字列は長さが一致しているので、shift を呼び出しても
-    shift の実行が省略される為に中身がクリアされない。
-    これは word 着色のバグ解決の時に解決されるはず。
-
-    長さが一致していても shift を実行する事にする。
-    shift によって途中の編集部分がクリアされる方が動作として自然だからである。
-    或いは、途中の編集部分に何が入っているか未定義、という事にしていると、
-    一々使う側でクリアしなければならないからである。
-    編集部分で前の属性などを保持するのは不自然であるし、
-    使う側でクリアするよりは shift の内部で行っている様な繋ぎ替えの方がコストが小さい。
 
   * complete
     - 既存の bash complete に対応する。
@@ -220,12 +217,6 @@ COMMITLOG
   * <bug> bash-3.1 日本語の色付け・描画が変だ
 
 2015-02-26
-
-  * ble-decode.sh: CSI Function Key Sequence を特別扱いする?
-
-    現在の登録作業は些か無駄な事をしている様な気がする。
-    ble-bind の出力も exaustive になっているし、
-    テーブルも巨大な物になっていて declare や set の時に見苦しい。
 
   Done
   * ble-syntax.sh: a+=( a=( に対応
@@ -933,6 +924,85 @@ Date:   Thu Feb 26 07:28:39 2015 +0900
 -------------------------------------------------------------------------------
 
 2015-02-28
+
+  * <bug> 履歴項目を移動中色が更新されない例を発見
+
+    "[[ ; == \; ]]" から "arr=(a b<a c)" に移動した時、初めの 2 文字の色がそのままだ。
+    これは良く考えたら word による着色を消していない事と関係がある。
+    特に上の二つの文字列は長さが一致しているので、shift を呼び出しても
+    shift の実行が省略される為に中身がクリアされない。
+    これは word 着色のバグ解決の時に解決されるはず。
+
+    長さが一致していても shift を実行する事にする。
+    shift によって途中の編集部分がクリアされる方が動作として自然だからである。
+    或いは、途中の編集部分に何が入っているか未定義、という事にしていると、
+    一々使う側でクリアしなければならないからである。
+    編集部分で前の属性などを保持するのは不自然であるし、
+    使う側でクリアするよりは shift の内部で行っている様な繋ぎ替えの方がコストが小さい。
+
+    →結局 shift 長さが変わらない場合でも shift を実行するように変更した。
+
+  * 初期化最適化: ble-bind が遅い
+
+    どうも ble-bind の遅さが、後続の bashrc をも遅くしている様である。
+    手軽に ble-bind を呼び出す事ができないのは致命的なので performance の悪さについて調べる。
+    どうも調べてみると ble-getopt が遅い様に思われる。
+    手で解析を書いて試してみる…(面倒だ。似たようなコードを何度も書かなければならない。
+    確かに ble-getopt の様な仕組みを作りたくなる物である。)
+
+    ble-bind を ble-getopt なしで書き直してみる。
+    今回は ~/.mwg/bashrc にある 7 つの binding について試してみる。
+    1 ble-bind (old, using ble-getopt) 122ms - 100ms = 22ms
+    2 ble-bind (new) 87ms - 78ms = 9ms
+    新実装の方が半分以下の時間で実行できる様になった。
+    これで現在 87ms で bashrc がロードされる様になった。
+
+    所で ble-bind が全体でどれぐらいの割合を占めているかについても概算しておく。
+    ble-bind が 9/22 の速さで実行できる事によって全体で 122 - 87 = 35ms 短縮している。
+    (ble-bind old 時間) * 13/22 = 35ms なのだから、(ble-bind old 時間) = 59ms という事になる。
+    実に半分を ble-bind が占めていた事になる。残りの 63ms が他の処理である。
+    現在は全体で 87ms に迄減った。63ms (他) + 24ms (ble-bind) という形である。
+
+    また、新しい実装についてより分かり易く実装できないかと、各オプションを関数に分けてみた。
+    結果、94ms - 83ms = 11ms であった。それ程遅くはなっていない。
+    他のコマンドのオプションを作る時にはこれを参考にしても良いだろう。
+
+    さてこれで ble-bind の速度は割合改善したがそれでも定数倍である。
+    本当はもっと速くなって欲しい。改めて現在時間の掛かっている部分の特定をする。
+    引数の解析部分を飛ばして直接呼び出して速度を確認すると、
+    83ms - 76ms = 7ms であった。という事は引数の解析は 2ms しか費やしていない。
+    今度は実際の登録部分について最適化を試みるべきであろう。
+
+    特に気になっているのは ble-decode-kbd の部分である。
+    試しに ble-decode-kbd を再実装してみたがそんなに時間は変わらない。
+    全体で 83ms である。元々 85ms であったから 2ms しか変わっていない。
+    特にテストに使っている部分 (7ms) に限って言えば大体 2/3ms 程度しか速くなっていないという事。
+    別の部分で時間が掛かっているという事だろうか。
+    試しに ble-decode-kbd 単体の速度を測ってみる事にする。
+    | time for ((i=0;i<1000;i++)); do ble-decode-kbd C-,; done → 292ms
+    | time for ((i=0;i<1000;i++)); do ble-decode-kbd M-down; done → 295ms
+    | 7 * 0.294ms = 2ms なので、全体の内 2/7 がこの ble-decode-kbd であると分かる。
+    バグがあった。修正したらかなり変わった。
+    | time for ((i=0;i<1000;i++)); do ble-decode-kbd C-,; done → 230ms
+    | time for ((i=0;i<1000;i++)); do ble-decode-kbd M-down; done → 375ms
+    正規表現によるマッチは結構重い??
+    →正規表現ではなく ${key//[...]/} を用いて試したら 375 → 257ms 迄速くなった。
+      所で、長さが 1 である事を確かめるならば、
+      算術式で長さを求めてから比較するよりは glob の pattern で一致させた方が速い様だ。
+    所で、旧実装を削除する前に改めて速度を測っておく。
+    →C-, に対しては 346ms,  M-down に対しては 670ms である。
+      全体の内 3.070ms / 7ms である。またこの事からこれ以外の部分に 4ms かかるという事が分かる。
+    | time for ((i=0;i<1000;i++)); do ble-decode-kbd C-,; done → 231ms
+    | time for ((i=0;i<1000;i++)); do ble-decode-kbd M-down; done → 257ms
+    | → bashrc の 7 bindings に対し大体 1.667ms / (4+1.6)ms。大体 5/17 を占める。
+
+    その他の部分で怪しいのは .ble-decode-key.bind である。
+    押されるキーの数×2 の eval を実行している。
+    しかしこれはどうしようもないので取り敢えず諦める。
+
+  * ble-edit.sh: bugfix, .ble-line-info.clear で位置がずれる
+
+    描画後の座標値の設定時に存在しない変数 x y を参照していた。これらは 0 であるべき。
 
   * 初期化の最適化
 

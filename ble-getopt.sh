@@ -32,15 +32,13 @@ ble_getopt_vars=(
 function .ble-getopt.next-argument {
   local type="$1" oarg
   if ((_getopt_oind<_getopt_olen)); then
-    oarg="${_getopt_oarg[$_getopt_oind]}"
-    ((_getopt_oind++))
+    oarg="${_getopt_oarg[_getopt_oind++]}"
   elif ((_getopt_index<_getopt_len)); then
-    oarg="${_getopt_args[$_getopt_index]}"
-    ((_getopt_index++))
+    oarg="${_getopt_args[_getopt_index++]}"
   else
-    if [ "x${type::1}" = 'x?' ]; then
+    if [[ $type == '?'* ]]; then
       oarg="${type:1}"
-      [ -z "$oarg" ] && return
+      [[ ! "$oarg" ]] && return
     else
       echo "$_getopt_cmd: missing an argument of the option \`${OPTARGS[0]}'." 1>&2
       return 1
@@ -66,7 +64,7 @@ function .ble-getopt.process-option {
   # search the option definition
   local i f_found adef
   for ((i=0;i<${#_getopt_odefs[@]};i++)); do
-    if [ "$name" = "${_getopt_odefs[$i]%%:*}" ]; then
+    if [[ $name == ${_getopt_odefs[$i]%%:*} ]]; then
       f_found=1
       GLOBIGNORE='*' IFS=: eval 'adef=(${_getopt_odefs[$i]})'
       break
@@ -74,8 +72,8 @@ function .ble-getopt.process-option {
   done
 
   # unknown option
-  if [ -z "$f_found" ]; then
-    if [ -n "$f_longname" ]; then
+  if [[ ! $f_found ]]; then
+    if [[ $f_longname ]]; then
       echo "an unknown long-name option \`--$name'" 1>&2
     else
       echo "an unknown option \`-$name'" 1>&2
@@ -114,9 +112,8 @@ function .ble-getopt.check-oarg-processed {
 }
 
 function ble-getopt {
-
   # 読み掛けのオプション列
-  if [ -n "$_getopt_opt" ]; then
+  if [[ $_getopt_opt ]]; then
     local o="${_getopt_opt::1}"
     _getopt_opt="${_getopt_opt:1}"
     .ble-getopt.process-option "$o"
@@ -132,18 +129,16 @@ function ble-getopt {
     return 2
   fi
 
-  local arg="${_getopt_args[$_getopt_index]}"
-  ((_getopt_index++))
-  if [ ${#arg} -gt 1 -a "${arg::1}" = - ]; then
-    _getopt_opt="${arg:1}"
-
-    if [ ${#_getopt_opt} -gt 1 -a "x${_getopt_opt::1}" = x- ]; then
+  local arg="${_getopt_args[_getopt_index++]}"
+  if [[ $arg == -?* ]]; then
+    
+    if [[ $arg == --?* ]]; then
       # longname option
       local f_longname=1
-      _getopt_opt="${_getopt_opt:1}"
+      _getopt_opt="${arg:2}"
 
       local o="${_getopt_opt%%=*}"
-      if [ "x$o" != "x$_getopt_opt" ]; then
+      if [[ $o != $_getopt_opt ]]; then
         _getopt_oarg=("${_getopt_opt#*=}")
         _getopt_oind=0
         _getopt_olen=1
@@ -155,10 +150,10 @@ function ble-getopt {
       return
     else
       # short options
-      local f_longname= arr
+      local f_longname=
+      _getopt_opt="${arg:1}"
 
-      GLOBIGNORE='*' IFS=: eval 'arr=($_getopt_opt)'
-      _getopt_oarg=("${arr[@]}")
+      GLOBIGNORE='*' IFS=: eval '_getopt_oarg=($_getopt_opt)'
       _getopt_olen="${#_getopt_oarg[@]}"
       _getopt_oind=1
       ble-getopt

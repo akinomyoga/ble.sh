@@ -298,7 +298,7 @@ function .ble-decode/keymap/dump {
 
 ## 関数 kmap ; .ble-decode-key.bind keycodes command
 function .ble-decode-key.bind {
-  local dicthead=_ble_decode_${kmap}_kmap_
+  local dicthead="_ble_decode_${kmap}_kmap_"
   local -a seq=($1)
   local cmd="$2"
 
@@ -306,7 +306,7 @@ function .ble-decode-key.bind {
 
   local i iN="${#seq[@]}" key tseq=
   for ((i=0;i<iN;i++)); do
-    local key="${seq[$i]}"
+    local key="${seq[i]}"
 
     eval "local ocmd=\"\${$dicthead$tseq[$key]}\""
     if ((i+1==iN)); then
@@ -617,8 +617,7 @@ if [ "${_ble_bash:-0}" -ge 40000 ]; then
     _ble_decode_kbd__k2c[$key]=$code
   }
   function .ble-decode-kbd.get-keycode {
-    local key="$1"
-    ret="${_ble_decode_kbd__k2c[$key]}"
+    ret="${_ble_decode_kbd__k2c[$1]}"
   }
 else
   _ble_decode_kbd_ver=3
@@ -665,11 +664,11 @@ function .ble-decode-kbd.get-keyname {
 ## \param [out] ret  keycode
 function .ble-decode-kbd.gen-keycode {
   local key="$1"
-  if [ ${#key} -eq 1 ]; then
+  if ((${#key}==1)); then
     .ble-text.s2c "$1"
-  elif [ -n "$key" -a -z "${key//[_a-zA-Z0-9]/}" ]; then
+  elif [[ $key =~ ^[_a-zA-Z0-9]+$ ]]; then
     .ble-decode-kbd.get-keycode "$key"
-    if [ -z "$ret" ]; then
+    if [[ ! $ret ]]; then
       ((ret=ble_decode_function_key_base+_ble_decode_kbd__n++))
       .ble-decode-kbd.set-keycode "$key" "$ret"
     fi
@@ -763,62 +762,48 @@ function .ble-decode-kbd.initialize {
 
 .ble-decode-kbd.initialize
 
-## example: .ble-decode-kbd.single-key C M S up
-## \param [out] ret
-function .ble-decode-kbd.single-key {
-  local code=0
-  while [ $# -gt 1 ]; do
-    case "$1" in
-    S) ((code|=ble_decode_Shft)) ;;
-    C) ((code|=ble_decode_Ctrl)) ;;
-    M) ((code|=ble_decode_Meta)) ;;
-    A) ((code|=ble_decode_Altr)) ;;
-    s) ((code|=ble_decode_Supr)) ;;
-    H) ((code|=ble_decode_Hypr)) ;;
-    *) ((code|=ble_decode_Erro)) ;;
-    esac
-    shift
-  done
+function ble-decode-kbd {
+  local key code codes
+  codes=()
+  for key in "$@"; do
+    code=0
+    while [[ $key == ?-* ]]; do
+      case "${key::1}" in
+      (S) ((code|=ble_decode_Shft)) ;;
+      (C) ((code|=ble_decode_Ctrl)) ;;
+      (M) ((code|=ble_decode_Meta)) ;;
+      (A) ((code|=ble_decode_Altr)) ;;
+      (s) ((code|=ble_decode_Supr)) ;;
+      (H) ((code|=ble_decode_Hypr)) ;;
+      (*) ((code|=ble_decode_Erro)) ;;
+      esac
+      key="${key:2}"
+    done
 
-  case "$1" in
-  ?)
-    .ble-text.s2c "$1" 0
-    ((code|=ret)) ;;
-  '^?')
-    ((code=0x7F)) ;;
-  '^`')
-    ((code=0x32)) ;;
-  ^?)
-    .ble-text.s2c "$1" 1
-    ((code|=ret&0x1F)) ;;
-  *)
-    if [ -z "${1//[_0-9a-zA-Z]/}" ]; then
-      .ble-decode-kbd.gen-keycode "$1"
+    if [[ $key == ? ]]; then
+      .ble-text.s2c "$key" 0
       ((code|=ret))
+    elif [[ $key && ! ${key//[_0-9a-zA-Z]/} ]]; then
+      .ble-decode-kbd.get-keycode "$key"
+      [[ $ret ]] || .ble-decode-kbd.gen-keycode "$key"
+      ((code|=ret))
+    elif [[ $key == ^? ]]; then
+      if [[ $key == '^?' ]]; then
+        ((code|=0x7F))
+      elif [[ $key == '^`' ]]; then
+        ((code|=0x20))
+      else
+        .ble-text.s2c "$key" 1
+        ((code|=ret&0x1F))
+      fi
     else
       ((code|=ble_decode_Erro))
-    fi ;;
-  esac
-
-  ret="$code"
-}
-
-function ble-decode-kbd {
-  local key keymods
-  local -a codes=()
-  for key in $@; do
-    if [[ ${key: -1} == - ]]; then
-      # -, C--
-      GLOBIGNORE='*' IFS=- eval 'keymods=(${key%-})'
-      ble/util/array-push keymods '-'
-    else
-      GLOBIGNORE='*' IFS=- eval 'keymods=($key)'
     fi
-
-    .ble-decode-kbd.single-key "${keymods[@]}"
-    codes[${#codes[@]}]="$ret"
+    
+    codes[${#codes[@]}]="$code"
   done
-  ret="${codes[@]}"
+
+  ret="${codes[*]}"
 }
 
 function .ble-decode-unkbd.single-key {
@@ -853,84 +838,113 @@ function ble-decode-unkbd {
 }
 
 # **** ble-bind ****
+
 function ble-bind {
   local kmap="$ble_opt_default_keymap" fX= fC= ret
-  local "${ble_getopt_vars[@]}"
-  ble-getopt-begin ble-bind 'D d k:n:? m:n x c f:.:? help' "$@"
-  while ble-getopt; do
-    case "${OPTARGS[0]}" in
-    D) # dump cmap raw
-      local -a vars=("${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}")
-      ((${#vars[@]})) && declare -p "${vars[@]}"
-      ;;
-    d) # dump ble-bind settings
-      .ble-decode-char.dump
-      .ble-decode-key.dump
-      ;;
-    k) # define char sequence = some key
-      ble-decode-kbd "${OPTARGS[1]}"; local cseq="$ret"
-      if [ -n "$3" ]; then
-        ble-decode-kbd "${OPTARGS[2]}"; local kc="$ret"
-        .ble-decode-char.bind "$cseq" "$kc"
-      else
-        .ble-decode-char.unbind "$cseq"
-      fi
-      ;;
-    m) kmap="${OPTARGS[1]}" ;;
-    x) fX=x ;;
-    c) fC=c ;;
-    f) # define key sequence = some command
-      ble-decode-kbd "${OPTARGS[1]}"
-      if [ -n "${OPTARGS[2]}" ]; then
-        local command="${OPTARGS[2]}"
 
-        # コマンドの種類
-        if test -z "$fX$fC"; then
-          # ble-edit+ 関数
-          command="ble-edit+$command"
-
-          # check if is function
-          local -a a
-          a=($command)
-          if ! ble/util/isfunction "${a[0]}"; then
-            echo "unknown ble edit function \`${a[0]#'ble-edit+'}'" 1>&2
-            return 1
-          fi
-        else
-          case "$fX$fC" in
-          (x) # 編集用の関数
-            # command="; $command; " # ■ 前処理と後処理を追加
-            echo "error: sorry, not yet implemented" 1>&2 ;;
-          (c) # コマンド実行
-            # echo "error: sorry, not yet implemented" 1>&2
-            command=".ble-edit.bind.command $command" ;;
-          (*)
-            echo "error: combination of -x and -c flags" 1>&2 ;;
-          esac
-        fi
-
-        .ble-decode-key.bind "$ret" "$command"
-      else
-        .ble-decode-key.unbind "$ret"
-      fi
-      fX= fC= ;;
-    help)
-      cat <<EOF
+  local arg c
+  while (($#)); do
+    local arg="$1"; shift
+    if [[ $arg == --?* ]]; then
+      case "${arg:2}" in
+      (help)
+        cat <<EOF
 ble-bind -k charspecs [keyspec]
 ble-bind [-m kmapname] [-scx@] -f keyspecs [command]
 ble-bind -D
 ble-bind -d
 
 EOF
-      return 0 ;;
-    *)
-      echo "unknown argument" 1>&2
-      return 1
-      ;;
-    esac
-  done
+        ;;
+      (*)
+        echo "ble-bind: unrecognized long option $arg" >&2
+        return 2 ;;
+      esac
+    elif [[ $arg == -?* ]]; then
+      arg="${arg:1}"
+      while ((${#arg})); do
+        c="${arg::1}" arg="${arg:1}"
+        case "$c" in
+        (D)
+          local -a vars=("${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}")
+          ((${#vars[@]})) && declare -p "${vars[@]}" ;;
+        (d)
+          .ble-decode-char.dump
+          .ble-decode-key.dump ;;
+        (k)
+          if (($#<2)); then
+            echo "ble-bind: the option \`-k' requires two arguments." >&2
+            return 2
+          fi
 
-  [ -n "${OPTARGS+set}" ] && return 1
+          ble-decode-kbd "$1"; local cseq="$ret"
+          if [[ $2 && $2 != - ]]; then
+            ble-decode-kbd "$2"; local kc="$ret"
+            .ble-decode-char.bind "$cseq" "$kc"
+          else
+            .ble-decode-char.unbind "$cseq"
+          fi
+          shift 2 ;;
+        (m)
+          if (($#<1)); then
+            echo "ble-bind: the option \`-m' requires an argument." >&2
+            return 2
+          fi
+          kmap="$1"
+          shift ;;
+        (x) fX=x ;;
+        (c) fC=c ;;
+        (f)
+          if (($#<2)); then
+            echo "ble-bind: the option \`-f' requires two arguments." >&2
+            return 2
+          fi
+
+          ble-decode-kbd "$1"
+          if [[ $2 && $2 != - ]]; then
+            local command="$2"
+
+            # コマンドの種類
+            if [[ ! "$fX$fC" ]]; then
+              # ble-edit+ 関数
+              command="ble-edit+$command"
+
+              # check if is function
+              local -a a
+              a=($command)
+              if ! ble/util/isfunction "${a[0]}"; then
+                echo "unknown ble edit function \`${a[0]#'ble-edit+'}'" 1>&2
+                return 1
+              fi
+            else
+              case "$fX$fC" in
+              (x) # 編集用の関数
+                # command="; $command; " # ■ 前処理と後処理を追加
+                echo "error: sorry, not yet implemented" 1>&2 ;;
+              (c) # コマンド実行
+                # echo "error: sorry, not yet implemented" 1>&2
+                command=".ble-edit.bind.command $command" ;;
+              (*)
+                echo "error: combination of -x and -c flags" 1>&2 ;;
+              esac
+            fi
+
+            .ble-decode-key.bind "$ret" "$command"
+          else
+            .ble-decode-key.unbind "$ret"
+          fi
+          fX= fC=
+          shift 2 ;;
+        (*)
+          echo "ble-bind: unrecognized short option \`-$c'." >&2
+          return 2 ;;
+        esac
+      done
+    else
+      echo "ble-bind: unrecognized argument \`$arg'." >&2
+      return 2
+    fi
+  done
 
   return 0
 }
