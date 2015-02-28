@@ -273,6 +273,28 @@ fi
 ##   存在している kmap の名前の一覧を保持します。
 ##   既定の kmap (名前無し) は含まれません。
 _ble_decode_kmaps=
+function .ble-decode/keymap/register {
+  local kmap="$1"
+  if [[ $kmap && $_ble_decode_kmaps != *":$kmap:"* ]]; then
+    _ble_decode_kmaps="$_ble_decode_kmaps:$kmap:"
+  fi
+}
+
+function .ble-decode/keymap/dump {
+  local kmap="$1" arrays
+  eval "arrays=(\"\${!_ble_decode_${kmap}_kmap_@}\")"
+  echo ".ble-decode/keymap/register $kmap"
+  if ((${#arrays[@]})); then
+    local rex_APOS="'\\\\''"
+    declare -p "${arrays[@]}" | sed '
+      s/^declare \+\(-[aAfFgilrtux]\+ \+\)\{0,1\}//
+      s/^-- \+//
+      s/^\([a-zA-Z_0-9]*\)='\''(/\1=(/
+      s/)'\''$/)/
+      s/'$rex_APOS'/'\''/g
+    '
+  fi
+}
 
 ## 関数 kmap ; .ble-decode-key.bind keycodes command
 function .ble-decode-key.bind {
@@ -280,30 +302,23 @@ function .ble-decode-key.bind {
   local -a seq=($1)
   local cmd="$2"
 
-  # register to the kmap list
-  if test -n "$kmap" -a "${_ble_decode_kmaps/:$kmap:/}" = "${_ble_decode_kmaps}"; then
-    _ble_decode_kmaps="$_ble_decode_kmaps:$kmap:"
-  fi
-  # if [ ${#seq} -eq 0 ]; then
-  #   eval "${dicthead}_default=\"\$cmd\""
-  #   return
-  # fi
+  .ble-decode/keymap/register "$kmap"
 
-  local i iN=${#seq[@]} key tseq=
+  local i iN="${#seq[@]}" key tseq=
   for ((i=0;i<iN;i++)); do
     local key="${seq[$i]}"
 
     eval "local ocmd=\"\${$dicthead$tseq[$key]}\""
     if ((i+1==iN)); then
-      if [ "${ocmd::1}" = _ ]; then
+      if [[ ${ocmd::1} == _ ]]; then
         eval "$dicthead$tseq[$key]=\"_:\$cmd\""
       else
         eval "$dicthead$tseq[$key]=\"1:\$cmd\""
       fi
     else
-      if [ -z "$ocmd" ]; then
+      if [[ ! $ocmd ]]; then
         eval "$dicthead$tseq[$key]=_"
-      elif [ "$ocmd::1" = 1 ]; then
+      elif [[ ${ocmd::1} == 1 ]]; then
         eval "$dicthead$tseq[$key]=\"_:\${ocmd#?:}\""
       fi
       tseq="${tseq}_$key"
@@ -326,18 +341,20 @@ function .ble-decode-key.unbind {
   while
     eval "ent=\"\${$dicthead$tseq[$key]}\""
 
-    if [ -n "$isfirst" ]; then
+    if [[ $isfirst ]]; then
       # command を消す
       isfirst=
-      if [ "${ent:0:1}" != _ ]; then
-        # ent = _:command (両方在る時は片方消して終わり)
+      if [[ ${ent::1} == _ ]]; then
+        # ent = _ または _:command の時は、単に command を消して終わる。
+        # (未だ bind が残っているので、登録は削除せず break)。
         eval $dicthead$tseq[$key]=_
         break
       fi
     else
-      # _ を消す
-      if [ "$ent" != _ ]; then
-        # ent = _:command (両方在る時は片方消して終わり)
+      # prefix の ent は _ か _:command のどちらかの筈。
+      if [[ $ent != _ ]]; then
+        # _:command の場合には 1:command に書き換える。
+        # (1:command の bind が残っているので登録は削除せず break)。
         eval $dicthead$tseq[$key]="1:${ent#?:}"
         break
       fi
@@ -346,7 +363,7 @@ function .ble-decode-key.unbind {
     unset $dicthead$tseq[$key]
     eval "((\${#$dicthead$tseq[@]}!=0))" && break
 
-    [ -n "$tseq" ]
+    [[ $tseq ]]
   do
     key="${tseq##*_}"
     tseq="${tseq%_*}"
@@ -1109,247 +1126,132 @@ function .ble-decode-initialize-cmap {
   fi
 }
 
-function .ble-decode-bind/bind {
-  builtin bind -x "\"$1\":ble-decode-byte:bind $2; eval \"\$_ble_decode_bind_hook\""
-}
-function .ble-decode-bind/unbind {
-  builtin bind -r "$1"
-}
-
 ## 関数 .ble-decode-bind/generate-source-to-unbind-default
 ##   既存の ESC で始まる binding を削除するコードを生成し標準出力に出力します。
 ##   更に、既存の binding を復元する為のコードを同時に生成し tmp/$$.bind.save に保存します。
 function .ble-decode-bind/generate-source-to-unbind-default {
   # 1 ESC で始まる既存の binding を全て削除
   # 2 bind を全て記録 at $$.bind.save
-  builtin bind -sp 2>/dev/null | awk -v apos="'" '
-    BEGIN{APOS=apos "\\" apos apos;}
-    #/^"(\\e|\\M-)/{
-    /^"/{
-      if(match($0,/^"(([^"]|\\.)+)"/,_capt)>0){
+  {
+    builtin bind -sp
+    if ((_ble_bash>=40300)); then
+      echo '__BINDX__'
+      builtin bind -X
+    fi
+  } 2>/dev/null | gawk -v apos="'" '
+    BEGIN{
+      APOS=apos "\\" apos apos;
+      mode=0;
+    }
+
+    function quote(text){
+      gsub(apos,APOS,text);
+      return apos text apos;
+    }
+
+    function unescape_control_modifier(str,_i,_esc){
+      for(_i=0;_i<32;_i++){
+        if(i==0||i==31)
+          _esc=sprintf("\\\\C-%c",i+64);
+        else if(27<=i&&i<=30)
+          _esc=sprintf("\\\\C-\\%c",i+64);
+        else
+          _esc=sprintf("\\\\C-%c",i+96);
+
+        _chr=sprintf("%c",i);
+        gsub(_esc,_chr,str);
+      }
+      gsub(/\\C-\?/,sprintf("%c",127));
+      return str;
+    }
+    function unescape(str){
+      if(str ~ /\\C-/)
+        str=unescape_control_modifier(str);
+      gsub(/\\e/,sprintf("%c",27),str);
+      gsub(/\\"/,"\"",str);
+      gsub(/\\\\/,"\\",str);
+      return str;
+    }
+
+    function output_bindr(line, seq,_capt){
+      if(match(line,/^"(([^"]|\\.)+)"/,_capt)>0){
         seq=_capt[1];
 
         # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
         #   bind -r では \M- ではなく \e と指定しなければ削除できない。
         gsub(/\\M-/,"\\e",seq);
 
-        gsub(apos,APOS,seq);
-        print "builtin bind -r " apos seq apos;
+        print "builtin bind -r " quote(seq);
+      }
+    }
+
+    mode==0&&$0~/^"/{
+      output_bindr($0);
+
+      print "builtin bind " quote($0) >"/dev/stderr";
+    }
+
+    /^__BINDX__$/{mode=1;}
+
+    mode==1&&$0~/^"/{
+      output_bindr($0);
+
+      line=$0;
+
+      # ※bash-4.3 では bind -r しても bind -X に残る。
+      #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
+      if(line~/\yble-decode-byte:bind\y/)next;
+
+      # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
+      #   コマンド部分の "" を外して中の escape を外す必要がある。
+      #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
+      #     \n\r\f\t\v\b\a 等は使われない様だ。
+      if(match(line,/^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/,captures)>0){
+        sequence=captures[1];
+        command=captures[3];
+
+        if(command ~ /\\/)
+          command=unescape(command);
+
+        line=sequence command;
       }
 
-      gsub(apos,APOS);
-      print "builtin bind " apos $0 apos >"/dev/stderr";
+      print "builtin bind -x " quote(line) >"/dev/stderr";
     }
   ' 2> "$_ble_base/tmp/$$.bind.save"
-
-  if ((_ble_bash>=40300)); then
-    builtin bind -X 2>/dev/null | gawk -v apos="'" '
-      BEGIN{APOS=apos "\\" apos apos;}
-
-      function unescape_control_modifier(str,_i,_esc){
-        for(_i=0;_i<32;_i++){
-          if(i==0||i==31)
-            _esc=sprintf("\\\\C-%c",i+64);
-          else if(27<=i&&i<=30)
-            _esc=sprintf("\\\\C-\\%c",i+64);
-          else
-            _esc=sprintf("\\\\C-%c",i+96);
-
-          _chr=sprintf("%c",i);
-          gsub(_esc,_chr,str);
-        }
-        gsub(/\\C-\?/,sprintf("%c",127));
-        return str;
-      }
-      function unescape(str){
-        if(str ~ /\\C-/)
-          str=unescape_control_modifier(str);
-        gsub(/\\e/,sprintf("%c",27),str);
-        gsub(/\\"/,"\"",str);
-        gsub(/\\\\/,"\\",str);
-        return str;
-      }
-
-      $0~/^"/{
-        line=$0;
-
-        # ※bash-4.3 では bind -r しても bind -X に残る。
-        #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
-        if(line~/\yble-decode-byte:bind\y/)next;
-
-        # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
-        #   コマンド部分の "" を外して中の escape を外す必要がある。
-        #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
-        #     \n\r\f\t\v\b\a 等は使われない様だ。
-        if(match(line,/^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/,captures)>0){
-          sequence=captures[1];
-          command=captures[3];
-
-          if(command ~ /\\/)
-            command=unescape(command);
-
-          line=sequence command;
-        }
-
-        gsub(apos,APOS,line);
-        print "builtin bind -x " apos line apos;
-      }
-    ' >> "$_ble_base/tmp/$$.bind.save" 2>/dev/null
-  fi
-}
-
-_ble_decode_bind_attached=0
-function .ble-decode-bind {
-  local mode="$1"
-
-  if [[ $mode == unbind ]]; then
-    ((_ble_decode_bind_attached==1)) || return
-    _ble_decode_bind_attached=0
-    .ble-stty.finalize
-    local binder=.ble-decode-bind/unbind
-  else
-    ((_ble_decode_bind_attached==0)) || return
-    _ble_decode_bind_attached=1
-    .ble-stty.initialize
-    local binder=.ble-decode-bind/bind
-  fi
-
-  # bind: 元のキー割り当ての保存
-  if [[ $mode != unbind ]]; then
-    eval -- "$(.ble-decode-bind/generate-source-to-unbind-default)"
-  fi
-
-  # ※bash-4.3 以降は bind -x の振る舞いがこれまでと色々と違う様だ
-  #   何より 3 byte 以上の物にも bind できる様になった点が大きい (が ble.sh では使っていない)
-
-  # * C-@ (0) は bash-4.3 では何故か bind -x すると
-  #   bash: bash_execute_unix_command: コマンドのキーマップがありません
-  #   bash_execute_unix_command: cannot find keymap for command
-  #   になってしまう。"C-@ *" に全て割り当てても駄目である。
-  #   bind '"\C-@":""' は使える様なので、UTF-8 の別表現に翻訳してしまう。
-  local esc00="$((_ble_bash>=40300))"
-
-  # * C-x (24) は直接 bind -x すると何故か bash が crash する。
-  #   なので C-x は割り当てないで、
-  #   代わりに C-x ? の組合せを全て登録する事にする。
-  #   bash-3.1 ～ bash-4.2 で再現する。bash-4.3 では問題ない。
-  local bind18XX="$((_ble_bash<40300))"
-
-  # * bash-3 では "ESC *" の組合せも全部登録しておかないと駄目??
-  #   (もしかすると bind -r 等に失敗していただけかも知れないが)
-  # * bash-4.3 では ESC * と ESC [ * も割り当てる必要がある (2015-02-09)
-  #   bash-4.3 では ESC *, ESC [ * も全て割り当てないと以下のエラーになる。
-  #   bash_execute_unix_command: cannot find keymap for command
-  #   というかあらゆる物を登録しておかないとうまく行かない。。
-  local bind1BXX="$((_ble_bash<40100||40300<=_ble_bash))"
-
-  # * bash-3.1
-  #   ESC [ を bind -x で捕まえようとしてもエラーになるので、
-  #   一旦 "ESC [" の ESC を UTF-8 2-byte code にしてから受信し直す。
-  #   bash-3.1 で確認。bash-4.1 ではOK。他は未確認。
-  local esc1B5B="$((_ble_bash<40100))"
-
-  # * bash-4.1 では ESC ESC に bind すると
-  #   bash_execute_unix_command: cannot find keymap for command
-  #   が出るので ESC [ ^ に適当に redirect して ESC [ ^ を
-  #   ESC ESC として解釈する様にする。
-  local esc1B1B="$((40100<=_ble_bash&&_ble_bash<40300))"
-
-  local i
-  for ((i=0;i<256;i++)); do
-    local ret; .ble-decode.c2dqs "$i"
-
-    # *
-    if ((i==0)); then
-      # C-@
-      if ((esc00)); then
-        if [[ $mode == unbind ]]; then
-          builtin bind -r '\C-@'
-        else
-          # UTF-8 2-byte code of 0 (■UTF-8依存)
-          builtin bind '"\C-@":"\xC0\x80"'
-        fi
-      else
-        $binder "$ret" "$i"
-      fi
-    elif ((i==24)); then
-      # C-x
-      ((bind18XX)) || $binder "$ret" "$i"
-    else
-      $binder "$ret" "$i"
-    fi
-
-    # # C-@ * for bash-4.3 (2015-02-11) 無駄?
-    # $binder "\\C-@$ret" "0 $i"
-
-    # C-x *
-    ((bind18XX)) && $binder "$ret" "24 $i"
-
-    # ESC *
-    if ((bind1BXX)); then
-      # ESC [
-      if ((i==91&&esc1B5B)); then
-        if [[ $mode == unbined ]]; then
-          builtin bind -r '\e['
-        else
-          # * obsoleted work around
-          #   ESC [ を CSI (encoded in utf-8) に変換して受信する。
-          #   受信した後で CSI を ESC [ に戻す。
-          #   CSI = \u009B = utf8{\xC2\x9B} = utf8{\302\233}
-          # bind '"\e[":"\302\233"'
-          # ble-bind -f 'CSI' '.ble-decode-char 27 91'
-
-          builtin bind '"\e[":"\xC0\x9B["' # (■UTF-8依存)
-        fi
-      else
-        $binder "\\e$ret" "27 $i"
-      fi
-    fi
-
-    # ESC ESC
-    if ((i==27&&esc1B1B)); then
-      # for bash-4.1
-      if ((i==27)); then
-
-        # ESC ESC
-        if [[ $mode == unbind ]]; then
-          builtin bind -r '\e\e'
-        else
-          builtin bind '"\e\e":"\e[^"'
-          ble-bind -k 'ESC [ ^' __esc__
-          ble-bind -f __esc__ '.ble-decode-char 27 27'
-        fi
-      fi
-    fi
-  done
-
-  if ((_ble_bash>=40300)); then
-    # 決まったパターンのキーシーケンスは全て登録
-    #   bash-4.3 で keymap が見付かりませんのエラーが出るので。
-    # ※3文字以上の bind -x ができるのは bash-4.3 以降
-    #   (bash-4.3-alpha で bugfix が入っている)
-    if [[ $mode == unbind ]]; then
-      source "$_ble_decode_bind_fbinder.unbind"
-    else
-      source "$_ble_decode_bind_fbinder.bind"
-    fi
-  fi
-
-  # unbind: 元のキー割り当ての復元
-  if [[ $mode == unbind && -s "$_ble_base/tmp/$$.bind.save" ]]; then
-    source "$_ble_base/tmp/$$.bind.save"
-    rm -f "$_ble_base/tmp/$$.bind.save"
-  fi
 }
 
 function ble-decode-initialize {
   .ble-decode-initialize-cmap
 }
+
+_ble_decode_bind_attached=0
 function ble-decode-attach {
-  .ble-decode-bind bind
+  ((_ble_decode_bind_attached==0)) || return
+  _ble_decode_bind_attached=1
+  .ble-stty.initialize
+
+  # 元のキー割り当ての保存
+  eval -- "$(.ble-decode-bind/generate-source-to-unbind-default)"
+
+  # ble.sh bind の設置
+  local file="$_ble_base/cache/ble-decode-bind.$_ble_bash.bind"
+  [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
+  source "$file"
 }
 function ble-decode-detach {
-  .ble-decode-bind unbind
+  ((_ble_decode_bind_attached==1)) || return
+  _ble_decode_bind_attached=0
+  .ble-stty.finalize
+
+  # ble.sh bind の削除
+  source "$_ble_base/cache/ble-decode-bind.$_ble_bash.unbind"
+  
+  # 元のキー割り当ての復元
+  if [[ -s "$_ble_base/tmp/$$.bind.save" ]]; then
+    source "$_ble_base/tmp/$$.bind.save"
+    rm -f "$_ble_base/tmp/$$.bind.save"
+  fi
 }
 
 # function bind {

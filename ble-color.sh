@@ -228,28 +228,21 @@ function ble-syntax-highlight+region {
   fi
 }
 
-.ble-shopt-extglob-push
-
 function ble-syntax-highlight+test {
-  .ble-shopt-extglob-push
-
   local text="$1"
   local i iN=${#text} w
   local mode=cmd
   for ((i=0;i<iN;)); do
-    local tail="${text:$i}"
-    case "$mode" in
-    cmd)
-      case "$tail" in
-      ([_a-zA-Z]*([_a-zA-Z0-9])=*)
+    local tail="${text:i}" rex
+    if [[ $mode == cmd ]]; then
+      if rex='^[_a-zA-Z][_a-zA-Z0-9]*=' && [[ $tail =~ $rex ]]; then
         # 変数への代入
         local var="${tail%%=*}"
         ble-region_highlight-append "$i $((i+${#var})) fg=orange"
         ((i+=${#var}+1))
   
         mode=rhs
-        ;;
-      ([_a-zA-Z]*([_a-zA-Z0-9])\[+([^\]])\]=*)
+      elif rex='^[_a-zA-Z][_a-zA-Z0-9]*\[[^]]+\]=' && [[ $tail =~ $rex ]]; then
         # 配列変数への代入
         local var="${tail%%\[*}"
         ble-region_highlight-append "$i $((i+${#var})) fg=orange"
@@ -261,8 +254,7 @@ function ble-syntax-highlight+test {
         ((i+=${#var}+1))
   
         mode=rhs
-        ;;
-      (+([^ 	"'\""])?([ 	]*))
+      elif rex='^[^ 	"'\'']+([ 	]|$)' && [[ $tail =~ $rex ]]; then
         local cmd="${tail%%[	 ]*}"
         case "$(builtin type -t "$cmd" 2>/dev/null):$cmd" in
         builtin:*)
@@ -280,25 +272,18 @@ function ble-syntax-highlight+test {
         esac
         ((i+=${#cmd}))
         mode=arg
-        ;;
-      *)
+      else
         ((i++))
-        ;;
-      esac ;;
-    *)
+      fi
+    else
       ((i++))
-      ;;
-    esac
+    fi
   done
-
-  .ble-shopt-extglob-pop
 
   ble-syntax-highlight+region "$@"
 
   # ble-region_highlight-append "${#text1} $((${#text1}+1)) standout"
 }
-
-.ble-shopt-extglob-pop
 
 function ble-syntax-highlight+default/type {
   type="$1"

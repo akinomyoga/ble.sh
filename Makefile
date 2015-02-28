@@ -14,14 +14,23 @@ out/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color
 outfiles+=out/term.sh
 out/term.sh: term.sh
 	cp -p $< $@
+outfiles+=out/bind.sh
+out/bind.sh: bind.sh
+	cp -p $< $@
 outfiles+=out/complete.sh
 out/complete.sh: complete.sh
+	cp -p $< $@
+
+outfiles+=out/keymap
+out/keymap:
+	mkdir -p $@
+outfiles+=out/keymap/emacs.sh
+out/keymap/emacs.sh: keymap/emacs.sh
 	cp -p $< $@
 
 outfiles+=out/cmap
 out/cmap:
 	mkdir -p $@
-
 outfiles+=out/cmap/default.sh
 out/cmap/default.sh: cmap/default.sh
 	cp -p $< $@

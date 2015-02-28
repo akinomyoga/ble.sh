@@ -79,6 +79,7 @@ if [[ ! -d $_ble_base/cache ]]; then
   mkdir -p "$_ble_base/cache"
 fi
 
+# time {}
 #%x inc.r/@/getopt/
 #%x inc.r/@/core/
 #%x inc.r/@/decode/

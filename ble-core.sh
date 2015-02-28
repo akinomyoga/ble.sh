@@ -12,27 +12,6 @@
 
 shopt -s checkwinsize
 
-_ble_shopt_extglob__level=0
-_ble_shopt_extglob__unset=1
-function .ble-shopt-extglob-push {
-  if ((_ble_shopt_extglob__level++==0)); then
-    shopt extglob &>/dev/null
-    _ble_shopt_extglob__unset=$?
-    shopt -s extglob &>/dev/null
-  fi
-}
-function .ble-shopt-extglob-pop {
-  if ((_ble_shopt_extglob__level>0&&--_ble_shopt_extglob__level==0&&_ble_shopt_extglob__unset)); then
-    shopt -u extglob
-  fi
-}
-function .ble-shopt-extglob-pop-all {
-  if ((_ble_shopt_extglob__level>0&&_ble_shopt_extglob__unset)); then
-    shopt -u extglob
-  fi
-  _ble_shopt_extglob__level=0
-}
-
 #------------------------------------------------------------------------------
 # util
 

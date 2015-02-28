@@ -161,10 +161,21 @@ bashbug: 実装上で注意するべき事
     ToDo
 -------------------------------------------------------------------------------
 
+COMMITLOG
+
 2015-02-28
 
+  * ble-decode.sh: CSI Function Key Sequence を別扱いにする?
+
   Done
+  * ble-decode.sh: bash-4.3 でも ESC [ を utf-8 2-byte code で受信する様に変更。
+  * ble-decode.sh (.ble-decode-bind/generate-source-to-unbind-default): awk 呼出を一回に統合。
+  * ble-decode.sh (.ble-decode-key.bind/unbind): [[ ]] による書き換え、bugfix。
+  * ble-decode.sh, bind.sh: bind -x を生成する為のコードを bind.sh に分離。
+  * ble-edit.sh, keymap.emacs.sh: keymap 初期化部分の分離、キャッシュ化。
+
   * ble-edit.sh: history 遅延ロード対応
+  * ble-core.sh, ble-color.sh: .ble-shopt-extglob-push/pop/pop-all 廃止
 
 2015-02-27
 
@@ -503,30 +514,6 @@ bashbug: 実装上で注意するべき事
     - time -p
     - extglob
 
-2015-02-09
-
-  * 既に bind -x してある物を削除するという事?
-    bash-4.3 では bind -X が実装されたので bind -x した物を列挙できる。
-    (但し、bind -r しても bind -X のリストには残ってしまう様だ @bash-4.3.33
-    リストには残っているが実際には削除されている。)
-
-  * 現在の初期化のボトルネックは圧倒的に history である
-    →.ble-edit.history-load を多少最適化した。読み取り時間が約半分になった。
-      それでも未だ全体の半分が history 読み取りである
-      (しかし history を 16k も溜めている場合は少ないから、実際は無視できるかも)。
-
-    改めて初期化の時間を調べる:
-    多少なりとも時間が掛かっているのは以下の phase
-    - ble-core.sh                     58ms
-    - ble-edit.sh                    629ms (554ms が history, 75ms が他)
-    - ble-decode-bind.cmap            52ms
-    - ble-decode-bind                105ms
-    - .ble-edit.default-key-bindings 229ms
-    - .ble-edit-draw.redraw           35ms
-
-    default-key-bindings を見るに ble-bind に平均 229/75 ms かかっている様だ。
-    これを考えると ble-edit.sh の中の 33ms も ble-bind の遅さに起因する。
-
 2013-06-10
 
   * ble-bind キーボードマクロの定義に対応
@@ -639,7 +626,394 @@ bashbug: 実装上で注意するべき事
     ChangeLog
 -------------------------------------------------------------------------------
 
+commit e1e87c2c8ae8afb14b249663ca06ced7e2160474
+Author: Koichi Murase <myoga.murase@gmail.com>
+Date:   Thu Feb 26 07:28:39 2015 +0900
+
+2015-02-25
+
+  * ble/term.sh: TERM 依存の部分を分離。キャッシュ化。完全移行ではないが徐々に。
+  * ble-decode.sh:
+    - <bug> $_ble_base/cache の代わりに $_ble_bash/cache を作成していた
+    - <bug> accept-single-line-or-newline が二回目以降常に accept
+  * ble-edit.sh:
+    - <bug> 複数行の編集時に履歴移動をすると表示が乱れる
+    - printf %()T を用いた実装の導入、PS1 \D{...} に対応
+    - <bug> 表示の属性の更新がうまく行かない事がある。
+    - <bug> 編集文字列の行数が変わった時に info.draw の内容がずれる
+  * カーソル移動
+    - ble-edit: 複数行編集と項目内でのカーソル移動に対応
+    - ble-edit.sh: 複数行コマンドの履歴に対応。
+  * ble-syntax.sh: ble-syntax-highlight+syntax を ble-highlight-layer:syntax に書き換え
+  * ble-syntax.sh:
+    - 関数定義 func() の形式に対応、
+    - 条件式 [[ ... ]] と配列初期化子内の文脈に対応。
+    - コメントに対応。
+    - $[...] の形式に対応 (何故か bash の説明には一切載っていないが使える)。
+    - <bug> invalid nest " $()" の先頭に for を挿入した時
+
+2015-02-24
+
+  * ble-edit.sh 出力の部分更新に対応 (描画ちらつき対策)
+  * ble-syntax.sh: _ble_syntax_word, _ble_syntax_stat の形式の変更
+  * ble-syntax.sh: 今迄行っていた dirty-range 拡大の方法を止めて、単に stat の削除を行う。
+  * ble-syntax.sh: 及び上記の変更に伴う数々の bugfix
+    - <bug> 文字削除時 invalid nest の assertion に引っかかる。
+    - <bug> 編集内容が零文字になった瞬間に改行が起こって表示が消える。
+    - <bug> 改行しても先頭がコマンドになっていない
+    - <bug> _ble_region_highlight_table で空欄になっている箇所がある。
+    - <bug> 単語の属性適用が後ろに続く単語にも続いている。
+    - <bug> _ble_syntax_attr の中に "BLE_ATTR_ERR" の文字列が混入している。
+    - 残っている dirty 拡大と _ble_syntax_word[] の廃止された形式に対する処理の
+      コメントアウトされた部分を削除。dirty 拡大の変更に伴う効率化の確認と、
+      shift が遅いという事の ToDo 項目の追加。
+  * ble-decode.sh: <bug> $_ble_base/cache の代わりに $_ble_bash/cache を作成していた
+  * ble-edit.sh: ble-edit+delete-backward-xword の類の動作を変更。
+
+2015-02-23
+
+  * ble-core.sh: ble-stackdump, ble-assert
+  * <bug> update-positions で dend-dbeg が負になると警告が出る
+  * <bug> info.draw で特殊文字が改行に跨っている時の座標計算
+
+2015-02-22
+
+  * ble-edit.sh: <bug> .ble-line-info.draw を使った時行がずれる
+  * ble-syntax.sh: <bug> for や do に色が着かない?
+  * レイヤー化
+    - ble-color.sh: レイヤーの仕組み、レイヤ region, adapter, plain + RandomColor
+    - ble-edit.sh: レイヤーに対応した表示文字列構築関数。古い構築関数の削除。出力関数の変更。
+    - ble-syntax.sh: 多少の変更。
+
+2015-02-21
+
+  * 描画の高速化
+    - ble-syntax.sh: 属性値の変更範囲に応じて適用を行い、変更範囲を LAYER_MIN, LAYER_MAX に返す様に。
+    - ble-edit.sh: 表示用の文字列の構築部分を書き直して部分更新に対応。
+    - ble-syntax.sh: 内容に変化のあった word の範囲も記録する様に変更。
+    - ble-syntax.sh (parse): _ble_syntax_attr_umin (属性値の変更範囲),
+      _ble_syntax_word_umin (word の変更範囲) の累積に対応する為に、これらについても shift を実行する。
+
+2015-02-20
+
+  * ble-decode.sh: bind 周り
+    - bash-4.3 C-@ を utf-8 2-byte code で受信する様に変更
+    - bash-3.1 ESC [ を utf-8 2-byte code で受信する様に変更
+    - bugfix, \C-\\ \C-_ \C-^ \C-] に bind できなくなっていた。
+    - bind の version 分岐について整理。
+    - 既存の bind を ESC に関係なく bind -r する。
+  * ble-decode.sh: .ble-decode-key 部分一致探索の処理の再実装。変な動作だった。
+  * ble-decode.sh: bugfix, 8bit 文字を正しく bind できていない。c2s で8bit文字が符号化されていた。
+  * ble-syntax.sh: 履歴展開は $- に H がある時のみ有効に。
+  * ble-syntax.sh: bugfix, bash-4.2 のバグの work around。配列を参照する算術式の書き換え。
+  * ble-core.sh: c2s を bash の機能だけで実装できたので fallback を replace。
+  * ble-core.sh: bash-4.0 で .ble-text.s2c を連想配列でメモ化
+  * ble-edit.sh: bugfix, bash-4.0 で ret に予め特定の値が入っていると c2w に失敗する。
+  * ble-edit.sh: bugfix, bind -x 直前のプロンプトの取り扱いは bash-4.0 では bash-3 系と同じ。
+  * ble-edit.sh (.ble-line-text.construct 周り): lc lg を後で計算する様に変更。一区切り。一旦 commit する。
+
+2015-02-19
+  * ble-syntax.sh: 履歴展開に対応。
+  * ble-decode.sh: bugfix, bind -X から bind -x を生成するコード。
+    bind -X の出力する形式は再利用不可能な形式でエスケープされているのでこれを変換。
+  * ble.pp, etc: noattach 引数に対応。ble-attach/ble-detach 関数の定義。detach の bugfix。
+  * ble-edit.sh: bug, bleopt_suppress_bash_output= にした時にプロンプトが二重になる
+
+2015-02-18
+
+  * ble.pp, ...: ディレクトリの構成を変更
+  * ble-syntax.sh: 文法の対応
+    - プロセス置換を単語として扱う様に変更
+    - リダイレクトの後の引数に対応
+    - リダイレクトの前の fd 部分に対応
+  * bash-3.1 対応
+    - ble-edit.sh: bash-3.1 で C-d を捕捉できる様に(結構無理のある方法だが)。
+    - ble-edit.sh, ble-decode.sh: bugfix, bash-3 でカーソルキーの類が動かない。履歴が読み込まれていない。
+    - ble-edis.sh: bash-3.1, bleopt_suppress_bash_output=1 の方が安定して動いているのでこちらで行く。
+    - ble-edit.sh: bash-3.1, カーソルキーが効かない。例によって ESC [ ... に関係するコマンドで
+      keymap が見付からないエラーになっている。これは ESC [ を CSI (utf-8) に変換してから読み取る事にした。
+    - ble-syntax.sh: bash-3.2.48 のバグの work-around, (()) 内で配列要素を参照すると制御が無条件に其処に跳ぶ。
+
+2015-02-17
+  * ble-edit.sh (ble-edit/dirty-range): 範囲更新の仕組みを追加。
+      _ble_edit_dirty はプロンプト再描画の判定も兼ねているので取り敢えず残す。
+  * ble-edit.sh: 変数リーク (グローバル変数の汚染) の修正。line i
+  * ble-syntax.sh (ctx-command/check-word-end): 単語終了判定の処理タイミングを変更。
+  * ble-syntax.sh: context の追加。CTX_CMDXF CTX_CMDX1 CTX_CMDXV CTX_ARGX0
+    より正確な文脈判定・エラー検知。
+  * ble-syntax.sh: 他にも多くの修正がある。未だ修正が続きそうなので一旦 commit する。
+
+  * ble-edit.sh (accept-line): bug, - で始まるコマンドを実行できない。
+  * ble-color.sh: <bug> bg=black を設定しても反映されない。
+    "未設定" と "黒" を区別する様に修正。
+  * ble-syntax (ble-syntax-highlight+syntax): 入れ子エラーの色の範囲
+  * ble-syntax: m, ;& は ;; ;;& 等と同じ取り扱い
+  * ble-syntax, etc: bash-3 正規表現対策。bash-3/4 の正規表現の違いに依存しない書き方に変更。
+
+2015-02-16
+  * ble-syntax.sh: bugfix, incremental に更新した時に word の長さが更新されない。
+    _ble_syntax_word への格納の際に失敗していた。
+
+2015-02-15
+  * ble-synatax.sh: bash の文法に従った incremental な解析と色付け。
+
+2015-02-14
+  * ble-edit.sh (.ble-line-info.draw): 表示が遅いので修正。
+    ASCII 文字は特別扱いする様に改良。劇的に速くなった。
+
+2015-02-13
+  * ble-edit.sh (keymap emacs): 既定の keymap に emacs の名を付与。
+  * ble-edit.sh (accept-line.exec): bugfix, C-c で再帰呼び出しのループから抜けられない。
+    trap DEBUG を用いて再帰呼び出しから抜けられる様に exec 周りを整理・実装し直し。
+  * ble-edit.sh: オプション名の変更、各オプションの整理・説明の追加。
+  * ble-edit.sh (.ble-edit/gexec): グローバルな文脈でコマンドを実行する仕組み。
+    再帰呼出に対する C-c にも対応。bleopt_exec_type で実行の方法を切り替えられる様に。
+    exec が従来の方法で gexec がこの新しい方法。
+
+2015-02-12
+  * ble-decode.sh: bugfix, exit 後に stty が壊れているのを修正
+    これに伴って ble の detach 機能の実装も行った。
+  * ble-decode.sh: bugfix, bash-4.3 で三文字以上のシーケンスが悉く聞かない。
+    keymap が見付からないエラーになってしまうので全てのシーケンスについて bind -x する事にした。
+  * ble-core.sh: bugfix, builtin printf \U.... の使えない環境で command printf fallback が働かない。
+    printf のパスを修正。また ASCII に対しては printf は使わない様に変更。
+  * ble-color.sh (ble-syntax-highlight+default):
+    追加・修正。また選択範囲の反転を ble-syntax-highlight+region として実装し、それを呼び出す形に。
+  * ble.pp: 起動時に interactive モードかどうかのチェックを行う様に。
+
+2015-02-11
+  * ble-edit.sh (_ble_edit_io_*): ちらつきを抑える為に stdout/stderr を切り替える事にした。
+    ちらつくのは bash の既定の出力によって ble の表示がクリアされ、bash の表示したい物が表示されるから。
+    これに対抗して ble は bash の出力の直後に上書き再描画して何とか表示していた。
+    bash の既定の出力を抑える為に、exec で出力先を切り替える事にした。
+    bash の出力はファイルに書き込まれる様にし向ける。出力先ファイルを逐次確認して、
+    エラーが出力されていれば visible-bell で表示する事にした。
+    bleopt_suppress_bash_output=1 の時にこの新しい方法を実験的に用いる。
+    bleopt_suppress_bash_output= の時は従来のちらつく方法。
+
+2015-02-10
+  * ble-edit.sh (accept-line.exec): bash-4.3 で内部からグローバル変数を定義できる様に
+    declare 及び typeset を上書きして -g オプションを指定する様に変更。
+    また、これに関係する注意点を ble.htm に記述。
+  * ble-edit.sh (history): ロードに時間が掛かるので最適化。
+  * 全般: bugfix, 文字列分割で GLOBIGNORE='*' を設定していないとパス名展開されて危険
+  * ble-color.sh (ble-syntax-highlight+default): より良い色づけ。
+  * ble-edit.sh (accept-line.exec): ble-bind -cf で bind されたコマンドの実行コンテキストを変更。
+    accept-line で実行されるのと同じコンテキストで実行する。
+  * ble-edit.sh (keymap default): C-z M-z を fg に bind。
+
+2015-02-09
+  * git repos
+  * ble-edit: bugfix, locate-xword マクロが展開されていなかった
+  * ble-decode: bash-4.3 に対応する為に色々変更
+    - bind 指定の場合分けを整理
+    - bugfix, ESC ?, ESC [ ? に対して全て bind
+    - bugfix, 場合によって全く bind -r できていない
+      →"bind -sp | fgrep" が "バイナリ" という結果になる事がある様だ。
+        fgrep に -a を指定する。
+    - bugfix, 日本語が入力できない。8bit 文字が認識されない。
+      →8bit 文字はエスケープシーケンスで bind に指定する様に変更。
+
+2013-06-12
+  * ble-edit: history-beginning, history-end, accept-and-next
+
+2013-06-12
+  * ble-edit:
+    kill-forward-fword, kill-backward-fword, kill-fword,
+    copy-forward-fword, copy-backward-fword, copy-fword,
+    delete-forward-fword, delete-backward-fword, delete-fword,
+    forward-fword, backward-fword
+  * ble-edit: history-expand-line, display-shell-version
+
+2013-06-10
+  * ble-edit:
+    kill-forward-uword, kill-backward-uword, kill-uword, kill-region-or-uword,
+    copy-forward-uword, copy-backward-uword, copy-uword, copy-region-or-uword,
+    forward-uword, backward-uword
+
+  * ble-edit:
+    delete-forward-uword, delete-backward-uword, delete-uword, delete-region-or-uword,
+    delete-forward-sword, delete-backward-sword, delete-sword, delete-region-or-sword,
+    delete-forward-cword, delete-backward-cword, delete-cword, delete-region-or-cword
+
+  * ble-edit:
+    以下の編集関数を廃止:
+      delete-region-or-uword, kill-region-or-uword, copy-region-or-uword,
+      delete-region-or-sword, kill-region-or-sword, copy-region-or-sword,
+      delete-region-or-cword, kill-region-or-cword, copy-region-or-cword.
+    代わりに以下の編集関数を用いる:
+      delete-region-or type, kill-region-or type, copy-region-or type.
+
+2013-06-09
+  * ble-edit: kill-region, copy-region
+  * ble-edit:
+    kill-forward-sword, kill-backward-sword, kill-sword, kill-region-or-sword,
+    copy-forward-sword, copy-backward-sword, copy-sword, copy-region-or-sword
+  * ble-edit:
+    kill-forward-cword, kill-backward-cword, kill-cword, kill-region-or-cword,
+    copy-forward-cword, copy-backward-cword, copy-cword, copy-region-or-cword
+  * ble-edit: forward-sword, backward-sword, forward-cword, backward-cword
+
+2013-06-06
+  * ble-edit-bind: 全ての文字・キーが入力可能に。
+  * complete: 候補一覧の表示 (簡易版)
+  * ble-color.sh: 色付け機能を highlight.sh から移植
+
+2013-06-05
+  * ble-edit: history-isearch-backward, history-isearch-forward,
+    isearch/self-insert,
+    isearch/next, isearch/forward, isearch/backward,
+    isearch/exit, isearch/cancel, isearch/default,
+    isearch/prev, isearch/accept
+  * ble-edit: yank
+  * ble-bind -d で今迄に bind した物を表示できる様に。
+  * ble-edit: complete, 取り敢えずファイル名補完だけ
+  * ble-edit: command-help
+
+2013-06-04
+  * ble-edit: discard-line, accept-line
+  * ble-edit: history-prev, history-next
+  * ble-edit: set-mark, kill-line, kill-backward-line, exchange-point-and-mark
+  * ble-edit: clear-screen
+  * ble-edit: transpose-chars
+  * ble-edit: insert-string
+
+2013-06-03
+  * ble-edit: bell, self-insert, redraw-line,
+  * ble-edit: delete-char, delete-backward-char, delete-char-or-exit,
+    delete-forward-backward-char
+  * ble-edit: forward-char, backward-char, end-of-line, beginning-of-line
+  * ble-edit: quoted-insert
+  * ble.sh: 取り敢えず簡単に文字列を入力できる程度までは完成
+
+2013-06-02
+  * ble-getopt.sh: bugfixes
+  * ble-getopt.sh: 無事に完了した場合に OPTARGS を unset する様に変更
+  * ble-decode-kbd, ble-decode-unkbd
+
+2013-05-31
+  * ble-getopt.sh: created
+  * ble-decode: 大枠が完成
+
+2013-05-30
+  * highlight.sh: 取り敢えず簡単な色付け
+  * ble.sh:
+
+    -- 経緯 --
+    highlight.sh の方針だと bash が表示する編集中の内容を消す事が出来ないし、
+    カーソルの位置も bash が表示する物の場所を指している。
+    色を付けて表示した物は、補助的に bash が表示する物の下に並べて表示する
+    ぐらいしか方法がない。
+
+    また readline 関数をスクリプトから呼び出す事が出来ないので、
+    結局、色付けを更新したいタイミングで READLINE_LINE や READLINE_POINT の動作を
+    スクリプトの側で全て模倣して再現しなければならない。
+    READLINE_LINE, READLINE_POINT の bash の仕様が変な所為で、日本語など
+    のマルチバイトで正しく処理する為に、色々と汚い事をしなければならない。
+
+    以上の事から、文字列の編集などの操作からスクリプトの実行まで
+    全部自分で好きな様に実装して bash readline の機能を全て上書きする事にした。
+    その為に、スクリプトを新しく書き直す。zle を真似て ble (bash line editor)
+    と名付ける。
+
+    -- 方針としては --
+    a. read -n 1 を用いて 1 文字ずつ標準入力から文字を取り出してそれを処理していく
+    b. bash の bind で全ての文字に ble のバイト受信関数を繋げて、
+       バイト列を受信しながら処理する。
+
+    highlight.sh の延長線上で b. の方針にしたが、
+    もしかすると a. の方針も可能かも知れない。
+
+2013-05-29
+  * highlight.sh: 作成
+
+
+*******************************************************************************
+    実装ログ
+-------------------------------------------------------------------------------
+
 2015-02-28
+
+  * 初期化の最適化
+
+    現在の初期化のボトルネックは圧倒的に history である (2015-02-09)
+    →.ble-edit.history-load を多少最適化した。読み取り時間が約半分になった。
+      それでも未だ全体の半分が history 読み取りである
+      (しかし history を 16k も溜めている場合は少ないから、実際は無視できるかも)。
+
+    | 改めて初期化の時間を調べる:
+    | 多少なりとも時間が掛かっているのは以下の phase
+    | - ble-core.sh                     58ms
+    | - ble-edit.sh                    629ms (554ms が history, 75ms が他)
+    | - ble-decode-bind.cmap            52ms
+    | - ble-decode-bind                105ms
+    | - .ble-edit.default-key-bindings 229ms
+    | - .ble-edit-draw.redraw           35ms
+    | 
+    | default-key-bindings を見るに ble-bind に平均 229/75 ms かかっている様だ。
+    | これを考えると ble-edit.sh の中の 33ms も ble-bind の遅さに起因する。
+
+    改めて初期化の時間を計る (2015-02-28)
+    前回から、初期化と attach の分離、history 遅延ロードの実装など、
+    初期化の順序・構成が変化した。
+
+    1 ファイルの読込                 |  39ms
+    2 ble-initialize
+      ble-decode-initialize          |  53ms
+      .ble-edit.default-key-bindings | 309ms -> 4ms
+      ble-edit-initialize            |   4ms
+    3 ble-attach
+      ble-decode-attach              | 201ms -> 55ms
+      ble-edit-attach                |   0ms
+      .ble-edit-draw.redraw          |  36ms
+
+    ble-decode-initialize は ble-decode-bind.cmap の現在の名前と思って良い。
+    これのロード時間は大して変わっていない。
+    この部分は基本的にファイルにキャッシュした配列を読み取っているだけである。
+    しかしその容量が大きい為にこれだけの時間が掛かっている。
+    CSI Funtion Key が大半を占めているので、これらを特別扱いする様にすれば多少は解消するかも。
+
+    .ble-edit.default-key-bindings は前回よりも大幅に増えている。
+    これは多少の bindings の追加を行った事もあるが、
+    keymap isearch などの初期化を .default-key-bindings に統合した事もある。
+    →これもファイルに dump を出力する様にした。これは 4ms と嘘のように軽くなった。
+      ble-bind 自体に問題があるのかもしれない…。
+
+    ble-decode-attach は前回に比べて大幅に増えている。
+    これは bash-4.3 で ESC [ ... に bind する為に、
+    全ての可能性に対して bind を実行している為であろう。
+    (しかしそれでも元々 100ms 程度かかっていたのでここを直しても劇的に速くなるという事はない)。
+    更に詳しく調べる。既存の bind の保存と削除は 31ms で済んでいる。
+    全組合せに対する bind は 77ms 掛かっている。メインの bind に 91ms かかっている。
+    実はこの部分をこそ最適化するべきなのかも知れない。
+    →既存の bind の保存と削除の部分は awk の呼出が2回に渡っているのを1回にくっつけた。
+      この部分は時間を計測してみたが 31ms の儘で変化しなかった。
+    →結局全組合せに対する bind はしないで代わりに ESC [ を utf-8 で翻訳する方向にした。
+    →また、メインの bind はコマンドを生成するのに時間が掛かっている様に思われたので、
+      先にコマンドを生成してファイルにキャッシュする様に変更した。
+      その為に新しく bind のコマンドを生成する為のファイル ble/bind.sh を作成した。
+    結果として元々の 201ms から 55ms に迄ロード時間を減らす事ができた。
+
+    これで一通り重い場所は解決したように思うので解決とする。
+
+  * ble-decode.sh (.ble-decode-bind/generate-source-to-unbind-default): awk 呼出を一回に統合。
+
+    | * 既に bind -x してある物を削除するという事?
+    |   bash-4.3 では bind -X が実装されたので bind -x した物を列挙できる。
+    |   (但し、bind -r しても bind -X のリストには残ってしまう様だ @bash-4.3.33
+    |   リストには残っているが実際には削除されている。)
+
+    同時に上記の項目 (2015-02-09) も実装した。
+
+  * ble-core.sh, ble-color.sh: .ble-shopt-extglob-push/pop/pop-all 廃止
+
+    ble-color.sh で、extglob を使った部分のコードの管理が
+    好い加減面倒なので正規表現による実装に切り替えた。
+    (そもそもこの部分は現在は使われていない部分ではあるが。)
+
+    さて、.ble-shopt-extglob-push/pop/pop-all 関数は
+    この部分でしか使われていなかったので削除してしまう事にする。
+    別にそう大した実装でもないので。
 
   * history 遅延ロードについて
 
@@ -1119,312 +1493,6 @@ bashbug: 実装上で注意するべき事
     |   引用符に囲まれた場合などに挿入位置がずれる。
 
     この問題は新しく実装し直した事によって解消した。
-
-commit e1e87c2c8ae8afb14b249663ca06ced7e2160474
-Author: Koichi Murase <myoga.murase@gmail.com>
-Date:   Thu Feb 26 07:28:39 2015 +0900
-
-2015-02-25
-
-  * ble/term.sh: TERM 依存の部分を分離。キャッシュ化。完全移行ではないが徐々に。
-  * ble-decode.sh:
-    - <bug> $_ble_base/cache の代わりに $_ble_bash/cache を作成していた
-    - <bug> accept-single-line-or-newline が二回目以降常に accept
-  * ble-edit.sh:
-    - <bug> 複数行の編集時に履歴移動をすると表示が乱れる
-    - printf %()T を用いた実装の導入、PS1 \D{...} に対応
-    - <bug> 表示の属性の更新がうまく行かない事がある。
-    - <bug> 編集文字列の行数が変わった時に info.draw の内容がずれる
-  * カーソル移動
-    - ble-edit: 複数行編集と項目内でのカーソル移動に対応
-    - ble-edit.sh: 複数行コマンドの履歴に対応。
-  * ble-syntax.sh: ble-syntax-highlight+syntax を ble-highlight-layer:syntax に書き換え
-  * ble-syntax.sh:
-    - 関数定義 func() の形式に対応、
-    - 条件式 [[ ... ]] と配列初期化子内の文脈に対応。
-    - コメントに対応。
-    - $[...] の形式に対応 (何故か bash の説明には一切載っていないが使える)。
-    - <bug> invalid nest " $()" の先頭に for を挿入した時
-
-2015-02-24
-
-  * ble-edit.sh 出力の部分更新に対応 (描画ちらつき対策)
-  * ble-syntax.sh: _ble_syntax_word, _ble_syntax_stat の形式の変更
-  * ble-syntax.sh: 今迄行っていた dirty-range 拡大の方法を止めて、単に stat の削除を行う。
-  * ble-syntax.sh: 及び上記の変更に伴う数々の bugfix
-    - <bug> 文字削除時 invalid nest の assertion に引っかかる。
-    - <bug> 編集内容が零文字になった瞬間に改行が起こって表示が消える。
-    - <bug> 改行しても先頭がコマンドになっていない
-    - <bug> _ble_region_highlight_table で空欄になっている箇所がある。
-    - <bug> 単語の属性適用が後ろに続く単語にも続いている。
-    - <bug> _ble_syntax_attr の中に "BLE_ATTR_ERR" の文字列が混入している。
-    - 残っている dirty 拡大と _ble_syntax_word[] の廃止された形式に対する処理の
-      コメントアウトされた部分を削除。dirty 拡大の変更に伴う効率化の確認と、
-      shift が遅いという事の ToDo 項目の追加。
-  * ble-decode.sh: <bug> $_ble_base/cache の代わりに $_ble_bash/cache を作成していた
-  * ble-edit.sh: ble-edit+delete-backward-xword の類の動作を変更。
-
-2015-02-23
-
-  * ble-core.sh: ble-stackdump, ble-assert
-  * <bug> update-positions で dend-dbeg が負になると警告が出る
-  * <bug> info.draw で特殊文字が改行に跨っている時の座標計算
-
-2015-02-22
-
-  * ble-edit.sh: <bug> .ble-line-info.draw を使った時行がずれる
-  * ble-syntax.sh: <bug> for や do に色が着かない?
-  * レイヤー化
-    - ble-color.sh: レイヤーの仕組み、レイヤ region, adapter, plain + RandomColor
-    - ble-edit.sh: レイヤーに対応した表示文字列構築関数。古い構築関数の削除。出力関数の変更。
-    - ble-syntax.sh: 多少の変更。
-
-2015-02-21
-
-  * 描画の高速化
-    - ble-syntax.sh: 属性値の変更範囲に応じて適用を行い、変更範囲を LAYER_MIN, LAYER_MAX に返す様に。
-    - ble-edit.sh: 表示用の文字列の構築部分を書き直して部分更新に対応。
-    - ble-syntax.sh: 内容に変化のあった word の範囲も記録する様に変更。
-    - ble-syntax.sh (parse): _ble_syntax_attr_umin (属性値の変更範囲),
-      _ble_syntax_word_umin (word の変更範囲) の累積に対応する為に、これらについても shift を実行する。
-
-2015-02-20
-
-  * ble-decode.sh: bind 周り
-    - bash-4.3 C-@ を utf-8 2-byte code で受信する様に変更
-    - bash-3.1 ESC [ を utf-8 2-byte code で受信する様に変更
-    - bugfix, \C-\\ \C-_ \C-^ \C-] に bind できなくなっていた。
-    - bind の version 分岐について整理。
-    - 既存の bind を ESC に関係なく bind -r する。
-  * ble-decode.sh: .ble-decode-key 部分一致探索の処理の再実装。変な動作だった。
-  * ble-decode.sh: bugfix, 8bit 文字を正しく bind できていない。c2s で8bit文字が符号化されていた。
-  * ble-syntax.sh: 履歴展開は $- に H がある時のみ有効に。
-  * ble-syntax.sh: bugfix, bash-4.2 のバグの work around。配列を参照する算術式の書き換え。
-  * ble-core.sh: c2s を bash の機能だけで実装できたので fallback を replace。
-  * ble-core.sh: bash-4.0 で .ble-text.s2c を連想配列でメモ化
-  * ble-edit.sh: bugfix, bash-4.0 で ret に予め特定の値が入っていると c2w に失敗する。
-  * ble-edit.sh: bugfix, bind -x 直前のプロンプトの取り扱いは bash-4.0 では bash-3 系と同じ。
-  * ble-edit.sh (.ble-line-text.construct 周り): lc lg を後で計算する様に変更。一区切り。一旦 commit する。
-
-2015-02-19
-  * ble-syntax.sh: 履歴展開に対応。
-  * ble-decode.sh: bugfix, bind -X から bind -x を生成するコード。
-    bind -X の出力する形式は再利用不可能な形式でエスケープされているのでこれを変換。
-  * ble.pp, etc: noattach 引数に対応。ble-attach/ble-detach 関数の定義。detach の bugfix。
-  * ble-edit.sh: bug, bleopt_suppress_bash_output= にした時にプロンプトが二重になる
-
-2015-02-18
-
-  * ble.pp, ...: ディレクトリの構成を変更
-  * ble-syntax.sh: 文法の対応
-    - プロセス置換を単語として扱う様に変更
-    - リダイレクトの後の引数に対応
-    - リダイレクトの前の fd 部分に対応
-  * bash-3.1 対応
-    - ble-edit.sh: bash-3.1 で C-d を捕捉できる様に(結構無理のある方法だが)。
-    - ble-edit.sh, ble-decode.sh: bugfix, bash-3 でカーソルキーの類が動かない。履歴が読み込まれていない。
-    - ble-edis.sh: bash-3.1, bleopt_suppress_bash_output=1 の方が安定して動いているのでこちらで行く。
-    - ble-edit.sh: bash-3.1, カーソルキーが効かない。例によって ESC [ ... に関係するコマンドで
-      keymap が見付からないエラーになっている。これは ESC [ を CSI (utf-8) に変換してから読み取る事にした。
-    - ble-syntax.sh: bash-3.2.48 のバグの work-around, (()) 内で配列要素を参照すると制御が無条件に其処に跳ぶ。
-
-2015-02-17
-  * ble-edit.sh (ble-edit/dirty-range): 範囲更新の仕組みを追加。
-      _ble_edit_dirty はプロンプト再描画の判定も兼ねているので取り敢えず残す。
-  * ble-edit.sh: 変数リーク (グローバル変数の汚染) の修正。line i
-  * ble-syntax.sh (ctx-command/check-word-end): 単語終了判定の処理タイミングを変更。
-  * ble-syntax.sh: context の追加。CTX_CMDXF CTX_CMDX1 CTX_CMDXV CTX_ARGX0
-    より正確な文脈判定・エラー検知。
-  * ble-syntax.sh: 他にも多くの修正がある。未だ修正が続きそうなので一旦 commit する。
-
-  * ble-edit.sh (accept-line): bug, - で始まるコマンドを実行できない。
-  * ble-color.sh: <bug> bg=black を設定しても反映されない。
-    "未設定" と "黒" を区別する様に修正。
-  * ble-syntax (ble-syntax-highlight+syntax): 入れ子エラーの色の範囲
-  * ble-syntax: m, ;& は ;; ;;& 等と同じ取り扱い
-  * ble-syntax, etc: bash-3 正規表現対策。bash-3/4 の正規表現の違いに依存しない書き方に変更。
-
-2015-02-16
-  * ble-syntax.sh: bugfix, incremental に更新した時に word の長さが更新されない。
-    _ble_syntax_word への格納の際に失敗していた。
-
-2015-02-15
-  * ble-synatax.sh: bash の文法に従った incremental な解析と色付け。
-
-2015-02-14
-  * ble-edit.sh (.ble-line-info.draw): 表示が遅いので修正。
-    ASCII 文字は特別扱いする様に改良。劇的に速くなった。
-
-2015-02-13
-  * ble-edit.sh (keymap emacs): 既定の keymap に emacs の名を付与。
-  * ble-edit.sh (accept-line.exec): bugfix, C-c で再帰呼び出しのループから抜けられない。
-    trap DEBUG を用いて再帰呼び出しから抜けられる様に exec 周りを整理・実装し直し。
-  * ble-edit.sh: オプション名の変更、各オプションの整理・説明の追加。
-  * ble-edit.sh (.ble-edit/gexec): グローバルな文脈でコマンドを実行する仕組み。
-    再帰呼出に対する C-c にも対応。bleopt_exec_type で実行の方法を切り替えられる様に。
-    exec が従来の方法で gexec がこの新しい方法。
-
-2015-02-12
-  * ble-decode.sh: bugfix, exit 後に stty が壊れているのを修正
-    これに伴って ble の detach 機能の実装も行った。
-  * ble-decode.sh: bugfix, bash-4.3 で三文字以上のシーケンスが悉く聞かない。
-    keymap が見付からないエラーになってしまうので全てのシーケンスについて bind -x する事にした。
-  * ble-core.sh: bugfix, builtin printf \U.... の使えない環境で command printf fallback が働かない。
-    printf のパスを修正。また ASCII に対しては printf は使わない様に変更。
-  * ble-color.sh (ble-syntax-highlight+default):
-    追加・修正。また選択範囲の反転を ble-syntax-highlight+region として実装し、それを呼び出す形に。
-  * ble.pp: 起動時に interactive モードかどうかのチェックを行う様に。
-
-2015-02-11
-  * ble-edit.sh (_ble_edit_io_*): ちらつきを抑える為に stdout/stderr を切り替える事にした。
-    ちらつくのは bash の既定の出力によって ble の表示がクリアされ、bash の表示したい物が表示されるから。
-    これに対抗して ble は bash の出力の直後に上書き再描画して何とか表示していた。
-    bash の既定の出力を抑える為に、exec で出力先を切り替える事にした。
-    bash の出力はファイルに書き込まれる様にし向ける。出力先ファイルを逐次確認して、
-    エラーが出力されていれば visible-bell で表示する事にした。
-    bleopt_suppress_bash_output=1 の時にこの新しい方法を実験的に用いる。
-    bleopt_suppress_bash_output= の時は従来のちらつく方法。
-
-2015-02-10
-  * ble-edit.sh (accept-line.exec): bash-4.3 で内部からグローバル変数を定義できる様に
-    declare 及び typeset を上書きして -g オプションを指定する様に変更。
-    また、これに関係する注意点を ble.htm に記述。
-  * ble-edit.sh (history): ロードに時間が掛かるので最適化。
-  * 全般: bugfix, 文字列分割で GLOBIGNORE='*' を設定していないとパス名展開されて危険
-  * ble-color.sh (ble-syntax-highlight+default): より良い色づけ。
-  * ble-edit.sh (accept-line.exec): ble-bind -cf で bind されたコマンドの実行コンテキストを変更。
-    accept-line で実行されるのと同じコンテキストで実行する。
-  * ble-edit.sh (keymap default): C-z M-z を fg に bind。
-
-2015-02-09
-  * git repos
-  * ble-edit: bugfix, locate-xword マクロが展開されていなかった
-  * ble-decode: bash-4.3 に対応する為に色々変更
-    - bind 指定の場合分けを整理
-    - bugfix, ESC ?, ESC [ ? に対して全て bind
-    - bugfix, 場合によって全く bind -r できていない
-      →"bind -sp | fgrep" が "バイナリ" という結果になる事がある様だ。
-        fgrep に -a を指定する。
-    - bugfix, 日本語が入力できない。8bit 文字が認識されない。
-      →8bit 文字はエスケープシーケンスで bind に指定する様に変更。
-
-2013-06-12
-  * ble-edit: history-beginning, history-end, accept-and-next
-
-2013-06-12
-  * ble-edit:
-    kill-forward-fword, kill-backward-fword, kill-fword,
-    copy-forward-fword, copy-backward-fword, copy-fword,
-    delete-forward-fword, delete-backward-fword, delete-fword,
-    forward-fword, backward-fword
-  * ble-edit: history-expand-line, display-shell-version
-
-2013-06-10
-  * ble-edit:
-    kill-forward-uword, kill-backward-uword, kill-uword, kill-region-or-uword,
-    copy-forward-uword, copy-backward-uword, copy-uword, copy-region-or-uword,
-    forward-uword, backward-uword
-
-  * ble-edit:
-    delete-forward-uword, delete-backward-uword, delete-uword, delete-region-or-uword,
-    delete-forward-sword, delete-backward-sword, delete-sword, delete-region-or-sword,
-    delete-forward-cword, delete-backward-cword, delete-cword, delete-region-or-cword
-
-  * ble-edit:
-    以下の編集関数を廃止:
-      delete-region-or-uword, kill-region-or-uword, copy-region-or-uword,
-      delete-region-or-sword, kill-region-or-sword, copy-region-or-sword,
-      delete-region-or-cword, kill-region-or-cword, copy-region-or-cword.
-    代わりに以下の編集関数を用いる:
-      delete-region-or type, kill-region-or type, copy-region-or type.
-
-2013-06-09
-  * ble-edit: kill-region, copy-region
-  * ble-edit:
-    kill-forward-sword, kill-backward-sword, kill-sword, kill-region-or-sword,
-    copy-forward-sword, copy-backward-sword, copy-sword, copy-region-or-sword
-  * ble-edit:
-    kill-forward-cword, kill-backward-cword, kill-cword, kill-region-or-cword,
-    copy-forward-cword, copy-backward-cword, copy-cword, copy-region-or-cword
-  * ble-edit: forward-sword, backward-sword, forward-cword, backward-cword
-
-2013-06-06
-  * ble-edit-bind: 全ての文字・キーが入力可能に。
-  * complete: 候補一覧の表示 (簡易版)
-  * ble-color.sh: 色付け機能を highlight.sh から移植
-
-2013-06-05
-  * ble-edit: history-isearch-backward, history-isearch-forward,
-    isearch/self-insert,
-    isearch/next, isearch/forward, isearch/backward,
-    isearch/exit, isearch/cancel, isearch/default,
-    isearch/prev, isearch/accept
-  * ble-edit: yank
-  * ble-bind -d で今迄に bind した物を表示できる様に。
-  * ble-edit: complete, 取り敢えずファイル名補完だけ
-  * ble-edit: command-help
-
-2013-06-04
-  * ble-edit: discard-line, accept-line
-  * ble-edit: history-prev, history-next
-  * ble-edit: set-mark, kill-line, kill-backward-line, exchange-point-and-mark
-  * ble-edit: clear-screen
-  * ble-edit: transpose-chars
-  * ble-edit: insert-string
-
-2013-06-03
-  * ble-edit: bell, self-insert, redraw-line,
-  * ble-edit: delete-char, delete-backward-char, delete-char-or-exit,
-    delete-forward-backward-char
-  * ble-edit: forward-char, backward-char, end-of-line, beginning-of-line
-  * ble-edit: quoted-insert
-  * ble.sh: 取り敢えず簡単に文字列を入力できる程度までは完成
-
-2013-06-02
-  * ble-getopt.sh: bugfixes
-  * ble-getopt.sh: 無事に完了した場合に OPTARGS を unset する様に変更
-  * ble-decode-kbd, ble-decode-unkbd
-
-2013-05-31
-  * ble-getopt.sh: created
-  * ble-decode: 大枠が完成
-
-2013-05-30
-  * highlight.sh: 取り敢えず簡単な色付け
-  * ble.sh:
-
-    -- 経緯 --
-    highlight.sh の方針だと bash が表示する編集中の内容を消す事が出来ないし、
-    カーソルの位置も bash が表示する物の場所を指している。
-    色を付けて表示した物は、補助的に bash が表示する物の下に並べて表示する
-    ぐらいしか方法がない。
-
-    また readline 関数をスクリプトから呼び出す事が出来ないので、
-    結局、色付けを更新したいタイミングで READLINE_LINE や READLINE_POINT の動作を
-    スクリプトの側で全て模倣して再現しなければならない。
-    READLINE_LINE, READLINE_POINT の bash の仕様が変な所為で、日本語など
-    のマルチバイトで正しく処理する為に、色々と汚い事をしなければならない。
-
-    以上の事から、文字列の編集などの操作からスクリプトの実行まで
-    全部自分で好きな様に実装して bash readline の機能を全て上書きする事にした。
-    その為に、スクリプトを新しく書き直す。zle を真似て ble (bash line editor)
-    と名付ける。
-
-    -- 方針としては --
-    a. read -n 1 を用いて 1 文字ずつ標準入力から文字を取り出してそれを処理していく
-    b. bash の bind で全ての文字に ble のバイト受信関数を繋げて、
-       バイト列を受信しながら処理する。
-
-    highlight.sh の延長線上で b. の方針にしたが、
-    もしかすると a. の方針も可能かも知れない。
-
-2013-05-29
-  * highlight.sh: 作成
-
-
-*******************************************************************************
-    実装ログ
--------------------------------------------------------------------------------
 
 2015-02-25
 
