@@ -89,7 +89,7 @@ ATTR_COMMENT=25 # コメント
 _BLE_SYNTAX_CSPACE=$' \t\n'
 _BLE_SYNTAX_CSPECIAL=()
 _BLE_SYNTAX_CSPECIAL[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'!^"
-_BLE_SYNTAX_CSPECIAL[CTX_QUOT]="\$\"\`\\!"   # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ
+_BLE_SYNTAX_CSPECIAL[CTX_QUOT]="\$\"\`\\!"   # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
 _BLE_SYNTAX_CSPECIAL[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
 _BLE_SYNTAX_CSPECIAL[CTX_PWORD]="}\$\"\`\\!" # パラメータ展開 ${～}
 

@@ -43,6 +43,13 @@ function ble/term.sh/initialize {
   fi
   ble/term.sh/register-varname _ble_term_it
 
+  # IND/RI, CR, LF
+  ble/term.sh/define-cap.2 _ble_term_ind $'\eD' ind
+  ble/term.sh/define-cap   _ble_term_ri  $'\eM' ri
+  ble/term.sh/define-cap   _ble_term_cr  $''  cr
+  _ble_term_nl=$'\n'
+  ble/term.sh/register-varname _ble_term_nl
+
   # CUU/CUD/CUF/CUB
   ble/term.sh/define-cap _ble_term_cuu $'\e[%dA' cuu 123
   ble/term.sh/define-cap _ble_term_cud $'\e[%dB' cud 123
@@ -52,7 +59,7 @@ function ble/term.sh/initialize {
   _ble_term_cud="${_ble_term_cud//123/%d}"
   _ble_term_cuf="${_ble_term_cuf//123/%d}"
   _ble_term_cub="${_ble_term_cub//123/%d}"
-  # 122 だとか 124 だとかになっていると上記は駄目になる…。
+  # ※もし 122 だとか 124 だとかになると上記では駄目
 
   # CUP
   ble/term.sh/define-cap _ble_term_cup $'\e[13;35H' cup 12 34
@@ -61,18 +68,22 @@ function ble/term.sh/initialize {
   _ble_term_cup="${_ble_term_cup//12/%y}"
   _ble_term_cup="${_ble_term_cup//34/%x}"
 
+  # CHA HPA VPA
+  ble/term.sh/define-cap _ble_term_hpa "$_ble_term_cr${_ble_term_cuf//'%d'/123}" hpa 123
+  _ble_term_hpa="${_ble_term_hpa//123/%x}"
+  _ble_term_hpa="${_ble_term_hpa//124/%c}"
+  ble/term.sh/define-cap _ble_term_vpa "${_ble_term_cuu//'%d'/199}${_ble_term_cud//'%d'/123}" vpa 123
+  _ble_term_vpa="${_ble_term_vpa//123/%y}"
+  _ble_term_vpa="${_ble_term_vpa//124/%l}"
+
+  # CUP+ED (clear_screen)
+  ble/term.sh/define-cap _ble_term_clear $'\e[H\e[2J' clear
+
   # IL/DL
   ble/term.sh/define-cap _ble_term_il $'\e[%dL' il 123
   ble/term.sh/define-cap _ble_term_dl $'\e[%dM' dl 123
   _ble_term_il="${_ble_term_il//123/%d}"
   _ble_term_dl="${_ble_term_dl//123/%d}"
-
-  # IND/RI
-  ble/term.sh/define-cap.2 _ble_term_ind $'\eD' ind
-  ble/term.sh/define-cap _ble_term_ri  $'\eM' ri
-
-  # CR
-  ble/term.sh/define-cap _ble_term_cr $'' cr
 
   # EL
   ble/term.sh/define-cap _ble_term_el  $'\e[K'  el
@@ -84,7 +95,7 @@ function ble/term.sh/initialize {
   fi
   ble/term.sh/register-varname _ble_term_el2
 
-  # SC/RC or SCOSC/SCORC
+  # DECSC/DECRC or SCOSC/SCORC
   ble/term.sh/define-cap _ble_term_sc $'\e[s' sc
   ble/term.sh/define-cap _ble_term_rc $'\e[u' rc
 

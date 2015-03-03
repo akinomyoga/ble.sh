@@ -163,7 +163,43 @@ bashbug: 実装上で注意するべき事
 
 Commit
 
+2015-03-03
+
+  * ble-edit/draw/trace: 描画属性も詳しく。
+
+  Done
+  * ble-edit.sh, ble-edit.color: discard-line の際に着色
+  * ble-edit.sh: prompt 再実装
+
 2015-03-01
+
+  公開までに特に必要な物
+  1 背景が暗い環境での色の設定
+  2 complete の設定の取り込み
+  3 bind 等の設定の取り込み
+    readline 関数の完全対応
+    bind -x は対応しなくて良い
+    inputrc は対応しない。簡単に翻訳できるから。
+  4 正しい PS1 の解釈
+
+  * 対応する物がない readline 関数
+    yank-nth-arg yank-last-arg insert-last-argument
+    shell-expand-line history-expand-line magic-space alias-expand-line
+    history-and-alias-expand-line
+    edit-and-execute-command
+    transpose-words upcase-word downcase-word capitalize-word
+    overwrite-mode これは結構大変かも?
+    kill-whole-line
+    delete-horizontal-space
+    yank-pop これはkill-ringを実装する必要がある
+    digit-argument universal-argument 入力しやすい様に?
+    complete関連
+    redo, undo
+    tilde-expand
+    
+
+  Done
+  * ble-edit.sh: .ble-edit-draw.goto-xy, .ble-edit-draw.put 廃止
 
 2015-02-28
 
@@ -572,10 +608,6 @@ Commit
     + 問題点: 既存の trap を上書きする事
     →これらは説明書にその様に書いておけば問題ない
 
-2013-06-02
-
-  * ble-edit+discard-line: 灰色にする
-
 2013-06-01 以前
 
   * vbell
@@ -922,6 +954,18 @@ Date:   Thu Feb 26 07:28:39 2015 +0900
 *******************************************************************************
     実装ログ
 -------------------------------------------------------------------------------
+
+2015-03-03
+
+  * ble-edit.sh, ble-edit.color: discard-line の際に着色
+    | 2013-06-02
+    | * ble-edit+discard-line: 灰色にする
+
+  * ble-edit.sh: bugfix, 複数行で上に行けない
+    →_ble_line_begx _ble_line_begy に編集内容の開始点を格納する様に変更。
+
+  * ble-edit.sh: bugfix, 複数行なのに空行の accept-line でのずれ量が1行になっている
+    →行を更新した後に _ble_line_x=0 _ble_line_y=0 を設定する必要。
 
 2015-02-28
 

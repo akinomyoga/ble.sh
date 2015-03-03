@@ -161,7 +161,7 @@ function ble-stackdump {
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
     message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
   done
-  echo -n "$message" >&2
+  builtin echo -n "$message" >&2
 }
 function ble-assert {
   local expr="$1"
@@ -203,7 +203,7 @@ function ble-term/cup {
   BUFF[${#BUFF[@]}]="$esc"
 }
 function ble-term/flush {
-  IFS= eval 'echo -n "${BUFF[*]}"'
+  IFS= eval 'builtin echo -n "${BUFF[*]}"'
   BUFF=()
 }
 
@@ -239,7 +239,7 @@ function .ble-term/visible-bell/initialize {
 
 
 function .ble-term.audible-bell {
-  echo -n '' 1>&2
+  builtin echo -n '' 1>&2
 }
 function .ble-term.visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
@@ -248,11 +248,11 @@ function .ble-term.visible-bell {
   local message="$*"
   message="${message:-$ble_opt_vbell_default_message}"
 
-  echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_setaf2$_ble_term_rev${message::cols}}" >&2
+  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_setaf2$_ble_term_rev${message::cols}}" >&2
   (
     {
       sleep 0.05
-      echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
+      builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
 
       # load time duration settings
       declare msec=$ble_opt_vbell_duration
@@ -269,7 +269,7 @@ function .ble-term.visible-bell {
       time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
       time2=($(date +'%s %N'))
       if (((time2[0]-time1[0])*1000+(1${time2[1]::3}-1${time1[1]::3})>=msec)); then
-        echo -n "$_ble_term_visible_bell_clear" >&2
+        builtin echo -n "$_ble_term_visible_bell_clear" >&2
       fi
     } &
   )
@@ -317,6 +317,17 @@ else
     )
   }
 fi
+
+function ble-text.s2c {
+  local _var="$ret"
+  if [[ $1 == -v && $# -ge 3 ]]; then
+    local ret
+    .ble-text.s2c "$3" "$4"
+    (($2=ret))
+  else
+    .ble-text.s2c "$@"
+  fi
+}
 
 # .ble-text.c2s
 if ((_ble_bash>=40200)); then

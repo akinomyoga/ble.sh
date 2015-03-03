@@ -109,6 +109,24 @@ function ble-complete/action/file/complete {
   fi
 }
 
+function ble-complete/source/command/gen {
+  compgen -c -- "$COMPV"
+  [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
+  shopt -q autocd && compgen -d -- "$COMPV"
+}
+function ble-complete/source/command {
+  if [[ ${COMPV+set} ]]; then
+    [[ $COMPV =~ ^.+/ ]] &&
+      COMP_PREFIX="${BASH_REMATCH[0]}"
+
+    local cand arr
+    IFS=$'\n' eval 'arr=($(ble-complete/source/command/gen))'
+    for cand in "${arr[@]}"; do
+      ble-complete/yield-candidate "$cand" ble-complete/action/word
+    done
+  fi
+}
+
 function ble-edit+complete {
   local text="$_ble_edit_str" index="$_ble_edit_ind"
   _ble_edit_str.update-syntax
@@ -158,14 +176,7 @@ function ble-edit+complete {
         done
       fi ;;
     (command)
-      if [[ ${COMPV+set} ]]; then
-        [[ $COMPV =~ ^.+/ ]] &&
-          COMP_PREFIX="${BASH_REMATCH[0]}"
-        IFS=$'\n' eval 'arr=($(compgen -c -- "$COMPV"; [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"))'
-        for cand in "${arr[@]}"; do
-          ble-complete/yield-candidate "$cand" ble-complete/action/word
-        done
-      fi ;;
+      ble-complete/source/command ;;
     (variable)
       if [[ ${COMPV+set} ]]; then
         IFS=$'\n' eval 'arr=($(compgen -v -- "$COMPV"))'
@@ -184,6 +195,7 @@ function ble-edit+complete {
 
   # 共通部分
   local i common comp1 clen comp2="$index"
+  local acount=0 aindex=0
   for ((i=0;i<cand_count;i++)); do
     local word="${cand_word[i]}"
     local -a prop
@@ -193,19 +205,33 @@ function ble-edit+complete {
       common="$word"
       comp1="${prop[1]}"
       clen="${#common}"
+      ((acount=1,aindex=i))
     else
+      # より近くの開始点の候補を優先する場合
       if ((comp1<prop[1])); then
-        word="${text:comp1:prop[1]-comp1}""$word"
-      elif ((comp1>prop[1])); then
-        common="${text:prop[1]:comp1-prop[1]}""$common"
+        common="$word"
         comp1="${prop[1]}"
+        clen="${#common}"
+        ((acount=1,aindex=i))
+        continue
+      elif ((comp1>prop[1])); then
+        continue
       fi
+
+      # # 補完開始点に関係なく共通部分を探す場合
+      # if ((comp1<prop[1])); then
+      #   word="${text:comp1:prop[1]-comp1}""$word"
+      # elif ((comp1>prop[1])); then
+      #   common="${text:prop[1]:comp1-prop[1]}""$common"
+      #   comp1="${prop[1]}"
+      # fi
 
       ((clen>${#word}&&(clen=${#word})))
       while [[ ${word::clen} != "${common::clen}" ]]; do
         ((clen--))
       done
       common="${common::clen}"
+      ((acount++))
     fi
   done
 
@@ -222,15 +248,15 @@ function ble-edit+complete {
     done
   fi
 
-  if ((cand_count==1)); then
+  if ((acount==1)); then
     # 一意確定の時
     local ACTION
-    ACTION=(${cand_prop[0]})
+    ACTION=(${cand_prop[aindex]})
     if ble/util/isfunction "$ACTION/complete"; then
       local COMP1="$comp1" COMP2="$comp2"
       local INSERT="$common"
-      local CAND="${cand_cand[0]}"
-      local DATA="${cand_data[0]}"
+      local CAND="${cand_cand[aindex]}"
+      local DATA="${cand_data[aindex]}"
 
       "$ACTION/complete"
       comp1="$COMP1" comp2="$COMP2" common="$INSERT"

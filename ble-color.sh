@@ -816,6 +816,43 @@ function ble-highlight-layer:region/getg {
 }
 
 #------------------------------------------------------------------------------
+# ble-highlight-layer:disabled
+
+ble-color-defface disabled fg=gray
+
+_ble_highlight_layer_disabled_prev=
+_ble_highlight_layer_disabled_buff=()
+
+function ble-highlight-layer:disabled/update {
+  if [[ $_ble_edit_line_disabled ]]; then
+    if ((DMIN>=0)) || [[ ! $_ble_highlight_layer_disabled_prev ]]; then
+      local sgr
+      ble-color-face2sgr disabled
+      _ble_highlight_layer_disabled_buff=("$sgr""${_ble_highlight_layer_plain_buff[@]}")
+    fi
+    PREV_BUFF=_ble_highlight_layer_disabled_buff
+
+    if [[ $_ble_highlight_layer_disabled_prev ]]; then
+      PREV_UMIN="$DMIN" PREV_UMAX="$DMAX"
+    else
+      PREV_UMIN=0 PREV_UMAX="${#1}"
+    fi
+  else
+    if [[ $_ble_highlight_layer_disabled_prev ]]; then
+      PREV_UMIN=0 PREV_UMAX="${#1}"
+    fi
+  fi
+
+  _ble_highlight_layer_disabled_prev="$_ble_edit_line_disabled"
+}
+
+function ble-highlight-layer:disabled/getg {
+  if [[ $_ble_highlight_layer_disabled_prev ]]; then
+    ble-color-face2g disabled
+  fi
+}
+
+#------------------------------------------------------------------------------
 # ble-highlight-layer:RandomColor (sample)
 
 _ble_highlight_layer_RandomColor_buff=()
@@ -858,4 +895,4 @@ function ble-highlight-layer:RandomColor2/getg {
   ble-color-gspec2g -v g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
 }
 
-_ble_highlight_layer__list=(plain syntax region)
+_ble_highlight_layer__list=(plain syntax region disabled)
