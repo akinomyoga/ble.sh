@@ -25,6 +25,20 @@ function ble/term.sh/define-cap.2 {
   ble/term.sh/register-varname "$name"
 }
 
+_ble_term_rex_sgr='\[([0-9;:]+)m'
+function ble/term.sh/define-sgr-param {
+  local name="$1" seq="$2"
+  if [[ $seq =~ $_ble_term_rex_sgr ]]; then
+    eval "$name=\"\${BASH_REMATCH[1]}\""
+  else
+    eval "$name="
+  fi
+
+  if [[ $name =~ ^[a-zA-Z_][a-zA-Z_0-9]*$ ]]; then
+    ble/term.sh/register-varname "$name"
+  fi
+}
+
 function ble/term.sh/initialize {
   local -a varnames=()
 
@@ -103,24 +117,64 @@ function ble/term.sh/initialize {
   ble/term.sh/define-cap _ble_term_sgr0 $'\e[m' sgr0
 
   # SGR misc
-  ble/term.sh/define-cap _ble_term_sgr_fghr $'\e[91m' setaf 9
-  ble/term.sh/define-cap _ble_term_sgr_fghb $'\e[94m' setaf 12
-  ble/term.sh/define-cap _ble_term_setaf2 $'\e[32m' setaf 2
+  ble/term.sh/define-cap _ble_term_bold $'\e[1m' bold
+  ble/term.sh/define-cap _ble_term_sitm $'\e[3m' sitm
+  ble/term.sh/define-cap _ble_term_smul $'\e[4m' smul
+  ble/term.sh/define-cap _ble_term_blink $'\e[5m' blink
   ble/term.sh/define-cap _ble_term_rev $'\e[7m' rev
+  ble/term.sh/define-cap _ble_term_invis $'\e[8m' invis
+  ble/term.sh/define-sgr-param _ble_term_sgr_bold "$_ble_term_bold"
+  ble/term.sh/define-sgr-param _ble_term_sgr_sitm "$_ble_term_sitm"
+  ble/term.sh/define-sgr-param _ble_term_sgr_smul "$_ble_term_smul"
+  ble/term.sh/define-sgr-param _ble_term_sgr_blink "$_ble_term_blink"
+  ble/term.sh/define-sgr-param _ble_term_sgr_rev "$_ble_term_rev"
+  ble/term.sh/define-sgr-param _ble_term_sgr_invis "$_ble_term_invis"
 
-  if ((_ble_bash>=30100)); then
-    declare -p "${varnames[@]}" | sed '
-      s/^declare \(-- \)\{0,1\}//
-    ' > "$_ble_base/cache/$TERM.term"
-  else
-    # bash-3.0 の declare -p は改行について誤った出力をする。
-    local var
-    for var in "${varnames[@]}"; do
-      eval "printf '$var=%q' \"\${$var}\""
-    done > "$_ble_base/cache/$TERM.term"
-  fi
+  # SGR colors
+  ble/term.sh/define-cap _ble_term_colors 8 colors
+  local i
+  _ble_term_setaf=()
+  _ble_term_setab=()
+  _ble_term_sgr_af=()
+  _ble_term_sgr_ab=()
+  for ((i=0;i<16;i++)); do
+    local i1="$((i%8))" af= ab=
+
+    # from terminfo
+    if ((i<_ble_term_colors)); then
+      local j1
+      ((j1=(i1==3?6:
+            (i1==6?3:
+             (i1==1?4:
+              (i1==4?1:i1))))))
+      local j="$((k-i1+j1))"
+
+      af="$(ble/term.sh/tput setaf "$i" 2>/dev/null)"
+      [[ $af ]] || af="$(ble/term.sh/tput setf "$j" 2>/dev/null)"
+
+      ab="$(ble/term.sh/tput setab "$i" 2>/dev/null)"
+      [[ $ab ]] || ab="$(ble/term.sh/tput setb "$j" 2>/dev/null)"
+    fi
+
+    # default value
+    : ${af:=$'\e[3'"${i1}m"}
+    : ${ab:=$'\e[4'"${i1}m"}
+
+    # register
+    _ble_term_setaf[i]="$af"
+    _ble_term_setab[i]="$ab"
+    ble/term.sh/define-sgr-param "_ble_term_sgr_af[i]" "$af"
+    ble/term.sh/define-sgr-param "_ble_term_sgr_ab[i]" "$ab"
+  done
+  ble/term.sh/register-varname "_ble_term_setaf"
+  ble/term.sh/register-varname "_ble_term_setab"
+  ble/term.sh/register-varname "_ble_term_sgr_af"
+  ble/term.sh/register-varname "_ble_term_sgr_ab"
+
+  # save
+  ble/util/declare-print-definitions "${varnames[@]}" > "$_ble_base/cache/$TERM.term"
 }
 
-echo -n "ble/term.sh: updating tput cache for TERM=$TERM..." >&2
+echo -n "ble/term.sh: updating tput cache for TERM=$TERM... " >&2
 ble/term.sh/initialize
-echo    "ble/term.sh: updating tput cache for TERM=$TERM... done" >&2
+echo  "ble/term.sh: updating tput cache for TERM=$TERM... done" >&2

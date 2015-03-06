@@ -89,8 +89,8 @@ fi
 ##%x inc.r/@/getopt/
 #%x inc.r/@/core/
 #%x inc.r/@/decode/
-#%x inc.r/@/edit/
 #%x inc.r/@/color/
+#%x inc.r/@/edit/
 #%x inc.r/@/syntax/
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }

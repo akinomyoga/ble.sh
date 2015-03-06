@@ -53,9 +53,9 @@ function .ble-decode-char {
   # decode error character
   if ((char&ble_decode_Erro)); then
     ((char&=~ble_decode_Erro))
-    [ -n "$ble_opt_error_char_vbell" ] && .ble-term.visible-bell "received a misencoded char $(printf '\\u%04x' $char)"
-    [ -n "$ble_opt_error_char_abell" ] && .ble-term.audible-bell
-    [ -n "$ble_opt_error_char_discard" ] && return
+    [[ $ble_opt_error_char_vbell ]] && .ble-term.visible-bell "received a misencoded char $(printf '\\u%04x' $char)"
+    [[ $ble_opt_error_char_abell ]] && .ble-term.audible-bell
+    [[ $ble_opt_error_char_discard ]] && return
     # ((char&ble_decode_Erro)) : 最適化(過去 sequence は全部吐く)?
   fi
 
@@ -68,14 +68,14 @@ function .ble-decode-char {
   fi
 
   eval "local ent=\"\${_ble_decode_cmap_$_ble_decode_char__seq[$char]}\""
-  if [ -z "$ent" ]; then
+  if [[ ! $ent ]]; then
     # /^$/   (一致に失敗した事を表す)
     .ble-decode-char.emit "$char"
-  elif [ -z "${ent//[0-9]/}" ]; then
+  elif [[ ! ${ent//[0-9]/} ]]; then
     # /\d+/  (続きのシーケンスはなく ent で確定である事を示す)
     _ble_decode_char__seq=
     .ble-decode-char.sendkey-mod "${ent//_/}"
-  elif [ "${ent//[0-9]/}" = _ ]; then
+  elif [[ ${ent//[0-9]/} == _ ]]; then
     # /\d*_/ (_ は続き (1つ以上の有効なシーケンス) がある事を示す)
     _ble_decode_char__seq="${_ble_decode_char__seq}_$char"
   fi
@@ -88,12 +88,12 @@ function .ble-decode-char {
 ## \param [in,out] _ble_decode_char__seq  過去の sequence
 function .ble-decode-char.emit {
   local fail="$1"
-  if [ -n "$_ble_decode_char__seq" ]; then
+  if [[ $_ble_decode_char__seq ]]; then
     local char="${_ble_decode_char__seq##*_}"
     _ble_decode_char__seq="${_ble_decode_char__seq%_*}"
 
     eval "local ent=\"\${_ble_decode_cmap_$_ble_decode_char__seq[$char]}\""
-    if [ "$ent" != _ -a "${ent//[0-9]/}" = _ ]; then
+    if [[ "$ent" != _ && "${ent//[0-9]/}" == _ ]]; then
       _ble_decode_char__seq=
       .ble-decode-char.sendkey-mod "${ent//_/}"
     else
@@ -106,7 +106,7 @@ function .ble-decode-char.emit {
     if ((fail<32)); then
       local kcode=$((fail|(fail==0||fail>26?64:96)|ble_decode_Ctrl))
       # modify meta
-      if test -n "$_ble_decode_char__mod_meta"; then
+      if [[ $_ble_decode_char__mod_meta ]]; then
         _ble_decode_char__mod_meta=
         .ble-decode-key $((kcode|ble_decode_Meta))
       elif ((fail==27)); then
@@ -116,7 +116,7 @@ function .ble-decode-char.emit {
       fi
     else
       # modify meta
-      if test -n "$_ble_decode_char__mod_meta"; then
+      if [[ $_ble_decode_char__mod_meta ]]; then
         fail=$((fail|ble_decode_Meta))
         _ble_decode_char__mod_meta=
       fi
@@ -148,7 +148,7 @@ function .ble-decode-char.bind {
 
   local i iN=${#seq[@]} char tseq=
   for ((i=0;i<iN;i++)); do
-    local char=${seq[$i]}
+    local char="${seq[i]}"
 
     eval "local okc=\"\${_ble_decode_cmap_$tseq[$char]}\""
     if ((i+1==iN)); then
@@ -181,17 +181,17 @@ function .ble-decode-char.unbind {
   while
     eval "ent=\"\${_ble_decode_cmap_$tseq[$char]}\""
 
-    if [ -n "$isfirst" ]; then
+    if [[ $isfirst ]]; then
       # 数字を消す
       isfirst=
-      if [ "${ent%_}" != "$ent" ]; then
+      if [[ $ent == *_ ]]; then
         # ent = 1234_ (両方在る時は片方消して終わり)
         eval _ble_decode_cmap_$tseq[$char]=_
         break
       fi
     else
       # _ を消す
-      if [ "$ent" != _ ]; then
+      if [[ $ent != _ ]]; then
         # ent = 1234_ (両方在る時は片方消して終わり)
         eval _ble_decode_cmap_$tseq[$char]=${ent%_}
         break
@@ -201,7 +201,7 @@ function .ble-decode-char.unbind {
     unset _ble_decode_cmap_$tseq[$char]
     eval "((\${#_ble_decode_cmap_$tseq[@]}!=0))" && break
 
-    [ -n "$tseq" ]
+    [[ $tseq ]]
   do
     char="${tseq##*_}"
     tseq="${tseq%_*}"
@@ -532,7 +532,7 @@ function .ble-decode-key/invoke-partial-match {
     _ble_decode_key__seq="${_ble_decode_key__seq%_*}"
 
     eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$last]}\""
-    if [ "${ent:0:2}" = _: ]; then
+    if [[ $ent == '_:'* ]]; then
       local command="${ent:2}"
       .ble-decode-key/invoke-command || _ble_decode_key__seq=
       .ble-decode-key "$next"
@@ -652,7 +652,7 @@ fi
 function .ble-decode-kbd.get-keyname {
   local keycode="$1"
   ret="${_ble_decode_kbd__c2k[$keycode]}"
-  if [ -z "$ret" ] && ((keycode<ble_decode_function_key_base)); then
+  if [[ ! $ret ]] && ((keycode<ble_decode_function_key_base)); then
     .ble-text.c2s "$keycode"
     _ble_decode_kbd__c2k[$keycode]="$ret"
   fi
@@ -765,7 +765,7 @@ function .ble-decode-kbd.initialize {
 function ble-decode-kbd {
   local key code codes
   codes=()
-  for key in "$@"; do
+  for key in $*; do
     code=0
     while [[ $key == ?-* ]]; do
       case "${key::1}" in
@@ -812,7 +812,7 @@ function .ble-decode-unkbd.single-key {
   local f_unknown=
   local char="$((key&ble_decode_MaskChar))"
   .ble-decode-kbd.get-keyname "$char"
-  if [ -z "$ret" ]; then
+  if [[ ! $ret ]]; then
     f_unknown=1
     ret=__UNKNOWN__
   fi
@@ -824,7 +824,7 @@ function .ble-decode-unkbd.single-key {
   ((key&ble_decode_Supr)) && ret="s-$ret"
   ((key&ble_decode_Hypr)) && ret="H-$ret"
 
-  [ -z "$f_unknown" ]
+  [[ ! $f_unknown ]]
 }
 
 function ble-decode-unkbd {
@@ -964,8 +964,13 @@ EOF
 #   一方で、出力の LF は CR LF に変換されて欲しいので onlcr は保持する。
 #   (これは -nl の設定に含まれている)
 # 
+# -icanon について
+#   stty icanon を設定するプログラムがある。これを設定すると入力が buffering され
+#   その場で入力を受信する事ができない。結果として hang した様に見える。
+#   従って、enter で -icanon を設定する事にする。
+#
 function .ble-stty.initialize {
-  stty -ixon -nl -icrnl \
+  stty -ixon -nl -icrnl -icanon \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_stty_stat=1
@@ -979,7 +984,7 @@ function .ble-stty.leave {
 }
 function .ble-stty.enter {
   test -n "$_ble_stty_stat" && return
-  stty -echo -nl -icrnl \
+  stty -echo -nl -icrnl -icanon \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_stty_stat=1
@@ -1282,8 +1287,8 @@ function ble-decode-detach {
 _ble_decode_byte__utf_8__mode=0
 _ble_decode_byte__utf_8__code=0
 function ble-decode-byte+UTF-8 {
-  local code=$_ble_decode_byte__utf_8__code
-  local mode=$_ble_decode_byte__utf_8__mode
+  local code="$_ble_decode_byte__utf_8__code"
+  local mode="$_ble_decode_byte__utf_8__mode"
   local byte="$1"
   local cha0= char=
   (('
@@ -1327,11 +1332,11 @@ function ble-decode-byte+UTF-8 {
     )
   '))
 
-  _ble_decode_byte__utf_8__code=$code
-  _ble_decode_byte__utf_8__mode=$mode
+  _ble_decode_byte__utf_8__code="$code"
+  _ble_decode_byte__utf_8__mode="$mode"
 
-  [ -n "$cha0" ] && .ble-decode-char "$cha0"
-  [ -n "$char" ] && .ble-decode-char "$char"
+  [[ $cha0 ]] && .ble-decode-char "$cha0"
+  [[ $char ]] && .ble-decode-char "$char"
 }
 
 ## \param [in]  $1 = code

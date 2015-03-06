@@ -1390,36 +1390,6 @@ function ble-syntax/completion-context {
 #
 #==============================================================================
 
-_ble_syntax_attr2g=()
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_ARGX]  none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_ARGX0] none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_CMDX]  none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_CMDXF] none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_CMDX1] none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_CMDXV] none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_ARGI] none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_CMDI] fg=9
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_VRHS] none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_QUOT] fg=2
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_EXPR] fg=4
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_ERR] bg=203,fg=231 # bg=224
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_VAR] fg=202
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_QDEL] fg=2,bold
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_DEF] none
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_DEL] bold
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_PARAM] fg=purple
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_PWORD] none
-
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_HISTX] bg=94,fg=231
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_FUNCDEF] fg=purple
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_VALX] none
-ble-color-gspec2g -v _ble_syntax_attr2g[CTX_VALI] none
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_COMMENT] fg=gray
-
-# region
-ATTR_REGION_SEL=91
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_REGION_SEL] bg=60,fg=white
-
 # filetype
 ATTR_CMD_BOLD=101
 ATTR_CMD_BUILTIN=102
@@ -1428,22 +1398,83 @@ ATTR_CMD_FUNCTION=104
 ATTR_CMD_FILE=105
 ATTR_CMD_KEYWORD=106
 ATTR_CMD_JOBS=107
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_CMD_BOLD]     fg=red,bold
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_CMD_BUILTIN]  fg=red
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_CMD_ALIAS]    fg=teal
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_CMD_FUNCTION] fg=purple
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_CMD_FILE]     fg=green
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_CMD_KEYWORD]  fg=blue
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_CMD_JOBS]     fg=red
-
+ATTR_CMD_DIR=112
 ATTR_FILE_DIR=108
 ATTR_FILE_LINK=109
 ATTR_FILE_EXEC=110
 ATTR_FILE_FILE=111
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_FILE_DIR]  fg=navy,underline
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_FILE_LINK] fg=teal,underline
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_FILE_EXEC] fg=green,underline
-ble-color-gspec2g -v _ble_syntax_attr2g[ATTR_FILE_FILE] underline
+
+ble-color-defface syntax_default           none
+ble-color-defface syntax_command           red
+ble-color-defface syntax_quoted            fg=green
+ble-color-defface syntax_quotation         fg=green,bold
+ble-color-defface syntax_expr              fg=navy
+ble-color-defface syntax_error             bg=203,fg=231 # bg=224
+ble-color-defface syntax_varname           fg=202
+ble-color-defface syntax_delimiter         bold
+ble-color-defface syntax_param_expansion   fg=purple
+ble-color-defface syntax_history_expansion bg=94,fg=231
+ble-color-defface syntax_function_name     fg=purple
+ble-color-defface syntax_comment           fg=gray
+
+ble-color-defface command_builtin_dot fg=red,bold
+ble-color-defface command_builtin     fg=red
+ble-color-defface command_alias       fg=teal
+ble-color-defface command_function    fg=purple
+ble-color-defface command_file        fg=green
+ble-color-defface command_keyword     fg=blue
+ble-color-defface command_jobs        fg=red
+ble-color-defface command_directory   fg=navy,underline
+ble-color-defface filename_directory  fg=navy,underline
+ble-color-defface filename_link       fg=teal,underline
+ble-color-defface filename_executable fg=green,underline
+ble-color-defface filename_other      underline
+
+_ble_syntax_attr2iface=()
+function _ble_syntax_attr2iface.define {
+  ((_ble_syntax_attr2iface[$1]=_ble_faces__$2))
+}
+_ble_syntax_attr2iface.define CTX_ARGX     syntax_default
+_ble_syntax_attr2iface.define CTX_ARGX0    syntax_default
+_ble_syntax_attr2iface.define CTX_CMDX     syntax_default
+_ble_syntax_attr2iface.define CTX_CMDXF    syntax_default
+_ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
+_ble_syntax_attr2iface.define CTX_CMDXV    syntax_default
+_ble_syntax_attr2iface.define CTX_ARGI     syntax_default
+_ble_syntax_attr2iface.define CTX_CMDI     syntax_command
+_ble_syntax_attr2iface.define CTX_VRHS     syntax_default
+_ble_syntax_attr2iface.define CTX_QUOT     syntax_quoted
+_ble_syntax_attr2iface.define CTX_EXPR     syntax_expr
+_ble_syntax_attr2iface.define ATTR_ERR     syntax_error
+_ble_syntax_attr2iface.define ATTR_VAR     syntax_varname
+_ble_syntax_attr2iface.define ATTR_QDEL    syntax_quotation
+_ble_syntax_attr2iface.define ATTR_DEF     syntax_default
+_ble_syntax_attr2iface.define ATTR_DEL     syntax_delimiter
+_ble_syntax_attr2iface.define CTX_PARAM    syntax_param_expansion
+_ble_syntax_attr2iface.define CTX_PWORD    syntax_default
+_ble_syntax_attr2iface.define ATTR_HISTX   syntax_history_expansion
+_ble_syntax_attr2iface.define ATTR_FUNCDEF syntax_function_name
+_ble_syntax_attr2iface.define CTX_VALX     syntax_default
+_ble_syntax_attr2iface.define CTX_VALI     syntax_default
+_ble_syntax_attr2iface.define ATTR_COMMENT syntax_comment
+
+_ble_syntax_attr2iface.define ATTR_CMD_BOLD     command_builtin_dot
+_ble_syntax_attr2iface.define ATTR_CMD_BUILTIN  command_builtin
+_ble_syntax_attr2iface.define ATTR_CMD_ALIAS    command_alias
+_ble_syntax_attr2iface.define ATTR_CMD_FUNCTION command_function
+_ble_syntax_attr2iface.define ATTR_CMD_FILE     command_file
+_ble_syntax_attr2iface.define ATTR_CMD_KEYWORD  command_keyword
+_ble_syntax_attr2iface.define ATTR_CMD_JOBS     command_jobs
+_ble_syntax_attr2iface.define ATTR_CMD_DIR      command_directory
+_ble_syntax_attr2iface.define ATTR_FILE_DIR     filename_directory
+_ble_syntax_attr2iface.define ATTR_FILE_LINK    filename_link
+_ble_syntax_attr2iface.define ATTR_FILE_EXEC    filename_executable
+_ble_syntax_attr2iface.define ATTR_FILE_FILE    filename_other
+
+function ble-syntax/attr2g {
+  local iface="${_ble_syntax_attr2iface[$1]:-_ble_faces__syntax_default}"
+  g="${_ble_faces[iface]}"
+}
 
 function ble-syntax/highlight/cmdtype1 {
   type="$1"
@@ -1470,7 +1501,11 @@ function ble-syntax/highlight/cmdtype1 {
       ((type=ATTR_ERR))
     fi ;;
   (*)
-    ((type=ATTR_ERR)) ;;
+    if [[ -d "$cmd" ]] && shopt -q autocd &>/dev/null; then
+      ((type=ATTR_CMD_DIR))
+    else
+      ((type=ATTR_ERR))
+    fi ;;
   esac
 }
 
@@ -1633,7 +1668,7 @@ function ble-highlight-layer:syntax/update-attribute-table {
 
     for ((i=_ble_syntax_attr_umin;i<_ble_syntax_attr_uend;i++)); do
       if ((${_ble_syntax_attr[i]})); then
-        g="${_ble_syntax_attr2g[_ble_syntax_attr[i]]:-0}"
+        ble-syntax/attr2g "${_ble_syntax_attr[i]}"
       fi
       _ble_highlight_layer_syntax1_table[i]="$g"
     done
@@ -1677,7 +1712,7 @@ function ble-highlight-layer:syntax/update-word-table {
           fi
 
           if [[ $type ]]; then
-            g="${_ble_syntax_attr2g[type]}"
+            ble-syntax/attr2g "$type"
             ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$g"
             set=1
           fi
@@ -1729,7 +1764,7 @@ function ble-highlight-layer:syntax/update-error-table {
 
   # set errors
   if [[ ${_ble_syntax_stat[iN]} ]]; then
-    local gErr="${_ble_syntax_attr2g[ATTR_ERR]}"
+    local g; ble-color-face2g syntax_error
     
     # 入れ子が閉じていないエラー
     local -a stat
@@ -1738,7 +1773,7 @@ function ble-highlight-layer:syntax/update-error-table {
     local i
     if((inest>=0)); then
       # 終端点の着色
-      ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$gErr"
+      ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
 
       while ((inest>=0)); do
         # 開始字句の着色
@@ -1746,7 +1781,7 @@ function ble-highlight-layer:syntax/update-error-table {
         for((inest2=inest+1;inest2<iN;inest2++)); do
           [[ ${_ble_syntax_attr[inest2]} ]] && break
         done
-        ble-highlight-layer:syntax/update-error-table/set "$inest" "$inest2" "$gErr"
+        ble-highlight-layer:syntax/update-error-table/set "$inest" "$inest2" "$g"
 
         ((i=inest))
         ble-syntax/parse/nest-pop
@@ -1757,7 +1792,7 @@ function ble-highlight-layer:syntax/update-error-table {
     # コマンド欠落
     if ((ctx==CTX_CMDX1||ctx==CTX_CMDXF)); then
       # 終端点の着色
-      ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$gErr"
+      ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
     fi
   fi
 }
@@ -1799,7 +1834,8 @@ function ble-highlight-layer:syntax/update {
   local sgr
   for ((i=umin;i<umax;i++)); do
     local ch="${_ble_highlight_layer_plain_buff[i]}"
-    ble-highlight-layer/getg "$i"
+    ble-highlight-layer:syntax/getg "$i"
+    [[ $g ]] || ble-highlight-layer/update/getg "$i"
     if ((gprev!=g)); then
       ble-color-g2sgr -v sgr "$g"
       ch="$sgr$ch"

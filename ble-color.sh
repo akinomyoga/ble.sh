@@ -2,13 +2,17 @@
 
 # gflags
 
+declare -i _ble_color_gflags_Bold=0x01
+declare -i _ble_color_gflags_Italic=0x02
+declare -i _ble_color_gflags_Underline=0x04
+declare -i _ble_color_gflags_Revert=0x08
+declare -i _ble_color_gflags_Invisible=0x10
+declare -i _ble_color_gflags_Strike=0x20
+declare -i _ble_color_gflags_Blink=0x40
 declare -i _ble_color_gflags_MaskFg=0x0000FF00
 declare -i _ble_color_gflags_MaskBg=0x00FF0000
-declare -i _ble_color_gflags_Bold=0x01
-declare -i _ble_color_gflags_Underline=0x02
-declare -i _ble_color_gflags_Revert=0x04
-declare -i _ble_color_gflags_BackColor=0x40
-declare -i _ble_color_gflags_ForeColor=0x80
+declare -i _ble_color_gflags_ForeColor=0x1000000
+declare -i _ble_color_gflags_BackColor=0x2000000
 
 declare -a _ble_color_g2sgr__table=()
 function ble-color-g2sgr {
@@ -25,9 +29,13 @@ function ble-color-g2sgr {
     local bg="$((g>>16&0xFF))"
 
     local _sgr=0
-    ((g&_ble_color_gflags_Bold))      && _sgr="$_sgr;1"
-    ((g&_ble_color_gflags_Underline)) && _sgr="$_sgr;4"
-    ((g&_ble_color_gflags_Revert))    && _sgr="$_sgr;7"
+    ((g&_ble_color_gflags_Bold))      && _sgr="$_sgr;${_ble_term_sgr_bold:-1}"
+    ((g&_ble_color_gflags_Italic))    && _sgr="$_sgr;${_ble_term_sgr_sitm:-3}"
+    ((g&_ble_color_gflags_Underline)) && _sgr="$_sgr;${_ble_term_sgr_smul:-4}"
+    ((g&_ble_color_gflags_Blink))     && _sgr="$_sgr;${_ble_term_sgr_blink:-5}"
+    ((g&_ble_color_gflags_Revert))    && _sgr="$_sgr;${_ble_term_sgr_rev:-7}"
+    ((g&_ble_color_gflags_Invisible)) && _sgr="$_sgr;${_ble_term_sgr_invis:-8}"
+    ((g&_ble_color_gflags_Strike))    && _sgr="$_sgr;${_ble_term_sgr_strike:-9}"
     if ((g&_ble_color_gflags_ForeColor)); then
       .ble-color.color2sgrfg -v "$_var" "$fg"
       _sgr="$_sgr;${!_var}"
@@ -55,7 +63,12 @@ function ble-color-gspec2g {
     case "$entry" in
     (bold)      ((_g|=_ble_color_gflags_Bold)) ;;
     (underline) ((_g|=_ble_color_gflags_Underline)) ;;
-    (standout)  ((_g|=_ble_color_gflags_Revert)) ;;
+    (blink)     ((_g|=_ble_color_gflags_Blink)) ;;
+    (invis)     ((_g|=_ble_color_gflags_Invisible)) ;;
+    (reverse)   ((_g|=_ble_color_gflags_Revert)) ;;
+    (strike)    ((_g|=_ble_color_gflags_Strike)) ;;
+    (italic)    ((_g|=_ble_color_gflags_Italic)) ;;
+    (standout)  ((_g|=_ble_color_gflags_Revert|_ble_color_gflags_Bold)) ;;
     (fg=*)
       .ble-color.name2color -v "$_var" "${entry:3}"
       if ((_var<0)); then
@@ -154,10 +167,8 @@ function .ble-color.color2sgrfg {
   local ccode="$1"
   if ((ccode<0)); then
     _ret=39
-  elif ((ccode<8)); then
-    _ret="3$ccode"
   elif ((ccode<16)); then
-    _ret="9$((ccode-8))"
+    _ret="${_ble_term_sgr_af[ccode]}"
   elif ((ccode<256)); then
     _ret="38;5;$ccode"
   fi
@@ -174,10 +185,8 @@ function .ble-color.color2sgrbg {
   local ccode="$1"
   if ((ccode<0)); then
     _ret=49
-  elif ((ccode<8)); then
-    _ret="4$ccode"
   elif ((ccode<16)); then
-    _ret="10$((ccode-8))"
+    _ret="${_ble_term_sgr_ab[ccode]}"
   elif ((ccode<256)); then
     _ret="48;5;$ccode"
   fi
@@ -187,19 +196,25 @@ function .ble-color.color2sgrbg {
 
 
 _ble_faces_count=0
-BLE_FACES=()
-BLE_FACES_SGR=()
+_ble_faces=()
+_ble_faces_sgr=()
 function ble-color-defface {
   local name="_ble_faces__$1" gspec="$2"
   (($name||($name=++_ble_faces_count)))
-  ble-color-gspec2g -v "BLE_FACES[$name]" "$gspec"
-  ble-color-gspec2sgr -v "BLE_FACES_SGR[$name]" "$gspec"
+  ble-color-gspec2g -v "_ble_faces[$name]" "$gspec"
+  ble-color-gspec2sgr -v "_ble_faces_sgr[$name]" "$gspec"
 }
 function ble-color-face2g {
-  ((g=BLE_FACES[_ble_faces__$1]))
+  ((g=_ble_faces[_ble_faces__$1]))
 }
 function ble-color-face2sgr {
-  eval "sgr=\"\${BLE_FACES_SGR[_ble_faces__$1]}\""
+  eval "sgr=\"\${_ble_faces_sgr[_ble_faces__$1]}\""
+}
+function ble-color-iface2g {
+  ((g=_ble_faces[$1]))
+}
+function ble-color-iface2sgr {
+  sgr="${_ble_faces_sgr[$1]}"
 }
 
 ## 関数 _ble_region_highlight_table;  ble-region_highlight-append triplets ; _ble_region_highlight_table
@@ -491,6 +506,11 @@ function ble-highlight-layer/update {
   HIGHLIGHT_UMAX="$PREV_UMAX"
 }
 
+function ble-highlight-layer/update/add-urange {
+  local umin="$1" umax="$2"
+  (((PREV_UMIN<0||PREV_UMIN>umin)&&(PREV_UMIN=umin),
+    (PREV_UMAX<0||PREV_UMAX<umax)&&(PREV_UMAX=umax)))
+}
 function ble-highlight-layer/update/shift {
   local __dstArray="$1"
   local __srcArray="${2:-$__dstArray}"
@@ -508,9 +528,9 @@ function ble-highlight-layer/update/shift {
 
 function ble-highlight-layer/update/getg {
   g=
-  local __i
-  for ((__i=LEVEL;--__i>=0;)); do
-    "ble-highlight-layer:${_ble_highlight_layer__list[__i]}/getg" "$1"
+  local LEVEL="$LEVEL"
+  while ((--LEVEL>=0)); do
+    "ble-highlight-layer:${_ble_highlight_layer__list[LEVEL]}/getg" "$1"
     [[ $g ]] && return
   done
   g=0
@@ -852,6 +872,76 @@ function ble-highlight-layer:disabled/getg {
   fi
 }
 
+ble-color-defface overwrite_mode fg=black,bg=51
+
+_ble_highlight_layer_overwrite_mode_index=-1
+_ble_highlight_layer_overwrite_mode_buff=()
+function ble-highlight-layer:overwrite_mode/update {
+  local oindex="$_ble_highlight_layer_overwrite_mode_index"
+  if ((DMIN>=0)); then
+    if ((oindex>=DMAX0)); then
+      ((oindex+=DMAX-DMAX0))
+    elif ((oindex>=DMIN)); then
+      oindex=-1
+    fi
+  fi
+
+  local index=-1
+  if [[ $_ble_edit_overwrite_mode ]]; then
+    local next="${_ble_edit_str:_ble_edit_ind:1}"
+    if [[ $next && $next != [$'\n\t'] ]]; then
+      index="$_ble_edit_ind"
+
+      local g sgr
+
+      # PREV_BUFF の内容をロード
+      if ((DMIN<0&&oindex>=0)); then
+        # 前回の結果が残っている場合
+        ble-highlight-layer/update/getg "$oindex"
+        ble-color-g2sgr -v sgr "$g"
+        _ble_highlight_layer_overwrite_mode_buff[oindex]="$sgr${_ble_highlight_layer_plain_buff[oindex]}"
+      else
+        # コピーした方が速い場合
+        eval "_ble_highlight_layer_overwrite_mode_buff=(\"\${$PREV_BUFF[@]}\")"
+      fi
+      PREV_BUFF=_ble_highlight_layer_overwrite_mode_buff
+
+      # 1文字着色
+      # ble-highlight-layer/update/getg "$index"
+      # ((g^=_ble_color_gflags_Revert))
+      ble-color-face2g overwrite_mode
+      ble-color-g2sgr -v sgr "$g"
+      _ble_highlight_layer_overwrite_mode_buff[index]="$sgr${_ble_highlight_layer_plain_buff[index]}"
+      if ((index+1<${#1})); then
+        ble-highlight-layer/update/getg "$((index+1))"
+        ble-color-g2sgr -v sgr "$g"
+        _ble_highlight_layer_overwrite_mode_buff[index+1]="$sgr${_ble_highlight_layer_plain_buff[index+1]}"
+      fi
+    fi
+  fi
+
+  if ((index>=0)); then
+    echo -n $'\e[?25l'
+  else
+    echo -n $'\e[?25h'
+  fi
+
+  if ((index!=oindex)); then
+    ((oindex>=0)) && ble-highlight-layer/update/add-urange "$oindex" "$((oindex+1))"
+    ((index>=0)) && ble-highlight-layer/update/add-urange "$index" "$((index+1))"
+  fi
+  
+  _ble_highlight_layer_overwrite_mode_index="$index"
+}
+function ble-highlight-layer:overwrite_mode/getg {
+  local index="$_ble_highlight_layer_overwrite_mode_index"
+  if ((index>=0&&index==$1)); then
+    # ble-highlight-layer/update/getg "$1"
+    # ((g^=_ble_color_gflags_Revert))
+    ble-color-face2g overwrite_mode
+  fi
+}
+
 #------------------------------------------------------------------------------
 # ble-highlight-layer:RandomColor (sample)
 
@@ -895,4 +985,4 @@ function ble-highlight-layer:RandomColor2/getg {
   ble-color-gspec2g -v g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
 }
 
-_ble_highlight_layer__list=(plain syntax region disabled)
+_ble_highlight_layer__list=(plain syntax region disabled overwrite_mode)

@@ -24,6 +24,8 @@ function ble-decode-keymap:isearch/define {
 function ble-decode-keymap:emacs/define {
   local ble_opt_default_keymap=emacs
 
+  ble-bind -f insert overwrite-mode
+
   # ins
   ble-bind -f __defchar__ self-insert
   ble-bind -f 'C-q'       quoted-insert

@@ -112,7 +112,7 @@ function ble-complete/action/file/complete {
 function ble-complete/source/command/gen {
   compgen -c -- "$COMPV"
   [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
-  shopt -q autocd && compgen -d -- "$COMPV"
+  shopt -q autocd &>/dev/null && compgen -d -- "$COMPV"
 }
 function ble-complete/source/command {
   if [[ ${COMPV+set} ]]; then

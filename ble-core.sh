@@ -84,6 +84,40 @@ else
   }
 fi
 
+function ble/util/declare-print-definitions {
+  if [[ $# -gt 0 ]]; then
+    declare -p "$@" | gawk -v _ble_bash="$_ble_bash" '
+      function declflush( isArray){
+        if(decl){
+          isArray=(decl~/declare +-[AfFgilrtux]*a/);
+
+          # bash-3.0 の declare -p は改行について誤った出力をする。
+          if(_ble_bash<30100)gsub(/\\\n/,"\n",decl);
+
+          # declare 除去
+          sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/,"",decl);
+          if(isArray){
+            if(decl~/^([a-zA-Z_][a-zA-Z_0-9]*)='\''\(.*\)'\''$/){
+              sub(/='\''\(/,"=(",decl);
+              sub(/\)'\''$/,")",decl);
+              gsub(/'\'\\\\\'\''/,"'\''",decl);
+            }
+          }
+          print decl;
+          decl="";
+        }
+      }
+      /^declare /{
+        declflush();
+        decl=$0;
+        next;
+      }
+      {decl=decl "\n" $0;}
+      END{declflush();}
+    '
+  fi
+}
+
 _ble_util_array_prototype=()
 function _ble_util_array_prototype.reserve {
   local -i n="$1" i
@@ -248,7 +282,7 @@ function .ble-term.visible-bell {
   local message="$*"
   message="${message:-$ble_opt_vbell_default_message}"
 
-  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_setaf2$_ble_term_rev${message::cols}}" >&2
+  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
   (
     {
       sleep 0.05
