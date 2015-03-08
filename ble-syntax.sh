@@ -1111,8 +1111,12 @@ function ble-syntax/parse {
         fi
 
         if ((shift!=0)); then
-          if ((word[1]>=end0)); then
-            ((word[1]+=shift))
+          if ((word[1]>=beg)); then
+            if ((word[1]>=end0)); then
+              ((word[1]+=shift))
+            else
+              ((word[1]=end))
+            fi
             _ble_syntax_word[j-1]="${word[*]}"
           fi
         fi
@@ -1682,7 +1686,7 @@ function ble-highlight-layer:syntax/update-word-table {
   ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
   if ((_ble_syntax_word_umin>=0)); then
     local i g
-    for ((i=_ble_syntax_word_umin;i<=_ble_syntax_word_umax;i++)); do
+    for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;i--)); do
       if [[ ${_ble_syntax_word[i-1]} ]]; then
         local -a word
         word=(${_ble_syntax_word[i-1]})
@@ -1848,21 +1852,21 @@ function ble-highlight-layer:syntax/update {
   PREV_UMIN="$umin" PREV_UMAX="$umax"
   PREV_BUFF=_ble_highlight_layer_syntax_buff
 
-  # # 以下は単語の分割のデバグ用
-  # local -a words=() word
-  # for ((i=1;i<=iN;i++)); do
-  #   if [[ ${_ble_syntax_word[i-1]} ]]; then
-  #     word=(${_ble_syntax_word[i-1]})
-  #     local wtxt="${text:word[1]:i-word[1]}" value
-  #     if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
-  #       eval "value=$wtxt"
-  #     else
-  #       value="? ($wtxt)"
-  #     fi
-  #     ble/util/array-push words "[$value ${word[*]}]"
-  #   fi
-  # done
-  # .ble-line-info.draw "${words[*]}"
+  # 以下は単語の分割のデバグ用
+  local -a words=() word
+  for ((i=1;i<=iN;i++)); do
+    if [[ ${_ble_syntax_word[i-1]} ]]; then
+      word=(${_ble_syntax_word[i-1]})
+      local wtxt="${text:word[1]:i-word[1]}" value
+      if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
+        eval "value=$wtxt"
+      else
+        value="? ($wtxt)"
+      fi
+      ble/util/array-push words "[$value ${word[*]}]"
+    fi
+  done
+  .ble-line-info.draw "${words[*]}"
 }
 
 function ble-highlight-layer:syntax/getg {

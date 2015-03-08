@@ -641,6 +641,11 @@ function ble-edit/draw/trace {
   local it="$_ble_term_it" xenl="$_ble_term_xenl"
   local text="$1"
 
+  # cygwin では LC_COLLATE=C にしないと
+  # 正規表現の range expression が期待通りに動かない。
+  # 日本語と混ざった場合に問題が生じたらまたその時に考える。
+  local LC_COLLATE=C
+
   local rex_ascii='^[ -~]+'
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
