@@ -357,7 +357,8 @@ function ble-edit/draw/trace/SGR/arg_next {
   if ((j<${#f[*]})); then
     _ret="${f[j++]}"
   else
-    _ret="${specs[++i]%%:*}"
+    ((i++))
+    _ret="${specs[i]%%:*}"
   fi
 
   (($_var=_ret))
@@ -933,7 +934,8 @@ function .ble-line-prompt/update {
   local date_d date_t date_A date_T date_at date_D jobc
 
   # 1 特別な Escape \? を処理
-  local i=0 iN="${#ps1}" DRAW_BUFF
+  local i=0 iN="${#ps1}"
+  local -a DRAW_BUFF
   local rex_letters='^[^\]+|^\\$'
   while ((i<iN)); do
     local tail="${ps1:i}"
@@ -1276,7 +1278,7 @@ function .ble-line-text/getxy.cur {
   # 追い出しされたか check
   if (($1<_ble_line_text_cache_length)); then
     local _eoc=(${_ble_line_text_cache_pos[$1+1]})
-    ((_eoc[2]&&(_pos[0]=0,_pos[1]++)))
+    ((_eoc[2])) && ((_pos[0]=0,_pos[1]++))
   fi
 
   ((${_prefix}x=_pos[0]))
@@ -1424,7 +1426,7 @@ function .ble-line-info.draw {
   .ble-line-info.construct-info "$text"
   local content="$ret"
 
-  local -a DRAW_BUFF=()
+  local -a DRAW_BUFF
 
   # (1) 移動・領域確保
   ble-edit/draw/goto 0 "$_ble_line_endy"
@@ -1443,7 +1445,7 @@ function .ble-line-info.draw {
 function .ble-line-info.clear {
   [[ ${_ble_line_info[2]} ]] || return
 
-  local -a DRAW_BUFF=()
+  local -a DRAW_BUFF
   ble-edit/draw/goto 0 _ble_line_endy
   ble-edit/draw/put "$_ble_term_ind"
   ble-edit/draw/put.dl '_ble_line_info[1]+1'
@@ -1742,7 +1744,7 @@ _ble_line_cache_ind=::
 function .ble-edit-draw.update {
   local indices="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
   if [[ ! $_ble_edit_dirty && "$_ble_line_cache_ind" == "$indices" ]]; then
-    local DRAW_BUFF
+    local -a DRAW_BUFF
     ble-edit/draw/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
     ble-edit/draw/flush >&2
     return
@@ -1780,7 +1782,7 @@ function .ble-edit-draw.update {
   #-------------------
   # 出力
 
-  local -a DRAW_BUFF=()
+  local -a DRAW_BUFF
 
   # 1 描画領域の確保 (高さの調整)
   local endx endy begx begy
@@ -1910,7 +1912,7 @@ function .ble-edit-draw.redraw-cache {
     local -a d
     d=("${_ble_line_cache[@]}")
 
-    local -a DRAW_BUFF=()
+    local -a DRAW_BUFF
 
     ble-edit/draw/clear-line
     ble-edit/draw/put "${d[0]}"
@@ -1936,7 +1938,7 @@ function .ble-edit-draw.update-adjusted {
   # 現在はフルで描画 (bash が消してしまうので)
   # .ble-edit-draw.redraw
 
-  local DRAW_BUFF
+  local -a DRAW_BUFF
 
   # bash が表示するプロンプトを見えなくする
   # (現在のカーソルの左側にある文字を再度上書きさせる)
@@ -2618,7 +2620,7 @@ function .ble-edit/exec/setexit {
 function .ble-edit/exec/adjust-eol {
   # 文末調整
   local cols="${COLUMNS:-80}"
-  local DRAW_BUFF
+  local -a DRAW_BUFF
   ble-edit/draw/put "$_ble_term_sc"
   ble-edit/draw/put "${_ble_term_setaf[12]}[ble: EOF]$_ble_term_sgr0"
   ble-edit/draw/put "$_ble_term_rc"
@@ -2953,7 +2955,7 @@ function .ble-edit/newline {
   .ble-edit-draw.update
 
   # 新しい行
-  local DRAW_BUFF
+  local -a DRAW_BUFF
   ble-edit/draw/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/flush >&2
@@ -3029,7 +3031,7 @@ function .ble-edit.bind.command {
   .ble-line-info.clear
   .ble-edit-draw.update
 
-  local DRAW_BUFF
+  local -a DRAW_BUFF
   ble-edit/draw/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/flush >&2
@@ -3136,7 +3138,7 @@ function .ble-edit.history-load {
     local x="$_ble_line_x" y="$_ble_line_y"
     .ble-line-info.draw "loading history..."
     
-    local DRAW_BUFF=()
+    local -a DRAW_BUFF
     ble-edit/draw/goto "$x" "$y"
     ble-edit/draw/flush >&2
   fi

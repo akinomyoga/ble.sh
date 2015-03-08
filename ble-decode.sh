@@ -549,17 +549,17 @@ function .ble-decode-char/send-modified-key {
   elif ((_ble_decode_KCODE_SHIFT<=$1&&$1<=_ble_decode_KCODE_HYPER)); then
     case "$1" in
     ($_ble_decode_KCODE_SHIFT)
-      .ble-decode-char/process-modifier "$ble_decode_Shft" ;;
+      .ble-decode-char/process-modifier "$ble_decode_Shft" && return ;;
     ($_ble_decode_KCODE_CONTROL)
-      .ble-decode-char/process-modifier "$ble_decode_Ctrl" ;;
+      .ble-decode-char/process-modifier "$ble_decode_Ctrl" && return ;;
     ($_ble_decode_KCODE_ALTER)
-      .ble-decode-char/process-modifier "$ble_decode_Altr" ;;
+      .ble-decode-char/process-modifier "$ble_decode_Altr" && return ;;
     ($_ble_decode_KCODE_META)
-      .ble-decode-char/process-modifier "$ble_decode_Meta" ;;
+      .ble-decode-char/process-modifier "$ble_decode_Meta" && return ;;
     ($_ble_decode_KCODE_SUPER)
-      .ble-decode-char/process-modifier "$ble_decode_Supr" ;;
+      .ble-decode-char/process-modifier "$ble_decode_Supr" && return ;;
     ($_ble_decode_KCODE_HYPER)
-      .ble-decode-char/process-modifier "$ble_decode_Hypr" ;;
+      .ble-decode-char/process-modifier "$ble_decode_Hypr" && return ;;
     esac
   fi
 
