@@ -202,7 +202,17 @@ function ble-color-defface {
   local name="_ble_faces__$1" gspec="$2"
   (($name||($name=++_ble_faces_count)))
   ble-color-gspec2g -v "_ble_faces[$name]" "$gspec"
-  ble-color-gspec2sgr -v "_ble_faces_sgr[$name]" "$gspec"
+  ble-color-g2sgr -v "_ble_faces_sgr[$name]" "${_ble_faces[$name]}"
+}
+function ble-color-setface {
+  local name="_ble_faces__$1" gspec="$2"
+  if [[ ${!name} ]]; then
+    ble-color-gspec2g -v "_ble_faces[$name]" "$gspec"
+    ble-color-g2sgr -v "_ble_faces_sgr[$name]" "${_ble_faces[$name]}"
+  else
+    echo "ble.sh: the specified face \`$1' is not defined." >&2
+    return 1
+  fi
 }
 function ble-color-face2g {
   ((g=_ble_faces[_ble_faces__$1]))

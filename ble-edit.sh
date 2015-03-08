@@ -3051,7 +3051,7 @@ function .ble-edit.bind.command {
 #------------------------------------------------------------------------------
 # **** history ****                                                    @history
 
-: ${ble_opt_history_preserve_point=}
+: ${bleopt_history_preserve_point=}
 _ble_edit_history=()
 _ble_edit_history_edit=()
 _ble_edit_history_ind=0
@@ -3254,7 +3254,7 @@ function .ble-edit.history-goto {
   fi
 
   # point
-  if [[ $ble_opt_history_preserve_point ]]; then
+  if [[ $bleopt_history_preserve_point ]]; then
     if ((_ble_edit_ind>"${#_ble_edit_str}")); then
       _ble_edit_ind="${#_ble_edit_str}"
     fi
@@ -3831,7 +3831,7 @@ function ble-decode-byte:bind {
   .ble-stty.enter
 
   while (($#)); do
-    "ble-decode-byte+$ble_opt_input_encoding" "$1"
+    "ble-decode-byte+$bleopt_input_encoding" "$1"
     shift
   done
 
@@ -3842,7 +3842,8 @@ function ble-decode-byte:bind {
 }
 
 function .ble-edit.default-key-bindings {
-  if [[ $_ble_base/cache/keymap.emacs -nt $_ble_base/keymap/emacs.sh ]]; then
+  if [[ $_ble_base/cache/keymap.emacs -nt $_ble_base/keymap/emacs.sh &&
+          $_ble_base/cache/keymap.emacs -nt $_ble_base/cmap/default.sh ]]; then
     source "$_ble_base/cache/keymap.emacs"
   else
     source "$_ble_base/keymap/emacs.sh"

@@ -163,12 +163,28 @@ bashbug: 実装上で注意するべき事
 
 Commit
 
+2015-03-07
+
+  * ble-decode.sh: CSI Function Key Sequence を特別扱いする? (2015-02-28)
+
+    現在の登録作業は些か無駄な事をしている様な気がする。
+    ble-bind の出力も exaustive になっているし、
+    テーブルも巨大な物になっていて declare や set の時に見苦しい。
+
+    - .ble-decode-char 再実装した。
+    - それに伴って .ble-decode-char/csi/* も追加し、
+      CSI シーケンスを特別に読み取る様に変更した。
+    - また、cmap/default.sh も大幅に変更した。
+    - 修飾の機能は sendkey の方で一括で行う様に変更する。
+      C-x @ S 等に対して ESC と同様の修飾の機能を与える。
+
 2015-03-06
 
   * 整理
     - complete の古いコード
     - 着色の古いコード
       これに関しては現在の複雑な実装と昔の簡単な実装の間の着地点を見つけたい。
+    - binder-source 周辺
 
 2015-03-04
 
@@ -176,8 +192,6 @@ Commit
 
     16-79 4x4x4 0,58*v+81
     80-87 gray 46+25*v
-
-  Done
 
 2015-03-01
 
@@ -195,6 +209,7 @@ Commit
   * 対応する物がない readline 関数
     yank-nth-arg yank-last-arg insert-last-argument
     shell-expand-line history-expand-line magic-space alias-expand-line
+    tilde-expand
     history-and-alias-expand-line
     edit-and-execute-command
     transpose-words upcase-word downcase-word capitalize-word
@@ -204,7 +219,6 @@ Commit
     digit-argument universal-argument 入力しやすい様に?
     complete関連
     redo, undo
-    tilde-expand
 
   * undo の実装について
 
@@ -227,14 +241,6 @@ Commit
     これも分かり易いのかどうかは分からないが、少なくとも zsh よりは良い様にも思う。
 
     とはいいつつも accept-line した後も編集が残っているのは良いのか微妙である。
-
-2015-02-28
-
-  * ble-decode.sh: CSI Function Key Sequence を特別扱いする?
-
-    現在の登録作業は些か無駄な事をしている様な気がする。
-    ble-bind の出力も exaustive になっているし、
-    テーブルも巨大な物になっていて declare や set の時に見苦しい。
 
 2015-02-27
 

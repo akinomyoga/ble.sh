@@ -5,7 +5,7 @@
 #
 
 function ble-decode-keymap:isearch/define {
-  local ble_opt_default_keymap=isearch
+  local bleopt_default_keymap=isearch
 
   ble-bind -f __defchar__ isearch/self-insert
   ble-bind -f C-r         isearch/backward
@@ -22,7 +22,7 @@ function ble-decode-keymap:isearch/define {
 }
 
 function ble-decode-keymap:emacs/define {
-  local ble_opt_default_keymap=emacs
+  local bleopt_default_keymap=emacs
 
   ble-bind -f insert overwrite-mode
 

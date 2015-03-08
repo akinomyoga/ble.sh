@@ -1,7 +1,7 @@
 # -*- mode:sh;eval:(sh-set-shell "bash") -*-
 # bash script to be sourced from interactive shell
 
-: ${ble_opt_input_encoding:=UTF-8}
+: ${bleopt_input_encoding:=UTF-8}
 
 
 ## オプション bleopt_openat_base
@@ -89,7 +89,7 @@ function ble/util/declare-print-definitions {
     declare -p "$@" | gawk -v _ble_bash="$_ble_bash" '
       function declflush( isArray){
         if(decl){
-          isArray=(decl~/declare +-[AfFgilrtux]*a/);
+          isArray=(decl~/declare +-[fFgilrtux]*[aA]/);
 
           # bash-3.0 の declare -p は改行について誤った出力をする。
           if(_ble_bash<30100)gsub(/\\\n/,"\n",decl);
@@ -209,9 +209,9 @@ function ble-assert {
 #------------------------------------------------------------------------------
 # **** terminal controls ****
 
-: ${ble_opt_vbell_default_message=' Wuff, -- Wuff!! '}
-#: ${ble_opt_vbell_default_message=' (>ω<)/ わふー, わふー!! '}
-: ${ble_opt_vbell_duration=2000}
+: ${bleopt_vbell_default_message=' Wuff, -- Wuff!! '}
+#: ${bleopt_vbell_default_message=' (>ω<)/ わふー, わふー!! '}
+: ${bleopt_vbell_duration=2000}
 
 function .ble-term.initialize {
   if [[ $_ble_base/term.sh -nt $_ble_base/cache/$TERM.term ]]; then
@@ -280,7 +280,7 @@ function .ble-term.visible-bell {
   local cols="${LINES:-25}"
   local lines="${COLUMNS:-80}"
   local message="$*"
-  message="${message:-$ble_opt_vbell_default_message}"
+  message="${message:-$bleopt_vbell_default_message}"
 
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
   (
@@ -289,7 +289,7 @@ function .ble-term.visible-bell {
       builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
 
       # load time duration settings
-      declare msec=$ble_opt_vbell_duration
+      declare msec=$bleopt_vbell_duration
       declare sec=$msec
       ((sec<1000)) && sec=$(printf '%04d' $sec)
       sec=${sec%???}.${sec: -3}
@@ -344,7 +344,7 @@ else
       return
     fi
 
-    "ble-text-b2c+$ble_opt_input_encoding" $(
+    "ble-text-b2c+$bleopt_input_encoding" $(
       while IFS= read -r -n 1 byte; do
         printf '%d ' "'$byte"
       done <<<$s
@@ -409,7 +409,7 @@ function .ble-text.c2s {
 ## \param [in]  $1 = code
 ## \param [out] ret
 function .ble-text.c2bc {
-  ".ble-text.c2bc+$ble_opt_input_encoding" "$1"
+  ".ble-text.c2bc+$bleopt_input_encoding" "$1"
 }
 
 #------------------------------------------------------------------------------
