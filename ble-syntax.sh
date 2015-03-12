@@ -1052,7 +1052,8 @@ _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 ##   今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
 ##
 function ble-syntax/parse {
-  local -r text="$1" beg="${2:-0}" end="${3:-${#text}}"
+  local -r text="$1"
+  local -r beg="${2:-0}" end="${3:-${#text}}"
   local -r end0="${4:-$end}"
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 
@@ -1101,24 +1102,25 @@ function ble-syntax/parse {
         #   stat[2]>=end0&&(stat[2]+=shift)))
       fi
 
-      if ((j>0)) && [[ ${_ble_syntax_word[j-1]} ]]; then
-        word=(${_ble_syntax_word[j-1]})
-        
-        # dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
-        # 中身が書き換わった時。
-        if ((word[1]<=end0)); then
-          ble-syntax/parse/touch-updated-word "$j"
-        fi
+    fi
 
-        if ((shift!=0)); then
-          if ((word[1]>=beg)); then
-            if ((word[1]>=end0)); then
-              ((word[1]+=shift))
-            else
-              ((word[1]=end))
-            fi
-            _ble_syntax_word[j-1]="${word[*]}"
+    if ((j>0)) && [[ ${_ble_syntax_word[j-1]} ]]; then
+      word=(${_ble_syntax_word[j-1]})
+      
+      # 中身が書き換わった時。
+      # dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
+      if ((word[1]<=end0)); then
+        ble-syntax/parse/touch-updated-word "$j"
+      fi
+
+      if ((shift!=0)); then
+        if ((word[1]>=beg)); then
+          if ((word[1]>=end0)); then
+            ((word[1]+=shift))
+          else
+            ((word[1]=end))
           fi
+          _ble_syntax_word[j-1]="${word[*]}"
         fi
       fi
     fi
@@ -1852,21 +1854,21 @@ function ble-highlight-layer:syntax/update {
   PREV_UMIN="$umin" PREV_UMAX="$umax"
   PREV_BUFF=_ble_highlight_layer_syntax_buff
 
-  # 以下は単語の分割のデバグ用
-  local -a words=() word
-  for ((i=1;i<=iN;i++)); do
-    if [[ ${_ble_syntax_word[i-1]} ]]; then
-      word=(${_ble_syntax_word[i-1]})
-      local wtxt="${text:word[1]:i-word[1]}" value
-      if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
-        eval "value=$wtxt"
-      else
-        value="? ($wtxt)"
-      fi
-      ble/util/array-push words "[$value ${word[*]}]"
-    fi
-  done
-  .ble-line-info.draw "${words[*]}"
+  # # 以下は単語の分割のデバグ用
+  # local -a words=() word
+  # for ((i=1;i<=iN;i++)); do
+  #   if [[ ${_ble_syntax_word[i-1]} ]]; then
+  #     word=(${_ble_syntax_word[i-1]})
+  #     local wtxt="${text:word[1]:i-word[1]}" value
+  #     if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
+  #       eval "value=$wtxt"
+  #     else
+  #       value="? ($wtxt)"
+  #     fi
+  #     ble/util/array-push words "[$value ${word[*]}]"
+  #   fi
+  # done
+  # .ble-line-info.draw "${words[*]}"
 }
 
 function ble-highlight-layer:syntax/getg {
@@ -1886,20 +1888,6 @@ function ble-highlight-layer:syntax/getg {
 #%# test codes
 #%#----------------------------------------------------------------------------
 #%(
-
-attrc=()
-attrc[CTX_CMDX]=' '
-attrc[CTX_ARGX]=' '
-attrc[CTX_CMDI]='c'
-attrc[CTX_ARGI]='a'
-attrc[CTX_QUOT]=$'\e[48;5;255mq\e[m'
-attrc[CTX_EXPR]='x'
-attrc[ATTR_ERR]=$'\e[101;97me\e[m'
-attrc[ATTR_VAR]=$'\e[35mv\e[m'
-attrc[ATTR_QDEL]=$'\e[1;48;5;255;94m\"\e[m' # '
-attrc[ATTR_DEF]='_'
-attrc[CTX_VRHS]='r'
-attrc[ATTR_DEL]=$'\e[1m|\e[m'
 
 attrg[CTX_ARGX]=$'\e[m'
 attrg[CTX_ARGX0]=$'\e[m'
@@ -1994,6 +1982,13 @@ mytest 'a=1 b[x[y]]=1234 echo <( world ) > hello; ( sub shell); ((1+2*3));'
 mytest 'a=${#hello} b=${world[10]:1:(5+2)*3} c=${arr[*]%%"test"$(cmd).cpp} d+=12'
 mytest 'for ((i=0;i<10;i++)); do echo hello; done; { : '"'worlds'\\'' record'"'; }'
 mytest '[[ echo == echo ]]; echo hello'
+
+# ble-syntax/parse "echo hello"
+# for ((i=0;i<${#_ble_syntax_stat[@]};i++)); do
+#   if [[ ${_ble_syntax_stat[i]} ]]; then
+#     echo "$i ${_ble_syntax_stat[i]}"
+#   fi
+# done
 
 # 関数名に使える文字?
 #
