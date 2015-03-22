@@ -3648,10 +3648,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
     ble/util/openat _ble_edit_io_stdout '>&1'
     ble/util/openat _ble_edit_io_stderr '>&2'
   fi
-  # declare _ble_edit_io_fname1=/dev/null
-  # declare _ble_edit_io_fname2=/dev/null
-  declare _ble_edit_io_fname1="$_ble_base/tmp/$$.stdout"
-  declare _ble_edit_io_fname2="$_ble_base/tmp/$$.stderr"
+  declare _ble_edit_io_fname1="$_ble_base_tmp/$$.stdout"
+  declare _ble_edit_io_fname2="$_ble_base_tmp/$$.stderr"
 
   function .ble-edit/stdout/on {
     exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr

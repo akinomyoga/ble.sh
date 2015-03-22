@@ -1253,7 +1253,7 @@ function .ble-stty.exit-trap {
   stty echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
-  rm -f "$_ble_base/tmp/$$".*
+  rm -f "$_ble_base_tmp/$$".*
 }
 trap .ble-stty.exit-trap EXIT
 
@@ -1488,7 +1488,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
 
       print "builtin bind -x " quote(line) >"/dev/stderr";
     }
-  ' 2> "$_ble_base/tmp/$$.bind.save"
+  ' 2> "$_ble_base_tmp/$$.bind.save"
 }
 
 function ble-decode-initialize {
@@ -1518,9 +1518,9 @@ function ble-decode-detach {
   source "$_ble_base/cache/ble-decode-bind.$_ble_bash.unbind"
 
   # 元のキー割り当ての復元
-  if [[ -s "$_ble_base/tmp/$$.bind.save" ]]; then
-    source "$_ble_base/tmp/$$.bind.save"
-    rm -f "$_ble_base/tmp/$$.bind.save"
+  if [[ -s "$_ble_base_tmp/$$.bind.save" ]]; then
+    source "$_ble_base_tmp/$$.bind.save"
+    rm -f "$_ble_base_tmp/$$.bind.save"
   fi
 }
 

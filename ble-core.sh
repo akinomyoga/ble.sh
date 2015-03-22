@@ -243,18 +243,34 @@ function ble-term/flush {
 
 # **** vbell/abell ****
 
-function .ble-term/visible-bell/initialize {
-  # 過去の .time ファイルを削除
-  local now= file
-  for file in "$_ble_base"/tmp/*.visible-bell.time; do
-    if test -f "$file"; then
-      test -z "$now" && now="$(date +%s)"
-      local ft="$(date +%s -r "$file")"
-      ((${now::${#now}-2}-${ft::${#now}-2}>36)) && /bin/rm "$file"
+function _ble_base_tmp.wipe {
+  local file pid mark
+  mark=()
+  for file in "$_ble_base_tmp"/[1-9]*.*; do
+    [[ -e $file && $file =~ ^[0-9]+ ]] || continue
+    pid="$BASH_REMATCH"
+    [[ ${mark[pid]} ]] && continue
+    mark[pid]=1
+    if ! kill -0 "$pid" &>/dev/null; then
+      rm -f "$_ble_base_tmp/$pid."*
     fi
   done
+}
 
-  _ble_term_visible_bell__ftime="$_ble_base/tmp/$$.visible-bell.time"
+_ble_base_tmp.wipe
+
+function .ble-term/visible-bell/initialize {
+  # # 過去の .time ファイルを削除
+  # local now= file
+  # for file in "$_ble_base_tmp"/*.visible-bell.time; do
+  #   if [[ -f $file ]]; then
+  #     [[ $now ]] || now="$(date +%s)"
+  #     local ft="$(date +%s -r "$file")"
+  #     ((${now::${#now}-2}-${ft::${#ft}-2}>36)) && /bin/rm "$file"
+  #   fi
+  # done
+
+  _ble_term_visible_bell__ftime="$_ble_base_tmp/$$.visible-bell.time"
 
   local -a BUFF=()
   ble-term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"

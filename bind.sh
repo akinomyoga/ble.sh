@@ -51,7 +51,9 @@ function ble-decode/generate-binder {
 
   # * bash-3 では "ESC *" の組合せも全部登録しておかないと駄目??
   #   (もしかすると bind -r 等に失敗していただけかも知れないが)
-  local bind1BXX="$((_ble_bash<40100||40300<=_ble_bash))"
+  #   追記: bash-4.0 bash-4.3 でも必要
+  #   追記: bash-4.1 でも bind -x '"\ez":fg' 等を一回もしていない場合は必要
+  local bind1BXX=1
 
   # * bash-3.1
   #   ESC [ を bind -x で捕まえようとしてもエラーになるので、
