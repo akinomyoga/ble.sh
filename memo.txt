@@ -207,6 +207,10 @@ Commit
     ESC 単体で登録しても何も起こらない。
     どの bash の version でも ESC * に対して張る事にする。
 
+    今度は ESC [ を捕まえられなくなった。
+    bash_execute_unix_command: cannot find keymap for command のエラーになる。
+    bash-4.3 と同じ症状である。結局 bash-4.3 と同様に ESC [ を変換する事にする。
+
 2015-03-08
 
   * <bug> $() を閉じると中身に色が着かない。

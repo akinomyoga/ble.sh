@@ -59,14 +59,14 @@ function ble-decode/generate-binder {
   #   ESC [ を bind -x で捕まえようとしてもエラーになるので、
   #   一旦 "ESC [" の ESC を UTF-8 2-byte code にしてから受信し直す。
   #   bash-3.1 で確認。bash-4.1 ではOK。他は未確認。
-  # * bash-4.3
+  # * bash-4.3, bash-4.1
   #   ESC *, ESC [ *, etc を全部割り当てないと以下のエラーになる。
   #   bash_execute_unix_command: cannot find keymap for command
   #   これを避ける為に二つの方針がある
   #   1 全てを登録する方針 (bindAllSeq)
   #   2 ESC [ を別のシーケンスに割り当てる (esc1B5B)
   #   初め 1 の方法を用いていたが 2 でも動く事が分かったので 2 を使う。
-  local esc1B5B="$((_ble_bash<40100||40300<=_ble_bash))"
+  local esc1B5B=1
   local bindAllSeq=0
 
   # * bash-4.1 では ESC ESC に bind すると
