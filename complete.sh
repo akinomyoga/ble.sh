@@ -3,6 +3,9 @@
 # ble-autoload "$_ble_base/complete.sh" ble-edit+complete
 #
 
+#==============================================================================
+# action
+
 ## 既存の action
 ##
 ##   ble-complete/action/word
@@ -33,27 +36,13 @@
 ## 関数 $ACTION/complete
 ##   一意確定時に、挿入文字列に対する加工を行います。
 ##   例えばディレクトリ名の場合に / を後に付け加える等です。
-##   
+##
 ##   @var[in    ] CAND
 ##   @var[in    ] ACTION
 ##   @var[in    ] DATA
-##   
+##
 ##   @var[in,out] COMP1 COMP2 INSERT
 ##
-
-function ble-complete/yield-candidate {
-  local CAND="$1" ACTION="$2" DATA="${*:3}"
-  local SHOW="${1#"$COMP_PREFIX"}" INSERT="$CAND"
-  "$ACTION/initialize"
-  
-  local icand
-  ((icand=cand_count++))
-  cand_cand[icand]="$CAND"
-  cand_prop[icand]="$ACTION $COMP1 $COMP2"
-  cand_word[icand]="$INSERT"
-  cand_show[icand]="$SHOW"
-  cand_data[icand]="$DATA"
-}
 
 function ble-complete/util/escape-specialchars {
   local _a _b _var=ret
@@ -84,6 +73,14 @@ function ble-complete/util/escape-specialchars {
   eval "$_var=\"\$_ret\""
 }
 
+function ble-complete/action/util/complete.addtail {
+  INSERT="$INSERT$1"
+  [[ ${text:index} == "$1"* ]] && ((index++))
+}
+
+#------------------------------------------------------------------------------
+# action/word
+
 function ble-complete/action/word/initialize {
   local ins
   ble-complete/util/escape-specialchars -v ins "${CAND:${#COMPV}}"
@@ -93,21 +90,57 @@ function ble-complete/action/word/initialize {
   INSERT="$COMPS$ins"
 }
 function ble-complete/action/word/complete {
-  INSERT="$INSERT "
+  ble-complete/action/util/complete.addtail ' '
 }
+
+# action/file
 
 function ble-complete/action/file/initialize {
   ble-complete/action/word/initialize
 }
 function ble-complete/action/file/complete {
+  local tail=
   if [[ -e $CAND ]]; then
     if [[ -d $CAND ]]; then
-      INSERT="$INSERT/"
+      ble-complete/action/util/complete.addtail /
+      tail=/
     else
-      INSERT="$INSERT "
+      ble-complete/action/util/complete.addtail ' '
     fi
   fi
 }
+
+# action/command
+
+function ble-complete/action/command/initialize {
+  ble-complete/action/word/initialize
+}
+function ble-complete/action/command/complete {
+  if [[ -d $CAND ]]; then
+    ble-complete/action/util/complete.addtail /
+  else
+    ble-complete/action/util/complete.addtail ' '
+  fi
+}
+
+#==============================================================================
+# source
+
+function ble-complete/yield-candidate {
+  local CAND="$1" ACTION="$2" DATA="${*:3}"
+  local SHOW="${1#"$COMP_PREFIX"}" INSERT="$CAND"
+  "$ACTION/initialize"
+
+  local icand
+  ((icand=cand_count++))
+  cand_cand[icand]="$CAND"
+  cand_prop[icand]="$ACTION $COMP1 $COMP2"
+  cand_word[icand]="$INSERT"
+  cand_show[icand]="$SHOW"
+  cand_data[icand]="$DATA"
+}
+
+# source/command
 
 function ble-complete/source/command/gen {
   compgen -c -- "$COMPV"
@@ -122,10 +155,12 @@ function ble-complete/source/command {
     local cand arr
     IFS=$'\n' eval 'arr=($(ble-complete/source/command/gen))'
     for cand in "${arr[@]}"; do
-      ble-complete/yield-candidate "$cand" ble-complete/action/word
+      ble-complete/yield-candidate "$cand" ble-complete/action/command
     done
   fi
 }
+
+#------------------------------------------------------------------------------
 
 function ble-edit+complete {
   local text="$_ble_edit_str" index="$_ble_edit_ind"
