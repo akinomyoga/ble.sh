@@ -1349,6 +1349,12 @@ function ble-syntax/completion-context/check-prefix {
         fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
+    elif ((stat[0]==CTX_RDRF)); then
+      # redirect > filename
+      local sub="${text:i:index-i}"
+      if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
+        ble-syntax/completion-context/add file "$i"
+      fi
     fi
   fi
 }
