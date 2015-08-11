@@ -52,7 +52,7 @@ function ble-assert {
 ##   type は入れ子の種類を表す文字列。
 ## @var _ble_syntax_word[i-1]
 ##   境界 #i で終わる単語についての情報を保持する。
-##   各要素は "wtype wbegin" の形式をしている。
+##   各要素は "wtype wlen" の形式をしている。
 ## @var _ble_syntax_attr[i]
 ##   文脈・属性の情報
 _ble_syntax_text=
@@ -618,7 +618,7 @@ function ble-syntax/parse/ctx-command/check-word-end {
   local word="${text:wbegin:wlen}"
 
   ble-syntax/parse/touch-updated-word "$i"
-  _ble_syntax_word[i-1]="$wtype $wbegin"
+  _ble_syntax_word[i-1]="$wtype $wlen"
 
   if ((ctx==CTX_CMDI)); then
     case "$word" in
@@ -647,7 +647,7 @@ function ble-syntax/parse/ctx-command/check-word-end {
 
         if [[ ${BASH_REMATCH[3]} ]]; then
           # 関数定義 (単語の種類を変更)
-          _ble_syntax_word[i-1]="$ATTR_FUNCDEF $wbegin"
+          _ble_syntax_word[i-1]="$ATTR_FUNCDEF $wlen"
           ((_ble_syntax_attr[i]=CTX_CMDX1,
             _ble_syntax_attr[i+${#rematch1}]=ATTR_DEL,
             ctx=CTX_CMDX1,
@@ -867,7 +867,7 @@ function ble-syntax/parse/ctx-values/check-word-end {
   local word="${text:wbegin:wlen}"
 
   ble-syntax/parse/touch-updated-word "$i"
-  _ble_syntax_word[i-1]="$wtype $wbegin"
+  _ble_syntax_word[i-1]="$wtype $wlen"
 
   ble-assert '((ctx==CTX_VALI))' 'invalid context'
   case "$word" in
@@ -995,7 +995,7 @@ function ble-syntax/parse/ctx-redirect/check-word-end {
   [[ $tail == [^"$_BLE_SYNTAX_CSPACE;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
 
   # 単語の長さの登録
-  _ble_syntax_word[i-1]="$wtype $wbegin"
+  _ble_syntax_word[i-1]="$wtype $((i-wbegin))"
   ble-syntax/parse/touch-updated-word "$i"
   ((wbegin=-1,wtype=-1))
 
@@ -1101,7 +1101,7 @@ function ble-syntax/parse {
 #%)
 
   # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
-  local i j j2 iwbegin iinest
+  local i j j2 jwbegin iinest
   local -a stat nest word
   for ((i=i2,j=j2=i2-shift;i<=iN;i++,j++)); do
     # 注意: データの範囲
@@ -1131,20 +1131,16 @@ function ble-syntax/parse {
 
     if ((j>0)) && [[ ${_ble_syntax_word[j-1]} ]]; then
       word=(${_ble_syntax_word[j-1]})
-      
-      # 中身が書き換わった時。
-      # dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
-      if ((word[1]<=end0)); then
-        ble-syntax/parse/touch-updated-word "$j"
-      fi
+      ((jwbegin=j-word[1]))
 
-      if ((shift!=0)); then
-        if ((word[1]>=beg)); then
-          if ((word[1]>=end0)); then
-            ((word[1]+=shift))
-          else
-            ((word[1]=end))
-          fi
+      if ((jwbegin<=end0)); then
+        # 中身が書き換わった時。
+        # dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
+        ble-syntax/parse/touch-updated-word "$j"
+
+        # 単語の長さの変更
+        if ((shift!=0)); then
+          ((word[1]=i-(jwbegin<beg?jwbegin:end)))
           _ble_syntax_word[j-1]="${word[*]}"
         fi
       fi
@@ -1725,8 +1721,8 @@ function ble-highlight-layer:syntax/update-word-table {
       if [[ ${_ble_syntax_word[i-1]} ]]; then
         local -a word
         word=(${_ble_syntax_word[i-1]})
-        local wbeg="${word[1]}" wend="$i"
-        local wtxt="${text:word[1]:i-word[1]}"
+        local wbeg="$((i-word[1]))" wend="$i"
+        local wtxt="${text:wbeg:word[1]}"
         local set=
         if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
           local value type=
@@ -1896,7 +1892,7 @@ function ble-highlight-layer:syntax/update {
   # for ((i=1;i<=iN;i++)); do
   #   if [[ ${_ble_syntax_word[i-1]} ]]; then
   #     word=(${_ble_syntax_word[i-1]})
-  #     local wtxt="${text:word[1]:i-word[1]}" value
+  #     local wtxt="${text:i-word[1]:word[1]}" value
   #     if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
   #       eval "value=$wtxt"
   #     else
