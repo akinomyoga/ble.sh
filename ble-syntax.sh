@@ -128,7 +128,9 @@ _BLE_SYNTAX_CSPECIAL[CTX_PWORD]="}\$\"\`\\!" # パラメータ展開 ${～}
 ##  @var  [in,out] wtype  復帰時の wtype を指定します。新しい wtype (-1) を返します。
 ##  @var  [in,out] inest  復帰時の inest を指定します。新しい inest (i) を返します。
 function ble-syntax/parse/nest-push {
-  _ble_syntax_nest[i]="$ctx $wbegin $wtype $inest ${2:-none}"
+  local wlen=$((wbegin<0?wbegin:i-wbegin))
+  local nlen=$((inest<0?inest:i-inest))
+  _ble_syntax_nest[i]="$ctx $wlen $wtype $nlen ${2:-none}"
   ((ctx=$1,inest=i,wbegin=-1,wtype=-1))
   #echo "push inest=$inest @${FUNCNAME[*]:1}"
 }
@@ -136,10 +138,13 @@ function ble-syntax/parse/nest-pop {
   ((inest<0)) && return 1
   local -a parent
   parent=(${_ble_syntax_nest[inest]})
+  local wlen nlen
   ((ctx=parent[0]))
-  ((wbegin=parent[1]))
+  ((wlen=parent[1]))
   ((wtype=parent[2]))
-  ((inest=parent[3]))
+  ((nlen=parent[3]))
+  ((wbegin=wlen<0?wlen:inest-wlen))
+  ((inest=nlen<0?nlen:inest-nlen))
   #echo pop inest=$inest
 }
 function ble-syntax/parse/nest-type {
@@ -1113,8 +1118,9 @@ function ble-syntax/parse {
       # (2) 無効になった stat/word の削除
 
       stat=(${_ble_syntax_stat[j]})
-      ((jwlen=stat[1],jnlen=stat[3],
-        jwbeg=jwlen<0?-1:j-jwlen,
+      ((jwlen=stat[1]))
+      ((jnlen=stat[3]))
+      ((jwbeg=jwlen<0?-1:j-jwlen,
         jnbeg=jnlen<0?-1:j-jnlen))
 
       # dirty 拡大の代わりに単に stat 内容の削除を実行する。dirty 拡大の連鎖は考えない。
@@ -1152,8 +1158,10 @@ function ble-syntax/parse {
     if [[ ${_ble_syntax_nest[j]} ]]; then
       if ((shift!=0)) && ((i<iN)); then
         nest=(${_ble_syntax_nest[j]})
-        ((nest[1]>=end0)) && ((nest[1]+=shift))
-        ((nest[3]>=end0)) && ((nest[3]+=shift))
+        ((jwlen=nest[1]))
+        ((jnlen=nest[3]))
+        ((jwlen>=0&&j-jwlen>=end0)) && ((nest[1]+=shift))
+        ((jnlen>=0&&j-jnlen>=end0)) && ((nest[3]+=shift))
         _ble_syntax_nest[j]="${nest[*]}"
       fi
     fi
