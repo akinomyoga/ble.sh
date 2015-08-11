@@ -41,6 +41,11 @@ fi
 
 #------------------------------------------------------------------------------
 
+if [[ $_ble_base ]]; then
+  echo "ble.sh: ble.sh seems to be already loaded." >&2
+  return 1
+fi
+
 function _ble_base.initialize {
   local src="$1"
   local defaultDir="$2"

@@ -710,7 +710,7 @@ function ble-highlight-layer:adapter/update {
   ble-highlight-layer/update/shift _ble_highlight_layer_adapter_buff
   local i g gprev=0 ctx=0 ret
   ((i1>0)) && ble-highlight-layer/getg -v gprev "$((i1-1))"
-  # .ble-line-info.draw "layer:adapter u = $i1-$i2"
+  # .ble-line-info.draw-text "layer:adapter u = $i1-$i2"
   for ((i=i1;i<=i2;i++)); do
     local ch
     if [[ ${_ble_region_highlight_table[i]} ]]; then

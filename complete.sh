@@ -167,7 +167,7 @@ function ble-edit+complete {
   _ble_edit_str.update-syntax
   local context
   ble-syntax/completion-context "$text" "$index"
-  # .ble-line-info.draw "${context[*]}"
+  # .ble-line-info.draw-text "${context[*]}"
   # return
 
   if ((${#context[@]}==0)); then
@@ -299,7 +299,7 @@ function ble-edit+complete {
     .ble-line-info.clear
   else
     # 候補が複数ある時
-    .ble-line-info.draw "${cand_show[*]}"
+    .ble-line-info.draw-text "${cand_show[*]}"
   fi
 
   .ble-edit.delete-range "$comp1" "$index"

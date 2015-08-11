@@ -37,6 +37,8 @@ function ble-assert {
 #%)
 #%m main (
 
+## @var _ble_syntax_text
+##   解析対象の文字列を保持します
 ## @var _ble_syntax_stat[i]
 ##   文字 #i を解釈しようとする直前の状態を記録する。
 ##   各要素は "ctx wbegin wtype inest" の形式をしている。
@@ -53,10 +55,32 @@ function ble-assert {
 ##   各要素は "wtype wbegin" の形式をしている。
 ## @var _ble_syntax_attr[i]
 ##   文脈・属性の情報
+_ble_syntax_text=
 _ble_syntax_stat=()
 _ble_syntax_nest=()
 _ble_syntax_word=()
 _ble_syntax_attr=()
+
+function ble-syntax/print-status {
+  local _result=
+
+  local i iN
+  for ((i=0,iN=${#_ble_syntax_text};i<iN;i++)); do
+    local attr="${_ble_syntax_attr[i]:-^}"
+    if ((_ble_syntax_attr_umin<=i&&i<_ble_syntax_attr_uend)); then
+      attr="$attr*"
+    fi
+
+    local word="${_ble_syntax_word[i]}"
+    _result="$_result$i '${_ble_syntax_text:i:1}' attr=$attr word=($word)"$'\n'
+  done
+
+  if [[ $1 == -v && $2 ]]; then
+    eval "$2=\"\$_result\""
+  else
+    echo "$_result"
+  fi
+}
 
 # 文脈値達
 CTX_UNSPECIFIED=0
@@ -1057,6 +1081,8 @@ function ble-syntax/parse {
   local -r end0="${4:-$end}"
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 
+  _ble_syntax_text="$text"
+
   # 解析予定範囲の更新
   local -ir iN="${#text}" shift=end-end0
   local i1 i2 flagSeekStat=0
@@ -1101,7 +1127,6 @@ function ble-syntax/parse {
         # ((stat[1]>=end0&&(stat[1]+=shift),
         #   stat[2]>=end0&&(stat[2]+=shift)))
       fi
-
     fi
 
     if ((j>0)) && [[ ${_ble_syntax_word[j-1]} ]]; then
@@ -1148,7 +1173,7 @@ function ble-syntax/parse {
          ++_ble_syntax_word_umin>_ble_syntax_word_umax&&
          (_ble_syntax_word_umin=_ble_syntax_word_umax=-1)))
   fi
-  # .ble-line-info.draw "diry-range $beg-$end extended-dirty-range $i1-$i2"
+  # .ble-line-info.draw-text "diry-range $beg-$end extended-dirty-range $i1-$i2"
 
 
   # 解析途中状態の復元
@@ -1302,15 +1327,16 @@ function ble-syntax/completion-context/check-prefix {
   done
 
   if [[ ${stat[0]} ]]; then
+    local ctx="${stat[0]}"
     local wbegin="${stat[1]}"
-    if ((stat[0]==CTX_CMDI)); then
+    if ((ctx==CTX_CMDI)); then
       # CTX_CMDI  → コマンドの続き
       ble-syntax/completion-context/add command "$wbegin"
       if [[ ${text:wbegin:index-wbegin} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$wbegin"
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((stat[0]==CTX_ARGI)); then
+    elif ((ctx==CTX_ARGI)); then
       # CTX_ARGI  → 引数の続き
       ble-syntax/completion-context/add file "$wbegin"
       local sub="${text:wbegin:index-wbegin}"
@@ -1319,9 +1345,9 @@ function ble-syntax/completion-context/check-prefix {
         ble-syntax/completion-context/add file "$((index-${#sub}))"
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((stat[0]==CTX_CMDX||
-              stat[0]==CTX_CMDX1||
-              stat[0]==CTX_CMDXV)); then
+    elif ((ctx==CTX_CMDX||
+              ctx==CTX_CMDX1||
+              ctx==CTX_CMDXV)); then
       # 直前の再開点が CMDX だった場合、
       # 現在地との間にコマンド名があればそれはコマンドである。
       # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
@@ -1333,12 +1359,12 @@ function ble-syntax/completion-context/check-prefix {
         fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((stat[0]==CTX_CMDXF)); then
+    elif ((ctx==CTX_CMDXF)); then
       # CTX_CMDXF → (( でなければ 変数名
       if [[ ${text:i:index-1} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$i"
       fi
-    elif ((stat[0]==CTX_ARGX)); then
+    elif ((ctx==CTX_ARGX)); then
       local sub="${text:i:index-i}"
       if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
         ble-syntax/completion-context/add file "$i"
@@ -1349,8 +1375,9 @@ function ble-syntax/completion-context/check-prefix {
         fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((stat[0]==CTX_RDRF)); then
-      # redirect > filename
+    elif ((ctx==CTX_RDRF||ctx==CTX_VRHS)); then
+      # CTX_RDRF: redirect の filename 部分
+      # CTX_VRHS: VAR=value の value 部分
       local sub="${text:i:index-i}"
       if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
         ble-syntax/completion-context/add file "$i"
@@ -1816,11 +1843,15 @@ function ble-highlight-layer:syntax/update {
 
   _ble_edit_str.update-syntax
 
+  # local status
+  # ble-syntax/print-status -v status
+  # .ble-line-info.draw "$status"
+
   local umin=-1 umax=-1
   # 少なくともこの範囲は文字が変わっているので再描画する必要がある
   ((DMIN>=0)) && umin="$DMIN" umax="$DMAX"
 
-  # .ble-line-info.draw "ble-syntax/parse attr_urange = $_ble_syntax_attr_umin-$_ble_syntax_attr_uend, word_urange = $_ble_syntax_word_umin-$_ble_syntax_word_umax"
+  # .ble-line-info.draw-text "ble-syntax/parse attr_urange = $_ble_syntax_attr_umin-$_ble_syntax_attr_uend, word_urange = $_ble_syntax_word_umin-$_ble_syntax_word_umax"
 
   ble-highlight-layer:syntax/update-attribute-table
   ble-highlight-layer:syntax/update-word-table
@@ -1874,7 +1905,7 @@ function ble-highlight-layer:syntax/update {
   #     ble/util/array-push words "[$value ${word[*]}]"
   #   fi
   # done
-  # .ble-line-info.draw "${words[*]}"
+  # .ble-line-info.draw-text "${words[*]}"
 }
 
 function ble-highlight-layer:syntax/getg {

@@ -1184,7 +1184,7 @@ function .ble-line-text/update {
   # highlight -> HIGHLIGHT_BUFF
   local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
   ble-highlight-layer/update "$text"
-  #.ble-line-info.draw "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
+  #.ble-line-info.draw-text "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
 
   # 変更文字の適用
   if ((${#_ble_line_text_cache_ichg[@]})); then
@@ -1205,7 +1205,7 @@ function .ble-line-text/update {
     umax=HIGHLIGHT_UMAX,
     POS_UMIN>=0&&(umin<0||umin>POS_UMIN)&&(umin=POS_UMIN),
     POS_UMAX>=0&&(umax<0||umax<POS_UMAX)&&(umax=POS_UMAX)))
-  # .ble-line-info.draw "position $POS_UMIN-$POS_UMAX, highlight $HIGHLIGHT_UMIN-$HIGHLIGHT_UMAX"
+  # .ble-line-info.draw-text "position $POS_UMIN-$POS_UMAX, highlight $HIGHLIGHT_UMIN-$HIGHLIGHT_UMAX"
 
   # update lc, lg
   #
@@ -1423,15 +1423,23 @@ function .ble-line-info.construct-info {
 }
 
 _ble_line_info=(0 0 "")
-function .ble-line-info.draw {
-  local text="$1"
-
-  # 内容の構築
-  local x=0 y=0 lc=32 ret
-  .ble-line-info.construct-info "$text"
-  local content="$ret"
+function .ble-line-info.draw/impl {
+  local text="$2"
 
   local -a DRAW_BUFF
+
+  local x=0 y=0 content=
+  # 内容の構築
+  case "$1" in
+  (raw)
+    local lc=32 lg=0
+    ble-edit/draw/trace "$text"
+    ble-edit/draw/sflush -v content ;;
+  (text)
+    local lc=32 ret
+    .ble-line-info.construct-info "$text"
+    content="$ret" ;;
+  esac
 
   # (1) 移動・領域確保
   ble-edit/draw/goto 0 "$_ble_line_endy"
@@ -1446,6 +1454,12 @@ function .ble-line-info.draw {
   _ble_line_y="$((_ble_line_endy+1+y))"
   _ble_line_x="$x"
   _ble_line_info=("$x" "$y" "$content")
+}
+function .ble-line-info.draw-text {
+  .ble-line-info.draw/impl text "$1"
+}
+function .ble-line-info.draw {
+  .ble-line-info.draw/impl raw "$1"
 }
 function .ble-line-info.clear {
   [[ ${_ble_line_info[2]} ]] || return
@@ -3093,8 +3107,10 @@ function .ble-edit/history/getcount {
 }
 
 function .ble-edit/history/generate-source-to-load-history {
-  # rcfile として起動すると history が未だロードされていない。
-  history -n
+  if ! history -p '!1' >/dev/null; then
+    # rcfile として起動すると history が未だロードされていない。
+    history -n
+  fi
   HISTTIMEFORMAT=__ble_ext__
 
   # 285ms for 16437 entries
@@ -3141,7 +3157,7 @@ function .ble-edit.history-load {
 
   if ((_ble_edit_attached)); then
     local x="$_ble_line_x" y="$_ble_line_y"
-    .ble-line-info.draw "loading history..."
+    .ble-line-info.draw-text "loading history..."
     
     local -a DRAW_BUFF
     ble-edit/draw/goto "$x" "$y"
@@ -3341,7 +3357,7 @@ function .ble-edit-isearch.draw-line {
   fi
 
   local text="(${#_ble_edit_isearch_arr[@]}: $ll $_ble_edit_history_ind $rr) \`$_ble_edit_isearch_str'"
-  .ble-line-info.draw "$text"
+  .ble-line-info.draw-text "$text"
 }
 function .ble-edit-isearch.erase-line {
   .ble-line-info.clear
@@ -3563,9 +3579,9 @@ function .ble-edit-comp.complete-filename {
   if ((${#cands[@]}>1)); then
     local dir="${fhead%/*}"
     if [[ $fhead != "$dir" ]]; then
-      .ble-line-info.draw "${cands[*]#$dir/}"
+      .ble-line-info.draw-text "${cands[*]#$dir/}"
     else
-      .ble-line-info.draw "${cands[*]}"
+      .ble-line-info.draw-text "${cands[*]}"
     fi
   fi
 }
