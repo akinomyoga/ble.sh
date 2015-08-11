@@ -41,10 +41,10 @@ function ble-assert {
 ##   解析対象の文字列を保持します
 ## @var _ble_syntax_stat[i]
 ##   文字 #i を解釈しようとする直前の状態を記録する。
-##   各要素は "ctx wbegin wtype inest" の形式をしている。
+##   各要素は "ctx wlen wtype nlen" の形式をしている。
 ##   ctx は現在の文脈。
-##   wbegin は現在の解析位置が属するシェル単語の開始位置。
-##   inest は現在の入れ子状態の親の開始位置。
+##   wbegin は現在のシェル単語の継続している長さ。
+##   nlen は現在の入れ子状態が継続している長さ。
 ## @var _ble_syntax_nest[inest]
 ##   入れ子の情報
 ##   各要素は "ctx wbegin wtype inest type" の形式をしている。
@@ -1101,7 +1101,7 @@ function ble-syntax/parse {
 #%)
 
   # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
-  local i j j2 jwbegin iinest
+  local i j j2 jwbeg jnbeg jwlen jnlen
   local -a stat nest word
   for ((i=i2,j=j2=i2-shift;i<=iN;i++,j++)); do
     # 注意: データの範囲
@@ -1113,34 +1113,35 @@ function ble-syntax/parse {
       # (2) 無効になった stat/word の削除
 
       stat=(${_ble_syntax_stat[j]})
+      ((jwlen=stat[1],jnlen=stat[3],
+        jwbeg=jwlen<0?-1:j-jwlen,
+        jnbeg=jnlen<0?-1:j-jnlen))
 
       # dirty 拡大の代わりに単に stat 内容の削除を実行する。dirty 拡大の連鎖は考えない。
-      if ((i1<=stat[1]&&stat[1]<=j2||i1<=stat[3]&&stat[3]<=j2)); then
+      if ((i1<=jwbeg&&jwbeg<=j2||i1<=jnbeg&&jnbeg<=j2)); then
         _ble_syntax_stat[j]=
       elif ((shift!=0)); then
         # shift 補正
-        ((stat[1]>=end0)) && ((stat[1]+=shift))
-        ((stat[3]>=end0)) && ((stat[3]+=shift))
-        _ble_syntax_stat[j]="${stat[*]}"
+        ((0<=jwbeg&&jwbeg<beg)) && ((stat[1]+=shift))
+        ((0<=jnbeg&&jnbeg<beg)) && ((stat[3]+=shift))
         # ※bash-3.2 では、bug で分岐内で配列を参照すると必ずそちらに分岐してしまう。
-        #   そのため以下は失敗する。必ず shift が加算されてしまう。
-        # ((stat[1]>=end0&&(stat[1]+=shift),
-        #   stat[2]>=end0&&(stat[2]+=shift)))
+        #   そのため一つの算術式にまとめると失敗する。必ず shift が加算されてしまう。
+        _ble_syntax_stat[j]="${stat[*]}"
       fi
     fi
 
     if ((j>0)) && [[ ${_ble_syntax_word[j-1]} ]]; then
       word=(${_ble_syntax_word[j-1]})
-      ((jwbegin=j-word[1]))
+      ((jwbeg=j-word[1]))
 
-      if ((jwbegin<=end0)); then
+      if ((jwbeg<=end0)); then
         # 中身が書き換わった時。
         # dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
         ble-syntax/parse/touch-updated-word "$j"
 
         # 単語の長さの変更
         if ((shift!=0)); then
-          ((word[1]=i-(jwbegin<beg?jwbegin:end)))
+          ((word[1]=i-(jwbeg<beg?jwbeg:end)))
           _ble_syntax_word[j-1]="${word[*]}"
         fi
       fi
@@ -1178,10 +1179,11 @@ function ble-syntax/parse {
   local ctx wbegin wtype inest
   if [[ $_stat ]]; then
     stat=($_stat)
+    local wlen="${stat[1]}" nlen="${stat[3]}"
     ctx="${stat[0]}"
-    wbegin="${stat[1]}"
+    wbegin="$((wlen<0?-1:i1-wlen))"
     wtype="${stat[2]}"
-    inest="${stat[3]}"
+    inest="$((nlen<1?-1:i1-nlen))"
   else
     # 初期値
     ctx="$CTX_CMDX"     ##!< 現在の解析の文脈
@@ -1204,8 +1206,7 @@ function ble-syntax/parse {
 
   # 解析
   for ((i=i1;i<iN;)); do
-    #local _stat="$ctx $((wbegin>=0?i-wbegin:-1)) $((inest>=0?i-inest:-1))"
-    local _stat="$ctx $wbegin $wtype $inest"
+    local _stat="$ctx $((wbegin<0?-1:i-wbegin)) $wtype $((inest<0?-1:i-inest))"
     if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == $_stat ]]; then
       if ble-syntax/parse/nest-equals "$inest"; then
 
@@ -1242,7 +1243,7 @@ function ble-syntax/parse {
 
   # 終端の状態の記録
   if ((i>=iN)); then
-    _ble_syntax_stat[iN]="$ctx $wbegin $wtype $inest"
+    _ble_syntax_stat[iN]="$ctx $((wbegin<0?-1:iN-wbegin)) $wtype $((inest<0?-1:iN-inest))"
 
     # ネスト開始点のエラー表示は +syntax 内で。
     # ここで設定すると部分更新の際に取り消しできないから。
@@ -1323,8 +1324,8 @@ function ble-syntax/completion-context/check-prefix {
   done
 
   if [[ ${stat[0]} ]]; then
-    local ctx="${stat[0]}"
-    local wbegin="${stat[1]}"
+    local ctx="${stat[0]}" wlen="${stat[1]}"
+    local wbegin="$((wlen<0?-1:i-wlen))"
     if ((ctx==CTX_CMDI)); then
       # CTX_CMDI  → コマンドの続き
       ble-syntax/completion-context/add command "$wbegin"
@@ -1805,12 +1806,13 @@ function ble-highlight-layer:syntax/update-error-table {
     # 入れ子が閉じていないエラー
     local -a stat
     stat=(${_ble_syntax_stat[iN]})
-    local ctx="${stat[0]}" wbegin="${stat[1]}" wtype="${stat[2]}" inest="${stat[3]}"
-    local i
-    if((inest>=0)); then
+    local ctx="${stat[0]}" nlen="${stat[3]}"
+    local i inest
+    if((nlen>0)); then
       # 終端点の着色
       ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
 
+      ((inest=iN-nlen))
       while ((inest>=0)); do
         # 開始字句の着色
         local inest2
