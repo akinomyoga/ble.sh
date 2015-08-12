@@ -71,8 +71,28 @@ function ble-syntax/print-status {
       attr="$attr*"
     fi
 
-    local word="${_ble_syntax_word[i]}"
-    _result="$_result$i '${_ble_syntax_text:i:1}' attr=$attr word=($word)"$'\n'
+    local word=(${_ble_syntax_word[i]})
+    [[ $word ]] && word=" word=${word[0]}:$((i+1-word[1]))-$((i+1))"
+
+    local nest=(${_ble_syntax_nest[i]})
+    if [[ $nest ]]; then
+      local nword='-'
+      local nnest='-'
+      ((nest[3]>=0)) && nnest="'${nest[4]}':$((i-nest[3]))-"
+      ((nest[1]>=0)) && nword="${nest[2]}:$((i-nest[1]))-"
+      nest=" nest=(${nest[0]} w=$nword n=$nnest)"
+    fi
+
+    local stat=(${_ble_syntax_stat[i]})
+    if [[ $stat ]]; then
+      local sword=-
+      local snest=-
+      ((stat[3]>=0)) && snest="@$((i-stat[3]))"
+      ((stat[1]>=0)) && sword="${stat[2]}:$((i-stat[1]))-"
+      stat=" stat=(${stat[0]} w=$sword n=$snest)"
+    fi
+
+    _result="$_result$i '${_ble_syntax_text:i:1}' attr=$attr$word$nest$stat"$'\n'
   done
 
   if [[ $1 == -v && $2 ]]; then
@@ -534,29 +554,32 @@ function ble-syntax/parse/ctx-expr {
             i+=2))
         else
           # a[...]... という唯のコマンドの場合。
-          if ((wbegin>=0)); then
-            ble-syntax/parse/touch-updated-attr "$wbegin"
+          ble-syntax/parse/nest-pop
+          ((_ble_syntax_attr[i]=CTX_EXPR,
+            i++,ctx=CTX_CMDI,wtype=CTX_CMDI))
 
-            # 式としての解釈を取り消し。
-            local j
-            for ((j=wbegin+1;j<i;j++)); do
-              _ble_syntax_stat[j]=
-              _ble_syntax_word[j-1]=
-              _ble_syntax_attr[j]=
-            done
+          # 入れ子構造などの情報が飛んでしまうので削除はしない。
+          # if ((wbegin>=0)); then
+          #   ble-syntax/parse/touch-updated-attr "$wbegin"
 
-            # コマンド
-            ((_ble_syntax_attr[wbegin]=CTX_CMDI))
-          fi
+          #   # 式としての解釈を取り消し。
+          #   local j
+          #   for ((j=wbegin+1;j<i;j++)); do
+          #     _ble_syntax_stat[j]=
+          #     _ble_syntax_word[j-1]=
+          #     _ble_syntax_attr[j]=
+          #   done
 
-          ((i++))
+          #   # コマンド
+          #   ((_ble_syntax_attr[wbegin]=CTX_CMDI))
+          # fi
         fi
         return 0
       elif [[ $type == 'v[' ]]; then
         # ${v[]...} などの場合。
         ble-syntax/parse/nest-pop
         ((_ble_syntax_attr[i]=CTX_EXPR,
-          i+=1))
+          i++))
         return 0
       else
         return 1
@@ -725,12 +748,12 @@ function ble-syntax/parse/ctx-command {
     elif [[ $tail =~ $rex_redirect ]]; then
       # リダイレクト (& 単体の解釈より優先する)
 
-      # for bash-3.1 ${#arr[n]} bug
+      # for bash-3.1 ${#arr[n]} bug ... 一旦 rematch1 に入れてから ${#rematch1} で文字数を得る。
       local rematch1="${BASH_REMATCH[1]}"
       if [[ $rematch1 == *'&' ]]; then
-        ble-syntax/parse/nest-push "$CTX_RDRD" "${BASH_REMATCH[1]}"
+        ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch1"
       else
-        ble-syntax/parse/nest-push "$CTX_RDRF" "${BASH_REMATCH[1]}"
+        ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch1"
       fi
       ((_ble_syntax_attr[i]=ATTR_DEL,
         _ble_syntax_attr[i+${#rematch1}]=CTX_ARGX,
@@ -1214,7 +1237,7 @@ function ble-syntax/parse {
 
   # 解析
   for ((i=i1;i<iN;)); do
-    local _stat="$ctx $((wbegin<0?-1:i-wbegin)) $wtype $((inest<0?-1:i-inest))"
+    local _stat="$ctx $((wbegin<0?wbegin:i-wbegin)) $wtype $((inest<0?inest:i-inest))"
     if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == $_stat ]]; then
       if ble-syntax/parse/nest-equals "$inest"; then
 
@@ -1251,7 +1274,7 @@ function ble-syntax/parse {
 
   # 終端の状態の記録
   if ((i>=iN)); then
-    _ble_syntax_stat[iN]="$ctx $((wbegin<0?-1:iN-wbegin)) $wtype $((inest<0?-1:iN-inest))"
+    _ble_syntax_stat[iN]="$ctx $((wbegin<0?wbegin:iN-wbegin)) $wtype $((inest<0?inest:iN-inest))"
 
     # ネスト開始点のエラー表示は +syntax 内で。
     # ここで設定すると部分更新の際に取り消しできないから。
@@ -1849,9 +1872,11 @@ function ble-highlight-layer:syntax/update {
 
   _ble_edit_str.update-syntax
 
-  # local status
-  # ble-syntax/print-status -v status
-  # .ble-line-info.draw "$status"
+  if [[ $ble_debug ]]; then
+    local status
+    ble-syntax/print-status -v status
+    .ble-line-info.draw "$status"
+  fi
 
   local umin=-1 umax=-1
   # 少なくともこの範囲は文字が変わっているので再描画する必要がある
