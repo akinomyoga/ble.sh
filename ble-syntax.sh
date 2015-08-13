@@ -61,18 +61,60 @@ _ble_syntax_nest=()
 _ble_syntax_word=()
 _ble_syntax_attr=()
 
-function ble-syntax/print-status {
-  local _result=
+## @var[in,out] word
+function ble-syntax/print-status/tree-prepend {
+  local -i j="$1"
+  local t="$2"
+  tree[j]="$t${tree[j]}"
+  ((max_tree_width<${#tree[j]}&&(max_tree_width=${#tree[j]})))
+}
 
-  local i iN
+function ble-syntax/print-status {
+  local _result='A?'$'\n'
+
+  local -a tree char line
+  tree=()
+  char=()
+  line=()
+
+  local i iN max_tree_width=0
   for ((i=0,iN=${#_ble_syntax_text};i<iN;i++)); do
-    local attr="${_ble_syntax_attr[i]:-^}"
+    local attr="  ${_ble_syntax_attr[i]:-|}"
     if ((_ble_syntax_attr_umin<=i&&i<_ble_syntax_attr_uend)); then
-      attr="$attr*"
+      attr="${attr:${#attr}-2:2}*"
+    else
+      attr="${attr:${#attr}-2:2} "
     fi
 
+    local index="000$i"
+    index="${index:${#index}-3:3}"
+
     local word=(${_ble_syntax_word[i]})
-    [[ $word ]] && word=" word=${word[0]}:$((i+1-word[1]))-$((i+1))"
+    local tword=
+    if [[ $word ]]; then
+      local l="$((${#word[@]}/4))"
+      while ((--l>=0)); do
+        local axis=$((i+1))
+        local b="$((axis-word[4*l+1]))" e="$axis"
+        local _prev="${word[4*l+3]}" _child="${word[4*l+2]}"
+        if ((_prev>=0)); then
+          _prev="@$((axis-_prev-1))>"
+        else
+          _prev=
+        fi
+        if ((_child>=0)); then
+          _child=">@$((axis-_child-1))"
+        else
+          _child=
+        fi
+
+        tword=" word=${word[4*l]}:$_prev$b-$e$_child$tword"
+        for ((;b<i;b++)); do
+          ble-syntax/print-status/tree-prepend b '|'
+        done
+        ble-syntax/print-status/tree-prepend i '+'
+      done
+    fi
 
     local nest=(${_ble_syntax_nest[i]})
     if [[ $nest ]]; then
@@ -92,7 +134,14 @@ function ble-syntax/print-status {
       stat=" stat=(${stat[0]} w=$sword n=$snest)"
     fi
 
-    _result="$_result$i '${_ble_syntax_text:i:1}' attr=$attr$word$nest$stat"$'\n'
+    char[i]="$attr $index '${_ble_syntax_text:i:1}'"
+    line[i]="$tword$nest$stat"
+  done
+
+  _ble_util_string_prototype.reserve max_tree_width
+  for ((i=0;i<iN;i++)); do
+    local t="${tree[i]}${_ble_util_string_prototype::max_tree_width}"
+    _result="$_result${char[i]} ${t::max_tree_width}${line[i]}"$'\n'
   done
 
   if [[ $1 == -v && $2 ]]; then
@@ -156,16 +205,16 @@ function ble-syntax/parse/nest-push {
 }
 function ble-syntax/parse/nest-pop {
   ((inest<0)) && return 1
+
   local -a parent
   parent=(${_ble_syntax_nest[inest]})
-  local wlen nlen
+  local wlen="${parent[1]}" nlen="${parent[3]}" ntype="${parent[4]}" nbeg="$inest"
   ((ctx=parent[0]))
-  ((wlen=parent[1]))
   ((wtype=parent[2]))
-  ((nlen=parent[3]))
-  ((wbegin=wlen<0?wlen:inest-wlen))
-  ((inest=nlen<0?nlen:inest-nlen))
-  #echo pop inest=$inest
+  ((wbegin=wlen<0?wlen:nbeg-wlen))
+  ((inest=nlen<0?nlen:nbeg-nlen))
+
+  ble-syntax/parse/tree-append "$ntype" "$nbeg"
 }
 function ble-syntax/parse/nest-type {
   local _var=type
@@ -200,6 +249,41 @@ function ble-syntax/parse/nest-equals {
 #%)
     parent_inest="${onest[3]}"
   done
+}
+
+# _ble_syntax_word
+
+BLE_SYNTAX_TREENODE_WIDTH=4
+
+function ble-syntax/parse/tree-append {
+  local type="$1"
+  local beg="$2" end="$i"
+  local len="$((end-beg))"
+  ((len==0)) && return
+
+  # 子情報・兄情報
+  local ochild=-1 oprev=-1
+  local j pbeg=$((wbegin>=0?wbegin:(inest>=0?inest:0)))
+  for ((j=end;j>beg;j--)); do
+    if [[ ${_ble_syntax_word[j-1]} ]]; then
+      ochild=$((end-j))
+      break
+    fi
+  done
+  for ((j=beg;j>pbeg;j--)); do
+    if [[ ${_ble_syntax_word[j-1]} ]]; then
+      oprev=$((end-j))
+      break
+    fi
+  done
+
+  ble-syntax/parse/touch-updated-word "$i"
+  _ble_syntax_word[i-1]="$type $len $ochild $oprev ${_ble_syntax_word[i-1]}"
+}
+function ble-syntax/parse/tree-append-word {
+  local wb="$wbegin" wt="$wtype"
+  ((wbegin=-1,wtype=-1))
+  ble-syntax/parse/tree-append "$wt" "$wb"
 }
 
 # 属性値の変更範囲
@@ -321,7 +405,7 @@ function ble-syntax/parse/check-quotes {
       return 0
     fi
   fi
- 
+
   return 1
 }
 
@@ -392,7 +476,7 @@ function ble-syntax/parse/check-history-expansion {
       ((_ble_syntax_attr[i+1]=ATTR_ERR,i+=2))
       return 0
     fi
-    
+
     # word-designator
     [[ ${text:i} =~ $_ble_syntax_rex_histexpand_word ]] &&
       ((i+=${#BASH_REMATCH}))
@@ -525,14 +609,14 @@ function ble-syntax/parse/ctx-expr {
           ((i+=2))
           ble-syntax/parse/nest-pop
         else
-          ble-syntax/parse/nest-pop
           ((_ble_syntax_attr[i]=ATTR_ERR,
             i+=1))
+          ble-syntax/parse/nest-pop
         fi
         return 0
       elif [[ $type == '(' ]]; then
-        ble-syntax/parse/nest-pop
         ((_ble_syntax_attr[i]=ctx,i+=1))
+        ble-syntax/parse/nest-pop
         return 0
       else
         return 1
@@ -543,8 +627,8 @@ function ble-syntax/parse/ctx-expr {
       if [[ $type == '[' ]]; then
         # ((a[...]=123)) や $[...] などの場合。
         ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
-        ble-syntax/parse/nest-pop
         ((i++))
+        ble-syntax/parse/nest-pop
         return 0
       elif [[ $type == 'a[' ]]; then
         if [[ $tail == ']='* ]]; then
@@ -554,9 +638,9 @@ function ble-syntax/parse/ctx-expr {
             i+=2))
         else
           # a[...]... という唯のコマンドの場合。
+          ((_ble_syntax_attr[i]=CTX_EXPR,i++))
           ble-syntax/parse/nest-pop
-          ((_ble_syntax_attr[i]=CTX_EXPR,
-            i++,ctx=CTX_CMDI,wtype=CTX_CMDI))
+          ((ctx=CTX_CMDI,wtype=CTX_CMDI))
 
           # 入れ子構造などの情報が飛んでしまうので削除はしない。
           # if ((wbegin>=0)); then
@@ -577,9 +661,9 @@ function ble-syntax/parse/ctx-expr {
         return 0
       elif [[ $type == 'v[' ]]; then
         # ${v[]...} などの場合。
-        ble-syntax/parse/nest-pop
         ((_ble_syntax_attr[i]=CTX_EXPR,
           i++))
+        ble-syntax/parse/nest-pop
         return 0
       else
         return 1
@@ -645,18 +729,16 @@ function ble-syntax/parse/ctx-command/check-word-end {
   local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
   local word="${text:wbegin:wlen}"
 
-  ble-syntax/parse/touch-updated-word "$i"
-  _ble_syntax_word[i-1]="$wtype $wlen"
+  ble-syntax/parse/tree-append-word
 
   if ((ctx==CTX_CMDI)); then
     case "$word" in
     ('[[')
       # 条件コマンド開始
-      ble-syntax/parse/touch-updated-attr "$wbegin"
-      ((_ble_syntax_attr[wbegin]=ATTR_DEL,
+      ble-syntax/parse/touch-updated-attr "$wbeg"
+      ((_ble_syntax_attr[wbeg]=ATTR_DEL,
         ctx=CTX_ARGX0))
 
-      ((wbegin=-1,wtype=-1))
       i="$wbeg" ble-syntax/parse/nest-push "$CTX_VALX" '[['
       return 0 ;;
     (['!{']|'time'|'do'|'if'|'then'|'else'|'while'|'until')
@@ -675,7 +757,8 @@ function ble-syntax/parse/ctx-command/check-word-end {
 
         if [[ ${BASH_REMATCH[3]} ]]; then
           # 関数定義 (単語の種類を変更)
-          _ble_syntax_word[i-1]="$ATTR_FUNCDEF $wlen"
+          _ble_syntax_word[i-1]="$ATTR_FUNCDEF ${_ble_syntax_word[i-1]#* }"
+
           ((_ble_syntax_attr[i]=CTX_CMDX1,
             _ble_syntax_attr[i+${#rematch1}]=ATTR_DEL,
             ctx=CTX_CMDX1,
@@ -685,8 +768,8 @@ function ble-syntax/parse/ctx-command/check-word-end {
           #   仕方がないのでサブシェルと思って取り敢えず解析する
           ((_ble_syntax_attr[i]=CTX_ARGX0,
             i+=${#rematch1},
-            _ble_syntax_attr[i]=ATTR_ERR))
-          ((ctx=CTX_ARGX0,wbegin=-1,wtype=-1))
+            _ble_syntax_attr[i]=ATTR_ERR,
+            ctx=CTX_ARGX0))
           ble-syntax/parse/nest-push "$CTX_CMDX1" '('
           ((${#rematch2}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDX1),
             i+=${#rematch2}))
@@ -706,9 +789,8 @@ function ble-syntax/parse/ctx-command/check-word-end {
     #   local type
     #   ble-syntax/parse/nest-type -v type
     #   if [[ $type == '[[' ]]; then
-    #     ble-syntax/parse/touch-updated-attr "$wbegin"
-    #     ((_ble_syntax_attr[wbegin]=ATTR_CMD_KEYWORD))
-    #     ((wbegin=-1,wtype=-1))
+    #     ble-syntax/parse/touch-updated-attr "$wbeg"
+    #     ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
     #     ble-syntax/parse/nest-pop
     #     return 0
     #   else
@@ -722,7 +804,6 @@ function ble-syntax/parse/ctx-command/check-word-end {
     ((ctx=CTX_CMDXV))
   fi
 
-  ((wbegin=-1,wtype=-1))
   return 0
 }
 
@@ -739,7 +820,7 @@ function ble-syntax/parse/ctx-command {
          ctx==CTX_CMDX1||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%)
-    
+
     if rex="^[$_BLE_SYNTAX_CSPACE]+" && [[ $tail =~ $rex ]]; then
       # 空白 (ctx はそのままで素通り)
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
@@ -759,7 +840,7 @@ function ble-syntax/parse/ctx-command {
         _ble_syntax_attr[i+${#rematch1}]=CTX_ARGX,
         i+=${#BASH_REMATCH}))
       return 0
-      
+
       #■リダイレクト&プロセス置換では直前の ctx を覚えて置いて後で復元する。
     elif rex='^;;&?|^;&|^(&&|\|[|&]?)|^[;&]' && [[ $tail =~ $rex ]]; then
       # 制御演算子 && || | & ; |& ;; ;;&
@@ -891,11 +972,10 @@ function ble-syntax/parse/ctx-values/check-word-end {
   # 未だ続きがある場合は抜ける
   [[ ${text:i:1} == [^"$_BLE_SYNTAX_CSPACE;|&<>()"] ]] && return 1
 
-  local wlen="$((i-wbegin))" wend="$i"
+  local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
   local word="${text:wbegin:wlen}"
 
-  ble-syntax/parse/touch-updated-word "$i"
-  _ble_syntax_word[i-1]="$wtype $wlen"
+  ble-syntax/parse/tree-append-word
 
   ble-assert '((ctx==CTX_VALI))' 'invalid context'
   case "$word" in
@@ -904,9 +984,8 @@ function ble-syntax/parse/ctx-values/check-word-end {
     local type
     ble-syntax/parse/nest-type -v type
     if [[ $type == '[[' ]]; then
-      ble-syntax/parse/touch-updated-attr "$wbegin"
-      ((_ble_syntax_attr[wbegin]=ATTR_CMD_KEYWORD))
-      ((wbegin=-1,wtype=-1))
+      ble-syntax/parse/touch-updated-attr "$wbeg"
+      ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
       ble-syntax/parse/nest-pop
       return 0
     else
@@ -916,7 +995,6 @@ function ble-syntax/parse/ctx-values/check-word-end {
     ((ctx=CTX_VALX)) ;;
   esac
 
-  ((wbegin=-1,wtype=-1))
   return 0
 }
 
@@ -930,7 +1008,7 @@ function ble-syntax/parse/ctx-values {
     ((ctx==CTX_VALX)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%)
-    
+
     if rex="^[$_BLE_SYNTAX_CSPACE]+" && [[ $tail =~ $rex ]]; then
       # 空白 (ctx はそのままで素通り)
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
@@ -1022,10 +1100,8 @@ function ble-syntax/parse/ctx-redirect/check-word-end {
   local tail="${text:i}"
   [[ $tail == [^"$_BLE_SYNTAX_CSPACE;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
 
-  # 単語の長さの登録
-  _ble_syntax_word[i-1]="$wtype $((i-wbegin))"
-  ble-syntax/parse/touch-updated-word "$i"
-  ((wbegin=-1,wtype=-1))
+  # 単語の登録
+  ble-syntax/parse/tree-append-word
 
   # pop
   ble-syntax/parse/nest-pop
@@ -1129,6 +1205,7 @@ function ble-syntax/parse {
 #%)
 
   # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
+  local rex_word_data='^^[0-9]+[[:space:]]'
   local i j j2 jwbeg jnbeg jwlen jnlen
   local -a stat nest word
   for ((i=i2,j=j2=i2-shift;i<=iN;i++,j++)); do
@@ -1159,7 +1236,7 @@ function ble-syntax/parse {
       fi
     fi
 
-    if ((j>0)) && [[ ${_ble_syntax_word[j-1]} ]]; then
+    if ((j>0)) && [[ ${_ble_syntax_word[j-1]} =~ $rex_word_data ]]; then
       word=(${_ble_syntax_word[j-1]})
       ((jwbeg=j-word[1]))
 
@@ -1740,7 +1817,7 @@ function ble-highlight-layer:syntax/update-attribute-table {
       fi
       _ble_highlight_layer_syntax1_table[i]="$g"
     done
-    
+
     _ble_syntax_attr_umin=-1 _ble_syntax_attr_uend=-1
   fi
 }
@@ -1749,8 +1826,9 @@ function ble-highlight-layer:syntax/update-word-table {
   ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
   if ((_ble_syntax_word_umin>=0)); then
     local i g
+    local rex_word_data='^[0-9]+[[:space:]]'
     for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;i--)); do
-      if [[ ${_ble_syntax_word[i-1]} ]]; then
+      if [[ ${_ble_syntax_word[i-1]} =~ $rex_word_data ]]; then
         local -a word
         word=(${_ble_syntax_word[i-1]})
         local wbeg="$((i-word[1]))" wend="$i"
@@ -1833,7 +1911,7 @@ function ble-highlight-layer:syntax/update-error-table {
   # set errors
   if [[ ${_ble_syntax_stat[iN]} ]]; then
     local g; ble-color-face2g syntax_error
-    
+
     # 入れ子が閉じていないエラー
     local -a stat
     stat=(${_ble_syntax_stat[iN]})
@@ -2074,7 +2152,7 @@ mytest '[[ echo == echo ]]; echo hello'
 #   ? * @ + ! は name() の形式で定義できない。
 #   一応 name () と間に空白を挟めば定義できる。
 #   function ?() *() などとすると "?()" という名前で関数が作られる。
-# 
+#
 
 #%)
 #%#----------------------------------------------------------------------------
