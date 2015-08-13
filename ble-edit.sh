@@ -1531,7 +1531,7 @@ function _ble_edit_str.update-syntax {
     # _ble_syntax_stat[]
     # _ble_syntax_nest[]
     # _ble_syntax_attr[]
-    # _ble_syntax_word[]
+    # _ble_syntax_tree[]
     # _ble_syntax_attr_umin
     # _ble_syntax_attr_uend
     # _ble_syntax_word_umin
