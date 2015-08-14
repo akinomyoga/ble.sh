@@ -1,4 +1,4 @@
-# -*- mode:sh;eval:(sh-set-shell "bash") -*-
+# -*- mode:sh;mode:sh-bash -*-
 # bash script to be sourced from interactive shell
 
 : ${bleopt_input_encoding:=UTF-8}
@@ -14,6 +14,16 @@ shopt -s checkwinsize
 
 #------------------------------------------------------------------------------
 # util
+
+_ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
+function ble/util/assign {
+  local _var="$1"
+  shift
+  eval "$@" > "$_ble_util_read_stdout_tmp"
+  local _ret="$?"
+  IFS= read -r -d '' "$_var" < "$_ble_util_read_stdout_tmp"
+  return "$_ret"
+}
 
 if ((_ble_bash>=40100)); then
   function ble/util/sprintf {

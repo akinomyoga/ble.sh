@@ -865,7 +865,8 @@ function .ble-line-prompt/update/process-backslash {
   (j) #   ジョブの数
     if [[ ! $jobc ]]; then
       local joblist
-      IFS=$'\n' GLOBIGNORE='*' eval 'joblist=($(jobs))'
+      ble/util/assign joblist jobs
+      IFS=$'\n' GLOBIGNORE='*' eval 'joblist=($joblist)'
       jobc=${#joblist[@]}
     fi
     ble-edit/draw/put "$jobc" ;;
@@ -2998,14 +2999,26 @@ function ble-edit+discard-line {
   _ble_edit_line_disabled=1 .ble-edit/newline
 }
 
+## @var[out] hist_expanded
+function hist_expanded.initialize {
+  local BASH_COMMAND="$*"
+  if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
+    hist_expanded="$BASH_COMMAND"
+    return 0
+  elif ble/util/assign hist_expanded 'history -p -- "$BASH_COMMAND" 2>/dev/null;echo -n :'; then
+    hist_expanded="${hist_expanded%$_ble_term_nl:}"
+    return 0
+  else
+    return 1
+  fi
+}
+
 function ble-edit+accept-line {
   local BASH_COMMAND="$_ble_edit_str"
 
   # 履歴展開
   local hist_expanded
-  if hist_expanded="$(history -p -- "$BASH_COMMAND" 2>/dev/null;echo -n :)"; then
-    hist_expanded="${hist_expanded%$_ble_term_nl:}"
-  else
+  if ! hist_expanded.initialize "$BASH_COMMAND"; then
     .ble-edit-draw.set-dirty -1
     return
   fi
@@ -3017,7 +3030,7 @@ function ble-edit+accept-line {
     builtin echo "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $BASH_COMMAND" 1>&2
   fi
 
-  if [[ ${BASH_COMMAND//[ 	]/} ]]; then
+  if [[ ${BASH_COMMAND//[ 	]} ]]; then
     ((++_ble_edit_CMD))
 
     # 編集文字列を履歴に追加
@@ -3307,7 +3320,7 @@ function ble-edit+history-end {
 
 function ble-edit+history-expand-line {
   local hist_expanded
-  hist_expanded="$(history -p -- "$_ble_edit_str" 2>/dev/null)" || return
+  hist_expanded.initialize "$_ble_edit_str" || return
   [[ $_ble_edit_str == $hist_expanded ]] && return
 
   _ble_edit_str.reset "$hist_expanded"
