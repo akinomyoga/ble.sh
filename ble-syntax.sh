@@ -69,6 +69,11 @@ _ble_syntax_attr=()
 ## @var[in]  iN
 ## @var[out] tree,i,nofs
 function ble-syntax/tree-enumerate/.initialize {
+  if [[ ! ${_ble_syntax_stat[iN]} ]]; then
+    tree= i=-1 nofs=0
+    return
+  fi
+
   local -a stat nest
   stat=(${_ble_syntax_stat[iN]})
   local wtype="${stat[2]}"
@@ -83,7 +88,7 @@ function ble-syntax/tree-enumerate/.initialize {
 
   while
     if ((wlen>=0)); then
-      tree="$wtype $wlen $tclen $tplen ${tree[@]}"
+      tree="$wtype $wlen $tclen $tplen -- ${tree[@]}"
       tclen=0
     fi
     ((inest>=0))
@@ -96,7 +101,7 @@ function ble-syntax/tree-enumerate/.initialize {
     tplen="${nest[4]}"
     ((tplen>=0&&(tplen+=olen)))
 
-    tree="${nest[6]} $olen $tclen $tplen ${tree[@]}"
+    tree="${nest[6]} $olen $tclen $tplen -- ${tree[@]}"
 
     wtype="${nest[2]}" wlen="${nest[1]}" nlen="${nest[3]}" tclen=0 tplen="${nest[5]}"
     ((wlen>=0&&(wlen+=olen),
@@ -115,6 +120,10 @@ function ble-syntax/tree-enumerate/.initialize {
   ((nofs=0))
 }
 
+## 関数 ble-syntax/tree-enumerate/.impl
+## @arg[in] command...
+##   @var[in]     wtype,wbegin,wlen,attr,tchild
+##   @var[in,out] tprev
 ## @var[in] iN
 ## @var[in] tree,i,nofs
 function ble-syntax/tree-enumerate/.impl {
@@ -124,16 +133,18 @@ function ble-syntax/tree-enumerate/.impl {
     if ((i<iN)); then
       node=(${_ble_syntax_tree[i-1]})
     else
-      node=($tree)
+      node=(${tree:-${_ble_syntax_tree[iN-1]}})
     fi
 
-    local wtype="${node[nofs]}" wlen="${node[nofs+1]}" tclen="${node[nofs+2]}" tplen="${node[nofs+3]}"
+    ((nofs>=${#node[@]})) && echo "$FUNCNAME(i=$i,iN=$iN,nofs=$nofs,node=${node[*]},command=$@)/FATAL1" >&2 && break
+
+    local wtype="${node[nofs]}" wlen="${node[nofs+1]}" tclen="${node[nofs+2]}" tplen="${node[nofs+3]}" attr="${node[nofs+4]}"
     local wbegin="$((wlen<0?wlen:i-wlen))"
     local tchild="$((tclen<0?tclen:i-tclen))"
     local tprev="$((tplen<0?tplen:i-tplen))"
-    "$1"
+    "$@"
 
-    ((tprev>=i)) && echo "$FUNCNAME/FATAL1" && break
+    ((tprev>=i)) && echo "$FUNCNAME/FATAL2" >&2 && break
 
     ((i=tprev,nofs=0,islast=0))
   done
@@ -143,18 +154,15 @@ function ble-syntax/tree-enumerate/.impl {
 ## @var[in] tree,i,nofs
 ## @var[in] tchild
 function ble-syntax/tree-enumerate-children {
-  if ((tchild>=0)); then
-    local nofs="$((i==tchild?nofs+BLE_SYNTAX_TREE_WIDTH:0))"
-    local i="$tchild"
-    ble-syntax/tree-enumerate/.impl "$1"
-  fi
+  ((0<tchild&&tchild<=i)) || return
+  local nofs="$((i==tchild?nofs+BLE_SYNTAX_TREE_WIDTH:0))"
+  local i="$tchild"
+  ble-syntax/tree-enumerate/.impl "$@"
 }
 function ble-syntax/tree-enumerate {
-  local iN="${#_ble_syntax_text}"
-
   local tree i nofs
   ble-syntax/tree-enumerate/.initialize
-  ble-syntax/tree-enumerate/.impl "$1"
+  ble-syntax/tree-enumerate/.impl "$@"
 }
 
 #--------------------------------------
@@ -167,19 +175,26 @@ function ble-syntax/print-status/.tree-prepend {
   tree[j]="$t${tree[j]}"
   ((max_tree_width<${#tree[j]}&&(max_tree_width=${#tree[j]})))
 }
+## @var[in] iN
 function ble-syntax/print-status/.dump-arrays {
   local -a tree char line
   tree=()
   char=()
   line=()
 
-  local i iN max_tree_width=0
-  for ((i=0,iN=${#_ble_syntax_text};i<iN;i++)); do
+  local i max_tree_width=0
+  for ((i=0;i<iN;i++)); do
     local attr="  ${_ble_syntax_attr[i]:-|}"
     if ((_ble_syntax_attr_umin<=i&&i<_ble_syntax_attr_uend)); then
       attr="${attr:${#attr}-2:2}*"
     else
       attr="${attr:${#attr}-2:2} "
+    fi
+
+    if [[ ${_ble_syntax_stat_shift[i]} ]]; then
+      attr="${attr}s"
+    else
+      attr="${attr} "
     fi
 
     local index="000$i"
@@ -188,7 +203,7 @@ function ble-syntax/print-status/.dump-arrays {
     local word=(${_ble_syntax_tree[i]})
     local tword=
     if [[ $word ]]; then
-      local nofs="$((${#word[@]}/4*4))"
+      local nofs="$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))"
       while (((nofs-=BLE_SYNTAX_TREE_WIDTH)>=0)); do
         local axis=$((i+1))
         local b="$((axis-word[nofs+1]))" e="$axis"
@@ -248,6 +263,7 @@ function ble-syntax/print-status/.dump-tree/proc1 {
   resultB="$prefix\_ '${_ble_syntax_text:wbegin:wlen}'$nl$resultB"
 }
 
+## @var[in] iN
 function ble-syntax/print-status/.dump-tree {
   resultB=
 
@@ -257,6 +273,8 @@ function ble-syntax/print-status/.dump-tree {
 }
 
 function ble-syntax/print-status {
+  local iN="${#_ble_syntax_text}"
+
   local resultA
   ble-syntax/print-status/.dump-arrays
 
@@ -315,7 +333,7 @@ function ble-syntax/parse/generate-stat {
 
 # 構文木の管理 (_ble_syntax_tree)
 
-BLE_SYNTAX_TREE_WIDTH=4
+BLE_SYNTAX_TREE_WIDTH=5
 
 function ble-syntax/parse/tree-append {
   local type="$1"
@@ -328,8 +346,8 @@ function ble-syntax/parse/tree-append {
   ((tchild>=0&&(ochild=i-tchild)))
   ((tprev>=0&&(oprev=i-tprev)))
 
-  ble-syntax/parse/touch-updated-word "$i"
-  _ble_syntax_tree[i-1]="$type $len $ochild $oprev ${_ble_syntax_tree[i-1]}"
+  [[ $type =~ ^[0-9]+$ ]] && ble-syntax/parse/touch-updated-word "$i"
+  _ble_syntax_tree[i-1]="$type $len $ochild $oprev - ${_ble_syntax_tree[i-1]}"
 }
 
 function ble-syntax/parse/word-push {
@@ -793,22 +811,6 @@ function ble-syntax/parse/ctx-expr {
           ((_ble_syntax_attr[i]=CTX_EXPR,i++))
           ble-syntax/parse/nest-pop
           ((ctx=CTX_CMDI,wtype=CTX_CMDI))
-
-          # 入れ子構造などの情報が飛んでしまうので削除はしない。
-          # if ((wbegin>=0)); then
-          #   ble-syntax/parse/touch-updated-attr "$wbegin"
-
-          #   # 式としての解釈を取り消し。
-          #   local j
-          #   for ((j=wbegin+1;j<i;j++)); do
-          #     _ble_syntax_stat[j]=
-          #     _ble_syntax_tree[j-1]=
-          #     _ble_syntax_attr[j]=
-          #   done
-
-          #   # コマンド
-          #   ((_ble_syntax_attr[wbegin]=CTX_CMDI))
-          # fi
         fi
         return 0
       elif [[ $type == 'v[' ]]; then
@@ -1311,76 +1313,150 @@ function ble-syntax/parse/ctx-redirect {
 #------------------------------------------------------------------------------
 # 解析部
 
-## @var[in] i1,i2,j2,iN
-## @var[in] beg,end,end0
-function ble-syntax/parse/shift {
-  # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
-  local i j
-  local -a stat nest node
-  local nofs k klen kbeg
-  for ((i=i2,j=j2;i<=iN;i++,j++)); do
-    # 注意: データの範囲
-    #   stat[i]   は i in [0,iN]
-    #   attr[i]   は i in [0,iN)
-    #   tree[i-1] は i in (0,iN]
-    if [[ ${_ble_syntax_stat[j]} ]]; then
-      stat=(${_ble_syntax_stat[j]})
+## @var[in] j
+## @var[in] beg,end,end0,shift
+function ble-syntax/parse/shift.stat {
+  if [[ ${_ble_syntax_stat[j]} ]]; then
+    local -a stat
+    stat=(${_ble_syntax_stat[j]})
 
-      for k in 1 3 4 5; do
-        (((klen=stat[k])<0)) && continue
-        ((kbeg=j-klen))
-        if ((kbeg<beg)); then
-          ((stat[k]+=shift))
-        elif ((kbeg<end0)); then
-          ((stat[k]-=end0-kbeg))
-        fi
-      done
+    local k klen kbeg
+    for k in 1 3 4 5; do
+      (((klen=stat[k])<0)) && continue
+      ((kbeg=j-klen))
+      if ((kbeg<beg)); then
+        ((stat[k]+=shift))
+      elif ((kbeg<end0)); then
+        ((stat[k]-=end0-kbeg))
+      fi
+    done
 
-      _ble_syntax_stat[j]="${stat[*]}"
+    _ble_syntax_stat[j]="${stat[*]}"
+  fi
+}
+
+## @var[in] node,j,nofs
+## @var[in] beg,end,end0,shift
+function ble-syntax/parse/shift.tree/1 {
+  local k klen kbeg
+  for k in 1 2 3; do
+    (((klen=node[nofs+k])<0||(kbeg=j-klen)>end0)) && continue
+    # 長さが変化した時 (k==1)、または構文木の距離変化があった時 (k==2, k==3) にここへ来る。
+
+    # (1) 単語の中身が変化した事を記録
+    #   node の中身が書き換わった時 (wbegin < end0 の時):
+    #   dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
+    if [[ $k == 1 && ${node[nofs]} =~ ^[0-9]$ ]]; then
+      ble-syntax/parse/touch-updated-word "$j"
+
+      # 着色情報を clear
+      node[nofs+4]='-'
     fi
 
-    if ((j>0)) && [[ ${_ble_syntax_tree[j-1]} ]]; then
-      node=(${_ble_syntax_tree[j-1]})
-
-      for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
-        for k in 1 2 3; do
-          (((klen=node[nofs+k])<0||(kbeg=j-klen)>end0)) && continue
-          # 長さが変化した時 (k==1)、または構文木の距離変化があった時 (k==2, k==3) にここへ来る。
-
-          # (1) 単語の中身が変化した事を記録
-          #   node の中身が書き換わった時 (wbegin < end0 の時):
-          #   dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
-          [[ $k == 1 && ${node[nofs]} =~ ^[0-9]$ ]] && ble-syntax/parse/touch-updated-word "$j"
-
-          # (1) 長さ・相対位置の補正
-          if ((kbeg<beg)); then
-            ((node[nofs+k]+=shift))
-          elif ((kbeg<end0)); then
-            ((node[nofs+k]-=end0-kbeg))
-          fi
-        done
-      done
-
-      _ble_syntax_tree[j-1]="${node[*]}"
-    fi
-
-    # stat の先頭以外でも nest-push している
-    #   @ ctx-command/check-word-begin の "関数名 ( " にて。
-    if ((i<iN)) && [[ ${_ble_syntax_nest[j]} ]]; then
-      nest=(${_ble_syntax_nest[j]})
-
-      for k in 1 3 4 5; do
-        (((klen=nest[1])<0||(kbeg=j-klen)<0)) && continue
-        if ((kbeg<beg)); then
-          ((nest[k]+=shift))
-        elif ((kbeg<end0)); then
-          ((nest[k]-=end0-kbeg))
-        fi
-      done
-
-      _ble_syntax_nest[j]="${nest[*]}"
+    # (1) 長さ・相対位置の補正
+    if ((kbeg<beg)); then
+      ((node[nofs+k]+=shift))
+    elif ((kbeg<end0)); then
+      ((node[nofs+k]-=end0-kbeg))
     fi
   done
+}
+
+## @var[in] j
+## @var[in] beg,end,end0,shift
+function ble-syntax/parse/shift.tree {
+  [[ ${_ble_syntax_tree[j-1]} ]] || return
+  local -a node
+  node=(${_ble_syntax_tree[j-1]})
+
+  local nofs
+  if [[ $1 ]]; then
+    nofs="$1" ble-syntax/parse/shift.tree/1
+  else
+    for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
+      ble-syntax/parse/shift.tree/1
+    done
+  fi
+
+  _ble_syntax_tree[j-1]="${node[*]}"
+}
+
+## @var[in] j
+## @var[in] beg,end,end0,shift
+function ble-syntax/parse/shift.nest {
+  # stat の先頭以外でも nest-push している
+  #   @ ctx-command/check-word-begin の "関数名 ( " にて。
+  if [[ ${_ble_syntax_nest[j]} ]]; then
+    local -a nest
+    nest=(${_ble_syntax_nest[j]})
+
+    local k klen kbeg
+    for k in 1 3 4 5; do
+      (((klen=nest[1])<0||(kbeg=j-klen)<0)) && continue
+      if ((kbeg<beg)); then
+        ((nest[k]+=shift))
+      elif ((kbeg<end0)); then
+        ((nest[k]-=end0-kbeg))
+      fi
+    done
+
+    _ble_syntax_nest[j]="${nest[*]}"
+  fi
+}
+
+# 実装中
+function ble-syntax/parse/shift.impl2/.proc1 {
+  while ((j>=end0)); do
+    if ((j==i)); then
+      ble-syntax/parse/shift.tree "$nofs"
+
+      if (((tprev<=end0||wbegin<=end0)&&tchild>=0)); then
+        # tprev<=end0 の場合、stat の中の tplen が shift 対象の可能性がある。
+        ble-syntax/tree-enumerate-children ble-syntax/parse/shift.impl2/.proc1
+      else
+        [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
+        ble-syntax/parse/shift.stat
+        ble-syntax/parse/shift.nest
+        ((j=wbegin)) # skip
+      fi
+      return
+    else
+      [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
+      ble-syntax/parse/shift.stat
+      ble-syntax/parse/shift.nest
+      ((j--))
+    fi
+  done
+
+  ((tprev=-1)) # 中断
+}
+
+## @var[in] i1,i2,j2,iN
+## @var[in] beg,end,end0,shift
+function ble-syntax/parse/shift {
+  # ※shift==0 でも更新で消滅した部分を縮める必要があるので
+  #   shift 実行する必要がある。
+
+  local ble_shift_method=2
+  if [[ $ble_shift_method == 1 ]]; then
+    # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
+    local i j
+    for ((i=i2,j=j2;i<=iN;i++,j++)); do
+      # 注意: データの範囲
+      #   stat[i]   は i in [0,iN]
+      #   attr[i]   は i in [0,iN)
+      #   tree[i-1] は i in (0,iN]
+      ble-syntax/parse/shift.stat
+      ((j>0))  && ble-syntax/parse/shift.tree
+      ((i<iN)) && ble-syntax/parse/shift.nest
+    done
+  else
+    [[ $ble_debug ]] && _ble_syntax_stat_shift=()
+
+    local iN="${#_ble_syntax_text}"
+    local j="$iN"
+    ble-syntax/tree-enumerate ble-syntax/parse/shift.impl2/.proc1
+  fi
 
   if ((shift!=0)); then
     # 更新範囲の shift
@@ -1394,7 +1470,6 @@ function ble-syntax/parse/shift {
          ++_ble_syntax_word_umin>_ble_syntax_word_umax&&
          (_ble_syntax_word_umin=_ble_syntax_word_umax=-1)))
   fi
-  # .ble-line-info.draw-text "diry-range $beg-$end extended-dirty-range $i1-$i2"
 }
 
 _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
@@ -1433,8 +1508,6 @@ function ble-syntax/parse {
   local -r beg="${2:-0}" end="${3:-${#text}}"
   local -r end0="${4:-$end}"
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
-
-  _ble_syntax_text="$text"
 
   # 解析予定範囲の更新
   local -ir iN="${#text}" shift=end-end0
@@ -1491,6 +1564,7 @@ function ble-syntax/parse {
   _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
 
   # 解析
+  _ble_syntax_text="$text"
   local i _stat
   for ((i=i1;i<iN;)); do
     ble-syntax/parse/generate-stat
@@ -1996,56 +2070,143 @@ function ble-highlight-layer:syntax/update-attribute-table {
     _ble_syntax_attr_umin=-1 _ble_syntax_attr_uend=-1
   fi
 }
-function ble-highlight-layer:syntax/update-word-table {
-  # update table2 (単語の削除に関しては後で考える)
-  ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
-  if ((_ble_syntax_word_umin>=0)); then
-    local i g
-    local rex_word_data='^[0-9]+[[:space:]]'
-    for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;i--)); do
-      if [[ ${_ble_syntax_tree[i-1]} =~ $rex_word_data ]]; then
-        local -a word
-        word=(${_ble_syntax_tree[i-1]})
-        local wbeg="$((i-word[1]))" wend="$i"
-        local wtxt="${text:wbeg:word[1]}"
-        local set=
-        if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
-          local value type=
 
-          # 単語を展開
-          if [[ $wtxt == '['* ]]; then
-            # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
-            eval "value=(''$wtxt)"
-          else
-            # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
-            eval "value=($wtxt)"
-          fi
+## @var[in,out] umin,umax
+function ble-highlight/urange-update {
+  local prefix=
+  if [[ $1 == --prefix=* ]]; then
+    prefix=${1#--prefix=}
+    shift
+  fi
 
-          if ((word[0]==CTX_CMDI)); then
-            ble-syntax/highlight/cmdtype "$value" "$wtxt"
-          elif ((word[0]==CTX_ARGI||word[0]==CTX_RDRF)); then
-            ble-syntax/highlight/filetype "$value" "$wtxt"
+  local -i p1="$1" p2="${2:-$1}"
+  (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
+    (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
+}
 
-            # エラー: ディレクトリにリダイレクトはできない
-            ((word[0]==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
-          elif ((word[0]==ATTR_FUNCDEF)); then
-            ((type=ATTR_FUNCDEF))
-          fi
+## 関数 ble-highlight-layer:syntax/word/.update-attributes
+## @var[in] _ble_syntax_word_umin,_ble_syntax_word_umax
+## @var[in,out] color_umin,color_umax
+function ble-highlight-layer:syntax/word/.update-attributes {
+  ((_ble_syntax_word_umin>=0)) || return
 
-          if [[ $type ]]; then
-            ble-syntax/attr2g "$type"
-            ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$g"
-            set=1
-          fi
+  local -a node
+  local i nofs
+  for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;i--)); do
+    ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]] || continue
+    node=(${_ble_syntax_tree[i-1]})
+    local flagNodeSet=
+    for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
+      [[ ${node[nofs]} =~ ^[0-9]+$ ]] || continue
+      [[ ${node[nofs+4]} == - ]] || continue
+      local wtype="${node[nofs]}"
+      local wlen="${node[nofs+1]}"
+      local wbeg="$((wlen<0?wlen:i-wlen))" wend="$i"
+      local wtxt="${text:wbeg:wlen}"
+      ble-highlight/urange-update --prefix=color_ "$wbeg" "$wend"
+      if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
+
+        # 単語を展開
+        local value
+        if [[ $wtxt == '['* ]]; then
+          # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
+          eval "value=(''$wtxt)"
+        else
+          # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
+          eval "value=($wtxt)"
         fi
 
-        [[ $set ]] || ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
+        local type=
+        if ((wtype==CTX_CMDI)); then
+          ble-syntax/highlight/cmdtype "$value" "$wtxt"
+        elif ((wtype==CTX_ARGI||wtype==CTX_RDRF)); then
+          ble-syntax/highlight/filetype "$value" "$wtxt"
 
-        ble-highlight-layer:syntax/touch-range "$wbeg" "$wend"
+          # エラー: ディレクトリにリダイレクトはできない
+          ((wtype==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
+        elif ((wtype==ATTR_FUNCDEF)); then
+          ((type=ATTR_FUNCDEF))
+        fi
+
+        if [[ $type ]]; then
+          local g
+          ble-syntax/attr2g "$type"
+          node[nofs+4]="$g"
+          # ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$g"
+        else
+          node[nofs+4]='d'
+        fi
+        flagNodeSet=1
       fi
     done
-    _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
+
+    [[ $flagNodeSet ]] && _ble_syntax_tree[i-1]="${node[*]}"
+  done
+}
+
+function ble-highlight-layer:syntax/word/.apply-attribute {
+  local wbeg="$1" wend="$2" attr="$3"
+  ((wbeg<color_umin&&(wbeg=color_umin),
+    wend>color_umax&&(wend=color_umax),
+    wbeg<wend)) || return
+
+  if [[ $attr =~ ^[0-9]+$ ]]; then
+    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$attr"
+  else
+    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
   fi
+}
+
+function ble-highlight-layer:syntax/word/.proc-childnode {
+  if [[ $wtype =~ ^[0-9]+$ ]]; then
+    local wbeg="$wbegin" wend="$i"
+    ble-highlight-layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
+  fi
+
+  ((tchild>=0)) && ble-syntax/tree-enumerate-children "$proc_children"
+}
+
+## @var[in,out] _ble_syntax_word_umin,_ble_syntax_word_umax
+function ble-highlight-layer:syntax/update-word-table {
+  # update table2 (単語の削除に関しては後で考える)
+
+  # (1) 単語色の計算
+  local color_umin=-1 color_umax=-1 iN="${#_ble_syntax_text}"
+  ble-highlight-layer:syntax/word/.update-attributes
+
+  # (2) 色配列 shift
+  ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
+
+  # (3) 色配列に登録
+  local i
+  for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;)); do
+    if ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]]; then
+      local -a node
+      node=(${_ble_syntax_tree[i-1]})
+
+      local wlen="${node[1]}"
+      local wbeg="$((i-wlen))" wend="$i"
+
+      if [[ ${node[0]} =~ ^[0-9]+$ ]]; then
+        local attr="${node[4]}"
+        ble-highlight-layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
+      fi
+
+      local tclen="${node[2]}"
+      if ((tclen>=0)); then
+        local tchild="$((i-tclen))"
+        local tree= nofs=0 proc_children=ble-highlight-layer:syntax/word/.proc-childnode
+        ble-syntax/tree-enumerate-children "$proc_children"
+      fi
+
+      ((i=wbeg))
+    else
+      ((i--))
+    fi
+  done
+  ((color_umin>=0)) && ble-highlight-layer:syntax/touch-range "$color_umin" "$color_umax"
+
+  _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
 }
 
 function ble-highlight-layer:syntax/update-error-table/set {
