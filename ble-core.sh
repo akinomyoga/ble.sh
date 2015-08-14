@@ -16,12 +16,11 @@ shopt -s checkwinsize
 # util
 
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
+# function ble/util/assign { eval "$1=\"\$(${@:2})\""; }
 function ble/util/assign {
-  local _var="$1"
-  shift
-  eval "$@" > "$_ble_util_read_stdout_tmp"
+  eval "${@:2}" > "$_ble_util_read_stdout_tmp"
   local _ret="$?"
-  IFS= read -r -d '' "$_var" < "$_ble_util_read_stdout_tmp"
+  IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
   return "$_ret"
 }
 
@@ -31,12 +30,16 @@ if ((_ble_bash>=40100)); then
   }
 else
   function ble/util/sprintf {
-    local _var="$1"
-    shift
-    local _value="$(printf "$@")"
-    eval "$_var=\"\$_value\""
+    local -a _args
+    _args=("${@:2}")
+    ble/util/assign "$1" 'printf "${_args[@]}"'
   }
 fi
+
+function ble/util/type {
+  _cmd="$2" ble/util/assign "$1" 'builtin type -t "$_cmd" 2>/dev/null'
+  eval "$1=\"\${$1%$_ble_term_nl}\""
+}
 
 if ((_ble_bash>=30200)); then
   function ble/util/isfunction {
@@ -46,7 +49,9 @@ else
   # bash-3.1 has bug in declare -f.
   # it does not accept a function name containing non-alnum chars.
   function ble/util/isfunction {
-    [[ $(type -t $1) == function ]]
+    local type
+    ble/util/type type "$1"
+    [[ $type == function ]]
   }
 fi
 

@@ -815,6 +815,14 @@ function .ble-line-prompt/update/append {
   fi
   ble-edit/draw/put "$text"
 }
+function .ble-line-prompt/update/process-text {
+  local text="$1" a b
+  if [[ $text == *['"`!']* ]]; then
+    a='"' b='\"' text="${text//"$a"/$b}"
+    a='!' b='\!' text="${text//"$a"/$b}"
+  fi
+  ble-edit/draw/put "$text"
+}
 
 ## 関数 .ble-line-prompt/update/process-backslash
 ##   @var[in]     tail
@@ -988,7 +996,7 @@ function .ble-line-prompt/update {
     if [[ $tail == '\'?* ]]; then
       .ble-line-prompt/update/process-backslash
     elif [[ $tail =~ $rex_letters ]]; then
-      .ble-line-prompt/update/append "$BASH_REMATCH"
+      .ble-line-prompt/update/process-text "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
     else
       # ? ここには本来来ないはず。

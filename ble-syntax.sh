@@ -1904,15 +1904,15 @@ function ble-syntax/highlight/cmdtype1 {
 
 function ble-syntax/highlight/cmdtype2 {
   local cmd="$1" _0="$2"
-  local btype; ble/util/assign btype 'builtin type -t "$cmd" 2>/dev/null'
-  ble-syntax/highlight/cmdtype1 "${btype%$_ble_term_nl}" "$cmd"
+  local btype; ble/util/type btype "$cmd"
+  ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
   if [[ $type == $ATTR_CMD_ALIAS && "$cmd" != "$_0" ]]; then
     # alias を \ で無効化している場合
     # → unalias して再度 check (2fork)
     type=$(
       unalias "$cmd"
-      ble/util/assign btype 'builtin type -t "$cmd" 2>/dev/null'
-      ble-syntax/highlight/cmdtype1 "${btype%$_ble_term_nl}" "$cmd"
+      ble/util/type btype "$cmd"
+      ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
       echo -n "$type")
   elif [[ $type = $ATTR_CMD_KEYWORD && "$cmd" != "$_0" ]]; then
     # keyword (time do if function else elif fi の類) を \ で無効化している場合
