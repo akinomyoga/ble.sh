@@ -200,14 +200,7 @@ bashbug: 実装上で注意するべき事
 
 2015-08-14
 
-  * leak variables: cs g ps1out
-    > rex=$'^([ \t]*)(\\([ \t]*(\\))?)?'
-    > rmax=-1 rmin=-1
-    type='$('
-    tchild=11
-    tprev=-1
-    wbegin=-1
-    wtype=-1
+  * [memo] leak variables check
 
     set | sort | sed -e '/()[[:space:]]*$\|^_\{0,1\}\(BLE\|ble\)/d' -e '/^[[:alnum:]_]\{1,\}=/!d' > a.txt
 
@@ -1094,6 +1087,17 @@ bashbug: 実装上で注意するべき事
 -------------------------------------------------------------------------------
 
 2015-08-14
+
+  * leak variables
+
+    > cs ps1out                             # local 宣言忘れ
+    > rex=$'^([ \t]*)(\\([ \t]*(\\))?)?'    # local rex 宣言忘れ
+    > rmax=-1 rmin=-1                       # local rmax rmin 宣言忘れ
+    > type='$('                             # parse/nest-type -v type 前に local type 忘れ
+    > tchild=11 tprev=-1 wbegin=-1 wtype=-1 # parse/nest-pop を parse の外側で呼び出していたのが原因
+
+    現在 g が leak している事が分かっているが、使用箇所が分散している為に見つけるのが面倒。
+    → g も処理した。
 
   * [2015-08-13] _ble_syntax_tree (旧 _ble_syntax_word): 入れ子構造を記録する様に変更
 

@@ -1065,7 +1065,7 @@ function .ble-line-text/update/position {
       local w="${#BASH_REMATCH}"
       local n
       for ((n=i+w;i<n;i++)); do
-        cs="${text:i:1}"
+        local cs="${text:i:1}"
         if (((++x==cols)&&(y++,x=0,xenl))); then
           cs="$cs$_ble_term_nl"
           ble/util/array-push _ble_line_text_cache_ichg "$i"
@@ -1433,7 +1433,7 @@ function .ble-line-info.draw/impl {
   # 内容の構築
   case "$1" in
   (raw)
-    local lc=32 lg=0
+    local lc=32 lg=0 g=0
     ble-edit/draw/trace "$text"
     ble-edit/draw/sflush -v content ;;
   (text)
@@ -1775,7 +1775,7 @@ function .ble-edit-draw.update {
 
   local ret
 
-  local x y lc lg=0
+  local x y g lc lg=0
   .ble-line-prompt/update # x y lc ret
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
