@@ -785,7 +785,18 @@ function .ble-line-prompt/initialize {
 ##     それ以外の時はこの値は使われません。
 ##   @var _ble_line_prompt[6]    ps1out
 ##     prompt を表示する為に出力する制御シーケンスを含んだ文字列です。
-_ble_line_prompt=("" 0 0 0 32 0 "")
+##   @var _ble_line_prompt[7]    ps1esc
+##     調整前の ps1out を格納します。ps1out の計算を省略する為に使用します。
+_ble_line_prompt=("" 0 0 0 32 0 "" "")
+
+function _ble_line_prompt.load {
+  x="${_ble_line_prompt[1]}"
+  y="${_ble_line_prompt[2]}"
+  g="${_ble_line_prompt[3]}"
+  lc="${_ble_line_prompt[4]}"
+  lg="${_ble_line_prompt[5]}"
+  ret="${_ble_line_prompt[6]}"
+}
 
 ## 関数 .ble-line-prompt/update/append text
 ##   指定された文字列を "" 内に入れる為のエスケープをして出力します。
@@ -795,7 +806,7 @@ _ble_line_prompt=("" 0 0 0 32 0 "")
 ##     出力先の配列です。
 function .ble-line-prompt/update/append {
   local text="$1" a b
-  if [[ $text =~ *['$\"`!']* ]]; then
+  if [[ $text == *['$\"`!']* ]]; then
     a='\' b='\\' text="${text//"$a"/$b}"
     a='$' b='\$' text="${text//"$a"/$b}"
     a='"' b='\"' text="${text//"$a"/$b}"
@@ -812,99 +823,133 @@ function .ble-line-prompt/update/process-backslash {
   ((i+=2))
 
   # \\ の次の文字
-  local c="${tail:1:1}"
-  case "$c" in
-  (\[) ble-edit/draw/put $'\e[99s' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
-  (\]) ble-edit/draw/put $'\e[99u' ;;
-  ('#') # コマンド番号 (本当は history に入らない物もある…)
-    ble-edit/draw/put "$_ble_edit_CMD" ;;
-  (\!) # 履歴番号
-    local count
-    .ble-edit/history/getcount -v count
-    ble-edit/draw/put "$count" ;;
-  ([0-7]) # 8進表現
-    local rex='^\\[0-7]{1,3}'
-    if [[ $tail =~ $rex ]]; then
-      local seq="${BASH_REMATCH[0]}"
-      ((i+=${#seq}-2))
-      eval "c=\$'$seq'"
-    fi
-    .ble-line-prompt/update/append "$c" ;;
-  (a) # 0 BEL
-    ble-edit/draw/put "" ;;
-  (d) # ? 日付
-    [[ $date_d ]] || ble/util/strftime -v date_d '%a %b %d'
-    .ble-line-prompt/update/append "$date_d" ;;
-  (t) # 8 時刻
-    [[ $date_t ]] || ble/util/strftime -v date_t '%H:%M:%S'
-    .ble-line-prompt/update/append "$date_t" ;;
-  (A) # 5 時刻
-    [[ $date_A ]] || ble/util/strftime -v date_A '%H:%M'
-    .ble-line-prompt/update/append "$date_A" ;;
-  (T) # 8 時刻
-    [[ $date_T ]] || ble/util/strftime -v date_T '%I:%M:%S'
-    .ble-line-prompt/update/append "$date_T" ;;
-  ('@')  # ? 時刻
-    [[ $date_at ]] || ble/util/strftime -v date_at '%I:%M %p'
-    .ble-line-prompt/update/append "$date_at" ;;
-  (D)
-    local rex='^\\D\{([^{}]*)\}' date_D
-    if [[ $tail =~ $rex ]]; then
-      ble/util/strftime -v date_D "${BASH_REMATCH[1]}"
-      .ble-line-prompt/update/append "$date_D"
-      ((i+=${#BASH_REMATCH}-2))
-    else
-      .ble-line-prompt/update/append "\\$c"
-    fi ;;
-  (e) 
-    ble-edit/draw/put $'\e' ;;
-  (h) # = ホスト名
-    .ble-line-prompt/update/append "$_ble_cursor_prompt__string_h" ;;
-  (H) # = ホスト名
-    .ble-line-prompt/update/append "$_ble_cursor_prompt__string_H" ;;
-  (j) #   ジョブの数
-    if [[ ! $jobc ]]; then
-      local joblist
-      ble/util/assign joblist jobs
-      IFS=$'\n' GLOBIGNORE='*' eval 'joblist=($joblist)'
-      jobc=${#joblist[@]}
-    fi
-    ble-edit/draw/put "$jobc" ;;
-  (l) #   tty basename
-    .ble-line-prompt/update/append "$_ble_cursor_prompt__string_l" ;;
-  (n)
-    ble-edit/draw/put $'\n' ;;
-  (r)
-    ble-edit/draw/put "$_ble_term_cr" ;;
-  (s) # 4 "bash"
-    .ble-line-prompt/update/append "$_ble_cursor_prompt__string_s" ;;
-  (u) # = ユーザ名
-    .ble-line-prompt/update/append "$_ble_cursor_prompt__string_u" ;;
-  (v) # = bash version %d.%d
-    .ble-line-prompt/update/append "$_ble_cursor_prompt__string_w" ;;
-  (V) # = bash version %d.%d.%d
-    .ble-line-prompt/update/append "$_ble_cursor_prompt__string_V" ;;
-  (w) # PWD
-    .ble-line-prompt/update/append "$param_wd" ;;
-  (W) # PWD短縮
-    if [[ $PWD == / ]]; then
-      .ble-line-prompt/update/append /
-    else
-      .ble-line-prompt/update/append "${param_wd##*/}"
-    fi ;;
-  ('$') # # or $
-    .ble-line-prompt/update/append "$_ble_cursor_prompt__string_root" ;;
-  ('\')
-    # '\\' は '\' と出力された後に、更に "" 内で評価された時に次の文字をエスケープする。
-    # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
-    ble-edit/draw/put '\' ;;
-  (*)
+  local c="${tail:1:1}" pat='[]#!$\'
+  if [[ ! ${pat##*"$c"*} ]]; then
+    case "$c" in
+    (\[) ble-edit/draw/put $'\e[99s' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
+    (\]) ble-edit/draw/put $'\e[99u' ;;
+    ('#') # コマンド番号 (本当は history に入らない物もある…)
+      ble-edit/draw/put "$_ble_edit_CMD" ;;
+    (\!) # 履歴番号
+      local count
+      .ble-edit/history/getcount -v count
+      ble-edit/draw/put "$count" ;;
+    ('$') # # or $
+      .ble-line-prompt/update/append "$_ble_cursor_prompt__string_root" ;;
+    (\\)
+      # '\\' は '\' と出力された後に、更に "" 内で評価された時に次の文字をエスケープする。
+      # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
+      ble-edit/draw/put '\' ;;
+    esac
+  elif local handler=".ble-line-prompt/update/backslash:$c" && ble/util/isfunction "$handler"; then
+    "$handler"
+  else
     # その他の文字はそのまま出力される。
     # - '\"' '\`' はそのまま出力された後に "" 内で評価され '"' '`' となる。
     # - それ以外の場合は '\?' がそのまま出力された後に、"" 内で評価されても変わらず '\?' 等となる。
-    ble-edit/draw/put "\\$c" ;;
-  esac
+    ble-edit/draw/put "\\$c"
+  fi
 }
+
+function .ble-line-prompt/update/backslash:0 { # 8進表現
+  local rex='^\\[0-7]{1,3}'
+  if [[ $tail =~ $rex ]]; then
+    local seq="${BASH_REMATCH[0]}"
+    ((i+=${#seq}-2))
+    eval "c=\$'$seq'"
+  fi
+  .ble-line-prompt/update/append "$c"
+}
+function .ble-line-prompt/update/backslash:1 { .ble-line-prompt/update/backslash:0; }
+function .ble-line-prompt/update/backslash:2 { .ble-line-prompt/update/backslash:0; }
+function .ble-line-prompt/update/backslash:3 { .ble-line-prompt/update/backslash:0; }
+function .ble-line-prompt/update/backslash:4 { .ble-line-prompt/update/backslash:0; }
+function .ble-line-prompt/update/backslash:5 { .ble-line-prompt/update/backslash:0; }
+function .ble-line-prompt/update/backslash:6 { .ble-line-prompt/update/backslash:0; }
+function .ble-line-prompt/update/backslash:7 { .ble-line-prompt/update/backslash:0; }
+function .ble-line-prompt/update/backslash:a { # 0 BEL
+  ble-edit/draw/put ""
+}
+function .ble-line-prompt/update/backslash:d { # ? 日付
+  [[ $cache_d ]] || ble/util/strftime -v cache_d '%a %b %d'
+  .ble-line-prompt/update/append "$cache_d"
+}
+function .ble-line-prompt/update/backslash:t { # 8 時刻
+  [[ $cache_t ]] || ble/util/strftime -v cache_t '%H:%M:%S'
+  .ble-line-prompt/update/append "$cache_t"
+}
+function .ble-line-prompt/update/backslash:A { # 5 時刻
+  [[ $cache_A ]] || ble/util/strftime -v cache_A '%H:%M'
+  .ble-line-prompt/update/append "$cache_A"
+}
+function .ble-line-prompt/update/backslash:T { # 8 時刻
+  [[ $cache_T ]] || ble/util/strftime -v cache_T '%I:%M:%S'
+  .ble-line-prompt/update/append "$cache_T"
+}
+function .ble-line-prompt/update/backslash:@ { # ? 時刻
+  [[ $cache_at ]] || ble/util/strftime -v cache_at '%I:%M %p'
+  .ble-line-prompt/update/append "$cache_at"
+}
+function .ble-line-prompt/update/backslash:D {
+  local rex='^\\D\{([^{}]*)\}' cache_D
+  if [[ $tail =~ $rex ]]; then
+    ble/util/strftime -v cache_D "${BASH_REMATCH[1]}"
+    .ble-line-prompt/update/append "$cache_D"
+    ((i+=${#BASH_REMATCH}-2))
+  else
+    .ble-line-prompt/update/append "\\$c"
+  fi
+}
+function .ble-line-prompt/update/backslash:e {
+  ble-edit/draw/put $'\e'
+}
+function .ble-line-prompt/update/backslash:h { # = ホスト名
+  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_h"
+}
+function .ble-line-prompt/update/backslash:H { # = ホスト名
+  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_H"
+}
+function .ble-line-prompt/update/backslash:j { #   ジョブの数
+  if [[ ! $cache_j ]]; then
+    local joblist
+    ble/util/assign joblist jobs
+    IFS=$'\n' GLOBIGNORE='*' eval 'joblist=($joblist)'
+    cache_j=${#joblist[@]}
+  fi
+  ble-edit/draw/put "$cache_j"
+}
+function .ble-line-prompt/update/backslash:l { #   tty basename
+  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_l"
+}
+function .ble-line-prompt/update/backslash:n {
+  ble-edit/draw/put $'\n'
+}
+function .ble-line-prompt/update/backslash:r {
+  ble-edit/draw/put "$_ble_term_cr"
+}
+function .ble-line-prompt/update/backslash:s { # 4 "bash"
+  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_s"
+}
+function .ble-line-prompt/update/backslash:u { # = ユーザ名
+  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_u"
+}
+function .ble-line-prompt/update/backslash:v { # = bash version %d.%d
+  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_w"
+}
+function .ble-line-prompt/update/backslash:V { # = bash version %d.%d.%d
+  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_V"
+}
+function .ble-line-prompt/update/backslash:w { # PWD
+  .ble-line-prompt/update/append "$param_wd"
+}
+function .ble-line-prompt/update/backslash:W { # PWD短縮
+  if [[ $PWD == / ]]; then
+    .ble-line-prompt/update/append /
+  else
+    .ble-line-prompt/update/append "${param_wd##*/}"
+  fi
+}
+
 
 ## 関数 .ble-line-prompt/update
 ##   _ble_edit_PS1 からプロンプトを構築します。
@@ -925,24 +970,19 @@ function .ble-line-prompt/update {
   local ps1="${_ble_edit_PS1}"
   local version="$_ble_edit_LINENO"
   if [[ ${_ble_line_prompt[0]} == "$version" ]]; then
-    x="${_ble_line_prompt[1]}"
-    y="${_ble_line_prompt[2]}"
-    g="${_ble_line_prompt[3]}"
-    lc="${_ble_line_prompt[4]}"
-    lg="${_ble_line_prompt[5]}"
-    ret="${_ble_line_prompt[6]}"
+    _ble_line_prompt.load
     return
   fi
 
   local param_wd="${PWD#$HOME}"
   [[ $param_wd != "$PWD" ]] && param_wd="~$param_wd"
 
-  local date_d date_t date_A date_T date_at date_D jobc
+  local cache_d cache_t cache_A cache_T cache_at cache_D cache_j
 
   # 1 特別な Escape \? を処理
   local i=0 iN="${#ps1}"
   local -a DRAW_BUFF
-  local rex_letters='^[^\]+|^\\$'
+  local rex_letters='^[^\]+|\\$'
   while ((i<iN)); do
     local tail="${ps1:i}"
     if [[ $tail == '\'?* ]]; then
@@ -961,6 +1001,12 @@ function .ble-line-prompt/update {
   local ps1esc
   ble-edit/draw/sflush -v ps1esc
   eval "ps1esc=\"$ps1esc\""
+  if [[ $ps1esc == "${_ble_line_prompt[7]}" ]]; then
+    # 前回と同じ ps1esc の場合は計測処理は省略
+    _ble_line_prompt[0]="$version"
+    _ble_line_prompt.load
+    return
+  fi
 
   # 3 計測
   x=0 y=0 g=0 lc=32 lg=0
@@ -975,7 +1021,7 @@ function .ble-line-prompt/update {
   local ps1out
   ble-edit/draw/sflush -v ps1out
   ret="$ps1out"
-  _ble_line_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out")
+  _ble_line_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1esc")
 }
 
 # 
@@ -1044,7 +1090,7 @@ function .ble-line-text/update/position {
 #%if debug (
   ble-assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- (${BLELINE_RANGE_UPDATE[*]})"
 #%)
-  
+
   # shift cached data
   _ble_util_array_prototype.reserve "$iN"
   local -a old_pos old_ichg
@@ -1059,7 +1105,7 @@ function .ble-line-text/update/position {
     "${_ble_util_array_prototype[@]::dend-dbeg}"
     "${_ble_line_text_cache_cs[@]:dend0:iN-dend}")
   _ble_line_text_cache_ichg=()
-  
+
   local i rex_ascii='^[ -~]+'
   for ((i=dbeg;i<iN;)); do
     if [[ ${text:i} =~ $rex_ascii ]]; then
@@ -1135,7 +1181,7 @@ function .ble-line-text/update/position {
       _ble_line_text_cache_pos[i+1]="$x $y $wrapping"
       ((i++))
     fi
-    
+
     # 後は同じなので計算を省略
     ((i>=dend)) && [[ ${old_pos[i-dend]} == ${_ble_line_text_cache_pos[i]} ]] && break
   done
@@ -1230,7 +1276,7 @@ function .ble-line-text/update {
     if ((index>0)); then
       local cx cy
       .ble-line-text/getxy.cur --prefix=c "$index"
-      
+
       local lcs ret
       if ((cx==0)); then
         # 次の文字
@@ -1241,7 +1287,7 @@ function .ble-line-text/update {
           lcs="${_ble_line_text_cache_cs[index]}"
           .ble-text.s2c "$lcs" 0
         fi
-        
+
         # 次が改行の時は空白にする
         ble-highlight-layer/getg -v lg "$index"
         ((lc=ret==10?32:ret))
@@ -1401,7 +1447,7 @@ function .ble-line-info.construct-info {
 
     if [[ $tail =~ $rex_ascii ]]; then
       .ble-line-cur.xyo/add-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
-      ((i+=${#BASH_REMATCH})) 
+      ((i+=${#BASH_REMATCH}))
     else
       .ble-text.s2c "$text" "$i"
       local code="$ret" w=0
@@ -1597,7 +1643,7 @@ function ble-edit/dirty-range/update {
         (delta=endA-endB0)>0?(end+=del):(end0-=del)))
     fi
   fi
-  
+
   ((${_prefix}beg=beg,
     ${_prefix}end=end,
     ${_prefix}end0=end0))
@@ -1821,7 +1867,7 @@ function .ble-edit-draw.update {
   fi
   _ble_line_begx="$begx" _ble_line_begy="$begy"
   _ble_line_endx="$endx" _ble_line_endy="$endy"
-  
+
   # 2 表示内容
   local ret retx=-1 rety=-1 esc_line=
   if ((_ble_edit_dirty>=0)); then
@@ -2325,7 +2371,7 @@ function ble-edit+delete-forward-char-or-exit {
   fi
 
   #_ble_edit_detach_flag=exit
-  
+
   #.ble-term.visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
   exit
@@ -2523,7 +2569,7 @@ function ble-edit+delete-backward-uword {
   .ble-edit.locate-backward-uword
   if ((x>c&&(c=x),b!=c)); then
     .ble-edit.delete-range "$b" "$c"
-  else 
+  else
     .ble-edit.bell
   fi
 }
@@ -2558,7 +2604,7 @@ function ble-edit+kill-backward-uword {
   .ble-edit.locate-backward-uword
   if ((x>c&&(c=x),b!=c)); then
     .ble-edit.kill-range "$b" "$c"
-  else 
+  else
     .ble-edit.bell
   fi
 }
@@ -2609,7 +2655,7 @@ function ble-edit+forward-uword {
   if ((x==t)); then
     .ble-edit.bell
   else
-    .ble-edit.goto-char "$t" 
+    .ble-edit.goto-char "$t"
   fi
 }
 function ble-edit+backward-uword {
@@ -2618,7 +2664,7 @@ function ble-edit+backward-uword {
   if ((x==b)); then
     .ble-edit.bell
   else
-    .ble-edit.goto-char "$b" 
+    .ble-edit.goto-char "$b"
   fi
 }
 #%)
@@ -2867,7 +2913,7 @@ function .ble-edit/gexec/eval-TRAPDEBUG {
       builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2"
       return 0
     fi
-    
+
     local rex='^(\.ble-edit/gexec/|trap - )'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、.ble-edit/gexec/ 関数ではない時
@@ -3042,7 +3088,7 @@ function ble-edit+accept-line {
 }
 
 function ble-edit+accept-and-next {
-  local hist_ind 
+  local hist_ind
   .ble-edit/history/getindex -v hist_ind
   ble-edit+accept-line
   .ble-edit.history-goto $((hist_ind+1))
@@ -3107,7 +3153,7 @@ function .ble-edit/history/getindex {
 function .ble-edit/history/getcount {
   local _var=count _ret
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
-  
+
   if [[ $_ble_edit_history_loaded ]]; then
     _ret="${#_ble_edit_history[@]}"
   else
@@ -3133,7 +3179,7 @@ function .ble-edit/history/generate-source-to-load-history {
     BEGIN{
       print "_ble_edit_history=("
     }
-  
+
     # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
     /^ *[0-9]+\*? +(__ble_ext__|\?\?)/{
       if(n!=""){
@@ -3172,12 +3218,12 @@ function .ble-edit.history-load {
   if ((_ble_edit_attached)); then
     local x="$_ble_line_x" y="$_ble_line_y"
     .ble-line-info.draw-text "loading history..."
-    
+
     local -a DRAW_BUFF
     ble-edit/draw/goto "$x" "$y"
     ble-edit/draw/flush >&2
   fi
-  
+
   # * プロセス置換にしてもファイルに書き出しても大した違いはない。
   #   270ms for 16437 entries (generate-source の時間は除く)
   # * プロセス置換×source は bash-3 で動かない。eval に変更する。
@@ -3384,7 +3430,7 @@ function ble-edit+isearch/next {
   #echo $_ble_edit_history_ind
   if [[ $_ble_edit_isearch_dir == - ]]; then
     # backward-search
-    
+
     for((i=_ble_edit_history_ind-(isMod?0:1);i>=0;i--)); do
       case "${_ble_edit_history[$i]}" in
       (*"$needle"*) ind="$i" ; break ;;
@@ -3403,7 +3449,7 @@ function ble-edit+isearch/next {
     .ble-edit.bell "isearch: \`$needle' not found"
     return
   fi
-  
+
   # 見付かったら _ble_edit_isearch_arr を更新
   local pop= ilast="$((${#_ble_edit_isearch_arr[@]}-1))"
   if ((ilast>=0)); then
@@ -3642,7 +3688,7 @@ function ble-edit+command-help {
     .ble-edit.bell "command \`$cmd' not found"
     return 1
   fi
-    
+
   local content
   if content="$("$cmd" --help 2>&1)" && [[ $content ]]; then
     builtin echo "$content" | less
@@ -3715,7 +3761,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
             message="$message${message:+; }$line"
           fi
         done < "$file"
-        
+
         [[ $message ]] && .ble-term.visible-bell "$message"
         :> "$file"
       fi
@@ -3765,7 +3811,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
       done < "$_ble_edit_io_fname2.pipe" &>/dev/null &
       disown $!
     } &>/dev/null
-    
+
     ble/util/openat _ble_edit_fd_stderr_pipe '> "$_ble_edit_io_fname2.pipe"'
 
     function .ble-edit/stdout/off {
