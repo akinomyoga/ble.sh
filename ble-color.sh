@@ -773,6 +773,7 @@ function ble-highlight-layer:region/update {
       omax>=DMAX0&&(omax+=DMAX-DMAX0)))
   fi
 
+  local rmin rmax
   if [[ $_ble_edit_mark_active ]]; then
     if ((_ble_edit_mark>_ble_edit_ind)); then
       ((rmin=_ble_edit_ind,rmax=_ble_edit_mark))

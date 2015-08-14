@@ -971,6 +971,7 @@ function .ble-line-prompt/update {
   #declare -p DRAW_BUFF >> 1.tmp
 
   # 4 出力
+  local ps1out
   ble-edit/draw/sflush -v ps1out
   ret="$ps1out"
   _ble_line_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out")

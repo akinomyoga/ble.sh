@@ -158,6 +158,7 @@ function ble-syntax/tree-enumerate {
 }
 
 #--------------------------------------
+# ble-syntax/print-status
 
 ## @var[in,out] word
 function ble-syntax/print-status/.tree-prepend {
@@ -187,11 +188,11 @@ function ble-syntax/print-status/.dump-arrays {
     local word=(${_ble_syntax_tree[i]})
     local tword=
     if [[ $word ]]; then
-      local l="$((${#word[@]}/4))"
-      while ((--l>=0)); do
+      local nofs="$((${#word[@]}/4*4))"
+      while (((nofs-=BLE_SYNTAX_TREE_WIDTH)>=0)); do
         local axis=$((i+1))
-        local b="$((axis-word[4*l+1]))" e="$axis"
-        local _prev="${word[4*l+3]}" _child="${word[4*l+2]}"
+        local b="$((axis-word[nofs+1]))" e="$axis"
+        local _prev="${word[nofs+3]}" _child="${word[nofs+2]}"
         if ((_prev>=0)); then
           _prev="@$((axis-_prev-1))>"
         else
@@ -203,7 +204,7 @@ function ble-syntax/print-status/.dump-arrays {
           _child=
         fi
 
-        tword=" word=${word[4*l]}:$_prev$b-$e$_child$tword"
+        tword=" word=${word[nofs]}:$_prev$b-$e$_child$tword"
         for ((;b<i;b++)); do
           ble-syntax/print-status/.tree-prepend b '|'
         done
@@ -269,6 +270,8 @@ function ble-syntax/print-status {
     echo "$_result"
   fi
 }
+
+#--------------------------------------
 
 # 文脈値達
 CTX_UNSPECIFIED=0
@@ -906,7 +909,7 @@ function ble-syntax/parse/ctx-command/check-word-end {
       ((ctx=CTX_ARGX0)) ;;
     (*)
       # 関数定義である可能性を考え stat を置かず読み取る
-      if rex='^([ 	]*)(\([ 	]*(\))?)?' && [[ ${text:i} =~ $rex ]]; then
+      if local rex='^([ 	]*)(\([ 	]*(\))?)?' && [[ ${text:i} =~ $rex ]]; then
 
         # for bash-3.1 ${#arr[n]} bug
         local rematch1="${BASH_REMATCH[1]}"
@@ -1019,6 +1022,7 @@ function ble-syntax/parse/ctx-command {
       ((i+=${#m}))
       return 0
     elif [[ $tail == ')'* ]]; then
+      local type
       ble-syntax/parse/nest-type -v type
       local attr=
       if [[ $type == '(' ]]; then
@@ -1307,6 +1311,92 @@ function ble-syntax/parse/ctx-redirect {
 #------------------------------------------------------------------------------
 # 解析部
 
+## @var[in] i1,i2,j2,iN
+## @var[in] beg,end,end0
+function ble-syntax/parse/shift {
+  # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
+  local i j
+  local -a stat nest node
+  local nofs k klen kbeg
+  for ((i=i2,j=j2;i<=iN;i++,j++)); do
+    # 注意: データの範囲
+    #   stat[i]   は i in [0,iN]
+    #   attr[i]   は i in [0,iN)
+    #   tree[i-1] は i in (0,iN]
+    if [[ ${_ble_syntax_stat[j]} ]]; then
+      stat=(${_ble_syntax_stat[j]})
+
+      for k in 1 3 4 5; do
+        (((klen=stat[k])<0)) && continue
+        ((kbeg=j-klen))
+        if ((kbeg<beg)); then
+          ((stat[k]+=shift))
+        elif ((kbeg<end0)); then
+          ((stat[k]-=end0-kbeg))
+        fi
+      done
+
+      _ble_syntax_stat[j]="${stat[*]}"
+    fi
+
+    if ((j>0)) && [[ ${_ble_syntax_tree[j-1]} ]]; then
+      node=(${_ble_syntax_tree[j-1]})
+
+      for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
+        for k in 1 2 3; do
+          (((klen=node[nofs+k])<0||(kbeg=j-klen)>end0)) && continue
+          # 長さが変化した時 (k==1)、または構文木の距離変化があった時 (k==2, k==3) にここへ来る。
+
+          # (1) 単語の中身が変化した事を記録
+          #   node の中身が書き換わった時 (wbegin < end0 の時):
+          #   dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
+          [[ $k == 1 && ${node[nofs]} =~ ^[0-9]$ ]] && ble-syntax/parse/touch-updated-word "$j"
+
+          # (1) 長さ・相対位置の補正
+          if ((kbeg<beg)); then
+            ((node[nofs+k]+=shift))
+          elif ((kbeg<end0)); then
+            ((node[nofs+k]-=end0-kbeg))
+          fi
+        done
+      done
+
+      _ble_syntax_tree[j-1]="${node[*]}"
+    fi
+
+    # stat の先頭以外でも nest-push している
+    #   @ ctx-command/check-word-begin の "関数名 ( " にて。
+    if ((i<iN)) && [[ ${_ble_syntax_nest[j]} ]]; then
+      nest=(${_ble_syntax_nest[j]})
+
+      for k in 1 3 4 5; do
+        (((klen=nest[1])<0||(kbeg=j-klen)<0)) && continue
+        if ((kbeg<beg)); then
+          ((nest[k]+=shift))
+        elif ((kbeg<end0)); then
+          ((nest[k]-=end0-kbeg))
+        fi
+      done
+
+      _ble_syntax_nest[j]="${nest[*]}"
+    fi
+  done
+
+  if ((shift!=0)); then
+    # 更新範囲の shift
+    ((_ble_syntax_attr_umin>=end0&&(_ble_syntax_attr_umin+=shift),
+      _ble_syntax_attr_uend>end0&&(_ble_syntax_attr_uend+=shift),
+      _ble_syntax_word_umin>=end0&&(_ble_syntax_word_umin+=shift),
+      _ble_syntax_word_umax>=end0&&(_ble_syntax_word_umax+=shift)))
+
+    # shift によって単語が潰れた時
+    ((_ble_syntax_word_umin==0&&
+         ++_ble_syntax_word_umin>_ble_syntax_word_umax&&
+         (_ble_syntax_word_umin=_ble_syntax_word_umax=-1)))
+  fi
+  # .ble-line-info.draw-text "diry-range $beg-$end extended-dirty-range $i1-$i2"
+}
+
 _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 
 ## @fn ble-syntax/parse text beg end
@@ -1348,12 +1438,13 @@ function ble-syntax/parse {
 
   # 解析予定範囲の更新
   local -ir iN="${#text}" shift=end-end0
-  local i1 i2 flagSeekStat=0
+  local i1 i2 j2 flagSeekStat=0
   ((i1=_ble_syntax_dbeg,i1>=end0&&(i1+=shift),
     i2=_ble_syntax_dend,i2>=end0&&(i2+=shift),
     (i1<0||beg<i1)&&(i1=beg,flagSeekStat=1),
     (i2<0||i2<end)&&(i2=end),
-    (i2>iN)&&(i2=iN)))
+    (i2>iN)&&(i2=iN),
+    j2=i2-shift))
   if ((flagSeekStat)); then
     # beg より前の最後の stat の位置まで戻る
     while ((i1>0)) && ! [[ ${_ble_syntax_stat[--i1]} ]]; do :;done
@@ -1363,89 +1454,7 @@ function ble-syntax/parse {
   ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
 #%)
 
-  # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
-  local rex_word_data='^^[0-9]+[[:space:]]'
-  local i j j2
-  local -a stat nest word
-  for ((i=i2,j=j2=i2-shift;i<=iN;i++,j++)); do
-    # 注意: データの範囲
-    #   stat[i]   は i in [0,iN]
-    #   attr[i]   は i in [0,iN)
-    #   word[i-1] は i in (0,iN]
-    if [[ ${_ble_syntax_stat[j]} ]]; then
-      stat=(${_ble_syntax_stat[j]})
-
-      local k klen kbeg
-      for k in 1 3 4 5; do
-        (((klen=stat[k])<0)) && continue
-        ((kbeg=j-klen))
-        if ((kbeg<beg)); then
-          ((stat[k]+=shift))
-        elif ((kbeg<end0)); then
-          ((stat[k]-=end0-kbeg))
-        fi
-      done
-
-      _ble_syntax_stat[j]="${stat[*]}"
-    fi
-
-    if ((j>0)) && [[ ${_ble_syntax_tree[j-1]} ]]; then
-      word=(${_ble_syntax_tree[j-1]})
-
-      local wbase k klen kbeg
-      for ((wbase=0;wbase<${#word[@]};wbase+=BLE_SYNTAX_TREE_WIDTH)); do
-        for k in 1 2 3; do
-          (((klen=word[wbase+k])<0||(kbeg=j-klen)>end0)) && continue
-          # 長さが変化した時 (k==1)、または構文木の距離変化があった時 (k==2, k==3) にここへ来る。
-
-          # (1) 単語の中身が変化した事を記録
-          #   word の中身が書き換わった時 (wbegin < end0 の時):
-          #   dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
-          [[ $k == 1 && ${word[wbase]} =~ ^[0-9]$ ]] && ble-syntax/parse/touch-updated-word "$j"
-
-          # (1) 長さ・相対位置の補正
-          if ((kbeg<beg)); then
-            ((word[wbase+k]+=shift))
-          elif ((kbeg<end0)); then
-            ((word[wbase+k]-=end0-kbeg))
-          fi
-        done
-      done
-
-      _ble_syntax_tree[j-1]="${word[*]}"
-    fi
-
-    # stat の先頭以外でも nest-push している
-    #   @ ctx-command/check-word-begin の "関数名 ( " にて。
-    if ((i<iN)) && [[ ${_ble_syntax_nest[j]} ]]; then
-      nest=(${_ble_syntax_nest[j]})
-
-      local k klen kbeg
-      for k in 1 3 4 5; do
-        (((klen=nest[1])<0||(kbeg=j-jlen)<0)) && continue
-        if ((kbeg<beg)); then
-          ((nest[k]+=shift))
-        elif ((kbeg<end0)); then
-          ((nest[k]-=end0-kbeg))
-        fi
-      done
-
-      _ble_syntax_nest[j]="${nest[*]}"
-    fi
-  done
-  if ((shift!=0)); then
-    # 更新範囲の shift
-    ((_ble_syntax_attr_umin>=end0&&(_ble_syntax_attr_umin+=shift),
-      _ble_syntax_attr_uend>end0&&(_ble_syntax_attr_uend+=shift),
-      _ble_syntax_word_umin>=end0&&(_ble_syntax_word_umin+=shift),
-      _ble_syntax_word_umax>=end0&&(_ble_syntax_word_umax+=shift)))
-
-    # shift によって単語が潰れた時
-    ((_ble_syntax_word_umin==0&&
-         ++_ble_syntax_word_umin>_ble_syntax_word_umax&&
-         (_ble_syntax_word_umin=_ble_syntax_word_umax=-1)))
-  fi
-  # .ble-line-info.draw-text "diry-range $beg-$end extended-dirty-range $i1-$i2"
+  ble-syntax/parse/shift
 
   # 解析途中状態の復元
   local ctx wbegin wtype inest tchild tprev
@@ -1470,9 +1479,9 @@ function ble-syntax/parse {
   fi
 
   # 前回までに解析が終わっている部分 [0,i1), [i2,iN)
-  local -a _tail_syntax_stat _tail_syntax_word _tail_syntax_nest _tail_syntax_attr
+  local -a _tail_syntax_stat _tail_syntax_tree _tail_syntax_nest _tail_syntax_attr
   _tail_syntax_stat=("${_ble_syntax_stat[@]:j2:iN-i2+1}")
-  _tail_syntax_word=("${_ble_syntax_tree[@]:j2:iN-i2}")
+  _tail_syntax_tree=("${_ble_syntax_tree[@]:j2:iN-i2}")
   _tail_syntax_nest=("${_ble_syntax_nest[@]:j2:iN-i2}")
   _tail_syntax_attr=("${_ble_syntax_attr[@]:j2:iN-i2}")
   _ble_util_array_prototype.reserve $iN
@@ -1482,7 +1491,7 @@ function ble-syntax/parse {
   _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
 
   # 解析
-  local _stat
+  local i _stat
   for ((i=i1;i<iN;)); do
     ble-syntax/parse/generate-stat
     if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == $_stat ]]; then
@@ -1490,7 +1499,7 @@ function ble-syntax/parse {
 
         # 前回の解析と同じ状態になった時 → 残りは前回の結果と同じ
         _ble_syntax_stat=("${_ble_syntax_stat[@]::i}" "${_tail_syntax_stat[@]:i-i2}")
-        _ble_syntax_tree=("${_ble_syntax_tree[@]::i}" "${_tail_syntax_word[@]:i-i2}")
+        _ble_syntax_tree=("${_ble_syntax_tree[@]::i}" "${_tail_syntax_tree[@]:i-i2}")
         _ble_syntax_nest=("${_ble_syntax_nest[@]::i}" "${_tail_syntax_nest[@]:i-i2}")
         _ble_syntax_attr=("${_ble_syntax_attr[@]::i}" "${_tail_syntax_attr[@]:i-i2}")
         break
@@ -2097,6 +2106,7 @@ function ble-highlight-layer:syntax/update-error-table {
         ble-highlight-layer:syntax/update-error-table/set "$inest" "$inest2" "$g"
 
         ((i=inest))
+        local wtype wbegin tchild tprev
         ble-syntax/parse/nest-pop
         ((inest>=i&&(inest=i-1)))
       done
