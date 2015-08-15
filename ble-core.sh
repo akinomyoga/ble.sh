@@ -26,13 +26,13 @@ function ble/util/assign {
 
 if ((_ble_bash>=40100)); then
   function ble/util/sprintf {
-    printf -v "$@"
+    builtin printf -v "$@"
   }
 else
   function ble/util/sprintf {
     local -a _args
     _args=("${@:2}")
-    ble/util/assign "$1" 'printf "${_args[@]}"'
+    ble/util/assign "$1" 'builtin printf "${_args[@]}"'
   }
 fi
 
@@ -73,9 +73,9 @@ fi
 if ((_ble_bash>=40200)); then
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
-      printf -v "$2" "%($3)T" "${4:--1}"
+      builtin printf -v "$2" "%($3)T" "${4:--1}"
     else
-      printf "%($1)T" "${2:--1}"
+      builtin printf "%($1)T" "${2:--1}"
     fi
   }
 else
@@ -204,7 +204,7 @@ function ble-load {
 _ble_stackdump_title=stackdump
 _ble_term_NL=$'\n'
 function ble-stackdump {
-  # echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
+  # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
   local i nl=$'\n'
   local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
@@ -322,7 +322,7 @@ function .ble-term.visible-bell {
       # load time duration settings
       declare msec=$bleopt_vbell_duration
       declare sec=$msec
-      ((sec<1000)) && sec=$(printf '%04d' $sec)
+      ((sec<1000)) && sec=$(builtin printf '%04d' $sec)
       sec=${sec%???}.${sec: -3}
 
       # wait
@@ -348,7 +348,7 @@ function .ble-term.visible-bell.cancel-erasure {
 if ((_ble_bash>=40100)); then
   # - printf "'c" で unicode が読める
   function .ble-text.s2c {
-    printf -v ret '%d' "'${1:$2:1}"
+    builtin printf -v ret '%d' "'${1:$2:1}"
   }
 elif ((_ble_bash>=40000)); then
   # - 連想配列にキャッシュできる
@@ -359,7 +359,7 @@ elif ((_ble_bash>=40000)); then
     ret="${_ble_text_s2c_table[x$s]}"
     [[ $ret ]] && return
 
-    ret=$(printf '%d' "'${1:$2:1}")
+    ret=$(builtin printf '%d' "'${1:$2:1}")
     _ble_text_s2c_table[x$s]="$ret"
   }
 else
@@ -371,13 +371,13 @@ else
   function .ble-text.s2c {
     local s="${1:$2:1}"
     if [[ $s == [''-''] ]]; then
-      ret=$(printf '%d' "'$s")
+      ret=$(builtin printf '%d' "'$s")
       return
     fi
 
     "ble-text-b2c+$bleopt_input_encoding" $(
       while IFS= read -r -n 1 byte; do
-        printf '%d ' "'$byte"
+        builtin printf '%d ' "'$byte"
       done <<<$s
     )
   }
@@ -398,7 +398,7 @@ function ble-text.s2c {
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
   function .ble-text.c2s-impl {
-    printf -v ret '\\U%08x' "$1"
+    builtin printf -v ret '\\U%08x' "$1"
     eval "ret=\$'$ret'"
   }
 else

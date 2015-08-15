@@ -1,0 +1,11 @@
+#!/bin/bash
+
+function check-builtin {
+  local command="$1" esc='(\[[ -?]*[@-~])*'
+  grc --color --exclude=./test "\b$command\b" |
+    grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin[[:space:]]+$esc$command(\b|$esc)"
+}
+
+check-builtin echo
+check-builtin printf
+check-builtin eval

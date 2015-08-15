@@ -371,7 +371,7 @@ function ble-syntax-highlight+default {
           type=$(
             unalias "$cmd"
             ble-syntax-highlight+default/type "$(builtin type -t "$cmd" 2>/dev/null)" "$cmd"
-            echo -n "$type")
+            builtin echo -n "$type")
         elif [[ "$type" = keyword && "$cmd" != "$_0" ]]; then
           # keyword (time do if function else elif fi の類) を \ で無効化している場合
           # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec
@@ -932,9 +932,9 @@ function ble-highlight-layer:overwrite_mode/update {
   fi
 
   if ((index>=0)); then
-    echo -n $'\e[?25l'
+    builtin echo -n $'\e[?25l'
   else
-    echo -n $'\e[?25h'
+    builtin echo -n $'\e[?25h'
   fi
 
   if ((index!=oindex)); then

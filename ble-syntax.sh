@@ -17,13 +17,13 @@ source ble-color.sh
 _ble_stackdump_title=stackdump
 _ble_term_NL=$'\n'
 function ble-stackdump {
-  # echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
+  # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
   local i nl=$'\n'
   local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
     message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
   done
-  echo -n "$message" >&2
+  builtin echo -n "$message" >&2
 }
 function ble-assert {
   local expr="$1"
@@ -31,6 +31,9 @@ function ble-assert {
   if ! eval -- "$expr"; then
     shift
     ble-stackdump "$expr$_ble_term_NL$*"
+    return 1
+  else
+    return 0
   fi
 }
 
@@ -93,7 +96,7 @@ function ble-syntax/tree-enumerate/.initialize {
     fi
     ((inest>=0))
   do
-    [[ ! ${_ble_syntax_nest[inest]} ]] && echo "$FUNCNAME/FATAL1" && break
+    ble-assert '[[ ${_ble_syntax_nest[inest]} ]]' "$FUNCNAME/FATAL1" || break
 
     nest=(${_ble_syntax_nest[inest]})
 
@@ -109,7 +112,7 @@ function ble-syntax/tree-enumerate/.initialize {
       nlen>=0&&(nlen+=olen),
       inest=nlen<0?nlen:iN-nlen))
 
-    ((nlen>=0&&nlen<=olen)) && echo "$FUNCNAME/FATAL2" && break
+    ble-assert '((nlen<0||nlen>olen))' "$FUNCNAME/FATAL2" || break
   done
 
   if [[ $tree ]]; then
@@ -136,7 +139,7 @@ function ble-syntax/tree-enumerate/.impl {
       node=(${tree:-${_ble_syntax_tree[iN-1]}})
     fi
 
-    ((nofs>=${#node[@]})) && echo "$FUNCNAME(i=$i,iN=$iN,nofs=$nofs,node=${node[*]},command=$@)/FATAL1" >&2 && break
+    ble-assert '((nofs<${#node[@]}))' "$FUNCNAME(i=$i,iN=$iN,nofs=$nofs,node=${node[*]},command=$@)/FATAL1" || break
 
     local wtype="${node[nofs]}" wlen="${node[nofs+1]}" tclen="${node[nofs+2]}" tplen="${node[nofs+3]}" attr="${node[nofs+4]}"
     local wbegin="$((wlen<0?wlen:i-wlen))"
@@ -144,7 +147,7 @@ function ble-syntax/tree-enumerate/.impl {
     local tprev="$((tplen<0?tplen:i-tplen))"
     "$@"
 
-    ((tprev>=i)) && echo "$FUNCNAME/FATAL2" >&2 && break
+    ble-assert '((tprev<i))' "$FUNCNAME/FATAL2" || break
 
     ((i=tprev,nofs=0,islast=0))
   done
@@ -285,7 +288,7 @@ function ble-syntax/print-status {
   if [[ $1 == -v && $2 ]]; then
     eval "$2=\"\$_result\""
   else
-    echo "$_result"
+    builtin echo "$_result"
   fi
 }
 
@@ -299,6 +302,7 @@ CTX_CMDX=1   # (コマンド) 次にコマンドが来る。
 CTX_CMDXV=13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
 CTX_CMDXF=16 # (コマンド)   for の直後。直後が (( だったら CTX_CMDI に、他の時は CTX_CMDI に。
 CTX_CMDX1=17 # (コマンド)   次にコマンドが少なくとも一つ来なければならない。例えば ( や && や while の直後。
+CTX_CMDXC=26 # (コマンド)   次に複合コマンド('(' '{' '((' '[[' for select case if while until)が来る。
 CTX_CMDI=2   # (コマンド) context,attr: in a command
 CTX_ARGI=4   # (コマンド) context,attr: in an argument
 CTX_VRHS=11  # (コマンド) context,attr: var=rhs
@@ -860,6 +864,7 @@ _BLE_SYNTAX_FCTX[CTX_ARGX]=ble-syntax/parse/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGX0]=ble-syntax/parse/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX]=ble-syntax/parse/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX1]=ble-syntax/parse/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXC]=ble-syntax/parse/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXF]=ble-syntax/parse/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax/parse/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGI]=ble-syntax/parse/ctx-command
@@ -882,6 +887,15 @@ function ble-syntax/parse/ctx-command/check-word-end {
 
   local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
   local word="${text:wbegin:wlen}"
+  local wt="$wtype"
+
+  if ((wt==CTX_CMDXC)); then
+    if local rex='^(\(|\{|\(\(|\[\[|for|select|case|if|while|until)$' && [[ $word =~ $rex ]]; then
+      ((wtype=CTX_CMDI))
+    else
+      ((wtype=ATTR_ERR))
+    fi
+  fi
 
   ble-syntax/parse/word-pop
 
@@ -909,38 +923,61 @@ function ble-syntax/parse/ctx-command/check-word-end {
       ((ctx=CTX_CMDXF)) ;;
     ('}'|'done'|'fi'|'esac')
       ((ctx=CTX_ARGX0)) ;;
+    ('function')
+      ((ctx=CTX_ARGX))
+      local processed=0
+      local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex
+      if rex="^$rex_space+" && [[ ${text:i} =~ $rex ]]; then
+        ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#BASH_REMATCH},ctx=CTX_ARGX))
+        if rex="^([^#$isfuncsymx][^$isfuncsymx]*)($rex_space*)(\(\(|\($rex_space*\)?)?" && [[ ${text:i} =~ $rex ]]; then
+          local rematch1="${BASH_REMATCH[1]}"
+          local rematch2="${BASH_REMATCH[2]}"
+          local rematch3="${BASH_REMATCH[3]}"
+          ((_ble_syntax_attr[i]=ATTR_FUNCDEF,i+=${#rematch1},
+            ${#rematch2}&&(_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch2})))
+
+          if [[ $rematch3 == '('*')' ]]; then
+            ((_ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch3},ctx=CTX_CMDXC))
+          elif [[ $rematch3 == '('* && $rematch3 != '((' ]]; then
+            ((_ble_syntax_attr[i]=ATTR_ERR,ctx=CTX_ARGX0))
+            ble-syntax/parse/nest-push "$CTX_CMDX1" '('
+            ((${#rematch3}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDX1),i+=${#rematch3}))
+          else
+            ((ctx=CTX_CMDXC))
+          fi
+          ((processed=1))
+        fi
+      fi
+      ((processed||(_ble_syntax_attr[i-1]=ATTR_ERR))) ;;
     (*)
       # 関数定義である可能性を考え stat を置かず読み取る
-      if local rex='^([ 	]*)(\([ 	]*(\))?)?' && [[ ${text:i} =~ $rex ]]; then
+      ((ctx=CTX_ARGX))
+      if local rex='^([ 	]*)(\([ 	]*\)?)?' && [[ ${text:i} =~ $rex ]]; then
 
         # for bash-3.1 ${#arr[n]} bug
         local rematch1="${BASH_REMATCH[1]}"
         local rematch2="${BASH_REMATCH[2]}"
 
-        if [[ ${BASH_REMATCH[3]} ]]; then
-          # 関数定義 (単語の種類を変更)
+        if [[ $rematch2 == '('*')' ]]; then
+          # case: /hoge ( *)/ 関数定義 (単語の種類を変更)
           _ble_syntax_tree[i-1]="$ATTR_FUNCDEF ${_ble_syntax_tree[i-1]#* }"
 
-          ((_ble_syntax_attr[i]=CTX_CMDX1,
-            _ble_syntax_attr[i+${#rematch1}]=ATTR_DEL,
-            ctx=CTX_CMDX1,
-            i+=${#BASH_REMATCH}))
-        elif [[ ${BASH_REMATCH[2]} ]]; then
-          # 括弧が閉じていない場合:
+          ((_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch1},
+            _ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch2},
+            ctx=CTX_CMDXC))
+        elif [[ $rematch2 == '('* ]]; then
+          # case: /hoge \( */ 括弧が閉じていない場合:
           #   仕方がないのでサブシェルと思って取り敢えず解析する
-          ((_ble_syntax_attr[i]=CTX_ARGX0,
-            i+=${#rematch1},
+          ((_ble_syntax_attr[i]=CTX_ARGX0,i+=${#rematch1},
             _ble_syntax_attr[i]=ATTR_ERR,
             ctx=CTX_ARGX0))
           ble-syntax/parse/nest-push "$CTX_CMDX1" '('
-          ((${#rematch2}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDX1),
+          ((${#rematch2}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDXC),
             i+=${#rematch2}))
           return 0
         else
-          # 恐らくコマンド
-          ((_ble_syntax_attr[i]=CTX_ARGX,
-            ctx=CTX_ARGX,
-            i+=${#BASH_REMATCH}))
+          # case: /hoge */ 恐らくコマンド
+          ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#rematch1}))
         fi
       fi ;;
     esac
@@ -979,7 +1016,7 @@ function ble-syntax/parse/ctx-command {
 #%if debug (
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||
          ctx==CTX_CMDX||ctx==CTX_CMDXF||
-         ctx==CTX_CMDX1||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
+         ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%)
 
@@ -1018,7 +1055,7 @@ function ble-syntax/parse/ctx-command {
     elif rex='^\(\(?' && [[ $tail =~ $rex ]]; then
       # サブシェル (, 算術コマンド ((
       local m="${BASH_REMATCH[0]}"
-      ((_ble_syntax_attr[i]=(ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXF&&${#m}==2)?ATTR_DEL:ATTR_ERR))
+      ((_ble_syntax_attr[i]=(ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXF&&${#m}==2)?ATTR_DEL:ATTR_ERR))
       ((ctx=CTX_ARGX0))
       ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
       ((i+=${#m}))
@@ -1056,13 +1093,15 @@ function ble-syntax/parse/ctx-command {
   if ((wbegin<0)); then
     # case CTX_ARGX | CTX_ARGX0 | CTX_CMDXF
     #   ctx=CTX_ARGI
-    # case CTX_CMDX | CTX_CMDX1 | CTX_CMDXV
+    # case CTX_CMDX | CTX_CMDX1 | CTX_CMDXC | CTX_CMDXV
     #   ctx=CTX_CMDI
     # case CTX_ARGI | CTX_CMDI | CTX_VRHS
     #   エラー...
+    local octx="$ctx"
     ((ctx==CTX_ARGX0&&(unexpectedWbegin=i),
-      ctx=(ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_CMDXF)?CTX_ARGI:CTX_CMDI))
-    ble-syntax/parse/word-push "$ctx" "$i"
+      ctx=(ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_CMDXF)?CTX_ARGI:CTX_CMDI,
+      wtype=octx==CTX_CMDXC?octx:ctx))
+    ble-syntax/parse/word-push "$wtype" "$i"
   fi
 
 #%if debug (
@@ -1701,7 +1740,7 @@ function ble-syntax/completion-context/check-prefix {
         ble-syntax/completion-context/add file "$((index-${#sub}))"
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXV)); then
+    elif ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXV)); then
       # 直前の再開点が CMDX だった場合、
       # 現在地との間にコマンド名があればそれはコマンドである。
       # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
@@ -1755,7 +1794,8 @@ function ble-syntax/completion-context/check-here {
 
     if ((stat[0]==CTX_CMDX||
             stat[0]==CTX_CMDXV||
-            stat[0]==CTX_CMDX1)); then
+            stat[0]==CTX_CMDX1||
+            stat[0]==CTX_CMDXC)); then
       ble-syntax/completion-context/add command "$index"
       ble-syntax/completion-context/add variable "$index"
     elif ((stat[0]==CTX_CMDXF)); then
@@ -1807,13 +1847,13 @@ ble-color-defface syntax_varname           fg=202
 ble-color-defface syntax_delimiter         bold
 ble-color-defface syntax_param_expansion   fg=purple
 ble-color-defface syntax_history_expansion bg=94,fg=231
-ble-color-defface syntax_function_name     fg=purple
+ble-color-defface syntax_function_name     fg=92,bold # fg=purple
 ble-color-defface syntax_comment           fg=gray
 
 ble-color-defface command_builtin_dot fg=red,bold
 ble-color-defface command_builtin     fg=red
 ble-color-defface command_alias       fg=teal
-ble-color-defface command_function    fg=purple
+ble-color-defface command_function    fg=92 # fg=purple
 ble-color-defface command_file        fg=green
 ble-color-defface command_keyword     fg=blue
 ble-color-defface command_jobs        fg=red
@@ -1832,6 +1872,7 @@ _ble_syntax_attr2iface.define CTX_ARGX0    syntax_default
 _ble_syntax_attr2iface.define CTX_CMDX     syntax_default
 _ble_syntax_attr2iface.define CTX_CMDXF    syntax_default
 _ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
+_ble_syntax_attr2iface.define CTX_CMDXC    syntax_default
 _ble_syntax_attr2iface.define CTX_CMDXV    syntax_default
 _ble_syntax_attr2iface.define CTX_ARGI     syntax_default
 _ble_syntax_attr2iface.define CTX_CMDI     syntax_command
@@ -1913,7 +1954,7 @@ function ble-syntax/highlight/cmdtype2 {
       unalias "$cmd"
       ble/util/type btype "$cmd"
       ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
-      echo -n "$type")
+      builtin echo -n "$type")
   elif [[ $type = $ATTR_CMD_KEYWORD && "$cmd" != "$_0" ]]; then
     # keyword (time do if function else elif fi の類) を \ で無効化している場合
     # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec
@@ -1992,31 +2033,6 @@ function ble-syntax/highlight/filetype {
     ((type=ATTR_FILE_FILE))
   else
     type=
-  fi
-}
-
-# highlighter
-
-function ble-syntax/highlight/set-attribute {
-  local i="$1" g="$2"
-  if [[ ${_ble_region_highlight_table[i]} != "$g" ]]; then
-    ((LAYER_UMIN>i&&(LAYER_UMIN=i),
-      LAYER_UMAX<i&&(LAYER_UMAX=i),
-      _ble_region_highlight_table[i]=g))
-  fi
-}
-
-function ble-syntax/highlight/fill-g {
-  local g="$1" i
-  if [[ $3 ]]; then
-    for ((i=$2;i<$3;i++)); do
-      ble-syntax/highlight/set-attribute "$i" "$g"
-    done
-  else
-    for ((i=$2;i<iN;i++)); do
-      ble-syntax/highlight/set-attribute "$i" "$g"
-      [[ ${_ble_syntax_attr[i+1]} ]] && break
-    done
   fi
 }
 
@@ -2126,8 +2142,8 @@ function ble-highlight-layer:syntax/word/.update-attributes {
 
           # エラー: ディレクトリにリダイレクトはできない
           ((wtype==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
-        elif ((wtype==ATTR_FUNCDEF)); then
-          ((type=ATTR_FUNCDEF))
+        elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
+          ((type=wtype))
         fi
 
         if [[ $type ]]; then
@@ -2276,7 +2292,7 @@ function ble-highlight-layer:syntax/update-error-table {
     fi
 
     # コマンド欠落
-    if ((ctx==CTX_CMDX1||ctx==CTX_CMDXF)); then
+    if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXF)); then
       # 終端点の着色
       ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
     fi
@@ -2379,6 +2395,7 @@ attrg[CTX_ARGX0]=$'\e[m'
 attrg[CTX_CMDX]=$'\e[m'
 attrg[CTX_CMDXF]=$'\e[m'
 attrg[CTX_CMDX1]=$'\e[m'
+attrg[CTX_CMDXC]=$'\e[m'
 attrg[CTX_CMDXV]=$'\e[m'
 attrg[CTX_ARGI]=$'\e[m'
 attrg[CTX_CMDI]=$'\e[;91m'
@@ -2403,7 +2420,7 @@ function mytest/put {
   buff[${#buff[@]}]="$*"
 }
 function mytest/fflush {
-  IFS= eval 'echo -n "${buff[*]}"'
+  IFS= eval 'builtin echo -n "${buff[*]}"'
   buff=()
 }
 function mytest/print {
@@ -2456,7 +2473,7 @@ function mytest {
   if ((${#text}>=5)); then
     text="${text::5}""hello; echo""${text:5}"
     ble-syntax/parse "$text" 5 16 5
-    echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_uend
+    builtin echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_uend
     mytest/print
   fi
 
@@ -2464,7 +2481,7 @@ function mytest {
   if ((${#text}>=10)); then
     text="${text::5}""${text:10}"
     ble-syntax/parse "$text" 5 5 10
-    echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_uend
+    builtin echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_uend
     mytest/print
   fi
 

@@ -3039,7 +3039,7 @@ function .ble-edit/newline {
 
   # カーソルを表示する。
   # layer:overwrite でカーソルを消している時の為。
-  [[ $_ble_edit_overwrite_mode ]] && echo -n $'\e[?25h'
+  [[ $_ble_edit_overwrite_mode ]] && builtin echo -n $'\e[?25h'
 
   _ble_edit_str.reset ''
   _ble_edit_ind=0
@@ -3056,10 +3056,10 @@ function ble-edit+discard-line {
 ## @var[out] hist_expanded
 function hist_expanded.initialize {
   local BASH_COMMAND="$*"
-  if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
+  if [[ $- != *H* || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded="$BASH_COMMAND"
     return 0
-  elif ble/util/assign hist_expanded 'history -p -- "$BASH_COMMAND" 2>/dev/null;echo -n :'; then
+  elif ble/util/assign hist_expanded 'history -p -- "$BASH_COMMAND" 2>/dev/null;builtin echo -n :'; then
     hist_expanded="${hist_expanded%$_ble_term_nl:}"
     return 0
   else
@@ -3699,12 +3699,12 @@ function ble-edit+command-help {
 
   local content
   if content="$("$cmd" --help 2>&1)" && [[ $content ]]; then
-    builtin echo "$content" | less
+    builtin printf '%s\n' "$content" | less
     return
   fi
 
   if content="$(man "$cmd" 2>&1)" && [[ $content ]]; then
-    builtin echo "$content" | less
+    builtin printf '%s\n' "$content" | less
     return
   fi
 
@@ -3803,7 +3803,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
       while IFS= read -r line; do
         SPACE=$' \n\t'
         if [[ $line == *[^$SPACE]* ]]; then
-          builtin echo "$line" >> "$_ble_edit_io_fname2"
+          builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
         fi
 
         if [[ $bleopt_ignoreeof_message && $line = *$bleopt_ignoreeof_message* ||
