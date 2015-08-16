@@ -103,10 +103,13 @@ function .ble-text.c2w {
 ##   編集画面での表示上の文字幅を返します。
 ##   @var[out] ret
 function .ble-text.c2w-edit {
-  if (($1<32||$1==127)); then
+  if (($1<32||127<=$1&&$1<160)); then
     # 制御文字は ^? と表示される。
     ret=2
     # TAB は???
+
+    # 128-159: M-^?
+    ((128<=$1&&(ret=4)))
   else
     .ble-text.c2w "$1"
   fi
@@ -1129,6 +1132,7 @@ function .ble-line-text/update/position {
         _ble_line_text_cache_pos[i+1]="$x $y 0"
       done
     else
+      local ret
       .ble-text.s2c "$text" "$i"
       local code="$ret"
 
@@ -1158,6 +1162,9 @@ function .ble-line-text/update/position {
         fi
       elif ((code==127)); then
         w=2 cs="^?"
+      elif ((128<=code&&code<160)); then
+        .ble-text.c2s "$((code-64))"
+        w=4 cs="M-^$ret"
       else
         .ble-text.c2w "$code"
         w="$ret" cs="${text:i:1}"
@@ -1464,6 +1471,9 @@ function .ble-line-info.construct-info {
         .ble-line-cur.xyo/add-atomic 2 "$_ble_term_rev^$ret$_ble_term_sgr0"
       elif ((code==127)); then
         .ble-line-cur.xyo/add-atomic 2 '$_ble_term_rev^?$_ble_term_sgr0'
+      elif ((128<=code&&code<160)); then
+        .ble-text.c2s "$((code-64))"
+        .ble-line-cur.xyo/add-atomic 4 "${_ble_term_rev}M-^$ret$_ble_term_sgr0"
       else
         .ble-text.c2w "$code"
         .ble-line-cur.xyo/add-atomic "$ret" "${text:i:1}"
@@ -2704,7 +2714,12 @@ function .ble-edit/exec/adjust-eol {
   ble-edit/draw/flush >&2
   _ble_line_x=0 _ble_line_y=0
 }
-function .ble-edit/exec/eval-TRAPINT {
+
+#--------------------------------------
+# bleopt_exec_type = exec
+#--------------------------------------
+
+function .ble-edit/exec:exec/eval-TRAPINT {
   builtin echo
   # echo "SIGINT ${FUNCNAME[1]}"
   if ((_ble_bash>=40300)); then
@@ -2712,9 +2727,9 @@ function .ble-edit/exec/eval-TRAPINT {
   else
     _ble_edit_accept_line_INT=128
   fi
-  trap '.ble-edit/exec/eval-TRAPDEBUG SIGINT "$*" && return' DEBUG
+  trap '.ble-edit/exec:exec/eval-TRAPDEBUG SIGINT "$*" && return' DEBUG
 }
-function .ble-edit/exec/eval-TRAPDEBUG {
+function .ble-edit/exec:exec/eval-TRAPDEBUG {
   # 一旦 DEBUG を設定すると bind -x を抜けるまで削除できない様なので、
   # _ble_edit_accept_line_INT のチェックと _ble_edit_exec_in_eval のチェックを行う。
   if ((_ble_edit_accept_line_INT&&_ble_edit_exec_in_eval)); then
@@ -2726,22 +2741,22 @@ function .ble-edit/exec/eval-TRAPDEBUG {
   fi
 }
 
-function .ble-edit/exec/eval-prologue {
+function .ble-edit/exec:exec/eval-prologue {
   .ble-stty.leave
 
   set -H
 
   # C-c に対して
-  trap '.ble-edit/exec/eval-TRAPINT; return 128' INT
+  trap '.ble-edit/exec:exec/eval-TRAPINT; return 128' INT
   # trap '_ble_edit_accept_line_INT=126; return 126' TSTP
 }
-function .ble-edit/exec/eval {
+function .ble-edit/exec:exec/eval {
   local _ble_edit_exec_in_eval=1
   # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
   .ble-edit/exec/setexit
   eval -- "$BASH_COMMAND"
 }
-function .ble-edit/exec/eval-epilogue {
+function .ble-edit/exec:exec/eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
 
   .ble-stty.enter
@@ -2763,11 +2778,11 @@ function .ble-edit/exec/eval-epilogue {
   fi
 }
 
-## 関数 .ble-edit/exec/recursive index
+## 関数 .ble-edit/exec:exec/recursive index
 ##   index 番目のコマンドを実行し、引数 index+1 で自己再帰します。
 ##   コマンドがこれ以上ない場合は何もせずに終了します。
 ## \param [in] index
-function .ble-edit/exec/recursive {
+function .ble-edit/exec:exec/recursive {
   (($1>=${#_ble_edit_accept_line})) && return
 
   local BASH_COMMAND="${_ble_edit_accept_line[$1]}"
@@ -2778,24 +2793,24 @@ function .ble-edit/exec/recursive {
     .ble-edit/history/getcount -v HISTCMD
 
     local _ble_edit_accept_line_INT=0
-    .ble-edit/exec/eval-prologue
-    .ble-edit/exec/eval
+    .ble-edit/exec:exec/eval-prologue
+    .ble-edit/exec:exec/eval
     _ble_edit_accept_line_lastexit="$?"
-    .ble-edit/exec/eval-epilogue
+    .ble-edit/exec:exec/eval-epilogue
   fi
 
-  .ble-edit/exec/recursive "$(($1+1))"
+  .ble-edit/exec:exec/recursive "$(($1+1))"
 }
 
 declare _ble_edit_exec_replacedDeclare=
 declare _ble_edit_exec_replacedTypeset=
-function .ble-edit/exec/isGlobalContext {
+function .ble-edit/exec:exec/isGlobalContext {
   local offset="$1"
 
   local path
   for path in "${FUNCNAME[@]:offset+1}"; do
     # source or . が続く限りは遡る (. で呼び出しても FUNCNAME には source が入る様だ。)
-    if [[ $path = .ble-edit/exec/eval ]]; then
+    if [[ $path = .ble-edit/exec:exec/eval ]]; then
       return 0
     elif [[ $path != source ]]; then
       # source という名の関数を定義して呼び出している場合、source と区別が付かない。
@@ -2812,7 +2827,7 @@ function .ble-edit/exec/isGlobalContext {
   # for ((i=offset;i<iN;i++)); do
   #   local func="${FUNCNAME[i]}"
   #   local path="${BASH_SOURCE[i]}"
-  #   if [[ $func = .ble-edit/exec/eval && $path = $BASH_SOURCE ]]; then
+  #   if [[ $func = .ble-edit/exec:exec/eval && $path = $BASH_SOURCE ]]; then
   #     return 0
   #   elif [[ $path != source && $path != $BASH_SOURCE ]]; then
   #     # source ble.sh の中の declare が全て local になるので上だと駄目。
@@ -2824,7 +2839,7 @@ function .ble-edit/exec/isGlobalContext {
   return 0
 }
 
-function .ble-edit.accept-line.exec {
+function .ble-edit/exec:exec {
   [[ ${#_ble_edit_accept_line[@]} -eq 0 ]] && return
 
   # コマンド内部で declare してもグローバルに定義されない。
@@ -2849,7 +2864,7 @@ function .ble-edit.accept-line.exec {
       _ble_edit_exec_replacedDeclare=1
       # declare() { builtin declare -g "$@"; }
       declare() {
-        if .ble-edit/exec/isGlobalContext 1; then
+        if .ble-edit/exec:exec/isGlobalContext 1; then
           builtin declare -g "$@"
         else
           builtin declare "$@"
@@ -2860,7 +2875,7 @@ function .ble-edit.accept-line.exec {
       _ble_edit_exec_replacedTypeset=1
       # typeset() { builtin typeset -g "$@"; }
       typeset() {
-        if .ble-edit/exec/isGlobalContext 1; then
+        if .ble-edit/exec:exec/isGlobalContext 1; then
           builtin typeset -g "$@"
         else
           builtin typeset "$@"
@@ -2877,7 +2892,7 @@ function .ble-edit.accept-line.exec {
   # 以下、配列 _ble_edit_accept_line に登録されている各コマンドを順に実行する。
   # ループ構文を使うと、ループ構文自体がユーザの入力した C-z (SIGTSTP)
   # を受信して(?)停止してしまう様なので、再帰でループする必要がある。
-  .ble-edit/exec/recursive 0
+  .ble-edit/exec:exec/recursive 0
 
   _ble_edit_accept_line=()
 
@@ -2894,37 +2909,39 @@ function .ble-edit.accept-line.exec {
 }
 
 function .ble-edit+accept-line/process+exec {
-  .ble-edit.accept-line.exec
+  .ble-edit/exec:exec
   .ble-decode-byte:bind/check-detach
   return $?
 }
 
-# **** .ble-edit/gexec ****                                         @edit.gexec
+#--------------------------------------
+# bleopt_exec_type = gexec
+#--------------------------------------
 
-function .ble-edit/gexec/eval-TRAPINT {
+function .ble-edit/exec:gexec/eval-TRAPINT {
   builtin echo
   if ((_ble_bash>=40300)); then
     _ble_edit_accept_line_INT=130
   else
     _ble_edit_accept_line_INT=128
   fi
-  trap '.ble-edit/gexec/eval-TRAPDEBUG SIGINT "$*" && { return &>/dev/null || break &>/dev/null;}' DEBUG
+  trap '.ble-edit/exec:gexec/eval-TRAPDEBUG SIGINT "$*" && { return &>/dev/null || break &>/dev/null;}' DEBUG
 }
-function .ble-edit/gexec/eval-TRAPDEBUG {
+function .ble-edit/exec:gexec/eval-TRAPDEBUG {
   if ((_ble_edit_accept_line_INT!=0)); then
     # エラーが起きている時
 
     local depth="${#FUNCNAME[*]}"
-    local rex='^\.ble-edit/gexec/'
+    local rex='^\.ble-edit/exec:gexec/'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
-      # 関数内にいるが、.ble-edit/gexec/ の中ではない時
+      # 関数内にいるが、.ble-edit/exec:gexec/ の中ではない時
       builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2"
       return 0
     fi
 
-    local rex='^(\.ble-edit/gexec/|trap - )'
+    local rex='^(\.ble-edit/exec:gexec/|trap - )'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
-      # 一番外側で、.ble-edit/gexec/ 関数ではない時
+      # 一番外側で、.ble-edit/exec:gexec/ 関数ではない時
       builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2"
       return 0
     fi
@@ -2933,21 +2950,21 @@ function .ble-edit/gexec/eval-TRAPDEBUG {
   trap - DEBUG # 何故か効かない
   return 1
 }
-function .ble-edit/gexec/begin {
+function .ble-edit/exec:gexec/begin {
   _ble_decode_bind_hook=
   .ble-edit/stdout/on
   set -H
 
   # C-c に対して
-  trap '.ble-edit/gexec/eval-TRAPINT' INT
+  trap '.ble-edit/exec:gexec/eval-TRAPINT' INT
 }
-function .ble-edit/gexec/end {
+function .ble-edit/exec:gexec/end {
   trap - INT DEBUG # DEBUG: 何故か効かない
 
   .ble-decode-byte:bind/check-detach && return 0
   .ble-decode-byte:bind/tail
 }
-function .ble-edit/gexec/eval-prologue {
+function .ble-edit/exec:gexec/eval-prologue {
   BASH_COMMAND="$1"
   PS1="$_ble_edit_PS1"
   unset HISTCMD; .ble-edit/history/getcount -v HISTCMD
@@ -2955,7 +2972,7 @@ function .ble-edit/gexec/eval-prologue {
   .ble-stty.leave
   .ble-edit/exec/setexit
 }
-function .ble-edit/gexec/eval-epilogue {
+function .ble-edit/exec:gexec/eval-epilogue {
   # lastexit
   _ble_edit_accept_line_lastexit="$?"
   if ((_ble_edit_accept_line_lastexit==0)); then
@@ -2979,7 +2996,7 @@ function .ble-edit/gexec/eval-epilogue {
     fi
   fi
 }
-function .ble-edit/gexec/setup {
+function .ble-edit/exec:gexec/setup {
   # コマンドを _ble_decode_bind_hook に設定してグローバルで評価する。
   #
   # ※ユーザの入力したコマンドをグローバルではなく関数内で評価すると
@@ -2994,12 +3011,12 @@ function .ble-edit/gexec/setup {
   local cmd
   local -a buff
   local count=0
-  buff[${#buff[@]}]=.ble-edit/gexec/begin
+  buff[${#buff[@]}]=.ble-edit/exec:gexec/begin
   for cmd in "${_ble_edit_accept_line[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
-      buff[${#buff[@]}]=".ble-edit/gexec/eval-prologue '${cmd//$apos/$APOS}'"
+      buff[${#buff[@]}]=".ble-edit/exec:gexec/eval-prologue '${cmd//$apos/$APOS}'"
       buff[${#buff[@]}]="eval -- '${cmd//$apos/$APOS}'"
-      buff[${#buff[@]}]=".ble-edit/gexec/eval-epilogue"
+      buff[${#buff[@]}]=".ble-edit/exec:gexec/eval-epilogue"
       ((count++))
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に
@@ -3011,14 +3028,14 @@ function .ble-edit/gexec/setup {
   ((count==0)) && return 1
 
   buff[${#buff[@]}]='trap - INT DEBUG' # trap - は一番外側でないと効かない様だ
-  buff[${#buff[@]}]=.ble-edit/gexec/end
+  buff[${#buff[@]}]=.ble-edit/exec:gexec/end
 
   IFS=$'\n' eval '_ble_decode_bind_hook="${buff[*]}"'
   return 0
 }
 
 function .ble-edit+accept-line/process+gexec {
-  .ble-edit/gexec/setup
+  .ble-edit/exec:gexec/setup
   return $?
 }
 
@@ -3054,7 +3071,7 @@ function ble-edit+discard-line {
 }
 
 ## @var[out] hist_expanded
-function hist_expanded.initialize {
+function hist_expanded.update {
   local BASH_COMMAND="$*"
   if [[ $- != *H* || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded="$BASH_COMMAND"
@@ -3072,7 +3089,7 @@ function ble-edit+accept-line {
 
   # 履歴展開
   local hist_expanded
-  if ! hist_expanded.initialize "$BASH_COMMAND"; then
+  if ! hist_expanded.update "$BASH_COMMAND"; then
     .ble-edit-draw.set-dirty -1
     return
   fi
@@ -3374,7 +3391,7 @@ function ble-edit+history-end {
 
 function ble-edit+history-expand-line {
   local hist_expanded
-  hist_expanded.initialize "$_ble_edit_str" || return
+  hist_expanded.update "$_ble_edit_str" || return
   [[ $_ble_edit_str == $hist_expanded ]] && return
 
   _ble_edit_str.reset "$hist_expanded"
@@ -3393,26 +3410,6 @@ function ble-edit+backward-line-or-history-prev {
 
 # 
 # **** incremental search ****                                 @history.isearch
-
-## 関数 .ble-edit-isearch.create-visible-text text ; ret
-##   指定した文字列を表示する為の制御系列に変換します。
-function .ble-edit-isearch.create-visible-text {
-  local text="$1" ptext=
-  local i iN=${#text}
-  for ((i=0;i<iN;i++)); do
-    .ble-text.s2c "$text" "$i"
-    local code="$ret"
-    if ((code<32)); then
-      .ble-text.c2s "$((code+64))"
-      ptext="$ptext$_ble_term_rev^$ret$_ble_term_sgr0"
-    elif ((code==127)); then
-      ptext="$ptext$_ble_term_rev^?$_ble_term_sgr0"
-    else
-      ptext="$ptext${text:i:1}"
-    fi
-  done
-  ret="$ptext"
-}
 
 function .ble-edit-isearch.draw-line {
   # 出力
@@ -3891,6 +3888,10 @@ else
   }
 fi
 
+function .ble-decode-byte:bind/tail-without-draw {
+  .ble-edit/stdout/off
+}
+
 if ((_ble_bash>40000)); then
   function .ble-decode-byte:bind/tail {
     .ble-edit-draw.update-adjusted
@@ -3914,7 +3915,6 @@ fi
 ##   それ以外の場合には終端処理をしていない事を表します。
 
 function ble-decode-byte:bind {
-  local dbg="$*"
   .ble-decode-byte:bind/head
   .ble-decode-bind.uvw
   .ble-stty.enter
@@ -3924,6 +3924,28 @@ function ble-decode-byte:bind {
     shift
   done
 
+  if ((_ble_bash>=40000)); then
+    # 貼付対策:
+    #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
+    #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
+    #   (再描画は次の文字に対する bind 呼出でされる筈。)
+    if IFS= LANG=C read -t 0 -s -r -d '' -n 1; then
+      .ble-decode-byte:bind/tail-without-draw
+      return 0
+    fi
+  else
+    # x 以下は bind '"\e[":"\xC0\x9B["' による
+    #   byte の受信順序が乱れるので使えない。
+    # x bash-4.0 未満では結局以下では何も起こらない。
+    #   read -t 0 としても必ず失敗する様である。
+    local byte=0
+    while IFS= LANG=C read -t 0 -s -r -d '' -n 1 byte; do
+      LANG=C ble-text.s2c -v byte "$byte" 0
+      "ble-decode-byte+$bleopt_input_encoding" "$byte"
+    done
+  fi
+
+  # _ble_decode_bind_hook で bind/tail される。
   ".ble-edit+accept-line/process+$bleopt_exec_type" && return 0
 
   .ble-decode-byte:bind/tail

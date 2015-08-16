@@ -274,17 +274,17 @@ function ble-decode-unkbd {
 #     shift
 #   done
 
-#   .ble-edit.accept-line.exec
+#   .ble-edit/exec:exec
 # }
 
 # function ble-decode-char {
 #   .ble-decode-char "$1"
-#   .ble-edit.accept-line.exec
+#   .ble-edit/exec:exec
 # }
 
 # function ble-decode-key {
 #   .ble-decode-key "$1"
-#   .ble-edit.accept-line.exec
+#   .ble-edit/exec:exec
 # }
 
 ## 関数 .ble-decode-byte bytes...

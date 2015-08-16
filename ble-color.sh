@@ -654,13 +654,20 @@ function ble-highlight-layer:plain/update {
           ch="${_ble_util_string_prototype::it}"
         elif [[ $ch == $'\n' ]]; then
           ch=$'\e[K\n'
-        elif [[ $ch != $'\n' ]]; then
+        else
           .ble-text.s2c "$ch" 0
-          .ble-text.c2s $((64+ret))
+          .ble-text.c2s $((ret+64))
           ch="^$ret"
         fi
-      elif [[ $ch == '' ]]; then
-        ch='^?'
+      elif [[ $ch == [$''-$'\302\237'] ]]; then
+        # ※\302\237 は 0x9F の utf8 表現
+        if [[ $ch == '' ]]; then
+          ch='^?'
+        else
+          .ble-text.s2c "$ch" 0
+          .ble-text.c2s $((ret-64))
+          ch="M-^$ret"
+        fi
       fi
       _ble_highlight_layer_plain_buff[i]="$ch"
     done
