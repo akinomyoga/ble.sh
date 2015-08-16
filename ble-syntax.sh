@@ -40,6 +40,50 @@ function ble-assert {
 #%end
 #%m main (
 
+## @var[in,out] umin,umax
+function ble/util/urange#update {
+  local prefix="$1"
+  local -i p1="$2" p2="${3:-$2}"
+  ((0<=p1&&p1<p2)) || return
+  (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
+    (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
+}
+## @var[in,out] umin,umax
+function ble/util/wrange#update {
+  local prefix="$1"
+  local -i p1="$2" p2="${3:-$2}"
+  ((0<=p1&&p1<=p2)) || return
+  (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
+    (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
+}
+
+## @var[in,out] umin,umax
+## @var[in] beg,end,end0,shift
+function ble/util/urange#shift {
+  local prefix="$1"
+  ((${prefix}umin>=end0?(${prefix}umin+=shift):(
+      ${prefix}umin>=beg&&(${prefix}umin=end)),
+    ${prefix}umax>end0?(${prefix}umax+=shift):(
+      ${prefix}umax>beg&&(${prefix}umax=beg)),
+    ${prefix}umin>=${prefix}umax&&
+      (${prefix}umin=${prefix}umax=-1)))
+}
+## @var[in,out] umin,umax
+## @var[in] beg,end,end0,shift
+function ble/util/wrange#shift {
+  local prefix="$1"
+
+  # ※以下の不等号について (動作を見ながら)
+  # もう一度考え直した方が良いかも。
+  ((${prefix}umin>=end0?(${prefix}umin+=shift):(
+       ${prefix}umin>beg&&(${prefix}umin=end)),
+    ${prefix}umax>=end0?(${prefix}umax+=shift):(
+      ${prefix}umax>=beg&&(${prefix}umax=beg)),
+    ${prefix}umin==0&&++${prefix}umin,
+    ${prefix}umin>${prefix}umax&&
+      (${prefix}umin=${prefix}umax=-1)))
+}
+
 ## @var _ble_syntax_text
 ##   解析対象の文字列を保持します
 ## @var _ble_syntax_stat[i]
@@ -68,6 +112,7 @@ _ble_syntax_attr=()
 #--------------------------------------
 # ble-syntax/tree-enumerate proc
 # ble-syntax/tree-enumerate-children proc
+# ble-syntax/tree-enumerate-in-range beg end proc
 
 ## @var[in]  iN
 ## @var[out] tree,i,nofs
@@ -168,6 +213,32 @@ function ble-syntax/tree-enumerate {
   ble-syntax/tree-enumerate/.impl "$@"
 }
 
+## @fn ble-syntax/tree-enumerate-in-range beg end proc
+##   入れ子構造に従わず或る範囲内に登録されている節を列挙します。
+## @param[in] beg,end
+## @param[in] proc 以下の変数を使用する関数を指定します。
+##   @var[in]     wtype,wlen,wbeg,wend
+##   @var[in,out] node,flagUpdateNode
+##   @var[in]     nofs
+function ble-syntax/tree-enumerate-in-range {
+  local -i beg="$1" end="$2"
+  local proc="$3"
+  local -a node
+  local i nofs
+  for ((i=end;i>=beg;i--)); do
+    ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]] || continue
+    node=(${_ble_syntax_tree[i-1]})
+    local flagUpdateNode=
+    for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
+      local wtype="${node[nofs]}" wlen="${node[nofs+1]}"
+      local wbeg="$((wlen<0?wlen:i-wlen))" wend="$i"
+      "${@:3}"
+    done
+
+    [[ $flagUpdateNode ]] && _ble_syntax_tree[i-1]="${node[*]}"
+  done
+}
+
 #--------------------------------------
 # ble-syntax/print-status
 
@@ -220,7 +291,7 @@ function ble-syntax/print-status/.dump-arrays {
   local i max_tree_width=0
   for ((i=0;i<iN;i++)); do
     local attr="  ${_ble_syntax_attr[i]:-|}"
-    if ((_ble_syntax_attr_umin<=i&&i<_ble_syntax_attr_uend)); then
+    if ((_ble_syntax_attr_umin<=i&&i<_ble_syntax_attr_umax)); then
       attr="${attr:${#attr}-2:2}*"
     else
       attr="${attr:${#attr}-2:2} "
@@ -501,11 +572,11 @@ function ble-syntax/parse/nest-equals {
 
 # 属性値の変更範囲
 
-## @var _ble_syntax_attr_umin, _ble_syntax_attr_uend は更新された文法属性の範囲を記録する。
+## @var _ble_syntax_attr_umin, _ble_syntax_attr_umax は更新された文法属性の範囲を記録する。
 ## @var _ble_syntax_word_umin, _ble_syntax_word_umax は更新された単語の先頭位置の範囲を記録する。
-##   attr については [_ble_syntax_attr_umin, _ble_syntax_attr_uend) が範囲である。
+##   attr については [_ble_syntax_attr_umin, _ble_syntax_attr_umax) が範囲である。
 ##   word については [_ble_syntax_word_umin, _ble_syntax_word_umax] が範囲である。
-_ble_syntax_attr_umin=-1 _ble_syntax_attr_uend=-1
+_ble_syntax_attr_umin=-1 _ble_syntax_attr_umax=-1
 _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
 function ble-syntax/parse/touch-updated-attr {
   (((_ble_syntax_attr_umin<0||_ble_syntax_attr_umin>$1)&&(
@@ -1391,6 +1462,31 @@ function ble-syntax/parse/ctx-redirect {
 #------------------------------------------------------------------------------
 # 解析部
 
+_ble_syntax_vanishing_word_umin=-1
+_ble_syntax_vanishing_word_umax=-1
+function ble-syntax/vanishing-word/register {
+  local tree_array="$1" tofs="$2"
+  local -i beg="$3" end="$4" lbeg="$5" lend="$6"
+  (((beg<=0)&&(beg=1)))
+
+  local node i nofs
+  for ((i=end;i>=beg;i--)); do
+    builtin eval "node=(\${$tree_array[tofs+i-1]})"
+    ((${#node[@]})) || continue
+    for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
+      local wtype="${node[nofs]}" wlen="${node[nofs+1]}"
+      local wbeg="$((wlen<0?wlen:i-wlen))" wend="$i"
+
+      ((wbeg<lbeg&&(wbeg=lbeg),
+        wend>lend&&(wend=lend)))
+      ble/util/urange#update _ble_syntax_vanishing_word_ "$wbeg" "$wend"
+    done
+  done
+}
+
+#----------------------------------------------------------
+# shift
+
 ## @var[in] j
 ## @var[in] beg,end,end0,shift
 function ble-syntax/parse/shift.stat {
@@ -1486,7 +1582,7 @@ function ble-syntax/parse/shift.nest {
 
 # 実装中
 function ble-syntax/parse/shift.impl2/.proc1 {
-  while ((j>=end0)); do
+  while ((j>=j2)); do
     if ((j==i)); then
       ble-syntax/parse/shift.tree "$nofs"
 
@@ -1546,17 +1642,14 @@ function ble-syntax/parse/shift {
 
   if ((shift!=0)); then
     # 更新範囲の shift
-    ((_ble_syntax_attr_umin>=end0&&(_ble_syntax_attr_umin+=shift),
-      _ble_syntax_attr_uend>end0&&(_ble_syntax_attr_uend+=shift),
-      _ble_syntax_word_umin>=end0&&(_ble_syntax_word_umin+=shift),
-      _ble_syntax_word_umax>=end0&&(_ble_syntax_word_umax+=shift)))
-
-    # shift によって単語が潰れた時
-    ((_ble_syntax_word_umin==0&&
-         ++_ble_syntax_word_umin>_ble_syntax_word_umax&&
-         (_ble_syntax_word_umin=_ble_syntax_word_umax=-1)))
+    ble/util/urange#shift _ble_syntax_attr_
+    ble/util/wrange#shift _ble_syntax_word_
+    ble/util/urange#shift _ble_syntax_vanishing_word_
   fi
 }
+
+#----------------------------------------------------------
+# parse
 
 _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 
@@ -1584,7 +1677,7 @@ _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 ##   これらの変数には解析結果が格納される。
 ##
 ## @var  [in,out] _ble_syntax_attr_umin
-## @var  [in,out] _ble_syntax_attr_uend
+## @var  [in,out] _ble_syntax_attr_umax
 ## @var  [in,out] _ble_syntax_word_umin
 ## @var  [in,out] _ble_syntax_word_umax
 ##   今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
@@ -1612,6 +1705,8 @@ function ble-syntax/parse {
   ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)) || ble-stackdump "X1 0 <= $beg <= $end <= $iN, $beg <= $end0"
   ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
 #%end
+
+  ble-syntax/vanishing-word/register _ble_syntax_tree 0 i1 j2 0 i1
 
   ble-syntax/parse/shift
 
@@ -1677,13 +1772,15 @@ function ble-syntax/parse {
     [[ ${_BLE_SYNTAX_FEND[ctx]} ]] && "${_BLE_SYNTAX_FEND[ctx]}"
   done
 
-  (((_ble_syntax_attr_umin<0||_ble_syntax_attr_umin>i1)&&(_ble_syntax_attr_umin=i1),
-    (_ble_syntax_attr_uend<0||_ble_syntax_attr_uend<i)&&(_ble_syntax_attr_uend=i),
-    (i>=i2)?(
+  ble-syntax/vanishing-word/register _tail_syntax_tree -i2 i2+1 i 0 i
+
+  ble/util/urange#update _ble_syntax_attr_ i1 i
+
+  (((i>=i2)?(
       _ble_syntax_dbeg=_ble_syntax_dend=-1
     ):(
       _ble_syntax_dbeg=i,_ble_syntax_dend=i2)))
-
+  
   # 終端の状態の記録
   if ((i>=iN)); then
     ((i=iN))
@@ -2099,9 +2196,7 @@ ble-syntax-initialize-rex
 
 # adapter に頼らず直接実装したい
 function ble-highlight-layer:syntax/touch-range {
-  local -i p1="$1" p2="${2:-$1}"
-  (((umin<0||umin>p1)&&(umin=p1),
-    (umax<0||umax<p2)&&(umax=p2)))
+  ble/util/urange#update '' "$@"
 }
 function ble-highlight-layer:syntax/fill {
   local _i _arr="$1" _i1="$2" _i2="$3" _v="$4"
@@ -2119,34 +2214,61 @@ _ble_highlight_layer_syntax3_table=() # errors
 function ble-highlight-layer:syntax/update-attribute-table {
   ble-highlight-layer/update/shift _ble_highlight_layer_syntax1_table
   if ((_ble_syntax_attr_umin>=0)); then
-    ble-highlight-layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_uend
+    ble-highlight-layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_umax
 
     local i g=0
     ((_ble_syntax_attr_umin>0)) &&
       ((g=_ble_highlight_layer_syntax1_table[_ble_syntax_attr_umin-1]))
 
-    for ((i=_ble_syntax_attr_umin;i<_ble_syntax_attr_uend;i++)); do
+    for ((i=_ble_syntax_attr_umin;i<_ble_syntax_attr_umax;i++)); do
       if ((${_ble_syntax_attr[i]})); then
         ble-syntax/attr2g "${_ble_syntax_attr[i]}"
       fi
       _ble_highlight_layer_syntax1_table[i]="$g"
     done
 
-    _ble_syntax_attr_umin=-1 _ble_syntax_attr_uend=-1
+    _ble_syntax_attr_umin=-1 _ble_syntax_attr_umax=-1
   fi
 }
 
-## @var[in,out] umin,umax
-function ble-highlight/urange-update {
-  local prefix=
-  if [[ $1 == --prefix=* ]]; then
-    prefix=${1#--prefix=}
-    shift
-  fi
+function ble-highlight-layer:syntax/word/.update-attributes/.proc {
+  [[ ${node[nofs]} =~ ^[0-9]+$ ]] || continue
+  [[ ${node[nofs+4]} == - ]] || continue
+  local wtxt="${text:wbeg:wlen}"
+  ble/util/urange#update color_ "$wbeg" "$wend"
+  if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
 
-  local -i p1="$1" p2="${2:-$1}"
-  (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
-    (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
+    # 単語を展開
+    local value
+    if [[ $wtxt == '['* ]]; then
+      # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
+      eval "value=(''$wtxt)"
+    else
+      # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
+      eval "value=($wtxt)"
+    fi
+
+    local type=
+    if ((wtype==CTX_CMDI)); then
+      ble-syntax/highlight/cmdtype "$value" "$wtxt"
+    elif ((wtype==CTX_ARGI||wtype==CTX_RDRF)); then
+      ble-syntax/highlight/filetype "$value" "$wtxt"
+
+      # エラー: ディレクトリにリダイレクトはできない
+      ((wtype==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
+    elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
+      ((type=wtype))
+    fi
+
+    if [[ $type ]]; then
+      local g
+      ble-syntax/attr2g "$type"
+      node[nofs+4]="$g"
+    else
+      node[nofs+4]='d'
+    fi
+    flagUpdateNode=1
+  fi
 }
 
 ## 関数 ble-highlight-layer:syntax/word/.update-attributes
@@ -2155,58 +2277,8 @@ function ble-highlight/urange-update {
 function ble-highlight-layer:syntax/word/.update-attributes {
   ((_ble_syntax_word_umin>=0)) || return
 
-  local -a node
-  local i nofs
-  for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;i--)); do
-    ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]] || continue
-    node=(${_ble_syntax_tree[i-1]})
-    local flagNodeSet=
-    for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
-      [[ ${node[nofs]} =~ ^[0-9]+$ ]] || continue
-      [[ ${node[nofs+4]} == - ]] || continue
-      local wtype="${node[nofs]}"
-      local wlen="${node[nofs+1]}"
-      local wbeg="$((wlen<0?wlen:i-wlen))" wend="$i"
-      local wtxt="${text:wbeg:wlen}"
-      ble-highlight/urange-update --prefix=color_ "$wbeg" "$wend"
-      if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
-
-        # 単語を展開
-        local value
-        if [[ $wtxt == '['* ]]; then
-          # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
-          eval "value=(''$wtxt)"
-        else
-          # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
-          eval "value=($wtxt)"
-        fi
-
-        local type=
-        if ((wtype==CTX_CMDI)); then
-          ble-syntax/highlight/cmdtype "$value" "$wtxt"
-        elif ((wtype==CTX_ARGI||wtype==CTX_RDRF)); then
-          ble-syntax/highlight/filetype "$value" "$wtxt"
-
-          # エラー: ディレクトリにリダイレクトはできない
-          ((wtype==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
-        elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
-          ((type=wtype))
-        fi
-
-        if [[ $type ]]; then
-          local g
-          ble-syntax/attr2g "$type"
-          node[nofs+4]="$g"
-          # ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$g"
-        else
-          node[nofs+4]='d'
-        fi
-        flagNodeSet=1
-      fi
-    done
-
-    [[ $flagNodeSet ]] && _ble_syntax_tree[i-1]="${node[*]}"
-  done
+  ble-syntax/tree-enumerate-in-range _ble_syntax_word_umin _ble_syntax_word_umax \
+    ble-highlight-layer:syntax/word/.update-attributes/.proc
 }
 
 function ble-highlight-layer:syntax/word/.apply-attribute {
@@ -2241,6 +2313,11 @@ function ble-highlight-layer:syntax/update-word-table {
 
   # (2) 色配列 shift
   ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
+
+  # 2015-08-16 暫定 (本当は入れ子構造を考慮に入れたい)
+  ble/util/wrange#update _ble_syntax_word_ _ble_syntax_vanishing_word_umin _ble_syntax_vanishing_word_umax
+  ble/util/wrange#update color_ _ble_syntax_vanishing_word_umin _ble_syntax_vanishing_word_umax
+  _ble_syntax_vanishing_word_umin=-1 _ble_syntax_vanishing_word_umax=-1
 
   # (3) 色配列に登録
   ble-highlight-layer:syntax/word/.apply-attribute 0 "$iN" '' # clear word color
@@ -2353,15 +2430,16 @@ function ble-highlight-layer:syntax/update {
 
   _ble_edit_str.update-syntax
 
+  #--------------------------------------------------------
+
   local umin=-1 umax=-1
   # 少なくともこの範囲は文字が変わっているので再描画する必要がある
   ((DMIN>=0)) && umin="$DMIN" umax="$DMAX"
 
-  # .ble-line-info.draw-text "ble-syntax/parse attr_urange = $_ble_syntax_attr_umin-$_ble_syntax_attr_uend, word_urange = $_ble_syntax_word_umin-$_ble_syntax_word_umax"
 #%if !release
   if [[ $ble_debug ]]; then
     local debug_attr_umin="$_ble_syntax_attr_umin"
-    local debug_attr_uend="$_ble_syntax_attr_uend"
+    local debug_attr_uend="$_ble_syntax_attr_umax"
   fi
 #%end
 
@@ -2406,7 +2484,7 @@ function ble-highlight-layer:syntax/update {
 #%if !release
   if [[ $ble_debug ]]; then
     local status buff=
-    _ble_syntax_attr_umin="$debug_attr_umin" _ble_syntax_attr_uend="$debug_attr_uend" ble-syntax/print-status -v status
+    _ble_syntax_attr_umin="$debug_attr_umin" _ble_syntax_attr_umax="$debug_attr_uend" ble-syntax/print-status -v status
     ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | cat -A'; status="$status$buff"
     ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | cat -A'; status="$status$buff"
     #ble/util/assign buff 'declare -p _ble_line_text_buffName $_ble_line_text_buffName | cat -A'; status="$status$buff"
@@ -2532,7 +2610,7 @@ function mytest {
   if ((${#text}>=5)); then
     text="${text::5}""hello; echo""${text:5}"
     ble-syntax/parse "$text" 5 16 5
-    builtin echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_uend
+    builtin echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_umax
     mytest/print
   fi
 
@@ -2540,7 +2618,7 @@ function mytest {
   if ((${#text}>=10)); then
     text="${text::5}""${text:10}"
     ble-syntax/parse "$text" 5 5 10
-    builtin echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_uend
+    builtin echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_umax
     mytest/print
   fi
 

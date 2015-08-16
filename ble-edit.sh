@@ -1596,17 +1596,6 @@ function _ble_edit_str.update-syntax {
     ble-edit/dirty-range/clear --prefix=_ble_edit_dirty_syntax_
 
     ble-syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
-    # ※状態変数
-    # _ble_syntax_dbeg
-    # _ble_syntax_dend
-    # _ble_syntax_stat[]
-    # _ble_syntax_nest[]
-    # _ble_syntax_attr[]
-    # _ble_syntax_tree[]
-    # _ble_syntax_attr_umin
-    # _ble_syntax_attr_uend
-    # _ble_syntax_word_umin
-    # _ble_syntax_word_umax
   fi
 }
 
