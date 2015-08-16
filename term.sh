@@ -15,13 +15,13 @@ function ble/term.sh/register-varname {
 function ble/term.sh/define-cap {
   local name="$1" def="$2"
   shift 2
-  eval "$name=\"\$(ble/term.sh/tput $@ || echo -n \"\$def\")\""
+  builtin eval "$name=\"\$(ble/term.sh/tput $@ || echo -n \"\$def\")\""
   ble/term.sh/register-varname "$name"
 }
 function ble/term.sh/define-cap.2 {
   local name="$1" def="$2"
   shift 2
-  eval "$name=\"\$(echo -n x;ble/term.sh/tput $@ || echo -n \"\$def\";echo -n x)\"; $name=\${$name#x}; $name=\${$name%x}"
+  builtin eval "$name=\"\$(echo -n x;ble/term.sh/tput $@ || echo -n \"\$def\";echo -n x)\"; $name=\${$name#x}; $name=\${$name%x}"
   ble/term.sh/register-varname "$name"
 }
 
@@ -29,9 +29,9 @@ _ble_term_rex_sgr='\[([0-9;:]+)m'
 function ble/term.sh/define-sgr-param {
   local name="$1" seq="$2"
   if [[ $seq =~ $_ble_term_rex_sgr ]]; then
-    eval "$name=\"\${BASH_REMATCH[1]}\""
+    builtin eval "$name=\"\${BASH_REMATCH[1]}\""
   else
-    eval "$name="
+    builtin eval "$name="
   fi
 
   if [[ $name =~ ^[a-zA-Z_][a-zA-Z_0-9]*$ ]]; then

@@ -7,7 +7,7 @@
 #
 
 function ble-decode/generate-binder/append {
-  local xarg="\"$1\":ble-decode-byte:bind $2; eval \"\$_ble_decode_bind_hook\""
+  local xarg="\"$1\":ble-decode-byte:bind $2; builtin eval \"\$_ble_decode_bind_hook\""
   local rarg="$1"
   echo "builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
   echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"

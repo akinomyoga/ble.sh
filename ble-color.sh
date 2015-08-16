@@ -49,7 +49,7 @@ function ble-color-g2sgr {
     _ble_color_g2sgr__table[$1]="$_ret"
   fi
 
-  eval "$_var=\"\$_ret\""
+  builtin eval "$_var=\"\$_ret\""
 }
 function ble-color-gspec2g {
   local _var=ret
@@ -88,7 +88,7 @@ function ble-color-gspec2g {
     esac
   done
 
-  eval "$_var=\"\$_g\""
+  builtin eval "$_var=\"\$_g\""
 }
 
 function ble-color-gspec2sgr {
@@ -116,7 +116,7 @@ function ble-color-gspec2sgr {
     esac
   done
 
-  eval "$_var=\"[\${__sgr}m\""
+  builtin eval "$_var=\"[\${__sgr}m\""
 }
 
 function .ble-color.name2color {
@@ -155,7 +155,7 @@ function .ble-color.name2color {
     esac
   fi
 
-  eval "$_var=\"\$_ret\""
+  builtin eval "$_var=\"\$_ret\""
 }
 function .ble-color.color2sgrfg {
   local _var=ret _ret
@@ -173,7 +173,7 @@ function .ble-color.color2sgrfg {
     _ret="38;5;$ccode"
   fi
 
-  eval "$_var=\"\$_ret\""
+  builtin eval "$_var=\"\$_ret\""
 }
 function .ble-color.color2sgrbg {
   local _var=ret _ret
@@ -191,7 +191,7 @@ function .ble-color.color2sgrbg {
     _ret="48;5;$ccode"
   fi
 
-  eval "$_var=\"\$_ret\""
+  builtin eval "$_var=\"\$_ret\""
 }
 
 
@@ -218,7 +218,7 @@ function ble-color-face2g {
   ((g=_ble_faces[_ble_faces__$1]))
 }
 function ble-color-face2sgr {
-  eval "sgr=\"\${_ble_faces_sgr[_ble_faces__$1]}\""
+  builtin eval "sgr=\"\${_ble_faces_sgr[_ble_faces__$1]}\""
 }
 function ble-color-iface2g {
   ((g=_ble_faces[$1]))
@@ -244,7 +244,7 @@ function ble-region_highlight-append {
 #------------------------------------------------------------------------------
 
 function ble-syntax-highlight+region {
-  if test -n "$_ble_edit_mark_active"; then
+  if [[ $_ble_edit_mark_active ]]; then
     if ((_ble_edit_mark>_ble_edit_ind)); then
       ble-region_highlight-append "$_ble_edit_ind $_ble_edit_mark bg=60,fg=white"
     elif ((_ble_edit_mark<_ble_edit_ind)); then
@@ -280,8 +280,9 @@ function ble-syntax-highlight+test {
   
         mode=rhs
       elif rex='^[^ 	"'\'']+([ 	]|$)' && [[ $tail =~ $rex ]]; then
-        local cmd="${tail%%[	 ]*}"
-        case "$(builtin type -t "$cmd" 2>/dev/null):$cmd" in
+        local cmd="${tail%%[	 ]*}" btype
+        ble/util/type btype "$cmd"
+        case "$btype:$cmd" in
         builtin:*)
           ble-region_highlight-append "$i $((i+${#cmd})) fg=red" ;;
         alias:*)
@@ -360,7 +361,7 @@ function ble-syntax-highlight+default {
         # ■ time'hello' 等の場合に time だけが切り出されてしまう
 
         local _0="${BASH_REMATCH[0]}"
-        eval "local cmd=${_0}"
+        builtin eval "local cmd=${_0}"
 
         # この部分の判定で fork を沢山する \if 等に対しては 4fork+2exec になる。
         # ■キャッシュ(accept-line 時に clear)するなどした方が良いかもしれない。
@@ -375,7 +376,7 @@ function ble-syntax-highlight+default {
         elif [[ "$type" = keyword && "$cmd" != "$_0" ]]; then
           # keyword (time do if function else elif fi の類) を \ で無効化している場合
           # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec
-          if test -z "${cmd##%*}" && jobs "$cmd" &>/dev/null; then
+          if [[ ! ${cmd##%*} ]] && jobs "$cmd" &>/dev/null; then
             # %() { :; } として 関数を定義できるが jobs の方が優先される。
             # (% という名の関数を呼び出す方法はない?)
             # でも % で始まる物が keyword になる事はそもそも無いような。
@@ -426,13 +427,13 @@ function ble-syntax-highlight+default {
 
         local file="$arg"
         rex='^~' && [[ ! -e $file && $file =~ $rex ]] && file="$HOME${file:1}"
-        if test -d "$file"; then
+        if [[ -d $file ]]; then
           ble-region_highlight-append "$i $((i+${#arg})) fg=navy,underline"
-        elif test -h "$file"; then
+        elif [[ -h $file ]]; then
           ble-region_highlight-append "$i $((i+${#arg})) fg=teal,underline"
-        elif test -x "$file"; then
+        elif [[ -x $file ]]; then
           ble-region_highlight-append "$i $((i+${#arg})) fg=green,underline"
-        elif test -f "$file"; then
+        elif [[ -f $file ]]; then
           ble-region_highlight-append "$i $((i+${#arg})) underline"
         fi
 
@@ -526,13 +527,13 @@ function ble-highlight-layer/update/shift {
   local __srcArray="${2:-$__dstArray}"
   if ((DMIN>=0)); then
     _ble_util_array_prototype.reserve "$((DMAX-DMIN))"
-    eval "
+    builtin eval "
     $__dstArray=(
       \"\${$__srcArray[@]::DMIN}\"
       \"\${_ble_util_array_prototype[@]::DMAX-DMIN}\"
       \"\${$__srcArray[@]:DMAX0}\")"
   else
-    [[ $__dstArray != "$__srcArray" ]] && eval "$__dstArray=(\"\${$__srcArray[@]}\")"
+    [[ $__dstArray != "$__srcArray" ]] && builtin eval "$__dstArray=(\"\${$__srcArray[@]}\")"
   fi
 }
 
@@ -551,7 +552,7 @@ function ble-highlight-layer/getg {
     if [[ $2 != g ]]; then
       local g
       ble-highlight-layer/getg "$3"
-      eval "$2=\"\$g\""
+      builtin eval "$2=\"\$g\""
       return
     else
       shift 2
@@ -729,7 +730,7 @@ function ble-highlight-layer:adapter/update {
         ch="$ret$ch"
       fi
     else
-      eval "ch=\"\${$PREV_BUFF[i]}\""
+      builtin eval "ch=\"\${$PREV_BUFF[i]}\""
       if ((ctx!=1)); then
         ((ctx=1,gprev=-1))
         ble-highlight-layer/update/getg
@@ -802,7 +803,7 @@ function ble-highlight-layer:region/update {
     local g sgr2
     ble-highlight-layer/update/getg "$rmax"
     ble-color-g2sgr -v sgr2 "$g"
-    eval "_ble_highlight_layer_region_buff=(
+    builtin eval "_ble_highlight_layer_region_buff=(
       \"\${$PREV_BUFF[@]::rmin}\"
       \"\$sgr\"\"\${_ble_highlight_layer_plain_buff[@]:rmin:rmax-rmin}\"
       \"\$sgr2\"\"\${$PREV_BUFF[@]:rmax}\")"
@@ -920,7 +921,7 @@ function ble-highlight-layer:overwrite_mode/update {
         _ble_highlight_layer_overwrite_mode_buff[oindex]="$sgr${_ble_highlight_layer_plain_buff[oindex]}"
       else
         # コピーした方が速い場合
-        eval "_ble_highlight_layer_overwrite_mode_buff=(\"\${$PREV_BUFF[@]}\")"
+        builtin eval "_ble_highlight_layer_overwrite_mode_buff=(\"\${$PREV_BUFF[@]}\")"
       fi
       PREV_BUFF=_ble_highlight_layer_overwrite_mode_buff
 

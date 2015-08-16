@@ -70,7 +70,7 @@ function ble-complete/util/escape-specialchars {
     _a=\! _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
     _a=\^ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
   fi
-  eval "$_var=\"\$_ret\""
+  builtin eval "$_var=\"\$_ret\""
 }
 
 function ble-complete/action/util/complete.addtail {
@@ -153,7 +153,7 @@ function ble-complete/source/command {
       COMP_PREFIX="${BASH_REMATCH[0]}"
 
     local cand arr
-    IFS=$'\n' eval 'arr=($(ble-complete/source/command/gen))'
+    IFS=$'\n' builtin eval 'arr=($(ble-complete/source/command/gen))'
     for cand in "${arr[@]}"; do
       ble-complete/yield-candidate "$cand" ble-complete/action/command
     done
@@ -193,7 +193,7 @@ function ble-edit+complete {
     local COMPS="${text:COMP1:COMP2-COMP1}"
     local COMPV _ble_complete_raw_paramx=
     if [[ -z $COMPS || $COMPS =~ $_ble_syntax_rex_simple_word ]]; then
-      eval "COMPV=$COMPS"
+      builtin eval "COMPV=$COMPS"
       [[ $COMPS =~ $rex_raw_paramx ]] && _ble_complete_raw_paramx=1
     fi
     local COMP_PREFIX=
@@ -214,7 +214,7 @@ function ble-edit+complete {
       ble-complete/source/command ;;
     (variable)
       if [[ ${COMPV+set} ]]; then
-        IFS=$'\n' eval 'arr=($(compgen -v -- "$COMPV"))'
+        IFS=$'\n' builtin eval 'arr=($(compgen -v -- "$COMPV"))'
         for cand in "${arr[@]}"; do
           ble-complete/yield-candidate "$cand" ble-complete/action/word
         done

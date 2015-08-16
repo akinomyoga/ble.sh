@@ -95,7 +95,7 @@ declare -a _ble_text_c2w__table=()
 ##   @var[out] ret
 function .ble-text.c2w {
   # ret="${_ble_text_c2w__table[$1]}"
-  # test -n "$ret" && return
+  # [[ $ret ]] && return
   ".ble-text.c2w+$bleopt_char_width_mode" "$1"
   # _ble_text_c2w__table[$1]="$ret"
 }
@@ -315,13 +315,13 @@ function ble-edit/draw/put.vpa {
   DRAW_BUFF[${#DRAW_BUFF[*]}]="$out"
 }
 function ble-edit/draw/flush {
-  IFS= eval 'builtin echo -n "${DRAW_BUFF[*]}"'
+  IFS= builtin eval 'builtin echo -n "${DRAW_BUFF[*]}"'
   DRAW_BUFF=()
 }
 function ble-edit/draw/sflush {
   local _var=ret
   [[ $1 == -v ]] && _var="$2"
-  IFS= eval "$_var=\"\${DRAW_BUFF[*]}\""
+  IFS= builtin eval "$_var=\"\${DRAW_BUFF[*]}\""
   DRAW_BUFF=()
 }
 
@@ -368,7 +368,7 @@ function ble-edit/draw/trace/SGR/arg_next {
 }
 function ble-edit/draw/trace/SGR {
   local param="$1" seq="$2" specs i iN
-  IFS=\; eval 'specs=($param)'
+  IFS=\; builtin eval 'specs=($param)'
   if ((${#specs[*]}==0)); then
     g=0
     ble-edit/draw/put "$_ble_term_sgr0"
@@ -377,7 +377,7 @@ function ble-edit/draw/trace/SGR {
 
   for ((i=0,iN=${#specs[@]};i<iN;i++)); do
     local spec="${specs[i]}" f
-    IFS=: eval 'f=($spec)'
+    IFS=: builtin eval 'f=($spec)'
     if ((30<=f[0]&&f[0]<50)); then
       # colors
       if ((30<=f[0]&&f[0]<38)); then
@@ -867,7 +867,7 @@ function .ble-line-prompt/update/backslash:0 { # 8進表現
   if [[ $tail =~ $rex ]]; then
     local seq="${BASH_REMATCH[0]}"
     ((i+=${#seq}-2))
-    eval "c=\$'$seq'"
+    builtin eval "c=\$'$seq'"
   fi
   .ble-line-prompt/update/append "$c"
 }
@@ -924,7 +924,7 @@ function .ble-line-prompt/update/backslash:j { #   ジョブの数
   if [[ ! $cache_j ]]; then
     local joblist
     ble/util/assign joblist jobs
-    IFS=$'\n' GLOBIGNORE='*' eval 'joblist=($joblist)'
+    IFS=$'\n' GLOBIGNORE='*' builtin eval 'joblist=($joblist)'
     cache_j=${#joblist[@]}
   fi
   ble-edit/draw/put "$cache_j"
@@ -1011,7 +1011,7 @@ function .ble-line-prompt/update {
   # 2 eval 'ps1esc="..."'
   local ps1esc
   ble-edit/draw/sflush -v ps1esc
-  eval "ps1esc=\"$ps1esc\""
+  builtin eval "ps1esc=\"$ps1esc\""
   if [[ $ps1esc == "${_ble_line_prompt[7]}" ]]; then
     # 前回と同じ ps1esc の場合は計測処理は省略
     _ble_line_prompt[0]="$version"
@@ -1252,7 +1252,7 @@ function .ble-line-text/update {
   # 変更文字の適用
   if ((${#_ble_line_text_cache_ichg[@]})); then
     local ichg g sgr
-    eval "_ble_line_text_buff=(\"\${$HIGHLIGHT_BUFF[@]}\")"
+    builtin eval "_ble_line_text_buff=(\"\${$HIGHLIGHT_BUFF[@]}\")"
     HIGHLIGHT_BUFF=_ble_line_text_buff
     for ichg in "${_ble_line_text_cache_ichg[@]}"; do
       ble-highlight-layer/getg "$ichg"
@@ -1365,7 +1365,7 @@ function .ble-line-text/slice {
     local g sgr
     ble-highlight-layer/getg -v g "$i1"
     ble-color-g2sgr -v sgr "$g"
-    IFS= eval "ret=\"\$sgr\${$_ble_line_text_buffName[*]:i1:i2-i1}\""
+    IFS= builtin eval "ret=\"\$sgr\${$_ble_line_text_buffName[*]:i1:i2-i1}\""
   else
     ret=
   fi
@@ -1698,7 +1698,7 @@ function .ble-edit/edit/attach {
 
   trap .ble-edit/edit/attach/TRAPWINCH WINCH
 
-  # if test -z "${_ble_edit_PS1+set}"; then
+  # if [[ ! ${_ble_edit_PS1+set} ]]; then
   # fi
   _ble_edit_PS1="$PS1"
   PS1=
@@ -2754,7 +2754,7 @@ function .ble-edit/exec:exec/eval {
   local _ble_edit_exec_in_eval=1
   # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
   .ble-edit/exec/setexit
-  eval -- "$BASH_COMMAND"
+  builtin eval -- "$BASH_COMMAND"
 }
 function .ble-edit/exec:exec/eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
@@ -2980,6 +2980,9 @@ function .ble-edit/exec:gexec/eval-epilogue {
   fi
   _ble_edit_accept_line_INT=0
 
+  unset -f builtin
+  builtin unset -f builtin return break continue : eval echo
+
   trap - DEBUG # DEBUG 削除が何故か効かない
 
   .ble-stty.enter
@@ -2989,7 +2992,7 @@ function .ble-edit/exec:gexec/eval-epilogue {
 
   if [ "$_ble_edit_accept_line_lastexit" -ne 0 ]; then
     # SIGERR処理
-    if type -t TRAPERR &>/dev/null; then
+    if builtin type -t TRAPERR &>/dev/null; then
       TRAPERR
     else
       builtin echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_accept_line_lastexit]$_ble_term_sgr0" 2>&1
@@ -3015,7 +3018,7 @@ function .ble-edit/exec:gexec/setup {
   for cmd in "${_ble_edit_accept_line[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
       buff[${#buff[@]}]=".ble-edit/exec:gexec/eval-prologue '${cmd//$apos/$APOS}'"
-      buff[${#buff[@]}]="eval -- '${cmd//$apos/$APOS}'"
+      buff[${#buff[@]}]="builtin eval -- '${cmd//$apos/$APOS}'"
       buff[${#buff[@]}]=".ble-edit/exec:gexec/eval-epilogue"
       ((count++))
 
@@ -3030,7 +3033,7 @@ function .ble-edit/exec:gexec/setup {
   buff[${#buff[@]}]='trap - INT DEBUG' # trap - は一番外側でないと効かない様だ
   buff[${#buff[@]}]=.ble-edit/exec:gexec/end
 
-  IFS=$'\n' eval '_ble_decode_bind_hook="${buff[*]}"'
+  IFS=$'\n' builtin eval '_ble_decode_bind_hook="${buff[*]}"'
   return 0
 }
 
@@ -3252,7 +3255,7 @@ function .ble-edit.history-load {
   # * プロセス置換にしてもファイルに書き出しても大した違いはない。
   #   270ms for 16437 entries (generate-source の時間は除く)
   # * プロセス置換×source は bash-3 で動かない。eval に変更する。
-  eval -- "$(.ble-edit/history/generate-source-to-load-history)"
+  builtin eval -- "$(.ble-edit/history/generate-source-to-load-history)"
   _ble_edit_history_count="${#_ble_edit_history[@]}"
   _ble_edit_history_ind="$_ble_edit_history_count"
   if ((_ble_edit_attached)); then
@@ -3270,7 +3273,7 @@ function .ble-edit.history-add {
   local cmd="$1"
   if [[ $HISTIGNORE ]]; then
     local i pats pat
-    GLOBIGNORE='*' IFS=: eval 'pats=($HISTIGNORE)'
+    GLOBIGNORE='*' IFS=: builtin eval 'pats=($HISTIGNORE)'
     for pat in "${pats[@]}"; do
       [[ $cmd == $pat ]] && return
     done
@@ -3576,7 +3579,7 @@ function .ble-edit-comp.initialize-vars {
   local _default_wordbreaks=' 	
 "'"'"'><=;|&(:}'
   local -a _tmp
-  GLOBIGNORE='*' IFS="${COMP_WORDBREAKS-$_default_wordbreaks}" eval '
+  GLOBIGNORE='*' IFS="${COMP_WORDBREAKS-$_default_wordbreaks}" builtin eval '
     COMP_WORDS=($COMP_LINE)
     _tmp=(${COMP_LINE::COMP_POINT}x)
     COMP_CWORD=$((${#_tmp[@]}-1))

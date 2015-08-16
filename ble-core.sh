@@ -16,15 +16,25 @@ shopt -s checkwinsize
 # util
 
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
-# function ble/util/assign { eval "$1=\"\$(${@:2})\""; }
+# function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
 function ble/util/assign {
-  eval "${@:2}" > "$_ble_util_read_stdout_tmp"
+  builtin eval "${@:2}" > "$_ble_util_read_stdout_tmp"
   local _ret="$?"
   IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
   return "$_ret"
 }
 
 if ((_ble_bash>=40100)); then
+  function ble/util/set {
+    builtin printf -v "$1" %s "$2"
+  }
+else
+  function ble/util/set {
+    builtin eval "$1=\"\$2\""
+  }
+fi
+
+if ((_ble_bash>=30100)); then
   function ble/util/sprintf {
     builtin printf -v "$@"
   }
@@ -38,7 +48,7 @@ fi
 
 function ble/util/type {
   _cmd="$2" ble/util/assign "$1" 'builtin type -t "$_cmd" 2>/dev/null'
-  eval "$1=\"\${$1%$_ble_term_nl}\""
+  builtin eval "$1=\"\${$1%$_ble_term_nl}\""
 }
 
 if ((_ble_bash>=30200)); then
@@ -59,14 +69,14 @@ fi
 if ((_ble_bash>=40100)); then
   function ble/util/openat {
     local _fdvar="$1" _redirect="$2"
-    eval "exec {$_fdvar}$_redirect"
+    builtin eval "exec {$_fdvar}$_redirect"
   }
 else
   _ble_util_openat_nextfd="$bleopt_openat_base"
   function ble/util/openat {
     local _fdvar="$1" _redirect="$2"
     (($_fdvar=_ble_util_openat_nextfd++))
-    eval "exec ${!_fdvar}$_redirect"
+    builtin eval "exec ${!_fdvar}$_redirect"
   }
 fi
 
@@ -82,7 +92,7 @@ else
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
       local _result="$(date +"$3" $4)"
-      eval "$2=\"\$_result\""
+      builtin eval "$2=\"\$_result\""
     else
       date +"$1" $2
     fi
@@ -91,11 +101,11 @@ fi
 
 if ((_ble_bash>=30100)); then
   function ble/util/array-push {
-    eval "$1+=(\"\$2\")"
+    builtin eval "$1+=(\"\$2\")"
   }
 else
   function ble/util/array-push {
-    eval "$1[\${#$1[@]}]=\"\$2\""
+    builtin eval "$1[\${#$1[@]}]=\"\$2\""
   }
 fi
 
@@ -181,7 +191,7 @@ function ble-autoload {
   #   この場合無闇にコマンドとして実行するのは危険である。
 
   for funcname in "$@"; do
-    eval "function $funcname {
+    builtin eval "function $funcname {
       unset -f $funcname
       ble-load '${file//$apos/$APOS}'
       $funcname \"\$@\"
@@ -215,7 +225,7 @@ function ble-stackdump {
 function ble-assert {
   local expr="$1"
   local _ble_stackdump_title='assertion failure'
-  if ! eval -- "$expr"; then
+  if ! builtin eval -- "$expr"; then
     shift
     ble-stackdump "$expr$_ble_term_NL$*"
   fi
@@ -252,7 +262,7 @@ function ble-term/cup {
   BUFF[${#BUFF[@]}]="$esc"
 }
 function ble-term/flush {
-  IFS= eval 'builtin echo -n "${BUFF[*]}"'
+  IFS= builtin eval 'builtin echo -n "${BUFF[*]}"'
   BUFF=()
 }
 
@@ -291,13 +301,13 @@ function .ble-term/visible-bell/initialize {
   ble-term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
   ble-term/cup 0 0
   ble-term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//'%d'/1}"
-  IFS= eval '_ble_term_visible_bell_show="${BUFF[*]}"'
+  IFS= builtin eval '_ble_term_visible_bell_show="${BUFF[*]}"'
   
   BUFF=()
   ble-term/put "$_ble_term_sc$_ble_term_sgr0"
   ble-term/cup 0 0
   ble-term/put "$_ble_term_el2$_ble_term_rc"
-  IFS= eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
+  IFS= builtin eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
 }
 
 .ble-term/visible-bell/initialize
@@ -399,7 +409,7 @@ if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
   function .ble-text.c2s-impl {
     builtin printf -v ret '\\U%08x' "$1"
-    eval "ret=\$'$ret'"
+    builtin eval "ret=\$'$ret'"
   }
 else
   _ble_text_xdigit=(0 1 2 3 4 5 6 7 8 9 A B C D E F)
@@ -411,7 +421,7 @@ else
   # 動作確認済 3.1, 3.2, 4.0, 4.2, 4.3
   function .ble-text.c2s-impl {
     if (($1<0x80)); then
-      eval "ret=\$'\\x${_ble_text_hexmap[$1]}'"
+      builtin eval "ret=\$'\\x${_ble_text_hexmap[$1]}'"
       return
     fi
 
@@ -420,7 +430,7 @@ else
     for ((i=0,iN=${#bytes[@]};i<iN;i++)); do
       seq="$seq\\x${_ble_text_hexmap[bytes[i]&0xFF]}"
     done
-    eval "ret=\$'$seq'"
+    builtin eval "ret=\$'$seq'"
   }
 fi
 

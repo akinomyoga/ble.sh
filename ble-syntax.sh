@@ -1405,7 +1405,8 @@ function ble-syntax/parse/shift.stat {
 function ble-syntax/parse/shift.tree/1 {
   local k klen kbeg
   for k in 1 2 3; do
-    (((klen=node[nofs+k])<0||(kbeg=j-klen)>end0)) && continue
+    ((klen=node[nofs+k]))
+    ((klen<0||(kbeg=j-klen)>end0)) && continue
     # 長さが変化した時 (k==1)、または構文木の距離変化があった時 (k==2, k==3) にここへ来る。
 
     # (1) 単語の中身が変化した事を記録
@@ -1457,7 +1458,8 @@ function ble-syntax/parse/shift.nest {
 
     local k klen kbeg
     for k in 1 3 4 5; do
-      (((klen=nest[1])<0||(kbeg=j-klen)<0)) && continue
+      (((klen=nest[1])))
+      ((klen<0||(kbeg=j-klen)<0)) && continue
       if ((kbeg<beg)); then
         ((nest[k]+=shift))
       elif ((kbeg<end0)); then
@@ -1984,7 +1986,7 @@ function ble-syntax/highlight/cmdtype2 {
   elif [[ $type = $ATTR_CMD_KEYWORD && "$cmd" != "$_0" ]]; then
     # keyword (time do if function else elif fi の類) を \ で無効化している場合
     # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec
-    if test -z "${cmd##%*}" && jobs "$cmd" &>/dev/null; then
+    if [[ ! ${cmd##%*} ]] && jobs "$cmd" &>/dev/null; then
       # %() { :; } として 関数を定義できるが jobs の方が優先される。
       # (% という名の関数を呼び出す方法はない?)
       # でも % で始まる物が keyword になる事はそもそも無いような。
@@ -2049,13 +2051,13 @@ fi
 function ble-syntax/highlight/filetype {
   local file="$1" _0="$2"
   [[ ! -e "$file" && ( $file == '~' || $file == '~/'* ) ]] && file="$HOME${file:1}"
-  if test -d "$file"; then
+  if [[ -d $file ]]; then
     ((type=ATTR_FILE_DIR))
-  elif test -h "$file"; then
+  elif [[ -h $file ]]; then
     ((type=ATTR_FILE_LINK))
-  elif test -x "$file"; then
+  elif [[ -x $file ]]; then
     ((type=ATTR_FILE_EXEC))
-  elif test -f "$file"; then
+  elif [[ -f $file ]]; then
     ((type=ATTR_FILE_FILE))
   else
     type=
