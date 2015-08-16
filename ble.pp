@@ -1,6 +1,6 @@
 #!/bin/bash
 #%$> out/ble.sh
-#%[debug=1]
+#%[release=0]
 #%m inc (
 #%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
 #%%if @_included!=1 (

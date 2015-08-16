@@ -1,5 +1,5 @@
 #!/bin/bash
-#%(
+#%begin
 
 _ble_util_array_prototype=()
 function _ble_util_array_prototype.reserve {
@@ -37,7 +37,7 @@ function ble-assert {
   fi
 }
 
-#%)
+#%end
 #%m main (
 
 ## @var _ble_syntax_text
@@ -202,6 +202,14 @@ function ble-syntax/print-status/.tree-prepend {
   tree[j]="$t${tree[j]}"
   ((max_tree_width<${#tree[j]}&&(max_tree_width=${#tree[j]})))
 }
+
+function ble-syntax/print-status/.dump-arrays/.append-attr-char {
+  if (($?==0)); then
+    attr="${attr}$1"
+  else
+    attr="${attr} "
+  fi
+}
 ## @var[in] iN
 function ble-syntax/print-status/.dump-arrays {
   local -a tree char line
@@ -218,11 +226,16 @@ function ble-syntax/print-status/.dump-arrays {
       attr="${attr:${#attr}-2:2} "
     fi
 
-    if [[ ${_ble_syntax_stat_shift[i]} ]]; then
-      attr="${attr}s"
-    else
-      attr="${attr} "
-    fi
+    local ret
+    [[ ${_ble_highlight_layer_syntax1_table[i]} ]] && ble-color-g2sgr "${_ble_highlight_layer_syntax1_table[i]}"
+    ble-syntax/print-status/.dump-arrays/.append-attr-char "${ret}a${_ble_term_sgr0}"
+    [[ ${_ble_highlight_layer_syntax2_table[i]} ]] && ble-color-g2sgr "${_ble_highlight_layer_syntax2_table[i]}"
+    ble-syntax/print-status/.dump-arrays/.append-attr-char "${ret}w${_ble_term_sgr0}"
+    [[ ${_ble_highlight_layer_syntax3_table[i]} ]] && ble-color-g2sgr "${_ble_highlight_layer_syntax3_table[i]}"
+    ble-syntax/print-status/.dump-arrays/.append-attr-char "${ret}e${_ble_term_sgr0}"
+
+    [[ ${_ble_syntax_stat_shift[i]} ]]
+    ble-syntax/print-status/.dump-arrays/.append-attr-char s
 
     local index="000$i"
     index="${index:${#index}-3:3}"
@@ -479,9 +492,9 @@ function ble-syntax/parse/nest-equals {
 
     local -a onest
     onest=($_onest)
-#%if debug (
+#%if !release
     ((onest[3]<parent_inest)) || ble-stackdump 'invalid nest' && return 0
-#%)
+#%end
     parent_inest="${onest[3]}"
   done
 }
@@ -499,9 +512,9 @@ function ble-syntax/parse/touch-updated-attr {
       _ble_syntax_attr_umin=$1)))
 }
 function ble-syntax/parse/touch-updated-word {
-#%if debug (
+#%if !release
   (($1>0)) || ble-stackdump "invalid word position $1"
-#%)
+#%end
   (((_ble_syntax_word_umin<0||_ble_syntax_word_umin>$1)&&(
       _ble_syntax_word_umin=$1)))
   (((_ble_syntax_word_umax<0||_ble_syntax_word_umax<$1)&&(
@@ -1039,12 +1052,12 @@ function ble-syntax/parse/ctx-command {
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
   local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&))['"$_BLE_SYNTAX_CSPACE"']*'
   if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
-#%if debug (
+#%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||
          ctx==CTX_CMDX||ctx==CTX_CMDXF||
          ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
-#%)
+#%end
 
     if rex="^[$_BLE_SYNTAX_CSPACE]+" && [[ $tail =~ $rex ]]; then
       # 空白 (ctx はそのままで素通り)
@@ -1130,9 +1143,9 @@ function ble-syntax/parse/ctx-command {
     ble-syntax/parse/word-push "$wtype" "$i"
   fi
 
-#%if debug (
+#%if !release
   ((ctx==CTX_CMDI||ctx==CTX_ARGI||ctx==CTX_VRHS)) || ble-stackdump 2
-#%)
+#%end
 
   local flagConsume=0
   if ((wbegin==i&&ctx==CTX_CMDI)) && rex='^[a-zA-Z_][a-zA-Z_0-9]*([=[]|\+=)' && [[ $tail =~ $rex ]]; then
@@ -1233,10 +1246,10 @@ function ble-syntax/parse/ctx-values {
 
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
   if [[ $tail =~ $rex_delimiters && $tail != ['<>']'('* ]]; then
-#%if debug (
+#%if !release
     ((ctx==CTX_VALX)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
-#%)
+#%end
 
     if rex="^[$_BLE_SYNTAX_CSPACE]+" && [[ $tail =~ $rex ]]; then
       # 空白 (ctx はそのままで素通り)
@@ -1276,9 +1289,9 @@ function ble-syntax/parse/ctx-values {
     ble-syntax/parse/word-push "$ctx" "$i"
   fi
 
-#%if debug (
+#%if !release
   ble-assert '((ctx==CTX_VALI))' "invalid context ctx=$ctx"
-#%)
+#%end
 
   if rex='^([^'"${_BLE_SYNTAX_CSPECIAL[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
@@ -1335,11 +1348,11 @@ function ble-syntax/parse/ctx-redirect/check-word-end {
 
   # pop
   ble-syntax/parse/nest-pop
-#%if debug (
+#%if !release
   # ここで終端の必要のある ctx (CTX_CMDI や CTX_ARGI, CTX_VRHS など) になる事は無い。
   # 何故なら push した時は CMDX か ARGX の文脈にいたはずだから。
   ((ctx!=CTX_CMDI&&ctx!=CTX_ARGI&&ctx!=CTX_VRHS)) || ble-stackdump "invalid ctx=$ctx after nest-pop"
-#%)
+#%end
   return 0
 }
 function ble-syntax/parse/ctx-redirect {
@@ -1481,14 +1494,18 @@ function ble-syntax/parse/shift.impl2/.proc1 {
         # tprev<=end0 の場合、stat の中の tplen が shift 対象の可能性がある。
         ble-syntax/tree-enumerate-children ble-syntax/parse/shift.impl2/.proc1
       else
+#%if !release
         [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
+#%end
         ble-syntax/parse/shift.stat
         ble-syntax/parse/shift.nest
         ((j=wbegin)) # skip
       fi
       return
     else
+#%if !release
       [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
+#%end
       ble-syntax/parse/shift.stat
       ble-syntax/parse/shift.nest
       ((j--))
@@ -1518,7 +1535,9 @@ function ble-syntax/parse/shift {
       ((i<iN)) && ble-syntax/parse/shift.nest
     done
   else
+#%if !release
     [[ $ble_debug ]] && _ble_syntax_stat_shift=()
+#%end
 
     local iN="${#_ble_syntax_text}"
     local j="$iN"
@@ -1589,10 +1608,10 @@ function ble-syntax/parse {
     # beg より前の最後の stat の位置まで戻る
     while ((i1>0)) && ! [[ ${_ble_syntax_stat[--i1]} ]]; do :;done
   fi
-#%if debug (
+#%if !release
   ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)) || ble-stackdump "X1 0 <= $beg <= $end <= $iN, $beg <= $end0"
   ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
-#%)
+#%end
 
   ble-syntax/parse/shift
 
@@ -1683,10 +1702,10 @@ function ble-syntax/parse {
     fi
   fi
 
-#%if debug (
+#%if !release
   ((${#_ble_syntax_stat[@]}==iN+1)) ||
     ble-stackdump "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_util_array_prototype[@]} should be >= $iN"
-#%)
+#%end
 }
 
 #==============================================================================
@@ -2100,7 +2119,7 @@ _ble_highlight_layer_syntax3_table=() # errors
 function ble-highlight-layer:syntax/update-attribute-table {
   ble-highlight-layer/update/shift _ble_highlight_layer_syntax1_table
   if ((_ble_syntax_attr_umin>=0)); then
-    ble-highlight-layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_umax
+    ble-highlight-layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_uend
 
     local i g=0
     ((_ble_syntax_attr_umin>0)) &&
@@ -2224,6 +2243,7 @@ function ble-highlight-layer:syntax/update-word-table {
   ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
 
   # (3) 色配列に登録
+  ble-highlight-layer:syntax/word/.apply-attribute 0 "$iN" '' # clear word color
   local i
   for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;)); do
     if ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]]; then
@@ -2333,17 +2353,17 @@ function ble-highlight-layer:syntax/update {
 
   _ble_edit_str.update-syntax
 
-  if [[ $ble_debug ]]; then
-    local status
-    ble-syntax/print-status -v status
-    .ble-line-info.draw "$status"
-  fi
-
   local umin=-1 umax=-1
   # 少なくともこの範囲は文字が変わっているので再描画する必要がある
   ((DMIN>=0)) && umin="$DMIN" umax="$DMAX"
 
   # .ble-line-info.draw-text "ble-syntax/parse attr_urange = $_ble_syntax_attr_umin-$_ble_syntax_attr_uend, word_urange = $_ble_syntax_word_umin-$_ble_syntax_word_umax"
+#%if !release
+  if [[ $ble_debug ]]; then
+    local debug_attr_umin="$_ble_syntax_attr_umin"
+    local debug_attr_uend="$_ble_syntax_attr_uend"
+  fi
+#%end
 
   ble-highlight-layer:syntax/update-attribute-table
   ble-highlight-layer:syntax/update-word-table
@@ -2382,6 +2402,17 @@ function ble-highlight-layer:syntax/update {
 
   PREV_UMIN="$umin" PREV_UMAX="$umax"
   PREV_BUFF=_ble_highlight_layer_syntax_buff
+
+#%if !release
+  if [[ $ble_debug ]]; then
+    local status buff=
+    _ble_syntax_attr_umin="$debug_attr_umin" _ble_syntax_attr_uend="$debug_attr_uend" ble-syntax/print-status -v status
+    ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | cat -A'; status="$status$buff"
+    ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | cat -A'; status="$status$buff"
+    #ble/util/assign buff 'declare -p _ble_line_text_buffName $_ble_line_text_buffName | cat -A'; status="$status$buff"
+    .ble-line-info.draw "$status"
+  fi
+#%end
 
   # # 以下は単語の分割のデバグ用
   # local -a words=() word

@@ -1098,9 +1098,9 @@ function .ble-line-text/update/position {
   local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl"
   # local cols="80" it="$_ble_term_it" xenl="1"
 
-#%if debug (
+#%if !release
   ble-assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- (${BLELINE_RANGE_UPDATE[*]})"
-#%)
+#%end
 
   # shift cached data
   _ble_util_array_prototype.reserve "$iN"
@@ -1582,6 +1582,11 @@ _ble_edit_dirty_syntax_end0=1
 function _ble_edit_str/update-dirty-range {
   ble-edit/dirty-range/update --prefix=_ble_edit_dirty_draw_ "$@"
   ble-edit/dirty-range/update --prefix=_ble_edit_dirty_syntax_ "$@"
+
+  # ble-assert '((
+  #   _ble_edit_dirty_draw_beg==_ble_edit_dirty_syntax_beg&&
+  #   _ble_edit_dirty_draw_end==_ble_edit_dirty_syntax_end&&
+  #   _ble_edit_dirty_draw_end0==_ble_edit_dirty_syntax_end0))'
 }
 
 function _ble_edit_str.update-syntax {
@@ -1645,7 +1650,7 @@ function ble-edit/dirty-range/update {
   ((begB<0)) && return
 
   local begA endA endA0
-  ((begA=${_prefix}beg,endA=${_prefix}end,endA0=${_prefix}beg))
+  ((begA=${_prefix}beg,endA=${_prefix}end,endA0=${_prefix}end0))
 
   local beg end end0 delta
   if ((begA<0)); then
@@ -1658,7 +1663,7 @@ function ble-edit/dirty-range/update {
       ((end=-1,end0=-1))
     else
       ((end=endB,end0=endA0,
-        (delta=endA-endB0)>0?(end+=del):(end0-=del)))
+        (delta=endA-endB0)>0?(end+=delta):(end0-=delta)))
     fi
   fi
 
@@ -1847,11 +1852,11 @@ function .ble-edit-draw.update {
   # BLELINE_RANGE_UPDATE → .ble-line-text/update 内でこれを見て update を済ませる
   local -a BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
   ble-edit/dirty-range/clear --prefix=_ble_edit_dirty_draw_
-#%if debug (
+#%if !release
   ble-assert '((BLELINE_RANGE_UPDATE[0]<0||(
        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[1]&&
        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[2])))' "(${BLELINE_RANGE_UPDATE[*]})"
-#%)
+#%end
 
   # local graphic_dbeg graphic_dend graphic_dend0
   # ble-edit/dirty-range/update --prefix=graphic_d
