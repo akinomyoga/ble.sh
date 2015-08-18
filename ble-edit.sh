@@ -1345,7 +1345,8 @@ function .ble-line-text/getxy.cur {
 
   # 追い出しされたか check
   if (($1<_ble_line_text_cache_length)); then
-    local _eoc=(${_ble_line_text_cache_pos[$1+1]})
+    local -a _eoc
+    _eoc=(${_ble_line_text_cache_pos[$1+1]})
     ((_eoc[2])) && ((_pos[0]=0,_pos[1]++))
   fi
 
@@ -3068,7 +3069,7 @@ function ble-edit+discard-line {
 }
 
 ## @var[out] hist_expanded
-function hist_expanded.update {
+function ble-edit/hist_expanded.update {
   local BASH_COMMAND="$*"
   if [[ $- != *H* || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded="$BASH_COMMAND"
@@ -3086,7 +3087,7 @@ function ble-edit+accept-line {
 
   # 履歴展開
   local hist_expanded
-  if ! hist_expanded.update "$BASH_COMMAND"; then
+  if ! ble-edit/hist_expanded.update "$BASH_COMMAND"; then
     .ble-edit-draw.set-dirty -1
     return
   fi
@@ -3388,7 +3389,7 @@ function ble-edit+history-end {
 
 function ble-edit+history-expand-line {
   local hist_expanded
-  hist_expanded.update "$_ble_edit_str" || return
+  ble-edit/hist_expanded.update "$_ble_edit_str" || return
   [[ $_ble_edit_str == $hist_expanded ]] && return
 
   _ble_edit_str.reset "$hist_expanded"

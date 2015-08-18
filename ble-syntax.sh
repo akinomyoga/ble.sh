@@ -15,7 +15,6 @@ function _ble_util_array_prototype.reserve {
 source ble-color.sh
 
 _ble_stackdump_title=stackdump
-_ble_term_NL=$'\n'
 function ble-stackdump {
   # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
   local i nl=$'\n'
@@ -28,9 +27,9 @@ function ble-stackdump {
 function ble-assert {
   local expr="$1"
   local _ble_stackdump_title='assertion failure'
-  if ! eval -- "$expr"; then
+  if ! builtin eval -- "$expr"; then
     shift
-    ble-stackdump "$expr$_ble_term_NL$*"
+    ble-stackdump "$expr$_ble_term_nl$*"
     return 1
   else
     return 0
@@ -311,7 +310,8 @@ function ble-syntax/print-status/.dump-arrays {
     local index="000$i"
     index="${index:${#index}-3:3}"
 
-    local word=(${_ble_syntax_tree[i]})
+    local -a word nest stat
+    word=(${_ble_syntax_tree[i]})
     local tword=
     if [[ $word ]]; then
       local nofs="$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))"
@@ -338,7 +338,7 @@ function ble-syntax/print-status/.dump-arrays {
       done
     fi
 
-    local nest=(${_ble_syntax_nest[i]})
+    nest=(${_ble_syntax_nest[i]})
     if [[ $nest ]]; then
       local nword='-'
       local nnest='-'
@@ -347,7 +347,7 @@ function ble-syntax/print-status/.dump-arrays {
       nest=" nest=(${nest[0]} w=$nword n=$nnest t=${nest[4]}:${nest[5]})"
     fi
 
-    local stat=(${_ble_syntax_stat[i]})
+    stat=(${_ble_syntax_stat[i]})
     if [[ $stat ]]; then
       local sword=-
       local snest=-
@@ -380,7 +380,7 @@ function ble-syntax/print-status/.dump-tree/proc1 {
 function ble-syntax/print-status/.dump-tree {
   resultB=
 
-  local nl="$_ble_term_NL"
+  local nl="$_ble_term_nl"
   local prefix=
   ble-syntax/tree-enumerate ble-syntax/print-status/.dump-tree/proc1
 }
@@ -540,7 +540,8 @@ function ble-syntax/parse/nest-reset-tprev {
   if ((inest<0)); then
     tprev=-1
   else
-    local nest=(${_ble_syntax_nest[inest]})
+    local -a nest
+    nest=(${_ble_syntax_nest[inest]})
     local tclen="${nest[4]}"
     ((tprev=tclen<0?tclen:inest-tclen))
   fi

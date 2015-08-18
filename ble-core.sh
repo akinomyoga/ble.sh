@@ -212,7 +212,6 @@ function ble-load {
 }
 
 _ble_stackdump_title=stackdump
-_ble_term_NL=$'\n'
 function ble-stackdump {
   # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
   local i nl=$'\n'
@@ -227,7 +226,10 @@ function ble-assert {
   local _ble_stackdump_title='assertion failure'
   if ! builtin eval -- "$expr"; then
     shift
-    ble-stackdump "$expr$_ble_term_NL$*"
+    ble-stackdump "$expr$_ble_term_nl$*"
+    return 1
+  else
+    return 0
   fi
 }
 

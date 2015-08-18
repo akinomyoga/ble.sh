@@ -6,6 +6,14 @@ function check-builtin {
     grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin$esc([[:space:]]$esc)+$command(\b|$esc)"
 }
 
-check-builtin echo
-check-builtin printf
-check-builtin eval
+# check-builtin echo
+# check-builtin printf
+# check-builtin eval
+
+function check-bash300bug {
+  # bash-3.0 では local arr=(1 2 3) とすると
+  # local arr='(1 2 3)' と解釈されてしまう。
+  grc 'local [a-zA-Z_]+=\('
+}
+
+check-bash300bug
