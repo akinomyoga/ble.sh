@@ -54,6 +54,9 @@
 ##   ble-attach 後、初めて必要になった時に履歴の読込を行います。
 ## bleopt_history_lazyload=
 ##   ble-attach 時に履歴の読込を行います。
+##
+## bash-3.1 未満では history -s が思い通りに動作しないので、
+## このオプションの値に関係なく ble-attach の時に履歴の読み込みを行います。
 : ${bleopt_history_lazyload=1}
 
 ## オプション bleopt_exec_type (内部使用)
@@ -3068,13 +3071,25 @@ function ble-edit+discard-line {
   _ble_edit_line_disabled=1 .ble-edit/newline
 }
 
+if ((_ble_bash>=30100)); then
+  function ble-edit/hist_expanded/expand {
+    history -p -- "$BASH_COMMAND" 2>/dev/null
+    builtin echo -n :
+  }
+else
+  function ble-edit/hist_expanded/expand {
+    (history -p -- "$BASH_COMMAND" 2>/dev/null)
+    builtin echo -n :
+  }
+fi
+
 ## @var[out] hist_expanded
 function ble-edit/hist_expanded.update {
   local BASH_COMMAND="$*"
   if [[ $- != *H* || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded="$BASH_COMMAND"
     return 0
-  elif ble/util/assign hist_expanded 'history -p -- "$BASH_COMMAND" 2>/dev/null;builtin echo -n :'; then
+  elif ble/util/assign hist_expanded ble-edit/hist_expanded/expand; then
     hist_expanded="${hist_expanded%$_ble_term_nl:}"
     return 0
   else
@@ -3308,6 +3323,8 @@ function .ble-edit.history-add {
     _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
     _ble_edit_history_count="${#_ble_edit_history[@]}"
     _ble_edit_history_ind="$_ble_edit_history_count"
+    ((_ble_bash<30100)) &&
+      builtin printf '%s\n' "$cmd" >> "${HISTFILE:-$HOME/.bash_history}"
   else
     if [[ $HISTCONTROL ]]; then
       # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
@@ -3326,7 +3343,8 @@ function .ble-edit.history-add {
   if [[ $cmd == *$'\n'* ]]; then
     ble/util/sprintf cmd 'eval -- %q' "$cmd"
   fi
-  history -s -- "$cmd"
+  ((_ble_bash>=30100)) &&
+    history -s -- "$cmd"
 }
 
 function .ble-edit.history-goto {
@@ -3963,12 +3981,15 @@ function ble-edit-initialize {
   .ble-line-prompt/initialize
 }
 function ble-edit-attach {
-  if [[ $bleopt_history_lazyload ]]; then
+  if ((_ble_bash>=30100)) && [[ $bleopt_history_lazyload ]]; then
     _ble_edit_history_loaded=
   else
     # * history-load は initialize ではなく attach で行う。
     #   detach してから attach する間に
     #   追加されたエントリがあるかもしれないので。
+    # * bash-3.0 では history -s は最近の履歴項目を置換するだけなので、
+    #   履歴項目は全て自分で処理する必要がある。
+    #   つまり、初めから load しておかなければならない。
     .ble-edit.history-load
   fi
 
