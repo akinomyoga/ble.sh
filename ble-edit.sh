@@ -3289,10 +3289,12 @@ function .ble-edit.history-add {
     done
   fi
 
+  local histfile=
+
   if [[ $_ble_edit_history_loaded ]]; then
     if [[ $HISTCONTROL ]]; then
       local lastIndex=$((${#_ble_edit_history[@]}-1)) spec
-      for spec in ${HISTCONTROL//:/}; do
+      for spec in ${HISTCONTROL//:/ }; do
         case "$spec" in
         ignorespace)
           [[ ! ${cmd##[ 	]*} ]] && return ;;
@@ -3323,8 +3325,10 @@ function .ble-edit.history-add {
     _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
     _ble_edit_history_count="${#_ble_edit_history[@]}"
     _ble_edit_history_ind="$_ble_edit_history_count"
-    ((_ble_bash<30100)) &&
-      builtin printf '%s\n' "$cmd" >> "${HISTFILE:-$HOME/.bash_history}"
+
+    # _ble_bash<30100 の時は必ずここを通る。
+    # 始めに _ble_edit_history_loaded=1 になるので。
+    ((_ble_bash<30100)) && histfile="${HISTFILE:-$HOME/.bash_history}"
   else
     if [[ $HISTCONTROL ]]; then
       # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
@@ -3343,8 +3347,12 @@ function .ble-edit.history-add {
   if [[ $cmd == *$'\n'* ]]; then
     ble/util/sprintf cmd 'eval -- %q' "$cmd"
   fi
-  ((_ble_bash>=30100)) &&
+
+  if [[ $histfile ]]; then
+    builtin printf '%s\n' "$cmd" >> "$histfile"
+  else
     history -s -- "$cmd"
+  fi
 }
 
 function .ble-edit.history-goto {
