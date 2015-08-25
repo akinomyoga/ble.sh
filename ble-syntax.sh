@@ -242,9 +242,8 @@ function ble-syntax/tree-enumerate-in-range {
 # ble-syntax/print-status
 
 function ble-syntax/print-status/.graph {
-  local rex_ascii='^[ -~]$'
   local char="$1"
-  if [[ $char =~ $rex_ascii ]]; then
+  if ble/util/isprint+ "$char"; then
     graph="'$char'"
     return
   else

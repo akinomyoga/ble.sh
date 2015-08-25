@@ -158,6 +158,13 @@ function _ble_util_string_prototype.reserve {
   done
 }
 
+# 正規表現は _ble_bash>=30000
+_ble_rex_isprint='^[ -~]+'
+function ble/util/isprint+ {
+  local LC_COLLATE=C # for cygwin collation
+  [[ $1 =~ $_ble_rex_isprint ]]
+}
+
 ## 関数 ble-autoload scriptfile functions...
 ##   関数が定義されたファイルを自動で読み取る設定を行います。
 ##   scriptfile には functions の実体を定義します。
