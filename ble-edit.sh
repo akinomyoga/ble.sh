@@ -812,20 +812,18 @@ function _ble_line_prompt.load {
 ##     出力先の配列です。
 function .ble-line-prompt/update/append {
   local text="$1" a b
-  if [[ $text == *['$\"`!']* ]]; then
+  if [[ $text == *['$\"`']* ]]; then
     a='\' b='\\' text="${text//"$a"/$b}"
     a='$' b='\$' text="${text//"$a"/$b}"
     a='"' b='\"' text="${text//"$a"/$b}"
     a='`' b='\`' text="${text//"$a"/$b}"
-    a='!' b='\!' text="${text//"$a"/$b}"
   fi
   ble-edit/draw/put "$text"
 }
 function .ble-line-prompt/update/process-text {
   local text="$1" a b
-  if [[ $text == *['"`!']* ]]; then
+  if [[ $text == *'"'* ]]; then
     a='"' b='\"' text="${text//"$a"/$b}"
-    a='!' b='\!' text="${text//"$a"/$b}"
   fi
   ble-edit/draw/put "$text"
 }
@@ -988,8 +986,12 @@ function .ble-line-prompt/update {
     return
   fi
 
-  local param_wd="${PWD#$HOME}"
-  [[ $param_wd != "$PWD" ]] && param_wd="~$param_wd"
+  local param_wd=
+  if [[ $PWD == "$HOME" || $PWD == "$HOME"/* ]]; then
+    param_wd="~${PWD#$HOME}"
+  else
+    param_wd="$PWD"
+  fi
 
   local cache_d cache_t cache_A cache_T cache_at cache_D cache_j
 
@@ -3205,7 +3207,7 @@ function .ble-edit/history/getcount {
 }
 
 function .ble-edit/history/generate-source-to-load-history {
-  if ! history -p '!1' >/dev/null; then
+  if ! history -p '!1' &>/dev/null; then
     # rcfile として起動すると history が未だロードされていない。
     history -n
   fi
