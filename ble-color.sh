@@ -640,8 +640,31 @@ function ble-highlight-layer/getg {
 # ble-highlight-layer:plain
 
 _ble_highlight_layer_plain_buff=()
+
+function ble-highlight-layer:plain/update/.getch {
+  if [[ $ch == [-] ]]; then
+    if [[ $ch == $'\t' ]]; then
+      ch="${_ble_util_string_prototype::it}"
+    elif [[ $ch == $'\n' ]]; then
+      ch=$'\e[K\n'
+    else
+      .ble-text.s2c "$ch" 0
+      .ble-text.c2s $((ret+64))
+      ch="^$ret"
+    fi
+  elif [[ $ch == [$''-$'\302\237'] ]]; then
+    # ※\302\237 は 0x9F の utf8 表現
+    if [[ $ch == '' ]]; then
+      ch='^?'
+    else
+      .ble-text.s2c "$ch" 0
+      .ble-text.c2s $((ret-64))
+      ch="M-^$ret"
+    fi
+  fi
+}
+
 ## 関数 ble-highlight-layer:<layerName>/update text pbuff
-##
 function ble-highlight-layer:plain/update {
   if ((DMIN>=0)); then
     ble-highlight-layer/update/shift _ble_highlight_layer_plain_buff
@@ -650,26 +673,10 @@ function ble-highlight-layer:plain/update {
     local it="$_ble_term_it" ret
     for((i=DMIN;i<DMAX;i++)); do
       ch="${text:i:1}"
-      if [[ $ch == [-] ]]; then
-        if [[ $ch == $'\t' ]]; then
-          ch="${_ble_util_string_prototype::it}"
-        elif [[ $ch == $'\n' ]]; then
-          ch=$'\e[K\n'
-        else
-          .ble-text.s2c "$ch" 0
-          .ble-text.c2s $((ret+64))
-          ch="^$ret"
-        fi
-      elif [[ $ch == [$''-$'\302\237'] ]]; then
-        # ※\302\237 は 0x9F の utf8 表現
-        if [[ $ch == '' ]]; then
-          ch='^?'
-        else
-          .ble-text.s2c "$ch" 0
-          .ble-text.c2s $((ret-64))
-          ch="M-^$ret"
-        fi
-      fi
+
+      # LC_COLLATE for cygwin collation
+      LC_COLLATE=C ble-highlight-layer:plain/update/.getch
+
       _ble_highlight_layer_plain_buff[i]="$ch"
     done
   fi
@@ -677,6 +684,7 @@ function ble-highlight-layer:plain/update {
   PREV_BUFF=_ble_highlight_layer_plain_buff
   ((PREV_UMIN=DMIN,PREV_UMAX=DMAX))
 }
+
 ## 関数 ble-highlight-layer:plain/getg index
 ##   @var[out] g
 function ble-highlight-layer:plain/getg {

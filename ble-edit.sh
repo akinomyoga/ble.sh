@@ -652,7 +652,6 @@ function ble-edit/draw/trace {
   # 日本語と混ざった場合に問題が生じたらまたその時に考える。
   local LC_COLLATE=C
 
-  local rex_ascii='^[ -~]+'
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
   # OSC, DCS, SOS, PM, APC Sequences + "GNU screen ESC k"
@@ -718,7 +717,7 @@ function ble-edit/draw/trace {
       # その他の制御文字は  (BEL)  (FF) も含めてゼロ幅と解釈する
       esac
       [[ $s ]] && ble-edit/draw/put "$s"
-    elif [[ $tail =~ $rex_ascii ]]; then
+    elif ble/util/isprint+ "$tail"; then
       w="${#BASH_REMATCH}"
       ble-edit/draw/put "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
@@ -1122,9 +1121,9 @@ function .ble-line-text/update/position {
     "${_ble_line_text_cache_cs[@]:dend0:iN-dend}")
   _ble_line_text_cache_ichg=()
 
-  local i rex_ascii='^[ -~]+'
+  local i
   for ((i=dbeg;i<iN;)); do
-    if [[ ${text:i} =~ $rex_ascii ]]; then
+    if ble/util/isprint+ "${text:i}"; then
       local w="${#BASH_REMATCH}"
       local n
       for ((n=i+w;i<n;i++)); do
@@ -1456,8 +1455,6 @@ function .ble-line-cur.xyo/eol2nl {
 ## 関数 x y; .ble-line-info.construct-info text ; ret
 ##   指定した文字列を表示する為の制御系列に変換します。
 function .ble-line-info.construct-info {
-  # 正規表現は _ble_bash>=30000
-  local rex_ascii='^[ -~]+'
 
   local cols=${COLUMNS-80}
 
@@ -1466,7 +1463,7 @@ function .ble-line-info.construct-info {
   for ((i=0;i<iN;)); do
     local tail="${text:i}"
 
-    if [[ $tail =~ $rex_ascii ]]; then
+    if ble/util/isprint+ "$tail"; then
       .ble-line-cur.xyo/add-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
       ((i+=${#BASH_REMATCH}))
     else
@@ -3291,10 +3288,12 @@ function .ble-edit.history-add {
     done
   fi
 
+  local histfile=
+
   if [[ $_ble_edit_history_loaded ]]; then
     if [[ $HISTCONTROL ]]; then
       local lastIndex=$((${#_ble_edit_history[@]}-1)) spec
-      for spec in ${HISTCONTROL//:/}; do
+      for spec in ${HISTCONTROL//:/ }; do
         case "$spec" in
         ignorespace)
           [[ ! ${cmd##[ 	]*} ]] && return ;;
@@ -3325,8 +3324,10 @@ function .ble-edit.history-add {
     _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
     _ble_edit_history_count="${#_ble_edit_history[@]}"
     _ble_edit_history_ind="$_ble_edit_history_count"
-    ((_ble_bash<30100)) &&
-      builtin printf '%s\n' "$cmd" >> "${HISTFILE:-$HOME/.bash_history}"
+
+    # _ble_bash<30100 の時は必ずここを通る。
+    # 始めに _ble_edit_history_loaded=1 になるので。
+    ((_ble_bash<30100)) && histfile="${HISTFILE:-$HOME/.bash_history}"
   else
     if [[ $HISTCONTROL ]]; then
       # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
@@ -3345,8 +3346,12 @@ function .ble-edit.history-add {
   if [[ $cmd == *$'\n'* ]]; then
     ble/util/sprintf cmd 'eval -- %q' "$cmd"
   fi
-  ((_ble_bash>=30100)) &&
+
+  if [[ $histfile ]]; then
+    builtin printf '%s\n' "$cmd" >> "$histfile"
+  else
     history -s -- "$cmd"
+  fi
 }
 
 function .ble-edit.history-goto {
