@@ -1,8 +1,8 @@
 # ble.sh
-Bash Line Editor
+Bash Line Editor - replaces GNU Readline, the default line editor of GNU Bash.
 
 ##Usage
-First generate `ble.sh` with the following commands:
+First, generate `ble.sh` using the following commands:
 ```bash
 $ cd ble.sh
 $ make
@@ -14,9 +14,9 @@ Add the following codes to your .bashrc file.
 # bashrc
 
 # Add the follwing line at the top of .bashrc:
-[[ $- == *-* ]] && source /path/to/ble.sh/out/ble.sh noattach
+[[ $- == *i* ]] && source /path/to/ble.sh/out/ble.sh noattach
 
-# your bashrc settings...
+# your bashrc settings come here...
 
 # Add the following line at the end of .bashrc:
 ((_ble_bash)) && ble-attach
