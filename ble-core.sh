@@ -244,7 +244,6 @@ function ble-assert {
 # **** terminal controls ****
 
 : ${bleopt_vbell_default_message=' Wuff, -- Wuff!! '}
-#: ${bleopt_vbell_default_message=' (>ω<)/ わふー, わふー!! '}
 : ${bleopt_vbell_duration=2000}
 
 function .ble-term.initialize {
