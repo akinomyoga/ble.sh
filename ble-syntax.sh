@@ -1750,10 +1750,7 @@ function ble-syntax/parse {
   for ((i=i1;i<iN;)); do
     ble-syntax/parse/generate-stat
     if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == $_stat ]]; then
-      ((i==i2)) && echo 1234 >> ~/a.txt
       if ble-syntax/parse/nest-equals "$inest"; then
-        ((i==i2)) && echo 4231 >> ~/a.txt
-
         # 前回の解析と同じ状態になった時 → 残りは前回の結果と同じ
         _ble_syntax_stat=("${_ble_syntax_stat[@]::i}" "${_tail_syntax_stat[@]:i-i2}")
         _ble_syntax_tree=("${_ble_syntax_tree[@]::i}" "${_tail_syntax_tree[@]:i-i2}")
