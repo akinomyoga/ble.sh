@@ -2395,6 +2395,14 @@ function ble-edit+delete-forward-backward-char {
   .ble-edit.delete-char 0 || .ble-edit.bell
 }
 
+
+function ble-edit+delete-horizontal-space {
+  local a b rex
+  b="${_ble_edit_str::_ble_edit_ind}" rex='[ 	]*$' ; [[ $b =~ $rex ]]; b="${#BASH_REMATCH}"
+  a="${_ble_edit_str:_ble_edit_ind}"  rex='^[ 	]*'; [[ $a =~ $rex ]]; a="${#BASH_REMATCH}"
+  .ble-edit.delete-range "$((_ble_edit_ind-b))" "$((_ble_edit_ind+a))"
+}
+
 # 
 # **** cursor move ****                                            @edit.cursor
 

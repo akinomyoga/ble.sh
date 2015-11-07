@@ -39,12 +39,35 @@ if [ "$_ble_bash" -lt 30000 ]; then
   return 1 2>/dev/null || exit 1
 fi
 
-#------------------------------------------------------------------------------
+# check environment
+
+function ble/.check-environment {
+  local posixCommandList='sed date rm mkdir mkfifo sleep stty tput'
+  if ! type $posixCommandList &>/dev/null; then
+    local cmd commandMissing=
+    for cmd in $posixCommandList; do
+      if ! type "$cmd" &>/dev/null; then
+        commandMissing="$commandMissing\`$cmd', "
+      fi
+    done
+    echo "ble.sh: Insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
+    return 1
+  elif ! type gawk &>/dev/null; then
+    echo "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
+    return 1
+  fi
+}
+if ! ble/.check-environment; then
+  _ble_bash=
+  return 1
+fi
 
 if [[ $_ble_base ]]; then
   echo "ble.sh: ble.sh seems to be already loaded." >&2
   return 1
 fi
+
+#------------------------------------------------------------------------------
 
 function _ble_base.initialize {
   local src="$1"

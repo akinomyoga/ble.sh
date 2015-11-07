@@ -32,17 +32,20 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f 'C-v'       quoted-insert
 
   # shell function
-  ble-bind -f 'C-c'    discard-line
-  ble-bind -f 'C-j'    accept-line
-  ble-bind -f 'C-m'    accept-single-line-or-newline
-  ble-bind -f 'RET'    accept-single-line-or-newline
-  ble-bind -f 'C-o'    accept-and-next
-  ble-bind -f 'C-g'    bell
-  ble-bind -f 'C-l'    clear-screen
-  ble-bind -f 'M-l'    redraw-line
-  ble-bind -f 'C-i'    complete
-  ble-bind -f 'TAB'    complete
-  ble-bind -f 'f1'     command-help
+  ble-bind -f  'C-c'     discard-line
+  ble-bind -f  'C-j'     accept-line
+  ble-bind -f  'C-m'     accept-single-line-or-newline
+  ble-bind -f  'RET'     accept-single-line-or-newline
+  ble-bind -f  'C-o'     accept-and-next
+  ble-bind -f  'C-g'     bell
+  ble-bind -f  'C-l'     clear-screen
+  ble-bind -f  'M-l'     redraw-line
+  ble-bind -f  'C-i'     complete
+  ble-bind -f  'TAB'     complete
+  ble-bind -f  'f1'      command-help
+  ble-bind -f  'C-x C-v' display-shell-version
+  ble-bind -cf 'C-z'     fg
+  ble-bind -cf 'M-z'     fg
 
   # history
   ble-bind -f 'C-r'    history-isearch-backward
@@ -58,6 +61,9 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f 'C-w'      'kill-region-or uword'
   ble-bind -f 'M-w'      'copy-region-or uword'
   ble-bind -f 'C-y'      yank
+
+  # spaces
+  ble-bind -f 'M-\'      delete-horizontal-space
 
   # charwise operations
   ble-bind -f 'C-f'      'nomarked forward-char'
@@ -123,10 +129,7 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f 'S-C-home' 'marked beginning-of-text'
   ble-bind -f 'S-C-end'  'marked end-of-text'
 
-  ble-bind -f 'C-x C-v'   display-shell-version
   # ble-bind -f 'C-x' bell
-  ble-bind -cf 'C-z' fg
-  ble-bind -cf 'M-z' fg
   ble-bind -f 'C-[' bell
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell

@@ -7,3 +7,10 @@ ble.d/cmap+default.binder-source.bind
 ble.d/cmap+default.binder-source.unbind
 ble.d/tmp
 dist
+
+# edit files
+/COMMIT
+/commit.txt
+
+# test
+/test

@@ -344,7 +344,7 @@ function .ble-term.visible-bell {
       sec=${sec%???}.${sec: -3}
 
       # wait
-      touch "$_ble_term_visible_bell__ftime"
+      > "$_ble_term_visible_bell__ftime"
       sleep $sec
 
       # check and clear
@@ -358,7 +358,7 @@ function .ble-term.visible-bell {
   )
 }
 function .ble-term.visible-bell.cancel-erasure {
-  touch "$_ble_term_visible_bell__ftime"
+  > "$_ble_term_visible_bell__ftime"
 }
 #------------------------------------------------------------------------------
 # String manipulations
