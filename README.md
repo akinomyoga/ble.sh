@@ -1,5 +1,8 @@
 # ble.sh
-Bash Line Editor - replaces GNU Readline, the default line editor of GNU Bash.
+Bash Line Editor written in Bash Scripts.
+- Replaces GNU Readline, the default line editor of GNU Bash.
+- Syntax highlighting of the command line (as in `fish` shell)
+- Syntax-aware completion
 
 ##Usage
 First, generate `ble.sh` using the following commands:
