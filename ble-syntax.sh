@@ -706,14 +706,16 @@ function ble-syntax/parse/check-process-subst {
 
 function ble-syntax/parse/check-comment {
   # コメント
-  if ((wbegin<i)) && local rex=$'^#[^\n]*' && [[ $tail =~ $rex ]]; then
-    # 空白と同様に ctx は変えずに素通り
-    ((_ble_syntax_attr[i]=ATTR_COMMENT,
-      i+=${#BASH_REMATCH}))
-    return 0
-  else
-    return 1
+  if shopt -q interactive_comments &>/dev/null; then
+    if ((wbegin<0||wbegin==i)) && local rex=$'^#[^\n]*' && [[ $tail =~ $rex ]]; then
+      # 空白と同様に ctx は変えずに素通り (末端の改行は残す)
+      ((_ble_syntax_attr[i]=ATTR_COMMENT,
+        i+=${#BASH_REMATCH}))
+      return 0
+    fi
   fi
+
+  return 1
 }
 
 # histchars には対応していない

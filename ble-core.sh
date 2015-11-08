@@ -24,6 +24,12 @@ function ble/util/assign {
   return "$_ret"
 }
 
+if ((_ble_bash>=40000)); then
+  function ble/util/is-stdin-ready { IFS= LANG=C read -t 0; }
+else
+  function ble/util/is-stdin-ready { false; }
+fi
+
 if ((_ble_bash>=40100)); then
   function ble/util/set {
     builtin printf -v "$1" %s "$2"

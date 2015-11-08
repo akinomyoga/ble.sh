@@ -258,6 +258,8 @@ bash_features
     ToDo
 -------------------------------------------------------------------------------
 
+2015-11-08
+
 2015-11-06
 
   * isearch-forward/backward で現在の一致範囲をハイライトする。
@@ -285,13 +287,6 @@ bash_features
 
     ※問題は解析領域拡大によって i1 が後退する事によって
       変化の無かった部分についても解析結果が消去されてしまう事にある。
-
-2015-11-05
-
-  * 補完候補列挙に時間がかかっている時に入力があった場合、中止する?
-
-    そもそも補完候補列挙のどの部分に時間がかかっているのか調べる必要がある。
-    列挙・フィルタ部分なのか、それとも描画レイアウト決定部分なのか、描画部分なのか。
 
 2015-08-20
 
@@ -1187,6 +1182,201 @@ bash_features
 *******************************************************************************
     実装ログ
 -------------------------------------------------------------------------------
+
+2015-11-08
+
+  * 補完候補列挙に時間がかかっている時に入力があった場合、中止する?
+
+    そもそも補完候補列挙のどの部分に時間がかかっているのか調べる必要がある。
+    列挙・フィルタ部分なのか、それとも描画レイアウト決定部分なのか、描画部分なのか。
+
+    特に時間が掛かるのは何も入力されていない状態で TAB を押した時である。
+    complete がどの様な手順で処理されているかについて初めに調べる。
+    ble-edit+complete (ble-edit.sh ble-autoload)
+    -> ble-edit+complete (complete.sh)
+        この関数内で殆ど分岐の処理をしている。
+        先ず初めに候補を列挙して (ble-complete/source/command)、
+        候補をスキャンして共通部分を計算する。
+        候補が複数あったら描画を実行する。
+    一番時間が掛かっているのは候補の列挙であり、
+    そして次に時間が掛かっているのは共通部分の絞り込みである。
+    今迄描画に時間が掛かっているのかと思っていたが、
+    描画は本当に一瞬で終わっている。
+
+    もっと ble-complete/source/command を詳しく見てみると、
+    どうやら各候補についての情報を生成する所 ble-complete/yield-candidate で時間が掛かっている様だ。
+    うーんこれを最適化するのは難しい…と思ったが、
+    この部分はシェルによるループになっているので read -t 0 をチェックして中断するのは容易である。
+
+    read -t 0 の performance をチェックする:
+
+    > | $ time for ((i=0;i<100000;i++)); do read -t 0 && echo "$i"; done
+    > |
+    > | real    0m2.139s
+    > | user    0m1.998s
+    > | sys     0m0.139s
+    > | [ble: exit 1]
+    > | $ time for ((i=0;i<100000;i++)); do ((i%10==0)) && read -t 0 && echo "$i"; done
+    > |
+    > | real    0m1.673s
+    > | user    0m1.664s
+    > | sys     0m0.009s
+    >
+    > read -t 0 の呼出回数を 1/10 にしても対して変わらない様だ。
+    > つまりループのコストか、或いは算術式による i%10==0 の実行の方も同じ位の実行コストがあるという事である。
+    > これならば下手に read -t 0 の判定を間引く必要もないだろう。
+    >
+    > | $ function ble-util/check-input { IFS= read -t 0 -n 1; }
+    > | $ time for ((i=0;i<100000;i++)); do ble-util/check-input && echo "$i"; done
+    > |
+    > | real    0m9.482s
+    > | user    0m9.260s
+    > | sys     0m0.213s
+    > |
+    > | $ function ble-util/check-input { IFS= LANG=C read -t 0 -s -r -d '' -n 1; }
+    > | $ time for ((i=0;i<100000;i++)); do ble-util/check-input && echo "$i"; done
+    > |
+    > | real    0m16.039s
+    > | user    0m15.809s
+    > | sys     0m0.215s
+    > |
+    > | $ function ble-util/check-input { IFS= LANG=C read -t 0; }
+    > | $ time for ((i=0;i<100000;i++)); do ble-util/check-input && echo "$i" && break; done
+    > |
+    > | real    0m11.199s
+    > | user    0m10.965s
+    > | sys     0m0.226s
+    > |
+    > | $ function ble-util/check-input { read -t 0; }
+    > | $ time for ((i=0;i<100000;i++)); do ble-util/check-input && echo "$i"; done
+    > |
+    > | real    0m3.687s
+    > | user    0m3.518s
+    > | sys     0m0.166s
+    > |
+    > |
+    > | $ IFS= LANG=C; time !!
+    > |
+    > | real    0m3.219s
+    > | user    0m3.048s
+    > | sys     0m0.168s
+    >
+    > 分かった事は read -t 0 の引数を増やすとそれだけ処理時間が増えるという事、
+    > それ以上に IFS= LANG=C によって変数を書き換えるのに時間が掛かるという事。
+    > 所で read -t 0 の引数を削除しても振る舞いには影響がないように見える。
+    > 唯単に速度が遅くなるだけなのでループ中断の判定の歳には引数は無駄に指定しない事にする。
+    >
+    > | $ time for ((i=0;i<100000;i++)); do ((_ble_bash>=40000)) && read -t 0 && echo "$i"; done
+    > |
+    > | real    0m2.909s
+    > | user    0m2.775s
+    > | sys     0m0.131s
+    > |
+    > | $ time for ((i=0;i<100000;i++)); do ((check)) && read -t 0 && echo "$i"; done
+    > |
+    > | real    0m2.712s
+    > | user    0m2.646s
+    > | sys     0m0.064s
+    > |
+    > | $ check=1
+    > | $ time for ((i=0;i<100000;i++)); do [[ $check ]] && read -t 0 && echo "$i"; done
+    > |
+    > | real    0m2.614s
+    > | user    0m2.419s
+    > | sys     0m0.193s
+    >
+    > 更に、関数呼出はそれほどには重くはないが多少時間は掛かるという事。
+    > それでも算術式展開と殆ど同じである。一番早いのは [[ ]] による長さ判定である。
+    > 関数呼出が絡むのであれば算術式 ((i%100==0)) でも挟んだ方が結局の所は有効なのかも知れない。
+    >
+    > | $ time for ((i=0;i<100000;i++)); do ((i%100==0)) && IFS= LANG=C ble-util/check-input && echo "$i"; done
+    > |
+    > | real    0m1.681s
+    > | user    0m1.679s
+    > | sys     0m0.001s
+    > |
+    > | $ time for ((i=0;i<100000;i++)); do ((i%10==0)) && IFS= LANG=C ble-util/check-input && echo "$i"; done
+    > |
+    > | real    0m2.475s
+    > | user    0m2.458s
+    > | sys     0m0.014s
+    > |
+    > | $ time for ((i=0;i<100000;i++)); do false && IFS= LANG=C ble-util/check-input && echo "$i"; done
+    > |
+    > | real    0m1.586s
+    > | user    0m1.585s
+    > | sys     0m0.000s
+    > |
+    > | $ time for ((i=0;i<100000;i++)); do :; done
+    > |
+    > | real    0m1.399s
+    > | user    0m1.398s
+    > | sys     0m0.000s
+    >
+    > そもそもループのコストが一番大きくて、算術式や [[ ]] による判定は殆どノーコストな様だ。
+    > read -t 0 による判定は 10 に 1 でも良いかも知れない。
+
+    read -t 0 の performance は大体分かったので適当に complete.sh に中断を実装した。
+    関数 ble/util/is-stdin-ready (ble-core.sh) に実装して、それをループ内で間引きつつ呼び出す事にする。
+
+    今の所は使い勝手はそんなに問題ない。誤って TAB を押しても固まるという事は無い。
+
+    ただし、初めのコマンドを compgen で列挙する phase は環境によって滅茶苦茶時間が掛かるかも知れない。
+    以下に速度を計測してみる事にする。
+
+    | @gauge Cygwin (Intel(R) Core(TM)2 CPU 6300 @ 1.86GHz)
+    |
+    | $ time compgen -A command '' > /dev/null
+    |
+    | real    0m24.248s
+    | user    0m0.953s
+    | sys     0m5.875s
+    |
+    | $ time compgen -A command '' > /dev/null
+    |
+    | real    0m6.578s
+    | user    0m1.063s
+    | sys     0m5.375s
+    |
+    | $ time compgen -A command '' | wc
+    |    6472    6494   65984
+    |
+    | real    0m6.734s
+    | user    0m1.296s
+    | sys     0m5.420s
+    |
+    | @padparadscha GNU/Linux (Intel(R) Core(TM) Duo CPU T2300 @ 1.66GHz)
+    |
+    | $ time compgen -A command '' | wc
+    |    5274    5274   68019
+    |
+    | real    0m0.119s
+    | user    0m0.038s
+    | sys     0m0.092s
+    |
+    | @hankel GNU/Linux (Intel(R) Core(TM) i7-2600 CPU @ 3.40GHz)
+    |
+    | $ time compgen -A command '' | wc
+    |    4112    4112   57267
+    |
+    | real    0m0.051s
+    | user    0m0.019s
+    | sys     0m0.038s
+    |
+    | @laguerre GNU/Linux (Intel(R) Xeon(R) CPU E5-2670 0 @ 2.60GHz)
+    |
+    | $ time compgen -A command '' | wc
+    |    7639    7639   87603
+    |
+    | real    0m0.094s
+    | user    0m0.021s
+    | sys     0m0.079s
+
+    やはり cygwin では桁違いの遅さである。
+    cygwin では command prefix が空の時は何も列挙しないなどの対策が必要かも知れない。
+    →しかしながらこれは ble.sh を使っていなくても同じ事である。
+      遅いのが嫌であれば shopt -s no_empty_cmd_completion を設定している筈なのだから、
+      この設定を参照して補完の有効・無効を切り替えるべきである。
 
 2015-11-07
 

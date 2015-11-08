@@ -143,6 +143,7 @@ function ble-complete/yield-candidate {
 # source/command
 
 function ble-complete/source/command/gen {
+  [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion &>/dev/null && return
   compgen -c -- "$COMPV"
   [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
   shopt -q autocd &>/dev/null && compgen -d -- "$COMPV"
@@ -152,9 +153,10 @@ function ble-complete/source/command {
     [[ $COMPV =~ ^.+/ ]] &&
       COMP_PREFIX="${BASH_REMATCH[0]}"
 
-    local cand arr
+    local cand arr i=0
     IFS=$'\n' builtin eval 'arr=($(ble-complete/source/command/gen))'
     for cand in "${arr[@]}"; do
+      ((i%100==0)) && ble/util/is-stdin-ready && return 27
       ble-complete/yield-candidate "$cand" ble-complete/action/command
     done
   fi
@@ -222,6 +224,8 @@ function ble-edit+complete {
     esac
   done
 
+  ble/util/is-stdin-ready && return 27
+
   if ((cand_count==0)); then
     .ble-edit.bell
     .ble-line-info.clear
@@ -232,6 +236,8 @@ function ble-edit+complete {
   local i common comp1 clen comp2="$index"
   local acount=0 aindex=0
   for ((i=0;i<cand_count;i++)); do
+    ((i%100==0)) && ble/util/is-stdin-ready && return 27
+
     local word="${cand_word[i]}"
     local -a prop
     prop=(${cand_prop[i]})
