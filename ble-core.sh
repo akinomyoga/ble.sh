@@ -286,8 +286,8 @@ function _ble_base_tmp.wipe {
   local file pid mark
   mark=()
   for file in "$_ble_base_tmp"/[1-9]*.*; do
-    [[ -e $file && $file =~ ^[0-9]+ ]] || continue
-    pid="$BASH_REMATCH"
+    [[ -e $file && $file =~ ^.*/([0-9]+)\.[^/]+$ ]] || continue
+    pid="${BASH_REMATCH[1]}"
     [[ ${mark[pid]} ]] && continue
     mark[pid]=1
     if ! kill -0 "$pid" &>/dev/null; then
