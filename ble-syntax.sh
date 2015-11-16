@@ -564,7 +564,7 @@ function ble-syntax/parse/nest-equals {
     local -a onest
     onest=($_onest)
 #%if !release
-    ((onest[3]<parent_inest)) || ble-stackdump 'invalid nest' && return 0
+    ((onest[3]<parent_inest)) || { ble-stackdump 'invalid nest' && return 0; }
 #%end
     parent_inest="${onest[3]}"
   done
