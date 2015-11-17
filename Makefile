@@ -3,13 +3,15 @@
 all:
 .PHONY: all dist
 
+PP:=ext/mwg_pp.awk
+
 outfiles+=out
 out:
 	mkdir -p $@
 
 outfiles+=out/ble.sh
 out/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh ble-syntax.sh
-	mwg_pp.awk $< >/dev/null
+	$(PP) $< >/dev/null
 
 outfiles+=out/term.sh
 out/term.sh: term.sh
@@ -48,5 +50,5 @@ dist_excludes= \
 dist:
 	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble $(dist_excludes)
 
-listf:
-	awk '/^[[:space:]]*function/{sub(/^[[:space:]]*function[[:space:]]*/,"");sub(/[[:space:]]*\{[[:space:]]*$$/,"");print $$0}' ble.sh |sort
+list-functions:
+	awk '/^[[:space:]]*function[[:space:]]+/{sub(/^[[:space:]]*function[[:space:]]+/,"");sub(/[[:space:]]+\{.*$$/,"");print $$0}' ble.sh |sort
