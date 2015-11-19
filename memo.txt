@@ -265,7 +265,14 @@ bash_features
 
 2015-11-18
 
-  * PROMPT_COMMAND
+  * bleopt コマンド: onchange
+
+    変数の値が変わった時に onchange イベントを起こす?
+    これは変数の内容変更にともなって処理が必要な変数が出てきてから考える。
+
+  * PROMPT_COMMAND を一番外側の環境で実行する様に変更する。
+
+    現在は .ble-line-prompt/update の中で実行している。
 
   * 存在しない変数名で補完しようとすると \ が挿入される。
     ここは何も実行しないで欲しい所である。
@@ -1199,6 +1206,29 @@ bash_features
 -------------------------------------------------------------------------------
 
 2015-11-19
+
+  * bleopt コマンド
+
+  * PROMPT_COMMAND
+
+    普通の bash (ble のない bash) では、
+    bind -x によって設定したコマンドを実行後に prompt を再描画するが、
+    その時には PROMPT_COMMAND の中身は実行されない様だ。
+    あくまで通常コマンドを実行した後にプロンプトの内容を
+    再計算する時にコマンドが実行される様である。
+
+    つまり PROMPT_COMMAND はプロンプトを計算する際に実行すれば良い。
+    プロンプトの計算は .ble-line-prompt/update の中で、
+    _ble_edit_LINENO と _ble_line_prompt[0] (前回のプロンプトの計算をした時の LINENO) が
+    不一致だった時に実行される。
+
+    PROMPT_COMMAND の内容を何処で実行するかは問題になる。
+    関数の内側で実行すると declare した変数が見えないし、
+    また関数の内側で定義された変数に干渉する事ができてしまう。
+
+    一番外側で実行しようと思うと色々面倒なことになる気がするので
+    取り敢えずは .ble-line-prompt/update の中で
+    eval "$PROMPT_COMMAND" を実行する事にする。
 
   * histexpand: "～" 中の histexpand, extglob の際の histexpand 開始
 

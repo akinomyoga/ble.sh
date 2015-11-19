@@ -1376,7 +1376,7 @@ function .ble-decode-initialize-cmap {
     echo '  Now initializing cmap... ' 1>&2
     source "$init"
     ble-bind -D | sed '
-      s/^declare \+\(-[aAfFgilrtux]\+ \+\)\?//
+      s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
       s/^-- //
       s/["'"'"']//g
     ' > "$dump"

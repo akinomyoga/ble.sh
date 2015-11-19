@@ -961,6 +961,10 @@ function .ble-line-prompt/update/backslash:W { # PWD短縮
   fi
 }
 
+function .ble-line-prompt/update/eval-prompt_command {
+  # return 等と記述されていた時対策として関数内評価。
+  eval "$PROMPT_COMMAND"
+}
 
 ## 関数 .ble-line-prompt/update
 ##   _ble_edit_PS1 からプロンプトを構築します。
@@ -983,6 +987,10 @@ function .ble-line-prompt/update {
   if [[ ${_ble_line_prompt[0]} == "$version" ]]; then
     _ble_line_prompt.load
     return
+  fi
+
+  if [[ $PROMPT_COMMAND ]]; then
+    .ble-line-prompt/update/eval-prompt_command
   fi
 
   local param_wd=

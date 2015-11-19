@@ -246,6 +246,40 @@ function ble-assert {
   fi
 }
 
+function bleopt {
+  local pvars
+  if (($#==0)); then
+    pvars=("${!bleopt_@}")
+  else
+    local spec var value ip=0
+    pvars=()
+    for spec in "$@"; do
+      if [[ $spec == *=* ]]; then
+        var="${spec%%=*}"
+        var="bleopt_${var#bleopt_}"
+        value="${spec#*=}"
+        if eval "[[ \${$var+set} ]]"; then
+          eval "$var=\"\$value\""
+        else
+          echo "bleopt: unknown bleopt option \`${var#bleopt_}'"
+        fi
+      else
+        var="bleopt_${spec#bleopt_}"
+        if eval "[[ \${$var+set} ]]"; then
+          printf "%s=%q" "${var#bleopt_}" "${!var}"
+          pvars[ip++]="$var"
+        else
+          echo "bleopt: unknown bleopt option \`${var#bleopt_}'"
+        fi
+      fi
+    done
+  fi
+
+  if ((${#pvars[@]})); then
+    declare -p "${pvars[@]}" | sed 's/^declare[[:space:]]\{1,\}\(-[^[:space:]]*[[:space:]]\{1,\}\)*bleopt_//'
+  fi
+}
+
 #------------------------------------------------------------------------------
 # **** terminal controls ****
 
