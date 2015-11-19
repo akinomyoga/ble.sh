@@ -403,43 +403,6 @@ function ble-syntax/print-status {
 
 #--------------------------------------
 
-# 文脈値達
-CTX_UNSPECIFIED=0
-CTX_ARGX=3   # (コマンド) 次に引数が来る
-CTX_ARGX0=18 # (コマンド)   文法的には次に引数が来そうだがもう引数が来てはならない文脈。例えば ]] や )) の後。
-CTX_CMDX=1   # (コマンド) 次にコマンドが来る。
-CTX_CMDXV=13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
-CTX_CMDXF=16 # (コマンド)   for の直後。直後が (( だったら CTX_CMDI に、他の時は CTX_CMDI に。
-CTX_CMDX1=17 # (コマンド)   次にコマンドが少なくとも一つ来なければならない。例えば ( や && や while の直後。
-CTX_CMDXC=26 # (コマンド)   次に複合コマンド('(' '{' '((' '[[' for select case if while until)が来る。
-CTX_CMDI=2   # (コマンド) context,attr: in a command
-CTX_ARGI=4   # (コマンド) context,attr: in an argument
-CTX_VRHS=11  # (コマンド) context,attr: var=rhs
-CTX_QUOT=5   # context,attr: in double quotations
-CTX_EXPR=8   # context,attr: in expression
-ATTR_ERR=6   # attr: error
-ATTR_VAR=7   # attr: variable
-ATTR_QDEL=9  # attr: delimiters for quotation
-ATTR_DEF=10  # attr: default (currently not used)
-ATTR_DEL=12  # attr: delimiters
-ATTR_HISTX=21 # 履歴展開 (!!$ など)
-ATTR_FUNCDEF=22 # 関数名 ( hoge() や function fuga など)
-CTX_PARAM=14 # (パラメータ展開) context,attr: inside of parameter expansion
-CTX_PWORD=15 # (パラメータ展開) context,attr: inside of parameter expansion
-CTX_RDRF=19 # (リダイレクト) リダイレクト対象のファイル。
-CTX_RDRD=20 # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
-CTX_VALX=23 # (値リスト) 次に値が来る
-CTX_VALI=24 # (値リスト) 値の中
-ATTR_COMMENT=25 # コメント
-
-_BLE_SYNTAX_CSPACE=$' \t\n'
-_BLE_SYNTAX_CSPECIAL=()
-_BLE_SYNTAX_CSPECIAL[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'!^"
-_BLE_SYNTAX_CSPECIAL[CTX_QUOT]="\$\"\`\\!"   # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
-_BLE_SYNTAX_CSPECIAL[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
-_BLE_SYNTAX_CSPECIAL[CTX_PWORD]="}\$\"\`\\!" # パラメータ展開 ${～}
-
-
 function ble-syntax/parse/generate-stat {
   _stat="$ctx $((wbegin<0?wbegin:i-wbegin)) $wtype $((inest<0?inest:i-inest)) $((tchild<0?tchild:i-tchild)) $((tprev<0?tprev:i-tprev))"
 }
@@ -592,8 +555,151 @@ function ble-syntax/parse/touch-updated-word {
       _ble_syntax_word_umax=$1)))
 }
 
+#==============================================================================
+#
+# Bash Script 文法
+#
 #------------------------------------------------------------------------------
-# 共通の字句
+
+# @var _BLE_SYNTAX_FCTX[]
+# @var _BLE_SYNTAX_FEND[]
+#   以上の二つの配列を通して文法要素は最終的に登録される。
+#   (逆に言えば上の二つの配列を弄れば別の文法の解析を実行する事もできる)
+
+# 文脈値達
+CTX_UNSPECIFIED=0
+CTX_ARGX=3   # (コマンド) 次に引数が来る
+CTX_ARGX0=18 # (コマンド)   文法的には次に引数が来そうだがもう引数が来てはならない文脈。例えば ]] や )) の後。
+CTX_CMDX=1   # (コマンド) 次にコマンドが来る。
+CTX_CMDXV=13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
+CTX_CMDXF=16 # (コマンド)   for の直後。直後が (( だったら CTX_CMDI に、他の時は CTX_CMDI に。
+CTX_CMDX1=17 # (コマンド)   次にコマンドが少なくとも一つ来なければならない。例えば ( や && や while の直後。
+CTX_CMDXC=26 # (コマンド)   次に複合コマンド('(' '{' '((' '[[' for select case if while until)が来る。
+CTX_CMDI=2   # (コマンド) context,attr: in a command
+CTX_ARGI=4   # (コマンド) context,attr: in an argument
+CTX_VRHS=11  # (コマンド) context,attr: var=rhs
+CTX_QUOT=5   # context,attr: in double quotations
+CTX_EXPR=8   # context,attr: in expression
+ATTR_ERR=6   # attr: error
+ATTR_VAR=7   # attr: variable
+ATTR_QDEL=9  # attr: delimiters for quotation
+ATTR_DEF=10  # attr: default (currently not used)
+ATTR_DEL=12  # attr: delimiters
+ATTR_HISTX=21 # 履歴展開 (!!$ など)
+ATTR_FUNCDEF=22 # 関数名 ( hoge() や function fuga など)
+CTX_PARAM=14 # (パラメータ展開) context,attr: inside of parameter expansion
+CTX_PWORD=15 # (パラメータ展開) context,attr: inside of parameter expansion
+CTX_RDRF=19 # (リダイレクト) リダイレクト対象のファイル。
+CTX_RDRD=20 # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
+CTX_VALX=23 # (値リスト) 次に値が来る
+CTX_VALI=24 # (値リスト) 値の中
+ATTR_COMMENT=25 # コメント
+
+_BLE_SYNTAX_CSPACE=$' \t\n'
+
+## @var _ble_syntax_bashc[]
+##   特定の役割を持つ文字の集合。Bracket expression [～] に入れて使う為の物。
+##   histchars に依存しているので変化があった時に更新する。
+_ble_syntax_bashc=()
+{
+  # default values
+  _ble_syntax_bashc_def=()
+  _ble_syntax_bashc_def[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'!^"
+  _ble_syntax_bashc_def[CTX_QUOT]="\$\"\`\\!"       # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
+  _ble_syntax_bashc_def[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
+  _ble_syntax_bashc_def[CTX_PWORD]="}\$\"\`\\!"     # パラメータ展開 ${～}
+
+  # templates
+  _ble_syntax_bashc_fmt=()
+  _ble_syntax_bashc_fmt[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'@h@q"
+  _ble_syntax_bashc_fmt[CTX_QUOT]="\$\"\`\\@h"
+  _ble_syntax_bashc_fmt[CTX_EXPR]="][}()\$\"\`\\'@h"
+  _ble_syntax_bashc_fmt[CTX_PWORD]="}\$\"\`\\@h"
+
+  ## @param[in] histc1 histc histc12
+  ## @param[out] _ble_syntax_bashc[]
+  function ble-syntax:bash/.update-_ble_syntax_bashc {
+    if [[ $histc12 == '!^' ]]; then
+      local key
+      for key in CTX_ARGI CTX_QUOT CTX_EXPR CTX_PWORD; do
+        _ble_syntax_bashc[key]="${_ble_syntax_bashc_def[key]}"
+      done
+    else
+      local key
+      for key in CTX_ARGI CTX_QUOT CTX_EXPR CTX_PWORD; do
+        local a="${_ble_syntax_bashc_fmt[key]}"
+        a="${a//@h/$histc1}"
+        a="${a//@q/$histc2}"
+
+        # Bracket expression として安全な順に並び替える必要がある:
+        [[ $a == *']'* ]] && a="]${a//]}"
+        [[ $a == *'-'* ]] && a="${a//-}-"
+
+        _ble_syntax_bashc[key]="$a"
+      done
+    fi
+  }
+
+  histc12='!^' ble-syntax:bash/.update-_ble_syntax_bashc
+}
+
+## @var _ble_syntax_rex_simple_word
+## @var _ble_syntax_rex_simple_word_element
+##   単純な単語のパターンとその構成要素を表す正規表現
+##   histchars に依存しているので変化があった時に更新する。
+_ble_syntax_rex_simple_word=
+_ble_syntax_rex_simple_word_element=
+{
+  function ble-syntax:bash/.update-rex_simple_word {
+    local quot="'"
+    local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
+    local rex_dquot='\$?"([^'"${_ble_syntax_bashc[CTX_QUOT]}"']|\\.)*"'
+    local rex_param='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
+    local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
+    local rex_letter='[^'"${_ble_syntax_bashc[CTX_ARGI]}"']'
+    _ble_syntax_rex_simple_word_element='('"$rex_letter"'|\\.|'"$rex_squot"'|'"$rex_dquot"'|'"$rex_param"'|'"$rex_param2"')'
+    _ble_syntax_rex_simple_word='^'"$_ble_syntax_rex_simple_word_element"'+$'
+  }
+  ble-syntax:bash/.update-rex_simple_word
+}
+
+_ble_syntax_bash_histc12=
+_ble_syntax_bash_vars=(histc1 histc2 histc12 histstop)
+function ble-syntax:bash/initialize-vars {
+  # シェル変数 histchars の解釈について
+  #
+  # - 1文字目 [既定値 !] は履歴展開の開始を表す。
+  #   イベント指示子の中に含まれる ! も対象となる。
+  #   但し、histchars の 1 文字目が既に別の意味を持っている場合 ([-#?0-9^$%*]) は、
+  #   そちらの方が優先される様だ。
+  # - 2文字目 [既定値 ^] は履歴展開(置換)の開始を表す。
+  #   ^aaa^bbb^ は =aaa=bbb= となる。
+  # - 3文字目 [既定値 #] は .bash_history
+  #   に時刻を出力する時の区切り文字に使われる。
+  #   ここでは関係ない。
+  #
+  if [[ ${histchars+set} ]]; then
+    histc1="${histchars::1}"
+    histc2="${histchars:1:1}"
+  else
+    histc1='!'
+    histc2='^'
+  fi
+
+  histc12="$histc1$histc2"
+  if [[ $histc12 != $_ble_syntax_bash_histc12 ]]; then
+    _ble_syntax_bash_histc12="$histc12"
+    ble-syntax:bash/.update-_ble_syntax_bashc
+    ble-syntax:bash/.update-rex_simple_word
+  fi
+
+  histstop=$' \t\n='
+  shopt -q extglob && histstop="$histstop("
+}
+
+
+#------------------------------------------------------------------------------
+# 共通の字句の一致判定
 
 function ble-syntax/parse/check-dollar {
   local rex
@@ -665,7 +771,7 @@ function ble-syntax/parse/check-quotes {
   fi
 
   if ((ctx!=CTX_QUOT)); then
-    if rex='^(\$?")([^'"${_BLE_SYNTAX_CSPECIAL[CTX_QUOT]}"']|\\.)*("?)' && [[ $tail =~ $rex ]]; then
+    if rex='^(\$?")([^'"${_ble_syntax_bashc[CTX_QUOT]}"']|\\.)*("?)' && [[ $tail =~ $rex ]]; then
       if [[ ${BASH_REMATCH[3]} ]]; then
         # 終端まで行った場合
         local rematch1="${BASH_REMATCH[1]}" # for bash-3.1 ${#arr[n]} bug
@@ -722,7 +828,7 @@ function ble-syntax/parse/check-comment {
 #   histchars を変更した時に変更するべき所:
 #   - _ble_syntax_rex_histexpand.init
 #   - ble-syntax/parse/check-history-expansion
-#   - _BLE_SYNTAX_CSPECIAL の中の !^ の部分
+#   - _ble_syntax_bashc の中の !^ の部分
 _ble_syntax_rex_histexpand_event=
 _ble_syntax_rex_histexpand_word=
 _ble_syntax_rex_histexpand_mods=
@@ -742,7 +848,34 @@ function _ble_syntax_rex_histexpand.init {
   local rex_modifier=':[htrepqx&gG]|:s(/([^\/]|\\.)*){0,2}(/|$)'
   _ble_syntax_rex_histexpand_mods='('"$rex_modifier"')*'
 
-  _ble_syntax_rex_histexpand_quicksub='\^([^\^]|\\.)*\^([^\^]|\\.)*\^'
+  _ble_syntax_rex_histexpand_quicksub='\^([^^\]|\\.)*\^([^^\]|\\.)*\^'
+
+  # for histchars
+  _ble_syntax_rex_histexpand_quicksub_template='@A([^@C\]|\\.)*@A([^@C\]|\\.)*@A'
+  _ble_syntax_rex_histexpand_event_template='^@A('"$rex_event"'|@A)'
+}
+
+## 関数 ble-syntax:bash/histexpand/initialize-event
+##
+function ble-syntax:bash/histexpand/initialize-event {
+  if [[ $histc1 == '!' ]]; then
+    rex_event="$_ble_syntax_rex_histexpand_event"
+  else
+    local A="[$histc1]"
+    [[ $histc1 == '^' ]] && A='\^'
+    rex_event="$_ble_syntax_rex_histexpand_event_template"
+    rex_event="${rex_event//@A/$A}"
+  fi
+}
+
+function ble-syntax:bash/histexpand/initialize-quicksub {
+  if [[ $histc2 == '^' ]]; then
+    rex_quicksub="$_ble_syntax_rex_histexpand_quicksub"
+  else
+    rex_quicksub="$_ble_syntax_rex_histexpand_quicksub_template"
+    rex_quicksub="${rex_quicksub//@A/[$histc2]}"
+    rex_quicksub="${rex_quicksub//@C/$histc2}"
+  fi
 }
 
 _ble_syntax_rex_histexpand.init
@@ -750,12 +883,20 @@ _ble_syntax_rex_histexpand.init
 function ble-syntax/parse/check-history-expansion {
   [[ $- == *H* ]] || return 1
 
-  local spaces=$' \t\n'
-  if [[ $tail == '!'[^"=$spaces"]* ]]; then
+  if [[ $histc1 && $tail == "$histc1"[^"$histstop"]* ]]; then
+
+    # "～" 文字列中では一致可能範囲を制限する。
+    if ((ctx==CTX_QUOT)); then
+      local tail=${tail%%'"'*}
+      [[ $tail == '!' ]] && return 1
+    fi
+
     ((_ble_syntax_attr[i]=ATTR_HISTX))
-    if [[ $tail =~ $_ble_syntax_rex_histexpand_event ]]; then
+    local rex_event
+    ble-syntax:bash/histexpand/initialize-event
+    if [[ $tail =~ $rex_event ]]; then
       ((i+=${#BASH_REMATCH}))
-    elif [[ $tail =~ '!'['-:0-9^$%*']* ]]; then
+    elif [[ $tail == "$histc1"['-:0-9^$%*']* ]]; then
       ((_ble_syntax_attr[i]=ATTR_HISTX,i++))
     else
       # ErrMsg 'unrecognized event'
@@ -775,9 +916,11 @@ function ble-syntax/parse/check-history-expansion {
     [[ ${text:i} == ':'* ]] &&
       ((_ble_syntax_attr[i]=ATTR_ERR,i++))
     return 0
-  elif ((i==0)) && [[ $tail == '^'* ]]; then
+  elif ((i==0)) && [[ $histc2 && $tail == "$histc2"* ]]; then
     ((_ble_syntax_attr[i]=ATTR_HISTX))
-    if [[ $tail =~ $_ble_syntax_rex_histexpand_quicksub ]]; then
+    local rex_quicksub
+    ble-syntax:bash/histexpand/initialize-quicksub
+    if [[ $tail =~ $rex_quicksub ]]; then
       ((i+=${#BASH_REMATCH}))
 
       # modifiers
@@ -809,7 +952,7 @@ _BLE_SYNTAX_FCTX[CTX_QUOT]=ble-syntax/parse/ctx-quot
 function ble-syntax/parse/ctx-quot {
   # 文字列の中身
   local rex
-  if rex='^([^'"${_BLE_SYNTAX_CSPECIAL[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if rex='^([^'"${_ble_syntax_bashc[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -822,7 +965,7 @@ function ble-syntax/parse/ctx-quot {
     return 0
   elif ble-syntax/parse/check-dollar; then
     return 0
-  elif [[ $tail == ['!^']* ]]; then
+  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax/parse/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -854,7 +997,7 @@ function ble-syntax/parse/ctx-param {
 function ble-syntax/parse/ctx-pword {
   # パラメータ展開 - word 部
   local rex
-  if rex='^([^'"${_BLE_SYNTAX_CSPECIAL[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if rex='^([^'"${_ble_syntax_bashc[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -867,7 +1010,7 @@ function ble-syntax/parse/ctx-pword {
     return 0
   elif ble-syntax/parse/check-dollar; then
     return 0
-  elif [[ $tail == ['!^']* ]]; then
+  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax/parse/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -881,7 +1024,7 @@ function ble-syntax/parse/ctx-expr {
   # 式の中身
   local rex
 
-  if rex='^([^'"${_BLE_SYNTAX_CSPECIAL[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if rex='^([^'"${_ble_syntax_bashc[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -959,7 +1102,7 @@ function ble-syntax/parse/ctx-expr {
     return 0
   elif ble-syntax/parse/check-dollar; then
     return 0
-  elif [[ $tail == ['!^']* ]]; then
+  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     # 恐ろしい事に数式中でも履歴展開が有効…。
     ble-syntax/parse/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
@@ -1241,7 +1384,7 @@ function ble-syntax/parse/ctx-command {
       ((_ble_syntax_attr[i]=ATTR_DEL,i+=1))
     fi
     flagConsume=1
-  elif rex='^([^'"${_BLE_SYNTAX_CSPECIAL[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  elif rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     flagConsume=1
@@ -1251,7 +1394,7 @@ function ble-syntax/parse/ctx-command {
     flagConsume=1
   elif ble-syntax/parse/check-dollar; then
     flagConsume=1
-  elif [[ $tail == ['!^']* ]]; then
+  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax/parse/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     flagConsume=1
@@ -1366,7 +1509,7 @@ function ble-syntax/parse/ctx-values {
   ble-assert '((ctx==CTX_VALI))' "invalid context ctx=$ctx"
 #%end
 
-  if rex='^([^'"${_BLE_SYNTAX_CSPECIAL[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -1376,7 +1519,7 @@ function ble-syntax/parse/ctx-values {
     return 0
   elif ble-syntax/parse/check-dollar; then
     return 0
-  elif [[ $tail == ['!^']* ]]; then
+  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax/parse/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -1442,7 +1585,7 @@ function ble-syntax/parse/ctx-redirect {
   # 単語開始の設置
   ble-syntax/parse/ctx-redirect/check-word-begin
 
-  if rex='^([^'"${_BLE_SYNTAX_CSPECIAL[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -1452,7 +1595,7 @@ function ble-syntax/parse/ctx-redirect {
     return 0
   elif ble-syntax/parse/check-dollar; then
     return 0
-  elif [[ $tail == ['!^']* ]]; then
+  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax/parse/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -1745,6 +1888,9 @@ function ble-syntax/parse {
   _ble_syntax_tree=("${_ble_syntax_tree[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 単語
   _ble_syntax_nest=("${_ble_syntax_nest[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 入れ子の親
   _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
+
+  local "${_ble_syntax_bash_vars[@]}"
+  ble-syntax:bash/initialize-vars
 
   # 解析
   _ble_syntax_text="$text"
@@ -2180,20 +2326,6 @@ function ble-syntax/highlight/filetype {
     type=
   fi
 }
-
-_ble_syntax_rex_simple_word=
-_ble_syntax_rex_simple_word_element=
-function ble-syntax-initialize-rex {
-  local quot="'"
-  local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
-  local rex_dquot='\$?"([^'"${_BLE_SYNTAX_CSPECIAL[CTX_QUOT]}"']|\\.)*"'
-  local rex_param='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
-  local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
-  local rex_letter='[^'"${_BLE_SYNTAX_CSPECIAL[CTX_ARGI]}"']'
-  _ble_syntax_rex_simple_word_element='('"$rex_letter"'|\\.|'"$rex_squot"'|'"$rex_dquot"'|'"$rex_param"'|'"$rex_param2"')'
-  _ble_syntax_rex_simple_word='^'"$_ble_syntax_rex_simple_word_element"'+$'
-}
-ble-syntax-initialize-rex
 
 # adapter に頼らず直接実装したい
 function ble-highlight-layer:syntax/touch-range {

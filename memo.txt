@@ -263,6 +263,15 @@ bash_features
     ToDo
 -------------------------------------------------------------------------------
 
+2015-11-18
+
+  * PROMPT_COMMAND
+
+  * 存在しない変数名で補完しようとすると \ が挿入される。
+    ここは何も実行しないで欲しい所である。
+
+  * histexpand: shopt -s histverify histreedit
+
 2015-11-06
 
   * isearch-forward/backward で現在の一致範囲をハイライトする。
@@ -1188,6 +1197,20 @@ bash_features
 *******************************************************************************
     実装ログ
 -------------------------------------------------------------------------------
+
+2015-11-19
+
+  * histexpand: "～" 中の histexpand, extglob の際の histexpand 開始
+
+    > - 文字列 "～" 中の history-expansion は " を含まない。
+    > - '!(' not histexpansion when shopt -s extglob 対応
+
+  * histexpand: histchars 対応
+
+    histchars が設定されている時の正規表現の修正。
+    > - _ble_syntax_bashc (旧 _BLE_SYNTAX_CSPECIAL)
+    > - _ble_syntax_rex_simple_word
+    > - _ble_syntax_rex_simple_word_element
 
 2015-11-16
 
