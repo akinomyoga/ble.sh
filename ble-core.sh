@@ -283,10 +283,10 @@ function ble-term/flush {
 # **** vbell/abell ****
 
 function _ble_base_tmp.wipe {
-  local file pid mark
+  local file pid mark rex_tmpfile='^.*/([0-9]+)\.[^/]+$'
   mark=()
   for file in "$_ble_base_tmp"/[1-9]*.*; do
-    [[ -e $file && $file =~ ^.*/([0-9]+)\.[^/]+$ ]] || continue
+    [[ -e $file && $file =~ $rex_tmpfile ]] || continue
     pid="${BASH_REMATCH[1]}"
     [[ ${mark[pid]} ]] && continue
     mark[pid]=1
