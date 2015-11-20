@@ -3438,6 +3438,10 @@ function ble-edit+history-expand-line {
   _ble_edit_mark=0
   _ble_edit_mark_active=
 }
+function ble-edit+magic-space {
+  ble-edit+history-expand-line
+  KEYS=(32) ble-edit+self-insert
+}
 
 function ble-edit+forward-line-or-history-next {
   ble-edit+forward-line || ble-edit+history-next

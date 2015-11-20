@@ -263,6 +263,35 @@ bash_features
     ToDo
 -------------------------------------------------------------------------------
 
+2015-11-21
+
+  * 公開までに追加であった方が良いかも知れない物
+
+    + 拡張性の提供 (拡張の仕方の説明)
+      + theme の枠組を整える事 (setting files の置き場?)
+      + 文字コード拡張 (Unicode との mapping)
+      + 端末制御コード拡張
+        tput からもっと積極的に読み込むべきなのでは?
+        cmap/default.sh に加えて cmap/tput.sh 的な物も?
+        minimal.sh, xterm.sh, rosaterm.sh の整理。
+
+    + 同じ場所で complete (TAB) を連続で呼び出した時にカウントを行うべき
+      + peco や sentaku などを起動する時の基準に使用できる。
+
+    + vbell の色
+      + キーボード入力を全部 vbell にする方法?
+
+    + マウス対応
+    + RPS1
+    + vi bind (これは bind -p で調べれば大丈夫の筈?)
+    + 簡単なキーボードハンドラのサンプル (テトリスとか?)
+
+  * bug: 複数行編集でカーソルが一番上にない場合 vbell で編集内容が消される。
+
+    元々 vbell を実装した時は複数行になる事を想定していなかった (複数行にできなかった)。
+    現在は複数行に対応したので特別の配慮が必要である。
+    (ble-edit.sh から値を引っ張ってくる必要があるので interface を決めておく必要はあるが。)
+
 2015-11-18
 
   * bleopt コマンド: onchange
@@ -321,7 +350,7 @@ bash_features
     エラーがある時のコマンド実行について考える前に、
     先ずはエラーの処理について再考しておいた方が良いような気がする。
 
-  * エラーの管理について
+  * エラー検出・表示の管理について
 
     現状
 
@@ -516,6 +545,7 @@ bash_features
   1 背景が暗い環境での色の設定
     これは確認してみたがそんなに問題にならないのではないかという気がした。
     何れにしても自由に配色を設定できるようにする仕組みは提供する必要がある。
+    →解説を加えれば良い。
   2 complete の設定の取り込み
   3 bind 等の設定の取り込み
     readline 関数の完全対応
@@ -524,14 +554,15 @@ bash_features
   > 4 正しい PS1 の解釈
 
   * 対応する物がない readline 関数
+    > history-expand-line magic-space
+    > delete-horizontal-space
+    history-search-forward/backward
     yank-nth-arg yank-last-arg insert-last-argument
-    shell-expand-line history-expand-line magic-space alias-expand-line
-    tilde-expand
-    history-and-alias-expand-line
+    shell-expand-line alias-expand-line
+    tilde-expand history-and-alias-expand-line
     edit-and-execute-command
     transpose-words upcase-word downcase-word capitalize-word
     kill-whole-line
-    delete-horizontal-space
     yank-pop これはkill-ringを正しく実装する必要がある
     digit-argument universal-argument 入力しやすい様に?
     complete関連

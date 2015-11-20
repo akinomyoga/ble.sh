@@ -48,11 +48,14 @@ function ble-decode-keymap:emacs/define {
   ble-bind -cf 'M-z'     fg
 
   # history
-  ble-bind -f 'C-r'    history-isearch-backward
-  ble-bind -f 'C-s'    history-isearch-forward
-  ble-bind -f 'C-RET'  history-expand-line
-  ble-bind -f 'M-<'    history-beginning
-  ble-bind -f 'M->'    history-end
+  ble-bind -f 'C-r'     history-isearch-backward
+  ble-bind -f 'C-s'     history-isearch-forward
+  ble-bind -f 'C-RET'   history-expand-line
+  ble-bind -f 'M-<'     history-beginning
+  ble-bind -f 'M->'     history-end
+  ble-bind -f 'C-prior' history-beginning
+  ble-bind -f 'C-next'  history-end
+  ble-bind -f 'SP'      magic-space
 
   # kill
   ble-bind -f 'C-@'      set-mark
