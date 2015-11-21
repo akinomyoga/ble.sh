@@ -1072,7 +1072,8 @@ function ble-bind/option:csi {
 
     # "CSI <num> $" は CSI sequence の形式に沿っていないので、
     # 個別に登録する必要がある。
-    local -a cseq=(27 91)
+    local -a cseq
+    cseq=(27 91)
     local ret i iN num="${BASH_REMATCH[1]}\$"
     for ((i=0,iN=${#num};i<iN;i++)); do
       .ble-text.s2c "$num" "$i"
