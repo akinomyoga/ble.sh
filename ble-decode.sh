@@ -1174,10 +1174,9 @@ function ble-bind {
                 # command="; $command; " # ■ 前処理と後処理を追加
                 echo "error: sorry, not yet implemented" 1>&2 ;;
               (c) # コマンド実行
-                # echo "error: sorry, not yet implemented" 1>&2
                 command=".ble-edit.bind.command $command" ;;
               (*)
-                echo "error: combination of -x and -c flags" 1>&2 ;;
+                echo "error: combination of -x and -c flags." 1>&2 ;;
               esac
             fi
 

@@ -167,8 +167,8 @@ function ble-syntax/tree-enumerate/.initialize {
   ((nofs=0))
 }
 
-## 関数 ble-syntax/tree-enumerate/.impl
-## @arg[in] command...
+## 関数 ble-syntax/tree-enumerate/.impl command...
+## @param[in] command...
 ##   @var[in]     wtype,wbegin,wlen,attr,tchild
 ##   @var[in,out] tprev
 ## @var[in] iN
@@ -206,6 +206,12 @@ function ble-syntax/tree-enumerate-children {
   local i="$tchild"
   ble-syntax/tree-enumerate/.impl "$@"
 }
+## 関数 ble-syntax/tree-enumerate command...
+##   現在の解析状態 _ble_syntax_tree に基いて、
+##   指定したコマンド command... を
+##   トップレベルの各ノードに対して末尾にあるノードから順に呼び出します。
+## @param[in] command...
+##   呼び出すコマンドを指定します。
 function ble-syntax/tree-enumerate {
   local tree i nofs
   ble-syntax/tree-enumerate/.initialize
@@ -279,7 +285,8 @@ function ble-syntax/print-status/.dump-arrays/.append-attr-char {
     attr="${attr} "
   fi
 }
-## @var[in] iN
+## @var[out] resultA
+## @var[in]  iN
 function ble-syntax/print-status/.dump-arrays {
   local -a tree char line
   tree=()
@@ -369,13 +376,19 @@ function ble-syntax/print-status/.dump-arrays {
   done
 }
 
+## 関数 ble-syntax/print-status/.dump-tree/proc1
+## @var[out] resultB
+## @var[in]  prefix
+## @var[in]  nl
 function ble-syntax/print-status/.dump-tree/proc1 {
   local tip="| "; tip="${tip:islast:1}"
   prefix="$prefix$tip   " ble-syntax/tree-enumerate-children ble-syntax/print-status/.dump-tree/proc1
   resultB="$prefix\_ '${_ble_syntax_text:wbegin:wlen}'$nl$resultB"
 }
 
-## @var[in] iN
+## 関数 ble-syntax/print-status/.dump-tree
+## @var[out] resultB
+## @var[in]  iN
 function ble-syntax/print-status/.dump-tree {
   resultB=
 
@@ -701,7 +714,7 @@ function ble-syntax:bash/initialize-vars {
 #------------------------------------------------------------------------------
 # 共通の字句の一致判定
 
-function ble-syntax/parse/check-dollar {
+function ble-syntax:bash/check-dollar {
   local rex
   if [[ $tail == '${'* ]]; then
     # ■中で許される物: 決まったパターン + 数式や文字列に途中で切り替わる事も
@@ -759,7 +772,7 @@ function ble-syntax/parse/check-dollar {
   return 1
 }
 
-function ble-syntax/parse/check-quotes {
+function ble-syntax:bash/check-quotes {
   local rex
 
   if rex='^`([^`\]|\\(.|$))*(`?)|^'\''[^'\'']*('\''?)' && [[ $tail =~ $rex ]]; then
@@ -799,7 +812,7 @@ function ble-syntax/parse/check-quotes {
   return 1
 }
 
-function ble-syntax/parse/check-process-subst {
+function ble-syntax:bash/check-process-subst {
   # プロセス置換
   if [[ $tail == ['<>']'('* ]]; then
     ble-syntax/parse/nest-push "$CTX_CMDX" '('
@@ -810,7 +823,7 @@ function ble-syntax/parse/check-process-subst {
   return 1
 }
 
-function ble-syntax/parse/check-comment {
+function ble-syntax:bash/check-comment {
   # コメント
   if shopt -q interactive_comments &>/dev/null; then
     if ((wbegin<0||wbegin==i)) && local rex=$'^#[^\n]*' && [[ $tail =~ $rex ]]; then
@@ -827,7 +840,7 @@ function ble-syntax/parse/check-comment {
 # histchars には対応していない
 #   histchars を変更した時に変更するべき所:
 #   - _ble_syntax_rex_histexpand.init
-#   - ble-syntax/parse/check-history-expansion
+#   - ble-syntax:bash/check-history-expansion
 #   - _ble_syntax_bashc の中の !^ の部分
 _ble_syntax_rex_histexpand_event=
 _ble_syntax_rex_histexpand_word=
@@ -880,7 +893,7 @@ function ble-syntax:bash/histexpand/initialize-quicksub {
 
 _ble_syntax_rex_histexpand.init
 
-function ble-syntax/parse/check-history-expansion {
+function ble-syntax:bash/check-history-expansion {
   [[ $- == *H* ]] || return 1
 
   if [[ $histc1 && $tail == "$histc1"[^"$histstop"]* ]]; then
@@ -948,8 +961,8 @@ function ble-syntax/parse/check-history-expansion {
 _BLE_SYNTAX_FCTX=()
 _BLE_SYNTAX_FEND=()
 
-_BLE_SYNTAX_FCTX[CTX_QUOT]=ble-syntax/parse/ctx-quot
-function ble-syntax/parse/ctx-quot {
+_BLE_SYNTAX_FCTX[CTX_QUOT]=ble-syntax:bash/ctx-quot
+function ble-syntax:bash/ctx-quot {
   # 文字列の中身
   local rex
   if rex='^([^'"${_ble_syntax_bashc[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
@@ -961,12 +974,12 @@ function ble-syntax/parse/ctx-quot {
       i+=1))
     ble-syntax/parse/nest-pop
     return 0
-  elif ble-syntax/parse/check-quotes; then
+  elif ble-syntax:bash/check-quotes; then
     return 0
-  elif ble-syntax/parse/check-dollar; then
+  elif ble-syntax:bash/check-dollar; then
     return 0
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
-    ble-syntax/parse/check-history-expansion ||
+    ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
   fi
@@ -974,9 +987,9 @@ function ble-syntax/parse/ctx-quot {
   return 1
 }
 
-_BLE_SYNTAX_FCTX[CTX_PARAM]=ble-syntax/parse/ctx-param
-_BLE_SYNTAX_FCTX[CTX_PWORD]=ble-syntax/parse/ctx-pword
-function ble-syntax/parse/ctx-param {
+_BLE_SYNTAX_FCTX[CTX_PARAM]=ble-syntax:bash/ctx-param
+_BLE_SYNTAX_FCTX[CTX_PWORD]=ble-syntax:bash/ctx-pword
+function ble-syntax:bash/ctx-param {
   # パラメータ展開 - パラメータの直後
 
   if [[ $tail == :[^-?=+]* ]]; then
@@ -990,11 +1003,11 @@ function ble-syntax/parse/ctx-param {
     return 0
   else
     ((ctx=CTX_PWORD))
-    ble-syntax/parse/ctx-pword
+    ble-syntax:bash/ctx-pword
     return
   fi
 }
-function ble-syntax/parse/ctx-pword {
+function ble-syntax:bash/ctx-pword {
   # パラメータ展開 - word 部
   local rex
   if rex='^([^'"${_ble_syntax_bashc[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
@@ -1006,12 +1019,12 @@ function ble-syntax/parse/ctx-pword {
     ((i+=1))
     ble-syntax/parse/nest-pop
     return 0
-  elif ble-syntax/parse/check-quotes; then
+  elif ble-syntax:bash/check-quotes; then
     return 0
-  elif ble-syntax/parse/check-dollar; then
+  elif ble-syntax:bash/check-dollar; then
     return 0
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
-    ble-syntax/parse/check-history-expansion ||
+    ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
   fi
@@ -1019,8 +1032,8 @@ function ble-syntax/parse/ctx-pword {
   return 1
 }
 
-_BLE_SYNTAX_FCTX[CTX_EXPR]=ble-syntax/parse/ctx-expr
-function ble-syntax/parse/ctx-expr {
+_BLE_SYNTAX_FCTX[CTX_EXPR]=ble-syntax:bash/ctx-expr
+function ble-syntax:bash/ctx-expr {
   # 式の中身
   local rex
 
@@ -1098,13 +1111,13 @@ function ble-syntax/parse/ctx-expr {
         i+=${#BASH_REMATCH}))
       return 0
     fi
-  elif ble-syntax/parse/check-quotes; then
+  elif ble-syntax:bash/check-quotes; then
     return 0
-  elif ble-syntax/parse/check-dollar; then
+  elif ble-syntax:bash/check-dollar; then
     return 0
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     # 恐ろしい事に数式中でも履歴展開が有効…。
-    ble-syntax/parse/check-history-expansion ||
+    ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
   fi
@@ -1115,25 +1128,25 @@ function ble-syntax/parse/ctx-expr {
 #------------------------------------------------------------------------------
 # 文脈: コマンドライン
 
-_BLE_SYNTAX_FCTX[CTX_ARGX]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_ARGX0]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_CMDX]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_CMDX1]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_CMDXC]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_CMDXF]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_ARGI]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_CMDI]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FCTX[CTX_VRHS]=ble-syntax/parse/ctx-command
-_BLE_SYNTAX_FEND[CTX_CMDI]=ble-syntax/parse/ctx-command/check-word-end
-_BLE_SYNTAX_FEND[CTX_ARGI]=ble-syntax/parse/ctx-command/check-word-end
-_BLE_SYNTAX_FEND[CTX_VRHS]=ble-syntax/parse/ctx-command/check-word-end
+_BLE_SYNTAX_FCTX[CTX_ARGX]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_ARGX0]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDX]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDX1]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXC]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXF]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_ARGI]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDI]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_VRHS]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FEND[CTX_CMDI]=ble-syntax:bash/ctx-command/check-word-end
+_BLE_SYNTAX_FEND[CTX_ARGI]=ble-syntax:bash/ctx-command/check-word-end
+_BLE_SYNTAX_FEND[CTX_VRHS]=ble-syntax:bash/ctx-command/check-word-end
 
-## 関数 ble-syntax/parse/ctx-command/check-word-end
+## 関数 ble-syntax:bash/ctx-command/check-word-end
 ## @var[in,out] ctx
 ## @var[in,out] wbegin
 ## @var[in,out] 他
-function ble-syntax/parse/ctx-command/check-word-end {
+function ble-syntax:bash/ctx-command/check-word-end {
   # 単語の中にいない時は抜ける
   ((wbegin<0)) && return 1
 
@@ -1261,7 +1274,7 @@ function ble-syntax/parse/ctx-command/check-word-end {
   return 0
 }
 
-function ble-syntax/parse/ctx-command {
+function ble-syntax:bash/ctx-command {
   # コマンド・引数部分
   local rex
 
@@ -1340,7 +1353,7 @@ function ble-syntax/parse/ctx-command {
     fi
   fi
 
-  if ble-syntax/parse/check-comment; then
+  if ble-syntax:bash/check-comment; then
     return 0
   fi
 
@@ -1388,14 +1401,14 @@ function ble-syntax/parse/ctx-command {
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     flagConsume=1
-  elif ble-syntax/parse/check-process-subst; then
+  elif ble-syntax:bash/check-process-subst; then
     flagConsume=1
-  elif ble-syntax/parse/check-quotes; then
+  elif ble-syntax:bash/check-quotes; then
     flagConsume=1
-  elif ble-syntax/parse/check-dollar; then
+  elif ble-syntax:bash/check-dollar; then
     flagConsume=1
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
-    ble-syntax/parse/check-history-expansion ||
+    ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     flagConsume=1
   fi
@@ -1418,12 +1431,12 @@ function ble-syntax/parse/ctx-command {
 #   分離した方が良いのではないか?
 #
 
-_BLE_SYNTAX_FCTX[CTX_VALX]=ble-syntax/parse/ctx-values
-_BLE_SYNTAX_FCTX[CTX_VALI]=ble-syntax/parse/ctx-values
-_BLE_SYNTAX_FEND[CTX_VALI]=ble-syntax/parse/ctx-values/check-word-end
+_BLE_SYNTAX_FCTX[CTX_VALX]=ble-syntax:bash/ctx-values
+_BLE_SYNTAX_FCTX[CTX_VALI]=ble-syntax:bash/ctx-values
+_BLE_SYNTAX_FEND[CTX_VALI]=ble-syntax:bash/ctx-values/check-word-end
 
-## 関数 ble-syntax/parse/ctx-values/check-word-end
-function ble-syntax/parse/ctx-values/check-word-end {
+## 関数 ble-syntax:bash/ctx-values/check-word-end
+function ble-syntax:bash/ctx-values/check-word-end {
   # 単語の中にいない時は抜ける
   ((wbegin<0)) && return 1
 
@@ -1456,7 +1469,7 @@ function ble-syntax/parse/ctx-values/check-word-end {
   return 0
 }
 
-function ble-syntax/parse/ctx-values {
+function ble-syntax:bash/ctx-values {
   # コマンド・引数部分
   local rex
 
@@ -1496,7 +1509,7 @@ function ble-syntax/parse/ctx-values {
     fi
   fi
 
-  if ble-syntax/parse/check-comment; then
+  if ble-syntax:bash/check-comment; then
     return 0
   fi
 
@@ -1513,14 +1526,14 @@ function ble-syntax/parse/ctx-values {
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
-  elif ble-syntax/parse/check-process-subst; then
+  elif ble-syntax:bash/check-process-subst; then
     return 0
-  elif ble-syntax/parse/check-quotes; then
+  elif ble-syntax:bash/check-quotes; then
     return 0
-  elif ble-syntax/parse/check-dollar; then
+  elif ble-syntax:bash/check-dollar; then
     return 0
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
-    ble-syntax/parse/check-history-expansion ||
+    ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
   else
@@ -1539,11 +1552,11 @@ function ble-syntax/parse/ctx-values {
 #------------------------------------------------------------------------------
 # 文脈: リダイレクト
 
-_BLE_SYNTAX_FCTX[CTX_RDRF]=ble-syntax/parse/ctx-redirect
-_BLE_SYNTAX_FCTX[CTX_RDRD]=ble-syntax/parse/ctx-redirect
-_BLE_SYNTAX_FEND[CTX_RDRF]=ble-syntax/parse/ctx-redirect/check-word-end
-_BLE_SYNTAX_FEND[CTX_RDRD]=ble-syntax/parse/ctx-redirect/check-word-end
-function ble-syntax/parse/ctx-redirect/check-word-begin {
+_BLE_SYNTAX_FCTX[CTX_RDRF]=ble-syntax:bash/ctx-redirect
+_BLE_SYNTAX_FCTX[CTX_RDRD]=ble-syntax:bash/ctx-redirect
+_BLE_SYNTAX_FEND[CTX_RDRF]=ble-syntax:bash/ctx-redirect/check-word-end
+_BLE_SYNTAX_FEND[CTX_RDRD]=ble-syntax:bash/ctx-redirect/check-word-end
+function ble-syntax:bash/ctx-redirect/check-word-begin {
   if ((wbegin<0)); then
     # ※ここで ctx==CTX_RDRF か ctx==CTX_RDRD かの情報が使われるので
     #   CTX_RDRF と CTX_RDRD は異なる二つの文脈として管理している。
@@ -1551,7 +1564,7 @@ function ble-syntax/parse/ctx-redirect/check-word-begin {
     ble-syntax/parse/touch-updated-word "$i" #■これは不要では?
   fi
 }
-function ble-syntax/parse/ctx-redirect/check-word-end {
+function ble-syntax:bash/ctx-redirect/check-word-end {
   # 単語の中にいない時は抜ける
   ((wbegin<0)) && return 1
 
@@ -1571,7 +1584,7 @@ function ble-syntax/parse/ctx-redirect/check-word-end {
 #%end
   return 0
 }
-function ble-syntax/parse/ctx-redirect {
+function ble-syntax:bash/ctx-redirect {
   local rex
 
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
@@ -1583,20 +1596,20 @@ function ble-syntax/parse/ctx-redirect {
   fi
 
   # 単語開始の設置
-  ble-syntax/parse/ctx-redirect/check-word-begin
+  ble-syntax:bash/ctx-redirect/check-word-begin
 
   if rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
-  elif ble-syntax/parse/check-process-subst; then
+  elif ble-syntax:bash/check-process-subst; then
     return 0;
-  elif ble-syntax/parse/check-quotes; then
+  elif ble-syntax:bash/check-quotes; then
     return 0
-  elif ble-syntax/parse/check-dollar; then
+  elif ble-syntax:bash/check-dollar; then
     return 0
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
-    ble-syntax/parse/check-history-expansion ||
+    ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
   fi
@@ -1604,7 +1617,8 @@ function ble-syntax/parse/ctx-redirect {
   return 1
 }
 
-#------------------------------------------------------------------------------
+#==============================================================================
+
 # 解析部
 
 _ble_syntax_vanishing_word_umin=-1
