@@ -73,6 +73,22 @@ function ble-complete/util/escape-specialchars {
   builtin eval "$_var=\"\$_ret\""
 }
 
+function ble-complete/util/escape-regexchars {
+  local _a _b _var=ret
+  [[ $1 == -v ]] && { _var="$2"; shift 2; }
+  local _ret="$*"
+  if [[ $_ret == *['][\ "'\''$|&;<>()*?{}!^']* ]]; then
+    _a=\\ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+    _a=\. _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+    _a=\[ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+    _a=\* _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+    _a=\^ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+    _a=\$ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+    _a=\/ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
+  fi
+  builtin eval "$_var=\"\$_ret\""
+}
+
 function ble-complete/action/util/complete.addtail {
   INSERT="$INSERT$1"
   [[ ${text:index} == "$1"* ]] && ((index++))
@@ -186,16 +202,23 @@ function ble-complete/source/argument/.compgen-helper-vars {
   COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in .ble-decode-key/invoke-command
 }
 function ble-complete/source/argument/.compgen-helper-prog {
-  local -a COMP_WORDS
-  local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
-  ble-complete/source/argument/.compgen-helper-vars
-  [[ $comp_prog ]] && eval "$comp_prog"
+  if [[ $comp_prog ]]; then
+    (
+      local COMP_WORDS COMP_CWORD
+      export COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
+      ble-complete/source/argument/.compgen-helper-vars
+      local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
+      "$comp_prog" "$cmd" "$cur" "$prev"
+    )
+  fi
 }
 function ble-complete/source/argument/.compgen-helper-func {
+  [[ $comp_func ]] || return
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
   ble-complete/source/argument/.compgen-helper-vars
-  [[ $comp_func ]] && eval "$comp_func"
+  local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
+  "$comp_func" "$cmd" "$cur" "$prev"
 }
 
 function ble-complete/source/argument {
@@ -227,17 +250,17 @@ function ble-complete/source/argument {
         case "$c" in
         ([abcdefgjksuvDE])
           ble/util/array-push compoptions "-$c" ;;
-        ([oACFGWXPS])
+        ([oAGWXPS])
           ble/util/array-push compoptions "-$c"
           ble/util/array-push compoptions "${compargs[iarg++]}" ;;
         (F)
+          comp_func="${compargs[iarg++]}"
+          ble/util/array-push compoptions "-$c"
+          ble/util/array-push compoptions ble-complete/source/argument/.compgen-helper-func ;;
+        (C)
           comp_prog="${compargs[iarg++]}"
           ble/util/array-push compoptions "-$c"
           ble/util/array-push compoptions ble-complete/source/argument/.compgen-helper-prog ;;
-        (C)
-          comp_prog="(${compargs[iarg++]})"
-          ble/util/array-push compoptions "-$c"
-          ble/util/array-push compoptions ble-complete/source/argument/.compgen-helper-func ;;
         ([pr])
           ;; # 無視 (-p 表示 -r 削除)
         (*)
@@ -249,11 +272,33 @@ function ble-complete/source/argument {
     esac
   done
 
-  IFS=$'\n' builtin eval 'arr=($(compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null))'
-  local cand
+  ble/util/is-stdin-ready && return 27
+
+  local rex_compv
+  ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
+  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
+  ble/util/assign compgen 'sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p}" <<< "$compgen" | sort -u'
+  IFS=$'\n' builtin eval 'arr=($compgen)'
+  # * 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
+  #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
+  # * "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
+  #   compgen に -- "$COMPV" を渡しても何故か思うようにフィルタしてくれない為である。
+  #   (compgen -W "$(compgen ...)" -- "$COMPV" の様にしないと駄目なのか?)
+  # * sed で末端の [[:space:]]+ を除去する。
+  #   git の補完関数など勝手に末尾に space をつける物が存在する為である。
+  #   単語の後にスペースを挿入する事を意図していると思われるが、
+  #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、挿入時のエスケープ対象である。
+  #   →これだとスペースで終わるファイル名を挿入できない…。
+  # * arr($(...)) としないのは IFS=$'\n' の影響を $(...) の中に持ち込まないためである。
+
+  local cand i=0 count=0
   for cand in "${arr[@]}"; do
+    ((i++%100==0)) && ble/util/is-stdin-ready && return 27
     ble-complete/yield-candidate "$cand" ble-complete/action/word
+    ((count++))
   done
+
+  ((count!=0))
 }
 
 #------------------------------------------------------------------------------
