@@ -77,7 +77,7 @@ function ble-complete/util/escape-regexchars {
   local _a _b _var=ret
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
   local _ret="$*"
-  if [[ $_ret == *['][\ "'\''$|&;<>()*?{}!^']* ]]; then
+  if [[ $_ret == *['\.[*^$/']* ]]; then
     _a=\\ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
     _a=\. _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
     _a=\[ _b="\\$_a" _ret="${_ret//"$_a"/$_b}"
@@ -95,15 +95,23 @@ function ble-complete/action/util/complete.addtail {
 }
 
 #------------------------------------------------------------------------------
-# action/word
 
-function ble-complete/action/word/initialize {
+# action/plain
+
+function ble-complete/action/plain/initialize {
   local ins
   ble-complete/util/escape-specialchars -v ins "${CAND:${#COMPV}}"
 
   [[ $_ble_complete_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
 
   INSERT="$COMPS$ins"
+}
+function ble-complete/action/plain/complete { :; }
+
+# action/word
+
+function ble-complete/action/word/initialize {
+  ble-complete/action/plain/initialize
 }
 function ble-complete/action/word/complete {
   ble-complete/action/util/complete.addtail ' '
@@ -112,7 +120,7 @@ function ble-complete/action/word/complete {
 # action/file
 
 function ble-complete/action/file/initialize {
-  ble-complete/action/word/initialize
+  ble-complete/action/plain/initialize
 }
 function ble-complete/action/file/complete {
   local tail=
@@ -126,10 +134,27 @@ function ble-complete/action/file/complete {
   fi
 }
 
+# action/argument
+
+function ble-complete/action/argument/initialize { ble-complete/action/plain/initialize; }
+function ble-complete/action/argument/complete {
+  if [[ -d $CAND ]]; then
+    ble-complete/action/util/complete.addtail /
+  else
+    ble-complete/action/util/complete.addtail ' '
+  fi
+}
+function ble-complete/action/argument-nospace/initialize { ble-complete/action/plain/initialize; }
+function ble-complete/action/argument-nospace/complete {
+  if [[ -d $CAND ]]; then
+    ble-complete/action/util/complete.addtail /
+  fi
+}
+
 # action/command
 
 function ble-complete/action/command/initialize {
-  ble-complete/action/word/initialize
+  ble-complete/action/plain/initialize
 }
 function ble-complete/action/command/complete {
   if [[ -d $CAND ]]; then
@@ -191,6 +216,19 @@ function ble-complete/source/file {
   done
 }
 
+# source/dir
+
+function ble-complete/source/dir {
+  [[ ${COMPV+set} ]] || return 1
+
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+  local cand
+  for cand in "$COMPV"*/; do
+    [[ -d "$cand" ]] || continue
+    ble-complete/yield-candidate "${cand%/}" ble-complete/action/file
+  done
+}
+
 # source/argument (complete -p)
 
 function ble-complete/source/argument/.compgen-helper-vars {
@@ -217,8 +255,48 @@ function ble-complete/source/argument/.compgen-helper-func {
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
   ble-complete/source/argument/.compgen-helper-vars
+
+  # compopt に介入して -o/+o option を読み取る。
+  function compopt {
+    builtin compopt "$@"; local ret="$?"
+
+    local -a ospec
+    while (($#)); do
+      local arg="$1"; shift
+      case "$arg" in
+      (-*)
+        local ic c
+        for ((ic=1;ic<${#arg};ic++)); do
+          c="${arg:ic:1}"
+          case "$c" in
+          (o)    ospec[${#ospec[@]}]="-$1"; shift ;;
+          ([DE]) fDefault=1; break 2 ;;
+          (*)    ((ret==0&&(ret=1))) ;;
+          esac
+        done ;;
+      (+o) ospec[${#ospec[@]}]="+$1"; shift ;;
+      (*)
+        # 特定のコマンドに対する compopt 指定
+        return "$ret" ;;
+      esac
+    done
+
+    local s
+    for s in "${ospec[@]}"; do
+      case "$s" in
+      (-*) comp_opts="$comp_opts${s:1}:" ;;
+      (+*) comp_opts="${comp_opts//:${s:1}/:}" ;;
+      esac
+    done
+
+    return "$ret"
+  }
+
+
   local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
   "$comp_func" "$cmd" "$cur" "$prev"
+
+  unset -f compopt
 }
 
 function ble-complete/source/argument {
@@ -238,6 +316,7 @@ function ble-complete/source/argument {
   [[ $compcmd ]] || return 1
 
   local -a compargs compoptions
+  local comp_opts=:
   local iarg=1
   eval "compargs=($(complete -p "$cmd" 2>/dev/null))"
   while ((iarg<${#compargs[@]})); do
@@ -250,9 +329,16 @@ function ble-complete/source/argument {
         case "$c" in
         ([abcdefgjksuvDE])
           ble/util/array-push compoptions "-$c" ;;
-        ([oAGWXPS])
+        ([pr])
+          ;; # 無視 (-p 表示 -r 削除)
+        ([AGWXPS])
           ble/util/array-push compoptions "-$c"
           ble/util/array-push compoptions "${compargs[iarg++]}" ;;
+        (o)
+          local o="${compargs[iarg++]}"
+          comp_opts="$comp_opts$o:"
+          ble/util/array-push compoptions "-$c"
+          ble/util/array-push compoptions "$o" ;;
         (F)
           comp_func="${compargs[iarg++]}"
           ble/util/array-push compoptions "-$c"
@@ -261,8 +347,6 @@ function ble-complete/source/argument {
           comp_prog="${compargs[iarg++]}"
           ble/util/array-push compoptions "-$c"
           ble/util/array-push compoptions ble-complete/source/argument/.compgen-helper-prog ;;
-        ([pr])
-          ;; # 無視 (-p 表示 -r 削除)
         (*)
           # just discard
         esac
@@ -291,14 +375,25 @@ function ble-complete/source/argument {
   #   →これだとスペースで終わるファイル名を挿入できない…。
   # * arr($(...)) としないのは IFS=$'\n' の影響を $(...) の中に持ち込まないためである。
 
+  local action=argument
+  [[ $comp_opts == *:nospace:* ]] && action=argument-nospace
+
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
     ((i++%100==0)) && ble/util/is-stdin-ready && return 27
-    ble-complete/yield-candidate "$cand" ble-complete/action/word
+    ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
     ((count++))
   done
 
-  ((count!=0))
+  ((count!=0)) && return
+
+  # 候補が見付からない場合
+  if [[ $comp_opts == *:dirnames:* ]]; then
+    ble-complete/source/dir
+  else
+    # filenames, default, bashdefault
+    ble-complete/source/file
+  fi
 }
 
 #------------------------------------------------------------------------------
@@ -343,8 +438,7 @@ function ble-edit+complete {
     local cand ACTION DATA arr
     case "${ctx[0]}" in
     (argument)
-      ble-complete/source/argument ||
-        ble-complete/source/file ;;
+      ble-complete/source/argument ;;
     (file)
       ble-complete/source/file ;;
     (command)
