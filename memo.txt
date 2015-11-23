@@ -277,8 +277,6 @@ bash_features
 
 2015-11-23
 
-  * complete -p による補完を動作する様に修正。
-
   * bug: ble-detach による stty 破壊
 
     ble-detach した後に rm file RET yes RET とすると反応がなくなる。
@@ -1315,6 +1313,12 @@ bash_features
 -------------------------------------------------------------------------------
 
 2015-11-23
+
+  * complete -p による補完を動作する様に修正。
+
+    下らないバグだった。extract-command 内で、出力変数の筈の
+    comp_words comp_line comp_point comp_cword に対して local を指定したままだった。
+    (実装中にテスト用として local 宣言していたのが残っていた。)
 
   * complete -F 対応
 

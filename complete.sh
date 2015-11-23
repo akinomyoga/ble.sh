@@ -249,7 +249,7 @@ function ble-complete/source/argument {
     esac
   done
 
-  IFS=$'\n' builtin eval 'arr=($(compgen "${compoptions[@]}" -- "$COMPV"))'
+  IFS=$'\n' builtin eval 'arr=($(compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null))'
   local cand
   for cand in "${arr[@]}"; do
     ble-complete/yield-candidate "$cand" ble-complete/action/word

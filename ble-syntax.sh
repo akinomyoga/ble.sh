@@ -2229,8 +2229,6 @@ function ble-syntax:bash/extract-command {
   local pos="$1"
   local isword= iscommand=
 
-  local -a comp_words
-  local comp_line comp_point comp_cword
   ble-syntax/tree-enumerate \
     ble-syntax:bash/extract-command/.scan
 
