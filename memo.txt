@@ -277,45 +277,6 @@ bash_features
 
 2015-11-23
 
-  * bug: ble-detach による stty 破壊
-
-    ble-detach した後に rm file RET yes RET とすると反応がなくなる。
-    改行が正しく伝わっていない? stty で調べてみる。
-
-    ble$ bash-4.0 --norc
-    ble$ stty -a
-    speed 38400 baud; rows 73; columns 210; line = 0;
-    intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0;
-    -parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts
-    -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -ixon -ixoff -iuclc -ixany -imaxbel -iutf8
-    opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
-    isig -icanon iexten echo -echoe -echok -echonl -noflsh -xcase -tostop -echoprt -echoctl -echoke
-
-    ble$ stty -a
-    speed 38400 baud; rows 73; columns 210; line = 0;
-    intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0;
-    -parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts
-    -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -ixon -ixoff -iuclc -ixany -imaxbel -iutf8
-    opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
-    isig -icanon iexten echo -echoe -echok -echonl -noflsh -xcase -tostop -echoprt -echoctl -echoke
-
-    ble$ ble-detach
-    ble$ stty -a
-    speed 38400 baud; rows 73; columns 210; line = 0;
-    intr = <undef>; quit = <undef>; erase = <undef>; kill = <undef>; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = <undef>; start = ^Q; stop = ^S; susp = <undef>; rprnt = ^R; werase = <undef>; lnext = <undef>;
-    flush = ^O; min = 1; time = 0;
-    -parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts
-    -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr -icrnl -ixon -ixoff -iuclc -ixany -imaxbel -iutf8
-    opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
-    isig -icanon iexten echo -echoe -echok -echonl -noflsh -xcase -tostop -echoprt -echoctl -echoke
-
-    どうも色々な設定が消滅している様子である。
-    状態の復元は ble-decode-detach -> .ble-stty.finalize -> stty で実行している筈である。
-    やはり bind -x の中で実行した stty の反映には制限が伴うという事か。
-    一応最後に stty sane を実行すれば直る。
-
-    取り敢えずの暫定処置として stty sane を ble-detach 後にユーザに実行して貰う事にする。
-
   * ble-detach 後の stty sane
 
     現在はユーザに stty sane を実行して貰っている。もっと綺麗な方法はないか?
@@ -1313,6 +1274,45 @@ bash_features
 -------------------------------------------------------------------------------
 
 2015-11-23
+
+  * bug: ble-detach による stty 破壊
+
+    ble-detach した後に rm file RET yes RET とすると反応がなくなる。
+    改行が正しく伝わっていない? stty で調べてみる。
+
+    ble$ bash-4.0 --norc
+    ble$ stty -a
+    speed 38400 baud; rows 73; columns 210; line = 0;
+    intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0;
+    -parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts
+    -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -ixon -ixoff -iuclc -ixany -imaxbel -iutf8
+    opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
+    isig -icanon iexten echo -echoe -echok -echonl -noflsh -xcase -tostop -echoprt -echoctl -echoke
+
+    ble$ stty -a
+    speed 38400 baud; rows 73; columns 210; line = 0;
+    intr = ^C; quit = ^\; erase = ^?; kill = ^U; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = <undef>; start = ^Q; stop = ^S; susp = ^Z; rprnt = ^R; werase = ^W; lnext = ^V; flush = ^O; min = 1; time = 0;
+    -parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts
+    -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -ixon -ixoff -iuclc -ixany -imaxbel -iutf8
+    opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
+    isig -icanon iexten echo -echoe -echok -echonl -noflsh -xcase -tostop -echoprt -echoctl -echoke
+
+    ble$ ble-detach
+    ble$ stty -a
+    speed 38400 baud; rows 73; columns 210; line = 0;
+    intr = <undef>; quit = <undef>; erase = <undef>; kill = <undef>; eof = ^D; eol = M-^?; eol2 = M-^?; swtch = <undef>; start = ^Q; stop = ^S; susp = <undef>; rprnt = ^R; werase = <undef>; lnext = <undef>;
+    flush = ^O; min = 1; time = 0;
+    -parenb -parodd -cmspar cs8 -hupcl -cstopb cread -clocal -crtscts
+    -ignbrk -brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr -icrnl -ixon -ixoff -iuclc -ixany -imaxbel -iutf8
+    opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
+    isig -icanon iexten echo -echoe -echok -echonl -noflsh -xcase -tostop -echoprt -echoctl -echoke
+
+    どうも色々な設定が消滅している様子である。
+    状態の復元は ble-decode-detach -> .ble-stty.finalize -> stty で実行している筈である。
+    やはり bind -x の中で実行した stty の反映には制限が伴うという事か。
+    一応最後に stty sane を実行すれば直る。
+
+    取り敢えずの暫定処置として stty sane を ble-detach 後にユーザに実行して貰う事にする。
 
   * complete -p による補完を動作する様に修正。
 

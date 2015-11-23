@@ -3901,7 +3901,9 @@ function .ble-decode-byte:bind/check-detach {
       kill -RTMAX $$
     else
       builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
+      builtin echo "Please run \`stty sane' to recover the correct TTY state." >&2
       .ble-edit-draw.update
+      READLINE_LINE='stty sane' READLINE_POINT=9
     fi
     return 0
   else
