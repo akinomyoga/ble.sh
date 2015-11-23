@@ -162,6 +162,100 @@ function ble-complete/source/command {
   fi
 }
 
+# source/file
+
+function ble-complete/source/file {
+  [[ ${COMPV+set} ]] || return 1
+
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+  local cand
+  for cand in "$COMPV"*; do
+    [[ -e "$cand" ]] || continue
+    ble-complete/yield-candidate "$cand" ble-complete/action/file
+  done
+}
+
+# source/argument (complete -p)
+
+function ble-complete/source/argument/.compgen-helper-vars {
+  COMP_WORDS=("${comp_words[@]}")
+  COMP_LINE="$comp_line"
+  COMP_POINT="$comp_point"
+  COMP_CWORD="$comp_cword"
+  COMP_TYPE=9
+  COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in .ble-decode-key/invoke-command
+}
+function ble-complete/source/argument/.compgen-helper-prog {
+  local -a COMP_WORDS
+  local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
+  ble-complete/source/argument/.compgen-helper-vars
+  [[ $comp_prog ]] && eval "$comp_prog"
+}
+function ble-complete/source/argument/.compgen-helper-func {
+  local -a COMP_WORDS
+  local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
+  ble-complete/source/argument/.compgen-helper-vars
+  [[ $comp_func ]] && eval "$comp_func"
+}
+
+function ble-complete/source/argument {
+  local comp_words comp_line comp_point comp_cword
+  local comp_prog= comp_func=
+  ble-syntax:bash/extract-command "$index" || return 1
+
+  local cmd="${comp_words[0]}" compcmd=
+  if complete -p "$cmd" &>/dev/null; then
+    compcmd="$cmd"
+  elif [[ ${cmd##*/} != $cmd ]] && complete -p "${cmd##*/}" &>/dev/null; then
+    compcmd="${cmd##*/}"
+  elif complete -p -D &>/dev/null; then
+    compcmd='-D'
+  fi
+
+  [[ $compcmd ]] || return 1
+
+  local -a compargs compoptions
+  local iarg=1
+  eval "compargs=($(complete -p "$cmd" 2>/dev/null))"
+  while ((iarg<${#compargs[@]})); do
+    local arg="${compargs[iarg++]}"
+    case "$arg" in
+    (-*)
+      local ic c
+      for ((ic=1;ic<${#arg};ic++)); do
+        c="${arg:ic:1}"
+        case "$c" in
+        ([abcdefgjksuvDE])
+          ble/util/array-push compoptions "-$c" ;;
+        ([oACFGWXPS])
+          ble/util/array-push compoptions "-$c"
+          ble/util/array-push compoptions "${compargs[iarg++]}" ;;
+        (F)
+          comp_prog="${compargs[iarg++]}"
+          ble/util/array-push compoptions "-$c"
+          ble/util/array-push compoptions ble-complete/source/argument/.compgen-helper-prog ;;
+        (C)
+          comp_prog="(${compargs[iarg++]})"
+          ble/util/array-push compoptions "-$c"
+          ble/util/array-push compoptions ble-complete/source/argument/.compgen-helper-func ;;
+        ([pr])
+          ;; # 無視 (-p 表示 -r 削除)
+        (*)
+          # just discard
+        esac
+      done ;;
+    (*)
+      ;; # 無視
+    esac
+  done
+
+  IFS=$'\n' builtin eval 'arr=($(compgen "${compoptions[@]}" -- "$COMPV"))'
+  local cand
+  for cand in "${arr[@]}"; do
+    ble-complete/yield-candidate "$cand" ble-complete/action/word
+  done
+}
+
 #------------------------------------------------------------------------------
 
 function ble-edit+complete {
@@ -203,15 +297,11 @@ function ble-edit+complete {
     # generate candidates
     local cand ACTION DATA arr
     case "${ctx[0]}" in
+    (argument)
+      ble-complete/source/argument ||
+        ble-complete/source/file ;;
     (file)
-      if [[ ${COMPV+set} ]]; then
-        [[ $COMPV =~ ^.+/ ]] &&
-          COMP_PREFIX="${BASH_REMATCH[0]}"
-        for cand in "$COMPV"*; do
-          [[ -e "$cand" ]] || continue
-          ble-complete/yield-candidate "$cand" ble-complete/action/file
-        done
-      fi ;;
+      ble-complete/source/file ;;
     (command)
       ble-complete/source/command ;;
     (variable)

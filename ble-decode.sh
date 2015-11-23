@@ -898,7 +898,8 @@ function .ble-decode-key {
       if [[ $bleopt_error_kseq_discard ]]; then
         _ble_decode_key__seq=
       else
-        local -a keys=(${_ble_decode_key__seq//_/ } $key)
+        local -a keys
+        keys=(${_ble_decode_key__seq//_/ } $key)
         local i iN
         _ble_decode_key__seq=
         for ((i=1,iN=${#keys[*]};i<iN;i++)); do
@@ -1011,7 +1012,8 @@ function .ble-decode-key/invoke-partial-match {
 #
 function .ble-decode-key/invoke-command {
   if [[ $command ]]; then
-    local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
+    local -a KEYS
+    KEYS=(${_ble_decode_key__seq//_/ } $key)
     _ble_decode_key__seq=
     builtin eval -- "$command"
     return 0

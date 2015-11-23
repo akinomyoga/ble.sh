@@ -89,7 +89,7 @@ function ble/util/wrange#shift {
 ##   文字 #i を解釈しようとする直前の状態を記録する。
 ##   各要素は "ctx wlen wtype nlen tclen tplen" の形式をしている。
 ##   ctx は現在の文脈。
-##   wbegin は現在のシェル単語の継続している長さ。
+##   wlen は現在のシェル単語の継続している長さ。
 ##   nlen は現在の入れ子状態が継続している長さ。
 ##   tclen, tplen は tchild, tprev の負オフセット。
 ## @var _ble_syntax_nest[inest]
@@ -171,6 +171,8 @@ function ble-syntax/tree-enumerate/.initialize {
 ## @param[in] command...
 ##   @var[in]     wtype,wbegin,wlen,attr,tchild
 ##   @var[in,out] tprev
+##     列挙を中断する時は ble-syntax/tree-enumerate-break
+##     を呼び出す事によって、tprev=-1 を設定します。
 ## @var[in] iN
 ## @var[in] tree,i,nofs
 function ble-syntax/tree-enumerate/.impl {
@@ -206,14 +208,20 @@ function ble-syntax/tree-enumerate-children {
   local i="$tchild"
   ble-syntax/tree-enumerate/.impl "$@"
 }
+function ble-syntax/tree-enumerate-break () ((tprev=-1))
+
 ## 関数 ble-syntax/tree-enumerate command...
 ##   現在の解析状態 _ble_syntax_tree に基いて、
 ##   指定したコマンド command... を
 ##   トップレベルの各ノードに対して末尾にあるノードから順に呼び出します。
 ## @param[in] command...
 ##   呼び出すコマンドを指定します。
+## @var[in] iN
+##   解析の起点を指定します。_ble_syntax_stat が設定されている必要があります。
+##   指定を省略した場合は _ble_syntax_stat の末尾が使用されます。
 function ble-syntax/tree-enumerate {
   local tree i nofs
+  [[ ${iN:+set} ]] || local iN="${#_ble_syntax_text}"
   ble-syntax/tree-enumerate/.initialize
   ble-syntax/tree-enumerate/.impl "$@"
 }
@@ -491,7 +499,7 @@ function ble-syntax/parse/nest-pop {
   parentNest=(${_ble_syntax_nest[inest]})
 
   local ntype="${parentNest[6]}" nbeg="$inest"
-  ble-syntax/parse/tree-append "$ntype" "$nbeg" "$tchild" "$tprev"
+  ble-syntax/parse/tree-append "n$ntype" "$nbeg" "$tchild" "$tprev"
 
   local wlen="${parentNest[1]}" nlen="${parentNest[3]}" tplen="${parentNest[5]}"
   ((ctx=parentNest[0]))
@@ -1228,6 +1236,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
 
         if [[ $rematch2 == '('*')' ]]; then
           # case: /hoge ( *)/ 関数定義 (単語の種類を変更)
+          #   上方の ble-syntax/parse/word-pop で設定した値を書き換え。
           _ble_syntax_tree[i-1]="$ATTR_FUNCDEF ${_ble_syntax_tree[i-1]#* }"
 
           ((_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch1},
@@ -2008,7 +2017,6 @@ function ble-syntax/completion-context/check/parameter-expansion {
   fi
 }
 
-
 ## 関数 ble-syntax/completion-context/check-prefix
 ##   @var[in] text
 ##   @var[in] index
@@ -2030,19 +2038,26 @@ function ble-syntax/completion-context/check-prefix {
     local ctx="${stat[0]}" wlen="${stat[1]}"
     local wbeg="$((wlen<0?wlen:i-wlen))"
     if ((ctx==CTX_CMDI)); then
-      # CTX_CMDI  → コマンドの続き
-      ble-syntax/completion-context/add command "$wbeg"
-      if [[ ${text:wbeg:index-wbeg} =~ $rex_param ]]; then
-        ble-syntax/completion-context/add variable "$wbeg"
+      if ((wlen>=0)); then
+        # CTX_CMDI  → コマンドの続き
+        ble-syntax/completion-context/add command "$wbeg"
+        if [[ ${text:wbeg:index-wbeg} =~ $rex_param ]]; then
+          ble-syntax/completion-context/add variable "$wbeg"
+        fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((ctx==CTX_ARGI)); then
+    elif ((ctx==CTX_ARGI||ctx==CTX_VALI)); then
       # CTX_ARGI  → 引数の続き
-      ble-syntax/completion-context/add file "$wbeg"
-      local sub="${text:wbeg:index-wbeg}"
-      if [[ $sub == *=* ]]; then
-        sub="${sub##*=}"
-        ble-syntax/completion-context/add file "$((index-${#sub}))"
+      if ((wlen>=0)); then
+        local source=argument
+        ((ctx==CTX_VALI)) && source=file
+        ble-syntax/completion-context/add "$source" "$wbeg"
+
+        local sub="${text:wbeg:index-wbeg}"
+        if [[ $sub == *[=:]* ]]; then
+          sub="${sub##*[=:]}"
+          ble-syntax/completion-context/add file "$((index-${#sub}))"
+        fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
     elif ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXV)); then
@@ -2062,14 +2077,17 @@ function ble-syntax/completion-context/check-prefix {
       if [[ ${text:i:index-1} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$i"
       fi
-    elif ((ctx==CTX_ARGX)); then
+    elif ((ctx==CTX_ARGX||ctx==CTX_VALX)); then
+      local source=argument
+      ((ctx==CTX_VALX)) && source=file
+
       local sub="${text:i:index-i}"
       if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
-        ble-syntax/completion-context/add file "$i"
+        ble-syntax/completion-context/add "$source" "$i"
         local rex="^([^'\"\$\\]|\\.)*="
         if [[ $sub =~ $rex ]]; then
           sub="${sub:${#BASH_REMATCH}}"
-          ble-syntax/completion-context/add file "$((index-${#sub}))"
+          ble-syntax/completion-context/add "$source" "$((index-${#sub}))"
         fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
@@ -2106,7 +2124,7 @@ function ble-syntax/completion-context/check-here {
     elif ((stat[0]==CTX_CMDXF)); then
       ble-syntax/completion-context/add variable "$index"
     elif ((stat[0]==CTX_ARGX)); then
-      ble-syntax/completion-context/add file "$index"
+      ble-syntax/completion-context/add argument "$index"
     fi
   fi
 }
@@ -2120,6 +2138,113 @@ function ble-syntax/completion-context {
 
   ble-syntax/completion-context/check-prefix
   ble-syntax/completion-context/check-here
+}
+
+## 関数 ble-syntax:bash/extract-command/.register-word
+## @var[in,out] comp_words, comp_line, comp_point, comp_cword
+## @var[in]     _ble_syntax_text, pos
+## @var[in]     wbegin, wlen
+function ble-syntax:bash/extract-command/.register-word {
+  local wtxt="${_ble_syntax_text:wbegin:wlen}"
+  if [[ ! $comp_cword ]] && ((wbegin<=pos)); then
+    if ((pos<=wbegin+wlen)); then
+      comp_cword="${#comp_words[@]}"
+      comp_point="$((${#comp_line}+wbegin+wlen-pos))"
+      comp_line="$wtxt$comp_line"
+      ble/util/array-push comp_words "$wtxt"
+    else
+      comp_cword="${#comp_words[@]}"
+      comp_point="${#comp_line}"
+      comp_line="$wtxt $comp_line"
+      ble/util/array-push comp_words ""
+      ble/util/array-push comp_words "$wtxt"
+    fi
+  else
+    comp_line="$wtxt$comp_line"
+    ble/util/array-push comp_words "$wtxt"
+  fi
+}
+
+function ble-syntax:bash/extract-command/.construct-proc {
+  if [[ $wtype =~ ^[0-9]+$ ]]; then
+    if ((wtype==CTX_CMDI)); then
+      if ((pos<wbegin)); then
+        echo clear words
+        comp_line= comp_point= comp_cword= comp_words=()
+      else
+        ble-syntax:bash/extract-command/.register-word
+        ble-syntax/tree-enumerate-break
+        return
+      fi
+    elif ((wtype==CTX_ARGI)); then
+      ble-syntax:bash/extract-command/.register-word
+      comp_line=" $comp_line"
+    fi
+  fi
+}
+
+function ble-syntax:bash/extract-command/.construct {
+  comp_line= comp_point= comp_cword= comp_words=()
+
+  if [[ $1 == nested ]]; then
+    ble-syntax/tree-enumerate-children \
+      ble-syntax:bash/extract-command/.construct-proc
+  else
+    ble-syntax/tree-enumerate \
+      ble-syntax:bash/extract-command/.construct-proc
+  fi
+
+  ble/util/array-reverse comp_words
+  comp_cword="$((${#comp_words[@]}-1-comp_cword))"
+  comp_point="$((${#comp_line}-comp_point))"
+}
+
+## (tree-enumerate-proc) ble-syntax:bash/extract-command/.scan
+function ble-syntax:bash/extract-command/.scan {
+  ((pos<wbegin)) && return
+
+  if ((wbegin+wlen<pos)); then
+    ble-syntax/tree-enumerate-break
+  else
+    ble-syntax/tree-enumerate-children \
+      ble-syntax:bash/extract-command/.scan
+
+    if [[ $isword && ! $iscommand ]]; then
+      iscommand=1
+      ble-syntax:bash/extract-command/.construct nested
+      ble-syntax/tree-enumerate-break
+    fi
+  fi
+
+  if [[ $wtype =~ ^[0-9]+$ && ! $isword ]]; then
+    isword="$wtype"
+    return
+  fi
+}
+
+## 関数 ble-syntax:bash/extract-command index
+## @var[out] comp_cword comp_words comp_line comp_point
+function ble-syntax:bash/extract-command {
+  # @@
+  local pos="$1"
+  local isword= iscommand=
+
+  local -a comp_words
+  local comp_line comp_point comp_cword
+  ble-syntax/tree-enumerate \
+    ble-syntax:bash/extract-command/.scan
+
+  [[ ! $isword ]] && return 1
+
+  if [[ ! $iscommand ]]; then
+    iscommand=1
+    ble-syntax:bash/extract-command/.construct
+  fi
+
+  # {
+  #   echo "pos=$pos w=$isword c=$iscommand"
+  #   declare -p comp_words comp_cword comp_line comp_point
+  # } >> ~/a.txt
 }
 
 #==============================================================================
