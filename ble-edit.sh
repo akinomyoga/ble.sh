@@ -3439,8 +3439,17 @@ function ble-edit+history-expand-line {
   _ble_edit_mark_active=
 }
 function ble-edit+magic-space {
-  ble-edit+history-expand-line
   KEYS=(32) ble-edit+self-insert
+
+  local prevline="${_ble_edit_str::_ble_edit_ind}" hist_expanded
+  ble-edit/hist_expanded.update "$prevline" || return
+  [[ $prevline == $hist_expanded ]] && return
+
+  _ble_edit_str.replace 0 _ble_edit_ind "$hist_expanded"
+  _ble_edit_ind="${#hist_expanded}"
+  _ble_edit_mark=0
+  _ble_edit_mark_active=
+  #ble-edit+history-expand-line
 }
 
 function ble-edit+forward-line-or-history-next {
