@@ -4,6 +4,10 @@
 - Syntax highlighting of command lines (as in `fish` shell)
 - Syntax-aware completion
 
+This script supports `bash` with the versions, 3.0 or larger.
+
+This script is provided under the BSD License (3-clause BSD license).
+
 ##Usage
 First, generate `ble.sh` using the following commands:
 ```bash
@@ -13,7 +17,7 @@ $ make
 ```
 A script file `ble.sh` will be generated in the directory `ble.sh/out`. Then, load `ble.sh` using the `source` command:
 ```bash
-$ source ble.sh
+$ source out/ble.sh
 ```
 
 If you would like to load `ble.sh` defaultly in the interactive sessions of `bash`, add the following codes to your .bashrc file:
