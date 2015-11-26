@@ -6,7 +6,9 @@
 
 This script supports `bash` with the versions, 3.0 or larger.
 
-This script is provided under the BSD License (3-clause BSD license).
+Currently, only the `utf-8` encoding is supported for non-ASCII characters.
+
+This script is provided under the **BSD License** (3-clause BSD license).
 
 ##Usage
 First, generate `ble.sh` using the following commands:
