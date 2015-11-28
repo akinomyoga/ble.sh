@@ -7,7 +7,7 @@ if [[ $- == *i* ]]; then
   # ble-color-setface disabled                 fg=gray
   # ble-color-setface overwrite_mode           fg=black,bg=51
   # ble-color-setface syntax_default           none
-  # ble-color-setface syntax_command           red
+  # ble-color-setface syntax_command           fg=red
   # ble-color-setface syntax_quoted            fg=green
   # ble-color-setface syntax_quotation         fg=green,bold
   # ble-color-setface syntax_expr              fg=navy

@@ -14,6 +14,25 @@ declare -i _ble_color_gflags_MaskBg=0x00FF0000
 declare -i _ble_color_gflags_ForeColor=0x1000000
 declare -i _ble_color_gflags_BackColor=0x2000000
 
+function ble-color-show {
+  local h l c
+  local lN=16
+  local hN=$((256/lN))
+  for ((h=0;h<hN;h++)); do
+    printf '\e[38;5;15m'
+    for ((l=0;l<lN;l++)); do
+      ((c=h*lN+l))
+      printf '\e[48;5;%dm%03d ' "$c" "$c"
+    done
+    printf '\e[m\n\e[38;5;0m'
+    for ((l=0;l<lN;l++)); do
+      ((c=h*lN+l))
+      printf '\e[48;5;%dm%03d ' "$c" "$c"
+    done
+    printf '\e[m\n'
+  done
+}
+
 declare -a _ble_color_g2sgr__table=()
 function ble-color-g2sgr {
   local _var=ret _ret
