@@ -6,9 +6,11 @@
 
 This script supports `bash` with the versions, 3.0 or larger.
 
-Currently, only the `utf-8` encoding is supported for non-ASCII characters.
+Currently, only the `UTF-8` encoding is supported for non-ASCII characters.
 
-This script is provided under the **BSD License** (3-clause BSD license).
+This script is available under the **BSD License** (3-clause BSD license).
+
+> ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
 ##Usage
 First, generate `ble.sh` using the following commands:
