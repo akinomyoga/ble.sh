@@ -1172,9 +1172,9 @@ function ble-bind {
               fi
             else
               case "$fX$fC" in
-              (x) # 編集用の関数
-                # command="; $command; " # ■ 前処理と後処理を追加
-                echo "error: sorry, not yet implemented" 1>&2 ;;
+              (x)
+                # 編集用の関数
+                command="ble-edit/bind/execute-edit-command $command" ;;
               (c) # コマンド実行
                 command=".ble-edit.bind.command $command" ;;
               (*)

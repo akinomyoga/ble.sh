@@ -711,7 +711,7 @@ function ble-edit/draw/trace {
         ble-edit/draw/put "$_ble_term_nl"
         ((x)) && ble-edit/draw/put.cuf "$x"
         ((y++,lc=32,lg=0)) ;;
-      ('') # CR
+      ($'\r') # CR ^M
         s="$_ble_term_cr"
         ((x=0,lc=-1,lg=0)) ;;
       # その他の制御文字は  (BEL)  (FF) も含めてゼロ幅と解釈する
@@ -1579,6 +1579,19 @@ function _ble_edit_str.reset {
   local str="$1"
   _ble_edit_str/update-dirty-range 0 "${#str}" "${#_ble_edit_str}"
   .ble-edit-draw.set-dirty 0
+  _ble_edit_str="$str"
+}
+function _ble_edit_str.reset-and-check-dirty {
+  local str="$1"
+  [[ $_ble_edit_str == $str ]] && return
+
+  local ret pref suff
+  ble/string#common-prefix "$_ble_edit_str" "$str"; pref="$ret"
+  local dmin="${#pref}"
+  ble/string#common-suffix "${_ble_edit_str:dmin}" "${str:dmin}"; suff="$ret"
+  local dmax0=$((${#_ble_edit_str}-${#suff})) dmax=$((${#str}-${#suff}))
+
+  _ble_edit_str/update-dirty-range "$dmin" "$dmax" "$dmax0"
   _ble_edit_str="$str"
 }
 
@@ -3179,6 +3192,17 @@ function .ble-edit.bind.command {
   fi
 
   .ble-edit-draw.set-dirty -1
+}
+
+function ble-edit/bind/execute-edit-command {
+  local READLINE_LINE="$_ble_edit_str"
+  local READLINE_POINT="$_ble_edit_ind"
+  eval "$command" || return 1
+
+  [[ $READLINE_LINE != $_ble_edit_str ]] &&
+    _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
+  [[ $READLINE_POINT != $_ble_edit_ind ]] &&
+    .ble-edit.goto-char "$READLINE_POINT"
 }
 
 # 

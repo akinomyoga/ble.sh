@@ -174,6 +174,51 @@ function _ble_util_string_prototype.reserve {
   done
 }
 
+function ble/string#common-prefix {
+  local a="$1" b="$2"
+  ((${#a}>${#b})) && local a="$b" b="$a"
+  b="${b::${#a}}"
+  if [[ $a == $b ]]; then
+    ret="$a"
+    return
+  fi
+
+  # l <= 解 < u, (${a:u}: 一致しない, ${a:l} 一致する)
+  local l=0 u="${#a}" m
+  while ((l+1<u)); do
+    ((m=(l+u)/2))
+    if [[ ${a::m} == ${b::m} ]]; then
+      ((l=m))
+    else
+      ((u=m))
+    fi
+  done
+
+  ret="${a::l}"
+}
+function ble/string#common-suffix {
+  local a="$1" b="$2"
+  ((${#a}>${#b})) && local a="$b" b="$a"
+  b="${b:${#b}-${#a}}"
+  if [[ $a == $b ]]; then
+    ret="$a"
+    return
+  fi
+
+  # l < 解 <= u, (${a:l}: 一致しない, ${a:u} 一致する)
+  local l=0 u="${#a}" m
+  while ((l+1<u)); do
+    ((m=(l+u+1)/2))
+    if [[ ${a:m} == ${b:m} ]]; then
+      ((u=m))
+    else
+      ((l=m))
+    fi
+  done
+
+  ret="${a:u}"
+}
+
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
 function ble/util/isprint+ {

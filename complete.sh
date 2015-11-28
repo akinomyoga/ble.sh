@@ -361,7 +361,7 @@ function ble-complete/source/argument {
   local rex_compv
   ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
   ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
-  ble/util/assign compgen 'sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p}" <<< "$compgen" | sort -u'
+  ble/util/assign compgen 'sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | sort -u'
   IFS=$'\n' builtin eval 'arr=($compgen)'
   # * 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。

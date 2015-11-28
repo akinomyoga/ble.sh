@@ -240,6 +240,11 @@ bash_features
     小数を指定できる様になったのは 4.0-alpha 以降である。
     `-t 0' で次の文字を読み取り可能かどうかチェックできるのは 4.0 以降である。
 
+tech
+
+  * swap の仕方
+    local a="$b" b="$a"
+    local や declare などは必要である。
 
 *******************************************************************************
     Memo
@@ -278,6 +283,63 @@ bash_features
     ToDo
 -------------------------------------------------------------------------------
 
+2015-11-28
+
+  * +UTF-8, +C
+
+2015-11-28
+
+  * デモ画像
+
+    準備
+    $ # PS1=$'[\e[4;38;5;202mfoo@bar\e[m \\j \\W]\\$ '
+    $ TTYREC=1
+    $ ttyrec
+
+    echo hello, world
+    printf hello
+    [[ a == b ]]
+    echo "hello $(echo bash $(echo world))"
+    C-r for
+    echo 'select, copy and paste' コピーする
+    echo insert mode -> overwrite mode
+    ls
+    echo complete ble-TABdTAB histexpand !#:2
+    echo "$HIST[TAB]"
+
+    $ mv ttyrecord demo.tty
+    $ seq2gif -f 0 -b 253 < demo.tty > out/img/demo.gif
+
+  * bug
+
+    $ seq2gif -f 0 -b 254 < demo.tty > out/img/demo.gif
+    カーソルを先頭に移動した時??
+
+    stackdump: X1 0 <= 48 <= 49 <= 1, 48 <= 48
+      @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+      @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+      @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+      @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
+      @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
+      @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+      @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+      @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
+      @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    stackdump: X2 0 <= 0 <= 48 <= 49 <= 1 <= 1
+      @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+      @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+      @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+      @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
+      @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
+      @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+      @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+      @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
+      @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+
+2015-11-25
+
+  * complete: bug 単語と単語の間で補完が効かない。
+
 2015-11-23
 
   * プログラム補完: 末尾空白の問題点
@@ -293,6 +355,9 @@ bash_features
 2015-11-21
 
   * 公開までに追加であった方が良いかも知れない物
+
+    + ライセンスファイルの追加
+    + release の登録
 
     + 拡張性の提供 (拡張の仕方の説明)
       + theme の枠組を整える事 (setting files の置き場?)
@@ -310,6 +375,7 @@ bash_features
       + キーボード入力内容を全部 vbell で表示する方法?
 
     + ble-bind -x 未実装状態になっている
+      →これは単純に ble-edit+... を実装してそれを ble-bind -c で登録すれば良いだけなのでは?
 
     + マウス対応
     + RPS1
@@ -646,8 +712,6 @@ bash_features
     とはいいつつも accept-line した後も編集が残っているのは良いのか微妙である。
 
 2015-02-27
-
-  * complete: bug 単語と単語の間で補完が効かない。
 
   * complete
     - 既存の bash complete に対応する。
