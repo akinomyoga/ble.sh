@@ -1594,7 +1594,7 @@ function ble-decode-byte+UTF-8 {
 
 ## \param [in]  $1 = code
 ## \param [out] ret
-function .ble-text.c2bc+UTF-8 {
+function ble-text-c2bc+UTF-8 {
   local code="$1"
   ((ret=code<0x80?1:
     (code<0x800?2:
@@ -1606,7 +1606,7 @@ function ble-decode-byte+C {
   .ble-decode-char "$1"
 }
 
-## 関数 .ble-text.c2bc+C charcode ; ret
-function .ble-text.c2bc+C {
+## 関数 ble-text-c2bc+C charcode ; ret
+function ble-text-c2bc+C {
   ret=1
 }

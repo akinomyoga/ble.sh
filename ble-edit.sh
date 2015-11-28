@@ -2056,7 +2056,7 @@ function .ble-edit-draw.update-adjusted {
       .ble-text.c2w "$lc"
       ((ret>0)) && ble-edit/draw/put.cub "$ret"
     fi
-    .ble-text.c2bc "$lc"
+    ble-text-c2bc "$lc"
     READLINE_POINT="$ret"
   fi
 

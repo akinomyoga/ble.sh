@@ -294,7 +294,7 @@ tech
     準備
     $ # PS1=$'[\e[4;38;5;202mfoo@bar\e[m \\j \\W]\\$ '
     $ TTYREC=1
-    $ ttyrec
+    $ ttyrec demo.tty
 
     echo hello, world
     printf hello
@@ -307,8 +307,7 @@ tech
     echo complete ble-TABdTAB histexpand !#:2
     echo "$HIST[TAB]"
 
-    $ mv ttyrecord demo.tty
-    $ seq2gif -f 0 -b 253 < demo.tty > out/img/demo.gif
+    $ seq2gif -f 0 -b 15 -h 14 --render-interval=10 -p rosa --play-speed=1.5 < demo.tty > demo2.gif
 
   * bug
 

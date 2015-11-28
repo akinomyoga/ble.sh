@@ -552,8 +552,8 @@ function .ble-text.c2s {
 ## 指定した文字を現在の符号化方式で符号化した時のバイト数を取得します。
 ## \param [in]  $1 = code
 ## \param [out] ret
-function .ble-text.c2bc {
-  ".ble-text.c2bc+$bleopt_input_encoding" "$1"
+function ble-text-c2bc {
+  "ble-text-c2bc+$bleopt_input_encoding" "$1"
 }
 
 #------------------------------------------------------------------------------
@@ -592,4 +592,13 @@ function ble-text-c2b+UTF-8 {
     done
     ((bytes[0]=code&0x3F>>n|0xFF80>>n))
   fi
+}
+
+function ble-text-b2c+C {
+  local -i byte="$1"
+  ((ret=byte&0xFF))
+}
+function ble-text-c2b+C {
+  local -i code="$1"
+  bytes=($((code&0xFF)))
 }
