@@ -80,3 +80,45 @@ For example, the visual bell can be enabled as:
 bleopt edit_vbell=1 vbell_default_message=' BEL ' vbell_duration=3000
 ```
 
+For another instance, the audible bell is disabled as:
+```
+bleopt edit_abell=
+```
+
+**Highlight Colors**
+
+The colors and attributes used in the syntax highlighting is controled by `ble-color-setface` command. The following code reproduces the default configuration:
+```bash
+ble-color-setface region                   bg=60,fg=white
+ble-color-setface disabled                 fg=gray
+ble-color-setface overwrite_mode           fg=black,bg=51
+ble-color-setface syntax_default           none
+ble-color-setface syntax_command           fg=red
+ble-color-setface syntax_quoted            fg=green
+ble-color-setface syntax_quotation         fg=green,bold
+ble-color-setface syntax_expr              fg=navy
+ble-color-setface syntax_error             bg=203,fg=231
+ble-color-setface syntax_varname           fg=202
+ble-color-setface syntax_delimiter         bold
+ble-color-setface syntax_param_expansion   fg=purple
+ble-color-setface syntax_history_expansion bg=94,fg=231
+ble-color-setface syntax_function_name     fg=purple
+ble-color-setface syntax_comment           fg=gray
+ble-color-setface command_builtin_dot      fg=red,bold
+ble-color-setface command_builtin          fg=red
+ble-color-setface command_alias            fg=teal
+ble-color-setface command_function         fg=purple
+ble-color-setface command_file             fg=green
+ble-color-setface command_keyword          fg=blue
+ble-color-setface command_jobs             fg=red
+ble-color-setface command_directory        fg=navy,underline
+ble-color-setface filename_directory       fg=navy,underline
+ble-color-setface filename_link            fg=teal,underline
+ble-color-setface filename_executable      fg=green,underline
+ble-color-setface filename_other           underline
+```
+
+The color codes can be checked in the output of the function `ble-color-show` (defined in ble.sh):
+```bash
+$ ble-color-show
+```
