@@ -65,7 +65,7 @@ bleopt char_width_mode='east'
 
 **Input Encoding**
 
-The option `input_encoding` controls the encoding scheme used in the decode of input. Currently `UTF-8` and `C` are available. With the value `C`, byte values are directly interpreted as the character code. The default value is `UTF-8`. For example, the value can be changed to `C` as:
+The option `input_encoding` controls the encoding scheme used in the decode of input. Currently `UTF-8` and `C` are available. With the value `C`, byte values are directly interpreted as character codes. The default value is `UTF-8`. For example, the value can be changed to `C` as:
 
 ```
 bleopt input_encoding='C'
@@ -73,7 +73,7 @@ bleopt input_encoding='C'
 
 **Bell**
 
-The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written in `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. Defaultly, the audible bell is enabled while the visual bell is disabled.
+The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. Defaultly, the audible bell is enabled while the visual bell is disabled.
 
 The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is millisecond. The default values is `2000`.
 
@@ -120,7 +120,7 @@ ble-color-setface filename_executable      fg=green,underline
 ble-color-setface filename_other           underline
 ```
 
-The color codes can be checked in the output of the function `ble-color-show` (defined in ble.sh):
+The color codes can be checked in output of the function `ble-color-show` (defined in ble.sh):
 ```bash
 $ ble-color-show
 ```
