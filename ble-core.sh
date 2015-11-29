@@ -127,7 +127,8 @@ function ble/util/array-reverse {
 
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
-    declare -p "$@" | gawk -v _ble_bash="$_ble_bash" '
+    declare -p "$@" | awk -v _ble_bash="$_ble_bash" '
+      BEGIN{decl="";}
       function declflush( isArray){
         if(decl){
           isArray=(decl~/declare +-[fFgilrtux]*[aA]/);
@@ -138,7 +139,7 @@ function ble/util/declare-print-definitions {
           # declare 除去
           sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/,"",decl);
           if(isArray){
-            if(decl~/^([a-zA-Z_][a-zA-Z_0-9]*)='\''\(.*\)'\''$/){
+            if(decl~/^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/){
               sub(/='\''\(/,"=(",decl);
               sub(/\)'\''$/,")",decl);
               gsub(/'\'\\\\\'\''/,"'\''",decl);

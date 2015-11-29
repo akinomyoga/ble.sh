@@ -1410,7 +1410,9 @@ function .ble-decode-bind/generate-source-to-unbind-default {
       echo '__BINDX__'
       builtin bind -X
     fi
-  } 2>/dev/null | gawk -v apos="'" '
+#%x
+  } 2>/dev/null | ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
+#%end.i
     BEGIN{
       APOS=apos "\\" apos apos;
       mode=0;
@@ -1433,7 +1435,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
         _chr=sprintf("%c",i);
         gsub(_esc,_chr,str);
       }
-      gsub(/\\C-\?/,sprintf("%c",127));
+      gsub(/\\C-\?/,sprintf("%c",127),str);
       return str;
     }
     function unescape(str){
@@ -1445,15 +1447,15 @@ function .ble-decode-bind/generate-source-to-unbind-default {
       return str;
     }
 
-    function output_bindr(line, seq,_capt){
-      if(match(line,/^"(([^"]|\\.)+)"/,_capt)>0){
-        seq=_capt[1];
+    function output_bindr(line0, _seq){
+      if(match(line0,/^"(([^"]|\\.)+)"/)>0){
+        _seq=substr(line0,2,RLENGTH-2);
 
         # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
         #   bind -r では \M- ではなく \e と指定しなければ削除できない。
-        gsub(/\\M-/,"\\e",seq);
+        gsub(/\\M-/,"\\e",_seq);
 
-        print "builtin bind -r " quote(seq);
+        print "builtin bind -r " quote(_seq);
       }
     }
 
@@ -1472,12 +1474,17 @@ function .ble-decode-bind/generate-source-to-unbind-default {
 
       # ※bash-4.3 では bind -r しても bind -X に残る。
       #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
+#%if use_gawk
       if(line~/\yble-decode-byte:bind\y/)next;
+#%else
+      if(line~/(^|[^[:alnum:]])ble-decode-byte:bind($|[^[:alnum:]])/)next;
+#%end
 
       # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
       #   コマンド部分の "" を外して中の escape を外す必要がある。
       #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
       #     \n\r\f\t\v\b\a 等は使われない様だ。
+#%if use_gawk
       if(match(line,/^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/,captures)>0){
         sequence=captures[1];
         command=captures[3];
@@ -1487,6 +1494,21 @@ function .ble-decode-bind/generate-source-to-unbind-default {
 
         line=sequence command;
       }
+#%else
+      if(match(line,/^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/)>0){
+        rlen=RLENGTH;
+        match(line,/^"([^"\\]|\\.)*":/);
+        rlen1=RLENGTH;
+        rlen2=rlen-rlen1-3;
+        sequence=substr(line,1      ,rlen1);
+        command =substr(line,rlen1+3,rlen2);
+
+        if(command ~ /\\/)
+          command=unescape(command);
+
+        line=sequence command;
+      }
+#%end
 
       print "builtin bind -x " quote(line) >"/dev/stderr";
     }

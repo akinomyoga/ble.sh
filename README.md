@@ -13,9 +13,10 @@ This script is available under the **BSD License** (3-clause BSD license).
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
 ##Usage
-First, generate `ble.sh` using the following commands:
+First generate `ble.sh`. To generate `ble.sh`, `gawk` (GNU awk) is required.
+The file `ble.sh` can be generated using the following commands:
 ```bash
-$ git clone git@github.com:akinomyoga/ble.sh.git
+$ git clone https://github.com/akinomyoga/ble.sh.git
 $ cd ble.sh
 $ make
 ```

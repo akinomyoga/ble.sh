@@ -3254,6 +3254,7 @@ function .ble-edit/history/generate-source-to-load-history {
   local apos="'"
   history | awk -v apos="'" '
     BEGIN{
+      n="";
       print "_ble_edit_history=("
     }
 

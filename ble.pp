@@ -1,6 +1,7 @@
 #!/bin/bash
 #%$> out/ble.sh
 #%[release=0]
+#%[use_gawk=0]
 #%m inc (
 #%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
 #%%if @_included!=1 (
@@ -42,7 +43,7 @@ fi
 # check environment
 
 function ble/.check-environment {
-  local posixCommandList='sed date rm mkdir mkfifo sleep stty tput sort'
+  local posixCommandList='sed date rm mkdir mkfifo sleep stty tput sort awk'
   if ! type $posixCommandList &>/dev/null; then
     local cmd commandMissing=
     for cmd in $posixCommandList; do
@@ -52,9 +53,11 @@ function ble/.check-environment {
     done
     echo "ble.sh: Insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
     return 1
+#%if use_gawk
   elif ! type gawk &>/dev/null; then
     echo "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
     return 1
+#%end
   fi
 }
 if ! ble/.check-environment; then
