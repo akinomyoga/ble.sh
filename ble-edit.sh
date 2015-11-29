@@ -3488,7 +3488,7 @@ function ble-edit+backward-line-or-history-prev {
 # 
 # **** incremental search ****                                 @history.isearch
 
-function .ble-edit-isearch.draw-line {
+function ble-edit/isearch/.draw-line {
   # 出力
   local ll rr
   if [[ $_ble_edit_isearch_dir == - ]]; then
@@ -3501,15 +3501,124 @@ function .ble-edit-isearch.draw-line {
   local text="(${#_ble_edit_isearch_arr[@]}: $ll $_ble_edit_history_ind $rr) \`$_ble_edit_isearch_str'"
   .ble-line-info.draw-text "$text"
 }
-function .ble-edit-isearch.erase-line {
+function ble-edit/isearch/.erase-line {
   .ble-line-info.clear
+}
+function ble-edit/isearch/.set-region {
+  local beg="$1" end="$2"
+  if ((beg<end)); then
+    if [[ $_ble_edit_isearch_dir == - ]]; then
+      _ble_edit_ind="$beg"
+      _ble_edit_mark="$end"
+    else
+      _ble_edit_ind="$end"
+      _ble_edit_mark="$beg"
+    fi
+    _ble_edit_mark_active=S
+  else
+    _ble_edit_mark_active=
+  fi
+}
+## 関数 ble-edit/isearch/.push-isearch-array
+##   現在の isearch の情報を配列 _ble_edit_isearch_arr に待避する。
+##   これから登録しようとしている情報が現在のものと同じならば何もしない。
+##   これから登録しようとしている情報が配列の最上にある場合は、
+##   検索の巻き戻しと解釈して配列の最上の要素を削除する。
+##   それ以外の場合は、現在の情報を配列に追加する。
+##   @var[in] ind beg end needle
+##     これから登録しようとしている isearch の情報。
+function ble-edit/isearch/.push-isearch-array {
+  local hash="$beg:$end:$needle"
+
+  # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
+  local ilast="$((${#_ble_edit_isearch_arr[@]}-1))"
+  if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
+    unset "_ble_edit_isearch_arr[$ilast]"
+    return
+  fi
+
+  local oind="$_ble_edit_history_ind"
+  local obeg="$_ble_edit_ind" oend="$_ble_edit_mark" tmp
+  ((obeg<=oend||(tmp=obeg,obeg=oend,oend=tmp)))
+  local oneedle="$_ble_edit_isearch_str"
+  local ohash="$obeg:$oend:$oneedle"
+
+  # [... A | B] -> B と来た時 (何もしない) [... A | B] になる。
+  [[ $ind == "$oind" && $hash == "$ohash" ]] && return
+
+  # [... A | B] -> C と来た時 (B を _ble_edit_isearch_arr に移動) [... A B | C] になる。
+  ble/util/array-push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
+}
+function ble-edit/isearch/.goto-match {
+  local ind="$1" beg="$2" end="$3" needle="$4"
+  ((beg==end&&(beg=end=-1)))
+
+  # 検索履歴に待避 (変数 ind beg end needle 使用)
+  ble-edit/isearch/.push-isearch-array
+
+  # 状態を更新
+  _ble_edit_isearch_str="$needle"
+  [[ _ble_edit_history_ind != $ind ]] &&
+    .ble-edit.history-goto "$ind"
+  ble-edit/isearch/.set-region "$beg" "$end"
+
+  # isearch 表示
+  ble-edit/isearch/.draw-line
 }
 
 function ble-edit+isearch/next {
   local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
+  local ind="$_ble_edit_history_ind" beg= end=
+
+  # 現在位置における伸張
+  if ((isMod)); then
+    if [[ $_ble_edit_isearch_dir == - ]]; then
+      if [[ ${_ble_edit_str:_ble_edit_ind} == "$needle"* ]]; then
+        beg="$_ble_edit_ind"
+        end="$((_ble_edit_ind+${#needle}))"
+      fi
+    else
+      if [[ ${_ble_edit_str::_ble_edit_ind} == *"$needle" ]]; then
+        beg="$((_ble_edit_ind-${#needle}))"
+        end="$_ble_edit_ind"
+      fi
+    fi
+
+    if [[ $beg ]]; then
+      ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
+      return
+    fi
+  fi
+
+  # 次の候補
+  if [[ $_ble_edit_isearch_dir == - ]]; then
+    local target="${_ble_edit_str::_ble_edit_ind}"
+    local m="${target%"$needle"*}"
+    if [[ $target != "$m" ]]; then
+      beg="${#m}"
+      end="$((beg+${#needle}))"
+    fi
+  else
+    local target="${_ble_edit_str:_ble_edit_ind}"
+    local m="${target#*"$needle"}"
+    if [[ $target != "$m" ]]; then
+      end="$((${#_ble_edit_str}-${#m}))"
+      beg="$((end-${#needle}))"
+    fi
+  fi
+
+  if [[ $beg ]]; then
+    ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
+    return
+  else
+    ble-edit+isearch/next-history "${@:1:1}"
+  fi
+}
+
+function ble-edit+isearch/next-history {
+  local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
   # 検索
   local i ind=
-  #echo $_ble_edit_history_ind
   if [[ $_ble_edit_isearch_dir == - ]]; then
     # backward-search
     for((i=_ble_edit_history_ind-(isMod?0:1);i>=0;i--)); do
@@ -3533,43 +3642,39 @@ function ble-edit+isearch/next {
     return
   fi
 
-  # 見付かったら _ble_edit_isearch_arr を更新
-  local ilast="$((${#_ble_edit_isearch_arr[@]}-1))"
-  if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$needle" ]]; then
-    unset "_ble_edit_isearch_arr[$ilast]"
-  else
-    ble/util/array-push _ble_edit_isearch_arr "$_ble_edit_history_ind:$_ble_edit_isearch_dir:$_ble_edit_isearch_str"
-  fi
-
-  _ble_edit_isearch_str="$needle"
-  .ble-edit-isearch.draw-line
-
-  .ble-edit.history-goto "$ind"
+  # 一致範囲 beg-end を取得
+  local str="${_ble_edit_history[ind]}"
   if [[ $_ble_edit_isearch_dir == - ]]; then
-    local prefix="${_ble_edit_str%"$needle"*}"
-    _ble_edit_ind="$((${#prefix}+${#needle}))"
-    _ble_edit_mark="${#prefix}"
+    local prefix="${str%"$needle"*}"
   else
-    local prefix="${_ble_edit_str%%"$needle"*}"
-    _ble_edit_ind="${#prefix}"
-    _ble_edit_mark="$((${#prefix}+${#needle}))"
+    local prefix="${str%%"$needle"*}"
   fi
-  _ble_edit_mark_active=1
+  local beg="${#prefix}" end="$((${#prefix}+${#needle}))"
+
+  ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
 }
+
 function ble-edit+isearch/prev {
   local sz="${#_ble_edit_isearch_arr[@]}"
   ((sz==0)) && return 0
 
   local ilast=$((sz-1))
-  local top="${_ble_edit_isearch_arr[$ilast]}"
+  local top="${_ble_edit_isearch_arr[ilast]}"
   unset "_ble_edit_isearch_arr[$ilast]"
 
-  .ble-edit.history-goto "${top%%:*}"; top="${top#*:}"
-  _ble_edit_isearch_dir="${top%%:*}"; top="${top#*:}"
+  local ind dir beg end
+  ind="${top%%:*}"; top="${top#*:}"
+  dir="${top%%:*}"; top="${top#*:}"
+  beg="${top%%:*}"; top="${top#*:}"
+  end="${top%%:*}"; top="${top#*:}"
+
+  _ble_edit_isearch_dir="$dir"
+  .ble-edit.history-goto "$ind"
+  ble-edit/isearch/.set-region "$beg" "$end"
   _ble_edit_isearch_str="$top"
 
   # isearch 表示
-  .ble-edit-isearch.draw-line
+  ble-edit/isearch/.draw-line
 }
 
 function ble-edit+isearch/forward {
@@ -3588,12 +3693,28 @@ function ble-edit+isearch/self-insert {
   .ble-text.c2s "$code"
   ble-edit+isearch/next "$_ble_edit_isearch_str$ret" 1
 }
+function ble-edit+isearch/history-forward {
+  _ble_edit_isearch_dir=+
+  ble-edit+isearch/next-history
+}
+function ble-edit+isearch/history-backward {
+  _ble_edit_isearch_dir=-
+  ble-edit+isearch/next-history
+}
+function ble-edit+isearch/history-self-insert {
+  local code="${KEYS[0]&ble_decode_MaskChar}"
+  ((code==0)) && return
+
+  local ret needle
+  .ble-text.c2s "$code"
+  ble-edit+isearch/next-history "$_ble_edit_isearch_str$ret" 1
+}
 function ble-edit+isearch/exit {
   .ble-decode/keymap/pop
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
   _ble_edit_isearch_str=
-  .ble-edit-isearch.erase-line
+  ble-edit/isearch/.erase-line
 }
 function ble-edit+isearch/cancel {
   if ((${#_ble_edit_isearch_arr[@]})); then
@@ -3624,14 +3745,14 @@ function ble-edit+history-isearch-backward {
   .ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=-
-  .ble-edit-isearch.draw-line
+  ble-edit/isearch/.draw-line
 }
 function ble-edit+history-isearch-forward {
   .ble-edit.history-load
   .ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=+
-  .ble-edit-isearch.draw-line
+  ble-edit/isearch/.draw-line
 }
 
 # 
