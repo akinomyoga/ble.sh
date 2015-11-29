@@ -3433,6 +3433,7 @@ function .ble-edit.history-goto {
     _ble_edit_ind="${#_ble_edit_str}"
   fi
   _ble_edit_mark=0
+  _ble_edit_mark_active=
 }
 
 function ble-edit+history-next {
@@ -3511,18 +3512,19 @@ function ble-edit+isearch/next {
   #echo $_ble_edit_history_ind
   if [[ $_ble_edit_isearch_dir == - ]]; then
     # backward-search
-
     for((i=_ble_edit_history_ind-(isMod?0:1);i>=0;i--)); do
-      case "${_ble_edit_history[$i]}" in
-      (*"$needle"*) ind="$i" ; break ;;
-      esac
+      if [[ ${_ble_edit_history[i]} == *"$needle"* ]]; then
+        ind="$i"
+        break
+      fi
     done
   else
     # forward-search
     for((i=_ble_edit_history_ind+(isMod?0:1);i<${#_ble_edit_history[@]};i++)); do
-      case "${_ble_edit_history[$i]}" in
-      (*"$needle"*) ind="$i" ; break ;;
-      esac
+      if [[ ${_ble_edit_history[i]} == *"$needle"* ]]; then
+        ind="$i"
+        break
+      fi
     done
   fi
   if [[ ! $ind ]]; then
@@ -3532,22 +3534,27 @@ function ble-edit+isearch/next {
   fi
 
   # 見付かったら _ble_edit_isearch_arr を更新
-  local pop= ilast="$((${#_ble_edit_isearch_arr[@]}-1))"
-  if ((ilast>=0)); then
-    case "${_ble_edit_isearch_arr[$ilast]}" in
-    ("$ind:"[-+]":$needle")
-      pop=1 ;;
-    esac
-  fi
-  if [[ $pop ]]; then
+  local ilast="$((${#_ble_edit_isearch_arr[@]}-1))"
+  if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$needle" ]]; then
     unset "_ble_edit_isearch_arr[$ilast]"
   else
     ble/util/array-push _ble_edit_isearch_arr "$_ble_edit_history_ind:$_ble_edit_isearch_dir:$_ble_edit_isearch_str"
   fi
 
   _ble_edit_isearch_str="$needle"
-  .ble-edit.history-goto "$ind"
   .ble-edit-isearch.draw-line
+
+  .ble-edit.history-goto "$ind"
+  if [[ $_ble_edit_isearch_dir == - ]]; then
+    local prefix="${_ble_edit_str%"$needle"*}"
+    _ble_edit_ind="$((${#prefix}+${#needle}))"
+    _ble_edit_mark="${#prefix}"
+  else
+    local prefix="${_ble_edit_str%%"$needle"*}"
+    _ble_edit_ind="${#prefix}"
+    _ble_edit_mark="$((${#prefix}+${#needle}))"
+  fi
+  _ble_edit_mark_active=1
 }
 function ble-edit+isearch/prev {
   local sz="${#_ble_edit_isearch_arr[@]}"

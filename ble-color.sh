@@ -804,8 +804,8 @@ function ble-highlight-layer:region/update {
   ((omin=_ble_highlight_layer_region_omin,
     omax=_ble_highlight_layer_region_omax))
   if ((DMIN>=0)); then
-    ((omin>=DMAX0&&(omin+=DMAX-DMAX0),
-      omax>=DMAX0&&(omax+=DMAX-DMAX0)))
+    ((DMAX0<=omin?(omin+=DMAX-DMAX0):(DMAX<omin&&(omin=DMAX)),
+      DMAX0<=omax?(omax+=DMAX-DMAX0):(DMAX<omax&&(omax=DMAX))))
   fi
 
   local rmin rmax

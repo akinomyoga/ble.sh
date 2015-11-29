@@ -4,9 +4,9 @@
 - Syntax highlighting of command lines (as in `fish` shell)
 - Syntax-aware completion
 
-This script supports `bash` with the versions, 3.0 or larger.
+This script supports `bash` with the version 3.0 or later.
 
-Currently, only the `UTF-8` encoding is supported for non-ASCII characters.
+Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 
 This script is available under the **BSD License** (3-clause BSD license).
 
@@ -24,7 +24,7 @@ A script file `ble.sh` will be generated in the directory `ble.sh/out`. Then, lo
 $ source out/ble.sh
 ```
 
-If you would like to load `ble.sh` defaultly in the interactive sessions of `bash`, add the following codes to your .bashrc file:
+If you would like to load `ble.sh` defaultly in interactive sessions of `bash`, add the following codes to your .bashrc file:
 ```bash
 # bashrc
 
@@ -42,7 +42,7 @@ fi
 ```
 
 ##Basic settings
-Most settings for `ble.sh` are to be specified after the source of `ble.sh`.
+Most settings for `ble.sh` are to be specified after the `source` of `ble.sh`.
 ```bash
 ...
 
@@ -57,7 +57,7 @@ fi
 
 **CJK Width**
 
-The option `char_width_mode` controls the width of the unicode characters with `East_Asian_Width=A` (Ambiguous characters). Currently three values `emacs`, `west`, and `east` are supported. With the value `emacs`, the default width in emacs is used. With the value `west` all the ambiguous characters have the width 1 (Hankaku). With the value `east` all the ambiguous characters have the width 2 (Zenkaku). The default value is `emacs`. Appropriate value should be chosen in accordance with your terminal behavior. For example, the value can be changed to `east` as:
+The option `char_width_mode` controls the width of the unicode characters with `East_Asian_Width=A` (Ambiguous characters). Currently three values `emacs`, `west`, and `east` are supported. With the value `emacs`, the default width in emacs is used. With `west` all the ambiguous characters have width 1 (Hankaku). With `east` all the ambiguous characters have width 2 (Zenkaku). The default value is `emacs`. Appropriate value should be chosen in accordance with your terminal behavior. For example, the value can be changed to `east` as:
 
 ```
 bleopt char_width_mode='east'
@@ -89,7 +89,7 @@ bleopt edit_abell=
 
 **Highlight Colors**
 
-The colors and attributes used in the syntax highlighting is controled by `ble-color-setface` command. The following code reproduces the default configuration:
+The colors and attributes used in the syntax highlighting are controled by `ble-color-setface` command. The following code reproduces the default configuration:
 ```bash
 ble-color-setface region                   bg=60,fg=white
 ble-color-setface disabled                 fg=gray

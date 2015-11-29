@@ -250,6 +250,29 @@ tech
     Memo
 -------------------------------------------------------------------------------
 
+2015-11-28
+
+  * デモ画像の作り方
+
+    準備
+    $ # PS1=$'[\e[4;38;5;202mfoo@bar\e[m \\j \\W]\\$ '
+    $ TTYREC=1
+    $ ttyrec demo.tty
+
+    echo hello, world
+    printf hello
+    [[ a == b ]]
+    echo "hello $(echo bash $(echo world))"
+    C-r for
+    echo 'select, copy and paste' コピーする
+    echo insert mode -> overwrite mode
+    ls
+    echo complete ble-TABdTAB histexpand !#:2
+    echo "$HIST[TAB]"
+
+    $ seq2gif -f 0 -b 15 -h 14 --render-interval=10 -p rosa --play-speed=1.5 < demo.tty > demo2.gif
+
+
 2015-08-14
 
   * [memo] builtin check
@@ -285,34 +308,10 @@ tech
 
 2015-11-28
 
-  * +UTF-8, +C
-
-2015-11-28
-
-  * デモ画像
-
-    準備
-    $ # PS1=$'[\e[4;38;5;202mfoo@bar\e[m \\j \\W]\\$ '
-    $ TTYREC=1
-    $ ttyrec demo.tty
-
-    echo hello, world
-    printf hello
-    [[ a == b ]]
-    echo "hello $(echo bash $(echo world))"
-    C-r for
-    echo 'select, copy and paste' コピーする
-    echo insert mode -> overwrite mode
-    ls
-    echo complete ble-TABdTAB histexpand !#:2
-    echo "$HIST[TAB]"
-
-    $ seq2gif -f 0 -b 15 -h 14 --render-interval=10 -p rosa --play-speed=1.5 < demo.tty > demo2.gif
-
   * bug
 
     $ seq2gif -f 0 -b 254 < demo.tty > out/img/demo.gif
-    カーソルを先頭に移動した時??
+    カーソルを先頭に移動した時?? 再現しない。
 
     stackdump: X1 0 <= 48 <= 49 <= 1, 48 <= 48
       @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
@@ -1343,6 +1342,19 @@ tech
 *******************************************************************************
     実装ログ
 -------------------------------------------------------------------------------
+
+2015-11-29
+
+  * input_encoding=C full support as 'UTF-8'
+
+  * bug
+
+    選択している状態で history を移動すると座標がずれる。
+    特に長いコマンドの一部を選択している時にずれる。
+    ずれの量は選択範囲の長さや位置に依存しない。
+
+    どうやら ble-syntax-layer:region が悪い様だ。
+    _ble_highlight_layer__list から region を外したら直った。
 
 2015-11-25
 
