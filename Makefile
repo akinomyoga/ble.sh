@@ -5,6 +5,8 @@ all:
 
 PP:=ext/mwg_pp.awk
 
+FULLVER:=0.1.1
+
 outfiles+=out
 out:
 	mkdir -p $@
@@ -48,6 +50,11 @@ dist_excludes= \
 	--exclude=./ble/ble.sh
 
 dist:
+	dir="ble-$(FULLVER)" && \
+{ for f in $(outfiles); do d="$$dir$${f#out}"; if [[ -d $$f ]]; then mkdir -p "$$d"; else cp "$$f" "$$d"; fi; done; } && \
+tar caf "dist/$$dir.$$(date +'%Y%m%d').tar.xz" "$$dir" && rm -r "$$dir"
+
+dist0:
 	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble $(dist_excludes)
 
 list-functions:
