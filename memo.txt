@@ -317,8 +317,6 @@ tech
 
       echo "$f" "$(B 'D' "$f")"
 
-  * bug: tab 補完が効かない
-
   * Note: ble-decode.sh (generate-source-to-unbind-default)
 
     文字コード実装時に問題があるかも。
@@ -334,8 +332,6 @@ tech
     つまり、ユーザが手で (或いは .inputrc に) bind '"日本語":"にほんご"' などとしない限りは問題は生じない。
 
 2015-11-28
-
-  * bug cygwin 環境で補完が効かない
 
   * bug
 
@@ -1368,6 +1364,13 @@ tech
 -------------------------------------------------------------------------------
 
 2015-12-01
+
+  * bugfix: 引数に対する補完で complete -D が登録されていない場合に何も起こらなかった。
+
+    以下のバグはこれに関連する物である:
+
+    > * bug: tab 補完が効かない @ laguerre
+    > * bug cygwin 環境で補完が効かない
 
   * bug: isearch/forward incremental にできない。
 
