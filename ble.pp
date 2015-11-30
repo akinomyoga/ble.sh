@@ -43,7 +43,7 @@ fi
 # check environment
 
 function ble/.check-environment {
-  local posixCommandList='sed date rm mkdir mkfifo sleep stty tput sort awk'
+  local posixCommandList='sed date rm mkdir mkfifo sleep stty tput sort awk chmod'
   if ! type $posixCommandList &>/dev/null; then
     local cmd commandMissing=
     for cmd in $posixCommandList; do
@@ -77,15 +77,15 @@ function _ble_base.initialize {
   local defaultDir="$2"
 
   # resolve symlink
-  if test -h "$src" && type -t readlink &>/dev/null; then
+  if [[ -h $src ]] && type -t readlink &>/dev/null; then
     src="$(readlink -f "$src")"
   fi
 
   local dir="${src%/*}"
-  if test "$dir" != "$src"; then
-    if test -z "$dir"; then
+  if [[ $dir != "$src" ]]; then
+    if [[ ! $dir ]]; then
       _ble_base=/
-    elif test "x${dir::1}" != x/; then
+    elif [[ $dir != /* ]]; then
       _ble_base="$PWD/$dir"
     else
       _ble_base="$dir"

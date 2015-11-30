@@ -1,1 +1,1 @@
---exclude=./out
+--exclude=./out ble.pp

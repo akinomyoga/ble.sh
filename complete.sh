@@ -321,7 +321,6 @@ function ble-complete/source/argument/.compgen {
   [[ $compcmd ]] || return 1
 
   local -a compargs compoptions
-  local comp_opts=:
   local iarg=1
   eval "compargs=($(complete -p "$cmd" 2>/dev/null))"
   while ((iarg<${#compargs[@]})); do
@@ -394,6 +393,8 @@ function ble-complete/source/argument/.compgen {
 }
 
 function ble-complete/source/argument {
+  local comp_opts=:
+
   # try complete&compgen
   ble-complete/source/argument/.compgen; local exit="$?"
   [[ $exit == 0 || $exit == 27 ]] && return "$exit"
