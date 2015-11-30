@@ -3576,12 +3576,12 @@ function ble-edit+isearch/next {
     if [[ $_ble_edit_isearch_dir == - ]]; then
       if [[ ${_ble_edit_str:_ble_edit_ind} == "$needle"* ]]; then
         beg="$_ble_edit_ind"
-        end="$((_ble_edit_ind+${#needle}))"
+        end="$((beg+${#needle}))"
       fi
     else
-      if [[ ${_ble_edit_str::_ble_edit_ind} == *"$needle" ]]; then
-        beg="$((_ble_edit_ind-${#needle}))"
-        end="$_ble_edit_ind"
+      if [[ ${_ble_edit_str:_ble_edit_mark} == "$needle"* ]]; then
+        beg="$_ble_edit_mark"
+        end="$((beg+${#needle}))"
       fi
     fi
 
