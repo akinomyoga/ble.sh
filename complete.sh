@@ -299,7 +299,12 @@ function ble-complete/source/argument/.compgen-helper-func {
   unset -f compopt
 }
 
-function ble-complete/source/argument {
+## 関数 ble-complete/source/argument/.compgen
+## @var[in] COMPV
+## @var[in] index _ble_syntax_*
+## @var[in] 他色々
+## @exit 入力がある時に 27 を返します。
+function ble-complete/source/argument/.compgen {
   local comp_words comp_line comp_point comp_cword
   local comp_prog= comp_func=
   ble-syntax:bash/extract-command "$index" || return 1
@@ -385,7 +390,13 @@ function ble-complete/source/argument {
     ((count++))
   done
 
-  ((count!=0)) && return
+  ((count!=0))
+}
+
+function ble-complete/source/argument {
+  # try complete&compgen
+  ble-complete/source/argument/.compgen; local exit="$?"
+  [[ $exit == 0 || $exit == 27 ]] && return "$exit"
 
   # 候補が見付からない場合
   if [[ $comp_opts == *:dirnames:* ]]; then

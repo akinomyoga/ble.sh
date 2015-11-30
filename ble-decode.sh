@@ -1411,7 +1411,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
       builtin bind -X
     fi
 #%x
-  } 2>/dev/null | ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
+  } 2>/dev/null | LANG=C ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
     BEGIN{
       APOS=apos "\\" apos apos;
@@ -1451,8 +1451,8 @@ function .ble-decode-bind/generate-source-to-unbind-default {
       if(match(line0,/^"(([^"]|\\.)+)"/)>0){
         _seq=substr(line0,2,RLENGTH-2);
 
-        # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
-        #   bind -r では \M- ではなく \e と指定しなければ削除できない。
+#%      # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
+#%      #   bind -r では \M- ではなく \e と指定しなければ削除できない。
         gsub(/\\M-/,"\\e",_seq);
 
         print "builtin bind -r " quote(_seq);
@@ -1472,18 +1472,18 @@ function .ble-decode-bind/generate-source-to-unbind-default {
 
       line=$0;
 
-      # ※bash-4.3 では bind -r しても bind -X に残る。
-      #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
+#%    # ※bash-4.3 では bind -r しても bind -X に残る。
+#%    #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
 #%if use_gawk
       if(line~/\yble-decode-byte:bind\y/)next;
 #%else
       if(line~/(^|[^[:alnum:]])ble-decode-byte:bind($|[^[:alnum:]])/)next;
 #%end
 
-      # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
-      #   コマンド部分の "" を外して中の escape を外す必要がある。
-      #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
-      #     \n\r\f\t\v\b\a 等は使われない様だ。
+#%    # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
+#%    #   コマンド部分の "" を外して中の escape を外す必要がある。
+#%    #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
+#%    #     \n\r\f\t\v\b\a 等は使われない様だ。
 #%if use_gawk
       if(match(line,/^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/,captures)>0){
         sequence=captures[1];
