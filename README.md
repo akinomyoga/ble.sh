@@ -13,7 +13,8 @@ This script is available under the **BSD License** (3-clause BSD license).
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
 ##Usage
-###Download `ble.sh`
+**Download `ble.sh`**
+
 With `wget`:
 ```bash
 $ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1/ble-0.1.0.tar.xz
@@ -27,7 +28,8 @@ $ tar xJf ble-0.1.0.tar.xz
 $ source ble/ble.sh
 ```
 
-###Or, generate `ble.sh` from source
+**Or, generate `ble.sh` from source**
+
 To generate `ble.sh`, `gawk` (GNU awk) is required.
 The file `ble.sh` can be generated using the following commands:
 ```bash
@@ -40,7 +42,8 @@ A script file `ble.sh` will be generated in the directory `ble.sh/out`. Then, lo
 $ source out/ble.sh
 ```
 
-###Setup `.bashrc`
+**Setup `.bashrc`**
+
 If you would like to load `ble.sh` defaultly in interactive sessions of `bash`, add the following codes to your .bashrc file:
 ```bash
 # bashrc
