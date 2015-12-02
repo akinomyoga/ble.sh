@@ -4004,24 +4004,34 @@ if [[ $bleopt_suppress_bash_output ]]; then
     rm -f "$_ble_edit_io_fname2.pipe"
     mkfifo "$_ble_edit_io_fname2.pipe"
     {
-      while IFS= read -r line; do
-        SPACE=$' \n\t'
-        if [[ $line == *[^$SPACE]* ]]; then
-          builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
-        fi
+      {
+        function ble-edit/stdout/check-ignoreeof-message {
+          local line="$1"
 
-        if [[ $bleopt_ignoreeof_message && $line = *$bleopt_ignoreeof_message* ||
-                  $line = *'Use "exit" to leave the shell.'* ||
-                  $line = *'ログアウトする為には exit を入力して下さい'* ||
-                  $line = *'シェルから脱出するには "exit" を使用してください。'* ||
-                  $line = *'シェルから脱出するのに "exit" を使いなさい.'* ]]
-        then
-          builtin echo eof >> "$_ble_edit_io_fname2.proc"
-          kill -USR1 $$
-          sleep 0.1 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
-        fi
-      done < "$_ble_edit_io_fname2.pipe" &>/dev/null &
-      disown $!
+          [[ $line = *$bleopt_ignoreeof_message* ||
+               $line = *'Use "exit" to leave the shell.'* ||
+               $line = *'ログアウトする為には exit を入力して下さい'* ||
+               $line = *'シェルから脱出するには "exit" を使用してください。'* ||
+               $line = *'シェルから脱出するのに "exit" を使いなさい.'* ||
+               $line = *'Gebruik Kaart na Los Tronk'* ]] && return 0
+
+          # ignoreeof-messages.txt の中身をキャッシュする様にする?
+          [[ $line == *exit* ]] && command grep -q -F "$line" "$_ble_base"/ignoreeof-messages.txt
+        }
+
+        while IFS= read -r line; do
+          SPACE=$' \n\t'
+          if [[ $line == *[^$SPACE]* ]]; then
+            builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
+          fi
+
+          if [[ $bleopt_ignoreeof_message ]] && ble-edit/stdout/check-ignoreeof-message; then
+            builtin echo eof >> "$_ble_edit_io_fname2.proc"
+            kill -USR1 $$
+            sleep 0.1 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
+          fi
+        done < "$_ble_edit_io_fname2.pipe"
+      } &>/dev/null & disown
     } &>/dev/null
 
     ble/util/openat _ble_edit_fd_stderr_pipe '> "$_ble_edit_io_fname2.pipe"'

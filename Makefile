@@ -7,36 +7,34 @@ PP:=ext/mwg_pp.awk
 
 FULLVER:=0.1.1
 
-outfiles+=out
-out:
+OUTDIR:=out
+outfiles+=$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap
+$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap:
 	mkdir -p $@
 
-outfiles+=out/ble.sh
-out/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh ble-syntax.sh
+outfiles+=$(OUTDIR)/ble.sh
+$(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh ble-syntax.sh | $(OUTDIR)
 	$(PP) $< >/dev/null
 
-outfiles+=out/term.sh
-out/term.sh: term.sh
+outfiles+=$(OUTDIR)/term.sh
+$(OUTDIR)/term.sh: term.sh | $(OUTDIR)
 	cp -p $< $@
-outfiles+=out/bind.sh
-out/bind.sh: bind.sh
+outfiles+=$(OUTDIR)/bind.sh
+$(OUTDIR)/bind.sh: bind.sh | $(OUTDIR)
 	cp -p $< $@
-outfiles+=out/complete.sh
-out/complete.sh: complete.sh
+outfiles+=$(OUTDIR)/complete.sh
+$(OUTDIR)/complete.sh: complete.sh | $(OUTDIR)
 	cp -p $< $@
-
-outfiles+=out/keymap
-out/keymap:
-	mkdir -p $@
-outfiles+=out/keymap/emacs.sh
-out/keymap/emacs.sh: keymap/emacs.sh
+outfiles+=$(OUTDIR)/ignoreeof-messages.txt
+$(OUTDIR)/ignoreeof-messages.txt: ignoreeof-messages.txt | $(OUTDIR)
 	cp -p $< $@
 
-outfiles+=out/cmap
-out/cmap:
-	mkdir -p $@
-outfiles+=out/cmap/default.sh
-out/cmap/default.sh: cmap/default.sh
+outfiles+=$(OUTDIR)/keymap/emacs.sh
+$(OUTDIR)/keymap/emacs.sh: keymap/emacs.sh | $(OUTDIR)/keymap
+	cp -p $< $@
+
+outfiles+=$(OUTDIR)/cmap/default.sh
+$(OUTDIR)/cmap/default.sh: cmap/default.sh | $(OUTDIR)/cmap
 	cp -p $< $@
 
 all: $(outfiles)
@@ -54,7 +52,7 @@ dist:
 { for f in $(outfiles); do d="$$dir$${f#out}"; if [[ -d $$f ]]; then mkdir -p "$$d"; else cp "$$f" "$$d"; fi; done; } && \
 tar caf "dist/$$dir.$$(date +'%Y%m%d').tar.xz" "$$dir" && rm -r "$$dir"
 
-dist0:
+dist.date:
 	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble $(dist_excludes)
 
 list-functions:

@@ -1,0 +1,32 @@
+Gebruik Kaart na Los Tronk
+Използвайте „exit“, за да излезете от обвивката.
+Utilitzeu ?exit? per a eixir de l'int?rpret d'ordres.
+Shell lze ukončit příkazem „exit“.
+Brug "exit" for at forlade skallen.
+Benutze "exit" um die Shell zu verlassen.
+Χρήση «exit» για έξοδο από το κέλυφος.
+Use “[1mexit[0m” to leave the shell.
+Use “exit” to leave the shell.
+Uzu «exit» por eliri el la ŝelo.
+Use "exit" para dejar el shell.
+Kirjoita ”exit” poistuaksesi komentotulkista.
+Utilisez « exit » pour quitter le shell.
+Úsáid "exit" le scoir den mblaosc.
+Use «exit» para deixar o shell.
+Koristite „exit” za napuštanje ljuske.
+„exit” használatával lehet elhagyni a parancsértelmezőt.
+Gunakan "exit" untuk meninggalkan shell.
+Usare "exit" per uscire dalla shell.
+シェルから脱出するには "exit" を使用してください。
+Naudokite „exit“, jei norite išeiti iš ap.
+Gebruik "exit" om de shell te verlaten.
+Użyj "exit", aby opuścić tę powłokę.
+Use "exit" para sair da `shell'.
+Na opustenie shellu použite „exit“.
+Uporabite "exit", če želite zapustiti lupino.
+Користите „exit“ да напустите шкољку.
+Använd "exit" fär att lämna skalet.
+Kabuğu bırakmak için "exit" kullanın.
+Використовуйте "exit", щоб вийти з оболонки.
+Dùng "exit" để rời hệ vỏ.
+使用 "exit" 退出 shell 。
