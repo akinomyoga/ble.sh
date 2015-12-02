@@ -5,7 +5,7 @@ all:
 
 PP:=ext/mwg_pp.awk
 
-FULLVER:=0.1.1
+FULLVER:=0.2.alpha
 
 OUTDIR:=out
 outfiles+=$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap
