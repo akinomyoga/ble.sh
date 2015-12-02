@@ -17,13 +17,13 @@ This script is available under the **BSD License** (3-clause BSD license).
 
 With `wget`:
 ```bash
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1/ble-0.1.1.tar.xz
+$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.1/ble-0.1.1.tar.xz
 $ tar xJf ble-0.1.1.tar.xz
 $ source ble/ble.sh
 ```
 With `curl`:
 ```bash
-$ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1/ble-0.1.1.tar.xz > ble-0.1.1.tar.xz
+$ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.1/ble-0.1.1.tar.xz > ble-0.1.1.tar.xz
 $ tar xJf ble-0.1.1.tar.xz
 $ source ble/ble.sh
 ```
