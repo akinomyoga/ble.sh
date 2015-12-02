@@ -97,10 +97,10 @@ if ((_ble_bash>=40200)); then
 else
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
-      local _result="$(date +"$3" $4)"
+      local _result="$(command date +"$3" $4)"
       builtin eval "$2=\"\$_result\""
     else
-      date +"$1" $2
+      command date +"$1" $2
     fi
   }
 fi
@@ -127,7 +127,7 @@ function ble/util/array-reverse {
 
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
-    declare -p "$@" | awk -v _ble_bash="$_ble_bash" '
+    declare -p "$@" | command awk -v _ble_bash="$_ble_bash" '
       BEGIN{decl="";}
       function declflush( isArray){
         if(decl){
@@ -332,7 +332,7 @@ function bleopt {
   fi
 
   if ((${#pvars[@]})); then
-    declare -p "${pvars[@]}" | sed 's/^declare[[:space:]]\{1,\}\(-[^[:space:]]*[[:space:]]\{1,\}\)*bleopt_//'
+    declare -p "${pvars[@]}" | command sed 's/^declare[[:space:]]\{1,\}\(-[^[:space:]]*[[:space:]]\{1,\}\)*bleopt_//'
   fi
 }
 
@@ -381,7 +381,7 @@ function _ble_base_tmp.wipe {
     [[ ${mark[pid]} ]] && continue
     mark[pid]=1
     if ! kill -0 "$pid" &>/dev/null; then
-      rm -f "$_ble_base_tmp/$pid."*
+      command rm -f "$_ble_base_tmp/$pid."*
     fi
   done
 }
@@ -393,8 +393,8 @@ function .ble-term/visible-bell/initialize {
   # local now= file
   # for file in "$_ble_base_tmp"/*.visible-bell.time; do
   #   if [[ -f $file ]]; then
-  #     [[ $now ]] || now="$(date +%s)"
-  #     local ft="$(date +%s -r "$file")"
+  #     [[ $now ]] || now="$(command date +%s)"
+  #     local ft="$(command date +%s -r "$file")"
   #     ((${now::${#now}-2}-${ft::${#ft}-2}>36)) && /bin/rm "$file"
   #   fi
   # done
@@ -430,7 +430,7 @@ function .ble-term.visible-bell {
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
   (
     {
-      sleep 0.05
+      command sleep 0.05
       builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
 
       # load time duration settings
@@ -441,12 +441,12 @@ function .ble-term.visible-bell {
 
       # wait
       > "$_ble_term_visible_bell__ftime"
-      sleep $sec
+      command sleep $sec
 
       # check and clear
       declare -a time1 time2
-      time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
-      time2=($(date +'%s %N'))
+      time1=($(command date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
+      time2=($(command date +'%s %N'))
       if (((time2[0]-time1[0])*1000+(1${time2[1]::3}-1${time1[1]::3})>=msec)); then
         builtin echo -n "$_ble_term_visible_bell_clear" >&2
       fi

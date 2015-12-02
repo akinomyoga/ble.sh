@@ -102,17 +102,17 @@ fi
 
 # tmpdir
 if [[ ! -d $_ble_base/tmp ]]; then
-  mkdir -p "$_ble_base/tmp"
-  chmod a+rwxt "$_ble_base/tmp"
+  command mkdir -p "$_ble_base/tmp"
+  command chmod a+rwxt "$_ble_base/tmp"
 fi
 
 _ble_base_tmp="$_ble_base/tmp/$UID"
 if [[ ! -d $_ble_base_tmp ]]; then
-  (umask 077; mkdir -p "$_ble_base_tmp")
+  (umask 077; command mkdir -p "$_ble_base_tmp")
 fi
 
 if [[ ! -d $_ble_base/cache ]]; then
-  mkdir -p "$_ble_base/cache"
+  command mkdir -p "$_ble_base/cache"
 fi
 
 # loading time

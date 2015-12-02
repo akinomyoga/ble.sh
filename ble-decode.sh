@@ -1223,21 +1223,21 @@ function ble-bind {
 #   従って、enter で -icanon を設定する事にする。
 #
 function .ble-stty.initialize {
-  stty -ixon -nl -icrnl -icanon \
+  command stty -ixon -nl -icrnl -icanon \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_stty_stat=1
 }
 function .ble-stty.leave {
   [[ ! $_ble_stty_stat ]] && return
-  stty  echo -nl \
+  command stty  echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
   _ble_stty_stat=
 }
 function .ble-stty.enter {
   [[ $_ble_stty_stat ]] && return
-  stty -echo -nl -icrnl -icanon \
+  command stty -echo -nl -icrnl -icanon \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_stty_stat=1
@@ -1245,17 +1245,17 @@ function .ble-stty.enter {
 function .ble-stty.finalize {
   [[ ! $_ble_stty_stat ]] && return
   # detach の場合 -echo を指定する
-  stty -echo -nl \
+  command stty -echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
   _ble_stty_stat=
 }
 function .ble-stty.exit-trap {
   # exit の場合は echo
-  stty echo -nl \
+  command stty echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
-  rm -f "$_ble_base_tmp/$$".*
+  command rm -f "$_ble_base_tmp/$$".*
 }
 trap .ble-stty.exit-trap EXIT
 
@@ -1366,7 +1366,7 @@ function .ble-decode-initialize-cmap/emit-bindr {
   echo "builtin bind -r \"$1\""
 }
 function .ble-decode-initialize-cmap {
-  [[ -d $_ble_base/cache ]] || mkdir -p "$_ble_base/cache"
+  [[ -d $_ble_base/cache ]] || command mkdir -p "$_ble_base/cache"
 
   local init="$_ble_base/cmap/default.sh"
   local dump="$_ble_base/cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump"
@@ -1377,7 +1377,7 @@ function .ble-decode-initialize-cmap {
     echo '  This is the first time to run ble.sh with TERM='"$TERM." 1>&2
     echo '  Now initializing cmap... ' 1>&2
     source "$init"
-    ble-bind -D | sed '
+    ble-bind -D | command sed '
       s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
       s/^-- //
       s/["'"'"']//g
@@ -1411,7 +1411,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
       builtin bind -X
     fi
 #%x
-  } 2>/dev/null | LANG=C ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
+  } 2>/dev/null | LANG=C command ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
     BEGIN{
       APOS=apos "\\" apos apos;
@@ -1544,7 +1544,7 @@ function ble-decode-detach {
   # 元のキー割り当ての復元
   if [[ -s "$_ble_base_tmp/$$.bind.save" ]]; then
     source "$_ble_base_tmp/$$.bind.save"
-    rm -f "$_ble_base_tmp/$$.bind.save"
+    command rm -f "$_ble_base_tmp/$$.bind.save"
   fi
 }
 

@@ -3254,7 +3254,7 @@ function .ble-edit/history/generate-source-to-load-history {
 
   # 285ms for 16437 entries
   local apos="'"
-  history | awk -v apos="'" '
+  history | command awk -v apos="'" '
     BEGIN{
       n="";
       print "_ble_edit_history=("
@@ -3948,8 +3948,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
   }
   function .ble-edit/stdout/finalize {
     .ble-edit/stdout/on
-    [[ -f $_ble_edit_io_fname1 ]] && rm -f "$_ble_edit_io_fname1"
-    [[ -f $_ble_edit_io_fname2 ]] && rm -f "$_ble_edit_io_fname2"
+    [[ -f $_ble_edit_io_fname1 ]] && command rm -f "$_ble_edit_io_fname1"
+    [[ -f $_ble_edit_io_fname2 ]] && command rm -f "$_ble_edit_io_fname2"
   }
 
   ## 関数 .ble-edit/stdout/check-stderr
@@ -4001,8 +4001,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
 
     trap -- '.ble-edit/stdout/trap-SIGUSR1' USR1
 
-    rm -f "$_ble_edit_io_fname2.pipe"
-    mkfifo "$_ble_edit_io_fname2.pipe"
+    command rm -f "$_ble_edit_io_fname2.pipe"
+    command mkfifo "$_ble_edit_io_fname2.pipe"
     {
       {
         function ble-edit/stdout/check-ignoreeof-message {
@@ -4028,7 +4028,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
           if [[ $bleopt_ignoreeof_message ]] && ble-edit/stdout/check-ignoreeof-message; then
             builtin echo eof >> "$_ble_edit_io_fname2.proc"
             kill -USR1 $$
-            sleep 0.1 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
+            command sleep 0.1 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
           fi
         done < "$_ble_edit_io_fname2.pipe"
       } &>/dev/null & disown
