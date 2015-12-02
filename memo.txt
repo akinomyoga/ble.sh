@@ -315,15 +315,6 @@ tech
 
 2015-11-30
 
-  * bug: ble-assert
-
-      "$f" --date="$(date +'%F %T %Z' -r "$f")"
-      "${f}" --date="$(date +'%F %T %Z' -r "$f")"
-
-    の過程でエラー。最小化:
-
-      echo "$f" "$(B 'D' "$f")"
-
   * Note: ble-decode.sh (generate-source-to-unbind-default)
 
     文字コード実装時に問題があるかも。
@@ -338,33 +329,199 @@ tech
     日本語で bind -sp に登録がなされていることはないだろうということである。
     つまり、ユーザが手で (或いは .inputrc に) bind '"日本語":"にほんご"' などとしない限りは問題は生じない。
 
-2015-11-28
 
-  * bug
+  * 構文解析部分更新の bug
 
-    $ seq2gif -f 0 -b 254 < demo.tty > out/img/demo.gif
-    カーソルを先頭に移動した時?? 再現しない。
+    先ず第一に ble_debug=1 が設定されているかされていないかでエラーが表示されるタイミングが異なる。
+    しかしこれは単にチェックのタイミングの問題である事は以前のバグ取りの時に分かっている。
+    ble_debug=1 が設定されていると現在の状態を表示する為に、その場で構文木の構造を辿る。
+    その際にエラーが存在している事が即座に検知されるという訳である。
+    一方で ble_debug= になっている場合にはその場で構文木を辿らないので後になってエラーが発生している事が分かる。
+    従って ble_debug=1 の時のエラーを先ず見るのが自然である。
 
-    stackdump: X1 0 <= 48 <= 49 <= 1, 48 <= 48
-      @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
-      @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
-      @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
-      @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
-      @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
-      @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
-      @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
-      @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
-      @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-    stackdump: X2 0 <= 0 <= 48 <= 49 <= 1 <= 1
-      @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
-      @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
-      @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
-      @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
-      @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
-      @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
-      @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
-      @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
-      @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    エラーメッセージ
+
+    | ble-syntax/tree-enumerate/.impl(i=10,iN=26,nofs=0,node=,command=ble-syntax/print-status/.dump-tree/proc1)/FATAL1
+    |   @ /home/murase/prog/ble/ble.sh:7685 (ble-assert)
+    |   @ /home/murase/prog/ble/ble.sh:108 (ble-syntax/tree-enumerate/.impl)
+    |   @ /home/murase/prog/ble/ble.sh:5 (ble-syntax/tree-enumerate)
+    |   @ /home/murase/prog/ble/ble.sh:8034 (ble-syntax/print-status/.dump-tree)
+    |   @ /home/murase/prog/ble/ble.sh:8264 (ble-syntax/print-status)
+    |   @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |   @ /home/murase/prog/ble/ble.sh:4290 (ble-highlight-layer/update)
+    |   @ /home/murase/prog/ble/ble.sh:4842 (.ble-line-text/update)
+    |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)=(5 w=- n=@5 t=-1:-1)
+    |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |   @ /home/murase/prog/ble/ble.sh:1130 (.ble-decode-byte:bind/tail)t=1:-1)
+    |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)t=(5 w=- n=@10 t=-1:-1)
+
+    +-------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------+
+    | エラー状態                                                                                | 正常状態                                                                               |
+    +-------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------+
+    | A?                                                                                        | A?                                                                                     |
+    |  2 aw   000 'e' |     stat=(1 w=- n=- t=-1:-1)                                            |  2 aw   000 'e' |   stat=(1 w=- n=- t=-1:-1)                                           |
+    |  | aw   001 'c' |                                                                         |  | aw   001 'c' |                                                                      |
+    |  | aw   002 'h' |                                                                         |  | aw   002 'h' |                                                                      |
+    |  | aw   003 'o' +     word=2:0-4                                                          |  | aw   003 'o' +   word=2:0-4                                                         |
+    |  3 a    004 ' '                                                                           |  3 a    004 ' '                                                                        |
+    |  9 a    005 '"'       nest=(4 w=4:5- n=- t=-1:1) stat=(3 w=- n=- t=1:-1)                  |  9 a e  005 '"'     nest=(4 w=4:5- n=- t=-1:1) stat=(3 w=- n=- t=1:-1)                 |
+    | 14*a    006 '$'       nest=(5 w=- n='${':5- t=-1:-1) stat=(5 w=- n=@5 t=-1:-1)            | 14 a e  006 '$'     nest=(5 w=- n='${':5- t=-1:-1) stat=(5 w=- n=@5 t=-1:-1)           |
+    |  |*a    007 '{'                                                                           |  | a e  007 '{'                                                                        |
+    |  7*a    008 'f'                                                                           |  7 a    008 'f'                                                                        |
+    |  9*a    009 '"'       stat=(14 w=- n=@6 t=-1:-1)                                          |  9 a    009 '"'     stat=(14 w=- n=@6 t=-1:-1)                                         |
+    |  5*a  s 010 ' '                                                                           |  5 a    010 ' '                                                                        |
+    |  9*a  s 011 '"' ||                                                                        |  9 a    011 '"'                                                                        |
+    | 14*a    012 '$' |||   nest=(15 w=- n='$(':6- t=-1:-1) stat=(15 w=- n=@6 t=-1:-1)          | 14 a    012 '$' |   nest=(15 w=- n='$(':6- t=-1:-1) stat=(15 w=- n=@6 t=-1:-1)         |
+    |  |*a    013 '(' |||                                                                       |  | a    013 '(' |                                                                      |
+    |  2*aw   014 'B' |||+  word=2:14-15 stat=(1 w=- n=@12 t=-1:-1)                             |  2 aw   014 'B' |+  word=2:14-15 stat=(1 w=- n=@12 t=-1:-1)                            |
+    |  3*a    015 ' ' |||                                                                       |  3 a    015 ' ' |                                                                      |
+    |  9*a    016 ''' ||||  stat=(3 w=- n=@12 t=1:-1)                                           |  9 a    016 ''' ||  stat=(3 w=- n=@12 t=1:-1)                                          |
+    |  5*a    017 'D' ||||                                                                      |  5 a    017 'D' ||                                                                     |
+    |  9*a    018 ''' |||+  word=4:@14>16-19                                                    |  9 a    018 ''' |+  word=4:@14>16-19                                                   |
+    |  3*a    019 ' ' |||   stat=(3 w=- n=@12 t=0:-1)                                           |  3 a    019 ' ' |   stat=(3 w=- n=@12 t=0:-1)                                          |
+    |  9*a    020 '"' ||||| nest=(4 w=4:20- n='none':12- t=-1:1) stat=(3 w=- n=@12 t=1:-1)      |  9 a    020 '"' ||| nest=(4 w=4:20- n='none':12- t=-1:1) stat=(3 w=- n=@12 t=1:-1)     |
+    | 14 a    021 '$' ||||| stat=(5 w=- n=@20 t=-1:-1)                                          | 14 a    021 '$' ||| stat=(5 w=- n=@20 t=-1:-1)                                         |
+    |  7 a    022 'f' |||||                                                                     |  7 a    022 'f' |||                                                                    |
+    |  9 a    023 '"' |||++ word=4:@18>20-24>@23 word=nnone:20-24 stat=(5 w=- n=@20 t=-1:-1)    |  9 a    023 '"' |++ word=4:@18>20-24>@23 word=nnone:20-24 stat=(5 w=- n=@20 t=-1:-1)   |
+    | 14 a    024 ')' ||+   word=n$(:12-25>@23 stat=(3 w=- n=@12 t=0:-1)                        | 14 a    024 ')' +   word=n$(:12-25>@23 stat=(3 w=- n=@12 t=0:-1)                       |
+    |  9 a    025 '"' ++    word=4:@9>11-26>@25 word=nnone:11-26>@24 stat=(5 w=- n=@11 t=0:-1)  |  6 a e  025 '"'     nest=(15 w=- n='none':6- t=0:-1) stat=(15 w=- n=@6 t=0:-1)         |
+    | \_ '"$(B 'D' "$f")"'                                                                      | \_ 'echo'                                                                              |
+    |     \_ '"$(B 'D' "$f")"'                                                                  | \_ '"${f" "$(B 'D' "$f")"'                                                             |
+    |         \_ '$(B 'D' "$f")'                                                                |     \_ '"${f" "$(B 'D' "$f")"'                                                         |
+    |             \_ 'B'                                                                        |         \_ '${f" "$(B 'D' "$f")"'                                                      |
+    |             \_ ''D''                                                                      |             \_ '$(B 'D' "$f")'                                                         |
+    |             \_ '"$f"'                                                                     |             |   \_ 'B'                                                                 |
+    |                 \_ '"$f"'                                                                 |             |   \_ ''D''                                                               |
+    |                                                                                           |             |   \_ '"$f"'                                                              |
+    |                                                                                           |             |       \_ '"$f"'                                                          |
+    |                                                                                           |             \_ '"'                                                                     |
+    +-------------------------------------------------------------------------------------------+----------------------------------------------------------------------------------------+
+
+    状態の差分
+
+    | --- a.txt       2015-12-03 05:12:49.627927314 +0900
+    | +++ b.txt       2015-12-03 05:12:55.499708773 +0900
+    | @@ -1,4 +1,4 @@
+    | -正常状態
+    | +エラー状態
+    |  000 'e' stat=(1 w=- n=- t=-1:-1)
+    |  001 'c'
+    |  002 'h'
+    | @@ -24,4 +24,4 @@
+    |  022 'f'
+    |  023 '"' word=4:@18>20-24>@23 word=nnone:20-24 stat=(5 w=- n=@20 t=-1:-1)
+    |  024 ')' word=n$(:12-25>@23 stat=(3 w=- n=@12 t=0:-1)
+    | -025 '"' nest=(15 w=- n='none':6- t=0:-1) stat=(15 w=- n=@6 t=0:-1)
+    | +025 '"' word=4:@9>11-26>@25 word=nnone:11-26>@24 stat=(5 w=- n=@11 t=0:-1)
+
+    これを見ると最後の状態が異なるだけの様である。
+    解析中断点は 020 にあるが 020 までの状態は完全に同じである。
+    %%という事は解析の状態は完全に一致している筈なのでその後の解析も同じでなければならない?%%
+    と思ったが、解析状態の際に比較するのは (現在の状態 vs 正しいと想定される状態) ではなくて、
+    (現在の状態 vs 前回までに解析した状態) であるのでここでは関係ないはずである。
+    この結果から言える事は、
+
+    a shift に失敗している
+    b 解析の中断の判定に失敗している
+    c または解析途中状態が同じで以降の文字列が同じだったとしても最終的な解析結果に違いが出る可能性がある
+
+    のどちらかという事になる。今迄の経験から行くと初めに a, b を疑った方が良い。
+    その為に前回までの解析状態を確認しておく必要がある。
+
+    +-------------------------------------------------------------------------------------------+
+    | 直前の状態                                                                                |
+    +-------------------------------------------------------------------------------------------+
+    | A?                                                                                        |
+    |  2*aw   000 'e' |     stat=(1 w=- n=- t=-1:-1)                                            |
+    |  |*aw   001 'c' |                                                                         |
+    |  |*aw   002 'h' |                                                                         |
+    |  |*aw   003 'o' +     word=2:0-4                                                          |
+    |  3*a    004 ' '                                                                           |
+    |  9*a    005 '"' ||    nest=(4 w=4:5- n=- t=-1:1) stat=(3 w=- n=- t=1:-1)                  |
+    | 14*a    006 '$' ||    stat=(5 w=- n=@5 t=-1:-1)                                           |
+    |  7*a    007 'f' ||                                                                        |
+    |  9*a    008 '"' ++    word=4:@3>5-9>@8 word=nnone:5-9 stat=(5 w=- n=@5 t=-1:-1)           |
+    |  3*a    009 ' '       stat=(3 w=- n=- t=0:-1)                                             |
+    |  9*a    010 '"' ||    nest=(4 w=4:10- n=- t=-1:1) stat=(3 w=- n=- t=1:-1)                 |
+    | 14*a    011 '$' |||   nest=(5 w=- n='$(':10- t=-1:-1) stat=(5 w=- n=@10 t=-1:-1)          |
+    |  |*a    012 '(' |||                                                                       |
+    |  2*aw   013 'B' |||+  word=2:13-14 stat=(1 w=- n=@11 t=-1:-1)                             |
+    |  3*a    014 ' ' |||                                                                       |
+    |  9*a    015 ''' ||||  stat=(3 w=- n=@11 t=1:-1)                                           |
+    |  5*a    016 'D' ||||                                                                      |
+    |  9*a    017 ''' |||+  word=4:@13>15-18                                                    |
+    |  3*a    018 ' ' |||   stat=(3 w=- n=@11 t=0:-1)                                           |
+    |  9*a    019 '"' ||||| nest=(4 w=4:19- n='none':11- t=-1:1) stat=(3 w=- n=@11 t=1:-1)      |
+    | 14*a    020 '$' ||||| stat=(5 w=- n=@19 t=-1:-1)                                          |
+    |  7*a    021 'f' |||||                                                                     |
+    |  9*a    022 '"' |||++ word=4:@17>19-23>@22 word=nnone:19-23 stat=(5 w=- n=@19 t=-1:-1)    |
+    | 14*a    023 ')' ||+   word=n$(:11-24>@22 stat=(3 w=- n=@11 t=0:-1)                        |
+    |  9*a    024 '"' ++    word=4:@8>10-25>@24 word=nnone:10-25>@23 stat=(5 w=- n=@10 t=0:-1)  |
+    | \_ 'echo'                                                                                 |
+    | \_ '"$f"'                                                                                 |
+    | |   \_ '"$f"'                                                                             |
+    | \_ '"$(B 'D' "$f")"'                                                                      |
+    |     \_ '"$(B 'D' "$f")"'                                                                  |
+    |         \_ '$(B 'D' "$f")'                                                                |
+    |             \_ 'B'                                                                        |
+    |             \_ ''D''                                                                      |
+    |             \_ '"$f"'                                                                     |
+    |                 \_ '"$f"'                                                                 |
+    +-------------------------------------------------------------------------------------------+
+
+
+
+    + bug (2015-12-02)
+
+      また出た。今度は
+
+      $ echo a "$(echo b "$(echo c "$(echo d "$(echo e "$(echo f)")")")")"
+
+      を
+
+      $ echo "a $(echo "b $(echo c "$(echo d "$(echo e "$(echo f)")")")")"
+
+      に書き換える過程で起きた。これは 11-28 のケースと状況が似ている。
+
+
+    + bug (2015-11-28)
+
+      ble-assert
+
+        "$f" --date="$(date +'%F %T %Z' -r "$f")"
+        "${f}" --date="$(date +'%F %T %Z' -r "$f")"
+
+      の過程でエラー。最小化:
+
+        echo "$f" "$(B 'D' "$f")"
+        echo "${f" "$(B 'D' "$f")" <- この時点でエラーになっている。(ble_debug= だと次の入力で明らかになるが。)
+        echo "${f}" "$(B 'D' "$f")"
+
+    + bug (2015-11-28)
+
+      $ seq2gif -f 0 -b 254 < demo.tty > out/img/demo.gif
+      カーソルを先頭に移動した時?? 再現しない。
+
+      stackdump: X1 0 <= 48 <= 49 <= 1, 48 <= 48
+        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+        @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+        @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
+        @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+        @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
+        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+      stackdump: X2 0 <= 0 <= 48 <= 49 <= 1 <= 1
+        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+        @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+        @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
+        @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+        @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
+        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
 
 2015-11-25
 

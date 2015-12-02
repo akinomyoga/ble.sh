@@ -672,7 +672,7 @@ function ble-highlight-layer:plain/update/.getch {
       ch="^$ret"
     fi
   elif [[ $ch == [$''-$'\302\237'] ]]; then
-    # ※\302\237 は 0x9F の utf8 表現
+    # __ENCODING__: ※\302\237 は 0x9F の utf8 表現
     if [[ $ch == '' ]]; then
       ch='^?'
     else

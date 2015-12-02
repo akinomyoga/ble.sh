@@ -83,7 +83,7 @@ function ble-decode/generate-binder {
     if ((i==0)); then
       # C-@
       if ((esc00)); then
-        # UTF-8 2-byte code of 0 (■UTF-8依存)
+        # __ENCODING__: UTF-8 2-byte code of 0 (UTF-8依存)
         ble-decode/generate-binder/bind-s '"\C-@":"\xC0\x80"'
         ble-decode/generate-binder/bind-r '\C-@'
       else
@@ -113,7 +113,7 @@ function ble-decode/generate-binder {
         # printf 'bind %q' '"\e[":"\302\233"'               >> "$fbind1"
         # echo "ble-bind -f 'CSI' '.ble-decode-char 27 91'" >> "$fbind1"
 
-        # ■UTF-8依存
+        # __ENCODING__: \xC0\x98 is 2-byte code of ESC (UTF-8依存)
         ble-decode/generate-binder/bind-s '"\e[":"\xC0\x9B["'
         ble-decode/generate-binder/bind-r '\e['
       else

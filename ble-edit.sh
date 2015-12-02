@@ -649,7 +649,10 @@ function ble-edit/draw/trace {
 
   # cygwin では LC_COLLATE=C にしないと
   # 正規表現の range expression が期待通りに動かない。
-  # 日本語と混ざった場合に問題が生じたらまたその時に考える。
+  # __ENCODING__:
+  #   マルチバイト文字コードで escape seq と紛らわしいコードが含まれる可能性がある。
+  #   多くの文字コードでは C0, C1 にあたるバイトコードを使わないので大丈夫と思われる。
+  #   日本語と混ざった場合に問題が生じたらまたその時に考える。
   local LC_COLLATE=C
 
   # CSI
@@ -670,7 +673,6 @@ function ble-edit/draw/trace {
       ((i++))
       case "$s" in
       ('')
-        #■各種escape sequence の解釈
         if [[ $tail =~ $rex_osc ]]; then
           # 各種メッセージ (素通り)
           s="$BASH_REMATCH"
