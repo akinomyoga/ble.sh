@@ -402,7 +402,7 @@ function ble-syntax-highlight+default {
             type=jobs
           elif ble/util/isfunction "$cmd"; then
             type=function
-          elif enable -p | fgrep -xq "enable $cmd" &>/dev/null; then
+          elif enable -p | command grep -q -F -x "enable $cmd" &>/dev/null; then
             type=builtin
           elif which "$cmd" &>/dev/null; then
             type=file

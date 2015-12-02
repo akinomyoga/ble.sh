@@ -548,9 +548,9 @@ function ble-syntax/parse/nest-equals {
     local -a onest
     onest=($_onest)
 #%if !release
-    ((onest[3]<parent_inest)) || { ble-stackdump 'invalid nest' && return 0; }
+    ((0<onest[3]&&onest[3]<=parent_inest)) || { ble-stackdump 'invalid nest' && return 0; }
 #%end
-    parent_inest="${onest[3]}"
+    ((parent_inest-=onest[3]))
   done
 }
 
@@ -1870,7 +1870,7 @@ function ble-syntax/parse {
     while ((i1>0)) && ! [[ ${_ble_syntax_stat[--i1]} ]]; do :;done
   fi
 #%if !release
-  ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)) || ble-stackdump "X1 0 <= $beg <= $end <= $iN, $beg <= $end0"
+  ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)) || ble-stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
   ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
 #%end
 
@@ -2393,7 +2393,7 @@ function ble-syntax/highlight/cmdtype2 {
       ((type=ATTR_CMD_JOBS))
     elif ble/util/isfunction "$cmd"; then
       ((type=ATTR_CMD_FUNCTION))
-    elif enable -p | fgrep -xq "enable $cmd" &>/dev/null; then
+    elif enable -p | command grep -q -F -x "enable $cmd" &>/dev/null; then
       ((type=ATTR_CMD_BUILTIN))
     elif which "$cmd" &>/dev/null; then
       ((type=ATTR_CMD_FILE))
