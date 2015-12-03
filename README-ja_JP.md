@@ -1,13 +1,13 @@
 # ble.sh
-ble.sh (*Bash Line Editor*) は Bash スクリプトで書かれた行エディタです。
+`ble.sh` (*Bash Line Editor*) は Bash スクリプトで書かれた行エディタです。
 - GNU Bash 標準の行エディタ GNU Readline を置き換える形で動作します
 - `source ble.sh` するだけ
 - コマンドラインを (`fish` シェルみたいな) `bash` 構文に従って色付け
 - 文法構造に従った補完
 
-このスクリプトは `bash-3.0` 以降でご利用になれます。
+このスクリプトは `bash-3.0` 以降で利用できます。
 
-現時点では、文字コードとして `UTF-8` のみの対応となります。
+現時点では、文字コードとして `UTF-8` のみの対応です。
 
 このスクリプトは **BSD License** (3条項 BSD ライセンス) の下で提供されます。
 
@@ -16,13 +16,13 @@ ble.sh (*Bash Line Editor*) は Bash スクリプトで書かれた行エディ�
 ##Usage
 **`ble.sh` をダウンロードして使う**
 
-`wget` をお持ちの場合:
+`wget` を使う場合:
 ```bash
 $ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.2/ble-0.1.2.tar.xz
 $ tar xJf ble-0.1.2.tar.xz
 $ source ble/ble.sh
 ```
-`curl` をお持ちの場合:
+`curl` を使う場合:
 ```bash
 $ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.2/ble-0.1.2.tar.xz > ble-0.1.2.tar.xz
 $ tar xJf ble-0.1.2.tar.xz
@@ -39,7 +39,7 @@ $ cd ble.sh
 $ make
 ```
 スクリプトファイル `ble.sh` がサブディレクトリ `ble.sh/out` 内に生成されます。
-`source` コマンドを用いてご利用になれます:
+`source` コマンドを用いて読み込めます:
 ```bash
 $ source out/ble.sh
 ```
@@ -80,7 +80,7 @@ fi
 **曖昧文字幅**
 
 設定 `char_width_mode` を用いて、曖昧文字幅を持つ文字 (Unicode プロパティ `East_Asian_Width` が `A` (Ambiguous) の文字) の幅を制御できます。
-現在は 3 つの選択肢 `emacs`, `west`, and `east` が用意されています。
+現在は 3 つの選択肢 `emacs`, `west`, `east` が用意されています。
 設定値 `emacs` を指定した場合、GNU Emacs における既定の文字幅と同じ物を使います。
 設定値 `west` を指定した場合、全ての曖昧文字幅を 1 (半角) と解釈します。
 設定値 `east` を指定した場合、全ての曖昧文字幅を 2 (全角) と解釈します。
