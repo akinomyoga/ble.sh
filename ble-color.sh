@@ -213,38 +213,66 @@ function .ble-color.color2sgrbg {
   builtin eval "$_var=\"\$_ret\""
 }
 
+#------------------------------------------------------------------------------
+# _ble_faces
 
+# 遅延初期化
 _ble_faces_count=0
 _ble_faces=()
 _ble_faces_sgr=()
-function ble-color-defface {
-  local name="_ble_faces__$1" gspec="$2"
-  (($name||($name=++_ble_faces_count)))
-  ble-color-gspec2g -v "_ble_faces[$name]" "$gspec"
-  ble-color-g2sgr -v "_ble_faces_sgr[$name]" "${_ble_faces[$name]}"
+function ble-color-defface   { ble-color/faces/initialize && ble-color-defface   "$@"; }
+function ble-color-setface   { ble-color/faces/initialize && ble-color-setface   "$@"; }
+function ble-color-face2g    { ble-color/faces/initialize && ble-color-face2g    "$@"; }
+function ble-color-face2sgr  { ble-color/faces/initialize && ble-color-face2sgr  "$@"; }
+function ble-color-iface2g   { ble-color/faces/initialize && ble-color-iface2g   "$@"; }
+function ble-color-iface2sgr { ble-color/faces/initialize && ble-color-iface2sgr "$@"; }
+
+# 遅延初期化登録
+_ble_faces_hooks=()
+function ble-color/faces/addhook-onload {
+  ble/util/array-push _ble_faces_hooks "$1"
 }
-function ble-color-setface {
-  local name="_ble_faces__$1" gspec="$2"
-  if [[ ${!name} ]]; then
+
+# 遅延初期化子
+function ble-color/faces/initialize {
+
+  function ble-color/faces/addhook-onload { "$1"; }
+
+  function ble-color-defface {
+    local name="_ble_faces__$1" gspec="$2"
+    (($name||($name=++_ble_faces_count)))
     ble-color-gspec2g -v "_ble_faces[$name]" "$gspec"
     ble-color-g2sgr -v "_ble_faces_sgr[$name]" "${_ble_faces[$name]}"
-  else
-    echo "ble.sh: the specified face \`$1' is not defined." >&2
-    return 1
-  fi
+  }
+  function ble-color-setface {
+    local name="_ble_faces__$1" gspec="$2"
+    if [[ ${!name} ]]; then
+      ble-color-gspec2g -v "_ble_faces[$name]" "$gspec"
+      ble-color-g2sgr -v "_ble_faces_sgr[$name]" "${_ble_faces[$name]}"
+    else
+      echo "ble.sh: the specified face \`$1' is not defined." >&2
+      return 1
+    fi
+  }
+  function ble-color-face2g {
+    ((g=_ble_faces[_ble_faces__$1]))
+  }
+  function ble-color-face2sgr {
+    builtin eval "sgr=\"\${_ble_faces_sgr[_ble_faces__$1]}\""
+  }
+  function ble-color-iface2g {
+    ((g=_ble_faces[$1]))
+  }
+  function ble-color-iface2sgr {
+    sgr="${_ble_faces_sgr[$1]}"
+  }
+
+  local hook ret=0
+  for hook in "${_ble_faces_hooks[@]}"; do "$hook" || ((ret++)); done
+  return "$ret"
 }
-function ble-color-face2g {
-  ((g=_ble_faces[_ble_faces__$1]))
-}
-function ble-color-face2sgr {
-  builtin eval "sgr=\"\${_ble_faces_sgr[_ble_faces__$1]}\""
-}
-function ble-color-iface2g {
-  ((g=_ble_faces[$1]))
-}
-function ble-color-iface2sgr {
-  sgr="${_ble_faces_sgr[$1]}"
-}
+
+#------------------------------------------------------------------------------
 
 ## 関数 _ble_region_highlight_table;  ble-region_highlight-append triplets ; _ble_region_highlight_table
 function ble-region_highlight-append {
@@ -785,7 +813,11 @@ function ble-highlight-layer:adapter/getg {
 #------------------------------------------------------------------------------
 # ble-highlight-layer:region
 
-ble-color-defface region bg=60,fg=white
+function ble-color/basic/faces-onload-hook {
+  ble-color-defface region         bg=60,fg=white
+  ble-color-defface disabled       fg=gray
+  ble-color-defface overwrite_mode fg=black,bg=51
+}
 
 _ble_highlight_layer_region_buff=()
 _ble_highlight_layer_region_omin=-1
@@ -884,8 +916,6 @@ function ble-highlight-layer:region/getg {
 #------------------------------------------------------------------------------
 # ble-highlight-layer:disabled
 
-ble-color-defface disabled fg=gray
-
 _ble_highlight_layer_disabled_prev=
 _ble_highlight_layer_disabled_buff=()
 
@@ -917,8 +947,6 @@ function ble-highlight-layer:disabled/getg {
     ble-color-face2g disabled
   fi
 }
-
-ble-color-defface overwrite_mode fg=black,bg=51
 
 _ble_highlight_layer_overwrite_mode_index=-1
 _ble_highlight_layer_overwrite_mode_buff=()

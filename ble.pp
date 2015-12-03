@@ -2,23 +2,45 @@
 #%$> out/ble.sh
 #%[release=0]
 #%[use_gawk=0]
+#%[measure_load_time=0]
+#%#----------------------------------------------------------------------------
 #%m inc (
 #%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
-#%%if @_included!=1 (
+#%%if @_included!=1
 #%% [@_included=1]
 ###############################################################################
 # Included from ble-@.sh
 
+#%% if measure_load_time
+time {
+echo ble-@.sh >&2
+#%% end
 #%% include ble-@.sh
-#%%)
+#%% if measure_load_time
+}
+#%% end
+#%%end
 #%)
-# bash script to source from interactive shell
+#%#----------------------------------------------------------------------------
+# bash script to be sourced from interactive shell
 #
 # ble - bash line editor
 #
 # Author: 2013, 2015, K. Murase <myoga.murase@gmail.com>
 #
 
+#%if measure_load_time
+time {
+# load_time (2015-12-03)
+#   core           12ms
+#   decode         10ms
+#   color           2ms
+#   edit            9ms
+#   syntax          5ms
+#   ble-initialize 14ms
+time {
+echo prologue >&2
+#%end
 #------------------------------------------------------------------------------
 # check shell
 
@@ -114,13 +136,9 @@ fi
 if [[ ! -d $_ble_base/cache ]]; then
   command mkdir -p "$_ble_base/cache"
 fi
-
-# loading time
-#   core    2ms
-#   decode  8ms
-#   edit    7ms
-#   color   3ms
-#   syntax 19ms
+#%if measure_load_time
+}
+#%end
 
 ##%x inc.r/@/getopt/
 #%x inc.r/@/core/
@@ -149,7 +167,15 @@ function ble-detach {
   _ble_edit_detach_flag=detach
 }
 
+#%if measure_load_time
+echo ble-initialize >&2
+time ble-initialize
+#%else
 ble-initialize
+#%end
 [[ $1 != noattach ]] && ble-attach
+#%if measure_load_time
+}
+#%end
 
 ###############################################################################

@@ -548,7 +548,7 @@ function ble-syntax/parse/nest-equals {
     local -a onest
     onest=($_onest)
 #%if !release
-    ((onest[3]<=parent_inest)) || { ble-stackdump "invalid nest onest[3]=${onest[3]} parent_inest=$parent_inest text=$text" && return 0; }
+    ((onest[3]!=0&&onest[3]<=parent_inest)) || { ble-stackdump "invalid nest onest[3]=${onest[3]} parent_inest=$parent_inest text=$text" && return 0; }
 #%end
     ((onest[3]<0?(parent_inest=onest[3]):(parent_inest-=onest[3])))
   done
@@ -2270,78 +2270,87 @@ ATTR_FILE_LINK=109
 ATTR_FILE_EXEC=110
 ATTR_FILE_FILE=111
 
-ble-color-defface syntax_default           none
-ble-color-defface syntax_command           red
-ble-color-defface syntax_quoted            fg=green
-ble-color-defface syntax_quotation         fg=green,bold
-ble-color-defface syntax_expr              fg=navy
-ble-color-defface syntax_error             bg=203,fg=231 # bg=224
-ble-color-defface syntax_varname           fg=202
-ble-color-defface syntax_delimiter         bold
-ble-color-defface syntax_param_expansion   fg=purple
-ble-color-defface syntax_history_expansion bg=94,fg=231
-ble-color-defface syntax_function_name     fg=92,bold # fg=purple
-ble-color-defface syntax_comment           fg=gray
-
-ble-color-defface command_builtin_dot fg=red,bold
-ble-color-defface command_builtin     fg=red
-ble-color-defface command_alias       fg=teal
-ble-color-defface command_function    fg=92 # fg=purple
-ble-color-defface command_file        fg=green
-ble-color-defface command_keyword     fg=blue
-ble-color-defface command_jobs        fg=red
-ble-color-defface command_directory   fg=navy,underline
-ble-color-defface filename_directory  fg=navy,underline
-ble-color-defface filename_link       fg=teal,underline
-ble-color-defface filename_executable fg=green,underline
-ble-color-defface filename_other      underline
-
+# 遅延初期化対象
 _ble_syntax_attr2iface=()
-function _ble_syntax_attr2iface.define {
-  ((_ble_syntax_attr2iface[$1]=_ble_faces__$2))
-}
-_ble_syntax_attr2iface.define CTX_ARGX     syntax_default
-_ble_syntax_attr2iface.define CTX_ARGX0    syntax_default
-_ble_syntax_attr2iface.define CTX_CMDX     syntax_default
-_ble_syntax_attr2iface.define CTX_CMDXF    syntax_default
-_ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
-_ble_syntax_attr2iface.define CTX_CMDXC    syntax_default
-_ble_syntax_attr2iface.define CTX_CMDXV    syntax_default
-_ble_syntax_attr2iface.define CTX_ARGI     syntax_default
-_ble_syntax_attr2iface.define CTX_CMDI     syntax_command
-_ble_syntax_attr2iface.define CTX_VRHS     syntax_default
-_ble_syntax_attr2iface.define CTX_QUOT     syntax_quoted
-_ble_syntax_attr2iface.define CTX_EXPR     syntax_expr
-_ble_syntax_attr2iface.define ATTR_ERR     syntax_error
-_ble_syntax_attr2iface.define ATTR_VAR     syntax_varname
-_ble_syntax_attr2iface.define ATTR_QDEL    syntax_quotation
-_ble_syntax_attr2iface.define ATTR_DEF     syntax_default
-_ble_syntax_attr2iface.define ATTR_DEL     syntax_delimiter
-_ble_syntax_attr2iface.define CTX_PARAM    syntax_param_expansion
-_ble_syntax_attr2iface.define CTX_PWORD    syntax_default
-_ble_syntax_attr2iface.define ATTR_HISTX   syntax_history_expansion
-_ble_syntax_attr2iface.define ATTR_FUNCDEF syntax_function_name
-_ble_syntax_attr2iface.define CTX_VALX     syntax_default
-_ble_syntax_attr2iface.define CTX_VALI     syntax_default
-_ble_syntax_attr2iface.define ATTR_COMMENT syntax_comment
+function ble-syntax/attr2g { ble-color/faces/initialize && ble-syntax/attr2g "$@"; }
 
-_ble_syntax_attr2iface.define ATTR_CMD_BOLD     command_builtin_dot
-_ble_syntax_attr2iface.define ATTR_CMD_BUILTIN  command_builtin
-_ble_syntax_attr2iface.define ATTR_CMD_ALIAS    command_alias
-_ble_syntax_attr2iface.define ATTR_CMD_FUNCTION command_function
-_ble_syntax_attr2iface.define ATTR_CMD_FILE     command_file
-_ble_syntax_attr2iface.define ATTR_CMD_KEYWORD  command_keyword
-_ble_syntax_attr2iface.define ATTR_CMD_JOBS     command_jobs
-_ble_syntax_attr2iface.define ATTR_CMD_DIR      command_directory
-_ble_syntax_attr2iface.define ATTR_FILE_DIR     filename_directory
-_ble_syntax_attr2iface.define ATTR_FILE_LINK    filename_link
-_ble_syntax_attr2iface.define ATTR_FILE_EXEC    filename_executable
-_ble_syntax_attr2iface.define ATTR_FILE_FILE    filename_other
+# 遅延初期化子
+function ble-syntax/faces-onload-hook {
+  function _ble_syntax_attr2iface.define {
+    ((_ble_syntax_attr2iface[$1]=_ble_faces__$2))
+  }
 
-function ble-syntax/attr2g {
-  local iface="${_ble_syntax_attr2iface[$1]:-_ble_faces__syntax_default}"
-  g="${_ble_faces[iface]}"
+  function ble-syntax/attr2g {
+    local iface="${_ble_syntax_attr2iface[$1]:-_ble_faces__syntax_default}"
+    g="${_ble_faces[iface]}"
+  }
+
+  ble-color-defface syntax_default           none
+  ble-color-defface syntax_command           red
+  ble-color-defface syntax_quoted            fg=green
+  ble-color-defface syntax_quotation         fg=green,bold
+  ble-color-defface syntax_expr              fg=navy
+  ble-color-defface syntax_error             bg=203,fg=231 # bg=224
+  ble-color-defface syntax_varname           fg=202
+  ble-color-defface syntax_delimiter         bold
+  ble-color-defface syntax_param_expansion   fg=purple
+  ble-color-defface syntax_history_expansion bg=94,fg=231
+  ble-color-defface syntax_function_name     fg=92,bold # fg=purple
+  ble-color-defface syntax_comment           fg=gray
+
+  ble-color-defface command_builtin_dot fg=red,bold
+  ble-color-defface command_builtin     fg=red
+  ble-color-defface command_alias       fg=teal
+  ble-color-defface command_function    fg=92 # fg=purple
+  ble-color-defface command_file        fg=green
+  ble-color-defface command_keyword     fg=blue
+  ble-color-defface command_jobs        fg=red
+  ble-color-defface command_directory   fg=navy,underline
+  ble-color-defface filename_directory  fg=navy,underline
+  ble-color-defface filename_link       fg=teal,underline
+  ble-color-defface filename_executable fg=green,underline
+  ble-color-defface filename_other      underline
+
+  _ble_syntax_attr2iface.define CTX_ARGX     syntax_default
+  _ble_syntax_attr2iface.define CTX_ARGX0    syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDX     syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDXF    syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDXC    syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDXV    syntax_default
+  _ble_syntax_attr2iface.define CTX_ARGI     syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDI     syntax_command
+  _ble_syntax_attr2iface.define CTX_VRHS     syntax_default
+  _ble_syntax_attr2iface.define CTX_QUOT     syntax_quoted
+  _ble_syntax_attr2iface.define CTX_EXPR     syntax_expr
+  _ble_syntax_attr2iface.define ATTR_ERR     syntax_error
+  _ble_syntax_attr2iface.define ATTR_VAR     syntax_varname
+  _ble_syntax_attr2iface.define ATTR_QDEL    syntax_quotation
+  _ble_syntax_attr2iface.define ATTR_DEF     syntax_default
+  _ble_syntax_attr2iface.define ATTR_DEL     syntax_delimiter
+  _ble_syntax_attr2iface.define CTX_PARAM    syntax_param_expansion
+  _ble_syntax_attr2iface.define CTX_PWORD    syntax_default
+  _ble_syntax_attr2iface.define ATTR_HISTX   syntax_history_expansion
+  _ble_syntax_attr2iface.define ATTR_FUNCDEF syntax_function_name
+  _ble_syntax_attr2iface.define CTX_VALX     syntax_default
+  _ble_syntax_attr2iface.define CTX_VALI     syntax_default
+  _ble_syntax_attr2iface.define ATTR_COMMENT syntax_comment
+
+  _ble_syntax_attr2iface.define ATTR_CMD_BOLD     command_builtin_dot
+  _ble_syntax_attr2iface.define ATTR_CMD_BUILTIN  command_builtin
+  _ble_syntax_attr2iface.define ATTR_CMD_ALIAS    command_alias
+  _ble_syntax_attr2iface.define ATTR_CMD_FUNCTION command_function
+  _ble_syntax_attr2iface.define ATTR_CMD_FILE     command_file
+  _ble_syntax_attr2iface.define ATTR_CMD_KEYWORD  command_keyword
+  _ble_syntax_attr2iface.define ATTR_CMD_JOBS     command_jobs
+  _ble_syntax_attr2iface.define ATTR_CMD_DIR      command_directory
+  _ble_syntax_attr2iface.define ATTR_FILE_DIR     filename_directory
+  _ble_syntax_attr2iface.define ATTR_FILE_LINK    filename_link
+  _ble_syntax_attr2iface.define ATTR_FILE_EXEC    filename_executable
+  _ble_syntax_attr2iface.define ATTR_FILE_FILE    filename_other
 }
+
+ble-color/faces/addhook-onload ble-syntax/faces-onload-hook
 
 function ble-syntax/highlight/cmdtype1 {
   type="$1"
@@ -2663,7 +2672,8 @@ function ble-highlight-layer:syntax/update-error-table {
   #_ble_highlight_layer_syntax3_table=()
 
   # set errors
-  if [[ ${_ble_syntax_stat[iN]} ]]; then
+  if ((iN>0)) && [[ ${_ble_syntax_stat[iN]} ]]; then
+    # iN==0 の時は実行しない。face 遅延初期化のため(最初は iN==0)。
     local g; ble-color-face2g syntax_error
 
     # 入れ子が閉じていないエラー

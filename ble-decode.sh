@@ -1373,9 +1373,7 @@ function .ble-decode-initialize-cmap {
   if [[ $dump -nt $init ]]; then
     source "$dump"
   else
-    echo 'ble.sh: There is no file "'"$dump"'".' 1>&2
-    echo '  This is the first time to run ble.sh with TERM='"$TERM." 1>&2
-    echo '  Now initializing cmap... ' 1>&2
+    echo 'ble.sh: generating "'"$dump"'"...' 1>&2
     source "$init"
     ble-bind -D | command sed '
       s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//

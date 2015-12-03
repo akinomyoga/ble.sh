@@ -373,32 +373,24 @@ function ble-term/flush {
 # **** vbell/abell ****
 
 function _ble_base_tmp.wipe {
-  local file pid mark rex_tmpfile='^.*/([0-9]+)\.[^/]+$'
-  mark=()
+  local file pid mark removed
+  mark=() removed=()
   for file in "$_ble_base_tmp"/[1-9]*.*; do
-    [[ -e $file && $file =~ $rex_tmpfile ]] || continue
-    pid="${BASH_REMATCH[1]}"
+    [[ -e $file ]] || continue
+    pid=${file##*/}; pid=${pid%%.*}
     [[ ${mark[pid]} ]] && continue
     mark[pid]=1
     if ! kill -0 "$pid" &>/dev/null; then
-      command rm -f "$_ble_base_tmp/$pid."*
+      removed=("${removed[@]}" "$_ble_base_tmp/$pid."*)
     fi
   done
+  ((${#removed[@]})) && command rm -f "${removed[@]}"
 }
 
+# initailization time = 9ms (for 70 files)
 _ble_base_tmp.wipe
 
 function .ble-term/visible-bell/initialize {
-  # # 過去の .time ファイルを削除
-  # local now= file
-  # for file in "$_ble_base_tmp"/*.visible-bell.time; do
-  #   if [[ -f $file ]]; then
-  #     [[ $now ]] || now="$(command date +%s)"
-  #     local ft="$(command date +%s -r "$file")"
-  #     ((${now::${#now}-2}-${ft::${#ft}-2}>36)) && /bin/rm "$file"
-  #   fi
-  # done
-
   _ble_term_visible_bell__ftime="$_ble_base_tmp/$$.visible-bell.time"
 
   local -a BUFF=()
