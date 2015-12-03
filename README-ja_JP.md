@@ -29,7 +29,7 @@ $ tar xJf ble-0.1.2.tar.xz
 $ source ble/ble.sh
 ```
 
-**最新の git repository のソースから生成して使うこともできます**
+**最新の git repository のソースから生成して使う**
 
 `ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
 以下のコマンドで生成できます:
