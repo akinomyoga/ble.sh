@@ -13,7 +13,7 @@
 
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
-##Usage
+##使い方
 **`ble.sh` をダウンロードして使う**
 
 `wget` を使う場合:
@@ -29,14 +29,14 @@ $ tar xJf ble-0.1.2.tar.xz
 $ source ble/ble.sh
 ```
 
-**git repository のソースから生成してもご利用頂けます**
+**最新の git repository のソースから生成して使うこともできます**
 
-`ble.sh` を生成する為には `gawk` (GNU awk) が必要になります。
+`ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
 以下のコマンドで生成できます:
 ```bash
 $ git clone https://github.com/akinomyoga/ble.sh.git
 $ cd ble.sh
-$ make
+$ gmake
 ```
 スクリプトファイル `ble.sh` がサブディレクトリ `ble.sh/out` 内に生成されます。
 `source` コマンドを用いて読み込めます:
@@ -120,9 +120,9 @@ bleopt edit_vbell=1 vbell_default_message=' BEL ' vbell_duration=3000
 bleopt edit_abell=
 ```
 
-**Highlight Colors**
+**着色の設定**
 
-構文に従った色付けで使用される、各文法要素の色と属性は `ble-color-setface` シェル関数で設定します。
+構文に従った着色で使用される、各文法要素の色と属性は `ble-color-setface` シェル関数で設定します。
 既定の設定は以下のコードに対応します:
 ```bash
 ble-color-setface region                   bg=60,fg=white
@@ -154,7 +154,7 @@ ble-color-setface filename_executable      fg=green,underline
 ble-color-setface filename_other           underline
 ```
 
-色コードはシェル関数 `ble-color-show` (`ble.sh` 内で定義) で確認する事ができます。
+色コードはシェル関数 `ble-color-show` (`ble.sh` 内で定義) で確認できます。
 ```bash
 $ ble-color-show
 ```
