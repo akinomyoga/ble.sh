@@ -324,6 +324,8 @@ tech
 
 2015-12-03
 
+  * また遅くなってきたので初期化の速度について再確認する?
+
   * bash-3 で C-d を捕獲する為のメッセージについて
 
     ignoreeof-messages.txt に入れてそれを grep -F で検索する様にした。
@@ -364,6 +366,31 @@ tech
         @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
         @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
         @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+
+      また出た。一旦 C-u した後に RET して貼付をしたら出た。2015-12-03
+      でもまた同じようにしても再現しない??
+
+      stackdump: X1 0 <= beg:66 <= end:96 <= iN:30, beg:66 <= end0:66 (shift=30 text=function () () { echo hello; })
+        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+        @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+        @ /home/murase/prog/ble/ble.sh:4353 (ble-highlight-layer/update)
+        @ /home/murase/prog/ble/ble.sh:4844 (.ble-line-text/update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+        @ /home/murase/prog/ble/ble.sh:1140 (.ble-decode-byte:bind/tail)
+        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+      stackdump: X2 0 <= 0 <= 66 <= 96 <= 30 <= 30
+        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+        @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+        @ /home/murase/prog/ble/ble.sh:4353 (ble-highlight-layer/update)
+        @ /home/murase/prog/ble/ble.sh:4844 (.ble-line-text/update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+        @ /home/murase/prog/ble/ble.sh:1140 (.ble-decode-byte:bind/tail)
+        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+
 
 2015-11-25
 
@@ -910,17 +937,18 @@ tech
   * ble-syntax.sh ToDo
 
     > 関数定義 function ...
-    - ${ ... } 内の文法チェック
+    > - Here string
+    - extglob
     - a=(arr) b=([x]=123 [y]=321) a+=
       aaa=(hoge), 他に aaa+=(hoge) というパターンもある。
       これは declare や local typset readonly 等を文法的に特別扱いしなければ対応できない
-    - case構文の中の文法
-    - ;; ;& ;;& の後に case のパターンを受ける
-    - Here document, Here string
-      Here document は次の行から始まるというのが厄介である。
-    - [[ 条件式の文法。より正確に
     - time -p
-    - extglob
+    - case構文の中の文法
+      - ;; ;& ;;& の後に case のパターンを受ける
+    - Here document
+      Here document は次の行から始まるというのが厄介である。
+    - ${ ... } 内の文法チェック
+    - [[ 条件式の文法。より正確に
 
 2013-06-10
 
@@ -1368,6 +1396,29 @@ tech
 -------------------------------------------------------------------------------
 
 2015-12-03
+
+  * ble-syntax/parse/nest-equals bug
+
+    + bug (2015-12-03) まただ
+
+      C-d で以下の様に書き換えを行おうとしたらなる。
+      $ function () () { echo hello; }
+      $ function () { echo hello; }
+
+      stackdump: invalid nest
+        @ /home/murase/prog/ble/ble.sh:1480 (ble-syntax/parse/nest-equals)
+        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+        @ /home/murase/prog/ble/ble.sh:2583 (ble-highlight-layer:syntax/update)
+        @ /home/murase/prog/ble/ble.sh:4292 (ble-highlight-layer/update)
+        @ /home/murase/prog/ble/ble.sh:4844 (.ble-line-text/update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+        @ /home/murase/prog/ble/ble.sh:1140 (.ble-decode-byte:bind/tail)
+        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+
+    これは今丁度直した所の直し方が甘かった所為で余計に変な事になっていただけだった。
+    すぐに直した。そんなに問題はない。
 
   * 構文解析部分更新の bug
 

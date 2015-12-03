@@ -548,9 +548,9 @@ function ble-syntax/parse/nest-equals {
     local -a onest
     onest=($_onest)
 #%if !release
-    ((0<onest[3]&&onest[3]<=parent_inest)) || { ble-stackdump 'invalid nest' && return 0; }
+    ((onest[3]<=parent_inest)) || { ble-stackdump "invalid nest onest[3]=${onest[3]} parent_inest=$parent_inest text=$text" && return 0; }
 #%end
-    ((parent_inest-=onest[3]))
+    ((onest[3]<0?(parent_inest=onest[3]):(parent_inest-=onest[3])))
   done
 }
 
@@ -612,6 +612,7 @@ CTX_PARAM=14 # (パラメータ展開) context,attr: inside of parameter expansi
 CTX_PWORD=15 # (パラメータ展開) context,attr: inside of parameter expansion
 CTX_RDRF=19 # (リダイレクト) リダイレクト対象のファイル。
 CTX_RDRD=20 # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
+CTX_RDRS=27 # (リダイレクト) ヒアストリング
 CTX_VALX=23 # (値リスト) 次に値が来る
 CTX_VALI=24 # (値リスト) 値の中
 ATTR_COMMENT=25 # コメント
@@ -1288,7 +1289,7 @@ function ble-syntax:bash/ctx-command {
   local rex
 
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
-  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&))['"$_BLE_SYNTAX_CSPACE"']*'
+  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&|<<<))['"$_BLE_SYNTAX_CSPACE"']*'
   if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||
@@ -1309,6 +1310,8 @@ function ble-syntax:bash/ctx-command {
       local rematch1="${BASH_REMATCH[1]}"
       if [[ $rematch1 == *'&' ]]; then
         ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch1"
+      elif [[ $rematch1 == '<<<' ]]; then
+        ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch1"
       else
         ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch1"
       fi
@@ -1563,8 +1566,10 @@ function ble-syntax:bash/ctx-values {
 
 _BLE_SYNTAX_FCTX[CTX_RDRF]=ble-syntax:bash/ctx-redirect
 _BLE_SYNTAX_FCTX[CTX_RDRD]=ble-syntax:bash/ctx-redirect
+_BLE_SYNTAX_FCTX[CTX_RDRS]=ble-syntax:bash/ctx-redirect
 _BLE_SYNTAX_FEND[CTX_RDRF]=ble-syntax:bash/ctx-redirect/check-word-end
 _BLE_SYNTAX_FEND[CTX_RDRD]=ble-syntax:bash/ctx-redirect/check-word-end
+_BLE_SYNTAX_FEND[CTX_RDRS]=ble-syntax:bash/ctx-redirect/check-word-end
 function ble-syntax:bash/ctx-redirect/check-word-begin {
   if ((wbegin<0)); then
     # ※ここで ctx==CTX_RDRF か ctx==CTX_RDRD かの情報が使われるので
@@ -2077,9 +2082,9 @@ function ble-syntax/completion-context/check-prefix {
       if [[ ${text:i:index-1} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$i"
       fi
-    elif ((ctx==CTX_ARGX||ctx==CTX_VALX)); then
-      local source=argument
-      ((ctx==CTX_VALX)) && source=file
+    elif ((ctx==CTX_ARGX||ctx==CTX_VALX||ctx==CTX_RDRS)); then
+      local source=file
+      ((ctx==CTX_ARGX)) && source=argument
 
       local sub="${text:i:index-i}"
       if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
@@ -2521,7 +2526,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     local type=
     if ((wtype==CTX_CMDI)); then
       ble-syntax/highlight/cmdtype "$value" "$wtxt"
-    elif ((wtype==CTX_ARGI||wtype==CTX_RDRF)); then
+    elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS)); then
       ble-syntax/highlight/filetype "$value" "$wtxt"
 
       # エラー: ディレクトリにリダイレクトはできない
@@ -2809,6 +2814,7 @@ attrg[CTX_CMDI]=$'\e[;91m'
 attrg[CTX_VRHS]=$'\e[m'
 attrg[CTX_RDRD]=$'\e[4m'
 attrg[CTX_RDRF]=$'\e[4m'
+attrg[CTX_RDRS]=$'\e[4m'
 attrg[CTX_QUOT]=$'\e[;32m'
 attrg[CTX_EXPR]=$'\e[;34m'
 attrg[ATTR_ERR]=$'\e[;101;97m'

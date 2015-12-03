@@ -300,11 +300,14 @@ function ble-complete/source/argument/.compgen-helper-func {
 }
 
 ## 関数 ble-complete/source/argument/.compgen
+## @var[out] comp_opts
 ## @var[in] COMPV
 ## @var[in] index _ble_syntax_*
 ## @var[in] 他色々
 ## @exit 入力がある時に 27 を返します。
 function ble-complete/source/argument/.compgen {
+  shopt -q progcomp || return 1
+
   local comp_words comp_line comp_point comp_cword
   local comp_prog= comp_func=
   ble-syntax:bash/extract-command "$index" || return 1
