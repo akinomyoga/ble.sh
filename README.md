@@ -80,10 +80,14 @@ fi
 
 **CJK Width**
 
-The option `char_width_mode` controls the width of the unicode characters with `East_Asian_Width=A` (Ambiguous characters). Currently three values `emacs`, `west`, and `east` are supported. With the value `emacs`, the default width in emacs is used. With `west` all the ambiguous characters have width 1 (Hankaku). With `east` all the ambiguous characters have width 2 (Zenkaku). The default value is `emacs`. Appropriate value should be chosen in accordance with your terminal behavior. For example, the value can be changed to `east` as:
+The option `char_width_mode` controls the width of the unicode characters with `East_Asian_Width=A` (Ambiguous characters).
+Currently three values `emacs`, `west`, and `east` are supported. With the value `emacs`, the default width in emacs is used.
+With `west` all the ambiguous characters have width 1 (Hankaku). With `east` all the ambiguous characters have width 2 (Zenkaku).
+The default value is `east`. Appropriate value should be chosen in accordance with your terminal behavior.
+For example, the value can be changed to `west` as:
 
 ```
-bleopt char_width_mode='east'
+bleopt char_width_mode='west'
 ```
 
 **Input Encoding**

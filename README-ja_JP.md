@@ -2,7 +2,7 @@
 `ble.sh` (*Bash Line Editor*) は Bash スクリプトで書かれた行エディタです。
 - GNU Bash 標準の行エディタ GNU Readline を置き換える形で動作します
 - `source ble.sh` するだけ
-- コマンドラインを (`fish` シェルみたいな) `bash` 構文に従って色付け
+- コマンドラインを (`fish` シェルみたいに) `bash` 構文に従って色付け
 - 文法構造に従った補完
 
 このスクリプトは `bash-3.0` 以降で利用できます。
@@ -79,16 +79,16 @@ fi
 
 **曖昧文字幅**
 
-設定 `char_width_mode` を用いて、曖昧文字幅を持つ文字 (Unicode プロパティ `East_Asian_Width` が `A` (Ambiguous) の文字) の幅を制御できます。
+設定 `char_width_mode` を用いて、曖昧文字幅を持つ文字 (Unicode 参考特定 `East_Asian_Width` が `A` (Ambiguous) の文字) の幅を制御できます。
 現在は 3 つの選択肢 `emacs`, `west`, `east` が用意されています。
 設定値 `emacs` を指定した場合、GNU Emacs における既定の文字幅と同じ物を使います。
 設定値 `west` を指定した場合、全ての曖昧文字幅を 1 (半角) と解釈します。
 設定値 `east` を指定した場合、全ての曖昧文字幅を 2 (全角) と解釈します。
-既定値は `emacs` です。この設定項目は、ご利用の端末の振る舞いに応じて適切に設定する必要があります。
-例えば `east` に設定する場合は以下の様にします:
+既定値は `east` です。この設定項目は、ご利用の端末の振る舞いに応じて適切に設定する必要があります。
+例えば `west` に設定する場合は以下の様にします:
 
 ```
-bleopt char_width_mode='east'
+bleopt char_width_mode='west'
 ```
 
 **文字コード**

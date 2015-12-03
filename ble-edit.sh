@@ -31,7 +31,7 @@
 ## bleopt_char_width_mode=emacs
 ##   emacs で用いられている既定の文字幅の設定です
 ## 定義 .ble-text.c2w+$bleopt_char_width_mode
-: ${bleopt_char_width_mode:=emacs}
+: ${bleopt_char_width_mode:=east}
 
 ## オプション bleopt_edit_vbell
 ##   編集時の visible bell の有効・無効を設定します。
