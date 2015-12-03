@@ -1,8 +1,9 @@
 # ble.sh
 *Bash Line Editor* written in Bash Scripts.
-- Replaces GNU Readline, the default line editor of GNU Bash.
-- Syntax highlighting of command lines (as in `fish` shell)
-- Syntax-aware completion
+- Replacing GNU Readline, the default line editor of GNU Bash.
+- Easy to use: just type `source ble.sh`
+- Providing syntax highlighting of command lines (as in `fish` shell)
+- Providing syntax-aware completion
 
 This script supports `bash` with the version 3.0 or later.
 
@@ -109,7 +110,7 @@ bleopt edit_abell=
 
 **Highlight Colors**
 
-The colors and attributes used in the syntax highlighting are controled by `ble-color-setface` command. The following code reproduces the default configuration:
+The colors and attributes used in the syntax highlighting are controled by `ble-color-setface` function. The following code reproduces the default configuration:
 ```bash
 ble-color-setface region                   bg=60,fg=white
 ble-color-setface disabled                 fg=gray
@@ -140,7 +141,7 @@ ble-color-setface filename_executable      fg=green,underline
 ble-color-setface filename_other           underline
 ```
 
-The color codes can be checked in output of the function `ble-color-show` (defined in ble.sh):
+The color codes can be checked in output of the function `ble-color-show` (defined in `ble.sh`):
 ```bash
 $ ble-color-show
 ```
