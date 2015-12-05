@@ -1025,11 +1025,12 @@ function .ble-decode-key/invoke-command {
 # **** ble-bind ****
 
 function ble-bind/option:help {
-  cat <<EOF
+  command cat <<EOF
+ble-bind --help
 ble-bind -k charspecs [keyspec]
 ble-bind [-m kmapname] [-scx@] -f keyspecs [command]
-ble-bind -D
-ble-bind -d
+ble-bind [-DdL]
+ble-bind --list-functions
 
 EOF
 }
@@ -1096,6 +1097,10 @@ function ble-bind/option:csi {
   fi
 }
 
+function ble-bind/option:list-functions {
+  declare -f | command sed -n -r 's/^ble-edit\+([[:alpha:]][^[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
+}
+
 function ble-bind {
   local kmap="$bleopt_default_keymap" fX= fC= ret
 
@@ -1110,6 +1115,8 @@ function ble-bind {
         ble-bind/check-argunemnt --csi 2 "$#" || return
         ble-bind/option:csi "$1" "$2"
         shift 2 ;;
+      (list-functions)
+        ble-bind/option:list-functions ;;
       (*)
         echo "ble-bind: unrecognized long option $arg" >&2
         return 2 ;;
@@ -1188,6 +1195,8 @@ function ble-bind {
           fi
           fX= fC=
           shift 2 ;;
+        (L)
+          ble-bind/option:list-functions ;;
         (*)
           echo "ble-bind: unrecognized short option \`-$c'." >&2
           return 2 ;;

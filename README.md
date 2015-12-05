@@ -16,22 +16,7 @@ This script is available under the **BSD License** (3-clause BSD license).
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
 ##Usage
-**Download `ble.sh`**
-
-With `wget`:
-```bash
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.2/ble-0.1.2.tar.xz
-$ tar xJf ble-0.1.2.tar.xz
-$ source ble/ble.sh
-```
-With `curl`:
-```bash
-$ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.2/ble-0.1.2.tar.xz > ble-0.1.2.tar.xz
-$ tar xJf ble-0.1.2.tar.xz
-$ source ble/ble.sh
-```
-
-**Or, generate `ble.sh` from source**
+**Generate `ble.sh` from source**
 
 To generate `ble.sh`, `gawk` (GNU awk) is required.
 The file `ble.sh` can be generated using the following commands:
@@ -43,6 +28,21 @@ $ make
 A script file `ble.sh` will be generated in the directory `ble.sh/out`. Then, load `ble.sh` using the `source` command:
 ```bash
 $ source out/ble.sh
+```
+
+**Or, download `ble.sh`**
+
+With `wget`:
+```bash
+$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz
+$ tar xJf ble-0.1.3.tar.xz
+$ source ble/ble.sh
+```
+With `curl`:
+```bash
+$ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz > ble-0.1.3.tar.xz
+$ tar xJf ble-0.1.3.tar.xz
+$ source ble/ble.sh
 ```
 
 **Setup `.bashrc`**
@@ -150,4 +150,21 @@ ble-color-setface filename_other           underline
 The color codes can be checked in output of the function `ble-color-show` (defined in `ble.sh`):
 ```bash
 $ ble-color-show
+```
+
+**Key Bindings**
+Key bindings can be controlled with the shell function, `ble-bind`.
+For example, with the following setting, "Hello, world!" will be inserted on typing `C-x h`
+```bash
+ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
+```
+
+The existing key bindings can be checked with the following command:
+```
+ble-bind -d
+```
+
+The list of functions can be checked with the following command:
+```bash
+ble-bind -L
 ```

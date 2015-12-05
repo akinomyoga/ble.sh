@@ -1861,8 +1861,17 @@ function ble-syntax/parse {
   local -r end0="${4:-$end}"
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 
-  # 解析予定範囲の更新
   local -ir iN="${#text}" shift=end-end0
+#%if !release
+  if ! ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)); then
+    ble-stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
+    ((beg=0,end=iN))
+  fi
+#%else
+  ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)) || ((beg=0,end=iN))
+#%end
+
+  # 解析予定範囲の更新
   local i1 i2 j2 flagSeekStat=0
   ((i1=_ble_syntax_dbeg,i1>=end0&&(i1+=shift),
     i2=_ble_syntax_dend,i2>=end0&&(i2+=shift),
@@ -1874,8 +1883,8 @@ function ble-syntax/parse {
     # beg より前の最後の stat の位置まで戻る
     while ((i1>0)) && ! [[ ${_ble_syntax_stat[--i1]} ]]; do :;done
   fi
+
 #%if !release
-  ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)) || ble-stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
   ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
 #%end
 

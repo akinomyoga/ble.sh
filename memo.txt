@@ -322,6 +322,25 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+  Done
+
+  * ble-bind -L, ble-bind --list-edit-functions
+    declare -f | sed -n -r 's/^ble-edit\+([[:alpha:]][^[:space:]();&|]+) \(\)[[:space:]]*$/\1/p'
+
+2015-12-03
+
+  * undo, redo
+
+  * v0.1-master: release=1 で更新、release 登録する
+
+  * download/git clone 順序入れ替え
+
+  * 色コード ble-color-gspec-list
+
+  * cat 置き換え
+
+  * ble-bind の説明を追加
+
 2015-12-03
 
   * bash-3 で C-d を捕獲する為のメッセージについて
@@ -938,12 +957,14 @@ tech
     > 関数定義 function ...
     > Here string
     - extglob
+    - for (()) { ...; }
+    - a[算術式] の終了条件 (() pairs ではなくて [] pairs を数える)
     - a=(arr) b=([x]=123 [y]=321) a+=
       aaa=(hoge), 他に aaa+=(hoge) というパターンもある。
       これは declare や local typeset readonly 等を文法的に特別扱いしなければ対応できない
-    - time -p
     - case構文の中の文法
       - ;; ;& ;;& の後に case のパターンを受ける
+    - time -p
     - Here document
       Here document は次の行から始まるというのが厄介である。
     - ${ ... } 内の文法チェック

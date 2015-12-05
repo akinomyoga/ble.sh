@@ -15,6 +15,15 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
+function ble/util/cat {
+  local line
+  if [[ $1 && $1 != - ]]; then
+    IFS= read -r -d '' line < "$1" && echo -n "$line"
+  else
+    IFS= read -r -d '' line && echo -n "$line"
+ fi
+}
+
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
 # function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
 function ble/util/assign {

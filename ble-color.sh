@@ -818,6 +818,7 @@ function ble-color/basic/faces-onload-hook {
   ble-color-defface disabled       fg=gray
   ble-color-defface overwrite_mode fg=black,bg=51
 }
+ble-color/faces/addhook-onload ble-color/basic/faces-onload-hook
 
 _ble_highlight_layer_region_buff=()
 _ble_highlight_layer_region_omin=-1

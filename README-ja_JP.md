@@ -14,22 +14,7 @@
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
 ##使い方
-**`ble.sh` をダウンロードして使う**
-
-`wget` を使う場合:
-```bash
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.2/ble-0.1.2.tar.xz
-$ tar xJf ble-0.1.2.tar.xz
-$ source ble/ble.sh
-```
-`curl` を使う場合:
-```bash
-$ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.2/ble-0.1.2.tar.xz > ble-0.1.2.tar.xz
-$ tar xJf ble-0.1.2.tar.xz
-$ source ble/ble.sh
-```
-
-**最新の git repository のソースから生成して使う**
+**最新の git repository のソースから生成して使う場合**
 
 `ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
 以下のコマンドで生成できます:
@@ -42,6 +27,21 @@ $ gmake
 `source` コマンドを用いて読み込めます:
 ```bash
 $ source out/ble.sh
+```
+
+**`ble.sh` をダウンロードして使う場合**
+
+`wget` を使う場合:
+```bash
+$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz
+$ tar xJf ble-0.1.3.tar.xz
+$ source ble/ble.sh
+```
+`curl` を使う場合:
+```bash
+$ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz > ble-0.1.3.tar.xz
+$ tar xJf ble-0.1.3.tar.xz
+$ source ble/ble.sh
 ```
 
 **`.bashrc` の設定**
@@ -84,7 +84,7 @@ fi
 設定値 `emacs` を指定した場合、GNU Emacs における既定の文字幅と同じ物を使います。
 設定値 `west` を指定した場合、全ての曖昧文字幅を 1 (半角) と解釈します。
 設定値 `east` を指定した場合、全ての曖昧文字幅を 2 (全角) と解釈します。
-既定値は `east` です。この設定項目は、ご利用の端末の振る舞いに応じて適切に設定する必要があります。
+既定値は `east` です。この設定項目は、利用している端末の振る舞いに応じて適切に設定する必要があります。
 例えば `west` に設定する場合は以下の様にします:
 
 ```
@@ -157,4 +157,20 @@ ble-color-setface filename_other           underline
 色コードはシェル関数 `ble-color-show` (`ble.sh` 内で定義) で確認できます。
 ```bash
 $ ble-color-show
+```
+
+**キーバインディング**
+キーバインディングはシェル関数 `ble-bind` を使って変更できます。
+```bash
+ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
+```
+
+既存のキーバインディングは以下のコマンドで確認できます。
+```
+ble-bind -d
+```
+
+以下のコマンドで関数一覧を確認できます。
+```bash
+ble-bind -L
 ```
