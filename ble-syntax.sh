@@ -1872,6 +1872,9 @@ function ble-syntax/parse {
 #%if !release
   ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)) || ble-stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
   ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
+#%else
+  ((0<beg&&(beg=0),iN<end?(end=iN)))
+  ((iN<i2?(i2=iN)))
 #%end
 
   ble-syntax/vanishing-word/register _ble_syntax_tree 0 i1 j2 0 i1

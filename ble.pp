@@ -1,6 +1,6 @@
 #!/bin/bash
 #%$> out/ble.sh
-#%[release=0]
+#%[release=1]
 #%[use_gawk=0]
 #%m inc (
 #%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
