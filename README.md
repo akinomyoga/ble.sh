@@ -18,8 +18,9 @@ This script is available under the **BSD License** (3-clause BSD license).
 ##Usage
 **Generate `ble.sh` from source**
 
-To generate `ble.sh`, `gawk` (GNU awk) is required.
-The file `ble.sh` can be generated using the following commands:
+To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
+The file `ble.sh` can be generated using the below commands.
+If you have GNU make installed on `gmake`, please use `gmake` instead of `make`.
 ```bash
 $ git clone https://github.com/akinomyoga/ble.sh.git
 $ cd ble.sh

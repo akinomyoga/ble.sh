@@ -17,11 +17,12 @@
 **最新の git repository のソースから生成して使う場合**
 
 `ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
-以下のコマンドで生成できます:
+以下のコマンドで生成できます。
+GNU make が `gmake` という名前でインストールされている場合は、`make` の代わりに `gmake` として下さい。
 ```bash
 $ git clone https://github.com/akinomyoga/ble.sh.git
 $ cd ble.sh
-$ gmake
+$ make
 ```
 スクリプトファイル `ble.sh` がサブディレクトリ `ble.sh/out` 内に生成されます。
 `source` コマンドを用いて読み込めます:

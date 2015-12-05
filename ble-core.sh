@@ -15,15 +15,19 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
+## 関数 ble/util/cat
+##   cat の代替。但し、ファイル内に \0 が含まれる場合は駄目。
 function ble/util/cat {
-  local line
+  local content=
   if [[ $1 && $1 != - ]]; then
-    IFS= read -r -d '' line < "$1" && echo -n "$line"
+    IFS= read -r -d '' content < "$1"
   else
-    IFS= read -r -d '' line && echo -n "$line"
- fi
+    IFS= read -r -d '' content
+  fi
+  echo -n "$content"
 }
 
+## 関数 ble/util/assign
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
 # function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
 function ble/util/assign {

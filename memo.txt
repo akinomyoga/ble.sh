@@ -322,18 +322,9 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
-  Done
-
-  * ble-bind -L, ble-bind --list-edit-functions
-    declare -f | sed -n -r 's/^ble-edit\+([[:alpha:]][^[:space:]();&|]+) \(\)[[:space:]]*$/\1/p'
-
 2015-12-03
 
   * undo, redo
-
-  * v0.1-master: release=1 で更新、release 登録する
-
-  * download/git clone 順序入れ替え
 
   * 色コード ble-color-gspec-list
 
@@ -349,8 +340,6 @@ tech
     しかしながら ignoreeof-messages.txt の中身を読み込んでしまった方が速いかもしれない。
 
 2015-12-01
-
-  * 日本語 README.md
 
   * vi bind
 
@@ -408,6 +397,7 @@ tech
         @ /home/murase/prog/ble/ble.sh:1140 (.ble-decode-byte:bind/tail)
         @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
 
+    見た感じ dirty-range の更新に失敗している様である。
 
 2015-11-25
 
@@ -1414,6 +1404,17 @@ tech
 *******************************************************************************
     実装ログ
 -------------------------------------------------------------------------------
+
+2015-12-05
+
+  * ble-bind -L, ble-bind --list-edit-functions
+    declare -f | sed -n -r 's/^ble-edit\+([[:alpha:]][^[:space:]();&|]+) \(\)[[:space:]]*$/\1/p'
+
+  * v0.1-master: release=1 で更新、release 登録する
+
+  * download/git clone 順序入れ替え
+
+  * 日本語 README.md
 
 2015-12-03
 

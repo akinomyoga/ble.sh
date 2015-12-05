@@ -1025,7 +1025,7 @@ function .ble-decode-key/invoke-command {
 # **** ble-bind ****
 
 function ble-bind/option:help {
-  command cat <<EOF
+  ble/util/cat <<EOF
 ble-bind --help
 ble-bind -k charspecs [keyspec]
 ble-bind [-m kmapname] [-scx@] -f keyspecs [command]
