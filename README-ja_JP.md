@@ -160,7 +160,9 @@ $ ble-color-show
 ```
 
 **キーバインディング**
+
 キーバインディングはシェル関数 `ble-bind` を使って変更できます。
+例えば `C-x h` を入力した時に "Hello, world!" と挿入させたければ以下のようにします。
 ```bash
 ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
@@ -170,7 +172,7 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ble-bind -d
 ```
 
-以下のコマンドで関数一覧を確認できます。
+以下のコマンドで編集に使える関数一覧を確認できます。
 ```bash
 ble-bind -L
 ```
