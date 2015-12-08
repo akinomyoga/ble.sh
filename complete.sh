@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# ble-autoload "$_ble_base/complete.sh" ble-edit+complete
+# ble-autoload "$_ble_base/complete.sh" ble/widget/complete
 #
 
 #==============================================================================
@@ -413,7 +413,7 @@ function ble-complete/source/argument {
 
 #------------------------------------------------------------------------------
 
-function ble-edit+complete {
+function ble/widget/complete {
   local text="$_ble_edit_str" index="$_ble_edit_ind"
   _ble_edit_str.update-syntax
   local context
@@ -553,5 +553,5 @@ function ble-edit+complete {
   fi
 
   .ble-edit.delete-range "$comp1" "$index"
-  ble-edit+insert-string "$common"
+  ble/widget/insert-string "$common"
 }

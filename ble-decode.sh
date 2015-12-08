@@ -268,24 +268,34 @@ function ble-decode-unkbd {
 
 # **** ble-decode-byte ****
 
-# function ble-decode-byte {
-#   while [ $# -gt 0 ]; do
-#     "ble-decode-byte+$bleopt_input_encoding" "$1"
-#     shift
-#   done
+# 関数 ble-decode-byte:bind/PROLOGUE
+# 関数 ble-decode-byte:bind/EPILOGUE
+#   to be overwritten in ble-edit.sh
+function ble-decode-byte:bind/PROLOGUE { :; }
+function ble-decode-byte:bind/EPILOGUE { :; }
 
-#   .ble-edit/exec:exec
-# }
-
-# function ble-decode-char {
+# function ble-decode-char:bind {
+#   ble-decode-byte:bind/PROLOGUE
 #   .ble-decode-char "$1"
-#   .ble-edit/exec:exec
+#   ble-decode-byte:bind/EPILOGUE
 # }
 
-# function ble-decode-key {
+# function ble-decode-key:bind {
+#   ble-decode-byte:bind/PROLOGUE
 #   .ble-decode-key "$1"
-#   .ble-edit/exec:exec
+#   ble-decode-byte:bind/EPILOGUE
 # }
+
+function ble-decode-byte:bind {
+  ble-decode-byte:bind/PROLOGUE
+
+  while (($#)); do
+    "ble-decode-byte+$bleopt_input_encoding" "$1"
+    shift
+  done
+
+  ble-decode-byte:bind/EPILOGUE
+}
 
 ## 関数 .ble-decode-byte bytes...
 ##   バイト値を整数で受け取って、現在の文字符号化方式に従ってデコードをします。
@@ -811,12 +821,14 @@ function .ble-decode-key.dump {
     if [[ ${ent:2} ]]; then
       local cmd="${ent:2}"
       case "$cmd" in
-      # ble-edit+insert-string *)
-      #   echo "ble-bind -sf '${knames[*]}' '${cmd#ble-edit+insert-string }'" ;;
-      (ble-edit+*)
-        echo "ble-bind$kmapopt -f '${knames[*]}' '${cmd#ble-edit+}'" ;;
-      ('.ble-edit.bind.command '*)
-        echo "ble-bind$kmapopt -cf '${knames[*]}' '${cmd#.ble-edit.bind.command }'" ;;
+      # ('ble/widget/insert-string '*)
+      #   echo "ble-bind -sf '${knames[*]}' '${cmd#ble/widget/insert-string }'" ;;
+      ('ble/widget/.shell-command '*)
+        echo "ble-bind$kmapopt -cf '${knames[*]}' '${cmd#ble/widget/.shell-command }'" ;;
+      ('ble/widget/.edit-command '*)
+        echo "ble-bind$kmapopt -xf '${knames[*]}' '${cmd#ble/widget/.edit-command }'" ;;
+      ('ble/widget/'*)
+        echo "ble-bind$kmapopt -f '${knames[*]}' '${cmd#ble/widget/}'" ;;
       (*)
         echo "ble-bind$kmapopt -xf '${knames[*]}' '${cmd}'" ;;
       esac
@@ -1098,7 +1110,7 @@ function ble-bind/option:csi {
 }
 
 function ble-bind/option:list-functions {
-  declare -f | command sed -n -r 's/^ble-edit\+([[:alpha:]][^[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
+  declare -f | command sed -n -r 's/^ble\/widget\/([[:alpha:]][^[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
 }
 
 function ble-bind {
@@ -1167,23 +1179,23 @@ function ble-bind {
 
             # コマンドの種類
             if [[ ! "$fX$fC" ]]; then
-              # ble-edit+ 関数
-              command="ble-edit+$command"
+              # ble/widget/ 関数
+              command="ble/widget/$command"
 
               # check if is function
               local -a a
               a=($command)
               if ! ble/util/isfunction "${a[0]}"; then
-                echo "unknown ble edit function \`${a[0]#'ble-edit+'}'" 1>&2
+                echo "unknown ble edit function \`${a[0]#'ble/widget/'}'" 1>&2
                 return 1
               fi
             else
               case "$fX$fC" in
               (x)
                 # 編集用の関数
-                command="ble-edit/bind/execute-edit-command $command" ;;
+                command="ble/widget/.edit-command $command" ;;
               (c) # コマンド実行
-                command=".ble-edit.bind.command $command" ;;
+                command="ble/widget/.shell-command $command" ;;
               (*)
                 echo "error: combination of -x and -c flags." 1>&2 ;;
               esac
@@ -1270,10 +1282,10 @@ trap .ble-stty.exit-trap EXIT
 
 # **** ESC ESC ****                                           @decode.bind.esc2
 
-## 関数 ble-edit+.ble-decode-byte 27 27
+## 関数 ble/widget/.ble-decode-byte 27 27
 ##   ESC ESC を直接受信できないので
 ##   '' → '[27^[27^' → '__esc__ __esc__' と変換して受信する。
-function ble-edit+.ble-decode-char {
+function ble/widget/.ble-decode-char {
   while (($#)); do
     .ble-decode-char "$1"
     shift

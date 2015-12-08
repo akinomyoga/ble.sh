@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 2015-12-09 keymap cache should be updated due to the refactoring.
+
 #
 # $_ble_base/cache/ble-decode-keymap.emacs
 #

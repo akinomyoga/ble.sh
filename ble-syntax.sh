@@ -226,7 +226,7 @@ function ble-syntax/tree-enumerate {
   ble-syntax/tree-enumerate/.impl "$@"
 }
 
-## @fn ble-syntax/tree-enumerate-in-range beg end proc
+## 関数 ble-syntax/tree-enumerate-in-range beg end proc
 ##   入れ子構造に従わず或る範囲内に登録されている節を列挙します。
 ## @param[in] beg,end
 ## @param[in] proc 以下の変数を使用する関数を指定します。
@@ -450,7 +450,7 @@ function ble-syntax/parse/tree-append {
 function ble-syntax/parse/word-push {
   wtype="$1" wbegin="$2" tprev="$tchild" tchild=-1
 }
-## @fn ble-syntax/parse/word-pop
+## 関数 ble-syntax/parse/word-pop
 ## 仮定: 1つ上の level は nest-push による level か top level のどちらかである。
 ##   この場合に限って ble-syntax/parse/nest-reset-tprev を用いて、tprev
 ##   を適切な値に復元することができる。
@@ -1826,7 +1826,7 @@ function ble-syntax/parse/shift {
 
 _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 
-## @fn ble-syntax/parse text beg end
+## 関数 ble-syntax/parse text beg end
 ##
 ## @param[in]     text
 ##   解析対象の文字列を指定する。

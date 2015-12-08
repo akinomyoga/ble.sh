@@ -2,7 +2,7 @@
 ([日本語はこっち](README-ja_JP.md))
 
 *Bash Line Editor* written in Bash Scripts.
-- Replacing GNU Readline, the default line editor of GNU Bash.
+- Replacing GNU Readline, the default command line editor of GNU Bash.
 - Easy to use: just type `source ble.sh`
 - Providing syntax highlighting of command lines (as in `fish` shell)
 - Providing syntax-aware completion
