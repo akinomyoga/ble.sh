@@ -149,8 +149,8 @@ function ble-decode-keymap:emacs/generate {
   ble-decode-keymap:emacs/define
 
   : > "$cache"
-  .ble-decode/keymap/dump emacs   >> "$cache"
-  .ble-decode/keymap/dump isearch >> "$cache"
+  ble-decode/keymap/dump emacs   >> "$cache"
+  ble-decode/keymap/dump isearch >> "$cache"
 
   echo "ble.sh: updating cache/keymap.emacs... done" >&2
 }

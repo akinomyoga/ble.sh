@@ -77,7 +77,7 @@ function ble-decode/generate-binder {
 
   local i
   for ((i=0;i<256;i++)); do
-    local ret; .ble-decode.c2dqs "$i"
+    local ret; ble-decode-bind/c2dqs "$i"
 
     # *
     if ((i==0)); then

@@ -237,7 +237,7 @@ function ble-complete/source/argument/.compgen-helper-vars {
   COMP_POINT="$comp_point"
   COMP_CWORD="$comp_cword"
   COMP_TYPE=9
-  COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in .ble-decode-key/invoke-command
+  COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode-key/.invoke-command
 }
 function ble-complete/source/argument/.compgen-helper-prog {
   if [[ $comp_prog ]]; then

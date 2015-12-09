@@ -2074,7 +2074,7 @@ function ble/widget/clear-screen {
   _ble_line_x=0 _ble_line_y=0
   _ble_line_cur=(0 0 32 0)
   .ble-edit-draw.set-dirty -1
-  .ble-term.visible-bell.cancel-erasure
+  ble-term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
   ble/widget/.shell-command 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
@@ -2253,8 +2253,8 @@ function ble/widget/copy-region-or {
 # **** bell ****                                                     @edit.bell
 
 function .ble-edit.bell {
-  [[ $bleopt_edit_vbell ]] && .ble-term.visible-bell "$1"
-  [[ $bleopt_edit_abell ]] && .ble-term.audible-bell
+  [[ $bleopt_edit_vbell ]] && ble-term/visible-bell "$1"
+  [[ $bleopt_edit_abell ]] && ble-term/audible-bell
 }
 function ble/widget/bell {
   .ble-edit.bell
@@ -2410,7 +2410,7 @@ function ble/widget/delete-forward-char-or-exit {
 
   #_ble_edit_detach_flag=exit
 
-  #.ble-term.visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
+  #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
   exit
 }
@@ -2779,7 +2779,7 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
 }
 
 function ble-edit/exec:exec/.eval-prologue {
-  .ble-stty.leave
+  ble-stty/leave
 
   set -H
 
@@ -2796,7 +2796,7 @@ function ble-edit/exec:exec/.eval {
 function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
 
-  .ble-stty.enter
+  ble-stty/enter
   _ble_edit_PS1="$PS1"
 
   ble-edit/exec/.adjust-eol
@@ -3006,7 +3006,7 @@ function ble-edit/exec:gexec/.eval-prologue {
   PS1="$_ble_edit_PS1"
   unset HISTCMD; .ble-edit/history/getcount -v HISTCMD
   _ble_edit_exec_INT=0
-  .ble-stty.leave
+  ble-stty/leave
   ble-edit/exec/.setexit
 }
 function ble-edit/exec:gexec/.eval-epilogue {
@@ -3022,7 +3022,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
 
   trap - DEBUG # DEBUG 削除が何故か効かない
 
-  .ble-stty.enter
+  ble-stty/enter
   _ble_edit_PS1="$PS1"
   PS1=
   ble-edit/exec/.adjust-eol
@@ -3687,7 +3687,7 @@ function ble/widget/isearch/history-self-insert {
   ble/widget/isearch/next-history "$_ble_edit_isearch_str$ret" 1
 }
 function ble/widget/isearch/exit {
-  .ble-decode/keymap/pop
+  ble-decode/keymap/pop
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
   _ble_edit_isearch_str=
@@ -3705,7 +3705,7 @@ function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit
 
   for key in "${KEYS[@]}"; do
-    .ble-decode-key "$key"
+    ble-decode-key "$key"
   done
 }
 function ble/widget/isearch/accept {
@@ -3719,14 +3719,14 @@ function ble/widget/isearch/exit-delete-forward-char {
 
 function ble/widget/history-isearch-backward {
   .ble-edit.history-load
-  .ble-decode/keymap/push isearch
+  ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=-
   ble-edit/isearch/.draw-line
 }
 function ble/widget/history-isearch-forward {
   .ble-edit.history-load
-  .ble-decode/keymap/push isearch
+  ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=+
   ble-edit/isearch/.draw-line
@@ -3932,7 +3932,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
     local file="${1:-$_ble_edit_io_fname2}"
 
     # if the visible bell function is already defined.
-    if ble/util/isfunction .ble-term.visible-bell; then
+    if ble/util/isfunction ble-term/visible-bell; then
 
       # checks if "$file" is an ordinary non-empty file
       #   since the $file might be /dev/null depending on the configuration.
@@ -3948,7 +3948,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
           fi
         done < "$file"
 
-        [[ $message ]] && .ble-term.visible-bell "$message"
+        [[ $message ]] && ble-term/visible-bell "$message"
         :> "$file"
       fi
     fi
@@ -4020,17 +4020,17 @@ fi
 _ble_edit_detach_flag=
 function ble-edit/bind/.exit-trap {
   # シグナルハンドラの中では stty は bash によって設定されている。
-  .ble-stty.exit-trap
+  ble-stty/exit-trap
   exit 0
 }
 function ble-edit/bind/.check-detach {
   if [[ $_ble_edit_detach_flag ]]; then
     type="$_ble_edit_detach_flag"
     _ble_edit_detach_flag=
-    #.ble-term.visible-bell ' Bye!! '
+    #ble-term/visible-bell ' Bye!! '
     .ble-edit-finalize
     ble-decode-detach
-    .ble-stty.finalize
+    ble-stty/finalize
 
     READLINE_LINE="" READLINE_POINT=0
 
@@ -4101,8 +4101,8 @@ fi
 ## 関数 ble-decode-byte:bind/PROLOGUE
 function ble-decode-byte:bind/PROLOGUE {
   ble-edit/bind/.head
-  .ble-decode-bind.uvw
-  .ble-stty.enter
+  ble-decode-bind/uvw
+  ble-stty/enter
 }
 
 ## 関数 ble-decode-byte:bind/EPILOGUE

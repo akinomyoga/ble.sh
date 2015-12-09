@@ -403,7 +403,7 @@ function _ble_base_tmp.wipe {
 # initailization time = 9ms (for 70 files)
 _ble_base_tmp.wipe
 
-function .ble-term/visible-bell/initialize {
+function ble-term/visible-bell/.initialize {
   _ble_term_visible_bell__ftime="$_ble_base_tmp/$$.visible-bell.time"
 
   local -a BUFF=()
@@ -419,13 +419,13 @@ function .ble-term/visible-bell/initialize {
   IFS= builtin eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
 }
 
-.ble-term/visible-bell/initialize
+ble-term/visible-bell/.initialize
 
 
-function .ble-term.audible-bell {
+function ble-term/audible-bell {
   builtin echo -n '' 1>&2
 }
-function .ble-term.visible-bell {
+function ble-term/visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
   local cols="${LINES:-25}"
   local lines="${COLUMNS:-80}"
@@ -458,7 +458,7 @@ function .ble-term.visible-bell {
     } &
   )
 }
-function .ble-term.visible-bell.cancel-erasure {
+function ble-term/visible-bell/cancel-erasure {
   > "$_ble_term_visible_bell__ftime"
 }
 #------------------------------------------------------------------------------
