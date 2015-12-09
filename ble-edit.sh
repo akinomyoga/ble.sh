@@ -538,7 +538,7 @@ function ble-edit/draw/trace/process-csi-sequence {
     ([su]) # SCOSC SCORC
       if [[ $param == 99 ]]; then
         # PS1 の \[ ... \] の処理。
-        # .ble-line-prompt/update で \e[99s, \e[99u に変換している。
+        # ble-edit/prompt/update で \e[99s, \e[99u に変換している。
         if [[ $char == s ]]; then
           _ble_draw_trace_brack[${#_ble_draw_trace_brack[*]}]="$x $y"
         else
@@ -753,65 +753,65 @@ function ble-edit/draw/trace {
 # **** prompt ****                                                    @line.ps1
 
 ## called by ble-edit-initialize
-function .ble-line-prompt/initialize {
+function ble-edit/prompt/initialize {
   # hostname
-  _ble_cursor_prompt__string_h="${HOSTNAME%%.*}"
-  _ble_cursor_prompt__string_H="${HOSTNAME}"
+  _ble_edit_prompt__string_h="${HOSTNAME%%.*}"
+  _ble_edit_prompt__string_H="${HOSTNAME}"
 
   # tty basename
   local tmp=$(tty 2>/dev/null)
-  _ble_cursor_prompt__string_l="${tmp##*/}"
+  _ble_edit_prompt__string_l="${tmp##*/}"
 
   # command name
-  _ble_cursor_prompt__string_s="${0##*/}"
+  _ble_edit_prompt__string_s="${0##*/}"
 
   # user
-  _ble_cursor_prompt__string_u="${USER}"
+  _ble_edit_prompt__string_u="${USER}"
 
   # bash versions
-  ble/util/sprintf _ble_cursor_prompt__string_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
-  ble/util/sprintf _ble_cursor_prompt__string_V '%d.%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" "${BASH_VERSINFO[2]}"
+  ble/util/sprintf _ble_edit_prompt__string_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
+  ble/util/sprintf _ble_edit_prompt__string_V '%d.%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" "${BASH_VERSINFO[2]}"
 
   # uid
   if [[ $EUID -eq 0 ]]; then
-    _ble_cursor_prompt__string_root='#'
+    _ble_edit_prompt__string_root='#'
   else
-    _ble_cursor_prompt__string_root='$'
+    _ble_edit_prompt__string_root='$'
   fi
 }
 
-## 変数 _ble_line_prompt
+## 変数 _ble_edit_prompt
 ##   構築した prompt の情報をキャッシュします。
-##   @var _ble_line_prompt[0]    version
+##   @var _ble_edit_prompt[0]    version
 ##     prompt 情報を作成した時の _ble_edit_LINENO を表します。
-##   @var _ble_line_prompt[1..3] x y g
+##   @var _ble_edit_prompt[1..3] x y g
 ##     prompt を表示し終わった時のカーソルの位置と描画属性を表します。
-##   @var _ble_line_prompt[4..5] lc lg
+##   @var _ble_edit_prompt[4..5] lc lg
 ##     bleopt_suppress_bash_output= の時、
 ##     prompt を表示し終わった時の左側にある文字とその描画属性を表します。
 ##     それ以外の時はこの値は使われません。
-##   @var _ble_line_prompt[6]    ps1out
+##   @var _ble_edit_prompt[6]    ps1out
 ##     prompt を表示する為に出力する制御シーケンスを含んだ文字列です。
-##   @var _ble_line_prompt[7]    ps1esc
+##   @var _ble_edit_prompt[7]    ps1esc
 ##     調整前の ps1out を格納します。ps1out の計算を省略する為に使用します。
-_ble_line_prompt=("" 0 0 0 32 0 "" "")
+_ble_edit_prompt=("" 0 0 0 32 0 "" "")
 
-function _ble_line_prompt.load {
-  x="${_ble_line_prompt[1]}"
-  y="${_ble_line_prompt[2]}"
-  g="${_ble_line_prompt[3]}"
-  lc="${_ble_line_prompt[4]}"
-  lg="${_ble_line_prompt[5]}"
-  ret="${_ble_line_prompt[6]}"
+function _ble_edit_prompt.load {
+  x="${_ble_edit_prompt[1]}"
+  y="${_ble_edit_prompt[2]}"
+  g="${_ble_edit_prompt[3]}"
+  lc="${_ble_edit_prompt[4]}"
+  lg="${_ble_edit_prompt[5]}"
+  ret="${_ble_edit_prompt[6]}"
 }
 
-## 関数 .ble-line-prompt/update/append text
+## 関数 ble-edit/prompt/update/append text
 ##   指定された文字列を "" 内に入れる為のエスケープをして出力します。
 ##   @param[in] text
 ##     エスケープされる文字列を指定します。
 ##   @var[out]  DRAW_BUFF[]
 ##     出力先の配列です。
-function .ble-line-prompt/update/append {
+function ble-edit/prompt/update/append {
   local text="$1" a b
   if [[ $text == *['$\"`']* ]]; then
     a='\' b='\\' text="${text//"$a"/$b}"
@@ -821,7 +821,7 @@ function .ble-line-prompt/update/append {
   fi
   ble-edit/draw/put "$text"
 }
-function .ble-line-prompt/update/process-text {
+function ble-edit/prompt/update/process-text {
   local text="$1" a b
   if [[ $text == *'"'* ]]; then
     a='"' b='\"' text="${text//"$a"/$b}"
@@ -829,10 +829,10 @@ function .ble-line-prompt/update/process-text {
   ble-edit/draw/put "$text"
 }
 
-## 関数 .ble-line-prompt/update/process-backslash
+## 関数 ble-edit/prompt/update/process-backslash
 ##   @var[in]     tail
 ##   @var[in.out] DRAW_BUFF
-function .ble-line-prompt/update/process-backslash {
+function ble-edit/prompt/update/process-backslash {
   ((i+=2))
 
   # \\ の次の文字
@@ -848,13 +848,13 @@ function .ble-line-prompt/update/process-backslash {
       .ble-edit/history/getcount -v count
       ble-edit/draw/put "$count" ;;
     ('$') # # or $
-      .ble-line-prompt/update/append "$_ble_cursor_prompt__string_root" ;;
+      ble-edit/prompt/update/append "$_ble_edit_prompt__string_root" ;;
     (\\)
       # '\\' は '\' と出力された後に、更に "" 内で評価された時に次の文字をエスケープする。
       # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
       ble-edit/draw/put '\' ;;
     esac
-  elif local handler=".ble-line-prompt/update/backslash:$c" && ble/util/isfunction "$handler"; then
+  elif local handler="ble-edit/prompt/update/backslash:$c" && ble/util/isfunction "$handler"; then
     "$handler"
   else
     # その他の文字はそのまま出力される。
@@ -864,65 +864,65 @@ function .ble-line-prompt/update/process-backslash {
   fi
 }
 
-function .ble-line-prompt/update/backslash:0 { # 8進表現
+function ble-edit/prompt/update/backslash:0 { # 8進表現
   local rex='^\\[0-7]{1,3}'
   if [[ $tail =~ $rex ]]; then
     local seq="${BASH_REMATCH[0]}"
     ((i+=${#seq}-2))
     builtin eval "c=\$'$seq'"
   fi
-  .ble-line-prompt/update/append "$c"
+  ble-edit/prompt/update/append "$c"
 }
-function .ble-line-prompt/update/backslash:1 { .ble-line-prompt/update/backslash:0; }
-function .ble-line-prompt/update/backslash:2 { .ble-line-prompt/update/backslash:0; }
-function .ble-line-prompt/update/backslash:3 { .ble-line-prompt/update/backslash:0; }
-function .ble-line-prompt/update/backslash:4 { .ble-line-prompt/update/backslash:0; }
-function .ble-line-prompt/update/backslash:5 { .ble-line-prompt/update/backslash:0; }
-function .ble-line-prompt/update/backslash:6 { .ble-line-prompt/update/backslash:0; }
-function .ble-line-prompt/update/backslash:7 { .ble-line-prompt/update/backslash:0; }
-function .ble-line-prompt/update/backslash:a { # 0 BEL
+function ble-edit/prompt/update/backslash:1 { ble-edit/prompt/update/backslash:0; }
+function ble-edit/prompt/update/backslash:2 { ble-edit/prompt/update/backslash:0; }
+function ble-edit/prompt/update/backslash:3 { ble-edit/prompt/update/backslash:0; }
+function ble-edit/prompt/update/backslash:4 { ble-edit/prompt/update/backslash:0; }
+function ble-edit/prompt/update/backslash:5 { ble-edit/prompt/update/backslash:0; }
+function ble-edit/prompt/update/backslash:6 { ble-edit/prompt/update/backslash:0; }
+function ble-edit/prompt/update/backslash:7 { ble-edit/prompt/update/backslash:0; }
+function ble-edit/prompt/update/backslash:a { # 0 BEL
   ble-edit/draw/put ""
 }
-function .ble-line-prompt/update/backslash:d { # ? 日付
+function ble-edit/prompt/update/backslash:d { # ? 日付
   [[ $cache_d ]] || ble/util/strftime -v cache_d '%a %b %d'
-  .ble-line-prompt/update/append "$cache_d"
+  ble-edit/prompt/update/append "$cache_d"
 }
-function .ble-line-prompt/update/backslash:t { # 8 時刻
+function ble-edit/prompt/update/backslash:t { # 8 時刻
   [[ $cache_t ]] || ble/util/strftime -v cache_t '%H:%M:%S'
-  .ble-line-prompt/update/append "$cache_t"
+  ble-edit/prompt/update/append "$cache_t"
 }
-function .ble-line-prompt/update/backslash:A { # 5 時刻
+function ble-edit/prompt/update/backslash:A { # 5 時刻
   [[ $cache_A ]] || ble/util/strftime -v cache_A '%H:%M'
-  .ble-line-prompt/update/append "$cache_A"
+  ble-edit/prompt/update/append "$cache_A"
 }
-function .ble-line-prompt/update/backslash:T { # 8 時刻
+function ble-edit/prompt/update/backslash:T { # 8 時刻
   [[ $cache_T ]] || ble/util/strftime -v cache_T '%I:%M:%S'
-  .ble-line-prompt/update/append "$cache_T"
+  ble-edit/prompt/update/append "$cache_T"
 }
-function .ble-line-prompt/update/backslash:@ { # ? 時刻
+function ble-edit/prompt/update/backslash:@ { # ? 時刻
   [[ $cache_at ]] || ble/util/strftime -v cache_at '%I:%M %p'
-  .ble-line-prompt/update/append "$cache_at"
+  ble-edit/prompt/update/append "$cache_at"
 }
-function .ble-line-prompt/update/backslash:D {
+function ble-edit/prompt/update/backslash:D {
   local rex='^\\D\{([^{}]*)\}' cache_D
   if [[ $tail =~ $rex ]]; then
     ble/util/strftime -v cache_D "${BASH_REMATCH[1]}"
-    .ble-line-prompt/update/append "$cache_D"
+    ble-edit/prompt/update/append "$cache_D"
     ((i+=${#BASH_REMATCH}-2))
   else
-    .ble-line-prompt/update/append "\\$c"
+    ble-edit/prompt/update/append "\\$c"
   fi
 }
-function .ble-line-prompt/update/backslash:e {
+function ble-edit/prompt/update/backslash:e {
   ble-edit/draw/put $'\e'
 }
-function .ble-line-prompt/update/backslash:h { # = ホスト名
-  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_h"
+function ble-edit/prompt/update/backslash:h { # = ホスト名
+  ble-edit/prompt/update/append "$_ble_edit_prompt__string_h"
 }
-function .ble-line-prompt/update/backslash:H { # = ホスト名
-  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_H"
+function ble-edit/prompt/update/backslash:H { # = ホスト名
+  ble-edit/prompt/update/append "$_ble_edit_prompt__string_H"
 }
-function .ble-line-prompt/update/backslash:j { #   ジョブの数
+function ble-edit/prompt/update/backslash:j { #   ジョブの数
   if [[ ! $cache_j ]]; then
     local joblist
     ble/util/assign joblist jobs
@@ -931,48 +931,48 @@ function .ble-line-prompt/update/backslash:j { #   ジョブの数
   fi
   ble-edit/draw/put "$cache_j"
 }
-function .ble-line-prompt/update/backslash:l { #   tty basename
-  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_l"
+function ble-edit/prompt/update/backslash:l { #   tty basename
+  ble-edit/prompt/update/append "$_ble_edit_prompt__string_l"
 }
-function .ble-line-prompt/update/backslash:n {
+function ble-edit/prompt/update/backslash:n {
   ble-edit/draw/put $'\n'
 }
-function .ble-line-prompt/update/backslash:r {
+function ble-edit/prompt/update/backslash:r {
   ble-edit/draw/put "$_ble_term_cr"
 }
-function .ble-line-prompt/update/backslash:s { # 4 "bash"
-  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_s"
+function ble-edit/prompt/update/backslash:s { # 4 "bash"
+  ble-edit/prompt/update/append "$_ble_edit_prompt__string_s"
 }
-function .ble-line-prompt/update/backslash:u { # = ユーザ名
-  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_u"
+function ble-edit/prompt/update/backslash:u { # = ユーザ名
+  ble-edit/prompt/update/append "$_ble_edit_prompt__string_u"
 }
-function .ble-line-prompt/update/backslash:v { # = bash version %d.%d
-  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_w"
+function ble-edit/prompt/update/backslash:v { # = bash version %d.%d
+  ble-edit/prompt/update/append "$_ble_edit_prompt__string_w"
 }
-function .ble-line-prompt/update/backslash:V { # = bash version %d.%d.%d
-  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_V"
+function ble-edit/prompt/update/backslash:V { # = bash version %d.%d.%d
+  ble-edit/prompt/update/append "$_ble_edit_prompt__string_V"
 }
-function .ble-line-prompt/update/backslash:w { # PWD
-  .ble-line-prompt/update/append "$param_wd"
+function ble-edit/prompt/update/backslash:w { # PWD
+  ble-edit/prompt/update/append "$param_wd"
 }
-function .ble-line-prompt/update/backslash:W { # PWD短縮
+function ble-edit/prompt/update/backslash:W { # PWD短縮
   if [[ $PWD == / ]]; then
-    .ble-line-prompt/update/append /
+    ble-edit/prompt/update/append /
   else
-    .ble-line-prompt/update/append "${param_wd##*/}"
+    ble-edit/prompt/update/append "${param_wd##*/}"
   fi
 }
 
-function .ble-line-prompt/update/eval-prompt_command {
+function ble-edit/prompt/update/eval-prompt_command {
   # return 等と記述されていた時対策として関数内評価。
   eval "$PROMPT_COMMAND"
 }
 
-## 関数 .ble-line-prompt/update
+## 関数 ble-edit/prompt/update
 ##   _ble_edit_PS1 からプロンプトを構築します。
 ##   @var[in]  _ble_edit_PS1
 ##     構築されるプロンプトの内容を指定します。
-##   @var[out] _ble_line_prompt
+##   @var[out] _ble_edit_prompt
 ##     構築したプロンプトの情報を格納します。
 ##   @var[out] ret
 ##     プロンプトを描画する為の文字列を返します。
@@ -983,16 +983,16 @@ function .ble-line-prompt/update/eval-prompt_command {
 ##     bleopt_suppress_bash_output= の際に、
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
-function .ble-line-prompt/update {
+function ble-edit/prompt/update {
   local ps1="${_ble_edit_PS1}"
   local version="$_ble_edit_LINENO"
-  if [[ ${_ble_line_prompt[0]} == "$version" ]]; then
-    _ble_line_prompt.load
+  if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
+    _ble_edit_prompt.load
     return
   fi
 
   if [[ $PROMPT_COMMAND ]]; then
-    .ble-line-prompt/update/eval-prompt_command
+    ble-edit/prompt/update/eval-prompt_command
   fi
 
   local param_wd=
@@ -1011,9 +1011,9 @@ function .ble-line-prompt/update {
   while ((i<iN)); do
     local tail="${ps1:i}"
     if [[ $tail == '\'?* ]]; then
-      .ble-line-prompt/update/process-backslash
+      ble-edit/prompt/update/process-backslash
     elif [[ $tail =~ $rex_letters ]]; then
-      .ble-line-prompt/update/process-text "$BASH_REMATCH"
+      ble-edit/prompt/update/process-text "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
     else
       # ? ここには本来来ないはず。
@@ -1026,10 +1026,10 @@ function .ble-line-prompt/update {
   local ps1esc
   ble-edit/draw/sflush -v ps1esc
   builtin eval "ps1esc=\"$ps1esc\""
-  if [[ $ps1esc == "${_ble_line_prompt[7]}" ]]; then
+  if [[ $ps1esc == "${_ble_edit_prompt[7]}" ]]; then
     # 前回と同じ ps1esc の場合は計測処理は省略
-    _ble_line_prompt[0]="$version"
-    _ble_line_prompt.load
+    _ble_edit_prompt[0]="$version"
+    _ble_edit_prompt.load
     return
   fi
 
@@ -1046,7 +1046,7 @@ function .ble-line-prompt/update {
   local ps1out
   ble-edit/draw/sflush -v ps1out
   ret="$ps1out"
-  _ble_line_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1esc")
+  _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1esc")
 }
 
 # 
@@ -1861,7 +1861,7 @@ function .ble-edit-draw.update {
   local ret
 
   local x y g lc lg=0
-  .ble-line-prompt/update # x y lc ret
+  ble-edit/prompt/update # x y lc ret
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
   # BLELINE_RANGE_UPDATE → .ble-line-text/update 内でこれを見て update を済ませる
@@ -4181,7 +4181,7 @@ function .ble-edit.default-key-bindings {
 }
 
 function ble-edit-initialize {
-  .ble-line-prompt/initialize
+  ble-edit/prompt/initialize
 }
 function ble-edit-attach {
   if ((_ble_bash>=30100)) && [[ $bleopt_history_lazyload ]]; then
