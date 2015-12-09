@@ -30,7 +30,7 @@
 ##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 1 とします
 ## bleopt_char_width_mode=emacs
 ##   emacs で用いられている既定の文字幅の設定です
-## 定義 .ble-text.c2w+$bleopt_char_width_mode
+## 定義 ble/util/c2w+$bleopt_char_width_mode
 : ${bleopt_char_width_mode:=east}
 
 ## オプション bleopt_edit_vbell
@@ -94,18 +94,18 @@
 
 declare -a _ble_text_c2w__table=()
 
-## 関数 .ble-text.c2w ccode
+## 関数 ble/util/c2w ccode
 ##   @var[out] ret
-function .ble-text.c2w {
+function ble/util/c2w {
   # ret="${_ble_text_c2w__table[$1]}"
   # [[ $ret ]] && return
-  ".ble-text.c2w+$bleopt_char_width_mode" "$1"
+  "ble/util/c2w+$bleopt_char_width_mode" "$1"
   # _ble_text_c2w__table[$1]="$ret"
 }
-## 関数 .ble-text.c2w-edit ccode
+## 関数 ble/util/c2w-edit ccode
 ##   編集画面での表示上の文字幅を返します。
 ##   @var[out] ret
-function .ble-text.c2w-edit {
+function ble/util/c2w-edit {
   if (($1<32||127<=$1&&$1<160)); then
     # 制御文字は ^? と表示される。
     ret=2
@@ -114,17 +114,17 @@ function .ble-text.c2w-edit {
     # 128-159: M-^?
     ((128<=$1&&(ret=4)))
   else
-    .ble-text.c2w "$1"
+    ble/util/c2w "$1"
   fi
 }
-## 関数 .ble-text.c2w-edit ccode
-##   @var[out] ret
-function .ble-text.s2w {
-  .ble-text.s2c "$1" "$2"
-  ".ble-text.c2w+$bleopt_char_width_mode" "$ret"
-}
+# ## 関数 ble/util/c2w-edit ccode
+# ##   @var[out] ret
+# function ble/util/s2w {
+#   ble/util/s2c "$1" "$2"
+#   "ble/util/c2w+$bleopt_char_width_mode" "$ret"
+# }
 
-## 関数 .ble-text.c2w+emacs
+## 関数 ble/util/c2w+emacs
 ##   emacs-24.2.1 default char-width-table
 declare -a _ble_text_c2w__emacs_wranges=(
  162 164 167 169 172 173 176 178 180 181 182 183 215 216 247 248 272 273 276 279
@@ -135,7 +135,7 @@ declare -a _ble_text_c2w__emacs_wranges=(
  1551 1553 1555 1557 1559 1561 1563 1566 1568 1569 1571 1574 1576 1577 1579 1581 1583 1585 1587 1589
  1591 1593 1595 1597 1599 1600 1602 1603 1611 1612 1696 1698 1714 1716 1724 1726 1734 1736 1739 1740
  1742 1744 1775 1776 1797 1799 1856 1857 1858 1859 1898 1899 1901 1902 1903 1904)
-function .ble-text.c2w+emacs {
+function ble/util/c2w+emacs {
   local code="$1" al=0 ah=0 tIndex=
 
   # bash-4.0 bug workaround
@@ -195,8 +195,8 @@ function .ble-text.c2w+emacs {
   return 0
 }
 
-## 関数 .ble-text.c2w+west
-function .ble-text.c2w.ambiguous {
+## 関数 ble/util/c2w+west
+function ble/util/c2w.ambiguous {
   local code="$1"
   ret=1
   (('
@@ -224,12 +224,12 @@ function .ble-text.c2w.ambiguous {
     ))
   '))
 }
-function .ble-text.c2w+west {
-  .ble-text.c2w.ambiguous "$1"
+function ble/util/c2w+west {
+  ble/util/c2w.ambiguous "$1"
   (((ret<0)&&(ret=1)))
 }
 
-## 関数 .ble-text.c2w+east
+## 関数 ble/util/c2w+east
 declare -a _ble_text_c2w__east_wranges=(
  161 162 164 165 167 169 170 171 174 175 176 181 182 187 188 192 198 199 208 209
  215 217 222 226 230 231 232 235 236 238 240 241 242 244 247 251 252 253 254 255
@@ -247,8 +247,8 @@ declare -a _ble_text_c2w__east_wranges=(
  9660 9662 9664 9666 9670 9673 9675 9676 9678 9682 9698 9702 9711 9712 9733 9735 9737 9738 9742 9744
  9748 9750 9756 9757 9758 9759 9792 9793 9794 9795 9824 9826 9827 9830 9831 9835 9836 9838 9839 9840
  10045 10046 10102 10112 57344 63744 65533 65534 983040 1048574 1048576 1114110)
-function .ble-text.c2w+east {
-  .ble-text.c2w.ambiguous "$1"
+function ble/util/c2w+east {
+  ble/util/c2w.ambiguous "$1"
   ((ret>=0)) && return
 
   if ((code<_ble_text_c2w__east_wranges[0])); then
@@ -731,7 +731,7 @@ function ble-edit/draw/trace {
       local w ret
       ble-text.s2c -v lc "$tail" 0
       ((lg=g))
-      .ble-text.c2w "$lc"
+      ble/util/c2w "$lc"
       w="$ret"
       if ((w>=2&&x+w>cols)); then
         # 行に入りきらない場合の調整
@@ -1147,7 +1147,7 @@ function .ble-line-text/update/position {
       done
     else
       local ret
-      .ble-text.s2c "$text" "$i"
+      ble/util/s2c "$text" "$i"
       local code="$ret"
 
       local w=0 cs= changed=0
@@ -1171,16 +1171,16 @@ function .ble-line-text/update/position {
           cs="$_ble_term_el$_ble_term_nl"
         else
           ((w=2))
-          .ble-text.c2s "$((code+64))"
+          ble/util/c2s "$((code+64))"
           cs="^$ret"
         fi
       elif ((code==127)); then
         w=2 cs="^?"
       elif ((128<=code&&code<160)); then
-        .ble-text.c2s "$((code-64))"
+        ble/util/c2s "$((code-64))"
         w=4 cs="M-^$ret"
       else
-        .ble-text.c2w "$code"
+        ble/util/c2w "$code"
         w="$ret" cs="${text:i:1}"
       fi
 
@@ -1314,7 +1314,7 @@ function .ble-line-text/update {
           ret=32
         else
           lcs="${_ble_line_text_cache_cs[index]}"
-          .ble-text.s2c "$lcs" 0
+          ble/util/s2c "$lcs" 0
         fi
 
         # 次が改行の時は空白にする
@@ -1323,7 +1323,7 @@ function .ble-line-text/update {
       else
         # 前の文字
         lcs="${_ble_line_text_cache_cs[index-1]}"
-        .ble-text.s2c "$lcs" "$((${#lcs}-1))"
+        ble/util/s2c "$lcs" "$((${#lcs}-1))"
         ble-highlight-layer/getg -v lg "$((index-1))"
         ((lc=ret))
       fi
@@ -1477,18 +1477,18 @@ function .ble-line-info.construct-info {
       .ble-line-cur.xyo/add-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
       ((i+=${#BASH_REMATCH}))
     else
-      .ble-text.s2c "$text" "$i"
+      ble/util/s2c "$text" "$i"
       local code="$ret" w=0
       if ((code<32)); then
-        .ble-text.c2s "$((code+64))"
+        ble/util/c2s "$((code+64))"
         .ble-line-cur.xyo/add-atomic 2 "$_ble_term_rev^$ret$_ble_term_sgr0"
       elif ((code==127)); then
         .ble-line-cur.xyo/add-atomic 2 '$_ble_term_rev^?$_ble_term_sgr0'
       elif ((128<=code&&code<160)); then
-        .ble-text.c2s "$((code-64))"
+        ble/util/c2s "$((code-64))"
         .ble-line-cur.xyo/add-atomic 4 "${_ble_term_rev}M-^$ret$_ble_term_sgr0"
       else
-        .ble-text.c2w "$code"
+        ble/util/c2w "$code"
         .ble-line-cur.xyo/add-atomic "$ret" "${text:i:1}"
       fi
 
@@ -2049,13 +2049,13 @@ function .ble-edit-draw.update-adjusted {
   # (現在のカーソルの左側にある文字を再度上書きさせる)
   PS1=
   local ret lc="${_ble_line_cur[2]}" lg="${_ble_line_cur[3]}"
-  .ble-text.c2s "$lc"
+  ble/util/c2s "$lc"
   READLINE_LINE="$ret"
   if ((_ble_line_cur[0]==0)); then
     READLINE_POINT=0
   else
     if [[ ! $bleopt_suppress_bash_output ]]; then
-      .ble-text.c2w "$lc"
+      ble/util/c2w "$lc"
       ((ret>0)) && ble-edit/draw/put.cub "$ret"
     fi
     ble-text-c2bc "$lc"
@@ -2281,18 +2281,18 @@ function ble/widget/self-insert {
   ((code==0)) && return
 
   local ibeg="$_ble_edit_ind" iend="$_ble_edit_ind"
-  local ret ins; .ble-text.c2s "$code"; ins="$ret"
+  local ret ins; ble/util/c2s "$code"; ins="$ret"
   local delta=1 # 挿入による文字数の増減
 
   if [[ $_ble_edit_overwrite_mode ]] && ((code!=10&&code!=9)); then
-    local ret w; .ble-text.c2w-edit "$code"; w="$ret"
+    local ret w; ble/util/c2w-edit "$code"; w="$ret"
 
     local repw iend iN="${#_ble_edit_str}"
     for ((repw=0;repw<w&&iend<iN;iend++)); do
       local c1 w1
-      .ble-text.s2c "$_ble_edit_str" "$iend"; c1="$ret"
+      ble/util/s2c "$_ble_edit_str" "$iend"; c1="$ret"
       [[ $c1 == 0 || $c1 == 10 || $c1 == 9 ]] && break
-      .ble-text.c2w-edit "$c1"; w1="$ret"
+      ble/util/c2w-edit "$c1"; w1="$ret"
       ((repw+=w1,delta--))
     done
 
@@ -2345,8 +2345,8 @@ function .ble-edit/delete-backward-char {
       local next="${_ble_edit_str:_ble_edit_ind:1}"
       if [[ $next && $next != [$'\n\t'] ]]; then
         local clast ret
-        .ble-text.s2c "$_ble_edit_str" "$((_ble_edit_ind-1))"
-        .ble-text.c2w-edit "$ret"
+        ble/util/s2c "$_ble_edit_str" "$((_ble_edit_ind-1))"
+        ble/util/c2w-edit "$ret"
         ins="${_ble_util_string_prototype::ret}"
         ((_ble_edit_mark>=_ble_edit_ind&&
              (_ble_edit_mark+=ret)))
@@ -3667,7 +3667,7 @@ function ble/widget/isearch/self-insert {
   ((code==0)) && return
 
   local ret needle
-  .ble-text.c2s "$code"
+  ble/util/c2s "$code"
   ble/widget/isearch/next "$_ble_edit_isearch_str$ret" 1
 }
 function ble/widget/isearch/history-forward {
@@ -3683,7 +3683,7 @@ function ble/widget/isearch/history-self-insert {
   ((code==0)) && return
 
   local ret needle
-  .ble-text.c2s "$code"
+  ble/util/c2s "$code"
   ble/widget/isearch/next-history "$_ble_edit_isearch_str$ret" 1
 }
 function ble/widget/isearch/exit {

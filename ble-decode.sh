@@ -69,7 +69,7 @@ function ble-decode-kbd/.get-keyname {
   local keycode="$1"
   ret="${_ble_decode_kbd__c2k[$keycode]}"
   if [[ ! $ret ]] && ((keycode<ble_decode_function_key_base)); then
-    .ble-text.c2s "$keycode"
+    ble/util/c2s "$keycode"
     _ble_decode_kbd__c2k[$keycode]="$ret"
   fi
 }
@@ -81,7 +81,7 @@ function ble-decode-kbd/.get-keyname {
 function ble-decode-kbd/.gen-keycode {
   local key="$1"
   if ((${#key}==1)); then
-    .ble-text.s2c "$1"
+    ble/util/s2c "$1"
   elif [[ $key && ! ${key//[a-zA-Z_0-9]} ]]; then
     ble-decode-kbd/.get-keycode "$key"
     if [[ ! $ret ]]; then
@@ -210,7 +210,7 @@ function ble-decode-kbd {
     done
 
     if [[ $key == ? ]]; then
-      .ble-text.s2c "$key" 0
+      ble/util/s2c "$key" 0
       ((code|=ret))
     elif [[ $key && ! ${key//[_0-9a-zA-Z]/} ]]; then
       ble-decode-kbd/.get-keycode "$key"
@@ -222,7 +222,7 @@ function ble-decode-kbd {
       elif [[ $key == '^`' ]]; then
         ((code|=0x20))
       else
-        .ble-text.s2c "$key" 1
+        ble/util/s2c "$key" 1
         ((code|=ret&0x1F))
       fi
     else
@@ -321,7 +321,7 @@ function ble-decode-char/csi/print {
   done
 
   for num in "${!_ble_decode_csimap_alpha[@]}"; do
-    local s; .ble-text.c2s "$num"; s="$ret"
+    local s; ble/util/c2s "$num"; s="$ret"
     ble-decode-unkbd "${_ble_decode_csimap_alpha[num]}"
     echo "ble-bind --csi '$s' $ret"
   done
@@ -409,7 +409,7 @@ function ble-decode-char/csi/consume {
     fi ;;
   (2)
     if ((32<=char&&char<64)); then
-      local ret; .ble-text.c2s "$char"
+      local ret; ble/util/c2s "$char"
       _ble_decode_csi_args="$_ble_decode_csi_args$ret"
       csistat=_
     elif ((64<=char&&char<127)); then
@@ -1091,7 +1091,7 @@ function ble-bind/option:csi {
     cseq=(27 91)
     local ret i iN num="${BASH_REMATCH[1]}\$"
     for ((i=0,iN=${#num};i<iN;i++)); do
-      .ble-text.s2c "$num" "$i"
+      ble/util/s2c "$num" "$i"
       ble/util/array-push cseq "$ret"
     done
     if [[ $kcode ]]; then
@@ -1101,7 +1101,7 @@ function ble-bind/option:csi {
     fi
   elif [[ $1 == [a-zA-Z] ]]; then
     # --csi '<Ft>' kname
-    local ret; .ble-text.s2c "$1"
+    local ret; ble/util/s2c "$1"
     _ble_decode_csimap_alpha[ret]="$kcode"
   else
     echo "ble-bind --csi: not supported type of csi sequences: CSI \`$1'." >&2
@@ -1321,7 +1321,7 @@ function ble-decode-bind/c2dqs {
   if ((0<=i&&i<32)); then
     # C0 characters
     if ((1<=i&&i<=26)); then
-      .ble-text.c2s $((i+96))
+      ble/util/c2s $((i+96))
       ret="\\C-$ret"
     elif ((i==27)); then
       ret="\\e"
@@ -1330,7 +1330,7 @@ function ble-decode-bind/c2dqs {
       ret="\\C-$ret"
     fi
   elif ((32<=i&&i<127)); then
-    .ble-text.c2s "$i"
+    ble/util/c2s "$i"
 
     # \" and \\
     if ((i==34||i==92)); then
@@ -1342,7 +1342,7 @@ function ble-decode-bind/c2dqs {
   else
     # others
     ble/util/sprintf ret '\\%03o' "$i"
-    # .ble-text.c2s だと UTF-8 encode されてしまうので駄目
+    # ble/util/c2s だと UTF-8 encode されてしまうので駄目
   fi
 }
 

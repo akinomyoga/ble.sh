@@ -56,11 +56,11 @@ function ble-color-g2sgr {
     ((g&_ble_color_gflags_Invisible)) && _sgr="$_sgr;${_ble_term_sgr_invis:-8}"
     ((g&_ble_color_gflags_Strike))    && _sgr="$_sgr;${_ble_term_sgr_strike:-9}"
     if ((g&_ble_color_gflags_ForeColor)); then
-      .ble-color.color2sgrfg -v "$_var" "$fg"
+      ble-color/.color2sgrfg -v "$_var" "$fg"
       _sgr="$_sgr;${!_var}"
     fi
     if ((g&_ble_color_gflags_BackColor)); then
-      .ble-color.color2sgrbg -v "$_var" "$bg"
+      ble-color/.color2sgrbg -v "$_var" "$bg"
       _sgr="$_sgr;${!_var}"
     fi
     
@@ -89,14 +89,14 @@ function ble-color-gspec2g {
     (italic)    ((_g|=_ble_color_gflags_Italic)) ;;
     (standout)  ((_g|=_ble_color_gflags_Revert|_ble_color_gflags_Bold)) ;;
     (fg=*)
-      .ble-color.name2color -v "$_var" "${entry:3}"
+      ble-color/.name2color -v "$_var" "${entry:3}"
       if ((_var<0)); then
         ((_g&=~(_ble_color_gflags_ForeColor|_ble_color_gflags_MaskFg)))
       else
         ((_g|=_var<<8|_ble_color_gflags_ForeColor))
       fi ;;
     (bg=*)
-      .ble-color.name2color -v "$_var" "${entry:3}"
+      ble-color/.name2color -v "$_var" "${entry:3}"
       if ((_var<0)); then
         ((_g&=~(_ble_color_gflags_BackColor|_ble_color_gflags_MaskBg)))
       else
@@ -123,12 +123,12 @@ function ble-color-gspec2sgr {
     (underline) __sgr="$__sgr;4" ;;
     (standout)  __sgr="$__sgr;7" ;;
     (fg=*)
-      .ble-color.name2color "${entry:3}"
-      .ble-color.color2sgrfg "$ret"
+      ble-color/.name2color "${entry:3}"
+      ble-color/.color2sgrfg "$ret"
       __sgr="$__sgr;$ret" ;;
     (bg=*)
-      .ble-color.name2color "${entry:3}"
-      .ble-color.color2sgrbg "$ret"
+      ble-color/.name2color "${entry:3}"
+      ble-color/.color2sgrbg "$ret"
       __sgr="$__sgr;$ret" ;;
     (none)
       __sgr=0 ;;
@@ -138,7 +138,7 @@ function ble-color-gspec2sgr {
   builtin eval "$_var=\"[\${__sgr}m\""
 }
 
-function .ble-color.name2color {
+function ble-color/.name2color {
   local _var=ret
   if [[ $1 == -v ]]; then
     _var=$2
@@ -176,7 +176,7 @@ function .ble-color.name2color {
 
   builtin eval "$_var=\"\$_ret\""
 }
-function .ble-color.color2sgrfg {
+function ble-color/.color2sgrfg {
   local _var=ret _ret
   if [[ $1 == -v ]]; then
     _var=$2
@@ -194,7 +194,7 @@ function .ble-color.color2sgrfg {
 
   builtin eval "$_var=\"\$_ret\""
 }
-function .ble-color.color2sgrbg {
+function ble-color/.color2sgrbg {
   local _var=ret _ret
   if [[ $1 == -v ]]; then
     _var=$2
@@ -695,8 +695,8 @@ function ble-highlight-layer:plain/update/.getch {
     elif [[ $ch == $'\n' ]]; then
       ch=$'\e[K\n'
     else
-      .ble-text.s2c "$ch" 0
-      .ble-text.c2s $((ret+64))
+      ble/util/s2c "$ch" 0
+      ble/util/c2s $((ret+64))
       ch="^$ret"
     fi
   elif [[ $ch == [$''-$'\302\237'] ]]; then
@@ -704,8 +704,8 @@ function ble-highlight-layer:plain/update/.getch {
     if [[ $ch == '' ]]; then
       ch='^?'
     else
-      .ble-text.s2c "$ch" 0
-      .ble-text.c2s $((ret-64))
+      ble/util/s2c "$ch" 0
+      ble/util/c2s $((ret-64))
       ch="M-^$ret"
     fi
   fi

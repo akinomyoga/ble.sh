@@ -355,7 +355,7 @@ function bleopt {
 : ${bleopt_vbell_default_message=' Wuff, -- Wuff!! '}
 : ${bleopt_vbell_duration=2000}
 
-function .ble-term.initialize {
+function ble-term/.initialize {
   if [[ $_ble_base/term.sh -nt $_ble_base/cache/$TERM.term ]]; then
     source "$_ble_base/term.sh"
   else
@@ -365,7 +365,7 @@ function .ble-term.initialize {
   _ble_util_string_prototype.reserve "$_ble_term_it"
 }
 
-.ble-term.initialize
+ble-term/.initialize
 
 function ble-term/put {
   BUFF[${#BUFF[@]}]="$1"
@@ -400,7 +400,7 @@ function _ble_base_tmp.wipe {
   ((${#removed[@]})) && command rm -f "${removed[@]}"
 }
 
-# initailization time = 9ms (for 70 files)
+# initialization time = 9ms (for 70 files)
 _ble_base_tmp.wipe
 
 function ble-term/visible-bell/.initialize {
@@ -466,14 +466,14 @@ function ble-term/visible-bell/cancel-erasure {
 
 if ((_ble_bash>=40100)); then
   # - printf "'c" で unicode が読める
-  function .ble-text.s2c {
+  function ble/util/s2c {
     builtin printf -v ret '%d' "'${1:$2:1}"
   }
 elif ((_ble_bash>=40000)); then
   # - 連想配列にキャッシュできる
   # - printf "'c" で unicode が読める
   declare -A _ble_text_s2c_table
-  function .ble-text.s2c {
+  function ble/util/s2c {
     local s="${1:$2:1}"
     ret="${_ble_text_s2c_table[x$s]}"
     [[ $ret ]] && return
@@ -487,7 +487,7 @@ else
   # 何とかして unicode 値に変換するコマンドを見つけるか、
   # 各バイトを取り出して unicode に変換するかする必要がある。
   # bash-3 では read -n 1 を用いてバイト単位で読み取れる。これを利用する。
-  function .ble-text.s2c {
+  function ble/util/s2c {
     local s="${1:$2:1}"
     if [[ $s == [''-''] ]]; then
       ret=$(builtin printf '%d' "'$s")
@@ -506,17 +506,17 @@ function ble-text.s2c {
   local _var="$ret"
   if [[ $1 == -v && $# -ge 3 ]]; then
     local ret
-    .ble-text.s2c "$3" "$4"
+    ble/util/s2c "$3" "$4"
     (($2=ret))
   else
-    .ble-text.s2c "$@"
+    ble/util/s2c "$@"
   fi
 }
 
-# .ble-text.c2s
+# ble/util/c2s
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
-  function .ble-text.c2s-impl {
+  function ble/util/c2s-impl {
     builtin printf -v ret '\\U%08x' "$1"
     builtin eval "ret=\$'$ret'"
   }
@@ -528,7 +528,7 @@ else
   done
 
   # 動作確認済 3.1, 3.2, 4.0, 4.2, 4.3
-  function .ble-text.c2s-impl {
+  function ble/util/c2s-impl {
     if (($1<0x80)); then
       builtin eval "ret=\$'\\x${_ble_text_hexmap[$1]}'"
       return
@@ -546,10 +546,10 @@ fi
 
 # どうもキャッシュするのが一番速い様だ
 declare -a _ble_text_c2s_table
-function .ble-text.c2s {
+function ble/util/c2s {
   ret="${_ble_text_c2s_table[$1]}"
   if [[ ! $ret ]]; then
-    .ble-text.c2s-impl "$1"
+    ble/util/c2s-impl "$1"
     _ble_text_c2s_table[$1]="$ret"
   fi
 }

@@ -262,15 +262,15 @@ function ble-syntax/print-status/.graph {
     return
   else
     local ret
-    .ble-text.s2c "$char" 0
+    ble/util/s2c "$char" 0
     local code="$ret"
     if ((code<32)); then
-      .ble-text.c2s "$((code+64))"
+      ble/util/c2s "$((code+64))"
       graph="$_ble_term_rev^$ret$_ble_term_sgr0"
     elif ((code==127)); then
       graph="$_ble_term_rev^?$_ble_term_sgr0"
     elif ((128<=code&&code<160)); then
-      .ble-text.c2s "$((code-64))"
+      ble/util/c2s "$((code-64))"
       graph="${_ble_term_rev}M-^$ret$_ble_term_sgr0"
     else
       graph="'$char' ($code)"
@@ -2875,8 +2875,8 @@ function mytest/print {
       mytest/put ' '
     fi
     # local ret
-    # .ble-text.s2c "$text" "$i"
-    # .ble-text.c2w "$ret"
+    # ble/util/s2c "$text" "$i"
+    # ble/util/c2w "$ret"
   done
   mytest/put $'\n'
   mytest/fflush
