@@ -2174,7 +2174,6 @@ function ble-syntax:bash/extract-command/.construct-proc {
   if [[ $wtype =~ ^[0-9]+$ ]]; then
     if ((wtype==CTX_CMDI)); then
       if ((pos<wbegin)); then
-        echo clear words
         comp_line= comp_point= comp_cword= comp_words=()
       else
         ble-syntax:bash/extract-command/.register-word
