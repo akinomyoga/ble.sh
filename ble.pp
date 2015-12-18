@@ -57,9 +57,27 @@ fi
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
 if [ "$_ble_bash" -lt 30000 ]; then
-  _ble_bash=0
-  echo "ble.sh: A bash with a version under 3.0 is not supported" >&2
+  unset _ble_bash
+  echo "ble.sh: bash with a version under 3.0 is not supported." >&2
   return 1 2>/dev/null || exit 1
+fi
+
+if [[ -o posix ]]; then
+  unset _ble_bash
+  echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
+  return 1 2>/dev/null || exit 1
+fi
+
+if [[ ! -o emacs && ! -o vi ]]; then
+  unset _ble_bash
+  echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
+  return 1
+fi
+
+if shopt -q restricted_shell; then
+  unset _ble_bash
+  echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
+  return 1
 fi
 
 # check environment

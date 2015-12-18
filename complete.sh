@@ -184,10 +184,10 @@ function ble-complete/yield-candidate {
 # source/command
 
 function ble-complete/source/command/gen {
-  [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion &>/dev/null && return
+  [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return
   compgen -c -- "$COMPV"
   [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
-  shopt -q autocd &>/dev/null && compgen -d -- "$COMPV"
+  shopt -q autocd && compgen -d -- "$COMPV"
 }
 function ble-complete/source/command {
   if [[ ${COMPV+set} ]]; then

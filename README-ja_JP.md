@@ -36,13 +36,13 @@ $ source out/ble.sh
 ```bash
 $ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz
 $ tar xJf ble-0.1.3.tar.xz
-$ source ble/ble.sh
+$ source ble-0.1.3/ble.sh
 ```
 `curl` を使う場合:
 ```bash
 $ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz > ble-0.1.3.tar.xz
 $ tar xJf ble-0.1.3.tar.xz
-$ source ble/ble.sh
+$ source ble-0.1.3/ble.sh
 ```
 
 **`.bashrc` の設定**
@@ -170,10 +170,10 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 
 既存のキーバインディングは以下のコマンドで確認できます。
 ```
-ble-bind -d
+$ ble-bind -d
 ```
 
 以下のコマンドで編集に使える関数一覧を確認できます。
 ```bash
-ble-bind -L
+$ ble-bind -L
 ```

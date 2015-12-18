@@ -1430,7 +1430,7 @@ function ble-decode-bind/.generate-source-to-unbind-default {
       builtin bind -X
     fi
 #%x
-  } 2>/dev/null | LANG=C command ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
+  } 2>/dev/null | LC_ALL=C command ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
     BEGIN{
       APOS=apos "\\" apos apos;

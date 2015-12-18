@@ -3125,7 +3125,7 @@ fi
 ## @var[out] hist_expanded
 function ble-edit/hist_expanded.update {
   local BASH_COMMAND="$*"
-  if [[ $- != *H* || ! ${BASH_COMMAND//[ 	]} ]]; then
+  if [[ -o histexpand || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded="$BASH_COMMAND"
     return 0
   elif ble/util/assign hist_expanded ble-edit/hist_expanded/expand; then
@@ -3146,6 +3146,7 @@ function ble/widget/accept-line {
     return
   fi
 
+  _ble_edit_mark_active=
   .ble-edit/newline
 
   if [[ $hist_expanded != "$BASH_COMMAND" ]]; then
@@ -3736,128 +3737,6 @@ function ble/widget/history-isearch-forward {
 #------------------------------------------------------------------------------
 # **** completion ****                                                    @comp
 
-function .ble-edit-comp.initialize-vars {
-  local COMP_LINE="$_ble_edit_str"
-  local COMP_POINT="$_ble_edit_ind"
-
-  # COMP_KEY
-  local COMP_KEY="${KEYS[@]: -1}"
-  local flag char
-  ((
-    flag=COMP_KEY&ble_decode_MaskFlag,
-    char=COMP_KEY&ble_decode_MaskChar,
-    flag==ble_decode_Ctrl&&(char==0x40||0x61<=char&&char<0x7B||0x5B<=char&&char<0x60)&&(
-      COMP_KEY=char&0x31
-    )
-  ))
-
-  local COMP_TYPE="TAB" # ? ! @ %
-
-  # COMP_WORDS, COMP_CWORD
-  local _default_wordbreaks=' 	
-"'"'"'><=;|&(:}'
-  local -a _tmp
-  GLOBIGNORE='*' IFS="${COMP_WORDBREAKS-$_default_wordbreaks}" builtin eval '
-    COMP_WORDS=($COMP_LINE)
-    _tmp=(${COMP_LINE::COMP_POINT}x)
-    COMP_CWORD=$((${#_tmp[@]}-1))
-  '
-
-  _ble_comp_cword="${_tmp[$COMP_CWORD]%x}"
-}
-
-## 関数 .ble-edit-comp.common-part word cands... ; ret
-function .ble-edit-comp.common-part {
-  local word="$1"; shift
-  local value isFirst=1
-  for value in "$@"; do
-    if [[ $isFirst ]]; then
-      isFirst=
-      common="$value"
-    else
-      local i len1 len2 len
-      ((len1=${#common},
-        len2=${#value},
-        len=len1<len2?len1:len2))
-      for ((i=${#word};i<len;i++)); do
-        [[ ${common:i:1} != "${value:i:1}" ]] && break
-      done
-      common="${common::i}"
-    fi
-  done
-
-  ret="$common"
-}
-
-function .ble-edit-comp.complete-filename {
-  local fhead="${_ble_edit_str::_ble_edit_ind}"
-  local sword_sep=$'|&;()<> \t\n'
-  fhead="${fhead##*[$sword_sep]}"
-
-  # local -a files cands
-  # files=(* .*)
-  # cands=($(compgen -W '"${files[@]}"' -- "$fhead"))
-  local -a cands
-  cands=($(compgen -f -- "$fhead"))
-  if ((${#cands[@]}==0)); then
-    .ble-edit.bell
-    .ble-line-info.clear
-    return
-  fi
-
-  local ret
-  .ble-edit-comp.common-part "$fhead" "${cands[@]}"
-
-  local common="$ret" ins="${ret:${#fhead}}"
-  if ((${#cands[@]}==1)) && [[ -e ${cands[0]} ]]; then
-    if [[ -d ${cands[0]} ]]; then
-      ins="$ins/"
-    else
-      ins="$ins "
-    fi
-  fi
-  if [[ $ins ]]; then
-    ble/widget/insert-string "$ins"
-  else
-    .ble-edit.bell
-  fi
-
-  if ((${#cands[@]}>1)); then
-    local dir="${fhead%/*}"
-    if [[ $fhead != "$dir" ]]; then
-      .ble-line-info.draw-text "${cands[*]#$dir/}"
-    else
-      .ble-line-info.draw-text "${cands[*]}"
-    fi
-  fi
-}
-
-function ble/widget/complete {
-  .ble-edit-comp.complete-filename
-}
-
-## 実装途中
-function ble/widget/complete-F {
-  local COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
-  local COMP_WORDS COMP_CWORD _ble_comp_cword
-  .ble-edit-comp.initialize-vars
-
-  # -- call completion function --
-  local COMPREPLY
-
-  #■
-
-  # -- common part completion --
-  .ble-edit-comp.common-part "$_ble_comp_cword" "${COMPREPLY[@]}"
-  local common="$ret" ins="${ret:${#fhead}}"
-  ((${#cands[@]}==1)) && ins="$ins "
-  if [[ $ins ]]; then
-    ble/widget/insert-string "$ins"
-  else
-    .ble-edit.bell
-  fi
-}
-
 ble-autoload "$_ble_base/complete.sh" ble/widget/complete
 
 function ble/widget/command-help {
@@ -4112,20 +3991,10 @@ function ble-decode-byte:bind/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    if IFS= LANG=C read -t 0 -s -r -d '' -n 1; then
+    if ble/util/is-stdin-ready; then
       ble-edit/bind/.tail-without-draw
       return 0
     fi
-  else
-    # x 以下は bind '"\e[":"\xC0\x9B["' による
-    #   byte の受信順序が乱れるので使えない。
-    # x bash-4.0 未満では結局以下では何も起こらない。
-    #   read -t 0 としても必ず失敗する様である。
-    local byte=0
-    while IFS= LANG=C read -t 0 -s -r -d '' -n 1 byte; do
-      LANG=C ble-text.s2c -v byte "$byte" 0
-      "ble-decode-byte+$bleopt_input_encoding" "$byte"
-    done
   fi
 
   # _ble_decode_bind_hook で bind/tail される。

@@ -9,9 +9,6 @@ function _ble_util_array_prototype.reserve {
   done
 }
 
-.ble-shopt-extglob-push() { shopt -s extglob;}
-.ble-shopt-extglob-pop()  { shopt -u extglob;}
-
 source ble-color.sh
 
 _ble_stackdump_title=stackdump
@@ -226,7 +223,7 @@ function ble-syntax/tree-enumerate {
   ble-syntax/tree-enumerate/.impl "$@"
 }
 
-## 関数 ble-syntax/tree-enumerate-in-range beg end proc
+## r関数 ble-syntax/tree-enumerate-in-range beg end proc
 ##   入れ子構造に従わず或る範囲内に登録されている節を列挙します。
 ## @param[in] beg,end
 ## @param[in] proc 以下の変数を使用する関数を指定します。
@@ -834,7 +831,7 @@ function ble-syntax:bash/check-process-subst {
 
 function ble-syntax:bash/check-comment {
   # コメント
-  if shopt -q interactive_comments &>/dev/null; then
+  if shopt -q interactive_comments; then
     if ((wbegin<0||wbegin==i)) && local rex=$'^#[^\n]*' && [[ $tail =~ $rex ]]; then
       # 空白と同様に ctx は変えずに素通り (末端の改行は残す)
       ((_ble_syntax_attr[i]=ATTR_COMMENT,
@@ -903,7 +900,7 @@ function ble-syntax:bash/histexpand/initialize-quicksub {
 _ble_syntax_rex_histexpand.init
 
 function ble-syntax:bash/check-history-expansion {
-  [[ $- == *H* ]] || return 1
+  [[ -o histexpand ]] || return 1
 
   if [[ $histc1 && $tail == "$histc1"[^"$histstop"]* ]]; then
 
@@ -2183,7 +2180,6 @@ function ble-syntax:bash/extract-command/.construct-proc {
   if [[ $wtype =~ ^[0-9]+$ ]]; then
     if ((wtype==CTX_CMDI)); then
       if ((pos<wbegin)); then
-        echo clear words
         comp_line= comp_point= comp_cword= comp_words=()
       else
         ble-syntax:bash/extract-command/.register-word
@@ -2386,7 +2382,7 @@ function ble-syntax/highlight/cmdtype1 {
       ((type=ATTR_ERR))
     fi ;;
   (*)
-    if [[ -d "$cmd" ]] && shopt -q autocd &>/dev/null; then
+    if [[ -d "$cmd" ]] && shopt -q autocd; then
       ((type=ATTR_CMD_DIR))
     else
       ((type=ATTR_ERR))

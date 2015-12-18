@@ -38,7 +38,7 @@ function ble/util/assign {
 }
 
 if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LANG=C read -t 0; }
+  function ble/util/is-stdin-ready { IFS= LC_ALL=C read -t 0; }
 else
   function ble/util/is-stdin-ready { false; }
 fi

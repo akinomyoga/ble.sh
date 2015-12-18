@@ -37,13 +37,13 @@ With `wget`:
 ```bash
 $ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz
 $ tar xJf ble-0.1.3.tar.xz
-$ source ble/ble.sh
+$ source ble-0.1.3/ble.sh
 ```
 With `curl`:
 ```bash
 $ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz > ble-0.1.3.tar.xz
 $ tar xJf ble-0.1.3.tar.xz
-$ source ble/ble.sh
+$ source ble-0.1.3/ble.sh
 ```
 
 **Setup `.bashrc`**
@@ -162,10 +162,10 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 
 The existing key bindings can be checked with the following command:
 ```
-ble-bind -d
+$ ble-bind -d
 ```
 
 The list of functions can be checked with the following command:
 ```bash
-ble-bind -L
+$ ble-bind -L
 ```

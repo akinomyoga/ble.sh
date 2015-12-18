@@ -322,17 +322,35 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2015-12-16
+
+  * パラメータ展開の中で '' single quote が効かない。
+
+2015-12-12
+
+  * ble-syntax.sh: <<< を順に入力すると文法エラーになる。
+
+    これは見てみた所 << と入力した時点で駄目になっている。
+    << に対応する文法要素がない (ヒアドキュメントは未実装) 為に、
+    < + < と解釈されて解析再開点が二箇所設定されている為である。
+    しかしながら <<< に対応する以上、
+    << が二回来た段階では一つ目の < で解析結果を確定させては成らない。
+
+    << も受け付ける様にして、単語を受け取ることができる様にする。
+
+  * complete FIGNORE に対応
+
+  * IGNOREEOF に対応 (現在 bash-4.0 未満では勝手な値を設定しているので、
+    これはコマンド実行の瞬間だけに復元する様にする必要がある。
+    PS1 と同様の取り扱いで良いと思われる。)
+
+  * ble-syntax.sh: extquote off に対応
+
 2015-12-03
 
   * undo, redo
 
   * 色コード ble-color-gspec-list
-
-  * cat 置き換え
-
-  * ble-bind の説明を追加
-
-2015-12-03
 
   * bash-3 で C-d を捕獲する為のメッセージについて
 
@@ -352,7 +370,7 @@ tech
       $ seq2gif -f 0 -b 254 < demo.tty > out/img/demo.gif
       カーソルを先頭に移動した時?? 再現しない。
 
-      stackdump: X1 0 <= 48 <= 49 <= 1, 48 <= 48
+    + stackdump: X1 0 <= 48 <= 49 <= 1, 48 <= 48
         @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
         @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
         @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
@@ -486,8 +504,6 @@ tech
   * histexpand: shopt -s histverify histreedit 対応
 
 2015-11-06
-
-  * isearch-forward/backward で現在の一致範囲をハイライトする。
 
   * まったく同じ nest 状態になると思われるのに解析中断が起こらない
 
@@ -708,10 +724,8 @@ tech
 2015-03-06
 
   * 整理
-    - complete の古いコード
     - 着色の古いコード
       これに関しては現在の複雑な実装と昔の簡単な実装の間の着地点を見つけたい。
-    - binder-source 周辺
 
 2015-03-04
 
@@ -770,23 +784,12 @@ tech
 2015-02-27
 
   * complete
-    - 既存の bash complete に対応する。
 
     - 文脈判定を強化する。他にも色々な箇所で補完を実行する。
 
     - 引用符の中で補完を実行する方法?
       引用符の途中でも正規な単語として認識できる様にする。
       引用符の中であるという情報が必要。
-
-2015-02-25
-
-  * isearch-forward/backward の動作
-
-    気付いたのだが bash では isearch-forward/backward は各ヒストリ項目に対して一致しているのではなく、
-    ヒストリ項目の中にある文字列に対して一致している様だ。
-    つまり、複数の一致が一つのコマンドラインの中にあれば、
-    その中を C-r C-s で移動していく事になる。
-    そればかりか現在編集している文字列の中で一致する物についてもちゃんと移動できる。。
 
 2015-02-24
 
@@ -978,9 +981,7 @@ tech
 2013-06-06
 
   * complete: 入力する側から候補を表示?
-  * complete: complete -F に対する対応
   * complete: 空白文字や " や ' などをエスケープしている時も正しく単語分割する
-  * complete: コマンド先頭位置の検出 (複合文の途中からコマンドが始まっている場合など)
   * complete: 候補一覧の整列
 
   * ble-line-info の描画のタイミングを ble-edit-draw.update と同じ時にする?
@@ -994,17 +995,7 @@ tech
     zsh で試してみた所、そもそも RPS1 に改行を含めると RPS1 自体表示されない事が分かった。
     改行は含まれていないと仮定して表示してしまっても良いのかも知れない(2015-03-04)。
 
-
-  * ^U ^V ^W ^? bind 関連
-    + 説明書にその事を書いておく。
-    + ^U ^V ^W ^? を bind するより良い方法があれば考える
-    + bashrc の中でも同様に問題が起こるのか?
-
-    + 一旦 bind '"":"hogehoge"' 等として変換したら受信できる可能性?
-
 2013-06-04
-
-  * vbell .time の置き場所を変更?
 
   * 説明書:
     + 問題点: 既存の bind を上書きする事
@@ -1022,14 +1013,6 @@ tech
     + [kbd] terminfo からの読み取り (entry 名は tmux が参考になる)
     + ble-bind: -x オプションに対する対応: BLE_LINE, BLE_POINT, 再描画
     * ble-bind: -s オプションで文字入力の羅列を指定できる様にする。
-
-  * 編集文字列の表示
-    + スタイル指定文字列
-    + color fall backs
-    + forward-char
-    + goto-char
-    + insert-string
-    + insert-char
 
   * デフォルトで bind されている readline 関数の一覧をチェック
   compgen, history コマンドを関数内から自由に利用する事が出来るか
@@ -1404,6 +1387,140 @@ tech
 *******************************************************************************
     実装ログ
 -------------------------------------------------------------------------------
+
+2015-12-12
+
+  * 起動チェック: bash の現在の設定を取得する方法に関して
+
+    起動チェック: set -o posix を確かめる方法?
+    → POSIXLY_CORRECT=y か空欄かで判定する事ができる。
+    → [[ -o posix ]] で OK. ただ、POSIX の時に [[ -o optname ]] が有効なのかは不明。
+      試すと動くから POSIX でも bash 固有の機能は相変わらず使えるのだろう。
+
+    a 既存の物については速度測定をして速い方法に移行する。
+
+      [[ $- == *H* ]] は [[ -o histexpand ]] の方が早いようだ。しかも分かり易い。
+
+      % shopt -q は $BASHOPTS を用いた物の方が早い方である。
+      % しかし読みにくいのは問題だ。$BASHOPTS を使用して判定する為の関数を定義してしまっても良い気がする。
+      shopt は >/dev/null にリダイレクトする必要はない。リダイレクトしなければ速い。
+
+    b set -o に関しては?
+
+      % set -o posix    -> [[ $POSIXLY_CORRECT ]]
+      %   Note: set -o posix の時は POSIXLY_CORRECT=y になっている。
+      %   set +o posix の時は POSIXLY_CORRECT は unset になっている。
+      % 
+      % set -o ignoreeof -> [[ $IGNOREEOF == 10 ]]
+      %   これは実行すると実際に IGNOREEOF=10 が設定されるので問題ない。
+      % 
+      % set -o pipefail -> false | :
+      %   これは false | : で判断できるが fork が入るので遅いかも。
+      % 
+      % set -o emacs
+      % set -o vi
+      % bash --noediting
+      % EMACS=t bash
+      %   → EMACS=t に関しては環境変数を介して判定できるが、
+      %   それ以外の方法による行編集機能の有効・無効・デフォルトキーマップは判断不能?
+      % 
+      % 
+      %   候補 bind
+      %     一応行編集機能が有効になっているかどうかは bind がエラーメッセージを出すかどうかで判断できる?
+      %     しかし bind の返却値は常に 0 の様だ (エラーメッセージを出力するだけ)。
+      % 
+      %   候補 set +o emacs && set -o emacs
+      %   候補 set +o vi && set -o vi
+      %     これら (set +o emacs, vi) は訳に立たない。
+      %     既にその設定になっているかどうかに拘わらず常に成功する様だ。
+      % 
+      % set -o history
+      %   これの判定方法は全く不明だ。
+      % 
+      %   候補 history
+      %     常に成功する。動作も変わらない様だ。
+
+      と思ったら set に関しては全て [[ -o option-name ]] で判定できるのであった。
+
+      起動オプション → [[ -o name ]] または [[ $- == *X* ]]
+      set → [[ -o option-name ]]
+      shopt → shopt -q optname
+
+  * LANG だけでいいのか? LC_ALL は?
+
+    LANG=... を使っているのは read -t 0 のチェック部分と、
+    初期化の command awk の呼出の部分だけである。
+
+    結局以下の bash-4.0 未満のコードは使われていない上に、
+    仮に動いてしまったとしても問題点もある(?)ので削除する事にする。
+    何れにしても bash-4.0 未満ではこの方法では、
+    入力が溜まっている事を検知することはできないので削除するのが良い。
+
+    | # x 以下は bind '"\e[":"\xC0\x9B["' による
+    | #   byte の受信順序が乱れるので使えない。
+    | # x bash-4.0 未満では結局以下では何も起こらない。
+    | #   read -t 0 としても必ず失敗する様である。
+    | local byte=0
+    | while IFS= LC_ALL=C read -t 0 -s -r -d '' -n 1 byte; do
+    |   LC_ALL=C ble-text.s2c -v byte "$byte" 0
+    |   "ble-decode-byte+$bleopt_input_encoding" "$byte"
+    | done
+
+  [過去の ToDo の整理]
+
+  * ble-bind の説明を追加
+
+  * cat 置き換え
+
+  * [2015-11-06] isearch-forward/backward で現在の一致範囲をハイライトする。
+
+  * [2015-03-06] complete の古いコード
+
+    →これは誰からも使われていない古い関数達を削除した。please, see commit log.
+
+  * [2015-03-06] binder-source 周辺
+
+  * [2015-02-27] complete: 既存の bash complete に対応する。
+
+  * [2015-02-25] isearch-forward/backward の動作
+
+    気付いたのだが bash では isearch-forward/backward は各ヒストリ項目に対して一致しているのではなく、
+    ヒストリ項目の中にある文字列に対して一致している様だ。
+    つまり、複数の一致が一つのコマンドラインの中にあれば、
+    その中を C-r C-s で移動していく事になる。
+    そればかりか現在編集している文字列の中で一致する物についてもちゃんと移動できる。。
+
+  * [2013-06-06] complete: complete -F に対する対応
+
+  * [2013-06-06] complete: コマンド先頭位置の検出 (複合文の途中からコマンドが始まっている場合など)
+
+  * [2013-06-05] ^U ^V ^W ^? bind 関連
+    + 説明書にその事を書いておく。
+    + ^U ^V ^W ^? を bind するより良い方法があれば考える
+    + bashrc の中でも同様に問題が起こるのか?
+
+    + 一旦 bind '"":"hogehoge"' 等として変換したら受信できる可能性?
+
+    2015-12-12 →これは現在何も問題が起こっていない気がするので完了済と解釈する。
+
+  * [2013-06-04] vbell .time の置き場所を変更?
+
+    2015-12-12 →一時ファイルは現在は $_ble_base_tmp を介して統一的に取り扱う事になっている。
+      もし置き場所を整理するとすれば $_ble_base_tmp 自体を変更する事になるが、
+      現在の実装で満足しているので、現在の所変更の予定はない。
+
+  * [2013-06-01 以前] 編集文字列の表示
+    + スタイル指定文字列
+    + color fall backs
+    + forward-char
+    + goto-char
+    + insert-string
+    + insert-char
+
+    2015-12-12 → これらの ToDo 項目が元々何を意図していたのか良く分からないが、
+      スタイル指定文字列は gspec として実装してあるし、
+      編集関数 goto-char, forward-char, insert-string, insert-char は実装済である。
+      編集関数と編集文字列の「表示」にどの様な関係があるのかは不明。
 
 2015-12-05
 
