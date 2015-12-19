@@ -626,14 +626,14 @@ _ble_syntax_bashc=()
   _ble_syntax_bashc_def[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'!^"
   _ble_syntax_bashc_def[CTX_QUOT]="\$\"\`\\!"       # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bashc_def[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
-  _ble_syntax_bashc_def[CTX_PWORD]="}\$\"\`\\!"     # パラメータ展開 ${～}
+  _ble_syntax_bashc_def[CTX_PWORD]="}\$\"\`\\'!"    # パラメータ展開 ${～}
 
   # templates
   _ble_syntax_bashc_fmt=()
   _ble_syntax_bashc_fmt[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'@h@q"
   _ble_syntax_bashc_fmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bashc_fmt[CTX_EXPR]="][}()\$\"\`\\'@h"
-  _ble_syntax_bashc_fmt[CTX_PWORD]="}\$\"\`\\@h"
+  _ble_syntax_bashc_fmt[CTX_PWORD]="}\$\"\`\\'@h"
 
   ## @param[in] histc1 histc histc12
   ## @param[out] _ble_syntax_bashc[]
@@ -738,7 +738,9 @@ function ble-syntax:bash/check-dollar {
       local rematch2="${BASH_REMATCH[2]}"
       local rematch3="${BASH_REMATCH[3]}"
 
-      ble-syntax/parse/nest-push "$CTX_PARAM" '${'
+      local ntype='${'
+      ((ctx==CTX_QUOT)) && ntype='"${'
+      ble-syntax/parse/nest-push "$CTX_PARAM" "$ntype"
       ((_ble_syntax_attr[i]=ctx,
         i+=${#rematch1},
         _ble_syntax_attr[i]=ATTR_VAR,
@@ -780,6 +782,18 @@ function ble-syntax:bash/check-dollar {
 
 function ble-syntax:bash/check-quotes {
   local rex
+
+  if ((ctx==CTX_PWORD)); then
+    # "${var ～}" の中では '' $'' $"" は無効 (-u extquote の時は '' が無効) になる。
+    if [[ $tail == "'"* ]] || { [[ $tail == '$'[\'\"]* ]] && ! shopt -q extquote; }; then
+      local ntype
+      ble-syntax/parse/nest-type -v ntype
+      if [[ $ntype == '"${' ]]; then
+        ((_ble_syntax_attr[i++]=ctx))
+        return 0
+      fi
+    fi
+  fi
 
   if rex='^`([^`\]|\\(.|$))*(`?)|^'\''[^'\'']*('\''?)' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ATTR_QDEL,
