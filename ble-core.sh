@@ -15,18 +15,6 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
-## 関数 ble/util/cat
-##   cat の代替。但し、ファイル内に \0 が含まれる場合は駄目。
-function ble/util/cat {
-  local content=
-  if [[ $1 && $1 != - ]]; then
-    IFS= read -r -d '' content < "$1"
-  else
-    IFS= read -r -d '' content
-  fi
-  echo -n "$content"
-}
-
 ## 関数 ble/util/assign
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
 # function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
@@ -240,6 +228,54 @@ function ble/util/isprint+ {
   [[ $1 =~ $_ble_rex_isprint ]]
 }
 
+## 関数 ble/util/cat
+##   cat の代替。但し、ファイル内に \0 が含まれる場合は駄目。
+function ble/util/cat {
+  local content=
+  if [[ $1 && $1 != - ]]; then
+    IFS= read -r -d '' content < "$1"
+  else
+    IFS= read -r -d '' content
+  fi
+  echo -n "$content"
+}
+
+_ble_util_less_fallback=
+function ble/util/less {
+  if [[ ! $_ble_util_less_fallback ]]; then
+    if type less &>/dev/null; then
+      _ble_util_less_fallback=less
+    elif type more &>/dev/null; then
+      _ble_util_less_fallback=more
+    else
+      _ble_util_less_fallback=cat
+    fi
+  fi
+
+  "${PAGER:-$_ble_util_less_fallback}"
+}
+
+## 関数 ble/util/getmtime filename
+##   ファイル filename の mtime を取得し標準出力に出力します。
+##   ミリ秒も取得できる場合には第二フィールドとしてミリ秒を出力します。
+##   @param[in] filename ファイル名を指定します。
+##
+if type date &>/dev/null && date -r / +%s &>/dev/null; then
+  function ble/util/getmtime { date -r "$1" +'%s %N' 2>/dev/null; }
+elif type stat &>/dev/null; then
+  # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
+  if stat -c %Y / &>/dev/null; then
+    function ble/util/getmtime { stat -c %Y "$1" 2>/dev/null; }
+  elif stat -f %m / &>/dev/null; then
+    function ble/util/getmtime { stat -f %m "$1" 2>/dev/null; }
+  fi
+fi
+# fallback: print current time
+ble/util/isfunction ble/util/getmtime ||
+  function ble/util/getmtime { ble/util/strftime '%s %N'; }
+
+#------------------------------------------------------------------------------
+
 ## 関数 ble-autoload scriptfile functions...
 ##   関数が定義されたファイルを自動で読み取る設定を行います。
 ##   scriptfile には functions の実体を定義します。
@@ -450,9 +486,9 @@ function ble-term/visible-bell {
 
       # check and clear
       declare -a time1 time2
-      time1=($(command date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
-      time2=($(command date +'%s %N'))
-      if (((time2[0]-time1[0])*1000+(1${time2[1]::3}-1${time1[1]::3})>=msec)); then
+      time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
+      time2=($(command date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
+      if (((time2[0]-time1[0])*1000+(10#${time2[1]::3}-10#${time1[1]::3})>=msec)); then
         builtin echo -n "$_ble_term_visible_bell_clear" >&2
       fi
     } &

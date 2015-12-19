@@ -83,7 +83,7 @@ fi
 # check environment
 
 function ble/.check-environment {
-  local posixCommandList='sed date rm mkdir mkfifo sleep stty tput sort awk chmod grep'
+  local posixCommandList='sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat'
   if ! type $posixCommandList &>/dev/null; then
     local cmd commandMissing=
     for cmd in $posixCommandList; do

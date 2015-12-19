@@ -2,7 +2,7 @@
 
 if type tput &>/dev/null; then
   _ble_term_hasput=1
-  function ble/term.sh/tput { tput "$@" 2>/dev/null; }
+  function ble/term.sh/tput { command tput "$@" 2>/dev/null; }
 else
   function ble/term.sh/tput { return 1; }
 fi
@@ -45,14 +45,14 @@ function ble/term.sh/initialize {
   # xenl (end of line behavior)
   _ble_term_xenl=1
   [[ $_ble_term_hasput ]] &&
-    ! tput xenl &>/dev/null &&
+    ! ble/term.sh/tput tput xenl &>/dev/null &&
     _ble_term_xenl=0
   ble/term.sh/register-varname _ble_term_xenl
 
   # tab width
   _ble_term_it=8
   if [[ $_ble_term_hasput ]]; then
-    _ble_term_it="$(tput it 2>/dev/null)"
+    _ble_term_it="$(ble/term.sh/tput it)"
     _ble_term_it="${_ble_term_it:-8}"
   fi
   ble/term.sh/register-varname _ble_term_it

@@ -3756,12 +3756,12 @@ function ble/widget/command-help {
 
   local content
   if content="$("$cmd" --help 2>&1)" && [[ $content ]]; then
-    builtin printf '%s\n' "$content" | less
+    builtin printf '%s\n' "$content" | ble/util/less
     return
   fi
 
-  if content="$(man "$cmd" 2>&1)" && [[ $content ]]; then
-    builtin printf '%s\n' "$content" | less
+  if content="$(command man "$cmd" 2>&1)" && [[ $content ]]; then
+    builtin printf '%s\n' "$content" | ble/util/less
     return
   fi
 
