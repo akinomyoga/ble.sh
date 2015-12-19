@@ -1400,7 +1400,7 @@ function ble-decode-bind/cmap/initialize {
       s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
       s/^-- //
       s/["'"'"']//g
-    ' > "$dump"
+    ' >| "$dump"
   fi
 
   if ((_ble_bash>=40300)); then
@@ -1409,9 +1409,9 @@ function ble-decode-bind/cmap/initialize {
     _ble_decode_bind_fbinder="$fbinder"
     if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
       echo -n 'ble.sh: initializing multichar sequence binders... '
-      ble-decode-bind/cmap/.generate-binder-template > "$fbinder"
-      binder=ble-decode-bind/cmap/.emit-bindx source "$fbinder" > "$fbinder.bind"
-      binder=ble-decode-bind/cmap/.emit-bindr source "$fbinder" > "$fbinder.unbind"
+      ble-decode-bind/cmap/.generate-binder-template >| "$fbinder"
+      binder=ble-decode-bind/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
+      binder=ble-decode-bind/cmap/.emit-bindr source "$fbinder" >| "$fbinder.unbind"
       echo 'done'
     fi
   fi
@@ -1531,7 +1531,7 @@ function ble-decode-bind/.generate-source-to-unbind-default {
 
       print "builtin bind -x " quote(line) >"/dev/stderr";
     }
-  ' 2> "$_ble_base_tmp/$$.bind.save"
+  ' 2>| "$_ble_base_tmp/$$.bind.save"
 }
 
 function ble-decode-initialize {

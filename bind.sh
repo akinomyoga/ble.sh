@@ -27,8 +27,8 @@ function ble-decode/generate-binder {
 
   echo -n "ble.sh: updating binders... $_ble_term_cr" >&2
 
-  : > "$fbind1"
-  : > "$fbind2"
+  : >| "$fbind1"
+  : >| "$fbind2"
 
   local apos=\' APOS="'\\''"
   local binder=ble-decode/generate-binder/append

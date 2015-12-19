@@ -19,7 +19,7 @@ shopt -s checkwinsize
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
 # function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
 function ble/util/assign {
-  builtin eval "${@:2}" > "$_ble_util_read_stdout_tmp"
+  builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
   local _ret="$?"
   IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
   return "$_ret"
@@ -481,7 +481,7 @@ function ble-term/visible-bell {
       sec=${sec%???}.${sec: -3}
 
       # wait
-      > "$_ble_term_visible_bell__ftime"
+      >| "$_ble_term_visible_bell__ftime"
       command sleep $sec
 
       # check and clear
@@ -495,7 +495,7 @@ function ble-term/visible-bell {
   )
 }
 function ble-term/visible-bell/cancel-erasure {
-  > "$_ble_term_visible_bell__ftime"
+  >| "$_ble_term_visible_bell__ftime"
 }
 #------------------------------------------------------------------------------
 # String manipulations

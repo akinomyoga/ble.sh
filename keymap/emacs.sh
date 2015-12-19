@@ -148,7 +148,7 @@ function ble-decode-keymap:emacs/generate {
   ble-decode-keymap:isearch/define
   ble-decode-keymap:emacs/define
 
-  : > "$cache"
+  : >| "$cache"
   ble-decode/keymap/dump emacs   >> "$cache"
   ble-decode/keymap/dump isearch >> "$cache"
 

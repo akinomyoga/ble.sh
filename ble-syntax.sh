@@ -1300,7 +1300,7 @@ function ble-syntax:bash/ctx-command {
   local rex
 
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
-  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&|<<<))['"$_BLE_SYNTAX_CSPACE"']*'
+  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&|>\||<<<?))[ 	]*'
   if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||
@@ -1317,21 +1317,25 @@ function ble-syntax:bash/ctx-command {
     elif [[ $tail =~ $rex_redirect ]]; then
       # リダイレクト (& 単体の解釈より優先する)
 
+      local fError=0
       # for bash-3.1 ${#arr[n]} bug ... 一旦 rematch1 に入れてから ${#rematch1} で文字数を得る。
       local rematch1="${BASH_REMATCH[1]}"
+      local rematch3="${BASH_REMATCH[3]}"
       if [[ $rematch1 == *'&' ]]; then
-        ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch1"
+        ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
+      elif [[ $rematch1 == '<<' ]]; then
+        #■ヒアドキュメント not yet supported
+        fError=1
+        ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3" # 暫定・単語一つ
       elif [[ $rematch1 == '<<<' ]]; then
-        ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch1"
+        ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
       else
-        ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch1"
+        ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch3"
       fi
-      ((_ble_syntax_attr[i]=ATTR_DEL,
-        _ble_syntax_attr[i+${#rematch1}]=CTX_ARGX,
+      ((_ble_syntax_attr[i]=fError?ATTR_ERR:ATTR_DEL,
+        ${#rematch1}<${#BASH_REMATCH}&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX),
         i+=${#BASH_REMATCH}))
       return 0
-
-      #■リダイレクト&プロセス置換では直前の ctx を覚えて置いて後で復元する。
     elif rex='^;;&?|^;&|^(&&|\|[|&]?)|^[;&]' && [[ $tail =~ $rex ]]; then
       # 制御演算子 && || | & ; |& ;; ;;&
 
@@ -1612,12 +1616,13 @@ function ble-syntax:bash/ctx-redirect/check-word-end {
 function ble-syntax:bash/ctx-redirect {
   local rex
 
+  # redirect の直後にコマンド終了や別の redirect があってはならない
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
-  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&))['"$_BLE_SYNTAX_CSPACE"']*'
+  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&|>\||<<<?))[ 	]*'
   if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
     ((_ble_syntax_attr[i-1]=ATTR_ERR))
     ble-syntax/parse/nest-pop
-    return 1
+    return 0
   fi
 
   # 単語開始の設置
@@ -2249,7 +2254,6 @@ function ble-syntax:bash/extract-command/.scan {
 ## 関数 ble-syntax:bash/extract-command index
 ## @var[out] comp_cword comp_words comp_line comp_point
 function ble-syntax:bash/extract-command {
-  # @@
   local pos="$1"
   local isword= iscommand=
 
@@ -2288,6 +2292,7 @@ ATTR_FILE_DIR=108
 ATTR_FILE_LINK=109
 ATTR_FILE_EXEC=110
 ATTR_FILE_FILE=111
+ATTR_FILE_WARN=113
 
 # 遅延初期化対象
 _ble_syntax_attr2iface=()
@@ -2329,6 +2334,7 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface filename_link       fg=teal,underline
   ble-color-defface filename_executable fg=green,underline
   ble-color-defface filename_other      underline
+  ble-color-defface filename_warning    fg=red,underline
 
   _ble_syntax_attr2iface.define CTX_ARGX     syntax_default
   _ble_syntax_attr2iface.define CTX_ARGX0    syntax_default
@@ -2367,6 +2373,7 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define ATTR_FILE_LINK    filename_link
   _ble_syntax_attr2iface.define ATTR_FILE_EXEC    filename_executable
   _ble_syntax_attr2iface.define ATTR_FILE_FILE    filename_other
+  _ble_syntax_attr2iface.define ATTR_FILE_WARN    filename_warning
 }
 
 ble-color/faces/addhook-onload ble-syntax/faces-onload-hook
@@ -2557,8 +2564,29 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS)); then
       ble-syntax/highlight/filetype "$value" "$wtxt"
 
-      # エラー: ディレクトリにリダイレクトはできない
-      ((wtype==CTX_RDRF&&type==ATTR_FILE_DIR&&(type=ATTR_ERR)))
+      # check values
+      if ((wtype==CTX_RDRF)); then
+        if ((type==ATTR_FILE_DIR)); then
+          # ディレクトリにリダイレクトはできない
+          type=$ATTR_ERR
+        elif ((BLE_SYNTAX_TREE_WIDTH<=nofs)); then
+          # noclobber の時は既存ファイルを > または <> で上書きできない
+          #
+          # 仮定: _ble_syntax_word に於いてリダイレクトとファイルは同じ位置で終了すると想定する。
+          #   この時、リダイレクトの情報の次にファイル名の情報が格納されている筈で、
+          #   リダイレクトの情報は node[nofs-BLE_SYNTAX_TREE_WIDTH] に入っていると考えられる。
+          #
+          local redirect_ntype=${node[nofs-BLE_SYNTAX_TREE_WIDTH]:1}
+          if [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' ) && -f $value ]]; then
+            if [[ -o noclobber ]]; then
+              type=$ATTR_ERR
+            else
+              type=$ATTR_FILE_WARN
+            fi
+          fi
+        fi
+      fi
+
     elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
       ((type=wtype))
     fi
@@ -2935,7 +2963,7 @@ function mytest {
 
 mytest 'echo a"$"a a"\$\",$*,$var,$12"a $*,$var,$12'
 mytest 'echo a"---$((1+a[12]*3))---$(echo hello)---"a'
-mytest 'a=1 b[x[y]]=1234 echo <( world ) > hello; ( sub shell); ((1+2*3));'
+mytest 'a=1 b[x[y]]=1234 echo <( world ) >> hello; ( sub shell); ((1+2*3));'
 mytest 'a=${#hello} b=${world[10]:1:(5+2)*3} c=${arr[*]%%"test"$(cmd).cpp} d+=12'
 mytest 'for ((i=0;i<10;i++)); do echo hello; done; { : '"'worlds'\\'' record'"'; }'
 mytest '[[ echo == echo ]]; echo hello'

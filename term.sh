@@ -172,7 +172,7 @@ function ble/term.sh/initialize {
   ble/term.sh/register-varname "_ble_term_sgr_ab"
 
   # save
-  ble/util/declare-print-definitions "${varnames[@]}" > "$_ble_base/cache/$TERM.term"
+  ble/util/declare-print-definitions "${varnames[@]}" >| "$_ble_base/cache/$TERM.term"
 }
 
 echo -n "ble/term.sh: updating tput cache for TERM=$TERM... " >&2

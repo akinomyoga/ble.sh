@@ -3828,7 +3828,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
         done < "$file"
 
         [[ $message ]] && ble-term/visible-bell "$message"
-        :> "$file"
+        : >| "$file"
       fi
     fi
   }
@@ -3841,7 +3841,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
       local file="$_ble_edit_io_fname2.proc"
       if [[ -s $file ]]; then
         content="$(< $file)"
-        : > "$file"
+        : >| "$file"
         for cmd in $content; do
           case "$cmd" in
           (eof)
