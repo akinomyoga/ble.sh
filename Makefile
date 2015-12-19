@@ -13,7 +13,7 @@ $(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap:
 	mkdir -p $@
 
 outfiles+=$(OUTDIR)/ble.sh
-$(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-getopt.sh ble-edit.sh ble-color.sh ble-syntax.sh | $(OUTDIR)
+$(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-edit.sh ble-color.sh ble-syntax.sh | $(OUTDIR)
 	$(PP) $< >/dev/null
 
 outfiles+=$(OUTDIR)/term.sh

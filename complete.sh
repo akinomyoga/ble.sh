@@ -209,9 +209,11 @@ function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
 
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+
   local cand
   for cand in "$COMPV"*; do
-    [[ -e "$cand" ]] || continue
+    [[ -e $cand ]] || continue
+    [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
     ble-complete/yield-candidate "$cand" ble-complete/action/file
   done
 }
@@ -224,7 +226,8 @@ function ble-complete/source/dir {
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
   local cand
   for cand in "$COMPV"*/; do
-    [[ -d "$cand" ]] || continue
+    [[ -d $cand ]] || continue
+    [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
     ble-complete/yield-candidate "${cand%/}" ble-complete/action/file
   done
 }
@@ -365,7 +368,7 @@ function ble-complete/source/argument/.compgen {
 
   ble/util/is-stdin-ready && return 27
 
-  local rex_compv
+  local rex_compv arr
   ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
   ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
   ble/util/assign compgen 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u'
@@ -413,6 +416,20 @@ function ble-complete/source/argument {
 
 #------------------------------------------------------------------------------
 
+function ble-complete/.fignore/prepare {
+  _fignore=()
+  local i=0 leaf tmp
+  IFS=: eval 'tmp=($FIGNORE)'
+  for leaf in "${tmp[@]}"; do
+    [[ $leaf ]] && _fignore[i++]="$leaf"
+  done
+}
+function ble-complete/.fignore/filter {
+  for pat in "${_fignore[@]}"; do
+    [[ $1 == *"$pat" ]] && return 1
+  done
+}
+
 function ble/widget/complete {
   local text="$_ble_edit_str" index="$_ble_edit_ind"
   _ble_edit_str.update-syntax
@@ -436,7 +453,12 @@ function ble/widget/complete {
 
   local rex_raw_paramx='^('"$_ble_syntax_rex_simple_word_element"'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
 
-  local ctx cand
+  if [[ $FIGNORE ]]; then
+    local -a _fignore
+    ble-complete/.fignore/prepare
+  fi
+
+  local ctx
   for ctx in "${context[@]}"; do
     # initialize completion range
     ctx=($ctx)
@@ -450,7 +472,7 @@ function ble/widget/complete {
     local COMP_PREFIX=
 
     # generate candidates
-    local cand ACTION DATA arr
+    local ACTION DATA
     case "${ctx[0]}" in
     (argument)
       ble-complete/source/argument ;;
@@ -460,6 +482,7 @@ function ble/widget/complete {
       ble-complete/source/command ;;
     (variable)
       if [[ ${COMPV+set} ]]; then
+        local cand arr
         IFS=$'\n' builtin eval 'arr=($(compgen -v -- "$COMPV"))'
         for cand in "${arr[@]}"; do
           ble-complete/yield-candidate "$cand" ble-complete/action/word
@@ -476,6 +499,9 @@ function ble/widget/complete {
     return
   fi
 
+  local flag_force_fignore=
+  shopt -q force_fignore && ((${#_fignore[@]})) && flag_force_fignore=1
+
   # 共通部分
   local i common comp1 clen comp2="$index"
   local acount=0 aindex=0
@@ -485,6 +511,8 @@ function ble/widget/complete {
     local word="${cand_word[i]}"
     local -a prop
     prop=(${cand_prop[i]})
+
+    [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter && continue
 
     if ((i==0)); then
       common="$word"
