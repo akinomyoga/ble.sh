@@ -845,7 +845,7 @@ function ble-edit/prompt/update/process-backslash {
       ble-edit/draw/put "$_ble_edit_CMD" ;;
     (\!) # 履歴番号
       local count
-      .ble-edit/history/getcount -v count
+      ble-edit/history/getcount -v count
       ble-edit/draw/put "$count" ;;
     ('$') # # or $
       ble-edit/prompt/update/append "$_ble_edit_prompt__string_root" ;;
@@ -2827,7 +2827,7 @@ function ble-edit/exec:exec/.recursive {
   if [[ ${BASH_COMMAND//[ 	]/} ]]; then
     # 実行
     local PS1="$_ble_edit_PS1" HISTCMD
-    .ble-edit/history/getcount -v HISTCMD
+    ble-edit/history/getcount -v HISTCMD
 
     local _ble_edit_exec_INT=0
     ble-edit/exec:exec/.eval-prologue
@@ -3004,7 +3004,7 @@ function ble-edit/exec:gexec/.end {
 function ble-edit/exec:gexec/.eval-prologue {
   BASH_COMMAND="$1"
   PS1="$_ble_edit_PS1"
-  unset HISTCMD; .ble-edit/history/getcount -v HISTCMD
+  unset HISTCMD; ble-edit/history/getcount -v HISTCMD
   _ble_edit_exec_INT=0
   ble-stty/leave
   ble-edit/exec/.setexit
@@ -3158,7 +3158,7 @@ function ble/widget/accept-line {
     ((++_ble_edit_CMD))
 
     # 編集文字列を履歴に追加
-    .ble-edit.history-add "$BASH_COMMAND"
+    ble-edit/history/add "$BASH_COMMAND"
 
     # 実行を登録
     ble-edit/exec/register "$BASH_COMMAND"
@@ -3167,9 +3167,9 @@ function ble/widget/accept-line {
 
 function ble/widget/accept-and-next {
   local hist_ind
-  .ble-edit/history/getindex -v hist_ind
+  ble-edit/history/getindex -v hist_ind
   ble/widget/accept-line
-  .ble-edit.history-goto $((hist_ind+1))
+  ble-edit/history/goto $((hist_ind+1))
 }
 function ble/widget/newline {
   KEYS=(10) ble/widget/self-insert
@@ -3194,17 +3194,17 @@ _ble_edit_history_ind=0
 _ble_edit_history_loaded=
 _ble_edit_history_count=
 
-function .ble-edit/history/getindex {
+function ble-edit/history/getindex {
   local _var=index _ret
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
   if [[ $_ble_edit_history_loaded ]]; then
     (($_var=_ble_edit_history_ind))
   else
-    .ble-edit/history/getcount -v "$_var"
+    ble-edit/history/getcount -v "$_var"
   fi
 }
 
-function .ble-edit/history/getcount {
+function ble-edit/history/getcount {
   local _var=count _ret
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
 
@@ -3220,7 +3220,7 @@ function .ble-edit/history/getcount {
   (($_var=_ret))
 }
 
-function .ble-edit/history/generate-source-to-load-history {
+function ble-edit/history/.generate-source-to-load-history {
   if ! history -p '!1' &>/dev/null; then
     # rcfile として起動すると history が未だロードされていない。
     history -n
@@ -3266,7 +3266,7 @@ function .ble-edit/history/generate-source-to-load-history {
 }
 
 ## called by ble-edit-initialize
-function .ble-edit.history-load {
+function ble-edit/history/load {
   [[ $_ble_edit_history_loaded ]] && return
   _ble_edit_history_loaded=1
 
@@ -3282,7 +3282,7 @@ function .ble-edit.history-load {
   # * プロセス置換にしてもファイルに書き出しても大した違いはない。
   #   270ms for 16437 entries (generate-source の時間は除く)
   # * プロセス置換×source は bash-3 で動かない。eval に変更する。
-  builtin eval -- "$(.ble-edit/history/generate-source-to-load-history)"
+  builtin eval -- "$(ble-edit/history/.generate-source-to-load-history)"
   _ble_edit_history_count="${#_ble_edit_history[@]}"
   _ble_edit_history_ind="$_ble_edit_history_count"
   if ((_ble_edit_attached)); then
@@ -3290,7 +3290,9 @@ function .ble-edit.history-load {
   fi
 }
 
-function .ble-edit.history-add {
+function ble-edit/history/add {
+  [[ -o history ]] || return
+
   if [[ $_ble_edit_history_loaded ]]; then
     # 登録・不登録に拘わらず取り敢えず初期化
     _ble_edit_history_ind=${#_ble_edit_history[@]}
@@ -3372,8 +3374,8 @@ function .ble-edit.history-add {
   fi
 }
 
-function .ble-edit.history-goto {
-  .ble-edit.history-load
+function ble-edit/history/goto {
+  ble-edit/history/load
 
   local histlen=${#_ble_edit_history[@]}
   local index0="$_ble_edit_history_ind"
@@ -3415,20 +3417,20 @@ function .ble-edit.history-goto {
 }
 
 function ble/widget/history-next {
-  .ble-edit.history-load
-  .ble-edit.history-goto $((_ble_edit_history_ind+1))
+  ble-edit/history/load
+  ble-edit/history/goto $((_ble_edit_history_ind+1))
 }
 function ble/widget/history-prev {
-  .ble-edit.history-load
-  .ble-edit.history-goto $((_ble_edit_history_ind-1))
+  ble-edit/history/load
+  ble-edit/history/goto $((_ble_edit_history_ind-1))
 }
 function ble/widget/history-beginning {
-  .ble-edit.history-load
-  .ble-edit.history-goto 0
+  ble-edit/history/load
+  ble-edit/history/goto 0
 }
 function ble/widget/history-end {
-  .ble-edit.history-load
-  .ble-edit.history-goto "${#_ble_edit_history[@]}"
+  ble-edit/history/load
+  ble-edit/history/goto "${#_ble_edit_history[@]}"
 }
 
 function ble/widget/history-expand-line {
@@ -3537,7 +3539,7 @@ function ble-edit/isearch/.goto-match {
   # 状態を更新
   _ble_edit_isearch_str="$needle"
   [[ _ble_edit_history_ind != $ind ]] &&
-    .ble-edit.history-goto "$ind"
+    ble-edit/history/goto "$ind"
   ble-edit/isearch/.set-region "$beg" "$end"
 
   # isearch 表示
@@ -3647,7 +3649,7 @@ function ble/widget/isearch/prev {
   end="${top%%:*}"; top="${top#*:}"
 
   _ble_edit_isearch_dir="$dir"
-  .ble-edit.history-goto "$ind"
+  ble-edit/history/goto "$ind"
   ble-edit/isearch/.set-region "$beg" "$end"
   _ble_edit_isearch_str="$top"
 
@@ -3697,7 +3699,7 @@ function ble/widget/isearch/exit {
 function ble/widget/isearch/cancel {
   if ((${#_ble_edit_isearch_arr[@]})); then
     local line="${_ble_edit_isearch_arr[0]}"
-    .ble-edit.history-goto "${line%%:*}"
+    ble-edit/history/goto "${line%%:*}"
   fi
 
   ble/widget/isearch/exit
@@ -3719,14 +3721,14 @@ function ble/widget/isearch/exit-delete-forward-char {
 }
 
 function ble/widget/history-isearch-backward {
-  .ble-edit.history-load
+  ble-edit/history/load
   ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=-
   ble-edit/isearch/.draw-line
 }
 function ble/widget/history-isearch-forward {
-  .ble-edit.history-load
+  ble-edit/history/load
   ble-decode/keymap/push isearch
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=+
@@ -4062,7 +4064,7 @@ function ble-edit-attach {
     # * bash-3.0 では history -s は最近の履歴項目を置換するだけなので、
     #   履歴項目は全て自分で処理する必要がある。
     #   つまり、初めから load しておかなければならない。
-    .ble-edit.history-load
+    ble-edit/history/load
   fi
 
   .ble-edit/edit/attach

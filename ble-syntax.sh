@@ -614,7 +614,8 @@ CTX_VALX=23 # (値リスト) 次に値が来る
 CTX_VALI=24 # (値リスト) 値の中
 ATTR_COMMENT=25 # コメント
 
-_BLE_SYNTAX_CSPACE=$' \t\n'
+_ble_syntax_bash_IFS=$' \t\n'
+_ble_syntax_bash_rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&|>\||<<<?))[ 	]*'
 
 ## @var _ble_syntax_bashc[]
 ##   特定の役割を持つ文字の集合。Bracket expression [～] に入れて使う為の物。
@@ -623,14 +624,14 @@ _ble_syntax_bashc=()
 {
   # default values
   _ble_syntax_bashc_def=()
-  _ble_syntax_bashc_def[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'!^"
+  _ble_syntax_bashc_def[CTX_ARGI]="$_ble_syntax_bash_IFS;|&()<>\$\"\`\\'!^"
   _ble_syntax_bashc_def[CTX_QUOT]="\$\"\`\\!"       # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bashc_def[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
   _ble_syntax_bashc_def[CTX_PWORD]="}\$\"\`\\'!"    # パラメータ展開 ${～}
 
   # templates
   _ble_syntax_bashc_fmt=()
-  _ble_syntax_bashc_fmt[CTX_ARGI]="$_BLE_SYNTAX_CSPACE;|&()<>\$\"\`\\'@h@q"
+  _ble_syntax_bashc_fmt[CTX_ARGI]="$_ble_syntax_bash_IFS;|&()<>\$\"\`\\'@h@q"
   _ble_syntax_bashc_fmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bashc_fmt[CTX_EXPR]="][}()\$\"\`\\'@h"
   _ble_syntax_bashc_fmt[CTX_PWORD]="}\$\"\`\\'@h"
@@ -1171,7 +1172,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  [[ ${text:i:1} == [^"$_BLE_SYNTAX_CSPACE;|&<>()"] ]] && return 1
+  [[ ${text:i:1} == [^"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
 
   local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
   local word="${text:wbegin:wlen}"
@@ -1299,8 +1300,8 @@ function ble-syntax:bash/ctx-command {
   # コマンド・引数部分
   local rex
 
-  local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
-  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&|>\||<<<?))[ 	]*'
+  local rex_delimiters="^[$_ble_syntax_bash_IFS;|&<>()]"
+  local rex_redirect="$_ble_syntax_bash_rex_redirect"
   if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||
@@ -1309,7 +1310,7 @@ function ble-syntax:bash/ctx-command {
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
 
-    if rex="^[$_BLE_SYNTAX_CSPACE]+" && [[ $tail =~ $rex ]]; then
+    if rex="^[$_ble_syntax_bash_IFS]+" && [[ $tail =~ $rex ]]; then
       # 空白 (ctx はそのままで素通り)
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
       ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_CMDXV)) && [[ ${BASH_REMATCH[0]} =~ $'\n' ]] && ((ctx=CTX_CMDX))
@@ -1468,7 +1469,7 @@ function ble-syntax:bash/ctx-values/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  [[ ${text:i:1} == [^"$_BLE_SYNTAX_CSPACE;|&<>()"] ]] && return 1
+  [[ ${text:i:1} == [^"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
 
   local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
   local word="${text:wbegin:wlen}"
@@ -1500,14 +1501,14 @@ function ble-syntax:bash/ctx-values {
   # コマンド・引数部分
   local rex
 
-  local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
+  local rex_delimiters="^[$_ble_syntax_bash_IFS;|&<>()]"
   if [[ $tail =~ $rex_delimiters && $tail != ['<>']'('* ]]; then
 #%if !release
     ((ctx==CTX_VALX)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
 
-    if rex="^[$_BLE_SYNTAX_CSPACE]+" && [[ $tail =~ $rex ]]; then
+    if rex="^[$_ble_syntax_bash_IFS]+" && [[ $tail =~ $rex ]]; then
       # 空白 (ctx はそのままで素通り)
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
       return 0
@@ -1599,7 +1600,7 @@ function ble-syntax:bash/ctx-redirect/check-word-end {
 
   # 未だ続きがある場合は抜ける
   local tail="${text:i}"
-  [[ $tail == [^"$_BLE_SYNTAX_CSPACE;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
+  [[ $tail == [^"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
 
   # 単語の登録
   ble-syntax/parse/word-pop
@@ -1617,8 +1618,8 @@ function ble-syntax:bash/ctx-redirect {
   local rex
 
   # redirect の直後にコマンド終了や別の redirect があってはならない
-  local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
-  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&|>\||<<<?))[ 	]*'
+  local rex_delimiters="^[$_ble_syntax_bash_IFS;|&<>()]"
+  local rex_redirect="$_ble_syntax_bash_rex_redirect"
   if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
     ((_ble_syntax_attr[i-1]=ATTR_ERR))
     ble-syntax/parse/nest-pop
@@ -2053,7 +2054,7 @@ function ble-syntax/completion-context/check/parameter-expansion {
 ##   @var[out] context
 function ble-syntax/completion-context/check-prefix {
   local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
-  local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
+  local rex_delimiters="^[$_ble_syntax_bash_IFS;|&<>()]"
   local rex_spaces='^[ 	]+$'
 
   local i
@@ -2606,6 +2607,8 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
             else
               type=$ATTR_FILE_WARN
             fi
+          elif [[ $redirect_ntype == '<' && ! -f $value ]]; then
+            type=$ATTR_ERR
           fi
         fi
       fi

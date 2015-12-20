@@ -324,14 +324,24 @@ tech
 
 2015-12-19
 
-  * ble-syntax.sh: <>| や &>| はどうなっているのか?
-  * ble-syntax.sh: rex_redirect を何処かに共有する。
-
-  * ble-edit: [[ ! -o history ]] の時は履歴に登録しない。
-
   * complete: 履歴を用いた候補生成? 特に単語について。
 
   Done
+
+  * ble-edit: [[ ! -o history ]] の時は履歴に登録しない。
+
+  * ble-syntax.sh: rex_redirect を何処かに共有する。
+
+    rex_redirect -> _ble_syntax_bash_rex_redirect.
+
+  * ble-syntax.sh (ble-syntax:bash): < check
+
+  * ble-syntax.sh (ble-syntax:bash): <>| や &>| はどうなっているのか?
+    →試してみたが <>| や &>| は存在しない様だ。
+      set -C の時に上書きできるのは >| だけという事になる。
+
+    一方で <> は set -C でも普通に実行できている様な気がする。何故だ。
+    多分 < として開かれるという事で書き込みはできないが読み取りはできるという事なのだろう。
 
 2015-12-12
 
