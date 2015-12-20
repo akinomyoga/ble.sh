@@ -1083,9 +1083,9 @@ function ble-syntax:bash/ctx-expr {
       elif [[ $type == 'a[' ]]; then
         if [[ $tail == ']='* ]]; then
           # a[...]= の場合。配列代入
+          ((_ble_syntax_attr[i++]=CTX_EXPR))
           ble-syntax/parse/nest-pop
-          ((_ble_syntax_attr[i]=CTX_EXPR,
-            i+=2))
+          ((i++))
         else
           # a[...]... という唯のコマンドの場合。
           ((_ble_syntax_attr[i]=CTX_EXPR,i++))
