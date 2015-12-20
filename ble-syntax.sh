@@ -96,7 +96,9 @@ function ble/util/wrange#shift {
 ##   type は入れ子の種類を表す文字列。
 ## @var _ble_syntax_tree[i-1]
 ##   境界 #i で終わる単語についての情報を保持する。
-##   各要素は "wtype wlen tclen tplen ..." の形式をしている。
+##   各要素は "( wtype wlen tclen tplen - )*" の形式をしている。
+## @var BLE_SYNTAX_TREE_WIDTH
+##   _ble_syntax_tree に格納される
 ## @var _ble_syntax_attr[i]
 ##   文脈・属性の情報
 _ble_syntax_text=
@@ -104,6 +106,8 @@ _ble_syntax_stat=()
 _ble_syntax_nest=()
 _ble_syntax_tree=()
 _ble_syntax_attr=()
+
+BLE_SYNTAX_TREE_WIDTH=5
 
 #--------------------------------------
 # ble-syntax/tree-enumerate proc
@@ -427,13 +431,11 @@ function ble-syntax/parse/generate-stat {
 
 # 構文木の管理 (_ble_syntax_tree)
 
-BLE_SYNTAX_TREE_WIDTH=5
-
 ## 関数 ble-syntax/parse/tree-append
 ## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
 function ble-syntax/parse/tree-append {
 #%if !release
-  ((i-1>=debug_p1)) || ble-stackdump "Wrong call of tree-append: Condition violation."
+  [[ $debug_p1 ]] && { ((i-1>=debug_p1)) || ble-stackdump "Wrong call of tree-append: Condition violation (p1=$debug_p1 i=$i iN=$iN)."; }
 #%end
   local type="$1"
   local beg="$2" end="$i"
@@ -448,6 +450,8 @@ function ble-syntax/parse/tree-append {
   ((tprev>=0&&(oprev=i-tprev)))
 
   [[ $type =~ ^[0-9]+$ ]] && ble-syntax/parse/touch-updated-word "$i"
+
+  # 追加する要素の数は BLE_SYNTAX_TREE_WIDTH と一致している必要がある。
   _ble_syntax_tree[i-1]="$type $len $ochild $oprev - ${_ble_syntax_tree[i-1]}"
 }
 
@@ -633,7 +637,7 @@ CTX_VALI=24 # (値リスト) 値の中
 ATTR_COMMENT=25 # コメント
 
 _ble_syntax_bash_IFS=$' \t\n'
-_ble_syntax_bash_rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&|>\||<<<?))[ 	]*'
+_ble_syntax_bash_rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|>[|&]|<[>&]|<<<?))[ 	]*'
 
 ## @var _ble_syntax_bashc[]
 ##   特定の役割を持つ文字の集合。Bracket expression [～] に入れて使う為の物。
@@ -1996,6 +2000,9 @@ function ble-syntax/parse {
     # (FCTX の中や直後ではなく) ここで単語終端をチェック
     [[ ${_BLE_SYNTAX_FEND[ctx]} ]] && "${_BLE_SYNTAX_FEND[ctx]}"
   done
+#%if !release
+  unset debug_p1
+#%end
 
   ble-syntax/vanishing-word/register _tail_syntax_tree -i2 i2+1 i 0 i
 
@@ -2340,6 +2347,10 @@ ATTR_FILE_DIR=108
 ATTR_FILE_LINK=109
 ATTR_FILE_EXEC=110
 ATTR_FILE_FILE=111
+ATTR_FILE_FIFO=114
+ATTR_FILE_CHR=115
+ATTR_FILE_BLK=116
+ATTR_FILE_SOCK=117
 ATTR_FILE_WARN=113
 
 # 遅延初期化対象
@@ -2382,6 +2393,10 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface filename_link       fg=teal,underline
   ble-color-defface filename_executable fg=green,underline
   ble-color-defface filename_other      underline
+  ble-color-defface filename_socket     fg=cyan,bg=black,underline
+  ble-color-defface filename_pipe       fg=lime,bg=black,underline
+  ble-color-defface filename_character  fg=white,bg=black,underline
+  ble-color-defface filename_block      fg=yellow,bg=black,underline
   ble-color-defface filename_warning    fg=red,underline
 
   _ble_syntax_attr2iface.define CTX_ARGX     syntax_default
@@ -2422,6 +2437,10 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define ATTR_FILE_EXEC    filename_executable
   _ble_syntax_attr2iface.define ATTR_FILE_FILE    filename_other
   _ble_syntax_attr2iface.define ATTR_FILE_WARN    filename_warning
+  _ble_syntax_attr2iface.define ATTR_FILE_FIFO    filename_pipe
+  _ble_syntax_attr2iface.define ATTR_FILE_SOCK    filename_socket
+  _ble_syntax_attr2iface.define ATTR_FILE_BLK     filename_block
+  _ble_syntax_attr2iface.define ATTR_FILE_CHR     filename_character
 }
 
 ble-color/faces/addhook-onload ble-syntax/faces-onload-hook
@@ -2538,17 +2557,26 @@ fi
 
 function ble-syntax/highlight/filetype {
   local file="$1" _0="$2"
+  type=
   [[ ! -e "$file" && ( $file == '~' || $file == '~/'* ) ]] && file="$HOME${file:1}"
-  if [[ -d $file ]]; then
-    ((type=ATTR_FILE_DIR))
-  elif [[ -h $file ]]; then
-    ((type=ATTR_FILE_LINK))
-  elif [[ -x $file ]]; then
-    ((type=ATTR_FILE_EXEC))
-  elif [[ -f $file ]]; then
-    ((type=ATTR_FILE_FILE))
-  else
-    type=
+  if [[ -e $file ]]; then
+    if [[ -d $file ]]; then
+      ((type=ATTR_FILE_DIR))
+    elif [[ -h $file ]]; then
+      ((type=ATTR_FILE_LINK))
+    elif [[ -x $file ]]; then
+      ((type=ATTR_FILE_EXEC))
+    elif [[ -f $file ]]; then
+      ((type=ATTR_FILE_FILE))
+    elif [[ -c $file ]]; then
+      ((type=ATTR_FILE_CHR))
+    elif [[ -p $file ]]; then
+      ((type=ATTR_FILE_FIFO))
+    elif [[ -S $file ]]; then
+      ((type=ATTR_FILE_SOCK))
+    elif [[ -b $file ]]; then
+      ((type=ATTR_FILE_BLK))
+    fi
   fi
 }
 
@@ -2625,13 +2653,26 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
           #   リダイレクトの情報は node[nofs-BLE_SYNTAX_TREE_WIDTH] に入っていると考えられる。
           #
           local redirect_ntype=${node[nofs-BLE_SYNTAX_TREE_WIDTH]:1}
-          if [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' ) && -f $value ]]; then
-            if [[ -o noclobber ]]; then
+          if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>|' ) ]]; then
+            if [[ -e $value ]]; then
+              if [[ -d $value || ! -w $value ]]; then
+                # ディレクトリまたは書き込み権限がない
+                type=$ATTR_ERR
+              elif [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' ) && -f $value ]]; then
+                if [[ -o noclobber ]]; then
+                  # 上書き禁止
+                  type=$ATTR_ERR
+                else
+                  # 上書き注意
+                  type=$ATTR_FILE_WARN
+                fi
+              fi
+            elif [[ $value == */* && ! -w ${value%/*}/ || $value != */* && ! -w ./ ]]; then
+              # ディレクトリに書き込み権限がない
               type=$ATTR_ERR
-            else
-              type=$ATTR_FILE_WARN
             fi
-          elif [[ $redirect_ntype == '<' && ! -f $value ]]; then
+          elif [[ $redirect_ntype == '<' && ! -r $value ]]; then
+            # ファイルがないまたは読み取り権限がない
             type=$ATTR_ERR
           fi
         fi
