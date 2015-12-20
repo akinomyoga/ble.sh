@@ -190,24 +190,23 @@ function ble-complete/source/command/gen {
   shopt -q autocd && compgen -d -- "$COMPV"
 }
 function ble-complete/source/command {
-  if [[ ${COMPV+set} ]]; then
-    [[ $COMPV =~ ^.+/ ]] &&
-      COMP_PREFIX="${BASH_REMATCH[0]}"
+  [[ ${COMPV+set} ]] || return 1
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
 
-    local cand arr i=0
-    IFS=$'\n' builtin eval 'arr=($(ble-complete/source/command/gen))'
-    for cand in "${arr[@]}"; do
-      ((i%100==0)) && ble/util/is-stdin-ready && return 27
-      ble-complete/yield-candidate "$cand" ble-complete/action/command
-    done
-  fi
+  local cand arr i=0
+  IFS=$'\n' builtin eval 'arr=($(ble-complete/source/command/gen))'
+  for cand in "${arr[@]}"; do
+    ((i%100==0)) && ble/util/is-stdin-ready && return 27
+    ble-complete/yield-candidate "$cand" ble-complete/action/command
+  done
+
+  ble-complete/source/dir
 }
 
 # source/file
 
 function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
-
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
 
   local cand
@@ -222,8 +221,8 @@ function ble-complete/source/file {
 
 function ble-complete/source/dir {
   [[ ${COMPV+set} ]] || return 1
-
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+
   local cand
   for cand in "$COMPV"*/; do
     [[ -d $cand ]] || continue

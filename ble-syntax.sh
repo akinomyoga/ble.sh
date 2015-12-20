@@ -2054,6 +2054,7 @@ function ble-syntax/completion-context/check/parameter-expansion {
 function ble-syntax/completion-context/check-prefix {
   local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
+  local rex_spaces='^[ 	]+$'
 
   local i
   local -a stat=()
@@ -2095,12 +2096,27 @@ function ble-syntax/completion-context/check-prefix {
       # 現在地との間にコマンド名があればそれはコマンドである。
       # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
       local word="${text:i:index-i}"
+
+      # コマンドのチェック
       if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
+        # 単語が i から開始している場合
         ble-syntax/completion-context/add command "$i"
-        if [[ $word =~ $rex_param ]]; then
-          ble-syntax/completion-context/add variable "$i"
+
+        # 変数・代入のチェック
+        if local rex='^[a-zA-Z_][a-zA-Z_0-9]*=?$' && [[ $word =~ $rex ]]; then
+          if [[ $word == *= ]]; then
+            # VAR=<argument>: 現在位置から argument 候補を生成する
+            ble-syntax/completion-context/add argument "$index"
+          else
+            # VAR<+variable>: 単語を変数名の一部と思って変数名を生成する
+            ble-syntax/completion-context/add variable "$i"
+          fi
         fi
+      elif [[ $word =~ $rex_spaces ]]; then
+        # 単語が未だ開始していない時 (空白)
+        ble-syntax/completion-context/add command "$index"
       fi
+
       ble-syntax/completion-context/check/parameter-expansion
     elif ((ctx==CTX_CMDXF)); then
       # CTX_CMDXF → (( でなければ 変数名
@@ -2111,14 +2127,18 @@ function ble-syntax/completion-context/check-prefix {
       local source=file
       ((ctx==CTX_ARGX)) && source=argument
 
-      local sub="${text:i:index-i}"
-      if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
+      local word="${text:i:index-i}"
+      if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
+        # 単語が i から開始している場合
         ble-syntax/completion-context/add "$source" "$i"
         local rex="^([^'\"\$\\]|\\.)*="
-        if [[ $sub =~ $rex ]]; then
-          sub="${sub:${#BASH_REMATCH}}"
-          ble-syntax/completion-context/add "$source" "$((index-${#sub}))"
+        if [[ $word =~ $rex ]]; then
+          word="${word:${#BASH_REMATCH}}"
+          ble-syntax/completion-context/add "$source" "$((index-${#word}))"
         fi
+      elif [[ $word =~ $rex_spaces ]]; then
+        # 単語が未だ開始していない時 (空白)
+        ble-syntax/completion-context/add "$source" "$index"
       fi
       ble-syntax/completion-context/check/parameter-expansion
     elif ((ctx==CTX_RDRF||ctx==CTX_VRHS)); then
@@ -2144,17 +2164,20 @@ function ble-syntax/completion-context/check-here {
   if [[ ${stat[0]} ]]; then
     # ここで CTX_CMDI や CTX_ARGI は処理しない。
     # 既に check-prefix で引っかかっている筈だから。
+    local ctx=${stat[0]}
 
-    if ((stat[0]==CTX_CMDX||
-            stat[0]==CTX_CMDXV||
-            stat[0]==CTX_CMDX1||
-            stat[0]==CTX_CMDXC)); then
+    if ((ctx==CTX_CMDX||
+            ctx==CTX_CMDXV||
+            ctx==CTX_CMDX1||
+            ctx==CTX_CMDXC)); then
       ble-syntax/completion-context/add command "$index"
       ble-syntax/completion-context/add variable "$index"
-    elif ((stat[0]==CTX_CMDXF)); then
+    elif ((ctx==CTX_CMDXF)); then
       ble-syntax/completion-context/add variable "$index"
-    elif ((stat[0]==CTX_ARGX)); then
+    elif ((ctx==CTX_ARGX)); then
       ble-syntax/completion-context/add argument "$index"
+    elif ((ctx==CTX_RDRF||ctx==CTX_RDRS||ctx==CTX_VRHS)); then
+      ble-syntax/completion-context/add file "$index"
     fi
   fi
 }
