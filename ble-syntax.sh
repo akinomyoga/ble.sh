@@ -429,11 +429,18 @@ function ble-syntax/parse/generate-stat {
 
 BLE_SYNTAX_TREE_WIDTH=5
 
+## 関数 ble-syntax/parse/tree-append
+## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
 function ble-syntax/parse/tree-append {
+#%if !release
+  ((i-1>=debug_p1)) || ble-stackdump "Wrong call of tree-append: Condition violation."
+#%end
   local type="$1"
   local beg="$2" end="$i"
   local len="$((end-beg))"
   ((len==0)) && return
+
+  local tchild="$3" tprev="$4"
 
   # 子情報・兄情報
   local ochild=-1 oprev=-1
@@ -448,9 +455,10 @@ function ble-syntax/parse/word-push {
   wtype="$1" wbegin="$2" tprev="$tchild" tchild=-1
 }
 ## 関数 ble-syntax/parse/word-pop
-## 仮定: 1つ上の level は nest-push による level か top level のどちらかである。
-##   この場合に限って ble-syntax/parse/nest-reset-tprev を用いて、tprev
-##   を適切な値に復元することができる。
+## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
+# 仮定: 1つ上の level は nest-push による level か top level のどちらかである。
+#   この場合に限って ble-syntax/parse/nest-reset-tprev を用いて、tprev
+#   を適切な値に復元することができる。
 function ble-syntax/parse/word-pop {
   ble-syntax/parse/tree-append "$wtype" "$wbegin" "$tchild" "$tprev"
   ((wbegin=-1,wtype=-1,tchild=i))
@@ -474,13 +482,14 @@ function ble-syntax/parse/word-cancel {
 # 入れ子構造の管理
 
 ## 関数 ble-syntax/parse/nest-push newctx type
-##  @param[in]     newctx 新しい ctx を指定します。
-##  @param[in,opt] type   文法要素の種類を指定します。
-##  @var  [in]     i      現在の位置を指定します。
-##  @var  [in,out] ctx    復帰時の ctx を指定します。新しい ctx (newctx) を返します。
-##  @var  [in,out] wbegin 復帰時の wbegin を指定します。新しい wbegin (-1) を返します。
-##  @var  [in,out] wtype  復帰時の wtype を指定します。新しい wtype (-1) を返します。
-##  @var  [in,out] inest  復帰時の inest を指定します。新しい inest (i) を返します。
+##   @param[in]     newctx 新しい ctx を指定します。
+##   @param[in,opt] type   文法要素の種類を指定します。
+##   @var  [in]     i      現在の位置を指定します。
+##   @var  [in,out] ctx    復帰時の ctx を指定します。新しい ctx (newctx) を返します。
+##   @var  [in,out] wbegin 復帰時の wbegin を指定します。新しい wbegin (-1) を返します。
+##   @var  [in,out] wtype  復帰時の wtype を指定します。新しい wtype (-1) を返します。
+##   @var  [in,out] tchild 復帰時の tchild を指定します。新しい tchild (-1) を返します。
+##   @var  [in,out] tprev  復帰時の tprev を指定します。新しい tprev (tchild) を返します。
 function ble-syntax/parse/nest-push {
   local wlen=$((wbegin<0?wbegin:i-wbegin))
   local nlen=$((inest<0?inest:i-inest))
@@ -489,6 +498,15 @@ function ble-syntax/parse/nest-push {
   _ble_syntax_nest[i]="$ctx $wlen $wtype $nlen $tclen $tplen ${2:-none}"
   ((ctx=$1,inest=i,wbegin=-1,wtype=-1,tprev=tchild,tchild=-1))
 }
+## 関数 ble-syntax/parse/nest-pop
+## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
+##   現在の入れ子を閉じます。現在の入れ子情報を登録して、一つ上の入れ子情報を復元します。
+##   @var[   out] ctx
+##   @var[   out] wbegin
+##   @var[   out] wtype
+##   @var[in,out] inest
+##   @var[in,out] tchild
+##   @var[in,out] tprev
 function ble-syntax/parse/nest-pop {
   ((inest<0)) && return 1
 
@@ -1096,12 +1114,12 @@ function ble-syntax:bash/ctx-expr {
       elif [[ $type == 'a[' ]]; then
         if [[ $tail == ']='* ]]; then
           # a[...]= の場合。配列代入
+          ((_ble_syntax_attr[i++]=CTX_EXPR))
           ble-syntax/parse/nest-pop
-          ((_ble_syntax_attr[i]=CTX_EXPR,
-            i+=2))
+          ((i++))
         else
           # a[...]... という唯のコマンドの場合。
-          ((_ble_syntax_attr[i]=CTX_EXPR,i++))
+          ((_ble_syntax_attr[i++]=CTX_EXPR))
           ble-syntax/parse/nest-pop
           ((ctx=CTX_CMDI,wtype=CTX_CMDI))
         fi
@@ -1948,7 +1966,10 @@ function ble-syntax/parse {
 
   # 解析
   _ble_syntax_text="$text"
-  local i _stat
+  local i _stat tail
+#%if !release
+  local debug_p1
+#%end
   for ((i=i1;i<iN;)); do
     ble-syntax/parse/generate-stat
     if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == $_stat ]]; then
@@ -1962,7 +1983,10 @@ function ble-syntax/parse {
       fi
     fi
     _ble_syntax_stat[i]="$_stat"
-    local tail="${text:i}"
+    tail="${text:i}"
+#%if !release
+    debug_p1="$i"
+#%end
 
     # 処理
     "${_BLE_SYNTAX_FCTX[ctx]}" || ((_ble_syntax_attr[i]=ATTR_ERR,i++))

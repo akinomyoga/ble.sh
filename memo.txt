@@ -317,31 +317,24 @@ tech
       解析状態の一致チェックの対象に含まれているからである。
       (_ble_syntax_nest の任意の情報を参照して良いという意味ではない。)
 
+    tree-append および nest-pop に対する制限
+
+      tree-append は _ble_syntax_tree[i-1] に格納を行う。
+      従って上記の条件1から p1<=i-1 つまり p1+1 <= i である必要がある。
+      これは少なくとも 1 文字 i を進めてからでないと tree-append を呼び出せないという事である。
+      nest-pop も内部的にそのまま tree-append を呼び出しているので同じ制限がある。
+
+
 
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
 
-2015-12-19
+2015-12-20
 
   * complete: 履歴を用いた候補生成? 特に単語について。
 
   Done
-
-  * ble-edit: [[ ! -o history ]] の時は履歴に登録しない。
-
-  * ble-syntax.sh: rex_redirect を何処かに共有する。
-
-    rex_redirect -> _ble_syntax_bash_rex_redirect.
-
-  * ble-syntax.sh (ble-syntax:bash): < check
-
-  * ble-syntax.sh (ble-syntax:bash): <>| や &>| はどうなっているのか?
-    →試してみたが <>| や &>| は存在しない様だ。
-      set -C の時に上書きできるのは >| だけという事になる。
-
-    一方で <> は set -C でも普通に実行できている様な気がする。何故だ。
-    多分 < として開かれるという事で書き込みはできないが読み取りはできるという事なのだろう。
 
 2015-12-12
 
@@ -1384,7 +1377,117 @@ tech
     実装ログ
 -------------------------------------------------------------------------------
 
-2015-12-19
+2015-12-20
+
+  * ble-synta.sh: bug: 配列添字の書き換え時に syntax error
+
+    以下の編集でエラーになる。
+    $ a['']=
+    $ a['a']=
+
+    | assertion failure: ((nofs<${#node[@]}))
+    | ble-syntax/tree-enumerate/.impl(i=5,iN=7,nofs=0,node=,command=ble-highlight-layer:syntax/word/.proc-childnode)/FATAL1
+    |   @ /home/murase/prog/ble/ble.sh:10 (ble-assert)
+    |   @ /home/murase/prog/ble/ble.sh:4 (ble-syntax/tree-enumerate/.impl)
+    |   @ /home/murase/prog/ble/ble.sh:164 (ble-syntax/tree-enumerate-children)
+    |   @ /home/murase/prog/ble/ble.sh:472 (ble-highlight-layer:syntax/update-word-table)
+    |   @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |   @ /home/murase/prog/ble/ble.sh:4380 (ble-highlight-layer/update)
+    |   @ /home/murase/prog/ble/ble.sh:4884 (.ble-line-text/update)
+    |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+    |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |   @ /home/murase/prog/ble/ble.sh:966 (ble-edit/bind/.tail)
+    |   @ /home/murase/prog/ble/ble.sh:-4230 (ble-decode-byte:bind/EPILOGUE)
+    |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    | assertion failure: ((nofs<${#node[@]}))te_mode_buff='()'$
+    | ble-syntax/tree-enumerate/.impl(i=5,iN=7,nofs=0,node=,command=ble-syntax/print-status/.dump-tree/proc1)/FATAL1
+    |   @ /home/murase/prog/ble/ble.sh:10 (ble-assert)
+    |   @ /home/murase/prog/ble/ble.sh:4 (ble-syntax/tree-enumerate/.impl)
+    |   @ /home/murase/prog/ble/ble.sh:2 (ble-syntax/tree-enumerate-children)
+    |   @ /home/murase/prog/ble/ble.sh:7614 (ble-syntax/print-status/.dump-tree/proc1)
+    |   @ /home/murase/prog/ble/ble.sh:108 (ble-syntax/tree-enumerate/.impl)
+    |   @ /home/murase/prog/ble/ble.sh:5 (ble-syntax/tree-enumerate)
+    |   @ /home/murase/prog/ble/ble.sh:8005 (ble-syntax/print-status/.dump-tree)
+    |   @ /home/murase/prog/ble/ble.sh:-24 (ble-syntax/print-status)
+    |   @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |   @ /home/murase/prog/ble/ble.sh:4380 (ble-highlight-layer/update)
+    |   @ /home/murase/prog/ble/ble.sh:4884 (.ble-line-text/update)
+    |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+    |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |   @ /home/murase/prog/ble/ble.sh:966 (ble-edit/bind/.tail)
+    |   @ /home/murase/prog/ble/ble.sh:-4230 (ble-decode-byte:bind/EPILOGUE)
+    |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |
+    | 異常
+    | A?
+    |  7 a    000 'a' | stat=(1 w=- n=- t=-1:-1)
+    |  8 a    001 '[' | nest=(11 w=7:0- n=- t=-1:-1)
+    |  9*a    002 ''' | stat=(8 w=- n=@1 t=-1:-1)
+    |  5*a    003 'a' |
+    |  9*a    004 ''' |
+    |  8 a  s 005 ']' | stat=(8 w=- n=@1 t=-1:-1)
+    |  | a  s 006 '=' + word=7:0-7>@4
+    | \_ 'a['a']='
+    |
+    | 正常
+    | A?
+    |  7*a    000 'a' |  stat=(1 w=- n=- t=-1:-1)
+    |  8*a    001 '[' || nest=(11 w=7:0- n=- t=-1:-1)
+    |  9*a    002 ''' || stat=(8 w=- n=@1 t=-1:-1)
+    |  5*a    003 'a' ||
+    |  9*a    004 ''' |+ word=na[:1-5
+    |  8*a    005 ']' |  stat=(8 w=- n=@1 t=-1:-1)
+    |  |*a    006 '=' +  word=7:0-7>@4
+    | \_ 'a['a']='
+    |     \_ '['a''
+
+
+    設置されている筈の単語が存在しないという所にある。
+    というかそもそも単語の設置位置が変な気もする。
+    単語は終了が判明した時点でその前の点に設置する物だったろうか?
+    良く分からなくなってきた。配列の添字の終了点での処理について再度確認する。
+
+    どうやら nest-pop をする時に i を進めた後に nest-pop するか、
+    i を進める前に nest-pop するかの違いのようだ。
+    調べてみると、a[...]= の時以外の nest-pop に関しては全て i を増加させた後に nest-pop を指定している。
+    nest-pop は更に tree-append を呼び出している。tree-append は [i-1] に情報を格納している。
+    つまり、tree-append 自体 i を進めた後にしか呼び出してはいけない物になっている。
+    この辺りの注意書きは何処にも書かれていない。
+
+    [tree-append/nest-pop/word-pop 呼出条件確認]
+
+    実際に _ble_syntax_tree 等の使用時の条件と、tree-append の内部動作を見るに、
+    tree-append/nest-pop/word-pop の呼出条件は以下のようになる:
+
+      解析開始点を p1 とする。現在の位置を i とする。tree-append/nest-pop は i >= p1+1 の時にだけ呼び出して良い。
+
+    この注意点を _ble_syntax_tree の制限の部分に書き加える。
+    また、tree-append/nest-pop/word-pop のそれぞれの関数の注意書き (要件) にも記す。
+    更に tree-append 内部にチェック用のコードを導入する事にした。
+
+    [既存コードの check]
+    さて似たような誤りを他の箇所でも犯していないか確認する必要がある。
+
+    基本的には check-word-end の中では必ず i が進んでいる筈なので tree-append を呼び出しても nest-pop を呼び出しても問題ない。
+    一方で、実際の解析部分では tree-append もしくは nest-pop は注意して呼び出す必要がある。
+    nest-pop に関しては類似の呼出箇所で問題がないか確認した。
+    tree-append を確認した所 word-pop と nest-pop だけからしか呼び出されていない。
+    word-pop に関しても調べてみたが全ての箇所で i を進めてからの呼出になっていた。
+
+  * ble-edit: [[ ! -o history ]] の時は履歴に登録しない。
+
+  * ble-syntax.sh: rex_redirect を何処かに共有する。
+
+    rex_redirect -> _ble_syntax_bash_rex_redirect.
+
+  * ble-syntax.sh (ble-syntax:bash): < check
+
+  * ble-syntax.sh (ble-syntax:bash): <>| や &>| はどうなっているのか?
+    →試してみたが <>| や &>| は存在しない様だ。
+      set -C の時に上書きできるのは >| だけという事になる。
+
+    一方で <> は set -C でも普通に実行できている様な気がする。何故だ。
+    多分 < として開かれるという事で書き込みはできないが読み取りはできるという事なのだろう。
 
   * [2015-06-28] complete: HOGE= の直後の編集でファイル名などを補完候補として出して欲しい
 
@@ -1426,6 +1529,8 @@ tech
     →単語と単語の間の空白の位置で TAB を押しても補完候補が生成されなかった。
       これは前の単語の終端位置から次の単語が始まっていると認識されて、
       空白で始まるファイル名を検索していたからであった。
+
+2015-12-19
 
   * [2015-12-12] complete FIGNORE に対応
 
