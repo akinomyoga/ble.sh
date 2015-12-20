@@ -619,7 +619,7 @@ CTX_CMDI=2   # (コマンド) context,attr: in a command
 CTX_ARGI=4   # (コマンド) context,attr: in an argument
 CTX_VRHS=11  # (コマンド) context,attr: var=rhs
 CTX_QUOT=5   # context,attr: in double quotations
-CTX_EXPR=8   # context,attr: in expression
+CTX_EXPR=8   # context,attr: in arithmetic expression
 ATTR_ERR=6   # attr: error
 ATTR_VAR=7   # attr: variable
 ATTR_QDEL=9  # attr: delimiters for quotation
@@ -1076,84 +1076,119 @@ function ble-syntax:bash/ctx-pword {
 }
 
 _BLE_SYNTAX_FCTX[CTX_EXPR]=ble-syntax:bash/ctx-expr
+
+## 関数 ble-syntax:bash/ctx-expr/.count-paren
+##   算術式中の括弧の数 () を数えます。
+##   @var ntype 現在の算術式の入れ子の種類を指定します。
+##   @var char  括弧文字を指定します。
+function ble-syntax:bash/ctx-expr/.count-paren {
+  if [[ $char == ')' ]]; then
+    if [[ $ntype == '((' ]]; then
+      if [[ $tail == '))'* ]]; then
+        ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
+        ((i+=2))
+        ble-syntax/parse/nest-pop
+      else
+        ((_ble_syntax_attr[i]=ATTR_ERR,
+          i+=1))
+        ble-syntax/parse/nest-pop
+      fi
+      return 0
+    elif [[ $ntype == '(' ]]; then
+      ((_ble_syntax_attr[i++]=ctx))
+      ble-syntax/parse/nest-pop
+      return 0
+    fi
+  elif [[ $char == '(' ]]; then
+    ble-syntax/parse/nest-push "$CTX_EXPR" "$char"
+    ((_ble_syntax_attr[i++]=ctx))
+    return 0
+  fi
+
+  return 1
+}
+## 関数 ble-syntax:bash/ctx-expr/.count-bracket
+##   算術式中の括弧の数 [] を数えます。
+##   @var ntype 現在の算術式の入れ子の種類を指定します。
+##   @var char  括弧文字を指定します。
+function ble-syntax:bash/ctx-expr/.count-bracket {
+  if [[ $char == ']' ]]; then
+    if [[ $ntype == '[' ]]; then
+      # ((a[...]=123)) や $[...] などの場合。
+      ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
+      ((i++))
+      ble-syntax/parse/nest-pop
+      return 0
+    elif [[ $ntype == 'a[' ]]; then
+      if [[ $tail == ']='* ]]; then
+        # a[...]= の場合。配列代入
+        ((_ble_syntax_attr[i++]=CTX_EXPR))
+        ble-syntax/parse/nest-pop
+        ((i++))
+      else
+        # a[...]... という唯のコマンドの場合。
+        ((_ble_syntax_attr[i++]=CTX_EXPR))
+        ble-syntax/parse/nest-pop
+        ((ctx=CTX_CMDI,wtype=CTX_CMDI))
+      fi
+      return 0
+    elif [[ $ntype == 'v[' ]]; then
+      # ${v[]...} などの場合。
+      ((_ble_syntax_attr[i++]=CTX_EXPR))
+      ble-syntax/parse/nest-pop
+      return 0
+    fi
+  elif [[ $char == '[' ]]; then
+    ble-syntax/parse/nest-push "$CTX_EXPR" "$char"
+    ((_ble_syntax_attr[i++]=ctx))
+    return 0
+  fi
+
+  return 1
+}
+## 関数 ble-syntax:bash/ctx-expr/.count-brace
+##   算術式中に閉じ波括弧 '}' が来たら算術式を抜けます。
+##   @var ntype 現在の算術式の入れ子の種類を指定します。
+##   @var char  括弧文字を指定します。
+function ble-syntax:bash/ctx-expr/.count-brace {
+  if [[ $char == '}' ]]; then
+    ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
+    ((i++))
+    ble-syntax/parse/nest-pop
+    return 0
+  fi
+
+  return 1
+}
 function ble-syntax:bash/ctx-expr {
   # 式の中身
   local rex
-
   if rex='^([^'"${_ble_syntax_bashc[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
-  elif rex='^[][()}]' && [[ $tail =~ $rex ]]; then
-    if [[ ${BASH_REMATCH[0]} == ')' ]]; then
-      local type
-      ble-syntax/parse/nest-type -v type
-      if [[ $type == '((' ]]; then
-        if [[ $tail == '))'* ]]; then
-          ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
-          ((i+=2))
-          ble-syntax/parse/nest-pop
-        else
-          ((_ble_syntax_attr[i]=ATTR_ERR,
-            i+=1))
-          ble-syntax/parse/nest-pop
-        fi
-        return 0
-      elif [[ $type == '(' ]]; then
-        ((_ble_syntax_attr[i]=ctx,i+=1))
-        ble-syntax/parse/nest-pop
-        return 0
-      else
-        return 1
-      fi
-    elif [[ ${BASH_REMATCH[0]} == ']' ]]; then
-      local type
-      ble-syntax/parse/nest-type -v type
-      if [[ $type == '[' ]]; then
-        # ((a[...]=123)) や $[...] などの場合。
-        ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
-        ((i++))
-        ble-syntax/parse/nest-pop
-        return 0
-      elif [[ $type == 'a[' ]]; then
-        if [[ $tail == ']='* ]]; then
-          # a[...]= の場合。配列代入
-          ((_ble_syntax_attr[i++]=CTX_EXPR))
-          ble-syntax/parse/nest-pop
-          ((i++))
-        else
-          # a[...]... という唯のコマンドの場合。
-          ((_ble_syntax_attr[i++]=CTX_EXPR))
-          ble-syntax/parse/nest-pop
-          ((ctx=CTX_CMDI,wtype=CTX_CMDI))
-        fi
-        return 0
-      elif [[ $type == 'v[' ]]; then
-        # ${v[]...} などの場合。
-        ((_ble_syntax_attr[i]=CTX_EXPR,
-          i++))
-        ble-syntax/parse/nest-pop
-        return 0
-      else
-        return 1
-      fi
-    elif [[ ${BASH_REMATCH[0]} == '}' ]]; then
-      local type
-      ble-syntax/parse/nest-type -v type
-      if [[ $type == '${' ]]; then
-        ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
-        ((i++))
-        ble-syntax/parse/nest-pop
-        return 0
-      else
-        return 1
-      fi
+  elif [[ $tail == ['][()}']* ]]; then
+    local char=${tail::1} ntype
+    ble-syntax/parse/nest-type -v ntype
+    if [[ $ntype == *'(' ]]; then
+      # ntype = '((' # $((...)) ((...))
+      #       = '('  # 式中の (..)
+      ble-syntax:bash/ctx-expr/.count-paren && return
+    elif [[ $ntype == *'[' ]]; then
+      # ntype = 'a[' # ${a[...]}
+      #       = 'v[' # v[...]=
+      #       = '['  # $[...] 及び式中の [...]
+      ble-syntax:bash/ctx-expr/.count-bracket && return
+    elif [[ $ntype == '${' ]]; then
+      # ntype = '${' # ${var:offset:length}
+      ble-syntax:bash/ctx-expr/.count-brace && return
     else
-      ble-syntax/parse/nest-push "$CTX_EXPR" "${BASH_REMATCH[0]}"
-      ((_ble_syntax_attr[i]=ctx,
-        i+=${#BASH_REMATCH}))
-      return 0
+      ble-stackdump "unexpected ntype=$ntype for arithmetic expression"
     fi
+
+    # 入れ子処理されなかった文字は通常文字として処理
+    ((_ble_syntax_attr[i++]=ctx))
+    return 0
   elif ble-syntax:bash/check-quotes; then
     return 0
   elif ble-syntax:bash/check-dollar; then
@@ -1427,7 +1462,9 @@ function ble-syntax:bash/ctx-command {
 #%end
 
   local flagConsume=0
-  if ((wbegin==i&&ctx==CTX_CMDI)) && rex='^[a-zA-Z_][a-zA-Z_0-9]*([=[]|\+=)' && [[ $tail =~ $rex ]]; then
+  local rex_assign='^[a-zA-Z_][a-zA-Z_0-9]*([=[]|\+=)'
+  ((_ble_bash<30100)) && rex_assign='^[a-zA-Z_][a-zA-Z_0-9]*([=[])'
+  if ((wbegin==i&&ctx==CTX_CMDI)) && [[ $tail =~ $rex_assign ]]; then
     # for bash-3.1 ${#arr[n]} bug
     local rematch1="${BASH_REMATCH[1]}"
 
@@ -2135,10 +2172,12 @@ function ble-syntax/completion-context/check-prefix {
         ble-syntax/completion-context/add command "$i"
 
         # 変数・代入のチェック
-        if local rex='^[a-zA-Z_][a-zA-Z_0-9]*=?$' && [[ $word =~ $rex ]]; then
+        if local rex='^[a-zA-Z_][a-zA-Z_0-9]*(\+?=)?$' && [[ $word =~ $rex ]]; then
           if [[ $word == *= ]]; then
-            # VAR=<argument>: 現在位置から argument 候補を生成する
-            ble-syntax/completion-context/add argument "$index"
+            if ((_ble_bash>=30100)) || [[ $word != *+= ]]; then
+              # VAR=<argument>: 現在位置から argument 候補を生成する
+              ble-syntax/completion-context/add argument "$index"
+            fi
           else
             # VAR<+variable>: 単語を変数名の一部と思って変数名を生成する
             ble-syntax/completion-context/add variable "$i"

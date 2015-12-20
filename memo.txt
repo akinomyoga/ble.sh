@@ -336,9 +336,27 @@ tech
 
   Done
 
+  * ble-syntax:bash
+    > a[算術式] の終了条件 (() pairs ではなくて [] pairs を数える)
+    >   $((...)) ((...)) は () pairs で終了判定する。
+    >   ${a[...]} a[...]= $[...] は [] pairs で終了判定する。
+    >   ${v:...:...} は } が来たら無条件で終了する。
+
   * bash-3.0 で C-d が効かなくなっている。
 
   * /dev/null に色が着いていない → つけた
+
+  整理
+
+  * [2015-02-16] ble-syntax:bash: 関数定義 function ...
+
+  * [2015-02-16] ble-syntax:bash: Here string
+
+  * [2015-02-16] ble-syntax:bash: aaa=(hoge), 他に aaa+=(hoge) というパターンもある。
+
+  * [2015-11-23] ble-detach 後の stty sane
+    現在はユーザに stty sane を実行して貰っている。もっと綺麗な方法はないか?
+    →保留する。これは今のままでも余り気にならないのでそのままで良い。
 
 2015-12-12
 
@@ -424,10 +442,6 @@ tech
     現在 git 補完関数に合わせる形で勝手に末尾の空白を除去している。
     しかしこれで良いのか? これだと空白で終わるファイル名などがあった場合に問題になる。
     (その様なファイル名は滅多にないとは思われるが…。)
-
-  * ble-detach 後の stty sane
-
-    現在はユーザに stty sane を実行して貰っている。もっと綺麗な方法はないか?
 
 2015-11-21
 
@@ -940,21 +954,17 @@ tech
 2015-02-16
 
   * ble-syntax.sh ToDo
-
-    > 関数定義 function ...
-    > Here string
     - extglob
-    - for (()) { ...; }
-    - a[算術式] の終了条件 (() pairs ではなくて [] pairs を数える)
-    - a=(arr) b=([x]=123 [y]=321) a+=
-      aaa=(hoge), 他に aaa+=(hoge) というパターンもある。
+    - local a=(arr) a+=
       これは declare や local typeset readonly 等を文法的に特別扱いしなければ対応できない
+    - a=([key]=value) b=([x]=123 [y]=321)
     - case構文の中の文法
       - ;; ;& ;;& の後に case のパターンを受ける
     - time -p
+    - for (()) { ...; }
+    - ${ ... } 内の文法チェック
     - Here document
       Here document は次の行から始まるというのが厄介である。
-    - ${ ... } 内の文法チェック
     - [[ 条件式の文法。より正確に
 
 2013-06-10
