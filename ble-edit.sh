@@ -3880,7 +3880,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
             builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
           fi
 
-          if [[ $bleopt_ignoreeof_message ]] && ble-edit/stdout/check-ignoreeof-message; then
+          if [[ $bleopt_ignoreeof_message ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
             builtin echo eof >> "$_ble_edit_io_fname2.proc"
             kill -USR1 $$
             command sleep 0.1 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
