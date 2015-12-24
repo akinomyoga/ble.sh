@@ -1237,17 +1237,28 @@ function ble-syntax:bash/ctx-expr/.count-bracket {
       ((i++))
       ble-syntax/parse/nest-pop
       return 0
-    elif [[ $ntype == 'a[' ]]; then
+    elif [[ $ntype == [ad]'[' ]]; then
+      ((_ble_syntax_attr[i++]=CTX_EXPR))
+      ble-syntax/parse/nest-pop
       if [[ $tail == ']='* ]]; then
-        # a[...]= の場合。配列代入
-        ((_ble_syntax_attr[i++]=CTX_EXPR))
-        ble-syntax/parse/nest-pop
+        # a[...]=, a=([...]=) の場合
         ((i++))
+      elif ((_ble_bash>=30100)) && [[ $tail == ']+'* ]]; then
+        if [[ $tail == ']+='* ]]; then
+          # a[...]+=, a+=([...]+=) の場合
+          ((i+=2))
+        else
+          # 曖昧状態
+          ((parse_suppressNextStat=1))
+        fi
       else
-        # a[...]... という唯のコマンドの場合。
-        ((_ble_syntax_attr[i++]=CTX_EXPR))
-        ble-syntax/parse/nest-pop
-        ((ctx=CTX_CMDI,wtype=CTX_CMDI))
+        if [[ $ntype == 'a[' ]]; then
+          # a[...]... という唯のコマンドの場合。
+          ((ctx=CTX_CMDI,wtype=CTX_CMDI))
+        else
+          # '[...]...' という唯の値の場合。
+          ((ctx=CTX_VALI,wtype=CTX_VALI))
+        fi
       fi
       return 0
     elif [[ $ntype == 'v[' ]]; then
@@ -1469,7 +1480,7 @@ function ble-syntax:bash/check-assign {
   ((ctx==CTX_CMDI||ctx==CTX_ARGVI)) || return 1
 
   # パターン一致 (var= var+= arr[ のどれか)
-  local suffix='=\+?'
+  local suffix='=|\+=?'
   ((_ble_bash<30100)) && suffix='='
   if ((ctx==CTX_CMDI)); then
     suffix="$suffix|\["
@@ -1479,6 +1490,11 @@ function ble-syntax:bash/check-assign {
   local rex_assign="^[a-zA-Z_][a-zA-Z_0-9]*($suffix)"
   [[ $tail =~ $rex_assign ]] || return 1
   local rematch1="${BASH_REMATCH[1]}" # for bash-3.1 ${#arr[n]} bug
+  if [[ $rematch1 == '+' ]]; then
+    # var+... 曖昧状態
+    ((parse_suppressNextStat=1))
+    return 1
+  fi
 
   ((wtype=ATTR_VAR,
     _ble_syntax_attr[i]=ATTR_VAR,
@@ -1722,7 +1738,11 @@ function ble-syntax:bash/ctx-values {
 #%end
 
   local rex
-  if rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if ((wbegin==i)) && [[ $tail == '['* ]]; then
+    ble-syntax/parse/nest-push "$CTX_EXPR" 'd['
+    ((_ble_syntax_attr[i++]=ctx))
+    return 0
+  elif rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -2203,7 +2223,7 @@ function ble-syntax/parse {
 
   # 解析
   _ble_syntax_text="$text"
-  local i _stat tail
+  local i _stat tail parse_suppressNextStat=
 #%if !release
   local debug_p1
 #%end
@@ -2219,7 +2239,12 @@ function ble-syntax/parse {
         break
       fi
     fi
-    _ble_syntax_stat[i]="$_stat"
+
+    if [[ $parse_suppressNextStat ]]; then
+      parse_suppressNextStat=
+    else
+      _ble_syntax_stat[i]="$_stat"
+    fi
     tail="${text:i}"
 #%if !release
     debug_p1="$i"

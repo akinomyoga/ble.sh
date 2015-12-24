@@ -947,15 +947,13 @@ tech
 2015-02-16
 
   * ble-syntax.sh ToDo
-    > extglob
-    - a=([key]=value) b=([x]=123 [y]=321)
     - case構文の中の文法
-      - ;; ;& ;;& の後に case のパターンを受ける
+      > ;; ;& ;;& の後に case のパターンを受ける
     - time -p
-    - for (()) { ...; }
     - ${ ... } 内の文法チェック
       - extglob (但し '}' で強制終了する必要がある。
           一旦全て読み取ってから後付けで着色する?)
+    - for (()) { ...; } (obsolete)
     - Here document
       Here document は次の行から始まるというのが厄介である。
     - [[ 条件式の文法。より正確に
@@ -1386,6 +1384,23 @@ tech
 
 2015-12-24
 
+  * (ble-syntax:bash): a=([...]=value), a+=([...]+=delta) に対応。
+
+    > [2015-02-16] (ble-syntax:bash): a=([key]=value) b=([x]=123 [y]=321)
+
+  * bug: extglob の所為で var+= が正しく読み取られない。
+
+    どうも var+ まで入力した時点で |var|+ の二箇所に解析再開点が設置される様である。
+    この状態で var+= を入力しても解析は += から再開されるので、
+    正規表現の var+= に引っかかる事がないという事になる。
+
+    これを何とかする為には、+( 以外の + については解析再開点を設置せずに
+    前の解析に取り込んで処理する必要がある。
+
+    parse_suppressNextStat という変数を新しく追加してみる事にした。
+    この変数に値を設定すると次の stat 記録が保留される。
+    これによって不都合が起こるかもしれないので暫く様子を見る。
+
   * (ble-syntax:bash): \new 文脈 CTX_CASE
 
     > ;& ;; ;;& の次に来るのは CTX_CMDX ではなくて CTX_CASE? 的な物では?
@@ -1407,6 +1422,8 @@ tech
   * ble-edit.sh: bug: 履歴展開が効かない
 
   * ble-syntax:bash extglob 対応
+
+    > [2015-02-16] (ble-syntax:bash): extglob
 
     extglob が有効なのはどの箇所か。
     - case pattern 内部
