@@ -3111,13 +3111,13 @@ function ble/widget/discard-line {
 }
 
 if ((_ble_bash>=30100)); then
-  function ble-edit/hist_expanded/expand {
-    history -p -- "$BASH_COMMAND" 2>/dev/null
+  function ble-edit/hist_expanded/.expand {
+    history -p -- "$BASH_COMMAND" 2>/dev/null || echo "$BASH_COMMAND"
     builtin echo -n :
   }
 else
-  function ble-edit/hist_expanded/expand {
-    (history -p -- "$BASH_COMMAND" 2>/dev/null)
+  function ble-edit/hist_expanded/.expand {
+    (history -p -- "$BASH_COMMAND" 2>/dev/null || echo "$BASH_COMMAND")
     builtin echo -n :
   }
 fi
@@ -3125,10 +3125,10 @@ fi
 ## @var[out] hist_expanded
 function ble-edit/hist_expanded.update {
   local BASH_COMMAND="$*"
-  if [[ -o histexpand || ! ${BASH_COMMAND//[ 	]} ]]; then
+  if [[ ! -o histexpand || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded="$BASH_COMMAND"
     return 0
-  elif ble/util/assign hist_expanded ble-edit/hist_expanded/expand; then
+  elif ble/util/assign hist_expanded ble-edit/hist_expanded/.expand; then
     hist_expanded="${hist_expanded%$_ble_term_nl:}"
     return 0
   else
