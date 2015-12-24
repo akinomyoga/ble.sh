@@ -637,10 +637,11 @@ CTX_VALI=24  # (値リスト) 値の中
 ATTR_COMMENT=25 # コメント
 CTX_ARGVX=28 # (コマンド) declare の引数
 CTX_ARGVI=29 # (コマンド) declare の引数
-CTX_GLOB=30  # glob 通常文字
-ATTR_GLOB=31 # glob 特別文字
 CTX_CONDX=32
 CTX_CONDI=33
+CTX_CASE=34  # case パターン待ち
+CTX_PATN=30  # glob 通常文字
+ATTR_GLOB=31 # glob 特別文字
 
 _ble_syntax_bash_IFS=$' \t\n'
 _ble_syntax_bash_rex_spaces=$'[ \t]+'
@@ -657,7 +658,7 @@ _ble_syntax_bashc_seed=
   # default values
   _ble_syntax_bashc_def=()
   _ble_syntax_bashc_def[CTX_ARGI]="$_ble_syntax_bash_IFS;|&()<>\$\"\`\\'!^"
-  _ble_syntax_bashc_def[CTX_GLOB]="\$\"\`\\'(|)?*@+!"
+  _ble_syntax_bashc_def[CTX_PATN]="\$\"\`\\'(|)?*@+!"
   _ble_syntax_bashc_def[CTX_QUOT]="\$\"\`\\!"       # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bashc_def[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
   _ble_syntax_bashc_def[CTX_PWORD]="}\$\"\`\\'!"    # パラメータ展開 ${～}
@@ -665,7 +666,7 @@ _ble_syntax_bashc_seed=
   # templates
   _ble_syntax_bashc_fmt=()
   _ble_syntax_bashc_fmt[CTX_ARGI]="$_ble_syntax_bash_IFS;|&()<>\$\"\`\\'@h@q"
-  _ble_syntax_bashc_fmt[CTX_GLOB]="\$\"\`\\'(|)?*@+@h"
+  _ble_syntax_bashc_fmt[CTX_PATN]="\$\"\`\\'(|)?*@+@h"
   _ble_syntax_bashc_fmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bashc_fmt[CTX_EXPR]="][}()\$\"\`\\'@h"
   _ble_syntax_bashc_fmt[CTX_PWORD]="}\$\"\`\\'@h"
@@ -921,7 +922,7 @@ function ble-syntax:bash/check-comment {
 function ble-syntax:bash/check-glob {
   if [[ $tail == ['?*@+!()|']* ]]; then
     if [[ $tail == ['?*@+!']'('* ]] && shopt -q extglob; then
-      ble-syntax/parse/nest-push "$CTX_GLOB"
+      ble-syntax/parse/nest-push "$CTX_PATN"
       ((_ble_syntax_attr[i]=ATTR_GLOB,i+=2))
       return 0
     fi
@@ -935,12 +936,12 @@ function ble-syntax:bash/check-glob {
     elif [[ $tail == ['@+!']* ]]; then
       ((_ble_syntax_attr[i++]=ctx))
       return 0
-    elif ((ctx==CTX_GLOB)); then
+    elif ((ctx==CTX_PATN)); then
       local ntype attr=$ATTR_GLOB
       ble-syntax/parse/nest-type -v ntype
       [[ $ntype == nest ]] && attr=$ctx
       if [[ $tail == '('* ]]; then
-        ble-syntax/parse/nest-push "$CTX_GLOB" nest
+        ble-syntax/parse/nest-push "$CTX_PATN" nest
         ((_ble_syntax_attr[i++]=ctx))
         return 0
       elif [[ $tail == ')'* ]]; then
@@ -1102,11 +1103,32 @@ function ble-syntax:bash/ctx-quot {
   return 1
 }
 
-_BLE_SYNTAX_FCTX[CTX_GLOB]=ble-syntax:bash/ctx-glob
-function ble-syntax:bash/ctx-glob {
+_BLE_SYNTAX_FCTX[CTX_CASE]=ble-syntax:bash/ctx-case
+function ble-syntax:bash/ctx-case {
+  if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
+    ((_ble_syntax_attr[i]=ctx,
+      i+=${#BASH_REMATCH}))
+    return 0
+  elif [[ $tail == '('* ]]; then
+    ((ctx=CTX_CMDX))
+    ble-syntax/parse/nest-push "$CTX_PATN"
+    ((_ble_syntax_attr[i++]=ATTR_GLOB))
+    return 0
+  elif [[ $tail == 'esac'$_ble_syntax_bash_rex_delimiters* || $tail == 'esac' ]]; then
+    ((ctx=CTX_CMDX1))
+    ble-syntax:bash/ctx-command
+  else
+    ((ctx=CTX_CMDX))
+    ble-syntax/parse/nest-push "$CTX_PATN"
+    ble-syntax:bash/ctx-globpat
+  fi
+}
+
+_BLE_SYNTAX_FCTX[CTX_PATN]=ble-syntax:bash/ctx-globpat
+function ble-syntax:bash/ctx-globpat {
   # glob () の中身 (extglob @(...) や case in (...) の中)
   local rex
-  if rex='^([^'"${_ble_syntax_bashc[CTX_GLOB]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if rex='^([^'"${_ble_syntax_bashc[CTX_PATN]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -1420,7 +1442,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
           ((_ble_syntax_attr[i]=CTX_ARGX0,i+=${#rematch1},
             _ble_syntax_attr[i]=ATTR_ERR,
             ctx=CTX_ARGX0))
-          ble-syntax/parse/nest-push "$CTX_GLOB"
+          ble-syntax/parse/nest-push "$CTX_PATN"
           ((${#rematch2}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDXC),
             i+=${#rematch2}))
           return 0
@@ -1524,16 +1546,18 @@ function ble-syntax:bash/ctx-command {
         ${#rematch1}<${#BASH_REMATCH}&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX),
         i+=${#BASH_REMATCH}))
       return 0
-    elif rex='^;;&?|^;&|^(&&|\|[|&]?)|^[;&]' && [[ $tail =~ $rex ]]; then
+    elif rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
       # 制御演算子 && || | & ; |& ;; ;;&
 
       # for bash-3.1 ${#arr[n]} bug
-      local rematch1="${BASH_REMATCH[1]}"
-      ((_ble_syntax_attr[i]=ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV?ATTR_DEL:ATTR_ERR,
-        ctx=${#rematch1}?CTX_CMDX1:CTX_CMDX,
-        i+=${#BASH_REMATCH}))
-      #■;& ;; ;;& の次に来るのは CTX_CMDX ではなくて CTX_CASE? 的な物では?
-      #■;& ;; ;;& の場合には CTX_ARGX CTX_CMDXV に加え CTX_CMDX でも ERR ではない。
+      local rematch1="${BASH_REMATCH[1]}" rematch2="${BASH_REMATCH[2]}"
+      ((_ble_syntax_attr[i]=ATTR_DEL,
+        (ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDX&&${#rematch2})||
+          (_ble_syntax_attr[i]=ATTR_ERR)))
+      ((ctx=${#rematch1}?CTX_CMDX1:(
+           ${#rematch2}?CTX_CASE:
+           CTX_CMDX)))
+      ((i+=${#BASH_REMATCH}))
       return 0
     elif rex='^\(\(?' && [[ $tail =~ $rex ]]; then
       # サブシェル (, 算術コマンド ((
@@ -1544,7 +1568,7 @@ function ble-syntax:bash/ctx-command {
         ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
         ((i+=${#m}))
       else
-        ble-syntax/parse/nest-push "$CTX_GLOB"
+        ble-syntax/parse/nest-push "$CTX_PATN"
         ((_ble_syntax_attr[i++]=ATTR_ERR))
       fi
       return 0
@@ -2645,7 +2669,8 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_CONDX    syntax_default
   _ble_syntax_attr2iface.define CTX_CONDI    syntax_default
   _ble_syntax_attr2iface.define ATTR_COMMENT syntax_comment
-  _ble_syntax_attr2iface.define CTX_GLOB     syntax_default
+  _ble_syntax_attr2iface.define CTX_CASE     syntax_default
+  _ble_syntax_attr2iface.define CTX_PATN     syntax_default
   _ble_syntax_attr2iface.define ATTR_GLOB    syntax_glob
 
   _ble_syntax_attr2iface.define ATTR_CMD_BOLD     command_builtin_dot
