@@ -637,19 +637,25 @@ CTX_VALI=24  # (値リスト) 値の中
 ATTR_COMMENT=25 # コメント
 CTX_ARGVX=28 # (コマンド) declare の引数
 CTX_ARGVI=29 # (コマンド) declare の引数
+CTX_GLOB=30  # glob 通常文字
+ATTR_GLOB=31 # glob 特別文字
 
 _ble_syntax_bash_IFS=$' \t\n'
-_ble_syntax_bash_rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|>[|&]|<[>&]|<<<?))[ 	]*'
+_ble_syntax_bash_rex_spaces=$'[ \t]+'
+_ble_syntax_bash_rex_IFSs="[$_ble_syntax_bash_IFS]+"
+_ble_syntax_bash_rex_delimiters="[$_ble_syntax_bash_IFS;|&<>()]"
+_ble_syntax_bash_rex_redirect='((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|>[|&]|<[>&]?|<<<?))[ 	]*'
 
 ## @var _ble_syntax_bashc[]
 ##   特定の役割を持つ文字の集合。Bracket expression [～] に入れて使う為の物。
 ##   histchars に依存しているので変化があった時に更新する。
 _ble_syntax_bashc=()
+_ble_syntax_bashc_seed=
 {
   # default values
   _ble_syntax_bashc_def=()
   _ble_syntax_bashc_def[CTX_ARGI]="$_ble_syntax_bash_IFS;|&()<>\$\"\`\\'!^"
-  _ble_syntax_bashc_def[CTX_ARGVI]="${_ble_syntax_bashc_def[CTX_ARGI]}"
+  _ble_syntax_bashc_def[CTX_GLOB]="\$\"\`\\'(|)?*@+!"
   _ble_syntax_bashc_def[CTX_QUOT]="\$\"\`\\!"       # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bashc_def[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
   _ble_syntax_bashc_def[CTX_PWORD]="}\$\"\`\\'!"    # パラメータ展開 ${～}
@@ -657,32 +663,58 @@ _ble_syntax_bashc=()
   # templates
   _ble_syntax_bashc_fmt=()
   _ble_syntax_bashc_fmt[CTX_ARGI]="$_ble_syntax_bash_IFS;|&()<>\$\"\`\\'@h@q"
-  _ble_syntax_bashc_fmt[CTX_ARGVI]="${_ble_syntax_bashc_fmt[CTX_ARGI]}"
+  _ble_syntax_bashc_fmt[CTX_GLOB]="\$\"\`\\'(|)?*@+@h"
   _ble_syntax_bashc_fmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bashc_fmt[CTX_EXPR]="][}()\$\"\`\\'@h"
   _ble_syntax_bashc_fmt[CTX_PWORD]="}\$\"\`\\'@h"
 
-  ## @param[in] histc1 histc histc12
-  ## @param[out] _ble_syntax_bashc[]
+  _ble_syntax_bashc_simple=${_ble_syntax_bashc_def[CTX_ARGI]}
+
+  function ble-syntax:bash/.update-_ble_syntax_bashc/reorder {
+    eval "local a=\"\${$1}\""
+
+    # Bracket expression として安全な順に並び替える
+    [[ $a == *']'* ]] && a="]${a//]}"
+    [[ $a == *'-'* ]] && a="${a//-}-"
+
+    eval "$1=\"\$a\""
+  }
+
+  ## @var[in] histc1 histc2 histc12
+  ## @var[in,out] _ble_syntax_bashc_seed
+  ## @var[in,out] _ble_syntax_bashc[]
   function ble-syntax:bash/.update-_ble_syntax_bashc {
+    local seed=$histc12
+    shopt -q extglob && seed="${seed}x"
+    [[ $seed == "$_ble_syntax_bashc_seed" ]] && return
+    _ble_syntax_bashc_seed=$seed
+
+    local key modified=
     if [[ $histc12 == '!^' ]]; then
-      local key
       for key in "${!_ble_syntax_bashc_def[@]}"; do
         _ble_syntax_bashc[key]="${_ble_syntax_bashc_def[key]}"
       done
     else
-      local key
+      modified=1
       for key in "${!_ble_syntax_bashc_fmt[@]}"; do
         local a="${_ble_syntax_bashc_fmt[key]}"
         a="${a//@h/$histc1}"
         a="${a//@q/$histc2}"
-
-        # Bracket expression として安全な順に並び替える必要がある:
-        [[ $a == *']'* ]] && a="]${a//]}"
-        [[ $a == *'-'* ]] && a="${a//-}-"
-
         _ble_syntax_bashc[key]="$a"
       done
+    fi
+
+    _ble_syntax_bashc_simple=${_ble_syntax_bashc[CTX_ARGI]}
+    if [[ $seed == *x ]]; then
+      # extglob: ?() *() +() @() !()
+      _ble_syntax_bashc[CTX_ARGI]="${_ble_syntax_bashc[CTX_ARGI]}?*+@!"
+    fi
+
+    if [[ $modified ]]; then
+      for key in "${!_ble_syntax_bashc[@]}"; do
+        ble-syntax:bash/.update-_ble_syntax_bashc/reorder _ble_syntax_bashc[key]
+      done
+      ble-syntax:bash/.update-_ble_syntax_bashc/reorder _ble_syntax_bashc_simple
     fi
   }
 
@@ -702,7 +734,7 @@ _ble_syntax_rex_simple_word_element=
     local rex_dquot='\$?"([^'"${_ble_syntax_bashc[CTX_QUOT]}"']|\\.)*"'
     local rex_param='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
     local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
-    local rex_letter='[^'"${_ble_syntax_bashc[CTX_ARGI]}"']'
+    local rex_letter='[^'"${_ble_syntax_bashc_simple}"']'
     _ble_syntax_rex_simple_word_element='('"$rex_letter"'|\\.|'"$rex_squot"'|'"$rex_dquot"'|'"$rex_param"'|'"$rex_param2"')'
     _ble_syntax_rex_simple_word='^'"$_ble_syntax_rex_simple_word_element"'+$'
   }
@@ -1012,7 +1044,7 @@ _BLE_SYNTAX_FCTX[CTX_QUOT]=ble-syntax:bash/ctx-quot
 function ble-syntax:bash/ctx-quot {
   # 文字列の中身
   local rex
-  if rex='^([^'"${_ble_syntax_bashc[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if rex='^([^'"${_ble_syntax_bashc[CTX_QUOT]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -1024,6 +1056,31 @@ function ble-syntax:bash/ctx-quot {
   elif ble-syntax:bash/check-quotes; then
     return 0
   elif ble-syntax:bash/check-dollar; then
+    return 0
+  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+    ble-syntax:bash/check-history-expansion ||
+      ((_ble_syntax_attr[i]=ctx,i++))
+    return 0
+  fi
+
+  return 1
+}
+
+_BLE_SYNTAX_FCTX[CTX_GLOB]=ble-syntax:bash/ctx-glob
+function ble-syntax:bash/ctx-glob {
+  # glob () の中身 (extglob @(...) や case in (...) の中)
+  local rex
+  if rex='^([^'"${_ble_syntax_bashc[CTX_GLOB]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+    ((_ble_syntax_attr[i]=ctx,
+      i+=${#BASH_REMATCH}))
+    return 0
+  elif ble-syntax:bash/check-process-subst; then
+    return 0
+  elif ble-syntax:bash/check-quotes; then
+    return 0
+  elif ble-syntax:bash/check-dollar; then
+    return 0
+  elif ble-syntax:bash/check-glob; then
     return 0
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax:bash/check-history-expansion ||
@@ -1080,7 +1137,6 @@ function ble-syntax:bash/ctx-pword {
 }
 
 _BLE_SYNTAX_FCTX[CTX_EXPR]=ble-syntax:bash/ctx-expr
-
 ## 関数 ble-syntax:bash/ctx-expr/.count-paren
 ##   算術式中の括弧の数 () を数えます。
 ##   @var ntype 現在の算術式の入れ子の種類を指定します。
@@ -1404,13 +1460,55 @@ function ble-syntax:bash/check-assign {
   return 0
 }
 
+function ble-syntax:bash/check-glob {
+  if [[ $tail == ['?*@+!()|']* ]]; then
+    if [[ $tail == ['?*@+!']'('* ]] && shopt -q extglob; then
+      ble-syntax/parse/nest-push "$CTX_GLOB"
+      ((_ble_syntax_attr[i]=ATTR_GLOB,i+=2))
+      return 0
+    fi
+
+    # 履歴展開の解釈の方が強い
+    [[ $histc1 && $tail == "$histc1"* ]] && return 1
+
+    if [[ $tail == ['?*']* ]]; then
+      ((_ble_syntax_attr[i++]=ATTR_GLOB))
+      return 0
+    elif [[ $tail == ['@+!']* ]]; then
+      ((_ble_syntax_attr[i++]=ctx))
+      return 0
+    elif ((ctx==CTX_GLOB)); then
+      local ntype attr=$ATTR_GLOB
+      ble-syntax/parse/nest-type -v ntype
+      [[ $ntype == nest ]] && attr=$ctx
+      if [[ $tail == '('* ]]; then
+        ble-syntax/parse/nest-push "$CTX_GLOB" nest
+        ((_ble_syntax_attr[i++]=ctx))
+        return 0
+      elif [[ $tail == ')'* ]]; then
+        ((_ble_syntax_attr[i++]=attr))
+        ble-syntax/parse/nest-pop
+        return 0
+      elif [[ $tail == '|'* ]]; then
+        ((_ble_syntax_attr[i++]=attr))
+        return 0
+      fi
+    fi
+  fi
+
+  return 1
+}
+
+function ble-syntax:bash/starts-with-delimiter-or-redirect {
+  local delimiters=$_ble_syntax_bash_rex_delimiters
+  local redirect=$_ble_syntax_bash_rex_redirect
+  [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect ) && $tail != ['<>']'('* ]]
+}
+
 function ble-syntax:bash/ctx-command {
   # コマンド・引数部分
   local rex
-
-  local rex_delimiters="^[$_ble_syntax_bash_IFS;|&<>()]"
-  local rex_redirect="$_ble_syntax_bash_rex_redirect"
-  if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
+  if ble-syntax:bash/starts-with-delimiter-or-redirect; then
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
          ctx==CTX_CMDX||ctx==CTX_CMDXF||
@@ -1418,12 +1516,12 @@ function ble-syntax:bash/ctx-command {
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
 
-    if rex="^[$_ble_syntax_bash_IFS]+" && [[ $tail =~ $rex ]]; then
+    if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
       # 空白 (ctx はそのままで素通り)
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
-      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)) && [[ ${BASH_REMATCH[0]} =~ $'\n' ]] && ((ctx=CTX_CMDX))
+      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)) && [[ $BASH_REMATCH == *$'\n'* ]] && ((ctx=CTX_CMDX))
       return 0
-    elif [[ $tail =~ $rex_redirect ]]; then
+    elif [[ $tail =~ ^$_ble_syntax_bash_rex_redirect ]]; then
       # リダイレクト (& 単体の解釈より優先する)
 
       local fError=0
@@ -1533,6 +1631,8 @@ function ble-syntax:bash/ctx-command {
     flagConsume=1
   elif ble-syntax:bash/check-dollar; then
     flagConsume=1
+  elif ble-syntax:bash/check-glob; then
+    flagConsume=1
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
@@ -1597,16 +1697,14 @@ function ble-syntax:bash/ctx-values/check-word-end {
 
 function ble-syntax:bash/ctx-values {
   # コマンド・引数部分
-  local rex
-
-  local rex_delimiters="^[$_ble_syntax_bash_IFS;|&<>()]"
+  local rex_delimiters="^$_ble_syntax_bash_rex_delimiters"
   if [[ $tail =~ $rex_delimiters && $tail != ['<>']'('* ]]; then
 #%if !release
     ((ctx==CTX_VALX)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
 
-    if rex="^[$_ble_syntax_bash_IFS]+" && [[ $tail =~ $rex ]]; then
+    if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
       # 空白 (ctx はそのままで素通り)
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
       return 0
@@ -1648,6 +1746,7 @@ function ble-syntax:bash/ctx-values {
   ble-assert '((ctx==CTX_VALI))' "invalid context ctx=$ctx"
 #%end
 
+  local rex
   if rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
@@ -1713,26 +1812,24 @@ function ble-syntax:bash/ctx-redirect/check-word-end {
   return 0
 }
 function ble-syntax:bash/ctx-redirect {
-  local rex
-
   # redirect の直後にコマンド終了や別の redirect があってはならない
-  local rex_delimiters="^[$_ble_syntax_bash_IFS;|&<>()]"
-  local rex_redirect="$_ble_syntax_bash_rex_redirect"
-  if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
-    ((_ble_syntax_attr[i-1]=ATTR_ERR))
-    ble-syntax/parse/nest-pop
+  if ble-syntax:bash/starts-with-delimiter-or-redirect; then
+    ((_ble_syntax_attr[i++]=ATTR_ERR))
+    [[ ${tail:1} =~ ^$_ble_syntax_bash_rex_spaces ]] &&
+      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
     return 0
   fi
 
   # 単語開始の設置
   ble-syntax:bash/ctx-redirect/check-word-begin
 
+  local rex
   if rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
   elif ble-syntax:bash/check-process-subst; then
-    return 0;
+    return 0
   elif ble-syntax:bash/check-quotes; then
     return 0
   elif ble-syntax:bash/check-dollar; then
@@ -2161,8 +2258,6 @@ function ble-syntax/completion-context/check/parameter-expansion {
 ##   @var[out] context
 function ble-syntax/completion-context/check-prefix {
   local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
-  local rex_delimiters="^[$_ble_syntax_bash_IFS;|&<>()]"
-  local rex_spaces='^[ 	]+$'
 
   local i
   local -a stat=()
@@ -2226,7 +2321,7 @@ function ble-syntax/completion-context/check-prefix {
             ble-syntax/completion-context/add variable "$i"
           fi
         fi
-      elif [[ $word =~ $rex_spaces ]]; then
+      elif [[ $word =~ ^$_ble_syntax_bash_rex_spaces$ ]]; then
         # 単語が未だ開始していない時 (空白)
         ble-syntax/completion-context/add command "$index"
       fi
@@ -2254,7 +2349,7 @@ function ble-syntax/completion-context/check-prefix {
           word="${word:${#BASH_REMATCH}}"
           ble-syntax/completion-context/add "$source" "$((index-${#word}))"
         fi
-      elif [[ $word =~ $rex_spaces ]]; then
+      elif [[ $word =~ ^$_ble_syntax_bash_rex_spaces$ ]]; then
         # 単語が未だ開始していない時 (空白)
         ble-syntax/completion-context/add "$source" "$index"
       fi
@@ -2466,6 +2561,7 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface syntax_history_expansion bg=94,fg=231
   ble-color-defface syntax_function_name     fg=92,bold # fg=purple
   ble-color-defface syntax_comment           fg=gray
+  ble-color-defface syntax_glob              fg=198,bold
 
   ble-color-defface command_builtin_dot fg=red,bold
   ble-color-defface command_builtin     fg=red
@@ -2511,6 +2607,8 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_VALX     syntax_default
   _ble_syntax_attr2iface.define CTX_VALI     syntax_default
   _ble_syntax_attr2iface.define ATTR_COMMENT syntax_comment
+  _ble_syntax_attr2iface.define CTX_GLOB     syntax_default
+  _ble_syntax_attr2iface.define ATTR_GLOB    syntax_glob
 
   _ble_syntax_attr2iface.define ATTR_CMD_BOLD     command_builtin_dot
   _ble_syntax_attr2iface.define ATTR_CMD_BUILTIN  command_builtin
