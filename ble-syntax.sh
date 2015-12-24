@@ -1396,7 +1396,21 @@ function ble-syntax:bash/ctx-command/check-word-end {
       ble-syntax/parse/word-pop
 
       return 0 ;;
-    (['!{']|'time'|'do'|'if'|'then'|'else'|'while'|'until')
+    ('time')
+      ((ctx=CTX_CMDX1,parse_suppressNextStat=1))
+      if [[ ${text:i} =~ ^$_ble_syntax_bash_rex_spaces ]]; then
+        ((_ble_syntax_attr[i]=CTX_CMDX,
+          i+=${#BASH_REMATCH}))
+      fi
+
+      if [[ ${text:i} == -p* ]] &&
+           tail=${text:i+2} ble-syntax:bash/starts-with-delimiter-or-redirect
+      then
+        ble-syntax/parse/word-push "$CTX_ARGI" "$i"
+        ((_ble_syntax_attr[i]=CTX_ARGI,i+=2))
+        ble-syntax/parse/word-pop
+      fi ;;
+    (['!{']|'do'|'if'|'then'|'else'|'while'|'until')
       ((ctx=CTX_CMDX1)) ;;
     ('for')
       ((ctx=CTX_CMDXF)) ;;
