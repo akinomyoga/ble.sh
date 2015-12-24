@@ -639,6 +639,8 @@ CTX_ARGVX=28 # (コマンド) declare の引数
 CTX_ARGVI=29 # (コマンド) declare の引数
 CTX_GLOB=30  # glob 通常文字
 ATTR_GLOB=31 # glob 特別文字
+CTX_CONDX=32
+CTX_CONDI=33
 
 _ble_syntax_bash_IFS=$' \t\n'
 _ble_syntax_bash_rex_spaces=$'[ \t]+'
@@ -916,11 +918,45 @@ function ble-syntax:bash/check-comment {
   return 1
 }
 
-# histchars には対応していない
-#   histchars を変更した時に変更するべき所:
-#   - _ble_syntax_rex_histexpand.init
-#   - ble-syntax:bash/check-history-expansion
-#   - _ble_syntax_bashc の中の !^ の部分
+function ble-syntax:bash/check-glob {
+  if [[ $tail == ['?*@+!()|']* ]]; then
+    if [[ $tail == ['?*@+!']'('* ]] && shopt -q extglob; then
+      ble-syntax/parse/nest-push "$CTX_GLOB"
+      ((_ble_syntax_attr[i]=ATTR_GLOB,i+=2))
+      return 0
+    fi
+
+    # 履歴展開の解釈の方が強い
+    [[ $histc1 && $tail == "$histc1"* ]] && return 1
+
+    if [[ $tail == ['?*']* ]]; then
+      ((_ble_syntax_attr[i++]=ATTR_GLOB))
+      return 0
+    elif [[ $tail == ['@+!']* ]]; then
+      ((_ble_syntax_attr[i++]=ctx))
+      return 0
+    elif ((ctx==CTX_GLOB)); then
+      local ntype attr=$ATTR_GLOB
+      ble-syntax/parse/nest-type -v ntype
+      [[ $ntype == nest ]] && attr=$ctx
+      if [[ $tail == '('* ]]; then
+        ble-syntax/parse/nest-push "$CTX_GLOB" nest
+        ((_ble_syntax_attr[i++]=ctx))
+        return 0
+      elif [[ $tail == ')'* ]]; then
+        ((_ble_syntax_attr[i++]=attr))
+        ble-syntax/parse/nest-pop
+        return 0
+      elif [[ $tail == '|'* ]]; then
+        ((_ble_syntax_attr[i++]=attr))
+        return 0
+      fi
+    fi
+  fi
+
+  return 1
+}
+
 _ble_syntax_rex_histexpand_event=
 _ble_syntax_rex_histexpand_word=
 _ble_syntax_rex_histexpand_mods=
@@ -1320,7 +1356,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
       # work-around: 一旦 word "[[" を削除
       ble-syntax/parse/word-cancel
 
-      i="$wbeg" ble-syntax/parse/nest-push "$CTX_VALX" '[['
+      i="$wbeg" ble-syntax/parse/nest-push "$CTX_CONDX"
 
       # work-around: word "[[" を nest 内部に設置し直す
       i="$wbeg" ble-syntax/parse/word-push "$CTX_CMDI" "$wbeg"
@@ -1380,11 +1416,11 @@ function ble-syntax:bash/ctx-command/check-word-end {
             ctx=CTX_CMDXC))
         elif [[ $rematch2 == '('* ]]; then
           # case: /hoge \( */ 括弧が閉じていない場合:
-          #   仕方がないのでサブシェルと思って取り敢えず解析する
+          #   仕方がないので extglob 括弧と思って取り敢えず解析する
           ((_ble_syntax_attr[i]=CTX_ARGX0,i+=${#rematch1},
             _ble_syntax_attr[i]=ATTR_ERR,
             ctx=CTX_ARGX0))
-          ble-syntax/parse/nest-push "$CTX_CMDX1" '('
+          ble-syntax/parse/nest-push "$CTX_GLOB"
           ((${#rematch2}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDXC),
             i+=${#rematch2}))
           return 0
@@ -1395,22 +1431,6 @@ function ble-syntax:bash/ctx-command/check-word-end {
       fi ;;
     esac
   elif ((ctx==CTX_ARGI)); then
-    # case "$word" in
-    # (']]')
-    #   # 条件コマンド終了
-    #   local type
-    #   ble-syntax/parse/nest-type -v type
-    #   if [[ $type == '[[' ]]; then
-    #     ble-syntax/parse/touch-updated-attr "$wbeg"
-    #     ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
-    #     ble-syntax/parse/nest-pop
-    #     return 0
-    #   else
-    #     ((ctx=CTX_ARGX0))
-    #   fi ;;
-    # (*)
-    #   ((ctx=CTX_ARGX)) ;;
-    # esac
     ((ctx=CTX_ARGX))
   elif ((ctx==CTX_ARGVI)); then
     ((ctx=CTX_ARGVX))
@@ -1452,51 +1472,12 @@ function ble-syntax:bash/check-assign {
     # * nest-pop した直後は未だ CTX_VRHS, CTX_ARGVI の続きになっている。
     #   例: a=(1 2)b=1 は a='(1 2)b=1' と解釈される。
     #   従って ctx (nest-pop 時の文脈) はそのまま (CTX_VRHS, CTX_ARGVI) にする。
-    ble-syntax/parse/nest-push "$CTX_VALX" 'A('
+    ble-syntax/parse/nest-push "$CTX_VALX"
 
     ((_ble_syntax_attr[i++]=ATTR_DEL))
   fi
 
   return 0
-}
-
-function ble-syntax:bash/check-glob {
-  if [[ $tail == ['?*@+!()|']* ]]; then
-    if [[ $tail == ['?*@+!']'('* ]] && shopt -q extglob; then
-      ble-syntax/parse/nest-push "$CTX_GLOB"
-      ((_ble_syntax_attr[i]=ATTR_GLOB,i+=2))
-      return 0
-    fi
-
-    # 履歴展開の解釈の方が強い
-    [[ $histc1 && $tail == "$histc1"* ]] && return 1
-
-    if [[ $tail == ['?*']* ]]; then
-      ((_ble_syntax_attr[i++]=ATTR_GLOB))
-      return 0
-    elif [[ $tail == ['@+!']* ]]; then
-      ((_ble_syntax_attr[i++]=ctx))
-      return 0
-    elif ((ctx==CTX_GLOB)); then
-      local ntype attr=$ATTR_GLOB
-      ble-syntax/parse/nest-type -v ntype
-      [[ $ntype == nest ]] && attr=$ctx
-      if [[ $tail == '('* ]]; then
-        ble-syntax/parse/nest-push "$CTX_GLOB" nest
-        ((_ble_syntax_attr[i++]=ctx))
-        return 0
-      elif [[ $tail == ')'* ]]; then
-        ((_ble_syntax_attr[i++]=attr))
-        ble-syntax/parse/nest-pop
-        return 0
-      elif [[ $tail == '|'* ]]; then
-        ((_ble_syntax_attr[i++]=attr))
-        return 0
-      fi
-    fi
-  fi
-
-  return 1
 }
 
 function ble-syntax:bash/starts-with-delimiter-or-redirect {
@@ -1563,9 +1544,8 @@ function ble-syntax:bash/ctx-command {
         ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
         ((i+=${#m}))
       else
-        ((_ble_syntax_attr[i]=ATTR_ERR))
-        ble-syntax/parse/nest-push "$CTX_VALX" 'A('
-        ((i++))
+        ble-syntax/parse/nest-push "$CTX_GLOB"
+        ((_ble_syntax_attr[i++]=ATTR_ERR))
       fi
       return 0
     elif [[ $tail == ')'* ]]; then
@@ -1651,10 +1631,7 @@ function ble-syntax:bash/ctx-command {
 }
 
 #------------------------------------------------------------------------------
-# 文脈: 値リスト、条件コマンド
-#
-#   値リストと条件コマンドの文法は、 &<>() 等の文字に対して結構違う。
-#   分離した方が良いのではないか?
+# 文脈: 配列値リスト
 #
 
 _BLE_SYNTAX_FCTX[CTX_VALX]=ble-syntax:bash/ctx-values
@@ -1675,22 +1652,7 @@ function ble-syntax:bash/ctx-values/check-word-end {
   ble-syntax/parse/word-pop
 
   ble-assert '((ctx==CTX_VALI))' 'invalid context'
-  case "$word" in
-  (']]')
-    # 条件コマンド終了
-    local type
-    ble-syntax/parse/nest-type -v type
-    if [[ $type == '[[' ]]; then
-      ble-syntax/parse/touch-updated-attr "$wbeg"
-      ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
-      ble-syntax/parse/nest-pop
-      return 0
-    else
-      ((ctx=CTX_VALX))
-    fi ;;
-  (*)
-    ((ctx=CTX_VALX)) ;;
-  esac
+  ((ctx=CTX_VALX))
 
   return 0
 }
@@ -1709,26 +1671,15 @@ function ble-syntax:bash/ctx-values {
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
       return 0
     elif [[ $tail == ')'* ]]; then
-      local type
-      ble-syntax/parse/nest-type -v type
-      if [[ $type == 'A(' ]]; then
-        # 配列定義の終了
-        ((_ble_syntax_attr[i++]=ATTR_DEL))
-        ble-syntax/parse/nest-pop
-        return 0
-      fi
-      # そのまま単語へ(?)
+      # 配列定義の終了
+      ((_ble_syntax_attr[i++]=ATTR_DEL))
+      ble-syntax/parse/nest-pop
+      return 0
     elif [[ $type == ';'* ]]; then
       ((_ble_syntax_attr[i++]=ATTR_ERR))
       return 0
     else
-      local type
-      ble-syntax/parse/nest-type -v type
-      if [[ $type == 'A(' ]]; then
-        ((_ble_syntax_attr[i++]=ATTR_ERR))
-      else
-        ((_ble_syntax_attr[i++]=ATTR_VALI))
-      fi
+      ((_ble_syntax_attr[i++]=ATTR_ERR))
       return 0
     fi
   fi
@@ -1757,22 +1708,105 @@ function ble-syntax:bash/ctx-values {
     return 0
   elif ble-syntax:bash/check-dollar; then
     return 0
+  elif ble-syntax:bash/check-glob; then
+    return 0
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
-  else
-    local type
-    ble-syntax/parse/nest-type -v type
-    if [[ $type == '[[' ]]; then
-      # 条件コマンドの時は $ や ) 等を許す。。
-      ((_ble_syntax_attr[i]=ctx,i++))
-      return 0
-    fi
   fi
 
   return 1
 }
+
+#------------------------------------------------------------------------------
+# 文脈: [[ 条件式 ]]
+
+_BLE_SYNTAX_FCTX[CTX_CONDX]=ble-syntax:bash/ctx-conditions
+_BLE_SYNTAX_FCTX[CTX_CONDI]=ble-syntax:bash/ctx-conditions
+_BLE_SYNTAX_FEND[CTX_CONDI]=ble-syntax:bash/ctx-conditions/check-word-end
+
+## 関数 ble-syntax:bash/ctx-values/check-word-end
+function ble-syntax:bash/ctx-conditions/check-word-end {
+  # 単語の中にいない時は抜ける
+  ((wbegin<0)) && return 1
+
+  # 未だ続きがある場合は抜ける
+  [[ ${text:i:1} == [^"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
+
+  local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
+  local word="${text:wbegin:wlen}"
+
+  ble-syntax/parse/word-pop
+
+  ble-assert '((ctx==CTX_CONDI))' 'invalid context'
+  if [[ $word == ']]' ]]; then
+    ble-syntax/parse/touch-updated-attr "$wbeg"
+    ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
+    ble-syntax/parse/nest-pop
+  else
+    ((ctx=CTX_CONDX))
+  fi
+  return 0
+}
+
+function ble-syntax:bash/ctx-conditions {
+  # コマンド・引数部分
+  if [[ $tail =~ ^$_ble_syntax_bash_rex_delimiters && $tail != ['<>']'('* ]]; then
+#%if !release
+    ((ctx==CTX_CONDX)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
+    ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
+#%end
+
+    if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
+      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+      return 0
+    else
+      # [(<>;|&] など
+      ((_ble_syntax_attr[i++]=ATTR_CONDI))
+      return 0
+    fi
+  fi
+
+  if ble-syntax:bash/check-comment; then
+    return 0
+  fi
+
+  if ((wbegin<0)); then
+    ((ctx=CTX_CONDI))
+    ble-syntax/parse/word-push "$ctx" "$i"
+  fi
+
+#%if !release
+  ble-assert '((ctx==CTX_CONDI))' "invalid context ctx=$ctx"
+#%end
+
+  local rex
+  if rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+    ((_ble_syntax_attr[i]=ctx,
+      i+=${#BASH_REMATCH}))
+    return 0
+  elif ble-syntax:bash/check-process-subst; then
+    return 0
+  elif ble-syntax:bash/check-quotes; then
+    return 0
+  elif ble-syntax:bash/check-dollar; then
+    return 0
+  elif ble-syntax:bash/check-glob; then
+    return 0
+  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+    ble-syntax:bash/check-history-expansion ||
+      ((_ble_syntax_attr[i++]=ctx))
+    return 0
+  else
+    # 条件コマンドの時は $ や ) 等を許す。。
+    ((_ble_syntax_attr[i++]=ctx))
+    return 0
+  fi
+
+  return 1
+}
+
 
 #------------------------------------------------------------------------------
 # 文脈: リダイレクト
@@ -1833,6 +1867,8 @@ function ble-syntax:bash/ctx-redirect {
   elif ble-syntax:bash/check-quotes; then
     return 0
   elif ble-syntax:bash/check-dollar; then
+    return 0
+  elif ble-syntax:bash/check-glob; then
     return 0
   elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
     ble-syntax:bash/check-history-expansion ||
@@ -2280,7 +2316,7 @@ function ble-syntax/completion-context/check-prefix {
         fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((ctx==CTX_ARGI||ctx==CTX_ARGVI||ctx==CTX_VALI)); then
+    elif ((ctx==CTX_ARGI||ctx==CTX_ARGVI||ctx==CTX_VALI||ctx==CTX_CONDI)); then
       # CTX_ARGI  → 引数の続き
       if ((wlen>=0)); then
         local source=file
@@ -2332,7 +2368,7 @@ function ble-syntax/completion-context/check-prefix {
       if [[ ${text:i:index-1} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$i"
       fi
-    elif ((ctx==CTX_ARGX||ctx==CTX_ARGVX||ctx==CTX_VALX||ctx==CTX_RDRS)); then
+    elif ((ctx==CTX_ARGX||ctx==CTX_ARGVX||ctx==CTX_VALX||ctx==CTX_CONDX||ctx==CTX_RDRS)); then
       local source=file
       if ((ctx==CTX_ARGX)); then
         source=argument
@@ -2606,6 +2642,8 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define ATTR_FUNCDEF syntax_function_name
   _ble_syntax_attr2iface.define CTX_VALX     syntax_default
   _ble_syntax_attr2iface.define CTX_VALI     syntax_default
+  _ble_syntax_attr2iface.define CTX_CONDX    syntax_default
+  _ble_syntax_attr2iface.define CTX_CONDI    syntax_default
   _ble_syntax_attr2iface.define ATTR_COMMENT syntax_comment
   _ble_syntax_attr2iface.define CTX_GLOB     syntax_default
   _ble_syntax_attr2iface.define ATTR_GLOB    syntax_glob
