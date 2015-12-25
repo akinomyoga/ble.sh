@@ -2,17 +2,17 @@
 
 # gflags
 
-declare -i _ble_color_gflags_Bold=0x01
-declare -i _ble_color_gflags_Italic=0x02
-declare -i _ble_color_gflags_Underline=0x04
-declare -i _ble_color_gflags_Revert=0x08
-declare -i _ble_color_gflags_Invisible=0x10
-declare -i _ble_color_gflags_Strike=0x20
-declare -i _ble_color_gflags_Blink=0x40
-declare -i _ble_color_gflags_MaskFg=0x0000FF00
-declare -i _ble_color_gflags_MaskBg=0x00FF0000
-declare -i _ble_color_gflags_ForeColor=0x1000000
-declare -i _ble_color_gflags_BackColor=0x2000000
+_ble_color_gflags_Bold=0x01
+_ble_color_gflags_Italic=0x02
+_ble_color_gflags_Underline=0x04
+_ble_color_gflags_Revert=0x08
+_ble_color_gflags_Invisible=0x10
+_ble_color_gflags_Strike=0x20
+_ble_color_gflags_Blink=0x40
+_ble_color_gflags_MaskFg=0x0000FF00
+_ble_color_gflags_MaskBg=0x00FF0000
+_ble_color_gflags_ForeColor=0x1000000
+_ble_color_gflags_BackColor=0x2000000
 
 function ble-color-show {
   local h l c
@@ -220,8 +220,9 @@ function ble-color/.color2sgrbg {
 _ble_faces_count=0
 _ble_faces=()
 _ble_faces_sgr=()
-function ble-color-defface   { ble-color/faces/initialize && ble-color-defface   "$@"; }
-function ble-color-setface   { ble-color/faces/initialize && ble-color-setface   "$@"; }
+_ble_faces_lazy_defface=()
+function ble-color-defface   { ble/util/array-push _ble_faces_lazy_defface "def:$1:$2"; }
+function ble-color-setface   { ble/util/array-push _ble_faces_lazy_defface "set:$1:$2"; }
 function ble-color-face2g    { ble-color/faces/initialize && ble-color-face2g    "$@"; }
 function ble-color-face2sgr  { ble-color/faces/initialize && ble-color-face2sgr  "$@"; }
 function ble-color-iface2g   { ble-color/faces/initialize && ble-color-iface2g   "$@"; }
@@ -235,8 +236,6 @@ function ble-color/faces/addhook-onload {
 
 # 遅延初期化子
 function ble-color/faces/initialize {
-
-  function ble-color/faces/addhook-onload { "$1"; }
 
   function ble-color-defface {
     local name="_ble_faces__$1" gspec="$2"
@@ -254,6 +253,19 @@ function ble-color/faces/initialize {
       return 1
     fi
   }
+
+  local args type face gspec
+  for args in "${_ble_faces_lazy_defface[@]}"; do
+    type="${args%%:*}" args="${args#*:}"
+    face="${args%%:*}" gspec="${args#*:}"
+    if [[ $type == set ]]; then
+      ble-color-setface "$face" "$gspec"
+    else
+      ble-color-defface "$face" "$gspec"
+    fi
+  done
+  unset _ble_faces_lazy_defface
+
   function ble-color-face2g {
     ((g=_ble_faces[_ble_faces__$1]))
   }
@@ -266,6 +278,8 @@ function ble-color/faces/initialize {
   function ble-color-iface2sgr {
     sgr="${_ble_faces_sgr[$1]}"
   }
+
+  function ble-color/faces/addhook-onload { "$1"; }
 
   local hook ret=0
   for hook in "${_ble_faces_hooks[@]}"; do "$hook" || ((ret++)); done
