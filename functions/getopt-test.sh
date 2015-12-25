@@ -20,7 +20,7 @@
 source getopt.sh
 
 function command1 {
-  declare "${ble_getopt_locals[@]}"
+  eval "$ble_getopt_prologue"
   ble/getopt.init "$0" "$@"
 
   while ble/getopt.next; do
