@@ -216,23 +216,20 @@ function ble-color/.color2sgrbg {
 #------------------------------------------------------------------------------
 # _ble_faces
 
+# 遅延初期化登録
+_ble_faces_lazy_loader=()
+function ble-color/faces/addhook-onload { ble/util/array-push _ble_faces_lazy_loader "hook:$1"; }
+
 # 遅延初期化
 _ble_faces_count=0
 _ble_faces=()
 _ble_faces_sgr=()
-_ble_faces_lazy_defface=()
-function ble-color-defface   { ble/util/array-push _ble_faces_lazy_defface "def:$1:$2"; }
-function ble-color-setface   { ble/util/array-push _ble_faces_lazy_defface "set:$1:$2"; }
+function ble-color-defface   { ble/util/array-push _ble_faces_lazy_loader "def:$1:$2"; }
+function ble-color-setface   { ble/util/array-push _ble_faces_lazy_loader "set:$1:$2"; }
 function ble-color-face2g    { ble-color/faces/initialize && ble-color-face2g    "$@"; }
 function ble-color-face2sgr  { ble-color/faces/initialize && ble-color-face2sgr  "$@"; }
 function ble-color-iface2g   { ble-color/faces/initialize && ble-color-iface2g   "$@"; }
 function ble-color-iface2sgr { ble-color/faces/initialize && ble-color-iface2sgr "$@"; }
-
-# 遅延初期化登録
-_ble_faces_hooks=()
-function ble-color/faces/addhook-onload {
-  ble/util/array-push _ble_faces_hooks "$1"
-}
 
 # 遅延初期化子
 function ble-color/faces/initialize {
@@ -254,18 +251,6 @@ function ble-color/faces/initialize {
     fi
   }
 
-  local args type face gspec
-  for args in "${_ble_faces_lazy_defface[@]}"; do
-    type="${args%%:*}" args="${args#*:}"
-    face="${args%%:*}" gspec="${args#*:}"
-    if [[ $type == set ]]; then
-      ble-color-setface "$face" "$gspec"
-    else
-      ble-color-defface "$face" "$gspec"
-    fi
-  done
-  unset _ble_faces_lazy_defface
-
   function ble-color-face2g {
     ((g=_ble_faces[_ble_faces__$1]))
   }
@@ -281,8 +266,17 @@ function ble-color/faces/initialize {
 
   function ble-color/faces/addhook-onload { "$1"; }
 
-  local hook ret=0
-  for hook in "${_ble_faces_hooks[@]}"; do "$hook" || ((ret++)); done
+  local initializer arg ret=0
+  for initializer in "${_ble_faces_lazy_loader[@]}"; do
+    local arg="${initializer#*:}"
+    case "$initializer" in
+    (def:*)  ble-color-defface "${arg%%:*}" "${arg#*:}";;
+    (set:*)  ble-color-setface "${arg%%:*}" "${arg#*:}";;
+    (hook:*) eval "$arg";;
+    esac || ((ret++))
+  done
+  unset _ble_faces_lazy_loader
+
   return "$ret"
 }
 
