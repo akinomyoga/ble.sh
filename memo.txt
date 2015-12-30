@@ -105,14 +105,38 @@ bash 実装上で注意するべき事
 
 bashbug: 実装上で注意するべき事
 
-  * 算術式:
+  * bash-3.0 - 4.3 算術式:
+
     条件分岐で実行されない部分でも配列の添字は 0 以上でなければならない。
-    例えば以下はエラーになる @ bash-3.1, 3.2, 4.0, 4.2, 4.3
+    例えば以下はエラーになる @ bash-3.0, 3.1, 3.2, 4.0, 4.2, 4.3
     ((a=-1,a>=0?b[a]:0))
+
+    もっと調べてみると配列の添字に限らず分岐しない所で式が評価されている様だ:
+
+    + 三項条件式で起こる。true/false branches のどちらでも起こる。&& や || では起こらない。
+
+      $ echo 'x=a=1; ((a=0,0?x:0)); echo $a' | bash      1 (bash-3.0 - 4.3)
+      $ echo 'x=a=1; ((a=0,1?0:x)); echo $a' | bash      1 (bash-3.0 - 4.3)
+      $ echo 'x=a=1; ((a=0,0&&x)); echo $a' | bash       0 (bash-3.0 - 4.3)
+      $ echo 'x=a=1; ((a=0,1||x)); echo $a' | bash       0 (bash-3.0 - 4.3)
+
+      $ echo 'x=a=1; ((a=0,0?b[x]:0)); echo $a' | bash   1
+      $ echo 'x=a=1; ((a=0,0&&b[x])); echo $a' | bash    0 (bash-3.0, 3.1, 4.2+ / bash-3.2, 4.0, 4.1 は別の bug で 1)
+
+    + 括弧で囲めば何も起こらない様だ。
+
+      $ echo 'x=a=1; ((a=0,0?(x):0)); echo $a' | bash    0 (bash-3.0 - 4.3)
+      $ echo 'x=a=1; ((a=0,1?0:(x))); echo $a' | bash    0 (bash-3.0 - 4.3)
+
+      $ echo 'x=a=1; ((a=0,0?(b[x]):0)); echo $a' | bash 0 (bash-3.0, 3.1, 4.2+ / bash-3.2, 4.0, 4.1 は別の bug で 1)
 
   * bash-4.3 \C-@ 関係に bind -x すると正しく動かない
 
-  * bash-4.2
+  * bash-4.2 算術式 seg fault
+
+    https://lists.gnu.org/archive/html/bug-bash-gnu/2013-01/msg00036.html
+    https://lists.gnu.org/archive/html/bug-bash-gnu/2013-01/msg00042.html
+    https://lists.gnu.org/archive/html/bug-bash-gnu/2013-01/msg00043.html
 
     算術式の中で配列要素の参照に関係して特定の式構造になると segfault する。
     多分、配列要素の読み出しの次の token が整数または代入式の左辺だと落ちる。
@@ -177,7 +201,9 @@ bashbug: 実装上で注意するべき事
     (より上の version では識別子名と解釈されているからなのかエラーにはならない。
     しかし、今迄は毎回「あ」等という変数を探していたのだろう。
 
-  * bash-3.2.48 で以下の評価に失敗する。
+  * bash-3.2, 4.0, 4.1: 算術式分岐内配列参照
+
+    bash-3.2.48 で以下の評価に失敗する。
     bash-3.1 以下は大丈夫。bash-4.2, bash-4.3 も大丈夫。bash-4.0 は駄目。
 
     dbg=()
@@ -187,6 +213,11 @@ bashbug: 実装上で注意するべき事
 
     bash-4.0 bash-4.1 でも以下の式で必ず _pos[1]++ が実行されていた。
     ((_eoc[2]&&(_pos[0]=0,_pos[1]++)))
+
+
+    $ ((a=0,b=0,0&&(a=1,x=dbg[0],b=1))); echo $a $b               → 0 1
+    $ expr="a=1,x=dbg[0],b=1"; ((a=0,b=0,0&&expr)); echo $a $b    → 0 1
+    $ expr="a=1,x=dbg[0],b=1"; ((a=0,b=0,0&&(expr))); echo $a $b  → 0 1
 
   * bash-3.2, bash-3.1 では source にプロセス置換を渡しても読み取ってくれない。
     つまり source <( ... ) としても何も起こらない。

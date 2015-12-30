@@ -35,15 +35,15 @@ $ source out/ble.sh
 
 With `wget`:
 ```bash
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz
-$ tar xJf ble-0.1.3.tar.xz
-$ source ble-0.1.3/ble.sh
+$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.4/ble-0.1.4.tar.xz
+$ tar xJf ble-0.1.4.tar.xz
+$ source ble-0.1.4/ble.sh
 ```
 With `curl`:
 ```bash
-$ curl -L https://github.com/akinomyoga/ble.sh/releases/download/v0.1.3/ble-0.1.3.tar.xz > ble-0.1.3.tar.xz
-$ tar xJf ble-0.1.3.tar.xz
-$ source ble-0.1.3/ble.sh
+$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.1.4/ble-0.1.4.tar.xz
+$ tar xJf ble-0.1.4.tar.xz
+$ source ble-0.1.4/ble.sh
 ```
 
 **Setup `.bashrc`**
