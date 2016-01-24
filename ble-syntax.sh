@@ -2163,7 +2163,7 @@ _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 ##
 function ble-syntax/parse {
   local -r text="$1"
-  local -r beg="${2:-0}" end="${3:-${#text}}"
+  local beg="${2:-0}" end="${3:-${#text}}"
   local -r end0="${4:-$end}"
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 

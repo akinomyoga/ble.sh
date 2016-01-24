@@ -1576,12 +1576,26 @@ function _ble_edit_str.replace {
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
   _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end"
   .ble-edit-draw.set-dirty "$beg"
+#%if !release
+  if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
+    ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
+    _ble_edit_dirty_syntax_beg=0
+    _ble_edit_dirty_syntax_end="${#_ble_edit_str}"
+  fi
+#%end
 }
 function _ble_edit_str.reset {
   local str="$1"
   _ble_edit_str/update-dirty-range 0 "${#str}" "${#_ble_edit_str}"
   .ble-edit-draw.set-dirty 0
   _ble_edit_str="$str"
+#%if !release
+  if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
+    ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str"
+    _ble_edit_dirty_syntax_beg=0
+    _ble_edit_dirty_syntax_end="${#_ble_edit_str}"
+  fi
+#%end
 }
 function _ble_edit_str.reset-and-check-dirty {
   local str="$1"

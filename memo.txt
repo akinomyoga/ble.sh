@@ -361,6 +361,85 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2016-01-12
+
+  * 履歴検索を起動しただけで×になった。比較的最新版である。
+    最近の構文解析のバグは全て潰した後である。
+
+    | stackdump: X1 0 <= beg:11 <= end:12 <= iN:1, beg:11 <= end0:11 (shift=1 text=s)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (_ble_edit_str.update-syntax)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4441 (ble-highlight-layer/update)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4884 (.ble-line-text/update)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (.ble-edit-draw.update)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:966 (ble-edit/bind/.tail)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-4230 (ble-decode-byte:bind/EPILOGUE)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble-decode-byte:bind)
+    | -bash: beg: 読み取り専用の変数です
+    | stackdump: X2 0 <= 0 <= 11 <= 12 <= 1 <= 1
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   ※以降のエラーは全て ble-syntax/parse 以下で起きている。
+    |     上記と同じなので詳細な stackdump は以降は省略する。
+    | stackdump: X1 0 <= beg:12 <= end:13 <= iN:2, beg:12 <= end0:12 (shift=1 text=ss)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | -bash: beg: 読み取り専用の変数です
+    | stackdump: X2 0 <= 1 <= 12 <= 13 <= 2 <= 2
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | stackdump: X1 0 <= beg:13 <= end:14 <= iN:3, beg:13 <= end0:13 (shift=1 text=ssh)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | -bash: beg: 読み取り専用の変数です
+    | stackdump: X2 0 <= 2 <= 13 <= 14 <= 3 <= 3
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | stackdump: X1 0 <= beg:14 <= end:15 <= iN:4, beg:14 <= end0:14 (shift=1 text=ssh )
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | -bash: beg: 読み取り専用の変数です
+    | stackdump: X2 0 <= 3 <= 14 <= 15 <= 4 <= 4
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | stackdump: X1 0 <= beg:15 <= end:16 <= iN:5, beg:15 <= end0:15 (shift=1 text=ssh l)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | -bash: beg: 読み取り専用の変数です
+    | stackdump: X2 0 <= 4 <= 15 <= 16 <= 5 <= 5
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | stackdump: X1 0 <= beg:16 <= end:17 <= iN:6, beg:16 <= end0:16 (shift=1 text=ssh la)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | -bash: beg: 読み取り専用の変数です
+    | stackdump: X2 0 <= 5 <= 16 <= 17 <= 6 <= 6
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    | assertion failure: ((nofs<${#node[@]}))
+    | ble-syntax/tree-enumerate/.impl(i=4,iN=6,nofs=0,node=,command=ble-syntax/parse/shift.impl2/.proc1)/FATAL1
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:7612 (ble-assert)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:108 (ble-syntax/tree-enumerate/.impl)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:22 (ble-syntax/tree-enumerate)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1901 (ble-syntax/parse/shift)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+
+    三つの問題点が生じている。再現性はない (正確には、再現方法は未だ不明)。
+
+    1. dirty range がおかしい (文字列の長さの外にある)。
+      これはここではなく dirty range を更新している部分でチェックを行うべきではないか。
+    2. dirty range がおかしい時の対策として beg, end を再設定している。
+      しかしここで "-bash: beg: 読み取り専用の変数です" のエラーが発生している。
+    3. 以下のエラーが発生している。node が空である。
+      assertion failure: ((nofs<${#node[@]}))
+      ble-syntax/tree-enumerate/.impl(i=4,iN=6,nofs=0,node=,command=ble-syntax/parse/shift.impl2/.proc1)/FATAL1
+
+    どうも今迄の経験から 1. の範囲の異常は履歴の移動に関係している気がする。
+    取り敢えず 2. "beg: 読み取り専用の変数です" のエラーメッセージの部分だけは修正する。
+    3. に関してはこのエラーに関係しているのかどうか分からないが、
+    一見すると独立なエラーのようにも思われる。
+    しかし発生したタイミング的には明らかに相関している。
+    そうだとするとどの様にしてこのエラーが発生するのか確認する必要がある。
+
+    先ずは改めて dirty range の計算について調べる。
+    _ble_edit_str が直接変更されているのは、初期化時を除けば、
+    function _ble_edit_str.{replace,reset,reset-and-check-dirty} のみである。
+    現在の所 reset-and-check-dirty は使用されていない。
+
+    →トラップをしかけたら直ぐに引っかかった。
+    _ble_edit_replace である。履歴検索をして中断した後になる。
+
 2015-12-24
 
   * (ble-syntax:bash): case 対応
@@ -377,6 +456,9 @@ tech
 
   * C-r C-s で mark が破壊されてしまう。
     (現状の実装だと、範囲選択に C-r C-s を使う事ができない。)
+
+    例えば mark が設定されている場合は現在の履歴項目の中で、
+    mark を解除せずに検索を行うなどの様にすると良い。
 
 2015-12-20
 
