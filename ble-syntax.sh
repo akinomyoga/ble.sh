@@ -303,7 +303,7 @@ function ble-syntax/print-status/.dump-arrays {
   line=()
 
   local i max_tree_width=0
-  for ((i=0;i<iN;i++)); do
+  for ((i=0;i<=iN;i++)); do
     local attr="  ${_ble_syntax_attr[i]:-|}"
     if ((_ble_syntax_attr_umin<=i&&i<_ble_syntax_attr_umax)); then
       attr="${attr:${#attr}-2:2}*"
@@ -377,9 +377,9 @@ function ble-syntax/print-status/.dump-arrays {
     line[i]="$tword$nest$stat"
   done
 
-  resultA='A?'$'\n'
+  resultA='_ble_syntax_attr/tree/nest/stat?'$'\n'
   _ble_util_string_prototype.reserve max_tree_width
-  for ((i=0;i<iN;i++)); do
+  for ((i=0;i<=iN;i++)); do
     local t="${tree[i]}${_ble_util_string_prototype::max_tree_width}"
     resultA="$resultA${char[i]} ${t::max_tree_width}${line[i]}"$'\n'
   done
@@ -2059,35 +2059,81 @@ function ble-syntax/parse/shift.nest {
   fi
 }
 
-# 実装中
-function ble-syntax/parse/shift.impl2/.proc1 {
-  while ((j>=j2)); do
-    if ((j==i)); then
-      ble-syntax/parse/shift.tree "$nofs"
-
-      if (((tprev<=end0||wbegin<=end0)&&tchild>=0)); then
-        # tprev<=end0 の場合、stat の中の tplen が shift 対象の可能性がある。
-        ble-syntax/tree-enumerate-children ble-syntax/parse/shift.impl2/.proc1
-      else
+function ble-syntax/parse/shift.impl2/.shift-until {
+  local limit="$1"
+  while ((j>=limit)); do
 #%if !release
-        [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
+    [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
 #%end
-        ble-syntax/parse/shift.stat
-        ble-syntax/parse/shift.nest
-        ((j=wbegin)) # skip
-      fi
-      return
-    else
-#%if !release
-      [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
-#%end
-      ble-syntax/parse/shift.stat
-      ble-syntax/parse/shift.nest
-      ((j--))
-    fi
+    ble-syntax/parse/shift.stat
+    ble-syntax/parse/shift.nest
+    ((j--))
   done
+}
 
-  ((tprev=-1)) # 中断
+## 関数 ble-syntax/parse/shift.impl2/.proc1
+##
+## @var[in] i
+##   tree-enumerate によって設定される変数です。
+##   現在処理している単語の終端境界を表します。
+##   単語の情報は _ble_syntax_tree[i-1] に格納されています。
+##
+## @var[in,out] _shift2_j  何処まで処理したかを格納します。
+##
+## @var[in]     i1,i2,j2,iN
+## @var[in]     beg,end,end0,shift
+##   これらの変数は更に子関数で使用されます。
+##
+function ble-syntax/parse/shift.impl2/.proc1 {
+  local j="$_shift2_j"
+  if ((i<j2)); then
+    ((tprev=-1)) # 中断
+    return
+  fi
+
+  ble-syntax/parse/shift.impl2/.shift-until "$((i+1))"
+
+  ble-syntax/parse/shift.tree "$nofs"
+
+  if ((tprev>end0&&wbegin>end0)); then
+    # skip 可能
+    #   tprev<=end0 の場合、stat の中の tplen が shift 対象の可能性がある事に注意する。
+#%if !release
+    [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
+#%end
+    ble-syntax/parse/shift.stat
+    ble-syntax/parse/shift.nest
+    ((_shift2_j=wbegin)) # skip
+  elif ((tchild>=0)); then
+    ((_shift2_j=j))
+    ble-syntax/tree-enumerate-children ble-syntax/parse/shift.impl2/.proc1
+  fi
+}
+
+function ble-syntax/parse/shift.method1 {
+  # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
+  local i j
+  for ((i=i2,j=j2;i<=iN;i++,j++)); do
+    # 注意: データの範囲
+    #   stat[i]   は i in [0,iN]
+    #   attr[i]   は i in [0,iN)
+    #   tree[i-1] は i in (0,iN]
+    ble-syntax/parse/shift.stat
+    ((j>0))  && ble-syntax/parse/shift.tree
+    ((i<iN)) && ble-syntax/parse/shift.nest
+  done
+}
+
+function ble-syntax/parse/shift.method2 {
+#%if !release
+  [[ $ble_debug ]] && _ble_syntax_stat_shift=()
+#%end
+
+  local iN="${#_ble_syntax_text}" # tree-enumerate 起点は (古い text の長さ) である
+  local _shift2_j="$iN" # proc1 に渡す変数
+  ble-syntax/tree-enumerate ble-syntax/parse/shift.impl2/.proc1
+  local j="$_shift2_j"
+  ble-syntax/parse/shift.impl2/.shift-until "$j2" # 未処理部分
 }
 
 ## @var[in] i1,i2,j2,iN
@@ -2096,28 +2142,8 @@ function ble-syntax/parse/shift {
   # ※shift==0 でも更新で消滅した部分を縮める必要があるので
   #   shift 実行する必要がある。
 
-  local ble_shift_method=2
-  if [[ $ble_shift_method == 1 ]]; then
-    # shift (shift は毎回やり切る。途中状態で抜けたりはしない)
-    local i j
-    for ((i=i2,j=j2;i<=iN;i++,j++)); do
-      # 注意: データの範囲
-      #   stat[i]   は i in [0,iN]
-      #   attr[i]   は i in [0,iN)
-      #   tree[i-1] は i in (0,iN]
-      ble-syntax/parse/shift.stat
-      ((j>0))  && ble-syntax/parse/shift.tree
-      ((i<iN)) && ble-syntax/parse/shift.nest
-    done
-  else
-#%if !release
-    [[ $ble_debug ]] && _ble_syntax_stat_shift=()
-#%end
-
-    local iN="${#_ble_syntax_text}"
-    local j="$iN"
-    ble-syntax/tree-enumerate ble-syntax/parse/shift.impl2/.proc1
-  fi
+  # ble-syntax/parse/shift.method1 # 直接探索
+  ble-syntax/parse/shift.method2 # tree-enumerate による skip
 
   if ((shift!=0)); then
     # 更新範囲の shift
