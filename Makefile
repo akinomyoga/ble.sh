@@ -5,7 +5,7 @@ all:
 
 PP:=ext/mwg_pp.awk
 
-FULLVER:=0.1.4
+FULLVER:=0.1.5
 
 outfiles+=out
 out:
