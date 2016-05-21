@@ -3421,11 +3421,7 @@ function .ble-edit.history-goto {
 
   # restore
   _ble_edit_history_ind="$index1"
-  if [[ ${_ble_edit_history_edit[$index1]+set} ]]; then
-    _ble_edit_str.reset "${_ble_edit_history_edit[$index1]}"
-  else
-    _ble_edit_str.reset "${_ble_edit_history[$index1]}"
-  fi
+  _ble_edit_str.reset "${_ble_edit_history_edit[index1]-${_ble_edit_history[index1]}}"
 
   # point
   if [[ $bleopt_history_preserve_point ]]; then
@@ -3561,7 +3557,7 @@ function ble-edit/isearch/.goto-match {
 
   # 状態を更新
   _ble_edit_isearch_str="$needle"
-  [[ _ble_edit_history_ind != $ind ]] &&
+  [[ $_ble_edit_history_ind != $ind ]] &&
     .ble-edit.history-goto "$ind"
   ble-edit/isearch/.set-region "$beg" "$end"
 
@@ -3625,7 +3621,7 @@ function ble-edit+isearch/next-history {
   if [[ $_ble_edit_isearch_dir == - ]]; then
     # backward-search
     for((i=_ble_edit_history_ind-(isMod?0:1);i>=0;i--)); do
-      if [[ ${_ble_edit_history[i]} == *"$needle"* ]]; then
+      if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
         ind="$i"
         break
       fi
@@ -3633,7 +3629,7 @@ function ble-edit+isearch/next-history {
   else
     # forward-search
     for((i=_ble_edit_history_ind+(isMod?0:1);i<${#_ble_edit_history[@]};i++)); do
-      if [[ ${_ble_edit_history[i]} == *"$needle"* ]]; then
+      if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
         ind="$i"
         break
       fi
@@ -3646,7 +3642,7 @@ function ble-edit+isearch/next-history {
   fi
 
   # 一致範囲 beg-end を取得
-  local str="${_ble_edit_history[ind]}"
+  local str="${_ble_edit_history_edit[ind]-${_ble_edit_history[ind]}}"
   if [[ $_ble_edit_isearch_dir == - ]]; then
     local prefix="${str%"$needle"*}"
   else
