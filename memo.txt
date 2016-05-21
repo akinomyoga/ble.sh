@@ -411,7 +411,6 @@ tech
     →いや、cd コマンドの候補がそうはなっていない様である。
       前に同様の事を議論したような気がするのでログを漁ってみる事にする。
 
-
 2016-04-05
 
   * tree-enumerate による skip の実装と解析一時中断の不整合に関して。
@@ -426,85 +425,6 @@ tech
     →一方で tree-enumerate を使った場合には閉じている単語内部の shift を省略できるなどの利点がある。
       最終的にはこれらを組み合わせたような shift が必要になるだろうと考えられる。
       もう少し詳しく考察を行う必要性がある。
-
-2016-01-12
-
-  * 履歴検索を起動しただけで×になった。比較的最新版である。
-    最近の構文解析のバグは全て潰した後である。
-
-    | stackdump: X1 0 <= beg:11 <= end:12 <= iN:1, beg:11 <= end0:11 (shift=1 text=s)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (_ble_edit_str.update-syntax)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-135 (ble-highlight-layer:syntax/update)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4441 (ble-highlight-layer/update)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4884 (.ble-line-text/update)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (.ble-edit-draw.update)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (.ble-edit-draw.update-adjusted)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:966 (ble-edit/bind/.tail)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-4230 (ble-decode-byte:bind/EPILOGUE)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble-decode-byte:bind)
-    | -bash: beg: 読み取り専用の変数です
-    | stackdump: X2 0 <= 0 <= 11 <= 12 <= 1 <= 1
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    |   ※以降のエラーは全て ble-syntax/parse 以下で起きている。
-    |     上記と同じなので詳細な stackdump は以降は省略する。
-    | stackdump: X1 0 <= beg:12 <= end:13 <= iN:2, beg:12 <= end0:12 (shift=1 text=ss)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | -bash: beg: 読み取り専用の変数です
-    | stackdump: X2 0 <= 1 <= 12 <= 13 <= 2 <= 2
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | stackdump: X1 0 <= beg:13 <= end:14 <= iN:3, beg:13 <= end0:13 (shift=1 text=ssh)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | -bash: beg: 読み取り専用の変数です
-    | stackdump: X2 0 <= 2 <= 13 <= 14 <= 3 <= 3
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | stackdump: X1 0 <= beg:14 <= end:15 <= iN:4, beg:14 <= end0:14 (shift=1 text=ssh )
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | -bash: beg: 読み取り専用の変数です
-    | stackdump: X2 0 <= 3 <= 14 <= 15 <= 4 <= 4
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | stackdump: X1 0 <= beg:15 <= end:16 <= iN:5, beg:15 <= end0:15 (shift=1 text=ssh l)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | -bash: beg: 読み取り専用の変数です
-    | stackdump: X2 0 <= 4 <= 15 <= 16 <= 5 <= 5
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | stackdump: X1 0 <= beg:16 <= end:17 <= iN:6, beg:16 <= end0:16 (shift=1 text=ssh la)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | -bash: beg: 読み取り専用の変数です
-    | stackdump: X2 0 <= 5 <= 16 <= 17 <= 6 <= 6
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-    | assertion failure: ((nofs<${#node[@]}))
-    | ble-syntax/tree-enumerate/.impl(i=4,iN=6,nofs=0,node=,command=ble-syntax/parse/shift.impl2/.proc1)/FATAL1
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:7612 (ble-assert)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:108 (ble-syntax/tree-enumerate/.impl)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:22 (ble-syntax/tree-enumerate)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1901 (ble-syntax/parse/shift)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
-
-    三つの問題点が生じている。再現性はない (正確には、再現方法は未だ不明)。
-
-    1. dirty range がおかしい (文字列の長さの外にある)。
-      これはここではなく dirty range を更新している部分でチェックを行うべきではないか。
-    2. dirty range がおかしい時の対策として beg, end を再設定している。
-      しかしここで "-bash: beg: 読み取り専用の変数です" のエラーが発生している。
-    3. 以下のエラーが発生している。node が空である。
-      assertion failure: ((nofs<${#node[@]}))
-      ble-syntax/tree-enumerate/.impl(i=4,iN=6,nofs=0,node=,command=ble-syntax/parse/shift.impl2/.proc1)/FATAL1
-
-    どうも今迄の経験から 1. の範囲の異常は履歴の移動に関係している気がする。
-    取り敢えず 2. "beg: 読み取り専用の変数です" のエラーメッセージの部分だけは修正する。
-    3. に関してはこのエラーに関係しているのかどうか分からないが、
-    一見すると独立なエラーのようにも思われる。
-    しかし発生したタイミング的には明らかに相関している。
-    そうだとするとどの様にしてこのエラーが発生するのか確認する必要がある。
-
-    先ずは改めて dirty range の計算について調べる。
-    _ble_edit_str が直接変更されているのは、初期化時を除けば、
-    function _ble_edit_str.{replace,reset,reset-and-check-dirty} のみである。
-    現在の所 reset-and-check-dirty は使用されていない。
-
-    →トラップをしかけたら直ぐに引っかかった。
-    _ble_edit_replace である。履歴検索をして中断した後になる。
 
 2015-12-24
 
@@ -550,62 +470,6 @@ tech
 2015-12-01
 
   * vi bind
-
-2015-11-30
-
-  * 構文解析部分更新の bug
-
-    + bug (2015-11-28a)
-
-      $ seq2gif -f 0 -b 254 < demo.tty > out/img/demo.gif
-      カーソルを先頭に移動した時?? 再現しない。
-
-    + stackdump: X1 0 <= 48 <= 49 <= 1, 48 <= 48
-        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
-        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
-        @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
-        @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
-        @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
-        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
-        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
-        @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
-        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-      stackdump: X2 0 <= 0 <= 48 <= 49 <= 1 <= 1
-        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
-        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
-        @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
-        @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
-        @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
-        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
-        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
-        @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
-        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-
-      また出た。一旦 C-u した後に RET して貼付をしたら出た。2015-12-03
-      でもまた同じようにしても再現しない??
-
-      stackdump: X1 0 <= beg:66 <= end:96 <= iN:30, beg:66 <= end0:66 (shift=30 text=function () () { echo hello; })
-        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
-        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
-        @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
-        @ /home/murase/prog/ble/ble.sh:4353 (ble-highlight-layer/update)
-        @ /home/murase/prog/ble/ble.sh:4844 (.ble-line-text/update)
-        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
-        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
-        @ /home/murase/prog/ble/ble.sh:1140 (.ble-decode-byte:bind/tail)
-        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-      stackdump: X2 0 <= 0 <= 66 <= 96 <= 30 <= 30
-        @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
-        @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
-        @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
-        @ /home/murase/prog/ble/ble.sh:4353 (ble-highlight-layer/update)
-        @ /home/murase/prog/ble/ble.sh:4844 (.ble-line-text/update)
-        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
-        @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
-        @ /home/murase/prog/ble/ble.sh:1140 (.ble-decode-byte:bind/tail)
-        @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-
-    見た感じ dirty-range の更新に失敗している様である。
 
 2015-11-23
 
@@ -1114,6 +978,7 @@ tech
       ただ、候補を表示するに留め、無断で補完する事はやめる。
 
 2015-02-18
+
   * エラーメッセージの設定を可能にする
 
 2015-02-16
@@ -1566,6 +1431,328 @@ tech
 *******************************************************************************
     実装ログ
 -------------------------------------------------------------------------------
+
+2016-05-21
+
+  * 出た 2016-04-23
+
+    [状況]
+
+    | stackdump: 0 <= beg=23 <= end=24 <= len=1; beg=23, end=23, ins(1)=c
+    | @ /home/murase/prog/ble/ble.sh:5079 (_ble_edit_str.replace)
+    | @ /home/murase/prog/ble/ble.sh:-1789 (ble/widget/self-insert)
+    | @ /home/murase/prog/ble/ble.sh:33 (ble-decode-key/.invoke-command)
+    | @ /home/murase/prog/ble/ble.sh:22 (ble-decode-key/.invoke-partial-match)
+    | @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
+    | @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
+    | @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
+    | @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
+    | @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |
+    | 改めて探してみるが不整合が出る様な場所は存在しない。
+    | _ble_edit_str に値を設定している場所は _ble_edit_str.replace, _ble_edit_str.reset だけである。
+    | _ble_edit_str.reset-and-check-dirty は現在の設定では使用していない筈である。
+    | _ble_edit_dirty_syntax_{beg,end} に関しても値を設定している箇所は
+    | _ble_edit_str/update-dirty-range だけだし、
+    | _ble_edit_str/update-dirty-range を呼び出している箇所は、
+    | 上記の _ble_edit_str.{replace,reset} だけである。
+    |
+    | と思ったが…良く考えたら挿入位置が範囲外になっているという事だろうか。
+    | self-insert で起こっているという事は、
+    | _ble_edit_ind の値が範囲外になっているという事である。
+    | そして今迄の経験から言ってこの現象が起こるのは履歴の操作をした後であるから、
+    | 履歴の移動を行った際に _ble_edit_ind の更新を忘れている、または、更新に失敗しているというのが怪しい。
+    |
+    | ble-edit/history/goto を確かめてみたがちゃんと _ble_edit_ind _ble_edit_mark は設定されている。
+    | 怪しいのは、ble-edit/history/goto の直後に ble-edit/isearch/.set-region を実行している箇所である。
+    | ここで格納されている・或いは関数外から指定されている beg end はちゃんと範囲内になっているのだろうか。
+    | 結局また迷宮入りの様な雰囲気がしている。
+    | しかし前よりは進歩があった。_ble_edit_ind, _ble_edit_mark の設定が怪しい。
+
+    → _ble_edit_ind, _ble_edit_mark が異常な値 (範囲外) になっている。
+
+    [原因]
+
+    | 怪しい所を発見した。
+    | ble/widget/isearch/next-history において、_ble_edit_history における一致箇所を取得している。
+    | その次に ble-edit/isearch/.goto-match で一致した箇所に移動を行っている。
+    | しかし、ble-edit/isearch/.goto-match から呼び出された ble-edit/history/goto では
+    | _ble_edit_history_edit または _ble_edit_history から文字列をロードしている。
+    | もし _ble_edit_history_edit が設定されているのに _ble_edit_history の中に一致が見付かった場合、
+    | _ble_edit_str には _ble_edit_history_edit からの文字列が設定され、
+    | _ble_edit_ind には _ble_edit_history の中の文字列における位置が設定される。
+    | _ble_edit_history_edit の文字列が _ble_edit_history の文字列よりも短く、
+    | 更に検索で _ble_edit_history の末尾付近 (_ble_edit_history_edit の文字列の長さよりも後尾) で一致が発生した場合、
+    | そこで _ble_edit_ind に対する不整合が生じることになる。
+
+    →ble/widget/isearch/next-history において _ble_edit_history の中を検索している。
+      しかし、実際に ble-edit/history/goto で設定される文字列は _ble_edit_history_edit から優先して取得される。
+      両者の文字列の内容に違いがある場合不整合が生じる。
+      更に、長さが異なり _ble_edit_ind が範囲外になった時にエラーが発生する。
+
+    [再現方法]
+
+    | 実際に再現するかどうかを試験する。
+    | →カーソルの位置がずれるというバグを発見した。しかしながら、
+    |   以前から出ているエラーは再現しない。
+    |
+    | うーん。_ble_edit_ind が不正な状態の時に self-insert が発生する為には、
+    | 或る時点で検索が中断されなければならない。矢印キーで検索を中断しようとすると、
+    | カーソルの移動が起こって、その際に正しい位置に _ble_edit_ind が設定され直す様だ。
+    | (本当か?) → 確かに関数 .ble-edit.forward-char において範囲外になった時のチェック・補正が行われている。
+    | という事は、矢印キー以外で検索を中断する手段があるという事になる。再度キー割り当てを確認する。
+    |
+    | C-d にすると補正が行われずに検索状態から抜けられそうである。
+    | 実際にやってみた。確かに初めの self-insert で変な状態になっている様に見えるが、
+    | しかしエラーは発生しない様である。うーん。と思ったが、検索した文字がいけない?
+    |
+    | 1. "echo hello" RET として入力・実行
+    | 2. up back*5 down として hello を削除
+    | 3. C-r "h" C-d で検索を行い中断
+    |
+    | としたが "h" で検索を行ったので "echo " の末尾にカーソルが設置された状態になっていて
+    | 何も問題が発生していないという事ではないだろうか。という事で o で検索を行ってみる事にする。
+    | 出た! 再現方法が分かった! 以下に再現方法の最小操作を書く
+
+    再現方法 → "aa" RET up C-u down C-r "a" C-d "a"
+
+    [解決方法]
+
+    ad hoc には検索時に _ble_edit_history だけでなく _ble_edit_history_edit も参照する様にすれば良い。
+    しかし、やはり実際に履歴を遡った時に表示する内容を _ble_edit_history に格納した方が良いのではないかという気がする。
+    つまり、現在は実際の履歴を _ble_edit_history に格納し、履歴の編集仕掛の状態を _ble_edit_history_edit に格納しているが、
+    そうではなくて、編集したものも含めて _ble_edit_history に格納しておいて、
+    編集前の状態を _ble_edit_history_edit に格納するという様に変更するべきかもしれない。
+
+    しかし、一方で現在の編集状態が _ble_edit_history に入っていると不都合という場合もあるかもしれない。
+    _ble_edit_history か _ble_edit_history_edit かどちらの値が入っている方が扱いやすいかについて、
+    それぞれの配列が使用されている各箇所で確認を行う必要がある。
+
+    * ble-edit/history/add の erasedups のチェックで使用する _ble_edit_history は編集前の内容であるべきである。
+    * ble-edit/history/goto で読み出しているのは編集後の内容であるべきだ。現在は既にその様な実装になっている。
+    * ble/widget/isearch/next-history で使用するのはやはり編集後の内容であるべきだ。
+      そしてここではループなどで読み取りを実行する為、_ble_edit_history_edit,
+      _ble_edit_history の両方をチェックする様な実装にはしたくない。
+
+    両者ともループでチェックする部分を含んでいる事から、編集前の状態と編集後の状態を完全に保持するという手もある。
+
+    * redo undo との関係
+
+      | また、今後 redo undo を実装することも考えて実装を選択する必要もあるだろう。
+      | redo undo を前提にするとどの様な実装が良いだろうか。
+      |
+      | a 一つの方法は現在の編集後の状態を _ble_edit_history に記録しておいて、
+      |   編集の履歴は一つの配列に edit[編集番号]="履歴番号 文字列" の形で積み重ねて記録する方法である。
+      | b もう一つの方法は、配列の履歴番号に対応する要素に edit[履歴番号]="文字列0 文字列1 ..." と格納する方法である。
+      |   この方法だと格納する文字列に適切な escape を施す必要がある。
+      |   例えば空白類を別の文字で置き換えるか、或いは、%q で格納しておいて使用する時に eval で取り出す。
+      | c 或いは編集前の状態を _ble_edit_history に記録して、編集の履歴を a と同様に格納する方法、
+      | d また、編集前の状態を _ble_edit_history に記録して、編集の履歴を b と同様に格納する方法が考えられる。
+      |
+      | 何れの方法を選ぶとしても erasedup check もしくは next-history で、
+      | 編集前の状態、編集後の状態の両方を高速に処理することはできない。
+      | という事は結局、やはり、編集前の状態・編集後の状態・編集過程の情報
+      | の三種類を独立に管理するという事になる。
+      | この内の "編集過程の情報" の管理に関しては redo undo で完全に閉じている話で、
+      | 実際に redo undo を実装する段階になってから考察すればよい。
+      | そして、編集前の状態・編集後の状態に関しては redo undo の方法に依らずに実装できる。
+      | つまり、redo undo と履歴データの保持は直交的である。或いは、直交的な実装にするのが見通しがよい。
+
+      [結論]
+
+      "編集前の状態"・"編集後の状態" は redo undo とは関係なく実装する。
+      更に redo undo については "編集過程の情報" を保持する何らかの形式の配列を用いる。
+
+    % 現在は、編集前の状態を _ble_edit_history に格納し、
+    % 編集がある場合には編集後の状態を _ble_edit_history_edit に格納している。
+    % その儘 _ble_edit_history_edit が完全な情報を持つ様に拡張を行うのが自然に思われる。
+    % しかし、その為の管理は大変ではないかどうか確かめる必要がある。
+    %
+    % 基本的に _ble_edit_history に値を設定している箇所で
+    % 同様に _ble_edit_history_edit にも値を設定する様にすればよい。
+    % 調べてみた所 _ble_edit_history に値を設定しているのは、
+    % ble-edit/history/load と ble-edit/history/add だけである。
+    % また _ble_edit_history_edit に値を設定しているのは、
+    % ble-edit/history/add で _ble_edit_history_edit の中身をクリアしている所と、
+    % ble-edit/history/goto で移動前に値を格納している所だけである。
+    % 以外と変更範囲が少ないので拡張の見通しは良い。
+    %
+    % [実行]
+    % _ble_edit_history_edit の拡張を実行する。
+    % 更に改名: _ble_edit_history -> _ble_edit_history0,
+    % _ble_edit_history_edit -> _ble_edit_history
+    %
+    % [問題]
+    % 変更してみるとバグは発生しなくなった。しかし今度は別の問題点が生じる。
+    % コマンドの実行が遅い。コマンドを実行する際に履歴に実行するコマンドを登録する。
+    % その時に _ble_edit_history0 の内容を丸ごと _ble_edit_history にコピーする。
+    % そのコピーに時間が掛かっている様だ。実際に、
+    %
+    %   time alpha=("${_ble_edit_history[@]}")
+    %
+    % を実行してみると、0.374s かかっている。ble-edit/history/add ではこれを2回実行している。
+    % つまり、毎回 0.7s 以上の遅延が生じるという事になる。
+    %
+    % やはり丸ごと同じ物を管理するというのは非現実的なのだろうか。
+    % 或いは、_ble_edit_history の内容をクリアするのに丸まるデータをコピーするのではなく、
+    % 変更のあった物だけクリアするという方法でも良い。
+    % この方針の場合には、変更のあった履歴番号を記録に残しておく必要がある。
+    %
+    % 或いは、実際に _ble_edit_history を使おうとするまでは
+    % _ble_edit_history0 -> _ble_edit_history のコピーは遅延させるか。
+    % しかし何れにしても history の検索に無駄な時間が掛かることに違いはない。
+
+    速度が遅いということが判明したので、
+    _ble_edit_history_edit にも完全な情報を持たせるという方法は棄却することにした。
+    代わりに、(多少検索に時間が掛かる様になるかもしれないが) 編集後の値が必要な箇所では
+
+      ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}}
+
+    の形式でアクセスする様に変更した。
+
+    何れにしても現在の時点で既に検索には時間が掛かる傾向があって、
+    その対策として検索中に入力がないかチェックすることを考えていた。
+    検索中に入力がないかチェックする機能が完成すれば、
+    この形式のアクセスによるオーバーヘッドは気にならなくなるだろう。
+    (実測はしていないが元々そんなに重くはないだろうと予想されるので)。
+
+    以下にある過去の報告はこの修正で直った物と思われる。
+    もし依然として問題が残っているのだとしても、それはその時に考える事にする。
+
+    | 2016-01-12
+    |
+    | * 履歴検索を起動しただけで×になった。比較的最新版である。
+    |   最近の構文解析のバグは全て潰した後である。
+    |
+    |   | stackdump: X1 0 <= beg:11 <= end:12 <= iN:1, beg:11 <= end0:11 (shift=1 text=s)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (_ble_edit_str.update-syntax)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4441 (ble-highlight-layer/update)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4884 (.ble-line-text/update)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (.ble-edit-draw.update)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:966 (ble-edit/bind/.tail)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-4230 (ble-decode-byte:bind/EPILOGUE)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble-decode-byte:bind)
+    |   | -bash: beg: 読み取り専用の変数です
+    |   | stackdump: X2 0 <= 0 <= 11 <= 12 <= 1 <= 1
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   |   ※以降のエラーは全て ble-syntax/parse 以下で起きている。
+    |   |     上記と同じなので詳細な stackdump は以降は省略する。
+    |   | stackdump: X1 0 <= beg:12 <= end:13 <= iN:2, beg:12 <= end0:12 (shift=1 text=ss)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | -bash: beg: 読み取り専用の変数です
+    |   | stackdump: X2 0 <= 1 <= 12 <= 13 <= 2 <= 2
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | stackdump: X1 0 <= beg:13 <= end:14 <= iN:3, beg:13 <= end0:13 (shift=1 text=ssh)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | -bash: beg: 読み取り専用の変数です
+    |   | stackdump: X2 0 <= 2 <= 13 <= 14 <= 3 <= 3
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | stackdump: X1 0 <= beg:14 <= end:15 <= iN:4, beg:14 <= end0:14 (shift=1 text=ssh )
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | -bash: beg: 読み取り専用の変数です
+    |   | stackdump: X2 0 <= 3 <= 14 <= 15 <= 4 <= 4
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | stackdump: X1 0 <= beg:15 <= end:16 <= iN:5, beg:15 <= end0:15 (shift=1 text=ssh l)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | -bash: beg: 読み取り専用の変数です
+    |   | stackdump: X2 0 <= 4 <= 15 <= 16 <= 5 <= 5
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | stackdump: X1 0 <= beg:16 <= end:17 <= iN:6, beg:16 <= end0:16 (shift=1 text=ssh la)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | -bash: beg: 読み取り専用の変数です
+    |   | stackdump: X2 0 <= 5 <= 16 <= 17 <= 6 <= 6
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |   | assertion failure: ((nofs<${#node[@]}))
+    |   | ble-syntax/tree-enumerate/.impl(i=4,iN=6,nofs=0,node=,command=ble-syntax/parse/shift.impl2/.proc1)/FATAL1
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:7612 (ble-assert)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:108 (ble-syntax/tree-enumerate/.impl)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:22 (ble-syntax/tree-enumerate)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1901 (ble-syntax/parse/shift)
+    |   |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:-16 (ble-syntax/parse)
+    |
+    |   三つの問題点が生じている。再現性はない (正確には、再現方法は未だ不明)。
+    |
+    |   1. dirty range がおかしい (文字列の長さの外にある)。
+    |     これはここではなく dirty range を更新している部分でチェックを行うべきではないか。
+    |   2. dirty range がおかしい時の対策として beg, end を再設定している。
+    |     しかしここで "-bash: beg: 読み取り専用の変数です" のエラーが発生している。
+    |   3. 以下のエラーが発生している。node が空である。
+    |     assertion failure: ((nofs<${#node[@]}))
+    |     ble-syntax/tree-enumerate/.impl(i=4,iN=6,nofs=0,node=,command=ble-syntax/parse/shift.impl2/.proc1)/FATAL1
+    |
+    |   どうも今迄の経験から 1. の範囲の異常は履歴の移動に関係している気がする。
+    |   取り敢えず 2. "beg: 読み取り専用の変数です" のエラーメッセージの部分だけは修正する。
+    |   3. に関してはこのエラーに関係しているのかどうか分からないが、
+    |   一見すると独立なエラーのようにも思われる。
+    |   しかし発生したタイミング的には明らかに相関している。
+    |   そうだとするとどの様にしてこのエラーが発生するのか確認する必要がある。
+    |
+    |   先ずは改めて dirty range の計算について調べる。
+    |   _ble_edit_str が直接変更されているのは、初期化時を除けば、
+    |   function _ble_edit_str.{replace,reset,reset-and-check-dirty} のみである。
+    |   現在の所 reset-and-check-dirty は使用されていない。
+    |
+    |   →トラップをしかけたら直ぐに引っかかった。
+    |   _ble_edit_replace である。履歴検索をして中断した後になる。
+    |
+    | 2015-11-30
+    |
+    | * 構文解析部分更新の bug
+    |
+    |   + bug (2015-11-28a)
+    |
+    |     $ seq2gif -f 0 -b 254 < demo.tty > out/img/demo.gif
+    |     カーソルを先頭に移動した時?? 再現しない。
+    |
+    |   + stackdump: X1 0 <= 48 <= 49 <= 1, 48 <= 48
+    |       @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+    |       @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+    |       @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |       @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
+    |       @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
+    |       @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+    |       @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |       @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
+    |       @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |     stackdump: X2 0 <= 0 <= 48 <= 49 <= 1 <= 1
+    |       @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+    |       @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+    |       @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |       @ /home/murase/prog/ble/ble.sh:4327 (ble-highlight-layer/update)
+    |       @ /home/murase/prog/ble/ble.sh:4818 (.ble-line-text/update)
+    |       @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+    |       @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |       @ /home/murase/prog/ble/ble.sh:1001 (.ble-decode-byte:bind/tail)
+    |       @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |
+    |     また出た。一旦 C-u した後に RET して貼付をしたら出た。2015-12-03
+    |     でもまた同じようにしても再現しない??
+    |
+    |     stackdump: X1 0 <= beg:66 <= end:96 <= iN:30, beg:66 <= end0:66 (shift=30 text=function () () { echo hello; })
+    |       @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+    |       @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+    |       @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |       @ /home/murase/prog/ble/ble.sh:4353 (ble-highlight-layer/update)
+    |       @ /home/murase/prog/ble/ble.sh:4844 (.ble-line-text/update)
+    |       @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+    |       @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |       @ /home/murase/prog/ble/ble.sh:1140 (.ble-decode-byte:bind/tail)
+    |       @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |     stackdump: X2 0 <= 0 <= 66 <= 96 <= 30 <= 30
+    |       @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+    |       @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+    |       @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+    |       @ /home/murase/prog/ble/ble.sh:4353 (ble-highlight-layer/update)
+    |       @ /home/murase/prog/ble/ble.sh:4844 (.ble-line-text/update)
+    |       @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+    |       @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+    |       @ /home/murase/prog/ble/ble.sh:1140 (.ble-decode-byte:bind/tail)
+    |       @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |
+    |   見た感じ dirty-range の更新に失敗している様である。
 
 2016-04-07
 
