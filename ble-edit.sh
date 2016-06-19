@@ -3524,6 +3524,7 @@ function ble-edit/isearch/.set-region {
 }
 ## 関数 ble-edit/isearch/.push-isearch-array
 ##   現在の isearch の情報を配列 _ble_edit_isearch_arr に待避する。
+##
 ##   これから登録しようとしている情報が現在のものと同じならば何もしない。
 ##   これから登録しようとしている情報が配列の最上にある場合は、
 ##   検索の巻き戻しと解釈して配列の最上の要素を削除する。
@@ -3567,6 +3568,7 @@ function ble-edit/isearch/.goto-match {
 
   # isearch 表示
   ble-edit/isearch/.draw-line
+  _ble_edit_bind_force_draw=1
 }
 
 function ble-edit/isearch/next.fib {
@@ -3717,7 +3719,7 @@ function ble-edit/isearch/history-self-insert.fib {
   ble-edit/isearch/next-history.fib "$_ble_edit_isearch_str$ret" 1
 }
 
-function ble-edit/isearch/prev.fib {
+function ble-edit/isearch/prev {
   local sz="${#_ble_edit_isearch_arr[@]}"
   ((sz==0)) && return 0
 
@@ -3753,7 +3755,6 @@ function ble-edit/isearch/process {
     (hf)  ble-edit/isearch/history-forward.fib ;;
     (hb)  ble-edit/isearch/history-backward.fib ;;
     (hi*) ble-edit/isearch/history-self-insert.fib "${1:2}";;
-    (p)   ble-edit/isearch/prev.fib ;;
     (z*)  local stat="${1:1}"
           local start="${stat%%:*}" needle="${stat#*:}" isMod=
           ble-edit/isearch/next-history-resume.fib ;;
@@ -3789,7 +3790,13 @@ function ble/widget/isearch/history-self-insert {
   ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" "hi$code"
 }
 function ble/widget/isearch/prev {
-  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" p
+  local nque
+  if ((nque=${#_ble_edit_isearch_que[@]})); then
+    unset _ble_edit_isearch_que[nque-1]
+    ((nque>=2)) && ble-edit/isearch/process "${_ble_edit_isearch_que[@]}"
+  else
+    ble-edit/isearch/prev
+  fi
 }
 function ble/widget/isearch/exit {
   ble-decode/keymap/pop
@@ -3819,8 +3826,12 @@ function ble/widget/isearch/exit-default {
   done
 }
 function ble/widget/isearch/accept {
-  ble/widget/isearch/exit
-  ble/widget/accept-line
+  if ((${#_ble_edit_isearch_que[@]})); then
+    .ble-edit.bell "isearch: now searching..."
+  else
+    ble/widget/isearch/exit
+    ble/widget/accept-line
+  fi
 }
 function ble/widget/isearch/exit-delete-forward-char {
   ble/widget/isearch/exit
@@ -4088,11 +4099,14 @@ else
   }
 fi
 
+_ble_edit_bind_force_draw=
+
 ## 関数 ble-decode-byte:bind/PROLOGUE
 function ble-decode-byte:bind/PROLOGUE {
   ble-edit/bind/.head
   ble-decode-bind/uvw
   ble-stty/enter
+  _ble_edit_bind_force_draw=
 }
 
 ## 関数 ble-decode-byte:bind/EPILOGUE
@@ -4102,7 +4116,7 @@ function ble-decode-byte:bind/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    if ble/util/is-stdin-ready; then
+    if [[ ! $_ble_edit_bind_force_draw ]] && ble/util/is-stdin-ready; then
       ble-edit/bind/.tail-without-draw
       return 0
     fi
