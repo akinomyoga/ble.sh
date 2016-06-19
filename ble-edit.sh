@@ -3478,6 +3478,19 @@ function ble/widget/backward-line-or-history-prev {
 # 
 # **** incremental search ****                                 @history.isearch
 
+## 変数 _ble_edit_isearch_str
+##   一致した文字列
+## 変数 _ble_edit_isearch_dir
+##   現在・直前の検索方法
+## 配列 _ble_edit_isearch_arr
+##   検索履歴
+## 配列 _ble_edit_isearch_que
+##   未処理の操作
+_ble_edit_isearch_str=
+_ble_edit_isearch_dir=-
+_ble_edit_isearch_arr=()
+_ble_edit_isearch_que=()
+
 function ble-edit/isearch/.draw-line {
   # 出力
   local ll rr
@@ -3556,7 +3569,7 @@ function ble-edit/isearch/.goto-match {
   ble-edit/isearch/.draw-line
 }
 
-function ble/widget/isearch/next {
+function ble-edit/isearch/next.fib {
   local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
   local ind="$_ble_edit_history_ind" beg= end=
 
@@ -3601,50 +3614,110 @@ function ble/widget/isearch/next {
     ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
     return
   else
-    ble/widget/isearch/next-history "${@:1:1}"
+    ble-edit/isearch/next-history.fib "${@:1:1}"
   fi
 }
 
-function ble/widget/isearch/next-history {
-  local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
-  # 検索
-  local i ind=
-  if [[ $_ble_edit_isearch_dir == - ]]; then
+## 関数 ble-edit/isearch/next-history-resume.fib
+##   @var[in] start
+##   @var[in] needle
+##   @var[in] isMod
+##   @var[in] _ble_edit_isearch_dir
+##   @var[in] _ble_edit_history_edit[]
+##   @var[in] _ble_edit_history[]
+##   @var[in,out] isearch_suspend
+##   @var[in,out] isearch_time
+function ble-edit/isearch/next-history-resume.fib {
+  local i="$start"
+
+  local dir="$_ble_edit_isearch_dir"
+  if [[ $dir == - ]]; then
     # backward-search
-    for((i=_ble_edit_history_ind-(isMod?0:1);i>=0;i--)); do
-      if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
-        ind="$i"
-        break
-      fi
-    done
+    local x_cond='i>=0' x_incr='i--'
   else
     # forward-search
-    for((i=_ble_edit_history_ind+(isMod?0:1);i<${#_ble_edit_history[@]};i++)); do
-      if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
-        ind="$i"
-        break
-      fi
-    done
+    local x_cond="i<${#_ble_edit_history[@]}" x_incr='i++'
   fi
-  if [[ ! $ind ]]; then
-    # 見つからない場合
+  ((isMod||x_incr))
+
+  # 検索
+  local ind= susp=
+  for ((;x_cond;x_incr)); do
+    if ((++isearch_time%100==0)) && ble/util/is-stdin-ready; then
+      susp=1
+      break
+    fi
+    if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
+      ind="$i"
+      break
+    fi
+  done
+
+  if [[ $ind ]]; then
+    # 見付かった場合
+
+    # 一致範囲 beg-end を取得
+    local str="${_ble_edit_history_edit[ind]-${_ble_edit_history[ind]}}"
+    if [[ $_ble_edit_isearch_dir == - ]]; then
+      local prefix="${str%"$needle"*}"
+    else
+      local prefix="${str%%"$needle"*}"
+    fi
+    local beg="${#prefix}" end="$((${#prefix}+${#needle}))"
+
+    ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
+  elif [[ $susp ]]; then
+    # 中断した場合
+    isearch_suspend="z$i:$needle"
+    #@@■途中状況の表示
+    return
+  else
+    # 見つからなかった場合
     .ble-edit.bell "isearch: \`$needle' not found"
     return
   fi
-
-  # 一致範囲 beg-end を取得
-  local str="${_ble_edit_history_edit[ind]-${_ble_edit_history[ind]}}"
-  if [[ $_ble_edit_isearch_dir == - ]]; then
-    local prefix="${str%"$needle"*}"
-  else
-    local prefix="${str%%"$needle"*}"
-  fi
-  local beg="${#prefix}" end="$((${#prefix}+${#needle}))"
-
-  ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
 }
 
-function ble/widget/isearch/prev {
+## @var[in] _ble_edit_history_ind
+## @var[in] _ble_edit_isearch_str
+function ble-edit/isearch/next-history.fib {
+  local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
+  local start="$_ble_edit_history_ind"
+  ble-edit/isearch/next-history-resume.fib
+}
+
+function ble-edit/isearch/forward.fib {
+  _ble_edit_isearch_dir=+
+  ble-edit/isearch/next.fib
+}
+function ble-edit/isearch/backward.fib {
+  _ble_edit_isearch_dir=-
+  ble-edit/isearch/next.fib
+}
+function ble-edit/isearch/self-insert.fib {
+  local code="$1"
+  ((code==0)) && return
+  local ret needle
+  ble/util/c2s "$code"
+  ble-edit/isearch/next.fib "$_ble_edit_isearch_str$ret" 1
+}
+function ble-edit/isearch/history-forward.fib {
+  _ble_edit_isearch_dir=+
+  ble-edit/isearch/next-history.fib
+}
+function ble-edit/isearch/history-backward.fib {
+  _ble_edit_isearch_dir=-
+  ble-edit/isearch/next-history.fib
+}
+function ble-edit/isearch/history-self-insert.fib {
+  local code="$1"
+  ((code==0)) && return
+  local ret needle
+  ble/util/c2s "$code"
+  ble-edit/isearch/next-history.fib "$_ble_edit_isearch_str$ret" 1
+}
+
+function ble-edit/isearch/prev.fib {
   local sz="${#_ble_edit_isearch_arr[@]}"
   ((sz==0)) && return 0
 
@@ -3667,52 +3740,76 @@ function ble/widget/isearch/prev {
   ble-edit/isearch/.draw-line
 }
 
+function ble-edit/isearch/process {
+  _ble_edit_isearch_que=()
+
+  local isearch_suspend=
+  local isearch_time=0
+  while (($#)); do
+    case "$1" in
+    (sf)  ble-edit/isearch/forward.fib ;;
+    (sb)  ble-edit/isearch/backward.fib ;;
+    (si*) ble-edit/isearch/self-insert.fib "${1:2}";;
+    (hf)  ble-edit/isearch/history-forward.fib ;;
+    (hb)  ble-edit/isearch/history-backward.fib ;;
+    (hi*) ble-edit/isearch/history-self-insert.fib "${1:2}";;
+    (p)   ble-edit/isearch/prev.fib ;;
+    (z*)  local stat="${1:1}"
+          local start="${stat%%:*}" needle="${stat#*:}" isMod=
+          ble-edit/isearch/next-history-resume.fib ;;
+    (*)   ble-stackdump "unknown isearch process entry '$1'." ;;
+    esac
+    shift
+
+    if [[ $isearch_suspend ]]; then
+      _ble_edit_isearch_que=("$isearch_suspend" "$@")
+      return
+    fi
+  done
+}
+
 function ble/widget/isearch/forward {
-  _ble_edit_isearch_dir=+
-  ble/widget/isearch/next
+  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" sf
 }
 function ble/widget/isearch/backward {
-  _ble_edit_isearch_dir=-
-  ble/widget/isearch/next
+  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" sb
 }
 function ble/widget/isearch/self-insert {
   local code="${KEYS[0]&ble_decode_MaskChar}"
-  ((code==0)) && return
-
-  local ret needle
-  ble/util/c2s "$code"
-  ble/widget/isearch/next "$_ble_edit_isearch_str$ret" 1
+  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" "si$code"
 }
 function ble/widget/isearch/history-forward {
-  _ble_edit_isearch_dir=+
-  ble/widget/isearch/next-history
+  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" hf
 }
 function ble/widget/isearch/history-backward {
-  _ble_edit_isearch_dir=-
-  ble/widget/isearch/next-history
+  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" hb
 }
 function ble/widget/isearch/history-self-insert {
   local code="${KEYS[0]&ble_decode_MaskChar}"
-  ((code==0)) && return
-
-  local ret needle
-  ble/util/c2s "$code"
-  ble/widget/isearch/next-history "$_ble_edit_isearch_str$ret" 1
+  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" "hi$code"
+}
+function ble/widget/isearch/prev {
+  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" p
 }
 function ble/widget/isearch/exit {
   ble-decode/keymap/pop
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
+  _ble_edit_isearch_que=()
   _ble_edit_isearch_str=
   ble-edit/isearch/.erase-line
 }
 function ble/widget/isearch/cancel {
-  if ((${#_ble_edit_isearch_arr[@]})); then
-    local line="${_ble_edit_isearch_arr[0]}"
-    ble-edit/history/goto "${line%%:*}"
-  fi
+  if ((${#_ble_edit_isearch_que[@]})); then
+    _ble_edit_isearch_que=()
+  else
+    if ((${#_ble_edit_isearch_arr[@]})); then
+      local line="${_ble_edit_isearch_arr[0]}"
+      ble-edit/history/goto "${line%%:*}"
+    fi
 
-  ble/widget/isearch/exit
+    ble/widget/isearch/exit
+  fi
 }
 function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit
@@ -3733,15 +3830,17 @@ function ble/widget/isearch/exit-delete-forward-char {
 function ble/widget/history-isearch-backward {
   ble-edit/history/load
   ble-decode/keymap/push isearch
-  _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=-
+  _ble_edit_isearch_arr=()
+  _ble_edit_isearch_que=()
   ble-edit/isearch/.draw-line
 }
 function ble/widget/history-isearch-forward {
   ble-edit/history/load
   ble-decode/keymap/push isearch
-  _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=+
+  _ble_edit_isearch_arr=()
+  _ble_edit_isearch_que=()
   ble-edit/isearch/.draw-line
 }
 
