@@ -3491,7 +3491,8 @@ _ble_edit_isearch_dir=-
 _ble_edit_isearch_arr=()
 _ble_edit_isearch_que=()
 
-function ble-edit/isearch/.draw-line {
+## @var[in] isearch_ntask
+function ble-edit/isearch/.draw-line-with-progress {
   # 出力
   local ll rr
   if [[ $_ble_edit_isearch_dir == - ]]; then
@@ -3500,9 +3501,20 @@ function ble-edit/isearch/.draw-line {
     ll="  " rr=">>"
     text="  >>)"
   fi
-
   local text="(${#_ble_edit_isearch_arr[@]}: $ll $_ble_edit_history_ind $rr) \`$_ble_edit_isearch_str'"
+
+  if [[ $1 ]]; then
+    local pos="$1"
+    local percentage="$((pos*1000/${#_ble_edit_history[@]}))"
+    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
+    ((isearch_ntask)) && text="$text *$isearch_ntask"
+  fi
+
   .ble-line-info.draw-text "$text"
+}
+
+function ble-edit/isearch/.draw-line {
+  ble-edit/isearch/.draw-line-with-progress
 }
 function ble-edit/isearch/.erase-line {
   .ble-line-info.clear
@@ -3653,6 +3665,10 @@ function ble-edit/isearch/next-history-resume.fib {
       ind="$i"
       break
     fi
+
+    if ((isearch_time%1000==0)); then
+      ble-edit/isearch/.draw-line-with-progress "$i"
+    fi
   done
 
   if [[ $ind ]]; then
@@ -3671,7 +3687,6 @@ function ble-edit/isearch/next-history-resume.fib {
   elif [[ $susp ]]; then
     # 中断した場合
     isearch_suspend="z$i:$needle"
-    #@@■途中状況の表示
     return
   else
     # 見つからなかった場合
@@ -3747,7 +3762,9 @@ function ble-edit/isearch/process {
 
   local isearch_suspend=
   local isearch_time=0
+  local isearch_ntask="$#"
   while (($#)); do
+    ((isearch_ntask--))
     case "$1" in
     (sf)  ble-edit/isearch/forward.fib ;;
     (sb)  ble-edit/isearch/backward.fib ;;
@@ -3767,6 +3784,9 @@ function ble-edit/isearch/process {
       return
     fi
   done
+
+  # 検索処理が完了した時
+  ble-edit/isearch/.draw-line
 }
 
 function ble/widget/isearch/forward {
@@ -3793,7 +3813,11 @@ function ble/widget/isearch/prev {
   local nque
   if ((nque=${#_ble_edit_isearch_que[@]})); then
     unset _ble_edit_isearch_que[nque-1]
-    ((nque>=2)) && ble-edit/isearch/process "${_ble_edit_isearch_que[@]}"
+    if ((nque>=2)); then
+      ble-edit/isearch/process "${_ble_edit_isearch_que[@]}"
+    else
+      ble-edit/isearch/.draw-line # 進捗状況を消去
+    fi
   else
     ble-edit/isearch/prev
   fi
@@ -3809,6 +3833,7 @@ function ble/widget/isearch/exit {
 function ble/widget/isearch/cancel {
   if ((${#_ble_edit_isearch_que[@]})); then
     _ble_edit_isearch_que=()
+    ble-edit/isearch/.draw-line # 進捗状況を消去
   else
     if ((${#_ble_edit_isearch_arr[@]})); then
       local line="${_ble_edit_isearch_arr[0]}"
