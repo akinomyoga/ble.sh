@@ -117,13 +117,9 @@ else
 fi
 function ble/util/array-reverse {
   builtin eval "
-    local i$1 j$1 t$1
-    for ((i$1=0,j$1=\${#$1[@]}-1;i$1<j$1;i$1++,j$1--)); do
-      t$1=\"\${$1[i$1]}\"
-      $1[i$1]=\"\${$1[j$1]}\"
-      $1[j$1]=\"\$t$1\"
-    done
-  "
+  set -- \"\${$1[@]}\"; $1=()
+  local e$1 i$1=\$#
+  for e$1; do $1[--i$1]=\"\$e$1\"; done"
 }
 
 function ble/util/declare-print-definitions {
