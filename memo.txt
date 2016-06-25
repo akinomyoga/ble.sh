@@ -361,6 +361,47 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2016-06-25
+
+  * また stackdump が出た。
+
+    .ble-edit/delete-backward-char および insert-char で起こっている。
+    表示されている内容から察するに、_ble_edit_ind が変な値になっている様だ。
+    また、履歴を上下で移動した後に起こっている事も分かっている。
+
+    | stackdump: 0 <= beg=10 <= end=10 <= len=8; beg=10, end=11, ins(0)=
+    |   @ /home/murase/prog/ble/ble.sh:17 (_ble_edit_str.replace)
+    |   @ /home/murase/prog/ble/ble.sh:11 (.ble-edit/delete-backward-char)
+    |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit.delete-char)
+    |   @ /home/murase/prog/ble/ble.sh:4 (ble/widget/delete-backward-char)
+    |   @ /home/murase/prog/ble/ble.sh:-1794 (ble/widget/delete-region-or)
+    |   @ /home/murase/prog/ble/ble.sh:16 (ble-decode-key/.invoke-command)
+
+    この前の修正で完全に直っていたはずだと思ったのだが何故だろうか。
+    make を実行したら ble.sh が更新されてしまったので ble.sh
+    が中途半端な状態にあったのかも知れない。
+    丁度最近、検索の速度向上の為に一時的に単一の配列だけを参照する様に
+    書き換えた理などしていた後である。
+    また、暫く様子を見てそれでも出る様だったらまた原因を探る必要がある。
+
+    或いは、今崎程エラーが起こったシェルの history next 関数を調べて、
+    その内容がどの様な状態になっているかを確認すれば、
+    エラーが起こる様な状態に丁度編集していた最中だったかどうかが分かる。
+    →実際のループ処理を行っているのは ble-edit/isearch/next-history-resume.fib
+    の中である。ロードされている関数の中身を確認してみた所、
+    ちゃんとこの前修正した二つの配列を参照して内容を決定する部分は正しい。
+
+    | if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
+    |     ind="$i";
+    |     break;
+    | fi;
+
+    では何が悪いのだろうか。考えてみると長い履歴項目を弄った後に、
+    一番下の (空の) 項目に戻ってきた時に起こった様な気がする。
+    うーんそれでも際限は簡単にはしない…。
+    又エラーの起こった状態から復帰する為に
+    _ble_edit_ind は調整を行ってしまうのが良い。
+
 2016-06-23
 
   * ジョブ状態の変更 (suspended だとか "[1]+ 終了" とか) が出力されない様だ
@@ -444,6 +485,19 @@ tech
 
     で頑張るしかない。しかしこれによる sleep は多少遅延がある。
 
+    →実際にやってみたら read -t 0.001 <&3 するだけで 12ms の時間を消費することが分かった。
+      read -t 0.001 -u 3 でも時間は全く変わらない様だ。
+      一方で read -t 0.001 </dev/tcp/0.0.0.0/80 は遅延が 1.5ms 程度と短い。
+      どうも繋がっている先によって遅延時間が異なる様である。
+
+      もっと他の繋ぎ方も試してみる事にする。
+
+      $ mkfifo tmp1
+      $ (exec 3> tmp1; sleep 65535) &
+      $ exec 8< tmp1
+      $ read -t 0.001 -u 8
+      → やはり同じ時間掛かる。
+
 
   * timer の実現方法について
 
@@ -484,18 +538,24 @@ tech
       と思ったらプロセス置換の場合でもちゃんと $! にプロセス置換のプロセス番号が入っていた。
       なので $! さえ何処かに記録しておけば問題ない。
 
+      更に実際に動かしてみると安定して動いている様に見える。
+
     c もし自プロセス内で閉じた方法があればそれが一番良い。
       例えばミリ秒単位で時刻を計測することができれば経過時間に応じて
       sleep 量を調整する事ができる。
 
       printf -v '%(%s)T' を用いる方法だと秒より下の単位は取得できない。
-      GNU coreutils の date はその様な機能も持っている様だが。拡張に過ぎない。
+      GNU coreutils の date はその様な機能 (%N) も持っている様だが、拡張に過ぎない。
 
-      あった。procps をマウントしていれば (そして現在のシステムでは殆どそうだろう)
+      あった。procfs をマウントしていれば (そして現在のシステムでは殆どそうだろう)
       cat /proc/uptime でシステムを起動してからの時間を見ることができる。
-      と思ったが linux cygwin には /proc/uptime があるが、mac os x ではそもそも /proc がない様だ。
+      と思ったが linux, cygwin には /proc/uptime があるが、mac os x ではそもそも /proc がない様だ。
       FreeBSD でも /proc はあるが、BSD にはなかったからの様だ。他に HP-UX もない。
+      Solaris には /proc はあるが /proc/uptime は無い様な雰囲気である (確認できていない)。
 
+      また /proc/uptime を呼び出す overhead が如何程の物かという問題もある。
+      →0.05ms であった。本当に計測できているのだろうか??
+        関数に入れて見たが計測できている様だ。という訳で overhead はない物として良い。
 
 
 2016-06-20

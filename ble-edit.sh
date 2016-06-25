@@ -1581,6 +1581,9 @@ function _ble_edit_str.replace {
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
     _ble_edit_dirty_syntax_beg=0
     _ble_edit_dirty_syntax_end="${#_ble_edit_str}"
+    if ((_ble_edit_ind>${#_ble_edit_str})); then
+      _ble_edit_ind=${#_ble_edit_str}
+    fi
   fi
 #%end
 }
