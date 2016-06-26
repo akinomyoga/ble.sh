@@ -16,7 +16,7 @@ shopt -s checkwinsize
 # util
 
 ## 関数 ble/util/assign
-_ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
+_ble_util_read_stdout_tmp="$_ble_base_tmp/$$.ble_util_assign.tmp"
 # function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
 function ble/util/assign {
   builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
@@ -104,6 +104,46 @@ else
       command date +"$1" $2
     fi
   }
+fi
+
+if ((_ble_bash>=40000)); then
+  # 遅延初期化
+  _ble_util_sleep_fd=
+  _ble_util_sleep_tmp=
+  function ble/util/sleep {
+    function ble/util/sleep { local REPLY=; ! read -u "$_ble_util_sleep_fd" -t "$1"; }
+
+    if [[ $OSTYPE == cygwin* ]]; then
+      # Cygwin work around
+
+      ble/util/openat _ble_util_sleep_fd '< <(
+        [[ $- == *i* ]] && trap -- '' INT QUIT
+        while :; do command sleep 2147483647; done
+      )'
+
+      if [[ $BASH_VERSION ]]; then
+        function ble/util/sleep {
+          local s="${1%%.*}"
+          if ((s>0)); then
+            ! read -u "$_ble_util_sleep_fd" -t "$1" s
+          else
+            ! read -t "$1" s < /dev/tcp/0.0.0.0/80
+          fi
+        }
+      fi
+    else
+      _ble_util_sleep_tmp="$_ble_base_tmp/$$.ble_util_sleep.pipe"
+      if [[ ! -p $_ble_util_sleep_tmp ]]; then
+        [[ -e $_ble_util_sleep_tmp ]] && command rm -rf "$_ble_util_sleep_tmp"
+        command mkfifo "$_ble_util_sleep_tmp"
+      fi
+      ble/util/openat _ble_util_sleep_fd "<> $_ble_util_sleep_tmp"
+    fi
+
+    ble/util/sleep "$1"
+  }
+else
+  function ble/util/sleep { command sleep "$1"; }
 fi
 
 if ((_ble_bash>=30100)); then
@@ -467,7 +507,7 @@ function ble-term/visible-bell {
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
   (
     {
-      command sleep 0.05
+      ble/util/sleep 0.05
       builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
 
       # load time duration settings
@@ -478,7 +518,7 @@ function ble-term/visible-bell {
 
       # wait
       >| "$_ble_term_visible_bell__ftime"
-      command sleep $sec
+      ble/util/sleep "$sec"
 
       # check and clear
       declare -a time1 time2

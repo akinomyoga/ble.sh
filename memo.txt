@@ -319,6 +319,15 @@ tech
 
     $ seq2gif -f 0 -b 15 -h 14 --render-interval=10 -p rosa --play-speed=1.5 < demo.tty > demo2.gif
 
+    gif のフォーマット的には 0.01s よりも小さな遅延は設定できない。
+    また、現実のブラウザでは 0.02s (50fps) よりも小さな遅延にすると強制的に 0.10 になってしまう。
+    更に、Safari や Internet Explorer では 0.06 (16.67fps) よりも小さな遅延は 0.10 になってしまう。
+    更に、Windows に附属している viewer では 0.10 よりも小さな遅延は全部 0.10 になってしまう。
+
+    [[Frame Delay Times for Animated GIFs by humpy77 on DeviantArt>http://humpy77.deviantart.com/journal/Frame-Delay-Times-for-Animated-GIFs-214150546]]
+    [[How to match animation rate of gif files accross browsers (Fenrir Developer's Blog)>http://blog.fenrir-inc.com/us/2012/02/theyre-different-how-to-match-the-animation-rate-of-gif-files-accross-browsers.html]]
+    [[Nullsleep | Jeremiah Johnson - Animated GIF Minimum Frame Delay Browser Compatibility Study>http://nullsleep.tumblr.com/post/16524517190/animated-gif-minimum-frame-delay-browser]]
+
 
 2015-08-14
 
@@ -497,6 +506,51 @@ tech
       $ exec 8< tmp1
       $ read -t 0.001 -u 8
       → やはり同じ時間掛かる。
+
+      うーん。/dev/tcp がごく短い時間しかかからないというのが不思議だ。
+      実は通信を始める前に処理を中断しているのだという可能性もある。
+      →うーん。実際に while :; do read -t 0.01 </dev/tcp/0.0.0.0/80; done を試してみたが、
+        外部に対して通信を行っている気配はない。
+        ということはネットワークに対する負荷はないのではないか。
+      →今度は実在する IP アドレスに対して同じ事を行ってみた。
+        外部に対して通信を大量にしまくっている様だ。これはいけない。
+        ということはやはり 0.0.0.0 の場合には通信が内部で閉じているという事である。
+        しかしこれは Windows だけの話かも知れないので他の OS では事情が異なるかもしれない。
+        やはり mkfifo が期待通りに働かず pipe が遅い Windows ならではの措置である。
+
+    Cygwin 上で系統的に速度の計測を行ってみる
+
+    $ exec 9< <(
+    >   [[ $- == *i* ]] && trap -- '' INT QUIT
+    >   while :; do command sleep 65535; done
+    > )
+    $ (exec 3> tmp1; sleep 65535) & exec 8< tmp1
+    $ exec 7<> tmp1
+
+    | コマンド                                | 実行時間 (Cygwin)  | 環境2
+    |-----------------------------------------|--------------------|--------------------
+    | sleep 0.001                             | 1819.10 usec/eval  | 1214.50 usec/eval
+    | read -t 0.001 < /dev/tcp/0.0.0.0/80     | 1967.50 usec/eval  | 1410.60 usec/eval
+    | read -t 0.001 < /dev/tcp/127.0.0.1/80   | 1967.50 usec/eval  | 1410.60 usec/eval
+    | read -t 0.001 < /dev/tcp/███.███.6.2/80 | 23337.50 usec/eval | 14070.60 usec/eval
+    | read -t 0.001 < /dev/udp/0.0.0.0/80     | 3067.50 usec/eval  | 1310.60 usec/eval
+    | read -t 0.001 <&9                       | 12437.50 usec/eval | 1210.60 usec/eval
+    | read -t 0.001 -u 9                      | 12437.50 usec/eval | 1220.60 usec/eval
+    | read -t 0.001 -u 8                      | 12437.50 usec/eval | 1210.60 usec/eval
+    | read -t 0.001 -u 7                      | ※1                | 1200.60 usec/eval
+
+    ※1 bash: read: read error: 6: Communication error on send
+
+    | コマンド                                | 環境1 Cygwin | 環境2 GNU/Linux |
+    |-----------------------------------------|----------|---------|
+    | `read -t 0.001 < /dev/tcp/0.0.0.0/80`   | 2.0 ms   | 1.41 ms |
+    | `read -t 0.001 < /dev/tcp/127.0.0.1/80` | 2.0 ms   | 1.41 ms |
+    | `read -t 0.001 < /dev/tcp/██.██.6.2/80` | 23 ms    | 14.1 ms |
+    | `read -t 0.001 < /dev/udp/0.0.0.0/80`   | 3.1 ms   | 1.31 ms |
+    | `read -t 0.001 <&9`                     | 12 ms    | 1.21 ms |
+    | `read -t 0.001 -u 9`                    | 12 ms    | 1.22 ms |
+    | `read -t 0.001 -u 8`                    | 12 ms    | 1.21 ms |
+    | `read -t 0.001 -u 7`                    | エラー   | 1.20 ms |
 
 
   * timer の実現方法について
