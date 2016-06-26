@@ -140,16 +140,39 @@ if [[ ! -d $_ble_base ]]; then
   return 1
 fi
 
-# tmpdir
-if [[ ! -d $_ble_base/tmp ]]; then
-  command mkdir -p "$_ble_base/tmp"
-  command chmod a+rwxt "$_ble_base/tmp"
+#
+# _ble_base_tmp
+#
+
+# use /tmp/blesh if accessible
+if [[ -r /tmp && -w /tmp && -x /tmp ]]; then
+  if [[ ! -d /tmp/blesh ]]; then
+    _ble_base_tmp=/tmp/blesh
+    [[ -e $_ble_base_tmp ]] && command rm -f "$_ble_base_tmp"
+    command mkdir -p "$_ble_base_tmp"
+    command chmod a+rwxt "$_ble_base_tmp"
+  elif [[ -r /tmp/blesh && -w /tmp/blesh && -x /tmp/blesh ]]; then
+    _ble_base_tmp=/tmp/blesh
+  fi
 fi
 
-_ble_base_tmp="$_ble_base/tmp/$UID"
+# fallback
+if [[ ! $_ble_base_tmp ]]; then
+  _ble_base_tmp="$_ble_base/tmp"
+  if [[ ! -d $_ble_base_tmp ]]; then
+    command mkdir -p "$_ble_base_tmp"
+    command chmod a+rwxt "$_ble_base_tmp"
+  fi
+fi
+
+_ble_base_tmp="$_ble_base_tmp/$UID"
 if [[ ! -d $_ble_base_tmp ]]; then
   (umask 077; command mkdir -p "$_ble_base_tmp")
 fi
+
+#
+# _ble_base_cache
+#
 
 if [[ ! -d $_ble_base/cache ]]; then
   command mkdir -p "$_ble_base/cache"
