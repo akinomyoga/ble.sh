@@ -1387,10 +1387,10 @@ function ble-decode-bind/cmap/.emit-bindr {
   echo "builtin bind -r \"$1\""
 }
 function ble-decode-bind/cmap/initialize {
-  [[ -d $_ble_base/cache ]] || command mkdir -p "$_ble_base/cache"
+  [[ -d $_ble_base_cache ]] || command mkdir -p "$_ble_base_cache"
 
   local init="$_ble_base/cmap/default.sh"
-  local dump="$_ble_base/cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump"
+  local dump="$_ble_base_cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump"
   if [[ $dump -nt $init ]]; then
     source "$dump"
   else
@@ -1405,7 +1405,7 @@ function ble-decode-bind/cmap/initialize {
 
   if ((_ble_bash>=40300)); then
     # 3文字以上 bind/unbind ソースの生成
-    local fbinder="$_ble_base/cache/cmap+default.binder-source"
+    local fbinder="$_ble_base_cache/cmap+default.binder-source"
     _ble_decode_bind_fbinder="$fbinder"
     if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
       echo -n 'ble.sh: initializing multichar sequence binders... '
@@ -1548,7 +1548,7 @@ function ble-decode-attach {
   builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)"
 
   # ble.sh bind の設置
-  local file="$_ble_base/cache/ble-decode-bind.$_ble_bash.bind"
+  local file="$_ble_base_cache/ble-decode-bind.$_ble_bash.bind"
   [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
   source "$file"
 }
@@ -1558,7 +1558,7 @@ function ble-decode-detach {
   ble-stty/finalize
 
   # ble.sh bind の削除
-  source "$_ble_base/cache/ble-decode-bind.$_ble_bash.unbind"
+  source "$_ble_base_cache/ble-decode-bind.$_ble_bash.unbind"
 
   # 元のキー割り当ての復元
   if [[ -s "$_ble_base_tmp/$$.bind.save" ]]; then

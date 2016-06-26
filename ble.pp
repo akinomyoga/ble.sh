@@ -174,9 +174,21 @@ fi
 # _ble_base_cache
 #
 
-if [[ ! -d $_ble_base/cache ]]; then
-  command mkdir -p "$_ble_base/cache"
+_ble_base_cache="$_ble_base/cache.d"
+if [[ ! -d $_ble_base_cache ]]; then
+  command mkdir -p "$_ble_base_cache"
+  command chmod a+rwxt "$_ble_base_cache"
+  if [[ -d $_ble_base/cache && ! -h $_ble_base/cache ]]; then
+    mv "$_ble_base/cache" "$_ble_base_cache/$UID"
+    ln -s "$_ble_base_cache/$UID" "$_ble_base/cache"
+  fi
 fi
+
+_ble_base_cache="$_ble_base_cache/$UID"
+if [[ ! -d $_ble_base_tmp ]]; then
+  command mkdir -p "$_ble_base_cache"
+fi
+
 #%if measure_load_time
 }
 #%end

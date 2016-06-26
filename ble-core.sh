@@ -428,10 +428,10 @@ function bleopt {
 : ${bleopt_vbell_duration=2000}
 
 function ble-term/.initialize {
-  if [[ $_ble_base/term.sh -nt $_ble_base/cache/$TERM.term ]]; then
+  if [[ $_ble_base/term.sh -nt $_ble_base_cache/$TERM.term ]]; then
     source "$_ble_base/term.sh"
   else
-    source "$_ble_base/cache/$TERM.term"
+    source "$_ble_base_cache/$TERM.term"
   fi
 
   _ble_util_string_prototype.reserve "$_ble_term_it"

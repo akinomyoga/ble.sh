@@ -2,8 +2,8 @@
 
 # 現在の bash の version に従って以下の二つのファイルを生成します:
 #
-#   $_ble_base/cache/ble-decode-bind.$_ble_bash.bind
-#   $_ble_base/cache/ble-decode-bind.$_ble_bash.unbind
+#   $_ble_base_cache/ble-decode-bind.$_ble_bash.bind
+#   $_ble_base_cache/ble-decode-bind.$_ble_bash.unbind
 #
 
 function ble-decode/generate-binder/append {
@@ -22,8 +22,8 @@ function ble-decode/generate-binder/bind-r {
 }
 
 function ble-decode/generate-binder {
-  local fbind1="$_ble_base/cache/ble-decode-bind.$_ble_bash.bind"
-  local fbind2="$_ble_base/cache/ble-decode-bind.$_ble_bash.unbind"
+  local fbind1="$_ble_base_cache/ble-decode-bind.$_ble_bash.bind"
+  local fbind2="$_ble_base_cache/ble-decode-bind.$_ble_bash.unbind"
 
   echo -n "ble.sh: updating binders... $_ble_term_cr" >&2
 

@@ -4194,9 +4194,9 @@ function ble/widget/.edit-command {
 }
 
 function .ble-edit.default-key-bindings {
-  if [[ $_ble_base/cache/keymap.emacs -nt $_ble_base/keymap/emacs.sh &&
-          $_ble_base/cache/keymap.emacs -nt $_ble_base/cmap/default.sh ]]; then
-    source "$_ble_base/cache/keymap.emacs"
+  if [[ $_ble_base_cache/keymap.emacs -nt $_ble_base/keymap/emacs.sh &&
+          $_ble_base_cache/keymap.emacs -nt $_ble_base/cmap/default.sh ]]; then
+    source "$_ble_base_cache/keymap.emacs"
   else
     source "$_ble_base/keymap/emacs.sh"
   fi

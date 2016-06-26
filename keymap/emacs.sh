@@ -3,7 +3,7 @@
 # 2015-12-09 keymap cache should be updated due to the refactoring.
 
 #
-# $_ble_base/cache/ble-decode-keymap.emacs
+# $_ble_base_cache/ble-decode-keymap.emacs
 #
 
 function ble-decode-keymap:isearch/define {
@@ -144,7 +144,7 @@ function ble-decode-keymap:emacs/define {
 function ble-decode-keymap:emacs/generate {
   echo -n "ble.sh: updating cache/keymap.emacs... $_ble_term_cr" >&2
 
-  local cache="$_ble_base/cache/keymap.emacs"
+  local cache="$_ble_base_cache/keymap.emacs"
   ble-decode-keymap:isearch/define
   ble-decode-keymap:emacs/define
 
