@@ -1551,6 +1551,7 @@ function ble-decode-attach {
   local file="$_ble_base_cache/ble-decode-bind.$_ble_bash.bind"
   [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
   source "$file"
+  _ble_decode_bind__uvwflag=
 }
 function ble-decode-detach {
   ((_ble_decode_bind_attached==1)) || return
