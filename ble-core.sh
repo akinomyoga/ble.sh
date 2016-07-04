@@ -1,8 +1,14 @@
 # -*- mode:sh;mode:sh-bash -*-
 # bash script to be sourced from interactive shell
 
+## オプション bleopt_input_encoding
 : ${bleopt_input_encoding:=UTF-8}
 
+## オプション bleopt_stackdump_enabled
+##   エラーが起こった時に関数呼出の構造を標準エラー出力に出力するかどうかを制御する。
+##   算術式評価によって非零の値になる場合にエラーを出力する。
+##   それ以外の場合にはエラーを出力しない。
+: ${bleopt_stackdump_enabled=0}
 
 ## オプション bleopt_openat_base
 ##   bash-4.1 未満で exec {var}>foo が使えない時に ble.sh で内部的に fd を割り当てる。
@@ -367,6 +373,7 @@ function ble-load {
 
 _ble_stackdump_title=stackdump
 function ble-stackdump {
+  ((bleopt_stackdump_enabled)) || return
   # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
   local i nl=$'\n'
   local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
