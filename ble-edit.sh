@@ -3964,13 +3964,12 @@ if [[ $bleopt_suppress_bash_output ]]; then
 
     # if the visible bell function is already defined.
     if ble/util/isfunction ble-term/visible-bell; then
-
       # checks if "$file" is an ordinary non-empty file
       #   since the $file might be /dev/null depending on the configuration.
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if [[ -f $file && -s $file ]]; then
         local message= line
-        while IFS= read -r line; do
+        while IFS= read -r line || [[ $line ]]; do
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。

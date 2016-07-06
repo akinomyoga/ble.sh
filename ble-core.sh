@@ -316,7 +316,7 @@ fi
 ble/util/isfunction ble/util/getmtime ||
   function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
-
+#------------------------------------------------------------------------------
 ## 関数 ble/util/joblist
 ##   現在のジョブ一覧を取得すると共に、ジョブ状態の変化を調べる。
 ##
@@ -614,9 +614,7 @@ function ble-term/visible-bell {
 
       # load time duration settings
       declare msec=$bleopt_vbell_duration
-      declare sec=$msec
-      ((sec<1000)) && sec=$(builtin printf '%04d' $sec)
-      sec=${sec%???}.${sec: -3}
+      declare sec=$(builtin printf '%d.%03d' "$((msec/1000))" "$((msec%1000))")
 
       # wait
       >| "$_ble_term_visible_bell__ftime"
@@ -626,7 +624,7 @@ function ble-term/visible-bell {
       declare -a time1 time2
       time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
       time2=($(command date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
-      if (((time2[0]-time1[0])*1000+(10#${time2[1]::3}-10#${time1[1]::3})>=msec)); then
+      if (((time2[0]-time1[0])*1000+(10#0${time2[1]::3}-10#0${time1[1]::3})>=msec)); then
         builtin echo -n "$_ble_term_visible_bell_clear" >&2
       fi
     } &
