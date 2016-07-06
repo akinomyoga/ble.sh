@@ -3014,8 +3014,11 @@ function ble-edit/exec:gexec/.begin {
   trap 'ble-edit/exec:gexec/.eval-TRAPINT' INT
 }
 function ble-edit/exec:gexec/.end {
-  trap - INT DEBUG # DEBUG: 何故か効かない
+  trap - INT DEBUG
+  # ↑何故か効かないので、
+  #   end の呼び出しと同じレベルで明示的に実行する。
 
+  ble/util/joblist.flush >&2
   ble-edit/bind/.check-detach && return 0
   ble-edit/bind/.tail
 }
@@ -3110,6 +3113,7 @@ function .ble-edit/newline {
   ble-edit/draw/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/flush >&2
+  ble/util/joblist.flush >&2
   _ble_line_x=0 _ble_line_y=0
   ((LINENO=++_ble_edit_LINENO))
 
@@ -4170,6 +4174,7 @@ function ble/widget/.shell-command {
   ble-edit/draw/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/flush >&2
+  ble/util/joblist.flush >&2
   _ble_line_x=0 _ble_line_y=0
   ((LINENO=++_ble_edit_LINENO))
 

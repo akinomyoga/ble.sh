@@ -363,6 +363,7 @@ function ble/util/joblist {
     for ijob in "${!list[@]}"; do
       if [[ ${_ble_util_joblist_list[ijob]} && ${list[ijob]#'['*']'[-+ ]} != "${_ble_util_joblist_list[ijob]#'['*']'[-+ ]}" ]]; then
         ble/util/array-push _ble_util_joblist_events "${list[ijob]}"
+        list[ijob]=
       fi
     done
   fi
@@ -375,7 +376,7 @@ function ble/util/joblist {
 
     # check removed jobs through list -> _ble_util_joblist_list.
     for ijob in "${!list[@]}"; do
-      if [[ ${list[ijob]} != "${_ble_util_joblist_list[ijob]}" ]]; then
+      if [[ ${list[ijob]} && ! ${_ble_util_joblist_list[ijob]} ]]; then
         ble/util/array-push _ble_util_joblist_events "${list[ijob]}"
       fi
     done
@@ -402,6 +403,16 @@ function ble/util/joblist.split {
 function ble/util/joblist.check {
   local joblist
   ble/util/joblist
+}
+
+## 関数 ble/util/joblist.flush
+##   ジョブ状態変化の確認とそれまでに検出した変化の出力を行います。
+function ble/util/joblist.flush {
+  local joblist
+  ble/util/joblist
+  ((${#_ble_util_joblist_events[@]})) || return
+  printf '%s\n' "${_ble_util_joblist_events[@]}"
+  _ble_util_joblist_events=()
 }
 
 ## 関数 ble/util/joblist.clear
