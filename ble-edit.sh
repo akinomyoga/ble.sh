@@ -3212,6 +3212,7 @@ function ble/widget/accept-single-line-or-newline {
 : ${bleopt_history_preserve_point=}
 _ble_edit_history=()
 _ble_edit_history_edit=()
+_ble_edit_history_dirt=()
 _ble_edit_history_ind=0
 
 _ble_edit_history_loaded=
@@ -3306,6 +3307,7 @@ function ble-edit/history/load {
   #   270ms for 16437 entries (generate-source の時間は除く)
   # * プロセス置換×source は bash-3 で動かない。eval に変更する。
   builtin eval -- "$(ble-edit/history/.generate-source-to-load-history)"
+  _ble_edit_history_edit=("${_ble_edit_history[@]}")
   _ble_edit_history_count="${#_ble_edit_history[@]}"
   _ble_edit_history_ind="$_ble_edit_history_count"
   if ((_ble_edit_attached)); then
@@ -3319,7 +3321,13 @@ function ble-edit/history/add {
   if [[ $_ble_edit_history_loaded ]]; then
     # 登録・不登録に拘わらず取り敢えず初期化
     _ble_edit_history_ind=${#_ble_edit_history[@]}
-    _ble_edit_history_edit=()
+
+    # _ble_edit_history_edit を未編集状態に戻す
+    local index
+    for index in "${!_ble_edit_history_dirt[@]}"; do
+      _ble_edit_history_edit[index]="${_ble_edit_history[index]}"
+    done
+    _ble_edit_history_dirt=()
   fi
 
   local cmd="$1"
@@ -3342,12 +3350,12 @@ function ble-edit/history/add {
           [[ ! ${cmd##[ 	]*} ]] && return ;;
         ignoredups)
           if ((lastIndex>=0)); then
-            [[ $cmd == "${_ble_edit_history[$lastIndex]}" ]] && return
+            [[ $cmd == "${_ble_edit_history[lastIndex]}" ]] && return
           fi ;;
         ignoreboth)
           [[ ! ${cmd##[ 	]*} ]] && return
           if ((lastIndex>=0)); then
-            [[ $cmd == "${_ble_edit_history[$lastIndex]}" ]] && return
+            [[ $cmd == "${_ble_edit_history[lastIndex]}" ]] && return
           fi ;;
         erasedups)
           local i n=-1
@@ -3357,7 +3365,7 @@ function ble-edit/history/add {
             fi
           done
           for ((i=lastIndex;i>n;i--)); do
-            unset '_ble_edit_history[$i]'
+            unset '_ble_edit_history[i]'
           done
           ;;
         esac
@@ -3365,6 +3373,7 @@ function ble-edit/history/add {
     fi
 
     _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
+    _ble_edit_history_edit[${#_ble_edit_history_edit[@]}]="$cmd"
     _ble_edit_history_count="${#_ble_edit_history[@]}"
     _ble_edit_history_ind="$_ble_edit_history_count"
 
@@ -3417,11 +3426,14 @@ function ble-edit/history/goto {
   ((index0==index1)) && return
 
   # store
-  _ble_edit_history_edit[$index0]="$_ble_edit_str"
+  if [[ ${_ble_edit_history_edit[index0]} != "$_ble_edit_str" ]]; then
+    _ble_edit_history_edit[index0]="$_ble_edit_str"
+    _ble_edit_history_dirt[index0]=1
+  fi
 
   # restore
   _ble_edit_history_ind="$index1"
-  _ble_edit_str.reset "${_ble_edit_history_edit[index1]-${_ble_edit_history[index1]}}"
+  _ble_edit_str.reset "${_ble_edit_history_edit[index1]}"
 
   # point
   if [[ $bleopt_history_preserve_point ]]; then
@@ -3514,7 +3526,7 @@ function ble-edit/isearch/.draw-line-with-progress {
 
   if [[ $1 ]]; then
     local pos="$1"
-    local percentage="$((pos*1000/${#_ble_edit_history[@]}))"
+    local percentage="$((pos*1000/${#_ble_edit_history_edit[@]}))"
     text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
     ((isearch_ntask)) && text="$text *$isearch_ntask"
   fi
@@ -3647,7 +3659,6 @@ function ble-edit/isearch/next.fib {
 ##   @var[in] isMod
 ##   @var[in] _ble_edit_isearch_dir
 ##   @var[in] _ble_edit_history_edit[]
-##   @var[in] _ble_edit_history[]
 ##   @var[in,out] isearch_suspend
 ##   @var[in,out] isearch_time
 function ble-edit/isearch/next-history-resume.fib {
@@ -3659,7 +3670,7 @@ function ble-edit/isearch/next-history-resume.fib {
     local x_cond='i>=0' x_incr='i--'
   else
     # forward-search
-    local x_cond="i<${#_ble_edit_history[@]}" x_incr='i++'
+    local x_cond="i<${#_ble_edit_history_edit[@]}" x_incr='i++'
   fi
   ((isMod||x_incr))
 
@@ -3670,7 +3681,7 @@ function ble-edit/isearch/next-history-resume.fib {
       susp=1
       break
     fi
-    if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
+    if [[ ${_ble_edit_history_edit[i]} == *"$needle"* ]]; then
       ind="$i"
       break
     fi
@@ -3684,7 +3695,7 @@ function ble-edit/isearch/next-history-resume.fib {
     # 見付かった場合
 
     # 一致範囲 beg-end を取得
-    local str="${_ble_edit_history_edit[ind]-${_ble_edit_history[ind]}}"
+    local str="${_ble_edit_history_edit[ind]}"
     if [[ $_ble_edit_isearch_dir == - ]]; then
       local prefix="${str%"$needle"*}"
     else

@@ -373,6 +373,51 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2016-07-07
+
+  * HISTCONTROL=erasedups の時 ble-edit/history/add が遅いかもしれない
+
+  * _ble_edit_history_edit の初期化時間について
+
+    検索速度の向上の為に配列 _ble_edit_history_edit において、
+    配列 _ble_edit_history と同様に完全な履歴を保持する様に変更した。
+    その為に、一番最初の初期化時に _ble_edit_history_edit のコピーが必要になる。
+
+    気になるのは初期化にかかる時間が余計にかかる様になることだが実際にやってみた所体感としては余り変わらない。
+    (もし気になるのだとしたら初期化についても progress を表示する様に変更する必要がある。
+    或いは edit を使用するまでは edit の初期化は遅延するなど。)
+    因みに、
+
+    $ time ble-edit/history/.generate-source-to-load-history >/dev/null
+    real    0m0.600s
+    user    0m0.683s
+    sys     0m0.119s
+
+    $ time eval -- "$(ble-edit/history/.generate-source-to-load-history)"
+    real    0m1.210s
+    user    0m1.273s
+    sys     0m0.165s
+
+    $ time _ble_edit_history_edit2=("${_ble_edit_history[@]}")
+    real    0m0.320s
+    user    0m0.316s
+    sys     0m0.004s
+
+    _ble_edit_history 本体の初期化時間に較べれば _ble_edit_history_edit
+    の初期化時間は 1/4 程度なのでそれほど問題という訳でもない。
+    また、工夫してコピー速度を口上しようにもこれ以上の工夫のしようはないと思われる。
+
+    もし改善するのだとしたらコピー自体の速度向上ではなくて、
+    コピーの遅延を行う様に修正した方が賢明である。
+
+    あるいは、一番時間の掛かっている _ble_edit_history 初期化の方の改善が必要である。
+    しかしこれ以上の高速化の方法は思い浮かばないし、
+    また、部分的なロードをして残りは遅延にするなどの処置をするとしても、
+    結局履歴を登録する際や検索を実行する際に、効率の問題から全部をロードする事を余儀なくされるだろう。
+    本当に改善するのだとしたら、履歴項目を独自形式で保存するような .bash_history の ble 版を管理する事になる。
+    (その様にすれば maparray などを用いて比較的高速に読み込める様にできる…かもしれない。
+    実際に maparray などのコマンドが本当に速いのかどうか (どれだけ速いのか) は確かめる必要がある。)
+
 2016-07-05
 
   * complete.sh: 変数名の補完確定時に = の代わりに ' ' が挿入される。
@@ -583,6 +628,11 @@ tech
     但し、編集しかけの状態になっている履歴番号を全て記録する様な仕組みにする。
     まずは、その様な実装方法によって _ble_edit_history 及び _ble_edit_history_edit
     の両方を完全な配列として maintain する様に変更を行う。
+
+    _ble_edit_history_dirt に編集状態の項目の index を記録することにした。
+    また isearch は完全に _ble_edit_history_edit だけを用いて動作する様にした。
+    _ble_edit_history は使用しない。初回の動作は良好である。
+    これにより順方向の検索は格段に向上した。
 
     ★逆方向の検索をできるだけ順方向の検索で処理できる様にする方法について考える。
 
