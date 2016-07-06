@@ -921,9 +921,10 @@ function ble-syntax:bash/check-comment {
 
 function ble-syntax:bash/check-glob {
   if [[ $tail == ['?*@+!()|']* ]]; then
+    local attr=$((ctx==CTX_VRHS?ctx:ATTR_GLOB))
     if [[ $tail == ['?*@+!']'('* ]] && shopt -q extglob; then
-      ble-syntax/parse/nest-push "$CTX_PATN"
-      ((_ble_syntax_attr[i]=ATTR_GLOB,i+=2))
+      ble-syntax/parse/nest-push "$CTX_PATN" "ctx=$attr"
+      ((_ble_syntax_attr[i]=attr,i+=2))
       return 0
     fi
 
@@ -931,15 +932,20 @@ function ble-syntax:bash/check-glob {
     [[ $histc1 && $tail == "$histc1"* ]] && return 1
 
     if [[ $tail == ['?*']* ]]; then
-      ((_ble_syntax_attr[i++]=ATTR_GLOB))
+      ((_ble_syntax_attr[i++]=attr))
       return 0
     elif [[ $tail == ['@+!']* ]]; then
       ((_ble_syntax_attr[i++]=ctx))
       return 0
     elif ((ctx==CTX_PATN)); then
-      local ntype attr=$ATTR_GLOB
+      local ntype
       ble-syntax/parse/nest-type -v ntype
-      [[ $ntype == nest ]] && attr=$ctx
+      if [[ $ntype == nest ]]; then
+        attr=$ctx
+      elif [[ $ntype == "ctx=$CTX_VRHS" ]]; then
+        attr=$CTX_VRHS
+      fi
+
       if [[ $tail == '('* ]]; then
         ble-syntax/parse/nest-push "$CTX_PATN" nest
         ((_ble_syntax_attr[i++]=ctx))
