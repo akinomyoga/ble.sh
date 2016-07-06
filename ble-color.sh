@@ -385,6 +385,7 @@ function ble-syntax-highlight+default/type {
     type=keyword ;;
   (*:%*)
     # jobs
+    ble/util/joblist.check
     if jobs "$cmd" &>/dev/null; then
       type=jobs
     else
@@ -431,6 +432,7 @@ function ble-syntax-highlight+default {
         elif [[ "$type" = keyword && "$cmd" != "$_0" ]]; then
           # keyword (time do if function else elif fi の類) を \ で無効化している場合
           # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec
+          ble/util/joblist.check
           if [[ ! ${cmd##%*} ]] && jobs "$cmd" &>/dev/null; then
             # %() { :; } として 関数を定義できるが jobs の方が優先される。
             # (% という名の関数を呼び出す方法はない?)

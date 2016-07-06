@@ -341,7 +341,7 @@ function ble/util/joblist {
     # 前回の呼び出し結果と同じならば状態変化はないものとして良い。終了・強制終
     # 了したジョブがあるとしたら "終了" だとか "Terminated" だとかいう表示にな
     # っているはずだが、その様な表示は二回以上は為されないので必ず変化がある。
-    joblist=("${_ble_util_joblist_jobs[@]}")
+    joblist=("${_ble_util_joblist_list[@]}")
     return
   elif [[ ! $jobs0 ]]; then
     # 前回の呼び出しで存在したジョブが新しい呼び出しで無断で消滅することは恐ら
@@ -361,7 +361,7 @@ function ble/util/joblist {
   # check changed jobs from _ble_util_joblist_list to list
   if [[ $jobs0 != "$_ble_util_joblist_jobs" ]]; then
     for ijob in "${!list[@]}"; do
-      if [[ ${_ble_util_joblist_list[ijob]} && ${list[ijob]} != "${_ble_util_joblist_list[ijob]}" ]]; then
+      if [[ ${_ble_util_joblist_list[ijob]} && ${list[ijob]#'['*']'[-+ ]} != "${_ble_util_joblist_list[ijob]#'['*']'[-+ ]}" ]]; then
         ble/util/array-push _ble_util_joblist_events "${list[ijob]}"
       fi
     done
@@ -375,17 +375,17 @@ function ble/util/joblist {
 
     # check removed jobs through list -> _ble_util_joblist_list.
     for ijob in "${!list[@]}"; do
-      if [[ ${list[ijob]} != "${_ble_util_joblist_jobs[ijob]}" ]]; then
+      if [[ ${list[ijob]} != "${_ble_util_joblist_list[ijob]}" ]]; then
         ble/util/array-push _ble_util_joblist_events "${list[ijob]}"
       fi
     done
   else
     for ijob in "${!list[@]}"; do
-      _ble_util_joblist_jobs[ijob]="${list[ijob]}"
+      _ble_util_joblist_list[ijob]="${list[ijob]}"
     done
   fi
-  joblist=("${_ble_util_joblist_jobs[@]}")
-}
+  joblist=("${_ble_util_joblist_list[@]}")
+} 2>/dev/null
 
 function ble/util/joblist.split {
   local arr="$1"; shift
@@ -394,6 +394,21 @@ function ble/util/joblist.split {
     [[ $line =~ $rex_ijob ]] && ijob="${BASH_REMATCH[1]}"
     [[ $ijob ]] && eval "$arr[ijob]=\"\${$arr[ijob]}\${$arr[ijob]:+\$_ble_term_nl}\$line\""
   done
+}
+
+## 関数 ble/util/joblist.check
+##   ジョブ状態変化の確認だけ行います。
+##   内部的に jobs を呼び出す直前に、ジョブ状態変化を取り逃がさない為に明示的に呼び出します。
+function ble/util/joblist.check {
+  local joblist
+  ble/util/joblist
+}
+
+## 関数 ble/util/joblist.clear
+##   bash 自身によってジョブ状態変化が出力される場合には比較用のバッファを clear する。
+function ble/util/joblist.clear {
+  _ble_util_joblist_jobs=
+  _ble_util_joblist_list=()
 }
 
 #------------------------------------------------------------------------------

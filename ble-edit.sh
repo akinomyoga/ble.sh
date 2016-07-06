@@ -925,8 +925,7 @@ function ble-edit/prompt/update/backslash:H { # = ホスト名
 function ble-edit/prompt/update/backslash:j { #   ジョブの数
   if [[ ! $cache_j ]]; then
     local joblist
-    ble/util/assign joblist jobs
-    IFS=$'\n' GLOBIGNORE='*' builtin eval 'joblist=($joblist)'
+    ble/util/joblist
     cache_j=${#joblist[@]}
   fi
   ble-edit/draw/put "$cache_j"
@@ -2419,9 +2418,11 @@ function ble/widget/delete-forward-char-or-exit {
   fi
 
   # job が残っている場合
-  if jobs % &>/dev/null; then
+  local joblist
+  ble/util/joblist
+  if ((${#joblist[@]})); then
     .ble-edit.bell "(exit) ジョブが残っています!"
-    ble/widget/.shell-command jobs
+    ble/widget/.shell-command 'printf %s "$_ble_util_joblist_jobs"'
     return
   fi
 
@@ -3023,6 +3024,7 @@ function ble-edit/exec:gexec/.eval-prologue {
   PS1="$_ble_edit_PS1"
   unset HISTCMD; ble-edit/history/getcount -v HISTCMD
   _ble_edit_exec_INT=0
+  ble/util/joblist.clear
   ble-stty/leave
   ble-edit/exec/.setexit
 }
