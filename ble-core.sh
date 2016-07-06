@@ -316,6 +316,86 @@ fi
 ble/util/isfunction ble/util/getmtime ||
   function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
+
+## 関数 ble/util/joblist
+##   現在のジョブ一覧を取得すると共に、ジョブ状態の変化を調べる。
+##
+##   @var[in,out] _ble_util_joblist_events
+##   @var[out]    joblist                ジョブ一覧を格納する配列
+##   @var[in,out] _ble_util_joblist_jobs 内部使用
+##   @var[in,out] _ble_util_joblist_list 内部使用
+##
+##   @remark 実装方法について。
+##   終了したジョブを確認するために内部で2回 jobs を呼び出す。
+##   比較のために前回の jobs の呼び出し結果も _ble_util_joblist_{jobs,list} (#1) に記録する。
+##   先ず jobs0,list (#2) に1回目の jobs 呼び出し結果を格納して #1 と #2 の比較を行いジョブ状態の変化を調べる。
+##   次に #1 に2回目の jobs 呼び出し結果を上書きして #2 と #1 の比較を行い終了ジョブを調べる。
+##
+_ble_util_joblist_jobs=
+_ble_util_joblist_list=()
+_ble_util_joblist_events=()
+function ble/util/joblist {
+  local jobs0
+  ble/util/assign jobs0 jobs
+  if [[ $jobs0 == "$_ble_util_joblist_jobs" ]]; then
+    # 前回の呼び出し結果と同じならば状態変化はないものとして良い。終了・強制終
+    # 了したジョブがあるとしたら "終了" だとか "Terminated" だとかいう表示にな
+    # っているはずだが、その様な表示は二回以上は為されないので必ず変化がある。
+    joblist=("${_ble_util_joblist_jobs[@]}")
+    return
+  elif [[ ! $jobs0 ]]; then
+    # 前回の呼び出しで存在したジョブが新しい呼び出しで無断で消滅することは恐ら
+    # くない。今回の結果が空という事は本来は前回の結果も空のはずであり、だとす
+    # ると上の分岐に入るはずなのでここには来ないはずだ。しかしここに入った時の
+    # 為に念を入れて空に設定して戻るようにする。
+    _ble_util_joblist_jobs=
+    _ble_util_joblist_list=()
+    joblist=()
+    return
+  fi
+
+  local lines list ijob
+  IFS=$'\n' GLOBIGNORE='*' builtin eval 'lines=($jobs0)'
+  ble/util/joblist.split list "${lines[@]}"
+
+  # check changed jobs from _ble_util_joblist_list to list
+  if [[ $jobs0 != "$_ble_util_joblist_jobs" ]]; then
+    for ijob in "${!list[@]}"; do
+      if [[ ${_ble_util_joblist_list[ijob]} && ${list[ijob]} != "${_ble_util_joblist_list[ijob]}" ]]; then
+        ble/util/array-push _ble_util_joblist_events "${list[ijob]}"
+      fi
+    done
+  fi
+
+  ble/util/assign _ble_util_joblist_jobs jobs
+  _ble_util_joblist_list=()
+  if [[ $_ble_util_joblist_jobs != "$jobs0" ]]; then
+    IFS=$'\n' GLOBIGNORE='*' builtin eval 'lines=($_ble_util_joblist_jobs)'
+    ble/util/joblist.split _ble_util_joblist_list "${lines[@]}"
+
+    # check removed jobs through list -> _ble_util_joblist_list.
+    for ijob in "${!list[@]}"; do
+      if [[ ${list[ijob]} != "${_ble_util_joblist_jobs[ijob]}" ]]; then
+        ble/util/array-push _ble_util_joblist_events "${list[ijob]}"
+      fi
+    done
+  else
+    for ijob in "${!list[@]}"; do
+      _ble_util_joblist_jobs[ijob]="${list[ijob]}"
+    done
+  fi
+  joblist=("${_ble_util_joblist_jobs[@]}")
+}
+
+function ble/util/joblist.split {
+  local arr="$1"; shift
+  local line ijob rex_ijob='^\[([0-9]+)\]'
+  for line; do
+    [[ $line =~ $rex_ijob ]] && ijob="${BASH_REMATCH[1]}"
+    [[ $ijob ]] && eval "$arr[ijob]=\"\${$arr[ijob]}\${$arr[ijob]:+\$_ble_term_nl}\$line\""
+  done
+}
+
 #------------------------------------------------------------------------------
 
 ## 関数 ble-autoload scriptfile functions...
