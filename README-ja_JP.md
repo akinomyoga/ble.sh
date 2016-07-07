@@ -1,5 +1,5 @@
+[Languages: [:us: English](README.md) | **:jp: 日本語**]
 # ble.sh
-[Languages: [English](README.md) | **日本語**]
 
 `ble.sh` (*Bash Line Editor*) は Bash スクリプトで書かれたコマンドラインエディタです。
 - GNU Bash 標準のコマンドラインエディタ GNU Readline を置き換える形で動作します

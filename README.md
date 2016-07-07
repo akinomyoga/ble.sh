@@ -1,5 +1,5 @@
+[Languages: **:us: English** | [:jp: 日本語](README-ja_JP.md)]
 # ble.sh
-[Languages: **English** | [日本語](README-ja_JP.md)]
 
 *Bash Line Editor* written in Bash Scripts.
 - Replacing GNU Readline, the default command line editor of GNU Bash.
