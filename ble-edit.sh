@@ -3653,16 +3653,80 @@ function ble-edit/isearch/next.fib {
   fi
 }
 
-## 関数 ble-edit/isearch/next-history-resume.fib
-##   @var[in] start
-##   @var[in] needle
-##   @var[in] isMod
-##   @var[in] _ble_edit_isearch_dir
-##   @var[in] _ble_edit_history_edit[]
+## 関数 ble-edit/isearch/next-history.fib [needle isMod]
+##
 ##   @var[in,out] isearch_suspend
+##     中断した時にこの変数に再開用のデータを格納します。
+##     再開する時はこの変数の中断時の内容を復元してこの関数を呼び出します。
+##     この変数が空の場合は新しい検索を開始します。
+##   @param[in,opt] needle,isMod
+##     新しい検索を開始する場合に、検索対象を明示的に指定します。
+##     needle に検索対象の文字列を指定します。
+##     isMod 現在の履歴項目を検索対象とするかどうかを指定します。
+##   @var[in] _ble_edit_isearch_str
+##     最後に一致した検索文字列を指定します。
+##     検索対象を明示的に指定しなかった場合に使う検索対象です。
+##   @var[in] _ble_edit_history_ind
+##     現在の履歴項目の位置を指定します。
+##     新しい検索を開始する時の検索開始位置になります。
+##
+##   @var[in] _ble_edit_isearch_dir
+##     現在の検索方向を指定します。
+##   @var[in] _ble_edit_history_edit[]
 ##   @var[in,out] isearch_time
-function ble-edit/isearch/next-history-resume.fib {
-  local i="$start"
+##
+## 関数 ble-edit/isearch/next-history/.blockwise-backward-search
+##   work around for bash slow array access: blockwise search
+##   @var[in,out] i ind susp
+##   @var[in,out] isearch_time
+##   @var[in] _ble_edit_history_edit start
+##
+function ble-edit/isearch/next-history/.blockwise-backward-search {
+  local NSTPCHK=1000 # 十分高速なのでこれぐらい大きくてOK
+  local NPROGRESS=$((NSTPCHK*2)) # 倍数である必要有り
+  local irest block j
+  while ((i>=0)); do
+    ((block=start-i,
+      block<5&&(block=5),
+      irest=NSTPCHK-isearch_time%NSTPCHK,
+      block>i+1&&(block=i+1),
+      block>irest&&(block=irest)))
+
+    for ((j=i-block;++j<=i;)); do
+      if [[ ${_ble_edit_history_edit[j]} == *"$needle"* ]]; then
+        ind="$j"
+      fi
+    done
+
+    ((isearch_time+=block))
+    if [[ $ind ]]; then
+      ((i=j))
+    else
+      ((i-=block))
+    fi
+
+    if [[ $ind ]]; then
+      break
+    elif ((isearch_time%NSTPCHK==0)) && ble/util/is-stdin-ready; then
+      susp=1
+      break
+    elif ((isearch_time%NPROGRESS==0)); then
+      ble-edit/isearch/.draw-line-with-progress "$i"
+    fi
+  done
+}
+function ble-edit/isearch/next-history.fib {
+  if [[ $isearch_suspend ]]; then
+    # resume the previous search
+    local needle="${isearch_suspend#*:}" isMod=
+    local i start; eval "${isearch_suspend%%:*}"
+    isearch_suspend=
+  else
+    # initialize new search
+    local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
+    local start="$_ble_edit_history_ind"
+    local i="$start"
+  fi
 
   local dir="$_ble_edit_isearch_dir"
   if [[ $dir == - ]]; then
@@ -3676,20 +3740,24 @@ function ble-edit/isearch/next-history-resume.fib {
 
   # 検索
   local ind= susp=
-  for ((;x_cond;x_incr)); do
-    if ((++isearch_time%100==0)) && ble/util/is-stdin-ready; then
-      susp=1
-      break
-    fi
-    if [[ ${_ble_edit_history_edit[i]} == *"$needle"* ]]; then
-      ind="$i"
-      break
-    fi
+  if [[ $dir == - ]]; then
+    ble-edit/isearch/next-history/.blockwise-backward-search
+  else
+    for ((;x_cond;x_incr)); do
+      if ((++isearch_time%100==0)) && ble/util/is-stdin-ready; then
+        susp=1
+        break
+      fi
+      if [[ ${_ble_edit_history_edit[i]} == *"$needle"* ]]; then
+        ind="$i"
+        break
+      fi
 
-    if ((isearch_time%1000==0)); then
-      ble-edit/isearch/.draw-line-with-progress "$i"
-    fi
-  done
+      if ((isearch_time%1000==0)); then
+        ble-edit/isearch/.draw-line-with-progress "$i"
+      fi
+    done
+  fi
 
   if [[ $ind ]]; then
     # 見付かった場合
@@ -3706,21 +3774,13 @@ function ble-edit/isearch/next-history-resume.fib {
     ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
   elif [[ $susp ]]; then
     # 中断した場合
-    isearch_suspend="z$i:$needle"
+    isearch_suspend="i=$i start=$start:$needle"
     return
   else
     # 見つからなかった場合
     .ble-edit.bell "isearch: \`$needle' not found"
     return
   fi
-}
-
-## @var[in] _ble_edit_history_ind
-## @var[in] _ble_edit_isearch_str
-function ble-edit/isearch/next-history.fib {
-  local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
-  local start="$_ble_edit_history_ind"
-  ble-edit/isearch/next-history-resume.fib
 }
 
 function ble-edit/isearch/forward.fib {
@@ -3792,15 +3852,14 @@ function ble-edit/isearch/process {
     (hf)  ble-edit/isearch/history-forward.fib ;;
     (hb)  ble-edit/isearch/history-backward.fib ;;
     (hi*) ble-edit/isearch/history-self-insert.fib "${1:2}";;
-    (z*)  local stat="${1:1}"
-          local start="${stat%%:*}" needle="${stat#*:}" isMod=
-          ble-edit/isearch/next-history-resume.fib ;;
+    (z*)  isearch_suspend="${1:1}"
+          ble-edit/isearch/next-history.fib;;
     (*)   ble-stackdump "unknown isearch process entry '$1'." ;;
     esac
     shift
 
     if [[ $isearch_suspend ]]; then
-      _ble_edit_isearch_que=("$isearch_suspend" "$@")
+      _ble_edit_isearch_que=("z$isearch_suspend" "$@")
       return
     fi
   done
