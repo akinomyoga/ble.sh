@@ -1,5 +1,5 @@
 # ble.sh
-([日本語はこっち](README-ja_JP.md))
+[Languages: **English** | [日本語](README-ja_JP.md)]
 
 *Bash Line Editor* written in Bash Scripts.
 - Replacing GNU Readline, the default command line editor of GNU Bash.
@@ -11,7 +11,7 @@ This script supports `bash` with the version 3.0 or later.
 
 Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 
-This script is available under the **BSD License** (3-clause BSD license).
+This script is provided under the **BSD License** (3-clause BSD license).
 
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
@@ -154,6 +154,7 @@ $ ble-color-show
 ```
 
 **Key Bindings**
+
 Key bindings can be controlled with the shell function, `ble-bind`.
 For example, with the following setting, "Hello, world!" will be inserted on typing `C-x h`
 ```bash
