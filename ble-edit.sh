@@ -952,14 +952,47 @@ function ble-edit/prompt/update/backslash:V { # = bash version %d.%d.%d
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_V"
 }
 function ble-edit/prompt/update/backslash:w { # PWD
-  ble-edit/prompt/update/append "$param_wd"
+  ble/edit/prompt/update/update-cache_wd
+  ble-edit/prompt/update/append "$cache_wd"
 }
 function ble-edit/prompt/update/backslash:W { # PWD短縮
   if [[ $PWD == / ]]; then
     ble-edit/prompt/update/append /
   else
-    ble-edit/prompt/update/append "${param_wd##*/}"
+    ble/edit/prompt/update/update-cache_wd
+    ble-edit/prompt/update/append "${cache_wd##*/}"
   fi
+}
+function ble/edit/prompt/update/update-cache_wd {
+  [[ $cache_wd ]] && return
+
+  if [[ $PWD == / ]]; then
+    cache_wd=/
+    return
+  fi
+
+  local head= body="${PWD%/}"
+  if [[ $body == "$HOME" ]]; then
+    cache_wd='~'
+    return
+  elif [[ $body == "$HOME"/* ]]; then
+    head='~/'
+    body=${body#"$HOME"/}
+  fi
+
+  if [[ $PROMPT_DIRTRIM ]]; then
+    local dirtrim=$((PROMPT_DIRTRIM))
+    local pat='[^/]'
+    local count=${body//$pat}
+    if ((${#count}>=dirtrim)); then
+      ble/string#repeat '/*' "$dirtrim"
+      local omit=${body%$ret}
+      ((${#omit}>3)) &&
+        body=...${body:${#omit}}
+    fi
+  fi
+
+  cache_wd="$head$body"
 }
 
 function ble-edit/prompt/update/eval-prompt_command {
@@ -994,14 +1027,7 @@ function ble-edit/prompt/update {
     ble-edit/prompt/update/eval-prompt_command
   fi
 
-  local param_wd=
-  if [[ $PWD == "$HOME" || $PWD == "$HOME"/* ]]; then
-    param_wd="~${PWD#$HOME}"
-  else
-    param_wd="$PWD"
-  fi
-
-  local cache_d cache_t cache_A cache_T cache_at cache_D cache_j
+  local cache_d cache_t cache_A cache_T cache_at cache_D cache_j cache_wd
 
   # 1 特別な Escape \? を処理
   local i=0 iN="${#ps1}"

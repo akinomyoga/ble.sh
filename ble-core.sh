@@ -218,6 +218,12 @@ function _ble_util_string_prototype.reserve {
   done
 }
 
+function ble/string#repeat {
+  _ble_util_string_prototype.reserve "$2"
+  ret="${_ble_util_string_prototype::$2}"
+  ret="${ret// /$1}"
+}
+
 function ble/string#common-prefix {
   local a="$1" b="$2"
   ((${#a}>${#b})) && local a="$b" b="$a"
