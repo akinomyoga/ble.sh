@@ -843,10 +843,10 @@ function ble-edit/prompt/update/process-backslash {
     (\]) ble-edit/draw/put $'\e[99u' ;;
     ('#') # コマンド番号 (本当は history に入らない物もある…)
       ble-edit/draw/put "$_ble_edit_CMD" ;;
-    (\!) # 履歴番号
+    (\!) # 編集行の履歴番号
       local count
       ble-edit/history/getcount -v count
-      ble-edit/draw/put "$count" ;;
+      ble-edit/draw/put "$((count+1))" ;;
     ('$') # # or $
       ble-edit/prompt/update/append "$_ble_edit_prompt__string_root" ;;
     (\\)
@@ -3522,7 +3522,8 @@ function ble-edit/isearch/.draw-line-with-progress {
     ll="  " rr=">>"
     text="  >>)"
   fi
-  local text="(${#_ble_edit_isearch_arr[@]}: $ll $_ble_edit_history_ind $rr) \`$_ble_edit_isearch_str'"
+  local histIndex='!'"$((_ble_edit_history_ind+1))"
+  local text="(${#_ble_edit_isearch_arr[@]}: $ll $histIndex $rr) \`$_ble_edit_isearch_str'"
 
   if [[ $1 ]]; then
     local pos="$1"
