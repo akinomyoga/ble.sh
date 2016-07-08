@@ -187,7 +187,7 @@ function ble-complete/source/command/gen {
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return
   compgen -c -- "$COMPV"
   [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
-  shopt -q autocd && compgen -d -- "$COMPV"
+  shopt -q autocd &>/dev/null && compgen -d -- "$COMPV"
 }
 function ble-complete/source/command {
   [[ ${COMPV+set} ]] || return 1

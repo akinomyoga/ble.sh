@@ -2791,7 +2791,7 @@ function ble-syntax/highlight/cmdtype1 {
       ((type=ATTR_ERR))
     fi ;;
   (*)
-    if [[ -d "$cmd" ]] && shopt -q autocd; then
+    if [[ -d "$cmd" ]] && shopt -q autocd &>/dev/null; then
       ((type=ATTR_CMD_DIR))
     else
       ((type=ATTR_ERR))
