@@ -3427,7 +3427,11 @@ function ble-edit/history/add {
   fi
 
   if [[ $histfile ]]; then
+    # bash-3.1 work around
+    local tmp="$_ble_base_tmp/$$.ble_edit_history_add.txt"
     builtin printf '%s\n' "$cmd" >> "$histfile"
+    builtin printf '%s\n' "$cmd" >| "$tmp"
+    history -r "$tmp"
   else
     history -s -- "$cmd"
   fi
