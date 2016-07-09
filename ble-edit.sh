@@ -3342,7 +3342,8 @@ function ble-edit/history/load {
 }
 
 function ble-edit/history/add {
-  [[ -o history ]] || return
+  # 注意: bash-3.2 未満では何故か bind -x の中では常に history off になっている。
+  [[ -o history ]] || ((_ble_bash<30200)) || return
 
   if [[ $_ble_edit_history_loaded ]]; then
     # 登録・不登録に拘わらず取り敢えず初期化
