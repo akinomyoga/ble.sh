@@ -507,7 +507,7 @@ function ble-assert {
 }
 
 function bleopt {
-  local pvars
+  local -a pvars
   if (($#==0)); then
     pvars=("${!bleopt_@}")
   else
@@ -525,8 +525,7 @@ function bleopt {
         fi
       else
         var="bleopt_${spec#bleopt_}"
-        if eval "[[ \${$var+set} ]]"; then
-          printf "%s=%q" "${var#bleopt_}" "${!var}"
+        if [[ ${!var+set} ]]; then
           pvars[ip++]="$var"
         else
           echo "bleopt: unknown bleopt option \`${var#bleopt_}'"
@@ -536,7 +535,10 @@ function bleopt {
   fi
 
   if ((${#pvars[@]})); then
-    declare -p "${pvars[@]}" | command sed 's/^declare[[:space:]]\{1,\}\(-[^[:space:]]*[[:space:]]\{1,\}\)*bleopt_//'
+    local q="'" Q="'\''" var
+    for var in "${pvars[@]}"; do
+      echo "${var#bleopt_}='${!var//$q/$Q}'"
+    done
   fi
 }
 
