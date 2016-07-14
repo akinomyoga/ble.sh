@@ -148,6 +148,21 @@ if ((_ble_bash>=40000)); then
 
     ble/util/sleep "$1"
   }
+elif type sleepenh &>/dev/null; then
+  function ble/util/sleep { command sleepenh "$1" &>/dev/null; }
+elif type usleep &>/dev/null; then
+  function ble/util/sleep {
+    if [[ $1 == *.* ]]; then
+      local sec=${1%%.*} sub=${1#*.}000000
+      if (($sec)); then
+        command usleep "$sec${sub::6}"
+      else
+        command usleep "$((10#${sub::6}))"
+      fi
+    else
+      command usleep "${1}000000"
+    fi
+  }
 else
   function ble/util/sleep { command sleep "$1"; }
 fi
