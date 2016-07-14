@@ -194,7 +194,9 @@ function ble-complete/source/command {
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
 
   local cand arr i=0
-  IFS=$'\n' builtin eval 'arr=($(ble-complete/source/command/gen))'
+  local compgen
+  ble/util/assign compgen ble-complete/source/command/gen
+  ble/string#split arr $'\n' "$compgen"
   for cand in "${arr[@]}"; do
     ((i%100==0)) && ble/util/is-stdin-ready && return 27
     ble-complete/yield-candidate "$cand" ble-complete/action/command
@@ -371,7 +373,7 @@ function ble-complete/source/argument/.compgen {
   ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
   ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
   ble/util/assign compgen 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u'
-  IFS=$'\n' builtin eval 'arr=($compgen)'
+  ble/string#split arr $'\n' "$compgen"
   # * 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
   # * "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
@@ -382,7 +384,7 @@ function ble-complete/source/argument/.compgen {
   #   単語の後にスペースを挿入する事を意図していると思われるが、
   #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、挿入時のエスケープ対象である。
   #   →これだとスペースで終わるファイル名を挿入できない…。
-  # * arr($(...)) としないのは IFS=$'\n' の影響を $(...) の中に持ち込まないためである。
+  # * arr=($(...)) としないのは IFS=$'\n' の影響を $(...) の中に持ち込まないためである。
 
   local action=argument
   [[ $comp_opts == *:nospace:* ]] && action=argument-nospace
@@ -418,12 +420,13 @@ function ble-complete/source/argument {
 function ble-complete/.fignore/prepare {
   _fignore=()
   local i=0 leaf tmp
-  IFS=: eval 'tmp=($FIGNORE)'
+  ble/string#split tmp ':' "$FIGNORE"
   for leaf in "${tmp[@]}"; do
     [[ $leaf ]] && _fignore[i++]="$leaf"
   done
 }
 function ble-complete/.fignore/filter {
+  local pat
   for pat in "${_fignore[@]}"; do
     [[ $1 == *"$pat" ]] && return 1
   done
@@ -481,8 +484,9 @@ function ble/widget/complete {
       ble-complete/source/command ;;
     (variable)
       if [[ ${COMPV+set} ]]; then
-        local cand arr
-        IFS=$'\n' builtin eval 'arr=($(compgen -v -- "$COMPV"))'
+        local cand arr compgen
+        ble/util/assign compgen 'compgen -v -- "$COMPV"'
+        ble/string#split arr $'\n' "$compgen"
         for cand in "${arr[@]}"; do
           ble-complete/yield-candidate "$cand" ble-complete/action/word
         done
@@ -511,7 +515,7 @@ function ble/widget/complete {
     local -a prop
     prop=(${cand_prop[i]})
 
-    [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter && continue
+    [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter "$word" && continue
 
     if ((i==0)); then
       common="$word"

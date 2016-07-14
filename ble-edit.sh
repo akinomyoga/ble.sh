@@ -3359,8 +3359,8 @@ function ble-edit/history/add {
 
   local cmd="$1"
   if [[ $HISTIGNORE ]]; then
-    local i pats pat
-    GLOBIGNORE='*' IFS=: builtin eval 'pats=($HISTIGNORE)'
+    local pats pat
+    ble/string#split pats : "$HISTIGNORE"
     for pat in "${pats[@]}"; do
       [[ $cmd == $pat ]] && return
     done

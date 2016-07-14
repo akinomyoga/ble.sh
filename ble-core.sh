@@ -283,6 +283,14 @@ function ble/string#common-suffix {
 
   ret="${a:u}"
 }
+## 関数 ble/string#split arr split str...
+##   文字列を分割します。
+##   @var[out] arr   分割した文字列を格納する配列名を指定します。
+##   @var[in]  split 分割に使用する文字を指定します。
+##   @var[in]  str   分割する文字列を指定します。
+function ble/string#split {
+  GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+}
 
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
@@ -376,7 +384,7 @@ function ble/util/joblist {
   fi
 
   local lines list ijob
-  IFS=$'\n' GLOBIGNORE='*' builtin eval 'lines=($jobs0)'
+  ble/string#split lines $'\n' "$jobs0"
   ble/util/joblist.split list "${lines[@]}"
 
   # check changed jobs from _ble_util_joblist_list to list
@@ -392,7 +400,7 @@ function ble/util/joblist {
   ble/util/assign _ble_util_joblist_jobs jobs
   _ble_util_joblist_list=()
   if [[ $_ble_util_joblist_jobs != "$jobs0" ]]; then
-    IFS=$'\n' GLOBIGNORE='*' builtin eval 'lines=($_ble_util_joblist_jobs)'
+    ble/string#split lines $'\n' "$_ble_util_joblist_jobs"
     ble/util/joblist.split _ble_util_joblist_list "${lines[@]}"
 
     # check removed jobs through list -> _ble_util_joblist_list.
