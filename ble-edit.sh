@@ -3637,39 +3637,20 @@ function ble-edit/isearch/.goto-match {
 }
 
 function ble-edit/isearch/next.fib {
-  local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
+  local needle="${1-$_ble_edit_isearch_str}" isAdd="$2"
   local ind="$_ble_edit_history_ind" beg= end=
 
-  # 現在位置における伸張
-  if ((isMod)); then
-    if [[ $_ble_edit_isearch_dir == - ]]; then
-      if [[ ${_ble_edit_str:_ble_edit_ind} == "$needle"* ]]; then
-        beg="$_ble_edit_ind"
-        end="$((beg+${#needle}))"
-      fi
-    else
-      if [[ ${_ble_edit_str:_ble_edit_mark} == "$needle"* ]]; then
-        beg="$_ble_edit_mark"
-        end="$((beg+${#needle}))"
-      fi
-    fi
-
-    if [[ $beg ]]; then
-      ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
-      return
-    fi
-  fi
-
-  # 次の候補
+  # isAdd -> 現在位置における伸張
+  # !isAdd -> 現在一致範囲と重複のない新しい一致
   if [[ $_ble_edit_isearch_dir == - ]]; then
-    local target="${_ble_edit_str::_ble_edit_ind}"
+    local target="${_ble_edit_str::(isAdd?_ble_edit_mark+1:_ble_edit_ind)}"
     local m="${target%"$needle"*}"
     if [[ $target != "$m" ]]; then
       beg="${#m}"
       end="$((beg+${#needle}))"
     fi
   else
-    local target="${_ble_edit_str:_ble_edit_ind}"
+    local target="${_ble_edit_str:(isAdd?_ble_edit_mark:_ble_edit_ind)}"
     local m="${target#*"$needle"}"
     if [[ $target != "$m" ]]; then
       end="$((${#_ble_edit_str}-${#m}))"
@@ -3680,21 +3661,21 @@ function ble-edit/isearch/next.fib {
   if [[ $beg ]]; then
     ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
     return
-  else
-    ble-edit/isearch/next-history.fib "${@:1:1}"
   fi
+
+  ble-edit/isearch/next-history.fib "${@:1:1}"
 }
 
-## 関数 ble-edit/isearch/next-history.fib [needle isMod]
+## 関数 ble-edit/isearch/next-history.fib [needle isAdd]
 ##
 ##   @var[in,out] isearch_suspend
 ##     中断した時にこの変数に再開用のデータを格納します。
 ##     再開する時はこの変数の中断時の内容を復元してこの関数を呼び出します。
 ##     この変数が空の場合は新しい検索を開始します。
-##   @param[in,opt] needle,isMod
+##   @param[in,opt] needle,isAdd
 ##     新しい検索を開始する場合に、検索対象を明示的に指定します。
 ##     needle に検索対象の文字列を指定します。
-##     isMod 現在の履歴項目を検索対象とするかどうかを指定します。
+##     isAdd 現在の履歴項目を検索対象とするかどうかを指定します。
 ##   @var[in] _ble_edit_isearch_str
 ##     最後に一致した検索文字列を指定します。
 ##     検索対象を明示的に指定しなかった場合に使う検索対象です。
@@ -3750,12 +3731,12 @@ function ble-edit/isearch/next-history/.blockwise-backward-search {
 function ble-edit/isearch/next-history.fib {
   if [[ $isearch_suspend ]]; then
     # resume the previous search
-    local needle="${isearch_suspend#*:}" isMod=
+    local needle="${isearch_suspend#*:}" isAdd=
     local i start; eval "${isearch_suspend%%:*}"
     isearch_suspend=
   else
     # initialize new search
-    local needle="${1-$_ble_edit_isearch_str}" isMod="$2"
+    local needle="${1-$_ble_edit_isearch_str}" isAdd="$2"
     local start="$_ble_edit_history_ind"
     local i="$start"
   fi
@@ -3768,7 +3749,7 @@ function ble-edit/isearch/next-history.fib {
     # forward-search
     local x_cond="i<${#_ble_edit_history_edit[@]}" x_incr='i++'
   fi
-  ((isMod||x_incr))
+  ((isAdd||x_incr))
 
   # 検索
   local ind= susp=
