@@ -164,6 +164,13 @@ function ble-complete/action/command/complete {
   fi
 }
 
+# action/variable
+
+function ble-complete/action/variable/initialize { ble-complete/action/plain/initialize; }
+function ble-complete/action/variable/complete {
+  ble-complete/action/util/complete.addtail '='
+}
+
 #==============================================================================
 # source
 
@@ -415,6 +422,27 @@ function ble-complete/source/argument {
   fi
 }
 
+# source/variable
+
+function ble-complete/source/variable {
+  [[ ${COMPV+set} ]] || return 1
+
+  local action
+  if [[ $1 == '=' ]]; then
+    action=variable # 確定時に '=' を挿入
+  else
+    action=word # 確定時に ' ' を挿入
+  fi
+
+  local cand arr compgen
+  ble/util/assign compgen 'compgen -v -- "$COMPV"'
+  ble/string#split arr $'\n' "$compgen"
+
+  for cand in "${arr[@]}"; do
+    ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
+  done
+}
+
 #------------------------------------------------------------------------------
 
 function ble-complete/.fignore/prepare {
@@ -460,14 +488,15 @@ function ble/widget/complete {
     ble-complete/.fignore/prepare
   fi
 
-  local ctx
+  local ctx source
   for ctx in "${context[@]}"; do
     # initialize completion range
     ctx=($ctx)
+    ble/string#split source : "${ctx[0]}"
     local COMP1="${ctx[1]}" COMP2="$index"
     local COMPS="${text:COMP1:COMP2-COMP1}"
     local COMPV _ble_complete_raw_paramx=
-    if [[ -z $COMPS || $COMPS =~ $_ble_syntax_rex_simple_word ]]; then
+    if [[ ! $COMPS || $COMPS =~ $_ble_syntax_rex_simple_word ]]; then
       builtin eval "COMPV=$COMPS"
       [[ $COMPS =~ $rex_raw_paramx ]] && _ble_complete_raw_paramx=1
     fi
@@ -475,23 +504,9 @@ function ble/widget/complete {
 
     # generate candidates
     local ACTION DATA
-    case "${ctx[0]}" in
-    (argument)
-      ble-complete/source/argument ;;
-    (file)
-      ble-complete/source/file ;;
-    (command)
-      ble-complete/source/command ;;
-    (variable)
-      if [[ ${COMPV+set} ]]; then
-        local cand arr compgen
-        ble/util/assign compgen 'compgen -v -- "$COMPV"'
-        ble/string#split arr $'\n' "$compgen"
-        for cand in "${arr[@]}"; do
-          ble-complete/yield-candidate "$cand" ble-complete/action/word
-        done
-      fi ;;
-    esac
+    if ble/util/isfunction ble-complete/source/"${source[0]}"; then
+      ble-complete/source/"${source[@]}"
+    fi
   done
 
   ble/util/is-stdin-ready && return 27

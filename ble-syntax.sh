@@ -2407,7 +2407,7 @@ function ble-syntax/completion-context/check-prefix {
         # CTX_CMDI  → コマンドの続き
         ble-syntax/completion-context/add command "$wbeg"
         if [[ ${text:wbeg:index-wbeg} =~ $rex_param ]]; then
-          ble-syntax/completion-context/add variable "$wbeg"
+          ble-syntax/completion-context/add variable:= "$wbeg"
         fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
@@ -2418,7 +2418,7 @@ function ble-syntax/completion-context/check-prefix {
         if ((ctx==CTX_ARGI)); then
           source=argument
         elif ((ctx==CTX_ARGVI)); then
-          source=variable
+          source=variable:=
         fi
         ble-syntax/completion-context/add "$source" "$wbeg"
 
@@ -2449,7 +2449,7 @@ function ble-syntax/completion-context/check-prefix {
             fi
           else
             # VAR<+variable>: 単語を変数名の一部と思って変数名を生成する
-            ble-syntax/completion-context/add variable "$i"
+            ble-syntax/completion-context/add variable:= "$i"
           fi
         fi
       elif [[ $word =~ ^$_ble_syntax_bash_rex_spaces$ ]]; then
@@ -2468,7 +2468,7 @@ function ble-syntax/completion-context/check-prefix {
       if ((ctx==CTX_ARGX)); then
         source=argument
       elif ((ctx==CTX_ARGVX)); then
-        source=variable
+        source=variable:=
       fi
 
       local word="${text:i:index-i}"
@@ -2515,7 +2515,7 @@ function ble-syntax/completion-context/check-here {
             ctx==CTX_CMDX1||
             ctx==CTX_CMDXC)); then
       ble-syntax/completion-context/add command "$index"
-      ble-syntax/completion-context/add variable "$index"
+      ble-syntax/completion-context/add variable:= "$index"
     elif ((ctx==CTX_CMDXF)); then
       ble-syntax/completion-context/add variable "$index"
     elif ((ctx==CTX_ARGX)); then
