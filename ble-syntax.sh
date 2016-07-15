@@ -2377,9 +2377,10 @@ function ble-syntax/completion-context/add {
 }
 
 function ble-syntax/completion-context/check/parameter-expansion {
-  local rex_paramx='^\$([a-zA-Z_][a-zA-Z_0-9]*)?$'
+  local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$'
   if [[ ${text:i:index-i} =~ $rex_paramx ]]; then
-    ble-syntax/completion-context/add variable $((i+1))
+    local rematch1="${BASH_REMATCH[1]}"
+    ble-syntax/completion-context/add variable $((i+${#rematch1}))
   fi
 }
 
@@ -2492,6 +2493,8 @@ function ble-syntax/completion-context/check-prefix {
       if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
         ble-syntax/completion-context/add file "$i"
       fi
+    elif ((ctx==CTX_QUOT)); then
+      ble-syntax/completion-context/check/parameter-expansion
     fi
   fi
 }
