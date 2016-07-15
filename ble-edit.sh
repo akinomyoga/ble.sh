@@ -1165,7 +1165,7 @@ function .ble-line-text/update/position {
         local cs="${text:i:1}"
         if (((++x==cols)&&(y++,x=0,xenl))); then
           cs="$cs$_ble_term_nl"
-          ble/util/array-push _ble_line_text_cache_ichg "$i"
+          ble/array#push _ble_line_text_cache_ichg "$i"
         fi
         _ble_line_text_cache_cs[i]="$cs"
         _ble_line_text_cache_pos[i+1]="$x $y 0"
@@ -1231,7 +1231,7 @@ function .ble-line-text/update/position {
       fi
 
       _ble_line_text_cache_cs[i]="$cs"
-      ((changed)) && ble/util/array-push _ble_line_text_cache_ichg "$i"
+      ((changed)) && ble/array#push _ble_line_text_cache_ichg "$i"
       _ble_line_text_cache_pos[i+1]="$x $y $wrapping"
       ((i++))
     fi
@@ -1255,7 +1255,7 @@ function .ble-line-text/update/position {
          (ichg>=dend0)&&(ichg+=dend-dend0),
          (0<=ichg&&ichg<dbeg||dend<=i&&ichg<iN)))
     then
-      ble/util/array-push _ble_line_text_cache_ichg "$ichg"
+      ble/array#push _ble_line_text_cache_ichg "$ichg"
     fi
   done
 
@@ -2768,7 +2768,7 @@ declare -a _ble_edit_exec_lines=()
 declare _ble_edit_exec_lastexit=0
 function ble-edit/exec/register {
   local BASH_COMMAND="$1"
-  ble/util/array-push _ble_edit_exec_lines "$1"
+  ble/array#push _ble_edit_exec_lines "$1"
 }
 function ble-edit/exec/.setexit {
   # $? 変数の設定
@@ -3616,7 +3616,7 @@ function ble-edit/isearch/.push-isearch-array {
   [[ $ind == "$oind" && $hash == "$ohash" ]] && return
 
   # [... A | B] -> C と来た時 (B を _ble_edit_isearch_arr に移動) [... A B | C] になる。
-  ble/util/array-push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
+  ble/array#push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
 }
 function ble-edit/isearch/.goto-match {
   local ind="$1" beg="$2" end="$3" needle="$4"

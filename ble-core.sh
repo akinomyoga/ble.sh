@@ -21,6 +21,110 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
+#
+# array and strings
+#
+
+_ble_util_array_prototype=()
+function _ble_util_array_prototype.reserve {
+  local -i n="$1" i
+  for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
+    _ble_util_array_prototype[i]=
+  done
+}
+
+if ((_ble_bash>=30100)); then
+  function ble/array#push {
+    builtin eval "$1+=(\"\${@:2}\")"
+  }
+else
+  function ble/array#push {
+    while
+      builtin eval "$1[\${#$1[@]}]=\"\$2\""
+      (($#>=3))
+    do
+      set -- "$1" "${@:3}"
+    done
+  }
+fi
+function ble/array#reverse {
+  builtin eval "
+  set -- \"\${$1[@]}\"; $1=()
+  local e$1 i$1=\$#
+  for e$1; do $1[--i$1]=\"\$e$1\"; done"
+}
+
+_ble_util_string_prototype='        '
+function _ble_util_string_prototype.reserve {
+  local -i n="$1" c
+  for ((c=${#_ble_util_string_prototype};c<n;c*=2)); do
+    _ble_util_string_prototype="$_ble_util_string_prototype$_ble_util_string_prototype"
+  done
+}
+
+function ble/string#repeat {
+  _ble_util_string_prototype.reserve "$2"
+  ret="${_ble_util_string_prototype::$2}"
+  ret="${ret// /$1}"
+}
+
+function ble/string#common-prefix {
+  local a="$1" b="$2"
+  ((${#a}>${#b})) && local a="$b" b="$a"
+  b="${b::${#a}}"
+  if [[ $a == $b ]]; then
+    ret="$a"
+    return
+  fi
+
+  # l <= 解 < u, (${a:u}: 一致しない, ${a:l} 一致する)
+  local l=0 u="${#a}" m
+  while ((l+1<u)); do
+    ((m=(l+u)/2))
+    if [[ ${a::m} == ${b::m} ]]; then
+      ((l=m))
+    else
+      ((u=m))
+    fi
+  done
+
+  ret="${a::l}"
+}
+function ble/string#common-suffix {
+  local a="$1" b="$2"
+  ((${#a}>${#b})) && local a="$b" b="$a"
+  b="${b:${#b}-${#a}}"
+  if [[ $a == $b ]]; then
+    ret="$a"
+    return
+  fi
+
+  # l < 解 <= u, (${a:l}: 一致しない, ${a:u} 一致する)
+  local l=0 u="${#a}" m
+  while ((l+1<u)); do
+    ((m=(l+u+1)/2))
+    if [[ ${a:m} == ${b:m} ]]; then
+      ((u=m))
+    else
+      ((l=m))
+    fi
+  done
+
+  ret="${a:u}"
+}
+## 関数 ble/string#split arr split str...
+##   文字列を分割します。
+##   @var[out] arr   分割した文字列を格納する配列名を指定します。
+##   @var[in]  split 分割に使用する文字を指定します。
+##   @var[in]  str   分割する文字列を指定します。
+function ble/string#split {
+  GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+}
+
+#
+# miscallaneous utils
+#
+
 ## 関数 ble/util/assign
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.ble_util_assign.tmp"
 # function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
@@ -92,6 +196,49 @@ else
     builtin eval "exec ${!_fdvar}$_redirect"
   }
 fi
+
+function ble/util/declare-print-definitions {
+  if [[ $# -gt 0 ]]; then
+    declare -p "$@" | command awk -v _ble_bash="$_ble_bash" '
+      BEGIN{decl="";}
+      function declflush( isArray){
+        if(decl){
+          isArray=(decl~/declare +-[fFgilrtux]*[aA]/);
+
+          # bash-3.0 の declare -p は改行について誤った出力をする。
+          if(_ble_bash<30100)gsub(/\\\n/,"\n",decl);
+
+          # declare 除去
+          sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/,"",decl);
+          if(isArray){
+            if(decl~/^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/){
+              sub(/='\''\(/,"=(",decl);
+              sub(/\)'\''$/,")",decl);
+              gsub(/'\'\\\\\'\''/,"'\''",decl);
+            }
+          }
+          print decl;
+          decl="";
+        }
+      }
+      /^declare /{
+        declflush();
+        decl=$0;
+        next;
+      }
+      {decl=decl "\n" $0;}
+      END{declflush();}
+    '
+  fi
+}
+
+# 正規表現は _ble_bash>=30000
+_ble_rex_isprint='^[ -~]+'
+function ble/util/isprint+ {
+  local LC_COLLATE=C # for cygwin collation
+  [[ $1 =~ $_ble_rex_isprint ]]
+}
+
 
 if ((_ble_bash>=40200)); then
   function ble/util/strftime {
@@ -166,138 +313,6 @@ elif type usleep &>/dev/null; then
 else
   function ble/util/sleep { command sleep "$1"; }
 fi
-
-if ((_ble_bash>=30100)); then
-  function ble/util/array-push {
-    builtin eval "$1+=(\"\$2\")"
-  }
-else
-  function ble/util/array-push {
-    builtin eval "$1[\${#$1[@]}]=\"\$2\""
-  }
-fi
-function ble/util/array-reverse {
-  builtin eval "
-  set -- \"\${$1[@]}\"; $1=()
-  local e$1 i$1=\$#
-  for e$1; do $1[--i$1]=\"\$e$1\"; done"
-}
-
-function ble/util/declare-print-definitions {
-  if [[ $# -gt 0 ]]; then
-    declare -p "$@" | command awk -v _ble_bash="$_ble_bash" '
-      BEGIN{decl="";}
-      function declflush( isArray){
-        if(decl){
-          isArray=(decl~/declare +-[fFgilrtux]*[aA]/);
-
-          # bash-3.0 の declare -p は改行について誤った出力をする。
-          if(_ble_bash<30100)gsub(/\\\n/,"\n",decl);
-
-          # declare 除去
-          sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/,"",decl);
-          if(isArray){
-            if(decl~/^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/){
-              sub(/='\''\(/,"=(",decl);
-              sub(/\)'\''$/,")",decl);
-              gsub(/'\'\\\\\'\''/,"'\''",decl);
-            }
-          }
-          print decl;
-          decl="";
-        }
-      }
-      /^declare /{
-        declflush();
-        decl=$0;
-        next;
-      }
-      {decl=decl "\n" $0;}
-      END{declflush();}
-    '
-  fi
-}
-
-_ble_util_array_prototype=()
-function _ble_util_array_prototype.reserve {
-  local -i n="$1" i
-  for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
-    _ble_util_array_prototype[i]=
-  done
-}
-_ble_util_string_prototype='        '
-function _ble_util_string_prototype.reserve {
-  local -i n="$1" c
-  for ((c=${#_ble_util_string_prototype};c<n;c*=2)); do
-    _ble_util_string_prototype="$_ble_util_string_prototype$_ble_util_string_prototype"
-  done
-}
-
-function ble/string#repeat {
-  _ble_util_string_prototype.reserve "$2"
-  ret="${_ble_util_string_prototype::$2}"
-  ret="${ret// /$1}"
-}
-
-function ble/string#common-prefix {
-  local a="$1" b="$2"
-  ((${#a}>${#b})) && local a="$b" b="$a"
-  b="${b::${#a}}"
-  if [[ $a == $b ]]; then
-    ret="$a"
-    return
-  fi
-
-  # l <= 解 < u, (${a:u}: 一致しない, ${a:l} 一致する)
-  local l=0 u="${#a}" m
-  while ((l+1<u)); do
-    ((m=(l+u)/2))
-    if [[ ${a::m} == ${b::m} ]]; then
-      ((l=m))
-    else
-      ((u=m))
-    fi
-  done
-
-  ret="${a::l}"
-}
-function ble/string#common-suffix {
-  local a="$1" b="$2"
-  ((${#a}>${#b})) && local a="$b" b="$a"
-  b="${b:${#b}-${#a}}"
-  if [[ $a == $b ]]; then
-    ret="$a"
-    return
-  fi
-
-  # l < 解 <= u, (${a:l}: 一致しない, ${a:u} 一致する)
-  local l=0 u="${#a}" m
-  while ((l+1<u)); do
-    ((m=(l+u+1)/2))
-    if [[ ${a:m} == ${b:m} ]]; then
-      ((u=m))
-    else
-      ((l=m))
-    fi
-  done
-
-  ret="${a:u}"
-}
-## 関数 ble/string#split arr split str...
-##   文字列を分割します。
-##   @var[out] arr   分割した文字列を格納する配列名を指定します。
-##   @var[in]  split 分割に使用する文字を指定します。
-##   @var[in]  str   分割する文字列を指定します。
-function ble/string#split {
-  GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
-}
-
-# 正規表現は _ble_bash>=30000
-_ble_rex_isprint='^[ -~]+'
-function ble/util/isprint+ {
-  local LC_COLLATE=C # for cygwin collation
-  [[ $1 =~ $_ble_rex_isprint ]]
-}
 
 ## 関数 ble/util/cat
 ##   cat の代替。但し、ファイル内に \0 が含まれる場合は駄目。
@@ -391,7 +406,7 @@ function ble/util/joblist {
   if [[ $jobs0 != "$_ble_util_joblist_jobs" ]]; then
     for ijob in "${!list[@]}"; do
       if [[ ${_ble_util_joblist_list[ijob]} && ${list[ijob]#'['*']'[-+ ]} != "${_ble_util_joblist_list[ijob]#'['*']'[-+ ]}" ]]; then
-        ble/util/array-push _ble_util_joblist_events "${list[ijob]}"
+        ble/array#push _ble_util_joblist_events "${list[ijob]}"
         list[ijob]=
       fi
     done
@@ -406,7 +421,7 @@ function ble/util/joblist {
     # check removed jobs through list -> _ble_util_joblist_list.
     for ijob in "${!list[@]}"; do
       if [[ ${list[ijob]} && ! ${_ble_util_joblist_list[ijob]} ]]; then
-        ble/util/array-push _ble_util_joblist_events "${list[ijob]}"
+        ble/array#push _ble_util_joblist_events "${list[ijob]}"
       fi
     done
   else

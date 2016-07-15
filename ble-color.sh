@@ -218,14 +218,14 @@ function ble-color/.color2sgrbg {
 
 # 遅延初期化登録
 _ble_faces_lazy_loader=()
-function ble-color/faces/addhook-onload { ble/util/array-push _ble_faces_lazy_loader "hook:$1"; }
+function ble-color/faces/addhook-onload { ble/array#push _ble_faces_lazy_loader "hook:$1"; }
 
 # 遅延初期化
 _ble_faces_count=0
 _ble_faces=()
 _ble_faces_sgr=()
-function ble-color-defface   { ble/util/array-push _ble_faces_lazy_loader "def:$1:$2"; }
-function ble-color-setface   { ble/util/array-push _ble_faces_lazy_loader "set:$1:$2"; }
+function ble-color-defface   { ble/array#push _ble_faces_lazy_loader "def:$1:$2"; }
+function ble-color-setface   { ble/array#push _ble_faces_lazy_loader "set:$1:$2"; }
 function ble-color-face2g    { ble-color/faces/initialize && ble-color-face2g    "$@"; }
 function ble-color-face2sgr  { ble-color/faces/initialize && ble-color-face2sgr  "$@"; }
 function ble-color-iface2g   { ble-color/faces/initialize && ble-color-iface2g   "$@"; }

@@ -848,7 +848,7 @@ declare -a _ble_decode_keymap_stack=()
 
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
-  ble/util/array-push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
+  ble/array#push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
   _ble_decode_key__kmap="$1"
 }
 ## 関数 ble-decode/keymap/pop
@@ -1092,7 +1092,7 @@ function ble-bind/option:csi {
     local ret i iN num="${BASH_REMATCH[1]}\$"
     for ((i=0,iN=${#num};i<iN;i++)); do
       ble/util/s2c "$num" "$i"
-      ble/util/array-push cseq "$ret"
+      ble/array#push cseq "$ret"
     done
     if [[ $kcode ]]; then
       ble-decode-char/bind "${cseq[*]}" "$((kcode|ble_decode_Shft))"

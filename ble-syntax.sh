@@ -2551,17 +2551,16 @@ function ble-syntax:bash/extract-command/.register-word {
       comp_cword="${#comp_words[@]}"
       comp_point="$((${#comp_line}+wbegin+wlen-pos))"
       comp_line="$wtxt$comp_line"
-      ble/util/array-push comp_words "$wtxt"
+      ble/array#push comp_words "$wtxt"
     else
       comp_cword="${#comp_words[@]}"
       comp_point="${#comp_line}"
       comp_line="$wtxt $comp_line"
-      ble/util/array-push comp_words ""
-      ble/util/array-push comp_words "$wtxt"
+      ble/array#push comp_words "" "$wtxt"
     fi
   else
     comp_line="$wtxt$comp_line"
-    ble/util/array-push comp_words "$wtxt"
+    ble/array#push comp_words "$wtxt"
   fi
 }
 
@@ -2593,7 +2592,7 @@ function ble-syntax:bash/extract-command/.construct {
       ble-syntax:bash/extract-command/.construct-proc
   fi
 
-  ble/util/array-reverse comp_words
+  ble/array#reverse comp_words
   comp_cword="$((${#comp_words[@]}-1-comp_cword))"
   comp_point="$((${#comp_line}-comp_point))"
 }
@@ -3251,7 +3250,7 @@ function ble-highlight-layer:syntax/update {
   #     else
   #       value="? ($wtxt)"
   #     fi
-  #     ble/util/array-push words "[$value ${word[*]}]"
+  #     ble/array#push words "[$value ${word[*]}]"
   #   fi
   # done
   # .ble-line-info.draw-text "${words[*]}"

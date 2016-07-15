@@ -346,25 +346,21 @@ function ble-complete/source/argument/.compgen {
         c="${arg:ic:1}"
         case "$c" in
         ([abcdefgjksuvDE])
-          ble/util/array-push compoptions "-$c" ;;
+          ble/array#push compoptions "-$c" ;;
         ([pr])
           ;; # 無視 (-p 表示 -r 削除)
         ([AGWXPS])
-          ble/util/array-push compoptions "-$c"
-          ble/util/array-push compoptions "${compargs[iarg++]}" ;;
+          ble/array#push compoptions "-$c" "${compargs[iarg++]}" ;;
         (o)
           local o="${compargs[iarg++]}"
           comp_opts="$comp_opts$o:"
-          ble/util/array-push compoptions "-$c"
-          ble/util/array-push compoptions "$o" ;;
+          ble/array#push compoptions "-$c" "$o" ;;
         (F)
           comp_func="${compargs[iarg++]}"
-          ble/util/array-push compoptions "-$c"
-          ble/util/array-push compoptions ble-complete/source/argument/.compgen-helper-func ;;
+          ble/array#push compoptions "-$c" ble-complete/source/argument/.compgen-helper-func ;;
         (C)
           comp_prog="${compargs[iarg++]}"
-          ble/util/array-push compoptions "-$c"
-          ble/util/array-push compoptions ble-complete/source/argument/.compgen-helper-prog ;;
+          ble/array#push compoptions "-$c" ble-complete/source/argument/.compgen-helper-prog ;;
         (*)
           # just discard
         esac
