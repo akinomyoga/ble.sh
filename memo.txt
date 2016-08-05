@@ -380,20 +380,6 @@ tech
 
 2016-08-06
 
-  * 突然、履歴項目に登録されなくなってしまう現象に出会う。
-    但し、history -s では登録されている様である。
-
-    調べてみると空白が登録されている様子である。
-    というかこのプロセスはいつの version なのだろうか。。
-
-    更に現象の発生したシェルで調べてみると、
-    _ble_edit_history と同じだけ要素数を持っている筈の
-    _ble_edit_history_edit 配列の中身が殆ど空になっている。
-    そもそも何故その様な事態になったのかも不思議であるが、
-    これが履歴が登録されない原因なのだろうか。
-    取り敢えず、問題を確認する為に _ble_edit_history_edit の内容を復元してみる。
-    →問題は発生しなくなった様に見える。
-
   * syntax: "${var# ... }" などの中の '' $'' $"" は無効になる。
     では "${var:-${var: ... }}" などの入れ子になっている場合はどうなのか?
     現在の実装ではこの様な入れ子の場合には quote が有効になってしまっている。
@@ -433,7 +419,7 @@ tech
     % 一致する version がなければ現在の方法に fall back する様にすれば良い。
     % もし cygwin に binary を添付することを許すのであれば、
     % stty に関しても cygwin 用に builtin として提供してしまって良い。
-    % 
+    %
     % しかし、この事の問題点は binary を添付することを許してしまうと、
     % 今迄スクリプトで実装してきたことの意味は何なのかという事になるという事である。
     % 一応、そのバイナリが使えなくても問題なく動作するという点は有意義であるが。
@@ -1762,6 +1748,102 @@ tech
 -------------------------------------------------------------------------------
 
 2016-08-06
+
+  * edit: bug 履歴項目に登録されなくなる現象
+
+    突然、履歴項目に登録されなくなってしまう現象に出会う。
+    但し、history -s では登録されている様である。
+
+    調べてみると空白が登録されている様子である。
+    というかこのプロセスはいつの version なのだろうか。。
+
+    % % 更に現象の発生したシェルで調べてみると、
+    % % _ble_edit_history と同じだけ要素数を持っている筈の
+    % % _ble_edit_history_edit 配列の中身が殆ど空になっている。長さが 20 だ。
+    % % そもそも何故その様な事態になったのかも不思議であるが、
+    % % これが履歴が登録されない原因なのだろうか。
+    % % 取り敢えず、問題を確認する為に _ble_edit_history_edit の内容を復元してみる。
+    % % →問題は発生しなくなった様に見える。
+    % % 従って、_ble_edit_history_edit さえ空にならなければこの問題は発生しないのではないかと思われる。
+    % %
+    % % さて、ではそもそも何故 _ble_edit_history_edit の中身が空になってしまったのだろう。
+    % % 再度 _ble_edit_history_edit に変更が発生しそうな箇所を探す。
+    %
+    % と思ったが変だ。問題が発生した直後に実行した以下のコードではちゃんと
+    % _ble_edit_history_edit の中身は沢山の項目が登録されている。
+    %
+    %   [murase@padparadscha 1 xgetopt]$ echo ${#_ble_edit_history_edit[@]}
+    %   21034
+    %
+    % 登録されている項目数も前後に実行した history | tail の結果と較べても正しい物の様に見える。
+    %
+    % これで二つの謎現象が起こっていたという事になる。
+    %
+    % a 何故か分からないが履歴項目が登録されない状態になる。
+    %   history -s には登録されている。
+    % b 更に原因を探す為に色々実行していると、
+    %   _ble_edit_history_edit の中身が空になってしまった。
+    %
+    % と思って再度前にテストの為に実行したコマンドを確認してみると、
+    %   echo "${#_ble_edit_history_edit[0]}"
+    % を実行していた。つまり、配列の要素数ではなくて配列の先頭要素の長さを確認していた。
+    % ただの勘違いだった。
+
+    さて上記の勘違いで唯一分かった事は、
+    _ble_edit_history_edit=("${_ble_edit_history[@]}")
+    を実行したら以上状態から直ったという事である。
+    うーん。一応近辺の出力内容を記録しておく。
+
+    | [murase@padparadscha 1 xgetopt]$ history | tail
+    | 21020  git submodule --help
+    | 21021  g t
+    | 21022  pwd
+    | 21023  less xgetopt.h
+    | 21024  g add remote origin git@gitlab:akinomyoga/libmwg-xgetopt.git
+    | 21025  g remote origin git@gitlab.akinomyoga/libmwg-xgetopt.git
+    | 21026  false
+    | 21027  true
+    | 21028  g remote add origin git@gitlab:akinomyoga/libmwg-xgetopt.git
+    | 21029  history | tail
+    | [murase@padparadscha 1 xgetopt]$
+    | [murase@padparadscha 1 xgetopt]$
+    | [murase@padparadscha 1 xgetopt]$ echo ${#_ble_history_edit_dirt[@]}
+    | 0
+    | [murase@padparadscha 1 xgetopt]$ echo ${#_ble_history_edit[@]}
+    | 0
+    | [murase@padparadscha 1 xgetopt]$ echo ${#_ble_edit_history_dirt[@]}
+    | 0
+    | [murase@padparadscha 1 xgetopt]$ echo ${#_ble_edit_history_edit[@]}
+    | 21034
+    | [murase@padparadscha 1 xgetopt]$ echo ${_ble_edit_history_dirt[@]: -10}
+    |
+    | [murase@padparadscha 1 xgetopt]$ echo ${_ble_edit_history_edit[@]: -10}
+    | history | tail echo ${#_ble_history_edit[@]} echo ${#_ble_edit_history_dirt[@]} echo ${_ble_edit_history_edit[@]: -10}
+
+    うーん。どうやら ${#_ble_edit_history_edit[@]} の数が余分になっている様に見える。
+    上記のタイミングでは本当は 21034 になっているべきである。
+    何かが無駄に登録されてしまっている状態である。
+    では何故その様な事になるのか?
+
+    →原因が分かった。現在最新の行を編集してから (何か非空の内容がある状態で) 履歴項目を移動すると、
+    その現在最新の行が _ble_edit_history_edit に登録される。
+    これはまた最新の行に戻ってきた時に参照する為に必要になる物である。
+    また、この編集仕掛の行は検索の対象でもある。
+    この時点で _ble_edit_history と要素数が異なってしまう。
+    →実際に試してみた所、再現した。
+      編集して echo という文字列がある状態で別の履歴項目に移る。
+      その後でコマンドを実行する。ずれが生じる。確かに履歴項目に登録されなくなる。
+
+    つまり、_ble_edit_history の要素数と _ble_edit_history_edit の要素数が
+    同じ筈だという仮定は成立しない物として取り扱わなければならない。
+    多分、_ble_edit_history/_ble_edit_history_edit に同時に項目を登録している箇所で注意しておけば問題ない。
+
+    + 一箇所 _ble_edit_history から項目を削除しているのに、
+      _ble_edit_history_edit から項目を削除していない箇所を発見する。
+      これについては修正した。
+      しかし、この事によって _ble_edit_history_edit の中身が空になるとは思われない。
+      寧ろ、_ble_edit_history よりも余分な要素が残留してしまうという逆の現象になるはずだ。
+      更に、現在の HISTCONTROL の設定ではこのコードは実行されないはずである。
 
   * syntax: bug 他の問題を調査中に以下のエラーも発生した。
 

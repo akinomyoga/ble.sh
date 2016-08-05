@@ -3388,20 +3388,25 @@ function ble-edit/history/add {
           local i n=-1
           for ((i=0;i<=lastIndex;i++)); do
             if [[ ${_ble_edit_history[i]} != "$cmd" ]]; then
-              ((++n!=i)) && _ble_edit_history[n]="${_ble_edit_history[i]}"
+              if ((++n!=i)); then
+                _ble_edit_history[n]="${_ble_edit_history[i]}"
+                _ble_edit_history_edit[n]="${_ble_edit_history_edit[i]}"
+              fi
             fi
           done
           for ((i=lastIndex;i>n;i--)); do
             unset '_ble_edit_history[i]'
+            unset '_ble_edit_history_edit[i]'
           done
           ;;
         esac
       done
     fi
 
-    _ble_edit_history[${#_ble_edit_history[@]}]="$cmd"
-    _ble_edit_history_edit[${#_ble_edit_history_edit[@]}]="$cmd"
-    _ble_edit_history_count="${#_ble_edit_history[@]}"
+    local topIndex=${#_ble_edit_history[@]}
+    _ble_edit_history[topIndex]="$cmd"
+    _ble_edit_history_edit[topIndex]="$cmd"
+    _ble_edit_history_count=$((topIndex+1))
     _ble_edit_history_ind="$_ble_edit_history_count"
 
     # _ble_bash<30100 の時は必ずここを通る。
