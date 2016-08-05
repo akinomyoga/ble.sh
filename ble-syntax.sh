@@ -845,7 +845,7 @@ function ble-syntax:bash/check-dollar {
 function ble-syntax:bash/check-quotes {
   local rex
 
-  if ((ctx==CTX_PWORD)); then
+  if ((ctx==CTX_PWORD)) || ((ctx==CTX_EXPR)); then
     # "${var ～}" の中では '' $'' $"" は無効 (-u extquote の時は '' が無効) になる。
     if [[ $tail == "'"* ]] || { [[ $tail == '$'[\'\"]* ]] && ! shopt -q extquote; }; then
       local ntype
@@ -1314,7 +1314,7 @@ function ble-syntax:bash/ctx-expr {
       #       = 'v[' # v[...]=
       #       = '['  # $[...] 及び式中の [...]
       ble-syntax:bash/ctx-expr/.count-bracket && return
-    elif [[ $ntype == '${' ]]; then
+    elif [[ $ntype == '${' || $ntype == '"${' ]]; then
       # ntype = '${' # ${var:offset:length}
       ble-syntax:bash/ctx-expr/.count-brace && return
     else
