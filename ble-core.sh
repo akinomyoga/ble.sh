@@ -264,26 +264,15 @@ if ((_ble_bash>=40000)); then
   _ble_util_sleep_fd=
   _ble_util_sleep_tmp=
   function ble/util/sleep {
-    function ble/util/sleep { local REPLY=; ! read -u "$_ble_util_sleep_fd" -t "$1"; }
+    function ble/util/sleep { local REPLY=; ! read -u "$_ble_util_sleep_fd" -t "$1"; } &>/dev/null
 
     if [[ $OSTYPE == cygwin* ]]; then
       # Cygwin work around
 
       ble/util/openat _ble_util_sleep_fd '< <(
         [[ $- == *i* ]] && trap -- '' INT QUIT
-        while :; do command sleep 2147483647; done
+        while :; do command sleep 2147483647; done &>/dev/null
       )'
-
-      if [[ $BASH_VERSION ]]; then
-        function ble/util/sleep {
-          local s="${1%%.*}"
-          if ((s>0)); then
-            ! read -u "$_ble_util_sleep_fd" -t "$1" s
-          else
-            ! read -t "$1" s < /dev/tcp/0.0.0.0/80
-          fi
-        }
-      fi
     else
       _ble_util_sleep_tmp="$_ble_base_tmp/$$.ble_util_sleep.pipe"
       if [[ ! -p $_ble_util_sleep_tmp ]]; then
