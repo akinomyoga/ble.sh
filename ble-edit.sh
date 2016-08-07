@@ -778,6 +778,29 @@ function ble-edit/prompt/initialize {
   else
     _ble_edit_prompt__string_root='$'
   fi
+
+  if [[ $OSTYPE == cygwin* ]]; then
+    local windir=/cygdrive/c/Windows
+    if [[ $WINDIR == [A-Za-z]:\\* ]]; then
+      local bsl='\' sl=/
+      local c=${WINDIR::1} path=${WINDIR:3}
+      if [[ $c == [A-Z] ]]; then
+        if ((_ble_bash>=40000)); then
+          c=${c,?}
+        else
+          local ret
+          ble/util/s2c "$c"
+          ble/util/c2s "$((ret+32))"
+          c=$ret
+        fi
+      fi
+      windir=/cygdrive/$c/${path//$bsl/$sl}
+    fi
+
+    if [[ -e $windir && -w $windir ]]; then
+      _ble_edit_prompt__string_root='#'
+    fi
+  fi
 }
 
 ## 変数 _ble_edit_prompt
