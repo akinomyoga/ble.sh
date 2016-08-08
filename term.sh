@@ -45,7 +45,7 @@ function ble/term.sh/initialize {
   # xenl (end of line behavior)
   _ble_term_xenl=1
   [[ $_ble_term_hasput ]] &&
-    ! ble/term.sh/tput tput xenl &>/dev/null &&
+    ! ble/term.sh/tput xenl &>/dev/null &&
     _ble_term_xenl=0
   ble/term.sh/register-varname _ble_term_xenl
 
