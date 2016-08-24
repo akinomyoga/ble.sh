@@ -124,7 +124,7 @@ function ble-complete/action/file/initialize {
 }
 function ble-complete/action/file/complete {
   local tail=
-  if [[ -e $CAND ]]; then
+  if [[ -e $CAND || -h $CAND ]]; then
     if [[ -d $CAND ]]; then
       ble-complete/action/util/complete.addtail /
       tail=/
@@ -220,7 +220,7 @@ function ble-complete/source/file {
 
   local cand
   for cand in "$COMPV"*; do
-    [[ -e $cand ]] || continue
+    [[ -e $cand || -h $cand ]] || continue
     [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
     ble-complete/yield-candidate "$cand" ble-complete/action/file
   done

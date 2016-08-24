@@ -2882,7 +2882,7 @@ fi
 function ble-syntax/highlight/filetype {
   local file="$1" _0="$2"
   type=
-  [[ ! -e "$file" && ( $file == '~' || $file == '~/'* ) ]] && file="$HOME${file:1}"
+  [[ ( $file == '~' || $file == '~/'* ) && ! ( -e $file || -h $file ) ]] && file="$HOME${file:1}"
   if [[ -e $file ]]; then
     if [[ -d $file ]]; then
       ((type=ATTR_FILE_DIR))
@@ -2901,6 +2901,9 @@ function ble-syntax/highlight/filetype {
     elif [[ -b $file ]]; then
       ((type=ATTR_FILE_BLK))
     fi
+  elif [[ -h $file ]]; then
+    # dangling link
+    ((type=ATTR_FILE_LINK))
   fi
 }
 
@@ -2978,7 +2981,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
           #
           local redirect_ntype=${node[nofs-BLE_SYNTAX_TREE_WIDTH]:1}
           if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>|' ) ]]; then
-            if [[ -e $value ]]; then
+            if [[ -e $value || -h $value ]]; then
               if [[ -d $value || ! -w $value ]]; then
                 # ディレクトリまたは書き込み権限がない
                 type=$ATTR_ERR

@@ -148,7 +148,7 @@ fi
 if [[ -r /tmp && -w /tmp && -x /tmp ]]; then
   if [[ ! -d /tmp/blesh ]]; then
     _ble_base_tmp=/tmp/blesh
-    [[ -e $_ble_base_tmp ]] && command rm -f "$_ble_base_tmp"
+    [[ -e $_ble_base_tmp || -h $_ble_base_tmp ]] && command rm -f "$_ble_base_tmp"
     command mkdir -p "$_ble_base_tmp"
     command chmod a+rwxt "$_ble_base_tmp"
   elif [[ -r /tmp/blesh && -w /tmp/blesh && -x /tmp/blesh ]]; then

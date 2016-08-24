@@ -483,7 +483,7 @@ function ble-syntax-highlight+default {
         local arg="${BASH_REMATCH[0]}"
 
         local file="$arg"
-        rex='^~' && [[ ! -e $file && $file =~ $rex ]] && file="$HOME${file:1}"
+        [[ ( $file == '~' || $file = '~/'* ) && ! ( -e $file || -h $file ) ]] && file="$HOME${file:1}"
         if [[ -d $file ]]; then
           ble-region_highlight-append "$i $((i+${#arg})) fg=navy,underline"
         elif [[ -h $file ]]; then
