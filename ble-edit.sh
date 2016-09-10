@@ -3989,6 +3989,7 @@ function ble/widget/history-isearch-backward {
   _ble_edit_isearch_dir=-
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_que=()
+  _ble_edit_mark="$_ble_edit_ind"
   ble-edit/isearch/.draw-line
 }
 function ble/widget/history-isearch-forward {
@@ -3997,6 +3998,7 @@ function ble/widget/history-isearch-forward {
   _ble_edit_isearch_dir=+
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_que=()
+  _ble_edit_mark="$_ble_edit_ind"
   ble-edit/isearch/.draw-line
 }
 
