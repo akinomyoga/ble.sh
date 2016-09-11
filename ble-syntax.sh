@@ -783,6 +783,8 @@ function ble-syntax:bash/initialize-vars {
 # 共通の字句の一致判定
 
 function ble-syntax:bash/check-dollar {
+  [[ $tail == '$'* ]] || return 1
+
   local rex
   if [[ $tail == '${'* ]]; then
     # ■中で許される物: 決まったパターン + 数式や文字列に途中で切り替わる事も
@@ -837,9 +839,11 @@ function ble-syntax:bash/check-dollar {
       _ble_syntax_attr[i+1]=ATTR_VAR,
       i+=${#BASH_REMATCH}))
     return 0
+  else
+    # if dollar doesn't match any patterns it is treated as a normal character
+    ((_ble_syntax_attr[i++]=ctx))
+    return 0
   fi
-
-  return 1
 }
 
 function ble-syntax:bash/check-quotes {
