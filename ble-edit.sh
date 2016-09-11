@@ -3393,37 +3393,39 @@ function ble-edit/history/add {
 
   if [[ $_ble_edit_history_loaded ]]; then
     if [[ $HISTCONTROL ]]; then
-      local lastIndex=$((${#_ble_edit_history[@]}-1)) spec
+      local ignorespace ignoredups erasedups spec
       for spec in ${HISTCONTROL//:/ }; do
         case "$spec" in
-        ignorespace)
-          [[ ! ${cmd##[ 	]*} ]] && return ;;
-        ignoredups)
-          if ((lastIndex>=0)); then
-            [[ $cmd == "${_ble_edit_history[lastIndex]}" ]] && return
-          fi ;;
-        ignoreboth)
-          [[ ! ${cmd##[ 	]*} ]] && return
-          if ((lastIndex>=0)); then
-            [[ $cmd == "${_ble_edit_history[lastIndex]}" ]] && return
-          fi ;;
-        erasedups)
-          local i n=-1
-          for ((i=0;i<=lastIndex;i++)); do
-            if [[ ${_ble_edit_history[i]} != "$cmd" ]]; then
-              if ((++n!=i)); then
-                _ble_edit_history[n]="${_ble_edit_history[i]}"
-                _ble_edit_history_edit[n]="${_ble_edit_history_edit[i]}"
-              fi
-            fi
-          done
-          for ((i=lastIndex;i>n;i--)); do
-            unset '_ble_edit_history[i]'
-            unset '_ble_edit_history_edit[i]'
-          done
-          ;;
+        (ignorespace) ignorespace=1 ;;
+        (ignoredups)  ignoredups=1 ;;
+        (ignoreboth)  ignorespace=1 ignoredups=1 ;;
+        (erasedups)   erasedups=1 ;;
         esac
       done
+
+      if [[ $ignorespace ]]; then
+        [[ $cmd == [' 	']* ]] && return
+      fi
+      if [[ $ignoredups ]]; then
+        local lastIndex=$((${#_ble_edit_history[@]}-1))
+        ((lastIndex>=0)) && [[ $cmd == "${_ble_edit_history[lastIndex]}" ]] && return
+      fi
+      if [[ $erasedups ]]; then
+        local lastIndex=$((${#_ble_edit_history[@]}-1))
+        local i n=-1
+        for ((i=0;i<=lastIndex;i++)); do
+          if [[ ${_ble_edit_history[i]} != "$cmd" ]]; then
+            if ((++n!=i)); then
+              _ble_edit_history[n]="${_ble_edit_history[i]}"
+              _ble_edit_history_edit[n]="${_ble_edit_history_edit[i]}"
+            fi
+          fi
+        done
+        for ((i=lastIndex;i>n;i--)); do
+          unset '_ble_edit_history[i]'
+          unset '_ble_edit_history_edit[i]'
+        done
+      fi
     fi
 
     local topIndex=${#_ble_edit_history[@]}
@@ -3451,6 +3453,7 @@ function ble-edit/history/add {
   fi
 
   if [[ $cmd == *$'\n'* ]]; then
+    # Note: 改行を含む場合は %q は常に $'' の形式になる。
     ble/util/sprintf cmd 'eval -- %q' "$cmd"
   fi
 
