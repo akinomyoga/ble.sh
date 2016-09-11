@@ -3238,10 +3238,25 @@ function ble/widget/accept-line {
 }
 
 function ble/widget/accept-and-next {
-  local hist_ind
-  ble-edit/history/getindex -v hist_ind
-  ble/widget/accept-line
-  ble-edit/history/goto $((hist_ind+1))
+  local index count
+  ble-edit/history/getindex -v index
+  ble-edit/history/getcount -v count
+
+  if ((index+1<count)); then
+    local HISTINDEX_NEXT="$((index+1))" # to be modified in accept-line
+    ble/widget/accept-line
+    ble-edit/history/goto "$HISTINDEX_NEXT"
+  else
+    local content="$_ble_edit_str"
+    ble/widget/accept-line
+
+    ble-edit/history/getcount -v count
+    if [[ ${_ble_edit_history[count-1]} == $_ble_edit_str ]]; then
+      ble-edit/history/goto "$((count-1))"
+    else
+      _ble_edit_str.reset "$content"
+    fi
+  fi
 }
 function ble/widget/newline {
   KEYS=(10) ble/widget/self-insert
@@ -3364,6 +3379,8 @@ function ble-edit/history/load {
   fi
 }
 
+# @var[in,out] HISTINDEX_NEXT
+#   used by ble/widget/accept-and-next to get modified next-entry positions
 function ble-edit/history/add {
   # 注意: bash-3.2 未満では何故か bind -x の中では常に history off になっている。
   [[ -o history ]] || ((_ble_bash<30200)) || return
@@ -3411,20 +3428,23 @@ function ble-edit/history/add {
         ((lastIndex>=0)) && [[ $cmd == "${_ble_edit_history[lastIndex]}" ]] && return
       fi
       if [[ $erasedups ]]; then
-        local lastIndex=$((${#_ble_edit_history[@]}-1))
-        local i n=-1
-        for ((i=0;i<=lastIndex;i++)); do
+        local indexNext="$HISTINDEX_NEXT"
+        local i n=-1 N=${#_ble_edit_history[@]}
+        for ((i=0;i<N;i++)); do
           if [[ ${_ble_edit_history[i]} != "$cmd" ]]; then
             if ((++n!=i)); then
               _ble_edit_history[n]="${_ble_edit_history[i]}"
               _ble_edit_history_edit[n]="${_ble_edit_history_edit[i]}"
             fi
+          else
+            ((i<HISTINDEX_NEXT&&HISTINDEX_NEXT--))
           fi
         done
-        for ((i=lastIndex;i>n;i--)); do
+        for ((i=N-1;i>n;i--)); do
           unset '_ble_edit_history[i]'
           unset '_ble_edit_history_edit[i]'
         done
+        [[ ${HISTINDEX_NEXT+set} ]] && HISTINDEX_NEXT=$indexNext
       fi
     fi
 
@@ -3435,7 +3455,7 @@ function ble-edit/history/add {
     _ble_edit_history_ind="$_ble_edit_history_count"
 
     # _ble_bash<30100 の時は必ずここを通る。
-    # 始めに _ble_edit_history_loaded=1 になるので。
+    # 初期化時に _ble_edit_history_loaded=1 になるので。
     ((_ble_bash<30100)) && histfile="${HISTFILE:-$HOME/.bash_history}"
   else
     if [[ $HISTCONTROL ]]; then
