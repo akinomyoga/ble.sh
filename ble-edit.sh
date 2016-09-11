@@ -3585,8 +3585,13 @@ function ble/widget/backward-line-or-history-prev {
 ##   一致した文字列
 ## 変数 _ble_edit_isearch_dir
 ##   現在・直前の検索方法
-## 配列 _ble_edit_isearch_arr
-##   検索履歴
+## 配列 _ble_edit_isearch_arr[]
+##   インクリメンタル検索の過程を記録する。
+##   各要素は ind:dir:beg:end:needle の形式をしている。
+##   ind は履歴項目の番号を表す。dir は履歴検索の方向を表す。
+##   beg, end はそれぞれ一致開始位置と終了位置を表す。
+##   丁度 _ble_edit_ind 及び _ble_edit_mark に対応する。
+##   needle は検索に使用した文字列を表す。
 ## 配列 _ble_edit_isearch_que
 ##   未処理の操作
 _ble_edit_isearch_str=
@@ -3979,8 +3984,10 @@ function ble/widget/isearch/cancel {
     ble-edit/isearch/.draw-line # 進捗状況を消去
   else
     if ((${#_ble_edit_isearch_arr[@]})); then
-      local line="${_ble_edit_isearch_arr[0]}"
-      ble-edit/history/goto "${line%%:*}"
+      local step
+      ble/string#split step : "${_ble_edit_isearch_arr[0]}"
+      ble-edit/history/goto "${step[0]}"
+      _ble_edit_ind=${step[2]} _ble_edit_mark=${step[3]}
     fi
 
     ble/widget/isearch/exit
