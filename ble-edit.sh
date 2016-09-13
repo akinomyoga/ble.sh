@@ -1625,13 +1625,18 @@ function _ble_edit_str.replace {
   _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end"
   .ble-edit-draw.set-dirty "$beg"
 #%if !release
+  # Note: 何処かのバグで _ble_edit_int に変な値が入ってエラーになるので、
+  #   ここで誤り訂正を行う。想定として、この関数を呼出した時の _ble_edit_ind の値は、
+  #   replace を実行する前の値とする。この関数の呼び出し元では、
+  #   _ble_edit_ind の更新はこの関数の呼び出しより後で行う様にする必要がある。
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
     _ble_edit_dirty_syntax_beg=0
     _ble_edit_dirty_syntax_end="${#_ble_edit_str}"
-    if ((_ble_edit_ind>${#_ble_edit_str})); then
-      _ble_edit_ind=${#_ble_edit_str}
-    fi
+    local olen=$((${#_ble_edit_str}-${#ins}+end-beg))
+    ((olen<0&&(olen=0),
+      _ble_edit_ind>olen&&(_ble_edit_ind=olen),
+      _ble_edit_mark>olen&&(_ble_edit_mark=olen)))
   fi
 #%end
 }
@@ -2220,13 +2225,13 @@ function .ble-edit.delete-range {
   .ble-edit.process-range-argument "$@" || return 0
 
   # delete
+  _ble_edit_str.replace p0 p1 ''
   ((
     _ble_edit_ind>p1? (_ble_edit_ind-=len):
     _ble_edit_ind>p0&&(_ble_edit_ind=p0),
     _ble_edit_mark>p1? (_ble_edit_mark-=len):
     _ble_edit_mark>p0&&(_ble_edit_mark=p0)
   ))
-  _ble_edit_str.replace p0 p1 ''
 }
 ## 関数 .ble-edit.kill-range P0 P1
 function .ble-edit.kill-range {
@@ -2237,13 +2242,13 @@ function .ble-edit.kill-range {
   _ble_edit_kill_ring="${_ble_edit_str:p0:len}"
 
   # delete
+  _ble_edit_str.replace p0 p1 ''
   ((
     _ble_edit_ind>p1? (_ble_edit_ind-=len):
     _ble_edit_ind>p0&&(_ble_edit_ind=p0),
     _ble_edit_mark>p1? (_ble_edit_mark-=len):
     _ble_edit_mark>p0&&(_ble_edit_mark=p0)
   ))
-  _ble_edit_str.replace p0 p1 ''
 }
 ## 関数 .ble-edit.copy-range P0 P1
 function .ble-edit.copy-range {
