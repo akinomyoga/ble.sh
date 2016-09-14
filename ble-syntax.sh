@@ -415,11 +415,11 @@ function ble-syntax/print-status {
   local resultB
   ble-syntax/print-status/.dump-tree
 
-  local _result="$resultA$_ble_term_NL$resultB"
+  local result="$resultA$_ble_term_NL$resultB"
   if [[ $1 == -v && $2 ]]; then
-    eval "$2=\"\$_result\""
+    local "$2" && ble/util/upvar "$2" "$result"
   else
-    builtin echo "$_result"
+    builtin echo "$result"
   fi
 }
 

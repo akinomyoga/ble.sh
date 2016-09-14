@@ -135,12 +135,6 @@ function ble/util/assign {
   return "$_ret"
 }
 
-if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LC_ALL=C read -t 0; }
-else
-  function ble/util/is-stdin-ready { false; }
-fi
-
 if ((_ble_bash>=40100)); then
   function ble/util/set {
     builtin printf -v "$1" %s "$2"
@@ -163,6 +157,9 @@ else
   }
 fi
 
+function ble/util/upvar { builtin unset "$1" && builtin eval "$1=\"\$2\""; }
+function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
+
 function ble/util/type {
   _cmd="$2" ble/util/assign "$1" 'builtin type -t "$_cmd" 2>/dev/null'
   builtin eval "$1=\"\${$1%$_ble_term_nl}\""
@@ -180,6 +177,12 @@ else
     ble/util/type type "$1"
     [[ $type == function ]]
   }
+fi
+
+if ((_ble_bash>=40000)); then
+  function ble/util/is-stdin-ready { IFS= LC_ALL=C read -t 0; }
+else
+  function ble/util/is-stdin-ready { false; }
 fi
 
 # exec {var}>foo

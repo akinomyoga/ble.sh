@@ -35,182 +35,182 @@ function ble-color-show {
 
 declare -a _ble_color_g2sgr__table=()
 function ble-color-g2sgr {
-  local _var=ret _ret
+  local var=ret ret
   if [[ $1 == -v ]]; then
-    _var="$2"
+    var="$2"
     shift 2
   fi
 
-  _ret="${_ble_color_g2sgr__table[$1]}"
-  if [[ -z $_ret ]]; then
+  ret="${_ble_color_g2sgr__table[$1]}"
+  if [[ -z $ret ]]; then
     local -i g="$1"
     local fg="$((g>> 8&0xFF))"
     local bg="$((g>>16&0xFF))"
 
-    local _sgr=0
-    ((g&_ble_color_gflags_Bold))      && _sgr="$_sgr;${_ble_term_sgr_bold:-1}"
-    ((g&_ble_color_gflags_Italic))    && _sgr="$_sgr;${_ble_term_sgr_sitm:-3}"
-    ((g&_ble_color_gflags_Underline)) && _sgr="$_sgr;${_ble_term_sgr_smul:-4}"
-    ((g&_ble_color_gflags_Blink))     && _sgr="$_sgr;${_ble_term_sgr_blink:-5}"
-    ((g&_ble_color_gflags_Revert))    && _sgr="$_sgr;${_ble_term_sgr_rev:-7}"
-    ((g&_ble_color_gflags_Invisible)) && _sgr="$_sgr;${_ble_term_sgr_invis:-8}"
-    ((g&_ble_color_gflags_Strike))    && _sgr="$_sgr;${_ble_term_sgr_strike:-9}"
+    local sgr=0
+    ((g&_ble_color_gflags_Bold))      && sgr="$sgr;${_ble_term_sgr_bold:-1}"
+    ((g&_ble_color_gflags_Italic))    && sgr="$sgr;${_ble_term_sgr_sitm:-3}"
+    ((g&_ble_color_gflags_Underline)) && sgr="$sgr;${_ble_term_sgr_smul:-4}"
+    ((g&_ble_color_gflags_Blink))     && sgr="$sgr;${_ble_term_sgr_blink:-5}"
+    ((g&_ble_color_gflags_Revert))    && sgr="$sgr;${_ble_term_sgr_rev:-7}"
+    ((g&_ble_color_gflags_Invisible)) && sgr="$sgr;${_ble_term_sgr_invis:-8}"
+    ((g&_ble_color_gflags_Strike))    && sgr="$sgr;${_ble_term_sgr_strike:-9}"
     if ((g&_ble_color_gflags_ForeColor)); then
-      ble-color/.color2sgrfg -v "$_var" "$fg"
-      _sgr="$_sgr;${!_var}"
+      ble-color/.color2sgrfg -v "$var" "$fg"
+      sgr="$sgr;${!var}"
     fi
     if ((g&_ble_color_gflags_BackColor)); then
-      ble-color/.color2sgrbg -v "$_var" "$bg"
-      _sgr="$_sgr;${!_var}"
+      ble-color/.color2sgrbg -v "$var" "$bg"
+      sgr="$sgr;${!var}"
     fi
     
-    _ret="[${_sgr}m"
-    _ble_color_g2sgr__table[$1]="$_ret"
+    ret="[${sgr}m"
+    _ble_color_g2sgr__table[$1]="$ret"
   fi
 
-  builtin eval "$_var=\"\$_ret\""
+  local "$var" && ble/util/upvar "$var" "$ret"
 }
 function ble-color-gspec2g {
-  local _var=ret
+  local var=ret
   if [[ $1 == -v ]]; then
-    _var=$2
+    var=$2
     shift 2
   fi
   
-  local _g=0 entry
+  local g=0 entry
   for entry in ${1//,/ }; do
     case "$entry" in
-    (bold)      ((_g|=_ble_color_gflags_Bold)) ;;
-    (underline) ((_g|=_ble_color_gflags_Underline)) ;;
-    (blink)     ((_g|=_ble_color_gflags_Blink)) ;;
-    (invis)     ((_g|=_ble_color_gflags_Invisible)) ;;
-    (reverse)   ((_g|=_ble_color_gflags_Revert)) ;;
-    (strike)    ((_g|=_ble_color_gflags_Strike)) ;;
-    (italic)    ((_g|=_ble_color_gflags_Italic)) ;;
-    (standout)  ((_g|=_ble_color_gflags_Revert|_ble_color_gflags_Bold)) ;;
+    (bold)      ((g|=_ble_color_gflags_Bold)) ;;
+    (underline) ((g|=_ble_color_gflags_Underline)) ;;
+    (blink)     ((g|=_ble_color_gflags_Blink)) ;;
+    (invis)     ((g|=_ble_color_gflags_Invisible)) ;;
+    (reverse)   ((g|=_ble_color_gflags_Revert)) ;;
+    (strike)    ((g|=_ble_color_gflags_Strike)) ;;
+    (italic)    ((g|=_ble_color_gflags_Italic)) ;;
+    (standout)  ((g|=_ble_color_gflags_Revert|_ble_color_gflags_Bold)) ;;
     (fg=*)
-      ble-color/.name2color -v "$_var" "${entry:3}"
-      if ((_var<0)); then
-        ((_g&=~(_ble_color_gflags_ForeColor|_ble_color_gflags_MaskFg)))
+      ble-color/.name2color -v "$var" "${entry:3}"
+      if ((var<0)); then
+        ((g&=~(_ble_color_gflags_ForeColor|_ble_color_gflags_MaskFg)))
       else
-        ((_g|=_var<<8|_ble_color_gflags_ForeColor))
+        ((g|=var<<8|_ble_color_gflags_ForeColor))
       fi ;;
     (bg=*)
-      ble-color/.name2color -v "$_var" "${entry:3}"
-      if ((_var<0)); then
-        ((_g&=~(_ble_color_gflags_BackColor|_ble_color_gflags_MaskBg)))
+      ble-color/.name2color -v "$var" "${entry:3}"
+      if ((var<0)); then
+        ((g&=~(_ble_color_gflags_BackColor|_ble_color_gflags_MaskBg)))
       else
-        ((_g|=_var<<16|_ble_color_gflags_BackColor))
+        ((g|=var<<16|_ble_color_gflags_BackColor))
       fi ;;
     (none)
-      _g=0 ;;
+      g=0 ;;
     esac
   done
 
-  builtin eval "$_var=\"\$_g\""
+  local "$var" && ble/util/upvar "$var" "$g"
 }
 
 function ble-color-gspec2sgr {
-  local _var=ret __sgr=0 entry
+  local var=ret sgr=0 entry
   if [[ $1 == -v ]]; then
-    _var=$2
+    var=$2
     shift 2
   fi
 
   for entry in ${1//,/ }; do
     case "$entry" in
-    (bold)      __sgr="$__sgr;1" ;;
-    (underline) __sgr="$__sgr;4" ;;
-    (standout)  __sgr="$__sgr;7" ;;
+    (bold)      sgr="$sgr;1" ;;
+    (underline) sgr="$sgr;4" ;;
+    (standout)  sgr="$sgr;7" ;;
     (fg=*)
       ble-color/.name2color "${entry:3}"
       ble-color/.color2sgrfg "$ret"
-      __sgr="$__sgr;$ret" ;;
+      sgr="$sgr;$ret" ;;
     (bg=*)
       ble-color/.name2color "${entry:3}"
       ble-color/.color2sgrbg "$ret"
-      __sgr="$__sgr;$ret" ;;
+      sgr="$sgr;$ret" ;;
     (none)
-      __sgr=0 ;;
+      sgr=0 ;;
     esac
   done
 
-  builtin eval "$_var=\"[\${__sgr}m\""
+  local "$var" && ble/util/upvar "$var" "[${sgr}m"
 }
 
 function ble-color/.name2color {
-  local _var=ret
+  local var=ret
   if [[ $1 == -v ]]; then
-    _var=$2
+    var=$2
     shift 2
   fi
 
-  local colorName="$1" _ret
+  local colorName="$1" ret
   if [[ $colorName == $((colorName)) ]]; then
-    ((_ret=colorName<0?-1:colorName))
+    ((ret=colorName<0?-1:colorName))
   else
     case "$colorName" in
-    (black)   _ret=0 ;;
-    (brown)   _ret=1 ;;
-    (green)   _ret=2 ;;
-    (olive)   _ret=3 ;;
-    (navy)    _ret=4 ;;
-    (purple)  _ret=5 ;;
-    (teal)    _ret=6 ;;
-    (silver)  _ret=7 ;;
+    (black)   ret=0 ;;
+    (brown)   ret=1 ;;
+    (green)   ret=2 ;;
+    (olive)   ret=3 ;;
+    (navy)    ret=4 ;;
+    (purple)  ret=5 ;;
+    (teal)    ret=6 ;;
+    (silver)  ret=7 ;;
 
-    (gray)    _ret=8 ;;
-    (red)     _ret=9 ;;
-    (lime)    _ret=10 ;;
-    (yellow)  _ret=11 ;;
-    (blue)    _ret=12 ;;
-    (magenta) _ret=13 ;;
-    (cyan)    _ret=14 ;;
-    (white)   _ret=15 ;;
+    (gray)    ret=8 ;;
+    (red)     ret=9 ;;
+    (lime)    ret=10 ;;
+    (yellow)  ret=11 ;;
+    (blue)    ret=12 ;;
+    (magenta) ret=13 ;;
+    (cyan)    ret=14 ;;
+    (white)   ret=15 ;;
 
-    (orange)  _ret=202 ;;
-    (transparent) _ret=-1 ;;
-    (*)       _ret=-1 ;;
+    (orange)  ret=202 ;;
+    (transparent) ret=-1 ;;
+    (*)       ret=-1 ;;
     esac
   fi
 
-  builtin eval "$_var=\"\$_ret\""
+  local "$var" && ble/util/upvar "$var" "$ret"
 }
 function ble-color/.color2sgrfg {
-  local _var=ret _ret
+  local var=ret ret
   if [[ $1 == -v ]]; then
-    _var=$2
+    var=$2
     shift 2
   fi
 
   local ccode="$1"
   if ((ccode<0)); then
-    _ret=39
+    ret=39
   elif ((ccode<16)); then
-    _ret="${_ble_term_sgr_af[ccode]}"
+    ret="${_ble_term_sgr_af[ccode]}"
   elif ((ccode<256)); then
-    _ret="38;5;$ccode"
+    ret="38;5;$ccode"
   fi
 
-  builtin eval "$_var=\"\$_ret\""
+  local "$var" && ble/util/upvar "$var" "$ret"
 }
 function ble-color/.color2sgrbg {
-  local _var=ret _ret
+  local var=ret ret
   if [[ $1 == -v ]]; then
-    _var=$2
+    var=$2
     shift 2
   fi
 
   local ccode="$1"
   if ((ccode<0)); then
-    _ret=49
+    ret=49
   elif ((ccode<16)); then
-    _ret="${_ble_term_sgr_ab[ccode]}"
+    ret="${_ble_term_sgr_ab[ccode]}"
   elif ((ccode<256)); then
-    _ret="48;5;$ccode"
+    ret="48;5;$ccode"
   fi
 
-  builtin eval "$_var=\"\$_ret\""
+  local "$var" && ble/util/upvar "$var" "$ret"
 }
 
 #------------------------------------------------------------------------------
@@ -609,7 +609,7 @@ function ble-highlight-layer/getg {
     if [[ $2 != g ]]; then
       local g
       ble-highlight-layer/getg "$3"
-      builtin eval "$2=\"\$g\""
+      local "$2" && ble/util/upvar "$2" "$g"
       return
     else
       shift 2
