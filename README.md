@@ -2,10 +2,10 @@
 # ble.sh
 
 *Bash Line Editor* written in Bash Scripts.
-- Replacing GNU Readline, the default command line editor of GNU Bash.
-- Easy to use: just type `source ble.sh`
-- Providing syntax highlighting of command lines (as in `fish` shell)
-- Providing syntax-aware completion
+- Replace GNU Readline, the default command line editor of GNU Bash.
+- Provide syntax highlighting of command lines (as in `fish` shell)
+- Provide syntax-aware completion
+- Provide an easy way to try: just type `source ble.sh`
 
 This script supports `bash` with the version 3.0 or later.
 
@@ -48,7 +48,7 @@ $ source ble-0.1.5/ble.sh
 
 **Setup `.bashrc`**
 
-If you would like to load `ble.sh` defaultly in interactive sessions of `bash`, add the following codes to your .bashrc file:
+If you want to load `ble.sh` defaultly in interactive sessions of `bash`, add the following codes to your `.bashrc` file:
 ```bash
 # bashrc
 

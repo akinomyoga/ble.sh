@@ -3,9 +3,9 @@
 
 `ble.sh` (*Bash Line Editor*) は Bash スクリプトで書かれたコマンドラインエディタです。
 - GNU Bash 標準のコマンドラインエディタ GNU Readline を置き換える形で動作します
-- `source ble.sh` するだけ
 - コマンドラインを (`fish` シェルみたいに) `bash` 構文に従って色付け
 - 文法構造に従った補完
+- `source ble.sh` するだけ
 
 このスクリプトは `bash-3.0` 以降で利用できます。
 
