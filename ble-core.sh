@@ -157,7 +157,7 @@ else
   }
 fi
 
-function ble/util/upvar { builtin unset "$1" && builtin eval "$1=\"\$2\""; }
+function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
 function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
 
 function ble/util/type {

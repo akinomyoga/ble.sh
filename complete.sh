@@ -70,7 +70,7 @@ function ble-complete/util/escape-specialchars {
     a=\! b="\\$a" ret="${ret//"$a"/$b}"
     a=\^ b="\\$a" ret="${ret//"$a"/$b}"
   fi
-  local "$var" && ble/util/upvar "$var" "$ret"
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
 }
 
 function ble-complete/util/escape-regexchars {
@@ -86,7 +86,7 @@ function ble-complete/util/escape-regexchars {
     a=\$ b="\\$a" ret="${ret//"$a"/$b}"
     a=\/ b="\\$a" ret="${ret//"$a"/$b}"
   fi
-  local "$var" && ble/util/upvar "$var" "$ret"
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
 }
 
 function ble-complete/action/util/complete.addtail {

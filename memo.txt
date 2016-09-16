@@ -378,6 +378,52 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2016-09-16
+
+  * ble-core: bug ble/util/upvar を導入してみた所、色が全く着かなくなってしまった。
+
+    調べてみると upvar の変数名に対して配列要素 arr[index] を渡しているのがいけなかった。
+    配列要素を指定した場合にどの様な動作をするのだろうか。調べてみる事にする。
+
+    先ず local arr[1] などとするとそもそも arr という変数が関数内から見えなくなる様だ。
+    関数スコープに arr という名前でスロットが作成されるが変数の実体は配置されないなどという事だろうか。
+    また local arr[1]=1 などの様に値まで指定すると arr=([1]=1) の様な内容の配列が local に作成される様だ。
+    引き続き unset arr[1] 等とすると、その配列要素は削除されるが配列自体は残ってしまう。
+
+    a さて、どの様に定義するべきだろうか。
+      例えば変数名が単純な変数名の場合には今まで通りに local "$var" && upvar "$var" "$value" として、
+      変数名が arr[index] 等の場合には単に eval $var=\"\$value\" を実行する様にするか。
+      然し、それだとローカルに arr という名前で変数が存在すると、
+      その変数に新しい要素を追加する事になってしまい、変更が外に達しないという事になる。
+      配列名が被ったとしても正しく外に変数を返す事ができる様にする為には、
+
+      local "${var%%\[*\]}" && upvar "$var" "$value"
+
+      として upvar の中でも unset "${var%%\[*\]}" 等の様にしなければならない。
+
+    b 或いは、全く発送変えても良い。例えば export を使うとどの様な動作になるだろう。
+
+      - 試してみた所、外側の関数で local var として内側の関数で export var=value とすると、
+        外側の関数でその値を参照できると共に、更に外側の関数を抜けると変数が存在しなかった事になる。
+        (少なくとも bash-4.3 ではその様な動作になっている。他の bash の version ではどの様な動作になるだろうか。)
+
+        % ToDo: check bash-3.0, 3.1, 4.0, 4.1, 4.2 での動作確認:
+        %   外側の関数で local して内側の関数で export した変数は外側の関数を抜けた時に削除されるか。
+        %   もしくは export flag が削除されるか。
+
+      x 更に重要な事は、或る関数の中で declare した変数について、
+        export によってその関数の外側にまで寿命を延長させる事ができるかどうかである。
+        実際に試してみた所、できない様だ。飽くまで宣言された時の寿命は変わらない様だ。
+
+      - また、もしこの問題を解決できたとしても、他の実行形式に対して環境変数として
+        変数の内容が伝播してしまうのは都合が悪い可能性がある。
+
+      - 更に、配列要素などが指定された時の動作についても非自明である。
+        結局配列要素などが指定される場合を考慮に入れれば
+        upvar を使った場合と較べてコードが簡単になるという事はない様に思われる。
+
+    結局今の所は export するしかない様だ。
+
 2016-09-14
 
   * stackdump がまた出た。
@@ -412,26 +458,7 @@ tech
     |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
     |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
     |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-    | stackdump: 0 <= beg=4 <= end=5 <= len=4; beg=4, end=4, ins(1)=o
-    |   @ /home/murase/prog/ble/ble.sh:5133 (_ble_edit_str.replace)
-    |   @ /home/murase/prog/ble/ble.sh:-2006 (ble/widget/self-insert)
-    |   @ /home/murase/prog/ble/ble.sh:33 (ble-decode-key/.invoke-command)
-    |   @ /home/murase/prog/ble/ble.sh:22 (ble-decode-key/.invoke-partial-match)
-    |   @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
-    |   @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
-    |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
-    |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
-    |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-    | stackdump: 0 <= beg=5 <= end=6 <= len=5; beg=5, end=5, ins(1)=
-    |   @ /home/murase/prog/ble/ble.sh:5133 (_ble_edit_str.replace)
-    |   @ /home/murase/prog/ble/ble.sh:1 (ble/widget/self-insert)
-    |   @ /home/murase/prog/ble/ble.sh:-2006 (ble/widget/magic-space)
-    |   @ /home/murase/prog/ble/ble.sh:16 (ble-decode-key/.invoke-command)
-    |   @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
-    |   @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
-    |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
-    |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
-    |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    | (略) つづきは同様
 
     1 不思議なのは _ble_edit_str.replace で修正が入っている筈なのに、
       エラー状態が継続している事である。
@@ -460,6 +487,7 @@ tech
       またエラーが発生したのは最新の編集行に echo と入力しようとした瞬間である。
       勿論、最新の編集行に入力しようとすると必ずなる訳ではなく
       (恐らく直前の操作手順に応じて) このエラーが発生したりしなかったりする。
+
 
 2016-09-11
 

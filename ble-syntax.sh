@@ -417,7 +417,7 @@ function ble-syntax/print-status {
 
   local result="$resultA$_ble_term_NL$resultB"
   if [[ $1 == -v && $2 ]]; then
-    local "$2" && ble/util/upvar "$2" "$result"
+    local "${2%%\[*\]}" && ble/util/upvar "$2" "$result"
   else
     builtin echo "$result"
   fi

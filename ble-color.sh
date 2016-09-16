@@ -68,7 +68,7 @@ function ble-color-g2sgr {
     _ble_color_g2sgr__table[$1]="$ret"
   fi
 
-  local "$var" && ble/util/upvar "$var" "$ret"
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
 }
 function ble-color-gspec2g {
   local var=ret
@@ -107,7 +107,7 @@ function ble-color-gspec2g {
     esac
   done
 
-  local "$var" && ble/util/upvar "$var" "$g"
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "$g"
 }
 
 function ble-color-gspec2sgr {
@@ -135,7 +135,7 @@ function ble-color-gspec2sgr {
     esac
   done
 
-  local "$var" && ble/util/upvar "$var" "[${sgr}m"
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "[${sgr}m"
 }
 
 function ble-color/.name2color {
@@ -174,7 +174,7 @@ function ble-color/.name2color {
     esac
   fi
 
-  local "$var" && ble/util/upvar "$var" "$ret"
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
 }
 function ble-color/.color2sgrfg {
   local var=ret ret
@@ -192,7 +192,7 @@ function ble-color/.color2sgrfg {
     ret="38;5;$ccode"
   fi
 
-  local "$var" && ble/util/upvar "$var" "$ret"
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
 }
 function ble-color/.color2sgrbg {
   local var=ret ret
@@ -210,7 +210,7 @@ function ble-color/.color2sgrbg {
     ret="48;5;$ccode"
   fi
 
-  local "$var" && ble/util/upvar "$var" "$ret"
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
 }
 
 #------------------------------------------------------------------------------
@@ -609,7 +609,7 @@ function ble-highlight-layer/getg {
     if [[ $2 != g ]]; then
       local g
       ble-highlight-layer/getg "$3"
-      local "$2" && ble/util/upvar "$2" "$g"
+      local "${2%%\[*\]}" && ble/util/upvar "$2" "$g"
       return
     else
       shift 2
