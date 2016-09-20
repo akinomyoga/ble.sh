@@ -274,7 +274,7 @@ if ((_ble_bash>=40000)); then
 
       ble/util/openat _ble_util_sleep_fd '< <(
         [[ $- == *i* ]] && trap -- '' INT QUIT
-        while :; do command sleep 2147483647; done &>/dev/null
+        while kill -0 $$; do command sleep 300; done &>/dev/null
       )'
     else
       _ble_util_sleep_tmp="$_ble_base_tmp/$$.ble_util_sleep.pipe"
