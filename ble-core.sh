@@ -737,10 +737,30 @@ function ble-text.s2c {
 # ble/util/c2s
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
-  function ble/util/c2s-impl {
-    builtin printf -v ret '\\U%08x' "$1"
-    builtin eval "ret=\$'$ret'"
+
+  # work arounds of bashbug that printf '\uFFFF' results in a broken surrogate
+  # pair in systems where sizeof(wchar_t) == 2.
+  function ble/util/.has-bashbug-printf-uffff {
+    ((40200<=_ble_bash&&_ble_bash<40500)) || return 1
+    local ret
+    builtin printf -v ret '\uFFFF'
+    ((${#ret}==2))
   }
+  if ble/util/.has-bashbug-printf-uffff; then
+    function ble/util/c2s-impl {
+      if ((0xE000<=$1&&$1<=0xFFFF)); then
+        builtin printf -v ret '\\x%02x' "$((0xE0|$1>>12&0x0F))" "$((0x80|$1>>6&0x3F))" "$((0x80|$1&0x3F))"
+      else
+        builtin printf -v ret '\\U%08x' "$1"
+      fi
+      builtin eval "ret=\$'$ret'"
+    }
+  else
+    function ble/util/c2s-impl {
+      builtin printf -v ret '\\U%08x' "$1"
+      builtin eval "ret=\$'$ret'"
+    }
+  fi
 else
   _ble_text_xdigit=(0 1 2 3 4 5 6 7 8 9 A B C D E F)
   _ble_text_hexmap=()
