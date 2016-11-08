@@ -1,9 +1,26 @@
-# -*- mode:makefile-gmake -*-
+# -*- mode: makefile-gmake -*-
 
 all:
 .PHONY: all dist
 
-PP:=ext/mwg_pp.awk
+# check GNU Makefile
+ifeq ($(.FEATURES),)
+  $(error Sorry, please use a newer version of gmake (GNU Makefile).)
+endif
+
+# check gawk
+GAWK := $(shell which gawk 2>/dev/null)
+ifeq ($(GAWK),)
+  GAWK := $(shell which awk 2>/dev/null)
+  ifeq ($(GAWK),)
+    $(error Sorry, gawk/awk could not be found. Please check your PATH environment variable.)
+  endif
+  ifeq ($(shell $(GAWK) --version | grep -Fi 'GNU Awk'),)
+    $(error Sorry, gawk could not be found. Please install gawk (GNU Awk).)
+  endif
+endif
+
+PP:=$(GAWK) -f ext/mwg_pp.awk
 
 FULLVER:=0.1.5
 
