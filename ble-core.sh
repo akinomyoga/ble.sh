@@ -118,7 +118,15 @@ function ble/string#common-suffix {
 ##   @var[in]  split 分割に使用する文字を指定します。
 ##   @var[in]  str   分割する文字列を指定します。
 function ble/string#split {
-  GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+  if shopt -q nullglob &>/dev/null; then
+    # ※GLOBIGNORE を設定していても nullglob の効果は有効である。
+    # この時 [..] や * や ? が一文字でも含まれるとその要素は必ず消滅する。
+    shopt -u nullglob
+    GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+    shopt -s nullglob
+  else
+    GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+  fi
 }
 
 #
