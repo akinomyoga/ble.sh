@@ -2793,7 +2793,8 @@ function ble/widget/backward-uword {
 # **** ble-edit/exec ****                                            @edit.exec
 
 declare -a _ble_edit_exec_lines=()
-declare _ble_edit_exec_lastexit=0
+_ble_edit_exec_lastexit=0
+_ble_edit_exec_lastarg=
 function ble-edit/exec/register {
   local BASH_COMMAND="$1"
   ble/array#push _ble_edit_exec_lines "$1"
@@ -2859,11 +2860,16 @@ function ble-edit/exec:exec/.eval-prologue {
   trap 'ble-edit/exec:exec/.eval-TRAPINT; return 128' INT
   # trap '_ble_edit_exec_INT=126; return 126' TSTP
 }
+function ble-edit/exec:exec/.save-params {
+  _ble_edit_exec_lastarg="$_" _ble_edit_exec_lastexit="$?"
+  return "$_ble_edit_exec_lastexit"
+}
 function ble-edit/exec:exec/.eval {
-  local _ble_edit_exec_in_eval=1
+  local _ble_edit_exec_in_eval=1 nl=$'\n'
   # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
   ble-edit/exec/.setexit
-  builtin eval -- "$BASH_COMMAND"
+  : "$_ble_edit_exec_lastarg"
+  builtin eval -- "$BASH_COMMAND${nl}ble-edit/exec:exec/.save-params"
 }
 function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
@@ -3085,6 +3091,10 @@ function ble-edit/exec:gexec/.eval-prologue {
   ble-stty/leave
   ble-edit/exec/.setexit
 }
+function ble-edit/exec:gexec/.save-params {
+  _ble_edit_exec_lastarg="$_" _ble_edit_exec_lastexit="$?"
+  return "$_ble_edit_exec_lastexit"
+}
 function ble-edit/exec:gexec/.eval-epilogue {
   # lastexit
   _ble_edit_exec_lastexit="$?"
@@ -3103,7 +3113,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   PS1=
   ble-edit/exec/.adjust-eol
 
-  if [ "$_ble_edit_exec_lastexit" -ne 0 ]; then
+  if ((_ble_edit_exec_lastexit)); then
     # SIGERR処理
     if builtin type -t TRAPERR &>/dev/null; then
       TRAPERR
@@ -3130,8 +3140,10 @@ function ble-edit/exec:gexec/.setup {
   buff[${#buff[@]}]=ble-edit/exec:gexec/.begin
   for cmd in "${_ble_edit_exec_lines[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
+      local nl=$'\n'
       buff[${#buff[@]}]="ble-edit/exec:gexec/.eval-prologue '${cmd//$apos/$APOS}'"
-      buff[${#buff[@]}]="builtin eval -- '${cmd//$apos/$APOS}'"
+      buff[${#buff[@]}]=': "$_ble_edit_exec_lastarg"' # set $_
+      buff[${#buff[@]}]="builtin eval -- '${cmd//$apos/$APOS}${nl}ble-edit/exec:gexec/.save-params'"
       buff[${#buff[@]}]="ble-edit/exec:gexec/.eval-epilogue"
       ((count++))
 
