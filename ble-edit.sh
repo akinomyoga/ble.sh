@@ -2794,7 +2794,7 @@ function ble/widget/backward-uword {
 
 declare -a _ble_edit_exec_lines=()
 _ble_edit_exec_lastexit=0
-_ble_edit_exec_lastarg=
+_ble_edit_exec_lastarg=$BASH
 function ble-edit/exec/register {
   local BASH_COMMAND="$1"
   ble/array#push _ble_edit_exec_lines "$1"
