@@ -381,6 +381,31 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2017-02-14
+
+* stackdump
+
+  [[ -x /home/murase ]] と入力したらなった。
+  具体的には [[ -x a と入力して、x を消して再度 x を入力するとなる。
+
+  | assertion failure: [[ ${_ble_syntax_nest[inest]} ]]
+  | ble-syntax/tree-enumerate/.initialize/FATAL1
+  |   @ /home/murase/prog/ble/ble.sh:25 (ble-assert)
+  |   @ /home/murase/prog/ble/ble.sh:3 (ble-syntax/tree-enumerate/.initialize)
+  |   @ /home/murase/prog/ble/ble.sh:5 (ble-syntax/tree-enumerate)
+  |   @ /home/murase/prog/ble/ble.sh:5 (ble-syntax/parse/shift.method2)
+  |   @ /home/murase/prog/ble/ble.sh:2167 (ble-syntax/parse/shift)
+  |   @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+  |   @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+  |   @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+  |   @ /home/murase/prog/ble/ble.sh:4630 (ble-highlight-layer/update)
+  |   @ /home/murase/prog/ble/ble.sh:4981 (.ble-line-text/update)
+  |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+  |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+  |   @ /home/murase/prog/ble/ble.sh:1196 (ble-edit/bind/.tail)
+  |   @ /home/murase/prog/ble/ble.sh:-4307 (ble-decode-byte:bind/EPILOGUE)
+  |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+
 2016-09-14
 
   * stackdump がまた出た。

@@ -1573,7 +1573,11 @@ function ble-syntax:bash/ctx-command {
       local rematch3="${BASH_REMATCH[3]}"
       if [[ $rematch1 == *'&' ]]; then
         ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
-      elif [[ $rematch1 == '<<' ]]; then
+      elif [[ $rematch1 == \<\< ]]; then
+        # Note: emacs bug workaround
+        #   '<<' と書くと何故か Emacs がヒアドキュメントと
+        #   勘違いする様になったので仕方なく \<\< とする。
+
         #■ヒアドキュメント not yet supported
         fError=1
         ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3" # 暫定・単語一つ
@@ -2949,8 +2953,8 @@ function ble-highlight-layer:syntax/update-attribute-table {
 }
 
 function ble-highlight-layer:syntax/word/.update-attributes/.proc {
-  [[ ${node[nofs]} =~ ^[0-9]+$ ]] || continue
-  [[ ${node[nofs+4]} == - ]] || continue
+  [[ ${node[nofs]} =~ ^[0-9]+$ ]] || return
+  [[ ${node[nofs+4]} == - ]] || return
   local wtxt="${text:wbeg:wlen}"
   ble/util/urange#update color_ "$wbeg" "$wend"
   if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
