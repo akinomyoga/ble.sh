@@ -3961,7 +3961,7 @@ function ble/widget/isearch/backward {
   ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" sb
 }
 function ble/widget/isearch/self-insert {
-  local code="${KEYS[0]&ble_decode_MaskChar}"
+  local code="$((KEYS[0]&ble_decode_MaskChar))"
   ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" "si$code"
 }
 function ble/widget/isearch/history-forward {
@@ -3971,7 +3971,7 @@ function ble/widget/isearch/history-backward {
   ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" hb
 }
 function ble/widget/isearch/history-self-insert {
-  local code="${KEYS[0]&ble_decode_MaskChar}"
+  local code="$((KEYS[0]&ble_decode_MaskChar))"
   ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" "hi$code"
 }
 function ble/widget/isearch/prev {
