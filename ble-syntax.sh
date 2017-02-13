@@ -2532,8 +2532,8 @@ function ble-highlight-layer:syntax/update-attribute-table {
 }
 
 function ble-highlight-layer:syntax/word/.update-attributes/.proc {
-  [[ ${node[nofs]} =~ ^[0-9]+$ ]] || continue
-  [[ ${node[nofs+4]} == - ]] || continue
+  [[ ${node[nofs]} =~ ^[0-9]+$ ]] || return
+  [[ ${node[nofs+4]} == - ]] || return
   local wtxt="${text:wbeg:wlen}"
   ble/util/urange#update color_ "$wbeg" "$wend"
   if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
