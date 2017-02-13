@@ -3685,7 +3685,7 @@ function ble-edit+isearch/backward {
   ble-edit+isearch/next
 }
 function ble-edit+isearch/self-insert {
-  local code="${KEYS[0]&ble_decode_MaskChar}"
+  local code="$((KEYS[0]&ble_decode_MaskChar))"
   ((code==0)) && return
 
   local ret needle
@@ -3701,7 +3701,7 @@ function ble-edit+isearch/history-backward {
   ble-edit+isearch/next-history
 }
 function ble-edit+isearch/history-self-insert {
-  local code="${KEYS[0]&ble_decode_MaskChar}"
+  local code="$((KEYS[0]&ble_decode_MaskChar))"
   ((code==0)) && return
 
   local ret needle
