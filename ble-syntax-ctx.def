@@ -1,0 +1,43 @@
+# -*- mode: conf-space -*-
+#
+# ble-syntax:bash
+#
+#   This file contains definition of context values
+#
+#
+
+CTX_UNSPECIFIED 0
+CTX_ARGX        3  # (コマンド) 次に引数が来る
+CTX_ARGX0       18 # (コマンド)   文法的には次に引数が来そうだがもう引数が来てはならない文脈。例えば ]] や )) の後。
+CTX_ARGI        4  # (コマンド) context,attr: in an argument
+CTX_CMDX        1  # (コマンド) 次にコマンドが来る。
+CTX_CMDXV       13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
+CTX_CMDXF       16 # (コマンド)   for の直後。直後が (( だったら CTX_CMDI に、他の時は CTX_CMDI に。
+CTX_CMDX1       17 # (コマンド)   次にコマンドが少なくとも一つ来なければならない。例えば ( や && や while の直後。
+CTX_CMDXC       26 # (コマンド)   次に複合コマンド('(' '{' '((' '[[' for select case if while until)が来る。
+CTX_CMDI        2  # (コマンド) context,attr: in a command
+CTX_VRHS        11 # (コマンド) context,attr: var=rhs
+CTX_QUOT        5  # context,attr: in double quotations
+CTX_EXPR        8  # context,attr: in arithmetic expression
+ATTR_ERR        6  # attr: error
+ATTR_VAR        7  # attr: variable
+ATTR_QDEL       9  # attr: delimiters for quotation
+ATTR_DEF        10 # attr: default (currently not used)
+ATTR_DEL        12 # attr: delimiters
+ATTR_HISTX      21 # 履歴展開 (!!$ など)
+ATTR_FUNCDEF    22 # 関数名 ( hoge() や function fuga など)
+CTX_PARAM       14 # (パラメータ展開) context,attr: inside of parameter expansion
+CTX_PWORD       15 # (パラメータ展開) context,attr: inside of parameter expansion
+CTX_RDRF        19 # (リダイレクト) リダイレクト対象のファイル。
+CTX_RDRD        20 # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
+CTX_RDRS        27 # (リダイレクト) ヒアストリング
+CTX_VALX        23 # (値リスト) 次に値が来る
+CTX_VALI        24 # (値リスト) 値の中
+ATTR_COMMENT    25 # コメント
+CTX_ARGVX       28 # (コマンド) declare の引数
+CTX_ARGVI       29 # (コマンド) declare の引数
+CTX_CONDX       32
+CTX_CONDI       33
+CTX_CASE        34 # case パターン待ち
+CTX_PATN        30 # glob 通常文字
+ATTR_GLOB       31 # glob 特別文字

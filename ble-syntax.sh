@@ -294,6 +294,25 @@ function ble-syntax/print-status/.dump-arrays/.append-attr-char {
     attr="${attr} "
   fi
 }
+
+function ble-syntax/print-status/.get-ctx-text {
+  local var=ret ret
+  if [[ $1 == -v ]]; then
+    var="$2"
+    shift 2
+  fi
+
+  local sgr
+  ble-syntax:bash/ctx#get_name -v ret "$1"
+  ret=${ret#BLE_}
+  if [[ ! $ret ]]; then
+    ble-color-face2sgr syntax_error
+    ret="${sgr}CTX$1$_ble_term_sgr0"
+  fi
+
+  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
+}
+
 ## @var[out] resultA
 ## @var[in]  iN
 function ble-syntax/print-status/.dump-arrays {
@@ -301,6 +320,12 @@ function ble-syntax/print-status/.dump-arrays {
   tree=()
   char=()
   line=()
+
+  local sgr
+  ble-color-face2sgr syntax_error
+  local sgr_error=$sgr
+  ble-color-face2sgr syntax_quoted
+  local sgr_quoted=$sgr
 
   local i max_tree_width=0
   for ((i=0;i<=iN;i++)); do
@@ -332,6 +357,14 @@ function ble-syntax/print-status/.dump-arrays {
       local nofs="$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))"
       while (((nofs-=BLE_SYNTAX_TREE_WIDTH)>=0)); do
         local axis=$((i+1))
+
+        local wtype=${word[nofs]}
+        if [[ $wtype =~ ^[0-9]+$ ]]; then
+          ble-syntax/print-status/.get-ctx-text -v wtype "$wtype"
+        else
+          wtype=$sgr_quoted\"$wtype\"$_ble_term_sgr0
+        fi
+
         local b="$((axis-word[nofs+1]))" e="$axis"
         local _prev="${word[nofs+3]}" _child="${word[nofs+2]}"
         if ((_prev>=0)); then
@@ -345,7 +378,7 @@ function ble-syntax/print-status/.dump-arrays {
           _child=
         fi
 
-        tword=" word=${word[nofs]}:$_prev$b-$e$_child$tword"
+        tword=" word=$wtype:$_prev$b-$e$_child$tword"
         for ((;b<i;b++)); do
           ble-syntax/print-status/.tree-prepend b '|'
         done
@@ -355,20 +388,81 @@ function ble-syntax/print-status/.dump-arrays {
 
     nest=(${_ble_syntax_nest[i]})
     if [[ $nest ]]; then
-      local nword='-'
-      local nnest='-'
+      local nctx
+      ble-syntax/print-status/.get-ctx-text -v nctx 'nest[0]'
+
+      local nword=-
+      if ((nest[1]>=0)); then
+        local nwtype
+        ble-syntax/print-status/.get-ctx-text -v nwtype 'nest[2]'
+        local nwbegin=$((i-nest[1]))
+        nword="$nwtype:$nwbegin-"
+      fi
+
+      local nnest=-
       ((nest[3]>=0)) && nnest="'${nest[6]}':$((i-nest[3]))-"
-      ((nest[1]>=0)) && nword="${nest[2]}:$((i-nest[1]))-"
-      nest=" nest=(${nest[0]} w=$nword n=$nnest t=${nest[4]}:${nest[5]})"
+
+      local nchild=-
+      if ((nest[4]>=0)); then
+        local tchild=$((i-nest[4]))
+        nchild='$'$tchild
+        if ! ((0<tchild&&tchild<i)) || [[ ! ${_ble_syntax_tree[tchild-1]} ]]; then
+          nchild=$sgr_error$nchild$_ble_term_sgr0
+        fi
+      fi
+
+      local nprev=-
+      if ((nest[5]>=0)); then
+        local tprev=$((i-nest[5]))
+        nprev='$'$tprev
+        if ! ((0<tprev&&tprev<i)) || [[ ! ${_ble_syntax_tree[tprev-1]} ]]; then
+          nprev=$sgr_error$nprev$_ble_term_sgr0
+        fi
+      fi
+
+      nest=" nest=($nctx w=$nword n=$nnest t=$nchild:$nprev)"
     fi
 
     stat=(${_ble_syntax_stat[i]})
     if [[ $stat ]]; then
+      local stat_ctx
+      ble-syntax/print-status/.get-ctx-text -v stat_ctx 'stat[0]'
+
       local sword=-
+      if ((stat[1]>=0)); then
+        local stat_wtype
+        ble-syntax/print-status/.get-ctx-text -v stat_wtype 'stat[2]'
+        sword="$stat_wtype:$((i-stat[1]))-"
+      fi
+
       local snest=-
-      ((stat[3]>=0)) && snest="@$((i-stat[3]))"
-      ((stat[1]>=0)) && sword="${stat[2]}:$((i-stat[1]))-"
-      stat=" stat=(${stat[0]} w=$sword n=$snest t=${stat[4]}:${stat[5]})"
+      if ((stat[3]>=0)); then
+        local inest=$((i-stat[3]))
+        snest="@$inest"
+        if ((inest<0)) || [[ ! ${_ble_syntax_nest[inest]} ]]; then
+          snest=$sgr_error$snest$_ble_term_sgr0
+        fi
+      fi
+
+      local schild=-
+      if ((stat[4]>=0)); then
+        local tchild=$((i-stat[4]))
+        schild='$'$tchild
+        if ! ((0<tchild&&tchild<=i)) || [[ ! ${_ble_syntax_tree[tchild-1]} ]]; then
+          schild=$sgr_error$schild$_ble_term_sgr0
+        fi
+      fi
+
+      local sprev=-
+      if ((stat[5]>=0)); then
+        local tprev=$((i-stat[5]))
+        sprev='$'$tprev
+        if ! ((0<tprev&&tprev<=i)) || [[ ! ${_ble_syntax_tree[tprev-1]} ]]; then
+          sprev=$sgr_error$sprev$_ble_term_sgr0
+        fi
+      fi
+
+      stat=" stat=($stat_ctx w=$sword n=$snest t=$schild:$sprev)"
     fi
 
     local graph=
@@ -606,42 +700,20 @@ function ble-syntax/parse/touch-updated-word {
 #   以上の二つの配列を通して文法要素は最終的に登録される。
 #   (逆に言えば上の二つの配列を弄れば別の文法の解析を実行する事もできる)
 
-# 文脈値達
-CTX_UNSPECIFIED=0
-CTX_ARGX=3   # (コマンド) 次に引数が来る
-CTX_ARGX0=18 # (コマンド)   文法的には次に引数が来そうだがもう引数が来てはならない文脈。例えば ]] や )) の後。
-CTX_ARGI=4   # (コマンド) context,attr: in an argument
-CTX_CMDX=1   # (コマンド) 次にコマンドが来る。
-CTX_CMDXV=13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
-CTX_CMDXF=16 # (コマンド)   for の直後。直後が (( だったら CTX_CMDI に、他の時は CTX_CMDI に。
-CTX_CMDX1=17 # (コマンド)   次にコマンドが少なくとも一つ来なければならない。例えば ( や && や while の直後。
-CTX_CMDXC=26 # (コマンド)   次に複合コマンド('(' '{' '((' '[[' for select case if while until)が来る。
-CTX_CMDI=2   # (コマンド) context,attr: in a command
-CTX_VRHS=11  # (コマンド) context,attr: var=rhs
-CTX_QUOT=5   # context,attr: in double quotations
-CTX_EXPR=8   # context,attr: in arithmetic expression
-ATTR_ERR=6   # attr: error
-ATTR_VAR=7   # attr: variable
-ATTR_QDEL=9  # attr: delimiters for quotation
-ATTR_DEF=10  # attr: default (currently not used)
-ATTR_DEL=12  # attr: delimiters
-ATTR_HISTX=21 # 履歴展開 (!!$ など)
-ATTR_FUNCDEF=22 # 関数名 ( hoge() や function fuga など)
-CTX_PARAM=14 # (パラメータ展開) context,attr: inside of parameter expansion
-CTX_PWORD=15 # (パラメータ展開) context,attr: inside of parameter expansion
-CTX_RDRF=19  # (リダイレクト) リダイレクト対象のファイル。
-CTX_RDRD=20  # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
-CTX_RDRS=27  # (リダイレクト) ヒアストリング
-CTX_VALX=23  # (値リスト) 次に値が来る
-CTX_VALI=24  # (値リスト) 値の中
-ATTR_COMMENT=25 # コメント
-CTX_ARGVX=28 # (コマンド) declare の引数
-CTX_ARGVI=29 # (コマンド) declare の引数
-CTX_CONDX=32
-CTX_CONDI=33
-CTX_CASE=34  # case パターン待ち
-CTX_PATN=30  # glob 通常文字
-ATTR_GLOB=31 # glob 特別文字
+# 文脈値達 from ble-syntax-ctx.def
+#%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print $1 "=" $2;}'
+
+# for debug
+_ble_syntax_bash_ctx_names=(
+#%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
+)
+function ble-syntax:bash/ctx#get_name {
+  if [[ $1 == -v ]]; then
+    eval "$2=\${_ble_syntax_bash_ctx_names[\$3]}"
+  else
+    ble-syntax:bash/ctx#get_name -v ret "$1"
+  fi
+}
 
 _ble_syntax_bash_IFS=$' \t\n'
 _ble_syntax_bash_rex_spaces=$'[ \t]+'
@@ -2252,7 +2324,7 @@ function ble-syntax/parse {
     tprev="$((tplen<0?tplen:i1-tplen))"
   else
     # 初期値
-    ctx="$CTX_CMDX" ##!< 現在の解析の文脈
+    ctx="$CTX_CMDX" ##!< 現在の解析の文脈 (CTX_CMDX は ble-syntax:bash 特有)
     wbegin=-1       ##!< シェル単語内にいる時、シェル単語の開始位置
     wtype=-1        ##!< シェル単語内にいる時、シェル単語の種類
     inest=-1        ##!< 入れ子の時、親の開始位置

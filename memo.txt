@@ -387,6 +387,7 @@ tech
 
   [[ -x /home/murase ]] と入力したらなった。
   具体的には [[ -x a と入力して、x を消して再度 x を入力するとなる。
+  これは再現性がある。
 
   | assertion failure: [[ ${_ble_syntax_nest[inest]} ]]
   | ble-syntax/tree-enumerate/.initialize/FATAL1
