@@ -2178,8 +2178,8 @@ function ble-syntax/parse/shift.impl2/.proc1 {
   fi
 
   ble-syntax/parse/shift.impl2/.shift-until "$((i+1))"
-
   ble-syntax/parse/shift.tree "$nofs"
+  ((_shift2_j=j))
 
   if ((tprev>end0&&wbegin>end0)); then
     # skip 可能
@@ -2191,7 +2191,6 @@ function ble-syntax/parse/shift.impl2/.proc1 {
     ble-syntax/parse/shift.nest
     ((_shift2_j=wbegin)) # skip
   elif ((tchild>=0)); then
-    ((_shift2_j=j))
     ble-syntax/tree-enumerate-children ble-syntax/parse/shift.impl2/.proc1
   fi
 }

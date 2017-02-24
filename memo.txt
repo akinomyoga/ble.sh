@@ -381,32 +381,6 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
-2017-02-14
-
-* stackdump
-
-  [[ -x /home/murase ]] と入力したらなった。
-  具体的には [[ -x a と入力して、x を消して再度 x を入力するとなる。
-  これは再現性がある。
-
-  | assertion failure: [[ ${_ble_syntax_nest[inest]} ]]
-  | ble-syntax/tree-enumerate/.initialize/FATAL1
-  |   @ /home/murase/prog/ble/ble.sh:25 (ble-assert)
-  |   @ /home/murase/prog/ble/ble.sh:3 (ble-syntax/tree-enumerate/.initialize)
-  |   @ /home/murase/prog/ble/ble.sh:5 (ble-syntax/tree-enumerate)
-  |   @ /home/murase/prog/ble/ble.sh:5 (ble-syntax/parse/shift.method2)
-  |   @ /home/murase/prog/ble/ble.sh:2167 (ble-syntax/parse/shift)
-  |   @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
-  |   @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
-  |   @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
-  |   @ /home/murase/prog/ble/ble.sh:4630 (ble-highlight-layer/update)
-  |   @ /home/murase/prog/ble/ble.sh:4981 (.ble-line-text/update)
-  |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
-  |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
-  |   @ /home/murase/prog/ble/ble.sh:1196 (ble-edit/bind/.tail)
-  |   @ /home/murase/prog/ble/ble.sh:-4307 (ble-decode-byte:bind/EPILOGUE)
-  |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-
 2016-09-14
 
   * stackdump がまた出た。
@@ -1888,6 +1862,89 @@ tech
 *******************************************************************************
     実装ログ
 -------------------------------------------------------------------------------
+
+2017-02-25
+
+* [2017-02-14] stackdump
+
+  [[ -x /home/murase ]] と入力したらなった。
+  具体的には [[ -x a と入力して、x を消して再度 x を入力するとなる。
+  これは再現性がある。
+
+  | assertion failure: [[ ${_ble_syntax_nest[inest]} ]]
+  | ble-syntax/tree-enumerate/.initialize/FATAL1
+  |   @ /home/murase/prog/ble/ble.sh:25 (ble-assert)
+  |   @ /home/murase/prog/ble/ble.sh:3 (ble-syntax/tree-enumerate/.initialize)
+  |   @ /home/murase/prog/ble/ble.sh:5 (ble-syntax/tree-enumerate)
+  |   @ /home/murase/prog/ble/ble.sh:5 (ble-syntax/parse/shift.method2)
+  |   @ /home/murase/prog/ble/ble.sh:2167 (ble-syntax/parse/shift)
+  |   @ /home/murase/prog/ble/ble.sh:-16 (ble-syntax/parse)
+  |   @ /home/murase/prog/ble/ble.sh:4 (_ble_edit_str.update-syntax)
+  |   @ /home/murase/prog/ble/ble.sh:-135 (ble-highlight-layer:syntax/update)
+  |   @ /home/murase/prog/ble/ble.sh:4630 (ble-highlight-layer/update)
+  |   @ /home/murase/prog/ble/ble.sh:4981 (.ble-line-text/update)
+  |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update)
+  |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit-draw.update-adjusted)
+  |   @ /home/murase/prog/ble/ble.sh:1196 (ble-edit/bind/.tail)
+  |   @ /home/murase/prog/ble/ble.sh:-4307 (ble-decode-byte:bind/EPILOGUE)
+  |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+
+  木構造の破壊が度々起こるので ble-syntax/print-status/.dump-arrays で
+  構造を確認して問題がある部分を着色して表示する様に変更した。
+  これによって確認してみた所、入れ子構造になっている部分の内部で
+  二個目以降の単語を編集した時には大体の場合に nest の参照が壊れているという事が分かった。
+  ただ単に顕在化するのが "[[ -x a" の場合だけだったという事になる。
+
+  これは明らかに nest の shift に失敗しているのが原因である。
+  現在の shift は基本的に e74c11631d62880a2600fb559e4135b8cf268110 (11ヶ月前) で作られた物である。
+  長らくエラーが出た覚えもないのでもっと最近の変更によって問題が埋め込まれた可能性がある。
+
+  その他では一番最近の 0757230b41a2adfe5eb6a52ce4c97f29734845a7 しかない。
+  (実のところ、この修正と stackdump が出たのとどちらが先だったのか覚えがない…。)
+  しかしこの修正は単純な物でこれで問題が起こるようには思われない。
+  実際にこの修正を戻して試してみたが、同様に問題が発生するので、この修正は関係ないとして良いだろう。
+  という事はこれは昔から存在していたバグと考えるべきだろう。
+
+  % 取り敢えず nest のシフト範囲がどの様に決定されているのかについてコードを追ってみる事にする。
+  % nest のシフトは ble-syntax/parse/shift.nest で行われている。
+  % この関数自体が誤っている可能性について先ずは確認してみる。
+  % と思ったが、よく見たら壊れているのは nest ではなくて nest の参照元である stat の方だった。
+
+  なので見るべきは stat のシフト範囲の方である。つまり、ble-syntax/parse/shift.stat である。
+  stat の他の項目に関しては特に問題も生じていない様なので、恐らくこの関数の呼び出し自体はちゃんと行われている。
+  問題は nest 参照 (stat[3]) のシフト方法ではないかと思われる。
+  コードを見てみると stat[1] (wlen), stat[3] (nlen), stat[4] (tclen), stat[5] (tprev) が共通のコードでシフトされている。
+  これは怪しい。というのも tclen, tprev によって参照されるのは境界で、
+  wlen, nlen によって参照されるのは文字であり、両者は異なる性質のものであるはずだからである。
+
+  ? さて wlen に関する問題が発生しなかったのは何故だろう。word が stat に入る機会が少ないからだろうか。
+    人為的に単語の途中に構造を導入して (例えば he"l"lo など)、word が破壊されないか確認する。
+    うーん word に関しては余り遠くを参照したりしないので nest とは dirty-range との相対位置が異なる様だ。
+    振る舞いが違うのはそういう事である。もしかすると特殊な状況では word にも不整合が生じるのかもしれないが、
+    wlen で今まで問題が発生しなかった理由がわかったのでこれでよしとして深く追求はしない。
+    nlen の修正方法が分かれば wlen の修正方法も同様にすれば良いだろう。
+
+  変だ。ちゃんと動いているべきな気がする。
+  何より同じ値なのに正しく動いている shift と動いていない shift がある。
+  どうやら shift 量が過剰の様だ。もしかして複数回 shift が実行されている?
+  →確認してみたら予想通り複数回の shift が実行されている様だ…。
+
+  % 一方で全然シフトの対象でない部分についても沢山 shift が呼び出されている様な気がするがこれは何だろう?
+  % と思ったら改めて実行してみた所何も起こっていない…と、よく考えたら "less ~/a.txt" と入力するのに
+  % 使っているシェルがテスト用のコードを埋め込んだ後のシェルになっていて、確認のための入力をしている時に、
+  % 変なごみが入力されてしまったというだけの事だった。
+
+  さて、j は j-- としているので複数回同じ j の値で shift が実行されるというのは変である。
+  誰かが j を increment しているのだろうか。或いは、j に何か値が代入されているのだろうか。
+
+  + 誰かが j を increment している可能性が怪しい→と思ったがそうでもない。
+  + どうやら "((_shift2_j=wbegin)) # skip" という行が怪しい気がする
+    (※_shift2_j は j の値を退避している変数である)。
+    →と思ったがこれでもない様だ…。
+  + あー。なんと _shift2_j に j の値を保存していないコントロールパスがあった。これだ。
+
+  呆気なく直った。
+
 
 2016-12-21
 
