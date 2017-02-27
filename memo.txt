@@ -383,24 +383,6 @@ tech
 
 2017-02-28
 
-  * ble-edit: 関数名の整理
-
-    .ble-edit/stdout/on       -> ble-edit/bind/stdout.on
-    .ble-edit/stdout/off      -> ble-edit/bind/stdout.off
-    .ble-edit/stdout/finalize -> ble-edit/bind/stdout.finalize
-    .ble-edit/stdout/*        -> ble-edit/bind/stdout/*
-
-    .ble-line-text.          -> ble-edit/text/
-    .ble-line-info.          -> ble-edit/info/
-    .ble-line-cur.xyo        -> ble-edit/info/.put
-    .ble-edit-draw.          -> ble-edit/render/
-    .ble-edit-draw.set-dirty -> ble-edit/render/invalidate
-
-    ble-edit/draw/goto             -> ble-edit/render/goto
-    ble-edit/draw/clear-line       -> ble-edit/render/clear-line
-    ble-edit/draw/clear-line-after -> ble-edit/render/clear-line-after
-
-
 2017-02-27
 
   * PS1='$(echo "hello")'
@@ -1872,6 +1854,40 @@ tech
 -------------------------------------------------------------------------------
 
 2017-02-28
+
+  * ble-edit: 関数名の整理
+
+    .ble-edit/stdout/on       -> ble-edit/bind/stdout.on
+    .ble-edit/stdout/off      -> ble-edit/bind/stdout.off
+    .ble-edit/stdout/finalize -> ble-edit/bind/stdout.finalize
+    .ble-edit/stdout/*        -> ble-edit/bind/stdout/*
+
+    .ble-line-text.          -> ble-edit/text/
+    .ble-line-info.          -> ble-edit/info/
+    .ble-line-cur.xyo        -> ble-edit/info/.put
+    .ble-edit-draw.          -> ble-edit/render/
+    .ble-edit-draw.set-dirty -> ble-edit/render/invalidate
+
+    ble-edit/draw/goto             -> ble-edit/render/goto
+    ble-edit/draw/clear-line       -> ble-edit/render/clear-line
+    ble-edit/draw/clear-line-after -> ble-edit/render/clear-line-after
+
+    .ble-edit.locate-forward-xword  -> ble/widget/.locate-forward-genword
+    .ble-edit.locate-backward-xword -> ble/widget/.locate-backward-genword
+    .ble-edit.locate-current-xword  -> ble/widget/.locate-current-genword
+    単語関連については全体的に整理した。
+
+    .ble-edit.bell -> ble/widget/.bell
+    .ble-edit.*-range -> ble/widget/.*-range
+    .ble-edit.quoted-insert.hook -> ble/widget/quoted-insert/.hook
+    .ble-edit/delete-backward-char -> ble/widget/.delete-backward-char
+    .ble-edit.delete-char -> ble/widget/.delete-char 
+    .ble-edit.goto-char -> ble/widget/.goto-char
+    .ble-edit.forward-char -> ble/widget/.forward-char
+    .ble-edit/newline -> ble/widget/.newline 
+
+    .ble-edit.default-key-bindings -> ble-edit/load-default-key-bindings
+    .ble-edit-finalize -> ble-edit-finalize
 
   * [2016-08-08] 改行&プロンプト出力を一度に行う?
 

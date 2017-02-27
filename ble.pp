@@ -204,7 +204,7 @@ fi
 
 function ble-initialize {
   ble-decode-initialize # 54ms
-  .ble-edit.default-key-bindings # 4ms
+  ble-edit/load-default-key-bindings # 4ms
   ble-edit-initialize # 4ms
 }
 

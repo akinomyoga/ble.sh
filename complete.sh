@@ -463,7 +463,7 @@ function ble/widget/complete {
   # return
 
   if ((${#context[@]}==0)); then
-    .ble-edit.bell
+    ble/widget/.bell
     ble-edit/info/clear
     return
   fi
@@ -506,7 +506,7 @@ function ble/widget/complete {
   ble/util/is-stdin-ready && return 27
 
   if ((cand_count==0)); then
-    .ble-edit.bell
+    ble/widget/.bell
     ble-edit/info/clear
     return
   fi
@@ -592,6 +592,6 @@ function ble/widget/complete {
     ble-edit/info/draw-text "${cand_show[*]}"
   fi
 
-  .ble-edit.delete-range "$comp1" "$index"
+  ble/widget/.delete-range "$comp1" "$index"
   ble/widget/insert-string "$common"
 }
