@@ -983,18 +983,18 @@ function ble-edit/prompt/update/backslash:V { # = bash version %d.%d.%d
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_V"
 }
 function ble-edit/prompt/update/backslash:w { # PWD
-  ble/edit/prompt/update/update-cache_wd
+  ble-edit/prompt/update/update-cache_wd
   ble-edit/prompt/update/append "$cache_wd"
 }
 function ble-edit/prompt/update/backslash:W { # PWD短縮
   if [[ $PWD == / ]]; then
     ble-edit/prompt/update/append /
   else
-    ble/edit/prompt/update/update-cache_wd
+    ble-edit/prompt/update/update-cache_wd
     ble-edit/prompt/update/append "${cache_wd##*/}"
   fi
 }
-function ble/edit/prompt/update/update-cache_wd {
+function ble-edit/prompt/update/update-cache_wd {
   [[ $cache_wd ]] && return
 
   if [[ $PWD == / ]]; then
