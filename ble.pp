@@ -212,8 +212,8 @@ function ble-attach {
   _ble_edit_detach_flag=
   ble-decode-attach # 53ms
   ble-edit-attach # 0ms
-  .ble-edit-draw.redraw # 34ms
-  .ble-edit/stdout/off
+  ble-edit/render/redraw # 34ms
+  ble-edit/bind/stdout.off
 }
 
 function ble-detach {

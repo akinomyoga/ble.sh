@@ -3313,7 +3313,7 @@ function ble-highlight-layer:syntax/update {
     ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | cat -A'; status="$status$buff"
     ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | cat -A'; status="$status$buff"
     #ble/util/assign buff 'declare -p _ble_line_text_buffName $_ble_line_text_buffName | cat -A'; status="$status$buff"
-    .ble-line-info.draw "$status"
+    ble-edit/info/draw "$status"
   fi
 #%end
 
@@ -3331,7 +3331,7 @@ function ble-highlight-layer:syntax/update {
   #     ble/array#push words "[$value ${word[*]}]"
   #   fi
   # done
-  # .ble-line-info.draw-text "${words[*]}"
+  # ble-edit/info/draw-text "${words[*]}"
 }
 
 function ble-highlight-layer:syntax/getg {

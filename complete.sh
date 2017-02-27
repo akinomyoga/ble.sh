@@ -459,12 +459,12 @@ function ble/widget/complete {
   _ble_edit_str.update-syntax
   local context
   ble-syntax/completion-context "$text" "$index"
-  # .ble-line-info.draw-text "${context[*]}"
+  # ble-edit/info/draw-text "${context[*]}"
   # return
 
   if ((${#context[@]}==0)); then
     .ble-edit.bell
-    .ble-line-info.clear
+    ble-edit/info/clear
     return
   fi
 
@@ -507,7 +507,7 @@ function ble/widget/complete {
 
   if ((cand_count==0)); then
     .ble-edit.bell
-    .ble-line-info.clear
+    ble-edit/info/clear
     return
   fi
 
@@ -586,10 +586,10 @@ function ble/widget/complete {
       "$ACTION/complete"
       comp1="$COMP1" comp2="$COMP2" common="$INSERT"
     fi
-    .ble-line-info.clear
+    ble-edit/info/clear
   else
     # 候補が複数ある時
-    .ble-line-info.draw-text "${cand_show[*]}"
+    ble-edit/info/draw-text "${cand_show[*]}"
   fi
 
   .ble-edit.delete-range "$comp1" "$index"

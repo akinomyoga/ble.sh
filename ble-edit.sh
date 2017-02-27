@@ -1120,7 +1120,7 @@ declare -a _ble_line_text_cache_cs=()
 declare -a _ble_line_text_cache_ichg=()
 _ble_line_text_cache_length=
 
-## 関数 text x y; .ble-line-text/update/position; x y
+## 関数 text x y; ble-edit/text/update/position; x y
 ##   @var[in    ] text
 ##   @var[in,out] x y
 ##   @var[in    ] BLELINE_RANGE_UPDATE[]
@@ -1129,7 +1129,7 @@ _ble_line_text_cache_length=
 ##   @var[   out] _ble_line_text_cache_pos[]
 ##   @var[   out] _ble_line_text_cache_cs[]
 ##   @var[   out] _ble_line_text_cache_ichg[]
-function .ble-line-text/update/position {
+function ble-edit/text/update/position {
   local dbeg dend dend0
   ((dbeg=BLELINE_RANGE_UPDATE[0]))
   ((dend=BLELINE_RANGE_UPDATE[1]))
@@ -1292,7 +1292,7 @@ function .ble-line-text/update/position {
 _ble_line_text_buff=()
 _ble_line_text_buffName=
 
-## 関数 x y lc lg; .ble-line-text/update; x y cx cy lc lg
+## 関数 x y lc lg; ble-edit/text/update; x y cx cy lc lg
 ## \param [in    ] text  編集文字列
 ## \param [in    ] dirty 編集によって変更のあった最初の index
 ## \param [in    ] index カーソルの index
@@ -1303,17 +1303,17 @@ _ble_line_text_buffName=
 ##   カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
 ## @var   [   out] umin umax
 ##   umin,umax は再描画の必要な範囲を文字インデックスで返します。
-function .ble-line-text/update {
-  # text dirty x y [.ble-line-text/update/position] x y
+function ble-edit/text/update {
+  # text dirty x y [ble-edit/text/update/position] x y
   local POS_UMIN=-1 POS_UMAX=-1
-  .ble-line-text/update/position
+  ble-edit/text/update/position
 
   local iN="${#text}"
 
   # highlight -> HIGHLIGHT_BUFF
   local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
   ble-highlight-layer/update "$text"
-  #.ble-line-info.draw-text "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
+  #ble-edit/info/draw-text "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
 
   # 変更文字の適用
   if ((${#_ble_line_text_cache_ichg[@]})); then
@@ -1334,7 +1334,7 @@ function .ble-line-text/update {
     umax=HIGHLIGHT_UMAX,
     POS_UMIN>=0&&(umin<0||umin>POS_UMIN)&&(umin=POS_UMIN),
     POS_UMAX>=0&&(umax<0||umax<POS_UMAX)&&(umax=POS_UMAX)))
-  # .ble-line-info.draw-text "position $POS_UMIN-$POS_UMAX, highlight $HIGHLIGHT_UMIN-$HIGHLIGHT_UMAX"
+  # ble-edit/info/draw-text "position $POS_UMIN-$POS_UMAX, highlight $HIGHLIGHT_UMIN-$HIGHLIGHT_UMAX"
 
   # update lc, lg
   #
@@ -1356,7 +1356,7 @@ function .ble-line-text/update {
     # index==0 の場合は受け取った lc lg をそのまま返す
     if ((index>0)); then
       local cx cy
-      .ble-line-text/getxy.cur --prefix=c "$index"
+      ble-edit/text/getxy.cur --prefix=c "$index"
 
       local lcs ret
       if ((cx==0)); then
@@ -1383,10 +1383,10 @@ function .ble-line-text/update {
   fi
 }
 
-## 関数 .ble-line-text/getxy iN
+## 関数 ble-edit/text/getxy iN
 ##   @var[out] x
 ##   @var[out] y
-function .ble-line-text/getxy {
+function ble-edit/text/getxy {
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1398,8 +1398,8 @@ function .ble-line-text/getxy {
   ((${_prefix}x=_pos[0]))
   ((${_prefix}y=_pos[1]))
 }
-## 関数 .ble-line-text/getxy.cur iN
-function .ble-line-text/getxy.cur {
+## 関数 ble-edit/text/getxy.cur iN
+function ble-edit/text/getxy.cur {
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1421,9 +1421,9 @@ function .ble-line-text/getxy.cur {
 }
 
 
-## 関数 .ble-line-text/slice [beg [end]]
+## 関数 ble-edit/text/slice [beg [end]]
 ##   @var [out] ret
-function .ble-line-text/slice {
+function ble-edit/text/slice {
   local iN="$_ble_line_text_cache_length"
   local i1="${1:-0}" i2="${2:-$iN}"
   ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
@@ -1438,9 +1438,9 @@ function .ble-line-text/slice {
   fi
 }
 
-## 関数 .ble-line-text/get-index-at x y
+## 関数 ble-edit/text/get-index-at x y
 ##   指定した位置 x y に対応する index を求めます。
-function .ble-line-text/get-index-at {
+function ble-edit/text/get-index-at {
   local _var=index
   if [[ $1 == -v ]]; then
     _var="$2"
@@ -1457,7 +1457,7 @@ function .ble-line-text/get-index-at {
     local _l=0 _u="$((_ble_line_text_cache_length+1))" _m
     local -a _mx _my
     while ((_l+1<_u)); do
-      .ble-line-text/getxy.cur --prefix=_m "$((_m=(_l+_u)/2))"
+      ble-edit/text/getxy.cur --prefix=_m "$((_m=(_l+_u)/2))"
       (((_y<_my||_y==_my&&_x<_mx)?(_u=_m):(_l=_m)))
     done
     (($_var=_l))
@@ -1468,10 +1468,10 @@ function .ble-line-text/get-index-at {
 # 
 # **** information pane ****                                         @line.info
 
-## 関数 x y cols out ; .ble-line-cur.xyo/add-atomic ( nchar text )+ ; x y out
+## 関数 x y cols out ; ble-edit/info/.put-atomic ( nchar text )+ ; x y out
 ##   指定した文字列を out に追加しつつ、現在位置を更新します。
 ##   文字列は幅 1 の文字で構成されていると仮定します。
-function .ble-line-cur.xyo/add-simple {
+function ble-edit/info/.put-simple {
   local nchar="$1"
 
   # assert ((x<=cols))
@@ -1482,9 +1482,9 @@ function .ble-line-cur.xyo/add-simple {
     (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)
   ))
 }
-## 関数 x y cols out ; .ble-line-cur.xyo/add-atomic ( w char )+ ; x y out
+## 関数 x y cols out ; ble-edit/info/.put-atomic ( w char )+ ; x y out
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
-function .ble-line-cur.xyo/add-atomic {
+function ble-edit/info/.put-atomic {
   local w c
   w="$1"
 
@@ -1505,18 +1505,18 @@ function .ble-line-cur.xyo/add-atomic {
     done
   fi
 }
-## 関数 x y cols out ; .ble-line-cur.xyo/eol2nl ; x y out
+## 関数 x y cols out ; ble-edit/info/.put-nl-if-eol ; x y out
 ##   行末にいる場合次の行へ移動します。
-function .ble-line-cur.xyo/eol2nl {
+function ble-edit/info/.put-nl-if-eol {
   if ((x==cols)); then
     ((_ble_term_xenl)) && out="$out"$'\n'
     ((y++,x=0))
   fi
 }
 
-## 関数 x y; .ble-line-info.construct-info text ; ret
+## 関数 x y; ble-edit/info/.construct text ; ret
 ##   指定した文字列を表示する為の制御系列に変換します。
-function .ble-line-info.construct-info {
+function ble-edit/info/.construct {
 
   local cols=${COLUMNS-80}
 
@@ -1526,35 +1526,35 @@ function .ble-line-info.construct-info {
     local tail="${text:i}"
 
     if ble/util/isprint+ "$tail"; then
-      .ble-line-cur.xyo/add-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
+      ble-edit/info/.put-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
       ((i+=${#BASH_REMATCH}))
     else
       ble/util/s2c "$text" "$i"
       local code="$ret" w=0
       if ((code<32)); then
         ble/util/c2s "$((code+64))"
-        .ble-line-cur.xyo/add-atomic 2 "$_ble_term_rev^$ret$_ble_term_sgr0"
+        ble-edit/info/.put-atomic 2 "$_ble_term_rev^$ret$_ble_term_sgr0"
       elif ((code==127)); then
-        .ble-line-cur.xyo/add-atomic 2 '$_ble_term_rev^?$_ble_term_sgr0'
+        ble-edit/info/.put-atomic 2 '$_ble_term_rev^?$_ble_term_sgr0'
       elif ((128<=code&&code<160)); then
         ble/util/c2s "$((code-64))"
-        .ble-line-cur.xyo/add-atomic 4 "${_ble_term_rev}M-^$ret$_ble_term_sgr0"
+        ble-edit/info/.put-atomic 4 "${_ble_term_rev}M-^$ret$_ble_term_sgr0"
       else
         ble/util/c2w "$code"
-        .ble-line-cur.xyo/add-atomic "$ret" "${text:i:1}"
+        ble-edit/info/.put-atomic "$ret" "${text:i:1}"
       fi
 
       ((i++))
     fi
   done
 
-  .ble-line-cur.xyo/eol2nl
+  ble-edit/info/.put-nl-if-eol
 
   ret="$out"
 }
 
 _ble_line_info=(0 0 "")
-function .ble-line-info.draw/impl {
+function ble-edit/info/.draw-impl {
   local text="$2"
 
   local -a DRAW_BUFF
@@ -1568,12 +1568,12 @@ function .ble-line-info.draw/impl {
     ble-edit/draw/sflush -v content ;;
   (text)
     local lc=32 ret
-    .ble-line-info.construct-info "$text"
+    ble-edit/info/.construct "$text"
     content="$ret" ;;
   esac
 
   # (1) 移動・領域確保
-  ble-edit/draw/goto 0 "$_ble_line_endy"
+  ble-edit/render/goto 0 "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_ind"
   [[ ${_ble_line_info[2]} ]] && ble-edit/draw/put.dl '_ble_line_info[1]+1'
   [[ $content ]] && ble-edit/draw/put.il y+1
@@ -1587,17 +1587,17 @@ function .ble-line-info.draw/impl {
   _ble_line_x="$x"
   _ble_line_info=("$x" "$y" "$content")
 }
-function .ble-line-info.draw-text {
-  .ble-line-info.draw/impl text "$1"
+function ble-edit/info/draw-text {
+  ble-edit/info/.draw-impl text "$1"
 }
-function .ble-line-info.draw {
-  .ble-line-info.draw/impl raw "$1"
+function ble-edit/info/draw {
+  ble-edit/info/.draw-impl raw "$1"
 }
-function .ble-line-info.clear {
+function ble-edit/info/clear {
   [[ ${_ble_line_info[2]} ]] || return
 
   local -a DRAW_BUFF
-  ble-edit/draw/goto 0 _ble_line_endy
+  ble-edit/render/goto 0 _ble_line_endy
   ble-edit/draw/put "$_ble_term_ind"
   ble-edit/draw/put.dl '_ble_line_info[1]+1'
   ble-edit/draw/bflush
@@ -1629,7 +1629,7 @@ function _ble_edit_str.replace {
   # c.f. Note#1
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
   _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end"
-  .ble-edit-draw.set-dirty "$beg"
+  ble-edit/render/invalidate "$beg"
 #%if !release
   # Note: 何処かのバグで _ble_edit_int に変な値が入ってエラーになるので、
   #   ここで誤り訂正を行う。想定として、この関数を呼出した時の _ble_edit_ind の値は、
@@ -1649,7 +1649,7 @@ function _ble_edit_str.replace {
 function _ble_edit_str.reset {
   local str="$1"
   _ble_edit_str/update-dirty-range 0 "${#str}" "${#_ble_edit_str}"
-  .ble-edit-draw.set-dirty 0
+  ble-edit/render/invalidate 0
   _ble_edit_str="$str"
 #%if !release
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
@@ -1731,10 +1731,11 @@ function ble-edit/dirty-range/clear {
 ## @param[in]  end    変更終了点。end<0 は変更が末端までである事を表す
 ## @param[in]  end0   変更前の end に対応する位置。
 function ble-edit/dirty-range/update {
-  local _prefix=_ble_edit_dirty_draw_
+  local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
     shift
+    [[ $_prefix ]] && local beg end end0
   fi
 
   local begB="$1" endB="$2" endB0="$3"
@@ -1743,7 +1744,7 @@ function ble-edit/dirty-range/update {
   local begA endA endA0
   ((begA=${_prefix}beg,endA=${_prefix}end,endA0=${_prefix}end0))
 
-  local beg end end0 delta
+  local delta
   if ((begA<0)); then
     ((beg=begB,
       end=endB,
@@ -1758,9 +1759,11 @@ function ble-edit/dirty-range/update {
     fi
   fi
 
-  ((${_prefix}beg=beg,
-    ${_prefix}end=end,
-    ${_prefix}end0=end0))
+  if [[ $_prefix ]]; then
+    ((${_prefix}beg=beg,
+      ${_prefix}end=end,
+      ${_prefix}end0=end0))
+  fi
 }
 
 # **** PS1/LINENO ****                                                @edit.ps1
@@ -1770,18 +1773,18 @@ function ble-edit/dirty-range/update {
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
 
-function .ble-edit/edit/attach/TRAPWINCH {
+function ble-edit/attach/TRAPWINCH {
   if ((_ble_edit_attached)); then
     _ble_line_text_cache_pos=()
-    .ble-edit/stdout/on
-    .ble-edit-draw.redraw
-    .ble-edit/stdout/off
+    ble-edit/bind/stdout.on
+    ble-edit/render/redraw
+    ble-edit/bind/stdout.off
   fi
 }
 
 ## called by ble-edit-attach
 _ble_edit_attached=0
-function .ble-edit/edit/attach {
+function ble-edit/attach {
   ((_ble_edit_attached)) && return
   _ble_edit_attached=1
 
@@ -1792,7 +1795,7 @@ function .ble-edit/edit/attach {
     _ble_edit_CMD="$_ble_edit_LINENO"
   fi
 
-  trap .ble-edit/edit/attach/TRAPWINCH WINCH
+  trap ble-edit/attach/TRAPWINCH WINCH
 
   # if [[ ! ${_ble_edit_PS1+set} ]]; then
   # fi
@@ -1800,22 +1803,50 @@ function .ble-edit/edit/attach {
   PS1=
 }
 
-function .ble-edit/edit/detach {
+function ble-edit/detach {
   ((!_ble_edit_attached)) && return
   PS1="$_ble_edit_PS1"
   _ble_edit_attached=0
 }
 
-# **** ble-edit/draw ****                                            @edit/draw
+# **** ble-edit/render ****                                        @edit/render
 
-# 出力のための新しい関数群2
+#
+# 大域変数
+#
 
-## 関数 ble-edit/draw/goto varname x y
+## 配列 _ble_line_cur
+##   キャレット位置 (ユーザに対して呈示するカーソル) と其処の文字の情報を保持します。
+## _ble_line_cur[0] x   キャレット位置の y 座標を保持します。
+## _ble_line_cur[1] y   キャレット位置の y 座標を保持します。
+## _ble_line_cur[2] lc
+##   キャレット位置の左側の文字の文字コードを整数で保持します。
+##   キャレットが最も左の列にある場合は右側の文字を保持します。
+## _ble_line_cur[3] lg
+##   キャレット位置の左側の SGR フラグを保持します。
+##   キャレットが最も左の列にある場合は右側の文字に適用される SGR フラグを保持します。
+_ble_line_cur=(0 0 32 0)
+
+## 変数 x
+## 変数 y
+##   現在の (描画の為に動き回る) カーソル位置を保持します。
+_ble_line_x=0 _ble_line_y=0
+
+_ble_line_begx=0
+_ble_line_begy=0
+_ble_line_endx=0
+_ble_line_endy=0
+
+#
+# 補助関数 (公開)
+#
+
+## 関数 ble-edit/render/goto varname x y
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
 ##   @param [in] x y
 ##     移動先のカーソルの座標を指定します。
 ##     プロンプト原点が x=0 y=0 に対応します。
-function ble-edit/draw/goto {
+function ble-edit/render/goto {
   local -i x="$1" y="$2"
   ble-edit/draw/put "$_ble_term_sgr0"
 
@@ -1841,10 +1872,10 @@ function ble-edit/draw/goto {
 
   _ble_line_x="$x" _ble_line_y="$y"
 }
-## 関数 ble-edit/draw/clear-line
+## 関数 ble-edit/render/clear-line
 ##   プロンプト原点に移動して、既存のプロンプト表示内容を空白にする制御系列を生成します。
-function ble-edit/draw/clear-line {
-  ble-edit/draw/goto 0 0
+function ble-edit/render/clear-line {
+  ble-edit/render/goto 0 0
   if ((_ble_line_endy>0)); then
     local height=$((_ble_line_endy+1))
     ble-edit/draw/put "${_ble_term_dl//'%d'/$height}${_ble_term_il//'%d'/$height}"
@@ -1852,15 +1883,15 @@ function ble-edit/draw/clear-line {
     ble-edit/draw/put "$_ble_term_el2"
   fi
 }
-## 関数 ble-edit/draw/clear-line-after x y
+## 関数 ble-edit/render/clear-line-after x y
 ##   指定した x y 位置に移動して、
 ##   更に、以降の内容を空白にする制御系列を生成します。
 ## \param [in] x
 ## \param [in] y
-function ble-edit/draw/clear-line-after {
+function ble-edit/render/clear-line-after {
   local x="$1" y="$2"
 
-  ble-edit/draw/goto "$x" "$y"
+  ble-edit/render/goto "$x" "$y"
   if ((_ble_line_endy>y)); then
     local height=$((_ble_line_endy-y))
     ble-edit/draw/put "$_ble_term_ind${_ble_term_dl//'%d'/$height}${_ble_term_il//'%d'/$height}$_ble_term_ri"
@@ -1870,34 +1901,14 @@ function ble-edit/draw/clear-line-after {
   _ble_line_x="$x" _ble_line_y="$y"
 }
 
-# **** .ble-edit-draw ****                                           @edit.draw
-
-## 配列 _ble_line_cur
-##   キャレット位置 (ユーザに対して呈示するカーソル) と其処の文字の情報を保持します。
-## _ble_line_cur[0] x   キャレット位置の y 座標を保持します。
-## _ble_line_cur[1] y   キャレット位置の y 座標を保持します。
-## _ble_line_cur[2] lc
-##   キャレット位置の左側の文字の文字コードを整数で保持します。
-##   キャレットが最も左の列にある場合は右側の文字を保持します。
-## _ble_line_cur[3] lg
-##   キャレット位置の左側の SGR フラグを保持します。
-##   キャレットが最も左の列にある場合は右側の文字に適用される SGR フラグを保持します。
-_ble_line_cur=(0 0 32 0)
-
-## 変数 x
-## 変数 y
-##   現在の (描画の為に動き回る) カーソル位置を保持します。
-_ble_line_x=0 _ble_line_y=0
-
-_ble_line_begx=0
-_ble_line_begy=0
-_ble_line_endx=0
-_ble_line_endy=0
+#
+# 表示関数
+#
 
 ## 変数 _ble_edit_dirty
 ##   編集文字列の変更開始点を記録します。
 ##   編集文字列の位置計算は、この点以降に対して実行されます。
-##   .ble-edit-draw.update 関数内で使用されクリアされます。
+##   ble-edit/render/update 関数内で使用されクリアされます。
 ##   @value _ble_edit_dirty=
 ##     再描画の必要がない事を表します。
 ##   @value _ble_edit_dirty=-1
@@ -1906,8 +1917,8 @@ _ble_line_endy=0
 ##     編集文字列の指定した位置以降に対し再計算する事を表します。
 _ble_edit_dirty=-1
 
-function .ble-edit-draw.set-dirty {
-  local d2="${1:-$_ble_edit_ind}"
+function ble-edit/render/invalidate {
+  local d2="${1:--1}"
   if [[ ! $_ble_edit_dirty ]]; then
     _ble_edit_dirty="$d2"
   else
@@ -1915,19 +1926,21 @@ function .ble-edit-draw.set-dirty {
   fi
 }
 
-## 変数 _ble_line_cache_ind := inds ':' mark ':' mark_active
-##   現在の表示内容のカーソル位置・ポイント位置の情報を保持します。
-_ble_line_cache_ind=::
-
-## 関数 .ble-edit-draw.update
+## 関数 ble-edit/render/update
 ##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
 ##   Post-condition: カーソル位置 (x y) = (_ble_line_cur[0] _ble_line_cur[1]) に移動する
 ##   Post-condition: 編集文字列部分の再描画を実行する
-function .ble-edit-draw.update {
-  local indices="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
-  if [[ ! $_ble_edit_dirty && "$_ble_line_cache_ind" == "$indices" ]]; then
+##
+##   @var _ble_edit_render_caret_state := inds ':' mark ':' mark_active ':' line_disabled ':' overwrite_mode
+##     ble-edit/render/update で用いる変数です。
+##     現在の表示内容のカーソル位置・ポイント位置の情報を記録します。
+##
+_ble_edit_render_caret_state=::
+function ble-edit/render/update {
+  local caret_state="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
+  if [[ ! $_ble_edit_dirty && $_ble_edit_render_caret_state == $caret_state ]]; then
     local -a DRAW_BUFF
-    ble-edit/draw/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
+    ble-edit/render/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
     ble-edit/draw/bflush
     return
   fi
@@ -1941,7 +1954,7 @@ function .ble-edit-draw.update {
   ble-edit/prompt/update # x y lc ret
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
-  # BLELINE_RANGE_UPDATE → .ble-line-text/update 内でこれを見て update を済ませる
+  # BLELINE_RANGE_UPDATE → ble-edit/text/update 内でこれを見て update を済ませる
   local -a BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
   ble-edit/dirty-range/clear --prefix=_ble_edit_dirty_draw_
 #%if !release
@@ -1959,7 +1972,7 @@ function .ble-edit-draw.update {
   ((index<0?(index=0):(index>iN&&(index=iN))))
 
   local umin=-1 umax=-1
-  .ble-line-text/update # text index dirty -> x y lc lg
+  ble-edit/text/update # text index dirty -> x y lc lg
 
   #-------------------
   # 出力
@@ -1968,15 +1981,15 @@ function .ble-edit-draw.update {
 
   # 1 描画領域の確保 (高さの調整)
   local endx endy begx begy
-  .ble-line-text/getxy --prefix=beg 0
-  .ble-line-text/getxy --prefix=end "$iN"
+  ble-edit/text/getxy --prefix=beg 0
+  ble-edit/text/getxy --prefix=end "$iN"
   local delta
   if (((delta=endy-_ble_line_endy)!=0)); then
     if((delta>0)); then
-      ble-edit/draw/goto 0 "$((_ble_line_endy+1))"
+      ble-edit/render/goto 0 "$((_ble_line_endy+1))"
       ble-edit/draw/put.il delta
     else
-      ble-edit/draw/goto 0 "$((_ble_line_endy+1+delta))"
+      ble-edit/render/goto 0 "$((_ble_line_endy+1+delta))"
       ble-edit/draw/put.dl -delta
     fi
   fi
@@ -1990,78 +2003,78 @@ function .ble-edit-draw.update {
 
     # # 編集文字列全体の描画
     # local ret
-    # .ble-line-text/slice # → ret
+    # ble-edit/text/slice # → ret
     # local esc_line="$ret"
-    # ble-edit/draw/clear-line-after "$prox" "$proy"
+    # ble-edit/render/clear-line-after "$prox" "$proy"
     # ble-edit/draw/put "$ret"
-    # .ble-line-text/getxy --prefix=ret "$iN" # → retx rety
+    # ble-edit/text/getxy --prefix=ret "$iN" # → retx rety
     # _ble_line_x="$retx" _ble_line_y="$rety"
 
     # 編集文字列の一部を描画する場合
     if ((umin<umax)); then
       local uminx uminy umaxx umaxy
-      .ble-line-text/getxy --prefix=umin "$umin"
-      .ble-line-text/getxy --prefix=umax "$umax"
+      ble-edit/text/getxy --prefix=umin "$umin"
+      ble-edit/text/getxy --prefix=umax "$umax"
 
-      ble-edit/draw/goto "$uminx" "$uminy"
-      .ble-line-text/slice "$umin" "$umax"
+      ble-edit/render/goto "$uminx" "$uminy"
+      ble-edit/text/slice "$umin" "$umax"
       ble-edit/draw/put "$ret"
       _ble_line_x="$umaxx" _ble_line_y="$umaxy"
     fi
 
     if ((BLELINE_RANGE_UPDATE[0]>=0)); then
-      ble-edit/draw/clear-line-after "$endx" "$endy"
+      ble-edit/render/clear-line-after "$endx" "$endy"
     fi
   else
     # 全体更新
 
     # プロンプト描画
-    ble-edit/draw/clear-line
+    ble-edit/render/clear-line
     ble-edit/draw/put "$esc_prompt"
     _ble_line_x="$prox" _ble_line_y="$proy"
 
     # # SC/RC で復帰する場合はこちら。
     # local ret esc_line
     # if ((index<iN)); then
-    #   .ble-line-text/slice 0 "$index"
+    #   ble-edit/text/slice 0 "$index"
     #   esc_line="$ret$_ble_term_sc"
-    #   .ble-line-text/slice "$index"
+    #   ble-edit/text/slice "$index"
     #   esc_line="$esc_line$ret$_ble_term_rc"
     #   ble-edit/draw/put "$esc_line"
-    #   .ble-line-text/getxy --prefix=ret "$index"
+    #   ble-edit/text/getxy --prefix=ret "$index"
     #   _ble_line_x="$retx" _ble_line_y="$rety"
     # else
-    #   .ble-line-text/slice
+    #   ble-edit/text/slice
     #   esc_line="$ret"
     #   ble-edit/draw/put "$esc_line"
-    #   .ble-line-text/getxy --prefix=ret "$iN"
+    #   ble-edit/text/getxy --prefix=ret "$iN"
     #   _ble_line_x="$retx" _ble_line_y="$rety"
     # fi
 
     # 全体を描画する場合
     local ret esc_line
-    .ble-line-text/slice # → ret
+    ble-edit/text/slice # → ret
     esc_line="$ret"
     ble-edit/draw/put "$ret"
-    .ble-line-text/getxy --prefix=ret "$iN" # → retx rety
+    ble-edit/text/getxy --prefix=ret "$iN" # → retx rety
     _ble_line_x="$retx" _ble_line_y="$rety"
   fi
 
   # 3 移動
   local cx cy
-  .ble-line-text/getxy.cur --prefix=c "$index" # → cx cy
-  ble-edit/draw/goto "$cx" "$cy"
+  ble-edit/text/getxy.cur --prefix=c "$index" # → cx cy
+  ble-edit/render/goto "$cx" "$cy"
   ble-edit/draw/bflush
 
   # 4 後で使う情報の記録
   _ble_line_cur=("$cx" "$cy" "$lc" "$lg")
-  _ble_edit_dirty= _ble_line_cache_ind="$indices"
+  _ble_edit_dirty= _ble_edit_render_caret_state="$caret_state"
 
   if [[ -z $bleopt_suppress_bash_output ]]; then
     if ((retx<0)); then
-      .ble-line-text/slice
+      ble-edit/text/slice
       esc_line="$ret"
-      .ble-line-text/getxy --prefix=ret "$iN"
+      ble-edit/text/getxy --prefix=ret "$iN"
     fi
 
     _ble_line_cache=(
@@ -2071,15 +2084,15 @@ function .ble-edit-draw.update {
       "$retx" "$rety")
   fi
 }
-function .ble-edit-draw.redraw {
+function ble-edit/render/redraw {
   _ble_edit_dirty=-1
-  .ble-edit-draw.update
+  ble-edit/render/update
 }
 
 ## 配列 _ble_line_cache
 ##   現在表示している内容のキャッシュです。
-##   .ble-edit-draw.update で値が設定されます。
-##   .ble-edit-draw.redraw-cache はこの情報を元に再描画を行います。
+##   ble-edit/render/update で値が設定されます。
+##   ble-edit/render/redraw-cache はこの情報を元に再描画を行います。
 ## _ble_line_cache[0]:        表示内容
 ## _ble_line_cache[1]: curx   カーソル位置 x
 ## _ble_line_cache[2]: cury   カーソル位置 y
@@ -2089,27 +2102,27 @@ function .ble-edit-draw.redraw {
 ## _ble_line_cache[5]: endy   末端位置 y
 _ble_line_cache=()
 
-function .ble-edit-draw.redraw-cache {
+function ble-edit/render/redraw-cache {
   if [[ ${_ble_line_cache[0]+set} ]]; then
     local -a d
     d=("${_ble_line_cache[@]}")
 
     local -a DRAW_BUFF
 
-    ble-edit/draw/clear-line
+    ble-edit/render/clear-line
     ble-edit/draw/put "${d[0]}"
     _ble_line_x="${d[7]}" _ble_line_y="${d[8]}"
     _ble_line_endx="${d[5]}" _ble_line_endy="${d[6]}"
 
     _ble_line_cur=("${d[@]:1:4}")
-    ble-edit/draw/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
+    ble-edit/render/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
     ble-edit/draw/bflush
   else
-    .ble-edit-draw.redraw
+    ble-edit/render/redraw
   fi
 }
 
-## 関数 .ble-edit-draw.update-adjusted
+## 関数 ble-edit/render/update-adjusted
 ##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
 ##
 ## @remarks
@@ -2118,10 +2131,10 @@ function .ble-edit-draw.redraw-cache {
 ## 内部で PS1= 等の設定を行うのでプロンプトの情報が失われる。
 ## また、READLINE_LINE, READLINE_POINT 等のグローバル変数の値を変更する。
 ##
-function .ble-edit-draw.update-adjusted {
-  .ble-edit-draw.update
+function ble-edit/render/update-adjusted {
+  ble-edit/render/update
   # 現在はフルで描画 (bash が消してしまうので)
-  # .ble-edit-draw.redraw
+  # ble-edit/render/redraw
 
   local -a DRAW_BUFF
 
@@ -2146,14 +2159,18 @@ function .ble-edit-draw.update-adjusted {
   ble-edit/draw/put "$ret"
   ble-edit/draw/bflush
 }
+
+# 
+# **** redraw, clear-screen, etc ****                             @widget.clear
+
 function ble/widget/redraw-line {
-  .ble-edit-draw.set-dirty -1
+  ble-edit/render/invalidate
 }
 function ble/widget/clear-screen {
   ble/util/buffer "$_ble_term_clear"
   _ble_line_x=0 _ble_line_y=0
   _ble_line_cur=(0 0 32 0)
-  .ble-edit-draw.set-dirty -1
+  ble-edit/render/invalidate
   ble-term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
@@ -2161,7 +2178,7 @@ function ble/widget/display-shell-version {
 }
 
 # 
-# **** mark, kill, copy ****                                         @edit.mark
+# **** mark, kill, copy ****                                       @widget.mark
 
 function ble/widget/overwrite-mode {
   if [[ $_ble_edit_overwrite_mode ]]; then
@@ -2545,31 +2562,31 @@ function ble/widget/beginning-of-text {
 
 function ble/widget/beginning-of-line {
   local x y index
-  .ble-line-text/getxy.cur "$_ble_edit_ind"
-  .ble-line-text/get-index-at 0 "$y"
+  ble-edit/text/getxy.cur "$_ble_edit_ind"
+  ble-edit/text/get-index-at 0 "$y"
   .ble-edit.goto-char "$index"
 }
 function ble/widget/end-of-line {
   local x y index ax ay
-  .ble-line-text/getxy.cur "$_ble_edit_ind"
-  .ble-line-text/get-index-at 0 "$((y+1))"
-  .ble-line-text/getxy.cur --prefix=a "$index"
+  ble-edit/text/getxy.cur "$_ble_edit_ind"
+  ble-edit/text/get-index-at 0 "$((y+1))"
+  ble-edit/text/getxy.cur --prefix=a "$index"
   ((ay>y&&index--))
   .ble-edit.goto-char "$index"
 }
 
 function ble/widget/kill-backward-line {
   local x y index
-  .ble-line-text/getxy.cur "$_ble_edit_ind"
-  .ble-line-text/get-index-at 0 "$y"
+  ble-edit/text/getxy.cur "$_ble_edit_ind"
+  ble-edit/text/get-index-at 0 "$y"
   ((index==_ble_edit_ind&&index>0&&index--))
   .ble-edit.kill-range "$index" "$_ble_edit_ind"
 }
 function ble/widget/kill-forward-line {
   local x y index ax ay
-  .ble-line-text/getxy.cur "$_ble_edit_ind"
-  .ble-line-text/get-index-at 0 "$((y+1))"
-  .ble-line-text/getxy.cur --prefix=a "$index"
+  ble-edit/text/getxy.cur "$_ble_edit_ind"
+  ble-edit/text/get-index-at 0 "$((y+1))"
+  ble-edit/text/getxy.cur --prefix=a "$index"
   ((_ble_edit_ind+1<index&&ay>y&&index--))
   .ble-edit.kill-range "$_ble_edit_ind" "$index"
 }
@@ -2577,8 +2594,8 @@ function ble/widget/kill-forward-line {
 function ble/widget/forward-line {
   local x y index
   ((_ble_edit_ind<_ble_line_text_cache_length)) || return 1
-  .ble-line-text/getxy.cur "$_ble_edit_ind"
-  .ble-line-text/get-index-at "$x" "$((y+1))"
+  ble-edit/text/getxy.cur "$_ble_edit_ind"
+  ble-edit/text/get-index-at "$x" "$((y+1))"
   .ble-edit.goto-char "$index"
   ((_ble_edit_mark_active||y<_ble_line_endy))
 }
@@ -2589,8 +2606,8 @@ function ble/widget/backward-line {
   # その場合に exit status 1 にする為に初めに check してしまう。
   ((_ble_edit_ind>0)) || return 1
 
-  .ble-line-text/getxy.cur "$_ble_edit_ind"
-  .ble-line-text/get-index-at "$x" "$((y-1))"
+  ble-edit/text/getxy.cur "$_ble_edit_ind"
+  ble-edit/text/get-index-at "$x" "$((y-1))"
   .ble-edit.goto-char "$index"
   ((_ble_edit_mark_active||y>_ble_line_begy))
 }
@@ -3079,7 +3096,7 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
 }
 function ble-edit/exec:gexec/.begin {
   _ble_decode_bind_hook=
-  .ble-edit/stdout/on
+  ble-edit/bind/stdout.on
   set -H
 
   # C-c に対して
@@ -3184,12 +3201,12 @@ function ble-edit/exec:gexec/process {
 
 function .ble-edit/newline {
   # 行更新
-  .ble-line-info.clear
-  .ble-edit-draw.update
+  ble-edit/info/clear
+  ble-edit/render/update
 
   # 新しい行
   local -a DRAW_BUFF
-  ble-edit/draw/goto "$_ble_line_endx" "$_ble_line_endy"
+  ble-edit/render/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/bflush
   ble/util/joblist.bflush
@@ -3244,7 +3261,7 @@ function ble/widget/accept-line {
   # 履歴展開
   local hist_expanded
   if ! ble-edit/hist_expanded.update "$BASH_COMMAND"; then
-    .ble-edit-draw.set-dirty -1
+    ble-edit/render/invalidate
     return
   fi
 
@@ -3390,10 +3407,10 @@ function ble-edit/history/load {
 
   if ((_ble_edit_attached)); then
     local x="$_ble_line_x" y="$_ble_line_y"
-    .ble-line-info.draw-text "loading history..."
+    ble-edit/info/draw-text "loading history..."
 
     local -a DRAW_BUFF
-    ble-edit/draw/goto "$x" "$y"
+    ble-edit/render/goto "$x" "$y"
     ble-edit/draw/flush >&2
   fi
 
@@ -3405,7 +3422,7 @@ function ble-edit/history/load {
   _ble_edit_history_count="${#_ble_edit_history[@]}"
   _ble_edit_history_ind="$_ble_edit_history_count"
   if ((_ble_edit_attached)); then
-    .ble-line-info.clear
+    ble-edit/info/clear
   fi
 }
 
@@ -3650,14 +3667,14 @@ function ble-edit/isearch/.draw-line-with-progress {
     ((isearch_ntask)) && text="$text *$isearch_ntask"
   fi
 
-  .ble-line-info.draw-text "$text"
+  ble-edit/info/draw-text "$text"
 }
 
 function ble-edit/isearch/.draw-line {
   ble-edit/isearch/.draw-line-with-progress
 }
 function ble-edit/isearch/.erase-line {
-  .ble-line-info.clear
+  ble-edit/info/clear
 }
 function ble-edit/isearch/.set-region {
   local beg="$1" end="$2"
@@ -4107,9 +4124,9 @@ function ble/widget/command-help {
 
 # **** binder ****                                                   @bind.bind
 
-function .ble-edit/stdout/on { :;}
-function .ble-edit/stdout/off { ble/util/buffer.flush >&2;}
-function .ble-edit/stdout/finalize { :;}
+function ble-edit/bind/stdout.on { :;}
+function ble-edit/bind/stdout.off { ble/util/buffer.flush >&2;}
+function ble-edit/bind/stdout.finalize { :;}
 
 if [[ $bleopt_suppress_bash_output ]]; then
   declare _ble_edit_io_stdout
@@ -4124,23 +4141,23 @@ if [[ $bleopt_suppress_bash_output ]]; then
   declare _ble_edit_io_fname1="$_ble_base_tmp/$$.stdout"
   declare _ble_edit_io_fname2="$_ble_base_tmp/$$.stderr"
 
-  function .ble-edit/stdout/on {
+  function ble-edit/bind/stdout.on {
     exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr
   }
-  function .ble-edit/stdout/off {
+  function ble-edit/bind/stdout.off {
     ble/util/buffer.flush >&2
-    .ble-edit/stdout/check-stderr
+    ble-edit/bind/stdout/check-stderr
     exec 1>>$_ble_edit_io_fname1 2>>$_ble_edit_io_fname2
   }
-  function .ble-edit/stdout/finalize {
-    .ble-edit/stdout/on
+  function ble-edit/bind/stdout.finalize {
+    ble-edit/bind/stdout.on
     [[ -f $_ble_edit_io_fname1 ]] && command rm -f "$_ble_edit_io_fname1"
     [[ -f $_ble_edit_io_fname2 ]] && command rm -f "$_ble_edit_io_fname2"
   }
 
-  ## 関数 .ble-edit/stdout/check-stderr
+  ## 関数 ble-edit/bind/stdout/check-stderr
   ##   bash が stderr にエラーを出力したかチェックし表示する。
-  function .ble-edit/stdout/check-stderr {
+  function ble-edit/bind/stdout/check-stderr {
     local file="${1:-$_ble_edit_io_fname2}"
 
     # if the visible bell function is already defined.
@@ -4169,7 +4186,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
   #   IGNOREEOF を設定しておくと C-d を押した時に
   #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
   if ((_ble_bash<40000)); then
-    function .ble-edit/stdout/trap-SIGUSR1 {
+    function ble-edit/bind/stdout/trap-SIGUSR1 {
       local file="$_ble_edit_io_fname2.proc"
       if [[ -s $file ]]; then
         content="$(< $file)"
@@ -4184,7 +4201,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
       fi
     }
 
-    trap -- '.ble-edit/stdout/trap-SIGUSR1' USR1
+    trap -- 'ble-edit/bind/stdout/trap-SIGUSR1' USR1
 
     command rm -f "$_ble_edit_io_fname2.pipe"
     command mkfifo "$_ble_edit_io_fname2.pipe"
@@ -4221,9 +4238,9 @@ if [[ $bleopt_suppress_bash_output ]]; then
 
     ble/util/openat _ble_edit_fd_stderr_pipe '> "$_ble_edit_io_fname2.pipe"'
 
-    function .ble-edit/stdout/off {
+    function ble-edit/bind/stdout.off {
       ble/util/buffer.flush >&2
-      .ble-edit/stdout/check-stderr
+      ble-edit/bind/stdout/check-stderr
       exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_fd_stderr_pipe
     }
   fi
@@ -4254,7 +4271,7 @@ function ble-edit/bind/.check-detach {
       # exit
       ble/util/buffer.flush >&2
       builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" 1>&2
-      .ble-edit-draw.update
+      ble-edit/render/update
       ble/util/buffer.flush >&2
 
       # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
@@ -4265,7 +4282,7 @@ function ble-edit/bind/.check-detach {
       ble/util/buffer.flush >&2
       builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
       builtin echo "Please run \`stty sane' to recover the correct TTY state." >&2
-      .ble-edit-draw.update
+      ble-edit/render/update
       ble/util/buffer.flush >&2
       READLINE_LINE='stty sane' READLINE_POINT=9
     fi
@@ -4277,42 +4294,42 @@ function ble-edit/bind/.check-detach {
 
 if ((_ble_bash>=40100)); then
   function ble-edit/bind/.head {
-    .ble-edit/stdout/on
+    ble-edit/bind/stdout.on
 
     if [[ -z $bleopt_suppress_bash_output ]]; then
       # bash-4.1 以降では呼出直前にプロンプトが消される
-      .ble-edit-draw.redraw-cache
+      ble-edit/render/redraw-cache
       ble/util/buffer.flush >&2
     fi
   }
 else
   function ble-edit/bind/.head {
-    .ble-edit/stdout/on
+    ble-edit/bind/stdout.on
 
     if [[ -z $bleopt_suppress_bash_output ]]; then
       # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
       ((_ble_line_y++,_ble_line_x=0))
       local -a DRAW_BUFF=()
-      ble-edit/draw/goto "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+      ble-edit/render/goto "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
       ble-edit/draw/flush
     fi
   }
 fi
 
 function ble-edit/bind/.tail-without-draw {
-  .ble-edit/stdout/off
+  ble-edit/bind/stdout.off
 }
 
 if ((_ble_bash>40000)); then
   function ble-edit/bind/.tail {
-    .ble-edit-draw.update-adjusted
-    .ble-edit/stdout/off
+    ble-edit/render/update-adjusted
+    ble-edit/bind/stdout.off
   }
 else
   IGNOREEOF=10000
   function ble-edit/bind/.tail {
-    .ble-edit-draw.update # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
-    .ble-edit/stdout/off
+    ble-edit/render/update # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
+    ble-edit/bind/stdout.off
   }
 fi
 
@@ -4351,11 +4368,11 @@ function ble-decode-byte:bind/EPILOGUE {
 function ble/widget/.shell-command {
   local -a BASH_COMMAND
   BASH_COMMAND=("$*")
-  .ble-line-info.clear
-  .ble-edit-draw.update
+  ble-edit/info/clear
+  ble-edit/render/update
 
   local -a DRAW_BUFF
-  ble-edit/draw/goto "$_ble_line_endx" "$_ble_line_endy"
+  ble-edit/render/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/bflush
   ble/util/joblist.bflush
@@ -4367,7 +4384,7 @@ function ble/widget/.shell-command {
     ble-edit/exec/register "$BASH_COMMAND"
   fi
 
-  .ble-edit-draw.set-dirty -1
+  ble-edit/render/invalidate
 }
 
 ## 関数 ble/widget/.edit-command command
@@ -4408,9 +4425,9 @@ function ble-edit-attach {
     ble-edit/history/load
   fi
 
-  .ble-edit/edit/attach
+  ble-edit/attach
 }
 function .ble-edit-finalize {
-  .ble-edit/stdout/finalize
-  .ble-edit/edit/detach
+  ble-edit/bind/stdout.finalize
+  ble-edit/detach
 }

@@ -381,6 +381,26 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2017-02-28
+
+  * ble-edit: 関数名の整理
+
+    .ble-edit/stdout/on       -> ble-edit/bind/stdout.on
+    .ble-edit/stdout/off      -> ble-edit/bind/stdout.off
+    .ble-edit/stdout/finalize -> ble-edit/bind/stdout.finalize
+    .ble-edit/stdout/*        -> ble-edit/bind/stdout/*
+
+    .ble-line-text.          -> ble-edit/text/
+    .ble-line-info.          -> ble-edit/info/
+    .ble-line-cur.xyo        -> ble-edit/info/.put
+    .ble-edit-draw.          -> ble-edit/render/
+    .ble-edit-draw.set-dirty -> ble-edit/render/invalidate
+
+    ble-edit/draw/goto             -> ble-edit/render/goto
+    ble-edit/draw/clear-line       -> ble-edit/render/clear-line
+    ble-edit/draw/clear-line-after -> ble-edit/render/clear-line-after
+
+
 2017-02-27
 
   * PS1='$(echo "hello")'
@@ -2012,7 +2032,7 @@ tech
     % _ の値の取得に関しては ble-edit/exec:gexec/.eval-epilogue の中に追加する事にした。
     % どうやら関数の実行が終了するまではその関数の最後の引数は _ に設定されない様なので。
     % つまり、そのコマンドが終了した時に _ が設定されるという事である。
-    % 
+    %
     % 一方で同じ理由で _ の設定に関しては ble-edit/exec:gexec/.eval-prologue の中に設定しても駄目だ。
     % というのも中で _ を設定したとしても .eval-prologue 関数を出た時に
     % .eval-prologue 関数自体の最後の引数が改めて _ に設定されてしまうからである。
