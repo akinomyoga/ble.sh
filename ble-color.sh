@@ -35,13 +35,9 @@ function ble-color-show {
 
 declare -a _ble_color_g2sgr__table=()
 function ble-color-g2sgr {
-  local var=ret ret
-  if [[ $1 == -v ]]; then
-    var="$2"
-    shift 2
-  fi
+  eval "$ble_util_upvar_setup"
 
-  ret="${_ble_color_g2sgr__table[$1]}"
+  local ret="${_ble_color_g2sgr__table[$1]}"
   if [[ -z $ret ]]; then
     local -i g="$1"
     local fg="$((g>> 8&0xFF))"
@@ -68,14 +64,10 @@ function ble-color-g2sgr {
     _ble_color_g2sgr__table[$1]="$ret"
   fi
 
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
+  eval "$ble_util_upvar"
 }
 function ble-color-gspec2g {
-  local var=ret
-  if [[ $1 == -v ]]; then
-    var=$2
-    shift 2
-  fi
+  eval "$ble_util_upvar_setup"
   
   local g=0 entry
   for entry in ${1//,/ }; do
@@ -107,15 +99,12 @@ function ble-color-gspec2g {
     esac
   done
 
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "$g"
+  local ret="$g"; eval "$ble_util_upvar"
 }
 
 function ble-color-gspec2sgr {
-  local var=ret sgr=0 entry
-  if [[ $1 == -v ]]; then
-    var=$2
-    shift 2
-  fi
+  eval "$ble_util_upvar_setup"
+  local sgr=0 entry
 
   for entry in ${1//,/ }; do
     case "$entry" in
@@ -135,15 +124,11 @@ function ble-color-gspec2sgr {
     esac
   done
 
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "[${sgr}m"
+  local ret="[${sgr}m"; eval "$ble_util_upvar"
 }
 
 function ble-color/.name2color {
-  local var=ret
-  if [[ $1 == -v ]]; then
-    var=$2
-    shift 2
-  fi
+  eval "$ble_util_upvar_setup"
 
   local colorName="$1" ret
   if [[ $colorName == $((colorName)) ]]; then
@@ -174,16 +159,12 @@ function ble-color/.name2color {
     esac
   fi
 
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
+  eval "$ble_util_upvar"
 }
 function ble-color/.color2sgrfg {
-  local var=ret ret
-  if [[ $1 == -v ]]; then
-    var=$2
-    shift 2
-  fi
+  eval "$ble_util_upvar_setup"
 
-  local ccode="$1"
+  local ret ccode="$1"
   if ((ccode<0)); then
     ret=39
   elif ((ccode<16)); then
@@ -192,16 +173,12 @@ function ble-color/.color2sgrfg {
     ret="38;5;$ccode"
   fi
 
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
+  eval "$ble_util_upvar"
 }
 function ble-color/.color2sgrbg {
-  local var=ret ret
-  if [[ $1 == -v ]]; then
-    var=$2
-    shift 2
-  fi
+  eval "$ble_util_upvar_setup"
 
-  local ccode="$1"
+  local ret ccode="$1"
   if ((ccode<0)); then
     ret=49
   elif ((ccode<16)); then
@@ -210,7 +187,7 @@ function ble-color/.color2sgrbg {
     ret="48;5;$ccode"
   fi
 
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
+  eval "$ble_util_upvar"
 }
 
 #------------------------------------------------------------------------------
@@ -605,18 +582,11 @@ function ble-highlight-layer/update/getg {
 }
 
 function ble-highlight-layer/getg {
-  if [[ $1 == -v ]]; then
-    if [[ $2 != g ]]; then
-      local g
-      ble-highlight-layer/getg "$3"
-      local "${2%%\[*\]}" && ble/util/upvar "$2" "$g"
-      return
-    else
-      shift 2
-    fi
-  fi
+  eval "$ble_util_upvar_setup"
 
   LEVEL="${#_ble_highlight_layer__list[*]}" ble-highlight-layer/update/getg "$1"
+
+  local ret="$g"; eval "$ble_util_upvar"
 }
 
 ## レイヤーの実装

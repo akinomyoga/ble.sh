@@ -296,13 +296,9 @@ function ble-syntax/print-status/.dump-arrays/.append-attr-char {
 }
 
 function ble-syntax/print-status/.get-ctx-text {
-  local var=ret ret
-  if [[ $1 == -v ]]; then
-    var="$2"
-    shift 2
-  fi
+  eval "$ble_util_upvar_setup"
 
-  local sgr
+  local sgr ret
   ble-syntax:bash/ctx#get_name -v ret "$1"
   ret=${ret#BLE_}
   if [[ ! $ret ]]; then
@@ -310,7 +306,7 @@ function ble-syntax/print-status/.get-ctx-text {
     ret="${sgr}CTX$1$_ble_term_sgr0"
   fi
 
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
+  eval "$ble_util_upvar"
 }
 
 ## @var[out] resultA

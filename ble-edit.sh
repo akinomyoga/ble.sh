@@ -3621,7 +3621,8 @@ function ble-edit/isearch/.draw-line-with-progress {
   # 出力
   local ll rr
   if [[ $_ble_edit_isearch_dir == - ]]; then
-    ll="<<" rr="  "
+    # Emacs work around: '<<' や "<<" と書けない。
+    ll=\<\< rr="  "
   else
     ll="  " rr=">>"
     text="  >>)"

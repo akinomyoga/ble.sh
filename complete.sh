@@ -45,9 +45,8 @@
 ##
 
 function ble-complete/util/escape-specialchars {
-  local a b var=ret
-  [[ $1 == -v ]] && { var="$2"; shift 2; }
-  local ret="$*"
+  eval "$ble_util_upvar_setup"
+  local a b ret="$*"
   if [[ $ret == *['][\ "'\''$|&;<>()*?{}!^']* ]]; then
     a=\\ b="\\$a" ret="${ret//"$a"/$b}"
     a=\  b="\\$a" ret="${ret//"$a"/$b}"
@@ -70,13 +69,12 @@ function ble-complete/util/escape-specialchars {
     a=\! b="\\$a" ret="${ret//"$a"/$b}"
     a=\^ b="\\$a" ret="${ret//"$a"/$b}"
   fi
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
+  eval "$ble_util_upvar"
 }
 
 function ble-complete/util/escape-regexchars {
-  local a b var=ret
-  [[ $1 == -v ]] && { var="$2"; shift 2; }
-  local ret="$*"
+  eval "$ble_util_upvar_setup"
+  local a b ret="$*"
   if [[ $ret == *['\.[*^$/']* ]]; then
     a=\\ b="\\$a" ret="${ret//"$a"/$b}"
     a=\. b="\\$a" ret="${ret//"$a"/$b}"
@@ -86,7 +84,7 @@ function ble-complete/util/escape-regexchars {
     a=\$ b="\\$a" ret="${ret//"$a"/$b}"
     a=\/ b="\\$a" ret="${ret//"$a"/$b}"
   fi
-  local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"
+  eval "$ble_util_upvar"
 }
 
 function ble-complete/action/util/complete.addtail {

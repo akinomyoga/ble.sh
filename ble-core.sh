@@ -165,6 +165,8 @@ else
   }
 fi
 
+ble_util_upvar_setup='local var=ret; [[ $1 == -v ]] && var="$2" && shift 2'
+ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
 function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
 function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
 
@@ -460,7 +462,7 @@ function ble/util/joblist.flush {
 }
 
 ## 関数 ble/util/joblist.clear
-##   bash 自身によってジョブ状態変化が出力される場合には比較用のバッファを clear する。
+##   bash 自身によってジョブ状態変化が出力される場合には比較用のバッファを clear します。
 function ble/util/joblist.clear {
   _ble_util_joblist_jobs=
   _ble_util_joblist_list=()
