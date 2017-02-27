@@ -363,6 +363,23 @@ ble/util/isfunction ble/util/getmtime ||
   function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
 #------------------------------------------------------------------------------
+## 関数 ble/util/buffer text...
+_ble_util_buffer=()
+function ble/util/buffer {
+  _ble_util_buffer[${#_ble_util_buffer[@]}]="$*"
+}
+function ble/util/buffer.print {
+  ble/util/buffer "$*"$'\n'
+}
+function ble/util/buffer.flush {
+  IFS= builtin eval 'builtin echo -n "${_ble_util_buffer[*]}"'
+  _ble_util_buffer=()
+}
+function ble/util/buffer.clear {
+  _ble_util_buffer=()
+}
+
+#------------------------------------------------------------------------------
 ## 関数 ble/util/joblist
 ##   現在のジョブ一覧を取得すると共に、ジョブ状態の変化を調べる。
 ##
@@ -458,6 +475,14 @@ function ble/util/joblist.flush {
   ble/util/joblist
   ((${#_ble_util_joblist_events[@]})) || return
   printf '%s\n' "${_ble_util_joblist_events[@]}"
+  _ble_util_joblist_events=()
+}
+function ble/util/joblist.bflush {
+  local joblist out
+  ble/util/joblist
+  ((${#_ble_util_joblist_events[@]})) || return
+  ble/util/sprintf out '%s\n' "${_ble_util_joblist_events[@]}"
+  ble/util/buffer "$out"
   _ble_util_joblist_events=()
 }
 

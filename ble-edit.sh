@@ -327,6 +327,10 @@ function ble-edit/draw/sflush {
   IFS= builtin eval "$_var=\"\${DRAW_BUFF[*]}\""
   DRAW_BUFF=()
 }
+function ble-edit/draw/bflush {
+  IFS= builtin eval 'ble/util/buffer "${DRAW_BUFF[*]}"'
+  DRAW_BUFF=()
+}
 
 _ble_draw_trace_brack=()
 _ble_draw_trace_scosc=
@@ -1576,7 +1580,8 @@ function .ble-line-info.draw/impl {
 
   # (2) 内容
   ble-edit/draw/put "$content"
-  ble-edit/draw/flush >&2
+  ble-edit/draw/bflush
+  ble/util/buffer.flush >&2
 
   _ble_line_y="$((_ble_line_endy+1+y))"
   _ble_line_x="$x"
@@ -1595,7 +1600,8 @@ function .ble-line-info.clear {
   ble-edit/draw/goto 0 _ble_line_endy
   ble-edit/draw/put "$_ble_term_ind"
   ble-edit/draw/put.dl '_ble_line_info[1]+1'
-  ble-edit/draw/flush >&2
+  ble-edit/draw/bflush
+  ble/util/buffer.flush >&2
 
   _ble_line_y="$((_ble_line_endy+1))"
   _ble_line_x=0
@@ -1914,14 +1920,15 @@ function .ble-edit-draw.set-dirty {
 _ble_line_cache_ind=::
 
 ## 関数 .ble-edit-draw.update
-##   要件: カーソル位置 (x y) = (_ble_line_cur[0] _ble_line_cur[1]) に移動する
-##   要件: 編集文字列部分の再描画を実行する
+##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
+##   Post-condition: カーソル位置 (x y) = (_ble_line_cur[0] _ble_line_cur[1]) に移動する
+##   Post-condition: 編集文字列部分の再描画を実行する
 function .ble-edit-draw.update {
   local indices="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
   if [[ ! $_ble_edit_dirty && "$_ble_line_cache_ind" == "$indices" ]]; then
     local -a DRAW_BUFF
     ble-edit/draw/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
-    ble-edit/draw/flush >&2
+    ble-edit/draw/bflush
     return
   fi
 
@@ -2044,7 +2051,7 @@ function .ble-edit-draw.update {
   local cx cy
   .ble-line-text/getxy.cur --prefix=c "$index" # → cx cy
   ble-edit/draw/goto "$cx" "$cy"
-  ble-edit/draw/flush 1>&2
+  ble-edit/draw/bflush
 
   # 4 後で使う情報の記録
   _ble_line_cur=("$cx" "$cy" "$lc" "$lg")
@@ -2096,18 +2103,21 @@ function .ble-edit-draw.redraw-cache {
 
     _ble_line_cur=("${d[@]:1:4}")
     ble-edit/draw/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
-
-    ble-edit/draw/flush 1>&2
+    ble-edit/draw/bflush
   else
     .ble-edit-draw.redraw
   fi
 }
+
 ## 関数 .ble-edit-draw.update-adjusted
+##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
 ##
-## * この関数は bind -x される関数から呼び出される事を想定している。
-##   通常のコマンドとして実行される関数から呼び出す事は想定していない。
-##   内部で PS1= 等の設定を行うのでプロンプトの情報が失われる。
-##   また、READLINE_LINE, READLINE_POINT 等のグローバル変数の値を変更する。
+## @remarks
+## この関数は bind -x される関数から呼び出される事を想定している。
+## 通常のコマンドとして実行される関数から呼び出す事は想定していない。
+## 内部で PS1= 等の設定を行うのでプロンプトの情報が失われる。
+## また、READLINE_LINE, READLINE_POINT 等のグローバル変数の値を変更する。
+##
 function .ble-edit-draw.update-adjusted {
   .ble-edit-draw.update
   # 現在はフルで描画 (bash が消してしまうので)
@@ -2134,13 +2144,13 @@ function .ble-edit-draw.update-adjusted {
 
   ble-color-g2sgr "$lg"
   ble-edit/draw/put "$ret"
-  ble-edit/draw/flush >&2
+  ble-edit/draw/bflush
 }
 function ble/widget/redraw-line {
   .ble-edit-draw.set-dirty -1
 }
 function ble/widget/clear-screen {
-  builtin echo -n "$_ble_term_clear" >&2
+  ble/util/buffer "$_ble_term_clear"
   _ble_line_x=0 _ble_line_y=0
   _ble_line_cur=(0 0 32 0)
   .ble-edit-draw.set-dirty -1
@@ -2483,7 +2493,8 @@ function ble/widget/delete-forward-char-or-exit {
   #_ble_edit_detach_flag=exit
 
   #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
-  builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
+  ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
+  ble/util/buffer.flush >&2
   exit
 }
 function ble/widget/delete-forward-backward-char {
@@ -2830,7 +2841,7 @@ function ble-edit/exec/.adjust-eol {
 #--------------------------------------
 
 function ble-edit/exec:exec/.eval-TRAPINT {
-  builtin echo
+  builtin echo >&2
   # echo "SIGINT ${FUNCNAME[1]}"
   if ((_ble_bash>=40300)); then
     _ble_edit_exec_INT=130
@@ -2843,7 +2854,7 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
   # 一旦 DEBUG を設定すると bind -x を抜けるまで削除できない様なので、
   # _ble_edit_exec_INT のチェックと _ble_edit_exec_in_eval のチェックを行う。
   if ((_ble_edit_exec_INT&&_ble_edit_exec_in_eval)); then
-    builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2"
+    builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2" >&2
     return 0
   else
     trap - DEBUG # 何故か効かない
@@ -3007,6 +3018,7 @@ function ble-edit/exec:exec {
   # 以下、配列 _ble_edit_exec_lines に登録されている各コマンドを順に実行する。
   # ループ構文を使うと、ループ構文自体がユーザの入力した C-z (SIGTSTP)
   # を受信して(?)停止してしまう様なので、再帰でループする必要がある。
+  ble/util/buffer.flush >&2
   ble-edit/exec:exec/.recursive 0
 
   _ble_edit_exec_lines=()
@@ -3034,7 +3046,7 @@ function ble-edit/exec:exec/process {
 #--------------------------------------
 
 function ble-edit/exec:gexec/.eval-TRAPINT {
-  builtin echo
+  builtin echo >&2
   if ((_ble_bash>=40300)); then
     _ble_edit_exec_INT=130
   else
@@ -3050,14 +3062,14 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
     local rex='^\ble-edit/exec:gexec/.'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
-      builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2"
+      builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2" >&2
       return 0
     fi
 
     local rex='^(\ble-edit/exec:gexec/.|trap - )'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
-      builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2"
+      builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2" >&2
       return 0
     fi
   fi
@@ -3118,7 +3130,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
     if builtin type -t TRAPERR &>/dev/null; then
       TRAPERR
     else
-      builtin echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" 2>&1
+      builtin echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" >&2
     fi
   fi
 }
@@ -3132,6 +3144,7 @@ function ble-edit/exec:gexec/.setup {
   #   この所為で、例えば source 内で declare した配列などが壊れる。
   #
   ((${#_ble_edit_exec_lines[@]}==0)) && return 1
+  ble/util/buffer.flush >&2
 
   local apos=\' APOS="'\\''"
   local cmd
@@ -3178,14 +3191,14 @@ function .ble-edit/newline {
   local -a DRAW_BUFF
   ble-edit/draw/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
-  ble-edit/draw/flush >&2
-  ble/util/joblist.flush >&2
+  ble-edit/draw/bflush
+  ble/util/joblist.bflush
   _ble_line_x=0 _ble_line_y=0
   ((LINENO=++_ble_edit_LINENO))
 
   # カーソルを表示する。
   # layer:overwrite でカーソルを消している時の為。
-  [[ $_ble_edit_overwrite_mode ]] && builtin echo -n $'\e[?25h'
+  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
 
   _ble_edit_str.reset ''
   _ble_edit_ind=0
@@ -3240,7 +3253,7 @@ function ble/widget/accept-line {
 
   if [[ $hist_expanded != "$BASH_COMMAND" ]]; then
     BASH_COMMAND="$hist_expanded"
-    builtin echo "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $BASH_COMMAND" 1>&2
+    ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $BASH_COMMAND"
   fi
 
   if [[ ${BASH_COMMAND//[ 	]} ]]; then
@@ -4073,11 +4086,13 @@ function ble/widget/command-help {
 
   local content
   if content="$("$cmd" --help 2>&1)" && [[ $content ]]; then
+    ble/util/buffer.flush >&2
     builtin printf '%s\n' "$content" | ble/util/less
     return
   fi
 
   if content="$(command man "$cmd" 2>&1)" && [[ $content ]]; then
+    ble/util/buffer.flush >&2
     builtin printf '%s\n' "$content" | ble/util/less
     return
   fi
@@ -4093,7 +4108,7 @@ function ble/widget/command-help {
 # **** binder ****                                                   @bind.bind
 
 function .ble-edit/stdout/on { :;}
-function .ble-edit/stdout/off { :;}
+function .ble-edit/stdout/off { ble/util/buffer.flush >&2;}
 function .ble-edit/stdout/finalize { :;}
 
 if [[ $bleopt_suppress_bash_output ]]; then
@@ -4113,6 +4128,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
     exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr
   }
   function .ble-edit/stdout/off {
+    ble/util/buffer.flush >&2
     .ble-edit/stdout/check-stderr
     exec 1>>$_ble_edit_io_fname1 2>>$_ble_edit_io_fname2
   }
@@ -4206,6 +4222,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
     ble/util/openat _ble_edit_fd_stderr_pipe '> "$_ble_edit_io_fname2.pipe"'
 
     function .ble-edit/stdout/off {
+      ble/util/buffer.flush >&2
       .ble-edit/stdout/check-stderr
       exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_fd_stderr_pipe
     }
@@ -4235,17 +4252,21 @@ function ble-edit/bind/.check-detach {
       #   一応 _ble_edit_detach_flag=exit と直に入力する事で呼び出す事はできる。
 
       # exit
+      ble/util/buffer.flush >&2
       builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" 1>&2
       .ble-edit-draw.update
+      ble/util/buffer.flush >&2
 
       # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
       # シグナルハンドラの中から exit すれば stty がそのままの状態で抜けられる様なのでそうする。
       trap 'ble-edit/bind/.exit-trap' RTMAX
       kill -RTMAX $$
     else
+      ble/util/buffer.flush >&2
       builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
       builtin echo "Please run \`stty sane' to recover the correct TTY state." >&2
       .ble-edit-draw.update
+      ble/util/buffer.flush >&2
       READLINE_LINE='stty sane' READLINE_POINT=9
     fi
     return 0
@@ -4259,7 +4280,9 @@ if ((_ble_bash>=40100)); then
     .ble-edit/stdout/on
 
     if [[ -z $bleopt_suppress_bash_output ]]; then
-      .ble-edit-draw.redraw-cache # bash-4.1 以降では呼出直前にプロンプトが消される
+      # bash-4.1 以降では呼出直前にプロンプトが消される
+      .ble-edit-draw.redraw-cache
+      ble/util/buffer.flush >&2
     fi
   }
 else
@@ -4334,8 +4357,8 @@ function ble/widget/.shell-command {
   local -a DRAW_BUFF
   ble-edit/draw/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
-  ble-edit/draw/flush >&2
-  ble/util/joblist.flush >&2
+  ble-edit/draw/bflush
+  ble/util/joblist.bflush
   _ble_line_x=0 _ble_line_y=0
   ((LINENO=++_ble_edit_LINENO))
 
