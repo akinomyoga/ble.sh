@@ -3029,7 +3029,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
 
     # 単語を展開
     local value
-    if [[ $wtxt == '['* ]]; then
+    if [[ $wtxt == ['[#']* ]]; then
       # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
       eval "value=(''$wtxt)"
     else
