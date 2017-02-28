@@ -1431,10 +1431,20 @@ _BLE_SYNTAX_FCTX[CTX_ARGVX]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGVI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FEND[CTX_ARGVI]=ble-syntax:bash/ctx-command/check-word-end
 
+function ble-syntax:bash/starts-with-delimiter-or-redirect {
+  local delimiters=$_ble_syntax_bash_rex_delimiters
+  local redirect=$_ble_syntax_bash_rex_redirect
+  [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect ) && $tail != ['<>']'('* ]]
+}
+
 ## 関数 ble-syntax:bash/ctx-command/check-word-end
-## @var[in,out] ctx
-## @var[in,out] wbegin
-## @var[in,out] 他
+##   @var[in,out] ctx
+##   @var[in,out] wbegin
+##   @var[in,out] 他
+_ble_syntax_bash_command_ectx=()
+_ble_syntax_bash_command_ectx[CTX_ARGI]=$CTX_ARGX
+_ble_syntax_bash_command_ectx[CTX_ARGVI]=$CTX_ARGVX
+_ble_syntax_bash_command_ectx[CTX_VRHS]=$CTX_CMDXV
 function ble-syntax:bash/ctx-command/check-word-end {
   # 単語の中にいない時は抜ける
   ((wbegin<0)) && return 1
@@ -1556,19 +1566,138 @@ function ble-syntax:bash/ctx-command/check-word-end {
         fi
       fi ;;
     esac
-  elif ((ctx==CTX_ARGI)); then
-    ((ctx=CTX_ARGX))
-  elif ((ctx==CTX_ARGVI)); then
-    ((ctx=CTX_ARGVX))
-  elif ((ctx==CTX_VRHS)); then
-    ((ctx=CTX_CMDXV))
+    return 0
+  fi
+
+  if ((_ble_syntax_bash_command_ectx[ctx])); then
+    ((ctx=_ble_syntax_bash_command_ectx[ctx]))
   fi
 
   return 0
 }
 
+function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
+  if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
+    # 空白 (ctx はそのままで素通り)
+    ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)) && [[ $BASH_REMATCH == *$'\n'* ]] && ((ctx=CTX_CMDX))
+    return 0
+  elif [[ $tail =~ ^$_ble_syntax_bash_rex_redirect ]]; then
+    # リダイレクト (& 単体の解釈より優先する)
+
+    local fError=0
+    # for bash-3.1 ${#arr[n]} bug ... 一旦 rematch1 に入れてから ${#rematch1} で文字数を得る。
+    local rematch1="${BASH_REMATCH[1]}"
+    local rematch3="${BASH_REMATCH[3]}"
+    if [[ $rematch1 == *'&' ]]; then
+      ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
+    elif [[ $rematch1 == \<\< ]]; then
+      # Note: emacs bug workaround
+      #   '<<' と書くと何故か Emacs がヒアドキュメントと
+      #   勘違いする様になったので仕方なく \<\< とする。
+
+      #■ヒアドキュメント not yet supported
+      fError=1
+      ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3" # 暫定・単語一つ
+    elif [[ $rematch1 == '<<<' ]]; then
+      ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
+    else
+      ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch3"
+    fi
+    ((_ble_syntax_attr[i]=fError?ATTR_ERR:ATTR_DEL,
+      ${#rematch1}<${#BASH_REMATCH}&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX),
+      i+=${#BASH_REMATCH}))
+    return 0
+  elif rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
+    # 制御演算子 && || | & ; |& ;; ;;&
+
+    # for bash-3.1 ${#arr[n]} bug
+    local rematch1="${BASH_REMATCH[1]}" rematch2="${BASH_REMATCH[2]}"
+    ((_ble_syntax_attr[i]=ATTR_DEL,
+      (ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDX&&${#rematch2})||
+        (_ble_syntax_attr[i]=ATTR_ERR)))
+    ((ctx=${#rematch1}?CTX_CMDX1:(
+         ${#rematch2}?CTX_CASE:
+         CTX_CMDX)))
+    ((i+=${#BASH_REMATCH}))
+    return 0
+  elif rex='^\(\(?' && [[ $tail =~ $rex ]]; then
+    # サブシェル (, 算術コマンド ((
+    local m="${BASH_REMATCH[0]}"
+    if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXF&&${#m}==2)); then
+      ((_ble_syntax_attr[i]=ATTR_DEL))
+      ((ctx=CTX_ARGX0))
+      ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
+      ((i+=${#m}))
+    else
+      ble-syntax/parse/nest-push "$CTX_PATN"
+      ((_ble_syntax_attr[i++]=ATTR_ERR))
+    fi
+    return 0
+  elif [[ $tail == ')'* ]]; then
+    local type
+    ble-syntax/parse/nest-type -v type
+    local attr=
+    if [[ $type == '(' ]]; then
+      # ( sub shell )
+      # <( process substitution )
+      # func ( invalid )
+      ((attr=ATTR_DEL))
+    elif [[ $type == '$(' ]]; then
+      # $(command substitution)
+      ((attr=CTX_PARAM))
+    fi
+
+    if [[ $attr ]]; then
+      ((_ble_syntax_attr[i]=(ctx==CTX_CMDX||ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)?attr:ATTR_ERR,
+        i+=1))
+      ble-syntax/parse/nest-pop
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+## 関数 ble-syntax:bash/ctx-command/.check-word-begin
+##   単語が未開始の場合に開始します。
+##   @var[in,out] i,ctx,wtype,wbegin
+##   @return 引数が来てはならない所に引数が来た時に 1 を返します。
+_ble_syntax_bash_command_bctx=()
+_ble_syntax_bash_command_bctx[CTX_ARGX]=$CTX_ARGI
+_ble_syntax_bash_command_bctx[CTX_ARGX0]=$CTX_ARGI
+_ble_syntax_bash_command_bctx[CTX_CMDXF]=$CTX_ARGI
+_ble_syntax_bash_command_bctx[CTX_ARGVX]=$CTX_ARGVI
+_ble_syntax_bash_command_bctx[CTX_CMDX]=$CTX_CMDI
+_ble_syntax_bash_command_bctx[CTX_CMDX1]=$CTX_CMDI
+_ble_syntax_bash_command_bctx[CTX_CMDXC]=$CTX_CMDI
+_ble_syntax_bash_command_bctx[CTX_CMDXV]=$CTX_CMDI
+function ble-syntax:bash/ctx-command/.check-word-begin {
+  if ((wbegin<0)); then
+    local octx
+    ((octx=ctx,
+      ctx=_ble_syntax_bash_command_bctx[ctx],
+      wtype=octx==CTX_CMDXC?octx:ctx))
+#%if !release
+    if ((ctx==0)); then
+      ((ctx=wtype=CTX_ARGI))
+      ble-stackdump "invalid ctx=$octx at the beginning of words"
+    fi
+#%end
+    ble-syntax/parse/word-push "$wtype" "$i"
+
+    ((ctx!=CTX_ARGX0)); return # return unexpectedWbegin
+  fi
+
+#%if !release
+  ((ctx==CTX_CMDI||ctx==CTX_ARGI||ctx==CTX_ARGVI||ctx==CTX_VRHS)) || ble-stackdump 2
+#%end
+  return 0
+}
+
+## 関数 ble-syntax:bash/ctx-command/.check-assign
 ## @var[in] tail
-function ble-syntax:bash/check-assign {
+function ble-syntax:bash/ctx-command/.check-assign {
   ((wbegin==i)) || return 1
   ((ctx==CTX_CMDI||ctx==CTX_ARGVI)) || return 1
 
@@ -1611,103 +1740,19 @@ function ble-syntax:bash/check-assign {
   return 0
 }
 
-function ble-syntax:bash/starts-with-delimiter-or-redirect {
-  local delimiters=$_ble_syntax_bash_rex_delimiters
-  local redirect=$_ble_syntax_bash_rex_redirect
-  [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect ) && $tail != ['<>']'('* ]]
-}
-
+_ble_syntax_bash_command_argx1[CTX_FOR1]=1
+_ble_syntax_bash_command_argx1[CTX_CASE1]=1
 function ble-syntax:bash/ctx-command {
   # コマンド・引数部分
   local rex
   if ble-syntax:bash/starts-with-delimiter-or-redirect; then
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
-         ctx==CTX_CMDX||ctx==CTX_CMDXF||
-         ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
+        ctx==CTX_CMDX||ctx==CTX_CMDXF||
+        ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
-
-    if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
-      # 空白 (ctx はそのままで素通り)
-      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
-      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)) && [[ $BASH_REMATCH == *$'\n'* ]] && ((ctx=CTX_CMDX))
-      return 0
-    elif [[ $tail =~ ^$_ble_syntax_bash_rex_redirect ]]; then
-      # リダイレクト (& 単体の解釈より優先する)
-
-      local fError=0
-      # for bash-3.1 ${#arr[n]} bug ... 一旦 rematch1 に入れてから ${#rematch1} で文字数を得る。
-      local rematch1="${BASH_REMATCH[1]}"
-      local rematch3="${BASH_REMATCH[3]}"
-      if [[ $rematch1 == *'&' ]]; then
-        ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
-      elif [[ $rematch1 == \<\< ]]; then
-        # Note: emacs bug workaround
-        #   '<<' と書くと何故か Emacs がヒアドキュメントと
-        #   勘違いする様になったので仕方なく \<\< とする。
-
-        #■ヒアドキュメント not yet supported
-        fError=1
-        ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3" # 暫定・単語一つ
-      elif [[ $rematch1 == '<<<' ]]; then
-        ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
-      else
-        ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch3"
-      fi
-      ((_ble_syntax_attr[i]=fError?ATTR_ERR:ATTR_DEL,
-        ${#rematch1}<${#BASH_REMATCH}&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX),
-        i+=${#BASH_REMATCH}))
-      return 0
-    elif rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
-      # 制御演算子 && || | & ; |& ;; ;;&
-
-      # for bash-3.1 ${#arr[n]} bug
-      local rematch1="${BASH_REMATCH[1]}" rematch2="${BASH_REMATCH[2]}"
-      ((_ble_syntax_attr[i]=ATTR_DEL,
-        (ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDX&&${#rematch2})||
-          (_ble_syntax_attr[i]=ATTR_ERR)))
-      ((ctx=${#rematch1}?CTX_CMDX1:(
-           ${#rematch2}?CTX_CASE:
-           CTX_CMDX)))
-      ((i+=${#BASH_REMATCH}))
-      return 0
-    elif rex='^\(\(?' && [[ $tail =~ $rex ]]; then
-      # サブシェル (, 算術コマンド ((
-      local m="${BASH_REMATCH[0]}"
-      if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXF&&${#m}==2)); then
-        ((_ble_syntax_attr[i]=ATTR_DEL))
-        ((ctx=CTX_ARGX0))
-        ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
-        ((i+=${#m}))
-      else
-        ble-syntax/parse/nest-push "$CTX_PATN"
-        ((_ble_syntax_attr[i++]=ATTR_ERR))
-      fi
-      return 0
-    elif [[ $tail == ')'* ]]; then
-      local type
-      ble-syntax/parse/nest-type -v type
-      local attr=
-      if [[ $type == '(' ]]; then
-        # ( sub shell )
-        # <( process substitution )
-        # func ( invalid )
-        ((attr=ATTR_DEL))
-      elif [[ $type == '$(' ]]; then
-        # $(command substitution)
-        ((attr=CTX_PARAM))
-      fi
-
-      if [[ $attr ]]; then
-        ((_ble_syntax_attr[i]=(ctx==CTX_CMDX||ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)?attr:ATTR_ERR,
-          i+=1))
-        ble-syntax/parse/nest-pop
-        return 0
-      fi
-    else
-      return 1
-    fi
+    ble-syntax:bash/ctx-command/.check-delimiter-or-redirect; return
   fi
 
   if ble-syntax:bash/check-comment; then
@@ -1715,28 +1760,10 @@ function ble-syntax:bash/ctx-command {
   fi
 
   local unexpectedWbegin=-1
-  if ((wbegin<0)); then
-    # case CTX_ARGX | CTX_ARGX0 | CTX_CMDXF
-    #   ctx=CTX_ARGI
-    # case CTX_CMDX | CTX_CMDX1 | CTX_CMDXC | CTX_CMDXV
-    #   ctx=CTX_CMDI
-    # case CTX_ARGI | CTX_CMDI | CTX_VRHS
-    #   エラー...
-    local octx="$ctx"
-    ((ctx==CTX_ARGX0&&(unexpectedWbegin=i),
-      ctx=(ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_CMDXF?CTX_ARGI:
-           (ctx==CTX_ARGVX?CTX_ARGVI:
-            CTX_CMDI)),
-      wtype=octx==CTX_CMDXC?octx:ctx))
-    ble-syntax/parse/word-push "$wtype" "$i"
-  fi
-
-#%if !release
-  ((ctx==CTX_CMDI||ctx==CTX_ARGI||ctx==CTX_ARGVI||ctx==CTX_VRHS)) || ble-stackdump 2
-#%end
+  ble-syntax:bash/ctx-command/.check-word-begin || ((unexpectedWbegin=i))
 
   local flagConsume=0
-  if ble-syntax:bash/check-assign; then
+  if ble-syntax:bash/ctx-command/.check-assign; then
     flagConsume=1
   elif rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
@@ -1960,8 +1987,9 @@ _BLE_SYNTAX_FEND[CTX_RDRD]=ble-syntax:bash/ctx-redirect/check-word-end
 _BLE_SYNTAX_FEND[CTX_RDRS]=ble-syntax:bash/ctx-redirect/check-word-end
 function ble-syntax:bash/ctx-redirect/check-word-begin {
   if ((wbegin<0)); then
-    # ※ここで ctx==CTX_RDRF か ctx==CTX_RDRD かの情報が使われるので
-    #   CTX_RDRF と CTX_RDRD は異なる二つの文脈として管理している。
+    # ※解析の段階では CTX_RDRF/CTX_RDRD/CTX_RDRS の間に区別はない。
+    #   但し、↓の行で解析に用いられた ctx が保存される。
+    #   この情報は後で補完候補を生成するのに用いられる。
     ble-syntax/parse/word-push "$ctx" "$i"
     ble-syntax/parse/touch-updated-word "$i" #■これは不要では?
   fi
