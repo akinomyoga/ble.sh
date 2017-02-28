@@ -1440,7 +1440,8 @@ function ble-syntax:bash/ctx-command/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  [[ ${text:i:1} == [^"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
+  local tail="${text:i}"
+  [[ $tail == [^"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
 
   local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
   local word="${text:wbegin:wlen}"
