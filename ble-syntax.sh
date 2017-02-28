@@ -1995,6 +1995,11 @@ function ble-syntax:bash/ctx-redirect {
     return 0
   fi
 
+  if local i0=$i && ble-syntax:bash/check-comment; then
+    ((_ble_syntax_attr[i0]=ATTR_ERR))
+    return 0
+  fi
+
   # 単語開始の設置
   ble-syntax:bash/ctx-redirect/check-word-begin
 
