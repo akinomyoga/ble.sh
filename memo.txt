@@ -1860,6 +1860,25 @@ tech
 
 2017-03-01
 
+  * ble-edit: 一番下の行で複数行の編集を開始するとずれる。
+    これは制御機能 IL で行の挿入までは行わないという事に起因する。
+    IND (LF) で行を増やしてから IL を実行する様にしなければならない。
+    これで一応直った。
+
+    然し、今度は一番下の行で行を accept した直後の動作が変である。
+    直前の行を上書きしている。
+    試しに ble-edit/render/update で行を追加削除する直前に各変数の値を確認してみる。
+
+    declare -- endx="27"
+    declare -- endy="0"
+    declare -- begx="27"
+    declare -- begy="0"
+    declare -- _ble_line_endx="10"
+    declare -- _ble_line_endy="3"
+
+    変である。accept した時に _ble_line_endx _ble_line_endy の各変数の値は 0 にしている筈である。
+    と思ったら、0 にしているのはカーソルの位置 _ble_line_x, _ble_line_y だけであった。
+
   * syntax: 実は } の直後に } が来ても良いようだ。
 
     更に fi の直後に } が来ても良い…。同様に esac done の直後も OK の様子。

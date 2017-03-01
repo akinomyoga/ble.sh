@@ -274,6 +274,11 @@ function ble/util/c2w+east {
 function ble-edit/draw/put {
   DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
 }
+function ble-edit/draw/put.ind {
+  local -i count="${1-1}"
+  local ret; ble/string#repeat "${_ble_term_ind}" "$count"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]="$ret"
+}
 function ble-edit/draw/put.il {
   local -i value="${1-1}"
   DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_il//'%d'/$value}"
@@ -1989,9 +1994,12 @@ function ble-edit/render/update {
   ble-edit/text/getxy --prefix=end "$iN"
   local delta
   if (((delta=endy-_ble_line_endy)!=0)); then
-    if((delta>0)); then
-      ble-edit/render/goto 0 "$((_ble_line_endy+1))"
+    if ((delta>0)); then
+      ble-edit/render/goto 0 "$_ble_line_endy"
+      ble-edit/draw/put.ind delta
+      ((delta>1)) && ble-edit/draw/put.cuu delta-1
       ble-edit/draw/put.il delta
+      ble-edit/draw/put.cuu
     else
       ble-edit/render/goto 0 "$((_ble_line_endy+1+delta))"
       ble-edit/draw/put.dl -delta
@@ -2173,7 +2181,6 @@ function ble/widget/redraw-line {
 function ble/widget/clear-screen {
   ble/util/buffer "$_ble_term_clear"
   _ble_line_x=0 _ble_line_y=0
-  _ble_line_cur=(0 0 32 0)
   ble-edit/render/invalidate
   ble-term/visible-bell/cancel-erasure
 }
@@ -2933,8 +2940,7 @@ function ble-edit/exec/.adjust-eol {
   ble-edit/draw/put "$_ble_term_rc"
   ble-edit/draw/put.cuf "$((_ble_term_xenl?cols-2:cols-3))"
   ble-edit/draw/put "  $_ble_term_cr$_ble_term_el"
-  ble-edit/draw/flush >&2
-  _ble_line_x=0 _ble_line_y=0
+  ble-edit/draw/bflush
 }
 
 ## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_exec_type/process;
@@ -3292,24 +3298,33 @@ function ble-edit/exec:gexec/process {
 
 # **** accept-line ****                                            @edit.accept
 
-function ble/widget/.newline {
-  # 行更新
+function ble/widget/.insert-newline {
+  # 最終状態の描画
   ble-edit/info/clear
   ble-edit/render/update
 
-  # 新しい行
+  # 新しい描画領域
   local -a DRAW_BUFF
   ble-edit/render/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/bflush
   ble/util/joblist.bflush
+
+  # 描画領域情報の初期化
   _ble_line_x=0 _ble_line_y=0
+  _ble_line_begx=0 _ble_line_begy=0
+  _ble_line_endx=0 _ble_line_endy=0
   ((LINENO=++_ble_edit_LINENO))
+}
+
+function ble/widget/.newline {
+  ble/widget/.insert-newline
 
   # カーソルを表示する。
   # layer:overwrite でカーソルを消している時の為。
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
 
+  # 行内容の初期化
   _ble_edit_str.reset ''
   _ble_edit_ind=0
   _ble_edit_mark=0
@@ -4461,16 +4476,8 @@ function ble-decode-byte:bind/EPILOGUE {
 function ble/widget/.shell-command {
   local -a BASH_COMMAND
   BASH_COMMAND=("$*")
-  ble-edit/info/clear
-  ble-edit/render/update
 
-  local -a DRAW_BUFF
-  ble-edit/render/goto "$_ble_line_endx" "$_ble_line_endy"
-  ble-edit/draw/put "$_ble_term_nl"
-  ble-edit/draw/bflush
-  ble/util/joblist.bflush
-  _ble_line_x=0 _ble_line_y=0
-  ((LINENO=++_ble_edit_LINENO))
+  ble/widget/.insert-newline
 
   # やはり通常コマンドはちゃんとした環境で評価するべき
   if [[ "${BASH_COMMAND//[ 	]/}" ]]; then
