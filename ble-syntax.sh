@@ -579,6 +579,7 @@ function ble-syntax/parse/word-cancel {
 ##   @param[in]     newctx 新しい ctx を指定します。
 ##   @param[in,opt] type   文法要素の種類を指定します。
 ##   @var  [in]     i      現在の位置を指定します。
+##   @var  [in out] inest  親 nest の位置を指定します。新しい nest の位置 (i) を返します。
 ##   @var  [in,out] ctx    復帰時の ctx を指定します。新しい ctx (newctx) を返します。
 ##   @var  [in,out] wbegin 復帰時の wbegin を指定します。新しい wbegin (-1) を返します。
 ##   @var  [in,out] wtype  復帰時の wtype を指定します。新しい wtype (-1) を返します。
@@ -1285,9 +1286,11 @@ function ble-syntax:bash/ctx-expr/.count-paren {
         ((i+=2))
         ble-syntax/parse/nest-pop
       else
-        ((_ble_syntax_attr[i]=ATTR_ERR,
-          i+=1))
-        ble-syntax/parse/nest-pop
+        # ((echo) > /dev/null) や $((echo) > /dev/null) などの
+        # 紛らわしいサブシェル・コマンド置換だったとみなす。
+        # それまでに算術式と思っていた部分については仕方がないのでそのまま。
+        ((_ble_syntax_attr[i++]=_ble_syntax_attr[inest],
+          ctx=CTX_ARGX0))
       fi
       return 0
     elif [[ $ntype == '(' ]]; then
@@ -1666,14 +1669,17 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     local type
     ble-syntax/parse/nest-type -v type
     local attr=
-    if [[ $type == '(' ]]; then
-      # ( sub shell )
-      # <( process substitution )
-      # func ( invalid )
-      ((attr=ATTR_DEL))
-    elif [[ $type == '$(' ]]; then
-      # $(command substitution)
-      ((attr=CTX_PARAM))
+    if [[ $type == '(' || $type == '((' || $type == '$(' ]]; then
+      # 1 $type == '('
+      #   ( sub shell )
+      #   <( process substitution )
+      #   func ( invalid )
+      # 2 $type == '(('
+      #   ((echo) >/dev/null)
+      #   ※これは当初は算術式だと思っていたら実はサブシェルだったというパターン
+      # 3 $type== '$('
+      #   $(command substitution)
+      ((attr=_ble_syntax_attr[inest]))
     fi
 
     if [[ $attr ]]; then
