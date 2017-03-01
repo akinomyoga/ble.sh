@@ -1735,8 +1735,8 @@ function ble-syntax:bash/ctx-command/.check-word-begin {
   if ((wbegin<0)); then
     local octx
     ((octx=ctx,
-      ctx=_ble_syntax_bash_command_bctx[ctx],
-      (wtype=_ble_syntax_bash_command_bwtype[octx])||(wtype=ctx)))
+      ctx=_ble_syntax_bash_command_bctx[ctx]))
+    (((wtype=_ble_syntax_bash_command_bwtype[octx])||(wtype=ctx)))
 #%if !release
     if ((ctx==0)); then
       ((ctx=wtype=CTX_ARGI))
