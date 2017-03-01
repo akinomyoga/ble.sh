@@ -1419,9 +1419,10 @@ function ble-syntax:bash/ctx-expr {
 _BLE_SYNTAX_FCTX[CTX_ARGX]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGX0]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX1]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXC]=ble-syntax:bash/ctx-command
-_BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXE]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_VRHS]=ble-syntax:bash/ctx-command
@@ -1485,6 +1486,12 @@ function ble-syntax:bash/ctx-command/check-word-end {
     else
       ((wtype=ATTR_ERR))
     fi
+  elif ((wt==CTX_CMDXE)); then
+    if local rex='^(\}|fi|done|esac)$' && [[ $word =~ $rex ]]; then
+      ((wtype=CTX_CMDI))
+    else
+      ((wtype=ATTR_ERR))
+    fi
   fi
 
   ble-syntax/parse/word-pop
@@ -1528,7 +1535,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
     ('case')
       ((ctx=CTX_CARGX1)) ;;
     ('}'|'done'|'fi'|'esac')
-      ((ctx=CTX_ARGX0)) ;;
+      ((ctx=CTX_CMDXE)) ;;
     ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
       ((ctx=CTX_ARGVX)) ;;
     ('function')
@@ -1705,12 +1712,14 @@ _ble_syntax_bash_command_bctx[CTX_ARGVX]=$CTX_ARGVI
 _ble_syntax_bash_command_bctx[CTX_CMDX]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDX1]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXC]=$CTX_CMDI
+_ble_syntax_bash_command_bctx[CTX_CMDXE]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXV]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_FARGX1]=$CTX_FARGI1
 _ble_syntax_bash_command_bctx[CTX_FARGX2]=$CTX_FARGI2
 _ble_syntax_bash_command_bctx[CTX_CARGX1]=$CTX_CARGI1
 _ble_syntax_bash_command_bctx[CTX_CARGX2]=$CTX_CARGI2
-_ble_syntax_bash_command_bwtype[CTX_CMDXC]=$CTX_CMDXC
+_ble_syntax_bash_command_bwtype[CTX_CMDXC]=$CTX_CMDXC # check-word-end で処理する
+_ble_syntax_bash_command_bwtype[CTX_CMDXE]=$CTX_CMDXE # check-word-end で処理する
 _ble_syntax_bash_command_bwtype[CTX_CARGX1]=$CTX_ARGI
 #%if !release
 _ble_syntax_bash_command_isARGI[CTX_CMDI]=1
@@ -1839,7 +1848,7 @@ function ble-syntax:bash/ctx-command {
 
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
-        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
+        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXE||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
     ble-syntax:bash/ctx-command/.check-delimiter-or-redirect; return
@@ -2635,7 +2644,7 @@ function ble-syntax/completion-context/check-prefix {
         fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXV)); then
+    elif ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXV)); then
       # 直前の再開点が CMDX だった場合、
       # 現在地との間にコマンド名があればそれはコマンドである。
       # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
@@ -2664,6 +2673,17 @@ function ble-syntax/completion-context/check-prefix {
       fi
 
       ble-syntax/completion-context/check/parameter-expansion
+    elif ((ctx==CTX_CMDXC)); then
+      local rex word="${text:i:index-i}"
+      if [[ ${text:i:index-i} =~ $rex_param ]]; then
+        ble-syntax/completion-context/add wordlist:'for:select:case:if:while:until' "$i"
+      elif rex='^[[({]+$'; [[ $word =~ $rex ]]; then
+        ble-syntax/completion-context/add wordlist:'(:{:((:[[' "$i"
+      fi
+    elif ((ctx==CTX_CMDXE)); then
+      if [[ ${text:i:index-i} =~ $rex_param ]]; then
+        ble-syntax/completion-context/add wordlist:fi:done:esac "$i"
+      fi
     elif ((ctx==CTX_FARGX1)); then
       # CTX_FARGX1 → (( でなければ 変数名
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
@@ -2722,12 +2742,13 @@ function ble-syntax/completion-context/check-here {
     # 既に check-prefix で引っかかっている筈だから。
     local ctx=${stat[0]}
 
-    if ((ctx==CTX_CMDX||
-            ctx==CTX_CMDXV||
-            ctx==CTX_CMDX1||
-            ctx==CTX_CMDXC)); then
+    if ((ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDX1)); then
       ble-syntax/completion-context/add command "$index"
       ble-syntax/completion-context/add variable:= "$index"
+    elif ((ctx==CTX_CMDXC)); then
+      ble-syntax/completion-context/add wordlist:'(:{:((:[[:for:select:case:if:while:until' "$index"
+    elif ((ctx==CTX_CMDXE)); then
+      ble-syntax/completion-context/add wordlist:}:fi:esac:done "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1)); then
       ble-syntax/completion-context/add argument "$index"
     elif ((ctx==CTX_FARGX1)); then
@@ -2933,6 +2954,7 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_CMDX     syntax_default
   _ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXC    syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDXE    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXV    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDI     syntax_command
   _ble_syntax_attr2iface.define CTX_VRHS     syntax_default
