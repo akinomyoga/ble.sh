@@ -42,7 +42,7 @@ CTX_PATN        30 # glob 通常文字
 ATTR_GLOB       31 # glob 特別文字
 
 # for var in ...
-CTX_FARGX1      16 # for の直後。直後が (( だったら CTX_CMDX と同じ扱い。
+CTX_FARGX1      16 # for の直後。直後が (( だったら CTX_CMDX と同じ扱い。(旧 CTX_CMDXF)
 CTX_FARGI1      35
 CTX_FARGX2      36
 CTX_FARGI2      37
