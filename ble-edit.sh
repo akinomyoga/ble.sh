@@ -1302,12 +1302,12 @@ _ble_line_text_buff=()
 _ble_line_text_buffName=
 
 ## 関数 x y lc lg; ble-edit/text/update; x y cx cy lc lg
-## \param [in    ] text  編集文字列
-## \param [in    ] dirty 編集によって変更のあった最初の index
-## \param [in    ] index カーソルの index
-## \param [in,out] x     編集文字列開始位置、終了位置。
-## \param [in,out] y     編集文字列開始位置、終了位置。
-## \param [in,out] lc lg
+## @param[in    ] text  編集文字列
+## @param[in    ] dirty 編集によって変更のあった最初の index
+## @param[in    ] index カーソルの index
+## @param[in,out] x     編集文字列開始位置、終了位置。
+## @param[in,out] y     編集文字列開始位置、終了位置。
+## @param[in,out] lc lg
 ##   カーソル左の文字のコードと gflag を返します。
 ##   カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
 ## @var   [   out] umin umax
@@ -1646,7 +1646,7 @@ function _ble_edit_str.replace {
   local -i beg="$1" end="$2"
   local ins="$3"
 
-  # c.f. Note#1
+  # cf. Note#1
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
   _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end"
   ble-edit/render/invalidate "$beg"
@@ -1863,9 +1863,9 @@ _ble_line_endy=0
 
 ## 関数 ble-edit/render/goto varname x y
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
-##   @param [in] x y
-##     移動先のカーソルの座標を指定します。
-##     プロンプト原点が x=0 y=0 に対応します。
+## @param[in] x y
+##   移動先のカーソルの座標を指定します。
+##   プロンプト原点が x=0 y=0 に対応します。
 function ble-edit/render/goto {
   local -i x="$1" y="$2"
   ble-edit/draw/put "$_ble_term_sgr0"
@@ -1906,8 +1906,8 @@ function ble-edit/render/clear-line {
 ## 関数 ble-edit/render/clear-line-after x y
 ##   指定した x y 位置に移動して、
 ##   更に、以降の内容を空白にする制御系列を生成します。
-## \param [in] x
-## \param [in] y
+## @param[in] x
+## @param[in] y
 function ble-edit/render/clear-line-after {
   local x="$1" y="$2"
 
@@ -2250,12 +2250,12 @@ function ble/widget/nomarked {
 }
 
 ## 関数 ble/widget/.process-range-argument P0 P1; p0 p1 len ?
-## \param [in]  P0  範囲の端点を指定します。
-## \param [in]  P1  もう一つの範囲の端点を指定します。
-## \param [out] p0  範囲の開始点を返します。
-## \param [out] p1  範囲の終端点を返します。
-## \param [out] len 範囲の長さを返します。
-## \param [out] $?
+## @param[in]  P0  範囲の端点を指定します。
+## @param[in]  P1  もう一つの範囲の端点を指定します。
+## @param[out] p0  範囲の開始点を返します。
+## @param[out] p1  範囲の終端点を返します。
+## @param[out] len 範囲の長さを返します。
+## @param[out] $?
 ##   範囲が有限の長さを持つ場合に正常終了します。
 ##   範囲が空の場合に 1 を返します。
 function ble/widget/.process-range-argument {
@@ -2329,7 +2329,7 @@ function ble/widget/copy-region {
 ##   領域または引数に指定した単位を削除します。
 ##   mark が active な場合には領域の削除を行います。
 ##   それ以外の場合には第一引数に指定した単位の削除を実行します。
-## \param [in] type
+## @param[in] type
 ##   mark が active でない場合に実行される削除の単位を指定します。
 ##   実際には ble-edit 関数 delete-type が呼ばれます。
 function ble/widget/delete-region-or {
@@ -2343,7 +2343,7 @@ function ble/widget/delete-region-or {
 ##   領域または引数に指定した単位を切り取ります。
 ##   mark が active な場合には領域の切り取りを行います。
 ##   それ以外の場合には第一引数に指定した単位の切り取りを実行します。
-## \param [in] type
+## @param[in] type
 ##   mark が active でない場合に実行される切り取りの単位を指定します。
 ##   実際には ble-edit 関数 kill-type が呼ばれます。
 function ble/widget/kill-region-or {
@@ -2357,7 +2357,7 @@ function ble/widget/kill-region-or {
 ##   領域または引数に指定した単位を転写します。
 ##   mark が active な場合には領域の転写を行います。
 ##   それ以外の場合には第一引数に指定した単位の転写を実行します。
-## \param [in] type
+## @param[in] type
 ##   mark が active でない場合に実行される転写の単位を指定します。
 ##   実際には ble-edit 関数 copy-type が呼ばれます。
 function ble/widget/copy-region-or {
@@ -3034,7 +3034,7 @@ function ble-edit/exec:exec/.eval-epilogue {
 ## 関数 ble-edit/exec:exec/.recursive index
 ##   index 番目のコマンドを実行し、引数 index+1 で自己再帰します。
 ##   コマンドがこれ以上ない場合は何もせずに終了します。
-## \param [in] index
+## @param[in] index
 function ble-edit/exec:exec/.recursive {
   (($1>=${#_ble_edit_exec_lines})) && return
 

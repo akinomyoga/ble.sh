@@ -63,8 +63,9 @@ if [[ ! $ble_decode_function_key_base ]]; then
   declare -ir ble_decode_function_key_base=0x110000
 fi
 
-## \param [in]  $1   keycode
-## \param [out] ret  keyname
+## 関数 ble-decode-kbd/.get-keyname keycode
+##   @param[in]  keycode keycode
+##   @var  [out] ret     keyname
 function ble-decode-kbd/.get-keyname {
   local keycode="$1"
   ret="${_ble_decode_kbd__c2k[$keycode]}"
@@ -73,11 +74,12 @@ function ble-decode-kbd/.get-keyname {
     _ble_decode_kbd__c2k[$keycode]="$ret"
   fi
 }
-## 指定した名前に対応する keycode を取得します。
-## 指定した名前の key が登録されていない場合は、
-## 新しく kecode を割り当てて返します。
-## \param [in]  $1   keyname
-## \param [out] ret  keycode
+## 関数 ble-decode-kbd/.gen-keycode keyname
+##   指定した名前に対応する keycode を取得します。
+##   指定した名前の key が登録されていない場合は、
+##   新しく kecode を割り当てて返します。
+##   @param[in]  keyname keyname
+##   @var  [out] ret     keycode
 function ble-decode-kbd/.gen-keycode {
   local key="$1"
   if ((${#key}==1)); then
@@ -1634,8 +1636,9 @@ function ble-decode-byte+UTF-8 {
   [[ $char ]] && ble-decode-char "$char"
 }
 
-## \param [in]  $1 = code
-## \param [out] ret
+## 関数 ble-text-c2bc+UTF-8 code
+##   @param[in]  code
+##   @var  [out] ret
 function ble-text-c2bc+UTF-8 {
   local code="$1"
   ((ret=code<0x80?1:

@@ -830,17 +830,19 @@ function ble/util/c2s {
   fi
 }
 
-## gets a byte count of the encoded data of the char
-## 指定した文字を現在の符号化方式で符号化した時のバイト数を取得します。
-## \param [in]  $1 = code
-## \param [out] ret
+## 関数 ble-text-c2bc
+##   gets a byte count of the encoded data of the char
+##   指定した文字を現在の符号化方式で符号化した時のバイト数を取得します。
+##   @param[in]  $1 = code
+##   @param[out] ret
 function ble-text-c2bc {
   "ble-text-c2bc+$bleopt_input_encoding" "$1"
 }
 
 #------------------------------------------------------------------------------
 
-## @var[out] ret
+## 関数 ble-text-b2c+UTF-8
+##   @var[out] ret
 function ble-text-b2c+UTF-8 {
   local bytes b0 n i
   bytes=("$@")
@@ -855,7 +857,8 @@ function ble-text-b2c+UTF-8 {
   done
 }
 
-## @var[out] bytes[]
+## 関数 ble-text-c2b+UTF-8
+##   @var[out] bytes[]
 function ble-text-c2b+UTF-8 {
   local code="$1" n i
   ((code=code&0x7FFFFFFF,
