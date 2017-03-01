@@ -2645,8 +2645,12 @@ function ble-syntax/completion-context/check-prefix {
       ble-syntax/completion-context/check/parameter-expansion
     elif ((ctx==CTX_FARGX1)); then
       # CTX_FARGX1 → (( でなければ 変数名
-      if [[ ${text:i:index-1} =~ $rex_param ]]; then
+      if [[ ${text:i:index-i} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$i"
+      fi
+    elif ((ctx==CTX_FARGX2||ctx==CTX_CARGX2||ctx==CTX_FARGI2||ctx==CTX_CARGI2)); then
+      if [[ ${text:i:index-i} =~ $rex_param ]]; then
+        ble-syntax/completion-context/add wordlist:in "$i"
       fi
     elif ((ctx==CTX_ARGX||ctx==CTX_ARGVX||ctx==CTX_CARGX1||ctx==CTX_VALX||ctx==CTX_CONDX||ctx==CTX_RDRS)); then
       local source=file
@@ -2703,10 +2707,12 @@ function ble-syntax/completion-context/check-here {
             ctx==CTX_CMDXC)); then
       ble-syntax/completion-context/add command "$index"
       ble-syntax/completion-context/add variable:= "$index"
-    elif ((ctx==CTX_FARGX1)); then
-      ble-syntax/completion-context/add variable "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1)); then
       ble-syntax/completion-context/add argument "$index"
+    elif ((ctx==CTX_FARGX1)); then
+      ble-syntax/completion-context/add variable "$index"
+    elif ((ctx==CTX_CARGX2||ctx==CTX_FARGX2)); then
+      ble-syntax/completion-context/add wordlist:in "$index"
     elif ((ctx==CTX_RDRF||ctx==CTX_RDRS||ctx==CTX_VRHS)); then
       ble-syntax/completion-context/add file "$index"
     fi

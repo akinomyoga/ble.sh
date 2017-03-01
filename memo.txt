@@ -403,12 +403,6 @@ tech
     算術式 (だと思っていた文脈) の中で単体の ) が来た場合には
     ( もしくは $( を nest-push し直す等。
 
-  * CTX_CARGI2, CTX_FARGI2, CTX_CARGX2, CTX_FARGX2 に対して補完候補として "in" を生成する。
-    complete.sh で "in" を生成する source を定義して、
-    ble-syntax/completion-context/check-prefix と ble-syntax/completion-context/check-here において、
-    CTX_ARGI, CTX_ARGX と同様に判定して、"in" を生成する source を指定すれば良い。
-
-
 2017-02-27
 
   * PS1='$(echo "hello")'
@@ -1880,6 +1874,11 @@ tech
 -------------------------------------------------------------------------------
 
 2017-03-01
+
+  * ble-syntax: CTX_CARGI2, CTX_FARGI2, CTX_CARGX2, CTX_FARGX2 に対して補完候補として "in" を生成する。
+    complete.sh で "in" を生成する source を定義して、
+    ble-syntax/completion-context/check-prefix と ble-syntax/completion-context/check-here において、
+    CTX_ARGI, CTX_ARGX と同様に判定して、"in" を生成する source を指定すれば良い。
 
   * syntax: for VAR in 及び case VAL in に対応する。
 

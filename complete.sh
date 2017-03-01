@@ -186,6 +186,20 @@ function ble-complete/yield-candidate {
   cand_data[icand]="$DATA"
 }
 
+# source/wordlist
+
+function ble-complete/source/wordlist {
+  [[ ${COMPV+set} ]] || return 1
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+
+  local cand
+  for cand; do
+    if [[ $cand == "$COMPV"* ]]; then
+      ble-complete/yield-candidate "$cand" ble-complete/action/word
+    fi
+  done
+}
+
 # source/command
 
 function ble-complete/source/command/gen {
@@ -203,7 +217,7 @@ function ble-complete/source/command {
   ble/util/assign compgen ble-complete/source/command/gen
   ble/string#split arr $'\n' "$compgen"
   for cand in "${arr[@]}"; do
-    ((i%100==0)) && ble/util/is-stdin-ready && return 27
+    ((i++%100==0)) && ble/util/is-stdin-ready && return 27
     ble-complete/yield-candidate "$cand" ble-complete/action/command
   done
 
