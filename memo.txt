@@ -1860,6 +1860,14 @@ tech
 
 2017-03-01
 
+  * ble-edit: ble-edit/info/{draw-text,draw} overflow 対策。
+
+    ble-edit/info/draw-text の方は COLUMNS/LINES に従った truncate を加えた。
+    一方で ble-edit/info/draw の方は truncate は加えていない。
+    様々な制御機能が指定される可能性があることを考えると難しい。
+    (改行や SGR だけ受け付けるという方針でまた別の draw 関数を用意するということも考えられなくはないが)。
+    制御機能を受け付けるぐらいであれば、呼び出し元で高さの調整は済んでいる物と考えたい所である。
+
   * ble-edit: 一番下の行で複数行の編集を開始するとずれる。
     これは制御機能 IL で行の挿入までは行わないという事に起因する。
     IND (LF) で行を増やしてから IL を実行する様にしなければならない。

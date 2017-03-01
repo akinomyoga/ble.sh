@@ -1483,13 +1483,17 @@ function ble-edit/text/get-index-at {
 function ble-edit/info/.put-simple {
   local nchar="$1"
 
-  # assert ((x<=cols))
-  out="$out$2"
-  ((
-    x+=nchar%cols,
-    y+=nchar/cols,
-    (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)
-  ))
+  if ((y+(x+nchar)/cols<lines)); then
+    out="$out$2"
+    ((x+=nchar%cols,
+      y+=nchar/cols,
+      (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)))
+  else
+    # 画面をはみ出る場合
+    out="$out${2::lines*cols-(y*cols+x)}"
+    ((x=cols,y=lines-1))
+    ble-edit/info/.put-nl-if-eol
+  fi
 }
 ## 関数 x y cols out ; ble-edit/info/.put-atomic ( w char )+ ; x y out
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
@@ -1526,8 +1530,8 @@ function ble-edit/info/.put-nl-if-eol {
 ## 関数 x y; ble-edit/info/.construct text ; ret
 ##   指定した文字列を表示する為の制御系列に変換します。
 function ble-edit/info/.construct {
-
   local cols=${COLUMNS-80}
+  local lines=$(((LINES?LINES:0)-_ble_line_endy-2))
 
   local text="$1" out=
   local i iN=${#text}
@@ -1553,6 +1557,7 @@ function ble-edit/info/.construct {
         ble-edit/info/.put-atomic "$ret" "${text:i:1}"
       fi
 
+      ((y>=lines)) && break
       ((i++))
     fi
   done
@@ -1596,9 +1601,15 @@ function ble-edit/info/.draw-impl {
   _ble_line_x="$x"
   _ble_line_info=("$x" "$y" "$content")
 }
+## 関数 ble-edit/info/draw-text text
+##   @remarks 改行などの制御文字は代替表現に代えられる。
+##   @remarks 画面からはみ出る文字列に関しては自動で truncate される。
 function ble-edit/info/draw-text {
   ble-edit/info/.draw-impl text "$1"
 }
+## 関数 ble-edit/info/draw-text esc
+##   @remarks 画面からはみ出る様なシーケンスに対する対策はない。
+##     シーケンスを生成する側でその様なことがない様にする必要がある。
 function ble-edit/info/draw {
   ble-edit/info/.draw-impl raw "$1"
 }
