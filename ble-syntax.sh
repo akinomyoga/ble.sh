@@ -620,7 +620,7 @@ function ble-syntax/parse/nest-pop {
     tprev=tplen<0?tplen:nbeg-tplen))
 }
 function ble-syntax/parse/nest-type {
-  local _var=type
+  local _var=ntype
   [[ $1 == -v ]] && _var="$2"
   if ((inest<0)); then
     eval "$_var="
@@ -872,7 +872,13 @@ function ble-syntax:bash/check-dollar {
       local rematch3="${BASH_REMATCH[3]}"
 
       local ntype='${'
-      ((ctx==CTX_QUOT)) && ntype='"${'
+      if ((ctx==CTX_QUOT)); then
+        ntype='"${'
+      elif ((ctx==CTX_PWORD||ctx==CTX_EXPR)); then
+        local ntype2; ble-syntax/parse/nest-type -v ntype2
+        [[ $ntype2 == '"${' ]] && ntype='"${'
+      fi
+
       ble-syntax/parse/nest-push "$CTX_PARAM" "$ntype"
       ((_ble_syntax_attr[i]=ctx,
         i+=${#rematch1},
@@ -890,12 +896,12 @@ function ble-syntax:bash/check-dollar {
     fi
   elif [[ $tail == '$(('* ]]; then
     ((_ble_syntax_attr[i]=CTX_PARAM))
-    ble-syntax/parse/nest-push "$CTX_EXPR" '(('
+    ble-syntax/parse/nest-push "$CTX_EXPR" '$(('
     ((i+=3))
     return 0
   elif [[ $tail == '$['* ]]; then
     ((_ble_syntax_attr[i]=CTX_PARAM))
-    ble-syntax/parse/nest-push "$CTX_EXPR" '['
+    ble-syntax/parse/nest-push "$CTX_EXPR" '$['
     ((i+=2))
     return 0
   elif [[ $tail == '$('* ]]; then
@@ -916,50 +922,72 @@ function ble-syntax:bash/check-dollar {
 }
 
 function ble-syntax:bash/check-quotes {
-  local rex
+  local rex aqdel=$ATTR_QDEL aquot=$CTX_QUOT
 
-  if ((ctx==CTX_PWORD)) || ((ctx==CTX_EXPR)); then
-    # "${var ～}" の中では '' $'' $"" は無効 (-u extquote の時は '' が無効) になる。
-    if [[ $tail == "'"* ]] || { [[ $tail == '$'[\'\"]* ]] && ! shopt -q extquote; }; then
+  # 字句的に解釈されるが除去はされない場合
+  if ((ctx==CTX_EXPR)); then
+    local ntype
+    ble-syntax/parse/nest-type -v ntype
+    if [[ $ntype == '${' || $ntype == '$[' || $ntype == '$((' || $ntype == 'NQ(' ]]; then
+      # $[...] / $((...)) / ${var:...} の中では
+      # 如何なる quote も除去されない (字句的には解釈される)。
+      # 除去されない quote は算術式エラーである。
+      ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
+    elif [[ $ntype == '"${' ]] && ! { [[ $tail == '$'[\'\"]* ]] && shopt -q extquote; }; then
+      # "${var:...}" の中では 〈extquote が設定されている時の $'' $""〉 を例外として
+      # quote は除去されない (字句的には解釈される)。
+      ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
+    fi
+  elif ((ctx==CTX_PWORD)); then
+    # "${var ～}" の中では $'' $"" は ! shopt -q extquote の時除去されない。
+    if [[ $tail == '$'[\'\"]* ]] && ! shopt -q extquote; then
       local ntype
       ble-syntax/parse/nest-type -v ntype
       if [[ $ntype == '"${' ]]; then
-        ((_ble_syntax_attr[i++]=ctx))
-        return 0
+        ((aqdel=CTX_PWORD,aquot=CTX_PWORD))
       fi
     fi
   fi
 
   if rex='^`([^`\]|\\(.|$))*(`?)|^'\''[^'\'']*('\''?)' && [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ATTR_QDEL,
-      _ble_syntax_attr[i+1]=CTX_QUOT,
+    ((_ble_syntax_attr[i]=aqdel,
+      _ble_syntax_attr[i+1]=aquot,
       i+=${#BASH_REMATCH},
-      _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}||${#BASH_REMATCH[4]}?ATTR_QDEL:ATTR_ERR))
+      _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}||${#BASH_REMATCH[4]}?aqdel:ATTR_ERR))
     return 0
   fi
 
   if ((ctx!=CTX_QUOT)); then
     if rex='^(\$?")([^'"${_ble_syntax_bashc[CTX_QUOT]}"']|\\.)*("?)' && [[ $tail =~ $rex ]]; then
+      local rematch1="${BASH_REMATCH[1]}" # for bash-3.1 ${#arr[n]} bug
       if [[ ${BASH_REMATCH[3]} ]]; then
         # 終端まで行った場合
-        local rematch1="${BASH_REMATCH[1]}" # for bash-3.1 ${#arr[n]} bug
-        ((_ble_syntax_attr[i]=ATTR_QDEL,
-          _ble_syntax_attr[i+${#rematch1}]=CTX_QUOT,
+        ((_ble_syntax_attr[i]=aqdel,
+          _ble_syntax_attr[i+${#rematch1}]=aquot,
           i+=${#BASH_REMATCH},
-          _ble_syntax_attr[i-1]=ATTR_QDEL))
+          _ble_syntax_attr[i-1]=aqdel))
       else
         # 中に構造がある場合
         ble-syntax/parse/nest-push "$CTX_QUOT"
-        ((_ble_syntax_attr[i]=ATTR_QDEL,
-          _ble_syntax_attr[i+1]=CTX_QUOT,
-          i+=${#BASH_REMATCH}))
+        if ((ctx==CTX_PWORD&&aqdel!=ATTR_QDEL)); then
+          # CTX_PWORD (パラメータ展開) でクォート除去が有効でない文脈の場合、
+          # 「$」 だけ aqdel で着色し、「" ... "」 は通常通り着色する。
+          ((_ble_syntax_attr[i]=aqdel,
+            _ble_syntax_attr[i+${#rematch1}-1]=ATTR_QDEL,
+            _ble_syntax_attr[i+${#rematch1}]=CTX_QUOT,
+            i+=${#BASH_REMATCH}))
+        else
+          ((_ble_syntax_attr[i]=aqdel,
+            _ble_syntax_attr[i+${#rematch1}]=CTX_QUOT,
+            i+=${#BASH_REMATCH}))
+        fi
       fi
       return 0
     elif rex='^\$'\''([^'\''\]|\\(.|$))*('\''?)' && [[ $tail =~ $rex ]]; then
-      ((_ble_syntax_attr[i]=ATTR_QDEL,
-        _ble_syntax_attr[i+2]=CTX_QUOT,
+      ((_ble_syntax_attr[i]=aqdel,
+        _ble_syntax_attr[i+2]=aquot,
         i+=${#BASH_REMATCH},
-        _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}?ATTR_QDEL:ATTR_ERR))
+        _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}?aqdel:ATTR_ERR))
       return 0
     fi
   fi
@@ -1273,6 +1301,28 @@ function ble-syntax:bash/ctx-pword {
   return 1
 }
 
+## @const CTX_EXPR
+##   算術式の文脈値
+##
+##   対応する nest types (ntype) の一覧
+##
+##   NTYPE   NEST-PUSH LOCATION       QUOTE  DESC
+##   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##   '$((' @ check-dollar                 x  算術式展開 $(()) の中身
+##   '$['  @ check-dollar                 x  算術式展開 $[] の中身
+##   '(('  @ .check-delimiter-or-redirect o  算術式評価コマンド (()) の中身
+##   'a['  @ .check-assign                o  a[...]= の中身
+##   'd['  @ ctx-values                   o  a=([...]=) の中身
+##   'v['  @ check-dollar                 o  ${a[...]} の中身
+##   '${'  @ check-dollar                 o  ${v:...} の中身
+##   '"${' @ check-dollar                 x  "${v:...}" の中身
+##   '('   @ .count-paren                 o  () によるネスト (quote 除去有効)
+##   'NQ(' @ .count-paren                 x  () によるネスト (quote 除去無効)
+##   '['   @ .count-bracket               o  [] によるネスト (quote 除去常時有効)
+##
+##   QUOTE = o ... 内部で quote 除去が有効
+##   QUOTE = x ... 内部で quote 除去は無効
+##
 _BLE_SYNTAX_FCTX[CTX_EXPR]=ble-syntax:bash/ctx-expr
 ## 関数 ble-syntax:bash/ctx-expr/.count-paren
 ##   算術式中の括弧の数 () を数えます。
@@ -1280,7 +1330,7 @@ _BLE_SYNTAX_FCTX[CTX_EXPR]=ble-syntax:bash/ctx-expr
 ##   @var char  括弧文字を指定します。
 function ble-syntax:bash/ctx-expr/.count-paren {
   if [[ $char == ')' ]]; then
-    if [[ $ntype == '((' ]]; then
+    if [[ $ntype == '((' || $ntype == '$((' ]]; then
       if [[ $tail == '))'* ]]; then
         ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
         ((i+=2))
@@ -1293,13 +1343,15 @@ function ble-syntax:bash/ctx-expr/.count-paren {
           ctx=CTX_ARGX0))
       fi
       return 0
-    elif [[ $ntype == '(' ]]; then
+    elif [[ $ntype == '(' || $ntype == 'NQ(' ]]; then
       ((_ble_syntax_attr[i++]=ctx))
       ble-syntax/parse/nest-pop
       return 0
     fi
   elif [[ $char == '(' ]]; then
-    ble-syntax/parse/nest-push "$CTX_EXPR" "$char"
+    local ntype2='('
+    [[ $ntype == '$((' || $ntype == 'NQ(' ]] && ntype2='NQ('
+    ble-syntax/parse/nest-push "$CTX_EXPR" "$ntype2"
     ((_ble_syntax_attr[i++]=ctx))
     return 0
   fi
@@ -1312,8 +1364,8 @@ function ble-syntax:bash/ctx-expr/.count-paren {
 ##   @var char  括弧文字を指定します。
 function ble-syntax:bash/ctx-expr/.count-bracket {
   if [[ $char == ']' ]]; then
-    if [[ $ntype == '[' ]]; then
-      # ((a[...]=123)) や $[...] などの場合。
+    if [[ $ntype == '[' || $ntype == '$[' ]]; then
+      # 算術式展開 $[...] や入れ子 ((a[...]=123)) などの場合。
       ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
       ((i++))
       ble-syntax/parse/nest-pop
@@ -1349,7 +1401,7 @@ function ble-syntax:bash/ctx-expr/.count-bracket {
       return 0
     fi
   elif [[ $char == '[' ]]; then
-    ble-syntax/parse/nest-push "$CTX_EXPR" "$char"
+    ble-syntax/parse/nest-push "$CTX_EXPR" '['
     ((_ble_syntax_attr[i++]=ctx))
     return 0
   fi
@@ -1381,16 +1433,20 @@ function ble-syntax:bash/ctx-expr {
     local char=${tail::1} ntype
     ble-syntax/parse/nest-type -v ntype
     if [[ $ntype == *'(' ]]; then
-      # ntype = '((' # $((...)) ((...))
-      #       = '('  # 式中の (..)
+      # ntype = '(('  # ((...))
+      #       = '$((' # $((...))
+      #       = '('   # 式中の (..)
       ble-syntax:bash/ctx-expr/.count-paren && return
     elif [[ $ntype == *'[' ]]; then
       # ntype = 'a[' # ${a[...]}
       #       = 'v[' # v[...]=
-      #       = '['  # $[...] 及び式中の [...]
+      #       = 'd[' # a=([...]=)
+      #       = '$[' # $[...]
+      #       = '['  # 式中の [...]
       ble-syntax:bash/ctx-expr/.count-bracket && return
     elif [[ $ntype == '${' || $ntype == '"${' ]]; then
-      # ntype = '${' # ${var:offset:length}
+      # ntype = '${'  # ${var:offset:length}
+      #       = '"${' # "${var:offset:length}"
       ble-syntax:bash/ctx-expr/.count-brace && return
     else
       ble-stackdump "unexpected ntype=$ntype for arithmetic expression"
@@ -1674,19 +1730,19 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     fi
     return 0
   elif [[ $tail == ')'* ]]; then
-    local type
-    ble-syntax/parse/nest-type -v type
+    local ntype
+    ble-syntax/parse/nest-type -v ntype
     local attr=
-    if [[ $type == '(' || $type == '((' || $type == '$(' ]]; then
-      # 1 $type == '('
+    if [[ $ntype == '(' || $ntype == '$(' || $ntype == '((' || $ntype == '$((' ]]; then
+      # 1 $ntype == '('
       #   ( sub shell )
       #   <( process substitution )
       #   func ( invalid )
-      # 2 $type == '(('
-      #   ((echo) >/dev/null)
-      #   ※これは当初は算術式だと思っていたら実はサブシェルだったというパターン
-      # 3 $type== '$('
+      # 2 $ntype== '$('
       #   $(command substitution)
+      # 3 $ntype == '((', '$(('
+      #   ((echo) >/dev/null) / $((echo) >/dev/null)
+      #   ※これは当初は算術式だと思っていたら実はサブシェルだったというパターン
       ((attr=_ble_syntax_attr[inest]))
     fi
 
