@@ -1543,7 +1543,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
       ((wtype=ATTR_ERR))
     fi
   elif ((wt==CTX_CMDXE)); then
-    if local rex='^(\}|fi|done|esac)$' && [[ $word =~ $rex ]]; then
+    if local rex='^(\}|fi|done|esac|then|elif|else|do)$' && [[ $word =~ $rex ]]; then
       ((wtype=CTX_CMDI))
     else
       ((wtype=ATTR_ERR))
@@ -1584,7 +1584,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
         ((_ble_syntax_attr[i]=CTX_ARGI,i+=2))
         ble-syntax/parse/word-pop
       fi ;;
-    (['!{']|'do'|'if'|'then'|'else'|'while'|'until')
+    (['!{']|'do'|'if'|'then'|'elif'|'else'|'while'|'until')
       ((ctx=CTX_CMDX1)) ;;
     ('for')
       ((ctx=CTX_FARGX1)) ;;
@@ -2738,7 +2738,7 @@ function ble-syntax/completion-context/check-prefix {
       fi
     elif ((ctx==CTX_CMDXE)); then
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
-        ble-syntax/completion-context/add wordlist:fi:done:esac "$i"
+        ble-syntax/completion-context/add wordlist:fi:done:esac:then:elif:else:do "$i"
       fi
     elif ((ctx==CTX_FARGX1)); then
       # CTX_FARGX1 → (( でなければ 変数名
@@ -2804,7 +2804,7 @@ function ble-syntax/completion-context/check-here {
     elif ((ctx==CTX_CMDXC)); then
       ble-syntax/completion-context/add wordlist:'(:{:((:[[:for:select:case:if:while:until' "$index"
     elif ((ctx==CTX_CMDXE)); then
-      ble-syntax/completion-context/add wordlist:}:fi:esac:done "$index"
+      ble-syntax/completion-context/add wordlist:}:fi:done:esac:then:elif:else:do "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1)); then
       ble-syntax/completion-context/add argument "$index"
     elif ((ctx==CTX_FARGX1)); then
