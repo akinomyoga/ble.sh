@@ -4537,6 +4537,8 @@ function ble-edit-attach {
   fi
 
   ble-edit/attach
+  _ble_line_x=0 _ble_line_y=0
+  ble/util/buffer "$_ble_term_cr"
 }
 function ble-edit-finalize {
   ble-edit/bind/stdout.finalize
