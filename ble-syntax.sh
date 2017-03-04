@@ -1721,7 +1721,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC)); then
       ((_ble_syntax_attr[i]=ATTR_DEL))
       ((ctx=CTX_ARGX0))
-      [[ $is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_ARGX0F))
+      [[ $is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXE))
       ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
       ((i+=${#m}))
     else
