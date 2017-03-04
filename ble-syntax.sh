@@ -1716,7 +1716,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     # for bash-3.1 ${#arr[n]} bug
     local rematch1="${BASH_REMATCH[1]}" rematch2="${BASH_REMATCH[2]}"
     ((_ble_syntax_attr[i]=ATTR_DEL,
-      (ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDX&&${#rematch2})||
+      (ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDXE||ctx==CTX_CMDX&&${#rematch2})||
         (_ble_syntax_attr[i]=ATTR_ERR)))
     ((ctx=${#rematch1}?CTX_CMDX1:(
          ${#rematch2}?CTX_CASE:
