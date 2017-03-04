@@ -1656,6 +1656,14 @@ function ble-syntax:bash/ctx-command/check-word-end {
     return 0
   fi
 
+  if ((ctx==CTX_FARGI2)); then
+    # for name do ...; done
+    if [[ $word == do ]]; then
+      ((ctx=CTX_CMDX1))
+      return 0
+    fi
+  fi
+
   if ((ctx==CTX_FARGI2||ctx==CTX_CARGI2)); then
     if [[ $word != in ]];  then
       ble-syntax/parse/touch-updated-attr "$wbeg"
@@ -2745,9 +2753,13 @@ function ble-syntax/completion-context/check-prefix {
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$i"
       fi
-    elif ((ctx==CTX_FARGX2||ctx==CTX_CARGX2||ctx==CTX_FARGI2||ctx==CTX_CARGI2)); then
+    elif ((ctx==CTX_CARGX2||ctx==CTX_CARGI2)); then
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
         ble-syntax/completion-context/add wordlist:in "$i"
+      fi
+    elif ((ctx==CTX_FARGX2||ctx==CTX_FARGI2)); then
+      if [[ ${text:i:index-i} =~ $rex_param ]]; then
+        ble-syntax/completion-context/add wordlist:in:do "$i"
       fi
     elif ((ctx==CTX_ARGX||ctx==CTX_ARGVX||ctx==CTX_CARGX1||ctx==CTX_VALX||ctx==CTX_CONDX||ctx==CTX_RDRS)); then
       local source=file
@@ -2809,8 +2821,10 @@ function ble-syntax/completion-context/check-here {
       ble-syntax/completion-context/add argument "$index"
     elif ((ctx==CTX_FARGX1)); then
       ble-syntax/completion-context/add variable "$index"
-    elif ((ctx==CTX_CARGX2||ctx==CTX_FARGX2)); then
+    elif ((ctx==CTX_CARGX2)); then
       ble-syntax/completion-context/add wordlist:in "$index"
+    elif ((ctx==CTX_FARGX2)); then
+      ble-syntax/completion-context/add wordlist:in:do "$index"
     elif ((ctx==CTX_RDRF||ctx==CTX_RDRS||ctx==CTX_VRHS)); then
       ble-syntax/completion-context/add file "$index"
     fi

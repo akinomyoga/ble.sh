@@ -1874,6 +1874,8 @@ tech
 
 2017-03-04
 
+  * syntax: 実は for name do ...; done という形式も可能の様だ。
+
   * syntax: 実は for (()) の直後に do が来ても良いようだ。
     http://qiita.com/yz2cm/items/bc5726e8aef0f2e6906e を見て気付く。
 
