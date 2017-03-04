@@ -1,7 +1,7 @@
 # -*- mode: makefile-gmake -*-
 
 all:
-.PHONY: all dist
+.PHONY: all install dist
 
 # check GNU Makefile
 ifeq ($(.FEATURES),)
@@ -25,7 +25,7 @@ PP:=$(GAWK) -f ext/mwg_pp.awk
 FULLVER:=0.2.alpha
 
 OUTDIR:=out
-outfiles+=$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap
+outdirs+=$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap
 $(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap:
 	mkdir -p $@
 
@@ -56,6 +56,14 @@ $(OUTDIR)/cmap/default.sh: cmap/default.sh | $(OUTDIR)/cmap
 
 all: $(outfiles)
 
+INSDIR = $(HOME)/.local/share/blesh
+install: $(outfiles:$(OUTDIR)/%=$(INSDIR)/%)
+$(INSDIR)/%: $(OUTDIR)/%
+	bash make_command.sh install "$<" "$@"
+
+dist: $(outfiles)
+	FULLVER=$(FULLVER) bash make_command.sh dist $^
+
 dist_excludes= \
 	--exclude=./ble/backup \
 	--exclude=*~ \
@@ -63,12 +71,6 @@ dist_excludes= \
 	--exclude=./ble/out \
 	--exclude=./ble/dist \
 	--exclude=./ble/ble.sh
-
-dist:
-	dir="ble-$(FULLVER)" && \
-{ for f in $(outfiles); do d="$$dir$${f#out}"; if [[ -d $$f ]]; then mkdir -p "$$d"; else cp "$$f" "$$d"; fi; done; } && \
-tar caf "dist/$$dir.$$(date +'%Y%m%d').tar.xz" "$$dir" && rm -r "$$dir"
-
 dist.date:
 	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble $(dist_excludes)
 

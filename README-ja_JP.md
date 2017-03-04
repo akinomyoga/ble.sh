@@ -31,6 +31,10 @@ $ make
 ```bash
 $ source out/ble.sh
 ```
+指定したディレクトリにインストールするには以下のコマンドを使用します。`INSDIR` の指定を省略したときは既定の場所 `$HOME/.local/share/blesh` にインストールされます。
+```bash
+$ make INSDIR=/path/to/blesh install
+```
 
 **`ble.sh` をダウンロードして使う場合**
 
@@ -47,6 +51,11 @@ $ tar xJf ble-0.1.5.tar.xz
 $ source ble-0.1.5/ble.sh
 ```
 
+指定したディレクトリに `ble.sh` を配置するには単に `ble-0.1.5` ディレクトリをコピーします。
+```bash
+$ cp -r ble-0.1.5 /path/to/blesh
+```
+
 **`.bashrc` の設定**
 
 対話シェルで常用する場合には `.bashrc` に設定を行います。以下の様にコードを追加して下さい。
@@ -55,7 +64,7 @@ $ source ble-0.1.5/ble.sh
 
 # .bashrc の先頭近くに以下を追加して下さい。
 if [[ $- == *i* ]]; then
-  source /path/to/ble.sh noattach
+  source /path/to/blesh/ble.sh noattach
   
   # ble.sh の設定 (後述) はここに記述します。
 fi
@@ -72,7 +81,7 @@ fi
 ...
 
 if [[ $- == *i* ]]; then
-  source /path/to/ble.sh/out/ble.sh noattach
+  source /path/to/blesh/ble.sh noattach
   
   # ***** 設定はここに書きます *****
 fi

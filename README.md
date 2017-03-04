@@ -30,6 +30,10 @@ A script file `ble.sh` will be generated in the directory `ble.sh/out`. Then, lo
 ```bash
 $ source out/ble.sh
 ```
+If you want to install `ble.sh` in a specified directory, use the following command (if `INSDIR` is not specified, the default location `$HOME/.local/share/blesh` is used):
+```bash
+$ make INSDIR=/path/to/blesh install
+```
 
 **Or, download `ble.sh`**
 
@@ -46,6 +50,11 @@ $ tar xJf ble-0.1.5.tar.xz
 $ source ble-0.1.5/ble.sh
 ```
 
+If you want to place `ble.sh` in a specific directory, just copy the directory:
+```bash
+$ cp -r ble-0.1.5 /path/to/blesh
+```
+
 **Setup `.bashrc`**
 
 If you want to load `ble.sh` defaultly in interactive sessions of `bash`, add the following codes to your `.bashrc` file:
@@ -54,7 +63,7 @@ If you want to load `ble.sh` defaultly in interactive sessions of `bash`, add th
 
 # Add these lines at the top of .bashrc:
 if [[ $- == *i* ]]; then
-  source /path/to/ble.sh noattach
+  source /path/to/blesh/ble.sh noattach
   
   # settings for ble.sh...
 fi
@@ -71,7 +80,7 @@ Most settings for `ble.sh` are to be specified after the `source` of `ble.sh`.
 ...
 
 if [[ $- == *i* ]]; then
-  source /path/to/ble.sh/out/ble.sh noattach
+  source /path/to/blesh/ble.sh noattach
   
   # ***** Settings Here *****
 fi
