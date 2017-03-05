@@ -307,7 +307,7 @@ tech
 
   * 構文関係でマニュアルに載っていないものが色々ある。
 
-    * }, fi, done, esac の直後に }, fi, done, esac, else, elif, then が来る場合はセミコロンは省略できる。
+    * }, fi, done, esac の直後に }, fi, done, esac, do, else, elif, then が来る場合はセミコロンは省略できる。
 
     * for ((expr1; expr2; expr3)) [ ; ] { list; } は比較的有名だが、
       for name [in name]; { list; }
@@ -439,11 +439,6 @@ tech
       後の着色で一様な色に塗り潰してしまうという方策で良いのではないか。
       しかしそれだと tree-enumerate の際に $() の内部で着色が起こる気がする…。
       特に部分更新などをすると確実に内部での着色が発生するのでは…??
-
-
-  * ble-syntax: bug 6b84ee7 の修正はバグである。元々 CTX_ARGX0F という特殊な文脈値を用いて
-    特別に { を受け付ける様にしていたのであった。なので、CTX_CMDXE にするのではなくて、
-    CTX_ARGX0F の処理の方で do も受け付ける様に修正するべきであったのである。
 
   * ble-core: ble_util_upvar_setup で local ret するべきなのでは。
     ble_util_upvar で $ret を参照しているので。
@@ -1968,6 +1963,15 @@ tech
 -------------------------------------------------------------------------------
 
 2017-03-05
+
+  * syntax: bug 6b84ee7 の修正はバグである。元々 CTX_ARGX0F という特殊な文脈値を用いて
+
+    特別に { を受け付ける様にしていたのであった。なので、CTX_CMDXE にするのではなくて、
+    CTX_ARGX0F の処理の方で do も受け付ける様に修正するべきであったのである。
+
+    と思って CTX_ARGX0F の方で { に一致しなかったら CTX_CMDXE にする様にしてみたが、
+    いろいろ考えて見るに CTX_CMDXE と同様に処理する CTX_CMDXD という物を用意する方が良いという事になった。
+    結局 CTX_ARGX0F を CTX_CMDXD という名前に改めて実際の文脈値として取り扱う事になった。
 
   * syntax: ヒアドキュメント (here documents) 対応
 

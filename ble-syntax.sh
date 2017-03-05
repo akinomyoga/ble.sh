@@ -1538,6 +1538,7 @@ _BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX1]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXC]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXE]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXD]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_VRHS]=ble-syntax:bash/ctx-command
@@ -1563,7 +1564,6 @@ _BLE_SYNTAX_FEND[CTX_FARGI1]=ble-syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_FARGI2]=ble-syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_CARGI1]=ble-syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_CARGI2]=ble-syntax:bash/ctx-command/check-word-end
-_BLE_SYNTAX_FCTX[CTX_ARGX0F]=ble-syntax:bash/ctx-command
 
 ## 関数 ble-syntax:bash/starts-with-delimiter-or-redirect
 function ble-syntax:bash/starts-with-delimiter-or-redirect {
@@ -1591,10 +1591,9 @@ function ble-syntax:bash/check-here-document-from {
   return 0
 }
 
-## 関数 ble-syntax:bash/ctx-command/check-word-end
-##   @var[in,out] ctx
-##   @var[in,out] wbegin
-##   @var[in,out] 他
+## 配列 _ble_syntax_bash_command_ectx
+##   単語が終了した後の次の文脈値を設定する。
+##   check-word-end で用いる。
 _ble_syntax_bash_command_ectx=()
 _ble_syntax_bash_command_ectx[CTX_ARGI]=$CTX_ARGX
 _ble_syntax_bash_command_ectx[CTX_ARGVI]=$CTX_ARGVX
@@ -1603,6 +1602,29 @@ _ble_syntax_bash_command_ectx[CTX_FARGI1]=$CTX_FARGX2
 _ble_syntax_bash_command_ectx[CTX_FARGI2]=$CTX_ARGX
 _ble_syntax_bash_command_ectx[CTX_CARGI1]=$CTX_CARGX2
 _ble_syntax_bash_command_ectx[CTX_CARGI2]=$CTX_CASE
+## 配列 _ble_syntax_bash_command_expect
+##   許容するコマンドの種類を表す正規表現を設定する。
+##   check-word-end で用いる。
+##   配列 _ble_syntax_bash_command_bwtype の設定と対応している必要がある。
+_ble_syntax_bash_command_expect=()
+_ble_syntax_bash_command_expect[CTX_CMDXC]='^(\(|\{|\(\(|\[\[|for|select|case|if|while|until)$'
+_ble_syntax_bash_command_expect[CTX_CMDXE]='^(\}|fi|done|esac|then|elif|else|do)$'
+_ble_syntax_bash_command_expect[CTX_CMDXD]='^(\{|do)$'
+## 配列 _ble_syntax_bash_command_opt
+##   その場でコマンドが終わっても良いかどうかを設定する。
+##   .check-delimiter-or-redirect で用いる。
+_ble_syntax_bash_command_opt=()
+_ble_syntax_bash_command_opt[CTX_ARGX]=1
+_ble_syntax_bash_command_opt[CTX_ARGX0]=1
+_ble_syntax_bash_command_opt[CTX_ARGVX]=1
+_ble_syntax_bash_command_opt[CTX_CMDXV]=1
+_ble_syntax_bash_command_opt[CTX_CMDXE]=1
+_ble_syntax_bash_command_opt[CTX_CMDXD]=1
+
+## 関数 ble-syntax:bash/ctx-command/check-word-end
+##   @var[in,out] ctx
+##   @var[in,out] wbegin
+##   @var[in,out] 他
 function ble-syntax:bash/ctx-command/check-word-end {
   # 単語の中にいない時は抜ける
   ((wbegin<0)) && return 1
@@ -1615,14 +1637,10 @@ function ble-syntax:bash/ctx-command/check-word-end {
   local word="${text:wbegin:wlen}"
   local wt="$wtype"
 
-  if ((wt==CTX_CMDXC)); then
-    if local rex='^(\(|\{|\(\(|\[\[|for|select|case|if|while|until)$' && [[ $word =~ $rex ]]; then
-      ((wtype=CTX_CMDI))
-    else
-      ((wtype=ATTR_ERR))
-    fi
-  elif ((wt==CTX_CMDXE)); then
-    if local rex='^(\}|fi|done|esac|then|elif|else|do)$' && [[ $word =~ $rex ]]; then
+  # 特定のコマンドのみを受け付ける文脈
+  local rex_expect_command=${_ble_syntax_bash_command_expect[wt]}
+  if [[ $rex_expect_command ]]; then
+    if [[ $word =~ $rex_expect_command ]]; then
       ((wtype=CTX_CMDI))
     else
       ((wtype=ATTR_ERR))
@@ -1802,7 +1820,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     # for bash-3.1 ${#arr[n]} bug
     local rematch1="${BASH_REMATCH[1]}" rematch2="${BASH_REMATCH[2]}"
     ((_ble_syntax_attr[i]=ATTR_DEL,
-      (ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDXE||ctx==CTX_CMDX&&${#rematch2})||
+      (_ble_syntax_bash_command_opt[ctx]||ctx==CTX_CMDX&&${#rematch2})||
         (_ble_syntax_attr[i]=ATTR_ERR)))
     ((ctx=${#rematch1}?CTX_CMDX1:(
          ${#rematch2}?CTX_CASE:
@@ -1815,7 +1833,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC)); then
       ((_ble_syntax_attr[i]=ATTR_DEL))
       ((ctx=CTX_ARGX0))
-      [[ $is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXE))
+      [[ $is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD))
       ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
       ((i+=${#m}))
     else
@@ -1863,6 +1881,7 @@ _ble_syntax_bash_command_bctx[CTX_CMDX]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDX1]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXC]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXE]=$CTX_CMDI
+_ble_syntax_bash_command_bctx[CTX_CMDXD]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXV]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_FARGX1]=$CTX_FARGI1
 _ble_syntax_bash_command_bctx[CTX_FARGX2]=$CTX_FARGI2
@@ -1870,6 +1889,7 @@ _ble_syntax_bash_command_bctx[CTX_CARGX1]=$CTX_CARGI1
 _ble_syntax_bash_command_bctx[CTX_CARGX2]=$CTX_CARGI2
 _ble_syntax_bash_command_bwtype[CTX_CMDXC]=$CTX_CMDXC # check-word-end で処理する
 _ble_syntax_bash_command_bwtype[CTX_CMDXE]=$CTX_CMDXE # check-word-end で処理する
+_ble_syntax_bash_command_bwtype[CTX_CMDXD]=$CTX_CMDXD # check-word-end で処理する
 _ble_syntax_bash_command_bwtype[CTX_CARGX1]=$CTX_ARGI
 #%if !release
 _ble_syntax_bash_command_isARGI[CTX_CMDI]=1
@@ -1951,20 +1971,6 @@ function ble-syntax:bash/ctx-command/.check-assign {
 
 # コマンド・引数部分
 function ble-syntax:bash/ctx-command {
-  local rex
-  if ((ctx==CTX_ARGX0F)); then
-    # CTX_ARGX0F (for ((;;)) の直後) は特別に処理する。
-    if rex=$'^[ \t]*\{'; [[ $tail =~ $rex ]]; then
-      ((_ble_syntax_attr[i]=CTX_CMDX,i+=${#BASH_REMATCH}-1))
-      ble-syntax/parse/word-push "$CTX_CMDI" "$i"
-      ((_ble_syntax_attr[i++]=CTX_CMDI))
-      ble-syntax/parse/word-pop
-      ((ctx=CTX_CMDX1))
-      return 0
-    fi
-    ((ctx=CTX_ARGX0))
-  fi
-
   local is_command_form_for=
   if ble-syntax:bash/starts-with-delimiter-or-redirect; then
     if ((ctx==CTX_FARGX1||ctx==CTX_CARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX2)); then
@@ -1998,7 +2004,7 @@ function ble-syntax:bash/ctx-command {
 
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
-        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXE||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
+        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
     ble-syntax:bash/ctx-command/.check-delimiter-or-redirect; return
@@ -2015,7 +2021,7 @@ function ble-syntax:bash/ctx-command {
   local unexpectedWbegin=-1
   ble-syntax:bash/ctx-command/.check-word-begin || ((unexpectedWbegin=i))
 
-  local flagConsume=0
+  local flagConsume=0 rex
   if ble-syntax:bash/ctx-command/.check-assign; then
     flagConsume=1
   elif rex='^([^'"${_ble_syntax_bashc[CTX_ARGI]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
@@ -3102,6 +3108,10 @@ function ble-syntax/completion-context/check-prefix {
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
         ble-syntax/completion-context/add wordlist:fi:done:esac:then:elif:else:do "$i"
       fi
+    elif ((ctx==CTX_CMDXD)); then
+      if [[ ${text:i:index-i} =~ $rex_param ]]; then
+        ble-syntax/completion-context/add wordlist:';:{:do' "$i"
+      fi
     elif ((ctx==CTX_FARGX1)); then
       # CTX_FARGX1 → (( でなければ 変数名
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
@@ -3171,6 +3181,8 @@ function ble-syntax/completion-context/check-here {
       ble-syntax/completion-context/add wordlist:'(:{:((:[[:for:select:case:if:while:until' "$index"
     elif ((ctx==CTX_CMDXE)); then
       ble-syntax/completion-context/add wordlist:}:fi:done:esac:then:elif:else:do "$index"
+    elif ((ctx==CTX_CMDXD)); then
+      ble-syntax/completion-context/add wordlist:';:{:do' "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1)); then
       ble-syntax/completion-context/add argument "$index"
     elif ((ctx==CTX_FARGX1)); then
@@ -3381,6 +3393,7 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXC    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXE    syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDXD    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXV    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDI     syntax_command
   _ble_syntax_attr2iface.define CTX_VRHS     syntax_default
