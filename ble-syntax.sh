@@ -2448,14 +2448,14 @@ function ble-syntax:bash/ctx-heredoc-word/check-word-end {
   [[ $tail == [^"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
 
   # word = "EOF" 等の終端文字列
-  local word=${text:wbegin:i-wbegin}
+  local octx=$ctx word=${text:wbegin:i-wbegin}
 
   # 終了処理
   ble-syntax/parse/word-pop
   ble-syntax/parse/nest-pop
   
   local I
-  if ((ctx==CTX_RDRI)); then I=I; else I=R; fi
+  if ((octx==CTX_RDRI)); then I=I; else I=R; fi
 
   local Q delimiter
   if [[ $word == *[\'\"\\]* ]]; then
@@ -2469,54 +2469,7 @@ function ble-syntax:bash/ctx-heredoc-word/check-word-end {
   return 0
 }
 function ble-syntax:bash/ctx-heredoc-word {
-  # redirect の直後にコマンド終了や別の redirect があってはならない
-  if ble-syntax:bash/starts-with-delimiter-or-redirect; then
-    ((_ble_syntax_attr[i++]=ATTR_ERR))
-    [[ ${tail:1} =~ ^$_ble_syntax_bash_rex_spaces ]] &&
-      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
-    return 0
-  fi
-
-  if local i0=$i; ble-syntax:bash/check-comment; then
-    ((_ble_syntax_attr[i0]=ATTR_ERR))
-    return 0
-  fi
-
-  # 単語開始の設置
-  ble-syntax:bash/ctx-redirect/check-word-begin
-
-  local rex
-  if rex='^([^'"${_ble_syntax_bashc[CTX_RDRH]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
-    return 0
-  elif rex='^`([^`\]|\\(.|$))*(`?)|^'\''[^'\'']*('\''?)' && [[ $tail =~ $rex ]]; then
-    # quote1 `...` / '...'
-    ((_ble_syntax_attr[i]=ATTR_QDEL,
-      _ble_syntax_attr[i+1]=CTX_QUOT,
-      i+=${#BASH_REMATCH},
-      _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}||${#BASH_REMATCH[4]}?ATTR_QDEL:ATTR_ERR))
-    return 0
-  elif rex='^(\$?")([^"\]|\\(.|$))*("?)' && [[ $tail =~ $rex ]]; then
-    # quote2 " ... "
-    local rematch1="${BASH_REMATCH[1]}" # for bash-3.1 ${#arr[n]} bug
-    ((_ble_syntax_attr[i]=ATTR_QDEL,
-      _ble_syntax_attr[i+${#rematch1}]=CTX_QUOT,
-      i+=${#BASH_REMATCH},
-      _ble_syntax_attr[i-1]=${#BASH_REMATCH[4]}?ATTR_QDEL:ATTR_ERR))
-    return 0
-  elif rex='^\$'\''([^'\''\]|\\(.|$))*('\''?)' && [[ $tail =~ $rex ]]; then
-    # quote3 $' ... '
-    ((_ble_syntax_attr[i]=ATTR_QDEL,
-      _ble_syntax_attr[i+2]=CTX_QUOT,
-      i+=${#BASH_REMATCH},
-      _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}?ATTR_QDEL:ATTR_ERR))
-    return 0
-  elif [[ $tail == '$'* ]]; then
-    ((_ble_syntax_attr[i]=ctx,i++))
-    return 0
-  fi
-
-  return 1
+  ble-syntax:bash/ctx-redirect
 }
 
 ## 文脈値 CTX_HERE0, CTX_HERE1
@@ -3636,9 +3589,15 @@ function ble-highlight-layer:syntax/update-attribute-table {
 function ble-highlight-layer:syntax/word/.update-attributes/.proc {
   [[ ${node[nofs]} =~ ^[0-9]+$ ]] || return
   [[ ${node[nofs+4]} == - ]] || return
-  local wtxt="${text:wbeg:wlen}"
   ble/util/urange#update color_ "$wbeg" "$wend"
-  if [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
+
+  local type=
+  if ((wtype==CTX_RDRH||wtype==CTX_RDRI)); then
+    # ヒアドキュメントのキーワード指定部分は、
+    # 展開・コマンド置換などに従った解析が行われるが、
+    # 実行は一切起こらないので一色で塗りつぶす。
+    ((type=wtype))
+  elif local wtxt="${text:wbeg:wlen}"; [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
 
     # 単語を展開
     local value
@@ -3650,9 +3609,10 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
       eval "value=($wtxt)"
     fi
 
-    local type=
     if ((wtype==CTX_CMDI)); then
       ble-syntax/highlight/cmdtype "$value" "$wtxt"
+    elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
+      ((type=wtype))
     elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS)); then
       ble-syntax/highlight/filetype "$value" "$wtxt"
 
@@ -3693,20 +3653,17 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
           fi
         fi
       fi
-
-    elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
-      ((type=wtype))
     fi
-
-    if [[ $type ]]; then
-      local g
-      ble-syntax/attr2g "$type"
-      node[nofs+4]="$g"
-    else
-      node[nofs+4]='d'
-    fi
-    flagUpdateNode=1
   fi
+
+  if [[ $type ]]; then
+    local g
+    ble-syntax/attr2g "$type"
+    node[nofs+4]="$g"
+  else
+    node[nofs+4]='d'
+  fi
+  flagUpdateNode=1
 }
 
 ## 関数 ble-highlight-layer:syntax/word/.update-attributes
