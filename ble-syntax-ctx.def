@@ -54,3 +54,9 @@ CTX_CARGX1      39
 CTX_CARGI1      40
 CTX_CARGX2      41
 CTX_CARGI2      42
+
+# Here documents
+CTX_RDRH        44 # (redirection) ヒアドキュメント単語読み取り <<  word
+CTX_RDRI        45 # (redirection) ヒアドキュメント単語読み取り <<- word
+CTX_HERE0       46 # ヒアドキュメント行頭
+CTX_HERE1       47 # ヒアドキュメント行頭以外

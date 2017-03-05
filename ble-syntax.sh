@@ -81,19 +81,28 @@ function ble/util/wrange#shift {
 }
 
 ## @var _ble_syntax_text
-##   解析対象の文字列を保持します
+##   解析対象の文字列を保持する。
+##
 ## @var _ble_syntax_stat[i]
 ##   文字 #i を解釈しようとする直前の状態を記録する。
-##   各要素は "ctx wlen wtype nlen tclen tplen" の形式をしている。
-##   ctx は現在の文脈。
-##   wlen は現在のシェル単語の継続している長さ。
-##   nlen は現在の入れ子状態が継続している長さ。
-##   tclen, tplen は tchild, tprev の負オフセット。
+##   各要素は "ctx wlen wtype nlen tclen tplen nparam" の形式をしている。
+##   @var ctx         = int; 現在の文脈。
+##   @var wlen        = int; 現在のシェル単語の継続している長さ。
+##   @var nlen        = int; 現在の入れ子状態が継続している長さ。
+##   @var tclen,tplen = int; tchild, tprev の負オフセット。
+##   @var nparam      = string
+##     その入れ子レベルに特有のデータ一般を記録する文字列。
+##     ヒアドキュメントの開始情報を記録するのに使用する。
+##     将来的に `{ .. }` や `do .. done` の対応を取るのにも使うかもしれない。
+##
 ## @var _ble_syntax_nest[inest]
 ##   入れ子の情報
-##   各要素は "ctx wlen wtype inest tclen tplen type" の形式をしている。
-##   ctx wbegin inest wtype は入れ子を抜けた時の状態を表す。
-##   type は入れ子の種類を表す文字列。
+##   各要素は "ctx wlen wtype inest tclen tplen nparam ntype" の形式をしている。
+##   ctx wbegin inest wtype nparam は入れ子を抜けた時の状態を表す。
+##   ntype は入れ子の種類を表す文字列。
+##   nparam は復帰時の入れ子レベルにおける nparam 値を保持する。
+##   nparam 値が空文字列の場合には代わりに none という文字列が格納される。
+##
 ## @var _ble_syntax_tree[i-1]
 ##   境界 #i で終わる単語についての情報を保持する。
 ##   各要素は "( wtype wlen tclen tplen - )*" の形式をしている。
@@ -114,8 +123,9 @@ BLE_SYNTAX_TREE_WIDTH=5
 # ble-syntax/tree-enumerate-children proc
 # ble-syntax/tree-enumerate-in-range beg end proc
 
-## @var[in]  iN
-## @var[out] tree,i,nofs
+## 関数 ble-syntax/tree-enumerate/.initialize
+##   @var[in]  iN
+##   @var[out] tree,i,nofs
 function ble-syntax/tree-enumerate/.initialize {
   if [[ ! ${_ble_syntax_stat[iN]} ]]; then
     tree= i=-1 nofs=0
@@ -149,7 +159,7 @@ function ble-syntax/tree-enumerate/.initialize {
     tplen="${nest[4]}"
     ((tplen>=0&&(tplen+=olen)))
 
-    tree="${nest[6]} $olen $tclen $tplen -- ${tree[@]}"
+    tree="${nest[7]} $olen $tclen $tplen -- ${tree[@]}"
 
     wtype="${nest[2]}" wlen="${nest[1]}" nlen="${nest[3]}" tclen=0 tplen="${nest[5]}"
     ((wlen>=0&&(wlen+=olen),
@@ -169,13 +179,15 @@ function ble-syntax/tree-enumerate/.initialize {
 }
 
 ## 関数 ble-syntax/tree-enumerate/.impl command...
-## @param[in] command...
-##   @var[in]     wtype,wbegin,wlen,attr,tchild
-##   @var[in,out] tprev
-##     列挙を中断する時は ble-syntax/tree-enumerate-break
-##     を呼び出す事によって、tprev=-1 を設定します。
-## @var[in] iN
-## @var[in] tree,i,nofs
+##   @param[in] command...
+##     各ノードについて呼び出すコマンドを指定します。
+##     コマンドは以下のシェル変数を入力・出力とします。
+##     @var[in]     wtype,wbegin,wlen,attr,tchild
+##     @var[in,out] tprev
+##       列挙を中断する時は ble-syntax/tree-enumerate-break
+##       を呼び出す事によって、tprev=-1 を設定します。
+##   @var[in] iN
+##   @var[in] tree,i,nofs
 function ble-syntax/tree-enumerate/.impl {
   local islast=1
   while ((i>0)); do
@@ -295,7 +307,7 @@ function ble-syntax/print-status/.dump-arrays/.append-attr-char {
   fi
 }
 
-function ble-syntax/print-status/.get-ctx-text {
+function ble-syntax/print-status/ctx#get-text {
   eval "$ble_util_upvar_setup"
 
   local sgr ret
@@ -307,6 +319,156 @@ function ble-syntax/print-status/.get-ctx-text {
   fi
 
   eval "$ble_util_upvar"
+}
+## 関数 ble-syntax/print-status/word.get-text index
+##   _ble_syntax_tree[index] の内容を文字列にします。
+##   @param[in] index
+##   @var[out]  word
+function ble-syntax/print-status/word.get-text {
+  local index=$1
+  word=(${_ble_syntax_tree[index]})
+  local ret=
+  if [[ $word ]]; then
+    local nofs="$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))"
+    while (((nofs-=BLE_SYNTAX_TREE_WIDTH)>=0)); do
+      local axis=$((index+1))
+
+      local wtype=${word[nofs]}
+      if [[ $wtype =~ ^[0-9]+$ ]]; then
+        ble-syntax/print-status/ctx#get-text -v wtype "$wtype"
+      elif [[ $wtype =~ ^n* ]]; then
+        # Note: nest-pop 時の tree-append では prefix n を付けている。
+        wtype=$sgr_quoted\"${wtype:1}\"$_ble_term_sgr0
+      else
+        wtype=$sgr_error${wtype}$_ble_term_sgr0
+      fi
+
+      local b="$((axis-word[nofs+1]))" e="$axis"
+      local _prev="${word[nofs+3]}" _child="${word[nofs+2]}"
+      if ((_prev>=0)); then
+        _prev="@$((axis-_prev-1))>"
+      else
+        _prev=
+      fi
+      if ((_child>=0)); then
+        _child=">@$((axis-_child-1))"
+      else
+        _child=
+      fi
+
+      ret=" word=$wtype:$_prev$b-$e$_child$ret"
+      for ((;b<index;b++)); do
+        ble-syntax/print-status/.tree-prepend b '|'
+      done
+      ble-syntax/print-status/.tree-prepend index '+'
+    done
+    word=$ret
+  fi
+}
+## 関数 ble-syntax/print-status/nest.get-text index
+##   _ble_syntax_nest[index] の内容を文字列にします。
+##   @param[in] index
+##   @var[out]  nest
+function ble-syntax/print-status/nest.get-text {
+  local index=$1
+  nest=(${_ble_syntax_nest[index]})
+  if [[ $nest ]]; then
+    local nctx
+    ble-syntax/print-status/ctx#get-text -v nctx 'nest[0]'
+
+    local nword=-
+    if ((nest[1]>=0)); then
+      local swtype
+      ble-syntax/print-status/ctx#get-text -v swtype 'nest[2]'
+      local wbegin=$((index-nest[1]))
+      nword="$swtype:$wbegin-"
+    fi
+
+    local nnest=-
+    ((nest[3]>=0)) && nnest="'${nest[7]}':$((index-nest[3]))-"
+
+    local nchild=-
+    if ((nest[4]>=0)); then
+      local tchild=$((index-nest[4]))
+      nchild='$'$tchild
+      if ! ((0<tchild&&tchild<=index)) || [[ ! ${_ble_syntax_tree[tchild-1]} ]]; then
+        nchild=$sgr_error$nchild$_ble_term_sgr0
+      fi
+    fi
+
+    local nprev=-
+    if ((nest[5]>=0)); then
+      local tprev=$((index-nest[5]))
+      nprev='$'$tprev
+      if ! ((0<tprev&&tprev<=index)) || [[ ! ${_ble_syntax_tree[tprev-1]} ]]; then
+        nprev=$sgr_error$nprev$_ble_term_sgr0
+      fi
+    fi
+
+    local nparam=${nest[6]}
+    if [[ $nparam == none ]]; then
+      nparam=
+    else
+      nparam=" nparam=${nparam//$_ble_term_fs/$'\e[7m^\\\e[m'}"
+    fi
+
+    nest=" nest=($nctx w=$nword n=$nnest t=$nchild:$nprev$nparam)"
+  fi
+}
+## 関数 ble-syntax/print-status/stat.get-text index
+##   _ble_syntax_stat[index] の内容を文字列にします。
+##   @param[in] index
+##   @var[out]  stat
+function ble-syntax/print-status/stat.get-text {
+  local index=$1
+  stat=(${_ble_syntax_stat[index]})
+  if [[ $stat ]]; then
+    local stat_ctx
+    ble-syntax/print-status/ctx#get-text -v stat_ctx 'stat[0]'
+
+    local stat_word=-
+    if ((stat[1]>=0)); then
+      local stat_wtype
+      ble-syntax/print-status/ctx#get-text -v stat_wtype 'stat[2]'
+      stat_word="$stat_wtype:$((index-stat[1]))-"
+    fi
+
+    local stat_inest=-
+    if ((stat[3]>=0)); then
+      local inest=$((index-stat[3]))
+      stat_inest="@$inest"
+      if ((inest<0)) || [[ ! ${_ble_syntax_nest[inest]} ]]; then
+        stat_inest=$sgr_error$stat_inest$_ble_term_sgr0
+      fi
+    fi
+
+    local stat_child=-
+    if ((stat[4]>=0)); then
+      local tchild=$((index-stat[4]))
+      stat_child='$'$tchild
+      if ! ((0<tchild&&tchild<=index)) || [[ ! ${_ble_syntax_tree[tchild-1]} ]]; then
+        stat_child=$sgr_error$stat_child$_ble_term_sgr0
+      fi
+    fi
+
+    local stat_prev=-
+    if ((stat[5]>=0)); then
+      local tprev=$((index-stat[5]))
+      stat_prev='$'$tprev
+      if ! ((0<tprev&&tprev<=index)) || [[ ! ${_ble_syntax_tree[tprev-1]} ]]; then
+        stat_prev=$sgr_error$stat_prev$_ble_term_sgr0
+      fi
+    fi
+
+    local snparam=${stat[6]}
+    if [[ $snparam == none ]]; then
+      snparam=
+    else
+      snparam=" nparam=${snparam//"$_ble_term_fs"/$'\e[7m^\\\e[m'}"
+    fi
+
+    stat=" stat=($stat_ctx w=$stat_word n=$stat_inest t=$stat_child:$stat_prev$snparam)"
+  fi
 }
 
 ## @var[out] resultA
@@ -346,125 +508,15 @@ function ble-syntax/print-status/.dump-arrays {
     local index="000$i"
     index="${index:${#index}-3:3}"
 
-    local -a word nest stat
-    word=(${_ble_syntax_tree[i]})
-    local tword=
-    if [[ $word ]]; then
-      local nofs="$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))"
-      while (((nofs-=BLE_SYNTAX_TREE_WIDTH)>=0)); do
-        local axis=$((i+1))
-
-        local wtype=${word[nofs]}
-        if [[ $wtype =~ ^[0-9]+$ ]]; then
-          ble-syntax/print-status/.get-ctx-text -v wtype "$wtype"
-        else
-          wtype=$sgr_quoted\"$wtype\"$_ble_term_sgr0
-        fi
-
-        local b="$((axis-word[nofs+1]))" e="$axis"
-        local _prev="${word[nofs+3]}" _child="${word[nofs+2]}"
-        if ((_prev>=0)); then
-          _prev="@$((axis-_prev-1))>"
-        else
-          _prev=
-        fi
-        if ((_child>=0)); then
-          _child=">@$((axis-_child-1))"
-        else
-          _child=
-        fi
-
-        tword=" word=$wtype:$_prev$b-$e$_child$tword"
-        for ((;b<i;b++)); do
-          ble-syntax/print-status/.tree-prepend b '|'
-        done
-        ble-syntax/print-status/.tree-prepend i '+'
-      done
-    fi
-
-    nest=(${_ble_syntax_nest[i]})
-    if [[ $nest ]]; then
-      local nctx
-      ble-syntax/print-status/.get-ctx-text -v nctx 'nest[0]'
-
-      local nword=-
-      if ((nest[1]>=0)); then
-        local nwtype
-        ble-syntax/print-status/.get-ctx-text -v nwtype 'nest[2]'
-        local nwbegin=$((i-nest[1]))
-        nword="$nwtype:$nwbegin-"
-      fi
-
-      local nnest=-
-      ((nest[3]>=0)) && nnest="'${nest[6]}':$((i-nest[3]))-"
-
-      local nchild=-
-      if ((nest[4]>=0)); then
-        local tchild=$((i-nest[4]))
-        nchild='$'$tchild
-        if ! ((0<tchild&&tchild<i)) || [[ ! ${_ble_syntax_tree[tchild-1]} ]]; then
-          nchild=$sgr_error$nchild$_ble_term_sgr0
-        fi
-      fi
-
-      local nprev=-
-      if ((nest[5]>=0)); then
-        local tprev=$((i-nest[5]))
-        nprev='$'$tprev
-        if ! ((0<tprev&&tprev<i)) || [[ ! ${_ble_syntax_tree[tprev-1]} ]]; then
-          nprev=$sgr_error$nprev$_ble_term_sgr0
-        fi
-      fi
-
-      nest=" nest=($nctx w=$nword n=$nnest t=$nchild:$nprev)"
-    fi
-
-    stat=(${_ble_syntax_stat[i]})
-    if [[ $stat ]]; then
-      local stat_ctx
-      ble-syntax/print-status/.get-ctx-text -v stat_ctx 'stat[0]'
-
-      local sword=-
-      if ((stat[1]>=0)); then
-        local stat_wtype
-        ble-syntax/print-status/.get-ctx-text -v stat_wtype 'stat[2]'
-        sword="$stat_wtype:$((i-stat[1]))-"
-      fi
-
-      local snest=-
-      if ((stat[3]>=0)); then
-        local inest=$((i-stat[3]))
-        snest="@$inest"
-        if ((inest<0)) || [[ ! ${_ble_syntax_nest[inest]} ]]; then
-          snest=$sgr_error$snest$_ble_term_sgr0
-        fi
-      fi
-
-      local schild=-
-      if ((stat[4]>=0)); then
-        local tchild=$((i-stat[4]))
-        schild='$'$tchild
-        if ! ((0<tchild&&tchild<=i)) || [[ ! ${_ble_syntax_tree[tchild-1]} ]]; then
-          schild=$sgr_error$schild$_ble_term_sgr0
-        fi
-      fi
-
-      local sprev=-
-      if ((stat[5]>=0)); then
-        local tprev=$((i-stat[5]))
-        sprev='$'$tprev
-        if ! ((0<tprev&&tprev<=i)) || [[ ! ${_ble_syntax_tree[tprev-1]} ]]; then
-          sprev=$sgr_error$sprev$_ble_term_sgr0
-        fi
-      fi
-
-      stat=" stat=($stat_ctx w=$sword n=$snest t=$schild:$sprev)"
-    fi
+    local word nest stat
+    ble-syntax/print-status/word.get-text "$i"
+    ble-syntax/print-status/nest.get-text "$i"
+    ble-syntax/print-status/stat.get-text "$i"
 
     local graph=
     ble-syntax/print-status/.graph "${_ble_syntax_text:i:1}"
     char[i]="$attr $index $graph"
-    line[i]="$tword$nest$stat"
+    line[i]="$word$nest$stat"
   done
 
   resultA='_ble_syntax_attr/tree/nest/stat?'$'\n'
@@ -516,7 +568,7 @@ function ble-syntax/print-status {
 #--------------------------------------
 
 function ble-syntax/parse/generate-stat {
-  _stat="$ctx $((wbegin<0?wbegin:i-wbegin)) $wtype $((inest<0?inest:i-inest)) $((tchild<0?tchild:i-tchild)) $((tprev<0?tprev:i-tprev))"
+  _stat="$ctx $((wbegin<0?wbegin:i-wbegin)) $wtype $((inest<0?inest:i-inest)) $((tchild<0?tchild:i-tchild)) $((tprev<0?tprev:i-tprev)) ${nparam:-none}"
 }
 
 # 構文木の管理 (_ble_syntax_tree)
@@ -575,9 +627,9 @@ function ble-syntax/parse/word-cancel {
 
 # 入れ子構造の管理
 
-## 関数 ble-syntax/parse/nest-push newctx type
+## 関数 ble-syntax/parse/nest-push newctx ntype
 ##   @param[in]     newctx 新しい ctx を指定します。
-##   @param[in,opt] type   文法要素の種類を指定します。
+##   @param[in,opt] ntype  文法要素の種類を指定します。
 ##   @var  [in]     i      現在の位置を指定します。
 ##   @var  [in out] inest  親 nest の位置を指定します。新しい nest の位置 (i) を返します。
 ##   @var  [in,out] ctx    復帰時の ctx を指定します。新しい ctx (newctx) を返します。
@@ -585,30 +637,33 @@ function ble-syntax/parse/word-cancel {
 ##   @var  [in,out] wtype  復帰時の wtype を指定します。新しい wtype (-1) を返します。
 ##   @var  [in,out] tchild 復帰時の tchild を指定します。新しい tchild (-1) を返します。
 ##   @var  [in,out] tprev  復帰時の tprev を指定します。新しい tprev (tchild) を返します。
+##   @var  [in,out] nparam 復帰時の nparam を指定します。新しい nparam (空文字列) を返します。
 function ble-syntax/parse/nest-push {
   local wlen=$((wbegin<0?wbegin:i-wbegin))
   local nlen=$((inest<0?inest:i-inest))
   local tclen=$((tchild<0?tchild:i-tchild))
   local tplen=$((tprev<0?tprev:i-tprev))
-  _ble_syntax_nest[i]="$ctx $wlen $wtype $nlen $tclen $tplen ${2:-none}"
+  _ble_syntax_nest[i]="$ctx $wlen $wtype $nlen $tclen $tplen ${nparam:-none} ${2:-none}"
   ((ctx=$1,inest=i,wbegin=-1,wtype=-1,tprev=tchild,tchild=-1))
+  nparam=
 }
 ## 関数 ble-syntax/parse/nest-pop
 ## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
-##   現在の入れ子を閉じます。現在の入れ子情報を登録して、一つ上の入れ子情報を復元します。
-##   @var[   out] ctx
-##   @var[   out] wbegin
-##   @var[   out] wtype
-##   @var[in,out] inest
-##   @var[in,out] tchild
-##   @var[in,out] tprev
+##   現在の入れ子を閉じます。現在の入れ子情報を記録して、一つ上の入れ子情報を復元します。
+##   @var[   out] ctx      上の入れ子階層の ctx を復元します。
+##   @var[   out] wbegin   上の入れ子階層の wbegin を復元します。
+##   @var[   out] wtype    上の入れ子階層の wtype を復元します。
+##   @var[in,out] inest    記録する入れ子情報を指定します。上の入れ子階層の inest を復元します。
+##   @var[in,out] tchild   記録する入れ子情報を指定します。上の入れ子階層の tchild を復元します。
+##   @var[in,out] tprev    記録する入れ子情報を指定します。上の入れ子階層の tprev を復元します。
+##   @var[   out] nparam   上の入れ子階層の nparam を復元します。
 function ble-syntax/parse/nest-pop {
   ((inest<0)) && return 1
 
   local -a parentNest
   parentNest=(${_ble_syntax_nest[inest]})
 
-  local ntype="${parentNest[6]}" nbeg="$inest"
+  local ntype="${parentNest[7]}" nbeg="$inest"
   ble-syntax/parse/tree-append "n$ntype" "$nbeg" "$tchild" "$tprev"
 
   local wlen="${parentNest[1]}" nlen="${parentNest[3]}" tplen="${parentNest[5]}"
@@ -618,6 +673,8 @@ function ble-syntax/parse/nest-pop {
     inest=nlen<0?nlen:nbeg-nlen,
     tchild=i,
     tprev=tplen<0?tplen:nbeg-tplen))
+  nparam=${parentNest[6]}
+  [[ $nparam == none ]] && nparam=
 }
 function ble-syntax/parse/nest-type {
   local _var=ntype
@@ -716,7 +773,7 @@ _ble_syntax_bash_IFS=$' \t\n'
 _ble_syntax_bash_rex_spaces=$'[ \t]+'
 _ble_syntax_bash_rex_IFSs="[$_ble_syntax_bash_IFS]+"
 _ble_syntax_bash_rex_delimiters="[$_ble_syntax_bash_IFS;|&<>()]"
-_ble_syntax_bash_rex_redirect='((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|>[|&]|<[>&]?|<<<?))[ 	]*'
+_ble_syntax_bash_rex_redirect='((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|>[|&]|<[>&]?|<<[-<]?))[ 	]*'
 
 ## @var _ble_syntax_bashc[]
 ##   特定の役割を持つ文字の集合。Bracket expression [～] に入れて使う為の物。
@@ -731,6 +788,7 @@ _ble_syntax_bashc_seed=
   _ble_syntax_bashc_def[CTX_QUOT]="\$\"\`\\!"       # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bashc_def[CTX_EXPR]="][}()\$\"\`\\'!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
   _ble_syntax_bashc_def[CTX_PWORD]="}\$\"\`\\'!"    # パラメータ展開 ${～}
+  _ble_syntax_bashc_def[CTX_RDRH]="$_ble_syntax_bash_IFS;|&()<>$\"\`\\'"
 
   # templates
   _ble_syntax_bashc_fmt=()
@@ -739,6 +797,7 @@ _ble_syntax_bashc_seed=
   _ble_syntax_bashc_fmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bashc_fmt[CTX_EXPR]="][}()\$\"\`\\'@h"
   _ble_syntax_bashc_fmt[CTX_PWORD]="}\$\"\`\\'@h"
+  _ble_syntax_bashc_fmt[CTX_RDRH]=${_ble_syntax_bashc_def[CTX_RDRH]}
 
   _ble_syntax_bashc_simple=${_ble_syntax_bashc_def[CTX_ARGI]}
 
@@ -1506,10 +1565,30 @@ _BLE_SYNTAX_FEND[CTX_CARGI1]=ble-syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_CARGI2]=ble-syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FCTX[CTX_ARGX0F]=ble-syntax:bash/ctx-command
 
+## 関数 ble-syntax:bash/starts-with-delimiter-or-redirect
 function ble-syntax:bash/starts-with-delimiter-or-redirect {
   local delimiters=$_ble_syntax_bash_rex_delimiters
   local redirect=$_ble_syntax_bash_rex_redirect
   [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect ) && $tail != ['<>']'('* ]]
+}
+
+## 関数 ble-syntax:bash/check-here-document-from spaces
+##   @param[in] spaces
+function ble-syntax:bash/check-here-document-from {
+  local spaces=$1
+  [[ $nparam && $spaces == *$'\n'* ]] || return 1
+  local rex="$_ble_term_fs@([RI][QH][^$_ble_term_fs]*)(.*$)" && [[ $nparam =~ $rex ]] || return 1
+
+  # ヒアドキュメントの開始
+  local rematch1=${BASH_REMATCH[1]}
+  local rematch2=${BASH_REMATCH[2]}
+  local padding=${spaces%%$'\n'*}
+  ((_ble_syntax_attr[i]=ctx,i+=${#padding}))
+  nparam=${nparam::${#nparam}-${#BASH_REMATCH}}${nparam:${#nparam}-${#rematch2}}
+  ble-syntax/parse/nest-push "$CTX_HERE0"
+  ((i++))
+  nparam=$rematch1
+  return 0
 }
 
 ## 関数 ble-syntax:bash/ctx-command/check-word-end
@@ -1680,33 +1759,40 @@ function ble-syntax:bash/ctx-command/check-word-end {
 
 function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
   if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
-    # 空白 (ctx はそのままで素通り)
-    ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
-    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)) && [[ $BASH_REMATCH == *$'\n'* ]] && ((ctx=CTX_CMDX))
+    # 空白
+
+    # 改行がある場合: ヒアドキュメントの確認 / 改行による文脈更新
+    local spaces=$BASH_REMATCH
+    if [[ $spaces == *$'\n'* ]]; then
+      ble-syntax:bash/check-here-document-from "$spaces" && return 0
+      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)) && ((ctx=CTX_CMDX))
+    fi
+
+    # ctx はそのままで素通り
+    ((_ble_syntax_attr[i]=ctx,i+=${#spaces}))
     return 0
+
   elif [[ $tail =~ ^$_ble_syntax_bash_rex_redirect ]]; then
     # リダイレクト (& 単体の解釈より優先する)
 
-    local fError=0
     # for bash-3.1 ${#arr[n]} bug ... 一旦 rematch1 に入れてから ${#rematch1} で文字数を得る。
     local rematch1="${BASH_REMATCH[1]}"
     local rematch3="${BASH_REMATCH[3]}"
     if [[ $rematch1 == *'&' ]]; then
       ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
-    elif [[ $rematch1 == \<\< ]]; then
+    elif [[ $rematch1 == *\<\< ]]; then
       # Note: emacs bug workaround
       #   '<<' と書くと何故か Emacs がヒアドキュメントと
       #   勘違いする様になったので仕方なく \<\< とする。
-
-      #■ヒアドキュメント not yet supported
-      fError=1
-      ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3" # 暫定・単語一つ
-    elif [[ $rematch1 == '<<<' ]]; then
+      ble-syntax/parse/nest-push "$CTX_RDRH" "$rematch3"
+    elif [[ $rematch1 == *\<\<- ]]; then
+      ble-syntax/parse/nest-push "$CTX_RDRI" "$rematch3"
+    elif [[ $rematch1 == *'<<<' ]]; then
       ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
     else
       ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch3"
     fi
-    ((_ble_syntax_attr[i]=fError?ATTR_ERR:ATTR_DEL,
+    ((_ble_syntax_attr[i]=ATTR_DEL,
       ${#rematch1}<${#BASH_REMATCH}&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX),
       i+=${#BASH_REMATCH}))
     return 0
@@ -1855,8 +1941,8 @@ function ble-syntax:bash/ctx-command/.check-assign {
     # * nest-pop した直後は未だ CTX_VRHS, CTX_ARGVI の続きになっている。
     #   例: a=(1 2)b=1 は a='(1 2)b=1' と解釈される。
     #   従って ctx (nest-pop 時の文脈) はそのまま (CTX_VRHS, CTX_ARGVI) にする。
-    ble-syntax/parse/nest-push "$CTX_VALX"
 
+    ble-syntax:bash/ctx-values/enter
     ((_ble_syntax_attr[i++]=ATTR_DEL))
   fi
 
@@ -1969,6 +2055,30 @@ _BLE_SYNTAX_FCTX[CTX_VALX]=ble-syntax:bash/ctx-values
 _BLE_SYNTAX_FCTX[CTX_VALI]=ble-syntax:bash/ctx-values
 _BLE_SYNTAX_FEND[CTX_VALI]=ble-syntax:bash/ctx-values/check-word-end
 
+## 文脈値 ctx-values
+##
+##   arr=() arr+=() から抜けた時にまた元の文脈値に復帰する必要があるので
+##   nest-push, nest-pop で入れ子構造を一段作成する事にする。
+##
+##   但し、外側で設定されたヒアドキュメントを処理する為に工夫が必要である。
+##   外側の nparam をそのまま利用しまた抜ける場合には外側の nparam に変更結果を適用する。
+##   ble-syntax:bash/ctx-values/enter, leave はこの nparam の持ち越しに使用する。
+##
+
+## 関数 ble-syntax:bash/ctx-values/enter
+##   @remarks この関数は ble-syntax:bash/ctx-command/.check-assign から呼ばれる。
+function ble-syntax:bash/ctx-values/enter {
+  local outer_nparam=$nparam
+  ble-syntax/parse/nest-push "$CTX_VALX"
+  nparam=$outer_nparam
+}
+## 関数 ble-syntax:bash/ctx-values/leave
+function ble-syntax:bash/ctx-values/leave {
+  local inner_nparam=$nparam
+  ble-syntax/parse/nest-pop
+  nparam=$inner_nparam
+}
+
 ## 関数 ble-syntax:bash/ctx-values/check-word-end
 function ble-syntax:bash/ctx-values/check-word-end {
   # 単語の中にいない時は抜ける
@@ -1998,13 +2108,16 @@ function ble-syntax:bash/ctx-values {
 #%end
 
     if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
+      local spaces=$BASH_REMATCH
+      ble-syntax:bash/check-here-document-from "$spaces" && return 0
+
       # 空白 (ctx はそのままで素通り)
-      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+      ((_ble_syntax_attr[i]=ctx,i+=${#spaces}))
       return 0
     elif [[ $tail == ')'* ]]; then
       # 配列定義の終了
       ((_ble_syntax_attr[i++]=ATTR_DEL))
-      ble-syntax/parse/nest-pop
+      ble-syntax:bash/ctx-values/leave
       return 0
     elif [[ $type == ';'* ]]; then
       ((_ble_syntax_attr[i++]=ATTR_ERR))
@@ -2218,6 +2331,245 @@ function ble-syntax:bash/ctx-redirect {
   fi
 
   return 1
+}
+
+#------------------------------------------------------------------------------
+# 文脈: ヒアドキュメント
+#
+# | <<[-] word
+# | contents
+# | delimiter
+#
+# ctx-heredoc-word (word の解析) は ctx-redirect を参考にして作成する。
+#
+
+_ble_syntax_bash_heredoc_escSP='\040'
+_ble_syntax_bash_heredoc_escHT='\011'
+_ble_syntax_bash_heredoc_escLF='\012'
+_ble_syntax_bash_heredoc_escFS='\034'
+function ble-syntax:bash/ctx-heredoc-word/initialize {
+  local ret
+  ble/util/s2c ' '
+  ble/util/sprintf _ble_syntax_bash_heredoc_escSP '\\%03o' "$ret"
+  ble/util/s2c $'\t'
+  ble/util/sprintf _ble_syntax_bash_heredoc_escHT '\\%03o' "$ret"
+  ble/util/s2c $'\n'
+  ble/util/sprintf _ble_syntax_bash_heredoc_escLF '\\%03o' "$ret"
+  ble/util/s2c "$_ble_term_fs"
+  ble/util/sprintf _ble_syntax_bash_heredoc_escFS '\\%03o' "$ret"
+}
+ble-syntax:bash/ctx-heredoc-word/initialize
+
+## 関数 ble-syntax:bash/ctx-heredoc-word/remove-quotes word
+##   @var[out] delimiter
+function ble-syntax:bash/ctx-heredoc-word/remove-quotes {
+  local text=$1 result=
+
+  local rex1='^[^\$"'\'']+|^\$?["'\'']|^\\.?|^.'
+  while [[ $text && $text =~ $rex1 ]]; do
+    local rematch=$BASH_REMATCH
+    if [[ $rematch == \" || $rematch == \$\" ]]; then
+      if rex='^\$?"(([^\"]|\\.)*)(\\?$|")'; [[ $text =~ $rex ]]; then
+        local str=${BASH_REMATCH[1]}
+        local a b
+        b='\`' a='`'; str="${str//"$b"/$a}"
+        b='\"' a='"'; str="${str//"$b"/$a}"
+        b='\$' a='$'; str="${str//"$b"/$a}"
+        b='\\' a='\'; str="${str//"$b"/$a}"
+        result=$result$str
+        text=${text:${#BASH_REMATCH}}
+        continue
+      fi
+    elif [[ $rematch == \' ]]; then
+      if rex="^('[^']*)'?"; [[ $text =~ $rex ]]; then
+        eval "result=\$result${BASH_REMATCH[1]}'"
+        text=${text:${#BASH_REMATCH}}
+        continue
+      fi
+    elif [[ $rematch == \$\' ]]; then
+      if rex='^(\$'\''([^\'\'']|\\.)*)('\''|\\?$)'; [[ $text =~ $rex ]]; then
+        eval "result=\$result${BASH_REMATCH[1]}'"
+        text=${text:${#BASH_REMATCH}}
+        continue
+      fi
+    elif [[ $rematch == \\* ]]; then
+      result=$result${rematch:1}
+      text=${text:${#rematch}}
+      continue
+    fi
+
+    result=$result$rematch
+    text=${text:${#rematch}}
+  done
+
+  delimiter=$result$text
+}
+
+## 関数 ble-syntax:bash/ctx-heredoc-word/remove-quotes delimiter
+##   @var[out] escaped
+function ble-syntax:bash/ctx-heredoc-word/escape-delimiter {
+  local ret=$1
+  if [[ $ret == *[\\\'$_ble_syntax_bash_IFS$_ble_term_fs]* ]]; then
+    local a b fs=$_ble_term_fs
+    a=\\   ; b="\\$a"; ret="${ret//"$a"/$b}"
+    a=\'   ; b="\\$a"; ret="${ret//"$a"/$b}"
+    a=' '  ; b="$_ble_syntax_bash_heredoc_escSP"; ret="${ret//"$a"/$b}"
+    a=$'\t'; b="$_ble_syntax_bash_heredoc_escHT"; ret="${ret//"$a"/$b}"
+    a=$'\n'; b="$_ble_syntax_bash_heredoc_escLF"; ret="${ret//"$a"/$b}"
+    a=$fs  ; b="$_ble_syntax_bash_heredoc_escFS"; ret="${ret//"$a"/$b}"
+  fi
+  escaped=$ret
+}
+function ble-syntax:bash/ctx-heredoc-word/unescape-delimiter {
+  eval "delimiter=\$'$1'"
+}
+
+## 文脈値 CTX_RDRH
+##
+##   @remarks
+##     redirect と同様に nest-push と同時にこの文脈に入る事を想定する。
+##
+_BLE_SYNTAX_FCTX[CTX_RDRH]=ble-syntax:bash/ctx-heredoc-word
+_BLE_SYNTAX_FEND[CTX_RDRH]=ble-syntax:bash/ctx-heredoc-word/check-word-end
+_BLE_SYNTAX_FCTX[CTX_RDRI]=ble-syntax:bash/ctx-heredoc-word
+_BLE_SYNTAX_FEND[CTX_RDRI]=ble-syntax:bash/ctx-heredoc-word/check-word-end
+function ble-syntax:bash/ctx-heredoc-word/check-word-end {
+  ((wbegin<0)) && return 1
+
+  # 未だ続きがある場合は抜ける
+  local tail="${text:i}"
+  [[ $tail == [^"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
+
+  # word = "EOF" 等の終端文字列
+  local word=${text:wbegin:i-wbegin}
+
+  # 終了処理
+  ble-syntax/parse/word-pop
+  ble-syntax/parse/nest-pop
+  
+  local I
+  if ((ctx==CTX_RDRI)); then I=I; else I=R; fi
+
+  local Q delimiter
+  if [[ $word == *[\'\"\\]* ]]; then
+    Q=Q; ble-syntax:bash/ctx-heredoc-word/remove-quotes "$word"
+  else
+    Q=H; delimiter=$word
+  fi
+
+  local escaped; ble-syntax:bash/ctx-heredoc-word/escape-delimiter "$delimiter"
+  nparam="$nparam$_ble_term_fs@$I$Q$escaped"
+  return 0
+}
+function ble-syntax:bash/ctx-heredoc-word {
+  # redirect の直後にコマンド終了や別の redirect があってはならない
+  if ble-syntax:bash/starts-with-delimiter-or-redirect; then
+    ((_ble_syntax_attr[i++]=ATTR_ERR))
+    [[ ${tail:1} =~ ^$_ble_syntax_bash_rex_spaces ]] &&
+      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+    return 0
+  fi
+
+  if local i0=$i; ble-syntax:bash/check-comment; then
+    ((_ble_syntax_attr[i0]=ATTR_ERR))
+    return 0
+  fi
+
+  # 単語開始の設置
+  ble-syntax:bash/ctx-redirect/check-word-begin
+
+  local rex
+  if rex='^([^'"${_ble_syntax_bashc[CTX_RDRH]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+    ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+    return 0
+  elif rex='^`([^`\]|\\(.|$))*(`?)|^'\''[^'\'']*('\''?)' && [[ $tail =~ $rex ]]; then
+    # quote1 `...` / '...'
+    ((_ble_syntax_attr[i]=ATTR_QDEL,
+      _ble_syntax_attr[i+1]=CTX_QUOT,
+      i+=${#BASH_REMATCH},
+      _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}||${#BASH_REMATCH[4]}?ATTR_QDEL:ATTR_ERR))
+    return 0
+  elif rex='^(\$?")([^"\]|\\(.|$))*("?)' && [[ $tail =~ $rex ]]; then
+    # quote2 " ... "
+    local rematch1="${BASH_REMATCH[1]}" # for bash-3.1 ${#arr[n]} bug
+    ((_ble_syntax_attr[i]=ATTR_QDEL,
+      _ble_syntax_attr[i+${#rematch1}]=CTX_QUOT,
+      i+=${#BASH_REMATCH},
+      _ble_syntax_attr[i-1]=${#BASH_REMATCH[4]}?ATTR_QDEL:ATTR_ERR))
+    return 0
+  elif rex='^\$'\''([^'\''\]|\\(.|$))*('\''?)' && [[ $tail =~ $rex ]]; then
+    # quote3 $' ... '
+    ((_ble_syntax_attr[i]=ATTR_QDEL,
+      _ble_syntax_attr[i+2]=CTX_QUOT,
+      i+=${#BASH_REMATCH},
+      _ble_syntax_attr[i-1]=${#BASH_REMATCH[3]}?ATTR_QDEL:ATTR_ERR))
+    return 0
+  elif [[ $tail == '$'* ]]; then
+    ((_ble_syntax_attr[i]=ctx,i++))
+    return 0
+  fi
+
+  return 1
+}
+
+## 文脈値 CTX_HERE0, CTX_HERE1
+##
+##   nest-push された環境で評価される。
+##   nparam =~ [RI][QH]delimiter の形式を持つ。
+##
+_BLE_SYNTAX_FCTX[CTX_HERE0]=ble-syntax:bash/ctx-heredoc-content
+_BLE_SYNTAX_FCTX[CTX_HERE1]=ble-syntax:bash/ctx-heredoc-content
+function ble-syntax:bash/ctx-heredoc-content {
+  local indented= quoted= delimiter=
+  ble-syntax:bash/ctx-heredoc-word/unescape-delimiter "${nparam:2}"
+  [[ ${nparam::1} == I ]] && indented=1
+  [[ ${nparam:1:1} == Q ]] && quoted=1
+
+  local rex ht=$'\t' lf=$'\n'
+  if ((ctx==CTX_HERE0)); then
+    rex="^${indented:+$ht*}"$'([^\n]+\n?|\n)'
+    [[ $tail =~ $rex ]] || return 1
+
+    # ヒアドキュメント終了判定
+    # ※前後の空白も含めて行が delimiter と一致していなければならない。
+    local line=${BASH_REMATCH%"$lf"}
+    local rematch1=${BASH_REMATCH[1]}
+    if [[ ${rematch1%"$lf"} == "$delimiter" ]]; then
+      local indent
+      ((indent=${#BASH_REMATCH}-${#rematch1},
+        _ble_syntax_attr[i]=CTX_HERE0,
+        _ble_syntax_attr[i+indent]=CTX_RDRH,
+        i+=${#line}))
+      ble-syntax/parse/nest-pop
+      return 0
+    fi
+  fi
+
+  if [[ $quoted ]]; then
+    ble-assert '((ctx==CTX_HERE0))'
+    ((_ble_syntax_attr[i]=CTX_HERE0,i+=${#BASH_REMATCH}))
+    return 0
+  else
+    ((ctx=CTX_HERE1))
+
+    # \? 及び $? ${} $(()) $[] $() ``
+    if rex='^([^$`\'"$lf"']|\\.)+'"$lf"'?|^'"$lf" && [[ $tail =~ $rex ]]; then
+      ((_ble_syntax_attr[i]=CTX_HERE0,
+        i+=${#BASH_REMATCH}))
+      [[ $BASH_REMATCH == *"$lf" ]] && ((ctx=CTX_HERE0))
+      return 0
+    fi
+
+    if ble-syntax:bash/check-dollar; then
+      return 0
+    elif [[ $tail == '`'* ]] && ble-syntax:bash/check-quotes; then
+      return 0
+    else
+      # 単独の $ や終端の \ など?
+      ((_ble_syntax_attr[i]=CTX_HERE0,i++))
+      return 0
+    fi
+  fi
 }
 
 #==============================================================================
@@ -2507,7 +2859,7 @@ function ble-syntax/parse {
   ble-syntax/parse/shift
 
   # 解析途中状態の復元
-  local ctx wbegin wtype inest tchild tprev
+  local ctx wbegin wtype inest tchild tprev nparam
   if [[ ${_ble_syntax_stat[i1]} ]]; then
     local -a stat
     stat=(${_ble_syntax_stat[i1]})
@@ -2518,6 +2870,7 @@ function ble-syntax/parse {
     inest="$((nlen<0?nlen:i1-nlen))"
     tchild="$((tclen<0?tclen:i1-tclen))"
     tprev="$((tplen<0?tplen:i1-tplen))"
+    nparam="${stat[6]}"; [[ $nparam == none ]] && nparam=
   else
     # 初期値
     ctx="$CTX_CMDX" ##!< 現在の解析の文脈 (CTX_CMDX は ble-syntax:bash 特有)
@@ -2526,6 +2879,7 @@ function ble-syntax/parse {
     inest=-1        ##!< 入れ子の時、親の開始位置
     tchild=-1
     tprev=-1
+    nparam=
   fi
 
   # 前回までに解析が終わっている部分 [0,i1), [i2,iN)
@@ -2997,6 +3351,8 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface syntax_function_name     fg=92,bold # fg=purple
   ble-color-defface syntax_comment           fg=gray
   ble-color-defface syntax_glob              fg=198,bold
+  ble-color-defface syntax_document          fg=94
+  ble-color-defface syntax_document_begin    fg=94,bold
 
   ble-color-defface command_builtin_dot fg=red,bold
   ble-color-defface command_builtin     fg=red
@@ -3057,6 +3413,12 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_FARGI2   command_keyword
   _ble_syntax_attr2iface.define CTX_CARGI1   syntax_default
   _ble_syntax_attr2iface.define CTX_CARGI2   command_keyword
+
+  # here documents
+  _ble_syntax_attr2iface.define CTX_RDRH    syntax_document_begin
+  _ble_syntax_attr2iface.define CTX_RDRI    syntax_document_begin
+  _ble_syntax_attr2iface.define CTX_HERE0   syntax_document
+  _ble_syntax_attr2iface.define CTX_HERE1   syntax_document
 
   _ble_syntax_attr2iface.define ATTR_CMD_BOLD     command_builtin_dot
   _ble_syntax_attr2iface.define ATTR_CMD_BUILTIN  command_builtin
@@ -3456,26 +3818,29 @@ function ble-highlight-layer:syntax/update-error-table {
     # 入れ子が閉じていないエラー
     local -a stat
     stat=(${_ble_syntax_stat[iN]})
-    local ctx="${stat[0]}" nlen="${stat[3]}"
+    local ctx="${stat[0]}" nlen="${stat[3]}" nparam="${stat[6]}"
+    [[ $nparam == none ]] && nparam=
     local i inest
-    if((nlen>0)); then
+    if ((nlen>0)) || [[ $nparam ]]; then
       # 終端点の着色
       ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
 
-      ((inest=iN-nlen))
-      while ((inest>=0)); do
-        # 開始字句の着色
-        local inest2
-        for((inest2=inest+1;inest2<iN;inest2++)); do
-          [[ ${_ble_syntax_attr[inest2]} ]] && break
-        done
-        ble-highlight-layer:syntax/update-error-table/set "$inest" "$inest2" "$g"
+      if ((nlen>0)); then
+        ((inest=iN-nlen))
+        while ((inest>=0)); do
+          # 開始字句の着色
+          local inest2
+          for((inest2=inest+1;inest2<iN;inest2++)); do
+            [[ ${_ble_syntax_attr[inest2]} ]] && break
+          done
+          ble-highlight-layer:syntax/update-error-table/set "$inest" "$inest2" "$g"
 
-        ((i=inest))
-        local wtype wbegin tchild tprev
-        ble-syntax/parse/nest-pop
-        ((inest>=i&&(inest=i-1)))
-      done
+          ((i=inest))
+          local wtype wbegin tchild tprev
+          ble-syntax/parse/nest-pop
+          ((inest>=i&&(inest=i-1)))
+        done
+      fi
     fi
 
     # コマンド欠落・引数の欠落
