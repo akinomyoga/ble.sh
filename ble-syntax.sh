@@ -1553,6 +1553,7 @@ _BLE_SYNTAX_FEND[CTX_ARGVI]=ble-syntax:bash/ctx-command/check-word-end
 
 # for var in ... / case arg in
 _BLE_SYNTAX_FCTX[CTX_FARGX1]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_SARGX1]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_FARGI1]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_FARGX2]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_FARGI2]=ble-syntax:bash/ctx-command
@@ -1683,10 +1684,9 @@ function ble-syntax:bash/ctx-command/check-word-end {
       fi ;;
     (['!{']|'do'|'if'|'then'|'elif'|'else'|'while'|'until')
       ((ctx=CTX_CMDX1)) ;;
-    ('for')
-      ((ctx=CTX_FARGX1)) ;;
-    ('case')
-      ((ctx=CTX_CARGX1)) ;;
+    ('for')    ((ctx=CTX_FARGX1)) ;;
+    ('select') ((ctx=CTX_SARGX1)) ;;
+    ('case')   ((ctx=CTX_CARGX1)) ;;
     ('}'|'done'|'fi'|'esac')
       ((ctx=CTX_CMDXE)) ;;
     ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
@@ -1884,6 +1884,7 @@ _ble_syntax_bash_command_bctx[CTX_CMDXE]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXD]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXV]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_FARGX1]=$CTX_FARGI1
+_ble_syntax_bash_command_bctx[CTX_SARGX1]=$CTX_FARGI1
 _ble_syntax_bash_command_bctx[CTX_FARGX2]=$CTX_FARGI2
 _ble_syntax_bash_command_bctx[CTX_CARGX1]=$CTX_CARGI1
 _ble_syntax_bash_command_bctx[CTX_CARGX2]=$CTX_CARGI2
@@ -1973,7 +1974,7 @@ function ble-syntax:bash/ctx-command/.check-assign {
 function ble-syntax:bash/ctx-command {
   local is_command_form_for=
   if ble-syntax:bash/starts-with-delimiter-or-redirect; then
-    if ((ctx==CTX_FARGX1||ctx==CTX_CARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX2)); then
+    if ((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX2)); then
       # "for var in ... / case arg in" を処理している途中で delimiter が来た場合。
       if ((ctx==CTX_FARGX2)) && [[ $tail == [$';\n']* ]]; then
         # for var in ... の in 以降が省略された形である。
@@ -2011,8 +2012,8 @@ function ble-syntax:bash/ctx-command {
   fi
 
   if local i0=$i; ble-syntax:bash/check-comment; then
-    if ((ctx==CTX_FARGX1||ctx==CTX_CARGX1)); then
-      # "for var / case arg" を処理している途中でコメントが来た場合
+    if ((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1)); then
+      # "for var / select var / case arg" を処理している途中でコメントが来た場合
       ((_ble_syntax_attr[i0]=ATTR_ERR))
     fi
     return 0
@@ -3112,7 +3113,7 @@ function ble-syntax/completion-context/check-prefix {
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
         ble-syntax/completion-context/add wordlist:';:{:do' "$i"
       fi
-    elif ((ctx==CTX_FARGX1)); then
+    elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
       # CTX_FARGX1 → (( でなければ 変数名
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
         ble-syntax/completion-context/add variable "$i"
@@ -3173,19 +3174,19 @@ function ble-syntax/completion-context/check-here {
     # ここで CTX_CMDI や CTX_ARGI は処理しない。
     # 既に check-prefix で引っかかっている筈だから。
     local ctx=${stat[0]}
-
+    
     if ((ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDX1)); then
       ble-syntax/completion-context/add command "$index"
       ble-syntax/completion-context/add variable:= "$index"
     elif ((ctx==CTX_CMDXC)); then
       ble-syntax/completion-context/add wordlist:'(:{:((:[[:for:select:case:if:while:until' "$index"
     elif ((ctx==CTX_CMDXE)); then
-      ble-syntax/completion-context/add wordlist:}:fi:done:esac:then:elif:else:do "$index"
+      ble-syntax/completion-context/add wordlist:'}:fi:done:esac:then:elif:else:do' "$index"
     elif ((ctx==CTX_CMDXD)); then
       ble-syntax/completion-context/add wordlist:';:{:do' "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1)); then
       ble-syntax/completion-context/add argument "$index"
-    elif ((ctx==CTX_FARGX1)); then
+    elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
       ble-syntax/completion-context/add variable "$index"
     elif ((ctx==CTX_CARGX2)); then
       ble-syntax/completion-context/add wordlist:in "$index"
@@ -3419,6 +3420,7 @@ function ble-syntax/faces-onload-hook {
 
   # for var in ... / case arg in
   _ble_syntax_attr2iface.define CTX_FARGX1   syntax_default
+  _ble_syntax_attr2iface.define CTX_SARGX1   syntax_default
   _ble_syntax_attr2iface.define CTX_FARGX2   syntax_default
   _ble_syntax_attr2iface.define CTX_CARGX1   syntax_default
   _ble_syntax_attr2iface.define CTX_CARGX2   syntax_default
@@ -3857,7 +3859,7 @@ function ble-highlight-layer:syntax/update-error-table {
     fi
 
     # コマンド欠落・引数の欠落
-    if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2)); then
+    if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2)); then
       # 終端点の着色
       ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
     fi
@@ -3996,6 +3998,7 @@ attrg[CTX_VALI]=$'\e[34m'
 attrg[ATTR_CMD_KEYWORD]=$'\e[94m'
 
 attrg[CTX_FARGX1]=$'\e[m'
+attrg[CTX_SARGX1]=$'\e[m'
 attrg[CTX_FARGX2]=$'\e[m'
 attrg[CTX_FARGI1]=$'\e[;38;5;202m'
 attrg[CTX_FARGI2]=$'\e[;94m'

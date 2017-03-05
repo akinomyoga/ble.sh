@@ -49,6 +49,9 @@ CTX_FARGI1      35
 CTX_FARGX2      36
 CTX_FARGI2      37
 
+# select name in ...
+CTX_SARGX1      48 # select の直後。for の処理 CTX_FARGI1 に合流する。
+
 # case arg in ...
 CTX_CARGX1      39
 CTX_CARGI1      40
