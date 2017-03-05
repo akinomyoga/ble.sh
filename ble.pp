@@ -232,7 +232,7 @@ ble-initialize
 #%end
 
 IFS=$_ble_init_original_IFS
-unset $_ble_init_original_IFS
+unset _ble_init_original_IFS
 [[ $1 != noattach ]] && ble-attach
 #%if measure_load_time
 }

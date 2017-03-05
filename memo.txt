@@ -2343,6 +2343,18 @@ tech
       ${} $() $(()) の内部で始まる事もない。
       配列の arr=() の中では始まる。
 
+        ```bash
+        cat <<EOF; \
+        echo line2 ${hello#
+        } line2b $(
+        echo line2c
+        ) $((
+        1+1
+        ))
+        hello test1 world
+        EOF
+        ```
+
       多分、ctx-command と ctx-values で対応すれば良い。
       取り敢えず ctx-command の中を見てみる。
       ble-syntax:bash/ctx-command/.check-delimiter-or-redirect で改行を処理している。
