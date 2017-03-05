@@ -428,32 +428,6 @@ tech
   * ble-core: ble_util_upvar_setup で local ret するべきなのでは。
     ble_util_upvar で $ret を参照しているので。
 
-  * 所でよく考えてみたら IFS をユーザが変更した場合には色々と大惨事が起こるのではないか…
-    bind 及び exec の部分でちゃんと local IFS=$' \t\n' を設定する様にしなければならない。
-    →試してみた所やはり大変な事になる…。これは後で最優先で対処しなければならない。
-
-    何処で対処するのが良かろうか。
-    例えば関数内で local IFS= を設定する様にするというのが一つの手である。
-    もう一つはコマンドを実行する直前に IFS を戻して、
-    コマンドを実行した直後に IFS を保存するという様にする方法である。
-
-    シグナルハンドラを設定する場合はどうだろうか。
-    シグナルハンドラの中ではユーザの設定した IFS が見えて欲しい。
-    そういう事を考えると local IFS= が良い様な気がする。
-    一方で exec:exec では結局 IFS を保存・復元しなければならない。
-    実際の所シグナルハンドラの中にいる時は LINENO 等の値も変な物になっているので、
-    IFS だけに拘っても仕方がないかもしれない…と言いつつ IFS は影響範囲が大きいので
-    やはりシグナルハンドラの中であってもユーザの期待する物になっているべきである。
-
-    うーん。以下の項目について対処すれば良いだろう。
-
-    - 関数内で local IFS= を設定する。
-      1. bind から呼び出される関数
-      2. _ble_decode_bind_hook から呼び出される関数
-      3. シグナルハンドラから呼び出される関数
-      4. 初期化時に呼び出される関数 (ble-attach 及びロード時に強制的に実行する関数たち)
-    - exec:exec では IFS の保存・復元を実行する
-
 2017-03-02
 
   * syntax: パラメータ展開・算術式評価内部の quote 除去が為されない状況での _ble_syntax_attr
@@ -1948,6 +1922,71 @@ tech
 -------------------------------------------------------------------------------
 
 2017-03-05
+
+  * IFS guard [#D0385]
+
+    所でよく考えてみたら IFS をユーザが変更した場合には色々と大惨事が起こるのではないか…
+    bind 及び exec の部分でちゃんと local IFS=$' \t\n' を設定する様にしなければならない。
+    →試してみた所やはり大変な事になる…。これは後で最優先で対処しなければならない。
+
+    何処で対処するのが良かろうか。
+    例えば関数内で local IFS= を設定する様にするというのが一つの手である。
+    もう一つはコマンドを実行する直前に IFS を戻して、
+    コマンドを実行した直後に IFS を保存するという様にする方法である。
+
+    シグナルハンドラを設定する場合はどうだろうか。
+    シグナルハンドラの中ではユーザの設定した IFS が見えて欲しい。
+    そういう事を考えると local IFS= が良い様な気がする。
+    一方で exec:exec では結局 IFS を保存・復元しなければならない。
+    実際の所シグナルハンドラの中にいる時は LINENO 等の値も変な物になっているので、
+    IFS だけに拘っても仕方がないかもしれない…と言いつつ IFS は影響範囲が大きいので
+    やはりシグナルハンドラの中であってもユーザの期待する物になっているべきである。
+
+    うーん。以下の項目について対処すれば良いだろう。
+
+    - 関数内で local IFS= を設定する。
+      1. bind から呼び出される関数
+      2. _ble_decode_bind_hook から呼び出される関数
+      3. シグナルハンドラから呼び出される関数
+        → これは trap を検索すれば良い。
+      4. 初期化時に呼び出される関数 (ble-attach 及びロード時に強制的に実行する関数たち)
+        →これは漏れがあると行けないし汚くなるのが嫌なので、
+          ble.pp で IFS を保存して自分の物に設定し最後に復元するというので良いだろう。
+    - exec:exec では IFS の保存・復元を実行する
+
+    [書き換え]
+
+    - ble-decode-byte:bind
+    - ble-edit/exec:gexec/.begin
+    - ble-edit/exec:gexec/.eval-prologue
+    - ble-edit/exec:gexec/.eval-epilogue
+    - ble-edit/exec:gexec/.end
+    - ble-edit/exec:gexec/.eval-TRAPDEBUG
+    - ble-attach
+
+    以下の関数は明らかに影響がないので IFS の設定は省略する。
+    - ble-stty/TRAPEXIT
+    - ble-edit/exec:gexec/.eval-TRAPINT
+    - ble-edit/exec:exec/.eval-TRAPINT
+    - ble-edit/exec:exec/.eval-TRAPDEBUG
+    - ble-detach
+
+    ble.pp では ble/.check-environment の直前で IFS を設定し、
+    ble-attach の直前で IFS を復元する。
+
+    exec:exec は関数内でユーザコマンドを実行するため IFS を復元・保存しなければならない。
+    _ble_edit_PS1 と同じ箇所で同様に復元・保存すればよいだろう。
+    但し ble-edit/attach, detach に関しては bleopt exec_type=exec の場合のみに
+    _ble_edit_IFS への保存と復元を行う事にする。
+
+    - ble-edit/attach 保存
+    - ble-edit/detach 復元
+    - ble-edit/exec:exec/.eval-epilogue (保存)
+    - ble-edit/exec:exec/.eval-recursive (復元)
+
+    取り敢えず動いているので良い事にする。
+    未だ何処かに漏れがある可能性もあるが、
+    IFS に変な値を入れる人もそんなにいないだろう。
 
   * memo.txt: 項目に番号を振っても良いのではないだろうか。 [#D0384]
 

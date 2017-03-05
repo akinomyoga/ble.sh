@@ -80,6 +80,9 @@ if shopt -q restricted_shell; then
   return 1
 fi
 
+_ble_init_original_IFS=$IFS
+IFS=$' \t\n'
+
 # check environment
 
 function ble/.check-environment {
@@ -209,6 +212,7 @@ function ble-initialize {
 }
 
 function ble-attach {
+  local IFS=$' \t\n'
   _ble_edit_detach_flag=
   ble-decode-attach # 53ms
   ble-edit-attach # 0ms
@@ -226,6 +230,9 @@ time ble-initialize
 #%else
 ble-initialize
 #%end
+
+IFS=$_ble_init_original_IFS
+unset $_ble_init_original_IFS
 [[ $1 != noattach ]] && ble-attach
 #%if measure_load_time
 }

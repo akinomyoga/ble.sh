@@ -289,6 +289,7 @@ function ble-decode-byte:bind/EPILOGUE { :; }
 # }
 
 function ble-decode-byte:bind {
+  local IFS=$' \t\n'
   ble-decode-byte:bind/PROLOGUE
 
   while (($#)); do
@@ -1273,14 +1274,14 @@ function ble-stty/finalize {
     intr   ''  quit   ''  susp   ''
   _ble_stty_stat=
 }
-function ble-stty/exit-trap {
+function ble-stty/TRAPEXIT {
   # exit の場合は echo
   command stty echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
   command rm -f "$_ble_base_tmp/$$".*
 }
-trap ble-stty/exit-trap EXIT
+trap ble-stty/TRAPEXIT EXIT
 
 # **** ESC ESC ****                                           @decode.bind.esc2
 

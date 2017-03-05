@@ -1795,6 +1795,7 @@ function ble-edit/dirty-range/update {
 
 function ble-edit/attach/TRAPWINCH {
   if ((_ble_edit_attached)); then
+    local IFS=$' \t\n'
     _ble_line_text_cache_pos=()
     ble-edit/bind/stdout.on
     ble-edit/render/redraw
@@ -1821,11 +1822,13 @@ function ble-edit/attach {
   # fi
   _ble_edit_PS1="$PS1"
   PS1=
+  [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS="$IFS"
 }
 
 function ble-edit/detach {
   ((!_ble_edit_attached)) && return
   PS1="$_ble_edit_PS1"
+  [[ $bleopt_exec_type == exec ]] && IFS="$_ble_edit_IFS"
   _ble_edit_attached=0
 }
 
@@ -3014,6 +3017,7 @@ function ble-edit/exec:exec/.eval-epilogue {
 
   ble-stty/enter
   _ble_edit_PS1="$PS1"
+  _ble_edit_IFS="$IFS"
 
   ble-edit/exec/.adjust-eol
 
@@ -3042,7 +3046,9 @@ function ble-edit/exec:exec/.recursive {
   _ble_edit_exec_lines[$1]=
   if [[ ${BASH_COMMAND//[ 	]/} ]]; then
     # 実行
-    local PS1="$_ble_edit_PS1" HISTCMD
+    local PS1="$_ble_edit_PS1"
+    local IFS="$_ble_edit_IFS"
+    local HISTCMD
     ble-edit/history/getcount -v HISTCMD
 
     local _ble_edit_exec_INT=0
@@ -3185,6 +3191,7 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
   if ((_ble_edit_exec_INT!=0)); then
     # エラーが起きている時
 
+    local IFS=$' \t\n'
     local depth="${#FUNCNAME[*]}"
     local rex='^\ble-edit/exec:gexec/.'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
@@ -3205,6 +3212,7 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
   return 1
 }
 function ble-edit/exec:gexec/.begin {
+  local IFS=$' \t\n'
   _ble_decode_bind_hook=
   ble-edit/bind/stdout.on
   set -H
@@ -3213,6 +3221,7 @@ function ble-edit/exec:gexec/.begin {
   trap 'ble-edit/exec:gexec/.eval-TRAPINT' INT
 }
 function ble-edit/exec:gexec/.end {
+  local IFS=$' \t\n'
   trap - INT DEBUG
   # ↑何故か効かないので、
   #   end の呼び出しと同じレベルで明示的に実行する。
@@ -3222,6 +3231,7 @@ function ble-edit/exec:gexec/.end {
   ble-edit/bind/.tail
 }
 function ble-edit/exec:gexec/.eval-prologue {
+  local IFS=$' \t\n'
   BASH_COMMAND="$1"
   PS1="$_ble_edit_PS1"
   unset HISTCMD; ble-edit/history/getcount -v HISTCMD
@@ -3245,6 +3255,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   unset -f builtin
   builtin unset -f builtin return break continue : eval echo
 
+  local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
 
   ble-stty/enter
@@ -4305,7 +4316,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
   #   IGNOREEOF を設定しておくと C-d を押した時に
   #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
   if ((_ble_bash<40000)); then
-    function ble-edit/bind/stdout/trap-SIGUSR1 {
+    function ble-edit/bind/stdout/TRAPUSR1 {
+      local IFS=$' \t\n'
       local file="$_ble_edit_io_fname2.proc"
       if [[ -s $file ]]; then
         content="$(< $file)"
@@ -4320,7 +4332,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
       fi
     }
 
-    trap -- 'ble-edit/bind/stdout/trap-SIGUSR1' USR1
+    trap -- 'ble-edit/bind/stdout/TRAPUSR1' USR1
 
     command rm -f "$_ble_edit_io_fname2.pipe"
     command mkfifo "$_ble_edit_io_fname2.pipe"
@@ -4366,9 +4378,10 @@ if [[ $bleopt_suppress_bash_output ]]; then
 fi
 
 _ble_edit_detach_flag=
-function ble-edit/bind/.exit-trap {
+function ble-edit/bind/.exit-TRAPRTMAX {
   # シグナルハンドラの中では stty は bash によって設定されている。
-  ble-stty/exit-trap
+  local IFS=$' \t\n'
+  ble-stty/TRAPEXIT
   exit 0
 }
 function ble-edit/bind/.check-detach {
@@ -4395,7 +4408,7 @@ function ble-edit/bind/.check-detach {
 
       # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
       # シグナルハンドラの中から exit すれば stty がそのままの状態で抜けられる様なのでそうする。
-      trap 'ble-edit/bind/.exit-trap' RTMAX
+      trap 'ble-edit/bind/.exit-TRAPRTMAX' RTMAX
       kill -RTMAX $$
     else
       ble/util/buffer.flush >&2
