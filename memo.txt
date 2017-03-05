@@ -435,9 +435,6 @@ tech
     また、同時に CTX_RDRI, CTX_RDRH の単語を上から塗りつぶす様にした。
     しかし、やはり予想通り $() の内部などの単語の着色は発生してしまっている。
 
-  * ble-core: ble_util_upvar_setup で local ret するべきなのでは。
-    ble_util_upvar で $ret を参照しているので。
-
 2017-03-02
 
   * syntax: パラメータ展開・算術式評価内部の quote 除去が為されない状況での _ble_syntax_attr
@@ -1932,6 +1929,14 @@ tech
 -------------------------------------------------------------------------------
 
 2017-03-05
+
+  * ble-core: ble_util_upvar_setup で local ret するべきなのでは。 [#D0388]
+    ble_util_upvar で $ret を参照しているので。
+
+    調べてみた所、全ての ble_util_upvar_setup 使用箇所で結局 local ret を宣言している。
+    また、ちゃんと ble_util_upvar_setup は ble_util_upvar と対になって使用されている。
+    従って local ret を ble_util_upvar_setup の中に入れるのが適切である。
+
 
   * syntax: ヒアドキュメント: << <<- の違いや EOF 'EOF' の違いが働いているかどうか確認する。 [#D0387]
 

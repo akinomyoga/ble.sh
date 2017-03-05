@@ -165,7 +165,7 @@ else
   }
 fi
 
-ble_util_upvar_setup='local var=ret; [[ $1 == -v ]] && var="$2" && shift 2'
+ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var="$2" && shift 2'
 ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
 function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
 function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }

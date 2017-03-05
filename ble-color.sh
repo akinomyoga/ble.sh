@@ -37,7 +37,7 @@ declare -a _ble_color_g2sgr__table=()
 function ble-color-g2sgr {
   eval "$ble_util_upvar_setup"
 
-  local ret="${_ble_color_g2sgr__table[$1]}"
+  ret="${_ble_color_g2sgr__table[$1]}"
   if [[ -z $ret ]]; then
     local -i g="$1"
     local fg="$((g>> 8&0xFF))"
@@ -99,7 +99,7 @@ function ble-color-gspec2g {
     esac
   done
 
-  local ret="$g"; eval "$ble_util_upvar"
+  ret="$g"; eval "$ble_util_upvar"
 }
 
 function ble-color-gspec2sgr {
@@ -124,13 +124,13 @@ function ble-color-gspec2sgr {
     esac
   done
 
-  local ret="[${sgr}m"; eval "$ble_util_upvar"
+  ret="[${sgr}m"; eval "$ble_util_upvar"
 }
 
 function ble-color/.name2color {
   eval "$ble_util_upvar_setup"
 
-  local colorName="$1" ret
+  local colorName="$1"
   if [[ $colorName == $((colorName)) ]]; then
     ((ret=colorName<0?-1:colorName))
   else
@@ -164,7 +164,7 @@ function ble-color/.name2color {
 function ble-color/.color2sgrfg {
   eval "$ble_util_upvar_setup"
 
-  local ret ccode="$1"
+  local ccode="$1"
   if ((ccode<0)); then
     ret=39
   elif ((ccode<16)); then
@@ -178,7 +178,7 @@ function ble-color/.color2sgrfg {
 function ble-color/.color2sgrbg {
   eval "$ble_util_upvar_setup"
 
-  local ret ccode="$1"
+  local ccode="$1"
   if ((ccode<0)); then
     ret=49
   elif ((ccode<16)); then
@@ -324,7 +324,7 @@ function ble-highlight-layer/getg {
 
   LEVEL="${#_ble_highlight_layer__list[*]}" ble-highlight-layer/update/getg "$1"
 
-  local ret="$g"; eval "$ble_util_upvar"
+  ret="$g"; eval "$ble_util_upvar"
 }
 
 ## レイヤーの実装

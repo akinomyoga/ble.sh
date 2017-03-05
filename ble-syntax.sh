@@ -310,7 +310,7 @@ function ble-syntax/print-status/.dump-arrays/.append-attr-char {
 function ble-syntax/print-status/ctx#get-text {
   eval "$ble_util_upvar_setup"
 
-  local sgr ret
+  local sgr
   ble-syntax:bash/ctx#get_name -v ret "$1"
   ret=${ret#BLE_}
   if [[ ! $ret ]]; then
