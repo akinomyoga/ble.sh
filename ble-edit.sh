@@ -1113,11 +1113,6 @@ function ble-edit/prompt/update {
 # 
 # **** text ****                                                     @line.text
 
-# 廃止予定
-declare -a _ble_region_highlight_table
-: ${bleopt_syntax_highlight_mode=default}
-
-
 ## @var _ble_line_text_cache_pos[]
 ## @var _ble_line_text_cache_cs[]
 ##   編集文字列の各文字に対応する位置と表示文字列の配列です。
