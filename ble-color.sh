@@ -440,7 +440,7 @@ function ble-highlight-layer:plain/update {
       ch="${text:i:1}"
 
       # LC_COLLATE for cygwin collation
-      LC_COLLATE=C ble-highlight-layer:plain/update/.getch
+      LC_COLLATE=C ble-highlight-layer:plain/update/.getch &>/dev/null
 
       _ble_highlight_layer_plain_buff[i]="$ch"
     done

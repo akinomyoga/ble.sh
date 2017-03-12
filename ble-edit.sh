@@ -656,17 +656,18 @@ function ble-edit/draw/trace/process-esc-sequence {
 ##     それ以外はカーソル位置の変更は行いません。
 ##
 function ble-edit/draw/trace {
-  local cols="${COLUMNS-80}" lines="${LINES-25}"
-  local it="$_ble_term_it" xenl="$_ble_term_xenl"
-  local text="$1"
-
   # cygwin では LC_COLLATE=C にしないと
   # 正規表現の range expression が期待通りに動かない。
   # __ENCODING__:
   #   マルチバイト文字コードで escape seq と紛らわしいコードが含まれる可能性がある。
   #   多くの文字コードでは C0, C1 にあたるバイトコードを使わないので大丈夫と思われる。
   #   日本語と混ざった場合に問題が生じたらまたその時に考える。
-  local LC_COLLATE=C
+  LC_COLLATE=C ble-edit/draw/trace.impl "$@" &>/dev/null
+}
+function ble-edit/draw/trace.impl {
+  local cols="${COLUMNS-80}" lines="${LINES-25}"
+  local it="$_ble_term_it" xenl="$_ble_term_xenl"
+  local text="$1"
 
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'

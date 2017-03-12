@@ -190,7 +190,7 @@ else
 fi
 
 if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LC_ALL=C read -t 0; }
+  function ble/util/is-stdin-ready { IFS= LC_ALL=C read -t 0; } &>/dev/null
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -248,10 +248,12 @@ function ble/util/declare-print-definitions {
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
 function ble/util/isprint+ {
-  local LC_COLLATE=C # for cygwin collation
+  # LC_COLLATE=C ...  &>/dev/null for cygwin collation
+  LC_COLLATE=C ble/util/isprint+.impl "$@" &>/dev/null
+}
+function ble/util/isprint+.impl {
   [[ $1 =~ $_ble_rex_isprint ]]
 }
-
 
 if ((_ble_bash>=40200)); then
   function ble/util/strftime {

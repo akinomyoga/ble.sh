@@ -1433,7 +1433,13 @@ function ble-decode-bind/.generate-source-to-unbind-default {
       builtin bind -X
     fi
 #%x
-  } 2>/dev/null | LC_ALL=C command ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
+  } | LC_ALL=C ble-decode-bind/.generate-source-to-unbind-default/.process
+
+  # Note: 2>/dev/null は、(1) bind -X のエラーメッセージ、及び、
+  # (2) LC_ALL 復元時のエラーメッセージ (外側の値が不正な時) を捨てる為に必要。
+} 2>/dev/null
+function ble-decode-bind/.generate-source-to-unbind-default/.process {
+  command ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
     BEGIN{
       APOS=apos "\\" apos apos;
