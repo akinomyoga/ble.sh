@@ -15,7 +15,7 @@
 
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
-##使い方
+## 使い方
 **最新の git repository のソースから生成して使う場合**
 
 `ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
@@ -75,7 +75,7 @@ fi
 ((_ble_bash)) && ble-attach
 ```
 
-##基本設定
+## 基本設定
 殆どの設定は `ble.sh` を読み込んだ後に指定します。
 ```bash
 ...

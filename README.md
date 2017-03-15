@@ -15,7 +15,7 @@ This script is provided under the **BSD License** (3-clause BSD license).
 
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
-##Usage
+## Usage
 **Generate `ble.sh` from source**
 
 To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
@@ -74,7 +74,7 @@ fi
 ((_ble_bash)) && ble-attach
 ```
 
-##Basic settings
+## Basic settings
 Most settings for `ble.sh` are to be specified after the `source` of `ble.sh`.
 ```bash
 ...
