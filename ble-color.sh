@@ -131,8 +131,8 @@ function ble-color/.name2color {
   eval "$ble_util_upvar_setup"
 
   local colorName="$1"
-  if [[ $colorName == $((colorName)) ]]; then
-    ((ret=colorName<0?-1:colorName))
+  if [[ ! ${colorName//[0-9]} ]]; then
+    ((ret=10#$colorName&255))
   else
     case "$colorName" in
     (black)   ret=0 ;;
