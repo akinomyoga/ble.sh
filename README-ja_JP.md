@@ -152,6 +152,8 @@ ble-color-setface syntax_param_expansion   fg=purple
 ble-color-setface syntax_history_expansion bg=94,fg=231
 ble-color-setface syntax_function_name     fg=purple
 ble-color-setface syntax_comment           fg=gray
+ble-color-defface syntax_document          fg=94
+ble-color-defface syntax_document_begin    fg=94,bold
 ble-color-setface command_builtin_dot      fg=red,bold
 ble-color-setface command_builtin          fg=red
 ble-color-setface command_alias            fg=teal
@@ -184,7 +186,7 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 $ ble-bind -d
 ```
 
-以下のコマンドで編集に使える関数一覧を確認できます。
+以下のコマンドでキーバインディングに使える関数一覧を確認できます。
 ```bash
 $ ble-bind -L
 ```
@@ -194,5 +196,5 @@ $ ble-bind -L
 **複数行のコマンドライン**
 
 `C-v RET` または `C-q RET` とすると改行をコマンドラインの一部として入力できます。
-コマンドラインの一部に改行が含まれている場合、`RET` (`C-m`) は改行挿入になります。
+コマンドラインに改行が含まれている場合、`RET` (`C-m`) は新しい改行の挿入になります。
 コマンドラインに改行が含まれているときは、`C-j` を用いてコマンドを実行して下さい。

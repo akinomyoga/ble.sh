@@ -143,6 +143,8 @@ ble-color-setface syntax_param_expansion   fg=purple
 ble-color-setface syntax_history_expansion bg=94,fg=231
 ble-color-setface syntax_function_name     fg=purple
 ble-color-setface syntax_comment           fg=gray
+ble-color-defface syntax_document          fg=94
+ble-color-defface syntax_document_begin    fg=94,bold
 ble-color-setface command_builtin_dot      fg=red,bold
 ble-color-setface command_builtin          fg=red
 ble-color-setface command_alias            fg=teal
@@ -179,3 +181,11 @@ The list of functions can be checked with the following command:
 ```bash
 $ ble-bind -L
 ```
+
+## Tips
+
+**Using multiline command line**
+
+By typing `C-v RET` or `C-q RET`, you can insert a newline character in the command line string.
+When the command line string contains a newline character, `RET` (`C-m`) causes insertion of a new newline character.
+The command containing newline characters can be executed by typing `C-j`.
