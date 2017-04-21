@@ -47,7 +47,8 @@ function ble-decode/generate-binder {
   #   なので C-x は割り当てないで、
   #   代わりに C-x ? の組合せを全て登録する事にする。
   #   bash-3.1 ～ bash-4.2 で再現する。bash-4.3 では問題ない。
-  local bind18XX="$((_ble_bash<40300))"
+  #   bash-4.4 で再び問題になったので戻す。
+  local bind18XX="$((_ble_bash<40300||40400<=_ble_bash))"
 
   # * bash-3 では "ESC *" の組合せも全部登録しておかないと駄目??
   #   (もしかすると bind -r 等に失敗していただけかも知れないが)
