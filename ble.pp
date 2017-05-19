@@ -211,9 +211,12 @@ function ble-initialize {
   ble-edit-initialize # 4ms
 }
 
+_ble_attached=
 function ble-attach {
+  [[ $_ble_attached ]] && return
+  _ble_attached=1
+  _ble_edit_detach_flag= # do not detach or exit
   local IFS=$' \t\n'
-  _ble_edit_detach_flag=
   ble-decode-attach # 53ms
   ble-edit-attach # 0ms
   ble-edit/render/redraw # 34ms
@@ -221,7 +224,9 @@ function ble-attach {
 }
 
 function ble-detach {
-  _ble_edit_detach_flag=detach
+  [[ $_ble_attached ]] || return
+  _ble_attached=
+  _ble_edit_detach_flag=detach # schedule detach
 }
 
 #%if measure_load_time
