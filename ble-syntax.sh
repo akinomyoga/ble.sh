@@ -1398,8 +1398,8 @@ function ble-syntax:bash/ctx-expr/.count-paren {
         # ((echo) > /dev/null) や $((echo) > /dev/null) などの
         # 紛らわしいサブシェル・コマンド置換だったとみなす。
         # それまでに算術式と思っていた部分については仕方がないのでそのまま。
-        ((_ble_syntax_attr[i++]=_ble_syntax_attr[inest],
-          ctx=CTX_ARGX0))
+        ((ctx=CTX_ARGX0,
+          _ble_syntax_attr[i++]=_ble_syntax_attr[inest]))
       fi
       return 0
     elif [[ $ntype == '(' || $ntype == 'NQ(' ]]; then
@@ -1907,7 +1907,7 @@ function ble-syntax:bash/ctx-command/.check-word-begin {
     local octx
     ((octx=ctx,
       ctx=_ble_syntax_bash_command_bctx[ctx]))
-    (((wtype=_ble_syntax_bash_command_bwtype[octx])||(wtype=ctx)))
+    ((wtype=_ble_syntax_bash_command_bwtype[octx])) || ((wtype=ctx))
 #%if !release
     if ((ctx==0)); then
       ((ctx=wtype=CTX_ARGI))
