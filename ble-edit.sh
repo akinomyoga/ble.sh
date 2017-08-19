@@ -63,6 +63,14 @@
 ## このオプションの値に関係なく ble-attach の時に履歴の読み込みを行います。
 : ${bleopt_history_lazyload=1}
 
+## オプション bleopt_delete_selection_mode
+##   文字挿入時に選択範囲をどうするかについて設定します。
+## bleopt_delete_selection_mode=1 (既定)
+##   選択範囲の内容を新しい文字で置き換えます。
+## bleopt_delete_selection_mode=
+##   選択範囲を解除して現在位置に新しい文字を挿入します。
+: ${bleopt_delete_selection_mode=1}
+
 ## オプション bleopt_exec_type (内部使用)
 ##   コマンドの実行の方法を指定します。
 ## bleopt_exec_type=exec
@@ -86,6 +94,7 @@
 ##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
 ##   これは自分の bash の設定に合わせる必要があります。
 : ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
+
 
 # 
 #------------------------------------------------------------------------------
@@ -2402,10 +2411,16 @@ function ble/widget/self-insert {
   local ret ins; ble/util/c2s "$code"; ins="$ret"
   local delta=1 # 挿入による文字数の増減
 
-  if [[ $_ble_edit_overwrite_mode ]] && ((code!=10&&code!=9)); then
+  if [[ $bleopt_delete_selection_mode && $_ble_edit_mark_active ]]; then
+    # 選択範囲を置き換える。
+    ((_ble_edit_mark<_ble_edit_ind?(ibeg=_ble_edit_mark):(iend=_ble_edit_mark),
+      _ble_edit_ind=ibeg,
+      delta=iend-ibeg+1))
+  elif [[ $_ble_edit_overwrite_mode ]] && ((code!=10&&code!=9)); then
+    # 上書きモードの時は文字幅を考慮して既存の文字を置き換える。
     local ret w; ble/util/c2w-edit "$code"; w="$ret"
 
-    local repw iend iN="${#_ble_edit_str}"
+    local repw iN="${#_ble_edit_str}"
     for ((repw=0;repw<w&&iend<iN;iend++)); do
       local c1 w1
       ble/util/s2c "$_ble_edit_str" "$iend"; c1="$ret"
