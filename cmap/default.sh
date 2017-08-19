@@ -133,12 +133,20 @@ function ble-bind-function-key+default {
   ble-bind -k 'ESC [ [ D' f4
   ble-bind -k 'ESC [ [ E' f5
 
-  ble-bind -k "CAN @ S" shift
-  ble-bind -k "CAN @ a" alter
-  ble-bind -k "CAN @ c" control
-  ble-bind -k "CAN @ h" hyper
-  ble-bind -k "CAN @ m" meta
-  ble-bind -k "CAN @ s" super
+  # 修飾キー 'CAN @ ?'
+  #
+  #   取り敢えず CAN で始まる修飾キーは無効にしておく。何故なら、
+  #   CAN (C-x) で始まるシーケンスをキーに当てはめてしまうと、
+  #   C-x で終わるコマンド (exchange-point-and-mark) が曖昧になってしまう。
+  #   結果として、次に非 @ の文字が来るまで確定しないので実行が遅れる。
+  #   また C-x C-x の後で @h 等を入力したい場合に別の解釈になってしまう。
+  #
+  # ble-bind -k "CAN @ S" shift
+  # ble-bind -k "CAN @ a" alter
+  # ble-bind -k "CAN @ c" control
+  # ble-bind -k "CAN @ h" hyper
+  # ble-bind -k "CAN @ m" meta
+  # ble-bind -k "CAN @ s" super
 
   echo "ble/cmap/default.sh: updating key sequences... done" >&2
 }
