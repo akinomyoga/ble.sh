@@ -74,6 +74,12 @@ if [[ ! -o emacs && ! -o vi ]]; then
   return 1
 fi
 
+if [[ -o vi ]]; then
+  unset _ble_bash
+  echo "ble.sh: ble.sh is intended to be used with emacs editing mode (set -o emacs)." >&2
+  return 1
+fi
+
 if shopt -q restricted_shell; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
@@ -214,6 +220,11 @@ function ble-initialize {
 _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
+  if [[ ! -o emacs ]]; then
+    echo "ble-attach cancelled. ble.sh is intended to be used with emacs editing mode (set -o emacs)." >&2
+    return 1
+  fi
+
   _ble_attached=1
   _ble_edit_detach_flag= # do not detach or exit
   local IFS=$' \t\n'
@@ -226,7 +237,7 @@ function ble-attach {
 function ble-detach {
   [[ $_ble_attached ]] || return
   _ble_attached=
-  _ble_edit_detach_flag=detach # schedule detach
+  _ble_edit_detach_flag=${1:-detach} # schedule detach
 }
 
 #%if measure_load_time
