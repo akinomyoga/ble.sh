@@ -1798,6 +1798,8 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     local rematch3="${BASH_REMATCH[3]}"
     if [[ $rematch1 == *'&' ]]; then
       ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
+    elif [[ $rematch1 == *'<<<' ]]; then
+      ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
     elif [[ $rematch1 == *\<\< ]]; then
       # Note: emacs bug workaround
       #   '<<' と書くと何故か Emacs がヒアドキュメントと
@@ -1805,8 +1807,6 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
       ble-syntax/parse/nest-push "$CTX_RDRH" "$rematch3"
     elif [[ $rematch1 == *\<\<- ]]; then
       ble-syntax/parse/nest-push "$CTX_RDRI" "$rematch3"
-    elif [[ $rematch1 == *'<<<' ]]; then
-      ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
     else
       ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch3"
     fi
