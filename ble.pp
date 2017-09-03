@@ -74,9 +74,9 @@ if [[ ! -o emacs && ! -o vi ]]; then
   return 1
 fi
 
-if [[ -o vi ]]; then
+if [[ ! -o emacs ]]; then
   unset _ble_bash
-  echo "ble.sh: ble.sh is intended to be used with emacs editing mode (set -o emacs)." >&2
+  echo "ble.sh: ble.sh is intended to be used in the emacs editing mode (set -o emacs)." >&2
   return 1
 fi
 
@@ -221,7 +221,7 @@ _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
   if [[ ! -o emacs ]]; then
-    echo "ble-attach cancelled. ble.sh is intended to be used with emacs editing mode (set -o emacs)." >&2
+    echo "ble-attach: cancelled. ble.sh is intended to be used in the emacs editing mode (set -o emacs)." >&2
     return 1
   fi
 
