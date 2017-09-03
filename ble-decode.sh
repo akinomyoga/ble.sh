@@ -1547,10 +1547,12 @@ function ble-decode-initialize {
   ble-decode-bind/cmap/initialize
 }
 
-_ble_decode_bind_attached=0
+_ble_decode_bind_state=none
 function ble-decode-attach {
-  ((_ble_decode_bind_attached==0)) || return
-  _ble_decode_bind_attached=1
+  [[ $_ble_decode_bind_state != none ]] && return
+  ble/util/save-editing-mode _ble_decode_bind_state
+  [[ $_ble_decode_bind_state == none ]] && return 1
+
   ble-stty/initialize
 
   # 元のキー割り当ての保存
@@ -1563,8 +1565,12 @@ function ble-decode-attach {
   _ble_decode_bind__uvwflag=
 }
 function ble-decode-detach {
-  ((_ble_decode_bind_attached==1)) || return
-  _ble_decode_bind_attached=0
+  [[ $_ble_decode_bind_state != none ]] || return
+
+  local current_editing_mode=
+  ble/util/save-editing-mode current_editing_mode
+  [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode _ble_decode_bind_state
+
   ble-stty/finalize
 
   # ble.sh bind の削除
@@ -1575,10 +1581,14 @@ function ble-decode-detach {
     source "$_ble_base_tmp/$$.bind.save"
     command rm -f "$_ble_base_tmp/$$.bind.save"
   fi
+
+  [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode current_editing_mode
+
+  _ble_decode_bind_state=none
 }
 
 # function bind {
-#   if ((_ble_decode_bind_attached)); then
+#   if ((_ble_decode_bind_state)); then
 #     echo Error
 #   else
 #     builtin bind "$@"

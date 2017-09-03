@@ -4396,25 +4396,6 @@ function ble-edit/bind/.exit-TRAPRTMAX {
   exit 0
 }
 
-## @var[out] editing_mode
-function ble-edit/bind/.save-editing-mode {
-  if [[ -o emacs ]]; then
-    editing_mode=emacs
-  elif [[ -o vi ]]; then
-    editing_mode=vi
-  else
-    editing_mode=none
-  fi
-}
-## @var[in] editing_mode
-function ble-edit/bind/.restore-editing-mode {
-  case "$editing_mode" in
-  (emacs) set -o emacs ;;
-  (vi) set -o vi ;;
-  (none) set +o emacs ;;
-  esac
-}
-
 function ble-edit/bind/.check-detach {
   [[ -o emacs ]] || ble-detach noemacs
 
@@ -4423,15 +4404,9 @@ function ble-edit/bind/.check-detach {
     _ble_edit_detach_flag=
     #ble-term/visible-bell ' Bye!! '
 
-    local editing_mode
-    ble-edit/bind/.save-editing-mode emacs
-    set -o emacs
-
     ble-edit-finalize
     ble-decode-detach
     ble-stty/finalize
-
-    ble-edit/bind/.restore-editing-mode
 
     READLINE_LINE="" READLINE_POINT=0
 
