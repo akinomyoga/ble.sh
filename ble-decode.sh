@@ -1441,71 +1441,71 @@ function ble-decode-bind/.generate-source-to-unbind-default {
 function ble-decode-bind/.generate-source-to-unbind-default/.process {
   command ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
-    BEGIN{
-      APOS=apos "\\" apos apos;
-      mode=0;
+    BEGIN {
+      APOS = apos "\\" apos apos;
+      mode = 0;
     }
 
-    function quote(text){
-      gsub(apos,APOS,text);
+    function quote(text) {
+      gsub(apos, APOS, text);
       return apos text apos;
     }
 
-    function unescape_control_modifier(str,_i,_esc){
-      for(_i=0;_i<32;_i++){
-        if(i==0||i==31)
-          _esc=sprintf("\\\\C-%c",i+64);
-        else if(27<=i&&i<=30)
-          _esc=sprintf("\\\\C-\\%c",i+64);
+    function unescape_control_modifier(str, _i, _esc) {
+      for (_i = 0; _i < 32; _i++) {
+        if (i == 0 || i == 31)
+          _esc = sprintf("\\\\C-%c", i + 64);
+        else if (27 <= i && i <= 30)
+          _esc = sprintf("\\\\C-\\%c", i + 64);
         else
-          _esc=sprintf("\\\\C-%c",i+96);
+          _esc = sprintf("\\\\C-%c", i + 96);
 
-        _chr=sprintf("%c",i);
-        gsub(_esc,_chr,str);
+        _chr = sprintf("%c", i);
+        gsub(_esc, _chr, str);
       }
-      gsub(/\\C-\?/,sprintf("%c",127),str);
+      gsub(/\\C-\?/, sprintf("%c", 127), str);
       return str;
     }
-    function unescape(str){
-      if(str ~ /\\C-/)
-        str=unescape_control_modifier(str);
-      gsub(/\\e/,sprintf("%c",27),str);
-      gsub(/\\"/,"\"",str);
-      gsub(/\\\\/,"\\",str);
+    function unescape(str) {
+      if (str ~ /\\C-/)
+        str = unescape_control_modifier(str);
+      gsub(/\\e/, sprintf("%c", 27), str);
+      gsub(/\\"/, "\"", str);
+      gsub(/\\\\/, "\\", str);
       return str;
     }
 
-    function output_bindr(line0, _seq){
-      if(match(line0,/^"(([^"]|\\.)+)"/)>0){
-        _seq=substr(line0,2,RLENGTH-2);
+    function output_bindr(line0, _seq) {
+      if (match(line0, /^"(([^"]|\\.)+)"/) > 0) {
+        _seq = substr(line0, 2, RLENGTH - 2);
 
 #%      # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
 #%      #   bind -r では \M- ではなく \e と指定しなければ削除できない。
-        gsub(/\\M-/,"\\e",_seq);
+        gsub(/\\M-/, "\\e", _seq);
 
         print "builtin bind -r " quote(_seq);
       }
     }
 
-    mode==0&&$0~/^"/{
+    mode == 0 && $0 ~ /^"/ {
       output_bindr($0);
 
-      print "builtin bind " quote($0) >"/dev/stderr";
+      print "builtin bind " quote($0) > "/dev/stderr";
     }
 
-    /^__BINDX__$/{mode=1;}
+    /^__BINDX__$/ { mode = 1; }
 
-    mode==1&&$0~/^"/{
+    mode == 1 && $0 ~ /^"/ {
       output_bindr($0);
 
-      line=$0;
+      line = $0;
 
 #%    # ※bash-4.3 では bind -r しても bind -X に残る。
 #%    #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
 #%if use_gawk
-      if(line~/\yble-decode-byte:bind\y/)next;
+      if (line ~ /\yble-decode-byte:bind\y/) next;
 #%else
-      if(line~/(^|[^[:alnum:]])ble-decode-byte:bind($|[^[:alnum:]])/)next;
+      if (line ~ /(^|[^[:alnum:]])ble-decode-byte:bind($|[^[:alnum:]])/) next;
 #%end
 
 #%    # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
@@ -1513,32 +1513,32 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 #%    #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
 #%    #     \n\r\f\t\v\b\a 等は使われない様だ。
 #%if use_gawk
-      if(match(line,/^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/,captures)>0){
-        sequence=captures[1];
-        command=captures[3];
+      if (match(line, /^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/,captures) > 0) {
+        sequence = captures[1];
+        command = captures[3];
 
-        if(command ~ /\\/)
-          command=unescape(command);
+        if (command ~ /\\/)
+          command = unescape(command);
 
-        line=sequence command;
+        line = sequence command;
       }
 #%else
-      if(match(line,/^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/)>0){
-        rlen=RLENGTH;
-        match(line,/^"([^"\\]|\\.)*":/);
-        rlen1=RLENGTH;
-        rlen2=rlen-rlen1-3;
-        sequence=substr(line,1      ,rlen1);
-        command =substr(line,rlen1+3,rlen2);
+      if (match(line, /^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/) > 0) {
+        rlen = RLENGTH;
+        match(line, /^"([^"\\]|\\.)*":/);
+        rlen1 = RLENGTH;
+        rlen2 = rlen - rlen1 - 3;
+        sequence = substr(line, 1        , rlen1);
+        command  = substr(line, rlen1 + 3, rlen2);
 
-        if(command ~ /\\/)
-          command=unescape(command);
+        if (command ~ /\\/)
+          command = unescape(command);
 
-        line=sequence command;
+        line = sequence command;
       }
 #%end
 
-      print "builtin bind -x " quote(line) >"/dev/stderr";
+      print "builtin bind -x " quote(line) > "/dev/stderr";
     }
   ' 2>| "$_ble_base_tmp/$$.bind.save"
 }
