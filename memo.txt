@@ -441,18 +441,6 @@ tech
     % その様に考えると bleopt_default_keymap とは別に bleopt_editing_mode のような感じの変数を用意するのが妥当である。
     % →使い方を多少変更した。改名はしないことにした。#D0402 を参照のこと。
 
-  * ble-decode: 分離: ble-decode/keymap/resolve-name 関連
-
-    他に以下のようなものが ble-edit.sh の存在・使用方法を想定している。
-
-    - _ble_decode_key__kmap=emacs の既定値
-    - bleopt_default_keymap=auto の既定値
-
-    ble-decode/keymap/resolve-name に関しては外部で関数定義できるようにするのが良い。
-    bleopt_default_keymap に関しては元々外部から設定するべきものである気がする。
-    _ble_decode_key__kmap=emacs の既定値もその時に同時に指定するべきな気がする。
-
-
   * vi-mode: 全てのキー入力を横取りできているかどうかを確認する
 
 
@@ -2013,6 +2001,42 @@ tech
 -------------------------------------------------------------------------------
 
 2017-09-04
+
+  * ble-decode: 分離: ble-decode/keymap/resolve-name 関連 [#D0403]
+
+    他に以下のようなものが ble-edit.sh の存在・使用方法を想定している。
+
+    - _ble_decode_key__kmap=emacs の既定値
+    - bleopt_default_keymap=auto の既定値
+
+    ble-decode/keymap/resolve-name に関しては外部で関数定義できるようにするのが良い。
+    bleopt_default_keymap に関しては元々外部から設定するべきものである気がする。
+    _ble_decode_key__kmap=emacs の既定値もその時に同時に指定するべきな気がする。
+
+    →整理した。
+
+    1. ble-decode/keymap/resolve-name は外部から上書きして使う事にした。
+
+      またこれを機に外部から上書きして設定を行うことを目的とする関数を "設定関数" とし、
+      またその名前をできるだけ "モジュール/大文字名" の形式になるようにした。
+      ここで "モジュール" とは ble-decode などのことである。
+      現在以下の設定関数が ble-decode.sh には定義されている。何れも ble-edit.sh で上書きされる。
+
+      - 設定関数 ble-decode/PROLOGUE
+      - 設定関数 ble-decode/EPILOGUE
+      - 設定関数 ble-decode/DEFAULT_KEYMAP -v varname
+      - 設定関数 ble/widget/.SHELL_COMMAND command
+      - 設定関数 ble/widget/.EDIT_COMMAND command
+
+      またこれに伴って ble-decode-byte:bind も ble-decode/.hook に改名した。
+      使われていない ble-decode-char:bind 及び ble-decode-key:bind は削除した。
+      (これらの関数は恐らく初期の実装のときのテストに使われたものであった。)
+
+    2. bleopt_default_keymap は ble-edit.sh 側で管理することにした。ble-decode.sh は関知しない。
+
+    3. _ble_decode_key__kmap=emacs の既定値は ble-decode.sh を単体で読み込んだ時には何れにしても
+      (例え動作しないとしても) 何らかの値を設定しておく必要があるので現状通り取り敢えず emacs を設定することにした。
+      同様に既定の ble-decode/DEFAULT_KEYMAP も emacs を設定するようにする。
 
   * vi-mode: bleopt_default_keymap [#D0402]
 

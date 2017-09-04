@@ -7,20 +7,9 @@
 : ${bleopt_error_kseq_vbell=1}
 : ${bleopt_error_kseq_discard=1}
 
-## オプション bleopt_default_keymap
-##   既定の編集モードに使われるキーマップを指定します。
-## bleopt_default_keymap=auto
-##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
-## bleopt_default_keymap=emacs
-##   emacs と同様の編集モードを使用します。
-## bleopt_default_keymap=vi
-##   vi と同様の編集モードを使用します。
-: ${bleopt_default_keymap:=auto}
-
-
 # **** key names ****
 
-if [ -z "$ble_decode_Erro" ]; then
+if [[ ! $ble_decode_Erro ]]; then
   declare -ir ble_decode_Erro=0x40000000
   declare -ir ble_decode_Meta=0x08000000
   declare -ir ble_decode_Ctrl=0x04000000
@@ -32,7 +21,7 @@ if [ -z "$ble_decode_Erro" ]; then
   declare -ir ble_decode_MaskFlag=0x7FC00000
 fi
 
-if [ "${_ble_bash:-0}" -ge 40000 ]; then
+if ((_ble_bash>=40000)); then
   _ble_decode_kbd_ver=4
   declare -i _ble_decode_kbd__n=0
   declare -A _ble_decode_kbd__k2c
@@ -280,34 +269,21 @@ function ble-decode-unkbd {
 
 # **** ble-decode-byte ****
 
-# 関数 ble-decode-byte:bind/PROLOGUE
-# 関数 ble-decode-byte:bind/EPILOGUE
-#   to be overwritten in ble-edit.sh
-function ble-decode-byte:bind/PROLOGUE { :; }
-function ble-decode-byte:bind/EPILOGUE { :; }
+## 設定関数 ble-decode/PROLOGUE
+## 設定関数 ble-decode/EPILOGUE
+function ble-decode/PROLOGUE { :; }
+function ble-decode/EPILOGUE { :; }
 
-# function ble-decode-char:bind {
-#   ble-decode-byte:bind/PROLOGUE
-#   ble-decode-char "$1"
-#   ble-decode-byte:bind/EPILOGUE
-# }
-
-# function ble-decode-key:bind {
-#   ble-decode-byte:bind/PROLOGUE
-#   ble-decode-key "$1"
-#   ble-decode-byte:bind/EPILOGUE
-# }
-
-function ble-decode-byte:bind {
+function ble-decode/.hook {
   local IFS=$' \t\n'
-  ble-decode-byte:bind/PROLOGUE
+  ble-decode/PROLOGUE
 
   while (($#)); do
     "ble-decode-byte+$bleopt_input_encoding" "$1"
     shift
   done
 
-  ble-decode-byte:bind/EPILOGUE
+  ble-decode/EPILOGUE
 }
 
 # ## 関数 ble-decode-byte bytes...
@@ -734,16 +710,21 @@ function ble-decode/keymap/dump {
   ble/util/declare-print-definitions "${arrays[@]}"
 }
 
-## 関数 ble-decode/keymap/resolve-name -v varname
-function ble-decode/keymap/resolve-name {
-  if [[ ${!2} == auto ]]; then
-    if [[ -o vi ]]; then
-      builtin eval "$2=vi"
-    else
-      builtin eval "$2=emacs"
-    fi
-  fi
+## 設定関数 ble-decode/DEFAULT_KEYMAP -v varname
+##   既定の keymap を決定します。
+##   ble-decode.sh 使用コードで上書きして使用します。
+function ble-decode/DEFAULT_KEYMAP {
+  [[ $1 == -v ]] || return 1
+  builtin eval "$2=emacs"
 }
+
+## 設定関数 ble/widget/.SHELL_COMMAND command
+##   ble-bind -cf で登録されたコマンドを処理します。
+function ble/widget/.SHELL_COMMAND { eval "$*"; }
+## 設定関数 ble/widget/.EDIT_COMMAND command
+##   ble-bind -xf で登録されたコマンドを処理します。
+function ble/widget/.EDIT_COMMAND { eval "$*"; }
+
 
 ## 関数 kmap ; ble-decode-key/bind keycodes command
 function ble-decode-key/bind {
@@ -847,10 +828,10 @@ function ble-decode-key/dump {
       case "$cmd" in
       # ('ble/widget/insert-string '*)
       #   echo "ble-bind -sf '${knames[*]}' '${cmd#ble/widget/insert-string }'" ;;
-      ('ble/widget/.shell-command '*)
-        echo "ble-bind$kmapopt -cf '${knames[*]}' '${cmd#ble/widget/.shell-command }'" ;;
-      ('ble/widget/.edit-command '*)
-        echo "ble-bind$kmapopt -xf '${knames[*]}' '${cmd#ble/widget/.edit-command }'" ;;
+      ('ble/widget/.SHELL_COMMAND '*)
+        echo "ble-bind$kmapopt -cf '${knames[*]}' '${cmd#ble/widget/.SHELL_COMMAND }'" ;;
+      ('ble/widget/.EDIT_COMMAND '*)
+        echo "ble-bind$kmapopt -xf '${knames[*]}' '${cmd#ble/widget/.EDIT_COMMAND }'" ;;
       ('ble/widget/'*)
         echo "ble-bind$kmapopt -f '${knames[*]}' '${cmd#ble/widget/}'" ;;
       (*)
@@ -1143,8 +1124,8 @@ function ble-bind/option:list-functions {
 }
 
 function ble-bind {
-  local kmap="$bleopt_default_keymap" fX= fC= ret
-  ble-decode/keymap/resolve-name -v kmap
+  local kmap fX= fC= ret
+  ble-decode/DEFAULT_KEYMAP -v kmap
 
   local arg c
   while (($#)); do
@@ -1223,9 +1204,9 @@ function ble-bind {
               case "$fX$fC" in
               (x)
                 # 編集用の関数
-                command="ble/widget/.edit-command $command" ;;
+                command="ble/widget/.EDIT_COMMAND $command" ;;
               (c) # コマンド実行
-                command="ble/widget/.shell-command $command" ;;
+                command="ble/widget/.SHELL_COMMAND $command" ;;
               (*)
                 echo "error: combination of -x and -c flags." 1>&2 ;;
               esac
@@ -1331,10 +1312,10 @@ function ble-decode-bind/uvw {
   _ble_decode_bind__uvwflag=1
 
   # 何故か stty 設定直後には bind できない物たち
-  builtin bind -x '"":ble-decode-byte:bind 21; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode-byte:bind 22; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode-byte:bind 23; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode-byte:bind 127; builtin eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode/.hook 21; builtin eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode/.hook 22; builtin eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode/.hook 23; builtin eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode/.hook 127; builtin eval "$_ble_decode_bind_hook"'
 }
 
 # **** ble-decode-bind ****                                   @decode.bind.main
@@ -1411,7 +1392,7 @@ function ble-decode-bind/cmap/.generate-binder-template {
 
 function ble-decode-bind/cmap/.emit-bindx {
   local ap="'" eap="'\\''"
-  echo "builtin bind -x '\"${1//$ap/$eap}\":ble-decode-byte:bind $2; builtin eval \"\$_ble_decode_bind_hook\"'"
+  echo "builtin bind -x '\"${1//$ap/$eap}\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\"'"
 }
 function ble-decode-bind/cmap/.emit-bindr {
   echo "builtin bind -r \"$1\""
@@ -1530,9 +1511,9 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 #%    # ※bash-4.3 では bind -r しても bind -X に残る。
 #%    #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
 #%if use_gawk
-      if (line ~ /\yble-decode-byte:bind\y/) next;
+      if (line ~ /\yble-decode\/.hook\y/) next;
 #%else
-      if (line ~ /(^|[^[:alnum:]])ble-decode-byte:bind($|[^[:alnum:]])/) next;
+      if (line ~ /(^|[^[:alnum:]])ble-decode\/.hook($|[^[:alnum:]])/) next;
 #%end
 
 #%    # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
@@ -1592,8 +1573,7 @@ function ble-decode-attach {
   _ble_decode_bind__uvwflag=
 
   # 現在の ble-decode/keymap の設定
-  _ble_decode_key__kmap=$bleopt_default_keymap
-  ble-decode/keymap/resolve-name -v _ble_decode_key__kmap
+  ble-decode/DEFAULT_KEYMAP -v _ble_decode_key__kmap
 }
 function ble-decode-detach {
   [[ $_ble_decode_bind_state != none ]] || return

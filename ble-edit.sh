@@ -95,6 +95,16 @@
 ##   これは自分の bash の設定に合わせる必要があります。
 : ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
 
+## オプション bleopt_default_keymap
+##   既定の編集モードに使われるキーマップを指定します。
+## bleopt_default_keymap=auto
+##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
+## bleopt_default_keymap=emacs
+##   emacs と同様の編集モードを使用します。
+## bleopt_default_keymap=vi
+##   vi と同様の編集モードを使用します。
+: ${bleopt_default_keymap:=auto}
+
 
 # 
 #------------------------------------------------------------------------------
@@ -2204,7 +2214,7 @@ function ble/widget/clear-screen {
   ble-term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
-  ble/widget/.shell-command 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
+  ble/widget/.SHELL_COMMAND 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
 }
 
 # 
@@ -2539,7 +2549,7 @@ function ble/widget/delete-forward-char-or-exit {
   ble/util/joblist
   if ((${#joblist[@]})); then
     ble/widget/.bell "(exit) ジョブが残っています!"
-    ble/widget/.shell-command 'printf %s "$_ble_util_joblist_jobs"'
+    ble/widget/.SHELL_COMMAND 'printf %s "$_ble_util_joblist_jobs"'
     return
   fi
 
@@ -2974,7 +2984,7 @@ function ble-edit/exec/.adjust-eol {
 ##   実行するコマンドの配列を指定します。実行したコマンドは削除するか空文字列を代入します。
 ## @return
 ##   戻り値が 0 の場合、終端 (ble-edit/bind/.tail) に対する処理も行われた事を意味します。
-##   つまり、そのまま ble-decode-byte:bind から抜ける事を期待します。
+##   つまり、そのまま ble-decode/.hook から抜ける事を期待します。
 ##   それ以外の場合には終端処理をしていない事を表します。
 
 #--------------------------------------
@@ -4337,7 +4347,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
           case "$cmd" in
           (eof)
             # C-d
-            ble-decode-byte:bind 4 ;;
+            ble-decode/.hook 4 ;;
           esac
         done
       fi
@@ -4486,16 +4496,16 @@ fi
 
 _ble_edit_bind_force_draw=
 
-## 関数 ble-decode-byte:bind/PROLOGUE
-function ble-decode-byte:bind/PROLOGUE {
+## ble-decode.sh 用の設定
+function ble-decode/PROLOGUE {
   ble-edit/bind/.head
   ble-decode-bind/uvw
   ble-stty/enter
   _ble_edit_bind_force_draw=
 }
 
-## 関数 ble-decode-byte:bind/EPILOGUE
-function ble-decode-byte:bind/EPILOGUE {
+## ble-decode.sh 用の設定
+function ble-decode/EPILOGUE {
   if ((_ble_bash>=40000)); then
     # 貼付対策:
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
@@ -4514,9 +4524,9 @@ function ble-decode-byte:bind/EPILOGUE {
   return 0
 }
 
-## 関数 ble/widget/.shell-command command
+## 関数 ble/widget/.SHELL_COMMAND command
 ##   ble-bind -cf で登録されたコマンドを処理します。
-function ble/widget/.shell-command {
+function ble/widget/.SHELL_COMMAND {
   local -a BASH_COMMAND
   BASH_COMMAND=("$*")
 
@@ -4530,9 +4540,9 @@ function ble/widget/.shell-command {
   ble-edit/render/invalidate
 }
 
-## 関数 ble/widget/.edit-command command
+## 関数 ble/widget/.EDIT_COMMAND command
 ##   ble-bind -xf で登録されたコマンドを処理します。
-function ble/widget/.edit-command {
+function ble/widget/.EDIT_COMMAND {
   local READLINE_LINE="$_ble_edit_str"
   local READLINE_POINT="$_ble_edit_ind"
   eval "$command" || return 1
@@ -4541,6 +4551,19 @@ function ble/widget/.edit-command {
     _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
   [[ $READLINE_POINT != $_ble_edit_ind ]] &&
     ble/widget/.goto-char "$READLINE_POINT"
+}
+
+## ble-decode.sh 用の設定
+function ble-decode/DEFAULT_KEYMAP {
+  if [[ $bleopt_default_keymap == auto ]]; then
+    if [[ -o vi ]]; then
+      builtin eval "$2=vi"
+    else
+      builtin eval "$2=emacs"
+    fi
+  else
+    builtin eval "$2=\"\$bleopt_default_keymap\""
+  fi
 }
 
 function ble-edit/load-default-key-bindings {
