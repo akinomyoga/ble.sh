@@ -503,11 +503,11 @@ function ble/util/joblist.clear {
 ##
 function ble/util/save-editing-mode {
   if [[ -o emacs ]]; then
-    ble/util/set "$1" emacs
+    builtin eval "$1=emacs"
   elif [[ -o vi ]]; then
-    ble/util/set "$1" vi
+    builtin eval "$1=vi"
   else
-    ble/util/set "$1" none
+    builtin eval "$1=none"
   fi
 }
 ## 関数 ble/util/restore-editing-mode varname

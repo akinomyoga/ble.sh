@@ -6,7 +6,17 @@
 : ${bleopt_error_kseq_abell=1}
 : ${bleopt_error_kseq_vbell=1}
 : ${bleopt_error_kseq_discard=1}
-: ${bleopt_default_keymap:=emacs}
+
+## オプション bleopt_default_keymap
+##   既定の編集モードに使われるキーマップを指定します。
+## bleopt_default_keymap=auto
+##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
+## bleopt_default_keymap=emacs
+##   emacs と同様の編集モードを使用します。
+## bleopt_default_keymap=vi
+##   vi と同様の編集モードを使用します。
+: ${bleopt_default_keymap:=auto}
+
 
 # **** key names ****
 
@@ -724,6 +734,17 @@ function ble-decode/keymap/dump {
   ble/util/declare-print-definitions "${arrays[@]}"
 }
 
+## 関数 ble-decode/keymap/resolve-name -v varname
+function ble-decode/keymap/resolve-name {
+  if [[ ${!2} == auto ]]; then
+    if [[ -o vi ]]; then
+      builtin eval "$2=vi"
+    else
+      builtin eval "$2=emacs"
+    fi
+  fi
+}
+
 ## 関数 kmap ; ble-decode-key/bind keycodes command
 function ble-decode-key/bind {
   local dicthead="_ble_decode_${kmap}_kmap_"
@@ -843,11 +864,16 @@ function ble-decode-key/dump {
   done
 }
 
-
-## 現在選択されている keymap
-declare _ble_decode_key__kmap
+## 変数 _ble_decode_key__kmap
 ##
-declare -a _ble_decode_keymap_stack=()
+##   現在選択されている keymap
+##
+## 配列 _ble_decode_keymap_stack
+##
+##   呼び出し元の keymap を記録するスタック
+##
+_ble_decode_key__kmap=emacs
+_ble_decode_keymap_stack=()
 
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
@@ -887,7 +913,7 @@ function ble-decode-key {
     return 0
   fi
 
-  local dicthead=_ble_decode_${_ble_decode_key__kmap:-$bleopt_default_keymap}_kmap_
+  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
 
   builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
   if [ "${ent%%:*}" = 1 ]; then
@@ -955,7 +981,7 @@ function ble-decode-key {
 ##     は、呼出元からは変化していない様に見えます。
 ##
 function ble-decode-key/.invoke-partial-match {
-  local dicthead=_ble_decode_${_ble_decode_key__kmap:-$bleopt_default_keymap}_kmap_
+  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
 
   local next="$1"
   if [[ $_ble_decode_key__seq ]]; then
@@ -1118,6 +1144,7 @@ function ble-bind/option:list-functions {
 
 function ble-bind {
   local kmap="$bleopt_default_keymap" fX= fC= ret
+  ble-decode/keymap/resolve-name -v kmap
 
   local arg c
   while (($#)); do
@@ -1563,6 +1590,10 @@ function ble-decode-attach {
   [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
   source "$file"
   _ble_decode_bind__uvwflag=
+
+  # 現在の ble-decode/keymap の設定
+  _ble_decode_key__kmap=$bleopt_default_keymap
+  ble-decode/keymap/resolve-name -v _ble_decode_key__kmap
 }
 function ble-decode-detach {
   [[ $_ble_decode_bind_state != none ]] || return

@@ -430,6 +430,29 @@ tech
       set -o vi の時には vi-insert (vi-command ではなく) だと考えてよいのだろうか。
       或いは emacs-standard になってしまうという可能性もある。
 
+  * vi-mode: ble-edit/bind/.check-detach で編集モード切り替わり判定を行う
+
+    うーん。bleopt_default_keymap=auto のとき、これも一緒に切り替える必要があるのではないだろうか。
+    一方で、bleopt_default_keymap を直接指定しているときには一緒に切り替えてしまっては駄目である。
+    また切り替えた場合には必要に応じて source keymap/vi.sh などが必要である。
+
+    % うーん。しかし bleopt_default_keymap として auto を許容すると複雑になる。
+    % 問題点は bleopt_default_keymap は既に別の用途で使われているということである。
+    % その様に考えると bleopt_default_keymap とは別に bleopt_editing_mode のような感じの変数を用意するのが妥当である。
+    % →使い方を多少変更した。改名はしないことにした。#D0402 を参照のこと。
+
+  * ble-decode: 分離: ble-decode/keymap/resolve-name 関連
+
+    他に以下のようなものが ble-edit.sh の存在・使用方法を想定している。
+
+    - _ble_decode_key__kmap=emacs の既定値
+    - bleopt_default_keymap=auto の既定値
+
+    ble-decode/keymap/resolve-name に関しては外部で関数定義できるようにするのが良い。
+    bleopt_default_keymap に関しては元々外部から設定するべきものである気がする。
+    _ble_decode_key__kmap=emacs の既定値もその時に同時に指定するべきな気がする。
+
+
   * vi-mode: 全てのキー入力を横取りできているかどうかを確認する
 
 
@@ -1991,7 +2014,60 @@ tech
 
 2017-09-04
 
-  * 所で set -o vi してから source ble.sh した時に動かなかったというのは何故なのか。
+  * vi-mode: bleopt_default_keymap [#D0402]
+
+    % 結局、ble.sh で編集モードに対応しているのは bleopt_default_keymap である。
+    %
+    % 更に具体的な emacs keymap の定義は ble-edit/load-default-key-bindings から
+    % source "$_ble_base/keymap/emacs.sh" を通して読み込まれている。
+    % この時 bleopt_default_keymap などは参照せずに直に emacs.sh が指定されている。
+    %
+    % この辺りは bleopt_default_keymap を参照するようにして良いのではないか。
+    % 或いは bleopt_default_keymap は動的に変わったりする物であっただろうか。
+
+    [現状]
+
+    改めて bleopt_default_keymap がどの様に使われているかについて確認しておく。
+
+    - 先ず ble-decode において _ble_decode_key__kmap が空の時の既定の keymap 名として使われている。
+
+      これについては _ble_decode_key__kmap による。調べてみると
+      _ble_decode_key__kmap は最初は中身は空のようである。
+      先に中身を設定してしまうと、ble の設定箇所で bleopt_default_keymap が変更された場合に対応できないからであろう。
+      これに関しては ble-attach のタイミングで _ble_decode_key__kmap=$bleopt_default_keymap を実行するようにすれば良い。
+
+    - また ble-bind において既定の keymap として使われている。
+
+      これは、その時の _ble_decode_key__kmap がどうであれ bleopt_default_keymap に設定を行いたい。
+
+    - keymap/emacs.sh で ble-bind を呼び出す時の bleopt_default_keymap を上書きしている。
+
+    こう調べてみると bleopt_default_keymap は (_ble_decode_key__kmap さえ正しく設定されていれば)
+    単に keymap の構築時に使用されるだけであり実際の処理に使われる訳ではない。
+
+    [変更]
+
+    結局 bleopt_default_keymap は改名しないことにした。
+    但し特別な値 auto が入っている場合には、実際に bleopt_default_keymap の値を読み出す時に、
+    現在の [[ -o emacs/vi ]] の状態に応じて値を解決するというようにした。
+    これらの処理は素朴に考えると ble-edit.sh にあるべき気もするが、
+    取り敢えず暫定的な実装として ble-decode.sh の方に配置することにした。
+
+  * vi-mode: 次に ble-edit-attach を改修する [不要][#D0401]
+
+    中で何をしているかというと
+
+    1. 先ず初めに ble-edit/attach を呼び出している。
+
+      中ではどうも大したことはしていない。
+      attach, detach で PS1, IFS の保存と復元を行っている。
+
+    2. また履歴の再読込の設定を行っている。
+
+    他は特に何もしていない。keymap に関する設定は別の関数で行っている様だ。
+    つまり、この関数は何も変更はいらない。
+
+  * 所で set -o vi してから source ble.sh した時に動かなかったというのは何故なのか。 [#D0400]
 
     % GitHub #1 によるとそのように報告されていた。
     % しかし ble-decode-attach の現状の実装方法で特に問題がないように思われた。どういうことか。
@@ -2022,7 +2098,7 @@ tech
     因みに inputrc に set editing-mode vi とした場合でも、
     ちゃんと [[ -o vi ]] に反映されるので inputrc で指定されたかどうかなどのことは意識しなくても良い。
 
-  * vi-mode: まずは ble-decode-attach を改修する。
+  * vi-mode: まずは ble-decode-attach を改修する。 [#D0399]
 
     取り敢えずは ble.sh を起動している最中に set -o emacs/vi が切り替わる場合については考慮しないで良いだろう。
     切り替わった時にするべき操作は別に実装することになるだろうからである。
