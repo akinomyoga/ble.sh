@@ -1,30 +1,11 @@
 #!/bin/bash
 
-# 2015-12-09 keymap cache should be updated due to the refactoring.
+# bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されるので、
+# 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
+function ble-edit/load-keymap-definition:vi (())
 
-#
-# $_ble_base_cache/ble-decode-keymap.emacs
-#
-
-function ble-decode-keymap:isearch/define {
-  local ble_bind_keymap=isearch
-
-  ble-bind -f __defchar__ isearch/self-insert
-  ble-bind -f C-r         isearch/backward
-  ble-bind -f C-s         isearch/forward
-  ble-bind -f C-h         isearch/prev
-  ble-bind -f DEL         isearch/prev
-
-  ble-bind -f __default__ isearch/exit-default
-  ble-bind -f M-C-j       isearch/exit
-  ble-bind -f C-d         isearch/exit-delete-forward-char
-  ble-bind -f C-g         isearch/cancel
-  ble-bind -f C-j         isearch/accept
-  ble-bind -f C-m         isearch/accept
-}
-
-function ble-decode-keymap:emacs/define {
-  local ble_bind_keymap=emacs
+function ble-decode-keymap:vi_insert/define {
+  local ble_bind_keymap=vi_insert
 
   ble-bind -f insert overwrite-mode
 
@@ -141,18 +122,22 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f 'C-^' bell
 }
 
-function ble-decode-keymap:emacs/generate {
-  echo -n "ble.sh: updating cache/keymap.emacs... $_ble_term_cr" >&2
+function ble-decode-keymap:vi/initialize {
+  local fname_keymap_cache=$_ble_base_cache/keymap.vi
+  if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi.sh &&
+          $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]; then
+    source "$fname_keymap_cache"
+    return
+  fi
 
-  local cache="$_ble_base_cache/keymap.emacs"
-  ble-decode-keymap:isearch/define
-  ble-decode-keymap:emacs/define
+  echo -n "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2
 
-  : >| "$cache"
-  ble-decode/keymap/dump emacs   >> "$cache"
-  ble-decode/keymap/dump isearch >> "$cache"
+  ble-decode-keymap:vi_insert/define
 
-  echo "ble.sh: updating cache/keymap.emacs... done" >&2
+  : >| "$fname_keymap_cache"
+  ble-decode/keymap/dump vi_insert >> "$fname_keymap_cache"
+
+  echo "ble.sh: updating cache/keymap.vi... done" >&2
 }
 
-ble-decode-keymap:emacs/generate
+ble-decode-keymap:vi/initialize

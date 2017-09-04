@@ -123,6 +123,29 @@ bash 実装上で注意するべき事
     IFS= LC_ALL=C read -t 0 &>/dev/null
     としても復元時のメッセージは何故か抑制できなかった。
 
+  * bind 関数の中で set +o emacs などをして編集モードを無効にすると、
+
+    編集関数の実行自体が中断されるようである。
+    具体的には set +o emacs を含む行だけ実行されて、次の行以降は実行されない。
+    set +o emacs が eval に含まれる場合は eval が終わると共に中断される。
+    また関数内に set +o emacs がある場合は、その関数は最後まで実行されるようだ。
+
+    従って set +o emacs が実行されたことを検知して適切な後処理を実行するのは難しい。
+    更にその後で set -o emacs に戻ってくると変な状態になる。
+    bind -p ではちゃんと hook された状態になっているが、
+    実際に操作してみると keymap はリセットされているように見受けられる。
+    この辺りはもう少し詳しく調べてみないと具体的に何が起こっているかはわからない。
+
+    例: 以下の3行のコマンドを実行しようとすると途中で中断され元の状態には戻らなくなる。
+
+    $ set +o emacs
+    > echo hello
+    > set -o emacs
+
+    直接 readline で実行している場合にはこの問題は起こらない。
+
+
+
 bashbug: 実装上で注意するべき事
 
   * bash-3.0 - 4.4 算術式:
@@ -415,34 +438,27 @@ tech
 
     取り敢えずブランチを切る。
 
-    - set -o vi が有効になっている時には keymap viins を使う様にする。
-    - 途中で set -o emacs から set -o vi になった時に ble.sh のモードも変更する様にする。
-    - ble-decode-attach において -m vi-insert に対して bind するようにする?
+    取り敢えず vi 用の keymap に切り替える仕組みを作る。
 
-      或いは飽くまで emacs-standard を使う様にするか。
-      emacs-standard を使うようにしていると [[ -o vi ]] などが意図と反する結果になるので良くない。
-      コマンドを実行する瞬間だけ戻すという手もあるがそれだと
-      - ^C などで中断した時に set -o emacs に戻す機会が失われて、また応答しなくなる状況に陥るという問題が発生する。
-      - ユーザが自分で定義した widget 関数の中などではやはり set -o emacs になっている様に見えてしまう。
-
-      従って、やはり -m vi-insert に対して設定を行う必要がある。
-      ところで bind で設定されるのは既定ではどの keymap なのだろうか。
-      set -o vi の時には vi-insert (vi-command ではなく) だと考えてよいのだろうか。
-      或いは emacs-standard になってしまうという可能性もある。
-
-  * vi-mode: ble-edit/bind/.check-detach で編集モード切り替わり判定を行う
-
-    うーん。bleopt_default_keymap=auto のとき、これも一緒に切り替える必要があるのではないだろうか。
-    一方で、bleopt_default_keymap を直接指定しているときには一緒に切り替えてしまっては駄目である。
-    また切り替えた場合には必要に応じて source keymap/vi.sh などが必要である。
-
-    % うーん。しかし bleopt_default_keymap として auto を許容すると複雑になる。
-    % 問題点は bleopt_default_keymap は既に別の用途で使われているということである。
-    % その様に考えると bleopt_default_keymap とは別に bleopt_editing_mode のような感じの変数を用意するのが妥当である。
-    % →使い方を多少変更した。改名はしないことにした。#D0402 を参照のこと。
+    | - set -o vi が有効になっている時には keymap viins を使う様にする。
+    | - 途中で set -o emacs から set -o vi になった時に ble.sh のモードも変更する様にする。
+    | - ble-decode-attach において -m vi-insert に対して bind するようにする?
+    |
+    |   或いは飽くまで emacs-standard を使う様にするか。
+    |   emacs-standard を使うようにしていると [[ -o vi ]] などが意図と反する結果になるので良くない。
+    |   コマンドを実行する瞬間だけ戻すという手もあるがそれだと
+    |   - ^C などで中断した時に set -o emacs に戻す機会が失われて、また応答しなくなる状況に陥るという問題が発生する。
+    |   - ユーザが自分で定義した widget 関数の中などではやはり set -o emacs になっている様に見えてしまう。
+    |
+    |   従って、やはり -m vi-insert に対して設定を行う必要がある。
+    |   ところで bind で設定されるのは既定ではどの keymap なのだろうか。
+    |   set -o vi の時には vi-insert (vi-command ではなく) だと考えてよいのだろうか。
+    |   或いは emacs-standard になってしまうという可能性もある。
+    |
+    | →vi_insert keymap を導入した。現在は emacs の clone である。動作している。
+    |   これから vi_insert としての振る舞いになるように少しずつ widget などを実装していけば良い。
 
   * vi-mode: 全てのキー入力を横取りできているかどうかを確認する
-
 
 2017-08-19
 
@@ -2001,6 +2017,88 @@ tech
 -------------------------------------------------------------------------------
 
 2017-09-04
+
+  * vi-mode: ble-edit/bind/.check-detach で編集モード切り替わり判定を行う
+
+    うーん。bleopt_default_keymap=auto のとき、これも一緒に切り替える必要があるのではないだろうか。
+    一方で、bleopt_default_keymap を直接指定しているときには一緒に切り替えてしまっては駄目である。
+    また切り替えた場合には必要に応じて source keymap/vi.sh などが必要である。
+
+    % うーん。しかし bleopt_default_keymap として auto を許容すると複雑になる。
+    % 問題点は bleopt_default_keymap は既に別の用途で使われているということである。
+    % その様に考えると bleopt_default_keymap とは別に bleopt_editing_mode のような感じの変数を用意するのが妥当である。
+    % →使い方を多少変更した。改名はしないことにした。#D0402 を参照のこと。
+
+    [変更]
+
+    編集モードが変わった時には単に ble-decode-detach してから
+    ble-decode-attach すれば良い。ble-decode-detach は前回の attach の際の編集モードで解除を行い、
+    attach は現在の編集モードで設定を行うからである。
+
+    また keymap/vi.sh は DEFAULT_KEYMAP から呼び出すことにした。
+    既に呼び出し済みかどうかの判定は関数 ble-edit/load-keymap-definition:$name
+    を空関数にすることによって設定する。
+
+    vi.sh に関しては vi.sh 内部に widget を定義したいので、
+    何れにしても必ず読み込むようにする。
+    その場合は keymap の定義の部分のみキャッシュする。
+    キャッシュがある場合は vi.sh の中から呼び出す様にする。
+
+    Note: この動作は emacs.sh の場合と異なることに注意する。
+      emacs.sh の widget は全て ble 本体の中に定義してあるので、
+      emacs.sh でやることは keymap の定義のみである。
+      ということはキャッシュがある場合にはそもそも emacs.sh すら呼び出さなくて良いので、
+      ble-edit.sh 側の ble-edit/load-keymap-definition:emacs でその操作を定義する。
+
+    実装した。テストした。
+    問題が合ったので以下の変更も行った。
+
+    * 変数 ble-bind: ble_bind_keymap の導入
+
+      ble-bind で既定の keymap を指定するのに bleopt_default_keymap を local で書き換えて呼び出していたが、
+      現在 bleopt_default_keymap は DEFAULT_KEYMAP を通して呼び出されるものであり、
+      keymap/kmap.sh などから定義を探し出す仕組みに組み込まれているので、
+      bleopt_default_keymap を任意に書き換えて実行するというのは良い方策ではない。
+      従って、新しい変数として ble_bind_keymap という変数を用意した。
+      ble_bind_keymap が設定されている場合には DEFAULT_KEYMAP は使用されない。
+
+  * vi-mode: どうやら set +o emacs を検知できない。 [対処不可][#D0404]
+
+    % set +o emacs を含む builtin eval を抜けるとそこですぐに終了してしまうようだ。
+    %
+    % 一応 set +o emacs を含む builtin eval の中にあるコマンドは全て実行されるようだ。
+    % builtin eval の中で細工して一旦 set -o emacs に戻すことによって
+    % 後処理をしてその後で抜けるという様にはできるかもしれない。
+    %
+    % どうやら builtin eval の中に直接 echo を書いたら実行されるが、
+    % 関数呼び出しを通して echo を呼び出そうとしても駄目のようだ。
+    % 関数呼び出しより後に書いても駄目のようだ。
+    % もしかすると .save-params 関数が悪さをしている可能性もある。
+    %
+    % .save-params でなくて空の関数 function AAA { :; } を使ってみたが同様に駄目だった。
+    % 関数定義が見えなくなっているのではないかと思って function AAA { :; } を eval の中に書いてみたが、
+    % 関数定義を書いただけでそれ以降は実行されなくなってしまう。
+    %
+    % と思ったが今度は直接 echo を書いても実行されなくなってしまった。何故?
+    % しかし依然として set +o emacs; echo world などとした場合の world は出力される。
+
+    もしかして改行があるかないかが関係しているのだろうか。
+    →試してみたらそうだった。何と改行があると駄目なのだ。
+
+    でもそうだとすると実行しようとしているコマンド自体に改行が含まれている場合には、
+    それ以降のコマンドは実行されないという事になる。実際に試してみた所そうなった。
+
+    また改行さえ無ければ eval の外も実行されるのかと思いきやそういう訳でもない。
+
+    更に .save-params を改行ではなく ; で区切れば良いのではないかと考えたが、
+    それだと "echo ;" などのコマンドを実行した時に ";" の重複により構文エラーになってしまう。
+
+    [結論]
+
+    仕方がないので以下の制限は置く必要がある。
+
+    - ユーザが set +o emacs を実行すると正しく ble.sh から抜けることができない。
+    - 更に set +o emacs に続けて改行が含まれる場合にはコマンド自体も正しく実行されることは保証できない。
 
   * ble-decode: 分離: ble-decode/keymap/resolve-name 関連 [#D0403]
 

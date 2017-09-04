@@ -1124,8 +1124,8 @@ function ble-bind/option:list-functions {
 }
 
 function ble-bind {
-  local kmap fX= fC= ret
-  ble-decode/DEFAULT_KEYMAP -v kmap
+  local kmap=$ble_bind_keymap fX= fC= ret
+  [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
 
   local arg c
   while (($#)); do

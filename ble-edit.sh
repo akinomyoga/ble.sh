@@ -4406,8 +4406,17 @@ function ble-edit/bind/.exit-TRAPRTMAX {
   exit 0
 }
 
+## 関数 ble-edit/bind/.check-detach
+##
+##   @exit detach した場合に 0 を返します。それ以外の場合に 1 を返します。
+##
 function ble-edit/bind/.check-detach {
-  [[ -o emacs ]] || ble-detach noemacs
+  if [[ ! -o emacs && ! -o vi ]]; then
+    # 実は set +o emacs などとした時点で eval の評価が中断されるので、これを検知することはできない。
+    # 従って、現状ではここに入ってくることはないようである。
+    builtin echo "${_ble_term_setaf[9]}[ble: unsupported]$_ble_term_sgr0 Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
+    ble-detach
+  fi
 
   if [[ $_ble_edit_detach_flag ]]; then
     type="$_ble_edit_detach_flag"
@@ -4437,18 +4446,23 @@ function ble-edit/bind/.check-detach {
       kill -RTMAX $$
     else
       ble/util/buffer.flush >&2
-      if [[ $type == noemacs ]]; then
-        builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0 Sorry, ble.sh doesn't support other than emacs editing mode (set -o emacs)." 1>&2
-      else
-        builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
-      fi
+      builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
       builtin echo "Please run \`stty sane' to recover the correct TTY state." >&2
       ble-edit/render/update
       ble/util/buffer.flush >&2
       READLINE_LINE='stty sane' READLINE_POINT=9
     fi
+
     return 0
   else
+    # Note: ここに入った時 -o emacs か -o vi のどちらかが成立する。なぜなら、
+    #   [[ ! -o emacs && ! -o vi ]] のときは ble-detach が呼び出されるのでここには来ない。
+    local state=$_ble_decode_bind_state
+    if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
+      ble-decode-detach
+      ble-decode-attach
+    fi
+
     return 1
   fi
 }
@@ -4557,22 +4571,41 @@ function ble/widget/.EDIT_COMMAND {
 function ble-decode/DEFAULT_KEYMAP {
   if [[ $bleopt_default_keymap == auto ]]; then
     if [[ -o vi ]]; then
-      builtin eval "$2=vi"
+      ble-edit/load-keymap-definition vi
+      builtin eval "$2=vi_insert"
     else
+      ble-edit/load-keymap-definition emacs
       builtin eval "$2=emacs"
     fi
   else
+    ble-edit/load-keymap-definition "$bleopt_default_keymap"
     builtin eval "$2=\"\$bleopt_default_keymap\""
   fi
 }
 
-function ble-edit/load-default-key-bindings {
-  if [[ $_ble_base_cache/keymap.emacs -nt $_ble_base/keymap/emacs.sh &&
-          $_ble_base_cache/keymap.emacs -nt $_ble_base/cmap/default.sh ]]; then
-    source "$_ble_base_cache/keymap.emacs"
+function ble-edit/load-keymap-definition:emacs {
+  function ble-edit/load-keymap-definition:emacs (())
+
+  local name=emacs
+  if [[ $_ble_base_cache/keymap.$name -nt $_ble_base/keymap/$name.sh &&
+          $_ble_base_cache/keymap.$name -nt $_ble_base/cmap/default.sh ]]; then
+    source "$_ble_base_cache/keymap.$name"
   else
-    source "$_ble_base/keymap/emacs.sh"
+    source "$_ble_base/keymap/$name.sh"
   fi
+}
+
+function ble-edit/load-keymap-definition {
+  local name=$1
+  if ble/util/isfunction ble-edit/load-keymap-definition:"$name"; then
+    ble-edit/load-keymap-definition:"$name"
+  else
+    source "$_ble_base/keymap/$name.sh"
+  fi
+}
+
+function ble-edit/load-default-key-bindings {
+  : ble-edit/load-keymap-definition emacs
 }
 
 function ble-edit-initialize {
