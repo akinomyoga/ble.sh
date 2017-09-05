@@ -2576,8 +2576,7 @@ function ble/widget/delete-horizontal-space {
 # **** cursor move ****                                            @edit.cursor
 
 function ble/widget/.goto-char {
-  local _ind="$1"
-  ((_ble_edit_ind==_ind)) && return
+  local -i _ind="$1"
   _ble_edit_ind="$_ind"
 }
 function ble/widget/.forward-char {
