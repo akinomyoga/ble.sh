@@ -4194,10 +4194,7 @@ function ble/widget/isearch/cancel {
 }
 function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit
-
-  for key in "${KEYS[@]}"; do
-    ble-decode-key "$key"
-  done
+  ble-decode-key "${KEYS[@]}"
 }
 function ble/widget/isearch/accept {
   if ((${#_ble_edit_isearch_que[@]})); then

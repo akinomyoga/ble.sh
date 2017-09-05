@@ -885,52 +885,51 @@ declare _ble_decode_key__hook=
 ##     入力されたキー
 ##
 function ble-decode-key {
-  local key="$1"
+  local key
+  for key; do
 
-  if [[ $_ble_decode_key__hook ]]; then
-    local hook="$_ble_decode_key__hook"
-    _ble_decode_key__hook=
-    $hook "$key"
-    return 0
-  fi
+    if [[ $_ble_decode_key__hook ]]; then
+      local hook="$_ble_decode_key__hook"
+      _ble_decode_key__hook=
+      $hook "$key"
+      return 0
+    fi
 
-  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+    local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
 
-  builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
-  if [ "${ent%%:*}" = 1 ]; then
-    # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
-    local command="${ent:2}"
-    ble-decode-key/.invoke-command || _ble_decode_key__seq=
-  elif [ "${ent%%:*}" = _ ]; then
-    # /_(:command)?/ (続き (1つ以上の有効なシーケンス) がある事を示す)
-    _ble_decode_key__seq="${_ble_decode_key__seq}_$key"
-  else
-    # 遡って適用 (部分一致、または、既定動作)
-    ble-decode-key/.invoke-partial-match "$key" && return
+    builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
+    if [ "${ent%%:*}" = 1 ]; then
+      # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
+      local command="${ent:2}"
+      ble-decode-key/.invoke-command || _ble_decode_key__seq=
+    elif [ "${ent%%:*}" = _ ]; then
+      # /_(:command)?/ (続き (1つ以上の有効なシーケンス) がある事を示す)
+      _ble_decode_key__seq="${_ble_decode_key__seq}_$key"
+    else
+      # 遡って適用 (部分一致、または、既定動作)
+      ble-decode-key/.invoke-partial-match "$key" && return
 
-    # エラーの表示
-    local kcseq="${_ble_decode_key__seq}_$key" ret
-    ble-decode-unkbd "${kcseq//_/ }"
-    local kbd="$ret"
-    [[ $bleopt_error_kseq_vbell ]] && ble-term/visible-bell "unbound keyseq: $kbd"
-    [[ $bleopt_error_kseq_abell ]] && ble-term/audible-bell
+      # エラーの表示
+      local kcseq="${_ble_decode_key__seq}_$key" ret
+      ble-decode-unkbd "${kcseq//_/ }"
+      local kbd="$ret"
+      [[ $bleopt_error_kseq_vbell ]] && ble-term/visible-bell "unbound keyseq: $kbd"
+      [[ $bleopt_error_kseq_abell ]] && ble-term/audible-bell
 
-    # 残っている文字の処理
-    if [[ $_ble_decode_key__seq ]]; then
-      if [[ $bleopt_error_kseq_discard ]]; then
-        _ble_decode_key__seq=
-      else
-        local -a keys
-        keys=(${_ble_decode_key__seq//_/ } $key)
-        local i iN
-        _ble_decode_key__seq=
-        for ((i=1,iN=${#keys[*]};i<iN;i++)); do
+      # 残っている文字の処理
+      if [[ $_ble_decode_key__seq ]]; then
+        if [[ $bleopt_error_kseq_discard ]]; then
+          _ble_decode_key__seq=
+        else
+          local -a keys=(${_ble_decode_key__seq//_/ } $key)
+          _ble_decode_key__seq=
           # 2文字目以降を処理
-          ble-decode-key "${keys[i]}"
-        done
+          ble-decode-key "${keys[@]:1}"
+        fi
       fi
     fi
-  fi
+
+  done
   return 0
 }
 
