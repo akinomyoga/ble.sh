@@ -865,6 +865,7 @@ function ble-decode/keymap/push {
 function ble-decode/keymap/pop {
   local count="${#_ble_decode_keymap_stack[@]}"
   local last="$((count-1))"
+  ble-assert '((last>=0))' || return
   _ble_decode_key__kmap="${_ble_decode_keymap_stack[last]}"
   unset _ble_decode_keymap_stack[last]
 }

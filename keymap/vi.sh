@@ -1,21 +1,79 @@
 #!/bin/bash
 
-# bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されるので、
+# Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されるので、
 # 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
 function ble-edit/load-keymap-definition:vi { :; }
+
+function ble/widget/vi-insert/default {
+  local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
+
+  # メタ修飾付きの入力 M-key は ESC + key に分解する
+  if ((flag&ble_decode_Meta)); then
+    ble/widget/vi-insert/normal-mode
+    ble-decode-key "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
+    return 0
+  fi
+
+  # Control 修飾された文字 C-@ - C-\, C-? は制御文字 \000 - \037, \177 に戻す
+  if ((flag==ble_decode_Ctrl&&63<=code&&code<128&&(code&0x1F)!=0)); then
+    ((code=code==63?127:code&0x1F))
+    local -a KEYS=("$code")
+    ble/widget/self-insert
+    return 0
+  fi
+
+  return 1
+}
+
+function ble/widget/vi-insert/normal-mode {
+  _ble_edit_overwrite_mode=
+  if ((_ble_edit_ind>=0)) && [[ ${_ble_edit_str[_ble_edit_ind-1]} != $'\n' ]]; then
+    ble/widget/.goto-char "$((_ble_edit_ind-1))"
+  fi
+  ble-decode/keymap/push vi_command
+}
+function ble/widget/vi-command/insert-mode {
+  ble-decode/keymap/pop
+}
+function ble/widget/vi-command/append-mode {
+  if ((_ble_edit_ind<${#_ble_edit_str})) && [[ ${_ble_edit_str[_ble_edit_ind]} != $'\n' ]]; then
+    ble/widget/.goto-char "$((_ble_edit_ind+1))"
+  fi
+  ble-decode/keymap/pop
+}
+function ble/widget/vi-command/replace-mode {
+  ble/widget/vi-command/insert-mode
+  _ble_edit_overwrite_mode=1
+}
+
+function ble-decode-keymap:vi_command/define {
+  local ble_bind_keymap=vi_command
+  ble-bind -f i vi-command/insert-mode
+  ble-bind -f a vi-command/append-mode
+  ble-bind -f R vi-command/replace-mode
+}
 
 function ble-decode-keymap:vi_insert/define {
   local ble_bind_keymap=vi_insert
 
+  ble-bind -f __defchar__ self-insert
+  ble-bind -f __default__ vi-insert/default
+
+  ble-bind -f 'ESC' vi-insert/normal-mode
+  ble-bind -f 'C-[' vi-insert/normal-mode
+  ble-bind -f 'C-c' vi-insert/normal-mode
+
   ble-bind -f insert overwrite-mode
 
+  #----------------------------------------------------------------------------
+  # from keymap emacs-standard
+
   # ins
-  ble-bind -f __defchar__ self-insert
   ble-bind -f 'C-q'       quoted-insert
   ble-bind -f 'C-v'       quoted-insert
 
   # shell function
-  ble-bind -f  'C-c'     discard-line
+  # ble-bind -f 'C-c' discard-line
   ble-bind -f  'C-j'     accept-line
   ble-bind -f  'C-m'     accept-single-line-or-newline
   ble-bind -f  'RET'     accept-single-line-or-newline
@@ -88,18 +146,18 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'M-B'       'marked backward-cword'
 
   # linewise operations
-  ble-bind -f 'C-a'       'nomarked beginning-of-line'
-  ble-bind -f 'C-e'       'nomarked end-of-line'
-  ble-bind -f 'home'      'nomarked beginning-of-line'
-  ble-bind -f 'end'       'nomarked end-of-line'
-  ble-bind -f 'M-m'       'nomarked beginning-of-line'
-  ble-bind -f 'S-C-a'     'marked beginning-of-line'
-  ble-bind -f 'S-C-e'     'marked end-of-line'
-  ble-bind -f 'S-home'    'marked beginning-of-line'
-  ble-bind -f 'S-end'     'marked end-of-line'
-  ble-bind -f 'S-M-m'     'marked beginning-of-line'
-  ble-bind -f 'C-k'       kill-forward-line
-  ble-bind -f 'C-u'       kill-backward-line
+  ble-bind -f 'C-a'    'nomarked beginning-of-line'
+  ble-bind -f 'C-e'    'nomarked end-of-line'
+  ble-bind -f 'home'   'nomarked beginning-of-line'
+  ble-bind -f 'end'    'nomarked end-of-line'
+  ble-bind -f 'M-m'    'nomarked beginning-of-line'
+  ble-bind -f 'S-C-a'  'marked beginning-of-line'
+  ble-bind -f 'S-C-e'  'marked end-of-line'
+  ble-bind -f 'S-home' 'marked beginning-of-line'
+  ble-bind -f 'S-end'  'marked end-of-line'
+  ble-bind -f 'S-M-m'  'marked beginning-of-line'
+  ble-bind -f 'C-k'    kill-forward-line
+  ble-bind -f 'C-u'    kill-backward-line
 
   ble-bind -f 'C-p'    'nomarked backward-line-or-history-prev'
   ble-bind -f 'up'     'nomarked backward-line-or-history-prev'
@@ -116,7 +174,6 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'S-C-end'  'marked end-of-text'
 
   # ble-bind -f 'C-x' bell
-  ble-bind -f 'C-[' bell
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
@@ -133,9 +190,11 @@ function ble-decode-keymap:vi/initialize {
   echo -n "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2
 
   ble-decode-keymap:vi_insert/define
+  ble-decode-keymap:vi_command/define
 
   : >| "$fname_keymap_cache"
   ble-decode/keymap/dump vi_insert >> "$fname_keymap_cache"
+  ble-decode/keymap/dump vi_command >> "$fname_keymap_cache"
 
   echo "ble.sh: updating cache/keymap.vi... done" >&2
 }

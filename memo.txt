@@ -434,6 +434,9 @@ tech
 
 2017-09-05
 
+  * ble-syntax: function hello (()) は bash-3.0 では構文エラー。
+  * ble-syntax: function hello (()) としておいて function hello () (()) にすると解析が誤っている。
+
   * vi-mode: gR?
 
     http://qiita.com/sfuta/items/0de4ead865c15e9e9b68
@@ -445,7 +448,7 @@ tech
     判定して動作を微妙に変えるという様にするのが良いのではないだろうか。
     ところで self-insert に関しては emacs/vi で動作の違いはあっただろうか?
 
-    実際に vim で試してみると gR と推しても何も起こらないどういうことか?
+    実際に vim で試してみると gR と押しても何も起こらないどういうことか?
 
 2017-09-04
 
@@ -472,6 +475,8 @@ tech
     |
     | →vi_insert keymap を導入した。現在は emacs の clone である。動作している。
     |   これから vi_insert としての振る舞いになるように少しずつ widget などを実装していけば良い。
+
+    先に mode の間の切り替えを実装する。
 
     次に引数を管理する仕組みを考える。
 
@@ -2071,6 +2076,8 @@ tech
     さて、ということはこの関数の内容は単純化できる。
 
   * vi-mode: (()) は bash-3.0 でエラーになる。{ :; } が意味的にも無難
+
+    →どうやら function f () (()) ならば bash-3.0 でも OK の様である。
 
 2017-09-04
 
