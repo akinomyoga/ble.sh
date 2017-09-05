@@ -4584,7 +4584,7 @@ function ble-decode/DEFAULT_KEYMAP {
 }
 
 function ble-edit/load-keymap-definition:emacs {
-  function ble-edit/load-keymap-definition:emacs (())
+  function ble-edit/load-keymap-definition:emacs { :; }
 
   local name=emacs
   if [[ $_ble_base_cache/keymap.$name -nt $_ble_base/keymap/$name.sh &&

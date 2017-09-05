@@ -2,7 +2,7 @@
 
 # bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されるので、
 # 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
-function ble-edit/load-keymap-definition:vi (())
+function ble-edit/load-keymap-definition:vi { :; }
 
 function ble-decode-keymap:vi_insert/define {
   local ble_bind_keymap=vi_insert
