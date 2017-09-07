@@ -247,6 +247,9 @@ function ble/util/declare-print-definitions {
 
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
+## 関数 ble/util/isprint+ str
+##
+##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。
 function ble/util/isprint+ {
   # LC_COLLATE=C ...  &>/dev/null for cygwin collation
   LC_COLLATE=C ble/util/isprint+.impl "$@" &>/dev/null

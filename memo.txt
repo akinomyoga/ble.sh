@@ -432,6 +432,57 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2017-09-06
+
+  * ble-syntax: echo ${a#[!0-9]} は履歴展開ではない
+    どうやら "echo [!1 " と入力しても展開されない。[ の中は (対応する ] がなくても) 履歴展開は無効ということ。
+
+  * ble-edit: BASH_REMATCH 復元について
+
+    任意の配列 BASH_REMATCH を、[[ some =~ some ]] を用いて復元するのは難しい。
+
+    % だとすると一つの方法は local BASH_REMATCH を ble-decode/.hook で定義することである。
+    %
+    % - 但し、exec:exec の場合には関数の内部でユーザコマンドを実行するので、
+    %   その際に unset BASH_REMATCH を実行する必要がある。
+    %   そしてユーザコマンドを呼び出した後で、適切な位置で再度 BASH_REMATCH を呼び出す必要がある。
+    %
+    %   関数 ble-decode/EPILOGUE の以下の行の直後で良いだろう。
+    %
+    %   "ble-edit/exec:$bleopt_exec_type/process" && return 0
+    %
+    % - また exec:gexec の場合には ble-decode/.hook の外側でも処理を行うので、
+    %   その外で呼び出されうる全ての関数について local BASH_REMATCH を指定する必要がある。
+    %   外で呼び出されうる関数に関しては変数 _ble_decode_bind_hook に設定されうる関数を調べれば良い。
+    %   _ble_decode_bind_hook に対する値の設定は現状でただ一箇所 ble-edit/exec:gexec/.setup の中である。
+    %   ここで指定される関数として以下のものがある。
+    %
+    %   - ble-edit/exec:gexec/.eval-prologue
+    %   - ble-edit/exec:gexec/.save-params
+    %   - ble-edit/exec:gexec/.eval-epilogue"
+    %   - ble-edit/exec:gexec/.end
+    %
+    % - 他に trap を通して呼び出される関数がある。
+    %
+    %   - ble-decode: ble-stty/TRAPEXIT これは単純な関数なので中で正規表現を使わないことは自明である。
+    %   - ble-edit: ble-edit/attach/TRAPWINCH 必要
+    %   - ble-edit: ble-edit/exec:exec/.eval-TRAPDEBUG 不要
+    %   - ble-edit: ble-edit/exec:exec/.eval-TRAPINT 不要
+    %   - ble-edit: ble-edit/exec:gexec/.eval-TRAPDEBUG 必要
+    %   - ble-edit: ble-edit/exec:gexec/.eval-TRAPINT 不要
+    %   - ble-edit: ble-edit/bind/stdout/TRAPUSR1 不要
+    %   - ble-edit: ble-edit/bind/.exit-TRAPRTMAX 不要
+    %
+    % また将来的に trap や _ble_decode_bind_hook を追加するときのために、
+    % どの様な関数において local BASH_REMATCH をつける必要があるかについて
+    % Note にまとめておく必要がある。
+
+    とここまでまとめて気付いたが local BASH_REMATCH を実行しても
+    読み取り専用の変数ですと表示されて怒られる。
+    更に、BASH_REMATCH に対する変更の影響は結局関数の外でも残る。
+    つまり local BASH_REMATCH としても効果はなくエラーメッセージが表示されるだけである。
+
+
 2017-09-05
 
   * ble-syntax: function hello (()) は bash-3.0 では構文エラー。
@@ -507,6 +558,7 @@ tech
     従って結局 emacs と vi で別々に forward-char を実装する必要があるのではないか。
 
   * vi-mode: 全てのキー入力を横取りできているかどうかを確認する
+
 
 2017-08-19
 
@@ -2063,6 +2115,10 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2017-09-06
+
+  * ble-edit: 余分な ble-edit/history/load 呼び出しがあったので削除
 
 2017-09-05
 

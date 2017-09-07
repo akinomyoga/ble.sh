@@ -1407,10 +1407,22 @@ function ble-edit/text/update {
   fi
 }
 
+## 関数 ble-edit/text/.check-text-positions-update
+##   編集文字列の文字の配置情報が最新であることを確認します。
+##   以下の変数を参照する場合に事前に呼び出します。
+##
+##   _ble_line_text_cache_pos
+##   _ble_line_text_cache_length
+##
+function ble-edit/text/.check-text-positions-update {
+  ble-assert '((_ble_edit_dirty_draw_beg==-1))' 'dirty text positions'
+}
+
 ## 関数 ble-edit/text/getxy iN
 ##   @var[out] x
 ##   @var[out] y
 function ble-edit/text/getxy {
+  ble-edit/text/.check-text-positions-update
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1424,6 +1436,7 @@ function ble-edit/text/getxy {
 }
 ## 関数 ble-edit/text/getxy.cur iN
 function ble-edit/text/getxy.cur {
+  ble-edit/text/.check-text-positions-update
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1448,6 +1461,7 @@ function ble-edit/text/getxy.cur {
 ## 関数 ble-edit/text/slice [beg [end]]
 ##   @var [out] ret
 function ble-edit/text/slice {
+  ble-edit/text/.check-text-positions-update
   local iN="$_ble_line_text_cache_length"
   local i1="${1:-0}" i2="${2:-$iN}"
   ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
@@ -1465,6 +1479,7 @@ function ble-edit/text/slice {
 ## 関数 ble-edit/text/get-index-at x y
 ##   指定した位置 x y に対応する index を求めます。
 function ble-edit/text/get-index-at {
+  ble-edit/text/.check-text-positions-update
   local _var=index
   if [[ $1 == -v ]]; then
     _var="$2"
@@ -2392,6 +2407,7 @@ function ble/widget/copy-region-or {
 function ble/widget/.bell {
   [[ $bleopt_edit_vbell ]] && ble-term/visible-bell "$1"
   [[ $bleopt_edit_abell ]] && ble-term/audible-bell
+  return 0
 }
 function ble/widget/bell {
   ble/widget/.bell
@@ -2638,6 +2654,7 @@ function ble/widget/kill-forward-line {
 
 function ble/widget/forward-line {
   local x y index
+  ble-edit/text/.check-text-positions-update || return 1
   ((_ble_edit_ind<_ble_line_text_cache_length)) || return 1
   ble-edit/text/getxy.cur "$_ble_edit_ind"
   ble-edit/text/get-index-at "$x" "$((y+1))"
@@ -3727,19 +3744,15 @@ function ble-edit/history/goto {
 }
 
 function ble/widget/history-next {
-  ble-edit/history/load
   ble-edit/history/goto $((_ble_edit_history_ind+1))
 }
 function ble/widget/history-prev {
-  ble-edit/history/load
   ble-edit/history/goto $((_ble_edit_history_ind-1))
 }
 function ble/widget/history-beginning {
-  ble-edit/history/load
   ble-edit/history/goto 0
 }
 function ble/widget/history-end {
-  ble-edit/history/load
   ble-edit/history/goto "${#_ble_edit_history[@]}"
 }
 
