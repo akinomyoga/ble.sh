@@ -85,7 +85,7 @@ function ble/widget/vi-command/@popped {
 
 #------------------------------------------------------------------------------
 # arg     : 0-9 d y c
-# command : dd yy cc [dyc]0 Y
+# command : dd yy cc [dyc]0 Y S
 
 ## 関数 ble/widget/vi-command/.get-arg [default_value]
 function ble/widget/vi-command/.get-arg {
@@ -566,7 +566,7 @@ function ble/widget/vi-command/paste-before {
 }
 
 #------------------------------------------------------------------------------
-# command: x X C D
+# command: x s X C D
 
 function ble/widget/vi-command/kill-forward-char {
   local arg flag; ble/widget/vi-command/.get-arg 1
@@ -574,6 +574,15 @@ function ble/widget/vi-command/kill-forward-char {
     ble/widget/.bell
   else
     _ble_edit_arg=${arg}d
+    ble/widget/vi-command/forward-char
+  fi
+}
+function ble/widget/vi-command/kill-forward-char-and-insert {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    _ble_edit_arg=${arg}c
     ble/widget/vi-command/forward-char
   fi
 }
@@ -631,6 +640,7 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f c 'vi-command/arg-append kill-current-line-and-insert'
 
   ble-bind -f Y vi-command/copy-current-line
+  ble-bind -f S vi-command/kill-current-line-and-insert
   ble-bind -f D vi-command/kill-forward-line
   ble-bind -f C vi-command/kill-forward-line-and-insert
 
@@ -657,6 +667,7 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f C-p   vi-command/backward-line
 
   ble-bind -f x      vi-command/kill-forward-char
+  ble-bind -f s      vi-command/kill-forward-char-and-insert
   ble-bind -f X      vi-command/kill-backward-char
   ble-bind -f delete vi-command/kill-forward-char
 

@@ -434,6 +434,10 @@ tech
 
 2017-09-07
 
+  * vi-mode: 現在のモードや引数の状態を表示する?
+    info に表示するか新しく別の status line を追加するか。
+    info に追加するというので良い気がする。
+
   * vi-mode: C-c ESC C-| の違い。
 
     http://d.hatena.ne.jp/yuta84q/20101216/1292508997
