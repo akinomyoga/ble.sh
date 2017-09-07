@@ -1529,7 +1529,7 @@ function ble-edit/text/get-index-at {
 ##   offset が正で offset 次の行がない場合は ${#_ble_edit_str} を返します。
 ##
 function ble-edit/text/find-logical-eol {
-  local index=${1:-$_ble_edit_ind} offset=${1:-0}
+  local index=${1:-$_ble_edit_ind} offset=${2:-0}
   if ((offset>0)); then
     local text=${_ble_edit_str:index}
     local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}[^$_ble_term_nl]*"
@@ -1537,7 +1537,7 @@ function ble-edit/text/find-logical-eol {
     ((ret=index+${#BASH_REMATCH}))
   elif ((offset<0)); then
     local text=${_ble_edit_str::index}
-    local rex="($_ble_term_nl[^$_ble_term_nl]*){0,$offset}$"
+    local rex="($_ble_term_nl[^$_ble_term_nl]*){0,$((-offset))}$"
     [[ $text =~ $rex ]]
     if [[ $BASH_REMATCH ]]; then
       ((ret=index-${#BASH_REMATCH}))

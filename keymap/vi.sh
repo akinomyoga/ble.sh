@@ -269,15 +269,20 @@ function ble/string#count-char {
 
 function ble/widget/vi-command/.history-relative-line {
   local arg=$1 type=$2
+  ((arg)) || return 0
+
   local ret count=$((arg<0?-arg:arg))
   ((count--))
+  ble-edit/history/load
   while ((count>=0)); do
     if ((arg<0)); then
       ((_ble_edit_history_ind>0||(count=0))) || break
       ble/widget/history-prev
+      _ble_edit_ind=${#_ble_edit_str}
     else
       ((_ble_edit_history_ind<${#_ble_edit_history[@]}||(count=0))) || break
       ble/widget/history-next
+      _ble_edit_ind=0
     fi
     ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
     ((count<nline)) && break
