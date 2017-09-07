@@ -172,28 +172,47 @@ function ble/widget/vi-command/beginning-of-line {
 #------------------------------------------------------------------------------
 # command: [cdy]?[hl|]
 
+## 編集関数 ble/widget/vi-command/forward-char [type]
+## 編集関数 ble/widget/vi-command/backward-char [type]
+##
+##   @param[in] type
+##     type=m のとき複数行に亘る移動を許します。
+##
 function ble/widget/vi-command/forward-char {
   local arg flag; ble/widget/vi-command/.get-arg 1
 
-  local line=${_ble_edit_str:_ble_edit_ind:arg}
-  line=${line%%$'\n'*}
-  local count=${#line}
+  local index
+  if [[ $1 == m ]]; then
+    local width=$arg line
+    while ((width<=${#_ble_edit_str}-_ble_edit_ind)); do
+      line=${_ble_edit_str:_ble_edit_ind:width}
+      line=${line//[!$'\n']$'\n'/x}
+      ((${#line}>=arg)) && break
+      ((width+=arg-${#line}))
+    done
+    ((index=_ble_edit_ind+width,index>${#_ble_edit_str}&&(index=${#_ble_edit_str})))
+    ((index<${#_ble_edit_str})) && ble-edit/text/nonbol-eolp $index && ((index++))
+  else
+    local line=${_ble_edit_str:_ble_edit_ind:arg}
+    line=${line%%$'\n'*}
+    ((index=_ble_edit_ind+${#line}))
+  fi
 
   if [[ $flag == [cd] ]]; then
-    ((count)) && ble/widget/.kill-range $_ble_edit_ind $((_ble_edit_ind+count))
+    ble/widget/.kill-range $_ble_edit_ind $index 0
     if [[ $flag == c ]]; then
       ble/widget/vi-command/insert-mode
     else
       ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
     fi
   elif [[ $flag == y ]]; then
-    ble/widget/.copy-range $_ble_edit_ind $((_ble_edit_ind+count)) 1
+    ble/widget/.copy-range $_ble_edit_ind $index 1
   elif [[ $flag ]]; then
     ble/widget/.bell
   else
-    ((count)) && ble-edit/text/nonbol-eolp $((_ble_edit_ind+count)) && ((count--))
-    if ((count)); then
-      ble/widget/.goto-char _ble_edit_ind+count
+    ble-edit/text/nonbol-eolp $index && ((index--))
+    if ((index!=_ble_edit_ind)); then
+      ble/widget/.goto-char index
     else
       ble/widget/.bell
     fi
@@ -203,23 +222,35 @@ function ble/widget/vi-command/forward-char {
 function ble/widget/vi-command/backward-char {
   local arg flag; ble/widget/vi-command/.get-arg 1
 
-  local count=$arg
-  ((count>_ble_edit_ind&&(count=_ble_edit_ind)))
-  local line=${_ble_edit_str:_ble_edit_ind-count:count}
-  line=${line##*$'\n'}
-  count=${#line}
+  local index
+  ((arg>_ble_edit_ind&&(arg=_ble_edit_ind)))
+  if [[ $1 == m ]]; then
+    local width=$arg line
+    while ((width<=_ble_edit_ind)); do
+      line=${_ble_edit_str:_ble_edit_ind-width:width}
+      line=${line//[!$'\n']$'\n'/x}
+      ((${#line}>=arg)) && break
+      ((width+=arg-${#line}))
+    done
+    ((index=_ble_edit_ind-width,index<0&&(index=0)))
+    ble-edit/text/nonbol-eolp $index && ((index--))
+  else
+    local line=${_ble_edit_str:_ble_edit_ind-arg:arg}
+    line=${line##*$'\n'}
+    ((index=_ble_edit_ind-${#line}))
+  fi
 
   if [[ $flag == [cd] ]]; then
-    ((count)) && ble/widget/.kill-range $((_ble_edit_ind-count)) $_ble_edit_ind
+    ble/widget/.kill-range $index $_ble_edit_ind 0
     [[ $flag == c ]] && ble/widget/vi-command/insert-mode
   elif [[ $flag == y ]]; then
-    ble/widget/.copy-range $((_ble_edit_ind-count)) $_ble_edit_ind 1
-    ble/widget/.goto-char _ble_edit_ind-count
+    ble/widget/.copy-range $index $_ble_edit_ind 1
+    ble/widget/.goto-char index
   elif [[ $flag ]]; then
     ble/widget/.bell
   else
-    if ((count)); then
-      ble/widget/.goto-char _ble_edit_ind-count
+    if ((index!=_ble_edit_ind)); then
+      ble/widget/.goto-char index
     else
       ble/widget/.bell
     fi
@@ -634,13 +665,9 @@ function ble-decode-keymap:vi_command/define {
   #----------------------------------------------------------------------------
   # temporary implementations
 
-  # ble-bind -f C-h   vi-command/backward-char + 行頭にいるとき前の行に
-  # ble-bind -f DEL   vi-command/backward-char + 行頭にいるとき前の行に
-  # ble-bind -f SP    vi-command/forward-char + 行末にいるとき次の行に
-
-  # ble-bind -f C-h backward-char
-  # ble-bind -f DEL backward-char
-  # ble-bind -f SP  forward-char
+  ble-bind -f C-h 'vi-command/backward-char m'
+  ble-bind -f DEL 'vi-command/backward-char m'
+  ble-bind -f SP 'vi-command/forward-char m'
 
   #----------------------------------------------------------------------------
   # bash
