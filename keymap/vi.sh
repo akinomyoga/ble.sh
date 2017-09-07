@@ -54,27 +54,28 @@ function ble/widget/vi-insert/normal-mode {
   ble-decode/keymap/push vi_command
 }
 function ble/widget/vi-command/insert-mode {
+  _ble_edit_overwrite_mode=
   ble-decode/keymap/pop
 }
 function ble/widget/vi-command/append-mode {
   if ! ble-edit/text/eolp; then
     ble/widget/.goto-char "$((_ble_edit_ind+1))"
   fi
-  ble-decode/keymap/pop
+  ble/widget/vi-command/insert-mode
 }
 function ble/widget/vi-command/append-eol-mode {
   local ret; ble-edit/text/find-logical-eol
   ble/widget/.goto-char "$ret"
-  ble-decode/keymap/pop
+  ble/widget/vi-command/insert-mode
 }
 function ble/widget/vi-command/insert-bol-mode {
   local ret; ble-edit/text/find-logical-bol
   ble/widget/.goto-char "$ret"
-  ble-decode/keymap/pop
+  ble/widget/vi-command/insert-mode
 }
 function ble/widget/vi-command/replace-mode {
-  ble/widget/vi-command/insert-mode
   _ble_edit_overwrite_mode=1
+  ble/widget/vi-command/insert-mode
 }
 
 #------------------------------------------------------------------------------
