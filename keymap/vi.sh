@@ -481,6 +481,28 @@ function ble/widget/vi-command/paste-before {
 }
 
 #------------------------------------------------------------------------------
+# command: x X
+
+function ble/widget/vi-command/delete-forward-char {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    _ble_edit_arg=${arg}d
+    ble/widget/vi-command/forward-char
+  fi
+}
+function ble/widget/vi-command/delete-backward-char {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    _ble_edit_arg=${arg}d
+    ble/widget/vi-command/backward-char
+  fi
+}
+
+#------------------------------------------------------------------------------
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
@@ -524,6 +546,10 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f up    vi-command/backward-line
   ble-bind -f C-n   vi-command/forward-line
   ble-bind -f C-p   vi-command/backward-line
+
+  ble-bind -f x      vi-command/delete-forward-char
+  ble-bind -f X      vi-command/delete-backward-char
+  ble-bind -f delete vi-command/delete-forward-char
 
   #----------------------------------------------------------------------------
   # temporary implementations
