@@ -1421,7 +1421,7 @@ function ble-edit/text/check-position-up-to-date {
   ble-assert 'ble-edit/text/is-position-up-to-date' 'dirty text positions'
 }
 
-## 関数 ble-edit/text/getxy index
+## 関数 ble-edit/text/getxy.out index
 ##   index 番目の文字の出力開始位置を取得します。
 ##
 ##   @var[out] x y
@@ -1431,7 +1431,7 @@ function ble-edit/text/check-position-up-to-date {
 ##   その場合には、追加される空白文字の前の位置を返すことに注意して下さい。
 ##   実用上は境界 index の左側の文字の終端位置と解釈できます。
 ##
-function ble-edit/text/getxy {
+function ble-edit/text/getxy.out {
   ble-edit/text/check-position-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
@@ -1450,7 +1450,7 @@ function ble-edit/text/getxy {
 ##
 ##   @var[out] x y
 ##
-##   ble-edidt/text/getxy の異なり前置される空白は考えずに、
+##   ble-edidt/text/getxy.out の異なり前置される空白は考えずに、
 ##   文字本体が開始する位置を取得します。
 ##   実用上は境界 index の右側の文字の開始位置と解釈できます。
 ##
@@ -2109,8 +2109,8 @@ function ble-edit/render/update {
 
   # 1 描画領域の確保 (高さの調整)
   local endx endy begx begy
-  ble-edit/text/getxy --prefix=beg 0
-  ble-edit/text/getxy --prefix=end "$iN"
+  ble-edit/text/getxy.out --prefix=beg 0
+  ble-edit/text/getxy.out --prefix=end "$iN"
   local delta
   if (((delta=endy-_ble_line_endy)!=0)); then
     if ((delta>0)); then
@@ -2138,14 +2138,14 @@ function ble-edit/render/update {
     # local esc_line="$ret"
     # ble-edit/render/clear-line-after "$prox" "$proy"
     # ble-edit/draw/put "$ret"
-    # ble-edit/text/getxy --prefix=ret "$iN" # → retx rety
+    # ble-edit/text/getxy.out --prefix=ret "$iN" # → retx rety
     # _ble_line_x="$retx" _ble_line_y="$rety"
 
     # 編集文字列の一部を描画する場合
     if ((umin<umax)); then
       local uminx uminy umaxx umaxy
-      ble-edit/text/getxy --prefix=umin "$umin"
-      ble-edit/text/getxy --prefix=umax "$umax"
+      ble-edit/text/getxy.out --prefix=umin "$umin"
+      ble-edit/text/getxy.out --prefix=umax "$umax"
 
       ble-edit/render/goto "$uminx" "$uminy"
       ble-edit/text/slice "$umin" "$umax"
@@ -2172,13 +2172,13 @@ function ble-edit/render/update {
     #   ble-edit/text/slice "$index"
     #   esc_line="$esc_line$ret$_ble_term_rc"
     #   ble-edit/draw/put "$esc_line"
-    #   ble-edit/text/getxy --prefix=ret "$index"
+    #   ble-edit/text/getxy.out --prefix=ret "$index"
     #   _ble_line_x="$retx" _ble_line_y="$rety"
     # else
     #   ble-edit/text/slice
     #   esc_line="$ret"
     #   ble-edit/draw/put "$esc_line"
-    #   ble-edit/text/getxy --prefix=ret "$iN"
+    #   ble-edit/text/getxy.out --prefix=ret "$iN"
     #   _ble_line_x="$retx" _ble_line_y="$rety"
     # fi
 
@@ -2187,7 +2187,7 @@ function ble-edit/render/update {
     ble-edit/text/slice # → ret
     esc_line="$ret"
     ble-edit/draw/put "$ret"
-    ble-edit/text/getxy --prefix=ret "$iN" # → retx rety
+    ble-edit/text/getxy.out --prefix=ret "$iN" # → retx rety
     _ble_line_x="$retx" _ble_line_y="$rety"
   fi
 
@@ -2205,7 +2205,7 @@ function ble-edit/render/update {
     if ((retx<0)); then
       ble-edit/text/slice
       esc_line="$ret"
-      ble-edit/text/getxy --prefix=ret "$iN"
+      ble-edit/text/getxy.out --prefix=ret "$iN"
     fi
 
     _ble_line_cache=(
