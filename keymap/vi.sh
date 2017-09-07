@@ -162,11 +162,12 @@ function ble/widget/vi-command/forward-char {
   local count=${#line}
 
   if [[ $flag == [cd] ]]; then
-    if ((count)); then
-      ble/widget/.kill-range $_ble_edit_ind $((_ble_edit_ind+count))
-      ble-edit/text/nonbol-eolp $_ble_edit_ind && ble/widget/.goto-char $((_ble_edit_ind-1))
+    ((count)) && ble/widget/.kill-range $_ble_edit_ind $((_ble_edit_ind+count))
+    if [[ $flag == c ]]; then
+      ble/widget/vi-command/insert-mode
+    else
+      ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
     fi
-    [[ $flag == c ]] && ble/widget/vi-command/insert-mode
   elif [[ $flag == y ]]; then
     ble/widget/.copy-range $_ble_edit_ind $((_ble_edit_ind+count)) 1
   else
@@ -189,9 +190,7 @@ function ble/widget/vi-command/backward-char {
   count=${#line}
 
   if [[ $flag == [cd] ]]; then
-    if ((count)); then
-      ble/widget/.kill-range $((_ble_edit_ind-count)) $_ble_edit_ind
-    fi
+    ((count)) && ble/widget/.kill-range $((_ble_edit_ind-count)) $_ble_edit_ind
     [[ $flag == c ]] && ble/widget/vi-command/insert-mode
   elif [[ $flag == y ]]; then
     ble/widget/.copy-range $((_ble_edit_ind-count)) $_ble_edit_ind 1
@@ -224,7 +223,7 @@ function ble/string#count-char {
 ##   todo: 移動開始時の相対表示位置の記録は現在行っていない。
 ##
 function ble/widget/vi-command/.forward-line {
-  local arg=$1
+  local arg=$1 flag=$2
   local count=$((arg<0?-arg:arg))
   local ret ind=$_ble_edit_ind
 
@@ -236,6 +235,10 @@ function ble/widget/vi-command/.forward-line {
     ((end<${#_ble_edit_str}&&end++))
     if [[ $flag == y ]]; then
       ble/widget/.copy-range "$beg" "$end"
+      if ((arg<0)); then
+        ble/string#count-char "${_ble_edit_str:beg:ind-beg}" $'\n'
+        ((ret)) && ble/widget/vi-command/.forward-line $((-ret))
+      fi
     else
       ble/widget/.kill-range "$beg" "$end"
       [[ $flag == c ]] && ble/widget/vi-command/insert-mode
@@ -250,6 +253,7 @@ function ble/widget/vi-command/.forward-line {
   ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; local nmove=$ret
   ((count-=nmove))
   if ((count==0)); then
+    local index
     if ble-edit/text/is-position-up-to-date; then
       # 列の表示相対位置 (x,y) を保持
       local b1x b1y; ble-edit/text/getxy.cur --prefix=b1 "$bol1"
@@ -262,14 +266,14 @@ function ble/widget/vi-command/.forward-line {
       local x=$c1x y=$((b2y+c1y-b1y))
       ((y>e2y&&(x=e2x,y=e2y)))
 
-      local index; ble-edit/text/get-index-at $x $y
-      ble/widget/.goto-char "$index"
+      ble-edit/text/get-index-at $x $y # local variable "index" is set here
     else
       # 論理列を保持
       ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
-      local index; ((index=bol2+ind-bol1,index>eol2&&(index=eol2)))
-      ble/widget/.goto-char "$index"
+      ((index=bol2+ind-bol1,index>eol2&&(index=eol2)))
     fi
+    ble/widget/.goto-char "$index"
+    ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
     return
   fi
 
@@ -289,6 +293,7 @@ function ble/widget/vi-command/.forward-line {
   if ((count)); then
     if ((arg<0)); then
       ble-edit/text/find-logical-eol 0 "$((nline-count-1))"
+      ble-edit/text/nonbol-eolp && ((ret--))
     else
       ble-edit/text/find-logical-bol 0 "$count"
     fi
@@ -297,12 +302,98 @@ function ble/widget/vi-command/.forward-line {
 }
 function ble/widget/vi-command/forward-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.forward-line "$arg"
+  ble/widget/vi-command/.forward-line "$arg" "$flag"
 }
 function ble/widget/vi-command/backward-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.forward-line "$((-arg))"
+  ble/widget/vi-command/.forward-line "$((-arg))" "$flag"
 }
+
+#------------------------------------------------------------------------------
+# command: ^ + - $
+
+function ble/widget/vi-command/.first-non-space-of-forward-line {
+  local arg=$1 flag=$2
+  local ret ind=$_ble_edit_ind
+  ble-edit/text/find-logical-bol "$ind" "$arg"; local bolx=$ret
+  local rex=$'^[ \t\n]*'
+  [[ ${_ble_edit_str:bolx} =~ $rex ]]
+  local nolx=$((bolx+${#BASH_REMATCH}))
+
+  if [[ $flag == [dyc] ]]; then
+    if ((arg==0)); then
+      local beg=$nolx end=$ind
+    else
+      if ((arg>0)); then
+        ble-edit/text/find-logical-bol; local bol1=$ret
+        ble-edit/text/find-logical-eol "$nolx" 0; local eol2=$ret
+      else
+        local bol1=$bolx
+        ble-edit/text/find-logical-eol; local eol2=$ret
+      fi
+      ((eol2<${#_ble_edit_str}&&eol2++))
+      local beg=$bol1 end=$eol2
+    fi
+
+    if [[ $flag == y ]]; then
+      ble/widget/.copy-range "$beg" "$end" 1
+      if ((nolx<ind)); then
+        ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
+        ble/widget/.goto-char "$nolx"
+      fi
+    else
+      ble/widget/.kill-range "$beg" "$end" 1
+      if [[ $flag == c ]]; then
+        ble/widget/vi-command/insert-mode
+      else
+        ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
+      fi
+    fi
+    return
+  fi
+
+  ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
+  ble/widget/.goto-char "$nolx"
+
+  # todo: 履歴項目の移動もするか? → するべき
+}
+
+function ble/widget/vi-command/first-non-space-of-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.first-non-space-of-forward-line 0 "$flag"
+}
+function ble/widget/vi-command/first-non-space-of-forward-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.first-non-space-of-forward-line "$arg" "$flag"
+}
+function ble/widget/vi-command/first-non-space-of-backward-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.first-non-space-of-forward-line "$((-arg))" "$flag"
+}
+
+function ble/widget/vi-command/forward-eol {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+
+  local ret
+  ble-edit/text/find-logical-eol "$_ble_edit_ind" $((arg-1)); local dst=$ret
+
+  if [[ $flag == y ]]; then
+    ble/widget/.copy-range "$_ble_edit_ind" "$dst" 1
+  elif [[ $flag == [cd] ]]; then
+    ble/widget/.kill-range "$_ble_edit_ind" "$dst" 1
+    if [[ $flag == c ]]; then
+      ble/widget/vi-command/insert-mode
+    else
+      ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
+    fi
+  else
+    ble-edit/text/nonbol-eolp "$dst" && ((dst--))
+    ble/widget/.goto-char "$dst"
+  fi
+
+  # todo: (要相談) 履歴項目の移動もするか?
+}
+
 
 #------------------------------------------------------------------------------
 
@@ -326,10 +417,33 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f d 'vi-command/arg-append delete-current-line'
   ble-bind -f c 'vi-command/arg-append delete-current-line-and-insert'
 
+  ble-bind -f home vi-command/beginning-of-line
+  ble-bind -f '$' vi-command/forward-eol
+  ble-bind -f end vi-command/forward-eol
+  ble-bind -f '^' vi-command/first-non-space-of-line
+  ble-bind -f '+' vi-command/first-non-space-of-forward-line
+  ble-bind -f '-' vi-command/first-non-space-of-backward-line
+
   ble-bind -f h vi-command/backward-char
   ble-bind -f j vi-command/forward-line
   ble-bind -f k vi-command/backward-line
   ble-bind -f l vi-command/forward-char
+
+  ble-bind -f left  vi-command/backward-char
+  ble-bind -f down  vi-command/forward-line
+  ble-bind -f up    vi-command/backward-line
+  ble-bind -f right vi-command/forward-char
+
+  # ble-bind -f C-h   vi-command/backward-char + 行頭にいるとき前の行に
+  # ble-bind -f DEL   vi-command/backward-char + 行頭にいるとき前の行に
+  # ble-bind -f SP    vi-command/forward-char + 行末にいるとき次の行に
+
+  #----------------------------------------------------------------------------
+  # bash
+
+  ble-bind -f 'C-q' quoted-insert
+  ble-bind -f 'C-v' quoted-insert
+
 }
 
 function ble-decode-keymap:vi_insert/define {
