@@ -1407,15 +1407,18 @@ function ble-edit/text/update {
   fi
 }
 
-## 関数 ble-edit/text/.check-text-positions-update
+function ble-edit/text/is-position-up-to-date {
+  ((_ble_edit_dirty_draw_beg==-1))
+}
+## 関数 ble-edit/text/check-position-up-to-date
 ##   編集文字列の文字の配置情報が最新であることを確認します。
 ##   以下の変数を参照する場合に事前に呼び出します。
 ##
 ##   _ble_line_text_cache_pos
 ##   _ble_line_text_cache_length
 ##
-function ble-edit/text/.check-text-positions-update {
-  ble-assert '((_ble_edit_dirty_draw_beg==-1))' 'dirty text positions'
+function ble-edit/text/check-position-up-to-date {
+  ble-assert 'ble-edit/text/is-position-up-to-date' 'dirty text positions'
 }
 
 ## 関数 ble-edit/text/getxy index
@@ -1429,7 +1432,7 @@ function ble-edit/text/.check-text-positions-update {
 ##   実用上は境界 index の左側の文字の終端位置と解釈できます。
 ##
 function ble-edit/text/getxy {
-  ble-edit/text/.check-text-positions-update
+  ble-edit/text/check-position-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1452,7 +1455,7 @@ function ble-edit/text/getxy {
 ##   実用上は境界 index の右側の文字の開始位置と解釈できます。
 ##
 function ble-edit/text/getxy.cur {
-  ble-edit/text/.check-text-positions-update
+  ble-edit/text/check-position-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1477,7 +1480,7 @@ function ble-edit/text/getxy.cur {
 ## 関数 ble-edit/text/slice [beg [end]]
 ##   @var [out] ret
 function ble-edit/text/slice {
-  ble-edit/text/.check-text-positions-update
+  ble-edit/text/check-position-up-to-date
   local iN="$_ble_line_text_cache_length"
   local i1="${1:-0}" i2="${2:-$iN}"
   ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
@@ -1495,7 +1498,7 @@ function ble-edit/text/slice {
 ## 関数 ble-edit/text/get-index-at x y
 ##   指定した位置 x y に対応する index を求めます。
 function ble-edit/text/get-index-at {
-  ble-edit/text/.check-text-positions-update
+  ble-edit/text/check-position-up-to-date
   local _var=index
   if [[ $1 == -v ]]; then
     _var="$2"
@@ -1519,6 +1522,61 @@ function ble-edit/text/get-index-at {
   fi
 }
 
+## 関数 ble-edit/text/find-logical-eol [index [offset]]; ret
+##   _ble_edit_str 内で位置 index から offset 行だけ次の行の終端位置を返します。
+##
+##   offset が 0 の場合は位置 index を含む行の行末を返します。
+##   offset が正で offset 次の行がない場合は ${#_ble_edit_str} を返します。
+##
+function ble-edit/text/find-logical-eol {
+  local index=${1:-$_ble_edit_ind} offset=${1:-0}
+  if ((offset>0)); then
+    local text=${_ble_edit_str:index}
+    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}[^$_ble_term_nl]*"
+    [[ $text =~ $rex ]]
+    ((ret=index+${#BASH_REMATCH}))
+  elif ((offset<0)); then
+    local text=${_ble_edit_str::index}
+    local rex="($_ble_term_nl[^$_ble_term_nl]*){0,$offset}$"
+    [[ $text =~ $rex ]]
+    if [[ $BASH_REMATCH ]]; then
+      ((ret=index-${#BASH_REMATCH}))
+    else
+      ble-edit/text/find-logical-eol "$index" 0
+    fi
+  else
+    local text=${_ble_edit_str:index}
+    text=${text%%$'\n'*}
+    ((ret=index+${#text}))
+  fi
+}
+## 関数 ble/widget/vi-command/.find-logical-forward-bol [index [offset]]; ret
+##   _ble_edit_str 内で位置 index から offset 行だけ次の行の先頭位置を返します。
+##
+##   offset が 0 の場合は位置 index を含む行の行頭を返します。
+##   offset が正で offset だけ次の行がない場合は最終行の行頭を返します。
+##   特に次の行がない場合は現在の行頭を返します。
+##
+function ble-edit/text/find-logical-bol {
+  local index=${1:-$_ble_edit_ind} offset=${2:-0}
+  if ((offset>0)); then
+    local text=${_ble_edit_str:index}
+    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}"
+    [[ $text =~ $rex ]]
+    if [[ $BASH_REMATCH ]]; then
+      ((ret=index+${#BASH_REMATCH}))
+    else
+      ble-edit/text/find-logical-bol "$index" 0
+    fi
+  elif ((offset<0)); then
+    ble-edit/text/find-logical-eol "$index" "$offset"
+    ble-edit/text/find-logical-bol "$ret" 0
+  else
+    local text=${_ble_edit_str::index}
+    text=${text##*$'\n'}
+    ((ret=index-${#text}))
+  fi
+}
 
 # 
 # **** information pane ****                                         @line.info
@@ -2637,57 +2695,135 @@ function ble/widget/beginning-of-text {
   ble/widget/.goto-char 0
 }
 
+function ble/widget/beginning-of-logical-line {
+  ble-edit/text/find-logical-bol
+  ble/widget/.goto-char "$ret"
+}
+function ble/widget/end-of-logical-line {
+  ble-edit/text/find-logical-eol
+  ble/widget/.goto-char "$ret"
+}
+function ble/widget/kill-backward-logical-line {
+  ble-edit/text/find-logical-bol
+  ((0<ret&&ret==_ble_edit_ind&&ret--)) # 行頭にいる時は直前の改行を削除
+  ble/widget/.kill-range "$ret" "$_ble_edit_ind"
+}
+function ble/widget/kill-forward-logical-line {
+  ble-edit/text/find-logical-eol
+  ((ret<${#_ble_edit_ind}&&_ble_edit_ind==ret&&ret++)) # 行末にいる時は直後の改行を削除
+  ble/widget/.kill-range "$_ble_edit_ind" "$ret"
+}
+function ble/widget/forward-logical-line {
+  ((_ble_edit_ind<${#_ble_edit_str})) || return 1
+  local ret ind=$_ble_edit_ind
+  ble-edit/text/find-logical-bol "$ind" 0; local bol1=$ret
+  ble-edit/text/find-logical-bol "$ind" 1; local bol2=$ret
+  if ((bol1==bol2)); then
+    ble-edit/text/find-logical-eol
+    ble/widget/.goto-char "$ret"
+    ((ret!=ind))
+  else
+    ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+    local dst=$((bol2+ind-bol1))
+    ble/widget/.goto-char $((dst<eol2?dst:eol2))
+    return 0
+  fi
+}
+function ble/widget/backward-logical-line {
+  ((_ble_edit_ind>0)) || return 1
+  local ret ind=$_ble_edit_ind
+  ble-edit/text/find-logical-bol "$ind" 0; local bol1=$ret
+  ble-edit/text/find-logical-bol "$ind" -1; local bol2=$ret
+  if ((bol1==bol2)); then
+    ble/widget/.goto-char "$bol1"
+    ((bol1!=ind))
+  else
+    ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+    local dst=$((bol2+ind-bol1))
+    ble/widget/.goto-char $((dst<eol2?dst:eol2))
+    return 0
+  fi
+}
+
 function ble/widget/beginning-of-line {
-  local x y index
-  ble-edit/text/getxy.cur "$_ble_edit_ind"
-  ble-edit/text/get-index-at 0 "$y"
-  ble/widget/.goto-char "$index"
+  if ble-edit/text/is-position-up-to-date; then
+    # 配置情報があるときは表示行頭
+    local x y index
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at 0 "$y"
+    ble/widget/.goto-char "$index"
+  else
+    # 配置情報がないときは論理行頭
+    ble/widget/beginning-of-logical-line
+  fi
 }
 function ble/widget/end-of-line {
-  local x y index ax ay
-  ble-edit/text/getxy.cur "$_ble_edit_ind"
-  ble-edit/text/get-index-at 0 "$((y+1))"
-  ble-edit/text/getxy.cur --prefix=a "$index"
-  ((ay>y&&index--))
-  ble/widget/.goto-char "$index"
+  if ble-edit/text/is-position-up-to-date; then
+    # 配置情報があるときは表示行末
+    local x y index ax ay
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at 0 "$((y+1))"
+    ble-edit/text/getxy.cur --prefix=a "$index"
+    ((ay>y&&index--))
+    ble/widget/.goto-char "$index"
+  else
+    # 配置情報がないときは論理行末
+    ble/widget/end-of-logical-line
+  fi
 }
-
 function ble/widget/kill-backward-line {
-  local x y index
-  ble-edit/text/getxy.cur "$_ble_edit_ind"
-  ble-edit/text/get-index-at 0 "$y"
-  ((index==_ble_edit_ind&&index>0&&index--))
-  ble/widget/.kill-range "$index" "$_ble_edit_ind"
+  if ble-edit/text/is-position-up-to-date; then
+    local x y index
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at 0 "$y"
+    ((index==_ble_edit_ind&&index>0&&index--))
+    ble/widget/.kill-range "$index" "$_ble_edit_ind"
+  else
+    ble/widget/kill-backward-logical-line
+  fi
 }
 function ble/widget/kill-forward-line {
-  local x y index ax ay
-  ble-edit/text/getxy.cur "$_ble_edit_ind"
-  ble-edit/text/get-index-at 0 "$((y+1))"
-  ble-edit/text/getxy.cur --prefix=a "$index"
-  ((_ble_edit_ind+1<index&&ay>y&&index--))
-  ble/widget/.kill-range "$_ble_edit_ind" "$index"
+  if ble-edit/text/is-position-up-to-date; then
+    local x y index ax ay
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at 0 "$((y+1))"
+    ble-edit/text/getxy.cur --prefix=a "$index"
+    ((_ble_edit_ind+1<index&&ay>y&&index--))
+    ble/widget/.kill-range "$_ble_edit_ind" "$index"
+  else
+    ble/widget/kill-forward-logical-line
+  fi
 }
-
 function ble/widget/forward-line {
-  local x y index
-  ble-edit/text/.check-text-positions-update || return 1
-  ((_ble_edit_ind<_ble_line_text_cache_length)) || return 1
-  ble-edit/text/getxy.cur "$_ble_edit_ind"
-  ble-edit/text/get-index-at "$x" "$((y+1))"
-  ble/widget/.goto-char "$index"
-  ((_ble_edit_mark_active||y<_ble_line_endy))
+  ((_ble_edit_ind<${#_ble_edit_str})) || return 1
+  if ble-edit/text/is-position-up-to-date; then
+    # 配置情報があるときは表示行を移動
+    local x y index
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at "$x" "$((y+1))"
+    ble/widget/.goto-char "$index"
+    ((y<_ble_line_endy))
+  else
+    # 配置情報がないときは論理行を移動
+    ble/widget/forward-logical-line
+  fi
 }
 function ble/widget/backward-line {
-  local x y index
-
   # 一番初めの文字でも追い出しによって2行目以降に表示される可能性。
   # その場合に exit status 1 にする為に初めに check してしまう。
   ((_ble_edit_ind>0)) || return 1
 
-  ble-edit/text/getxy.cur "$_ble_edit_ind"
-  ble-edit/text/get-index-at "$x" "$((y-1))"
-  ble/widget/.goto-char "$index"
-  ((_ble_edit_mark_active||y>_ble_line_begy))
+  if ble-edit/text/is-position-up-to-date; then
+    # 配置情報があるときは表示行を移動
+    local x y index
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at "$x" "$((y-1))"
+    ble/widget/.goto-char "$index"
+    ((y>_ble_line_begy))
+  else
+    # 配置情報がないときは論理行を移動
+    ble/widget/backward-logical-line
+  fi
 }
 
 # 
@@ -3797,10 +3933,10 @@ function ble/widget/magic-space {
 }
 
 function ble/widget/forward-line-or-history-next {
-  ble/widget/forward-line || ble/widget/history-next
+  ble/widget/forward-line || ((_ble_edit_mark_active)) || ble/widget/history-next
 }
 function ble/widget/backward-line-or-history-prev {
-  ble/widget/backward-line || ble/widget/history-prev
+  ble/widget/backward-line || ((_ble_edit_mark_active)) || ble/widget/history-prev
 }
 
 

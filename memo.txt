@@ -626,72 +626,6 @@ tech
     @() や +() 等に関しては必ずバランスする事が保証されているのでこれも一緒くたに追跡すれば良い。
     問題は quote されている () "" であるがそれらは… \? '...' `...` を飛ばすという対応で良いのではないか。
 
-
-2016-09-14
-
-  * stackdump がまた出た。
-
-    | stackdump: 0 <= beg=28 <= end=29 <= len=1; beg=28, end=28, ins(1)=e
-    |   @ /home/murase/prog/ble/ble.sh:5133 (_ble_edit_str.replace)
-    |   @ /home/murase/prog/ble/ble.sh:-2006 (ble/widget/self-insert)
-    |   @ /home/murase/prog/ble/ble.sh:33 (ble-decode-key/.invoke-command)
-    |   @ /home/murase/prog/ble/ble.sh:22 (ble-decode-key/.invoke-partial-match)
-    |   @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
-    |   @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
-    |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
-    |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
-    |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-    | stackdump: 0 <= beg=2 <= end=3 <= len=2; beg=2, end=2, ins(1)=c
-    |   @ /home/murase/prog/ble/ble.sh:5133 (_ble_edit_str.replace)
-    |   @ /home/murase/prog/ble/ble.sh:-2006 (ble/widget/self-insert)
-    |   @ /home/murase/prog/ble/ble.sh:33 (ble-decode-key/.invoke-command)
-    |   @ /home/murase/prog/ble/ble.sh:22 (ble-decode-key/.invoke-partial-match)
-    |   @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
-    |   @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
-    |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
-    |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
-    |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-    | stackdump: 0 <= beg=3 <= end=4 <= len=3; beg=3, end=3, ins(1)=h
-    |   @ /home/murase/prog/ble/ble.sh:5133 (_ble_edit_str.replace)
-    |   @ /home/murase/prog/ble/ble.sh:-2006 (ble/widget/self-insert)
-    |   @ /home/murase/prog/ble/ble.sh:33 (ble-decode-key/.invoke-command)
-    |   @ /home/murase/prog/ble/ble.sh:22 (ble-decode-key/.invoke-partial-match)
-    |   @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
-    |   @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
-    |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
-    |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
-    |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
-    | (略) つづきは同様
-
-    1 不思議なのは _ble_edit_str.replace で修正が入っている筈なのに、
-      エラー状態が継続している事である。
-      よく見ると、修正によって初回よりはましな値になっていると言え
-      end の値が文字列の長さよりも一つ多いものになっている。
-
-      取り敢えず、初めに発生したエラーの原因は別の所にあるとしても、
-      修正部分のコードが間違っている可能性があるので修正する。
-
-      確認してみたところ、_ble_edit_str.replace は _ble_edit_ind を修正するとは言っても、
-      その場で許容される値に修正するだけで _ble_edit_str.replace 呼び出し元での
-      _ble_edit_ind に対する操作も含めての修正ではない。
-      従って、_ble_edit_str.replace の中で _ble_edit_ind を修正しても仕方がない。
-
-      →どうも観察してみたところ、_ble_edit_str.replace の呼び出し元では、全て、
-      _ble_edit_str.replace を呼び出した後に _ble_edit_ind を更新している様である。
-      つまり、_ble_edit_str.replace 呼び出し時点では、_ble_edit_ind の値は
-      文字列挿入前の値になっていると想定して良い。
-      と思ったが、そうでは無い物もあったので、それについては処理の順序を入れ替える。
-      という訳で、これでエラーが発生した時の _ble_edit_ind の修正は正しくなった筈である。
-      序に _ble_edit_mark に関しても同様の修正を行う様にする。
-
-    2 もう一つの問題点はそもそも何故初めに変な値になったのかという事である。
-      特に beg=28 end=28 という値になっている。
-      因みにこの時前に実行したコマンドは "gunzip -c xp.img.gz | wc -c" の 27 文字であり、
-      またエラーが発生したのは最新の編集行に echo と入力しようとした瞬間である。
-      勿論、最新の編集行に入力しようとすると必ずなる訳ではなく
-      (恐らく直前の操作手順に応じて) このエラーが発生したりしなかったりする。
-
-
 2016-09-11
 
   * やはり履歴のロード時間が気になる。
@@ -882,47 +816,6 @@ tech
 
     記述の汚さの割に大幅な高速化が見込める訳ではないので現在は採用していない。
     今後高速化で問題になる様なことがあれば上記の項目・その他について考える。
-
-2016-06-25
-
-  * また stackdump が出た。
-
-    .ble-edit/delete-backward-char および insert-char で起こっている。
-    表示されている内容から察するに、_ble_edit_ind が変な値になっている様だ。
-    また、履歴を上下で移動した後に起こっている事も分かっている。
-
-    | stackdump: 0 <= beg=10 <= end=10 <= len=8; beg=10, end=11, ins(0)=
-    |   @ /home/murase/prog/ble/ble.sh:17 (_ble_edit_str.replace)
-    |   @ /home/murase/prog/ble/ble.sh:11 (.ble-edit/delete-backward-char)
-    |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit.delete-char)
-    |   @ /home/murase/prog/ble/ble.sh:4 (ble/widget/delete-backward-char)
-    |   @ /home/murase/prog/ble/ble.sh:-1794 (ble/widget/delete-region-or)
-    |   @ /home/murase/prog/ble/ble.sh:16 (ble-decode-key/.invoke-command)
-
-    この前の修正で完全に直っていたはずだと思ったのだが何故だろうか。
-    make を実行したら ble.sh が更新されてしまったので ble.sh
-    が中途半端な状態にあったのかも知れない。
-    丁度最近、検索の速度向上の為に一時的に単一の配列だけを参照する様に
-    書き換えたりなどしていた後である。
-    また、暫く様子を見てそれでも出る様だったらまた原因を探る必要がある。
-
-    或いは、今先程エラーが起こったシェルの history next 関数を調べて、
-    その内容がどの様な状態になっているかを確認すれば、
-    エラーが起こる様な状態に丁度編集していた最中だったかどうかが分かる。
-    →実際のループ処理を行っているのは ble-edit/isearch/next-history-resume.fib
-    の中である。ロードされている関数の中身を確認してみた所、
-    ちゃんとこの前修正した二つの配列を参照して内容を決定する部分は正しい。
-
-    | if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
-    |     ind="$i";
-    |     break;
-    | fi;
-
-    では何が悪いのだろうか。考えてみると長い履歴項目を弄った後に、
-    一番下の (空の) 項目に戻ってきた時に起こった様な気がする。
-    うーんそれでも再現は簡単にはしない…。
-    又エラーの起こった状態から復帰する為に
-    _ble_edit_ind は調整を行ってしまうのが良い。
 
 2016-06-20
 
@@ -2063,6 +1956,137 @@ tech
 -------------------------------------------------------------------------------
 
 2017-09-07
+
+  * ble-edit で ble-edit/text/update/position が実行済みかのチェックを入れたら
+    history-next, history-prev を実行した後の
+    forward-line, backward-line で引っかかる様になった。
+
+    当初は一つの入力に対して forward-line, backward-line のみを呼び出すならば、
+    編集文字列の変更はなく常に配置情報は最新になっているはずに違いないと考えたが、
+    よく考えたら stdin に入力が溜まっている場合には配置計算を省略するようにしているので、
+    上下のキーを連打すると容易に配置情報が更新されていない状態で forward-line/backward-line が呼び出される。
+
+    これは今までもチェックしていなかったために気付いていなかっただけで、
+    今までも getxy.cur や get-index-at の計算が誤っていた事になる。
+    実はこれが今までの _ble_edit_ind out of range のエラーの原因だったのではないか。
+    これについては再現するかどうかを確かめた後に検証する必要がある。
+
+    →修正した。配置情報を使うコマンドに関しては
+      ble-edit/text/update/position の結果が最新の場合とそうでない場合で
+      動作を切り替える様に改修した。
+
+    →検証するのは面倒なのでやめた。
+      今までの assertion failure は全て履歴の移動の後に起こっていたので
+      もうこれが原因だということで恐らく間違いないだろう。
+      取り敢えず今までの assertion failure の報告は全て解決済みとする。
+      その上でまた assertion failure が出たらその時に改めて調査する事にする。
+
+    | 2016-09-14
+    |
+    | * stackdump がまた出た。
+    |
+    |   | stackdump: 0 <= beg=28 <= end=29 <= len=1; beg=28, end=28, ins(1)=e
+    |   |   @ /home/murase/prog/ble/ble.sh:5133 (_ble_edit_str.replace)
+    |   |   @ /home/murase/prog/ble/ble.sh:-2006 (ble/widget/self-insert)
+    |   |   @ /home/murase/prog/ble/ble.sh:33 (ble-decode-key/.invoke-command)
+    |   |   @ /home/murase/prog/ble/ble.sh:22 (ble-decode-key/.invoke-partial-match)
+    |   |   @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
+    |   |   @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
+    |   |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
+    |   |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
+    |   |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |   | stackdump: 0 <= beg=2 <= end=3 <= len=2; beg=2, end=2, ins(1)=c
+    |   |   @ /home/murase/prog/ble/ble.sh:5133 (_ble_edit_str.replace)
+    |   |   @ /home/murase/prog/ble/ble.sh:-2006 (ble/widget/self-insert)
+    |   |   @ /home/murase/prog/ble/ble.sh:33 (ble-decode-key/.invoke-command)
+    |   |   @ /home/murase/prog/ble/ble.sh:22 (ble-decode-key/.invoke-partial-match)
+    |   |   @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
+    |   |   @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
+    |   |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
+    |   |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
+    |   |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |   | stackdump: 0 <= beg=3 <= end=4 <= len=3; beg=3, end=3, ins(1)=h
+    |   |   @ /home/murase/prog/ble/ble.sh:5133 (_ble_edit_str.replace)
+    |   |   @ /home/murase/prog/ble/ble.sh:-2006 (ble/widget/self-insert)
+    |   |   @ /home/murase/prog/ble/ble.sh:33 (ble-decode-key/.invoke-command)
+    |   |   @ /home/murase/prog/ble/ble.sh:22 (ble-decode-key/.invoke-partial-match)
+    |   |   @ /home/murase/prog/ble/ble.sh:37 (ble-decode-key)
+    |   |   @ /home/murase/prog/ble/ble.sh:92 (ble-decode-char/.send-modified-key)
+    |   |   @ /home/murase/prog/ble/ble.sh:50 (ble-decode-char)
+    |   |   @ /home/murase/prog/ble/ble.sh:-966 (ble-decode-byte+UTF-8)
+    |   |   @ /home/murase/prog/ble/ble.sh:1 (ble-decode-byte:bind)
+    |   | (略) つづきは同様
+    |
+    |   1 不思議なのは _ble_edit_str.replace で修正が入っている筈なのに、
+    |     エラー状態が継続している事である。
+    |     よく見ると、修正によって初回よりはましな値になっていると言え
+    |     end の値が文字列の長さよりも一つ多いものになっている。
+    |
+    |     取り敢えず、初めに発生したエラーの原因は別の所にあるとしても、
+    |     修正部分のコードが間違っている可能性があるので修正する。
+    |
+    |     確認してみたところ、_ble_edit_str.replace は _ble_edit_ind を修正するとは言っても、
+    |     その場で許容される値に修正するだけで _ble_edit_str.replace 呼び出し元での
+    |     _ble_edit_ind に対する操作も含めての修正ではない。
+    |     従って、_ble_edit_str.replace の中で _ble_edit_ind を修正しても仕方がない。
+    |
+    |     →どうも観察してみたところ、_ble_edit_str.replace の呼び出し元では、全て、
+    |     _ble_edit_str.replace を呼び出した後に _ble_edit_ind を更新している様である。
+    |     つまり、_ble_edit_str.replace 呼び出し時点では、_ble_edit_ind の値は
+    |     文字列挿入前の値になっていると想定して良い。
+    |     と思ったが、そうでは無い物もあったので、それについては処理の順序を入れ替える。
+    |     という訳で、これでエラーが発生した時の _ble_edit_ind の修正は正しくなった筈である。
+    |     序に _ble_edit_mark に関しても同様の修正を行う様にする。
+    |
+    |   2 もう一つの問題点はそもそも何故初めに変な値になったのかという事である。
+    |     特に beg=28 end=28 という値になっている。
+    |     因みにこの時前に実行したコマンドは "gunzip -c xp.img.gz | wc -c" の 27 文字であり、
+    |     またエラーが発生したのは最新の編集行に echo と入力しようとした瞬間である。
+    |     勿論、最新の編集行に入力しようとすると必ずなる訳ではなく
+    |     (恐らく直前の操作手順に応じて) このエラーが発生したりしなかったりする。
+    |
+    |
+    | 2016-06-25
+    |
+    | * また stackdump が出た。
+    |
+    |   .ble-edit/delete-backward-char および insert-char で起こっている。
+    |   表示されている内容から察するに、_ble_edit_ind が変な値になっている様だ。
+    |   また、履歴を上下で移動した後に起こっている事も分かっている。
+    |
+    |   | stackdump: 0 <= beg=10 <= end=10 <= len=8; beg=10, end=11, ins(0)=
+    |   |   @ /home/murase/prog/ble/ble.sh:17 (_ble_edit_str.replace)
+    |   |   @ /home/murase/prog/ble/ble.sh:11 (.ble-edit/delete-backward-char)
+    |   |   @ /home/murase/prog/ble/ble.sh:1 (.ble-edit.delete-char)
+    |   |   @ /home/murase/prog/ble/ble.sh:4 (ble/widget/delete-backward-char)
+    |   |   @ /home/murase/prog/ble/ble.sh:-1794 (ble/widget/delete-region-or)
+    |   |   @ /home/murase/prog/ble/ble.sh:16 (ble-decode-key/.invoke-command)
+    |
+    |   この前の修正で完全に直っていたはずだと思ったのだが何故だろうか。
+    |   make を実行したら ble.sh が更新されてしまったので ble.sh
+    |   が中途半端な状態にあったのかも知れない。
+    |   丁度最近、検索の速度向上の為に一時的に単一の配列だけを参照する様に
+    |   書き換えたりなどしていた後である。
+    |   また、暫く様子を見てそれでも出る様だったらまた原因を探る必要がある。
+    |
+    |   或いは、今先程エラーが起こったシェルの history next 関数を調べて、
+    |   その内容がどの様な状態になっているかを確認すれば、
+    |   エラーが起こる様な状態に丁度編集していた最中だったかどうかが分かる。
+    |   →実際のループ処理を行っているのは ble-edit/isearch/next-history-resume.fib
+    |   の中である。ロードされている関数の中身を確認してみた所、
+    |   ちゃんとこの前修正した二つの配列を参照して内容を決定する部分は正しい。
+    |
+    |   | if [[ ${_ble_edit_history_edit[i]-${_ble_edit_history[i]}} == *"$needle"* ]]; then
+    |   |     ind="$i";
+    |   |     break;
+    |   | fi;
+    |
+    |   では何が悪いのだろうか。考えてみると長い履歴項目を弄った後に、
+    |   一番下の (空の) 項目に戻ってきた時に起こった様な気がする。
+    |   うーんそれでも再現は簡単にはしない…。
+    |   又エラーの起こった状態から復帰する為に
+    |   _ble_edit_ind は調整を行ってしまうのが良い。
+
 
   * 2017-09-04 vi-mode に対応する (初期計画)
 
