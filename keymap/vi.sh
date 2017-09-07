@@ -151,6 +151,8 @@ function ble/widget/vi-command/beginning-of-line {
   elif [[ $flag == [cd] ]]; then
     ble/widget/.kill-range "$beg" "$_ble_edit_ind" 1
     [[ $flag == c ]] && ble/widget/vi-command/insert-mode
+  elif [[ $flag ]]; then
+    ble/widget/.bell
   else
     ble/widget/.goto-char "$beg"
   fi
@@ -175,6 +177,8 @@ function ble/widget/vi-command/forward-char {
     fi
   elif [[ $flag == y ]]; then
     ble/widget/.copy-range $_ble_edit_ind $((_ble_edit_ind+count)) 1
+  elif [[ $flag ]]; then
+    ble/widget/.bell
   else
     ((count)) && ble-edit/text/nonbol-eolp $((_ble_edit_ind+count)) && ((count--))
     if ((count)); then
@@ -200,6 +204,8 @@ function ble/widget/vi-command/backward-char {
   elif [[ $flag == y ]]; then
     ble/widget/.copy-range $((_ble_edit_ind-count)) $_ble_edit_ind 1
     ble/widget/.goto-char _ble_edit_ind-count
+  elif [[ $flag ]]; then
+    ble/widget/.bell
   else
     if ((count)); then
       ble/widget/.goto-char _ble_edit_ind-count
@@ -277,6 +283,8 @@ function ble/widget/vi-command/.relative-line {
       [[ $flag == c ]] && ble/widget/vi-command/insert-mode
     fi
     return
+  elif [[ $flag ]]; then
+    ble/widget/.bell
   fi
 
   # 現在の履歴項目内での探索
@@ -363,6 +371,8 @@ function ble/widget/vi-command/.first-non-space-of-relative-line {
       fi
     fi
     return
+  elif [[ $flag ]]; then
+    ble/widget/.bell
   fi
 
   local count=$((arg<0?-arg:arg))
@@ -411,6 +421,8 @@ function ble/widget/vi-command/forward-eol {
     else
       ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
     fi
+  elif [[ $flag ]]; then
+    ble/widget/.bell
   else
     ble-edit/text/nonbol-eolp "$dst" && ((dst--))
     ble/widget/.goto-char "$dst"
@@ -450,15 +462,17 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f '+' vi-command/first-non-space-of-forward-line
   ble-bind -f '-' vi-command/first-non-space-of-backward-line
 
-  ble-bind -f h vi-command/backward-char
-  ble-bind -f j vi-command/forward-line
-  ble-bind -f k vi-command/backward-line
-  ble-bind -f l vi-command/forward-char
-
+  ble-bind -f h     vi-command/backward-char
+  ble-bind -f l     vi-command/forward-char
   ble-bind -f left  vi-command/backward-char
+  ble-bind -f right vi-command/forward-char
+
+  ble-bind -f j     vi-command/forward-line
+  ble-bind -f k     vi-command/backward-line
   ble-bind -f down  vi-command/forward-line
   ble-bind -f up    vi-command/backward-line
-  ble-bind -f right vi-command/forward-char
+  ble-bind -f C-n   vi-command/forward-line
+  ble-bind -f C-p   vi-command/backward-line
 
   #----------------------------------------------------------------------------
   # temporary implementations
