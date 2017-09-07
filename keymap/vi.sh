@@ -431,6 +431,54 @@ function ble/widget/vi-command/forward-eol {
   # todo: (要相談) 履歴項目の移動もするか?
 }
 
+#------------------------------------------------------------------------------
+# command: p P
+
+function ble/widget/vi-command/.paste {
+  local arg=$1 flag=$2 is_after=$3
+  if [[ $flag ]]; then
+    ble/widget/.bell
+    return 1
+  fi
+
+  [[ $_ble_edit_kill_ring ]] || return 0
+  local ret
+  if [[ $_ble_edit_kill_type == L ]]; then
+    if ((is_after)); then
+      ble-edit/text/find-logical-eol
+      if ((ret==${#_ble_edit_str})); then
+        ble/widget/.goto-char ret
+        ble/widget/insert-string $'\n'
+      else
+        ble/widget/.goto-char ret+1
+      fi
+    else
+      ble-edit/text/find-logical-bol
+      ble/widget/.goto-char "$ret"
+    fi
+    local ind=$_ble_edit_ind
+    ble/string#repeat "${_ble_edit_kill_ring%$_ble_term_nl}$_ble_term_nl" "$arg"
+    ble/widget/insert-string "$ret"
+    ble/widget/.goto-char ind
+    ble/widget/vi-command/first-non-space-of-line
+  else
+    if ((is_after&&_ble_edit_ind<${#_ble_edit_str})); then
+      ble/widget/.goto-char _ble_edit_ind+1
+    fi
+    ble/string#repeat "$_ble_edit_kill_ring" "$arg"
+    ble/widget/insert-string "$ret"
+    ble/widget/.goto-char _ble_edit_ind-1
+  fi
+}
+
+function ble/widget/vi-command/paste-after {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.paste "$arg" "$flag" 1
+}
+function ble/widget/vi-command/paste-before {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.paste "$arg" "$flag" 0
+}
 
 #------------------------------------------------------------------------------
 
@@ -454,6 +502,9 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f y 'vi-command/arg-append yank-current-line'
   ble-bind -f d 'vi-command/arg-append delete-current-line'
   ble-bind -f c 'vi-command/arg-append delete-current-line-and-insert'
+
+  ble-bind -f p vi-command/paste-after
+  ble-bind -f P vi-command/paste-before
 
   ble-bind -f home vi-command/beginning-of-line
   ble-bind -f '$' vi-command/forward-eol
