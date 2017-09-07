@@ -2497,6 +2497,7 @@ function ble/widget/.bell {
 function ble/widget/bell {
   ble/widget/.bell
   _ble_edit_mark_active=
+  _ble_edit_arg=
 }
 
 # 

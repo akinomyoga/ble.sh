@@ -454,9 +454,16 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f up    vi-command/backward-line
   ble-bind -f right vi-command/forward-char
 
+  #----------------------------------------------------------------------------
+  # temporary implementations
+
   # ble-bind -f C-h   vi-command/backward-char + 行頭にいるとき前の行に
   # ble-bind -f DEL   vi-command/backward-char + 行頭にいるとき前の行に
   # ble-bind -f SP    vi-command/forward-char + 行末にいるとき次の行に
+
+  # ble-bind -f C-h backward-char
+  # ble-bind -f DEL backward-char
+  # ble-bind -f SP  forward-char
 
   #----------------------------------------------------------------------------
   # bash
@@ -464,6 +471,11 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'C-q' quoted-insert
   ble-bind -f 'C-v' quoted-insert
 
+  ble-bind -f 'C-j' accept-line
+  ble-bind -f 'C-m' accept-single-line-or-newline
+  ble-bind -f 'RET' accept-single-line-or-newline
+  ble-bind -f 'C-g' bell
+  ble-bind -f 'C-l' clear-screen
 }
 
 function ble-decode-keymap:vi_insert/define {
@@ -507,22 +519,22 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'C-r'     history-isearch-backward
   ble-bind -f 'C-s'     history-isearch-forward
   ble-bind -f 'C-RET'   history-expand-line
-  ble-bind -f 'M-<'     history-beginning
-  ble-bind -f 'M->'     history-end
+  # ble-bind -f 'M-<'     history-beginning
+  # ble-bind -f 'M->'     history-end
   ble-bind -f 'C-prior' history-beginning
   ble-bind -f 'C-next'  history-end
   ble-bind -f 'SP'      magic-space
 
   # kill
   ble-bind -f 'C-@'      set-mark
-  ble-bind -f 'M-SP'     set-mark
+  # ble-bind -f 'M-SP'     set-mark
   ble-bind -f 'C-x C-x'  exchange-point-and-mark
   ble-bind -f 'C-w'      'kill-region-or uword'
-  ble-bind -f 'M-w'      'copy-region-or uword'
+  # ble-bind -f 'M-w'      'copy-region-or uword'
   ble-bind -f 'C-y'      yank
 
   # spaces
-  ble-bind -f 'M-\'      delete-horizontal-space
+  # ble-bind -f 'M-\'      delete-horizontal-space
 
   # charwise operations
   ble-bind -f 'C-f'      'nomarked forward-char'
@@ -542,35 +554,35 @@ function ble-decode-keymap:vi_insert/define {
   # wordwise operations
   ble-bind -f 'C-right'   'nomarked forward-cword'
   ble-bind -f 'C-left'    'nomarked backward-cword'
-  ble-bind -f 'M-right'   'nomarked forward-sword'
-  ble-bind -f 'M-left'    'nomarked backward-sword'
+  # ble-bind -f 'M-right'   'nomarked forward-sword'
+  # ble-bind -f 'M-left'    'nomarked backward-sword'
   ble-bind -f 'S-C-right' 'marked forward-cword'
   ble-bind -f 'S-C-left'  'marked backward-cword'
-  ble-bind -f 'S-M-right' 'marked forward-sword'
-  ble-bind -f 'S-M-left'  'marked backward-sword'
-  ble-bind -f 'M-d'       kill-forward-cword
-  ble-bind -f 'M-h'       kill-backward-cword
+  # ble-bind -f 'S-M-right' 'marked forward-sword'
+  # ble-bind -f 'S-M-left'  'marked backward-sword'
+  # ble-bind -f 'M-d'       kill-forward-cword
+  # ble-bind -f 'M-h'       kill-backward-cword
   ble-bind -f 'C-delete'  delete-forward-cword  # C-delete
   ble-bind -f 'C-_'       delete-backward-cword # C-BS
-  ble-bind -f 'M-delete'  copy-forward-sword    # M-delete
-  ble-bind -f 'M-DEL'     copy-backward-sword   # M-BS
+  # ble-bind -f 'M-delete'  copy-forward-sword    # M-delete
+  # ble-bind -f 'M-DEL'     copy-backward-sword   # M-BS
 
-  ble-bind -f 'M-f'       'nomarked forward-cword'
-  ble-bind -f 'M-b'       'nomarked backward-cword'
-  ble-bind -f 'M-F'       'marked forward-cword'
-  ble-bind -f 'M-B'       'marked backward-cword'
+  # ble-bind -f 'M-f'       'nomarked forward-cword'
+  # ble-bind -f 'M-b'       'nomarked backward-cword'
+  # ble-bind -f 'M-F'       'marked forward-cword'
+  # ble-bind -f 'M-B'       'marked backward-cword'
 
   # linewise operations
   ble-bind -f 'C-a'    'nomarked beginning-of-line'
   ble-bind -f 'C-e'    'nomarked end-of-line'
   ble-bind -f 'home'   'nomarked beginning-of-line'
   ble-bind -f 'end'    'nomarked end-of-line'
-  ble-bind -f 'M-m'    'nomarked beginning-of-line'
+  # ble-bind -f 'M-m'    'nomarked beginning-of-line'
   ble-bind -f 'S-C-a'  'marked beginning-of-line'
   ble-bind -f 'S-C-e'  'marked end-of-line'
   ble-bind -f 'S-home' 'marked beginning-of-line'
   ble-bind -f 'S-end'  'marked end-of-line'
-  ble-bind -f 'S-M-m'  'marked beginning-of-line'
+  # ble-bind -f 'S-M-m'  'marked beginning-of-line'
   ble-bind -f 'C-k'    kill-forward-line
   ble-bind -f 'C-u'    kill-backward-line
 
