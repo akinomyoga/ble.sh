@@ -77,6 +77,11 @@ function ble/widget/vi-command/replace-mode {
   _ble_edit_overwrite_mode=1
   ble/widget/vi-command/insert-mode
 }
+function ble/widget/vi-command/@popped {
+  _ble_edit_arg=
+  ble-decode/keymap/pop
+  ble/widget/"$@"
+}
 
 #------------------------------------------------------------------------------
 # arg     : 0-9 d y c
@@ -638,9 +643,9 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'C-q' quoted-insert
   ble-bind -f 'C-v' quoted-insert
 
-  ble-bind -f 'C-j' accept-line
-  ble-bind -f 'C-m' accept-single-line-or-newline
-  ble-bind -f 'RET' accept-single-line-or-newline
+  ble-bind -f 'C-j' 'vi-command/@popped accept-line'
+  ble-bind -f 'C-m' 'vi-command/@popped accept-single-line-or-newline'
+  ble-bind -f 'RET' 'vi-command/@popped accept-single-line-or-newline'
   ble-bind -f 'C-g' bell
   ble-bind -f 'C-l' clear-screen
 }
