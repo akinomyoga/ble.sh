@@ -2397,6 +2397,7 @@ function ble/widget/copy-region-or {
 function ble/widget/.bell {
   [[ $bleopt_edit_vbell ]] && ble-term/visible-bell "$1"
   [[ $bleopt_edit_abell ]] && ble-term/audible-bell
+  return 0
 }
 function ble/widget/bell {
   ble/widget/.bell
