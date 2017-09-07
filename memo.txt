@@ -1957,6 +1957,12 @@ tech
 
 2017-09-07
 
+  * ble-edit: 履歴の初期位置がおかしい。
+
+    これは先程 ble-edit/history/load は ble-edit/history/goto
+    でどうせ使うから呼び出さなくても良いとして削除したのがいけない。
+    goto の引数に渡している値を取得するのに load が必要である。
+
   * ble-edit で ble-edit/text/update/position が実行済みかのチェックを入れたら
     history-next, history-prev を実行した後の
     forward-line, backward-line で引っかかる様になった。
