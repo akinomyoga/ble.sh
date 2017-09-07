@@ -176,68 +176,15 @@ function ble/string#count-char {
   ret=${#text}
 }
 
-## 関数 ble-edit/text/find-logical-eol [index [offset]]; ret
-##   _ble_edit_str 内で位置 index から offset 行だけ次の行の終端位置を返します。
-##
-##   offset が 0 の場合は位置 index を含む行の行末を返します。
-##   offset が正で offset 次の行がない場合は ${#_ble_edit_str} を返します。
-##
-function ble-edit/text/find-logical-eol {
-  local index=${1:-$_ble_edit_ind} offset=${1:-0}
-  if ((offset>0)); then
-    local text=${_ble_edit_str:index}
-    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}[^$_ble_term_nl]*"
-    [[ $text =~ $rex ]]
-    ((ret=index+${#BASH_REMATCH}))
-  elif ((offset<0)); then
-    local text=${_ble_edit_str::index}
-    local rex="($_ble_term_nl[^$_ble_term_nl]*){0,$offset}$"
-    [[ $text =~ $rex ]]
-    if [[ $BASH_REMATCH ]]; then
-      ((ret=index-${#BASH_REMATCH}))
-    else
-      ble-edit/text/find-logical-eol "$index" 0
-    fi
-  else
-    local text=${_ble_edit_str:index}
-    text=${text%%$'\n'*}
-    ((ret=index+${#text}))
-  fi
-}
-## 関数 ble/widget/vi-command/.find-logical-forward-bol [index [offset]]; ret
-##   _ble_edit_str 内で位置 index から offset 行だけ次の行の先頭位置を返します。
-##
-##   offset が 0 の場合は位置 index を含む行の行頭を返します。
-##   offset が正で offset だけ次の行がない場合は最終行の行頭を返します。
-##   特に次の行がない場合は現在の行頭を返します。
-##
-function ble-edit/text/find-logical-bol {
-  local index=${1:-$_ble_edit_ind} offset=${2:-0}
-  if ((offset>0)); then
-    local text=${_ble_edit_str:index}
-    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}"
-    [[ $text =~ $rex ]]
-    if [[ $BASH_REMATCH ]]; then
-      ((ret=index+${#BASH_REMATCH}))
-    else
-      ble-edit/text/find-logical-bol "$index" 0
-    fi
-  elif ((offset<0)); then
-    ble-edit/text/find-logical-eol "$index" "$offset"
-    ble-edit/text/find-logical-bol "$ret" 0
-  else
-    local text=${_ble_edit_str::index}
-    text=${text##*$'\n'}
-    ((ret=index-${#text}))
-  fi
-}
-
 ## 編集関数 ble/widget/vi-command/forward-line
 ## 編集関数 ble/widget/vi-command/backward-line
 ##
-##   j, k による移動の動作について。
-##   論理行を移動するとする。列は行頭からの相対表示位置 (dx,dy) を保持する。
-##   別の履歴項目に移った時は列は先頭に移る。
+##   j, k による移動の動作について。論理行を移動するとする。
+##   配置情報があるとき、列は行頭からの相対表示位置 (dx,dy) を保持する。
+##   配置情報がないとき、論理列を保持する。
+##
+##   より前の履歴項目に移った時は列は行末に移る。
+##   より後の履歴項目に移った時は列は先頭に移る。
 ##
 ##   todo: 移動開始時の相対表示位置の記録は現在行っていない。
 ##
@@ -268,18 +215,26 @@ function ble/widget/vi-command/.forward-line {
   ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; local nmove=$ret
   ((count-=nmove))
   if ((count==0)); then
-    local b1x b1y; ble-edit/text/getxy.cur --prefix=b1 "$bol1"
-    local b2x b2y; ble-edit/text/getxy.cur --prefix=b2 "$bol2"
+    if ble-edit/text/is-position-up-to-date; then
+      # 列の表示相対位置 (x,y) を保持
+      local b1x b1y; ble-edit/text/getxy.cur --prefix=b1 "$bol1"
+      local b2x b2y; ble-edit/text/getxy.cur --prefix=b2 "$bol2"
 
-    ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
-    local c1x c1y; ble-edit/text/getxy.cur --prefix=c1 "$ind"
-    local e2x e2y; ble-edit/text/getxy.cur --prefix=e2 "$eol2"
+      ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+      local c1x c1y; ble-edit/text/getxy.cur --prefix=c1 "$ind"
+      local e2x e2y; ble-edit/text/getxy.cur --prefix=e2 "$eol2"
 
-    local x=$c1x y=$((b2y+c1y-b1y))
-    ((y>e2y&&(x=e2x,y=e2y)))
+      local x=$c1x y=$((b2y+c1y-b1y))
+      ((y>e2y&&(x=e2x,y=e2y)))
 
-    ble-edit/text/get-index-at $x $y
-    ble/widget/.goto-char "$index"
+      local index; ble-edit/text/get-index-at $x $y
+      ble/widget/.goto-char "$index"
+    else
+      # 論理列を保持
+      ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+      local index; ((index=bol2+ind-bol1,index>eol2&&(index=eol2)))
+      ble/widget/.goto-char "$index"
+    fi
     return
   fi
 
