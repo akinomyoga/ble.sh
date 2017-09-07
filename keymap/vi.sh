@@ -165,7 +165,7 @@ function ble/widget/vi-command/beginning-of-line {
 }
 
 #------------------------------------------------------------------------------
-# command: [cdy]?[hjkl]
+# command: [cdy]?[hl|]
 
 function ble/widget/vi-command/forward-char {
   local arg flag; ble/widget/vi-command/.get-arg 1
@@ -220,6 +220,41 @@ function ble/widget/vi-command/backward-char {
     fi
   fi
 }
+
+function ble/widget/vi-command/column {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+
+  local ret index
+  ble-edit/text/find-logical-bol; local bol=$ret
+  ble-edit/text/find-logical-eol; local eol=$ret
+  if ble-edit/text/is-position-up-to-date; then
+    local bx by; ble-edit/text/getxy.cur --prefix=b "$bol" # Note: 先頭行はプロンプトにより bx!=0
+    local ex ey; ble-edit/text/getxy.cur --prefix=e "$eol"
+    local dstx=$((bx+arg-1)) dsty=$by cols=${COLUMNS:-80}
+    ((dsty+=dstx/cols,dstx%=cols))
+    ((dsty>ey&&(dsty=ey,dstx=ex)))
+    ble-edit/text/get-index-at "$dstx" "$dsty" # local variable "index" is set here
+    ble-edit/text/nonbol-eolp "$index" && ((index--))
+  else
+    ble-edit/text/nonbol-eolp "$eol" && ((eol--))
+    ((index=bol+arg-1,index>eol?(index=eol)))
+  fi
+
+  if [[ $flag == [cd] ]]; then
+    ble/widget/.kill-range "$_ble_edit_ind" "$index" 0
+    [[ $flag == c ]] && ble/widget/vi-command/insert-mode
+  elif [[ $flag == y ]]; then
+    ble/widget/.copy-range "$_ble_edit_ind" "$index" 1
+    ((index<_ble_edit_ind)) && ble/widget/.goto-char index
+  elif [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    ble/widget/.goto-char index
+  fi
+}
+
+#------------------------------------------------------------------------------
+# command: [cdy]?[jk]
 
 function ble/string#count-char {
   local text=$1 char=$2
@@ -533,11 +568,12 @@ function ble/widget/vi-command/kill-forward-line-and-insert {
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
-  ble-bind -f i vi-command/insert-mode
-  ble-bind -f I vi-command/insert-bol-mode
-  ble-bind -f R vi-command/replace-mode
-  ble-bind -f a vi-command/append-mode
-  ble-bind -f A vi-command/append-eol-mode
+  ble-bind -f i      vi-command/insert-mode
+  ble-bind -f I      vi-command/insert-bol-mode
+  ble-bind -f R      vi-command/replace-mode
+  ble-bind -f a      vi-command/append-mode
+  ble-bind -f A      vi-command/append-eol-mode
+  ble-bind -f insert vi-command/insert-mode
 
   ble-bind -f 0 vi-command/arg-append
   ble-bind -f 1 vi-command/arg-append
@@ -583,6 +619,8 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f X      vi-command/kill-backward-char
   ble-bind -f delete vi-command/kill-forward-char
 
+  ble-bind -f '|' vi-command/column
+
   #----------------------------------------------------------------------------
   # temporary implementations
 
@@ -615,6 +653,7 @@ function ble-decode-keymap:vi_insert/define {
 
   ble-bind -f 'ESC' vi-insert/normal-mode
   ble-bind -f 'C-[' vi-insert/normal-mode
+  ble-bind -f 'C-|' vi-insert/normal-mode
   ble-bind -f 'C-c' vi-insert/normal-mode
 
   ble-bind -f insert overwrite-mode
@@ -642,7 +681,7 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
   ble-bind -cf 'C-z'     fg
-  ble-bind -cf 'M-z'     fg
+  # ble-bind -cf 'M-z'     fg
 
   # history
   ble-bind -f 'C-r'     history-isearch-backward
