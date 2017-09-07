@@ -1418,9 +1418,16 @@ function ble-edit/text/.check-text-positions-update {
   ble-assert '((_ble_edit_dirty_draw_beg==-1))' 'dirty text positions'
 }
 
-## 関数 ble-edit/text/getxy iN
-##   @var[out] x
-##   @var[out] y
+## 関数 ble-edit/text/getxy index
+##   index 番目の文字の出力開始位置を取得します。
+##
+##   @var[out] x y
+##
+##   行末に収まらない文字の場合は行末のスペースを埋める為に
+##   配列 _ble_line_text_cache_cs において空白文字が文字本体の前に追加されます。
+##   その場合には、追加される空白文字の前の位置を返すことに注意して下さい。
+##   実用上は境界 index の左側の文字の終端位置と解釈できます。
+##
 function ble-edit/text/getxy {
   ble-edit/text/.check-text-positions-update
   local _prefix=
@@ -1434,7 +1441,16 @@ function ble-edit/text/getxy {
   ((${_prefix}x=_pos[0]))
   ((${_prefix}y=_pos[1]))
 }
-## 関数 ble-edit/text/getxy.cur iN
+
+## 関数 ble-edit/text/getxy.cur index
+##   index 番目の文字の表示開始位置を取得します。
+##
+##   @var[out] x y
+##
+##   ble-edidt/text/getxy の異なり前置される空白は考えずに、
+##   文字本体が開始する位置を取得します。
+##   実用上は境界 index の右側の文字の開始位置と解釈できます。
+##
 function ble-edit/text/getxy.cur {
   ble-edit/text/.check-text-positions-update
   local _prefix=

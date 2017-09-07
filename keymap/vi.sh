@@ -4,6 +4,24 @@
 # 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
 function ble-edit/load-keymap-definition:vi { :; }
 
+# utils
+
+function ble-edit/text/eolp {
+  local pos=${1:-$_ble_edit_ind}
+  ((pos==${#_ble_edit_str})) || [[ ${_ble_edit_str:pos:1} == $'\n' ]]
+}
+function ble-edit/text/bolp {
+  local pos=${1:-$_ble_edit_ind}
+  ((pos<=0)) || [[ ${_ble_edit_str:pos-1:1} == $'\n' ]]
+}
+function ble-edit/text/nonbol-eolp {
+  local pos=${1:-$_ble_edit_ind}
+  ! ble-edit/text/bolp "$pos" && ble-edit/text/eolp "$pos"
+}
+
+#------------------------------------------------------------------------------
+# vi-insert/default
+
 function ble/widget/vi-insert/default {
   local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
 
@@ -25,9 +43,12 @@ function ble/widget/vi-insert/default {
   return 1
 }
 
+#------------------------------------------------------------------------------
+# modes
+
 function ble/widget/vi-insert/normal-mode {
   _ble_edit_overwrite_mode=
-  if ((_ble_edit_ind>=0)) && [[ ${_ble_edit_str[_ble_edit_ind-1]} != $'\n' ]]; then
+  if ! ble-edit/text/bolp; then
     ble/widget/.goto-char "$((_ble_edit_ind-1))"
   fi
   ble-decode/keymap/push vi_command
@@ -36,7 +57,7 @@ function ble/widget/vi-command/insert-mode {
   ble-decode/keymap/pop
 }
 function ble/widget/vi-command/append-mode {
-  if ((_ble_edit_ind<${#_ble_edit_str})) && [[ ${_ble_edit_str[_ble_edit_ind]} != $'\n' ]]; then
+  if ! ble-edit/text/eolp; then
     ble/widget/.goto-char "$((_ble_edit_ind+1))"
   fi
   ble-decode/keymap/pop
@@ -46,11 +67,301 @@ function ble/widget/vi-command/replace-mode {
   _ble_edit_overwrite_mode=1
 }
 
+#------------------------------------------------------------------------------
+# arg
+
+function ble/widget/vi-command/.get-arg {
+  local rex='^[0-9]*$'
+  if [[ ! $_ble_edit_arg ]]; then
+    flag= arg=
+  elif [[ $_ble_edit_arg =~ $rex ]]; then
+    flag= arg=$((10#${_ble_edit_arg:-1}))
+  else
+    local a=${_ble_edit_arg##*[!0-9]} b=${_ble_edit_arg%%[!0-9]*}
+    flag=${_ble_edit_arg//[0-9]}
+    arg=$((10#${a:-1}*10#${b:-1}))
+  fi
+  _ble_edit_arg=
+}
+
+_ble_edit_arg=
+function ble/widget/vi-command/arg-append {
+  local code="$((KEYS[0]&ble_decode_MaskChar))"
+  ((code==0)) && return
+  local ret; ble/util/c2s "$code"
+
+  # 0
+  if [[ $ret == 0 && $_ble_edit_arg != *[0-9] ]]; then
+    ble/widget/vi-command/beginning-of-line
+    return
+  fi
+  
+  # 2つ目の非数修飾 (yy dd cc)
+  if local rex='^[0-9]*$'; [[ $1 && ! ( $_ble_edit_arg =~ $rex ) ]]; then
+    if [[ $_ble_edit_arg == *"$ret"* ]]; then
+      ble/widget/vi-command/"$1"
+      return
+    else
+      ble/widget/.bell
+      _ble_edit_arg=
+      return 1
+    fi
+  fi
+
+  _ble_edit_arg="$_ble_edit_arg$ret"
+}
+
+#------------------------------------------------------------------------------
+# hjkl
+
+function ble/widget/vi-command/forward-char {
+  local arg flag; ble/widget/vi-command/.get-arg
+  ((arg<=0&&(arg=1)))
+
+  local line=${_ble_edit_str:_ble_edit_ind:arg}
+  line=${line%%$'\n'*}
+  local count=${#line}
+
+  if [[ $flag == [cd] ]]; then
+    if ((count)); then
+      ble/widget/.kill-range $_ble_edit_ind $((_ble_edit_ind+count))
+      ble-edit/text/nonbol-eolp $_ble_edit_ind && ble/widget/.goto-char $((_ble_edit_ind-1))
+    fi
+    [[ $flag == c ]] && ble/widget/vi-command/insert-mode
+  elif [[ $flag == y ]]; then
+    if ((count)); then
+      ble/widget/.copy-range $_ble_edit_ind $((_ble_edit_ind+count))
+    fi
+  else
+    ((count)) && ble-edit/text/nonbol-eolp $((_ble_edit_ind+count)) && ((count--))
+    if ((count)); then
+      ble/widget/.goto-char _ble_edit_ind+count
+    else
+      ble/widget/.bell
+    fi
+  fi
+}
+
+function ble/widget/vi-command/backward-char {
+  local arg flag; ble/widget/vi-command/.get-arg
+  ((arg<=0&&(arg=1)))
+
+  local count=$arg
+  ((count>_ble_edit_ind&&(count=_ble_edit_ind)))
+  local line=${_ble_edit_str:_ble_edit_ind-count:count}
+  line=${line##*$'\n'}
+  count=${#line}
+
+  if [[ $flag == [cd] ]]; then
+    if ((count)); then
+      ble/widget/.kill-range $((_ble_edit_ind-count)) $_ble_edit_ind
+    fi
+    [[ $flag == c ]] && ble/widget/vi-command/insert-mode
+  elif [[ $flag == y ]]; then
+    if ((count)); then
+      ble/widget/.copy-range $((_ble_edit_ind-count)) $_ble_edit_ind
+    fi
+  else
+    if ((count)); then
+      ble/widget/.goto-char _ble_edit_ind-count
+    else
+      ble/widget/.bell
+    fi
+  fi
+}
+
+function ble/string#count-char {
+  local text=$1 char=$2
+  text=${text//[!$char]}
+  ret=${#text}
+}
+
+## 関数 ble-edit/text/find-logical-eol [index [offset]]; ret
+##   _ble_edit_str 内で位置 index から offset 行だけ次の行の終端位置を返します。
+##
+##   offset が 0 の場合は位置 index を含む行の行末を返します。
+##   offset が正で offset 次の行がない場合は ${#_ble_edit_str} を返します。
+##
+function ble-edit/text/find-logical-eol {
+  local index=${1:-$_ble_edit_ind} offset=${1:-0}
+  if ((offset>0)); then
+    local text=${_ble_edit_str:index}
+    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}[^$_ble_term_nl]*"
+    [[ $text =~ $rex ]]
+    ((ret=index+${#BASH_REMATCH}))
+  elif ((offset<0)); then
+    local text=${_ble_edit_str::index}
+    local rex="($_ble_term_nl[^$_ble_term_nl]*){0,$offset}$"
+    [[ $text =~ $rex ]]
+    if [[ $BASH_REMATCH ]]; then
+      ((ret=index-${#BASH_REMATCH}))
+    else
+      ble-edit/text/find-logical-eol "$index" 0
+    fi
+  else
+    local text=${_ble_edit_str:index}
+    text=${text%%$'\n'*}
+    ((ret=index+${#text}))
+  fi
+}
+## 関数 ble/widget/vi-command/.find-logical-forward-bol [index [offset]]; ret
+##   _ble_edit_str 内で位置 index から offset 行だけ次の行の先頭位置を返します。
+##
+##   offset が 0 の場合は位置 index を含む行の行頭を返します。
+##   offset が正で offset だけ次の行がない場合は最終行の行頭を返します。
+##   特に次の行がない場合は現在の行頭を返します。
+##
+function ble-edit/text/find-logical-bol {
+  local index=${1:-$_ble_edit_ind} offset=${2:-0}
+  if ((offset>0)); then
+    local text=${_ble_edit_str:index}
+    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}"
+    [[ $text =~ $rex ]]
+    if [[ $BASH_REMATCH ]]; then
+      ((ret=index+${#BASH_REMATCH}))
+    else
+      ble-edit/text/find-logical-bol "$index" 0
+    fi
+  elif ((offset<0)); then
+    ble-edit/text/find-logical-eol "$index" "$offset"
+    ble-edit/text/find-logical-bol "$ret" 0
+  else
+    local text=${_ble_edit_str::index}
+    text=${text##*$'\n'}
+    ((ret=index-${#text}))
+  fi
+}
+
+## 編集関数 ble/widget/vi-command/forward-line
+## 編集関数 ble/widget/vi-command/backward-line
+##
+##   j, k による移動の動作について。
+##   論理行を移動するとする。列は行頭からの相対表示位置 (dx,dy) を保持する。
+##   別の履歴項目に移った時は列は先頭に移る。
+##
+##   todo: 移動開始時の相対表示位置の記録は現在行っていない。
+##
+function ble/widget/vi-command/.forward-line {
+  local arg=$1
+  local count=$((arg<0?-arg:arg))
+  local ret ind=$_ble_edit_ind
+
+  # [ydc]k の処理
+  if [[ $flag == [ydc] ]]; then
+    local begl=0 endl=0; ((arg<0?(begl=arg):(endl=arg)))
+    ble-edit/text/find-logical-bol "$ind" "$begl"; local beg=$ret
+    ble-edit/text/find-logical-eol "$ind" "$endl"; local end=$ret
+    ((end<${#_ble_edit_str}&&end++))
+    if [[ $flag == y ]]; then
+      ble/widget/.copy-range "$beg" "$end"
+    else
+      ble/widget/.kill-range "$beg" "$end"
+      [[ $flag == c ]] && ble/widget/vi-command/insert-mode
+    fi
+    return
+  fi
+
+  # 現在の履歴項目内での探索
+  ble-edit/text/find-logical-bol "$ind" 0; local bol1=$ret
+  ble-edit/text/find-logical-bol "$ind" "$arg"; local bol2=$ret
+  local beg end; ((bol1<=bol2?(beg=bol1,end=bol2):(beg=bol2,end=bol1)))
+  ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; local nmove=$ret
+  ((count-=nmove))
+  if ((count==0)); then
+    local b1x b1y; ble-edit/text/getxy.cur --prefix=b1 "$bol1"
+    local b2x b2y; ble-edit/text/getxy.cur --prefix=b2 "$bol2"
+
+    ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+    local c1x c1y; ble-edit/text/getxy.cur --prefix=c1 "$ind"
+    local e2x e2y; ble-edit/text/getxy.cur --prefix=e2 "$eol2"
+
+    local x=$c1x y=$((b2y+c1y-b1y))
+    ((y>e2y&&(x=e2x,y=e2y)))
+
+    ble-edit/text/get-index-at $x $y
+    ble/widget/.goto-char "$index"
+    return
+  fi
+
+  # 履歴項目を行数を数えつつ移動
+  ((count--))
+  while ((count>=0)); do
+    if ((arg<0)); then
+      ble/widget/history-prev
+    else
+      ble/widget/history-next
+    fi
+    ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
+    ((count<nline)) && break
+    ((count-=nline))
+  done
+
+  if ((count)); then
+    if ((arg<0)); then
+      ble-edit/text/find-logical-eol 0 "$((nline-count-1))"
+    else
+      ble-edit/text/find-logical-bol 0 "$count"
+    fi
+    ble/widget/.goto-char "$ret"
+  fi
+}
+function ble/widget/vi-command/forward-line {
+  local arg flag; ble/widget/vi-command/.get-arg
+  ((arg<=0&&(arg=1)))
+  ble/widget/vi-command/.forward-line "$arg"
+}
+function ble/widget/vi-command/backward-line {
+  local arg flag; ble/widget/vi-command/.get-arg
+  ((arg<=0&&(arg=1)))
+  ble/widget/vi-command/.forward-line "$((-arg))"
+}
+
+function ble/widget/vi-command/yank-current-line {
+  local arg flag; ble/widget/vi-command/.get-arg
+  ble-assert false not-implemented
+}
+
+function ble/widget/vi-command/delete-current-line {
+  local arg flag; ble/widget/vi-command/.get-arg
+  ble-assert false not-implemented
+}
+
+function ble/widget/vi-command/delete-current-line-and-insert {
+  local arg flag; ble/widget/vi-command/.get-arg
+  ble-assert false not-implemented
+}
+
+function ble/widget/vi-command/beginning-of-line {
+  local arg flag; ble/widget/vi-command/.get-arg
+  ble-assert false not-implemented
+}
+
+#------------------------------------------------------------------------------
+
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
   ble-bind -f i vi-command/insert-mode
   ble-bind -f a vi-command/append-mode
   ble-bind -f R vi-command/replace-mode
+
+  ble-bind -f 0 vi-command/arg-append
+  ble-bind -f 1 vi-command/arg-append
+  ble-bind -f 2 vi-command/arg-append
+  ble-bind -f 3 vi-command/arg-append
+  ble-bind -f 4 vi-command/arg-append
+  ble-bind -f 5 vi-command/arg-append
+  ble-bind -f 6 vi-command/arg-append
+  ble-bind -f 7 vi-command/arg-append
+  ble-bind -f 8 vi-command/arg-append
+  ble-bind -f 9 vi-command/arg-append
+  ble-bind -f y 'vi-command/arg-append yank-current-line'
+  ble-bind -f d 'vi-command/arg-append delete-current-line'
+  ble-bind -f c 'vi-command/arg-append delete-current-line-and-insert'
+
+  ble-bind -f h vi-command/backward-char
+  ble-bind -f j vi-command/forward-line
+  ble-bind -f k vi-command/backward-line
+  ble-bind -f l vi-command/forward-char
 }
 
 function ble-decode-keymap:vi_insert/define {
@@ -67,6 +378,8 @@ function ble-decode-keymap:vi_insert/define {
 
   #----------------------------------------------------------------------------
   # from keymap emacs-standard
+
+  # C-o http://qiita.com/takasianpride/items/6900eebb7cde9fbb5298
 
   # ins
   ble-bind -f 'C-q'       quoted-insert
