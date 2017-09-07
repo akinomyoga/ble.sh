@@ -95,6 +95,16 @@
 ##   これは自分の bash の設定に合わせる必要があります。
 : ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
 
+## オプション bleopt_default_keymap
+##   既定の編集モードに使われるキーマップを指定します。
+## bleopt_default_keymap=auto
+##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
+## bleopt_default_keymap=emacs
+##   emacs と同様の編集モードを使用します。
+## bleopt_default_keymap=vi
+##   vi と同様の編集モードを使用します。
+: ${bleopt_default_keymap:=auto}
+
 
 # 
 #------------------------------------------------------------------------------
@@ -1408,9 +1418,16 @@ function ble-edit/text/.check-text-positions-update {
   ble-assert '((_ble_edit_dirty_draw_beg==-1))' 'dirty text positions'
 }
 
-## 関数 ble-edit/text/getxy iN
-##   @var[out] x
-##   @var[out] y
+## 関数 ble-edit/text/getxy index
+##   index 番目の文字の出力開始位置を取得します。
+##
+##   @var[out] x y
+##
+##   行末に収まらない文字の場合は行末のスペースを埋める為に
+##   配列 _ble_line_text_cache_cs において空白文字が文字本体の前に追加されます。
+##   その場合には、追加される空白文字の前の位置を返すことに注意して下さい。
+##   実用上は境界 index の左側の文字の終端位置と解釈できます。
+##
 function ble-edit/text/getxy {
   ble-edit/text/.check-text-positions-update
   local _prefix=
@@ -1424,7 +1441,16 @@ function ble-edit/text/getxy {
   ((${_prefix}x=_pos[0]))
   ((${_prefix}y=_pos[1]))
 }
-## 関数 ble-edit/text/getxy.cur iN
+
+## 関数 ble-edit/text/getxy.cur index
+##   index 番目の文字の表示開始位置を取得します。
+##
+##   @var[out] x y
+##
+##   ble-edidt/text/getxy の異なり前置される空白は考えずに、
+##   文字本体が開始する位置を取得します。
+##   実用上は境界 index の右側の文字の開始位置と解釈できます。
+##
 function ble-edit/text/getxy.cur {
   ble-edit/text/.check-text-positions-update
   local _prefix=
@@ -2219,7 +2245,7 @@ function ble/widget/clear-screen {
   ble-term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
-  ble/widget/.shell-command 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
+  ble/widget/.SHELL_COMMAND 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
 }
 
 # 
@@ -2555,7 +2581,7 @@ function ble/widget/delete-forward-char-or-exit {
   ble/util/joblist
   if ((${#joblist[@]})); then
     ble/widget/.bell "(exit) ジョブが残っています!"
-    ble/widget/.shell-command 'printf %s "$_ble_util_joblist_jobs"'
+    ble/widget/.SHELL_COMMAND 'printf %s "$_ble_util_joblist_jobs"'
     return
   fi
 
@@ -2582,8 +2608,7 @@ function ble/widget/delete-horizontal-space {
 # **** cursor move ****                                            @edit.cursor
 
 function ble/widget/.goto-char {
-  local _ind="$1"
-  ((_ble_edit_ind==_ind)) && return
+  local -i _ind="$1"
   _ble_edit_ind="$_ind"
 }
 function ble/widget/.forward-char {
@@ -2991,7 +3016,7 @@ function ble-edit/exec/.adjust-eol {
 ##   実行するコマンドの配列を指定します。実行したコマンドは削除するか空文字列を代入します。
 ## @return
 ##   戻り値が 0 の場合、終端 (ble-edit/bind/.tail) に対する処理も行われた事を意味します。
-##   つまり、そのまま ble-decode-byte:bind から抜ける事を期待します。
+##   つまり、そのまま ble-decode/.hook から抜ける事を期待します。
 ##   それ以外の場合には終端処理をしていない事を表します。
 
 #--------------------------------------
@@ -4197,10 +4222,7 @@ function ble/widget/isearch/cancel {
 }
 function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit
-
-  for key in "${KEYS[@]}"; do
-    ble-decode-key "$key"
-  done
+  ble-decode-key "${KEYS[@]}"
 }
 function ble/widget/isearch/accept {
   if ((${#_ble_edit_isearch_que[@]})); then
@@ -4350,7 +4372,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
           case "$cmd" in
           (eof)
             # C-d
-            ble-decode-byte:bind 4 ;;
+            ble-decode/.hook 4 ;;
           esac
         done
       fi
@@ -4409,42 +4431,26 @@ function ble-edit/bind/.exit-TRAPRTMAX {
   exit 0
 }
 
-## @var[out] editing_mode
-function ble-edit/bind/.save-editing-mode {
-  if [[ -o emacs ]]; then
-    editing_mode=emacs
-  elif [[ -o vi ]]; then
-    editing_mode=vi
-  else
-    editing_mode=none
-  fi
-}
-## @var[in] editing_mode
-function ble-edit/bind/.restore-editing-mode {
-  case "$editing_mode" in
-  (emacs) set -o emacs ;;
-  (vi) set -o vi ;;
-  (none) set +o emacs ;;
-  esac
-}
-
+## 関数 ble-edit/bind/.check-detach
+##
+##   @exit detach した場合に 0 を返します。それ以外の場合に 1 を返します。
+##
 function ble-edit/bind/.check-detach {
-  [[ -o emacs ]] || ble-detach noemacs
+  if [[ ! -o emacs && ! -o vi ]]; then
+    # 実は set +o emacs などとした時点で eval の評価が中断されるので、これを検知することはできない。
+    # 従って、現状ではここに入ってくることはないようである。
+    builtin echo "${_ble_term_setaf[9]}[ble: unsupported]$_ble_term_sgr0 Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
+    ble-detach
+  fi
 
   if [[ $_ble_edit_detach_flag ]]; then
     type="$_ble_edit_detach_flag"
     _ble_edit_detach_flag=
     #ble-term/visible-bell ' Bye!! '
 
-    local editing_mode
-    ble-edit/bind/.save-editing-mode emacs
-    set -o emacs
-
     ble-edit-finalize
     ble-decode-detach
     ble-stty/finalize
-
-    ble-edit/bind/.restore-editing-mode
 
     READLINE_LINE="" READLINE_POINT=0
 
@@ -4465,18 +4471,23 @@ function ble-edit/bind/.check-detach {
       kill -RTMAX $$
     else
       ble/util/buffer.flush >&2
-      if [[ $type == noemacs ]]; then
-        builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0 Sorry, ble.sh doesn't support other than emacs editing mode (set -o emacs)." 1>&2
-      else
-        builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
-      fi
+      builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
       builtin echo "Please run \`stty sane' to recover the correct TTY state." >&2
       ble-edit/render/update
       ble/util/buffer.flush >&2
       READLINE_LINE='stty sane' READLINE_POINT=9
     fi
+
     return 0
   else
+    # Note: ここに入った時 -o emacs か -o vi のどちらかが成立する。なぜなら、
+    #   [[ ! -o emacs && ! -o vi ]] のときは ble-detach が呼び出されるのでここには来ない。
+    local state=$_ble_decode_bind_state
+    if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
+      ble-decode-detach
+      ble-decode-attach
+    fi
+
     return 1
   fi
 }
@@ -4524,16 +4535,16 @@ fi
 
 _ble_edit_bind_force_draw=
 
-## 関数 ble-decode-byte:bind/PROLOGUE
-function ble-decode-byte:bind/PROLOGUE {
+## ble-decode.sh 用の設定
+function ble-decode/PROLOGUE {
   ble-edit/bind/.head
   ble-decode-bind/uvw
   ble-stty/enter
   _ble_edit_bind_force_draw=
 }
 
-## 関数 ble-decode-byte:bind/EPILOGUE
-function ble-decode-byte:bind/EPILOGUE {
+## ble-decode.sh 用の設定
+function ble-decode/EPILOGUE {
   if ((_ble_bash>=40000)); then
     # 貼付対策:
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
@@ -4552,9 +4563,9 @@ function ble-decode-byte:bind/EPILOGUE {
   return 0
 }
 
-## 関数 ble/widget/.shell-command command
+## 関数 ble/widget/.SHELL_COMMAND command
 ##   ble-bind -cf で登録されたコマンドを処理します。
-function ble/widget/.shell-command {
+function ble/widget/.SHELL_COMMAND {
   local -a BASH_COMMAND
   BASH_COMMAND=("$*")
 
@@ -4568,9 +4579,9 @@ function ble/widget/.shell-command {
   ble-edit/render/invalidate
 }
 
-## 関数 ble/widget/.edit-command command
+## 関数 ble/widget/.EDIT_COMMAND command
 ##   ble-bind -xf で登録されたコマンドを処理します。
-function ble/widget/.edit-command {
+function ble/widget/.EDIT_COMMAND {
   local READLINE_LINE="$_ble_edit_str"
   local READLINE_POINT="$_ble_edit_ind"
   eval "$command" || return 1
@@ -4581,13 +4592,48 @@ function ble/widget/.edit-command {
     ble/widget/.goto-char "$READLINE_POINT"
 }
 
-function ble-edit/load-default-key-bindings {
-  if [[ $_ble_base_cache/keymap.emacs -nt $_ble_base/keymap/emacs.sh &&
-          $_ble_base_cache/keymap.emacs -nt $_ble_base/cmap/default.sh ]]; then
-    source "$_ble_base_cache/keymap.emacs"
+## ble-decode.sh 用の設定
+function ble-decode/DEFAULT_KEYMAP {
+  if [[ $bleopt_default_keymap == auto ]]; then
+    if [[ -o vi ]]; then
+      ble-edit/load-keymap-definition vi
+      builtin eval "$2=vi_insert"
+    else
+      ble-edit/load-keymap-definition emacs
+      builtin eval "$2=emacs"
+    fi
+  elif [[ $bleopt_default_keymap == vi ]]; then
+    ble-edit/load-keymap-definition vi
+    builtin eval "$2=vi_insert"
   else
-    source "$_ble_base/keymap/emacs.sh"
+    ble-edit/load-keymap-definition "$bleopt_default_keymap"
+    builtin eval "$2=\"\$bleopt_default_keymap\""
   fi
+}
+
+function ble-edit/load-keymap-definition:emacs {
+  function ble-edit/load-keymap-definition:emacs { :; }
+
+  local name=emacs
+  if [[ $_ble_base_cache/keymap.$name -nt $_ble_base/keymap/$name.sh &&
+          $_ble_base_cache/keymap.$name -nt $_ble_base/cmap/default.sh ]]; then
+    source "$_ble_base_cache/keymap.$name"
+  else
+    source "$_ble_base/keymap/$name.sh"
+  fi
+}
+
+function ble-edit/load-keymap-definition {
+  local name=$1
+  if ble/util/isfunction ble-edit/load-keymap-definition:"$name"; then
+    ble-edit/load-keymap-definition:"$name"
+  else
+    source "$_ble_base/keymap/$name.sh"
+  fi
+}
+
+function ble-edit/load-default-key-bindings {
+  : ble-edit/load-keymap-definition emacs
 }
 
 function ble-edit-initialize {

@@ -123,6 +123,29 @@ bash 実装上で注意するべき事
     IFS= LC_ALL=C read -t 0 &>/dev/null
     としても復元時のメッセージは何故か抑制できなかった。
 
+  * bind 関数の中で set +o emacs などをして編集モードを無効にすると、
+
+    編集関数の実行自体が中断されるようである。
+    具体的には set +o emacs を含む行だけ実行されて、次の行以降は実行されない。
+    set +o emacs が eval に含まれる場合は eval が終わると共に中断される。
+    また関数内に set +o emacs がある場合は、その関数は最後まで実行されるようだ。
+
+    従って set +o emacs が実行されたことを検知して適切な後処理を実行するのは難しい。
+    更にその後で set -o emacs に戻ってくると変な状態になる。
+    bind -p ではちゃんと hook された状態になっているが、
+    実際に操作してみると keymap はリセットされているように見受けられる。
+    この辺りはもう少し詳しく調べてみないと具体的に何が起こっているかはわからない。
+
+    例: 以下の3行のコマンドを実行しようとすると途中で中断され元の状態には戻らなくなる。
+
+    $ set +o emacs
+    > echo hello
+    > set -o emacs
+
+    直接 readline で実行している場合にはこの問題は起こらない。
+
+
+
 bashbug: 実装上で注意するべき事
 
   * bash-3.0 - 4.4 算術式:
@@ -458,6 +481,29 @@ tech
     読み取り専用の変数ですと表示されて怒られる。
     更に、BASH_REMATCH に対する変更の影響は結局関数の外でも残る。
     つまり local BASH_REMATCH としても効果はなくエラーメッセージが表示されるだけである。
+
+
+2017-09-05
+
+  * ble-syntax: function hello (()) は bash-3.0 では構文エラー。
+  * ble-syntax: function hello (()) としておいて function hello () (()) にすると解析が誤っている。
+
+  * vi-mode: gR?
+
+    http://qiita.com/sfuta/items/0de4ead865c15e9e9b68
+
+    overwrite mode には R/gR の区別があるようだ。
+    さて overwrite mode まで来ると複雑である。
+    特に self-insert が複雑になる。
+    これは再実装すると面倒なので何らかの変数を用いて vi/emacs を内部で
+    判定して動作を微妙に変えるという様にするのが良いのではないだろうか。
+    ところで self-insert に関しては emacs/vi で動作の違いはあっただろうか?
+
+    実際に vim で試してみると gR と押しても何も起こらないどういうことか?
+
+2017-09-04
+
+  * vi-mode: 全てのキー入力を横取りできているかどうかを確認する
 
 
 2017-08-19
@@ -2016,9 +2062,415 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2017-09-07
+
+  * 2017-09-04 vi-mode に対応する (初期計画)
+
+    取り敢えずブランチを切る。
+
+    取り敢えず vi 用の keymap に切り替える仕組みを作る。
+
+    | - set -o vi が有効になっている時には keymap viins を使う様にする。
+    | - 途中で set -o emacs から set -o vi になった時に ble.sh のモードも変更する様にする。
+    | - ble-decode-attach において -m vi-insert に対して bind するようにする?
+    |
+    |   或いは飽くまで emacs-standard を使う様にするか。
+    |   emacs-standard を使うようにしていると [[ -o vi ]] などが意図と反する結果になるので良くない。
+    |   コマンドを実行する瞬間だけ戻すという手もあるがそれだと
+    |   - ^C などで中断した時に set -o emacs に戻す機会が失われて、また応答しなくなる状況に陥るという問題が発生する。
+    |   - ユーザが自分で定義した widget 関数の中などではやはり set -o emacs になっている様に見えてしまう。
+    |
+    |   従って、やはり -m vi-insert に対して設定を行う必要がある。
+    |   ところで bind で設定されるのは既定ではどの keymap なのだろうか。
+    |   set -o vi の時には vi-insert (vi-command ではなく) だと考えてよいのだろうか。
+    |   或いは emacs-standard になってしまうという可能性もある。
+    |
+    | →vi_insert keymap を導入した。現在は emacs の clone である。動作している。
+    |   これから vi_insert としての振る舞いになるように少しずつ widget などを実装していけば良い。
+
+    先に mode の間の切り替えを実装する。
+
+    次に引数を管理する仕組みを考える。
+
+    | 初めは数字の引数を記録する枠組みを作って、
+    | それを emacs と共有するようにしようと考えたが、
+    | 操作体系を調べると 2d3 なども引数として処理した方が良い様に思われる。
+    | というのも d3h d3l などは削除コマンド d に対する細かい動作の制御ではなくて、
+    | 移動コマンド h l に対する修飾として働いている様に思われるからである。
+    |
+    | 引数はどの様に管理すれば良いだろうか。
+    | これは単純に引数を記録しておく変数を用意すれば良い気がする。
+    |
+    | - ble_edit_str ble_edit_ind ble_edit_mark と同様に管理すれば良いだろうか?
+    |   引数の入力状態は直接表示の仕方に影響を与えるものではないので
+    |   これらと同様に管理する必要はない。
+    |   つまり引数が変更されたとしても表示の更新を行う必要はないので、
+    |   表示が更新されたかどうかの判定に用いる必要もない。
+    | - また各履歴項目に紐付いた物でもないので、履歴を移動した時に記録する必要もない。
+    |
+    | さてもう一つ考えて置かなければならないのは editing-mode = emacs の時の
+    | arg と統一的に扱うかどうかである。emacs の時は arg は唯の整数である。
+    | しかし vi の時は上で決定したように d などの文字も含む。
+    | ただ結局どのような文字を引数に入れるのかはキーバインディングに依存するので、
+    | emacs でも vi でも同様に実装して問題ないように思われる。
+
+    ところで同じ forward-char であっても emacs vi で引数の取り扱いが異なる。
+    vi では右端に行ったら次の行には行かないが emacs では次の行に行く。
+    従って結局 emacs と vi で別々に forward-char を実装する必要があるのではないか。
+
+    先ずは hjkl について実装した。
+    大体の仕組みは整ったので後は少しずつ実装していくだけの気がする。
+
+  * 2017-09-05 vi-mode: forward-line-or-history-next, forward-line-or-history-next
+
+    引数に対応する。そもそも emacs では引数に修飾文字が入らないことを考えると、
+    共通で vi の引数の仕組みで実行するようにしてしまって問題ない気がする。
+    つまり、現在 vi 専用の引数の仕組みになっているものを emacs にも拡張する。
+
+    と思ったが、forward-line-or-history-next は修飾に対応していない。
+    しかし、異なる history entry の間でコピー・切り取りに対応するのは変だ。
+    従って、修飾文字が含まれている場合には現在の履歴項目の中での移動に制限するのが自然である。
+
+
+    forward-line/backward-line において見た目の行を移動するか論理的な行を移動するかが問題である。
+    また列も見た目の列を保持するか、論理的な列 (文字数) を保持するかが問題である。
+    emacs mode の方では見た目の行を見た目の列を保持して移動する様になっている。
+
+    vim で実際に試してみると一番最後に forward-line/backward-line
+    を実行した時の見た目の列を保持している。
+    また当然のことながら論理的な行を移動するようになっている。
+    論理行が複数行にまたがる時、全角・半角の都合により異なる位置で改行されることがある。
+    調べてみるとそのような場合でも "見た目" の列を保持しているようである。
+    従って、もし厳密にこの動作に従うのだとすると、
+    1. まず初めに論理行頭からの見た目の行・列を取得し
+    2. 次に移動先の論理行頭の位置を求め、
+      更に論理行頭を保持するということにする必要がある。
+
+    - ble-edit/text/update/positions の問題
+
+      所で、行の内容を変更した後に ble/widget/forward-line を呼び出す時には
+      ble-edit/text/update/position を呼び出す必要があることには注意しなければならないのではないか。
+      何故なら中で使用している ble-edit/text/getxy.cur などの関数は内部で
+      配列 _ble_line_text_cache_pos を参照するがこの配列は ble-edit/text/update/position
+      で更新される。ここで手で ble-edit/text/update/position を呼び出すというても考えられるかもしれないが、
+      その為には変更範囲 BLELINE_RANGE_UPDATE (中身は _ble_edit_dirty_draw_{beg,end,end0}) が必要で、
+      更にこの変更範囲は "描画" や "色つけ" と共有しているので、
+      ble-edit/text/update/position を実行するためにはこれらと一緒に更新する必要がある。
+      従って現状では途中で _ble_line_text_cache_pos を更新するのは難しい。
+
+      - もし対応させようとするならば ble-edit/text/update/position の dirty range を
+        描画の dirty range とは独立に管理する様にしなければならない。
+
+      - 従って現状では変更後に forward-line は呼び出してはならないという制限を設けなければならない。
+        安全の為に変更がないということを確認する必要はあるかもしれない。
+        このチェックは _ble_edit_dirty_draw_beg=-1 である事を確認すれば十分である。
+        →確認する様に修正する。
+
+      [結論] dirty になっていないか確認し、dirty ならエラー。
+
+
+    - ble-edit/text/getxy と ble-edit/text/getxy.cur の違い
+
+      何であったか。memo.txt を探すと getxy は出力位置で getxy.cur はカーソルの表示位置だという。
+      これは一体どういうことか。両者は同じではないのか。
+      調べると _ble_line_text_cache_pos[i+1] の第3フィールドが非ゼロの時に、
+      getxy.cur は次の行頭を指し示す様になっている。
+      % 第3フィールドは左の文字が ASCII 表示文字以外 (isprint 以外) で、かつ、
+      % その行に収まりきらない時に、非ゼロになる。
+      つまり幅2以上の文字でその行に収まりきらない時に非ゼロになる。
+
+      うーん。getxy は左側の文字の終端位置で、
+      getxy.cur は右側の文字の開始位置と解釈すれば良いだろうか。
+
+      考えていたら分かった気がする。先ず右側で折り返す文字は、
+      行末の幅を補填する空白が追加される。これにより二行にまたがる文字になる。
+      getxy はこの空白も含めた開始位置であり、実際に _ble_line_text_cache_cs を切り出して出力する場合には、
+      この位置から出力を開始する必要がある。getxy.cur は実際に空白を除いた文字の本体が表示される位置である。
+      実用的には、実際の所 getxy は左側の文字の州単一で getxy.cur は右側の文字の開始位置と解釈して問題なさそうだ。
+
+      [結論] 分かりにくいので getxy, getxy.cur の関数に説明を追加しておく。
+
 2017-09-06
 
   * ble-edit: 余分な ble-edit/history/load 呼び出しがあったので削除
+
+2017-09-05
+
+  * ble-edit: .goto-char
+
+    何やら意味のない関数のように思われたが、
+    履歴を調べてみると以前は変更があったときのみ set-dirty を実行していた様だ。
+    現在はカーソルの位置は別に記録してあるし表示内容の変更と
+    カーソル位置の移動は別々に管理しているのでその必要はなくなったのであった。
+
+    さて、ということはこの関数の内容は単純化できる。
+
+  * vi-mode: (()) は bash-3.0 でエラーになる。{ :; } が意味的にも無難
+
+    →どうやら function f () (()) ならば bash-3.0 でも OK の様である。
+
+2017-09-04
+
+  * vi-mode: ble-edit/bind/.check-detach で編集モード切り替わり判定を行う
+
+    うーん。bleopt_default_keymap=auto のとき、これも一緒に切り替える必要があるのではないだろうか。
+    一方で、bleopt_default_keymap を直接指定しているときには一緒に切り替えてしまっては駄目である。
+    また切り替えた場合には必要に応じて source keymap/vi.sh などが必要である。
+
+    % うーん。しかし bleopt_default_keymap として auto を許容すると複雑になる。
+    % 問題点は bleopt_default_keymap は既に別の用途で使われているということである。
+    % その様に考えると bleopt_default_keymap とは別に bleopt_editing_mode のような感じの変数を用意するのが妥当である。
+    % →使い方を多少変更した。改名はしないことにした。#D0402 を参照のこと。
+
+    [変更]
+
+    編集モードが変わった時には単に ble-decode-detach してから
+    ble-decode-attach すれば良い。ble-decode-detach は前回の attach の際の編集モードで解除を行い、
+    attach は現在の編集モードで設定を行うからである。
+
+    また keymap/vi.sh は DEFAULT_KEYMAP から呼び出すことにした。
+    既に呼び出し済みかどうかの判定は関数 ble-edit/load-keymap-definition:$name
+    を空関数にすることによって設定する。
+
+    vi.sh に関しては vi.sh 内部に widget を定義したいので、
+    何れにしても必ず読み込むようにする。
+    その場合は keymap の定義の部分のみキャッシュする。
+    キャッシュがある場合は vi.sh の中から呼び出す様にする。
+
+    Note: この動作は emacs.sh の場合と異なることに注意する。
+      emacs.sh の widget は全て ble 本体の中に定義してあるので、
+      emacs.sh でやることは keymap の定義のみである。
+      ということはキャッシュがある場合にはそもそも emacs.sh すら呼び出さなくて良いので、
+      ble-edit.sh 側の ble-edit/load-keymap-definition:emacs でその操作を定義する。
+
+    実装した。テストした。
+    問題が合ったので以下の変更も行った。
+
+    * 変数 ble-bind: ble_bind_keymap の導入
+
+      ble-bind で既定の keymap を指定するのに bleopt_default_keymap を local で書き換えて呼び出していたが、
+      現在 bleopt_default_keymap は DEFAULT_KEYMAP を通して呼び出されるものであり、
+      keymap/kmap.sh などから定義を探し出す仕組みに組み込まれているので、
+      bleopt_default_keymap を任意に書き換えて実行するというのは良い方策ではない。
+      従って、新しい変数として ble_bind_keymap という変数を用意した。
+      ble_bind_keymap が設定されている場合には DEFAULT_KEYMAP は使用されない。
+
+  * vi-mode: どうやら set +o emacs を検知できない。 [対処不可][#D0404]
+
+    % set +o emacs を含む builtin eval を抜けるとそこですぐに終了してしまうようだ。
+    %
+    % 一応 set +o emacs を含む builtin eval の中にあるコマンドは全て実行されるようだ。
+    % builtin eval の中で細工して一旦 set -o emacs に戻すことによって
+    % 後処理をしてその後で抜けるという様にはできるかもしれない。
+    %
+    % どうやら builtin eval の中に直接 echo を書いたら実行されるが、
+    % 関数呼び出しを通して echo を呼び出そうとしても駄目のようだ。
+    % 関数呼び出しより後に書いても駄目のようだ。
+    % もしかすると .save-params 関数が悪さをしている可能性もある。
+    %
+    % .save-params でなくて空の関数 function AAA { :; } を使ってみたが同様に駄目だった。
+    % 関数定義が見えなくなっているのではないかと思って function AAA { :; } を eval の中に書いてみたが、
+    % 関数定義を書いただけでそれ以降は実行されなくなってしまう。
+    %
+    % と思ったが今度は直接 echo を書いても実行されなくなってしまった。何故?
+    % しかし依然として set +o emacs; echo world などとした場合の world は出力される。
+
+    もしかして改行があるかないかが関係しているのだろうか。
+    →試してみたらそうだった。何と改行があると駄目なのだ。
+
+    でもそうだとすると実行しようとしているコマンド自体に改行が含まれている場合には、
+    それ以降のコマンドは実行されないという事になる。実際に試してみた所そうなった。
+
+    また改行さえ無ければ eval の外も実行されるのかと思いきやそういう訳でもない。
+
+    更に .save-params を改行ではなく ; で区切れば良いのではないかと考えたが、
+    それだと "echo ;" などのコマンドを実行した時に ";" の重複により構文エラーになってしまう。
+
+    [結論]
+
+    仕方がないので以下の制限は置く必要がある。
+
+    - ユーザが set +o emacs を実行すると正しく ble.sh から抜けることができない。
+    - 更に set +o emacs に続けて改行が含まれる場合にはコマンド自体も正しく実行されることは保証できない。
+
+  * ble-decode: 分離: ble-decode/keymap/resolve-name 関連 [#D0403]
+
+    他に以下のようなものが ble-edit.sh の存在・使用方法を想定している。
+
+    - _ble_decode_key__kmap=emacs の既定値
+    - bleopt_default_keymap=auto の既定値
+
+    ble-decode/keymap/resolve-name に関しては外部で関数定義できるようにするのが良い。
+    bleopt_default_keymap に関しては元々外部から設定するべきものである気がする。
+    _ble_decode_key__kmap=emacs の既定値もその時に同時に指定するべきな気がする。
+
+    →整理した。
+
+    1. ble-decode/keymap/resolve-name は外部から上書きして使う事にした。
+
+      またこれを機に外部から上書きして設定を行うことを目的とする関数を "設定関数" とし、
+      またその名前をできるだけ "モジュール/大文字名" の形式になるようにした。
+      ここで "モジュール" とは ble-decode などのことである。
+      現在以下の設定関数が ble-decode.sh には定義されている。何れも ble-edit.sh で上書きされる。
+
+      - 設定関数 ble-decode/PROLOGUE
+      - 設定関数 ble-decode/EPILOGUE
+      - 設定関数 ble-decode/DEFAULT_KEYMAP -v varname
+      - 設定関数 ble/widget/.SHELL_COMMAND command
+      - 設定関数 ble/widget/.EDIT_COMMAND command
+
+      またこれに伴って ble-decode-byte:bind も ble-decode/.hook に改名した。
+      使われていない ble-decode-char:bind 及び ble-decode-key:bind は削除した。
+      (これらの関数は恐らく初期の実装のときのテストに使われたものであった。)
+
+    2. bleopt_default_keymap は ble-edit.sh 側で管理することにした。ble-decode.sh は関知しない。
+
+    3. _ble_decode_key__kmap=emacs の既定値は ble-decode.sh を単体で読み込んだ時には何れにしても
+      (例え動作しないとしても) 何らかの値を設定しておく必要があるので現状通り取り敢えず emacs を設定することにした。
+      同様に既定の ble-decode/DEFAULT_KEYMAP も emacs を設定するようにする。
+
+  * vi-mode: bleopt_default_keymap [#D0402]
+
+    % 結局、ble.sh で編集モードに対応しているのは bleopt_default_keymap である。
+    %
+    % 更に具体的な emacs keymap の定義は ble-edit/load-default-key-bindings から
+    % source "$_ble_base/keymap/emacs.sh" を通して読み込まれている。
+    % この時 bleopt_default_keymap などは参照せずに直に emacs.sh が指定されている。
+    %
+    % この辺りは bleopt_default_keymap を参照するようにして良いのではないか。
+    % 或いは bleopt_default_keymap は動的に変わったりする物であっただろうか。
+
+    [現状]
+
+    改めて bleopt_default_keymap がどの様に使われているかについて確認しておく。
+
+    - 先ず ble-decode において _ble_decode_key__kmap が空の時の既定の keymap 名として使われている。
+
+      これについては _ble_decode_key__kmap による。調べてみると
+      _ble_decode_key__kmap は最初は中身は空のようである。
+      先に中身を設定してしまうと、ble の設定箇所で bleopt_default_keymap が変更された場合に対応できないからであろう。
+      これに関しては ble-attach のタイミングで _ble_decode_key__kmap=$bleopt_default_keymap を実行するようにすれば良い。
+
+    - また ble-bind において既定の keymap として使われている。
+
+      これは、その時の _ble_decode_key__kmap がどうであれ bleopt_default_keymap に設定を行いたい。
+
+    - keymap/emacs.sh で ble-bind を呼び出す時の bleopt_default_keymap を上書きしている。
+
+    こう調べてみると bleopt_default_keymap は (_ble_decode_key__kmap さえ正しく設定されていれば)
+    単に keymap の構築時に使用されるだけであり実際の処理に使われる訳ではない。
+
+    [変更]
+
+    結局 bleopt_default_keymap は改名しないことにした。
+    但し特別な値 auto が入っている場合には、実際に bleopt_default_keymap の値を読み出す時に、
+    現在の [[ -o emacs/vi ]] の状態に応じて値を解決するというようにした。
+    これらの処理は素朴に考えると ble-edit.sh にあるべき気もするが、
+    取り敢えず暫定的な実装として ble-decode.sh の方に配置することにした。
+
+  * vi-mode: 次に ble-edit-attach を改修する [不要][#D0401]
+
+    中で何をしているかというと
+
+    1. 先ず初めに ble-edit/attach を呼び出している。
+
+      中ではどうも大したことはしていない。
+      attach, detach で PS1, IFS の保存と復元を行っている。
+
+    2. また履歴の再読込の設定を行っている。
+
+    他は特に何もしていない。keymap に関する設定は別の関数で行っている様だ。
+    つまり、この関数は何も変更はいらない。
+
+  * 所で set -o vi してから source ble.sh した時に動かなかったというのは何故なのか。 [#D0400]
+
+    % GitHub #1 によるとそのように報告されていた。
+    % しかし ble-decode-attach の現状の実装方法で特に問題がないように思われた。どういうことか。
+    % これはよく分からないので改めて set -o vi で source ble.sh して動作を確認してみる必要がある。
+    %
+    % うーん。動いているような気がする。
+    % よく考えてみたら set -o vi にしてから source すると死ぬのではなくて、
+    % .inputrc に記述して ble.sh つきで起動すると駄目だということだった様にも思う。
+    %
+    % さて .inputrc に vi を使うという事を指定するにはどうしたら良いのか。
+    % http://d.hatena.ne.jp/yamazakiccs/20081207/1216817670
+    % → set editing-mode vi と記述すれば良いようだ。
+    %
+    % さて実際にやってみると特に問題もなく ble.sh が読み込まれている。
+    % 変な動作も簡単に見た感じでは現れていない。
+    % (もしかすると或る種のキー入力に関しては入力を奪いきれていないという可能性も残っているが、
+    % それらの検証は後回しにして良いだろう。)
+    %
+    % 改めて #1 を読んでみると "無効になる" としか書かれていない。
+    % もしかして無効になるとは set -o vi をした時と同様に反応がなくなるという意味ではなくて、
+    % 単に set -o vi (の動作) が無効になるという意味なのではないだろうか。
+    % だとするとこれには対応していないのだから当然のことである。
+    % 実はこれについては対策しなくても良かったのではないかと思われる。
+
+    "無効" というのは #1 の報告者の苛立ちというか "いやみ" が入った表現で、
+    実際に動かないということではなかった。気にしなくて良い。
+
+    因みに inputrc に set editing-mode vi とした場合でも、
+    ちゃんと [[ -o vi ]] に反映されるので inputrc で指定されたかどうかなどのことは意識しなくても良い。
+
+  * vi-mode: まずは ble-decode-attach を改修する。 [#D0399]
+
+    取り敢えずは ble.sh を起動している最中に set -o emacs/vi が切り替わる場合については考慮しないで良いだろう。
+    切り替わった時にするべき操作は別に実装することになるだろうからである。
+    そして切り替わった時にするべき操作が具体的に何になるかは、ble-decode-attach の内容に依存する。
+
+    [現状]
+
+    どのような変更が必要になるのか改めて調べるために取り敢えず現在の実装について観察しておく。
+
+    1. ble-decode-bind/.generate-source-to-unbind-default
+
+      先ず初めに現在の bind の状態を調べてそれを .save ファイルに記録する。
+      そして ESC に関しては unbind するためのコードを生成する。
+
+      この .save ファイルはキャッシュするような性質のものではなく、
+      ble-decode-bind を実行する度に毎回生成するものである。
+
+      これは set -o vi でも同じ動作で問題ないだろうか。
+      つまり vi と emacs で .save のファイル名を切り替えなくても良いのではないか。
+      一度に両方の keymap を上書きしていると混乱の元だし状態の把握が面倒である。
+      一度に片方しか上書きしないのだとしたら同じファイル名でも問題ないように思われる。
+
+      但し、「現在どちらのモードに対して上書きを実行しているか」の状態を管理する変数は別に保持する必要がある。
+      これは実際 _ble_decode_bind_attached が担っている。現在は「上書きを実行しているか」「していないか」の2状態だが、
+      emacs として上書きしているか vi として上書きしているかの情報を持たせるようにすれば良い。
+
+      →取り敢えず現状のままで問題ないだろう。
+
+    2. 次に source "$_ble_base/bind.sh" を呼び出す。
+
+      ここでは ble_decode_bind.40412.bind (40412 は実際は bash の version) を生成する。
+      このファイルの中にはその bash の version において、
+      キー入力を全て横取りする為に必要な bind の列が含まれる。
+
+      実はこれについても set -o vi と set -o emacs で違いはないように思われる。
+      念のため bind.sh の中身についても確認しておく。やはり vi/emacs に依存する処理は行っていない。
+
+    [変更]
+
+    従って、変更は _ble_decode_bind_attached の管理だけである様に思われる。
+    _ble_decode_bind_attached は他に ble-decode-detach が参照している。
+    他の箇所からは参照されていない。
+
+    ble-decode-attach ではどのモードで attach したかを記録しておくだけで良い。
+    ble-decode-detach では _ble_decode_bind_attached の内容に応じて、
+    set -o vi/emacs で attach した時のモードに戻しておいて、
+    その状態で bind を復元してから元のモードに戻るようにすれば良い。
+
+    (モードを復元している最中に ^C で中断などが入ると変なことになるがそれは仕方がないだろう。
+    ただ簡単に状態を復元する方法というのを実装しておいても良いかもしれない。)
+
+    この変更により ble-decode-detach を呼び出す時の編集モードは気にしなくて良くなった。
+    つまり、先の変更により ble-decode-detach を呼び出す前に set -o emacs に戻していたが、
+    ble-decode-detach の中で適切な編集モードに切り替えるので、外でその操作をする必要はなくなる。
+
+    取り敢えず変更は実施した。
+
 
 2017-09-03
 
@@ -2034,12 +2486,12 @@ tech
     % TERM に依存して出たり出なかったりする様だ。
     % 現在 tkyntn の上でしか再現していない。
     % 元々 tkyntn は色々とおかしいのでもしかすると他では再現しないのかもしれない。
-    % 
+    %
     % どうも TERM ではなくてログインシェルかどうかで変わるようである。
     % ログインした後に bash として入ると大丈夫である。
     % 一方で、bash --login とすると駄目である。
     % TERM=xterm-256color でも再現することを確認した。
-    % 
+    %
     % どうやら ble の中で起こる問題というわけでもない様だ?
     % bash --norc で入って cd ~yabe して cat <<< hello とするとエラーを吐く。
 

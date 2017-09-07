@@ -499,6 +499,34 @@ function ble/util/joblist.clear {
 }
 
 #------------------------------------------------------------------------------
+## 関数 ble/util/save-editing-mode varname
+##   現在の編集モード (emacs/vi/none) を変数に設定します。
+##
+##   @param varname 設定する変数の変数名を指定します。
+##
+function ble/util/save-editing-mode {
+  if [[ -o emacs ]]; then
+    builtin eval "$1=emacs"
+  elif [[ -o vi ]]; then
+    builtin eval "$1=vi"
+  else
+    builtin eval "$1=none"
+  fi
+}
+## 関数 ble/util/restore-editing-mode varname
+##   編集モードを復元します。
+##
+##   @param varname 編集モードを記録した変数の変数名を指定します。
+##
+function ble/util/restore-editing-mode {
+  case "${!1}" in
+  (emacs) set -o emacs ;;
+  (vi) set -o vi ;;
+  (none) set +o emacs ;;
+  esac
+}
+#------------------------------------------------------------------------------
+
 
 ## 関数 ble-autoload scriptfile functions...
 ##   関数が定義されたファイルを自動で読み取る設定を行います。
