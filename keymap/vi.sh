@@ -210,6 +210,34 @@ function ble/string#count-char {
   ret=${#text}
 }
 
+function ble/widget/vi-command/.history-relative-line {
+  local arg=$1 type=$2
+  local ret count=$((arg<0?-arg:arg))
+  ((count--))
+  while ((count>=0)); do
+    if ((arg<0)); then
+      ((_ble_edit_history_ind>0||(count=0))) || break
+      ble/widget/history-prev
+    else
+      ((_ble_edit_history_ind<${#_ble_edit_history[@]}||(count=0))) || break
+      ble/widget/history-next
+    fi
+    ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
+    ((count<nline)) && break
+    ((count-=nline))
+  done
+
+  if ((count)); then
+    if ((arg<0)); then
+      ble-edit/text/find-logical-eol 0 "$((nline-count-1))"
+      ble-edit/text/nonbol-eolp && ((ret--))
+    else
+      ble-edit/text/find-logical-bol 0 "$count"
+    fi
+    ble/widget/.goto-char "$ret"
+  fi
+}
+
 ## 編集関数 ble/widget/vi-command/forward-line
 ## 編集関数 ble/widget/vi-command/backward-line
 ##
@@ -222,7 +250,7 @@ function ble/string#count-char {
 ##
 ##   todo: 移動開始時の相対表示位置の記録は現在行っていない。
 ##
-function ble/widget/vi-command/.forward-line {
+function ble/widget/vi-command/.relative-line {
   local arg=$1 flag=$2
   local count=$((arg<0?-arg:arg))
   local ret ind=$_ble_edit_ind
@@ -237,7 +265,7 @@ function ble/widget/vi-command/.forward-line {
       ble/widget/.copy-range "$beg" "$end"
       if ((arg<0)); then
         ble/string#count-char "${_ble_edit_str:beg:ind-beg}" $'\n'
-        ((ret)) && ble/widget/vi-command/.forward-line $((-ret))
+        ((ret)) && ble/widget/vi-command/.relative-line $((-ret))
       fi
     else
       ble/widget/.kill-range "$beg" "$end"
@@ -278,41 +306,21 @@ function ble/widget/vi-command/.forward-line {
   fi
 
   # 履歴項目を行数を数えつつ移動
-  ((count--))
-  while ((count>=0)); do
-    if ((arg<0)); then
-      ble/widget/history-prev
-    else
-      ble/widget/history-next
-    fi
-    ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
-    ((count<nline)) && break
-    ((count-=nline))
-  done
-
-  if ((count)); then
-    if ((arg<0)); then
-      ble-edit/text/find-logical-eol 0 "$((nline-count-1))"
-      ble-edit/text/nonbol-eolp && ((ret--))
-    else
-      ble-edit/text/find-logical-bol 0 "$count"
-    fi
-    ble/widget/.goto-char "$ret"
-  fi
+  ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count))
 }
 function ble/widget/vi-command/forward-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.forward-line "$arg" "$flag"
+  ble/widget/vi-command/.relative-line "$arg" "$flag"
 }
 function ble/widget/vi-command/backward-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.forward-line "$((-arg))" "$flag"
+  ble/widget/vi-command/.relative-line "$((-arg))" "$flag"
 }
 
 #------------------------------------------------------------------------------
 # command: ^ + - $
 
-function ble/widget/vi-command/.first-non-space-of-forward-line {
+function ble/widget/vi-command/.first-non-space-of-relative-line {
   local arg=$1 flag=$2
   local ret ind=$_ble_edit_ind
   ble-edit/text/find-logical-bol "$ind" "$arg"; local bolx=$ret
@@ -352,23 +360,35 @@ function ble/widget/vi-command/.first-non-space-of-forward-line {
     return
   fi
 
-  ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
-  ble/widget/.goto-char "$nolx"
+  local count=$((arg<0?-arg:arg))
+  if ((count)); then
+    local beg end; ((nolx<ind?(beg=nolx,end=ind):(beg=ind,end=nolx)))
+    ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; local nmove=$ret
+    ((count-=nmove))
+  fi
 
-  # todo: 履歴項目の移動もするか? → するべき
+  if ((count==0)); then
+    ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
+    ble/widget/.goto-char "$nolx"
+    return
+  fi
+
+  # 履歴項目の移動
+  ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count))
+  ble/widget/vi-command/first-non-space-of-line
 }
 
 function ble/widget/vi-command/first-non-space-of-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.first-non-space-of-forward-line 0 "$flag"
+  ble/widget/vi-command/.first-non-space-of-relative-line 0 "$flag"
 }
 function ble/widget/vi-command/first-non-space-of-forward-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.first-non-space-of-forward-line "$arg" "$flag"
+  ble/widget/vi-command/.first-non-space-of-relative-line "$arg" "$flag"
 }
 function ble/widget/vi-command/first-non-space-of-backward-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.first-non-space-of-forward-line "$((-arg))" "$flag"
+  ble/widget/vi-command/.first-non-space-of-relative-line "$((-arg))" "$flag"
 }
 
 function ble/widget/vi-command/forward-eol {
