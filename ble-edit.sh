@@ -1742,6 +1742,7 @@ _ble_edit_ind=0
 _ble_edit_mark=0
 _ble_edit_mark_active=
 _ble_edit_kill_ring=
+_ble_edit_kill_type=
 _ble_edit_overwrite_mode=
 
 # _ble_edit_str は以下の関数を通して変更する。
@@ -2325,12 +2326,14 @@ function ble/widget/kill-forward-text {
   ((_ble_edit_ind>=${#_ble_edit_str})) && return
 
   _ble_edit_kill_ring="${_ble_edit_str:_ble_edit_ind}"
+  _ble_edit_kill_type=
   _ble_edit_str.replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
 function ble/widget/kill-backward-text {
   ((_ble_edit_ind==0)) && return
   _ble_edit_kill_ring="${_ble_edit_str::_ble_edit_ind}"
+  _ble_edit_kill_type=
   _ble_edit_str.replace 0 _ble_edit_ind ''
   ((_ble_edit_mark=_ble_edit_mark<=_ble_edit_ind?0:_ble_edit_mark-_ble_edit_ind))
   _ble_edit_ind=0
@@ -2375,44 +2378,52 @@ function ble/widget/.process-range-argument {
     (len=p1-p0)>0
   ))
 }
-## 関数 ble/widget/.delete-range P0 P1
+## 関数 ble/widget/.delete-range P0 P1 [allow_empty]
 function ble/widget/.delete-range {
   local p0 p1 len
-  ble/widget/.process-range-argument "$@" || return 0
+  ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
 
   # delete
-  _ble_edit_str.replace p0 p1 ''
-  ((
-    _ble_edit_ind>p1? (_ble_edit_ind-=len):
-    _ble_edit_ind>p0&&(_ble_edit_ind=p0),
-    _ble_edit_mark>p1? (_ble_edit_mark-=len):
-    _ble_edit_mark>p0&&(_ble_edit_mark=p0)
-  ))
+  if ((len)); then
+    _ble_edit_str.replace p0 p1 ''
+    ((
+      _ble_edit_ind>p1? (_ble_edit_ind-=len):
+      _ble_edit_ind>p0&&(_ble_edit_ind=p0),
+      _ble_edit_mark>p1? (_ble_edit_mark-=len):
+      _ble_edit_mark>p0&&(_ble_edit_mark=p0)
+    ))
+  fi
+  return 0
 }
-## 関数 ble/widget/.kill-range P0 P1
+## 関数 ble/widget/.kill-range P0 P1 [allow_empty [kill_type]]
 function ble/widget/.kill-range {
   local p0 p1 len
-  ble/widget/.process-range-argument "$@" || return 0
+  ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
 
   # copy
   _ble_edit_kill_ring="${_ble_edit_str:p0:len}"
+  _ble_edit_kill_type=$4
 
   # delete
-  _ble_edit_str.replace p0 p1 ''
-  ((
-    _ble_edit_ind>p1? (_ble_edit_ind-=len):
-    _ble_edit_ind>p0&&(_ble_edit_ind=p0),
-    _ble_edit_mark>p1? (_ble_edit_mark-=len):
-    _ble_edit_mark>p0&&(_ble_edit_mark=p0)
-  ))
+  if ((len)); then
+    _ble_edit_str.replace p0 p1 ''
+    ((
+      _ble_edit_ind>p1? (_ble_edit_ind-=len):
+      _ble_edit_ind>p0&&(_ble_edit_ind=p0),
+      _ble_edit_mark>p1? (_ble_edit_mark-=len):
+      _ble_edit_mark>p0&&(_ble_edit_mark=p0)
+    ))
+  fi
+  return 0
 }
-## 関数 ble/widget/.copy-range P0 P1
+## 関数 ble/widget/.copy-range P0 P1 [kill_type]
 function ble/widget/.copy-range {
   local p0 p1 len
-  ble/widget/.process-range-argument "$@" || return 0
+  ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
 
   # copy
   _ble_edit_kill_ring="${_ble_edit_str:p0:len}"
+  _ble_edit_kill_type=$4
 }
 ## 関数 ble/widget/delete-region
 ##   領域を削除します。

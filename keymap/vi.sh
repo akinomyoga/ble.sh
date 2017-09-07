@@ -68,12 +68,14 @@ function ble/widget/vi-command/replace-mode {
 }
 
 #------------------------------------------------------------------------------
-# arg
+# arg     : 0-9 d y c
+# command : dd yy cc [dyc]0
 
+## 関数 ble/widget/vi-command/.get-arg [default_value]
 function ble/widget/vi-command/.get-arg {
-  local rex='^[0-9]*$'
+  local rex='^[0-9]+$' default_value=$1
   if [[ ! $_ble_edit_arg ]]; then
-    flag= arg=
+    flag= arg=$default_value
   elif [[ $_ble_edit_arg =~ $rex ]]; then
     flag= arg=$((10#${_ble_edit_arg:-1}))
   else
@@ -111,12 +113,49 @@ function ble/widget/vi-command/arg-append {
   _ble_edit_arg="$_ble_edit_arg$ret"
 }
 
+function ble/widget/vi-command/yank-current-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  local ret
+  ble-edit/text/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
+  ble-edit/text/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
+  ((end<${#_ble_edit_str}&&end++))
+  ble/widget/.copy-range "$beg" "$end" 1 L
+}
+
+function ble/widget/vi-command/delete-current-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  local ret
+  ble-edit/text/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
+  ble-edit/text/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
+  ((end<${#_ble_edit_str}&&end++))
+  ble/widget/.kill-range "$beg" "$end" 1 L
+}
+
+function ble/widget/vi-command/delete-current-line-and-insert {
+  ble/widget/vi-command/delete-current-line
+  ble/widget/vi-command/insert-mode
+}
+
+function ble/widget/vi-command/beginning-of-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  local ret
+  ble-edit/text/find-logical-bol; local beg=$ret
+  if [[ $flag == y ]]; then
+    ble/widget/.copy-range "$beg" "$_ble_edit_ind" 1
+    ble/widget/.goto-char "$beg"
+  elif [[ $flag == [cd] ]]; then
+    ble/widget/.kill-range "$beg" "$_ble_edit_ind" 1
+    [[ $flag == c ]] && ble/widget/vi-command/insert-mode
+  else
+    ble/widget/.goto-char "$beg"
+  fi
+}
+
 #------------------------------------------------------------------------------
-# hjkl
+# command: [cdy]?[hjkl]
 
 function ble/widget/vi-command/forward-char {
-  local arg flag; ble/widget/vi-command/.get-arg
-  ((arg<=0&&(arg=1)))
+  local arg flag; ble/widget/vi-command/.get-arg 1
 
   local line=${_ble_edit_str:_ble_edit_ind:arg}
   line=${line%%$'\n'*}
@@ -143,8 +182,7 @@ function ble/widget/vi-command/forward-char {
 }
 
 function ble/widget/vi-command/backward-char {
-  local arg flag; ble/widget/vi-command/.get-arg
-  ((arg<=0&&(arg=1)))
+  local arg flag; ble/widget/vi-command/.get-arg 1
 
   local count=$arg
   ((count>_ble_edit_ind&&(count=_ble_edit_ind)))
@@ -261,34 +299,12 @@ function ble/widget/vi-command/.forward-line {
   fi
 }
 function ble/widget/vi-command/forward-line {
-  local arg flag; ble/widget/vi-command/.get-arg
-  ((arg<=0&&(arg=1)))
+  local arg flag; ble/widget/vi-command/.get-arg 1
   ble/widget/vi-command/.forward-line "$arg"
 }
 function ble/widget/vi-command/backward-line {
-  local arg flag; ble/widget/vi-command/.get-arg
-  ((arg<=0&&(arg=1)))
+  local arg flag; ble/widget/vi-command/.get-arg 1
   ble/widget/vi-command/.forward-line "$((-arg))"
-}
-
-function ble/widget/vi-command/yank-current-line {
-  local arg flag; ble/widget/vi-command/.get-arg
-  ble-assert false not-implemented
-}
-
-function ble/widget/vi-command/delete-current-line {
-  local arg flag; ble/widget/vi-command/.get-arg
-  ble-assert false not-implemented
-}
-
-function ble/widget/vi-command/delete-current-line-and-insert {
-  local arg flag; ble/widget/vi-command/.get-arg
-  ble-assert false not-implemented
-}
-
-function ble/widget/vi-command/beginning-of-line {
-  local arg flag; ble/widget/vi-command/.get-arg
-  ble-assert false not-implemented
 }
 
 #------------------------------------------------------------------------------
