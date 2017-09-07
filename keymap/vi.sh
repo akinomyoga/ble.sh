@@ -168,9 +168,7 @@ function ble/widget/vi-command/forward-char {
     fi
     [[ $flag == c ]] && ble/widget/vi-command/insert-mode
   elif [[ $flag == y ]]; then
-    if ((count)); then
-      ble/widget/.copy-range $_ble_edit_ind $((_ble_edit_ind+count))
-    fi
+    ble/widget/.copy-range $_ble_edit_ind $((_ble_edit_ind+count)) 1
   else
     ((count)) && ble-edit/text/nonbol-eolp $((_ble_edit_ind+count)) && ((count--))
     if ((count)); then
@@ -196,9 +194,8 @@ function ble/widget/vi-command/backward-char {
     fi
     [[ $flag == c ]] && ble/widget/vi-command/insert-mode
   elif [[ $flag == y ]]; then
-    if ((count)); then
-      ble/widget/.copy-range $((_ble_edit_ind-count)) $_ble_edit_ind
-    fi
+    ble/widget/.copy-range $((_ble_edit_ind-count)) $_ble_edit_ind 1
+    ble/widget/.goto-char _ble_edit_ind-count
   else
     if ((count)); then
       ble/widget/.goto-char _ble_edit_ind-count
