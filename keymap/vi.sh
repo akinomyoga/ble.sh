@@ -67,6 +67,11 @@ function ble/widget/vi-command/append-eol-mode {
   ble/widget/.goto-char "$ret"
   ble-decode/keymap/pop
 }
+function ble/widget/vi-command/insert-bol-mode {
+  local ret; ble-edit/text/find-logical-bol
+  ble/widget/.goto-char "$ret"
+  ble-decode/keymap/pop
+}
 function ble/widget/vi-command/replace-mode {
   ble/widget/vi-command/insert-mode
   _ble_edit_overwrite_mode=1
@@ -528,6 +533,7 @@ function ble/widget/vi-command/kill-forward-line-and-insert {
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
   ble-bind -f i vi-command/insert-mode
+  ble-bind -f I vi-command/insert-bol-mode
   ble-bind -f R vi-command/replace-mode
   ble-bind -f a vi-command/append-mode
   ble-bind -f A vi-command/append-eol-mode
