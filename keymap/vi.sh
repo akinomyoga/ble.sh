@@ -74,7 +74,7 @@ function ble/widget/vi-command/replace-mode {
 
 #------------------------------------------------------------------------------
 # arg     : 0-9 d y c
-# command : dd yy cc [dyc]0
+# command : dd yy cc [dyc]0 Y
 
 ## 関数 ble/widget/vi-command/.get-arg [default_value]
 function ble/widget/vi-command/.get-arg {
@@ -118,7 +118,7 @@ function ble/widget/vi-command/arg-append {
   _ble_edit_arg="$_ble_edit_arg$ret"
 }
 
-function ble/widget/vi-command/yank-current-line {
+function ble/widget/vi-command/copy-current-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
   local ret
   ble-edit/text/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
@@ -127,7 +127,7 @@ function ble/widget/vi-command/yank-current-line {
   ble/widget/.copy-range "$beg" "$end" 1 L
 }
 
-function ble/widget/vi-command/delete-current-line {
+function ble/widget/vi-command/kill-current-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
   local ret
   ble-edit/text/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
@@ -136,8 +136,8 @@ function ble/widget/vi-command/delete-current-line {
   ble/widget/.kill-range "$beg" "$end" 1 L
 }
 
-function ble/widget/vi-command/delete-current-line-and-insert {
-  ble/widget/vi-command/delete-current-line
+function ble/widget/vi-command/kill-current-line-and-insert {
+  ble/widget/vi-command/kill-current-line
   ble/widget/vi-command/insert-mode
 }
 
@@ -412,21 +412,24 @@ function ble/widget/vi-command/forward-eol {
   local ret
   ble-edit/text/find-logical-eol "$_ble_edit_ind" $((arg-1)); local dst=$ret
 
-  if [[ $flag == y ]]; then
-    ble/widget/.copy-range "$_ble_edit_ind" "$dst" 1
-  elif [[ $flag == [cd] ]]; then
-    ble/widget/.kill-range "$_ble_edit_ind" "$dst" 1
-    if [[ $flag == c ]]; then
-      ble/widget/vi-command/insert-mode
+  if [[ $flag ]]; then
+    if [[ $flag == y ]]; then
+      ble/widget/.copy-range "$_ble_edit_ind" "$dst" 1
+    elif [[ $flag == [cd] ]]; then
+      ble/widget/.kill-range "$_ble_edit_ind" "$dst" 1
+      if [[ $flag == c ]]; then
+        ble/widget/vi-command/insert-mode
+      else
+        ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
+      fi
     else
-      ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
+      ble/widget/.bell
     fi
-  elif [[ $flag ]]; then
-    ble/widget/.bell
-  else
-    ble-edit/text/nonbol-eolp "$dst" && ((dst--))
-    ble/widget/.goto-char "$dst"
+    return
   fi
+
+  ble-edit/text/nonbol-eolp "$dst" && ((dst--))
+  ble/widget/.goto-char "$dst"
 
   # todo: (要相談) 履歴項目の移動もするか?
 }
@@ -481,9 +484,9 @@ function ble/widget/vi-command/paste-before {
 }
 
 #------------------------------------------------------------------------------
-# command: x X
+# command: x X C D
 
-function ble/widget/vi-command/delete-forward-char {
+function ble/widget/vi-command/kill-forward-char {
   local arg flag; ble/widget/vi-command/.get-arg 1
   if [[ $flag ]]; then
     ble/widget/.bell
@@ -492,13 +495,31 @@ function ble/widget/vi-command/delete-forward-char {
     ble/widget/vi-command/forward-char
   fi
 }
-function ble/widget/vi-command/delete-backward-char {
+function ble/widget/vi-command/kill-backward-char {
   local arg flag; ble/widget/vi-command/.get-arg 1
   if [[ $flag ]]; then
     ble/widget/.bell
   else
     _ble_edit_arg=${arg}d
     ble/widget/vi-command/backward-char
+  fi
+}
+function ble/widget/vi-command/kill-forward-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    _ble_edit_arg=${arg}d
+    ble/widget/vi-command/forward-char
+  fi
+}
+function ble/widget/vi-command/kill-forward-line-and-insert {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    _ble_edit_arg=${arg}c
+    ble/widget/vi-command/forward-char
   fi
 }
 
@@ -521,9 +542,13 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 7 vi-command/arg-append
   ble-bind -f 8 vi-command/arg-append
   ble-bind -f 9 vi-command/arg-append
-  ble-bind -f y 'vi-command/arg-append yank-current-line'
-  ble-bind -f d 'vi-command/arg-append delete-current-line'
-  ble-bind -f c 'vi-command/arg-append delete-current-line-and-insert'
+  ble-bind -f y 'vi-command/arg-append copy-current-line'
+  ble-bind -f d 'vi-command/arg-append kill-current-line'
+  ble-bind -f c 'vi-command/arg-append kill-current-line-and-insert'
+
+  ble-bind -f Y vi-command/copy-current-line
+  ble-bind -f D vi-command/kill-forward-line
+  ble-bind -f C vi-command/kill-forward-line-and-insert
 
   ble-bind -f p vi-command/paste-after
   ble-bind -f P vi-command/paste-before
@@ -547,9 +572,9 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f C-n   vi-command/forward-line
   ble-bind -f C-p   vi-command/backward-line
 
-  ble-bind -f x      vi-command/delete-forward-char
-  ble-bind -f X      vi-command/delete-backward-char
-  ble-bind -f delete vi-command/delete-forward-char
+  ble-bind -f x      vi-command/kill-forward-char
+  ble-bind -f X      vi-command/kill-backward-char
+  ble-bind -f delete vi-command/kill-forward-char
 
   #----------------------------------------------------------------------------
   # temporary implementations
