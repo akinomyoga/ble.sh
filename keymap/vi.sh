@@ -334,6 +334,7 @@ function ble/widget/vi-command/.history-relative-line {
 ##
 function ble/widget/vi-command/.relative-line {
   local arg=$1 flag=$2
+  ((arg==0)) && return
   local count=$((arg<0?-arg:arg))
   local ret ind=$_ble_edit_ind
 
@@ -342,20 +343,33 @@ function ble/widget/vi-command/.relative-line {
     local begl=0 endl=0; ((arg<0?(begl=arg):(endl=arg)))
     ble-edit/text/find-logical-bol "$ind" "$begl"; local beg=$ret
     ble-edit/text/find-logical-eol "$ind" "$endl"; local end=$ret
+    if ble-edit/text/find-logical-bol "$end"; ((beg==ret)); then
+      # jk で1行も移動できない場合は操作をキャンセル
+      ble/widget/.bell
+      return
+    fi
+
     ((end<${#_ble_edit_str}&&end++))
     if [[ $flag == y ]]; then
-      ble/widget/.copy-range "$beg" "$end"
+      ble/widget/.copy-range "$beg" "$end" 1 L
       if ((arg<0)); then
         ble/string#count-char "${_ble_edit_str:beg:ind-beg}" $'\n'
-        ((ret)) && ble/widget/vi-command/.relative-line $((-ret))
+        ble/widget/vi-command/.relative-line $((-ret))
       fi
     else
-      ble/widget/.kill-range "$beg" "$end"
-      [[ $flag == c ]] && ble/widget/vi-command/insert-mode
+      ble/widget/.kill-range "$beg" "$end" 1 L
+      if [[ $flag == c ]]; then
+        ble/widget/insert-string $'\n'
+        ble/widget/.goto-char _ble_edit_ind-1
+        ble/widget/vi-command/insert-mode
+      else
+        ble/widget/vi-command/first-non-space
+      fi
     fi
     return
   elif [[ $flag ]]; then
     ble/widget/.bell
+    return
   fi
 
   # 現在の履歴項目内での探索
@@ -404,46 +418,62 @@ function ble/widget/vi-command/backward-line {
 #------------------------------------------------------------------------------
 # command: ^ + - $
 
-function ble/widget/vi-command/.relativie-first-non-space {
+function ble/widget/vi-command/.relative-first-non-space {
   local arg=$1 flag=$2
   local ret ind=$_ble_edit_ind
   ble-edit/text/find-logical-bol "$ind" "$arg"; local bolx=$ret
-  local rex=$'^[ \t\n]*'
+  local rex=$'^[ \t]*'
   [[ ${_ble_edit_str:bolx} =~ $rex ]]
   local nolx=$((bolx+${#BASH_REMATCH}))
 
   if [[ $flag == [dyc] ]]; then
     if ((arg==0)); then
+      ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
       local beg=$nolx end=$ind
-    else
-      if ((arg>0)); then
-        ble-edit/text/find-logical-bol; local bol1=$ret
-        ble-edit/text/find-logical-eol "$nolx" 0; local eol2=$ret
+      if [[ $flag == y ]]; then
+        ble/widget/.copy-range "$beg" "$end" 1
+        ((nolx<ind)) && ble/widget/.goto-char "$nolx"
       else
-        local bol1=$bolx
-        ble-edit/text/find-logical-eol; local eol2=$ret
+        ble/widget/.kill-range "$beg" "$end" 0
+        [[ $flag == c ]] && ble/widget/vi-command/insert-mode
       fi
-      ((eol2<${#_ble_edit_str}&&eol2++))
-      local beg=$bol1 end=$eol2
-    fi
+    else
+      # arg!=0 (command: + -) なのに bolx と ind が同一行のときはエラー
+      if ((bolx<=ind)) && [[ ${_ble_edit_str:bolx:ind-bolx} != *$'\n'* ]]; then
+        ble/widget/.bell
+        return
+      fi
 
-    if [[ $flag == y ]]; then
-      ble/widget/.copy-range "$beg" "$end" 1
-      if ((nolx<ind)); then
-        ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
-        ble/widget/.goto-char "$nolx"
-      fi
-    else
-      ble/widget/.kill-range "$beg" "$end" 1
-      if [[ $flag == c ]]; then
-        ble/widget/vi-command/insert-mode
+      local beg end
+      if ((arg>0)); then
+        ble-edit/text/find-logical-bol; beg=$ret
+        ble-edit/text/find-logical-eol "$nolx" 0; end=$ret
       else
-        ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
+        ble-edit/text/find-logical-eol; beg=$bolx end=$ret
+      fi
+      ((end<${#_ble_edit_str}&&end++))
+
+      if [[ $flag == y ]]; then
+        ble/widget/.copy-range "$beg" "$end" 1 L
+        if ((nolx<ind)); then
+          ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
+          ble/widget/.goto-char "$nolx"
+        fi
+      else
+        ble/widget/.kill-range "$beg" "$end" 1 L
+        if [[ $flag == c ]]; then
+          ble/widget/insert-string $'\n'
+          ble/widget/.goto-char _ble_edit_ind-1
+          ble/widget/vi-command/insert-mode
+        else
+          ble/widget/vi-command/first-non-space
+        fi
       fi
     fi
     return
   elif [[ $flag ]]; then
     ble/widget/.bell
+    return
   fi
 
   local count=$((arg<0?-arg:arg))
@@ -466,15 +496,15 @@ function ble/widget/vi-command/.relativie-first-non-space {
 
 function ble/widget/vi-command/first-non-space {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.relativie-first-non-space 0 "$flag"
+  ble/widget/vi-command/.relative-first-non-space 0 "$flag"
 }
 function ble/widget/vi-command/forward-first-non-space {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.relativie-first-non-space "$arg" "$flag"
+  ble/widget/vi-command/.relative-first-non-space "$arg" "$flag"
 }
 function ble/widget/vi-command/backward-first-non-space {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.relativie-first-non-space "$((-arg))" "$flag"
+  ble/widget/vi-command/.relative-first-non-space "$((-arg))" "$flag"
 }
 
 function ble/widget/vi-command/forward-eol {
