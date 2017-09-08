@@ -46,36 +46,85 @@ function ble/widget/vi-insert/default {
 #------------------------------------------------------------------------------
 # modes
 
+## 変数 _ble_keymap_vi_insert_arg
+##   挿入モードに入る時に指定された引数を記録する。
+##   ToDo: 現在は使用していない。将来的には vi-isnert/normal-mode で使う。
+_ble_keymap_vi_insert_arg=
+
+## 変数 _ble_keymap_vi_insert_mark
+##   最後に vi-insert を抜けた位置
+##   ToDo: 現在は使用していない。将来的には gi などで使う。
+_ble_keymap_vi_insert_mark=
+
 function ble/widget/vi-insert/normal-mode {
+  _ble_keymap_vi_insert_mark=$_ble_edit_ind
   _ble_edit_overwrite_mode=
   if ! ble-edit/text/bolp; then
     ble/widget/.goto-char "$((_ble_edit_ind-1))"
   fi
   ble-decode/keymap/push vi_command
 }
-function ble/widget/vi-command/insert-mode {
+function ble/widget/vi-command/.insert-mode {
+  _ble_keymap_vi_insert_arg=$1
   _ble_edit_overwrite_mode=
   ble-decode/keymap/pop
 }
-function ble/widget/vi-command/append-mode {
-  if ! ble-edit/text/eolp; then
-    ble/widget/.goto-char "$((_ble_edit_ind+1))"
+function ble/widget/vi-command/insert-mode {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    ble/widget/vi-command/.insert-mode "$arg"
   fi
-  ble/widget/vi-command/insert-mode
+}
+function ble/widget/vi-command/append-mode {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    if ! ble-edit/text/eolp; then
+      ble/widget/.goto-char "$((_ble_edit_ind+1))"
+    fi
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
 }
 function ble/widget/vi-command/append-eol-mode {
-  local ret; ble-edit/text/find-logical-eol
-  ble/widget/.goto-char "$ret"
-  ble/widget/vi-command/insert-mode
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    local ret; ble-edit/text/find-logical-eol
+    ble/widget/.goto-char "$ret"
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
 }
 function ble/widget/vi-command/insert-bol-mode {
-  local ret; ble-edit/text/find-logical-bol
-  ble/widget/.goto-char "$ret"
-  ble/widget/vi-command/insert-mode
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    local ret; ble-edit/text/find-logical-bol
+    ble/widget/.goto-char "$ret"
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
+}
+function ble/widget/vi-command/insert-nol-mode {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    ble/widget/vi-command/first-non-space
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
 }
 function ble/widget/vi-command/replace-mode {
-  _ble_edit_overwrite_mode=1
-  ble/widget/vi-command/insert-mode
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    ble/widget/vi-command/.insert-mode
+    _ble_edit_overwrite_mode=1
+  fi
 }
 function ble/widget/vi-command/accept-line {
   _ble_edit_arg=
@@ -794,7 +843,8 @@ function ble/widget/vi-command/history-end {
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
   ble-bind -f i      vi-command/insert-mode
-  ble-bind -f I      vi-command/insert-bol-mode
+  ble-bind -f I      vi-command/insert-nol-mode
+  ble-bind -f 'g I'  vi-command/insert-bol-mode
   ble-bind -f R      vi-command/replace-mode
   ble-bind -f a      vi-command/append-mode
   ble-bind -f A      vi-command/append-eol-mode

@@ -434,10 +434,18 @@ tech
 
 2017-09-08
 
-  * 下キー:
+  * ble-edit: 下キーなど履歴項目を移動するもの全般に
 
     現在一番下の行にいるということが分かっているのであれば、
     下に行こうとした時に history/load する必要はないのではないだろうか。
+
+  * vi-mode: 以下のリンクで重要そうなコマンドの一覧が見られる
+
+    http://qiita.com/sfuta/items/0de4ead865c15e9e9b68 ?
+    http://qiita.com/sfuta/items/2d646396a6117c8e53e5 g? z?
+
+  * vi-mode: gi
+    変数 _ble_keymap_vi_insert_mark だけ用意した。
 
   * vi-mode: f F
 
