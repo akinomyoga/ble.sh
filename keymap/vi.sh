@@ -172,6 +172,30 @@ function ble/widget/vi-command/beginning-of-line {
 #------------------------------------------------------------------------------
 # command: [cdy]?[hl|]
 
+function ble/widget/vi-command/.common-move {
+  local index=$1 flag=$2 nobell=$3
+  if [[ $flag == [cd] ]]; then
+    ble/widget/.kill-range "$_ble_edit_ind" "$index" 0
+    if [[ $flag == c ]]; then
+      ble/widget/vi-command/insert-mode
+    else
+      ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
+    fi
+  elif [[ $flag == y ]]; then
+    ble/widget/.copy-range "$_ble_edit_ind" "$index" 1
+    ((index<_ble_edit_ind)) && ble/widget/.goto-char index
+  elif [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    ble-edit/text/nonbol-eolp $index && ((index--))
+    if ((index!=_ble_edit_ind)); then
+      ble/widget/.goto-char index
+    else
+      ((nobell)) || ble/widget/.bell
+    fi
+  fi
+}
+
 ## 編集関数 ble/widget/vi-command/forward-char [type]
 ## 編集関数 ble/widget/vi-command/backward-char [type]
 ##
@@ -198,25 +222,7 @@ function ble/widget/vi-command/forward-char {
     ((index=_ble_edit_ind+${#line}))
   fi
 
-  if [[ $flag == [cd] ]]; then
-    ble/widget/.kill-range $_ble_edit_ind $index 0
-    if [[ $flag == c ]]; then
-      ble/widget/vi-command/insert-mode
-    else
-      ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
-    fi
-  elif [[ $flag == y ]]; then
-    ble/widget/.copy-range $_ble_edit_ind $index 1
-  elif [[ $flag ]]; then
-    ble/widget/.bell
-  else
-    ble-edit/text/nonbol-eolp $index && ((index--))
-    if ((index!=_ble_edit_ind)); then
-      ble/widget/.goto-char index
-    else
-      ble/widget/.bell
-    fi
-  fi
+  ble/widget/vi-command/.common-move "$index" "$flag"
 }
 
 function ble/widget/vi-command/backward-char {
@@ -240,21 +246,7 @@ function ble/widget/vi-command/backward-char {
     ((index=_ble_edit_ind-${#line}))
   fi
 
-  if [[ $flag == [cd] ]]; then
-    ble/widget/.kill-range $index $_ble_edit_ind 0
-    [[ $flag == c ]] && ble/widget/vi-command/insert-mode
-  elif [[ $flag == y ]]; then
-    ble/widget/.copy-range $index $_ble_edit_ind 1
-    ble/widget/.goto-char index
-  elif [[ $flag ]]; then
-    ble/widget/.bell
-  else
-    if ((index!=_ble_edit_ind)); then
-      ble/widget/.goto-char index
-    else
-      ble/widget/.bell
-    fi
-  fi
+  ble/widget/vi-command/.common-move "$index" "$flag"
 }
 
 function ble/widget/vi-command/column {
@@ -276,17 +268,7 @@ function ble/widget/vi-command/column {
     ((index=bol+arg-1,index>eol?(index=eol)))
   fi
 
-  if [[ $flag == [cd] ]]; then
-    ble/widget/.kill-range "$_ble_edit_ind" "$index" 0
-    [[ $flag == c ]] && ble/widget/vi-command/insert-mode
-  elif [[ $flag == y ]]; then
-    ble/widget/.copy-range "$_ble_edit_ind" "$index" 1
-    ((index<_ble_edit_ind)) && ble/widget/.goto-char index
-  elif [[ $flag ]]; then
-    ble/widget/.bell
-  else
-    ble/widget/.goto-char index
-  fi
+  ble/widget/vi-command/.common-move "$index" "$flag" 1
 }
 
 #------------------------------------------------------------------------------
@@ -615,6 +597,60 @@ function ble/widget/vi-command/kill-forward-line-and-insert {
 }
 
 #------------------------------------------------------------------------------
+# command: w W b B e E
+
+function ble/widget/vi-command/.forward-word {
+  local arg=$1 flag=$2 rex_word=$3
+  local bl=$' \t' nl=$'\n'
+  local rex="^((($rex_word)$nl?|[$bl]+$nl?|$nl)([$bl]+$nl)*[$bl]*){0,$arg}" # 単語先頭または空行に止まる
+  [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]
+  local index=$((_ble_edit_ind+${#BASH_REMATCH}))
+  ble/widget/vi-command/.common-move "$index" "$flag"
+}
+function ble/widget/vi-command/.forward-word-end {
+  local arg=$1 flag=$2 rex_word=$3
+  local IFS=$' \t\n'
+  local rex="^([$IFS]*($rex_word)?){0,$arg}" # 単語末端に止まる。空行には止まらない
+  [[ ${_ble_edit_str:_ble_edit_ind+1} =~ $rex ]]
+  local index=$((_ble_edit_ind+${#BASH_REMATCH}))
+  [[ $BASH_REMATCH && ${_ble_edit_str:index:1} == [$IFS] ]] && ble/widget/.bell
+  ble/widget/vi-command/.common-move "$index" "$flag" 0
+}
+function ble/widget/vi-command/.backward-word {
+  local arg=$1 flag=$2 rex_word=$3
+  local bl=$' \t' nl=$'\n'
+  local rex="((($rex_word)$nl?|[$bl]+$nl?|$nl)([$bl]+$nl)*[$bl]*){0,$arg}\$" # 単語先頭または空行に止まる
+  [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]
+  local index=$((_ble_edit_ind-${#BASH_REMATCH}))
+  ble/widget/vi-command/.common-move "$index" "$flag"
+}
+
+function ble/widget/vi-command/forward-vword {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.forward-word "$arg" "$flag" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
+}
+function ble/widget/vi-command/forward-vword-end {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.forward-word-end "$arg" "$flag" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
+}
+function ble/widget/vi-command/backward-vword {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.backward-word "$arg" "$flag" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
+}
+function ble/widget/vi-command/forward-uword {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.forward-word "$arg" "$flag" $'[^ \t\n]+'
+}
+function ble/widget/vi-command/forward-uword-end {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.forward-word-end "$arg" "$flag" $'[^ \t\n]+'
+}
+function ble/widget/vi-command/backward-uword {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  ble/widget/vi-command/.backward-word "$arg" "$flag" $'[^ \t\n]+'
+}
+
+#------------------------------------------------------------------------------
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
@@ -658,6 +694,9 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f l     vi-command/forward-char
   ble-bind -f left  vi-command/backward-char
   ble-bind -f right vi-command/forward-char
+  ble-bind -f C-h   'vi-command/backward-char m'
+  ble-bind -f DEL   'vi-command/backward-char m'
+  ble-bind -f SP    'vi-command/forward-char m'
 
   ble-bind -f j     vi-command/forward-line
   ble-bind -f k     vi-command/backward-line
@@ -671,14 +710,14 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f X      vi-command/kill-backward-char
   ble-bind -f delete vi-command/kill-forward-char
 
+  ble-bind -f w vi-command/forward-vword
+  ble-bind -f W vi-command/forward-uword
+  ble-bind -f b vi-command/backward-vword
+  ble-bind -f B vi-command/backward-uword
+  ble-bind -f e vi-command/forward-vword-end
+  ble-bind -f E vi-command/forward-uword-end
+
   ble-bind -f '|' vi-command/column
-
-  #----------------------------------------------------------------------------
-  # temporary implementations
-
-  ble-bind -f C-h 'vi-command/backward-char m'
-  ble-bind -f DEL 'vi-command/backward-char m'
-  ble-bind -f SP 'vi-command/forward-char m'
 
   #----------------------------------------------------------------------------
   # bash
@@ -691,6 +730,11 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'RET' 'vi-command/@popped accept-single-line-or-newline'
   ble-bind -f 'C-g' bell
   ble-bind -f 'C-l' clear-screen
+
+  ble-bind -f C-left  vi-command/backward-vword
+  ble-bind -f M-left  vi-command/backward-uword
+  ble-bind -f C-right vi-command/forward-vword-end
+  ble-bind -f M-right vi-command/forward-uword-end
 }
 
 function ble-decode-keymap:vi_insert/define {
