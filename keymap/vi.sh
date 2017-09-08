@@ -298,11 +298,11 @@ function ble/widget/vi-command/.history-relative-line {
     if ((arg<0)); then
       ((_ble_edit_history_ind>0||(count=0))) || break
       ble/widget/history-prev
-      _ble_edit_ind=${#_ble_edit_str}
+      ble/widget/.goto-char ${#_ble_edit_str}
     else
       ((_ble_edit_history_ind<${#_ble_edit_history[@]}||(count=0))) || break
       ble/widget/history-next
-      _ble_edit_ind=0
+      ble/widget/.goto-char 0
     fi
     ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
     ((count<nline)) && break
@@ -725,6 +725,7 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f E vi-command/forward-uword-end
 
   ble-bind -f '|' vi-command/column
+  ble-bind -f K command-help
 
   #----------------------------------------------------------------------------
   # bash
