@@ -1744,6 +1744,7 @@ _ble_edit_mark_active=
 _ble_edit_kill_ring=
 _ble_edit_kill_type=
 _ble_edit_overwrite_mode=
+_ble_edit_arg=
 
 # _ble_edit_str は以下の関数を通して変更する。
 # 変更範囲を追跡する為。

@@ -77,11 +77,19 @@ function ble/widget/vi-command/replace-mode {
   _ble_edit_overwrite_mode=1
   ble/widget/vi-command/insert-mode
 }
-function ble/widget/vi-command/@popped {
+function ble/widget/vi-command/accept-line {
   _ble_edit_arg=
   ble-decode/keymap/pop
-  ble/widget/"$@"
+  ble/widget/accept-line
 }
+function ble/widget/vi-command/accept-single-line-or-forward-first-non-space {
+  if [[ $_ble_edit_str == *$'\n'* ]]; then
+    ble/widget/vi-command/forward-first-non-space
+  else
+    ble/widget/vi-command/accept-line
+  fi
+}
+
 
 #------------------------------------------------------------------------------
 # arg     : 0-9 d y c
@@ -102,7 +110,6 @@ function ble/widget/vi-command/.get-arg {
   _ble_edit_arg=
 }
 
-_ble_edit_arg=
 function ble/widget/vi-command/arg-append {
   local code="$((KEYS[0]&ble_decode_MaskChar))"
   ((code==0)) && return
@@ -397,7 +404,7 @@ function ble/widget/vi-command/backward-line {
 #------------------------------------------------------------------------------
 # command: ^ + - $
 
-function ble/widget/vi-command/.first-non-space-of-relative-line {
+function ble/widget/vi-command/.relativie-first-non-space {
   local arg=$1 flag=$2
   local ret ind=$_ble_edit_ind
   ble-edit/text/find-logical-bol "$ind" "$arg"; local bolx=$ret
@@ -454,20 +461,20 @@ function ble/widget/vi-command/.first-non-space-of-relative-line {
 
   # 履歴項目の移動
   ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count))
-  ble/widget/vi-command/first-non-space-of-line
+  ble/widget/vi-command/first-non-space
 }
 
-function ble/widget/vi-command/first-non-space-of-line {
+function ble/widget/vi-command/first-non-space {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.first-non-space-of-relative-line 0 "$flag"
+  ble/widget/vi-command/.relativie-first-non-space 0 "$flag"
 }
-function ble/widget/vi-command/first-non-space-of-forward-line {
+function ble/widget/vi-command/forward-first-non-space {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.first-non-space-of-relative-line "$arg" "$flag"
+  ble/widget/vi-command/.relativie-first-non-space "$arg" "$flag"
 }
-function ble/widget/vi-command/first-non-space-of-backward-line {
+function ble/widget/vi-command/backward-first-non-space {
   local arg flag; ble/widget/vi-command/.get-arg 1
-  ble/widget/vi-command/.first-non-space-of-relative-line "$((-arg))" "$flag"
+  ble/widget/vi-command/.relativie-first-non-space "$((-arg))" "$flag"
 }
 
 function ble/widget/vi-command/forward-eol {
@@ -527,7 +534,7 @@ function ble/widget/vi-command/.paste {
     ble/string#repeat "${_ble_edit_kill_ring%$_ble_term_nl}$_ble_term_nl" "$arg"
     ble/widget/insert-string "$ret"
     ble/widget/.goto-char ind
-    ble/widget/vi-command/first-non-space-of-line
+    ble/widget/vi-command/first-non-space
   else
     if ((is_after&&_ble_edit_ind<${#_ble_edit_str})); then
       ble/widget/.goto-char _ble_edit_ind+1
@@ -686,9 +693,9 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f home vi-command/beginning-of-line
   ble-bind -f '$' vi-command/forward-eol
   ble-bind -f end vi-command/forward-eol
-  ble-bind -f '^' vi-command/first-non-space-of-line
-  ble-bind -f '+' vi-command/first-non-space-of-forward-line
-  ble-bind -f '-' vi-command/first-non-space-of-backward-line
+  ble-bind -f '^' vi-command/first-non-space
+  ble-bind -f '+' vi-command/forward-first-non-space
+  ble-bind -f '-' vi-command/backward-first-non-space
 
   ble-bind -f h     vi-command/backward-char
   ble-bind -f l     vi-command/forward-char
@@ -725,9 +732,9 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'C-q' quoted-insert
   ble-bind -f 'C-v' quoted-insert
 
-  ble-bind -f 'C-j' 'vi-command/@popped accept-line'
-  ble-bind -f 'C-m' 'vi-command/@popped accept-single-line-or-newline'
-  ble-bind -f 'RET' 'vi-command/@popped accept-single-line-or-newline'
+  ble-bind -f 'C-j' vi-command/accept-line
+  ble-bind -f 'C-m' vi-command/accept-single-line-or-forward-first-non-space
+  ble-bind -f 'RET' vi-command/accept-single-line-or-forward-first-non-space
   ble-bind -f 'C-g' bell
   ble-bind -f 'C-l' clear-screen
 
