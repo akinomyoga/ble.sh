@@ -177,9 +177,9 @@ function ble/widget/vi-command/beginning-of-line {
 }
 
 #------------------------------------------------------------------------------
-# command: [cdy]?[hl|]
+# command: [cdy]?[hl]
 
-function ble/widget/vi-command/.common-move {
+function ble/widget/vi-command/.common-goto {
   local index=$1 flag=$2 nobell=$3
   if [[ $flag == [cd] ]]; then
     ble/widget/.kill-range "$_ble_edit_ind" "$index" 0
@@ -229,7 +229,7 @@ function ble/widget/vi-command/forward-char {
     ((index=_ble_edit_ind+${#line}))
   fi
 
-  ble/widget/vi-command/.common-move "$index" "$flag"
+  ble/widget/vi-command/.common-goto "$index" "$flag"
 }
 
 function ble/widget/vi-command/backward-char {
@@ -253,29 +253,7 @@ function ble/widget/vi-command/backward-char {
     ((index=_ble_edit_ind-${#line}))
   fi
 
-  ble/widget/vi-command/.common-move "$index" "$flag"
-}
-
-function ble/widget/vi-command/column {
-  local arg flag; ble/widget/vi-command/.get-arg 1
-
-  local ret index
-  ble-edit/text/find-logical-bol; local bol=$ret
-  ble-edit/text/find-logical-eol; local eol=$ret
-  if ble-edit/text/is-position-up-to-date; then
-    local bx by; ble-edit/text/getxy.cur --prefix=b "$bol" # Note: 先頭行はプロンプトにより bx!=0
-    local ex ey; ble-edit/text/getxy.cur --prefix=e "$eol"
-    local dstx=$((bx+arg-1)) dsty=$by cols=${COLUMNS:-80}
-    ((dsty+=dstx/cols,dstx%=cols))
-    ((dsty>ey&&(dsty=ey,dstx=ex)))
-    ble-edit/text/get-index-at "$dstx" "$dsty" # local variable "index" is set here
-    ble-edit/text/nonbol-eolp "$index" && ((index--))
-  else
-    ble-edit/text/nonbol-eolp "$eol" && ((eol--))
-    ((index=bol+arg-1,index>eol?(index=eol)))
-  fi
-
-  ble/widget/vi-command/.common-move "$index" "$flag" 1
+  ble/widget/vi-command/.common-goto "$index" "$flag"
 }
 
 #------------------------------------------------------------------------------
@@ -642,7 +620,7 @@ function ble/widget/vi-command/.forward-word {
   local rex="^((($rex_word)$nl?|[$bl]+$nl?|$nl)([$bl]+$nl)*[$bl]*){0,$arg}" # 単語先頭または空行に止まる
   [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]
   local index=$((_ble_edit_ind+${#BASH_REMATCH}))
-  ble/widget/vi-command/.common-move "$index" "$flag"
+  ble/widget/vi-command/.common-goto "$index" "$flag"
 }
 function ble/widget/vi-command/.forward-word-end {
   local arg=$1 flag=$2 rex_word=$3
@@ -651,7 +629,7 @@ function ble/widget/vi-command/.forward-word-end {
   [[ ${_ble_edit_str:_ble_edit_ind+1} =~ $rex ]]
   local index=$((_ble_edit_ind+${#BASH_REMATCH}))
   [[ $BASH_REMATCH && ${_ble_edit_str:index:1} == [$IFS] ]] && ble/widget/.bell
-  ble/widget/vi-command/.common-move "$index" "$flag" 0
+  ble/widget/vi-command/.common-goto "$index" "$flag" 0
 }
 function ble/widget/vi-command/.backward-word {
   local arg=$1 flag=$2 rex_word=$3
@@ -659,7 +637,7 @@ function ble/widget/vi-command/.backward-word {
   local rex="((($rex_word)$nl?|[$bl]+$nl?|$nl)([$bl]+$nl)*[$bl]*){0,$arg}\$" # 単語先頭または空行に止まる
   [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]
   local index=$((_ble_edit_ind-${#BASH_REMATCH}))
-  ble/widget/vi-command/.common-move "$index" "$flag"
+  ble/widget/vi-command/.common-goto "$index" "$flag"
 }
 
 function ble/widget/vi-command/forward-vword {
@@ -685,6 +663,130 @@ function ble/widget/vi-command/forward-uword-end {
 function ble/widget/vi-command/backward-uword {
   local arg flag; ble/widget/vi-command/.get-arg 1
   ble/widget/vi-command/.backward-word "$arg" "$flag" $'[^ \t\n]+'
+}
+
+#------------------------------------------------------------------------------
+# command: [cdy]?[|HL]
+
+function ble/widget/vi-command/nth-column {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+
+  local ret index
+  ble-edit/text/find-logical-bol; local bol=$ret
+  ble-edit/text/find-logical-eol; local eol=$ret
+  if ble-edit/text/is-position-up-to-date; then
+    local bx by; ble-edit/text/getxy.cur --prefix=b "$bol" # Note: 先頭行はプロンプトにより bx!=0
+    local ex ey; ble-edit/text/getxy.cur --prefix=e "$eol"
+    local dstx=$((bx+arg-1)) dsty=$by cols=${COLUMNS:-80}
+    ((dsty+=dstx/cols,dstx%=cols))
+    ((dsty>ey&&(dsty=ey,dstx=ex)))
+    ble-edit/text/get-index-at "$dstx" "$dsty" # local variable "index" is set here
+    ble-edit/text/nonbol-eolp "$index" && ((index--))
+  else
+    ble-edit/text/nonbol-eolp "$eol" && ((eol--))
+    ((index=bol+arg-1,index>eol?(index=eol)))
+  fi
+
+  ble/widget/vi-command/.common-goto "$index" "$flag" 1
+}
+
+## 関数 ble/widget/vi-command/.common-goto-line bolx [flag]
+##   指定した行の非空白行頭に移動または flag で指定した処理をします。
+##
+##   @param[in] bolx
+##     行き先の行の行頭を指定します。
+##
+##   @param[in] flag
+##
+function ble/widget/vi-command/.common-goto-line {
+  local bolx=$1 flag=$2
+  if [[ $flag == [ydc] ]]; then
+    local ind=$_ble_edit_ind
+
+    # Note: .relative-line / .relative-first-non-space
+    #   に類似の処理があるが、統合できそうで微妙にできない。
+    local beg end
+    if ((ind<=bolx)); then
+      ble-edit/text/find-logical-bol "$ind"; beg=$ret
+      ble-edit/text/find-logical-eol "$bolx"; end=$ret
+    else
+      ble-edit/text/find-logical-eol "$ind"; beg=$bolx end=$ret
+    fi
+    ((end<${#_ble_edit_str}&&end++))
+
+    if [[ $flag == y ]]; then
+      ble/widget/.copy-range "$beg" "$end" 1 L
+      if ((bolx<ind)); then
+        ble/string#count-char "${_ble_edit_str:beg:ind-beg}" $'\n'
+        ((ret)) && ble/widget/vi-command/.relative-line $((-ret))
+      fi
+    else
+      ble/widget/.kill-range "$beg" "$end" 1 L
+      if [[ $flag == c ]]; then
+        ble/widget/insert-string $'\n'
+        ble/widget/.goto-char _ble_edit_ind-1
+        ble/widget/vi-command/insert-mode
+      else
+        ble/widget/vi-command/first-non-space
+      fi
+    fi
+  elif [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    ble/widget/.goto-char bolx
+    ble/widget/vi-command/first-non-space
+  fi
+}
+
+function ble/widget/vi-command/nth-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  local ret; ble-edit/text/find-logical-bol 0 $((arg-1)); local bolx=$ret
+  ble/widget/vi-command/.common-goto-line "$bolx" "$flag"
+}
+
+function ble/widget/vi-command/nth-last-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  local ret; ble-edit/text/find-logical-bol ${#_ble_edit_str} $((-(arg-1))); local bolx=$ret
+  ble/widget/vi-command/.common-goto-line "$bolx" "$flag"
+}
+
+function ble/widget/vi-command/history-beginning {
+  local arg flag; ble/widget/vi-command/.get-arg 0
+  if [[ $flag ]]; then
+    if ((arg)); then
+      _ble_edit_arg=$arg$flag
+    else
+      _ble_edit_arg=$flag
+    fi
+    ble/widget/vi-command/nth-line
+    return
+  fi
+  
+  if ((arg)); then
+    ble-edit/history/goto $((arg-1))
+  else
+    ble/widget/history-beginning
+  fi
+}
+
+function ble/widget/vi-command/history-end {
+  local arg flag; ble/widget/vi-command/.get-arg 0
+  if [[ $flag ]]; then
+    if ((arg)); then
+      _ble_edit_arg=$arg$flag
+      ble/widget/vi-command/nth-line
+    else
+      _ble_edit_arg=$flag
+      ble/widget/vi-command/nth-last-line
+    fi
+    return
+  fi
+
+  if ((arg)); then
+    ble-edit/history/goto $((arg-1))
+  else
+    ble/widget/history-end
+  fi
 }
 
 #------------------------------------------------------------------------------
@@ -754,7 +856,12 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f e vi-command/forward-vword-end
   ble-bind -f E vi-command/forward-uword-end
 
-  ble-bind -f '|' vi-command/column
+  ble-bind -f '|'   vi-command/nth-column
+  ble-bind -f H     vi-command/nth-line
+  ble-bind -f L     vi-command/nth-last-line
+  ble-bind -f 'g g' vi-command/history-beginning
+  ble-bind -f G     vi-command/history-end
+
   ble-bind -f K command-help
 
   #----------------------------------------------------------------------------
