@@ -314,23 +314,39 @@ function ble/string#count-char {
   ret=${#text}
 }
 
+## 関数 ble/widget/vi-command/.history-relative-line arg
+##
+##   @param[in] arg
+##     移動する相対行数を指定する。負の値は前に移動することを表し、
+##     正の値は後に移動することを表す。
+##
+##   @exit
+##     全く移動しなかった場合は 1 を返します。
+##     それ以外の場合は 0 を返します。
+##
 function ble/widget/vi-command/.history-relative-line {
-  local arg=$1 type=$2
+  local arg=$1
   ((arg)) || return 0
 
-  local ret count=$((arg<0?-arg:arg))
+  # 履歴が初期化されていないとき最終行にいる。
+  if [[ ! $_ble_edit_history_loaded ]]; then
+    ((arg<0)) || return 1
+    ble-edit/history/load # to use _ble_edit_history_ind
+  fi
+
+  local ret count=$((arg<0?-arg:arg)) exit=1
   ((count--))
-  ble-edit/history/load
   while ((count>=0)); do
     if ((arg<0)); then
-      ((_ble_edit_history_ind>0||(count=0))) || break
+      ((_ble_edit_history_ind>0)) || return "$exit"
       ble/widget/history-prev
       ble/widget/.goto-char ${#_ble_edit_str}
     else
-      ((_ble_edit_history_ind<${#_ble_edit_history[@]}||(count=0))) || break
+      ((_ble_edit_history_ind<${#_ble_edit_history[@]})) || return "$exit"
       ble/widget/history-next
       ble/widget/.goto-char 0
     fi
+    exit=0
     ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
     ((count<nline)) && break
     ((count-=nline))
@@ -431,7 +447,7 @@ function ble/widget/vi-command/.relative-line {
   fi
 
   # 履歴項目を行数を数えつつ移動
-  ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count))
+  ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)) || ((nmove)) || ble/widget/.bell
 }
 function ble/widget/vi-command/forward-line {
   local arg flag; ble/widget/vi-command/.get-arg 1
@@ -503,10 +519,10 @@ function ble/widget/vi-command/.relative-first-non-space {
     return
   fi
 
-  local count=$((arg<0?-arg:arg))
+  local count=$((arg<0?-arg:arg)) nmove=0
   if ((count)); then
     local beg end; ((nolx<ind?(beg=nolx,end=ind):(beg=ind,end=nolx)))
-    ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; local nmove=$ret
+    ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; nmove=$ret
     ((count-=nmove))
   fi
 
@@ -517,8 +533,11 @@ function ble/widget/vi-command/.relative-first-non-space {
   fi
 
   # 履歴項目の移動
-  ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count))
-  ble/widget/vi-command/first-non-space
+  if ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)) || ((nmove)); then
+    ble/widget/vi-command/first-non-space
+  else
+    ble/widget/.bell
+  fi
 }
 
 function ble/widget/vi-command/first-non-space {

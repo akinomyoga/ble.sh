@@ -3964,8 +3964,11 @@ function ble-edit/history/goto {
 }
 
 function ble/widget/history-next {
-  ble-edit/history/load # $_ble_edit_history_ind のため
-  ble-edit/history/goto $((_ble_edit_history_ind+1))
+  if [[ $_ble_edit_history_loaded ]]; then
+    ble-edit/history/goto $((_ble_edit_history_ind+1))
+  else
+    ble/widget/.bell
+  fi
 }
 function ble/widget/history-prev {
   ble-edit/history/load # $_ble_edit_history_ind のため
@@ -3975,8 +3978,11 @@ function ble/widget/history-beginning {
   ble-edit/history/goto 0
 }
 function ble/widget/history-end {
-  ble-edit/history/load # ${#_ble_edit_history[@]} のため
-  ble-edit/history/goto "${#_ble_edit_history[@]}"
+  if [[ $_ble_edit_history_loaded ]]; then
+    ble-edit/history/goto "${#_ble_edit_history[@]}"
+  else
+    ble/widget/.bell
+  fi
 }
 
 function ble/widget/history-expand-line {
