@@ -115,7 +115,7 @@
 #   直す必要がある。その様な変な端末があるとは思えないが。
 
 
-declare -a _ble_text_c2w__table=()
+_ble_text_c2w__table=()
 
 ## 関数 ble/util/c2w ccode
 ##   @var[out] ret
@@ -149,7 +149,7 @@ function ble/util/c2w-edit {
 
 ## 関数 ble/util/c2w+emacs
 ##   emacs-24.2.1 default char-width-table
-declare -a _ble_text_c2w__emacs_wranges=(
+_ble_text_c2w__emacs_wranges=(
  162 164 167 169 172 173 176 178 180 181 182 183 215 216 247 248 272 273 276 279
  280 282 284 286 288 290 293 295 304 305 306 308 315 316 515 516 534 535 545 546
  555 556 608 618 656 660 722 723 724 725 768 769 770 772 775 777 779 780 785 787
@@ -253,7 +253,7 @@ function ble/util/c2w+west {
 }
 
 ## 関数 ble/util/c2w+east
-declare -a _ble_text_c2w__east_wranges=(
+_ble_text_c2w__east_wranges=(
  161 162 164 165 167 169 170 171 174 175 176 181 182 187 188 192 198 199 208 209
  215 217 222 226 230 231 232 235 236 238 240 241 242 244 247 251 252 253 254 255
  257 258 273 274 275 276 283 284 294 296 299 300 305 308 312 313 319 323 324 325
@@ -1136,12 +1136,12 @@ function ble-edit/prompt/update {
 ## @var _ble_line_text_cache_pos[]
 ## @var _ble_line_text_cache_cs[]
 ##   編集文字列の各文字に対応する位置と表示文字列の配列です。
-declare -a _ble_line_text_cache_pos=()
-declare -a _ble_line_text_cache_cs=()
+_ble_line_text_cache_pos=()
+_ble_line_text_cache_cs=()
 
 ## @var _ble_line_text_cache_ichg[]
 ##   表示文字に変更のあった物の index の一覧です。
-declare -a _ble_line_text_cache_ichg=()
+_ble_line_text_cache_ichg=()
 _ble_line_text_cache_length=
 
 ## 関数 text x y; ble-edit/text/update/position; x y
@@ -3191,7 +3191,7 @@ function ble/widget/backward-xword {
 
 # **** ble-edit/exec ****                                            @edit.exec
 
-declare -a _ble_edit_exec_lines=()
+_ble_edit_exec_lines=()
 _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
 function ble-edit/exec/register {
@@ -3318,8 +3318,8 @@ function ble-edit/exec:exec/.recursive {
   ble-edit/exec:exec/.recursive "$(($1+1))"
 }
 
-declare _ble_edit_exec_replacedDeclare=
-declare _ble_edit_exec_replacedTypeset=
+_ble_edit_exec_replacedDeclare=
+_ble_edit_exec_replacedTypeset=
 function ble-edit/exec:exec/.isGlobalContext {
   local offset="$1"
 
@@ -4512,8 +4512,8 @@ function ble-edit/bind/stdout.off { ble/util/buffer.flush >&2;}
 function ble-edit/bind/stdout.finalize { :;}
 
 if [[ $bleopt_suppress_bash_output ]]; then
-  declare _ble_edit_io_stdout
-  declare _ble_edit_io_stderr
+  _ble_edit_io_stdout=
+  _ble_edit_io_stderr=
   if ((_ble_bash>40100)); then
     exec {_ble_edit_io_stdout}>&1
     exec {_ble_edit_io_stderr}>&2
@@ -4521,8 +4521,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
     ble/util/openat _ble_edit_io_stdout '>&1'
     ble/util/openat _ble_edit_io_stderr '>&2'
   fi
-  declare _ble_edit_io_fname1="$_ble_base_tmp/$$.stdout"
-  declare _ble_edit_io_fname2="$_ble_base_tmp/$$.stderr"
+  _ble_edit_io_fname1="$_ble_base_tmp/$$.stdout"
+  _ble_edit_io_fname2="$_ble_base_tmp/$$.stderr"
 
   function ble-edit/bind/stdout.on {
     exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr

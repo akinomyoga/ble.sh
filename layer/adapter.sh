@@ -13,7 +13,7 @@
 
 : ${bleopt_syntax_highlight_mode=default}
 
-declare -a _ble_region_highlight_table
+_ble_region_highlight_table=()
 
 ## 古い実装からの adapter
 _ble_highlight_layer_adapter_buff=()

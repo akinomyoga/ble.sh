@@ -3476,8 +3476,12 @@ function ble-syntax/highlight/cmdtype2 {
   fi
 }
 
-if ((_ble_bash>=40000)); then
-  declare -A _ble_syntax_highlight_filetype=()
+if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function)); then
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_syntax_highlight_filetype=()
+  else
+    declare -A _ble_syntax_highlight_filetype=()
+  fi
   _ble_syntax_highlight_filetype_version=-1
   ## @var type[out]
   function ble-syntax/highlight/cmdtype {
@@ -3496,7 +3500,7 @@ if ((_ble_bash>=40000)); then
     _ble_syntax_highlight_filetype["x$_0"]="$type"
   }
 else
-  declare -a _ble_syntax_highlight_filetype=()
+  _ble_syntax_highlight_filetype=()
   _ble_syntax_highlight_filetype_version=-1
   function ble-syntax/highlight/cmdtype {
     local cmd="$1" _0="$2"

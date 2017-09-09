@@ -758,7 +758,7 @@ if ((_ble_bash>=40100)); then
   function ble/util/s2c {
     builtin printf -v ret '%d' "'${1:$2:1}"
   }
-elif ((_ble_bash>=40000)); then
+elif ((_ble_bash>=40000&&_ble_bash_loaded_in_function)); then
   # - 連想配列にキャッシュできる
   # - printf "'c" で unicode が読める
   declare -A _ble_text_s2c_table
@@ -854,7 +854,7 @@ fi
 
 
 # どうもキャッシュするのが一番速い様だ
-declare -a _ble_text_c2s_table
+_ble_text_c2s_table=()
 function ble/util/c2s {
   ret="${_ble_text_c2s_table[$1]}"
   if [[ ! $ret ]]; then

@@ -9,23 +9,27 @@
 
 # **** key names ****
 
-if [[ ! $ble_decode_Erro ]]; then
-  declare -ir ble_decode_Erro=0x40000000
-  declare -ir ble_decode_Meta=0x08000000
-  declare -ir ble_decode_Ctrl=0x04000000
-  declare -ir ble_decode_Shft=0x02000000
-  declare -ir ble_decode_Hypr=0x01000000
-  declare -ir ble_decode_Supr=0x00800000
-  declare -ir ble_decode_Altr=0x00400000
-  declare -ir ble_decode_MaskChar=0x001FFFFF
-  declare -ir ble_decode_MaskFlag=0x7FC00000
-fi
+ble_decode_Erro=0x40000000
+ble_decode_Meta=0x08000000
+ble_decode_Ctrl=0x04000000
+ble_decode_Shft=0x02000000
+ble_decode_Hypr=0x01000000
+ble_decode_Supr=0x00800000
+ble_decode_Altr=0x00400000
+ble_decode_MaskChar=0x001FFFFF
+ble_decode_MaskFlag=0x7FC00000
 
-if ((_ble_bash>=40000)); then
+if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function)); then
   _ble_decode_kbd_ver=4
-  declare -i _ble_decode_kbd__n=0
-  declare -A _ble_decode_kbd__k2c
-  declare -A _ble_decode_kbd__c2k
+  _ble_decode_kbd__n=0
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_decode_kbd__k2c
+    declare -gA _ble_decode_kbd__c2k
+  else
+    declare -A _ble_decode_kbd__k2c
+    declare -A _ble_decode_kbd__c2k
+  fi
+
   function ble-decode-kbd/.set-keycode {
     local key="$1" code="$2"
     : ${_ble_decode_kbd__c2k[$code]:=$key}
@@ -36,10 +40,10 @@ if ((_ble_bash>=40000)); then
   }
 else
   _ble_decode_kbd_ver=3
-  declare -i _ble_decode_kbd__n=0
-  declare    _ble_decode_kbd__k2c_keys=
-  declare -a _ble_decode_kbd__k2c_vals
-  declare -a _ble_decode_kbd__c2k
+  _ble_decode_kbd__n=0
+  _ble_decode_kbd__k2c_keys=
+  _ble_decode_kbd__k2c_vals=()
+  _ble_decode_kbd__c2k=()
   function ble-decode-kbd/.set-keycode {
     local key="$1" code="$2"
     : ${_ble_decode_kbd__c2k[$code]:=$key}
@@ -58,9 +62,7 @@ else
   }
 fi
 
-if [[ ! $ble_decode_function_key_base ]]; then
-  declare -ir ble_decode_function_key_base=0x110000
-fi
+ble_decode_function_key_base=0x110000
 
 ## 関数 ble-decode-kbd/.get-keyname keycode
 ##   @param[in]  keycode keycode
@@ -412,7 +414,7 @@ function ble-decode-char/csi/consume {
 
 # **** ble-decode-char ****
 
-declare _ble_decode_char__hook=
+_ble_decode_char__hook=
 
 ## 配列 _ble_decode_cmap_${_ble_decode_char__seq}[char]
 ##   文字列からキーへの写像を保持する。
@@ -872,9 +874,9 @@ function ble-decode/keymap/pop {
 
 
 ## 今迄に入力された未処理のキーの列を保持します
-declare _ble_decode_key__seq= # /(_\d+)*/
+_ble_decode_key__seq= # /(_\d+)*/
 
-declare _ble_decode_key__hook=
+_ble_decode_key__hook=
 
 ## 関数 ble-decode-key key
 ##   キー入力の処理を行います。登録されたキーシーケンスに一致した場合、

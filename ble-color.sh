@@ -33,7 +33,7 @@ function ble-color-show {
   done
 }
 
-declare -a _ble_color_g2sgr__table=()
+_ble_color_g2sgr__table=()
 function ble-color-g2sgr {
   eval "$ble_util_upvar_setup"
 

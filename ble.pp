@@ -115,6 +115,9 @@ fi
 
 #------------------------------------------------------------------------------
 
+_ble_bash_loaded_in_function=0
+[[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
+
 function _ble_base.initialize {
   local src="$1"
   local defaultDir="$2"
