@@ -876,16 +876,76 @@ function ble/widget/vi-command/overwrite-char {
 }
 
 #------------------------------------------------------------------------------
+# command: J gJ o O
+
+function ble/widget/vi-command/connect-line-with-space {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+    return
+  fi
+
+  local ret; ble-edit/text/find-logical-eol; local eol=$ret
+  if ((eol<${#_ble_edit_str})); then
+    _ble_edit_str.replace eol eol+1 ' '
+    ble/widget/.goto-char "$eol"
+  else
+    ble/widget/.bell
+  fi
+}
+function ble/widget/vi-command/connect-line {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+    return
+  fi
+
+  local ret; ble-edit/text/find-logical-eol; local eol=$ret
+  if ((eol<${#_ble_edit_str})); then
+    ble/widget/.delete-range "$eol" $((eol+1))
+    ble/widget/.goto-char "$eol"
+  else
+    ble/widget/.bell
+  fi
+}
+
+function ble/widget/vi-command/insert-forward-line-mode {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    local ret; ble-edit/text/find-logical-eol; local eol=$ret
+    ble/widget/.goto-char "$eol"
+    ble/widget/insert-string $'\n'
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
+}
+function ble/widget/vi-command/insert-backward-line-mode {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    local ret; ble-edit/text/find-logical-bol; local bol=$ret
+    ble/widget/.goto-char "$bol"
+    ble/widget/insert-string $'\n'
+    ble/widget/.goto-char "$bol"
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
+}
+
+#------------------------------------------------------------------------------
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
-  ble-bind -f i      vi-command/insert-mode
-  ble-bind -f I      vi-command/insert-nol-mode
-  ble-bind -f 'g I'  vi-command/insert-bol-mode
-  ble-bind -f R      vi-command/replace-mode
   ble-bind -f a      vi-command/append-mode
   ble-bind -f A      vi-command/append-eol-mode
+  ble-bind -f i      vi-command/insert-mode
   ble-bind -f insert vi-command/insert-mode
+  ble-bind -f I      vi-command/insert-nol-mode
+  ble-bind -f 'g I'  vi-command/insert-bol-mode
+  ble-bind -f o      vi-command/insert-forward-line-mode
+  ble-bind -f O      vi-command/insert-backward-line-mode
+  ble-bind -f R      vi-command/replace-mode
 
   ble-bind -f 0 vi-command/arg-append
   ble-bind -f 1 vi-command/arg-append
@@ -953,6 +1013,9 @@ function ble-decode-keymap:vi_command/define {
 
   ble-bind -f 'r'   vi-command/replace-char
   ble-bind -f 'g r' vi-command/overwrite-char # vim で実際に試すとこの機能はない
+
+  ble-bind -f J     vi-command/connect-line-with-space
+  ble-bind -f 'g J' vi-command/connect-line
 
   #----------------------------------------------------------------------------
   # bash
