@@ -19,6 +19,45 @@ function ble-edit/text/nonbol-eolp {
   ! ble-edit/text/bolp "$pos" && ble-edit/text/eolp "$pos"
 }
 
+## 関数 ble/string#count-char text chars
+##   @param[in] text
+##   @param[in] chars
+##     検索対象の文字の集合を指定します。
+function ble/string#count-char {
+  local text=$1 char=$2
+  text=${text//[!"$char"]}
+  ret=${#text}
+}
+
+## 関数 ble/string#index-of text needle [n]
+##   @param[in] text
+##   @param[in] needle
+##   @param[in] n
+##     この引数を指定したとき n 番目の一致を検索します。
+function ble/string#index-of {
+  local haystack=$1 needle=$2 count=${3:-1}
+  ble/string#repeat '*"$needle"' "$count"; local pattern=$ret
+  eval "local transformed=\${haystack#$pattern}"
+  ((ret=${#haystack}-${#transformed}-${#needle},
+    ret<0&&(ret=-1)))
+}
+
+## 関数 ble/string#last-index-of text needle [n]
+##   @param[in] text
+##   @param[in] needle
+##   @param[in] n
+##     この引数を指定したとき n 番目の一致を検索します。
+function ble/string#last-index-of {
+  local haystack=$1 needle=$2 count=${3:-1}
+  ble/string#repeat '"$needle"*' "$count"; local pattern=$ret
+  eval "local transformed=\${haystack%$pattern}"
+  if [[ $transformed == "$haystack" ]]; then
+    ret=-1
+  else
+    ret=${#transformed}
+  fi
+}
+
 #------------------------------------------------------------------------------
 # vi-insert/default
 
@@ -953,6 +992,117 @@ function ble/widget/vi-command/insert-backward-line-mode {
 }
 
 #------------------------------------------------------------------------------
+# command: f F t F
+
+
+## 変数 _ble_keymap_vi_search_char
+##   前回の ble/widget/vi-command/.search-char の検索を記録します。
+_ble_keymap_vi_search_char=
+
+## 関数 ble/widget/vi-command/.search-char key|char opts
+##
+##   @param[in] key
+##   @param[in] char
+##     key は検索対象のキーコードを指定します。
+##     char は検索対象の文字を指定します。
+##     どちらで解釈されるかは後述する opts のフラグ r に依存します。
+##
+##   @param[in] opts
+##     以下のフラグ文字から構成される文字列です。
+##
+##     b 後方検索であることを表します。
+##
+##     p 見つかった文字の1つ手前に移動することを表します。
+##
+##     r 繰り返し検索であることを表します。
+##       このとき第1引数は文字 char と解釈されます。
+##       これ以外のとき第1引数はキーコード key と解釈されます。
+##
+function ble/widget/vi-command/.search-char {
+  local key=$1 opts=$2
+  local arg flag; ble/widget/vi-command/.get-arg 1
+
+  local ret c
+  [[ $opts != *p* ]]; local isprev=$?
+  [[ $opts != *r* ]]; local isrepeat=$?
+  if ((isrepeat)); then
+    c=$key
+  else
+    ble-decode-key/ischar "$key" || return 1
+    ble/util/c2s "$key"; local c=$ret
+  fi
+  [[ $c ]] || return 1
+
+  local index
+  if [[ $opts == *b* ]]; then
+    # backward search
+    ble-edit/text/find-logical-bol; local bol=$ret
+    local base=$_ble_edit_ind
+    ((isrepeat&&isprev&&base--,base>bol)) || return 1
+    local line=${_ble_edit_str:bol:base-bol}
+    ble/string#last-index-of "$line" "$c" "$arg"
+    ((ret>=0)) || return 1
+
+    ((index=bol+ret,isprev&&index++))
+  else
+    # forward search
+    ble-edit/text/find-logical-eol; local eol=$ret
+    local base=$((_ble_edit_ind+1))
+    ((isrepeat&&isprev&&base++,base<eol)) || return 1
+
+    local line=${_ble_edit_str:base:eol-base}
+    ble/string#index-of "$line" "$c" "$arg"
+    ((ret>=0)) || return 1
+
+    ((index=base+ret,isprev&&index--))
+    [[ $flag ]] && ((index++))
+  fi
+  ble/widget/vi-command/.common-goto "$index" "$flag" 1
+  ((isrepeat)) || _ble_keymap_vi_search_char=$c$opts
+  return 0
+}
+
+function ble/widget/vi-command/search-forward-char/.hook {
+  ble/widget/vi-command/.search-char "$1" f || ble/widget/.bell
+}
+function ble/widget/vi-command/search-forward-char-prev/.hook {
+  ble/widget/vi-command/.search-char "$1" fp || ble/widget/.bell
+}
+function ble/widget/vi-command/search-backward-char/.hook {
+  ble/widget/vi-command/.search-char "$1" b || ble/widget/.bell
+}
+function ble/widget/vi-command/search-backward-char-prev/.hook {
+  ble/widget/vi-command/.search-char "$1" bp || ble/widget/.bell
+}
+function ble/widget/vi-command/search-forward-char {
+  _ble_decode_key__hook=ble/widget/vi-command/search-forward-char/.hook
+}
+function ble/widget/vi-command/search-forward-char-prev {
+  _ble_decode_key__hook=ble/widget/vi-command/search-forward-char-prev/.hook
+}
+function ble/widget/vi-command/search-backward-char {
+  _ble_decode_key__hook=ble/widget/vi-command/search-backward-char/.hook
+}
+function ble/widget/vi-command/search-backward-char-prev {
+  _ble_decode_key__hook=ble/widget/vi-command/search-backward-char-prev/.hook
+}
+function ble/widget/vi-command/search-char-repeat {
+  [[ $_ble_keymap_vi_search_char ]] || ble/widget/.bell
+  local c=${_ble_keymap_vi_search_char::1} opts=${_ble_keymap_vi_search_char:1}
+  ble/widget/vi-command/.search-char "$c" "r$opts" || ble/widget/.bell
+}
+function ble/widget/vi-command/search-char-reverse-repeat {
+  [[ $_ble_keymap_vi_search_char ]] || ble/widget/.bell
+  local c=${_ble_keymap_vi_search_char::1} opts=${_ble_keymap_vi_search_char:1}
+  if [[ $opts == *b* ]]; then
+    opts=f${opts//b}
+  else
+    opts=b${opts//f}
+  fi
+  ble/widget/vi-command/.search-char "$c" "r$opts" || ble/widget/.bell
+}
+
+#------------------------------------------------------------------------------
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
@@ -1035,6 +1185,13 @@ function ble-decode-keymap:vi_command/define {
 
   ble-bind -f J     vi-command/connect-line-with-space
   ble-bind -f 'g J' vi-command/connect-line
+
+  ble-bind -f 'f' vi-command/search-forward-char
+  ble-bind -f 'F' vi-command/search-backward-char
+  ble-bind -f 't' vi-command/search-forward-char-prev
+  ble-bind -f 'T' vi-command/search-backward-char-prev
+  ble-bind -f ';' vi-command/search-char-repeat
+  ble-bind -f ',' vi-command/search-char-reverse-repeat
 
   #----------------------------------------------------------------------------
   # bash
