@@ -1814,7 +1814,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
       ${#rematch1}<${#BASH_REMATCH}&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX),
       i+=${#BASH_REMATCH}))
     return 0
-  elif rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
+  elif local rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
     # 制御演算子 && || | & ; |& ;; ;;&
 
     # for bash-3.1 ${#arr[n]} bug
@@ -1827,7 +1827,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
          CTX_CMDX)))
     ((i+=${#BASH_REMATCH}))
     return 0
-  elif rex='^\(\(?' && [[ $tail =~ $rex ]]; then
+  elif local rex='^\(\(?' && [[ $tail =~ $rex ]]; then
     # サブシェル (, 算術コマンド ((
     local m="${BASH_REMATCH[0]}"
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC)); then

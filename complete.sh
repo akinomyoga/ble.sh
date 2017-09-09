@@ -387,7 +387,7 @@ function ble-complete/source/argument/.compgen {
 
   ble/util/is-stdin-ready && return 27
 
-  local rex_compv arr
+  local rex_compv arr compgen
   ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
   ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
   ble/util/assign compgen 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
