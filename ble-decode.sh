@@ -992,7 +992,7 @@ function ble-decode-key/.invoke-partial-match {
 
     # 既定の文字ハンドラ
     local key="$1"
-    if (((key&ble_decode_MaskFlag)==0&&32<=key&&key<ble_decode_function_key_base)); then
+    if ble-decode-key/ischar "$key"; then
       builtin eval "local command=\"\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]:2}\""
       ble-decode-key/.invoke-command && return 0
     fi
@@ -1003,6 +1003,11 @@ function ble-decode-key/.invoke-partial-match {
 
     return 1
   fi
+}
+
+function ble-decode-key/ischar {
+  local key="$1"
+  (((key&ble_decode_MaskFlag)==0&&32<=key&&key<ble_decode_function_key_base))
 }
 
 ## 関数 ble-decode-key/.invoke-command

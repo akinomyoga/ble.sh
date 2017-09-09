@@ -1757,10 +1757,11 @@ function _ble_edit_str.replace {
   _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end"
   ble-edit/render/invalidate "$beg"
 #%if !release
-  # Note: 何処かのバグで _ble_edit_int に変な値が入ってエラーになるので、
+  # Note: 何処かのバグで _ble_edit_ind に変な値が入ってエラーになるので、
   #   ここで誤り訂正を行う。想定として、この関数を呼出した時の _ble_edit_ind の値は、
   #   replace を実行する前の値とする。この関数の呼び出し元では、
   #   _ble_edit_ind の更新はこの関数の呼び出しより後で行う様にする必要がある。
+  # Note: このバグは恐らく #D0411 で解決したが暫く様子見する。
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
     _ble_edit_dirty_syntax_beg=0
@@ -1825,6 +1826,20 @@ function _ble_edit_str.update-syntax {
 
     ble-syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
   fi
+}
+
+function _ble_edit_arg.get {
+  eval "${ble_util_upvar_setup//ret/arg}"
+
+  local default_value=$1
+  if [[ $_ble_edit_arg ]]; then
+    arg=$((10#$_ble_edit_arg))
+  else
+    arg=$default_value
+  fi
+  _ble_edit_arg=
+
+  eval "${ble_util_upvar//ret/arg}"
 }
 
 # **** edit/dirty ****                                              @edit.dirty
@@ -2516,45 +2531,81 @@ function ble/widget/insert-string {
   '))
   _ble_edit_mark_active=
 }
+
+## 編集関数 ble/widget/self-insert
+##   文字を挿入する。
+##
+##   @var[in] _ble_edit_arg
+##     繰り返し回数を指定する。
+##
+##   @var[in] ble_widget_self_insert_opts
+##     コロン区切りの設定のリストを指定する。
+##
+##     nolineext は上書きモードにおいて、行の長さを拡張しない。
+##     行の長さが足りない場合は操作をキャンセルする。
+##     vi.sh の r, gr による挿入を想定する。
+##
 function ble/widget/self-insert {
   local code="$((KEYS[0]&ble_decode_MaskChar))"
   ((code==0)) && return
 
   local ibeg="$_ble_edit_ind" iend="$_ble_edit_ind"
   local ret ins; ble/util/c2s "$code"; ins="$ret"
-  local delta=1 # 挿入による文字数の増減
+
+  local arg; _ble_edit_arg.get 1
+  if ((arg<1)) || [[ ! $ins ]]; then
+    arg=0 ins=
+  elif ((arg>1)); then
+    ble/string#repeat "$ins" "$arg"; ins=$ret
+  fi
+  # Note: arg はこの時点での ins の文字数になっている。
 
   if [[ $bleopt_delete_selection_mode && $_ble_edit_mark_active ]]; then
     # 選択範囲を置き換える。
     ((_ble_edit_mark<_ble_edit_ind?(ibeg=_ble_edit_mark):(iend=_ble_edit_mark),
-      _ble_edit_ind=ibeg,
-      delta=iend-ibeg+1))
+      _ble_edit_ind=ibeg))
+    ((arg==0&&ibeg==iend)) && return
   elif [[ $_ble_edit_overwrite_mode ]] && ((code!=10&&code!=9)); then
-    # 上書きモードの時は文字幅を考慮して既存の文字を置き換える。
-    local ret w; ble/util/c2w-edit "$code"; w="$ret"
+    ((arg==0)) && return
 
-    local repw iN="${#_ble_edit_str}"
-    for ((repw=0;repw<w&&iend<iN;iend++)); do
-      local c1 w1
-      ble/util/s2c "$_ble_edit_str" "$iend"; c1="$ret"
-      [[ $c1 == 0 || $c1 == 10 || $c1 == 9 ]] && break
-      ble/util/c2w-edit "$c1"; w1="$ret"
-      ((repw+=w1,delta--))
-    done
+    local removed_width
+    if [[ $_ble_edit_overwrite_mode == R ]]; then
+      local removed_text=${_ble_edit_str:ibeg:arg}
+      removed_text=${removed_text%%[$'\n\t']*}
+      removed_width=${#removed_text}
+      ((iend+=removed_width))
+    else
+      # 上書きモードの時は文字幅を考慮して既存の文字を置き換える。
+      local ret w; ble/util/c2w-edit "$code"; w=$((arg*ret))
 
-    if ((repw>w)); then
-      ins="$ins${_ble_util_string_prototype::repw-w}"
-      ((delta++))
+      local iN="${#_ble_edit_str}"
+      for ((removed_width=0;removed_width<w&&iend<iN;iend++)); do
+        local c1 w1
+        ble/util/s2c "$_ble_edit_str" "$iend"; c1="$ret"
+        [[ $c1 == 0 || $c1 == 10 || $c1 == 9 ]] && break
+        ble/util/c2w-edit "$c1"; w1="$ret"
+        ((removed_width+=w1))
+      done
+
+      ((removed_width>w)) && ins="$ins${_ble_util_string_prototype::removed_width-w}"
+    fi
+
+    # これは vi.sh の r gr で設定する変数
+    if [[ :$ble_widget_self_insert_opts: == *:nolineext:* ]]; then
+      if ((removed_width<arg)); then
+        ble/widget/.bell
+        return
+      fi
     fi
   fi
 
   _ble_edit_str.replace ibeg iend "$ins"
-  ((_ble_edit_ind++,
+  ((_ble_edit_ind+=arg,
     _ble_edit_mark>ibeg&&(
       _ble_edit_mark<iend?(
         _ble_edit_mark=_ble_edit_ind
       ):(
-        _ble_edit_mark+=delta))))
+        _ble_edit_mark+=${#ins}-(iend-ibeg)))))
   _ble_edit_mark_active=
 }
 
@@ -2586,16 +2637,20 @@ function ble/widget/.delete-backward-char {
   if ((_ble_edit_ind<=0)); then
     return 1
   else
-    local ins=
+    local ins=  
     if [[ $_ble_edit_overwrite_mode ]]; then
       local next="${_ble_edit_str:_ble_edit_ind:1}"
       if [[ $next && $next != [$'\n\t'] ]]; then
-        local clast ret
-        ble/util/s2c "$_ble_edit_str" "$((_ble_edit_ind-1))"
-        ble/util/c2w-edit "$ret"
-        ins="${_ble_util_string_prototype::ret}"
-        ((_ble_edit_mark>=_ble_edit_ind&&
-             (_ble_edit_mark+=ret)))
+        local w
+        if [[ $_ble_edit_overwrite_mode == R ]]; then
+          w=1
+        else
+          local ret
+          ble/util/s2c "$_ble_edit_str" "$((_ble_edit_ind-1))"
+          ble/util/c2w-edit "$ret"; w=$ret
+        fi
+        ins="${_ble_util_string_prototype::w}"
+        ((_ble_edit_mark>=_ble_edit_ind&&(_ble_edit_mark+=w)))
       fi
     fi
 

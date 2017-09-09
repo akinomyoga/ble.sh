@@ -715,7 +715,7 @@ function ble/widget/vi-command/backward-uword {
 }
 
 #------------------------------------------------------------------------------
-# command: [cdy]?[|HL]
+# command: [cdy]?[|HL] G gg
 
 function ble/widget/vi-command/nth-column {
   local arg flag; ble/widget/vi-command/.get-arg 1
@@ -839,6 +839,43 @@ function ble/widget/vi-command/history-end {
 }
 
 #------------------------------------------------------------------------------
+# command: r gr
+
+## 関数 ble/widget/vi-command/.replace-char/impl code [overwrite_mode]
+##   @param[in] overwrite_mode
+##     置換する文字の挿入方法を指定します。
+function ble/widget/vi-command/.replace-char/impl {
+  local key=$1 overwrite_mode=${2:-R}
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]] || ! ble-decode-key/ischar "$key"; then
+    ble/widget/.bell
+  else
+    local pos=$_ble_edit_ind
+
+    local -a KEYS=("$key")
+    local _ble_edit_arg=$arg
+    local _ble_edit_overwrite_mode=$overwrite_mode
+    local ble_widget_self_insert_opts=nolineext
+    ble/widget/self-insert
+
+    ((pos<_ble_edit_ind)) && ble/widget/.goto-char _ble_edit_ind-1
+  fi
+}
+
+function ble/widget/vi-command/replace-char/.hook {
+  ble/widget/vi-command/.replace-char/impl "$1" R
+}
+function ble/widget/vi-command/replace-char {
+  _ble_decode_key__hook=ble/widget/vi-command/replace-char/.hook
+}
+function ble/widget/vi-command/overwrite-char/.hook {
+  ble/widget/vi-command/.replace-char/impl "$1" 1
+}
+function ble/widget/vi-command/overwrite-char {
+  _ble_decode_key__hook=ble/widget/vi-command/overwrite-char/.hook
+}
+
+#------------------------------------------------------------------------------
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
@@ -913,6 +950,9 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f G     vi-command/history-end
 
   ble-bind -f K command-help
+
+  ble-bind -f 'r'   vi-command/replace-char
+  ble-bind -f 'g r' vi-command/overwrite-char # vim で実際に試すとこの機能はない
 
   #----------------------------------------------------------------------------
   # bash
