@@ -162,6 +162,15 @@ function ble/widget/vi-command/replace-mode {
     ble/widget/.bell
   else
     ble/widget/vi-command/.insert-mode
+    _ble_edit_overwrite_mode=R
+  fi
+}
+function ble/widget/vi-command/overwrite-mode {
+  local arg flag; ble/widget/vi-command/.get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell
+  else
+    ble/widget/vi-command/.insert-mode
     _ble_edit_overwrite_mode=1
   fi
 }
