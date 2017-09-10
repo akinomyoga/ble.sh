@@ -1550,7 +1550,7 @@ function ble-edit/text/find-logical-eol {
     ((ret=index+${#text}))
   fi
 }
-## 関数 ble/widget/vi-command/.find-logical-forward-bol [index [offset]]; ret
+## 関数 ble-edit/text/find-logical-bol [index [offset]]; ret
 ##   _ble_edit_str 内で位置 index から offset 行だけ次の行の先頭位置を返します。
 ##
 ##   offset が 0 の場合は位置 index を含む行の行頭を返します。
@@ -1576,6 +1576,11 @@ function ble-edit/text/find-logical-bol {
     text=${text##*$'\n'}
     ((ret=index-${#text}))
   fi
+}
+
+## 関数 ble-edit/text/is-single-line
+function ble-edit/text/is-single-line {
+  [[ $_ble_edit_str != *$'\n'* ]]
 }
 
 # 
@@ -3701,12 +3706,15 @@ function ble/widget/accept-and-next {
 function ble/widget/newline {
   KEYS=(10) ble/widget/self-insert
 }
-function ble/widget/accept-single-line-or-newline {
-  if [[ $_ble_edit_str == *$'\n'* ]]; then
-    ble/widget/newline
-  else
+function ble/widget/accept-single-line-or {
+  if ble-edit/text/is-single-line; then
     ble/widget/accept-line
+  else
+    ble/widget/"$@"
   fi
+}
+function ble/widget/accept-single-line-or-newline {
+  ble/widget/accept-single-line-or newline
 }
 
 # 

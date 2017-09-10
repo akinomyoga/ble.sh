@@ -85,19 +85,59 @@ function ble/widget/vi-insert/default {
 }
 
 #------------------------------------------------------------------------------
-# modes
+# repeat
 
-## 変数 _ble_keymap_vi_insert_arg
+## 変数 _ble_keymap_vi_repeat
 ##   挿入モードに入る時に指定された引数を記録する。
-##   ToDo: 現在は使用していない。将来的には vi-isnert/normal-mode で使う。
-_ble_keymap_vi_insert_arg=
+_ble_keymap_vi_repeat=
+
+## 配列 _ble_keymap_vi_repeat_keylog
+##   挿入モードに入るときに指定された引数が 1 より大きい時、
+##   後でキーボード操作を繰り返すためにキーの列を記録する配列。
+_ble_keymap_vi_repeat_keylog=()
+
+function ble/widget/vi-insert/.reset-repeat {
+  local arg=$1
+  _ble_keymap_vi_repeat=
+  _ble_keymap_vi_repeat_keylog=()
+  ((arg>1)) && _ble_keymap_vi_repeat=$1
+}
+function ble/widget/vi-insert/.process-repeat {
+  if [[ $_ble_keymap_vi_repeat ]]; then
+    local repeat=$_ble_keymap_vi_repeat
+    local key_count=$((${#_ble_keymap_vi_repeat_keylog[@]}-${#KEYS[@]}))
+    local -a key_codes=("${_ble_keymap_vi_repeat_keylog[@]::key_count}")
+    ble/widget/vi-insert/.reset-repeat
+
+    local i
+    for ((i=1;i<repeat;i++)); do
+      ble-decode-key "${key_codes[@]}"
+    done
+  else
+    ble/widget/vi-insert/.reset-repeat
+  fi
+}
+
+function ble/widget/vi-insert/@norepeat {
+  ble/widget/vi-insert/.reset-repeat
+  ble/widget/"$@"
+}
+
+function ble/widget/vi-insert/log-repeat {
+  if [[ $_ble_keymap_vi_repeat ]]; then
+    ble/array#push _ble_keymap_vi_repeat_keylog "${KEYS[@]}"
+  fi
+}
+
+#------------------------------------------------------------------------------
+# modes
 
 ## 変数 _ble_keymap_vi_insert_mark
 ##   最後に vi-insert を抜けた位置
 ##   ToDo: 現在は使用していない。将来的には gi などで使う。
 _ble_keymap_vi_insert_mark=
 
-function ble/widget/vi-insert/normal-mode {
+function ble/widget/vi-insert/.normal-mode {
   _ble_keymap_vi_insert_mark=$_ble_edit_ind
   _ble_edit_overwrite_mode=
   if ! ble-edit/text/bolp; then
@@ -105,8 +145,17 @@ function ble/widget/vi-insert/normal-mode {
   fi
   ble-decode/keymap/push vi_command
 }
+function ble/widget/vi-insert/normal-mode {
+  ble/widget/vi-insert/.process-repeat
+  ble/widget/vi-insert/.normal-mode
+}
+function ble/widget/vi-insert/normal-mode-norepeat {
+  ble/widget/vi-insert/.reset-repeat
+  ble/widget/vi-insert/.normal-mode
+}
+
 function ble/widget/vi-command/.insert-mode {
-  _ble_keymap_vi_insert_arg=$1
+  ble/widget/vi-insert/.reset-repeat "$1"
   _ble_edit_overwrite_mode=
   ble-decode/keymap/pop
 }
@@ -181,11 +230,11 @@ function ble/widget/vi-command/accept-line {
   ble-decode/keymap/pop
   ble/widget/accept-line
 }
-function ble/widget/vi-command/accept-single-line-or-forward-first-non-space {
-  if [[ $_ble_edit_str == *$'\n'* ]]; then
-    ble/widget/vi-command/forward-first-non-space
-  else
+function ble/widget/vi-command/accept-single-line-or {
+  if ble-edit/text/is-single-line; then
     ble/widget/vi-command/accept-line
+  else
+    ble/widget/"$@"
   fi
 }
 
@@ -1252,9 +1301,9 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'C-q' quoted-insert
   ble-bind -f 'C-v' quoted-insert
 
-  ble-bind -f 'C-j' vi-command/accept-line
-  ble-bind -f 'C-m' vi-command/accept-single-line-or-forward-first-non-space
-  ble-bind -f 'RET' vi-command/accept-single-line-or-forward-first-non-space
+  ble-bind -f 'C-j' 'vi-command/accept-line'
+  ble-bind -f 'C-m' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
+  ble-bind -f 'RET' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
   ble-bind -f 'C-g' bell
 
   ble-bind -f C-left  vi-command/backward-vword
@@ -1263,18 +1312,46 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f M-right vi-command/forward-uword-end
 }
 
+#------------------------------------------------------------------------------
+# vi-insert
+
+function ble/widget/vi-insert/magic-space {
+  if [[ $_ble_keymap_vi_repeat ]]; then
+    ble/widget/self-insert
+  else
+    ble/widget/vi-insert/@norepeat magic-space
+  fi
+}
+function ble/widget/vi-insert/accept-single-line-or {
+  if ble-edit/text/is-single-line; then
+    ble/widget/vi-insert/@norepeat accept-line
+  else
+    ble/widget/"$@"
+  fi
+}
+function ble/widget/vi-insert/delete-region-or {
+  if [[ $_ble_edit_mark_active ]]; then
+    ble/widget/vi-insert/@norepeat delete-region
+  else
+    "ble/widget/delete-$@"
+  fi
+}
+
 function ble-decode-keymap:vi_insert/define {
   local ble_bind_keymap=vi_insert
 
   ble-bind -f __defchar__ self-insert
   ble-bind -f __default__ vi-insert/default
+  ble-bind -f __before_command__ vi-insert/log-repeat
 
   ble-bind -f 'ESC' vi-insert/normal-mode
   ble-bind -f 'C-[' vi-insert/normal-mode
   ble-bind -f 'C-l' vi-insert/normal-mode
-  ble-bind -f 'C-c' vi-insert/normal-mode
+  ble-bind -f 'C-c' vi-insert/normal-mode-norepeat
 
   ble-bind -f insert overwrite-mode
+
+  ble-bind -f 'C-w' 'delete-backward-cword' # vword?
 
   #----------------------------------------------------------------------------
   # from keymap emacs-standard
@@ -1282,111 +1359,111 @@ function ble-decode-keymap:vi_insert/define {
   # C-o http://qiita.com/takasianpride/items/6900eebb7cde9fbb5298
 
   # ins
-  ble-bind -f 'C-q'       quoted-insert
-  ble-bind -f 'C-v'       quoted-insert
+  ble-bind -f 'C-q'      quoted-insert
+  ble-bind -f 'C-v'      quoted-insert
+  ble-bind -f 'C-RET'    newline
 
   # shell function
-  # ble-bind -f 'C-c' discard-line
-  ble-bind -f  'C-j'     accept-line
-  ble-bind -f  'C-m'     accept-single-line-or-newline
-  ble-bind -f  'RET'     accept-single-line-or-newline
-  ble-bind -f  'C-o'     accept-and-next
-  ble-bind -f  'C-g'     bell
-  # ble-bind -f  'C-l'     clear-screen
-  # ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i'     complete
-  ble-bind -f  'TAB'     complete
+  ble-bind -f  'C-j'     'vi-insert/@norepeat accept-line'
+  ble-bind -f  'C-m'     'vi-insert/accept-single-line-or newline'
+  ble-bind -f  'RET'     'vi-insert/accept-single-line-or newline'
+  ble-bind -f  'C-o'     'vi-insert/@norepeat accept-and-next'
+  ble-bind -f  'C-g'     'vi-insert/@norepeat bell'
+  ble-bind -f  'C-i'     'vi-insert/@norepeat complete'
+  ble-bind -f  'TAB'     'vi-insert/@norepeat complete'
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
   ble-bind -cf 'C-z'     fg
+  # ble-bind -f 'C-c'      discard-line
+  # ble-bind -f  'C-l'     clear-screen
+  # ble-bind -f  'M-l'     redraw-line
   # ble-bind -cf 'M-z'     fg
 
   # history
-  ble-bind -f 'C-r'     history-isearch-backward
-  ble-bind -f 'C-s'     history-isearch-forward
-  ble-bind -f 'C-RET'   history-expand-line
-  # ble-bind -f 'M-<'     history-beginning
-  # ble-bind -f 'M->'     history-end
-  ble-bind -f 'C-prior' history-beginning
-  ble-bind -f 'C-next'  history-end
-  ble-bind -f 'SP'      magic-space
+  ble-bind -f 'C-r'     'vi-insert/@norepeat history-isearch-backward'
+  ble-bind -f 'C-s'     'vi-insert/@norepeat history-isearch-forward'
+  ble-bind -f 'C-prior' 'vi-insert/@norepeat history-beginning'
+  ble-bind -f 'C-next'  'vi-insert/@norepeat history-end'
+  ble-bind -f 'SP'      'vi-insert/magic-space'
+  # ble-bind -f 'C-RET'   'vi-insert/@norepeat history-expand-line'
+  # ble-bind -f 'M-<'     'vi-insert/@norepeat history-beginning'
+  # ble-bind -f 'M->'     'vi-insert/@norepeat history-end'
 
   # kill
   ble-bind -f 'C-@'      set-mark
+  ble-bind -f 'C-x C-x'  'vi-insert/@norepeat exchange-point-and-mark'
+  ble-bind -f 'C-y'      'vi-insert/@norepeat yank'
+  # ble-bind -f 'C-w'      'vi-insert/@norepeat kill-region-or uword'
   # ble-bind -f 'M-SP'     set-mark
-  ble-bind -f 'C-x C-x'  exchange-point-and-mark
-  ble-bind -f 'C-w'      'kill-region-or uword'
   # ble-bind -f 'M-w'      'copy-region-or uword'
-  ble-bind -f 'C-y'      yank
 
   # spaces
-  # ble-bind -f 'M-\'      delete-horizontal-space
+  # ble-bind -f 'M-\'      'vi-insert/@norepeat delete-horizontal-space'
 
   # charwise operations
-  ble-bind -f 'C-f'      'nomarked forward-char'
-  ble-bind -f 'C-b'      'nomarked backward-char'
-  ble-bind -f 'right'    'nomarked forward-char'
-  ble-bind -f 'left'     'nomarked backward-char'
-  ble-bind -f 'S-C-f'    'marked forward-char'
-  ble-bind -f 'S-C-b'    'marked backward-char'
-  ble-bind -f 'S-right'  'marked forward-char'
-  ble-bind -f 'S-left'   'marked backward-char'
-  ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
-  ble-bind -f 'C-h'      'delete-region-or backward-char'
-  ble-bind -f 'delete'   'delete-region-or forward-char'
-  ble-bind -f 'DEL'      'delete-region-or backward-char'
-  ble-bind -f 'C-t'      transpose-chars
+  ble-bind -f 'C-f'      'vi-insert/@norepeat nomarked forward-char'
+  ble-bind -f 'C-b'      'vi-insert/@norepeat nomarked backward-char'
+  ble-bind -f 'right'    'vi-insert/@norepeat nomarked forward-char'
+  ble-bind -f 'left'     'vi-insert/@norepeat nomarked backward-char'
+  ble-bind -f 'S-C-f'    'vi-insert/@norepeat marked forward-char'
+  ble-bind -f 'S-C-b'    'vi-insert/@norepeat marked backward-char'
+  ble-bind -f 'S-right'  'vi-insert/@norepeat marked forward-char'
+  ble-bind -f 'S-left'   'vi-insert/@norepeat marked backward-char'
+  ble-bind -f 'C-d'      'vi-insert/@norepeat delete-region-or forward-char-or-exit'
+  ble-bind -f 'delete'   'vi-insert/@norepeat delete-region-or forward-char'
+  ble-bind -f 'C-h'      'vi-insert/delete-region-or backward-char'
+  ble-bind -f 'DEL'      'vi-insert/delete-region-or backward-char'
+  ble-bind -f 'C-t'      'vi-insert/@norepeat transpose-chars'
 
   # wordwise operations
-  ble-bind -f 'C-right'   'nomarked forward-cword'
-  ble-bind -f 'C-left'    'nomarked backward-cword'
-  # ble-bind -f 'M-right'   'nomarked forward-sword'
-  # ble-bind -f 'M-left'    'nomarked backward-sword'
-  ble-bind -f 'S-C-right' 'marked forward-cword'
-  ble-bind -f 'S-C-left'  'marked backward-cword'
-  # ble-bind -f 'S-M-right' 'marked forward-sword'
-  # ble-bind -f 'S-M-left'  'marked backward-sword'
-  # ble-bind -f 'M-d'       kill-forward-cword
-  # ble-bind -f 'M-h'       kill-backward-cword
-  ble-bind -f 'C-delete'  delete-forward-cword  # C-delete
-  ble-bind -f 'C-_'       delete-backward-cword # C-BS
+  ble-bind -f 'C-right'   'vi-insert/@norepeat nomarked forward-cword'
+  ble-bind -f 'C-left'    'vi-insert/@norepeat nomarked backward-cword'
+  ble-bind -f 'S-C-right' 'vi-insert/@norepeat marked forward-cword'
+  ble-bind -f 'S-C-left'  'vi-insert/@norepeat marked backward-cword'
+  ble-bind -f 'C-delete'  'vi-insert/@norepeat delete-forward-cword'
+  ble-bind -f 'C-_'       'delete-backward-cword'
+  # ble-bind -f 'M-right'   'vi-insert/@norepeat nomarked forward-sword'
+  # ble-bind -f 'M-left'    'vi-insert/@norepeat nomarked backward-sword'
+  # ble-bind -f 'S-M-right' 'vi-insert/@norepeat marked forward-sword'
+  # ble-bind -f 'S-M-left'  'vi-insert/@norepeat marked backward-sword'
+  # ble-bind -f 'M-d'       'vi-insert/@norepeat kill-forward-cword'
+  # ble-bind -f 'M-h'       'vi-insert/@norepeat kill-backward-cword'
   # ble-bind -f 'M-delete'  copy-forward-sword    # M-delete
   # ble-bind -f 'M-DEL'     copy-backward-sword   # M-BS
 
-  # ble-bind -f 'M-f'       'nomarked forward-cword'
-  # ble-bind -f 'M-b'       'nomarked backward-cword'
-  # ble-bind -f 'M-F'       'marked forward-cword'
-  # ble-bind -f 'M-B'       'marked backward-cword'
+  # ble-bind -f 'M-f'       'vi-insert/@norepeat nomarked forward-cword'
+  # ble-bind -f 'M-b'       'vi-insert/@norepeat nomarked backward-cword'
+  # ble-bind -f 'M-F'       'vi-insert/@norepeat marked forward-cword'
+  # ble-bind -f 'M-B'       'vi-insert/@norepeat marked backward-cword'
 
   # linewise operations
-  ble-bind -f 'C-a'    'nomarked beginning-of-line'
-  ble-bind -f 'C-e'    'nomarked end-of-line'
-  ble-bind -f 'home'   'nomarked beginning-of-line'
-  ble-bind -f 'end'    'nomarked end-of-line'
-  # ble-bind -f 'M-m'    'nomarked beginning-of-line'
-  ble-bind -f 'S-C-a'  'marked beginning-of-line'
-  ble-bind -f 'S-C-e'  'marked end-of-line'
-  ble-bind -f 'S-home' 'marked beginning-of-line'
-  ble-bind -f 'S-end'  'marked end-of-line'
-  # ble-bind -f 'S-M-m'  'marked beginning-of-line'
-  ble-bind -f 'C-k'    kill-forward-line
-  ble-bind -f 'C-u'    kill-backward-line
+  ble-bind -f 'C-a'      'vi-insert/@norepeat nomarked beginning-of-line'
+  ble-bind -f 'C-e'      'vi-insert/@norepeat nomarked end-of-line'
+  ble-bind -f 'home'     'vi-insert/@norepeat nomarked beginning-of-line'
+  ble-bind -f 'end'      'vi-insert/@norepeat nomarked end-of-line'
+  ble-bind -f 'S-C-a'    'vi-insert/@norepeat marked beginning-of-line'
+  ble-bind -f 'S-C-e'    'vi-insert/@norepeat marked end-of-line'
+  ble-bind -f 'S-home'   'vi-insert/@norepeat marked beginning-of-line'
+  ble-bind -f 'S-end'    'vi-insert/@norepeat marked end-of-line'
+  ble-bind -f 'C-k'      'vi-insert/@norepeat kill-forward-line'
+  ble-bind -f 'C-u'      'vi-insert/@norepeat kill-backward-line'
+  # ble-bind -f 'M-m'      'vi-insert/@norepeat nomarked beginning-of-line'
+  # ble-bind -f 'S-M-m'    'vi-insert/@norepeat marked beginning-of-line'
 
-  ble-bind -f 'C-p'    'nomarked backward-line-or-history-prev'
-  ble-bind -f 'up'     'nomarked backward-line-or-history-prev'
-  ble-bind -f 'C-n'    'nomarked forward-line-or-history-next'
-  ble-bind -f 'down'   'nomarked forward-line-or-history-next'
-  ble-bind -f 'S-C-p'  'marked backward-line'
-  ble-bind -f 'S-up'   'marked backward-line'
-  ble-bind -f 'S-C-n'  'marked forward-line'
-  ble-bind -f 'S-down' 'marked forward-line'
+  ble-bind -f 'C-p'      'vi-insert/@norepeat nomarked backward-line-or-history-prev'
+  ble-bind -f 'up'       'vi-insert/@norepeat nomarked backward-line-or-history-prev'
+  ble-bind -f 'C-n'      'vi-insert/@norepeat nomarked forward-line-or-history-next'
+  ble-bind -f 'down'     'vi-insert/@norepeat nomarked forward-line-or-history-next'
+  ble-bind -f 'S-C-p'    'vi-insert/@norepeat marked backward-line'
+  ble-bind -f 'S-up'     'vi-insert/@norepeat marked backward-line'
+  ble-bind -f 'S-C-n'    'vi-insert/@norepeat marked forward-line'
+  ble-bind -f 'S-down'   'vi-insert/@norepeat marked forward-line'
 
-  ble-bind -f 'C-home'   'nomarked beginning-of-text'
-  ble-bind -f 'C-end'    'nomarked end-of-text'
-  ble-bind -f 'S-C-home' 'marked beginning-of-text'
-  ble-bind -f 'S-C-end'  'marked end-of-text'
+  ble-bind -f 'C-home'   'vi-insert/@norepeat nomarked beginning-of-text'
+  ble-bind -f 'C-end'    'vi-insert/@norepeat nomarked end-of-text'
+  ble-bind -f 'S-C-home' 'vi-insert/@norepeat marked beginning-of-text'
+  ble-bind -f 'S-C-end'  'vi-insert/@norepeat marked end-of-text'
 
-  # ble-bind -f 'C-x' bell
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
