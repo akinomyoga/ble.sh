@@ -765,7 +765,7 @@ function ble/widget/vi-command/kill-forward-line {
     ble/widget/.bell
   else
     _ble_edit_arg=${arg}d
-    ble/widget/vi-command/forward-char
+    ble/widget/vi-command/forward-eol
   fi
 }
 function ble/widget/vi-command/kill-forward-line-and-insert {
@@ -774,7 +774,7 @@ function ble/widget/vi-command/kill-forward-line-and-insert {
     ble/widget/.bell
   else
     _ble_edit_arg=${arg}c
-    ble/widget/vi-command/forward-char
+    ble/widget/vi-command/forward-eol
   fi
 }
 
