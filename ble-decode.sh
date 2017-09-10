@@ -53,7 +53,7 @@ else
   function ble-decode-kbd/.get-keycode {
     local key="$1"
     local tmp="${_ble_decode_kbd__k2c_keys%%:$key:*}"
-    if [ ${#tmp} = ${#_ble_decode_kbd__k2c_keys} ]; then
+    if [[ ${#tmp} == ${#_ble_decode_kbd__k2c_keys} ]]; then
       ret=
     else
       tmp=(${tmp//:/ })
@@ -174,22 +174,26 @@ function ble-decode-kbd/.initialize {
 
   local ret
   ble-decode-kbd/.gen-keycode __defchar__
-  _ble_decode_KCODE_DEFCHAR="$ret"
+  _ble_decode_KCODE_DEFCHAR=$ret
   ble-decode-kbd/.gen-keycode __default__
-  _ble_decode_KCODE_DEFAULT="$ret"
+  _ble_decode_KCODE_DEFAULT=$ret
+  ble-decode-kbd/.gen-keycode __before_command__
+  _ble_decode_KCODE_BEFORE_COMMAND=$ret
+  ble-decode-kbd/.gen-keycode __after_command__
+  _ble_decode_KCODE_AFTER_COMMAND=$ret
 
   ble-decode-kbd/.gen-keycode shift
-  _ble_decode_KCODE_SHIFT="$ret"
+  _ble_decode_KCODE_SHIFT=$ret
   ble-decode-kbd/.gen-keycode alter
-  _ble_decode_KCODE_ALTER="$ret"
+  _ble_decode_KCODE_ALTER=$ret
   ble-decode-kbd/.gen-keycode control
-  _ble_decode_KCODE_CONTROL="$ret"
+  _ble_decode_KCODE_CONTROL=$ret
   ble-decode-kbd/.gen-keycode meta
-  _ble_decode_KCODE_META="$ret"
+  _ble_decode_KCODE_META=$ret
   ble-decode-kbd/.gen-keycode super
-  _ble_decode_KCODE_SUPER="$ret"
+  _ble_decode_KCODE_SUPER=$ret
   ble-decode-kbd/.gen-keycode hyper
-  _ble_decode_KCODE_HYPER="$ret"
+  _ble_decode_KCODE_HYPER=$ret
 }
 
 ble-decode-kbd/.initialize
@@ -895,22 +899,22 @@ function ble-decode-key {
       local hook="$_ble_decode_key__hook"
       _ble_decode_key__hook=
       $hook "$key"
-      return 0
+      continue
     fi
 
     local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
 
     builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
-    if [ "${ent%%:*}" = 1 ]; then
+    if [[ $ent == 1:* ]]; then
       # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
       local command="${ent:2}"
       ble-decode-key/.invoke-command || _ble_decode_key__seq=
-    elif [ "${ent%%:*}" = _ ]; then
+    elif [[ $ent == _ || $ent == _:* ]]; then
       # /_(:command)?/ (続き (1つ以上の有効なシーケンス) がある事を示す)
       _ble_decode_key__seq="${_ble_decode_key__seq}_$key"
     else
       # 遡って適用 (部分一致、または、既定動作)
-      ble-decode-key/.invoke-partial-match "$key" && return
+      ble-decode-key/.invoke-partial-match "$key" && continue
 
       # エラーの表示
       local kcseq="${_ble_decode_key__seq}_$key" ret
@@ -1041,10 +1045,15 @@ function ble-decode-key/ischar {
 #
 function ble-decode-key/.invoke-command {
   if [[ $command ]]; then
-    local -a KEYS
-    KEYS=(${_ble_decode_key__seq//_/ } $key)
+    builtin eval "local BEFORE_COMMAND=\"\${$dicthead[$_ble_decode_KCODE_BEFORE_COMMAND]:2}\""
+    builtin eval "local AFTER_COMMAND=\"\${$dicthead[$_ble_decode_KCODE_AFTER_COMMAND]:2}\""
+    local COMMAND=$command
+    local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
     _ble_decode_key__seq=
-    builtin eval -- "$command"
+
+    [[ $BEFORE_COMMAND ]] && builtin eval -- "$BEFORE_COMMAND"
+    builtin eval -- "$COMMAND"
+    [[ $AFTER_COMMAND ]] && builtin eval -- "$AFTER_COMMAND"
     return 0
   else
     return 1

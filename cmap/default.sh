@@ -1,5 +1,33 @@
 #!/bin/bash
 
+#
+# 以下は ble-decode.sh にて既定で定義される特殊キー
+#
+#   __defchar__
+#   __default__
+#   __before_command__
+#   __after_command__
+#
+#   shift alter control meta super hyper
+#
+#   TAB  RET
+#
+#   NUL  SOH  STX  ETX  EOT  ENQ  ACK  BEL
+#   BS   HT   LF   VT   FF   CR   SO   SI
+#   DLE  DC1  DC2  DC3  DC4  NAK  SYN  ETB
+#   CAN  EM   SUB  ESC  FS   GS   RS   US
+#
+#   SP   DEL
+#
+#   PAD  HOP  BPH  NBH  IND  NEL  SSA  ESA
+#   HTS  HTJ  VTS  PLD  PLU  RI   SS2  SS3
+#   DCS  PU1  PU2  STS  CCH  MW   SPA  EPA
+#   SOS  SGCI SCI  CSI  ST   OSC  PM   APC
+#
+# Note: ble-decode.sh における特殊キーの変更に際して、
+# この一覧を更新することでキャッシュの更新が起こるようにしている。
+#
+
 function ble/cmap/default/bind-keypad-key {
   local Ft="$1" name="$2"
   ble-bind --csi "$Ft" "$name"
