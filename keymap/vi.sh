@@ -58,6 +58,8 @@ function ble/string#last-index-of {
   fi
 }
 
+function ble/widget/nop { :; }
+
 #------------------------------------------------------------------------------
 # vi-insert/default
 
@@ -885,6 +887,7 @@ function ble/widget/vi-command/history-beginning {
   fi
 }
 
+# G in history
 function ble/widget/vi-command/history-end {
   local arg flag; ble/widget/vi-command/.get-arg 0
   if [[ $flag ]]; then
@@ -903,6 +906,31 @@ function ble/widget/vi-command/history-end {
   else
     ble/widget/history-end
   fi
+}
+
+# G in the current history entry
+function ble/widget/vi-command/last-line {
+  local arg flag; ble/widget/vi-command/.get-arg 0
+  local ret
+  if ((arg)); then
+    ble-edit/text/find-logical-bol 0 $((arg-1))
+  else
+    ble-edit/text/find-logical-bol ${#_ble_edit_str} 0
+  fi
+  ble/widget/vi-command/.common-goto-line "$ret" "$flag"
+}
+
+function ble/widget/vi-command/clear-screen-and-first-non-space {
+  ble/widget/vi-command/first-non-space
+  ble/widget/clear-screen
+}
+function ble/widget/vi-command/redraw-line-and-first-non-space {
+  ble/widget/vi-command/first-non-space
+  ble/widget/redraw-line
+}
+function ble/widget/vi-command/clear-screen-and-last-line {
+  ble/widget/vi-command/last-line
+  ble/widget/redraw-line
 }
 
 #------------------------------------------------------------------------------
@@ -1180,12 +1208,16 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f B vi-command/backward-uword
   ble-bind -f e vi-command/forward-vword-end
   ble-bind -f E vi-command/forward-uword-end
+  ble-bind -f C-right vi-command/forward-vword
+  ble-bind -f C-left  vi-command/backward-vword
 
-  ble-bind -f '|'   vi-command/nth-column
-  ble-bind -f H     vi-command/nth-line
-  ble-bind -f L     vi-command/nth-last-line
-  ble-bind -f 'g g' vi-command/history-beginning
-  ble-bind -f G     vi-command/history-end
+  ble-bind -f '|'    vi-command/nth-column
+  ble-bind -f H      vi-command/nth-line
+  ble-bind -f L      vi-command/nth-last-line
+  ble-bind -f 'g g'  vi-command/history-beginning
+  ble-bind -f G      vi-command/history-end
+  ble-bind -f C-home vi-command/nth-line
+  ble-bind -f C-end  vi-command/last-line
 
   ble-bind -f K command-help
 
@@ -1202,6 +1234,18 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f ';' vi-command/search-char-repeat
   ble-bind -f ',' vi-command/search-char-reverse-repeat
 
+  ble-bind -f 'C-\ C-n' nop
+
+  ble-bind -f 'z t'   clear-screen
+  ble-bind -f 'z z'   redraw-line # 中央
+  ble-bind -f 'z b'   redraw-line # 最下行
+
+  ble-bind -f 'z RET' vi-command/clear-screen-and-first-non-space
+  ble-bind -f 'z C-m' vi-command/clear-screen-and-first-non-space
+  ble-bind -f 'z +'   vi-command/clear-screen-and-last-line
+  ble-bind -f 'z -'   vi-command/redraw-line-and-first-non-space # 中央
+  ble-bind -f 'z .'   vi-command/redraw-line-and-first-non-space # 最下行
+
   #----------------------------------------------------------------------------
   # bash
 
@@ -1212,7 +1256,6 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'C-m' vi-command/accept-single-line-or-forward-first-non-space
   ble-bind -f 'RET' vi-command/accept-single-line-or-forward-first-non-space
   ble-bind -f 'C-g' bell
-  ble-bind -f 'C-l' clear-screen
 
   ble-bind -f C-left  vi-command/backward-vword
   ble-bind -f M-left  vi-command/backward-uword
@@ -1228,7 +1271,7 @@ function ble-decode-keymap:vi_insert/define {
 
   ble-bind -f 'ESC' vi-insert/normal-mode
   ble-bind -f 'C-[' vi-insert/normal-mode
-  ble-bind -f 'C-|' vi-insert/normal-mode
+  ble-bind -f 'C-l' vi-insert/normal-mode
   ble-bind -f 'C-c' vi-insert/normal-mode
 
   ble-bind -f insert overwrite-mode
@@ -1249,8 +1292,8 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f  'RET'     accept-single-line-or-newline
   ble-bind -f  'C-o'     accept-and-next
   ble-bind -f  'C-g'     bell
-  ble-bind -f  'C-l'     clear-screen
-  ble-bind -f  'M-l'     redraw-line
+  # ble-bind -f  'C-l'     clear-screen
+  # ble-bind -f  'M-l'     redraw-line
   ble-bind -f  'C-i'     complete
   ble-bind -f  'TAB'     complete
   ble-bind -f  'f1'      command-help

@@ -32,6 +32,8 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f __defchar__ self-insert
   ble-bind -f 'C-q'       quoted-insert
   ble-bind -f 'C-v'       quoted-insert
+  ble-bind -f 'C-M-m'     newline
+  ble-bind -f 'M-RET'     newline
 
   # shell function
   ble-bind -f  'C-c'     discard-line

@@ -1841,6 +1841,10 @@ function _ble_edit_arg.get {
 
   eval "${ble_util_upvar//ret/arg}"
 }
+function _ble_edit_arg.clear {
+  _ble_edit_arg=
+}
+
 
 # **** edit/dirty ****                                              @edit.dirty
 
@@ -2311,9 +2315,11 @@ function ble-edit/render/update-adjusted {
 # **** redraw, clear-screen, etc ****                             @widget.clear
 
 function ble/widget/redraw-line {
+  _ble_edit_arg.clear
   ble-edit/render/invalidate
 }
 function ble/widget/clear-screen {
+  _ble_edit_arg.clear
   ble/util/buffer "$_ble_term_clear"
   _ble_line_x=0 _ble_line_y=0
   ble-edit/render/invalidate
