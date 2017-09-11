@@ -4841,12 +4841,13 @@ function ble-decode/DEFAULT_KEYMAP {
 function ble-edit/load-keymap-definition:emacs {
   function ble-edit/load-keymap-definition:emacs { :; }
 
-  local name=emacs
-  if [[ $_ble_base_cache/keymap.$name -nt $_ble_base/keymap/$name.sh &&
-          $_ble_base_cache/keymap.$name -nt $_ble_base/cmap/default.sh ]]; then
-    source "$_ble_base_cache/keymap.$name"
+  local fname_keymap_cache=$_ble_base_cache/keymap.emacs
+  if [[ $fname_keymap_cache -nt $_ble_base/keymap/emacs.sh &&
+          $fname_keymap_cache -nt $_ble_base/keymap/isearch.sh &&
+          $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]; then
+    source "$fname_keymap_cache"
   else
-    source "$_ble_base/keymap/$name.sh"
+    source "$_ble_base/keymap/emacs.sh"
   fi
 }
 
@@ -4857,10 +4858,6 @@ function ble-edit/load-keymap-definition {
   else
     source "$_ble_base/keymap/$name.sh"
   fi
-}
-
-function ble-edit/load-default-key-bindings {
-  : ble-edit/load-keymap-definition emacs
 }
 
 function ble-edit-initialize {

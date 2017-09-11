@@ -46,11 +46,8 @@ outfiles+=$(OUTDIR)/ignoreeof-messages.txt
 $(OUTDIR)/ignoreeof-messages.txt: ignoreeof-messages.txt | $(OUTDIR)
 	cp -p $< $@
 
-outfiles+=$(OUTDIR)/keymap/emacs.sh
-$(OUTDIR)/keymap/emacs.sh: keymap/emacs.sh | $(OUTDIR)/keymap
-	cp -p $< $@
-outfiles+=$(OUTDIR)/keymap/vi.sh
-$(OUTDIR)/keymap/vi.sh: keymap/vi.sh | $(OUTDIR)/keymap
+outfiles += $(OUTDIR)/keymap/emacs.sh $(OUTDIR)/keymap/vi.sh $(OUTDIR)/keymap/isearch.sh
+$(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
 	cp -p $< $@
 
 outfiles+=$(OUTDIR)/cmap/default.sh

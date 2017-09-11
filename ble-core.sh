@@ -33,6 +33,8 @@ function _ble_util_array_prototype.reserve {
   done
 }
 
+# Note: declare +a arr だとローカル変数の判定になってしまう。
+function ble/is-array { eval "((\${#$1[*]}))"; }
 if ((_ble_bash>=30100)); then
   function ble/array#push {
     builtin eval "$1+=(\"\${@:2}\")"

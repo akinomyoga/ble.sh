@@ -864,8 +864,13 @@ _ble_decode_keymap_stack=()
 
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
-  ble/array#push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
-  _ble_decode_key__kmap="$1"
+  if eval "((\${#_ble_decode_${1}_kmap_[*]}))"; then
+    ble/array#push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
+    _ble_decode_key__kmap="$1"
+  else
+    echo "[ble: keymap '$1' not found]" >&2
+    declare -p _ble_decode_isearch_kmap_
+  fi
 }
 ## 関数 ble-decode/keymap/pop
 function ble-decode/keymap/pop {
@@ -1594,6 +1599,13 @@ function ble-decode-attach {
 
   # 現在の ble-decode/keymap の設定
   ble-decode/DEFAULT_KEYMAP -v _ble_decode_key__kmap
+
+  # 失敗すると悲惨なことになるので抜ける。
+  if ! ble/is-array "_ble_decode_${_ble_decode_key__kmap}_kmap_"; then
+    echo "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_key__kmap' is not defined." >&2
+    ble-decode-detach
+    return 1
+  fi
 }
 function ble-decode-detach {
   [[ $_ble_decode_bind_state != none ]] || return

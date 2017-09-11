@@ -68,6 +68,7 @@ if [[ -o posix ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
+bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
@@ -210,7 +211,6 @@ fi
 
 function ble-initialize {
   ble-decode-initialize # 54ms
-  ble-edit/load-default-key-bindings # 4ms
   ble-edit-initialize # 4ms
 }
 
@@ -218,10 +218,11 @@ _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
 
+  local IFS=$' \t\n'
+  ble-decode-attach || return 1 # 53ms
   _ble_attached=1
   _ble_edit_detach_flag= # do not detach or exit
-  local IFS=$' \t\n'
-  ble-decode-attach # 53ms
+
   ble-edit-attach # 0ms
   ble-edit/render/redraw # 34ms
   ble-edit/bind/stdout.off

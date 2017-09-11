@@ -1,8 +1,10 @@
 #!/bin/bash
 
-# Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されるので、
+# Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されうるので、
 # 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
 function ble-edit/load-keymap-definition:vi { :; }
+
+ble-edit/load-keymap-definition isearch
 
 # utils
 
@@ -1472,6 +1474,7 @@ function ble-decode-keymap:vi_insert/define {
 function ble-decode-keymap:vi/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi.sh &&
+          $fname_keymap_cache -nt $_ble_base/keymap/isearch.sh &&
           $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]; then
     source "$fname_keymap_cache"
     return
@@ -1479,12 +1482,14 @@ function ble-decode-keymap:vi/initialize {
 
   echo -n "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2
 
+  ble-decode-keymap:isearch/define
   ble-decode-keymap:vi_insert/define
   ble-decode-keymap:vi_command/define
 
   : >| "$fname_keymap_cache"
   ble-decode/keymap/dump vi_insert >> "$fname_keymap_cache"
   ble-decode/keymap/dump vi_command >> "$fname_keymap_cache"
+  ble-decode/keymap/dump isearch >> "$fname_keymap_cache"
 
   echo "ble.sh: updating cache/keymap.vi... done" >&2
 }
