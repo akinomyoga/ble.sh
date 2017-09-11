@@ -476,7 +476,7 @@ function ble/widget/complete {
   _ble_edit_str.update-syntax
   local context
   ble-syntax/completion-context "$text" "$index"
-  # ble-edit/info/draw-text "${context[*]}"
+  # ble-edit/info/show text "${context[*]}"
   # return
 
   if ((${#context[@]}==0)); then
@@ -606,7 +606,7 @@ function ble/widget/complete {
     ble-edit/info/clear
   else
     # 候補が複数ある時
-    ble-edit/info/draw-text "${cand_show[*]}"
+    ble-edit/info/show text "${cand_show[*]}"
   fi
 
   ble/widget/.delete-range "$comp1" "$index"

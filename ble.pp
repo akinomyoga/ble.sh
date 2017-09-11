@@ -224,6 +224,7 @@ function ble-attach {
   _ble_edit_detach_flag= # do not detach or exit
 
   ble-edit-attach # 0ms
+  ble-edit/info/reveal
   ble-edit/render/redraw # 34ms
   ble-edit/bind/stdout.off
 }

@@ -1337,7 +1337,7 @@ function ble-edit/text/update {
   # highlight -> HIGHLIGHT_BUFF
   local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
   ble-highlight-layer/update "$text"
-  #ble-edit/info/draw-text "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
+  #ble-edit/info/show text "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
 
   # 変更文字の適用
   if ((${#_ble_line_text_cache_ichg[@]})); then
@@ -1358,7 +1358,7 @@ function ble-edit/text/update {
     umax=HIGHLIGHT_UMAX,
     POS_UMIN>=0&&(umin<0||umin>POS_UMIN)&&(umin=POS_UMIN),
     POS_UMAX>=0&&(umax<0||umax<POS_UMAX)&&(umax=POS_UMAX)))
-  # ble-edit/info/draw-text "position $POS_UMIN-$POS_UMAX, highlight $HIGHLIGHT_UMIN-$HIGHLIGHT_UMAX"
+  # ble-edit/info/show text "position $POS_UMIN-$POS_UMAX, highlight $HIGHLIGHT_UMIN-$HIGHLIGHT_UMAX"
 
   # update lc, lg
   #
@@ -1636,9 +1636,9 @@ function ble-edit/info/.put-nl-if-eol {
   fi
 }
 
-## 関数 x y; ble-edit/info/.construct text ; ret
+## 関数 x y; ble-edit/info/.construct-text text ; ret
 ##   指定した文字列を表示する為の制御系列に変換します。
-function ble-edit/info/.construct {
+function ble-edit/info/.construct-text {
   local cols=${COLUMNS-80}
   local lines=$(((LINES?LINES:0)-_ble_line_endy-2))
 
@@ -1676,26 +1676,58 @@ function ble-edit/info/.construct {
   ret="$out"
 }
 
-_ble_line_info=(0 0 "")
-function ble-edit/info/.draw-impl {
-  local text="$2"
-
-  local -a DRAW_BUFF
-
-  local x=0 y=0 content=
-  # 内容の構築
+## 関数 ble-edit/info/.construct-content type text
+##   @var[in,out] x y
+##   @var[out]    content
+function ble-edit/info/.construct-content {
+  local type=$1 text=$2
   case "$1" in
   (raw)
     local lc=32 lg=0 g=0
+    local -a DRAW_BUFF
     ble-edit/draw/trace "$text"
     ble-edit/draw/sflush -v content ;;
   (text)
     local lc=32 ret
-    ble-edit/info/.construct "$text"
+    ble-edit/info/.construct-text "$text"
     content="$ret" ;;
+  (*)
+    echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
   esac
+}
+
+
+_ble_line_info=(0 0 "")
+
+function ble-edit/info/.clear-content {
+  [[ ${_ble_line_info[2]} ]] || return
+
+  local -a DRAW_BUFF
+  ble-edit/render/goto 0 _ble_line_endy
+  ble-edit/draw/put "$_ble_term_ind"
+  ble-edit/draw/put.dl '_ble_line_info[1]+1'
+  ble-edit/draw/bflush
+
+  _ble_line_y="$((_ble_line_endy+1))"
+  _ble_line_x=0
+  _ble_line_info=(0 0 "")
+}
+
+## 関数 ble-edit/info/.render-content x y content
+##   @param[in] x y content
+function ble-edit/info/.render-content {
+  local x=$1 y=$2 content=$3
+
+  # 既に同じ内容で表示されているとき…。
+  [[ $content == "${_ble_line_info[2]}" ]] && return
+
+  if [[ ! $content ]]; then
+    ble-edit/info/.clear-content
+    return
+  fi
 
   # (1) 移動・領域確保
+  local -a DRAW_BUFF
   ble-edit/render/goto 0 "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_ind"
   [[ ${_ble_line_info[2]} ]] && ble-edit/draw/put.dl '_ble_line_info[1]+1'
@@ -1704,37 +1736,84 @@ function ble-edit/info/.draw-impl {
   # (2) 内容
   ble-edit/draw/put "$content"
   ble-edit/draw/bflush
-  ble/util/buffer.flush >&2
 
   _ble_line_y="$((_ble_line_endy+1+y))"
   _ble_line_x="$x"
   _ble_line_info=("$x" "$y" "$content")
 }
-## 関数 ble-edit/info/draw-text text
-##   @remarks 改行などの制御文字は代替表現に代えられる。
-##   @remarks 画面からはみ出る文字列に関しては自動で truncate される。
-function ble-edit/info/draw-text {
-  ble-edit/info/.draw-impl text "$1"
-}
-## 関数 ble-edit/info/draw-text esc
-##   @remarks 画面からはみ出る様なシーケンスに対する対策はない。
+
+_ble_line_info_default=(0 0 "")
+_ble_line_info_scene=hidden
+
+## 関数 ble-edit/info/show type text
+##
+##   @param[in] type
+##
+##     以下の2つの内の何れかを指定する。
+##
+##     type=text
+##     type=raw
+##
+##   @param[in] text
+##
+##     type=text のとき、引数 text は表示する文字列を含む。
+##     改行などの制御文字は代替表現に置き換えられる。
+##     画面からはみ出る文字列に関しては自動で truncate される。
+##
+##     type=raw のとき、引数 text は制御シーケンスを含む文字列を指定する。
+##     画面からはみ出る様なシーケンスに対する対策はない。
 ##     シーケンスを生成する側でその様なことがない様にする必要がある。
-function ble-edit/info/draw {
-  ble-edit/info/.draw-impl raw "$1"
+##
+function ble-edit/info/show {
+  local type=$1 text=$2
+  if [[ $text ]]; then
+    local x=0 y=0 content=
+    ble-edit/info/.construct-content "$type" "$text"
+    ble-edit/info/.render-content "$x" "$y" "$content"
+    ble/util/buffer.flush >&2
+    _ble_line_info_scene=show
+  else
+    ble-edit/info/default
+  fi
+}
+function ble-edit/info/set-default {
+  local type=$1 text=$2
+  local x=0 y=0 content
+  ble-edit/info/.construct-content "$type" "$text"
+  _ble_line_info_default=("$x" "$y" "$content")
+  if [[ $_ble_line_info_scene == default ]]; then
+    ble-edit/info/.render-content "${_ble_line_info_default[@]}"
+    ble/util/buffer.flush >&2
+  fi
+}
+function ble-edit/info/default {
+  _ble_line_info_scene=default
+  if (($#)); then
+    ble-edit/info/set-default "$@"
+  else
+    ble-edit/info/.render-content "${_ble_line_info_default[@]}"
+    ble/util/buffer.flush >&2
+  fi
 }
 function ble-edit/info/clear {
-  [[ ${_ble_line_info[2]} ]] || return
+  ble-edit/info/default
+}
 
-  local -a DRAW_BUFF
-  ble-edit/render/goto 0 _ble_line_endy
-  ble-edit/draw/put "$_ble_term_ind"
-  ble-edit/draw/put.dl '_ble_line_info[1]+1'
-  ble-edit/draw/bflush
-  ble/util/buffer.flush >&2
-
-  _ble_line_y="$((_ble_line_endy+1))"
-  _ble_line_x=0
-  _ble_line_info=(0 0 "")
+## 関数 ble-edit/info/hide
+## 関数 ble-edit/info/reveal
+##
+##   これらの関数は .newline 前後に一時的に info の表示を抑制するための関数である。
+##   この関数の呼び出しの後に flush が入ることを想定して ble/util/buffer.flush は実行しない。
+##
+function ble-edit/info/hide {
+  _ble_line_info_scene=hidden
+  ble-edit/info/.clear-content
+}
+function ble-edit/info/reveal {
+  if [[ $_ble_line_info_scene == hidden ]]; then
+    _ble_line_info_scene=default
+    ble-edit/info/.render-content "${_ble_line_info_default[@]}"
+  fi
 }
 
 # 
@@ -2725,7 +2804,7 @@ function ble/widget/delete-forward-char-or-exit {
   #_ble_edit_detach_flag=exit
 
   #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
-  ble-edit/info/clear
+  ble-edit/info/hide
   local -a DRAW_BUFF
   ble-edit/render/goto "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/bflush
@@ -3594,7 +3673,7 @@ function ble-edit/exec:gexec/process {
 
 function ble/widget/.insert-newline {
   # 最終状態の描画
-  ble-edit/info/clear
+  ble-edit/info/hide
   ble-edit/render/update
 
   # 新しい描画領域
@@ -3812,7 +3891,7 @@ function ble-edit/history/load {
 
   if ((_ble_edit_attached)); then
     local x="$_ble_line_x" y="$_ble_line_y"
-    ble-edit/info/draw-text "loading history..."
+    ble-edit/info/show text "loading history..."
 
     local -a DRAW_BUFF
     ble-edit/render/goto "$x" "$y"
@@ -4077,14 +4156,14 @@ function ble-edit/isearch/.draw-line-with-progress {
     ((isearch_ntask)) && text="$text *$isearch_ntask"
   fi
 
-  ble-edit/info/draw-text "$text"
+  ble-edit/info/show text "$text"
 }
 
 function ble-edit/isearch/.draw-line {
   ble-edit/isearch/.draw-line-with-progress
 }
 function ble-edit/isearch/.erase-line {
-  ble-edit/info/clear
+  ble-edit/info/default
 }
 function ble-edit/isearch/.set-region {
   local beg="$1" end="$2"
@@ -4693,7 +4772,7 @@ function ble-edit/bind/.check-detach {
       # exit
       ble/util/buffer.flush >&2
       builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" 1>&2
-      ble-edit/info/clear
+      ble-edit/info/hide
       ble-edit/render/update
       ble/util/buffer.flush >&2
 
@@ -4754,12 +4833,14 @@ function ble-edit/bind/.tail-without-draw {
 
 if ((_ble_bash>40000)); then
   function ble-edit/bind/.tail {
+    ble-edit/info/reveal
     ble-edit/render/update-adjusted
     ble-edit/bind/stdout.off
   }
 else
   IGNOREEOF=10000
   function ble-edit/bind/.tail {
+    ble-edit/info/reveal
     ble-edit/render/update # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
     ble-edit/bind/stdout.off
   }
