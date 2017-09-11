@@ -64,12 +64,19 @@ function _ble_util_string_prototype.reserve {
   done
 }
 
+## 関数 ble/string#repeat str count
+##   @param[in] str
+##   @param[in] count
+##   @var[out] ret
 function ble/string#repeat {
   _ble_util_string_prototype.reserve "$2"
   ret="${_ble_util_string_prototype::$2}"
   ret="${ret// /$1}"
 }
 
+## 関数 ble/string#common-prefix a b
+##   @param[in] a b
+##   @var[out] ret
 function ble/string#common-prefix {
   local a="$1" b="$2"
   ((${#a}>${#b})) && local a="$b" b="$a"
@@ -92,6 +99,10 @@ function ble/string#common-prefix {
 
   ret="${a::l}"
 }
+
+## 関数 ble/string#common-suffix a b
+##   @param[in] a b
+##   @var[out] ret
 function ble/string#common-suffix {
   local a="$1" b="$2"
   ((${#a}>${#b})) && local a="$b" b="$a"
@@ -114,11 +125,12 @@ function ble/string#common-suffix {
 
   ret="${a:u}"
 }
+
 ## 関数 ble/string#split arr split str...
 ##   文字列を分割します。
-##   @var[out] arr   分割した文字列を格納する配列名を指定します。
-##   @var[in]  split 分割に使用する文字を指定します。
-##   @var[in]  str   分割する文字列を指定します。
+##   @param[out] arr   分割した文字列を格納する配列名を指定します。
+##   @param[in]  split 分割に使用する文字を指定します。
+##   @param[in]  str   分割する文字列を指定します。
 function ble/string#split {
   if shopt -q nullglob &>/dev/null; then
     # ※GLOBIGNORE を設定していても nullglob の効果は有効である。
@@ -130,6 +142,101 @@ function ble/string#split {
     GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
   fi
 }
+
+## 関数 ble/string#count-char text chars
+##   @param[in] text
+##   @param[in] chars
+##     検索対象の文字の集合を指定します。
+##   @var[out] ret
+function ble/string#count-char {
+  local text=$1 char=$2
+  text=${text//[!"$char"]}
+  ret=${#text}
+}
+
+## 関数 ble/string#index-of text needle [n]
+##   @param[in] text
+##   @param[in] needle
+##   @param[in] n
+##     この引数を指定したとき n 番目の一致を検索します。
+function ble/string#index-of {
+  local haystack=$1 needle=$2 count=${3:-1}
+  ble/string#repeat '*"$needle"' "$count"; local pattern=$ret
+  eval "local transformed=\${haystack#$pattern}"
+  ((ret=${#haystack}-${#transformed}-${#needle},
+    ret<0&&(ret=-1)))
+}
+
+## 関数 ble/string#last-index-of text needle [n]
+##   @param[in] text
+##   @param[in] needle
+##   @param[in] n
+##     この引数を指定したとき n 番目の一致を検索します。
+function ble/string#last-index-of {
+  local haystack=$1 needle=$2 count=${3:-1}
+  ble/string#repeat '"$needle"*' "$count"; local pattern=$ret
+  eval "local transformed=\${haystack%$pattern}"
+  if [[ $transformed == "$haystack" ]]; then
+    ret=-1
+  else
+    ret=${#transformed}
+  fi
+}
+
+## 関数 ble/string#toggle-case text...
+## 関数 ble/string#touppwer text...
+## 関数 ble/string#tolower text...
+##   @param[in] text
+##   @var[out] ret
+_ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
+_ble_util_string_upper_list=ABCDEFGHIJKLMNOPQRSTUVWXYZ
+function ble/string#toggle-case {
+  local text=$*
+  local -a buff ch
+  for ((i=0;i<${#text};i++)); do
+    ch=${text:i:1}
+    if [[ $ch == [A-Z] ]]; then
+      ch=${_ble_util_string_upper_list%%"$ch"*}
+      ch=${_ble_util_string_lower_list:${#ch}:1}
+    elif [[ $ch == [a-z] ]]; then
+      ch=${_ble_util_string_lower_list%%"$ch"*}
+      ch=${_ble_util_string_upper_list:${#ch}:1}
+    fi
+    ble/array#push buff "$ch"
+  done
+  IFS= eval 'ret=${buff[*]}'
+}
+if ((_ble_bash>=40000)); then
+  function ble/string#tolower { ret=${*,,}; }
+  function ble/string#toupper { ret=${*^^}; }
+else
+  function ble/string#tolower {
+    local text=$*
+    local -a buff ch
+    for ((i=0;i<${#text};i++)); do
+      ch=${text:i:1}
+      if [[ $ch == [A-Z] ]]; then
+        ch=${_ble_util_string_upper_list%%"$ch"*}
+        ch=${_ble_util_string_lower_list:${#ch}:1}
+      fi
+      ble/array#push buff "$ch"
+    done
+    IFS= eval 'ret=${buff[*]}'
+  }
+  function ble/string#toupper {
+    local text=$*
+    local -a buff ch
+    for ((i=0;i<${#text};i++)); do
+      ch=${text:i:1}
+      if [[ $ch == [a-z] ]]; then
+        ch=${_ble_util_string_lower_list%%"$ch"*}
+        ch=${_ble_util_string_upper_list:${#ch}:1}
+      fi
+      ble/array#push buff "$ch"
+    done
+    IFS= eval 'ret=${buff[*]}'
+  }
+fi
 
 #
 # miscallaneous utils

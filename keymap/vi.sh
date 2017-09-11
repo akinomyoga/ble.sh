@@ -21,45 +21,6 @@ function ble-edit/text/nonbol-eolp {
   ! ble-edit/text/bolp "$pos" && ble-edit/text/eolp "$pos"
 }
 
-## 関数 ble/string#count-char text chars
-##   @param[in] text
-##   @param[in] chars
-##     検索対象の文字の集合を指定します。
-function ble/string#count-char {
-  local text=$1 char=$2
-  text=${text//[!"$char"]}
-  ret=${#text}
-}
-
-## 関数 ble/string#index-of text needle [n]
-##   @param[in] text
-##   @param[in] needle
-##   @param[in] n
-##     この引数を指定したとき n 番目の一致を検索します。
-function ble/string#index-of {
-  local haystack=$1 needle=$2 count=${3:-1}
-  ble/string#repeat '*"$needle"' "$count"; local pattern=$ret
-  eval "local transformed=\${haystack#$pattern}"
-  ((ret=${#haystack}-${#transformed}-${#needle},
-    ret<0&&(ret=-1)))
-}
-
-## 関数 ble/string#last-index-of text needle [n]
-##   @param[in] text
-##   @param[in] needle
-##   @param[in] n
-##     この引数を指定したとき n 番目の一致を検索します。
-function ble/string#last-index-of {
-  local haystack=$1 needle=$2 count=${3:-1}
-  ble/string#repeat '"$needle"*' "$count"; local pattern=$ret
-  eval "local transformed=\${haystack%$pattern}"
-  if [[ $transformed == "$haystack" ]]; then
-    ret=-1
-  else
-    ret=${#transformed}
-  fi
-}
-
 function ble/widget/nop { :; }
 
 #------------------------------------------------------------------------------
@@ -426,12 +387,6 @@ function ble/widget/vi-command/backward-char {
 
 #------------------------------------------------------------------------------
 # command: [cdy]?[jk]
-
-function ble/string#count-char {
-  local text=$1 char=$2
-  text=${text//[!$char]}
-  ret=${#text}
-}
 
 ## 関数 ble/widget/vi-command/.history-relative-line arg
 ##
