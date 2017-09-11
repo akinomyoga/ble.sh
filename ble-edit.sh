@@ -2725,6 +2725,10 @@ function ble/widget/delete-forward-char-or-exit {
   #_ble_edit_detach_flag=exit
 
   #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
+  ble-edit/info/clear
+  local -a DRAW_BUFF
+  ble-edit/render/goto "$_ble_line_endx" "$_ble_line_endy"
+  ble-edit/draw/bflush
   ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
   ble/util/buffer.flush >&2
   exit
@@ -4689,6 +4693,7 @@ function ble-edit/bind/.check-detach {
       # exit
       ble/util/buffer.flush >&2
       builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" 1>&2
+      ble-edit/info/clear
       ble-edit/render/update
       ble/util/buffer.flush >&2
 
