@@ -189,3 +189,7 @@ $ ble-bind -L
 By typing `C-v RET` or `C-q RET`, you can insert a newline character in the command line string.
 When the command line string contains a newline character, `RET` (`C-m`) causes insertion of a new newline character.
 The command containing newline characters can be executed by typing `C-j`.
+
+## Special thanks
+
+- many thanks for testing the `ble.sh` vi mode: @B-bar
