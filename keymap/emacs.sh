@@ -11,7 +11,9 @@ ble-edit/load-keymap-definition isearch
 function ble-decode-keymap:emacs/define {
   local ble_bind_keymap=emacs
 
-  ble-bind -f insert overwrite-mode
+  ble-bind -f __attach__  emacs/.attach
+
+  ble-bind -f insert      overwrite-mode
 
   # ins
   ble-bind -f __defchar__ self-insert

@@ -4936,6 +4936,9 @@ function ble-edit/load-keymap-definition:emacs {
     source "$_ble_base/keymap/emacs.sh"
   fi
 }
+function ble/widget/emacs/.attach {
+  ble-edit/info/set-default text ''
+}
 
 function ble-edit/load-keymap-definition {
   local name=$1

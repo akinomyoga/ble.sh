@@ -7,6 +7,7 @@
 #   __default__
 #   __before_command__
 #   __after_command__
+#   __attach__
 #
 #   shift alter control meta super hyper
 #

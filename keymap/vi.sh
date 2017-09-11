@@ -125,7 +125,7 @@ function ble/widget/vi-insert/@norepeat {
   ble/widget/"$@"
 }
 
-function ble/widget/vi-insert/log-repeat {
+function ble/widget/vi-insert/.log-repeat {
   if [[ $_ble_keymap_vi_repeat ]]; then
     ble/array#push _ble_keymap_vi_repeat_keylog "${KEYS[@]}"
   fi
@@ -139,6 +139,11 @@ function ble/widget/vi-insert/log-repeat {
 ##   ToDo: 現在は使用していない。将来的には gi などで使う。
 _ble_keymap_vi_insert_mark=
 
+_ble_keymap_vi_INFO_NORMAL=
+_ble_keymap_vi_INFO_INSERT=$'\e[1m-- INSERT --\e[m'
+_ble_keymap_vi_INFO_REPLACE=$'\e[1m-- REPLACE --\e[m'
+_ble_keymap_vi_INFO_VREPLACE=$'\e[1m-- VREPLACE --\e[m'
+
 function ble/widget/vi-insert/.normal-mode {
   _ble_keymap_vi_insert_mark=$_ble_edit_ind
   _ble_edit_overwrite_mode=
@@ -150,10 +155,12 @@ function ble/widget/vi-insert/.normal-mode {
 function ble/widget/vi-insert/normal-mode {
   ble/widget/vi-insert/.process-repeat
   ble/widget/vi-insert/.normal-mode
+  ble-edit/info/default raw "$_ble_keymap_vi_INFO_NORMAL"
 }
 function ble/widget/vi-insert/normal-mode-norepeat {
   ble/widget/vi-insert/.reset-repeat
   ble/widget/vi-insert/.normal-mode
+  ble-edit/info/default raw "$_ble_keymap_vi_INFO_NORMAL"
 }
 
 function ble/widget/vi-command/.insert-mode {
@@ -167,6 +174,7 @@ function ble/widget/vi-command/insert-mode {
     ble/widget/.bell
   else
     ble/widget/vi-command/.insert-mode "$arg"
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_INSERT"
   fi
 }
 function ble/widget/vi-command/append-mode {
@@ -178,6 +186,7 @@ function ble/widget/vi-command/append-mode {
       ble/widget/.goto-char "$((_ble_edit_ind+1))"
     fi
     ble/widget/vi-command/.insert-mode "$arg"
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_INSERT"
   fi
 }
 function ble/widget/vi-command/append-eol-mode {
@@ -188,6 +197,7 @@ function ble/widget/vi-command/append-eol-mode {
     local ret; ble-edit/text/find-logical-eol
     ble/widget/.goto-char "$ret"
     ble/widget/vi-command/.insert-mode "$arg"
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_INSERT"
   fi
 }
 function ble/widget/vi-command/insert-bol-mode {
@@ -198,6 +208,7 @@ function ble/widget/vi-command/insert-bol-mode {
     local ret; ble-edit/text/find-logical-bol
     ble/widget/.goto-char "$ret"
     ble/widget/vi-command/.insert-mode "$arg"
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_INSERT"
   fi
 }
 function ble/widget/vi-command/insert-nol-mode {
@@ -207,6 +218,7 @@ function ble/widget/vi-command/insert-nol-mode {
   else
     ble/widget/vi-command/first-non-space
     ble/widget/vi-command/.insert-mode "$arg"
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_INSERT"
   fi
 }
 function ble/widget/vi-command/replace-mode {
@@ -216,15 +228,17 @@ function ble/widget/vi-command/replace-mode {
   else
     ble/widget/vi-command/.insert-mode
     _ble_edit_overwrite_mode=R
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_REPLACE"
   fi
 }
-function ble/widget/vi-command/overwrite-mode {
+function ble/widget/vi-command/virtual-replace-mode {
   local arg flag; ble/widget/vi-command/.get-arg 1
   if [[ $flag ]]; then
     ble/widget/.bell
   else
     ble/widget/vi-command/.insert-mode
     _ble_edit_overwrite_mode=1
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_VREPLACE"
   fi
 }
 function ble/widget/vi-command/accept-line {
@@ -1203,6 +1217,7 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f o      vi-command/insert-forward-line-mode
   ble-bind -f O      vi-command/insert-backward-line-mode
   ble-bind -f R      vi-command/replace-mode
+  ble-bind -f 'g R'  vi-command/virtual-replace-mode
 
   ble-bind -f 0 vi-command/arg-append
   ble-bind -f 1 vi-command/arg-append
@@ -1317,6 +1332,9 @@ function ble-decode-keymap:vi_command/define {
 #------------------------------------------------------------------------------
 # vi-insert
 
+function ble/widget/vi-insert/.attach {
+  ble-edit/info/set-default raw "$_ble_keymap_vi_INFO_INSERT"
+}
 function ble/widget/vi-insert/magic-space {
   if [[ $_ble_keymap_vi_repeat ]]; then
     ble/widget/self-insert
@@ -1342,9 +1360,10 @@ function ble/widget/vi-insert/delete-region-or {
 function ble-decode-keymap:vi_insert/define {
   local ble_bind_keymap=vi_insert
 
-  ble-bind -f __defchar__ self-insert
-  ble-bind -f __default__ vi-insert/default
-  ble-bind -f __before_command__ vi-insert/log-repeat
+  ble-bind -f __attach__         vi-insert/.attach
+  ble-bind -f __defchar__        self-insert
+  ble-bind -f __default__        vi-insert/default
+  ble-bind -f __before_command__ vi-insert/.log-repeat
 
   ble-bind -f 'ESC' vi-insert/normal-mode
   ble-bind -f 'C-[' vi-insert/normal-mode

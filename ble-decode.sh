@@ -181,6 +181,8 @@ function ble-decode-kbd/.initialize {
   _ble_decode_KCODE_BEFORE_COMMAND=$ret
   ble-decode-kbd/.gen-keycode __after_command__
   _ble_decode_KCODE_AFTER_COMMAND=$ret
+  ble-decode-kbd/.gen-keycode __attach__
+  _ble_decode_KCODE_ATTACH=$ret
 
   ble-decode-kbd/.gen-keycode shift
   _ble_decode_KCODE_SHIFT=$ret
@@ -1020,6 +1022,12 @@ function ble-decode-key/ischar {
   local key="$1"
   (((key&ble_decode_MaskFlag)==0&&32<=key&&key<ble_decode_function_key_base))
 }
+function ble-decode-key/.invoke-hook {
+  local kcode=$1
+  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+  builtin eval "local hook=\"\${$dicthead[$kcode]:2}\""
+  [[ $hook ]] && builtin eval -- "$hook"
+}
 
 ## 関数 ble-decode-key/.invoke-command
 ##   コマンドが有効な場合に、指定したコマンドを適切な環境で実行します。
@@ -1050,15 +1058,13 @@ function ble-decode-key/ischar {
 #
 function ble-decode-key/.invoke-command {
   if [[ $command ]]; then
-    builtin eval "local BEFORE_COMMAND=\"\${$dicthead[$_ble_decode_KCODE_BEFORE_COMMAND]:2}\""
-    builtin eval "local AFTER_COMMAND=\"\${$dicthead[$_ble_decode_KCODE_AFTER_COMMAND]:2}\""
     local COMMAND=$command
     local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
     _ble_decode_key__seq=
 
-    [[ $BEFORE_COMMAND ]] && builtin eval -- "$BEFORE_COMMAND"
+    ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
     builtin eval -- "$COMMAND"
-    [[ $AFTER_COMMAND ]] && builtin eval -- "$AFTER_COMMAND"
+    ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
     return 0
   else
     return 1
@@ -1606,6 +1612,8 @@ function ble-decode-attach {
     ble-decode-detach
     return 1
   fi
+
+  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_ATTACH"
 }
 function ble-decode-detach {
   [[ $_ble_decode_bind_state != none ]] || return
