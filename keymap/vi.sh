@@ -1382,7 +1382,7 @@ function ble-decode-keymap:vi_command/define {
 # vi-insert
 
 function ble/widget/vi-insert/.attach {
-  ble/keymap:vi/update-mode-name
+  ble-edit/info/set-default raw $'\e[1m-- INSERT --\e[m'
 }
 function ble/widget/vi-insert/magic-space {
   if [[ $_ble_keymap_vi_repeat ]]; then
