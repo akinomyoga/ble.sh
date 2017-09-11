@@ -2404,9 +2404,10 @@ function ble/widget/redraw-line {
 }
 function ble/widget/clear-screen {
   _ble_edit_arg.clear
+  ble-edit/info/hide
+  ble-edit/render/invalidate
   ble/util/buffer "$_ble_term_clear"
   _ble_line_x=0 _ble_line_y=0
-  ble-edit/render/invalidate
   ble-term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
