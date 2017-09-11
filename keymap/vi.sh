@@ -138,6 +138,7 @@ function ble/widget/vi-insert/.log-repeat {
 ##   最後に vi-insert を抜けた位置
 ##   ToDo: 現在は使用していない。将来的には gi などで使う。
 _ble_keymap_vi_insert_mark=
+_ble_keymap_vi_insert_overwrite=
 
 _ble_keymap_vi_INFO_NORMAL=
 _ble_keymap_vi_INFO_INSERT=$'\e[1m-- INSERT --\e[m'
@@ -166,6 +167,7 @@ function ble/widget/vi-insert/normal-mode-norepeat {
 function ble/widget/vi-command/.insert-mode {
   ble/widget/vi-insert/.reset-repeat "$1"
   _ble_edit_overwrite_mode=
+  _ble_keymap_vi_insert_overwrite=
   ble-decode/keymap/pop
 }
 function ble/widget/vi-command/insert-mode {
@@ -228,6 +230,7 @@ function ble/widget/vi-command/replace-mode {
   else
     ble/widget/vi-command/.insert-mode
     _ble_edit_overwrite_mode=R
+    _ble_keymap_vi_insert_overwrite=R
     ble-edit/info/default raw "$_ble_keymap_vi_INFO_REPLACE"
   fi
 }
@@ -238,6 +241,7 @@ function ble/widget/vi-command/virtual-replace-mode {
   else
     ble/widget/vi-command/.insert-mode
     _ble_edit_overwrite_mode=1
+    _ble_keymap_vi_insert_overwrite=1
     ble-edit/info/default raw "$_ble_keymap_vi_INFO_VREPLACE"
   fi
 }
@@ -1356,6 +1360,18 @@ function ble/widget/vi-insert/delete-region-or {
     "ble/widget/delete-$@"
   fi
 }
+function ble/widget/vi-insert/overwrite-mode {
+  if [[ $_ble_edit_overwrite_mode ]]; then
+    _ble_edit_overwrite_mode=
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_INSERT"
+  elif [[ $_ble_keymap_vi_insert_overwrite == 1 ]]; then
+    _ble_edit_overwrite_mode=1
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_VREPLACE"
+  else
+    _ble_edit_overwrite_mode=R
+    ble-edit/info/default raw "$_ble_keymap_vi_INFO_REPLACE"
+  fi
+}
 
 function ble-decode-keymap:vi_insert/define {
   local ble_bind_keymap=vi_insert
@@ -1370,7 +1386,7 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'C-l' vi-insert/normal-mode
   ble-bind -f 'C-c' vi-insert/normal-mode-norepeat
 
-  ble-bind -f insert overwrite-mode
+  ble-bind -f insert vi-insert/overwrite-mode
 
   ble-bind -f 'C-w' 'delete-backward-cword' # vword?
 
