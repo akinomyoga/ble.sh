@@ -607,6 +607,9 @@ function ble/widget/vi-command/.relative-first-non-space {
   [[ ${_ble_edit_str:bolx} =~ $rex ]]
   local nolx=$((bolx+${#BASH_REMATCH}))
 
+  # 2017-09-12 何故か分からないが vim はこういう振る舞いに見える。
+  ((_ble_keymap_vi_single_command==2&&_ble_keymap_vi_single_command--))
+
   if [[ $flag == [dyc] ]]; then
     if ((arg==0)); then
       ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
