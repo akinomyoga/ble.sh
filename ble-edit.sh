@@ -1325,7 +1325,7 @@ _ble_line_text_buffName=
 ## @param[in,out] lc lg
 ##   カーソル左の文字のコードと gflag を返します。
 ##   カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
-## @var   [   out] umin umax
+## @var  [   out] umin umax
 ##   umin,umax は再描画の必要な範囲を文字インデックスで返します。
 function ble-edit/text/update {
   # text dirty x y [ble-edit/text/update/position] x y
@@ -1410,14 +1410,14 @@ function ble-edit/text/update {
 function ble-edit/text/is-position-up-to-date {
   ((_ble_edit_dirty_draw_beg==-1))
 }
-## 関数 ble-edit/text/check-position-up-to-date
+## 関数 ble-edit/text/assert-position-up-to-date
 ##   編集文字列の文字の配置情報が最新であることを確認します。
 ##   以下の変数を参照する場合に事前に呼び出します。
 ##
 ##   _ble_line_text_cache_pos
 ##   _ble_line_text_cache_length
 ##
-function ble-edit/text/check-position-up-to-date {
+function ble-edit/text/assert-position-up-to-date {
   ble-assert 'ble-edit/text/is-position-up-to-date' 'dirty text positions'
 }
 
@@ -1432,7 +1432,7 @@ function ble-edit/text/check-position-up-to-date {
 ##   実用上は境界 index の左側の文字の終端位置と解釈できます。
 ##
 function ble-edit/text/getxy.out {
-  ble-edit/text/check-position-up-to-date
+  ble-edit/text/assert-position-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1455,7 +1455,7 @@ function ble-edit/text/getxy.out {
 ##   実用上は境界 index の右側の文字の開始位置と解釈できます。
 ##
 function ble-edit/text/getxy.cur {
-  ble-edit/text/check-position-up-to-date
+  ble-edit/text/assert-position-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1480,7 +1480,7 @@ function ble-edit/text/getxy.cur {
 ## 関数 ble-edit/text/slice [beg [end]]
 ##   @var [out] ret
 function ble-edit/text/slice {
-  ble-edit/text/check-position-up-to-date
+  ble-edit/text/assert-position-up-to-date
   local iN="$_ble_line_text_cache_length"
   local i1="${1:-0}" i2="${2:-$iN}"
   ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
@@ -1498,7 +1498,7 @@ function ble-edit/text/slice {
 ## 関数 ble-edit/text/get-index-at x y
 ##   指定した位置 x y に対応する index を求めます。
 function ble-edit/text/get-index-at {
-  ble-edit/text/check-position-up-to-date
+  ble-edit/text/assert-position-up-to-date
   local _var=index
   if [[ $1 == -v ]]; then
     _var="$2"
@@ -1522,66 +1522,6 @@ function ble-edit/text/get-index-at {
   fi
 }
 
-## 関数 ble-edit/text/find-logical-eol [index [offset]]; ret
-##   _ble_edit_str 内で位置 index から offset 行だけ次の行の終端位置を返します。
-##
-##   offset が 0 の場合は位置 index を含む行の行末を返します。
-##   offset が正で offset 次の行がない場合は ${#_ble_edit_str} を返します。
-##
-function ble-edit/text/find-logical-eol {
-  local index=${1:-$_ble_edit_ind} offset=${2:-0}
-  if ((offset>0)); then
-    local text=${_ble_edit_str:index}
-    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}[^$_ble_term_nl]*"
-    [[ $text =~ $rex ]]
-    ((ret=index+${#BASH_REMATCH}))
-  elif ((offset<0)); then
-    local text=${_ble_edit_str::index}
-    local rex="($_ble_term_nl[^$_ble_term_nl]*){0,$((-offset))}$"
-    [[ $text =~ $rex ]]
-    if [[ $BASH_REMATCH ]]; then
-      ((ret=index-${#BASH_REMATCH}))
-    else
-      ble-edit/text/find-logical-eol "$index" 0
-    fi
-  else
-    local text=${_ble_edit_str:index}
-    text=${text%%$'\n'*}
-    ((ret=index+${#text}))
-  fi
-}
-## 関数 ble-edit/text/find-logical-bol [index [offset]]; ret
-##   _ble_edit_str 内で位置 index から offset 行だけ次の行の先頭位置を返します。
-##
-##   offset が 0 の場合は位置 index を含む行の行頭を返します。
-##   offset が正で offset だけ次の行がない場合は最終行の行頭を返します。
-##   特に次の行がない場合は現在の行頭を返します。
-##
-function ble-edit/text/find-logical-bol {
-  local index=${1:-$_ble_edit_ind} offset=${2:-0}
-  if ((offset>0)); then
-    local text=${_ble_edit_str:index}
-    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}"
-    [[ $text =~ $rex ]]
-    if [[ $BASH_REMATCH ]]; then
-      ((ret=index+${#BASH_REMATCH}))
-    else
-      ble-edit/text/find-logical-bol "$index" 0
-    fi
-  elif ((offset<0)); then
-    ble-edit/text/find-logical-eol "$index" "$offset"
-    ble-edit/text/find-logical-bol "$ret" 0
-  else
-    local text=${_ble_edit_str::index}
-    text=${text##*$'\n'}
-    ((ret=index-${#text}))
-  fi
-}
-
-## 関数 ble-edit/text/is-single-line
-function ble-edit/text/is-single-line {
-  [[ $_ble_edit_str != *$'\n'* ]]
-}
 
 # 
 # **** information pane ****                                         @line.info
@@ -1814,10 +1754,13 @@ _ble_edit_str=
 _ble_edit_ind=0
 _ble_edit_mark=0
 _ble_edit_mark_active=
+_ble_edit_overwrite_mode=
+_ble_edit_line_disabled=
+_ble_edit_arg=
+
+# 以下は複数の編集文字列が合ったとして全体で共有して良いもの
 _ble_edit_kill_ring=
 _ble_edit_kill_type=
-_ble_edit_overwrite_mode=
-_ble_edit_arg=
 
 # _ble_edit_str は以下の関数を通して変更する。
 # 変更範囲を追跡する為。
@@ -1901,7 +1844,69 @@ function _ble_edit_str.update-syntax {
   fi
 }
 
-function _ble_edit_arg.get {
+## 関数 ble-edit/content/find-logical-eol [index [offset]]; ret
+##   _ble_edit_str 内で位置 index から offset 行だけ次の行の終端位置を返します。
+##
+##   offset が 0 の場合は位置 index を含む行の行末を返します。
+##   offset が正で offset 次の行がない場合は ${#_ble_edit_str} を返します。
+##
+function ble-edit/content/find-logical-eol {
+  local index=${1:-$_ble_edit_ind} offset=${2:-0}
+  if ((offset>0)); then
+    local text=${_ble_edit_str:index}
+    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}[^$_ble_term_nl]*"
+    [[ $text =~ $rex ]]
+    ((ret=index+${#BASH_REMATCH}))
+  elif ((offset<0)); then
+    local text=${_ble_edit_str::index}
+    local rex="($_ble_term_nl[^$_ble_term_nl]*){0,$((-offset))}$"
+    [[ $text =~ $rex ]]
+    if [[ $BASH_REMATCH ]]; then
+      ((ret=index-${#BASH_REMATCH}))
+    else
+      ble-edit/content/find-logical-eol "$index" 0
+    fi
+  else
+    local text=${_ble_edit_str:index}
+    text=${text%%$'\n'*}
+    ((ret=index+${#text}))
+  fi
+}
+## 関数 ble-edit/content/find-logical-bol [index [offset]]; ret
+##   _ble_edit_str 内で位置 index から offset 行だけ次の行の先頭位置を返します。
+##
+##   offset が 0 の場合は位置 index を含む行の行頭を返します。
+##   offset が正で offset だけ次の行がない場合は最終行の行頭を返します。
+##   特に次の行がない場合は現在の行頭を返します。
+##
+function ble-edit/content/find-logical-bol {
+  local index=${1:-$_ble_edit_ind} offset=${2:-0}
+  if ((offset>0)); then
+    local text=${_ble_edit_str:index}
+    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}"
+    [[ $text =~ $rex ]]
+    if [[ $BASH_REMATCH ]]; then
+      ((ret=index+${#BASH_REMATCH}))
+    else
+      ble-edit/content/find-logical-bol "$index" 0
+    fi
+  elif ((offset<0)); then
+    ble-edit/content/find-logical-eol "$index" "$offset"
+    ble-edit/content/find-logical-bol "$ret" 0
+  else
+    local text=${_ble_edit_str::index}
+    text=${text##*$'\n'}
+    ((ret=index-${#text}))
+  fi
+}
+
+## 関数 ble-edit/content/is-single-line
+function ble-edit/content/is-single-line {
+  [[ $_ble_edit_str != *$'\n'* ]]
+}
+
+
+function ble-edit/content/get-arg {
   eval "${ble_util_upvar_setup//ret/arg}"
 
   local default_value=$1
@@ -1914,7 +1919,7 @@ function _ble_edit_arg.get {
 
   eval "${ble_util_upvar//ret/arg}"
 }
-function _ble_edit_arg.clear {
+function ble-edit/content/clear-arg {
   _ble_edit_arg=
 }
 
@@ -2126,24 +2131,24 @@ function ble-edit/render/clear-line-after {
 # 表示関数
 #
 
-## 変数 _ble_edit_dirty
+## 変数 _ble_line_dirty
 ##   編集文字列の変更開始点を記録します。
 ##   編集文字列の位置計算は、この点以降に対して実行されます。
 ##   ble-edit/render/update 関数内で使用されクリアされます。
-##   @value _ble_edit_dirty=
+##   @value _ble_line_dirty=
 ##     再描画の必要がない事を表します。
-##   @value _ble_edit_dirty=-1
+##   @value _ble_line_dirty=-1
 ##     プロンプトも含めて内容の再計算をする必要がある事を表します。
-##   @value _ble_edit_dirty=(整数)
+##   @value _ble_line_dirty=(整数)
 ##     編集文字列の指定した位置以降に対し再計算する事を表します。
-_ble_edit_dirty=-1
+_ble_line_dirty=-1
 
 function ble-edit/render/invalidate {
   local d2="${1:--1}"
-  if [[ ! $_ble_edit_dirty ]]; then
-    _ble_edit_dirty="$d2"
+  if [[ ! $_ble_line_dirty ]]; then
+    _ble_line_dirty="$d2"
   else
-    ((d2<_ble_edit_dirty&&(_ble_edit_dirty=d2)))
+    ((d2<_ble_line_dirty&&(_ble_line_dirty=d2)))
   fi
 }
 
@@ -2159,7 +2164,7 @@ function ble-edit/render/invalidate {
 _ble_edit_render_caret_state=::
 function ble-edit/render/update {
   local caret_state="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
-  if [[ ! $_ble_edit_dirty && $_ble_edit_render_caret_state == $caret_state ]]; then
+  if [[ ! $_ble_line_dirty && $_ble_edit_render_caret_state == $caret_state ]]; then
     local -a DRAW_BUFF
     ble-edit/render/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
     ble-edit/draw/bflush
@@ -2188,7 +2193,7 @@ function ble-edit/render/update {
   # ble-edit/dirty-range/update --prefix=graphic_d
 
   # 編集内容の構築
-  local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_edit_dirty"
+  local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_line_dirty"
   local iN="${#text}"
   ((index<0?(index=0):(index>iN&&(index=iN))))
 
@@ -2222,7 +2227,7 @@ function ble-edit/render/update {
 
   # 2 表示内容
   local ret retx=-1 rety=-1 esc_line=
-  if ((_ble_edit_dirty>=0)); then
+  if ((_ble_line_dirty>=0)); then
     # 部分更新の場合
 
     # # 編集文字列全体の描画
@@ -2292,7 +2297,7 @@ function ble-edit/render/update {
 
   # 4 後で使う情報の記録
   _ble_line_cur=("$cx" "$cy" "$lc" "$lg")
-  _ble_edit_dirty= _ble_edit_render_caret_state="$caret_state"
+  _ble_line_dirty= _ble_edit_render_caret_state="$caret_state"
 
   if [[ -z $bleopt_suppress_bash_output ]]; then
     if ((retx<0)); then
@@ -2309,7 +2314,7 @@ function ble-edit/render/update {
   fi
 }
 function ble-edit/render/redraw {
-  _ble_edit_dirty=-1
+  _ble_line_dirty=-1
   ble-edit/render/update
 }
 
@@ -2388,11 +2393,11 @@ function ble-edit/render/update-adjusted {
 # **** redraw, clear-screen, etc ****                             @widget.clear
 
 function ble/widget/redraw-line {
-  _ble_edit_arg.clear
+  ble-edit/content/clear-arg
   ble-edit/render/invalidate
 }
 function ble/widget/clear-screen {
-  _ble_edit_arg.clear
+  ble-edit/content/clear-arg
   ble-edit/info/hide
   ble-edit/render/invalidate
   ble/util/buffer "$_ble_term_clear"
@@ -2632,7 +2637,7 @@ function ble/widget/self-insert {
   local ibeg="$_ble_edit_ind" iend="$_ble_edit_ind"
   local ret ins; ble/util/c2s "$code"; ins="$ret"
 
-  local arg; _ble_edit_arg.get 1
+  local arg; ble-edit/content/get-arg 1
   if ((arg<1)) || [[ ! $ins ]]; then
     arg=0 ins=
   elif ((arg>1)); then
@@ -2717,7 +2722,7 @@ function ble/widget/.delete-backward-char {
   if ((_ble_edit_ind<=0)); then
     return 1
   else
-    local ins=  
+    local ins=
     if [[ $_ble_edit_overwrite_mode ]]; then
       local next="${_ble_edit_str:_ble_edit_ind:1}"
       if [[ $next && $next != [$'\n\t'] ]]; then
@@ -2848,34 +2853,34 @@ function ble/widget/beginning-of-text {
 }
 
 function ble/widget/beginning-of-logical-line {
-  ble-edit/text/find-logical-bol
+  ble-edit/content/find-logical-bol
   ble/widget/.goto-char "$ret"
 }
 function ble/widget/end-of-logical-line {
-  ble-edit/text/find-logical-eol
+  ble-edit/content/find-logical-eol
   ble/widget/.goto-char "$ret"
 }
 function ble/widget/kill-backward-logical-line {
-  ble-edit/text/find-logical-bol
+  ble-edit/content/find-logical-bol
   ((0<ret&&ret==_ble_edit_ind&&ret--)) # 行頭にいる時は直前の改行を削除
   ble/widget/.kill-range "$ret" "$_ble_edit_ind"
 }
 function ble/widget/kill-forward-logical-line {
-  ble-edit/text/find-logical-eol
+  ble-edit/content/find-logical-eol
   ((ret<${#_ble_edit_ind}&&_ble_edit_ind==ret&&ret++)) # 行末にいる時は直後の改行を削除
   ble/widget/.kill-range "$_ble_edit_ind" "$ret"
 }
 function ble/widget/forward-logical-line {
   ((_ble_edit_ind<${#_ble_edit_str})) || return 1
   local ret ind=$_ble_edit_ind
-  ble-edit/text/find-logical-bol "$ind" 0; local bol1=$ret
-  ble-edit/text/find-logical-bol "$ind" 1; local bol2=$ret
+  ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
+  ble-edit/content/find-logical-bol "$ind" 1; local bol2=$ret
   if ((bol1==bol2)); then
-    ble-edit/text/find-logical-eol
+    ble-edit/content/find-logical-eol
     ble/widget/.goto-char "$ret"
     ((ret!=ind))
   else
-    ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+    ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
     local dst=$((bol2+ind-bol1))
     ble/widget/.goto-char $((dst<eol2?dst:eol2))
     return 0
@@ -2884,13 +2889,13 @@ function ble/widget/forward-logical-line {
 function ble/widget/backward-logical-line {
   ((_ble_edit_ind>0)) || return 1
   local ret ind=$_ble_edit_ind
-  ble-edit/text/find-logical-bol "$ind" 0; local bol1=$ret
-  ble-edit/text/find-logical-bol "$ind" -1; local bol2=$ret
+  ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
+  ble-edit/content/find-logical-bol "$ind" -1; local bol2=$ret
   if ((bol1==bol2)); then
     ble/widget/.goto-char "$bol1"
     ((bol1!=ind))
   else
-    ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+    ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
     local dst=$((bol2+ind-bol1))
     ble/widget/.goto-char $((dst<eol2?dst:eol2))
     return 0
@@ -3692,7 +3697,7 @@ function ble/widget/.newline {
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
-  _ble_edit_dirty=-1
+  _ble_line_dirty=-1
   _ble_edit_overwrite_mode=
 }
 
@@ -3780,7 +3785,7 @@ function ble/widget/newline {
   KEYS=(10) ble/widget/self-insert
 }
 function ble/widget/accept-single-line-or {
-  if ble-edit/text/is-single-line; then
+  if ble-edit/content/is-single-line; then
     ble/widget/accept-line
   else
     ble/widget/"$@"

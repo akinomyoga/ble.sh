@@ -8,19 +8,19 @@ ble-edit/load-keymap-definition isearch
 
 # utils
 
-function ble-edit/text/eolp {
+function ble-edit/content/eolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos==${#_ble_edit_str})) || [[ ${_ble_edit_str:pos:1} == $'\n' ]]
 }
-function ble-edit/text/bolp {
+function ble-edit/content/bolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos<=0)) || [[ ${_ble_edit_str:pos-1:1} == $'\n' ]]
 }
-function ble-edit/text/nonbol-eolp {
+function ble-edit/content/nonbol-eolp {
   local pos=${1:-$_ble_edit_ind}
-  ! ble-edit/text/bolp "$pos" && ble-edit/text/eolp "$pos"
+  ! ble-edit/content/bolp "$pos" && ble-edit/content/eolp "$pos"
 }
-function ble-edit/text/find-nol-from-bol {
+function ble-edit/content/find-nol-from-bol {
   local bol=$1
   local rex=$'^[ \t]*'; [[ ${_ble_edit_str:bol} =~ $rex ]]
   ret=$((bol+${#BASH_REMATCH}))
@@ -164,7 +164,7 @@ function ble/widget/vi-insert/.normal-mode {
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
   _ble_edit_overwrite_mode=
-  ble-edit/text/bolp || ble/widget/.goto-char _ble_edit_ind-1
+  ble-edit/content/bolp || ble/widget/.goto-char _ble_edit_ind-1
   ble-decode/keymap/push vi_command
   ble/keymap:vi/update-mode-name
 }
@@ -182,8 +182,8 @@ function ble/widget/vi-insert/single-command-mode {
   _ble_keymap_vi_single_command=1
   _ble_keymap_vi_single_command_overwrite=$_ble_edit_overwrite_mode
   _ble_edit_overwrite_mode=
-  ble-edit/text/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
-  ble-edit/text/eolp && _ble_keymap_vi_single_command=2
+  ble-edit/content/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
+  ble-edit/content/eolp && _ble_keymap_vi_single_command=2
   ble-decode/keymap/push vi_command
   ble/keymap:vi/update-mode-name
 }
@@ -196,13 +196,13 @@ function ble/widget/vi-insert/single-command-mode {
 function ble/keymap:vi/needs-eol-fix {
   [[ $_ble_keymap_vi_single_command ]] && return 1
   local index=${1:-$_ble_edit_ind}
-  ble-edit/text/nonbol-eolp "$index"
+  ble-edit/content/nonbol-eolp "$index"
 }
 function ble/keymap:vi/check-single-command-mode {
   if [[ $_ble_keymap_vi_single_command ]]; then
     if ((_ble_keymap_vi_single_command==2)); then
       local index=$((_ble_edit_ind+1))
-      ble-edit/text/nonbol-eolp "$index" && ble/widget/.goto-char index
+      ble-edit/content/nonbol-eolp "$index" && ble/widget/.goto-char index
     fi
     ble/widget/vi-command/.insert-mode 1 "$_ble_keymap_vi_single_command_overwrite"
     return 0
@@ -234,7 +234,7 @@ function ble/widget/vi-command/append-mode {
   if [[ $flag ]]; then
     ble/widget/.bell
   else
-    if ! ble-edit/text/eolp; then
+    if ! ble-edit/content/eolp; then
       ble/widget/.goto-char "$((_ble_edit_ind+1))"
     fi
     ble/widget/vi-command/.insert-mode "$arg"
@@ -245,7 +245,7 @@ function ble/widget/vi-command/append-eol-mode {
   if [[ $flag ]]; then
     ble/widget/.bell
   else
-    local ret; ble-edit/text/find-logical-eol
+    local ret; ble-edit/content/find-logical-eol
     ble/widget/.goto-char "$ret"
     ble/widget/vi-command/.insert-mode "$arg"
   fi
@@ -255,7 +255,7 @@ function ble/widget/vi-command/insert-bol-mode {
   if [[ $flag ]]; then
     ble/widget/.bell
   else
-    local ret; ble-edit/text/find-logical-bol
+    local ret; ble-edit/content/find-logical-bol
     ble/widget/.goto-char "$ret"
     ble/widget/vi-command/.insert-mode "$arg"
   fi
@@ -293,7 +293,7 @@ function ble/widget/vi-command/accept-line {
   ble/widget/accept-line
 }
 function ble/widget/vi-command/accept-single-line-or {
-  if ble-edit/text/is-single-line; then
+  if ble-edit/content/is-single-line; then
     ble/widget/vi-command/accept-line
   else
     ble/widget/"$@"
@@ -341,8 +341,8 @@ function ble/widget/vi-command/arg-append {
         return
       elif ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
         local arg flag; ble/keymap:vi/get-arg 1
-        ble-edit/text/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
-        ble-edit/text/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
+        ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
+        ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
         ((end<${#_ble_edit_str}&&end++))
         ble/keymap:vi/operator:"$ch" "$beg" "$end" line
         ble/keymap:vi/check-single-command-mode
@@ -362,8 +362,8 @@ function ble/widget/vi-command/arg-append {
 function ble/widget/vi-command/copy-current-line {
   local arg flag; ble/keymap:vi/get-arg 1
   local ret
-  ble-edit/text/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
-  ble-edit/text/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
+  ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
+  ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
   ((end<${#_ble_edit_str}&&end++))
   ble/widget/.copy-range "$beg" "$end" 1 L
   ble/keymap:vi/check-single-command-mode
@@ -372,8 +372,8 @@ function ble/widget/vi-command/copy-current-line {
 function ble/widget/vi-command/kill-current-line {
   local arg flag; ble/keymap:vi/get-arg 1
   local ret
-  ble-edit/text/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
-  ble-edit/text/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
+  ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
+  ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
   ((end<${#_ble_edit_str}&&end++))
   ble/widget/.kill-range "$beg" "$end" 1 L
   ble/keymap:vi/check-single-command-mode
@@ -387,7 +387,7 @@ function ble/widget/vi-command/kill-current-line-and-insert {
 function ble/widget/vi-command/beginning-of-line {
   local arg flag; ble/keymap:vi/get-arg 1
   local ret
-  ble-edit/text/find-logical-bol; local beg=$ret
+  ble-edit/content/find-logical-bol; local beg=$ret
   if [[ $flag == y ]]; then
     ble/widget/.copy-range "$beg" "$_ble_edit_ind" 1
     ble/widget/.goto-char "$beg"
@@ -462,9 +462,9 @@ function ble/widget/vi-command/inclusive-goto.impl {
   local index=$1 flag=$2 nobell=$3
   if [[ $flag ]]; then
     if ((_ble_edit_ind<=index)); then
-      ble-edit/text/eolp "$index" || ((index++))
+      ble-edit/content/eolp "$index" || ((index++))
     else
-      ble-edit/text/eolp || ble/widget/.goto-char _ble_edit_ind+1
+      ble-edit/content/eolp || ble/widget/.goto-char _ble_edit_ind+1
     fi
   fi
   ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$nobell"
@@ -508,13 +508,13 @@ function ble/widget/vi-command/linewise-goto.impl {
     # 最初の行の行頭 beg と最後の行の行末 end
     local beg end
     if ((!reverted)); then
-      ble-edit/text/find-logical-bol "$ind"; beg=$ret
-      ble-edit/text/find-logical-eol "$indx" "$linex"; end=$ret
+      ble-edit/content/find-logical-bol "$ind"; beg=$ret
+      ble-edit/content/find-logical-eol "$indx" "$linex"; end=$ret
     else
       if [[ ! $bolx ]]; then
-        ble-edit/text/find-logical-bol "$indx" "$linex"; bolx=$ret
+        ble-edit/content/find-logical-bol "$indx" "$linex"; bolx=$ret
       fi
-      ble-edit/text/find-logical-eol "$ind"; beg=$bolx end=$ret
+      ble-edit/content/find-logical-eol "$ind"; beg=$bolx end=$ret
     fi
 
     # jk+- で1行も移動できない場合は操作をキャンセルする。
@@ -524,7 +524,7 @@ function ble/widget/vi-command/linewise-goto.impl {
       local is_single_line=
       if ((indx==ind&&linex==0)); then
         is_single_line=1
-      elif ble-edit/text/find-logical-bol "$end"; ((beg==ret)); then
+      elif ble-edit/content/find-logical-bol "$end"; ((beg==ret)); then
         is_single_line=1
       fi
 
@@ -553,9 +553,9 @@ function ble/widget/vi-command/linewise-goto.impl {
           ((ret)) && ble/widget/vi-command/.relative-line $((-ret))
         else
           if [[ ! $nolx ]]; then
-            ble-edit/text/find-nol-from-bol "$beg"; nolx=$ret
+            ble-edit/content/find-nol-from-bol "$beg"; nolx=$ret
           fi
-          ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
+          ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
           ble/widget/.goto-char "$nolx"
         fi
       fi
@@ -567,11 +567,11 @@ function ble/widget/vi-command/linewise-goto.impl {
   else
     if [[ ! $nolx ]]; then
       if [[ ! $bolx ]]; then
-        ble-edit/text/find-logical-bol "$indx" "$linex"; bolx=$ret
+        ble-edit/content/find-logical-bol "$indx" "$linex"; bolx=$ret
       fi
-      ble-edit/text/find-nol-from-bol "$bolx"; nolx=$ret
+      ble-edit/content/find-nol-from-bol "$bolx"; nolx=$ret
     fi
-    ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
+    ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
     ble/widget/.goto-char nolx
     ble/keymap:vi/check-single-command-mode
   fi
@@ -599,7 +599,7 @@ function ble/widget/vi-command/forward-char {
       ((width+=arg-${#line}))
     done
     ((index=_ble_edit_ind+width,index>${#_ble_edit_str}&&(index=${#_ble_edit_str})))
-    ((index<${#_ble_edit_str})) && ble-edit/text/nonbol-eolp $index && ((index++))
+    ((index<${#_ble_edit_str})) && ble-edit/content/nonbol-eolp $index && ((index++))
   else
     local line=${_ble_edit_str:_ble_edit_ind:arg}
     line=${line%%$'\n'*}
@@ -676,10 +676,10 @@ function ble/widget/vi-command/.history-relative-line {
 
   if ((count)); then
     if ((arg<0)); then
-      ble-edit/text/find-logical-eol 0 "$((nline-count-1))"
+      ble-edit/content/find-logical-eol 0 "$((nline-count-1))"
       ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
     else
-      ble-edit/text/find-logical-bol 0 "$count"
+      ble-edit/content/find-logical-bol 0 "$count"
     fi
     ble/widget/.goto-char "$ret"
   fi
@@ -709,8 +709,8 @@ function ble/widget/vi-command/.relative-line {
   # 現在の履歴項目内での探索
   local count=$((arg<0?-arg:arg))
   local ret ind=$_ble_edit_ind
-  ble-edit/text/find-logical-bol "$ind" 0; local bol1=$ret
-  ble-edit/text/find-logical-bol "$ind" "$arg"; local bol2=$ret
+  ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
+  ble-edit/content/find-logical-bol "$ind" "$arg"; local bol2=$ret
   local beg end; ((bol1<=bol2?(beg=bol1,end=bol2):(beg=bol2,end=bol1)))
   ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; local nmove=$ret
   ((count-=nmove))
@@ -721,7 +721,7 @@ function ble/widget/vi-command/.relative-line {
       local b1x b1y; ble-edit/text/getxy.cur --prefix=b1 "$bol1"
       local b2x b2y; ble-edit/text/getxy.cur --prefix=b2 "$bol2"
 
-      ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+      ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
       local c1x c1y; ble-edit/text/getxy.cur --prefix=c1 "$ind"
       local e2x e2y; ble-edit/text/getxy.cur --prefix=e2 "$eol2"
 
@@ -731,7 +731,7 @@ function ble/widget/vi-command/.relative-line {
       ble-edit/text/get-index-at $x $y # local variable "index" is set here
     else
       # 論理列を保持
-      ble-edit/text/find-logical-eol "$bol2"; local eol2=$ret
+      ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
       ((index=bol2+ind-bol1,index>eol2&&(index=eol2)))
     fi
     ble/widget/.goto-char "$index"
@@ -759,8 +759,8 @@ function ble/widget/vi-command/backward-line {
 function ble/widget/vi-command/.relative-first-non-space {
   local arg=$1 flag=$2
   local ret ind=$_ble_edit_ind
-  ble-edit/text/find-logical-bol "$ind" "$arg"; local bolx=$ret
-  ble-edit/text/find-nol-from-bol "$bolx"; local nolx=$ret
+  ble-edit/content/find-logical-bol "$ind" "$arg"; local bolx=$ret
+  ble-edit/content/find-nol-from-bol "$bolx"; local nolx=$ret
 
   # 2017-09-12 何故か分からないが vim はこういう振る舞いに見える。
   ((_ble_keymap_vi_single_command==2&&_ble_keymap_vi_single_command--))
@@ -768,7 +768,7 @@ function ble/widget/vi-command/.relative-first-non-space {
   if [[ $flag ]]; then
     if ((arg==0)); then
       # command: ^
-      ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
+      ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
       ble/widget/vi-command/exclusive-goto.impl "$nolx" "$flag"
     else
       # command: + -
@@ -786,7 +786,7 @@ function ble/widget/vi-command/.relative-first-non-space {
   fi
 
   if ((count==0)); then
-    ble-edit/text/nonbol-eolp "$nolx" && ((nolx--))
+    ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
     ble/widget/.goto-char "$nolx"
     return
   fi
@@ -818,7 +818,7 @@ function ble/widget/vi-command/backward-first-non-space {
 function ble/widget/vi-command/forward-eol {
   local arg flag; ble/keymap:vi/get-arg 1
   local ret index
-  ble-edit/text/find-logical-eol "$_ble_edit_ind" $((arg-1)); index=$ret
+  ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg-1)); index=$ret
   ble/keymap:vi/needs-eol-fix "$index" && ((index--))
   ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
 }
@@ -837,7 +837,7 @@ function ble/widget/vi-command/paste.impl {
   local ret
   if [[ $_ble_edit_kill_type == L ]]; then
     if ((is_after)); then
-      ble-edit/text/find-logical-eol
+      ble-edit/content/find-logical-eol
       if ((ret==${#_ble_edit_str})); then
         ble/widget/.goto-char ret
         ble/widget/insert-string $'\n'
@@ -845,7 +845,7 @@ function ble/widget/vi-command/paste.impl {
         ble/widget/.goto-char ret+1
       fi
     else
-      ble-edit/text/find-logical-bol
+      ble-edit/content/find-logical-bol
       ble/widget/.goto-char "$ret"
     fi
     local ind=$_ble_edit_ind
@@ -988,8 +988,8 @@ function ble/widget/vi-command/nth-column {
   local arg flag; ble/keymap:vi/get-arg 1
 
   local ret index
-  ble-edit/text/find-logical-bol; local bol=$ret
-  ble-edit/text/find-logical-eol; local eol=$ret
+  ble-edit/content/find-logical-bol; local bol=$ret
+  ble-edit/content/find-logical-eol; local eol=$ret
   if ble-edit/text/is-position-up-to-date; then
     local bx by; ble-edit/text/getxy.cur --prefix=b "$bol" # Note: 先頭行はプロンプトにより bx!=0
     local ex ey; ble-edit/text/getxy.cur --prefix=e "$eol"
@@ -997,9 +997,9 @@ function ble/widget/vi-command/nth-column {
     ((dsty+=dstx/cols,dstx%=cols))
     ((dsty>ey&&(dsty=ey,dstx=ex)))
     ble-edit/text/get-index-at "$dstx" "$dsty" # local variable "index" is set here
-    ble-edit/text/nonbol-eolp "$index" && ((index--))
+    ble-edit/content/nonbol-eolp "$index" && ((index--))
   else
-    ble-edit/text/nonbol-eolp "$eol" && ((eol--))
+    ble-edit/content/nonbol-eolp "$eol" && ((eol--))
     ((index=bol+arg-1,index>eol?(index=eol)))
   fi
 
@@ -1127,7 +1127,7 @@ function ble/widget/vi-command/connect-line-with-space {
   if [[ $flag ]]; then
     ble/widget/.bell
   else
-    local ret; ble-edit/text/find-logical-eol; local eol=$ret
+    local ret; ble-edit/content/find-logical-eol; local eol=$ret
     if ((eol<${#_ble_edit_str})); then
       _ble_edit_str.replace eol eol+1 ' '
       ble/widget/.goto-char "$eol"
@@ -1142,7 +1142,7 @@ function ble/widget/vi-command/connect-line {
   if [[ $flag ]]; then
     ble/widget/.bell
   else
-    local ret; ble-edit/text/find-logical-eol; local eol=$ret
+    local ret; ble-edit/content/find-logical-eol; local eol=$ret
     if ((eol<${#_ble_edit_str})); then
       ble/widget/.delete-range "$eol" $((eol+1))
       ble/widget/.goto-char "$eol"
@@ -1159,7 +1159,7 @@ function ble/widget/vi-command/insert-forward-line-mode {
     ble/widget/.bell
     ble/keymap:vi/check-single-command-mode
   else
-    local ret; ble-edit/text/find-logical-eol; local eol=$ret
+    local ret; ble-edit/content/find-logical-eol; local eol=$ret
     ble/widget/.goto-char "$eol"
     ble/widget/insert-string $'\n'
     ble/widget/vi-command/.insert-mode "$arg"
@@ -1171,7 +1171,7 @@ function ble/widget/vi-command/insert-backward-line-mode {
     ble/widget/.bell
     ble/keymap:vi/check-single-command-mode
   else
-    local ret; ble-edit/text/find-logical-bol; local bol=$ret
+    local ret; ble-edit/content/find-logical-bol; local bol=$ret
     ble/widget/.goto-char "$bol"
     ble/widget/insert-string $'\n'
     ble/widget/.goto-char "$bol"
@@ -1224,7 +1224,7 @@ function ble/widget/vi-command/.search-char {
   local index
   if [[ $opts == *b* ]]; then
     # backward search
-    ble-edit/text/find-logical-bol; local bol=$ret
+    ble-edit/content/find-logical-bol; local bol=$ret
     local base=$_ble_edit_ind
     ((isrepeat&&isprev&&base--,base>bol)) || return 1
     local line=${_ble_edit_str:bol:base-bol}
@@ -1235,7 +1235,7 @@ function ble/widget/vi-command/.search-char {
     ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
   else
     # forward search
-    ble-edit/text/find-logical-eol; local eol=$ret
+    ble-edit/content/find-logical-eol; local eol=$ret
     local base=$((_ble_edit_ind+1))
     ((isrepeat&&isprev&&base++,base<eol)) || return 1
 
@@ -1313,7 +1313,7 @@ function ble/widget/vi-command/text-object/inner-word.impl {
   local rex="([A-Za-z_]+$nl?|[^A-Za-z_$space]+$nl?|[$space]+$nl?){$arg}"
   if ! [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]; then
     local index=${#_ble_edit_str}
-    ble-edit/text/nonbol-eolp "$index" && ((index--))
+    ble-edit/content/nonbol-eolp "$index" && ((index--))
     ble/widget/.goto-char "$index"
     ble/widget/.bell
     ble/keymap:vi/check-single-command-mode
@@ -1539,7 +1539,7 @@ function ble/widget/vi-insert/magic-space {
   fi
 }
 function ble/widget/vi-insert/accept-single-line-or {
-  if ble-edit/text/is-single-line; then
+  if ble-edit/content/is-single-line; then
     ble/widget/vi-insert/@norepeat accept-line
   else
     ble/widget/"$@"

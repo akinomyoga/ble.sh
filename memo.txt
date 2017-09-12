@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 
 設定項目
+
 : ${ble_opt_input_encoding:=UTF-8}
 : ${ble_opt_vbell_default_message=' Wuff, Wuff!! '}
 : ${ble_opt_vbell_duration=2000}
@@ -377,6 +378,16 @@ tech
     Memo
 -------------------------------------------------------------------------------
 
+2017-09-08
+
+  * vi-mode: 以下のリンクで重要そうなコマンドの一覧が見られる
+
+    http://qiita.com/sfuta/items/0de4ead865c15e9e9b68 ?
+    http://qiita.com/sfuta/items/2d646396a6117c8e53e5 g? z?
+    http://qiita.com/sfuta/items/fd78f3ece8861f8142ee C-w? [? ]?
+    http://vim-jp.org/vimdoc-ja/vimindex.html
+    http://vim-jp.org/vimdoc-en/vimindex.html
+
 2015-11-28
 
   * デモ画像の作り方
@@ -452,6 +463,42 @@ tech
 
 2017-09-12
 
+  * 表示レイアウト管理の方法について
+
+    これは現在問題になっている、一番下の行で info が表示されなくなってしまうこととも関連する。
+
+    presentation : form
+     \_ textarea : control
+     |   \_ content : ble-edit/content
+     |   \_ prompt : ble-edit/prompt
+     |   \_ layout : ble-edit/text
+     |   \_ render : ble-edit/layout
+     \_ info : control
+
+    もし本格的なウィンドウシステムを実装するとしたら、
+
+    1 textarea は一つのコントロールとして管理するべきである。
+    2 textarea 毎に _ble_edit_str などの content が存在するべき。
+    3 着色の設定も textarea 毎に管理するべきだ。
+
+    4 全ての入力は textarea を一回経由してから処理する。
+      というのも処理対象の _ble_edit_str を選択するため。
+      というかそもそも keymap だって textarea に紐付いているのではないか。
+
+      と思ったが、これは少し違う。
+      ウィンドウは単一で機能を持つこともあれば、
+      一つの機能を提供するために複数のウィンドウを組み合わせることもある。
+      現在ある info や将来実装するかもしれない補完候補のメニューなどは、
+      固有の機能を持っているものではなくて、textarea と組み合わせて使うものである。
+
+      そのように考えるとウィンドウの集合と keymap は対応付けられるべきである。
+      .NET Frameworks の類推で親ウィンドウを form と称して
+      子ウィンドウを control と称して考えると分かりやすそうだ。
+
+    何か話がとんでもない方向にそれている。元々は関数名の話だった。
+
+    これは別の話として切り離すべきだ → #D0439 から切り離した。
+
   * vi-mode: operators
 
     ydc の他にも色々ある。
@@ -467,7 +514,9 @@ tech
     これは operator:* 関数内からいじっても良いということにすれば現在の枠組みで十分対応可能である。
     何れにしてもそれぞれの機能の動作について調べてから実装する必要はある。
 
-  * ble-edit/info
+    * todo: ! > < gq = g@ zf
+
+  * ble-edit/info が一番下の行で消える問題
 
     ターミナルの一番下にいる時に C-q C-j で本体の行数を高くした時に info が消える。
     これは、render/update が info の高さを認識していないということと、
@@ -481,6 +530,8 @@ tech
     表示が消えないことを保証できないということなのだから。
 
     うーん。現在のレイアウト (種類+行数のリスト) を管理するための仕組みを追加するほうが速いかもしれない。
+    これは将来的なレイアウト管理への布石にもなる。取り敢えずファイルを追加してみるのが良い。
+
 
 2017-09-11
 
@@ -549,14 +600,6 @@ tech
     下手に insert-mode を呼び出せない (もしくはその追加した keymap に追加する widget では必ず最初に pop をすれば良い?)。
 
 2017-09-08
-
-  * vi-mode: 以下のリンクで重要そうなコマンドの一覧が見られる
-
-    http://qiita.com/sfuta/items/0de4ead865c15e9e9b68 ?
-    http://qiita.com/sfuta/items/2d646396a6117c8e53e5 g? z?
-    http://qiita.com/sfuta/items/fd78f3ece8861f8142ee C-w? [? ]?
-    http://vim-jp.org/vimdoc-ja/vimindex.html
-    http://vim-jp.org/vimdoc-en/vimindex.html
 
   * vi-mode: gi
     変数 _ble_keymap_vi_insert_mark だけ用意した。
@@ -2125,13 +2168,140 @@ tech
 
 2017-09-12
 
-  * ble-edit/info/default
+  * ble-edit: 新しく追加した関数の ble-edit/text/find-* という関数名は正しくない。 [#D0439]
+
+    今調べた所、従来の配置計算のための ble-edit/text/* という関数群は、
+    _ble_edit_str とは独立に動作する物であった。
+    つまり、他の文字列の配置計算にも転用できるようになっているのである。
+    (ただ、その為にはどの変数に結果が格納されるかなどの情報をちゃんと調べて、
+    それらの変数を対比する仕組みも作る必要があるが。)
+
+    従って、_ble_edit_str に対して様々な情報を取り出すための
+    新しく追加した関数群には別の名前をつけるべきである。
+    既存の関数を観察すると _ble_edit_str に対する操作は、以下の様になっている。
+
+    - _ble_edit_str.*
+    - _ble_edit_str/*
+    - ble/widget/*
+
+    今回の場合は特に公開する編集関数に直接に紐付いたものではないので、ble/widget/* は適当ではないだろう。
+    一方で、_ble_edit_str.* のような関数名は他の関数との整合性が取りにくいので本当は廃止したい。
+    しかしながらこれは大きな変更になると思われるから、取り敢えずはそのままが良いのではないか。
+    というか、_ble_edit_str だけでなく _ble_edit_ind にも関わってくる関数の場合は、
+    やはり _ble_edit_str.* は余り良くないのではないだろうか。
+
+    後でよりまともな関数名に変えるとしたらどのようなものになるかについては今此処で考えておく。
+    比較のために既存の他のモジュールの名前も考慮する。
+
+
+    | ble-edit/prompt : これは _ble_edit_PS1 を元にプロンプトを更新する仕組み。
+    | 
+    |   内部状態の記録に使用している変数は恐らく以下のみである。
+    | 
+    |   _ble_edit_prompt=("" 0 0 0 32 0 "" "")
+    | 
+    |   参照している変数は以下の通りである。更に、他にも様々なシェルの状態をを参照している。
+    | 
+    |   _ble_edit_PS1
+    |   _ble_edit_LINENO
+    |   _ble_edit_CMD
+    | 
+    | 
+    | ble-edit/text : これは文字列の中の文字の配置情報を計算・キャッシュする仕組みである。
+    |   外部から初期位置 (プロンプト末端の座標) と文字列を受け取って配置情報を計算する。
+    |   内部状態の記録に指定している変数は以下の通り。
+    | 
+    |   _ble_line_text_cache_pos=()
+    |   _ble_line_text_cache_cs=()
+    |   _ble_line_text_cache_ichg=()
+    |   _ble_line_text_cache_length=
+    | 
+    | 
+    | ble/widget : これは ble-decode の ble-bind から使うことを想定した関数群をいれておく場所である。
+    |   ユーザが自由にここに関数を追加して良い。但し、実際には更にshチアの階層を作って使うのが望ましい。
+    | 
+    | _ble_edit_str : これは実際の編集文字列の管理をするところ。
+    | 
+    |   _ble_edit_str=
+    |   _ble_edit_ind=0
+    |   _ble_edit_mark=0
+    |   _ble_edit_mark_active=
+    |   _ble_edit_overwrite_mode=
+    |   _ble_edit_arg=
+    | 
+    |   _ble_edit_dirty_draw_beg=-1
+    |   _ble_edit_dirty_draw_end=-1
+    |   _ble_edit_dirty_draw_end0=-1
+    | 
+    |   _ble_edit_dirty_syntax_beg=0
+    |   _ble_edit_dirty_syntax_end=0
+    |   _ble_edit_dirty_syntax_end0=1
+    | 
+    |   _ble_edit_kill_ring=
+    |   _ble_edit_kill_type=
+    |
+    |   _ble_edit_line_disabled=
+    | 
+    | ble-edit/render : 編集文字列の表示にまつわる機能
+    | 
+    |   これは雑多な他の機能をまとめて描画を行っているところ。
+    | 
+    |   _ble_line_cur=(0 0 32 0)
+    |   _ble_line_x=0 _ble_line_y=0
+    |   _ble_line_begx=0
+    |   _ble_line_begy=0
+    |   _ble_line_endx=0
+    |   _ble_line_endy=0
+    |   _ble_edit_dirty=-1 -> _ble_line_dirty に改名
+    | 
+    |   _ble_edit_render_caret_state=
+    |   _ble_line_cache=()
+    | 
+    | 
+    | ble-edit/info : 追加情報を表示するところ。
+    | 
+    |   これは更に ble-edit/render の管理外で、
+    |   ble-edit/render の表示内容の下に表示を行う。
+    | 
+    |   _ble_line_info=(0 0 "")
+    |   _ble_line_info_default=(0 0 "")
+    |   _ble_line_info_scene=default
+
+    どうも変数名は _ble_line_* と _ble_edit_* が混ざり合ってしまっているが、
+    関数に関しては ble-edit に統一されているように見える。
+
+    うーん。ble-edit/content にするのが良いような気がしてきた。
+    →変更した。
+
+    更に、ble-edit/text は ble-edit/layout にするのはどうだろうか。
+    と思ったが、将来的には pane の配置も考えたいので、単に layout というのは余り好ましくない。
+    しかしだからと言って ble-edit/text-layout というのも長い。
+    更に ble-edit/text は配色情報のかんりもしているし、
+    ble-highlight-layer の呼び出しも行っている。
+    つまり、単にレイアウトというよりは文字列描画一般の機能を担っている。
+    ble-edit/textbox だとか ble-edit/text-rendering だとかそういうのが適切だ。
+    うーん。然し実際に描画をおこなっているのは ble-edit/render の方である。
+
+    うーん。色々考えると現在の構成は割りと現実的になっている。
+    本来は以下のようになっているべきなのだ。
+
+    presentation : form
+     \_ textarea : control
+     |   \_ content : ble-edit/content
+     |   \_ prompt : ble-edit/prompt
+     |   \_ layout : ble-edit/text
+     |   \_ render : ble-edit/layout
+     \_ info : control
+
+    この話は別項目として切り離す事にした。
+
+  * ble-edit/info/default [#D0438]
 
     実はその場で表示しなくても良いのではないだろうか。
     一回のコマンドの中で複数の書き換えがあった場合にちらつきが気になる。
     default は常に bind/.tail で更新するように修正することにした。
 
-  * vi-mode: operator ydc... 再編
+  * vi-mode: operator ydc... 再編 [#D0437]
 
     このページを見るとどうも ydc に対してどの様に動作するかというのはいくつかの種類があるようだ。
 
@@ -2208,7 +2378,7 @@ tech
 
 2017-09-11
 
-  * ble-edit: stty sane をしなくて済む方法?
+  * ble-edit: stty sane をしなくて済む方法? [#D0436]
 
     ble-edit/bind/.check-detach を見ていて思ったこと…
     もしかして stty sane はシグナルハンドラで実行すれば良いのではないだろうか。
@@ -2222,11 +2392,11 @@ tech
     面倒だし ble-detach することも余りないだろうから、
     これはこのまま茶番として残しておく。
 
-  * clear-screen 直後に info が表示されない。
+  * clear-screen 直後に info が表示されない。 [#D0435]
 
     直した。
 
-  * vi-mode: C-o の復帰位置
+  * vi-mode: C-o の復帰位置 [#D0434]
 
     現在のアルゴリズムは以下の通りである。
 
@@ -2254,7 +2424,7 @@ tech
     他にも何か vim との振る舞いの違いがまだあるのではないかと思われるが、
     それらは発覚してから対処するということにする。
 
-  * 初回起動時の INSERT がずれるようになった。何故?
+  * 初回起動時の INSERT がずれるようになった。何故? [#D0433]
 
     ble/widget/vi-insert/.attach で呼び出すのは default ではなくて set-default であるべきだった様だ。
 
@@ -2264,7 +2434,7 @@ tech
     先に info を描画してしまうと表示がずれることになる。初めは set-default で内容だけ指定しておいて、
     プロンプトの表示位置が確定した後に info も描画させるようにする必要がアアル。
 
-  * vi-mode: by B-bar
+  * vi-mode: by B-bar [#D0432]
 
     | ble.sh における vi-insert モードでの C-o は "accept-and-next" となっていますが、
     | vi/Vim の標準では「次に入力される「一回」のキー[^1]をノーマルモードに対する
@@ -2401,7 +2571,7 @@ tech
     > * p の動作が正しくない気がする。 → 条件が反転していた。直した。
     > * あとカーソルの位置がおかしい。 → 条件を修正するべきところ eol 補正を完全に削除していた。直した。
 
-  * 2017-09-05 vi-mode: gR?
+  * 2017-09-05 vi-mode: gR? [#D0431]
 
     http://qiita.com/sfuta/items/0de4ead865c15e9e9b68
 
@@ -2417,7 +2587,7 @@ tech
     これは vi ではなく vim で起動しなければならなかったという話だった。
 
 
-  * 2017-09-09 テストユーザ (vim) に説明すること
+  * 2017-09-09 テストユーザ (vim) に説明すること [#D0430]
 
     - 編集文字列内に改行 LF が含まれないとき単一行編集と呼び、あるとき複数行編集と呼ぶことにする。
       単一行編集のとき LF を挿入して複数行編集に移るには C-v C-j (または端末のフロー制御を無効にしていれば C-q C-j でもよい) とすれば良い。
@@ -2431,7 +2601,7 @@ tech
     - H L が現在の履歴項目内の移動で、G gg が履歴内の移動であること。
     - jk+- で現在の履歴項目の上下を踏み越えると次の履歴項目に移動すること。
 
-  * vi-mode: vi.sh から keymap/isearch を使っているが
+  * vi-mode: vi.sh から keymap/isearch を使っているが [#D0429]
     keymap/isearch は emacs.sh の中で定義されている。
     どうやら現状では .inputrc で vi が設定されていたとしても、
     ble.sh をロードした段階では -o emacs であり、
@@ -2464,7 +2634,7 @@ tech
 
 2017-09-10
 
-  * 2017-09-07 vi-mode: C-c ESC C-| の違い。
+  * 2017-09-07 vi-mode: C-c ESC C-| の違い。 [#D0428]
 
     http://d.hatena.ne.jp/yuta84q/20101216/1292508997
 
@@ -2514,7 +2684,7 @@ tech
     何れにしてもキーボードマクロは今回の仕組みとは独立に用意しなければならない。
     この事はキーボードマクロの計画の方に追記しておくことにする。
 
-  * vi-mode: C-home C-end は現在の編集文字列内の移動としても良いかもしれない。
+  * vi-mode: C-home C-end は現在の編集文字列内の移動としても良いかもしれない。 [#D0427]
 
 2017-09-09
 
