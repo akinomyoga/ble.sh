@@ -28,6 +28,23 @@ function ble-edit/text/find-nol-from-bol {
 
 function ble/widget/nop { :; }
 
+function ble/keymap:vi/string#encode-rot13 {
+  local text=$*
+  local -a buff ch
+  for ((i=0;i<${#text};i++)); do
+    ch=${text:i:1}
+    if [[ $ch == [A-Z] ]]; then
+      ch=${_ble_util_string_upper_list%%"$ch"*}
+      ch=${_ble_util_string_upper_list:(${#ch}+13)%26:1}
+    elif [[ $ch == [a-z] ]]; then
+      ch=${_ble_util_string_lower_list%%"$ch"*}
+      ch=${_ble_util_string_lower_list:(${#ch}+13)%26:1}
+    fi
+    ble/array#push buff "$ch"
+  done
+  IFS= eval 'ret=${buff[*]}'
+}
+
 #------------------------------------------------------------------------------
 # vi-insert/default
 
@@ -303,29 +320,43 @@ function ble/keymap:vi/get-arg {
 }
 
 function ble/widget/vi-command/arg-append {
-  local code="$((KEYS[0]&ble_decode_MaskChar))"
-  ((code==0)) && return
-  local ret; ble/util/c2s "$code"
+  local ret ch=$1
+  if [[ ! $ch ]]; then
+    local code="$((KEYS[${#KEYS[*]}-1]&ble_decode_MaskChar))"
+    ((code==0)) && return
+    ble/util/c2s "$code"; ch=$ret
+  fi
 
   # 0
-  if [[ $ret == 0 && $_ble_edit_arg != *[0-9] ]]; then
+  if [[ $ch == 0 && $_ble_edit_arg != *[0-9] ]]; then
     ble/widget/vi-command/beginning-of-line
     return
   fi
 
   # 2つ目の非数修飾 (yy dd cc)
-  if local rex='^[0-9]*$'; [[ $1 && ! ( $_ble_edit_arg =~ $rex ) ]]; then
-    if [[ $_ble_edit_arg == *"$ret"* ]]; then
-      ble/widget/vi-command/"$1"
-      return
-    else
-      ble/widget/.bell
-      _ble_edit_arg=
-      return 1
+  if [[ ${_ble_edit_arg//[0-9]} && ${ch//[0-9]} ]]; then
+    if [[ $_ble_edit_arg == *"$ch"* ]]; then
+      if [[ $2 ]]; then
+        ble/widget/vi-command/"$2"
+        return
+      elif ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+        local arg flag; ble/keymap:vi/get-arg 1
+        ble-edit/text/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
+        ble-edit/text/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
+        ((end<${#_ble_edit_str}&&end++))
+        ble/keymap:vi/operator:"$ch" "$beg" "$end" line
+        ble/keymap:vi/check-single-command-mode
+        return
+      fi
     fi
+
+    _ble_edit_arg=
+    ble/widget/.bell
+    ble/keymap:vi/check-single-command-mode
+    return 1
   fi
 
-  _ble_edit_arg="$_ble_edit_arg$ret"
+  _ble_edit_arg="$_ble_edit_arg$ch"
 }
 
 function ble/widget/vi-command/copy-current-line {
@@ -374,19 +405,45 @@ function ble/widget/vi-command/beginning-of-line {
 #------------------------------------------------------------------------------
 # operators
 
+function ble/keymap:vi/operator:y {
+  if [[ $3 == line ]]; then
+    ble/widget/.copy-range "$1" "$2" 1 L
+  else
+    ble/widget/.copy-range "$1" "$2" 1
+  fi
+}
+function ble/keymap:vi/operator:tr.impl {
+  local beg=$1 end=$2 filter=$3
+  local ret; "$filter" "${_ble_edit_str:beg:end-beg}"
+  _ble_edit_str.replace "$beg" "$end" "$ret"
+}
+function ble/keymap:vi/operator:u {
+  ble/keymap:vi/operator:tr.impl "$1" "$2" ble/string#tolower
+}
+function ble/keymap:vi/operator:U {
+  ble/keymap:vi/operator:tr.impl "$1" "$2" ble/string#toupper
+}
+function ble/keymap:vi/operator:~ {
+  ble/keymap:vi/operator:tr.impl "$1" "$2" ble/string#toggle-case
+}
+function ble/keymap:vi/operator:? {
+  ble/keymap:vi/operator:tr.impl "$1" "$2" ble/keymap:vi/string#encode-rot13
+}
+
 function ble/widget/vi-command/exclusive-goto.impl {
   local index=$1 flag=$2 nobell=$3
   if [[ $flag ]]; then
-    if [[ $flag == y ]]; then
-      ble/widget/.copy-range "$_ble_edit_ind" "$index" 1
-      ((index<_ble_edit_ind)) && ble/widget/.goto-char index
-    elif [[ $flag == [cd] ]]; then
+    if [[ $flag == [cd] ]]; then
       ble/widget/.kill-range "$_ble_edit_ind" "$index" 0
       if [[ $flag == c ]]; then
         ble/widget/vi-command/.insert-mode
       else
         ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char _ble_edit_ind-1
       fi
+    elif ble/util/isfunction ble/keymap:vi/operator:"$flag"; then
+      local beg end; ((index<_ble_edit_ind?(beg=index,end=_ble_edit_ind):(beg=_ble_edit_ind,end=index)))
+      ble/keymap:vi/operator:"$flag" "$beg" "$end" char
+      ((beg!=_ble_edit_ind)) && ble/widget/.goto-char index
     else
       ble/widget/.bell
     fi
@@ -479,8 +536,17 @@ function ble/widget/vi-command/linewise-goto.impl {
     fi
 
     ((end<${#_ble_edit_str}&&end++))
-    if [[ $flag == y ]]; then
-      ble/widget/.copy-range "$beg" "$end" 1 L
+    if [[ $flag == [cd] ]]; then
+      ble/widget/.kill-range "$beg" "$end" 1 L
+      if [[ $flag == c ]]; then
+        ble/widget/insert-string $'\n'
+        ble/widget/.goto-char _ble_edit_ind-1
+        ble/widget/vi-command/.insert-mode
+      else
+        ble/widget/vi-command/first-non-space
+      fi
+    elif ble/util/isfunction ble/keymap:vi/operator:"$flag"; then
+      ble/keymap:vi/operator:"$flag" "$beg" "$end" line
       if ((reverted)); then
         if [[ :$opts: == *:preserve_column:* ]]; then
           ble/string#count-char "${_ble_edit_str:beg:ind-beg}" $'\n'
@@ -494,15 +560,6 @@ function ble/widget/vi-command/linewise-goto.impl {
         fi
       fi
       ble/keymap:vi/check-single-command-mode
-    elif [[ $flag == [cd] ]]; then
-      ble/widget/.kill-range "$beg" "$end" 1 L
-      if [[ $flag == c ]]; then
-        ble/widget/insert-string $'\n'
-        ble/widget/.goto-char _ble_edit_ind-1
-        ble/widget/vi-command/.insert-mode
-      else
-        ble/widget/vi-command/first-non-space
-      fi
     elif [[ $flag ]]; then
       ble/widget/.bell
       ble/keymap:vi/check-single-command-mode
@@ -1264,9 +1321,20 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 7 vi-command/arg-append
   ble-bind -f 8 vi-command/arg-append
   ble-bind -f 9 vi-command/arg-append
-  ble-bind -f y 'vi-command/arg-append copy-current-line'
-  ble-bind -f d 'vi-command/arg-append kill-current-line'
-  ble-bind -f c 'vi-command/arg-append kill-current-line-and-insert'
+  ble-bind -f y vi-command/arg-append
+  ble-bind -f d 'vi-command/arg-append d kill-current-line'
+  ble-bind -f c 'vi-command/arg-append c kill-current-line-and-insert'
+  ble-bind -f 'g ~' vi-command/arg-append
+  ble-bind -f 'g u' vi-command/arg-append
+  ble-bind -f 'g U' vi-command/arg-append
+  ble-bind -f 'g ?' vi-command/arg-append
+  # ble-bind -f 'g @' vi-command/arg-append
+  # ble-bind -f '!' vi-command/arg-append
+  # ble-bind -f '=' vi-command/arg-append
+  # ble-bind -f '<' 'vi-command/arg-append L'
+  # ble-bind -f '>' 'vi-command/arg-append R'
+  # ble-bind -f 'g q' vi-command/arg-append
+  # ble-bind -f 'z f' vi-command/arg-append
 
   ble-bind -f Y vi-command/copy-current-line
   ble-bind -f S vi-command/kill-current-line-and-insert
