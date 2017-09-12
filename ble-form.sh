@@ -1,0 +1,125 @@
+#!/bin/bash
+
+function ble/arithmetic/sum {
+  IFS=+ eval 'let "ret=$*+0"'
+}
+
+## 変数 _ble_line_x
+## 変数 _ble_line_y
+##   現在の (描画の為に動き回る) カーソル位置を保持します。
+_ble_line_x=0 _ble_line_y=0
+
+## 関数 ble-form/goto.draw varname x y
+##   現在位置を指定した座標へ移動する制御系列を生成します。
+## @param[in] x y
+##   移動先のカーソルの座標を指定します。
+##   プロンプト原点が x=0 y=0 に対応します。
+function ble-form/goto.draw {
+  local -i x="$1" y="$2"
+  ble-edit/draw/put "$_ble_term_sgr0"
+
+  local -i dy=y-_ble_line_y
+  if ((dy!=0)); then
+    if ((dy>0)); then
+      ble-edit/draw/put "${_ble_term_cud//'%d'/$dy}"
+    else
+      ble-edit/draw/put "${_ble_term_cuu//'%d'/$((-dy))}"
+    fi
+  fi
+
+  local -i dx=x-_ble_line_x
+  if ((dx!=0)); then
+    if ((x==0)); then
+      ble-edit/draw/put "$_ble_term_cr"
+    elif ((dx>0)); then
+      ble-edit/draw/put "${_ble_term_cuf//'%d'/$dx}"
+    else
+      ble-edit/draw/put "${_ble_term_cub//'%d'/$((-dx))}"
+    fi
+  fi
+
+  _ble_line_x="$x" _ble_line_y="$y"
+}
+
+
+## 配列 _ble_form_window_height
+##   各パネルの高さを保持する。
+##   現在 panel 0 が textarea で panel 1 が info に対応する。
+_ble_form_window_height=(0 0)
+
+function ble-form/panel#goto.draw {
+  local index=$1 x=${2-0} y=${3-0} ret
+  ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
+  ble-form/goto.draw "$x" $((ret+y))
+}
+
+function ble-form/panel#set-height.draw {
+  local index=$1 new_height=$2
+  local delta=$((new_height-_ble_form_window_height[index]))
+  ((delta)) || return
+
+  local ret
+  if ((delta>0)); then
+    # 新しく行を挿入
+    ble/arithmetic/sum "${_ble_form_window_height[@]::index+1}"; local ins_offset=$ret
+    ble/arithmetic/sum "${_ble_form_window_height[@]}"; local old_total_height=$ret
+    if ((old_total_height>0)); then
+      # 下に余白を確保
+      ble-form/goto.draw 0 old_total_height-1
+      ble-edit/draw/put.ind delta; ((_ble_line_y+=delta))
+    fi
+    ble-form/goto.draw 0 "$ins_offset"
+    ble-edit/draw/put.il delta
+  else
+    # 行を削除
+    ble/arithmetic/sum "${_ble_form_window_height[@]::index+1}"; local ins_offset=$ret
+    ble-form/goto.draw 0 ins_offset+delta
+    ble-edit/draw/put.dl -delta
+  fi
+
+  ((_ble_form_window_height[index]=new_height))
+}
+
+function ble-form/panel#set-height-and-clear.draw {
+  local index=$1 new_height=$2
+  local old_height=${_ble_form_window_height[index]}
+  if ((old_height||new_height)); then
+    local ret
+    ble/arithmetic/sum "${_ble_form_window_height[@]::index}"; local ins_offset=$ret
+    ble-form/goto.draw 0 "$ins_offset"
+    ((old_height)) && ble-edit/draw/put.dl "$old_height"
+    ((new_height)) && ble-edit/draw/put.il "$new_height"
+  fi
+  ((_ble_form_window_height[index]=new_height))
+}
+
+function ble-form/panel#clear.draw {
+  local index=$1
+  local height=${_ble_form_window_height[index]}
+  if ((height)); then
+    local ret
+    ble/arithmetic/sum "${_ble_form_window_height[@]::index}"; local ins_offset=$ret
+    ble-form/goto.draw 0 "$ins_offset"
+    if ((height==1)); then
+      ble-edit/draw/put "$_ble_term_el2"
+    else
+      ble-edit/draw/put.dl "$height"
+      ble-edit/draw/put.il "$height"
+    fi
+  fi
+}
+function ble-form/panel#clear-after.draw {
+  local index=$1 x=$2 y=$3
+  local height=${_ble_form_window_height[index]}
+  ((y<height)) || return
+
+  ble-form/panel#goto.draw "$index" "$x" "$y"
+  ble-edit/draw/put "$_ble_term_el"
+  local rest_lines=$((height-(y+1)))
+  if ((rest_lines)); then
+    ble-edit/draw/put "$_ble_term_ind"
+    ble-edit/draw/put.dl "$rest_lines"
+    ble-edit/draw/put.il "$rest_lines"
+    ble-edit/draw/put "$_ble_term_ri"
+  fi
+}

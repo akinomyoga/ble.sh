@@ -205,6 +205,7 @@ fi
 #%x inc.r/@/decode/
 #%x inc.r/@/color/
 #%x inc.r/@/edit/
+#%x inc.r/@/form/
 #%x inc.r/@/syntax/
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }

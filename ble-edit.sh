@@ -1643,13 +1643,9 @@ function ble-edit/info/.clear-content {
   [[ ${_ble_line_info[2]} ]] || return
 
   local -a DRAW_BUFF
-  ble-edit/render/goto 0 _ble_line_endy
-  ble-edit/draw/put "$_ble_term_ind"
-  ble-edit/draw/put.dl '_ble_line_info[1]+1'
+  ble-form/panel#set-height.draw 1 0
   ble-edit/draw/bflush
-
-  _ble_line_y="$((_ble_line_endy+1))"
-  _ble_line_x=0
+  
   _ble_line_info=(0 0 "")
 }
 
@@ -1666,19 +1662,13 @@ function ble-edit/info/.render-content {
     return
   fi
 
-  # (1) 移動・領域確保
   local -a DRAW_BUFF
-  ble-edit/render/goto 0 "$_ble_line_endy"
-  ble-edit/draw/put "$_ble_term_ind"
-  [[ ${_ble_line_info[2]} ]] && ble-edit/draw/put.dl '_ble_line_info[1]+1'
-  [[ $content ]] && ble-edit/draw/put.il y+1
-
-  # (2) 内容
+  ble-form/panel#set-height-and-clear.draw 1 $((y+1))
+  ble-form/panel#goto.draw 1
   ble-edit/draw/put "$content"
   ble-edit/draw/bflush
 
-  _ble_line_y="$((_ble_line_endy+1+y))"
-  _ble_line_x="$x"
+  ((_ble_line_endy+=y,_ble_line_x=x))
   _ble_line_info=("$x" "$y" "$content")
 }
 
@@ -2053,79 +2043,10 @@ function ble-edit/detach {
 ##   キャレットが最も左の列にある場合は右側の文字に適用される SGR フラグを保持します。
 _ble_line_cur=(0 0 32 0)
 
-## 変数 x
-## 変数 y
-##   現在の (描画の為に動き回る) カーソル位置を保持します。
-_ble_line_x=0 _ble_line_y=0
-
 _ble_line_begx=0
 _ble_line_begy=0
 _ble_line_endx=0
 _ble_line_endy=0
-
-#
-# 補助関数 (公開)
-#
-
-## 関数 ble-edit/render/goto varname x y
-##   現在位置を指定した座標へ移動する制御系列を生成します。
-## @param[in] x y
-##   移動先のカーソルの座標を指定します。
-##   プロンプト原点が x=0 y=0 に対応します。
-function ble-edit/render/goto {
-  local -i x="$1" y="$2"
-  ble-edit/draw/put "$_ble_term_sgr0"
-
-  local -i dy=y-_ble_line_y
-  if ((dy!=0)); then
-    if ((dy>0)); then
-      ble-edit/draw/put "${_ble_term_cud//'%d'/$dy}"
-    else
-      ble-edit/draw/put "${_ble_term_cuu//'%d'/$((-dy))}"
-    fi
-  fi
-
-  local -i dx=x-_ble_line_x
-  if ((dx!=0)); then
-    if ((x==0)); then
-      ble-edit/draw/put "$_ble_term_cr"
-    elif ((dx>0)); then
-      ble-edit/draw/put "${_ble_term_cuf//'%d'/$dx}"
-    else
-      ble-edit/draw/put "${_ble_term_cub//'%d'/$((-dx))}"
-    fi
-  fi
-
-  _ble_line_x="$x" _ble_line_y="$y"
-}
-## 関数 ble-edit/render/clear-line
-##   プロンプト原点に移動して、既存のプロンプト表示内容を空白にする制御系列を生成します。
-function ble-edit/render/clear-line {
-  ble-edit/render/goto 0 0
-  if ((_ble_line_endy>0)); then
-    local height=$((_ble_line_endy+1))
-    ble-edit/draw/put "${_ble_term_dl//'%d'/$height}${_ble_term_il//'%d'/$height}"
-  else
-    ble-edit/draw/put "$_ble_term_el2"
-  fi
-}
-## 関数 ble-edit/render/clear-line-after x y
-##   指定した x y 位置に移動して、
-##   更に、以降の内容を空白にする制御系列を生成します。
-## @param[in] x
-## @param[in] y
-function ble-edit/render/clear-line-after {
-  local x="$1" y="$2"
-
-  ble-edit/render/goto "$x" "$y"
-  if ((_ble_line_endy>y)); then
-    local height=$((_ble_line_endy-y))
-    ble-edit/draw/put "$_ble_term_ind${_ble_term_dl//'%d'/$height}${_ble_term_il//'%d'/$height}$_ble_term_ri"
-  fi
-  ble-edit/draw/put "$_ble_term_el"
-
-  _ble_line_x="$x" _ble_line_y="$y"
-}
 
 #
 # 表示関数
@@ -2166,7 +2087,7 @@ function ble-edit/render/update {
   local caret_state="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
   if [[ ! $_ble_line_dirty && $_ble_edit_render_caret_state == $caret_state ]]; then
     local -a DRAW_BUFF
-    ble-edit/render/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
+    ble-form/panel#goto.draw 0 "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
     ble-edit/draw/bflush
     return
   fi
@@ -2205,25 +2126,13 @@ function ble-edit/render/update {
 
   local -a DRAW_BUFF
 
-  # 1 描画領域の確保 (高さの調整)
+  # 1 描画領域の決定
   local endx endy begx begy
   ble-edit/text/getxy.out --prefix=beg 0
   ble-edit/text/getxy.out --prefix=end "$iN"
-  local delta
-  if (((delta=endy-_ble_line_endy)!=0)); then
-    if ((delta>0)); then
-      ble-edit/render/goto 0 "$_ble_line_endy"
-      ble-edit/draw/put.ind delta
-      ((delta>1)) && ble-edit/draw/put.cuu delta-1
-      ble-edit/draw/put.il delta
-      ble-edit/draw/put.cuu
-    else
-      ble-edit/render/goto 0 "$((_ble_line_endy+1+delta))"
-      ble-edit/draw/put.dl -delta
-    fi
-  fi
   _ble_line_begx="$begx" _ble_line_begy="$begy"
   _ble_line_endx="$endx" _ble_line_endy="$endy"
+  ble-form/panel#set-height.draw 0 $((endy+1))
 
   # 2 表示内容
   local ret retx=-1 rety=-1 esc_line=
@@ -2234,7 +2143,7 @@ function ble-edit/render/update {
     # local ret
     # ble-edit/text/slice # → ret
     # local esc_line="$ret"
-    # ble-edit/render/clear-line-after "$prox" "$proy"
+    # ble-form/panel#clear-after.draw 0 "$prox" "$proy"
     # ble-edit/draw/put "$ret"
     # ble-edit/text/getxy.out --prefix=ret "$iN" # → retx rety
     # _ble_line_x="$retx" _ble_line_y="$rety"
@@ -2245,20 +2154,21 @@ function ble-edit/render/update {
       ble-edit/text/getxy.out --prefix=umin "$umin"
       ble-edit/text/getxy.out --prefix=umax "$umax"
 
-      ble-edit/render/goto "$uminx" "$uminy"
+      ble-form/panel#goto.draw 0 "$uminx" "$uminy"
       ble-edit/text/slice "$umin" "$umax"
       ble-edit/draw/put "$ret"
       _ble_line_x="$umaxx" _ble_line_y="$umaxy"
     fi
 
     if ((BLELINE_RANGE_UPDATE[0]>=0)); then
-      ble-edit/render/clear-line-after "$endx" "$endy"
+      ble-form/panel#clear-after.draw 0 "$endx" "$endy"
     fi
   else
     # 全体更新
 
     # プロンプト描画
-    ble-edit/render/clear-line
+    ble-form/panel#clear.draw 0
+    ble-form/panel#goto.draw 0
     ble-edit/draw/put "$esc_prompt"
     _ble_line_x="$prox" _ble_line_y="$proy"
 
@@ -2292,7 +2202,7 @@ function ble-edit/render/update {
   # 3 移動
   local cx cy
   ble-edit/text/getxy.cur --prefix=c "$index" # → cx cy
-  ble-edit/render/goto "$cx" "$cy"
+  ble-form/panel#goto.draw 0 "$cx" "$cy"
   ble-edit/draw/bflush
 
   # 4 後で使う情報の記録
@@ -2338,13 +2248,14 @@ function ble-edit/render/redraw-cache {
 
     local -a DRAW_BUFF
 
-    ble-edit/render/clear-line
+    ble-form/panel#clear.draw 0
+    ble-form/panel#goto.draw 0
     ble-edit/draw/put "${d[0]}"
     _ble_line_x="${d[7]}" _ble_line_y="${d[8]}"
     _ble_line_endx="${d[5]}" _ble_line_endy="${d[6]}"
 
     _ble_line_cur=("${d[@]:1:4}")
-    ble-edit/render/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
+    ble-form/panel#goto.draw 0 "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
     ble-edit/draw/bflush
   else
     ble-edit/render/redraw
@@ -2801,7 +2712,7 @@ function ble/widget/delete-forward-char-or-exit {
   #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   ble-edit/info/hide
   local -a DRAW_BUFF
-  ble-edit/render/goto "$_ble_line_endx" "$_ble_line_endy"
+  ble-form/panel#goto.draw 0 "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/bflush
   ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
   ble/util/buffer.flush >&2
@@ -3673,7 +3584,7 @@ function ble/widget/.insert-newline {
 
   # 新しい描画領域
   local -a DRAW_BUFF
-  ble-edit/render/goto "$_ble_line_endx" "$_ble_line_endy"
+  ble-form/panel#goto.draw 0 "$_ble_line_endx" "$_ble_line_endy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/bflush
   ble/util/joblist.bflush
@@ -3889,7 +3800,7 @@ function ble-edit/history/load {
     ble-edit/info/show text "loading history..."
 
     local -a DRAW_BUFF
-    ble-edit/render/goto "$x" "$y"
+    ble-form/goto.draw "$x" "$y"
     ble-edit/draw/flush >&2
   fi
 
@@ -4816,7 +4727,7 @@ else
       # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
       ((_ble_line_y++,_ble_line_x=0))
       local -a DRAW_BUFF=()
-      ble-edit/render/goto "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+      ble-form/panel#goto.draw 0 "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
       ble-edit/draw/flush
     fi
   }
