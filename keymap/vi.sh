@@ -1297,12 +1297,103 @@ function ble/widget/vi-command/search-char-reverse-repeat {
 }
 
 #------------------------------------------------------------------------------
+# text objects
+
+_ble_keymap_vi_text_object=
+
+function ble/widget/vi-command/text-object/inner-word.impl {
+  local arg=$1 flag=$2
+
+  local space=$' \t' nl=$'\n'
+
+  local rex="([A-Za-z_]+|[^A-Za-z_$space]+|[$space]+)\$"
+  [[ ${_ble_edit_str::_ble_edit_ind+1} =~ $rex ]]
+  local beg=$((_ble_edit_ind+1-${#BASH_REMATCH}))
+
+  local rex="([A-Za-z_]+$nl?|[^A-Za-z_$space]+$nl?|[$space]+$nl?){$arg}"
+  if ! [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]; then
+    local index=${#_ble_edit_str}
+    ble-edit/text/nonbol-eolp "$index" && ((index--))
+    ble/widget/.goto-char "$index"
+    ble/widget/.bell
+    ble/keymap:vi/check-single-command-mode
+    return 1
+  fi
+
+  local end=$((_ble_edit_ind+${#BASH_REMATCH}))
+  [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
+  ble/widget/.goto-char "$beg"
+  ble/widget/vi-command/exclusive-goto.impl "$end" "$flag"
+}
+
+function ble/widget/vi-command/text-object.hook {
+  local key=$1
+  local arg flag; ble/keymap:vi/get-arg 1
+  if ! ble-decode-key/ischar "$key"; then
+    ble/widget/.bell
+    ble/keymap:vi/check-single-command-mode
+    return
+  fi
+
+  local ret; ble/util/c2s "$key"
+  local type=$_ble_keymap_vi_text_object$ret
+  case "$type" in
+  ('a"') ;;
+  ("a'") ;;
+  ('ab'|'a('|'a)') ;;
+  ('a<'|'a>') ;;
+  ('aB'|'a{'|'a}') ;;
+  ('aW') ;;
+  ('a['|'a]') ;;
+  ('a`') ;;
+  ('ap') ;;
+  ('as') ;;
+  ('at') ;;
+  ('aw') ;;
+  ('i"') ;;
+  ("i'") ;;
+  ('ib'|'i('|'i)') ;;
+  ('i<'|'i>') ;;
+  ('iB'|'i{'|'i}') ;;
+  ('iW') ;;
+  ('i['|'i]') ;;
+  ('i`') ;;
+  ('ip') ;;
+  ('is') ;;
+  ('it') ;;
+  ('iw') ble/widget/vi-command/text-object/inner-word.impl "$arg" "$flag" ;;
+  (*)
+    ble/widget/.bell
+    ble/keymap:vi/check-single-command-mode ;;
+  esac
+}
+
+function ble/widget/vi-command/.check-text-object {
+  ble-decode-key/ischar "${KEYS[0]}" || return 1
+
+  local ret; ble/util/c2s "${KEYS[0]}"; local c="$ret"
+  [[ $c == [ia] ]] || return 1
+
+  local arg flag; ble/keymap:vi/get-arg 1
+  _ble_edit_arg=$arg$flag
+  [[ $flag ]] || return 1
+
+  _ble_keymap_vi_text_object=$c
+  _ble_decode_key__hook=ble/widget/vi-command/text-object.hook
+  return 0
+}
+
+function ble/widget/vi-command/text-object-or {
+  ble/widget/vi-command/.check-text-object || ble/widget/vi-command/"$@"
+}
+
+#------------------------------------------------------------------------------
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
-  ble-bind -f a      vi-command/append-mode
+  ble-bind -f a      'vi-command/text-object-or append-mode'
   ble-bind -f A      vi-command/append-eol-mode
-  ble-bind -f i      vi-command/insert-mode
+  ble-bind -f i      'vi-command/text-object-or insert-mode'
   ble-bind -f insert vi-command/insert-mode
   ble-bind -f I      vi-command/insert-nol-mode
   ble-bind -f 'g I'  vi-command/insert-bol-mode
