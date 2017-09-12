@@ -1743,7 +1743,7 @@ function ble-edit/info/.render-content {
 }
 
 _ble_line_info_default=(0 0 "")
-_ble_line_info_scene=hidden
+_ble_line_info_scene=default
 
 ## 関数 ble-edit/info/show type text
 ##
@@ -1781,19 +1781,10 @@ function ble-edit/info/set-default {
   local x=0 y=0 content
   ble-edit/info/.construct-content "$type" "$text"
   _ble_line_info_default=("$x" "$y" "$content")
-  if [[ $_ble_line_info_scene == default ]]; then
-    ble-edit/info/.render-content "${_ble_line_info_default[@]}"
-    ble/util/buffer.flush >&2
-  fi
 }
 function ble-edit/info/default {
   _ble_line_info_scene=default
-  if (($#)); then
-    ble-edit/info/set-default "$@"
-  else
-    ble-edit/info/.render-content "${_ble_line_info_default[@]}"
-    ble/util/buffer.flush >&2
-  fi
+  (($#)) && ble-edit/info/set-default "$@"
 }
 function ble-edit/info/clear {
   ble-edit/info/default
@@ -1806,12 +1797,10 @@ function ble-edit/info/clear {
 ##   この関数の呼び出しの後に flush が入ることを想定して ble/util/buffer.flush は実行しない。
 ##
 function ble-edit/info/hide {
-  _ble_line_info_scene=hidden
   ble-edit/info/.clear-content
 }
 function ble-edit/info/reveal {
-  if [[ $_ble_line_info_scene == hidden ]]; then
-    _ble_line_info_scene=default
+  if [[ $_ble_line_info_scene == default ]]; then
     ble-edit/info/.render-content "${_ble_line_info_default[@]}"
   fi
 }
