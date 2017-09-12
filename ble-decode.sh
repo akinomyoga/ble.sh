@@ -1224,7 +1224,7 @@ function ble-bind {
               local -a a
               a=($command)
               if ! ble/util/isfunction "${a[0]}"; then
-                if [[ $command == ble/widget/* ]]; then
+                if [[ $command == ble/widget/ble/widget/* ]]; then
                   echo "ble-bind: Unknown ble edit function \`${a[0]#'ble/widget/'}'. Note: The prefix 'ble/widget/' is redundant" 1>&2
                 else
                   echo "ble-bind: Unknown ble edit function \`${a[0]#'ble/widget/'}'" 1>&2
