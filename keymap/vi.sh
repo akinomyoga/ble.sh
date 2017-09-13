@@ -1301,16 +1301,27 @@ function ble/widget/vi-command/search-char-reverse-repeat {
 
 _ble_keymap_vi_text_object=
 
-function ble/widget/vi-command/text-object/inner-word.impl {
-  local arg=$1 flag=$2
+function ble/widget/vi-command/text-object/word.impl {
+  local arg=$1 flag=$2 type=$3
 
-  local space=$' \t' nl=$'\n'
+  local space=$' \t' nl=$'\n' ifs=$' \t\n'
 
-  local rex="([A-Za-z_]+|[^A-Za-z_$space]+|[$space]+)\$"
+  local rex_word
+  if [[ $type == *W* ]]; then
+    rex_word="[^$ifs]+"
+  else
+    rex_word="[A-Za-z_]+|[^A-Za-z_$space]+"
+  fi
+
+  local rex="(($rex_word)|[$space]+)\$"
   [[ ${_ble_edit_str::_ble_edit_ind+1} =~ $rex ]]
   local beg=$((_ble_edit_ind+1-${#BASH_REMATCH}))
 
-  local rex="([A-Za-z_]+$nl?|[^A-Za-z_$space]+$nl?|[$space]+$nl?){$arg}"
+  if [[ $type == *i* ]]; then
+    rex="(($rex_word)$nl?|[$space]+$nl?){$arg}"
+  else
+    rex="([$ifs]*($rex_word)){$arg}"
+  fi
   if ! [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]; then
     local index=${#_ble_edit_str}
     ble-edit/content/nonbol-eolp "$index" && ((index--))
@@ -1322,6 +1333,119 @@ function ble/widget/vi-command/text-object/inner-word.impl {
 
   local end=$((_ble_edit_ind+${#BASH_REMATCH}))
   [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
+  ble/widget/.goto-char "$beg"
+  ble/widget/vi-command/exclusive-goto.impl "$end" "$flag"
+}
+
+function ble/widget/vi-command/text-object/find-next-quote {
+  local index=${1:-$((_ble_edit_ind+1))} nl=$'\n'
+  local rex="^[^$nl$quote]*$quote"
+  [[ ${_ble_edit_str:index} =~ $rex ]] || return 1
+  ((ret=index+${#BASH_REMATCH}))
+  return 0
+}
+function ble/widget/vi-command/text-object/find-previous-quote {
+  local index=${1:-_ble_edit_ind} nl=$'\n'
+  local rex="$quote[^$nl$quote]*\$"
+  [[ ${_ble_edit_str::index} =~ $rex ]] || return 1
+  ((ret=index-${#BASH_REMATCH}))
+  return 0
+}
+function ble/widget/vi-command/text-object/quote.impl {
+  local arg=$1 flag=$2 type=$3
+  local ret quote=${type:1}
+
+  local beg= end=
+  if [[ ${_ble_edit_str:_ble_edit_ind:1} == "$quote" ]]; then
+    ble-edit/content/find-logical-bol; local bol=$ret
+    ble/string#count-char "${_ble_edit_str:bol:_ble_edit_ind-bol}" "$quote"
+    if ((ret%2==1)); then
+      # 現在終了引用符
+      ((end=_ble_edit_ind+1))
+      ble/widget/vi-command/text-object/find-previous-quote && beg=$ret
+    else
+      ((beg=_ble_edit_ind))
+      ble/widget/vi-command/text-object/find-next-quote && end=$ret
+    fi
+  elif ble/widget/vi-command/text-object/find-previous-quote && beg=$ret; then
+    ble/widget/vi-command/text-object/find-next-quote && end=$ret
+  elif ble/widget/vi-command/text-object/find-next-quote && beg=$((ret-1)); then
+    ble/widget/vi-command/text-object/find-next-quote "$((beg+1))" && end=$ret
+  fi
+
+  # Note: ビジュアルモードでは繰り返し使うと範囲を拡大する (?) らしい
+  if [[ $beg && $end ]]; then
+    [[ $type == *i* ]] && ((beg++,end--))
+    ble/widget/.goto-char "$beg"
+    ble/widget/vi-command/exclusive-goto.impl "$end" "$flag"
+  else
+    ble/widget/.bell
+    ble/keymap:vi/check-single-command-mode
+  fi
+}
+
+function ble/widget/vi-command/text-object/index-of-chars {
+  local chars=$2 index=${3:-0}
+  local text=${1:index}
+  local cut=${text%%["$chars"]*}
+  if ((${#cut}<${#text})); then
+    ((ret=index+${#cut}))
+    return 0
+  else
+    return 1
+  fi
+}
+function ble/widget/vi-command/text-object/last-index-of-chars {
+  local chars=$2 index=${3:-0}
+  local text=${1::index}
+  local cut=${text##*["$chars"]}
+  if ((${#cut}<${#text})); then
+    ((ret=index-${#cut}-1))
+    return 0
+  else
+    return 1
+  fi
+}
+function ble/widget/vi-command/text-object/block.impl {
+  # todo 実際に実行してみる
+  local arg=$1 flag=$2 type=$3
+  local ret paren=${type:1} lparen=${type:1:1} rparen=${type:2:1}
+  local axis=$_ble_edit_ind
+  [[ ${_ble_edit_str:axis:1} == "$lparen" ]] && ((axis++))
+
+  local count=$arg beg=$axis
+  while ble/widget/vi-command/text-object/last-index-of-chars "$_ble_edit_str" "$paren" "$beg"; do
+    beg=$ret
+    if [[ ${_ble_edit_str:beg:1} == "$lparen" ]]; then
+      ((--count==0)) && break
+    else
+      ((++count))
+    fi
+  done
+  if ((count)); then
+    # not yet implemented
+    ble/widget/.bell
+    ble/keymap:vi/check-single-command-mode
+    return
+  fi
+
+  local count=$arg end=$axis
+  while ble/widget/vi-command/text-object/index-of-chars "$_ble_edit_str" "$paren" "$end"; do
+    end=$((ret+1))
+    if [[ ${_ble_edit_str:end-1:1} == "$rparen" ]]; then
+      ((--count==0)) && break
+    else
+      ((++count))
+    fi
+  done
+  if ((count)); then
+    # not yet implemented
+    ble/widget/.bell
+    ble/keymap:vi/check-single-command-mode
+    return
+  fi
+
+  [[ $type == *i* ]] && ((beg++,end--))
   ble/widget/.goto-char "$beg"
   ble/widget/vi-command/exclusive-goto.impl "$end" "$flag"
 }
@@ -1338,30 +1462,18 @@ function ble/widget/vi-command/text-object.hook {
   local ret; ble/util/c2s "$key"
   local type=$_ble_keymap_vi_text_object$ret
   case "$type" in
-  ('a"') ;;
-  ("a'") ;;
-  ('ab'|'a('|'a)') ;;
-  ('a<'|'a>') ;;
-  ('aB'|'a{'|'a}') ;;
-  ('aW') ;;
-  ('a['|'a]') ;;
-  ('a`') ;;
+  ([ia][wW]) ble/widget/vi-command/text-object/word.impl "$arg" "$flag" "$type" ;;
+  ([ia][\"\'\`]) ble/widget/vi-command/text-object/quote.impl "$arg" "$flag" "$type" ;;
+  ([ia]['b()']) ble/widget/vi-command/text-object/block.impl "$arg" "$flag" "${type::1}()" ;;
+  ([ia]['B{}']) ble/widget/vi-command/text-object/block.impl "$arg" "$flag" "${type::1}{}" ;;
+  ([ia]['<>']) ble/widget/vi-command/text-object/block.impl "$arg" "$flag" "${type::1}<>" ;;
+  ([ia]['][']) ble/widget/vi-command/text-object/block.impl "$arg" "$flag" "${type::1}[]" ;;
   ('ap') ;;
   ('as') ;;
   ('at') ;;
-  ('aw') ;;
-  ('i"') ;;
-  ("i'") ;;
-  ('ib'|'i('|'i)') ;;
-  ('i<'|'i>') ;;
-  ('iB'|'i{'|'i}') ;;
-  ('iW') ;;
-  ('i['|'i]') ;;
-  ('i`') ;;
   ('ip') ;;
   ('is') ;;
   ('it') ;;
-  ('iw') ble/widget/vi-command/text-object/inner-word.impl "$arg" "$flag" ;;
   (*)
     ble/widget/.bell
     ble/keymap:vi/check-single-command-mode ;;
