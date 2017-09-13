@@ -53,6 +53,22 @@ function ble-form/panel#goto.draw {
   ble-form/goto.draw "$x" $((ret+y))
 }
 
+function ble-form/panel#increase-total-height.draw {
+  local delta=$1
+  ((delta>0)) || return
+
+  local ret
+  ble/arithmetic/sum "${_ble_form_window_height[@]}"; local old_total_height=$ret
+  # 下に余白を確保
+  if ((old_total_height>0)); then
+    ble-form/goto.draw 0 old_total_height-1
+    ble-edit/draw/put.ind delta; ((_ble_line_y+=delta))
+  else
+    ble-form/goto.draw 0 0
+    ble-edit/draw/put.ind delta-1; ((_ble_line_y+=delta-1))
+  fi
+}
+
 function ble-form/panel#set-height.draw {
   local index=$1 new_height=$2
   local delta=$((new_height-_ble_form_window_height[index]))
@@ -61,13 +77,9 @@ function ble-form/panel#set-height.draw {
   local ret
   if ((delta>0)); then
     # 新しく行を挿入
+    ble-form/panel#increase-total-height.draw "$delta"
+
     ble/arithmetic/sum "${_ble_form_window_height[@]::index+1}"; local ins_offset=$ret
-    ble/arithmetic/sum "${_ble_form_window_height[@]}"; local old_total_height=$ret
-    if ((old_total_height>0)); then
-      # 下に余白を確保
-      ble-form/goto.draw 0 old_total_height-1
-      ble-edit/draw/put.ind delta; ((_ble_line_y+=delta))
-    fi
     ble-form/goto.draw 0 "$ins_offset"
     ble-edit/draw/put.il delta
   else
@@ -83,13 +95,15 @@ function ble-form/panel#set-height.draw {
 function ble-form/panel#set-height-and-clear.draw {
   local index=$1 new_height=$2
   local old_height=${_ble_form_window_height[index]}
-  if ((old_height||new_height)); then
-    local ret
-    ble/arithmetic/sum "${_ble_form_window_height[@]::index}"; local ins_offset=$ret
-    ble-form/goto.draw 0 "$ins_offset"
-    ((old_height)) && ble-edit/draw/put.dl "$old_height"
-    ((new_height)) && ble-edit/draw/put.il "$new_height"
-  fi
+  ((old_height||new_height)) || return
+
+  local ret
+  ble-form/panel#increase-total-height.draw $((new_height-old_height))
+  ble/arithmetic/sum "${_ble_form_window_height[@]::index}"; local ins_offset=$ret
+  ble-form/goto.draw 0 "$ins_offset"
+  ((old_height)) && ble-edit/draw/put.dl "$old_height"
+  ((new_height)) && ble-edit/draw/put.il "$new_height"
+
   ((_ble_form_window_height[index]=new_height))
 }
 
