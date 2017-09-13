@@ -1667,8 +1667,7 @@ function ble-edit/info/.render-content {
   ble-form/panel#goto.draw 1
   ble-edit/draw/put "$content"
   ble-edit/draw/bflush
-
-  ((_ble_line_endy+=y,_ble_line_x=x))
+  ((_ble_line_y+=y,_ble_line_x=x))
   _ble_line_info=("$x" "$y" "$content")
 }
 
