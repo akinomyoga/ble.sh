@@ -2427,7 +2427,7 @@ function ble/widget/.kill-range {
   fi
   return 0
 }
-## 関数 ble/widget/.copy-range P0 P1 [kill_type]
+## 関数 ble/widget/.copy-range P0 P1 [allow_empty [kill_type]]
 function ble/widget/.copy-range {
   local p0 p1 len
   ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
@@ -2435,6 +2435,20 @@ function ble/widget/.copy-range {
   # copy
   _ble_edit_kill_ring="${_ble_edit_str:p0:len}"
   _ble_edit_kill_type=$4
+}
+## 関数 ble/widget/.replace-range P0 P1 string [allow_empty]
+function ble/widget/.replace-range {
+  local p0 p1 len
+  ble/widget/.process-range-argument "${@:1:2}" || (($4)) || return 1
+  local str=$3 strlen=${#3}
+
+  _ble_edit_str.replace p0 p1 "$str"
+  ((delta=strlen-len)) &&
+    ((_ble_edit_ind>p1?(_ble_edit_ind+=delta):
+      _ble_edit_ind>p0+strlen&&(_ble_edit_ind=p0+strlen),
+      _ble_edit_mark>p1?(_ble_edit_mark+=delta):
+      _ble_edit_mark>p0+strlen&&(_ble_edit_mark=p0+strlen)))
+  return 0
 }
 ## 関数 ble/widget/delete-region
 ##   領域を削除します。

@@ -363,7 +363,7 @@ function ble/widget/vi-command/append-arg {
         ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
         ((end<${#_ble_edit_str}&&end++))
         ble/keymap:vi/operator:"$ch" "$beg" "$end" line
-        ble/keymap:vi/check-single-command-mode
+        ble/widget/vi-command/first-non-space
         return
       fi
     fi
@@ -454,6 +454,80 @@ function ble/keymap:vi/operator:? {
   ble/keymap:vi/operator:tr.impl "$1" "$2" ble/keymap:vi/string#encode-rot13
 }
 
+## 関数 ble/keymap:vi/expand-range-for-linewise-operator
+##   @var[in,out] beg, end
+function ble/keymap:vi/expand-range-for-linewise-operator {
+  local ret
+
+  # 行頭補正:
+  ble-edit/content/find-logical-bol "$beg"; beg=$ret
+
+  # 行末補正:
+  #   行前進時は非空白行頭以前に end がある場合はその行は無視
+  #   行後退時は行頭に end (_ble_edit_ind) がある場合はその行は無視
+  #   同一行内の移動の場合は無条件にその行は含まれる。
+  ble-edit/content/find-logical-bol "$end"; local bol2=$ret
+  ble-edit/content/find-nol-from-bol "$bol2"; local nol2=$ret
+  if ((beg<bol2&&_ble_edit_ind<=bol2&&end<=nol2)); then
+    end=$bol2
+  else
+    ble-edit/content/find-logical-eol "$end"; local end=$ret
+    [[ ${_ble_edit_str:end:1} == $'\n' ]] && ((end++))
+  fi
+}
+
+function ble/keymap:vi/operator:increase-indent {
+  local delta=$1 type=$2
+  [[ $type == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
+
+  ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
+  local space=$' \t'
+  local arr; ble/string#split arr $'\n' "${_ble_edit_str:beg:end-beg}"
+  local arr2 line indent i len x r
+  for line in "${arr[@]}"; do
+    indent=${line%%[!$space]*}
+    line=${line:${#indent}}
+
+    ((x=0))
+    if [[ $indent ]]; then
+      ((len=${#indent}))
+      for ((i=0;i<len;i++)); do
+        if [[ ${indent:i:1} == ' ' ]]; then
+          ((x++))
+        else
+          ((x=(x+8)/8*8))
+        fi
+      done
+    fi
+
+    ((x+=delta,x<0&&(x=0)))
+
+    indent=
+    if ((x)); then
+      if ((r=x/8)); then
+        ble/string#repeat $'\t' "$r"
+        indent=$ret
+      fi
+      if ((r=x%8)); then
+        ble/string#repeat ' ' "$r"
+        indent=$indent$ret
+      fi
+    fi
+
+    ble/array#push arr2 "$indent$line"
+  done
+
+  IFS=$'\n' eval 'local content=${arr2[*]}'
+  ble/widget/.replace-range "$beg" "$end" "$content"
+  [[ $type == char ]] && ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
+}
+function ble/keymap:vi/operator:L { # operator <
+  ble/keymap:vi/operator:increase-indent -8 "$3"
+}
+function ble/keymap:vi/operator:R { # operator >
+  ble/keymap:vi/operator:increase-indent 8 "$3"
+}
+
 function ble/widget/vi-command/exclusive-goto.impl {
   local index=$1 flag=$2 nobell=$3
   if [[ $flag ]]; then
@@ -467,7 +541,7 @@ function ble/widget/vi-command/exclusive-goto.impl {
     elif ble/util/isfunction ble/keymap:vi/operator:"$flag"; then
       local beg end; ((index<_ble_edit_ind?(beg=index,end=_ble_edit_ind):(beg=_ble_edit_ind,end=index)))
       ble/keymap:vi/operator:"$flag" "$beg" "$end" char
-      ((beg!=_ble_edit_ind)) && ble/widget/.goto-char index
+      ((beg!=_ble_edit_ind)) && ble/widget/.goto-char "$beg"
     else
       ble/widget/.bell
     fi
@@ -1559,6 +1633,8 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f y vi-command/append-arg
   ble-bind -f d 'vi-command/append-arg d kill-current-line'
   ble-bind -f c 'vi-command/append-arg c kill-current-line-and-insert'
+  ble-bind -f '<' 'vi-command/append-arg L'
+  ble-bind -f '>' 'vi-command/append-arg R'
   ble-bind -f 'g ~' vi-command/append-arg
   ble-bind -f 'g u' vi-command/append-arg
   ble-bind -f 'g U' vi-command/append-arg
@@ -1566,8 +1642,6 @@ function ble-decode-keymap:vi_command/define {
   # ble-bind -f 'g @' vi-command/append-arg
   # ble-bind -f '!' vi-command/append-arg
   # ble-bind -f '=' vi-command/append-arg
-  # ble-bind -f '<' 'vi-command/append-arg L'
-  # ble-bind -f '>' 'vi-command/append-arg R'
   # ble-bind -f 'g q' vi-command/append-arg
   # ble-bind -f 'z f' vi-command/append-arg
 
