@@ -1320,7 +1320,9 @@ function ble/widget/vi-command/text-object/word.impl {
   if [[ $type == *i* ]]; then
     rex="(($rex_word)$nl?|[$space]+$nl?){$arg}"
   else
-    rex="([$ifs]*($rex_word)){$arg}"
+    local rex1=
+    ((arg>1)) && rex1="(($rex_word)[$ifs]+){$((arg-1))}"
+    rex="([$ifs]+($rex_word)){$arg}|$rex1($rex_word)[$space]*"
   fi
   if ! [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]; then
     local index=${#_ble_edit_str}
