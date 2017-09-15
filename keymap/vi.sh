@@ -46,7 +46,7 @@ function ble/keymap:vi/string#encode-rot13 {
 }
 
 #------------------------------------------------------------------------------
-# vi-insert/default
+# vi-insert/default, vi-command/default
 
 function ble/widget/vi-insert/default {
   local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
@@ -58,11 +58,24 @@ function ble/widget/vi-insert/default {
     return 0
   fi
 
-  # Control 修飾された文字 C-@ - C-\, C-? は制御文字 \000 - \037, \177 に戻す
+  # Control 修飾された文字 C-@ - C-\, C-? は制御文字 \000 - \037, \177 に戻して挿入
   if ((flag==ble_decode_Ctrl&&63<=code&&code<128&&(code&0x1F)!=0)); then
     ((code=code==63?127:code&0x1F))
     local -a KEYS=("$code")
     ble/widget/self-insert
+    return 0
+  fi
+
+  return 1
+}
+
+function ble/widget/vi-command/default {
+  local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
+
+  # メタ修飾付きの入力 M-key は ESC + key に分解する
+  if ((flag&ble_decode_Meta)); then
+    ble/widget/.bell
+    ble-decode-key "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
     return 0
   fi
 
@@ -1526,6 +1539,9 @@ function ble/widget/vi-command/text-object-or {
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
+
+  ble-bind -f __default__ vi-command/default
+
   ble-bind -f a      'vi-command/text-object-or append-mode'
   ble-bind -f A      vi-command/append-mode-at-end-of-line
   ble-bind -f i      'vi-command/text-object-or insert-mode'
