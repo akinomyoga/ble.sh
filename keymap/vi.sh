@@ -633,6 +633,27 @@ function ble/widget/vi-command/backward-char {
   ble/widget/vi-command/exclusive-goto.impl "$index" "$flag"
 }
 
+function ble/widget/vi-command/forward-char-toggle-case {
+  local arg flag; ble/keymap:vi/get-arg 1
+
+  if [[ $flag ]]; then
+    ble/widget/.bell
+    ble/keymap:vi/check-single-command-mode
+  else
+    local line=${_ble_edit_str:_ble_edit_ind:arg}
+    line=${line%%$'\n'*}
+    local len=${#line}
+    local index=$((_ble_edit_ind+len))
+    if ((len)); then
+      local ret; ble/string#toggle-case "${_ble_edit_str:_ble_edit_ind:${#line}}"
+      _ble_edit_str.replace "$_ble_edit_ind" "$index" "$ret"
+    fi
+    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+    ble/widget/.goto-char "$index"
+    ble/keymap:vi/check-single-command-mode
+  fi
+}
+
 #------------------------------------------------------------------------------
 # command: [cdy]?[jk]
 
@@ -1619,6 +1640,8 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'z +'   vi-command/clear-screen-and-last-line
   ble-bind -f 'z -'   vi-command/redraw-line-and-first-non-space # 中央
   ble-bind -f 'z .'   vi-command/redraw-line-and-first-non-space # 最下行
+
+  ble-bind -f '~' vi-command/forward-char-toggle-case
 
   #----------------------------------------------------------------------------
   # bash
