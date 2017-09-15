@@ -240,7 +240,7 @@ function ble/widget/vi-command/append-mode {
     ble/widget/vi-command/.insert-mode "$arg"
   fi
 }
-function ble/widget/vi-command/append-eol-mode {
+function ble/widget/vi-command/append-mode-at-end-of-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
     ble/widget/.bell
@@ -250,7 +250,7 @@ function ble/widget/vi-command/append-eol-mode {
     ble/widget/vi-command/.insert-mode "$arg"
   fi
 }
-function ble/widget/vi-command/insert-bol-mode {
+function ble/widget/vi-command/insert-mode-at-beginning-of-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
     ble/widget/.bell
@@ -260,7 +260,7 @@ function ble/widget/vi-command/insert-bol-mode {
     ble/widget/vi-command/.insert-mode "$arg"
   fi
 }
-function ble/widget/vi-command/insert-nol-mode {
+function ble/widget/vi-command/insert-mode-at-first-non-space {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
     ble/widget/.bell
@@ -319,7 +319,7 @@ function ble/keymap:vi/get-arg {
   _ble_edit_arg=
 }
 
-function ble/widget/vi-command/arg-append {
+function ble/widget/vi-command/append-arg {
   local ret ch=$1
   if [[ ! $ch ]]; then
     local code="$((KEYS[${#KEYS[*]}-1]&ble_decode_MaskChar))"
@@ -1153,7 +1153,7 @@ function ble/widget/vi-command/connect-line {
   ble/keymap:vi/check-single-command-mode
 }
 
-function ble/widget/vi-command/insert-forward-line-mode {
+function ble/widget/vi-command/insert-mode-at-forward-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
     ble/widget/.bell
@@ -1165,7 +1165,7 @@ function ble/widget/vi-command/insert-forward-line-mode {
     ble/widget/vi-command/.insert-mode "$arg"
   fi
 }
-function ble/widget/vi-command/insert-backward-line-mode {
+function ble/widget/vi-command/insert-mode-at-backward-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
     ble/widget/.bell
@@ -1504,40 +1504,40 @@ function ble/widget/vi-command/text-object-or {
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
   ble-bind -f a      'vi-command/text-object-or append-mode'
-  ble-bind -f A      vi-command/append-eol-mode
+  ble-bind -f A      vi-command/append-mode-at-end-of-line
   ble-bind -f i      'vi-command/text-object-or insert-mode'
   ble-bind -f insert vi-command/insert-mode
-  ble-bind -f I      vi-command/insert-nol-mode
-  ble-bind -f 'g I'  vi-command/insert-bol-mode
-  ble-bind -f o      vi-command/insert-forward-line-mode
-  ble-bind -f O      vi-command/insert-backward-line-mode
+  ble-bind -f I      vi-command/insert-mode-at-first-non-space
+  ble-bind -f 'g I'  vi-command/insert-mode-at-beginning-of-line
+  ble-bind -f o      vi-command/insert-mode-at-forward-line
+  ble-bind -f O      vi-command/insert-mode-at-backward-line
   ble-bind -f R      vi-command/replace-mode
   ble-bind -f 'g R'  vi-command/virtual-replace-mode
 
-  ble-bind -f 0 vi-command/arg-append
-  ble-bind -f 1 vi-command/arg-append
-  ble-bind -f 2 vi-command/arg-append
-  ble-bind -f 3 vi-command/arg-append
-  ble-bind -f 4 vi-command/arg-append
-  ble-bind -f 5 vi-command/arg-append
-  ble-bind -f 6 vi-command/arg-append
-  ble-bind -f 7 vi-command/arg-append
-  ble-bind -f 8 vi-command/arg-append
-  ble-bind -f 9 vi-command/arg-append
-  ble-bind -f y vi-command/arg-append
-  ble-bind -f d 'vi-command/arg-append d kill-current-line'
-  ble-bind -f c 'vi-command/arg-append c kill-current-line-and-insert'
-  ble-bind -f 'g ~' vi-command/arg-append
-  ble-bind -f 'g u' vi-command/arg-append
-  ble-bind -f 'g U' vi-command/arg-append
-  ble-bind -f 'g ?' vi-command/arg-append
-  # ble-bind -f 'g @' vi-command/arg-append
-  # ble-bind -f '!' vi-command/arg-append
-  # ble-bind -f '=' vi-command/arg-append
-  # ble-bind -f '<' 'vi-command/arg-append L'
-  # ble-bind -f '>' 'vi-command/arg-append R'
-  # ble-bind -f 'g q' vi-command/arg-append
-  # ble-bind -f 'z f' vi-command/arg-append
+  ble-bind -f 0 vi-command/append-arg
+  ble-bind -f 1 vi-command/append-arg
+  ble-bind -f 2 vi-command/append-arg
+  ble-bind -f 3 vi-command/append-arg
+  ble-bind -f 4 vi-command/append-arg
+  ble-bind -f 5 vi-command/append-arg
+  ble-bind -f 6 vi-command/append-arg
+  ble-bind -f 7 vi-command/append-arg
+  ble-bind -f 8 vi-command/append-arg
+  ble-bind -f 9 vi-command/append-arg
+  ble-bind -f y vi-command/append-arg
+  ble-bind -f d 'vi-command/append-arg d kill-current-line'
+  ble-bind -f c 'vi-command/append-arg c kill-current-line-and-insert'
+  ble-bind -f 'g ~' vi-command/append-arg
+  ble-bind -f 'g u' vi-command/append-arg
+  ble-bind -f 'g U' vi-command/append-arg
+  ble-bind -f 'g ?' vi-command/append-arg
+  # ble-bind -f 'g @' vi-command/append-arg
+  # ble-bind -f '!' vi-command/append-arg
+  # ble-bind -f '=' vi-command/append-arg
+  # ble-bind -f '<' 'vi-command/append-arg L'
+  # ble-bind -f '>' 'vi-command/append-arg R'
+  # ble-bind -f 'g q' vi-command/append-arg
+  # ble-bind -f 'z f' vi-command/append-arg
 
   ble-bind -f Y vi-command/copy-current-line
   ble-bind -f S vi-command/kill-current-line-and-insert
