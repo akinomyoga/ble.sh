@@ -74,7 +74,7 @@ function ble/widget/vi-command/default {
 
   # メタ修飾付きの入力 M-key は ESC + key に分解する
   if ((flag&ble_decode_Meta)); then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
     ble-decode-key "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
     return 0
   fi
@@ -223,6 +223,11 @@ function ble/keymap:vi/check-single-command-mode {
     return 1
   fi
 }
+function ble/widget/vi-command/bell {
+  ble/widget/.bell
+  ble/keymap:vi/check-single-command-mode
+}
+
 
 function ble/widget/vi-command/.insert-mode {
   local arg=$1 overwrite=$2
@@ -237,7 +242,7 @@ function ble/widget/vi-command/.insert-mode {
 function ble/widget/vi-command/insert-mode {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
   else
     ble/widget/vi-command/.insert-mode "$arg"
   fi
@@ -245,7 +250,7 @@ function ble/widget/vi-command/insert-mode {
 function ble/widget/vi-command/append-mode {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
   else
     if ! ble-edit/content/eolp; then
       ble/widget/.goto-char "$((_ble_edit_ind+1))"
@@ -256,7 +261,7 @@ function ble/widget/vi-command/append-mode {
 function ble/widget/vi-command/append-mode-at-end-of-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
   else
     local ret; ble-edit/content/find-logical-eol
     ble/widget/.goto-char "$ret"
@@ -266,7 +271,7 @@ function ble/widget/vi-command/append-mode-at-end-of-line {
 function ble/widget/vi-command/insert-mode-at-beginning-of-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
   else
     local ret; ble-edit/content/find-logical-bol
     ble/widget/.goto-char "$ret"
@@ -276,7 +281,7 @@ function ble/widget/vi-command/insert-mode-at-beginning-of-line {
 function ble/widget/vi-command/insert-mode-at-first-non-space {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
   else
     ble/widget/vi-command/first-non-space
     [[ ${_ble_edit_str:_ble_edit_ind:1} == [$' \t'] ]] &&
@@ -287,7 +292,7 @@ function ble/widget/vi-command/insert-mode-at-first-non-space {
 function ble/widget/vi-command/replace-mode {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
   else
     ble/widget/vi-command/.insert-mode "$arg" R
   fi
@@ -295,7 +300,7 @@ function ble/widget/vi-command/replace-mode {
 function ble/widget/vi-command/virtual-replace-mode {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
   else
     ble/widget/vi-command/.insert-mode "$arg" 1
   fi
@@ -335,7 +340,7 @@ function ble/keymap:vi/get-arg {
 function ble/widget/vi-command/append-arg {
   local ret ch=$1
   if [[ ! $ch ]]; then
-    local code="$((KEYS[${#KEYS[*]}-1]&ble_decode_MaskChar))"
+    local code=$((KEYS[${#KEYS[*]}-1]&ble_decode_MaskChar))
     ((code==0)) && return
     ble/util/c2s "$code"; ch=$ret
   fi
@@ -364,12 +369,18 @@ function ble/widget/vi-command/append-arg {
     fi
 
     _ble_edit_arg=
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
     return 1
   fi
 
   _ble_edit_arg="$_ble_edit_arg$ch"
+}
+function ble/widget/vi-command/check-doubled-operator-or {
+  if [[ ${_ble_edit_arg//[0-9]} ]]; then
+    ble/widget/vi-command/append-arg
+  else
+    ble/widget/"$@"
+  fi
 }
 
 function ble/widget/vi-command/copy-current-line {
@@ -542,8 +553,7 @@ function ble/widget/vi-command/linewise-goto.impl {
       fi
 
       if [[ $is_single_line ]]; then
-        ble/widget/.bell
-        ble/keymap:vi/check-single-command-mode
+        ble/widget/vi-command/bell
         return
       fi
     fi
@@ -574,8 +584,7 @@ function ble/widget/vi-command/linewise-goto.impl {
       fi
       ble/keymap:vi/check-single-command-mode
     elif [[ $flag ]]; then
-      ble/widget/.bell
-      ble/keymap:vi/check-single-command-mode
+      ble/widget/vi-command/bell
     fi
   else
     if [[ ! $nolx ]]; then
@@ -650,8 +659,7 @@ function ble/widget/vi-command/forward-char-toggle-case {
   local arg flag; ble/keymap:vi/get-arg 1
 
   if [[ $flag ]]; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   else
     local line=${_ble_edit_str:_ble_edit_ind:arg}
     line=${line%%$'\n'*}
@@ -863,7 +871,7 @@ function ble/widget/vi-command/forward-eol {
 function ble/widget/vi-command/paste.impl {
   local arg=$1 flag=$2 is_after=$3
   if [[ $flag ]]; then
-    ble/widget/.bell
+    ble/widget/vi-command/bell
     return 1
   fi
 
@@ -913,8 +921,7 @@ function ble/widget/vi-command/paste-before {
 function ble/widget/vi-command/kill-forward-char {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   else
     _ble_edit_arg=${arg}d
     ble/widget/vi-command/forward-char
@@ -923,8 +930,7 @@ function ble/widget/vi-command/kill-forward-char {
 function ble/widget/vi-command/kill-forward-char-and-insert {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   else
     _ble_edit_arg=${arg}c
     ble/widget/vi-command/forward-char
@@ -933,8 +939,7 @@ function ble/widget/vi-command/kill-forward-char-and-insert {
 function ble/widget/vi-command/kill-backward-char {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   else
     _ble_edit_arg=${arg}d
     ble/widget/vi-command/backward-char
@@ -943,8 +948,7 @@ function ble/widget/vi-command/kill-backward-char {
 function ble/widget/vi-command/kill-forward-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   else
     _ble_edit_arg=${arg}d
     ble/widget/vi-command/forward-eol
@@ -953,8 +957,7 @@ function ble/widget/vi-command/kill-forward-line {
 function ble/widget/vi-command/kill-forward-line-and-insert {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   else
     _ble_edit_arg=${arg}c
     ble/widget/vi-command/forward-eol
@@ -1190,8 +1193,7 @@ function ble/widget/vi-command/connect-line {
 function ble/widget/vi-command/insert-mode-at-forward-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   else
     local ret; ble-edit/content/find-logical-eol; local eol=$ret
     ble/widget/.goto-char "$eol"
@@ -1202,8 +1204,7 @@ function ble/widget/vi-command/insert-mode-at-forward-line {
 function ble/widget/vi-command/insert-mode-at-backward-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   else
     local ret; ble-edit/content/find-logical-bol; local bol=$ret
     ble/widget/.goto-char "$bol"
@@ -1362,8 +1363,7 @@ function ble/widget/vi-command/text-object/word.impl {
     local index=${#_ble_edit_str}
     ble-edit/content/nonbol-eolp "$index" && ((index--))
     ble/widget/.goto-char "$index"
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
     return 1
   fi
 
@@ -1415,8 +1415,7 @@ function ble/widget/vi-command/text-object/quote.impl {
     ble/widget/.goto-char "$beg"
     ble/widget/vi-command/exclusive-goto.impl "$end" "$flag"
   else
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
   fi
 }
 
@@ -1459,9 +1458,7 @@ function ble/widget/vi-command/text-object/block.impl {
     fi
   done
   if ((count)); then
-    # not yet implemented
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
     return
   fi
 
@@ -1475,9 +1472,7 @@ function ble/widget/vi-command/text-object/block.impl {
     fi
   done
   if ((count)); then
-    # not yet implemented
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
     return
   fi
 
@@ -1490,8 +1485,7 @@ function ble/widget/vi-command/text-object.hook {
   local key=$1
   local arg flag; ble/keymap:vi/get-arg 1
   if ! ble-decode-key/ischar "$key"; then
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode
+    ble/widget/vi-command/bell
     return
   fi
 
@@ -1511,8 +1505,7 @@ function ble/widget/vi-command/text-object.hook {
   ('is') ;;
   ('it') ;;
   (*)
-    ble/widget/.bell
-    ble/keymap:vi/check-single-command-mode ;;
+    ble/widget/vi-command/bell ;;
   esac
 }
 
@@ -1657,7 +1650,10 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'z -'   vi-command/redraw-line-and-first-non-space # 中央
   ble-bind -f 'z .'   vi-command/redraw-line-and-first-non-space # 最下行
 
-  ble-bind -f '~' vi-command/forward-char-toggle-case
+  ble-bind -f '~' 'vi-command/check-doubled-operator-or vi-command/forward-char-toggle-case'
+  ble-bind -f 'u' 'vi-command/check-doubled-operator-or vi-command/bell'
+  ble-bind -f 'U' 'vi-command/check-doubled-operator-or vi-command/bell'
+  ble-bind -f '?' 'vi-command/check-doubled-operator-or vi-command/bell'
 
   #----------------------------------------------------------------------------
   # bash
