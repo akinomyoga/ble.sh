@@ -46,7 +46,7 @@ function ble/keymap:vi/string#encode-rot13 {
 }
 
 #------------------------------------------------------------------------------
-# vi-insert/default, vi-command/default
+# vi-insert/default, vi_command/default
 
 function ble/widget/vi-insert/default {
   local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
@@ -69,7 +69,7 @@ function ble/widget/vi-insert/default {
   return 1
 }
 
-function ble/widget/vi-command/default {
+function ble/widget/vi_command/default {
   local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
 
   # メタ修飾付きの入力 M-key は ESC + key に分解する
@@ -81,6 +81,12 @@ function ble/widget/vi-command/default {
 
   return 1
 }
+
+function ble/widget/vi_omap/default {
+  ble/widget/vi_command/default || ble/widget/vi-command/bell
+  return 0
+}
+
 
 #------------------------------------------------------------------------------
 # repeat
@@ -1541,7 +1547,6 @@ function ble/widget/vi-command/text-object/last-index-of-chars {
   fi
 }
 function ble/widget/vi-command/text-object/block.impl {
-  # todo 実際に実行してみる
   local arg=$1 flag=$2 type=$3
   local ret paren=${type:1} lparen=${type:1:1} rparen=${type:2:1}
   local axis=$_ble_edit_ind
@@ -1631,8 +1636,6 @@ function ble/widget/vi-command/text-object {
 ## 関数 ble/keymap:vi/setup-map
 ## @var[in] ble_bind_keymap
 function ble/keymap:vi/setup-map {
-  ble-bind -f __default__ vi-command/default
-
   ble-bind -f 0 vi-command/append-arg
   ble-bind -f 1 vi-command/append-arg
   ble-bind -f 2 vi-command/append-arg
@@ -1724,6 +1727,8 @@ function ble-decode-keymap:vi_command/define {
 
   ble/keymap:vi/setup-map
 
+  ble-bind -f __default__ vi_command/default
+
   ble-bind -f a      vi-command/append-mode
   ble-bind -f A      vi-command/append-mode-at-end-of-line
   ble-bind -f i      vi-command/insert-mode
@@ -1786,8 +1791,7 @@ function ble-decode-keymap:vi_omap/define {
   local ble_bind_keymap=vi_omap
   ble/keymap:vi/setup-map
 
-  # to invoke ble/keymap:vi/adjust-command-mode
-  ble-bind -f __default__ vi-command/bell
+  ble-bind -f __default__ vi_omap/default
 
   ble-bind -f a   vi-command/text-object
   ble-bind -f i   vi-command/text-object
