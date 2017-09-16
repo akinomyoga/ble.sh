@@ -461,6 +461,12 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2017-09-16
+
+  * B-bar: vim-surround.sh: ds cs cS yS ySsd ySSd S gS 'C-s' 'C-g s' 'C-g S'
+
+    現在のところ特に要望は出ていないが ds cs あたりは使いたくなるのではないかと思われる。
+
 2017-09-15
 
   * B-bar: C-@ と accept-and-next に関する提案
@@ -524,6 +530,9 @@ tech
     従って、処理を行った後の beg 及び end の位置は変更を受けることになる。
     これは operator:* 関数内からいじっても良いということにすれば現在の枠組みで十分対応可能である。
     何れにしてもそれぞれの機能の動作について調べてから実装する必要はある。
+
+    →実際に < > の実装で (type == char のときに) beg を修正することにした。
+    ! = gq zf の実装では < > の実装を参考にすれば良い。
 
     * todo: ! gq = g@ zf
 
@@ -616,103 +625,7 @@ tech
     vimindex に色々なテキストオブジェクトについて記述がある。
     [ydc] が設定されている時に [ia] が来たら、その時点で別のキーマップに切り替えるなどすれば良いのだろうか。
 
-    更に ysiw" は体系としてかなり謎である → これは独立した項目 #tmp1 を立てて対応することにした。
-
-
-  * B-bar: vi-mode ysiw" [#tmp1]
-
-    | 更に ysiw" は体系としてかなり謎である。
-    | と思って vim で試してみたら動かない。ys まで打った時点でエラーになる。
-    | もしかしてビジュアルモードの機能なんだろうか。と思ったけれどそうでもないようだ。
-    | 調べてみると surround.vim というのがあるようだ。拡張?
-    | そうだとすると恐らく "ys" に対して直接 bind しているのだろうと理解できる。
-    | - [surround.vimの使い方 | Memo on the Web](http://motw.mods.jp/Vim/surround.html)
-    | - [What does the "y" stand for in "ysiw"? · Issue #128 · tpope/vim-surround](https://github.com/tpope/vim-surround/issues/128)
-    | 
-    | でもそれをやると "yy" がその場で実行されなくなる。"yy" に対しても同時に bind することを考慮する必要がある。
-    | が、もっと体系的なやりかたはないのだろうか。
-    | →よく考えたら "y3y" などにも対応しなければならないので単に "yy" に bind するだけでは駄目だ。
-    | 
-    | surround.vim を除けば i の直後には引数などが来る余地はないようなので (試した)、
-    | 単に次のキーを一つ読み取るという具合にすれば良い。下手に keymap を追加すると
-    | insert-mode で単に ble-decode/keymap/pop などとしているのがずれて問題になるので、
-    | 下手に insert-mode を呼び出せない (もしくはその追加した keymap に追加する widget では必ず最初に pop をすれば良い?)。
-    | 
-    | 取り敢えず入れてみた。結局日本語のページは古くて使い物にならなかった?
-    | よく分からないので surround.vim 本家に書かれている方法でインストールした。
-    | 
-    | | surround.vim インストール
-    | |
-    | | $ mkdir -p ~/.vim/autoload ~/.vim/bundle && curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
-    | | $ (cd ~/.vim/bundle && git clone https://github.com/tpope/vim-sensible.git)
-    | | $ (cd ~/.vim/bundle && git clone git://github.com/tpope/vim-surround.git)
-    | | 
-    | | ~/.vimrc に以下を追記
-    | | 
-    | |   execute pathogen#infect()
-    | |   filetype plugin indent on
-    | | 
-    | | vim を起動して以下を実行
-    | | 
-    | |   :Helptags
-    | |   :help surround
-    | 
-    | 試しに y3y としても問題は起こらない。ysiw" も動いている。
-    | 更に y3ys でも y3y + s と解釈されているようだ。
-    | どの様に処理しているのかは気になる。中を覗いてみる。
-    | 
-    |   nmap ys  <Plug>Ysurround
-    | 
-    | という所が怪しい。更に、Ysurround は以下の行にしか現れない。
-    | 
-    |   nnoremap <silent> <Plug>Ysurround  :<C-U>set opfunc=<SID>opfunc<CR>g@
-    |   nnoremap <silent> <Plug>YSurround  :<C-U>set opfunc=<SID>opfunc2<CR>g@
-    | 
-    | どうやら opfunc=... となっているのでオペレータとして実装されている?
-    | 更に s:opfunc, s:opfunc2 という関数が内部で実装されているので、これが本体だろう。
-    | 
-    | しかしやはり ys から直接束縛している。そして問題は起こっていない。
-    | これが意味するところは nmap に対する設定は、
-    | オペレータが設定されている時の動作には影響を与えないという事である。
-    | 
-    | 後気付いたことは引数を認識していない気がするという事。
-    | 2ysiw" も ys2iw" も変わらなかった。
-    | 更に y2s はエラーになったのでやはり "ys" の組で登録されているという事。
-    | 
-    | うーん。調べると nmap (normal-mode map) と
-    | omap (operator-pending mode map) という二種類のモードに対する map が存在して、
-    | 更にそれぞれ独立に設定を行うことができるようだ。
-    | 更に同時に設定ができるコマンドも用意されている。
-    | 
-    | うーん。vi_omap を新しく導入することにするか。
-    | 何が必要か。keymap を作ること自体はそんなに難しくはない。
-    | さて問題なのは元の状態に戻るというのをどのように実装するかだ。
-    | check-single-command に類似のものを更に用意しなければならないのか。
-    | と思ったが、check-single-command に追加の実装をすれば良いだけの気もしてきた。
-    | 
-    | 後、念のため現在のモードの表示については vi_omap も vi_command と同じ扱いにするという事。
-
-    [結論] vim には nmap の他に omap という独立した keymap が存在して、
-    それぞれ独立に設定を行うことができる。ble.sh の実装でもこれにならう必要がある。
-
-    http://vim-jp.org/vimdoc-ja/map.html
-     \_ map           ... normal, visual, select, operator-pending
-     |   \_ nmap      ... normal mode
-     |   \_ vmap      ... visual/select mode
-     |   |   \_ smap  ... select mode
-     |   |   \_ xmap  ... visual mode
-     |   \_ omap      ... operator-pending mode
-     \_ lmap          ... lang-arg, insert, commandline
-         \_ map!      ... insert, commandline
-             \_ imap  ... insert
-             \_ cmap  ... commandline
-
-    ys は nmap にだけ設定を行う。これにより yy などと矛盾しなくて済む。
-
-    [変更]
-
-    先ず初めに omap を追加する必要がある。
-
+    更に ysiw" は体系としてかなり謎である → これは独立した項目 #D0446 を立てて対応することにした。
 
 2017-09-08
 
@@ -2275,9 +2188,116 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2017-09-16
+
+  * B-bar: vi-mode ysiw" [#D0446]
+
+    | 更に ysiw" は体系としてかなり謎である。
+    | と思って vim で試してみたら動かない。ys まで打った時点でエラーになる。
+    | もしかしてビジュアルモードの機能なんだろうか。と思ったけれどそうでもないようだ。
+    | 調べてみると surround.vim というのがあるようだ。拡張?
+    | そうだとすると恐らく "ys" に対して直接 bind しているのだろうと理解できる。
+    | - [surround.vimの使い方 | Memo on the Web](http://motw.mods.jp/Vim/surround.html)
+    | - [What does the "y" stand for in "ysiw"? · Issue #128 · tpope/vim-surround](https://github.com/tpope/vim-surround/issues/128)
+    | 
+    | でもそれをやると "yy" がその場で実行されなくなる。"yy" に対しても同時に bind することを考慮する必要がある。
+    | が、もっと体系的なやりかたはないのだろうか。
+    | →よく考えたら "y3y" などにも対応しなければならないので単に "yy" に bind するだけでは駄目だ。
+    | 
+    | surround.vim を除けば i の直後には引数などが来る余地はないようなので (試した)、
+    | 単に次のキーを一つ読み取るという具合にすれば良い。下手に keymap を追加すると
+    | insert-mode で単に ble-decode/keymap/pop などとしているのがずれて問題になるので、
+    | 下手に insert-mode を呼び出せない (もしくはその追加した keymap に追加する widget では必ず最初に pop をすれば良い?)。
+    | 
+    | 取り敢えず入れてみた。結局日本語のページは古くて使い物にならなかった?
+    | よく分からないので surround.vim 本家に書かれている方法でインストールした。
+    | 
+    | | surround.vim インストール
+    | |
+    | | $ mkdir -p ~/.vim/autoload ~/.vim/bundle && curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+    | | $ (cd ~/.vim/bundle && git clone https://github.com/tpope/vim-sensible.git)
+    | | $ (cd ~/.vim/bundle && git clone git://github.com/tpope/vim-surround.git)
+    | | 
+    | | ~/.vimrc に以下を追記
+    | | 
+    | |   execute pathogen#infect()
+    | |   filetype plugin indent on
+    | | 
+    | | vim を起動して以下を実行
+    | | 
+    | |   :Helptags
+    | |   :help surround
+    | 
+    | 試しに y3y としても問題は起こらない。ysiw" も動いている。
+    | 更に y3ys でも y3y + s と解釈されているようだ。
+    | どの様に処理しているのかは気になる。中を覗いてみる。
+    | 
+    |   nmap ys  <Plug>Ysurround
+    | 
+    | という所が怪しい。更に、Ysurround は以下の行にしか現れない。
+    | 
+    |   nnoremap <silent> <Plug>Ysurround  :<C-U>set opfunc=<SID>opfunc<CR>g@
+    |   nnoremap <silent> <Plug>YSurround  :<C-U>set opfunc=<SID>opfunc2<CR>g@
+    | 
+    | どうやら opfunc=... となっているのでオペレータとして実装されている?
+    | 更に s:opfunc, s:opfunc2 という関数が内部で実装されているので、これが本体だろう。
+    | 
+    | しかしやはり ys から直接束縛している。そして問題は起こっていない。
+    | これが意味するところは nmap に対する設定は、
+    | オペレータが設定されている時の動作には影響を与えないという事である。
+    | 
+    | 後気付いたことは引数を認識していない気がするという事。
+    | 2ysiw" も ys2iw" も変わらなかった。
+    | 更に y2s はエラーになったのでやはり "ys" の組で登録されているという事。
+    | 
+    | うーん。調べると nmap (normal-mode map) と
+    | omap (operator-pending mode map) という二種類のモードに対する map が存在して、
+    | 更にそれぞれ独立に設定を行うことができるようだ。
+    | 更に同時に設定ができるコマンドも用意されている。
+    | 
+    | うーん。vi_omap を新しく導入することにするか。
+    | 何が必要か。keymap を作ること自体はそんなに難しくはない。
+    | さて問題なのは元の状態に戻るというのをどのように実装するかだ。
+    | check-single-command に類似のものを更に用意しなければならないのか。
+    | と思ったが、check-single-command に追加の実装をすれば良いだけの気もしてきた。
+    | 
+    | 後、念のため現在のモードの表示については vi_omap も vi_command と同じ扱いにするという事。
+
+    [結論] vim には nmap の他に omap という独立した keymap が存在して、
+    それぞれ独立に設定を行うことができる。ble.sh の実装でもこれにならう必要がある。
+
+    http://vim-jp.org/vimdoc-ja/map.html
+     \_ map           ... normal, visual, select, operator-pending
+     |   \_ nmap      ... normal mode
+     |   \_ vmap      ... visual/select mode
+     |   |   \_ smap  ... select mode
+     |   |   \_ xmap  ... visual mode
+     |   \_ omap      ... operator-pending mode
+     \_ lmap          ... lang-arg, insert, commandline
+         \_ map!      ... insert, commandline
+             \_ imap  ... insert
+             \_ cmap  ... commandline
+
+    ys は nmap にだけ設定を行う。これにより yy などと矛盾しなくて済む。
+
+    [変更]
+
+    * done: 先ず初めに omap を追加する必要がある。
+
+    * cancel: 次に外部ファイルを読み込む仕組みを整える必要がある。
+      或いは、取り敢えずは単に source "$_ble_base/lib/vim-surround.sh" を実行してもらうか。
+      結局現状では ble-source または ble-import を実装するとしても $_ble_base/lib を前置するぐらいしかない。
+      直接指定してもらうので問題ない気がする。
+
+      いよいよ ble-import などが必要になるのは複数のライブラリの間で依存関係が合って、
+      更にそれぞれのライブラリを何処にインストールしているかを事前に決定できないときである。
+      現状では全て $_ble_base/lib に放り込むので問題ない。
+
+    * done: 取り敢えず ys/yss だけ実装する。実装した。
+
 2017-09-15
 
-  * vi-mode: operator: < >
+  * vi-mode: operator: < > [#D0445]
 
     オペレータの >< の動作について調べている。
     次の行の非空白行頭に行くときは前の行に範囲が縮まる。
@@ -2292,7 +2312,7 @@ tech
     この時に < > を実行するとはじめにあった空白は消える。
     つまり、最初に "表示" に従って全てタブに変換されてしまうようである。
 
-  * 2017-09-08 vi-mode: ~
+  * 2017-09-08 vi-mode: ~ [#D0444]
 
     大文字小文字を変換する。ydc の引数には対応していない。
     また変更範囲に大文字と小文字が混在している場合には、
@@ -2304,7 +2324,7 @@ tech
     移動先は l と同じ扱いで良いのだろうか。試してみた限り同じように見える。
     但し一番右に行ってカーソルが動かなかったとしても bell は鳴らない。
 
-  * B-bar: iw aw の違い
+  * B-bar: iw aw の違い [#D0443]
 
     これは対応したつもりで対応できていなかったと思ったが、
     改めて調べてみると aw の動作は思っていたよりもずっと複雑だった。
@@ -2321,12 +2341,12 @@ tech
 
 2017-09-13
 
-  * ble-edit: 補完候補の表示で座標計算がずれる。
+  * ble-edit: 補完候補の表示で座標計算がずれる。 [#D0442]
 
     info を通して表示しているはずだから、info 周りの座標系参加 ble-form#panel が悪い。
     これは書き換えのケアレスミスだった。
 
-  * ble-edit: info が表示されているとき一番下の行で、上の行に侵食する。
+  * ble-edit: info が表示されているとき一番下の行で、上の行に侵食する。 [#D0441]
 
     ind の数が足りていないのではないかという疑惑がある。
     と思ったら set-height の方では ind していたけれども、
@@ -2334,7 +2354,7 @@ tech
 
 2017-09-12
 
-  * ble-edit/info が一番下の行で消える問題
+  * ble-edit/info が一番下の行で消える問題 [#D0440]
 
     ターミナルの一番下にいる時に C-q C-j で本体の行数を高くした時に info が消える。
     これは、render/update が info の高さを認識していないということと、

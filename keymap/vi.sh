@@ -343,7 +343,7 @@ function ble/keymap:vi/get-arg {
 function ble/widget/vi-command/append-arg {
   local ret ch=$1
   if [[ ! $ch ]]; then
-    local code=$((KEYS[${#KEYS[*]}-1]&ble_decode_MaskChar))
+    local code=$((KEYS[0]&ble_decode_MaskChar))
     ((code==0)) && return
     ble/util/c2s "$code"; ch=$ret
   fi
@@ -360,12 +360,7 @@ function ble/widget/vi-command/append-arg {
 
 function ble/widget/vi-command/set-operator {
   local ret ch=$1
-  if [[ ! $ch ]]; then
-    local code=$((KEYS[${#KEYS[*]}-1]&ble_decode_MaskChar))
-    ((code==0)) && return
-    ble/util/c2s "$code"; ch=$ret
-  fi
-  ble-assert '[[ $ch != *[0-9]* ]]'
+  ble-assert '[[ $ch != *[0-9]* ]]' "ch=$ch"
 
   if [[ ! ${_ble_edit_arg//[0-9]} ]]; then
     # 1つ目のオペレータ
@@ -374,6 +369,7 @@ function ble/widget/vi-command/set-operator {
   else
     # 2つ目のオペレータ (yy dd cc)
     if [[ $_ble_edit_arg == *"$ch"* ]]; then
+      _ble_edit_arg=
       if [[ $2 ]]; then
         ble/widget/vi-command/"$2"
         return
@@ -382,7 +378,9 @@ function ble/widget/vi-command/set-operator {
         ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
         ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
         ((end<${#_ble_edit_str}&&end++))
+        local _ble_keymap_vi_operator_delayed=
         ble/keymap:vi/operator:"$ch" "$beg" "$end" line
+        [[ $_ble_keymap_vi_operator_delayed ]] && return
         ble/widget/vi-command/first-non-space
         return
       fi
@@ -531,7 +529,7 @@ function ble/keymap:vi/operator:increase-indent {
   done
 
   IFS=$'\n' eval 'local content=${arr2[*]}'
-  ble/widget/.replace-range "$beg" "$end" "$content"
+  ble/widget/.replace-range "$beg" "$end" "$content" 1
   [[ $type == char ]] && ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
 }
 function ble/keymap:vi/operator:L { # operator <
@@ -541,32 +539,46 @@ function ble/keymap:vi/operator:R { # operator >
   ble/keymap:vi/operator:increase-indent 8 "$3"
 }
 
-function ble/widget/vi-command/exclusive-goto.impl {
-  local index=$1 flag=$2 nobell=$3
+## 関数 ble/widget/vi-command/exclusive-range.impl src dst flag nobell
+##   @param[in] src, dst
+##   @param[in] flag
+##   @param[in] nobell
+function ble/widget/vi-command/exclusive-range.impl {
+  local src=$1 dst=$2 flag=$3 nobell=$4
   if [[ $flag ]]; then
     if [[ $flag == [cd] ]]; then
-      ble/widget/.kill-range "$_ble_edit_ind" "$index" 0
+      ble/widget/.kill-range "$src" "$dst" 0
       if [[ $flag == c ]]; then
         ble/widget/vi-command/.insert-mode
       else
         ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char _ble_edit_ind-1
       fi
     elif ble/util/isfunction ble/keymap:vi/operator:"$flag"; then
-      local beg end; ((index<_ble_edit_ind?(beg=index,end=_ble_edit_ind):(beg=_ble_edit_ind,end=index)))
+      local beg end; ((dst<src?(beg=dst,end=src):(beg=src,end=dst)))
+      local _ble_keymap_vi_operator_delayed=
       ble/keymap:vi/operator:"$flag" "$beg" "$end" char
+      [[ $_ble_keymap_vi_operator_delayed ]] && return
       ((beg!=_ble_edit_ind)) && ble/widget/.goto-char "$beg"
     else
       ble/widget/.bell
     fi
   else
-    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
-    if ((index!=_ble_edit_ind)); then
-      ble/widget/.goto-char index
+    ble/keymap:vi/needs-eol-fix "$dst" && ((dst--))
+    if ((dst!=_ble_edit_ind)); then
+      ble/widget/.goto-char dst
     else
       ((nobell)) || ble/widget/.bell
     fi
   fi
   ble/keymap:vi/adjust-command-mode
+}
+
+## 関数 ble/widget/vi-command/exclusive-goto.impl index flag nobell
+##   @param[in] index
+##   @param[in] flag
+##   @param[in] nobell
+function ble/widget/vi-command/exclusive-goto.impl {
+  ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$@"
 }
 
 function ble/widget/vi-command/inclusive-goto.impl {
@@ -656,7 +668,9 @@ function ble/widget/vi-command/linewise-goto.impl {
         ble/widget/vi-command/first-non-space
       fi
     elif ble/util/isfunction ble/keymap:vi/operator:"$flag"; then
+      local _ble_keymap_vi_operator_delayed=
       ble/keymap:vi/operator:"$flag" "$beg" "$end" line
+      [[ $_ble_keymap_vi_operator_delayed ]] && return
       if ((reverted)); then
         if [[ :$opts: == *:preserve_column:* ]]; then
           ble/string#count-char "${_ble_edit_str:beg:ind-beg}" $'\n'
@@ -1429,7 +1443,7 @@ function ble/widget/vi-command/text-object/word.impl {
   local space=$' \t' nl=$'\n' ifs=$' \t\n'
 
   local rex_word
-  if [[ $type == *W* ]]; then
+  if [[ $type == ?W ]]; then
     rex_word="[^$ifs]+"
   else
     rex_word="[A-Za-z_]+|[^A-Za-z_$space]+"
@@ -1439,7 +1453,7 @@ function ble/widget/vi-command/text-object/word.impl {
   [[ ${_ble_edit_str::_ble_edit_ind+1} =~ $rex ]]
   local beg=$((_ble_edit_ind+1-${#BASH_REMATCH}))
 
-  if [[ $type == *i* ]]; then
+  if [[ $type == i* ]]; then
     rex="(($rex_word)$nl?|[$space]+$nl?){$arg}"
   else
     local rex1=
@@ -1456,8 +1470,7 @@ function ble/widget/vi-command/text-object/word.impl {
 
   local end=$((_ble_edit_ind+${#BASH_REMATCH}))
   [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
-  ble/widget/.goto-char "$beg"
-  ble/widget/vi-command/exclusive-goto.impl "$end" "$flag"
+  ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
 }
 
 function ble/widget/vi-command/text-object/find-next-quote {
@@ -1498,9 +1511,8 @@ function ble/widget/vi-command/text-object/quote.impl {
 
   # Note: ビジュアルモードでは繰り返し使うと範囲を拡大する (?) らしい
   if [[ $beg && $end ]]; then
-    [[ $type == *i* ]] && ((beg++,end--))
-    ble/widget/.goto-char "$beg"
-    ble/widget/vi-command/exclusive-goto.impl "$end" "$flag"
+    [[ $type == i* ]] && ((beg++,end--))
+    ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
   else
     ble/widget/vi-command/bell
   fi
@@ -1564,8 +1576,7 @@ function ble/widget/vi-command/text-object/block.impl {
   fi
 
   [[ $type == *i* ]] && ((beg++,end--))
-  ble/widget/.goto-char "$beg"
-  ble/widget/vi-command/exclusive-goto.impl "$end" "$flag"
+  ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
 }
 
 function ble/widget/vi-command/text-object.hook {
@@ -1632,20 +1643,20 @@ function ble/keymap:vi/setup-map {
   ble-bind -f 7 vi-command/append-arg
   ble-bind -f 8 vi-command/append-arg
   ble-bind -f 9 vi-command/append-arg
-  ble-bind -f y vi-command/set-operator
+  ble-bind -f y 'vi-command/set-operator y'
   ble-bind -f d 'vi-command/set-operator d kill-current-line'
   ble-bind -f c 'vi-command/set-operator c kill-current-line-and-insert'
   ble-bind -f '<' 'vi-command/set-operator L'
   ble-bind -f '>' 'vi-command/set-operator R'
-  ble-bind -f 'g ~' vi-command/set-operator
-  ble-bind -f 'g u' vi-command/set-operator
-  ble-bind -f 'g U' vi-command/set-operator
-  ble-bind -f 'g ?' vi-command/set-operator
-  # ble-bind -f 'g @' vi-command/set-operator
-  # ble-bind -f '!' vi-command/set-operator
-  # ble-bind -f '=' vi-command/set-operator
-  # ble-bind -f 'g q' vi-command/set-operator
-  # ble-bind -f 'z f' vi-command/set-operator
+  ble-bind -f 'g ~' 'vi-command/set-operator ~'
+  ble-bind -f 'g u' 'vi-command/set-operator u'
+  ble-bind -f 'g U' 'vi-command/set-operator U'
+  ble-bind -f 'g ?' 'vi-command/set-operator ?'
+  # ble-bind -f 'g @' 'vi-command/set-operator @'
+  # ble-bind -f '!'   'vi-command/set-operator !'
+  # ble-bind -f '='   'vi-command/set-operator ='
+  # ble-bind -f 'g q' 'vi-command/set-operator q'
+  # ble-bind -f 'z f' 'vi-command/set-operator f'
 
   ble-bind -f home  vi-command/beginning-of-line
   ble-bind -f '$'   vi-command/forward-eol
@@ -1775,13 +1786,16 @@ function ble-decode-keymap:vi_omap/define {
   local ble_bind_keymap=vi_omap
   ble/keymap:vi/setup-map
 
+  # to invoke ble/keymap:vi/adjust-command-mode
+  ble-bind -f __default__ vi-command/bell
+
   ble-bind -f a   vi-command/text-object
   ble-bind -f i   vi-command/text-object
-                  
-  ble-bind -f '~' vi-command/set-operator
-  ble-bind -f 'u' vi-command/set-operator
-  ble-bind -f 'U' vi-command/set-operator
-  ble-bind -f '?' vi-command/set-operator
+
+  ble-bind -f '~' 'vi-command/set-operator ~'
+  ble-bind -f 'u' 'vi-command/set-operator u'
+  ble-bind -f 'U' 'vi-command/set-operator U'
+  ble-bind -f '?' 'vi-command/set-operator ?'
 }
 
 #------------------------------------------------------------------------------

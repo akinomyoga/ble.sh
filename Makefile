@@ -20,18 +20,16 @@ ifeq ($(GAWK),)
   endif
 endif
 
-PP:=$(GAWK) -f ext/mwg_pp.awk
+MWGPP:=$(GAWK) -f ext/mwg_pp.awk
 
 FULLVER:=0.2.alpha
 
 OUTDIR:=out
-outdirs+=$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap
-$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap:
-	mkdir -p $@
+outdirs+=$(OUTDIR)
 
 outfiles+=$(OUTDIR)/ble.sh
 $(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-edit.sh ble-color.sh ble-syntax.sh ble-form.sh | $(OUTDIR)
-	$(PP) $< >/dev/null
+	$(MWGPP) $< >/dev/null
 
 outfiles+=$(OUTDIR)/term.sh
 $(OUTDIR)/term.sh: term.sh | $(OUTDIR)
@@ -46,14 +44,23 @@ outfiles+=$(OUTDIR)/ignoreeof-messages.txt
 $(OUTDIR)/ignoreeof-messages.txt: ignoreeof-messages.txt | $(OUTDIR)
 	cp -p $< $@
 
+outdirs += $(OUTDIR)/cmap
+outfiles += $(OUTDIR)/cmap/default.sh
+$(OUTDIR)/cmap/%.sh: cmap/%.sh | $(OUTDIR)/cmap
+	cp -p $< $@
+
+outdirs += $(OUTDIR)/keymap
 outfiles += $(OUTDIR)/keymap/emacs.sh $(OUTDIR)/keymap/vi.sh $(OUTDIR)/keymap/isearch.sh
 $(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
 	cp -p $< $@
 
-outfiles+=$(OUTDIR)/cmap/default.sh
-$(OUTDIR)/cmap/default.sh: cmap/default.sh | $(OUTDIR)/cmap
+outdirs += $(OUTDIR)/lib
+outfiles += $(OUTDIR)/lib/vim-surround.sh
+$(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
 
+$(outdirs):
+	mkdir -p $@
 all: $(outfiles)
 
 INSDIR = $(HOME)/.local/share/blesh
