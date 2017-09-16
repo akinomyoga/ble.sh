@@ -915,7 +915,11 @@ function ble-decode-key {
     if [[ $ent == 1:* ]]; then
       # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
       local command="${ent:2}"
-      ble-decode-key/.invoke-command || _ble_decode_key__seq=
+      if [[ $command ]]; then
+        ble-decode-key/.invoke-command
+      else
+        _ble_decode_key__seq=
+      fi
     elif [[ $ent == _ || $ent == _:* ]]; then
       # /_(:command)?/ (続き (1つ以上の有効なシーケンス) がある事を示す)
       _ble_decode_key__seq="${_ble_decode_key__seq}_$key"
@@ -985,7 +989,11 @@ function ble-decode-key/.invoke-partial-match {
     builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$last]}\""
     if [[ $ent == '_:'* ]]; then
       local command="${ent:2}"
-      ble-decode-key/.invoke-command || _ble_decode_key__seq=
+      if [[ $command ]]; then
+        ble-decode-key/.invoke-command
+      else
+        _ble_decode_key__seq=
+      fi
       ble-decode-key "$next"
       return 0
     else # ent = _
@@ -1057,18 +1065,16 @@ function ble-decode-key/.invoke-hook {
 #   部分一致などの場合に後続のキーが存在する場合には、それらは呼出元で管理しなければならない。
 #
 function ble-decode-key/.invoke-command {
-  if [[ $command ]]; then
-    local COMMAND=$command
-    local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
-    _ble_decode_key__seq=
+  [[ $command ]] || return 1
 
-    ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
-    builtin eval -- "$COMMAND"
-    ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
-    return 0
-  else
-    return 1
-  fi
+  local COMMAND=$command
+  local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
+  _ble_decode_key__seq=
+
+  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
+  builtin eval -- "$COMMAND"; local exit=$?
+  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
+  return "$exit"
 }
 
 # **** ble-bind ****
