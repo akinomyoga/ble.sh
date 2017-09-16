@@ -67,22 +67,34 @@ function ble/keymap:vi/operator:ys {
 
 function ble/widget/vim-surround.sh/ysurround.hook {
   local prefix= suffix=
-  local ret; ble/widget/vim-surround.sh/get-char-from-key "$1"
-  case "$ret" in
+
+  local ins= instype= ret
+  if (($1==(ble_decode_Ctrl|0x5D)||$1==(ble_decode_Ctrl|0x7D))); then # 0x5D = ], 0x7D = }
+    ins='}' instype=indent
+  elif ble/widget/vim-surround.sh/get-char-from-key "$1"; then
+    ins=$ret
+  fi
+
+  if [[ ! $ins ]]; then
+    ble/widget/vi-command/bell
+    return
+  fi
+
+  case "$ins" in
   (['<t'])
     ble/widget/vi-command/bell
     return ;;
   ('(') prefix='( ' suffix=' )' ;;
   ('[') prefix='[ ' suffix=' ]' ;;
   ('{') prefix='{ ' suffix=' }' ;;
-  (')') prefix='(' suffix=')' ;;
-  (']') prefix='[' suffix=']' ;;
-  ('}') prefix='{' suffix='}' ;;
-  ('>') prefix='<' suffix='>' ;;
+  (['b)']) prefix='(' suffix=')' ;;
+  (['r]']) prefix='[' suffix=']' ;;
+  (['B}']) prefix='{' suffix='}' ;;
+  (['r>']) prefix='<' suffix='>' ;;
   ([a-zA-Z])
     ble/widget/vi-command/bell
     return ;;
-  (*) prefix=$ret suffix=$ret ;;
+  (*) prefix=$ins suffix=$ins ;;
   esac
 
   local beg=${_ble_lib_vim_surround_sh_ys[0]}
@@ -95,6 +107,14 @@ function ble/widget/vim-surround.sh/ysurround.hook {
   if local rex=$'[ \t\n]+$'; [[ $text =~ $rex ]]; then
     ((end-=${#BASH_REMATCH}))
     text=${_ble_edit_str:beg:end-beg}
+  fi
+
+  if [[ $instype == indent ]]; then
+    ble-edit/content/find-logical-bol "$beg"; local bol=$ret
+    ble-edit/content/find-nol-from-bol "$bol"; local nol=$ret
+    text=${_ble_edit_str:bol:nol-bol}${text}
+    ble/keymap:vi/string#increase-indent "$text" 8
+    text=$'\n'$ret$'\n'${_ble_edit_str:bol:nol-bol}
   fi
 
   ble/widget/.replace-range "$beg" "$end" "$prefix$text$suffix" 1

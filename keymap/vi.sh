@@ -493,13 +493,10 @@ function ble/keymap:vi/expand-range-for-linewise-operator {
   fi
 }
 
-function ble/keymap:vi/operator:increase-indent {
-  local delta=$1 type=$2
-  [[ $type == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
-
-  ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
+function ble/keymap:vi/string#increase-indent {
+  local text=$1 delta=$2
   local space=$' \t'
-  local arr; ble/string#split arr $'\n' "${_ble_edit_str:beg:end-beg}"
+  local arr; ble/string#split arr $'\n' "$text"
   local arr2 line indent i len x r
   for line in "${arr[@]}"; do
     indent=${line%%[!$space]*}
@@ -534,8 +531,17 @@ function ble/keymap:vi/operator:increase-indent {
     ble/array#push arr2 "$indent$line"
   done
 
-  IFS=$'\n' eval 'local content=${arr2[*]}'
+  IFS=$'\n' eval 'ret=${arr2[*]}'
+
+}
+function ble/keymap:vi/operator:increase-indent {
+  local delta=$1 type=$2
+  [[ $type == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
+  ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
+
+  ble/keymap:vi/string#increase-indent "${_ble_edit_str:beg:end-beg}" "$delta"; local content=$ret
   ble/widget/.replace-range "$beg" "$end" "$content" 1
+
   [[ $type == char ]] && ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
 }
 function ble/keymap:vi/operator:left {
