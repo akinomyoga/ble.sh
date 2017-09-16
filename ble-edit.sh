@@ -2603,7 +2603,7 @@ function ble/widget/self-insert {
     if [[ :$ble_widget_self_insert_opts: == *:nolineext:* ]]; then
       if ((removed_width<arg)); then
         ble/widget/.bell
-        return
+        return 0
       fi
     fi
   fi
@@ -2616,6 +2616,7 @@ function ble/widget/self-insert {
       ):(
         _ble_edit_mark+=${#ins}-(iend-ibeg)))))
   _ble_edit_mark_active=
+  return 0
 }
 
 # quoted insert
