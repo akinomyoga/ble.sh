@@ -375,12 +375,11 @@ function ble/widget/vi-command/set-operator {
   else
     # 2つ目のオペレータ (yy dd cc)
     if [[ $_ble_edit_arg == *"$ch"* ]]; then
-      _ble_edit_arg=
       if [[ $2 ]]; then
-        ble/widget/vi-command/"$2"
+        ble/widget/vi-command/"$2" # _ble_edit_arg should be consumed here
         return
       elif ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
-        local arg flag; ble/keymap:vi/get-arg 1
+        local arg flag; ble/keymap:vi/get-arg 1 # _ble_edit_arg is consumed here
         ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
         ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
         ((end<${#_ble_edit_str}&&end++))
