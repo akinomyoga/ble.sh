@@ -612,25 +612,107 @@ tech
     | Bash の vi-mode にはないのですが、テキストオブジェクトを実装して欲しいです。
     | Zsh の vim-mode では実装されています。
 
-    これは実装したい。が、コマンド体型がよく分からないのでどのように dispatch するのが良いか微妙。
+    これは実装したい。が、コマンド体系がよく分からないのでどのように dispatch するのが良いか微妙。
     vimindex に色々なテキストオブジェクトについて記述がある。
     [ydc] が設定されている時に [ia] が来たら、その時点で別のキーマップに切り替えるなどすれば良いのだろうか。
 
-    更に ysiw" は体系としてかなり謎である。
-    と思って vim で試してみたら動かない。ys まで打った時点でエラーになる。
-    もしかしてビジュアルモードの機能なんだろうか。と思ったけれどそうでもないようだ。
-    調べてみると surround.vim というのがあるようだ。拡張?
-    そうだとすると恐らく "ys" に対して直接 bind しているのだろうと理解できる。
-    - [surround.vimの使い方 | Memo on the Web](http://motw.mods.jp/Vim/surround.html)
-    - [What does the "y" stand for in "ysiw"? · Issue #128 · tpope/vim-surround](https://github.com/tpope/vim-surround/issues/128)
+    更に ysiw" は体系としてかなり謎である → これは独立した項目 #tmp1 を立てて対応することにした。
 
-    でもそれをやると "yy" がその場で実行されなくなる。"yy" に対しても同時に bind することを考慮する必要がある。
-    が、もっと体系的なやりかたはないのだろうか。
 
-    surround.vim を除けば i の直後には引数などが来る余地はない (試した) ようなので、
-    単に次のキーを一つ読み取るという具合にすれば良い。下手に keymap を追加すると
-    insert-mode で単に ble-decode/keymap/pop などとしているのがずれて問題になるので、
-    下手に insert-mode を呼び出せない (もしくはその追加した keymap に追加する widget では必ず最初に pop をすれば良い?)。
+  * B-bar: vi-mode ysiw" [#tmp1]
+
+    | 更に ysiw" は体系としてかなり謎である。
+    | と思って vim で試してみたら動かない。ys まで打った時点でエラーになる。
+    | もしかしてビジュアルモードの機能なんだろうか。と思ったけれどそうでもないようだ。
+    | 調べてみると surround.vim というのがあるようだ。拡張?
+    | そうだとすると恐らく "ys" に対して直接 bind しているのだろうと理解できる。
+    | - [surround.vimの使い方 | Memo on the Web](http://motw.mods.jp/Vim/surround.html)
+    | - [What does the "y" stand for in "ysiw"? · Issue #128 · tpope/vim-surround](https://github.com/tpope/vim-surround/issues/128)
+    | 
+    | でもそれをやると "yy" がその場で実行されなくなる。"yy" に対しても同時に bind することを考慮する必要がある。
+    | が、もっと体系的なやりかたはないのだろうか。
+    | →よく考えたら "y3y" などにも対応しなければならないので単に "yy" に bind するだけでは駄目だ。
+    | 
+    | surround.vim を除けば i の直後には引数などが来る余地はないようなので (試した)、
+    | 単に次のキーを一つ読み取るという具合にすれば良い。下手に keymap を追加すると
+    | insert-mode で単に ble-decode/keymap/pop などとしているのがずれて問題になるので、
+    | 下手に insert-mode を呼び出せない (もしくはその追加した keymap に追加する widget では必ず最初に pop をすれば良い?)。
+    | 
+    | 取り敢えず入れてみた。結局日本語のページは古くて使い物にならなかった?
+    | よく分からないので surround.vim 本家に書かれている方法でインストールした。
+    | 
+    | | surround.vim インストール
+    | |
+    | | $ mkdir -p ~/.vim/autoload ~/.vim/bundle && curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
+    | | $ (cd ~/.vim/bundle && git clone https://github.com/tpope/vim-sensible.git)
+    | | $ (cd ~/.vim/bundle && git clone git://github.com/tpope/vim-surround.git)
+    | | 
+    | | ~/.vimrc に以下を追記
+    | | 
+    | |   execute pathogen#infect()
+    | |   filetype plugin indent on
+    | | 
+    | | vim を起動して以下を実行
+    | | 
+    | |   :Helptags
+    | |   :help surround
+    | 
+    | 試しに y3y としても問題は起こらない。ysiw" も動いている。
+    | 更に y3ys でも y3y + s と解釈されているようだ。
+    | どの様に処理しているのかは気になる。中を覗いてみる。
+    | 
+    |   nmap ys  <Plug>Ysurround
+    | 
+    | という所が怪しい。更に、Ysurround は以下の行にしか現れない。
+    | 
+    |   nnoremap <silent> <Plug>Ysurround  :<C-U>set opfunc=<SID>opfunc<CR>g@
+    |   nnoremap <silent> <Plug>YSurround  :<C-U>set opfunc=<SID>opfunc2<CR>g@
+    | 
+    | どうやら opfunc=... となっているのでオペレータとして実装されている?
+    | 更に s:opfunc, s:opfunc2 という関数が内部で実装されているので、これが本体だろう。
+    | 
+    | しかしやはり ys から直接束縛している。そして問題は起こっていない。
+    | これが意味するところは nmap に対する設定は、
+    | オペレータが設定されている時の動作には影響を与えないという事である。
+    | 
+    | 後気付いたことは引数を認識していない気がするという事。
+    | 2ysiw" も ys2iw" も変わらなかった。
+    | 更に y2s はエラーになったのでやはり "ys" の組で登録されているという事。
+    | 
+    | うーん。調べると nmap (normal-mode map) と
+    | omap (operator-pending mode map) という二種類のモードに対する map が存在して、
+    | 更にそれぞれ独立に設定を行うことができるようだ。
+    | 更に同時に設定ができるコマンドも用意されている。
+    | 
+    | うーん。vi_omap を新しく導入することにするか。
+    | 何が必要か。keymap を作ること自体はそんなに難しくはない。
+    | さて問題なのは元の状態に戻るというのをどのように実装するかだ。
+    | check-single-command に類似のものを更に用意しなければならないのか。
+    | と思ったが、check-single-command に追加の実装をすれば良いだけの気もしてきた。
+    | 
+    | 後、念のため現在のモードの表示については vi_omap も vi_command と同じ扱いにするという事。
+
+    [結論] vim には nmap の他に omap という独立した keymap が存在して、
+    それぞれ独立に設定を行うことができる。ble.sh の実装でもこれにならう必要がある。
+
+    http://vim-jp.org/vimdoc-ja/map.html
+     \_ map           ... normal, visual, select, operator-pending
+     |   \_ nmap      ... normal mode
+     |   \_ vmap      ... visual/select mode
+     |   |   \_ smap  ... select mode
+     |   |   \_ xmap  ... visual mode
+     |   \_ omap      ... operator-pending mode
+     \_ lmap          ... lang-arg, insert, commandline
+         \_ map!      ... insert, commandline
+             \_ imap  ... insert
+             \_ cmap  ... commandline
+
+    ys は nmap にだけ設定を行う。これにより yy などと矛盾しなくて済む。
+
+    [変更]
+
+    先ず初めに omap を追加する必要がある。
+
 
 2017-09-08
 
