@@ -538,10 +538,10 @@ function ble/keymap:vi/operator:increase-indent {
   ble/widget/.replace-range "$beg" "$end" "$content" 1
   [[ $type == char ]] && ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
 }
-function ble/keymap:vi/operator:L { # operator <
+function ble/keymap:vi/operator:left {
   ble/keymap:vi/operator:increase-indent -8 "$3"
 }
-function ble/keymap:vi/operator:R { # operator >
+function ble/keymap:vi/operator:right {
   ble/keymap:vi/operator:increase-indent 8 "$3"
 }
 
@@ -1649,8 +1649,8 @@ function ble/keymap:vi/setup-map {
   ble-bind -f y 'vi-command/set-operator y'
   ble-bind -f d 'vi-command/set-operator d kill-current-line'
   ble-bind -f c 'vi-command/set-operator c kill-current-line-and-insert'
-  ble-bind -f '<' 'vi-command/set-operator L'
-  ble-bind -f '>' 'vi-command/set-operator R'
+  ble-bind -f '<' 'vi-command/set-operator left'
+  ble-bind -f '>' 'vi-command/set-operator right'
   ble-bind -f 'g ~' 'vi-command/set-operator ~'
   ble-bind -f 'g u' 'vi-command/set-operator u'
   ble-bind -f 'g U' 'vi-command/set-operator U'

@@ -463,6 +463,10 @@ tech
 
 2017-09-16
 
+  * vi-mode merge 直前に一括して行う仕様変更
+
+    vi_command は vi_nmap に変更する
+
   * B-bar: vim-surround.sh: ds cs cS yS ySsd ySSd S gS 'C-s' 'C-g s' 'C-g S'
 
     現在のところ特に要望は出ていないが ds cs あたりは使いたくなるのではないかと思われる。
