@@ -463,49 +463,15 @@ tech
 
 2017-09-17
 
-  * B-bar: f が失敗した時にも検索を記録する。 [#tmp1]
+  * vi-mode: imap C-k
 
-    更に提示された :help f を見ると digraph や Unicode 結合文字にも対応しているようだ。
+    ところで C-k は元々 (readline でも) kill-line だったところを digraph にしてしまってよかったのだろうか。
+    そもそも digraph を使う機会なんてそんなになさそうだし、kill-line の方が便利なのではないだろうか。
+    これはやはりマニュアルに記述して、実際には対応しないという方法のほうが良いのではないだろうか。
 
-    | digraph には対応できるけれども、Unicode の結合文字についてはそもそも現状の ble.sh の枠組みで取り扱えていないので駄目。
-    | さて digraph http://vim-jp.org/vimdoc-ja/digraph.html を参照すると普通のアルファベットの組で digraph が登録されている。
-    | 更に :help r などを参照してみるとこれも digraph を受け取るようになっている。
-    | :dig を参考に試しに rNU として見たが、N が入力されて "U" によって undo されてしまう。
-    | 引数に指定する場合には digraph-arg というのを参照しなければならないということか。
-    | と思ったら C-k に続いて入力しなければならないようだ。
-    |
-    | さて、digraph に対応するにはどうしたら良いか。
-    | _ble_decode_key__hook だと問答無用で一文字だけ取ってしまうので駄目だ。
-    | 或いは、_ble_decode_key__hook のチェーンを作って無理やり処理するか。
-    |
-    | それよりは cmap を登録した方が良い様な気もする。
-    | しかし個別に登録すると大変である。
-    | といっても結局はテーブルを作って処理することになるのだから、
-    | 余り変わらないのかもしれない。
-    |
-    | 或いは新しい keymap を追加してしまうことにするか。
-    | と思ったら、よく考えると :help f に lmap が効くと書かれている。
-    | lmap と言っているのは lang-arg といっているもので、
-    | もしかするとこれが一文字引数を受け取るための keymap なのではないだろうか。
-    |
-    | 更に vi_digraph のような感じの keymap を用意するのが良さそうだ。
-
-    先に digraph に対応してから考える。
+    bash が C-k を kill-line にしているので、やはり C-k は kill-line であるべきだ。
 
   * B-bar: vim-surround.sh: ds cs $( \r ) $(( \r ))
-
-  * vi-mode: digraph 対応
-
-    先に #tmp1 で考察したように keymap を生成するのが良いだろう。
-
-    digraph の一覧は http://vim-jp.org/vimdoc-ja/digraph.html を wget して加工する。
-    HTML 実体参照 (&nbsp;&lt;&gt;&quot;) を戻して適当に列を切り出す。
-    keymap/vi_digraph.txt に保存した。
-
-    vi_digraph の keymap は巨大なので vi.sh が更新される度に再生成するのは損である。
-    という訳で vi_digraph.sh に分離して頻繁に更新しなくても良いようにする。
-    通常文字にしか依存しないので [[ $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]
-    のキャッシュ更新用のチェックも外して良いだろう。
 
   * B-bar: undo
 
@@ -2294,11 +2260,63 @@ tech
 
 2017-09-17
 
-  * 2017-09-04 vi-mode: 全てのキー入力を横取りできているかどうかを確認する
+  * B-bar: f が失敗した時にも検索を記録する。 [#D0453]
+
+    更に提示された :help f を見ると digraph や Unicode 結合文字にも対応しているようだ。
+
+    | digraph には対応できるけれども、Unicode の結合文字についてはそもそも現状の ble.sh の枠組みで取り扱えていないので駄目。
+    | さて digraph http://vim-jp.org/vimdoc-ja/digraph.html を参照すると普通のアルファベットの組で digraph が登録されている。
+    | 更に :help r などを参照してみるとこれも digraph を受け取るようになっている。
+    | :dig を参考に試しに rNU として見たが、N が入力されて "U" によって undo されてしまう。
+    | 引数に指定する場合には digraph-arg というのを参照しなければならないということか。
+    | と思ったら C-k に続いて入力しなければならないようだ。
+    |
+    | さて、digraph に対応するにはどうしたら良いか。
+    | _ble_decode_key__hook だと問答無用で一文字だけ取ってしまうので駄目だ。
+    | 或いは、_ble_decode_key__hook のチェーンを作って無理やり処理するか。
+    |
+    | それよりは cmap を登録した方が良い様な気もする。
+    | しかし個別に登録すると大変である。
+    | といっても結局はテーブルを作って処理することになるのだから、
+    | 余り変わらないのかもしれない。
+    |
+    | 或いは新しい keymap を追加してしまうことにするか。
+    | と思ったら、よく考えると :help f に lmap が効くと書かれている。
+    | lmap と言っているのは lang-arg といっているもので、
+    | もしかするとこれが一文字引数を受け取るための keymap なのではないだろうか。
+    |
+    | 更に vi_digraph のような感じの keymap を用意するのが良さそうだ。
+
+    先に digraph に対応してから考える。対応した。
+
+    fFtT については取り敢えず修正だけ先に行う。
+    その後で digraph の対応について考える。
+    当初は一文字読取るだけのために lmap なる keymap を作成する事を考えていたが、
+    よく考えてみると C-k に対応するだけであれば
+    別に fFtT 内で vi_digraph keymap に入れば良いだけのような気もする。
+
+    →結局 aread-char-arg という仕組みを整えて
+    fFtT 及び r gr はこれを呼び出すことにした。
+    現在のところ動作している。
+
+  * vi-mode: digraph 対応 [#D0452]
+
+    先に #D0453 で考察したように keymap を生成するのが良いだろう。
+
+    digraph の一覧は http://vim-jp.org/vimdoc-ja/digraph.html を wget して加工する。
+    HTML 実体参照 (&nbsp;&lt;&gt;&quot;) を戻して適当に列を切り出す。
+    keymap/vi_digraph.txt に保存した。
+
+    vi_digraph の keymap は巨大なので vi.sh が更新される度に再生成するのは損である。
+    という訳で vi_digraph.sh に分離して頻繁に更新しなくても良いようにする。
+    通常文字にしか依存しないので [[ $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]
+    のキャッシュ更新用のチェックも外して良いだろう。
+
+  * 2017-09-04 vi-mode: 全てのキー入力を横取りできているかどうかを確認する [#D0451]
 
     → bind -p, bind -s, bind -X を見る限りは大丈夫に見える。
 
-  * 2017-09-11 vi-mode: by B-bar
+  * 2017-09-11 vi-mode: by B-bar [#D0450]
 
     | 複数行編集において、最初の行を削除した後に移動モードが機能しない。
 
@@ -2312,12 +2330,12 @@ tech
 
 2017-09-16
 
-  * dd の引数が効かなくなっている。
+  * dd の引数が効かなくなっている。 [#D0449]
     これは勘違いで追加した行が原因だった。
 
-  * vim-surround.sh において bBra は )}]> の aliases である。
+  * vim-surround.sh において bBra は )}]> の aliases である。 [#D0448]
 
-  * vim-surround.sh について C-] / C-} に対応する。
+  * vim-surround.sh について C-] / C-} に対応する。 [#D0447]
 
   * B-bar: vi-mode ysiw" [#D0446]
 

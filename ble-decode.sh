@@ -455,7 +455,7 @@ function ble-decode-char {
   if [[ $_ble_decode_char__hook ]]; then
     local hook="$_ble_decode_char__hook"
     _ble_decode_char__hook=
-    $hook "$char"
+    eval "$hook $char"
     return 0
   fi
 
@@ -906,7 +906,7 @@ function ble-decode-key {
     if [[ $_ble_decode_key__hook ]]; then
       local hook="$_ble_decode_key__hook"
       _ble_decode_key__hook=
-      $hook "$key"
+      eval "$hook $key"
       continue
     fi
 
