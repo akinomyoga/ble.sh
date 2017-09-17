@@ -220,6 +220,23 @@ function ble/string#common-suffix {
   ret="${a:u}"
 }
 
+## 関数 ble/string#split arr split str...
+##   文字列を分割します。
+##   @param[out] arr   分割した文字列を格納する配列名を指定します。
+##   @param[in]  split 分割に使用する文字を指定します。
+##   @param[in]  str   分割する文字列を指定します。
+function ble/string#split {
+  if shopt -q nullglob &>/dev/null; then
+    # ※GLOBIGNORE を設定していても nullglob の効果は有効である。
+    # この時 [..] や * や ? が一文字でも含まれるとその要素は必ず消滅する。
+    shopt -u nullglob
+    GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+    shopt -s nullglob
+  else
+    GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+  fi
+}
+
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
 function ble/util/isprint+ {
