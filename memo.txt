@@ -461,6 +461,84 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2017-09-17
+
+  * B-bar: f が失敗した時にも検索を記録する。 [#tmp1]
+
+    更に提示された :help f を見ると digraph や Unicode 結合文字にも対応しているようだ。
+
+    | digraph には対応できるけれども、Unicode の結合文字についてはそもそも現状の ble.sh の枠組みで取り扱えていないので駄目。
+    | さて digraph http://vim-jp.org/vimdoc-ja/digraph.html を参照すると普通のアルファベットの組で digraph が登録されている。
+    | 更に :help r などを参照してみるとこれも digraph を受け取るようになっている。
+    | :dig を参考に試しに rNU として見たが、N が入力されて "U" によって undo されてしまう。
+    | 引数に指定する場合には digraph-arg というのを参照しなければならないということか。
+    | と思ったら C-k に続いて入力しなければならないようだ。
+    |
+    | さて、digraph に対応するにはどうしたら良いか。
+    | _ble_decode_key__hook だと問答無用で一文字だけ取ってしまうので駄目だ。
+    | 或いは、_ble_decode_key__hook のチェーンを作って無理やり処理するか。
+    |
+    | それよりは cmap を登録した方が良い様な気もする。
+    | しかし個別に登録すると大変である。
+    | といっても結局はテーブルを作って処理することになるのだから、
+    | 余り変わらないのかもしれない。
+    |
+    | 或いは新しい keymap を追加してしまうことにするか。
+    | と思ったら、よく考えると :help f に lmap が効くと書かれている。
+    | lmap と言っているのは lang-arg といっているもので、
+    | もしかするとこれが一文字引数を受け取るための keymap なのではないだろうか。
+    |
+    | 更に vi_digraph のような感じの keymap を用意するのが良さそうだ。
+
+    先に digraph に対応してから考える。
+
+  * B-bar: vim-surround.sh: ds cs $( \r ) $(( \r ))
+
+  * vi-mode: digraph 対応
+
+    先に #tmp1 で考察したように keymap を生成するのが良いだろう。
+
+    digraph の一覧は http://vim-jp.org/vimdoc-ja/digraph.html を wget して加工する。
+    HTML 実体参照 (&nbsp;&lt;&gt;&quot;) を戻して適当に列を切り出す。
+    keymap/vi_digraph.txt に保存した。
+
+    vi_digraph の keymap は巨大なので vi.sh が更新される度に再生成するのは損である。
+    という訳で vi_digraph.sh に分離して頻繁に更新しなくても良いようにする。
+    通常文字にしか依存しないので [[ $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]
+    のキャッシュ更新用のチェックも外して良いだろう。
+
+  * B-bar: undo
+
+  * B-bar: ビジュアルモード・選択モード?
+
+    そもそもビジュアルモードと選択モードの違いは何なのか。
+
+  * 第二のプロンプト・編集文字列を出すということについて。
+
+    info の上で表示する様に再実装しても良いが、
+    やはり似たようなコードが重複して存在するのは気になる。
+    将来的にも必要になると思われるので、現状の ble-edit の仕組みを
+    複数の編集文字列に対して適用できるように拡張する方が自然なのではないだろうか。
+
+    更に info はカーソルの位置に関しては管理しない。
+    カーソルの位置は現在全て本体の編集文字列の描画で設定されている。
+
+    さて、複数の編集文字列を取り扱えるようにするには何が必要であるかを考える必要がある。
+
+    * 先ず初めにどの変数を差し替えれば
+      別の編集文字列を取り扱えるようになるかを調べる必要がある。
+
+      それらの変数をひとまとまりとして textbox 的な概念にまとめるのが良い。
+      もっというと、今回の第二の編集文字列を出すということに特化したものではなくて、
+      一般に textbox としての component を独立させるとしたらどうなるかという事を意識して
+      実装したほうが汎用的で整理された実装になる気がする。それを目指す。
+
+      序にいうと表示の幅や高さも管理できるようにしたい。
+
+    * 実は ble-decode の decode 状態も textbox 毎に用意するべきなのではないか。
+      だとすると先ずは ble-decode について切り替える仕組みを整える必要が出てくる。
+
+
 2017-09-16
 
   * vi-mode merge 直前に一括して行う仕様変更
@@ -480,7 +558,11 @@ tech
 
   * B-bar: here string 候補について
 
-    here string 候補にファイル名以外のものがあれば対応する。返信待ち。
+    here string 候補にファイル名以外のものがあれば対応する。返信待ち → やはり候補は難しい。
+
+    コマンド名に応じた補完関数の設定を可能にする?
+    例えば python3 に対する here document の場合には、import を補完候補に出すなど。
+
 
 2017-09-12
 
@@ -614,11 +696,13 @@ tech
     取り敢えず処理するようにした。もう少し様子を見て他に問題の可能性が
     なさそうであれば改めて B-bar さんに尋ねることにする。
 
-  * vi-mode: by B-bar
+    2017-09-17 うーん。やはり駄目だそうだ。
 
-    | 複数行編集において、最初の行を削除した後に移動モードが機能しない。
+    | すいません。まだ発生します。@akinomyoga 様の手元で発生しないということは
+    | 確実に私の端末側の問題ですので、こちらで対処します。
+    | どうかお気になさらないでください。
 
-    これは分からない。再現しない。
+
 
   * vi-mode: by B-bar
 
@@ -648,6 +732,24 @@ tech
 
     <> は括弧として認識しない。[] () {} は括弧として認識する。
     引数を指定した時の動作は不明である。
+
+    B-bar: 2017-09-17 要望が入った。
+
+    | Vim のノーマルモードにおいて % は「対応する括弧(もしくはそれに準ずるもの)の対に飛ぶ」
+    | という機能が割り当てられています。(:help %) 実装していただくととても嬉しいです。
+
+    * :help % で見てみると引数は許されないと書かれている。
+      {count}% で count % だけ次の行に行くそうだ。
+      成る程。確かに試してみるとそうなっている。
+      :help N% というので説明が見られるようなので調べると、式も与えられている。
+
+        ({count} * number-of-lines + 99) / 100
+
+      count% だけ下に移動するのではなくて、 count% の位置にある行に移動するようだ。
+
+    * matchpairs という変数で指定できるということになっている様だが、
+      どのように指定するものなのかは :help % には書かれていない気がする。
+      :help matchpairs で見てみると default "(:),{:},[:]" と書かれている。
 
 2017-09-06
 
@@ -730,10 +832,6 @@ tech
 
   * ble-syntax: function hello (()) は bash-3.0 では構文エラー。
   * ble-syntax: function hello (()) としておいて function hello () (()) にすると解析が誤っている。
-
-2017-09-04
-
-  * vi-mode: 全てのキー入力を横取りできているかどうかを確認する
 
 2017-08-19
 
@@ -2194,6 +2292,24 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2017-09-17
+
+  * 2017-09-04 vi-mode: 全てのキー入力を横取りできているかどうかを確認する
+
+    → bind -p, bind -s, bind -X を見る限りは大丈夫に見える。
+
+  * 2017-09-11 vi-mode: by B-bar
+
+    | 複数行編集において、最初の行を削除した後に移動モードが機能しない。
+
+    これは分からない。再現しない。
+
+    2017-09-17 取り敢えず現在は再現しないということ。
+
+    | これは 1b9e2a4 において発生しませんでした。ありがとうございます。
+
+    本当に解決したのかどうかは謎だが、取り敢えずは解決したことにする。
+
 2017-09-16
 
   * dd の引数が効かなくなっている。
@@ -2212,68 +2328,68 @@ tech
     | そうだとすると恐らく "ys" に対して直接 bind しているのだろうと理解できる。
     | - [surround.vimの使い方 | Memo on the Web](http://motw.mods.jp/Vim/surround.html)
     | - [What does the "y" stand for in "ysiw"? · Issue #128 · tpope/vim-surround](https://github.com/tpope/vim-surround/issues/128)
-    | 
+    |
     | でもそれをやると "yy" がその場で実行されなくなる。"yy" に対しても同時に bind することを考慮する必要がある。
     | が、もっと体系的なやりかたはないのだろうか。
     | →よく考えたら "y3y" などにも対応しなければならないので単に "yy" に bind するだけでは駄目だ。
-    | 
+    |
     | surround.vim を除けば i の直後には引数などが来る余地はないようなので (試した)、
     | 単に次のキーを一つ読み取るという具合にすれば良い。下手に keymap を追加すると
     | insert-mode で単に ble-decode/keymap/pop などとしているのがずれて問題になるので、
     | 下手に insert-mode を呼び出せない (もしくはその追加した keymap に追加する widget では必ず最初に pop をすれば良い?)。
-    | 
+    |
     | 取り敢えず入れてみた。結局日本語のページは古くて使い物にならなかった?
     | よく分からないので surround.vim 本家に書かれている方法でインストールした。
-    | 
+    |
     | | surround.vim インストール
     | |
     | | $ mkdir -p ~/.vim/autoload ~/.vim/bundle && curl -LSso ~/.vim/autoload/pathogen.vim https://tpo.pe/pathogen.vim
     | | $ (cd ~/.vim/bundle && git clone https://github.com/tpope/vim-sensible.git)
     | | $ (cd ~/.vim/bundle && git clone git://github.com/tpope/vim-surround.git)
-    | | 
+    | |
     | | ~/.vimrc に以下を追記
-    | | 
+    | |
     | |   execute pathogen#infect()
     | |   filetype plugin indent on
-    | | 
+    | |
     | | vim を起動して以下を実行
-    | | 
+    | |
     | |   :Helptags
     | |   :help surround
-    | 
+    |
     | 試しに y3y としても問題は起こらない。ysiw" も動いている。
     | 更に y3ys でも y3y + s と解釈されているようだ。
     | どの様に処理しているのかは気になる。中を覗いてみる。
-    | 
+    |
     |   nmap ys  <Plug>Ysurround
-    | 
+    |
     | という所が怪しい。更に、Ysurround は以下の行にしか現れない。
-    | 
+    |
     |   nnoremap <silent> <Plug>Ysurround  :<C-U>set opfunc=<SID>opfunc<CR>g@
     |   nnoremap <silent> <Plug>YSurround  :<C-U>set opfunc=<SID>opfunc2<CR>g@
-    | 
+    |
     | どうやら opfunc=... となっているのでオペレータとして実装されている?
     | 更に s:opfunc, s:opfunc2 という関数が内部で実装されているので、これが本体だろう。
-    | 
+    |
     | しかしやはり ys から直接束縛している。そして問題は起こっていない。
     | これが意味するところは nmap に対する設定は、
     | オペレータが設定されている時の動作には影響を与えないという事である。
-    | 
+    |
     | 後気付いたことは引数を認識していない気がするという事。
     | 2ysiw" も ys2iw" も変わらなかった。
     | 更に y2s はエラーになったのでやはり "ys" の組で登録されているという事。
-    | 
+    |
     | うーん。調べると nmap (normal-mode map) と
     | omap (operator-pending mode map) という二種類のモードに対する map が存在して、
     | 更にそれぞれ独立に設定を行うことができるようだ。
     | 更に同時に設定ができるコマンドも用意されている。
-    | 
+    |
     | うーん。vi_omap を新しく導入することにするか。
     | 何が必要か。keymap を作ること自体はそんなに難しくはない。
     | さて問題なのは元の状態に戻るというのをどのように実装するかだ。
     | check-single-command に類似のものを更に用意しなければならないのか。
     | と思ったが、check-single-command に追加の実装をすれば良いだけの気もしてきた。
-    | 
+    |
     | 後、念のため現在のモードの表示については vi_omap も vi_command と同じ扱いにするという事。
 
     [結論] vim には nmap の他に omap という独立した keymap が存在して、
@@ -2415,57 +2531,57 @@ tech
 
 
     | ble-edit/prompt : これは _ble_edit_PS1 を元にプロンプトを更新する仕組み。
-    | 
+    |
     |   内部状態の記録に使用している変数は恐らく以下のみである。
-    | 
+    |
     |   _ble_edit_prompt=("" 0 0 0 32 0 "" "")
-    | 
+    |
     |   参照している変数は以下の通りである。更に、他にも様々なシェルの状態をを参照している。
-    | 
+    |
     |   _ble_edit_PS1
     |   _ble_edit_LINENO
     |   _ble_edit_CMD
-    | 
-    | 
+    |
+    |
     | ble-edit/text : これは文字列の中の文字の配置情報を計算・キャッシュする仕組みである。
     |   外部から初期位置 (プロンプト末端の座標) と文字列を受け取って配置情報を計算する。
     |   内部状態の記録に指定している変数は以下の通り。
-    | 
+    |
     |   _ble_line_text_cache_pos=()
     |   _ble_line_text_cache_cs=()
     |   _ble_line_text_cache_ichg=()
     |   _ble_line_text_cache_length=
-    | 
-    | 
+    |
+    |
     | ble/widget : これは ble-decode の ble-bind から使うことを想定した関数群をいれておく場所である。
     |   ユーザが自由にここに関数を追加して良い。但し、実際には更にshチアの階層を作って使うのが望ましい。
-    | 
+    |
     | _ble_edit_str : これは実際の編集文字列の管理をするところ。
-    | 
+    |
     |   _ble_edit_str=
     |   _ble_edit_ind=0
     |   _ble_edit_mark=0
     |   _ble_edit_mark_active=
     |   _ble_edit_overwrite_mode=
     |   _ble_edit_arg=
-    | 
+    |
     |   _ble_edit_dirty_draw_beg=-1
     |   _ble_edit_dirty_draw_end=-1
     |   _ble_edit_dirty_draw_end0=-1
-    | 
+    |
     |   _ble_edit_dirty_syntax_beg=0
     |   _ble_edit_dirty_syntax_end=0
     |   _ble_edit_dirty_syntax_end0=1
-    | 
+    |
     |   _ble_edit_kill_ring=
     |   _ble_edit_kill_type=
     |
     |   _ble_edit_line_disabled=
-    | 
+    |
     | ble-edit/render : 編集文字列の表示にまつわる機能
-    | 
+    |
     |   これは雑多な他の機能をまとめて描画を行っているところ。
-    | 
+    |
     |   _ble_line_cur=(0 0 32 0)
     |   _ble_line_x=0 _ble_line_y=0
     |   _ble_line_begx=0
@@ -2473,16 +2589,16 @@ tech
     |   _ble_line_endx=0
     |   _ble_line_endy=0
     |   _ble_edit_dirty=-1 -> _ble_line_dirty に改名
-    | 
+    |
     |   _ble_edit_render_caret_state=
     |   _ble_line_cache=()
-    | 
-    | 
+    |
+    |
     | ble-edit/info : 追加情報を表示するところ。
-    | 
+    |
     |   これは更に ble-edit/render の管理外で、
     |   ble-edit/render の表示内容の下に表示を行う。
-    | 
+    |
     |   _ble_line_info=(0 0 "")
     |   _ble_line_info_default=(0 0 "")
     |   _ble_line_info_scene=default

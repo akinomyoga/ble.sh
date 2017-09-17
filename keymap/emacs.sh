@@ -6,8 +6,6 @@
 # $_ble_base_cache/ble-decode-keymap.emacs
 #
 
-ble-edit/load-keymap-definition isearch
-
 function ble-decode-keymap:emacs/define {
   local ble_bind_keymap=emacs
 
@@ -132,6 +130,8 @@ function ble-decode-keymap:emacs/define {
 
 function ble-decode-keymap:emacs/generate {
   echo -n "ble.sh: updating cache/keymap.emacs... $_ble_term_cr" >&2
+
+  source "$_ble_base/keymap/isearch.sh"
 
   local cache="$_ble_base_cache/keymap.emacs"
   ble-decode-keymap:isearch/define

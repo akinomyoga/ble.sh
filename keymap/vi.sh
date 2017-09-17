@@ -4,7 +4,7 @@
 # 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
 function ble-edit/load-keymap-definition:vi { :; }
 
-ble-edit/load-keymap-definition isearch
+source "$_ble_base/keymap/vi_digraph.sh"
 
 # utils
 
@@ -1843,6 +1843,21 @@ function ble/widget/vi-insert/overwrite-mode {
   ble/keymap:vi/update-mode-name
 }
 
+#------------------------------------------------------------------------------
+# imap: C-k (digraph)
+
+function ble/widget/vi-insert/insert-digraph.hook {
+  local -a KEYS=("$1")
+  ble/widget/self-insert
+}
+
+function ble/widget/vi-insert/insert-digraph {
+  ble-decode/keymap/push vi_digraph
+  _ble_keymap_vi_digraph__hook=ble/widget/vi-insert/insert-digraph.hook
+}
+
+#------------------------------------------------------------------------------
+
 function ble-decode-keymap:vi_insert/define {
   local ble_bind_keymap=vi_insert
 
@@ -1862,6 +1877,8 @@ function ble-decode-keymap:vi_insert/define {
 
   # ble-bind -f 'C-o' 'nop'
   ble-bind -f 'C-o' 'vi-insert/single-command-mode'
+
+  ble-bind -f 'C-k' vi-insert/insert-digraph
 
   #----------------------------------------------------------------------------
   # bash
@@ -1961,7 +1978,7 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'S-C-e'    'vi-insert/@norepeat marked end-of-line'
   ble-bind -f 'S-home'   'vi-insert/@norepeat marked beginning-of-line'
   ble-bind -f 'S-end'    'vi-insert/@norepeat marked end-of-line'
-  ble-bind -f 'C-k'      'vi-insert/@norepeat kill-forward-line'
+  # ble-bind -f 'C-k'      'vi-insert/@norepeat kill-forward-line'
   ble-bind -f 'C-u'      'vi-insert/@norepeat kill-backward-line'
   # ble-bind -f 'M-m'      'vi-insert/@norepeat nomarked beginning-of-line'
   # ble-bind -f 'S-M-m'    'vi-insert/@norepeat marked beginning-of-line'
@@ -1993,6 +2010,8 @@ function ble-decode-keymap:vi/initialize {
     source "$fname_keymap_cache"
     return
   fi
+
+  source "$_ble_base/keymap/isearch.sh"
 
   echo -n "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2
 
