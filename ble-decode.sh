@@ -1158,7 +1158,7 @@ function ble-bind/option:list-functions {
 }
 
 function ble-bind {
-  local kmap=$ble_bind_keymap fX= fC= ret
+  local kmap=$ble_bind_keymap flags= ret
   [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
 
   local arg c
@@ -1210,8 +1210,7 @@ function ble-bind {
           fi
           kmap="$1"
           shift ;;
-        (x) fX=x ;;
-        (c) fC=c ;;
+        (['@xcs']) flags=${flags}$c ;;
         (f)
           if (($#<2)); then
             echo "ble-bind: the option \`-f' requires two arguments." >&2
@@ -1223,38 +1222,36 @@ function ble-bind {
             local command="$2"
 
             # コマンドの種類
-            if [[ ! "$fX$fC" ]]; then
+            case "$flags" in
+            ('')
               # ble/widget/ 関数
               command="ble/widget/$command"
 
               # check if is function
-              local -a a
-              a=($command)
-              if ! ble/util/isfunction "${a[0]}"; then
+              local -a arr=($command)
+              if ! ble/util/isfunction "${arr[0]}"; then
                 if [[ $command == ble/widget/ble/widget/* ]]; then
-                  echo "ble-bind: Unknown ble edit function \`${a[0]#'ble/widget/'}'. Note: The prefix 'ble/widget/' is redundant" 1>&2
+                  echo "ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'. Note: The prefix 'ble/widget/' is redundant" 1>&2
                 else
-                  echo "ble-bind: Unknown ble edit function \`${a[0]#'ble/widget/'}'" 1>&2
+                  echo "ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'" 1>&2
                 fi
                 return 1
-              fi
-            else
-              case "$fX$fC" in
-              (x)
-                # 編集用の関数
-                command="ble/widget/.EDIT_COMMAND $command" ;;
-              (c) # コマンド実行
-                command="ble/widget/.SHELL_COMMAND $command" ;;
-              (*)
-                echo "error: combination of -x and -c flags." 1>&2 ;;
-              esac
-            fi
+              fi ;;
+            (x) # 編集用の関数
+              command="ble/widget/.EDIT_COMMAND $command" ;;
+            (c) # コマンド実行
+              command="ble/widget/.SHELL_COMMAND $command" ;;
+            ('@') ;; # 直接実行
+            (*)
+              echo "error: unknowon combination of flags \`-$flags'." 1>&2
+              return 1 ;;
+            esac
 
             ble-decode-key/bind "$ret" "$command"
           else
             ble-decode-key/unbind "$ret"
           fi
-          fX= fC=
+          flags=
           shift 2 ;;
         (L)
           ble-bind/option:list-functions ;;
