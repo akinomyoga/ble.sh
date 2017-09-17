@@ -201,9 +201,10 @@ function ble-decode-kbd/.initialize {
 ble-decode-kbd/.initialize
 
 function ble-decode-kbd {
-  local key code codes
+  local keys; ble/string#split keys $' \t\n' "$*"
+  local key code codes keys
   codes=()
-  for key in $*; do
+  for key in "${keys[@]}"; do
     code=0
     while [[ $key == ?-* ]]; do
       case "${key::1}" in
