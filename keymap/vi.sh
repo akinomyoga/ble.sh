@@ -1876,24 +1876,25 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'ESC' vi-insert/normal-mode
   ble-bind -f 'C-[' vi-insert/normal-mode
   ble-bind -f 'C-c' vi-insert/normal-mode-norepeat
-  # ble-bind -f 'C-l' vi-insert/normal-mode
 
   ble-bind -f insert vi-insert/overwrite-mode
 
   ble-bind -f 'C-w' 'delete-backward-cword' # vword?
 
-  # ble-bind -f 'C-o' 'nop'
   ble-bind -f 'C-o' 'vi-insert/single-command-mode'
 
-  ble-bind -f 'C-k' vi-insert/insert-digraph
+  # settings overwritten by bash key bindings
+
+  # ble-bind -f 'C-l' vi-insert/normal-mode
+  # ble-bind -f 'C-k' vi-insert/insert-digraph
 
   #----------------------------------------------------------------------------
   # bash
 
   # ins
-  ble-bind -f 'C-q'      quoted-insert
-  ble-bind -f 'C-v'      quoted-insert
-  ble-bind -f 'C-RET'    newline
+  ble-bind -f 'C-q'   quoted-insert
+  ble-bind -f 'C-v'   quoted-insert
+  ble-bind -f 'C-RET' newline
 
   # shell
   ble-bind -f 'C-m' 'vi-insert/accept-single-line-or newline'
@@ -1909,6 +1910,8 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'SP'      'vi-insert/magic-space'
 
   ble-bind -f 'C-l' clear-screen
+  ble-bind -f 'C-k' 'vi-insert/@norepeat kill-forward-line'
+
   # ble-bind -f  'C-o' 'vi-insert/@norepeat accept-and-next'
 
   #----------------------------------------------------------------------------
@@ -1985,7 +1988,6 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'S-C-e'    'vi-insert/@norepeat marked end-of-line'
   ble-bind -f 'S-home'   'vi-insert/@norepeat marked beginning-of-line'
   ble-bind -f 'S-end'    'vi-insert/@norepeat marked end-of-line'
-  # ble-bind -f 'C-k'      'vi-insert/@norepeat kill-forward-line'
   ble-bind -f 'C-u'      'vi-insert/@norepeat kill-backward-line'
   # ble-bind -f 'M-m'      'vi-insert/@norepeat nomarked beginning-of-line'
   # ble-bind -f 'S-M-m'    'vi-insert/@norepeat marked beginning-of-line'
