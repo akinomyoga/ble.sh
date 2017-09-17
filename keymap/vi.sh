@@ -1555,7 +1555,7 @@ function ble/widget/vi-command/text-object/quote.impl {
 
   # Note: ビジュアルモードでは繰り返し使うと範囲を拡大する (?) らしい
   if [[ $beg && $end ]]; then
-    [[ $type == i* ]] && ((beg++,end--))
+    [[ $type == i* || arg -gt 1 ]] && ((beg++,end--))
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
   else
     ble/widget/vi-command/bell
