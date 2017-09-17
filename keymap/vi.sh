@@ -8,6 +8,32 @@ source "$_ble_base/keymap/vi_digraph.sh"
 
 # utils
 
+## 関数 ble/string#index-of-chars text chars
+function ble/string#index-of-chars {
+  local chars=$2 index=${3:-0}
+  local text=${1:index}
+  local cut=${text%%["$chars"]*}
+  if ((${#cut}<${#text})); then
+    ((ret=index+${#cut}))
+    return 0
+  else
+    ret=-1
+    return 1
+  fi
+}
+## 関数 ble/string#last-index-of-chars text chars
+function ble/string#last-index-of-chars {
+  local chars=$2 index=${3:-0}
+  local text=${1::index}
+  local cut=${text##*["$chars"]}
+  if ((${#cut}<${#text})); then
+    ((ret=index-${#cut}-1))
+    return 0
+  else
+    ret=-1
+    return 1
+  fi
+}
 function ble-edit/content/eolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos==${#_ble_edit_str})) || [[ ${_ble_edit_str:pos:1} == $'\n' ]]
@@ -1536,28 +1562,6 @@ function ble/widget/vi-command/text-object/quote.impl {
   fi
 }
 
-function ble/widget/vi-command/text-object/index-of-chars {
-  local chars=$2 index=${3:-0}
-  local text=${1:index}
-  local cut=${text%%["$chars"]*}
-  if ((${#cut}<${#text})); then
-    ((ret=index+${#cut}))
-    return 0
-  else
-    return 1
-  fi
-}
-function ble/widget/vi-command/text-object/last-index-of-chars {
-  local chars=$2 index=${3:-0}
-  local text=${1::index}
-  local cut=${text##*["$chars"]}
-  if ((${#cut}<${#text})); then
-    ((ret=index-${#cut}-1))
-    return 0
-  else
-    return 1
-  fi
-}
 function ble/widget/vi-command/text-object/block.impl {
   local arg=$1 flag=$2 type=$3
   local ret paren=${type:1} lparen=${type:1:1} rparen=${type:2:1}
@@ -1565,7 +1569,7 @@ function ble/widget/vi-command/text-object/block.impl {
   [[ ${_ble_edit_str:axis:1} == "$lparen" ]] && ((axis++))
 
   local count=$arg beg=$axis
-  while ble/widget/vi-command/text-object/last-index-of-chars "$_ble_edit_str" "$paren" "$beg"; do
+  while ble/string#last-index-of-chars "$_ble_edit_str" "$paren" "$beg"; do
     beg=$ret
     if [[ ${_ble_edit_str:beg:1} == "$lparen" ]]; then
       ((--count==0)) && break
@@ -1579,7 +1583,7 @@ function ble/widget/vi-command/text-object/block.impl {
   fi
 
   local count=$arg end=$axis
-  while ble/widget/vi-command/text-object/index-of-chars "$_ble_edit_str" "$paren" "$end"; do
+  while ble/string#index-of-chars "$_ble_edit_str" "$paren" "$end"; do
     end=$((ret+1))
     if [[ ${_ble_edit_str:end-1:1} == "$rparen" ]]; then
       ((--count==0)) && break
