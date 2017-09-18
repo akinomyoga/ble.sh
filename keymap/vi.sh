@@ -253,10 +253,9 @@ function ble/keymap:vi/adjust-command-mode {
       ble-edit/content/nonbol-eolp "$index" && ble/widget/.goto-char index
     fi
     ble/widget/vi-command/.insert-mode 1 "$_ble_keymap_vi_single_command_overwrite"
-    return 0
-  else
-    return 1
   fi
+
+  return 0
 }
 function ble/widget/vi-command/bell {
   ble/widget/.bell
@@ -564,14 +563,14 @@ function ble/keymap:vi/string#increase-indent {
 
 }
 function ble/keymap:vi/operator:increase-indent {
-  local delta=$1 type=$2
-  [[ $type == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
+  local delta=$1 context=$2
+  [[ $context == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
   ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
 
   ble/keymap:vi/string#increase-indent "${_ble_edit_str:beg:end-beg}" "$delta"; local content=$ret
   ble/widget/.replace-range "$beg" "$end" "$content" 1
 
-  [[ $type == char ]] && ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
+  [[ $context == char ]] && ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
 }
 function ble/keymap:vi/operator:left {
   ble/keymap:vi/operator:increase-indent -8 "$3"

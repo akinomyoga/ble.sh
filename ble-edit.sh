@@ -1714,6 +1714,7 @@ function ble-edit/info/set-default {
 function ble-edit/info/default {
   _ble_line_info_scene=default
   (($#)) && ble-edit/info/set-default "$@"
+  return 0
 }
 function ble-edit/info/clear {
   ble-edit/info/default

@@ -164,7 +164,7 @@ function ble/string#index-of {
   ble/string#repeat '*"$needle"' "$count"; local pattern=$ret
   eval "local transformed=\${haystack#$pattern}"
   ((ret=${#haystack}-${#transformed}-${#needle},
-    ret<0&&(ret=-1)))
+    ret<0&&(ret=-1),ret>=0))
 }
 
 ## 関数 ble/string#last-index-of text needle [n]
@@ -181,6 +181,7 @@ function ble/string#last-index-of {
   else
     ret=${#transformed}
   fi
+  ((ret>=0))
 }
 
 ## 関数 ble/string#toggle-case text...
