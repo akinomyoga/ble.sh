@@ -55,6 +55,7 @@ function ble/widget/vim-surround.sh/get-char-from-key {
   fi
 
   ble/util/c2s "$key"
+  return 0
 }
 
 _ble_lib_vim_surround_sh_ys=()
@@ -67,18 +68,15 @@ function ble/keymap:vi/operator:ys {
 
 function ble/widget/vim-surround.sh/ysurround.hook {
   local prefix= suffix=
+  local ret
 
-  local ins= instype= ret
-  if (($1==(ble_decode_Ctrl|0x5D)||$1==(ble_decode_Ctrl|0x7D))); then # 0x5D = ], 0x7D = }
-    ins='}' instype=indent
-  elif ble/widget/vim-surround.sh/get-char-from-key "$1"; then
-    ins=$ret
-  fi
-
-  if [[ ! $ins ]]; then
+  if ! ble/widget/vim-surround.sh/get-char-from-key "$1"; then
     ble/widget/vi-command/bell
     return
   fi
+
+  local ins=$ret instype=
+  [[ $ins == $'\x1D' ]] && ins='}' instype=indent # C-], C-}
 
   case "$ins" in
   (['<t'])
