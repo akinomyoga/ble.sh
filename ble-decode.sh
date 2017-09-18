@@ -1239,7 +1239,7 @@ function .ble-stty.initialize {
 }
 function .ble-stty.leave {
   [[ ! $_ble_stty_stat ]] && return
-  stty  echo -nl \
+  command stty  echo -nl icanon \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
   _ble_stty_stat=
@@ -1254,7 +1254,7 @@ function .ble-stty.enter {
 function .ble-stty.finalize {
   [[ ! $_ble_stty_stat ]] && return
   # detach の場合 -echo を指定する
-  stty -echo -nl \
+  command stty -echo -nl icanon \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
   _ble_stty_stat=
