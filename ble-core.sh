@@ -719,25 +719,26 @@ function bleopt {
   if (($#==0)); then
     pvars=("${!bleopt_@}")
   else
-    local spec var value ip=0
+    local spec var type= value= ip=0
     pvars=()
-    for spec in "$@"; do
-      if [[ $spec == *=* ]]; then
-        var="${spec%%=*}"
-        var="bleopt_${var#bleopt_}"
-        value="${spec#*=}"
-        if eval "[[ \${$var+set} ]]"; then
-          eval "$var=\"\$value\""
-        else
-          echo "bleopt: unknown bleopt option \`${var#bleopt_}'"
-        fi
+    for spec; do
+      if [[ $spec == *:=* ]]; then
+        type=a var=${spec%%:=*} value=${spec#*:=}
+      elif [[ $spec == *=* ]]; then
+        type=ac var=${spec%%=*} value=${spec#*=}
       else
-        var="bleopt_${spec#bleopt_}"
-        if [[ ${!var+set} ]]; then
-          pvars[ip++]="$var"
-        else
-          echo "bleopt: unknown bleopt option \`${var#bleopt_}'"
-        fi
+        type=p var=$spec
+      fi
+
+      var=bleopt_${var#bleopt_}
+      if [[ $type == *c* && ! ${!var+set} ]]; then
+        echo "bleopt: unknown bleopt option \`${var#bleopt_}'" >&2
+      else
+        case "$type" in
+        (a*) eval "$var=\"\$value\"" ;;
+        (p*) pvars[ip++]="$var" ;;
+        (*)  echo "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
+        esac
       fi
     done
   fi
