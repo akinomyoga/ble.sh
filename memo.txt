@@ -473,14 +473,12 @@ tech
     既に vim-surround.sh で類似の機能について実装したが、
     [/ についても個別に実装したい所である。
 
-  * vim-surround: ds cs
+  * vim-surround: ds cs インデント
 
     surround.vim では改行が絡むとき = によるインデントを実行している。
     現在 vim-surround.sh ではインデントを実行していない。
 
 2017-09-17
-
-  * B-bar: vim-surround.sh: $( \r ) $(( \r ))
 
   * vi-mode: 改行挿入時
 
@@ -2273,6 +2271,8 @@ tech
 -------------------------------------------------------------------------------
 
 2017-09-18
+
+  * B-bar: vim-surround.sh: $( \r ) $(( \r ))
 
   * vim-surround: 実は ys の引数も / ./ の形式で指定できる。
 

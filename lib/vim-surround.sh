@@ -6,10 +6,13 @@ source "$_ble_base/keymap/vi.sh"
 #
 # 現在以下のみに対応している。
 #
-#   nmap: ys{move}{char}
-#   nmap: yss{char}
+#   nmap: ys{move}{ins}
+#   nmap: yss{ins}
 #
-#     {char}
+#     {ins} ~ / ?./
+#
+#       空白を前置した場合は、囲まれる文字列の両端に半角空白を1つずつ付加する。
+#       最後の文字によって囲み文字を指定する。
 #
 #       <, t        (未対応) タグで囲む
 #       右括弧類    括弧で囲む
@@ -17,18 +20,38 @@ source "$_ble_base/keymap/vi.sh"
 #       [a-zA-Z]    エラー
 #       他の文字    その文字で囲む
 #
-#   注意: vim-surround.sh と違って、
+#   注意: surround.vim と違って、
 #     テキストオブジェクト等に対する引数は有効である。
 #     または、aw は iw と異なる位置に挿入する。
 #
-#   注意: vim-surround.sh と同様に、
+#   注意: surround.vim と同様に、
 #     g~2~ などとは違って、
 #     ys2s のような引数の指定はできない。
 #
+#   nmap: ds{del}
+#   nmap: cs{del}{ins}
+#
+#     {del} ~ /([0-9]+| )?./
+#
+#       削除される囲み文字を指定する。
+#       [0-9]+ を指定した場合は引数に対する倍率となる。
+#       空白を前置した場合は囲まれた文字列の両端の空白を trim する。
+#
+#       最後の文字によって囲み文字を指定する。
+#
+#       b()B{}r[]a<>    括弧を削除する。左括弧を指定したとき囲まれた文字列は trim される。
+#       wW              範囲を指定するのみで、何も削除しない。
+#       ps (未対応)     範囲を指定するのみで、何も削除しない。
+#       tT              タグ。T を用いたとき囲まれた文字列は trim される。
+#       /               /* ... */ で囲まれた領域を削除する。
+#       他の文字        その文字を、行内で左右に探して対で削除する。
+#
+#     {ins} ~ / ?./
+#
+#       代わりに挿入される囲み文字を指定する。ys, yss と同じ。
+#
 # 以下には対応していない。
 #
-#   nmap: ds
-#   nmap: cs
 #   nmap: cS
 #   nmap: yS
 #   nmap: ySsd
@@ -52,10 +75,10 @@ function ble/string#trim {
   [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
 }
 
-## 関数 ble/widget/vim-surround.sh/get-char-from-key key
+## 関数 ble/lib/vim-surround.sh/get-char-from-key key
 ##   @param[in] key
 ##   @var[out] ret
-function ble/widget/vim-surround.sh/get-char-from-key {
+function ble/lib/vim-surround.sh/get-char-from-key {
   local key=$1
   if ! ble-decode-key/ischar "$key"; then
     local flag=$((key&ble_decode_MaskFlag)) code=$((key&ble_decode_MaskChar))
@@ -72,7 +95,7 @@ function ble/widget/vim-surround.sh/get-char-from-key {
 
 function ble/lib/vim-surround.sh/async-inputtarget.hook {
   local mode=$1 hook=${@:2:$#-2} key=${@:$#}
-  if ! ble/widget/vim-surround.sh/get-char-from-key "$key"; then
+  if ! ble/lib/vim-surround.sh/get-char-from-key "$key"; then
     ble/widget/vi-command/bell
     return
   fi
@@ -102,6 +125,44 @@ function ble/lib/vim-surround.sh/async-inputtarget-noarg {
   _ble_decode_key__hook="ble/lib/vim-surround.sh/async-inputtarget.hook init $*"
 }
 
+: ${bleopt_vim_surround_45:=$'$(\r)'} # ysiw-
+: ${bleopt_vim_surround_61:=$'$((\r))'} # ysiw=
+: ${bleopt_vim_surround_q:=\"} # ysiwQ
+: ${bleopt_vim_surround_Q:=\'} # ysiwq
+
+## 関数 ble/lib/vim-surround.sh/load-template ins
+##   @param[in] ins
+##   @var[out] template
+function ble/lib/vim-surround.sh/load-template {
+  local ins=$1
+
+  # read user settings
+
+  local optname=bleopt_vim_surround_$ins
+  template=${!optname}
+  [[ $template ]] && return
+
+  local ret; ble/util/s2c "$ins"
+  local optname=bleopt_vim_surround_$ret
+  template=${!optname}
+  [[ $template ]] && return
+
+  # default
+
+  case "$ins" in
+  (['<t']) return 1 ;;
+  ('(') template=$'( \r )' ;;
+  ('[') template=$'[ \r ]' ;;
+  ('{') template=$'{ \r }' ;;
+  (['b)']) template=$'(\r)' ;;
+  (['r]']) template=$'[\r]' ;;
+  (['B}']) template=$'{\r}' ;;
+  (['a>']) template=$'<\r>' ;;
+  ([a-zA-Z]) return 1 ;;
+  (*) template=$ins ;;
+  esac
+} &>/dev/null
+
 ## 関数 ble/lib/vim-surround.sh/surround text ins
 ##   @param[in] text
 ##   @param[in] ins
@@ -116,18 +177,23 @@ function ble/lib/vim-surround.sh/surround {
   local has_space=
   [[ $ins == ' '?* ]] && has_space=1 ins=${ins:1}
 
-  case "$ins" in
-  (['<t']) return 1 ;;
-  ('(') prefix='(' suffix=')' has_space=1 ;;
-  ('[') prefix='[' suffix=']' has_space=1 ;;
-  ('{') prefix='{' suffix='}' has_space=1 ;;
-  (['b)']) prefix='(' suffix=')' ;;
-  (['r]']) prefix='[' suffix=']' ;;
-  (['B}']) prefix='{' suffix='}' ;;
-  (['a>']) prefix='<' suffix='>' ;;
-  ([a-zA-Z]) return 1 ;;
-  (*) prefix=$ins suffix=$ins ;;
-  esac
+  local template=
+  ble/lib/vim-surround.sh/load-template "$ins" || return 1
+
+  local prefix= suffix=
+  if [[ $template == *$'\r'* ]]; then
+    prefix=${template%%$'\r'*}
+    suffix=${template#*$'\r'}
+  else
+    prefix=$template
+    suffix=$template
+  fi
+
+  if [[ $prefix == *' ' && $suffix == ' '* ]]; then
+    prefix=${prefix::${#prefix}-1}
+    suffix=${suffix:1}
+    has_space=1
+  fi
 
   if [[ $instype == indent ]]; then
     ble-edit/content/find-logical-bol "$beg"; local bol=$ret
@@ -154,15 +220,9 @@ function ble/keymap:vi/operator:ys {
 }
 
 function ble/widget/vim-surround.sh/ysurround.hook {
-  local prefix= suffix=
-  local ret
+  local ins=$1
 
-  # ins
-  if ! ble/widget/vim-surround.sh/get-char-from-key "$1"; then
-    ble/widget/vi-command/bell
-    return
-  fi
-  local ins=$ret
+  local ret
 
   # saved arguments
   local beg=${_ble_lib_vim_surround_ys[0]}
