@@ -265,6 +265,7 @@ function ble/widget/vi-command/bell {
 
 
 function ble/widget/vi-command/.insert-mode {
+  [[ $_ble_decode_key__kmap == vi_omap ]] && ble-decode/keymap/pop
   local arg=$1 overwrite=$2
   ble/widget/vi-insert/.reset-repeat "$arg"
   _ble_edit_overwrite_mode=$overwrite
@@ -398,7 +399,8 @@ function ble/widget/vi-command/set-operator {
 
   if [[ ! ${_ble_edit_arg//[0-9]} ]]; then
     # 1つ目のオペレータ
-    ble-decode/keymap/push vi_omap
+    [[ $_ble_decode_key__kmap == vi_omap ]] ||
+      ble-decode/keymap/push vi_omap
 
   else
     # 2つ目のオペレータ (yy dd cc)
@@ -1506,7 +1508,7 @@ function ble/widget/vi-command/search-char-reverse-repeat {
 
 _ble_keymap_vi_text_object=
 
-function ble/widget/vi-command/text-object/word.impl {
+function ble/keymap:vi/text-object/word.impl {
   local arg=$1 flag=$2 type=$3
 
   local space=$' \t' nl=$'\n' ifs=$' \t\n'
@@ -1542,21 +1544,21 @@ function ble/widget/vi-command/text-object/word.impl {
   ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
 }
 
-function ble/widget/vi-command/text-object/find-next-quote {
+function ble/keymap:vi/text-object/find-next-quote {
   local index=${1:-$((_ble_edit_ind+1))} nl=$'\n'
   local rex="^[^$nl$quote]*$quote"
   [[ ${_ble_edit_str:index} =~ $rex ]] || return 1
   ((ret=index+${#BASH_REMATCH}))
   return 0
 }
-function ble/widget/vi-command/text-object/find-previous-quote {
+function ble/keymap:vi/text-object/find-previous-quote {
   local index=${1:-_ble_edit_ind} nl=$'\n'
   local rex="$quote[^$nl$quote]*\$"
   [[ ${_ble_edit_str::index} =~ $rex ]] || return 1
   ((ret=index-${#BASH_REMATCH}))
   return 0
 }
-function ble/widget/vi-command/text-object/quote.impl {
+function ble/keymap:vi/text-object/quote.impl {
   local arg=$1 flag=$2 type=$3
   local ret quote=${type:1}
 
@@ -1567,15 +1569,15 @@ function ble/widget/vi-command/text-object/quote.impl {
     if ((ret%2==1)); then
       # 現在終了引用符
       ((end=_ble_edit_ind+1))
-      ble/widget/vi-command/text-object/find-previous-quote && beg=$ret
+      ble/keymap:vi/text-object/find-previous-quote && beg=$ret
     else
       ((beg=_ble_edit_ind))
-      ble/widget/vi-command/text-object/find-next-quote && end=$ret
+      ble/keymap:vi/text-object/find-next-quote && end=$ret
     fi
-  elif ble/widget/vi-command/text-object/find-previous-quote && beg=$ret; then
-    ble/widget/vi-command/text-object/find-next-quote && end=$ret
-  elif ble/widget/vi-command/text-object/find-next-quote && beg=$((ret-1)); then
-    ble/widget/vi-command/text-object/find-next-quote "$((beg+1))" && end=$ret
+  elif ble/keymap:vi/text-object/find-previous-quote && beg=$ret; then
+    ble/keymap:vi/text-object/find-next-quote && end=$ret
+  elif ble/keymap:vi/text-object/find-next-quote && beg=$((ret-1)); then
+    ble/keymap:vi/text-object/find-next-quote "$((beg+1))" && end=$ret
   fi
 
   # Note: ビジュアルモードでは繰り返し使うと範囲を拡大する (?) らしい
@@ -1584,10 +1586,11 @@ function ble/widget/vi-command/text-object/quote.impl {
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
   else
     ble/widget/vi-command/bell
+    return 1
   fi
 }
 
-function ble/widget/vi-command/text-object/block.impl {
+function ble/keymap:vi/text-object/block.impl {
   local arg=$1 flag=$2 type=$3
   local ret paren=${type:1} lparen=${type:1:1} rparen=${type:2:1}
   local axis=$_ble_edit_ind
@@ -1604,7 +1607,7 @@ function ble/widget/vi-command/text-object/block.impl {
   done
   if ((count)); then
     ble/widget/vi-command/bell
-    return
+    return 1
   fi
 
   local count=$arg end=$axis
@@ -1618,7 +1621,7 @@ function ble/widget/vi-command/text-object/block.impl {
   done
   if ((count)); then
     ble/widget/vi-command/bell
-    return
+    return 1
   fi
 
   local linewise=
@@ -1636,7 +1639,32 @@ function ble/widget/vi-command/text-object/block.impl {
   fi
 }
 
-function ble/widget/vi-command/text-object.hook {
+## 関数 ble/keymap:vi/text-object.impl
+##
+##   @exit テキストオブジェクトの処理が完了したときに 0 になります。
+##
+function ble/keymap:vi/text-object.impl {
+  local arg=$1 flag=$2 type=$3
+  case "$type" in
+  ([ia][wW]) ble/keymap:vi/text-object/word.impl "$arg" "$flag" "$type" ;;
+  ([ia][\"\'\`]) ble/keymap:vi/text-object/quote.impl "$arg" "$flag" "$type" ;;
+  ([ia]['b()']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "${type::1}()" ;;
+  ([ia]['B{}']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "${type::1}{}" ;;
+  ([ia]['<>']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "${type::1}<>" ;;
+  ([ia]['][']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "${type::1}[]" ;;
+  ('ap') return 1 ;;
+  ('as') return 1 ;;
+  ('at') return 1 ;;
+  ('ip') return 1 ;;
+  ('is') return 1 ;;
+  ('it') return 1 ;;
+  (*)
+    ble/widget/vi-command/bell
+    return 1;;
+  esac
+}
+
+function ble/keymap:vi/text-object.hook {
   local key=$1
   local arg flag; ble/keymap:vi/get-arg 1
   if ! ble-decode-key/ischar "$key"; then
@@ -1646,25 +1674,11 @@ function ble/widget/vi-command/text-object.hook {
 
   local ret; ble/util/c2s "$key"
   local type=$_ble_keymap_vi_text_object$ret
-  case "$type" in
-  ([ia][wW]) ble/widget/vi-command/text-object/word.impl "$arg" "$flag" "$type" ;;
-  ([ia][\"\'\`]) ble/widget/vi-command/text-object/quote.impl "$arg" "$flag" "$type" ;;
-  ([ia]['b()']) ble/widget/vi-command/text-object/block.impl "$arg" "$flag" "${type::1}()" ;;
-  ([ia]['B{}']) ble/widget/vi-command/text-object/block.impl "$arg" "$flag" "${type::1}{}" ;;
-  ([ia]['<>']) ble/widget/vi-command/text-object/block.impl "$arg" "$flag" "${type::1}<>" ;;
-  ([ia]['][']) ble/widget/vi-command/text-object/block.impl "$arg" "$flag" "${type::1}[]" ;;
-  ('ap') ;;
-  ('as') ;;
-  ('at') ;;
-  ('ip') ;;
-  ('is') ;;
-  ('it') ;;
-  (*)
-    ble/widget/vi-command/bell ;;
-  esac
+  ble/keymap:vi/text-object.impl "$arg" "$flag" "$type"
+  return 0
 }
 
-function ble/widget/vi-command/.check-text-object {
+function ble/keymap:vi/.check-text-object {
   ble-decode-key/ischar "${KEYS[0]}" || return 1
 
   local ret; ble/util/c2s "${KEYS[0]}"; local c="$ret"
@@ -1675,12 +1689,12 @@ function ble/widget/vi-command/.check-text-object {
   [[ $flag ]] || return 1
 
   _ble_keymap_vi_text_object=$c
-  _ble_decode_key__hook=ble/widget/vi-command/text-object.hook
+  _ble_decode_key__hook=ble/keymap:vi/text-object.hook
   return 0
 }
 
 function ble/widget/vi-command/text-object {
-  ble/widget/vi-command/.check-text-object || ble/widget/vi-command/bell
+  ble/keymap:vi/.check-text-object || ble/widget/vi-command/bell
 }
 
 #------------------------------------------------------------------------------
