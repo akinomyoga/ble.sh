@@ -768,7 +768,7 @@ function ble/widget/vi-command/linewise-goto.impl {
 #------------------------------------------------------------------------------
 # single char arguments
 
-function ble/keymap:vi/aread-char-arg.hook {
+function ble/keymap:vi/async-read-char.hook {
   local command=${@:1:$#-1} key=${@:$#}
   if ((key==(ble_decode_Ctrl|0x6B))); then # C-k
     ble-decode/keymap/push vi_digraph
@@ -778,8 +778,8 @@ function ble/keymap:vi/aread-char-arg.hook {
   fi
 }
 
-function ble/keymap:vi/aread-char-arg {
-  _ble_decode_key__hook="ble/keymap:vi/aread-char-arg.hook $*"
+function ble/keymap:vi/async-read-char {
+  _ble_decode_key__hook="ble/keymap:vi/async-read-char.hook $*"
 }
 
 #------------------------------------------------------------------------------
@@ -1309,6 +1309,7 @@ function ble/widget/vi-command/clear-screen-and-last-line {
 ##     置換する文字の挿入方法を指定します。
 function ble/widget/vi-command/replace-char.impl {
   local key=$1 overwrite_mode=${2:-R}
+  _ble_edit_overwrite_mode=
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]] || ! ble-decode-key/ischar "$key"; then
     ble/widget/.bell
@@ -1330,13 +1331,15 @@ function ble/widget/vi-command/replace-char/.hook {
   ble/widget/vi-command/replace-char.impl "$1" R
 }
 function ble/widget/vi-command/replace-char {
-  ble/keymap:vi/aread-char-arg ble/widget/vi-command/replace-char/.hook
+  _ble_edit_overwrite_mode=R
+  ble/keymap:vi/async-read-char ble/widget/vi-command/replace-char/.hook
 }
 function ble/widget/vi-command/virtual-replace-char/.hook {
   ble/widget/vi-command/replace-char.impl "$1" 1
 }
 function ble/widget/vi-command/virtual-replace-char {
-  ble/keymap:vi/aread-char-arg ble/widget/vi-command/virtual-replace-char/.hook
+  _ble_edit_overwrite_mode=1
+  ble/keymap:vi/async-read-char ble/widget/vi-command/virtual-replace-char/.hook
 }
 
 #------------------------------------------------------------------------------
@@ -1475,16 +1478,16 @@ function ble/widget/vi-command/search-char.impl {
 }
 
 function ble/widget/vi-command/search-forward-char {
-  ble/keymap:vi/aread-char-arg ble/widget/vi-command/search-char.impl f
+  ble/keymap:vi/async-read-char ble/widget/vi-command/search-char.impl f
 }
 function ble/widget/vi-command/search-forward-char-prev {
-  ble/keymap:vi/aread-char-arg ble/widget/vi-command/search-char.impl fp
+  ble/keymap:vi/async-read-char ble/widget/vi-command/search-char.impl fp
 }
 function ble/widget/vi-command/search-backward-char {
-  ble/keymap:vi/aread-char-arg ble/widget/vi-command/search-char.impl b
+  ble/keymap:vi/async-read-char ble/widget/vi-command/search-char.impl b
 }
 function ble/widget/vi-command/search-backward-char-prev {
-  ble/keymap:vi/aread-char-arg ble/widget/vi-command/search-char.impl bp
+  ble/keymap:vi/async-read-char ble/widget/vi-command/search-char.impl bp
 }
 function ble/widget/vi-command/search-char-repeat {
   [[ $_ble_keymap_vi_search_char ]] || ble/widget/.bell
