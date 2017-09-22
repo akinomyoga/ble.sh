@@ -239,6 +239,25 @@ else
   }
 fi
 
+function ble/string#escape-for-sed-regex {
+  ret="$*"
+  if [[ $ret == *['\.[*^$/']* ]]; then
+    local a b
+    for a in \\ \. \[ \* \^ \$ \/; do
+      b="\\$a" ret="${ret//"$a"/$b}"
+    done
+  fi
+}
+function ble/string#escape-for-bash-regex {
+  ret="$*"
+  if [[ $ret == *['\.[*?+^$(){}']* ]]; then
+    local a b
+    for a in \\ \. \[ \* \? \+ \^ \$ \( \) \{ \}; do
+      b="\\$a" ret="${ret//"$a"/$b}"
+    done
+  fi
+}
+
 #
 # miscallaneous utils
 #

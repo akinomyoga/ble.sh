@@ -23,11 +23,11 @@ function ble/string#index-of-chars {
 }
 ## 関数 ble/string#last-index-of-chars text chars
 function ble/string#last-index-of-chars {
-  local chars=$2 index=${3:-0}
-  local text=${1::index}
-  local cut=${text##*["$chars"]}
+  local text=$1 chars=$2 index=$3
+  [[ $index ]] && text=${text::index}
+  local cut=${text%["$chars"]*}
   if ((${#cut}<${#text})); then
-    ((ret=index-${#cut}-1))
+    ((ret=${#cut}))
     return 0
   else
     ret=-1
@@ -1638,6 +1638,76 @@ function ble/keymap:vi/text-object/block.impl {
   fi
 }
 
+
+## 関数 ble/keymap:vi/text-object/tag.impl/.find-end-tag
+##   @var[in] beg
+##   @var[out] end
+function ble/keymap:vi/text-object/tag.impl/.find-end-tag {
+  local ifs=$' \t\n' ret rex
+
+  rex="^<([^$ifs/>!]+)"; [[ ${_ble_edit_str:beg} =~ $rex ]] || return 1
+  ble/string#escape-for-bash-regex "${BASH_REMATCH[1]}"; local tagname=$ret
+  rex="^</?$tagname([$ifs]+([^>]*[^/])?)?>"
+
+  end=$beg
+  local count=0
+  while ble/string#index-of-chars "$_ble_edit_str" '<' "$end" && end=$((ret+1)); do
+    [[ ${_ble_edit_str:end-1} =~ $rex ]] || continue
+    ((end+=${#BASH_REMATCH}-1))
+
+    if [[ ${BASH_REMATCH::2} == '</' ]]; then
+      ((--count==0)) && return 0
+    else
+      ((++count))
+    fi
+  done
+  return 1
+}
+function ble/keymap:vi/text-object/tag.impl {
+  local arg=$1 flag=$2 type=$3
+  local ret rex
+
+  local pivot=$_ble_edit_ind ret=$_ble_edit_ind
+  if [[ ${_ble_edit_str:ret:1} == '<' ]] || ble/string#last-index-of-chars "${_ble_edit_str::_ble_edit_ind}" '<>'; then
+    if rex='^<[^/][^>]*>' && [[ ${_ble_edit_str:ret} =~ $rex ]]; then
+      ((pivot=ret+${#BASH_REMATCH}))
+    else
+      ((pivot=ret+1))
+    fi
+  fi
+
+  local ifs=$' \t\n'
+
+  local beg=$pivot count=$arg
+  rex="<([^$ifs/>!]+([$ifs]+([^>]*[^/])?)?|/[^>]*)>\$"
+  while ble/string#last-index-of-chars "${_ble_edit_str::beg}" '>' && beg=$ret; do
+    [[ ${_ble_edit_str::beg+1} =~ $rex ]] || continue
+    ((beg-=${#BASH_REMATCH}-1))
+
+    if [[ ${BASH_REMATCH::2} == '</' ]]; then
+      ((++count))
+    else
+      if ((--count==0)); then
+        if ble/keymap:vi/text-object/tag.impl/.find-end-tag "$beg" && ((_ble_edit_ind<end)); then
+          break
+        else
+          ((count++))
+        fi
+      fi
+    fi
+  done
+  if ((count)); then
+    ble/widget/vi-command/bell
+    return 1
+  fi
+
+  if [[ $type == i* ]]; then
+    rex='^<[^>]*>'; [[ ${_ble_edit_str:beg:end-beg} =~ $rex ]] && ((beg+=${#BASH_REMATCH}))
+    rex='<[^>]*>$'; [[ ${_ble_edit_str:beg:end-beg} =~ $rex ]] && ((end-=${#BASH_REMATCH}))
+  fi
+  ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
+}
+
 ## 関数 ble/keymap:vi/text-object.impl
 ##
 ##   @exit テキストオブジェクトの処理が完了したときに 0 になります。
@@ -1651,12 +1721,11 @@ function ble/keymap:vi/text-object.impl {
   ([ia]['B{}']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "${type::1}{}" ;;
   ([ia]['<>']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "${type::1}<>" ;;
   ([ia]['][']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "${type::1}[]" ;;
+  ([ia]t) ble/keymap:vi/text-object/tag.impl "$arg" "$flag" "$type" ;;
   ('ap') return 1 ;;
   ('as') return 1 ;;
-  ('at') return 1 ;;
   ('ip') return 1 ;;
   ('is') return 1 ;;
-  ('it') return 1 ;;
   (*)
     ble/widget/vi-command/bell
     return 1;;

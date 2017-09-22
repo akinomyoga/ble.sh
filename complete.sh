@@ -77,16 +77,7 @@ function ble-complete/util/escape-specialchars {
 
 function ble-complete/util/escape-regexchars {
   eval "$ble_util_upvar_setup"
-  local a b ret="$*"
-  if [[ $ret == *['\.[*^$/']* ]]; then
-    a=\\ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\. b="\\$a" ret="${ret//"$a"/$b}"
-    a=\[ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\* b="\\$a" ret="${ret//"$a"/$b}"
-    a=\^ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\$ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\/ b="\\$a" ret="${ret//"$a"/$b}"
-  fi
+  ble/string#escape-for-sed-regex "$*"
   eval "$ble_util_upvar"
 }
 
