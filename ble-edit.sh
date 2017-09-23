@@ -3266,6 +3266,7 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
 
 function ble-edit/exec:exec/.eval-prologue {
   ble-stty/leave
+  ble/restore-bash-verbose-option
 
   set -H
 
@@ -3273,16 +3274,16 @@ function ble-edit/exec:exec/.eval-prologue {
   trap 'ble-edit/exec:exec/.eval-TRAPINT; return 128' INT
   # trap '_ble_edit_exec_INT=126; return 126' TSTP
 }
-function ble-edit/exec:exec/.save-params {
+function ble-edit/exec:exec/.save-last-arg {
   _ble_edit_exec_lastarg="$_" _ble_edit_exec_lastexit="$?"
+  ble/adjust-bash-verbose-option
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:exec/.eval {
-  local _ble_edit_exec_in_eval=1 nl=$'\n'
   # BASH_COMMAND に return が含まれていても大丈夫な様に関数内で評価
-  ble-edit/exec/.setexit
-  : "$_ble_edit_exec_lastarg"
-  builtin eval -- "$BASH_COMMAND${nl}ble-edit/exec:exec/.save-params"
+  local _ble_edit_exec_in_eval=1 nl=$'\n'
+  ble-edit/exec/.setexit "$_ble_edit_exec_lastarg" # set $? and $_
+  builtin eval -- "$BASH_COMMAND${nl}ble-edit/exec:exec/.save-last-arg"
 }
 function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
@@ -3290,7 +3291,7 @@ function ble-edit/exec:exec/.eval-epilogue {
   ble-stty/enter
   _ble_edit_PS1="$PS1"
   _ble_edit_IFS="$IFS"
-
+  ble/adjust-bash-verbose-option
   ble-edit/exec/.adjust-eol
 
   # lastexit
@@ -3504,21 +3505,23 @@ function ble-edit/exec:gexec/.end {
 }
 function ble-edit/exec:gexec/.eval-prologue {
   local IFS=$' \t\n'
-  BASH_COMMAND="$1"
+  BASH_COMMAND=$1
   PS1="$_ble_edit_PS1"
   unset HISTCMD; ble-edit/history/getcount -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-stty/leave
-  ble-edit/exec/.setexit
+  ble/restore-bash-verbose-option
+  ble-edit/exec/.setexit # set $?
 }
-function ble-edit/exec:gexec/.save-params {
+function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg="$_" _ble_edit_exec_lastexit="$?"
+  ble/adjust-bash-verbose-option
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.eval-epilogue {
   # lastexit
-  _ble_edit_exec_lastexit="$?"
+  _ble_edit_exec_lastexit=$?
   if ((_ble_edit_exec_lastexit==0)); then
     _ble_edit_exec_lastexit="$_ble_edit_exec_INT"
   fi
@@ -3533,6 +3536,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   ble-stty/enter
   _ble_edit_PS1="$PS1"
   PS1=
+  ble/adjust-bash-verbose-option
   ble-edit/exec/.adjust-eol
 
   if ((_ble_edit_exec_lastexit)); then
@@ -3563,15 +3567,16 @@ function ble-edit/exec:gexec/.setup {
   buff[${#buff[@]}]=ble-edit/exec:gexec/.begin
   for cmd in "${_ble_edit_exec_lines[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
-      local nl=$'\n'
-      buff[${#buff[@]}]="ble-edit/exec:gexec/.eval-prologue '${cmd//$apos/$APOS}'"
-      buff[${#buff[@]}]=': "$_ble_edit_exec_lastarg"' # set $_
-      buff[${#buff[@]}]="builtin eval -- '${cmd//$apos/$APOS}${nl}ble-edit/exec:gexec/.save-params'"
+      # Note: $_ble_edit_exec_lastarg は $_ を設定するためのものである。
+      local prologue="ble-edit/exec:gexec/.eval-prologue '${cmd//$apos/$APOS}' \"\$_ble_edit_exec_lastarg\""
+      buff[${#buff[@]}]="builtin eval -- '${prologue//$apos/$APOS}"
+      buff[${#buff[@]}]="${cmd//$apos/$APOS}"
+      buff[${#buff[@]}]="ble-edit/exec:gexec/.save-last-arg'"
       buff[${#buff[@]}]="ble-edit/exec:gexec/.eval-epilogue"
       ((count++))
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に
-      #   下の行が実行されない事になってしまう。
+      #   続きの行が実行されない事になってしまう。
     fi
   done
   _ble_edit_exec_lines=()

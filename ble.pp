@@ -26,7 +26,7 @@ echo ble-@.sh >&2
 #
 # ble - bash line editor
 #
-# Author: 2013, 2015, K. Murase <myoga.murase@gmail.com>
+# Author: 2013, 2015-2017, K. Murase <myoga.murase@gmail.com>
 #
 
 #%if measure_load_time
@@ -62,6 +62,20 @@ if [ "$_ble_bash" -lt 30000 ]; then
   return 1 2>/dev/null || exit 1
 fi
 
+_ble_bash_verbose_adjusted=
+function ble/adjust-bash-verbose-option {
+  [[ $_ble_bash_verbose_adjusted ]] && return 1
+  _ble_bash_verbose_adjusted=1
+  _ble_edit_SETV=
+  [[ -o verbose ]] && _ble_edit_SETV=1 && set +v
+}
+ble/adjust-bash-verbose-option
+function ble/restore-bash-verbose-option {
+  [[ $_ble_bash_verbose_adjusted ]] || return 1
+  _ble_bash_verbose_adjusted=
+  [[ $_ble_edit_SETV && ! -o verbose ]] && set -v
+}
+
 if [[ -o posix ]]; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
@@ -96,13 +110,29 @@ function ble/.check-environment {
       fi
     done
     echo "ble.sh: Insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
-    return 1
+
+    # try to fix PATH
+    local default_path=$(command -p getconf PATH 2>/dev/null)
+    local original_path=$PATH
+    export PATH=${PATH}${PATH:+:}${default_path}
+    [[ :$PATH: == *:/usr/bin:* ]] || PATH=$PATH${PATH:+:}/usr/bin
+    [[ :$PATH: == *:/bin:* ]] || PATH=$PATH${PATH:+:}/bin
+    if ! type $posixCommandList &>/dev/null; then
+      PATH=$original_path
+      return 1
+    fi
+
+    echo "ble.sh: modified PATH=\$PATH${PATH:${#original_path}}" >&2
+  fi
+
 #%if use_gawk
-  elif ! type gawk &>/dev/null; then
+  if ! type gawk &>/dev/null; then
     echo "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
     return 1
-#%end
   fi
+#%end
+
+  return 0
 }
 if ! ble/.check-environment; then
   _ble_bash=
