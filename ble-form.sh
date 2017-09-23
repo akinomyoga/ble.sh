@@ -45,7 +45,10 @@ function ble-form/goto.draw {
 ## 配列 _ble_form_window_height
 ##   各パネルの高さを保持する。
 ##   現在 panel 0 が textarea で panel 1 が info に対応する。
-_ble_form_window_height=(0 0)
+##
+##   開始した瞬間にキー入力をすると画面に echo されてしまうので、
+##   それを削除するために最初の編集文字列の行数を 1 とする。
+_ble_form_window_height=(1 0)
 
 function ble-form/panel#goto.draw {
   local index=$1 x=${2-0} y=${3-0} ret
