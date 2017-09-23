@@ -1510,6 +1510,16 @@ function ble/widget/vi-command/search-char-reverse-repeat {
 
 _ble_keymap_vi_text_object=
 
+## 関数 ble/keymap:vi/text-object/word.impl arg flag type
+## 関数 ble/keymap:vi/text-object/quote.impl arg flag type
+## 関数 ble/keymap:vi/text-object/block.impl arg flag type
+## 関数 ble/keymap:vi/text-object/tag.impl arg flag type
+## 関数 ble/keymap:vi/text-object/sentence.impl arg flag type
+## 関数 ble/keymap:vi/text-object/paragraph.impl arg flag type
+##
+##   @exit テキストオブジェクトの処理が完了したときに 0 を返します。
+##
+
 function ble/keymap:vi/text-object/word.impl {
   local arg=$1 flag=$2 type=$3
 
@@ -1758,7 +1768,7 @@ function ble/keymap:vi/text-object/sentence.impl {
       local end=$((_ble_edit_ind+${#BASH_REMATCH}-2))
       local beg=$end bolx=$end nolx=
       ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
-      return
+      return 0
     fi
 
     if rex=$'\n+$'; [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
@@ -1770,7 +1780,7 @@ function ble/keymap:vi/text-object/sentence.impl {
       local beg=0 end=${#_ble_edit_str}
       local bolx=$end nolx=$end
       ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
-      return
+      return 0
     fi
   fi
 
@@ -1821,9 +1831,65 @@ function ble/keymap:vi/text-object/sentence.impl {
   fi
 }
 
+function ble/keymap:vi/text-object/paragraph.impl {
+  local arg=$1 flag=$2 type=$3
+  local rex ret
+
+  local beg= empty_start=
+  ble-edit/content/find-logical-bol; local bol=$ret
+  ble-edit/content/find-nol-from-bol "$bol"; local nol=$ret
+  if rex=$'[ \t]*(\n|$)' ble-edit/content/eolp "$nol"; then
+    # 空行のときは連続する一番初めの空行に移動する
+    empty_start=1
+    rex=$'(^|\n)([ \t]*\n)*$'
+    [[ ${_ble_edit_str::bol} =~ $rex ]]
+    local rematch1=${BASH_REMATCH[1]} # Note: for bash-3.1 ${#arr[n]} bug
+    ((beg=bol-(${#BASH_REMATCH}-${#rematch1})))
+  else
+    # 非空行のときは最初の非空行の先頭まで移動する。
+    if rex=$'^(.*\n)?[ \t]*\n'; [[ ${_ble_edit_str::bol} =~ $rex ]]; then
+      ((beg=${#BASH_REMATCH}))
+    else
+      ((beg=0))
+    fi
+  fi
+
+  local end=$beg
+  local rex_empty_line=$'([ \t]*\n|[ \t]+$)' rex_paragraph_line=$'([ \t]*[^ \t\n][^\n]*(\n|$))'
+  if [[ $type == i* ]]; then
+    rex="$rex_empty_line+|$rex_paragraph_line+"
+  elif [[ $empty_start ]]; then
+    rex="$rex_empty_line*$rex_paragraph_line+"
+  else
+    rex="$rex_paragraph_line+$rex_empty_line*"
+  fi
+  local i
+  for ((i=0;i<arg;i++)); do
+    if [[ ${_ble_edit_str:end} =~ $rex ]]; then
+      ((end+=${#BASH_REMATCH}))
+    else
+      # paragraph の場合は次が見つからない場合はエラー
+      ble/widget/vi-command/bell
+      return 1
+    fi
+  done
+
+  # at で後続の空行がなければ backward の空行を取り入れる
+  if [[ $type != i* && ! $empty_start ]]; then
+    if rex=$'(^|\n)[ \t]*\n$'; ! [[ ${_ble_edit_str::end} =~ $rex ]]; then
+      if rex=$'(^|\n)([ \t]*\n)*$'; [[ ${_ble_edit_str::beg} =~ $rex ]]; then
+        local rematch1=${BASH_REMATCH[1]}
+        ((beg-=${#BASH_REMATCH}-${#rematch1}))
+      fi
+    fi
+  fi
+  ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
+  ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
+}
+
 ## 関数 ble/keymap:vi/text-object.impl
 ##
-##   @exit テキストオブジェクトの処理が完了したときに 0 になります。
+##   @exit テキストオブジェクトの処理が完了したときに 0 を返します。
 ##
 function ble/keymap:vi/text-object.impl {
   local arg=$1 flag=$2 type=$3
@@ -1836,7 +1902,7 @@ function ble/keymap:vi/text-object.impl {
   ([ia]['][']) ble/keymap:vi/text-object/block.impl "$arg" "$flag" "${type::1}[]" ;;
   ([ia]t) ble/keymap:vi/text-object/tag.impl "$arg" "$flag" "$type" ;;
   ([ia]s) ble/keymap:vi/text-object/sentence.impl "$arg" "$flag" "$type" ;;
-  ([ia]p) return 1 ;;
+  ([ia]p) ble/keymap:vi/text-object/paragraph.impl "$arg" "$flag" "$type" ;;
   (*)
     ble/widget/vi-command/bell
     return 1;;
