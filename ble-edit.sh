@@ -181,7 +181,6 @@ function .ble-text.c2w+emacs {
 
   [[ $tIndex ]] || return 0
 
-  local tIndex="$1"
   if ((tIndex<_ble_text_c2w__emacs_wranges[0])); then
     ret=1
     return
