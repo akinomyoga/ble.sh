@@ -3712,7 +3712,8 @@ function ble/widget/accept-and-next {
   fi
 }
 function ble/widget/newline {
-  KEYS=(10) ble/widget/self-insert
+  local -a KEYS=(10)
+  ble/widget/self-insert
 }
 function ble/widget/accept-single-line-or {
   if ble-edit/content/is-single-line; then
@@ -4018,7 +4019,8 @@ function ble/widget/history-expand-line {
   _ble_edit_mark_active=
 }
 function ble/widget/magic-space {
-  KEYS=(32) ble/widget/self-insert
+  local -a KEYS=(32)
+  ble/widget/self-insert
 
   local prevline="${_ble_edit_str::_ble_edit_ind}" hist_expanded
   ble-edit/hist_expanded.update "$prevline" || return

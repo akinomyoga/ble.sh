@@ -1713,6 +1713,14 @@ function ble/keymap:vi/text-object/tag.impl {
   ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
 }
 
+function ble/keymap:vi/text-object/sentence.impl {
+  local arg=$1 flag=$2 type=$3
+
+  if [[ $_ble_term ]]; then
+    :
+  fi
+}
+
 ## 関数 ble/keymap:vi/text-object.impl
 ##
 ##   @exit テキストオブジェクトの処理が完了したときに 0 になります。
@@ -1965,7 +1973,7 @@ function ble/widget/vi-insert/delete-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/vi-insert/@norepeat delete-region
   else
-    "ble/widget/delete-$@"
+    ble/widget/"$@"
   fi
 }
 function ble/widget/vi-insert/overwrite-mode {
@@ -1988,6 +1996,26 @@ function ble/widget/vi-insert/insert-digraph.hook {
 function ble/widget/vi-insert/insert-digraph {
   ble-decode/keymap/push vi_digraph
   _ble_keymap_vi_digraph__hook=ble/widget/vi-insert/insert-digraph.hook
+}
+
+# imap: CR, LF (newline)
+function ble/widget/vi-insert/newline {
+  local ret
+  ble-edit/content/find-logical-bol; local bol=$ret
+  ble-edit/content/find-nol-from-bol "$bol"; local nol=$ret
+  ble/widget/newline
+  ((bol<nol)) && ble/widget/insert-string "${_ble_edit_str:bol:nol-bol}"
+}
+
+# imap: C-h, DEL
+function ble/widget/vi-insert/delete-backward-indent-or {
+  local rex=$'(^|\n)([ \t]+)$'
+  if [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
+    local rematch2=${BASH_REMATCH[2]}
+    ble/widget/.delete-range $((_ble_edit_ind-${#rematch2})) "$_ble_edit_ind"
+  else
+    ble/widget/"$@"
+  fi
 }
 
 #------------------------------------------------------------------------------
@@ -2024,8 +2052,8 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'C-RET' newline
 
   # shell
-  ble-bind -f 'C-m' 'vi-insert/accept-single-line-or newline'
-  ble-bind -f 'RET' 'vi-insert/accept-single-line-or newline'
+  ble-bind -f 'C-m' 'vi-insert/accept-single-line-or vi-insert/newline'
+  ble-bind -f 'RET' 'vi-insert/accept-single-line-or vi-insert/newline'
   ble-bind -f 'C-i' 'vi-insert/@norepeat complete'
   ble-bind -f 'TAB' 'vi-insert/@norepeat complete'
 
@@ -2081,8 +2109,8 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'S-left'   'vi-insert/@norepeat marked backward-char'
   ble-bind -f 'C-d'      'vi-insert/@norepeat delete-region-or forward-char-or-exit'
   ble-bind -f 'delete'   'vi-insert/@norepeat delete-region-or forward-char'
-  ble-bind -f 'C-h'      'vi-insert/delete-region-or backward-char'
-  ble-bind -f 'DEL'      'vi-insert/delete-region-or backward-char'
+  ble-bind -f 'C-h'      'vi-insert/delete-region-or vi-insert/delete-backward-indent-or delete-backward-char'
+  ble-bind -f 'DEL'      'vi-insert/delete-region-or vi-insert/delete-backward-indent-or delete-backward-char'
   ble-bind -f 'C-t'      'vi-insert/@norepeat transpose-chars'
 
   # wordwise operations
