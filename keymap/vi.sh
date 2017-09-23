@@ -209,8 +209,9 @@ function ble/widget/vi-insert/.normal-mode {
   _ble_keymap_vi_insert_mark=$_ble_edit_ind
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
+  _ble_edit_mark_active=
   _ble_edit_overwrite_mode=
-  ble-edit/content/bolp || ble/widget/.goto-char _ble_edit_ind-1
+ ble-edit/content/bolp || ble/widget/.goto-char _ble_edit_ind-1
   ble-decode/keymap/push vi_command
   ble/keymap:vi/update-mode-name
 }
@@ -227,6 +228,7 @@ function ble/widget/vi-insert/single-command-mode {
   _ble_keymap_vi_insert_mark=$_ble_edit_ind
   _ble_keymap_vi_single_command=1
   _ble_keymap_vi_single_command_overwrite=$_ble_edit_overwrite_mode
+  _ble_edit_mark_active=
   _ble_edit_overwrite_mode=
   ble-edit/content/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
   ble-edit/content/eolp && _ble_keymap_vi_single_command=2
