@@ -1718,110 +1718,108 @@ function ble/keymap:vi/text-object/tag.impl {
   ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
 }
 
-## 関数 ble/keymap:vi/text-object/sentence.impl/backward-extend
-##   @var[in,out] beg
-##   @var[in] bop
-function ble/keymap:vi/text-object/sentence.impl/backward-extend {
-  local ifs=$' \t\n'
-  if local rex="(^|[.!?])([$ifs]+)\$"; [[ ${_ble_edit_str:bop:beg+1-bop} =~ $rex ]]; then
-    local rematch2=${BASH_REMATCH[2]} # Note:for bash-3.1 ${#arr[n]} bug
-    ((beg=beg+1-${#rematch2}))
-  else
-    rex="^(.*[.!?])[$ifs]+"
-    if [[ ${_ble_edit_str:bop:beg-bop} =~ $rex ]]; then
-      beg=$((bop+${#BASH_REMATCH}))
+## 関数 ble/keymap:vi/text-object/sentence.impl/.beg
+##   @var[out] beg
+##   @var[out] is_interval
+##   @var[in] LF, HT
+function ble/keymap:vi/text-object/sentence.impl/.beg {
+  beg= is_interval=
+  local pivot=$_ble_edit_ind rex=
+  if ble-edit/content/bolp && ble-edit/content/eolp; then
+    if rex=$'^\n+[^\n]'; [[ ${_ble_edit_str:pivot} =~ $rex ]]; then
+      # 前方に非空白が見つかればその手前の行を開始点とする
+      beg=$((pivot+${#BASH_REMATCH}-2))
     else
-      beg=$bop
+      # 前の非空行末を基点に取り直す
+      if rex=$'\n+$'; [[ ${_ble_edit_str::pivot} =~ $rex ]]; then
+        ((pivot-=${#BASH_REMATCH}))
+      fi
+    fi
+  fi
+  if [[ ! $beg ]]; then
+    rex="^.*((^$LF?|$LF$LF)([ $HT]*)|[.!?][])'\"]*([ $HT$LF]+))"
+    if [[ ${_ble_edit_str::pivot+1} =~ $rex ]]; then
+      beg=${#BASH_REMATCH}
+      if ((pivot<beg)); then
+        # pivot < beg は beg == pivot + 1 (終端まで一致) を意味する。
+        # この時点で pivot は必ず非空行または先頭行にいるので /\n\n/ に一致することはない。
+        local rematch34=${BASH_REMATCH[3]}${BASH_REMATCH[4]}
+        if [[ $rematch34 ]]; then
+          # /(^\n\s+|\n\n\s+|[.!?]\s+)$/
+          beg=$((pivot+1-${#rematch34})) is_interval=1
+        else
+          # /^\n$/
+          beg=$pivot
+        fi
+      fi
+    else
+      beg=0
     fi
   fi
 }
-## 関数 ble/keymap:vi/text-object/sentence.impl/forward-extend
+## 関数 ble/keymap:vi/text-object/sentence.impl/.next {
 ##   @var[in,out] end
-##   @var[in] eop
-function ble/keymap:vi/text-object/sentence.impl/forward-extend {
-  local ifs=$' \t\n'
-  if local rex="(^|[.!?])[$ifs]+\$"; [[ ${_ble_edit_str:bop:end+1-bop} =~ $rex ]]; then
-    rex="^[$ifs]*"
-    [[ ${_ble_edit_str:end:eop-end} =~ $rex ]]
-    ((end+=${#BASH_REMATCH}))
+##   @var[in,out] is_interval
+##   @var[in] LF, HT
+function ble/keymap:vi/text-object/sentence.impl/.next {
+  if [[ $is_interval ]]; then
+    is_interval=
+    local rex=$'[ \t]*((\n[ \t]+)*\n[ \t]*)?'
+    [[ ${_ble_edit_str:end} =~ $rex ]]
+    local index=$((end+${#BASH_REMATCH}))
+    ((end<index)) && [[ ${_ble_edit_str:index-1:1} == $'\n' ]] && ((index--))
+    ((end=index))
   else
-    rex="[.!?]([$ifs].*)?\$"
-    if [[ ${_ble_edit_str:end:eop-end} =~ $rex ]]; then
-      end=$((eop-(${#BASH_REMATCH}-1)))
+    is_interval=1
+    if local rex=$'^\n+'; [[ ${_ble_edit_str:end} =~ $rex ]]; then
+      # 連続する LF を読み切る
+      ((end+=${#BASH_REMATCH}))
+    elif rex="(([.!?][])\"']*)[ $HT$LF]|$LF$LF).*\$"; [[ ${_ble_edit_str:end} =~ $rex ]]; then
+      # 文を次の文末記号まで
+      local rematch2=${BASH_REMATCH[2]}
+      end=$((${#_ble_edit_str}-${#BASH_REMATCH}+${#rematch2}))
     else
-      end=$eop
+      # 最後の文
+      local index=${#_ble_edit_str}
+      ((end<index)) && [[ ${_ble_edit_str:index-1:1} == $'\n' ]] && ((index--))
+      ((end=index))
     fi
   fi
 }
 function ble/keymap:vi/text-object/sentence.impl {
   local arg=$1 flag=$2 type=$3
+  local LF=$'\n' HT=$'\t'
   local rex
 
-  local piv=$_ble_edit_ind
-  if ble-edit/content/bolp && ble-edit/content/eolp; then
-    # 次の非空行の前の行が対象 (is as で違いはない)
-    if rex=$'^\n+[^\n]'; [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]; then
-      local end=$((_ble_edit_ind+${#BASH_REMATCH}-2))
-      local beg=$end bolx=$end nolx=
-      ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
-      return 0
-    fi
+  local beg is_interval
+  ble/keymap:vi/text-object/sentence.impl/.beg
 
-    if rex=$'\n+$'; [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
-      ((piv-=${#BASH_REMATCH}))
-    fi
-
-    # 空行しかないときは全体が対象 (is as で違いはない)
-    if ((piv==0)); then
-      local beg=0 end=${#_ble_edit_str}
-      local bolx=$end nolx=$end
-      ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
-      return 0
-    fi
-  fi
-
-  # 二重改行で区切られた "段落" に制限する
-  local ret bop=0 eop=${#_ble_edit_str}
-  ble/string#last-index-of "${_ble_edit_str::piv}" $'\n\n' && bop=$((ret+2))
-  ble/string#index-of "${_ble_edit_str:piv}" $'\n\n' && eop=$((piv+ret))
-  ((bop<eop)) && [[ ${_ble_edit_str:eop-1:1} == $'\n' ]] && ((eop--))
-  ((bop<eop)) && [[ ${_ble_edit_str:bop:1} == $'\n' ]] && ((bop++))
-
-
-  local beg=$piv end=$piv
-  ble/keymap:vi/text-object/sentence.impl/backward-extend
-  if [[ $type == i* ]]; then
-    local i
-    for ((i=0;i<arg;i++)); do
-      ble/keymap:vi/text-object/sentence.impl/forward-extend
-    done
-  else
-    local i
-    for ((i=0;i<arg;i++)); do
-      ble/keymap:vi/text-object/sentence.impl/forward-extend
-      ble/keymap:vi/text-object/sentence.impl/forward-extend
-    done
-  fi
-
-  # 両端の改行は除外する
+  local end=$beg i n=$arg
+  [[ $type != i* ]] && ((n*=2))
+  for ((i=0;i<n;i++)); do
+    ble/keymap:vi/text-object/sentence.impl/.next
+  done
   ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
-  ((beg<end)) && [[ ${_ble_edit_str:beg:1} == $'\n' ]] && ((beg++))
 
-  # at は後方に空白を確保できなければ前方に空白を確保する。
-  if [[ $type != i* ]]; then
+  # at は後方 (forward) に空白を確保できなければ前方 (backward) に空白を確保する。
+  if [[ $type != i* && ! $is_interval ]]; then
     local ifs=$' \t\n'
-    if [[ ${_ble_edit_str:beg:1} != ["$ifs"] && ${_ble_edit_str:end-1:1} != ["$ifs"] ]]; then
-      if ((bop<beg)) && rex="(^|[.!?])([$ifs]+)\$" && [[ ${_ble_edit_str:bop:beg-bop} =~ $rex ]]; then
+    if ((end)) && [[ ${_ble_edit_str:end-1:1} != ["$ifs"] ]]; then
+      rex="^.*(^$LF?|$LF$LF|[.!?][])'\"]*([ $HT$LF]))([ $HT$LF]*)\$"
+      if [[ ${_ble_edit_str::beg} =~ $rex ]]; then
         local rematch2=${BASH_REMATCH[2]}
-        ((beg-=${#rematch2}))
+        local rematch3=${BASH_REMATCH[3]}
+        ((beg-=${#rematch2}+${#rematch3}))
         [[ ${_ble_edit_str:beg:1} == $'\n' ]] && ((beg++))
       fi
     fi
   fi
 
-  if ble-edit/content/bolp "$beg" && ble-edit/content/eolp "$end"; then
+  # 行頭から LF の手前までのときに linewise になる。
+  # _ble_edit_str の末端までのときは linewise ではないことに注意する。
+  if ble-edit/content/bolp "$beg" && [[ ${_ble_edit_str:end:1} == $'\n' ]]; then
     local bolx= nolx=
-    ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
+    ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" goto_bol
   else
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
   fi
