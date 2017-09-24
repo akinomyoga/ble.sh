@@ -8,7 +8,18 @@ source "$_ble_base/keymap/vi_digraph.sh"
 
 # utils
 
-## 関数 ble/string#index-of-chars text chars
+## 関数 ble/string#index-of-chars text chars [index]
+##   文字集合に含まれる文字を、文字列中で順方向に探索します。
+## 関数 ble/string#last-index-of-chars text chars [index]
+##   文字集合に含まれる文字を、文字列中で逆方向に探索します。
+##
+##   @param[in] text
+##     検索する対象の文字列を指定します。
+##   @param[in] chars
+##     検索する文字の集合を指定します
+##   @param[in] index
+##     text の内の検索開始位置を指定します。
+##
 function ble/string#index-of-chars {
   local chars=$2 index=${3:-0}
   local text=${1:index}
@@ -21,7 +32,6 @@ function ble/string#index-of-chars {
     return 1
   fi
 }
-## 関数 ble/string#last-index-of-chars text chars
 function ble/string#last-index-of-chars {
   local text=$1 chars=$2 index=$3
   [[ $index ]] && text=${text::index}
@@ -34,6 +44,7 @@ function ble/string#last-index-of-chars {
     return 1
   fi
 }
+
 function ble-edit/content/eolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos==${#_ble_edit_str})) || [[ ${_ble_edit_str:pos:1} == $'\n' ]]
@@ -363,11 +374,13 @@ function ble/widget/vi-command/accept-single-line-or {
 
 ## 関数 ble/keymap:vi/get-arg [default_value]
 function ble/keymap:vi/get-arg {
-  local rex='^[0-9]+$' default_value=$1
+  local rex default_value=$1
   if [[ ! $_ble_edit_arg ]]; then
     flag= arg=$default_value
-  elif [[ $_ble_edit_arg =~ $rex ]]; then
+  elif rex='^[0-9]+$'; [[ $_ble_edit_arg =~ $rex ]]; then
     flag= arg=$((10#${_ble_edit_arg:-1}))
+  elif rex='^[^0-9]+$'; [[ $_ble_edit_arg =~ $rex ]]; then
+    flag=$_ble_edit_arg arg=$default_value
   else
     local a=${_ble_edit_arg##*[!0-9]} b=${_ble_edit_arg%%[!0-9]*}
     flag=${_ble_edit_arg//[0-9]}
@@ -1508,6 +1521,76 @@ function ble/widget/vi-command/search-char-reverse-repeat {
 }
 
 #------------------------------------------------------------------------------
+# command: %
+
+## @var[in] _ble_edit_str, ch1, ch2, index
+## @var[out] ret
+function ble/widget/vi-command/search-matchpair/.search-forward {
+  ble/string#index-of-chars "$_ble_edit_str" "$ch1$ch2" $((index+1))
+}
+function ble/widget/vi-command/search-matchpair/.search-backward {
+  ble/string#last-index-of-chars "$_ble_edit_str" "$ch1$ch2" "$index"
+}
+
+function ble/widget/vi-command/search-matchpair-or {
+  local arg flag; ble/keymap:vi/get-arg -1
+  if ((arg>=0)); then
+    _ble_edit_arg=$arg$flag
+    ble/widget/"$@"
+    return
+  fi
+
+  local open='({[' close=')}]'
+
+  local ret
+  ble-edit/content/find-logical-eol; local eol=$ret
+  if ! ble/string#index-of-chars "${_ble_edit_str::eol}" '(){}[]' "$_ble_edit_ind"; then
+    ble/keymap:vi/adjust-command-mode
+    return
+  fi
+  local index1=$ret ch1=${_ble_edit_str:ret:1}
+
+  if [[ $ch1 == ["$open"] ]]; then
+    local i=${open%%"$ch"*}; i=${#i}
+    local ch2=${close:i:1}
+    local searcher=ble/widget/vi-command/search-matchpair/.search-forward
+  else
+    local i=${close%%"$ch"*}; i=${#i}
+    local ch2=${open:i:1}
+    local searcher=ble/widget/vi-command/search-matchpair/.search-backward
+  fi
+
+  local index=$index1 count=1
+  while "$searcher"; do
+    index=$ret
+    if [[ ${_ble_edit_str:ret:1} == "$ch1" ]]; then
+      ((++count))
+    else
+      ((--count==0)) && break
+    fi
+  done
+
+  if ((count)); then
+    ble/keymap:vi/adjust-command-mode
+    return
+  fi
+
+  #ble/widget/.goto-char "$index"
+  ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
+
+# # backward
+#     ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
+# # forward
+}
+
+function ble/widget/vi-command/percentage-line {
+  local arg flag; ble/keymap:vi/get-arg 0
+  local ret; ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
+  local iline=$(((arg*nline+99)/100))
+  ble/widget/vi-command/linewise-goto.impl 0:$((iline-1)) "$flag"
+}
+
+#------------------------------------------------------------------------------
 # text objects
 
 _ble_keymap_vi_text_object=
@@ -2016,6 +2099,8 @@ function ble/keymap:vi/setup-map {
   ble-bind -f 'T' vi-command/search-backward-char-prev
   ble-bind -f ';' vi-command/search-char-repeat
   ble-bind -f ',' vi-command/search-char-reverse-repeat
+
+  ble-bind -f '%' 'vi-command/search-matchpair-or vi-command/percentage-line'
 
   ble-bind -f 'C-\ C-n' nop
 
