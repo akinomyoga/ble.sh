@@ -1378,9 +1378,12 @@ function ble/widget/vi-command/insert-mode-at-forward-line {
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    local ret; ble-edit/content/find-logical-eol; local eol=$ret
+    local ret
+    ble-edit/content/find-logical-bol; local bol=$ret
+    ble-edit/content/find-logical-eol; local eol=$ret
+    ble-edit/content/find-nol-from-bol "$bol"; local indent=${_ble_edit_str:bol:ret-bol}
     ble/widget/.goto-char "$eol"
-    ble/widget/insert-string $'\n'
+    ble/widget/insert-string $'\n'"$indent"
     ble/widget/vi-command/.insert-mode "$arg"
   fi
 }
@@ -1389,10 +1392,12 @@ function ble/widget/vi-command/insert-mode-at-backward-line {
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    local ret; ble-edit/content/find-logical-bol; local bol=$ret
+    local ret
+    ble-edit/content/find-logical-bol; local bol=$ret
+    ble-edit/content/find-nol-from-bol "$bol"; local indent=${_ble_edit_str:bol:ret-bol}
     ble/widget/.goto-char "$bol"
-    ble/widget/insert-string $'\n'
-    ble/widget/.goto-char "$bol"
+    ble/widget/insert-string "$indent"$'\n'
+    ble/widget/.goto-char $((bol+${#indent}))
     ble/widget/vi-command/.insert-mode "$arg"
   fi
 }
