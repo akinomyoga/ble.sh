@@ -188,6 +188,11 @@ _ble_keymap_vi_insert_overwrite=
 _ble_keymap_vi_single_command=
 _ble_keymap_vi_single_command_overwrite=
 
+## オプション bleopt_keymap_vi_normal_mode_name
+##   ノーマルモードの時に表示する文字列を指定します。
+##   空文字列を指定したときは何も表示しません。
+: ${bleopt_keymap_vi_normal_mode_name:=$'\e[1m~\e[m'}
+
 function ble/keymap:vi/update-mode-name {
   local kmap=$_ble_decode_key__kmap
   local show= overwrite=
@@ -197,7 +202,7 @@ function ble/keymap:vi/update-mode-name {
     show=1 overwrite=$_ble_keymap_vi_single_command_overwrite
   fi
 
-  local name=
+  local name=$bleopt_keymap_vi_normal_mode_name
   if [[ $show ]]; then
     if [[ $overwrite == R ]]; then
       name='REPLACE'
