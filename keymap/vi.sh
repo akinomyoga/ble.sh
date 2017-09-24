@@ -635,12 +635,12 @@ function ble/widget/vi-command/inclusive-goto.impl {
   ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$nobell"
 }
 
-## 関数 ble/widget/vi-command/linewise-range.impl beg end flag opts
+## 関数 ble/widget/vi-command/linewise-range.impl p q flag opts
 ## 関数 ble/widget/vi-command/linewise-goto.impl index flag opts
 ##
-##   @param[in] beg, end
+##   @param[in] p, q
 ##     開始位置と終了位置を指定します。
-##     flag が設定されていない場合は end に移動します。
+##     flag が設定されていない場合は q に移動します。
 ##
 ##   @param[in] index
 ##     開始位置を _ble_edit_ind とし、
@@ -659,10 +659,10 @@ function ble/widget/vi-command/inclusive-goto.impl {
 ##     require_multiline
 ##
 ##   @var[in] bolx
-##     既に計算済みの移動先 (index, end) の行の行頭がある場合はここに指定します。
+##     既に計算済みの移動先 (index, q) の行の行頭がある場合はここに指定します。
 ##
 ##   @var[in] nolx
-##     既に計算済みの移動先 (index, end) の行の非空白行頭位置がある場合はここに指定します。
+##     既に計算済みの移動先 (index, q) の行の非空白行頭位置がある場合はここに指定します。
 ##
 function ble/widget/vi-command/linewise-range.impl {
   local p=$1 q=$2 flag=$3 opts=$4
@@ -674,32 +674,24 @@ function ble/widget/vi-command/linewise-range.impl {
   fi
 
   if [[ $flag ]]; then
-    local reverted=$((p==qbase?qline<0:qbase<p))
+    local bolp bolq=$bolx nolq=$nolx
+    ble-edit/content/find-logical-bol "$p"; bolp=$ret
+    [[ $bolq ]] || { ble-edit/content/find-logical-bol "$qbase" "$qline"; bolq=$ret; }
 
     # 最初の行の行頭 beg と最後の行の行末 end
     local beg end
-    if ((!reverted)); then
-      ble-edit/content/find-logical-bol "$p"; beg=$ret
-      ble-edit/content/find-logical-eol "$qbase" "$qline"; end=$ret
+    if ((bolp<=bolq)); then
+      ble-edit/content/find-logical-eol "$bolq"; beg=$bolp end=$ret
     else
-      if [[ ! $bolx ]]; then
-        ble-edit/content/find-logical-bol "$qbase" "$qline"; bolx=$ret
-      fi
-      ble-edit/content/find-logical-eol "$p"; beg=$bolx end=$ret
+      ble-edit/content/find-logical-eol "$bolp"; beg=$bolq end=$ret
     fi
 
     # jk+- で1行も移動できない場合は操作をキャンセルする。
     # Note: qline を用いる場合は必ずしも望みどおり
-    #   qline 行目になっているとは限らないことに注意する。
+    #   qline 行目が存在するとは限らないことに注意する。
     if [[ :$opts: == *:require_multiline:* ]]; then
-      local is_single_line=
-      if ((qbase==p&&qline==0)); then
-        is_single_line=1
-      elif ble-edit/content/find-logical-bol "$end"; ((beg==ret)); then
-        is_single_line=1
-      fi
-
-      if [[ $is_single_line ]]; then
+      local is_single_line=$((bolq==bolp))
+      if ((bolq==bolp)); then
         ble/widget/vi-command/bell
         return
       fi
@@ -724,23 +716,28 @@ function ble/widget/vi-command/linewise-range.impl {
 
       # 範囲の先頭に移動
       local ind=$_ble_edit_ind
-      if ((ind!=beg)); then
-        if [[ :$opts: == *:preserve_column:* ]]; then
-          if ((beg<ind)); then
-            ble/string#count-char "${_ble_edit_str:beg:ind-beg}" $'\n'
-            ((ret=-ret))
-          else
-            ble/string#count-char "${_ble_edit_str:ind:beg-ind}" $'\n'
-          fi
-          ((ret)) && ble/widget/vi-command/.relative-line "$ret"
+      if [[ :$opts: == *:preserve_column:* ]]; then # j k
+        if ((beg<ind)); then
+          ble/string#count-char "${_ble_edit_str:beg:ind-beg}" $'\n'
+          ((ret=-ret))
+        elif ((ind<beg)); then
+          ble/string#count-char "${_ble_edit_str:ind:beg-ind}" $'\n'
         else
-          if ((beg==bolx)) && [[ $nolx ]]; then
-            local bnol=$nolx
+          ret=0
+        fi
+        ((ret)) && ble/widget/vi-command/.relative-line "$ret"
+      elif [[ :$opts: == *:goto_bol:* ]]; then # 行指向 yis
+        ble/widget/.goto-char "$beg"
+      else # + - gg G L H
+        if ((beg==bolq||ind<beg)) || [[ ${_ble_edit_str:beg:ind-beg} == *$'\n'* ]] ; then
+          # 先頭行の非空白行頭に移動する
+          if ((bolq<=bolp)) && [[ $nolq ]]; then
+            local nolb=$nolq
           else
-            ble-edit/content/find-nol-from-bol "$beg"; local bnol=$ret
+            ble-edit/content/find-nol-from-bol "$beg"; local nolb=$ret
           fi
-          ble-edit/content/nonbol-eolp "$bnol" && ((bnol--))
-          ble/widget/.goto-char "$bnol"
+          ble-edit/content/nonbol-eolp "$nolb" && ((nolb--))
+          ((ind<beg||nolb<ind)) && ble/widget/.goto-char "$nolb"
         fi
       fi
 
@@ -1646,12 +1643,11 @@ function ble/keymap:vi/text-object/block.impl {
 
   if [[ $linewise ]]; then
     local nolx= bolx=
-    ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
+    ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" goto_bol
   else
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
   fi
 }
-
 
 ## 関数 ble/keymap:vi/text-object/tag.impl/.find-end-tag
 ##   @var[in] beg
