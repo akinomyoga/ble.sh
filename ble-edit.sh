@@ -37,6 +37,13 @@
 ## 定義 ble/util/c2w+$bleopt_char_width_mode
 : ${bleopt_char_width_mode:=east}
 
+function bleopt/check:char_width_mode {
+  if ! ble/util/isfunction "ble/util/c2w+$value"; then
+    echo "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w+$value' is not defined." >&2
+    return 1
+  fi
+}
+
 ## オプション bleopt_edit_vbell
 ##   編集時の visible bell の有効・無効を設定します。
 ## bleopt_edit_vbell=1
@@ -80,6 +87,13 @@
 ## 要件: 関数 ble-edit/exec:$bleopt_exec_type/process
 : ${bleopt_exec_type:=gexec}
 
+function bleopt/check:exec_type {
+  if ! ble/util/isfunction "ble-edit/exec:$value/process"; then
+    echo "bleopt: Invalid value exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
+    return 1
+  fi
+}
+
 ## オプション bleopt_suppress_bash_output (内部使用)
 ##   bash 自体の出力を抑制するかどうかを指定します。
 ## bleopt_suppress_bash_output=1
@@ -105,6 +119,14 @@
 ##   vi と同様の編集モードを使用します。
 : ${bleopt_default_keymap:=auto}
 
+function bleopt/check:default_keymap {
+  case $value in
+  (auto|emacs|vi) ;;
+  (*)
+    echo "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
+    return 1 ;;
+  esac
+}
 
 # 
 #------------------------------------------------------------------------------

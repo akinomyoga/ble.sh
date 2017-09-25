@@ -1580,12 +1580,7 @@ function ble/widget/vi-command/search-matchpair-or {
     return
   fi
 
-  #ble/widget/.goto-char "$index"
   ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
-
-# # backward
-#     ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
-# # forward
 }
 
 function ble/widget/vi-command/percentage-line {

@@ -4,6 +4,20 @@
 ## オプション bleopt_input_encoding
 : ${bleopt_input_encoding:=UTF-8}
 
+function bleopt/check:input_encoding {
+  if ! ble/util/isfunction "ble-decode-byte+$value"; then
+    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-decode-byte+$value' is not defined." >&2
+    return 1
+  elif ! ble/util/isfunction "ble-text-b2c+$value"; then
+    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-b2c+$value' is not defined." >&2
+    return 1
+  elif ! ble/util/isfunction "ble-text-c2bc+$value"; then
+    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-c2bc+$value' is not defined." >&2
+    return 1
+  fi
+}
+
+
 ## オプション bleopt_stackdump_enabled
 ##   エラーが起こった時に関数呼出の構造を標準エラー出力に出力するかどうかを制御する。
 ##   算術式評価によって非零の値になる場合にエラーを出力する。
@@ -733,7 +747,21 @@ function ble-assert {
   fi
 }
 
+## 関数 bleopt args...
+##   @params[in] args
+##     args は以下の内の何れかの形式を持つ。
+##
+##     var=value
+##       既存の設定変数に値を設定する。
+##       設定変数が存在しないときはエラー。
+##     var:=value
+##       設定変数に値を設定する。
+##       設定変数が存在しないときは新しく作成する。
+##     var
+##       変数の設定内容を表示する
+##
 function bleopt {
+  local error_flag=
   local -a pvars
   if (($#==0)); then
     pvars=("${!bleopt_@}")
@@ -751,14 +779,24 @@ function bleopt {
 
       var=bleopt_${var#bleopt_}
       if [[ $type == *c* && ! ${!var+set} ]]; then
+        error_flag=1
         echo "bleopt: unknown bleopt option \`${var#bleopt_}'" >&2
-      else
-        case "$type" in
-        (a*) eval "$var=\"\$value\"" ;;
-        (p*) pvars[ip++]="$var" ;;
-        (*)  echo "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
-        esac
+        continue
       fi
+
+      case "$type" in
+      (a*)
+        [[ ${!var} == "$value" ]] && continue
+        if ble/util/isfunction bleopt/check:"${var#bleopt_}"; then
+          if ! bleopt/check:"${var#bleopt_}"; then
+            error_flag=1
+            continue
+          fi
+        fi
+        eval "$var=\"\$value\"" ;;
+      (p*) pvars[ip++]="$var" ;;
+      (*)  echo "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
+      esac
     done
   fi
 
@@ -768,6 +806,8 @@ function bleopt {
       echo "${var#bleopt_}='${!var//$q/$Q}'"
     done
   fi
+
+  [[ ! $error_flag ]]
 }
 
 #------------------------------------------------------------------------------
