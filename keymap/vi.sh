@@ -191,7 +191,7 @@ _ble_keymap_vi_single_command_overwrite=
 ## オプション bleopt_keymap_vi_normal_mode_name
 ##   ノーマルモードの時に表示する文字列を指定します。
 ##   空文字列を指定したときは何も表示しません。
-: ${bleopt_keymap_vi_normal_mode_name:=$'\e[1m~\e[m'}
+: ${bleopt_keymap_vi_normal_mode_name:="$_ble_term_bold~$_ble_term_sgr0"}
 
 function ble/keymap:vi/update-mode-name {
   local kmap=$_ble_decode_key__kmap
@@ -216,7 +216,7 @@ function ble/keymap:vi/update-mode-name {
       local ret; ble/string#tolower "$name"; name="($ret)"
     fi
 
-    name=$'\e[1m-- '$name$' --\e[m'
+    name="$_ble_term_bold-- $name --$_ble_term_sgr0"
   fi
   ble-edit/info/default raw "$name"
 }
