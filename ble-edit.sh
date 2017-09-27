@@ -2737,7 +2737,7 @@ function ble/widget/insert-string {
   _ble_edit_mark_active=
 }
 
-## 編集関数 ble/widget/self-insert
+## 編集関数 self-insert
 ##   文字を挿入する。
 ##
 ##   @var[in] _ble_edit_arg

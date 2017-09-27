@@ -800,8 +800,8 @@ function ble/keymap:vi/async-read-char {
 #------------------------------------------------------------------------------
 # command: [cdy]?[hl]
 
-## 編集関数 ble/widget/vi-command/forward-char [type]
-## 編集関数 ble/widget/vi-command/backward-char [type]
+## 編集関数 vi-command/forward-char [type]
+## 編集関数 vi-command/backward-char [type]
 ##
 ##   @param[in] type
 ##     type=m のとき複数行に亘る移動を許します。
@@ -925,8 +925,9 @@ function ble/widget/vi-command/.history-relative-line {
   fi
 }
 
-## 編集関数 ble/widget/vi-command/forward-line
-## 編集関数 ble/widget/vi-command/backward-line
+## 関数 ble/widget/vi-command/.relative-line arg flag opts
+## 編集関数 vi-command/forward-line  # nmap j
+## 編集関数 vi-command/backward-line # nmap k
 ##
 ##   j, k による移動の動作について。論理行を移動するとする。
 ##   配置情報があるとき、列は行頭からの相対表示位置 (dx,dy) を保持する。
@@ -937,8 +938,18 @@ function ble/widget/vi-command/.history-relative-line {
 ##
 ##   todo: 移動開始時の相対表示位置の記録は現在行っていない。
 ##
+##   @param[in] arg flag
+##
+##   @param[in] opts
+##     以下の値をコロンで区切って繋げた物を指定する。
+##
+##     history
+##       現在の履歴項目内で要求された行数だけ移動できないとき、
+##       履歴項目内の論理行を移動する。
+##       但し flag がある場合は履歴項目の移動は行わない。
+##
 function ble/widget/vi-command/.relative-line {
-  local arg=$1 flag=$2
+  local arg=$1 flag=$2 opts=$3
   ((arg==0)) && return
   if [[ $flag ]]; then
     local bolx= nolx=
@@ -980,17 +991,88 @@ function ble/widget/vi-command/.relative-line {
   fi
 
   # 履歴項目を行数を数えつつ移動
-  ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)) || ((nmove)) || ble/widget/.bell
+  if [[ :$opts: == *:history:* ]]; then
+    ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)) || ((nmove)) || ble/widget/.bell
+  else
+    ble/widget/.bell
+  fi
 }
 function ble/widget/vi-command/forward-line {
   local arg flag; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/.relative-line "$arg" "$flag"
+  ble/widget/vi-command/.relative-line "$arg" "$flag" history
   ble/keymap:vi/adjust-command-mode
 }
 function ble/widget/vi-command/backward-line {
   local arg flag; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/.relative-line "$((-arg))" "$flag"
+  ble/widget/vi-command/.relative-line $((-arg)) "$flag" history
   ble/keymap:vi/adjust-command-mode
+}
+
+## 関数 ble/widget/vi-command/graphical-relative-line.impl arg flag opts
+## 編集関数 vi-command/graphical-forward-line  # nmap gj
+## 編集関数 vi-command/graphical-backward-line # nmap gk
+##
+##   @param[in] arg
+##     移動する相対行数。負の値は上の行へ行くことを表す。正の値は下の行へ行くことを表す。
+##   @param[in] flag
+##     オペレータを指定する。
+##   @param[in] opts
+##     以下のオプションをコロンで繋げたものを指定する。
+##
+##     history
+##
+function ble/widget/vi-command/graphical-relative-line.impl {
+  local arg=$1 flag=$2 opts=$3
+  local index move
+  if ble-edit/text/is-position-up-to-date; then
+    local x y ax ay
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ((ax=x,ay=y+arg,
+      ay<_ble_line_text_begy?(ay=_ble_line_text_begy):
+      (ay>_ble_line_text_endy?(ay=_ble_line_text_endy):0)))
+    ble-edit/text/get-index-at "$ax" "$ay"
+    ble-edit/text/getxy.cur --prefix=a "$index"
+    ((arg-=move=ay-y))
+  else
+    local ind=$_ble_edit_ind
+    ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
+    ble-edit/content/find-logical-bol "$ind" "$arg"; local bol2=$ret
+    ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
+    ((index=bol2+ind-bol1,index>eol2&&(index=eol2)))
+
+    local ret
+    if ((index>ind)); then
+      ble/string#count-char "${_ble_edit_str:ind:index-ind}" $'\n'
+      ((arg+=move=-ret))
+    elif ((index<ind)); then
+      ble/string#count-char "${_ble_edit_str:index:ind-index}" $'\n'
+      ((arg+=move=ret))
+    fi
+  fi
+
+  if ((arg==0)); then
+    ble/widget/vi-command/exclusive-goto.impl "$index" "$flag"
+    return
+  fi
+
+  if [[ ! $flag && :$opts: == *:history:* ]]; then
+    if ble/widget/vi-command/.history-relative-line "$arg"; then
+      ble/keymap:vi/adjust-command-mode
+      return
+    fi
+  fi
+
+  # 失敗: オペレータは実行されないが移動はする。
+  ((move)) && ble/widget/vi-command/exclusive-goto.impl "$index"
+  ble/widget/vi-command/bell
+}
+function ble/widget/vi-command/graphical-forward-line {
+  local arg flag; ble/keymap:vi/get-arg 1
+  ble/widget/vi-command/graphical-relative-line.impl "$arg" "$flag"
+}
+function ble/widget/vi-command/graphical-backward-line {
+  local arg flag; ble/keymap:vi/get-arg 1
+  ble/widget/vi-command/graphical-relative-line.impl $((-arg)) "$flag"
 }
 
 #------------------------------------------------------------------------------
@@ -2075,6 +2157,8 @@ function ble/keymap:vi/setup-map {
   ble-bind -f up    vi-command/backward-line
   ble-bind -f C-n   vi-command/forward-line
   ble-bind -f C-p   vi-command/backward-line
+  ble-bind -f 'g j' vi-command/graphical-forward-line
+  ble-bind -f 'g k' vi-command/graphical-backward-line
 
   ble-bind -f w       vi-command/forward-vword
   ble-bind -f W       vi-command/forward-uword
