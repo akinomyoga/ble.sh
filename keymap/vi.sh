@@ -364,7 +364,7 @@ function ble/widget/vi-command/accept-line {
   ble/widget/accept-line
 }
 function ble/widget/vi-command/accept-single-line-or {
-  if ble-edit/content/is-single-line; then
+  if ble-edit/content/is-single-line && ! ble/util/is-stdin-ready; then
     ble/widget/vi-command/accept-line
   else
     ble/widget/"$@"
@@ -2211,7 +2211,7 @@ function ble/widget/vi-insert/magic-space {
   fi
 }
 function ble/widget/vi-insert/accept-single-line-or {
-  if ble-edit/content/is-single-line; then
+  if ble-edit/content/is-single-line && ! ble/util/is-stdin-ready; then
     ble/widget/vi-insert/@norepeat accept-line
   else
     ble/widget/"$@"

@@ -3911,7 +3911,7 @@ function ble/widget/newline {
   ble/widget/self-insert
 }
 function ble/widget/accept-single-line-or {
-  if ble-edit/content/is-single-line; then
+  if ble-edit/content/is-single-line && ! ble/util/is-stdin-ready; then
     ble/widget/accept-line
   else
     ble/widget/"$@"
