@@ -629,7 +629,6 @@ tech
         この方法は汚い上に色々辻褄を合わせるのが大変そうなので、良い方法ではない。
 
 
-
   * 第二のプロンプト・編集文字列を出すということについて。
 
     info の上で表示する様に再実装しても良いが、
@@ -822,78 +821,6 @@ tech
 
   * ble-syntax: echo ${a#[!0-9]} は履歴展開ではない
     どうやら "echo [!1 " と入力しても展開されない。[ の中は (対応する ] がなくても) 履歴展開は無効ということ。
-
-  * ble-edit: BASH_REMATCH 復元について
-
-    任意の配列 BASH_REMATCH を、[[ some =~ some ]] を用いて復元するのは難しい。
-
-    % だとすると一つの方法は local BASH_REMATCH を ble-decode/.hook で定義することである。
-    %
-    % - 但し、exec:exec の場合には関数の内部でユーザコマンドを実行するので、
-    %   その際に unset BASH_REMATCH を実行する必要がある。
-    %   そしてユーザコマンドを呼び出した後で、適切な位置で再度 BASH_REMATCH を呼び出す必要がある。
-    %
-    %   関数 ble-decode/EPILOGUE の以下の行の直後で良いだろう。
-    %
-    %   "ble-edit/exec:$bleopt_exec_type/process" && return 0
-    %
-    % - また exec:gexec の場合には ble-decode/.hook の外側でも処理を行うので、
-    %   その外で呼び出されうる全ての関数について local BASH_REMATCH を指定する必要がある。
-    %   外で呼び出されうる関数に関しては変数 _ble_decode_bind_hook に設定されうる関数を調べれば良い。
-    %   _ble_decode_bind_hook に対する値の設定は現状でただ一箇所 ble-edit/exec:gexec/.setup の中である。
-    %   ここで指定される関数として以下のものがある。
-    %
-    %   - ble-edit/exec:gexec/.eval-prologue
-    %   - ble-edit/exec:gexec/.save-params
-    %   - ble-edit/exec:gexec/.eval-epilogue"
-    %   - ble-edit/exec:gexec/.end
-    %
-    % - 他に trap を通して呼び出される関数がある。
-    %
-    %   - ble-decode: ble-stty/TRAPEXIT これは単純な関数なので中で正規表現を使わないことは自明である。
-    %   - ble-edit: ble-edit/attach/TRAPWINCH 必要
-    %   - ble-edit: ble-edit/exec:exec/.eval-TRAPDEBUG 不要
-    %   - ble-edit: ble-edit/exec:exec/.eval-TRAPINT 不要
-    %   - ble-edit: ble-edit/exec:gexec/.eval-TRAPDEBUG 必要
-    %   - ble-edit: ble-edit/exec:gexec/.eval-TRAPINT 不要
-    %   - ble-edit: ble-edit/bind/stdout/TRAPUSR1 不要
-    %   - ble-edit: ble-edit/bind/.exit-TRAPRTMAX 不要
-    %
-    % また将来的に trap や _ble_decode_bind_hook を追加するときのために、
-    % どの様な関数において local BASH_REMATCH をつける必要があるかについて
-    % Note にまとめておく必要がある。
-
-    とここまでまとめて気付いたが local BASH_REMATCH を実行しても
-    読み取り専用の変数ですと表示されて怒られる。
-    更に、BASH_REMATCH に対する変更の影響は結局関数の外でも残る。
-    つまり local BASH_REMATCH としても効果はなくエラーメッセージが表示されるだけである。
-
-    一番理想的な方法は正規表現の一致に使用された文字列と正規表現を特定することだがそれは難しい。
-    もし一致全体 ${BASH_REMATCH[0]} のことを気にしないで良いのであれば、
-    ${BASH_REMATCH[i]} に対して (.{${#BASH_REMATCH[i]}}) を一致させるようにすれば良い。
-    問題は一致全体である。結局一致全体は不動なので [[ $BASH_REMATCH =~ 某 ]] とするしかない。
-    この時各子一致は独立ではなくて overlap があることに注意する。
-
-    特に、各子一致は入れ子構造になっていなければならないという制限が存在する。
-    さて、問題は子一致の内容が指定されたときに入れ子構造を再現することができるのかということである。
-    また各子一致の順序も保持しなければならない。
-
-    1 各子一致について先頭から順に見ていくとする。
-      或る子一致について、先ず既存の子一致に対する入れ子関係を決定する。
-      一般に複数の可能性がある。つまり、全体一致の部分列として複数の位置に存在する可能性があって、
-      更に既存の子一致に対する入れ子関係と矛盾しない (既存の子一致の終端を跨がない) という条件を課しても、
-      複数の候補が残る可能性がある。
-
-    2 この時、一番初めの (即ち、一番内側の入れ子になるような) 可能性を選んでも問題は起こらない。
-      何故ならば後続の子一致は、現在処理している子一致に完全に含まれるか、
-      或いは現在処理している子一致より明確に後に位置するかであるため、
-      本来の一致位置より左側に平行移動する分には何も問題が起こらないからである。
-
-    この手順によって各子一致の開始位置を決定することができる。
-    その後に対応する正規表現を () と .{幅} の組み合わせで構築すれば良い。
-    後は $BASH_REMATCH と構築した正規表現を何処かの変数に保存しておけば、
-    [[ $saved_rematch =~ $saved_rex ]] でいつでも BASH_REMATCH の状態を復元できる。
-
 
 2017-09-05
 
@@ -2355,6 +2282,88 @@ tech
 -------------------------------------------------------------------------------
 
 2017-09-27
+
+  * 2017-09-06 ble-edit: BASH_REMATCH 復元について
+
+    任意の配列 BASH_REMATCH を、[[ some =~ some ]] を用いて復元するのは難しい。
+
+    % だとすると一つの方法は local BASH_REMATCH を ble-decode/.hook で定義することである。
+    %
+    % - 但し、exec:exec の場合には関数の内部でユーザコマンドを実行するので、
+    %   その際に unset BASH_REMATCH を実行する必要がある。
+    %   そしてユーザコマンドを呼び出した後で、適切な位置で再度 BASH_REMATCH を呼び出す必要がある。
+    %
+    %   関数 ble-decode/EPILOGUE の以下の行の直後で良いだろう。
+    %
+    %   "ble-edit/exec:$bleopt_exec_type/process" && return 0
+    %
+    % - また exec:gexec の場合には ble-decode/.hook の外側でも処理を行うので、
+    %   その外で呼び出されうる全ての関数について local BASH_REMATCH を指定する必要がある。
+    %   外で呼び出されうる関数に関しては変数 _ble_decode_bind_hook に設定されうる関数を調べれば良い。
+    %   _ble_decode_bind_hook に対する値の設定は現状でただ一箇所 ble-edit/exec:gexec/.setup の中である。
+    %   ここで指定される関数として以下のものがある。
+    %
+    %   - ble-edit/exec:gexec/.eval-prologue
+    %   - ble-edit/exec:gexec/.save-params
+    %   - ble-edit/exec:gexec/.eval-epilogue"
+    %   - ble-edit/exec:gexec/.end
+    %
+    % - 他に trap を通して呼び出される関数がある。
+    %
+    %   - ble-decode: ble-stty/TRAPEXIT これは単純な関数なので中で正規表現を使わないことは自明である。
+    %   - ble-edit: ble-edit/attach/TRAPWINCH 必要
+    %   - ble-edit: ble-edit/exec:exec/.eval-TRAPDEBUG 不要
+    %   - ble-edit: ble-edit/exec:exec/.eval-TRAPINT 不要
+    %   - ble-edit: ble-edit/exec:gexec/.eval-TRAPDEBUG 必要
+    %   - ble-edit: ble-edit/exec:gexec/.eval-TRAPINT 不要
+    %   - ble-edit: ble-edit/bind/stdout/TRAPUSR1 不要
+    %   - ble-edit: ble-edit/bind/.exit-TRAPRTMAX 不要
+    %
+    % また将来的に trap や _ble_decode_bind_hook を追加するときのために、
+    % どの様な関数において local BASH_REMATCH をつける必要があるかについて
+    % Note にまとめておく必要がある。
+
+    とここまでまとめて気付いたが local BASH_REMATCH を実行しても
+    読み取り専用の変数ですと表示されて怒られる。
+    更に、BASH_REMATCH に対する変更の影響は結局関数の外でも残る。
+    つまり local BASH_REMATCH としても効果はなくエラーメッセージが表示されるだけである。
+
+    一番理想的な方法は正規表現の一致に使用された文字列と正規表現を特定することだがそれは難しい。
+    もし一致全体 ${BASH_REMATCH[0]} のことを気にしないで良いのであれば、
+    ${BASH_REMATCH[i]} に対して (.{${#BASH_REMATCH[i]}}) を一致させるようにすれば良い。
+    問題は一致全体である。結局一致全体は不動なので [[ $BASH_REMATCH =~ 某 ]] とするしかない。
+    この時各子一致は独立ではなくて overlap があることに注意する。
+
+    特に、各子一致は入れ子構造になっていなければならないという制限が存在する。
+    さて、問題は子一致の内容が指定されたときに入れ子構造を再現することができるのかということである。
+    また各子一致の順序も保持しなければならない。
+
+    1 各子一致について先頭から順に見ていくとする。
+      或る子一致について、先ず既存の子一致に対する入れ子関係を決定する。
+      一般に複数の可能性がある。つまり、全体一致の部分列として複数の位置に存在する可能性があって、
+      更に既存の子一致に対する入れ子関係と矛盾しない (既存の子一致の終端を跨がない) という条件を課しても、
+      複数の候補が残る可能性がある。
+
+    2 この時、一番初めの (即ち、一番内側の入れ子になるような) 可能性を選んでも問題は起こらない。
+      何故ならば後続の子一致は、現在処理している子一致に完全に含まれるか、
+      或いは現在処理している子一致より明確に後に位置するかであるため、
+      本来の一致位置より左側に平行移動する分には何も問題が起こらないからである。
+
+    この手順によって各子一致の開始位置を決定することができる。
+    その後に対応する正規表現を () と .{幅} の組み合わせで構築すれば良い。
+    後は $BASH_REMATCH と構築した正規表現を何処かの変数に保存しておけば、
+    [[ $saved_rematch =~ $saved_rex ]] でいつでも BASH_REMATCH の状態を復元できる。
+
+    [実装]
+
+    取り敢えず実装した。動いている気がする。実装している途中に気付いた点として、
+
+    - 一致に失敗すると BASH_REMATCH は空になる。
+    - 初期の状態では BASH_REMATCH は unset の状態になっている。
+    - BASH_REMATCH を手で unset することはできない。
+
+    初期の unset の状態には戻せないので ble.sh では BASH_REMATCH を空にする
+    (具体的には [[ '' =~ none ]] を実行する) ことにした。
 
   * 2017-09-25 ble-edit: 貼り付け対策
 

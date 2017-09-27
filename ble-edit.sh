@@ -3424,6 +3424,94 @@ function ble-edit/exec/.adjust-eol {
   ble-edit/draw/bflush
 }
 
+_ble_edit_exec_BASH_REMATCH=()
+_ble_edit_exec_BASH_REMATCH_rex=none
+
+## 関数 ble-edit/exec/.save-BASH_REMATCH/increase delta
+##   @param[in] delta
+##   @var[in,out] i rex
+function ble-edit/exec/save-BASH_REMATCH/increase {
+  local delta=$1
+  ((delta)) || return
+  ((i+=delta))
+  if ((delta==1)); then
+    rex=$rex.
+  else
+    rex=$rex.{$delta}
+  fi
+}
+function ble-edit/exec/save-BASH_REMATCH/is-updated {
+  local i n=${#_ble_edit_exec_BASH_REMATCH[@]}
+  ((n!=${#BASH_REMATCH[@]})) && return 0
+  for ((i=0;i<n;i++)); do
+    [[ ${_ble_edit_exec_BASH_REMATCH[i]} != ${BASH_REMATCH[i]} ]] && return 0
+  done
+  return 1
+}
+function ble-edit/exec/save-BASH_REMATCH {
+  ble-edit/exec/save-BASH_REMATCH/is-updated || return
+
+  local size=${#BASH_REMATCH[@]}
+  if ((size==0)); then
+    _ble_edit_exec_BASH_REMATCH=()
+    _ble_edit_exec_BASH_REMATCH_rex=none
+    return
+  fi
+
+  local rex= i=0
+  local text=$BASH_REMATCH sub ret isub
+
+  local rex i=0 rparens
+  local isub
+  for ((isub=1;isub<size;isub++)); do
+    local sub=${BASH_REMATCH[isub]}
+
+    # 既存の子一致の孫一致になるか確認
+    local r rN=${#rparens[@]}
+    for ((r=rN-1;r>=0;r--)); do
+      local end=${rparens[r]}
+      if ble/string#index-of "${text:i:end-i}" "$sub"; then
+        ble-edit/exec/save-BASH_REMATCH/increase "$ret"
+        ble/array#push rparens $((i+${#sub}))
+        rex=$rex'('
+        break
+      else
+        ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
+        rex=$rex')'
+        unset rparens[r]
+      fi
+    done
+
+    ((r>=0)) && continue
+
+    # 新しい子一致
+    if ble/string#index-of "${text:i}" "$sub"; then
+      ble-edit/exec/save-BASH_REMATCH/increase "$ret"
+      ble/array#push rparens $((i+${#sub}))
+      rex=$rex'('
+    else
+      break # 復元失敗
+    fi
+  done
+
+  local r rN=${#rparens[@]}
+  for ((r=rN-1;r>=0;r--)); do
+    local end=${rparens[r]}
+    ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
+    rex=$rex')'
+    unset rparens[r]
+  done
+
+  ble-edit/exec/save-BASH_REMATCH/increase $((${#text}-i))
+
+  _ble_edit_exec_BASH_REMATCH=("${BASH_REMATCH[@]}")
+  _ble_edit_exec_BASH_REMATCH_rex=$rex
+}
+function ble-edit/exec/restore-BASH_REMATCH {
+  [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
+}
+
+
 ## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_exec_type/process;
 ##   指定したコマンドを実行します。
 ## @param[in,out] _ble_edit_exec_lines
@@ -3461,6 +3549,7 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
 
 function ble-edit/exec:exec/.eval-prologue {
   ble-stty/leave
+  ble-edit/exec/restore-BASH_REMATCH
   ble/restore-bash-verbose-option
 
   set -H
@@ -3484,9 +3573,10 @@ function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
 
   ble-stty/enter
+  ble/adjust-bash-verbose-option
   _ble_edit_PS1="$PS1"
   _ble_edit_IFS="$IFS"
-  ble/adjust-bash-verbose-option
+  ble-edit/exec/save-BASH_REMATCH
   ble-edit/exec/.adjust-eol
 
   # lastexit
@@ -3706,6 +3796,7 @@ function ble-edit/exec:gexec/.eval-prologue {
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-stty/leave
+  ble-edit/exec/restore-BASH_REMATCH
   ble/restore-bash-verbose-option
   ble-edit/exec/.setexit # set $?
 }
@@ -3729,9 +3820,10 @@ function ble-edit/exec:gexec/.eval-epilogue {
   trap - DEBUG # DEBUG 削除が何故か効かない
 
   ble-stty/enter
+  ble/adjust-bash-verbose-option
   _ble_edit_PS1="$PS1"
   PS1=
-  ble/adjust-bash-verbose-option
+  ble-edit/exec/save-BASH_REMATCH
   ble-edit/exec/.adjust-eol
 
   if ((_ble_edit_exec_lastexit)); then
