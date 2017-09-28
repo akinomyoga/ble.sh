@@ -191,7 +191,7 @@ _ble_keymap_vi_single_command_overwrite=
 ## オプション bleopt_keymap_vi_normal_mode_name
 ##   ノーマルモードの時に表示する文字列を指定します。
 ##   空文字列を指定したときは何も表示しません。
-: ${bleopt_keymap_vi_normal_mode_name:="$_ble_term_bold~$_ble_term_sgr0"}
+: ${bleopt_keymap_vi_normal_mode_name:=$'\e[1m~\e[m'}
 
 function ble/keymap:vi/update-mode-name {
   local kmap=$_ble_decode_key__kmap
@@ -216,7 +216,7 @@ function ble/keymap:vi/update-mode-name {
       local ret; ble/string#tolower "$name"; name="($ret)"
     fi
 
-    name="$_ble_term_bold-- $name --$_ble_term_sgr0"
+    name=$'\e[1m-- '$name$' --\e[m'
   fi
   ble-edit/info/default raw "$name"
 }
@@ -364,7 +364,7 @@ function ble/widget/vi-command/accept-line {
   ble/widget/accept-line
 }
 function ble/widget/vi-command/accept-single-line-or {
-  if ble-edit/content/is-single-line && ! ble/util/is-stdin-ready; then
+  if ble/widget/accept-single-line-or/accepts; then
     ble/widget/vi-command/accept-line
   else
     ble/widget/"$@"
@@ -2295,7 +2295,7 @@ function ble/widget/vi-insert/magic-space {
   fi
 }
 function ble/widget/vi-insert/accept-single-line-or {
-  if ble-edit/content/is-single-line && ! ble/util/is-stdin-ready; then
+  if ble/widget/accept-single-line-or/accepts; then
     ble/widget/vi-insert/@norepeat accept-line
   else
     ble/widget/"$@"

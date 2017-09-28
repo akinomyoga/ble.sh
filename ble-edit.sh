@@ -4002,8 +4002,13 @@ function ble/widget/newline {
   local -a KEYS=(10)
   ble/widget/self-insert
 }
+function ble/widget/accept-single-line-or/accepts {
+  ble-edit/content/is-single-line || return 1
+  [[ $_ble_edit_str ]] && ble/util/is-stdin-ready && return 1
+  return 0
+}
 function ble/widget/accept-single-line-or {
-  if ble-edit/content/is-single-line && ! ble/util/is-stdin-ready; then
+  if ble/widget/accept-single-line-or/accepts; then
     ble/widget/accept-line
   else
     ble/widget/"$@"
