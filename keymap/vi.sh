@@ -2420,13 +2420,18 @@ _ble_keymap_vi_previous_visual=char:1
 # }
 
 function ble/widget/vi-command/visual-mode.impl {
-  local type=$1
+  local visual_type=$1
   local arg flag; ble/keymap:vi/get-arg 0
-  ((arg)) && type=previous
+  if [[ $flag ]]; then
+    ble/widget/vi-command/bell
+    return 1
+  fi
+
+  ((arg)) && visual_type=previous
 
   _ble_edit_overwrite_mode=
   _ble_edit_mark=$_ble_edit_ind
-  _ble_edit_mark_active=$type
+  _ble_edit_mark_active=$visual_type
   ble-decode/keymap/push vi_xmap
   ble/keymap:vi/update-mode-name
 }
@@ -2456,6 +2461,31 @@ function ble/widget/vi_xmap/cancel {
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
 }
+function ble/widget/vi_xmap/switch-visual-mode.impl {
+  local visual_type=$1
+  local arg flag; ble/keymap:vi/get-arg 0
+  if [[ $flag ]]; then
+    ble/widget/.bell
+    return
+  fi
+
+  if [[ $_ble_edit_mark_active == $visual_type ]]; then
+    ble/widget/vi_xmap/cancel
+  else
+    _ble_edit_mark_active=$visual_type
+    ble/keymap:vi/update-mode-name
+  fi
+  
+}
+function ble/widget/vi_xmap/switch-to-charwise {
+  ble/widget/vi_xmap/switch-visual-mode.impl char
+}
+function ble/widget/vi_xmap/switch-to-linewise {
+  ble/widget/vi_xmap/switch-visual-mode.impl line
+}
+function ble/widget/vi_xmap/switch-to-blockwise {
+  ble/widget/vi_xmap/switch-visual-mode.impl block
+}
 
 
 function ble-decode-keymap:vi_xmap/define {
@@ -2475,6 +2505,12 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f 'u' 'vi-command/set-operator u'
   ble-bind -f 'U' 'vi-command/set-operator U'
   ble-bind -f '?' 'vi-command/set-operator ?'
+
+  ble-bind -f 'C-\ C-n' vi_xmap/cancel
+  ble-bind -f 'C-\ C-g' vi_xmap/cancel
+  ble-bind -f v   vi_xmap/switch-to-charwise
+  ble-bind -f V   vi_xmap/switch-to-linewise
+  ble-bind -f C-v vi_xmap/switch-to-blockwise
 }
 
 #------------------------------------------------------------------------------
