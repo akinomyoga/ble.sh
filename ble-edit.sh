@@ -1163,6 +1163,7 @@ _ble_line_text_begx=0
 _ble_line_text_begy=0
 _ble_line_text_endx=0
 _ble_line_text_endy=0
+_ble_line_text_cols=80
 
 ## @var _ble_line_text_cache_ichg[]
 ##   表示文字に変更のあった物の index の一覧です。
@@ -1174,10 +1175,15 @@ _ble_line_text_cache_length=
 ##   @var[in,out] x y
 ##   @var[in    ] BLELINE_RANGE_UPDATE[]
 ##   @var[   out] POS_UMIN POS_UMAX
-##   @var[   out] _ble_line_text_cache_length
-##   @var[   out] _ble_line_text_cache_pos[]
-##   @var[   out] _ble_line_text_cache_cs[]
-##   @var[   out] _ble_line_text_cache_ichg[]
+##   @var[in,out] _ble_line_text_cache_length
+##   @var[in,out] _ble_line_text_cache_pos[]
+##   @var[in,out] _ble_line_text_cache_cs[]
+##   @var[in,out] _ble_line_text_cache_ichg[]
+##   @var[in,out] _ble_line_text_cols
+##   @var[   out] _ble_line_text_begx
+##   @var[   out] _ble_line_text_begy
+##   @var[   out] _ble_line_text_endx
+##   @var[   out] _ble_line_text_endy
 function ble-edit/text/update/position {
   local dbeg dend dend0
   ((dbeg=BLELINE_RANGE_UPDATE[0]))
@@ -1185,25 +1191,34 @@ function ble-edit/text/update/position {
   ((dend0=BLELINE_RANGE_UPDATE[2]))
 
   local iN="${#text}"
-  ((_ble_line_text_cache_length=iN))
 
   # 初期位置 x y
   local _pos="$x $y"
   _ble_line_text_begx=$x
   _ble_line_text_begy=$y
 
+  local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl"
+  ((COLUMNS&&cols<COLUMNS&&(xenl=1)))
+  # local cols="80" it="$_ble_term_it" xenl="1"
+
   local -a pos
-  if [[ ${_ble_line_text_cache_pos[0]} != "$_pos" ]]; then
+  if ((cols!=_ble_line_text_cols)); then
+    # 表示幅が変化したときは全部再計算
+    ((dbeg=0,dend0=_ble_line_text_cache_length,dend=iN))
+    _ble_line_text_cache_pos[0]="$_pos"
+  elif [[ ${_ble_line_text_cache_pos[0]} != "$_pos" ]]; then
     # 初期位置の変更がある場合は初めから計算し直し
     ((dbeg<0&&(dend=dend0=0),
       dbeg=0))
     _ble_line_text_cache_pos[0]="$_pos"
   else
     if ((dbeg<0)); then
-      # 初期位置も内容も変更がない場合はOK
+      # 表示幅も初期位置も内容も変更がない場合はOK
       pos=(${_ble_line_text_cache_pos[iN]})
       ((x=pos[0]))
       ((y=pos[1]))
+      _ble_line_text_endx=$x
+      _ble_line_text_endy=$y
       return
     elif ((dbeg>0)); then
       # 途中から計算を再開
@@ -1213,8 +1228,8 @@ function ble-edit/text/update/position {
     fi
   fi
 
-  local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl"
-  # local cols="80" it="$_ble_term_it" xenl="1"
+  _ble_line_text_cols=$cols
+  _ble_line_text_cache_length=$iN
 
 #%if !release
   ble-assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- (${BLELINE_RANGE_UPDATE[*]})"
@@ -1481,7 +1496,7 @@ function ble-edit/text/getxy.out {
 ##
 ##   @var[out] x y
 ##
-##   ble-edidt/text/getxy.out の異なり前置される空白は考えずに、
+##   ble-edit/text/getxy.out の異なり前置される空白は考えずに、
 ##   文字本体が開始する位置を取得します。
 ##   実用上は境界 index の右側の文字の開始位置と解釈できます。
 ##
@@ -1544,9 +1559,9 @@ function ble-edit/text/get-index-at {
   else
     # 2分法
     local _l=0 _u="$((_ble_line_text_cache_length+1))" _m
-    local -a _mx _my
+    local _mx _my
     while ((_l+1<_u)); do
-      ble-edit/text/getxy.cur --prefix=_m "$((_m=(_l+_u)/2))"
+      ble-edit/text/getxy.cur --prefix=_m $((_m=(_l+_u)/2))
       (((_y<_my||_y==_my&&_x<_mx)?(_u=_m):(_l=_m)))
     done
     (($_var=_l))
@@ -1676,7 +1691,7 @@ function ble-edit/info/.clear-content {
   local -a DRAW_BUFF
   ble-form/panel#set-height.draw 1 0
   ble-edit/draw/bflush
-  
+
   _ble_line_info=(0 0 "")
 }
 
@@ -2296,7 +2311,7 @@ function ble-edit/render/update {
   local cx cy
   ble-edit/text/getxy.cur --prefix=c "$index" # → cx cy
 
-  local cols=$COLUMNS
+  local cols=$_ble_line_text_cols
   local height=$((LINES-1)) # todo: info の高さも考慮に入れる
   local scroll=$_ble_line_scroll
   ble-edit/render/.determine-scroll # update: height scroll umin umax

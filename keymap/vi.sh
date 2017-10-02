@@ -2396,7 +2396,225 @@ function ble-decode-keymap:vi_omap/define {
 #------------------------------------------------------------------------------
 # Visual mode
 
-_ble_keymap_vi_previous_visual=char:1
+
+# 矩形範囲の抽出
+
+## 関数 ble/keymap:vi/extract-graphical-block-by-geometry bol1 bol2 x1:y1 x2:y2
+## 関数 ble/keymap:vi/extract-logical-block-by-geometry bol1 bol2 c1 c2
+##   指定した引数の範囲を元に矩形範囲を抽出します。
+## 関数 ble/keymap:vi/extract-graphical-block
+## 関数 ble/keymap:vi/extract-logical-block
+##   現在位置 (_ble_edit_ind) とマーク (_ble_edit_mark) を元に矩形範囲を抽出します。
+##
+##   @param[in] bol1 bol2
+##     2つの行の行頭を指定します。
+##   @param[in] x1:y1 x2:y2
+##     2つの列を行頭からの相対位置で指定します。
+##   @param[in] c1 c2
+##     2つの列を論理列で指定します。
+##
+##   @arr[out] sub_ranges
+##     矩形を構成する各行の情報を格納します。
+##     各要素は以下の形式を持ちます。
+##
+##     smin:smax:slpad:srpad:sfill:stext
+##
+##     smin smax
+##       選択範囲を強調するとき・切り取るときの範囲を指定します。
+##     slpad srpad
+##       選択範囲を切り取ったときに左右に補填する空白の数を指定します。
+##     sfill
+##       矩形の挿入時に右端に補填するべき空白の数を指定します。
+##     stext
+##       選択範囲から読み取られる文字列を指定します。
+##       全角文字などが範囲の境界を跨ぐとき、
+##       その文字は (範囲に被る幅と同数の) 空白に置き換えられます。
+##
+function ble/keymap:vi/extract-graphical-block-by-geometry {
+  local bol1=$1 bol2=$2 x1=$3 x2=$4 y1=0 y2=0
+  ((bol1<=bol2||(bol1=$2,bol2=$1)))
+  [[ $x1 == *:* ]] && local x1=${x1%%:*} y1=${x1#*:}
+  [[ $x2 == *:* ]] && local x2=${x2%%:*} y2=${x2#*:}
+
+  local cols=$_ble_line_text_cols
+  local c1=$((cols*y1+x1)) c2=$((cols*y2+x2))
+
+  local ret index
+  local bol=$bol1 eol bolx boly x y c
+  sub_ranges=()
+  while :; do
+    ble-edit/content/find-logical-eol "$bol"; eol=$ret
+    ble-edit/text/getxy.cur --prefix=bol "$bol"
+
+    ble-edit/text/get-index-at "$x1" $((boly+y1)); local smin=$index
+    ble-edit/text/get-index-at "$x2" $((boly+y2)); local smax=$index
+    ((smin>eol&&(smin=eol),smax>eol&&(smax=eol)))
+
+    local sfill=0 slpad=0 srpad=0
+    local stext=${_ble_edit_str:smin:smax-smin}
+    if ((smin<smax)); then
+      # 1. 左の境界 c1 を大きな文字が跨いでいるときは空白に変換する。
+      #
+      # Note: 行送りにより getxy.out(smin) <= c1 < pc = getxy.cur(smin)
+      # が起こりうるが vim に倣って、空白を付加するなどの対策はしない。
+      #
+      ble-edit/text/getxy.cur "$smin"
+      ((y-=boly,c=y*cols+x))
+      if ((c<c1)); then
+        ((slpad=c1-c))
+
+        # assert: smin < smax <= eol なので行末ではない
+        ble-assert '! ble-edit/content/eolp "$smin"'
+
+        ble-edit/text/getxy.cur $((smin+1))
+        ((y-=boly,c=y*cols+x))
+
+        # assert: get-index-at の振る舞いから、次の文字は c1 より後にいるはず。
+        ble-assert '((c>c1))' || ((c=c1))
+
+        ble/string#repeat ' ' $((c-c1))
+        stext=$ret${stext:1}
+      fi
+
+      # 2. 右の境界 c2 を大きな文字が跨いでいるときは空白に変換する
+      ble-edit/text/getxy.out "$smax"
+      ((y-=boly,c=y*cols+x))
+      if ((c<c2)); then
+        if ble-edit/content/eolp "$smax"; then
+          ((sfill=c2-c))
+        else
+          ble/string#repeat ' ' $((c2-c))
+          stext=$stext$ret
+          ((smax++))
+
+          ble-edit/text/getxy.out $((smax+1))
+          ((y-=boly,c=y*cols+x))
+          ble-assert '((c>c2))' || ((c=c2))
+          ((srpad=c-c2))
+        fi
+      fi
+
+    else
+      if ble-edit/content/eolp "$smin"; then
+        # 行末
+        ((sfill=c2-c1))
+      elif ((c2>c1)); then
+        # 範囲の両端が単一の文字の左端または内部にある
+        ble/string#repeat ' ' $((c2-c1))
+        stext=$ret${stext:1}
+        ((smax++))
+
+        ble-edit/text/getxy.out "$smin" # ※行送りの幅も slpad に含めるので getxy.out でOK
+        ((y-=boly,c=y*cols+x,slpad=c1-c))
+        ble-edit/text/getxy.out $((smin+1))
+        ((y-=boly,c=y*cols+x,srpad=c-c2))
+      fi
+    fi
+
+    ble/array#push sub_ranges "$smin:$smax:$slpad:$srpad:$sfill:$stext"
+
+    ((bol>=bol2)) && break
+    ble-edit/content/find-logical-bol "$bol" 1; bol=$ret
+  done
+}
+function ble/keymap:vi/extract-graphical-block {
+  local p=$_ble_edit_mark q=$_ble_edit_ind
+  ble-edit/content/find-logical-bol "$p"; local p0=$ret
+  ble-edit/content/find-logical-bol "$q"; local q0=$ret
+
+  local p0x p0y q0x q0y
+  ble-edit/text/getxy.out --prefix=p0 "$p0"
+  ble-edit/text/getxy.out --prefix=q0 "$q0"
+
+  local plx ply qlx qly
+  ble-edit/text/getxy.out --prefix=pl "$p"
+  ble-edit/text/getxy.out --prefix=ql "$q"
+
+  local prx=$plx pry=$ply qrx=$qlx qry=$qly
+  ble-edit/content/eolp "$p" || ble-edit/text/getxy.out --prefix=pr $((p+1))
+  ble-edit/content/eolp "$q" || ble-edit/text/getxy.out --prefix=qr $((q+1))
+
+  local lx ly rx ry
+  ((ply-=p0y,qly-=q0y,pry-=p0y,qry-=q0y,
+    (ply<qly||ply==qly&&plx<qlx)?(lx=plx,ly=ply):(lx=qlx,ly=qly),
+    (pry>qry||pry==qry&&prx>qrx)?(rx=prx,ry=pry):(rx=qrx,ry=qry)))
+
+  ble/keymap:vi/extract-graphical-block-by-geometry "$p0" "$q0" "$lx:$ly" "$rx:$ry"
+}
+function ble/keymap:vi/extract-logical-block-by-geometry {
+  local bol1=$1 bol2=$2 x1=$3 x2=$4
+  ((bol1<=bol2||(bol1=$2,bol2=$1)))
+
+  local ret
+  local bol=$bol1 eol
+  sub_ranges=()
+  while :; do
+    ble-edit/content/find-logical-eol "$bol"; eol=$ret
+    local smin=$((bol+x1)) smax=$((bol+x2)) slpad=0 srpad=0 sfill=0
+    ((smin>eol&&(smin=eol),
+      smax>eol&&(sfill=smax-eol,smax=eol)))
+    local stext=${_ble_edit_str:smin:smax-smin}
+
+    ble/array#push sub_ranges "$smin:$smax:$slpad:$srpad:$sfill:$stext"
+
+    ((bol>=bol2)) && break
+    ble-edit/content/find-logical-bol "$bol" 1; bol=$ret
+  done
+}
+function ble/keymap:vi/extract-logical-block {
+  local p=$_ble_edit_mark q=$_ble_edit_ind
+  ble-edit/content/find-logical-bol "$p"; local p0=$ret
+  ble-edit/content/find-logical-bol "$q"; local q0=$ret
+  ((p-=p0,q-=q0,p<=q)) || local p=$q q=$p
+  ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$p" $((q+1))
+}
+function ble/keymap:vi/extract-block {
+  if ble-edit/text/is-position-up-to-date; then
+    ble/keymap:vi/extract-graphical-block
+  else
+    ble/keymap:vi/extract-logical-block
+  fi
+}
+
+
+# 選択範囲の着色の設定
+
+## 関数 ble-highlight-layer:region/mark:char/get-selection
+## 関数 ble-highlight-layer:region/mark:line/get-selection
+## 関数 ble-highlight-layer:region/mark:block/get-selection
+##   @arr[in,out] selection
+function ble-highlight-layer:region/mark:char/get-selection {
+  local rmin rmax
+  if ((_ble_edit_mark<_ble_edit_ind)); then
+    rmin=$_ble_edit_mark rmax=$_ble_edit_ind
+  else
+    rmin=$_ble_edit_ind rmax=$_ble_edit_mark
+  fi
+  ble-edit/content/eolp "$rmax" || ((rmax++))
+  selection=("$rmin:$rmax")
+}
+function ble-highlight-layer:region/mark:line/get-selection {
+  local rmin rmax
+  if ((_ble_edit_mark<_ble_edit_ind)); then
+    rmin=$_ble_edit_mark rmax=$_ble_edit_ind
+  else
+    rmin=$_ble_edit_ind rmax=$_ble_edit_mark
+  fi
+  local ret
+  ble-edit/content/find-logical-bol "$rmin"; rmin=$ret
+  ble-edit/content/find-logical-eol "$rmax"; rmax=$ret
+  selection=("$rmin:$rmax")
+}
+function ble-highlight-layer:region/mark:block/get-selection {
+  local sub_ranges
+  ble/keymap:vi/extract-block
+  selection=("${sub_ranges[@]}")
+}
+
+
+# 前回の選択範囲の記録
+
+_ble_keymap_vi_previous_visual=char:1:0
 # ? 日本語の文字の上にカーソルがあるときの処理
 # ? 複数行に跨っているときの相対位置の処理
 # function ble/widget/vi_xmap/.save-visual-state {
@@ -2415,9 +2633,11 @@ _ble_keymap_vi_previous_visual=char:1
 #     local ret
 #     ble-edit/content/find-logical-bol "$a"; ay=$ret
 #   fi
-  
+
 #   _ble_keymap_vi_previous_visual=$_ble_edit_mark_active:$dx:$dy
 # }
+
+# モード遷移
 
 function ble/widget/vi-command/visual-mode.impl {
   local visual_type=$1
@@ -2444,7 +2664,6 @@ function ble/widget/vi-command/linewise-visual-mode {
 function ble/widget/vi-command/blockwise-visual-mode {
   ble/widget/vi-command/visual-mode.impl block
 }
-
 function ble/widget/vi_xmap/exit {
   _ble_edit_mark_active=
   ble-decode/keymap/pop
@@ -2475,7 +2694,7 @@ function ble/widget/vi_xmap/switch-visual-mode.impl {
     _ble_edit_mark_active=$visual_type
     ble/keymap:vi/update-mode-name
   fi
-  
+
 }
 function ble/widget/vi_xmap/switch-to-charwise {
   ble/widget/vi_xmap/switch-visual-mode.impl char
