@@ -439,18 +439,20 @@ function ble/widget/vi-command/set-operator {
   ble-assert '[[ $ch != *[0-9]* ]]' "ch=$ch"
 
   if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
-    _ble_edit_arg= # todo: 無視?
+    local arg flag; ble/keymap:vi/get-arg ''
+    # ※flag はユーザにより設定されているかもしれないが無視
+
     local a=$_ble_edit_ind b=$_ble_edit_mark
     ((a<=b||(a=_ble_edit_mark,b=_ble_edit_ind)))
 
     if [[ $_ble_edit_mark_active == line ]]; then
-      ble/keymap:vi/call-operator-linewise "$ch" "$a" "$b"
+      ble/keymap:vi/call-operator-linewise "$ch" "$a" "$b" $arg
     elif [[ $_ble_edit_mark_active == block ]]; then
-      ble/keymap:vi/call-operator-blockwise "$ch" "$a" "$b"
+      ble/keymap:vi/call-operator-blockwise "$ch" "$a" "$b" $arg
     else
       local end=$b
       ((end<${#_ble_edit_str}&&end++))
-      ble/keymap:vi/call-operator-charwise "$ch" "$a" "$end"
+      ble/keymap:vi/call-operator-charwise "$ch" "$a" "$end" $arg
     fi || ble/widget/.bell
 
     # todo: 範囲を記録
@@ -526,7 +528,7 @@ function ble/widget/vi-command/beginning-of-line {
 
 ## オペレータは以下の形式の関数として定義される。
 ##
-## 関数 ble/keymap:vi/operator:名称 a b type
+## 関数 ble/keymap:vi/operator:名称 a b type [count]
 ##
 ##   @param[in] a b
 ##     範囲の開始点と終了点。終了点は開始点以降にあることが保証される。
@@ -535,6 +537,10 @@ function ble/widget/vi-command/beginning-of-line {
 ##
 ##   @param[in] type
 ##     範囲の種類を表す文字列。char, line, block の何れか。
+##
+##   @param[in] count
+##     オペレータの操作に対する引数。
+##     これはビジュアルモードで指定される。
 ##
 ##   @var[in,out] beg end
 ##     範囲の開始点と終了点。a b と同一の値。
@@ -550,11 +556,11 @@ function ble/widget/vi-command/beginning-of-line {
 ##
 
 function ble/keymap:vi/call-operator-charwise {
-  local ch=$1 beg=$2 end=$3
+  local ch=$1 beg=$2 end=$3 arg=$4
   ((beg<=end||(beg=$3,end=$2)))
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
     local _ble_keymap_vi_operator_delayed=
-    ble/keymap:vi/operator:"$ch" "$beg" "$end" char
+    ble/keymap:vi/operator:"$ch" "$beg" "$end" char "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
     ble/widget/.goto-char "$beg"
     ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
@@ -565,7 +571,7 @@ function ble/keymap:vi/call-operator-charwise {
 }
 
 function ble/keymap:vi/call-operator-linewise {
-  local ch=$1 a=$2 b=$3 ia=0 ib=0
+  local ch=$1 a=$2 b=$3 arg=$4 ia=0 ib=0
   [[ $a == *:* ]] && local a=${a%%:*} ia=${a#*:}
   [[ $b == *:* ]] && local b=${b%%:*} ib=${b#*:}
   local ret
@@ -575,7 +581,7 @@ function ble/keymap:vi/call-operator-linewise {
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
     ((end<${#_ble_edit_str}&&end++))
     local _ble_keymap_vi_operator_delayed=
-    ble/keymap:vi/operator:"$ch" "$beg" "$end" line
+    ble/keymap:vi/operator:"$ch" "$beg" "$end" line "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
     ble/widget/.goto-char "$beg"
     ble/widget/vi-command/first-non-space
@@ -701,7 +707,6 @@ function ble/keymap:vi/string#increase-indent {
   done
 
   IFS=$'\n' eval 'ret=${arr2[*]}'
-
 }
 function ble/keymap:vi/operator:increase-indent {
   local delta=$1 context=$2
@@ -716,10 +721,12 @@ function ble/keymap:vi/operator:increase-indent {
   fi
 }
 function ble/keymap:vi/operator:left {
-  ble/keymap:vi/operator:increase-indent -8 "$3"
+  local context=$3 arg=${4:-1}
+  ble/keymap:vi/operator:increase-indent $((-8*arg)) "$context"
 }
 function ble/keymap:vi/operator:right {
-  ble/keymap:vi/operator:increase-indent 8 "$3"
+  local context=$3 arg=${4:-1}
+  ble/keymap:vi/operator:increase-indent $((8*arg)) "$context"
 }
 
 ## 関数 ble/widget/vi-command/exclusive-range.impl src dst flag nobell
