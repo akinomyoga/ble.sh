@@ -711,7 +711,9 @@ function ble/keymap:vi/operator:increase-indent {
   ble/keymap:vi/string#increase-indent "${_ble_edit_str:beg:end-beg}" "$delta"; local content=$ret
   ble/widget/.replace-range "$beg" "$end" "$content" 1
 
-  [[ $context == char ]] && ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
+  if [[ $context == char ]]; then
+    ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
+  fi
 }
 function ble/keymap:vi/operator:left {
   ble/keymap:vi/operator:increase-indent -8 "$3"
