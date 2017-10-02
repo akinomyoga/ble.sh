@@ -453,7 +453,7 @@ function ble/widget/vi-command/set-operator {
       ble/keymap:vi/call-operator-charwise "$ch" "$a" "$end"
     fi || ble/widget/.bell
 
-    #@@@ 範囲を記録
+    # todo: 範囲を記録
 
     ble/widget/vi_xmap/exit
     return 0
@@ -1008,7 +1008,9 @@ function ble/widget/vi-command/.history-relative-line {
     if ((arg<0)); then
       ((_ble_edit_history_ind>0)) || return "$exit"
       ble/widget/history-prev
-      ble/widget/.goto-char ${#_ble_edit_str}
+      ret=${#_ble_edit_str}
+      ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
+      ble/widget/.goto-char "$ret"
     else
       ((_ble_edit_history_ind<${#_ble_edit_history[@]})) || return "$exit"
       ble/widget/history-next
@@ -1097,7 +1099,7 @@ function ble/widget/vi-command/.relative-line {
   fi
 
   # 履歴項目を行数を数えつつ移動
-  if [[ :$opts: == *:history:* ]]; then
+  if [[ $_ble_decode_key__kmap == vi_command && :$opts: == *:history:* ]]; then
     ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)) || ((nmove)) || ble/widget/.bell
   else
     ble/widget/.bell
@@ -1161,7 +1163,7 @@ function ble/widget/vi-command/graphical-relative-line.impl {
     return
   fi
 
-  if [[ ! $flag && :$opts: == *:history:* ]]; then
+  if [[ ! $flag && $_ble_decode_key__kmap == vi_command && :$opts: == *:history:* ]]; then
     if ble/widget/vi-command/.history-relative-line "$arg"; then
       ble/keymap:vi/adjust-command-mode
       return
@@ -1220,7 +1222,9 @@ function ble/widget/vi-command/.relative-first-non-space {
   fi
 
   # 履歴項目の移動
-  if ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)) || ((nmove)); then
+  if [[ $_ble_decode_key__kmap == vi_command ]] && ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)); then
+    ble/widget/vi-command/first-non-space
+  elif ((nmove)); then
     ble/widget/vi-command/first-non-space
   else
     ble/widget/.bell
