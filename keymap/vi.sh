@@ -445,6 +445,8 @@ function ble/widget/vi-command/set-operator {
     local a=$_ble_edit_ind b=$_ble_edit_mark
     ((a<=b||(a=_ble_edit_mark,b=_ble_edit_ind)))
 
+    ble/widget/vi_xmap/.save-visual-state
+
     if [[ $_ble_edit_mark_active == line ]]; then
       ble/keymap:vi/call-operator-linewise "$ch" "$a" "$b" $arg
     elif [[ $_ble_edit_mark_active == block ]]; then
@@ -454,8 +456,6 @@ function ble/widget/vi-command/set-operator {
       ((end<${#_ble_edit_str}&&end++))
       ble/keymap:vi/call-operator-charwise "$ch" "$a" "$end" $arg
     fi || ble/widget/.bell
-
-    # todo: 範囲を記録
 
     ble/widget/vi_xmap/exit
     return 0
@@ -2604,6 +2604,44 @@ function ble-decode-keymap:vi_omap/define {
 
 # 矩形範囲の抽出
 
+## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-graphical-rectangle [index1 [index2]]
+## 関数 local p0 q0 lx rx      ; ble/keymap:vi/get-logical-rectangle   [index1 [index2]]
+##
+##   @param[in,opt] index1 [=_ble_edit_mark]
+##   @param[in,opt] index2 [=_ble_edit_ind]
+##
+##   @var[out] p0 q0
+##   @var[out] lx ly rx ry
+##
+function ble/keymap:vi/get-graphical-rectangle {
+  local p=${1:-$_ble_edit_mark} q=${2:-$_ble_edit_ind}
+  ble-edit/content/find-logical-bol "$p"; p0=$ret
+  ble-edit/content/find-logical-bol "$q"; q0=$ret
+
+  local p0x p0y q0x q0y
+  ble-edit/text/getxy.out --prefix=p0 "$p0"
+  ble-edit/text/getxy.out --prefix=q0 "$q0"
+
+  local plx ply qlx qly
+  ble-edit/text/getxy.cur --prefix=pl "$p"
+  ble-edit/text/getxy.cur --prefix=ql "$q"
+
+  local prx=$plx pry=$ply qrx=$qlx qry=$qly
+  ble-edit/content/eolp "$p" || ble-edit/text/getxy.out --prefix=pr $((p+1))
+  ble-edit/content/eolp "$q" || ble-edit/text/getxy.out --prefix=qr $((q+1))
+
+  ((ply-=p0y,qly-=q0y,pry-=p0y,qry-=q0y,
+    (ply<qly||ply==qly&&plx<qlx)?(lx=plx,ly=ply):(lx=qlx,ly=qly),
+    (pry>qry||pry==qry&&prx>qrx)?(rx=prx,ry=pry):(rx=qrx,ry=qry)))
+}
+function ble/keymap:vi/get-logical-rectangle {
+  local p=${1:-$_ble_edit_mark} q=${2:-$_ble_edit_ind}
+  ble-edit/content/find-logical-bol "$p"; p0=$ret
+  ble-edit/content/find-logical-bol "$q"; q0=$ret
+  ((p-=p0,q-=q0,p<=q)) || local p=$q q=$p
+  lx=$p rx=$((q+1))
+}
+
 ## 関数 ble/keymap:vi/extract-graphical-block-by-geometry bol1 bol2 x1:y1 x2:y2
 ## 関数 ble/keymap:vi/extract-logical-block-by-geometry bol1 bol2 c1 c2
 ##   指定した引数の範囲を元に矩形範囲を抽出します。
@@ -2713,27 +2751,8 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   done
 }
 function ble/keymap:vi/extract-graphical-block {
-  local p=${1:-$_ble_edit_mark} q=${2:-$_ble_edit_ind}
-  ble-edit/content/find-logical-bol "$p"; local p0=$ret
-  ble-edit/content/find-logical-bol "$q"; local q0=$ret
-
-  local p0x p0y q0x q0y
-  ble-edit/text/getxy.out --prefix=p0 "$p0"
-  ble-edit/text/getxy.out --prefix=q0 "$q0"
-
-  local plx ply qlx qly
-  ble-edit/text/getxy.cur --prefix=pl "$p"
-  ble-edit/text/getxy.cur --prefix=ql "$q"
-
-  local prx=$plx pry=$ply qrx=$qlx qry=$qly
-  ble-edit/content/eolp "$p" || ble-edit/text/getxy.out --prefix=pr $((p+1))
-  ble-edit/content/eolp "$q" || ble-edit/text/getxy.out --prefix=qr $((q+1))
-
-  local lx ly rx ry
-  ((ply-=p0y,qly-=q0y,pry-=p0y,qry-=q0y,
-    (ply<qly||ply==qly&&plx<qlx)?(lx=plx,ly=ply):(lx=qlx,ly=qly),
-    (pry>qry||pry==qry&&prx>qrx)?(rx=prx,ry=pry):(rx=qrx,ry=qry)))
-
+  local p0 q0 lx ly rx ry
+  ble/keymap:vi/get-graphical-rectangle
   ble/keymap:vi/extract-graphical-block-by-geometry "$p0" "$q0" "$lx:$ly" "$rx:$ry"
 }
 function ble/keymap:vi/extract-logical-block-by-geometry {
@@ -2757,11 +2776,9 @@ function ble/keymap:vi/extract-logical-block-by-geometry {
   done
 }
 function ble/keymap:vi/extract-logical-block {
-  local p=${1:-$_ble_edit_mark} q=${2:-$_ble_edit_ind}
-  ble-edit/content/find-logical-bol "$p"; local p0=$ret
-  ble-edit/content/find-logical-bol "$q"; local q0=$ret
-  ((p-=p0,q-=q0,p<=q)) || local p=$q q=$p
-  ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$p" $((q+1))
+  local p0 q0 lx rx
+  ble/keymap:vi/get-logical-rectangle
+  ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$lx" "$rx"
 }
 function ble/keymap:vi/extract-block {
   if ble-edit/text/is-position-up-to-date; then
@@ -2770,7 +2787,6 @@ function ble/keymap:vi/extract-block {
     ble/keymap:vi/extract-logical-block "$@"
   fi
 }
-
 
 # 選択範囲の着色の設定
 
@@ -2809,28 +2825,98 @@ function ble-highlight-layer:region/mark:block/get-selection {
 
 # 前回の選択範囲の記録
 
-_ble_keymap_vi_previous_visual=char:1:0
-# ? 日本語の文字の上にカーソルがあるときの処理
-# ? 複数行に跨っているときの相対位置の処理
-# function ble/widget/vi_xmap/.save-visual-state {
-#   local a=$_ble_edit_mark b=$_ble_edit_ind t
-#   ((a<=b||(t=a,a=b,b=t)))
-#   if ble-edit/text/is-position-up-to-date; then
-#     local ax ay bx by
-#     ble-edit/text/getxy.cur --prefix=a "$a"
-#     ble-edit/text/getxy.cur --prefix=a "$b"
+_ble_keymap_vi_visual_prev=char:1:1
+function ble/widget/vi_xmap/.save-visual-state {
+  local nline nchar
+  if [[ $_ble_edit_mark_active == block ]]; then
+    local p0 q0 lx rx ly ry
+    if ble-edit/text/is-position-up-to-date; then
+      local cols=$_ble_line_text_cols
+      ble/keymap:vi/get-graphical-rectangle
+      ((lx+=ly*cols,rx+=ry*cols))
+    else
+      ble/keymap:vi/get-logical-rectangle
+    fi
 
-#     local dx=$bx dy=$((by-ay))
-#     if [[ dy -eq 0 || $_ble_edit_mark_active == block ]]; then
-#       ((dx=bx-ax,dx<0&&(dx=-dx)))
-#     fi
-#   else
-#     local ret
-#     ble-edit/content/find-logical-bol "$a"; ay=$ret
-#   fi
+    nchar=$((rx-lx))
 
-#   _ble_keymap_vi_previous_visual=$_ble_edit_mark_active:$dx:$dy
-# }
+    local ret
+    ((p0<=q0)) || local p0=$q0 q0=$p0
+    ble/string#count-char "${_ble_edit_str:p0:q0-p0}" $'\n'
+    nline=$((ret+1))
+
+  else
+    local ret
+    local p=$_ble_edit_mark q=$_ble_edit_ind
+    ((p<=q)) || local p=$q q=$p
+    ble/string#count-char "${_ble_edit_str:p:q-p}" $'\n'
+    nline=$((ret+1))
+
+    local base
+    if ((nline==1)) && [[ $_ble_edit_mark_active != line ]]; then
+      base=$p
+    else
+      ble-edit/content/find-logical-bol "$q"; base=$ret
+    fi
+
+    if ble-edit/text/is-position-up-to-date; then
+      local cols=$_ble_line_text_cols
+      local bx by x y
+      ble-edit/text/getxy.cur --prefix=b "$base"
+      ble-edit/text/getxy.cur "$q"
+      nchar=$((x-bx+(y-by)*cols+1))
+    else
+      nchar=$((q-base+1))
+    fi
+  fi
+
+  _ble_keymap_vi_visual_prev=$_ble_edit_mark_active:$nchar:$nline
+}
+function ble/widget/vi_xmap/.restore-visual-state {
+  local arg=$1
+  local prev; ble/string#split prev : "$_ble_keymap_vi_visual_prev"
+  _ble_edit_mark_active=${prev[0]:-char}
+  local nchar=${prev[1]:-1}
+  local nline=${prev[2]:-1}
+  ((nchar<1&&(nchar=1),nline<1&&(nline=1)))
+
+  local is_x_relative=0
+  if [[ $_ble_edit_mark_active == block ]]; then
+    ((is_x_relative=1,nchar*=arg,nline*=arg))
+  elif [[ $_ble_edit_mark_active == line ]]; then
+    ((nline*=arg))
+  else
+    ((nline==1?(is_x_relative=1,nchar*=arg):(nline*=arg)))
+  fi
+  ((nchar--,nline--))
+
+  local index
+  ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local b1=$ret
+  ble-edit/content/find-logical-bol "$_ble_edit_ind" "$nline"; local b2=$ret
+  ble-edit/content/find-logical-eol "$b2"; local e2=$ret
+  if ble-edit/text/is-position-up-to-date; then
+    local cols=$_ble_line_text_cols
+    local b1x b1y b2x b2y x y
+    ble-edit/text/getxy.out --prefix=b1 "$b1"
+    ble-edit/text/getxy.out --prefix=b2 "$b2"
+    if ((is_x_relative)); then
+      ble-edit/text/getxy.out "$_ble_edit_ind"
+      local c=$((x+(y-b1y)*cols+nchar))
+    else
+      local c=$nchar
+    fi
+    ((y=c/cols,x=c%cols))
+
+    local lx ly rx ry
+    ble-edit/text/hit out "$x" "$((b2y+y))" "$b2" "$e2"
+  else
+    local c=$((is_x_relative?_ble_edit_ind-b1+nchar:nchar))
+    ((index=b2+c,index>e2&&(index=e2)))
+  fi
+
+  ble/widget/.goto-char "$index"
+}
+
 
 # モード遷移
 
@@ -2842,11 +2928,12 @@ function ble/widget/vi-command/visual-mode.impl {
     return 1
   fi
 
-  ((arg)) && visual_type=previous
-
   _ble_edit_overwrite_mode=
   _ble_edit_mark=$_ble_edit_ind
   _ble_edit_mark_active=$visual_type
+
+  ((arg)) && ble/widget/vi_xmap/.restore-visual-state "$arg"
+
   ble-decode/keymap/push vi_xmap
   ble/keymap:vi/update-mode-name
 }
