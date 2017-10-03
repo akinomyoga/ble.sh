@@ -806,25 +806,24 @@ function .ble-decode-key.dump {
   builtin eval "kcodes=(\${!$dicthead$tseq[@]})"
   for kcode in "${kcodes[@]}"; do
     local ret; ble-decode-unkbd "$kcode"
-    local -a knames
-    knames=($nseq $ret)
+    local knames=$nseq${nseq:+ }$ret
     builtin eval "local ent=\${$dicthead$tseq[$kcode]}"
     if [[ ${ent:2} ]]; then
       local cmd="${ent:2}"
       case "$cmd" in
       # ble-edit+insert-string *)
-      #   echo "ble-bind -sf '${knames[*]}' '${cmd#ble-edit+insert-string }'" ;;
+      #   echo "ble-bind -sf '$knames' '${cmd#ble-edit+insert-string }'" ;;
       (ble-edit+*)
-        echo "ble-bind$kmapopt -f '${knames[*]}' '${cmd#ble-edit+}'" ;;
+        echo "ble-bind$kmapopt -f '$knames' '${cmd#ble-edit+}'" ;;
       ('.ble-edit.bind.command '*)
-        echo "ble-bind$kmapopt -cf '${knames[*]}' '${cmd#.ble-edit.bind.command }'" ;;
+        echo "ble-bind$kmapopt -cf '$knames' '${cmd#.ble-edit.bind.command }'" ;;
       (*)
-        echo "ble-bind$kmapopt -xf '${knames[*]}' '${cmd}'" ;;
+        echo "ble-bind$kmapopt -xf '$knames' '${cmd}'" ;;
       esac
     fi
 
     if [[ ${ent::1} == _ ]]; then
-      .ble-decode-key.dump "$kmap" "${tseq}_$kcode" "${knames[*]}"
+      .ble-decode-key.dump "$kmap" "${tseq}_$kcode" "$knames"
     fi
   done
 }
