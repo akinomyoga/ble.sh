@@ -1339,7 +1339,7 @@ function ble/widget/vi-command/forward-eol {
 ##     B: に続き空白区切りの数字のリストを保持します。
 ##     数字は _ble_edit_kill_ring に含まれる行の数と同じだけ指定します。
 ##     数字は行の途中に挿入する際に後ろに追加する空白の数を表します。
-##     
+##
 function ble/widget/vi-command/paste.impl/paste-block.impl {
   local arg=${1:-1} type=$2
   local graphical=
@@ -2634,63 +2634,56 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   local cols=$_ble_line_text_cols
   local c1=$((cols*y1+x1)) c2=$((cols*y2+x2))
 
-  local ret index
-  local bol=$bol1 eol bolx boly x y c
-  sub_ranges=()
-  while :; do
-    ble-edit/content/find-logical-eol "$bol"; eol=$ret
-    ble-edit/text/getxy.cur --prefix=bol "$bol"
+  local ret index lx ly rx ly
 
-    ble-edit/text/get-index-at "$x1" $((boly+y1)); local smin=$index
-    ble-edit/text/get-index-at "$x2" $((boly+y2)); local smax=$index
-    ((smin>eol&&(smin=eol),smax>eol&&(smax=eol)))
+  ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
+  local lines; ble/string#split lines $'\n' "${_ble_edit_str:bol1:eol2-bol1}"
+
+  sub_ranges=()
+  local line bol=$bol1 eol bolx boly
+  local c1l c1r c2l c2r
+  for line in "${lines[@]}"; do
+    ((eol=bol+${#line}))
+    ble-edit/text/getxy.out --prefix=bol "$bol"
+    ble-edit/text/hit out "$x1" "$((boly+y1))" "$bol" "$eol"
+    local smin=$index x1l=$lx y1l=$ly x1r=$rx y1r=$ry
+    ble-edit/text/hit out "$x2" "$((boly+y2))" "$bol" "$eol"
+    local smax=$index x2l=$lx y2l=$ly x2r=$rx y2r=$ry
 
     local sfill=0 slpad=0 srpad=0
     local stext=${_ble_edit_str:smin:smax-smin}
     if ((smin<smax)); then
       # 1. 左の境界 c1 を大きな文字が跨いでいるときは空白に変換する。
-      #
-      # Note: 行送りにより getxy.out(smin) <= c1 < pc = getxy.cur(smin)
-      # が起こりうるが vim に倣って、空白を付加するなどの対策はしない。
-      #
-      ble-edit/text/getxy.cur "$smin"
-      ((y-=boly,c=y*cols+x))
-      if ((c<c1)); then
-        ((slpad=c1-c))
+      ((c1l=(y1l-boly)*cols+x1l))
+      if ((c1l<c1)); then
+        ((slpad=c1-c1l))
 
         # assert: smin < smax <= eol なので行末ではない
         ble-assert '! ble-edit/content/eolp "$smin"'
 
-        ble-edit/text/getxy.cur $((smin+1))
-        ((y-=boly,c=y*cols+x))
-
-        # assert: get-index-at の振る舞いから、次の文字は c1 より後にいるはず。
-        ble-assert '((c>c1))' || ((c=c1))
-
-        ble/string#repeat ' ' $((c-c1))
+        ((c1r=(y1r-boly)*cols+x1r))
+        ble-assert '((c1r>c1))' || ((c1r=c1))
+        ble/string#repeat ' ' $((c1r-c1))
         stext=$ret${stext:1}
       fi
 
       # 2. 右の境界 c2 を大きな文字が跨いでいるときは空白に変換する
-      ble-edit/text/getxy.out "$smax"
-      ((y-=boly,c=y*cols+x))
-      if ((c<c2)); then
-        if ble-edit/content/eolp "$smax"; then
-          ((sfill=c2-c))
+      ((c2l=(y2l-boly)*cols+x2l))
+      if ((c2l<c2)); then
+        if ((smax==eol)); then
+          ((sfill=c2-c2l))
         else
-          ble/string#repeat ' ' $((c2-c))
+          ble/string#repeat ' ' $((c2-c2l))
           stext=$stext$ret
           ((smax++))
 
-          ble-edit/text/getxy.out $((smax+1))
-          ((y-=boly,c=y*cols+x))
-          ble-assert '((c>c2))' || ((c=c2))
-          ((srpad=c-c2))
+          ((c2r=(y2r-boly)*cols+x2r))
+          ble-assert '((c2r>c2))' || ((c2r=c2))
+          ((srpad=c2r-c2))
         fi
       fi
-
     else
-      if ble-edit/content/eolp "$smin"; then
+      if ((smin==eol)); then
         # 行末
         ((sfill=c2-c1))
       elif ((c2>c1)); then
@@ -2699,17 +2692,14 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
         stext=$ret${stext:1}
         ((smax++))
 
-        ble-edit/text/getxy.out "$smin" # ※行送りの幅も slpad に含めるので getxy.out でOK
-        ((y-=boly,c=y*cols+x,slpad=c1-c))
-        ble-edit/text/getxy.out $((smin+1))
-        ((y-=boly,c=y*cols+x,srpad=c-c2))
+        ((c1l=(y1l-boly)*cols+x1l,slpad=c1-c1l))
+        ((c1r=(y1r-boly)*cols+x1r,srpad=c1r-c1))
       fi
     fi
 
     ble/array#push sub_ranges "$smin:$smax:$slpad:$srpad:$sfill:$stext"
 
-    ((bol>=bol2)) && break
-    ble-edit/content/find-logical-bol "$bol" 1; bol=$ret
+    ((bol=eol+1))
   done
 }
 function ble/keymap:vi/extract-graphical-block {
@@ -2722,8 +2712,8 @@ function ble/keymap:vi/extract-graphical-block {
   ble-edit/text/getxy.out --prefix=q0 "$q0"
 
   local plx ply qlx qly
-  ble-edit/text/getxy.out --prefix=pl "$p"
-  ble-edit/text/getxy.out --prefix=ql "$q"
+  ble-edit/text/getxy.cur --prefix=pl "$p"
+  ble-edit/text/getxy.cur --prefix=ql "$q"
 
   local prx=$plx pry=$ply qrx=$qlx qry=$qly
   ble-edit/content/eolp "$p" || ble-edit/text/getxy.out --prefix=pr $((p+1))

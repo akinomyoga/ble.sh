@@ -1541,7 +1541,7 @@ function ble-edit/text/slice {
   fi
 }
 
-## 関数 ble-edit/text/get-index-at x y
+## 関数 ble-edit/text/get-index-at [-v varname] x y
 ##   指定した位置 x y に対応する index を求めます。
 function ble-edit/text/get-index-at {
   ble-edit/text/assert-position-up-to-date
@@ -1565,6 +1565,76 @@ function ble-edit/text/get-index-at {
       (((_y<_my||_y==_my&&_x<_mx)?(_u=_m):(_l=_m)))
     done
     (($_var=_l))
+  fi
+}
+
+## 関数 ble-edit/text/.getxy.out index
+## 関数 ble-edit/text/.getxy.cur index
+##   @var[in,out] pos
+function ble-edit/text/.getxy.out {
+  set -- ${_ble_line_text_cache_pos[$1]}
+  x=$1 y=$2
+}
+function ble-edit/text/.getxy.cur {
+  local index=$1
+  set -- ${_ble_line_text_cache_pos[index]}
+  x=$1 y=$2
+  if ((index<_ble_line_text_cache_length)); then
+    set -- ${_ble_line_text_cache_pos[index+1]}
+    (($3)) && ((x=0,y++))
+  fi
+}
+
+## 関数 ble-edit/text/hit type xh yh [beg [end]]
+##   指定した座標に対応する境界 index を取得します。
+##   指定した座標以前の最も近い境界を求めます。
+##   探索範囲に対応する境界がないときは最初の境界 beg を返します。
+##
+##   @param[in] type
+##     探索する点の種類を指定します。out または cur を指定します。
+##     out を指定したときは文字終端境界を探索します。
+##     cur を指定したときは文字開始境界(行送りを考慮に入れたもの)を探索します。
+##   @param[in] xh yh
+##     探索する点を指定します。
+##   @param[in] beg end
+##     探索する index の範囲を指定します。
+##     beg を省略したときは最初の境界位置が使用されます。
+##     end を省略したときは最後の境界位置が使用されます。
+##
+##   @var[out] index
+##     見つかった境界の番号を返します。
+##   @var[out] lx ly
+##     見つかった境界の座標を返します。
+##   @var[out] rx ry
+##     指定した座標以後の最も近い境界を返します。
+##     index が探索範囲の最後の境界のとき、または、
+##     lx ly が指定した座標と一致するとき lx ly と同一です。
+##
+function ble-edit/text/hit {
+  ble-edit/text/assert-position-up-to-date
+  local getxy=ble-edit/text/.getxy.$1
+  local xh=$2 yh=$3 beg=${4:-0} end=${5:-$_ble_line_text_cache_length}
+
+  local -a pos
+  if "$getxy" "$end"; ((yh>y||yh==y&&xh>x)); then
+    index=$end
+    lx=$x ly=$y
+    rx=$x ry=$y
+  elif "$getxy" "$beg"; ((yh<y||yh==y&&xh<x)); then
+    index=$beg
+    lx=$x ly=$y
+    rx=$x ry=$y
+  else
+    # 2分法
+    local l=0 u=$((end+1)) m
+    while ((l+1<u)); do
+      "$getxy" $((m=(l+u)/2))
+      (((yh<y||yh==y&&xh<x)?(u=m):(l=m)))
+    done
+    "$getxy" $((index=l))
+    lx=$x ly=$y
+    (((ly<yh||ly==yh&&lx<xh)&&index<end)) && "$getxy" $((index+1))
+    rx=$x ry=$y
   fi
 }
 
