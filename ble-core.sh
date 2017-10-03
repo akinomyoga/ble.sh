@@ -35,6 +35,11 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
+ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var="$2" && shift 2'
+ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
+function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
+function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
+
 #
 # array and strings
 #
@@ -140,23 +145,62 @@ function ble/string#common-suffix {
   ret="${a:u}"
 }
 
-## 関数 ble/string#split arr split str...
+## 関数 ble/string#split arr sep str...
 ##   文字列を分割します。
-##   @param[out] arr   分割した文字列を格納する配列名を指定します。
-##   @param[in]  split 分割に使用する文字を指定します。
-##   @param[in]  str   分割する文字列を指定します。
+##   空白類を分割に用いた場合は、空要素は削除されます。
+##
+##   @param[out] arr 分割した文字列を格納する配列名を指定します。
+##   @param[in]  sep 分割に使用する文字を指定します。
+##   @param[in]  str 分割する文字列を指定します。
+##
 function ble/string#split {
   if shopt -q nullglob &>/dev/null; then
-    # ※GLOBIGNORE を設定していても nullglob の効果は有効である。
-    # この時 [..] や * や ? が一文字でも含まれるとその要素は必ず消滅する。
+    # Note: GLOBIGNORE を設定していても nullglob の効果は有効である。
+    #   この時 [..] や * や ? が一文字でも含まれるとその要素は必ず消滅する。
+    # Note: 末尾の sep が無視されない様に、末尾に手で sep を 1 個追加している。
     shopt -u nullglob
-    GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+    GLOBIGNORE='*' IFS=$2 builtin eval "$1=(\${*:3}\$2)"
     shopt -s nullglob
   else
-    GLOBIGNORE='*' IFS="$2" builtin eval "$1=(\${*:3})"
+    GLOBIGNORE='*' IFS=$2 builtin eval "$1=(\${*:3}\$2)"
   fi
 }
+## 関数 ble/string#split-lines arr text...
+##   文字列を行に分割します。空行も省略されません。
+##
+##   @param[out] arr  分割した文字列を格納する配列名を指定します。
+##   @param[in]  text 分割する文字列を指定します。
+##
+if ((_ble_bash>=40000)); then
+  function ble/string#split-lines {
+    mapfile -t "$1" <<< "${*:2}"
+  }
+else
+  function ble/string#split-lines {
+    local name=$1 text=${*:2} sep='' esc='\'
+    if [[ $text == *$sep* ]]; then
+      local a b arr ret value
+      a=$esc b=$esc'A' text=${text//"$a"/"$b"}
+      a=$sep b=$esc'B' text=${text//"$a"/"$b"}
 
+      text=${text//$'\n'/"$sep"}
+      ble/string#split arr "$sep" "$text"
+
+      for value in "${arr[@]}"; do
+        if [[ $value == *$esc* ]]; then
+          a=$esc'B' b=$sep value=${value//"$a"/"$b"}
+          a=$esc'A' b=$esc value=${value//"$a"/"$b"}
+        fi
+        ret[${#ret[@]}]=$value
+      done
+    else
+      local ret
+      text=${text//$'\n'/"$sep"}
+      ble/string#split ret "$sep" "$text"
+    fi
+    local "$name" && ble/util/uparr "$name" "${ret[@]}"
+  }
+fi
 ## 関数 ble/string#count-char text chars
 ##   @param[in] text
 ##   @param[in] chars
@@ -307,11 +351,6 @@ else
     ble/util/assign "$1" 'builtin printf "${_args[@]}"'
   }
 fi
-
-ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var="$2" && shift 2'
-ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
-function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
-function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
 
 function ble/util/type {
   _cmd="$2" ble/util/assign "$1" 'builtin type -t "$_cmd" 2>/dev/null'

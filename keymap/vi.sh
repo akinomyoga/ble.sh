@@ -726,7 +726,7 @@ function ble/keymap:vi/expand-range-for-linewise-operator {
 function ble/keymap:vi/string#increase-indent {
   local text=$1 delta=$2
   local space=$' \t'
-  local arr; ble/string#split arr $'\n' "$text"
+  local arr; ble/string#split-lines arr "$text"
   local arr2 line indent i len x r
   for line in "${arr[@]}"; do
     indent=${line%%[!$space]*}
@@ -1352,7 +1352,7 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
   local ret cols=$_ble_line_text_cols
 
   local -a afill=(${_ble_edit_kill_type:2})
-  local atext; ble/string#split atext $'\n' "$_ble_edit_kill_ring"
+  local atext; ble/string#split-lines atext "$_ble_edit_kill_ring"
   local ntext=${#atext[@]}
 
   if [[ $graphical ]]; then
@@ -2637,7 +2637,7 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   local ret index lx ly rx ly
 
   ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
-  local lines; ble/string#split lines $'\n' "${_ble_edit_str:bol1:eol2-bol1}"
+  local lines; ble/string#split-lines lines "${_ble_edit_str:bol1:eol2-bol1}"
 
   sub_ranges=()
   local line bol=$bol1 eol bolx boly
