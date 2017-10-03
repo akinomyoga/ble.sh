@@ -2793,7 +2793,7 @@ function ble/keymap:vi/extract-block {
 ## 関数 ble-highlight-layer:region/mark:char/get-selection
 ## 関数 ble-highlight-layer:region/mark:line/get-selection
 ## 関数 ble-highlight-layer:region/mark:block/get-selection
-##   @arr[in,out] selection
+##   @arr[out] selection
 function ble-highlight-layer:region/mark:char/get-selection {
   local rmin rmax
   if ((_ble_edit_mark<_ble_edit_ind)); then
@@ -2802,7 +2802,7 @@ function ble-highlight-layer:region/mark:char/get-selection {
     rmin=$_ble_edit_ind rmax=$_ble_edit_mark
   fi
   ble-edit/content/eolp "$rmax" || ((rmax++))
-  selection=("$rmin:$rmax")
+  selection=("$rmin" "$rmax")
 }
 function ble-highlight-layer:region/mark:line/get-selection {
   local rmin rmax
@@ -2814,12 +2814,19 @@ function ble-highlight-layer:region/mark:line/get-selection {
   local ret
   ble-edit/content/find-logical-bol "$rmin"; rmin=$ret
   ble-edit/content/find-logical-eol "$rmax"; rmax=$ret
-  selection=("$rmin:$rmax")
+  selection=("$rmin" "$rmax")
 }
 function ble-highlight-layer:region/mark:block/get-selection {
   local sub_ranges
   ble/keymap:vi/extract-block
-  selection=("${sub_ranges[@]}")
+
+  selection=()
+  local sub
+  for sub in "${sub_ranges[@]}"; do
+    ble/string#split sub : "$sub"
+    ((sub[0]<sub[1])) || continue
+    ble/array#push selection "${sub[0]}" "${sub[1]}"
+  done
 }
 
 
