@@ -616,7 +616,9 @@ function ble/keymap:vi/call-operator-blockwise {
 
 function ble/keymap:vi/operator:d {
   if [[ $3 == line ]]; then
-    ble/widget/.kill-range "$1" "$2" 1 L
+    ((end==${#_ble_edit_str}&&beg>0&&beg--)) # fix start position
+    ble/widget/.copy-range "$1" "$2" 1 L
+    ble/widget/.delete-range "$beg" "$end"
   elif [[ $3 == block ]]; then
     ble/keymap:vi/operator:y "$@"
     local isub=${#sub_ranges[@]} sub
