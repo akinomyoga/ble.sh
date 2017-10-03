@@ -1366,7 +1366,7 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
     local c=$((_ble_edit_ind-bol))
   fi
 
-  local i ins_index ins_text is_newline=
+  local i ins_beg ins_end ins_text is_newline=
   for ((i=0;i<ntext;i++)); do
     if ((i>0)); then
       ble-edit/content/find-logical-bol "$bol" 1
@@ -1389,7 +1389,7 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
     fi
 
     # 挿入位置と padding
-    local index
+    local index iend=
     if [[ $is_newline ]]; then
       index=${#_ble_edit_str}
       ble/string#repeat ' ' "$c"
@@ -1405,6 +1405,15 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
       if ((ac<c)); then
         ble/string#repeat ' ' $((c-ac))
         text=$ret$text
+
+        # タブを空白に変換
+        if ((index<eol)) && [[ ${_ble_edit_str:index:1} == $'\t' ]]; then
+          local rx ry rc; ble-edit/text/getxy.out --prefix=r $((index+1))
+          ((rc=(ry-by)*cols+rx))
+          ble/string#repeat ' ' $((rc-c))
+          text=$text$ret
+          iend=$((index+1))
+        fi
       fi
 
       # right padding (行末がより右にあるとき)
@@ -1429,15 +1438,16 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
       fi
     fi
 
-    ble/array#push ins_index "$index"
+    ble/array#push ins_beg "$index"
+    ble/array#push ins_end "${iend:-$index}"
     ble/array#push ins_text "$text"
   done
 
   # 逆順に挿入
-  local i=${#ins_index[@]}
+  local i=${#ins_beg[@]}
   while ((i--)); do
-    local index=${ins_index[i]} text=${ins_text[i]}
-    _ble_edit_str.replace "$index" "$index" "$text"
+    local ibeg=${ins_beg[i]} iend=${ins_end[i]} text=${ins_text[i]}
+    _ble_edit_str.replace "$ibeg" "$iend" "$text"
   done
 
   ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
