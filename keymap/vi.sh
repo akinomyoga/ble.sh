@@ -617,13 +617,25 @@ function ble/keymap:vi/call-operator-blockwise {
 function ble/keymap:vi/operator:d {
   if [[ $3 == line ]]; then
     ble/widget/.kill-range "$1" "$2" 1 L
+  elif [[ $3 == block ]]; then
+    ble/keymap:vi/operator:y "$@"
+    local isub=${#sub_ranges[@]} sub
+    local smin= smax= slpad= srpad=
+    while ((isub--)); do
+      ble/string#split sub : "${sub_ranges[isub]}"
+      smin=${sub[0]} smax=${sub[1]}
+      slpad=${sub[2]} srpad=${sub[3]}
+      local ret; ble/string#repeat ' ' $((slpad+srpad))
+      _ble_edit_str.replace "$smin" "$smax" "$ret"
+    done
+    ((beg+=slpad)) # fix start position
   else
     ble/widget/.kill-range "$1" "$2" 0
   fi
 }
 function ble/keymap:vi/operator:c {
-  local beg=$1 end=$2 type=$3
-  if [[ $type == line ]]; then
+  if [[ $3 == line ]]; then
+    local beg=$1 end=$2
     ((end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
 
     local indent=
@@ -633,8 +645,11 @@ function ble/keymap:vi/operator:c {
     ble/widget/.kill-range "$beg" "$end" 1 L
     [[ $indent ]] && ble/widget/.replace-range "$beg" "$beg" "$indent" 1
     ble/widget/vi-command/.insert-mode
+  elif [[ $3 == block ]]; then
+    ble/keymap:vi/operator:d "$@" # @var beg will be overwritten here
+    ble/widget/vi-command/.insert-mode
   else
-    ble/widget/.kill-range "$beg" "$end" 0
+    ble/widget/.kill-range "$1" "$2" 0
     ble/widget/vi-command/.insert-mode
   fi
 }
@@ -657,21 +672,31 @@ function ble/keymap:vi/operator:y {
   fi
 }
 function ble/keymap:vi/operator:tr.impl {
-  local beg=$1 end=$2 filter=$3
-  local ret; "$filter" "${_ble_edit_str:beg:end-beg}"
-  _ble_edit_str.replace "$beg" "$end" "$ret"
+  local beg=$1 end=$2 context=$3 filter=$4
+  if [[ $context == block ]]; then
+    local isub=${#sub_ranges[@]}
+    while ((isub--)); do
+      ble/string#split sub : "${sub_ranges[isub]}"
+      local smin=${sub[0]} smax=${sub[1]}
+      local ret; "$filter" "${_ble_edit_str:smin:smax-smin}"
+      _ble_edit_str.replace "$smin" "$smax" "$ret"
+    done
+  else
+    local ret; "$filter" "${_ble_edit_str:beg:end-beg}"
+    _ble_edit_str.replace "$beg" "$end" "$ret"
+  fi
 }
 function ble/keymap:vi/operator:u {
-  ble/keymap:vi/operator:tr.impl "$1" "$2" ble/string#tolower
+  ble/keymap:vi/operator:tr.impl "$1" "$2" "$3" ble/string#tolower
 }
 function ble/keymap:vi/operator:U {
-  ble/keymap:vi/operator:tr.impl "$1" "$2" ble/string#toupper
+  ble/keymap:vi/operator:tr.impl "$1" "$2" "$3" ble/string#toupper
 }
-function ble/keymap:vi/operator:~ {
-  ble/keymap:vi/operator:tr.impl "$1" "$2" ble/string#toggle-case
+function ble/keymap:vi/operator:toggle_case {
+  ble/keymap:vi/operator:tr.impl "$1" "$2" "$3" ble/string#toggle-case
 }
-function ble/keymap:vi/operator:? {
-  ble/keymap:vi/operator:tr.impl "$1" "$2" ble/keymap:vi/string#encode-rot13
+function ble/keymap:vi/operator:rot13 {
+  ble/keymap:vi/operator:tr.impl "$1" "$2" "$3" ble/keymap:vi/string#encode-rot13
 }
 
 ## 関数 ble/keymap:vi/expand-range-for-linewise-operator
@@ -2400,10 +2425,10 @@ function ble/keymap:vi/setup-map {
   ble-bind -f c 'vi-command/set-operator c'
   ble-bind -f '<' 'vi-command/set-operator left'
   ble-bind -f '>' 'vi-command/set-operator right'
-  ble-bind -f 'g ~' 'vi-command/set-operator ~'
+  ble-bind -f 'g ~' 'vi-command/set-operator toggle_case'
   ble-bind -f 'g u' 'vi-command/set-operator u'
   ble-bind -f 'g U' 'vi-command/set-operator U'
-  ble-bind -f 'g ?' 'vi-command/set-operator ?'
+  ble-bind -f 'g ?' 'vi-command/set-operator rot13'
   # ble-bind -f 'g @' 'vi-command/set-operator @' # (operatorfunc opfunc)
   # ble-bind -f '!'   'vi-command/set-operator !' # コマンド
   # ble-bind -f '='   'vi-command/set-operator =' # インデント (equalprg, ep)
@@ -2555,10 +2580,10 @@ function ble-decode-keymap:vi_omap/define {
   ble-bind -f a   vi-command/text-object
   ble-bind -f i   vi-command/text-object
 
-  ble-bind -f '~' 'vi-command/set-operator ~'
+  ble-bind -f '~' 'vi-command/set-operator toggle_case'
   ble-bind -f 'u' 'vi-command/set-operator u'
   ble-bind -f 'U' 'vi-command/set-operator U'
-  ble-bind -f '?' 'vi-command/set-operator ?'
+  ble-bind -f '?' 'vi-command/set-operator rot13'
 }
 
 #------------------------------------------------------------------------------
@@ -2888,10 +2913,10 @@ function ble-decode-keymap:vi_xmap/define {
   # ble-bind -f a   vi-command/text-object
   # ble-bind -f i   vi-command/text-object
 
-  ble-bind -f '~' 'vi-command/set-operator ~'
+  ble-bind -f '~' 'vi-command/set-operator toggle_case'
   ble-bind -f 'u' 'vi-command/set-operator u'
   ble-bind -f 'U' 'vi-command/set-operator U'
-  ble-bind -f '?' 'vi-command/set-operator ?'
+  ble-bind -f '?' 'vi-command/set-operator rot13'
 
   ble-bind -f 'C-\ C-n' vi_xmap/cancel
   ble-bind -f 'C-\ C-g' vi_xmap/cancel
