@@ -562,8 +562,8 @@ function ble/keymap:vi/call-operator-charwise {
     local _ble_keymap_vi_operator_delayed=
     ble/keymap:vi/operator:"$ch" "$beg" "$end" char "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
+    ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
-    ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
     return 0
   else
     return 1
@@ -591,8 +591,25 @@ function ble/keymap:vi/call-operator-linewise {
   fi
 }
 function ble/keymap:vi/call-operator-blockwise {
-  # todo: blockwise
-  ble/keymap:vi/call-operator-charwise "$@"
+  local ch=$1 beg=$2 end=$3 arg=$4
+  if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+    local sub_ranges
+    ble/keymap:vi/extract-block "$beg" "$end"
+    local nrange=${#sub_ranges[@]}
+    ((nrange)) || return 1
+
+    local beg=${sub_ranges[0]}; beg=${beg%%:*}
+    local end=${sub_ranges[nrange-1]}; end=${end#*:}; end=${end%%:*}
+    local _ble_keymap_vi_operator_delayed=
+    ble/keymap:vi/operator:"$ch" "$beg" "$end" block "$arg"
+    [[ $_ble_keymap_vi_operator_delayed ]] && return
+
+    ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
+    ble/widget/.goto-char "$beg"
+    return 0
+  else
+    return 1
+  fi
 }
 
 
@@ -624,6 +641,17 @@ function ble/keymap:vi/operator:c {
 function ble/keymap:vi/operator:y {
   if [[ $3 == line ]]; then
     ble/widget/.copy-range "$1" "$2" 1 L
+  elif [[ $3 == block ]]; then
+    local sub afill atext
+    for sub in "${sub_ranges[@]}"; do
+      local sub4=${sub#*:*:*:*:}
+      local sfill=${sub4%%:*} stext=${sub4#*:}
+      ble/array#push afill "$sfill"
+      ble/array#push atext "$stext"
+    done
+
+    IFS=$'\n' eval '_ble_edit_kill_ring=${atext[*]}'
+    _ble_edit_kill_type=B:${afill[*]}
   else
     ble/widget/.copy-range "$1" "$2" 1
   fi
@@ -1267,6 +1295,128 @@ function ble/widget/vi-command/forward-eol {
 #------------------------------------------------------------------------------
 # command: p P
 
+## 関数 ble/widget/vi-command/paste.impl/paste-block.impl arg [type]
+##
+##   @param[in] arg
+##     挿入する各行の繰り返し回数を指定します。
+##
+##   @param[in] type
+##     graphical を指定すると配置情報を用いて挿入します。
+##     省略したときは、配置情報があるときにそれを使用します。
+##     それ以外を指定すると論理列に基いて挿入を行います。
+##
+##   @var[in] _ble_edit_kill_ring
+##     改行区切りの文字列リストです。
+##
+##   @var[in] _ble_edit_kill_type == B:*
+##     B: に続き空白区切りの数字のリストを保持します。
+##     数字は _ble_edit_kill_ring に含まれる行の数と同じだけ指定します。
+##     数字は行の途中に挿入する際に後ろに追加する空白の数を表します。
+##     
+function ble/widget/vi-command/paste.impl/paste-block.impl {
+  local arg=${1:-1} type=$2
+  local graphical=
+  if [[ $type ]]; then
+    [[ $type == graphical ]] && graphical=1
+  else
+    ble-edit/text/is-position-up-to-date && graphical=1
+  fi
+
+  local ret cols=$_ble_line_text_cols
+
+  local -a afill=(${_ble_edit_kill_type:2})
+  local atext; ble/string#split atext $'\n' "$_ble_edit_kill_ring"
+  local ntext=${#atext[@]}
+
+  if [[ $graphical ]]; then
+    ble-edit/content/find-logical-bol; local bol=$ret
+    local bx by x y c
+    ble-edit/text/getxy.cur --prefix=b "$bol"
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ((y-=by,c=y*cols+x))
+  else
+    ble-edit/content/find-logical-bol; local bol=$ret
+    local c=$((_ble_edit_ind-bol))
+  fi
+
+  local i ins_index ins_text is_newline=
+  for ((i=0;i<ntext;i++)); do
+    if ((i>0)); then
+      ble-edit/content/find-logical-bol "$bol" 1
+      if ((bol==ret)); then
+        is_newline=1
+      else
+        bol=$ret
+        [[ $graphical ]] && ble-edit/text/getxy.cur --prefix=b "$bol"
+      fi
+    fi
+
+    # 挿入文字列
+    local text=${atext[i]}
+    local fill=$((afill[i]))
+    if ((arg>1)); then
+      ret=
+      ((fill)) && ble/string#repeat ' ' "$fill"
+      ble/string#repeat "$text$ret" "$arg"
+      text=${ret::${#ret}-fill}
+    fi
+
+    # 挿入位置と padding
+    local index
+    if [[ $is_newline ]]; then
+      index=${#_ble_edit_str}
+      ble/string#repeat ' ' "$c"
+      text=$'\n'$ret$text
+
+    elif [[ $graphical ]]; then
+      ble-edit/content/find-logical-eol "$bol"; local eol=$ret
+      ble-edit/text/get-index-at "$x" $((by+y)); ((index>eol&&(index=eol)))
+
+      # left padding (行末がより左にある、または、全角文字があるとき)
+      local ax ay ac; ble-edit/text/getxy.out --prefix=a "$index"
+      ((ay-=by,ac=ay*cols+ax))
+      if ((ac<c)); then
+        ble/string#repeat ' ' $((c-ac))
+        text=$ret$text
+      fi
+
+      # right padding (行末がより右にあるとき)
+      if ((index<eol&&fill)); then
+        ble/string#repeat ' ' "$fill"
+        text=$text$ret
+      fi
+
+    else
+      ble-edit/content/find-logical-eol "$bol"; local eol=$ret
+      local index=$((bol+c))
+
+      if ((index<eol)); then
+        if ((fill)); then
+          ble/string#repeat ' ' "$fill"
+          text=$text$ret
+        fi
+      elif ((index>eol)); then
+        ble/string#repeat ' ' $((index-eol))
+        text=$ret$text
+        index=$eol
+      fi
+    fi
+
+    ble/array#push ins_index "$index"
+    ble/array#push ins_text "$text"
+  done
+
+  # 逆順に挿入
+  local i=${#ins_index[@]}
+  while ((i--)); do
+    local index=${ins_index[i]} text=${ins_text[i]}
+    _ble_edit_str.replace "$index" "$index" "$text"
+  done
+
+  ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
+  ble/keymap:vi/adjust-command-mode
+}
+
 function ble/widget/vi-command/paste.impl {
   local arg=$1 flag=$2 is_after=$3
   if [[ $flag ]]; then
@@ -1294,13 +1444,18 @@ function ble/widget/vi-command/paste.impl {
     ble/widget/insert-string "$ret"
     ble/widget/.goto-char ind
     ble/widget/vi-command/first-non-space
+  elif [[ $_ble_edit_kill_type == B:* ]]; then
+    if ((is_after)) && ! ble-edit/content/eolp; then
+      ble/widget/.goto-char $((_ble_edit_ind+1))
+    fi
+    ble/widget/vi-command/paste.impl/paste-block.impl "$arg"
   else
-    if ((is_after&&_ble_edit_ind<${#_ble_edit_str})); then
-      ble/widget/.goto-char _ble_edit_ind+1
+    if ((is_after)) && ! ble-edit/content/eolp; then
+      ble/widget/.goto-char $((_ble_edit_ind+1))
     fi
     ble/string#repeat "$_ble_edit_kill_ring" "$arg"
     ble/widget/insert-string "$ret"
-    [[ $_ble_keymap_vi_single_command ]] || ble/widget/.goto-char _ble_edit_ind-1
+    [[ $_ble_keymap_vi_single_command ]] || ble/widget/.goto-char $((_ble_edit_ind-1))
     ble/keymap:vi/adjust-command-mode
   fi
 }
@@ -2249,10 +2404,10 @@ function ble/keymap:vi/setup-map {
   ble-bind -f 'g u' 'vi-command/set-operator u'
   ble-bind -f 'g U' 'vi-command/set-operator U'
   ble-bind -f 'g ?' 'vi-command/set-operator ?'
-  # ble-bind -f 'g @' 'vi-command/set-operator @'
-  # ble-bind -f '!'   'vi-command/set-operator !'
-  # ble-bind -f '='   'vi-command/set-operator ='
-  # ble-bind -f 'g q' 'vi-command/set-operator q'
+  # ble-bind -f 'g @' 'vi-command/set-operator @' # (operatorfunc opfunc)
+  # ble-bind -f '!'   'vi-command/set-operator !' # コマンド
+  # ble-bind -f '='   'vi-command/set-operator =' # インデント (equalprg, ep)
+  # ble-bind -f 'g q' 'vi-command/set-operator q' # 整形?
   # ble-bind -f 'z f' 'vi-command/set-operator f'
 
   ble-bind -f home  vi-command/beginning-of-line
@@ -2531,7 +2686,7 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   done
 }
 function ble/keymap:vi/extract-graphical-block {
-  local p=$_ble_edit_mark q=$_ble_edit_ind
+  local p=${1:-$_ble_edit_mark} q=${2:-$_ble_edit_ind}
   ble-edit/content/find-logical-bol "$p"; local p0=$ret
   ble-edit/content/find-logical-bol "$q"; local q0=$ret
 
@@ -2575,7 +2730,7 @@ function ble/keymap:vi/extract-logical-block-by-geometry {
   done
 }
 function ble/keymap:vi/extract-logical-block {
-  local p=$_ble_edit_mark q=$_ble_edit_ind
+  local p=${1:-$_ble_edit_mark} q=${2:-$_ble_edit_ind}
   ble-edit/content/find-logical-bol "$p"; local p0=$ret
   ble-edit/content/find-logical-bol "$q"; local q0=$ret
   ((p-=p0,q-=q0,p<=q)) || local p=$q q=$p
@@ -2583,9 +2738,9 @@ function ble/keymap:vi/extract-logical-block {
 }
 function ble/keymap:vi/extract-block {
   if ble-edit/text/is-position-up-to-date; then
-    ble/keymap:vi/extract-graphical-block
+    ble/keymap:vi/extract-graphical-block "$@"
   else
-    ble/keymap:vi/extract-logical-block
+    ble/keymap:vi/extract-logical-block "$@"
   fi
 }
 
