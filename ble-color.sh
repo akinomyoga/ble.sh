@@ -260,7 +260,6 @@ function ble-color/faces/initialize {
 #------------------------------------------------------------------------------
 # ble-highlight-layer
 
-_ble_highlight_layer__buff=()
 _ble_highlight_layer__list=(plain)
 #_ble_highlight_layer__list=(plain RandomColor)
 

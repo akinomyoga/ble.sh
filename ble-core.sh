@@ -40,6 +40,23 @@ ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
 function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
 function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
 
+function ble/util/save-vars {
+  local name prefix=$1; shift
+  for name; do eval "$prefix$name=\"\$$name\""; done
+}
+function ble/util/save-arrs {
+  local name prefix=$1; shift
+  for name; do eval "$prefix$name=(\"\${$name[@]}\")"; done
+}
+function ble/util/restore-vars {
+  local name prefix=$1; shift
+  for name; do eval "$name=\"\$$prefix$name\""; done
+}
+function ble/util/restore-arrs {
+  local name prefix=$1; shift
+  for name; do eval "$name=(\"\${$prefix$name[@]}\")"; done
+}
+
 #
 # array and strings
 #
@@ -52,8 +69,20 @@ function _ble_util_array_prototype.reserve {
   done
 }
 
-# Note: declare +a arr だとローカル変数の判定になってしまう。
-function ble/is-array { eval "((\${#$1[*]}))"; }
+## 関数 ble/is-array arr
+##
+##   Note: これに関しては様々な実現方法が考えられるが大体余りうまく動かない。
+##
+##   * ! declare +a arr だと現在の関数のローカル変数の判定になってしまう。
+##   * bash-4.2 以降では ! declare -g +a arr を使えるが、
+##     これだと呼び出し元の関数で定義されている配列が見えない。
+##     というか現在のスコープの配列も見えない。
+##   * 今の所は compgen -A arrayvar を用いているが、
+##     この方法だと bash-4.3 以降では連想配列も配列と判定され、
+##     bash-4.2 以下では連想配列は配列とはならない。
+##
+function ble/is-array { compgen -A arrayvar "$1" &>/dev/null; }
+## 関数 ble/array#push arr value...
 if ((_ble_bash>=30100)); then
   function ble/array#push {
     builtin eval "$1+=(\"\${@:2}\")"
@@ -68,6 +97,7 @@ else
     done
   }
 fi
+## 関数 ble/array#reverse arr
 function ble/array#reverse {
   builtin eval "
   set -- \"\${$1[@]}\"; $1=()
@@ -395,34 +425,34 @@ fi
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
     declare -p "$@" | command awk -v _ble_bash="$_ble_bash" '
-      BEGIN{decl="";}
-      function declflush( isArray){
-        if(decl){
-          isArray=(decl~/declare +-[fFgilrtux]*[aA]/);
+      BEGIN { decl = ""; }
+      function declflush(_, isArray) {
+        if (decl) {
+          isArray = (decl ~ /declare +-[fFgilrtux]*[aA]/);
 
           # bash-3.0 の declare -p は改行について誤った出力をする。
-          if(_ble_bash<30100)gsub(/\\\n/,"\n",decl);
+          if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
 
           # declare 除去
-          sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/,"",decl);
-          if(isArray){
-            if(decl~/^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/){
-              sub(/='\''\(/,"=(",decl);
-              sub(/\)'\''$/,")",decl);
-              gsub(/'\'\\\\\'\''/,"'\''",decl);
+          sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/, "", decl);
+          if (isArray) {
+            if (decl ~ /^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/) {
+              sub(/='\''\(/, "=(", decl);
+              sub(/\)'\''$/, ")", decl);
+              gsub(/'\'\\\\\'\''/, "'\''", decl);
             }
           }
           print decl;
-          decl="";
+          decl = "";
         }
       }
-      /^declare /{
+      /^declare / {
         declflush();
-        decl=$0;
+        decl = $0;
         next;
       }
-      {decl=decl "\n" $0;}
-      END{declflush();}
+      { decl = decl "\n" $0; }
+      END { declflush(); }
     '
   fi
 }
@@ -632,10 +662,22 @@ function ble/dirty-range#update {
   fi
 }
 
-## 関数 ble/urange#update [--prefix=prefix] umin umax
+## 関数 ble/urange#clear [--prefix=prefix]
 ##
 ##   @param[in,opt] prefix=
-##   @param[in]     umin umax
+##   @var[in,out]   {prefix}umin {prefix}umax
+##
+function ble/urange#clear {
+  local prefix=
+  if [[ $1 == --prefix=* ]]; then
+    prefix=${1#*=}; shift
+  fi
+  ((${prefix}umin=-1,${prefix}umax=-1))
+}
+## 関数 ble/urange#update [--prefix=prefix] min max
+##
+##   @param[in,opt] prefix=
+##   @param[in]     min max
 ##   @var[in,out]   {prefix}umin {prefix}umax
 ##
 function ble/urange#update {

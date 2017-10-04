@@ -256,7 +256,7 @@ function ble-attach {
 
   ble-edit-attach # 0ms
   ble-edit/info/reveal
-  ble-edit/render/redraw # 34ms
+  ble/textarea#redraw # 34ms
   ble-edit/bind/stdout.off
 }
 

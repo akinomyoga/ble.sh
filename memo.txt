@@ -324,6 +324,11 @@ bashbug: 実装上で注意するべき事
     - local a=(...) や declare a=(...) とすると、"(...)" と同じ事になる。
       a=() の形式ならば問題ない。
 
+    - 今まで local -a a=() の形式ならば問題ないと信じてきたが、どうやら
+      local -a a=('1 2') が local -a a=(1 2) と同じ意味になってしまうようだ。
+      a="123 345"; declare -a arr=("$a"); このようにしても駄目だ。
+      a="123 345"; declare -a arr; arr=("$a"); こうする必要がある。
+
     - declare -p A で改行を含む変数を出力すると改行が消える。
       例: 一見正しく出力されている様に錯覚するが "\ + 改行" は改行のエスケープではなく、
         長い文字列リテラルを二行に書く為の記法である。つまり、無視される。
@@ -462,6 +467,16 @@ tech
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
+
+2017-10-05
+
+  * _ble_bash_loaded_in_function 条件が反転している
+
+  * bash-3.0 local -a arr=() 対策
+
+    bash-3.0 で local -a arr=() を使うと要素の単語分割がクォート除去よりも後で実行されるようだ。
+    調べてみると今の所は要素に空白を含むような場合に使っていないので問題になっていないようだが、
+    これについては適宜別の形式に書き換えるなどして、この書き方自体を追放するのが安全である。
 
 2017-10-01
 
@@ -633,22 +648,29 @@ tech
 
     さて、複数の編集文字列を取り扱えるようにするには何が必要であるかを考える必要がある。
 
-    * 先ず初めにどの変数を差し替えれば
-      別の編集文字列を取り扱えるようになるかを調べる必要がある。
+    | * 先ず初めにどの変数を差し替えれば
+    |   別の編集文字列を取り扱えるようになるかを調べる必要がある。
+    |
+    |   それらの変数をひとまとまりとして textbox 的な概念にまとめるのが良い。
+    |   もっというと、今回の第二の編集文字列を出すということに特化したものではなくて、
+    |   一般に textbox としての component を独立させるとしたらどうなるかという事を意識して
+    |   実装したほうが汎用的で整理された実装になる気がする。それを目指す。
 
-      それらの変数をひとまとまりとして textbox 的な概念にまとめるのが良い。
-      もっというと、今回の第二の編集文字列を出すということに特化したものではなくて、
-      一般に textbox としての component を独立させるとしたらどうなるかという事を意識して
-      実装したほうが汎用的で整理された実装になる気がする。それを目指す。
+    → これは ble/textarea としてまとめることにした。状態の保存・復元にも対応した。#D0505
 
-      序にいうと表示の幅や高さも管理できるようにしたい。
+    * 序にいうと表示の幅や高さも管理できるようにしたい。
 
     * 実は ble-decode の decode 状態も textbox 毎に用意するべきなのではないか。
       だとすると先ずは ble-decode について切り替える仕組みを整える必要が出てくる。
 
-    うーん。思ったのだが、面倒なので第二のプロンプトなどと言わずに read -e -p / で良いのでは?
-    →と思ったが bind で全て上書きしているのが祟って動かない。
-    これは read -e も再実装する必要があるということを意味する。
+    % うーん。思ったのだが、面倒なので第二のプロンプトなどと言わずに read -e -p / で良いのでは?
+    % →と思ったが bind で全て上書きしているのが祟って動かない。
+    % これは read -e も再実装する必要があるということを意味する。
+
+    [実装]
+
+    取り敢えずは decode 状態については考えないことにする。
+    textarea を切り替えると同時に keymap も変更するということにする。
 
 2017-09-16
 
@@ -689,7 +711,7 @@ tech
      \_ textarea : control
      |   \_ content : ble-edit/content
      |   \_ prompt : ble-edit/prompt
-     |   \_ layout : ble-edit/text
+     |   \_ layout : ble/textmap 文字の配置
      |   \_ render : ble-edit/layout
      \_ info : control
 
@@ -2328,6 +2350,201 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2017-10-05
+
+  * 2017-09-17 第二のプロンプト・編集文字列を出すということについて (1) 状態を保存・復元する仕組み [#D0505]
+
+    1 存在する変数について整理する。
+
+      _ble_edit_prompt=("" 0 0 0 32 0 "" "")
+
+      ble/textmap#
+        _ble_textmap_*
+
+      ble-highlight-layer
+        _ble_highlight_layer_RandomColor2_buff
+        _ble_highlight_layer_RandomColor_buff
+        _ble_highlight_layer__list
+        _ble_highlight_layer_disabled_buff
+        _ble_highlight_layer_disabled_prev
+        _ble_highlight_layer_overwrite_mode_buff
+        _ble_highlight_layer_overwrite_mode_index
+        _ble_highlight_layer_plain_buff
+        _ble_highlight_layer_region_buff
+        _ble_highlight_layer_region_osel
+        _ble_highlight_layer_syntax1_table
+        _ble_highlight_layer_syntax2_table
+        _ble_highlight_layer_syntax3_list
+        _ble_highlight_layer_syntax3_table
+        _ble_highlight_layer_syntax_buff
+
+        誰も使っていない _ble_highlight_layer__buff=() は削除することにした。
+        _ble_draw_trace_{brack,scorc} は関数内で定義することにした。
+
+      % ble-edit/text/update
+      %   _ble_line_text_buff=()
+      %   _ble_line_text_buffName=
+      % 
+      % ble-edit/render/*
+      % 
+      %   _ble_line_cur=(0 0 32 0)
+      %   _ble_line_scroll=
+      %   _ble_line_gendx=0
+      %   _ble_line_gendy=0
+      %   _ble_line_dirty=-1
+
+      ble/textarea
+        _ble_textarea_buffer=()
+        _ble_textarea_bufferName=
+        _ble_textarea_cur=(0 0 32 0)
+        _ble_textarea_scroll=
+        _ble_textarea_gendx=0
+        _ble_textarea_gendy=0
+        _ble_textarea_invalidated=1
+        _ble_textarea_cache=()
+
+      ble-syntax
+        _ble_syntax_text=
+        _ble_syntax_stat=()
+        _ble_syntax_nest=()
+        _ble_syntax_tree=()
+        _ble_syntax_attr=()
+
+        _ble_syntax_attr_umin=-1
+        _ble_syntax_attr_umax=-1
+        _ble_syntax_word_umin=-1
+        _ble_syntax_word_umax=-1
+        これらの変数は ble-highlight-layer:syntax から参照するためにある。
+
+        _ble_syntax_vanishing_word_umin=-1
+        _ble_syntax_vanishing_word_umax=-1
+        これは ble-highlight-layer:syntax/update-word-table の暫定的(?)な実装に使っている。
+
+        _ble_syntax_dbeg=-1
+        _ble_syntax_dend=-1
+        これは ble-syntax/parse 解析中断をした時に復元するためにある。
+        但し現在は解析の中断の対応していないので、常に -1 である。
+
+        因みに文法を指定しているのは ble-syntax/parse 中の以下の行である。
+
+          ctx="$CTX_CMDX"
+
+        他の文法にも対応するためにはこの値を何らかの変数を用いて初期化する必要がある。
+        例えば、_ble_syntax_lang=bash としておいて、
+
+          ble-syntax:$_ble_syntax_lang/initialize-context
+
+        のような関数を呼び出すと ctx に呼び出しが入るなど。
+
+      こうして見てみるととても沢山の変数が存在している。
+      これらをえいやと切り替えるのはとても大変そうだ。
+
+    2 ble-edit/render 統合
+
+      ble-edit/text/update は ble/textarea#update-text-buffer とすることにする。
+      ble-edit/render/* は ble/textarea#render/* にする。
+      ble/textmap#slice は実のところ ble/textarea#slice-text-buffer が良い。
+
+      ble-edit/render/update-adjusted では、
+        $bleopt_suppress_bash_output であっても念のためと称して
+        READLINE_LINE, READLINE_POINT を設定していたが、
+        何か問題になるとも思われないので、
+        $bleopt_suppress_bash_output の時には適当な値を設定して抜けることにした。
+        また、関数名は ble/textarea#adjust-for-bash-bind とした。
+
+      _ble_line_dirty
+        現在 _ble_textarea_dirty は -1 か空文字列かのどちらかの気がする。
+        と思ったが、一応 _ble_edit_str.replace で設定はしている。
+        一方で、実際に使っているのかどうかは怪しい。
+        結局、_ble_edit_dirty_draw_beg と役割が重複しているので、
+        _ble_textarea_dirty 改め _ble_textarea_invalidated は、
+        完全再描画の要求がされたかどうかだけの状態を保持することにした。
+
+      現在以下の変数が存在している。
+
+      _ble_textarea_buffer=()
+      _ble_textarea_bufferName
+      _ble_textarea_cur=(0 0 32 0)
+      _ble_textarea_scroll=
+      _ble_textarea_gendx=0
+      _ble_textarea_gendy=0
+      _ble_textarea_invalidated=1
+      _ble_textarea_cache=()
+
+    3 切替方法について
+
+      何処に値を保存しておくかということ。
+      そのまま保存すると沢山の変数を汚すことになる。
+      何処か一つの変数に保存しておいて eval するだけで復元するということにならないか。
+
+      | a "declare -p" の出力を利用する方法
+      |
+      |   但し、直接使うとローカル変数に勝手になってしまったり、復元できなかったりするケースがあるので、
+      |   出力は可能しなければならない。その為に以前書いた関数 ble/util/declare-print-definitions を見てみると、
+      |   これは出力を整形するために awk を使っている。遅い。頻繁に呼び出せるものではない。
+      |
+      | 或いは、テキストボックスのフォーカスが移動するのはそんなに頻繁ではないはずだから、
+      | 毎回瞬間的に切り替えるのではなく、現在フォーカスが当たっているものが常に表を占拠するようにすれば良い。
+      | だとすれば多少重くても良いかもしれない。しかし重くても良いのであれば、やはり沢山の変数を汚しても良い?
+      | と思ったけれど、むしろローカル変数で瞬間的にというわけではなく、まとめて退避するということから、
+      | やはり一つの変数に記録する方が良い。
+      |
+      | さて declare や typeset を用いるとごみが入る。set だとごみが入らない。
+      | と思ってマニュアルを探したが set で指定した変数だけ出力するということはできない。
+      | というか declare でも引数を指定せずに呼び出すとごみは入らない。
+      | declare -p のようにするとゴミが入る。typeset -p でも同様。
+      | local -p とすると何も表示されない。何故?
+      |
+      | b ローカル変数にコピーして local する案
+      |
+      |   所で、local とすると現在のフレームの変数だけ出力されるようだ。
+      |   最終的にはこれを使うという手もある…と思ったが、
+      |   同じ変数名で local a=$a として外の値を継承できるのか? bash-3.0 で試してみると
+      |
+      |   - local a だと変数は空になる。
+      |   - local a=$a だと外の値を持つ (bash-3.0-4.4)。
+      |   - local -a a=($a) だと空になる (bash-3.1, 4.3-4.4)。外の値を持つ (bash-3.0, 3.2-4.2)。
+      |
+      |   最後の項目に関しては興味深い。実は同じスコープで既に local となっていても空になる。
+      |   うーん。従って。一旦、別の変数にコピーして、それから改めて同名の local 変数に書き戻して、
+      |   その上で local を実行するか。
+      |
+      |   或いは、変数名を   __to_remove___ble_edit_str などのようにして、そこにコピーして、
+      |   それから local を実行してから、変数の中身の __to_remove__ を削除するか。
+      |   但し、それだと変数の値に __to_remove__  が含まれているとそれが消滅する。
+      |   特に、これの動作のテストのために丁度コマンドラインに同じ文字列 __to_remove__ が含まれる可能性はある。
+      |   何れにしても、恣意的に構成されたコマンドラインで問題になるので一種の脆弱性になるかもしれない。
+      |
+      |   何れにしても、この方法だと全変数を一旦 local 変数にコピーするという操作は不可避なので、
+      |   単に全変数を直接退避する方法と比べると、変数を減らすということ以外に利点がない。
+      |
+      | c 或いは手動で生成できるか。
+      |
+      |   すぐに eval できる形にするのは難しい。
+      |   それに一発で eval できなくても良いのではないだろうか。
+      |   そう考えると
+      |
+      |   aaa=(_ble_edit_str content
+      |     _some_array[3] hello1 hello2 hello3
+      |     _some_scalar value)
+      |
+      |   などの形に配列に格納するというのも手である。
+      |   と思ったが、これは構築も復元もいかにも遅そうである。
+      |   すぐ eval できる形に手動で整形するのは難しい。printf %q には古い bash でバグが有るし、
+      |   もし printf %q を用いるとしても 文字列の結合を繰り返さなければならないことに変わりはない。
+      |
+      |   ただ、awk を起動するよりは速いかもしれない。
+      |   (それでも長い編集文字列を扱うとこれは格段に遅くなるだろう)
+
+      うーん。結局単一の変数にコピーするのは難しそうである。
+      方法があるとすれば一旦ローカル変数にコピーしておいて、
+      そこで local を実行するという方法しか現実的なものはないと思われる。
+
+      取り敢えずは変数の集合として保存するという方法で我慢することにする。
+
+    取り敢えず ble/textarea の状態を保存・復元する仕組みは整えた。
+    見た目は動いているように見える。取りこぼしの変数はあるかもしれないが、それは後で考える。
+
 2017-10-04
 
   * 2017-10-02 vi-mode (visual block): 矩形選択から text/update/position を呼び出せるようにする [#D0504]
@@ -2344,7 +2561,7 @@ tech
     更新範囲の情報を分離する必要がある。
 
     * 同時に _ble_line_text_* の変数名を何とかする。案を考える。
-      
+
       _ble_line_text_cache_length=  -> _ble_textmap_length
       _ble_line_text_cols=80        -> _ble_textmap_cols
       _ble_line_text_cache_pos=()   -> _ble_textmap_pos
@@ -2356,11 +2573,11 @@ tech
       _ble_line_text_endy=0         -> _ble_textmap_endy
 
       | うーん。text_layout よりも良い名前はないか。
-      | 
+      |
       | - 文字の配置を素直に英語にすると character arrangement になる。長い。
-      | 
+      |
       | - .NET では Sysmtem.Drawing.Graphics に MeasureString および MeasureCharacterRanges がある。
-      | 
+      |
       | - _ble_text は既に s2c などの名前空間として使用されている。
       |   従って、_ble_textbox, _ble_textarea, _ble_line を使う必要がある。
       |   _ble_line は今まで使ってきたものだが実態に合わないので変更したい。
@@ -2368,26 +2585,26 @@ tech
       |   (或いは将来的にそのような機能を実装するかもしれないが)
       |   よく考えたら現状の配置情報の計算は textbox かどうかなどとは直交する実装になっている。
       |   現に render/update でスクロール機能を実装したときも _ble_line_text 側には何も変更はなかった。
-      | 
+      |
       |   従って、_ble_textbox や _ble_textarea というのも微妙である。
       |   或いは、_ble_graphics_textlayout_ などにするか。
       |   短くすれば _ble_draw_textrange もしくは _ble_draw_txtlayout。
       |   うーん。もはや draw/graphics とか要らないかもしれない。
-      | 
+      |
       |   _ble_textlayout_ とするか。_ble_textrange_ でも良いかも。
       |   TextRange については調べてみたが色々と意味が違うような気がするのでやめる。
-      | 
+      |
       |   うーん。実際には glyph などの描画に関する情報も保持している。
       |   なので単に layout という訳でもないのではないか。
       |   但し着色などについての情報は持っていないので、やはり layout に近いというべきか。
-      | 
+      |
       | _ble_textlayout に収束しつつある。
-      | 
+      |
       |   少し変種を考えてみる。_ble_txtlayout, _ble_txtout, _ble_txtpos,
       |   _ble_charpos, _ble_txtarrange, _ble_txtconfiguration, _ble_txtdisposition,
       |   _ble_txtgeometry, _ble_txtgeo, _ble_txtmetric, _ble_txtmeasure,
       |   _ble_txtmap, _ble_textmap.
-      | 
+      |
       |   良さそうなのは、_ble_txtpos, _ble_txtmap, _ble_textpos, _ble_textmap 辺りである。
       |   取り敢えず _ble_textmap にする。
 
@@ -2412,7 +2629,7 @@ tech
       | これは別の場所に記録して置かなければならない。
       | ところが、ble/textmap#update を呼び出した後で
       | 更に文字列に更新があった場合はこの更新範囲がどうなるかは非自明だ。
-      | 
+      |
       | (dbeg dend dend0) のペアを用いて範囲を更新することはできるがそれで十分だろうか。
       | - umin-umax で変更範囲より前にある場合はそのままで良い。
       | - umin-umax で変更範囲より後にある場合は…その分だけ index をシフトすれば良い。
@@ -2421,7 +2638,7 @@ tech
       |   もしそれで不充分であるのであれば次の ble/textmap#update でそこまで umin-umax が拡張されるはずである。
       | - 変更範囲が被っている場合には削って良い。
       |   変更範囲の領域はどうせ次の更新で再描画の対象になるだろうから。
-      | 
+      |
       | →_ble_edit_str の更新をする度に毎回 _ble_textmap の更新もするべきかと思ったが、
       |   ble/textmap#update を呼び出したときに、蓄積した dirty-range を用いて
       |   _ble_textmap_u{min,max} を shift して更新すれば良いのだと気付いた。

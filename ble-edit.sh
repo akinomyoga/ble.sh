@@ -10,7 +10,9 @@
 # @line.info
 # @edit
 # @edit.ps1
-# @edit/render
+# @textarea
+# @textarea.buffer
+# @textarea.render
 # @widget.clear
 # @widget.mark
 # @edit.bell
@@ -381,15 +383,13 @@ function ble-edit/draw/bflush {
   DRAW_BUFF=()
 }
 
-_ble_draw_trace_brack=()
-_ble_draw_trace_scosc=
 function ble-edit/draw/trace/SC {
-  _ble_draw_trace_scosc="$x $y $g $lc $lg"
+  trace_scosc="$x $y $g $lc $lg"
   ble-edit/draw/put "$_ble_term_sc"
 }
 function ble-edit/draw/trace/RC {
   local -a scosc
-  scosc=($_ble_draw_trace_scosc)
+  scosc=($trace_scosc)
   x="${scosc[0]}"
   y="${scosc[1]}"
   g="${scosc[2]}"
@@ -593,15 +593,15 @@ function ble-edit/draw/trace/process-csi-sequence {
         # PS1 の \[ ... \] の処理。
         # ble-edit/prompt/update で \e[99s, \e[99u に変換している。
         if [[ $char == s ]]; then
-          _ble_draw_trace_brack[${#_ble_draw_trace_brack[*]}]="$x $y"
+          trace_brack[${#trace_brack[*]}]="$x $y"
         else
-          local lastIndex="${#_ble_draw_trace_brack[*]}-1"
+          local lastIndex="${#trace_brack[*]}-1"
           if ((lastIndex>=0)); then
             local -a scosc
-            scosc=(${_ble_draw_trace_brack[lastIndex]})
+            scosc=(${trace_brack[lastIndex]})
             ((x=scosc[0]))
             ((y=scosc[1]))
-            unset "_ble_draw_trace_brack[$lastIndex]"
+            unset "trace_brack[$lastIndex]"
           fi
         fi
         return
@@ -708,6 +708,9 @@ function ble-edit/draw/trace.impl {
   local cols="${COLUMNS-80}" lines="${LINES-25}"
   local it="$_ble_term_it" xenl="$_ble_term_xenl"
   local text="$1"
+
+  local -a trace_brack=()
+  local trace_scosc=
 
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
@@ -1154,6 +1157,9 @@ function ble-edit/prompt/update {
 # 
 # **** textmap ****                                                    @textmap
 
+_ble_textmap_VARNAMES=(_ble_textmap_{cols,length,{beg,end}{x,y},d{beg,end,end0},u{min,max}})
+_ble_textmap_ARRNAMES=(_ble_textmap_{pos,glyph,ichg})
+
 ## 文字列の配置計算に関する情報
 ##
 ##   前回の配置計算の前提と結果を保持する変数群を以下に説明します。
@@ -1210,21 +1216,13 @@ function ble/textmap#update-dirty-range {
 }
 function ble/textmap#save {
   local name prefix=$1
-  for name in cols length {beg,end}{x,y} d{beg,end,end0} u{min,max}; do
-    eval "$prefix$name=\"\${_ble_textmap_$name}\""
-  done
-  for name in pos glyph ichg; do
-    eval "$prefix$name=(\"\${_ble_textmap_$name[@]}\")"
-  done
+  ble/util/save-vars "$prefix" "${_ble_textmap_VARNAMES[@]}"
+  ble/util/save-arrs "$prefix" "${_ble_textmap_ARRNAMES[@]}"
 }
 function ble/textmap#restore {
   local name prefix=$1
-  for name in cols length {beg,end}{x,y} d{beg,end,end0} u{min,max}; do
-    eval "_ble_textmap_$name=\"\${$prefix$name}\""
-  done
-  for name in pos glyph ichg; do
-    eval "_ble_textmap_$name=(\"\${$prefix$name[@]}\")"
-  done
+  ble/util/restore-vars "$prefix" "${_ble_textmap_VARNAMES[@]}"
+  ble/util/restore-arrs "$prefix" "${_ble_textmap_ARRNAMES[@]}"
 }
 
 ## 関数 text x y; ble/textmap#update; x y
@@ -1410,103 +1408,6 @@ function ble/textmap#update {
   _ble_textmap_endy=$y
 }
 
-
-# **** text ****                                                     @line.text
-
-_ble_line_text_buff=()
-_ble_line_text_buffName=
-
-## 関数 x y lc lg; ble-edit/text/update; x y cx cy lc lg
-## @param[in    ] text  編集文字列
-## @param[in    ] dirty 編集によって変更のあった最初の index
-## @param[in    ] index カーソルの index
-## @param[in,out] x     編集文字列開始位置、終了位置。
-## @param[in,out] y     編集文字列開始位置、終了位置。
-## @param[in,out] lc lg
-##   カーソル左の文字のコードと gflag を返します。
-##   カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
-## @var  [   out] umin umax
-##   umin,umax は再描画の必要な範囲を文字インデックスで返します。
-function ble-edit/text/update {
-  # text x y [ble/textmap#update] x y
-  ble/textmap#update
-  ((umin=_ble_textmap_umin,
-    umax=_ble_textmap_umax,
-    _ble_textmap_umin=-1,
-    _ble_textmap_umax=-1))
-
-  local iN="${#text}"
-
-  # highlight -> HIGHLIGHT_BUFF
-  local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
-  ble-highlight-layer/update "$text"
-  #ble-edit/info/show text "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
-
-  # 変更文字の適用
-  if ((${#_ble_textmap_ichg[@]})); then
-    local ichg g sgr
-    builtin eval "_ble_line_text_buff=(\"\${$HIGHLIGHT_BUFF[@]}\")"
-    HIGHLIGHT_BUFF=_ble_line_text_buff
-    for ichg in "${_ble_textmap_ichg[@]}"; do
-      ble-highlight-layer/getg "$ichg"
-      ble-color-g2sgr -v sgr "$g"
-      _ble_line_text_buff[ichg]="$sgr${_ble_textmap_glyph[ichg]}"
-    done
-  fi
-
-  _ble_line_text_buffName="$HIGHLIGHT_BUFF"
-
-  # umin, umax
-  ((HIGHLIGHT_UMIN>=0&&(umin<0||umin>HIGHLIGHT_UMIN)&&(umin=HIGHLIGHT_UMIN),
-    HIGHLIGHT_UMAX>=0&&(umax<0||umax<HIGHLIGHT_UMAX)&&(umax=HIGHLIGHT_UMAX)))
-
-  # update lc, lg
-  #
-  #   lc, lg は bleopt_suppress_bash_output= の時に bash に出力させる文字と
-  #   その属性を表す。READLINE_LINE が空だと C-d を押した時にその場でログアウト
-  #   してしまったり、エラーメッセージが表示されたりする。その為 READLINE_LINE
-  #   に有限の長さの文字列を設定したいが、そうするとそれが画面に出てしまう。
-  #   そこで、ble.sh では現在のカーソル位置にある文字と同じ文字を READLINE_LINE
-  #   に設定する事で、bash が文字を出力しても見た目に問題がない様にしている。
-  #
-  #   cx==0 の時には現在のカーソル位置の右にある文字を READLINE_LINE に設定し
-  #   READLINE_POINT=0 とする。cx>0 の時には現在のカーソル位置の左にある文字を
-  #   READLINE_LINE に設定し READLINE_POINT=(左の文字のバイト数) とする。
-  #   (READLINE_POINT は文字数ではなくバイトオフセットである事に注意する。)
-  #
-  if [[ $bleopt_suppress_bash_output ]]; then
-    lc=32 lg=0
-  else
-    # index==0 の場合は受け取った lc lg をそのまま返す
-    if ((index>0)); then
-      local cx cy
-      ble/textmap#getxy.cur --prefix=c "$index"
-
-      local lcs ret
-      if ((cx==0)); then
-        # 次の文字
-        if ((index==iN)); then
-          # 次の文字がない時は空白
-          ret=32
-        else
-          lcs="${_ble_textmap_glyph[index]}"
-          ble/util/s2c "$lcs" 0
-        fi
-
-        # 次が改行の時は空白にする
-        ble-highlight-layer/getg -v lg "$index"
-        ((lc=ret==10?32:ret))
-      else
-        # 前の文字
-        lcs="${_ble_textmap_glyph[index-1]}"
-        ble/util/s2c "$lcs" "$((${#lcs}-1))"
-        ble-highlight-layer/getg -v lg "$((index-1))"
-        ((lc=ret))
-      fi
-    fi
-  fi
-}
-
 function ble/textmap#is-up-to-date {
   ((_ble_textmap_dbeg==-1))
 }
@@ -1574,25 +1475,6 @@ function ble/textmap#getxy.cur {
 
   ((${_prefix}x=_pos[0]))
   ((${_prefix}y=_pos[1]))
-}
-
-
-## 関数 ble/textmap#slice [beg [end]]
-##   @var [out] ret
-function ble/textmap#slice {
-  ble/textmap#assert-up-to-date
-  local iN="$_ble_textmap_length"
-  local i1="${1:-0}" i2="${2:-$iN}"
-  ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
-    i2<0&&(i2+=iN)))
-  if ((i1<i2&&i1<iN)); then
-    local g sgr
-    ble-highlight-layer/getg -v g "$i1"
-    ble-color-g2sgr -v sgr "$g"
-    IFS= builtin eval "ret=\"\$sgr\${$_ble_line_text_buffName[*]:i1:i2-i1}\""
-  else
-    ret=
-  fi
 }
 
 ## 関数 ble/textmap#get-index-at [-v varname] x y
@@ -1692,7 +1574,6 @@ function ble/textmap#hit {
   fi
 }
 
-
 # 
 # **** information pane ****                                         @line.info
 
@@ -1750,7 +1631,7 @@ function ble-edit/info/.put-nl-if-eol {
 ##   指定した文字列を表示する為の制御系列に変換します。
 function ble-edit/info/.construct-text {
   local cols=${COLUMNS-80}
-  local lines=$(((LINES?LINES:0)-_ble_line_gendy-2))
+  local lines=$(((LINES?LINES:0)-_ble_textarea_gendy-2))
 
   local text="$1" out=
   local i iN=${#text}
@@ -1909,6 +1790,12 @@ function ble-edit/info/reveal {
 #------------------------------------------------------------------------------
 # **** edit ****                                                          @edit
 
+_ble_edit_VARNAMES=(
+  _ble_edit_{str,ind,mark{,_active},overwrite_mode,line_disabled,arg}
+  _ble_edit_kill_{ring,type}
+  _ble_edit_dirty_{draw,syntax}_{beg,end,end0})
+_ble_edit_ARRNAMES=()
+
 # 現在の編集状態は以下の変数で表現される
 _ble_edit_str=
 _ble_edit_ind=0
@@ -1931,7 +1818,6 @@ function _ble_edit_str.replace {
   # cf. Note#1
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
   _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end"
-  ble-edit/render/invalidate "$beg"
 #%if !release
   # Note: 何処かのバグで _ble_edit_ind に変な値が入ってエラーになるので、
   #   ここで誤り訂正を行う。想定として、この関数を呼出した時の _ble_edit_ind の値は、
@@ -1952,7 +1838,6 @@ function _ble_edit_str.replace {
 function _ble_edit_str.reset {
   local str="$1"
   _ble_edit_str/update-dirty-range 0 "${#str}" "${#_ble_edit_str}"
-  ble-edit/render/invalidate 0
   _ble_edit_str="$str"
 #%if !release
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
@@ -2096,7 +1981,7 @@ function ble-edit/attach/TRAPWINCH {
     local IFS=$' \t\n'
     _ble_textmap_pos=()
     ble-edit/bind/stdout.on
-    ble-edit/render/redraw
+    ble/textarea#redraw
     ble-edit/bind/stdout.off
   fi
 }
@@ -2130,57 +2015,160 @@ function ble-edit/detach {
   _ble_edit_attached=0
 }
 
-# **** ble-edit/render ****                                        @edit/render
+
+# 
+#------------------------------------------------------------------------------
+# **** textarea ****                                                  @textarea
+
+_ble_textarea_VARNAMES=(_ble_textarea_{bufferName,scroll,gendx,gendy,invalidated,caret_state})
+_ble_textarea_ARRNAMES=(_ble_textarea_{buffer,cur,cache})
+
+# **** textarea.buffer ****                                    @textarea.buffer
+
+_ble_textarea_buffer=()
+_ble_textarea_bufferName=
+
+## 関数 lc lg; ble/textarea#update-text-buffer; cx cy lc lg
+##
+##   @param[in    ] text  編集文字列
+##   @param[in    ] index カーソルの index
+##   @param[in,out] x     編集文字列開始位置、終了位置。
+##   @param[in,out] y     編集文字列開始位置、終了位置。
+##   @param[in,out] lc lg
+##     カーソル左の文字のコードと gflag を返します。
+##     カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
+##   @var  [   out] umin umax
+##     umin,umax は再描画の必要な範囲を文字インデックスで返します。
+##
+##   @var[in] _ble_textmap_*
+##     配置情報が最新であることを要求します。
+##
+function ble/textarea#update-text-buffer {
+  local iN="${#text}"
+
+  # highlight -> HIGHLIGHT_BUFF
+  local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
+  ble-highlight-layer/update "$text"
+  ble/urange#update "$HIGHLIGHT_UMIN" "$HIGHLIGHT_UMAX"
+
+  # 変更文字の適用
+  if ((${#_ble_textmap_ichg[@]})); then
+    local ichg g sgr
+    builtin eval "_ble_textarea_buffer=(\"\${$HIGHLIGHT_BUFF[@]}\")"
+    HIGHLIGHT_BUFF=_ble_textarea_buffer
+    for ichg in "${_ble_textmap_ichg[@]}"; do
+      ble-highlight-layer/getg "$ichg"
+      ble-color-g2sgr -v sgr "$g"
+      _ble_textarea_buffer[ichg]="$sgr${_ble_textmap_glyph[ichg]}"
+    done
+  fi
+
+  _ble_textarea_bufferName="$HIGHLIGHT_BUFF"
+
+  # update lc, lg
+  #
+  #   lc, lg は bleopt_suppress_bash_output= の時に bash に出力させる文字と
+  #   その属性を表す。READLINE_LINE が空だと C-d を押した時にその場でログアウト
+  #   してしまったり、エラーメッセージが表示されたりする。その為 READLINE_LINE
+  #   に有限の長さの文字列を設定したいが、そうするとそれが画面に出てしまう。
+  #   そこで、ble.sh では現在のカーソル位置にある文字と同じ文字を READLINE_LINE
+  #   に設定する事で、bash が文字を出力しても見た目に問題がない様にしている。
+  #
+  #   cx==0 の時には現在のカーソル位置の右にある文字を READLINE_LINE に設定し
+  #   READLINE_POINT=0 とする。cx>0 の時には現在のカーソル位置の左にある文字を
+  #   READLINE_LINE に設定し READLINE_POINT=(左の文字のバイト数) とする。
+  #   (READLINE_POINT は文字数ではなくバイトオフセットである事に注意する。)
+  #
+  if [[ $bleopt_suppress_bash_output ]]; then
+    lc=32 lg=0
+  else
+    # index==0 の場合は受け取った lc lg をそのまま返す
+    if ((index>0)); then
+      local cx cy
+      ble/textmap#getxy.cur --prefix=c "$index"
+
+      local lcs ret
+      if ((cx==0)); then
+        # 次の文字
+        if ((index==iN)); then
+          # 次の文字がない時は空白
+          ret=32
+        else
+          lcs="${_ble_textmap_glyph[index]}"
+          ble/util/s2c "$lcs" 0
+        fi
+
+        # 次が改行の時は空白にする
+        ble-highlight-layer/getg -v lg "$index"
+        ((lc=ret==10?32:ret))
+      else
+        # 前の文字
+        lcs="${_ble_textmap_glyph[index-1]}"
+        ble/util/s2c "$lcs" "$((${#lcs}-1))"
+        ble-highlight-layer/getg -v lg "$((index-1))"
+        ((lc=ret))
+      fi
+    fi
+  fi
+}
+## 関数 ble/textare#slice-text-buffer [beg [end]]
+##   @var [out] ret
+function ble/textare#slice-text-buffer {
+  ble/textmap#assert-up-to-date
+  local iN="$_ble_textmap_length"
+  local i1="${1:-0}" i2="${2:-$iN}"
+  ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
+    i2<0&&(i2+=iN)))
+  if ((i1<i2&&i1<iN)); then
+    local g sgr
+    ble-highlight-layer/getg -v g "$i1"
+    ble-color-g2sgr -v sgr "$g"
+    IFS= builtin eval "ret=\"\$sgr\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
+  else
+    ret=
+  fi
+}
+
+# 
+# **** textarea.render ****                                    @textarea.render
 
 #
 # 大域変数
 #
 
-## 配列 _ble_line_cur
-##   キャレット位置 (ユーザに対して呈示するカーソル) と其処の文字の情報を保持します。
-## _ble_line_cur[0] x   キャレット描画位置の y 座標を保持します。
-## _ble_line_cur[1] y   キャレット描画位置の y 座標を保持します。
-## _ble_line_cur[2] lc
-##   キャレット位置の左側の文字の文字コードを整数で保持します。
-##   キャレットが最も左の列にある場合は右側の文字を保持します。
-## _ble_line_cur[3] lg
-##   キャレット位置の左側の SGR フラグを保持します。
-##   キャレットが最も左の列にある場合は右側の文字に適用される SGR フラグを保持します。
-_ble_line_cur=(0 0 32 0)
+## 配列 _ble_textarea_cur
+##     キャレット位置 (ユーザに対して呈示するカーソル) と其処の文字の情報を保持します。
+##   _ble_textarea_cur[0] x   キャレット描画位置の y 座標を保持します。
+##   _ble_textarea_cur[1] y   キャレット描画位置の y 座標を保持します。
+##   _ble_textarea_cur[2] lc
+##     キャレット位置の左側の文字の文字コードを整数で保持します。
+##     キャレットが最も左の列にある場合は右側の文字を保持します。
+##   _ble_textarea_cur[3] lg
+##     キャレット位置の左側の SGR フラグを保持します。
+##     キャレットが最も左の列にある場合は右側の文字に適用される SGR フラグを保持します。
+_ble_textarea_cur=(0 0 32 0)
 
-_ble_line_scroll=
-_ble_line_gendx=0
-_ble_line_gendy=0
+_ble_textarea_scroll=
+_ble_textarea_gendx=0
+_ble_textarea_gendy=0
 
 #
 # 表示関数
 #
 
-## 変数 _ble_line_dirty
-##   編集文字列の変更開始点を記録します。
-##   編集文字列の位置計算は、この点以降に対して実行されます。
-##   ble-edit/render/update 関数内で使用されクリアされます。
-##   @value _ble_line_dirty=
-##     再描画の必要がない事を表します。
-##   @value _ble_line_dirty=-1
-##     プロンプトも含めて内容の再計算をする必要がある事を表します。
-##   @value _ble_line_dirty=(整数)
-##     編集文字列の指定した位置以降に対し再計算する事を表します。
-_ble_line_dirty=-1
+## 変数 _ble_textarea_invalidated
+##   完全再描画 (プロンプトも含めた) を要求されたことを記録します。
+##   完全再描画の要求前に空文字列で、要求後に 1 の値を持ちます。
+_ble_textarea_invalidated=1
 
-function ble-edit/render/invalidate {
-  local d2="${1:--1}"
-  if [[ ! $_ble_line_dirty ]]; then
-    _ble_line_dirty="$d2"
-  else
-    ((d2<_ble_line_dirty&&(_ble_line_dirty=d2)))
-  fi
+function ble/textarea#invalidate {
+  _ble_textarea_invalidated=1
 }
 
 
-## 関数 ble-edit/render/.determine-scroll
+## 関数 ble/textarea#render/.determine-scroll
 ##   新しい表示高さとスクロール位置を決定します。
-##   ble-edit/render/update から呼び出されることを想定します。
+##   ble/textarea#render から呼び出されることを想定します。
 ##
 ##   @var[in,out] scroll
 ##     現在のスクロール量を指定します。調整後のスクロール量を指定します。
@@ -2193,7 +2181,7 @@ function ble-edit/render/invalidate {
 ##   @var[in] begx begy endx endy cx cy
 ##     それぞれ編集文字列の先端・末端・現在カーソル位置の表示座標を指定します。
 ##
-function ble-edit/render/.determine-scroll {
+function ble/textarea#render/.determine-scroll {
   local nline=$((endy+1))
   if ((nline>height)); then
     ((scroll<=nline-height)) || ((scroll=nline-height))
@@ -2230,7 +2218,7 @@ function ble-edit/render/.determine-scroll {
     height=$nline
   fi
 }
-## 関数 ble-edit/render/.perform-scroll
+## 関数 ble/textarea#render/.perform-scroll
 ##
 ##   @var[out] DRAW_BUFF
 ##     スクロールを実行するシーケンスの出力先です。
@@ -2238,16 +2226,16 @@ function ble-edit/render/.determine-scroll {
 ##   @var[in] height cols
 ##   @var[in] begx begy
 ##
-function ble-edit/render/.perform-scroll {
+function ble/textarea#render/.perform-scroll {
   local new_scroll=$1
-  if ((new_scroll!=_ble_line_scroll)); then
+  if ((new_scroll!=_ble_textarea_scroll)); then
     local scry=$((begy+1))
     local scrh=$((height-scry))
 
     # 行の削除と挿入および新しい領域 [fmin, fmax] の決定
     local fmin fmax index
-    if ((_ble_line_scroll>new_scroll)); then
-      local shift=$((_ble_line_scroll-new_scroll))
+    if ((_ble_textarea_scroll>new_scroll)); then
+      local shift=$((_ble_textarea_scroll-new_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
       ble-form/panel#goto.draw 0 0 $((height-draw_shift))
       ble-edit/draw/put.dl "$draw_shift"
@@ -2261,7 +2249,7 @@ function ble-edit/render/.perform-scroll {
       fi
       ble/textmap#get-index-at "$cols" $((scry+new_scroll+draw_shift-1)); fmax=$index
     else
-      local shift=$((new_scroll-_ble_line_scroll))
+      local shift=$((new_scroll-_ble_textarea_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
       ble-form/panel#goto.draw 0 0 "$scry"
       ble-edit/draw/put.dl "$draw_shift"
@@ -2280,7 +2268,7 @@ function ble-edit/render/.perform-scroll {
 
       ble-form/panel#goto.draw 0 "$fminx" $((fminy-new_scroll))
       ((new_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-      local ret; ble/textmap#slice "$fmin" "$fmax"
+      local ret; ble/textare#slice-text-buffer "$fmin" "$fmax"
       ble-edit/draw/put "$ret"
       ((_ble_line_x=fmaxx,
         _ble_line_y+=fmaxy-fminy))
@@ -2290,42 +2278,42 @@ function ble-edit/render/.perform-scroll {
           fmin<umax&&umax<=fmax&&(umax=fmin)))
     fi
 
-    _ble_line_scroll=$new_scroll
+    _ble_textarea_scroll=$new_scroll
 
-    ble-edit/render/.show-scroll-at-first-line
+    ble/textarea#render/.show-scroll-at-first-line
   fi
 }
-## 関数 ble-edit/render/.show-scroll-at-first-line
+## 関数 ble/textarea#render/.show-scroll-at-first-line
 ##   スクロール時 "(line 3) ..." などの表示
 ##
-##   @var[in] _ble_line_scroll
+##   @var[in] _ble_textarea_scroll
 ##   @var[in,out] DRAW_BUFF _ble_line_x _ble_line_y
 ##
-function ble-edit/render/.show-scroll-at-first-line {
-  if ((_ble_line_scroll!=0)); then
+function ble/textarea#render/.show-scroll-at-first-line {
+  if ((_ble_textarea_scroll!=0)); then
     ble-form/panel#goto.draw 0 "$begx" "$begy"
-    local scroll_status="(line $((_ble_line_scroll+2))) ..."
+    local scroll_status="(line $((_ble_textarea_scroll+2))) ..."
     scroll_status=${scroll_status::cols-1-begx}
     ble-edit/draw/put "$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
     ((_ble_line_x+=${#scroll_status}))
   fi
 }
 
-## 関数 ble-edit/render/update
+## 関数 ble/textarea#render
 ##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
-##   Post-condition: カーソル位置 (x y) = (_ble_line_cur[0] _ble_line_cur[1]) に移動する
+##   Post-condition: カーソル位置 (x y) = (_ble_textarea_cur[0] _ble_textarea_cur[1]) に移動する
 ##   Post-condition: 編集文字列部分の再描画を実行する
 ##
-##   @var _ble_edit_render_caret_state := inds ':' mark ':' mark_active ':' line_disabled ':' overwrite_mode
-##     ble-edit/render/update で用いる変数です。
+##   @var _ble_textarea_caret_state := inds ':' mark ':' mark_active ':' line_disabled ':' overwrite_mode
+##     ble/textarea#render で用いる変数です。
 ##     現在の表示内容のカーソル位置・ポイント位置の情報を記録します。
 ##
-_ble_edit_render_caret_state=::
-function ble-edit/render/update {
+_ble_textarea_caret_state=::
+function ble/textarea#render {
   local caret_state="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
-  if [[ ! $_ble_line_dirty && $_ble_edit_render_caret_state == $caret_state ]]; then
+  if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == $caret_state ]]; then
     local -a DRAW_BUFF
-    ble-form/panel#goto.draw 0 "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
+    ble-form/panel#goto.draw 0 "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
     ble-edit/draw/bflush
     return
   fi
@@ -2339,7 +2327,7 @@ function ble-edit/render/update {
   ble-edit/prompt/update # x y lc ret
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
-  # BLELINE_RANGE_UPDATE → ble-edit/text/update 内でこれを見て update を済ませる
+  # BLELINE_RANGE_UPDATE → ble/textarea#update-text-buffer 内でこれを見て update を済ませる
   local -a BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
   ble/dirty-range#clear --prefix=_ble_edit_dirty_draw_
 #%if !release
@@ -2352,12 +2340,19 @@ function ble-edit/render/update {
   # ble/dirty-range#update --prefix=graphic_d
 
   # 編集内容の構築
-  local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_line_dirty"
+  local text="$_ble_edit_str" index="$_ble_edit_ind"
   local iN="${#text}"
   ((index<0?(index=0):(index>iN&&(index=iN))))
 
   local umin=-1 umax=-1
-  ble-edit/text/update # text index dirty -> x y lc lg
+
+  # 配置情報の更新
+  ble/textmap#update # text x y → x y
+  ble/urange#update "$_ble_textmap_umin" "$_ble_textmap_umax"
+  ble/urange#clear --prefix=_ble_textmap_
+
+  # 着色の更新
+  ble/textarea#update-text-buffer # text index -> lc lg
 
   #-------------------
   # 描画領域の決定とスクロール
@@ -2372,8 +2367,8 @@ function ble-edit/render/update {
 
   local cols=$_ble_textmap_cols
   local height=$((LINES-1)) # todo: info の高さも考慮に入れる
-  local scroll=$_ble_line_scroll
-  ble-edit/render/.determine-scroll # update: height scroll umin umax
+  local scroll=$_ble_textarea_scroll
+  ble/textarea#render/.determine-scroll # update: height scroll umin umax
   ble-form/panel#set-height.draw 0 "$height"
 
   local gend gendx gendy
@@ -2384,17 +2379,17 @@ function ble-edit/render/update {
   else
     gend=$iN gendx=$endx gendy=$endy
   fi
-  _ble_line_gendx=$gendx _ble_line_gendy=$gendy
+  _ble_textarea_gendx=$gendx _ble_textarea_gendy=$gendy
 
   #-------------------
   # 出力
 
   # 2 表示内容
   local ret esc_line= esc_line_set=
-  if ((_ble_line_dirty>=0)); then
+  if [[ ! $_ble_textarea_invalidated ]]; then
     # 部分更新の場合
 
-    ble-edit/render/.perform-scroll "$scroll" # update: umin umax
+    ble/textarea#render/.perform-scroll "$scroll" # update: umin umax
 
     # 編集文字列の一部を描画する場合
     if ((umin<umax)); then
@@ -2402,19 +2397,18 @@ function ble-edit/render/update {
       ble/textmap#getxy.out --prefix=umin "$umin"
       ble/textmap#getxy.out --prefix=umax "$umax"
 
-      ble-form/panel#goto.draw 0 "$uminx" $((uminy-_ble_line_scroll))
-      ble/textmap#slice "$umin" "$umax"
+      ble-form/panel#goto.draw 0 "$uminx" $((uminy-_ble_textarea_scroll))
+      ble/textare#slice-text-buffer "$umin" "$umax"
       ble-edit/draw/put "$ret"
-      _ble_line_x="$umaxx" _ble_line_y=$((umaxy-_ble_line_scroll))
+      _ble_line_x="$umaxx" _ble_line_y=$((umaxy-_ble_textarea_scroll))
     fi
 
     if ((BLELINE_RANGE_UPDATE[0]>=0)); then
-      local endY=$((endy-_ble_line_scroll))
+      local endY=$((endy-_ble_textarea_scroll))
       ((endY<height)) && ble-form/panel#clear-after.draw 0 "$endx" "$endY"
     fi
   else
     # 全体更新
-
     ble-form/panel#clear.draw 0
 
     # プロンプト描画
@@ -2423,95 +2417,95 @@ function ble-edit/render/update {
     _ble_line_x="$prox" _ble_line_y="$proy"
 
     # 全体描画
-    if [[ ! $_ble_line_scroll ]]; then
-      ble/textmap#slice # → ret
+    if [[ ! $_ble_textarea_scroll ]]; then
+      ble/textare#slice-text-buffer # → ret
       esc_line="$ret" esc_line_set=1
       ble-edit/draw/put "$ret"
-      _ble_line_x=$_ble_line_gendx _ble_line_y=$_ble_line_gendy
+      _ble_line_x=$_ble_textarea_gendx _ble_line_y=$_ble_textarea_gendy
     else
-      ble-edit/render/.show-scroll-at-first-line
+      ble/textarea#render/.show-scroll-at-first-line
 
       local gbeg=0
-      if ((_ble_line_scroll)); then
-        ble/textmap#get-index-at 0 $((_ble_line_scroll+begy+1)); gbeg=$index
+      if ((_ble_textarea_scroll)); then
+        ble/textmap#get-index-at 0 $((_ble_textarea_scroll+begy+1)); gbeg=$index
       fi
 
       local gbegx gbegy
       ble/textmap#getxy.out --prefix=gbeg "$gbeg"
-      ((gbegy-=_ble_line_scroll))
+      ((gbegy-=_ble_textarea_scroll))
 
       ble-form/panel#goto.draw 0 "$gbegx" "$gbegy"
-      ((_ble_line_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-      ble/textmap#slice "$gbeg" "$gend"
+      ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+      ble/textare#slice-text-buffer "$gbeg" "$gend"
       ble-edit/draw/put "$ret"
       ((_ble_line_x=gendx,_ble_line_y+=gendy-gbegy))
     fi
   fi
 
   # 3 移動
-  local gcx=$cx gcy=$((cy-_ble_line_scroll))
+  local gcx=$cx gcy=$((cy-_ble_textarea_scroll))
   ble-form/panel#goto.draw 0 "$gcx" "$gcy"
   ble-edit/draw/bflush
 
   # 4 後で使う情報の記録
-  _ble_line_cur=("$gcx" "$gcy" "$lc" "$lg")
-  _ble_line_dirty= _ble_edit_render_caret_state="$caret_state"
+  _ble_textarea_cur=("$gcx" "$gcy" "$lc" "$lg")
+  _ble_textarea_invalidated= _ble_textarea_caret_state="$caret_state"
 
   if [[ ! $bleopt_suppress_bash_output ]]; then
     if [[ ! $esc_line_set ]]; then
-      if [[ ! $_ble_line_scroll ]]; then
-        ble/textmap#slice
+      if [[ ! $_ble_textarea_scroll ]]; then
+        ble/textare#slice-text-buffer
         esc_line="$ret"
       else
         local _ble_line_x=$begx _ble_line_y=$begy
         DRAW_BUFF=()
 
-        ble-edit/render/.show-scroll-at-first-line
+        ble/textarea#render/.show-scroll-at-first-line
 
         local gbeg=0
-        if ((_ble_line_scroll)); then
-          ble/textmap#get-index-at 0 $((_ble_line_scroll+begy+1)); gbeg=$index
+        if ((_ble_textarea_scroll)); then
+          ble/textmap#get-index-at 0 $((_ble_textarea_scroll+begy+1)); gbeg=$index
         fi
         local gbegx gbegy
         ble/textmap#getxy.out --prefix=gbeg "$gbeg"
-        ((gbegy-=_ble_line_scroll))
+        ((gbegy-=_ble_textarea_scroll))
 
         ble-form/panel#goto.draw 0 "$gbegx" "$gbegy"
-        ((_ble_line_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-        ble/textmap#slice "$gbeg" "$gend"
+        ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+        ble/textare#slice-text-buffer "$gbeg" "$gend"
         ble-edit/draw/put "$ret"
 
         ble-edit/draw/sflush -v esc_line
       fi
     fi
 
-    _ble_line_cache=(
+    _ble_textarea_cache=(
       "$esc_prompt$esc_line"
-      "${_ble_line_cur[@]}"
-      "$_ble_line_gendx" "$_ble_line_gendy")
+      "${_ble_textarea_cur[@]}"
+      "$_ble_textarea_gendx" "$_ble_textarea_gendy")
   fi
 }
-function ble-edit/render/redraw {
-  _ble_line_dirty=-1
-  ble-edit/render/update
+function ble/textarea#redraw {
+  ble/textarea#invalidate
+  ble/textarea#render
 }
 
-## 配列 _ble_line_cache
+## 配列 _ble_textarea_cache
 ##   現在表示している内容のキャッシュです。
-##   ble-edit/render/update で値が設定されます。
-##   ble-edit/render/redraw-cache はこの情報を元に再描画を行います。
-## _ble_line_cache[0]:        表示内容
-## _ble_line_cache[1]: curx   カーソル位置 x
-## _ble_line_cache[2]: cury   カーソル位置 y
-## _ble_line_cache[3]: curlc  カーソル位置の文字の文字コード
-## _ble_line_cache[4]: curlg  カーソル位置の文字の SGR フラグ
-## _ble_line_cache[5]: gendx  表示末端位置 x
-## _ble_line_cache[6]: gendy  表示末端位置 y
-_ble_line_cache=()
+##   ble/textarea#render で値が設定されます。
+##   ble/textarea#redraw-cache はこの情報を元に再描画を行います。
+## _ble_textarea_cache[0]:        表示内容
+## _ble_textarea_cache[1]: curx   カーソル位置 x
+## _ble_textarea_cache[2]: cury   カーソル位置 y
+## _ble_textarea_cache[3]: curlc  カーソル位置の文字の文字コード
+## _ble_textarea_cache[4]: curlg  カーソル位置の文字の SGR フラグ
+## _ble_textarea_cache[5]: gendx  表示末端位置 x
+## _ble_textarea_cache[6]: gendy  表示末端位置 y
+_ble_textarea_cache=()
 
-function ble-edit/render/redraw-cache {
-  if [[ ! $_ble_line_scroll && ${_ble_line_cache[0]+set} ]]; then
-    local -a d=("${_ble_line_cache[@]}")
+function ble/textarea#redraw-cache {
+  if [[ ! $_ble_textarea_scroll && ${_ble_textarea_cache[0]+set} ]]; then
+    local -a d=("${_ble_textarea_cache[@]}")
 
     local -a DRAW_BUFF
 
@@ -2520,19 +2514,19 @@ function ble-edit/render/redraw-cache {
     ble-edit/draw/put "${d[0]}"
     _ble_line_x=${d[5]}
     _ble_line_y=${d[6]}
-    _ble_line_gendx=${d[5]}
-    _ble_line_gendy=${d[6]}
+    _ble_textarea_gendx=${d[5]}
+    _ble_textarea_gendy=${d[6]}
 
-    _ble_line_cur=("${d[@]:1:4}")
-    ble-form/panel#goto.draw 0 "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
+    _ble_textarea_cur=("${d[@]:1:4}")
+    ble-form/panel#goto.draw 0 "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
     ble-edit/draw/bflush
   else
-    ble-edit/render/redraw
+    ble/textarea#redraw
   fi
 }
 
-## 関数 ble-edit/render/update-adjusted
-##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
+## 関数 ble/textarea#adjust-for-bash-bind
+##   プロンプト・編集文字列の表示更新を ble/textarea に対して行う。
 ##
 ## @remarks
 ## この関数は bind -x される関数から呼び出される事を想定している。
@@ -2540,33 +2534,95 @@ function ble-edit/render/redraw-cache {
 ## 内部で PS1= 等の設定を行うのでプロンプトの情報が失われる。
 ## また、READLINE_LINE, READLINE_POINT 等のグローバル変数の値を変更する。
 ##
-function ble-edit/render/update-adjusted {
-  ble-edit/render/update
-  # 現在はフルで描画 (bash が消してしまうので)
-  # ble-edit/render/redraw
+function ble/textarea#adjust-for-bash-bind {
+  ble/textarea#render
 
-  local -a DRAW_BUFF
-
-  # bash が表示するプロンプトを見えなくする
-  # (現在のカーソルの左側にある文字を再度上書きさせる)
-  PS1=
-  local ret lc="${_ble_line_cur[2]}" lg="${_ble_line_cur[3]}"
-  ble/util/c2s "$lc"
-  READLINE_LINE="$ret"
-  if ((_ble_line_cur[0]==0)); then
-    READLINE_POINT=0
+  if [[ $bleopt_suppress_bash_output ]]; then
+    PS1= READLINE_LINE=$'\n' READLINE_POINT=0
   else
-    if [[ ! $bleopt_suppress_bash_output ]]; then
+    # bash が表示するプロンプトを見えなくする
+    # (現在のカーソルの左側にある文字を再度上書きさせる)
+    local -a DRAW_BUFF
+    PS1=
+    local ret lc="${_ble_textarea_cur[2]}" lg="${_ble_textarea_cur[3]}"
+    ble/util/c2s "$lc"
+    READLINE_LINE="$ret"
+    if ((_ble_textarea_cur[0]==0)); then
+      READLINE_POINT=0
+    else
       ble/util/c2w "$lc"
       ((ret>0)) && ble-edit/draw/put.cub "$ret"
+      ble-text-c2bc "$lc"
+      READLINE_POINT="$ret"
     fi
-    ble-text-c2bc "$lc"
-    READLINE_POINT="$ret"
-  fi
 
-  ble-color-g2sgr "$lg"
-  ble-edit/draw/put "$ret"
-  ble-edit/draw/bflush
+    ble-color-g2sgr "$lg"
+    ble-edit/draw/put "$ret"
+    ble-edit/draw/bflush
+  fi
+}
+
+function ble/textarea#save-state {
+  local prefix=$1
+  local -a vars=() arrs=()
+
+  # _ble_edit_prompt
+  ble/array#push arrs _ble_edit_prompt
+
+  # _ble_edit_*
+  ble/array#push vars "${_ble_edit_VARNAMES[@]}"
+  ble/array#push arrs "${_ble_edit_ARRNAMES[@]}"
+
+  # _ble_textmap_*
+  ble/array#push vars "${_ble_textmap_VARNAMES[@]}"
+  ble/array#push arrs "${_ble_textmap_ARRNAMES[@]}"
+
+  # _ble_highlight_layer_*
+  ble/array#push arrs _ble_highlight_layer__list
+  local layer names
+  for layer in "${_ble_highlight_layer__list[@]}"; do
+    eval "names=(\"\${!_ble_highlight_layer_$name@}\")"
+    for name in "${names[@]}"; do
+      if ble/is-array "$name"; then
+        ble/array#push arrs "$name"
+      else
+        ble/array#push vars "$name"
+      fi
+    done
+  done
+
+  # _ble_textarea_*
+  ble/array#push vars "${_ble_textarea_VARNAMES[@]}"
+  ble/array#push arrs "${_ble_textarea_ARRNAMES[@]}"
+
+  # _ble_syntax_*
+  ble/array#push vars "${_ble_syntax_VARNAMES[@]}"
+  ble/array#push arrs "${_ble_syntax_ARRNAMES[@]}"
+
+  eval "${prefix}_VARNAMES=(\"\${vars[@]}\")"
+  eval "${prefix}_ARRNAMES=(\"\${arrs[@]}\")"
+  ble/util/save-vars "$prefix" "${vars[@]}"
+  ble/util/save-arrs "$prefix" "${arrs[@]}"
+}
+function ble/textarea#restore-state {
+  local prefix=$1
+  if eval "[[ \$prefix && \${${prefix}_VARNAMES+set} && \${${prefix}_ARRNAMES+set} ]]"; then
+    eval "ble/util/restore-vars $prefix \"\${${prefix}_VARNAMES[@]}\""
+    eval "ble/util/restore-arrs $prefix \"\${${prefix}_ARRNAMES[@]}\""
+  else
+    echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
+    return 1
+  fi
+}
+function ble/textarea#clear-state {
+  local prefix=$1
+  if [[ $prefix ]]; then
+    local vars=${prefix}_VARNAMES arrs=${prefix}_ARRNAMES
+    eval "unset \"\${$vars[@]/#/$prefix}\" \"\${$arrs[@]/#/$prefix}\" $vars $arrs"
+  else
+    echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
+    return 1
+  fi
 }
 
 # 
@@ -2578,12 +2634,12 @@ function ble/widget/.update-textmap {
 }
 function ble/widget/redraw-line {
   ble-edit/content/clear-arg
-  ble-edit/render/invalidate
+  ble/textarea#invalidate
 }
 function ble/widget/clear-screen {
   ble-edit/content/clear-arg
   ble-edit/info/hide
-  ble-edit/render/invalidate
+  ble/textarea#invalidate
   ble/util/buffer "$_ble_term_clear"
   _ble_line_x=0 _ble_line_y=0
   ble-term/visible-bell/cancel-erasure
@@ -3000,7 +3056,7 @@ function ble/widget/delete-forward-char-or-exit {
   #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   ble-edit/info/hide
   local -a DRAW_BUFF
-  ble-form/panel#goto.draw 0 "$_ble_line_gendx" "$_ble_line_gendy"
+  ble-form/panel#goto.draw 0 "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble-edit/draw/bflush
   ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
   ble/util/buffer.flush >&2
@@ -3966,18 +4022,18 @@ function ble-edit/exec:gexec/process {
 function ble/widget/.insert-newline {
   # 最終状態の描画
   ble-edit/info/hide
-  ble-edit/render/update
+  ble/textarea#render
 
   # 新しい描画領域
   local -a DRAW_BUFF
-  ble-form/panel#goto.draw 0 "$_ble_line_gendx" "$_ble_line_gendy"
+  ble-form/panel#goto.draw 0 "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/bflush
   ble/util/joblist.bflush
 
   # 描画領域情報の初期化
   _ble_line_x=0 _ble_line_y=0
-  _ble_line_gendx=0 _ble_line_gendy=0
+  _ble_textarea_gendx=0 _ble_textarea_gendy=0
   ((LINENO=++_ble_edit_LINENO))
 }
 
@@ -3993,8 +4049,8 @@ function ble/widget/.newline {
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
-  _ble_line_dirty=-1
   _ble_edit_overwrite_mode=
+  ble/textarea#invalidate
 }
 
 function ble/widget/discard-line {
@@ -4033,7 +4089,7 @@ function ble/widget/accept-line {
   # 履歴展開
   local hist_expanded
   if ! ble-edit/hist_expanded.update "$BASH_COMMAND"; then
-    ble-edit/render/invalidate
+    ble/textarea#invalidate
     return
   fi
 
@@ -5078,7 +5134,7 @@ function ble-edit/bind/.check-detach {
       ble/util/buffer.flush >&2
       builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" 1>&2
       ble-edit/info/hide
-      ble-edit/render/update
+      ble/textarea#render
       ble/util/buffer.flush >&2
 
       # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
@@ -5089,7 +5145,7 @@ function ble-edit/bind/.check-detach {
       ble/util/buffer.flush >&2
       builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
       builtin echo "Please run \`stty sane' to recover the correct TTY state." >&2
-      ble-edit/render/update
+      ble/textarea#render
       ble/util/buffer.flush >&2
       READLINE_LINE='stty sane' READLINE_POINT=9
     fi
@@ -5114,7 +5170,7 @@ if ((_ble_bash>=40100)); then
 
     if [[ ! $bleopt_suppress_bash_output ]]; then
       # bash-4.1 以降では呼出直前にプロンプトが消される
-      ble-edit/render/redraw-cache
+      ble/textarea#redraw-cache
       ble/util/buffer.flush >&2
     fi
   }
@@ -5139,14 +5195,14 @@ function ble-edit/bind/.tail-without-draw {
 if ((_ble_bash>40000)); then
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
-    ble-edit/render/update-adjusted
+    ble/textarea#adjust-for-bash-bind
     ble-edit/bind/stdout.off
   }
 else
   IGNOREEOF=10000
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
-    ble-edit/render/update # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
+    ble/textarea#render # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
     ble-edit/bind/stdout.off
   }
 fi
@@ -5194,7 +5250,7 @@ function ble/widget/.SHELL_COMMAND {
     ble-edit/exec/register "$BASH_COMMAND"
   fi
 
-  ble-edit/render/invalidate
+  ble/textarea#invalidate
 }
 
 ## 関数 ble/widget/.EDIT_COMMAND command

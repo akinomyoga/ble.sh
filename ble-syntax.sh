@@ -94,8 +94,13 @@ function ble-syntax/wrange#shift {
       (${prefix}umin=${prefix}umax=-1)))
 }
 
+_ble_syntax_VARNAMES=(_ble_syntax_{text,lang,{attr,word,vanishing_word}_u{min,max},d{beg,end}})
+_ble_syntax_ARRNAMES=(_ble_syntax_{stat,nest,tree,attr})
+
 ## @var _ble_syntax_text
 ##   解析対象の文字列を保持する。
+## @var _ble_syntax_lang
+##   解析対象の言語を保持する。
 ##
 ## @var _ble_syntax_stat[i]
 ##   文字 #i を解釈しようとする直前の状態を記録する。
@@ -125,6 +130,7 @@ function ble-syntax/wrange#shift {
 ## @var _ble_syntax_attr[i]
 ##   文脈・属性の情報
 _ble_syntax_text=
+_ble_syntax_lang=bash
 _ble_syntax_stat=()
 _ble_syntax_nest=()
 _ble_syntax_tree=()
@@ -884,6 +890,10 @@ _ble_syntax_rex_simple_word_element=
     _ble_syntax_rex_simple_word='^'"$_ble_syntax_rex_simple_word_element"'+$'
   }
   ble-syntax:bash/.update-rex_simple_word
+}
+
+function ble-syntax:bash/initialize-ctx {
+  ctx="$CTX_CMDX" # CTX_CMDX が ble-syntax:bash の最初の文脈
 }
 
 _ble_syntax_bash_histc12=
@@ -2847,6 +2857,8 @@ function ble-syntax/parse {
     nparam="${stat[6]}"; [[ $nparam == none ]] && nparam=
   else
     # 初期値
+    ctx="$CTX_UNSPECIFIED" ##!< 現在の解析の文脈 
+    ble-syntax:"$_ble_syntax_lang"/initialize-ctx # ctx 初期化
     ctx="$CTX_CMDX" ##!< 現在の解析の文脈 (CTX_CMDX は ble-syntax:bash 特有)
     wbegin=-1       ##!< シェル単語内にいる時、シェル単語の開始位置
     wtype=-1        ##!< シェル単語内にいる時、シェル単語の種類
@@ -2869,7 +2881,7 @@ function ble-syntax/parse {
   _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
 
   local "${_ble_syntax_bash_vars[@]}"
-  ble-syntax:bash/initialize-vars
+  ble-syntax:"$_ble_syntax_lang"/initialize-vars
 
   # 解析
   _ble_syntax_text="$text"
@@ -3904,7 +3916,7 @@ function ble-highlight-layer:syntax/update {
     _ble_syntax_attr_umin="$debug_attr_umin" _ble_syntax_attr_umax="$debug_attr_uend" ble-syntax/print-status -v status
     ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | cat -A'; status="$status$buff"
     ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | cat -A'; status="$status$buff"
-    #ble/util/assign buff 'declare -p _ble_line_text_buffName $_ble_line_text_buffName | cat -A'; status="$status$buff"
+    #ble/util/assign buff 'declare -p _ble_textarea_bufferName $_ble_textarea_bufferName | cat -A'; status="$status$buff"
     ble-edit/info/show raw "$status"
   fi
 #%end
