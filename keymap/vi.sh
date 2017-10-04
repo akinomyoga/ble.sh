@@ -57,7 +57,7 @@ function ble-edit/content/nonbol-eolp {
   local pos=${1:-$_ble_edit_ind}
   ! ble-edit/content/bolp "$pos" && ble-edit/content/eolp "$pos"
 }
-function ble-edit/content/find-nol-from-bol {
+function ble-edit/content/find-non-space {
   local bol=$1
   local rex=$'^[ \t]*'; [[ ${_ble_edit_str:bol} =~ $rex ]]
   ret=$((bol+${#BASH_REMATCH}))
@@ -505,6 +505,7 @@ function ble/widget/vi-command/kill-current-line-and-insert {
   ble/widget/vi-command/.insert-mode
 }
 
+# nmap: 0, <home>
 function ble/widget/vi-command/beginning-of-line {
   local arg flag; ble/keymap:vi/get-arg 1
   local ret
@@ -641,7 +642,7 @@ function ble/keymap:vi/operator:c {
     ((end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
 
     local indent=
-    ble-edit/content/find-nol-from-bol "$beg"; local nol=$ret
+    ble-edit/content/find-non-space "$beg"; local nol=$ret
     ((beg<nol)) && indent=${_ble_edit_str:beg:nol-beg}
 
     ble/widget/.kill-range "$beg" "$end" 1 L
@@ -714,7 +715,7 @@ function ble/keymap:vi/expand-range-for-linewise-operator {
   #   行後退時は行頭に end (_ble_edit_ind) がある場合はその行は無視
   #   同一行内の移動の場合は無条件にその行は含まれる。
   ble-edit/content/find-logical-bol "$end"; local bol2=$ret
-  ble-edit/content/find-nol-from-bol "$bol2"; local nol2=$ret
+  ble-edit/content/find-non-space "$bol2"; local nol2=$ret
   if ((beg<bol2&&_ble_edit_ind<=bol2&&end<=nol2)); then
     end=$bol2
   else
@@ -772,7 +773,7 @@ function ble/keymap:vi/operator:increase-indent {
   ble/widget/.replace-range "$beg" "$end" "$content" 1
 
   if [[ $context == char ]]; then
-    ble-edit/content/find-nol-from-bol "$beg"; beg=$ret
+    ble-edit/content/find-non-space "$beg"; beg=$ret
   fi
 }
 function ble/keymap:vi/operator:left {
@@ -916,7 +917,7 @@ function ble/widget/vi-command/linewise-range.impl {
           if ((bolq<=bolp)) && [[ $nolq ]]; then
             local nolb=$nolq
           else
-            ble-edit/content/find-nol-from-bol "$beg"; local nolb=$ret
+            ble-edit/content/find-non-space "$beg"; local nolb=$ret
           fi
           ble-edit/content/nonbol-eolp "$nolb" && ((nolb--))
           ((ind<beg||nolb<ind)) && ble/widget/.goto-char "$nolb"
@@ -932,7 +933,7 @@ function ble/widget/vi-command/linewise-range.impl {
       if [[ ! $bolx ]]; then
         ble-edit/content/find-logical-bol "$qbase" "$qline"; bolx=$ret
       fi
-      ble-edit/content/find-nol-from-bol "$bolx"; nolx=$ret
+      ble-edit/content/find-non-space "$bolx"; nolx=$ret
     fi
     ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
     ble/widget/.goto-char "$nolx"
@@ -1248,13 +1249,13 @@ function ble/widget/vi-command/graphical-backward-line {
 }
 
 #------------------------------------------------------------------------------
-# command: ^ + - $
+# command: ^ + - _ $
 
-function ble/widget/vi-command/.relative-first-non-space {
+function ble/widget/vi-command/relative-first-non-space.impl {
   local arg=$1 flag=$2
   local ret ind=$_ble_edit_ind
   ble-edit/content/find-logical-bol "$ind" "$arg"; local bolx=$ret
-  ble-edit/content/find-nol-from-bol "$bolx"; local nolx=$ret
+  ble-edit/content/find-non-space "$bolx"; local nolx=$ret
 
   # 2017-09-12 何故か分からないが vim はこういう振る舞いに見える。
   ((_ble_keymap_vi_single_command==2&&_ble_keymap_vi_single_command--))
@@ -1282,6 +1283,7 @@ function ble/widget/vi-command/.relative-first-non-space {
   if ((count==0)); then
     ble/keymap:vi/needs-eol-fix "$nolx" && ((nolx--))
     ble/widget/.goto-char "$nolx"
+    ble/keymap:vi/adjust-command-mode
     return
   fi
 
@@ -1291,31 +1293,103 @@ function ble/widget/vi-command/.relative-first-non-space {
   elif ((nmove)); then
     ble/widget/vi-command/first-non-space
   else
-    ble/widget/.bell
+    ble/widget/vi-command/bell
   fi
 }
-
+# nmap ^
 function ble/widget/vi-command/first-non-space {
   local arg flag; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/.relative-first-non-space 0 "$flag"
-  ble/keymap:vi/adjust-command-mode
+  ble/widget/vi-command/relative-first-non-space.impl 0 "$flag"
 }
+# nmap +
 function ble/widget/vi-command/forward-first-non-space {
   local arg flag; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/.relative-first-non-space "$arg" "$flag"
-  ble/keymap:vi/adjust-command-mode
+  ble/widget/vi-command/relative-first-non-space.impl "$arg" "$flag"
 }
+# nmap -
 function ble/widget/vi-command/backward-first-non-space {
   local arg flag; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/.relative-first-non-space "$((-arg))" "$flag"
-  ble/keymap:vi/adjust-command-mode
+  ble/widget/vi-command/relative-first-non-space.impl "$((-arg))" "$flag"
 }
-
+# nmap _
+function ble/widget/vi-command/first-non-space-forward {
+  local arg flag; ble/keymap:vi/get-arg 1
+  ble/widget/vi-command/relative-first-non-space.impl $((arg-1)) "$flag"
+}
+# nmap $
 function ble/widget/vi-command/forward-eol {
   local arg flag; ble/keymap:vi/get-arg 1
   local ret index
   ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg-1)); index=$ret
   ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+  ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
+}
+# nmap g0 g<home>
+function ble/widget/vi-command/beginning-of-graphical-line {
+  if ble-edit/text/is-position-up-to-date; then
+    local arg flag; ble/keymap:vi/get-arg 1
+    local x y index
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at 0 "$y"
+    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+    ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
+  else
+    ble/widget/vi-command/beginning-of-line
+  fi
+}
+# nmap g^
+function ble/widget/vi-command/graphical-first-non-space {
+  if ble-edit/text/is-position-up-to-date; then
+    local arg flag; ble/keymap:vi/get-arg 1
+    local x y index ret
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at 0 "$y"
+    ble-edit/content/find-non-space "$index"
+    ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
+    ble/widget/vi-command/exclusive-goto.impl "$ret" "$flag" 1
+  else
+    ble/widget/vi-command/first-non-space
+  fi
+}
+# nmap g$ g<end>
+function ble/widget/vi-command/graphical-forward-eol {
+  if ble-edit/text/is-position-up-to-date; then
+    local arg flag; ble/keymap:vi/get-arg 1
+    local x y index
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at $((_ble_line_text_cols-1)) $((y+arg-1))
+    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+    ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
+  else
+    ble/widget/vi-command/forward-eol
+  fi
+}
+# nmap gm
+function ble/widget/vi-command/middle-of-graphical-line {
+  local arg flag; ble/keymap:vi/get-arg 1
+  local index
+  if ble-edit/text/is-position-up-to-date; then
+    local x y
+    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble-edit/text/get-index-at $((_ble_line_text_cols/2)) "$y"
+    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+  else
+    local ret
+    ble-edit/content/find-logical-bol; local bol=$ret
+    ble-edit/content/find-logical-eol; local eol=$ret
+    ((index=(bol+${COLUMNS:-eol})/2,
+      index>eol&&(index=eol),
+      bol<eol&&index==eol&&(index--)))
+  fi
+  ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
+}
+# nmap g_
+function ble/widget/vi-command/last-non-space {
+  local arg flag; ble/keymap:vi/get-arg 1
+  local ret
+  ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg-1)); local index=$ret
+  local rex=$'([^ \t\n]?[ \t]+|[^ \t\n])$'
+  [[ ${_ble_edit_str::index} =~ $rex ]] && ((index-=${#BASH_REMATCH}))
   ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
 }
 
@@ -1560,8 +1634,8 @@ function ble/widget/vi-command/kill-forward-line-and-insert {
 
 function ble/widget/vi-command/forward-word.impl {
   local arg=$1 flag=$2 rex_word=$3
-  local bl=$' \t' nl=$'\n'
-  local rex="^((($rex_word)$nl?|[$bl]+$nl?|$nl)([$bl]+$nl)*[$bl]*){0,$arg}" # 単語先頭または空行に止まる
+  local b=$'[ \t]' n=$'\n'
+  local rex="^((($rex_word)$n?|$b+$n?|$n)($b+$n)*$b*){0,$arg}" # 単語先頭または空行に止まる
   [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]
   local index=$((_ble_edit_ind+${#BASH_REMATCH}))
   ble/widget/vi-command/exclusive-goto.impl "$index" "$flag"
@@ -1577,11 +1651,22 @@ function ble/widget/vi-command/forward-word-end.impl {
 }
 function ble/widget/vi-command/backward-word.impl {
   local arg=$1 flag=$2 rex_word=$3
-  local bl=$' \t' nl=$'\n'
-  local rex="((($rex_word)$nl?|[$bl]+$nl?|$nl)([$bl]+$nl)*[$bl]*){0,$arg}\$" # 単語先頭または空行に止まる
+  local b=$'[ \t]' n=$'\n'
+  local rex="((($rex_word)$n?|$b+$n?|$n)($b+$n)*$b*){0,$arg}\$" # 単語先頭または空行に止まる
   [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]
   local index=$((_ble_edit_ind-${#BASH_REMATCH}))
   ble/widget/vi-command/exclusive-goto.impl "$index" "$flag"
+}
+function ble/widget/vi-command/backward-word-end.impl {
+  local arg=$1 flag=$2 rex_word=$3
+  local i=$'[ \t\n]' b=$'[ \t]' n=$'\n' w="($rex_word)"
+  local rex1="(^|$w$n?|$n)($b+$n)*$b*"
+  local rex="($rex1)($rex1){$((arg-1))}($rex_word|$i)\$" # 単語末端または空行に止まる
+  [[ ${_ble_edit_str::_ble_edit_ind+1} =~ $rex ]]
+  local index=$((_ble_edit_ind+1-${#BASH_REMATCH}))
+  local rematch3=${BASH_REMATCH[3]} # 最初の ($rex_word)
+  [[ $rematch3 ]] && ((index+=${#rematch3}-1))
+  ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 0
 }
 
 function ble/widget/vi-command/forward-vword {
@@ -1596,6 +1681,10 @@ function ble/widget/vi-command/backward-vword {
   local arg flag; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/backward-word.impl "$arg" "$flag" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
 }
+function ble/widget/vi-command/backward-vword-end {
+  local arg flag; ble/keymap:vi/get-arg 1
+  ble/widget/vi-command/backward-word-end.impl "$arg" "$flag" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
+}
 function ble/widget/vi-command/forward-uword {
   local arg flag; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/forward-word.impl "$arg" "$flag" $'[^ \t\n]+'
@@ -1607,6 +1696,10 @@ function ble/widget/vi-command/forward-uword-end {
 function ble/widget/vi-command/backward-uword {
   local arg flag; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/backward-word.impl "$arg" "$flag" $'[^ \t\n]+'
+}
+function ble/widget/vi-command/backward-uword-end {
+  local arg flag; ble/keymap:vi/get-arg 1
+  ble/widget/vi-command/backward-word-end.impl "$arg" "$flag" $'[^ \t\n]+'
 }
 
 #------------------------------------------------------------------------------
@@ -1792,7 +1885,7 @@ function ble/widget/vi-command/insert-mode-at-forward-line {
     local ret
     ble-edit/content/find-logical-bol; local bol=$ret
     ble-edit/content/find-logical-eol; local eol=$ret
-    ble-edit/content/find-nol-from-bol "$bol"; local indent=${_ble_edit_str:bol:ret-bol}
+    ble-edit/content/find-non-space "$bol"; local indent=${_ble_edit_str:bol:ret-bol}
     ble/widget/.goto-char "$eol"
     ble/widget/insert-string $'\n'"$indent"
     ble/widget/vi-command/.insert-mode "$arg"
@@ -1805,7 +1898,7 @@ function ble/widget/vi-command/insert-mode-at-backward-line {
   else
     local ret
     ble-edit/content/find-logical-bol; local bol=$ret
-    ble-edit/content/find-nol-from-bol "$bol"; local indent=${_ble_edit_str:bol:ret-bol}
+    ble-edit/content/find-non-space "$bol"; local indent=${_ble_edit_str:bol:ret-bol}
     ble/widget/.goto-char "$bol"
     ble/widget/insert-string "$indent"$'\n'
     ble/widget/.goto-char $((bol+${#indent}))
@@ -1981,6 +2074,31 @@ function ble/widget/vi-command/percentage-line {
   local ret; ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
   local iline=$(((arg*nline+99)/100))
   ble/widget/vi-command/linewise-goto.impl 0:$((iline-1)) "$flag"
+}
+
+#------------------------------------------------------------------------------
+# command: go
+
+function ble/widget/vi-command/nth-byte {
+  local arg flag; ble/keymap:vi/get-arg 1
+  ((arg--))
+  local offset=0 text=$_ble_edit_str len=${#_ble_edit_str}
+  local left nleft
+  while ((arg>0&&len>1)); do
+    left=${text::len/2}
+    LC_ALL=C builtin eval 'nleft=${#left}'
+    if ((arg<nleft)); then
+      text=$left
+      ((len/=2))
+    else
+      text=${text:len/2}
+      ((offset+=len/2,
+        arg-=nleft,
+        len-=len/2))
+    fi
+  done
+  ble/keymap:vi/needs-eol-fix "$offset" && ((offset--))
+  ble/widget/vi-command/exclusive-goto.impl "$offset" "$flag" 1
 }
 
 #------------------------------------------------------------------------------
@@ -2312,7 +2430,7 @@ function ble/keymap:vi/text-object/paragraph.impl {
 
   local beg= empty_start=
   ble-edit/content/find-logical-bol; local bol=$ret
-  ble-edit/content/find-nol-from-bol "$bol"; local nol=$ret
+  ble-edit/content/find-non-space "$bol"; local nol=$ret
   if rex=$'[ \t]*(\n|$)' ble-edit/content/eolp "$nol"; then
     # 空行のときは連続する一番初めの空行に移動する
     empty_start=1
@@ -2451,8 +2569,18 @@ function ble/keymap:vi/setup-map {
   ble-bind -f '$'   vi-command/forward-eol
   ble-bind -f end   vi-command/forward-eol
   ble-bind -f '^'   vi-command/first-non-space
+  ble-bind -f '_'   vi-command/first-non-space-forward
   ble-bind -f '+'   vi-command/forward-first-non-space
+  ble-bind -f 'C-m' vi-command/forward-first-non-space
+  ble-bind -f 'RET' vi-command/forward-first-non-space
   ble-bind -f '-'   vi-command/backward-first-non-space
+  ble-bind -f 'g 0'    vi-command/beginning-of-graphical-line
+  ble-bind -f 'g home' vi-command/beginning-of-graphical-line
+  ble-bind -f 'g ^'    vi-command/graphical-first-non-space
+  ble-bind -f 'g $'    vi-command/graphical-forward-eol
+  ble-bind -f 'g end'  vi-command/graphical-forward-eol
+  ble-bind -f 'g m'    vi-command/middle-of-graphical-line
+  ble-bind -f 'g _'    vi-command/last-non-space
 
   ble-bind -f h     vi-command/backward-char
   ble-bind -f l     vi-command/forward-char
@@ -2463,13 +2591,16 @@ function ble/keymap:vi/setup-map {
   ble-bind -f SP    'vi-command/forward-char m'
 
   ble-bind -f j     vi-command/forward-line
-  ble-bind -f k     vi-command/backward-line
   ble-bind -f down  vi-command/forward-line
-  ble-bind -f up    vi-command/backward-line
   ble-bind -f C-n   vi-command/forward-line
+  ble-bind -f C-j   vi-command/forward-line
+  ble-bind -f k     vi-command/backward-line
+  ble-bind -f up    vi-command/backward-line
   ble-bind -f C-p   vi-command/backward-line
-  ble-bind -f 'g j' vi-command/graphical-forward-line
-  ble-bind -f 'g k' vi-command/graphical-backward-line
+  ble-bind -f 'g j'    vi-command/graphical-forward-line
+  ble-bind -f 'g down' vi-command/graphical-forward-line
+  ble-bind -f 'g k'    vi-command/graphical-backward-line
+  ble-bind -f 'g up'   vi-command/graphical-backward-line
 
   ble-bind -f w       vi-command/forward-vword
   ble-bind -f W       vi-command/forward-uword
@@ -2477,9 +2608,14 @@ function ble/keymap:vi/setup-map {
   ble-bind -f B       vi-command/backward-uword
   ble-bind -f e       vi-command/forward-vword-end
   ble-bind -f E       vi-command/forward-uword-end
+  ble-bind -f 'g e'   vi-command/backward-vword-end
+  ble-bind -f 'g E'   vi-command/backward-uword-end
   ble-bind -f C-right vi-command/forward-vword
+  ble-bind -f S-right vi-command/forward-vword
   ble-bind -f C-left  vi-command/backward-vword
+  ble-bind -f S-left  vi-command/backward-vword
 
+  ble-bind -f 'g o'  vi-command/nth-byte
   ble-bind -f '|'    vi-command/nth-column
   ble-bind -f H      vi-command/nth-line
   ble-bind -f L      vi-command/nth-last-line
@@ -2499,9 +2635,6 @@ function ble/keymap:vi/setup-map {
 
   ble-bind -f 'C-\ C-n' nop
 
-  ble-bind -f 'C-m' vi-command/forward-first-non-space
-  ble-bind -f 'RET' vi-command/forward-first-non-space
-  ble-bind -f 'C-j' vi-command/forward-line
 
   #----------------------------------------------------------------------------
   # bash
@@ -3074,7 +3207,7 @@ function ble/widget/vi-insert/insert-digraph {
 function ble/widget/vi-insert/newline {
   local ret
   ble-edit/content/find-logical-bol; local bol=$ret
-  ble-edit/content/find-nol-from-bol "$bol"; local nol=$ret
+  ble-edit/content/find-non-space "$bol"; local nol=$ret
   ble/widget/newline
   ((bol<nol)) && ble/widget/insert-string "${_ble_edit_str:bol:nol-bol}"
 }
