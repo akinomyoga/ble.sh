@@ -1,14 +1,17 @@
 #!/bin/bash
 
-function check-builtin {
-  local command="$1" esc='(\[[ -?]*[@-~])*'
-  grc --color --exclude=./test "(^|[^/])\b$command\b" |
-    grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin$esc([[:space:]]$esc)+$command(\b|$esc)"
-}
+if ! type grc >/dev/null; then
+  echo 'blesh check: grc not found. grc can be found in github.com:akinomyoga/mshex.git/' >&2
+  exit
+fi
 
-# check-builtin echo
-# check-builtin printf
-# check-builtin eval
+function check-builtin {
+  echo "--- $FUNCNAME ---"
+  local command="$1" esc='(\[[ -?]*[@-~])*'
+  grc --color --exclude=./test "(^|[^-./$])\b$command\b" |
+    grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin$esc([[:space:]]$esc)+$command(\b|$esc)" |
+    grep -Ev "$command(\b|$esc)="
+}
 
 function check-bash300bug {
   echo "--- $FUNCNAME ---"
@@ -26,5 +29,8 @@ function check-bash301bug-array-element-length {
   echo
 }
 
+# builtin return break continue : eval echo unset は unset しているので大丈夫のはず
+check-builtin 'echo'
+check-builtin '(bind|compopt|type|printf|read)'
 check-bash300bug
 check-bash301bug-array-element-length

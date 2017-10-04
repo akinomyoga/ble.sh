@@ -842,7 +842,7 @@ function bleopt {
   if ((${#pvars[@]})); then
     local q="'" Q="'\''" var
     for var in "${pvars[@]}"; do
-      echo "${var#bleopt_}='${!var//$q/$Q}'"
+      builtin printf '%s\n' "${var#bleopt_}='${!var//$q/$Q}'"
     done
   fi
 
