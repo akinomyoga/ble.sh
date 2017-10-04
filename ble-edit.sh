@@ -5,10 +5,10 @@
 # @text.c2w
 # @edit/draw
 # @line.ps1
+# @textmap
 # @line.text
 # @line.info
 # @edit
-# @edit.dirty
 # @edit.ps1
 # @edit/render
 # @widget.clear
@@ -1152,103 +1152,154 @@ function ble-edit/prompt/update {
 }
 
 # 
-# **** text ****                                                     @line.text
+# **** textmap ****                                                    @textmap
 
-## @var _ble_line_text_cache_pos[]
-## @var _ble_line_text_cache_cs[]
-##   編集文字列の各文字に対応する位置と表示文字列の配列です。
-_ble_line_text_cache_pos=()
-_ble_line_text_cache_cs=()
-_ble_line_text_begx=0
-_ble_line_text_begy=0
-_ble_line_text_endx=0
-_ble_line_text_endy=0
-_ble_line_text_cols=80
+## 文字列の配置計算に関する情報
+##
+##   前回の配置計算の前提と結果を保持する変数群を以下に説明します。
+##   以下は配置計算の前提になる情報です。
+##
+##   @var _ble_textmap_cols
+##     配置幅を保持します。
+##   @var _ble_textmap_begx
+##   @var _ble_textmap_begy
+##     配置の開始位置を保持します。
+##   @var _ble_textmap_length
+##     配置文字列の長さを保持します。
+##
+##   以下は配置計算の結果を保持します。
+##
+##   @arr _ble_textmap_pos[]
+##     各文字の表示位置を保持します。
+##   @arr _ble_textmap_glyph[]
+##     各文字の表現を保持します。
+##     例えば、制御文字は ^C や M-^C などと表されます。
+##     タブは表示開始位置に応じて異なる個数の空白で表現されます。
+##     行送りされた全角文字は前にパディングの空白が付加されます。
+##   @arr _ble_textmap_ichg[]
+##     タブや行送りなどによって標準的な表現と異なる文字
+##     のインデックスのリストです。
+##   @var _ble_textmap_endx
+##   @var _ble_textmap_endy
+##     最後の文字の右端の座標を保持します。
+##
+##   以下は前回の配置計算以降の更新範囲を保持する変数です。
+##   部分更新をするために使用します。
+##
+##   @var _ble_textmap_dbeg
+##   @var _ble_textmap_dend
+##   @var _ble_textmap_dend0
+##
+_ble_textmap_cols=80
+_ble_textmap_length=
+_ble_textmap_begx=0
+_ble_textmap_begy=0
+_ble_textmap_endx=0
+_ble_textmap_endy=0
+_ble_textmap_pos=()
+_ble_textmap_glyph=()
+_ble_textmap_ichg=()
+_ble_textmap_dbeg=-1
+_ble_textmap_dend=-1
+_ble_textmap_dend0=-1
+_ble_textmap_umin=-1
+_ble_textmap_umax=-1
 
-## @var _ble_line_text_cache_ichg[]
-##   表示文字に変更のあった物の index の一覧です。
-_ble_line_text_cache_ichg=()
-_ble_line_text_cache_length=
+function ble/textmap#update-dirty-range {
+  ble/dirty-range#update --prefix=_ble_textmap_d "$@"
+}
+function ble/textmap#save {
+  local name prefix=$1
+  for name in cols length {beg,end}{x,y} d{beg,end,end0} u{min,max}; do
+    eval "$prefix$name=\"\${_ble_textmap_$name}\""
+  done
+  for name in pos glyph ichg; do
+    eval "$prefix$name=(\"\${_ble_textmap_$name[@]}\")"
+  done
+}
+function ble/textmap#restore {
+  local name prefix=$1
+  for name in cols length {beg,end}{x,y} d{beg,end,end0} u{min,max}; do
+    eval "_ble_textmap_$name=\"\${$prefix$name}\""
+  done
+  for name in pos glyph ichg; do
+    eval "_ble_textmap_$name=(\"\${$prefix$name[@]}\")"
+  done
+}
 
-## 関数 text x y; ble-edit/text/update/position; x y
+## 関数 text x y; ble/textmap#update; x y
 ##   @var[in    ] text
 ##   @var[in,out] x y
-##   @var[in    ] BLELINE_RANGE_UPDATE[]
-##   @var[   out] POS_UMIN POS_UMAX
-##   @var[in,out] _ble_line_text_cache_length
-##   @var[in,out] _ble_line_text_cache_pos[]
-##   @var[in,out] _ble_line_text_cache_cs[]
-##   @var[in,out] _ble_line_text_cache_ichg[]
-##   @var[in,out] _ble_line_text_cols
-##   @var[   out] _ble_line_text_begx
-##   @var[   out] _ble_line_text_begy
-##   @var[   out] _ble_line_text_endx
-##   @var[   out] _ble_line_text_endy
-function ble-edit/text/update/position {
+##   @var[in,out] _ble_textmap_*
+function ble/textmap#update {
   local dbeg dend dend0
-  ((dbeg=BLELINE_RANGE_UPDATE[0]))
-  ((dend=BLELINE_RANGE_UPDATE[1]))
-  ((dend0=BLELINE_RANGE_UPDATE[2]))
+  ((dbeg=_ble_textmap_dbeg,
+    dend=_ble_textmap_dend,
+    dend0=_ble_textmap_dend0))
+  ble/dirty-range#clear --prefix=_ble_textmap_d
 
   local iN="${#text}"
 
   # 初期位置 x y
   local _pos="$x $y"
-  _ble_line_text_begx=$x
-  _ble_line_text_begy=$y
+  _ble_textmap_begx=$x
+  _ble_textmap_begy=$y
 
+  # ※現在は COLUMNS で決定しているが将来的には変更可能にする?
   local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl"
   ((COLUMNS&&cols<COLUMNS&&(xenl=1)))
   # local cols="80" it="$_ble_term_it" xenl="1"
 
   local -a pos
-  if ((cols!=_ble_line_text_cols)); then
+  if ((cols!=_ble_textmap_cols)); then
     # 表示幅が変化したときは全部再計算
-    ((dbeg=0,dend0=_ble_line_text_cache_length,dend=iN))
-    _ble_line_text_cache_pos[0]="$_pos"
-  elif [[ ${_ble_line_text_cache_pos[0]} != "$_pos" ]]; then
+    ((dbeg=0,dend0=_ble_textmap_length,dend=iN))
+    _ble_textmap_pos[0]="$_pos"
+  elif [[ ${_ble_textmap_pos[0]} != "$_pos" ]]; then
     # 初期位置の変更がある場合は初めから計算し直し
     ((dbeg<0&&(dend=dend0=0),
       dbeg=0))
-    _ble_line_text_cache_pos[0]="$_pos"
+    _ble_textmap_pos[0]="$_pos"
   else
     if ((dbeg<0)); then
       # 表示幅も初期位置も内容も変更がない場合はOK
-      pos=(${_ble_line_text_cache_pos[iN]})
+      pos=(${_ble_textmap_pos[iN]})
       ((x=pos[0]))
       ((y=pos[1]))
-      _ble_line_text_endx=$x
-      _ble_line_text_endy=$y
+      _ble_textmap_endx=$x
+      _ble_textmap_endy=$y
       return
     elif ((dbeg>0)); then
       # 途中から計算を再開
-      pos=(${_ble_line_text_cache_pos[dbeg]})
+      pos=(${_ble_textmap_pos[dbeg]})
       ((x=pos[0]))
       ((y=pos[1]))
     fi
   fi
 
-  _ble_line_text_cols=$cols
-  _ble_line_text_cache_length=$iN
+  _ble_textmap_cols=$cols
+  _ble_textmap_length=$iN
 
 #%if !release
-  ble-assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- (${BLELINE_RANGE_UPDATE[*]})"
+  ble-assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- ($_ble_textmap_dbeg $_ble_textmap_dend $_ble_textmap_dend0)"
 #%end
 
   # shift cached data
   _ble_util_array_prototype.reserve "$iN"
   local -a old_pos old_ichg
-  old_pos=("${_ble_line_text_cache_pos[@]:dend0:iN-dend+1}")
-  old_ichg=("${_ble_line_text_cache_ichg[@]}")
-  _ble_line_text_cache_pos=(
-    "${_ble_line_text_cache_pos[@]::dbeg+1}"
+  old_pos=("${_ble_textmap_pos[@]:dend0:iN-dend+1}")
+  old_ichg=("${_ble_textmap_ichg[@]}")
+  _ble_textmap_pos=(
+    "${_ble_textmap_pos[@]::dbeg+1}"
     "${_ble_util_array_prototype[@]::dend-dbeg}"
-    "${_ble_line_text_cache_pos[@]:dend0+1:iN-dend}")
-  _ble_line_text_cache_cs=(
-    "${_ble_line_text_cache_cs[@]::dbeg}"
+    "${_ble_textmap_pos[@]:dend0+1:iN-dend}")
+  _ble_textmap_glyph=(
+    "${_ble_textmap_glyph[@]::dbeg}"
     "${_ble_util_array_prototype[@]::dend-dbeg}"
-    "${_ble_line_text_cache_cs[@]:dend0:iN-dend}")
-  _ble_line_text_cache_ichg=()
+    "${_ble_textmap_glyph[@]:dend0:iN-dend}")
+  _ble_textmap_ichg=()
+
+  ble/urange#shift --prefix=_ble_textmap_ "$dbeg" "$dend" "$dend0"
 
   local i
   for ((i=dbeg;i<iN;)); do
@@ -1259,10 +1310,10 @@ function ble-edit/text/update/position {
         local cs="${text:i:1}"
         if (((++x==cols)&&(y++,x=0,xenl))); then
           cs="$cs$_ble_term_nl"
-          ble/array#push _ble_line_text_cache_ichg "$i"
+          ble/array#push _ble_textmap_ichg "$i"
         fi
-        _ble_line_text_cache_cs[i]="$cs"
-        _ble_line_text_cache_pos[i+1]="$x $y 0"
+        _ble_textmap_glyph[i]="$cs"
+        _ble_textmap_pos[i+1]="$x $y 0"
       done
     else
       local ret
@@ -1324,20 +1375,20 @@ function ble-edit/text/update/position {
         fi
       fi
 
-      _ble_line_text_cache_cs[i]="$cs"
-      ((changed)) && ble/array#push _ble_line_text_cache_ichg "$i"
-      _ble_line_text_cache_pos[i+1]="$x $y $wrapping"
+      _ble_textmap_glyph[i]="$cs"
+      ((changed)) && ble/array#push _ble_textmap_ichg "$i"
+      _ble_textmap_pos[i+1]="$x $y $wrapping"
       ((i++))
     fi
 
     # 後は同じなので計算を省略
-    ((i>=dend)) && [[ ${old_pos[i-dend]} == ${_ble_line_text_cache_pos[i]} ]] && break
+    ((i>=dend)) && [[ ${old_pos[i-dend]} == ${_ble_textmap_pos[i]} ]] && break
   done
 
   if ((i<iN)); then
     # 途中で一致して中断した場合は、前の iN 番目の位置を読む
     local -a pos
-    pos=(${_ble_line_text_cache_pos[iN]})
+    pos=(${_ble_textmap_pos[iN]})
     ((x=pos[0]))
     ((y=pos[1]))
   fi
@@ -1349,15 +1400,18 @@ function ble-edit/text/update/position {
          (ichg>=dend0)&&(ichg+=dend-dend0),
          (0<=ichg&&ichg<dbeg||dend<=i&&ichg<iN)))
     then
-      ble/array#push _ble_line_text_cache_ichg "$ichg"
+      ble/array#push _ble_textmap_ichg "$ichg"
     fi
   done
 
-  ((dbeg<i)) && POS_UMIN="$dbeg" POS_UMAX="$i"
+  ((dbeg<i)) && ble/urange#update --prefix=_ble_textmap_ "$dbeg" "$i"
 
-  _ble_line_text_endx=$x
-  _ble_line_text_endy=$y
+  _ble_textmap_endx=$x
+  _ble_textmap_endy=$y
 }
+
+
+# **** text ****                                                     @line.text
 
 _ble_line_text_buff=()
 _ble_line_text_buffName=
@@ -1374,9 +1428,12 @@ _ble_line_text_buffName=
 ## @var  [   out] umin umax
 ##   umin,umax は再描画の必要な範囲を文字インデックスで返します。
 function ble-edit/text/update {
-  # text dirty x y [ble-edit/text/update/position] x y
-  local POS_UMIN=-1 POS_UMAX=-1
-  ble-edit/text/update/position
+  # text x y [ble/textmap#update] x y
+  ble/textmap#update
+  ((umin=_ble_textmap_umin,
+    umax=_ble_textmap_umax,
+    _ble_textmap_umin=-1,
+    _ble_textmap_umax=-1))
 
   local iN="${#text}"
 
@@ -1386,25 +1443,22 @@ function ble-edit/text/update {
   #ble-edit/info/show text "highlight-urange = ($HIGHLIGHT_UMIN $HIGHLIGHT_UMAX)"
 
   # 変更文字の適用
-  if ((${#_ble_line_text_cache_ichg[@]})); then
+  if ((${#_ble_textmap_ichg[@]})); then
     local ichg g sgr
     builtin eval "_ble_line_text_buff=(\"\${$HIGHLIGHT_BUFF[@]}\")"
     HIGHLIGHT_BUFF=_ble_line_text_buff
-    for ichg in "${_ble_line_text_cache_ichg[@]}"; do
+    for ichg in "${_ble_textmap_ichg[@]}"; do
       ble-highlight-layer/getg "$ichg"
       ble-color-g2sgr -v sgr "$g"
-      _ble_line_text_buff[ichg]="$sgr${_ble_line_text_cache_cs[ichg]}"
+      _ble_line_text_buff[ichg]="$sgr${_ble_textmap_glyph[ichg]}"
     done
   fi
 
   _ble_line_text_buffName="$HIGHLIGHT_BUFF"
 
   # umin, umax
-  ((umin=HIGHLIGHT_UMIN,
-    umax=HIGHLIGHT_UMAX,
-    POS_UMIN>=0&&(umin<0||umin>POS_UMIN)&&(umin=POS_UMIN),
-    POS_UMAX>=0&&(umax<0||umax<POS_UMAX)&&(umax=POS_UMAX)))
-  # ble-edit/info/show text "position $POS_UMIN-$POS_UMAX, highlight $HIGHLIGHT_UMIN-$HIGHLIGHT_UMAX"
+  ((HIGHLIGHT_UMIN>=0&&(umin<0||umin>HIGHLIGHT_UMIN)&&(umin=HIGHLIGHT_UMIN),
+    HIGHLIGHT_UMAX>=0&&(umax<0||umax<HIGHLIGHT_UMAX)&&(umax=HIGHLIGHT_UMAX)))
 
   # update lc, lg
   #
@@ -1426,7 +1480,7 @@ function ble-edit/text/update {
     # index==0 の場合は受け取った lc lg をそのまま返す
     if ((index>0)); then
       local cx cy
-      ble-edit/text/getxy.cur --prefix=c "$index"
+      ble/textmap#getxy.cur --prefix=c "$index"
 
       local lcs ret
       if ((cx==0)); then
@@ -1435,7 +1489,7 @@ function ble-edit/text/update {
           # 次の文字がない時は空白
           ret=32
         else
-          lcs="${_ble_line_text_cache_cs[index]}"
+          lcs="${_ble_textmap_glyph[index]}"
           ble/util/s2c "$lcs" 0
         fi
 
@@ -1444,7 +1498,7 @@ function ble-edit/text/update {
         ((lc=ret==10?32:ret))
       else
         # 前の文字
-        lcs="${_ble_line_text_cache_cs[index-1]}"
+        lcs="${_ble_textmap_glyph[index-1]}"
         ble/util/s2c "$lcs" "$((${#lcs}-1))"
         ble-highlight-layer/getg -v lg "$((index-1))"
         ((lc=ret))
@@ -1453,32 +1507,32 @@ function ble-edit/text/update {
   fi
 }
 
-function ble-edit/text/is-position-up-to-date {
-  ((_ble_edit_dirty_draw_beg==-1))
+function ble/textmap#is-up-to-date {
+  ((_ble_textmap_dbeg==-1))
 }
-## 関数 ble-edit/text/assert-position-up-to-date
+## 関数 ble/textmap#assert-up-to-date
 ##   編集文字列の文字の配置情報が最新であることを確認します。
 ##   以下の変数を参照する場合に事前に呼び出します。
 ##
-##   _ble_line_text_cache_pos
-##   _ble_line_text_cache_length
+##   _ble_textmap_pos
+##   _ble_textmap_length
 ##
-function ble-edit/text/assert-position-up-to-date {
-  ble-assert 'ble-edit/text/is-position-up-to-date' 'dirty text positions'
+function ble/textmap#assert-up-to-date {
+  ble-assert 'ble/textmap#is-up-to-date' 'dirty text positions'
 }
 
-## 関数 ble-edit/text/getxy.out index
+## 関数 ble/textmap#getxy.out index
 ##   index 番目の文字の出力開始位置を取得します。
 ##
 ##   @var[out] x y
 ##
 ##   行末に収まらない文字の場合は行末のスペースを埋める為に
-##   配列 _ble_line_text_cache_cs において空白文字が文字本体の前に追加されます。
+##   配列 _ble_textmap_glyph において空白文字が文字本体の前に追加されます。
 ##   その場合には、追加される空白文字の前の位置を返すことに注意して下さい。
 ##   実用上は境界 index の左側の文字の終端位置と解釈できます。
 ##
-function ble-edit/text/getxy.out {
-  ble-edit/text/assert-position-up-to-date
+function ble/textmap#getxy.out {
+  ble/textmap#assert-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1486,22 +1540,22 @@ function ble-edit/text/getxy.out {
   fi
 
   local -a _pos
-  _pos=(${_ble_line_text_cache_pos[$1]})
+  _pos=(${_ble_textmap_pos[$1]})
   ((${_prefix}x=_pos[0]))
   ((${_prefix}y=_pos[1]))
 }
 
-## 関数 ble-edit/text/getxy.cur index
+## 関数 ble/textmap#getxy.cur index
 ##   index 番目の文字の表示開始位置を取得します。
 ##
 ##   @var[out] x y
 ##
-##   ble-edit/text/getxy.out の異なり前置される空白は考えずに、
+##   ble/textmap#getxy.out の異なり前置される空白は考えずに、
 ##   文字本体が開始する位置を取得します。
 ##   実用上は境界 index の右側の文字の開始位置と解釈できます。
 ##
-function ble-edit/text/getxy.cur {
-  ble-edit/text/assert-position-up-to-date
+function ble/textmap#getxy.cur {
+  ble/textmap#assert-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
     _prefix="${1#--prefix=}"
@@ -1509,12 +1563,12 @@ function ble-edit/text/getxy.cur {
   fi
 
   local -a _pos
-  _pos=(${_ble_line_text_cache_pos[$1]})
+  _pos=(${_ble_textmap_pos[$1]})
 
   # 追い出しされたか check
-  if (($1<_ble_line_text_cache_length)); then
+  if (($1<_ble_textmap_length)); then
     local -a _eoc
-    _eoc=(${_ble_line_text_cache_pos[$1+1]})
+    _eoc=(${_ble_textmap_pos[$1+1]})
     ((_eoc[2])) && ((_pos[0]=0,_pos[1]++))
   fi
 
@@ -1523,11 +1577,11 @@ function ble-edit/text/getxy.cur {
 }
 
 
-## 関数 ble-edit/text/slice [beg [end]]
+## 関数 ble/textmap#slice [beg [end]]
 ##   @var [out] ret
-function ble-edit/text/slice {
-  ble-edit/text/assert-position-up-to-date
-  local iN="$_ble_line_text_cache_length"
+function ble/textmap#slice {
+  ble/textmap#assert-up-to-date
+  local iN="$_ble_textmap_length"
   local i1="${1:-0}" i2="${2:-$iN}"
   ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
     i2<0&&(i2+=iN)))
@@ -1541,10 +1595,10 @@ function ble-edit/text/slice {
   fi
 }
 
-## 関数 ble-edit/text/get-index-at [-v varname] x y
+## 関数 ble/textmap#get-index-at [-v varname] x y
 ##   指定した位置 x y に対応する index を求めます。
-function ble-edit/text/get-index-at {
-  ble-edit/text/assert-position-up-to-date
+function ble/textmap#get-index-at {
+  ble/textmap#assert-up-to-date
   local _var=index
   if [[ $1 == -v ]]; then
     _var="$2"
@@ -1552,40 +1606,40 @@ function ble-edit/text/get-index-at {
   fi
 
   local _x="$1" _y="$2"
-  if ((_y>_ble_line_text_endy)); then
-    (($_var=_ble_line_text_cache_length))
-  elif ((_y<_ble_line_text_begy)); then
+  if ((_y>_ble_textmap_endy)); then
+    (($_var=_ble_textmap_length))
+  elif ((_y<_ble_textmap_begy)); then
     (($_var=0))
   else
     # 2分法
-    local _l=0 _u="$((_ble_line_text_cache_length+1))" _m
+    local _l=0 _u="$((_ble_textmap_length+1))" _m
     local _mx _my
     while ((_l+1<_u)); do
-      ble-edit/text/getxy.cur --prefix=_m $((_m=(_l+_u)/2))
+      ble/textmap#getxy.cur --prefix=_m $((_m=(_l+_u)/2))
       (((_y<_my||_y==_my&&_x<_mx)?(_u=_m):(_l=_m)))
     done
     (($_var=_l))
   fi
 }
 
-## 関数 ble-edit/text/.getxy.out index
-## 関数 ble-edit/text/.getxy.cur index
+## 関数 ble/textmap#hit/.getxy.out index
+## 関数 ble/textmap#hit/.getxy.cur index
 ##   @var[in,out] pos
-function ble-edit/text/.getxy.out {
-  set -- ${_ble_line_text_cache_pos[$1]}
+function ble/textmap#hit/.getxy.out {
+  set -- ${_ble_textmap_pos[$1]}
   x=$1 y=$2
 }
-function ble-edit/text/.getxy.cur {
+function ble/textmap#hit/.getxy.cur {
   local index=$1
-  set -- ${_ble_line_text_cache_pos[index]}
+  set -- ${_ble_textmap_pos[index]}
   x=$1 y=$2
-  if ((index<_ble_line_text_cache_length)); then
-    set -- ${_ble_line_text_cache_pos[index+1]}
+  if ((index<_ble_textmap_length)); then
+    set -- ${_ble_textmap_pos[index+1]}
     (($3)) && ((x=0,y++))
   fi
 }
 
-## 関数 ble-edit/text/hit type xh yh [beg [end]]
+## 関数 ble/textmap#hit type xh yh [beg [end]]
 ##   指定した座標に対応する境界 index を取得します。
 ##   指定した座標以前の最も近い境界を求めます。
 ##   探索範囲に対応する境界がないときは最初の境界 beg を返します。
@@ -1610,10 +1664,10 @@ function ble-edit/text/.getxy.cur {
 ##     index が探索範囲の最後の境界のとき、または、
 ##     lx ly が指定した座標と一致するとき lx ly と同一です。
 ##
-function ble-edit/text/hit {
-  ble-edit/text/assert-position-up-to-date
-  local getxy=ble-edit/text/.getxy.$1
-  local xh=$2 yh=$3 beg=${4:-0} end=${5:-$_ble_line_text_cache_length}
+function ble/textmap#hit {
+  ble/textmap#assert-up-to-date
+  local getxy=ble/textmap#hit/.getxy.$1
+  local xh=$2 yh=$3 beg=${4:-0} end=${5:-$_ble_textmap_length}
 
   local -a pos
   if "$getxy" "$end"; ((yh>y||yh==y&&xh>x)); then
@@ -1931,8 +1985,9 @@ _ble_edit_dirty_syntax_end=0
 _ble_edit_dirty_syntax_end0=1
 
 function _ble_edit_str/update-dirty-range {
-  ble-edit/dirty-range/update --prefix=_ble_edit_dirty_draw_ "$@"
-  ble-edit/dirty-range/update --prefix=_ble_edit_dirty_syntax_ "$@"
+  ble/dirty-range#update --prefix=_ble_edit_dirty_draw_ "$@"
+  ble/dirty-range#update --prefix=_ble_edit_dirty_syntax_ "$@"
+  ble/textmap#update-dirty-range "$@"
 
   # ble-assert '((
   #   _ble_edit_dirty_draw_beg==_ble_edit_dirty_syntax_beg&&
@@ -1942,9 +1997,9 @@ function _ble_edit_str/update-dirty-range {
 
 function _ble_edit_str.update-syntax {
   local beg end end0
-  ble-edit/dirty-range/load --prefix=_ble_edit_dirty_syntax_
+  ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
   if ((beg>=0)); then
-    ble-edit/dirty-range/clear --prefix=_ble_edit_dirty_syntax_
+    ble/dirty-range#clear --prefix=_ble_edit_dirty_syntax_
 
     ble-syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
   fi
@@ -2029,72 +2084,6 @@ function ble-edit/content/clear-arg {
   _ble_edit_arg=
 }
 
-
-# **** edit/dirty ****                                              @edit.dirty
-
-function ble-edit/dirty-range/load {
-  local _prefix=
-  if [[ $1 == --prefix=* ]]; then
-    _prefix="${1#--prefix=}"
-    ((beg=${_prefix}beg,
-      end=${_prefix}end,
-      end0=${_prefix}end0))
-  fi
-}
-
-function ble-edit/dirty-range/clear {
-  local _prefix=
-  if [[ $1 == --prefix=* ]]; then
-    _prefix="${1#--prefix=}"
-    shift
-  fi
-
-  ((${_prefix}beg=-1,
-    ${_prefix}end=-1,
-    ${_prefix}end0=-1))
-}
-
-## 関数 ble-edit/dirty-range/update [--prefix=PREFIX] beg end end0
-## @param[out] PREFIX
-## @param[in]  beg    変更開始点。beg<0 は変更がない事を表す
-## @param[in]  end    変更終了点。end<0 は変更が末端までである事を表す
-## @param[in]  end0   変更前の end に対応する位置。
-function ble-edit/dirty-range/update {
-  local _prefix=
-  if [[ $1 == --prefix=* ]]; then
-    _prefix="${1#--prefix=}"
-    shift
-    [[ $_prefix ]] && local beg end end0
-  fi
-
-  local begB="$1" endB="$2" endB0="$3"
-  ((begB<0)) && return
-
-  local begA endA endA0
-  ((begA=${_prefix}beg,endA=${_prefix}end,endA0=${_prefix}end0))
-
-  local delta
-  if ((begA<0)); then
-    ((beg=begB,
-      end=endB,
-      end0=endB0))
-  else
-    ((beg=begA<begB?begA:begB))
-    if ((endA<0||endB<0)); then
-      ((end=-1,end0=-1))
-    else
-      ((end=endB,end0=endA0,
-        (delta=endA-endB0)>0?(end+=delta):(end0-=delta)))
-    fi
-  fi
-
-  if [[ $_prefix ]]; then
-    ((${_prefix}beg=beg,
-      ${_prefix}end=end,
-      ${_prefix}end0=end0))
-  fi
-}
-
 # **** PS1/LINENO ****                                                @edit.ps1
 #
 # 内部使用変数
@@ -2105,7 +2094,7 @@ function ble-edit/dirty-range/update {
 function ble-edit/attach/TRAPWINCH {
   if ((_ble_edit_attached)); then
     local IFS=$' \t\n'
-    _ble_line_text_cache_pos=()
+    _ble_textmap_pos=()
     ble-edit/bind/stdout.on
     ble-edit/render/redraw
     ble-edit/bind/stdout.off
@@ -2230,9 +2219,9 @@ function ble-edit/render/.determine-scroll {
     #
     local wmin=0 wmax index
     if ((scroll)); then
-      ble-edit/text/get-index-at 0 $((scroll+begy+1)); wmin=$index
+      ble/textmap#get-index-at 0 $((scroll+begy+1)); wmin=$index
     fi
-    ble-edit/text/get-index-at "$cols" $((scroll+height-1)); wmax=$index
+    ble/textmap#get-index-at "$cols" $((scroll+height-1)); wmax=$index
     ((umin<umax)) &&
       ((umin<wmin&&(umin=wmin),
         umax>wmax&&(umax=wmax)))
@@ -2268,9 +2257,9 @@ function ble-edit/render/.perform-scroll {
       if ((new_scroll==0)); then
         fmin=0
       else
-        ble-edit/text/get-index-at 0 $((scry+new_scroll)); fmin=$index
+        ble/textmap#get-index-at 0 $((scry+new_scroll)); fmin=$index
       fi
-      ble-edit/text/get-index-at "$cols" $((scry+new_scroll+draw_shift-1)); fmax=$index
+      ble/textmap#get-index-at "$cols" $((scry+new_scroll+draw_shift-1)); fmax=$index
     else
       local shift=$((new_scroll-_ble_line_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
@@ -2279,19 +2268,19 @@ function ble-edit/render/.perform-scroll {
       ble-form/panel#goto.draw 0 0 $((height-draw_shift))
       ble-edit/draw/put.il "$draw_shift"
 
-      ble-edit/text/get-index-at 0 $((new_scroll+height-draw_shift)); fmin=$index
-      ble-edit/text/get-index-at "$cols" $((new_scroll+height-1)); fmax=$index
+      ble/textmap#get-index-at 0 $((new_scroll+height-draw_shift)); fmin=$index
+      ble/textmap#get-index-at "$cols" $((new_scroll+height-1)); fmax=$index
     fi
 
     # 新しく現れた範囲 [fmin, fmax] を埋める
     if ((fmin<fmax)); then
       local fmaxx fmaxy fminx fminy
-      ble-edit/text/getxy.out --prefix=fmin "$fmin"
-      ble-edit/text/getxy.out --prefix=fmax "$fmax"
+      ble/textmap#getxy.out --prefix=fmin "$fmin"
+      ble/textmap#getxy.out --prefix=fmax "$fmax"
 
       ble-form/panel#goto.draw 0 "$fminx" $((fminy-new_scroll))
       ((new_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-      local ret; ble-edit/text/slice "$fmin" "$fmax"
+      local ret; ble/textmap#slice "$fmin" "$fmax"
       ble-edit/draw/put "$ret"
       ((_ble_line_x=fmaxx,
         _ble_line_y+=fmaxy-fminy))
@@ -2352,7 +2341,7 @@ function ble-edit/render/update {
 
   # BLELINE_RANGE_UPDATE → ble-edit/text/update 内でこれを見て update を済ませる
   local -a BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
-  ble-edit/dirty-range/clear --prefix=_ble_edit_dirty_draw_
+  ble/dirty-range#clear --prefix=_ble_edit_dirty_draw_
 #%if !release
   ble-assert '((BLELINE_RANGE_UPDATE[0]<0||(
        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[1]&&
@@ -2360,7 +2349,7 @@ function ble-edit/render/update {
 #%end
 
   # local graphic_dbeg graphic_dend graphic_dend0
-  # ble-edit/dirty-range/update --prefix=graphic_d
+  # ble/dirty-range#update --prefix=graphic_d
 
   # 編集内容の構築
   local text="$_ble_edit_str" index="$_ble_edit_ind" dirty="$_ble_line_dirty"
@@ -2376,12 +2365,12 @@ function ble-edit/render/update {
   local -a DRAW_BUFF
 
   # 1 描画領域の決定
-  local begx=$_ble_line_text_begx begy=$_ble_line_text_begy
-  local endx=$_ble_line_text_endx endy=$_ble_line_text_endy
+  local begx=$_ble_textmap_begx begy=$_ble_textmap_begy
+  local endx=$_ble_textmap_endx endy=$_ble_textmap_endy
   local cx cy
-  ble-edit/text/getxy.cur --prefix=c "$index" # → cx cy
+  ble/textmap#getxy.cur --prefix=c "$index" # → cx cy
 
-  local cols=$_ble_line_text_cols
+  local cols=$_ble_textmap_cols
   local height=$((LINES-1)) # todo: info の高さも考慮に入れる
   local scroll=$_ble_line_scroll
   ble-edit/render/.determine-scroll # update: height scroll umin umax
@@ -2389,8 +2378,8 @@ function ble-edit/render/update {
 
   local gend gendx gendy
   if [[ $scroll ]]; then
-    ble-edit/text/get-index-at "$cols" $((height+scroll-1)); gend=$index
-    ble-edit/text/getxy.out --prefix=gend "$gend"
+    ble/textmap#get-index-at "$cols" $((height+scroll-1)); gend=$index
+    ble/textmap#getxy.out --prefix=gend "$gend"
     ((gendy-=scroll))
   else
     gend=$iN gendx=$endx gendy=$endy
@@ -2410,11 +2399,11 @@ function ble-edit/render/update {
     # 編集文字列の一部を描画する場合
     if ((umin<umax)); then
       local uminx uminy umaxx umaxy
-      ble-edit/text/getxy.out --prefix=umin "$umin"
-      ble-edit/text/getxy.out --prefix=umax "$umax"
+      ble/textmap#getxy.out --prefix=umin "$umin"
+      ble/textmap#getxy.out --prefix=umax "$umax"
 
       ble-form/panel#goto.draw 0 "$uminx" $((uminy-_ble_line_scroll))
-      ble-edit/text/slice "$umin" "$umax"
+      ble/textmap#slice "$umin" "$umax"
       ble-edit/draw/put "$ret"
       _ble_line_x="$umaxx" _ble_line_y=$((umaxy-_ble_line_scroll))
     fi
@@ -2435,7 +2424,7 @@ function ble-edit/render/update {
 
     # 全体描画
     if [[ ! $_ble_line_scroll ]]; then
-      ble-edit/text/slice # → ret
+      ble/textmap#slice # → ret
       esc_line="$ret" esc_line_set=1
       ble-edit/draw/put "$ret"
       _ble_line_x=$_ble_line_gendx _ble_line_y=$_ble_line_gendy
@@ -2444,16 +2433,16 @@ function ble-edit/render/update {
 
       local gbeg=0
       if ((_ble_line_scroll)); then
-        ble-edit/text/get-index-at 0 $((_ble_line_scroll+begy+1)); gbeg=$index
+        ble/textmap#get-index-at 0 $((_ble_line_scroll+begy+1)); gbeg=$index
       fi
 
       local gbegx gbegy
-      ble-edit/text/getxy.out --prefix=gbeg "$gbeg"
+      ble/textmap#getxy.out --prefix=gbeg "$gbeg"
       ((gbegy-=_ble_line_scroll))
 
       ble-form/panel#goto.draw 0 "$gbegx" "$gbegy"
       ((_ble_line_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-      ble-edit/text/slice "$gbeg" "$gend"
+      ble/textmap#slice "$gbeg" "$gend"
       ble-edit/draw/put "$ret"
       ((_ble_line_x=gendx,_ble_line_y+=gendy-gbegy))
     fi
@@ -2471,7 +2460,7 @@ function ble-edit/render/update {
   if [[ ! $bleopt_suppress_bash_output ]]; then
     if [[ ! $esc_line_set ]]; then
       if [[ ! $_ble_line_scroll ]]; then
-        ble-edit/text/slice
+        ble/textmap#slice
         esc_line="$ret"
       else
         local _ble_line_x=$begx _ble_line_y=$begy
@@ -2481,15 +2470,15 @@ function ble-edit/render/update {
 
         local gbeg=0
         if ((_ble_line_scroll)); then
-          ble-edit/text/get-index-at 0 $((_ble_line_scroll+begy+1)); gbeg=$index
+          ble/textmap#get-index-at 0 $((_ble_line_scroll+begy+1)); gbeg=$index
         fi
         local gbegx gbegy
-        ble-edit/text/getxy.out --prefix=gbeg "$gbeg"
+        ble/textmap#getxy.out --prefix=gbeg "$gbeg"
         ((gbegy-=_ble_line_scroll))
 
         ble-form/panel#goto.draw 0 "$gbegx" "$gbegy"
         ((_ble_line_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-        ble-edit/text/slice "$gbeg" "$gend"
+        ble/textmap#slice "$gbeg" "$gend"
         ble-edit/draw/put "$ret"
 
         ble-edit/draw/sflush -v esc_line
@@ -2583,6 +2572,10 @@ function ble-edit/render/update-adjusted {
 # 
 # **** redraw, clear-screen, etc ****                             @widget.clear
 
+function ble/widget/.update-textmap {
+  local text=$_ble_edit_str x=$_ble_textmap_begx y=$_ble_textmap_begy
+  ble/textmap#update
+}
 function ble/widget/redraw-line {
   ble-edit/content/clear-arg
   ble-edit/render/invalidate
@@ -3109,11 +3102,11 @@ function ble/widget/backward-logical-line {
 }
 
 function ble/widget/beginning-of-line {
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/textmap#is-up-to-date; then
     # 配置情報があるときは表示行頭
     local x y index
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at 0 "$y"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at 0 "$y"
     ble/widget/.goto-char "$index"
   else
     # 配置情報がないときは論理行頭
@@ -3121,12 +3114,12 @@ function ble/widget/beginning-of-line {
   fi
 }
 function ble/widget/end-of-line {
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/textmap#is-up-to-date; then
     # 配置情報があるときは表示行末
     local x y index ax ay
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at 0 "$((y+1))"
-    ble-edit/text/getxy.cur --prefix=a "$index"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at 0 "$((y+1))"
+    ble/textmap#getxy.cur --prefix=a "$index"
     ((ay>y&&index--))
     ble/widget/.goto-char "$index"
   else
@@ -3135,10 +3128,10 @@ function ble/widget/end-of-line {
   fi
 }
 function ble/widget/kill-backward-line {
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/textmap#is-up-to-date; then
     local x y index
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at 0 "$y"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at 0 "$y"
     ((index==_ble_edit_ind&&index>0&&index--))
     ble/widget/.kill-range "$index" "$_ble_edit_ind"
   else
@@ -3146,11 +3139,11 @@ function ble/widget/kill-backward-line {
   fi
 }
 function ble/widget/kill-forward-line {
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/textmap#is-up-to-date; then
     local x y index ax ay
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at 0 "$((y+1))"
-    ble-edit/text/getxy.cur --prefix=a "$index"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at 0 "$((y+1))"
+    ble/textmap#getxy.cur --prefix=a "$index"
     ((_ble_edit_ind+1<index&&ay>y&&index--))
     ble/widget/.kill-range "$_ble_edit_ind" "$index"
   else
@@ -3159,13 +3152,13 @@ function ble/widget/kill-forward-line {
 }
 function ble/widget/forward-line {
   ((_ble_edit_ind<${#_ble_edit_str})) || return 1
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/textmap#is-up-to-date; then
     # 配置情報があるときは表示行を移動
     local x y index
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at "$x" "$((y+1))"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at "$x" "$((y+1))"
     ble/widget/.goto-char "$index"
-    ((y<_ble_line_text_endy))
+    ((y<_ble_textmap_endy))
   else
     # 配置情報がないときは論理行を移動
     ble/widget/forward-logical-line
@@ -3176,13 +3169,13 @@ function ble/widget/backward-line {
   # その場合に exit status 1 にする為に初めに check してしまう。
   ((_ble_edit_ind>0)) || return 1
 
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/textmap#is-up-to-date; then
     # 配置情報があるときは表示行を移動
     local x y index
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at "$x" "$((y-1))"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at "$x" "$((y-1))"
     ble/widget/.goto-char "$index"
-    ((y>_ble_line_text_begy))
+    ((y>_ble_textmap_begy))
   else
     # 配置情報がないときは論理行を移動
     ble/widget/backward-logical-line

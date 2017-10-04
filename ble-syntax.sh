@@ -36,16 +36,24 @@ function ble-assert {
 #%end
 #%m main (
 
-## @var[in,out] umin,umax
-function ble/util/urange#update {
+## 関数 ble-syntax/urange#update prefix p1 p2
+## 関数 ble-syntax/wrange#update prefix p1 p2
+##   @param[in]   prefix
+##   @param[in]   p1 p2
+##   @var[in,out] {prefix}umin {prefix}umax
+##
+##   ble-syntax/urange#update に関しては、
+##   ble/urange#update --prefix=prefix p1 p2 に等価である。
+##   ble-syntax/wrange#update に対応するものはない。
+##
+function ble-syntax/urange#update {
   local prefix="$1"
   local -i p1="$2" p2="${3:-$2}"
   ((0<=p1&&p1<p2)) || return
   (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
 }
-## @var[in,out] umin,umax
-function ble/util/wrange#update {
+function ble-syntax/wrange#update {
   local prefix="$1"
   local -i p1="$2" p2="${3:-$2}"
   ((0<=p1&&p1<=p2)) || return
@@ -53,9 +61,17 @@ function ble/util/wrange#update {
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
 }
 
-## @var[in,out] umin,umax
-## @var[in] beg,end,end0,shift
-function ble/util/urange#shift {
+## 関数 ble-syntax/urange#shift prefix
+## 関数 ble-syntax/wrange#shift prefix
+##   @param[in]   prefix
+##   @var[in]     beg end end0 shift
+##   @var[in,out] {prefix}umin {prefix}umax
+##
+##   ble-syntax/urange#shift に関しては、
+##   ble/urange#shift --prefix=prefix "$beg" "$end" "$end0" "$shift" に等価である。
+##   ble-syntax/wrange#shift に対応するものはない。
+##
+function ble-syntax/urange#shift {
   local prefix="$1"
   ((${prefix}umin>=end0?(${prefix}umin+=shift):(
       ${prefix}umin>=beg&&(${prefix}umin=end)),
@@ -64,9 +80,7 @@ function ble/util/urange#shift {
     ${prefix}umin>=${prefix}umax&&
       (${prefix}umin=${prefix}umax=-1)))
 }
-## @var[in,out] umin,umax
-## @var[in] beg,end,end0,shift
-function ble/util/wrange#shift {
+function ble-syntax/wrange#shift {
   local prefix="$1"
 
   # ※以下の不等号について (動作を見ながら)
@@ -2553,7 +2567,7 @@ function ble-syntax/vanishing-word/register {
 
       ((wbeg<lbeg&&(wbeg=lbeg),
         wend>lend&&(wend=lend)))
-      ble/util/urange#update _ble_syntax_vanishing_word_ "$wbeg" "$wend"
+      ble-syntax/urange#update _ble_syntax_vanishing_word_ "$wbeg" "$wend"
     done
   done
 }
@@ -2741,9 +2755,9 @@ function ble-syntax/parse/shift {
 
   if ((shift!=0)); then
     # 更新範囲の shift
-    ble/util/urange#shift _ble_syntax_attr_
-    ble/util/wrange#shift _ble_syntax_word_
-    ble/util/urange#shift _ble_syntax_vanishing_word_
+    ble-syntax/urange#shift _ble_syntax_attr_
+    ble-syntax/wrange#shift _ble_syntax_word_
+    ble-syntax/urange#shift _ble_syntax_vanishing_word_
   fi
 }
 
@@ -2900,7 +2914,7 @@ function ble-syntax/parse {
 
   ble-syntax/vanishing-word/register _tail_syntax_tree -i2 i2+1 i 0 i
 
-  ble/util/urange#update _ble_syntax_attr_ i1 i
+  ble-syntax/urange#update _ble_syntax_attr_ i1 i
 
   (((i>=i2)?(
       _ble_syntax_dbeg=_ble_syntax_dend=-1
@@ -3555,7 +3569,7 @@ function ble-syntax/highlight/filetype {
 
 # adapter に頼らず直接実装したい
 function ble-highlight-layer:syntax/touch-range {
-  ble/util/urange#update '' "$@"
+  ble-syntax/urange#update '' "$@"
 }
 function ble-highlight-layer:syntax/fill {
   local _i _arr="$1" _i1="$2" _i2="$3" _v="$4"
@@ -3593,7 +3607,7 @@ function ble-highlight-layer:syntax/update-attribute-table {
 function ble-highlight-layer:syntax/word/.update-attributes/.proc {
   [[ ${node[nofs]} =~ ^[0-9]+$ ]] || return
   [[ ${node[nofs+4]} == - ]] || return
-  ble/util/urange#update color_ "$wbeg" "$wend"
+  ble-syntax/urange#update color_ "$wbeg" "$wend"
 
   local type=
   if ((wtype==CTX_RDRH||wtype==CTX_RDRI)); then
@@ -3714,8 +3728,8 @@ function ble-highlight-layer:syntax/update-word-table {
   ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
 
   # 2015-08-16 暫定 (本当は入れ子構造を考慮に入れたい)
-  ble/util/wrange#update _ble_syntax_word_ _ble_syntax_vanishing_word_umin _ble_syntax_vanishing_word_umax
-  ble/util/wrange#update color_ _ble_syntax_vanishing_word_umin _ble_syntax_vanishing_word_umax
+  ble-syntax/wrange#update _ble_syntax_word_ _ble_syntax_vanishing_word_umin _ble_syntax_vanishing_word_umax
+  ble-syntax/wrange#update color_ _ble_syntax_vanishing_word_umin _ble_syntax_vanishing_word_umax
   _ble_syntax_vanishing_word_umin=-1 _ble_syntax_vanishing_word_umax=-1
 
   # (3) 色配列に登録

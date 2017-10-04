@@ -567,6 +567,110 @@ function ble/util/buffer.clear {
 }
 
 #------------------------------------------------------------------------------
+# class dirty-range, urange
+
+function ble/dirty-range#load {
+  local _prefix=
+  if [[ $1 == --prefix=* ]]; then
+    _prefix="${1#--prefix=}"
+    ((beg=${_prefix}beg,
+      end=${_prefix}end,
+      end0=${_prefix}end0))
+  fi
+}
+
+function ble/dirty-range#clear {
+  local _prefix=
+  if [[ $1 == --prefix=* ]]; then
+    _prefix="${1#--prefix=}"
+    shift
+  fi
+
+  ((${_prefix}beg=-1,
+    ${_prefix}end=-1,
+    ${_prefix}end0=-1))
+}
+
+## 関数 ble/dirty-range#update [--prefix=PREFIX] beg end end0
+## @param[out] PREFIX
+## @param[in]  beg    変更開始点。beg<0 は変更がない事を表す
+## @param[in]  end    変更終了点。end<0 は変更が末端までである事を表す
+## @param[in]  end0   変更前の end に対応する位置。
+function ble/dirty-range#update {
+  local _prefix=
+  if [[ $1 == --prefix=* ]]; then
+    _prefix="${1#--prefix=}"
+    shift
+    [[ $_prefix ]] && local beg end end0
+  fi
+
+  local begB="$1" endB="$2" endB0="$3"
+  ((begB<0)) && return
+
+  local begA endA endA0
+  ((begA=${_prefix}beg,endA=${_prefix}end,endA0=${_prefix}end0))
+
+  local delta
+  if ((begA<0)); then
+    ((beg=begB,
+      end=endB,
+      end0=endB0))
+  else
+    ((beg=begA<begB?begA:begB))
+    if ((endA<0||endB<0)); then
+      ((end=-1,end0=-1))
+    else
+      ((end=endB,end0=endA0,
+        (delta=endA-endB0)>0?(end+=delta):(end0-=delta)))
+    fi
+  fi
+
+  if [[ $_prefix ]]; then
+    ((${_prefix}beg=beg,
+      ${_prefix}end=end,
+      ${_prefix}end0=end0))
+  fi
+}
+
+## 関数 ble/urange#update [--prefix=prefix] umin umax
+##
+##   @param[in,opt] prefix=
+##   @param[in]     umin umax
+##   @var[in,out]   {prefix}umin {prefix}umax
+##
+function ble/urange#update {
+  local prefix=
+  if [[ $1 == --prefix=* ]]; then
+    prefix=${1#*=}; shift
+  fi
+  local min=$1 max=$2
+  ((0<=min&&min<max)) || return
+  (((${prefix}umin<0||min<${prefix}umin)&&(${prefix}umin=min),
+    (${prefix}umax<0||${prefix}umax<max)&&(${prefix}umax=max)))
+}
+## 関数 ble/urange#shift [--prefix=prefix] dbeg dend dend0
+##
+##   @param[in,opt] prefix=
+##   @param[in]     dbeg dend dend0
+##   @var[in,out]   {prefix}umin {prefix}umax
+##
+function ble/urange#shift {
+  local prefix=
+  if [[ $1 == --prefix=* ]]; then
+    prefix=${1#*=}; shift
+  fi
+  local dbeg=$1 dend=$2 dend0=$3 shift=$4
+  ((dbeg>=0)) || return
+  [[ $shift ]] || ((shift=dend-dend0))
+  ((${prefix}umin>=0&&(
+      dbeg<=${prefix}umin&&(${prefix}umin<=dend0?(${prefix}umin=dend):(${prefix}umin+=shift)),
+      dbeg<=${prefix}umax&&(${prefix}umax<=dend0?(${prefix}umax=dbeg):(${prefix}umax+=shift))),
+    ${prefix}umin<${prefix}umax||(
+      ${prefix}umin=-1,
+      ${prefix}umax=-1)))
+}
+
+#------------------------------------------------------------------------------
 ## 関数 ble/util/joblist
 ##   現在のジョブ一覧を取得すると共に、ジョブ状態の変化を調べる。
 ##

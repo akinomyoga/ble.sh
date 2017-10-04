@@ -6,6 +6,20 @@ function ble-edit/load-keymap-definition:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
 
+## オプション keymap_vi_force_update_textmap
+##   1 が設定されているとき、矩形選択に先立って配置計算を強制します。
+##   0 が設定されているとき、配置情報があるときにそれを使い、
+##   配置情報がないときは論理行・論理列による矩形選択にフォールバックします。
+##
+: ${bleopt_keymap_vi_force_update_textmap:=1}
+
+function ble/keymap:vi/use-textmap {
+  ble/textmap#is-up-to-date && return 0
+  ((bleopt_keymap_vi_force_update_textmap)) || return 1
+  ble/widget/.update-textmap
+}
+
+#------------------------------------------------------------------------------
 # utils
 
 ## 関数 ble/string#index-of-chars text chars [index]
@@ -1140,19 +1154,19 @@ function ble/widget/vi-command/.relative-line {
   ((count-=nmove))
   if ((count==0)); then
     local index
-    if ble-edit/text/is-position-up-to-date; then
+    if ble/keymap:vi/use-textmap; then
       # 列の表示相対位置 (x,y) を保持
-      local b1x b1y; ble-edit/text/getxy.cur --prefix=b1 "$bol1"
-      local b2x b2y; ble-edit/text/getxy.cur --prefix=b2 "$bol2"
+      local b1x b1y; ble/textmap#getxy.cur --prefix=b1 "$bol1"
+      local b2x b2y; ble/textmap#getxy.cur --prefix=b2 "$bol2"
 
       ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
-      local c1x c1y; ble-edit/text/getxy.cur --prefix=c1 "$ind"
-      local e2x e2y; ble-edit/text/getxy.cur --prefix=e2 "$eol2"
+      local c1x c1y; ble/textmap#getxy.cur --prefix=c1 "$ind"
+      local e2x e2y; ble/textmap#getxy.cur --prefix=e2 "$eol2"
 
       local x=$c1x y=$((b2y+c1y-b1y))
       ((y>e2y&&(x=e2x,y=e2y)))
 
-      ble-edit/text/get-index-at "$x" "$y" # local variable "index" is set here
+      ble/textmap#get-index-at "$x" "$y" # local variable "index" is set here
     else
       # 論理列を保持
       ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
@@ -1197,14 +1211,14 @@ function ble/widget/vi-command/backward-line {
 function ble/widget/vi-command/graphical-relative-line.impl {
   local arg=$1 flag=$2 opts=$3
   local index move
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/keymap:vi/use-textmap; then
     local x y ax ay
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
     ((ax=x,ay=y+arg,
-      ay<_ble_line_text_begy?(ay=_ble_line_text_begy):
-      (ay>_ble_line_text_endy?(ay=_ble_line_text_endy):0)))
-    ble-edit/text/get-index-at "$ax" "$ay"
-    ble-edit/text/getxy.cur --prefix=a "$index"
+      ay<_ble_textmap_begy?(ay=_ble_textmap_begy):
+      (ay>_ble_textmap_endy?(ay=_ble_textmap_endy):0)))
+    ble/textmap#get-index-at "$ax" "$ay"
+    ble/textmap#getxy.cur --prefix=a "$index"
     ((arg-=move=ay-y))
   else
     local ind=$_ble_edit_ind
@@ -1326,11 +1340,11 @@ function ble/widget/vi-command/forward-eol {
 }
 # nmap g0 g<home>
 function ble/widget/vi-command/beginning-of-graphical-line {
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/keymap:vi/use-textmap; then
     local arg flag; ble/keymap:vi/get-arg 1
     local x y index
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at 0 "$y"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at 0 "$y"
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
     ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
   else
@@ -1339,11 +1353,11 @@ function ble/widget/vi-command/beginning-of-graphical-line {
 }
 # nmap g^
 function ble/widget/vi-command/graphical-first-non-space {
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/keymap:vi/use-textmap; then
     local arg flag; ble/keymap:vi/get-arg 1
     local x y index ret
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at 0 "$y"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at 0 "$y"
     ble-edit/content/find-non-space "$index"
     ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
     ble/widget/vi-command/exclusive-goto.impl "$ret" "$flag" 1
@@ -1353,11 +1367,11 @@ function ble/widget/vi-command/graphical-first-non-space {
 }
 # nmap g$ g<end>
 function ble/widget/vi-command/graphical-forward-eol {
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/keymap:vi/use-textmap; then
     local arg flag; ble/keymap:vi/get-arg 1
     local x y index
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at $((_ble_line_text_cols-1)) $((y+arg-1))
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at $((_ble_textmap_cols-1)) $((y+arg-1))
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
     ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
   else
@@ -1368,10 +1382,10 @@ function ble/widget/vi-command/graphical-forward-eol {
 function ble/widget/vi-command/middle-of-graphical-line {
   local arg flag; ble/keymap:vi/get-arg 1
   local index
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/keymap:vi/use-textmap; then
     local x y
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
-    ble-edit/text/get-index-at $((_ble_line_text_cols/2)) "$y"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at $((_ble_textmap_cols/2)) "$y"
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
   else
     local ret
@@ -1420,10 +1434,10 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
   if [[ $type ]]; then
     [[ $type == graphical ]] && graphical=1
   else
-    ble-edit/text/is-position-up-to-date && graphical=1
+    ble/keymap:vi/use-textmap && graphical=1
   fi
 
-  local ret cols=$_ble_line_text_cols
+  local ret cols=$_ble_textmap_cols
 
   local -a afill=(${_ble_edit_kill_type:2})
   local atext; ble/string#split-lines atext "$_ble_edit_kill_ring"
@@ -1432,8 +1446,8 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
   if [[ $graphical ]]; then
     ble-edit/content/find-logical-bol; local bol=$ret
     local bx by x y c
-    ble-edit/text/getxy.cur --prefix=b "$bol"
-    ble-edit/text/getxy.cur "$_ble_edit_ind"
+    ble/textmap#getxy.cur --prefix=b "$bol"
+    ble/textmap#getxy.cur "$_ble_edit_ind"
     ((y-=by,c=y*cols+x))
   else
     ble-edit/content/find-logical-bol; local bol=$ret
@@ -1448,7 +1462,7 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
         is_newline=1
       else
         bol=$ret
-        [[ $graphical ]] && ble-edit/text/getxy.cur --prefix=b "$bol"
+        [[ $graphical ]] && ble/textmap#getxy.cur --prefix=b "$bol"
       fi
     fi
 
@@ -1471,10 +1485,10 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
 
     elif [[ $graphical ]]; then
       ble-edit/content/find-logical-eol "$bol"; local eol=$ret
-      ble-edit/text/get-index-at "$x" $((by+y)); ((index>eol&&(index=eol)))
+      ble/textmap#get-index-at "$x" $((by+y)); ((index>eol&&(index=eol)))
 
       # left padding (行末がより左にある、または、全角文字があるとき)
-      local ax ay ac; ble-edit/text/getxy.out --prefix=a "$index"
+      local ax ay ac; ble/textmap#getxy.out --prefix=a "$index"
       ((ay-=by,ac=ay*cols+ax))
       if ((ac<c)); then
         ble/string#repeat ' ' $((c-ac))
@@ -1482,7 +1496,7 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
 
         # タブを空白に変換
         if ((index<eol)) && [[ ${_ble_edit_str:index:1} == $'\t' ]]; then
-          local rx ry rc; ble-edit/text/getxy.out --prefix=r $((index+1))
+          local rx ry rc; ble/textmap#getxy.out --prefix=r $((index+1))
           ((rc=(ry-by)*cols+rx))
           ble/string#repeat ' ' $((rc-c))
           text=$text$ret
@@ -1711,13 +1725,13 @@ function ble/widget/vi-command/nth-column {
   local ret index
   ble-edit/content/find-logical-bol; local bol=$ret
   ble-edit/content/find-logical-eol; local eol=$ret
-  if ble-edit/text/is-position-up-to-date; then
-    local bx by; ble-edit/text/getxy.cur --prefix=b "$bol" # Note: 先頭行はプロンプトにより bx!=0
-    local ex ey; ble-edit/text/getxy.cur --prefix=e "$eol"
+  if ble/keymap:vi/use-textmap; then
+    local bx by; ble/textmap#getxy.cur --prefix=b "$bol" # Note: 先頭行はプロンプトにより bx!=0
+    local ex ey; ble/textmap#getxy.cur --prefix=e "$eol"
     local dstx=$((bx+arg-1)) dsty=$by cols=${COLUMNS:-80}
     ((dsty+=dstx/cols,dstx%=cols))
     ((dsty>ey&&(dsty=ey,dstx=ex)))
-    ble-edit/text/get-index-at "$dstx" "$dsty" # local variable "index" is set here
+    ble/textmap#get-index-at "$dstx" "$dsty" # local variable "index" is set here
     ble-edit/content/nonbol-eolp "$index" && ((index--))
   else
     ble-edit/content/nonbol-eolp "$eol" && ((eol--))
@@ -2752,16 +2766,16 @@ function ble/keymap:vi/get-graphical-rectangle {
   ble-edit/content/find-logical-bol "$q"; q0=$ret
 
   local p0x p0y q0x q0y
-  ble-edit/text/getxy.out --prefix=p0 "$p0"
-  ble-edit/text/getxy.out --prefix=q0 "$q0"
+  ble/textmap#getxy.out --prefix=p0 "$p0"
+  ble/textmap#getxy.out --prefix=q0 "$q0"
 
   local plx ply qlx qly
-  ble-edit/text/getxy.cur --prefix=pl "$p"
-  ble-edit/text/getxy.cur --prefix=ql "$q"
+  ble/textmap#getxy.cur --prefix=pl "$p"
+  ble/textmap#getxy.cur --prefix=ql "$q"
 
   local prx=$plx pry=$ply qrx=$qlx qry=$qly
-  ble-edit/content/eolp "$p" || ble-edit/text/getxy.out --prefix=pr $((p+1))
-  ble-edit/content/eolp "$q" || ble-edit/text/getxy.out --prefix=qr $((q+1))
+  ble-edit/content/eolp "$p" || ble/textmap#getxy.out --prefix=pr $((p+1))
+  ble-edit/content/eolp "$q" || ble/textmap#getxy.out --prefix=qr $((q+1))
 
   ((ply-=p0y,qly-=q0y,pry-=p0y,qry-=q0y,
     (ply<qly||ply==qly&&plx<qlx)?(lx=plx,ly=ply):(lx=qlx,ly=qly),
@@ -2812,7 +2826,7 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   [[ $x1 == *:* ]] && local x1=${x1%%:*} y1=${x1#*:}
   [[ $x2 == *:* ]] && local x2=${x2%%:*} y2=${x2#*:}
 
-  local cols=$_ble_line_text_cols
+  local cols=$_ble_textmap_cols
   local c1=$((cols*y1+x1)) c2=$((cols*y2+x2))
 
   local ret index lx ly rx ly
@@ -2825,10 +2839,10 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   local c1l c1r c2l c2r
   for line in "${lines[@]}"; do
     ((eol=bol+${#line}))
-    ble-edit/text/getxy.out --prefix=bol "$bol"
-    ble-edit/text/hit out "$x1" "$((boly+y1))" "$bol" "$eol"
+    ble/textmap#getxy.out --prefix=bol "$bol"
+    ble/textmap#hit out "$x1" "$((boly+y1))" "$bol" "$eol"
     local smin=$index x1l=$lx y1l=$ly x1r=$rx y1r=$ry
-    ble-edit/text/hit out "$x2" "$((boly+y2))" "$bol" "$eol"
+    ble/textmap#hit out "$x2" "$((boly+y2))" "$bol" "$eol"
     local smax=$index x2l=$lx y2l=$ly x2r=$rx y2r=$ry
 
     local sfill=0 slpad=0 srpad=0
@@ -2914,7 +2928,7 @@ function ble/keymap:vi/extract-logical-block {
   ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$lx" "$rx"
 }
 function ble/keymap:vi/extract-block {
-  if ble-edit/text/is-position-up-to-date; then
+  if ble/keymap:vi/use-textmap; then
     ble/keymap:vi/extract-graphical-block "$@"
   else
     ble/keymap:vi/extract-logical-block "$@"
@@ -2970,8 +2984,8 @@ function ble/widget/vi_xmap/.save-visual-state {
   local nline nchar
   if [[ $_ble_edit_mark_active == block ]]; then
     local p0 q0 lx rx ly ry
-    if ble-edit/text/is-position-up-to-date; then
-      local cols=$_ble_line_text_cols
+    if ble/keymap:vi/use-textmap; then
+      local cols=$_ble_textmap_cols
       ble/keymap:vi/get-graphical-rectangle
       ((lx+=ly*cols,rx+=ry*cols))
     else
@@ -2999,11 +3013,11 @@ function ble/widget/vi_xmap/.save-visual-state {
       ble-edit/content/find-logical-bol "$q"; base=$ret
     fi
 
-    if ble-edit/text/is-position-up-to-date; then
-      local cols=$_ble_line_text_cols
+    if ble/keymap:vi/use-textmap; then
+      local cols=$_ble_textmap_cols
       local bx by x y
-      ble-edit/text/getxy.cur --prefix=b "$base"
-      ble-edit/text/getxy.cur "$q"
+      ble/textmap#getxy.cur --prefix=b "$base"
+      ble/textmap#getxy.cur "$q"
       nchar=$((x-bx+(y-by)*cols+1))
     else
       nchar=$((q-base+1))
@@ -3034,13 +3048,13 @@ function ble/widget/vi_xmap/.restore-visual-state {
   ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local b1=$ret
   ble-edit/content/find-logical-bol "$_ble_edit_ind" "$nline"; local b2=$ret
   ble-edit/content/find-logical-eol "$b2"; local e2=$ret
-  if ble-edit/text/is-position-up-to-date; then
-    local cols=$_ble_line_text_cols
+  if ble/keymap:vi/use-textmap; then
+    local cols=$_ble_textmap_cols
     local b1x b1y b2x b2y x y
-    ble-edit/text/getxy.out --prefix=b1 "$b1"
-    ble-edit/text/getxy.out --prefix=b2 "$b2"
+    ble/textmap#getxy.out --prefix=b1 "$b1"
+    ble/textmap#getxy.out --prefix=b2 "$b2"
     if ((is_x_relative)); then
-      ble-edit/text/getxy.out "$_ble_edit_ind"
+      ble/textmap#getxy.out "$_ble_edit_ind"
       local c=$((x+(y-b1y)*cols+nchar))
     else
       local c=$nchar
@@ -3048,7 +3062,7 @@ function ble/widget/vi_xmap/.restore-visual-state {
     ((y=c/cols,x=c%cols))
 
     local lx ly rx ry
-    ble-edit/text/hit out "$x" "$((b2y+y))" "$b2" "$e2"
+    ble/textmap#hit out "$x" "$((b2y+y))" "$b2" "$e2"
   else
     local c=$((is_x_relative?_ble_edit_ind-b1+nchar:nchar))
     ((index=b2+c,index>e2&&(index=e2)))

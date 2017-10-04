@@ -463,21 +463,6 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
-2017-10-02
-
-  * vi-mode (visual block): 矩形選択から text/update/position を呼び出せるようにする
-
-    連続して入力をしたときには配置情報が更新されていないことがある。
-    その様な場合には現在は論理列による矩形にフォールバックしているが、
-    これは直感的ではないので問題になる。
-
-    従って text/update/position を外部から呼び出せるようにして、
-    配置情報が更新されていない場合にはこれを呼び出すようにする必要がある。
-    しかし、現在は text/update/position の更新範囲は、
-    着色の更新範囲と一緒に管理しているがために、
-    text/update/position を単体で呼び出すことができない。
-    更新範囲の情報を分離する必要がある。
-
 2017-10-01
 
   * ble-syntax: case $x in (a b) : ;; done のパターン "a b" はエラー
@@ -495,6 +480,10 @@ tech
     - vi-mode change: `c{linewise}` (`{linewise}` = `j` `k` `H` `L` `+` `-` `gg` `G`) のとき空行を挿入するように修正
     - vi-mode change: `d` で最終行を削除したとき前の行に移動するように修正
     - bug: "ble-bind -d" の内部でパス名展開が起こって出力が正しくないバグの修正
+
+    - vi-mode: _ g0 g<home> g^ g$ g<end> gm go g_ ge gE
+    - vi-mode: ビジュアルモード (char, line, block)
+    - edit: 複数行編集時スクロール
 
 2017-09-25
 
@@ -2340,6 +2329,137 @@ tech
 -------------------------------------------------------------------------------
 
 2017-10-04
+
+  * 2017-10-02 vi-mode (visual block): 矩形選択から text/update/position を呼び出せるようにする [#D0504]
+
+    連続して入力をしたときには配置情報が更新されていないことがある。
+    その様な場合には現在は論理列による矩形にフォールバックしているが、
+    これは直感的ではないので問題になる。
+
+    従って text/update/position を外部から呼び出せるようにして、
+    配置情報が更新されていない場合にはこれを呼び出すようにする必要がある。
+    しかし、現在は text/update/position の更新範囲は、
+    着色の更新範囲と一緒に管理しているがために、
+    text/update/position を単体で呼び出すことができない。
+    更新範囲の情報を分離する必要がある。
+
+    * 同時に _ble_line_text_* の変数名を何とかする。案を考える。
+      
+      _ble_line_text_cache_length=  -> _ble_textmap_length
+      _ble_line_text_cols=80        -> _ble_textmap_cols
+      _ble_line_text_cache_pos=()   -> _ble_textmap_pos
+      _ble_line_text_cache_cs=()    -> _ble_textmap_glyph
+      _ble_line_text_cache_ichg=()  -> _ble_textmap_ichg
+      _ble_line_text_begx=0         -> _ble_textmap_begx
+      _ble_line_text_begy=0         -> _ble_textmap_begy
+      _ble_line_text_endx=0         -> _ble_textmap_endx
+      _ble_line_text_endy=0         -> _ble_textmap_endy
+
+      | うーん。text_layout よりも良い名前はないか。
+      | 
+      | - 文字の配置を素直に英語にすると character arrangement になる。長い。
+      | 
+      | - .NET では Sysmtem.Drawing.Graphics に MeasureString および MeasureCharacterRanges がある。
+      | 
+      | - _ble_text は既に s2c などの名前空間として使用されている。
+      |   従って、_ble_textbox, _ble_textarea, _ble_line を使う必要がある。
+      |   _ble_line は今まで使ってきたものだが実態に合わないので変更したい。
+      |   textbox だと任意の場所に任意のサイズで表示できそうな気がするのでよくない。
+      |   (或いは将来的にそのような機能を実装するかもしれないが)
+      |   よく考えたら現状の配置情報の計算は textbox かどうかなどとは直交する実装になっている。
+      |   現に render/update でスクロール機能を実装したときも _ble_line_text 側には何も変更はなかった。
+      | 
+      |   従って、_ble_textbox や _ble_textarea というのも微妙である。
+      |   或いは、_ble_graphics_textlayout_ などにするか。
+      |   短くすれば _ble_draw_textrange もしくは _ble_draw_txtlayout。
+      |   うーん。もはや draw/graphics とか要らないかもしれない。
+      | 
+      |   _ble_textlayout_ とするか。_ble_textrange_ でも良いかも。
+      |   TextRange については調べてみたが色々と意味が違うような気がするのでやめる。
+      | 
+      |   うーん。実際には glyph などの描画に関する情報も保持している。
+      |   なので単に layout という訳でもないのではないか。
+      |   但し着色などについての情報は持っていないので、やはり layout に近いというべきか。
+      | 
+      | _ble_textlayout に収束しつつある。
+      | 
+      |   少し変種を考えてみる。_ble_txtlayout, _ble_txtout, _ble_txtpos,
+      |   _ble_charpos, _ble_txtarrange, _ble_txtconfiguration, _ble_txtdisposition,
+      |   _ble_txtgeometry, _ble_txtgeo, _ble_txtmetric, _ble_txtmeasure,
+      |   _ble_txtmap, _ble_textmap.
+      | 
+      |   良さそうなのは、_ble_txtpos, _ble_txtmap, _ble_textpos, _ble_textmap 辺りである。
+      |   取り敢えず _ble_textmap にする。
+
+      _ble_textmap に統一した。
+
+    * 次に _ble_textmap 用の dirty-range を新設することにする。
+      現在は外部から指定した BLELINE_RANGE_UPDATE を使用している。
+      これは ble-edit/render/update で設定される変数で、
+      dirty-range _ble_edit_dirty_draw_* を元にしている。
+      従って、_ble_edit_dirty_draw_* の複製を作れば良いのである。
+
+      今までは外部からこれらの変更範囲について管理して、
+      BLELINE_RANGE_UPDATE などの変数を介して指定できるようにしていたが、
+      今回の変更のように内部で保持するようにしてしまって問題ないだろうか。
+
+      恐らく問題ないという気がする。
+      但し、これらの変数の更新はそれ専用の関数を用いて行うようにした方が良い気がする。
+
+    * うーん。問題がある。
+
+      | ble/textmap#update では "再描画の必要がある範囲" を POS_UMIN, POS_UMAX で返す。
+      | これは別の場所に記録して置かなければならない。
+      | ところが、ble/textmap#update を呼び出した後で
+      | 更に文字列に更新があった場合はこの更新範囲がどうなるかは非自明だ。
+      | 
+      | (dbeg dend dend0) のペアを用いて範囲を更新することはできるがそれで十分だろうか。
+      | - umin-umax で変更範囲より前にある場合はそのままで良い。
+      | - umin-umax で変更範囲より後にある場合は…その分だけ index をシフトすれば良い。
+      |   もし変更範囲の長さが変わらない場合や変更範囲での違いが改行で吸収できるときは、
+      |   umin-umax の変更範囲はそのままシフトするだけで良いし、
+      |   もしそれで不充分であるのであれば次の ble/textmap#update でそこまで umin-umax が拡張されるはずである。
+      | - 変更範囲が被っている場合には削って良い。
+      |   変更範囲の領域はどうせ次の更新で再描画の対象になるだろうから。
+      | 
+      | →_ble_edit_str の更新をする度に毎回 _ble_textmap の更新もするべきかと思ったが、
+      |   ble/textmap#update を呼び出したときに、蓄積した dirty-range を用いて
+      |   _ble_textmap_u{min,max} を shift して更新すれば良いのだと気付いた。
+      |   _ble_textmap_u{min,max} で公開するのであれば飽くまで最後の配置計算の際の更新必要範囲で良いのだ。
+
+      配置情報に関連する umin,umax は独自に管理し、
+      _ble_textmap_umin, _ble_textmap_umax に蓄積することにした。
+      これは修正した。OK
+
+    * ble/textmap#update のインターフェイスに疑問が生じてきた。
+
+      外から呼び出す時にグローバル変数と密結合にならないように、
+      text BLELINE_DIRTY_RANGE POS_UMIN POS_UMAX などの変数を介して呼び出すようにしてきた。
+      しかしながら現在の実装では不可避的に _ble_textmap_* という内部状態を持つので、
+      完全に外部から自由に取り扱うためには _ble_textmap_* の変数を宣言して呼び出す必要があった。
+
+      一方で、今回の書き換えによって BLELINE_DIRTY_RANGE やら POS_UMIN POS_UMAX などの変数も全て、
+      _ble_textmap_* で管理するようにした。これは順当な書き換えである。
+      現在残っている変数は text x y である。
+      一方でこの text というのはそれまでに渡した _ble_textmap_d* と符合するものでなければならない。
+      ここで _ble_textmap_d* と独立に渡せるようになっているのは不自然である。
+      それよりは寧ろ update-dirty-range を呼び出すときに一緒に text も指定する方が自然である。
+      しかしそれはそれでデータが巨大になってくると無駄な気がする。
+      やはり text というローカル変数で再計算の時に受け渡しするというのが良いのだろうか。
+
+      だとすると ble/textmap#update を呼び出す側で現在どのような目的で textmap#update を呼び出すのか
+      ということを承知で行わなければならない。ということは簡易な ble/textmap#update-auto 的な関数で、
+      local text=$_ble_edit_str x=... y=... して呼び出すのは変だということになる。
+      或いは、これは widget として提供するべきか。
+
+    * さてここまでの書き換えによって ble/textmap#is-up-to-date でなくても、
+      ble/widget/.update-textmap を呼び出せば最新状態になるということになった筈だ。
+      しかし本当にちゃんと動作するのかについては謎だ。確認方法がない…。
+
+      一つのテスト方法は _ble_edit_str.replace の中で毎回 ble/widget/.update-textmap を呼び出すことだ。
+      とても遅くなるが取り敢えず動作することを確認する上ではこれで良いだろうという気がする。
+      →遅いが、何事もなく動作した。本当にこれで大丈夫なのだろうか…。
+        分からないが取り敢えず暫く動かしてみることにする。
 
   * vi-mode: ge gE [#D0503]
 
