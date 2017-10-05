@@ -490,13 +490,16 @@ tech
     - vi-mode bug: オペレータ `g~` を呼び出せないバグを修正
     - vi-mode bug: `k` `-` などで履歴項目を遡ったときに(最後の文字でなく)行末にカーソルが来るバグの修正
     - vi-mode bug: オペレータ `>` および `<` で空行が消滅するバグの修正
+    - bug: "ble-bind -d" の内部でパス名展開が起こって出力が正しくないバグの修正
+
     - vi-mode change: `c{linewise}` (`{linewise}` = `j` `k` `H` `L` `+` `-` `gg` `G`) のとき空行を挿入するように修正
     - vi-mode change: `d` で最終行を削除したとき前の行に移動するように修正
-    - bug: "ble-bind -d" の内部でパス名展開が起こって出力が正しくないバグの修正
+    - vi-mode change: f F t T r gr に C-? の形式で文字を指定できるように修正
 
     - vi-mode: _ g0 g<home> g^ g$ g<end> gm go g_ ge gE
     - vi-mode: ビジュアルモード (char, line, block)
     - edit: 複数行編集時スクロール
+
 
 2017-09-25
 

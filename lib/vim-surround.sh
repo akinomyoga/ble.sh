@@ -199,7 +199,7 @@ function ble/lib/vim-surround.sh/surround {
 
   if [[ $instype == indent ]]; then
     ble-edit/content/find-logical-bol "$beg"; local bol=$ret
-    ble-edit/content/find-nol-from-bol "$bol"; local nol=$ret
+    ble-edit/content/find-non-space "$bol"; local nol=$ret
     text=${_ble_edit_str:bol:nol-bol}${text}
     ble/keymap:vi/string#increase-indent "$text" 8
     text=$'\n'$ret$'\n'${_ble_edit_str:bol:nol-bol}

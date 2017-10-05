@@ -19,6 +19,21 @@ function ble/keymap:vi/use-textmap {
   ble/widget/.update-textmap
 }
 
+function ble/keymap:vi/k2c {
+  local key=$1
+  local flag=$((key&ble_decode_MaskFlag)) char=$((key&ble_decode_MaskChar))
+  if ((flag==0&&(32<=char&&char<ble_decode_function_key_base))); then
+    ret=$char
+    return 0
+  elif ((flag==ble_decode_Ctrl&&63<=char&&char<128&&(char&0x1F)!=0)); then
+    ((char=char==63?127:char&0x1F))
+    ret=$char
+    return 0
+  else
+    return 1
+  fi
+}
+
 #------------------------------------------------------------------------------
 # utils
 
@@ -111,9 +126,8 @@ function ble/widget/vi-insert/default {
   fi
 
   # Control 修飾された文字 C-@ - C-\, C-? は制御文字 \000 - \037, \177 に戻して挿入
-  if ((flag==ble_decode_Ctrl&&63<=code&&code<128&&(code&0x1F)!=0)); then
-    ((code=code==63?127:code&0x1F))
-    local -a KEYS=("$code")
+  if local ret; ble/keymap:vi/k2c "${KEYS[0]}"; then
+    local -a KEYS=("$ret")
     ble/widget/self-insert
     return 0
   fi
@@ -299,7 +313,11 @@ function ble/keymap:vi/needs-eol-fix {
   ble-edit/content/nonbol-eolp "$index"
 }
 function ble/keymap:vi/adjust-command-mode {
-  [[ $_ble_decode_key__kmap == vi_omap ]] && ble-decode/keymap/pop
+  local kmap_popped=
+  if [[ $_ble_decode_key__kmap == vi_omap ]]; then
+    ble-decode/keymap/pop
+    kmap_popped=1
+  fi
 
   if [[ $_ble_decode_key__kmap == vi_command && $_ble_keymap_vi_single_command ]]; then
     if ((_ble_keymap_vi_single_command==2)); then
@@ -307,6 +325,8 @@ function ble/keymap:vi/adjust-command-mode {
       ble-edit/content/nonbol-eolp "$index" && ble/widget/.goto-char index
     fi
     ble/widget/vi-command/.insert-mode 1 "$_ble_keymap_vi_single_command_overwrite"
+  elif [[ $kmap_popped ]]; then
+    ble/keymap:vi/update-mode-name
   fi
 
   return 0
@@ -485,7 +505,10 @@ function ble/widget/vi-command/set-operator {
     # 2つ目のオペレータ (yy, dd, cc, etc.)
     if [[ $_ble_edit_arg == *"$ch"* ]]; then
       local arg flag; ble/keymap:vi/get-arg 1 # _ble_edit_arg is consumed here
-      ble/keymap:vi/call-operator-linewise "$ch" "$_ble_edit_ind" "$_ble_edit_ind:$((arg-1))" && return
+      if ble/keymap:vi/call-operator-linewise "$ch" "$_ble_edit_ind" "$_ble_edit_ind:$((arg-1))"; then
+        ble/keymap:vi/adjust-command-mode
+        return 0
+      fi
     fi
 
     _ble_edit_arg=
@@ -598,8 +621,10 @@ function ble/keymap:vi/call-operator-linewise {
     local _ble_keymap_vi_operator_delayed=
     ble/keymap:vi/operator:"$ch" "$beg" "$end" line "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
-    ble/widget/.goto-char "$beg"
-    ble/widget/vi-command/first-non-space
+    ble-edit/content/find-logical-bol "$beg"; beg=$ret # operator 中で beg が変更されているかも
+    ble-edit/content/find-non-space "$beg"; local nol=$ret
+    ble/keymap:vi/needs-eol-fix "$nol" && ((nol--))
+    ble/widget/.goto-char "$nol"
     return 0
   else
     return 1
@@ -608,7 +633,7 @@ function ble/keymap:vi/call-operator-linewise {
 function ble/keymap:vi/call-operator-blockwise {
   local ch=$1 beg=$2 end=$3 arg=$4
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
-    local sub_ranges
+    local sub_ranges sub_x1 sub_x2
     ble/keymap:vi/extract-block "$beg" "$end"
     local nrange=${#sub_ranges[@]}
     ((nrange)) || return 1
@@ -1825,20 +1850,21 @@ function ble/widget/vi-command/clear-screen-and-last-line {
 function ble/widget/vi-command/replace-char.impl {
   local key=$1 overwrite_mode=${2:-R}
   _ble_edit_overwrite_mode=
-  local arg flag; ble/keymap:vi/get-arg 1
-  if [[ $flag ]] || ! ble-decode-key/ischar "$key"; then
-    ble/widget/.bell
-  else
-    local pos=$_ble_edit_ind
-
-    local -a KEYS=("$key")
-    local _ble_edit_arg=$arg
-    local _ble_edit_overwrite_mode=$overwrite_mode
-    local ble_widget_self_insert_opts=nolineext
-    ble/widget/self-insert
-
-    ((pos<_ble_edit_ind)) && ble/widget/.goto-char _ble_edit_ind-1
+  local arg flag ret; ble/keymap:vi/get-arg 1
+  if [[ $flag ]] || ! ble/keymap:vi/k2c "$key"; then
+    ble/widget/vi-command/bell
+    return
   fi
+
+  local pos=$_ble_edit_ind
+
+  local -a KEYS=("$ret")
+  local _ble_edit_arg=$arg
+  local _ble_edit_overwrite_mode=$overwrite_mode
+  local ble_widget_self_insert_opts=nolineext
+  ble/widget/self-insert
+
+  ((pos<_ble_edit_ind)) && ble/widget/.goto-char _ble_edit_ind-1
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -1958,8 +1984,8 @@ function ble/widget/vi-command/search-char.impl/core {
   if ((isrepeat)); then
     c=$key
   else
-    ble-decode-key/ischar "$key" || return 1
-    ble/util/c2s "$key"; local c=$ret
+    ble/keymap:vi/k2c "$key" || return 1
+    ble/util/c2s "$ret"; local c=$ret
   fi
   [[ $c ]] || return 1
 
@@ -2864,6 +2890,7 @@ function ble/keymap:vi/get-logical-rectangle {
 ##       選択範囲から読み取られる文字列を指定します。
 ##       全角文字などが範囲の境界を跨ぐとき、
 ##       その文字は (範囲に被る幅と同数の) 空白に置き換えられます。
+##   @var[out] sub_x1 sub_x2
 ##
 function ble/keymap:vi/extract-graphical-block-by-geometry {
   local bol1=$1 bol2=$2 x1=$3 x2=$4 y1=0 y2=0
@@ -2873,6 +2900,7 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
 
   local cols=$_ble_textmap_cols
   local c1=$((cols*y1+x1)) c2=$((cols*y2+x2))
+  sub_x1=$c1 sub_x2=$c2
 
   local ret index lx ly rx ly
 
@@ -2950,6 +2978,7 @@ function ble/keymap:vi/extract-graphical-block {
 function ble/keymap:vi/extract-logical-block-by-geometry {
   local bol1=$1 bol2=$2 x1=$3 x2=$4
   ((bol1<=bol2||(bol1=$2,bol2=$1)))
+  sub_x1=$c1 sub_x2=$c2
 
   local ret
   local bol=$bol1 eol
@@ -3009,7 +3038,7 @@ function ble-highlight-layer:region/mark:line/get-selection {
   selection=("$rmin" "$rmax")
 }
 function ble-highlight-layer:region/mark:block/get-selection {
-  local sub_ranges
+  local sub_ranges sub_x1 sub_x2
   ble/keymap:vi/extract-block
 
   selection=()
@@ -3187,6 +3216,78 @@ function ble/widget/vi_xmap/switch-to-blockwise {
   ble/widget/vi_xmap/switch-visual-mode.impl block
 }
 
+# コマンド
+
+# xmap r{char}
+function ble/widget/vi_xmap/visual-replace-char.hook {
+  local key=$1 overwrite_mode=${2:-R}
+  _ble_edit_overwrite_mode=
+  local arg flag; ble/keymap:vi/get-arg 1
+
+  local ret
+  if [[ $flag ]] || ! ble/keymap:vi/k2c "$key"; then
+    ble/widget/.bell
+    return
+  fi
+  local c=$ret
+  ble/util/c2s "$c"; local s=$ret
+
+  ble/widget/vi_xmap/.save-visual-state
+  if [[ $_ble_edit_mark_active == block ]]; then
+    ble/util/c2w "$c"; local w=$ret
+    ((w<=0)) && w=1
+
+    local sub_ranges sub_x1 sub_x2
+    ble/keymap:vi/extract-block "$beg" "$end"
+
+    # create ins
+    local width=$((sub_x2-sub_x1))
+    local count=$((width/w))
+    ble/string#repeat "$s" "$count"; local ins=$ret
+    local pad=$((width-count*w))
+    if ((pad)); then
+      ble/string#repeat ' ' "$pad"; ins=$ins$ret
+    fi
+
+    local i=${#sub_ranges[@]} sub smin=0
+    while ((i--)); do
+      ble/string#split sub : "${sub_ranges[i]}"
+      local smin=${sub[0]} smax=${sub[1]}
+      local slpad=${sub[2]} srpad=${sub[3]} sfill=${sub[4]}
+
+      local ins1=$ins
+      ((sfill)) && ins1=${ins1::(width-sfill)/w}
+      ((slpad)) && { ble/string#repeat ' ' "$slpad"; ins1=$ret$ins1; }
+      ((srpad)) && { ble/string#repeat ' ' "$srpad"; ins1=$ins1$ret; }
+      _ble_edit_str.replace "$smin" "$smax" "$ins1"
+    done
+    local beg=$smin
+    ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
+    ble/widget/.goto-char "$beg"
+    ble/widget/vi_xmap/exit
+    return 0
+
+  else
+    local beg=$_ble_edit_mark end=$_ble_edit_ind
+    ((beg<=end)) || local beg=$end end=$beg
+    if [[ $_ble_edit_mark_active == line ]]; then
+      ble-edit/content/find-logical-bol "$beg"; local beg=$ret
+      ble-edit/content/find-logical-eol "$end"; local end=$ret
+    else
+      ble-edit/content/eolp "$end" || ((end++))
+    fi
+
+    local ins=${_ble_edit_str//[^$'\n']/"$s"}
+    _ble_edit_str.replace "$beg" "$end" "$ins"
+    ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
+    ble/widget/.goto-char "$beg"
+    ble/widget/vi_xmap/exit
+  fi
+}
+function ble/widget/vi_xmap/visual-replace-char {
+  ble/keymap:vi/async-read-char ble/widget/vi_xmap/visual-replace-char.hook
+}
+
 
 function ble-decode-keymap:vi_xmap/define {
   local ble_bind_keymap=vi_xmap
@@ -3205,12 +3306,15 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f 'u' 'vi-command/set-operator u'
   ble-bind -f 'U' 'vi-command/set-operator U'
   ble-bind -f '?' 'vi-command/set-operator rot13'
+  ble-bind -f 's' 'vi-command/set-operator c'
 
   ble-bind -f 'C-\ C-n' vi_xmap/cancel
   ble-bind -f 'C-\ C-g' vi_xmap/cancel
   ble-bind -f v   vi_xmap/switch-to-charwise
   ble-bind -f V   vi_xmap/switch-to-linewise
   ble-bind -f C-v vi_xmap/switch-to-blockwise
+
+  ble-bind -f r vi_xmap/visual-replace-char
 }
 
 #------------------------------------------------------------------------------
@@ -3464,7 +3568,7 @@ function ble/keymap:vi/async-commandline-mode {
 function ble/widget/vi_cmap/accept {
   local hook=${_ble_keymap_vi_cmap_hook}
   _ble_keymap_vi_digraph__hook=
-  
+
   local result=$_ble_edit_str
 
   # 消去
