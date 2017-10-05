@@ -514,9 +514,11 @@ function ble/widget/vi-command/set-operator {
     # 2つ目のオペレータ (yy, dd, cc, etc.)
     if [[ $_ble_edit_arg == *"$ch"* ]]; then
       local arg flag; ble/keymap:vi/get-arg 1 # _ble_edit_arg is consumed here
-      if ble/keymap:vi/call-operator-linewise "$ch" "$_ble_edit_ind" "$_ble_edit_ind:$((arg-1))"; then
-        ble/keymap:vi/adjust-command-mode
-        return 0
+      if ((arg==1)) || [[ ${_ble_edit_str:_ble_edit_ind} == *$'\n'* ]]; then
+        if ble/keymap:vi/call-operator-linewise "$ch" "$_ble_edit_ind" "$_ble_edit_ind:$((arg-1))"; then
+          ble/keymap:vi/adjust-command-mode
+          return 0
+        fi
       fi
     fi
 
@@ -1367,6 +1369,11 @@ function ble/widget/vi-command/first-non-space-forward {
 # nmap $
 function ble/widget/vi-command/forward-eol {
   local arg flag; ble/keymap:vi/get-arg 1
+  if ((arg>1)) && [[ ${_ble_edit_str:_ble_edit_ind}  != *$'\n'* ]]; then
+    ble/widget/vi-command/bell
+    return
+  fi
+
   local ret index
   ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg-1)); index=$ret
   ble/keymap:vi/needs-eol-fix "$index" && ((index--))

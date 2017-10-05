@@ -470,7 +470,10 @@ tech
 
 2017-10-05
 
-  * vi-mode (visual mode): P
+  * vi-mode: 最終行付近で + _ g_ などを呼び出したときの振る舞いが異なる。
+    この当たりの振る舞いについては色々調べる価値はある。
+
+  * vi-mode (visual mode): p P #tmp001
 
     前回 p または P 消したものを覚えていて、それを貼り付けている気がする。
     vimindex のページには書いていない。ページが古いのかもしれない。
@@ -490,8 +493,9 @@ tech
 
   * vi-mode (visual mode): r s C S R x D X Y p J U u I A ^]
 
-    todo: p J I A ^] gJ
+    todo: J I A ^] gJ
     done: u U r s C S R X D x Y
+    他の項目: p #tmp001
 
     C は char のとき一旦行指向になってから .save しているようだ。1v などとすると分かる。
 
@@ -533,7 +537,8 @@ tech
 
     - vi-mode change: `c{linewise}` (`{linewise}` = `j` `k` `H` `L` `+` `-` `gg` `G`) のとき空行を挿入するように修正
     - vi-mode change: `d` で最終行を削除したとき前の行に移動するように修正
-    - vi-mode change: f F t T r gr に C-? の形式で文字を指定できるように修正
+    - vi-mode change: `f` `F` `t` `T` `r` `gr` に C-? の形式で文字を指定できるように修正
+    - vi-mode change: `dd`, `yy`, etc. および `D` は最終行で 2 以上の引数を与えるとエラーにするように修正
 
     - vi-mode: _ g0 g<home> g^ g$ g<end> gm go g_ ge gE
     - vi-mode: ビジュアルモード (char, line, block)
@@ -2322,15 +2327,28 @@ tech
 
 2017-10-05
 
-  * vi-mode (visual mode): S
+  * vi-mode: dd yy ... の最終行での振る舞い
+
+    行数が足りないときにはエラーになる。
+    他のオペレータについても一様に同じようだ。
+
+    % 更に D は dd と違って末尾にいても行を削除しないようだ。
+    % D も行数が足りないときにはエラーになる。
+    % と思ったらこれはそもそもぜんぜん異なる働きをするコマンドだった。
+
+    D は 1 より大きい引数を指定して一行も動けないときエラー。
+
+    実は dd や yy の場合も同様のようだ。直した。
+
+  * vi-mode (visual mode): S [#D0511]
 
     何やら次の引数を読み取ろうとしている気がする。何故か。
     と思ったら、これは surround.vim の仕業だった。
 
-  * vi-mode (visual block): 行末にいるときの範囲がずれている。
+  * vi-mode (visual block): 行末にいるときの範囲がずれている。 [#D0510]
     行末から右に1文字のところが境界になる。
 
-  * vi-mode (visual): vim では | で行末に行けるようだ。
+  * vi-mode (visual): vim では | で行末に行けるようだ。 [#D0509]
 
   * 2017-09-12 表示レイアウト管理の方法について [#D0508]
 
