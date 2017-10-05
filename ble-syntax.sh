@@ -2911,7 +2911,6 @@ function ble-syntax/parse {
 #%if !release
     debug_p1="$i"
 #%end
-
     # 処理
     "${_BLE_SYNTAX_FCTX[ctx]}" || ((_ble_syntax_attr[i]=ATTR_ERR,i++))
 
@@ -3502,7 +3501,7 @@ function ble-syntax/highlight/cmdtype2 {
   fi
 }
 
-if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bash_loaded_in_function)); then
   if ((_ble_bash>=40200)); then
     declare -gA _ble_syntax_highlight_filetype=()
   else

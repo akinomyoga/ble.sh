@@ -19,7 +19,7 @@ ble_decode_Altr=0x00400000
 ble_decode_MaskChar=0x001FFFFF
 ble_decode_MaskFlag=0x7FC00000
 
-if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bash_loaded_in_function)); then
   _ble_decode_kbd_ver=4
   _ble_decode_kbd__n=0
   if ((_ble_bash>=40200)); then
