@@ -313,6 +313,12 @@ function ble/keymap:vi/needs-eol-fix {
   ble-edit/content/nonbol-eolp "$index"
 }
 function ble/keymap:vi/adjust-command-mode {
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    # 移動コマンドが来たら末尾拡張を無効にする。
+    # 移動コマンドはここを通るはず…。
+    _ble_keymap_vi_xmap_eol_extended=
+  fi
+
   local kmap_popped=
   if [[ $_ble_decode_key__kmap == vi_omap ]]; then
     ble-decode/keymap/pop
@@ -338,6 +344,7 @@ function ble/widget/vi-command/bell {
 
 
 function ble/widget/vi-command/.insert-mode {
+  [[ $_ble_decode_key__kmap == vi_xmap ]] && ble-decode/keymap/pop
   [[ $_ble_decode_key__kmap == vi_omap ]] && ble-decode/keymap/pop
   local arg=$1 overwrite=$2
   ble/widget/vi-insert/.reset-repeat "$arg"
@@ -480,10 +487,12 @@ function ble/widget/vi-command/set-operator {
     ((a<=b||(a=_ble_edit_mark,b=_ble_edit_ind)))
 
     ble/widget/vi_xmap/.save-visual-state
+    local mark_type=$_ble_edit_mark_active
+    ble/widget/vi_xmap/exit
 
-    if [[ $_ble_edit_mark_active == line ]]; then
+    if [[ $mark_type == line ]]; then
       ble/keymap:vi/call-operator-linewise "$ch" "$a" "$b" $arg
-    elif [[ $_ble_edit_mark_active == block ]]; then
+    elif [[ $mark_type == block ]]; then
       ble/keymap:vi/call-operator-blockwise "$ch" "$a" "$b" $arg
     else
       local end=$b
@@ -491,7 +500,7 @@ function ble/widget/vi-command/set-operator {
       ble/keymap:vi/call-operator-charwise "$ch" "$a" "$end" $arg
     fi || ble/widget/.bell
 
-    ble/widget/vi_xmap/exit
+    ble/keymap:vi/adjust-command-mode
     return 0
   fi
 
@@ -1362,6 +1371,8 @@ function ble/widget/vi-command/forward-eol {
   ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg-1)); index=$ret
   ble/keymap:vi/needs-eol-fix "$index" && ((index--))
   ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
+  [[ $_ble_decode_key__kmap == vi_xmap ]] &&
+    _ble_keymap_vi_xmap_eol_extended=1 # 末尾拡張
 }
 # nmap g0 g<home>
 function ble/widget/vi-command/beginning-of-graphical-line {
@@ -1744,6 +1755,7 @@ function ble/widget/vi-command/backward-uword-end {
 #------------------------------------------------------------------------------
 # command: [cdy]?[|HL] G gg
 
+# nmap |
 function ble/widget/vi-command/nth-column {
   local arg flag; ble/keymap:vi/get-arg 1
 
@@ -1757,9 +1769,14 @@ function ble/widget/vi-command/nth-column {
     ((dsty+=dstx/cols,dstx%=cols))
     ((dsty>ey&&(dsty=ey,dstx=ex)))
     ble/textmap#get-index-at "$dstx" "$dsty" # local variable "index" is set here
-    ble-edit/content/nonbol-eolp "$index" && ((index--))
+
+    # Note: 何故かノーマルモードで d や c を実行するときには行末に行かないのに、
+    # ビジュアルモードでは行末に行くことができるようだ。
+    [[ $_ble_decode_key__kmap != vi_xmap ]] &&
+      ble-edit/content/nonbol-eolp "$index" && ((index--))
   else
-    ble-edit/content/nonbol-eolp "$eol" && ((eol--))
+    [[ $_ble_decode_key__kmap != vi_xmap ]] &&
+      ble-edit/content/nonbol-eolp "$eol" && ((eol--))
     ((index=bol+arg-1,index>eol?(index=eol)))
   fi
 
@@ -2820,6 +2837,8 @@ function ble-decode-keymap:vi_omap/define {
 # Visual mode
 
 
+_ble_keymap_vi_xmap_eol_extended=
+
 # 矩形範囲の抽出
 
 ## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-graphical-rectangle [index1 [index2]]
@@ -2845,8 +2864,8 @@ function ble/keymap:vi/get-graphical-rectangle {
   ble/textmap#getxy.cur --prefix=ql "$q"
 
   local prx=$plx pry=$ply qrx=$qlx qry=$qly
-  ble-edit/content/eolp "$p" || ble/textmap#getxy.out --prefix=pr $((p+1))
-  ble-edit/content/eolp "$q" || ble/textmap#getxy.out --prefix=qr $((q+1))
+  ble-edit/content/eolp "$p" && ((prx++)) || ble/textmap#getxy.out --prefix=pr $((p+1))
+  ble-edit/content/eolp "$q" && ((qrx++)) || ble/textmap#getxy.out --prefix=qr $((q+1))
 
   ((ply-=p0y,qly-=q0y,pry-=p0y,qry-=q0y,
     (ply<qly||ply==qly&&plx<qlx)?(lx=plx,ly=ply):(lx=qlx,ly=qly),
@@ -2908,6 +2927,7 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   local lines; ble/string#split-lines lines "${_ble_edit_str:bol1:eol2-bol1}"
 
   sub_ranges=()
+  local min_sfill=0
   local line bol=$bol1 eol bolx boly
   local c1l c1r c2l c2r
   for line in "${lines[@]}"; do
@@ -2915,8 +2935,13 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
     ble/textmap#getxy.out --prefix=bol "$bol"
     ble/textmap#hit out "$x1" "$((boly+y1))" "$bol" "$eol"
     local smin=$index x1l=$lx y1l=$ly x1r=$rx y1r=$ry
-    ble/textmap#hit out "$x2" "$((boly+y2))" "$bol" "$eol"
-    local smax=$index x2l=$lx y2l=$ly x2r=$rx y2r=$ry
+    if [[ $_ble_keymap_vi_xmap_eol_extended ]]; then
+      local eolx eoly; ble/textmap#getxy.out --prefix=eol "$eol"
+      local smax=$eol x2l=$eolx y2l=$eoly x2r=$eolx y2r=$eoly
+    else
+      ble/textmap#hit out "$x2" "$((boly+y2))" "$bol" "$eol"
+      local smax=$index x2l=$lx y2l=$ly x2r=$rx y2r=$ry
+    fi
 
     local sfill=0 slpad=0 srpad=0
     local stext=${_ble_edit_str:smin:smax-smin}
@@ -2949,6 +2974,10 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
           ble-assert '((c2r>c2))' || ((c2r=c2))
           ((srpad=c2r-c2))
         fi
+      elif ((c2l>c2)); then
+        # ここに来るのは [[ $_ble_keymap_vi_xmap_eol_extended ]] のときのみの筈
+        ((sfill=c2-c2l,
+          sfill<min_sfill&&(min_sfill=sfill)))
       fi
     else
       if ((smin==eol)); then
@@ -2969,6 +2998,16 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
 
     ((bol=eol+1))
   done
+
+  if ((min_sfill<0)); then
+    local isub=${#sub_ranges[@]}
+    while ((isub--)); do
+      local sub=${sub_ranges[isub]}
+      local sub45=${sub#*:*:*:*:}
+      local sfill=${sub45%%:*}
+      sub_ranges[isub]=${sub::${#sub}-${#sub45}}$((sfill-min_sfill))${sub45:${#sfill}}
+    done
+  fi
 }
 function ble/keymap:vi/extract-graphical-block {
   local p0 q0 lx ly rx ry
@@ -2980,14 +3019,21 @@ function ble/keymap:vi/extract-logical-block-by-geometry {
   ((bol1<=bol2||(bol1=$2,bol2=$1)))
   sub_x1=$c1 sub_x2=$c2
 
-  local ret
-  local bol=$bol1 eol
+  local ret min_sfill=0
+  local bol=$bol1 eol smin smax slpad srpad sfill
   sub_ranges=()
   while :; do
     ble-edit/content/find-logical-eol "$bol"; eol=$ret
-    local smin=$((bol+x1)) smax=$((bol+x2)) slpad=0 srpad=0 sfill=0
-    ((smin>eol&&(smin=eol),
-      smax>eol&&(sfill=smax-eol,smax=eol)))
+    slpad=0 srpad=0 sfill=0
+    ((smin=bol+x1,smin>eol&&(smin=eol)))
+    if [[ $_ble_keymap_vi_xmap_eol_extended ]]; then
+      ((smax=eol,
+        sfill=bol+x2-eol,
+        sfill<min_sfill&&(min_sfill=sfill)))
+    else
+      ((smax=bol+x2,smax>eol&&(sfill=smax-eol,smax=eol)))
+    fi
+
     local stext=${_ble_edit_str:smin:smax-smin}
 
     ble/array#push sub_ranges "$smin:$smax:$slpad:$srpad:$sfill:$stext"
@@ -2995,6 +3041,16 @@ function ble/keymap:vi/extract-logical-block-by-geometry {
     ((bol>=bol2)) && break
     ble-edit/content/find-logical-bol "$bol" 1; bol=$ret
   done
+
+  if ((min_sfill<0)); then
+    local isub=${#sub_ranges[@]}
+    while ((isub--)); do
+      local sub=${sub_ranges[isub]}
+      local sub45=${sub#*:*:*:*:}
+      local sfill=${sub45%%:*}
+      sub_ranges[isub]=${sub::${#sub}-${#sub45}}$((sfill-min_sfill))${sub45:${#sfill}}
+    done
+  fi
 }
 function ble/keymap:vi/extract-logical-block {
   local p0 q0 lx rx
@@ -3098,6 +3154,7 @@ function ble/widget/vi_xmap/.save-visual-state {
     fi
   fi
 
+  [[ $_ble_keymap_vi_xmap_eol_extended ]] && nchar='$'
   _ble_keymap_vi_visual_prev=$_ble_edit_mark_active:$nchar:$nline
 }
 function ble/widget/vi_xmap/.restore-visual-state {
@@ -3106,13 +3163,14 @@ function ble/widget/vi_xmap/.restore-visual-state {
   _ble_edit_mark_active=${prev[0]:-char}
   local nchar=${prev[1]:-1}
   local nline=${prev[2]:-1}
+  [[ $nchar == '$' ]] && nchar=1 _ble_keymap_vi_xmap_eol_extended=1
   ((nchar<1&&(nchar=1),nline<1&&(nline=1)))
 
   local is_x_relative=0
   if [[ $_ble_edit_mark_active == block ]]; then
     ((is_x_relative=1,nchar*=arg,nline*=arg))
   elif [[ $_ble_edit_mark_active == line ]]; then
-    ((nline*=arg))
+    ((nline*=arg,is_x_relative=1,nchar=1))
   else
     ((nline==1?(is_x_relative=1,nchar*=arg):(nline*=arg)))
   fi
@@ -3122,7 +3180,9 @@ function ble/widget/vi_xmap/.restore-visual-state {
   ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local b1=$ret
   ble-edit/content/find-logical-bol "$_ble_edit_ind" "$nline"; local b2=$ret
   ble-edit/content/find-logical-eol "$b2"; local e2=$ret
-  if ble/keymap:vi/use-textmap; then
+  if [[ $_ble_keymap_vi_xmap_eol_extended ]]; then
+    index=$e2
+  elif ble/keymap:vi/use-textmap; then
     local cols=$_ble_textmap_cols
     local b1x b1y b2x b2y x y
     ble/textmap#getxy.out --prefix=b1 "$b1"
@@ -3159,6 +3219,7 @@ function ble/widget/vi-command/visual-mode.impl {
   _ble_edit_overwrite_mode=
   _ble_edit_mark=$_ble_edit_ind
   _ble_edit_mark_active=$visual_type
+  _ble_keymap_vi_xmap_eol_extended=
 
   ((arg)) && ble/widget/vi_xmap/.restore-visual-state "$arg"
 
@@ -3232,8 +3293,10 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
   local c=$ret
   ble/util/c2s "$c"; local s=$ret
 
+  local mark_type=$_ble_edit_mark_active
   ble/widget/vi_xmap/.save-visual-state
-  if [[ $_ble_edit_mark_active == block ]]; then
+  ble/widget/vi_xmap/exit
+  if [[ $mark_type == block ]]; then
     ble/util/c2w "$c"; local w=$ret
     ((w<=0)) && w=1
 
@@ -3264,13 +3327,10 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
     local beg=$smin
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
-    ble/widget/vi_xmap/exit
-    return 0
-
   else
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
-    if [[ $_ble_edit_mark_active == line ]]; then
+    if [[ $mark_type == line ]]; then
       ble-edit/content/find-logical-bol "$beg"; local beg=$ret
       ble-edit/content/find-logical-eol "$end"; local end=$ret
     else
@@ -3281,12 +3341,43 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
     _ble_edit_str.replace "$beg" "$end" "$ins"
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
-    ble/widget/vi_xmap/exit
   fi
 }
 function ble/widget/vi_xmap/visual-replace-char {
   ble/keymap:vi/async-read-char ble/widget/vi_xmap/visual-replace-char.hook
 }
+
+function ble/widget/vi_xmap/linewise-operator.impl {
+  local op=$1 opts=$2
+  local arg flag; ble/keymap:vi/get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/.bell 'wrong keymap: xmap ではオペレータは設定されないはず'
+    return
+  fi
+
+  local mark_type=$_ble_edit_mark_active
+  local beg=$_ble_edit_mark end=$_ble_edit_ind
+  ((beg<=end)) || local beg=$end end=$beg
+
+  ble/widget/vi_xmap/.save-visual-state
+  ble/widget/vi_xmap/exit
+  if [[ :$opts: != *:force_line:* && $mark_type == block ]]; then
+    [[ :$opts: == *:extend:* ]] && _ble_keymap_vi_xmap_eol_extended=1
+    ble/keymap:vi/call-operator-blockwise "$op" "$beg" "$end" $arg
+  else
+    ble/keymap:vi/call-operator-linewise "$op" "$beg" "$end" $arg
+  fi
+  ble/keymap:vi/adjust-command-mode
+}
+
+# xmap C
+function ble/widget/vi_xmap/replace-block-lines { ble/widget/vi_xmap/linewise-operator.impl c extend; }
+# xmap D X
+function ble/widget/vi_xmap/delete-block-lines { ble/widget/vi_xmap/linewise-operator.impl d extend; }
+# xmap R S
+function ble/widget/vi_xmap/delete-lines { ble/widget/vi_xmap/linewise-operator.impl d force_line; }
+# xmap Y
+function ble/widget/vi_xmap/copy-block-or-lines { ble/widget/vi_xmap/linewise-operator.impl y; }
 
 
 function ble-decode-keymap:vi_xmap/define {
@@ -3302,19 +3393,31 @@ function ble-decode-keymap:vi_xmap/define {
   # ble-bind -f a   vi-command/text-object
   # ble-bind -f i   vi-command/text-object
 
-  ble-bind -f '~' 'vi-command/set-operator toggle_case'
-  ble-bind -f 'u' 'vi-command/set-operator u'
-  ble-bind -f 'U' 'vi-command/set-operator U'
-  ble-bind -f '?' 'vi-command/set-operator rot13'
-  ble-bind -f 's' 'vi-command/set-operator c'
-
   ble-bind -f 'C-\ C-n' vi_xmap/cancel
   ble-bind -f 'C-\ C-g' vi_xmap/cancel
   ble-bind -f v   vi_xmap/switch-to-charwise
   ble-bind -f V   vi_xmap/switch-to-linewise
   ble-bind -f C-v vi_xmap/switch-to-blockwise
 
+  ble-bind -f '~' 'vi-command/set-operator toggle_case'
+  ble-bind -f 'u' 'vi-command/set-operator u'
+  ble-bind -f 'U' 'vi-command/set-operator U'
+  ble-bind -f '?' 'vi-command/set-operator rot13'
+
+  ble-bind -f 's' 'vi-command/set-operator c'
+  ble-bind -f 'x'    'vi-command/set-operator d'
+  ble-bind -f delete 'vi-command/set-operator d'
+  # ble-bind -f C-h    'vi-command/set-operator d' # for smap
+  # ble-bind -f DEL    'vi-command/set-operator d' # for smap
+
   ble-bind -f r vi_xmap/visual-replace-char
+
+  ble-bind -f C vi_xmap/replace-block-lines
+  ble-bind -f D vi_xmap/delete-block-lines
+  ble-bind -f X vi_xmap/delete-block-lines
+  ble-bind -f S vi_xmap/delete-lines
+  ble-bind -f R vi_xmap/delete-lines
+  ble-bind -f Y vi_xmap/copy-block-or-lines
 }
 
 #------------------------------------------------------------------------------
