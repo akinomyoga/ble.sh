@@ -331,7 +331,7 @@ function ble-syntax/print-status/ctx#get-text {
   eval "$ble_util_upvar_setup"
 
   local sgr
-  ble-syntax:bash/ctx#get_name -v ret "$1"
+  ble-syntax/ctx#get_name -v ret "$1"
   ret=${ret#BLE_}
   if [[ ! $ret ]]; then
     ble-color-face2sgr syntax_error
@@ -765,14 +765,8 @@ function ble-syntax/parse/touch-updated-word {
 
 #==============================================================================
 #
-# Bash Script 文法
+# 文脈値
 #
-#------------------------------------------------------------------------------
-
-# @var _BLE_SYNTAX_FCTX[]
-# @var _BLE_SYNTAX_FEND[]
-#   以上の二つの配列を通して文法要素は最終的に登録される。
-#   (逆に言えば上の二つの配列を弄れば別の文法の解析を実行する事もできる)
 
 # 文脈値達 from ble-syntax-ctx.def
 #%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print $1 "=" $2;}'
@@ -781,13 +775,41 @@ function ble-syntax/parse/touch-updated-word {
 _ble_syntax_bash_ctx_names=(
 #%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
 )
-function ble-syntax:bash/ctx#get_name {
+function ble-syntax/ctx#get_name {
   if [[ $1 == -v ]]; then
     eval "$2=\${_ble_syntax_bash_ctx_names[\$3]}"
   else
-    ble-syntax:bash/ctx#get_name -v ret "$1"
+    ble-syntax/ctx#get_name -v ret "$1"
   fi
 }
+
+# @var _BLE_SYNTAX_FCTX[]
+# @var _BLE_SYNTAX_FEND[]
+#   以上の二つの配列を通して文法要素は最終的に登録される。
+#   (逆に言えば上の二つの配列を弄れば別の文法の解析を実行する事もできる)
+_BLE_SYNTAX_FCTX=()
+_BLE_SYNTAX_FEND=()
+
+#==============================================================================
+#
+# 空文法
+#
+#------------------------------------------------------------------------------
+
+function ble-syntax:text/ctx-unspecified {
+  ((i+=${#tail}))
+  return 0
+}
+_BLE_SYNTAX_FCTX[CTX_UNSPECIFIED]=ble-syntax:text/ctx-unspecified
+
+function ble-syntax:text/initialize-ctx { ctx=$CTX_UNSPECIFIED; }
+function ble-syntax:text/initialize-vars { :; }
+
+#==============================================================================
+#
+# Bash Script 文法
+#
+#------------------------------------------------------------------------------
 
 _ble_syntax_bash_IFS=$' \t\n'
 _ble_syntax_bash_rex_spaces=$'[ \t]+'
@@ -1263,9 +1285,6 @@ function ble-syntax:bash/check-history-expansion {
 
 #------------------------------------------------------------------------------
 # 文脈: 各種文脈
-
-_BLE_SYNTAX_FCTX=()
-_BLE_SYNTAX_FEND=()
 
 _BLE_SYNTAX_FCTX[CTX_QUOT]=ble-syntax:bash/ctx-quot
 function ble-syntax:bash/ctx-quot {
@@ -2844,7 +2863,7 @@ function ble-syntax/parse {
 
   # 解析途中状態の復元
   local ctx wbegin wtype inest tchild tprev nparam
-  if [[ ${_ble_syntax_stat[i1]} ]]; then
+  if [[ i1 -gt 0 && ${_ble_syntax_stat[i1]} ]]; then
     local -a stat
     stat=(${_ble_syntax_stat[i1]})
     local wlen="${stat[1]}" nlen="${stat[3]}" tclen="${stat[4]}" tplen="${stat[5]}"
@@ -2859,7 +2878,6 @@ function ble-syntax/parse {
     # 初期値
     ctx="$CTX_UNSPECIFIED" ##!< 現在の解析の文脈 
     ble-syntax:"$_ble_syntax_lang"/initialize-ctx # ctx 初期化
-    ctx="$CTX_CMDX" ##!< 現在の解析の文脈 (CTX_CMDX は ble-syntax:bash 特有)
     wbegin=-1       ##!< シェル単語内にいる時、シェル単語の開始位置
     wtype=-1        ##!< シェル単語内にいる時、シェル単語の種類
     inest=-1        ##!< 入れ子の時、親の開始位置

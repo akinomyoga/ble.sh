@@ -55,6 +55,11 @@ function ble-form/panel#goto.draw {
   ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
   ble-form/goto.draw "$x" $((ret+y))
 }
+function ble-form/panel#report-cursor-position {
+  local index=$1 x=${2-0} y=${3-0} ret
+  ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
+  ((_ble_line_x=x,_ble_line_y=ret+y))
+}
 
 function ble-form/panel#increase-total-height.draw {
   local delta=$1

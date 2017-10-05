@@ -101,7 +101,7 @@ IFS=$' \t\n'
 # check environment
 
 function ble/.check-environment {
-  local posixCommandList='sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat'
+  local posixCommandList='sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat wc'
   if ! type $posixCommandList &>/dev/null; then
     local cmd commandMissing=
     for cmd in $posixCommandList; do

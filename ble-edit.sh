@@ -2020,7 +2020,7 @@ function ble-edit/detach {
 #------------------------------------------------------------------------------
 # **** textarea ****                                                  @textarea
 
-_ble_textarea_VARNAMES=(_ble_textarea_{bufferName,scroll,gendx,gendy,invalidated,caret_state})
+_ble_textarea_VARNAMES=(_ble_textarea_{bufferName,scroll,gendx,gendy,invalidated,caret_state,panel})
 _ble_textarea_ARRNAMES=(_ble_textarea_{buffer,cur,cache})
 
 # **** textarea.buffer ****                                    @textarea.buffer
@@ -2148,6 +2148,7 @@ function ble/textare#slice-text-buffer {
 ##     キャレットが最も左の列にある場合は右側の文字に適用される SGR フラグを保持します。
 _ble_textarea_cur=(0 0 32 0)
 
+_ble_textarea_panel=0
 _ble_textarea_scroll=
 _ble_textarea_gendx=0
 _ble_textarea_gendy=0
@@ -2237,9 +2238,9 @@ function ble/textarea#render/.perform-scroll {
     if ((_ble_textarea_scroll>new_scroll)); then
       local shift=$((_ble_textarea_scroll-new_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
-      ble-form/panel#goto.draw 0 0 $((height-draw_shift))
+      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
       ble-edit/draw/put.dl "$draw_shift"
-      ble-form/panel#goto.draw 0 0 "$scry"
+      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
       ble-edit/draw/put.il "$draw_shift"
 
       if ((new_scroll==0)); then
@@ -2251,9 +2252,9 @@ function ble/textarea#render/.perform-scroll {
     else
       local shift=$((new_scroll-_ble_textarea_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
-      ble-form/panel#goto.draw 0 0 "$scry"
+      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
       ble-edit/draw/put.dl "$draw_shift"
-      ble-form/panel#goto.draw 0 0 $((height-draw_shift))
+      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
       ble-edit/draw/put.il "$draw_shift"
 
       ble/textmap#get-index-at 0 $((new_scroll+height-draw_shift)); fmin=$index
@@ -2266,7 +2267,7 @@ function ble/textarea#render/.perform-scroll {
       ble/textmap#getxy.out --prefix=fmin "$fmin"
       ble/textmap#getxy.out --prefix=fmax "$fmax"
 
-      ble-form/panel#goto.draw 0 "$fminx" $((fminy-new_scroll))
+      ble-form/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
       ((new_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
       local ret; ble/textare#slice-text-buffer "$fmin" "$fmax"
       ble-edit/draw/put "$ret"
@@ -2291,7 +2292,7 @@ function ble/textarea#render/.perform-scroll {
 ##
 function ble/textarea#render/.show-scroll-at-first-line {
   if ((_ble_textarea_scroll!=0)); then
-    ble-form/panel#goto.draw 0 "$begx" "$begy"
+    ble-form/panel#goto.draw "$_ble_textarea_panel" "$begx" "$begy"
     local scroll_status="(line $((_ble_textarea_scroll+2))) ..."
     scroll_status=${scroll_status::cols-1-begx}
     ble-edit/draw/put "$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
@@ -2313,7 +2314,7 @@ function ble/textarea#render {
   local caret_state="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
   if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == $caret_state ]]; then
     local -a DRAW_BUFF
-    ble-form/panel#goto.draw 0 "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
+    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
     ble-edit/draw/bflush
     return
   fi
@@ -2369,7 +2370,7 @@ function ble/textarea#render {
   local height=$((LINES-1)) # todo: info の高さも考慮に入れる
   local scroll=$_ble_textarea_scroll
   ble/textarea#render/.determine-scroll # update: height scroll umin umax
-  ble-form/panel#set-height.draw 0 "$height"
+  ble-form/panel#set-height.draw "$_ble_textarea_panel" "$height"
 
   local gend gendx gendy
   if [[ $scroll ]]; then
@@ -2397,31 +2398,31 @@ function ble/textarea#render {
       ble/textmap#getxy.out --prefix=umin "$umin"
       ble/textmap#getxy.out --prefix=umax "$umax"
 
-      ble-form/panel#goto.draw 0 "$uminx" $((uminy-_ble_textarea_scroll))
+      ble-form/panel#goto.draw "$_ble_textarea_panel" "$uminx" $((uminy-_ble_textarea_scroll))
       ble/textare#slice-text-buffer "$umin" "$umax"
       ble-edit/draw/put "$ret"
-      _ble_line_x="$umaxx" _ble_line_y=$((umaxy-_ble_textarea_scroll))
+      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$umaxx" $((umaxy-_ble_textarea_scroll))
     fi
 
     if ((BLELINE_RANGE_UPDATE[0]>=0)); then
       local endY=$((endy-_ble_textarea_scroll))
-      ((endY<height)) && ble-form/panel#clear-after.draw 0 "$endx" "$endY"
+      ((endY<height)) && ble-form/panel#clear-after.draw "$_ble_textarea_panel" "$endx" "$endY"
     fi
   else
     # 全体更新
-    ble-form/panel#clear.draw 0
+    ble-form/panel#clear.draw "$_ble_textarea_panel"
 
     # プロンプト描画
-    ble-form/panel#goto.draw 0
+    ble-form/panel#goto.draw "$_ble_textarea_panel"
     ble-edit/draw/put "$esc_prompt"
-    _ble_line_x="$prox" _ble_line_y="$proy"
+    ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$prox" "$proy"
 
     # 全体描画
     if [[ ! $_ble_textarea_scroll ]]; then
       ble/textare#slice-text-buffer # → ret
       esc_line="$ret" esc_line_set=1
       ble-edit/draw/put "$ret"
-      _ble_line_x=$_ble_textarea_gendx _ble_line_y=$_ble_textarea_gendy
+      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
     else
       ble/textarea#render/.show-scroll-at-first-line
 
@@ -2434,17 +2435,18 @@ function ble/textarea#render {
       ble/textmap#getxy.out --prefix=gbeg "$gbeg"
       ((gbegy-=_ble_textarea_scroll))
 
-      ble-form/panel#goto.draw 0 "$gbegx" "$gbegy"
+      ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
       ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
       ble/textare#slice-text-buffer "$gbeg" "$gend"
       ble-edit/draw/put "$ret"
+      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
       ((_ble_line_x=gendx,_ble_line_y+=gendy-gbegy))
     fi
   fi
 
   # 3 移動
   local gcx=$cx gcy=$((cy-_ble_textarea_scroll))
-  ble-form/panel#goto.draw 0 "$gcx" "$gcy"
+  ble-form/panel#goto.draw "$_ble_textarea_panel" "$gcx" "$gcy"
   ble-edit/draw/bflush
 
   # 4 後で使う情報の記録
@@ -2470,7 +2472,7 @@ function ble/textarea#render {
         ble/textmap#getxy.out --prefix=gbeg "$gbeg"
         ((gbegy-=_ble_textarea_scroll))
 
-        ble-form/panel#goto.draw 0 "$gbegx" "$gbegy"
+        ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
         ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
         ble/textare#slice-text-buffer "$gbeg" "$gend"
         ble-edit/draw/put "$ret"
@@ -2509,16 +2511,15 @@ function ble/textarea#redraw-cache {
 
     local -a DRAW_BUFF
 
-    ble-form/panel#clear.draw 0
-    ble-form/panel#goto.draw 0
+    ble-form/panel#clear.draw "$_ble_textarea_panel"
+    ble-form/panel#goto.draw "$_ble_textarea_panel"
     ble-edit/draw/put "${d[0]}"
-    _ble_line_x=${d[5]}
-    _ble_line_y=${d[6]}
+    ble-form/panel#report-cursor-position "$_ble_textarea_panel" "${d[5]}" "${d[6]}"
     _ble_textarea_gendx=${d[5]}
     _ble_textarea_gendy=${d[6]}
 
     _ble_textarea_cur=("${d[@]:1:4}")
-    ble-form/panel#goto.draw 0 "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
+    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
     ble-edit/draw/bflush
   else
     ble/textarea#redraw
@@ -2568,6 +2569,7 @@ function ble/textarea#save-state {
 
   # _ble_edit_prompt
   ble/array#push arrs _ble_edit_prompt
+  ble/array#push vars _ble_edit_PS1
 
   # _ble_edit_*
   ble/array#push vars "${_ble_edit_VARNAMES[@]}"
@@ -3036,19 +3038,18 @@ function ble/widget/delete-forward-char {
 function ble/widget/delete-backward-char {
   ble/widget/.delete-char -1 || ble/widget/.bell
 }
-function ble/widget/delete-forward-char-or-exit {
-  if [[ $_ble_edit_str ]]; then
-    ble/widget/delete-forward-char
-    return
-  fi
+function ble/widget/exit {
+  local opts=$1
 
-  # job が残っている場合
-  local joblist
-  ble/util/joblist
-  if ((${#joblist[@]})); then
-    ble/widget/.bell "(exit) ジョブが残っています!"
-    ble/widget/.SHELL_COMMAND 'printf %s "$_ble_util_joblist_jobs"'
-    return
+  if [[ :$opts: != *:force:* ]]; then
+    # job が残っている場合
+    local joblist
+    ble/util/joblist
+    if ((${#joblist[@]})); then
+      ble/widget/.bell "(exit) ジョブが残っています!"
+      ble/widget/.SHELL_COMMAND jobs
+      return
+    fi
   fi
 
   #_ble_edit_detach_flag=exit
@@ -3056,11 +3057,19 @@ function ble/widget/delete-forward-char-or-exit {
   #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   ble-edit/info/hide
   local -a DRAW_BUFF
-  ble-form/panel#goto.draw 0 "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+  ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble-edit/draw/bflush
   ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
   ble/util/buffer.flush >&2
   exit
+}
+function ble/widget/delete-forward-char-or-exit {
+  if [[ $_ble_edit_str ]]; then
+    ble/widget/delete-forward-char
+    return
+  else
+    ble/widget/exit
+  fi
 }
 function ble/widget/delete-forward-backward-char {
   ble/widget/.delete-char 0 || ble/widget/.bell
@@ -4026,7 +4035,7 @@ function ble/widget/.insert-newline {
 
   # 新しい描画領域
   local -a DRAW_BUFF
-  ble-form/panel#goto.draw 0 "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+  ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/bflush
   ble/util/joblist.bflush
@@ -5182,7 +5191,7 @@ else
       # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
       ((_ble_line_y++,_ble_line_x=0))
       local -a DRAW_BUFF=()
-      ble-form/panel#goto.draw 0 "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+      ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
       ble-edit/draw/flush
     fi
   }
