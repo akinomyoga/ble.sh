@@ -130,6 +130,8 @@ function ble/lib/vim-surround.sh/async-inputtarget-noarg {
 : ${bleopt_vim_surround_q:=\"} # ysiwQ
 : ${bleopt_vim_surround_Q:=\'} # ysiwq
 
+_ble_lib_vim_surround_previous_tag=html
+
 ## 関数 ble/lib/vim-surround.sh/load-template ins
 ##   @param[in] ins
 ##   @var[out] template
@@ -152,7 +154,15 @@ function ble/lib/vim-surround.sh/load-template {
   # default
 
   case "$ins" in
-  (['<t']) return 1 ;;
+  (['<tT']*)
+    local tag=${ins:1}; tag=${tag//$'\r'/' '}
+    if [[ ! $tag ]]; then
+      tag=$_ble_lib_vim_surround_previous_tag
+    else
+      _ble_lib_vim_surround_previous_tag=$tag
+    fi
+    local end_tag=${tag%%[$' \t\n']*}
+    template="<$tag>"$'\r'"</$end_tag>" ;;
   ('(') template=$'( \r )' ;;
   ('[') template=$'[ \r ]' ;;
   ('{') template=$'{ \r }' ;;
@@ -218,10 +228,22 @@ _ble_lib_vim_surround_ys=()
 function ble/keymap:vi/operator:ys {
   _ble_lib_vim_surround_ys=("$@")
   _ble_keymap_vi_operator_delayed=1
-  ble/lib/vim-surround.sh/async-inputtarget-noarg ble/widget/vim-surround.sh/ysurround.hook
+  ble/lib/vim-surround.sh/async-inputtarget-noarg ble/widget/vim-surround.sh/ysurround.hook1
 }
-
-function ble/widget/vim-surround.sh/ysurround.hook {
+function ble/widget/vim-surround.sh/ysurround.hook1 {
+  local ins=$1
+  if local rex='^ ?[<tT]$'; [[ $ins =~ $rex ]]; then
+    ble/keymap:vi/async-commandline-mode "ble/widget/vim-surround.sh/ysurround.hook2 '$ins'"
+    _ble_edit_PS1='<'
+  else
+    ble/widget/vim-surround.sh/ysurround.core "$ins"
+  fi
+}
+function ble/widget/vim-surround.sh/ysurround.hook2 {
+  local ins=$1 tagName=$2
+  ble/widget/vim-surround.sh/ysurround.core "$ins$tagName"
+}
+function ble/widget/vim-surround.sh/ysurround.core {
   local ins=$1
 
   local ret
@@ -424,10 +446,20 @@ function ble/widget/vim-surround.sh/dsurround {
 
 _ble_lib_vim_surround_cs_del=
 
+function ble/widget/vim-surround.sh/csurround.hook3 {
+  local del=$_ble_lib_vim_surround_cs_del ins=$1 tagName=$2
+  local arg flag; ble/keymap:vi/get-arg 1 # flag=cs
+  ble/widget/vim-surround.sh/csurround.core "$arg" "$del" "$ins$tagName" || ble/widget/vi-command/bell
+}
 function ble/widget/vim-surround.sh/csurround.hook2 {
   local del=$_ble_lib_vim_surround_cs_del ins=$1
-  local arg flag; ble/keymap:vi/get-arg 1 # flag=cs
-  ble/widget/vim-surround.sh/csurround.core "$arg" "$del" "$ins" || ble/widget/vi-command/bell
+  if local rex='^ ?[<tT]$'; [[ $ins =~ $rex ]]; then
+    ble/keymap:vi/async-commandline-mode "ble/widget/vim-surround.sh/csurround.hook3 '$ins'"
+    _ble_edit_PS1='<'
+  else
+    local arg flag; ble/keymap:vi/get-arg 1 # flag=cs
+    ble/widget/vim-surround.sh/csurround.core "$arg" "$del" "$ins" || ble/widget/vi-command/bell
+  fi
 }
 function ble/widget/vim-surround.sh/csurround.hook1 {
   local del=$1
