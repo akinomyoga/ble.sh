@@ -549,7 +549,7 @@ function ble-highlight-layer:region/update {
       # 端点の移動による再描画
       ble-highlight-layer:region/update-dirty-range omin rmin
       ble-highlight-layer:region/update-dirty-range omax rmax
-      if ((olen||rlen)); then
+      if ((olen>1||rlen>1)); then
         # 複数範囲選択
         ble-highlight-layer:region/update-dirty-range rmin rmax
       fi

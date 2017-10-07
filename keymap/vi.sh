@@ -325,6 +325,14 @@ function ble/keymap:vi/adjust-command-mode {
     kmap_popped=1
   fi
 
+  # search による mark の設定・解除
+  if [[ $_ble_keymap_vicmd_search_activate ]]; then
+    _ble_edit_mark_active=$_ble_keymap_vicmd_search_activate
+    _ble_keymap_vicmd_search_activate=
+  else
+    _ble_edit_mark_active=
+  fi
+
   if [[ $_ble_decode_key__kmap == vi_command && $_ble_keymap_vi_single_command ]]; then
     if ((_ble_keymap_vi_single_command==2)); then
       local index=$((_ble_edit_ind+1))
@@ -348,6 +356,7 @@ function ble/widget/vi-command/.insert-mode {
   [[ $_ble_decode_key__kmap == vi_omap ]] && ble-decode/keymap/pop
   local arg=$1 overwrite=$2
   ble/widget/vi-insert/.reset-repeat "$arg"
+  _ble_edit_mark_active=
   _ble_edit_overwrite_mode=$overwrite
   _ble_keymap_vi_insert_overwrite=$overwrite
   _ble_keymap_vi_single_command=
@@ -1817,6 +1826,7 @@ function ble/widget/vi-command/history-beginning {
   else
     ble/widget/history-beginning
   fi
+  ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -1839,6 +1849,7 @@ function ble/widget/vi-command/history-end {
   else
     ble/widget/history-end
   fi
+  ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -2600,7 +2611,9 @@ function ble/widget/vi-command/text-object {
 }
 
 #------------------------------------------------------------------------------
-# nmap :cmd
+# Command
+#
+# map: :cmd
 
 function ble/widget/vi-command/commandline {
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
@@ -2640,6 +2653,212 @@ function ble/widget/vi-command:wq {
   ble/widget/vi-command:w "$@"
   ble/widget/exit
   ble/keymap:vi/adjust-command-mode
+}
+
+#------------------------------------------------------------------------------
+# Search
+#
+# map: / ? n N
+
+_ble_keymap_vicmd_search_obackward=
+_ble_keymap_vicmd_search_ohistory=
+_ble_keymap_vicmd_search_needle=
+_ble_keymap_vicmd_search_activate=
+function ble-highlight-layer:region/mark:search/get-selection {
+  ble-highlight-layer:region/mark:char/get-selection
+}
+function ble/widget/vi-command/search/.call-search {
+  local ind=$_ble_edit_ind
+
+  # 検索開始位置
+  if ((opt_optional_next)); then
+    if ((!opt_backward)); then
+      ((_ble_edit_ind<${#_ble_edit_str}&&_ble_edit_ind++))
+    fi
+  elif ((opt_locate)) || [[ $_ble_edit_mark_active != search && ! $_ble_keymap_vicmd_search_activate ]]; then
+    # 何にも一致していない状態から
+    if ((opt_backward)); then
+      ble-edit/content/eolp || ((_ble_edit_ind++))
+    fi
+  else
+    # _ble_edit_ind .. _ble_edit_mark[+1] に一致しているとき
+    if ((!opt_backward)); then
+      ((_ble_edit_ind=_ble_edit_mark))
+      ble-edit/content/eolp || ((_ble_edit_ind++))
+    fi
+  fi
+
+  ble-edit/isearch/search "$@"; local ret=$?
+  _ble_edit_ind=$ind
+  return "$ret"
+}
+
+## 関数 ble/widget/vi-command/search.core
+##
+##   @var[in] needle
+##   @var[in] opt_backward history
+##   @var[in] opt_history
+##   @var[in] opt_locate
+##   @var[in] start dir
+##   @var[in] ntask
+##
+function ble/widget/vi-command/search.core {
+  local beg= end= is_empty_match=
+  if ble/widget/vi-command/search/.call-search "$needle" "$dir:regex"; then
+    if ((beg<end)); then
+      ble-edit/content/bolp "$end" || ((end--))
+      _ble_edit_ind=$beg # eol 補正は search.impl 側で最後に行う
+      _ble_edit_mark=$end
+      _ble_keymap_vicmd_search_activate=search
+      return 0
+    else
+      # vim では空一致は即座に失敗のようだ。
+      # 続きを検索するということはしない。
+      opt_history=
+      is_empty_match=1
+    fi
+  fi
+
+  if ((opt_history)) && [[ $_ble_edit_history_loaded || opt_backward -ne 0 ]]; then
+    ble-edit/history/load
+    local index=$_ble_edit_history_ind
+    [[ $start ]] || start=$index
+    if ((opt_backward)); then
+      ((index--))
+    else
+      ((index++))
+    fi
+
+    local _ble_edit_isearch_dir=$dir
+    local _ble_edit_isearch_str=$needle
+    local isearch_ntask=$ntask
+    local isearch_time=0
+    if ((opt_backward)); then
+      ble-edit/isearch/backward-search-history-blockwise regex:progress
+    else
+      ble-edit/isearch/forward-search-history regex:progress
+    fi; local r=$?
+    ble-edit/info/default
+    
+    if ((r==0)); then
+      [[ $index != "$_ble_edit_history_ind" ]] &&
+        ble-edit/history/goto "$index"
+      if ((opt_backward)); then
+        local i=${#_ble_edit_str}
+        ble/keymap:vi/needs-eol-fix "$i" && ((i--))
+        ble/widget/.goto-char "$i"
+      else
+        ble/widget/.goto-char 0
+      fi
+
+      opt_locate=1 opt_history=0 ble/widget/vi-command/search.core
+      return
+    fi
+  fi
+
+  if ((!opt_optional_next)); then
+    if [[ $is_empty_match ]]; then
+      ble/widget/.bell "search: empty match"
+    else
+      ble/widget/.bell "search: not found"
+    fi
+    if [[ $_ble_edit_mark_active == search ]]; then
+      _ble_keymap_vicmd_search_activate=search
+    fi
+  fi
+  return 1
+}
+function ble/widget/vi-command/search.impl {
+  local arg flag; ble/keymap:vi/get-arg 1
+
+  local opts=$1 needle=$2
+  [[ :$opts: != *:repeat:* ]]; local opt_repeat=$? # 再検索 n N
+  [[ :$opts: != *:history:* ]]; local opt_history=$? # 履歴検索が有効か
+  [[ :$opts: != *:-:* ]]; local opt_backward=$? # 逆方向
+  local opt_locate=0
+  local opt_optional_next=0
+  if ((opt_repeat)); then
+    # n N
+    if [[ $_ble_keymap_vicmd_search_needle ]]; then
+      needle=$_ble_keymap_vicmd_search_needle
+      ((opt_backward^=_ble_keymap_vicmd_search_obackward,
+        opt_history=_ble_keymap_vicmd_search_ohistory))
+    else
+      ble/widget/vi-command/bell 'no previous search'
+      return 1
+    fi
+  else
+    # / ?
+    if [[ $needle ]]; then
+      _ble_keymap_vicmd_search_needle=$needle
+      _ble_keymap_vicmd_search_obackward=$opt_backward
+      _ble_keymap_vicmd_search_ohistory=$opt_history
+    elif [[ $_ble_keymap_vicmd_search_needle ]]; then
+      needle=$_ble_keymap_vicmd_search_needle
+      _ble_keymap_vicmd_search_obackward=$opt_backward
+      _ble_keymap_vicmd_search_ohistory=$opt_history
+    else
+      ble/widget/vi-command/bell 'no previous search'
+      return 1
+    fi
+  fi
+
+  if [[ $flag ]]; then
+    local original_ind=$_ble_edit_ind
+    opt_history=0
+  fi
+
+  local start= # 初めの履歴番号。search.core 内で最初に履歴を読み込んだあとで設定される。
+  local dir=+; ((opt_backward)) && dir=-
+  local ntask=$arg
+  while ((ntask)); do
+    ble/widget/vi-command/search.core || break
+    ((ntask--))
+  done
+
+  if [[ $flag ]]; then
+    if ((ntask)); then
+      # 検索対象が見つからなかったとき
+      _ble_keymap_vicmd_search_activate=
+      ble/widget/.goto-char "$original_ind"
+      ble/keymap:vi/adjust-command-mode
+    else
+      # 見つかったとき
+      if ((_ble_edit_ind==original_index)); then
+        # 範囲が空のときは次の一致場所まで。
+        # 次の一致場所がないとき (自分自身のとき) は空領域になる。
+        opt_optional_next=1 ble/widget/vi-command/search.core
+      fi
+      local index=$_ble_edit_ind
+
+      _ble_keymap_vicmd_search_activate=
+      ble/widget/.goto-char "$original_ind"
+      ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
+    fi
+  else
+    if ((ntask<arg)) && ble/keymap:vi/needs-eol-fix; then
+      if ((!opt_backward&&_ble_edit_ind<_ble_edit_mark)); then
+        ble/widget/.goto-char $((_ble_edit_ind+1))
+      else
+        ble/widget/.goto-char $((_ble_edit_ind-1))
+      fi
+    fi
+    ble/keymap:vi/adjust-command-mode
+  fi
+}
+function ble/widget/vi-command/search-forward {
+  ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
+  _ble_edit_PS1='/'
+}
+function ble/widget/vi-command/search-backward {
+  ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
+  _ble_edit_PS1='?'
+}
+function ble/widget/vi-command/search-repeat {
+  ble/widget/vi-command/search.impl repeat:+
+}
+function ble/widget/vi-command/search-reverse-repeat {
+  ble/widget/vi-command/search.impl repeat:-
 }
 
 #------------------------------------------------------------------------------
@@ -2742,15 +2961,30 @@ function ble/keymap:vi/setup-map {
 
   ble-bind -f 'C-\ C-n' nop
 
-
-  #----------------------------------------------------------------------------
-  # bash
-
-  ble-bind -f C-left  vi-command/backward-vword
-  #ble-bind -f M-left  vi-command/backward-uword
-  ble-bind -f C-right vi-command/forward-vword-end
-  #ble-bind -f M-right vi-command/forward-uword-end
+  ble-bind -f ':' vi-command/commandline
+  ble-bind -f '/' vi-command/search-forward
+  ble-bind -f '?' vi-command/search-backward
+  ble-bind -f 'n' vi-command/search-repeat
+  ble-bind -f 'N' vi-command/search-reverse-repeat
 }
+
+function ble-decode-keymap:vi_omap/define {
+  local ble_bind_keymap=vi_omap
+  ble/keymap:vi/setup-map
+
+  ble-bind -f __default__ vi_omap/default
+
+  ble-bind -f a   vi-command/text-object
+  ble-bind -f i   vi-command/text-object
+
+  ble-bind -f '~' 'vi-command/set-operator toggle_case'
+  ble-bind -f 'u' 'vi-command/set-operator u'
+  ble-bind -f 'U' 'vi-command/set-operator U'
+  ble-bind -f '?' 'vi-command/set-operator rot13'
+}
+
+#------------------------------------------------------------------------------
+# Normal mode
 
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
@@ -2822,22 +3056,6 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'C-g' bell
   ble-bind -f 'C-l' clear-screen
 
-  ble-bind -f : vi-command/commandline
-}
-
-function ble-decode-keymap:vi_omap/define {
-  local ble_bind_keymap=vi_omap
-  ble/keymap:vi/setup-map
-
-  ble-bind -f __default__ vi_omap/default
-
-  ble-bind -f a   vi-command/text-object
-  ble-bind -f i   vi-command/text-object
-
-  ble-bind -f '~' 'vi-command/set-operator toggle_case'
-  ble-bind -f 'u' 'vi-command/set-operator u'
-  ble-bind -f 'U' 'vi-command/set-operator U'
-  ble-bind -f '?' 'vi-command/set-operator rot13'
 }
 
 #------------------------------------------------------------------------------
@@ -3670,6 +3888,7 @@ function ble/keymap:vi/async-commandline-mode {
   _ble_edit_mark=0
   _ble_edit_mark_active=
   _ble_edit_overwrite_mode=
+  _ble_edit_arg=
 
   ble/textarea#invalidate
   ble-decode/keymap/push vi_cmap

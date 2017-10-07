@@ -2583,7 +2583,7 @@ function ble/textarea#save-state {
   ble/array#push arrs _ble_highlight_layer__list
   local layer names
   for layer in "${_ble_highlight_layer__list[@]}"; do
-    eval "names=(\"\${!_ble_highlight_layer_$name@}\")"
+    eval "names=(\"\${!_ble_highlight_layer_$layer@}\")"
     for name in "${names[@]}"; do
       if ble/is-array "$name"; then
         ble/array#push arrs "$name"
@@ -4599,29 +4599,233 @@ function ble-edit/isearch/.goto-match {
   _ble_edit_bind_force_draw=1
 }
 
-function ble-edit/isearch/next.fib {
-  local needle="${1-$_ble_edit_isearch_str}" isAdd="$2"
-  local ind="$_ble_edit_history_ind" beg= end=
+#---------------------------------------
+# Basic search functions
 
-  # isAdd -> 現在位置における伸張
-  # !isAdd -> 現在一致範囲と重複のない新しい一致
-  if [[ $_ble_edit_isearch_dir == - ]]; then
-    local target="${_ble_edit_str::(isAdd?_ble_edit_mark+1:_ble_edit_ind)}"
-    local m="${target%"$needle"*}"
-    if [[ $target != "$m" ]]; then
-      beg="${#m}"
-      end="$((beg+${#needle}))"
+## 関数 ble-edit/isearch/search needle opts ; beg end
+##   @param[in] needle
+##
+##   @param[in] opts
+##     コロン区切りのオプションです。
+##
+##     + ... forward に検索します (既定)
+##     - ... backward に検索します
+##
+##     regex
+##       正規表現による一致を試みます
+##
+##     extend
+##       これが指定された時、現在位置における一致の伸長が試みられます。
+##       指定されなかったとき、現在一致範囲と重複のない新しい一致が試みられます。
+##
+##   @var[out] beg end
+##     検索対象が見つかった時に一致範囲の先頭と終端を返します。
+##
+##   @exit
+##     検索対象が見つかった時に 0 を返します。
+##     それ以外のときに 1 を返します。
+function ble-edit/isearch/search {
+  local needle=$1 opts=$2
+  beg= end=
+  [[ :$opts: != *:regex:* ]]; local has_regex=$?
+  [[ :$opts: != *:extend:* ]]; local has_extend=$?
+
+  if [[ :$opts: == *:-:* ]]; then
+    local start=$((has_extend?_ble_edit_mark+1:_ble_edit_ind))
+
+    if ((has_regex)); then
+      ble-edit/isearch/.shift-backward-references
+      local rex="^.*($needle)" padding=$((${#_ble_edit_str}-start))
+      ((padding)) && rex="$rex.{$padding}"
+      if [[ $_ble_edit_str =~ $rex ]]; then
+        local rematch1=${BASH_REMATCH[1]}
+        end=$((${#BASH_REMATCH}-padding))
+        beg=$((end-${#rematch1}))
+        return 0
+      fi
+    else
+      local target=${_ble_edit_str::start}
+      local m=${target%"$needle"*}
+      if [[ $target != "$m" ]]; then
+        beg=${#m}
+        end=$((beg+${#needle}))
+        return 0
+      fi
     fi
   else
-    local target="${_ble_edit_str:(isAdd?_ble_edit_mark:_ble_edit_ind)}"
-    local m="${target#*"$needle"}"
-    if [[ $target != "$m" ]]; then
-      end="$((${#_ble_edit_str}-${#m}))"
-      beg="$((end-${#needle}))"
+    local start=$((has_extend?_ble_edit_mark:_ble_edit_ind))
+    if ((has_regex)); then
+      ble-edit/isearch/.shift-backward-references
+      local rex="($needle).*\$"
+      ((start)) && rex=".{$start}$rex"
+      if [[ $_ble_edit_str =~ $rex ]]; then
+        local rematch1=${BASH_REMATCH[1]}
+        beg=$((${#_ble_edit_str}-${#BASH_REMATCH}+start))
+        end=$((beg+${#rematch1}))
+        return 0
+      fi
+    else
+      local target=${_ble_edit_str:start}
+      local m=${target#*"$needle"}
+      if [[ $target != "$m" ]]; then
+        end=$((${#_ble_edit_str}-${#m}))
+        beg=$((end-${#needle}))
+        return 0
+      fi
     fi
   fi
+  return 1
+}
+## 関数 ble-edit/isearch/.shift-backward-references
+##   @var[in,out] needle
+##     処理する正規表現を指定します。
+##     後方参照をおきかえた正規表現を返します。
+function ble-edit/isearch/.shift-backward-references {
+    # 後方参照 (backward references) の番号を 1 ずつ増やす。
+    # bash 正規表現は 2 桁以上の後方参照に対応していないので、
+    # \1 - \8 を \2-\9 にずらすだけにする (\9 が存在するときに問題になるが仕方がない)。
+    local rex_cc='\[[@][^]@]+[@]\]' # [:space:] [=a=] [.a.] など。
+    local rex_bracket_expr='\[\^?]?('${rex_cc//@/:}'|'${rex_cc//@/=}'|'${rex_cc//@/.}'|[^][]|\[[^]:=.])*\[?\]'
+    local rex='^('$rex_bracket_expr'|\\[^1-8])*\\[1-8]'
+    local buff=
+    while [[ $needle =~ $rex ]]; do
+      local mlen=${#BASH_REMATCH}
+      buff=$buff${BASH_REMATCH::mlen-1}$((10#${BASH_REMATCH:mlen-1}+1))
+      needle=${needle:mlen}
+    done
+    needle=$buff$needle
+}
 
-  if [[ $beg ]]; then
+## 関数 ble-edit/isearch/forward-search-history opts
+## 関数 ble-edit/isearch/backward-search-history opts
+## 関数 ble-edit/isearch/backward-search-history-blockwise opts
+##
+##   backward-search-history-blockwise does blockwise search
+##   as a workaround for bash slow array access
+##
+##   @param[in] opts
+##     コロン区切りのオプション
+##     regex 正規表現による検索
+##     stop_check
+##     progress
+##
+##   @var[in] _ble_edit_history_edit
+##     検索対象の配列と全体の検索開始位置
+##   @var[in] start
+##     全体の検索開始位置を指定します。
+##   @var[in] needle
+##     検索文字列を指定します。
+##
+##   @var[in,out] index
+##     今回の呼び出しの検索開始位置を指定します。
+##     一致が成功したとき見つかった位置を返します。
+##     一致が中断されたとき次の位置 (再開時に最初に検査する位置) を返します。
+##
+##   @var[in,out] isearch_time
+##
+##   @var[in] isearch_ntask
+##     progress 表示に使用
+##
+##   @exit
+##     見つかったときに 0 を返します。
+##     見つからなかったときに 1 を返します。
+##     中断された時に 5 を返します。
+##
+function ble-edit/isearch/backward-search-history-blockwise {
+  local opts=$1
+  [[ :$opts: != *:regex:* ]]; local has_regex=$?
+  [[ :$opts: != *:stop_check:* ]]; local has_stop_check=$?
+  [[ :$opts: != *:progress:* ]]; local has_progress=$?
+
+  local NSTPCHK=1000 # 十分高速なのでこれぐらい大きくてOK
+  local NPROGRESS=$((NSTPCHK*2)) # 倍数である必要有り
+  local irest block j i=$index
+  index=
+  while ((i>=0)); do
+    ((block=start-i,
+      block<5&&(block=5),
+      irest=NSTPCHK-isearch_time%NSTPCHK,
+      block>i+1&&(block=i+1),
+      block>irest&&(block=irest)))
+
+    if ((has_regex)); then
+      for ((j=i-block;++j<=i;)); do
+        [[ ${_ble_edit_history_edit[j]} =~ $needle ]] && index=$j
+      done
+    else
+      for ((j=i-block;++j<=i;)); do
+        [[ ${_ble_edit_history_edit[j]} == *"$needle"* ]] && index=$j
+      done
+    fi
+
+    ((isearch_time+=block))
+    if [[ $index ]]; then
+      ((i=j))
+      return 0
+    fi
+
+    ((i-=block))
+    if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble/util/is-stdin-ready; then
+      return 5
+    elif ((has_progress&&isearch_time%NPROGRESS==0)); then
+      ble-edit/isearch/.draw-line-with-progress "$i"
+    fi
+  done
+  return 1
+}
+function ble-edit/isearch/next-history/forward-search-history.impl {
+  local opts=$1
+  [[ :$opts: != *:regex:* ]]; local has_regex=$?
+  [[ :$opts: != *:stop_check:* ]]; local has_stop_check=$?
+  [[ :$opts: != *:progress:* ]]; local has_progress=$?
+  [[ :$opts: != *:backward:* ]]; local has_backward=$?
+
+  if ((has_backward)); then
+    local expr_cond='index>=0' expr_incr='index--'
+  else
+    local expr_cond="index<${#_ble_edit_history_edit[@]}" expr_incr='index++'
+  fi
+
+  for ((;expr_cond;expr_incr)); do
+    ((isearch_time++))
+    if ((has_stop_check&&isearch_time%100==0)) && ble/util/is-stdin-ready; then
+      return 5
+    fi
+
+    if
+      if ((has_regex)); then
+        [[ ${_ble_edit_history_edit[index]} =~ $needle ]]
+      else
+        [[ ${_ble_edit_history_edit[index]} == *"$needle"* ]]
+      fi
+    then
+      return 0
+    fi
+
+    if ((has_progress&&isearch_time%1000==0)); then
+      ble-edit/isearch/.draw-line-with-progress "$index"
+    fi
+  done
+  return 1
+}
+function ble-edit/isearch/forward-search-history {
+  ble-edit/isearch/next-history/forward-search-history.impl "$1"
+}
+function ble-edit/isearch/backward-search-history {
+  ble-edit/isearch/next-history/forward-search-history.impl "$1:backward"
+}
+
+#---------------------------------------
+# Fibers
+
+## 関数 ble-edit/isearch/next.fib needle isAdd
+function ble-edit/isearch/next.fib {
+  local needle="${1-$_ble_edit_isearch_str}" isAdd="$2"
+  local ind="$_ble_edit_history_ind"
+
+  local beg= end= search_opts=$_ble_edit_isearch_dir
+  ((isAdd)) && search_opts=$search_opts:extend
+  if ble-edit/isearch/search "$needle" "$search_opts"; then
     ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
     return
   fi
@@ -4651,106 +4855,51 @@ function ble-edit/isearch/next.fib {
 ##   @var[in] _ble_edit_history_edit[]
 ##   @var[in,out] isearch_time
 ##
-## 関数 ble-edit/isearch/next-history/.blockwise-backward-search
-##   work around for bash slow array access: blockwise search
-##   @var[in,out] i ind susp
-##   @var[in,out] isearch_time
-##   @var[in] _ble_edit_history_edit start
-##
-function ble-edit/isearch/next-history/.blockwise-backward-search {
-  local NSTPCHK=1000 # 十分高速なのでこれぐらい大きくてOK
-  local NPROGRESS=$((NSTPCHK*2)) # 倍数である必要有り
-  local irest block j
-  while ((i>=0)); do
-    ((block=start-i,
-      block<5&&(block=5),
-      irest=NSTPCHK-isearch_time%NSTPCHK,
-      block>i+1&&(block=i+1),
-      block>irest&&(block=irest)))
-
-    for ((j=i-block;++j<=i;)); do
-      if [[ ${_ble_edit_history_edit[j]} == *"$needle"* ]]; then
-        ind="$j"
-      fi
-    done
-
-    ((isearch_time+=block))
-    if [[ $ind ]]; then
-      ((i=j))
-    else
-      ((i-=block))
-    fi
-
-    if [[ $ind ]]; then
-      break
-    elif ((isearch_time%NSTPCHK==0)) && ble/util/is-stdin-ready; then
-      susp=1
-      break
-    elif ((isearch_time%NPROGRESS==0)); then
-      ble-edit/isearch/.draw-line-with-progress "$i"
-    fi
-  done
-}
 function ble-edit/isearch/next-history.fib {
   if [[ $isearch_suspend ]]; then
     # resume the previous search
-    local needle="${isearch_suspend#*:}" isAdd=
-    local i start; eval "${isearch_suspend%%:*}"
+    local needle=${isearch_suspend#*:} isAdd=
+    local index start; eval "${isearch_suspend%%:*}"
     isearch_suspend=
   else
     # initialize new search
-    local needle="${1-$_ble_edit_isearch_str}" isAdd="$2"
-    local start="$_ble_edit_history_ind"
-    local i="$start"
+    local needle=${1-$_ble_edit_isearch_str} isAdd=$2
+    local start=$_ble_edit_history_ind
+    local index=$start
   fi
 
-  local dir="$_ble_edit_isearch_dir"
-  if [[ $dir == - ]]; then
-    # backward-search
-    local x_cond='i>=0' x_incr='i--'
-  else
-    # forward-search
-    local x_cond="i<${#_ble_edit_history_edit[@]}" x_incr='i++'
+  if ((isAdd)); then
+    if [[ $_ble_edit_isearch_dir == - ]]; then
+      ((index--))
+    else
+      ((index++))
+    fi
   fi
-  ((isAdd||x_incr))
 
   # 検索
-  local ind= susp=
-  if [[ $dir == - ]]; then
-    ble-edit/isearch/next-history/.blockwise-backward-search
+  if [[ $_ble_edit_isearch_dir == - ]]; then
+    ble-edit/isearch/backward-search-history-blockwise stop_check:progress
   else
-    for ((;x_cond;x_incr)); do
-      if ((++isearch_time%100==0)) && ble/util/is-stdin-ready; then
-        susp=1
-        break
-      fi
-      if [[ ${_ble_edit_history_edit[i]} == *"$needle"* ]]; then
-        ind="$i"
-        break
-      fi
-
-      if ((isearch_time%1000==0)); then
-        ble-edit/isearch/.draw-line-with-progress "$i"
-      fi
-    done
+    ble-edit/isearch/forward-search-history stop_check:progress
   fi
+  local r=$?
 
-  if [[ $ind ]]; then
+  if ((r==0)); then
     # 見付かった場合
 
     # 一致範囲 beg-end を取得
-    local str="${_ble_edit_history_edit[ind]}"
+    local str=${_ble_edit_history_edit[index]}
     if [[ $_ble_edit_isearch_dir == - ]]; then
-      local prefix="${str%"$needle"*}"
+      local prefix=${str%"$needle"*}
     else
-      local prefix="${str%%"$needle"*}"
+      local prefix=${str%%"$needle"*}
     fi
-    local beg="${#prefix}" end="$((${#prefix}+${#needle}))"
+    local beg=${#prefix} end=$((${#prefix}+${#needle}))
 
-    ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
-  elif [[ $susp ]]; then
+    ble-edit/isearch/.goto-match "$index" "$beg" "$end" "$needle"
+  elif ((r==5)); then
     # 中断した場合
-    isearch_suspend="i=$i start=$start:$needle"
+    isearch_suspend="index=$index start=$start:$needle"
     return
   else
     # 見つからなかった場合
