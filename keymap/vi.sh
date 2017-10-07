@@ -329,7 +329,7 @@ function ble/keymap:vi/adjust-command-mode {
   if [[ $_ble_keymap_vicmd_search_activate ]]; then
     _ble_edit_mark_active=$_ble_keymap_vicmd_search_activate
     _ble_keymap_vicmd_search_activate=
-  else
+  elif [[ $_ble_edit_mark_active == search ]]; then
     _ble_edit_mark_active=
   fi
 
@@ -2224,7 +2224,11 @@ function ble/keymap:vi/text-object/word.impl {
 
   local end=$((_ble_edit_ind+${#BASH_REMATCH}))
   [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
-  ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    ble/widget/vi-command/exclusive-goto.impl "$end"
+  else
+    ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
+  fi
 }
 
 function ble/keymap:vi/text-object/find-next-quote {
@@ -2266,7 +2270,12 @@ function ble/keymap:vi/text-object/quote.impl {
   # Note: ビジュアルモードでは繰り返し使うと範囲を拡大する (?) らしい
   if [[ $beg && $end ]]; then
     [[ $type == i* || arg -gt 1 ]] && ((beg++,end--))
-    ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
+    if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+      _ble_edit_mark="$beg"
+      ble/widget/vi-command/exclusive-goto.impl "$end"
+    else
+      ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
+    fi
   else
     ble/widget/vi-command/bell
     return 1
@@ -2315,7 +2324,10 @@ function ble/keymap:vi/text-object/block.impl {
     ((beg<end)) && ble-edit/content/bolp "$beg" && ble-edit/content/eolp "$end" && linewise=1
   fi
 
-  if [[ $linewise ]]; then
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    _ble_edit_mark="$beg"
+    ble/widget/vi-command/exclusive-goto.impl "$end"
+  elif [[ $linewise ]]; then
     local nolx= bolx=
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" goto_bol
   else
@@ -2389,7 +2401,12 @@ function ble/keymap:vi/text-object/tag.impl {
     rex='^<[^>]*>'; [[ ${_ble_edit_str:beg:end-beg} =~ $rex ]] && ((beg+=${#BASH_REMATCH}))
     rex='<[^>]*>$'; [[ ${_ble_edit_str:beg:end-beg} =~ $rex ]] && ((end-=${#BASH_REMATCH}))
   fi
-  ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    _ble_edit_mark="$beg"
+    ble/widget/vi-command/exclusive-goto.impl "$end"
+  else
+    ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
+  fi
 }
 
 ## 関数 ble/keymap:vi/text-object/sentence.impl/.beg
@@ -2489,9 +2506,12 @@ function ble/keymap:vi/text-object/sentence.impl {
     fi
   fi
 
-  # 行頭から LF の手前までのときに linewise になる。
-  # _ble_edit_str の末端までのときは linewise ではないことに注意する。
-  if ble-edit/content/bolp "$beg" && [[ ${_ble_edit_str:end:1} == $'\n' ]]; then
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    _ble_edit_mark="$beg"
+    ble/widget/vi-command/exclusive-goto.impl "$end"
+  elif ble-edit/content/bolp "$beg" && [[ ${_ble_edit_str:end:1} == $'\n' ]]; then
+    # 行頭から LF の手前までのときに linewise になる。
+    # _ble_edit_str の末端までのときは linewise ではないことに注意する。
     local bolx= nolx=
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" goto_bol
   else
@@ -2552,7 +2572,12 @@ function ble/keymap:vi/text-object/paragraph.impl {
     fi
   fi
   ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
-  ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    _ble_edit_mark="$beg"
+    ble/widget/vi-command/exclusive-goto.impl "$end"
+  else
+    ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag"
+  fi
 }
 
 ## 関数 ble/keymap:vi/text-object.impl
@@ -2599,7 +2624,7 @@ function ble/keymap:vi/.check-text-object {
 
   local arg flag; ble/keymap:vi/get-arg 1
   _ble_edit_arg=$arg$flag
-  [[ $flag ]] || return 1
+  [[ $flag || $_ble_decode_key__kmap == vi_xmap ]] || return 1
 
   _ble_keymap_vi_text_object=$c
   _ble_decode_key__hook=ble/keymap:vi/text-object.hook
@@ -3615,8 +3640,8 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f 'C-[' vi_xmap/exit
   ble-bind -f 'C-c' vi_xmap/cancel
 
-  # ble-bind -f a   vi-command/text-object
-  # ble-bind -f i   vi-command/text-object
+  ble-bind -f a vi-command/text-object
+  ble-bind -f i vi-command/text-object
 
   ble-bind -f 'C-\ C-n' vi_xmap/cancel
   ble-bind -f 'C-\ C-g' vi_xmap/cancel
