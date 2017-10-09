@@ -217,7 +217,7 @@ function ble/lib/vim-surround.sh/surround {
       indent=' '
     fi
     text=$indent$text
-    ble/keymap:vi/string#increase-indent "$text" 8
+    ble/keymap:vi/string#increase-indent "$text" "$bleopt_indent_offset"
     text=$'\n'$ret$'\n'$indent
   elif [[ $has_space ]]; then
     text=' '$text' '

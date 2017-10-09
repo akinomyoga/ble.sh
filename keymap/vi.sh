@@ -811,7 +811,7 @@ function ble/keymap:vi/expand-range-for-linewise-operator {
 
 function ble/keymap:vi/string#increase-indent {
   local text=$1 delta=$2
-  local space=$' \t'
+  local space=$' \t' it=${bleopt_tab_width:-$_ble_term_it}
   local arr; ble/string#split-lines arr "$text"
   local arr2 line indent i len x r
   for line in "${arr[@]}"; do
@@ -825,7 +825,7 @@ function ble/keymap:vi/string#increase-indent {
         if [[ ${indent:i:1} == ' ' ]]; then
           ((x++))
         else
-          ((x=(x+8)/8*8))
+          ((x=(x+it)/it*it))
         fi
       done
     fi
@@ -834,13 +834,18 @@ function ble/keymap:vi/string#increase-indent {
 
     indent=
     if ((x)); then
-      if ((r=x/8)); then
-        ble/string#repeat $'\t' "$r"
+      if ((bleopt_indent_tabs)); then
+        if ((r=x/it)); then
+          ble/string#repeat $'\t' "$r"
+          indent=$ret
+        fi
+        if ((r=x%it)); then
+          ble/string#repeat ' ' "$r"
+          indent=$indent$ret
+        fi
+      else
+        ble/string#repeat ' ' "$x"
         indent=$ret
-      fi
-      if ((r=x%8)); then
-        ble/string#repeat ' ' "$r"
-        indent=$indent$ret
       fi
     fi
 
@@ -863,11 +868,11 @@ function ble/keymap:vi/operator:increase-indent {
 }
 function ble/keymap:vi/operator:left {
   local context=$3 arg=${4:-1}
-  ble/keymap:vi/operator:increase-indent $((-8*arg)) "$context"
+  ble/keymap:vi/operator:increase-indent $((-bleopt_indent_offset*arg)) "$context"
 }
 function ble/keymap:vi/operator:right {
   local context=$3 arg=${4:-1}
-  ble/keymap:vi/operator:increase-indent $((8*arg)) "$context"
+  ble/keymap:vi/operator:increase-indent $((bleopt_indent_offset*arg)) "$context"
 }
 
 ## 関数 ble/widget/vi-command/exclusive-range.impl src dst flag nobell

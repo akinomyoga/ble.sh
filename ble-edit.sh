@@ -130,6 +130,32 @@ function bleopt/check:default_keymap {
   esac
 }
 
+## オプション bleopt_indent_offset
+##   シェルのインデント幅を指定します。既定では 4 です。
+: ${bleopt_indent_offset:=4}
+
+## オプション bleopt_indent_tabs
+##   インデントにタブを使用するかどうかを指定します。
+##   0 を指定するとインデントに空白だけを用います。
+##   それ以外の場合はインデントにタブを使用します。
+: ${bleopt_indent_tabs:=1}
+
+## オプション bleopt_tab_width
+##   タブの表示幅を指定します。
+##
+##   bleopt_tab_width= (既定)
+##     空文字列を指定したときは $(tput it) を用います。
+##   bleopt_tab_width=NUM
+##     数字を指定したときはその値をタブの幅として用います。
+: ${bleopt_tab_width:=}
+
+function bleopt/check:tab_width {
+  if [[ $value ]] && (((value=value)<=0)); then
+    echo "bleopt: an empty string or a positive value is required for tab_width." >&2
+    return 1
+  fi
+}
+
 # 
 #------------------------------------------------------------------------------
 # **** char width ****                                                @text.c2w
@@ -705,13 +731,12 @@ function ble-edit/draw/trace {
   LC_COLLATE=C ble-edit/draw/trace.impl "$@" &>/dev/null
 }
 function ble-edit/draw/trace.impl {
-  local cols="${COLUMNS-80}" lines="${LINES-25}"
-  local it="$_ble_term_it" xenl="$_ble_term_xenl"
-  local text="$1"
+  local text=$1
 
-  local -a trace_brack=()
-  local trace_scosc=
-
+  # constants
+  local cols=${COLUMNS:-80} lines=${LINES:-25}
+  local it=${bleopt_tab_width:-$_ble_term_it} xenl=$_ble_term_xenl
+  _ble_util_string_prototype.reserve "$it"
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
   # OSC, DCS, SOS, PM, APC Sequences + "GNU screen ESC k"
@@ -721,7 +746,11 @@ function ble-edit/draw/trace.impl {
   # ESC ?
   local rex_esc='^[ -~]'
 
-  local i=0 iN="${#text}"
+  # variables
+  local -a trace_brack=()
+  local trace_scosc=
+
+  local i=0 iN=${#text}
   while ((i<iN)); do
     local tail="${text:i}"
     local w=0
@@ -1244,9 +1273,12 @@ function ble/textmap#update {
   _ble_textmap_begy=$y
 
   # ※現在は COLUMNS で決定しているが将来的には変更可能にする?
-  local cols="${COLUMNS-80}" it="$_ble_term_it" xenl="$_ble_term_xenl"
+  local cols="${COLUMNS-80}" xenl="$_ble_term_xenl"
   ((COLUMNS&&cols<COLUMNS&&(xenl=1)))
-  # local cols="80" it="$_ble_term_it" xenl="1"
+  # local cols="80" xenl="1"
+
+  local it=${bleopt_tab_width:-$_ble_term_it}
+  _ble_util_string_prototype.reserve "$it"
 
   local -a pos
   if ((cols!=_ble_textmap_cols)); then
