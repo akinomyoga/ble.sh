@@ -199,6 +199,7 @@ function ble/widget/vi-insert/@norepeat {
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
 _ble_keymap_vi_imap_white_list=(
   self-insert
+  quoted-insert
   delete-backward-{c,f,s,u}word
   copy{,-forward,-backward}-{c,f,s,u}word
   copy-region{,-or}
@@ -3044,6 +3045,16 @@ function ble-decode-keymap:vi_omap/define {
 #------------------------------------------------------------------------------
 # Normal mode
 
+# nmap C-d
+function ble/widget/vi-command/exit-on-empty-line {
+  if [[ $_ble_edit_str ]]; then
+    ble/widget/vi-command/bell
+  else
+    ble/widget/exit
+    ble/keymap:vi/adjust-command-mode # ジョブがあるときは終了しないので。
+  fi
+}
+
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
 
@@ -3114,6 +3125,7 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'C-g' bell
   ble-bind -f 'C-l' clear-screen
 
+  ble-bind -f C-d vi-command/exit-on-empty-line
 }
 
 #------------------------------------------------------------------------------
