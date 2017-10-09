@@ -470,12 +470,10 @@ tech
 
 2017-10-09
 
+  * magic-space: 現状の実装では空白を入れてから展開しているが、
+    :s/ などが終端していない状態でこれを実行すると空白が余分についてしまう。
+
   * vi-mode (normal mode): C-d で抜けても良いのでは。
-
-  * vi-mode (insert): @norepeat
-
-    実は norepeat でないコマンドは数える程しかないのだから、
-    それ以外全てで norepeat を実行するように __before_command__ に書くほうが懸命なのでは。
 
   * vi-mode change
 
@@ -786,12 +784,17 @@ tech
     * vi_command は vi_nmap に変更する?
     * vi_insert は vi_imap に変更する?
     * vi-mode を bash-3.0 でもテストする。
-    * vi-insert/@norepeat は @vi-norepeat 辺りに改名する。
 
-      C-c の説明は "InsertLeave autocmd が実行されない" である。
-      これより @vi-cancel-leave などの方が分かりやすいのでは。
+    % * vi-insert/@norepeat は @vi-norepeat 辺りに改名する。
+    % 
+    %   C-c の説明は "InsertLeave autocmd が実行されない" である。
+    %   これより @vi-cancel-leave などの方が分かりやすいのでは。
 
-      また同時に marked/nomarked も @marked/@nomarked に変更する。
+    → vi-insert/@norepeat は廃止された。従って改名の必要はなくただ消すのみである。
+      _ble_keymap_vi_imap_white_list に登録されていない widget は全て
+      __before_command__ で repeat を reset するように変更したためである。
+
+    * また同時に marked/nomarked も @marked/@nomarked に変更する。
 
   * cmpltstofB: vim-surround.sh: ds cs cS yS ySsd ySSd S gS 'C-s' 'C-g s' 'C-g S'
 
@@ -831,8 +834,13 @@ tech
     * todo: ! gq = g@ zf
 
     * opfunc/g@ はどうやら Vim Script のキーボードマクロで使われるようだ。
+
     * gq の整形とはどういう整形だろう。調べると gw というのもある。
       http://h-miyako.hatenablog.com/entry/2015/01/31/185620 によると折り返しと関係する?
+      試してみた所 80 桁に収まるように単語の切れ目で折り返しをする。
+      単語は空白区切りであり w による単語とは異なる。
+      gw と gq の違いは簡単に試した限りではない。後で help を見る。
+
     * zf は領域の折り畳み。対話シェルでは長いコマンドの編集は推奨されないし、これには対応しない。
 
 2017-09-11
@@ -2394,6 +2402,14 @@ tech
 -------------------------------------------------------------------------------
 
 2017-10-09
+
+  * vi-mode (insert): @norepeat
+
+    実は norepeat でないコマンドは数える程しかないのだから、
+    それ以外全てで norepeat を実行するように __before_command__ に書くほうが懸命なのでは。
+
+    実装した。動いている。これにより @norepeat は改名対象ではなくて削除対象になった。
+    master へ merge する直前に適用することにする。
 
   * vi-mode (cmap): / ? n N
 
