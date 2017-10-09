@@ -490,14 +490,12 @@ tech
     動作変更
     - nmap `/` `?`: 検索対象の入力中に空文字列で DEL or C-h することでキャンセルできるように修正
     - vim-surround.sh のタグ名入力中に '>' で確定するように修正
+    - operator `<` `>`: Visual block での正しい振る舞い
 
     他の変更
     - magic-space: 空白を挿入してから履歴展開していた順番を逆転
 
 2017-10-08
-
-  * vi-mode (visual block): < >
-    振る舞いが違う。
 
   * vi-mode (visual): I A
 
@@ -801,7 +799,7 @@ tech
     * vi-mode を bash-3.0 でもテストする。
 
     % * vi-insert/@norepeat は @vi-norepeat 辺りに改名する。
-    % 
+    %
     %   C-c の説明は "InsertLeave autocmd が実行されない" である。
     %   これより @vi-cancel-leave などの方が分かりやすいのでは。
 
@@ -2418,7 +2416,10 @@ tech
 
 2017-10-09
 
-  * vi-mode: indent の幅を設定できるようにするべきなのでは。
+  * vi-mode (visual block): < > [#D0524]
+    振る舞いが違う→実装した。
+
+  * vi-mode: indent の幅を設定できるようにするべきなのでは。 [#D0523]
 
     8 は大きすぎるので既定で 4 にして、自分で 2 に指定するなど。
     というかこれは vi-mode 特有の設定というよりは全体の設定でもある気がする。
@@ -2428,7 +2429,7 @@ tech
     変更対象は vi.sh 及び vim-surround.sh の indent 関係の所にある。
     →対応した。
 
-  * vim-surround.sh: xmap S, gS
+  * vim-surround.sh: xmap S, gS [#D0522]
 
     S と gS の振る舞いを調べると、S は v, C-v に対しては ys と同様に働き、
     V に対しては yS と同様に働くようだ。
@@ -2455,7 +2456,7 @@ tech
     序に cS も実装したらどうか。調べてみると cs と殆ど同じで挿入するものが異なるだけだそうだ。
     これは簡単に実装できると思う。実装した。
 
-  * vi-mode: bug: g? を set-operator rot13 にしていたが、
+  * vi-mode: bug: g? を set-operator rot13 にしていたが、 [#D0521]
     これは数字が入っているので使えないのでは?
     →実際にやってみたら使えなくなっていた。修正する必要がある。
 
@@ -2471,7 +2472,7 @@ tech
       _ble_edit_arg は空か数かのどちらかでないと都合が悪いのだ。
       作り直した。余り大きな変更もなく作り直すことができた。
 
-  * vi-mode (normal mode): C-d で抜けても良いのでは。
+  * vi-mode (normal mode): C-d で抜けても良いのでは。 [#D0520]
 
     そもそも vim では C-d は何に割り当てられていたのだったろうか。
     →スクロール用のコマンドの様だ。これは滅多に使わないので、
@@ -2480,11 +2481,11 @@ tech
     と思ったが、よく考えたら空文字列の時にはそもそもスクロールもしようと思わないだろうから、
     空文字列の時に限り抜けるようにして、それ以外の時にはスクロールという様にすることも可能のはずである。
 
-  * magic-space: 現状の実装では空白を入れてから展開しているが、
+  * magic-space: 現状の実装では空白を入れてから展開しているが、 [#D0519]
     :s/ などが終端していない状態でこれを実行すると空白が余分についてしまう。
     →修正した。更に dirty-range も最小限になるように修正した。
 
-  * vi-mode (insert): @norepeat
+  * vi-mode (insert): @norepeat [#D0518]
 
     実は norepeat でないコマンドは数える程しかないのだから、
     それ以外全てで norepeat を実行するように __before_command__ に書くほうが懸命なのでは。
@@ -2492,7 +2493,7 @@ tech
     実装した。動いている。これにより @norepeat は改名対象ではなくて削除対象になった。
     master へ merge する直前に適用することにする。
 
-  * vi-mode (cmap): / ? n N
+  * vi-mode (cmap): / ? n N [#D0517]
 
     * C-c で抜けても実行されてしまう。キャンセルするべき。
       →これは単にバグだった。直した。
@@ -2524,7 +2525,7 @@ tech
 
 2017-10-07
 
-  * 2017-10-01 vi-mode (visual mode): r s C S R x D X Y p J U u I A ^]
+  * 2017-10-01 vi-mode (visual mode): r s C S R x D X Y p J U u I A ^] [#D0516]
 
     todo: J I A ^] gJ → これは別項目 #tmp001 で処理
     done: u U r s C S R X D x Y
@@ -2561,7 +2562,7 @@ tech
 
     取り敢えず現状で push することにした。
 
-  * 2017-10-01 vi-mode: 前回からの動作の修正
+  * 2017-10-01 vi-mode: 前回からの動作の修正 [#D0515]
 
     - vi-mode bug: 行単位のインデントオペレータ (`>>` など) でエラーが出るバグを修正
     - vi-mode bug: オペレータ `g~` を呼び出せないバグを修正
@@ -2579,7 +2580,7 @@ tech
     - vi-mode: vim-surround.sh にて囲み文字として t T < を指定したとき、タグ名の入力を受け付ける
     - edit: 複数行編集時スクロール
 
-  * 2017-09-18 vim-surround: ds cs テキストオブジェクト
+  * 2017-09-18 vim-surround: ds cs テキストオブジェクト [#D0514]
 
     - done: pst に対応する。これは本体のテキストオブジェクトを先に対応させる必要がある。
     - done: 更に t に関しては第2のプロンプトを表示できるように改修する必要がある。

@@ -809,6 +809,9 @@ function ble/keymap:vi/expand-range-for-linewise-operator {
   fi
 }
 
+#--------------------------------------
+# Indent operators < >
+
 function ble/keymap:vi/string#increase-indent {
   local text=$1 delta=$2
   local space=$' \t' it=${bleopt_tab_width:-$_ble_term_it}
@@ -834,18 +837,14 @@ function ble/keymap:vi/string#increase-indent {
 
     indent=
     if ((x)); then
-      if ((bleopt_indent_tabs)); then
-        if ((r=x/it)); then
-          ble/string#repeat $'\t' "$r"
-          indent=$ret
-        fi
-        if ((r=x%it)); then
-          ble/string#repeat ' ' "$r"
-          indent=$indent$ret
-        fi
-      else
-        ble/string#repeat ' ' "$x"
+      if ((bleopt_indent_tabs&&(r=x/it))); then
+        ble/string#repeat $'\t' "$r"
         indent=$ret
+        ((x%=it))
+      fi
+      if ((x)); then
+        ble/string#repeat ' ' "$x"
+        indent=$indent$ret
       fi
     fi
 
@@ -854,26 +853,131 @@ function ble/keymap:vi/string#increase-indent {
 
   IFS=$'\n' eval 'ret=${arr2[*]}'
 }
+## 関数 ble/keymap:vi/operator:increase-indent/increase-block-indent width
+##   @param[in] width
+##   @var[in] sub_ranges
+function ble/keymap:vi/operator:increase-indent/increase-block-indent {
+  local width=$1
+  local isub=${#sub_ranges[@]}
+  local sub smin slpad ret
+  while ((isub--)); do
+    ble/string#split sub : "${sub_ranges[isub]}"
+    smin=${sub[0]} slpad=${sub[2]}
+    ble/string#repeat ' ' $((slpad+width))
+    ble/widget/.replace-range "$smin" "$smin" "$ret" 1
+  done
+}
+## 関数 ble/keymap:vi/operator:increase-indent/decrease-graphical-block-indent width
+##   @param[in] width
+##   @var[in] sub_ranges
+function ble/keymap:vi/operator:increase-indent/decrease-graphical-block-indent {
+  local width=$1
+  local it=${bleopt_tab_width:-$_ble_term_it} cols=$_ble_textmap_cols
+  local sub smin slpad
+  local replaces
+  local isub=${#sub_ranges[@]}
+  while ((isub--)); do
+    ble/string#split sub : "${sub_ranges[isub]}"
+    smin=${sub[0]} slpad=${sub[2]}
+    ble-edit/content/find-non-space "$smin"; local nsp=$ret
+    ((smin<nsp)) || continue
+
+    local ax ay bx by
+    ble/textmap#getxy.out --prefix=a "$smin"
+    ble/textmap#getxy.out --prefix=b "$nsp"
+    local w=$(((bx-ax)-(by-ay)*cols-width))
+    ((w<slpad)) && w=$slpad
+
+    local ins=
+    if ((w)); then
+      local r
+      if ((bleopt_indent_tabs&&(r=(ax+w)/it-ax/it))); then
+        ble/string#repeat $'\t' "$r"; ins=$ret
+        ((w=(ax+w)%it))
+      fi
+      if ((w)); then
+        ble/string#repeat ' ' "$w"
+        ins=$ins$ret
+      fi
+    fi
+
+    ble/array#push replaces "$smin:$nsp:$ins"
+  done
+
+  local rep
+  for rep in "${replaces[@]}"; do
+    ble/string#split rep : "$rep"
+    ble/widget/.replace-range "${rep[@]::3}" 1
+  done
+}
+## 関数 ble/keymap:vi/operator:increase-indent/decrease-logical-block-indent width
+##   @param[in] width
+##   @var[in] sub_ranges
+function ble/keymap:vi/operator:increase-indent/decrease-logical-block-indent {
+  # タブは幅 it で固定と見做して削除する
+  local width=$1
+  local it=${bleopt_tab_width:-$_ble_term_it}
+  local sub smin ret nsp
+  local isub=${#sub_ranges[@]}
+  while ((isub--)); do
+    ble/string#split sub : "${sub_ranges[isub]}"
+    smin=${sub[0]}
+    ble-edit/content/find-non-space "$smin"; nsp=$ret
+    ((smin<nsp)) || continue
+
+    local stext=${_ble_edit_str:smin:nsp-smin}
+    local i=0 n=${#stext} c=0 pad=0
+    for ((i=0;i<n;i++)); do
+      if [[ ${stext:i:1} == $'\t' ]]; then
+        ((c+=it))
+      else
+        ((c++))
+      fi
+      if ((c>=width)); then
+        pad=$((c-width))
+        nsp=$((smin+i+1))
+        break
+      fi
+    done
+
+    local padding=
+    ((pad)) && { ble/string#repeat ' ' "$pad"; padding=$ret; }
+    ble/widget/.replace-range "$smin" "$nsp" "$padding" 1
+  done
+}
 function ble/keymap:vi/operator:increase-indent {
   local delta=$1 context=$2
-  [[ $context == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
-  ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
+  ((delta)) || return
+  if [[ $context == block ]]; then
+    if ((delta>=0)); then
+      ble/keymap:vi/operator:increase-indent/increase-block-indent "$delta"
+    elif ble/keymap:vi/use-textmap; then
+      ble/keymap:vi/operator:increase-indent/decrease-graphical-block-indent $((-delta))
+    else
+      ble/keymap:vi/operator:increase-indent/decrease-logical-block-indent $((-delta))
+    fi
+  else
+    [[ $context == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
+    ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
 
-  ble/keymap:vi/string#increase-indent "${_ble_edit_str:beg:end-beg}" "$delta"; local content=$ret
-  ble/widget/.replace-range "$beg" "$end" "$content" 1
+    ble/keymap:vi/string#increase-indent "${_ble_edit_str:beg:end-beg}" "$delta"; local content=$ret
+    ble/widget/.replace-range "$beg" "$end" "$content" 1
 
-  if [[ $context == char ]]; then
-    ble-edit/content/find-non-space "$beg"; beg=$ret
+    if [[ $context == char ]]; then
+      ble-edit/content/find-non-space "$beg"; beg=$ret
+    fi
   fi
 }
-function ble/keymap:vi/operator:left {
+function ble/keymap:vi/operator:indent-left {
   local context=$3 arg=${4:-1}
   ble/keymap:vi/operator:increase-indent $((-bleopt_indent_offset*arg)) "$context"
 }
-function ble/keymap:vi/operator:right {
+function ble/keymap:vi/operator:indent-right {
   local context=$3 arg=${4:-1}
   ble/keymap:vi/operator:increase-indent $((bleopt_indent_offset*arg)) "$context"
 }
+
+#--------------------------------------
 
 ## 関数 ble/widget/vi-command/exclusive-range.impl src dst flag nobell
 ##   @param[in] src, dst
@@ -2812,7 +2916,7 @@ function ble/widget/vi-command/search.core {
       ble-edit/isearch/forward-search-history regex:progress
     fi; local r=$?
     ble-edit/info/default
-    
+
     if ((r==0)); then
       [[ $index != "$_ble_edit_history_ind" ]] &&
         ble-edit/history/goto "$index"
@@ -2954,8 +3058,8 @@ function ble/keymap:vi/setup-map {
   ble-bind -f y 'vi-command/operator y'
   ble-bind -f d 'vi-command/operator d'
   ble-bind -f c 'vi-command/operator c'
-  ble-bind -f '<' 'vi-command/operator left'
-  ble-bind -f '>' 'vi-command/operator right'
+  ble-bind -f '<' 'vi-command/operator indent-left'
+  ble-bind -f '>' 'vi-command/operator indent-right'
   ble-bind -f 'g ~' 'vi-command/operator toggle_case'
   ble-bind -f 'g u' 'vi-command/operator u'
   ble-bind -f 'g U' 'vi-command/operator U'
