@@ -714,7 +714,7 @@ function ble/keymap:vi/operator:d {
       smin=${sub[0]} smax=${sub[1]}
       slpad=${sub[2]} srpad=${sub[3]}
       local ret; ble/string#repeat ' ' $((slpad+srpad))
-      _ble_edit_str.replace "$smin" "$smax" "$ret"
+      ble/widget/.replace-range "$smin" "$smax" "$ret" 1
     done
     ((beg+=slpad)) # fix start position
   else
@@ -767,11 +767,11 @@ function ble/keymap:vi/operator:tr.impl {
       ble/string#split sub : "${sub_ranges[isub]}"
       local smin=${sub[0]} smax=${sub[1]}
       local ret; "$filter" "${_ble_edit_str:smin:smax-smin}"
-      _ble_edit_str.replace "$smin" "$smax" "$ret"
+      ble/widget/.replace-range "$smin" "$smax" "$ret" 1
     done
   else
     local ret; "$filter" "${_ble_edit_str:beg:end-beg}"
-    _ble_edit_str.replace "$beg" "$end" "$ret"
+    ble/widget/.replace-range "$beg" "$end" "$ret" 1
   fi
 }
 function ble/keymap:vi/operator:u {
@@ -1121,7 +1121,7 @@ function ble/widget/vi-command/forward-char-toggle-case {
     local index=$((_ble_edit_ind+len))
     if ((len)); then
       local ret; ble/string#toggle-case "${_ble_edit_str:_ble_edit_ind:${#line}}"
-      _ble_edit_str.replace "$_ble_edit_ind" "$index" "$ret"
+      ble/widget/.replace-range "$_ble_edit_ind" "$index" "$ret" 1
     fi
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
     ble/widget/.goto-char "$index"
@@ -1613,7 +1613,7 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
   local i=${#ins_beg[@]}
   while ((i--)); do
     local ibeg=${ins_beg[i]} iend=${ins_end[i]} text=${ins_text[i]}
-    _ble_edit_str.replace "$ibeg" "$iend" "$text"
+    ble/widget/.replace-range "$ibeg" "$iend" "$text" 1
   done
 
   ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
@@ -1963,7 +1963,7 @@ function ble/widget/vi-command/connect-line-with-space {
   else
     local ret; ble-edit/content/find-logical-eol; local eol=$ret
     if ((eol<${#_ble_edit_str})); then
-      _ble_edit_str.replace eol eol+1 ' '
+      ble/widget/.replace-range "$eol" $((eol+1)) ' ' 1
       ble/widget/.goto-char "$eol"
     else
       ble/widget/.bell
@@ -3628,7 +3628,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
       ((sfill)) && ins1=${ins1::(width-sfill)/w}
       ((slpad)) && { ble/string#repeat ' ' "$slpad"; ins1=$ret$ins1; }
       ((srpad)) && { ble/string#repeat ' ' "$srpad"; ins1=$ins1$ret; }
-      _ble_edit_str.replace "$smin" "$smax" "$ins1"
+      ble/widget/.replace-range "$smin" "$smax" "$ins1" 1
     done
     local beg=$smin
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
@@ -3644,7 +3644,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
     fi
 
     local ins=${_ble_edit_str//[^$'\n']/"$s"}
-    _ble_edit_str.replace "$beg" "$end" "$ins"
+    ble/widget/.replace-range "$beg" "$end" "$ins" 1
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
   fi

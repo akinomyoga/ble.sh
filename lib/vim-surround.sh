@@ -52,12 +52,6 @@ source "$_ble_base/keymap/vi.sh"
 #
 # 以下には対応していない。
 #
-#   nmap: cS
-#   nmap: yS
-#   nmap: ySsd
-#   nmap: ySSd
-#   xmap: S
-#   xmap: gS
 #   imap: <C-S>
 #   imap: <C-G>s
 #   imap: <C-G>S
@@ -176,19 +170,24 @@ function ble/lib/vim-surround.sh/load-template {
   esac
 } &>/dev/null
 
-## 関数 ble/lib/vim-surround.sh/surround text ins
+## 関数 ble/lib/vim-surround.sh/surround text ins opts
 ##   @param[in] text
 ##   @param[in] ins
+##   @param[in] opts
+##     linewise
+##       囲まれた文字列を新しい独立した業にします。
+##       cS yS VS VgS などで使用します。
+##
 ##   @var[in] beg
 ##   @var[out] ret
 function ble/lib/vim-surround.sh/surround {
-  local text=$1 ins=$2
+  local text=$1 ins=$2 opts=$3
 
   local instype=
   [[ $ins == $'\x1D' ]] && ins='}' instype=indent # C-], C-}
 
   local has_space=
-  [[ $ins == ' '?* ]] && has_space=1 ins=${ins:1}
+  [[ $ins == ' '?* ]] && ins=${ins:1} has_space=1
 
   local template=
   ble/lib/vim-surround.sh/load-template "$ins" || return 1
@@ -208,15 +207,21 @@ function ble/lib/vim-surround.sh/surround {
     has_space=1
   fi
 
-  if [[ $instype == indent ]]; then
+  if [[ $instype == indent || :$opts: == *:linewise:* ]]; then
     ble-edit/content/find-logical-bol "$beg"; local bol=$ret
     ble-edit/content/find-non-space "$bol"; local nol=$ret
-    text=${_ble_edit_str:bol:nol-bol}${text}
+    local indent=
+    if [[ $instype == indent ]] || ((bol<nol)); then
+      indent=${_ble_edit_str:bol:nol-bol}
+    elif [[ $has_space ]]; then
+      indent=' '
+    fi
+    text=$indent$text
     ble/keymap:vi/string#increase-indent "$text" 8
-    text=$'\n'$ret$'\n'${_ble_edit_str:bol:nol-bol}
+    text=$'\n'$ret$'\n'$indent
+  elif [[ $has_space ]]; then
+    text=' '$text' '
   fi
-
-  [[ $has_space && $text != *$'\n'* ]] && text=' '$text' '
 
   ret=$prefix$text$suffix
 }
@@ -238,14 +243,29 @@ function ble/lib/vim-surround.sh/async-read-tagname/.before-command {
 }
 
 #------------------------------------------------------------------------------
-# ys yss
+# ys yss yS ySS ySs vS vgS
 
-_ble_lib_vim_surround_ys=()
-
-function ble/keymap:vi/operator:ys {
-  _ble_lib_vim_surround_ys=("$@")
+_ble_lib_vim_surround_ys_type= # ys | yS | vS | vgS
+_ble_lib_vim_surround_ys_args=()
+_ble_lib_vim_surround_ys_ranges=()
+function ble/lib/vim-surround.sh/operator.impl {
+  _ble_lib_vim_surround_ys_type=$1; shift
+  _ble_lib_vim_surround_ys_args=("$@")
+  [[ $3 == block ]] && _ble_lib_vim_surround_ys_ranges=("${sub_ranges[@]}")
   _ble_keymap_vi_operator_delayed=1
   ble/lib/vim-surround.sh/async-inputtarget-noarg ble/widget/vim-surround.sh/ysurround.hook1
+}
+function ble/keymap:vi/operator:yS {
+  ble/lib/vim-surround.sh/operator.impl yS "$@"
+}
+function ble/keymap:vi/operator:ys {
+  ble/lib/vim-surround.sh/operator.impl ys "$@"
+}
+function ble/keymap:vi/operator:vS {
+  ble/lib/vim-surround.sh/operator.impl vS "$@"
+}
+function ble/keymap:vi/operator:vgS {
+  ble/lib/vim-surround.sh/operator.impl vgS "$@"
 }
 function ble/widget/vim-surround.sh/ysurround.hook1 {
   local ins=$1
@@ -265,27 +285,56 @@ function ble/widget/vim-surround.sh/ysurround.core {
   local ret
 
   # saved arguments
-  local beg=${_ble_lib_vim_surround_ys[0]}
-  local end=${_ble_lib_vim_surround_ys[1]}
-  local context=${_ble_lib_vim_surround_ys[2]}
-  _ble_lib_vim_surround_ys=()
+  local type=$_ble_lib_vim_surround_ys_type
+  local beg=${_ble_lib_vim_surround_ys_args[0]}
+  local end=${_ble_lib_vim_surround_ys_args[1]}
+  local context=${_ble_lib_vim_surround_ys_args[2]}
+  local sub_ranges; sub_ranges=("${_ble_lib_vim_surround_ys_ranges[@]}")
+  _ble_lib_vim_surround_ys_type=
+  _ble_lib_vim_surround_ys_args=()
+  _ble_lib_vim_surround_ys_ranges=()
 
-  # text
-  local text=${_ble_edit_str:beg:end-beg}
-  if local rex=$'[ \t\n]+$'; [[ $text =~ $rex ]]; then
-    # 範囲末端の空白は囲む対象としない
-    ((end-=${#BASH_REMATCH}))
-    text=${_ble_edit_str:beg:end-beg}
+  if [[ $context == block ]]; then
+    local isub=${#sub_ranges[@]} sub
+    local smin= smax= slpad= srpad=
+    while ((isub--)); do
+      local sub=${sub_ranges[isub]}
+      local stext=${sub#*:*:*:*:*:}
+      ble/string#split sub : "${sub::${#sub}-${#stext}}"
+      smin=${sub[0]} smax=${sub[1]}
+      slpad=${sub[2]} srpad=${sub[3]}
+
+      if ! ble/lib/vim-surround.sh/surround "$stext" "$ins"; then
+        ble/widget/vi-command/bell
+        return
+      fi
+      stext=$ret
+
+      ((slpad)) && { ble/string#repeat ' ' "$slpad"; stext=$ret$stext; }
+      ((srpad)) && { ble/string#repeat ' ' "$srpad"; stext=$stext$ret; }
+      ble/widget/.replace-range "$smin" "$smax" "$stext" 1
+    done
+
+  else
+    # text
+    local text=${_ble_edit_str:beg:end-beg}
+    if local rex=$'[ \t\n]+$'; [[ $text =~ $rex ]]; then
+      # 範囲末端の空白は囲む対象としない
+      ((end-=${#BASH_REMATCH}))
+      text=${_ble_edit_str:beg:end-beg}
+    fi
+
+    # surround
+    local opts=
+    case $type in (yS|vS|vgS) opts=linewise ;; esac
+    if ! ble/lib/vim-surround.sh/surround "$text" "$ins" "$opts"; then
+      ble/widget/vi-command/bell
+      return
+    fi
+    local text=$ret
+
+    ble/widget/.replace-range "$beg" "$end" "$text" 1
   fi
-
-  # surround
-  if ! ble/lib/vim-surround.sh/surround "$text" "$ins"; then
-    ble/widget/vi-command/bell
-    return
-  fi
-  local text=$ret
-
-  ble/widget/.replace-range "$beg" "$end" "$text" 1
 
   ble/widget/.goto-char "$beg"
   if [[ $context == line ]]; then
@@ -299,10 +348,26 @@ function ble/widget/vim-surround.sh/ysurround-current-line {
   ble/widget/vi-command/operator ys
   ble/widget/vi-command/operator ys
 }
+function ble/widget/vim-surround.sh/ySurround-current-line {
+  ble/widget/vi-command/operator yS
+  ble/widget/vi-command/operator yS
+}
+function ble/widget/vim-surround.sh/vsurround { # vS
+  ble/widget/vi-command/operator vS
+}
+function ble/widget/vim-surround.sh/vgsurround { # vgS
+  [[ $_ble_decode_key__kmap == vi_xmap ]] &&
+    _ble_keymap_vi_xmap_eol_extended=1 # 末尾拡張
+  ble/widget/vi-command/operator vgS
+}
 
 ble-bind -m vi_command -f 'y s'   'vi-command/operator ys'
 ble-bind -m vi_command -f 'y s s' 'vim-surround.sh/ysurround-current-line'
-
+ble-bind -m vi_command -f 'y S'   'vi-command/operator yS'
+ble-bind -m vi_command -f 'y S s' 'vim-surround.sh/ySurround-current-line'
+ble-bind -m vi_command -f 'y S S' 'vim-surround.sh/ySurround-current-line'
+ble-bind -m vi_xmap -f 'S' 'vi-command/operator vS'
+ble-bind -m vi_xmap -f 'g S' 'vim-surround.sh/vgsurround'
 
 #------------------------------------------------------------------------------
 # ds cs
@@ -337,8 +402,11 @@ ble-bind -m vi_command -f 'y s s' 'vim-surround.sh/ysurround-current-line'
 #
 
 ## 関数 ble/keymap:vi/operator:surround
-##   @var[in] $surround_content
-##   @var[in] $surround_trim
+##   @var[in] surround_content
+##   @var[in] surround_ins
+##   @var[in] surround_trim
+##   @var[in] surround_type
+##     ds cs cS の何れかの値
 function ble/keymap:vi/operator:surround {
   local beg=$1 end=$2 context=$3
   local content=$surround_content ins=$surround_ins trims=$surround_trim
@@ -348,7 +416,8 @@ function ble/keymap:vi/operator:surround {
     ble/string#trim "$content"; content=$ret
   fi
 
-  if ! ble/lib/vim-surround.sh/surround "$content" "$ins"; then
+  local opts=; [[ $surround_type == cS ]] && opts=linewise
+  if ! ble/lib/vim-surround.sh/surround "$content" "$ins" "$opts"; then
     ble/widget/vi-command/bell
     return
   fi
@@ -363,11 +432,15 @@ function ble/keymap:vi/operator:surround {
   return 0
 }
 
+_ble_lib_vim_surround_cs_type= # ds | cs | cS
+_ble_lib_vim_surround_cs_arg=
+_ble_lib_vim_surround_cs_del=
+
 function ble/widget/vim-surround.sh/csurround.core {
-  local arg=$1 del=$2 ins=$3
+  local type=$1 arg=$2 del=$3 ins=$4
 
   local to1= to2=
-  local surround_trim= surround_ins=$ins
+  local surround_trim= surround_ins=$ins surround_type=$type
 
   [[ $del == ' '?* ]] && surround_trim=1 del=${del:1}
   if [[ $del == a ]]; then
@@ -446,34 +519,38 @@ function ble/widget/vim-surround.sh/csurround.core {
   ble/keymap:vi/adjust-command-mode
 }
 function ble/widget/vim-surround.sh/dsurround.hook {
+  local type=$_ble_lib_vim_surround_cs_type
+  local arg=$_ble_lib_vim_surround_cs_arg
   local del=$1
-  local arg flag; ble/keymap:vi/get-arg 1 # flag=ds
-  ble/widget/vim-surround.sh/csurround.core "$arg" "$del" || ble/widget/vi-command/bell
+  ble/widget/vim-surround.sh/csurround.core "$type" "$arg" "$del" || ble/widget/vi-command/bell
 }
 function ble/widget/vim-surround.sh/dsurround {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    _ble_edit_arg=${arg}ds
+    _ble_lib_vim_surround_cs_type=ds
+    _ble_lib_vim_surround_cs_arg=$arg
     ble/lib/vim-surround.sh/async-inputtarget ble/widget/vim-surround.sh/dsurround.hook
   fi
 }
 
-_ble_lib_vim_surround_cs_del=
-
 function ble/widget/vim-surround.sh/csurround.hook3 {
-  local del=$_ble_lib_vim_surround_cs_del ins=$1 tagName=$2
-  local arg flag; ble/keymap:vi/get-arg 1 # flag=cs
-  ble/widget/vim-surround.sh/csurround.core "$arg" "$del" "$ins$tagName" || ble/widget/vi-command/bell
+  local ins=$1 tagName=$2
+  local type=$_ble_lib_vim_surround_cs_type
+  local arg=$_ble_lib_vim_surround_cs_arg
+  local del=$_ble_lib_vim_surround_cs_del
+  ble/widget/vim-surround.sh/csurround.core "$type" "$arg" "$del" "$ins$tagName" || ble/widget/vi-command/bell
 }
 function ble/widget/vim-surround.sh/csurround.hook2 {
-  local del=$_ble_lib_vim_surround_cs_del ins=$1
+  local ins=$1
   if local rex='^ ?[<tT]$'; [[ $ins =~ $rex ]]; then
     ble/lib/vim-surround.sh/async-read-tagname "ble/widget/vim-surround.sh/csurround.hook3 '$ins'"
   else
-    local arg flag; ble/keymap:vi/get-arg 1 # flag=cs
-    ble/widget/vim-surround.sh/csurround.core "$arg" "$del" "$ins" || ble/widget/vi-command/bell
+    local type=$_ble_lib_vim_surround_cs_type
+    local arg=$_ble_lib_vim_surround_cs_arg
+    local del=$_ble_lib_vim_surround_cs_del
+    ble/widget/vim-surround.sh/csurround.core "$type" "$arg" "$del" "$ins" || ble/widget/vi-command/bell
   fi
 }
 function ble/widget/vim-surround.sh/csurround.hook1 {
@@ -486,15 +563,25 @@ function ble/widget/vim-surround.sh/csurround.hook1 {
     ble/widget/vi-command/bell
   fi
 }
-function ble/widget/vim-surround.sh/csurround {
+function ble/widget/vim-surround.sh/csurround.impl {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    _ble_edit_arg=${arg}cs
+    local type=$1
+    _ble_lib_vim_surround_cs_type=$type
+    _ble_lib_vim_surround_cs_arg=$arg
+    _ble_lib_vim_surround_cs_del=
     ble/lib/vim-surround.sh/async-inputtarget ble/widget/vim-surround.sh/csurround.hook1
   fi
+}
+function ble/widget/vim-surround.sh/csurround {
+  ble/widget/vim-surround.sh/csurround.impl cs
+}
+function ble/widget/vim-surround.sh/cSurround {
+  ble/widget/vim-surround.sh/csurround.impl cS
 }
 
 ble-bind -m vi_command -f 'd s' 'vim-surround.sh/dsurround'
 ble-bind -m vi_command -f 'c s' 'vim-surround.sh/csurround'
+ble-bind -m vi_command -f 'c S' 'vim-surround.sh/cSurround'
