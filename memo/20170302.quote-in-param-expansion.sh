@@ -182,7 +182,8 @@ check_qroffset_noextquote
 
 shopt -s extquote
 function check_qrsub_extquote {
-  local -a digits=({0..9}) n=
+  local digits n=
+  digits=({0..9})
   echo 'check_qrsub_extquote'
   [[ "${n:-${digits['1']}}"  == 1 ]] || echo Error1
   [[ "${n:-${digits[$'1']}}" == 1 ]] || echo Error2
@@ -192,7 +193,8 @@ check_qrsub_extquote
 
 shopt -u extquote
 function check_qrsub_noextquote {
-  local -a digits=({0..9}) n=
+  local digits n=
+  digits=({0..9})
   echo 'check_qrsub_noextquote'
   [[ "${n:-${digits['1']}}"  == 1 ]] || echo Error1
   # [[ "${n:-${digits[$'1']}}" != 1 ]] || echo Error2 # 構文エラー

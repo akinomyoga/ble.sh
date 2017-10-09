@@ -127,7 +127,7 @@ function ble/widget/vi-insert/default {
 
   # Control 修飾された文字 C-@ - C-\, C-? は制御文字 \000 - \037, \177 に戻して挿入
   if local ret; ble/keymap:vi/k2c "${KEYS[0]}"; then
-    local -a KEYS=("$ret")
+    local -a KEYS; KEYS=("$ret")
     ble/widget/self-insert
     return 0
   fi
@@ -177,7 +177,7 @@ function ble/widget/vi-insert/.process-repeat {
   if [[ $_ble_keymap_vi_repeat ]]; then
     local repeat=$_ble_keymap_vi_repeat
     local key_count=$((${#_ble_keymap_vi_repeat_keylog[@]}-${#KEYS[@]}))
-    local -a key_codes=("${_ble_keymap_vi_repeat_keylog[@]::key_count}")
+    local -a key_codes; key_codes=("${_ble_keymap_vi_repeat_keylog[@]::key_count}")
     ble/widget/vi-insert/.reset-repeat
 
     local i
@@ -2037,7 +2037,7 @@ function ble/widget/vi-command/replace-char.impl {
 
   local pos=$_ble_edit_ind
 
-  local -a KEYS=("$ret")
+  local -a KEYS; KEYS=("$ret")
   local _ble_edit_arg=$arg
   local _ble_edit_overwrite_mode=$overwrite_mode
   local ble_widget_self_insert_opts=nolineext
@@ -3878,7 +3878,7 @@ function ble/widget/vi-insert/overwrite-mode {
 # imap: C-k (digraph)
 
 function ble/widget/vi-insert/insert-digraph.hook {
-  local -a KEYS=("$1")
+  local -a KEYS; KEYS=("$1")
   ble/widget/self-insert
 }
 

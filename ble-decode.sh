@@ -614,13 +614,13 @@ function ble-decode-char/bind {
 function ble-decode-char/unbind {
   local -a seq=($1)
 
-  local char="${seq[$((iN-1))]}"
   local tseq=
   local i iN=${#seq}
   for ((i=0;i<iN-1;i++)); do
     tseq="${tseq}_${seq[$i]}"
   done
 
+  local char=${seq[iN-1]}
   local isfirst=1 ent=
   while
     builtin eval "ent=\"\${_ble_decode_cmap_$tseq[$char]}\""
@@ -653,7 +653,7 @@ function ble-decode-char/unbind {
 }
 function ble-decode-char/dump {
   local tseq="$1" nseq="$2" ccode
-  builtin eval "local -a ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
+  builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
   for ccode in "${ccodes[@]}"; do
     local ret; ble-decode-unkbd "$ccode"
     local cnames
@@ -1404,7 +1404,7 @@ function ble-decode-bind/c2dqs {
 function ble-decode-bind/cmap/.generate-binder-template {
   local tseq="$1" qseq="$2" nseq="$3" depth="${4:-1}" ccode
   local apos="'" escapos="'\\''"
-  builtin eval "local -a ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
+  builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
   for ccode in "${ccodes[@]}"; do
     local ret
     ble-decode-bind/c2dqs "$ccode"

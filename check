@@ -8,7 +8,7 @@ fi
 function check-builtin {
   echo "--- $FUNCNAME ---"
   local command="$1" esc='(\[[ -?]*[@-~])*'
-  grc --color --exclude=./test "(^|[^-./$])\b$command\b" |
+  grc --color --exclude=./test "(^|[^-./\${}])\b$command\b" |
     grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)="
 }
@@ -18,6 +18,10 @@ function check-bash300bug {
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
   grc 'local [a-zA-Z_]+=\(' --exclude=test
+
+  # bash-3.0 では local -a arr=("$hello") とすると
+  # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
+  grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=test
   echo
 }
 
@@ -25,7 +29,7 @@ function check-bash301bug-array-element-length {
   echo "--- $FUNCNAME ---"
   # bash-3.1 で ${#arr[index]} を用いると、
   # 日本語の文字数が変になる。
-  grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude=test
+  grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude=test | grep -Ev '^([^#]*[[:space:]])?#'
   echo
 }
 

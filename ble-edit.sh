@@ -2361,7 +2361,8 @@ function ble/textarea#render {
   local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
 
   # BLELINE_RANGE_UPDATE → ble/textarea#update-text-buffer 内でこれを見て update を済ませる
-  local -a BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
+  local -a BLELINE_RANGE_UPDATE
+  BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
   ble/dirty-range#clear --prefix=_ble_edit_dirty_draw_
 #%if !release
   ble-assert '((BLELINE_RANGE_UPDATE[0]<0||(
@@ -2539,7 +2540,7 @@ _ble_textarea_cache=()
 
 function ble/textarea#redraw-cache {
   if [[ ! $_ble_textarea_scroll && ${_ble_textarea_cache[0]+set} ]]; then
-    local -a d=("${_ble_textarea_cache[@]}")
+    local -a d; d=("${_ble_textarea_cache[@]}")
 
     local -a DRAW_BUFF
 
@@ -2985,7 +2986,7 @@ function ble/widget/self-insert {
 
 # quoted insert
 function ble/widget/quoted-insert/.hook {
-  local -a KEYS=("$1")
+  local -a KEYS; KEYS=("$1")
   ble/widget/self-insert
 }
 function ble/widget/quoted-insert {
