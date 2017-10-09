@@ -4456,24 +4456,27 @@ function ble/widget/history-expand-line {
   ble-edit/hist_expanded.update "$_ble_edit_str" || return
   [[ $_ble_edit_str == $hist_expanded ]] && return
 
-  _ble_edit_str.reset "$hist_expanded"
+  _ble_edit_str.reset-and-check-dirty "$hist_expanded"
+  _ble_edit_ind="${#hist_expanded}"
+  _ble_edit_mark=0
+  _ble_edit_mark_active=
+}
+function ble/widget/history-expand-backward-line {
+  local prevline="${_ble_edit_str::_ble_edit_ind}" hist_expanded
+  ble-edit/hist_expanded.update "$prevline" || return
+  [[ $prevline == $hist_expanded ]] && return
+
+  local ret
+  ble/string#common-prefix "$prevline" "$hist_expanded"; local dmin=${#ret}
+  _ble_edit_str.replace "$dmin" "$_ble_edit_ind" "${hist_expanded:dmin}"
   _ble_edit_ind="${#hist_expanded}"
   _ble_edit_mark=0
   _ble_edit_mark_active=
 }
 function ble/widget/magic-space {
+  ble/widget/history-expand-backward-line
   local -a KEYS=(32)
   ble/widget/self-insert
-
-  local prevline="${_ble_edit_str::_ble_edit_ind}" hist_expanded
-  ble-edit/hist_expanded.update "$prevline" || return
-  [[ $prevline == $hist_expanded ]] && return
-
-  _ble_edit_str.replace 0 _ble_edit_ind "$hist_expanded"
-  _ble_edit_ind="${#hist_expanded}"
-  _ble_edit_mark=0
-  _ble_edit_mark_active=
-  #ble/widget/history-expand-line
 }
 
 function ble/widget/forward-line-or-history-next {
