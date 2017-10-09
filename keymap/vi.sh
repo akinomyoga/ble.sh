@@ -457,7 +457,7 @@ function ble/widget/vi-command/virtual-replace-mode {
   fi
 }
 function ble/widget/vi-command/accept-line {
-  _ble_edit_arg=
+  ble/keymap:vi/clear-arg
   ble/widget/vi-command/.insert-mode
   ble/widget/accept-line
 }
@@ -475,21 +475,24 @@ function ble/widget/vi-command/accept-single-line-or {
 # arg     : 0-9 d y c
 # command : dd yy cc [dyc]0 Y S
 
+_ble_keymap_vi_oparg=
+_ble_keymap_vi_opfunc=
+
 ## 関数 ble/keymap:vi/get-arg [default_value]
 function ble/keymap:vi/get-arg {
-  local rex default_value=$1
-  if [[ ! $_ble_edit_arg ]]; then
-    flag= arg=$default_value
-  elif rex='^[0-9]+$'; [[ $_ble_edit_arg =~ $rex ]]; then
-    flag= arg=$((10#${_ble_edit_arg:-1}))
-  elif rex='^[^0-9]+$'; [[ $_ble_edit_arg =~ $rex ]]; then
-    flag=$_ble_edit_arg arg=$default_value
+  local default_value=$1
+  flag=$_ble_keymap_vi_opfunc
+  if [[ ! $_ble_edit_arg && ! $_ble_keymap_vi_oparg ]]; then
+    arg=$default_value
   else
-    local a=${_ble_edit_arg##*[!0-9]} b=${_ble_edit_arg%%[!0-9]*}
-    flag=${_ble_edit_arg//[0-9]}
-    arg=$((10#${a:-1}*10#${b:-1}))
+    arg=$((10#${_ble_edit_arg:-1}*10#${_ble_keymap_vi_oparg:-1}))
   fi
+  ble/keymap:vi/clear-arg
+}
+function ble/keymap:vi/clear-arg {
   _ble_edit_arg=
+  _ble_keymap_vi_oparg=
+  _ble_keymap_vi_opfunc=
 }
 
 function ble/widget/vi-command/append-arg {
@@ -502,7 +505,7 @@ function ble/widget/vi-command/append-arg {
   ble-assert '[[ ! ${ch//[0-9]} ]]'
 
   # 0
-  if [[ $ch == 0 && $_ble_edit_arg != *[0-9] ]]; then
+  if [[ $ch == 0 && ! $_ble_edit_arg ]]; then
     ble/widget/vi-command/beginning-of-line
     return
   fi
@@ -510,9 +513,8 @@ function ble/widget/vi-command/append-arg {
   _ble_edit_arg="$_ble_edit_arg$ch"
 }
 
-function ble/widget/vi-command/set-operator {
-  local ret ch=$1
-  ble-assert '[[ $ch != *[0-9]* ]]' "ch=$ch"
+function ble/widget/vi-command/operator {
+  local ret opname=$1
 
   if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
     local arg flag; ble/keymap:vi/get-arg ''
@@ -526,39 +528,37 @@ function ble/widget/vi-command/set-operator {
     ble/widget/vi_xmap/exit
 
     if [[ $mark_type == line ]]; then
-      ble/keymap:vi/call-operator-linewise "$ch" "$a" "$b" $arg
+      ble/keymap:vi/call-operator-linewise "$opname" "$a" "$b" $arg
     elif [[ $mark_type == block ]]; then
-      ble/keymap:vi/call-operator-blockwise "$ch" "$a" "$b" $arg
+      ble/keymap:vi/call-operator-blockwise "$opname" "$a" "$b" $arg
     else
       local end=$b
       ((end<${#_ble_edit_str}&&end++))
-      ble/keymap:vi/call-operator-charwise "$ch" "$a" "$end" $arg
+      ble/keymap:vi/call-operator-charwise "$opname" "$a" "$end" $arg
     fi || ble/widget/.bell
 
     ble/keymap:vi/adjust-command-mode
     return 0
-  fi
+  elif [[ $_ble_decode_key__kmap == vi_command ]]; then
+    ble-decode/keymap/push vi_omap
+    _ble_keymap_vi_oparg=$_ble_edit_arg
+    _ble_keymap_vi_opfunc=$opname
+    _ble_edit_arg=
 
-  if [[ ! ${_ble_edit_arg//[0-9]} ]]; then
-    # 1つ目のオペレータ
-    [[ $_ble_decode_key__kmap == vi_omap ]] ||
-      ble-decode/keymap/push vi_omap
-    _ble_edit_arg="$_ble_edit_arg$ch"
-
-  else
-    # 2つ目のオペレータ (yy, dd, cc, etc.)
-    if [[ $_ble_edit_arg == *"$ch"* ]]; then
+  elif [[ $_ble_decode_key__kmap == vi_omap ]]; then
+    if [[ $opname == "$_ble_keymap_vi_opfunc" ]]; then
+      # 2つの同じオペレータ (yy, dd, cc, etc.) = 行指向の処理
       local arg flag; ble/keymap:vi/get-arg 1 # _ble_edit_arg is consumed here
       if ((arg==1)) || [[ ${_ble_edit_str:_ble_edit_ind} == *$'\n'* ]]; then
-        if ble/keymap:vi/call-operator-linewise "$ch" "$_ble_edit_ind" "$_ble_edit_ind:$((arg-1))"; then
+        if ble/keymap:vi/call-operator-linewise "$opname" "$_ble_edit_ind" "$_ble_edit_ind:$((arg-1))"; then
           ble/keymap:vi/adjust-command-mode
           return 0
         fi
       fi
+    else
+      ble/keymap:vi/clear-arg
+      ble/widget/vi-command/bell
     fi
-
-    _ble_edit_arg=
-    ble/widget/vi-command/bell
     return 1
   fi
 }
@@ -1680,7 +1680,8 @@ function ble/widget/vi-command/kill-forward-char {
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    _ble_edit_arg=${arg}d
+    _ble_keymap_vi_oparg=$arg
+    _ble_keymap_vi_opfunc=d
     ble/widget/vi-command/forward-char
   fi
 }
@@ -1689,7 +1690,8 @@ function ble/widget/vi-command/kill-forward-char-and-insert {
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    _ble_edit_arg=${arg}c
+    _ble_keymap_vi_oparg=$arg
+    _ble_keymap_vi_opfunc=c
     ble/widget/vi-command/forward-char
   fi
 }
@@ -1698,7 +1700,8 @@ function ble/widget/vi-command/kill-backward-char {
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    _ble_edit_arg=${arg}d
+    _ble_keymap_vi_oparg=$arg
+    _ble_keymap_vi_opfunc=d
     ble/widget/vi-command/backward-char
   fi
 }
@@ -1707,7 +1710,8 @@ function ble/widget/vi-command/kill-forward-line {
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    _ble_edit_arg=${arg}d
+    _ble_keymap_vi_oparg=$arg
+    _ble_keymap_vi_opfunc=d
     ble/widget/vi-command/forward-eol
   fi
 }
@@ -1716,7 +1720,8 @@ function ble/widget/vi-command/kill-forward-line-and-insert {
   if [[ $flag ]]; then
     ble/widget/vi-command/bell
   else
-    _ble_edit_arg=${arg}c
+    _ble_keymap_vi_oparg=$arg
+    _ble_keymap_vi_opfunc=c
     ble/widget/vi-command/forward-eol
   fi
 }
@@ -1839,9 +1844,11 @@ function ble/widget/vi-command/history-beginning {
   local arg flag; ble/keymap:vi/get-arg 0
   if [[ $flag ]]; then
     if ((arg)); then
-      _ble_edit_arg=$arg$flag
+      _ble_keymap_vi_oparg=$arg
+      _ble_keymap_vi_opfunc=$flag
     else
-      _ble_edit_arg=$flag
+      _ble_keymap_vi_oparg=
+      _ble_keymap_vi_opfunc=$flag
     fi
     ble/widget/vi-command/nth-line
     return
@@ -1861,10 +1868,12 @@ function ble/widget/vi-command/history-end {
   local arg flag; ble/keymap:vi/get-arg 0
   if [[ $flag ]]; then
     if ((arg)); then
-      _ble_edit_arg=$arg$flag
+      _ble_keymap_vi_oparg=$arg
+      _ble_keymap_vi_opfunc=$flag
       ble/widget/vi-command/nth-line
     else
-      _ble_edit_arg=$flag
+      _ble_keymap_vi_oparg=
+      _ble_keymap_vi_opfunc=$flag
       ble/widget/vi-command/nth-last-line
     fi
     return
@@ -2127,7 +2136,8 @@ function ble/widget/vi-command/search-matchpair/.search-backward {
 function ble/widget/vi-command/search-matchpair-or {
   local arg flag; ble/keymap:vi/get-arg -1
   if ((arg>=0)); then
-    _ble_edit_arg=$arg$flag
+    _ble_keymap_vi_oparg=$arg
+    _ble_keymap_vi_opfunc=$flag
     ble/widget/"$@"
     return
   fi
@@ -2649,7 +2659,8 @@ function ble/keymap:vi/.check-text-object {
   [[ $c == [ia] ]] || return 1
 
   local arg flag; ble/keymap:vi/get-arg 1
-  _ble_edit_arg=$arg$flag
+  _ble_keymap_vi_oparg=$arg
+  _ble_keymap_vi_opfunc=$flag
   [[ $flag || $_ble_decode_key__kmap == vi_xmap ]] || return 1
 
   _ble_keymap_vi_text_object=$c
@@ -2935,20 +2946,20 @@ function ble/keymap:vi/setup-map {
   ble-bind -f 7 vi-command/append-arg
   ble-bind -f 8 vi-command/append-arg
   ble-bind -f 9 vi-command/append-arg
-  ble-bind -f y 'vi-command/set-operator y'
-  ble-bind -f d 'vi-command/set-operator d'
-  ble-bind -f c 'vi-command/set-operator c'
-  ble-bind -f '<' 'vi-command/set-operator left'
-  ble-bind -f '>' 'vi-command/set-operator right'
-  ble-bind -f 'g ~' 'vi-command/set-operator toggle_case'
-  ble-bind -f 'g u' 'vi-command/set-operator u'
-  ble-bind -f 'g U' 'vi-command/set-operator U'
-  ble-bind -f 'g ?' 'vi-command/set-operator rot13'
-  # ble-bind -f 'g @' 'vi-command/set-operator @' # (operatorfunc opfunc)
-  # ble-bind -f '!'   'vi-command/set-operator !' # コマンド
-  # ble-bind -f '='   'vi-command/set-operator =' # インデント (equalprg, ep)
-  # ble-bind -f 'g q' 'vi-command/set-operator q' # 整形?
-  # ble-bind -f 'z f' 'vi-command/set-operator f'
+  ble-bind -f y 'vi-command/operator y'
+  ble-bind -f d 'vi-command/operator d'
+  ble-bind -f c 'vi-command/operator c'
+  ble-bind -f '<' 'vi-command/operator left'
+  ble-bind -f '>' 'vi-command/operator right'
+  ble-bind -f 'g ~' 'vi-command/operator toggle_case'
+  ble-bind -f 'g u' 'vi-command/operator u'
+  ble-bind -f 'g U' 'vi-command/operator U'
+  ble-bind -f 'g ?' 'vi-command/operator rot13'
+  # ble-bind -f 'g @' 'vi-command/operator @' # (operatorfunc opfunc)
+  # ble-bind -f '!'   'vi-command/operator !' # コマンド
+  # ble-bind -f '='   'vi-command/operator =' # インデント (equalprg, ep)
+  # ble-bind -f 'g q' 'vi-command/operator q' # 整形?
+  # ble-bind -f 'z f' 'vi-command/operator f'
 
   ble-bind -f home  vi-command/beginning-of-line
   ble-bind -f '$'   vi-command/forward-eol
@@ -3036,10 +3047,10 @@ function ble-decode-keymap:vi_omap/define {
   ble-bind -f a   vi-command/text-object
   ble-bind -f i   vi-command/text-object
 
-  ble-bind -f '~' 'vi-command/set-operator toggle_case'
-  ble-bind -f 'u' 'vi-command/set-operator u'
-  ble-bind -f 'U' 'vi-command/set-operator U'
-  ble-bind -f '?' 'vi-command/set-operator rot13'
+  ble-bind -f '~' 'vi-command/operator toggle_case'
+  ble-bind -f 'u' 'vi-command/operator u'
+  ble-bind -f 'U' 'vi-command/operator U'
+  ble-bind -f '?' 'vi-command/operator rot13'
 }
 
 #------------------------------------------------------------------------------
@@ -3694,16 +3705,16 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f V   vi_xmap/switch-to-linewise
   ble-bind -f C-v vi_xmap/switch-to-blockwise
 
-  ble-bind -f '~' 'vi-command/set-operator toggle_case'
-  ble-bind -f 'u' 'vi-command/set-operator u'
-  ble-bind -f 'U' 'vi-command/set-operator U'
-  ble-bind -f '?' 'vi-command/set-operator rot13'
+  ble-bind -f '~' 'vi-command/operator toggle_case'
+  ble-bind -f 'u' 'vi-command/operator u'
+  ble-bind -f 'U' 'vi-command/operator U'
+  ble-bind -f '?' 'vi-command/operator rot13'
 
-  ble-bind -f 's' 'vi-command/set-operator c'
-  ble-bind -f 'x'    'vi-command/set-operator d'
-  ble-bind -f delete 'vi-command/set-operator d'
-  # ble-bind -f C-h    'vi-command/set-operator d' # for smap
-  # ble-bind -f DEL    'vi-command/set-operator d' # for smap
+  ble-bind -f 's' 'vi-command/operator c'
+  ble-bind -f 'x'    'vi-command/operator d'
+  ble-bind -f delete 'vi-command/operator d'
+  # ble-bind -f C-h    'vi-command/operator d' # for smap
+  # ble-bind -f DEL    'vi-command/operator d' # for smap
 
   ble-bind -f r vi_xmap/visual-replace-char
 

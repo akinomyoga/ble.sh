@@ -296,11 +296,11 @@ function ble/widget/vim-surround.sh/ysurround.core {
 }
 
 function ble/widget/vim-surround.sh/ysurround-current-line {
-  ble/widget/vi-command/set-operator ys
-  ble/widget/vi-command/set-operator ys
+  ble/widget/vi-command/operator ys
+  ble/widget/vi-command/operator ys
 }
 
-ble-bind -m vi_command -f 'y s'   'vi-command/set-operator ys'
+ble-bind -m vi_command -f 'y s'   'vi-command/operator ys'
 ble-bind -m vi_command -f 'y s s' 'vim-surround.sh/ysurround-current-line'
 
 
