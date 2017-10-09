@@ -2692,7 +2692,13 @@ _ble_keymap_vicmd_search_activate=
 function ble-highlight-layer:region/mark:search/get-selection {
   ble-highlight-layer:region/mark:char/get-selection
 }
-function ble/widget/vi-command/search/.call-search {
+function ble/keymap:vi/search/.before_command {
+  if [[ ! $_ble_edit_str ]] && ((KEYS[0]==127||KEYS[0]==(104|ble_decode_Ctrl))); then # DEL or C-h
+    ble/widget/vi_cmap/cancel
+    COMMAND=
+  fi
+}
+function ble/keymap:vi/search/invoke-search {
   local ind=$_ble_edit_ind
 
   # 検索開始位置
@@ -2729,7 +2735,7 @@ function ble/widget/vi-command/search/.call-search {
 ##
 function ble/widget/vi-command/search.core {
   local beg= end= is_empty_match=
-  if ble/widget/vi-command/search/.call-search "$needle" "$dir:regex"; then
+  if ble/keymap:vi/search/invoke-search "$needle" "$dir:regex"; then
     if ((beg<end)); then
       ble-edit/content/bolp "$end" || ((end--))
       _ble_edit_ind=$beg # eol 補正は search.impl 側で最後に行う
@@ -2874,10 +2880,12 @@ function ble/widget/vi-command/search.impl {
 function ble/widget/vi-command/search-forward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
   _ble_edit_PS1='/'
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/search/.before_command
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/search/.before_command
 }
 function ble/widget/vi-command/search-repeat {
   ble/widget/vi-command/search.impl repeat:+
@@ -3891,10 +3899,12 @@ function ble-decode-keymap:vi_insert/define {
 # vi_cmap
 
 _ble_keymap_vi_cmap_hook=
+_ble_keymap_vi_cmap_before_command=
 
 function ble/keymap:vi/async-commandline-mode {
   local hook="$1"
   _ble_keymap_vi_cmap_hook=$hook
+  _ble_keymap_vi_cmap_before_command=
 
   ble/textarea#save-state _ble_keymap_vi_cmap
   ble-edit/info/default text ''
@@ -3921,7 +3931,7 @@ function ble/keymap:vi/async-commandline-mode {
 
 function ble/widget/vi_cmap/accept {
   local hook=${_ble_keymap_vi_cmap_hook}
-  _ble_keymap_vi_digraph__hook=
+  _ble_keymap_vi_cmap_hook=
 
   local result=$_ble_edit_str
 
@@ -3945,12 +3955,20 @@ function ble/widget/vi_cmap/accept {
 }
 
 function ble/widget/vi_cmap/cancel {
-  _ble_keymap_vi_digraph__hook=
+  _ble_keymap_vi_cmap_hook=
   ble/widget/vi_cmap/accept
+}
+
+function ble/widget/vi_cmap/.before_command {
+  if [[ $_ble_keymap_vi_cmap_before_command ]]; then
+    eval "$_ble_keymap_vi_cmap_before_command"
+  fi
 }
 
 function ble-decode-keymap:vi_cmap/define {
   local ble_bind_keymap=vi_cmap
+
+  ble-bind -f __before_command__ vi_cmap/.before_command
 
   ble-bind -f 'ESC' vi_cmap/cancel
   ble-bind -f 'C-[' vi_cmap/cancel

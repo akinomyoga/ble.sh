@@ -159,6 +159,7 @@ function ble/lib/vim-surround.sh/load-template {
     if [[ ! $tag ]]; then
       tag=$_ble_lib_vim_surround_previous_tag
     else
+      tag=${tag%'>'}
       _ble_lib_vim_surround_previous_tag=$tag
     fi
     local end_tag=${tag%%[$' \t\n']*}
@@ -221,6 +222,22 @@ function ble/lib/vim-surround.sh/surround {
 }
 
 #------------------------------------------------------------------------------
+# async-read-tagname
+
+function ble/lib/vim-surround.sh/async-read-tagname {
+  ble/keymap:vi/async-commandline-mode "$1"
+  _ble_edit_PS1='<'
+  _ble_keymap_vi_cmap_before_command=ble/lib/vim-surround.sh/async-read-tagname/.before-command
+}
+function ble/lib/vim-surround.sh/async-read-tagname/.before-command {
+  if [[ ${KEYS[0]} == 62 ]]; then # '>'
+    ble/widget/self-insert
+    ble/widget/vi_cmap/accept
+    COMMAND=
+  fi
+}
+
+#------------------------------------------------------------------------------
 # ys yss
 
 _ble_lib_vim_surround_ys=()
@@ -233,8 +250,7 @@ function ble/keymap:vi/operator:ys {
 function ble/widget/vim-surround.sh/ysurround.hook1 {
   local ins=$1
   if local rex='^ ?[<tT]$'; [[ $ins =~ $rex ]]; then
-    ble/keymap:vi/async-commandline-mode "ble/widget/vim-surround.sh/ysurround.hook2 '$ins'"
-    _ble_edit_PS1='<'
+    ble/lib/vim-surround.sh/async-read-tagname "ble/widget/vim-surround.sh/ysurround.hook2 '$ins'"
   else
     ble/widget/vim-surround.sh/ysurround.core "$ins"
   fi
@@ -454,8 +470,7 @@ function ble/widget/vim-surround.sh/csurround.hook3 {
 function ble/widget/vim-surround.sh/csurround.hook2 {
   local del=$_ble_lib_vim_surround_cs_del ins=$1
   if local rex='^ ?[<tT]$'; [[ $ins =~ $rex ]]; then
-    ble/keymap:vi/async-commandline-mode "ble/widget/vim-surround.sh/csurround.hook3 '$ins'"
-    _ble_edit_PS1='<'
+    ble/lib/vim-surround.sh/async-read-tagname "ble/widget/vim-surround.sh/csurround.hook3 '$ins'"
   else
     local arg flag; ble/keymap:vi/get-arg 1 # flag=cs
     ble/widget/vim-surround.sh/csurround.core "$arg" "$del" "$ins" || ble/widget/vi-command/bell
