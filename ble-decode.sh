@@ -445,7 +445,10 @@ function ble-decode-char {
   # decode error character
   if ((char&ble_decode_Erro)); then
     ((char&=~ble_decode_Erro))
-    [[ $bleopt_error_char_vbell ]] && ble-term/visible-bell "received a misencoded char $(builtin printf '\\u%04x' $char)"
+    if [[ $bleopt_error_char_vbell ]]; then
+      local name; ble/util/sprintf name 'U+%04x' "$char"
+      ble-term/visible-bell "received a misencoded char $name"
+    fi
     [[ $bleopt_error_char_abell ]] && ble-term/audible-bell
     [[ $bleopt_error_char_discard ]] && return
     # ((char&ble_decode_Erro)) : 最適化(過去 sequence は全部吐く)?

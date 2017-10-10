@@ -75,7 +75,8 @@ function ble-bind-function-key+default {
   # ble-bind --csi '5~' end
   # ble-bind --csi '6~' next
 
-  if [[ $(tput kend) == $'\e[5~' ]]; then
+  local kend; ble/util/assign kend 'tput kend'
+  if [[ $kend == $'\e[5~' ]]; then
     # vt100
     ble-bind --csi '1~' insert
     ble-bind --csi '2~' home

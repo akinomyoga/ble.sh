@@ -33,8 +33,20 @@ function check-bash301bug-array-element-length {
   echo
 }
 
+function check-assign {
+  echo "--- $FUNCNAME ---"
+  local command="$1"
+  local esc='(\[[ -?]*[@-~])*'
+  local rex_grep_head="^$esc[[:graph:]]+$esc:$esc[[:digit:]]*$esc:$esc"
+  grc --color --exclude=./test --exclude=./memo '\$\([^()]' |
+    grep -Ev "$rex_grep_head#|[[:space:]]#"
+}
+
 # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
-check-builtin 'echo'
-check-builtin '(bind|compopt|type|printf|read)'
+
+#check-builtin 'echo'
+#check-builtin '(bind|compopt|type|printf|read)'
+#check-assign
+
 check-bash300bug
 check-bash301bug-array-element-length

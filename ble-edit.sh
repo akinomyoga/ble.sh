@@ -845,7 +845,7 @@ function ble-edit/prompt/initialize {
   _ble_edit_prompt__string_H="${HOSTNAME}"
 
   # tty basename
-  local tmp=$(tty 2>/dev/null)
+  local tmp; ble/util/assign tmp 'tty 2>/dev/null'
   _ble_edit_prompt__string_l="${tmp##*/}"
 
   # command name
@@ -4226,12 +4226,14 @@ function ble-edit/history/getcount {
   [[ $1 == -v ]] && { _var="$2"; shift 2; }
 
   if [[ $_ble_edit_history_loaded ]]; then
-    _ret="${#_ble_edit_history[@]}"
+    _ret=${#_ble_edit_history[@]}
   else
     if [[ ! $_ble_edit_history_count ]]; then
-      _ble_edit_history_count=($(history 1))
+      local history_line
+      ble/util/assign history_line 'history 1'
+      _ble_edit_history_count=($history_line)
     fi
-    _ret="$_ble_edit_history_count"
+    _ret=$_ble_edit_history_count
   fi
 
   (($_var=_ret))
@@ -5234,7 +5236,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
       local IFS=$' \t\n'
       local file="$_ble_edit_io_fname2.proc"
       if [[ -s $file ]]; then
-        content="$(< $file)"
+        local content
+        ble/util/readfile content "$file"
         : >| "$file"
         for cmd in $content; do
           case "$cmd" in

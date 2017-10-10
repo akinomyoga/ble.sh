@@ -350,9 +350,29 @@ function ble/string#escape-for-bash-regex {
 # miscallaneous utils
 #
 
-## 関数 ble/util/assign
+## 関数 ble/util/readfile var filename
+##   ファイルの内容を変数に読み取ります。
+##
+##   @param[in] var
+##     読み取った内容の格納先の変数名を指定します。
+##   @param[in] filename
+##     読み取るファイルの場所を指定します。
+##
+function ble/util/readfile {
+  IFS= read -r -d '' "$1" < "$2"
+}
+
+
+## 関数 ble/util/assign var command...
+##   var=$(command ...) の高速な代替です。
+##   command はサブシェルではなく現在のシェルで実行されます。
+##
+##   @param[in] var
+##     代入先の変数名を指定します。
+##   @param[in] command...
+##     実行するコマンドを指定します。
+##
 _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.ble_util_assign.tmp"
-# function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
 function ble/util/assign {
   builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
   local _ret="$?"
@@ -376,9 +396,7 @@ if ((_ble_bash>=30100)); then
   }
 else
   function ble/util/sprintf {
-    local -a _args
-    _args=("${@:2}")
-    ble/util/assign "$1" 'builtin printf "${_args[@]}"'
+    ble/util/assign "$1" 'builtin printf "${@:2}"'
   }
 fi
 
@@ -1081,6 +1099,8 @@ function ble-term/visible-bell {
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
   (
     {
+      # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
+
       ble/util/sleep 0.05
       builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
 
@@ -1118,12 +1138,16 @@ elif ((_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bash_loaded_in_func
   # - printf "'c" で unicode が読める
   declare -A _ble_text_s2c_table
   function ble/util/s2c {
-    local s="${1:$2:1}"
-    ret="${_ble_text_s2c_table[x$s]}"
+    local s=${1:$2:1}
+    ret=${_ble_text_s2c_table[x$s]}
     [[ $ret ]] && return
 
-    ret=$(builtin printf '%d' "'${1:$2:1}")
-    _ble_text_s2c_table[x$s]="$ret"
+    ble/util/sprintf ret %d "'$s"
+    _ble_text_s2c_table[x$s]=$ret
+  }
+elif ((_ble_bash>=40000)); then
+  function ble/util/s2c {
+    ble/util/sprintf ret %d "'${1:$2:1}"
   }
 else
   # bash-3 では printf %d "'あ" 等としても
@@ -1132,17 +1156,19 @@ else
   # 各バイトを取り出して unicode に変換するかする必要がある。
   # bash-3 では read -n 1 を用いてバイト単位で読み取れる。これを利用する。
   function ble/util/s2c {
-    local s="${1:$2:1}"
+    local s=${1:$2:1}
     if [[ $s == [''-''] ]]; then
-      ret=$(builtin printf '%d' "'$s")
+      ble/util/sprintf ret %d "'$s"
       return
     fi
 
-    "ble-text-b2c+$bleopt_input_encoding" $(
+    local bytes byte
+    ble/util/assign bytes '
       while IFS= read -r -n 1 byte; do
-        builtin printf '%d ' "'$byte"
-      done <<<$s
-    )
+        builtin printf "%d " "'\''$byte"
+      done <<< "$s"
+    '
+    "ble-text-b2c+$bleopt_input_encoding" $bytes
   }
 fi
 

@@ -224,13 +224,15 @@ function ble-syntax-highlight+default {
 
         # この部分の判定で fork を沢山する \if 等に対しては 4fork+2exec になる。
         # ■キャッシュ(accept-line 時に clear)するなどした方が良いかもしれない。
-        local type; ble-syntax-highlight+default/type "$(builtin type -t "$cmd" 2>/dev/null)" "$cmd"
+        local type; ble/util/type type "$cmd"
+        ble-syntax-highlight+default/type "$type" "$cmd" # -> type
         if [[ "$type" = alias && "$cmd" != "$_0" ]]; then
           # alias を \ で無効化している場合
           # → unalias して再度 check (2fork)
           type=$(
             unalias "$cmd"
-            ble-syntax-highlight+default/type "$(builtin type -t "$cmd" 2>/dev/null)" "$cmd"
+            ble/util/type type "$cmd"
+            ble-syntax-highlight+default/type "$type" "$cmd" # -> type
             builtin echo -n "$type")
         elif [[ "$type" = keyword && "$cmd" != "$_0" ]]; then
           # keyword (time do if function else elif fi の類) を \ で無効化している場合

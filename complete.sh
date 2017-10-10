@@ -341,8 +341,9 @@ function ble-complete/source/argument/.compgen {
   [[ $compcmd ]] || return 1
 
   local -a compargs compoptions
-  local iarg=1
-  eval "compargs=($(complete -p "$cmd" 2>/dev/null))"
+  local ret iarg=1
+  ble/util/assign ret 'complete -p "$cmd" 2>/dev/null'
+  eval "compargs=($ret)"
   while ((iarg<${#compargs[@]})); do
     local arg="${compargs[iarg++]}"
     case "$arg" in

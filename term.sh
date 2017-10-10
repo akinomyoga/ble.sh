@@ -15,13 +15,14 @@ function ble/term.sh/register-varname {
 function ble/term.sh/define-cap {
   local name="$1" def="$2"
   shift 2
-  builtin eval "$name=\"\$(ble/term.sh/tput $@ || echo -n \"\$def\")\""
+  ble/util/assign "$name" "ble/term.sh/tput $@ || echo -n \"\$def\""
   ble/term.sh/register-varname "$name"
 }
 function ble/term.sh/define-cap.2 {
   local name="$1" def="$2"
   shift 2
-  builtin eval "$name=\"\$(echo -n x;ble/term.sh/tput $@ || echo -n \"\$def\";echo -n x)\"; $name=\${$name#x}; $name=\${$name%x}"
+  ble/util/assign "$name" "echo -n x;ble/term.sh/tput $@ || echo -n \"\$def\";echo -n x"
+  builtin eval "$name=\${$name#x}; $name=\${$name%x}"
   ble/term.sh/register-varname "$name"
 }
 
@@ -52,7 +53,7 @@ function ble/term.sh/initialize {
   # tab width
   _ble_term_it=8
   if [[ $_ble_term_hasput ]]; then
-    _ble_term_it="$(ble/term.sh/tput it)"
+    ble/util/assign _ble_term_it 'ble/term.sh/tput it'
     _ble_term_it="${_ble_term_it:-8}"
   fi
   ble/term.sh/register-varname _ble_term_it
@@ -140,7 +141,7 @@ function ble/term.sh/initialize {
   _ble_term_sgr_af=()
   _ble_term_sgr_ab=()
   for ((i=0;i<16;i++)); do
-    local i1="$((i%8))" af= ab=
+    local i1=$((i%8)) af= ab=
 
     # from terminfo
     if ((i<_ble_term_colors)); then
@@ -149,13 +150,13 @@ function ble/term.sh/initialize {
             (i1==6?3:
              (i1==1?4:
               (i1==4?1:i1))))))
-      local j="$((k-i1+j1))"
+      local j=$((k-i1+j1))
 
-      af="$(ble/term.sh/tput setaf "$i" 2>/dev/null)"
-      [[ $af ]] || af="$(ble/term.sh/tput setf "$j" 2>/dev/null)"
+      ble/util/assign af 'ble/term.sh/tput setaf "$i" 2>/dev/null'
+      [[ $af ]] || ble/util/assign af 'ble/term.sh/tput setf "$j" 2>/dev/null'
 
-      ab="$(ble/term.sh/tput setab "$i" 2>/dev/null)"
-      [[ $ab ]] || ab="$(ble/term.sh/tput setb "$j" 2>/dev/null)"
+      ble/util/assign ab 'ble/term.sh/tput setab "$i" 2>/dev/null'
+      [[ $ab ]] || ble/util/assign ab 'ble/term.sh/tput setb "$j" 2>/dev/null'
     fi
 
     # default value
