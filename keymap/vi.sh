@@ -978,6 +978,7 @@ function ble/keymap:vi/operator:indent-right {
 }
 
 #--------------------------------------
+# Primitive motion
 
 ## 関数 ble/widget/vi-command/exclusive-range.impl src dst flag nobell
 ##   @param[in] src, dst
@@ -1040,6 +1041,7 @@ function ble/widget/vi-command/inclusive-goto.impl {
 ##
 ##     preserve_column
 ##     require_multiline
+##     goto_bol
 ##
 ##   @var[in] bolx
 ##     既に計算済みの移動先 (index, q) の行の行頭がある場合はここに指定します。
@@ -1155,6 +1157,179 @@ function ble/keymap:vi/async-read-char.hook {
 function ble/keymap:vi/async-read-char {
   _ble_decode_key__hook="ble/keymap:vi/async-read-char.hook $*"
 }
+
+#------------------------------------------------------------------------------
+# marks
+
+## 配列 _ble_keymap_vi_mark_global
+##   添字は c を mark の文字コード、h を履歴番号として
+##     h*_ble_keymap_vi_mark_Base+(c-_ble_keymap_vi_mark_Offset) で表す。
+##   各要素は point:bytes の形をしている。
+## 配列 _ble_keymap_vi_mark_global
+##   添字は mark の文字コードで指定する。
+##   各要素は hindex:point:bytes の形をしている。
+_ble_keymap_vi_mark_Offset=32
+_ble_keymap_vi_mark_Base=96
+_ble_keymap_vi_mark_local=()
+_ble_keymap_vi_mark_global=()
+_ble_keymap_vi_mark_history_initialized=
+
+ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
+
+# 履歴がロードされていない時は取り敢えず _ble_edit_history_ind=0 で登録をしておく。
+# 履歴がロードされた後の初めての利用のときに正しい履歴番号に修正する。
+function ble/keymap:vi/mark/check-history-loaded {
+  if [[ $_ble_edit_history_loaded && ! $_ble_keymap_vi_mark_history_initialized ]]; then
+    _ble_keymap_vi_mark_history_initialized=1
+    local itop=${#_ble_edit_history[@]}
+    if ((itop!=0)); then
+      local imark
+      for imark in "${!_ble_keymap_vi_mark_local[@]}"; do
+        _ble_keymap_vi_mark_local[itop*_ble_keymap_vi_mark_Base+imark]=${_ble_keymap_vi_mark_local[imark]}
+        unset '_ble_keymap_vi_mark_local[imark]'
+      done
+      for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
+        local value=${_ble_keymap_vi_mark_global[imark]}
+        _ble_keymap_vi_mark_global[imark]=$itop:${value#*:}
+      done
+    fi
+  fi
+}
+function ble/keymap:vi/mark/shift-by-dirty-range {
+  [[ $_ble_decode_key__kmap == vi_cmap ]] && return
+  local beg=$1 end=$2 end0=$3
+  local shift=$((end-end0))
+  local imark_min=$((_ble_edit_history_ind*_ble_keymap_vi_mark_Base))
+  local imark_sup=$((imark_min+_ble_keymap_vi_mark_Base))
+  local imark
+  for imark in "${!_ble_keymap_vi_mark_local[@]}"; do # mark が沢山あると重くなる
+    ((imark<imark_min)) && continue
+    ((imark<imark_sup)) || break
+    local value=${_ble_keymap_vi_mark_local[imark]}
+    local index=${value%%:*} rest=${value#*:}
+    ((index<beg)) || _ble_keymap_vi_mark_local[imark]=$((index<end0?beg:index+shift)):$rest
+  done
+  for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
+    local value=${_ble_keymap_vi_mark_global[imark]}
+    [[ $value == "$_ble_edit_history_ind":* ]] || continue
+    local h=${value%%:*}; value=${value:${#h}+1}
+    local index=${value%%:*}; value=${value:${#index}+1}
+    ((index<beg)) || _ble_keymap_vi_mark_global[imark]=$h:$((index<end0?beg:index+shift)):$value
+  done
+}
+function ble/keymap:vi/mark/set-global-mark {
+  local c=$1 index=$2
+  ble/keymap:vi/mark/check-history-loaded
+  ble-edit/content/find-logical-bol "$index"; local bol=$ret
+  local imark=$((c-_ble_keymap_vi_mark_Offset))
+  _ble_keymap_vi_mark_global[imark]=$_ble_edit_history_ind:$bol:$((index-bol))
+}
+function ble/keymap:vi/mark/set-local-mark {
+  local c=$1 index=$2
+  ble/keymap:vi/mark/check-history-loaded
+  ble-edit/content/find-logical-bol "$index"; local bol=$ret
+  local imark=$((_ble_edit_history_ind*__ble_keymap_vi_mark_Base+c-_ble_keymap_vi_mark_Offset))
+  _ble_keymap_vi_mark_local[imark]=$bol:$((index-bol))
+}
+
+function ble/widget/vi-command/set-mark {
+  _ble_decode_key__hook="ble/widget/vi-command/set-mark.hook"
+}
+function ble/widget/vi-command/set-mark.hook {
+  local key=$1
+  local ret
+  if ble/keymap:vi/k2c "$key" && local c=$ret; then
+    if ((65<=c&&c<91)); then # A-Z
+      ble/keymap:vi/mark/set-global-mark "$c" "$_ble_edit_ind"
+      ble/keymap:vi/adjust-command-mode
+      return
+    elif ((97<=c&&c<123||c==91||c==93||c==60||c==62||c==96||c==39)); then # a-z [ ] < > ` '
+      ble/keymap:vi/mark/set-local-mark "$c" "$_ble_edit_ind"
+      ble/keymap:vi/adjust-command-mode
+      return
+    fi
+  fi
+  ble/widget/vi-command/bell
+}
+
+function ble/widget/vi-command/goto-mark/data.impl {
+  local index=$1 bytes=$2 flag=$3 opts=$4
+  local len=${#_ble_edit_str}
+  ((index>len&&(index=len)))
+  local ret
+  ble-edit/content/find-logical-bol "$index"; index=$ret
+  ble-edit/content/find-logical-eol "$index"; local eol=$ret
+
+  if [[ :$opts: == *:line:* ]]; then
+    local bolx= nolx=
+    ble/widget/vi-command/linewise-goto.impl "$index" "$flag"
+  else
+    ((index+=bytes,index>eol&&(index=eol))) # todo: calculate by byte offset
+    ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
+  fi
+}
+function ble/widget/vi-command/goto-local-mark.impl {
+  local c=$1 opts=$2
+  local arg flag; ble/keymap:vi/get-arg 1
+
+  ble/keymap:vi/mark/check-history-loaded
+  local imark=$((_ble_edit_history_ind*_ble_keymap_vi_mark_Base+c-_ble_keymap_vi_mark_Offset))
+  local value=${_ble_keymap_vi_mark_local[imark]}
+  if [[ ! $value ]]; then
+    ble/widget/vi-command/bell
+    return
+  fi
+
+  local data
+  ble/string#split data : "$value"
+  ble/widget/vi-command/goto-mark/data.impl "${data[0]}" "${data[1]}" "$flag" "$opts"
+}
+function ble/widget/vi-command/goto-global-mark.impl {
+  local c=$1 opts=$2
+  local arg flag; ble/keymap:vi/get-arg 1
+
+  ble/keymap:vi/mark/check-history-loaded
+  local imark=$((c-_ble_keymap_vi_mark_Offset))
+  local value=${_ble_keymap_vi_mark_global[imark]}
+  if [[ ! $value ]]; then
+    ble/widget/vi-command/bell
+    return
+  fi
+
+  local data
+  ble/string#split data : "$value"
+
+  # find a history entry by data[0]
+  if [[ $_ble_edit_history_ind != ${data[0]} ]]; then
+    if [[ $flag ]]; then
+      ble/widget/vi-command/bell
+      return
+    fi
+    ble-edit/history/goto "${data[0]}"
+  fi
+
+  # find a line by data[1]
+  ble/widget/vi-command/goto-mark/data.impl "${data[1]}" "${data[2]}" "$flag" "$opts"
+}
+
+function ble/widget/vi-command/goto-mark {
+  _ble_decode_key__hook="ble/widget/vi-command/goto-mark.hook ${1:-char}"
+}
+function ble/widget/vi-command/goto-mark.hook {
+  local opts=$1 key=$2
+  local ret
+  if ble/keymap:vi/k2c "$key" && local c=$ret; then
+    if ((65<=c&&c<91)); then # A-Z
+      ble/widget/vi-command/goto-global-mark.impl "$c" "$opts"
+      return
+    elif ((_ble_keymap_vi_mark_Offset<=c)); then
+      ble/widget/vi-command/goto-local-mark.impl "$c" "$opts"
+      return
+    fi
+  fi
+  ble/widget/vi-command/bell
+}
+
 
 #------------------------------------------------------------------------------
 # command: [cdy]?[hl]
@@ -3145,6 +3320,9 @@ function ble/keymap:vi/setup-map {
   ble-bind -f '?' vi-command/search-backward
   ble-bind -f 'n' vi-command/search-repeat
   ble-bind -f 'N' vi-command/search-reverse-repeat
+
+  ble-bind -f '`' 'vi-command/goto-mark'
+  ble-bind -f \'  'vi-command/goto-mark line'
 }
 
 function ble-decode-keymap:vi_omap/define {
@@ -3231,6 +3409,8 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f v   vi-command/charwise-visual-mode
   ble-bind -f V   vi-command/linewise-visual-mode
   ble-bind -f C-v vi-command/blockwise-visual-mode
+
+  ble-bind -f m vi-command/set-mark
 
   #----------------------------------------------------------------------------
   # bash
@@ -4070,6 +4250,7 @@ function ble/keymap:vi/async-commandline-mode {
   ble-edit/info/default text ''
 
   # 初期化
+  ble-decode/keymap/push vi_cmap
   _ble_textarea_panel=2
   _ble_syntax_lang=text
   _ble_edit_PS1=$PS2
@@ -4078,7 +4259,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # from ble/widget/.newline
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
-  _ble_edit_str.reset ''
+  _ble_edit_str.reset '' # Note: 中で mark の shift が起きるので push vi_cmap より後である必要がある
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
@@ -4086,7 +4267,6 @@ function ble/keymap:vi/async-commandline-mode {
   _ble_edit_arg=
 
   ble/textarea#invalidate
-  ble-decode/keymap/push vi_cmap
 }
 
 function ble/widget/vi_cmap/accept {

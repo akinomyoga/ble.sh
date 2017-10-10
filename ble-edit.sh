@@ -1901,11 +1901,14 @@ _ble_edit_dirty_syntax_beg=0
 _ble_edit_dirty_syntax_end=0
 _ble_edit_dirty_syntax_end0=1
 
+_ble_edit_dirty_observer=()
 function _ble_edit_str/update-dirty-range {
   ble/dirty-range#update --prefix=_ble_edit_dirty_draw_ "$@"
   ble/dirty-range#update --prefix=_ble_edit_dirty_syntax_ "$@"
   ble/textmap#update-dirty-range "$@"
 
+  local obs
+  for obs in "${_ble_edit_dirty_observer[@]}"; do "$obs" "$@"; done
   # ble-assert '((
   #   _ble_edit_dirty_draw_beg==_ble_edit_dirty_syntax_beg&&
   #   _ble_edit_dirty_draw_end==_ble_edit_dirty_syntax_end&&
