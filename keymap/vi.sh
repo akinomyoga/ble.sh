@@ -2961,9 +2961,17 @@ function ble/widget/vi-command/text-object {
 #
 # map: :cmd
 
+function ble/keymap:vi/commandline/.before_command {
+  if [[ ! $_ble_edit_str ]] && ((KEYS[0]==127||KEYS[0]==(104|ble_decode_Ctrl))); then # DEL or C-h
+    ble/widget/vi_cmap/cancel
+    COMMAND=
+  fi
+}
+
 function ble/widget/vi-command/commandline {
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
   _ble_edit_PS1=:
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/.before_command
 }
 function ble/widget/vi-command/commandline.hook {
   local command
@@ -3012,12 +3020,6 @@ _ble_keymap_vicmd_search_needle=
 _ble_keymap_vicmd_search_activate=
 function ble-highlight-layer:region/mark:search/get-selection {
   ble-highlight-layer:region/mark:char/get-selection
-}
-function ble/keymap:vi/search/.before_command {
-  if [[ ! $_ble_edit_str ]] && ((KEYS[0]==127||KEYS[0]==(104|ble_decode_Ctrl))); then # DEL or C-h
-    ble/widget/vi_cmap/cancel
-    COMMAND=
-  fi
 }
 function ble/keymap:vi/search/invoke-search {
   local ind=$_ble_edit_ind
@@ -3201,12 +3203,12 @@ function ble/widget/vi-command/search.impl {
 function ble/widget/vi-command/search-forward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
   _ble_edit_PS1='/'
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/search/.before_command
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/.before_command
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/search/.before_command
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/.before_command
 }
 function ble/widget/vi-command/search-repeat {
   ble/widget/vi-command/search.impl repeat:+

@@ -85,7 +85,7 @@ function bleopt/check:char_width_mode {
 ## bleopt_exec_type=exec
 ##   関数内で実行します (従来の方法です。将来的に削除されます)
 ## bleopt_exec_type=gexec
-##   グローバルな文脈で実行します (新しい方法です。現在テスト中です)
+##   グローバルな文脈で実行します (新しい方法です)
 ## 要件: 関数 ble-edit/exec:$bleopt_exec_type/process
 : ${bleopt_exec_type:=gexec}
 
