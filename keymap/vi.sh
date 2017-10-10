@@ -229,11 +229,6 @@ function ble/widget/vi-insert/.before_command {
 #------------------------------------------------------------------------------
 # modes
 
-## 変数 _ble_keymap_vi_insert_mark
-##   最後に vi-insert を抜けた位置
-##   ToDo: 現在は使用していない。将来的には gi などで使う。
-_ble_keymap_vi_insert_mark=
-
 ## 変数 _ble_keymap_vi_insert_overwrite
 ##   挿入モードに入った時の上書き文字
 _ble_keymap_vi_insert_overwrite=
@@ -297,7 +292,7 @@ function ble/keymap:vi/update-mode-name {
 }
 
 function ble/widget/vi-insert/.normal-mode {
-  _ble_keymap_vi_insert_mark=$_ble_edit_ind
+  ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
   _ble_edit_mark_active=
@@ -316,7 +311,7 @@ function ble/widget/vi-insert/normal-mode-norepeat {
 }
 function ble/widget/vi-insert/single-command-mode {
   ble/widget/vi-insert/.reset-repeat
-  _ble_keymap_vi_insert_mark=$_ble_edit_ind
+  ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
   _ble_keymap_vi_single_command=1
   _ble_keymap_vi_single_command_overwrite=$_ble_edit_overwrite_mode
   _ble_edit_mark_active=
@@ -437,6 +432,17 @@ function ble/widget/vi-command/insert-mode-at-first-non-space {
     ble/widget/vi-command/first-non-space
     [[ ${_ble_edit_str:_ble_edit_ind:1} == [$' \t'] ]] &&
       ble/widget/.goto-char _ble_edit_ind+1 # 逆eol補正
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
+}
+# nmap: gi
+function ble/widget/vi-command/insert-mode-at-previous-point {
+  local arg flag; ble/keymap:vi/get-arg 1
+  if [[ $flag ]]; then
+    ble/widget/vi-command/bell
+  else
+    local ret
+    ble/keymap:vi/mark/get-local-mark 94 && ble/widget/.goto-char "$ret"
     ble/widget/vi-command/.insert-mode "$arg"
   fi
 }
@@ -1237,6 +1243,36 @@ function ble/keymap:vi/mark/set-local-mark {
   ble-edit/content/find-logical-bol "$index"; local bol=$ret
   _ble_keymap_vi_mark_local[c]=$bol:$((index-bol))
 }
+## 関数 ble/keymap:vi/mark/get-mark.impl index bytes
+##   @param[in] index bytes
+##     記録された行頭の位置と列を指定します。
+##   @var[out] ret
+##     マークが見つかったとき対応する位置を返します。
+function ble/keymap:vi/mark/get-mark.impl {
+  local index=$1 bytes=$2
+  local len=${#_ble_edit_str}
+  ((index>len&&(index=len)))
+  ble-edit/content/find-logical-bol "$index"; index=$ret
+  ble-edit/content/find-logical-eol "$index"; local eol=$ret
+  ((index+=bytes,index>eol&&(index=eol))) # todo: calculate by byte offset
+  ret=$index
+  return 0
+}
+## 関数 ble/keymap:vi/mark/get-mark.impl c
+##   @param[in] c
+##     mark の番号 (文字コード) を指定します。
+##   @var[out] ret
+##     マークが見つかったとき対応する位置を返します。
+function ble/keymap:vi/mark/get-local-mark {
+  local c=$1
+  ble/keymap:vi/mark/update-mark-history
+  local value=${_ble_keymap_vi_mark_local[c]}
+  [[ $value ]] || return 1
+
+  local data
+  ble/string#split data : "$value"
+  ble/keymap:vi/mark/get-mark.impl "${data[0]}" "${data[1]}" # -> ret
+}
 
 function ble/widget/vi-command/set-mark {
   _ble_decode_key__hook="ble/widget/vi-command/set-mark.hook"
@@ -1258,36 +1294,23 @@ function ble/widget/vi-command/set-mark.hook {
   ble/widget/vi-command/bell
 }
 
-function ble/widget/vi-command/goto-mark/data.impl {
-  local index=$1 bytes=$2 flag=$3 opts=$4
-  local len=${#_ble_edit_str}
-  ((index>len&&(index=len)))
-  local ret
-  ble-edit/content/find-logical-bol "$index"; index=$ret
-  ble-edit/content/find-logical-eol "$index"; local eol=$ret
-
+function ble/widget/vi-command/goto-mark.impl {
+  local index=$1 flag=$2 opts=$3
   if [[ :$opts: == *:line:* ]]; then
     local bolx= nolx=
     ble/widget/vi-command/linewise-goto.impl "$index" "$flag"
   else
-    ((index+=bytes,index>eol&&(index=eol))) # todo: calculate by byte offset
     ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
   fi
 }
 function ble/widget/vi-command/goto-local-mark.impl {
-  local c=$1 opts=$2
+  local c=$1 opts=$2 ret
   local arg flag; ble/keymap:vi/get-arg 1
-
-  ble/keymap:vi/mark/update-mark-history
-  local value=${_ble_keymap_vi_mark_local[c]}
-  if [[ ! $value ]]; then
+  if ble/keymap:vi/mark/get-local-mark "$c" && local index=$ret; then
+    ble/widget/vi-command/goto-mark.impl "$index" "$flag" "$opts"
+  else
     ble/widget/vi-command/bell
-    return
   fi
-
-  local data
-  ble/string#split data : "$value"
-  ble/widget/vi-command/goto-mark/data.impl "${data[0]}" "${data[1]}" "$flag" "$opts"
 }
 function ble/widget/vi-command/goto-global-mark.impl {
   local c=$1 opts=$2
@@ -1312,8 +1335,10 @@ function ble/widget/vi-command/goto-global-mark.impl {
     ble-edit/history/goto "${data[0]}"
   fi
 
-  # find a line by data[1]
-  ble/widget/vi-command/goto-mark/data.impl "${data[1]}" "${data[2]}" "$flag" "$opts"
+  # find position by data[1]:data[2]
+  local ret
+  ble/keymap:vi/mark/get-mark.impl "${data[1]}" "${data[2]}"
+  ble/widget/vi-command/goto-mark.impl "$ret" "$flag" "$opts"
 }
 
 function ble/widget/vi-command/goto-mark {
@@ -3378,6 +3403,7 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f O      vi-command/insert-mode-at-backward-line
   ble-bind -f R      vi-command/replace-mode
   ble-bind -f 'g R'  vi-command/virtual-replace-mode
+  ble-bind -f 'g i'  vi-command/insert-mode-at-previous-point
 
   ble-bind -f '~'    vi-command/forward-char-toggle-case
 
