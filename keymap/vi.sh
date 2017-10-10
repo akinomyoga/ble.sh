@@ -1161,57 +1161,64 @@ function ble/keymap:vi/async-read-char {
 #------------------------------------------------------------------------------
 # marks
 
-## 配列 _ble_keymap_vi_mark_global
-##   添字は c を mark の文字コード、h を履歴番号として
-##     h*_ble_keymap_vi_mark_Base+(c-_ble_keymap_vi_mark_Offset) で表す。
+## 配列 _ble_keymap_vi_mark_local
+##   添字は mark の文字コードで指定する。
 ##   各要素は point:bytes の形をしている。
 ## 配列 _ble_keymap_vi_mark_global
 ##   添字は mark の文字コードで指定する。
 ##   各要素は hindex:point:bytes の形をしている。
 _ble_keymap_vi_mark_Offset=32
-_ble_keymap_vi_mark_Base=96
+_ble_keymap_vi_mark_hindex=
 _ble_keymap_vi_mark_local=()
 _ble_keymap_vi_mark_global=()
-_ble_keymap_vi_mark_history_initialized=
+_ble_keymap_vi_mark_history=()
 
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
 
 # 履歴がロードされていない時は取り敢えず _ble_edit_history_ind=0 で登録をしておく。
 # 履歴がロードされた後の初めての利用のときに正しい履歴番号に修正する。
-function ble/keymap:vi/mark/check-history-loaded {
-  if [[ $_ble_edit_history_loaded && ! $_ble_keymap_vi_mark_history_initialized ]]; then
-    _ble_keymap_vi_mark_history_initialized=1
-    local itop=${#_ble_edit_history[@]}
-    if ((itop!=0)); then
-      local imark
-      for imark in "${!_ble_keymap_vi_mark_local[@]}"; do
-        _ble_keymap_vi_mark_local[itop*_ble_keymap_vi_mark_Base+imark]=${_ble_keymap_vi_mark_local[imark]}
-        unset '_ble_keymap_vi_mark_local[imark]'
-      done
-      for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
-        local value=${_ble_keymap_vi_mark_global[imark]}
-        _ble_keymap_vi_mark_global[imark]=$itop:${value#*:}
-      done
-    fi
+function ble/keymap:vi/mark/update-mark-history {
+  local h; ble-edit/history/getindex -v h
+  if [[ ! $_ble_keymap_vi_mark_hindex ]]; then
+    _ble_keymap_vi_mark_hindex=$h
+  elif [[ $_ble_keymap_vi_mark_hindex != $h ]]; then
+    local imark value
+
+    # save
+    local save
+    for imark in "${!_ble_keymap_vi_mark_local[@]}"; do
+      local value=${_ble_keymap_vi_mark_local[imark]}
+      ble/array#push save "$imark:$value"
+    done
+    _ble_keymap_vi_mark_history[_ble_keymap_vi_mark_hindex]=${save[*]}
+
+    # load
+    _ble_keymap_vi_mark_local=()
+    local entry
+    for entry in ${_ble_keymap_vi_mark_history[h]}; do
+      imark=${entry%%:*} value=${entry#*:}
+      _ble_keymap_vi_mark_local[imark]=$value
+    done
+
+    _ble_keymap_vi_mark_hindex=$h
   fi
 }
 function ble/keymap:vi/mark/shift-by-dirty-range {
-  [[ $_ble_decode_key__kmap == vi_cmap ]] && return
-  local beg=$1 end=$2 end0=$3
+  local beg=$1 end=$2 end0=$3 reason=$4
+  [[ $4 == edit ]] || return
+
+  ble/keymap:vi/mark/update-mark-history
   local shift=$((end-end0))
-  local imark_min=$((_ble_edit_history_ind*_ble_keymap_vi_mark_Base))
-  local imark_sup=$((imark_min+_ble_keymap_vi_mark_Base))
   local imark
-  for imark in "${!_ble_keymap_vi_mark_local[@]}"; do # mark が沢山あると重くなる
-    ((imark<imark_min)) && continue
-    ((imark<imark_sup)) || break
+  for imark in "${!_ble_keymap_vi_mark_local[@]}"; do
     local value=${_ble_keymap_vi_mark_local[imark]}
     local index=${value%%:*} rest=${value#*:}
     ((index<beg)) || _ble_keymap_vi_mark_local[imark]=$((index<end0?beg:index+shift)):$rest
   done
+  local h; ble-edit/history/getindex -v h
   for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
     local value=${_ble_keymap_vi_mark_global[imark]}
-    [[ $value == "$_ble_edit_history_ind":* ]] || continue
+    [[ $value == "$h":* ]] || continue
     local h=${value%%:*}; value=${value:${#h}+1}
     local index=${value%%:*}; value=${value:${#index}+1}
     ((index<beg)) || _ble_keymap_vi_mark_global[imark]=$h:$((index<end0?beg:index+shift)):$value
@@ -1219,17 +1226,16 @@ function ble/keymap:vi/mark/shift-by-dirty-range {
 }
 function ble/keymap:vi/mark/set-global-mark {
   local c=$1 index=$2
-  ble/keymap:vi/mark/check-history-loaded
+  ble/keymap:vi/mark/update-mark-history
   ble-edit/content/find-logical-bol "$index"; local bol=$ret
-  local imark=$((c-_ble_keymap_vi_mark_Offset))
-  _ble_keymap_vi_mark_global[imark]=$_ble_edit_history_ind:$bol:$((index-bol))
+  local h; ble-edit/history/getindex -v h
+  _ble_keymap_vi_mark_global[c]=$h:$bol:$((index-bol))
 }
 function ble/keymap:vi/mark/set-local-mark {
   local c=$1 index=$2
-  ble/keymap:vi/mark/check-history-loaded
+  ble/keymap:vi/mark/update-mark-history
   ble-edit/content/find-logical-bol "$index"; local bol=$ret
-  local imark=$((_ble_edit_history_ind*__ble_keymap_vi_mark_Base+c-_ble_keymap_vi_mark_Offset))
-  _ble_keymap_vi_mark_local[imark]=$bol:$((index-bol))
+  _ble_keymap_vi_mark_local[c]=$bol:$((index-bol))
 }
 
 function ble/widget/vi-command/set-mark {
@@ -1272,9 +1278,8 @@ function ble/widget/vi-command/goto-local-mark.impl {
   local c=$1 opts=$2
   local arg flag; ble/keymap:vi/get-arg 1
 
-  ble/keymap:vi/mark/check-history-loaded
-  local imark=$((_ble_edit_history_ind*_ble_keymap_vi_mark_Base+c-_ble_keymap_vi_mark_Offset))
-  local value=${_ble_keymap_vi_mark_local[imark]}
+  ble/keymap:vi/mark/update-mark-history
+  local value=${_ble_keymap_vi_mark_local[c]}
   if [[ ! $value ]]; then
     ble/widget/vi-command/bell
     return
@@ -1288,9 +1293,8 @@ function ble/widget/vi-command/goto-global-mark.impl {
   local c=$1 opts=$2
   local arg flag; ble/keymap:vi/get-arg 1
 
-  ble/keymap:vi/mark/check-history-loaded
-  local imark=$((c-_ble_keymap_vi_mark_Offset))
-  local value=${_ble_keymap_vi_mark_global[imark]}
+  ble/keymap:vi/mark/update-mark-history
+  local value=${_ble_keymap_vi_mark_global[c]}
   if [[ ! $value ]]; then
     ble/widget/vi-command/bell
     return
@@ -4261,7 +4265,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # from ble/widget/.newline
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
-  _ble_edit_str.reset '' # Note: 中で mark の shift が起きるので push vi_cmap より後である必要がある
+  _ble_edit_str.reset '' newline # Note: 中で mark の shift が起きるので push vi_cmap より後である必要がある
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=

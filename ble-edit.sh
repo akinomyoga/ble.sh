@@ -1844,12 +1844,12 @@ _ble_edit_kill_type=
 # _ble_edit_str は以下の関数を通して変更する。
 # 変更範囲を追跡する為。
 function _ble_edit_str.replace {
-  local -i beg="$1" end="$2"
-  local ins="$3"
+  local -i beg=$1 end=$2
+  local ins=$3 reason=${4:-edit}
 
   # cf. Note#1
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
-  _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end"
+  _ble_edit_str/update-dirty-range "$beg" "$((beg+${#ins}))" "$end" "$reason"
 #%if !release
   # Note: 何処かのバグで _ble_edit_ind に変な値が入ってエラーになるので、
   #   ここで誤り訂正を行う。想定として、この関数を呼出した時の _ble_edit_ind の値は、
@@ -1868,8 +1868,8 @@ function _ble_edit_str.replace {
 #%end
 }
 function _ble_edit_str.reset {
-  local str="$1"
-  _ble_edit_str/update-dirty-range 0 "${#str}" "${#_ble_edit_str}"
+  local str=$1 reason=${2:-edit}
+  _ble_edit_str/update-dirty-range 0 "${#str}" "${#_ble_edit_str}" "$reason"
   _ble_edit_str="$str"
 #%if !release
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
@@ -1880,7 +1880,7 @@ function _ble_edit_str.reset {
 #%end
 }
 function _ble_edit_str.reset-and-check-dirty {
-  local str="$1"
+  local str=$1 reason=${2:-edit}
   [[ $_ble_edit_str == $str ]] && return
 
   local ret pref suff
@@ -1889,8 +1889,8 @@ function _ble_edit_str.reset-and-check-dirty {
   ble/string#common-suffix "${_ble_edit_str:dmin}" "${str:dmin}"; suff="$ret"
   local dmax0=$((${#_ble_edit_str}-${#suff})) dmax=$((${#str}-${#suff}))
 
-  _ble_edit_str/update-dirty-range "$dmin" "$dmax" "$dmax0"
   _ble_edit_str="$str"
+  _ble_edit_str/update-dirty-range "$dmin" "$dmax" "$dmax0" "$reason"
 }
 
 _ble_edit_dirty_draw_beg=-1
@@ -1902,10 +1902,15 @@ _ble_edit_dirty_syntax_end=0
 _ble_edit_dirty_syntax_end0=1
 
 _ble_edit_dirty_observer=()
+## 関数 _ble_edit_str/update-dirty-range beg end end0 [reason]
+##  @param[in] beg end end0
+##    変更範囲を指定します。
+##  @param[in] reason
+##    変更の理由を表す文字列を指定します。
 function _ble_edit_str/update-dirty-range {
-  ble/dirty-range#update --prefix=_ble_edit_dirty_draw_ "$@"
-  ble/dirty-range#update --prefix=_ble_edit_dirty_syntax_ "$@"
-  ble/textmap#update-dirty-range "$@"
+  ble/dirty-range#update --prefix=_ble_edit_dirty_draw_ "${@:1:3}"
+  ble/dirty-range#update --prefix=_ble_edit_dirty_syntax_ "${@:1:3}"
+  ble/textmap#update-dirty-range "${@:1:3}"
 
   local obs
   for obs in "${_ble_edit_dirty_observer[@]}"; do "$obs" "$@"; done
@@ -4090,7 +4095,7 @@ function ble/widget/.newline {
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
 
   # 行内容の初期化
-  _ble_edit_str.reset ''
+  _ble_edit_str.reset '' newline
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
@@ -4446,7 +4451,7 @@ function ble-edit/history/goto {
 
   # restore
   _ble_edit_history_ind="$index1"
-  _ble_edit_str.reset "${_ble_edit_history_edit[index1]}"
+  _ble_edit_str.reset "${_ble_edit_history_edit[index1]}" history
 
   # point
   if [[ $bleopt_history_preserve_point ]]; then
