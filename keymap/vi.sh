@@ -362,9 +362,9 @@ function ble/keymap:vi/adjust-command-mode {
   fi
 
   # search による mark の設定・解除
-  if [[ $_ble_keymap_vicmd_search_activate ]]; then
-    _ble_edit_mark_active=$_ble_keymap_vicmd_search_activate
-    _ble_keymap_vicmd_search_activate=
+  if [[ $_ble_keymap_vi_search_activate ]]; then
+    _ble_edit_mark_active=$_ble_keymap_vi_search_activate
+    _ble_keymap_vi_search_activate=
   elif [[ $_ble_edit_mark_active == search ]]; then
     _ble_edit_mark_active=
   fi
@@ -2447,9 +2447,9 @@ function ble/widget/vi-command/insert-mode-at-backward-line {
 # command: f F t F
 
 
-## 変数 _ble_keymap_vi_search_char
+## 変数 _ble_keymap_vi_char_search
 ##   前回の ble/widget/vi-command/search-char.impl/core の検索を記録します。
-_ble_keymap_vi_search_char=
+_ble_keymap_vi_char_search=
 
 ## 関数 ble/widget/vi-command/search-char.impl/core opts key|char
 ##
@@ -2486,7 +2486,7 @@ function ble/widget/vi-command/search-char.impl/core {
   fi
   [[ $c ]] || return 1
 
-  ((isrepeat)) || _ble_keymap_vi_search_char=$c$opts
+  ((isrepeat)) || _ble_keymap_vi_char_search=$c$opts
 
   local index
   if [[ $opts == *b* ]]; then
@@ -2533,13 +2533,13 @@ function ble/widget/vi-command/search-backward-char-prev {
   ble/keymap:vi/async-read-char ble/widget/vi-command/search-char.impl bp
 }
 function ble/widget/vi-command/search-char-repeat {
-  [[ $_ble_keymap_vi_search_char ]] || ble/widget/.bell
-  local c=${_ble_keymap_vi_search_char::1} opts=${_ble_keymap_vi_search_char:1}
+  [[ $_ble_keymap_vi_char_search ]] || ble/widget/.bell
+  local c=${_ble_keymap_vi_char_search::1} opts=${_ble_keymap_vi_char_search:1}
   ble/widget/vi-command/search-char.impl "r$opts" "$c"
 }
 function ble/widget/vi-command/search-char-reverse-repeat {
-  [[ $_ble_keymap_vi_search_char ]] || ble/widget/.bell
-  local c=${_ble_keymap_vi_search_char::1} opts=${_ble_keymap_vi_search_char:1}
+  [[ $_ble_keymap_vi_char_search ]] || ble/widget/.bell
+  local c=${_ble_keymap_vi_char_search::1} opts=${_ble_keymap_vi_char_search:1}
   if [[ $opts == *b* ]]; then
     opts=f${opts//b}
   else
@@ -3157,10 +3157,10 @@ function ble/widget/vi-command:wq {
 #
 # map: / ? n N
 
-_ble_keymap_vicmd_search_obackward=
-_ble_keymap_vicmd_search_ohistory=
-_ble_keymap_vicmd_search_needle=
-_ble_keymap_vicmd_search_activate=
+_ble_keymap_vi_search_obackward=
+_ble_keymap_vi_search_ohistory=
+_ble_keymap_vi_search_needle=
+_ble_keymap_vi_search_activate=
 function ble-highlight-layer:region/mark:search/get-selection {
   ble-highlight-layer:region/mark:char/get-selection
 }
@@ -3172,7 +3172,7 @@ function ble/keymap:vi/search/invoke-search {
     if ((!opt_backward)); then
       ((_ble_edit_ind<${#_ble_edit_str}&&_ble_edit_ind++))
     fi
-  elif ((opt_locate)) || [[ $_ble_edit_mark_active != search && ! $_ble_keymap_vicmd_search_activate ]]; then
+  elif ((opt_locate)) || [[ $_ble_edit_mark_active != search && ! $_ble_keymap_vi_search_activate ]]; then
     # 何にも一致していない状態から
     if ((opt_backward)); then
       ble-edit/content/eolp || ((_ble_edit_ind++))
@@ -3206,7 +3206,7 @@ function ble/widget/vi-command/search.core {
       ble-edit/content/bolp "$end" || ((end--))
       _ble_edit_ind=$beg # eol 補正は search.impl 側で最後に行う
       _ble_edit_mark=$end
-      _ble_keymap_vicmd_search_activate=search
+      _ble_keymap_vi_search_activate=search
       return 0
     else
       # vim では空一致は即座に失敗のようだ。
@@ -3260,7 +3260,7 @@ function ble/widget/vi-command/search.core {
       ble/widget/.bell "search: not found"
     fi
     if [[ $_ble_edit_mark_active == search ]]; then
-      _ble_keymap_vicmd_search_activate=search
+      _ble_keymap_vi_search_activate=search
     fi
   fi
   return 1
@@ -3276,10 +3276,10 @@ function ble/widget/vi-command/search.impl {
   local opt_optional_next=0
   if ((opt_repeat)); then
     # n N
-    if [[ $_ble_keymap_vicmd_search_needle ]]; then
-      needle=$_ble_keymap_vicmd_search_needle
-      ((opt_backward^=_ble_keymap_vicmd_search_obackward,
-        opt_history=_ble_keymap_vicmd_search_ohistory))
+    if [[ $_ble_keymap_vi_search_needle ]]; then
+      needle=$_ble_keymap_vi_search_needle
+      ((opt_backward^=_ble_keymap_vi_search_obackward,
+        opt_history=_ble_keymap_vi_search_ohistory))
     else
       ble/widget/vi-command/bell 'no previous search'
       return 1
@@ -3287,13 +3287,13 @@ function ble/widget/vi-command/search.impl {
   else
     # / ?
     if [[ $needle ]]; then
-      _ble_keymap_vicmd_search_needle=$needle
-      _ble_keymap_vicmd_search_obackward=$opt_backward
-      _ble_keymap_vicmd_search_ohistory=$opt_history
-    elif [[ $_ble_keymap_vicmd_search_needle ]]; then
-      needle=$_ble_keymap_vicmd_search_needle
-      _ble_keymap_vicmd_search_obackward=$opt_backward
-      _ble_keymap_vicmd_search_ohistory=$opt_history
+      _ble_keymap_vi_search_needle=$needle
+      _ble_keymap_vi_search_obackward=$opt_backward
+      _ble_keymap_vi_search_ohistory=$opt_history
+    elif [[ $_ble_keymap_vi_search_needle ]]; then
+      needle=$_ble_keymap_vi_search_needle
+      _ble_keymap_vi_search_obackward=$opt_backward
+      _ble_keymap_vi_search_ohistory=$opt_history
     else
       ble/widget/vi-command/bell 'no previous search'
       return 1
@@ -3316,7 +3316,7 @@ function ble/widget/vi-command/search.impl {
   if [[ $flag ]]; then
     if ((ntask)); then
       # 検索対象が見つからなかったとき
-      _ble_keymap_vicmd_search_activate=
+      _ble_keymap_vi_search_activate=
       ble/widget/.goto-char "$original_ind"
       ble/keymap:vi/adjust-command-mode
     else
@@ -3328,7 +3328,7 @@ function ble/widget/vi-command/search.impl {
       fi
       local index=$_ble_edit_ind
 
-      _ble_keymap_vicmd_search_activate=
+      _ble_keymap_vi_search_activate=
       ble/widget/.goto-char "$original_ind"
       ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
     fi
