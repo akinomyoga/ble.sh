@@ -1220,6 +1220,11 @@ _ble_keymap_vi_mark_edit_dend=-1
 _ble_keymap_vi_mark_edit_dend0=-1
 
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
+ble/array#push _ble_edit_history_onleave ble/keymap:vi/mark/history-onleave.hook
+
+function ble/keymap:vi/mark/history-onleave.hook {
+  ble/keymap:vi/mark/set-local-mark 34 "$_ble_edit_ind" # `"
+}
 
 # 履歴がロードされていない時は取り敢えず _ble_edit_history_ind=0 で登録をしておく。
 # 履歴がロードされた後の初めての利用のときに正しい履歴番号に修正する。
@@ -1273,6 +1278,9 @@ function ble/keymap:vi/mark/shift-by-dirty-range {
     ble/keymap:vi/mark/set-local-mark 46 "$beg" # `.
   else
     ble/dirty-range#clear --prefix=_ble_keymap_vi_mark_edit_d
+    if [[ $4 == newline && $_ble_decode_key__kmap != vi_cmap ]]; then
+      ble/keymap:vi/mark/set-local-mark 96 0 # ``
+    fi
   fi
 }
 function ble/keymap:vi/mark/set-global-mark {
@@ -1378,6 +1386,7 @@ function ble/widget/vi-command/set-mark.hook {
       ble/keymap:vi/adjust-command-mode
       return
     elif ((97<=c&&c<123||c==91||c==93||c==60||c==62||c==96||c==39)); then # a-z [ ] < > ` '
+      ((c==39)) && c=96 # m' は m` に読み替える
       ble/keymap:vi/mark/set-local-mark "$c" "$_ble_edit_ind"
       ble/keymap:vi/adjust-command-mode
       return
@@ -1388,6 +1397,7 @@ function ble/widget/vi-command/set-mark.hook {
 
 function ble/widget/vi-command/goto-mark.impl {
   local index=$1 flag=$2 opts=$3
+  [[ $flag ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
   if [[ :$opts: == *:line:* ]]; then
     local bolx= nolx=
     ble/widget/vi-command/linewise-goto.impl "$index" "$flag"
@@ -1444,6 +1454,7 @@ function ble/widget/vi-command/goto-mark.hook {
       ble/widget/vi-command/goto-global-mark.impl "$c" "$opts"
       return
     elif ((_ble_keymap_vi_mark_Offset<=c)); then
+      ((c==39)) && c=96 # `' は `` に読み替える
       ble/widget/vi-command/goto-local-mark.impl "$c" "$opts"
       return
     fi
@@ -2241,13 +2252,16 @@ function ble/widget/vi-command/nth-column {
   ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
 }
 
+# nmap H
 function ble/widget/vi-command/nth-line {
   local arg flag bolx= nolx=; ble/keymap:vi/get-arg 1
+  [[ $flag ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
   ble/widget/vi-command/linewise-goto.impl 0:$((arg-1)) "$flag"
 }
-
+# nmap L
 function ble/widget/vi-command/nth-last-line {
   local arg flag bolx= nolx=; ble/keymap:vi/get-arg 1
+  [[ $flag ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
   ble/widget/vi-command/linewise-goto.impl ${#_ble_edit_str}:$((-(arg-1))) "$flag"
 }
 
@@ -2302,6 +2316,7 @@ function ble/widget/vi-command/history-end {
 # G in the current history entry
 function ble/widget/vi-command/last-line {
   local bolx= nolx= arg flag; ble/keymap:vi/get-arg 0
+  [[ $flag ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
   if ((arg)); then
     ble/widget/vi-command/linewise-goto.impl 0:$((arg-1)) "$flag"
   else
@@ -2603,6 +2618,7 @@ function ble/widget/vi-command/search-matchpair-or {
     return
   fi
 
+  [[ $flag ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
   ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" 1
 }
 
@@ -3299,9 +3315,11 @@ function ble/widget/vi-command/search.impl {
     fi
   fi
 
+  local original_ind=$_ble_edit_ind
   if [[ $flag ]]; then
-    local original_ind=$_ble_edit_ind
     opt_history=0
+  else
+    local old_hindex; ble-edit/history/getindex -v old_hindex
   fi
 
   local start= # 初めの履歴番号。search.core 内で最初に履歴を読み込んだあとで設定される。
@@ -3332,11 +3350,19 @@ function ble/widget/vi-command/search.impl {
       ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" 1
     fi
   else
-    if ((ntask<arg)) && ble/keymap:vi/needs-eol-fix; then
-      if ((!opt_backward&&_ble_edit_ind<_ble_edit_mark)); then
-        ble/widget/.goto-char $((_ble_edit_ind+1))
-      else
-        ble/widget/.goto-char $((_ble_edit_ind-1))
+    if ((ntask<arg)); then
+      # 同じ履歴項目内でのジャンプ
+      local new_hindex; ble-edit/history/getindex -v new_hindex
+      ((new_hindex==old_hindex)) &&
+        ble/keymap:vi/mark/set-local-mark 96 "$original_index" # ``
+
+      # 行末補正
+      if ble/keymap:vi/needs-eol-fix; then
+        if ((!opt_backward&&_ble_edit_ind<_ble_edit_mark)); then
+          ble/widget/.goto-char $((_ble_edit_ind+1))
+        else
+          ble/widget/.goto-char $((_ble_edit_ind-1))
+        fi
       fi
     fi
     ble/keymap:vi/adjust-command-mode
@@ -4675,12 +4701,13 @@ function ble/keymap:vi/async-commandline-mode {
 
   # from ble/widget/.newline
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
-  _ble_edit_str.reset '' newline # Note: 中で mark の shift が起きるので push vi_cmap より後である必要がある
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
   _ble_edit_overwrite_mode=
   _ble_edit_arg=
+  _ble_edit_dirty_observer=()
+  _ble_edit_str.reset '' newline # Note: 中で mark の shift が起きるので _ble_edit_dirty_observer=() より後である必要がある
 
   ble/textarea#invalidate
 }

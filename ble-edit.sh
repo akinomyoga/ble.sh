@@ -1825,7 +1825,8 @@ function ble-edit/info/reveal {
 _ble_edit_VARNAMES=(
   _ble_edit_{str,ind,mark{,_active},overwrite_mode,line_disabled,arg}
   _ble_edit_kill_{ring,type}
-  _ble_edit_dirty_{draw,syntax}_{beg,end,end0})
+  _ble_edit_dirty_{draw,syntax}_{beg,end,end0}
+  _ble_edit_dirty_observer)
 _ble_edit_ARRNAMES=()
 
 # 現在の編集状態は以下の変数で表現される
@@ -1869,8 +1870,9 @@ function _ble_edit_str.replace {
 }
 function _ble_edit_str.reset {
   local str=$1 reason=${2:-edit}
-  _ble_edit_str/update-dirty-range 0 "${#str}" "${#_ble_edit_str}" "$reason"
+  local beg=0 end=${#str} end0=${#_ble_edit_str}
   _ble_edit_str="$str"
+  _ble_edit_str/update-dirty-range "$beg" "$end" "$end0" "$reason"
 #%if !release
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str"
@@ -4095,6 +4097,7 @@ function ble/widget/.newline {
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
 
   # 行内容の初期化
+  ble-edit/history/onleave.fire
   _ble_edit_str.reset '' newline
   _ble_edit_ind=0
   _ble_edit_mark=0
@@ -4215,6 +4218,13 @@ _ble_edit_history_ind=0
 
 _ble_edit_history_loaded=
 _ble_edit_history_count=
+
+_ble_edit_history_onleave=()
+function ble-edit/history/onleave.fire {
+  local obs
+  for obs in "${_ble_edit_history_onleave[@]}"; do "$obs" "$@"; done
+}
+
 
 function ble-edit/history/getindex {
   local _var=index _ret
@@ -4450,6 +4460,7 @@ function ble-edit/history/goto {
   fi
 
   # restore
+  ble-edit/history/onleave.fire
   _ble_edit_history_ind=$index1
   _ble_edit_str.reset "${_ble_edit_history_edit[index1]}" history
 
