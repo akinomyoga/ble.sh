@@ -358,7 +358,7 @@ function ble/widget/vim-surround.sh/vsurround { # vS
 }
 function ble/widget/vim-surround.sh/vgsurround { # vgS
   [[ $_ble_decode_key__kmap == vi_xmap ]] &&
-    _ble_keymap_vi_xmap_eol_extended=1 # 末尾拡張
+    ble/keymap:vi/xmap/add-eol-extension # 末尾拡張
   ble/widget/vi-command/operator vgS
 }
 
