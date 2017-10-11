@@ -271,9 +271,10 @@ function ble-complete/source/argument/.compgen-helper-func {
   [[ $comp_func ]] || return
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
-  ble-complete/source/argument/.compgen-helper-vars
+  ble-complete/source/argument/.compgen-helper-varsz
 
   # compopt に介入して -o/+o option を読み取る。
+  local fDefault=
   function compopt {
     builtin compopt "$@"; local ret="$?"
 
@@ -301,19 +302,21 @@ function ble-complete/source/argument/.compgen-helper-func {
     local s
     for s in "${ospec[@]}"; do
       case "$s" in
-      (-*) comp_opts="$comp_opts${s:1}:" ;;
-      (+*) comp_opts="${comp_opts//:${s:1}/:}" ;;
+      (-*) comp_opts=${comp_opts//:"${s:1}":/:}${s:1}: ;;
+      (+*) comp_opts=${comp_opts//:"${s:1}":/:} ;;
       esac
     done
 
     return "$ret"
   }
 
-
   local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
-  "$comp_func" "$cmd" "$cur" "$prev"
-
+  "$comp_func" "$cmd" "$cur" "$prev"; local ret=$?
   unset -f compopt
+
+  if [[ $is_default_completion && $ret == 124 ]]; then
+    is_default_completion=retry
+  fi
 }
 
 ## 関数 ble-complete/source/argument/.compgen
@@ -329,12 +332,13 @@ function ble-complete/source/argument/.compgen {
   local comp_prog= comp_func=
   ble-syntax:bash/extract-command "$index" || return 1
 
-  local cmd="${comp_words[0]}" compcmd=
+  local cmd="${comp_words[0]}" compcmd= is_default_completion=
   if complete -p "$cmd" &>/dev/null; then
     compcmd="$cmd"
   elif [[ ${cmd##*/} != $cmd ]] && complete -p "${cmd##*/}" &>/dev/null; then
     compcmd="${cmd##*/}"
   elif complete -p -D &>/dev/null; then
+    is_default_completion=1
     compcmd='-D'
   fi
 
@@ -342,7 +346,7 @@ function ble-complete/source/argument/.compgen {
 
   local -a compargs compoptions
   local ret iarg=1
-  ble/util/assign ret 'complete -p "$cmd" 2>/dev/null'
+  ble/util/assign ret 'complete -p "$compcmd" 2>/dev/null'
   eval "compargs=($ret)"
   while ((iarg<${#compargs[@]})); do
     local arg="${compargs[iarg++]}"
@@ -352,7 +356,7 @@ function ble-complete/source/argument/.compgen {
       for ((ic=1;ic<${#arg};ic++)); do
         c="${arg:ic:1}"
         case "$c" in
-        ([abcdefgjksuvDE])
+        ([abcdefgjksuvE])
           ble/array#push compoptions "-$c" ;;
         ([pr])
           ;; # 無視 (-p 表示 -r 削除)
@@ -360,7 +364,7 @@ function ble-complete/source/argument/.compgen {
           ble/array#push compoptions "-$c" "${compargs[iarg++]}" ;;
         (o)
           local o="${compargs[iarg++]}"
-          comp_opts="$comp_opts$o:"
+          comp_opts=${comp_opts//:"$o":/:}$o:
           ble/array#push compoptions "-$c" "$o" ;;
         (F)
           comp_func="${compargs[iarg++]}"
@@ -369,7 +373,7 @@ function ble-complete/source/argument/.compgen {
           comp_prog="${compargs[iarg++]}"
           ble/array#push compoptions "-$c" ble-complete/source/argument/.compgen-helper-prog ;;
         (*)
-          # just discard
+          # -D, etc. just discard
         esac
       done ;;
     (*)
@@ -379,22 +383,47 @@ function ble-complete/source/argument/.compgen {
 
   ble/util/is-stdin-ready && return 27
 
-  local rex_compv arr compgen
-  ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
-  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
-  ble/util/assign compgen 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
-  ble/string#split arr $'\n' "$compgen"
-  # * 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
+  # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
-  # * "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
+  local compgen
+  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
+
+  # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
+  #   ble-complete/source/argument/.compgen-helper-func 関数内で補間関数の終了ステータスを確認し、
+  #   もし 124 だった場合には is_default_completion に retry を設定する。
+  if [[ $is_default_completion == retry && ! $_ble_complete_retry_guard ]]; then
+    local _ble_complete_retry_guard=1
+    ble-complete/source/argument/.compgen
+    return
+  fi
+
+  # Note: git の補完関数など勝手に末尾に space をつけ -o nospace を指定する物が存在する。
+  #   単語の後にスペースを挿入する事を意図していると思われるが、
+  #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、
+  #   挿入時のエスケープ対象であるので末尾の space もエスケープされてしまう。
+  #
+  #   仕方がないので sed で各候補の末端の [[:space:]]+ を除去する。
+  #   これだとスペースで終わるファイル名を挿入できないという実害が発生するが、
+  #   そのような変な補完関数を作るのが悪いのである。
+  local use_workaround_for_git=
+  if [[ $comp_func == __git* && $comp_opts == *:nospace:* ]]; then
+    use_workaround_for_git=1
+    comp_opts=${comp_opts//:nospace:/:}
+  fi
+
+  # Note: "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
   #   compgen に -- "$COMPV" を渡しても何故か思うようにフィルタしてくれない為である。
   #   (compgen -W "$(compgen ...)" -- "$COMPV" の様にしないと駄目なのか?)
-  # * sed で末端の [[:space:]]+ を除去する。
-  #   git の補完関数など勝手に末尾に space をつける物が存在する為である。
-  #   単語の後にスペースを挿入する事を意図していると思われるが、
-  #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、挿入時のエスケープ対象である。
-  #   →これだとスペースで終わるファイル名を挿入できない…。
-  # * arr=($(...)) としないのは IFS=$'\n' の影響を $(...) の中に持ち込まないためである。
+  local rex_compv
+  ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
+  if [[ $use_workaround_for_git ]]; then
+    ble/util/assign compgen 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
+  else
+    ble/util/assign compgen 'command sed -n "/^$rex_compv/p" <<< "$compgen" | command sort -u' 2>/dev/null
+  fi
+
+  local arr
+  ble/string#split arr $'\n' "$compgen"
 
   local action=argument
   [[ $comp_opts == *:nospace:* ]] && action=argument-nospace
