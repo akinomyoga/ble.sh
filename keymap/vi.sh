@@ -119,6 +119,12 @@ function ble/widget/vi-insert/default {
 
   # メタ修飾付きの入力 M-key は ESC + key に分解する
   if ((flag&ble_decode_Meta)); then
+    if [[ $_ble_keymap_vi_repeat ]]; then
+      # .before_command で登録されているはずなので pop
+      local top_index=$((${#_ble_keymap_vi_repeat_keylog[*]}-1))
+      unset '_ble_keymap_vi_repeat_keylog[top_index]'
+    fi
+
     local esc=27 # ESC
     # local esc=$((ble_decode_Ctrl|0x5b)) # もしくは C-[
     ble-decode-key "$esc" "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
