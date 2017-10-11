@@ -239,6 +239,10 @@ function ble/widget/vi-insert/.before_command {
 ##   挿入モードに入った時の上書き文字
 _ble_keymap_vi_insert_overwrite=
 
+## 変数 _ble_keymap_vi_insert_leave
+##   挿入モードから抜ける時に実行する関数を設定します
+_ble_keymap_vi_insert_leave=
+
 ## 変数 _ble_keymap_vi_single_command
 ##   ノーマルモードにおいて 1 つコマンドを実行したら
 ##   元の挿入モードに戻るモード (C-o) にいるかどうかを表します。
@@ -297,9 +301,7 @@ function ble/keymap:vi/update-mode-name {
   ble-edit/info/default raw "$name"
 }
 
-function ble/widget/vi-insert/.normal-mode {
-  ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
-  ble/keymap:vi/mark/end-edit
+function ble/widget/vi-insert/normal-mode/.common {
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
   _ble_edit_mark_active=
@@ -310,11 +312,16 @@ function ble/widget/vi-insert/.normal-mode {
 }
 function ble/widget/vi-insert/normal-mode {
   ble/widget/vi-insert/.process-repeat
-  ble/widget/vi-insert/.normal-mode
+  ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
+  ble/keymap:vi/mark/end-edit
+  eval "$_ble_keymap_vi_insert_leave"
+  ble/widget/vi-insert/normal-mode/.common
 }
-function ble/widget/vi-insert/normal-mode-norepeat {
+function ble/widget/vi-insert/normal-mode-without-insert-leave {
   ble/widget/vi-insert/.reset-repeat
-  ble/widget/vi-insert/.normal-mode
+  ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
+  ble/keymap:vi/mark/end-edit
+  ble/widget/vi-insert/normal-mode/.common
 }
 function ble/widget/vi-insert/single-command-mode {
   ble/widget/vi-insert/.reset-repeat
@@ -390,6 +397,7 @@ function ble/widget/vi-command/.insert-mode {
   ble/widget/vi-insert/.reset-repeat "$arg"
   _ble_edit_mark_active=
   _ble_edit_overwrite_mode=$overwrite
+  _ble_keymap_vi_insert_leave=
   _ble_keymap_vi_insert_overwrite=$overwrite
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
@@ -658,7 +666,7 @@ function ble/widget/vi-command/beginning-of-line {
 ##     operator 関数の中でこの変数に空でない文字列が設定されたとき、
 ##     operator が非同期に入力を読み取ることを表します。
 ##     この値を設定した operator は、実際に操作が完了した時に
-##   
+##
 ##     1 ble/keymap:vi/mark/end-edit を呼び出す必要があります。
 ##     2 適切な位置にカーソルを移動する必要があります。
 ##
@@ -1317,10 +1325,10 @@ function ble/keymap:vi/mark/get-local-mark {
   ble/keymap:vi/mark/get-mark.impl "${data[0]}" "${data[1]}" # -> ret
 }
 
-
+# `[ `]
 function ble/keymap:vi/mark/set-previous-area {
   local beg=$1 end=$2
-  ((beg<end)) && ble-edit/content/bolp "$end" || ((end--))
+  ((beg<end)) && ! ble-edit/content/bolp "$end" && ((end--))
   ble/keymap:vi/mark/set-local-mark 91 "$beg" # `[
   ble/keymap:vi/mark/set-local-mark 93 "$end" # `]
 }
@@ -1331,6 +1339,31 @@ function ble/keymap:vi/mark/end-edit {
   local beg=$_ble_keymap_vi_mark_edit_dbeg
   local end=$_ble_keymap_vi_mark_edit_dend
   ((beg>=0)) && ble/keymap:vi/mark/set-previous-area "$beg" "$end"
+}
+
+# `< `>
+function ble/keymap:vi/mark/set-previous-visual-area {
+  local beg end
+  if [[ $_ble_edit_mark_active == block ]]; then
+    local sub_ranges sub_x1 sub_x2
+    ble/keymap:vi/extract-block
+    local nrange=${#sub_ranges[*]}
+    ((nrange)) || return
+    local beg=${sub_ranges[0]%%:*}
+    local sub2_slice1=${sub_ranges[nrange-1]#*:}
+    local end=${sub2_slice1%%:*}
+    ((beg<end)) && ! ble-edit/content/bolp "$end" && ((end--))
+  else
+    local beg=$_ble_edit_mark end=$_ble_edit_ind
+    ((beg<=end)) || local beg=$end end=$beg
+    if [[ $_ble_edit_mark_active == line ]]; then
+      ble-edit/content/find-logical-bol "$beg"; beg=$ret
+      ble-edit/content/find-logical-eol "$end"; end=$ret
+      ble-edit/content/bolp "$end" || ((end--))
+    fi
+  fi
+  ble/keymap:vi/mark/set-local-mark 60 "$beg" # `<
+  ble/keymap:vi/mark/set-local-mark 62 "$end" # `>
 }
 
 
@@ -3928,6 +3961,7 @@ function ble/widget/vi-command/visual-mode.impl {
   _ble_edit_mark=$_ble_edit_ind
   _ble_edit_mark_active=$visual_type
   _ble_keymap_vi_xmap_eol_extended=
+  _ble_keymap_vi_xmap_insert_data= # ※矩形挿入の途中で更に xmap に入ったときはキャンセル
 
   ((arg)) && ble/widget/vi_xmap/.restore-visual-state "$arg"
 
@@ -3943,7 +3977,9 @@ function ble/widget/vi-command/linewise-visual-mode {
 function ble/widget/vi-command/blockwise-visual-mode {
   ble/widget/vi-command/visual-mode.impl block
 }
+
 function ble/widget/vi_xmap/exit {
+  ble/keymap:vi/mark/set-previous-visual-area
   _ble_edit_mark_active=
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
@@ -3952,12 +3988,10 @@ function ble/widget/vi_xmap/exit {
 function ble/widget/vi_xmap/cancel {
   # もし single-command-mode にいたとしても消去して normal へ移動する
 
-  _ble_edit_mark_active=
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
   ble-edit/content/nonbol-eolp && ble/widget/.goto-char $((_ble_edit_ind-1))
-  ble-decode/keymap/pop
-  ble/keymap:vi/update-mode-name
+  ble/widget/vi_xmap/exit
 }
 function ble/widget/vi_xmap/switch-visual-mode.impl {
   local visual_type=$1
@@ -4097,6 +4131,225 @@ function ble/widget/vi_xmap/delete-lines { ble/widget/vi_xmap/linewise-operator.
 function ble/widget/vi_xmap/copy-block-or-lines { ble/widget/vi_xmap/linewise-operator.impl y; }
 
 
+# 矩形挿入モード
+
+## 変数 _ble_keymap_vi_xmap_insert_data
+##   矩形挿入モードの情報を保持します。
+##   iline:x1:width:content の形式です。
+##
+##   iline
+##     編集を行う行の番号を保持します。
+##   x1
+##     挿入開始位置を表示列で保持します。
+##   width
+##     編集行の元々の幅を保持します。
+##   nline
+##     行数を保持します。
+##   content
+##     編集行の元々の内容を保持します。
+##
+_ble_keymap_vi_xmap_insert_data=
+
+function ble/widget/vi_xmap/block-insert-block.impl {
+  local type=$1
+  local arg flag; ble/keymap:vi/get-arg 1
+
+  local sub_ranges sub_x1 sub_x2
+  ble/keymap:vi/extract-block
+  local nline=${#sub_ranges[@]}
+  ble-assert '((nline))'
+
+  local index ins_x
+  if [[ $type == append ]]; then
+    local sub=${sub_ranges[0]#*:}
+    local smax=${sub%%:*}
+    index=$smax
+    if [[ $_ble_keymap_vi_xmap_eol_extended ]]; then
+      ins_x='$'
+    else
+      ins_x=$sub_x2
+    fi
+  else
+    local sub=${sub_ranges[0]}
+    local smin=${sub%%:*}
+    index=$smin
+    ins_x=$sub_x1
+  fi
+
+  ble/widget/vi_xmap/cancel
+  ble/widget/.goto-char "$index"
+  ble/widget/vi-command/.insert-mode "$arg"
+
+  local ret display_width
+  ble/string#count-char "${_ble_edit_str::_ble_edit_ind}" $'\n'; local iline=$ret
+  ble-edit/content/find-logical-bol; local bol=$ret
+  ble-edit/content/find-logical-eol; local eol=$ret
+  if ble/keymap:vi/use-textmap; then
+    local bx by ex ey
+    ble/textmap#getxy.out --prefix=b "$bol"
+    ble/textmap#getxy.out --prefix=e "$eol"
+    ((display_width=ex+_ble_textmap_cols*(ey-by)))
+  else
+    ((display_width=eol-bol))
+  fi
+  _ble_keymap_vi_xmap_insert_data=$iline:$ins_x:$display_width:$nline:${_ble_edit_str:bol:eol-bol}
+  _ble_keymap_vi_insert_leave=ble/widget/vi_xmap/block-insert-mode.onleave
+}
+function ble/widget/vi_xmap/block-insert-mode.onleave {
+  local data=$_ble_keymap_vi_xmap_insert_data
+  [[ $data ]] || continue
+  _ble_keymap_vi_xmap_insert_data=
+
+  local content=${data#*:*:*:*:}; data=${data::${#data}-${#content}-1}
+  ble/string#split data : "$data"
+
+  # カーソル行が記録行と同じか
+  local ret
+  ble-edit/content/find-logical-bol; local bol=$ret
+  ble/string#count-char "${_ble_edit_str::bol}" $'\n'; ((ret==data[0])) || return # 行番号
+  ble/keymap:vi/mark/get-local-mark 91 || return; local mark=$ret # `[
+  ble-edit/content/find-logical-bol "$mark"; ((bol==ret)) || return # 記録行 `[ と同じか
+
+  local has_textmap=
+  if ble/keymap:vi/use-textmap; then
+    local cols=$_ble_textmap_cols
+    has_textmap=1
+  fi
+
+  # 表示幅の変量
+  local new_width delta
+  ble-edit/content/find-logical-eol; local eol=$ret
+  if [[ $has_textmap ]]; then
+    local bx by ex ey
+    ble/textmap#getxy.out --prefix=b "$bol"
+    ble/textmap#getxy.out --prefix=e "$eol"
+    ((new_width=ex+cols*(ey-by)))
+  else
+    ((new_width=eol-bol))
+  fi
+  ((delta=new_width-data[2]))
+  ((delta>0)) || return # 縮んだ場合は処理しない
+
+  # 挿入列の決定
+  local x1=${data[1]}
+  [[ $x1 == '$' ]] && ((x1=data[2]))
+  ((x1>new_width&&(x1=new_width)))
+  local new_content="${_ble_edit_str:bol:eol-bol}"
+  ble/string#common-prefix "$new_content" "$content"; local wprefix=${#ret}
+  if [[ $has_textmap ]]; then
+    local px py
+    ble/textmap#getxy.out --prefix=p "${#ret}"
+    ((px+=cols*(py-by),
+      px>x1&&(x1=px)))
+  else
+    ((wprefix>x1&&(x1=wprefix)))
+  fi
+  local x2=$((x1+delta))
+
+  # 切り出し
+  local ins=
+  if [[ $has_textmap ]]; then
+    local index lx ly rx ry
+    ble/textmap#hit out $((x1%cols)) $((by+x1/cols)) "$bol" "$eol"; local b=$index
+    ble/textmap#hit out $((x2%cols)) $((by+x2/cols)) "$bol" "$eol"; local e=$index
+    ((lx+=(ly-by)*cols,rx+=(ry-by)*cols,lx!=rx&&e++))
+    ins=${_ble_edit_str:b:e-b}
+  else
+    ins=${_ble_edit_str:bol+x1:x2-x1}
+  fi
+
+  # 挿入の決定
+  local -a ins_beg ins_text
+  local iline=1 nline=${data[3]} strlen=${#_ble_edit_str}
+  for ((iline=1;iline<nline;iline++)); do
+    local index= lpad=
+    if ((eol<strlen)); then
+      bol=$((eol+1))
+      ble-edit/content/find-logical-eol "$bol"; eol=$ret
+    else
+      bol=$eol lpad=$'\n'
+    fi
+
+    if [[ ${data[1]} == '$' ]]; then
+      index=$eol
+    elif [[ $has_textmap ]]; then
+      ble/textmap#getxy.out --prefix=b "$bol"
+      ble/textmap#hit out $((x1%cols)) $((by+x1/cols)) "$bol" "$eol" # -> index
+      
+      local nfill
+      if ((index==eol&&(nfill=x1-lx+(ly-by)*cols)>0)); then
+        ble/string#repeat ' ' "$nfill"; lpad=$lpad$ret
+      fi
+    else
+      index=$((bol+x1))
+      if ((index>eol)); then
+        ble/string#repeat ' ' $((index-eol)); lpad=$lpad$ret
+        ((index=eol))
+      fi
+    fi
+
+    ble/array#push ins_beg "$index"
+    ble/array#push ins_text "$lpad$ins"
+  done
+
+  # 挿入実行
+  local i=${#ins_beg[@]}
+  ble/keymap:vi/mark/start-edit
+  while ((i--)); do
+    local index=${ins_beg[i]} text=${ins_text[i]}
+    ble/widget/.replace-range "$index" "$index" "$text" 1
+  done
+  ble/keymap:vi/mark/end-edit
+
+  # 領域の最初に
+  local index
+  if ble/keymap:vi/mark/get-local-mark 60 && index=$ret; then
+    ble/widget/vi-command/goto-mark.impl "$index"
+  else
+    ble-edit/content/find-logical-bol; index=$ret
+  fi
+  ble/widget/.goto-char "$index"
+}
+function ble/widget/vi_xmap/insert-mode {
+  if [[ $_ble_edit_mark_active == block ]]; then
+    ble/widget/vi_xmap/block-insert-block.impl insert
+  else
+    local arg flag; ble/keymap:vi/get-arg 1
+
+    local beg=$_ble_edit_mark end=$_ble_edit_ind
+    ((beg<=end)) || local beg=$end end=$beg
+    if [[ $_ble_edit_mark_active == line ]]; then
+      ble-edit/content/find-logical-bol "$beg"; beg=$ret
+    fi
+
+    ble/widget/vi_xmap/cancel
+    ble/widget/.goto-char "$beg"
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
+}
+function ble/widget/vi_xmap/append-mode {
+  if [[ $_ble_edit_mark_active == block ]]; then
+    ble/widget/vi_xmap/block-insert-block.impl append
+  else
+    local arg flag; ble/keymap:vi/get-arg 1
+
+    local beg=$_ble_edit_mark end=$_ble_edit_ind
+    ((beg<=end)) || local beg=$end end=$beg
+    if [[ $_ble_edit_mark_active == line ]]; then
+      # 行指向のときは最終行の先頭か _ble_edit_ind の内、
+      # 後にある文字の後に移動する。
+      if ((_ble_edit_mark>_ble_edit_ind)); then
+        ble-edit/content/find-logical-bol "$end"; end=$ret
+      fi
+    fi
+    ble-edit/content/eolp "$end" || ((end++))
+
+    ble/widget/vi_xmap/cancel
+    ble/widget/.goto-char "$end"
+    ble/widget/vi-command/.insert-mode "$arg"
+  fi
+}
+
 function ble-decode-keymap:vi_xmap/define {
   local ble_bind_keymap=vi_xmap
   ble/keymap:vi/setup-map
@@ -4135,6 +4388,9 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f S vi_xmap/delete-lines
   ble-bind -f R vi_xmap/delete-lines
   ble-bind -f Y vi_xmap/copy-block-or-lines
+
+  ble-bind -f I vi_xmap/insert-mode
+  ble-bind -f A vi_xmap/append-mode
 }
 
 #------------------------------------------------------------------------------
@@ -4221,7 +4477,7 @@ function ble-decode-keymap:vi_insert/define {
 
   ble-bind -f 'ESC' vi-insert/normal-mode
   ble-bind -f 'C-[' vi-insert/normal-mode
-  ble-bind -f 'C-c' vi-insert/normal-mode-norepeat
+  ble-bind -f 'C-c' vi-insert/normal-mode-without-insert-leave
 
   ble-bind -f insert vi-insert/overwrite-mode
 
