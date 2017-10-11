@@ -600,6 +600,7 @@ function ble/widget/vi-command/copy-current-line {
   ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
   ((end<${#_ble_edit_str}&&end++))
   ble/widget/.copy-range "$beg" "$end" 1 L
+  ble/keymap:vi/mark/set-previous-area "$beg" "$end"
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -623,19 +624,8 @@ function ble/widget/vi-command/kill-current-line-and-insert {
 # nmap: 0, <home>
 function ble/widget/vi-command/beginning-of-line {
   local arg flag; ble/keymap:vi/get-arg 1
-  local ret
-  ble-edit/content/find-logical-bol; local beg=$ret
-  if [[ $flag == y ]]; then
-    ble/widget/.copy-range "$beg" "$_ble_edit_ind" 1
-    ble/widget/.goto-char "$beg"
-  elif [[ $flag == [cd] ]]; then
-    ble/widget/.kill-range "$beg" "$_ble_edit_ind" 1
-    [[ $flag == c ]] && ble/widget/vi-command/.insert-mode
-  elif [[ $flag ]]; then
-    ble/widget/.bell
-  else
-    ble/widget/.goto-char "$beg"
-  fi
+  local ret; ble-edit/content/find-logical-bol; local beg=$ret
+  ble/widget/vi-command/exclusive-goto.impl "$beg" "$flag" 1
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -807,6 +797,7 @@ function ble/keymap:vi/operator:y {
   else
     ble/widget/.copy-range "$1" "$2" 1
   fi
+  ble/keymap:vi/mark/commit-edit "$1" "$2"
 }
 function ble/keymap:vi/operator:tr.impl {
   local beg=$1 end=$2 context=$3 filter=$4
@@ -1279,6 +1270,7 @@ function ble/keymap:vi/mark/shift-by-dirty-range {
       local index=${value%%:*}; value=${value:${#index}+1}
       ((index<beg)) || _ble_keymap_vi_mark_global[imark]=$h:$((index<end0?beg:index+shift)):$value
     done
+    ble/keymap:vi/mark/set-local-mark 46 "$beg" # `.
   else
     ble/dirty-range#clear --prefix=_ble_keymap_vi_mark_edit_d
   fi
@@ -1336,6 +1328,10 @@ function ble/keymap:vi/mark/set-previous-area {
 }
 function ble/keymap:vi/mark/start-edit {
   ble/dirty-range#clear --prefix=_ble_keymap_vi_mark_edit_d
+}
+function ble/keymap:vi/mark/commit-edit {
+  local beg=$1 end=$2
+  ble/dirty-range#update --prefix=_ble_keymap_vi_mark_edit_d "$beg" "$end" "$end"
 }
 function ble/keymap:vi/mark/end-edit {
   local beg=$_ble_keymap_vi_mark_edit_dbeg
