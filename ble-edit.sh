@@ -3645,8 +3645,8 @@ function ble-edit/exec/save-BASH_REMATCH {
   local rex= i=0
   local text=$BASH_REMATCH sub ret isub
 
-  local rex i=0 rparens
-  local isub
+  local -a rparens
+  local isub rex i=0
   for ((isub=1;isub<size;isub++)); do
     local sub=${BASH_REMATCH[isub]}
 
@@ -4450,7 +4450,7 @@ function ble-edit/history/goto {
   fi
 
   # restore
-  _ble_edit_history_ind="$index1"
+  _ble_edit_history_ind=$index1
   _ble_edit_str.reset "${_ble_edit_history_edit[index1]}" history
 
   # point

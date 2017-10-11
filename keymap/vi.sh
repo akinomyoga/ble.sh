@@ -299,6 +299,7 @@ function ble/keymap:vi/update-mode-name {
 
 function ble/widget/vi-insert/.normal-mode {
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
+  ble/keymap:vi/mark/end-edit
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
   _ble_edit_mark_active=
@@ -318,6 +319,7 @@ function ble/widget/vi-insert/normal-mode-norepeat {
 function ble/widget/vi-insert/single-command-mode {
   ble/widget/vi-insert/.reset-repeat
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
+  ble/keymap:vi/mark/end-edit
   _ble_keymap_vi_single_command=1
   _ble_keymap_vi_single_command_overwrite=$_ble_edit_overwrite_mode
   _ble_edit_mark_active=
@@ -365,7 +367,7 @@ function ble/keymap:vi/adjust-command-mode {
       local index=$((_ble_edit_ind+1))
       ble-edit/content/nonbol-eolp "$index" && ble/widget/.goto-char index
     fi
-    ble/widget/vi-command/.insert-mode 1 "$_ble_keymap_vi_single_command_overwrite"
+    ble/widget/vi-command/.insert-mode 1 "$_ble_keymap_vi_single_command_overwrite" nomark
   elif [[ $kmap_popped ]]; then
     ble/keymap:vi/update-mode-name
   fi
@@ -377,7 +379,10 @@ function ble/widget/vi-command/bell {
   ble/keymap:vi/adjust-command-mode
 }
 
-
+## 関数 ble/widget/vi-command/.insert-mode [arg [overwrite [opts]]]
+##   @param[in] arg
+##   @param[in] overwrite
+##   @param[in] opts
 function ble/widget/vi-command/.insert-mode {
   [[ $_ble_decode_key__kmap == vi_xmap ]] && ble-decode/keymap/pop
   [[ $_ble_decode_key__kmap == vi_omap ]] && ble-decode/keymap/pop
@@ -390,6 +395,9 @@ function ble/widget/vi-command/.insert-mode {
   _ble_keymap_vi_single_command_overwrite=
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
+  if [[ :$opts: != *:nomark:* ]]; then
+    ble/keymap:vi/mark/start-edit
+  fi
 }
 function ble/widget/vi-command/insert-mode {
   local arg flag; ble/keymap:vi/get-arg 1
@@ -591,7 +599,9 @@ function ble/widget/vi-command/kill-current-line {
   ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
   ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
   ((end<${#_ble_edit_str}&&end++))
+  ble/keymap:vi/mark/start-edit
   ble/widget/.kill-range "$beg" "$end" 1 L
+  ble/keymap:vi/mark/end-edit
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -622,6 +632,7 @@ function ble/widget/vi-command/beginning-of-line {
 #------------------------------------------------------------------------------
 # operators / movements
 
+
 ## オペレータは以下の形式の関数として定義される。
 ##
 ## 関数 ble/keymap:vi/operator:名称 a b type [count]
@@ -643,6 +654,14 @@ function ble/widget/vi-command/beginning-of-line {
 ##     行指向オペレータのとき範囲が拡大されることがある。
 ##     その時 beg に拡大後の開始点を返す。
 ##
+##   @var[out] _ble_keymap_vi_operator_delayed=
+##     operator 関数の中でこの変数に空でない文字列が設定されたとき、
+##     operator が非同期に入力を読み取ることを表します。
+##     この値を設定した operator は、実際に操作が完了した時に
+##   
+##     1 ble/keymap:vi/mark/end-edit を呼び出す必要があります。
+##     2 適切な位置にカーソルを移動する必要があります。
+##
 ##
 ## オペレータは現在以下の三箇所で呼び出されている。
 ##
@@ -655,9 +674,12 @@ function ble/keymap:vi/call-operator-charwise {
   local ch=$1 beg=$2 end=$3 arg=$4
   ((beg<=end||(beg=$3,end=$2)))
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+    ble/keymap:vi/mark/start-edit
     local _ble_keymap_vi_operator_delayed=
     ble/keymap:vi/operator:"$ch" "$beg" "$end" char "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
+    ble/keymap:vi/mark/end-edit
+
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
     return 0
@@ -665,7 +687,6 @@ function ble/keymap:vi/call-operator-charwise {
     return 1
   fi
 }
-
 function ble/keymap:vi/call-operator-linewise {
   local ch=$1 a=$2 b=$3 arg=$4 ia=0 ib=0
   [[ $a == *:* ]] && local a=${a%%:*} ia=${a#*:}
@@ -676,9 +697,12 @@ function ble/keymap:vi/call-operator-linewise {
 
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
     ((end<${#_ble_edit_str}&&end++))
+    ble/keymap:vi/mark/start-edit
     local _ble_keymap_vi_operator_delayed=
     ble/keymap:vi/operator:"$ch" "$beg" "$end" line "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
+    ble/keymap:vi/mark/end-edit
+
     ble-edit/content/find-logical-bol "$beg"; beg=$ret # operator 中で beg が変更されているかも
     ble-edit/content/find-non-space "$beg"; local nol=$ret
     ble/keymap:vi/needs-eol-fix "$nol" && ((nol--))
@@ -698,9 +722,11 @@ function ble/keymap:vi/call-operator-blockwise {
 
     local beg=${sub_ranges[0]}; beg=${beg%%:*}
     local end=${sub_ranges[nrange-1]}; end=${end#*:}; end=${end%%:*}
+    ble/keymap:vi/mark/start-edit
     local _ble_keymap_vi_operator_delayed=
     ble/keymap:vi/operator:"$ch" "$beg" "$end" block "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
+    ble/keymap:vi/mark/end-edit
 
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
@@ -757,7 +783,8 @@ function ble/keymap:vi/operator:y {
   if [[ $3 == line ]]; then
     ble/widget/.copy-range "$1" "$2" 1 L
   elif [[ $3 == block ]]; then
-    local sub afill atext
+    local sub
+    local -a afill atext
     for sub in "${sub_ranges[@]}"; do
       local sub4=${sub#*:*:*:*:}
       local sfill=${sub4%%:*} stext=${sub4#*:}
@@ -828,7 +855,8 @@ function ble/keymap:vi/string#increase-indent {
   local text=$1 delta=$2
   local space=$' \t' it=${bleopt_tab_width:-$_ble_term_it}
   local arr; ble/string#split-lines arr "$text"
-  local arr2 line indent i len x r
+  local -a arr2
+  local line indent i len x r
   for line in "${arr[@]}"; do
     indent=${line%%[!$space]*}
     line=${line:${#indent}}
@@ -886,7 +914,7 @@ function ble/keymap:vi/operator:increase-indent/decrease-graphical-block-indent 
   local width=$1
   local it=${bleopt_tab_width:-$_ble_term_it} cols=$_ble_textmap_cols
   local sub smin slpad
-  local replaces
+  local -a replaces
   local isub=${#sub_ranges[@]}
   while ((isub--)); do
     ble/string#split sub : "${sub_ranges[isub]}"
@@ -1097,9 +1125,11 @@ function ble/widget/vi-command/linewise-range.impl {
     ((end<${#_ble_edit_str}&&end++))
     if ble/util/isfunction ble/keymap:vi/operator:"$flag"; then
       # オペレータ呼び出し
+      ble/keymap:vi/mark/start-edit
       local _ble_keymap_vi_operator_delayed=
       ble/keymap:vi/operator:"$flag" "$beg" "$end" line
       [[ $_ble_keymap_vi_operator_delayed ]] && return
+      ble/keymap:vi/mark/end-edit
 
       # 範囲の先頭に移動
       local ind=$_ble_edit_ind
@@ -1184,6 +1214,9 @@ _ble_keymap_vi_mark_hindex=
 _ble_keymap_vi_mark_local=()
 _ble_keymap_vi_mark_global=()
 _ble_keymap_vi_mark_history=()
+_ble_keymap_vi_mark_edit_dbeg=-1
+_ble_keymap_vi_mark_edit_dend=-1
+_ble_keymap_vi_mark_edit_dend0=-1
 
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
 
@@ -1197,7 +1230,7 @@ function ble/keymap:vi/mark/update-mark-history {
     local imark value
 
     # save
-    local save
+    local -a save
     for imark in "${!_ble_keymap_vi_mark_local[@]}"; do
       local value=${_ble_keymap_vi_mark_local[imark]}
       ble/array#push save "$imark:$value"
@@ -1217,24 +1250,28 @@ function ble/keymap:vi/mark/update-mark-history {
 }
 function ble/keymap:vi/mark/shift-by-dirty-range {
   local beg=$1 end=$2 end0=$3 reason=$4
-  [[ $4 == edit ]] || return
+  if [[ $4 == edit ]]; then
+    ble/dirty-range#update --prefix=_ble_keymap_vi_mark_edit_d "${@:1:3}"
 
-  ble/keymap:vi/mark/update-mark-history
-  local shift=$((end-end0))
-  local imark
-  for imark in "${!_ble_keymap_vi_mark_local[@]}"; do
-    local value=${_ble_keymap_vi_mark_local[imark]}
-    local index=${value%%:*} rest=${value#*:}
-    ((index<beg)) || _ble_keymap_vi_mark_local[imark]=$((index<end0?beg:index+shift)):$rest
-  done
-  local h; ble-edit/history/getindex -v h
-  for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
-    local value=${_ble_keymap_vi_mark_global[imark]}
-    [[ $value == "$h":* ]] || continue
-    local h=${value%%:*}; value=${value:${#h}+1}
-    local index=${value%%:*}; value=${value:${#index}+1}
-    ((index<beg)) || _ble_keymap_vi_mark_global[imark]=$h:$((index<end0?beg:index+shift)):$value
-  done
+    ble/keymap:vi/mark/update-mark-history
+    local shift=$((end-end0))
+    local imark
+    for imark in "${!_ble_keymap_vi_mark_local[@]}"; do
+      local value=${_ble_keymap_vi_mark_local[imark]}
+      local index=${value%%:*} rest=${value#*:}
+      ((index<beg)) || _ble_keymap_vi_mark_local[imark]=$((index<end0?beg:index+shift)):$rest
+    done
+    local h; ble-edit/history/getindex -v h
+    for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
+      local value=${_ble_keymap_vi_mark_global[imark]}
+      [[ $value == "$h":* ]] || continue
+      local h=${value%%:*}; value=${value:${#h}+1}
+      local index=${value%%:*}; value=${value:${#index}+1}
+      ((index<beg)) || _ble_keymap_vi_mark_global[imark]=$h:$((index<end0?beg:index+shift)):$value
+    done
+  else
+    ble/dirty-range#clear --prefix=_ble_keymap_vi_mark_edit_d
+  fi
 }
 function ble/keymap:vi/mark/set-global-mark {
   local c=$1 index=$2
@@ -1279,6 +1316,23 @@ function ble/keymap:vi/mark/get-local-mark {
   ble/string#split data : "$value"
   ble/keymap:vi/mark/get-mark.impl "${data[0]}" "${data[1]}" # -> ret
 }
+
+
+function ble/keymap:vi/mark/set-previous-area {
+  local beg=$1 end=$2
+  ((beg<end)) && ble-edit/content/bolp "$end" || ((end--))
+  ble/keymap:vi/mark/set-local-mark 91 "$beg" # `[
+  ble/keymap:vi/mark/set-local-mark 93 "$end" # `]
+}
+function ble/keymap:vi/mark/start-edit {
+  ble/dirty-range#clear --prefix=_ble_keymap_vi_mark_edit_d
+}
+function ble/keymap:vi/mark/end-edit {
+  local beg=$_ble_keymap_vi_mark_edit_dbeg
+  local end=$_ble_keymap_vi_mark_edit_dend
+  ((beg>=0)) && ble/keymap:vi/mark/set-previous-area "$beg" "$end"
+}
+
 
 function ble/widget/vi-command/set-mark {
   _ble_decode_key__hook="ble/widget/vi-command/set-mark.hook"
@@ -1439,8 +1493,9 @@ function ble/widget/vi-command/forward-char-toggle-case {
     local len=${#line}
     local index=$((_ble_edit_ind+len))
     if ((len)); then
-      local ret; ble/string#toggle-case "${_ble_edit_str:_ble_edit_ind:${#line}}"
+      local ret; ble/string#toggle-case "${_ble_edit_str:_ble_edit_ind:len}"
       ble/widget/.replace-range "$_ble_edit_ind" "$index" "$ret" 1
+      ble/keymap:vi/mark/set-previous-area "$_ble_edit_ind" "$index"
     fi
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
     ble/widget/.goto-char "$index"
@@ -1851,7 +1906,8 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
     local c=$((_ble_edit_ind-bol))
   fi
 
-  local i ins_beg ins_end ins_text is_newline=
+  local -a ins_beg ins_end ins_text
+  local i is_newline=
   for ((i=0;i<ntext;i++)); do
     if ((i>0)); then
       ble-edit/content/find-logical-bol "$bol" 1
@@ -1929,11 +1985,13 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
   done
 
   # 逆順に挿入
+  ble/keymap:vi/mark/start-edit
   local i=${#ins_beg[@]}
   while ((i--)); do
     local ibeg=${ins_beg[i]} iend=${ins_end[i]} text=${ins_text[i]}
     ble/widget/.replace-range "$ibeg" "$iend" "$text" 1
   done
+  ble/keymap:vi/mark/end-edit
 
   ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
   ble/keymap:vi/adjust-command-mode
@@ -1949,13 +2007,14 @@ function ble/widget/vi-command/paste.impl {
   [[ $_ble_edit_kill_ring ]] || return 0
   local ret
   if [[ $_ble_edit_kill_type == L ]]; then
+    ble/keymap:vi/mark/start-edit
     if ((is_after)); then
       ble-edit/content/find-logical-eol
       if ((ret==${#_ble_edit_str})); then
-        ble/widget/.goto-char ret
+        ble/widget/.goto-char "$ret"
         ble/widget/insert-string $'\n'
       else
-        ble/widget/.goto-char ret+1
+        ble/widget/.goto-char $((ret+1))
       fi
     else
       ble-edit/content/find-logical-bol
@@ -1964,7 +2023,8 @@ function ble/widget/vi-command/paste.impl {
     local ind=$_ble_edit_ind
     ble/string#repeat "${_ble_edit_kill_ring%$_ble_term_nl}$_ble_term_nl" "$arg"
     ble/widget/insert-string "$ret"
-    ble/widget/.goto-char ind
+    ble/keymap:vi/mark/end-edit
+    ble/widget/.goto-char "$ind"
     ble/widget/vi-command/first-non-space
   elif [[ $_ble_edit_kill_type == B:* ]]; then
     if ((is_after)) && ! ble-edit/content/eolp; then
@@ -2251,7 +2311,9 @@ function ble/widget/vi-command/replace-char.impl {
   local _ble_edit_arg=$arg
   local _ble_edit_overwrite_mode=$overwrite_mode
   local ble_widget_self_insert_opts=nolineext
+  ble/keymap:vi/mark/start-edit
   ble/widget/self-insert
+  ble/keymap:vi/mark/end-edit
 
   ((pos<_ble_edit_ind)) && ble/widget/.goto-char _ble_edit_ind-1
   ble/keymap:vi/adjust-command-mode
@@ -2280,10 +2342,16 @@ function ble/widget/vi-command/connect-line-with-space {
   if [[ $flag ]]; then
     ble/widget/.bell
   else
-    local ret; ble-edit/content/find-logical-eol; local eol=$ret
-    if ((eol<${#_ble_edit_str})); then
-      ble/widget/.replace-range "$eol" $((eol+1)) ' ' 1
-      ble/widget/.goto-char "$eol"
+    local ret
+    ble-edit/content/find-logical-eol; local eol1=$ret
+    ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg<=1?1:arg-1)); local eol2=$ret
+    ble-edit/content/find-logical-bol "$eol2"; local bol2=$ret
+    if ((eol1<eol2)); then
+      local text=${_ble_edit_str:eol1:eol2-eol1}
+      text=${text//$'\n'/' '}
+      ble/widget/.replace-range "$eol1" "$eol2" "$text"
+      ble/keymap:vi/mark/set-previous-area "$eol1" "$eol2"
+      ble/widget/.goto-char $((bol2-1))
     else
       ble/widget/.bell
     fi
@@ -2295,10 +2363,17 @@ function ble/widget/vi-command/connect-line {
   if [[ $flag ]]; then
     ble/widget/.bell
   else
-    local ret; ble-edit/content/find-logical-eol; local eol=$ret
-    if ((eol<${#_ble_edit_str})); then
-      ble/widget/.delete-range "$eol" $((eol+1))
-      ble/widget/.goto-char "$eol"
+    local ret
+    ble-edit/content/find-logical-eol; local eol1=$ret
+    ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg<=1?1:arg-1)); local eol2=$ret
+    ble-edit/content/find-logical-bol "$eol2"; local bol2=$ret
+    if ((eol1<eol2)); then
+      local text=${_ble_edit_str:eol1:bol2-eol1}
+      text=${text//$'\n'}
+      ble/widget/.replace-range "$eol1" "$bol2" "$text"
+      local delta=$((${#text}-(bol2-eol1)))
+      ble/keymap:vi/mark/set-previous-area "$eol1" $((eol2+delta))
+      ble/widget/.goto-char $((bol2+delta))
     else
       ble/widget/.bell
     fi
@@ -3935,6 +4010,11 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
 
     local sub_ranges sub_x1 sub_x2
     ble/keymap:vi/extract-block "$beg" "$end"
+    local n=${#sub_ranges[@]}
+    if ((n==0)); then
+      ble/widget/.bell
+      return
+    fi
 
     # create ins
     local width=$((sub_x2-sub_x1))
@@ -3945,7 +4025,8 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
       ble/string#repeat ' ' "$pad"; ins=$ins$ret
     fi
 
-    local i=${#sub_ranges[@]} sub smin=0
+    local i=$n sub smin=0
+    ble/keymap:vi/mark/start-edit
     while ((i--)); do
       ble/string#split sub : "${sub_ranges[i]}"
       local smin=${sub[0]} smax=${sub[1]}
@@ -3957,6 +4038,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
       ((srpad)) && { ble/string#repeat ' ' "$srpad"; ins1=$ins1$ret; }
       ble/widget/.replace-range "$smin" "$smax" "$ins1" 1
     done
+    ble/keymap:vi/mark/end-edit
     local beg=$smin
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
@@ -3970,8 +4052,10 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
       ble-edit/content/eolp "$end" || ((end++))
     fi
 
-    local ins=${_ble_edit_str//[^$'\n']/"$s"}
+    local ins=${_ble_edit_str:beg:end-beg}
+    ins=${ins//[^$'\n']/"$s"}
     ble/widget/.replace-range "$beg" "$end" "$ins" 1
+    ble/keymap:vi/mark/set-previous-area "$beg" "$end"
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
   fi
