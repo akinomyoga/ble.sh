@@ -4925,7 +4925,7 @@ function ble-edit/isearch/next-history.fib {
     local index=$start
   fi
 
-  if ((isAdd)); then
+  if ((!isAdd)); then
     if [[ $_ble_edit_isearch_dir == - ]]; then
       ((index--))
     else
