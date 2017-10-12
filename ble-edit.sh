@@ -1133,7 +1133,9 @@ function ble-edit/prompt/update {
   fi
 
   if [[ $PROMPT_COMMAND ]]; then
+    local PS1=$ps1
     ble-edit/prompt/update/eval-prompt_command
+    ps1=$PS1
   fi
 
   local cache_d cache_t cache_A cache_T cache_at cache_D cache_j cache_wd
