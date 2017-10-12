@@ -214,20 +214,27 @@ _ble_keymap_vi_imap_white_list=(
   display-shell-version
   redraw-line
 )
-function ble/widget/vi-insert/.before_command {
-  if [[ $_ble_keymap_vi_repeat ]]; then
-    local white=
-    if [[ $COMMAND == ble/widget/* ]]; then
-      local command=${COMMAND#ble/widget/}; command=${command%%[$' \t\n']*}
-      if [[ $command == vi-insert/* || " ${_ble_keymap_vi_imap_white_list[*]} " == *" $command "*  ]]; then
-        white=1
-      fi
-    fi
+function ble/keymap:vi/imap/is-command-white {
+  if [[ $1 == ble/widget/self-insert ]]; then
+    # frequently used command is checked first
+    return 0
+  elif [[ $1 == ble/widget/* ]]; then
+    local cmd=${1#ble/widget/}; cmd=${cmd%%[$' \t\n']*}
+    [[ $cmd == vi-insert/* || " ${_ble_keymap_vi_imap_white_list[*]} " == *" $cmd "*  ]] && return 0
+  fi
+  return 1
+}
 
-    if [[ $white ]]; then
+function ble/widget/vi-insert/.before_command {
+  if ble/keymap:vi/imap/is-command-white; then
+    [[ $_ble_keymap_vi_repeat ]] &&
       ble/array#push _ble_keymap_vi_repeat_keylog "${KEYS[@]}"
-    else
+  else
+    [[ $_ble_keymap_vi_repeat ]] &&
       ble/widget/vi-insert/.reset-repeat
+    if ((_ble_keymap_vi_mark_edit_dbeg>=0)); then
+      ble/keymap:vi/mark/end-edit-area
+      ble/keymap:vi/mark/start-edit-area
     fi
   fi
 }
