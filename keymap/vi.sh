@@ -2411,6 +2411,7 @@ function ble/widget/vi-command/virtual-replace-char {
 #------------------------------------------------------------------------------
 # command: J gJ o O
 
+# nmap J
 function ble/widget/vi-command/connect-line-with-space {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
@@ -2432,6 +2433,7 @@ function ble/widget/vi-command/connect-line-with-space {
   fi
   ble/keymap:vi/adjust-command-mode
 }
+# nmap gJ
 function ble/widget/vi-command/connect-line {
   local arg flag; ble/keymap:vi/get-arg 1
   if [[ $flag ]]; then
@@ -3520,6 +3522,9 @@ function ble/keymap:vi/setup-map {
 
   ble-bind -f '`' 'vi-command/goto-mark'
   ble-bind -f \'  'vi-command/goto-mark line'
+
+  # bash
+  ble-bind -cf 'C-z' fg
 }
 
 function ble-decode-keymap:vi_omap/define {
@@ -4272,6 +4277,31 @@ function ble/widget/vi_xmap/delete-lines { ble/widget/vi_xmap/linewise-operator.
 # xmap Y
 function ble/widget/vi_xmap/copy-block-or-lines { ble/widget/vi_xmap/linewise-operator.impl y; }
 
+function ble/widget/vi_xmap/connect-line.impl {
+  local name=$1
+  local arg flag; ble/keymap:vi/get-arg 1 # ignored
+  
+  local beg=$_ble_edit_mark end=$_ble_edit_ind
+  ((beg<=end)) || local beg=$end end=$beg
+  local ret; ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; local nline=$((ret+1))
+
+  ble/widget/vi_xmap/.save-visual-state
+  ble/widget/vi_xmap/exit # Note: _ble_edit_mark_active will be cleared here
+
+  ble/widget/.goto-char "$beg"
+  _ble_edit_arg=$nline
+  _ble_keymap_vi_oparg=
+  _ble_keymap_vi_opfunc=
+  "ble/widget/$name"
+}
+# xmap J
+function ble/widget/vi_xmap/connect-line-with-space {
+  ble/widget/vi_xmap/connect-line.impl vi-command/connect-line-with-space
+} 
+# xmap gJ
+function ble/widget/vi_xmap/connect-line {
+  ble/widget/vi_xmap/connect-line.impl vi-command/connect-line
+} 
 
 # 矩形挿入モード
 
@@ -4500,6 +4530,8 @@ function ble/widget/vi_xmap/append-mode {
   fi
 }
 
+# 貼り付け
+
 # xmap: p, P
 function ble/widget/vi_xmap/paste.impl {
   local opts=$1
@@ -4622,6 +4654,8 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f S vi_xmap/delete-lines
   ble-bind -f R vi_xmap/delete-lines
   ble-bind -f Y vi_xmap/copy-block-or-lines
+  ble-bind -f J     vi_xmap/connect-line-with-space
+  ble-bind -f 'g J' vi_xmap/connect-line
 
   ble-bind -f I vi_xmap/insert-mode
   ble-bind -f A vi_xmap/append-mode

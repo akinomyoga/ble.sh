@@ -526,7 +526,7 @@ tech
 
     * nmap: . C-g C-a C-x C-^ * # '括弧 `括弧 gv
       C-t C-] M Q ZZ ZQ [x ]x do dp { } qx @x gx zx C-w{char}
-    * xmap: O o K C-z C-x gC-a gC-x gv
+    * xmap: O o K ^] C-a C-x gC-a gC-x gv
 
   * vi-mode change
 
@@ -573,10 +573,6 @@ tech
   * ble-syntax: case $x in (a b) : ;; done のパターン "a b" はエラー
 
     どうやら一個の単語までしか駄目な様子?
-
-  * vi-mode (visual mode): J gJ [#tmp001]
-
-    これは試してみた所 block, char かどうかとは関係なく、常に行指向で処理するようだ。
 
 2017-09-25
 
@@ -843,6 +839,10 @@ tech
     | すいません。まだ発生します。@akinomyoga 様の手元で発生しないということは
     | 確実に私の端末側の問題ですので、こちらで対処します。
     | どうかお気になさらないでください。
+
+    2017-10-12 2文字のコマンドの2文字目に ESC が来る場合、
+    ble-decode の枠組みでは次の文字をも食らい M-? が 2 文字目に来たとする。
+    これにより余分に処理されない文字が出てくる。
 
 2017-09-06
 
@@ -2274,7 +2274,12 @@ tech
 
 2017-10-12
 
-  * vi-mode: (insert) で C-c すると表示は (insert) のまま
+  * vi-mode (visual mode): J gJ [#D0539]
+
+    これは試してみた所 block, char かどうかとは関係なく、常に行指向で処理するようだ。
+    これの対応は簡単だった。
+
+  * vi-mode: (insert) で C-c すると表示は (insert) のまま [#D0538]
     ノーマルモードに戻っている気がする。
     よく分からないので、ble.sh では C-c で
     単にノーマルモードに戻ることにする。
@@ -3071,7 +3076,7 @@ tech
 
   * 2017-10-01 vi-mode (visual mode): r s C S R x D X Y p J U u I A ^] [#D0516]
 
-    todo: J gJ → これは別項目 #tmp001 で処理
+    done: J gJ → これは別項目 #D0539 で処理
     done: u U r s C S R X D x Y
     done: I A #D0531
     done: p P #D0535
