@@ -314,20 +314,20 @@ function ble/widget/vi-insert/normal-mode/.common {
 function ble/widget/vi-insert/normal-mode {
   ble/widget/vi-insert/.process-repeat
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
-  ble/keymap:vi/mark/end-edit
+  ble/keymap:vi/mark/end-edit-area
   eval "$_ble_keymap_vi_insert_leave"
   ble/widget/vi-insert/normal-mode/.common
 }
 function ble/widget/vi-insert/normal-mode-without-insert-leave {
   ble/widget/vi-insert/.reset-repeat
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
-  ble/keymap:vi/mark/end-edit
+  ble/keymap:vi/mark/end-edit-area
   ble/widget/vi-insert/normal-mode/.common
 }
 function ble/widget/vi-insert/single-command-mode {
   ble/widget/vi-insert/.reset-repeat
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
-  ble/keymap:vi/mark/end-edit
+  ble/keymap:vi/mark/end-edit-area
   _ble_keymap_vi_single_command=1
   _ble_keymap_vi_single_command_overwrite=$_ble_edit_overwrite_mode
   _ble_edit_mark_active=
@@ -405,7 +405,7 @@ function ble/widget/vi-command/.insert-mode {
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
   if [[ :$opts: != *:nomark:* ]]; then
-    ble/keymap:vi/mark/start-edit
+    ble/keymap:vi/mark/start-edit-area
   fi
 }
 function ble/widget/vi-command/insert-mode {
@@ -600,7 +600,7 @@ function ble/widget/vi-command/copy-current-line {
   ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
   ((end<${#_ble_edit_str}&&end++))
   ble/widget/.copy-range "$beg" "$end" 1 L
-  ble/keymap:vi/mark/set-previous-area "$beg" "$end"
+  ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -610,9 +610,9 @@ function ble/widget/vi-command/kill-current-line {
   ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local beg=$ret
   ble-edit/content/find-logical-eol "$_ble_edit_ind" "$((arg-1))"; local end=$ret
   ((end<${#_ble_edit_str}&&end++))
-  ble/keymap:vi/mark/start-edit
+  ble/keymap:vi/mark/start-edit-area
   ble/widget/.kill-range "$beg" "$end" 1 L
-  ble/keymap:vi/mark/end-edit
+  ble/keymap:vi/mark/end-edit-area
   ble/keymap:vi/adjust-command-mode
 }
 
@@ -659,7 +659,7 @@ function ble/widget/vi-command/beginning-of-line {
 ##     operator が非同期に入力を読み取ることを表します。
 ##     この値を設定した operator は、実際に操作が完了した時に
 ##
-##     1 ble/keymap:vi/mark/end-edit を呼び出す必要があります。
+##     1 ble/keymap:vi/mark/end-edit-area を呼び出す必要があります。
 ##     2 適切な位置にカーソルを移動する必要があります。
 ##
 ##
@@ -674,11 +674,11 @@ function ble/keymap:vi/call-operator-charwise {
   local ch=$1 beg=$2 end=$3 arg=$4
   ((beg<=end||(beg=$3,end=$2)))
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
-    ble/keymap:vi/mark/start-edit
+    ble/keymap:vi/mark/start-edit-area
     local _ble_keymap_vi_operator_delayed=
     ble/keymap:vi/operator:"$ch" "$beg" "$end" char "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
-    ble/keymap:vi/mark/end-edit
+    ble/keymap:vi/mark/end-edit-area
 
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
@@ -697,11 +697,11 @@ function ble/keymap:vi/call-operator-linewise {
 
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
     ((end<${#_ble_edit_str}&&end++))
-    ble/keymap:vi/mark/start-edit
+    ble/keymap:vi/mark/start-edit-area
     local _ble_keymap_vi_operator_delayed=
     ble/keymap:vi/operator:"$ch" "$beg" "$end" line "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
-    ble/keymap:vi/mark/end-edit
+    ble/keymap:vi/mark/end-edit-area
 
     ble-edit/content/find-logical-bol "$beg"; beg=$ret # operator 中で beg が変更されているかも
     ble-edit/content/find-non-space "$beg"; local nol=$ret
@@ -722,11 +722,11 @@ function ble/keymap:vi/call-operator-blockwise {
 
     local beg=${sub_ranges[0]}; beg=${beg%%:*}
     local end=${sub_ranges[nrange-1]}; end=${end#*:}; end=${end%%:*}
-    ble/keymap:vi/mark/start-edit
+    ble/keymap:vi/mark/start-edit-area
     local _ble_keymap_vi_operator_delayed=
     ble/keymap:vi/operator:"$ch" "$beg" "$end" block "$arg"
     [[ $_ble_keymap_vi_operator_delayed ]] && return
-    ble/keymap:vi/mark/end-edit
+    ble/keymap:vi/mark/end-edit-area
 
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
@@ -797,7 +797,7 @@ function ble/keymap:vi/operator:y {
   else
     ble/widget/.copy-range "$1" "$2" 1
   fi
-  ble/keymap:vi/mark/commit-edit "$1" "$2"
+  ble/keymap:vi/mark/commit-edit-area "$1" "$2"
 }
 function ble/keymap:vi/operator:tr.impl {
   local beg=$1 end=$2 context=$3 filter=$4
@@ -1126,11 +1126,11 @@ function ble/widget/vi-command/linewise-range.impl {
     ((end<${#_ble_edit_str}&&end++))
     if ble/util/isfunction ble/keymap:vi/operator:"$flag"; then
       # オペレータ呼び出し
-      ble/keymap:vi/mark/start-edit
+      ble/keymap:vi/mark/start-edit-area
       local _ble_keymap_vi_operator_delayed=
       ble/keymap:vi/operator:"$flag" "$beg" "$end" line
       [[ $_ble_keymap_vi_operator_delayed ]] && return
-      ble/keymap:vi/mark/end-edit
+      ble/keymap:vi/mark/end-edit-area
 
       # 範囲の先頭に移動
       local ind=$_ble_edit_ind
@@ -1328,23 +1328,26 @@ function ble/keymap:vi/mark/get-local-mark {
 }
 
 # `[ `]
-function ble/keymap:vi/mark/set-previous-area {
+function ble/keymap:vi/mark/set-previous-edit-area {
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
   local beg=$1 end=$2
   ((beg<end)) && ! ble-edit/content/bolp "$end" && ((end--))
   ble/keymap:vi/mark/set-local-mark 91 "$beg" # `[
   ble/keymap:vi/mark/set-local-mark 93 "$end" # `]
 }
-function ble/keymap:vi/mark/start-edit {
+function ble/keymap:vi/mark/start-edit-area {
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
   ble/dirty-range#clear --prefix=_ble_keymap_vi_mark_edit_d
 }
-function ble/keymap:vi/mark/commit-edit {
+function ble/keymap:vi/mark/commit-edit-area {
   local beg=$1 end=$2
   ble/dirty-range#update --prefix=_ble_keymap_vi_mark_edit_d "$beg" "$end" "$end"
 }
-function ble/keymap:vi/mark/end-edit {
+function ble/keymap:vi/mark/end-edit-area {
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
   local beg=$_ble_keymap_vi_mark_edit_dbeg
   local end=$_ble_keymap_vi_mark_edit_dend
-  ((beg>=0)) && ble/keymap:vi/mark/set-previous-area "$beg" "$end"
+  ((beg>=0)) && ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
 }
 
 # `< `>
@@ -1538,7 +1541,7 @@ function ble/widget/vi-command/forward-char-toggle-case {
     if ((len)); then
       local ret; ble/string#toggle-case "${_ble_edit_str:_ble_edit_ind:len}"
       ble/widget/.replace-range "$_ble_edit_ind" "$index" "$ret" 1
-      ble/keymap:vi/mark/set-previous-area "$_ble_edit_ind" "$index"
+      ble/keymap:vi/mark/set-previous-edit-area "$_ble_edit_ind" "$index"
     fi
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
     ble/widget/.goto-char "$index"
@@ -2028,13 +2031,13 @@ function ble/widget/vi-command/paste.impl/paste-block.impl {
   done
 
   # 逆順に挿入
-  ble/keymap:vi/mark/start-edit
+  ble/keymap:vi/mark/start-edit-area
   local i=${#ins_beg[@]}
   while ((i--)); do
     local ibeg=${ins_beg[i]} iend=${ins_end[i]} text=${ins_text[i]}
     ble/widget/.replace-range "$ibeg" "$iend" "$text" 1
   done
-  ble/keymap:vi/mark/end-edit
+  ble/keymap:vi/mark/end-edit-area
 
   ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
   ble/keymap:vi/adjust-command-mode
@@ -2050,7 +2053,7 @@ function ble/widget/vi-command/paste.impl {
   [[ $_ble_edit_kill_ring ]] || return 0
   local ret
   if [[ $_ble_edit_kill_type == L ]]; then
-    ble/keymap:vi/mark/start-edit
+    ble/keymap:vi/mark/start-edit-area
     if ((is_after)); then
       ble-edit/content/find-logical-eol
       if ((ret==${#_ble_edit_str})); then
@@ -2066,7 +2069,7 @@ function ble/widget/vi-command/paste.impl {
     local ind=$_ble_edit_ind
     ble/string#repeat "${_ble_edit_kill_ring%$_ble_term_nl}$_ble_term_nl" "$arg"
     ble/widget/insert-string "$ret"
-    ble/keymap:vi/mark/end-edit
+    ble/keymap:vi/mark/end-edit-area
     ble/widget/.goto-char "$ind"
     ble/widget/vi-command/first-non-space
   elif [[ $_ble_edit_kill_type == B:* ]]; then
@@ -2079,8 +2082,12 @@ function ble/widget/vi-command/paste.impl {
       ble/widget/.goto-char $((_ble_edit_ind+1))
     fi
     ble/string#repeat "$_ble_edit_kill_ring" "$arg"
+    local beg=$_ble_edit_ind
     ble/widget/insert-string "$ret"
+    local end=$_ble_edit_ind
+    ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
     [[ $_ble_keymap_vi_single_command ]] || ble/widget/.goto-char $((_ble_edit_ind-1))
+    ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
     ble/keymap:vi/adjust-command-mode
   fi
 }
@@ -2358,9 +2365,9 @@ function ble/widget/vi-command/replace-char.impl {
   local _ble_edit_arg=$arg
   local _ble_edit_overwrite_mode=$overwrite_mode
   local ble_widget_self_insert_opts=nolineext
-  ble/keymap:vi/mark/start-edit
+  ble/keymap:vi/mark/start-edit-area
   ble/widget/self-insert
-  ble/keymap:vi/mark/end-edit
+  ble/keymap:vi/mark/end-edit-area
 
   ((pos<_ble_edit_ind)) && ble/widget/.goto-char _ble_edit_ind-1
   ble/keymap:vi/adjust-command-mode
@@ -2397,7 +2404,7 @@ function ble/widget/vi-command/connect-line-with-space {
       local text=${_ble_edit_str:eol1:eol2-eol1}
       text=${text//$'\n'/' '}
       ble/widget/.replace-range "$eol1" "$eol2" "$text"
-      ble/keymap:vi/mark/set-previous-area "$eol1" "$eol2"
+      ble/keymap:vi/mark/set-previous-edit-area "$eol1" "$eol2"
       ble/widget/.goto-char $((bol2-1))
     else
       ble/widget/.bell
@@ -2419,7 +2426,7 @@ function ble/widget/vi-command/connect-line {
       text=${text//$'\n'}
       ble/widget/.replace-range "$eol1" "$bol2" "$text"
       local delta=$((${#text}-(bol2-eol1)))
-      ble/keymap:vi/mark/set-previous-area "$eol1" $((eol2+delta))
+      ble/keymap:vi/mark/set-previous-edit-area "$eol1" $((eol2+delta))
       ble/widget/.goto-char $((bol2+delta))
     else
       ble/widget/.bell
@@ -3629,7 +3636,7 @@ function ble/keymap:vi/xmap/switch-type {
 # 矩形範囲の抽出
 
 ## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-graphical-rectangle [index1 [index2]]
-## 関数 local p0 q0 lx rx      ; ble/keymap:vi/get-logical-rectangle   [index1 [index2]]
+## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-logical-rectangle   [index1 [index2]]
 ##
 ##   @param[in,opt] index1 [=_ble_edit_mark]
 ##   @param[in,opt] index2 [=_ble_edit_ind]
@@ -3663,8 +3670,23 @@ function ble/keymap:vi/get-logical-rectangle {
   ble-edit/content/find-logical-bol "$p"; p0=$ret
   ble-edit/content/find-logical-bol "$q"; q0=$ret
   ((p-=p0,q-=q0,p<=q)) || local p=$q q=$p
-  lx=$p rx=$((q+1))
+  lx=$p rx=$((q+1)) ly=0 ry=0
 }
+function ble/keymap:vi/get-rectangle {
+  if ble/keymap:vi/use-textmap; then
+    ble/keymap:vi/get-graphical-rectangle
+  else
+    ble/keymap:vi/get-logical-rectangle
+  fi
+}
+function ble/keymap:vi/mark/get-rectangle-height {
+  local p0 q0 lx ly rx ry
+  ble/keymap:vi/get-rectangle
+  ble/string#count-char "${_ble_edit_str:p0:q0-p0}" $'\n'
+  ((ret++))
+  return 0
+}
+
 
 ## 関数 ble/keymap:vi/extract-graphical-block-by-geometry bol1 bol2 x1:y1 x2:y2
 ## 関数 ble/keymap:vi/extract-logical-block-by-geometry bol1 bol2 c1 c2
@@ -3843,7 +3865,7 @@ function ble/keymap:vi/extract-logical-block-by-geometry {
   fi
 }
 function ble/keymap:vi/extract-logical-block {
-  local p0 q0 lx rx
+  local p0 q0 lx ly rx ry
   ble/keymap:vi/get-logical-rectangle
   ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$lx" "$rx"
 }
@@ -4116,7 +4138,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
     fi
 
     local i=$n sub smin=0
-    ble/keymap:vi/mark/start-edit
+    ble/keymap:vi/mark/start-edit-area
     while ((i--)); do
       ble/string#split sub : "${sub_ranges[i]}"
       local smin=${sub[0]} smax=${sub[1]}
@@ -4128,7 +4150,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
       ((srpad)) && { ble/string#repeat ' ' "$srpad"; ins1=$ins1$ret; }
       ble/widget/.replace-range "$smin" "$smax" "$ins1" 1
     done
-    ble/keymap:vi/mark/end-edit
+    ble/keymap:vi/mark/end-edit-area
     local beg=$smin
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
@@ -4145,7 +4167,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
     local ins=${_ble_edit_str:beg:end-beg}
     ins=${ins//[^$'\n']/"$s"}
     ble/widget/.replace-range "$beg" "$end" "$ins" 1
-    ble/keymap:vi/mark/set-previous-area "$beg" "$end"
+    ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
   fi
@@ -4356,12 +4378,12 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
 
   # 挿入実行
   local i=${#ins_beg[@]}
-  ble/keymap:vi/mark/start-edit
+  ble/keymap:vi/mark/start-edit-area
   while ((i--)); do
     local index=${ins_beg[i]} text=${ins_text[i]}
     ble/widget/.replace-range "$index" "$index" "$text" 1
   done
-  ble/keymap:vi/mark/end-edit
+  ble/keymap:vi/mark/end-edit-area
 
   # 領域の最初に
   local index
@@ -4414,6 +4436,90 @@ function ble/widget/vi_xmap/append-mode {
   fi
 }
 
+# xmap: p, P
+function ble/widget/vi_xmap/paste.impl {
+  local opts=$1
+  [[ :$opts: != *:after:* ]]; local is_after=$?
+
+  local arg flag; ble/keymap:vi/get-arg 1
+
+  local mark_type=${_ble_edit_mark_active%+}
+  local kill_ring=$_ble_edit_kill_ring
+  local kill_type=$_ble_edit_kill_type
+
+  local adjustment=
+  if [[ $mark_type == block ]]; then
+    if [[ $kill_type == L ]]; then
+      # P: V → C-v のときは C-v の最終行直後に挿入
+      if ((is_after)); then
+        local ret; ble/keymap:vi/mark/get-rectangle-height; local nline=$ret
+        adjustment=lastline:$nline
+      fi
+    elif [[ $kill_type == B:* ]]; then
+      # C-v → C-v
+      is_after=0
+    else
+      # 単純 v → C-v はブロック挿入に切り替え
+      is_after=0
+      if [[ $kill_ring != *$'\n'* ]]; then
+        ((${#kill_ring}>=2)) && adjustment=index:$((${#kill_ring}*arg-1))
+        local ret; ble/keymap:vi/mark/get-rectangle-height; local nline=$ret
+        ble/string#repeat "$kill_ring"$'\n' "$nline"; kill_ring=${ret%$'\n'}
+        ble/string#repeat '0 ' "$nline"; kill_type=B:${ret% }
+      fi
+    fi
+  elif [[ $mark_type == line ]]; then
+    if [[ $kill_type == L ]]; then
+      # V → V のとき
+      is_after=0
+    elif [[ $kill_type == B:* ]]; then
+      # C-v → V のとき、行貼り付け。
+      # kill_type=B:* のとき kill_ring の末端の改行は空行を意味するので、
+      # 空行が消えないように $'\n' を付加する必要がある。
+      is_after=0 kill_type=L kill_ring=$kill_ring$'\n'
+    else
+      # v → V のとき、行貼り付けになる。
+      # kill_ring の末端に改行がないときに追加される (このままで良い)
+      is_after=0 kill_type=L
+    fi
+  else
+    # v, V, C-v → v のとき
+    is_after=0
+    [[ $kill_type == L ]] && adjustment=newline
+  fi
+
+  ble/keymap:vi/mark/start-edit-area
+  local _ble_keymap_vi_mark_suppress_edit=1
+  {
+    ble/widget/vi-command/operator d
+    if [[ $adjustment == newline ]]; then
+      local -a KEYS=(10)
+      ble/widget/self-insert
+    elif [[ $adjustment == lastline:* ]]; then
+      local ret
+      ble-edit/content/find-logical-bol "$_ble_edit_ind" $((${adjustment#*:}-1))
+      ble/widget/.goto-char "$ret"
+    fi
+    local _ble_edit_kill_ring=$kill_ring
+    local _ble_edit_kill_type=$kill_type
+    ble/widget/vi-command/paste.impl "$arg" "$flag" "$is_after"
+    if [[ $adjustment == index:* ]]; then
+      local index=$((_ble_edit_ind+${adjustment#*:}))
+      ((index>${#_ble_edit_str}&&(index=${#_ble_edit_str})))
+      ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+      ble/widget/.goto-char "$index"
+    fi
+  }
+  unset _ble_keymap_vi_mark_suppress_edit
+  ble/keymap:vi/mark/end-edit-area
+}
+function ble/widget/vi_xmap/paste-after {
+  ble/widget/vi_xmap/paste.impl after
+}
+function ble/widget/vi_xmap/paste-before {
+  ble/widget/vi_xmap/paste.impl before
+}
+
 function ble-decode-keymap:vi_xmap/define {
   local ble_bind_keymap=vi_xmap
   ble/keymap:vi/setup-map
@@ -4455,6 +4561,8 @@ function ble-decode-keymap:vi_xmap/define {
 
   ble-bind -f I vi_xmap/insert-mode
   ble-bind -f A vi_xmap/append-mode
+  ble-bind -f p vi_xmap/paste-after
+  ble-bind -f P vi_xmap/paste-before
 }
 
 #------------------------------------------------------------------------------

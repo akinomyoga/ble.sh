@@ -342,7 +342,7 @@ function ble/widget/vim-surround.sh/ysurround.core {
   else
     ble/keymap:vi/adjust-command-mode
   fi
-  ble/keymap:vi/mark/end-edit
+  ble/keymap:vi/mark/end-edit-area
 }
 
 function ble/widget/vim-surround.sh/ysurround-current-line {
@@ -483,9 +483,9 @@ function ble/widget/vim-surround.sh/csurround.core {
     local end=$((beg+ret+4))
 
     local surround_content=${_ble_edit_str:beg+2:end-beg-4}
-    ble/keymap:vi/mark/start-edit
+    ble/keymap:vi/mark/start-edit-area
     ble/keymap:vi/operator:surround "$beg" "$end" char
-    ble/keymap:vi/mark/end-edit
+    ble/keymap:vi/mark/end-edit-area
     ble/widget/.goto-char "$beg"
   elif [[ $del ]]; then
     # 指定した文字で囲まれた部分
@@ -514,9 +514,9 @@ function ble/widget/vim-surround.sh/csurround.core {
     ((beg+=bol,end+=bol))
 
     local surround_content=${_ble_edit_str:beg+${#del}:end-beg-2*${#del}}
-    ble/keymap:vi/mark/start-edit
+    ble/keymap:vi/mark/start-edit-area
     ble/keymap:vi/operator:surround "$beg" "$end" char
-    ble/keymap:vi/mark/end-edit
+    ble/keymap:vi/mark/end-edit-area
     ble/widget/.goto-char "$beg"
   else
     ble/widget/vi-command/bell
