@@ -991,7 +991,9 @@ function .ble-line-prompt/update {
   fi
 
   if [[ $PROMPT_COMMAND ]]; then
+    local PS1=$ps1
     .ble-line-prompt/update/eval-prompt_command
+    ps1=$PS1
   fi
 
   local param_wd=
