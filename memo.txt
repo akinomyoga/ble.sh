@@ -539,8 +539,8 @@ tech
       - 既定のインデントの幅は 8 から 4 に変更
     - vi-mode: mark `mx` <code>`x</code> <code>'x</code> (`x` = <code>[][<>`'a-zA-Z"^.]</code>)
     - vi-mode: nmap `gi`
-    - vi-mode: xmap `I` `A` `p` `P`
-    - vim-surround.sh: nmap `yS` `ySS` `ySs` `cS`, xmap `S` `gS`
+    - vi-mode: xmap `I` `A` `p` `P` `J` `gJ`
+    - lib/vim-surround.sh: nmap `yS` `ySS` `ySs` `cS`, xmap `S` `gS`
 
     バグ修正
     - vi-mode: 挿入モードに繰り返し回数を指定したとき `ESC ?` も一緒に繰り返されていたバグの修正
@@ -551,14 +551,16 @@ tech
     - vi-mode (motion `0`): オペレータを認識していなかったバグを修正
     - isearch: 一度一致したら同じものに一致し続けるバグを前回の `/` `?` `n` `N` 対応の際に埋め込んでいたので修正
     - complete: `complete -F something -D` で登録されている補完関数が正しく実行されていなかったのを修正
-    - prompt: PROMPT_COMMAND によって設定された PS1 を拾っていなかったバグを修正x
+    - prompt: PROMPT_COMMAND によって設定された PS1 を拾っていなかったバグを修正
+    - textarea: 端末の下部で複数行編集時に `C-z` (`fz`) すると描画高さを正しく確保できていないバグの修正
 
     動作変更
-    - nmap `:` `/` `?`: 文字列入力中に空文字列で DEL or C-h することでキャンセルできるように修正
-    - vim-surround.sh のタグ名入力中に '>' で確定するように修正
-    - operator `<` `>`: Visual block での正しい振る舞い
-    - nmap `J`, `gJ`: 引数に対応
-    - xmap `Y` `D` `R`: 記録するビジュアルモードの種類を修正
+    - vi-mode (nmap `:` `/` `?`): 文字列入力中に空文字列で DEL or C-h することでキャンセルできるように修正
+    - lib/vim-surround.sh: タグ名入力中に '>' で確定するように修正
+    - vi-mode (operator `<` `>`): Visual block での正しい振る舞い
+    - vi-mode (nmap `J`, `gJ`): 引数に対応
+    - vi-mode (xmap `Y` `D` `R`): 記録するビジュアルモードの種類を修正
+    - widget (.SHELL_COMMAND): 実行しないコマンドに色がついているのはややこしいのでグレーアウトする様に変更
 
     他の変更
     - magic-space: 空白を挿入してから履歴展開していた順番を逆転
@@ -2273,6 +2275,15 @@ tech
 -------------------------------------------------------------------------------
 
 2017-10-12
+
+  * ble-edit: 複数行編集時に .SHELL_COMMAND を実行すると、
+    色々と座標計算がずれている。先ず初めに編集中の文字列が残ってしまう。
+    更に、.SHELL_COMMAND が出力した内容が上書きされて消えてしまう。
+
+    座標計算は合っている。みたところちゃんとした場所に移動してから実行しているように見える。
+    と思ったら分かった。端末の一番下にいるときに起こり、端末の上の方に煎る時には起こらない。
+    つまり、描画領域の高さの確保がちゃんとできていないことが原因である。
+    取り敢えず一時的に端末の高さを 0 にするということが必要である。
 
   * vi-mode (visual mode): J gJ [#D0539]
 

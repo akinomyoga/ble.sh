@@ -4088,6 +4088,7 @@ function ble/widget/.insert-newline {
   # 描画領域情報の初期化
   _ble_line_x=0 _ble_line_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
+  _ble_form_window_height[_ble_textarea_panel]=0
   ((LINENO=++_ble_edit_LINENO))
 }
 
@@ -5461,7 +5462,7 @@ function ble/widget/.SHELL_COMMAND {
   local -a BASH_COMMAND
   BASH_COMMAND=("$*")
 
-  ble/widget/.insert-newline
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline
 
   # やはり通常コマンドはちゃんとした環境で評価するべき
   if [[ "${BASH_COMMAND//[ 	]/}" ]]; then
