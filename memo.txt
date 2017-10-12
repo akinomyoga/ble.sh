@@ -347,6 +347,16 @@ bashbug: 実装上で注意するべき事
 
     - history -p を実行する度に history のリストの項目が削除される。
 
+  * bash-4.0 segfault
+
+    以下で segfault を起こすことが分かった。
+
+    bash-4.0 -c 'function f1 { COMPREPLY=(alpha); }; compgen -F f1 2>/dev/null'
+
+    但し、ble.sh の使用中に実際に compgen -F を通して segfault になることはなかった。
+    もしかすると何らかの条件が整うと segfault するかもしれないので、
+    念のためここに記録に残しておく。
+
 bash_features
 
   * printf -v var %s value
@@ -510,16 +520,13 @@ tech
 
 2017-10-12
 
-  * vi-mode: (insert) で C-c すると表示は (insert) のまま
-      ノーマルモードに戻っている気がする。
-
   * vi-mode まだ対応していない・考えていないコマンドを列挙する
 
     意外とそんなに残っていないようなので。
 
-    * nmap: . C-g C-a C-x C-^ * # '括弧 `括弧
+    * nmap: . C-g C-a C-x C-^ * # '括弧 `括弧 gv
       C-t C-] M Q ZZ ZQ [x ]x do dp { } qx @x gx zx C-w{char}
-    * xmap: K O o C-z C-x gC-a gC-x gv
+    * xmap: O o K C-z C-x gC-a gC-x gv
 
   * vi-mode change
 
@@ -532,7 +539,7 @@ tech
       - 既定のインデントの幅は 8 から 4 に変更
     - vi-mode: mark `mx` <code>`x</code> <code>'x</code> (`x` = <code>[][<>`'a-zA-Z"^.]</code>)
     - vi-mode: nmap `gi`
-    - vi-mode: xmap `I` `A`
+    - vi-mode: xmap `I` `A` `p` `P`
     - vim-surround.sh: nmap `yS` `ySS` `ySs` `cS`, xmap `S` `gS`
 
     バグ修正
@@ -542,8 +549,9 @@ tech
     - vi-mode (xmap `r` (visual char/line)): 全体を置換したものが選択範囲に挿入されていたバグの修正
     - vi-mode (xmap `$`): 行末で `$` をしたときに表示が更新されないバグの修正
     - vi-mode (motion `0`): オペレータを認識していなかったバグを修正
-    - isearch: 一度一致したら同じものに一致し続けるバグを `/` `?` `n` `N` 対応の際に埋め込んでいたので修正
+    - isearch: 一度一致したら同じものに一致し続けるバグを前回の `/` `?` `n` `N` 対応の際に埋め込んでいたので修正
     - complete: `complete -F something -D` で登録されている補完関数が正しく実行されていなかったのを修正
+    - prompt: PROMPT_COMMAND によって設定された PS1 を拾っていなかったバグを修正x
 
     動作変更
     - nmap `:` `/` `?`: 文字列入力中に空文字列で DEL or C-h することでキャンセルできるように修正
@@ -566,7 +574,9 @@ tech
 
     どうやら一個の単語までしか駄目な様子?
 
-  * vi-mode (visual mode): J gJ ^] [#tmp001]
+  * vi-mode (visual mode): J gJ [#tmp001]
+
+    これは試してみた所 block, char かどうかとは関係なく、常に行指向で処理するようだ。
 
 2017-09-25
 
@@ -2264,7 +2274,12 @@ tech
 
 2017-10-12
 
-  * `[ `] は挿入モード中でのカーソル移動でも途切れるが、
+  * vi-mode: (insert) で C-c すると表示は (insert) のまま
+    ノーマルモードに戻っている気がする。
+    よく分からないので、ble.sh では C-c で
+    単にノーマルモードに戻ることにする。
+
+  * `[ `] は挿入モード中でのカーソル移動でも途切れるが、 [#D0537]
 
     % そのようなものにまで対応していると遅くなると思われるので今は対応しない。
 
@@ -3056,10 +3071,12 @@ tech
 
   * 2017-10-01 vi-mode (visual mode): r s C S R x D X Y p J U u I A ^] [#D0516]
 
-    todo: J gJ ^] → これは別項目 #tmp001 で処理
+    todo: J gJ → これは別項目 #tmp001 で処理
     done: u U r s C S R X D x Y
     done: I A #D0531
-    todo: p P #D0535
+    done: p P #D0535
+    保留: ^] これは何処で見たものか何故か書かれていたが実際対応しなくて良い。
+      b4b4r07/zsh-vimode-visual で見たかと思ったが、改めて確認したところない。
 
     C は char のとき一旦行指向になってから .save しているようだ。1v などとすると分かる。
 

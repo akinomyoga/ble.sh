@@ -309,39 +309,40 @@ function ble/keymap:vi/update-mode-name {
   ble-edit/info/default raw "$name"
 }
 
-function ble/widget/vi-insert/normal-mode/.common {
-  _ble_keymap_vi_single_command=
-  _ble_keymap_vi_single_command_overwrite=
-  _ble_edit_mark_active=
-  _ble_edit_overwrite_mode=
-  ble-edit/content/bolp || ble/widget/.goto-char _ble_edit_ind-1
-  ble-decode/keymap/push vi_command
-  ble/keymap:vi/update-mode-name
-}
-function ble/widget/vi-insert/normal-mode {
+function ble/widget/vi-insert/normal-mode.impl {
+  local opts=$1
+
+  # finalize insert mode
   ble/widget/vi-insert/.process-repeat
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
   ble/keymap:vi/mark/end-edit-area
-  eval "$_ble_keymap_vi_insert_leave"
-  ble/widget/vi-insert/normal-mode/.common
-}
-function ble/widget/vi-insert/normal-mode-without-insert-leave {
-  ble/widget/vi-insert/.reset-repeat
-  ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
-  ble/keymap:vi/mark/end-edit-area
-  ble/widget/vi-insert/normal-mode/.common
-}
-function ble/widget/vi-insert/single-command-mode {
-  ble/widget/vi-insert/.reset-repeat
-  ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
-  ble/keymap:vi/mark/end-edit-area
-  _ble_keymap_vi_single_command=1
-  _ble_keymap_vi_single_command_overwrite=$_ble_edit_overwrite_mode
+  [[ $opts == *:InsertLeave:* ]] && eval "$_ble_keymap_vi_insert_leave"
+
+  # setup normal mode
   _ble_edit_mark_active=
   _ble_edit_overwrite_mode=
-  ble-edit/content/nonbol-eolp && ble/widget/.goto-char _ble_edit_ind-1
-  ble-edit/content/eolp && _ble_keymap_vi_single_command=2
+  _ble_keymap_vi_insert_leave=
+  _ble_keymap_vi_single_command=
+  _ble_keymap_vi_single_command_overwrite=
+  ble-edit/content/bolp || ble/widget/.goto-char $((_ble_edit_ind-1))
   ble-decode/keymap/push vi_command
+}
+function ble/widget/vi-insert/normal-mode {
+  ble/widget/vi-insert/normal-mode.impl InsertLeave
+  ble/keymap:vi/update-mode-name
+}
+function ble/widget/vi-insert/normal-mode-without-insert-leave {
+  ble/widget/vi-insert/normal-mode.impl
+  ble/keymap:vi/update-mode-name
+}
+function ble/widget/vi-insert/single-command-mode {
+  local single_command=1
+  local single_command_overwrite=$_ble_edit_overwrite_mode
+  ble-edit/content/eolp && _ble_keymap_vi_single_command=2
+
+  ble/widget/vi-insert/normal-mode.impl
+  _ble_keymap_vi_single_command=$single_command
+  _ble_keymap_vi_single_command_overwrite=$single_command_overwrite
   ble/keymap:vi/update-mode-name
 }
 
@@ -1498,7 +1499,7 @@ function ble/widget/vi-command/forward-char {
   local arg flag; ble/keymap:vi/get-arg 1
 
   local index
-  if [[ $1 == m ]]; then
+  if [[ $1 == multiline ]]; then
     # SP
     local width=$arg line
     while ((width<=${#_ble_edit_str}-_ble_edit_ind)); do
@@ -1525,7 +1526,7 @@ function ble/widget/vi-command/backward-char {
 
   local index
   ((arg>_ble_edit_ind&&(arg=_ble_edit_ind)))
-  if [[ $1 == m ]]; then
+  if [[ $1 == multiline ]]; then
     # DEL
     local width=$arg line
     while ((width<=_ble_edit_ind)); do
@@ -3462,9 +3463,9 @@ function ble/keymap:vi/setup-map {
   ble-bind -f l     vi-command/forward-char
   ble-bind -f left  vi-command/backward-char
   ble-bind -f right vi-command/forward-char
-  ble-bind -f C-h   'vi-command/backward-char m'
-  ble-bind -f DEL   'vi-command/backward-char m'
-  ble-bind -f SP    'vi-command/forward-char m'
+  ble-bind -f C-h   'vi-command/backward-char multiline'
+  ble-bind -f DEL   'vi-command/backward-char multiline'
+  ble-bind -f SP    'vi-command/forward-char multiline'
 
   ble-bind -f j     vi-command/forward-line
   ble-bind -f down  vi-command/forward-line
@@ -3549,6 +3550,43 @@ function ble/widget/vi-command/exit-on-empty-line {
   fi
 }
 
+# nmap C-g (show line and column)
+function ble/widget/vi-command/show-line-info {
+  local index count
+  ble-edit/history/getindex -v index
+  ble-edit/history/getcount -v count
+  local hist_ratio=$(((100*index+count-1)/count))%
+  local hist_stat=$'!\e[32m'$index$'\e[m / \e[32m'$count$'\e[m (\e[32m'$hist_ratio$'\e[m)'
+
+  local ret
+  ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
+  ble/string#count-char "${_ble_edit_str::_ble_edit_ind}" $'\n'; local iline=$((ret+1))
+  local line_ratio=$(((100*iline+nline-1)/nline))%
+  local line_stat=$'line \e[34m'$iline$'\e[m / \e[34m'$nline$'\e[m --\e[34m'$line_ratio$'\e[m--'
+
+  ble-edit/info/show raw "\"$hist_stat\" $line_stat"
+  ble/keymap:vi/adjust-command-mode
+}
+
+# nmap C-c (jobs)
+function ble/widget/vi-command/cancel {
+  if [[ $_ble_keymap_vi_single_command ]]; then
+    _ble_keymap_vi_single_command=
+    _ble_keymap_vi_single_command_overwrite=
+    ble/keymap:vi/update-mode-name
+  else
+    local joblist; ble/util/joblist
+    if ((${#joblist[*]})); then
+      ble/array#push joblist $'Type  \e[35m:q!\e[m  and press \e[35m<Enter>\e[m to abandon all \e[31mjobs\e[m and exit Bash'
+      IFS=$'\n' eval 'ble-edit/info/show raw "${joblist[*]}"'
+    else
+      ble-edit/info/show raw $'Type  \e[35m:q\e[m  and press \e[35m<Enter>\e[m to exit Bash'
+    fi
+  fi
+  ble/widget/vi-command/bell
+}
+
+
 function ble-decode-keymap:vi_command/define {
   local ble_bind_keymap=vi_command
 
@@ -3557,6 +3595,7 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f __default__ vi-command/decompose-meta
   ble-bind -f 'ESC' vi-command/bell
   ble-bind -f 'C-[' vi-command/bell
+  ble-bind -f 'C-c' vi-command/cancel
 
   ble-bind -f a      vi-command/append-mode
   ble-bind -f A      vi-command/append-mode-at-end-of-line
@@ -3619,7 +3658,7 @@ function ble-decode-keymap:vi_command/define {
   ble-bind -f 'C-m' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
   ble-bind -f 'RET' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
 
-  ble-bind -f 'C-g' bell
+  ble-bind -f 'C-g' vi-command/show-line-info
   ble-bind -f 'C-l' clear-screen
 
   ble-bind -f C-d vi-command/exit-on-empty-line
@@ -4384,7 +4423,7 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
     elif [[ $has_textmap ]]; then
       ble/textmap#getxy.out --prefix=b "$bol"
       ble/textmap#hit out $((x1%cols)) $((by+x1/cols)) "$bol" "$eol" # -> index
-      
+
       local nfill
       if ((index==eol&&(nfill=x1-lx+(ly-by)*cols)>0)); then
         ble/string#repeat ' ' "$nfill"; lpad=$lpad$ret
