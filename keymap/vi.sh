@@ -375,7 +375,7 @@ function ble/keymap:vi/adjust-command-mode {
       local index=$((_ble_edit_ind+1))
       ble-edit/content/nonbol-eolp "$index" && ble/widget/.goto-char index
     fi
-    ble/widget/vi-command/.insert-mode 1 "$_ble_keymap_vi_single_command_overwrite" nomark
+    ble/widget/vi-command/.insert-mode 1 "$_ble_keymap_vi_single_command_overwrite" resume
   elif [[ $kmap_popped ]]; then
     ble/keymap:vi/update-mode-name
   fi
@@ -404,8 +404,10 @@ function ble/widget/vi-command/.insert-mode {
   _ble_keymap_vi_single_command_overwrite=
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
-  if [[ :$opts: != *:nomark:* ]]; then
-    ble/keymap:vi/mark/start-edit-area
+
+  ble/keymap:vi/mark/start-edit-area
+  if [[ :$opts: != *:resume:* ]]; then
+    ble/keymap:vi/mark/commit-edit-area "$_ble_edit_ind" "$_ble_edit_ind"
   fi
 }
 function ble/widget/vi-command/insert-mode {
@@ -1219,6 +1221,15 @@ _ble_keymap_vi_mark_edit_dbeg=-1
 _ble_keymap_vi_mark_edit_dend=-1
 _ble_keymap_vi_mark_edit_dend0=-1
 
+# mark 番号と用途の対応
+#
+#
+#   1     内部使用。矩形挿入モードの開始点を記録するためのもの
+#   91 93 `[ と `]。編集・ヤンク範囲を保持する。
+#   96 39 `` と `'。最後のジャンプ位置を保持する。39 は実際には使用されない。
+#   60 62 `< と `>。最後のビジュアル範囲。
+#
+
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
 ble/array#push _ble_edit_history_onleave ble/keymap:vi/mark/history-onleave.hook
 
@@ -1258,6 +1269,7 @@ function ble/keymap:vi/mark/shift-by-dirty-range {
   local beg=$1 end=$2 end0=$3 reason=$4
   if [[ $4 == edit ]]; then
     ble/dirty-range#update --prefix=_ble_keymap_vi_mark_edit_d "${@:1:3}"
+    ble/keymap:vi/xmap/update-dirty-range "$@"
 
     ble/keymap:vi/mark/update-mark-history
     local shift=$((end-end0))
@@ -4229,12 +4241,17 @@ function ble/widget/vi_xmap/copy-block-or-lines { ble/widget/vi_xmap/linewise-op
 ##     編集行の元々の幅を保持します。
 ##   nline
 ##     行数を保持します。
-##   content
-##     編集行の元々の内容を保持します。
 ##
 _ble_keymap_vi_xmap_insert_data=
 
-function ble/widget/vi_xmap/block-insert-block.impl {
+_ble_keymap_vi_xmap_insert_dbeg=-1
+function ble/keymap:vi/xmap/update-dirty-range {
+  [[ $_ble_keymap_vi_insert_leave == ble/widget/vi_xmap/block-insert-mode.onleave ]] &&
+    ((_ble_keymap_vi_xmap_insert_dbeg<0||beg<_ble_keymap_vi_xmap_insert_dbeg)) &&
+    _ble_keymap_vi_xmap_insert_dbeg=$beg
+}
+
+function ble/widget/vi_xmap/block-insert-mode.impl {
   local type=$1
   local arg flag; ble/keymap:vi/get-arg 1
 
@@ -4263,6 +4280,8 @@ function ble/widget/vi_xmap/block-insert-block.impl {
   ble/widget/vi_xmap/cancel
   ble/widget/.goto-char "$index"
   ble/widget/vi-command/.insert-mode "$arg"
+  ble/keymap:vi/mark/set-local-mark 1 "$_ble_edit_ind"
+  _ble_keymap_vi_xmap_insert_dbeg=-1
 
   local ret display_width
   ble/string#count-char "${_ble_edit_str::_ble_edit_ind}" $'\n'; local iline=$ret
@@ -4276,7 +4295,7 @@ function ble/widget/vi_xmap/block-insert-block.impl {
   else
     ((display_width=eol-bol))
   fi
-  _ble_keymap_vi_xmap_insert_data=$iline:$ins_x:$display_width:$nline:${_ble_edit_str:bol:eol-bol}
+  _ble_keymap_vi_xmap_insert_data=$iline:$ins_x:$display_width:$nline
   _ble_keymap_vi_insert_leave=ble/widget/vi_xmap/block-insert-mode.onleave
 }
 function ble/widget/vi_xmap/block-insert-mode.onleave {
@@ -4284,14 +4303,13 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   [[ $data ]] || continue
   _ble_keymap_vi_xmap_insert_data=
 
-  local content=${data#*:*:*:*:}; data=${data::${#data}-${#content}-1}
   ble/string#split data : "$data"
 
   # カーソル行が記録行と同じか
   local ret
   ble-edit/content/find-logical-bol; local bol=$ret
   ble/string#count-char "${_ble_edit_str::bol}" $'\n'; ((ret==data[0])) || return # 行番号
-  ble/keymap:vi/mark/get-local-mark 91 || return; local mark=$ret # `[
+  ble/keymap:vi/mark/get-local-mark 1 || return; local mark=$ret # `[
   ble-edit/content/find-logical-bol "$mark"; ((bol==ret)) || return # 記録行 `[ と同じか
 
   local has_textmap=
@@ -4314,19 +4332,19 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   ((delta=new_width-data[2]))
   ((delta>0)) || return # 縮んだ場合は処理しない
 
-  # 挿入列の決定
+  # 切り出し列の決定
   local x1=${data[1]}
   [[ $x1 == '$' ]] && ((x1=data[2]))
   ((x1>new_width&&(x1=new_width)))
-  local new_content="${_ble_edit_str:bol:eol-bol}"
-  ble/string#common-prefix "$new_content" "$content"; local wprefix=${#ret}
-  if [[ $has_textmap ]]; then
+  if ((bol<=_ble_keymap_vi_xmap_insert_dbeg&&_ble_keymap_vi_xmap_insert_dbeg<=eol)); then
     local px py
-    ble/textmap#getxy.out --prefix=p "${#ret}"
-    ((px+=cols*(py-by),
-      px>x1&&(x1=px)))
-  else
-    ((wprefix>x1&&(x1=wprefix)))
+    if [[ $has_textmap ]]; then
+      ble/textmap#getxy.out --prefix=p "$_ble_keymap_vi_xmap_insert_dbeg"
+      ((px+=cols*(py-by)))
+    else
+      ((px=_ble_keymap_vi_xmap_insert_dbeg-bol))
+    fi
+    ((px>x1&&(x1=px)))
   fi
   local x2=$((x1+delta))
 
@@ -4397,7 +4415,7 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
 function ble/widget/vi_xmap/insert-mode {
   local mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == block ]]; then
-    ble/widget/vi_xmap/block-insert-block.impl insert
+    ble/widget/vi_xmap/block-insert-mode.impl insert
   else
     local arg flag; ble/keymap:vi/get-arg 1
 
@@ -4415,7 +4433,7 @@ function ble/widget/vi_xmap/insert-mode {
 function ble/widget/vi_xmap/append-mode {
   local mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == block ]]; then
-    ble/widget/vi_xmap/block-insert-block.impl append
+    ble/widget/vi_xmap/block-insert-mode.impl append
   else
     local arg flag; ble/keymap:vi/get-arg 1
 
