@@ -4115,12 +4115,12 @@ function ble/widget/discard-line {
 
 if ((_ble_bash>=30100)); then
   function ble-edit/hist_expanded/.expand {
-    history -p -- "$BASH_COMMAND" 2>/dev/null || echo "$BASH_COMMAND"
+    builtin history -p -- "$BASH_COMMAND" 2>/dev/null || echo "$BASH_COMMAND"
     builtin echo -n :
   }
 else
   function ble-edit/hist_expanded/.expand {
-    (history -p -- "$BASH_COMMAND" 2>/dev/null || echo "$BASH_COMMAND")
+    (builtin history -p -- "$BASH_COMMAND" 2>/dev/null || echo "$BASH_COMMAND")
     builtin echo -n :
   }
 fi
@@ -4248,7 +4248,7 @@ function ble-edit/history/getcount {
   else
     if [[ ! $_ble_edit_history_count ]]; then
       local history_line
-      ble/util/assign history_line 'history 1'
+      ble/util/assign history_line 'builtin history 1'
       _ble_edit_history_count=($history_line)
     fi
     _ret=$_ble_edit_history_count
@@ -4258,15 +4258,15 @@ function ble-edit/history/getcount {
 }
 
 function ble-edit/history/.generate-source-to-load-history {
-  if ! history -p '!1' &>/dev/null; then
+  if ! builtin history -p '!1' &>/dev/null; then
     # rcfile として起動すると history が未だロードされていない。
-    history -n
+    builtin history -n
   fi
   HISTTIMEFORMAT=__ble_ext__
 
   # 285ms for 16437 entries
   local apos="'"
-  history | command awk -v apos="'" '
+  builtin history | command awk -v apos="'" '
     BEGIN{
       n="";
       print "_ble_edit_history=("
@@ -4431,9 +4431,9 @@ function ble-edit/history/add {
     local tmp="$_ble_base_tmp/$$.ble_edit_history_add.txt"
     builtin printf '%s\n' "$cmd" >> "$histfile"
     builtin printf '%s\n' "$cmd" >| "$tmp"
-    history -r "$tmp"
+    builtin history -r "$tmp"
   else
-    history -s -- "$cmd"
+    builtin history -s -- "$cmd"
   fi
 }
 

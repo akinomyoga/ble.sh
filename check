@@ -8,7 +8,7 @@ fi
 function check-builtin {
   echo "--- $FUNCNAME ---"
   local command="$1" esc='(\[[ -?]*[@-~])*'
-  grc --color --exclude=./test "(^|[^-./\${}])\b$command\b" |
+  grc --color --exclude=./test "(^|[^-./\${}])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)' |
     grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)="
 }
@@ -44,8 +44,9 @@ function check-assign {
 
 # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
 
+#check-builtin 'history'
 #check-builtin 'echo'
-#check-builtin '(bind|compopt|type|printf|read)'
+check-builtin '(bind|compopt|type|printf|read)'
 #check-assign
 
 check-bash300bug

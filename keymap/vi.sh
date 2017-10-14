@@ -3173,10 +3173,10 @@ function ble/widget/vi-command/commandline.hook {
 
 function ble/widget/vi-command:w {
   if [[ $1 ]]; then
-    history -a "$1"
+    builtin history -a "$1"
     local file=$1
   else
-    history -a
+    builtin history -a
     local file=${HISTFILE:-'~/.bash_history'}
   fi
   local wc; ble/util/assign wc 'wc "$file"'; wc=($wc)
