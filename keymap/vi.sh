@@ -2710,30 +2710,53 @@ function ble/keymap:vi/text-object/word.impl {
     rex_word="[A-Za-z_]+|[^A-Za-z_$space]+"
   fi
 
-  local rex="(($rex_word)|[$space]+)\$"
-  [[ ${_ble_edit_str::_ble_edit_ind+1} =~ $rex ]]
-  local beg=$((_ble_edit_ind+1-${#BASH_REMATCH}))
-
+  local rex_words
   if [[ $type == i* ]]; then
-    rex="(($rex_word)$nl?|[$space]+$nl?){$arg}"
+    rex_words="(($rex_word)$nl?|[$space]+$nl?){$arg}"
   else
     local rex1=
     ((arg>1)) && rex1="(($rex_word)[$ifs]+){$((arg-1))}"
-    rex="([$ifs]+($rex_word)){$arg}|$rex1($rex_word)[$space]*"
+    rex_words="([$ifs]+($rex_word)){$arg}|$rex1($rex_word)[$space]*"
   fi
-  if ! [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]; then
-    local index=${#_ble_edit_str}
+
+  local index=$_ble_edit_ind
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    if ((index<_ble_edit_mark)); then
+      ((index)) && [[ ${_ble_edit_str:index-1:1} == $'\n' ]] && ((index--))
+      if local rex="($rex_words)\$"; [[ ${_ble_edit_str::index} =~ $rex ]]; then
+        index=$((index-${#BASH_REMATCH}))
+        [[ ${_ble_edit_str:index:1} == $'\n' ]] && ((index++))
+      else
+        index=0
+        ble/widget/.bell
+      fi
+      ble/widget/vi-command/exclusive-goto.impl "$index" '' 1
+      return
+    fi
+
+    ble-edit/content/eolp || ((index++))
+    [[ ${_ble_edit_str:index:1} == $'\n' ]] && ((index++))
+  fi
+
+  local rex="(($rex_word)|[$space]+)\$"
+  [[ ${_ble_edit_str::index+1} =~ $rex ]]
+  local beg=$((index+1-${#BASH_REMATCH}))
+
+  if rex="^($rex_words)"; ! [[ ${_ble_edit_str:index} =~ $rex ]]; then
+    index=${#_ble_edit_str}
     ble-edit/content/nonbol-eolp "$index" && ((index--))
     ble/widget/.goto-char "$index"
     ble/widget/vi-command/bell
     return 1
   fi
+  local end=$((index+${#BASH_REMATCH}))
 
-  local end=$((_ble_edit_ind+${#BASH_REMATCH}))
-  [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
   if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    ((end--))
+    ble-edit/content/nonbol-eolp "$end" && ((end--))
     ble/widget/vi-command/exclusive-goto.impl "$end"
   else
+    [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag"
   fi
 }

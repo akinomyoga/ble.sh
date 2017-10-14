@@ -531,16 +531,15 @@ tech
   * vi-mode change
 
     新機能
-    - vi-mode (nmap `<C-d>`): 空文字列のとき exit
+    - vi-mode (mark): `mx` <code>`x</code> <code>'x</code> (`x` = <code>[][<>`'a-zA-Z"^.]</code>)
+    - vi-mode (nmap): `gi` `<C-d>` (空文字列のとき exit)
+    - vi-mode (xmap): `I` `A` `p` `P` `J` `gJ` `aw` `iw`
+    - lib/vim-surround.sh: nmap `yS` `ySS` `ySs` `cS`, xmap `S` `gS`
     - タブ・インデントの制御
       - bleopt tab_width= (タブの表示幅)
       - bleopt indent_offset=4 (`>` や `<` のインデントの幅)
       - bleopt indent_tabs=1 (`>` や `<` のインデントにタブを用いるかどうか)
       - 既定のインデントの幅は 8 から 4 に変更
-    - vi-mode: mark `mx` <code>`x</code> <code>'x</code> (`x` = <code>[][<>`'a-zA-Z"^.]</code>)
-    - vi-mode: nmap `gi`
-    - vi-mode: xmap `I` `A` `p` `P` `J` `gJ`
-    - lib/vim-surround.sh: nmap `yS` `ySS` `ySs` `cS`, xmap `S` `gS`
 
     バグ修正
     - vi-mode: 挿入モードに繰り返し回数を指定したとき `ESC ?` も一緒に繰り返されていたバグの修正
