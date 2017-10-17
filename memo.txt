@@ -518,6 +518,10 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2017-10-17
+
+  * vi-mode: support :reg
+
 2017-10-12
 
   * vi-mode まだ対応していない・考えていないコマンドを列挙する
@@ -554,11 +558,12 @@ tech
     - textarea: 端末の下部で複数行編集時に `C-z` (`fz`) すると描画高さを正しく確保できていないバグの修正
 
     動作変更
-    - vi-mode (nmap `:` `/` `?`): 文字列入力中に空文字列で DEL or C-h することでキャンセルできるように修正
-    - lib/vim-surround.sh: タグ名入力中に '>' で確定するように修正
     - vi-mode (operator `<` `>`): Visual block での正しい振る舞い
+    - vi-mode (nmap `:` `/` `?`): 文字列入力中に空文字列で DEL or C-h することでキャンセルできるように修正
     - vi-mode (nmap `J`, `gJ`): 引数に対応
+    - vi-mode (nmap `p`): 最後の行で挿入するときに余分な行が入らないように修正
     - vi-mode (xmap `Y` `D` `R`): 記録するビジュアルモードの種類を修正
+    - lib/vim-surround.sh: タグ名入力中に '>' で確定するように修正
     - widget (.SHELL_COMMAND): 実行しないコマンドに色がついているのはややこしいのでグレーアウトする様に変更
 
     他の変更
@@ -2272,6 +2277,117 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2017-10-17
+
+  * 2017-10-14 vi-mode: レジスタ対応
+
+    operator 呼び出しの前後で _ble_edit_kill_{ring,type}
+    を入れ替える実装にする事にした。
+    これは単に書き換えて行くだけである。
+
+    * done: call-operator-*wise を改修して kill_ring, kill_type を
+      復元・保存する様にする。
+
+    * done: 現在 operator:* は _ble_keymap_vi_operator_delayed
+      を用いて処理の継続の情報を呼び出し物に伝えているが、
+      これは終了ステータスによる方法の方が自然なのではないかと思われる。
+      →終了ステータス 27 によって続きを別のところで処理することを表す事にした。
+
+    * done: call-operator-*wise の呼び出し元を修正する。
+
+    * done: 以下の関数の呼び出し元の修正
+      - done: exclusive-goto index flag reg nobell
+      - done: inclusive-goto index flag reg nobell
+      - done: exclusive-range p q flag reg nobell
+      - done: linewise-goto index flag reg opts
+      - done: linewise-range p q flag reg opts
+
+    * done: 以下の関数は直接 kill-range/copy-range を呼び出している。
+
+      - done: ble/widget/vi-command/copy-current-line
+      - done: ble/widget/vi-command/kill-current-line
+        上記の関数については operator 経由で呼び出す様に変更した。
+
+      他にもあると思われる。と思ったら、他は全て operator y/d/c 経由だった。
+
+    * done: 後は kill_ring kill_type を直接触っているコード
+      vi-command/paste.impl vi_xmap/paste.impl がある。
+
+    * done: operator:* の終了ステータスを確定させる。
+      特に 27 を返すことは特別な意味を持つので。
+      27 を返すもの以外は 0 を返すように修正した。
+
+    レジスタへの追記の振る舞い
+
+    "大文字によって既存のレジスタへ内容を追加できるそうだ。
+    しかし v V C-v を混在させるとどうなるのか。
+
+    C-v に v を追記したら C-v だった。
+    ただし、v で追記した分については nfill は設定されていないようである。
+
+    今の実装の問題点
+
+    * resolved: "x を前置すると実際に変更がなかった場合でも
+      レジスタに kill_ring kill_type の内容が登録されてしまうのでは?
+      と思ったが "x を前置したときの内容は事前に "x の内容になっているので、
+      変更がなかった場合は改めて "x に値を格納しても以前と変わらないので問題ない。
+
+    * resolved: 現在は "x を指定したときにはそのレジスタだけに値を設定している。
+      しかし、vim の動作を確認すると無名レジスタにも同じ値をコピーするようである。
+
+      a これに対応するためには、例えば一つの方法は
+        local _ble_edit_kill_{ring,type} を事前に設定せずにそのまま処理を実行し、
+        後で _ble_edit_kill_{ring,type} の内容をレジスタにコピーするというもの。
+        もし追記を指定された場合には、レジスタに追記した後で追記内容を
+        _ble_edit_kill_{ring,type} に書き戻す。
+
+        この方法の問題点は実際に _ble_edit_kill_{ring,type} が変更されたか
+        どうかを検出しなければならないということである。
+        もし "x を設定しても何も変更がなかった場合には、
+        _ble_edit_kill_{ring,type} の内容をレジスタにコピー・追記してはならない。
+        実際に試してみたが、やはり、例えば "ag~ ではレジスタに変更は起こらない様だ。
+
+        またこの方法だと operator から見える _ble_edit_kill_{ring,type} の内容は
+        無名レジスタのそれであって、ユーザが "a で指定したレジスタの内容ではない。
+        % (_ble_edit_kill_{ring,type} の内容を変更した時は "a に対する変更であるにも拘らず。
+        % と思ったが、これは微妙である。何故ならユーザに依る変更は "" と "a の両方に適用されるから)
+
+      b もう一つの方法は、取り敢えず local _ble_edit_kill_{ring,type} は事前に設定し、
+        それをレジスタにコピー・追記した後で、
+        unset _ble_edit_kill_{ring,type} して本来の kill_ring に値を戻すというものである。
+        しかし、この場合でも kill_ring に変更があったかどうかを検出する必要がある。
+
+      c やはり一番妥当な方法は実際に .copy-range .kill-range する箇所で
+        コピー・追記などの処理を行うということである。
+
+      → c の方針で書き直した。operator:* の呼び出しは結局全て
+      call-operator 経由で行うことになったので、書き換えは簡単である。
+      operator 側でもレジスタに触るものは限られている。
+
+    Note
+
+    * done: omap では "x は使えない。つまりオペレータを入力する前に "x は設定しなければならない。
+      →nmap と xmap に個別に '"' を登録することにした。
+
+    色々書き換えたので動作確認を行う。
+
+    * done: レジスタ追記について: (v, V, C-v) x (v, V, C-v) が正しく動作するか。
+      - v v, v V, v C-v は確認した。
+      - V V, V v, V C-v も確認した。
+      - C-v v, C-v C-v, C-v V も確認した。
+
+    x resolved: ysiw" の入力途中に bell がなる。動作は正しい。
+      w まで入力したところでなる。どうも operator:ys で 27 を返すとなるようだ。
+      →call-operator-* の戻り値をチェックして失敗したら bell を鳴らすようにしていた箇所があった。
+        27 を返した時には何もせずに退出するべきである。その様に書き換えた。
+        他にも call-operator-* を呼び出しているが戻り値に対応して適切な処理をしていないところが
+        幾つか合ったのでそれも直した。
+
+    * resolved: これは前からだと思うが行指向の kill_ring を最終行で貼り付けたとき、
+      余分に改行が挿入されるのは何とかならないのだろうか。
+      →これは直した。また `[`] で設定される範囲も直した (次の行頭には行かない)。
+        両変更について確認した。
 
 2017-10-12
 
