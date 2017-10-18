@@ -1018,12 +1018,14 @@ function ble-decode-key/.invoke-partial-match {
     local key="$1"
     if ble-decode-key/ischar "$key"; then
       builtin eval "local command=\"\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]:2}\""
-      ble-decode-key/.invoke-command && return 0
+      ble-decode-key/.invoke-command; local ext=$?
+      ((ext!=125)) && return
     fi
 
     # 既定のキーハンドラ
     builtin eval "local command=\"\${${dicthead}[$_ble_decode_KCODE_DEFAULT]:2}\""
-    ble-decode-key/.invoke-command && return 0
+    ble-decode-key/.invoke-command; local ext=$?
+    ((ext!=125)) && return
 
     return 1
   fi
@@ -1068,7 +1070,7 @@ function ble-decode-key/.invoke-hook {
 #   部分一致などの場合に後続のキーが存在する場合には、それらは呼出元で管理しなければならない。
 #
 function ble-decode-key/.invoke-command {
-  [[ $command ]] || return 1
+  [[ $command ]] || return 125
 
   local COMMAND=$command
   local -a KEYS=(${_ble_decode_key__seq//_/ } $key)

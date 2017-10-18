@@ -4789,7 +4789,7 @@ function ble-edit/isearch/.shift-backward-references {
 ##   @exit
 ##     見つかったときに 0 を返します。
 ##     見つからなかったときに 1 を返します。
-##     中断された時に 27 を返します。
+##     中断された時に 148 を返します。
 ##
 function ble-edit/isearch/backward-search-history-blockwise {
   local opts=$1
@@ -4826,7 +4826,7 @@ function ble-edit/isearch/backward-search-history-blockwise {
 
     ((i-=block))
     if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble/util/is-stdin-ready; then
-      return 27
+      return 148
     elif ((has_progress&&isearch_time%NPROGRESS==0)); then
       ble-edit/isearch/.draw-line-with-progress "$i"
     fi
@@ -4849,7 +4849,7 @@ function ble-edit/isearch/next-history/forward-search-history.impl {
   for ((;expr_cond;expr_incr)); do
     ((isearch_time++))
     if ((has_stop_check&&isearch_time%100==0)) && ble/util/is-stdin-ready; then
-      return 27
+      return 148
     fi
 
     if
@@ -4957,7 +4957,7 @@ function ble-edit/isearch/next-history.fib {
     local beg=${#prefix} end=$((${#prefix}+${#needle}))
 
     ble-edit/isearch/.goto-match "$index" "$beg" "$end" "$needle"
-  elif ((r==27)); then
+  elif ((r==148)); then
     # 中断した場合
     isearch_suspend="index=$index start=$start:$needle"
     return

@@ -211,7 +211,7 @@ function ble-complete/source/command {
   ble/util/assign compgen ble-complete/source/command/gen
   ble/string#split arr $'\n' "$compgen"
   for cand in "${arr[@]}"; do
-    ((i++%100==0)) && ble/util/is-stdin-ready && return 27
+    ((i++%100==0)) && ble/util/is-stdin-ready && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/command
   done
 
@@ -324,7 +324,7 @@ function ble-complete/source/argument/.compgen-helper-func {
 ## @var[in] COMPV
 ## @var[in] index _ble_syntax_*
 ## @var[in] 他色々
-## @exit 入力がある時に 27 を返します。
+## @exit 入力がある時に 148 を返します。
 function ble-complete/source/argument/.compgen {
   shopt -q progcomp || return 1
 
@@ -381,7 +381,7 @@ function ble-complete/source/argument/.compgen {
     esac
   done
 
-  ble/util/is-stdin-ready && return 27
+  ble/util/is-stdin-ready && return 148
 
   # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
@@ -430,7 +430,7 @@ function ble-complete/source/argument/.compgen {
 
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
-    ((i++%100==0)) && ble/util/is-stdin-ready && return 27
+    ((i++%100==0)) && ble/util/is-stdin-ready && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
     ((count++))
   done
@@ -443,7 +443,7 @@ function ble-complete/source/argument {
 
   # try complete&compgen
   ble-complete/source/argument/.compgen; local exit="$?"
-  [[ $exit == 0 || $exit == 27 ]] && return "$exit"
+  [[ $exit == 0 || $exit == 148 ]] && return "$exit"
 
   # 候補が見付からない場合
   if [[ $comp_opts == *:dirnames:* ]]; then
@@ -541,7 +541,7 @@ function ble/widget/complete {
     fi
   done
 
-  ble/util/is-stdin-ready && return 27
+  ble/util/is-stdin-ready && return 148
 
   if ((cand_count==0)); then
     ble/widget/.bell
@@ -556,7 +556,7 @@ function ble/widget/complete {
   local i common comp1 clen comp2="$index"
   local acount=0 aindex=0
   for ((i=0;i<cand_count;i++)); do
-    ((i%100==0)) && ble/util/is-stdin-ready && return 27
+    ((i%100==0)) && ble/util/is-stdin-ready && return 148
 
     local word="${cand_word[i]}"
     local -a prop
