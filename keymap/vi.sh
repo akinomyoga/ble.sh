@@ -174,10 +174,10 @@ _ble_keymap_vi_repeat=
 _ble_keymap_vi_repeat_keylog=()
 
 function ble/widget/vi-insert/.reset-repeat {
-  local arg=$1
+  local count=$1
   _ble_keymap_vi_repeat=
   _ble_keymap_vi_repeat_keylog=()
-  ((arg>1)) && _ble_keymap_vi_repeat=$1
+  ((count>1)) && _ble_keymap_vi_repeat=$count
 }
 function ble/widget/vi-insert/.process-repeat {
   if [[ $_ble_keymap_vi_repeat ]]; then
@@ -226,7 +226,7 @@ function ble/keymap:vi/imap/is-command-white {
 }
 
 function ble/widget/vi-insert/.before_command {
-  if ble/keymap:vi/imap/is-command-white; then
+  if ble/keymap:vi/imap/is-command-white "$COMMAND"; then
     [[ $_ble_keymap_vi_repeat ]] &&
       ble/array#push _ble_keymap_vi_repeat_keylog "${KEYS[@]}"
   else

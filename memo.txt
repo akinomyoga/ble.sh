@@ -527,6 +527,10 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2017-10-22
+
+  * ble.pp: readlink -f は Linux でしか使えない
+
 2017-10-17
 
   * vi-mode: support :reg
@@ -723,6 +727,14 @@ tech
       ただ、この . の実装とは独立に終了ステータスを確定させるというのはあった方が安心な気もする。
       → #D0542
 
+      うーん。一番外側で情報を記録するようにすると問題になるのは、
+      オペレータが中で実際に何をしたか分からないということである。
+      もしかすると opfunc として何もしないものが登録されているかもしれない。
+      その時にも . の対象とするのだろうか。
+      Vim script では opfunc は結局キーの列として登録される。
+      だとすると何か意味のある操作をするとすれば :func() のようになる。
+      この時 : なので、これは . の繰り返し対象として登録されない気がする。
+
     [実装計画A]
 
     get-arg, get-arg-reg の出力先の変数名は大文字にする。
@@ -770,43 +782,6 @@ tech
     * nmap: . C-g C-a C-x C-^ * # '括弧 `括弧 gv
       C-t C-] M Q ZZ ZQ [x ]x do dp { } qx @x gx zx C-w{char}
     * xmap: O o K ^] C-a C-x gC-a gC-x gv
-
-  * vi-mode change
-
-    新機能
-    - vi-mode (mark): `mx` <code>`x</code> <code>'x</code> (`x` = <code>[][<>`'a-zA-Z"^.]</code>)
-    - vi-mode (nmap): `gi` `<C-d>` (空文字列のとき exit)
-    - vi-mode (xmap): `I` `A` `p` `P` `J` `gJ` `aw` `iw`
-    - lib/vim-surround.sh: nmap `yS` `ySS` `ySs` `cS`, xmap `S` `gS`
-    - タブ・インデントの制御
-      - bleopt tab_width= (タブの表示幅)
-      - bleopt indent_offset=4 (`>` や `<` のインデントの幅)
-      - bleopt indent_tabs=1 (`>` や `<` のインデントにタブを用いるかどうか)
-      - 既定のインデントの幅は 8 から 4 に変更
-
-    バグ修正
-    - vi-mode: 挿入モードに繰り返し回数を指定したとき `ESC ?` も一緒に繰り返されていたバグの修正
-    - vi-mode: オペレータ `g?` が動かなくなっていたのを修正
-    - vi-mode (nmap `/` `?`): 検索対象の入力中に `C-c` してもキャンセルされないバグの修正
-    - vi-mode (xmap `r` (visual char/line)): 全体を置換したものが選択範囲に挿入されていたバグの修正
-    - vi-mode (xmap `$`): 行末で `$` をしたときに表示が更新されないバグの修正
-    - vi-mode (motion `0`): オペレータを認識していなかったバグを修正
-    - isearch: 一度一致したら同じものに一致し続けるバグを前回の `/` `?` `n` `N` 対応の際に埋め込んでいたので修正
-    - complete: `complete -F something -D` で登録されている補完関数が正しく実行されていなかったのを修正
-    - prompt: PROMPT_COMMAND によって設定された PS1 を拾っていなかったバグを修正
-    - textarea: 端末の下部で複数行編集時に `C-z` (`fz`) すると描画高さを正しく確保できていないバグの修正
-
-    動作変更
-    - vi-mode (operator `<` `>`): Visual block での正しい振る舞い
-    - vi-mode (nmap `:` `/` `?`): 文字列入力中に空文字列で DEL or C-h することでキャンセルできるように修正
-    - vi-mode (nmap `J`, `gJ`): 引数に対応
-    - vi-mode (nmap `p`): 最後の行で挿入するときに余分な行が入らないように修正
-    - vi-mode (xmap `Y` `D` `R`): 記録するビジュアルモードの種類を修正
-    - lib/vim-surround.sh: タグ名入力中に '>' で確定するように修正
-    - widget (.SHELL_COMMAND): 実行しないコマンドに色がついているのはややこしいのでグレーアウトする様に変更
-
-    他の変更
-    - magic-space: 空白を挿入してから履歴展開していた順番を逆転
 
 2017-10-05
 
@@ -2162,6 +2137,43 @@ tech
 *******************************************************************************
     ChangeLog
 -------------------------------------------------------------------------------
+
+2017-10-22
+
+  新機能
+  - vi-mode (mark): `mx` <code>`x</code> <code>'x</code> (`x` = <code>[][<>`'a-zA-Z"^.]</code>)
+  - vi-mode (nmap): `gi` `<C-d>` (空文字列のとき exit) `"x` (registers)
+  - vi-mode (xmap): `I` `A` `p` `P` `J` `gJ` `aw` `iw`
+  - lib/vim-surround.sh: nmap `yS` `ySS` `ySs` `cS`, xmap `S` `gS`
+  - タブ・インデントの制御
+    - bleopt tab_width= (タブの表示幅)
+    - bleopt indent_offset=4 (`>` や `<` のインデントの幅)
+    - bleopt indent_tabs=1 (`>` や `<` のインデントにタブを用いるかどうか)
+    - 既定のインデントの幅は 8 から 4 に変更
+
+  バグ修正
+  - vi-mode: 挿入モードに繰り返し回数を指定したとき `ESC ?` も一緒に繰り返されていたバグの修正
+  - vi-mode: オペレータ `g?` が動かなくなっていたのを修正
+  - vi-mode (nmap `/` `?`): 検索対象の入力中に `C-c` してもキャンセルされないバグの修正
+  - vi-mode (xmap `r` (visual char/line)): 全体を置換したものが選択範囲に挿入されていたバグの修正
+  - vi-mode (xmap `$`): 行末で `$` をしたときに表示が更新されないバグの修正
+  - vi-mode (motion `0`): オペレータを認識していなかったバグを修正
+  - isearch: 一度一致したら同じものに一致し続けるバグを前回の `/` `?` `n` `N` 対応の際に埋め込んでいたので修正
+  - complete: `complete -F something -D` で登録されている補完関数が正しく実行されていなかったのを修正
+  - prompt: PROMPT_COMMAND によって設定された PS1 を拾っていなかったバグを修正
+  - textarea: 端末の下部で複数行編集時に `C-z` (`fz`) すると描画高さを正しく確保できていないバグの修正
+
+  動作変更
+  - vi-mode (operator `<` `>`): Visual block での正しい振る舞い
+  - vi-mode (nmap `:` `/` `?`): 文字列入力中に空文字列で DEL or C-h することでキャンセルできるように修正
+  - vi-mode (nmap `J`, `gJ`): 引数に対応
+  - vi-mode (nmap `p`): 最後の行で挿入するときに余分な行が入らないように修正
+  - vi-mode (xmap `Y` `D` `R`): 記録するビジュアルモードの種類を修正
+  - lib/vim-surround.sh: タグ名入力中に '>' で確定するように修正
+  - widget (.SHELL_COMMAND): 実行しないコマンドに色がついているのはややこしいのでグレーアウトする様に変更
+
+  他の変更
+  - magic-space: 空白を挿入してから履歴展開していた順番を逆転
 
 2015-03-03
   * ble-edit.sh, ble-edit.color: discard-line の際に着色
