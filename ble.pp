@@ -151,26 +151,52 @@ fi
 
 #------------------------------------------------------------------------------
 
+# readlink -f (taken from akinomyoga/mshex.git)
+function ble/util/readlink {
+  local path=$1
+  case "$OSTYPE" in
+  (cygwin|linux-gnu)
+    # 少なくとも cygwin, GNU/Linux では readlink -f が使える
+    PATH=/bin:/usr/bin readlink -f "$path" ;;
+  (darwin*|*)
+    # Mac OSX には readlink -f がない。
+    local PWD=$PWD OLDPWD=$OLDPWD
+    while [[ -h $path ]]; do
+      local link=$(PATH=/bin:/usr/bin readlink "$path" 2>/dev/null || true)
+      [[ $link ]] || break
+
+      if [[ $link = /* || $path != */* ]]; then
+        # * $link ~ 絶対パス の時
+        # * $link ~ 相対パス かつ ( $path が現在のディレクトリにある ) の時
+        path=$link
+      else
+        local dir=${path%/*}
+        path=${dir%/}/$link
+      fi
+    done
+    echo -n "$path" ;;
+  esac
+}
 function _ble_base.initialize {
-  local src="$1"
-  local defaultDir="$2"
+  local src=$1
+  local defaultDir=$2
 
   # resolve symlink
   if [[ -h $src ]] && type -t readlink &>/dev/null; then
-    src="$(readlink -f "$src")"
+    src=$(ble/util/readlink $src)
   fi
 
-  local dir="${src%/*}"
+  local dir=${src%/*}
   if [[ $dir != "$src" ]]; then
     if [[ ! $dir ]]; then
       _ble_base=/
     elif [[ $dir != /* ]]; then
-      _ble_base="$PWD/$dir"
+      _ble_base=$PWD/$dir
     else
-      _ble_base="$dir"
+      _ble_base=$dir
     fi
   else
-    _ble_base="${defaultDir:-$PWD}"
+    _ble_base=${defaultDir:-$HOME/.local/share/blesh}
   fi
 }
 _ble_base.initialize "${BASH_SOURCE[0]}"
