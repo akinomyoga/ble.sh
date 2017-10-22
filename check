@@ -5,12 +5,21 @@ if ! type grc >/dev/null; then
   exit
 fi
 
+esc='(\[[ -?]*[@-~])*'
+rex_grep_head="^$esc[[:graph:]]+$esc:$esc[[:digit:]]*$esc:$esc"
+
 function check-builtin {
   echo "--- $FUNCNAME ---"
   local command="$1" esc='(\[[ -?]*[@-~])*'
   grc --color --exclude=./test "(^|[^-./\${}])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)' |
     grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)="
+}
+
+function check-a.txt {
+  echo "--- $FUNCNAME ---"
+  grc --exclude=./test a.txt |
+    grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 
 function check-bash300bug {
@@ -36,8 +45,6 @@ function check-bash301bug-array-element-length {
 function check-assign {
   echo "--- $FUNCNAME ---"
   local command="$1"
-  local esc='(\[[ -?]*[@-~])*'
-  local rex_grep_head="^$esc[[:graph:]]+$esc:$esc[[:digit:]]*$esc:$esc"
   grc --color --exclude=./test --exclude=./memo '\$\([^()]' |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
@@ -46,8 +53,9 @@ function check-assign {
 
 #check-builtin 'history'
 #check-builtin 'echo'
-check-builtin '(bind|compopt|type|printf|read)'
+#check-builtin '(bind|compopt|type|printf|read)'
 #check-assign
 
+check-a.txt
 check-bash300bug
 check-bash301bug-array-element-length

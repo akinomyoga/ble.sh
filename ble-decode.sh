@@ -13,7 +13,7 @@
 ##     Meta 修飾または特殊キーのエスケープシーケンスとして扱います。
 ##   bleopt decode_isolated_esc=esc
 ##     単体で受信した ESC を、C-[ として扱います。
-: ${bleopt_decode_isolated_esc:=meta}
+: ${bleopt_decode_isolated_esc:=esc}
 
 function bleopt/check:decode_isolated_esc {
   case $value in
@@ -486,13 +486,6 @@ function ble-decode-char {
       continue
     fi
 
-    if ((char==27)) && [[ $bleopt_decode_isolated_esc == esc ]]; then
-      if ((!$#)) && ble-decode-char/.is-isolated-esc; then
-        # 単体 ESC を先に C-[ に変換する。問題ないはず。
-        ((char=ble_decode_Ctrl|91)) # C-[
-      fi
-    fi
-
     local ent
     ble-decode-char/.getent
     if [[ ! $ent ]]; then
@@ -531,12 +524,6 @@ function ble-decode-char {
   done
   return 0
 }
-
-if ((_ble_bash>=40000)); then
-  function ble-decode-char/.is-isolated-esc { ! ble/util/is-stdin-ready; }
-else
-  function ble-decode-char/.is-isolated-esc { false; }
-fi
 
 ##   @var[in] _ble_decode_char2_seq
 ##   @var[in] char
@@ -593,6 +580,10 @@ function ble-decode-char/.send-modified-key {
 
   if (($1==27)); then
     ble-decode-char/.process-modifier "$ble_decode_Meta" && return
+  elif (($1==(ble_decode_Ctrl|91))); then # "C-[" here means "isolated ESC"
+    if [[ $bleopt_decode_isolated_esc == meta ]]; then
+      ble-decode-char/.process-modifier "$ble_decode_Meta" && return
+    fi
   elif ((_ble_decode_KCODE_SHIFT<=$1&&$1<=_ble_decode_KCODE_HYPER)); then
     case "$1" in
     ($_ble_decode_KCODE_SHIFT)

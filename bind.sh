@@ -52,9 +52,35 @@ function ble-decode/generate-binder {
 
   # * bash-3 では "ESC *" の組合せも全部登録しておかないと駄目??
   #   (もしかすると bind -r 等に失敗していただけかも知れないが)
+  #
+  #   local bind1BXX=1
+  #
   #   追記: bash-4.0 bash-4.3 でも必要
   #   追記: bash-4.1 でも bind -x '"\ez":fg' 等を一回もしていない場合は必要
-  local bind1BXX=1
+  #   追記: この方法でも ESC を 2 つ以上連続で入力する時に
+  #     bash_execute_unix_command のエラーが発生する。
+  #
+  # * 2017-10-22 実は bind '"\e": "\xC0\x9B"' とすれば全バージョンで OK の様だ。
+  #   __ENCODING__ 但し UTF-8 依存。
+  #
+  #   local bind1BXX=0 esc1B=1
+  #
+  #   しかし、これだと単体の ESC と続きのある ESC の区別ができない。
+  #   続きがあるとき Readline が標準入力からひとまとまりで読み取ってから hook を呼び出す。
+  #   従って、標準入力に文字が残っているかどうか見ても判定できないし、
+  #   標準入力から次の文字をタイムアウト付きで読み取るとシーケンスの順序が狂う。
+  #
+  # * 2017-10-22 代替案として
+  #
+  #     bind '"\e":"\e[27;5;91~"'
+  #     bind '"\e":"\xC0\x9B\e[27;5;91~"'
+  #
+  #   などの様に bind -s で1文字のものと2文字のものを両方登録して、
+  #   Readline に ESC に続きがあるかどうかを判定させて単独 ESC を区別するという手がある。
+  #
+  #   local bind1BXX=2 esc1B=1
+  #
+  local bind1BXX=2 esc1B=1
 
   # * bash-3.1
   #   ESC [ を bind -x で捕まえようとしてもエラーになるので、
@@ -94,7 +120,17 @@ function ble-decode/generate-binder {
       # C-x
       ((bind18XX)) || $binder "$ret" "$i"
     elif ((i==27)); then
-      ((bind1BXX)) || $binder "$ret" "$i"
+      if ((bind1BXX==2)); then
+        ble-decode/generate-binder/bind-s '"\e":"\xC0\x9B[27;5;91~"'
+        ble-decode/generate-binder/bind-r '"\e"'
+      elif ((!bind1BXX)); then
+        if ((esc1B)); then
+          ble-decode/generate-binder/bind-s '"\e":"\xC0\x9B"'
+          ble-decode/generate-binder/bind-r '"\e"'
+        else
+          $binder "$ret" "$i"
+        fi
+      fi
     else
       $binder "$ret" "$i"
     fi
@@ -106,7 +142,7 @@ function ble-decode/generate-binder {
     ((bind18XX)) && $binder "$ret" "24 $i"
 
     # ESC *
-    if ((bind1BXX)); then
+    if ((bind1BXX==1)); then
       # ESC [
       if ((i==91&&esc1B5B)); then
         # * obsoleted work around
@@ -116,11 +152,19 @@ function ble-decode/generate-binder {
         # printf 'bind %q' '"\e[":"\302\233"'               >> "$fbind1"
         # echo "ble-bind -f 'CSI' '.ble-decode-char 27 91'" >> "$fbind1"
 
-        # __ENCODING__: \xC0\x98 is 2-byte code of ESC (UTF-8依存)
+        # __ENCODING__: \xC0\x9B is 2-byte code of ESC (UTF-8依存)
         ble-decode/generate-binder/bind-s '"\e[":"\xC0\x9B["'
         ble-decode/generate-binder/bind-r '\e['
       else
         $binder "\\e$ret" "27 $i"
+      fi
+    elif ((bind1BXX==2)); then
+      if ((i==91)); then
+        ble-decode/generate-binder/bind-s '"\e[":"\xC0\x9B["'
+        ble-decode/generate-binder/bind-r '\e['
+      else
+        ble-decode/generate-binder/bind-s '"\e$ret":"\xC0\9B[27;5;91~$ret"'
+        ble-decode/generate-binder/bind-r '\e$ret'
       fi
     fi
 
