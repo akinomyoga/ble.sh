@@ -809,16 +809,16 @@ function .ble-decode-key.dump {
     local knames=$nseq${nseq:+ }$ret
     builtin eval "local ent=\${$dicthead$tseq[$kcode]}"
     if [[ ${ent:2} ]]; then
-      local cmd="${ent:2}"
+      local cmd="${ent:2}" q=\' Q="'\''"
       case "$cmd" in
       # ble-edit+insert-string *)
-      #   echo "ble-bind -sf '$knames' '${cmd#ble-edit+insert-string }'" ;;
+      #   echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble-edit+insert-string }'" ;;
       (ble-edit+*)
-        echo "ble-bind$kmapopt -f '$knames' '${cmd#ble-edit+}'" ;;
+        echo "ble-bind$kmapopt -f '${knames//$q/$Q}' '${cmd#ble-edit+}'" ;;
       ('.ble-edit.bind.command '*)
-        echo "ble-bind$kmapopt -cf '$knames' '${cmd#.ble-edit.bind.command }'" ;;
+        echo "ble-bind$kmapopt -cf '${knames//$q/$Q}' '${cmd#.ble-edit.bind.command }'" ;;
       (*)
-        echo "ble-bind$kmapopt -xf '$knames' '${cmd}'" ;;
+        echo "ble-bind$kmapopt -xf '${knames//$q/$Q}' '${cmd}'" ;;
       esac
     fi
 
