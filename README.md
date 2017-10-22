@@ -192,4 +192,4 @@ The command containing newline characters can be executed by typing `C-j`.
 
 ## Special thanks
 
-- many thanks for testing the `ble.sh` vi mode: @B-bar
+- many thanks for testing the `ble.sh` vi mode: @cmplstofB

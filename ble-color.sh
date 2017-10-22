@@ -679,9 +679,9 @@ function ble-highlight-layer:overwrite_mode/update {
   fi
 
   if ((index>=0)); then
-    builtin echo -n $'\e[?25l'
+    builtin echo -n "$_ble_term_civis"
   else
-    builtin echo -n $'\e[?25h'
+    builtin echo -n "$_ble_term_cvvis"
   fi
 
   if ((index!=oindex)); then

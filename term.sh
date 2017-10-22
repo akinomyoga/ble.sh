@@ -116,6 +116,20 @@ function ble/term.sh/initialize {
   ble/term.sh/define-cap _ble_term_sc $'\e[s' sc
   ble/term.sh/define-cap _ble_term_rc $'\e[u' rc
 
+  # Cursors
+  ble/term.sh/define-cap _ble_term_Ss $'\e[@1 q' ss 123 # DECSCUSR
+  _ble_term_Ss="${_ble_term_Ss//123/@1}"
+  ble/term.sh/define-cap _ble_term_cvvis $'\e[?25h' cvvis
+  ble/term.sh/define-cap _ble_term_civis $'\e[?25l' civis
+  # xterm の terminfo が点滅まで勝手に変更するので消す。
+  [[ $_ble_term_cvvis == $'\e[?12;25h' || $_ble_term_cvvis == $'\e[?25;12h' ]] &&
+    _ble_term_cvvis=$'\e[?25h'
+  # 何故か screen の terminfo が壊れている(非対称になっている)ので対称化する。
+  [[ $_ble_term_cvvis == $'\e[34l'* && $_ble_term_civis != *$'\e[34h'* ]] &&
+    _ble_term_civis="$_ble_term_civis"$'\e[34h'
+  [[ $_ble_term_civis == $'\e[?25l'* && $_ble_term_cvvis != *$'\e[?25h'* ]] &&
+    _ble_term_cvvis="$_ble_term_cvvis"$'\e[?25h'
+
   # SGR clear
   ble/term.sh/define-cap _ble_term_sgr0 $'\e[m' sgr0
 

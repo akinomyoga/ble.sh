@@ -4097,7 +4097,7 @@ function ble/widget/.newline {
 
   # カーソルを表示する。
   # layer:overwrite でカーソルを消している時の為。
-  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
+  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_cvvis"
 
   # 行内容の初期化
   ble-edit/history/onleave.fire

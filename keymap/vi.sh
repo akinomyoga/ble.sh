@@ -261,8 +261,28 @@ _ble_keymap_vi_single_command_overwrite=
 ##   空文字列を指定したときは何も表示しません。
 : ${bleopt_keymap_vi_normal_mode_name:=$'\e[1m~\e[m'}
 
+: ${bleopt_term_vi_imap=}
+: ${bleopt_term_vi_nmap=}
+: ${bleopt_term_vi_omap=}
+: ${bleopt_term_vi_xmap=}
+: ${bleopt_term_vi_cmap=}
+
 function ble/keymap:vi/update-mode-name {
   local kmap=$_ble_decode_key__kmap
+  if [[ $kmap == vi_insert ]]; then
+    ble/util/buffer "$bleopt_term_vi_imap"
+  elif [[ $kmap == vi_command ]]; then
+    ble/util/buffer "$bleopt_term_vi_nmap"
+  elif [[ $kmap == vi_xmap ]]; then
+    ble/util/buffer "$bleopt_term_vi_xmap"
+  elif [[ $kmap == vi_omap ]]; then
+    ble/util/buffer "$bleopt_term_vi_omap"
+  elif [[ $kmap == vi_cmap ]]; then
+    ble-edit/info/default text ''
+    ble/util/buffer "$bleopt_term_vi_cmap"
+    return
+  fi
+
   local show= overwrite=
   if [[ $kmap == vi_insert ]]; then
     show=1 overwrite=$_ble_edit_overwrite_mode
@@ -724,6 +744,7 @@ function ble/widget/vi-command/operator {
     _ble_keymap_vi_oparg=$_ble_edit_arg
     _ble_keymap_vi_opfunc=$opname
     _ble_edit_arg=
+    ble/keymap:vi/update-mode-name
 
   elif [[ $_ble_decode_key__kmap == vi_omap ]]; then
     if [[ $opname == "$_ble_keymap_vi_opfunc" ]]; then
@@ -5167,10 +5188,10 @@ function ble/keymap:vi/async-commandline-mode {
   _ble_keymap_vi_cmap_before_command=
 
   ble/textarea#save-state _ble_keymap_vi_cmap
-  ble-edit/info/default text ''
 
   # 初期化
   ble-decode/keymap/push vi_cmap
+  ble/keymap:vi/update-mode-name
   _ble_textarea_panel=2
   _ble_syntax_lang=text
   _ble_edit_PS1=$PS2
@@ -5178,7 +5199,7 @@ function ble/keymap:vi/async-commandline-mode {
   _ble_highlight_layer__list=(plain region overwrite_mode)
 
   # from ble/widget/.newline
-  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25h'
+  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_cvvis"
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
@@ -5204,7 +5225,7 @@ function ble/widget/vi_cmap/accept {
   # 復元
   ble/textarea#restore-state _ble_keymap_vi_cmap
   ble/textarea#clear-state _ble_keymap_vi_cmap
-  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer $'\e[?25l'
+  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_civis"
 
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
