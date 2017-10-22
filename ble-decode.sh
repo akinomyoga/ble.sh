@@ -7,6 +7,23 @@
 : ${bleopt_decode_error_kseq_vbell=1}
 : ${bleopt_decode_error_kseq_discard=1}
 
+## オプション bleopt_decode_isolated_esc
+##   bleopt decode_isolated_esc=meta
+##     単体で受信した ESC を、前置詞として受信した ESC と同様に、
+##     Meta 修飾または特殊キーのエスケープシーケンスとして扱います。
+##   bleopt decode_isolated_esc=esc
+##     単体で受信した ESC を、C-[ として扱います。
+: ${bleopt_decode_isolated_esc:=meta}
+
+function bleopt/check:decode_isolated_esc {
+  case $value in
+  (meta|esc) ;;
+  (*)
+    echo "bleopt: Invalid value decode_isolated_esc='$value'. One of the values 'meta' or 'esc' is expected." >&2
+    return 1 ;;
+  esac
+}
+
 # **** key names ****
 
 ble_decode_Erro=0x40000000
@@ -469,6 +486,13 @@ function ble-decode-char {
       continue
     fi
 
+    if ((char==27)) && [[ $bleopt_decode_isolated_esc == esc ]]; then
+      if ((!$#)) && ble-decode-char/.is-isolated-esc; then
+        # 単体 ESC を先に C-[ に変換する。問題ないはず。
+        ((char=ble_decode_Ctrl|91)) # C-[
+      fi
+    fi
+
     local ent
     ble-decode-char/.getent
     if [[ ! $ent ]]; then
@@ -507,6 +531,12 @@ function ble-decode-char {
   done
   return 0
 }
+
+if ((_ble_bash>=40000)); then
+  function ble-decode-char/.is-isolated-esc { ! ble/util/is-stdin-ready; }
+else
+  function ble-decode-char/.is-isolated-esc { false; }
+fi
 
 ##   @var[in] _ble_decode_char2_seq
 ##   @var[in] char
