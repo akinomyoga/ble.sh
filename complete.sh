@@ -331,7 +331,7 @@ function ble-complete/source/argument/.compgen {
       for ((ic=1;ic<${#arg};ic++)); do
         c="${arg:ic:1}"
         case "$c" in
-        ([abcdefgjksuvDE])
+        ([abcdefgjksuvE])
           ble/util/array-push compoptions "-$c" ;;
         ([pr])
           ;; # 無視 (-p 表示 -r 削除)
