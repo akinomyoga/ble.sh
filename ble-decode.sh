@@ -862,18 +862,18 @@ function ble-decode-key/dump {
     local knames=$nseq${nseq:+ }$ret
     builtin eval "local ent=\${$dicthead$tseq[$kcode]}"
     if [[ ${ent:2} ]]; then
-      local cmd="${ent:2}"
+      local cmd="${ent:2}" q=\' Q="'\''"
       case "$cmd" in
       # ('ble/widget/insert-string '*)
-      #   echo "ble-bind -sf '$knames' '${cmd#ble/widget/insert-string }'" ;;
+      #   echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/insert-string }'" ;;
       ('ble/widget/.SHELL_COMMAND '*)
-        echo "ble-bind$kmapopt -cf '$knames' '${cmd#ble/widget/.SHELL_COMMAND }'" ;;
+        echo "ble-bind$kmapopt -cf '${knames//$q/$Q}' '${cmd#ble/widget/.SHELL_COMMAND }'" ;;
       ('ble/widget/.EDIT_COMMAND '*)
-        echo "ble-bind$kmapopt -xf '$knames' '${cmd#ble/widget/.EDIT_COMMAND }'" ;;
+        echo "ble-bind$kmapopt -xf '${knames//$q/$Q}' '${cmd#ble/widget/.EDIT_COMMAND }'" ;;
       ('ble/widget/'*)
-        echo "ble-bind$kmapopt -f '$knames' '${cmd#ble/widget/}'" ;;
+        echo "ble-bind$kmapopt -f '${knames//$q/$Q}' '${cmd#ble/widget/}'" ;;
       (*)
-        echo "ble-bind$kmapopt -xf '$knames' '${cmd}'" ;;
+        echo "ble-bind$kmapopt -xf '${knames//$q/$Q}' '${cmd}'" ;;
       esac
     fi
 
