@@ -396,7 +396,8 @@ if ((_ble_bash>=30100)); then
   }
 else
   function ble/util/sprintf {
-    ble/util/assign "$1" 'builtin printf "${@:2}"'
+    local -a args; args=("${@:2}")
+    ble/util/assign "$1" 'builtin printf "${args[@]}"'
   }
 fi
 
