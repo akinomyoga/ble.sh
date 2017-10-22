@@ -5385,6 +5385,7 @@ function ble-decode-keymap:vi/initialize {
     return
   fi
 
+  ble-decode-bind/cmap/initialize
   source "$_ble_base/keymap/isearch.sh"
 
   echo -n "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2

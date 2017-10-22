@@ -1225,7 +1225,6 @@ function ble-bind/option:list-functions {
 
 function ble-bind {
   local kmap=$ble_bind_keymap flags= ret
-  [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
 
   local arg c
   while (($#)); do
@@ -1254,6 +1253,7 @@ function ble-bind {
         (d)
           ble-decode-char/csi/print
           ble-decode-char/dump
+          [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
           ble-decode-key/dump ;;
         (k)
           if (($#<2)); then
@@ -1313,8 +1313,10 @@ function ble-bind {
               return 1 ;;
             esac
 
+            [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
             ble-decode-key/bind "$ret" "$command"
           else
+            [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
             ble-decode-key/unbind "$ret"
           fi
           flags=
@@ -1494,7 +1496,12 @@ function ble-decode-bind/cmap/.emit-bindx {
 function ble-decode-bind/cmap/.emit-bindr {
   echo "builtin bind -r \"$1\""
 }
+
+_ble_decode_cmap_initialized=
 function ble-decode-bind/cmap/initialize {
+  [[ $_ble_decode_cmap_initialized ]] && return
+  _ble_decode_cmap_initialized=1
+
   [[ -d $_ble_base_cache ]] || command mkdir -p "$_ble_base_cache"
 
   local init="$_ble_base/cmap/default.sh"

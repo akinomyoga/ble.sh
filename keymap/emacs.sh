@@ -129,9 +129,10 @@ function ble-decode-keymap:emacs/define {
 }
 
 function ble-decode-keymap:emacs/generate {
-  echo -n "ble.sh: updating cache/keymap.emacs... $_ble_term_cr" >&2
-
+  ble-decode-bind/cmap/initialize
   source "$_ble_base/keymap/isearch.sh"
+
+  echo -n "ble.sh: updating cache/keymap.emacs... $_ble_term_cr" >&2
 
   local cache="$_ble_base_cache/keymap.emacs"
   ble-decode-keymap:isearch/define
