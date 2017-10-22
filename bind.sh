@@ -93,6 +93,8 @@ function ble-decode/generate-binder {
     elif ((i==24)); then
       # C-x
       ((bind18XX)) || $binder "$ret" "$i"
+    elif ((i==27)); then
+      ((bind1BXX)) || $binder "$ret" "$i"
     else
       $binder "$ret" "$i"
     fi
