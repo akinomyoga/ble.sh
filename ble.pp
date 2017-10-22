@@ -3,6 +3,7 @@
 #%[release=0]
 #%[use_gawk=0]
 #%[measure_load_time=0]
+#%[debug_keylogger=0]
 #%#----------------------------------------------------------------------------
 #%m inc (
 #%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
