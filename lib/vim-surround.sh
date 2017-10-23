@@ -57,6 +57,11 @@ source "$_ble_base/keymap/vi.sh"
 #   imap: <C-G>S
 #
 
+: ${bleopt_vim_surround_45:=$'$(\r)'} # ysiw-
+: ${bleopt_vim_surround_61:=$'$((\r))'} # ysiw=
+: ${bleopt_vim_surround_q:=\"} # ysiwQ
+: ${bleopt_vim_surround_Q:=\'} # ysiwq
+: ${bleopt_vim_surround_omap_bind=1}
 
 #------------------------------------------------------------------------------
 # util
@@ -121,11 +126,6 @@ function ble/lib/vim-surround.sh/async-inputtarget-noarg {
   _ble_decode_key__hook="ble/lib/vim-surround.sh/async-inputtarget.hook init $*"
   return 148
 }
-
-: ${bleopt_vim_surround_45:=$'$(\r)'} # ysiw-
-: ${bleopt_vim_surround_61:=$'$((\r))'} # ysiw=
-: ${bleopt_vim_surround_q:=\"} # ysiwQ
-: ${bleopt_vim_surround_Q:=\'} # ysiwq
 
 _ble_lib_vim_surround_previous_tag=html
 
@@ -365,14 +365,6 @@ function ble/widget/vim-surround.sh/vgsurround { # vgS
   ble/widget/vi-command/operator vgS
 }
 
-ble-bind -m vi_command -f 'y s'   'vi-command/operator ys'
-ble-bind -m vi_command -f 'y s s' 'vim-surround.sh/ysurround-current-line'
-ble-bind -m vi_command -f 'y S'   'vi-command/operator yS'
-ble-bind -m vi_command -f 'y S s' 'vim-surround.sh/ySurround-current-line'
-ble-bind -m vi_command -f 'y S S' 'vim-surround.sh/ySurround-current-line'
-ble-bind -m vi_xmap -f 'S' 'vi-command/operator vS'
-ble-bind -m vi_xmap -f 'g S' 'vim-surround.sh/vgsurround'
-
 #------------------------------------------------------------------------------
 # ds cs
 
@@ -441,7 +433,7 @@ _ble_lib_vim_surround_cs_arg=
 _ble_lib_vim_surround_cs_reg=
 _ble_lib_vim_surround_cs_del=
 
-function ble/widget/vim-surround.sh/csurround.core {
+function ble/widget/vim-surround.sh/nmap/csurround.core {
   local type=$1 arg=$2 reg=$3 del=$4 ins=$5
 
   local to1= to2=
@@ -525,84 +517,116 @@ function ble/widget/vim-surround.sh/csurround.core {
   ble/keymap:vi/adjust-command-mode
   return 0
 }
-function ble/widget/vim-surround.sh/dsurround.hook {
+function ble/widget/vim-surround.sh/nmap/dsurround.hook {
   local type=$_ble_lib_vim_surround_cs_type
   local arg=$_ble_lib_vim_surround_cs_arg
   local reg=$_ble_lib_vim_surround_cs_reg
   local del=$1
-  ble/widget/vim-surround.sh/csurround.core "$type" "$arg" "$reg" "$del" && return
+  ble/widget/vim-surround.sh/nmap/csurround.core "$type" "$arg" "$reg" "$del" && return
   ble/widget/vi-command/bell
   return 1
 }
-function ble/widget/vim-surround.sh/dsurround {
+function ble/widget/vim-surround.sh/nmap/dsurround {
   local arg flag reg; ble/keymap:vi/get-arg-reg 1
-  if [[ $flag ]]; then
-    ble/widget/vi-command/bell
-    return 1
-  else
-    _ble_lib_vim_surround_cs_type=ds
-    _ble_lib_vim_surround_cs_arg=$arg
-    _ble_lib_vim_surround_cs_reg=$reg
-    ble/lib/vim-surround.sh/async-inputtarget ble/widget/vim-surround.sh/dsurround.hook
-  fi
+  _ble_lib_vim_surround_cs_type=ds
+  _ble_lib_vim_surround_cs_arg=$arg
+  _ble_lib_vim_surround_cs_reg=$reg
+  ble/lib/vim-surround.sh/async-inputtarget ble/widget/vim-surround.sh/nmap/dsurround.hook
 }
 
-function ble/widget/vim-surround.sh/csurround.hook3 {
+function ble/widget/vim-surround.sh/nmap/csurround.hook3 {
   local ins=$1 tagName=$2
   local type=$_ble_lib_vim_surround_cs_type
   local arg=$_ble_lib_vim_surround_cs_arg
   local reg=$_ble_lib_vim_surround_cs_reg
   local del=$_ble_lib_vim_surround_cs_del
-  ble/widget/vim-surround.sh/csurround.core "$type" "$arg" "$reg" "$del" "$ins$tagName" && return 0
+  ble/widget/vim-surround.sh/nmap/csurround.core "$type" "$arg" "$reg" "$del" "$ins$tagName" && return 0
   ble/widget/vi-command/bell
   return 1
 }
-function ble/widget/vim-surround.sh/csurround.hook2 {
+function ble/widget/vim-surround.sh/nmap/csurround.hook2 {
   local ins=$1
   if local rex='^ ?[<tT]$'; [[ $ins =~ $rex ]]; then
-    ble/lib/vim-surround.sh/async-read-tagname "ble/widget/vim-surround.sh/csurround.hook3 '$ins'"
+    ble/lib/vim-surround.sh/async-read-tagname "ble/widget/vim-surround.sh/nmap/csurround.hook3 '$ins'"
   else
     local type=$_ble_lib_vim_surround_cs_type
     local arg=$_ble_lib_vim_surround_cs_arg
     local reg=$_ble_lib_vim_surround_cs_reg
     local del=$_ble_lib_vim_surround_cs_del
-    ble/widget/vim-surround.sh/csurround.core "$type" "$arg" "$reg" "$del" "$ins" && return 0
+    ble/widget/vim-surround.sh/nmap/csurround.core "$type" "$arg" "$reg" "$del" "$ins" && return 0
     ble/widget/vi-command/bell
     return 1
   fi
 }
-function ble/widget/vim-surround.sh/csurround.hook1 {
+function ble/widget/vim-surround.sh/nmap/csurround.hook1 {
   local del=$1
   if [[ $del ]]; then
     _ble_lib_vim_surround_cs_del=$1
-    ble/lib/vim-surround.sh/async-inputtarget-noarg ble/widget/vim-surround.sh/csurround.hook2
+    ble/lib/vim-surround.sh/async-inputtarget-noarg ble/widget/vim-surround.sh/nmap/csurround.hook2
   else
     _ble_lib_vim_surround_cs_del=
     ble/widget/vi-command/bell
     return 1
   fi
 }
-function ble/widget/vim-surround.sh/csurround.impl {
+function ble/widget/vim-surround.sh/nmap/csurround.impl {
   local arg flag reg; ble/keymap:vi/get-arg-reg 1
-  if [[ $flag ]]; then
-    ble/widget/vi-command/bell
-    return 1
-  else
-    local type=$1
-    _ble_lib_vim_surround_cs_type=$type
-    _ble_lib_vim_surround_cs_arg=$arg
-    _ble_lib_vim_surround_cs_reg=$reg
-    _ble_lib_vim_surround_cs_del=
-    ble/lib/vim-surround.sh/async-inputtarget ble/widget/vim-surround.sh/csurround.hook1
-  fi
+  local type=$1
+  _ble_lib_vim_surround_cs_type=$type
+  _ble_lib_vim_surround_cs_arg=$arg
+  _ble_lib_vim_surround_cs_reg=$reg
+  _ble_lib_vim_surround_cs_del=
+  ble/lib/vim-surround.sh/async-inputtarget ble/widget/vim-surround.sh/nmap/csurround.hook1
 }
-function ble/widget/vim-surround.sh/csurround {
-  ble/widget/vim-surround.sh/csurround.impl cs
+function ble/widget/vim-surround.sh/nmap/csurround {
+  ble/widget/vim-surround.sh/nmap/csurround.impl cs
 }
-function ble/widget/vim-surround.sh/cSurround {
-  ble/widget/vim-surround.sh/csurround.impl cS
+function ble/widget/vim-surround.sh/nmap/cSurround {
+  ble/widget/vim-surround.sh/nmap/csurround.impl cS
 }
 
-ble-bind -m vi_command -f 'd s' 'vim-surround.sh/dsurround'
-ble-bind -m vi_command -f 'c s' 'vim-surround.sh/csurround'
-ble-bind -m vi_command -f 'c S' 'vim-surround.sh/cSurround'
+#------------------------------------------------------------------------------
+
+function ble/widget/vim-surround.sh/omap {
+  local ret
+  if ! ble/keymap:vi/k2c "${KEYS[0]}"; then
+    ble/widget/.bell
+    return 1
+  fi
+  ble/util/c2s "$ret"; local s=$ret
+
+  local opfunc=$_ble_keymap_vi_opfunc$s
+  case "$opfunc" in
+  (y[sS])
+    local arg flag reg; ble/keymap:vi/get-arg-reg 1
+    _ble_edit_arg=$arg
+    _ble_keymap_vi_reg=$reg
+    ble-decode/keymap/pop
+    ble/widget/vi-command/operator "$opfunc" ;;
+  (yss)
+    ble/widget/vim-surround.sh/ysurround-current-line ;;
+  (yS[sS])
+    ble/widget/vim-surround.sh/ySurround-current-line ;;
+  (ds) ble/widget/vim-surround.sh/nmap/dsurround ;;
+  (cs) ble/widget/vim-surround.sh/nmap/csurround ;;
+  (cS) ble/widget/vim-surround.sh/nmap/cSurround ;;
+  (*) ble/widget/.bell ;;
+  esac
+}
+
+ble-bind -m vi_xmap -f 'S' 'vi-command/operator vS'
+ble-bind -m vi_xmap -f 'g S' 'vim-surround.sh/vgsurround'
+
+if [[ $bleopt_vim_surround_omap_bind ]]; then
+  ble-bind -m vi_omap -f s 'vim-surround.sh/omap'
+  ble-bind -m vi_omap -f S 'vim-surround.sh/omap'
+else
+  ble-bind -m vi_command -f 'y s'   'vi-command/operator ys'
+  ble-bind -m vi_command -f 'y s s' 'vim-surround.sh/ysurround-current-line'
+  ble-bind -m vi_command -f 'y S'   'vi-command/operator yS'
+  ble-bind -m vi_command -f 'y S s' 'vim-surround.sh/ySurround-current-line'
+  ble-bind -m vi_command -f 'y S S' 'vim-surround.sh/ySurround-current-line'
+  ble-bind -m vi_command -f 'd s' 'vim-surround.sh/nmap/dsurround'
+  ble-bind -m vi_command -f 'c s' 'vim-surround.sh/nmap/csurround'
+  ble-bind -m vi_command -f 'c S' 'vim-surround.sh/nmap/cSurround'
+fi
