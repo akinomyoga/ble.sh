@@ -542,7 +542,7 @@ function ble/widget/vim-surround.sh/dsurround {
   else
     _ble_lib_vim_surround_cs_type=ds
     _ble_lib_vim_surround_cs_arg=$arg
-    _ble_lib_vim_surround_cs_arg=$reg
+    _ble_lib_vim_surround_cs_reg=$reg
     ble/lib/vim-surround.sh/async-inputtarget ble/widget/vim-surround.sh/dsurround.hook
   fi
 }
