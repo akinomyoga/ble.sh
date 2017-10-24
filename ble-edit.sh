@@ -4086,44 +4086,56 @@ function ble/widget/.insert-newline {
   ble/util/joblist.bflush
 
   # 描画領域情報の初期化
+  ble/textarea#invalidate
   _ble_line_x=0 _ble_line_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
   _ble_form_window_height[_ble_textarea_panel]=0
-  ((LINENO=++_ble_edit_LINENO))
 }
 
-function ble/widget/.newline {
-  ble/widget/.insert-newline
-
+function ble/widget/.newline/clear-content {
   # カーソルを表示する。
   # layer:overwrite でカーソルを消している時の為。
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_cvvis"
 
   # 行内容の初期化
-  ble-edit/history/onleave.fire
   _ble_edit_str.reset '' newline
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
   _ble_edit_overwrite_mode=
-  ble/textarea#invalidate
+}
+
+function ble/widget/.newline {
+  _ble_edit_mark_active=
+  ble/widget/.insert-newline
+  ((LINENO=++_ble_edit_LINENO))
+
+  ble-edit/history/onleave.fire
+  ble/widget/.newline/clear-content
 }
 
 function ble/widget/discard-line {
   _ble_edit_line_disabled=1 ble/widget/.newline
 }
 
+
 if ((_ble_bash>=30100)); then
-  function ble-edit/hist_expanded/.expand {
-    builtin history -p -- "$BASH_COMMAND" 2>/dev/null || echo "$BASH_COMMAND"
-    builtin echo -n :
+  function ble/edit/hist_expanded/.core {
+    builtin history -p -- "$BASH_COMMAND"
   }
 else
-  function ble-edit/hist_expanded/.expand {
-    (builtin history -p -- "$BASH_COMMAND" 2>/dev/null || echo "$BASH_COMMAND")
-    builtin echo -n :
+  # workaround for bash-3.0 (see memo.txt#D0233)
+  function ble/edit/hist_expanded/.core {
+    (builtin history -p -- "$BASH_COMMAND")
   }
 fi
+
+function ble-edit/hist_expanded/.expand {
+  ble/edit/hist_expanded/.core 2>/dev/null; local ext=$?
+  ((ext)) && echo "$BASH_COMMAND"
+  builtin echo -n :
+  return "$ext"
+}
 
 ## @var[out] hist_expanded
 function ble-edit/hist_expanded.update {
@@ -4135,6 +4147,7 @@ function ble-edit/hist_expanded.update {
     hist_expanded="${hist_expanded%$_ble_term_nl:}"
     return 0
   else
+    hist_expanded="$BASH_COMMAND"
     return 1
   fi
 }
@@ -4142,30 +4155,47 @@ function ble-edit/hist_expanded.update {
 function ble/widget/accept-line {
   local BASH_COMMAND="$_ble_edit_str"
 
-  # 履歴展開
-  local hist_expanded
-  if ! ble-edit/hist_expanded.update "$BASH_COMMAND"; then
-    ble/textarea#invalidate
+  if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
+    ble/widget/.newline
     return
   fi
 
-  _ble_edit_mark_active=
+  # 履歴展開
+  local hist_expanded
+  if ! ble-edit/hist_expanded.update "$BASH_COMMAND"; then
+    _ble_edit_line_disabled=1 ble/widget/.insert-newline
+    shopt -q histreedit &>/dev/null || ble/widget/.newline/clear-content
+    ble/util/buffer.flush >&2
+    ble/edit/hist_expanded/.core 1>/dev/null # エラーメッセージを表示
+    return
+  fi
+
+  local hist_is_expanded=
+  if [[ $hist_expanded != "$BASH_COMMAND" ]]; then
+    if shopt -q histverify &>/dev/null; then
+      _ble_edit_line_disabled=1 ble/widget/.insert-newline
+      _ble_edit_str.reset-and-check-dirty "$hist_expanded"
+      _ble_edit_ind=${#hist_expanded}
+      _ble_edit_mark=0
+      _ble_edit_mark_active=
+      return
+    fi
+
+    BASH_COMMAND="$hist_expanded"
+    hist_is_expanded=1
+  fi
+
   ble/widget/.newline
 
-  if [[ $hist_expanded != "$BASH_COMMAND" ]]; then
-    BASH_COMMAND="$hist_expanded"
-    ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $BASH_COMMAND"
-  fi
+  [[ $hist_is_expanded ]] && ble/util/buffer.print "${_ble_term_setaf[12]}[ble: expand]$_ble_term_sgr0 $BASH_COMMAND"
 
-  if [[ ${BASH_COMMAND//[ 	]} ]]; then
-    ((++_ble_edit_CMD))
+  ((++_ble_edit_CMD))
 
-    # 編集文字列を履歴に追加
-    ble-edit/history/add "$BASH_COMMAND"
+  # 編集文字列を履歴に追加
+  ble-edit/history/add "$BASH_COMMAND"
 
-    # 実行を登録
-    ble-edit/exec/register "$BASH_COMMAND"
-  fi
+  # 実行を登録
+  ble-edit/exec/register "$BASH_COMMAND"
 }
 
 function ble/widget/accept-and-next {
@@ -5468,8 +5498,6 @@ function ble/widget/.SHELL_COMMAND {
   if [[ "${BASH_COMMAND//[ 	]/}" ]]; then
     ble-edit/exec/register "$BASH_COMMAND"
   fi
-
-  ble/textarea#invalidate
 }
 
 ## 関数 ble/widget/.EDIT_COMMAND command

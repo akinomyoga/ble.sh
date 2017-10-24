@@ -1,5 +1,8 @@
 #!/bin/bash
 
+[[ $_ble_keymap_vi_initialized ]] && return
+_ble_keymap_vi_initialized=1
+
 # Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されうるので、
 # 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
 function ble-edit/load-keymap-definition:vi { :; }
@@ -5198,15 +5201,14 @@ function ble/keymap:vi/async-commandline-mode {
   _ble_edit_prompt=("" 0 0 0 32 0 "" "")
   _ble_highlight_layer__list=(plain region overwrite_mode)
 
-  # from ble/widget/.newline
-  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_cvvis"
-  _ble_edit_ind=0
-  _ble_edit_mark=0
-  _ble_edit_mark_active=
-  _ble_edit_overwrite_mode=
   _ble_edit_arg=
   _ble_edit_dirty_observer=()
-  _ble_edit_str.reset '' newline # Note: 中で mark の shift が起きるので _ble_edit_dirty_observer=() より後である必要がある
+
+  # Note: ble/widget/.newline/clear-content の中で
+  #   _ble_edit_str.reset が呼び出され、更に _ble_edit_dirty_observer が呼び出さる。
+  #   ble/keymap:vi/mark/shift-by-dirty-range が呼び出されないように、
+  #   _ble_edit_dirty_observer=() より後である必要がある。
+  ble/widget/.newline/clear-content
 
   ble/textarea#invalidate
 }
@@ -5374,7 +5376,6 @@ function ble-decode-keymap:vi_cmap/define {
 }
 
 #------------------------------------------------------------------------------
-
 
 function ble-decode-keymap:vi/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi
