@@ -2746,16 +2746,6 @@ function ble/widget/@nomarked {
   fi
   "ble/widget/$@"
 }
-## [[obsoleted]]
-function ble/widget/marked {
-  ble-edit/info/show txt 'widget "marked" is obsoleted. use "@marked" instead.'
-  ble/widget/@marked "$@"
-}
-## [[obsoleted]]
-function ble/widget/nomarked {
-  ble-edit/info/show txt 'widget "nomarked" is obsoleted. use "@nomarked" instead.'
-  ble/widget/@nomarked "$@"
-}
 
 ## 関数 ble/widget/.process-range-argument P0 P1; p0 p1 len ?
 ## @param[in]  P0  範囲の端点を指定します。

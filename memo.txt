@@ -527,8 +527,14 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
-
   * log
+
+    破壊的変更
+    - vi-mode: キーマップの名称変更 vi_command -> vi_nmap, vi_insert -> vi_imap
+    - vi-mode: 一部の widget の名称変更
+      - ble/widget/{no,}marked -> ble/widget/@{no,}marked
+      - ble/widget/vi-command/* (一部) -> ble/widget/vi_nmap/*
+    - vi-mode: ble/widget/vi-insert/@norepeat 廃止。別の方法 (_ble_keymap_vi_imap_white_list) を用いる。
 
     新しい機能
     - vi-mode (mode): bleopt 変数 `term_vi_[inoxc]map`
@@ -976,26 +982,6 @@ tech
       Wiki に各コマンドの説明を書きつつテストして行くのが良いだろう。
 
     * vi-mode を bash-3.0 でもテストする。
-
-    * done: vi_command は vi_nmap に変更する?
-    * done: vi_insert は vi_imap に変更する?
-      →widget で vi_nmap と vi-command (vi_nmap, vi_omap, vi_xmap 用) を区別したかったので、
-      早々に名前を変更することにしてしまった。これは破壊的な変更なので、今度 push する時に説明が必要。
-
-    % * vi-insert/@norepeat は @vi-norepeat 辺りに改名する。
-    %
-    %   C-c の説明は "InsertLeave autocmd が実行されない" である。
-    %   これより @vi-cancel-leave などの方が分かりやすいのでは。
-
-    * done: vi-insert/@norepeat は廃止された。従って改名の必要はなくただ消すのみである。
-      _ble_keymap_vi_imap_white_list に登録されていない widget は全て
-      __before_command__ で repeat を reset するように変更したためである。
-
-    * done: また同時に marked/nomarked も @marked/@nomarked に変更する。
-      →2017-10-25 これはもう修正した。今は marked/nomarked は obsoleted とし、
-      @marked/@nomarked に振り替える様にしているが、後に削除する。
-
-    * vi-insert/@norepeat, marked/nomarked の廃止
 
   * cmplstofB: vim-surround.sh: ds cs cS yS ySsd ySSd S gS 'C-s' 'C-g s' 'C-g S'
 
@@ -2515,6 +2501,32 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2017-10-25
+
+  * 2017-09-16 vi-mode merge 直前に一括して行うテスト・仕様変更など (1) [#D0548]
+
+    以下は先に破壊的変更してしまうことにした。
+
+    * done: vi_command は vi_nmap に変更する?
+    * done: vi_insert は vi_imap に変更する?
+      →widget で vi_nmap と vi-command (vi_nmap, vi_omap, vi_xmap 用) を区別したかったので、
+      早々に名前を変更することにしてしまった。これは破壊的な変更なので、今度 push する時に説明が必要。
+
+    % * vi-insert/@norepeat は @vi-norepeat 辺りに改名する。
+    %
+    %   C-c の説明は "InsertLeave autocmd が実行されない" である。
+    %   これより @vi-cancel-leave などの方が分かりやすいのでは。
+
+    * done: vi-insert/@norepeat は廃止された。従って改名の必要はなくただ消すのみである。
+      _ble_keymap_vi_imap_white_list に登録されていない widget は全て
+      __before_command__ で repeat を reset するように変更したためである。
+
+    * done: また同時に marked/nomarked も @marked/@nomarked に変更する。
+      →2017-10-25 これはもう修正した。今は marked/nomarked は obsoleted とし、
+      @marked/@nomarked に振り替える様にしているが、後に削除する。
+
+    * done: vi-insert/@norepeat, marked/nomarked の廃止
 
 2017-10-24
 

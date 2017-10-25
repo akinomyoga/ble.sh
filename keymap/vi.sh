@@ -196,12 +196,6 @@ function ble/widget/vi-insert/.process-repeat {
   fi
 }
 
-## [[obsoleted]]
-function ble/widget/vi-insert/@norepeat {
-  ble/widget/vi-insert/.reset-repeat
-  ble/widget/"$@"
-}
-
 ## 配列 _ble_keymap_vi_imap_white_list
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
 _ble_keymap_vi_imap_white_list=(
