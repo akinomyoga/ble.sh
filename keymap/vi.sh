@@ -1,10 +1,8 @@
 #!/bin/bash
 
-[[ $_ble_keymap_vi_initialized ]] && return
-_ble_keymap_vi_initialized=1
-
 # Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されうるので、
 # 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
+ble/util/isfunction ble-edit/load-keymap-definition:vi && return
 function ble-edit/load-keymap-definition:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
@@ -5047,12 +5045,11 @@ function ble-decode-keymap:vi_insert/define {
 
   ble-bind -f insert vi-insert/overwrite-mode
 
-  ble-bind -f 'C-w' 'delete-backward-cword' # vword?
-
   ble-bind -f 'C-o' 'vi-insert/single-command-mode'
 
   # settings overwritten by bash key bindings
 
+  # ble-bind -f 'C-w' 'delete-backward-cword' # vword?
   # ble-bind -f 'C-l' vi-insert/normal-mode
   # ble-bind -f 'C-k' vi-insert/insert-digraph
 
@@ -5104,9 +5101,9 @@ function ble-decode-keymap:vi_insert/define {
   ble-bind -f 'C-@'      set-mark
   ble-bind -f 'C-x C-x'  exchange-point-and-mark
   ble-bind -f 'C-y'      yank
-  # ble-bind -f C-w      kill-region-or uword
+  ble-bind -f 'C-w'      'kill-region-or uword'
   # ble-bind -f M-SP     set-mark
-  # ble-bind -f M-w      copy-region-or uword
+  # ble-bind -f M-w      'copy-region-or uword'
 
   # spaces
   # ble-bind -f 'M-\'      delete-horizontal-space

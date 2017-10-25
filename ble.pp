@@ -1,27 +1,27 @@
 #!/bin/bash
 #%$> out/ble.sh
-#%[release=0]
-#%[use_gawk=0]
-#%[measure_load_time=0]
-#%[debug_keylogger=0]
+#%[release = 0]
+#%[use_gawk = 0]
+#%[measure_load_time = 0]
+#%[debug_keylogger = 1]
 #%#----------------------------------------------------------------------------
-#%m inc (
-#%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
-#%%if @_included!=1
-#%% [@_included=1]
+#%m inc
+#%%[guard = "@_included".replace("[^_a-zA-Z0-9]", "_")]
+#%%if @_included != 1
+#%%%[@_included = 1]
 ###############################################################################
 # Included from ble-@.sh
 
-#%% if measure_load_time
+#%%%if measure_load_time
 time {
 echo ble-@.sh >&2
-#%% end
-#%% include ble-@.sh
-#%% if measure_load_time
+#%%%%include ble-@.sh
 }
-#%% end
+#%%%else
+#%%%%include ble-@.sh
+#%%%end
 #%%end
-#%)
+#%end
 #%#----------------------------------------------------------------------------
 # bash script to be sourced from interactive shell
 #
