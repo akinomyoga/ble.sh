@@ -983,7 +983,6 @@ function .ble-line-prompt/update/eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function .ble-line-prompt/update {
-  local ps1="${_ble_edit_PS1}"
   local version="$_ble_edit_LINENO"
   if [[ ${_ble_line_prompt[0]} == "$version" ]]; then
     _ble_line_prompt.load
@@ -991,10 +990,11 @@ function .ble-line-prompt/update {
   fi
 
   if [[ $PROMPT_COMMAND ]]; then
-    local PS1=$ps1
+    local PS1=$_ble_edit_PS1
     .ble-line-prompt/update/eval-prompt_command
-    ps1=$PS1
+    _ble_edit_PS1=$PS1
   fi
+  local ps1=$_ble_edit_PS1
 
   local param_wd=
   if [[ $PWD == "$HOME" || $PWD == "$HOME"/* ]]; then
