@@ -1125,7 +1125,6 @@ function ble-edit/prompt/update/eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble-edit/prompt/update {
-  local ps1="${_ble_edit_PS1}"
   local version="$_ble_edit_LINENO"
   if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
     _ble_edit_prompt.load
@@ -1133,10 +1132,11 @@ function ble-edit/prompt/update {
   fi
 
   if [[ $PROMPT_COMMAND ]]; then
-    local PS1=$ps1
+    local PS1=$_ble_edit_PS1
     ble-edit/prompt/update/eval-prompt_command
-    ps1=$PS1
+    _ble_edit_PS1=$PS1
   fi
+  local ps1=$_ble_edit_PS1
 
   local cache_d cache_t cache_A cache_T cache_at cache_D cache_j cache_wd
 

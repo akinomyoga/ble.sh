@@ -13268,6 +13268,8 @@ tech
     取り敢えずは .ble-line-prompt/update の中で
     eval "$PROMPT_COMMAND" を実行する事にする。
 
+    2017-10-26 変更を眺めていて思ったが、これは直しきれていない。改めて修正した。
+
   * histexpand: "～" 中の histexpand, extglob の際の histexpand 開始 [#D0242]
 
     > - 文字列 "～" 中の history-expansion は " を含まない。
