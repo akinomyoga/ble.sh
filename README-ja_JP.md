@@ -63,9 +63,7 @@ $ cp -r ble-0.1.7 /path/to/blesh
 # bashrc
 
 # .bashrc の先頭近くに以下を追加して下さい。
-if [[ $- == *i* ]]; then
-  source /path/to/blesh/ble.sh noattach
-  
+if [[ $- == *i* ]] && source /path/to/blesh/ble.sh noattach; then
   # ble.sh の設定 (後述) はここに記述します。
 fi
 

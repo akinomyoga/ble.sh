@@ -79,9 +79,7 @@ Most settings for `ble.sh` are to be specified after the `source` of `ble.sh`.
 ```bash
 ...
 
-if [[ $- == *i* ]]; then
-  source /path/to/blesh/ble.sh noattach
-  
+if [[ $- == *i* ]] && source /path/to/blesh/ble.sh noattach; then
   # ***** Settings Here *****
 fi
 
@@ -112,7 +110,7 @@ bleopt input_encoding='C'
 
 The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. Defaultly, the audible bell is enabled while the visual bell is disabled.
 
-The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is millisecond. The default values is `2000`.
+The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is millisecond. The default value is `2000`.
 
 For example, the visual bell can be enabled as:
 ```
