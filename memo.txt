@@ -931,11 +931,15 @@ tech
     %   C-c の説明は "InsertLeave autocmd が実行されない" である。
     %   これより @vi-cancel-leave などの方が分かりやすいのでは。
 
-    →vi-insert/@norepeat は廃止された。従って改名の必要はなくただ消すのみである。
+    * done: vi-insert/@norepeat は廃止された。従って改名の必要はなくただ消すのみである。
       _ble_keymap_vi_imap_white_list に登録されていない widget は全て
       __before_command__ で repeat を reset するように変更したためである。
 
-    * また同時に marked/nomarked も @marked/@nomarked に変更する。
+    * done: また同時に marked/nomarked も @marked/@nomarked に変更する。
+      →2017-10-25 これはもう修正した。今は marked/nomarked は obsoleted とし、
+      @marked/@nomarked に振り替える様にしているが、後に削除する。
+
+    * vi-insert/@norepeat, marked/nomarked の廃止
 
   * cmplstofB: vim-surround.sh: ds cs cS yS ySsd ySSd S gS 'C-s' 'C-g s' 'C-g S'
 

@@ -2733,18 +2733,28 @@ function ble/widget/exchange-point-and-mark {
 function ble/widget/yank {
   ble/widget/insert-string "$_ble_edit_kill_ring"
 }
-function ble/widget/marked {
+function ble/widget/@marked {
   if [[ $_ble_edit_mark_active != S ]]; then
     _ble_edit_mark="$_ble_edit_ind"
     _ble_edit_mark_active=S
   fi
   "ble/widget/$@"
 }
-function ble/widget/nomarked {
+function ble/widget/@nomarked {
   if [[ $_ble_edit_mark_active == S ]]; then
     _ble_edit_mark_active=
   fi
   "ble/widget/$@"
+}
+## [[obsoleted]]
+function ble/widget/marked {
+  ble-edit/info/show txt 'widget "marked" is obsoleted. use "@marked" instead.'
+  ble/widget/@marked "$@"
+}
+## [[obsoleted]]
+function ble/widget/nomarked {
+  ble-edit/info/show txt 'widget "nomarked" is obsoleted. use "@nomarked" instead.'
+  ble/widget/@nomarked "$@"
 }
 
 ## 関数 ble/widget/.process-range-argument P0 P1; p0 p1 len ?
