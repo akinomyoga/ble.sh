@@ -972,9 +972,15 @@ tech
 
   * vi-mode merge 直前に一括して行うテスト・仕様変更など
 
-    * vi_command は vi_nmap に変更する?
-    * vi_insert は vi_imap に変更する?
+    * 各コマンドについて再度動作するかどうかについてテストする必要がある。
+      Wiki に各コマンドの説明を書きつつテストして行くのが良いだろう。
+
     * vi-mode を bash-3.0 でもテストする。
+
+    * done: vi_command は vi_nmap に変更する?
+    * done: vi_insert は vi_imap に変更する?
+      →widget で vi_nmap と vi-command (vi_nmap, vi_omap, vi_xmap 用) を区別したかったので、
+      早々に名前を変更することにしてしまった。これは破壊的な変更なので、今度 push する時に説明が必要。
 
     % * vi-insert/@norepeat は @vi-norepeat 辺りに改名する。
     %

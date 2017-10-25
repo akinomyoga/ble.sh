@@ -5528,14 +5528,14 @@ function ble-decode/DEFAULT_KEYMAP {
   if [[ $bleopt_default_keymap == auto ]]; then
     if [[ -o vi ]]; then
       ble-edit/load-keymap-definition vi
-      builtin eval "$2=vi_insert"
+      builtin eval "$2=vi_imap"
     else
       ble-edit/load-keymap-definition emacs
       builtin eval "$2=emacs"
     fi
   elif [[ $bleopt_default_keymap == vi ]]; then
     ble-edit/load-keymap-definition vi
-    builtin eval "$2=vi_insert"
+    builtin eval "$2=vi_imap"
   else
     ble-edit/load-keymap-definition "$bleopt_default_keymap"
     builtin eval "$2=\"\$bleopt_default_keymap\""
