@@ -242,7 +242,7 @@ function ble/lib/vim-surround.sh/async-read-tagname/.before-command {
   if [[ ${KEYS[0]} == 62 ]]; then # '>'
     ble/widget/self-insert
     ble/widget/vi_cmap/accept
-    COMMAND=
+    WIDGET=
   fi
 }
 
@@ -351,13 +351,13 @@ function ble/widget/vim-surround.sh/ysurround.core {
 }
 
 function ble/widget/vim-surround.sh/ysurround-current-line {
-  ble/widget/vi-command/linewise-operator ys
+  ble/widget/vi_nmap/linewise-operator ys
 }
 function ble/widget/vim-surround.sh/ySurround-current-line {
-  ble/widget/vi-command/linewise-operator yS
+  ble/widget/vi_nmap/linewise-operator yS
 }
 function ble/widget/vim-surround.sh/vsurround { # vS
-  ble/widget/vi-command/linewise-operator vS
+  ble/widget/vi_nmap/linewise-operator vS
 }
 function ble/widget/vim-surround.sh/vgsurround { # vgS
   [[ $_ble_decode_key__kmap == vi_xmap ]] &&
@@ -527,7 +527,7 @@ function ble/widget/vim-surround.sh/nmap/dsurround.hook {
   return 1
 }
 function ble/widget/vim-surround.sh/nmap/dsurround {
-  local arg flag reg; ble/keymap:vi/get-arg-reg 1
+  local arg flag reg; ble/keymap:vi/get-arg 1
   _ble_lib_vim_surround_cs_type=ds
   _ble_lib_vim_surround_cs_arg=$arg
   _ble_lib_vim_surround_cs_reg=$reg
@@ -570,7 +570,7 @@ function ble/widget/vim-surround.sh/nmap/csurround.hook1 {
   fi
 }
 function ble/widget/vim-surround.sh/nmap/csurround.impl {
-  local arg flag reg; ble/keymap:vi/get-arg-reg 1
+  local arg flag reg; ble/keymap:vi/get-arg 1
   local type=$1
   _ble_lib_vim_surround_cs_type=$type
   _ble_lib_vim_surround_cs_arg=$arg
@@ -598,7 +598,7 @@ function ble/widget/vim-surround.sh/omap {
   local opfunc=$_ble_keymap_vi_opfunc$s
   case "$opfunc" in
   (y[sS])
-    local arg flag reg; ble/keymap:vi/get-arg-reg 1
+    local arg flag reg; ble/keymap:vi/get-arg 1
     _ble_edit_arg=$arg
     _ble_keymap_vi_reg=$reg
     ble-decode/keymap/pop

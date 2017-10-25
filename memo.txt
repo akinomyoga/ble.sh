@@ -527,6 +527,30 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+
+  * log
+
+    新しい機能
+    - vi-mode (mode): bleopt 変数 `term_vi_[inoxc]map`
+    - decode: 孤立 ESC のタイムアウトに対応
+    - edit: shopt -s histverify, shopt -s histreedit に対応 #D0547
+
+    バグ修正
+    - vi-mode (xmap): `p`, `P` が正しく動作しないバグを修正
+    - vi-mode (imap): 挿入モードに入るときに指定した引数 (繰り返し回数) が常にキャンセルされていたバグの修正
+    - lib/vim-surround (nmap ds): 引数が内部使用のオペレータ `y`, `d` に正しく渡っていなかったバグの修正
+    - prompt: `PROMPT_COMMAND` で設定された `PS1` が永続化されていなかったバグの修正
+    - decode: bind -x で曖昧な登録があって bash_execute_unix_command エラーになっていた問題の修正 #D0544
+    - decode: `vi.sh`, `emacs.sh` において `default.sh` が多重に呼び出されていた無駄の修正 #D0545
+    - core: bash-3.0 において ble/util/assign が壊れていたバグの修正
+
+    動作変更
+    - vi-mode (nmap `x`, `<delete>`, `s`, `X`, `C`, `D`): support registers
+    - source ble.sh において無事にロードされたときに終了ステータス 0 を返すことを保証
+    - widget marked, nomarked を @marked, @nomarked に改名。元の widget は非推奨 (削除予定)
+    - ble.sh: Linux 以外でも (`readlink -f` が動かないときも) シンボリックリンクを通したロードに対応 #D0543
+
+
 2017-10-22
 
   * RET: 文法に基づく改行挿入
@@ -702,6 +726,11 @@ tech
         書き換えとして最も安全なのではないかと思われる。
         枠組みとしても引数が直接透過して見えるので、それが自然である。
 
+      更に気付いたことだが、呼び出した時の keymap に依存して振る舞いを変えるコマンドが存在して、
+      しかし、呼び出しの途中で ble-decode/keymap/push, pop を実行することがある。
+      この時 set-previous-edit の中から元々の keymap を復元する必要が生じる。
+      これに関しては .invoke-command にて (zle に倣って) KEYMAP なる変数を定義すれば良いのではないか。
+
     b set-previous-edit と独立に各コマンドで . 情報を記録するようにする可能性はあるか。
 
       単純なコマンドの場合にはそのまま記録する。
@@ -742,21 +771,36 @@ tech
 
     [実装計画A] 主に set-previous-edit で記録する
 
-    get-arg, get-arg-reg の出力先の変数名は大文字にする。
-    get-arg, get-arg-reg を直接呼び出している関数名の変数は大文字にする。
-    引数として受け取っている arg flag reg は大文字にしない。
+    * get-arg, get-arg-reg の出力先の変数名は大文字にする。
+      get-arg, get-arg-reg を直接呼び出している関数名の変数は大文字にする。
+      引数として受け取っている arg flag reg は大文字にしない。
 
       直接呼び出し元の arg flag reg を触るような関数は現在存在しないはずなので、これで問題は起こらないはず。
       (直接呼び出し元の変数を触るように設計するのは、
       特に out パラメータとして使う場合かグローバル変数の場合であるが、
       arg flag reg に限って呼び出し元に変更を通知するようなことはないしグローバル変数でもない)
 
-    ble-decode: _ble_decode_key__hook から読み取ったコマンドを一旦
-    BLE_COMMAND 的な変数に入れてから実行する。引数も含めて。
-    これは _ble_decode_char__hook についても同様にする。
-    通常の widget 呼び出しに使っているのも COMMAND から BLE_COMMAND 的なものに改名する。
-    {BEFORE,AFTER}_COMMAND も同様にする? もし COMMAND -> BLE_WIDGET にするならこれは変えなくても良いかも。
-    もしくは __before_command__ 自体を __before_widget__ に変更するか。
+      * done: 先ず初めに vi_nmap からのみ呼び出すことを目的とした widget については、
+        関数名を vi-command/* から vi_nmap/* に変更し、更に flag のチェックは省略する。
+      * done: 更に get-arg を使っている部分については get-arg-reg を使う様にする。
+      * done: get-arg は廃止し、get-arg-reg の関数名を get-arg にする。
+
+
+      * get-arg を呼び出している箇所を機械的に大文字に変換していく。
+        これを実行するに当たって良い方法はないだろうか。
+        Emacs の置換の文字列で特別な記法があれば良いが難しい。
+
+        こんな記事を見つけた。\,(...) で replacement に S 式を含めることができるようだ。
+        https://stackoverflow.com/questions/677021/emacs-regular-expression-replacing-to-change-case
+
+        \_<\(arg\|flag\|reg\)\_> -> \,(upcase \1)
+
+    * done: ble-decode: _ble_decode_key__hook から読み取ったコマンドを一旦
+      BLE_COMMAND 的な変数に入れてから実行する。引数も含めて。
+      これは _ble_decode_{char,key}__hook についても同様にする。
+      通常の widget 呼び出しに使っているのも COMMAND から BLE_COMMAND 的なものに改名する。
+      {BEFORE,AFTER}_COMMAND も同様にする? もし COMMAND -> BLE_WIDGET にするならこれは変えなくても良いかも。
+      もしくは __before_command__ 自体を __before_widget__ に変更するか。
 
       % また、現在の実装では __before_command__ の内部で
       % COMMAND= としてコマンドをキャンセルする手法を用いているが、
@@ -766,16 +810,22 @@ tech
       % を記録して再実行したとしても動作を再現することはできないので別の問題が生じる。
       % →これは恐らく問題ない。OK
 
+      そもそも {BEFORE,AFTER}_COMMAND なる変数は定義していないのであった。なので気にしない。
+      COMMAND に関しては (BLE_COMMAND などではなく) zle に合わせて WIDGET にする事にした。
+      現在の kmap を zle に倣って KEYMAP に記録することにしたのだから気にしないで良い。
+
     vi-mode 用の ble/widget を実装する上での注意点についてまとめる必要がある。
 
     - 先ず __before_command__ の内部で set-previous-edit が発生してはならない。
       set-previous-edit 内部では . で繰り返すために、その編集が起こった原因となる
-      コマンドを BLE_COMMAND によって特定する。__before_command__ は
-      BLE_COMMAND 経由で呼び出されないので、誤った復元をしてしまうことになる。
+      コマンドを WIDGET によって特定する。__before_command__ は
+      WIDGET 経由で呼び出されないので、誤った復元をしてしまうことになる。
 
-    - BLE_COMMAND を widget 本体の中で変更してはならない。
+    - WIDGET を widget 本体の中で変更してはならない。
       これは同様に . で繰り返すための情報を破壊してしまうことになるからである。
       __before_command__ 内部でコマンドを変更する目的で書き換えることは可能。
+
+    | * vi-mode: . 実装 (2) WIDGET KEYMAP (decode) 及び ARG FLAG REG (vi-mode arg) の整理・対応
 
 
 2017-10-12

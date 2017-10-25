@@ -480,9 +480,10 @@ function ble-decode-char {
 
     # hook for quoted-insert, etc
     if [[ $_ble_decode_char__hook ]]; then
-      local hook="$_ble_decode_char__hook"
+      local KEYMAP=$_ble_decode_key__kmap
+      local WIDGET="$_ble_decode_char__hook $char"
       _ble_decode_char__hook=
-      eval "$hook $char"
+      builtin eval -- "$WIDGET"
       continue
     fi
 
@@ -906,10 +907,10 @@ function ble-decode/keymap/push {
 }
 ## 関数 ble-decode/keymap/pop
 function ble-decode/keymap/pop {
-  local count="${#_ble_decode_keymap_stack[@]}"
-  local last="$((count-1))"
+  local count=${#_ble_decode_keymap_stack[@]}
+  local last=$((count-1))
   ble-assert '((last>=0))' || return
-  _ble_decode_key__kmap="${_ble_decode_keymap_stack[last]}"
+  _ble_decode_key__kmap=${_ble_decode_keymap_stack[last]}
   unset _ble_decode_keymap_stack[last]
 }
 
@@ -936,9 +937,10 @@ function ble-decode-key {
 #%end
 
     if [[ $_ble_decode_key__hook ]]; then
-      local hook="$_ble_decode_key__hook"
+      local KEYMAP=$_ble_decode_key__kmap
+      local WIDGET="$_ble_decode_key__hook $key"
       _ble_decode_key__hook=
-      eval "$hook $key"
+      builtin eval -- "$WIDGET"
       continue
     fi
 
@@ -1102,12 +1104,12 @@ function ble-decode-key/.invoke-hook {
 function ble-decode-key/.invoke-command {
   [[ $command ]] || return 125
 
-  local COMMAND=$command
+  local WIDGET=$command KEYMAP=$_ble_decode_key__kmap
   local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
   _ble_decode_key__seq=
 
   ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
-  builtin eval -- "$COMMAND"; local exit=$?
+  builtin eval -- "$WIDGET"; local exit=$?
   ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
   return "$exit"
 }
