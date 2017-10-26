@@ -21,38 +21,38 @@
 `ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
 以下のコマンドで生成できます。
 GNU make が `gmake` という名前でインストールされている場合は、`make` の代わりに `gmake` として下さい。
-```bash
+```console
 $ git clone https://github.com/akinomyoga/ble.sh.git
 $ cd ble.sh
 $ make
 ```
 スクリプトファイル `ble.sh` がサブディレクトリ `ble.sh/out` 内に生成されます。
 `source` コマンドを用いて読み込めます:
-```bash
+```console
 $ source out/ble.sh
 ```
 指定したディレクトリにインストールするには以下のコマンドを使用します。`INSDIR` の指定を省略したときは既定の場所 `$HOME/.local/share/blesh` にインストールされます。
-```bash
+```console
 $ make INSDIR=/path/to/blesh install
 ```
 
 **`ble.sh` をダウンロードして使う場合** (201512安定版・古いです)
 
 `wget` を使う場合:
-```bash
+```console
 $ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.7/ble-0.1.7.tar.xz
 $ tar xJf ble-0.1.7.tar.xz
 $ source ble-0.1.7/ble.sh
 ```
 `curl` を使う場合:
-```bash
+```console
 $ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.1.7/ble-0.1.7.tar.xz
 $ tar xJf ble-0.1.7.tar.xz
 $ source ble-0.1.7/ble.sh
 ```
 
 指定したディレクトリに `ble.sh` を配置するには単に `ble-0.1.7` ディレクトリをコピーします。
-```bash
+```console
 $ cp -r ble-0.1.7 /path/to/blesh
 ```
 
@@ -99,7 +99,7 @@ fi
 既定値は `east` です。この設定項目は、利用している端末の振る舞いに応じて適切に設定する必要があります。
 例えば `west` に設定する場合は以下の様にします:
 
-```
+```bash
 bleopt char_width_mode='west'
 ```
 
@@ -109,7 +109,7 @@ bleopt char_width_mode='west'
 設定値 `C` を指定した場合は、受信したバイト値が直接文字コードであると解釈されます。
 既定値は `UTF-8` です。`C` に設定を変更する場合には以下の様にします:
 
-```
+```bash
 bleopt input_encoding='C'
 ```
 
@@ -123,12 +123,12 @@ bleopt input_encoding='C'
 設定 `vbell_duration` は画面での通知を表示する時間の長さを指定します。単位はミリ秒です。既定値は `2000` です。
 
 例えば、画面での通知は以下のように設定・有効化できます:
-```
+```bash
 bleopt edit_vbell=1 vbell_default_message=' BEL ' vbell_duration=3000
 ```
 
 もう一つの例として、音による通知は以下の様にして無効化できます。
-```
+```bash
 bleopt edit_abell=
 ```
 
@@ -169,7 +169,7 @@ ble-color-setface filename_other           underline
 ```
 
 色コードはシェル関数 `ble-color-show` (`ble.sh` 内で定義) で確認できます。
-```bash
+```console
 $ ble-color-show
 ```
 
@@ -182,12 +182,12 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
 
 既存のキーバインディングは以下のコマンドで確認できます。
-```
+```console
 $ ble-bind -d
 ```
 
 以下のコマンドでキーバインディングに使える関数一覧を確認できます。
-```bash
+```console
 $ ble-bind -L
 ```
 
