@@ -527,10 +527,10 @@ function ble/widget/vim-surround.sh/nmap/dsurround.hook {
   return 1
 }
 function ble/widget/vim-surround.sh/nmap/dsurround {
-  local arg flag reg; ble/keymap:vi/get-arg 1
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
   _ble_lib_vim_surround_cs_type=ds
-  _ble_lib_vim_surround_cs_arg=$arg
-  _ble_lib_vim_surround_cs_reg=$reg
+  _ble_lib_vim_surround_cs_arg=$ARG
+  _ble_lib_vim_surround_cs_reg=$REG
   ble/lib/vim-surround.sh/async-inputtarget ble/widget/vim-surround.sh/nmap/dsurround.hook
 }
 
@@ -598,9 +598,9 @@ function ble/widget/vim-surround.sh/omap {
   local opfunc=$_ble_keymap_vi_opfunc$s
   case "$opfunc" in
   (y[sS])
-    local arg flag reg; ble/keymap:vi/get-arg 1
-    _ble_edit_arg=$arg
-    _ble_keymap_vi_reg=$reg
+    local ARG FLAG REG; ble/keymap:vi/get-arg 1
+    _ble_edit_arg=$ARG
+    _ble_keymap_vi_reg=$REG
     ble-decode/keymap/pop
     ble/widget/vi-command/operator "$opfunc" ;;
   (yss)
