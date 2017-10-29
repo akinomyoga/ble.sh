@@ -2422,16 +2422,17 @@ function ble/widget/vi-command/nth-last-line {
   ble/widget/vi-command/linewise-goto.impl ${#_ble_edit_str}:$((-(ARG-1))) "$FLAG" "$REG"
 }
 
+## gg in history
 function ble/widget/vi-command/history-beginning {
   local ARG FLAG REG; ble/keymap:vi/get-arg 0
   if [[ $FLAG ]]; then
     if ((ARG)); then
       _ble_keymap_vi_oparg=$ARG
-      _ble_keymap_vi_opfunc=$FLAG
     else
       _ble_keymap_vi_oparg=
-      _ble_keymap_vi_opfunc=$FLAG
     fi
+    _ble_keymap_vi_opfunc=$FLAG
+    _ble_keymap_vi_reg=$REG
     ble/widget/vi-command/nth-line
     return
   fi
@@ -2450,13 +2451,13 @@ function ble/widget/vi-command/history-beginning {
 function ble/widget/vi-command/history-end {
   local ARG FLAG REG; ble/keymap:vi/get-arg 0
   if [[ $FLAG ]]; then
+    _ble_keymap_vi_opfunc=$FLAG
+    _ble_keymap_vi_reg=$REG
     if ((ARG)); then
       _ble_keymap_vi_oparg=$ARG
-      _ble_keymap_vi_opfunc=$FLAG
       ble/widget/vi-command/nth-line
     else
       _ble_keymap_vi_oparg=
-      _ble_keymap_vi_opfunc=$FLAG
       ble/widget/vi-command/nth-last-line
     fi
     return
@@ -2742,6 +2743,7 @@ function ble/widget/vi-command/search-matchpair-or {
   if ((ARG>=0)); then
     _ble_keymap_vi_oparg=$ARG
     _ble_keymap_vi_opfunc=$FLAG
+    _ble_keymap_vi_reg=$REG
     ble/widget/"$@"
     return
   fi
@@ -4473,6 +4475,7 @@ function ble/widget/vi_xmap/connect-line.impl {
   _ble_edit_arg=$nline
   _ble_keymap_vi_oparg=
   _ble_keymap_vi_opfunc=
+  _ble_keymap_vi_reg=
   "ble/widget/$name"
 }
 # xmap J

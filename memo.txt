@@ -544,7 +544,7 @@ tech
     バグ修正
     - vi-mode (xmap): `p`, `P` が正しく動作しないバグを修正
     - vi-mode (imap): 挿入モードに入るときに指定した引数 (繰り返し回数) が常にキャンセルされていたバグの修正
-    - vi-mode (txtobj): レジスター指定が消失していたバグの修正
+    - vi-mode (txtobj; nmap `gg`, `G`): レジスター指定が消失していたバグの修正
     - lib/vim-surround (nmap ds): 引数が内部使用のオペレータ `y`, `d` に正しく渡っていなかったバグの修正
     - prompt: `PROMPT_COMMAND` で設定された `PS1` が永続化されていなかったバグの修正
     - decode: bind -x で曖昧な登録があって bash_execute_unix_command エラーになっていた問題の修正 #D0544
