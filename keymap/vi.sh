@@ -661,8 +661,10 @@ function ble/widget/vi-command/register.hook {
     elif ((97<=c&&c<123||48<=c&&c<58||c==45||c==58||c==46||c==37||c==35||c==61||c==42||c==43||c==126||c==95||c==47)); then # a-z 0-9 - : . % # = * + ~ _ /
       _ble_keymap_vi_reg=$c
       return 0
-    elif ((c==34)); then # "
-      _ble_keymap_vi_reg=
+    elif ((c==34)); then # ""
+      # Note: vim の内部的には "" を指定するのと何も指定しないのは区別される。
+      # 例えば diw"y. は "y に記録されるが ""diw"y. は "" に記録される。
+      _ble_keymap_vi_reg=$c
       return 0
     fi
   fi
@@ -803,6 +805,9 @@ function ble/keymap:vi/call-operator {
   ble/keymap:vi/mark/start-edit-area
   ble/keymap:vi/operator:"$@"; local ext=$?
   ble/keymap:vi/mark/end-edit-area
+  if ((ext==0)); then
+    ble/util/isfunction ble/keymap:vi/operator:"$1"/norecord || ble/keymap:vi/repeat/record
+  fi
   return "$ext"
 }
 function ble/keymap:vi/call-operator-charwise {
@@ -810,7 +815,7 @@ function ble/keymap:vi/call-operator-charwise {
   ((beg<=end||(beg=$3,end=$2)))
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" char "$arg" "$reg"; local ext=$?
-   ((ext==148)) && return 148
+    ((ext==148)) && return 148
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
     return 0
@@ -907,6 +912,7 @@ function ble/keymap:vi/operator:c {
   fi
   return 0
 }
+function ble/keymap:vi/operator:y/norecord { :; }
 function ble/keymap:vi/operator:y {
   local beg=$1 end=$2 type=$3 arg=$4 reg=$5
   if [[ $type == line ]]; then
@@ -1632,6 +1638,55 @@ function ble/widget/vi-command/goto-mark.hook {
   return 1
 }
 
+#------------------------------------------------------------------------------
+# repeat (nmap .)
+
+_ble_keymap_vi_repeat=()
+function ble/keymap:vi/repeat/record {
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
+
+  local widget=${WIDGET%%[$' \t\n']*}
+  if [[ $widget == ble/widget/vi_nmap/repeat ]]; then
+    # repeat に引数が指定されたときは以降それを使う
+    [[ $repeat_arg ]] && _ble_keymap_vi_repeat[3]=$repeat_arg
+    # レジスタが記録されていないときは、以降新しく指定されたレジスタを使う
+    [[ ! ${_ble_keymap_vi_repeat[5]} ]] && _ble_keymap_vi_repeat[5]=$repeat_reg
+  else
+    _ble_keymap_vi_repeat=("$KEYMAP" "${KEYS[*]}" "$WIDGET" "$ARG" "$FLAG" "$REG")
+    # ToDo: $widget.record 的な関数が定義されていたらそれを呼び出す
+  fi
+}
+function ble/keymap:vi/repeat/invoke {
+  local repeat_arg=$_ble_edit_arg
+  local repeat_reg=$_ble_keymap_vi_reg
+  local KEYMAP=${_ble_keymap_vi_repeat[0]}
+  local -a KEYS=(${_ble_keymap_vi_repeat[1]})
+  local WIDGET=(${_ble_keymap_vi_repeat[2]})
+  if [[ $KEYMAP == vi_omap || $KEYMAP == vi_nmap ]]; then
+    [[ $KEYMAP == vi_omap ]] &&
+      ble-decode/keymap/push vi_omap
+
+    # ※本体の _ble_keymap_vi_repeat は成功した時にのみ repeat/record で書き換える
+    _ble_edit_arg=
+    _ble_keymap_vi_oparg=${_ble_keymap_vi_repeat[3]}
+    _ble_keymap_vi_opfunc=${_ble_keymap_vi_repeat[4]}
+    [[ $repeat_arg ]] && _ble_keymap_vi_oparg=$repeat_arg
+
+    # レジスタは記録されたものが優先される
+    local REG=${_ble_keymap_vi_repeat[5]}
+    [[ $REG ]] && _ble_keymap_vi_reg=$REG
+
+    builtin eval -- "$WIDGET"
+  else
+    ble/widget/vi-command/bell
+    return 1
+  fi
+}
+
+# nmap .
+function ble/widget/vi_nmap/repeat {
+  ble/keymap:vi/repeat/invoke
+}
 
 #------------------------------------------------------------------------------
 # command: [cdy]?[hl]
@@ -3810,21 +3865,22 @@ function ble-decode-keymap:vi_nmap/define {
   ble-bind -f J      vi_nmap/connect-line-with-space
   ble-bind -f 'g J'  vi_nmap/connect-line
 
+  ble-bind -f v      vi_nmap/charwise-visual-mode
+  ble-bind -f V      vi_nmap/linewise-visual-mode
+  ble-bind -f C-v    vi_nmap/blockwise-visual-mode
+
+  ble-bind -f .      vi_nmap/repeat
+
   ble-bind -f K      command-help
 
   ble-bind -f 'z t'   clear-screen
   ble-bind -f 'z z'   redraw-line # 中央
   ble-bind -f 'z b'   redraw-line # 最下行
-
   ble-bind -f 'z RET' vi-command/clear-screen-and-first-non-space
   ble-bind -f 'z C-m' vi-command/clear-screen-and-first-non-space
   ble-bind -f 'z +'   vi-command/clear-screen-and-last-line
   ble-bind -f 'z -'   vi-command/redraw-line-and-first-non-space # 中央
   ble-bind -f 'z .'   vi-command/redraw-line-and-first-non-space # 最下行
-
-  ble-bind -f v      vi_nmap/charwise-visual-mode
-  ble-bind -f V      vi_nmap/linewise-visual-mode
-  ble-bind -f C-v    vi_nmap/blockwise-visual-mode
 
   ble-bind -f m      vi-command/set-mark
   ble-bind -f '"'    vi-command/register
