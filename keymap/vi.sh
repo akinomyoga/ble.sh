@@ -2567,7 +2567,10 @@ function ble/widget/vi_nmap/replace-char.impl {
   _ble_edit_overwrite_mode=
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local ret
-  if ! ble/keymap:vi/k2c "$key"; then
+  if ((key==(ble_decode_Ctrl|91))); then # C-[
+    ble/keymap:vi/adjust-command-mode
+    return 0
+  elif ! ble/keymap:vi/k2c "$key"; then
     ble/widget/vi-command/bell
     return 1
   fi
