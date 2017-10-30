@@ -21,37 +21,37 @@ This script is provided under the **BSD License** (3-clause BSD license).
 To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
 The file `ble.sh` can be generated using the below commands.
 If you have GNU make installed on `gmake`, please use `gmake` instead of `make`.
-```bash
+```console
 $ git clone https://github.com/akinomyoga/ble.sh.git
 $ cd ble.sh
 $ make
 ```
 A script file `ble.sh` will be generated in the directory `ble.sh/out`. Then, load `ble.sh` using the `source` command:
-```bash
+```console
 $ source out/ble.sh
 ```
 If you want to install `ble.sh` in a specified directory, use the following command (if `INSDIR` is not specified, the default location `$HOME/.local/share/blesh` is used):
-```bash
+```console
 $ make INSDIR=/path/to/blesh install
 ```
 
 **Or, download `ble.sh`** (201512 stable, old)
 
 With `wget`:
-```bash
+```console
 $ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.1.7/ble-0.1.7.tar.xz
 $ tar xJf ble-0.1.7.tar.xz
 $ source ble-0.1.7/ble.sh
 ```
 With `curl`:
-```bash
+```console
 $ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.1.7/ble-0.1.7.tar.xz
 $ tar xJf ble-0.1.7.tar.xz
 $ source ble-0.1.7/ble.sh
 ```
 
 If you want to place `ble.sh` in a specific directory, just copy the directory:
-```bash
+```console
 $ cp -r ble-0.1.7 /path/to/blesh
 ```
 
@@ -94,7 +94,7 @@ With `west` all the ambiguous characters have width 1 (Hankaku). With `east` all
 The default value is `east`. Appropriate value should be chosen in accordance with your terminal behavior.
 For example, the value can be changed to `west` as:
 
-```
+```bash
 bleopt char_width_mode='west'
 ```
 
@@ -102,7 +102,7 @@ bleopt char_width_mode='west'
 
 The option `input_encoding` controls the encoding scheme used in the decode of input. Currently `UTF-8` and `C` are available. With the value `C`, byte values are directly interpreted as character codes. The default value is `UTF-8`. For example, the value can be changed to `C` as:
 
-```
+```bash
 bleopt input_encoding='C'
 ```
 
@@ -158,7 +158,7 @@ ble-color-setface filename_other           underline
 ```
 
 The color codes can be checked in output of the function `ble-color-show` (defined in `ble.sh`):
-```bash
+```console
 $ ble-color-show
 ```
 
@@ -171,12 +171,12 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
 
 The existing key bindings can be checked with the following command:
-```
+```console
 $ ble-bind -d
 ```
 
 The list of functions can be checked with the following command:
-```bash
+```console
 $ ble-bind -L
 ```
 
