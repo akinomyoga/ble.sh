@@ -4406,6 +4406,45 @@ function ble/widget/vi_xmap/switch-to-blockwise {
 
 # コマンド
 
+# xmap o
+function ble/widget/vi_xmap/exchange-points {
+  ble/keymap:vi/xmap/remove-eol-extension
+  ble/widget/exchange-point-and-mark
+  return 0
+}
+# xmap O
+function ble/widget/vi_xmap/exchange-boundaries {
+  if [[ ${_ble_edit_mark_active%+} == block ]]; then
+    ble/keymap:vi/xmap/remove-eol-extension
+
+    local sub_ranges sub_x1 sub_x2
+    ble/keymap:vi/extract-block
+    local nline=${#sub_ranges[@]}
+    ble-assert '((nline))'
+
+    local data1; ble/string#split data1 : "${sub_ranges[0]}"
+    local lpos1=${data1[0]} rpos1=$((data1[4]?data1[1]:data1[1]-1))
+    if ((nline==1)); then
+      local lpos2=$lpos1 rpos2=$rpos1
+    else
+      local data2; ble/string#split data2 : "${sub_ranges[nline-1]}"
+      local lpos2=${data2[0]} rpos2=$((data2[4]?data2[1]:data2[1]-1))
+    fi
+
+    # lpos2:rpos2 が _ble_edit_ind に対応していないとき swap する
+    if ! ((lpos2<=_ble_edit_ind&&_ble_edit_ind<=rpos2)); then
+      local lpos1=$lpos2 lpos2=$lpos1
+      local rpos1=$rpos2 rpos2=$rpos1
+    fi
+
+    _ble_edit_mark=$((_ble_edit_mark==lpos1?rpos1:lpos1))
+    ble/widget/.goto-char $((_ble_edit_ind==lpos2?rpos2:lpos2))
+    return 0
+  else
+    ble/widget/vi_xmap/exchange-points
+  fi
+}
+
 # xmap r{char}
 function ble/widget/vi_xmap/visual-replace-char.hook {
   local key=$1 overwrite_mode=${2:-R}
@@ -4895,6 +4934,9 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f v   vi_xmap/switch-to-charwise
   ble-bind -f V   vi_xmap/switch-to-linewise
   ble-bind -f C-v vi_xmap/switch-to-blockwise
+
+  ble-bind -f o vi_xmap/exchange-points
+  ble-bind -f O vi_xmap/exchange-boundaries
 
   ble-bind -f '~' 'vi-command/operator toggle_case'
   ble-bind -f 'u' 'vi-command/operator u'
