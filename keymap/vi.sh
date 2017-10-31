@@ -114,6 +114,11 @@ function ble/keymap:vi/string#encode-rot13 {
 }
 
 #------------------------------------------------------------------------------
+# constants
+
+_ble_keymap_vi_REX_WORD=$'[A-Za-z_]+|[!-/:-@[-`{-~]+|[^ \t\nA-Za-z_!-/:-@[-`{-~]+'
+
+#------------------------------------------------------------------------------
 # vi-insert/default, vi-command/decompose-meta
 
 function ble/widget/vi-insert/default {
@@ -2903,7 +2908,7 @@ function ble/keymap:vi/text-object/word.impl {
   if [[ $type == ?W ]]; then
     rex_word="[^$ifs]+"
   else
-    rex_word="[A-Za-z_]+|[^A-Za-z_$space]+"
+    rex_word=$_ble_keymap_vi_REX_WORD
   fi
 
   local rex_words
@@ -4962,6 +4967,19 @@ function ble/widget/vi-insert/overwrite-mode {
   return 0
 }
 
+function ble/widget/vi-insert/delete-backward-word {
+  local space=$' \t' nl=$'\n'
+  local rex="($_ble_keymap_vi_REX_WORD)[$space]*\$|[$space]+\$|$nl\$"
+  if [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
+    local index=$((_ble_edit_ind-${#BASH_REMATCH}))
+    ble/widget/.delete-range "$index" "$_ble_edit_ind"
+    return 0
+  else
+    ble/widget/.bell
+    return 1
+  fi
+}
+
 #------------------------------------------------------------------------------
 # imap: C-k (digraph)
 
@@ -5018,7 +5036,7 @@ function ble-decode-keymap:vi_imap/define {
 
   # settings overwritten by bash key bindings
 
-  # ble-bind -f 'C-w' 'delete-backward-cword' # vword?
+  ble-bind -f 'C-w' vi-insert/delete-backward-word
   # ble-bind -f 'C-l' vi-insert/normal-mode
   # ble-bind -f 'C-k' vi-insert/insert-digraph
 
@@ -5046,7 +5064,8 @@ function ble-decode-keymap:vi_imap/define {
   ble-bind -f 'C-l' clear-screen
   ble-bind -f 'C-k' kill-forward-line
 
-  # ble-bind -f  'C-o' accept-and-next
+  # ble-bind -f 'C-o' accept-and-next
+  # ble-bind -f 'C-w' 'kill-region-or uword'
 
   #----------------------------------------------------------------------------
   # from keymap emacs-standard
@@ -5070,7 +5089,6 @@ function ble-decode-keymap:vi_imap/define {
   ble-bind -f 'C-@'      set-mark
   ble-bind -f 'C-x C-x'  exchange-point-and-mark
   ble-bind -f 'C-y'      yank
-  ble-bind -f 'C-w'      'kill-region-or uword'
   # ble-bind -f M-SP     set-mark
   # ble-bind -f M-w      'copy-region-or uword'
 
