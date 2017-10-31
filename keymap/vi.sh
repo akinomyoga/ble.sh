@@ -2569,7 +2569,7 @@ function ble/widget/vi_nmap/replace-char.impl {
   local ret
   if ((key==(ble_decode_Ctrl|91))); then # C-[
     ble/keymap:vi/adjust-command-mode
-    return 0
+    return 27
   elif ! ble/keymap:vi/k2c "$key"; then
     ble/widget/vi-command/bell
     return 1
@@ -2710,6 +2710,8 @@ function ble/widget/vi-command/search-char.impl/core {
   [[ $opts != *r* ]]; local isrepeat=$?
   if ((isrepeat)); then
     c=$key
+  elif ((key==(ble_decode_Ctrl|91))); then # C-[ -> cancel
+    return 27
   else
     ble/keymap:vi/k2c "$key" || return 1
     ble/util/c2s "$ret"; local c=$ret
@@ -4406,7 +4408,12 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
 
   local ret
-  if [[ $FLAG ]] || ! ble/keymap:vi/k2c "$key"; then
+  if [[ $FLAG ]]; then
+    ble/widget/.bell
+    return 1
+  elif ((key==(ble_decode_Ctrl|91))); then # C-[ -> cancel
+    return 27
+  elif ! ble/keymap:vi/k2c "$key"; then
     ble/widget/.bell
     return 1
   fi
