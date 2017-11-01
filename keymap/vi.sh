@@ -1646,7 +1646,27 @@ function ble/widget/vi-command/goto-mark.hook {
 #------------------------------------------------------------------------------
 # repeat (nmap .)
 
+## 配列 _ble_keymap_vi_repeat
+##
+##   ${_ble_keymap_vi_repeat[0]} = KEYMAP
+##     呼び出し時の kmap を保持します。
+##   ${_ble_keymap_vi_repeat[1]} = KEYS
+##     呼び出しに用いられたキーの列を保持します。
+##   ${_ble_keymap_vi_repeat[2]} = WIDGET
+##     呼び出された編集コマンドを保持します。
+##   ${_ble_keymap_vi_repeat[@]:3:3} = ARG FLAG REG
+##     呼び出し時の修飾状態を保持します。
+##   ${_ble_keymap_vi_repeat[6]} = _ble_keymap_vi_xmap_prev
+##     vi_xmap のとき範囲の大きさと種類を記録します。
+##   ${_ble_keymap_vi_repeat[@]:10}
+##     各 WIDGET が自由に使える領域
 _ble_keymap_vi_repeat=()
+function ble/keymap:vi/repeat/record-normal {
+  _ble_keymap_vi_repeat=("$KEYMAP" "${KEYS[*]}" "$WIDGET" "$ARG" "$FLAG" "$REG")
+  if [[ $KEYMAP == vi_xmap ]]; then
+    _ble_keymap_vi_repeat[6]=$_ble_keymap_vi_xmap_prev
+  fi
+}
 function ble/keymap:vi/repeat/record {
   [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
 
@@ -1657,8 +1677,8 @@ function ble/keymap:vi/repeat/record {
     # レジスタが記録されていないときは、以降新しく指定されたレジスタを使う
     [[ ! ${_ble_keymap_vi_repeat[5]} ]] && _ble_keymap_vi_repeat[5]=$repeat_reg
   else
-    _ble_keymap_vi_repeat=("$KEYMAP" "${KEYS[*]}" "$WIDGET" "$ARG" "$FLAG" "$REG")
     # ToDo: $widget.record 的な関数が定義されていたらそれを呼び出す
+    ble/keymap:vi/repeat/record-normal
   fi
 }
 function ble/keymap:vi/repeat/invoke {
@@ -1666,10 +1686,17 @@ function ble/keymap:vi/repeat/invoke {
   local repeat_reg=$_ble_keymap_vi_reg
   local KEYMAP=${_ble_keymap_vi_repeat[0]}
   local -a KEYS=(${_ble_keymap_vi_repeat[1]})
-  local WIDGET=(${_ble_keymap_vi_repeat[2]})
-  if [[ $KEYMAP == vi_omap || $KEYMAP == vi_nmap ]]; then
-    [[ $KEYMAP == vi_omap ]] &&
+  local WIDGET=${_ble_keymap_vi_repeat[2]}
+  if [[ $KEYMAP == vi_[onx]map ]]; then
+    if [[ $KEYMAP == vi_omap ]]; then
       ble-decode/keymap/push vi_omap
+    elif [[ $KEYMAP == vi_xmap ]]; then
+      local _ble_keymap_vi_xmap_prev=${_ble_keymap_vi_repeat[6]}
+      ble/widget/vi_xmap/.restore-visual-state
+      ble-decode/keymap/push vi_xmap
+      # Note: vim では . によって領域の大きさは更新されない。
+      #   従ってここでは敢えて _ble_keymap_vi_xmap_prev を unset しない
+    fi
 
     # ※本体の _ble_keymap_vi_repeat は成功した時にのみ repeat/record で書き換える
     _ble_edit_arg=
@@ -1677,7 +1704,7 @@ function ble/keymap:vi/repeat/invoke {
     _ble_keymap_vi_opfunc=${_ble_keymap_vi_repeat[4]}
     [[ $repeat_arg ]] && _ble_keymap_vi_oparg=$repeat_arg
 
-    # レジスタは記録されたものが優先される
+    # vim ではレジスタは記録されたものが優先されるようだ
     local REG=${_ble_keymap_vi_repeat[5]}
     [[ $REG ]] && _ble_keymap_vi_reg=$REG
 
@@ -3878,6 +3905,7 @@ function ble-decode-keymap:vi_nmap/define {
   ble-bind -f v      vi_nmap/charwise-visual-mode
   ble-bind -f V      vi_nmap/linewise-visual-mode
   ble-bind -f C-v    vi_nmap/blockwise-visual-mode
+  ble-bind -f C-q    vi_nmap/blockwise-visual-mode
 
   ble-bind -f .      vi_nmap/repeat
 
@@ -3897,9 +3925,6 @@ function ble-decode-keymap:vi_nmap/define {
 
   #----------------------------------------------------------------------------
   # bash
-
-  ble-bind -f 'C-q' quoted-insert
-  # ble-bind -f 'C-v' quoted-insert
 
   ble-bind -f 'C-j' 'vi-command/accept-line'
   ble-bind -f 'C-m' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
@@ -4283,7 +4308,7 @@ function ble/widget/vi_xmap/.save-visual-state {
   _ble_keymap_vi_xmap_prev=$_ble_edit_mark_active:$nchar:$nline
 }
 function ble/widget/vi_xmap/.restore-visual-state {
-  local arg=$1
+  local arg=$1; ((arg>0)) || arg=1
   local prev; ble/string#split prev : "$_ble_keymap_vi_xmap_prev"
   _ble_edit_mark_active=${prev[0]:-char}
   local nchar=${prev[1]:-1}
@@ -4326,6 +4351,7 @@ function ble/widget/vi_xmap/.restore-visual-state {
     ((index=b2+c,index>e2&&(index=e2)))
   fi
 
+  _ble_edit_mark=$_ble_edit_ind
   ble/widget/.goto-char "$index"
 }
 
@@ -4934,6 +4960,7 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f v   vi_xmap/switch-to-charwise
   ble-bind -f V   vi_xmap/switch-to-linewise
   ble-bind -f C-v vi_xmap/switch-to-blockwise
+  ble-bind -f C-q vi_xmap/switch-to-blockwise
 
   ble-bind -f o vi_xmap/exchange-points
   ble-bind -f O vi_xmap/exchange-boundaries
@@ -5009,6 +5036,7 @@ function ble/widget/vi-insert/overwrite-mode {
   return 0
 }
 
+# imap C-w
 function ble/widget/vi-insert/delete-backward-word {
   local space=$' \t' nl=$'\n'
   local rex="($_ble_keymap_vi_REX_WORD)[$space]*\$|[$space]+\$|$nl\$"

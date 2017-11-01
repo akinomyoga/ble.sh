@@ -481,6 +481,7 @@ function ble-decode-char {
     # hook for quoted-insert, etc
     if [[ $_ble_decode_char__hook ]]; then
       local KEYMAP=$_ble_decode_key__kmap
+      local -a KEYS=($char)
       local WIDGET="$_ble_decode_char__hook $char"
       _ble_decode_char__hook=
       builtin eval -- "$WIDGET"
@@ -938,6 +939,7 @@ function ble-decode-key {
 
     if [[ $_ble_decode_key__hook ]]; then
       local KEYMAP=$_ble_decode_key__kmap
+      local -a KEYS=($key)
       local WIDGET="$_ble_decode_key__hook $key"
       _ble_decode_key__hook=
       builtin eval -- "$WIDGET"
