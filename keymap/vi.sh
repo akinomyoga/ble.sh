@@ -126,10 +126,9 @@ function ble/widget/vi-insert/default {
 
   # メタ修飾付きの入力 M-key は ESC + key に分解する
   if ((flag&ble_decode_Meta)); then
-    if [[ $_ble_keymap_vi_repeat ]]; then
+    if [[ $_ble_keymap_vi_irepeat_count ]]; then
       # .before_command で登録されているはずなので pop
-      local top_index=$((${#_ble_keymap_vi_repeat_keylog[*]}-1))
-      unset '_ble_keymap_vi_repeat_keylog[top_index]'
+      ble/keymap:vi/imap-repeat/pop
     fi
 
     local esc=27 # ESC
@@ -170,34 +169,51 @@ function ble/widget/vi_omap/default {
 #------------------------------------------------------------------------------
 # repeat
 
-## 変数 _ble_keymap_vi_repeat
+## 変数 _ble_keymap_vi_irepeat_count
 ##   挿入モードに入る時に指定された引数を記録する。
-_ble_keymap_vi_repeat=
+_ble_keymap_vi_irepeat_count=
 
-## 配列 _ble_keymap_vi_repeat_keylog
+## 配列 _ble_keymap_vi_irepeat
 ##   挿入モードに入るときに指定された引数が 1 より大きい時、
-##   後でキーボード操作を繰り返すためにキーの列を記録する配列。
-_ble_keymap_vi_repeat_keylog=()
+##   後で操作を繰り返すために操作内容を記録する配列。
+##
+##   各要素は keys:widget の形式を持つ。
+##   keys は空白区切りの key (整数値) の列、つまり ${KEYS[*]} である。
+##   widget は実際に呼び出す WIDGET の内容である。
+##
+_ble_keymap_vi_irepeat=()
 
-function ble/widget/vi-insert/.reset-repeat {
-  local count=$1
-  _ble_keymap_vi_repeat=
-  _ble_keymap_vi_repeat_keylog=()
-  ((count>1)) && _ble_keymap_vi_repeat=$count
+function ble/keymap:vi/imap-repeat/pop {
+  local top_index=$((${#_ble_keymap_vi_irepeat[*]}-1))
+  unset '_ble_keymap_vi_irepeat[top_index]'
 }
-function ble/widget/vi-insert/.process-repeat {
-  if [[ $_ble_keymap_vi_repeat ]]; then
-    local repeat=$_ble_keymap_vi_repeat
-    local key_count=$((${#_ble_keymap_vi_repeat_keylog[@]}-${#KEYS[@]}))
-    local -a key_codes; key_codes=("${_ble_keymap_vi_repeat_keylog[@]::key_count}")
-    ble/widget/vi-insert/.reset-repeat
+function ble/keymap:vi/imap-repeat/push {
+  ble/array#push _ble_keymap_vi_irepeat "${KEYS[*]}:$WIDGET"
+}
 
-    local i
+function ble/keymap:vi/imap-repeat/reset {
+  local count=$1
+  _ble_keymap_vi_irepeat_count=
+  _ble_keymap_vi_irepeat=()
+  ((count>1)) && _ble_keymap_vi_irepeat_count=$count
+}
+function ble/keymap:vi/imap-repeat/process {
+  if [[ $_ble_keymap_vi_irepeat_count ]]; then
+    local repeat=$_ble_keymap_vi_irepeat_count
+    ble/keymap:vi/imap-repeat/pop
+    local -a widgets; widgets=("${_ble_keymap_vi_irepeat[@]}")
+    ble/keymap:vi/imap-repeat/reset
+
+    local i widget
     for ((i=1;i<repeat;i++)); do
-      ble-decode-key "${key_codes[@]}"
+      for widget in "${widgets[@]}"; do
+        local -a KEYS=(${widget%%:*})
+        local WIDGET=${widget#*:} KEYMAP=$_ble_decode_key__kmap
+        builtin eval -- "$WIDGET"
+      done
     done
   else
-    ble/widget/vi-insert/.reset-repeat
+    ble/keymap:vi/imap-repeat/reset
   fi
 }
 
@@ -205,7 +221,6 @@ function ble/widget/vi-insert/.process-repeat {
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
 _ble_keymap_vi_imap_white_list=(
   self-insert
-  quoted-insert
   delete-backward-{c,f,s,u}word
   copy{,-forward,-backward}-{c,f,s,u}word
   copy-region{,-or}
@@ -227,11 +242,11 @@ function ble/keymap:vi/imap/is-command-white {
 
 function ble/widget/vi-insert/.before_command {
   if ble/keymap:vi/imap/is-command-white "$WIDGET"; then
-    [[ $_ble_keymap_vi_repeat ]] &&
-      ble/array#push _ble_keymap_vi_repeat_keylog "${KEYS[@]}"
+    [[ $_ble_keymap_vi_irepeat_count ]] &&
+      ble/keymap:vi/imap-repeat/push
   else
-    [[ $_ble_keymap_vi_repeat ]] &&
-      ble/widget/vi-insert/.reset-repeat
+    [[ $_ble_keymap_vi_irepeat_count ]] &&
+      ble/keymap:vi/imap-repeat/reset
     if ((_ble_keymap_vi_mark_edit_dbeg>=0)); then
       ble/keymap:vi/mark/end-edit-area
       ble/keymap:vi/mark/start-edit-area
@@ -333,7 +348,6 @@ function ble/widget/vi-insert/normal-mode.impl {
   local opts=$1
 
   # finalize insert mode
-  ble/widget/vi-insert/.process-repeat
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
   ble/keymap:vi/mark/end-edit-area
   [[ $opts == *:InsertLeave:* ]] && eval "$_ble_keymap_vi_insert_leave"
@@ -348,6 +362,7 @@ function ble/widget/vi-insert/normal-mode.impl {
   ble-decode/keymap/push vi_nmap
 }
 function ble/widget/vi-insert/normal-mode {
+  ble/keymap:vi/imap-repeat/process
   ble/widget/vi-insert/normal-mode.impl InsertLeave
   ble/keymap:vi/update-mode-name
   return 0
@@ -427,7 +442,7 @@ function ble/widget/vi_nmap/.insert-mode {
   [[ $_ble_decode_key__kmap == vi_xmap ]] && ble-decode/keymap/pop
   [[ $_ble_decode_key__kmap == vi_omap ]] && ble-decode/keymap/pop
   local arg=$1 overwrite=$2
-  ble/widget/vi-insert/.reset-repeat "$arg"
+  ble/keymap:vi/imap-repeat/reset "$arg"
   _ble_edit_mark_active=
   _ble_edit_overwrite_mode=$overwrite
   _ble_keymap_vi_insert_leave=
@@ -5003,16 +5018,16 @@ function ble/widget/vi-insert/.attach {
   return 0
 }
 function ble/widget/vi-insert/magic-space {
-  if [[ $_ble_keymap_vi_repeat ]]; then
+  if [[ $_ble_keymap_vi_irepeat_count ]]; then
     ble/widget/self-insert
   else
-    ble/widget/vi-insert/.reset-repeat
+    ble/keymap:vi/imap-repeat/reset
     ble/widget/magic-space
   fi
 }
 function ble/widget/vi-insert/accept-single-line-or {
   if ble/widget/accept-single-line-or/accepts; then
-    ble/widget/vi-insert/.reset-repeat
+    ble/keymap:vi/imap-repeat/reset
     ble/widget/accept-line
   else
     ble/widget/"$@"
@@ -5020,7 +5035,7 @@ function ble/widget/vi-insert/accept-single-line-or {
 }
 function ble/widget/vi-insert/delete-region-or {
   if [[ $_ble_edit_mark_active ]]; then
-    ble/widget/vi-insert/.reset-repeat
+    ble/keymap:vi/imap-repeat/reset
     ble/widget/delete-region
   else
     ble/widget/"$@"
@@ -5048,6 +5063,21 @@ function ble/widget/vi-insert/delete-backward-word {
     ble/widget/.bell
     return 1
   fi
+}
+
+# imap C-q, C-v
+function ble/widget/vi-insert/quoted-insert.hook {
+  local -a KEYS=($1);
+  local WIDGET=ble/widget/self-insert
+  [[ $_ble_keymap_vi_irepeat_count ]] &&
+    ble/keymap:vi/imap-repeat/push
+  builtin eval -- "$WIDGET"
+}
+function ble/widget/vi-insert/quoted-insert {
+  [[ $_ble_keymap_vi_irepeat_count ]] &&
+    ble/keymap:vi/imap-repeat/pop
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/vi-insert/quoted-insert.hook
 }
 
 #------------------------------------------------------------------------------
@@ -5114,8 +5144,8 @@ function ble-decode-keymap:vi_imap/define {
   # bash
 
   # ins
-  ble-bind -f 'C-q'   quoted-insert
-  ble-bind -f 'C-v'   quoted-insert
+  ble-bind -f 'C-q'   vi-insert/quoted-insert
+  ble-bind -f 'C-v'   vi-insert/quoted-insert
   ble-bind -f 'C-RET' newline
 
   # shell

@@ -2997,13 +2997,13 @@ function ble/widget/self-insert {
 }
 
 # quoted insert
-function ble/widget/quoted-insert/.hook {
+function ble/widget/quoted-insert.hook {
   local -a KEYS; KEYS=("$1")
   ble/widget/self-insert
 }
 function ble/widget/quoted-insert {
   _ble_edit_mark_active=
-  _ble_decode_char__hook=ble/widget/quoted-insert/.hook
+  _ble_decode_char__hook=ble/widget/quoted-insert.hook
 }
 
 function ble/widget/transpose-chars {
