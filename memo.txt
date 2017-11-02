@@ -137,6 +137,10 @@ bash 実装上で注意するべき事
     IFS= LC_ALL=C read -t 0 &>/dev/null
     としても復元時のメッセージは何故か抑制できなかった。
 
+  * bash 正規表現の POSIX 文字クラス [[:alpha:]] などは
+    ロケールによって何にでも一致するので信用できない。
+    例えば GNU/Linux (Fedora 25) では ja_JP.UTF-8 で [[:alpha:]] は漢字・仮名にも一致する。
+
   * bind 関数の中で set +o emacs などをして編集モードを無効にすると、
 
     編集関数の実行自体が中断されるようである。
@@ -566,10 +570,15 @@ tech
   - vi-mode (xmap `I` `A`): 動かなくなっていたバグの修正
   - vi-mode (xmap `I` `A`): 実行後のカーソル位置がずれていたバグの修正
   - lib/vim-surround (nmap `cs` `cS`): nmap `.` 対応時に引数とレジスタが効かなくなっていたバグの修正
+  - vi-mode (txtobj `[ia]w`): 英数字と _ の連続ではなく英字と _ だけの連続を単語としていたバグの修正
+  - vi-mode (nmap `{N}%`): 目的の行に移動しなくなっていたバグの修正
+  - vi-mode (mark `` `x `` `'x`): オペレータが動作しないバグの修正
+  - vi-mode (nmap `>`): `d_` 及び `d1_` が linewise になっていないバグの修正
 
   動作変更
   - vi-mode (imap `<C-w>`): vim の単語区切り (iw) による削除に変更
   - vi-mode (nmap `[rRfFtT]x`): `<C-[>` でキャンセルするように変更
+  - vi-mode (nmap `w` `b` `e` `ge`): 非英数字 ASCII の連続と、Unicode 文字の連続 をそれぞれ別の単語と扱うように変更
 
 
 2017-11-01
@@ -759,7 +768,7 @@ tech
     * 各コマンドについて再度動作するかどうかについてテストする必要がある。
       Wiki に各コマンドの説明を書きつつテストして行くのが良いだろう。
 
-      x resolved: ihello world<C-[>. で world 以降しか挿入されない。
+      x fixed: ihello world<C-[>. で world 以降しか挿入されない。
         これは vi_imap/magic-space によって記録が reset されていた為に起こった物である。
         現在は irepeat は実際に行われたコマンドの列で記録されているし、
         また xmap I, A なども dirty-range による追跡を行っている。
@@ -768,8 +777,29 @@ tech
 
         vi_imap/magic-space は廃止した。今後は magic-space を直接使ってもらう。
 
-      x a123<C-[>.. において1つ目の . ではちゃんと a で実行されているが、
+      x fixed: a123<C-[>.. において1つ目の . ではちゃんと a で実行されているが、
         2つ目の . においては i で実行されている。これは何故か。
+        record-insert で (vi_nmap/repeat で呼び出されたかどうかに拘らず)
+        毎回記録しているのが原因である。→修正した。
+
+      x fixed: nmap w b e ge において単語の定義が異なる。
+        これは imap <C-w> や text object iw aw と同様にすれば良さそうだ。
+        というか、imap <C-w> や text object iw aw についても数字が考慮されていなかった。
+
+      x resolved: imap <C-w> でスペースの削除の仕方が異なる気がする。
+        と思ったら、これは bashrc で設定している関数が問題だった。
+
+      x fixed: {N}% がいつも同じ位置に移動する気がする。
+        →これはどうやら local bolx= nolx= を定義せずに linewise-goto を呼び出したのが行けなかったようだ。
+        類似の修正を text objects ip ap に対しても行った。
+
+      * fixed: `a 'a でオペレータが全く動いていない。
+        goto-local-mark.impl, goto-global-mark.impl を呼び出す前に clear-arg を実行していたのがいけなかった。
+        他にも operator の効かない移動コマンドが存在したりするかもしれないので確認する。
+
+      * fixed: d_ 及び d1_ が charwise になっている。正しくは linewise である。
+
+      ここまでで取り敢えず setup-map で登録されているコマンドについては一通り動作することを確認した。
 
     * vi-mode を bash-3.0 でもテストする。
 

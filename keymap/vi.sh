@@ -116,7 +116,7 @@ function ble/keymap:vi/string#encode-rot13 {
 #------------------------------------------------------------------------------
 # constants
 
-_ble_keymap_vi_REX_WORD=$'[A-Za-z_]+|[!-/:-@[-`{-~]+|[^ \t\nA-Za-z_!-/:-@[-`{-~]+'
+_ble_keymap_vi_REX_WORD=$'[a-zA-Z0-9_]+|[!-/:-@[-`{-~]+|[^ \t\na-zA-Z0-9!-/:-@[-`{-~]+'
 
 #------------------------------------------------------------------------------
 # vi_imap/__default__, vi-command/decompose-meta
@@ -214,6 +214,7 @@ function ble/keymap:vi/imap-repeat/process {
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
 _ble_keymap_vi_imap_white_list=(
   self-insert
+  nop
   magic-space
   delete-backward-{c,f,s,u}word
   copy{,-forward,-backward}-{c,f,s,u}word
@@ -1629,7 +1630,6 @@ function ble/widget/vi-command/goto-mark {
 }
 function ble/widget/vi-command/goto-mark.hook {
   local opts=$1 key=$2
-  ble/keymap:vi/clear-arg
   local ret
   if ble/keymap:vi/k2c "$key" && local c=$ret; then
     if ((65<=c&&c<91)); then # A-Z
@@ -1641,6 +1641,7 @@ function ble/widget/vi-command/goto-mark.hook {
       return
     fi
   fi
+  ble/keymap:vi/clear-arg
   ble/widget/vi-command/bell
   return 1
 }
@@ -1710,13 +1711,14 @@ function ble/keymap:vi/repeat/record-normal {
   fi
 }
 function ble/keymap:vi/repeat/record {
-  ble/keymap:vi/repeat/record-special ||
-    ble/keymap:vi/repeat/record-normal
+  ble/keymap:vi/repeat/record-special && return 0
+  ble/keymap:vi/repeat/record-normal
 }
 ## 関数 ble/keymap:vi/repeat/record-insert
 ##   挿入モードを抜ける時に、挿入モードに入るきっかけになった操作と、
 ##   挿入モードで行われた挿入操作の列を記録します。
 function ble/keymap:vi/repeat/record-insert {
+  ble/keymap:vi/repeat/record-special && return 0
   if [[ $_ble_keymap_vi_repeat_insert ]]; then
     # 挿入モード突入操作が未だ有効ならば、挿入操作の有無に拘らず記録
     _ble_keymap_vi_repeat=("${_ble_keymap_vi_repeat_insert[@]}")
@@ -2085,7 +2087,7 @@ function ble/widget/vi-command/graphical-backward-line {
 # command: ^ + - _ $
 
 function ble/widget/vi-command/relative-first-non-space.impl {
-  local arg=$1 flag=$2 reg=$3
+  local arg=$1 flag=$2 reg=$3 opts=$4
   local ret ind=$_ble_edit_ind
   ble-edit/content/find-logical-bol "$ind" "$arg"; local bolx=$ret
   ble-edit/content/find-non-space "$bolx"; local nolx=$ret
@@ -2094,14 +2096,17 @@ function ble/widget/vi-command/relative-first-non-space.impl {
   ((_ble_keymap_vi_single_command==2&&_ble_keymap_vi_single_command--))
 
   if [[ $flag ]]; then
-    if ((arg==0)); then
+    if [[ :$opts: == *:charwise:* ]]; then
       # command: ^
       ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
       ble/widget/vi-command/exclusive-goto.impl "$nolx" "$flag" "$reg" 1
-    else
+    elif [[ :$opts: == *:multiline:* ]]; then
       # command: + -
       # Note: bolx nolx (required by linewise-goto.impl) is already defined
       ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg" require_multiline
+    else
+      # command: _
+      ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg"
     fi
     return
   fi
@@ -2133,17 +2138,17 @@ function ble/widget/vi-command/relative-first-non-space.impl {
 # nmap ^
 function ble/widget/vi-command/first-non-space {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/relative-first-non-space.impl 0 "$FLAG" "$REG"
+  ble/widget/vi-command/relative-first-non-space.impl 0 "$FLAG" "$REG" charwise
 }
 # nmap +
 function ble/widget/vi-command/forward-first-non-space {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/relative-first-non-space.impl "$ARG" "$FLAG" "$REG"
+  ble/widget/vi-command/relative-first-non-space.impl "$ARG" "$FLAG" "$REG" multiline
 }
 # nmap -
 function ble/widget/vi-command/backward-first-non-space {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/relative-first-non-space.impl $((-ARG)) "$FLAG" "$REG"
+  ble/widget/vi-command/relative-first-non-space.impl $((-ARG)) "$FLAG" "$REG" multiline
 }
 # nmap _
 function ble/widget/vi-command/first-non-space-forward {
@@ -2507,19 +2512,19 @@ function ble/widget/vi-command/backward-word-end.impl {
 
 function ble/widget/vi-command/forward-vword {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/forward-word.impl "$ARG" "$FLAG" "$REG" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
+  ble/widget/vi-command/forward-word.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
 }
 function ble/widget/vi-command/forward-vword-end {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/forward-word-end.impl "$ARG" "$FLAG" "$REG" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
+  ble/widget/vi-command/forward-word-end.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
 }
 function ble/widget/vi-command/backward-vword {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/backward-word.impl "$ARG" "$FLAG" "$REG" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
+  ble/widget/vi-command/backward-word.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
 }
 function ble/widget/vi-command/backward-vword-end {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/backward-word-end.impl "$ARG" "$FLAG" "$REG" $'[a-zA-Z0-9_]+|[^a-zA-Z0-9_ \t\n]+'
+  ble/widget/vi-command/backward-word-end.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
 }
 function ble/widget/vi-command/forward-uword {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
@@ -2966,6 +2971,7 @@ function ble/widget/vi-command/percentage-line {
   local ARG FLAG REG; ble/keymap:vi/get-arg 0
   local ret; ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
   local iline=$(((ARG*nline+99)/100))
+  local bolx= nolx=
   ble/widget/vi-command/linewise-goto.impl 0:$((iline-1)) "$FLAG" "$REG"
 }
 
@@ -3420,6 +3426,7 @@ function ble/keymap:vi/text-object/paragraph.impl {
     _ble_edit_mark="$beg"
     ble/widget/vi-command/exclusive-goto.impl "$end"
   else
+    local bolx= nolx=
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" "$reg"
   fi
 }
