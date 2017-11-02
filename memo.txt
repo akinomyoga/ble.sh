@@ -550,6 +550,11 @@ tech
 
   * change log
 
+  破壊的変更
+  - vi-mode (widget): 名称変更 blw/widget/vi-insert/* → ble/widget/vi_imap/*
+  - vi-mode (bleopt 変数): 名称変更 bleopt keymap_vi_normal_mode_name → keymap_vi_nmap_name
+  - vi-mode (imap): vi-insert/magic-space 廃止。代わりに magic-space を直接用いる。
+
   新機能
   - vi-mode (xmap): `o` `O`
   - vi-mode (nmap): `.` 取り敢えず完成?
@@ -753,6 +758,18 @@ tech
 
     * 各コマンドについて再度動作するかどうかについてテストする必要がある。
       Wiki に各コマンドの説明を書きつつテストして行くのが良いだろう。
+
+      x resolved: ihello world<C-[>. で world 以降しか挿入されない。
+        これは vi_imap/magic-space によって記録が reset されていた為に起こった物である。
+        現在は irepeat は実際に行われたコマンドの列で記録されているし、
+        また xmap I, A なども dirty-range による追跡を行っている。
+        imap での様々な編集が起こっても問題ないようになっているので、
+        単に magic-space を登録してそれを white としても問題ないだろう。
+
+        vi_imap/magic-space は廃止した。今後は magic-space を直接使ってもらう。
+
+      x a123<C-[>.. において1つ目の . ではちゃんと a で実行されているが、
+        2つ目の . においては i で実行されている。これは何故か。
 
     * vi-mode を bash-3.0 でもテストする。
 

@@ -119,9 +119,9 @@ function ble/keymap:vi/string#encode-rot13 {
 _ble_keymap_vi_REX_WORD=$'[A-Za-z_]+|[!-/:-@[-`{-~]+|[^ \t\nA-Za-z_!-/:-@[-`{-~]+'
 
 #------------------------------------------------------------------------------
-# vi-insert/default, vi-command/decompose-meta
+# vi_imap/__default__, vi-command/decompose-meta
 
-function ble/widget/vi-insert/default {
+function ble/widget/vi_imap/__default__ {
   local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
 
   # メタ修飾付きの入力 M-key は ESC + key に分解する
@@ -158,7 +158,7 @@ function ble/widget/vi-command/decompose-meta {
   return 125
 }
 
-function ble/widget/vi_omap/default {
+function ble/widget/vi_omap/__default__ {
   ble/widget/vi-command/decompose-meta || ble/widget/vi-command/bell
   return 0
 }
@@ -214,6 +214,7 @@ function ble/keymap:vi/imap-repeat/process {
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
 _ble_keymap_vi_imap_white_list=(
   self-insert
+  magic-space
   delete-backward-{c,f,s,u}word
   copy{,-forward,-backward}-{c,f,s,u}word
   copy-region{,-or}
@@ -228,12 +229,12 @@ function ble/keymap:vi/imap/is-command-white {
     return 0
   elif [[ $1 == ble/widget/* ]]; then
     local cmd=${1#ble/widget/}; cmd=${cmd%%[$' \t\n']*}
-    [[ $cmd == vi-insert/* || " ${_ble_keymap_vi_imap_white_list[*]} " == *" $cmd "*  ]] && return 0
+    [[ $cmd == vi_imap/* || " ${_ble_keymap_vi_imap_white_list[*]} " == *" $cmd "*  ]] && return 0
   fi
   return 1
 }
 
-function ble/widget/vi-insert/.before_command {
+function ble/widget/vi_imap/__before_command__ {
   if ble/keymap:vi/imap/is-command-white "$WIDGET"; then
     ble/keymap:vi/imap-repeat/push
   else
@@ -263,10 +264,10 @@ _ble_keymap_vi_insert_leave=
 _ble_keymap_vi_single_command=
 _ble_keymap_vi_single_command_overwrite=
 
-## オプション bleopt_keymap_vi_normal_mode_name
+## オプション bleopt_keymap_vi_nmap_name
 ##   ノーマルモードの時に表示する文字列を指定します。
 ##   空文字列を指定したときは何も表示しません。
-: ${bleopt_keymap_vi_normal_mode_name:=$'\e[1m~\e[m'}
+: ${bleopt_keymap_vi_nmap_name:=$'\e[1m~\e[m'}
 
 : ${bleopt_term_vi_imap=}
 : ${bleopt_term_vi_nmap=}
@@ -299,7 +300,7 @@ function ble/keymap:vi/update-mode-name {
     show=x overwrite=$_ble_keymap_vi_single_command_overwrite
   fi
 
-  local name=$bleopt_keymap_vi_normal_mode_name
+  local name=$bleopt_keymap_vi_nmap_name
   if [[ $show ]]; then
     if [[ $overwrite == R ]]; then
       name='REPLACE'
@@ -336,7 +337,7 @@ function ble/keymap:vi/update-mode-name {
   ble-edit/info/default raw "$name"
 }
 
-function ble/widget/vi-insert/normal-mode.impl {
+function ble/widget/vi_imap/normal-mode.impl {
   local opts=$1
 
   # finalize insert mode
@@ -353,28 +354,28 @@ function ble/widget/vi-insert/normal-mode.impl {
   ble-edit/content/bolp || ble/widget/.goto-char $((_ble_edit_ind-1))
   ble-decode/keymap/push vi_nmap
 }
-function ble/widget/vi-insert/normal-mode {
+function ble/widget/vi_imap/normal-mode {
   ble/keymap:vi/imap-repeat/pop
   ble/keymap:vi/imap-repeat/process
   ble/keymap:vi/repeat/record-insert
-  ble/widget/vi-insert/normal-mode.impl InsertLeave
+  ble/widget/vi_imap/normal-mode.impl InsertLeave
   ble/keymap:vi/update-mode-name
   return 0
 }
-function ble/widget/vi-insert/normal-mode-without-insert-leave {
+function ble/widget/vi_imap/normal-mode-without-insert-leave {
   ble/keymap:vi/imap-repeat/pop
   ble/keymap:vi/repeat/record-insert
-  ble/widget/vi-insert/normal-mode.impl
+  ble/widget/vi_imap/normal-mode.impl
   ble/keymap:vi/update-mode-name
   return 0
 }
-function ble/widget/vi-insert/single-command-mode {
+function ble/widget/vi_imap/single-command-mode {
   local single_command=1
   local single_command_overwrite=$_ble_edit_overwrite_mode
   ble-edit/content/eolp && _ble_keymap_vi_single_command=2
 
   ble/keymap:vi/imap-repeat/pop
-  ble/widget/vi-insert/normal-mode.impl
+  ble/widget/vi_imap/normal-mode.impl
   _ble_keymap_vi_single_command=$single_command
   _ble_keymap_vi_single_command_overwrite=$single_command_overwrite
   ble/keymap:vi/update-mode-name
@@ -1549,57 +1550,6 @@ function ble/keymap:vi/mark/end-edit-area {
   ((beg>=0)) && ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
 }
 
-# `< `>
-_ble_keymap_vi_mark_vmode=
-function ble/keymap:vi/mark/set-previous-visual-area {
-  local beg end
-  local mark_type=${_ble_edit_mark_active%+}
-  if [[ $mark_type == block ]]; then
-    local sub_ranges sub_x1 sub_x2
-    ble/keymap:vi/extract-block
-    local nrange=${#sub_ranges[*]}
-    ((nrange)) || return
-    local beg=${sub_ranges[0]%%:*}
-    local sub2_slice1=${sub_ranges[nrange-1]#*:}
-    local end=${sub2_slice1%%:*}
-    ((beg<end)) && ! ble-edit/content/bolp "$end" && ((end--))
-  else
-    local beg=$_ble_edit_mark end=$_ble_edit_ind
-    ((beg<=end)) || local beg=$end end=$beg
-    if [[ $mark_type == line ]]; then
-      ble-edit/content/find-logical-bol "$beg"; beg=$ret
-      ble-edit/content/find-logical-eol "$end"; end=$ret
-      ble-edit/content/bolp "$end" || ((end--))
-    fi
-  fi
-  _ble_keymap_vi_mark_vmode=$_ble_edit_mark_active
-  ble/keymap:vi/mark/set-local-mark 60 "$beg" # `<
-  ble/keymap:vi/mark/set-local-mark 62 "$end" # `>
-}
-# nmap/xmap gv
-function ble/widget/vi-command/previous-visual-area {
-  local mark=$_ble_keymap_vi_mark_vmode
-  local ret beg= end=
-  ble/keymap:vi/mark/get-local-mark 60 && beg=$ret # `<
-  ble/keymap:vi/mark/get-local-mark 62 && end=$ret # `>
-  [[ $beg && $end ]] || return 1
-
-  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
-    ble/keymap:vi/clear-arg
-    ble/keymap:vi/mark/set-previous-visual-area
-    ble/widget/.goto-char "$end"
-    _ble_edit_mark=$beg
-    _ble_edit_mark_active=$mark
-    ble/keymap:vi/update-mode-name
-  else
-    ble/keymap:vi/clear-arg
-    ble/widget/vi-command/visual-mode.impl "$mark"
-    ble/widget/.goto-char "$end"
-    _ble_edit_mark=$beg
-  fi
-  return 0
-}
-
 function ble/widget/vi-command/set-mark {
   _ble_decode_key__hook="ble/widget/vi-command/set-mark.hook"
   return 148
@@ -1715,7 +1665,7 @@ function ble/widget/vi-command/goto-mark.hook {
 ##     呼び出された編集コマンドを保持します。
 ##   ${_ble_keymap_vi_repeat[@]:3:3} = ARG FLAG REG
 ##     呼び出し時の修飾状態を保持します。
-##   ${_ble_keymap_vi_repeat[6]} = _ble_keymap_vi_xmap_prev
+##   ${_ble_keymap_vi_repeat[6]} = _ble_keymap_vi_xmap_prev_edit
 ##     vi_xmap のとき範囲の大きさと種類を記録します。
 ##   ${_ble_keymap_vi_repeat[@]:10}
 ##     各 WIDGET が自由に使える領域
@@ -1750,7 +1700,7 @@ function ble/keymap:vi/repeat/record-special {
 function ble/keymap:vi/repeat/record-normal {
   local -a repeat; repeat=("$KEYMAP" "${KEYS[*]}" "$WIDGET" "$ARG" "$FLAG" "$REG" '')
   if [[ $KEYMAP == vi_xmap ]]; then
-    repeat[6]=$_ble_keymap_vi_xmap_prev
+    repeat[6]=$_ble_keymap_vi_xmap_prev_edit
   fi
   if [[ $_ble_decode_key__kmap == vi_imap ]]; then
     _ble_keymap_vi_repeat_insert=("${repeat[@]}")
@@ -1795,11 +1745,11 @@ function ble/keymap:vi/repeat/invoke {
     if [[ $KEYMAP == vi_omap ]]; then
       ble-decode/keymap/push vi_omap
     elif [[ $KEYMAP == vi_xmap ]]; then
-      local _ble_keymap_vi_xmap_prev=${_ble_keymap_vi_repeat[6]}
+      local _ble_keymap_vi_xmap_prev_edit=${_ble_keymap_vi_repeat[6]}
       ble/widget/vi_xmap/.restore-visual-state
       ble-decode/keymap/push vi_xmap
       # Note: vim では . によって領域の大きさは更新されない。
-      #   従ってここでは敢えて _ble_keymap_vi_xmap_prev を unset しない
+      #   従ってここでは敢えて _ble_keymap_vi_xmap_prev_edit を unset しない
     fi
 
     # ※本体の _ble_keymap_vi_repeat は成功した時にのみ repeat/record で書き換える
@@ -1822,7 +1772,7 @@ function ble/keymap:vi/repeat/invoke {
       _ble_keymap_vi_irepeat=("${_ble_keymap_vi_repeat_irepeat[@]}")
 
       ble/array#push _ble_keymap_vi_irepeat '0:ble/widget/dummy' # Note: normal-mode が自分自身を pop しようとするので。
-      ble/widget/vi-insert/normal-mode
+      ble/widget/vi_imap/normal-mode
     fi
     unset _ble_keymap_vi_single_command{,_overwrite}
   else
@@ -1899,6 +1849,7 @@ function ble/widget/vi-command/backward-char {
   ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG"
 }
 
+# nmap ~
 function ble/widget/vi_nmap/forward-char-toggle-case {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local line=${_ble_edit_str:_ble_edit_ind:ARG}
@@ -3533,7 +3484,7 @@ function ble/widget/vi-command/text-object {
 #
 # map: :cmd
 
-function ble/keymap:vi/commandline/.before_command {
+function ble/keymap:vi/commandline/__before_command__ {
   if [[ ! $_ble_edit_str ]] && ((KEYS[0]==127||KEYS[0]==(104|ble_decode_Ctrl))); then # DEL or C-h
     ble/widget/vi_cmap/cancel
     WIDGET=
@@ -3543,7 +3494,7 @@ function ble/keymap:vi/commandline/.before_command {
 function ble/widget/vi-command/commandline {
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
   _ble_edit_PS1=:
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/.before_command
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
   return 148
 }
 function ble/widget/vi-command/commandline.hook {
@@ -3793,13 +3744,13 @@ function ble/widget/vi-command/search.impl {
 function ble/widget/vi-command/search-forward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
   _ble_edit_PS1='/'
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/.before_command
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
   return 148
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/.before_command
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
   return 148
 }
 function ble/widget/vi-command/search-repeat {
@@ -3926,7 +3877,7 @@ function ble-decode-keymap:vi_omap/define {
   local ble_bind_keymap=vi_omap
   ble/keymap:vi/setup-map
 
-  ble-bind -f __default__ vi_omap/default
+  ble-bind -f __default__ vi_omap/__default__
 
   ble-bind -f a   vi-command/text-object
   ble-bind -f i   vi-command/text-object
@@ -4391,9 +4342,9 @@ function ble-highlight-layer:region/mark:block+/get-selection {
 }
 
 
-# 前回の選択範囲の記録
+# 前回の選択サイズ
 
-_ble_keymap_vi_xmap_prev=char:1:1
+_ble_keymap_vi_xmap_prev_edit=char:1:1
 function ble/widget/vi_xmap/.save-visual-state {
   local nline nchar mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == block ]]; then
@@ -4438,11 +4389,11 @@ function ble/widget/vi_xmap/.save-visual-state {
     fi
   fi
 
-  _ble_keymap_vi_xmap_prev=$_ble_edit_mark_active:$nchar:$nline
+  _ble_keymap_vi_xmap_prev_edit=$_ble_edit_mark_active:$nchar:$nline
 }
 function ble/widget/vi_xmap/.restore-visual-state {
   local arg=$1; ((arg>0)) || arg=1
-  local prev; ble/string#split prev : "$_ble_keymap_vi_xmap_prev"
+  local prev; ble/string#split prev : "$_ble_keymap_vi_xmap_prev_edit"
   _ble_edit_mark_active=${prev[0]:-char}
   local nchar=${prev[1]:-1}
   local nline=${prev[2]:-1}
@@ -4488,6 +4439,58 @@ function ble/widget/vi_xmap/.restore-visual-state {
   ble/widget/.goto-char "$index"
 }
 
+# 前回の選択範囲
+
+# mark `< `>
+_ble_keymap_vi_xmap_prev_visual=
+function ble/keymap:vi/xmap/set-previous-visual-area {
+  local beg end
+  local mark_type=${_ble_edit_mark_active%+}
+  if [[ $mark_type == block ]]; then
+    local sub_ranges sub_x1 sub_x2
+    ble/keymap:vi/extract-block
+    local nrange=${#sub_ranges[*]}
+    ((nrange)) || return
+    local beg=${sub_ranges[0]%%:*}
+    local sub2_slice1=${sub_ranges[nrange-1]#*:}
+    local end=${sub2_slice1%%:*}
+    ((beg<end)) && ! ble-edit/content/bolp "$end" && ((end--))
+  else
+    local beg=$_ble_edit_mark end=$_ble_edit_ind
+    ((beg<=end)) || local beg=$end end=$beg
+    if [[ $mark_type == line ]]; then
+      ble-edit/content/find-logical-bol "$beg"; beg=$ret
+      ble-edit/content/find-logical-eol "$end"; end=$ret
+      ble-edit/content/bolp "$end" || ((end--))
+    fi
+  fi
+  _ble_keymap_vi_xmap_prev_visual=$_ble_edit_mark_active
+  ble/keymap:vi/mark/set-local-mark 60 "$beg" # `<
+  ble/keymap:vi/mark/set-local-mark 62 "$end" # `>
+}
+# nmap/xmap gv
+function ble/widget/vi-command/previous-visual-area {
+  local mark=$_ble_keymap_vi_xmap_prev_visual
+  local ret beg= end=
+  ble/keymap:vi/mark/get-local-mark 60 && beg=$ret # `<
+  ble/keymap:vi/mark/get-local-mark 62 && end=$ret # `>
+  [[ $beg && $end ]] || return 1
+
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    ble/keymap:vi/clear-arg
+    ble/keymap:vi/xmap/set-previous-visual-area
+    ble/widget/.goto-char "$end"
+    _ble_edit_mark=$beg
+    _ble_edit_mark_active=$mark
+    ble/keymap:vi/update-mode-name
+  else
+    ble/keymap:vi/clear-arg
+    ble/widget/vi-command/visual-mode.impl "$mark"
+    ble/widget/.goto-char "$end"
+    _ble_edit_mark=$beg
+  fi
+  return 0
+}
 
 # モード遷移
 
@@ -4521,7 +4524,7 @@ function ble/widget/vi_nmap/blockwise-visual-mode {
 }
 
 function ble/widget/vi_xmap/exit {
-  ble/keymap:vi/mark/set-previous-visual-area
+  ble/keymap:vi/xmap/set-previous-visual-area
   _ble_edit_mark_active=
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
@@ -5141,21 +5144,13 @@ function ble-decode-keymap:vi_xmap/define {
 }
 
 #------------------------------------------------------------------------------
-# vi-insert
+# vi_imap
 
-function ble/widget/vi-insert/.attach {
+function ble/widget/vi_imap/__attach__ {
   ble/keymap:vi/update-mode-name
   return 0
 }
-function ble/widget/vi-insert/magic-space {
-  if [[ $_ble_keymap_vi_irepeat_count ]]; then
-    ble/widget/self-insert
-  else
-    ble/keymap:vi/imap-repeat/reset
-    ble/widget/magic-space
-  fi
-}
-function ble/widget/vi-insert/accept-single-line-or {
+function ble/widget/vi_imap/accept-single-line-or {
   if ble/widget/accept-single-line-or/accepts; then
     ble/keymap:vi/imap-repeat/reset
     ble/widget/accept-line
@@ -5163,7 +5158,7 @@ function ble/widget/vi-insert/accept-single-line-or {
     ble/widget/"$@"
   fi
 }
-function ble/widget/vi-insert/delete-region-or {
+function ble/widget/vi_imap/delete-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/keymap:vi/imap-repeat/reset
     ble/widget/delete-region
@@ -5171,7 +5166,7 @@ function ble/widget/vi-insert/delete-region-or {
     ble/widget/"$@"
   fi
 }
-function ble/widget/vi-insert/overwrite-mode {
+function ble/widget/vi_imap/overwrite-mode {
   if [[ $_ble_edit_overwrite_mode ]]; then
     _ble_edit_overwrite_mode=
   else
@@ -5182,7 +5177,7 @@ function ble/widget/vi-insert/overwrite-mode {
 }
 
 # imap C-w
-function ble/widget/vi-insert/delete-backward-word {
+function ble/widget/vi_imap/delete-backward-word {
   local space=$' \t' nl=$'\n'
   local rex="($_ble_keymap_vi_REX_WORD)[$space]*\$|[$space]+\$|$nl\$"
   if [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
@@ -5196,34 +5191,34 @@ function ble/widget/vi-insert/delete-backward-word {
 }
 
 # imap C-q, C-v
-function ble/widget/vi-insert/quoted-insert.hook {
+function ble/widget/vi_imap/quoted-insert.hook {
   local -a KEYS=($1);
   local WIDGET=ble/widget/self-insert
   ble/keymap:vi/imap-repeat/push
   builtin eval -- "$WIDGET"
 }
-function ble/widget/vi-insert/quoted-insert {
+function ble/widget/vi_imap/quoted-insert {
   ble/keymap:vi/imap-repeat/pop
   _ble_edit_mark_active=
-  _ble_decode_char__hook=ble/widget/vi-insert/quoted-insert.hook
+  _ble_decode_char__hook=ble/widget/vi_imap/quoted-insert.hook
 }
 
 #------------------------------------------------------------------------------
 # imap: C-k (digraph)
 
-function ble/widget/vi-insert/insert-digraph.hook {
+function ble/widget/vi_imap/insert-digraph.hook {
   local -a KEYS; KEYS=("$1")
   ble/widget/self-insert
 }
 
-function ble/widget/vi-insert/insert-digraph {
+function ble/widget/vi_imap/insert-digraph {
   ble-decode/keymap/push vi_digraph
-  _ble_keymap_vi_digraph__hook=ble/widget/vi-insert/insert-digraph.hook
+  _ble_keymap_vi_digraph__hook=ble/widget/vi_imap/insert-digraph.hook
   return 0
 }
 
 # imap: CR, LF (newline)
-function ble/widget/vi-insert/newline {
+function ble/widget/vi_imap/newline {
   local ret
   ble-edit/content/find-logical-bol; local bol=$ret
   ble-edit/content/find-non-space "$bol"; local nol=$ret
@@ -5233,7 +5228,7 @@ function ble/widget/vi-insert/newline {
 }
 
 # imap: C-h, DEL
-function ble/widget/vi-insert/delete-backward-indent-or {
+function ble/widget/vi_imap/delete-backward-indent-or {
   local rex=$'(^|\n)([ \t]+)$'
   if [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
     local rematch2=${BASH_REMATCH[2]} # Note: for bash-3.1 ${#arr[n]} bug
@@ -5249,36 +5244,36 @@ function ble/widget/vi-insert/delete-backward-indent-or {
 function ble-decode-keymap:vi_imap/define {
   local ble_bind_keymap=vi_imap
 
-  ble-bind -f __attach__         vi-insert/.attach
+  ble-bind -f __attach__         vi_imap/__attach__
   ble-bind -f __defchar__        self-insert
-  ble-bind -f __default__        vi-insert/default
-  ble-bind -f __before_command__ vi-insert/.before_command
+  ble-bind -f __default__        vi_imap/__default__
+  ble-bind -f __before_command__ vi_imap/__before_command__
 
-  ble-bind -f 'ESC' vi-insert/normal-mode
-  ble-bind -f 'C-[' vi-insert/normal-mode
-  ble-bind -f 'C-c' vi-insert/normal-mode-without-insert-leave
+  ble-bind -f 'ESC' vi_imap/normal-mode
+  ble-bind -f 'C-[' vi_imap/normal-mode
+  ble-bind -f 'C-c' vi_imap/normal-mode-without-insert-leave
 
-  ble-bind -f insert vi-insert/overwrite-mode
+  ble-bind -f insert vi_imap/overwrite-mode
 
-  ble-bind -f 'C-o' 'vi-insert/single-command-mode'
+  ble-bind -f 'C-o' 'vi_imap/single-command-mode'
 
   # settings overwritten by bash key bindings
 
-  ble-bind -f 'C-w' vi-insert/delete-backward-word
-  # ble-bind -f 'C-l' vi-insert/normal-mode
-  # ble-bind -f 'C-k' vi-insert/insert-digraph
+  ble-bind -f 'C-w' vi_imap/delete-backward-word
+  # ble-bind -f 'C-l' vi_imap/normal-mode
+  # ble-bind -f 'C-k' vi_imap/insert-digraph
 
   #----------------------------------------------------------------------------
   # bash
 
   # ins
-  ble-bind -f 'C-q'   vi-insert/quoted-insert
-  ble-bind -f 'C-v'   vi-insert/quoted-insert
+  ble-bind -f 'C-q'   vi_imap/quoted-insert
+  ble-bind -f 'C-v'   vi_imap/quoted-insert
   ble-bind -f 'C-RET' newline
 
   # shell
-  ble-bind -f 'C-m' 'vi-insert/accept-single-line-or vi-insert/newline'
-  ble-bind -f 'RET' 'vi-insert/accept-single-line-or vi-insert/newline'
+  ble-bind -f 'C-m' 'vi_imap/accept-single-line-or vi_imap/newline'
+  ble-bind -f 'RET' 'vi_imap/accept-single-line-or vi_imap/newline'
   ble-bind -f 'C-i'  complete
   ble-bind -f 'TAB'  complete
 
@@ -5287,7 +5282,7 @@ function ble-decode-keymap:vi_imap/define {
   ble-bind -f 'C-s'     history-isearch-forward
   ble-bind -f 'C-prior' history-beginning
   ble-bind -f 'C-next'  history-end
-  ble-bind -f 'SP'      vi-insert/magic-space
+  ble-bind -f 'SP'      magic-space
 
   ble-bind -f 'C-l' clear-screen
   ble-bind -f 'C-k' kill-forward-line
@@ -5334,8 +5329,8 @@ function ble-decode-keymap:vi_imap/define {
   ble-bind -f 'S-left'   '@marked backward-char'
   ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
   ble-bind -f 'delete'   'delete-region-or forward-char'
-  ble-bind -f 'C-h'      'vi-insert/delete-region-or vi-insert/delete-backward-indent-or delete-backward-char'
-  ble-bind -f 'DEL'      'vi-insert/delete-region-or vi-insert/delete-backward-indent-or delete-backward-char'
+  ble-bind -f 'C-h'      'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
+  ble-bind -f 'DEL'      'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
   ble-bind -f 'C-t'      'transpose-chars'
 
   # wordwise operations
@@ -5456,7 +5451,7 @@ function ble/widget/vi_cmap/cancel {
   ble/widget/vi_cmap/accept
 }
 
-function ble/widget/vi_cmap/.before_command {
+function ble/widget/vi_cmap/__before_command__ {
   if [[ $_ble_keymap_vi_cmap_before_command ]]; then
     eval "$_ble_keymap_vi_cmap_before_command"
   fi
@@ -5465,7 +5460,7 @@ function ble/widget/vi_cmap/.before_command {
 function ble-decode-keymap:vi_cmap/define {
   local ble_bind_keymap=vi_cmap
 
-  ble-bind -f __before_command__ vi_cmap/.before_command
+  ble-bind -f __before_command__ vi_cmap/__before_command__
 
   ble-bind -f 'ESC' vi_cmap/cancel
   ble-bind -f 'C-[' vi_cmap/cancel
