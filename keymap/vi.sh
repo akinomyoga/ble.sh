@@ -342,7 +342,7 @@ function ble/widget/vi-insert/normal-mode.impl {
   # finalize insert mode
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
   ble/keymap:vi/mark/end-edit-area
-  [[ $opts == *:InsertLeave:* ]] && eval "$_ble_keymap_vi_insert_leave"
+  [[ :$opts: == *:InsertLeave:* ]] && eval "$_ble_keymap_vi_insert_leave"
 
   # setup normal mode
   _ble_edit_mark_active=
@@ -4914,6 +4914,9 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   else
     ble-edit/content/find-logical-bol; index=$ret
   fi
+
+  # ノーマルモードに戻る時に一文字カーソルが戻るので一文字進めておく。
+  ble-edit/content/eolp || ((index++))
   ble/widget/.goto-char "$index"
   return 0
 }
