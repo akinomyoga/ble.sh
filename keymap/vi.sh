@@ -1550,6 +1550,7 @@ function ble/keymap:vi/mark/end-edit-area {
 }
 
 # `< `>
+_ble_keymap_vi_mark_vmode=
 function ble/keymap:vi/mark/set-previous-visual-area {
   local beg end
   local mark_type=${_ble_edit_mark_active%+}
@@ -1571,10 +1572,33 @@ function ble/keymap:vi/mark/set-previous-visual-area {
       ble-edit/content/bolp "$end" || ((end--))
     fi
   fi
+  _ble_keymap_vi_mark_vmode=$_ble_edit_mark_active
   ble/keymap:vi/mark/set-local-mark 60 "$beg" # `<
   ble/keymap:vi/mark/set-local-mark 62 "$end" # `>
 }
+# nmap/xmap gv
+function ble/widget/vi-command/previous-visual-area {
+  local mark=$_ble_keymap_vi_mark_vmode
+  local ret beg= end=
+  ble/keymap:vi/mark/get-local-mark 60 && beg=$ret # `<
+  ble/keymap:vi/mark/get-local-mark 62 && end=$ret # `>
+  [[ $beg && $end ]] || return 1
 
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    ble/keymap:vi/clear-arg
+    ble/keymap:vi/mark/set-previous-visual-area
+    ble/widget/.goto-char "$end"
+    _ble_edit_mark=$beg
+    _ble_edit_mark_active=$mark
+    ble/keymap:vi/update-mode-name
+  else
+    ble/keymap:vi/clear-arg
+    ble/widget/vi-command/visual-mode.impl "$mark"
+    ble/widget/.goto-char "$end"
+    _ble_edit_mark=$beg
+  fi
+  return 0
+}
 
 function ble/widget/vi-command/set-mark {
   _ble_decode_key__hook="ble/widget/vi-command/set-mark.hook"
@@ -4014,6 +4038,7 @@ function ble-decode-keymap:vi_nmap/define {
   ble-bind -f V      vi_nmap/linewise-visual-mode
   ble-bind -f C-v    vi_nmap/blockwise-visual-mode
   ble-bind -f C-q    vi_nmap/blockwise-visual-mode
+  ble-bind -f 'g v'  vi-command/previous-visual-area
 
   ble-bind -f .      vi_nmap/repeat
 
@@ -5076,10 +5101,11 @@ function ble-decode-keymap:vi_xmap/define {
 
   ble-bind -f 'C-\ C-n' vi_xmap/cancel
   ble-bind -f 'C-\ C-g' vi_xmap/cancel
-  ble-bind -f v   vi_xmap/switch-to-charwise
-  ble-bind -f V   vi_xmap/switch-to-linewise
-  ble-bind -f C-v vi_xmap/switch-to-blockwise
-  ble-bind -f C-q vi_xmap/switch-to-blockwise
+  ble-bind -f v      vi_xmap/switch-to-charwise
+  ble-bind -f V      vi_xmap/switch-to-linewise
+  ble-bind -f C-v    vi_xmap/switch-to-blockwise
+  ble-bind -f C-q    vi_xmap/switch-to-blockwise
+  ble-bind -f 'g v'  vi-command/previous-visual-area
 
   ble-bind -f o vi_xmap/exchange-points
   ble-bind -f O vi_xmap/exchange-boundaries
