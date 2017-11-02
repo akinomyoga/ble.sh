@@ -830,10 +830,16 @@ function ble/widget/vi-command/beginning-of-line {
 ## 関数 ble/keymap:vi/call-operator-blockwise op beg end arg reg
 function ble/keymap:vi/call-operator {
   ble/keymap:vi/mark/start-edit-area
+  local _ble_keymap_vi_mark_suppress_edit=1
   ble/keymap:vi/operator:"$@"; local ext=$?
+  unset _ble_keymap_vi_mark_suppress_edit
   ble/keymap:vi/mark/end-edit-area
   if ((ext==0)); then
-    ble/util/isfunction ble/keymap:vi/operator:"$1"/norecord || ble/keymap:vi/repeat/record
+    if ble/util/isfunction ble/keymap:vi/operator:"$1".record; then
+      ble/keymap:vi/operator:"$1".record
+    else
+      ble/keymap:vi/repeat/record
+    fi
   fi
   return "$ext"
 }
@@ -939,7 +945,7 @@ function ble/keymap:vi/operator:c {
   fi
   return 0
 }
-function ble/keymap:vi/operator:y/norecord { :; }
+function ble/keymap:vi/operator:y.record { :; }
 function ble/keymap:vi/operator:y {
   local beg=$1 end=$2 type=$3 arg=$4 reg=$5
   if [[ $type == line ]]; then

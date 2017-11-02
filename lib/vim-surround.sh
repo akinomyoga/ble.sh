@@ -450,6 +450,7 @@ function ble/keymap:vi/operator:ysurround.repeat {
 ##   @var[in] surround_trim
 ##   @var[in] surround_type
 ##     ds cs cS の何れかの値
+function ble/keymap:vi/operator:surround.record { :; }
 function ble/keymap:vi/operator:surround {
   local beg=$1 end=$2 context=$3
   local content=$surround_content ins=$surround_ins trims=$surround_trim

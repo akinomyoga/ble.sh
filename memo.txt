@@ -565,10 +565,6 @@ tech
   - vi-mode (imap `<C-w>`): vim の単語区切り (iw) による削除に変更
   - vi-mode (nmap `[rRfFtT]x`): `<C-[>` でキャンセルするように変更
 
-2017-11-02
-
-  * 所で挿入モードに a で入った時と i で入った時で <C-o> 後のカーソル位置が異なる?
-    と思ったけれど改めて試してみるとそうでもなかった。
 
 2017-11-01
 
@@ -609,89 +605,6 @@ tech
 2017-10-17
 
   * vi-mode: support :reg
-
-  * vi-mode: ble/widget 実装の注意点
-
-    vi-mode 用の ble/widget を実装する上での注意点についてまとめる必要がある。
-
-    - 先ず __before_command__ の内部で set-previous-edit が発生してはならない。
-      set-previous-edit 内部では . で繰り返すために、その編集が起こった原因となる
-      コマンドを WIDGET によって特定する。__before_command__ は
-      WIDGET 経由で呼び出されないので、誤った復元をしてしまうことになる。
-
-    - WIDGET を widget 本体の中で変更してはならない。
-      これは同様に . で繰り返すための情報を破壊してしまうことになるからである。
-      __before_command__ 内部でコマンドを変更する目的で書き換えることは可能。
-
-    - operator の定義方法について
-
-      もし . による繰り返しに登録しないときには
-      空の関数 ble/keymap:vi/operator:foo/norepeat を定義する。
-
-
-    - `[`] が正しく設定されるために
-
-      編集を伴うコマンドについては、編集後に編集範囲を設定するために
-      ble/keymap:vi/mark/set-previous-edit-area 編集開始位置 編集終了位置 を呼び出す。
-
-      複雑な編集について編集範囲が容易に決定できない場合には、
-      ble/keymap:vi/mark/set-previous-edit-area を自分で呼び出す代わりに、
-      編集が行われるコード全体を ble/keymap:vi/mark/start-edit-area と
-      ble/keymap:vi/mark/end-edit-area で囲めば良い。
-
-      | ble/keymap:vi/mark/start-edit-area
-      | local _ble_keymap_vi_mark_suppress_edit=1
-      |
-      | ... # 編集操作
-      |
-      | unset _ble_keymap_vi_mark_suppress_edit
-      | ble/keymap:vi/mark/end-edit-area
-
-      mark/{start,end}-edit-area の内側で更に別の編集コマンド (内部で `[`] が設定される)
-      を呼び出す場合には、更に _ble_keymap_vi_mark_suppress_edit を設定する必要がある。
-
-      | ble/keymap:vi/mark/start-edit-area
-      | local _ble_keymap_vi_mark_suppress_edit=1
-      |
-      | ... # 編集操作 (`[`] の設定を行う widget の呼び出しを含みうる)
-      |
-      | unset _ble_keymap_vi_mark_suppress_edit
-      | ble/keymap:vi/mark/end-edit-area
-
-      オペレータについては外側で自動的に編集範囲が検知されるので、
-      自身で {set-previous,end}-edit-area を呼び出す必要はない。
-      但し、編集は起こらないが範囲を設定したい場合 (operator y など) には、
-      commit-edit-area 関数を明示的に呼び出す。
-
-    - . による繰り返し操作が正しく設定されるようにするために
-
-      基本的には繰り返しの対象になる widget で ble/keymap:vi/repeat/record を呼び出せば良い。
-      繰り返しの対象となるコマンドは2種類ある。
-      一つは編集を伴うコマンドで、もう一つは挿入モードに入るコマンドである。
-
-      1 ble/keymap:vi/mark/{set-previous-edit-area,end-edit-area} を呼び出すときは、
-        そこで1単位の編集が完了するということを表すので、
-        大抵、対応して ble/keymap:vi/repeat/record も呼び出すと考えると良い。
-
-      2 ble/widget/vi_nmap/.insert-mode を呼び出した後も、
-        場合に応じて、ble/keymap:vi/repeat/record または ble/keymap:vi/repeat/clear-insert を呼び出す。
-        repeat/record はその挿入モード突入に至るコマンドを . で再現したい時に使う。
-        repeat/clear-insert は、挿入モードの途中で挿入操作をクリアする時などに使う。
-        repeat/clear-insert は実例として imap の <C-o>, 移動操作, コマンド実行などで使われている。
-        - 但し operator の中では、外側で自動的に repeat/record が呼び出されるので、これらは自分で呼び出さない。
-          例えば operator:c では .insert-mode を呼び出すが、自身で repeat/record を呼び出すことはしていない。
-          operator による非同期読み取りによる継続の場合は、mark/set-previous-edit の時と同様に自分で呼び出す必要がある。
-        - repeat/record はその時の keymap を参照するので、vi_nmap/.insert-mode よりも後で呼び出す必要がある。
-
-        また、編集を行って更に挿入モードに入るコマンドの場合であっても、
-        1回だけ repeat/record を呼び出せば問題ない。
-        その時でもやはり .insert-mode よりも後で repeat/record を呼び出すようにすること。
-
-      KEYMAP, KEYS, WIDGET, ARG, FLAG, REG の値は記録され
-      繰り返しの対象となる widget を呼び出すときに再現される。
-      繰り返しの対象となる widget が、それ以外の "状態" に依存して振る舞いが変化し、
-      その時選択された振る舞いを繰り返しの際にも再現したい場合には、
-      それを明示的に記録・再生する必要がある。
 
 2017-10-12
 
@@ -2394,7 +2307,97 @@ tech
 
 2017-11-02
 
-  * vi-mode: xmap I A が動かなくなっている…。
+  * vi-mode (operator): ble/keymap:vi/call-operator [#D0560]
+
+    オペレータの中で更に編集コマンドを実装する場合に備えて
+    _ble_keymap_vi_mark_suppress_edit を設定してオペレータを呼び出す。
+
+  * vi-mode: ble/widget 実装の注意点 [#D0559]
+
+    これらは Wiki に記述することにした。
+
+    | vi-mode 用の ble/widget を実装する上での注意点についてまとめる必要がある。
+    |
+    | - 先ず __before_command__ の内部で set-previous-edit が発生してはならない。
+    |   set-previous-edit 内部では . で繰り返すために、その編集が起こった原因となる
+    |   コマンドを WIDGET によって特定する。__before_command__ は
+    |   WIDGET 経由で呼び出されないので、誤った復元をしてしまうことになる。
+    |
+    | - WIDGET を widget 本体の中で変更してはならない。
+    |   これは同様に . で繰り返すための情報を破壊してしまうことになるからである。
+    |   __before_command__ 内部でコマンドを変更する目的で書き換えることは可能。
+    |
+    | - operator の定義方法について
+    |
+    |   もし . による繰り返しに登録しないときには
+    |   空の関数 ble/keymap:vi/operator:foo/norepeat を定義する。
+    |
+    |
+    | - `[`] が正しく設定されるために
+    |
+    |   編集を伴うコマンドについては、編集後に編集範囲を設定するために
+    |   ble/keymap:vi/mark/set-previous-edit-area 編集開始位置 編集終了位置 を呼び出す。
+    |
+    |   複雑な編集について編集範囲が容易に決定できない場合には、
+    |   ble/keymap:vi/mark/set-previous-edit-area を自分で呼び出す代わりに、
+    |   編集が行われるコード全体を ble/keymap:vi/mark/start-edit-area と
+    |   ble/keymap:vi/mark/end-edit-area で囲めば良い。
+    |
+    |   | ble/keymap:vi/mark/start-edit-area
+    |   | local _ble_keymap_vi_mark_suppress_edit=1
+    |   |
+    |   | ... # 編集操作
+    |   |
+    |   | unset _ble_keymap_vi_mark_suppress_edit
+    |   | ble/keymap:vi/mark/end-edit-area
+    |
+    |   mark/{start,end}-edit-area の内側で更に別の編集コマンド (内部で `[`] が設定される)
+    |   を呼び出す場合には、更に _ble_keymap_vi_mark_suppress_edit を設定する必要がある。
+    |
+    |   | ble/keymap:vi/mark/start-edit-area
+    |   | local _ble_keymap_vi_mark_suppress_edit=1
+    |   |
+    |   | ... # 編集操作 (`[`] の設定を行う widget の呼び出しを含みうる)
+    |   |
+    |   | unset _ble_keymap_vi_mark_suppress_edit
+    |   | ble/keymap:vi/mark/end-edit-area
+    |
+    |   オペレータについては外側で自動的に編集範囲が検知されるので、
+    |   自身で {set-previous,end}-edit-area を呼び出す必要はない。
+    |   但し、編集は起こらないが範囲を設定したい場合 (operator y など) には、
+    |   commit-edit-area 関数を明示的に呼び出す。
+    |
+    | - . による繰り返し操作が正しく設定されるようにするために
+    |
+    |   基本的には繰り返しの対象になる widget で ble/keymap:vi/repeat/record を呼び出せば良い。
+    |   繰り返しの対象となるコマンドは2種類ある。
+    |   一つは編集を伴うコマンドで、もう一つは挿入モードに入るコマンドである。
+    |
+    |   1 ble/keymap:vi/mark/{set-previous-edit-area,end-edit-area} を呼び出すときは、
+    |     そこで1単位の編集が完了するということを表すので、
+    |     大抵、対応して ble/keymap:vi/repeat/record も呼び出すと考えると良い。
+    |
+    |   2 ble/widget/vi_nmap/.insert-mode を呼び出した後も、
+    |     場合に応じて、ble/keymap:vi/repeat/record または ble/keymap:vi/repeat/clear-insert を呼び出す。
+    |     repeat/record はその挿入モード突入に至るコマンドを . で再現したい時に使う。
+    |     repeat/clear-insert は、挿入モードの途中で挿入操作をクリアする時などに使う。
+    |     repeat/clear-insert は実例として imap の <C-o>, 移動操作, コマンド実行などで使われている。
+    |     - 但し operator の中では、外側で自動的に repeat/record が呼び出されるので、これらは自分で呼び出さない。
+    |       例えば operator:c では .insert-mode を呼び出すが、自身で repeat/record を呼び出すことはしていない。
+    |       operator による非同期読み取りによる継続の場合は、mark/set-previous-edit の時と同様に自分で呼び出す必要がある。
+    |     - repeat/record はその時の keymap を参照するので、vi_nmap/.insert-mode よりも後で呼び出す必要がある。
+    |
+    |     また、編集を行って更に挿入モードに入るコマンドの場合であっても、
+    |     1回だけ repeat/record を呼び出せば問題ない。
+    |     その時でもやはり .insert-mode よりも後で repeat/record を呼び出すようにすること。
+    |
+    |   KEYMAP, KEYS, WIDGET, ARG, FLAG, REG の値は記録され
+    |   繰り返しの対象となる widget を呼び出すときに再現される。
+    |   繰り返しの対象となる widget が、それ以外の "状態" に依存して振る舞いが変化し、
+    |   その時選択された振る舞いを繰り返しの際にも再現したい場合には、
+    |   それを明示的に記録・再生する必要がある。
+
+  * vi-mode: xmap I A が動かなくなっている…。 [#D0558]
 
     これは修正した。InsertLeave オプションが指定されているかどうかの判定が誤っていた。直した。
 
@@ -2426,7 +2429,10 @@ tech
 
     実のところ c の実装が最も自然に思われる。
 
-  * vi-mode: . 実装 (6) 取り敢えず完了
+  * 所で挿入モードに a で入った時と i で入った時で <C-o> 後のカーソル位置が異なる? [#D0557]
+    と思ったけれど改めて試してみるとそうでもなかった。
+
+  * vi-mode: . 実装 (6) 取り敢えず完了 [#D0556]
 
     #D0542 各 widget の戻り値の確定
     #D0549 WIDGET/KEYMAP/ARG/FLAG/REG ローカル変数の導入
