@@ -1696,11 +1696,29 @@ function ble/widget/vi-command/goto-mark.hook {
 ##   そこで行われる挿入操作の列を記録する配列である。
 ##   形式は _ble_keymap_vi_irepeat と同じ。
 ##
+## 変数 _ble_keymap_vi_repeat_invoke
+##   ble/keymap:vi/repeat/invoke を通して呼び出された widget かどうかを保持するローカル変数です。
+##   この変数が非空白のとき ble/keymap:vi/repeat/invoke 内部での呼び出しであることを表します。
+##
 _ble_keymap_vi_repeat=()
 _ble_keymap_vi_repeat_insert=()
 _ble_keymap_vi_repeat_irepeat=()
+_ble_keymap_vi_repeat_invoke=
+function ble/keymap:vi/repeat/record-special {
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return 0
+
+  if [[ $_ble_keymap_vi_repeat_invoke ]]; then
+    # repeat に引数が指定されたときは以降それを使う
+    [[ $repeat_arg ]] && _ble_keymap_vi_repeat[3]=$repeat_arg
+    # レジスタが記録されていないときは、以降新しく指定されたレジスタを使う
+    [[ ! ${_ble_keymap_vi_repeat[5]} ]] && _ble_keymap_vi_repeat[5]=$repeat_reg
+    return 0
+  fi
+
+  return 1
+}
 function ble/keymap:vi/repeat/record-normal {
-  local -a repeat; repeat=("$KEYMAP" "${KEYS[*]}" "$WIDGET" "$ARG" "$FLAG" "$REG")
+  local -a repeat; repeat=("$KEYMAP" "${KEYS[*]}" "$WIDGET" "$ARG" "$FLAG" "$REG" '')
   if [[ $KEYMAP == vi_xmap ]]; then
     repeat[6]=$_ble_keymap_vi_xmap_prev
   fi
@@ -1712,18 +1730,8 @@ function ble/keymap:vi/repeat/record-normal {
   fi
 }
 function ble/keymap:vi/repeat/record {
-  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
-
-  local widget=${WIDGET%%[$' \t\n']*}
-  if [[ $widget == ble/widget/vi_nmap/repeat ]]; then
-    # repeat に引数が指定されたときは以降それを使う
-    [[ $repeat_arg ]] && _ble_keymap_vi_repeat[3]=$repeat_arg
-    # レジスタが記録されていないときは、以降新しく指定されたレジスタを使う
-    [[ ! ${_ble_keymap_vi_repeat[5]} ]] && _ble_keymap_vi_repeat[5]=$repeat_reg
-  else
-    # ToDo: $widget.record 的な関数が定義されていたらそれを呼び出す
+  ble/keymap:vi/repeat/record-special ||
     ble/keymap:vi/repeat/record-normal
-  fi
 }
 ## 関数 ble/keymap:vi/repeat/record-insert
 ##   挿入モードを抜ける時に、挿入モードに入るきっかけになった操作と、
@@ -1735,7 +1743,7 @@ function ble/keymap:vi/repeat/record-insert {
     _ble_keymap_vi_repeat_irepeat=("${_ble_keymap_vi_irepeat[@]}")
   elif ((${#_ble_keymap_vi_irepeat[@]})); then
     # 挿入モード突入操作が初期化されていたら、挿入操作がある時のみに記録
-    _ble_keymap_vi_repeat=(vi_nmap "${KEYS[*]}" ble/widget/insert-mode 1 '' '')
+    _ble_keymap_vi_repeat=(vi_nmap "${KEYS[*]}" ble/widget/vi_nmap/insert-mode 1 '' '')
     _ble_keymap_vi_repeat_irepeat=("${_ble_keymap_vi_irepeat[@]}")
   fi
   ble/keymap:vi/repeat/clear-insert
@@ -1775,6 +1783,7 @@ function ble/keymap:vi/repeat/invoke {
     [[ $REG ]] && _ble_keymap_vi_reg=$REG
 
     local _ble_keymap_vi_single_command{,_overwrite}= # single-command-mode は持続させる。
+    local _ble_keymap_vi_repeat_invoke=1
     builtin eval -- "$WIDGET"
 
     if [[ $_ble_decode_key__kmap == vi_imap ]]; then
@@ -1865,12 +1874,16 @@ function ble/widget/vi_nmap/forward-char-toggle-case {
   local line=${_ble_edit_str:_ble_edit_ind:ARG}
   line=${line%%$'\n'*}
   local len=${#line}
-  local index=$((_ble_edit_ind+len))
-  if ((len)); then
-    local ret; ble/string#toggle-case "${_ble_edit_str:_ble_edit_ind:len}"
-    ble/widget/.replace-range "$_ble_edit_ind" "$index" "$ret" 1
-    ble/keymap:vi/mark/set-previous-edit-area "$_ble_edit_ind" "$index"
+  if ((len==0)); then
+    ble/widget/vi-command/bell
+    return 1
   fi
+
+  local index=$((_ble_edit_ind+len))
+  local ret; ble/string#toggle-case "${_ble_edit_str:_ble_edit_ind:len}"
+  ble/widget/.replace-range "$_ble_edit_ind" "$index" "$ret" 1
+  ble/keymap:vi/mark/set-previous-edit-area "$_ble_edit_ind" "$index"
+  ble/keymap:vi/repeat/record
   ble/keymap:vi/needs-eol-fix "$index" && ((index--))
   ble/widget/.goto-char "$index"
   ble/keymap:vi/adjust-command-mode
@@ -2373,6 +2386,7 @@ function ble/widget/vi_nmap/paste.impl/block {
     ble/widget/.replace-range "$ibeg" "$iend" "$text" 1
   done
   ble/keymap:vi/mark/end-edit-area
+  ble/keymap:vi/repeat/record
 
   ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
   ble/keymap:vi/adjust-command-mode
@@ -2408,6 +2422,7 @@ function ble/widget/vi_nmap/paste.impl {
     ble/widget/.replace-range "$index" "$index" "$content" 1
     ble/widget/.goto-char "$dbeg"
     ble/keymap:vi/mark/set-previous-edit-area "$dbeg" "$dend"
+    ble/keymap:vi/repeat/record
     ble/widget/vi-command/first-non-space
   elif [[ $_ble_edit_kill_type == B:* ]]; then
     if ((is_after)) && ! ble-edit/content/eolp; then
@@ -2423,6 +2438,7 @@ function ble/widget/vi_nmap/paste.impl {
     ble/widget/insert-string "$ret"
     local end=$_ble_edit_ind
     ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
+    ble/keymap:vi/repeat/record
     [[ $_ble_keymap_vi_single_command ]] || ble/widget/.goto-char $((_ble_edit_ind-1))
     ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
     ble/keymap:vi/adjust-command-mode
@@ -2687,32 +2703,36 @@ function ble/widget/vi_nmap/replace-char.impl {
 
   local pos=$_ble_edit_ind
 
-  local -a KEYS; KEYS=("$ret")
-  local _ble_edit_arg=$ARG
-  local _ble_edit_overwrite_mode=$overwrite_mode
-  local ble_widget_self_insert_opts=nolineext
   ble/keymap:vi/mark/start-edit-area
-  ble/widget/self-insert
+  {
+    local -a KEYS; KEYS=("$ret")
+    local _ble_edit_arg=$ARG
+    local _ble_edit_overwrite_mode=$overwrite_mode
+    local ble_widget_self_insert_opts=nolineext
+    ble/widget/self-insert
+    unset KEYS
+  }
   ble/keymap:vi/mark/end-edit-area
+  ble/keymap:vi/repeat/record
 
   ((pos<_ble_edit_ind)) && ble/widget/.goto-char _ble_edit_ind-1
   ble/keymap:vi/adjust-command-mode
   return 0
 }
 
-function ble/widget/vi_nmap/replace-char/.hook {
+function ble/widget/vi_nmap/replace-char.hook {
   ble/widget/vi_nmap/replace-char.impl "$1" R
 }
 function ble/widget/vi_nmap/replace-char {
   _ble_edit_overwrite_mode=R
-  ble/keymap:vi/async-read-char ble/widget/vi_nmap/replace-char/.hook
+  ble/keymap:vi/async-read-char ble/widget/vi_nmap/replace-char.hook
 }
-function ble/widget/vi_nmap/virtual-replace-char/.hook {
+function ble/widget/vi_nmap/virtual-replace-char.hook {
   ble/widget/vi_nmap/replace-char.impl "$1" 1
 }
 function ble/widget/vi_nmap/virtual-replace-char {
   _ble_edit_overwrite_mode=1
-  ble/keymap:vi/async-read-char ble/widget/vi_nmap/virtual-replace-char/.hook
+  ble/keymap:vi/async-read-char ble/widget/vi_nmap/virtual-replace-char.hook
 }
 
 #------------------------------------------------------------------------------
@@ -2730,6 +2750,7 @@ function ble/widget/vi_nmap/connect-line-with-space {
     text=${text//$'\n'/' '}
     ble/widget/.replace-range "$eol1" "$eol2" "$text"
     ble/keymap:vi/mark/set-previous-edit-area "$eol1" "$eol2"
+    ble/keymap:vi/repeat/record
     ble/widget/.goto-char $((bol2-1))
     ble/keymap:vi/adjust-command-mode
     return 0
@@ -2751,6 +2772,7 @@ function ble/widget/vi_nmap/connect-line {
     ble/widget/.replace-range "$eol1" "$bol2" "$text"
     local delta=$((${#text}-(bol2-eol1)))
     ble/keymap:vi/mark/set-previous-edit-area "$eol1" $((eol2+delta))
+    ble/keymap:vi/repeat/record
     ble/widget/.goto-char $((bol2+delta))
     ble/keymap:vi/adjust-command-mode
     return 0
@@ -4609,6 +4631,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
       ble/widget/.replace-range "$smin" "$smax" "$ins1" 1
     done
     ble/keymap:vi/mark/end-edit-area
+    ble/keymap:vi/repeat/record
     local beg=$smin
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
@@ -4626,6 +4649,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
     ins=${ins//[^$'\n']/"$s"}
     ble/widget/.replace-range "$beg" "$end" "$ins" 1
     ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
+    ble/keymap:vi/repeat/record
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
   fi
@@ -4880,6 +4904,8 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
     ble/widget/.replace-range "$index" "$index" "$text" 1
   done
   ble/keymap:vi/mark/end-edit-area
+  # Note: この編集は record-insert 経由で記録されるので
+  # ここで明示的に ble/keymap:vi/repeat/record を呼び出す必要はない。
 
   # 領域の最初に
   local index
@@ -5016,6 +5042,7 @@ function ble/widget/vi_xmap/paste.impl {
   }
   unset _ble_keymap_vi_mark_suppress_edit
   ble/keymap:vi/mark/end-edit-area
+  ble/keymap:vi/repeat/record
   return "$ext"
 }
 function ble/widget/vi_xmap/paste-after {

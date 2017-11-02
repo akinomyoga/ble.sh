@@ -606,28 +606,7 @@ tech
 
   * vi-mode: support :reg
 
-  * vi-mode: . の観察
-
-    #D0542 各 widget の戻り値の確定
-    #D0549 WIDGET/KEYMAP/ARG/FLAG/REG ローカル変数の導入
-    #D0550 nmap/omap における operator 操作の記録と復元
-    #D0554 xmap における operator 操作の記録と復元
-    #D0555 挿入モードの操作の記録 (これの為に imap-repeat も整理した #D0553)
-
-    - 3l. とするとそれより前に行われた編集コマンドが実行される。
-      つまり編集コマンドしか繰り返しの対象とはならない。
-
-      どのコマンドが繰り返しの対象になるかについては help を見るのが良いだろう。
-      help には repeat last change, also yank is repeated
-      commandline command is not repeated としか書かれていない。
-
-      % しかも実際に試してみると yiw は repeat されない様である。
-      % also yank is repeated とはどういう意味だろう?
-
-    [実装]
-
-    * 後は一つ一つのコマンドについて確認を行って行くことにする。
-    * 一段落したら set-previous-edit / end-edit-area と統合できないか考察する。
+  * vi-mode: ble/widget 実装の注意点
 
     vi-mode 用の ble/widget を実装する上での注意点についてまとめる必要がある。
 
@@ -664,7 +643,6 @@ tech
       | unset _ble_keymap_vi_mark_suppress_edit
       | ble/keymap:vi/mark/end-edit-area
 
-
       mark/{start,end}-edit-area の内側で更に別の編集コマンド (内部で `[`] が設定される)
       を呼び出す場合には、更に _ble_keymap_vi_mark_suppress_edit を設定する必要がある。
 
@@ -675,6 +653,11 @@ tech
       |
       | unset _ble_keymap_vi_mark_suppress_edit
       | ble/keymap:vi/mark/end-edit-area
+
+      オペレータについては外側で自動的に編集範囲が検知されるので、
+      自身で {set-previous,end}-edit-area を呼び出す必要はない。
+      但し、編集は起こらないが範囲を設定したい場合 (operator y など) には、
+      commit-edit-area 関数を明示的に呼び出す。
 
     - . による繰り返し操作が正しく設定されるようにするために
 
@@ -693,6 +676,7 @@ tech
         repeat/clear-insert は実例として imap の <C-o>, 移動操作, コマンド実行などで使われている。
         - 但し operator の中では、外側で自動的に repeat/record が呼び出されるので、これらは自分で呼び出さない。
           例えば operator:c では .insert-mode を呼び出すが、自身で repeat/record を呼び出すことはしていない。
+          operator による非同期読み取りによる継続の場合は、mark/set-previous-edit の時と同様に自分で呼び出す必要がある。
         - repeat/record はその時の keymap を参照するので、vi_nmap/.insert-mode よりも後で呼び出す必要がある。
 
         また、編集を行って更に挿入モードに入るコマンドの場合であっても、
@@ -702,13 +686,8 @@ tech
       KEYMAP, KEYS, WIDGET, ARG, FLAG, REG の値は記録され
       繰り返しの対象となる widget を呼び出すときに再現される。
       繰り返しの対象となる widget が、それ以外の "状態" に依存して振る舞いが変化し、
-      その時選択された振る舞い化を繰り返しの際にも再現したい場合には、
+      その時選択された振る舞いを繰り返しの際にも再現したい場合には、
       それを明示的に記録・再生する必要がある。
-
-      todo: 記録・再生のための関数の名前を決める
-
-
-    - .insert-mode
 
 2017-10-12
 
@@ -2408,6 +2387,65 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2017-11-02
+
+  * vi-mode: . 実装 (6) 取り敢えず完了
+
+    #D0542 各 widget の戻り値の確定
+    #D0549 WIDGET/KEYMAP/ARG/FLAG/REG ローカル変数の導入
+    #D0550 nmap/omap における operator 操作の記録と復元
+    #D0554 xmap における operator 操作の記録と復元
+    #D0555 挿入モードの操作の記録 (これの為に imap-repeat も整理した #D0553)
+
+    - 3l. とするとそれより前に行われた編集コマンドが実行される。
+      つまり編集コマンドしか繰り返しの対象とはならない。
+
+      どのコマンドが繰り返しの対象になるかについては help を見るのが良いだろう。
+      help には repeat last change, also yank is repeated
+      commandline command is not repeated としか書かれていない。
+
+      % しかも実際に試してみると yiw は repeat されない様である。
+      % also yank is repeated とはどういう意味だろう?
+
+    * $widget.record 的な関数を定義して、それが使われていたらという話があったが、
+      operator などの内部で記録を行いたい場合には難しいのでは?
+
+      % と思ったが operator の内部では基本的に記録は行わず記録を行うとすれば非同期な読み取りが関わるときだが、
+      % その場合には改めて hook 関数が呼び出されるのだから、"(hook 関数).widget" という形の関数名にすれば良いのでは?
+
+      とも思ったが、直接 hook 関数が _ble_decode_key__kmap に登録されているとは限らない。
+      例えば、vim-surround.sh の async-inputtarget では async-inputtarget 用の関数が WIDGET の本体になってしまう。
+      従って、"(WIDGETの本体).record" をそれぞれ定義して動作を制御するというのは難しい。
+
+      従って、やはり $widget.record の様な仕組みは余り意味がない。
+      各自で ble/keymap:vi/repeat/record の代わりに独自の記録関数を定義するのが良い。
+      その場合には _ble_keymap_vi_repeat{,_irepeat} 配列を必ず設定させるようにする。
+
+    [実装]
+
+    * 後は一つ一つのコマンドについて確認を行って行くことにする。
+
+      - nmap ~ OK
+      - nmap p P OK
+      - nmap rx Rx OK
+      - nmap J gJ OK
+      - xmap rx Rx OK
+      - xmap p P OK
+      - xmap I A OK
+      - lib/vim-surround: ysiw" OK (surround.vim とは異なるが想定した動き)
+      - lib/vim-surround: cs"b OK (同上)
+
+      どうも実装した後で気付いた事だが、lib/vim-surround.sh の ysiw" に対して
+      . を実行すると、最後の " の部分に関しては前回のものが使われるのではなくて、
+      改めて入力を求められる様である。
+
+      更に、cs"b などについても入力が求められるが
+      cs<空><入力したもの> という解釈になる様だ。
+      これはバグなのではないかと思っている。
+
+    * 一段落したら set-previous-edit / end-edit-area と統合できないか考察する。
+      実装してみた結果、考察するまでもなく、これは全然統合できない。
 
 2017-11-01
 
