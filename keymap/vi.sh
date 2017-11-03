@@ -794,14 +794,14 @@ function ble/widget/vi-command/beginning-of-line {
 
 ## オペレータは以下の形式の関数として定義される。
 ##
-## 関数 ble/keymap:vi/operator:名称 a b type [count [reg]]
+## 関数 ble/keymap:vi/operator:名称 a b context [count [reg]]
 ##
 ##   @param[in] a b
 ##     範囲の開始点と終了点。終了点は開始点以降にあることが保証される。
-##     type が 'line' のとき、それぞれ行頭・行末にあることが保証される。
+##     context が 'line' のとき、それぞれ行頭・行末にあることが保証される。
 ##     ただし、行末に改行があるときは b は次の行頭を指す。
 ##
-##   @param[in] type
+##   @param[in] context
 ##     範囲の種類を表す文字列。char, line, block の何れか。
 ##
 ##   @param[in] count
@@ -907,12 +907,12 @@ function ble/keymap:vi/call-operator-blockwise {
 
 
 function ble/keymap:vi/operator:d {
-  local type=$3 arg=$4 reg=$5 # beg end は上書きする
-  if [[ $type == line ]]; then
+  local context=$3 arg=$4 reg=$5 # beg end は上書きする
+  if [[ $context == line ]]; then
     ble/keymap:vi/register#set "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
     ((end==${#_ble_edit_str}&&beg>0&&beg--)) # fix start position
     ble/widget/.delete-range "$beg" "$end"
-  elif [[ $type == block ]]; then
+  elif [[ $context == block ]]; then
     ble/keymap:vi/operator:y "$@" || return 1
     local isub=${#sub_ranges[@]} sub
     local smin= smax= slpad= srpad=
@@ -969,10 +969,10 @@ function ble/keymap:vi/operator:c {
 }
 function ble/keymap:vi/operator:y.record { :; }
 function ble/keymap:vi/operator:y {
-  local beg=$1 end=$2 type=$3 arg=$4 reg=$5
-  if [[ $type == line ]]; then
+  local beg=$1 end=$2 context=$3 arg=$4 reg=$5
+  if [[ $context == line ]]; then
     ble/keymap:vi/register#set "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
-  elif [[ $type == block ]]; then
+  elif [[ $context == block ]]; then
     local sub
     local -a afill atext
     for sub in "${sub_ranges[@]}"; do
@@ -1291,11 +1291,11 @@ function ble/widget/vi-command/inclusive-goto.impl {
 ##     require_multiline
 ##     goto_bol
 ##
-##   @var[in] bolx
-##     既に計算済みの移動先 (index, q) の行の行頭がある場合はここに指定します。
+##     bolx=NUMBER
+##       既に計算済みの移動先 (index, q) の行の行頭がある場合はここに指定します。
 ##
-##   @var[in] nolx
-##     既に計算済みの移動先 (index, q) の行の非空白行頭位置がある場合はここに指定します。
+##     nolx=NUMBER
+##       既に計算済みの移動先 (index, q) の行の非空白行頭位置がある場合はここに指定します。
 ##
 function ble/widget/vi-command/linewise-range.impl {
   local p=$1 q=$2 flag=$3 reg=$4 opts=$5
@@ -1305,6 +1305,9 @@ function ble/widget/vi-command/linewise-range.impl {
   else
     local qbase=$q qline=0
   fi
+
+  local bolx=; local rex=':bolx=([0-9]+):'; [[ :$opts: =~ $rex ]] && bolx=${BASH_REMATCH[1]}
+  local nolx=; local rex=':nolx=([0-9]+):'; [[ :$opts: =~ $rex ]] && nolx=${BASH_REMATCH[1]}
 
   if [[ $flag ]]; then
     local bolp bolq=$bolx nolq=$nolx
@@ -1528,7 +1531,7 @@ function ble/keymap:vi/mark/get-mark.impl {
   ((index>len&&(index=len)))
   ble-edit/content/find-logical-bol "$index"; index=$ret
   ble-edit/content/find-logical-eol "$index"; local eol=$ret
-  ((index+=bytes,index>eol&&(index=eol))) # todo: calculate by byte offset
+  ((index+=bytes,index>eol&&(index=eol))) # ToDo: calculate by byte offset
   ret=$index
   return 0
 }
@@ -1571,6 +1574,12 @@ function ble/keymap:vi/mark/end-edit-area {
   ((beg>=0)) && ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
 }
 
+# ``
+function ble/keymap:vi/mark/set-jump {
+  # ToDo: jumplist?
+  ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind"
+}
+
 function ble/widget/vi-command/set-mark {
   _ble_decode_key__hook="ble/widget/vi-command/set-mark.hook"
   return 148
@@ -1597,9 +1606,8 @@ function ble/widget/vi-command/set-mark.hook {
 
 function ble/widget/vi-command/goto-mark.impl {
   local index=$1 flag=$2 reg=$3 opts=$4
-  [[ $flag ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
+  [[ $flag ]] || ble/keymap:vi/mark/set-jump # ``
   if [[ :$opts: == *:line:* ]]; then
-    local bolx= nolx=
     ble/widget/vi-command/linewise-goto.impl "$index" "$flag" "$reg"
   else
     ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg" 1
@@ -1960,7 +1968,7 @@ function ble/widget/vi-command/.history-relative-line {
 ##   より前の履歴項目に移った時は列は行末に移る。
 ##   より後の履歴項目に移った時は列は先頭に移る。
 ##
-##   todo: 移動開始時の相対表示位置の記録は現在行っていない。
+##   ToDo: 移動開始時の相対表示位置の記録は現在行っていない。
 ##
 ##   @param[in] offset flag
 ##
@@ -1976,7 +1984,6 @@ function ble/widget/vi-command/relative-line.impl {
   local offset=$1 flag=$2 reg=$3 opts=$4
   ((offset==0)) && return
   if [[ $flag ]]; then
-    local bolx= nolx=
     ble/widget/vi-command/linewise-goto.impl "$_ble_edit_ind:$offset" "$flag" "$reg" preserve_column:require_multiline
     return
   fi
@@ -2122,11 +2129,10 @@ function ble/widget/vi-command/relative-first-non-space.impl {
       ble/widget/vi-command/exclusive-goto.impl "$nolx" "$flag" "$reg" 1
     elif [[ :$opts: == *:multiline:* ]]; then
       # command: + -
-      # Note: bolx nolx (required by linewise-goto.impl) is already defined
-      ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg" require_multiline
+      ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg" require_multiline:bolx="$bolx":nolx="$nolx"
     else
       # command: _
-      ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg"
+      ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg" bolx="$bolx":nolx="$nolx"
     fi
     return
   fi
@@ -2597,15 +2603,13 @@ function ble/widget/vi-command/nth-column {
 # nmap H
 function ble/widget/vi-command/nth-line {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  [[ $FLAG ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
-  local bolx= nolx=
+  [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
   ble/widget/vi-command/linewise-goto.impl 0:$((ARG-1)) "$FLAG" "$REG"
 }
 # nmap L
 function ble/widget/vi-command/nth-last-line {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  [[ $FLAG ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
-  local bolx= nolx=
+  [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
   ble/widget/vi-command/linewise-goto.impl ${#_ble_edit_str}:$((-(ARG-1))) "$FLAG" "$REG"
 }
 
@@ -2663,8 +2667,7 @@ function ble/widget/vi-command/history-end {
 # G in the current history entry
 function ble/widget/vi-command/last-line {
   local ARG FLAG REG; ble/keymap:vi/get-arg 0
-  [[ $FLAG ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
-  local bolx= nolx=
+  [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
   if ((ARG)); then
     ble/widget/vi-command/linewise-goto.impl 0:$((ARG-1)) "$FLAG" "$REG"
   else
@@ -2983,7 +2986,7 @@ function ble/widget/vi-command/search-matchpair-or {
     return 1
   fi
 
-  [[ $FLAG ]] || ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" # ``
+  [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
   ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
 }
 
@@ -2991,7 +2994,6 @@ function ble/widget/vi-command/percentage-line {
   local ARG FLAG REG; ble/keymap:vi/get-arg 0
   local ret; ble/string#count-char "$_ble_edit_str" $'\n'; local nline=$((ret+1))
   local iline=$(((ARG*nline+99)/100))
-  local bolx= nolx=
   ble/widget/vi-command/linewise-goto.impl 0:$((iline-1)) "$FLAG" "$REG"
 }
 
@@ -3198,7 +3200,6 @@ function ble/keymap:vi/text-object/block.impl {
     _ble_edit_mark="$beg"
     ble/widget/vi-command/exclusive-goto.impl "$end"
   elif [[ $linewise ]]; then
-    local nolx= bolx=
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" "$reg" goto_bol
   else
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag" "$reg"
@@ -3382,7 +3383,6 @@ function ble/keymap:vi/text-object/sentence.impl {
   elif ble-edit/content/bolp "$beg" && [[ ${_ble_edit_str:end:1} == $'\n' ]]; then
     # 行頭から LF の手前までのときに linewise になる。
     # _ble_edit_str の末端までのときは linewise ではないことに注意する。
-    local bolx= nolx=
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" "$reg" goto_bol
   else
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag" "$reg"
@@ -3446,7 +3446,6 @@ function ble/keymap:vi/text-object/paragraph.impl {
     _ble_edit_mark="$beg"
     ble/widget/vi-command/exclusive-goto.impl "$end"
   else
-    local bolx= nolx=
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" "$reg"
   fi
 }
