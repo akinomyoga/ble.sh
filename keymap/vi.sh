@@ -409,10 +409,14 @@ function ble/keymap:vi/adjust-command-mode {
 
   # search による mark の設定・解除
   if [[ $_ble_keymap_vi_search_activate ]]; then
-    _ble_edit_mark_active=$_ble_keymap_vi_search_activate
+    if [[ $_ble_decode_key__kmap != vi_xmap ]]; then
+      _ble_edit_mark_active=$_ble_keymap_vi_search_activate
+    fi
+    _ble_keymap_vi_search_matched=1
     _ble_keymap_vi_search_activate=
-  elif [[ $_ble_edit_mark_active == search ]]; then
-    _ble_edit_mark_active=
+  else
+    [[ $_ble_edit_mark_active == search ]] && _ble_edit_mark_active=
+    ((_ble_keymap_vi_search_matched)) && _ble_keymap_vi_search_matched=
   fi
 
   if [[ $_ble_decode_key__kmap == vi_nmap && $_ble_keymap_vi_single_command ]]; then
@@ -449,6 +453,7 @@ function ble/widget/vi_nmap/.insert-mode {
   _ble_keymap_vi_insert_overwrite=$overwrite
   _ble_keymap_vi_single_command=
   _ble_keymap_vi_single_command_overwrite=
+  _ble_keymap_vi_search_matched=
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
 
@@ -928,8 +933,8 @@ function ble/keymap:vi/operator:d {
   return 0
 }
 function ble/keymap:vi/operator:c {
-  local type=$3 arg=$4 reg=$5 # beg は上書き対象
-  if [[ $3 == line ]]; then
+  local context=$3 arg=$4 reg=$5 # beg は上書き対象
+  if [[ $context == line ]]; then
     ble/keymap:vi/register#set "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
 
     local end2=$end
@@ -941,6 +946,21 @@ function ble/keymap:vi/operator:c {
 
     ble/widget/.replace-range "$beg" "$end2" "$indent" 1
     ble/widget/vi_nmap/.insert-mode
+  elif [[ $context == block ]]; then
+    ble/keymap:vi/operator:d "$@" || return 1 # @var beg will be overwritten here
+
+    # operator:d によってずれた矩形領域を修正する。
+    # 一から計算し直すのは面倒なので sub_ranges を直接弄る。
+    # 実のところ block-insert-mode insert は sub_ranges[0] の smin と sub_x1
+    # しか参照しないので、sub_ranges[0] だけ修正すれば良い。
+    local sub=${sub_ranges[0]}
+    local smin=${sub%%:*} sub=${sub#*:}
+    local smax=${sub%%:*} sub=${sub#*:}
+    local slpad=${sub%%:*} sub=${sub#*:}
+    ((smin+=slpad,smax=smin,slpad=0))
+    sub_ranges[0]=$smin:$smax:$slpad:$sub
+    
+    ble/widget/vi_xmap/block-insert-mode.impl insert
   else
     ble/keymap:vi/operator:d "$@" || return 1 # @var beg will be overwritten here
     ble/widget/vi_nmap/.insert-mode
@@ -3554,9 +3574,17 @@ _ble_keymap_vi_search_obackward=
 _ble_keymap_vi_search_ohistory=
 _ble_keymap_vi_search_needle=
 _ble_keymap_vi_search_activate=
+_ble_keymap_vi_search_matched=
 function ble-highlight-layer:region/mark:search/get-selection {
   ble-highlight-layer:region/mark:char/get-selection
 }
+function ble/keymap:vi/search/matched {
+  [[ $_ble_keymap_vi_search_matched || $_ble_edit_mark_active == search || $_ble_keymap_vi_search_activate ]]
+}
+## 関数 ble/keymap:vi/search/invoke-search needle opts
+##   @var[in] needle
+##   @var[in,opt] opts
+##   @var[out] beg end
 function ble/keymap:vi/search/invoke-search {
   local ind=$_ble_edit_ind
 
@@ -3565,7 +3593,7 @@ function ble/keymap:vi/search/invoke-search {
     if ((!opt_backward)); then
       ((_ble_edit_ind<${#_ble_edit_str}&&_ble_edit_ind++))
     fi
-  elif ((opt_locate)) || [[ $_ble_edit_mark_active != search && ! $_ble_keymap_vi_search_activate ]]; then
+  elif ((opt_locate)) || ! ble/keymap:vi/search/matched; then
     # 何にも一致していない状態から
     if ((opt_backward)); then
       ble-edit/content/eolp || ((_ble_edit_ind++))
@@ -3573,8 +3601,18 @@ function ble/keymap:vi/search/invoke-search {
   else
     # _ble_edit_ind .. _ble_edit_mark[+1] に一致しているとき
     if ((!opt_backward)); then
-      ((_ble_edit_ind=_ble_edit_mark))
-      ble-edit/content/eolp || ((_ble_edit_ind++))
+      if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+        # vi_xmap では _ble_edit_mark は別の用途に使われていて
+        # 終端点の情報が失われているので再度一致を試みる。
+        if ble-edit/isearch/search "$@" && ((beg==_ble_edit_ind)); then
+          _ble_edit_ind=$end
+        else
+          ((_ble_edit_ind<${#_ble_edit_str&&_ble_edit_ind++))
+        fi
+      else
+        ((_ble_edit_ind=_ble_edit_mark))
+        ble-edit/content/eolp || ((_ble_edit_ind++))
+      fi
     fi
   fi
 
@@ -3598,7 +3636,7 @@ function ble/widget/vi-command/search.core {
     if ((beg<end)); then
       ble-edit/content/bolp "$end" || ((end--))
       _ble_edit_ind=$beg # eol 補正は search.impl 側で最後に行う
-      _ble_edit_mark=$end
+      [[ $_ble_decode_key__kmap != vi_xmap ]] && _ble_edit_mark=$end
       _ble_keymap_vi_search_activate=search
       return 0
     else
@@ -3694,7 +3732,7 @@ function ble/widget/vi-command/search.impl {
   fi
 
   local original_ind=$_ble_edit_ind
-  if [[ $FLAG ]]; then
+  if [[ $FLAG || $_ble_decode_key__kmap == vi_xmap ]]; then
     opt_history=0
   else
     local old_hindex; ble-edit/history/getindex -v old_hindex
@@ -3731,9 +3769,10 @@ function ble/widget/vi-command/search.impl {
   else
     if ((ntask<ARG)); then
       # 同じ履歴項目内でのジャンプ
-      local new_hindex; ble-edit/history/getindex -v new_hindex
-      ((new_hindex==old_hindex)) &&
-        ble/keymap:vi/mark/set-local-mark 96 "$original_index" # ``
+      if ((opt_history)); then
+        local new_hindex; ble-edit/history/getindex -v new_hindex
+        ((new_hindex==old_hindex))
+      fi && ble/keymap:vi/mark/set-local-mark 96 "$original_index" # ``
 
       # 行末補正
       if ble/keymap:vi/needs-eol-fix; then
@@ -4014,6 +4053,8 @@ function ble-decode-keymap:vi_nmap/define {
   ble-bind -f m      vi-command/set-mark
   ble-bind -f '"'    vi-command/register
 
+  ble-bind -f 'C-g' vi-command/show-line-info
+
   #----------------------------------------------------------------------------
   # bash
 
@@ -4021,7 +4062,6 @@ function ble-decode-keymap:vi_nmap/define {
   ble-bind -f 'C-m' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
   ble-bind -f 'RET' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
 
-  ble-bind -f 'C-g' vi-command/show-line-info
   ble-bind -f 'C-l' clear-screen
 
   ble-bind -f C-d vi-command/exit-on-empty-line
@@ -4531,11 +4571,17 @@ function ble/widget/vi_nmap/blockwise-visual-mode {
 }
 
 function ble/widget/vi_xmap/exit {
-  ble/keymap:vi/xmap/set-previous-visual-area
-  _ble_edit_mark_active=
-  ble-decode/keymap/pop
-  ble/keymap:vi/update-mode-name
-  ble/keymap:vi/adjust-command-mode
+  # Note: xmap operator:c
+  #   -> vi_xmap/block-insert-mode.impl
+  #   → vi_xmap/cancel 経由で呼び出されるとき、
+  #   既に vi_nmap に戻っていることがあるので、vi_xmap のときだけ処理する。
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    ble/keymap:vi/xmap/set-previous-visual-area
+    _ble_edit_mark_active=
+    ble-decode/keymap/pop
+    ble/keymap:vi/update-mode-name
+    ble/keymap:vi/adjust-command-mode
+  fi
   return 0
 }
 function ble/widget/vi_xmap/cancel {
@@ -4587,7 +4633,7 @@ function ble/widget/vi_xmap/exchange-boundaries {
     ble/keymap:vi/xmap/remove-eol-extension
 
     local sub_ranges sub_x1 sub_x2
-    ble/keymap:vi/extract-block
+    ble/keymap:vi/extract-block # Optimize: 実は sub_ranges[0] と sub_ranges[最後] しか使わない
     local nline=${#sub_ranges[@]}
     ble-assert '((nline))'
 
@@ -4792,12 +4838,12 @@ function ble/keymap:vi/xmap/update-dirty-range {
     _ble_keymap_vi_xmap_insert_dbeg=$beg
 }
 
+## 関数 ble/widget/vi_xmap/block-insert-mode.impl
+##   @var[in] sub_ranges sub_x1 sub_x2
 function ble/widget/vi_xmap/block-insert-mode.impl {
   local type=$1
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
 
-  local sub_ranges sub_x1 sub_x2
-  ble/keymap:vi/extract-block
   local nline=${#sub_ranges[@]}
   ble-assert '((nline))'
 
@@ -4892,16 +4938,16 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   local x2=$((x1+delta))
 
   # 切り出し
-  local ins=
+  local ins= p1 p2
   if [[ $has_textmap ]]; then
     local index lx ly rx ry
-    ble/textmap#hit out $((x1%cols)) $((by+x1/cols)) "$bol" "$eol"; local b=$index
-    ble/textmap#hit out $((x2%cols)) $((by+x2/cols)) "$bol" "$eol"; local e=$index
-    ((lx+=(ly-by)*cols,rx+=(ry-by)*cols,lx!=rx&&e++))
-    ins=${_ble_edit_str:b:e-b}
+    ble/textmap#hit out $((x1%cols)) $((by+x1/cols)) "$bol" "$eol"; p1=$index
+    ble/textmap#hit out $((x2%cols)) $((by+x2/cols)) "$bol" "$eol"; p2=$index
+    ((lx+=(ly-by)*cols,rx+=(ry-by)*cols,lx!=rx&&p2++))
   else
-    ins=${_ble_edit_str:bol+x1:x2-x1}
+    ((p1=bol+x1,p2=bol+x2))
   fi
+  ins=${_ble_edit_str:p1:p2-p1}
 
   # 挿入の決定
   local -a ins_beg ins_text
@@ -4940,6 +4986,7 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   # 挿入実行
   local i=${#ins_beg[@]}
   ble/keymap:vi/mark/start-edit-area
+  ble/keymap:vi/mark/commit-edit-area "$p1" "$p2"
   while ((i--)); do
     local index=${ins_beg[i]} text=${ins_text[i]}
     ble/widget/.replace-range "$index" "$index" "$text" 1
@@ -4964,6 +5011,8 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
 function ble/widget/vi_xmap/insert-mode {
   local mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == block ]]; then
+    local sub_ranges sub_x1 sub_x2
+    ble/keymap:vi/extract-block # Optimize: 実は sub_ranges[0] しか使わない
     ble/widget/vi_xmap/block-insert-mode.impl insert
   else
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
@@ -4984,6 +5033,8 @@ function ble/widget/vi_xmap/insert-mode {
 function ble/widget/vi_xmap/append-mode {
   local mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == block ]]; then
+    local sub_ranges sub_x1 sub_x2
+    ble/keymap:vi/extract-block # Optimize: 実は sub_ranges[0] しか使わない
     ble/widget/vi_xmap/block-insert-mode.impl append
   else
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
@@ -5123,7 +5174,6 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f '~' 'vi-command/operator toggle_case'
   ble-bind -f 'u' 'vi-command/operator u'
   ble-bind -f 'U' 'vi-command/operator U'
-  ble-bind -f '?' 'vi-command/operator rot13'
 
   ble-bind -f 's' 'vi-command/operator c'
   ble-bind -f 'x'    'vi-command/operator d'

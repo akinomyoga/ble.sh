@@ -197,6 +197,8 @@ function ble/lib/vim-surround.sh/load-template {
 ##     linewise
 ##       囲まれた文字列を新しい独立した業にします。
 ##       cS yS VS VgS などで使用します。
+##     indent
+##       linewise のとき、新しい行のインデントを追加します。
 ##
 ##   @var[in] beg
 ##   @var[out] ret
@@ -237,8 +239,12 @@ function ble/lib/vim-surround.sh/surround {
       indent=' '
     fi
     text=$indent$text
-    ble/keymap:vi/string#increase-indent "$text" "$bleopt_indent_offset"
-    text=$'\n'$ret$'\n'$indent
+    if [[ $instype == indent || :$opts: == *:indent:* ]]; then
+      ble/keymap:vi/string#increase-indent "$text" "$bleopt_indent_offset"; text=$ret
+    fi
+    text=$'\n'$text$'\n'$indent
+    # todo: 初めから text に改行が含まれていた場合は、
+    #   更にここで = による自動インデントを実行する?
   elif [[ $has_space ]]; then
     text=' '$text' '
   fi
@@ -343,7 +349,11 @@ function ble/widget/vim-surround.sh/ysurround.core {
 
     # surround
     local opts=
-    case $type in (yS|ySS|vS|vgS) opts=linewise ;; esac
+    if [[ $type == yS || $type == ySS || $context == char && $type == vgS ]]; then
+      opts=linewise:indent
+    elif [[ $context == line ]]; then
+      opts=linewise
+    fi
     if ! ble/lib/vim-surround.sh/surround "$text" "$ins" "$opts"; then
       ble/widget/vi-command/bell
       return 1

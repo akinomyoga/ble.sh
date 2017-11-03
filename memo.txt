@@ -565,21 +565,67 @@ tech
   - vi-mode (xmap/nmap): `gv`
 
   バグ修正
+  - vi-mode (mark `` `x `` `'x`): オペレータが呼び出されないバグの修正
+  - vi-mode (txtobj `[ia]w`): 英数字と _ の連続ではなく英字と _ だけの連続を単語としていたバグの修正
   - vi-mode (imap): `{count}i...<C-[>` において `<C-q>x` `<C-v>x` が正しく繰り返されなかったバグの修正
   - vi-mode (imap): `{count}i...<C-c>` において繰り返しが有効になっていたバグの修正
+  - vi-mode (nmap `{N}%`): 目的の行に移動しなくなっていたバグの修正
+  - vi-mode (nmap `_`): `d_` 及び `d1_` が linewise になっていないバグの修正
   - vi-mode (xmap `I` `A`): 動かなくなっていたバグの修正
   - vi-mode (xmap `I` `A`): 実行後のカーソル位置がずれていたバグの修正
+  - vi-mode (xmap `I` `A` `c` `s` `C`): 矩形挿入の後の編集範囲 `` `[`] `` から1行目が抜けているバグの修正
+  - vi-mode (xmap `?`): 検索 `?` が operator `g?` になっているバグの修正
+  - vi-mode (xmap `/` `?` `n` `N`): ビジュアルモードの選択範囲が検索の一致範囲で上書きされるバグの修正
+  - vi-mode (xmap `/` `?` `n` `N`): 現在の履歴項目の中で一致しない時、別の履歴項目にビジュアルモードのまま移動するバグの修正
   - lib/vim-surround (nmap `cs` `cS`): nmap `.` 対応時に引数とレジスタが効かなくなっていたバグの修正
-  - vi-mode (txtobj `[ia]w`): 英数字と _ の連続ではなく英字と _ だけの連続を単語としていたバグの修正
-  - vi-mode (nmap `{N}%`): 目的の行に移動しなくなっていたバグの修正
-  - vi-mode (mark `` `x `` `'x`): オペレータが動作しないバグの修正
-  - vi-mode (nmap `>`): `d_` 及び `d1_` が linewise になっていないバグの修正
+  - lib/vim-surround (xmap `S`): `v` によるビジュアルモードで改行が前後に挿入されていたバグの修正
 
   動作変更
-  - vi-mode (imap `<C-w>`): vim の単語区切り (iw) による削除に変更
+  - vi-mode (imap `<C-w>`): vim の単語区切り (`w`) による削除に変更
   - vi-mode (nmap `[rRfFtT]x`): `<C-[>` でキャンセルするように変更
   - vi-mode (nmap `w` `b` `e` `ge`): 非英数字 ASCII の連続と、Unicode 文字の連続 をそれぞれ別の単語と扱うように変更
+  - vi-mode (xmap `c` `s` `C`): `I`, `A` と同様の矩形挿入に対応
 
+2017-11-03
+
+  * edit: command-help [#tmp001]
+
+    現在の文脈に従ってコマンド名を抽出して調べる。
+    実のところ、complete 辺りで似たようなことをしているはずだから、
+    簡単に実装できるはずである。
+
+    ble-syntax.sh の syntax-complete の辺りを見ると
+    先ず初めにただ単に文脈によって argument だとかを返しているだけである。
+    complete.sh の方を覗いてみると、
+    ble-complete/source/argument/.compgen で
+    ble-syntax:bash/extract-command "$index" を呼び出している。
+    この関数は変数 comp_cword comp_words comp_line comp_point を設定する。
+
+  * vi-mode (extract-block): [Optimize] 現在の実装では毎回フルに矩形を計算している。
+
+    しかし、一部のコマンドでは一部の情報しか必要としないものも多い。
+    例えば xmap I, xmap A では sub_ranges[0] と sub_x1, sub_x2 しか使用しない。
+    また xmap O では sub_ranges[0] と sub_ranges[最後] しか使わない。
+    extract-block に途中の行について取得しないオプションがあっても良い気がする。
+
+  * vi-mode (registers): 各種特殊レジスタの対応
+
+  * vi-mode: refactor
+
+    ble/keymap:vi/mark/set-local-mark 96 "$_ble_edit_ind" を実行するコマンドを提供するべき。
+    例えば ble/keymap:vi/mark/set-jump など。
+
+    また、linewise-goto.impl 及び linewise-range.impl は
+    bolx nolx を用意しなければならないのが分かりにくい。これも修正するべき。
+
+    ビジュアルモードの種類 char line block を格納する変数名は type ではなく context に統一する。
+
+  * vi-mode (map / ? n N): backward search の一致の仕方が異なる。
+    現在の実装では一致範囲が現在の位置以前にある一致の最後のものが当たる。
+    しかし vim を観察すると、"一致範囲の開始位置" が現在の位置以前にある一致の最後のものが当たる。
+
+    また、vim では一致する物がそれ以上ないときに cyclic に一致するが、
+    ble.sh ではこれについて敢えて対応していない。
 
 2017-11-01
 
@@ -762,46 +808,6 @@ tech
       同じ動作をする。行の右端に行くと次に次の行に普通に移動する。
 
 2017-09-16
-
-  * vi-mode merge 直前に一括して行うテスト・仕様変更など
-
-    * 各コマンドについて再度動作するかどうかについてテストする必要がある。
-      Wiki に各コマンドの説明を書きつつテストして行くのが良いだろう。
-
-      x fixed: ihello world<C-[>. で world 以降しか挿入されない。
-        これは vi_imap/magic-space によって記録が reset されていた為に起こった物である。
-        現在は irepeat は実際に行われたコマンドの列で記録されているし、
-        また xmap I, A なども dirty-range による追跡を行っている。
-        imap での様々な編集が起こっても問題ないようになっているので、
-        単に magic-space を登録してそれを white としても問題ないだろう。
-
-        vi_imap/magic-space は廃止した。今後は magic-space を直接使ってもらう。
-
-      x fixed: a123<C-[>.. において1つ目の . ではちゃんと a で実行されているが、
-        2つ目の . においては i で実行されている。これは何故か。
-        record-insert で (vi_nmap/repeat で呼び出されたかどうかに拘らず)
-        毎回記録しているのが原因である。→修正した。
-
-      x fixed: nmap w b e ge において単語の定義が異なる。
-        これは imap <C-w> や text object iw aw と同様にすれば良さそうだ。
-        というか、imap <C-w> や text object iw aw についても数字が考慮されていなかった。
-
-      x resolved: imap <C-w> でスペースの削除の仕方が異なる気がする。
-        と思ったら、これは bashrc で設定している関数が問題だった。
-
-      x fixed: {N}% がいつも同じ位置に移動する気がする。
-        →これはどうやら local bolx= nolx= を定義せずに linewise-goto を呼び出したのが行けなかったようだ。
-        類似の修正を text objects ip ap に対しても行った。
-
-      * fixed: `a 'a でオペレータが全く動いていない。
-        goto-local-mark.impl, goto-global-mark.impl を呼び出す前に clear-arg を実行していたのがいけなかった。
-        他にも operator の効かない移動コマンドが存在したりするかもしれないので確認する。
-
-      * fixed: d_ 及び d1_ が charwise になっている。正しくは linewise である。
-
-      ここまでで取り敢えず setup-map で登録されているコマンドについては一通り動作することを確認した。
-
-    * vi-mode を bash-3.0 でもテストする。
 
   * cmplstofB: vim-surround.sh: ds cs cS yS ySsd ySSd S gS 'C-s' 'C-g s' 'C-g S'
 
@@ -2352,6 +2358,177 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2017-11-03
+
+  * 2017-09-16 vi-mode merge 直前に一括して行うテスト・仕様変更など
+
+    * 各コマンドについて再度動作するかどうかについてテストする必要がある。
+      Wiki に各コマンドの説明を書きつつテストして行くのが良いだろう。
+
+      x fixed: ihello world<C-[>. で world 以降しか挿入されない。
+        これは vi_imap/magic-space によって記録が reset されていた為に起こった物である。
+        現在は irepeat は実際に行われたコマンドの列で記録されているし、
+        また xmap I, A なども dirty-range による追跡を行っている。
+        imap での様々な編集が起こっても問題ないようになっているので、
+        単に magic-space を登録してそれを white としても問題ないだろう。
+
+        vi_imap/magic-space は廃止した。今後は magic-space を直接使ってもらう。
+
+      x fixed: a123<C-[>.. において1つ目の . ではちゃんと a で実行されているが、
+        2つ目の . においては i で実行されている。これは何故か。
+        record-insert で (vi_nmap/repeat で呼び出されたかどうかに拘らず)
+        毎回記録しているのが原因である。→修正した。
+
+      x fixed: nmap w b e ge において単語の定義が異なる。
+        これは imap <C-w> や text object iw aw と同様にすれば良さそうだ。
+        というか、imap <C-w> や text object iw aw についても数字が考慮されていなかった。
+
+      x resolved: imap <C-w> でスペースの削除の仕方が異なる気がする。
+        と思ったら、これは bashrc で設定している関数が問題だった。
+
+      x fixed: {N}% がいつも同じ位置に移動する気がする。
+        →これはどうやら local bolx= nolx= を定義せずに linewise-goto を呼び出したのが行けなかったようだ。
+        類似の修正を text objects ip ap に対しても行った。
+
+      x fixed: `a 'a でオペレータが全く動いていない。
+        goto-local-mark.impl, goto-global-mark.impl を呼び出す前に clear-arg を実行していたのがいけなかった。
+        他にも operator の効かない移動コマンドが存在したりするかもしれないので確認する。
+
+      x fixed: d_ 及び d1_ が charwise になっている。正しくは linewise である。
+
+      ここまでで取り敢えず setup-map で登録されているコマンドについては一通り動作することを確認した。
+      次に omap nmap xmap に登録されているコマンドについてテストを行う。
+
+      x fixed: lib/vim-surround (xmap S): vS が linewise になっているが、
+        元々の surround.vim ではそうではない。
+        vS は charwise で vgS の時に linewise になっている。
+        また VS および VgS の時も linewise だがインデントは行わない?
+        surround.vim の振る舞いは謎だが、取り敢えず修正した。
+
+      x resolved: command-help が常に一番最初のコマンドの help しか出さない?
+        →調べてみた所、これは元からそういう仕様だったようだ。
+        これの改良については別項目を立てて処理することにする。 #tmp001
+
+      x implemented: 実は xmap c, xmap s, xmap C では InsertLeave を設定する様だ。
+        これの対応は面倒である。
+
+        先ず初めに operator:c の中で、
+        現在の operator の実行が xmap 経由であることを認識しなければならない。
+        と思ったが、よく考えたら context == block となるのはビジュアルモードだけなので、
+        この時は常に block-insert-mode.impl を呼び出すようにしてしまえば良い。
+
+        block-insert-mode.impl は今まで自身で extract-block を呼び出していたが、
+        operator:c context=block の時は既に sub_ranges があるので、これを利用したい。
+        block-insert-mode.impl の呼び出し元で sub_ranges を計算することにした。
+
+        operator:c で .insert-mode を呼び出す代わりに block-insert-mode.impl を呼び出す様にする。
+        vi_xmap/exit が重複して呼び出されることの対策を vi_xmap/exit に追加した。
+
+        実装した。動いている。と思ったが、挿入される文字の数が少ない。
+
+        operator:c の中で、block-insert-mode は行の長さの変化を見るから、
+        これを呼び出した後で領域を削除する訳にはいかない。
+        従って block-insert-mode.impl を呼び出す前に領域を削除しなければならない。
+        すると、それに応じて sub_ranges の修正が必要になる。
+        block-insert-mode は sub_ranges[0] しか参照しないので、これを修正すれば十分である。
+        →修正した。OK
+
+      取り敢えず各 keymap で定義されているコマンドは確認した
+      (imap cmap は面倒だし殆ど emacs-mode と同じなので良いだろう)。
+
+      後は各 mark, 各 registers の特殊な振る舞いについて確認すれば良い。
+
+      o 先ず registers については、そもそも特殊レジスタには対応していない。
+        なので確認することは現時点ではない。
+
+      o mark `^ (挿入モードを抜けた位置)
+      o mark `" (最後にその履歴項目から抜けた時の位置)
+      o mark `. 最後に編集の起こった位置。これは vim のそれと
+        厳密には振る舞いが異なる可能性もあるが、気にしない。
+      o mark `[`] これはよく使っているので問題はないはず。
+      o mark `` これについても既に試したので問題はないはず。
+      o mark `<`> これも gv で使われているので問題ないはず。
+
+      x fixed: xmap ? を押したら rot13 が呼び出される。
+        xmap: / ? n N これは motion として働くべき。
+        確認してみると元から登録されている。
+        単に operator rot13 が上書きされていた。削除した。
+
+      x fixed: xmap で / ? n N を実行すると選択範囲がずれるのでは?
+        →ずれた。これは修正する必要がある。
+        単に xmap にいる時には選択範囲のハイライトをしないという様にすれば良さそう。
+
+        と思ったら、_ble_edit_mark を用いて現在位置が
+        既に一致したものなのかどうか判定している様だ。
+        そうすると _ble_edit_mark を設定しておかないと n N で移動ができなくなる。
+        と思ったが、既に一致したかどうかの判定は ble/keymap:vi/search/invoke-search の中で行っていて、
+        _ble_edit_mark_active または _ble_keymap_vi_search_activate が search になっているかで判定している。
+
+        うーん。invoke-search の中を vi_xmap の時に合わせて書き直そうとしたが難しい。
+        やはり既に一致したかどうかの情報は必要である。
+        そしてそれは _ble_edit_mark_active の clone の様な変数を用意すれば良い。
+        (或いは _ble_edit_mark_active=line+! などのようにどんどん構造を複雑にすることも可能ではあるが、
+        全体に汚くなるのでやはりそのような方法は駄目だ。)
+
+        うーん。取り敢えず _ble_keymap_vi_search_matched という変数を導入してみた。
+        しかし、この変数が正しくクリアされるかどうかについては自信がない。
+
+        - _ble_edit_mark_active は異なるタイミングでもクリアされる。
+          特に xmap から抜けるときと xmap に入る時。
+          xmap から抜ける時は実のところ一致状態が残っていても良い。
+          xmap に入るときも一致状態が残っていても良い。
+          問題は motion によって解除されるはずのところ解除されないということが起こる場合だが、
+          恐らく問題はないはずである。
+
+        - 他に imap や cmap に移るときに問題になることはあるだろうか。
+          cmap に移る時には _ble_edit_mark_active はクリアされるが、
+          _ble_keymap_vi_search_matched はクリアされない。
+          しかしながら cmap から _ble_keymap_vi_search_matched を参照することはないから問題ない。
+          更に、また元の nmap に戻ってきたときには _ble_edit_mark_active が復元されて元の状態に戻る。
+          : を実行している場合には更に adjust-command-mode が呼ばれるので、無事に両方共解除される。
+
+        - imap に移る時にはどうだろうか。_ble_edit_mark_active は解除される。
+          _ble_keymap_vi_search_matched は解除されない。
+          そのまま挿入の操作をしても _ble_keymap_vi_search_matched は解除されないまま残る。
+          次に normal-mode に突入するときにも残る。ここで初回から n などを実行すると、
+          本当は一致していないのに一致しているという様に勘違いして検索が始まる。
+
+          この微妙な違いにユーザは気づかないかもしれないが、確かに変な振る舞いになる。
+          取り敢えず .insert-mode の _ble_edit_mark_active をクリアしているところで、
+          _ble_keymap_vi_search_matched もクリアすることにする。
+          取り敢えずこれでよしとする。
+
+        さて実際に試してみると駄目だ。動いていない。うーん。
+
+        x fixed: これは invoke-search の中で _ble_edit_mark を用いて開始位置を探索していたのが駄目だった。
+          単に 1 文字進めるというようにすれば良いだろうか。。
+          或いは再度一致させてしまえば良い→再度一致させる方針で実装した。
+
+        x fixed: それでも動かないと思ったら、そもそも _ble_keymap_vi_search_activate を
+          vi_xmap の時に設定していなかった。従って、_ble_keymap_vi_search_matched も設定されなかったということだった。
+          _ble_keymap_vi_search_activate を設定するようにした。
+
+        x fixed: 所が今度は _ble_keymap_vi_search_activate を設定したら _ble_edit_mark_active が上書きされてしまった。
+          これは _ble_keymap_vi_search_activate から _ble_edit_mark_active に移す時の keymap の判定が誤っていた。修正した。
+
+        x fixed: また詳しく見てみると範囲がずれている。
+          元々は _ble_edit_mark から読み取って _ble_edit_ind++ していたが、
+          具体的に再一致させて end を読み取っているときには _ble_edit_ind++ は要らないのだった。直した。
+
+      x fixed: / ? n N xmap の時に履歴項目を移動するのはまずいのではないか。
+        →xmap にいる時には履歴項目の移動はしない様にした。動いている。
+
+      取り敢えずはこんなところだろう。
+
+    * vi-mode を bash-3.0 でもテストする。
+
+      そんなに詳しくテストするつもりはない。
+      簡単に動かしてみているが、問題はないようだ。
+      少なくとも全く動かないということはないことは確かだ。
+
+      x fixed: ところで矩形挿入の時の `[`] が変だということに気付いた。
+        修正した。commit-edit-area を追加すれば良いだけだった。
 
 2017-11-02
 
