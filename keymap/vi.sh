@@ -2501,6 +2501,12 @@ function ble/widget/vi_nmap/kill-forward-line-and-insert {
 
 function ble/widget/vi-command/forward-word.impl {
   local arg=$1 flag=$2 reg=$3 rex_word=$4
+  if [[ $flag == c ]]; then
+    # Note: cw cW は特別に ce cE と同じ。
+    #   http://vim-jp.org/vimdoc-ja/change.html#cw
+    ble/widget/vi-command/forward-word-end.impl "$@"
+    return
+  fi
   local b=$'[ \t]' n=$'\n'
   local rex="^((($rex_word)$n?|$b+$n?|$n)($b+$n)*$b*){0,$arg}" # 単語先頭または空行に止まる
   [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]
@@ -2536,34 +2542,42 @@ function ble/widget/vi-command/backward-word-end.impl {
   ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" "$reg"
 }
 
+# motion w
 function ble/widget/vi-command/forward-vword {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/forward-word.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
 }
+# motion e
 function ble/widget/vi-command/forward-vword-end {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/forward-word-end.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
 }
+# motion b
 function ble/widget/vi-command/backward-vword {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/backward-word.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
 }
+# motion ge
 function ble/widget/vi-command/backward-vword-end {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/backward-word-end.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
 }
+# motion W
 function ble/widget/vi-command/forward-uword {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/forward-word.impl "$ARG" "$FLAG" "$REG" $'[^ \t\n]+'
 }
+# motion E
 function ble/widget/vi-command/forward-uword-end {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/forward-word-end.impl "$ARG" "$FLAG" "$REG" $'[^ \t\n]+'
 }
+# motion B
 function ble/widget/vi-command/backward-uword {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/backward-word.impl "$ARG" "$FLAG" "$REG" $'[^ \t\n]+'
 }
+# motion gE
 function ble/widget/vi-command/backward-uword-end {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi-command/backward-word-end.impl "$ARG" "$FLAG" "$REG" $'[^ \t\n]+'
