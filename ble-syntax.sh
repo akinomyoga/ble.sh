@@ -3090,7 +3090,8 @@ function ble-syntax/completion-context/check-prefix {
         fi
       elif [[ $word =~ ^$_ble_syntax_bash_rex_spaces$ ]]; then
         # 単語が未だ開始していない時 (空白)
-        ble-syntax/completion-context/add command "$index"
+        shopt -q no_empty_cmd_completion ||
+          ble-syntax/completion-context/add command "$index"
       fi
 
       ble-syntax/completion-context/check/parameter-expansion
@@ -3172,8 +3173,10 @@ function ble-syntax/completion-context/check-here {
     local ctx=${stat[0]}
     
     if ((ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDX1)); then
-      ble-syntax/completion-context/add command "$index"
-      ble-syntax/completion-context/add variable:= "$index"
+      if ! shopt -q no_empty_cmd_completion; then
+        ble-syntax/completion-context/add command "$index"
+        ble-syntax/completion-context/add variable:= "$index"
+      fi
     elif ((ctx==CTX_CMDXC)); then
       ble-syntax/completion-context/add wordlist:'(:{:((:[[:for:select:case:if:while:until' "$index"
     elif ((ctx==CTX_CMDXE)); then
