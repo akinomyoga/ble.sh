@@ -849,6 +849,10 @@ tech
     もしかすると stty raw などとすると遅延は起こらないのかもしれないが、
     これは時間のある時に試すことにすれば良い。
 
+    →screen の maptimeout や readline の
+      keyseq-timeout を変更してみたが変わらない。
+      screen を抜けても変わらない。
+
 2017-03-18
 
   * complete: .exe が候補から消去されている場合、.e の入力仕掛けの状態での補完ができない。

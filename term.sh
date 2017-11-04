@@ -117,7 +117,7 @@ function ble/term.sh/initialize {
   ble/term.sh/define-cap _ble_term_rc $'\e[u' rc
 
   # Cursors
-  ble/term.sh/define-cap _ble_term_Ss $'\e[@1 q' ss 123 # DECSCUSR
+  ble/term.sh/define-cap _ble_term_Ss '' ss 123 # DECSCUSR
   _ble_term_Ss="${_ble_term_Ss//123/@1}"
   ble/term.sh/define-cap _ble_term_cvvis $'\e[?25h' cvvis
   ble/term.sh/define-cap _ble_term_civis $'\e[?25l' civis
