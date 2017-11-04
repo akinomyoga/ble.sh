@@ -745,10 +745,17 @@ function ble-decode/keymap/register {
 }
 
 function ble-decode/keymap/dump {
-  local kmap="$1" arrays
-  builtin eval "arrays=(\"\${!_ble_decode_${kmap}_kmap_@}\")"
-  builtin echo "ble-decode/keymap/register $kmap"
-  ble/util/declare-print-definitions "${arrays[@]}"
+  if (($#)); then
+    local kmap=$1 arrays
+    builtin eval "arrays=(\"\${!_ble_decode_${kmap}_kmap_@}\")"
+    builtin echo "ble-decode/keymap/register $kmap"
+    ble/util/declare-print-definitions "${arrays[@]}"
+  else
+    local keymap_name
+    for keymap_name in ${_ble_decode_kmaps//:/ }; do
+      ble-decode/keymap/dump "$keymap_name"
+    done
+  fi
 }
 
 ## 設定関数 ble-decode/DEFAULT_KEYMAP -v varname
@@ -1161,7 +1168,7 @@ ble-bind --list-functions
 EOF
 }
 
-function ble-bind/check-argunemnt {
+function ble-bind/check-argunment {
   if (($3<$2)); then
     if (($2==1)); then
       echo "ble-bind: the option \`$1' requires an argument." >&2
@@ -1238,7 +1245,7 @@ function ble-bind {
       (help)
         ble-bind/option:help ;;
       (csi)
-        ble-bind/check-argunemnt --csi 2 "$#" || return
+        ble-bind/check-argunment --csi 2 "$#" || return
         ble-bind/option:csi "$1" "$2"
         shift 2 ;;
       (list-functions)
@@ -1253,7 +1260,8 @@ function ble-bind {
         c="${arg::1}" arg="${arg:1}"
         case "$c" in
         (D)
-          ble/util/declare-print-definitions "${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}" "${!_ble_decode_csimap_@}" ;;
+          ble/util/declare-print-definitions "${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}" "${!_ble_decode_csimap_@}"
+          ble-decode/keymap/dump ;;
         (d)
           ble-decode-char/csi/print
           ble-decode-char/dump

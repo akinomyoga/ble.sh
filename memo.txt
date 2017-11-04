@@ -615,7 +615,7 @@ tech
 
 2017-10-22
 
-  * RET: 文法に基づく改行挿入
+  * edit: RET 文法に基づく改行挿入
 
     shopt -q cmdhist &>/dev/null を参照してこれを有効・無効にするのが良い。
 
