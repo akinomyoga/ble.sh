@@ -211,7 +211,7 @@ function ble-complete/source/command {
   ble/util/assign compgen ble-complete/source/command/gen
   ble/string#split arr $'\n' "$compgen"
   for cand in "${arr[@]}"; do
-    ((i++%100==0)) && ble/util/is-stdin-ready && return 148
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/command
   done
 
@@ -430,7 +430,7 @@ function ble-complete/source/argument/.compgen {
 
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
-    ((i++%100==0)) && ble/util/is-stdin-ready && return 148
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
     ((count++))
   done
@@ -470,7 +470,9 @@ function ble-complete/source/variable {
   ble/util/assign compgen 'compgen -v -- "$COMPV"'
   ble/string#split arr $'\n' "$compgen"
 
+  local i=0
   for cand in "${arr[@]}"; do
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
   done
 }
@@ -556,7 +558,7 @@ function ble/widget/complete {
   local i common comp1 clen comp2="$index"
   local acount=0 aindex=0
   for ((i=0;i<cand_count;i++)); do
-    ((i%100==0)) && ble/util/is-stdin-ready && return 148
+    ((i%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
 
     local word="${cand_word[i]}"
     local -a prop

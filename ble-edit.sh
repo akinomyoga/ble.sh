@@ -5179,6 +5179,7 @@ function ble/widget/history-isearch-forward {
 #------------------------------------------------------------------------------
 # **** completion ****                                                    @comp
 
+: ${bleopt_complete_stdin_frequency:=50}
 ble-autoload "$_ble_base/complete.sh" ble/widget/complete
 
 function ble/widget/command-help {
