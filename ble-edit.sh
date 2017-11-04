@@ -5277,7 +5277,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
     fi
   }
 
-  # * bash-3.1, bash-3.2, bash-4.0 では C-d は直接検知できない。
+  # * bash-3.1, bash-3.2, bash-3.0 では C-d は直接検知できない。
   #   IGNOREEOF を設定しておくと C-d を押した時に
   #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
   if ((_ble_bash<40000)); then
