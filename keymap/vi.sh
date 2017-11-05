@@ -1857,16 +1857,14 @@ function ble/widget/vi-command/forward-char {
   local index
   if [[ $1 == multiline ]]; then
     # SP
-    local width=$ARG line
-    while ((width<=${#_ble_edit_str}-_ble_edit_ind)); do
-      line=${_ble_edit_str:_ble_edit_ind:width}
-      line=${line//[!$'\n']$'\n'/x}
-      ((${#line}>=ARG)) && break
-      ((width+=ARG-${#line}))
-    done
-    ((index=_ble_edit_ind+width,index>${#_ble_edit_str}&&(index=${#_ble_edit_str})))
-    if [[ $_ble_decode_key__kmap != vi_xmap ]]; then
-      ((index<${#_ble_edit_str})) && ble-edit/content/nonbol-eolp "$index" && ((index++))
+    if [[ $FLAG || $_ble_decode_key__kmap == vi_xmap ]]; then
+      ((index=_ble_edit_ind+ARG,
+        index>${#_ble_edit_str}&&(index=${#_ble_edit_str})))
+    else
+      local nl=$'\n'
+      local rex="^([^$nl]$nl?|$nl){0,$ARG}"
+      [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]
+      ((index=_ble_edit_ind+${#BASH_REMATCH}))
     fi
   else
     local line=${_ble_edit_str:_ble_edit_ind:ARG}
@@ -1884,16 +1882,17 @@ function ble/widget/vi-command/backward-char {
   ((ARG>_ble_edit_ind&&(ARG=_ble_edit_ind)))
   if [[ $1 == multiline ]]; then
     # DEL
-    local width=$ARG line
-    while ((width<=_ble_edit_ind)); do
-      line=${_ble_edit_str:_ble_edit_ind-width:width}
-      line=${line//[!$'\n']$'\n'/x}
-      ((${#line}>=ARG)) && break
-      ((width+=ARG-${#line}))
-    done
-    ((index=_ble_edit_ind-width,index<0&&(index=0)))
-    if [[ $_ble_decode_key__kmap != vi_xmap ]]; then
-      ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+    if [[ $FLAG || $_ble_decode_key__kmap == vi_xmap ]]; then
+      ((index=_ble_edit_ind-ARG,index<0&&(index=0)))
+    else
+      local width=$ARG line
+      while ((width<=_ble_edit_ind)); do
+        line=${_ble_edit_str:_ble_edit_ind-width:width}
+        line=${line//[!$'\n']$'\n'/x}
+        ((${#line}>=ARG)) && break
+        ((width+=ARG-${#line}))
+      done
+      ((index=_ble_edit_ind-width,index<0&&(index=0)))
     fi
   else
     local line=${_ble_edit_str:_ble_edit_ind-ARG:ARG}
