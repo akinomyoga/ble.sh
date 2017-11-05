@@ -1252,7 +1252,32 @@ function ble/widget/vi-command/exclusive-range.impl {
   fi
 }
 function ble/widget/vi-command/exclusive-goto.impl {
-  ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$@"
+  local index=$1 flag=$2 reg=$3 nobell=$4
+  if [[ $flag ]]; then
+    if ble-edit/content/bolp "$index"; then
+      ((_ble_edit_ind<index&&index--))
+
+      local is_linewise=
+      if ((_ble_edit_ind<index)); then
+        # :help exclusive-linewise の規則1 (src<ind の時のみ)
+        ((index--))
+        # :help exclusive-linewise の規則2
+        rex=$'(^|\n)[ \t]*$'
+        [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]] &&
+          is_linewise=1
+      elif ((index<_ble_edit_ind)); then
+        # :help exclusive-linewise の規則2 (条件が異なる)
+        ble-edit/content/bolp &&
+          is_linewise=1
+      fi
+
+      if [[ $is_linewise ]]; then
+        ble/widget/vi-command/linewise-goto.impl "$index" "$flag" "$reg"
+        return
+      fi
+    fi
+  fi
+  ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$nobell"
 }
 function ble/widget/vi-command/inclusive-goto.impl {
   local index=$1 flag=$2 reg=$3 nobell=$4
@@ -1263,7 +1288,7 @@ function ble/widget/vi-command/inclusive-goto.impl {
       ble-edit/content/eolp || ble/widget/.goto-char $((_ble_edit_ind+1))
     fi
   fi
-  ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg" "$nobell"
+  ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$nobell"
 }
 
 ## 関数 ble/widget/vi-command/linewise-range.impl p q flag reg opts
