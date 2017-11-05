@@ -1255,8 +1255,6 @@ function ble/widget/vi-command/exclusive-goto.impl {
   local index=$1 flag=$2 reg=$3 nobell=$4
   if [[ $flag ]]; then
     if ble-edit/content/bolp "$index"; then
-      ((_ble_edit_ind<index&&index--))
-
       local is_linewise=
       if ((_ble_edit_ind<index)); then
         # :help exclusive-linewise の規則1 (src<ind の時のみ)
@@ -2525,25 +2523,37 @@ function ble/widget/vi_nmap/kill-forward-line-and-insert {
 
 function ble/widget/vi-command/forward-word.impl {
   local arg=$1 flag=$2 reg=$3 rex_word=$4
-  if [[ $flag == c ]]; then
-    # Note: cw cW は特別に ce cE と同じ。
+  local ifs=$' \t\n'
+  if [[ $flag == c && ${_ble_edit_str:_ble_edit_ind:1} != [$ifs] ]]; then
+    # Note: cw cW は特別な動作
     #   http://vim-jp.org/vimdoc-ja/change.html#cw
-    ble/widget/vi-command/forward-word-end.impl "$@"
+    ble/widget/vi-command/forward-word-end.impl "$arg" "$flag" "$reg" "$rex_word" allow_here
     return
   fi
   local b=$'[ \t]' n=$'\n'
   local rex="^((($rex_word)$n?|$b+$n?|$n)($b+$n)*$b*){0,$arg}" # 単語先頭または空行に止まる
   [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]
   local index=$((_ble_edit_ind+${#BASH_REMATCH}))
+  if [[ $flag ]]; then
+    # :help word-motions の特別規則 (通過した最後の単語が行末にあるとき)
+    local rematch1=${BASH_REMATCH[1]}
+    if local rex="$n$b*\$"; [[ $rematch1 =~ $rex ]]; then
+      local suffix_len=${#BASH_REMATCH}
+      ((suffix_len<${#rematch1})) &&
+        ((index-=suffix_len))
+    fi
+  fi
   ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg"
 }
 function ble/widget/vi-command/forward-word-end.impl {
-  local arg=$1 flag=$2 reg=$3 rex_word=$4
+  local arg=$1 flag=$2 reg=$3 rex_word=$4 opts=$5
   local IFS=$' \t\n'
   local rex="^([$IFS]*($rex_word)?){0,$arg}" # 単語末端に止まる。空行には止まらない
-  [[ ${_ble_edit_str:_ble_edit_ind+1} =~ $rex ]]
-  local index=$((_ble_edit_ind+${#BASH_REMATCH}))
-  [[ $BASH_REMATCH && ${_ble_edit_str:index:1} == [$IFS] ]] && ble/widget/.bell
+  local offset=1; [[ :$opts: == *:allow_here:* ]] && offset=0
+  [[ ${_ble_edit_str:_ble_edit_ind+offset} =~ $rex ]]
+  local index=$((_ble_edit_ind+offset+${#BASH_REMATCH}-1))
+  ((index<_ble_edit_ind&&(index=_ble_edit_ind)))
+  [[ ! $flag && $BASH_REMATCH && ${_ble_edit_str:index:1} == [$IFS] ]] && ble/widget/.bell
   ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" "$reg"
 }
 function ble/widget/vi-command/backward-word.impl {

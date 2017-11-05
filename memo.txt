@@ -556,50 +556,14 @@ tech
 
 2017-11-05
 
-  * vi-mode: cw cW の特殊な動き by cmplstofB
+  * vi-mode (omap): C-c 及び C-[ 等でキャンセルするべきなのでは。
 
-    | echo   hello   vim   world # 元の文字列
-    |
-    | echo   hello@  vim   world # カーソル位置
-    | echo   hellovim   world # cw
-    | echo   hellovim   world # 1cw
-    | echo   helloworld #2cw
-    |
-    | echo   hell@   vim   world # カーソル位置
-    | echo   hell   vim   world # cw
-    | echo   hell   vim   world # 1cw
-    | echo   hell   world # 2cw
-    |
-    | echo   @ello   vim   world # カーソル位置
-    | echo      vim   world # cw
-    | echo      vim   world # 1cw
-    | echo      world # 2cw
-    |
-    | echo nihongo日本語にほんご # 元の文字列
-    |
-    | echo nihong@日本語にほんご # カーソル位置
-    | echo nihong日本語にほんご # cw
-    | echo nihong日本語にほんご # 1cw
-    | echo nihongにほんご # 2cw
-    |
-    | echo @ihongo日本語にほんご # カーソル位置
-    | echo 日本語にほんご # cw
-    | echo 日本語にほんご # 1cw
-    | echo にほんご # 2cw
+    マニュアルを少し探してみたが該当する記述は見つからない。
+    vimindex によるとC-c は現在のコマンドをキャンセルと書かれている。
+    恐らくコレが該当するのだろう。
+    C-[ 及び <esc> は未使用と書かれている。
 
-    - 先ず初めに cw と 1cw に違いはない。
-    - 空白の上にいる時には {N} 個先の w の手前まで。
-      これは cmplstofB さんの報告通り {N}dw と同じ範囲で良い。
-    - 単語の文字の上にいるときは {N} 個先の単語終端まで。現在位置を含む。
-
-    うーん。もしかして caw の終端点? と一瞬思ったが全然違った。
-
-    空行を挟む場合にはどうなるか。
-    先ず空行または行の最後の空白文字で実行すると、その文字以降を消すだけ。
-    行の最後の単語の上で cw を実行しても同様に、その文字以降を消すだけ。
-    行の最後の単語の上で 2cw を実行すると、空行を飛び越えて最初の非空行の最初の単語の末端まで消える。
-    行の最後の空白の上で 2cw を実行すると、空行が1つ消えるのみである。
-    というか 2dw の時点で vim と ble.sh で振る舞いが異なっている。
+  * vi-mode (nmap :q): 残っている文字列を灰色にする?
 
 2017-11-03
 
@@ -1937,6 +1901,21 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
+2017-11-05
+
+  新機能
+  - vi-mode (exclusive motion): `:help exclusive-linewise` 特別規則 (exclusive -> inclusive, exclusive -> linewise) に対応
+  - complete: bleopt 変数 `complete_stdin_frequency` (既定値 `50`) 追加
+  - vi-mode: keymap/vi_test.sh 追加。regression が酷いので vi-mode の動作テストを自動化
+
+  動作変更
+  - vi-mode (nmap `e`, `E`): 移動先が最終行の最後の文字の空白のとき、omap なら bell を鳴らさないように変更
+  - vi-mode (omap/xmap `<space>`, `<back>`, `<C-h>`): 改行の数え方を変更
+  - vi-mode (nmap `cw`, `cW`): 単語の最後の文字、および空白の上にいるときの振る舞いの変更
+  - decode (ble-bind): `ble-bind -D` でキーマップの内部状態も出力するように変更
+  - term: `_ble_term_SS` の既定値を空文字列に変更
+  - complete: `shopt -s no_empty_cmd_completion` では補完を (コマンドの補完以外も) 全く行わない
+
 2017-11-03
 
   破壊的変更
@@ -2393,6 +2372,85 @@ tech
 -------------------------------------------------------------------------------
 
 2017-11-05
+
+  * vi-mode: cw cW の特殊な動き by cmplstofB
+
+    | echo   hello   vim   world # 元の文字列
+    |
+    | echo   hello@  vim   world # カーソル位置
+    | echo   hellovim   world # cw
+    | echo   hellovim   world # 1cw
+    | echo   helloworld #2cw
+    |
+    | echo   hell@   vim   world # カーソル位置
+    | echo   hell   vim   world # cw
+    | echo   hell   vim   world # 1cw
+    | echo   hell   world # 2cw
+    |
+    | echo   @ello   vim   world # カーソル位置
+    | echo      vim   world # cw
+    | echo      vim   world # 1cw
+    | echo      world # 2cw
+    |
+    | echo nihongo日本語にほんご # 元の文字列
+    |
+    | echo nihong@日本語にほんご # カーソル位置
+    | echo nihong日本語にほんご # cw
+    | echo nihong日本語にほんご # 1cw
+    | echo nihongにほんご # 2cw
+    |
+    | echo @ihongo日本語にほんご # カーソル位置
+    | echo 日本語にほんご # cw
+    | echo 日本語にほんご # 1cw
+    | echo にほんご # 2cw
+
+    - 先ず初めに cw と 1cw に違いはない。
+    - 空白の上にいる時には {N} 個先の w の手前まで。
+      これは cmplstofB さんの報告通り {N}dw と同じ範囲で良い。
+    - 単語の文字の上にいるときは {N} 個先の単語終端まで。現在位置を含む。
+
+    うーん。もしかして caw の終端点? と一瞬思ったが全然違った。
+
+    空行を挟む場合にはどうなるか。
+    先ず空行または行の最後の空白文字で実行すると、その文字以降を消すだけ。
+    行の最後の単語の上で cw を実行しても同様に、その文字以降を消すだけ。
+    行の最後の単語の上で 2cw を実行すると、空行を飛び越えて最初の非空行の最初の単語の末端まで消える。
+    行の最後の空白の上で 2cw を実行すると、空行が1つ消えるのみである。
+
+    x fixed: というか 2dw の時点で vim と ble.sh で振る舞いが異なっている。
+      →これについては #D0566 で修正した。
+
+    x fixed: あと、最終行で最後に空白しか無いときに e を押すと最後の文字に移動して bell がなるが、
+      vim ではオペレータ付きでこれを実行すると bell はならない。
+      ble.sh ではオペレータがついていても bell を鳴らしていたので、修正する。
+
+    取り敢えず対応した。これから動作確認をする。
+    取り敢えず提示された編集を実行してみることにする。
+
+
+  * vi-mode: w, dw の動作の違いに関して。 [#D0566]
+
+    これは既に Issues #2 にも書いたが、
+    以下の内容に対して H5|w だと 9 位置に行くが、
+    H5|dw だと 5678 を削除するという振る舞いについてである。
+
+    | 12345678
+    |     90ab
+
+    - 実は :help word-motions に記述があった。
+      {op}w の時には最後に通過した単語が行末にあった時、
+      その後の空白は含まれないというものである。
+
+    - {op}W に関しては記述がないが、
+      実際に試してみると {op}w の時と同様に働く。
+
+    - "最後の単語" の後に空白があってから改行でも良い。
+      更にいうと、word-motions には単語の終わりがオペレータの対象の終わりと書いてあるが、
+      これは間違いで実際には行末までがオペレータの対象の終わりになる。
+
+    - "最後の単語" が改行の場合でも成立する。
+      この時には改行の直後がオペレータの対象の終わりになる。
+      (但し、その後で exclusive-linewise の規則が適用される。)
 
   * vi-mode: SP DEL は vi_xmap 及びオペレータが設定されている時は改行も数える。 [#D0565]
 
