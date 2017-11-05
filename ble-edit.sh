@@ -3101,6 +3101,7 @@ function ble/widget/exit {
 
   #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   ble-edit/info/hide
+  _ble_edit_line_disabled=1 ble/textarea#render
   local -a DRAW_BUFF
   ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble-edit/draw/bflush

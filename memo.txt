@@ -554,10 +554,6 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
-2017-11-05
-
-  * vi-mode (nmap :q): 残っている文字列を灰色にする?
-
 2017-11-03
 
   * edit: command-help [#tmp001]
@@ -1898,8 +1894,9 @@ tech
 
   新機能
   - vi-mode (exclusive motion): `:help exclusive-linewise` 特別規則 (exclusive -> inclusive, exclusive -> linewise) に対応
-  - complete: bleopt 変数 `complete_stdin_frequency` (既定値 `50`) 追加
+  - vi-mode (omap): `C-c` `C-[` で明示的にキャンセル
   - vi-mode: keymap/vi_test.sh 追加。regression が酷いので vi-mode の動作テストを自動化
+  - complete: bleopt 変数 `complete_stdin_frequency` (既定値 `50`) 追加
 
   動作変更
   - vi-mode (nmap `e`, `E`): 移動先が最終行の最後の文字の空白のとき、omap なら bell を鳴らさないように変更
@@ -1907,7 +1904,8 @@ tech
   - vi-mode (nmap `cw`, `cW`): 単語の最後の文字、および空白の上にいるときの振る舞いの変更
   - decode (ble-bind): `ble-bind -D` でキーマップの内部状態も出力するように変更
   - term: `_ble_term_SS` の既定値を空文字列に変更
-  - complete: `shopt -s no_empty_cmd_completion` では補完を (コマンドの補完以外も) 全く行わない
+  - complete: `shopt -s no_empty_cmd_completion` では補完を (コマンドの補完以外も) 全く行わないように変更
+  - edit (ble/widget/exit): 編集中の文字列が残っているとき、灰色で再描画してから exit するように変更
 
 2017-11-03
 
@@ -2365,6 +2363,8 @@ tech
 -------------------------------------------------------------------------------
 
 2017-11-05
+
+  * vi-mode (nmap :q): 残っている文字列を灰色にする? [#D0569]
 
   * vi-mode (omap): C-c 及び C-[ 等でキャンセルするべきなのでは。 [#D0568]
 
