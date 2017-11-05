@@ -243,7 +243,7 @@ function ble/lib/vim-surround.sh/surround {
       ble/keymap:vi/string#increase-indent "$text" "$bleopt_indent_offset"; text=$ret
     fi
     text=$'\n'$text$'\n'$indent
-    # todo: 初めから text に改行が含まれていた場合は、
+    # ToDo: 初めから text に改行が含まれていた場合は、
     #   更にここで = による自動インデントを実行する?
   elif [[ $has_space ]]; then
     text=' '$text' '
@@ -440,8 +440,6 @@ function ble/keymap:vi/operator:ysurround.repeat {
 #     それ以外の c = a-zA-Z は既定として text-object {arg}ic を残し {arg}ac を削除する。
 #     それ以外の文字に関しては行内で一致を検索する。
 #
-#     ToDo: /[pstT]/ は本体で実装が追いついていないので未対応
-#
 #   更に cs は続いて / ?./ の形式の引数を受け取る。
 #
 #     / / が指定されたtときは左右内側に空白を 1 つずつ付加する。
@@ -480,7 +478,7 @@ function ble/keymap:vi/operator:surround {
   ble/widget/.replace-range "$beg" "$end" "$content"
 
   # if [[ $has_nl ]]; then
-  #   # todo: indent
+  #   # ToDo: indent
   # fi
 
   return 0

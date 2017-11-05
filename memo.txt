@@ -564,19 +564,6 @@ tech
 
 2017-11-03
 
-  * edit: command-help [#tmp001]
-
-    現在の文脈に従ってコマンド名を抽出して調べる。
-    実のところ、complete 辺りで似たようなことをしているはずだから、
-    簡単に実装できるはずである。
-
-    ble-syntax.sh の syntax-complete の辺りを見ると
-    先ず初めにただ単に文脈によって argument だとかを返しているだけである。
-    complete.sh の方を覗いてみると、
-    ble-complete/source/argument/.compgen で
-    ble-syntax:bash/extract-command "$index" を呼び出している。
-    この関数は変数 comp_cword comp_words comp_line comp_point を設定する。
-
   * vi-mode (extract-block): [Optimize] 現在の実装では毎回フルに矩形を計算している。
 
     しかし、一部のコマンドでは一部の情報しか必要としないものも多い。
@@ -659,7 +646,7 @@ tech
 
     * nmap: C-g C-a C-x C-^ '括弧 `括弧
       C-t C-] M Q ZZ ZQ [x ]x do dp { } qx @x gx zx C-w{char}
-    * xmap: K ^] C-a C-x gC-a gC-x
+    * xmap: ^] C-a C-x gC-a gC-x
 
 2017-10-05
 
@@ -2390,6 +2377,23 @@ tech
 
 2017-11-05
 
+  * 2017-11-03 edit: command-help [#D0571]
+
+    現在の文脈に従ってコマンド名を抽出して調べる。
+    実のところ、complete 辺りで似たようなことをしているはずだから、
+    簡単に実装できるはずである。
+
+    ble-syntax.sh の syntax-complete の辺りを見ると
+    先ず初めにただ単に文脈によって argument だとかを返しているだけである。
+    complete.sh の方を覗いてみると、
+    ble-complete/source/argument/.compgen で
+    ble-syntax:bash/extract-command "$index" を呼び出している。
+    この関数は変数 comp_cword comp_words comp_line comp_point を設定する。
+
+    対応した。--help よりも man の方を優先する様に変更した。
+    また man の出力をパイプに流すと日本語の見出しが変なことになるので、
+    man を直接起動することにした。man の標準エラー出力は /dev/null に捨てる。
+
   * vi-mode (nmape * #): 単語の検索に対応するということ [#D0570]
 
     * をおした時カーソルの下に単語 (WORD) があればそれを検索する。
@@ -2815,7 +2819,7 @@ tech
 
       x resolved: command-help が常に一番最初のコマンドの help しか出さない?
         →調べてみた所、これは元からそういう仕様だったようだ。
-        これの改良については別項目を立てて処理することにする。 #tmp001
+        これの改良については別項目を立てて処理することにする。 #D0571
 
       x implemented: 実は xmap c, xmap s, xmap C では InsertLeave を設定する様だ。
         これの対応は面倒である。

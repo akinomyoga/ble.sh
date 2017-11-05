@@ -3908,6 +3908,37 @@ function ble/widget/vi-command/search-word-backward {
 }
 
 #------------------------------------------------------------------------------
+# command-help
+
+# nmap K
+function ble/widget/vi_nmap/command-help {
+  ble/keymap:vi/clear-arg
+  ble/widget/command-help; local ext=$?
+  ble/keymap:vi/adjust-command-mode
+  return "$ext"
+}
+function ble/widget/vi_xmap/command-help.core {
+  ble/keymap:vi/clear-arg
+  local get_selection=ble-highlight-layer:region/mark:$_ble_edit_mark_active/get-selection
+  ble/util/isfunction "$get_selection" || return 1
+
+  local selection
+  "$get_selection" || return 1
+  ((${#selection[*]}==2)) || return
+
+  local cmd=${_ble_edit_str:selection[0]:selection[1]-selection[0]}
+  ble/widget/command-help.impl "$cmd"; local ext=$?
+  ble/keymap:vi/adjust-command-mode
+  return "$ext"
+}
+function ble/widget/vi_xmap/command-help {
+  if ! ble/widget/vi_xmap/command-help.core; then
+    ble/widget/vi-command/bell
+    return 1
+  fi
+}
+
+#------------------------------------------------------------------------------
 
 ## 関数 ble/keymap:vi/setup-map
 ## @var[in] ble_bind_keymap
@@ -4093,7 +4124,6 @@ function ble/widget/vi-command/cancel {
   return 0
 }
 
-
 function ble-decode-keymap:vi_nmap/define {
   local ble_bind_keymap=vi_nmap
 
@@ -4145,7 +4175,7 @@ function ble-decode-keymap:vi_nmap/define {
 
   ble-bind -f .      vi_nmap/repeat
 
-  ble-bind -f K      command-help
+  ble-bind -f K      vi_nmap/command-help
 
   ble-bind -f 'z t'   clear-screen
   ble-bind -f 'z z'   redraw-line # 中央
@@ -5263,6 +5293,8 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f 'C-[' vi_xmap/exit
   ble-bind -f 'C-c' vi_xmap/cancel
 
+  ble-bind -f '"' vi-command/register
+
   ble-bind -f a vi-command/text-object
   ble-bind -f i vi-command/text-object
 
@@ -5303,7 +5335,7 @@ function ble-decode-keymap:vi_xmap/define {
   ble-bind -f p vi_xmap/paste-after
   ble-bind -f P vi_xmap/paste-before
 
-  ble-bind -f '"' vi-command/register
+  ble-bind -f K vi_xmap/command-help
 }
 
 #------------------------------------------------------------------------------

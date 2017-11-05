@@ -2412,7 +2412,7 @@ function ble/textarea#render {
   ble/textmap#getxy.cur --prefix=c "$index" # → cx cy
 
   local cols=$_ble_textmap_cols
-  local height=$((LINES-1)) # todo: info の高さも考慮に入れる
+  local height=$((LINES-1)) # ToDo: info の高さも考慮に入れる
   local scroll=$_ble_textarea_scroll
   ble/textarea#render/.determine-scroll # update: height scroll umin umax
   ble-form/panel#set-height.draw "$_ble_textarea_panel" "$height"
@@ -5183,10 +5183,8 @@ function ble/widget/history-isearch-forward {
 : ${bleopt_complete_stdin_frequency:=50}
 ble-autoload "$_ble_base/complete.sh" ble/widget/complete
 
-function ble/widget/command-help {
-  local -a args
-  args=($_ble_edit_str)
-  local cmd="${args[0]}"
+function ble/widget/command-help.impl {
+  local cmd=$1
 
   if [[ ! $cmd ]]; then
     ble/widget/.bell
@@ -5198,21 +5196,36 @@ function ble/widget/command-help {
     return 1
   fi
 
-  local content
-  if content="$("$cmd" --help 2>&1)" && [[ $content ]]; then
-    ble/util/buffer.flush >&2
-    builtin printf '%s\n' "$content" | ble/util/less
-    return
-  fi
+  ble/util/buffer.flush >&2
 
-  if content="$(command man "$cmd" 2>&1)" && [[ $content ]]; then
-    ble/util/buffer.flush >&2
+  local content
+  command man "$cmd" 2>/dev/null && return 0
+  # Note: $(man "$cmd") と (特に日本語で) 正しい結果が得られない。
+  # if content="$(command man "$cmd" 2>&1)" && [[ $content ]]; then
+  #   builtin printf '%s\n' "$content" | ble/util/less
+  #   return
+  # fi
+
+  if content="$("$cmd" --help 2>&1)" && [[ $content ]]; then
     builtin printf '%s\n' "$content" | ble/util/less
     return
   fi
 
   ble/widget/.bell "help of \`$cmd' not found"
   return 1
+}
+
+function ble/widget/command-help {
+  # ToDo: syntax update?
+  local comp_cword comp_words comp_line comp_point
+  if ble-syntax:bash/extract-command "$_ble_edit_ind"; then
+    local cmd=${comp_words[0]}
+  else
+    local -a args; args=($_ble_edit_str)
+    local cmd="${args[0]}"
+  fi
+
+  ble/widget/command-help.impl "$cmd"
 }
 
 # 
