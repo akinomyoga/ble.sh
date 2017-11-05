@@ -8,6 +8,9 @@ function ble/keymap:vi_test/decompose-state {
     ind=${str%%"$ind"*} ind=${#ind} str=${str::ind}${str:ind+1}
 }
 
+function ble/keymap:vi_test/start-section {
+  section=$1 nsuccess=0 ntest=0
+}
 
 function ble/keymap:vi_test/check {
   local id=$1 initial=$2 kspecs=$3 final=$4
@@ -28,7 +31,7 @@ function ble/keymap:vi_test/check {
     ((ntest++,nsuccess++))
   else
     ((ntest++))
-    echo "test($id): keys = ($kspecs)"
+    echo "test($section/$id): keys = ($kspecs)"
     echo "  initial  = \"$i:${in//$nl/$NL}\""
     echo "  expected = \"$f:${fin//$nl/$NL}\""
     echo "  result   = \"$_ble_edit_ind:${_ble_edit_str//$nl/$NL}\""
@@ -36,16 +39,13 @@ function ble/keymap:vi_test/check {
 
   # restore states
   case $_ble_decode_key__kmap in
-  (vi_[ix]map)
+  (vi_[ixo]map)
     ble-decode-key $((ble_decode_Ctrl|99)) &>/dev/null ;;
   esac
 
   return "$ext"
 }
 
-function ble/keymap:vi_test/start-section {
-  section=$1 nsuccess=0 ntest=0
-}
 function ble/keymap:vi_test/show-summary {
   local title=$section
   if ((nsuccess==ntest)); then

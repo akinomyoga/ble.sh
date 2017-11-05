@@ -1857,7 +1857,7 @@ function ble/widget/vi-command/forward-char {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
 
   local index
-  if [[ $1 == multiline ]]; then
+  if [[ $1 == wrap ]]; then
     # SP
     if [[ $FLAG || $_ble_decode_key__kmap == vi_xmap ]]; then
       ((index=_ble_edit_ind+ARG,
@@ -1882,7 +1882,7 @@ function ble/widget/vi-command/backward-char {
 
   local index
   ((ARG>_ble_edit_ind&&(ARG=_ble_edit_ind)))
-  if [[ $1 == multiline ]]; then
+  if [[ $1 == wrap ]]; then
     # DEL
     if [[ $FLAG || $_ble_decode_key__kmap == vi_xmap ]]; then
       ((index=_ble_edit_ind-ARG,index<0&&(index=0)))
@@ -3632,6 +3632,11 @@ function ble-highlight-layer:region/mark:search/get-selection {
 function ble/keymap:vi/search/matched {
   [[ $_ble_keymap_vi_search_matched || $_ble_edit_mark_active == search || $_ble_keymap_vi_search_activate ]]
 }
+function ble/keymap:vi/search/clear-matched {
+  _ble_keymap_vi_search_activate=
+  _ble_keymap_vi_search_matched=
+  [[ $_ble_edit_mark_active == search ]] && _ble_edit_mark_active=
+}
 ## 関数 ble/keymap:vi/search/invoke-search needle opts
 ##   @var[in] needle
 ##   @var[in,opt] opts
@@ -3767,7 +3772,8 @@ function ble/widget/vi-command/search.impl {
       return 1
     fi
   else
-    # / ?
+    # / ? * #
+    ble/keymap:vi/search/clear-matched
     if [[ $needle ]]; then
       _ble_keymap_vi_search_needle=$needle
       _ble_keymap_vi_search_obackward=$opt_backward
@@ -3857,6 +3863,50 @@ function ble/widget/vi-command/search-reverse-repeat {
   ble/widget/vi-command/search.impl repeat:-
 }
 
+function ble/widget/vi-command/search-word.impl {
+  local opts=$1
+  local rex=$'^([^[:alnum:]_\n]*)([[:alnum:]_]*)'
+  if ! [[ ${_ble_edit_str:_ble_edit_ind} =~ $rex ]]; then
+    ble/keymap:vi/clear-arg
+    ble/widget/vi-command/bell 'word is not found'
+    return 1
+  fi
+
+  local end=$((_ble_edit_ind+${#BASH_REMATCH}))
+  local word=${BASH_REMATCH[2]}
+  if [[ ! ${BASH_REMATCH[1]} ]]; then
+    rex=$'[[:alnum:]_]+$'
+    [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]] &&
+      word=$BASH_REMATCH$word
+  fi
+
+  # Note: Bash 正規表現は <regex.h> を用いるので、
+  #   必ずしも非 POSIX ERE \<\> に対応しているとは限らない。
+  #   また [[:alnum:]_] と符合しているかも分からない。
+  #   従って適用できるか確認してから境界に一致することを要求する。
+  local needle=$word
+  rex='\<'$needle; [[ $word =~ $rex ]] && needle=$rex
+  rex=$needle'\>'; [[ $word =~ $rex ]] && needle=$rex
+
+  if [[ $opts == backward ]]; then
+    ble/widget/vi-command/search.impl -:history "$needle"
+  else
+    local original_ind=$_ble_edit_ind
+    ble/widget/.goto-char $((end-1))
+    ble/widget/vi-command/search.impl +:history "$needle" && return
+    ble/widget/.goto-char "$original_ind"
+    return 1
+  fi
+}
+# nmap *
+function ble/widget/vi-command/search-word-forward {
+  ble/widget/vi-command/search-word.impl forward
+}
+# nmap #
+function ble/widget/vi-command/search-word-backward {
+  ble/widget/vi-command/search-word.impl backward
+}
+
 #------------------------------------------------------------------------------
 
 ## 関数 ble/keymap:vi/setup-map
@@ -3908,9 +3958,9 @@ function ble/keymap:vi/setup-map {
   ble-bind -f l     vi-command/forward-char
   ble-bind -f left  vi-command/backward-char
   ble-bind -f right vi-command/forward-char
-  ble-bind -f C-h   'vi-command/backward-char multiline'
-  ble-bind -f DEL   'vi-command/backward-char multiline'
-  ble-bind -f SP    'vi-command/forward-char multiline'
+  ble-bind -f C-h   'vi-command/backward-char wrap'
+  ble-bind -f DEL   'vi-command/backward-char wrap'
+  ble-bind -f SP    'vi-command/forward-char wrap'
 
   ble-bind -f j     vi-command/forward-line
   ble-bind -f down  vi-command/forward-line
@@ -3962,6 +4012,8 @@ function ble/keymap:vi/setup-map {
   ble-bind -f '?' vi-command/search-backward
   ble-bind -f 'n' vi-command/search-repeat
   ble-bind -f 'N' vi-command/search-reverse-repeat
+  ble-bind -f '*' vi-command/search-word-forward
+  ble-bind -f '#' vi-command/search-word-backward
 
   ble-bind -f '`' 'vi-command/goto-mark'
   ble-bind -f \'  'vi-command/goto-mark line'
