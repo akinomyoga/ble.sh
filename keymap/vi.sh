@@ -162,6 +162,10 @@ function ble/widget/vi_omap/__default__ {
   ble/widget/vi-command/decompose-meta || ble/widget/vi-command/bell
   return 0
 }
+function ble/widget/vi_omap/cancel {
+  ble/keymap:vi/adjust-command-mode
+  return 0
+}
 
 #------------------------------------------------------------------------------
 # repeat
@@ -3971,6 +3975,9 @@ function ble-decode-keymap:vi_omap/define {
   ble/keymap:vi/setup-map
 
   ble-bind -f __default__ vi_omap/__default__
+  ble-bind -f ESC vi_omap/cancel
+  ble-bind -f C-[ vi_omap/cancel
+  ble-bind -f C-c vi_omap/cancel
 
   ble-bind -f a   vi-command/text-object
   ble-bind -f i   vi-command/text-object
