@@ -645,24 +645,6 @@ function ble-term/flush {
 
 # **** vbell/abell ****
 
-function _ble_base_tmp.wipe {
-  local file pid mark removed
-  mark=() removed=()
-  for file in "$_ble_base_tmp"/[1-9]*.*; do
-    [[ -e $file ]] || continue
-    pid=${file##*/}; pid=${pid%%.*}
-    [[ ${mark[pid]} ]] && continue
-    mark[pid]=1
-    if ! kill -0 "$pid" &>/dev/null; then
-      removed=("${removed[@]}" "$_ble_base_tmp/$pid."*)
-    fi
-  done
-  ((${#removed[@]})) && command rm -f "${removed[@]}"
-}
-
-# initialization time = 9ms (for 70 files)
-_ble_base_tmp.wipe
-
 function ble-term/visible-bell/.initialize {
   _ble_term_visible_bell__ftime="$_ble_base_tmp/$$.visible-bell.time"
 

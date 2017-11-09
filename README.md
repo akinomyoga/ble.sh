@@ -30,7 +30,7 @@ A script file `ble.sh` will be generated in the directory `ble.sh/out`. Then, lo
 ```console
 $ source out/ble.sh
 ```
-If you want to install `ble.sh` in a specified directory, use the following command (if `INSDIR` is not specified, the default location `$HOME/.local/share/blesh` is used):
+If you want to install `ble.sh` in a specified directory, use the following command (if `INSDIR` is not specified, the default location `${XDG_DATA_DIR:-$HOME/.local/share}/blesh` is used):
 ```console
 $ make INSDIR=/path/to/blesh install
 ```
