@@ -234,7 +234,7 @@ if ! ble/base/initialize-base-directory "${BASH_SOURCE[0]}"; then
 fi
 
 ##
-## @var _ble_base_tmp
+## @var _ble_base_run
 ##
 ##   実行時の一時ファイルを格納するディレクトリ。以下の手順で決定する。
 ##   
@@ -257,7 +257,7 @@ function ble/base/initialize-runtime-directory/.xdg {
     return 1
   fi
 
-  ble/base/.create-user-directory _ble_base_tmp "$runtime_dir/blesh"
+  ble/base/.create-user-directory _ble_base_run "$runtime_dir/blesh"
 }
 function ble/base/initialize-runtime-directory/.tmp {
   [[ -r /tmp && -w /tmp && -x /tmp ]] || return
@@ -276,7 +276,7 @@ function ble/base/initialize-runtime-directory/.tmp {
     return 1
   fi
 
-  ble/base/.create-user-directory _ble_base_tmp "$tmp_dir/$UID"
+  ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
 }
 function ble/base/initialize-runtime-directory {
   ble/base/initialize-runtime-directory/.xdg && return
@@ -288,23 +288,23 @@ function ble/base/initialize-runtime-directory {
     command mkdir -p "$tmp_dir" || return
     command chmod a+rwxt "$tmp_dir" || return
   fi
-  ble/base/.create-user-directory _ble_base_tmp "$tmp_dir/$UID"
+  ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
 }
 if ! ble/base/initialize-runtime-directory; then
-  echo "ble.sh: failed to initialize \$_ble_base_tmp." 1>&2
+  echo "ble.sh: failed to initialize \$_ble_base_run." 1>&2
   return 1
 fi
 
 function ble/base/clean-up-runtime-directory {
   local file pid mark removed
   mark=() removed=()
-  for file in "$_ble_base_tmp"/[1-9]*.*; do
+  for file in "$_ble_base_run"/[1-9]*.*; do
     [[ -e $file ]] || continue
     pid=${file##*/}; pid=${pid%%.*}
     [[ ${mark[pid]} ]] && continue
     mark[pid]=1
     if ! kill -0 "$pid" &>/dev/null; then
-      removed=("${removed[@]}" "$_ble_base_tmp/$pid."*)
+      removed=("${removed[@]}" "$_ble_base_run/$pid."*)
     fi
   done
   ((${#removed[@]})) && command rm -f "${removed[@]}"

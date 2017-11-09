@@ -3672,7 +3672,7 @@ function ble-edit/history/add {
 
   if [[ $histfile ]]; then
     # bash-3.1 work around
-    local tmp="$_ble_base_tmp/$$.ble_edit_history_add.txt"
+    local tmp="$_ble_base_run/$$.ble_edit_history_add.txt"
     builtin printf '%s\n' "$cmd" >> "$histfile"
     builtin printf '%s\n' "$cmd" >| "$tmp"
     history -r "$tmp"
@@ -4284,8 +4284,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
     ble/util/openat _ble_edit_io_stdout '>&1'
     ble/util/openat _ble_edit_io_stderr '>&2'
   fi
-  declare _ble_edit_io_fname1="$_ble_base_tmp/$$.stdout"
-  declare _ble_edit_io_fname2="$_ble_base_tmp/$$.stderr"
+  declare _ble_edit_io_fname1="$_ble_base_run/$$.stdout"
+  declare _ble_edit_io_fname2="$_ble_base_run/$$.stderr"
 
   function ble-edit/bind/stdout.on {
     exec 1>&$_ble_edit_io_stdout 2>&$_ble_edit_io_stderr

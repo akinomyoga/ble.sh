@@ -134,7 +134,7 @@ function ble/string#split {
 #
 
 ## 関数 ble/util/assign
-_ble_util_read_stdout_tmp="$_ble_base_tmp/$$.ble_util_assign.tmp"
+_ble_util_read_stdout_tmp="$_ble_base_run/$$.ble_util_assign.tmp"
 # function ble/util/assign { builtin eval "$1=\"\$(${@:2})\""; }
 function ble/util/assign {
   builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
@@ -289,7 +289,7 @@ if ((_ble_bash>=40000)); then
         while kill -0 $$; do command sleep 300; done &>/dev/null
       )'
     else
-      _ble_util_sleep_tmp="$_ble_base_tmp/$$.ble_util_sleep.pipe"
+      _ble_util_sleep_tmp="$_ble_base_run/$$.ble_util_sleep.pipe"
       if [[ ! -p $_ble_util_sleep_tmp ]]; then
         [[ -e $_ble_util_sleep_tmp ]] && command rm -rf "$_ble_util_sleep_tmp"
         command mkfifo "$_ble_util_sleep_tmp"
@@ -646,7 +646,7 @@ function ble-term/flush {
 # **** vbell/abell ****
 
 function ble-term/visible-bell/.initialize {
-  _ble_term_visible_bell__ftime="$_ble_base_tmp/$$.visible-bell.time"
+  _ble_term_visible_bell__ftime="$_ble_base_run/$$.visible-bell.time"
 
   local -a BUFF=()
   ble-term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
