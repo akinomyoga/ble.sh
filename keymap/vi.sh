@@ -5938,7 +5938,6 @@ function ble-decode-keymap:vi_cmap/define {
   ble-bind -f 'S-C-end'  '@marked end-of-text'
 
   # ble-bind -f 'C-x' bell
-  ble-bind -f 'C-[' bell
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
