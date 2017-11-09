@@ -23,7 +23,7 @@ echo ble-@.sh >&2
 #%%end
 #%end
 #%#----------------------------------------------------------------------------
-# bash script to be sourced from interactive shell
+# bash script to souce from interactive shell sessions
 #
 # ble - bash line editor
 #
@@ -176,7 +176,34 @@ function ble/util/readlink {
     echo -n "$path" ;;
   esac
 }
-function _ble_base.initialize {
+
+function ble/base/.create-user-directory {
+  local var=$1 dir=$2
+  if [[ ! -d $dir ]]; then
+    # dangling symlinks are silently removed
+    [[ ! -e $dir && -h $dir ]] && command rm -f "$dir"
+    if [[ -e $dir || -h $dir ]]; then
+      echo "ble.sh: cannot create a directory '$dir' since there is already a file." >&2
+      return 1
+    fi
+    if ! (umask 077; command mkdir -p "$dir"); then
+      echo "ble.sh: failed to create a directory '$dir'." >&2
+      return 1
+    fi
+  elif ! [[ -r $dir && -w $dir && -x $dir ]]; then
+    echo "ble.sh: permision of '$tmpdir' is not correct." >&2
+    return 1
+  fi
+  eval "$var=\$dir"
+}
+
+##
+## @var _ble_base
+##
+##   ble.sh のインストール先ディレクトリ。
+##   読み込んだ ble.sh の実体があるディレクトリとして解決される。
+##
+function ble/base/initialize-base-directory {
   local src=$1
   local defaultDir=$2
 
@@ -197,60 +224,140 @@ function _ble_base.initialize {
   else
     _ble_base=${defaultDir:-$HOME/.local/share/blesh}
   fi
+
+  [[ -d $_ble_base ]]
 }
-_ble_base.initialize "${BASH_SOURCE[0]}"
-if [[ ! -d $_ble_base ]]; then
+if ! ble/base/initialize-base-directory "${BASH_SOURCE[0]}"; then
   echo "ble.sh: ble base directory not found!" 1>&2
   return 1
 fi
 
-#
-# _ble_base_tmp
-#
+##
+## @var _ble_base_run
+##
+##   実行時の一時ファイルを格納するディレクトリ。以下の手順で決定する。
+##   
+##   1. ${XDG_RUNTIME_DIR:=/run/user/$UID} が存在すればその下に blesh を作成して使う。
+##   2. /tmp/blesh/$UID を作成可能ならば、それを使う。
+##   3. $_ble_base/tmp/$UID を使う。
+##
+function ble/base/initialize-runtime-directory/.xdg {
+  [[ $_ble_base != */out ]] || return
 
-# use /tmp/blesh if accessible
-if [[ -r /tmp && -w /tmp && -x /tmp ]]; then
-  if [[ ! -d /tmp/blesh ]]; then
-    _ble_base_tmp=/tmp/blesh
-    [[ -e $_ble_base_tmp || -h $_ble_base_tmp ]] && command rm -f "$_ble_base_tmp"
-    command mkdir -p "$_ble_base_tmp"
-    command chmod a+rwxt "$_ble_base_tmp"
-  elif [[ -r /tmp/blesh && -w /tmp/blesh && -x /tmp/blesh ]]; then
-    _ble_base_tmp=/tmp/blesh
+  local runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$UID}
+  if [[ ! -d $runtime_dir ]]; then
+    [[ $XDG_RUNTIME_DIR ]] &&
+      echo "ble.sh: XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' is not a directory." >&2
+    return 1
   fi
-fi
-
-# fallback
-if [[ ! $_ble_base_tmp ]]; then
-  _ble_base_tmp="$_ble_base/tmp"
-  if [[ ! -d $_ble_base_tmp ]]; then
-    command mkdir -p "$_ble_base_tmp"
-    command chmod a+rwxt "$_ble_base_tmp"
+  if ! [[ -r $runtime_dir && -w $runtime_dir && -x $runtime_dir ]]; then
+    [[ $XDG_RUNTIME_DIR ]] &&
+      echo "ble.sh: XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' doesn't have a proper permission." >&2
+    return 1
   fi
-fi
 
-_ble_base_tmp="$_ble_base_tmp/$UID"
-if [[ ! -d $_ble_base_tmp ]]; then
-  (umask 077; command mkdir -p "$_ble_base_tmp")
-fi
+  ble/base/.create-user-directory _ble_base_run "$runtime_dir/blesh"
+}
+function ble/base/initialize-runtime-directory/.tmp {
+  [[ -r /tmp && -w /tmp && -x /tmp ]] || return
 
-#
-# _ble_base_cache
-#
-
-_ble_base_cache="$_ble_base/cache.d"
-if [[ ! -d $_ble_base_cache ]]; then
-  command mkdir -p "$_ble_base_cache"
-  command chmod a+rwxt "$_ble_base_cache"
-  if [[ -d $_ble_base/cache && ! -h $_ble_base/cache ]]; then
-    mv "$_ble_base/cache" "$_ble_base_cache/$UID"
-    ln -s "$_ble_base_cache/$UID" "$_ble_base/cache"
+  local tmp_dir=/tmp/blesh
+  if [[ ! -d $tmp_dir ]]; then
+    [[ ! -e $tmp_dir && -h $tmp_dir ]] && command rm -f "$tmp_dir"
+    if [[ -e $tmp_dir || -h $tmp_dir ]]; then
+      echo "ble.sh: cannot create a directory '$tmp_dir' since there is already a file." >&2
+      return 1
+    fi
+    command mkdir -p "$tmp_dir" || return
+    command chmod a+rwxt "$tmp_dir" || return
+  elif ! [[ -r $tmp_dir && -w $tmp_dir && -x $tmp_dir ]]; then
+    echo "ble.sh: permision of '$tmp_dir' is not correct." >&2
+    return 1
   fi
+
+  ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
+}
+function ble/base/initialize-runtime-directory {
+  ble/base/initialize-runtime-directory/.xdg && return
+  ble/base/initialize-runtime-directory/.tmp && return
+
+  # fallback
+  local tmp_dir=$_ble_base/tmp
+  if [[ ! -d $tmp_dir ]]; then
+    command mkdir -p "$tmp_dir" || return
+    command chmod a+rwxt "$tmp_dir" || return
+  fi
+  ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
+}
+if ! ble/base/initialize-runtime-directory; then
+  echo "ble.sh: failed to initialize \$_ble_base_run." 1>&2
+  return 1
 fi
 
-_ble_base_cache="$_ble_base_cache/$UID"
-if [[ ! -d $_ble_base_tmp ]]; then
-  command mkdir -p "$_ble_base_cache"
+function ble/base/clean-up-runtime-directory {
+  local file pid mark removed
+  mark=() removed=()
+  for file in "$_ble_base_run"/[1-9]*.*; do
+    [[ -e $file ]] || continue
+    pid=${file##*/}; pid=${pid%%.*}
+    [[ ${mark[pid]} ]] && continue
+    mark[pid]=1
+    if ! kill -0 "$pid" &>/dev/null; then
+      removed=("${removed[@]}" "$_ble_base_run/$pid."*)
+    fi
+  done
+  ((${#removed[@]})) && command rm -f "${removed[@]}"
+}
+
+# initialization time = 9ms (for 70 files)
+ble/base/clean-up-runtime-directory
+
+##
+## @var _ble_base_cache
+##
+##   環境毎の初期化ファイルを格納するディレクトリ。以下の手順で決定する。
+##
+##   1. ${XDG_CACHE_HOME:=$HOME/.cache} が存在すればその下に blesh を作成して使う。
+##   2. $_ble_base/cache.d/$UID を使う。
+##
+function ble/base/initialize-cache-directory/.xdg {
+  [[ $_ble_base != */out ]] || return
+
+  local cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}
+  if [[ ! -d $cache_dir ]]; then
+    [[ $XDG_CACHE_HOME ]] &&
+      echo "ble.sh: XDG_CACHE_HOME='$XDG_CACHE_HOME' is not a directory." >&2
+    return 1
+  fi
+  if ! [[ -r $cache_dir && -w $cache_dir && -x $cache_dir ]]; then
+    [[ $XDG_CACHE_HOME ]] &&
+      echo "ble.sh: XDG_CACHE_HOME='$XDG_CACHE_HOME' doesn't have a proper permission." >&2
+    return 1
+  fi
+
+  ble/base/.create-user-directory _ble_base_cache "$cache_dir/blesh"
+}
+function ble/base/initialize-cache-directory {
+  ble/base/initialize-cache-directory/.xdg && return
+
+  # fallback
+  local cache_dir=$_ble_base/cache.d
+  if [[ ! -d $cache_dir ]]; then
+    command mkdir -p "$cache_dir" || return
+    command chmod a+rwxt "$cache_dir" || return
+
+    # relocate an old cache directory if any
+    local old_cache_dir=$_ble_base/cache
+    if [[ -d $old_cache_dir && ! -h $old_cache_dir ]]; then
+      mv "$old_cache_dir" "$cache_dir/$UID"
+      ln -s "$cache_dir/$UID" "$old_cache_dir"
+    fi
+  fi
+  ble/base/.create-user-directory _ble_base_cache "$cache_dir/$UID"
+}
+if ! ble/base/initialize-cache-directory; then
+  echo "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
+  return 1
 fi
 
 #%if measure_load_time

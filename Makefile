@@ -66,10 +66,16 @@ $(outdirs):
 	mkdir -p $@
 all: $(outfiles)
 
-INSDIR = $(HOME)/.local/share/blesh
-install: $(outfiles:$(OUTDIR)/%=$(INSDIR)/%)
+DATA_HOME := $(XDG_DATA_HOME)
+ifeq ($(DATA_HOME),)
+  DATA_HOME := $(HOME)/.local/share
+endif
+INSDIR = $(DATA_HOME)/blesh
+install: $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) $(INSDIR)/cache.d $(INSDIR)/tmp
 $(INSDIR)/%: $(OUTDIR)/%
 	bash make_command.sh install "$<" "$@"
+$(INSDIR)/cache.d $(INSDIR)/tmp:
+	mkdir -p $@ && chmod a+rwxt $@
 
 dist: $(outfiles)
 	FULLVER=$(FULLVER) bash make_command.sh dist $^

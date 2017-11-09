@@ -1439,7 +1439,7 @@ function ble-stty/TRAPEXIT {
   command stty echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
-  command rm -f "$_ble_base_tmp/$$".*
+  command rm -f "$_ble_base_run/$$".*
 }
 trap ble-stty/TRAPEXIT EXIT
 
@@ -1701,7 +1701,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 
       print "builtin bind -x " quote(line) > "/dev/stderr";
     }
-  ' 2>| "$_ble_base_tmp/$$.bind.save"
+  ' 2>| "$_ble_base_run/$$.bind.save"
 }
 
 function ble-decode-initialize {
@@ -1750,9 +1750,9 @@ function ble-decode-detach {
   source "$_ble_base_cache/ble-decode-bind.$_ble_bash.unbind"
 
   # 元のキー割り当ての復元
-  if [[ -s "$_ble_base_tmp/$$.bind.save" ]]; then
-    source "$_ble_base_tmp/$$.bind.save"
-    command rm -f "$_ble_base_tmp/$$.bind.save"
+  if [[ -s "$_ble_base_run/$$.bind.save" ]]; then
+    source "$_ble_base_run/$$.bind.save"
+    command rm -f "$_ble_base_run/$$.bind.save"
   fi
 
   [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode current_editing_mode
