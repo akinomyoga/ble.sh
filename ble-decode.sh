@@ -480,11 +480,9 @@ function ble-decode-char {
 
     # hook for quoted-insert, etc
     if [[ $_ble_decode_char__hook ]]; then
-      local KEYMAP=$_ble_decode_key__kmap
-      local -a KEYS=($char)
-      local WIDGET="$_ble_decode_char__hook $char"
+      local hook=$_ble_decode_char__hook
       _ble_decode_char__hook=
-      builtin eval -- "$WIDGET"
+      ble-decode-key/.call-widget "$char" "$hook $char"
       continue
     fi
 
@@ -943,13 +941,13 @@ function ble-decode-key {
 #%if debug_keylogger
     ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_keys "$key"
 #%end
+    [[ $_ble_decode_keylog_enabled && $_ble_decode_keylog_depth == 0 ]] &&
+      ble/array#push _ble_decode_keylog "$key"
 
     if [[ $_ble_decode_key__hook ]]; then
-      local KEYMAP=$_ble_decode_key__kmap
-      local -a KEYS=($key)
-      local WIDGET="$_ble_decode_key__hook $key"
+      local hook=$_ble_decode_key__hook
       _ble_decode_key__hook=
-      builtin eval -- "$WIDGET"
+      ble-decode-key/.call-widget "$key" "$hook $key"
       continue
     fi
 
@@ -1113,6 +1111,11 @@ function ble-decode-key/.invoke-hook {
 function ble-decode-key/.invoke-command {
   [[ $command ]] || return 125
 
+  # for keylog suppress
+  local old_suppress=$_ble_decode_keylog_depth
+  local _ble_decode_keylog_depth=$((old_suppress+1))
+
+  # setup variables
   local WIDGET=$command KEYMAP=$_ble_decode_key__kmap
   local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
   _ble_decode_key__seq=
@@ -1121,6 +1124,18 @@ function ble-decode-key/.invoke-command {
   builtin eval -- "$WIDGET"; local exit=$?
   ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
   return "$exit"
+}
+function ble-decode-key/.call-widget {
+  # for keylog suppress
+  local old_suppress=$_ble_decode_keylog_depth
+  local _ble_decode_keylog_depth=$((old_suppress+1))
+
+  # setup variables
+  local -a KEYS=($1)
+  local WIDGET=$2
+  local KEYMAP=$_ble_decode_key__kmap
+
+  builtin eval -- "$WIDGET"
 }
 
 #%if debug_keylogger
@@ -1154,6 +1169,28 @@ function ble-decode/end-keylog {
   _ble_keylogger_keys=()
 }
 #%end
+_ble_decode_keylog_enabled=
+_ble_decode_keylog_depth=0
+_ble_decode_keylog=()
+function ble-decode/keylog/start {
+  _ble_decode_keylog_enabled=1
+}
+function ble-decode/keylog/end {
+  ret=("${_ble_decode_keylog[@]}")
+  _ble_decode_keylog_enabled=
+  _ble_decode_keylog=()
+}
+## 関数 ble-decode/keylog/pop
+##   現在の WIDGET 呼び出しに対応する KEYS が記録されているとき、これを削除します。
+##   @var[in] _ble_decode_keylog_enabled
+##   @var[in] _ble_decode_keylog_depth
+##   @arr[in] KEYS
+function ble-decode/keylog/pop {
+  [[ $_ble_decode_keylog_enabled && $_ble_decode_keylog_depth == 1 ]] || return
+  local new_size=$((${#_ble_decode_keylog[@]}-${#KEYS[@]}))
+  _ble_decode_keylog=("${_ble_decode_keylog[@]::new_size}")
+}
+
 
 # **** ble-bind ****
 

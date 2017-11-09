@@ -14,6 +14,9 @@ source "$_ble_base/keymap/vi_digraph.sh"
 ##
 : ${bleopt_keymap_vi_force_update_textmap:=1}
 
+## オプション keymap_vi_macro_depth
+: ${bleopt_keymap_vi_macro_depth:=64}
+
 function ble/keymap:vi/use-textmap {
   ble/textmap#is-up-to-date && return 0
   ((bleopt_keymap_vi_force_update_textmap)) || return 1
@@ -149,8 +152,13 @@ function ble/widget/vi-command/decompose-meta {
 
   # メタ修飾付きの入力 M-key は ESC + key に分解する
   if ((flag&ble_decode_Meta)); then
-    local esc=27 # ESC
-    # local esc=$((ble_decode_Ctrl|0x5b)) # もしくは C-[
+    local esc=$((ble_decode_Ctrl|0x5b)) # C-[ (もしくは esc=27 ESC?)
+
+    # 分解した後のキーを記録させる。
+    ble-decode/keylog/pop
+    old_suppress=$_ble_decode_keylog_depth
+    local _ble_decode_keylog_depth=$((old_suppress-1))
+
     ble-decode-key "$esc" "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
     return 0
   fi
@@ -338,6 +346,9 @@ function ble/keymap:vi/update-mode-name {
     fi
 
     name=$'\e[1m-- '$name$' --\e[m'
+  fi
+  if [[ $_ble_keymap_vi_reg_record ]]; then
+    name=$name$' \e[1;31mREC @'$_ble_keymap_vi_reg_record_char$'\e[m'
   fi
   ble-edit/info/default raw "$name"
 }
@@ -531,6 +542,8 @@ function ble/widget/vi-command/accept-line {
   ble/keymap:vi/clear-arg
   ble/widget/vi_nmap/.insert-mode
   ble/keymap:vi/repeat/clear-insert
+  [[ $_ble_keymap_vi_reg_record ]] &&
+    ble/widget/vi_nmap/record-register
   ble/widget/accept-line
 }
 function ble/widget/vi-command/accept-single-line-or {
@@ -573,6 +586,7 @@ _ble_keymap_vi_reg=
 #   _ble_edit_kill_ring は任意の文字列である。
 #
 _ble_keymap_vi_register=()
+_ble_keymap_vi_register_onplay=
 
 ## 関数 ble/keymap:vi/clear-arg
 function ble/keymap:vi/clear-arg {
@@ -609,14 +623,21 @@ function ble/keymap:vi/register#load {
     if [[ $value == */* ]]; then
       _ble_edit_kill_type=${value%%/*}
       _ble_edit_kill_ring=${value#*/}
+      return 0
     else
       _ble_edit_kill_type=
       _ble_edit_kill_ring=
+      return 1
     fi
   fi
 }
 function ble/keymap:vi/register#set {
   local reg=$1 type=$2 content=$3
+
+  # type = L は行指向の値
+  # type = B は矩形指向の値
+  # type = '' は文字指向の値
+  # type = q はキーボードマクロ
 
   # 追記の場合
   if [[ $reg == +* ]]; then
@@ -626,13 +647,22 @@ function ble/keymap:vi/register#set {
       local oring=${value#*/}
 
       if [[ $otype == L ]]; then
-        type=L content=$oring$content # V + * → V
+        if [[ $type == q ]]; then
+          type=L content=${oring%$'\n'}$content # V + * → V
+        else
+          type=L content=$oring$content # V + * → V
+        fi
       elif [[ $type == L ]]; then
         type=L content=$oring$'\n'$content # C-v + V, v + V → V
       elif [[ $otype == B:* ]]; then
         if [[ $type == B:* ]]; then
           type=$otype' '${type#B:}
           content=$oring$'\n'$content # C-v + C-v → C-v
+        elif [[ $type == q ]]; then
+          local ret; ble/string#count-char "$content" $'\n'
+          ble/string#repeat ' 0' "$ret"
+          type=$otype$ret
+          content=$oring$$content # C-v + q → C-v
         else
           local ret; ble/string#count-char "$content" $'\n'
           ble/string#repeat ' 0' $((ret+1))
@@ -640,12 +670,15 @@ function ble/keymap:vi/register#set {
           content=$oring$'\n'$content # C-v + v → C-v
         fi
       else
-        type= content=$oring$content # v + C-v, v + v → v
+        type= content=$oring$content # v + C-v, v + v, v + q → v
       fi
     fi
   fi
 
   [[ $type == L && $content != *$'\n' ]] && content=$content$'\n'
+
+  local suppress_default=
+  [[ $type == q ]] && type= suppress_default=1
 
   if [[ ! $reg ]] || ((reg==34)); then # ""
     # unnamed register
@@ -660,11 +693,33 @@ function ble/keymap:vi/register#set {
     # black hole register
     return 0
   else
-    _ble_edit_kill_type=$type
-    _ble_edit_kill_ring=$content
+    if [[ ! $suppress_default ]]; then
+      _ble_edit_kill_type=$type
+      _ble_edit_kill_ring=$content
+    fi
     _ble_keymap_vi_register[reg]=$type/$content
     return 0
   fi
+}
+function ble/keymap:vi/register#play {
+  local reg=$1 value
+  if [[ $reg ]] && ((reg!=34)); then
+    value=${_ble_keymap_vi_register[reg]}
+    if [[ $value == */* ]]; then
+      value=${value#*/}
+    else
+      value=
+    fi
+  else
+    value=$_ble_edit_kill_ring
+  fi
+
+  local _ble_keymap_vi_register_onplay=1
+  local i len=${#value} ret
+  for ((i=0;i<len;i++)); do
+    ble/util/s2c "$value" "$i"
+    ble-decode-char "$ret"
+  done
 }
 
 function ble/widget/vi-command/append-arg {
@@ -704,6 +759,115 @@ function ble/widget/vi-command/register.hook {
       # 例えば diw"y. は "y に記録されるが ""diw"y. は "" に記録される。
       _ble_keymap_vi_reg=$c
       return 0
+    fi
+  fi
+  ble/widget/vi-command/bell
+  return 1
+}
+
+_ble_keymap_vi_reg_record=
+_ble_keymap_vi_reg_record_char=
+_ble_keymap_vi_reg_record_play=0
+# nmap q
+function ble/widget/vi_nmap/record-register {
+  # レジスタに含まれる q は再生中には何も起こさない
+  if [[ $_ble_keymap_vi_register_onplay ]]; then
+    ble/keymap:vi/clear-arg
+    ble/keymap:vi/adjust-command-mode
+    return 0
+  fi
+
+  if [[ $_ble_keymap_vi_reg_record ]]; then
+    ble/keymap:vi/clear-arg
+    local -a ret
+    ble-decode/keylog/pop
+    ble-decode/keylog/end; local keys=("${ret[@]}")
+
+    local key value
+    local -a buff
+    for key in "${keys[@]}"; do
+      # 通常の文字
+      if ble-decode-key/ischar "$key"; then
+        ble/util/c2s "$key"
+        ble/array#push buff "$ret"
+        continue
+      fi
+
+      local c=$((key&ble_decode_MaskChar))
+
+      # C-? は制御文字として登録する
+      if (((key&ble_decode_MaskFlag)==ble_decode_Ctrl&&(c==64||91<=c&&c<=95||97<=c&&c<=122))); then
+        # Note: ^@ (NUL) は文字列にできないので除外
+        # Note: ^[ (ESC) は meta 修飾と紛らわしいので除外
+        if ((c!=64&&c!=91)); then
+          ble/util/c2s "$((c&0x1F))"
+          ble/array#push buff "$ret"
+          continue
+        fi
+      fi
+
+      local esc=$'\e' mod=1
+      (((key&ble_decode_Shft)&&(mod+=0x01),
+        (key&ble_decode_Altr)&&(mod+=0x02),
+        (key&ble_decode_Ctrl)&&(mod+=0x04),
+        (key&ble_decode_Supr)&&(mod+=0x08),
+        (key&ble_decode_Hypr)&&(mod+=0x10)))
+      ble/array#push buff "$esc[27;$mod;$c~"
+    done
+    IFS= eval 'local value="${buff[*]}"'
+    ble/keymap:vi/register#set "$_ble_keymap_vi_reg_record" q "$value"
+
+    _ble_keymap_vi_reg_record=
+    ble/keymap:vi/update-mode-name
+  else
+    _ble_decode_key__hook="ble/widget/vi_nmap/record-register.hook"
+  fi
+}
+function ble/widget/vi_nmap/record-register.hook {
+  local key=$1
+  ble/keymap:vi/clear-arg
+  local ret
+  if ble/keymap:vi/k2c "$key" && local c=$ret; then
+    local reg=
+    if ((65<=c&&c<91)); then # q{A-Z}
+      reg=+$((c+32))
+    elif ((48<=c&&c<58||97<=c&&c<123)); then # q{0-9a-z}
+      reg=$c
+    elif ((c==34)); then # q"
+      reg=$c
+    fi
+
+    if [[ $reg ]]; then
+      ble/util/c2s "$c"
+      _ble_keymap_vi_reg_record=$reg
+      _ble_keymap_vi_reg_record_char=$ret
+      ble-decode/keylog/start
+      ble/keymap:vi/update-mode-name
+      return 0
+    fi
+  fi
+  ble/widget/vi-command/bell "invalid register key=$key"
+  return 1
+}
+# nmap @
+function ble/widget/vi_nmap/play-register {
+  _ble_decode_key__hook="ble/widget/vi_nmap/play-register.hook"
+}
+function ble/widget/vi_nmap/play-register.hook {
+  ble/keymap:vi/clear-arg
+
+  local depth=$_ble_keymap_vi_reg_record_play
+  if ((depth>=bleopt_keymap_vi_macro_depth)) || ble/util/is-stdin-ready; then
+    return 1 # 無限ループを防ぐため
+  fi
+
+  local _ble_keymap_vi_reg_record_play=$((depth+1))
+  local key=$1
+  local ret
+  if ble/keymap:vi/k2c "$key" && local c=$ret; then
+    ((65<=c&&c<91)) && ((c+=32)) # A-Z -> a-z
+    if ((48<=c&&c<58||97<=c&&c<123)); then # 0-9a-z
+      ble/keymap:vi/register#play "$c" && return
     fi
   fi
   ble/widget/vi-command/bell
@@ -4190,6 +4354,9 @@ function ble-decode-keymap:vi_nmap/define {
   ble-bind -f '"'    vi-command/register
 
   ble-bind -f 'C-g' vi-command/show-line-info
+
+  ble-bind -f 'q' vi_nmap/record-register
+  ble-bind -f '@' vi_nmap/play-register
 
   #----------------------------------------------------------------------------
   # bash

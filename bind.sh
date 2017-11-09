@@ -121,7 +121,7 @@ function ble-decode/generate-binder {
       ((bind18XX)) || $binder "$ret" "$i"
     elif ((i==27)); then
       if ((bind1BXX==2)); then
-        ble-decode/generate-binder/bind-s '"\e":"\xC0\x9B[27;5;91~"'
+        ble-decode/generate-binder/bind-s '"\e":"\xC0\x9B[27;5;91~"' # C-[
         ble-decode/generate-binder/bind-r '"\e"'
       elif ((!bind1BXX)); then
         if ((esc1B)); then
