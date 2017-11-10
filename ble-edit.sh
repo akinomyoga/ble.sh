@@ -5261,8 +5261,7 @@ function ble/widget/isearch/accept {
   if ((${#_ble_edit_isearch_que[@]})); then
     ble/widget/.bell "isearch: now searching..."
   else
-    ble/widget/isearch/exit
-    ble/widget/accept-line
+    ble/widget/isearch/exit-default
   fi
 }
 function ble/widget/isearch/exit-delete-forward-char {
