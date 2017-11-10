@@ -3667,7 +3667,7 @@ function ble-edit/exec/save-BASH_REMATCH {
       else
         ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
         rex=$rex')'
-        unset rparens[r]
+        unset 'rparens[r]'
       fi
     done
 
@@ -3688,7 +3688,7 @@ function ble-edit/exec/save-BASH_REMATCH {
     local end=${rparens[r]}
     ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
     rex=$rex')'
-    unset rparens[r]
+    unset 'rparens[r]'
   done
 
   ble-edit/exec/save-BASH_REMATCH/increase $((${#text}-i))
