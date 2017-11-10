@@ -5220,7 +5220,7 @@ function ble/widget/isearch/history-self-insert {
 function ble/widget/isearch/prev {
   local nque
   if ((nque=${#_ble_edit_isearch_que[@]})); then
-    unset _ble_edit_isearch_que[nque-1]
+    unset '_ble_edit_isearch_que[nque-1]'
     if ((nque>=2)); then
       ble-edit/isearch/process "${_ble_edit_isearch_que[@]}"
     else
