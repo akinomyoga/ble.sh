@@ -1637,7 +1637,9 @@ ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
 ble/array#push _ble_edit_history_onleave ble/keymap:vi/mark/history-onleave.hook
 
 function ble/keymap:vi/mark/history-onleave.hook {
-  ble/keymap:vi/mark/set-local-mark 34 "$_ble_edit_ind" # `"
+  if [[ $_ble_decode_key__kmap == vi_[inox]map ]]; then
+    ble/keymap:vi/mark/set-local-mark 34 "$_ble_edit_ind" # `"
+  fi
 }
 
 # 履歴がロードされていない時は取り敢えず _ble_edit_history_ind=0 で登録をしておく。
@@ -3726,6 +3728,13 @@ function ble/widget/vi-command/text-object {
 #
 # map: :cmd
 
+# 既定の cmap 履歴
+_ble_keymap_vi_commandline_history=()
+_ble_keymap_vi_commandline_history_edit=()
+_ble_keymap_vi_commandline_history_dirt=()
+_ble_keymap_vi_commandline_history_ind=0
+_ble_keymap_vi_commandline_history_onleave=()
+
 function ble/keymap:vi/commandline/__before_command__ {
   if [[ ! $_ble_edit_str ]] && ((KEYS[0]==127||KEYS[0]==(104|ble_decode_Ctrl))); then # DEL or C-h
     ble/widget/vi_cmap/cancel
@@ -3736,6 +3745,7 @@ function ble/keymap:vi/commandline/__before_command__ {
 function ble/widget/vi-command/commandline {
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
   _ble_edit_PS1=:
+  _ble_edit_history_prefix=_ble_keymap_vi_commandline
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
   return 148
 }
@@ -3790,6 +3800,13 @@ _ble_keymap_vi_search_ohistory=
 _ble_keymap_vi_search_needle=
 _ble_keymap_vi_search_activate=
 _ble_keymap_vi_search_matched=
+
+_ble_keymap_vi_search_history=()
+_ble_keymap_vi_search_history_edit=()
+_ble_keymap_vi_search_history_dirt=()
+_ble_keymap_vi_search_history_ind=0
+_ble_keymap_vi_search_history_onleave=()
+
 function ble-highlight-layer:region/mark:search/get-selection {
   ble-highlight-layer:region/mark:char/get-selection
 }
@@ -4011,12 +4028,14 @@ function ble/widget/vi-command/search.impl {
 function ble/widget/vi-command/search-forward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
   _ble_edit_PS1='/'
+  _ble_edit_history_prefix=_ble_keymap_vi_search
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
   return 148
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
+  _ble_edit_history_prefix=_ble_keymap_vi_search
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
   return 148
 }
@@ -5754,12 +5773,21 @@ function ble-decode-keymap:vi_imap/define {
 _ble_keymap_vi_cmap_hook=
 _ble_keymap_vi_cmap_before_command=
 
+# 既定の cmap 履歴
+_ble_keymap_vi_cmap_history=()
+_ble_keymap_vi_cmap_history_edit=()
+_ble_keymap_vi_cmap_history_dirt=()
+_ble_keymap_vi_cmap_history_ind=0
+_ble_keymap_vi_cmap_history_onleave=()
+
 function ble/keymap:vi/async-commandline-mode {
   local hook="$1"
   _ble_keymap_vi_cmap_hook=$hook
   _ble_keymap_vi_cmap_before_command=
 
+  # 記録
   ble/textarea#save-state _ble_keymap_vi_cmap
+  _ble_keymap_vi_cmap_history_prefix=$_ble_edit_history_prefix
 
   # 初期化
   ble-decode/keymap/push vi_cmap
@@ -5780,6 +5808,8 @@ function ble/keymap:vi/async-commandline-mode {
   ble/widget/.newline/clear-content
 
   ble/textarea#invalidate
+
+  _ble_edit_history_prefix=_ble_keymap_vi_cmap
 }
 
 function ble/widget/vi_cmap/accept {
@@ -5787,6 +5817,7 @@ function ble/widget/vi_cmap/accept {
   _ble_keymap_vi_cmap_hook=
 
   local result=$_ble_edit_str
+  [[ $result ]] && ble-edit/history/add "$result" # Note: cancel でも登録する
 
   # 消去
   local -a DRAW_BUFF
@@ -5797,6 +5828,7 @@ function ble/widget/vi_cmap/accept {
   ble/textarea#restore-state _ble_keymap_vi_cmap
   ble/textarea#clear-state _ble_keymap_vi_cmap
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_civis"
+  _ble_edit_history_prefix=$_ble_keymap_vi_cmap_history_prefix
 
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
@@ -5847,16 +5879,6 @@ function ble-decode-keymap:vi_cmap/define {
   # ble-bind -f  'C-i'     complete
   # ble-bind -f  'TAB'     complete
   ble-bind -f  'C-x C-v' display-shell-version
-
-  # # history
-  # ble-bind -f 'C-r'     history-isearch-backward
-  # ble-bind -f 'C-s'     history-isearch-forward
-  # ble-bind -f 'C-RET'   history-expand-line
-  # ble-bind -f 'M-<'     history-beginning
-  # ble-bind -f 'M->'     history-end
-  # ble-bind -f 'C-prior' history-beginning
-  # ble-bind -f 'C-next'  history-end
-  # ble-bind -f 'SP'      magic-space
 
   # kill
   ble-bind -f 'C-@'      set-mark
@@ -5919,14 +5941,26 @@ function ble-decode-keymap:vi_cmap/define {
   ble-bind -f 'C-k'       kill-forward-line
   ble-bind -f 'C-u'       kill-backward-line
 
-  # ble-bind -f 'C-p'    '@nomarked backward-line-or-history-prev'
-  # ble-bind -f 'up'     '@nomarked backward-line-or-history-prev'
-  # ble-bind -f 'C-n'    '@nomarked forward-line-or-history-next'
-  # ble-bind -f 'down'   '@nomarked forward-line-or-history-next'
-  ble-bind -f 'C-p'    '@nomarked backward-line'
-  ble-bind -f 'up'     '@nomarked backward-line'
-  ble-bind -f 'C-n'    '@nomarked forward-line'
-  ble-bind -f 'down'   '@nomarked forward-line'
+  # history
+  ble-bind -f 'C-r'     history-isearch-backward
+  ble-bind -f 'C-s'     history-isearch-forward
+  ble-bind -f 'M-<'     history-beginning
+  ble-bind -f 'M->'     history-end
+  ble-bind -f 'C-prior' history-beginning
+  ble-bind -f 'C-next'  history-end
+  ble-bind -f 'C-p'    '@nomarked backward-line-or-history-prev'
+  ble-bind -f 'up'     '@nomarked backward-line-or-history-prev'
+  ble-bind -f 'C-n'    '@nomarked forward-line-or-history-next'
+  ble-bind -f 'down'   '@nomarked forward-line-or-history-next'
+  # ble-bind -f 'C-p'    '@nomarked backward-line'
+  # ble-bind -f 'up'     '@nomarked backward-line'
+  # ble-bind -f 'C-n'    '@nomarked forward-line'
+  # ble-bind -f 'down'   '@nomarked forward-line'
+
+  # command-history
+  # ble-bind -f 'C-RET'   history-expand-line
+  # ble-bind -f 'SP'      magic-space
+
   ble-bind -f 'S-C-p'  '@marked backward-line'
   ble-bind -f 'S-up'   '@marked backward-line'
   ble-bind -f 'S-C-n'  '@marked forward-line'

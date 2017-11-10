@@ -4205,19 +4205,23 @@ function ble/widget/accept-and-next {
   ble-edit/history/getcount -v count
 
   if ((index+1<count)); then
-    local HISTINDEX_NEXT="$((index+1))" # to be modified in accept-line
+    local HISTINDEX_NEXT=$((index+1)) # to be modified in accept-line
     ble/widget/accept-line
     ble-edit/history/goto "$HISTINDEX_NEXT"
   else
-    local content="$_ble_edit_str"
+    local content=$_ble_edit_str
     ble/widget/accept-line
 
     ble-edit/history/getcount -v count
-    if [[ ${_ble_edit_history[count-1]} == $_ble_edit_str ]]; then
-      ble-edit/history/goto "$((count-1))"
-    else
-      _ble_edit_str.reset "$content"
+    if ((count)); then
+      local entry; ble-edit/history/get-entry $((count-1))
+      if [[ $entry == $content ]]; then
+        ble-edit/history/goto "$((count-1))"
+      fi
     fi
+
+    [[ $_ble_edit_str != $content ]] &&
+      _ble_edit_str.reset "$content"
   fi
 }
 function ble/widget/newline {
@@ -4245,36 +4249,92 @@ function ble/widget/accept-single-line-or-newline {
 # **** history ****                                                    @history
 
 : ${bleopt_history_preserve_point=}
+
+## @arr _ble_edit_history
+##   コマンド履歴項目を保持する。
+##
+## @arr _ble_edit_history_edit
+## @arr _ble_edit_history_dirt
+##   _ble_edit_history_edit 編集されたコマンド履歴項目を保持する。
+##   _ble_edit_history の各項目と対応し、必ず同じ数・添字の要素を持つ。
+##   _ble_edit_history_dirt は編集されたかどうかを保持する。
+##   _ble_edit_history の各項目と対応し、変更のあったい要素にのみ値 1 を持つ。
+##
+## @var _ble_edit_history_ind
+##   現在の履歴項目の番号
+##
+## @arr _ble_edit_history_onleave
+##   履歴移動の通知先を格納する配列
+##
 _ble_edit_history=()
 _ble_edit_history_edit=()
 _ble_edit_history_dirt=()
 _ble_edit_history_ind=0
+_ble_edit_history_onleave=()
 
+## @var _ble_edit_history_prefix
+##
+##   現在どの履歴を対象としているかを保持する。
+##   空文字列の時、コマンド履歴を対象とする。以下の変数を用いる。
+##
+##     _ble_edit_history
+##     _ble_edit_history_ind
+##     _ble_edit_history_edit
+##     _ble_edit_history_dirt
+##     _ble_edit_history_onleave
+##
+##   空でない文字列 prefix のとき、以下の変数を操作対象とする。
+##
+##     ${prefix}_history
+##     ${prefix}_history_ind
+##     ${prefix}_history_edit
+##     ${prefix}_history_dirt
+##     ${prefix}_history_onleave
+##
+##   何れの関数も _ble_edit_history_prefix を適切に処理する必要がある。
+##
+##   実装のために配列 _ble_edit_history_edit などを
+##   ローカルに定義して処理するときは、以下の注意点を守る必要がある。
+##
+##   - その関数自身またはそこから呼び出される関数が、
+##     履歴項目に対して副作用を持ってはならない。
+##
+##   この要請の下で、各関数は呼び出し元のすり替えを意識せずに動作できる。
+##
+_ble_edit_history_prefix=
+
+## @var _ble_edit_history_loaded
+## @var _ble_edit_history_count
+##
+##   これらの変数はコマンド履歴を対象としているときにのみ用いる。
+##
 _ble_edit_history_loaded=
 _ble_edit_history_count=
 
-_ble_edit_history_onleave=()
 function ble-edit/history/onleave.fire {
-  local obs
-  for obs in "${_ble_edit_history_onleave[@]}"; do "$obs" "$@"; done
+  local -a observers
+  eval "observers=(\"\${${_ble_edit_history_prefix:-_ble_edit}_history_onleave[@]}\")"
+  local obs; for obs in "${observers[@]}"; do "$obs" "$@"; done
 }
 
-
 function ble-edit/history/getindex {
-  local _var=index _ret
-  [[ $1 == -v ]] && { _var="$2"; shift 2; }
-  if [[ $_ble_edit_history_loaded ]]; then
+  local _var=index
+  [[ $1 == -v ]] && { _var=$2; shift 2; }
+  if [[ $_ble_edit_history_prefix ]]; then
+    (($_var=${_ble_edit_history_prefix}_history_ind))
+  elif [[ $_ble_edit_history_loaded ]]; then
     (($_var=_ble_edit_history_ind))
   else
     ble-edit/history/getcount -v "$_var"
   fi
 }
-
 function ble-edit/history/getcount {
   local _var=count _ret
-  [[ $1 == -v ]] && { _var="$2"; shift 2; }
+  [[ $1 == -v ]] && { _var=$2; shift 2; }
 
-  if [[ $_ble_edit_history_loaded ]]; then
+  if [[ $_ble_edit_history_prefix ]]; then
+    eval "_ret=\${#${_ble_edit_history_prefix}_history[@]}"
+  elif [[ $_ble_edit_history_loaded ]]; then
     _ret=${#_ble_edit_history[@]}
   else
     if [[ ! $_ble_edit_history_count ]]; then
@@ -4287,6 +4347,19 @@ function ble-edit/history/getcount {
 
   (($_var=_ret))
 }
+function ble-edit/history/get-entry {
+  ble-edit/history/load
+  local __var=entry
+  [[ $1 == -v ]] && { __var=$2; shift 2; }
+  eval "$__var=\${${_ble_edit_history_prefix:-_ble_edit}_history[\$1]}"
+}
+function ble-edit/history/get-editted-entry {
+  ble-edit/history/load
+  local __var=entry
+  [[ $1 == -v ]] && { __var=$2; shift 2; }
+  eval "$__var=\${${_ble_edit_history_prefix:-_ble_edit}_history_edit[\$1]}"
+}
+
 
 function ble-edit/history/.generate-source-to-load-history {
   if ! builtin history -p '!1' &>/dev/null; then
@@ -4335,6 +4408,7 @@ function ble-edit/history/.generate-source-to-load-history {
 
 ## called by ble-edit-initialize
 function ble-edit/history/load {
+  [[ $_ble_edit_history_prefix ]] && return
   [[ $_ble_edit_history_loaded ]] && return
   _ble_edit_history_loaded=1
 
@@ -4352,8 +4426,8 @@ function ble-edit/history/load {
   # * プロセス置換×source は bash-3 で動かない。eval に変更する。
   builtin eval -- "$(ble-edit/history/.generate-source-to-load-history)"
   _ble_edit_history_edit=("${_ble_edit_history[@]}")
-  _ble_edit_history_count="${#_ble_edit_history[@]}"
-  _ble_edit_history_ind="$_ble_edit_history_count"
+  _ble_edit_history_count=${#_ble_edit_history[@]}
+  _ble_edit_history_ind=$_ble_edit_history_count
   if ((_ble_edit_attached)); then
     ble-edit/info/clear
   fi
@@ -4361,7 +4435,7 @@ function ble-edit/history/load {
 
 # @var[in,out] HISTINDEX_NEXT
 #   used by ble/widget/accept-and-next to get modified next-entry positions
-function ble-edit/history/add {
+function ble-edit/history/add/.command-history {
   # 注意: bash-3.2 未満では何故か bind -x の中では常に history off になっている。
   [[ -o history ]] || ((_ble_bash<30200)) || return
 
@@ -4372,12 +4446,12 @@ function ble-edit/history/add {
     # _ble_edit_history_edit を未編集状態に戻す
     local index
     for index in "${!_ble_edit_history_dirt[@]}"; do
-      _ble_edit_history_edit[index]="${_ble_edit_history[index]}"
+      _ble_edit_history_edit[index]=${_ble_edit_history[index]}
     done
     _ble_edit_history_dirt=()
   fi
 
-  local cmd="$1"
+  local cmd=$1
   if [[ $HISTIGNORE ]]; then
     local pats pat
     ble/string#split pats : "$HISTIGNORE"
@@ -4413,8 +4487,8 @@ function ble-edit/history/add {
         for ((i=0;i<N;i++)); do
           if [[ ${_ble_edit_history[i]} != "$cmd" ]]; then
             if ((++n!=i)); then
-              _ble_edit_history[n]="${_ble_edit_history[i]}"
-              _ble_edit_history_edit[n]="${_ble_edit_history_edit[i]}"
+              _ble_edit_history[n]=${_ble_edit_history[i]}
+              _ble_edit_history_edit[n]=${_ble_edit_history_edit[i]}
             fi
           else
             ((i<HISTINDEX_NEXT&&HISTINDEX_NEXT--))
@@ -4427,16 +4501,15 @@ function ble-edit/history/add {
         [[ ${HISTINDEX_NEXT+set} ]] && HISTINDEX_NEXT=$indexNext
       fi
     fi
-
     local topIndex=${#_ble_edit_history[@]}
-    _ble_edit_history[topIndex]="$cmd"
-    _ble_edit_history_edit[topIndex]="$cmd"
+    _ble_edit_history[topIndex]=$cmd
+    _ble_edit_history_edit[topIndex]=$cmd
     _ble_edit_history_count=$((topIndex+1))
-    _ble_edit_history_ind="$_ble_edit_history_count"
+    _ble_edit_history_ind=$_ble_edit_history_count
 
     # _ble_bash<30100 の時は必ずここを通る。
     # 初期化時に _ble_edit_history_loaded=1 になるので。
-    ((_ble_bash<30100)) && histfile="${HISTFILE:-$HOME/.bash_history}"
+    ((_ble_bash<30100)) && histfile=${HISTFILE:-$HOME/.bash_history}
   else
     if [[ $HISTCONTROL ]]; then
       # 未だ履歴が初期化されていない場合は取り敢えず history -s に渡す。
@@ -4468,12 +4541,33 @@ function ble-edit/history/add {
   fi
 }
 
+function ble-edit/history/add {
+  local cmd=$1
+  if [[ $_ble_edit_history_prefix ]]; then
+    local code='
+      # PREFIX_history_edit を未編集状態に戻す
+      local index
+      for index in "${!PREFIX_history_dirt[@]}"; do
+        PREFIX_history_edit[index]=${PREFIX_history[index]}
+      done
+      PREFIX_history_dirt=()
+  
+      local topIndex=${#PREFIX_history[@]}
+      PREFIX_history[topIndex]=$cmd
+      PREFIX_history_edit[topIndex]=$cmd
+      PREFIX_history_ind=$((topIndex+1))'
+    eval "${code//PREFIX/$_ble_edit_history_prefix}"
+  else
+    ble-edit/history/add/.command-history "$@"
+  fi
+}
+
 function ble-edit/history/goto {
   ble-edit/history/load
 
-  local histlen=${#_ble_edit_history[@]}
-  local index0="$_ble_edit_history_ind"
-  local index1="$1"
+  local histlen= index0= index1=$1
+  ble-edit/history/getcount -v histlen
+  ble-edit/history/getindex -v index0
 
   ((index0==index1)) && return
 
@@ -4487,26 +4581,28 @@ function ble-edit/history/goto {
 
   ((index0==index1)) && return
 
-  # store
-  if [[ ${_ble_edit_history_edit[index0]} != "$_ble_edit_str" ]]; then
-    _ble_edit_history_edit[index0]="$_ble_edit_str"
-    _ble_edit_history_dirt[index0]=1
-  fi
+  local code='
+    # store
+    if [[ ${PREFIX_history_edit[index0]} != "$_ble_edit_str" ]]; then
+      PREFIX_history_edit[index0]=$_ble_edit_str
+      PREFIX_history_dirt[index0]=1
+    fi
 
-  # restore
-  ble-edit/history/onleave.fire
-  _ble_edit_history_ind=$index1
-  _ble_edit_str.reset "${_ble_edit_history_edit[index1]}" history
+    # restore
+    ble-edit/history/onleave.fire
+    PREFIX_history_ind=$index1
+    _ble_edit_str.reset "${PREFIX_history_edit[index1]}" history'
+  eval "${code//PREFIX/${_ble_edit_history_prefix:-_ble_edit}}"
 
   # point
   if [[ $bleopt_history_preserve_point ]]; then
-    if ((_ble_edit_ind>"${#_ble_edit_str}")); then
-      _ble_edit_ind="${#_ble_edit_str}"
+    if ((_ble_edit_ind>${#_ble_edit_str})); then
+      _ble_edit_ind=${#_ble_edit_str}
     fi
   else
     if ((index1<index0)); then
       # 遡ったときは最後の行の末尾
-      _ble_edit_ind="${#_ble_edit_str}"
+      _ble_edit_ind=${#_ble_edit_str}
     else
       # 進んだときは最初の行の末尾
       local first_line=${_ble_edit_str%%$'\n'*}
@@ -4518,22 +4614,24 @@ function ble-edit/history/goto {
 }
 
 function ble/widget/history-next {
-  if [[ $_ble_edit_history_loaded ]]; then
-    ble-edit/history/goto $((_ble_edit_history_ind+1))
+  if [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]]; then
+    local index; ble-edit/history/getindex
+    ble-edit/history/goto $((index+1))
   else
     ble/widget/.bell
   fi
 }
 function ble/widget/history-prev {
-  ble-edit/history/load # $_ble_edit_history_ind のため
-  ble-edit/history/goto $((_ble_edit_history_ind-1))
+  local index; ble-edit/history/getindex
+  ble-edit/history/goto $((index-1))
 }
 function ble/widget/history-beginning {
   ble-edit/history/goto 0
 }
 function ble/widget/history-end {
-  if [[ $_ble_edit_history_loaded ]]; then
-    ble-edit/history/goto "${#_ble_edit_history[@]}"
+  if [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]]; then
+    local count; ble-edit/history/getcount
+    ble-edit/history/goto "$count"
   else
     ble/widget/.bell
   fi
@@ -4545,7 +4643,7 @@ function ble/widget/history-expand-line {
   [[ $_ble_edit_str == $hist_expanded ]] && return
 
   _ble_edit_str.reset-and-check-dirty "$hist_expanded"
-  _ble_edit_ind="${#hist_expanded}"
+  _ble_edit_ind=${#hist_expanded}
   _ble_edit_mark=0
   _ble_edit_mark_active=
 }
@@ -4607,12 +4705,14 @@ function ble-edit/isearch/.draw-line-with-progress {
     ll="  " rr=">>"
     text="  >>)"
   fi
-  local histIndex='!'"$((_ble_edit_history_ind+1))"
+  local index; ble-edit/history/getindex
+  local count; ble-edit/history/getcount
+  local histIndex='!'$((index+1))
   local text="(${#_ble_edit_isearch_arr[@]}: $ll $histIndex $rr) \`$_ble_edit_isearch_str'"
 
   if [[ $1 ]]; then
     local pos="$1"
-    local percentage="$((pos*1000/${#_ble_edit_history_edit[@]}))"
+    local percentage="$((pos*1000/$count))"
     text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
     ((isearch_ntask)) && text="$text *$isearch_ntask"
   fi
@@ -4627,14 +4727,14 @@ function ble-edit/isearch/.erase-line {
   ble-edit/info/default
 }
 function ble-edit/isearch/.set-region {
-  local beg="$1" end="$2"
+  local beg=$1 end=$2
   if ((beg<end)); then
     if [[ $_ble_edit_isearch_dir == - ]]; then
-      _ble_edit_ind="$beg"
-      _ble_edit_mark="$end"
+      _ble_edit_ind=$beg
+      _ble_edit_mark=$end
     else
-      _ble_edit_ind="$end"
-      _ble_edit_mark="$beg"
+      _ble_edit_ind=$end
+      _ble_edit_mark=$beg
     fi
     _ble_edit_mark_active=S
   else
@@ -4660,7 +4760,7 @@ function ble-edit/isearch/.push-isearch-array {
     return
   fi
 
-  local oind="$_ble_edit_history_ind"
+  local oind; ble-edit/history/getindex -v oind
   local obeg="$_ble_edit_ind" oend="$_ble_edit_mark" tmp
   ((obeg<=oend||(tmp=obeg,obeg=oend,oend=tmp)))
   local oneedle="$_ble_edit_isearch_str"
@@ -4681,7 +4781,8 @@ function ble-edit/isearch/.goto-match {
 
   # 状態を更新
   _ble_edit_isearch_str="$needle"
-  [[ $_ble_edit_history_ind != $ind ]] &&
+  local oind; ble-edit/history/getindex -v oind
+  [[ $oind != $ind ]] &&
     ble-edit/history/goto "$ind"
   ble-edit/isearch/.set-region "$beg" "$end"
 
@@ -4828,6 +4929,12 @@ function ble-edit/isearch/backward-search-history-blockwise {
   [[ :$opts: != *:stop_check:* ]]; local has_stop_check=$?
   [[ :$opts: != *:progress:* ]]; local has_progress=$?
 
+  ble-edit/history/load
+  if [[ $_ble_edit_history_prefix ]]; then
+    local -a _ble_edit_history_edit
+    eval "_ble_edit_history_edit=(\"\${${_ble_edit_history_prefix}_history_edit[@]}\")"
+  fi
+
   local NSTPCHK=1000 # 十分高速なのでこれぐらい大きくてOK
   local NPROGRESS=$((NSTPCHK*2)) # 倍数である必要有り
   local irest block j i=$index
@@ -4871,6 +4978,12 @@ function ble-edit/isearch/next-history/forward-search-history.impl {
   [[ :$opts: != *:progress:* ]]; local has_progress=$?
   [[ :$opts: != *:backward:* ]]; local has_backward=$?
 
+  ble-edit/history/load
+  if [[ $_ble_edit_history_prefix ]]; then
+    local -a _ble_edit_history_edit
+    eval "_ble_edit_history_edit=(\"\${${_ble_edit_history_prefix}_history_edit[@]}\")"
+  fi
+
   if ((has_backward)); then
     local expr_cond='index>=0' expr_incr='index--'
   else
@@ -4912,7 +5025,7 @@ function ble-edit/isearch/backward-search-history {
 ## 関数 ble-edit/isearch/next.fib needle isAdd
 function ble-edit/isearch/next.fib {
   local needle="${1-$_ble_edit_isearch_str}" isAdd="$2"
-  local ind="$_ble_edit_history_ind"
+  local ind; ble-edit/history/getindex -v ind
 
   local beg= end= search_opts=$_ble_edit_isearch_dir
   ((isAdd)) && search_opts=$search_opts:extend
@@ -4955,7 +5068,7 @@ function ble-edit/isearch/next-history.fib {
   else
     # initialize new search
     local needle=${1-$_ble_edit_isearch_str} isAdd=$2
-    local start=$_ble_edit_history_ind
+    local start; ble-edit/history/getindex -v start
     local index=$start
   fi
 
@@ -4979,7 +5092,7 @@ function ble-edit/isearch/next-history.fib {
     # 見付かった場合
 
     # 一致範囲 beg-end を取得
-    local str=${_ble_edit_history_edit[index]}
+    local str; ble-edit/history/get-editted-entry -v str "$index"
     if [[ $_ble_edit_isearch_dir == - ]]; then
       local prefix=${str%"$needle"*}
     else
@@ -5158,7 +5271,6 @@ function ble/widget/isearch/exit-delete-forward-char {
 }
 
 function ble/widget/history-isearch-backward {
-  ble-edit/history/load
   ble-decode/keymap/push isearch
   _ble_edit_isearch_dir=-
   _ble_edit_isearch_arr=()
@@ -5167,7 +5279,6 @@ function ble/widget/history-isearch-backward {
   ble-edit/isearch/.draw-line
 }
 function ble/widget/history-isearch-forward {
-  ble-edit/history/load
   ble-decode/keymap/push isearch
   _ble_edit_isearch_dir=+
   _ble_edit_isearch_arr=()
