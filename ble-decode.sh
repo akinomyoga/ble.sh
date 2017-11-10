@@ -647,7 +647,7 @@ function ble-decode-char/unbind {
       fi
     fi
 
-    unset _ble_decode_cmap_$tseq[$char]
+    unset "_ble_decode_cmap_$tseq[$char]"
     builtin eval "((\${#_ble_decode_cmap_$tseq[@]}!=0))" && break
 
     [[ $tseq ]]
@@ -788,7 +788,7 @@ function ble-decode-key/unbind {
       fi
     fi
 
-    unset $dicthead$tseq[$key]
+    unset "$dicthead$tseq[$key]"
     builtin eval "((\${#$dicthead$tseq[@]}!=0))" && break
 
     [[ $tseq ]]
@@ -859,7 +859,7 @@ function ble-decode/keymap/pop {
   local count="${#_ble_decode_keymap_stack[@]}"
   local last="$((count-1))"
   _ble_decode_key__kmap="${_ble_decode_keymap_stack[last]}"
-  unset _ble_decode_keymap_stack[last]
+  unset '_ble_decode_keymap_stack[last]'
 }
 
 
