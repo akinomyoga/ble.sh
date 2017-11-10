@@ -3431,7 +3431,7 @@ function ble/keymap:vi/text-object/tag.impl/.find-end-tag {
   local ifs=$' \t\n' ret rex
 
   rex="^<([^$ifs/>!]+)"; [[ ${_ble_edit_str:beg} =~ $rex ]] || return 1
-  ble/string#escape-for-bash-regex "${BASH_REMATCH[1]}"; local tagname=$ret
+  ble/string#escape-for-extended-regex "${BASH_REMATCH[1]}"; local tagname=$ret
   rex="^</?$tagname([$ifs]+([^>]*[^/])?)?>"
 
   end=$beg
@@ -4109,6 +4109,8 @@ function ble/widget/vi_xmap/command-help.core {
   "$get_selection" || return 1
   ((${#selection[*]}==2)) || return
 
+  local comp_cword=0 comp_line=$_ble_edit_str comp_point=$_ble_edit_ind
+  local -a comp_words; comp_words=("$cmd")
   local cmd=${_ble_edit_str:selection[0]:selection[1]-selection[0]}
   ble/widget/command-help.impl "$cmd"; local ext=$?
   ble/keymap:vi/adjust-command-mode

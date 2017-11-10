@@ -5293,36 +5293,130 @@ function ble/widget/history-isearch-forward {
 : ${bleopt_complete_stdin_frequency:=50}
 ble-autoload "$_ble_base/complete.sh" ble/widget/complete
 
-function ble/widget/command-help.impl {
-  local cmd=$1
 
-  if [[ ! $cmd ]]; then
+## 設定関数 ble/cmdinfo/help
+## 設定関数 ble/cmdinfo/help:$command
+##
+##   ヘルプを表示するシェル関数を定義します。
+##   ble/widget/command-help から呼び出されます。
+##   ble/cmdinfo/help:$command はコマンド $command に対するヘルプ表示で使われます。
+##   ble/cmdinfo/help はその他のコマンドに対するヘルプ表示で使われます。
+##
+##   @var[in] command
+##   @var[in] type
+##     コマンド名と種類 (type -t によって得られるもの) を指定します。
+##
+##   @var[in] comp_line comp_point comp_words comp_cword
+##     現在のコマンドラインと位置、コマンド名・引数と現在の引数番号を指定します。
+##
+##   @exit[out]
+##     ヘルプの終了が完了したときに 0 を返します。
+##     それ以外の時は 0 以外を返します。
+##
+
+function ble/widget/command-help/.locate-in-man-bash {
+  local command=$1
+  local ret rex
+  local rex_esc=$'(\e\[[ -?]*[@-~]|)' cr=$'\r'
+
+  # check if pager is less
+  local pager; ble/util/get-pager pager
+  local pager_cmd=${pager%%[$' \t\n']*}
+  [[ ${pager_cmd##*/} == less ]] || return 1
+
+  # awk/gawk
+  local awk=awk; type -t gawk &>/dev/null && awk=gawk
+
+  # locate line number
+  ble/string#escape-for-awk-regex "$command"; local rex_awk=$ret
+  rex='\b$'; [[ $awk == gawk && $command =~ $rex ]] && rex_awk=$rex_awk'\y'
+  local awk_script='{
+    gsub(/'"$rex_esc"'*/, "");
+    if (!par && $0 ~ /^[[:space:]]*'"$rex_awk"'/) { print NR; exit; }
+    par = !($0 ~ /^[[:space:]]*$/);
+  }'
+  local man_out; ble/util/assign man_out 'MANOPT= man bash 2>/dev/null' || return 1 # 1 fork
+  local awk_out; ble/util/assign awk_out '"$awk" "$awk_script" 2>/dev/null <<< "$man_out"' || return 1 # 1 fork
+  local iline=${awk_out%$'\n'}; [[ $iline ]] || return 1
+
+  # show
+  ble/string#escape-for-extended-regex "$command"; local rex_ext=$ret
+  rex='\b$'; [[ $command =~ $rex ]] && rex_ext=$rex_ext'\b'
+  rex='^\b'; [[ $command =~ $rex ]] && rex_ext="($rex_esc|\b)$rex_ext"
+  local manpager="$pager -r +'/$rex_ext$cr$((iline-1))g'"
+  MANOPT= MANPAGER=$manpager PAGER=$manpager man bash # 2 fork
+}
+## 関数 ble/widget/command-help.core
+##   @var[in] type
+##   @var[in] command
+##   @var[in] comp_cword comp_words comp_line comp_point
+function ble/widget/command-help.core {
+  ble/util/isfunction ble/cmdinfo/help:"$command" &&
+    ble/cmdinfo/help:"$command" && return
+  ble/util/isfunction ble/cmdinfo/help &&
+    ble/cmdinfo/help "$command" && return
+
+  if [[ $type == builtin || $type == keyword ]]; then
+    # 組み込みコマンド・キーワードは man bash を表示
+    ble/widget/command-help/.locate-in-man-bash "$command" && return
+  elif [[ $type == function ]]; then
+    # シェル関数は定義を表示
+    local pager=ble/util/pager
+    type -t source-highlight &>/dev/null &&
+      pager='source-highlight -s sh -f esc | '$pager
+    LESS="$LESS -r" eval 'declare -f "$command" | '"$pager" && return
+  fi
+
+  MANOPT= command man "${command##*/}" 2>/dev/null && return
+  # Note: $(man "${command##*/}") と (特に日本語で) 正しい結果が得られない。
+  # if local content=$(MANOPT= command man "${command##*/}" 2>&1) && [[ $content ]]; then
+  #   builtin printf '%s\n' "$content" | ble/util/pager
+  #   return
+  # fi
+
+  if local content=$("$command" --help 2>&1) && [[ $content ]]; then
+    builtin printf '%s\n' "$content" | ble/util/pager
+    return 0
+  fi
+
+  echo "ble: help of \`$command' not found" >&2
+  ble/widget/.bell "help of \`$command' not found"
+  return 1
+}
+
+function ble/widget/command-help.impl {
+  local command=$1
+  if [[ ! $command ]]; then
     ble/widget/.bell
     return 1
   fi
 
-  if ! type -t "$cmd" &>/dev/null; then
-    ble/widget/.bell "command \`$cmd' not found"
+  # resolve alias
+  local type; ble/util/type type "$command"
+  while [[ $type == alias ]]; do
+    local alias_def
+    ble/util/assign alias_def "alias $command"
+    eval "alias_def=${alias_def#*=}" # remove quote
+    command=${alias_def%%[$' \t\n']*}
+    ble/util/type type "$command"
+  done
+
+  if ! type -t "$command" &>/dev/null; then
+    ble/widget/.bell "command \`$command' not found"
     return 1
   fi
 
+  ble-edit/info/hide
+  ble/textarea#invalidate
+  local -a DRAW_BUFF
+  ble-form/panel#set-height.draw "$_ble_textarea_panel" 0
+  ble-form/panel#goto.draw "$_ble_textarea_panel" 0 0
+  ble-edit/draw/bflush
   ble/util/buffer.flush >&2
-
-  local content
-  command man "$cmd" 2>/dev/null && return 0
-  # Note: $(man "$cmd") と (特に日本語で) 正しい結果が得られない。
-  # if content="$(command man "$cmd" 2>&1)" && [[ $content ]]; then
-  #   builtin printf '%s\n' "$content" | ble/util/less
-  #   return
-  # fi
-
-  if content="$("$cmd" --help 2>&1)" && [[ $content ]]; then
-    builtin printf '%s\n' "$content" | ble/util/less
-    return
-  fi
-
-  ble/widget/.bell "help of \`$cmd' not found"
-  return 1
+  ble-stty/leave
+  ble/widget/command-help.core; local ext=$?
+  ble-stty/enter
+  return "$ext"
 }
 
 function ble/widget/command-help {
@@ -5332,7 +5426,7 @@ function ble/widget/command-help {
     local cmd=${comp_words[0]}
   else
     local -a args; args=($_ble_edit_str)
-    local cmd="${args[0]}"
+    local cmd=${args[0]}
   fi
 
   ble/widget/command-help.impl "$cmd"

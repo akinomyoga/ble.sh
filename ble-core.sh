@@ -30,6 +30,9 @@ function bleopt/check:input_encoding {
 ##   という具合に順番に使用される。既定値は 30 である。
 : ${bleopt_openat_base:=30}
 
+## オプション bleopt_pager
+: ${bleopt_pager:=}
+
 shopt -s checkwinsize
 
 #------------------------------------------------------------------------------
@@ -336,11 +339,20 @@ function ble/string#escape-for-sed-regex {
     done
   fi
 }
-function ble/string#escape-for-bash-regex {
+function ble/string#escape-for-awk-regex {
   ret="$*"
-  if [[ $ret == *['\.[*?+^$(){}']* ]]; then
+  if [[ $ret == *['\.[*?+|^$(){}/']* ]]; then
     local a b
-    for a in \\ \. \[ \* \? \+ \^ \$ \( \) \{ \}; do
+    for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \} \/; do
+      b="\\$a" ret="${ret//"$a"/$b}"
+    done
+  fi
+}
+function ble/string#escape-for-extended-regex {
+  ret="$*"
+  if [[ $ret == *['\.[*?+|^$(){}']* ]]; then
+    local a b
+    for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \}; do
       b="\\$a" ret="${ret//"$a"/$b}"
     done
   fi
@@ -565,10 +577,12 @@ function ble/util/cat {
 }
 
 _ble_util_less_fallback=
-function ble/util/less {
+function ble/util/get-pager {
   if [[ ! $_ble_util_less_fallback ]]; then
     if type less &>/dev/null; then
       _ble_util_less_fallback=less
+    elif type pager &>/dev/null; then
+      _ble_util_less_fallback=pager
     elif type more &>/dev/null; then
       _ble_util_less_fallback=more
     else
@@ -576,7 +590,11 @@ function ble/util/less {
     fi
   fi
 
-  "${PAGER:-$_ble_util_less_fallback}"
+  eval "$1"'=${bleopt_pager:-${PAGER:-$_ble_util_less_fallback}}'
+}
+function ble/util/pager {
+  local pager; ble/util/get-pager pager
+  eval "$pager \"\$@\""
 }
 
 ## 関数 ble/util/getmtime filename
