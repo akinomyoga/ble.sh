@@ -370,10 +370,17 @@ function ble/string#escape-for-extended-regex {
 ##   @param[in] filename
 ##     読み取るファイルの場所を指定します。
 ##
-function ble/util/readfile {
-  IFS= read -r -d '' "$1" < "$2"
-}
-
+if ((_ble_bash>=40000)); then
+  function ble/util/readfile { # 155ms for man bash
+    local __buffer
+    mapfile __buffer < "$2"
+    IFS= eval "$1"'="${__buffer[*]}"'
+  }
+else
+  function ble/util/readfile { # 465ms for man bash
+    IFS= read -r -d '' "$1" < "$2"
+  }
+fi
 
 ## 関数 ble/util/assign var command...
 ##   var=$(command ...) の高速な代替です。
@@ -385,12 +392,23 @@ function ble/util/readfile {
 ##     実行するコマンドを指定します。
 ##
 _ble_util_read_stdout_tmp="$_ble_base_run/$$.ble_util_assign.tmp"
-function ble/util/assign {
-  builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
-  local _ret="$?"
-  IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
-  return "$_ret"
-}
+if ((_ble_bash>=40000)); then
+  # mapfile の方が read より高速
+  function ble/util/assign {
+    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    local _ret="$?" __arr
+    mapfile -t __arr < "$_ble_util_read_stdout_tmp"
+    IFS=$'\n' eval "$1=\"\${__arr[*]}\""
+    return "$_ret"
+  }
+else
+  function ble/util/assign {
+    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    local _ret="$?"
+    IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
+    return "$_ret"
+  }
+fi
 
 if ((_ble_bash>=40100)); then
   function ble/util/set {
@@ -579,11 +597,11 @@ function ble/util/cat {
 _ble_util_less_fallback=
 function ble/util/get-pager {
   if [[ ! $_ble_util_less_fallback ]]; then
-    if type less &>/dev/null; then
+    if type -t less &>/dev/null; then
       _ble_util_less_fallback=less
-    elif type pager &>/dev/null; then
+    elif type -t pager &>/dev/null; then
       _ble_util_less_fallback=pager
-    elif type more &>/dev/null; then
+    elif type -t more &>/dev/null; then
       _ble_util_less_fallback=more
     else
       _ble_util_less_fallback=cat

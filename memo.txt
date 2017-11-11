@@ -99,6 +99,21 @@ bash 実装上で注意するべき事
   * arr=(1 2 3) func の形式で配列をシェル関数に渡そうとすると、
     export arr='(1 2 3)' で渡されてしまう。
 
+  * 既に配列変数になっている物に対して
+    export var=value や typeset -x var=value をしても、
+    呼び出された別コマンドからは環境変数として見えない。
+
+    $ a=(1 2 3)
+    $ (export a=1; bash -c 'declare -p a')
+    bash: 0 行: declare: a: 見つかりません
+
+    新しい変数として導入すれば良い。
+    例えば関数内で新しく local -x var=value とするか、
+    var=value command の形式で呼び出すようにすれば良い。
+
+    $ (a=1 bash -c 'declare -p a')
+    declare -x a="1"
+
   * 変数の代入は基本的に quote は必要ないが、
 
     1 チルダで始まる時はチルダ展開を防ぐ為に quote が必要。

@@ -5314,6 +5314,15 @@ ble-autoload "$_ble_base/complete.sh" ble/widget/complete
 ##     それ以外の時は 0 以外を返します。
 ##
 
+## 関数 ble/widget/command-help/.read-man
+##   @var[out] man_content
+function ble/widget/command-help/.read-man {
+  local pager="sh -c 'cat >| \"\$BLETMPFILE\"'" tmp=$_ble_util_read_stdout_tmp
+  BLETMPFILE=$tmp MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
+  ble/util/readfile man_content "$tmp" # 80ms
+  return "$ext"
+}
+
 function ble/widget/command-help/.locate-in-man-bash {
   local command=$1
   local ret rex
@@ -5327,6 +5336,9 @@ function ble/widget/command-help/.locate-in-man-bash {
   # awk/gawk
   local awk=awk; type -t gawk &>/dev/null && awk=gawk
 
+  # man bash
+  local man_content; ble/widget/command-help/.read-man bash || return 1 # 733ms (3 fork: man, sh, cat)
+
   # locate line number
   ble/string#escape-for-awk-regex "$command"; local rex_awk=$ret
   rex='\b$'; [[ $awk == gawk && $command =~ $rex ]] && rex_awk=$rex_awk'\y'
@@ -5335,8 +5347,7 @@ function ble/widget/command-help/.locate-in-man-bash {
     if (!par && $0 ~ /^[[:space:]]*'"$rex_awk"'/) { print NR; exit; }
     par = !($0 ~ /^[[:space:]]*$/);
   }'
-  local man_out; ble/util/assign man_out 'MANOPT= man bash 2>/dev/null' || return 1 # 1 fork
-  local awk_out; ble/util/assign awk_out '"$awk" "$awk_script" 2>/dev/null <<< "$man_out"' || return 1 # 1 fork
+  local awk_out; ble/util/assign awk_out '"$awk" "$awk_script" 2>/dev/null <<< "$man_content"' || return 1 # 206ms (1 fork)
   local iline=${awk_out%$'\n'}; [[ $iline ]] || return 1
 
   # show
@@ -5344,7 +5355,7 @@ function ble/widget/command-help/.locate-in-man-bash {
   rex='\b$'; [[ $command =~ $rex ]] && rex_ext=$rex_ext'\b'
   rex='^\b'; [[ $command =~ $rex ]] && rex_ext="($rex_esc|\b)$rex_ext"
   local manpager="$pager -r +'/$rex_ext$cr$((iline-1))g'"
-  MANOPT= MANPAGER=$manpager PAGER=$manpager man bash # 2 fork
+  eval "$manpager" <<< "$man_content" # 1 fork
 }
 ## 関数 ble/widget/command-help.core
 ##   @var[in] type
@@ -5374,13 +5385,12 @@ function ble/widget/command-help.core {
   #   return
   # fi
 
-  if local content=$("$command" --help 2>&1) && [[ $content ]]; then
+  if local content; content=$("$command" --help 2>&1) && [[ $content ]]; then
     builtin printf '%s\n' "$content" | ble/util/pager
     return 0
   fi
 
   echo "ble: help of \`$command' not found" >&2
-  ble/widget/.bell "help of \`$command' not found"
   return 1
 }
 
