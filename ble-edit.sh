@@ -5326,7 +5326,7 @@ function ble/widget/command-help/.read-man {
 function ble/widget/command-help/.locate-in-man-bash {
   local command=$1
   local ret rex
-  local rex_esc=$'(\e\[[ -?]*[@-~]|)' cr=$'\r'
+  local rex_esc=$'(\e\\[[ -?]*[@-~]||.\b)' cr=$'\r'
 
   # check if pager is less
   local pager; ble/util/get-pager pager
@@ -5343,7 +5343,7 @@ function ble/widget/command-help/.locate-in-man-bash {
   ble/string#escape-for-awk-regex "$command"; local rex_awk=$ret
   rex='\b$'; [[ $awk == gawk && $command =~ $rex ]] && rex_awk=$rex_awk'\y'
   local awk_script='{
-    gsub(/'"$rex_esc"'*/, "");
+    gsub(/'"$rex_esc"'/, "");
     if (!par && $0 ~ /^[[:space:]]*'"$rex_awk"'/) { print NR; exit; }
     par = !($0 ~ /^[[:space:]]*$/);
   }'
