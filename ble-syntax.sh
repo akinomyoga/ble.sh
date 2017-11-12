@@ -3932,10 +3932,10 @@ function ble-highlight-layer:syntax/update {
 
 #%if !release
   if [[ $ble_debug ]]; then
-    local status buff=
+    local status buff= nl=$'\n'
     _ble_syntax_attr_umin="$debug_attr_umin" _ble_syntax_attr_umax="$debug_attr_uend" ble-syntax/print-status -v status
-    ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | cat -A'; status="$status$buff"
-    ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | cat -A'; status="$status$buff"
+    ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | cat -A'; status="$status${buff%$nl}$nl"
+    ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | cat -A'; status="$status${buff%$nl}$nl"
     #ble/util/assign buff 'declare -p _ble_textarea_bufferName $_ble_textarea_bufferName | cat -A'; status="$status$buff"
     ble-edit/info/show raw "$status"
   fi

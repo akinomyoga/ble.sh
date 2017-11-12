@@ -415,6 +415,7 @@ else
     builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
     local _ret="$?"
     IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
+    eval "$1=\${$1%$'\n'}"
     return "$_ret"
   }
 fi
