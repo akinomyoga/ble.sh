@@ -36,6 +36,8 @@ ble_decode_Altr=0x00400000
 ble_decode_MaskChar=0x001FFFFF
 ble_decode_MaskFlag=0x7FC00000
 
+ble_decode_IsolatedESC=$((0x07FF))
+
 if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bash_loaded_in_function)); then
   _ble_decode_kbd_ver=4
   _ble_decode_kbd__n=0
@@ -304,12 +306,12 @@ function ble-decode/.hook {
   local IFS=$' \t\n'
   ble-decode/PROLOGUE
 
-  while (($#)); do
+  local c
+  for c; do
 #%if debug_keylogger
-    ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$1"
+    ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
 #%end
-    "ble-decode-byte+$bleopt_input_encoding" "$1"
-    shift
+    "ble-decode-byte+$bleopt_input_encoding" "$c"
   done
 
   ble-decode/EPILOGUE
@@ -351,11 +353,13 @@ function ble-decode-char/csi/clear {
 function ble-decode-char/csi/.modify-kcode {
   local mod="$(($1-1))"
   if ((mod>=0)); then
+    # Note: Meta 0x20 は独自
     ((mod&0x01&&(kcode|=ble_decode_Shft),
       mod&0x02&&(kcode|=ble_decode_Altr),
       mod&0x04&&(kcode|=ble_decode_Ctrl),
       mod&0x08&&(kcode|=ble_decode_Supr),
-      mod&0x10&&(kcode|=ble_decode_Hypr)))
+      mod&0x10&&(kcode|=ble_decode_Hypr),
+      mod&0x20&&(kcode|=ble_decode_Meta)))
   fi
 }
 function ble-decode-char/csi/.decode {
@@ -407,14 +411,16 @@ function ble-decode-char/csi/.decode {
 ##   @param[in] char
 ##   @var[out] csistat
 function ble-decode-char/csi/consume {
-  # 一番頻度の高い物
   csistat=
-  ((_ble_decode_csi_mode==0&&$1!=27)) && return 1
+
+  # 一番頻度の高い物
+  ((_ble_decode_csi_mode==0&&$1!=27&&$1!=155)) && return 1
 
   local char="$1"
   case "$_ble_decode_csi_mode" in
   (0)
-    _ble_decode_csi_mode=1
+    # CSI (155) もしくは ESC (27)
+    ((_ble_decode_csi_mode=$1==155?2:1))
     csistat=_ ;;
   (1)
     if ((char!=91)); then
@@ -460,11 +466,11 @@ _ble_decode_char2_reach=
 _ble_decode_char2_modifier=
 _ble_decode_char2_modkcode=
 function ble-decode-char {
-#%if debug_keylogger
-  ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_chars "$@"
-#%end
-  while (($#)); do
+  while (($#)); do # Note: ループ中で set -- ... を使っている。
     local char=$1; shift
+#%if debug_keylogger
+    ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_chars "$char"
+#%end
 
     # decode error character
     if ((char&ble_decode_Erro)); then
@@ -480,6 +486,7 @@ function ble-decode-char {
 
     # hook for quoted-insert, etc
     if [[ $_ble_decode_char__hook ]]; then
+      ((char==ble_decode_IsolatedESC)) && char=27 # isolated ESC -> ESC
       local hook=$_ble_decode_char__hook
       _ble_decode_char__hook=
       ble-decode-key/.call-widget "$char" "$hook $char"
@@ -570,6 +577,7 @@ function ble-decode-char/.process-modifier {
 ##   指定されたキーを修飾して ble-decode-key に渡します。
 ##   kcode = 0..31 は C-@ C-a ... C-z C-[ C-\ C-] C-^ C-_ に変換されます。
 ##   ESC は次に来る文字を meta 修飾します。
+##   ble_decode_IsolatedESC は meta にならずに ESC として渡されます。
 ##   @param[in] kcode
 ##     処理対象のキーコードを指定します。
 function ble-decode-char/.send-modified-key {
@@ -580,7 +588,8 @@ function ble-decode-char/.send-modified-key {
 
   if (($1==27)); then
     ble-decode-char/.process-modifier "$ble_decode_Meta" && return
-  elif (($1==(ble_decode_Ctrl|91))); then # "C-[" here means "isolated ESC"
+  elif (($1==ble_decode_IsolatedESC)); then
+    ((kcode=(ble_decode_Ctrl|91)))
     if [[ $bleopt_decode_isolated_esc == meta ]]; then
       ble-decode-char/.process-modifier "$ble_decode_Meta" && return
     fi
@@ -1704,6 +1713,18 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
   ' 2>| "$_ble_base_run/$$.bind.save"
 }
 
+function ble-decode/bind {
+  local file="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind"
+  [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
+  source "$file"
+  _ble_decode_bind__uvwflag=
+}
+function ble-decode/unbind {
+  source "$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind"
+}
+
+#------------------------------------------------------------------------------
+
 function ble-decode-initialize {
   ble-decode-bind/cmap/initialize
 }
@@ -1720,10 +1741,7 @@ function ble-decode-attach {
   builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)"
 
   # ble.sh bind の設置
-  local file="$_ble_base_cache/ble-decode-bind.$_ble_bash.bind"
-  [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
-  source "$file"
-  _ble_decode_bind__uvwflag=
+  ble-decode/bind
 
   # 現在の ble-decode/keymap の設定
   ble-decode/DEFAULT_KEYMAP -v _ble_decode_key__kmap
@@ -1747,7 +1765,7 @@ function ble-decode-detach {
   ble-stty/finalize
 
   # ble.sh bind の削除
-  source "$_ble_base_cache/ble-decode-bind.$_ble_bash.unbind"
+  ble-decode/unbind
 
   # 元のキー割り当ての復元
   if [[ -s "$_ble_base_run/$$.bind.save" ]]; then
@@ -1770,6 +1788,20 @@ function ble-decode-detach {
 
 #------------------------------------------------------------------------------
 # **** encoding = UTF-8 ****
+
+function ble/encoding:UTF-8/generate-binder { :; }
+
+# # bind.sh の esc1B==3 の設定用
+# # これは bind.sh の中にある物と等価なので殊更に設定しなくて良い。
+# function ble/encoding:UTF-8/generate-binder {
+#   ble-decode/generate-binder/bind-s '"\C-@":"\xC0\x80"'
+#   ble-decode/generate-binder/bind-s '"\e":"\xDF\xBF"' # isolated ESC (U+07FF)
+#   local i ret
+#   for i in {0..255}; do
+#     ble-decode-bind/c2dqs "$i"
+#     ble-decode/generate-binder/bind-s "\"\e$ret\": \"\xC0\x9B$ret\""
+#   done
+# }
 
 _ble_decode_byte__utf_8__mode=0
 _ble_decode_byte__utf_8__code=0
@@ -1837,8 +1869,50 @@ function ble-text-c2bc+UTF-8 {
     (code<0x200000?4:5)))))
 }
 
+# bind.sh の esc1B==3 の設定用
+function ble/encoding:C/generate-binder {
+  ble-decode/generate-binder/bind-s '"\C-@":"\x9B\x80"'
+  ble-decode/generate-binder/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FF)
+  local i ret
+  for i in {0..255}; do
+    ble-decode-bind/c2dqs "$i"
+    ble-decode/generate-binder/bind-s "\"\e$ret\": \"\x9B\x9B$ret\""
+  done
+}
+
+## 関数 ble-decode-byte+C byte
+##
+##   受け取ったバイトをそのまま文字コードと解釈する。
+##   但し、bind の都合 (bashbug の回避) により以下の変換を行う。
+##
+##   \x9B\x80 (155 128) → C-@
+##   \x9B\x8B (155 139) → isolated ESC \u07FF (2047)
+##   \x9B\x9B (155 155) → ESC
+##
+##   実際にこの組み合わせの入力が来ると誤変換されるが、
+##   この組み合わせは不正な CSI シーケンスなので、
+##   入力に混入した時の動作は元々保証外である。
+##
+_ble_encoding_c_csi=
 function ble-decode-byte+C {
-  ble-decode-char "$1"
+  if [[ $_ble_encoding_c_csi ]]; then
+    _ble_encoding_c_csi=
+    case $1 in
+    (155) ble-decode-char 27 # ESC
+          return ;;
+    (139) ble-decode-char 2047 # isolated ESC
+          return ;;
+    (128) ble-decode-char 0 # C-@
+          return ;;
+    esac
+    ble-decode-char 155
+  fi
+
+  if (($1==155)); then
+    _ble_encoding_c_csi=1
+  else
+    ble-decode-char "$1"
+  fi
 }
 
 ## 関数 ble-text-c2bc+C charcode ; ret

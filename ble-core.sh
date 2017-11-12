@@ -14,9 +14,18 @@ function bleopt/check:input_encoding {
   elif ! ble/util/isfunction "ble-text-c2bc+$value"; then
     echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-c2bc+$value' is not defined." >&2
     return 1
+  elif ! ble/util/isfunction "ble/encoding:$value/generate-binder"; then
+    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/generate-binder' is not defined." >&2
+    return 1
   fi
-}
 
+  if [[ $bleopt_input_encoding != $value ]]; then
+    ble-decode/unbind
+    bleopt_input_encoding=$value
+    ble-decode/bind
+  fi
+  return 0
+}
 
 ## オプション bleopt_stackdump_enabled
 ##   エラーが起こった時に関数呼出の構造を標準エラー出力に出力するかどうかを制御する。

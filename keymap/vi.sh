@@ -718,6 +718,7 @@ function ble/keymap:vi/register#play {
   local i len=${#value} ret
   for ((i=0;i<len;i++)); do
     ble/util/s2c "$value" "$i"
+    ((ret==27)) && ret=$ble_decode_IsolatedESC
     ble-decode-char "$ret"
   done
 }
@@ -783,6 +784,8 @@ function ble/widget/vi_nmap/record-register {
     ble-decode/keylog/pop
     ble-decode/keylog/end; local keys=("${ret[@]}")
 
+    ble/util/c2s 155; local csi=$ret
+
     local key value
     local -a buff
     for key in "${keys[@]}"; do
@@ -798,21 +801,22 @@ function ble/widget/vi_nmap/record-register {
       # C-? は制御文字として登録する
       if (((key&ble_decode_MaskFlag)==ble_decode_Ctrl&&(c==64||91<=c&&c<=95||97<=c&&c<=122))); then
         # Note: ^@ (NUL) は文字列にできないので除外
-        # Note: ^[ (ESC) は meta 修飾と紛らわしいので除外
-        if ((c!=64&&c!=91)); then
+        if ((c!=64)); then
           ble/util/c2s "$((c&0x1F))"
           ble/array#push buff "$ret"
           continue
         fi
       fi
 
-      local esc=$'\e' mod=1
+      # Note: Meta 修飾は単体の ESC と紛らわしいので CSI 27 で記録する。
+      local mod=1
       (((key&ble_decode_Shft)&&(mod+=0x01),
         (key&ble_decode_Altr)&&(mod+=0x02),
         (key&ble_decode_Ctrl)&&(mod+=0x04),
         (key&ble_decode_Supr)&&(mod+=0x08),
-        (key&ble_decode_Hypr)&&(mod+=0x10)))
-      ble/array#push buff "$esc[27;$mod;$c~"
+        (key&ble_decode_Hypr)&&(mod+=0x10),
+        (key&ble_decode_Meta)&&(mod+=0x20)))
+      ble/array#push buff "${csi}27;$mod;$c~"
     done
     IFS= eval 'local value="${buff[*]}"'
     ble/keymap:vi/register#set "$_ble_keymap_vi_reg_record" q "$value"
@@ -6003,12 +6007,12 @@ function ble-decode-keymap:vi/initialize {
   ble-decode-keymap:vi_cmap/define
 
   : >| "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_imap  >> "$fname_keymap_cache"
+  ble-decode/keymap/dump vi_imap >> "$fname_keymap_cache"
   ble-decode/keymap/dump vi_nmap >> "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_omap    >> "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_xmap    >> "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_cmap    >> "$fname_keymap_cache"
-  ble-decode/keymap/dump isearch    >> "$fname_keymap_cache"
+  ble-decode/keymap/dump vi_omap >> "$fname_keymap_cache"
+  ble-decode/keymap/dump vi_xmap >> "$fname_keymap_cache"
+  ble-decode/keymap/dump vi_cmap >> "$fname_keymap_cache"
+  ble-decode/keymap/dump isearch >> "$fname_keymap_cache"
 
   echo "ble.sh: updating cache/keymap.vi... done" >&2
 }
