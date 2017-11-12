@@ -3100,8 +3100,12 @@ function ble/widget/exit {
   #_ble_edit_detach_flag=exit
 
   #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
-  ble-edit/info/hide
   _ble_edit_line_disabled=1 ble/textarea#render
+
+  # Note: ble_debug=1 の時 ble/textarea#render の中で info が設定されるので、
+  #   これは ble/textarea#render より後である必要がある。
+  ble-edit/info/hide
+
   local -a DRAW_BUFF
   ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble-edit/draw/bflush
