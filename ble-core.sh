@@ -1158,7 +1158,7 @@ function ble-term/visible-bell/cancel-erasure {
 # String manipulations
 
 if ((_ble_bash>=40100)); then
-  # - printf "'c" で unicode が読める
+  # - printf "'c" で Unicode が読める (どの LC_CTYPE でも Unicode になる)
   function ble/util/s2c {
     builtin printf -v ret '%d' "'${1:$2:1}"
   }

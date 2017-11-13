@@ -1720,6 +1720,8 @@ function ble-decode/bind {
   _ble_decode_bind__uvwflag=
 }
 function ble-decode/unbind {
+  local encoding_clear=ble/encoding:$bleopt_input_encoding/clear
+  ble/util/isfunction "$encoding_clear" && "$encoding_clear"
   source "$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind"
 }
 
@@ -1805,6 +1807,10 @@ function ble/encoding:UTF-8/generate-binder { :; }
 
 _ble_decode_byte__utf_8__mode=0
 _ble_decode_byte__utf_8__code=0
+function ble/encoding:UTF-8/clear {
+  _ble_decode_byte__utf_8__mode=0
+  _ble_decode_byte__utf_8__code=0
+}
 function ble-decode-byte+UTF-8 {
   local code="$_ble_decode_byte__utf_8__code"
   local mode="$_ble_decode_byte__utf_8__mode"
@@ -1851,8 +1857,8 @@ function ble-decode-byte+UTF-8 {
     )
   '))
 
-  _ble_decode_byte__utf_8__code="$code"
-  _ble_decode_byte__utf_8__mode="$mode"
+  _ble_decode_byte__utf_8__code=$code
+  _ble_decode_byte__utf_8__mode=$mode
 
   local -a CHARS=($cha0 $char)
   ((${#CHARS[*]})) && ble-decode-char "${CHARS[@]}"
@@ -1894,6 +1900,9 @@ function ble/encoding:C/generate-binder {
 ##   入力に混入した時の動作は元々保証外である。
 ##
 _ble_encoding_c_csi=
+function ble/encoding:C/clear {
+  _ble_encoding_c_csi=
+}
 function ble-decode-byte+C {
   if [[ $_ble_encoding_c_csi ]]; then
     _ble_encoding_c_csi=

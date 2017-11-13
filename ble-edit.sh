@@ -532,7 +532,7 @@ function ble-edit/draw/trace/SGR {
 function ble-edit/draw/trace/process-csi-sequence {
   local seq="$1" seq1="${1:2}" rex
   local char="${seq1:${#seq1}-1:1}" param="${seq1::${#seq1}-1}"
-  if [[ ! ${param//[0-9:;]/} ]]; then
+  if [[ ! ${param//[0-9:;]} ]]; then
     # CSI 数字引数 + 文字
     case "$char" in
     (m) # SGR
@@ -724,14 +724,15 @@ function ble-edit/draw/trace/process-esc-sequence {
 function ble-edit/draw/trace {
   # cygwin では LC_COLLATE=C にしないと
   # 正規表現の range expression が期待通りに動かない。
-  # __ENCODING__:
-  #   マルチバイト文字コードで escape seq と紛らわしいコードが含まれる可能性がある。
-  #   多くの文字コードでは C0, C1 にあたるバイトコードを使わないので大丈夫と思われる。
-  #   日本語と混ざった場合に問題が生じたらまたその時に考える。
   LC_COLLATE=C ble-edit/draw/trace.impl "$@" &>/dev/null
 }
 function ble-edit/draw/trace.impl {
   local text=$1
+
+  # Note: 文字符号化方式によっては対応する文字が存在しない可能性がある。
+  #   その時は st='\u009C' になるはず。2文字以上のとき変換に失敗したと見做す。
+  ble/util/c2s 156; local st=$ret #  (ST)
+  ((${#st}>=2)) && st=
 
   # constants
   local cols=${COLUMNS:-80} lines=${LINES:-25}
@@ -740,7 +741,7 @@ function ble-edit/draw/trace.impl {
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
   # OSC, DCS, SOS, PM, APC Sequences + "GNU screen ESC k"
-  local rex_osc='^([]PX^_k])([^]|+[^\])*(\\|||$)'
+  local rex_osc='^([]PX^_k])([^'$st']|+[^\'$st'])*(\\|'${st:+'|'}$st'|$)'
   # ISO-2022 関係 (3byte以上の物)
   local rex_2022='^[ -/]+[@-~]'
   # ESC ?

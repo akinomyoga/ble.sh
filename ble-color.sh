@@ -406,22 +406,23 @@ function ble-highlight-layer/getg {
 _ble_highlight_layer_plain_buff=()
 
 function ble-highlight-layer:plain/update/.getch {
-  if [[ $ch == [-] ]]; then
+  [[ $ch == [' '-'~'] ]] && return
+  if [[ $ch == [-] ]]; then
     if [[ $ch == $'\t' ]]; then
-      ch="${_ble_util_string_prototype::it}"
+      ch=${_ble_util_string_prototype::it}
     elif [[ $ch == $'\n' ]]; then
       ch=$'\e[K\n'
+    elif [[ $ch == '' ]]; then
+      ch='^?'
     else
       ble/util/s2c "$ch" 0
       ble/util/c2s $((ret+64))
       ch="^$ret"
     fi
-  elif [[ $ch == [$''-$'\302\237'] ]]; then
-    # __ENCODING__: ※\302\237 は 0x9F の utf8 表現
-    if [[ $ch == '' ]]; then
-      ch='^?'
-    else
-      ble/util/s2c "$ch" 0
+  else
+    # C1 characters
+    local ret; ble/util/s2c "$ch"
+    if ((0x80<=ret&&ret<=0x9F)); then
       ble/util/c2s $((ret-64))
       ch="M-^$ret"
     fi
@@ -433,15 +434,15 @@ function ble-highlight-layer:plain/update {
   if ((DMIN>=0)); then
     ble-highlight-layer/update/shift _ble_highlight_layer_plain_buff
 
-    local i text="$1" ch
-    local it="$_ble_term_it" ret
-    for((i=DMIN;i<DMAX;i++)); do
-      ch="${text:i:1}"
+    local i text=$1 ch
+    local it=$_ble_term_it ret
+    for ((i=DMIN;i<DMAX;i++)); do
+      ch=${text:i:1}
 
       # LC_COLLATE for cygwin collation
       LC_COLLATE=C ble-highlight-layer:plain/update/.getch &>/dev/null
 
-      _ble_highlight_layer_plain_buff[i]="$ch"
+      _ble_highlight_layer_plain_buff[i]=$ch
     done
   fi
 
