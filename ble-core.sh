@@ -442,7 +442,7 @@ else
 fi
 
 function ble/util/type {
-  _cmd="$2" ble/util/assign "$1" 'builtin type -t "$_cmd" 2>/dev/null'
+  _cmd="$2" ble/util/assign "$1" 'builtin type -t -- "$_cmd" 2>/dev/null'
   builtin eval "$1=\"\${$1%$_ble_term_nl}\""
 }
 
