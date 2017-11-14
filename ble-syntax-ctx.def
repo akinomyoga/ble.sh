@@ -11,11 +11,12 @@ CTX_ARGX        3  # (コマンド) 次に引数が来る
 CTX_ARGX0       18 # (コマンド)   文法的には次に引数が来そうだがもう引数が来てはならない文脈。例えば ]] や )) の後。
 CTX_ARGI        4  # (コマンド) context,attr: in an argument
 CTX_CMDX        1  # (コマンド) 次にコマンドが来る。
-CTX_CMDXV       13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
 CTX_CMDX1       17 # (コマンド)   次にコマンドが少なくとも一つ来なければならない。例えば ( や && や while の直後。
+CTX_CMDXT       49 # (コマンド)   time や ! の後。次にコマンドが少なくとも1つ来るか ; が来るか、行末が来る。
 CTX_CMDXC       26 # (コマンド)   次に複合コマンド ('(' '{' '((' '[[' for select case if while until) が来る。
 CTX_CMDXE       43 # (コマンド)   次に終端キーワード ('}' 'done' 'fi' 'esac') が来るかも知れないし、来ないかもしれない。
 CTX_CMDXD       38 # (コマンド)   次に 'do', '{' が来るかも知れないし、来ないかもしれない (for (()) の直後) (旧 CTX_ARGX0F)
+CTX_CMDXV       13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
 CTX_CMDI        2  # (コマンド) context,attr: in a command
 CTX_VRHS        11 # (コマンド) context,attr: var=rhs
 CTX_QUOT        5  # context,attr: in double quotations

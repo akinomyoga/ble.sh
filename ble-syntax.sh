@@ -1577,11 +1577,12 @@ function ble-syntax:bash/ctx-expr {
 _BLE_SYNTAX_FCTX[CTX_ARGX]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGX0]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX]=ble-syntax:bash/ctx-command
-_BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDX1]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXT]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXC]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXE]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXD]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_VRHS]=ble-syntax:bash/ctx-command
@@ -1655,6 +1656,7 @@ _ble_syntax_bash_command_ewtype[CTX_ARGX0]=$CTX_ARGI
 _ble_syntax_bash_command_ewtype[CTX_ARGVX]=$CTX_ARGVI
 _ble_syntax_bash_command_ewtype[CTX_CMDX]=$CTX_CMDI
 _ble_syntax_bash_command_ewtype[CTX_CMDX1]=$CTX_CMDI
+_ble_syntax_bash_command_ewtype[CTX_CMDXT]=$CTX_CMDI
 _ble_syntax_bash_command_ewtype[CTX_CMDXC]=$CTX_CMDI
 _ble_syntax_bash_command_ewtype[CTX_CMDXE]=$CTX_CMDI
 _ble_syntax_bash_command_ewtype[CTX_CMDXD]=$CTX_CMDI
@@ -1733,7 +1735,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
       ble-syntax/parse/word-pop
       return 0 ;;
     ('time')
-      ((ctx=CTX_CMDX1,parse_suppressNextStat=1))
+      ((ctx=CTX_CMDXT,parse_suppressNextStat=1))
       if [[ ${text:i} =~ ^$_ble_syntax_bash_rex_spaces ]]; then
         ((_ble_syntax_attr[i]=CTX_CMDX,
           i+=${#BASH_REMATCH}))
@@ -1748,7 +1750,10 @@ function ble-syntax:bash/ctx-command/check-word-end {
         ble-syntax/parse/word-pop
       fi
       is_keyword=1 ;;
-    (['!{']|'do'|'if'|'then'|'elif'|'else'|'while'|'until')
+    ('!')
+      ((ctx=CTX_CMDXT))
+      is_keyword=1 ;;
+    ('{'|'do'|'if'|'then'|'elif'|'else'|'while'|'until')
       ((ctx=CTX_CMDX1))
       is_keyword=1 ;;
     ('for')    ((ctx=CTX_FARGX1)); is_keyword=1 ;;
@@ -1858,7 +1863,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     local spaces=$BASH_REMATCH
     if [[ $spaces == *$'\n'* ]]; then
       ble-syntax:bash/check-here-document-from "$spaces" && return 0
-      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)) && ((ctx=CTX_CMDX))
+      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDXT)) && ((ctx=CTX_CMDX))
     fi
 
     # ctx はそのままで素通り
@@ -1874,7 +1879,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     local rematch3=${BASH_REMATCH[3]}
     ((_ble_syntax_attr[i]=ATTR_DEL,
       ${#rematch1}<len&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX)))
-    if ((ctx==CTX_CMDX||ctx==CTX_CMDX1)); then
+    if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT)); then
       ((ctx=CTX_CMDXV))
     elif ((ctx==CTX_CMDXC||ctx==CTX_CMDXD)); then
       ((ctx=CTX_CMDXV,
@@ -1900,13 +1905,22 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     ((i+=len))
     return 0
   elif local rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
-    # 制御演算子 && || | & ; |& ;; ;;&
+    # 制御演算子 && || | & ; |& ;; ;;& ;&
+
+    # time ; 及び ! ; に限っては、エラーにならずに直後に CTX_CMDXE になる (#D0592)
+    if ((ctx==CTX_CMDXT)) && [[ $BASH_REMATCH == ';' ]]; then
+      ((_ble_syntax_attr[i]=ATTR_DEL,
+        ctx=CTX_CMDXE,
+        i+=${#BASH_REMATCH}))
+      return 0
+    fi
 
     # for bash-3.1 ${#arr[n]} bug
-    local rematch1="${BASH_REMATCH[1]}" rematch2="${BASH_REMATCH[2]}"
+    local rematch1=${BASH_REMATCH[1]} rematch2=${BASH_REMATCH[2]}
     ((_ble_syntax_attr[i]=ATTR_DEL,
       (_ble_syntax_bash_command_opt[ctx]||ctx==CTX_CMDX&&${#rematch2})||
         (_ble_syntax_attr[i]=ATTR_ERR)))
+
     ((ctx=${#rematch1}?CTX_CMDX1:(
          ${#rematch2}?CTX_CASE:
          CTX_CMDX)))
@@ -1914,8 +1928,8 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     return 0
   elif local rex='^\(\(?' && [[ $tail =~ $rex ]]; then
     # サブシェル (, 算術コマンド ((
-    local m="${BASH_REMATCH[0]}"
-    if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC)); then
+    local m=${BASH_REMATCH[0]}
+    if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC)); then
       ((_ble_syntax_attr[i]=ATTR_DEL))
       ((ctx=CTX_ARGX0))
       [[ $is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD))
@@ -1964,6 +1978,7 @@ _ble_syntax_bash_command_bctx[CTX_ARGX0]=$CTX_ARGI
 _ble_syntax_bash_command_bctx[CTX_ARGVX]=$CTX_ARGVI
 _ble_syntax_bash_command_bctx[CTX_CMDX]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDX1]=$CTX_CMDI
+_ble_syntax_bash_command_bctx[CTX_CMDXT]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXC]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXE]=$CTX_CMDI
 _ble_syntax_bash_command_bctx[CTX_CMDXD]=$CTX_CMDI
@@ -2089,7 +2104,7 @@ function ble-syntax:bash/ctx-command {
 
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
-        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
+        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
     ble-syntax:bash/ctx-command/.check-delimiter-or-redirect; return
@@ -3106,7 +3121,7 @@ function ble-syntax/completion-context/check-prefix {
         fi
       fi
       ble-syntax/completion-context/check/parameter-expansion
-    elif ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXV)); then
+    elif ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXV)); then
       # 直前の再開点が CMDX だった場合、
       # 現在地との間にコマンド名があればそれはコマンドである。
       # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
@@ -3213,7 +3228,7 @@ function ble-syntax/completion-context/check-here {
     # 既に check-prefix で引っかかっている筈だから。
     local ctx=${stat[0]}
     
-    if ((ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDX1)); then
+    if ((ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDX1||ctx==CTX_CMDXT)); then
       if ! shopt -q no_empty_cmd_completion; then
         ble-syntax/completion-context/add command "$index"
         ble-syntax/completion-context/add variable:= "$index"
@@ -3432,6 +3447,7 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_ARGVI    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDX     syntax_default
   _ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDXT    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXC    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXE    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXD    syntax_default
@@ -4028,7 +4044,10 @@ attrg[CTX_ARGVX]=$'\e[m'
 attrg[CTX_ARGVI]=$'\e[m'
 attrg[CTX_CMDX]=$'\e[m'
 attrg[CTX_CMDX1]=$'\e[m'
+attrg[CTX_CMDXT]=$'\e[m'
 attrg[CTX_CMDXC]=$'\e[m'
+attrg[CTX_CMDXE]=$'\e[m'
+attrg[CTX_CMDXD]=$'\e[m'
 attrg[CTX_CMDXV]=$'\e[m'
 attrg[CTX_CMDI]=$'\e[;91m'
 attrg[CTX_VRHS]=$'\e[m'

@@ -589,6 +589,20 @@ tech
 
 2017-11-14
 
+  * syntax: echo $(echo > ) において $() が閉じていないとなっている。
+
+    元々 > の次に ) が来た時点で構文エラーなのだから、
+    ")" がどう取り扱われようと勝手なのかもしれないが、
+
+    - やはり直観としてはエラーは > の手前で止まってほしいし、
+
+    - 例えば、長いコマンドの最初の方の $() の中にリダイレクトを追加する時、
+      一瞬この様な状態になったことで部分更新が働かなくなるのも嫌である。
+
+    従って、> において ) が現れたらその手前で nest-pop
+    をするという訳には行かないだろうか。
+
+
   * complete: コマンドの補完候補に出てくる functions とは何だろう。実際には見つからないし実行できない
 
   * edit (command-help): quote されていると駄目
@@ -600,29 +614,6 @@ tech
 
   * syntax: time の後に何もなくても文法的には正しい。
     time -p の後に何もなくても文法的には正しい。
-
-  * syntax: 以下はリダイレクトの文法の詳細について調べている時 (#D0589) に分かったこと。
-
-    | 実は ! 単体でも OK
-    | while !; do break; done
-    | これは直したのに直っていないと思ったら、
-    | そもそもリダイレクトに関係ないので修正とは関係なかった。
-    | 独立に修正する必要がある。
-    |
-    | 所が調べてみると ! ; echo これは文法エラーになる。不思議だ。
-
-    調べてみるとまたよく分からない規則がある様だ。
-
-    $ ! ;                          # OK
-    $ time ;                       # OK
-    $ ! ; echo                     # Error 何故?
-    $ time ; echo                  # Error 何故?
-    $ while ! ; do break; done     # OK
-    $ while time; do break; done   # OK
-    $ while false; do ! ; done     # OK
-    $ while false; do time ; done  # OK
-
-    どうやら !, time 直後の ; の後は CTX_CMDXE になっている様だ。
 
 2017-11-11
 
@@ -932,6 +923,18 @@ tech
 
   * ble-syntax: echo ${a#[!0-9]} は履歴展開ではない
     どうやら "echo [!1 " と入力しても展開されない。[ の中は (対応する ] がなくても) 履歴展開は無効ということ。
+
+    実は、もう少し試してみた所、以下は何れも履歴展開となった。
+
+    $ echo [a!a
+    $ echo [a!a]
+    $ echo [[!a
+
+    1 つまり、[! の組み合わせで始まる range expression だけ特別扱いする。
+    2 range expression の中で [! の組み合わせは特に特別な意味は持たない。
+
+    ということ。しかし、それでも [! が特別な意味を持つかどうかの判定の為に、
+    結局、現在 range-expression の中にいるかどうかの判定は必要になる。
 
 2017-09-05
 
@@ -2731,7 +2734,65 @@ tech
 
 2017-11-14
 
-  * syntax: 以下で ")" の位置で誤って構文エラーが報告されている。
+  * syntax: ! / time の直後は特殊な文脈になっている [#D0592]
+
+    以下はリダイレクトの文法の詳細について調べている時 (#D0589) に分かったこと。
+
+    | 実は ! 単体でも OK
+    | while !; do break; done
+    | これは直したのに直っていないと思ったら、
+    | そもそもリダイレクトに関係ないので修正とは関係なかった。
+    | 独立に修正する必要がある。
+    |
+    | 所が調べてみると ! ; echo これは文法エラーになる。不思議だ。
+
+    調べてみるとまたよく分からない規則がある様だ。
+
+    $ ! ;                          # OK
+    $ time ;                       # OK
+    $ ! ; echo                     # Error 何故?
+    $ time ; echo                  # Error 何故?
+    $ while ! ; do break; done     # OK
+    $ while time; do break; done   # OK
+    $ while false; do ! ; done     # OK
+    $ while false; do time ; done  # OK
+
+    どうやら !, time 直後の ; の後は CTX_CMDXE になっている様だ。
+
+    もう少し調べる。
+
+    $ time &        # Error
+    $ time && echo  # Error (&& が来た時点で既にエラー)
+    $ time || echo  # Error
+    $ time | echo   # Error
+    $ time |& echo  # Error
+    $ case a in (a) time ;; esac  # Error
+    $ case a in (a) time ;& esac  # Error
+    $ case a in (a) time ;;& esac # Error
+
+    つまり ; 以外が来るともう駄目ということである。
+    さて、; 以外については現状の振る舞いと一致しているので、
+    ; が来た時だけ特別扱いをすれば良い。
+
+    ! と time の後は、現在の枠組みでは文脈値として CTX_CMDX1 になっている。
+    これは例えば else の時も同じである。試してみる。
+
+    $ if true; then true; else ; fi # Error
+    $ if true; then true; time ; fi # OK
+    $ if true; then true; ! ; fi    # OK
+
+    やはり明確に !, time の直後だけ文脈が異なる。
+    そして、! と time の直後はやはり類似の文脈の様だ。
+
+    % と思ったが、! に関しては寧ろ else と同じ?
+    % 勘違いだった。構文エラーではなくて単に ! が実行されて終了ステータスが 1 になっただけだった。
+
+    取り敢えず CMD_CMDX1 を複製することにする。複製した。
+    time ; 及び ! ; に対応した。
+    次に行末での処理に対応する。改行のある時と、最後(文字列末端)のチェックを直す。
+    多分、これで対応できた。
+
+  * syntax: 以下で ")" の位置で誤って構文エラーが報告されている。 [#D0591]
 
     echo $({ time echo helo; })
     echo $(while true; do break; done)
