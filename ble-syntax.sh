@@ -2296,7 +2296,7 @@ function ble-syntax:bash/ctx-conditions/check-word-end {
   ble-assert '((ctx==CTX_CONDI))' 'invalid context'
   if [[ $word == ']]' ]]; then
     ble-syntax/parse/touch-updated-attr "$wbeg"
-    ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
+    ((_ble_syntax_attr[wbeg]=ATTR_DEL))
     ble-syntax/parse/nest-pop
   else
     ((ctx=CTX_CONDX))
@@ -3719,7 +3719,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     fi
 
     if ((wtype==CTX_CMDI)); then
-      if ((_ble_syntax_attr[wbeg]!=ATTR_CMD_KEYWORD)); then
+      if ((_ble_syntax_attr[wbeg]!=ATTR_CMD_KEYWORD&&_ble_syntax_attr[wbeg]!=ATTR_DEL)); then
         ble-syntax/highlight/cmdtype "$value" "$wtxt"
       fi
     elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
