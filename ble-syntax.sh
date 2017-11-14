@@ -1837,8 +1837,20 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     # リダイレクト (& 単体の解釈より優先する)
 
     # for bash-3.1 ${#arr[n]} bug ... 一旦 rematch1 に入れてから ${#rematch1} で文字数を得る。
-    local rematch1="${BASH_REMATCH[1]}"
-    local rematch3="${BASH_REMATCH[3]}"
+    local len=${#BASH_REMATCH}
+    local rematch1=${BASH_REMATCH[1]}
+    local rematch3=${BASH_REMATCH[3]}
+    ((_ble_syntax_attr[i]=ATTR_DEL,
+      ${#rematch1}<len&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX)))
+    if ((ctx==CTX_CMDX||ctx==CTX_CMDX1)); then
+      ((ctx=CTX_CMDXV))
+    elif ((ctx==CTX_CMDXC||ctx==CTX_CMDXD)); then
+      ((ctx=CTX_CMDXV,
+        _ble_syntax_attr[i]=ATTR_ERR))
+    elif ((ctx==CTX_CMDXE)); then
+      ((ctx=CTX_ARGX0))
+    fi
+
     if [[ $rematch1 == *'&' ]]; then
       ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
     elif [[ $rematch1 == *'<<<' ]]; then
@@ -1853,9 +1865,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     else
       ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch3"
     fi
-    ((_ble_syntax_attr[i]=ATTR_DEL,
-      ${#rematch1}<${#BASH_REMATCH}&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX),
-      i+=${#BASH_REMATCH}))
+    ((i+=len))
     return 0
   elif local rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
     # 制御演算子 && || | & ; |& ;; ;;&
