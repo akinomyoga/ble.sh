@@ -1646,6 +1646,25 @@ _ble_syntax_bash_command_ectx[CTX_FARGI1]=$CTX_FARGX2
 _ble_syntax_bash_command_ectx[CTX_FARGI2]=$CTX_ARGX
 _ble_syntax_bash_command_ectx[CTX_CARGI1]=$CTX_CARGX2
 _ble_syntax_bash_command_ectx[CTX_CARGI2]=$CTX_CASE
+
+## 配列 _ble_syntax_bash_command_ewtype[wtype]
+##   実際に tree 登録する wtype を指定します。
+##   ※解析中の wtype には解析開始時の wtype が入っていることに注意する。
+_ble_syntax_bash_command_ewtype[CTX_ARGX]=$CTX_ARGI
+_ble_syntax_bash_command_ewtype[CTX_ARGX0]=$CTX_ARGI
+_ble_syntax_bash_command_ewtype[CTX_ARGVX]=$CTX_ARGVI
+_ble_syntax_bash_command_ewtype[CTX_CMDX]=$CTX_CMDI
+_ble_syntax_bash_command_ewtype[CTX_CMDX1]=$CTX_CMDI
+_ble_syntax_bash_command_ewtype[CTX_CMDXC]=$CTX_CMDI
+_ble_syntax_bash_command_ewtype[CTX_CMDXE]=$CTX_CMDI
+_ble_syntax_bash_command_ewtype[CTX_CMDXD]=$CTX_CMDI
+_ble_syntax_bash_command_ewtype[CTX_CMDXV]=$CTX_CMDI
+_ble_syntax_bash_command_ewtype[CTX_FARGX1]=$CTX_ARGI
+_ble_syntax_bash_command_ewtype[CTX_SARGX1]=$CTX_ARGI
+_ble_syntax_bash_command_ewtype[CTX_FARGX2]=$CTX_FARGI2 # in
+_ble_syntax_bash_command_ewtype[CTX_CARGX1]=$CTX_ARGI
+_ble_syntax_bash_command_ewtype[CTX_CARGX2]=$CTX_CARGI2 # in
+
 ## 配列 _ble_syntax_bash_command_expect
 ##   許容するコマンドの種類を表す正規表現を設定する。
 ##   check-word-end で用いる。
@@ -1654,6 +1673,7 @@ _ble_syntax_bash_command_expect=()
 _ble_syntax_bash_command_expect[CTX_CMDXC]='^(\(|\{|\(\(|\[\[|for|select|case|if|while|until)$'
 _ble_syntax_bash_command_expect[CTX_CMDXE]='^(\}|fi|done|esac|then|elif|else|do)$'
 _ble_syntax_bash_command_expect[CTX_CMDXD]='^(\{|do)$'
+
 ## 配列 _ble_syntax_bash_command_opt
 ##   その場でコマンドが終わっても良いかどうかを設定する。
 ##   .check-delimiter-or-redirect で用いる。
@@ -1674,26 +1694,28 @@ function ble-syntax:bash/ctx-command/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  local tail="${text:i}"
+  local tail=${text:i}
   [[ $tail == [^"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
 
-  local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
-  local word="${text:wbegin:wlen}"
-  local wt="$wtype"
+  local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
+  local word=${text:wbegin:wlen}
+  local wt=$wtype
 
-  # 特定のコマンドのみを受け付ける文脈
+  ((_ble_syntax_bash_command_ewtype[wt]&&(wtype=_ble_syntax_bash_command_ewtype[wt])))
   local rex_expect_command=${_ble_syntax_bash_command_expect[wt]}
   if [[ $rex_expect_command ]]; then
-    if [[ $word =~ $rex_expect_command ]]; then
-      ((wtype=CTX_CMDI))
-    else
-      ((wtype=ATTR_ERR))
-    fi
+    # 特定のコマンドのみを受け付ける文脈
+    [[ $word =~ $rex_expect_command ]] || ((wtype=ATTR_ERR))
   fi
-
   ble-syntax/parse/word-pop
 
   if ((ctx==CTX_CMDI)); then
+    if ((wt==CTX_CMDXV)); then
+      ((ctx=CTX_ARGX))
+      return 0
+    fi
+
+    local is_keyword=
     case "$word" in
     ('[[')
       # 条件コマンド開始
@@ -1704,12 +1726,11 @@ function ble-syntax:bash/ctx-command/check-word-end {
       # work-around: 一旦 word "[[" を削除
       ble-syntax/parse/word-cancel
 
-      i="$wbeg" ble-syntax/parse/nest-push "$CTX_CONDX"
+      i=$wbeg ble-syntax/parse/nest-push "$CTX_CONDX"
 
       # work-around: word "[[" を nest 内部に設置し直す
-      i="$wbeg" ble-syntax/parse/word-push "$CTX_CMDI" "$wbeg"
+      i=$wbeg ble-syntax/parse/word-push "$CTX_CMDI" "$wbeg"
       ble-syntax/parse/word-pop
-
       return 0 ;;
     ('time')
       ((ctx=CTX_CMDX1,parse_suppressNextStat=1))
@@ -1718,22 +1739,27 @@ function ble-syntax:bash/ctx-command/check-word-end {
           i+=${#BASH_REMATCH}))
       fi
 
-      if [[ ${text:i} == -p* ]] &&
-           tail=${text:i+2} ble-syntax:bash/starts-with-delimiter-or-redirect
+      if [[ ${text:i} == -p ]] ||
+           { [[ ${text:i} == -p?* ]] &&
+               tail=${text:i+2} ble-syntax:bash/starts-with-delimiter-or-redirect; }
       then
         ble-syntax/parse/word-push "$CTX_ARGI" "$i"
         ((_ble_syntax_attr[i]=CTX_ARGI,i+=2))
         ble-syntax/parse/word-pop
-      fi ;;
+      fi
+      is_keyword=1 ;;
     (['!{']|'do'|'if'|'then'|'elif'|'else'|'while'|'until')
-      ((ctx=CTX_CMDX1)) ;;
-    ('for')    ((ctx=CTX_FARGX1)) ;;
-    ('select') ((ctx=CTX_SARGX1)) ;;
-    ('case')   ((ctx=CTX_CARGX1)) ;;
+      ((ctx=CTX_CMDX1))
+      is_keyword=1 ;;
+    ('for')    ((ctx=CTX_FARGX1)); is_keyword=1 ;;
+    ('select') ((ctx=CTX_SARGX1)); is_keyword=1 ;;
+    ('case')   ((ctx=CTX_CARGX1)); is_keyword=1 ;;
     ('}'|'done'|'fi'|'esac')
-      ((ctx=CTX_CMDXE)) ;;
+      ((ctx=CTX_CMDXE))
+      is_keyword=1 ;;
     ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
-      ((ctx=CTX_ARGVX)) ;;
+      ((ctx=CTX_ARGVX))
+      is_keyword=1 ;;
     ('function')
       ((ctx=CTX_ARGX))
       local processed=0
@@ -1759,40 +1785,46 @@ function ble-syntax:bash/ctx-command/check-word-end {
           ((processed=1))
         fi
       fi
-      ((processed||(_ble_syntax_attr[i-1]=ATTR_ERR))) ;;
-    (*)
-      # 関数定義である可能性を考え stat を置かず読み取る
-      ((ctx=CTX_ARGX))
-      if local rex='^([ 	]*)(\([ 	]*\)?)?' && [[ ${text:i} =~ $rex ]]; then
-
-        # for bash-3.1 ${#arr[n]} bug
-        local rematch1="${BASH_REMATCH[1]}"
-        local rematch2="${BASH_REMATCH[2]}"
-
-        if [[ $rematch2 == '('*')' ]]; then
-          # case: /hoge ( *)/ 関数定義 (単語の種類を変更)
-          #   上方の ble-syntax/parse/word-pop で設定した値を書き換え。
-          _ble_syntax_tree[i-1]="$ATTR_FUNCDEF ${_ble_syntax_tree[i-1]#* }"
-
-          ((_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch1},
-            _ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch2},
-            ctx=CTX_CMDXC))
-        elif [[ $rematch2 == '('* ]]; then
-          # case: /hoge \( */ 括弧が閉じていない場合:
-          #   仕方がないので extglob 括弧と思って取り敢えず解析する
-          ((_ble_syntax_attr[i]=CTX_ARGX0,i+=${#rematch1},
-            _ble_syntax_attr[i]=ATTR_ERR,
-            ctx=CTX_ARGX0))
-          ble-syntax/parse/nest-push "$CTX_PATN"
-          ((${#rematch2}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDXC),
-            i+=${#rematch2}))
-          return 0
-        else
-          # case: /hoge */ 恐らくコマンド
-          ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#rematch1}))
-        fi
-      fi ;;
+      ((processed||(_ble_syntax_attr[i-1]=ATTR_ERR)))
+      is_keyword=1 ;;
     esac
+
+    if [[ $is_keyword ]]; then
+      ble-syntax/parse/touch-updated-attr "$wbeg"
+      ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
+      return 0
+    fi
+
+    # 関数定義である可能性を考え stat を置かず読み取る
+    ((ctx=CTX_ARGX))
+    if local rex='^([ 	]*)(\([ 	]*\)?)?'; [[ ${text:i} =~ $rex && $BASH_REMATCH ]]; then
+
+      # for bash-3.1 ${#arr[n]} bug
+      local rematch1="${BASH_REMATCH[1]}"
+      local rematch2="${BASH_REMATCH[2]}"
+
+      if [[ $rematch2 == '('*')' ]]; then
+        # case: /hoge ( *)/ 関数定義 (単語の種類を変更)
+        #   上方の ble-syntax/parse/word-pop で設定した値を書き換え。
+        _ble_syntax_tree[i-1]="$ATTR_FUNCDEF ${_ble_syntax_tree[i-1]#* }"
+
+        ((_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch1},
+          _ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch2},
+          ctx=CTX_CMDXC))
+      elif [[ $rematch2 == '('* ]]; then
+        # case: /hoge \( */ 括弧が閉じていない場合:
+        #   仕方がないので extglob 括弧と思って取り敢えず解析する
+        ((_ble_syntax_attr[i]=CTX_ARGX0,i+=${#rematch1},
+          _ble_syntax_attr[i]=ATTR_ERR,
+          ctx=CTX_ARGX0))
+        ble-syntax/parse/nest-push "$CTX_PATN"
+        ((${#rematch2}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDXC),
+          i+=${#rematch2}))
+      else
+        # case: /hoge */ 恐らくコマンド
+        ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#rematch1}))
+      fi
+    fi
     return 0
   fi
 
@@ -1941,10 +1973,6 @@ _ble_syntax_bash_command_bctx[CTX_SARGX1]=$CTX_FARGI1
 _ble_syntax_bash_command_bctx[CTX_FARGX2]=$CTX_FARGI2
 _ble_syntax_bash_command_bctx[CTX_CARGX1]=$CTX_CARGI1
 _ble_syntax_bash_command_bctx[CTX_CARGX2]=$CTX_CARGI2
-_ble_syntax_bash_command_bwtype[CTX_CMDXC]=$CTX_CMDXC # check-word-end で処理する
-_ble_syntax_bash_command_bwtype[CTX_CMDXE]=$CTX_CMDXE # check-word-end で処理する
-_ble_syntax_bash_command_bwtype[CTX_CMDXD]=$CTX_CMDXD # check-word-end で処理する
-_ble_syntax_bash_command_bwtype[CTX_CARGX1]=$CTX_ARGI
 #%if !release
 _ble_syntax_bash_command_isARGI[CTX_CMDI]=1
 _ble_syntax_bash_command_isARGI[CTX_ARGI]=1
@@ -1959,14 +1987,17 @@ function ble-syntax:bash/ctx-command/.check-word-begin {
   if ((wbegin<0)); then
     local octx
     ((octx=ctx,
+      wtype=octx,
       ctx=_ble_syntax_bash_command_bctx[ctx]))
-    ((wtype=_ble_syntax_bash_command_bwtype[octx])) || ((wtype=ctx))
 #%if !release
     if ((ctx==0)); then
       ((ctx=wtype=CTX_ARGI))
       ble-stackdump "invalid ctx=$octx at the beginning of words"
     fi
 #%end
+
+    # Note: ここで設定される wtype は最終的に ctx-command/check-word-end で
+    #   配列 _ble_syntax_bash_command_ewtype により変換されてから tree に登録される。
     ble-syntax/parse/word-push "$wtype" "$i"
 
     ((ctx!=CTX_ARGX0)); return # return unexpectedWbegin
@@ -3361,7 +3392,7 @@ function ble-syntax/faces-onload-hook {
   }
 
   ble-color-defface syntax_default           none
-  ble-color-defface syntax_command           red
+  ble-color-defface syntax_command           brown
   ble-color-defface syntax_quoted            fg=green
   ble-color-defface syntax_quotation         fg=green,bold
   ble-color-defface syntax_expr              fg=navy
@@ -3503,7 +3534,7 @@ function ble-syntax/highlight/cmdtype2 {
   local cmd="$1" _0="$2"
   local btype; ble/util/type btype "$cmd"
   ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
-  if [[ $type == $ATTR_CMD_ALIAS && "$cmd" != "$_0" ]]; then
+  if [[ $type == $ATTR_CMD_ALIAS && $cmd != "$_0" ]]; then
     # alias を \ で無効化している場合
     # → unalias して再度 check (2fork)
     type=$(
@@ -3511,9 +3542,11 @@ function ble-syntax/highlight/cmdtype2 {
       ble/util/type btype "$cmd"
       ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
       builtin echo -n "$type")
-  elif [[ $type = $ATTR_CMD_KEYWORD && "$cmd" != "$_0" ]]; then
-    # keyword (time do if function else elif fi の類) を \ で無効化している場合
-    # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec
+  elif [[ $type == $ATTR_CMD_KEYWORD ]]; then
+    # Note: 予約語 (keyword) の時は構文解析の時点で着色しているのでコマンドとしての着色は行わない。
+    #   関数 ble-syntax/highlight/cmdtype が呼び出されたとすれば、コマンドとしての文脈である。
+    #   予約語がコマンドとして取り扱われるのは、クォートされていたか変数代入やリダイレクトの後だった時。
+    #   この時 file, function, builtin, jobs のどれかになる。以下、最悪で 3fork+2exec
     ble/util/joblist.check
     if [[ ! ${cmd##%*} ]] && jobs "$cmd" &>/dev/null; then
       # %() { :; } として 関数を定義できるが jobs の方が優先される。
@@ -3670,7 +3703,9 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     fi
 
     if ((wtype==CTX_CMDI)); then
-      ble-syntax/highlight/cmdtype "$value" "$wtxt"
+      if ((_ble_syntax_attr[wbeg]!=ATTR_CMD_KEYWORD)); then
+        ble-syntax/highlight/cmdtype "$value" "$wtxt"
+      fi
     elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
       ((type=wtype))
     elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS)); then
