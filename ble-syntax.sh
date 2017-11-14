@@ -1912,7 +1912,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     fi
 
     if [[ $attr ]]; then
-      ((_ble_syntax_attr[i]=(ctx==CTX_CMDX||ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV)?attr:ATTR_ERR,
+      ((_ble_syntax_attr[i]=(ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDXE||ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX)?attr:ATTR_ERR,
         i+=1))
       ble-syntax/parse/nest-pop
       return 0
