@@ -104,15 +104,27 @@ _ble_syntax_ARRNAMES=(_ble_syntax_{stat,nest,tree,attr})
 ##
 ## @var _ble_syntax_stat[i]
 ##   文字 #i を解釈しようとする直前の状態を記録する。
-##   各要素は "ctx wlen wtype nlen tclen tplen nparam" の形式をしている。
-##   @var ctx         = int; 現在の文脈。
-##   @var wlen        = int; 現在のシェル単語の継続している長さ。
-##   @var nlen        = int; 現在の入れ子状態が継続している長さ。
-##   @var tclen,tplen = int; tchild, tprev の負オフセット。
-##   @var nparam      = string
+##   各要素は "ctx wlen wtype nlen tclen tplen nparam lookahead" の形式をしている。
+##
+##   @var ctx         = int (stat[0])
+##     現在の文脈。
+##   @var wlen        = int (stat[1])
+##     現在のシェル単語の継続している長さ。
+##   @var wtype       = string (stat[2])
+##     現在のシェル単語の種類。
+##   @var nlen        = int (stat[3])
+##     現在の入れ子状態が継続している長さ。
+##   @var tclen,tplen = int (stat[4], stat[5])
+##     tchild, tprev の負オフセット。
+##   @var nparam      = string (stat[6])
 ##     その入れ子レベルに特有のデータ一般を記録する文字列。
 ##     ヒアドキュメントの開始情報を記録するのに使用する。
 ##     将来的に `{ .. }` や `do .. done` の対応を取るのにも使うかもしれない。
+##     解析変数の nparam が空文字列のときは "none" という値を格納する。
+##   @var lookahead   = int (stat[7])
+##     先読みの文字数を指定します。通常は 1 です。
+##     この _ble_syntax_stat 要素の情報に影響を与えた、
+##     対応する点以降の文字数を格納します。文字列末端も 1 文字と数えます。
 ##
 ## @var _ble_syntax_nest[inest]
 ##   入れ子の情報
@@ -154,12 +166,12 @@ function ble-syntax/tree-enumerate/.initialize {
 
   local -a stat nest
   stat=(${_ble_syntax_stat[iN]})
-  local wtype="${stat[2]}"
-  local wlen="${stat[1]}"
-  local nlen="${stat[3]}" inest
+  local wtype=${stat[2]}
+  local wlen=${stat[1]}
+  local nlen=${stat[3]} inest
   ((inest=nlen<0?nlen:iN-nlen))
-  local tclen="${stat[4]}"
-  local tplen="${stat[5]}"
+  local tclen=${stat[4]}
+  local tplen=${stat[5]}
 
   tree=
   ((iN>0)) && tree="${_ble_syntax_tree[iN-1]}"
@@ -254,7 +266,7 @@ function ble-syntax/tree-enumerate-break () ((tprev=-1))
 ##   指定を省略した場合は _ble_syntax_stat の末尾が使用されます。
 function ble-syntax/tree-enumerate {
   local tree i nofs
-  [[ ${iN:+set} ]] || local iN="${#_ble_syntax_text}"
+  [[ ${iN:+set} ]] || local iN=${#_ble_syntax_text}
   ble-syntax/tree-enumerate/.initialize
   ble-syntax/tree-enumerate/.impl "$@"
 }
@@ -487,7 +499,9 @@ function ble-syntax/print-status/stat.get-text {
       snparam=" nparam=${snparam//"$_ble_term_fs"/$'\e[7m^\\\e[m'}"
     fi
 
-    stat=" stat=($stat_ctx w=$stat_word n=$stat_inest t=$stat_child:$stat_prev$snparam)"
+    local stat_lookahead=
+    ((stat[7]!=1)) && stat_lookahead=" >>${stat[7]}"
+    stat=" stat=($stat_ctx w=$stat_word n=$stat_inest t=$stat_child:$stat_prev$snparam$stat_lookahead)"
   fi
 }
 
@@ -588,7 +602,12 @@ function ble-syntax/print-status {
 #--------------------------------------
 
 function ble-syntax/parse/generate-stat {
-  _stat="$ctx $((wbegin<0?wbegin:i-wbegin)) $wtype $((inest<0?inest:i-inest)) $((tchild<0?tchild:i-tchild)) $((tprev<0?tprev:i-tprev)) ${nparam:-none}"
+  ((ilook<=i&&(ilook=i+1)))
+  _stat="$ctx $((wbegin<0?wbegin:i-wbegin)) $wtype $((inest<0?inest:i-inest)) $((tchild<0?tchild:i-tchild)) $((tprev<0?tprev:i-tprev)) ${nparam:-none} $((ilook-i))"
+}
+
+function ble-syntax/parse/set-lookahead {
+  ((i+$1>ilook&&(ilook=i+$1)))
 }
 
 # 構文木の管理 (_ble_syntax_tree)
@@ -1616,6 +1635,19 @@ function ble-syntax:bash/starts-with-delimiter-or-redirect {
   local redirect=$_ble_syntax_bash_rex_redirect
   [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect ) && $tail != ['<>']'('* ]]
 }
+function ble-syntax:bash/starts-with-delimiter {
+  [[ $tail == ["$_ble_syntax_bash_IFS;|&<>()"]* && $tail != ['<>']'('* ]]
+}
+function ble-syntax:bash/check-word-end/is-delimiter {
+  local tail=${text:i}
+  if [[ $tail == [!"$_ble_syntax_bash_IFS;|&<>()"]* ]]; then
+    return 1
+  elif [[ $tail == ['<>']* ]]; then
+    ble-syntax/parse/set-lookahead 2
+    [[ $tail == ['<>']'('* ]] && return 1
+  fi
+  return 0
+}
 
 ## 関数 ble-syntax:bash/check-here-document-from spaces
 ##   @param[in] spaces
@@ -1687,17 +1719,6 @@ _ble_syntax_bash_command_expect[CTX_CMDXC]='^(\(|\{|\(\(|\[\[|for|select|case|if
 _ble_syntax_bash_command_expect[CTX_CMDXE]='^(\}|fi|done|esac|then|elif|else|do)$'
 _ble_syntax_bash_command_expect[CTX_CMDXD]='^(\{|do)$'
 
-## 配列 _ble_syntax_bash_command_opt
-##   その場でコマンドが終わっても良いかどうかを設定する。
-##   .check-delimiter-or-redirect で用いる。
-_ble_syntax_bash_command_opt=()
-_ble_syntax_bash_command_opt[CTX_ARGX]=1
-_ble_syntax_bash_command_opt[CTX_ARGX0]=1
-_ble_syntax_bash_command_opt[CTX_ARGVX]=1
-_ble_syntax_bash_command_opt[CTX_CMDXV]=1
-_ble_syntax_bash_command_opt[CTX_CMDXE]=1
-_ble_syntax_bash_command_opt[CTX_CMDXD]=1
-
 ## 関数 ble-syntax:bash/ctx-command/check-word-end
 ##   @var[in,out] ctx
 ##   @var[in,out] wbegin
@@ -1707,8 +1728,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  local tail=${text:i}
-  [[ $tail == [!"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
+  ble-syntax:bash/check-word-end/is-delimiter || return 1
 
   local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
   local word=${text:wbegin:wlen}
@@ -1754,7 +1774,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
 
       if [[ ${text:i} == -p ]] ||
            { [[ ${text:i} == -p?* ]] &&
-               tail=${text:i+2} ble-syntax:bash/starts-with-delimiter-or-redirect; }
+               i=$((i+2)) ble-syntax:bash/check-word-end/is-delimiter; }
       then
         ble-syntax/parse/word-push "$CTX_ARGI" "$i"
         ((_ble_syntax_attr[i]=CTX_ARGI,i+=2))
@@ -1865,6 +1885,17 @@ function ble-syntax:bash/ctx-command/check-word-end {
 
   return 0
 }
+
+## 配列 _ble_syntax_bash_command_opt
+##   その場でコマンドが終わっても良いかどうかを設定する。
+##   .check-delimiter-or-redirect で用いる。
+_ble_syntax_bash_command_opt=()
+_ble_syntax_bash_command_opt[CTX_ARGX]=1
+_ble_syntax_bash_command_opt[CTX_ARGX0]=1
+_ble_syntax_bash_command_opt[CTX_ARGVX]=1
+_ble_syntax_bash_command_opt[CTX_CMDXV]=1
+_ble_syntax_bash_command_opt[CTX_CMDXE]=1
+_ble_syntax_bash_command_opt[CTX_CMDXD]=1
 
 function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
   if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
@@ -2230,8 +2261,7 @@ function ble-syntax:bash/ctx-values/check-word-end {
 
 function ble-syntax:bash/ctx-values {
   # コマンド・引数部分
-  local rex_delimiters="^$_ble_syntax_bash_rex_delimiters"
-  if [[ $tail =~ $rex_delimiters && $tail != ['<>']'('* ]]; then
+  if ble-syntax:bash/starts-with-delimiter; then
 #%if !release
     ((ctx==CTX_VALX)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
@@ -2330,7 +2360,7 @@ function ble-syntax:bash/ctx-conditions/check-word-end {
 
 function ble-syntax:bash/ctx-conditions {
   # コマンド・引数部分
-  if [[ $tail =~ ^$_ble_syntax_bash_rex_delimiters && $tail != ['<>']'('* ]]; then
+  if ble-syntax:bash/starts-with-delimiter; then
 #%if !release
     ((ctx==CTX_CONDX)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
@@ -2409,8 +2439,7 @@ function ble-syntax:bash/ctx-redirect/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  local tail=${text:i}
-  [[ $tail == [!"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
+  ble-syntax:bash/check-word-end/is-delimiter || return 1
 
   # 単語の登録
   ble-syntax/parse/word-pop
@@ -2567,8 +2596,7 @@ function ble-syntax:bash/ctx-heredoc-word/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  local tail="${text:i}"
-  [[ $tail == [^"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
+  ble-syntax:bash/check-word-end/is-delimiter || return 1
 
   # word = "EOF" 等の終端文字列
   local octx=$ctx word=${text:wbegin:i-wbegin}
@@ -2875,6 +2903,41 @@ function ble-syntax/parse/shift {
 
 _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 
+## 関数 ble-syntax/parse/determine-parse-range
+##
+##   @var[out] i1 i2 j2
+##
+##   @var[in] beg end end0
+##   @var[in] _ble_syntax_dbeg
+##   @var[in] _ble_syntax_dend
+##     文字列の変更範囲と、前回の解析でやり残した範囲を指定します。
+##
+function ble-syntax/parse/determine-parse-range {
+  local flagSeekStat=0
+  ((i1=_ble_syntax_dbeg,i1>=end0&&(i1+=shift),
+    i2=_ble_syntax_dend,i2>=end0&&(i2+=shift),
+    (i1<0||beg<i1)&&(i1=beg,flagSeekStat=1),
+    (i2<0||i2<end)&&(i2=end),
+    (i2>iN)&&(i2=iN),
+    j2=i2-shift))
+
+  if ((flagSeekStat)); then
+    # beg より前の最後の stat の位置まで戻る
+    local lookahead='stat[7]'
+    local -a stat
+    while ((i1>0)); do
+      if [[ ${_ble_syntax_stat[--i1]} ]]; then
+        stat=(${_ble_syntax_stat[i1]})
+        ((i1+lookahead<=beg)) && break
+      fi
+    done
+  fi
+
+#%if !release
+  ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
+#%end
+}
+
 ## 関数 ble-syntax/parse text beg end
 ##
 ## @param[in]     text
@@ -2921,29 +2984,16 @@ function ble-syntax/parse {
 #%end
 
   # 解析予定範囲の更新
-  local i1 i2 j2 flagSeekStat=0
-  ((i1=_ble_syntax_dbeg,i1>=end0&&(i1+=shift),
-    i2=_ble_syntax_dend,i2>=end0&&(i2+=shift),
-    (i1<0||beg<i1)&&(i1=beg,flagSeekStat=1),
-    (i2<0||i2<end)&&(i2=end),
-    (i2>iN)&&(i2=iN),
-    j2=i2-shift))
-  if ((flagSeekStat)); then
-    # beg より前の最後の stat の位置まで戻る
-    while ((i1>0)) && ! [[ ${_ble_syntax_stat[--i1]} ]]; do :;done
-  fi
-
-#%if !release
-  ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
-#%end
+  local i1 i2 j2
+  ble-syntax/parse/determine-parse-range
 
   ble-syntax/vanishing-word/register _ble_syntax_tree 0 i1 j2 0 i1
 
   ble-syntax/parse/shift
 
   # 解析途中状態の復元
-  local ctx wbegin wtype inest tchild tprev nparam
-  if [[ i1 -gt 0 && ${_ble_syntax_stat[i1]} ]]; then
+  local ctx wbegin wtype inest tchild tprev nparam ilook
+  if ((i1>0)) && [[ ${_ble_syntax_stat[i1]} ]]; then
     local -a stat
     stat=(${_ble_syntax_stat[i1]})
     local wlen=${stat[1]} nlen=${stat[3]} tclen=${stat[4]} tplen=${stat[5]}
@@ -2954,9 +3004,10 @@ function ble-syntax/parse {
     tchild=$((tclen<0?tclen:i1-tclen))
     tprev=$((tplen<0?tplen:i1-tplen))
     nparam=${stat[6]}; [[ $nparam == none ]] && nparam=
+    ilook=$((i1+${stat[7]:-1}))
   else
     # 初期値
-    ctx="$CTX_UNSPECIFIED" ##!< 現在の解析の文脈 
+    ctx=$CTX_UNSPECIFIED ##!< 現在の解析の文脈 
     ble-syntax:"$_ble_syntax_lang"/initialize-ctx # ctx 初期化
     wbegin=-1       ##!< シェル単語内にいる時、シェル単語の開始位置
     wtype=-1        ##!< シェル単語内にいる時、シェル単語の種類
@@ -2964,6 +3015,7 @@ function ble-syntax/parse {
     tchild=-1
     tprev=-1
     nparam=
+    ilook=1
   fi
 
   # 前回までに解析が終わっている部分 [0,i1), [i2,iN)
@@ -2982,7 +3034,7 @@ function ble-syntax/parse {
   ble-syntax:"$_ble_syntax_lang"/initialize-vars
 
   # 解析
-  _ble_syntax_text="$text"
+  _ble_syntax_text=$text
   local i _stat tail parse_suppressNextStat=
 #%if !release
   local debug_p1
@@ -3003,11 +3055,12 @@ function ble-syntax/parse {
     if [[ $parse_suppressNextStat ]]; then
       parse_suppressNextStat=
     else
-      _ble_syntax_stat[i]="$_stat"
+      _ble_syntax_stat[i]=$_stat
     fi
-    tail="${text:i}"
+
+    tail=${text:i}
 #%if !release
-    debug_p1="$i"
+    debug_p1=$i
 #%end
     # 処理
     "${_BLE_SYNTAX_FCTX[ctx]}" || ((_ble_syntax_attr[i]=ATTR_ERR,i++))
@@ -3034,7 +3087,7 @@ function ble-syntax/parse {
   if ((i>=iN)); then
     ((i=iN))
     ble-syntax/parse/generate-stat
-    _ble_syntax_stat[i]="$_stat"
+    _ble_syntax_stat[i]=$_stat
 
     # ネスト開始点のエラー表示は +syntax 内で。
     # ここで設定すると部分更新の際に取り消しできないから。
@@ -3114,8 +3167,8 @@ function ble-syntax/completion-context/check-prefix {
   done
 
   if [[ ${stat[0]} ]]; then
-    local ctx="${stat[0]}" wlen="${stat[1]}"
-    local wbeg="$((wlen<0?wlen:i-wlen))"
+    local ctx=${stat[0]} wlen=${stat[1]}
+    local wbeg=$((wlen<0?wlen:i-wlen))
     if ((ctx==CTX_CMDI)); then
       if ((wlen>=0)); then
         # CTX_CMDI  → コマンドの続き
@@ -3138,9 +3191,9 @@ function ble-syntax/completion-context/check-prefix {
         fi
         ble-syntax/completion-context/add "$source" "$wbeg"
 
-        local sub="${text:wbeg:index-wbeg}"
+        local sub=${text:wbeg:index-wbeg}
         if [[ $sub == *[=:]* ]]; then
-          sub="${sub##*[=:]}"
+          sub=${sub##*[=:]}
           ble-syntax/completion-context/add file "$((index-${#sub}))"
         fi
       fi
@@ -3149,7 +3202,7 @@ function ble-syntax/completion-context/check-prefix {
       # 直前の再開点が CMDX だった場合、
       # 現在地との間にコマンド名があればそれはコマンドである。
       # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
-      local word="${text:i:index-i}"
+      local word=${text:i:index-i}
 
       # コマンドのチェック
       if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
@@ -3176,7 +3229,7 @@ function ble-syntax/completion-context/check-prefix {
 
       ble-syntax/completion-context/check/parameter-expansion
     elif ((ctx==CTX_CMDXC)); then
-      local rex word="${text:i:index-i}"
+      local rex word=${text:i:index-i}
       if [[ ${text:i:index-i} =~ $rex_param ]]; then
         ble-syntax/completion-context/add wordlist:'for:select:case:if:while:until' "$i"
       elif rex='^[[({]+$'; [[ $word =~ $rex ]]; then
@@ -3211,13 +3264,13 @@ function ble-syntax/completion-context/check-prefix {
         source=variable:=
       fi
 
-      local word="${text:i:index-i}"
+      local word=${text:i:index-i}
       if [[ $word =~ $_ble_syntax_rex_simple_word ]]; then
         # 単語が i から開始している場合
         ble-syntax/completion-context/add "$source" "$i"
         local rex="^([^'\"\$\\]|\\.)*="
         if [[ $word =~ $rex ]]; then
-          word="${word:${#BASH_REMATCH}}"
+          word=${word:${#BASH_REMATCH}}
           ble-syntax/completion-context/add "$source" "$((index-${#word}))"
         fi
       elif [[ $word =~ ^$_ble_syntax_bash_rex_spaces$ ]]; then
@@ -3228,7 +3281,7 @@ function ble-syntax/completion-context/check-prefix {
     elif ((ctx==CTX_RDRF||ctx==CTX_VRHS)); then
       # CTX_RDRF: redirect の filename 部分
       # CTX_VRHS: VAR=value の value 部分
-      local sub="${text:i:index-i}"
+      local sub=${text:i:index-i}
       if [[ $sub =~ $_ble_syntax_rex_simple_word ]]; then
         ble-syntax/completion-context/add file "$i"
       fi
@@ -3280,7 +3333,7 @@ function ble-syntax/completion-context/check-here {
 ## 関数 ble-syntax/completion-context
 ##   @var[out] context[]
 function ble-syntax/completion-context {
-  local text="$1" index="$2"
+  local text=$1 index=$2
   context=()
   ((index<0&&(index=0)))
 
@@ -3925,7 +3978,7 @@ function ble-highlight-layer:syntax/update-error-table {
     # 入れ子が閉じていないエラー
     local -a stat
     stat=(${_ble_syntax_stat[iN]})
-    local ctx="${stat[0]}" nlen="${stat[3]}" nparam="${stat[6]}"
+    local ctx=${stat[0]} nlen=${stat[3]} nparam=${stat[6]}
     [[ $nparam == none ]] && nparam=
     local i inest
     if ((nlen>0)) || [[ $nparam ]]; then
