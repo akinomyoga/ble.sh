@@ -1668,9 +1668,20 @@ _ble_syntax_bash_command_ewtype[CTX_CARGX1]=$CTX_ARGI
 _ble_syntax_bash_command_ewtype[CTX_CARGX2]=$CTX_CARGI2 # in
 
 ## 配列 _ble_syntax_bash_command_expect
+##
 ##   許容するコマンドの種類を表す正規表現を設定する。
 ##   check-word-end で用いる。
 ##   配列 _ble_syntax_bash_command_bwtype の設定と対応している必要がある。
+##
+##   * 前提: 予約語のみに一致する
+##     この配列が設定されている文脈値については、
+##     既定でコマンドの属性は ATTR_ERR にする。
+##     許容するコマンドは何れも予約語なので、
+##     許容された暁には自動的に ATTR_CMD_KEYWORD で上書きされるのでOK
+##
+##     予約語以外に一致する時には、
+##     明示的に属性値 ATTR_ERR をキャンセルする必要がある。
+##
 _ble_syntax_bash_command_expect=()
 _ble_syntax_bash_command_expect[CTX_CMDXC]='^(\(|\{|\(\(|\[\[|for|select|case|if|while|until)$'
 _ble_syntax_bash_command_expect[CTX_CMDXE]='^(\}|fi|done|esac|then|elif|else|do)$'
@@ -1697,7 +1708,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
 
   # 未だ続きがある場合は抜ける
   local tail=${text:i}
-  [[ $tail == [^"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
+  [[ $tail == [!"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
 
   local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
   local word=${text:wbegin:wlen}
@@ -1888,19 +1899,26 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
       ((ctx=CTX_ARGX0))
     fi
 
-    if [[ $rematch1 == *'&' ]]; then
-      ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
-    elif [[ $rematch1 == *'<<<' ]]; then
-      ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
-    elif [[ $rematch1 == *\<\< ]]; then
-      # Note: emacs bug workaround
-      #   '<<' と書くと何故か Emacs がヒアドキュメントと
-      #   勘違いする様になったので仕方なく \<\< とする。
-      ble-syntax/parse/nest-push "$CTX_RDRH" "$rematch3"
-    elif [[ $rematch1 == *\<\<- ]]; then
-      ble-syntax/parse/nest-push "$CTX_RDRI" "$rematch3"
+    if [[ ${text:i+len} != [!$'\n|&()']* ]]; then
+      # リダイレクトがその場で終わるときはそもそも nest-push せずエラー。
+      # Note: 上の判定の文字集合は _ble_syntax_bash_rex_delimiters の部分集合。
+      #   但し、空白類および <> はリダイレクトに含まれ得るので許容する。
+      ((_ble_syntax_attr[i+len-1]=ATTR_ERR))
     else
-      ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch3"
+      if [[ $rematch1 == *'&' ]]; then
+        ble-syntax/parse/nest-push "$CTX_RDRD" "$rematch3"
+      elif [[ $rematch1 == *'<<<' ]]; then
+        ble-syntax/parse/nest-push "$CTX_RDRS" "$rematch3"
+      elif [[ $rematch1 == *\<\< ]]; then
+        # Note: emacs bug workaround
+        #   '<<' と書くと何故か Emacs がヒアドキュメントと
+        #   勘違いする様になったので仕方なく \<\< とする。
+        ble-syntax/parse/nest-push "$CTX_RDRH" "$rematch3"
+      elif [[ $rematch1 == *\<\<- ]]; then
+        ble-syntax/parse/nest-push "$CTX_RDRI" "$rematch3"
+      else
+        ble-syntax/parse/nest-push "$CTX_RDRF" "$rematch3"
+      fi
     fi
     ((i+=len))
     return 0
@@ -2015,7 +2033,7 @@ function ble-syntax:bash/ctx-command/.check-word-begin {
     #   配列 _ble_syntax_bash_command_ewtype により変換されてから tree に登録される。
     ble-syntax/parse/word-push "$wtype" "$i"
 
-    ((ctx!=CTX_ARGX0)); return # return unexpectedWbegin
+    ((octx!=CTX_ARGX0)); return # return unexpectedWbegin
   fi
 
 #%if !release
@@ -2110,7 +2128,8 @@ function ble-syntax:bash/ctx-command {
     ble-syntax:bash/ctx-command/.check-delimiter-or-redirect; return
   fi
 
-  if local i0=$i; ble-syntax:bash/check-comment; then
+  local i0=$i
+  if ble-syntax:bash/check-comment; then
     if ((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1)); then
       # "for var / select var / case arg" を処理している途中でコメントが来た場合
       ((_ble_syntax_attr[i0]=ATTR_ERR))
@@ -2120,6 +2139,8 @@ function ble-syntax:bash/ctx-command {
 
   local unexpectedWbegin=-1
   ble-syntax:bash/ctx-command/.check-word-begin || ((unexpectedWbegin=i))
+
+  local owtype=$wtype
 
   local flagConsume=0 rex
   if ble-syntax:bash/ctx-command/.check-assign; then
@@ -2143,6 +2164,9 @@ function ble-syntax:bash/ctx-command {
   fi
 
   if ((flagConsume)); then
+    ble-assert '((owtype>=0))'
+    [[ ${_ble_syntax_bash_command_expect[owtype]} ]] &&
+      ((_ble_syntax_attr[i0]=ATTR_ERR))
     if ((unexpectedWbegin>=0)); then
       ble-syntax/parse/touch-updated-attr "$unexpectedWbegin"
       ((_ble_syntax_attr[unexpectedWbegin]=ATTR_ERR))
@@ -2191,7 +2215,7 @@ function ble-syntax:bash/ctx-values/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  [[ ${text:i:1} == [^"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
+  [[ ${text:i:1} == [!"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
 
   local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
   local word="${text:wbegin:wlen}"
@@ -2385,8 +2409,8 @@ function ble-syntax:bash/ctx-redirect/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  local tail="${text:i}"
-  [[ $tail == [^"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
+  local tail=${text:i}
+  [[ $tail == [!"$_ble_syntax_bash_IFS;|&<>()"]* || $tail == ['<>']'('* ]] && return 1
 
   # 単語の登録
   ble-syntax/parse/word-pop
@@ -2922,14 +2946,14 @@ function ble-syntax/parse {
   if [[ i1 -gt 0 && ${_ble_syntax_stat[i1]} ]]; then
     local -a stat
     stat=(${_ble_syntax_stat[i1]})
-    local wlen="${stat[1]}" nlen="${stat[3]}" tclen="${stat[4]}" tplen="${stat[5]}"
-    ctx="${stat[0]}"
-    wbegin="$((wlen<0?wlen:i1-wlen))"
-    wtype="${stat[2]}"
-    inest="$((nlen<0?nlen:i1-nlen))"
-    tchild="$((tclen<0?tclen:i1-tclen))"
-    tprev="$((tplen<0?tplen:i1-tplen))"
-    nparam="${stat[6]}"; [[ $nparam == none ]] && nparam=
+    local wlen=${stat[1]} nlen=${stat[3]} tclen=${stat[4]} tplen=${stat[5]}
+    ctx=${stat[0]}
+    wbegin=$((wlen<0?wlen:i1-wlen))
+    wtype=${stat[2]}
+    inest=$((nlen<0?nlen:i1-nlen))
+    tchild=$((tclen<0?tclen:i1-tclen))
+    tprev=$((tplen<0?tplen:i1-tplen))
+    nparam=${stat[6]}; [[ $nparam == none ]] && nparam=
   else
     # 初期値
     ctx="$CTX_UNSPECIFIED" ##!< 現在の解析の文脈 
@@ -3407,7 +3431,7 @@ function ble-syntax/faces-onload-hook {
   }
 
   ble-color-defface syntax_default           none
-  ble-color-defface syntax_command           brown
+  ble-color-defface syntax_command           fg=brown
   ble-color-defface syntax_quoted            fg=green
   ble-color-defface syntax_quotation         fg=green,bold
   ble-color-defface syntax_expr              fg=navy
