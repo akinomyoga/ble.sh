@@ -59,6 +59,12 @@ CTX_CARGI1      40
 CTX_CARGX2      41
 CTX_CARGI2      42
 
+# time -p -- ...
+CTX_TARGX1      50
+CTX_TARGI1      51
+CTX_TARGX2      52
+CTX_TARGI2      53
+
 # Here documents
 CTX_RDRH        44 # (redirection) ヒアドキュメント単語読み取り <<  word
 CTX_RDRI        45 # (redirection) ヒアドキュメント単語読み取り <<- word
