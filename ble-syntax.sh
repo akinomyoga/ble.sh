@@ -1803,15 +1803,18 @@ function ble-syntax:bash/ctx-command/check-word-end {
       if rex="^$rex_space+" && [[ ${text:i} =~ $rex ]]; then
         ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#BASH_REMATCH},ctx=CTX_ARGX))
         if rex="^([^#$isfuncsymx][^$isfuncsymx]*)($rex_space*)(\(\(|\($rex_space*\)?)?" && [[ ${text:i} =~ $rex ]]; then
-          local rematch1="${BASH_REMATCH[1]}"
-          local rematch2="${BASH_REMATCH[2]}"
-          local rematch3="${BASH_REMATCH[3]}"
+          local rematch1=${BASH_REMATCH[1]}
+          local rematch2=${BASH_REMATCH[2]}
+          local rematch3=${BASH_REMATCH[3]}
           ((_ble_syntax_attr[i]=ATTR_FUNCDEF,i+=${#rematch1},
             ${#rematch2}&&(_ble_syntax_attr[i]=CTX_CMDX1,i+=${#rematch2})))
 
           if [[ $rematch3 == '('*')' ]]; then
             ((_ble_syntax_attr[i]=ATTR_DEL,i+=${#rematch3},ctx=CTX_CMDXC))
-          elif [[ $rematch3 == '('* && $rematch3 != '((' ]]; then
+          elif ((_ble_bash>=40200)) && [[ $rematch3 == '((' ]]; then
+            ble-syntax/parse/set-lookahead 2
+            ((ctx=CTX_CMDXC))
+          elif [[ $rematch3 == '('* ]]; then
             ((_ble_syntax_attr[i]=ATTR_ERR,ctx=CTX_ARGX0))
             ble-syntax/parse/nest-push "$CTX_CMDX1" '('
             ((${#rematch3}>=2&&(_ble_syntax_attr[i+1]=CTX_CMDX1),i+=${#rematch3}))
@@ -1873,6 +1876,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
   fi
 
   if ((ctx==CTX_FARGI2||ctx==CTX_CARGI2)); then
+    # for name in ... / case value in
     if [[ $word != in ]];  then
       ble-syntax/parse/touch-updated-attr "$wbeg"
       ((_ble_syntax_attr[wbeg]=ATTR_ERR))
