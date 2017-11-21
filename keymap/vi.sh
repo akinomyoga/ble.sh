@@ -782,7 +782,7 @@ function ble/widget/vi_nmap/record-register {
     ble/keymap:vi/clear-arg
     local -a ret
     ble-decode/keylog/pop
-    ble-decode/keylog/end; local keys=("${ret[@]}")
+    ble-decode/keylog/end; local -a keys; keys=("${ret[@]}")
 
     ble/util/c2s 155; local csi=$ret
 
