@@ -1762,7 +1762,7 @@ function ble-syntax:bash/ctx-command/check-word-end {
       return 0
     fi
 
-    local is_keyword=
+    local processed=
     case "$word" in
     ('[[')
       # 条件コマンド開始
@@ -1780,40 +1780,24 @@ function ble-syntax:bash/ctx-command/check-word-end {
       ble-syntax/parse/word-pop
       return 0 ;;
     ('time')
-      ((ctx=CTX_TARGX1)); is_keyword=1 ;;
-      # ((ctx=CTX_CMDXT,parse_suppressNextStat=1))
-      # if [[ ${text:i} =~ ^$_ble_syntax_bash_rex_spaces ]]; then
-      #   ((_ble_syntax_attr[i]=CTX_CMDX,
-      #     i+=${#BASH_REMATCH}))
-      # fi
-
-      # if [[ ${text:i} == -p ]] ||
-      #      { [[ ${text:i} == -p?* ]] &&
-      #          i=$((i+2)) ble-syntax:bash/check-word-end/is-delimiter; }
-      # then
-      #   ble-syntax/parse/word-push "$CTX_ARGI" "$i"
-      #   ((_ble_syntax_attr[i]=CTX_ARGI,i+=2))
-      #   ble-syntax/parse/word-pop
-      # fi
-      # is_keyword=1 ;;
+      ((ctx=CTX_TARGX1)); processed=keyword ;;
     ('!')
       ((ctx=CTX_CMDXT))
-      is_keyword=1 ;;
+      processed=keyword ;;
     ('{'|'do'|'if'|'then'|'elif'|'else'|'while'|'until')
       ((ctx=CTX_CMDX1))
-      is_keyword=1 ;;
-    ('for')    ((ctx=CTX_FARGX1)); is_keyword=1 ;;
-    ('select') ((ctx=CTX_SARGX1)); is_keyword=1 ;;
-    ('case')   ((ctx=CTX_CARGX1)); is_keyword=1 ;;
+      processed=keyword ;;
+    ('for')    ((ctx=CTX_FARGX1)); processed=keyword ;;
+    ('select') ((ctx=CTX_SARGX1)); processed=keyword ;;
+    ('case')   ((ctx=CTX_CARGX1)); processed=keyword ;;
     ('}'|'done'|'fi'|'esac')
       ((ctx=CTX_CMDXE))
-      is_keyword=1 ;;
+      processed=keyword ;;
     ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
       ((ctx=CTX_ARGVX))
-      is_keyword=1 ;;
+      processed=builtin ;;
     ('function')
       ((ctx=CTX_ARGX))
-      local processed=0
       local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex
       if rex="^$rex_space+" && [[ ${text:i} =~ $rex ]]; then
         ((_ble_syntax_attr[i]=CTX_ARGX,i+=${#BASH_REMATCH},ctx=CTX_ARGX))
@@ -1836,16 +1820,17 @@ function ble-syntax:bash/ctx-command/check-word-end {
           else
             ((ctx=CTX_CMDXC))
           fi
-          ((processed=1))
+          processed=keyword
         fi
       fi
-      ((processed||(_ble_syntax_attr[i-1]=ATTR_ERR)))
-      is_keyword=1 ;;
+      [[ $processed ]] || ((_ble_syntax_attr[i-1]=ATTR_ERR)) ;;
     esac
 
-    if [[ $is_keyword ]]; then
-      ble-syntax/parse/touch-updated-attr "$wbeg"
-      ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
+    if [[ $processed ]]; then
+      if [[ $processed == keyword ]]; then
+        ble-syntax/parse/touch-updated-attr "$wbeg"
+        ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
+      fi
       return 0
     fi
 

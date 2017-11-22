@@ -2719,6 +2719,9 @@ tech
 
   * syntax: declare, local, の類が予約語の色になっている。
     修正した。と思ったら、今度は declare の上での変数名の補完が効かなくなっている。
+    ble_debug=1 で見てみると declare の直後の文脈が通常のものに戻っている。
+    と思ったら、is_keyword でない時には後で ctx=ARGX に上書きされて、
+    通常の引数のための処理が行われている。
 
   * complete: echo echo などのように二重に候補が出るのは何故か。 [#D0606]
 
