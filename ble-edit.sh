@@ -5345,8 +5345,19 @@ function ble/widget/command-help/.locate-in-man-bash {
   local man_content; ble/widget/command-help/.read-man bash || return 1 # 733ms (3 fork: man, sh, cat)
 
   # locate line number
-  ble/string#escape-for-awk-regex "$command"; local rex_awk=$ret
-  rex='\b$'; [[ $awk == gawk && $command =~ $rex ]] && rex_awk=$rex_awk'\y'
+  local cmd_awk
+  case $command in
+  ('function')  cmd_awk='name () compound-command' ;;
+  ('until')     cmd_awk=while ;;
+  ('command')   cmd_awk='command [' ;;
+  ('source')    cmd_awk=. ;;
+  ('typeset')   cmd_awk=declare ;;
+  ('readarray') cmd_awk=mapfile ;;
+  ('[')         cmd_awk=test ;;
+  (*)           cmd_awk=$command ;;
+  esac
+  ble/string#escape-for-awk-regex "$cmd_awk"; local rex_awk=$ret
+  rex='\b$'; [[ $awk == gawk && $cmd_awk =~ $rex ]] && rex_awk=$rex_awk'\y'
   local awk_script='{
     gsub(/'"$rex_esc"'/, "");
     if (!par && $0 ~ /^[[:space:]]*'"$rex_awk"'/) { print NR; exit; }
@@ -5399,24 +5410,97 @@ function ble/widget/command-help.core {
   return 1
 }
 
+## 関数 ble/widget/command-help/type.resolve-alias
+##   サブシェルで実行してエイリアスを解決する。
+##   解決のために unalias を使用する為にサブシェルで実行する。
+##
+##   @stdout type:command
+##     command はエイリアスを解決した後の最終的なコマンド
+##     type はそのコマンドの種類
+##     解決に失敗した時は何も出力しない。
+##
+function ble/widget/command-help/.type/.resolve-alias {
+  local literal=$1 command=$2 type=alias
+  local last_literal=$1 last_command=$2
+
+  while
+    [[ $command == "$literal" ]] || break # Note: type=alias
+
+    local old_literal=$literal old_command=$command
+
+    local alias_def
+    ble/util/assign alias_def "alias $command"
+    unalias "$command"
+    eval "alias_def=${alias_def#*=}" # remove quote
+    literal=${alias_def%%[$' \t\n']*} command= type=
+    [[ $literal =~ $_ble_syntax_rex_simple_word ]] || break # Note: type=
+    eval "command=$literal"
+    ble/util/type type "$command"
+    [[ $type ]] || break # Note: type=
+
+    last_literal=$literal
+    last_command=$command
+    [[ $type == alias ]]
+  do :; done
+
+  if [[ ! $type || $type == alias ]]; then
+    # - command はエイリアスに一致するが literal では quote されている時、
+    #   type=alias の状態でループを抜ける。
+    # - 途中で複雑なコマンドに展開された時、必ずしも先頭の単語がコマンド名ではない。
+    #   例: alias which='(alias; declare -f) | /usr/bin/which ...'
+    #   この時途中で type= になってループを抜ける。
+    #
+    # これらの時、直前の成功した command 名で非エイリアス名を探す。
+    literal=$last_literal
+    command=$last_command
+    unalias "$command" &>/dev/null
+    ble/util/type type "$command"
+  fi
+
+  local q="'" Q="'\''"
+  printf "type='%s'\n" "${type//$q/$Q}"
+  printf "literal='%s'\n" "${literal//$q/$Q}"
+  printf "command='%s'\n" "${command//$q/$Q}"
+  return
+}
+
+function ble/widget/command-help/.type {
+  local literal=$1
+  type= command=
+  [[ $literal =~ $_ble_syntax_rex_simple_word ]] || return 1
+  eval "command=$literal"
+  ble/util/type type "$command"
+
+  # alias の時はサブシェルで解決
+  if [[ $type == alias ]]; then
+    eval "$(ble/widget/command-help/.type/.resolve-alias "$literal" "$command")"
+  fi
+
+  if [[ $type == keyword && $command != $literal ]]; then
+    if [[ $command == %* ]] && jobs -- "$command" &>/dev/null; then
+      type=jobs
+    elif ble/util/isfunction "$command"; then
+      type=function
+    elif enable -p | command grep -q -F -x "enable $cmd" &>/dev/null; then
+      type=builtin
+    elif type -P -- "$cmd" &>/dev/null; then
+      type=file
+    else
+      type=
+      return 1
+    fi
+  fi
+}
+
 function ble/widget/command-help.impl {
-  local command=$1
-  if [[ ! $command ]]; then
+  local literal=$1
+  if [[ ! $literal ]]; then
     ble/widget/.bell
     return 1
   fi
 
-  # resolve alias
-  local type; ble/util/type type "$command"
-  while [[ $type == alias ]]; do
-    local alias_def
-    ble/util/assign alias_def "alias $command"
-    eval "alias_def=${alias_def#*=}" # remove quote
-    command=${alias_def%%[$' \t\n']*}
-    ble/util/type type "$command"
-  done
-
-  if ! type -t "$command" &>/dev/null; then
+  local type command; ble/widget/command-help/.type "$literal"
+  if [[ ! $type ]]; then
     ble/widget/.bell "command \`$command' not found"
     return 1
   fi

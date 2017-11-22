@@ -3697,9 +3697,10 @@ function ble-syntax/highlight/cmdtype2 {
   local cmd="$1" _0="$2"
   local btype; ble/util/type btype "$cmd"
   ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
+
   if [[ $type == $ATTR_CMD_ALIAS && $cmd != "$_0" ]]; then
-    # alias を \ で無効化している場合
-    # → unalias して再度 check (2fork)
+    # alias を \ で無効化している場合は
+    # unalias して再度 check (2fork)
     type=$(
       unalias "$cmd"
       ble/util/type btype "$cmd"
@@ -3711,7 +3712,7 @@ function ble-syntax/highlight/cmdtype2 {
     #   予約語がコマンドとして取り扱われるのは、クォートされていたか変数代入やリダイレクトの後だった時。
     #   この時 file, function, builtin, jobs のどれかになる。以下、最悪で 3fork+2exec
     ble/util/joblist.check
-    if [[ ! ${cmd##%*} ]] && jobs "$cmd" &>/dev/null; then
+    if [[ ! ${cmd##%*} ]] && jobs -- "$cmd" &>/dev/null; then
       # %() { :; } として 関数を定義できるが jobs の方が優先される。
       # (% という名の関数を呼び出す方法はない?)
       # でも % で始まる物が keyword になる事はそもそも無いような。
@@ -3720,7 +3721,7 @@ function ble-syntax/highlight/cmdtype2 {
       ((type=ATTR_CMD_FUNCTION))
     elif enable -p | command grep -q -F -x "enable $cmd" &>/dev/null; then
       ((type=ATTR_CMD_BUILTIN))
-    elif which "$cmd" &>/dev/null; then
+    elif type -P -- "$cmd" &>/dev/null; then
       ((type=ATTR_CMD_FILE))
     else
       ((type=ATTR_ERR))
