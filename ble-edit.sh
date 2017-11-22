@@ -4536,7 +4536,7 @@ function ble-edit/history/add/.command-history {
   fi
 
   if [[ $histfile ]]; then
-    # bash-3.1 work around
+    # bash-3.1 workaround
     local tmp="$_ble_base_run/$$.ble_edit_history_add.txt"
     builtin printf '%s\n' "$cmd" >> "$histfile"
     builtin printf '%s\n' "$cmd" >| "$tmp"
@@ -4704,7 +4704,7 @@ function ble-edit/isearch/.draw-line-with-progress {
   # 出力
   local ll rr
   if [[ $_ble_edit_isearch_dir == - ]]; then
-    # Emacs work around: '<<' や "<<" と書けない。
+    # Emacs workaround: '<<' や "<<" と書けない。
     ll=\<\< rr="  "
   else
     ll="  " rr=">>"

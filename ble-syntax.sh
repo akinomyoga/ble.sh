@@ -1770,12 +1770,12 @@ function ble-syntax:bash/ctx-command/check-word-end {
       ((_ble_syntax_attr[wbeg]=ATTR_DEL,
         ctx=CTX_ARGX0))
 
-      # work-around: 一旦 word "[[" を削除
+      # workaround: 一旦 word "[[" を削除
       ble-syntax/parse/word-cancel
 
       i=$wbeg ble-syntax/parse/nest-push "$CTX_CONDX"
 
-      # work-around: word "[[" を nest 内部に設置し直す
+      # workaround: word "[[" を nest 内部に設置し直す
       i=$wbeg ble-syntax/parse/word-push "$CTX_CMDI" "$wbeg"
       ble-syntax/parse/word-pop
       return 0 ;;

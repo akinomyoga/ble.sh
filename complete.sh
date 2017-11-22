@@ -115,11 +115,10 @@ function ble-complete/action/file/initialize {
   ble-complete/action/plain/initialize
 }
 function ble-complete/action/file/complete {
-  local tail=
   if [[ -e $CAND || -h $CAND ]]; then
     if [[ -d $CAND ]]; then
-      ble-complete/action/util/complete.addtail /
-      tail=/
+      [[ $CAND != */ ]] &&
+        ble-complete/action/util/complete.addtail /
     else
       ble-complete/action/util/complete.addtail ' '
     fi
@@ -131,14 +130,15 @@ function ble-complete/action/file/complete {
 function ble-complete/action/argument/initialize { ble-complete/action/plain/initialize; }
 function ble-complete/action/argument/complete {
   if [[ -d $CAND ]]; then
-    ble-complete/action/util/complete.addtail /
+    [[ $CAND != */ ]] &&
+      ble-complete/action/util/complete.addtail /
   else
     ble-complete/action/util/complete.addtail ' '
   fi
 }
 function ble-complete/action/argument-nospace/initialize { ble-complete/action/plain/initialize; }
 function ble-complete/action/argument-nospace/complete {
-  if [[ -d $CAND ]]; then
+  if [[ -d $CAND && $CAND != */ ]]; then
     ble-complete/action/util/complete.addtail /
   fi
 }
@@ -150,7 +150,8 @@ function ble-complete/action/command/initialize {
 }
 function ble-complete/action/command/complete {
   if [[ -d $CAND ]]; then
-    ble-complete/action/util/complete.addtail /
+    [[ $CAND != */ ]] &&
+      ble-complete/action/util/complete.addtail /
   else
     ble-complete/action/util/complete.addtail ' '
   fi
@@ -200,7 +201,13 @@ function ble-complete/source/command/gen {
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return
   compgen -c -- "$COMPV"
   [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
-  shopt -q autocd &>/dev/null && compgen -d -- "$COMPV"
+
+  # ディレクトリ名列挙 (/ 付きで生成する)
+  #   Note: shopt -q autocd &>/dev/null かどうかに拘らず列挙する。
+  local cand
+  for cand in "$COMPV"*/; do
+    [[ -d $cand ]] && printf '%s\n' "$cand"
+  done
 }
 function ble-complete/source/command {
   [[ ${COMPV+set} ]] || return 1
@@ -212,17 +219,20 @@ function ble-complete/source/command {
   ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
+
+    # workaround: 何故か compgen -c -- "$COMPV" で
+    #   厳密一致のディレクトリ名が混入するので削除する。
+    [[ $cand != */ && -d $cand ]] && ! type "$cand" &>/dev/null && continue
+
     ble-complete/yield-candidate "$cand" ble-complete/action/command
   done
-
-  ble-complete/source/dir
 }
 
 # source/file
 
 function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
-  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   local cand
   for cand in "$COMPV"*; do
@@ -523,8 +533,8 @@ function ble/widget/complete {
     # initialize completion range
     ctx=($ctx)
     ble/string#split source : "${ctx[0]}"
-    local COMP1="${ctx[1]}" COMP2="$index"
-    local COMPS="${text:COMP1:COMP2-COMP1}"
+    local COMP1=${ctx[1]} COMP2=$index
+    local COMPS=${text:COMP1:COMP2-COMP1}
     local COMPV _ble_complete_raw_paramx=
     if [[ ! $COMPS || $COMPS =~ $_ble_syntax_rex_simple_word ]]; then
       builtin eval "COMPV=$COMPS"

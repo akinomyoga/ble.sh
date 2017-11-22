@@ -588,7 +588,7 @@ if ((_ble_bash>=40000)); then
     function ble/util/sleep { local REPLY=; ! read -u "$_ble_util_sleep_fd" -t "$1"; } &>/dev/null
 
     if [[ $OSTYPE == cygwin* ]]; then
-      # Cygwin work around
+      # Cygwin workaround
 
       ble/util/openat _ble_util_sleep_fd '< <(
         [[ $- == *i* ]] && trap -- '' INT QUIT
@@ -1248,7 +1248,7 @@ function ble-text.s2c {
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
 
-  # work arounds of bashbug that printf '\uFFFF' results in a broken surrogate
+  # workarounds of bashbug that printf '\uFFFF' results in a broken surrogate
   # pair in systems where sizeof(wchar_t) == 2.
   function ble/util/.has-bashbug-printf-uffff {
     ((40200<=_ble_bash&&_ble_bash<40500)) || return 1
