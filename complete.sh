@@ -209,7 +209,7 @@ function ble-complete/source/command {
   local cand arr i=0
   local compgen
   ble/util/assign compgen ble-complete/source/command/gen
-  ble/string#split arr $'\n' "$compgen"
+  ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/command
@@ -414,16 +414,13 @@ function ble-complete/source/argument/.compgen {
   # Note: "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
   #   compgen に -- "$COMPV" を渡しても何故か思うようにフィルタしてくれない為である。
   #   (compgen -W "$(compgen ...)" -- "$COMPV" の様にしないと駄目なのか?)
-  local rex_compv
+  local arr rex_compv
   ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
   if [[ $use_workaround_for_git ]]; then
-    ble/util/assign compgen 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
+    ble/util/assign-array arr 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
   else
-    ble/util/assign compgen 'command sed -n "/^$rex_compv/p" <<< "$compgen" | command sort -u' 2>/dev/null
+    ble/util/assign-array arr 'command sed -n "/^$rex_compv/p" <<< "$compgen" | command sort -u' 2>/dev/null
   fi
-
-  local arr
-  ble/string#split arr $'\n' "$compgen"
 
   local action=argument
   [[ $comp_opts == *:nospace:* ]] && action=argument-nospace
@@ -466,9 +463,8 @@ function ble-complete/source/variable {
     action=word # 確定時に ' ' を挿入
   fi
 
-  local cand arr compgen
-  ble/util/assign compgen 'compgen -v -- "$COMPV"'
-  ble/string#split arr $'\n' "$compgen"
+  local cand arr
+  ble/util/assign-array arr 'compgen -v -- "$COMPV"'
 
   local i=0
   for cand in "${arr[@]}"; do

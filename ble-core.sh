@@ -372,10 +372,13 @@ function ble/string#escape-for-extended-regex {
 #
 
 ## 関数 ble/util/readfile var filename
-##   ファイルの内容を変数に読み取ります。
+## 関数 ble/util/mapfile arr filename
+##   ファイルの内容を変数または配列に読み取ります。
 ##
 ##   @param[in] var
 ##     読み取った内容の格納先の変数名を指定します。
+##   @param[in] arr
+##     読み取った内容を行毎に格納する配列の名前を指定します。
 ##   @param[in] filename
 ##     読み取るファイルの場所を指定します。
 ##
@@ -385,9 +388,16 @@ if ((_ble_bash>=40000)); then
     mapfile __buffer < "$2"
     IFS= eval "$1"'="${__buffer[*]}"'
   }
+  function ble/util/mapfile {
+    mapfile -t "$1"
+  }
 else
   function ble/util/readfile { # 465ms for man bash
     IFS= read -r -d '' "$1" < "$2"
+  }
+  function ble/util/mapfile {
+    IFS= read -r -d '' "$1"
+    ble/string#split-lines "$1" "${!1}"
   }
 fi
 
@@ -405,7 +415,7 @@ if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
     builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
-    local _ret="$?" __arr
+    local _ret=$? __arr
     mapfile -t __arr < "$_ble_util_read_stdout_tmp"
     IFS=$'\n' eval "$1=\"\${__arr[*]}\""
     return "$_ret"
@@ -413,10 +423,32 @@ if ((_ble_bash>=40000)); then
 else
   function ble/util/assign {
     builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
-    local _ret="$?"
+    local _ret=$?
     IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
     eval "$1=\${$1%$'\n'}"
     return "$_ret"
+  }
+fi
+## 関数 ble/util/assign-array arr command...
+##   mapfile -t arr <(command ...) の高速な代替です。
+##   command はサブシェルではなく現在のシェルで実行されます。
+##
+##   @param[in] arr
+##     代入先の配列名を指定します。
+##   @param[in] command...
+##     実行するコマンドを指定します。
+##
+if ((_ble_bash>=40000)); then
+  function ble/util/assign-array {
+    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    local _ret=$?
+    mapfile -t "$1" < "$_ble_util_read_stdout_tmp"
+    return "$_ret"
+  }
+else
+  function ble/util/assign-array {
+    ble/util/assign "$@"
+    ble/string#split "$1" $'\n' "${!1}"
   }
 fi
 

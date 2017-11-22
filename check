@@ -50,8 +50,9 @@ function check-assign {
 }
 
 function check-memo-numbering {
+  echo "--- $FUNCNAME ---"
   grep -ao '\[#D....\]' memo.txt | sort | uniq -cd
-  grep -ao '\[#D....\]' memo.txt | wc
+  grep -ao '\[#D....\]' memo.txt | wc -l
   sed -n '0,/^[[:space:]]\{1,\}Done/d;/  \* .*\[#D....\]$/d;/^  \* /p' memo.txt
 }
 

@@ -35,9 +35,7 @@ function ble-decode-keymap:vi_digraph/define {
   ble-bind -f __defchar__ vi_digraph/defchar
   ble-bind -f __default__ vi_digraph/default
 
-  local file_content
-  IFS= read -r -d '' file_content < "$_ble_base/keymap/vi_digraph.txt"
-  local lines; ble/string#split lines $'\n' "$file_content"
+  local lines; ble/util/mapfile lines < "$_ble_base/keymap/vi_digraph.txt"
 
   local line field ch1 ch2 code
   for line in "${lines[@]}"; do
