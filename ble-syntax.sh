@@ -2060,6 +2060,8 @@ _ble_syntax_bash_command_opt[CTX_CMDXV]=1
 _ble_syntax_bash_command_opt[CTX_CMDXE]=1
 _ble_syntax_bash_command_opt[CTX_CMDXD]=1
 
+_ble_syntax_bash_is_command_form_for=
+
 function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
   if [[ $tail =~ ^$_ble_syntax_bash_rex_IFSs ]]; then
     # 空白
@@ -2144,7 +2146,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC)); then
       ((_ble_syntax_attr[i]=ATTR_DEL))
       ((ctx=CTX_ARGX0))
-      [[ $is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD))
+      [[ $_ble_syntax_bash_is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD))
       ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
       ((i+=${#m}))
     else
@@ -2287,7 +2289,6 @@ function ble-syntax:bash/ctx-command/.check-assign {
 
 # コマンド・引数部分
 function ble-syntax:bash/ctx-command {
-  local is_command_form_for=
 #%if !release
   if ble-syntax:bash/starts-with-delimiter-or-redirect; then
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
@@ -2343,7 +2344,7 @@ function ble-syntax:bash/ctx-command {
 
 function ble-syntax:bash/ctx-command-compound-expect {
   ble-assert '((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX2))'
-  local is_command_form_for=
+  local _ble_syntax_bash_is_command_form_for=
   if ble-syntax:bash/starts-with-delimiter-or-redirect; then
     # "for var in ... / case arg in" を処理している途中で delimiter が来た場合。
     if ((ctx==CTX_FARGX2)) && [[ $tail == [$';\n']* ]]; then
@@ -2353,7 +2354,7 @@ function ble-syntax:bash/ctx-command-compound-expect {
     elif ((ctx==CTX_FARGX1)) && [[ $tail == '(('* ]]; then
       # for ((...)) の場合
       # ここで return せずに以降の CTX_CMDX1 用の処理に任せる
-      ((ctx=CTX_CMDX1,is_command_form_for=1))
+      ((ctx=CTX_CMDX1,_ble_syntax_bash_is_command_form_for=1))
     elif [[ $tail == $'\n'* ]]; then
       if ((ctx==CTX_CARGX2)); then
         ((_ble_syntax_attr[i++]=CTX_ARGX))
