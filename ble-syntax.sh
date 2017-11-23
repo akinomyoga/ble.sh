@@ -3,7 +3,7 @@
 
 _ble_util_array_prototype=()
 function _ble_util_array_prototype.reserve {
-  local n="$1"
+  local n=$1
   for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
     _ble_util_array_prototype[i]=
   done
@@ -22,7 +22,7 @@ function ble-stackdump {
   builtin echo -n "$message" >&2
 }
 function ble-assert {
-  local expr="$1"
+  local expr=$1
   local _ble_stackdump_title='assertion failure'
   if ! builtin eval -- "$expr"; then
     shift
@@ -47,15 +47,15 @@ function ble-assert {
 ##   ble-syntax/wrange#update に対応するものはない。
 ##
 function ble-syntax/urange#update {
-  local prefix="$1"
-  local -i p1="$2" p2="${3:-$2}"
+  local prefix=$1
+  local -i p1=$2 p2=${3:-$2}
   ((0<=p1&&p1<p2)) || return
   (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
 }
 function ble-syntax/wrange#update {
-  local prefix="$1"
-  local -i p1="$2" p2="${3:-$2}"
+  local prefix=$1
+  local -i p1=$2 p2=${3:-$2}
   ((0<=p1&&p1<=p2)) || return
   (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
@@ -72,7 +72,7 @@ function ble-syntax/wrange#update {
 ##   ble-syntax/wrange#shift に対応するものはない。
 ##
 function ble-syntax/urange#shift {
-  local prefix="$1"
+  local prefix=$1
   ((${prefix}umin>=end0?(${prefix}umin+=shift):(
       ${prefix}umin>=beg&&(${prefix}umin=end)),
     ${prefix}umax>end0?(${prefix}umax+=shift):(
@@ -81,7 +81,7 @@ function ble-syntax/urange#shift {
       (${prefix}umin=${prefix}umax=-1)))
 }
 function ble-syntax/wrange#shift {
-  local prefix="$1"
+  local prefix=$1
 
   # ※以下の不等号について (動作を見ながら)
   # もう一度考え直した方が良いかも。
@@ -174,7 +174,7 @@ function ble-syntax/tree-enumerate/.initialize {
   local tplen=${stat[5]}
 
   tree=
-  ((iN>0)) && tree="${_ble_syntax_tree[iN-1]}"
+  ((iN>0)) && tree=${_ble_syntax_tree[iN-1]}
 
   while
     if ((wlen>=0)); then
@@ -187,13 +187,13 @@ function ble-syntax/tree-enumerate/.initialize {
 
     nest=(${_ble_syntax_nest[inest]})
 
-    local olen="$((iN-inest))"
-    tplen="${nest[4]}"
+    local olen=$((iN-inest))
+    tplen=${nest[4]}
     ((tplen>=0&&(tplen+=olen)))
 
     tree="${nest[7]} $olen $tclen $tplen -- ${tree[@]}"
 
-    wtype="${nest[2]}" wlen="${nest[1]}" nlen="${nest[3]}" tclen=0 tplen="${nest[5]}"
+    wtype=${nest[2]} wlen=${nest[1]} nlen=${nest[3]} tclen=0 tplen=${nest[5]}
     ((wlen>=0&&(wlen+=olen),
       tplen>=0&&(tplen+=olen),
       nlen>=0&&(nlen+=olen),
@@ -232,10 +232,10 @@ function ble-syntax/tree-enumerate/.impl {
 
     ble-assert '((nofs<${#node[@]}))' "$FUNCNAME(i=$i,iN=$iN,nofs=$nofs,node=${node[*]},command=$@)/FATAL1" || break
 
-    local wtype="${node[nofs]}" wlen="${node[nofs+1]}" tclen="${node[nofs+2]}" tplen="${node[nofs+3]}" attr="${node[nofs+4]}"
-    local wbegin="$((wlen<0?wlen:i-wlen))"
-    local tchild="$((tclen<0?tclen:i-tclen))"
-    local tprev="$((tplen<0?tplen:i-tplen))"
+    local wtype=${node[nofs]} wlen=${node[nofs+1]} tclen=${node[nofs+2]} tplen=${node[nofs+3]} attr=${node[nofs+4]}
+    local wbegin=$((wlen<0?wlen:i-wlen))
+    local tchild=$((tclen<0?tclen:i-tclen))
+    local tprev=$((tplen<0?tplen:i-tplen))
     "$@"
 
     ble-assert '((tprev<i))' "$FUNCNAME/FATAL2" || break
@@ -249,8 +249,8 @@ function ble-syntax/tree-enumerate/.impl {
 ## @var[in] tchild
 function ble-syntax/tree-enumerate-children {
   ((0<tchild&&tchild<=i)) || return
-  local nofs="$((i==tchild?nofs+BLE_SYNTAX_TREE_WIDTH:0))"
-  local i="$tchild"
+  local nofs=$((i==tchild?nofs+BLE_SYNTAX_TREE_WIDTH:0))
+  local i=$tchild
   ble-syntax/tree-enumerate/.impl "$@"
 }
 function ble-syntax/tree-enumerate-break () ((tprev=-1))
@@ -279,8 +279,8 @@ function ble-syntax/tree-enumerate {
 ##   @var[in,out] node,flagUpdateNode
 ##   @var[in]     nofs
 function ble-syntax/tree-enumerate-in-range {
-  local -i beg="$1" end="$2"
-  local proc="$3"
+  local -i beg=$1 end=$2
+  local proc=$3
   local -a node
   local i nofs
   for ((i=end;i>=beg;i--)); do
@@ -288,8 +288,8 @@ function ble-syntax/tree-enumerate-in-range {
     node=(${_ble_syntax_tree[i-1]})
     local flagUpdateNode=
     for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
-      local wtype="${node[nofs]}" wlen="${node[nofs+1]}"
-      local wbeg="$((wlen<0?wlen:i-wlen))" wend="$i"
+      local wtype=${node[nofs]} wlen=${node[nofs+1]}
+      local wbeg=$((wlen<0?wlen:i-wlen)) wend=$i
       "${@:3}"
     done
 
@@ -301,7 +301,7 @@ function ble-syntax/tree-enumerate-in-range {
 # ble-syntax/print-status
 
 function ble-syntax/print-status/.graph {
-  local char="$1"
+  local char=$1
   if ble/util/isprint+ "$char"; then
     graph="'$char'"
     return
@@ -325,9 +325,9 @@ function ble-syntax/print-status/.graph {
 
 ## @var[in,out] word
 function ble-syntax/print-status/.tree-prepend {
-  local -i j="$1"
-  local value="$2${tree[j]}"
-  tree[j]="$value"
+  local -i j=$1
+  local value=$2${tree[j]}
+  tree[j]=$value
   ((max_tree_width<${#value}&&(max_tree_width=${#value})))
 }
 
@@ -361,7 +361,7 @@ function ble-syntax/print-status/word.get-text {
   word=(${_ble_syntax_tree[index]})
   local ret=
   if [[ $word ]]; then
-    local nofs="$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))"
+    local nofs=$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))
     while (((nofs-=BLE_SYNTAX_TREE_WIDTH)>=0)); do
       local axis=$((index+1))
 
@@ -375,8 +375,8 @@ function ble-syntax/print-status/word.get-text {
         wtype=$sgr_error${wtype}$_ble_term_sgr0
       fi
 
-      local b="$((axis-word[nofs+1]))" e="$axis"
-      local _prev="${word[nofs+3]}" _child="${word[nofs+2]}"
+      local b=$((axis-word[nofs+1])) e=$axis
+      local _prev=${word[nofs+3]} _child=${word[nofs+2]}
       if ((_prev>=0)); then
         _prev="@$((axis-_prev-1))>"
       else
@@ -539,8 +539,8 @@ function ble-syntax/print-status/.dump-arrays {
     [[ ${_ble_syntax_stat_shift[i]} ]]
     ble-syntax/print-status/.dump-arrays/.append-attr-char s
 
-    local index="000$i"
-    index="${index:${#index}-3:3}"
+    local index=000$i
+    index=${index:${#index}-3:3}
 
     local word nest stat
     ble-syntax/print-status/word.get-text "$i"
@@ -550,13 +550,13 @@ function ble-syntax/print-status/.dump-arrays {
     local graph=
     ble-syntax/print-status/.graph "${_ble_syntax_text:i:1}"
     char[i]="$attr $index $graph"
-    line[i]="$word$nest$stat"
+    line[i]=$word$nest$stat
   done
 
   resultA='_ble_syntax_attr/tree/nest/stat?'$'\n'
   _ble_util_string_prototype.reserve max_tree_width
   for ((i=0;i<=iN;i++)); do
-    local t="${tree[i]}${_ble_util_string_prototype::max_tree_width}"
+    local t=${tree[i]}${_ble_util_string_prototype::max_tree_width}
     resultA="$resultA${char[i]} ${t::max_tree_width}${line[i]}"$'\n'
   done
 }
@@ -566,7 +566,7 @@ function ble-syntax/print-status/.dump-arrays {
 ## @var[in]  prefix
 ## @var[in]  nl
 function ble-syntax/print-status/.dump-tree/proc1 {
-  local tip="| "; tip="${tip:islast:1}"
+  local tip="| "; tip=${tip:islast:1}
   prefix="$prefix$tip   " ble-syntax/tree-enumerate-children ble-syntax/print-status/.dump-tree/proc1
   resultB="$prefix\_ '${_ble_syntax_text:wbegin:wlen}'$nl$resultB"
 }
@@ -577,13 +577,13 @@ function ble-syntax/print-status/.dump-tree/proc1 {
 function ble-syntax/print-status/.dump-tree {
   resultB=
 
-  local nl="$_ble_term_nl"
+  local nl=$_ble_term_nl
   local prefix=
   ble-syntax/tree-enumerate ble-syntax/print-status/.dump-tree/proc1
 }
 
 function ble-syntax/print-status {
-  local iN="${#_ble_syntax_text}"
+  local iN=${#_ble_syntax_text}
 
   local resultA
   ble-syntax/print-status/.dump-arrays
@@ -591,7 +591,7 @@ function ble-syntax/print-status {
   local resultB
   ble-syntax/print-status/.dump-tree
 
-  local result="$resultA$_ble_term_NL$resultB"
+  local result=$resultA$_ble_term_NL$resultB
   if [[ $1 == -v && $2 ]]; then
     local "${2%%\[*\]}" && ble/util/upvar "$2" "$result"
   else
@@ -618,12 +618,12 @@ function ble-syntax/parse/tree-append {
 #%if !release
   [[ $debug_p1 ]] && { ((i-1>=debug_p1)) || ble-stackdump "Wrong call of tree-append: Condition violation (p1=$debug_p1 i=$i iN=$iN)."; }
 #%end
-  local type="$1"
-  local beg="$2" end="$i"
-  local len="$((end-beg))"
+  local type=$1
+  local beg=$2 end=$i
+  local len=$((end-beg))
   ((len==0)) && return
 
-  local tchild="$3" tprev="$4"
+  local tchild=$3 tprev=$4
 
   # 子情報・兄情報
   local ochild=-1 oprev=-1
@@ -637,7 +637,7 @@ function ble-syntax/parse/tree-append {
 }
 
 function ble-syntax/parse/word-push {
-  wtype="$1" wbegin="$2" tprev="$tchild" tchild=-1
+  wtype=$1 wbegin=$2 tprev=$tchild tchild=-1
 }
 ## 関数 ble-syntax/parse/word-pop
 ## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
@@ -738,7 +738,7 @@ function ble-syntax/parse/nest-reset-tprev {
   else
     local -a nest
     nest=(${_ble_syntax_nest[inest]})
-    local tclen="${nest[4]}"
+    local tclen=${nest[4]}
     ((tprev=tclen<0?tclen:inest-tclen))
   fi
 }
@@ -1019,9 +1019,9 @@ function ble-syntax:bash/check-dollar {
       # ${!head<@>} ${!varname[<@>]}
 
       # for bash-3.1 ${#arr[n]} bug
-      local rematch1="${BASH_REMATCH[1]}"
-      local rematch2="${BASH_REMATCH[2]}"
-      local rematch3="${BASH_REMATCH[3]}"
+      local rematch1=${BASH_REMATCH[1]}
+      local rematch2=${BASH_REMATCH[2]}
+      local rematch3=${BASH_REMATCH[3]}
 
       local ntype='${'
       if ((ctx==CTX_QUOT)); then
@@ -1111,7 +1111,7 @@ function ble-syntax:bash/check-quotes {
 
   if ((ctx!=CTX_QUOT)); then
     if rex='^(\$?")([^'"${_ble_syntax_bashc[CTX_QUOT]}"']|\\.)*("?)' && [[ $tail =~ $rex ]]; then
-      local rematch1="${BASH_REMATCH[1]}" # for bash-3.1 ${#arr[n]} bug
+      local rematch1=${BASH_REMATCH[1]} # for bash-3.1 ${#arr[n]} bug
       if [[ ${BASH_REMATCH[3]} ]]; then
         # 終端まで行った場合
         ((_ble_syntax_attr[i]=aqdel,
@@ -1998,8 +1998,8 @@ function ble-syntax:bash/ctx-command/check-word-end {
     if local rex='^([ 	]*)(\([ 	]*\)?)?'; [[ ${text:i} =~ $rex && $BASH_REMATCH ]]; then
 
       # for bash-3.1 ${#arr[n]} bug
-      local rematch1="${BASH_REMATCH[1]}"
-      local rematch2="${BASH_REMATCH[2]}"
+      local rematch1=${BASH_REMATCH[1]}
+      local rematch2=${BASH_REMATCH[2]}
 
       if [[ $rematch2 == '('*')' ]]; then
         # case: /hoge ( *)/ 関数定義 (単語の種類を変更)
@@ -2256,7 +2256,7 @@ function ble-syntax:bash/ctx-command/.check-assign {
   fi
   local rex_assign="^[a-zA-Z_][a-zA-Z_0-9]*($suffix)"
   [[ $tail =~ $rex_assign ]] || return 1
-  local rematch1="${BASH_REMATCH[1]}" # for bash-3.1 ${#arr[n]} bug
+  local rematch1=${BASH_REMATCH[1]} # for bash-3.1 ${#arr[n]} bug
   if [[ $rematch1 == '+' ]]; then
     # var+... 曖昧状態
     ((parse_suppressNextStat=1))
@@ -2456,8 +2456,8 @@ function ble-syntax:bash/ctx-values/check-word-end {
   # 未だ続きがある場合は抜ける
   [[ ${text:i:1} == [!"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
 
-  local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
-  local word="${text:wbegin:wlen}"
+  local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
+  local word=${text:wbegin:wlen}
 
   ble-syntax/parse/word-pop
 
@@ -2548,10 +2548,10 @@ function ble-syntax:bash/ctx-conditions/check-word-end {
   ((wbegin<0)) && return 1
 
   # 未だ続きがある場合は抜ける
-  [[ ${text:i:1} == [^"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
+  [[ ${text:i:1} == [!"$_ble_syntax_bash_IFS;|&<>()"] ]] && return 1
 
-  local wbeg="$wbegin" wlen="$((i-wbegin))" wend="$i"
-  local word="${text:wbegin:wlen}"
+  local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
+  local word=${text:wbegin:wlen}
 
   ble-syntax/parse/word-pop
 
@@ -2584,9 +2584,7 @@ function ble-syntax:bash/ctx-conditions {
     fi
   fi
 
-  if ble-syntax:bash/check-comment; then
-    return 0
-  fi
+  ble-syntax:bash/check-comment && return 0
 
   if ((wbegin<0)); then
     ((ctx=CTX_CONDI))
@@ -2824,7 +2822,7 @@ function ble-syntax:bash/ctx-heredoc-word/check-word-end {
   fi
 
   local escaped; ble-syntax:bash/ctx-heredoc-word/escape-delimiter "$delimiter"
-  nparam="$nparam$_ble_term_fs@$I$Q$escaped"
+  nparam=$nparam$_ble_term_fs@$I$Q$escaped
   return 0
 }
 function ble-syntax:bash/ctx-heredoc-word {
@@ -2979,7 +2977,7 @@ function ble-syntax/parse/shift.tree {
 
   local nofs
   if [[ $1 ]]; then
-    nofs="$1" ble-syntax/parse/shift.tree/1
+    nofs=$1 ble-syntax/parse/shift.tree/1
   else
     for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
       ble-syntax/parse/shift.tree/1
@@ -3014,7 +3012,7 @@ function ble-syntax/parse/shift.nest {
 }
 
 function ble-syntax/parse/shift.impl2/.shift-until {
-  local limit="$1"
+  local limit=$1
   while ((j>=limit)); do
 #%if !release
     [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
@@ -3039,7 +3037,7 @@ function ble-syntax/parse/shift.impl2/.shift-until {
 ##   これらの変数は更に子関数で使用されます。
 ##
 function ble-syntax/parse/shift.impl2/.proc1 {
-  local j="$_shift2_j"
+  local j=$_shift2_j
   if ((i<j2)); then
     ((tprev=-1)) # 中断
     return
@@ -3344,15 +3342,15 @@ function ble-syntax/parse {
 # }
 
 function ble-syntax/completion-context/add {
-  local source="$1"
-  local comp1="$2"
+  local source=$1
+  local comp1=$2
   context[${#context[*]}]="$source $comp1"
 }
 
 function ble-syntax/completion-context/check/parameter-expansion {
   local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$'
   if [[ ${text:i:index-i} =~ $rex_paramx ]]; then
-    local rematch1="${BASH_REMATCH[1]}"
+    local rematch1=${BASH_REMATCH[1]}
     ble-syntax/completion-context/add variable $((i+${#rematch1}))
   fi
 }
@@ -3569,16 +3567,16 @@ function ble-syntax/completion-context {
 ## @var[in]     _ble_syntax_text, pos
 ## @var[in]     wbegin, wlen
 function ble-syntax:bash/extract-command/.register-word {
-  local wtxt="${_ble_syntax_text:wbegin:wlen}"
+  local wtxt=${_ble_syntax_text:wbegin:wlen}
   if [[ ! $comp_cword ]] && ((wbegin<=pos)); then
     if ((pos<=wbegin+wlen)); then
-      comp_cword="${#comp_words[@]}"
-      comp_point="$((${#comp_line}+wbegin+wlen-pos))"
+      comp_cword=${#comp_words[@]}
+      comp_point=$((${#comp_line}+wbegin+wlen-pos))
       comp_line="$wtxt$comp_line"
       ble/array#push comp_words "$wtxt"
     else
-      comp_cword="${#comp_words[@]}"
-      comp_point="${#comp_line}"
+      comp_cword=${#comp_words[@]}
+      comp_point=${#comp_line}
       comp_line="$wtxt $comp_line"
       ble/array#push comp_words "" "$wtxt"
     fi
@@ -3617,8 +3615,8 @@ function ble-syntax:bash/extract-command/.construct {
   fi
 
   ble/array#reverse comp_words
-  comp_cword="$((${#comp_words[@]}-1-comp_cword))"
-  comp_point="$((${#comp_line}-comp_point))"
+  ((comp_cword=${#comp_words[@]}-1-comp_cword,
+    comp_point=${#comp_line}-comp_point))
 }
 
 ## (tree-enumerate-proc) ble-syntax:bash/extract-command/.scan
@@ -3639,7 +3637,7 @@ function ble-syntax:bash/extract-command/.scan {
   fi
 
   if [[ $wtype =~ ^[0-9]+$ && ! $isword ]]; then
-    isword="$wtype"
+    isword=$wtype
     return
   fi
 }
@@ -3647,7 +3645,7 @@ function ble-syntax:bash/extract-command/.scan {
 ## 関数 ble-syntax:bash/extract-command index
 ## @var[out] comp_cword comp_words comp_line comp_point
 function ble-syntax:bash/extract-command {
-  local pos="$1"
+  local pos=$1
   local isword= iscommand=
 
   ble-syntax/tree-enumerate \
@@ -3702,8 +3700,8 @@ function ble-syntax/faces-onload-hook {
   }
 
   function ble-syntax/attr2g {
-    local iface="${_ble_syntax_attr2iface[$1]:-_ble_faces__syntax_default}"
-    g="${_ble_faces[iface]}"
+    local iface=${_ble_syntax_attr2iface[$1]:-_ble_faces__syntax_default}
+    g=${_ble_faces[iface]}
   }
 
   ble-color-defface syntax_default           none
@@ -3818,8 +3816,8 @@ function ble-syntax/faces-onload-hook {
 ble-color/faces/addhook-onload ble-syntax/faces-onload-hook
 
 function ble-syntax/highlight/cmdtype1 {
-  type="$1"
-  local cmd="$2"
+  type=$1
+  local cmd=$2
   case "$type:$cmd" in
   (builtin::|builtin:.)
     # 見にくいので太字にする
@@ -3837,7 +3835,7 @@ function ble-syntax/highlight/cmdtype1 {
   (*:%*)
     # jobs
     ble/util/joblist.check
-    if jobs "$cmd" &>/dev/null; then
+    if jobs -- "$cmd" &>/dev/null; then
       ((type=ATTR_CMD_JOBS))
     else
       ((type=ATTR_ERR))
@@ -3852,7 +3850,7 @@ function ble-syntax/highlight/cmdtype1 {
 }
 
 function ble-syntax/highlight/cmdtype2 {
-  local cmd="$1" _0="$2"
+  local cmd=$1 _0=$2
   local btype; ble/util/type btype "$cmd"
   ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
 
@@ -3896,7 +3894,7 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bas
   _ble_syntax_highlight_filetype_version=-1
   ## @var type[out]
   function ble-syntax/highlight/cmdtype {
-    local cmd="$1" _0="$2"
+    local cmd=$1 _0=$2
 
     # check cache
     if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
@@ -3908,13 +3906,13 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bas
     [[ $type ]] && return
 
     ble-syntax/highlight/cmdtype2 "$cmd" "$_0"
-    _ble_syntax_highlight_filetype["x$_0"]="$type"
+    _ble_syntax_highlight_filetype["x$_0"]=$type
   }
 else
   _ble_syntax_highlight_filetype=()
   _ble_syntax_highlight_filetype_version=-1
   function ble-syntax/highlight/cmdtype {
-    local cmd="$1" _0="$2"
+    local cmd=$1 _0=$2
 
     # check cache
     if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
@@ -3931,15 +3929,15 @@ else
     done
 
     ble-syntax/highlight/cmdtype2 "$cmd" "$_0"
-    _ble_syntax_highlight_filetype[2*iN]="x$_0"
-    _ble_syntax_highlight_filetype[2*iN+1]="$type"
+    _ble_syntax_highlight_filetype[2*iN]=x$_0
+    _ble_syntax_highlight_filetype[2*iN+1]=$type
   }
 fi
 
 function ble-syntax/highlight/filetype {
-  local file="$1" _0="$2"
+  local file=$1 _0=$2
   type=
-  [[ ( $file == '~' || $file == '~/'* ) && ! ( -e $file || -h $file ) ]] && file="$HOME${file:1}"
+  [[ ( $file == '~' || $file == '~/'* ) && ! ( -e $file || -h $file ) ]] && file=$HOME${file:1}
   if [[ -e $file ]]; then
     if [[ -d $file ]]; then
       ((type=ATTR_FILE_DIR))
@@ -3969,7 +3967,7 @@ function ble-highlight-layer:syntax/touch-range {
   ble-syntax/urange#update '' "$@"
 }
 function ble-highlight-layer:syntax/fill {
-  local _i _arr="$1" _i1="$2" _i2="$3" _v="$4"
+  local _i _arr=$1 _i1=$2 _i2=$3 _v=$4
   for ((_i=_i1;_i<_i2;_i++)); do
     eval "$_arr[_i]=\"\$_v\""
   done
@@ -3994,7 +3992,7 @@ function ble-highlight-layer:syntax/update-attribute-table {
       if ((${_ble_syntax_attr[i]})); then
         ble-syntax/attr2g "${_ble_syntax_attr[i]}"
       fi
-      _ble_highlight_layer_syntax1_table[i]="$g"
+      _ble_highlight_layer_syntax1_table[i]=$g
     done
 
     _ble_syntax_attr_umin=-1 _ble_syntax_attr_umax=-1
@@ -4012,7 +4010,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     # 展開・コマンド置換などに従った解析が行われるが、
     # 実行は一切起こらないので一色で塗りつぶす。
     ((type=wtype))
-  elif local wtxt="${text:wbeg:wlen}"; [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
+  elif local wtxt=${text:wbeg:wlen}; [[ $wtxt =~ $_ble_syntax_rex_simple_word ]]; then
 
     # 単語を展開
     local value
@@ -4076,7 +4074,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
   if [[ $type ]]; then
     local g
     ble-syntax/attr2g "$type"
-    node[nofs+4]="$g"
+    node[nofs+4]=$g
   else
     node[nofs+4]='d'
   fi
@@ -4094,7 +4092,7 @@ function ble-highlight-layer:syntax/word/.update-attributes {
 }
 
 function ble-highlight-layer:syntax/word/.apply-attribute {
-  local wbeg="$1" wend="$2" attr="$3"
+  local wbeg=$1 wend=$2 attr=$3
   ((wbeg<color_umin&&(wbeg=color_umin),
     wend>color_umax&&(wend=color_umax),
     wbeg<wend)) || return
@@ -4108,7 +4106,7 @@ function ble-highlight-layer:syntax/word/.apply-attribute {
 
 function ble-highlight-layer:syntax/word/.proc-childnode {
   if [[ $wtype =~ ^[0-9]+$ ]]; then
-    local wbeg="$wbegin" wend="$i"
+    local wbeg=$wbegin wend=$i
     ble-highlight-layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
   fi
 
@@ -4120,7 +4118,7 @@ function ble-highlight-layer:syntax/update-word-table {
   # update table2 (単語の削除に関しては後で考える)
 
   # (1) 単語色の計算
-  local color_umin=-1 color_umax=-1 iN="${#_ble_syntax_text}"
+  local color_umin=-1 color_umax=-1 iN=${#_ble_syntax_text}
   ble-highlight-layer:syntax/word/.update-attributes
 
   # (2) 色配列 shift
@@ -4139,17 +4137,17 @@ function ble-highlight-layer:syntax/update-word-table {
       local -a node
       node=(${_ble_syntax_tree[i-1]})
 
-      local wlen="${node[1]}"
-      local wbeg="$((i-wlen))" wend="$i"
+      local wlen=${node[1]}
+      local wbeg=$((i-wlen)) wend=$i
 
       if [[ ${node[0]} =~ ^[0-9]+$ ]]; then
-        local attr="${node[4]}"
+        local attr=${node[4]}
         ble-highlight-layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
       fi
 
-      local tclen="${node[2]}"
+      local tclen=${node[2]}
       if ((tclen>=0)); then
-        local tchild="$((i-tclen))"
+        local tchild=$((i-tclen))
         local tree= nofs=0 proc_children=ble-highlight-layer:syntax/word/.proc-childnode
         ble-syntax/tree-enumerate-children "$proc_children"
       fi
@@ -4165,7 +4163,7 @@ function ble-highlight-layer:syntax/update-word-table {
 }
 
 function ble-highlight-layer:syntax/update-error-table/set {
-  local i1="$1" i2="$2" g="$3"
+  local i1=$1 i2=$2 g=$3
   if ((i1<i2)); then
     ble-highlight-layer:syntax/touch-range "$i1" "$i2"
     ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax3_table "$i1" "$i2" "$g"
@@ -4178,13 +4176,13 @@ function ble-highlight-layer:syntax/update-error-table {
   # clear old errors
   #   shift の前の方が簡単に更新できるが、
   #   umin umax を更新する為に shift の後で処理する。
-  local j=0 jN="${#_ble_highlight_layer_syntax3_list[*]}"
+  local j=0 jN=${#_ble_highlight_layer_syntax3_list[*]}
   if ((jN)); then
     for ((j=0;j<jN;j++)); do
       local -a range
       range=(${_ble_highlight_layer_syntax3_list[j]})
 
-      local a="${range[0]}" b="${range[1]}"
+      local a=${range[0]} b=${range[1]}
       ((a>=DMAX0?(a+=DMAX-DMAX0):(a>=DMIN&&(a=DMIN)),
         b>=DMAX0?(b+=DMAX-DMAX0):(b>=DMIN&&(b=DMIN))))
       if ((a<b)); then
@@ -4250,12 +4248,12 @@ function ble-highlight-layer:syntax/update {
 
   local umin=-1 umax=-1
   # 少なくともこの範囲は文字が変わっているので再描画する必要がある
-  ((DMIN>=0)) && umin="$DMIN" umax="$DMAX"
+  ((DMIN>=0)) && umin=$DMIN umax=$DMAX
 
 #%if !release
   if [[ $ble_debug ]]; then
-    local debug_attr_umin="$_ble_syntax_attr_umin"
-    local debug_attr_uend="$_ble_syntax_attr_umax"
+    local debug_attr_umin=$_ble_syntax_attr_umin
+    local debug_attr_uend=$_ble_syntax_attr_umax
   fi
 #%end
 
@@ -4270,37 +4268,37 @@ function ble-highlight-layer:syntax/update {
       local g sgr ch
       ble-highlight-layer:syntax/getg "$DMAX"
       ble-color-g2sgr -v sgr "$g"
-      ch="${_ble_highlight_layer_plain_buff[DMAX]}"
-      _ble_highlight_layer_syntax_buff[DMAX]="$sgr$ch"
+      ch=${_ble_highlight_layer_plain_buff[DMAX]}
+      _ble_highlight_layer_syntax_buff[DMAX]=$sgr$ch
     fi
   fi
 
   local i j g gprev=0
   if ((umin>0)); then
     ble-highlight-layer:syntax/getg "$((umin-1))"
-    gprev="$g"
+    gprev=$g
   fi
 
   local sgr
   for ((i=umin;i<umax;i++)); do
-    local ch="${_ble_highlight_layer_plain_buff[i]}"
+    local ch=${_ble_highlight_layer_plain_buff[i]}
     ble-highlight-layer:syntax/getg "$i"
     [[ $g ]] || ble-highlight-layer/update/getg "$i"
     if ((gprev!=g)); then
       ble-color-g2sgr -v sgr "$g"
-      ch="$sgr$ch"
+      ch=$sgr$ch
       ((gprev=g))
     fi
-    _ble_highlight_layer_syntax_buff[i]="$ch"
+    _ble_highlight_layer_syntax_buff[i]=$ch
   done
 
-  PREV_UMIN="$umin" PREV_UMAX="$umax"
+  PREV_UMIN=$umin PREV_UMAX=$umax
   PREV_BUFF=_ble_highlight_layer_syntax_buff
 
 #%if !release
   if [[ $ble_debug ]]; then
     local status buff= nl=$'\n'
-    _ble_syntax_attr_umin="$debug_attr_umin" _ble_syntax_attr_umax="$debug_attr_uend" ble-syntax/print-status -v status
+    _ble_syntax_attr_umin=$debug_attr_umin _ble_syntax_attr_umax=$debug_attr_uend ble-syntax/print-status -v status
     ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | cat -A'; status="$status${buff%$nl}$nl"
     ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | cat -A'; status="$status${buff%$nl}$nl"
     #ble/util/assign buff 'declare -p _ble_textarea_bufferName $_ble_textarea_bufferName | cat -A'; status="$status$buff"
@@ -4326,13 +4324,13 @@ function ble-highlight-layer:syntax/update {
 }
 
 function ble-highlight-layer:syntax/getg {
-  local i="$1"
+  local i=$1
   if [[ ${_ble_highlight_layer_syntax3_table[i]} ]]; then
-    g="${_ble_highlight_layer_syntax3_table[i]}"
+    g=${_ble_highlight_layer_syntax3_table[i]}
   elif [[ ${_ble_highlight_layer_syntax2_table[i]} ]]; then
-    g="${_ble_highlight_layer_syntax2_table[i]}"
+    g=${_ble_highlight_layer_syntax2_table[i]}
   elif [[ ${_ble_highlight_layer_syntax1_table[i]} ]]; then
-    g="${_ble_highlight_layer_syntax1_table[i]}"
+    g=${_ble_highlight_layer_syntax1_table[i]}
   else
     g=
   fi
@@ -4431,7 +4429,7 @@ function mytest/print {
   # mytest/put $'\n'
 }
 function mytest {
-  local text="$1"
+  local text=$1
   ble-syntax/parse "$text"
   mytest/print
 
