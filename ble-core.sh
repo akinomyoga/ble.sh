@@ -19,7 +19,7 @@ function bleopt/check:input_encoding {
     return 1
   fi
 
-  if [[ $bleopt_input_encoding != $value ]]; then
+  if [[ $bleopt_input_encoding != "$value" ]]; then
     ble-decode/unbind
     bleopt_input_encoding=$value
     ble-decode/bind
@@ -139,52 +139,52 @@ function ble/string#repeat {
 ##   @param[in] a b
 ##   @var[out] ret
 function ble/string#common-prefix {
-  local a="$1" b="$2"
-  ((${#a}>${#b})) && local a="$b" b="$a"
-  b="${b::${#a}}"
-  if [[ $a == $b ]]; then
-    ret="$a"
+  local a=$1 b=$2
+  ((${#a}>${#b})) && local a=$b b=$a
+  b=${b::${#a}}
+  if [[ $a == "$b" ]]; then
+    ret=$a
     return
   fi
 
   # l <= 解 < u, (${a:u}: 一致しない, ${a:l} 一致する)
-  local l=0 u="${#a}" m
+  local l=0 u=${#a} m
   while ((l+1<u)); do
     ((m=(l+u)/2))
-    if [[ ${a::m} == ${b::m} ]]; then
+    if [[ ${a::m} == "${b::m}" ]]; then
       ((l=m))
     else
       ((u=m))
     fi
   done
 
-  ret="${a::l}"
+  ret=${a::l}
 }
 
 ## 関数 ble/string#common-suffix a b
 ##   @param[in] a b
 ##   @var[out] ret
 function ble/string#common-suffix {
-  local a="$1" b="$2"
-  ((${#a}>${#b})) && local a="$b" b="$a"
-  b="${b:${#b}-${#a}}"
-  if [[ $a == $b ]]; then
-    ret="$a"
+  local a=$1 b=$2
+  ((${#a}>${#b})) && local a=$b b=$a
+  b=${b:${#b}-${#a}}
+  if [[ $a == "$b" ]]; then
+    ret=$a
     return
   fi
 
   # l < 解 <= u, (${a:l}: 一致しない, ${a:u} 一致する)
-  local l=0 u="${#a}" m
+  local l=0 u=${#a} m
   while ((l+1<u)); do
     ((m=(l+u+1)/2))
-    if [[ ${a:m} == ${b:m} ]]; then
+    if [[ ${a:m} == "${b:m}" ]]; then
       ((u=m))
     else
       ((l=m))
     fi
   done
 
-  ret="${a:u}"
+  ret=${a:u}
 }
 
 ## 関数 ble/string#split arr sep str...

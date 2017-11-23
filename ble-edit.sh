@@ -1415,7 +1415,7 @@ function ble/textmap#update {
     fi
 
     # 後は同じなので計算を省略
-    ((i>=dend)) && [[ ${old_pos[i-dend]} == ${_ble_textmap_pos[i]} ]] && break
+    ((i>=dend)) && [[ ${old_pos[i-dend]} == "${_ble_textmap_pos[i]}" ]] && break
   done
 
   if ((i<iN)); then
@@ -1886,7 +1886,7 @@ function _ble_edit_str.reset {
 }
 function _ble_edit_str.reset-and-check-dirty {
   local str=$1 reason=${2:-edit}
-  [[ $_ble_edit_str == $str ]] && return
+  [[ $_ble_edit_str == "$str" ]] && return
 
   local ret pref suff
   ble/string#common-prefix "$_ble_edit_str" "$str"; pref="$ret"
@@ -2357,7 +2357,7 @@ function ble/textarea#render/.show-scroll-at-first-line {
 _ble_textarea_caret_state=::
 function ble/textarea#render {
   local caret_state="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
-  if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == $caret_state ]]; then
+  if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == "$caret_state" ]]; then
     local -a DRAW_BUFF
     ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
     ble-edit/draw/bflush
@@ -3638,7 +3638,7 @@ function ble-edit/exec/save-BASH_REMATCH/is-updated {
   local i n=${#_ble_edit_exec_BASH_REMATCH[@]}
   ((n!=${#BASH_REMATCH[@]})) && return 0
   for ((i=0;i<n;i++)); do
-    [[ ${_ble_edit_exec_BASH_REMATCH[i]} != ${BASH_REMATCH[i]} ]] && return 0
+    [[ ${_ble_edit_exec_BASH_REMATCH[i]} != "${BASH_REMATCH[i]}" ]] && return 0
   done
   return 1
 }
@@ -3838,9 +3838,9 @@ function ble-edit/exec:exec/.isGlobalContext {
   # for ((i=offset;i<iN;i++)); do
   #   local func="${FUNCNAME[i]}"
   #   local path="${BASH_SOURCE[i]}"
-  #   if [[ $func = ble-edit/exec:exec/.eval && $path = $BASH_SOURCE ]]; then
+  #   if [[ $func == ble-edit/exec:exec/.eval && $path == "$BASH_SOURCE" ]]; then
   #     return 0
-  #   elif [[ $path != source && $path != $BASH_SOURCE ]]; then
+  #   elif [[ $path != source && $path != "$BASH_SOURCE" ]]; then
   #     # source ble.sh の中の declare が全て local になるので上だと駄目。
   #     # しかしそもそも二重にロードしても大丈夫な物かは謎。
   #     return 1
@@ -4220,12 +4220,12 @@ function ble/widget/accept-and-next {
     ble-edit/history/getcount -v count
     if ((count)); then
       local entry; ble-edit/history/get-entry $((count-1))
-      if [[ $entry == $content ]]; then
+      if [[ $entry == "$content" ]]; then
         ble-edit/history/goto "$((count-1))"
       fi
     fi
 
-    [[ $_ble_edit_str != $content ]] &&
+    [[ $_ble_edit_str != "$content" ]] &&
       _ble_edit_str.reset "$content"
   fi
 }
@@ -4645,7 +4645,7 @@ function ble/widget/history-end {
 function ble/widget/history-expand-line {
   local hist_expanded
   ble-edit/hist_expanded.update "$_ble_edit_str" || return
-  [[ $_ble_edit_str == $hist_expanded ]] && return
+  [[ $_ble_edit_str == "$hist_expanded" ]] && return
 
   _ble_edit_str.reset-and-check-dirty "$hist_expanded"
   _ble_edit_ind=${#hist_expanded}
@@ -4655,7 +4655,7 @@ function ble/widget/history-expand-line {
 function ble/widget/history-expand-backward-line {
   local prevline="${_ble_edit_str::_ble_edit_ind}" hist_expanded
   ble-edit/hist_expanded.update "$prevline" || return
-  [[ $prevline == $hist_expanded ]] && return
+  [[ $prevline == "$hist_expanded" ]] && return
 
   local ret
   ble/string#common-prefix "$prevline" "$hist_expanded"; local dmin=${#ret}
@@ -4756,20 +4756,20 @@ function ble-edit/isearch/.set-region {
 ##   @var[in] ind beg end needle
 ##     これから登録しようとしている isearch の情報。
 function ble-edit/isearch/.push-isearch-array {
-  local hash="$beg:$end:$needle"
+  local hash=$beg:$end:$needle
 
   # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
-  local ilast="$((${#_ble_edit_isearch_arr[@]}-1))"
+  local ilast=$((${#_ble_edit_isearch_arr[@]}-1))
   if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
     unset "_ble_edit_isearch_arr[$ilast]"
     return
   fi
 
   local oind; ble-edit/history/getindex -v oind
-  local obeg="$_ble_edit_ind" oend="$_ble_edit_mark" tmp
+  local obeg=$_ble_edit_ind oend=$_ble_edit_mark tmp
   ((obeg<=oend||(tmp=obeg,obeg=oend,oend=tmp)))
-  local oneedle="$_ble_edit_isearch_str"
-  local ohash="$obeg:$oend:$oneedle"
+  local oneedle=$_ble_edit_isearch_str
+  local ohash=$obeg:$oend:$oneedle
 
   # [... A | B] -> B と来た時 (何もしない) [... A | B] になる。
   [[ $ind == "$oind" && $hash == "$ohash" ]] && return
@@ -4778,17 +4778,16 @@ function ble-edit/isearch/.push-isearch-array {
   ble/array#push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
 }
 function ble-edit/isearch/.goto-match {
-  local ind="$1" beg="$2" end="$3" needle="$4"
+  local ind=$1 beg=$2 end=$3 needle=$4
   ((beg==end&&(beg=end=-1)))
 
   # 検索履歴に待避 (変数 ind beg end needle 使用)
   ble-edit/isearch/.push-isearch-array
 
   # 状態を更新
-  _ble_edit_isearch_str="$needle"
+  _ble_edit_isearch_str=$needle
   local oind; ble-edit/history/getindex -v oind
-  [[ $oind != $ind ]] &&
-    ble-edit/history/goto "$ind"
+  ((oind!=ind)) && ble-edit/history/goto "$ind"
   ble-edit/isearch/.set-region "$beg" "$end"
 
   # isearch 表示
@@ -5029,7 +5028,7 @@ function ble-edit/isearch/backward-search-history {
 
 ## 関数 ble-edit/isearch/next.fib needle isAdd
 function ble-edit/isearch/next.fib {
-  local needle="${1-$_ble_edit_isearch_str}" isAdd="$2"
+  local needle=${1-$_ble_edit_isearch_str} isAdd=$2
   local ind; ble-edit/history/getindex -v ind
 
   local beg= end= search_opts=$_ble_edit_isearch_dir
@@ -5476,7 +5475,7 @@ function ble/widget/command-help/.type {
     eval "$(ble/widget/command-help/.type/.resolve-alias "$literal" "$command")"
   fi
 
-  if [[ $type == keyword && $command != $literal ]]; then
+  if [[ $type == keyword && $command != "$literal" ]]; then
     if [[ $command == %* ]] && jobs -- "$command" &>/dev/null; then
       type=jobs
     elif ble/util/isfunction "$command"; then
@@ -5821,13 +5820,13 @@ function ble/widget/.SHELL_COMMAND {
 ## 関数 ble/widget/.EDIT_COMMAND command
 ##   ble-bind -xf で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND {
-  local READLINE_LINE="$_ble_edit_str"
-  local READLINE_POINT="$_ble_edit_ind"
+  local READLINE_LINE=$_ble_edit_str
+  local READLINE_POINT=$_ble_edit_ind
   eval "$command" || return 1
 
-  [[ $READLINE_LINE != $_ble_edit_str ]] &&
+  [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
-  [[ $READLINE_POINT != $_ble_edit_ind ]] &&
+  ((READLINE_POINT!=_ble_edit_ind)) &&
     ble/widget/.goto-char "$READLINE_POINT"
 }
 

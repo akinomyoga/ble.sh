@@ -54,10 +54,11 @@ function measure2 {
 #------------------------------------------------------------------------------
 # 3 実は代入は算術式の外でやった方が速かったりするのか?
 #
-# →算術式の中でやった方が速い。
+# * 算術式の中でやった方が速い。
+#   これは実のところ bash の構文解析&評価が、
+#   算術式の中と外でどちらの方が速いのかという競争である。
 #
-# これは実のところ bash の構文解析&評価が、
-# 算術式の中と外でどちらの方が速いのかという競争である。
+# * 流石に直接代入する場合には変数代入の方が速い。
 #
 
 function measure3 {
@@ -67,12 +68,19 @@ function measure3 {
   function assign.c1 () { x=0; ((x+=a*2+b*3-c*4)); }
   function assign.c2 () { x=0; x=$((x+a*2+b*3-c*4)); }
 
-  ble-measure 'assign.d1' #  22.10 usec/eval
-  ble-measure 'assign.d2' #  23.20 usec/eval
-  ble-measure 'assign.c1' #  28.10 usec/eval
-  ble-measure 'assign.c2' #  29.40 usec/eval
+  ble-measure 'assign.d1' # 22.10 usec/eval
+  ble-measure 'assign.d2' # 23.20 usec/eval
+  ble-measure 'assign.c1' # 28.10 usec/eval
+  ble-measure 'assign.c2' # 29.40 usec/eval
+
+  function assign.a1 { ((x=a)); }
+  function assign.a2 { x=$a; }
+  function assign.a3 { x=$((a)); } # a に式が含まれている可能性がある時
+  ble-measure 'assign.a1' # 17.50 usec/eval
+  ble-measure 'assign.a2' # 16.20 usec/eval
+  ble-measure 'assign.a3' # 19.40 usec/eval
 }
-#measure3
+measure3
 
 #------------------------------------------------------------------------------
 # 4 変数代入で配列要素を読み出すのと、再帰算術式で読み出すのでどちらが速いか?
@@ -99,13 +107,26 @@ function measure4 {
 # 整数値が標準形 ($value が $((value)) と同じになる) のとき、
 # 意外なことに、算術式で比較した方が速い。
 #
-
+# 但し、2つの文字列の文字数比較では条件コマンドの方が微妙に速かった。
+#
 function measure5 {
   value=3
   function compare.1 () { [[ $value == 3 ]]; }
   function compare.2 () { ((value==3)); }
   ble-measure 'compare.1' # 17.40 usec/eval
   ble-measure 'compare.2' # 16.80 usec/eval
+
+  lhs=3 rhs=3
+  function compare.a1 () { [[ $lhs == "$rhs" ]]; }
+  function compare.a2 () { ((lhs==rhs)); }
+  ble-measure 'compare.a1' # 20.10 usec/eval
+  ble-measure 'compare.a2' # 17.60 usec/eval
+
+  atext=1234 btext=4321
+  function compare.b1 () { [[ ${#atext} == ${#btext} ]]; }
+  function compare.b2 () { ((${#atext}==${#btext})); }
+  ble-measure 'compare.b1' # 27.60 usec/eval
+  ble-measure 'compare.b2' # 27.90 usec/eval
 }
 #measure5
 
@@ -132,4 +153,4 @@ function measure6 {
   ble-measure 'cond-assign.b2' # 25.60 usec/eval
   ble-measure 'cond-assign.b3' # 25.60 usec/eval
 }
-measure6
+#measure6

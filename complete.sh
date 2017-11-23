@@ -345,7 +345,7 @@ function ble-complete/source/argument/.compgen {
   local cmd="${comp_words[0]}" compcmd= is_default_completion=
   if complete -p "$cmd" &>/dev/null; then
     compcmd="$cmd"
-  elif [[ ${cmd##*/} != $cmd ]] && complete -p "${cmd##*/}" &>/dev/null; then
+  elif [[ ${cmd##*/} != "$cmd" ]] && complete -p "${cmd##*/}" &>/dev/null; then
     compcmd="${cmd##*/}"
   elif complete -p -D &>/dev/null; then
     is_default_completion=1

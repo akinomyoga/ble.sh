@@ -749,14 +749,14 @@ function ble-syntax/parse/nest-reset-tprev {
 ## @var _tail_syntax_stat[i-i2] i2 以降の更新前状態
 ## @var _ble_syntax_stat[i]    新しい状態
 function ble-syntax/parse/nest-equals {
-  local parent_inest="$1"
+  local parent_inest=$1
   while :; do
     ((parent_inest<i1)) && return 0 # 変更していない範囲 または -1
     ((parent_inest<i2)) && return 1 # 変更によって消えた範囲
 
-    local _onest="${_tail_syntax_nest[parent_inest-i2]}"
-    local _nnest="${_ble_syntax_nest[parent_inest]}"
-    [[ $_onest != $_nnest ]] && return 1
+    local _onest=${_tail_syntax_nest[parent_inest-i2]}
+    local _nnest=${_ble_syntax_nest[parent_inest]}
+    [[ $_onest != "$_nnest" ]] && return 1
 
     local -a onest
     onest=($_onest)
@@ -3248,7 +3248,7 @@ function ble-syntax/parse {
 #%end
   for ((i=i1;i<iN;)); do
     ble-syntax/parse/generate-stat
-    if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == $_stat ]]; then
+    if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == "$_stat" ]]; then
       if ble-syntax/parse/nest-equals "$inest"; then
         # 前回の解析と同じ状態になった時 → 残りは前回の結果と同じ
         _ble_syntax_stat=("${_ble_syntax_stat[@]::i}" "${_tail_syntax_stat[@]:i-i2}")
@@ -3856,7 +3856,7 @@ function ble-syntax/highlight/cmdtype2 {
   local btype; ble/util/type btype "$cmd"
   ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
 
-  if [[ $type == $ATTR_CMD_ALIAS && $cmd != "$_0" ]]; then
+  if [[ $type == "$ATTR_CMD_ALIAS" && $cmd != "$_0" ]]; then
     # alias を \ で無効化している場合は
     # unalias して再度 check (2fork)
     type=$(
@@ -3864,7 +3864,7 @@ function ble-syntax/highlight/cmdtype2 {
       ble/util/type btype "$cmd"
       ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
       builtin echo -n "$type")
-  elif [[ $type == $ATTR_CMD_KEYWORD ]]; then
+  elif [[ $type == "$ATTR_CMD_KEYWORD" ]]; then
     # Note: 予約語 (keyword) の時は構文解析の時点で着色しているのでコマンドとしての着色は行わない。
     #   関数 ble-syntax/highlight/cmdtype が呼び出されたとすれば、コマンドとしての文脈である。
     #   予約語がコマンドとして取り扱われるのは、クォートされていたか変数代入やリダイレクトの後だった時。
@@ -3899,9 +3899,9 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bas
     local cmd="$1" _0="$2"
 
     # check cache
-    if [[ $_ble_syntax_highlight_filetype_version != $_ble_edit_LINENO ]]; then
+    if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
       _ble_syntax_highlight_filetype=()
-      _ble_syntax_highlight_filetype_version="$_ble_edit_LINENO"
+      ((_ble_syntax_highlight_filetype_version=_ble_edit_LINENO))
     fi
 
     type="${_ble_syntax_highlight_filetype[x$_0]}"
@@ -3917,9 +3917,9 @@ else
     local cmd="$1" _0="$2"
 
     # check cache
-    if [[ $_ble_syntax_highlight_filetype_version != $_ble_edit_LINENO ]]; then
+    if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
       _ble_syntax_highlight_filetype=()
-      _ble_syntax_highlight_filetype_version="$_ble_edit_LINENO"
+      ((_ble_syntax_highlight_filetype_version=_ble_edit_LINENO))
     fi
 
     local i iN

@@ -1652,7 +1652,7 @@ function ble/keymap:vi/mark/update-mark-history {
   local h; ble-edit/history/getindex -v h
   if [[ ! $_ble_keymap_vi_mark_hindex ]]; then
     _ble_keymap_vi_mark_hindex=$h
-  elif [[ $_ble_keymap_vi_mark_hindex != $h ]]; then
+  elif ((_ble_keymap_vi_mark_hindex!=h)); then
     local imark value
 
     # save
@@ -1835,7 +1835,7 @@ function ble/widget/vi-command/goto-global-mark.impl {
   ble/string#split data : "$value"
 
   # find a history entry by data[0]
-  if [[ $_ble_edit_history_ind != ${data[0]} ]]; then
+  if ((_ble_edit_history_ind!=data[0])); then
     if [[ $FLAG ]]; then
       ble/widget/vi-command/bell
       return 1
@@ -4928,7 +4928,7 @@ function ble/widget/vi_xmap/switch-visual-mode.impl {
     return 1
   fi
 
-  if [[ ${_ble_edit_mark_active%+} == $visual_type ]]; then
+  if [[ ${_ble_edit_mark_active%+} == "$visual_type" ]]; then
     ble/widget/vi_xmap/cancel
   else
     ble/keymap:vi/xmap/switch-type "$visual_type"
