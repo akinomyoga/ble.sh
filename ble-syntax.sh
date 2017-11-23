@@ -859,23 +859,32 @@ function ble-syntax:bash/cclass/update/reorder {
   eval "$1=\$a"
 }
 
-## @var[in] histc1 histc2 histc12
-## @var[in,out] _ble_syntax_bashc_seed
-## @var[in,out] _ble_syntax_bashc[]
+## 関数 ble-syntax:bash/cclass/update
+##
+##   @var[in] _ble_syntax_bash_histc12
+##   @var[in,out] _ble_syntax_bashc_seed
+##   @var[in,out] _ble_syntax_bashc[]
+##
+##   @exit 更新があった時に正常終了します。
+##     更新の必要がなかった時に 1 を返します。
+##
 function ble-syntax:bash/cclass/update {
-  local seed=$histc12
+  local seed=$_ble_syntax_bash_histc12
   shopt -q extglob && seed=${seed}x
-  [[ $seed == "$_ble_syntax_bashc_seed" ]] && return
+  [[ $seed == "$_ble_syntax_bashc_seed" ]] && return 1
   _ble_syntax_bashc_seed=$seed
 
   local key modified=
-  if [[ $histc12 == '!^' ]]; then
+  if [[ $_ble_syntax_bash_histc12 == '!^' ]]; then
     for key in "${!_ble_syntax_bashc_def[@]}"; do
       _ble_syntax_bashc[key]=${_ble_syntax_bashc_def[key]}
     done
     _ble_syntax_bashc_simple=$_ble_syntax_bashc_simple_def
   else
     modified=1
+
+    local histc1=${_ble_syntax_bash_histc12:0:1}
+    local histc2=${_ble_syntax_bash_histc12:1:1}
     for key in "${!_ble_syntax_bashc_fmt[@]}"; do
       local a=${_ble_syntax_bashc_fmt[key]}
       a=${a//@h/$histc1}
@@ -901,11 +910,12 @@ function ble-syntax:bash/cclass/update {
     done
     ble-syntax:bash/cclass/update/reorder _ble_syntax_bashc_simple
   fi
+  return 0
 }
 function ble-syntax:bash/cclass/initialize {
   local delimiters="$_ble_syntax_bash_IFS;|&()<>"
   local expansions="\$\"\`\\'"
-  local glob='[' # todo *?
+  local glob='[*?'
 
   # default values
   _ble_syntax_bashc_def=()
@@ -928,7 +938,8 @@ function ble-syntax:bash/cclass/initialize {
   _ble_syntax_bashc_simple_def="$delimiters$expansions^!"
   _ble_syntax_bashc_simple_fmt="$delimiters$expansions@q@h"
 
-  histc12='!^' ble-syntax:bash/cclass/update
+  _ble_syntax_bash_histc12='!^'
+  ble-syntax:bash/cclass/update
 }
 
 ble-syntax:bash/cclass/initialize
@@ -955,9 +966,9 @@ function ble-syntax:bash/initialize-ctx {
   ctx="$CTX_CMDX" # CTX_CMDX が ble-syntax:bash の最初の文脈
 }
 
-_ble_syntax_bash_histc12=
-_ble_syntax_bash_vars=(histc1 histc2 histc12 histstop)
-##   @var histc1
+## 関数 ble-syntax:bash/initialize-vars
+##   @var[in,out] _ble_syntax_bash_histc12
+##   @var[in,out] _ble_syntax_bash_histstop
 function ble-syntax:bash/initialize-vars {
   # シェル変数 histchars の解釈について
   #
@@ -971,25 +982,21 @@ function ble-syntax:bash/initialize-vars {
   #   に時刻を出力する時の区切り文字に使われる。
   #   ここでは関係ない。
   #
+  local histc12
   if [[ ${histchars+set} ]]; then
-    histc1=${histchars::1}
-    histc2=${histchars:1:1}
-    [[ $histc1 ]] || histc1='!'
-    [[ $histc2 ]] || histc2='^'
+    histc12=${histchars::2}
   else
-    histc1='!'
-    histc2='^'
+    histc12='!^'
   fi
+  _ble_syntax_bash_histc12=$histc12
 
-  histc12=$histc1$histc2
-  if [[ $histc12 != $_ble_syntax_bash_histc12 ]]; then
-    _ble_syntax_bash_histc12=$histc12
-    ble-syntax:bash/cclass/update
+  if ble-syntax:bash/cclass/update; then
     ble-syntax:bash/.update-rex_simple_word
   fi
 
-  histstop=$' \t\n='
+  local histstop=$' \t\n='
   shopt -q extglob && histstop="$histstop("
+  _ble_syntax_bash_histstop=$histstop
 }
 
 
@@ -1199,6 +1206,7 @@ function ble-syntax:bash/check-glob {
     fi
 
     # 履歴展開の解釈の方が強い
+    local histc1=${_ble_syntax_bash_histc12::1}
     [[ $histc1 && $tail == "$histc1"* ]] && return 1
 
     if [[ $tail == '['* ]]; then
@@ -1254,55 +1262,65 @@ _ble_syntax_rex_histexpand_mods=
 _ble_syntax_rex_histexpand_quicksub=
 function _ble_syntax_rex_histexpand.init {
   local spaces=$' \t\n' nl=$'\n'
-  local rex_event='-?[0-9]+|[!#]|[^-$^*%:'"$spaces"'=?!#;&|<>()]+|\?[^?'"$nl"']*\??'
-  _ble_syntax_rex_histexpand_event='^!('"$rex_event"')'
+  local rex_event='-?[0-9]+|[!#]|[^-$^*%:'$spaces'=?!#;&|<>()]+|\?[^?'$nl']*\??'
+  _ble_syntax_rex_histexpand_event='^!('$rex_event')'
 
   local rex_word1='([0-9]+|[$%^])'
-  local rex_wordsA=':('"$rex_word1"'?-'"$rex_word1"'?|\*|'"$rex_word1"'\*?)'
-  local rex_wordsB='([$%^]?-'"$rex_word1"'?|\*|[$^%][*-]?)'
-  _ble_syntax_rex_histexpand_word='('"$rex_wordsA|$rex_wordsB"')?'
+  local rex_wordsA=':('$rex_word1'?-'$rex_word1'?|\*|'$rex_word1'\*?)'
+  local rex_wordsB='([$%^]?-'$rex_word1'?|\*|[$^%][*-]?)'
+  _ble_syntax_rex_histexpand_word='('$rex_wordsA'|'$rex_wordsB')?'
 
   # ※本当は /s(.)([^\]|\\.)*?\1([^\]|\\.)*?\1/ 等としたいが *? は ERE にない。
   #   正しく対応しようと思ったら一回の正規表現でやろうとせずに繰り返し適用する?
   local rex_modifier=':[htrepqx&gG]|:s(/([^\/]|\\.)*){0,2}(/|$)'
-  _ble_syntax_rex_histexpand_mods='('"$rex_modifier"')*'
+  _ble_syntax_rex_histexpand_mods='('$rex_modifier')*'
 
   _ble_syntax_rex_histexpand_quicksub='\^([^^\]|\\.)*\^([^^\]|\\.)*\^'
 
   # for histchars
   _ble_syntax_rex_histexpand_quicksub_template='@A([^@C\]|\\.)*@A([^@C\]|\\.)*@A'
-  _ble_syntax_rex_histexpand_event_template='^@A('"$rex_event"'|@A)'
+  _ble_syntax_rex_histexpand_event_template='^@A('$rex_event'|@A)'
 }
+_ble_syntax_rex_histexpand.init
 
 ## 関数 ble-syntax:bash/histexpand/initialize-event
-##
+##   @var[out] rex_event
 function ble-syntax:bash/histexpand/initialize-event {
+  local histc1=${_ble_syntax_bash_histc12::1}
   if [[ $histc1 == '!' ]]; then
-    rex_event="$_ble_syntax_rex_histexpand_event"
+    rex_event=$_ble_syntax_rex_histexpand_event
   else
     local A="[$histc1]"
     [[ $histc1 == '^' ]] && A='\^'
-    rex_event="$_ble_syntax_rex_histexpand_event_template"
-    rex_event="${rex_event//@A/$A}"
+    rex_event=$_ble_syntax_rex_histexpand_event_template
+    rex_event=${rex_event//@A/$A}
   fi
 }
-
+## 関数 ble-syntax:bash/histexpand/initialize-quicksub
+##   @var[out] rex_quicksub
 function ble-syntax:bash/histexpand/initialize-quicksub {
+  local histc2=${_ble_syntax_bash_histc12:1:1}
   if [[ $histc2 == '^' ]]; then
-    rex_quicksub="$_ble_syntax_rex_histexpand_quicksub"
+    rex_quicksub=$_ble_syntax_rex_histexpand_quicksub
   else
-    rex_quicksub="$_ble_syntax_rex_histexpand_quicksub_template"
-    rex_quicksub="${rex_quicksub//@A/[$histc2]}"
-    rex_quicksub="${rex_quicksub//@C/$histc2}"
+    rex_quicksub=$_ble_syntax_rex_histexpand_quicksub_template
+    rex_quicksub=${rex_quicksub//@A/[$histc2]}
+    rex_quicksub=${rex_quicksub//@C/$histc2}
   fi
 }
-
-_ble_syntax_rex_histexpand.init
-
+## 関数 ble-syntax:bash/starts-with-histchars
+##   @var[in] tail
+function ble-syntax:bash/starts-with-histchars {
+  [[ $_ble_syntax_bash_histc12 && $tail == ["$_ble_syntax_bash_histc12"]* ]]
+}
+## 関数 ble-syntax:bash/check-history-expansion
+##   @var[in] i tail
 function ble-syntax:bash/check-history-expansion {
   [[ -o histexpand ]] || return 1
 
-  if [[ $histc1 && $tail == "$histc1"[^"$histstop"]* ]]; then
+  local histc1=${_ble_syntax_bash_histc12:0:1}
+  local histc2=${_ble_syntax_bash_histc12:1:1}
+  if [[ $histc1 && $tail == "$histc1"[^"$_ble_syntax_bash_histstop"]* ]]; then
 
     # "～" 文字列中では一致可能範囲を制限する。
     if ((ctx==CTX_QUOT)); then
@@ -1381,7 +1399,7 @@ function ble-syntax:bash/ctx-quot {
     return 0
   elif ble-syntax:bash/check-dollar; then
     return 0
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -1431,7 +1449,7 @@ function ble-syntax:bash/ctx-globpat {
     return 0
   elif ble-syntax:bash/check-glob; then
     return 0
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -1482,7 +1500,7 @@ function ble-syntax:bash/ctx-bracket-expression {
     return 0
   elif ble-syntax:bash/check-glob; then
     return 0
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i++]=${force_attr:-ctx}))
     return 0
@@ -1552,7 +1570,7 @@ function ble-syntax:bash/ctx-pword {
     return 0
   elif ble-syntax:bash/check-dollar; then
     return 0
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -1719,7 +1737,7 @@ function ble-syntax:bash/ctx-expr {
     return 0
   elif ble-syntax:bash/check-dollar; then
     return 0
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     # 恐ろしい事に数式中でも履歴展開が有効…。
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
@@ -2303,7 +2321,7 @@ function ble-syntax:bash/ctx-command {
     flagConsume=1
   elif ble-syntax:bash/check-glob; then
     flagConsume=1
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     flagConsume=1
@@ -2508,7 +2526,7 @@ function ble-syntax:bash/ctx-values {
     return 0
   elif ble-syntax:bash/check-glob; then
     return 0
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -2592,7 +2610,7 @@ function ble-syntax:bash/ctx-conditions {
     return 0
   elif ble-syntax:bash/check-glob; then
     return 0
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i++]=ctx))
     return 0
@@ -2673,7 +2691,7 @@ function ble-syntax:bash/ctx-redirect {
     return 0
   elif ble-syntax:bash/check-glob; then
     return 0
-  elif [[ $histc12 && $tail == ["$histc12"]* ]]; then
+  elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
     return 0
@@ -2880,8 +2898,8 @@ function ble-syntax:bash/ctx-heredoc-content {
 _ble_syntax_vanishing_word_umin=-1
 _ble_syntax_vanishing_word_umax=-1
 function ble-syntax/vanishing-word/register {
-  local tree_array="$1" tofs="$2"
-  local -i beg="$3" end="$4" lbeg="$5" lend="$6"
+  local tree_array=$1 tofs=$2
+  local -i beg=$3 end=$4 lbeg=$5 lend=$6
   (((beg<=0)&&(beg=1)))
 
   local node i nofs
@@ -2889,8 +2907,8 @@ function ble-syntax/vanishing-word/register {
     builtin eval "node=(\${$tree_array[tofs+i-1]})"
     ((${#node[@]})) || continue
     for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
-      local wtype="${node[nofs]}" wlen="${node[nofs+1]}"
-      local wbeg="$((wlen<0?wlen:i-wlen))" wend="$i"
+      local wtype=${node[nofs]} wlen=${node[nofs+1]}
+      local wbeg=$((wlen<0?wlen:i-wlen)) wend=$i
 
       ((wbeg<lbeg&&(wbeg=lbeg),
         wend>lend&&(wend=lend)))
@@ -3064,10 +3082,10 @@ function ble-syntax/parse/shift.method2 {
   [[ $ble_debug ]] && _ble_syntax_stat_shift=()
 #%end
 
-  local iN="${#_ble_syntax_text}" # tree-enumerate 起点は (古い text の長さ) である
-  local _shift2_j="$iN" # proc1 に渡す変数
+  local iN=${#_ble_syntax_text} # tree-enumerate 起点は (古い text の長さ) である
+  local _shift2_j=$iN # proc1 に渡す変数
   ble-syntax/tree-enumerate ble-syntax/parse/shift.impl2/.proc1
-  local j="$_shift2_j"
+  local j=$_shift2_j
   ble-syntax/parse/shift.impl2/.shift-until "$j2" # 未処理部分
 }
 
@@ -3158,12 +3176,12 @@ function ble-syntax/parse/determine-parse-range {
 ##   今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
 ##
 function ble-syntax/parse {
-  local -r text="$1"
-  local beg="${2:-0}" end="${3:-${#text}}"
-  local -r end0="${4:-$end}"
+  local -r text=$1
+  local beg=${2:-0} end=${3:-${#text}}
+  local -r end0=${4:-$end}
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 
-  local -ir iN="${#text}" shift=end-end0
+  local -ir iN=${#text} shift=end-end0
 #%if !release
   if ! ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)); then
     ble-stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
@@ -3220,7 +3238,6 @@ function ble-syntax/parse {
   _ble_syntax_nest=("${_ble_syntax_nest[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 入れ子の親
   _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
 
-  local "${_ble_syntax_bash_vars[@]}"
   ble-syntax:"$_ble_syntax_lang"/initialize-vars
 
   # 解析
