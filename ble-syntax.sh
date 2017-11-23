@@ -543,7 +543,7 @@ function ble-syntax/parse/nest-equals {
 
     local _onest="${_tail_syntax_nest[parent_inest-i2]}"
     local _nnest="${_ble_syntax_nest[parent_inest]}"
-    [[ $_onest != $_nnest ]] && return 1
+    [[ $_onest != "$_nnest" ]] && return 1
 
     local -a onest
     onest=($_onest)
@@ -708,7 +708,7 @@ function ble-syntax:bash/initialize-vars {
   fi
 
   histc12="$histc1$histc2"
-  if [[ $histc12 != $_ble_syntax_bash_histc12 ]]; then
+  if [[ $histc12 != "$_ble_syntax_bash_histc12" ]]; then
     _ble_syntax_bash_histc12="$histc12"
     ble-syntax:bash/.update-_ble_syntax_bashc
     ble-syntax:bash/.update-rex_simple_word
@@ -1951,7 +1951,7 @@ function ble-syntax/parse {
   local i _stat
   for ((i=i1;i<iN;)); do
     ble-syntax/parse/generate-stat
-    if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == $_stat ]]; then
+    if ((i>=i2)) && [[ ${_tail_syntax_stat[i-i2]} == "$_stat" ]]; then
       if ble-syntax/parse/nest-equals "$inest"; then
         # 前回の解析と同じ状態になった時 → 残りは前回の結果と同じ
         _ble_syntax_stat=("${_ble_syntax_stat[@]::i}" "${_tail_syntax_stat[@]:i-i2}")
@@ -2405,7 +2405,7 @@ function ble-syntax/highlight/cmdtype2 {
   local cmd="$1" _0="$2"
   local btype; ble/util/type btype "$cmd"
   ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
-  if [[ $type == $ATTR_CMD_ALIAS && "$cmd" != "$_0" ]]; then
+  if [[ $type == "$ATTR_CMD_ALIAS" && "$cmd" != "$_0" ]]; then
     # alias を \ で無効化している場合
     # → unalias して再度 check (2fork)
     type=$(
@@ -2413,7 +2413,7 @@ function ble-syntax/highlight/cmdtype2 {
       ble/util/type btype "$cmd"
       ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
       builtin echo -n "$type")
-  elif [[ $type = $ATTR_CMD_KEYWORD && "$cmd" != "$_0" ]]; then
+  elif [[ $type == "$ATTR_CMD_KEYWORD" && "$cmd" != "$_0" ]]; then
     # keyword (time do if function else elif fi の類) を \ で無効化している場合
     # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec
     if [[ ! ${cmd##%*} ]] && jobs "$cmd" &>/dev/null; then
@@ -2441,7 +2441,7 @@ if ((_ble_bash>=40000)); then
     local cmd="$1" _0="$2"
 
     # check cache
-    if [[ $_ble_syntax_highlight_filetype_version != $_ble_edit_LINENO ]]; then
+    if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
       _ble_syntax_highlight_filetype=()
       _ble_syntax_highlight_filetype_version="$_ble_edit_LINENO"
     fi
@@ -2459,7 +2459,7 @@ else
     local cmd="$1" _0="$2"
 
     # check cache
-    if [[ $_ble_syntax_highlight_filetype_version != $_ble_edit_LINENO ]]; then
+    if ((_ble_syntax_highlight_filetype_version!=_ble_edit_LINENO)); then
       _ble_syntax_highlight_filetype=()
       _ble_syntax_highlight_filetype_version="$_ble_edit_LINENO"
     fi

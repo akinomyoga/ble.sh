@@ -179,7 +179,7 @@ function ble/string#common-prefix {
   local a="$1" b="$2"
   ((${#a}>${#b})) && local a="$b" b="$a"
   b="${b::${#a}}"
-  if [[ $a == $b ]]; then
+  if [[ $a == "$b" ]]; then
     ret="$a"
     return
   fi
@@ -188,7 +188,7 @@ function ble/string#common-prefix {
   local l=0 u="${#a}" m
   while ((l+1<u)); do
     ((m=(l+u)/2))
-    if [[ ${a::m} == ${b::m} ]]; then
+    if [[ ${a::m} == "${b::m}" ]]; then
       ((l=m))
     else
       ((u=m))
@@ -201,7 +201,7 @@ function ble/string#common-suffix {
   local a="$1" b="$2"
   ((${#a}>${#b})) && local a="$b" b="$a"
   b="${b:${#b}-${#a}}"
-  if [[ $a == $b ]]; then
+  if [[ $a == "$b" ]]; then
     ret="$a"
     return
   fi
@@ -210,7 +210,7 @@ function ble/string#common-suffix {
   local l=0 u="${#a}" m
   while ((l+1<u)); do
     ((m=(l+u+1)/2))
-    if [[ ${a:m} == ${b:m} ]]; then
+    if [[ ${a:m} == "${b:m}" ]]; then
       ((u=m))
     else
       ((l=m))

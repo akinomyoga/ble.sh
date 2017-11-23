@@ -1213,7 +1213,7 @@ function .ble-line-text/update/position {
     fi
 
     # 後は同じなので計算を省略
-    ((i>=dend)) && [[ ${old_pos[i-dend]} == ${_ble_line_text_cache_pos[i]} ]] && break
+    ((i>=dend)) && [[ ${old_pos[i-dend]} == "${_ble_line_text_cache_pos[i]}" ]] && break
   done
 
   if ((i<iN)); then
@@ -1586,7 +1586,7 @@ function _ble_edit_str.reset {
 }
 function _ble_edit_str.reset-and-check-dirty {
   local str="$1"
-  [[ $_ble_edit_str == $str ]] && return
+  [[ $_ble_edit_str == "$str" ]] && return
 
   local ret pref suff
   ble/string#common-prefix "$_ble_edit_str" "$str"; pref="$ret"
@@ -2856,9 +2856,9 @@ function .ble-edit/exec:exec/isGlobalContext {
   # for ((i=offset;i<iN;i++)); do
   #   local func="${FUNCNAME[i]}"
   #   local path="${BASH_SOURCE[i]}"
-  #   if [[ $func = .ble-edit/exec:exec/eval && $path = $BASH_SOURCE ]]; then
+  #   if [[ $func == .ble-edit/exec:exec/eval && $path == "$BASH_SOURCE" ]]; then
   #     return 0
-  #   elif [[ $path != source && $path != $BASH_SOURCE ]]; then
+  #   elif [[ $path != source && $path != "$BASH_SOURCE" ]]; then
   #     # source ble.sh の中の declare が全て local になるので上だと駄目。
   #     # しかしそもそも二重にロードしても大丈夫な物かは謎。
   #     return 1
@@ -3202,9 +3202,9 @@ function ble-edit/bind/execute-edit-command {
   local READLINE_POINT="$_ble_edit_ind"
   eval "$command" || return 1
 
-  [[ $READLINE_LINE != $_ble_edit_str ]] &&
+  [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
-  [[ $READLINE_POINT != $_ble_edit_ind ]] &&
+  ((READLINE_POINT!=_ble_edit_ind)) &&
     .ble-edit.goto-char "$READLINE_POINT"
 }
 
@@ -3456,7 +3456,7 @@ function ble-edit+history-end {
 function ble-edit+history-expand-line {
   local hist_expanded
   ble-edit/hist_expanded.update "$_ble_edit_str" || return
-  [[ $_ble_edit_str == $hist_expanded ]] && return
+  [[ $_ble_edit_str == "$hist_expanded" ]] && return
 
   _ble_edit_str.reset "$hist_expanded"
   _ble_edit_ind="${#hist_expanded}"
@@ -3468,7 +3468,7 @@ function ble-edit+magic-space {
 
   local prevline="${_ble_edit_str::_ble_edit_ind}" hist_expanded
   ble-edit/hist_expanded.update "$prevline" || return
-  [[ $prevline == $hist_expanded ]] && return
+  [[ $prevline == "$hist_expanded" ]] && return
 
   _ble_edit_str.replace 0 _ble_edit_ind "$hist_expanded"
   _ble_edit_ind="${#hist_expanded}"
@@ -3558,7 +3558,7 @@ function ble-edit/isearch/.goto-match {
 
   # 状態を更新
   _ble_edit_isearch_str="$needle"
-  [[ $_ble_edit_history_ind != $ind ]] &&
+  ((_ble_edit_history_ind!=ind)) &&
     .ble-edit.history-goto "$ind"
   ble-edit/isearch/.set-region "$beg" "$end"
 
