@@ -43,7 +43,10 @@ CTX_CONDI       33
 CTX_CASE        34 # case パターン待ち
 CTX_PATN        30 # glob 通常文字
 ATTR_GLOB       31 # glob 特別文字
-CTX_BRAX        54 # (角括弧式) [...]
+CTX_BRAX        54 # [...] (角括弧式)
+ATTR_BRACE      55 # {...} (ブレース展開)
+CTX_BRACE1      56 # ブレース展開の中を読み取る文脈 ("," が現れる前)
+CTX_BRACE2      57 # ブレース展開の中を読み取る文脈 ("," が現れた後)
 
 # for var in ...
 CTX_FARGX1      16 # for の直後。直後が (( だったら CTX_CMDX と同じ扱い。(旧 CTX_CMDXF)

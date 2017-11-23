@@ -901,7 +901,9 @@ function ble-syntax:bash/cclass/update {
 
   if [[ $seed == *x ]]; then
     # extglob: ?() *() +() @() !()
-    _ble_syntax_bashc[CTX_ARGI]="${_ble_syntax_bashc[CTX_ARGI]}?*+@!"
+    local extglob='@+!' # *? は既に登録されている筈
+    _ble_syntax_bashc[CTX_ARGI]=${_ble_syntax_bashc[CTX_ARGI]}$extglob
+    _ble_syntax_bashc[CTX_PATN]=${_ble_syntax_bashc[CTX_PATN]}$extglob
   fi
 
   if [[ $modified ]]; then
@@ -912,24 +914,27 @@ function ble-syntax:bash/cclass/update {
   fi
   return 0
 }
+
+_ble_syntax_bashc_def=()
+_ble_syntax_bashc_fmt=()
+_ble_syntax_bashc_simple_def=
+_ble_syntax_bashc_simple_fmt=
 function ble-syntax:bash/cclass/initialize {
   local delimiters="$_ble_syntax_bash_IFS;|&()<>"
   local expansions="\$\"\`\\'"
   local glob='[*?'
 
   # default values
-  _ble_syntax_bashc_def=()
-  _ble_syntax_bashc_def[CTX_ARGI]="$delimiters$expansions$glob^!"
-  _ble_syntax_bashc_def[CTX_PATN]="$expansions$glob(|)<>?*@+!" # <> はプロセス置換のため。
+  _ble_syntax_bashc_def[CTX_ARGI]="$delimiters$expansions$glob{^!"
+  _ble_syntax_bashc_def[CTX_PATN]="$expansions$glob(|)<>{!" # <> はプロセス置換のため。
   _ble_syntax_bashc_def[CTX_QUOT]="\$\"\`\\!"         # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bashc_def[CTX_EXPR]="][}()$expansions!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
   _ble_syntax_bashc_def[CTX_PWORD]="}$expansions!"    # パラメータ展開 ${～}
   _ble_syntax_bashc_def[CTX_RDRH]="$delimiters$expansions"
 
   # templates
-  _ble_syntax_bashc_fmt=()
-  _ble_syntax_bashc_fmt[CTX_ARGI]="$delimiters$expansions$glob@q@h"
-  _ble_syntax_bashc_fmt[CTX_PATN]="$expansions$glob(|)<>?*@+!@h"
+  _ble_syntax_bashc_fmt[CTX_ARGI]="$delimiters$expansions$glob{@q@h"
+  _ble_syntax_bashc_fmt[CTX_PATN]="$expansions$glob(|)<>{@h"
   _ble_syntax_bashc_fmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bashc_fmt[CTX_EXPR]="][}()$expansions@h"
   _ble_syntax_bashc_fmt[CTX_PWORD]="}$expansions@h"
@@ -1256,14 +1261,16 @@ function ble-syntax:bash/check-glob {
   return 1
 }
 
-_ble_syntax_rex_histexpand_event=
 _ble_syntax_rex_histexpand_word=
 _ble_syntax_rex_histexpand_mods=
-_ble_syntax_rex_histexpand_quicksub=
-function _ble_syntax_rex_histexpand.init {
+_ble_syntax_rex_histexpand_event_default=
+_ble_syntax_rex_histexpand_quicksub_default=
+_ble_syntax_rex_histexpand_event_template=
+_ble_syntax_rex_histexpand_quicksub_template=
+function ble-syntax:bash/check-history-expansion/.initialize {
   local spaces=$' \t\n' nl=$'\n'
   local rex_event='-?[0-9]+|[!#]|[^-$^*%:'$spaces'=?!#;&|<>()]+|\?[^?'$nl']*\??'
-  _ble_syntax_rex_histexpand_event='^!('$rex_event')'
+  _ble_syntax_rex_histexpand_event_default='^!('$rex_event')'
 
   local rex_word1='([0-9]+|[$%^])'
   local rex_wordsA=':('$rex_word1'?-'$rex_word1'?|\*|'$rex_word1'\*?)'
@@ -1275,20 +1282,20 @@ function _ble_syntax_rex_histexpand.init {
   local rex_modifier=':[htrepqx&gG]|:s(/([^\/]|\\.)*){0,2}(/|$)'
   _ble_syntax_rex_histexpand_mods='('$rex_modifier')*'
 
-  _ble_syntax_rex_histexpand_quicksub='\^([^^\]|\\.)*\^([^^\]|\\.)*\^'
+  _ble_syntax_rex_histexpand_quicksub_default='\^([^^\]|\\.)*\^([^^\]|\\.)*\^'
 
   # for histchars
   _ble_syntax_rex_histexpand_quicksub_template='@A([^@C\]|\\.)*@A([^@C\]|\\.)*@A'
   _ble_syntax_rex_histexpand_event_template='^@A('$rex_event'|@A)'
 }
-_ble_syntax_rex_histexpand.init
+ble-syntax:bash/check-history-expansion/.initialize
 
-## 関数 ble-syntax:bash/histexpand/initialize-event
+## 関数 ble-syntax:bash/check-history-expansion/.initialize-event
 ##   @var[out] rex_event
-function ble-syntax:bash/histexpand/initialize-event {
+function ble-syntax:bash/check-history-expansion/.initialize-event {
   local histc1=${_ble_syntax_bash_histc12::1}
   if [[ $histc1 == '!' ]]; then
-    rex_event=$_ble_syntax_rex_histexpand_event
+    rex_event=$_ble_syntax_rex_histexpand_event_default
   else
     local A="[$histc1]"
     [[ $histc1 == '^' ]] && A='\^'
@@ -1296,22 +1303,17 @@ function ble-syntax:bash/histexpand/initialize-event {
     rex_event=${rex_event//@A/$A}
   fi
 }
-## 関数 ble-syntax:bash/histexpand/initialize-quicksub
+## 関数 ble-syntax:bash/check-history-expansion/.initialize-quicksub
 ##   @var[out] rex_quicksub
-function ble-syntax:bash/histexpand/initialize-quicksub {
+function ble-syntax:bash/check-history-expansion/.initialize-quicksub {
   local histc2=${_ble_syntax_bash_histc12:1:1}
   if [[ $histc2 == '^' ]]; then
-    rex_quicksub=$_ble_syntax_rex_histexpand_quicksub
+    rex_quicksub=$_ble_syntax_rex_histexpand_quicksub_default
   else
     rex_quicksub=$_ble_syntax_rex_histexpand_quicksub_template
     rex_quicksub=${rex_quicksub//@A/[$histc2]}
     rex_quicksub=${rex_quicksub//@C/$histc2}
   fi
-}
-## 関数 ble-syntax:bash/starts-with-histchars
-##   @var[in] tail
-function ble-syntax:bash/starts-with-histchars {
-  [[ $_ble_syntax_bash_histc12 && $tail == ["$_ble_syntax_bash_histc12"]* ]]
 }
 ## 関数 ble-syntax:bash/check-history-expansion
 ##   @var[in] i tail
@@ -1330,7 +1332,7 @@ function ble-syntax:bash/check-history-expansion {
 
     ((_ble_syntax_attr[i]=ATTR_HISTX))
     local rex_event
-    ble-syntax:bash/histexpand/initialize-event
+    ble-syntax:bash/check-history-expansion/.initialize-event
     if [[ $tail =~ $rex_event ]]; then
       ((i+=${#BASH_REMATCH}))
     elif [[ $tail == "$histc1"['-:0-9^$%*']* ]]; then
@@ -1356,7 +1358,7 @@ function ble-syntax:bash/check-history-expansion {
   elif ((i==0)) && [[ $histc2 && $tail == "$histc2"* ]]; then
     ((_ble_syntax_attr[i]=ATTR_HISTX))
     local rex_quicksub
-    ble-syntax:bash/histexpand/initialize-quicksub
+    ble-syntax:bash/check-history-expansion/.initialize-quicksub
     if [[ $tail =~ $rex_quicksub ]]; then
       ((i+=${#BASH_REMATCH}))
 
@@ -1377,7 +1379,11 @@ function ble-syntax:bash/check-history-expansion {
 
   return 1
 }
-
+## 関数 ble-syntax:bash/starts-with-histchars
+##   @var[in] tail
+function ble-syntax:bash/starts-with-histchars {
+  [[ $_ble_syntax_bash_histc12 && $tail == ["$_ble_syntax_bash_histc12"]* ]]
+}
 
 #------------------------------------------------------------------------------
 # 文脈: 各種文脈
@@ -1449,6 +1455,8 @@ function ble-syntax:bash/ctx-globpat {
     return 0
   elif ble-syntax:bash/check-glob; then
     return 0
+  elif ble-syntax:bash/check-brace-expansion; then
+    return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
@@ -1464,7 +1472,7 @@ _BLE_SYNTAX_FEND[CTX_BRAX]=ble-syntax:bash/ctx-bracket-expression.end
 function ble-syntax:bash/ctx-bracket-expression {
   local nctx; ble-syntax/parse/nest-ctx
   if ((nctx==CTX_PATN)); then
-    chars=${_ble_syntax_bashc[CTX_PATN]}
+    local chars=${_ble_syntax_bashc[CTX_PATN]}
   else
     # 以下の文脈では ctx-command と同様の処理で問題ない。
     #
@@ -1476,7 +1484,7 @@ function ble-syntax:bash/ctx-bracket-expression {
     #     が単語中に許されるが、この例外は [...] を含む単語には当てはまらない。
     #
     # is-delimiters の時に [... は其処で不完全終端する。
-    chars=${_ble_syntax_bashc[CTX_ARGI]}
+    local chars=${_ble_syntax_bashc[CTX_ARGI]}
   fi
   chars="]${chars#']'}"
 
@@ -1499,6 +1507,8 @@ function ble-syntax:bash/ctx-bracket-expression {
   elif ble-syntax:bash/check-dollar; then
     return 0
   elif ble-syntax:bash/check-glob; then
+    return 0
+  elif ble-syntax:bash/check-brace-expansion; then
     return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
@@ -1526,13 +1536,12 @@ function ble-syntax:bash/ctx-bracket-expression.end {
 
   if [[ $is_end ]]; then
     ble-syntax/parse/nest-pop
-    [[ ${_BLE_SYNTAX_FEND[ctx]} ]] && "${_BLE_SYNTAX_FEND[ctx]}"
+    ble-syntax/parse/check-end
     return
   fi
 
   return 0
 }
-
 
 _BLE_SYNTAX_FCTX[CTX_PARAM]=ble-syntax:bash/ctx-param
 _BLE_SYNTAX_FCTX[CTX_PWORD]=ble-syntax:bash/ctx-pword
@@ -1748,6 +1757,153 @@ function ble-syntax:bash/ctx-expr {
 }
 
 #------------------------------------------------------------------------------
+# ブレース展開
+
+
+## CTX_CONDI 及び CTX_RDRS の時は不活性化したブレース展開として振る舞う
+## CTX_RDRF 及び CTX_RDRS の時は複数語に展開されるブレース展開はエラーなので、
+## nest-push して解析だけ行いブレース展開であるということが確定した時点でエラーを設定する。 
+
+function ble-syntax:bash/check-brace-expansion {
+  [[ $tail == '{'* ]] || return 1
+
+  local rex='^\{[0-9a-zA-Z.]*(\}?)'
+  [[ $tail =~ $rex ]]
+  local str=$BASH_REMATCH
+
+  local force_attr= inactive=
+
+  # 特定の文脈では完全に不活性
+  # Note: {fd}> リダイレクトの先読みに合わせて、
+  #   不活性であっても一気に読み取る必要がある。
+  #   cf ble-syntax:bash/starts-with-delimiter-or-redirect
+  if ((ctx==CTX_CONDI||ctx==CTX_RDRS||ctx==CTX_VRHS)); then
+    inactive=1
+  elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
+    local ntype; ble-syntax/parse/nest-type -v ntype
+    if [[ $ntype == glob_attr=* ]]; then
+      force_attr=${ntype#*=}
+      (((force_attr==CTX_RDRS||force_attr==CTX_VRHS)&&(inactive=1)))
+    elif ((ctx==CTX_BRAX)); then
+      local nctx; ble-syntax/parse/nest-ctx
+      ((nctx==CTX_CONDI&&(inactive=1)))
+    fi
+  elif ((ctx==CTX_BRACE1||ctx==CTX_BRACE2)); then
+    local ntype; ble-syntax/parse/nest-type -v ntype
+    if [[ $ntype == glob_attr=* ]]; then
+      force_attr=${ntype#*=}
+    fi
+  fi
+
+  if [[ $inactive ]]; then
+    ((_ble_syntax_attr[i]=${force_attr:-ctx},i+=${#str}))
+    return 0
+  fi
+
+  # {a..b..c} の形式のブレース展開
+  if rex='^\{(([0-9]+)\.\.[0-9]+|[a-zA-Z]\.\.[a-zA-Z])(\.\.[0-9]+)?\}$'; [[ $str =~ $rex ]]; then
+    if [[ $force_attr ]]; then
+      ((_ble_syntax_attr[i]=force_attr,i+=${#str}))
+    else
+      local rematch1=${BASH_REMATCH[1]}
+      local rematch2=${BASH_REMATCH[2]}
+      local rematch3=${BASH_REMATCH[3]}
+      local len2=${#rematch2}; ((len2||(len2=1)))
+      local attr=$ATTR_BRACE
+      if ((ctx==CTX_RDRF||ctx==CTX_RDRD)); then
+        if [[ ${rematch1::len2} != "${rematch1:len2+2}" ]]; then
+          ((attr=ATTR_ERR))
+        fi
+      fi
+
+      ((_ble_syntax_attr[i++]=attr))
+      ((_ble_syntax_attr[i]=ctx,i+=len2,
+        _ble_syntax_attr[i]=ATTR_BRACE,i+=2,
+        _ble_syntax_attr[i]=ctx,i+=${#rematch1}-len2-2))
+      if [[ $rematch3 ]]; then
+        ((_ble_syntax_attr[i]=ATTR_BRACE,i+=2,
+          _ble_syntax_attr[i]=ctx,i+=${#rematch3}-2))
+      fi
+      ((_ble_syntax_attr[i++]=attr))
+    fi
+
+    return 0
+  fi
+
+  # それ以外
+  # Note: {aa},bb} は {"aa}","bb"} と解釈されるので、
+  #   ここでは終端の "}" の有無に拘らず nest-push する。
+  local ntype=
+  ((ctx==CTX_RDRF||ctx==CTX_RDRD)) && force_attr=$ctx
+  [[ $force_attr ]] && ntype="glob_attr=$force_attr"
+  ble-syntax/parse/nest-push "$CTX_BRACE1" "$ntype"
+  local len=$((${#str}-1))
+  ((_ble_syntax_attr[i++]=${force_attr:-ATTR_BRACE},
+    len&&(_ble_syntax_attr[i]=${force_attr:-ctx},i+=len)))
+
+  return 0
+}
+
+# 文脈 CTX_BRAX (brace expansion)
+_BLE_SYNTAX_FCTX[CTX_BRACE1]=ble-syntax:bash/ctx-brace-expansion
+_BLE_SYNTAX_FCTX[CTX_BRACE2]=ble-syntax:bash/ctx-brace-expansion
+_BLE_SYNTAX_FEND[CTX_BRACE1]=ble-syntax:bash/ctx-brace-expansion.end
+_BLE_SYNTAX_FEND[CTX_BRACE2]=ble-syntax:bash/ctx-brace-expansion.end
+function ble-syntax:bash/ctx-brace-expansion {
+  if [[ $tail == '}'* ]] && ((ctx==CTX_BRACE2)); then
+    local force_attr=
+    local ntype; ble-syntax/parse/nest-type -v ntype
+    [[ $ntype == glob_attr=* ]] && force_attr=$ATTR_ERR # ※${ntype#*=} ではなくエラー
+
+    ((_ble_syntax_attr[i++]=${force_attr:-ATTR_BRACE}))
+    ble-syntax/parse/nest-pop
+    return 0
+  elif [[ $tail == ','* ]]; then
+    local force_attr=
+    local ntype; ble-syntax/parse/nest-type -v ntype
+    [[ $ntype == glob_attr=* ]] && force_attr=${ntype#*=}
+
+    ((_ble_syntax_attr[i++]=${force_attr:-ATTR_BRACE}))
+    ((ctx=CTX_BRACE2))
+    return 0
+  fi
+
+  local chars=",${_ble_syntax_bashc[CTX_ARGI]}"
+  ((ctx==CTX_BRACE2)) && chars="}$chars"
+  ble-syntax:bash/cclass/update/reorder chars
+  if local rex='^([^'$chars']|\\.)+'; [[ $tail =~ $rex ]]; then
+    ((_ble_syntax_attr[i]=ctx,
+      i+=${#BASH_REMATCH}))
+    return 0
+  elif ble-syntax:bash/check-process-subst; then
+    return 0
+  elif ble-syntax:bash/check-quotes; then
+    return 0
+  elif ble-syntax:bash/check-dollar; then
+    return 0
+  elif ble-syntax:bash/check-glob; then
+    return 0
+  elif ble-syntax:bash/check-brace-expansion; then
+    return 0
+  elif ble-syntax:bash/starts-with-histchars; then
+    ble-syntax:bash/check-history-expansion ||
+      ((_ble_syntax_attr[i++]=ctx))
+    return 0
+  fi
+
+  return 1
+}
+function ble-syntax:bash/ctx-brace-expansion.end {
+  if ((i==${#text})) || ble-syntax:bash/check-word-end/is-delimiter; then
+    ble-syntax/parse/nest-pop
+    ble-syntax/parse/check-end
+    return
+  fi
+
+  return 0
+}
+
+#------------------------------------------------------------------------------
 # 文脈: コマンドライン
 
 _BLE_SYNTAX_FCTX[CTX_ARGX]=ble-syntax:bash/ctx-command
@@ -1793,6 +1949,14 @@ _BLE_SYNTAX_FEND[CTX_TARGI1]=ble-syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_TARGI2]=ble-syntax:bash/ctx-command/check-word-end
 
 ## 関数 ble-syntax:bash/starts-with-delimiter-or-redirect
+##
+##   空白類、コマンド区切り文字、またはリダイレクトかどうかを判定する。
+##   単語開始における 1>2 や {fd}>2 もリダイレクトと判定する。
+##
+##   Note: ここで "1>2" や "{fd}>" に一致しなかったとしても、通常の文脈で
+##   "{fd}" や "1" 等の列が一気に読み取られる限り先読みの問題は発生しないはず。
+##   ブレース展開の解析は "{fd}" が一気に読み取られる様に注意深く実装する。
+##
 function ble-syntax:bash/starts-with-delimiter-or-redirect {
   local delimiters=$_ble_syntax_bash_rex_delimiters
   local redirect=$_ble_syntax_bash_rex_redirect
@@ -2322,6 +2486,8 @@ function ble-syntax:bash/ctx-command {
     flagConsume=1
   elif ble-syntax:bash/check-glob; then
     flagConsume=1
+  elif ble-syntax:bash/check-brace-expansion; then
+    flagConsume=1
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
@@ -2527,6 +2693,8 @@ function ble-syntax:bash/ctx-values {
     return 0
   elif ble-syntax:bash/check-glob; then
     return 0
+  elif ble-syntax:bash/check-brace-expansion; then
+    return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
@@ -2609,6 +2777,8 @@ function ble-syntax:bash/ctx-conditions {
     return 0
   elif ble-syntax:bash/check-glob; then
     return 0
+  elif ble-syntax:bash/check-brace-expansion; then
+    return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i++]=ctx))
@@ -2689,6 +2859,8 @@ function ble-syntax:bash/ctx-redirect {
   elif ble-syntax:bash/check-dollar; then
     return 0
   elif ble-syntax:bash/check-glob; then
+    return 0
+  elif ble-syntax:bash/check-brace-expansion; then
     return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
@@ -3145,6 +3317,10 @@ function ble-syntax/parse/determine-parse-range {
 #%end
 }
 
+function ble-syntax/parse/check-end {
+  [[ ${_BLE_SYNTAX_FEND[ctx]} ]] && "${_BLE_SYNTAX_FEND[ctx]}"
+}
+
 ## 関数 ble-syntax/parse text beg end
 ##
 ## @param[in]     text
@@ -3274,7 +3450,7 @@ function ble-syntax/parse {
     # nest-pop で CMDI/ARGI になる事もあるし、
     # また単語終端な文字でも FCTX が失敗する事もある (unrecognized な場合) ので、
     # (FCTX の中や直後ではなく) ここで単語終端をチェック
-    [[ ${_BLE_SYNTAX_FEND[ctx]} ]] && "${_BLE_SYNTAX_FEND[ctx]}"
+    ble-syntax/parse/check-end
   done
 #%if !release
   unset debug_p1
@@ -3718,6 +3894,7 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface syntax_function_name     fg=92,bold # fg=purple
   ble-color-defface syntax_comment           fg=gray
   ble-color-defface syntax_glob              fg=198,bold
+  ble-color-defface syntax_brace             fg=37,bold
   ble-color-defface syntax_document          fg=94
   ble-color-defface syntax_document_begin    fg=94,bold
 
@@ -3772,8 +3949,12 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_CASE     syntax_default
   _ble_syntax_attr2iface.define CTX_PATN     syntax_default
   _ble_syntax_attr2iface.define ATTR_GLOB    syntax_glob
+  _ble_syntax_attr2iface.define CTX_BRAX     syntax_default
+  _ble_syntax_attr2iface.define ATTR_BRACE   syntax_brace
+  _ble_syntax_attr2iface.define CTX_BRACE1   syntax_default
+  _ble_syntax_attr2iface.define CTX_BRACE2   syntax_default
 
-  # for var in ... / case arg in
+  # for var in ... / case arg in / time -p --
   _ble_syntax_attr2iface.define CTX_FARGX1   syntax_default
   _ble_syntax_attr2iface.define CTX_SARGX1   syntax_default
   _ble_syntax_attr2iface.define CTX_FARGX2   syntax_default
