@@ -5432,7 +5432,7 @@ function ble/widget/command-help/.type/.resolve-alias {
     unalias "$command"
     eval "alias_def=${alias_def#*=}" # remove quote
     literal=${alias_def%%[$' \t\n']*} command= type=
-    [[ $literal =~ $_ble_syntax_rex_simple_word ]] || break # Note: type=
+    ble-syntax:bash/simple-word/is-simple "$literal" || break # Note: type=
     eval "command=$literal"
     ble/util/type type "$command"
     [[ $type ]] || break # Note: type=
@@ -5466,7 +5466,7 @@ function ble/widget/command-help/.type/.resolve-alias {
 function ble/widget/command-help/.type {
   local literal=$1
   type= command=
-  [[ $literal =~ $_ble_syntax_rex_simple_word ]] || return 1
+  ble-syntax:bash/simple-word/is-simple "$literal" || return 1
   eval "command=$literal"
   ble/util/type type "$command"
 

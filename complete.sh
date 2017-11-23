@@ -521,7 +521,7 @@ function ble/widget/complete {
   local -a cand_show=() # 表示文字列 (～ 分かり易い文字列)
   local -a cand_data=() # 関数で使うデータ
 
-  local rex_raw_paramx='^('"$_ble_syntax_rex_simple_word_element"'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
+  local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
 
   if [[ $FIGNORE ]]; then
     local -a _fignore
@@ -536,7 +536,7 @@ function ble/widget/complete {
     local COMP1=${ctx[1]} COMP2=$index
     local COMPS=${text:COMP1:COMP2-COMP1}
     local COMPV _ble_complete_raw_paramx=
-    if [[ ! $COMPS || $COMPS =~ $_ble_syntax_rex_simple_word ]]; then
+    if [[ ! $COMPS ]] || ble-syntax:bash/simple-word/is-simple "$COMPS"; then
       builtin eval "COMPV=$COMPS"
       [[ $COMPS =~ $rex_raw_paramx ]] && _ble_complete_raw_paramx=1
     fi
