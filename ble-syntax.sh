@@ -924,8 +924,18 @@ function ble-syntax:bash/cclass/initialize {
   local expansions="\$\"\`\\'"
   local glob='[*?'
 
+  # _ble_syntax_bash_chars[CTX_ARGI] は以下で使われている
+  #   ctx-command (色々)
+  #   ctx-redirect (CTX_RDRF, CTX_RDRD, CTX_RDRS)
+  #   ctx-values (CTX_VALI)
+  #   ctx-conditions (CTX_CONDI)
+  # 更に以下でも使われている
+  #   ctx-bracket-expression
+  #   ctx-brace-expansion
+  #   check-tilde-expansion
+
   # default values
-  _ble_syntax_bash_charsDef[CTX_ARGI]="$delimiters$expansions$glob{^!"
+  _ble_syntax_bash_charsDef[CTX_ARGI]="$delimiters$expansions$glob{~^!"
   _ble_syntax_bash_charsDef[CTX_PATN]="$expansions$glob(|)<>{!" # <> はプロセス置換のため。
   _ble_syntax_bash_charsDef[CTX_QUOT]="\$\"\`\\!"         # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bash_charsDef[CTX_EXPR]="][}()$expansions!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
@@ -933,7 +943,7 @@ function ble-syntax:bash/cclass/initialize {
   _ble_syntax_bash_charsDef[CTX_RDRH]="$delimiters$expansions"
 
   # templates
-  _ble_syntax_bash_charsFmt[CTX_ARGI]="$delimiters$expansions$glob{@q@h"
+  _ble_syntax_bash_charsFmt[CTX_ARGI]="$delimiters$expansions$glob{~@q@h"
   _ble_syntax_bash_charsFmt[CTX_PATN]="$expansions$glob(|)<>{@h"
   _ble_syntax_bash_charsFmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bash_charsFmt[CTX_EXPR]="][}()$expansions@h"
@@ -1500,7 +1510,7 @@ function ble-syntax:bash/ctx-bracket-expression {
     #     が単語中に許されるが、この例外は [...] を含む単語には当てはまらない。
     #
     # is-delimiters の時に [... は其処で不完全終端する。
-    local chars=${_ble_syntax_bash_chars[CTX_ARGI]}
+    local chars=${_ble_syntax_bash_chars[CTX_ARGI]//'~'}
   fi
   chars="]${chars#']'}"
 
@@ -1775,9 +1785,8 @@ function ble-syntax:bash/ctx-expr {
 #------------------------------------------------------------------------------
 # ブレース展開
 
-
 ## CTX_CONDI 及び CTX_RDRS の時は不活性化したブレース展開として振る舞う
-## CTX_RDRF 及び CTX_RDRS の時は複数語に展開されるブレース展開はエラーなので、
+## CTX_RDRF 及び CTX_RDRD の時は複数語に展開されるブレース展開はエラーなので、
 ## nest-push して解析だけ行いブレース展開であるということが確定した時点でエラーを設定する。 
 
 function ble-syntax:bash/check-brace-expansion {
@@ -1884,7 +1893,7 @@ function ble-syntax:bash/ctx-brace-expansion {
     return 0
   fi
 
-  local chars=",${_ble_syntax_bash_chars[CTX_ARGI]}"
+  local chars=",${_ble_syntax_bash_chars[CTX_ARGI]//'~'}"
   ((ctx==CTX_BRACE2)) && chars="}$chars"
   ble-syntax:bash/cclass/update/reorder chars
   if local rex='^([^'$chars']|\\.)+'; [[ $tail =~ $rex ]]; then
@@ -1915,6 +1924,36 @@ function ble-syntax:bash/ctx-brace-expansion.end {
     ble-syntax/parse/check-end
     return
   fi
+
+  return 0
+}
+
+#------------------------------------------------------------------------------
+# チルダ展開
+
+# ${_ble_syntax_bash_chars[CTX_ARGI]} により読み取りを行っている
+# ctx-command ctx-values ctx-conditions ctx-redirect から呼び出される事を想定している。
+
+function ble-syntax:bash/check-tilde-expansion {
+  [[ $tail == '~'* ]] || return 1
+
+  if ((i==wbegin)) || { ((ctx==CTX_VRHS)) && [[ ${text:i-1:1} == [':='] ]]; }; then
+    local chars="${_ble_syntax_bash_chars[CTX_ARGI]}/:"
+    ble-syntax:bash/cclass/update/reorder chars
+    local delimiters="$_ble_syntax_bash_IFS;|&()<>"
+    local rex='^(~[^'$chars']*)([^'$delimiters'/:]?)'; [[ $tail =~ $rex ]]
+    local str=${BASH_REMATCH[1]}
+
+    local path attr=$ctx
+    eval "path=$str"
+    [[ ! ${BASH_REMATCH[2]} && $path != "$str" ]] && ((attr=ATTR_TILDE))
+    ((_ble_syntax_attr[i]=attr,i+=${#str}))
+  else
+    local chars=${_ble_syntax_bash_chars[CTX_ARGI]}
+    local rex='^~([^'$chars']|\\.)*'; [[ $tail =~ $rex ]]
+    ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
+  fi
+
 
   return 0
 }
@@ -2520,6 +2559,8 @@ function ble-syntax:bash/ctx-command {
     flagConsume=1
   elif ble-syntax:bash/check-brace-expansion; then
     flagConsume=1
+  elif ble-syntax:bash/check-tilde-expansion; then
+    flagConsume=1
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
@@ -2727,6 +2768,8 @@ function ble-syntax:bash/ctx-values {
     return 0
   elif ble-syntax:bash/check-brace-expansion; then
     return 0
+  elif ble-syntax:bash/check-tilde-expansion; then
+    return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
       ((_ble_syntax_attr[i]=ctx,i++))
@@ -2780,7 +2823,7 @@ function ble-syntax:bash/ctx-conditions {
       return 0
     else
       # [(<>;|&] など
-      ((_ble_syntax_attr[i++]=ATTR_CONDI))
+      ((_ble_syntax_attr[i++]=CTX_CONDI))
       return 0
     fi
   fi
@@ -2810,6 +2853,8 @@ function ble-syntax:bash/ctx-conditions {
   elif ble-syntax:bash/check-glob; then
     return 0
   elif ble-syntax:bash/check-brace-expansion; then
+    return 0
+  elif ble-syntax:bash/check-tilde-expansion; then
     return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
@@ -2893,6 +2938,8 @@ function ble-syntax:bash/ctx-redirect {
   elif ble-syntax:bash/check-glob; then
     return 0
   elif ble-syntax:bash/check-brace-expansion; then
+    return 0
+  elif ble-syntax:bash/check-tilde-expansion; then
     return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
@@ -3706,7 +3753,7 @@ function ble-syntax/completion-context/check-prefix {
   elif ((ctx==CTX_RDRF||ctx==CTX_VRHS)); then
     # CTX_RDRF: redirect の filename 部分
     # CTX_VRHS: VAR=value の value 部分
-    local sub=${text:i:index-i}
+    local sub=${text:i:index-i} # ■ここは i ではなく wbeg を使うべき
     if ble-syntax:bash/simple-word/is-simple "$sub"; then
       ble-syntax/completion-context/add file "$i"
     fi
@@ -3927,6 +3974,7 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface syntax_comment           fg=gray
   ble-color-defface syntax_glob              fg=198,bold
   ble-color-defface syntax_brace             fg=37,bold
+  ble-color-defface syntax_tilde             fg=navy,bold
   ble-color-defface syntax_document          fg=94
   ble-color-defface syntax_document_begin    fg=94,bold
 
@@ -3985,6 +4033,7 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define ATTR_BRACE   syntax_brace
   _ble_syntax_attr2iface.define CTX_BRACE1   syntax_default
   _ble_syntax_attr2iface.define CTX_BRACE2   syntax_default
+  _ble_syntax_attr2iface.define ATTR_TILDE   syntax_tilde
 
   # for var in ... / case arg in / time -p --
   _ble_syntax_attr2iface.define CTX_SARGX1   syntax_default
@@ -4582,6 +4631,16 @@ attrg[ATTR_DEF]=$'\e[m'
 attrg[ATTR_DEL]=$'\e[;1m'
 attrg[CTX_PARAM]=$'\e[;94m'
 attrg[CTX_PWORD]=$'\e[m'
+
+attrg[CTX_CASE]=$'\e[m'
+attrg[CTX_PATN]=$'\e[m'
+attrg[CTX_BRAX]=$'\e[m'
+attrg[CTX_BRACE1]=$'\e[m'
+attrg[CTX_BRACE2]=$'\e[m'
+attrg[ATTR_COMMENT]=$'\e[90m'
+attrg[ATTR_GLOB]=$'\e[35;1m'
+attrg[ATTR_BRACE]=$'\e[36;1m'
+attrg[ATTR_TILDE]=$'\e[34;1m'
 
 attrg[CTX_VALX]=$'\e[m'
 attrg[CTX_VALI]=$'\e[34m'
