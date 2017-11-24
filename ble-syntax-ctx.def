@@ -51,8 +51,10 @@ CTX_BRACE2      57 # ブレース展開の中を読み取る文脈 ("," が現�
 # for var in ...
 CTX_FARGX1      16 # for の直後。直後が (( だったら CTX_CMDX と同じ扱い。(旧 CTX_CMDXF)
 CTX_FARGI1      35
-CTX_FARGX2      36
+CTX_FARGX2      36 # in
 CTX_FARGI2      37
+CTX_FARGX3      58 # args...
+CTX_FARGI3      59
 
 # select name in ...
 CTX_SARGX1      48 # select の直後。for の処理 CTX_FARGI1 に合流する。

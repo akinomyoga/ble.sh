@@ -1931,13 +1931,16 @@ _BLE_SYNTAX_FCTX[CTX_ARGVI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FEND[CTX_ARGVI]=ble-syntax:bash/ctx-command/check-word-end
 
 # for var in ... / case arg in
-_BLE_SYNTAX_FCTX[CTX_FARGX1]=ble-syntax:bash/ctx-command-compound-expect
 _BLE_SYNTAX_FCTX[CTX_SARGX1]=ble-syntax:bash/ctx-command-compound-expect
+_BLE_SYNTAX_FCTX[CTX_FARGX1]=ble-syntax:bash/ctx-command-compound-expect
 _BLE_SYNTAX_FCTX[CTX_FARGX2]=ble-syntax:bash/ctx-command-compound-expect
+_BLE_SYNTAX_FCTX[CTX_FARGX3]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_FARGI1]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_FARGI2]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_FARGI3]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FEND[CTX_FARGI1]=ble-syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_FARGI2]=ble-syntax:bash/ctx-command/check-word-end
+_BLE_SYNTAX_FEND[CTX_FARGI3]=ble-syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FCTX[CTX_CARGX1]=ble-syntax:bash/ctx-command-compound-expect
 _BLE_SYNTAX_FCTX[CTX_CARGX2]=ble-syntax:bash/ctx-command-compound-expect
 _BLE_SYNTAX_FCTX[CTX_CARGI1]=ble-syntax:bash/ctx-command
@@ -2010,7 +2013,8 @@ _ble_syntax_bash_command_EndCtx[CTX_ARGI]=$CTX_ARGX
 _ble_syntax_bash_command_EndCtx[CTX_ARGVI]=$CTX_ARGVX
 _ble_syntax_bash_command_EndCtx[CTX_VRHS]=$CTX_CMDXV
 _ble_syntax_bash_command_EndCtx[CTX_FARGI1]=$CTX_FARGX2
-_ble_syntax_bash_command_EndCtx[CTX_FARGI2]=$CTX_ARGX
+_ble_syntax_bash_command_EndCtx[CTX_FARGI2]=$CTX_FARGX3
+_ble_syntax_bash_command_EndCtx[CTX_FARGI3]=$CTX_FARGX3
 _ble_syntax_bash_command_EndCtx[CTX_CARGI1]=$CTX_CARGX2
 _ble_syntax_bash_command_EndCtx[CTX_CARGI2]=$CTX_CASE
 _ble_syntax_bash_command_EndCtx[CTX_TARGI1]=$((_ble_bash>=40200?CTX_TARGX2:CTX_CMDXT)) #1
@@ -2032,6 +2036,7 @@ _ble_syntax_bash_command_EndWtype[CTX_CMDXV]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_FARGX1]=$CTX_ARGI
 _ble_syntax_bash_command_EndWtype[CTX_SARGX1]=$CTX_ARGI
 _ble_syntax_bash_command_EndWtype[CTX_FARGX2]=$CTX_FARGI2 # in
+_ble_syntax_bash_command_EndWtype[CTX_FARGX3]=$CTX_ARGI # in
 _ble_syntax_bash_command_EndWtype[CTX_CARGX1]=$CTX_ARGI
 _ble_syntax_bash_command_EndWtype[CTX_CARGX2]=$CTX_CARGI2 # in
 _ble_syntax_bash_command_EndWtype[CTX_TARGX1]=$CTX_ARGI # -p
@@ -2237,7 +2242,11 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     local spaces=$BASH_REMATCH
     if [[ $spaces == *$'\n'* ]]; then
       ble-syntax:bash/check-here-document-from "$spaces" && return 0
-      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDXT)) && ((ctx=CTX_CMDX))
+      if ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDXT)); then
+        ((ctx=CTX_CMDX))
+      elif ((ctx==CTX_FARGX3)); then
+        ((ctx=CTX_CMDXD))
+      fi
     fi
 
     # ctx はそのままで素通り
@@ -2260,6 +2269,8 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
         _ble_syntax_attr[i]=ATTR_ERR))
     elif ((ctx==CTX_CMDXE)); then
       ((ctx=CTX_ARGX0))
+    elif ((ctx==CTX_FARGX3)); then
+      ((_ble_syntax_attr[i]=ATTR_ERR))
     fi
 
     if [[ ${text:i+len} != [!$'\n|&()']* ]]; then
@@ -2288,12 +2299,15 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
   elif local rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
     # 制御演算子 && || | & ; |& ;; ;;& ;&
 
-    # time ; 及び ! ; に限っては、エラーにならずに直後に CTX_CMDXE になる (#D0592)
-    if ((ctx==CTX_CMDXT)) && [[ $BASH_REMATCH == ';' ]]; then
-      ((_ble_syntax_attr[i]=ATTR_DEL,
-        ctx=CTX_CMDXE,
-        i+=${#BASH_REMATCH}))
-      return 0
+    if [[ $BASH_REMATCH == ';' ]]; then
+      if ((ctx==CTX_FARGX3)); then
+        ((_ble_syntax_attr[i++]=ATTR_DEL,ctx=CTX_CMDXD))
+        return 0
+      elif ((ctx==CTX_CMDXT)); then
+        # time ; 及び ! ; に限っては、エラーにならずに直後に CTX_CMDXE になる (#D0592)
+        ((_ble_syntax_attr[i++]=ATTR_DEL,ctx=CTX_CMDXE))
+        return 0
+      fi
     fi
 
     # for bash-3.1 ${#arr[n]} bug
@@ -2367,6 +2381,7 @@ _ble_syntax_bash_command_BeginCtx[CTX_CMDXV]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_FARGX1]=$CTX_FARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_SARGX1]=$CTX_FARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_FARGX2]=$CTX_FARGI2
+_ble_syntax_bash_command_BeginCtx[CTX_FARGX3]=$CTX_FARGI3
 _ble_syntax_bash_command_BeginCtx[CTX_CARGX1]=$CTX_CARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_CARGX2]=$CTX_CARGI2
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX1]=$CTX_TARGI1
@@ -2378,6 +2393,7 @@ _ble_syntax_bash_command_isARGI[CTX_ARGVI]=1
 _ble_syntax_bash_command_isARGI[CTX_VRHS]=1
 _ble_syntax_bash_command_isARGI[CTX_FARGI1]=1
 _ble_syntax_bash_command_isARGI[CTX_FARGI2]=1
+_ble_syntax_bash_command_isARGI[CTX_FARGI3]=1
 _ble_syntax_bash_command_isARGI[CTX_CARGI1]=1
 _ble_syntax_bash_command_isARGI[CTX_CARGI2]=1
 _ble_syntax_bash_command_isARGI[CTX_TARGI1]=1
@@ -2458,7 +2474,7 @@ function ble-syntax:bash/ctx-command/.check-assign {
 function ble-syntax:bash/ctx-command {
 #%if !release
   if ble-syntax:bash/starts-with-delimiter-or-redirect; then
-    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
+    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_FARGX3||
         ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
     ble-syntax:bash/ctx-command/.check-delimiter-or-redirect; return
@@ -3563,11 +3579,11 @@ function ble-syntax/completion-context/check-prefix {
       fi
     fi
     ble-syntax/completion-context/check/parameter-expansion
-  elif ((ctx==CTX_ARGI||ctx==CTX_ARGVI||ctx==CTX_VALI||ctx==CTX_CONDI||ctx==CTX_CARGI1||ctx==CTX_FARGI1)); then
+  elif ((ctx==CTX_ARGI||ctx==CTX_FARGI3||ctx==CTX_ARGVI||ctx==CTX_FARGI1||ctx==CTX_VALI||ctx==CTX_CONDI||ctx==CTX_CARGI1)); then
     # CTX_ARGI  → 引数の続き
     if ((wlen>=0)); then
       local source=file
-      if ((ctx==CTX_ARGI)); then
+      if ((ctx==CTX_ARGI||ctx==CTX_FARGI3)); then
         source=argument
       elif ((ctx==CTX_ARGVI)); then
         source=variable:=
@@ -3652,9 +3668,9 @@ function ble-syntax/completion-context/check-prefix {
       [[ ${text:i:index-i} =~ $rex ]] &&
         ble-syntax/completion-context/add wordlist:-- "$i"
     fi
-  elif ((ctx==CTX_ARGX||ctx==CTX_ARGVX||ctx==CTX_CARGX1||ctx==CTX_VALX||ctx==CTX_CONDX||ctx==CTX_RDRS)); then
+  elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3||ctx==CTX_ARGVX||ctx==CTX_VALX||ctx==CTX_CONDX||ctx==CTX_RDRS)); then
     local source=file
-    if ((ctx==CTX_ARGX||ctx==CTX_CARGX1)); then
+    if ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
       source=argument
     elif ((ctx==CTX_ARGVX)); then
       source=variable:=
@@ -3711,7 +3727,7 @@ function ble-syntax/completion-context/check-here {
       ble-syntax/completion-context/add wordlist:'}:fi:done:esac:then:elif:else:do' "$index"
     elif ((ctx==CTX_CMDXD)); then
       ble-syntax/completion-context/add wordlist:';:{:do' "$index"
-    elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1)); then
+    elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==FARGX3)); then
       ble-syntax/completion-context/add argument "$index"
     elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
       ble-syntax/completion-context/add variable "$index"
@@ -3958,13 +3974,15 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_BRACE2   syntax_default
 
   # for var in ... / case arg in / time -p --
-  _ble_syntax_attr2iface.define CTX_FARGX1   syntax_default
   _ble_syntax_attr2iface.define CTX_SARGX1   syntax_default
+  _ble_syntax_attr2iface.define CTX_FARGX1   syntax_default
   _ble_syntax_attr2iface.define CTX_FARGX2   syntax_default
+  _ble_syntax_attr2iface.define CTX_FARGX3   syntax_default
   _ble_syntax_attr2iface.define CTX_CARGX1   syntax_default
   _ble_syntax_attr2iface.define CTX_CARGX2   syntax_default
   _ble_syntax_attr2iface.define CTX_FARGI1   syntax_varname
   _ble_syntax_attr2iface.define CTX_FARGI2   command_keyword
+  _ble_syntax_attr2iface.define CTX_FARGI3   syntax_default
   _ble_syntax_attr2iface.define CTX_CARGI1   syntax_default
   _ble_syntax_attr2iface.define CTX_CARGI2   command_keyword
 
@@ -4557,11 +4575,13 @@ attrg[CTX_VALX]=$'\e[m'
 attrg[CTX_VALI]=$'\e[34m'
 attrg[ATTR_CMD_KEYWORD]=$'\e[94m'
 
-attrg[CTX_FARGX1]=$'\e[m'
 attrg[CTX_SARGX1]=$'\e[m'
+attrg[CTX_FARGX1]=$'\e[m'
 attrg[CTX_FARGX2]=$'\e[m'
+attrg[CTX_FARGX3]=$'\e[m'
 attrg[CTX_FARGI1]=$'\e[;38;5;202m'
 attrg[CTX_FARGI2]=$'\e[;94m'
+attrg[CTX_FARGI3]=$'\e[m'
 attrg[CTX_CARGX1]=$'\e[m'
 attrg[CTX_CARGX2]=$'\e[m'
 attrg[CTX_CARGI1]=$'\e[m'

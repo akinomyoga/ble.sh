@@ -848,7 +848,7 @@ tech
 
 2017-10-01
 
-  * ble-syntax: case $x in (a b) : ;; esac のパターン "a b" はエラー
+  * syntax: case $x in (a b) : ;; esac のパターン "a b" はエラー
 
     どうやら一個の単語までしか駄目な様子?
 
@@ -1970,13 +1970,7 @@ tech
 
 2015-08-15
 
-  * ble-syntax.sh: CTX_CMDXC, CTX_CMDXF 等に於いて redirect は許可するべきでないのでは?
-    更に、CTX_CMDXC においては var=... も許可するべきではない。
-
-    また CTX_CMDX1 についても直前のコマンドによっては redirect は許可するべきでない?
-    (while, if, do, then, else, '(', time の直後では redirect も可能な様だ。)
-
-  * ble-syntax.sh: `function ...' において関数名の部分に使用した履歴展開を解釈する?
+  * syntax: `function ...' において関数名の部分に使用した履歴展開を解釈する?
     履歴展開だけを解釈する新しい文脈が必要になると思われる。
 
     然し乍ら、履歴展開の結果として複数の単語になる場合などを考えると、
@@ -2359,6 +2353,7 @@ tech
   - syntax: 変数代入の右辺にある不活性になった extglob の入れ子 `@(@())` も不活性にする `#D0613`
   - syntax: `shopt -u extglob` の時でも `*` や `?` を着色する `#D0616`
   - syntax: ブレース展開の着色に対応 `#D0622`
+  - syntax: `for var in args...` の `args` におけるリダイレクトの禁止 `#D0623`
 
   構文解析修正
   - syntax: `$({ echo; })` や `$(while false; do :; done)` において `}`, `done` 等の後にコマンドがないと構文エラーになっていたバグの修正 `#D0593`
@@ -2866,6 +2861,37 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2017-11-24
+
+  * 2015-08-15 syntax: CTX_CMDXC, CTX_CMDXF 等に於いて redirect は許可するべきでないのでは? [#D0623]
+    更に、CTX_CMDXC においては var=... も許可するべきではない。
+
+    また CTX_CMDX1 についても直前のコマンドによっては redirect は許可するべきでない?
+    (while, if, do, then, else, '(', time の直後では redirect も可能な様だ。)
+
+    2017-11-24 改めて一通り動作を確認する事にする。
+
+    | CTX_CMDX1 について調べた所、他に && などの直後が CTX_CMDX1 のようだが、これについても redirect は可能である。
+    | 結局、現状のコードでは CTX_CMDX1 の場合はいつでも redirect は可能に思われる。
+    |
+    | CTX_CMDXF は CTX_FARGX1 に改名した。CTX_FARGX1 では redirect はできない。
+    | CTX_FARGX2 でも redirect はできない。これらは大丈夫。
+    | しかし、CTX_FARGX2 から CTX_ARGI に変換しているが、
+    | bash は for a in aaa bbb > redirect; の形式を許していない。★これは修正が必要
+    |
+    | CTX_CMDXE は fi fi などの文脈であるが、
+    | この直後に > redirect がある事はいつでも許される。
+    | また redirect の後は CTX_ARGX0 になるという振る舞いも正しい。
+    |
+    | CTX_CMDXC は関数定義の始まる前の文脈であるが、ここでは redirect は使えない。
+    | この振る舞いについても ble.sh で試したところ正しい。
+    |
+    | CTX_CMDXD は for ((;;)) 直後の文脈である。
+    | これも現状の ble.sh の振る舞い通り redirect は使えない。
+
+    結局 for a in の後の引数の列でリダイレクトを使えないという事に対応すれば良い。
+    対応した。新しい文脈値 CTX_FARGX3, CTX_FARGI3 を追加した。
+
 2017-11-23
 
   * 2017-11-21 syntax: ブレース展開? [#D0622]
@@ -3068,7 +3094,7 @@ tech
     - CTX_BRAX によって不活性化した CTX_PATN からブレース展開を試みるとき
     CTX_BRACE1/CTX_BRACE2 から CTX_PATN/CTX_BRAX に入る時は特別な処理は何も必要ない。
 
-  * syntax:"{fd}>" 形式のリダイレクトで先読みに問題が生じる可能性? [無問題] [#D0621]
+  * syntax: "{fd}>" 形式のリダイレクトで先読みに問題が生じる可能性? [無問題] [#D0621]
 
     echo {f,d}> a.txt を echo {fd}> a.txt に書き換えるとどうなるのか。
     うーん。実はこれは問題にならない。何故なら、
