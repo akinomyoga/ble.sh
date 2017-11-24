@@ -965,10 +965,23 @@ function ble-syntax:bash/simple-word/update {
   _ble_syntax_bash_simple_rex_element='('$rex_letter'|\\.|'$rex_squot'|'$rex_dquot'|'$rex_param'|'$rex_param2')'
   _ble_syntax_bash_simple_rex_word='^'$_ble_syntax_bash_simple_rex_element'+$'
 }
+ble-syntax:bash/simple-word/update
+
 function ble-syntax:bash/simple-word/is-simple {
   [[ $1 =~ $_ble_syntax_bash_simple_rex_word ]]
 }
-ble-syntax:bash/simple-word/update
+function ble-syntax:bash/simple-word/eval-noglob {
+  eval "ret=$1"
+}
+function ble-syntax:bash/simple-word/eval {
+  if [[ $1 == ['[#']* ]]; then
+    # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
+    eval "ret=(''$1)"
+  else
+    # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
+    eval "ret=($1)"
+  fi
+}
 
 function ble-syntax:bash/initialize-ctx {
   ctx="$CTX_CMDX" # CTX_CMDX が ble-syntax:bash の最初の文脈
@@ -4214,18 +4227,17 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     # 実行は一切起こらないので一色で塗りつぶす。
     ((type=wtype))
   elif local wtxt=${text:wbeg:wlen}; ble-syntax:bash/simple-word/is-simple "$wtxt"; then
-
-    # 単語を展開
-    local value
-    if [[ $wtxt == ['[#']* ]]; then
-      # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
-      eval "value=(''$wtxt)"
+    local value ret
+    if ((wtype==CTX_RDRS)); then
+      ble-syntax:bash/simple-word/eval-noglob "$wtxt"; value=$ret
     else
-      # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
-      eval "value=($wtxt)"
+      ble-syntax:bash/simple-word/eval "$wtxt"; value=("${ret[@]}")
     fi
 
-    if ((wtype==CTX_CMDI)); then
+    if (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
+      # 複数語に展開されたら駄目
+      type=$ATTR_ERR
+    elif ((wtype==CTX_CMDI)); then
       if ((_ble_syntax_attr[wbeg]!=ATTR_CMD_KEYWORD&&_ble_syntax_attr[wbeg]!=ATTR_DEL)); then
         ble-syntax/highlight/cmdtype "$value" "$wtxt"
       fi
