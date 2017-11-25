@@ -5906,7 +5906,7 @@ function ble-decode-keymap:vi_cmap/define {
   ble-bind -f 'S-C-b'    '@marked backward-char'
   ble-bind -f 'S-right'  '@marked forward-char'
   ble-bind -f 'S-left'   '@marked backward-char'
-  ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
+  ble-bind -f 'C-d'      'delete-region-or forward-char'
   ble-bind -f 'C-h'      'delete-region-or backward-char'
   ble-bind -f 'delete'   'delete-region-or forward-char'
   ble-bind -f 'DEL'      'delete-region-or backward-char'
