@@ -528,7 +528,7 @@ function ble/widget/complete {
     ble-complete/.fignore/prepare
   fi
 
-  local ctx source
+  local ctx source ret
   for ctx in "${context[@]}"; do
     # initialize completion range
     ctx=($ctx)
@@ -537,7 +537,7 @@ function ble/widget/complete {
     local COMPS=${text:COMP1:COMP2-COMP1}
     local COMPV _ble_complete_raw_paramx=
     if [[ ! $COMPS ]] || ble-syntax:bash/simple-word/is-simple "$COMPS"; then
-      builtin eval "COMPV=$COMPS"
+      ble-syntax:bash/simple-word/eval "$COMPS"; COMPV=$ret
       [[ $COMPS =~ $rex_raw_paramx ]] && _ble_complete_raw_paramx=1
     fi
     local COMP_PREFIX=

@@ -69,6 +69,7 @@ function ble/util/restore-arrs {
   for name; do eval "$name=(\"\${$prefix$name[@]}\")"; done
 }
 
+
 #
 # array and strings
 #
@@ -547,6 +548,79 @@ function ble/util/declare-print-definitions {
     '
   fi
 }
+## 関数 ble/util/print-global-definitions varnames...
+##
+##   @var[in] varnames
+##
+##   指定した変数のグローバル変数としての定義を出力します。
+##   現状では配列変数には対応していません。
+##
+##   制限: 途中に readonly なローカル変数があるとその変数の値を返す。
+##   しかし、そもそも readonly な変数には問題が多いので ble.sh では使わない。
+##
+##   制限: __ble_* という変数名は内部で使用するので、対応しません。
+##
+if ((_ble_bash>=40200)); then
+  # 注意: bash-4.2 にはバグがあって、グローバル変数が存在しない時に
+  #   declare -g -r var とすると、ローカルに新しく読み取り専用の var 変数が作られる。
+  #   現在の実装では問題にならない。
+  function ble/util/print-global-definitions {
+    (
+      __ble_error=
+      __ble_q="'" __ble_Q="'\''"
+      # 補完で 20 階層も関数呼び出しが重なることはなかろう
+      __ble_MaxLoop=20
+
+      for __ble_name; do
+        ((__ble_processed_$__ble_name)) && continue
+        ((__ble_processed_$__ble_name=1))
+        [[ $_ble_name == __ble_* ]] && continue
+
+        declare -g -r "$__ble_name"
+
+        for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
+          __ble_value=${!__ble_name}
+          unset "$__ble_name" || break
+        done 2>/dev/null
+
+        ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
+
+        echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+      done
+      
+      [[ ! $__ble_error ]]
+    )
+  }
+else
+  # 制限: グローバル変数が定義されずローカル変数が定義されているとき、
+  #   ローカル変数の値が取得されてしまう。
+  function ble/util/print-global-definitions {
+    (
+      __ble_error=
+      __ble_q="'" __ble_Q="'\''"
+      __ble_MaxLoop=20
+
+      for __ble_name; do
+        ((__ble_processed_$__ble_name)) && continue
+        ((__ble_processed_$__ble_name=1))
+        [[ $_ble_name == __ble_* ]] && continue
+
+        __ble_value= __ble_found=0
+        for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
+          [[ ${!__ble_name+set} ]] && __ble_value=${!__ble_name} __ble_found=1
+          unset "$__ble_name" 2>/dev/null
+        done
+
+        ((__ble_found)) || __ble_error= __ble_value= # not found
+
+        echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+      done
+      
+      [[ ! $__ble_error ]]
+    )
+  }
+fi
+
 
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'

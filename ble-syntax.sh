@@ -965,32 +965,79 @@ ble-syntax:bash/cclass/initialize
 ##   histchars に依存しているので変化があった時に更新する。
 _ble_syntax_bash_simple_rex_word=
 _ble_syntax_bash_simple_rex_element=
+_ble_syntax_bash_simple_rex_letter=
+_ble_syntax_bash_simple_rex_quote=
+_ble_syntax_bash_simple_rex_param=
 function ble-syntax:bash/simple-word/update {
   local quot="'"
   local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
   local rex_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)*"'
-  local rex_param='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
+  local rex_param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
   local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
   local rex_letter='[^'${_ble_syntax_bashc_simple}']'
-  _ble_syntax_bash_simple_rex_element='('$rex_letter'|\\.|'$rex_squot'|'$rex_dquot'|'$rex_param'|'$rex_param2')'
+  _ble_syntax_bash_simple_rex_element='(\\.|'$rex_squot'|'$rex_dquot'|'$rex_param1'|'$rex_param2'|'$rex_letter')'
   _ble_syntax_bash_simple_rex_word='^'$_ble_syntax_bash_simple_rex_element'+$'
+  _ble_syntax_bash_simple_rex_letter=$rex_letter
+  _ble_syntax_bash_simple_rex_quote='\\.|'$rex_squot'|'$rex_dquot
+  _ble_syntax_bash_simple_rex_param=$rex_param1'|'$rex_param2
 }
 ble-syntax:bash/simple-word/update
 
 function ble-syntax:bash/simple-word/is-simple {
   [[ $1 =~ $_ble_syntax_bash_simple_rex_word ]]
 }
-function ble-syntax:bash/simple-word/eval-noglob {
-  eval "ret=$1"
+function ble-syntax:bash/simple-word/extract-parameter-names {
+  ret=()
+  local word=$1
+  local rex1='^('$_ble_syntax_bash_simple_rex_quote'|'$_ble_syntax_bash_simple_rex_letter')+'
+  local rex2='^'$_ble_syntax_bash_simple_rex_param
+  while [[ $word ]]; do
+    [[ $word =~ $rex1 ]] && word=${word:${#BASH_REMATCH}}
+    [[ $word =~ $rex2 ]] || break
+    word=${word:${#BASH_REMATCH}}
+    local var=${BASH_REMATCH[1]}${BASH_REMATCH[2]}
+    [[ $var == [_a-zA-Z]* ]] && ble/array#push ret "$var"
+  done
 }
-function ble-syntax:bash/simple-word/eval {
+function ble-syntax:bash/simple-word/eval-noglob.impl {
+  # グローバル変数の復元
+  local -a ret
+  ble-syntax:bash/simple-word/extract-parameter-names "$1"
+  if ((${ret[@]})); then
+    local __ble_defs
+    ble/util/assign __ble_defs 'ble/util/print-global-definitions "${ret[@]}"'
+    builtin eval -- "$__ble_defs"
+  fi
+
+  builtin eval -- "__ble_ret=$1"
+}
+function ble-syntax:bash/simple-word/eval-noglob {
+  local __ble_ret
+  ble-syntax:bash/simple-word/eval-noglob.impl "$1"
+  ret=$__ble_ret
+}
+function ble-syntax:bash/simple-word/eval.impl {
+  # グローバル変数の復元
+  local -a ret=()
+  ble-syntax:bash/simple-word/extract-parameter-names "$1"
+  if ((${#ret[@]})); then
+    local __ble_defs
+    ble/util/assign __ble_defs 'ble/util/print-global-definitions "${ret[@]}"'
+    builtin eval -- "$__ble_defs"
+  fi
+
   if [[ $1 == ['[#']* ]]; then
     # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
-    eval "ret=(''$1)"
+    builtin eval "__ble_ret=(''$1)"
   else
     # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
-    eval "ret=($1)"
+    builtin eval "__ble_ret=($1)"
   fi
+}
+function ble-syntax:bash/simple-word/eval {
+  local __ble_ret
+  ble-syntax:bash/simple-word/eval.impl "$1"
+  ret=$__ble_ret
 }
 
 function ble-syntax:bash/initialize-ctx {
@@ -3430,9 +3477,9 @@ function ble-syntax/parse/check-end {
 ##   今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
 ##
 function ble-syntax/parse {
-  local -r text=$1
+  local text=$1
   local beg=${2:-0} end=${3:-${#text}}
-  local -r end0=${4:-$end}
+  local end0=${4:-$end}
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 
   local -ir iN=${#text} shift=end-end0
@@ -3751,11 +3798,23 @@ function ble-syntax/completion-context/check-prefix {
     fi
     ble-syntax/completion-context/check/parameter-expansion
   elif ((ctx==CTX_RDRF||ctx==CTX_VRHS)); then
-    # CTX_RDRF: redirect の filename 部分
-    # CTX_VRHS: VAR=value の value 部分
-    local sub=${text:i:index-i} # ■ここは i ではなく wbeg を使うべき
-    if ble-syntax:bash/simple-word/is-simple "$sub"; then
-      ble-syntax/completion-context/add file "$i"
+    if ((ctx==CTX_VRHS)); then
+      # CTX_VRHS: VAR=value の value 部分
+      if ((wlen>=0)); then
+        # CTX_VRHS における単語は var= または var+= の形式をしている筈
+        local p=$wbeg
+        local rex='^[a-zA-Z0-9]+\+?='
+        [[ ${text:p:index-p} =~ $rex ]] && ((p+=${#BASH_REMATCH}))
+      else
+        local p=$i
+      fi
+    else
+      # CTX_RDRF: redirect の filename 部分
+      local p=$((wlen>=0?wbeg:i))
+    fi
+
+    if ble-syntax:bash/simple-word/is-simple "${text:p:index-p}"; then
+      ble-syntax/completion-context/add file "$p"
     fi
   elif ((ctx==CTX_QUOT)); then
     ble-syntax/completion-context/check/parameter-expansion
