@@ -19,7 +19,7 @@ function bleopt/check:input_encoding {
     return 1
   fi
 
-  if [[ $bleopt_input_encoding != $value ]]; then
+  if [[ $bleopt_input_encoding != "$value" ]]; then
     ble-decode/unbind
     bleopt_input_encoding=$value
     ble-decode/bind
@@ -68,6 +68,7 @@ function ble/util/restore-arrs {
   local name prefix=$1; shift
   for name; do eval "$name=(\"\${$prefix$name[@]}\")"; done
 }
+
 
 #
 # array and strings
@@ -139,52 +140,52 @@ function ble/string#repeat {
 ##   @param[in] a b
 ##   @var[out] ret
 function ble/string#common-prefix {
-  local a="$1" b="$2"
-  ((${#a}>${#b})) && local a="$b" b="$a"
-  b="${b::${#a}}"
-  if [[ $a == $b ]]; then
-    ret="$a"
+  local a=$1 b=$2
+  ((${#a}>${#b})) && local a=$b b=$a
+  b=${b::${#a}}
+  if [[ $a == "$b" ]]; then
+    ret=$a
     return
   fi
 
   # l <= 解 < u, (${a:u}: 一致しない, ${a:l} 一致する)
-  local l=0 u="${#a}" m
+  local l=0 u=${#a} m
   while ((l+1<u)); do
     ((m=(l+u)/2))
-    if [[ ${a::m} == ${b::m} ]]; then
+    if [[ ${a::m} == "${b::m}" ]]; then
       ((l=m))
     else
       ((u=m))
     fi
   done
 
-  ret="${a::l}"
+  ret=${a::l}
 }
 
 ## 関数 ble/string#common-suffix a b
 ##   @param[in] a b
 ##   @var[out] ret
 function ble/string#common-suffix {
-  local a="$1" b="$2"
-  ((${#a}>${#b})) && local a="$b" b="$a"
-  b="${b:${#b}-${#a}}"
-  if [[ $a == $b ]]; then
-    ret="$a"
+  local a=$1 b=$2
+  ((${#a}>${#b})) && local a=$b b=$a
+  b=${b:${#b}-${#a}}
+  if [[ $a == "$b" ]]; then
+    ret=$a
     return
   fi
 
   # l < 解 <= u, (${a:l}: 一致しない, ${a:u} 一致する)
-  local l=0 u="${#a}" m
+  local l=0 u=${#a} m
   while ((l+1<u)); do
     ((m=(l+u+1)/2))
-    if [[ ${a:m} == ${b:m} ]]; then
+    if [[ ${a:m} == "${b:m}" ]]; then
       ((u=m))
     else
       ((l=m))
     fi
   done
 
-  ret="${a:u}"
+  ret=${a:u}
 }
 
 ## 関数 ble/string#split arr sep str...
@@ -372,10 +373,13 @@ function ble/string#escape-for-extended-regex {
 #
 
 ## 関数 ble/util/readfile var filename
-##   ファイルの内容を変数に読み取ります。
+## 関数 ble/util/mapfile arr filename
+##   ファイルの内容を変数または配列に読み取ります。
 ##
 ##   @param[in] var
 ##     読み取った内容の格納先の変数名を指定します。
+##   @param[in] arr
+##     読み取った内容を行毎に格納する配列の名前を指定します。
 ##   @param[in] filename
 ##     読み取るファイルの場所を指定します。
 ##
@@ -385,9 +389,16 @@ if ((_ble_bash>=40000)); then
     mapfile __buffer < "$2"
     IFS= eval "$1"'="${__buffer[*]}"'
   }
+  function ble/util/mapfile {
+    mapfile -t "$1"
+  }
 else
   function ble/util/readfile { # 465ms for man bash
     IFS= read -r -d '' "$1" < "$2"
+  }
+  function ble/util/mapfile {
+    IFS= read -r -d '' "$1"
+    ble/string#split-lines "$1" "${!1}"
   }
 fi
 
@@ -405,7 +416,7 @@ if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
     builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
-    local _ret="$?" __arr
+    local _ret=$? __arr
     mapfile -t __arr < "$_ble_util_read_stdout_tmp"
     IFS=$'\n' eval "$1=\"\${__arr[*]}\""
     return "$_ret"
@@ -413,10 +424,32 @@ if ((_ble_bash>=40000)); then
 else
   function ble/util/assign {
     builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
-    local _ret="$?"
+    local _ret=$?
     IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
     eval "$1=\${$1%$'\n'}"
     return "$_ret"
+  }
+fi
+## 関数 ble/util/assign-array arr command...
+##   mapfile -t arr <(command ...) の高速な代替です。
+##   command はサブシェルではなく現在のシェルで実行されます。
+##
+##   @param[in] arr
+##     代入先の配列名を指定します。
+##   @param[in] command...
+##     実行するコマンドを指定します。
+##
+if ((_ble_bash>=40000)); then
+  function ble/util/assign-array {
+    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    local _ret=$?
+    mapfile -t "$1" < "$_ble_util_read_stdout_tmp"
+    return "$_ret"
+  }
+else
+  function ble/util/assign-array {
+    ble/util/assign "$@"
+    ble/string#split "$1" $'\n' "${!1}"
   }
 fi
 
@@ -442,7 +475,7 @@ else
 fi
 
 function ble/util/type {
-  _cmd="$2" ble/util/assign "$1" 'builtin type -t "$_cmd" 2>/dev/null'
+  _cmd="$2" ble/util/assign "$1" 'builtin type -t -- "$_cmd" 2>/dev/null'
   builtin eval "$1=\"\${$1%$_ble_term_nl}\""
 }
 
@@ -515,6 +548,79 @@ function ble/util/declare-print-definitions {
     '
   fi
 }
+## 関数 ble/util/print-global-definitions varnames...
+##
+##   @var[in] varnames
+##
+##   指定した変数のグローバル変数としての定義を出力します。
+##   現状では配列変数には対応していません。
+##
+##   制限: 途中に readonly なローカル変数があるとその変数の値を返す。
+##   しかし、そもそも readonly な変数には問題が多いので ble.sh では使わない。
+##
+##   制限: __ble_* という変数名は内部で使用するので、対応しません。
+##
+if ((_ble_bash>=40200)); then
+  # 注意: bash-4.2 にはバグがあって、グローバル変数が存在しない時に
+  #   declare -g -r var とすると、ローカルに新しく読み取り専用の var 変数が作られる。
+  #   現在の実装では問題にならない。
+  function ble/util/print-global-definitions {
+    (
+      __ble_error=
+      __ble_q="'" __ble_Q="'\''"
+      # 補完で 20 階層も関数呼び出しが重なることはなかろう
+      __ble_MaxLoop=20
+
+      for __ble_name; do
+        ((__ble_processed_$__ble_name)) && continue
+        ((__ble_processed_$__ble_name=1))
+        [[ $_ble_name == __ble_* ]] && continue
+
+        declare -g -r "$__ble_name"
+
+        for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
+          __ble_value=${!__ble_name}
+          unset "$__ble_name" || break
+        done 2>/dev/null
+
+        ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
+
+        echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+      done
+      
+      [[ ! $__ble_error ]]
+    )
+  }
+else
+  # 制限: グローバル変数が定義されずローカル変数が定義されているとき、
+  #   ローカル変数の値が取得されてしまう。
+  function ble/util/print-global-definitions {
+    (
+      __ble_error=
+      __ble_q="'" __ble_Q="'\''"
+      __ble_MaxLoop=20
+
+      for __ble_name; do
+        ((__ble_processed_$__ble_name)) && continue
+        ((__ble_processed_$__ble_name=1))
+        [[ $_ble_name == __ble_* ]] && continue
+
+        __ble_value= __ble_found=0
+        for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
+          [[ ${!__ble_name+set} ]] && __ble_value=${!__ble_name} __ble_found=1
+          unset "$__ble_name" 2>/dev/null
+        done
+
+        ((__ble_found)) || __ble_error= __ble_value= # not found
+
+        echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+      done
+      
+      [[ ! $__ble_error ]]
+    )
+  }
+fi
+
 
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
@@ -556,7 +662,7 @@ if ((_ble_bash>=40000)); then
     function ble/util/sleep { local REPLY=; ! read -u "$_ble_util_sleep_fd" -t "$1"; } &>/dev/null
 
     if [[ $OSTYPE == cygwin* ]]; then
-      # Cygwin work around
+      # Cygwin workaround
 
       ble/util/openat _ble_util_sleep_fd '< <(
         [[ $- == *i* ]] && trap -- '' INT QUIT
@@ -1216,7 +1322,7 @@ function ble-text.s2c {
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
 
-  # work arounds of bashbug that printf '\uFFFF' results in a broken surrogate
+  # workarounds of bashbug that printf '\uFFFF' results in a broken surrogate
   # pair in systems where sizeof(wchar_t) == 2.
   function ble/util/.has-bashbug-printf-uffff {
     ((40200<=_ble_bash&&_ble_bash<40500)) || return 1

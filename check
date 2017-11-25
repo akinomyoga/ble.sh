@@ -49,6 +49,13 @@ function check-assign {
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 
+function check-memo-numbering {
+  echo "--- $FUNCNAME ---"
+  grep -ao '\[#D....\]' memo.txt | sort | uniq -cd
+  grep -ao '\[#D....\]' memo.txt | wc -l
+  sed -n '0,/^[[:space:]]\{1,\}Done/d;/  \* .*\[#D....\]$/d;/^  \* /p' memo.txt
+}
+
 # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
 
 #check-builtin 'history'
@@ -59,3 +66,5 @@ function check-assign {
 check-a.txt
 check-bash300bug
 check-bash301bug-array-element-length
+
+check-memo-numbering

@@ -160,7 +160,7 @@ function ble-decode/generate-binder {
       if ((esc1B==1)); then
         # ESC [
         if ((i==91&&esc1B5B)); then
-          # * obsoleted work around
+          # * obsoleted workaround
           #   ESC [ を CSI (encoded in utf-8) に変換して受信する。
           #   受信した後で CSI を ESC [ に戻す。
           #   CSI = \u009B = utf8{\xC2\x9B} = utf8{\302\233}
