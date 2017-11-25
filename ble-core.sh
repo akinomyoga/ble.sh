@@ -197,15 +197,22 @@ function ble/string#common-suffix {
 ##   @param[in]  str 分割する文字列を指定します。
 ##
 function ble/string#split {
-  if shopt -q nullglob &>/dev/null; then
-    # Note: GLOBIGNORE を設定していても nullglob の効果は有効である。
-    #   この時 [..] や * や ? が一文字でも含まれるとその要素は必ず消滅する。
+  if [[ -o noglob ]]; then
     # Note: 末尾の sep が無視されない様に、末尾に手で sep を 1 個追加している。
-    shopt -u nullglob
-    GLOBIGNORE='*' IFS=$2 builtin eval "$1=(\${*:3}\$2)"
-    shopt -s nullglob
+    IFS=$2 builtin eval "$1=(\${*:3}\$2)"
   else
-    GLOBIGNORE='*' IFS=$2 builtin eval "$1=(\${*:3}\$2)"
+    set -f
+    IFS=$2 builtin eval "$1=(\${*:3}\$2)"
+    set +f
+  fi
+}
+function ble/string#split-words {
+  if [[ -o noglob ]]; then
+    IFS=$' \t\n' builtin eval "$1=(\${*:2})"
+  else
+    set -f
+    IFS=$' \t\n' builtin eval "$1=(\${*:2})"
+    set +f
   fi
 }
 ## 関数 ble/string#split-lines arr text...
@@ -800,12 +807,12 @@ function ble/dirty-range#clear {
 function ble/dirty-range#update {
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix="${1#--prefix=}"
+    _prefix=${1#--prefix=}
     shift
     [[ $_prefix ]] && local beg end end0
   fi
 
-  local begB="$1" endB="$2" endB0="$3"
+  local begB=$1 endB=$2 endB0=$3
   ((begB<0)) && return
 
   local begA endA endA0

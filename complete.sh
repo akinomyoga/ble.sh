@@ -357,14 +357,14 @@ function ble-complete/source/argument/.compgen {
   local -a compargs compoptions
   local ret iarg=1
   ble/util/assign ret 'complete -p "$compcmd" 2>/dev/null'
-  eval "compargs=($ret)"
+  ble/string#split-words compargs "$ret"
   while ((iarg<${#compargs[@]})); do
-    local arg="${compargs[iarg++]}"
+    local arg=${compargs[iarg++]}
     case "$arg" in
     (-*)
       local ic c
       for ((ic=1;ic<${#arg};ic++)); do
-        c="${arg:ic:1}"
+        c=${arg:ic:1}
         case "$c" in
         ([abcdefgjksuvE])
           ble/array#push compoptions "-$c" ;;
@@ -531,7 +531,7 @@ function ble/widget/complete {
   local ctx source ret
   for ctx in "${context[@]}"; do
     # initialize completion range
-    ctx=($ctx)
+    ble/string#split-words ctx "$ctx"
     ble/string#split source : "${ctx[0]}"
     local COMP1=${ctx[1]} COMP2=$index
     local COMPS=${text:COMP1:COMP2-COMP1}
@@ -566,23 +566,23 @@ function ble/widget/complete {
   for ((i=0;i<cand_count;i++)); do
     ((i%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
 
-    local word="${cand_word[i]}"
+    local word=${cand_word[i]}
     local -a prop
-    prop=(${cand_prop[i]})
+    ble/string#split-words prop "${cand_prop[i]}"
 
     [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter "$word" && continue
 
     if ((i==0)); then
-      common="$word"
-      comp1="${prop[1]}"
-      clen="${#common}"
+      common=$word
+      comp1=${prop[1]}
+      clen=${#common}
       ((acount=1,aindex=i))
     else
       # より近くの開始点の候補を優先する場合
       if ((comp1<prop[1])); then
-        common="$word"
-        comp1="${prop[1]}"
-        clen="${#common}"
+        common=$word
+        comp1=${prop[1]}
+        clen=${#common}
         ((acount=1,aindex=i))
         continue
       elif ((comp1>prop[1])); then
@@ -601,7 +601,7 @@ function ble/widget/complete {
       while [[ ${word::clen} != "${common::clen}" ]]; do
         ((clen--))
       done
-      common="${common::clen}"
+      common=${common::clen}
       ((acount++))
     fi
   done
@@ -609,12 +609,12 @@ function ble/widget/complete {
   # 編集範囲の最小化
   if [[ $common == "${text:comp1:comp2-comp1}"* ]]; then
     # 既存部分の置換がない場合
-    common="${common:comp2-comp1}"
+    common=${common:comp2-comp1}
     ((comp1=comp2))
   else
     # 既存部分の置換がある場合
     while ((comp1<comp2)) && [[ $common == "${text:comp1:1}"* ]]; do
-      common="${common:1}"
+      common=${common:1}
       ((comp1++))
     done
   fi
@@ -622,15 +622,15 @@ function ble/widget/complete {
   if ((acount==1)); then
     # 一意確定の時
     local ACTION
-    ACTION=(${cand_prop[aindex]})
+    ble/string#split-words ACTION "${cand_prop[aindex]}"
     if ble/util/isfunction "$ACTION/complete"; then
-      local COMP1="$comp1" COMP2="$comp2"
-      local INSERT="$common"
-      local CAND="${cand_cand[aindex]}"
-      local DATA="${cand_data[aindex]}"
+      local COMP1=$comp1 COMP2=$comp2
+      local INSERT=$common
+      local CAND=${cand_cand[aindex]}
+      local DATA=${cand_data[aindex]}
 
       "$ACTION/complete"
-      comp1="$COMP1" comp2="$COMP2" common="$INSERT"
+      comp1=$COMP1 comp2=$COMP2 common=$INSERT
     fi
     ble-edit/info/clear
   else
@@ -639,5 +639,5 @@ function ble/widget/complete {
   fi
 
   ble/widget/.delete-range "$comp1" "$index"
-  ble/widget/insert-string "$common"
+  [[ $common ]] && ble/widget/insert-string "$common"
 }

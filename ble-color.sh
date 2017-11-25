@@ -570,7 +570,7 @@ function ble-highlight-layer:region/update {
     # 選択範囲がない時
 
     # 下層の変更
-    umin="$PREV_UMIN" umax="$PREV_UMAX"
+    umin=$PREV_UMIN umax=$PREV_UMAX
 
     # 選択解除の範囲
     ble-highlight-layer:region/update-dirty-range omin omax

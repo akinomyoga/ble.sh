@@ -66,7 +66,7 @@ function .ble-getopt.process-option {
   for ((i=0;i<${#_getopt_odefs[@]};i++)); do
     if [[ $name == "${_getopt_odefs[$i]%%:*}" ]]; then
       f_found=1
-      GLOBIGNORE='*' IFS=: eval 'adef=(${_getopt_odefs[$i]})'
+      ble/string#split adef : "${_getopt_odefs[i]}"
       break
     fi
   done
@@ -87,8 +87,8 @@ function .ble-getopt.process-option {
 }
 
 function ble-getopt-begin {
-  _getopt_cmd=($1)
-  _getopt_odefs=($2)
+  ble/string#split-words _getopt_cmd "$1"
+  ble/string#split-words _getopt_odefs "$2"
   shift 2
   _getopt_args=("$@")
   _getopt_len=${#_getopt_args[@]}
@@ -153,7 +153,7 @@ function ble-getopt {
       local f_longname=
       _getopt_opt=${arg:1}
 
-      GLOBIGNORE='*' IFS=: eval '_getopt_oarg=($_getopt_opt)'
+      ble/string#split _getopt_oarg : "$_getopt_opt"
       _getopt_olen=${#_getopt_oarg[@]}
       _getopt_oind=1
       ble-getopt

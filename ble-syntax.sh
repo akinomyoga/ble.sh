@@ -165,7 +165,7 @@ function ble-syntax/tree-enumerate/.initialize {
   fi
 
   local -a stat nest
-  stat=(${_ble_syntax_stat[iN]})
+  ble/string#split-words stat "${_ble_syntax_stat[iN]}"
   local wtype=${stat[2]}
   local wlen=${stat[1]}
   local nlen=${stat[3]} inest
@@ -185,7 +185,7 @@ function ble-syntax/tree-enumerate/.initialize {
   do
     ble-assert '[[ ${_ble_syntax_nest[inest]} ]]' "$FUNCNAME/FATAL1" || break
 
-    nest=(${_ble_syntax_nest[inest]})
+    ble/string#split-words nest "${_ble_syntax_nest[inest]}"
 
     local olen=$((iN-inest))
     tplen=${nest[4]}
@@ -403,7 +403,7 @@ function ble-syntax/print-status/word.get-text {
 ##   @var[out]  nest
 function ble-syntax/print-status/nest.get-text {
   local index=$1
-  nest=(${_ble_syntax_nest[index]})
+  ble/string#split-words nest "${_ble_syntax_nest[index]}"
   if [[ $nest ]]; then
     local nctx
     ble-syntax/print-status/ctx#get-text -v nctx 'nest[0]'
@@ -453,7 +453,7 @@ function ble-syntax/print-status/nest.get-text {
 ##   @var[out]  stat
 function ble-syntax/print-status/stat.get-text {
   local index=$1
-  stat=(${_ble_syntax_stat[index]})
+  ble/string#split-words stat "${_ble_syntax_stat[index]}"
   if [[ $stat ]]; then
     local stat_ctx
     ble-syntax/print-status/ctx#get-text -v stat_ctx 'stat[0]'
@@ -700,7 +700,7 @@ function ble-syntax/parse/nest-pop {
   ((inest<0)) && return 1
 
   local -a parentNest
-  parentNest=(${_ble_syntax_nest[inest]})
+  ble/string#split-words parentNest "${_ble_syntax_nest[inest]}"
 
   local ntype=${parentNest[7]} nbeg=$inest
   ble-syntax/parse/tree-append "n$ntype" "$nbeg" "$tchild" "$tprev"
@@ -737,7 +737,7 @@ function ble-syntax/parse/nest-reset-tprev {
     tprev=-1
   else
     local -a nest
-    nest=(${_ble_syntax_nest[inest]})
+    ble/string#split-words nest "${_ble_syntax_nest[inest]}"
     local tclen=${nest[4]}
     ((tprev=tclen<0?tclen:inest-tclen))
   fi
@@ -758,8 +758,7 @@ function ble-syntax/parse/nest-equals {
     local _nnest=${_ble_syntax_nest[parent_inest]}
     [[ $_onest != "$_nnest" ]] && return 1
 
-    local -a onest
-    onest=($_onest)
+    local -a onest; ble/string#split-words onest "$_onest"
 #%if !release
     ((onest[3]!=0&&onest[3]<=parent_inest)) || { ble-stackdump "invalid nest onest[3]=${onest[3]} parent_inest=$parent_inest text=$text" && return 0; }
 #%end
@@ -1032,16 +1031,23 @@ function ble-syntax:bash/simple-word/eval.impl {
   else
     # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
     builtin eval "__ble_ret=($1)"
-  fi
+  fi &>/dev/null # Note: failglob 時に一致がないとエラーが生じる
 }
+## 関数 ble-syntax:bash/simple-word/eval
+##
+##   @exit
+##     shopt -q failglob の時、パス名展開に失敗すると
+##     0 以外の終了ステータスを返します。
+##
 function ble-syntax:bash/simple-word/eval {
   local __ble_ret
-  ble-syntax:bash/simple-word/eval.impl "$1"
+  ble-syntax:bash/simple-word/eval.impl "$1"; local ext=$?
   ret=$__ble_ret
+  return "$ext"
 }
 
 function ble-syntax:bash/initialize-ctx {
-  ctx="$CTX_CMDX" # CTX_CMDX が ble-syntax:bash の最初の文脈
+  ctx=$CTX_CMDX # CTX_CMDX が ble-syntax:bash の最初の文脈
 }
 
 ## 関数 ble-syntax:bash/initialize-vars
@@ -3221,8 +3227,7 @@ function ble-syntax/vanishing-word/register {
 ## @var[in] beg,end,end0,shift
 function ble-syntax/parse/shift.stat {
   if [[ ${_ble_syntax_stat[j]} ]]; then
-    local -a stat
-    stat=(${_ble_syntax_stat[j]})
+    local -a stat; ble/string#split-words stat "${_ble_syntax_stat[j]}"
 
     local k klen kbeg
     for k in 1 3 4 5; do
@@ -3293,7 +3298,7 @@ function ble-syntax/parse/shift.nest {
   #   @ ctx-command/check-word-begin の "関数名 ( " にて。
   if [[ ${_ble_syntax_nest[j]} ]]; then
     local -a nest
-    nest=(${_ble_syntax_nest[j]})
+    ble/string#split-words nest "${_ble_syntax_nest[j]}"
 
     local k klen kbeg
     for k in 1 3 4 5; do
@@ -3432,7 +3437,7 @@ function ble-syntax/parse/determine-parse-range {
     local -a stat
     while ((i1>0)); do
       if [[ ${_ble_syntax_stat[--i1]} ]]; then
-        stat=(${_ble_syntax_stat[i1]})
+        ble/string#split-words stat "${_ble_syntax_stat[i1]}"
         ((i1+lookahead<=beg)) && break
       fi
     done
@@ -3504,7 +3509,7 @@ function ble-syntax/parse {
   local ctx wbegin wtype inest tchild tprev nparam ilook
   if ((i1>0)) && [[ ${_ble_syntax_stat[i1]} ]]; then
     local -a stat
-    stat=(${_ble_syntax_stat[i1]})
+    ble/string#split-words stat "${_ble_syntax_stat[i1]}"
     local wlen=${stat[1]} nlen=${stat[3]} tclen=${stat[4]} tplen=${stat[5]}
     ctx=${stat[0]}
     wbegin=$((wlen<0?wlen:i1-wlen))
@@ -3638,7 +3643,7 @@ function ble-syntax/parse {
 #   local i
 #   for ((i=$1;i>=0;i--)); do
 #     if [[ ${_ble_syntax_stat[i]} ]]; then
-#       stat=(${_ble_syntax_stat[i]})
+#       ble/string#split-words stat "${_ble_syntax_stat[i]}"
 #       return
 #     fi
 #   done
@@ -3669,7 +3674,7 @@ function ble-syntax/completion-context/check-prefix {
   local -a stat=()
   for ((i=index-1;i>=0;i--)); do
     if [[ ${_ble_syntax_stat[i]} ]]; then
-      stat=(${_ble_syntax_stat[i]})
+      ble/string#split-words stat "${_ble_syntax_stat[i]}"
       break
     fi
   done
@@ -3829,7 +3834,7 @@ function ble-syntax/completion-context/check-prefix {
 function ble-syntax/completion-context/check-here {
   ((${#context[*]})) && return
   local -a stat
-  stat=(${_ble_syntax_stat[index]})
+  ble/string#split-words stat "${_ble_syntax_stat[index]}"
   if [[ ${stat[0]} ]]; then
     # ここで CTX_CMDI や CTX_ARGI は処理しない。
     # 既に check-prefix で引っかかっている筈だから。
@@ -4335,14 +4340,17 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     # 実行は一切起こらないので一色で塗りつぶす。
     ((type=wtype))
   elif local wtxt=${text:wbeg:wlen}; ble-syntax:bash/simple-word/is-simple "$wtxt"; then
-    local value ret
+    local ret
     if ((wtype==CTX_RDRS)); then
-      ble-syntax:bash/simple-word/eval-noglob "$wtxt"; value=$ret
+      ble-syntax:bash/simple-word/eval-noglob "$wtxt"; local ext=$? value=$ret
     else
-      ble-syntax:bash/simple-word/eval "$wtxt"; value=("${ret[@]}")
+      ble-syntax:bash/simple-word/eval "$wtxt"; local ext=$? value=("${ret[@]}")
     fi
 
-    if (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
+    if ((ext)); then
+      # failglob 等の理由で展開に失敗した場合
+      type=$ATTR_ERR
+    elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
       # 複数語に展開されたら駄目
       type=$ATTR_ERR
     elif ((wtype==CTX_CMDI)); then
@@ -4527,7 +4535,7 @@ function ble-highlight-layer:syntax/update-error-table {
 
     # 入れ子が閉じていないエラー
     local -a stat
-    stat=(${_ble_syntax_stat[iN]})
+    ble/string#split-words stat "${_ble_syntax_stat[iN]}"
     local ctx=${stat[0]} nlen=${stat[3]} nparam=${stat[6]}
     [[ $nparam == none ]] && nparam=
     local i inest

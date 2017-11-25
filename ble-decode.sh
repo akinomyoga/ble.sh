@@ -220,7 +220,7 @@ function ble-decode-kbd/.initialize {
 ble-decode-kbd/.initialize
 
 function ble-decode-kbd {
-  local keys; ble/string#split keys $' \t\n' "$*"
+  local keys; ble/string#split-words keys "$*"
   local key code codes keys
   codes=()
   for key in "${keys[@]}"; do
@@ -363,45 +363,45 @@ function ble-decode-char/csi/.modify-kcode {
   fi
 }
 function ble-decode-char/csi/.decode {
-  local char="$1" rex kcode
+  local char=$1 rex kcode
   if ((char==126)); then
     if rex='^27;([1-9][0-9]*);?([1-9][0-9]*)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm "CSI 2 7 ; <mod> ; <char> ~" sequences
-      local kcode="$((BASH_REMATCH[2]&ble_decode_MaskChar))"
+      local kcode=$((BASH_REMATCH[2]&ble_decode_MaskChar))
       ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[1]}"
-      csistat="$kcode"
+      csistat=$kcode
       return
     fi
 
     if rex='^([1-9][0-9]*)(;([1-9][0-9]*))?$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # "CSI <kcode> ; <mod> ~" sequences
-      kcode="${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}"
+      kcode=${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}
       if [[ $kcode ]]; then
         ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[3]}"
-        csistat="$kcode"
+        csistat=$kcode
         return
       fi
     fi
   elif ((char==94||char==64)); then
     if rex='^[1-9][0-9]*$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # rxvt "CSI <kcode> ^", "CSI <kcode> @" sequences
-      kcode="${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}"
+      kcode=${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}
       if [[ $kcode ]]; then
         ((kcode|=ble_decode_Ctrl,
           char==64&&(kcode|=ble_decode_Shft)))
         ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[3]}"
-        csistat="$kcode"
+        csistat=$kcode
         return
       fi
     fi
   fi
 
   # pc-style "CSI 1; <mod> A" sequences
-  kcode="${_ble_decode_csimap_alpha[char]}"
+  kcode=${_ble_decode_csimap_alpha[char]}
   if [[ $kcode ]]; then
     if rex='^(1?|1;([1-9][0-9]*))$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[2]}"
-      csistat="$kcode"
+      csistat=$kcode
       return
     fi
   fi
@@ -416,7 +416,7 @@ function ble-decode-char/csi/consume {
   # 一番頻度の高い物
   ((_ble_decode_csi_mode==0&&$1!=27&&$1!=155)) && return 1
 
-  local char="$1"
+  local char=$1
   case "$_ble_decode_csi_mode" in
   (0)
     # CSI (155) もしくは ESC (27)
@@ -434,7 +434,7 @@ function ble-decode-char/csi/consume {
   (2)
     if ((32<=char&&char<64)); then
       local ret; ble/util/c2s "$char"
-      _ble_decode_csi_args="$_ble_decode_csi_args$ret"
+      _ble_decode_csi_args=$_ble_decode_csi_args$ret
       csistat=_
     elif ((64<=char&&char<127)); then
       _ble_decode_csi_mode=0
@@ -965,7 +965,7 @@ function ble-decode-key {
     builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
     if [[ $ent == 1:* ]]; then
       # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
-      local command="${ent:2}"
+      local command=${ent:2}
       if [[ $command ]]; then
         ble-decode-key/.invoke-command
       else
@@ -973,13 +973,13 @@ function ble-decode-key {
       fi
     elif [[ $ent == _ || $ent == _:* ]]; then
       # /_(:command)?/ (続き (1つ以上の有効なシーケンス) がある事を示す)
-      _ble_decode_key__seq="${_ble_decode_key__seq}_$key"
+      _ble_decode_key__seq=${_ble_decode_key__seq}_$key
     else
       # 遡って適用 (部分一致、または、既定動作)
       ble-decode-key/.invoke-partial-match "$key" && continue
 
       # エラーの表示
-      local kcseq="${_ble_decode_key__seq}_$key" ret
+      local kcseq=${_ble_decode_key__seq}_$key ret
       ble-decode-unkbd "${kcseq//_/ }"
       local kbd="$ret"
       [[ $bleopt_decode_error_kseq_vbell ]] && ble-term/visible-bell "unbound keyseq: $kbd"
@@ -1349,10 +1349,10 @@ function ble-bind {
             case "$flags" in
             ('')
               # ble/widget/ 関数
-              command="ble/widget/$command"
+              command=ble/widget/$command
 
               # check if is function
-              local -a arr=($command)
+              local arr; ble/string#split-words arr "$command"
               if ! ble/util/isfunction "${arr[0]}"; then
                 if [[ $command == ble/widget/ble/widget/* ]]; then
                   echo "ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'. Note: The prefix 'ble/widget/' is redundant" 1>&2

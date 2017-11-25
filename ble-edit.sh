@@ -416,11 +416,11 @@ function ble-edit/draw/trace/SC {
 function ble-edit/draw/trace/RC {
   local -a scosc
   scosc=($trace_scosc)
-  x="${scosc[0]}"
-  y="${scosc[1]}"
-  g="${scosc[2]}"
-  lc="${scosc[3]}"
-  lg="${scosc[4]}"
+  x=${scosc[0]}
+  y=${scosc[1]}
+  g=${scosc[2]}
+  lc=${scosc[3]}
+  lg=${scosc[4]}
   ble-edit/draw/put "$_ble_term_rc"
 }
 function ble-edit/draw/trace/NEL {
@@ -450,7 +450,7 @@ function ble-edit/draw/trace/SGR/arg_next {
 }
 function ble-edit/draw/trace/SGR {
   local param="$1" seq="$2" specs i iN
-  IFS=\; builtin eval 'specs=($param)'
+  ble/string#split specs \; "$param"
   if ((${#specs[*]}==0)); then
     g=0
     ble-edit/draw/put "$_ble_term_sgr0"
@@ -458,8 +458,8 @@ function ble-edit/draw/trace/SGR {
   fi
 
   for ((i=0,iN=${#specs[@]};i<iN;i++)); do
-    local spec="${specs[i]}" f
-    IFS=: builtin eval 'f=($spec)'
+    local spec=${specs[i]} f
+    ble/string#split f : "$spec"
     if ((30<=f[0]&&f[0]<50)); then
       # colors
       if ((30<=f[0]&&f[0]<38)); then
@@ -1863,7 +1863,7 @@ function _ble_edit_str.replace {
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
     _ble_edit_dirty_syntax_beg=0
-    _ble_edit_dirty_syntax_end="${#_ble_edit_str}"
+    _ble_edit_dirty_syntax_end=${#_ble_edit_str}
     local olen=$((${#_ble_edit_str}-${#ins}+end-beg))
     ((olen<0&&(olen=0),
       _ble_edit_ind>olen&&(_ble_edit_ind=olen),
@@ -2933,11 +2933,11 @@ function ble/widget/insert-string {
 ##     vi.sh の r, gr による挿入を想定する。
 ##
 function ble/widget/self-insert {
-  local code="$((KEYS[0]&ble_decode_MaskChar))"
+  local code=$((KEYS[0]&ble_decode_MaskChar))
   ((code==0)) && return
 
-  local ibeg="$_ble_edit_ind" iend="$_ble_edit_ind"
-  local ret ins; ble/util/c2s "$code"; ins="$ret"
+  local ibeg=$_ble_edit_ind iend=$_ble_edit_ind
+  local ret ins; ble/util/c2s "$code"; ins=$ret
 
   local arg; ble-edit/content/get-arg 1
   if ((arg<1)) || [[ ! $ins ]]; then
@@ -2965,7 +2965,7 @@ function ble/widget/self-insert {
       # 上書きモードの時は文字幅を考慮して既存の文字を置き換える。
       local ret w; ble/util/c2w-edit "$code"; w=$((arg*ret))
 
-      local iN="${#_ble_edit_str}"
+      local iN=${#_ble_edit_str}
       for ((removed_width=0;removed_width<w&&iend<iN;iend++)); do
         local c1 w1
         ble/util/s2c "$_ble_edit_str" "$iend"; c1="$ret"
@@ -3768,8 +3768,8 @@ function ble-edit/exec:exec/.eval-epilogue {
 
   ble-stty/enter
   ble/adjust-bash-verbose-option
-  _ble_edit_PS1="$PS1"
-  _ble_edit_IFS="$IFS"
+  _ble_edit_PS1=$PS1
+  _ble_edit_IFS=$IFS
   ble-edit/exec/save-BASH_REMATCH
   ble-edit/exec/.adjust-eol
 
@@ -4345,7 +4345,7 @@ function ble-edit/history/getcount {
     if [[ ! $_ble_edit_history_count ]]; then
       local history_line
       ble/util/assign history_line 'builtin history 1'
-      _ble_edit_history_count=($history_line)
+      _ble_edit_history_count=${history_line%%[$' \t\n']*}
     fi
     _ret=$_ble_edit_history_count
   fi
@@ -5523,7 +5523,7 @@ function ble/widget/command-help {
   if ble-syntax:bash/extract-command "$_ble_edit_ind"; then
     local cmd=${comp_words[0]}
   else
-    local -a args; args=($_ble_edit_str)
+    local args; ble/string#split-words args "$_ble_edit_str"
     local cmd=${args[0]}
   fi
 

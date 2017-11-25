@@ -3755,7 +3755,7 @@ function ble/widget/vi-command/commandline {
 }
 function ble/widget/vi-command/commandline.hook {
   local command
-  ble/string#split command $' \t\n' "$1"
+  ble/string#split-words command "$1"
   local cmd="ble/widget/vi-command:${command[0]}"
   if ble/util/isfunction "$cmd"; then
     "$cmd" "${command[@]:1}"
@@ -3773,7 +3773,9 @@ function ble/widget/vi-command:w {
     builtin history -a
     local file=${HISTFILE:-'~/.bash_history'}
   fi
-  local wc; ble/util/assign wc 'wc "$file"'; wc=($wc)
+  local wc
+  ble/util/assign wc 'wc "$file"'
+  ble/string#split-words wc "$wc"
   ble-edit/info/show text "\"$file\" ${wc[0]}L, ${wc[2]}C written"
   ble/keymap:vi/adjust-command-mode
   return 0
