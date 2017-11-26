@@ -135,10 +135,39 @@ _ble_syntax_ARRNAMES=(_ble_syntax_{stat,nest,tree,attr})
 ##   nparam 値が空文字列の場合には代わりに none という文字列が格納される。
 ##
 ## @var _ble_syntax_tree[i-1]
-##   境界 #i で終わる単語についての情報を保持する。
+##   境界 #i で終端した範囲 (単語・入れ子) についての情報を保持する。
+##   同じ位置で複数の階層の範囲が終端した場合は、それらの情報が連結されて格納される。
 ##   各要素は "( wtype wlen tclen tplen - )*" の形式をしている。
+##   より外側の範囲の情報はより左側に格納される。
+##
+##   tclen tplen を用いて他の _ble_syntax_tree 要素を参照する。
+##   別の位置から或る位置を参照するとき、一番左側の範囲情報を参照する。
+##   或る位置から自分自身を参照するとき、同じ要素の一つ右の範囲情報を参照する。
+##
+##   wtype (ntype)
+##     範囲の種類を保持する。範囲が単語のとき、文脈値を整数で保持する。
+##     範囲が入れ子範囲のとき、整数以外の文字列になる。
+##
+##   wlen (nlen)
+##     範囲の長さを保持する。範囲の開始点は i-wlen である。
+##
+##   tclen
+##     0 以上の時、一つ内側の要素の終端位置までの offset を保持する。
+##     _ble_syntax_tree[i-1-tclen] に子要素の情報が格納されている。
+##     子要素がないとき負の値。
+##
+##   tplen
+##     0 以上の時、一つ前の兄弟要素までの offset を保持する。
+##     _ble_syntax_tree[i-1-tplen] に兄要素の情報が格納されている。
+##     兄要素が同じ位置で終端することはないので必ず正の値になるはず。
+##     兄要素がないとき (自分が長男要素のとき) 負の値。
+##
+##   - (または --)
+##     第五要素は現在は使われていない。
+##
 ## @var BLE_SYNTAX_TREE_WIDTH
-##   _ble_syntax_tree に格納される
+##   _ble_syntax_tree に格納される一つの範囲情報のフィールドの数。
+##
 ## @var _ble_syntax_attr[i]
 ##   文脈・属性の情報
 _ble_syntax_text=
@@ -156,11 +185,24 @@ BLE_SYNTAX_TREE_WIDTH=5
 # ble-syntax/tree-enumerate-in-range beg end proc
 
 ## 関数 ble-syntax/tree-enumerate/.initialize
+##
 ##   @var[in]  iN
-##   @var[out] tree,i,nofs
+##     文字列の長さ、つまり現在の解析終端位置を指定します。
+##
+##   @var[out] root
+##     ${_ble_syntax_tree[iN-1]} を調整して返します。
+##     閉じていない範囲 (word, nest) を終端位置で閉じたときの値を計算します。
+##
+##   @var[out] i
+##     一番最後の範囲の終端位置を返します。
+##     解析情報がない場合は -1 を返します。
+##
+##   @var[out] nofs
+##     0 に初期化します。
+##
 function ble-syntax/tree-enumerate/.initialize {
   if [[ ! ${_ble_syntax_stat[iN]} ]]; then
-    tree= i=-1 nofs=0
+    root= i=-1 nofs=0
     return
   fi
 
@@ -173,12 +215,12 @@ function ble-syntax/tree-enumerate/.initialize {
   local tclen=${stat[4]}
   local tplen=${stat[5]}
 
-  tree=
-  ((iN>0)) && tree=${_ble_syntax_tree[iN-1]}
+  root=
+  ((iN>0)) && root=${_ble_syntax_tree[iN-1]}
 
   while
     if ((wlen>=0)); then
-      tree="$wtype $wlen $tclen $tplen -- ${tree[@]}"
+      root="$wtype $wlen $tclen $tplen -- $root"
       tclen=0
     fi
     ((inest>=0))
@@ -191,7 +233,7 @@ function ble-syntax/tree-enumerate/.initialize {
     tplen=${nest[4]}
     ((tplen>=0&&(tplen+=olen)))
 
-    tree="${nest[7]} $olen $tclen $tplen -- ${tree[@]}"
+    root="${nest[7]} $olen $tclen $tplen -- $root"
 
     wtype=${nest[2]} wlen=${nest[1]} nlen=${nest[3]} tclen=0 tplen=${nest[5]}
     ((wlen>=0&&(wlen+=olen),
@@ -202,7 +244,7 @@ function ble-syntax/tree-enumerate/.initialize {
     ble-assert '((nlen<0||nlen>olen))' "$FUNCNAME/FATAL2" || break
   done
 
-  if [[ $tree ]]; then
+  if [[ $root ]]; then
     ((i=iN))
   else
     ((i=tclen>=0?iN-tclen:tclen))
@@ -219,15 +261,15 @@ function ble-syntax/tree-enumerate/.initialize {
 ##       列挙を中断する時は ble-syntax/tree-enumerate-break
 ##       を呼び出す事によって、tprev=-1 を設定します。
 ##   @var[in] iN
-##   @var[in] tree,i,nofs
+##   @var[in] root,i,nofs
 function ble-syntax/tree-enumerate/.impl {
   local islast=1
   while ((i>0)); do
     local -a node
     if ((i<iN)); then
-      node=(${_ble_syntax_tree[i-1]})
+      ble/string#split-words node "${_ble_syntax_tree[i-1]}"
     else
-      node=(${tree:-${_ble_syntax_tree[iN-1]}})
+      ble/string#split-words node "${root:-${_ble_syntax_tree[iN-1]}}"
     fi
 
     ble-assert '((nofs<${#node[@]}))' "$FUNCNAME(i=$i,iN=$iN,nofs=$nofs,node=${node[*]},command=$@)/FATAL1" || break
@@ -245,7 +287,7 @@ function ble-syntax/tree-enumerate/.impl {
 }
 
 ## @var[in] iN
-## @var[in] tree,i,nofs
+## @var[in] root,i,nofs
 ## @var[in] tchild
 function ble-syntax/tree-enumerate-children {
   ((0<tchild&&tchild<=i)) || return
@@ -265,13 +307,13 @@ function ble-syntax/tree-enumerate-break () ((tprev=-1))
 ##   解析の起点を指定します。_ble_syntax_stat が設定されている必要があります。
 ##   指定を省略した場合は _ble_syntax_stat の末尾が使用されます。
 function ble-syntax/tree-enumerate {
-  local tree i nofs
+  local root i nofs
   [[ ${iN:+set} ]] || local iN=${#_ble_syntax_text}
   ble-syntax/tree-enumerate/.initialize
   ble-syntax/tree-enumerate/.impl "$@"
 }
 
-## r関数 ble-syntax/tree-enumerate-in-range beg end proc
+## 関数 ble-syntax/tree-enumerate-in-range beg end proc
 ##   入れ子構造に従わず或る範囲内に登録されている節を列挙します。
 ## @param[in] beg,end
 ## @param[in] proc 以下の変数を使用する関数を指定します。
@@ -285,7 +327,7 @@ function ble-syntax/tree-enumerate-in-range {
   local i nofs
   for ((i=end;i>=beg;i--)); do
     ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]] || continue
-    node=(${_ble_syntax_tree[i-1]})
+    ble/string#split-words node "${_ble_syntax_tree[i-1]}"
     local flagUpdateNode=
     for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
       local wtype=${node[nofs]} wlen=${node[nofs+1]}
@@ -358,7 +400,7 @@ function ble-syntax/print-status/ctx#get-text {
 ##   @var[out]  word
 function ble-syntax/print-status/word.get-text {
   local index=$1
-  word=(${_ble_syntax_tree[index]})
+  ble/string#split-words word "${_ble_syntax_tree[index]}"
   local ret=
   if [[ $word ]]; then
     local nofs=$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))
@@ -658,7 +700,7 @@ function ble-syntax/parse/word-pop {
 ##   かつ、キャンセルされる単語は今回の解析ステップで設置された物である事。
 function ble-syntax/parse/word-cancel {
   local -a word
-  word=(${_ble_syntax_tree[i-1]})
+  ble/string#split-words word "${_ble_syntax_tree[i-1]}"
   local tclen=${word[3]}
   tchild=$((tclen<0?tclen:i-tclen))
   _ble_syntax_tree[i-1]="${word[*]:BLE_SYNTAX_TREE_WIDTH}"
@@ -3282,7 +3324,7 @@ function ble-syntax/parse/shift.tree/1 {
 function ble-syntax/parse/shift.tree {
   [[ ${_ble_syntax_tree[j-1]} ]] || return
   local -a node
-  node=(${_ble_syntax_tree[j-1]})
+  ble/string#split-words node "${_ble_syntax_tree[j-1]}"
 
   local nofs
   if [[ $1 ]]; then
@@ -3919,6 +3961,7 @@ function ble-syntax:bash/extract-command/.construct-proc {
       else
         ble-syntax:bash/extract-command/.register-word
         ble-syntax/tree-enumerate-break
+        extract_command_found=1
         return
       fi
     elif ((wtype==CTX_ARGI||wtype==CTX_ARGVI)); then
@@ -3951,18 +3994,20 @@ function ble-syntax:bash/extract-command/.scan {
   if ((wbegin+wlen<pos)); then
     ble-syntax/tree-enumerate-break
   else
+    local extract_has_word=
     ble-syntax/tree-enumerate-children \
       ble-syntax:bash/extract-command/.scan
+    local has_word=$extract_has_word
+    unset extract_has_word
 
-    if [[ $isword && ! $iscommand ]]; then
-      iscommand=1
+    if [[ $has_word && ! $extract_command_found ]]; then
       ble-syntax:bash/extract-command/.construct nested
       ble-syntax/tree-enumerate-break
     fi
   fi
 
-  if [[ $wtype =~ ^[0-9]+$ && ! $isword ]]; then
-    isword=$wtype
+  if [[ $wtype =~ ^[0-9]+$ && ! $extract_has_word ]]; then
+    extract_has_word=$wtype
     return
   fi
 }
@@ -3971,22 +4016,23 @@ function ble-syntax:bash/extract-command/.scan {
 ## @var[out] comp_cword comp_words comp_line comp_point
 function ble-syntax:bash/extract-command {
   local pos=$1
-  local isword= iscommand=
+  local extract_command_found=
 
+  local extract_has_word=
   ble-syntax/tree-enumerate \
     ble-syntax:bash/extract-command/.scan
+  [[ ! $extract_has_word ]] && return 1
 
-  [[ ! $isword ]] && return 1
-
-  if [[ ! $iscommand ]]; then
-    iscommand=1
+  if [[ ! $extract_command_found ]]; then
     ble-syntax:bash/extract-command/.construct
   fi
 
   # {
-  #   echo "pos=$pos w=$isword c=$iscommand"
+  #   echo "pos=$pos w=$extract_has_word c=$extract_command_found"
   #   declare -p comp_words comp_cword comp_line comp_point
   # } >> ~/a.txt
+
+  [[ $extract_command_found ]]
 }
 
 #==============================================================================
@@ -4471,7 +4517,7 @@ function ble-highlight-layer:syntax/update-word-table {
   for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;)); do
     if ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]]; then
       local -a node
-      node=(${_ble_syntax_tree[i-1]})
+      ble/string#split-words node "${_ble_syntax_tree[i-1]}"
 
       local wlen=${node[1]}
       local wbeg=$((i-wlen)) wend=$i
@@ -4646,7 +4692,7 @@ function ble-highlight-layer:syntax/update {
   # local -a words=() word
   # for ((i=1;i<=iN;i++)); do
   #   if [[ ${_ble_syntax_tree[i-1]} ]]; then
-  #     word=(${_ble_syntax_tree[i-1]})
+  #     ble/string#split-words word "${_ble_syntax_tree[i-1]}"
   #     local wtxt="${text:i-word[1]:word[1]}" value
   #     if ble-syntax:bash/simple-word/is-simple "$wtxt"; then
   #       eval "value=$wtxt"
