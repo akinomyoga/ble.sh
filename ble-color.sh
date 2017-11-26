@@ -323,7 +323,7 @@ function ble-highlight-layer/getg {
 
   LEVEL="${#_ble_highlight_layer__list[*]}" ble-highlight-layer/update/getg "$1"
 
-  ret="$g"; eval "$ble_util_upvar"
+  ret=$g; eval "$ble_util_upvar"
 }
 
 ## レイヤーの実装
@@ -405,6 +405,8 @@ function ble-highlight-layer/getg {
 
 _ble_highlight_layer_plain_buff=()
 
+## 関数 ble-highlight-layer:plain/update/.getch
+##   @var[in,out] ch
 function ble-highlight-layer:plain/update/.getch {
   [[ $ch == [' '-'~'] ]] && return
   if [[ $ch == [-] ]]; then
@@ -415,6 +417,7 @@ function ble-highlight-layer:plain/update/.getch {
     elif [[ $ch == '' ]]; then
       ch='^?'
     else
+      local ret
       ble/util/s2c "$ch" 0
       ble/util/c2s $((ret+64))
       ch="^$ret"
@@ -435,7 +438,7 @@ function ble-highlight-layer:plain/update {
     ble-highlight-layer/update/shift _ble_highlight_layer_plain_buff
 
     local i text=$1 ch
-    local it=$_ble_term_it ret
+    local it=$_ble_term_it
     for ((i=DMIN;i<DMAX;i++)); do
       ch=${text:i:1}
 

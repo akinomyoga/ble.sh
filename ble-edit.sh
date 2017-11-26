@@ -199,6 +199,7 @@ function ble/util/c2w-edit {
 
 ## 関数 ble/util/c2w+emacs
 ##   emacs-24.2.1 default char-width-table
+##   @var[out] ret
 _ble_text_c2w__emacs_wranges=(
  162 164 167 169 172 173 176 178 180 181 182 183 215 216 247 248 272 273 276 279
  280 282 284 286 288 290 293 295 304 305 306 308 315 316 515 516 534 535 545 546
@@ -267,7 +268,8 @@ function ble/util/c2w+emacs {
   return 0
 }
 
-## 関数 ble/util/c2w+west
+## 関数 ble/util/c2w.ambiguous
+##   @var[out] ret
 function ble/util/c2w.ambiguous {
   local code="$1"
   ret=1
@@ -296,12 +298,15 @@ function ble/util/c2w.ambiguous {
     ))
   '))
 }
+## 関数 ble/util/c2w+west
+##   @var[out] ret
 function ble/util/c2w+west {
   ble/util/c2w.ambiguous "$1"
   (((ret<0)&&(ret=1)))
 }
 
 ## 関数 ble/util/c2w+east
+##   @var[out] ret
 _ble_text_c2w__east_wranges=(
  161 162 164 165 167 169 170 171 174 175 176 181 182 187 188 192 198 199 208 209
  215 217 222 226 230 231 232 235 236 238 240 241 242 244 247 251 252 253 254 255
@@ -343,61 +348,65 @@ function ble-edit/draw/put {
   DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
 }
 function ble-edit/draw/put.ind {
-  local -i count="${1-1}"
+  local -i count=${1-1}
   local ret; ble/string#repeat "${_ble_term_ind}" "$count"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="$ret"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
 }
 function ble-edit/draw/put.il {
-  local -i value="${1-1}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_il//'%d'/$value}"
+  local -i value=${1-1}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_il//'%d'/$value}
 }
 function ble-edit/draw/put.dl {
-  local -i value="${1-1}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_dl//'%d'/$value}"
+  local -i value=${1-1}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
 }
 function ble-edit/draw/put.cuu {
-  local -i value="${1-1}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_cuu//'%d'/$value}"
+  local -i value=${1-1}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuu//'%d'/$value}
 }
 function ble-edit/draw/put.cud {
-  local -i value="${1-1}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_cud//'%d'/$value}"
+  local -i value=${1-1}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cud//'%d'/$value}
 }
 function ble-edit/draw/put.cuf {
-  local -i value="${1-1}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_cuf//'%d'/$value}"
+  local -i value=${1-1}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuf//'%d'/$value}
 }
 function ble-edit/draw/put.cub {
-  local -i value="${1-1}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_cub//'%d'/$value}"
+  local -i value=${1-1}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cub//'%d'/$value}
 }
 function ble-edit/draw/put.cup {
-  local -i l="${1-1}" c="${2-1}"
-  local out="$_ble_term_cup"
-  out="${out//'%l'/$l}"
-  out="${out//'%c'/$c}"
-  out="${out//'%y'/$((l-1))}"
-  out="${out//'%x'/$((c-1))}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="$out"
+  local -i l=${1-1} c=${2-1}
+  local out=$_ble_term_cup
+  out=${out//'%l'/$l}
+  out=${out//'%c'/$c}
+  out=${out//'%y'/$((l-1))}
+  out=${out//'%x'/$((c-1))}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
 function ble-edit/draw/put.hpa {
-  local -i c="${1-1}"
-  local out="$_ble_term_hpa"
-  out="${out//'%c'/$c}"
-  out="${out//'%x'/$((c-1))}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="$out"
+  local -i c=${1-1}
+  local out=$_ble_term_hpa
+  out=${out//'%c'/$c}
+  out=${out//'%x'/$((c-1))}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
 function ble-edit/draw/put.vpa {
-  local -i l="${1-1}"
-  local out="$_ble_term_vpa"
-  out="${out//'%l'/$l}"
-  out="${out//'%y'/$((l-1))}"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="$out"
+  local -i l=${1-1}
+  local out=$_ble_term_vpa
+  out=${out//'%l'/$l}
+  out=${out//'%y'/$((l-1))}
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
 function ble-edit/draw/flush {
   IFS= builtin eval 'builtin echo -n "${DRAW_BUFF[*]}"'
   DRAW_BUFF=()
 }
+## 関数 ble-edit/draw/sflush [-v var]
+##   @param[in] var
+##     出力先の変数名を指定します。
+##   @var[out] !var
 function ble-edit/draw/sflush {
   local _var=ret
   [[ $1 == -v ]] && _var="$2"
@@ -731,6 +740,7 @@ function ble-edit/draw/trace.impl {
 
   # Note: 文字符号化方式によっては対応する文字が存在しない可能性がある。
   #   その時は st='\u009C' になるはず。2文字以上のとき変換に失敗したと見做す。
+  local ret
   ble/util/c2s 156; local st=$ret #  (ST)
   ((${#st}>=2)) && st=
 
@@ -819,7 +829,7 @@ function ble-edit/draw/trace.impl {
       ble-text.s2c -v lc "$tail" 0
       ((lg=g))
       ble/util/c2w "$lc"
-      w="$ret"
+      w=$ret
       if ((w>=2&&x+w>cols)); then
         # 行に入りきらない場合の調整
         ble-edit/draw/put "${_ble_util_string_prototype::x+w-cols}"
@@ -877,7 +887,7 @@ function ble-edit/prompt/initialize {
         else
           local ret
           ble/util/s2c "$c"
-          ble/util/c2s "$((ret+32))"
+          ble/util/c2s $((ret+32))
           c=$ret
         fi
       fi
@@ -906,13 +916,19 @@ function ble-edit/prompt/initialize {
 ##     調整前の ps1out を格納します。ps1out の計算を省略する為に使用します。
 _ble_edit_prompt=("" 0 0 0 32 0 "" "")
 
+
+## 関数 _ble_edit_prompt.load
+##   @var[out] x y g
+##   @var[out] lc lg
+##   @var[out] ret
+##     プロンプトを描画するための文字列
 function _ble_edit_prompt.load {
-  x="${_ble_edit_prompt[1]}"
-  y="${_ble_edit_prompt[2]}"
-  g="${_ble_edit_prompt[3]}"
-  lc="${_ble_edit_prompt[4]}"
-  lg="${_ble_edit_prompt[5]}"
-  ret="${_ble_edit_prompt[6]}"
+  x=${_ble_edit_prompt[1]}
+  y=${_ble_edit_prompt[2]}
+  g=${_ble_edit_prompt[3]}
+  lc=${_ble_edit_prompt[4]}
+  lg=${_ble_edit_prompt[5]}
+  ret=${_ble_edit_prompt[6]}
 }
 
 ## 関数 ble-edit/prompt/update/append text
@@ -1073,6 +1089,8 @@ function ble-edit/prompt/update/backslash:W { # PWD短縮
     ble-edit/prompt/update/append "${cache_wd##*/}"
   fi
 }
+## 関数 ble-edit/prompt/update/update-cache_wd
+##   @var[in,out] cache_wd
 function ble-edit/prompt/update/update-cache_wd {
   [[ $cache_wd ]] && return
 
@@ -1081,7 +1099,7 @@ function ble-edit/prompt/update/update-cache_wd {
     return
   fi
 
-  local head= body="${PWD%/}"
+  local head= body=${PWD%/}
   if [[ $body == "$HOME" ]]; then
     cache_wd='~'
     return
@@ -1095,6 +1113,7 @@ function ble-edit/prompt/update/update-cache_wd {
     local pat='[^/]'
     local count=${body//$pat}
     if ((${#count}>=dirtrim)); then
+      local ret
       ble/string#repeat '/*' "$dirtrim"
       local omit=${body%$ret}
       ((${#omit}>3)) &&
@@ -1102,7 +1121,7 @@ function ble-edit/prompt/update/update-cache_wd {
     fi
   fi
 
-  cache_wd="$head$body"
+  cache_wd=$head$body
 }
 
 function ble-edit/prompt/update/eval-prompt_command {
@@ -1182,7 +1201,7 @@ function ble-edit/prompt/update {
   # 4 出力
   local ps1out
   ble-edit/draw/sflush -v ps1out
-  ret="$ps1out"
+  ret=$ps1out
   _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1esc")
 }
 
@@ -1351,7 +1370,7 @@ function ble/textmap#update {
     else
       local ret
       ble/util/s2c "$text" "$i"
-      local code="$ret"
+      local code=$ret
 
       local w=0 cs= changed=0
       if ((code<32)); then
@@ -1384,14 +1403,14 @@ function ble/textmap#update {
         w=4 cs="M-^$ret"
       else
         ble/util/c2w "$code"
-        w="$ret" cs="${text:i:1}"
+        w=$ret cs=${text:i:1}
       fi
 
       local wrapping=0
       if ((w>0)); then
         if ((x<cols&&cols<x+w)); then
-          ((xenl)) && cs="$_ble_term_nl$cs"
-          cs="${_ble_util_string_prototype::cols-x}$cs"
+          ((xenl)) && cs=$_ble_term_nl$cs
+          cs=${_ble_util_string_prototype::cols-x}$cs
           ((x=cols,changed=1,wrapping=1))
         fi
 
@@ -1401,14 +1420,14 @@ function ble/textmap#update {
         done
         if ((x==cols)); then
           if ((xenl)); then
-            cs="$cs$_ble_term_nl"
+            cs=$cs$_ble_term_nl
             changed=1
           fi
           ((y++,x=0))
         fi
       fi
 
-      _ble_textmap_glyph[i]="$cs"
+      _ble_textmap_glyph[i]=$cs
       ((changed)) && ble/array#push _ble_textmap_ichg "$i"
       _ble_textmap_pos[i+1]="$x $y $wrapping"
       ((i++))
@@ -1678,7 +1697,7 @@ function ble-edit/info/.construct-text {
       ((i+=${#BASH_REMATCH}))
     else
       ble/util/s2c "$text" "$i"
-      local code="$ret" w=0
+      local code=$ret w=0
       if ((code<32)); then
         ble/util/c2s "$((code+64))"
         ble-edit/info/.put-atomic 2 "$_ble_term_rev^$ret$_ble_term_sgr0"
@@ -1699,7 +1718,7 @@ function ble-edit/info/.construct-text {
 
   ble-edit/info/.put-nl-if-eol
 
-  ret="$out"
+  ret=$out
 }
 
 ## 関数 ble-edit/info/.construct-content type text
@@ -1716,7 +1735,7 @@ function ble-edit/info/.construct-content {
   (text)
     local lc=32 ret
     ble-edit/info/.construct-text "$text"
-    content="$ret" ;;
+    content=$ret ;;
   (*)
     echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
   esac
@@ -1874,7 +1893,7 @@ function _ble_edit_str.replace {
 function _ble_edit_str.reset {
   local str=$1 reason=${2:-edit}
   local beg=0 end=${#str} end0=${#_ble_edit_str}
-  _ble_edit_str="$str"
+  _ble_edit_str=$str
   _ble_edit_str/update-dirty-range "$beg" "$end" "$end0" "$reason"
 #%if !release
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
@@ -1889,9 +1908,9 @@ function _ble_edit_str.reset-and-check-dirty {
   [[ $_ble_edit_str == "$str" ]] && return
 
   local ret pref suff
-  ble/string#common-prefix "$_ble_edit_str" "$str"; pref="$ret"
+  ble/string#common-prefix "$_ble_edit_str" "$str"; pref=$ret
   local dmin="${#pref}"
-  ble/string#common-suffix "${_ble_edit_str:dmin}" "${str:dmin}"; suff="$ret"
+  ble/string#common-suffix "${_ble_edit_str:dmin}" "${str:dmin}"; suff=$ret
   local dmax0=$((${#_ble_edit_str}-${#suff})) dmax=$((${#str}-${#suff}))
 
   _ble_edit_str="$str"
@@ -2371,7 +2390,7 @@ function ble/textarea#render {
 
   local x y g lc lg=0
   ble-edit/prompt/update # x y lc ret
-  local prox="$x" proy="$y" prolc="$lc" esc_prompt="$ret"
+  local prox=$x proy=$y prolc=$lc esc_prompt=$ret
 
   # BLELINE_RANGE_UPDATE → ble/textarea#update-text-buffer 内でこれを見て update を済ませる
   local -a BLELINE_RANGE_UPDATE
@@ -2466,7 +2485,7 @@ function ble/textarea#render {
     # 全体描画
     if [[ ! $_ble_textarea_scroll ]]; then
       ble/textare#slice-text-buffer # → ret
-      esc_line="$ret" esc_line_set=1
+      esc_line=$ret esc_line_set=1
       ble-edit/draw/put "$ret"
       ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
     else
@@ -2503,7 +2522,7 @@ function ble/textarea#render {
     if [[ ! $esc_line_set ]]; then
       if [[ ! $_ble_textarea_scroll ]]; then
         ble/textare#slice-text-buffer
-        esc_line="$ret"
+        esc_line=$ret
       else
         local _ble_line_x=$begx _ble_line_y=$begy
         DRAW_BUFF=()
@@ -2593,14 +2612,14 @@ function ble/textarea#adjust-for-bash-bind {
     PS1=
     local ret lc="${_ble_textarea_cur[2]}" lg="${_ble_textarea_cur[3]}"
     ble/util/c2s "$lc"
-    READLINE_LINE="$ret"
+    READLINE_LINE=$ret
     if ((_ble_textarea_cur[0]==0)); then
       READLINE_POINT=0
     else
       ble/util/c2w "$lc"
       ((ret>0)) && ble-edit/draw/put.cub "$ret"
       ble-text-c2bc "$lc"
-      READLINE_POINT="$ret"
+      READLINE_POINT=$ret
     fi
 
     ble-color-g2sgr "$lg"
@@ -2968,9 +2987,9 @@ function ble/widget/self-insert {
       local iN=${#_ble_edit_str}
       for ((removed_width=0;removed_width<w&&iend<iN;iend++)); do
         local c1 w1
-        ble/util/s2c "$_ble_edit_str" "$iend"; c1="$ret"
+        ble/util/s2c "$_ble_edit_str" "$iend"; c1=$ret
         [[ $c1 == 0 || $c1 == 10 || $c1 == 9 ]] && break
-        ble/util/c2w-edit "$c1"; w1="$ret"
+        ble/util/c2w-edit "$c1"; w1=$ret
         ((removed_width+=w1))
       done
 
@@ -3168,19 +3187,23 @@ function ble/widget/beginning-of-text {
 }
 
 function ble/widget/beginning-of-logical-line {
+  local ret
   ble-edit/content/find-logical-bol
   ble/widget/.goto-char "$ret"
 }
 function ble/widget/end-of-logical-line {
+  local ret
   ble-edit/content/find-logical-eol
   ble/widget/.goto-char "$ret"
 }
 function ble/widget/kill-backward-logical-line {
+  local ret
   ble-edit/content/find-logical-bol
   ((0<ret&&ret==_ble_edit_ind&&ret--)) # 行頭にいる時は直前の改行を削除
   ble/widget/.kill-range "$ret" "$_ble_edit_ind"
 }
 function ble/widget/kill-forward-logical-line {
+  local ret
   ble-edit/content/find-logical-eol
   ((ret<${#_ble_edit_ind}&&_ble_edit_ind==ret&&ret++)) # 行末にいる時は直後の改行を削除
   ble/widget/.kill-range "$_ble_edit_ind" "$ret"

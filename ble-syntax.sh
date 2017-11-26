@@ -308,7 +308,7 @@ function ble-syntax/print-status/.graph {
   else
     local ret
     ble/util/s2c "$char" 0
-    local code="$ret"
+    local code=$ret
     if ((code<32)); then
       ble/util/c2s "$((code+64))"
       graph="$_ble_term_rev^$ret$_ble_term_sgr0"
@@ -800,6 +800,11 @@ function ble-syntax/parse/touch-updated-word {
 _ble_syntax_bash_ctx_names=(
 #%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
 )
+
+## 関数 ble-syntax/ctx#get_name [-v varname]
+##   @var[in] varname
+##     既定値 ret
+##   @var[out] !varname
 function ble-syntax/ctx#get_name {
   if [[ $1 == -v ]]; then
     eval "$2=\${_ble_syntax_bash_ctx_names[\$3]}"

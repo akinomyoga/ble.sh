@@ -50,12 +50,12 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bas
   fi
 
   function ble-decode-kbd/.set-keycode {
-    local key="$1" code="$2"
+    local key=$1 code=$2
     : ${_ble_decode_kbd__c2k[$code]:=$key}
     _ble_decode_kbd__k2c[$key]=$code
   }
   function ble-decode-kbd/.get-keycode {
-    ret="${_ble_decode_kbd__k2c[$1]}"
+    ret=${_ble_decode_kbd__k2c[$1]}
   }
 else
   _ble_decode_kbd_ver=3
@@ -64,19 +64,19 @@ else
   _ble_decode_kbd__k2c_vals=()
   _ble_decode_kbd__c2k=()
   function ble-decode-kbd/.set-keycode {
-    local key="$1" code="$2"
+    local key=$1 code=$2
     : ${_ble_decode_kbd__c2k[$code]:=$key}
     _ble_decode_kbd__k2c_keys="$_ble_decode_kbd__k2c_keys:$key:"
     _ble_decode_kbd__k2c_vals[${#_ble_decode_kbd__k2c_vals[@]}]=$code
   }
   function ble-decode-kbd/.get-keycode {
-    local key="$1"
-    local tmp="${_ble_decode_kbd__k2c_keys%%:$key:*}"
+    local key=$1
+    local tmp=${_ble_decode_kbd__k2c_keys%%:$key:*}
     if [[ ${#tmp} == ${#_ble_decode_kbd__k2c_keys} ]]; then
       ret=
     else
       tmp=(${tmp//:/ })
-      ret="${_ble_decode_kbd__k2c_vals[${#tmp[@]}]}"
+      ret=${_ble_decode_kbd__k2c_vals[${#tmp[@]}]}
     fi
   }
 fi
@@ -87,11 +87,11 @@ ble_decode_function_key_base=0x110000
 ##   @param[in]  keycode keycode
 ##   @var  [out] ret     keyname
 function ble-decode-kbd/.get-keyname {
-  local keycode="$1"
-  ret="${_ble_decode_kbd__c2k[$keycode]}"
+  local keycode=$1
+  ret=${_ble_decode_kbd__c2k[keycode]}
   if [[ ! $ret ]] && ((keycode<ble_decode_function_key_base)); then
     ble/util/c2s "$keycode"
-    _ble_decode_kbd__c2k[$keycode]="$ret"
+    _ble_decode_kbd__c2k[keycode]=$ret
   fi
 }
 ## 関数 ble-decode-kbd/.gen-keycode keyname
@@ -101,7 +101,7 @@ function ble-decode-kbd/.get-keyname {
 ##   @param[in]  keyname keyname
 ##   @var  [out] ret     keycode
 function ble-decode-kbd/.gen-keycode {
-  local key="$1"
+  local key=$1
   if ((${#key}==1)); then
     ble/util/s2c "$1"
   elif [[ $key && ! ${key//[a-zA-Z_0-9]} ]]; then
@@ -219,6 +219,8 @@ function ble-decode-kbd/.initialize {
 
 ble-decode-kbd/.initialize
 
+## 関数 ble-decode-kbd
+##   @var[out] ret
 function ble-decode-kbd {
   local keys; ble/string#split-words keys "$*"
   local key code codes keys
@@ -235,7 +237,7 @@ function ble-decode-kbd {
       (H) ((code|=ble_decode_Hypr)) ;;
       (*) ((code|=ble_decode_Erro)) ;;
       esac
-      key="${key:2}"
+      key=${key:2}
     done
 
     if [[ $key == ? ]]; then
@@ -258,12 +260,17 @@ function ble-decode-kbd {
       ((code|=ble_decode_Erro))
     fi
 
-    codes[${#codes[@]}]="$code"
+    codes[${#codes[@]}]=$code
   done
 
   ret="${codes[*]}"
 }
 
+## 関数 ble-decode-unkbd/.single-key key
+##   @var[in] key
+##     キーを表す整数値
+##   @var[out] ret
+##     key の文字列表現を返します。
 function ble-decode-unkbd/.single-key {
   local key="$1"
 
@@ -285,14 +292,17 @@ function ble-decode-unkbd/.single-key {
   [[ ! $f_unknown ]]
 }
 
+## 関数 ble-decode-unkbd keys...
+##   @var[in] keys
+##   @var[out] ret
 function ble-decode-unkbd {
-  local -a kbd
-  local kc
-  for kc in $*; do
-    ble-decode-unkbd/.single-key "$kc"
-    kbd[${#kbd[@]}]="$ret"
+  local -a kspecs
+  local key
+  for key in $*; do
+    ble-decode-unkbd/.single-key "$key"
+    kspecs[${#kspecs[@]}]=$ret
   done
-  ret="${kbd[*]}"
+  ret="${kspecs[*]}"
 }
 
 # **** ble-decode-byte ****
@@ -341,7 +351,7 @@ function ble-decode-char/csi/print {
   done
 
   for num in "${!_ble_decode_csimap_alpha[@]}"; do
-    local s; ble/util/c2s "$num"; s="$ret"
+    local s; ble/util/c2s "$num"; s=$ret
     ble-decode-unkbd "${_ble_decode_csimap_alpha[num]}"
     echo "ble-bind --csi '$s' $ret"
   done
@@ -691,7 +701,7 @@ function ble-decode-char/unbind {
   done
 }
 function ble-decode-char/dump {
-  local tseq="$1" nseq="$2" ccode
+  local tseq=$1 nseq=$2 ccode
   builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
   for ccode in "${ccodes[@]}"; do
     local ret; ble-decode-unkbd "$ccode"
@@ -700,9 +710,9 @@ function ble-decode-char/dump {
 
     builtin eval "local ent=\${_ble_decode_cmap_$tseq[$ccode]}"
     if [[ ${ent%_} ]]; then
-      local kcode="${ent%_}" ret
-      ble-decode-unkbd "$kcode"; local key="$ret"
-      builtin echo "ble-bind -k '${cnames[*]}' '$key'"
+      local kcode=${ent%_} ret
+      ble-decode-unkbd "$kcode"; local kspec=$ret
+      builtin echo "ble-bind -k '${cnames[*]}' '$kspec'"
     fi
 
     if [[ ${ent//[0-9]/} == _ ]]; then
@@ -981,8 +991,8 @@ function ble-decode-key {
       # エラーの表示
       local kcseq=${_ble_decode_key__seq}_$key ret
       ble-decode-unkbd "${kcseq//_/ }"
-      local kbd="$ret"
-      [[ $bleopt_decode_error_kseq_vbell ]] && ble-term/visible-bell "unbound keyseq: $kbd"
+      local kspecs=$ret
+      [[ $bleopt_decode_error_kseq_vbell ]] && ble-term/visible-bell "unbound keyseq: $kspecs"
       [[ $bleopt_decode_error_kseq_abell ]] && ble-term/audible-bell
 
       # 残っている文字の処理
@@ -1319,9 +1329,9 @@ function ble-bind {
             return 2
           fi
 
-          ble-decode-kbd "$1"; local cseq="$ret"
+          ble-decode-kbd "$1"; local cseq=$ret
           if [[ $2 && $2 != - ]]; then
-            ble-decode-kbd "$2"; local kc="$ret"
+            ble-decode-kbd "$2"; local kc=$ret
             ble-decode-char/bind "$cseq" "$kc"
           else
             ble-decode-char/unbind "$cseq"
@@ -1525,13 +1535,13 @@ function ble-decode-bind/c2dqs {
 #   追記: 公開されている patch を見たら bash-3.1.4 で修正されている様だ。
 #
 function ble-decode-bind/cmap/.generate-binder-template {
-  local tseq="$1" qseq="$2" nseq="$3" depth="${4:-1}" ccode
+  local tseq=$1 qseq=$2 nseq=$3 depth=${4:-1} ccode
   local apos="'" escapos="'\\''"
   builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
   for ccode in "${ccodes[@]}"; do
     local ret
     ble-decode-bind/c2dqs "$ccode"
-    qseq1="$qseq$ret"
+    qseq1=$qseq$ret
     nseq1="$nseq $ccode"
 
     builtin eval "local ent=\${_ble_decode_cmap_$tseq[$ccode]}"

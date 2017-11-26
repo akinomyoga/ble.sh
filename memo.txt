@@ -2462,6 +2462,11 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
+  - vi-mode: `ret` グローバル変数が汚染されていたバグの修正 `#D0632`
+  - complete: 補完候補がない時に空文字列で確定するバグの修正 `#D0631`
+
+2017-11-26
+
   バグ修正
   - general: failglob で問題が生じるバグの修正 `#D0630`
   - keymap/vi (nmap q): bash-3.0 で動かなかったバグの修正
@@ -3005,9 +3010,78 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2017-11-26
+
+  * 変数が漏れている。ret が定義されている [#D0632]
+
+    1 先ず emacs mode でも定義される。
+    2 ble-syntax/parse で local ret としてみても変わらない。
+    3 ble/textarea#render で local ret としてみても変わらない。
+
+    逆に外側から絞っていく事にする。
+    4 ble-decode/.hook で local ret としたらさすがに大丈夫だ。
+    5 ble-decode/PROLOGUE, EPILOGUE は関係ないようだ。
+    6 ble-decode-key で local ret としたら大丈夫だ。
+    7 eval -- "$WIDGET" の前後で ret が設定される様だ。
+      ret の値が破壊される時の WIDGET を出力させると以下の様になった。
+      ret=0:WIDGET=ble/widget/vi_imap/accept-single-line-or vi_imap/newline
+
+    どうも複数存在する様である。一つは _ble_edit_str/update-dirty-range から。
+    見つけた。以下で漏れている。
+
+      ble/keymap:vi/mark/set-global-mark
+      ble/keymap:vi/mark/set-local-mark
+
+    直したら取り敢えず ret の値は保持される様になった。
+    実は他の箇所でも漏れがあったような気がしたが、今の所は再現していない。
+
+    x 更に、一回 normal-mode に入ってそれから insert-mode に入ると ret が消える。
+      これも ret が漏れている証拠である。どうも normal-mode に入る瞬間に駄目の様だ。
+      と思ったが当たらない。どうも実行直前に insert-mode に入っていて、
+      insert-mode の実装で ret を宣言するのを忘れていたということのようだ。
+
+      さて、これは直したと思ったが、未だ直っていない。
+      insert-mode で local ret したが反応しない。と思ったら xmap/insert-mode を見ていた。
+      そう思って nmap/insert-mode で local ret をして見たがそれでも直らない。
+      vi_imap/normal-mode-without-insert-leave の方でも修正したがそれでも駄目。
+      もう一度外側から絞っていくしかないのだろうか。もう一度 ble-decode にしかける。
+
+      | local ret=trap1
+      |   builtin eval -- "$WIDGET"; local exit=$?
+      | [[ $ret == trap1 ]] || echo "ret=$ret:WIDGET=$WIDGET" >> a.txt
+      |
+      | 結果
+      | ret=<U+009C>:WIDGET=ble/widget/vi_imap/normal-mode-without-insert-leave
+      | ret=<U+009C>:WIDGET=ble/widget/vi_nmap/insert-mode
+
+      うーん。何と両方で ret が書き換わっている。道理で片方だけ書き換えても反応しない訳だ。
+      というかよく考えたら local -r ret すれば犯人が分かるのでは?
+      と一瞬思ったが駄目だ。local -r ret すると新しいローカル変数の定義も禁止されてしまう。
+
+      normal-mode-without-insert-leave に潜る。ble/keymap:vi/update-mode-name が駄目だ。
+      中を覗いてみると呼び出している関数は ble-edit/info/default しかない。やはりそうだ。
+      辿っていくと ble-edit/draw/trace.impl にまですぐに行く。見つけた。
+
+      改めて ble-edit.sh についても ret のリークがないか調べる必要がある気がしてきた。
+      他に 2 箇所同様の ret のリークを見つけた。直した。
+      心配になったので ble-syntax.sh と ble-decode.sh も確認する。問題は見つからなかった。
+      ble-color.sh も確かめた。一つ上の階層で local ret している例を見つけたが、
+      実際の処理内容を見ると不自然なので local ret は中に移動した。
+      (ble-highlight-layer:plain/update / ble-highlight-layer:plain/update/.getch)
+
+    x done: keymap/vi.sh の実装について一通り ret の使用を見てみたら、
+      かなり local ret を忘れている箇所が見つかった。見つかった物は直した。
+
+    * また最初の調査で "emacs mode でも定義される" と書いたが、
+      これは _ble_edit_dirty_observer に登録した
+      ble/keymap:vi/mark/shift-by-dirty-range がそのまま動いていて、
+      更にこれの中で ret が上書きされていたのが行けなかったようである。
+      これについては emacs mode に入る時には _ble_edit_dirty_observer
+      から消去する等の対策が必要な気がする。
+
 2017-11-25
 
-  * 2017-11-23 complete: bug 補完で謎の現象が起こっている。空白が補完される
+  * 2017-11-23 complete: bug 補完で謎の現象が起こっている。空白が補完される [#D0631]
     というか echo [a でも同様に空白が補完される。
     echo $(echo > ) の > の後で実行しても同様である。
     更に echo $(echo) の後でも空白が補完される。

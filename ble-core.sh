@@ -69,6 +69,29 @@ function ble/util/restore-arrs {
   for name; do eval "$name=(\"\${$prefix$name[@]}\")"; done
 }
 
+#%if !release
+## 関数 ble/debug/.check-leak-variable
+##   [デバグ用] 宣言忘れに依るグローバル変数の汚染位置を特定するための関数。
+##
+##   使い方
+##
+##   ```
+##   eval "${_ble_debug_check_leak_variable//@var/ret}"
+##   ...codes1...
+##   ble/util/.check-leak-variable ret tag1
+##   ...codes2...
+##   ble/util/.check-leak-variable ret tag2
+##   ...codes3...
+##   ble/util/.check-leak-variable ret tag3
+##   ```
+_ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
+function ble/debug/.check-leak-variable {
+  if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
+    echo "$1=${!1}:${2:*}" >> a.txt
+    eval "$1=__t1wJltaP9nmow__"
+  fi
+}
+#%end
 
 #
 # array and strings

@@ -1112,7 +1112,7 @@ function ble/keymap:vi/operator:c {
     local end2=$end
     ((end2)) && [[ ${_ble_edit_str:end2-1:1} == $'\n' ]] && ((end2--))
 
-    local indent=
+    local indent= ret
     ble-edit/content/find-non-space "$beg"; local nol=$ret
     ((beg<nol)) && indent=${_ble_edit_str:beg:nol-beg}
 
@@ -1217,6 +1217,8 @@ function ble/keymap:vi/expand-range-for-linewise-operator {
 #--------------------------------------
 # Indent operators < >
 
+## 関数 ble/keymap:vi/string#increase-indent
+##   @var[out] ret
 function ble/keymap:vi/string#increase-indent {
   local text=$1 delta=$2
   local space=$' \t' it=${bleopt_tab_width:-$_ble_term_it}
@@ -1279,7 +1281,7 @@ function ble/keymap:vi/operator:increase-indent.impl/increase-block-indent {
 function ble/keymap:vi/operator:increase-indent.impl/decrease-graphical-block-indent {
   local width=$1
   local it=${bleopt_tab_width:-$_ble_term_it} cols=$_ble_textmap_cols
-  local sub smin slpad
+  local sub smin slpad ret
   local -a replaces
   local isub=${#sub_ranges[@]}
   while ((isub--)); do
@@ -1366,6 +1368,7 @@ function ble/keymap:vi/operator:increase-indent.impl {
     [[ $context == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
     ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
 
+    local ret
     ble/keymap:vi/string#increase-indent "${_ble_edit_str:beg:end-beg}" "$delta"; local content=$ret
     ble/widget/.replace-range "$beg" "$end" "$content" 1
 
@@ -1705,14 +1708,14 @@ function ble/keymap:vi/mark/shift-by-dirty-range {
   fi
 }
 function ble/keymap:vi/mark/set-global-mark {
-  local c=$1 index=$2
+  local c=$1 index=$2 ret
   ble/keymap:vi/mark/update-mark-history
   ble-edit/content/find-logical-bol "$index"; local bol=$ret
   local h; ble-edit/history/getindex -v h
   _ble_keymap_vi_mark_global[c]=$h:$bol:$((index-bol))
 }
 function ble/keymap:vi/mark/set-local-mark {
-  local c=$1 index=$2
+  local c=$1 index=$2 ret
   ble/keymap:vi/mark/update-mark-history
   ble-edit/content/find-logical-bol "$index"; local bol=$ret
   _ble_keymap_vi_mark_local[c]=$bol:$((index-bol))
@@ -2264,13 +2267,12 @@ function ble/widget/vi-command/graphical-relative-line.impl {
     ble/textmap#getxy.cur --prefix=a "$index"
     ((offset-=move=ay-y))
   else
-    local ind=$_ble_edit_ind
+    local ret ind=$_ble_edit_ind
     ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
     ble-edit/content/find-logical-bol "$ind" "$offset"; local bol2=$ret
     ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
     ((index=bol2+ind-bol1,index>eol2&&(index=eol2)))
 
-    local ret
     if ((index>ind)); then
       ble/string#count-char "${_ble_edit_str:ind:index-ind}" $'\n'
       ((offset+=move=-ret))
@@ -4437,6 +4439,7 @@ function ble/keymap:vi/xmap/switch-type {
 ##
 function ble/keymap:vi/get-graphical-rectangle {
   local p=${1:-$_ble_edit_mark} q=${2:-$_ble_edit_ind}
+  local ret
   ble-edit/content/find-logical-bol "$p"; p0=$ret
   ble-edit/content/find-logical-bol "$q"; q0=$ret
 
@@ -4458,6 +4461,7 @@ function ble/keymap:vi/get-graphical-rectangle {
 }
 function ble/keymap:vi/get-logical-rectangle {
   local p=${1:-$_ble_edit_mark} q=${2:-$_ble_edit_ind}
+  local ret
   ble-edit/content/find-logical-bol "$p"; p0=$ret
   ble-edit/content/find-logical-bol "$q"; q0=$ret
   ((p-=p0,q-=q0,p<=q)) || local p=$q q=$p
@@ -4786,7 +4790,7 @@ function ble/widget/vi_xmap/.restore-visual-state {
   fi
   ((nchar--,nline--))
 
-  local index
+  local index ret
   ble-edit/content/find-logical-bol "$_ble_edit_ind" 0; local b1=$ret
   ble-edit/content/find-logical-bol "$_ble_edit_ind" "$nline"; local b2=$ret
   ble-edit/content/find-logical-eol "$b2"; local e2=$ret
@@ -4836,6 +4840,7 @@ function ble/keymap:vi/xmap/set-previous-visual-area {
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
     if [[ $mark_type == line ]]; then
+      local ret
       ble-edit/content/find-logical-bol "$beg"; beg=$ret
       ble-edit/content/find-logical-eol "$end"; end=$ret
       ble-edit/content/bolp "$end" || ((end--))
@@ -5350,6 +5355,7 @@ function ble/widget/vi_xmap/insert-mode {
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
     if [[ $mark_type == line ]]; then
+      local ret
       ble-edit/content/find-logical-bol "$beg"; beg=$ret
     fi
 
@@ -5375,6 +5381,7 @@ function ble/widget/vi_xmap/append-mode {
       # 行指向のときは最終行の先頭か _ble_edit_ind の内、
       # 後にある文字の後に移動する。
       if ((_ble_edit_mark>_ble_edit_ind)); then
+        local ret
         ble-edit/content/find-logical-bol "$end"; end=$ret
       fi
     fi
