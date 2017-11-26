@@ -342,11 +342,11 @@ function ble-complete/source/argument/.compgen {
   local comp_prog= comp_func=
   ble-syntax:bash/extract-command "$index" || return 1
 
-  local cmd="${comp_words[0]}" compcmd= is_default_completion=
+  local cmd=${comp_words[0]} compcmd= is_default_completion=
   if complete -p "$cmd" &>/dev/null; then
-    compcmd="$cmd"
+    compcmd=$cmd
   elif [[ ${cmd##*/} != "$cmd" ]] && complete -p "${cmd##*/}" &>/dev/null; then
-    compcmd="${cmd##*/}"
+    compcmd=${cmd##*/}
   elif complete -p -D &>/dev/null; then
     is_default_completion=1
     compcmd='-D'
@@ -407,6 +407,8 @@ function ble-complete/source/argument/.compgen {
     return
   fi
 
+  [[ $compgen ]] || return 1
+
   # Note: git の補完関数など勝手に末尾に space をつけ -o nospace を指定する物が存在する。
   #   単語の後にスペースを挿入する事を意図していると思われるが、
   #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、
@@ -427,9 +429,9 @@ function ble-complete/source/argument/.compgen {
   local arr rex_compv
   ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
   if [[ $use_workaround_for_git ]]; then
-    ble/util/assign-array arr 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
+    ble/util/assign-array arr 'command sed -n "/^\$/d;/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
   else
-    ble/util/assign-array arr 'command sed -n "/^$rex_compv/p" <<< "$compgen" | command sort -u' 2>/dev/null
+    ble/util/assign-array arr 'command sed -n "/^\$/d;/^$rex_compv/p" <<< "$compgen" | command sort -u' 2>/dev/null
   fi
 
   local action=argument

@@ -456,7 +456,11 @@ if ((_ble_bash>=40000)); then
 else
   function ble/util/assign-array {
     ble/util/assign "$@"
-    ble/string#split "$1" $'\n' "${!1}"
+    if [[ ${!1} ]]; then
+      ble/string#split-lines "$1" "${!1%$'\n'}"
+    else
+      eval "$1=()"
+    fi
   }
 fi
 
