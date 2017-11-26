@@ -204,10 +204,13 @@ function ble-complete/source/command/gen {
 
   # ディレクトリ名列挙 (/ 付きで生成する)
   #   Note: shopt -q autocd &>/dev/null かどうかに拘らず列挙する。
-  local cand
-  for cand in "$COMPV"*/; do
-    [[ -d $cand ]] && printf '%s\n' "$cand"
-  done
+  compgen -A directory -S / -- "$COMPV"
+
+  # local ret; ble/util/eval-pathname-expansion '"$COMPV"*/'
+  # local cand
+  # for cand in "${ret[@]}"; do
+  #   [[ -d $cand ]] && printf '%s\n' "$cand"
+  # done
 }
 function ble-complete/source/command {
   [[ ${COMPV+set} ]] || return 1
@@ -216,6 +219,7 @@ function ble-complete/source/command {
   local cand arr i=0
   local compgen
   ble/util/assign compgen ble-complete/source/command/gen
+  [[ $compgen ]] || return 1
   ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
@@ -234,8 +238,11 @@ function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
+  local candidates
+  ble/util/assign-array candidates 'compgen -A file -- "$COMPV"'
+
   local cand
-  for cand in "$COMPV"*; do
+  for cand in "${candidates[@]}"; do
     [[ -e $cand || -h $cand ]] || continue
     [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
     ble-complete/yield-candidate "$cand" ble-complete/action/file
@@ -248,11 +255,15 @@ function ble-complete/source/dir {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
 
+  local candidates
+  ble/util/assign-array candidates 'compgen -A directory -S / -- "$COMPV"'
+
   local cand
-  for cand in "$COMPV"*/; do
+  for cand in "${candidates[@]}"; do
     [[ -d $cand ]] || continue
     [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
-    ble-complete/yield-candidate "${cand%/}" ble-complete/action/file
+    [[ $cand == / ]] || cand=${cand%/}
+    ble-complete/yield-candidate "$cand" ble-complete/action/file
   done
 }
 

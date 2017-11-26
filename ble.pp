@@ -310,7 +310,13 @@ function ble/base/clean-up-runtime-directory {
 }
 
 # initialization time = 9ms (for 70 files)
-ble/base/clean-up-runtime-directory
+if shopt -q failglob &>/dev/null; then
+  shopt -u failglob
+  ble/base/clean-up-runtime-directory
+  shopt -s failglob
+else
+  ble/base/clean-up-runtime-directory
+fi
 
 ##
 ## @var _ble_base_cache

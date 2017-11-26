@@ -655,6 +655,13 @@ else
   }
 fi
 
+function ble/util/eval-pathname-expansion {
+  # Note: eval で囲んでおかないと failglob 失敗時に続きが実行されない
+  # Note: failglob で失敗した時のエラーメッセージは殺す
+  ret=()
+  eval "ret=($1)" 2>/dev/null
+}
+
 
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
