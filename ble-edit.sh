@@ -4368,7 +4368,8 @@ function ble-edit/history/getcount {
     if [[ ! $_ble_edit_history_count ]]; then
       local history_line
       ble/util/assign history_line 'builtin history 1'
-      _ble_edit_history_count=${history_line%%[$' \t\n']*}
+      ble/string#split-words history_line "$history_line"
+      _ble_edit_history_count=${history_line[0]}
     fi
     _ret=$_ble_edit_history_count
   fi

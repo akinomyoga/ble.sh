@@ -3019,6 +3019,16 @@ tech
 
 2017-11-26
 
+  * edit: history 初期化で先頭行に行く [reported by cmplstofB] [#D0634]
+
+    > 起動直後に履歴を遡る (というより ^P を押下する) と一番始めの履歴にまで戻ってしまいます。
+
+    送ってもらったログを見て分かった。
+    failglob の為に history_line=($history_line) を
+    ${history_line%%[$IFS]*} に変更したのが原因だった。
+    どうやら history で出力される履歴番号は printf %5d で出力されている為に、
+    履歴項目の数が 5 桁より小さい時には先頭にスペースが入るのだ。
+
   * complete: failglob 時の問題 (3) [reported by @cmplstofB] [#D0633]
 
     > コマンドに glob が含まれている場合などはいいのですが，
