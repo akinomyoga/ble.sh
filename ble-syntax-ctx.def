@@ -5,11 +5,19 @@
 #   This file contains definition of context values
 #
 #
+#   単語の文脈値の命名法
+#
+#   CTX_FOOX ... 単語 FOO が次に来ることを期待する
+#   CTX_FOOI ... 単語 FOO 中の解析状態であることを意味する
+#   CTX_FOOR ... 単語 FOO 中が変数代入であり、途中のチルダ展開が有効でパス名展開やブレース展開は不活性である
+#   CTX_FOOQ ... 単語 FOO 中が変数代入形式であり、途中のチルダ展開が有効である
+#
 
 CTX_UNSPECIFIED 0
 CTX_ARGX        3  # (コマンド) 次に引数が来る
 CTX_ARGX0       18 # (コマンド)   文法的には次に引数が来そうだがもう引数が来てはならない文脈。例えば ]] や )) の後。
 CTX_ARGI        4  # (コマンド) context,attr: in an argument
+CTX_ARGQ        61 # (コマンド)   v=1 v+=1 a[1]=1 a[1]+=1 の形式の引数の = 以降。: で区切ったチルダ展開が有効である。
 CTX_CMDX        1  # (コマンド) 次にコマンドが来る。
 CTX_CMDX1       17 # (コマンド)   次にコマンドが少なくとも一つ来なければならない。例えば ( や && や while の直後。
 CTX_CMDXT       49 # (コマンド)   time や ! の後。次にコマンドが少なくとも1つ来るか ; が来るか、行末が来る。
@@ -33,13 +41,17 @@ CTX_PWORD       15 # (パラメータ展開) context,attr: inside of parameter e
 CTX_RDRF        19 # (リダイレクト) リダイレクト対象のファイル。
 CTX_RDRD        20 # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
 CTX_RDRS        27 # (リダイレクト) ヒアストリング
-CTX_VALX        23 # (値リスト) 次に値が来る
-CTX_VALI        24 # (値リスト) 値の中
+CTX_VALX        23 # (値リスト) arr=(@)
+CTX_VALI        24 # (値リスト) arr=(a@b)
+CTX_VALR        65 # (値リスト) arr=([0]=a@b)
+CTX_VALQ        66 # (値リスト) arr=(a=b@c a[0]=b@c)
 ATTR_COMMENT    25 # コメント
-CTX_ARGVX       28 # (コマンド) declare の引数
-CTX_ARGVI       29 # (コマンド) declare の引数
+CTX_ARGVX       28 # (コマンド) declare の引数が来る
+CTX_ARGVI       29 # (コマンド) declare の引数の中
+CTX_ARGVR       62 # (コマンド) declare の引数の右辺
 CTX_CONDX       32
 CTX_CONDI       33
+CTX_CONDQ       67
 CTX_CASE        34 # case パターン待ち
 CTX_PATN        30 # glob 通常文字
 ATTR_GLOB       31 # glob 特別文字
@@ -56,6 +68,7 @@ CTX_FARGX2      36 # in
 CTX_FARGI2      37
 CTX_FARGX3      58 # args...
 CTX_FARGI3      59
+CTX_FARGQ3      63
 
 # select name in ...
 CTX_SARGX1      48 # select の直後。for の処理 CTX_FARGI1 に合流する。
@@ -63,6 +76,7 @@ CTX_SARGX1      48 # select の直後。for の処理 CTX_FARGI1 に合流する
 # case arg in ...
 CTX_CARGX1      39
 CTX_CARGI1      40
+CTX_CARGQ1      64
 CTX_CARGX2      41
 CTX_CARGI2      42
 

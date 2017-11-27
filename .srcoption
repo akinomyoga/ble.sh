@@ -1,1 +1,1 @@
---exclude=./out --exclude=./a.sh ble.pp
+--exclude=./out --exclude=./a.sh ble.pp ble-syntax-ctx.def
