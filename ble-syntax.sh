@@ -1351,14 +1351,6 @@ function ble-syntax:bash/check-glob {
       ((_ble_syntax_attr[i++]=force_attr))
       [[ $tail == '[!'* ]] && ((i++))
       return 0
-    elif ((_ble_syntax_bash_command_IsAssign[ctx])); then
-      # 変数代入の右辺では : の手前で CTX_BRAX は途切れる。
-      # nest-push してすぐ nest-pop は駄目なので初めから nest-push しない。
-      if local rex='^\[!?(\]|\[!?)?:'; [[ $tail =~ $rex ]]; then
-        ((_ble_syntax_attr[i]=force_attr,
-          i+=${#BASH_REMATCH}-1))
-        return 0
-      fi
     fi
 
     ble-syntax/parse/nest-push "$CTX_BRAX" "$ntype"
@@ -1371,6 +1363,7 @@ function ble-syntax:bash/check-glob {
       ((_ble_syntax_attr[i++]=${force_attr:-CTX_BRAX}))
       [[ ${text:i:1} == '!'* ]] && ((i++))
     fi
+
     return 0
   elif [[ $tail == ['?*']* ]]; then
     ((_ble_syntax_attr[i++]=${force_attr:-ATTR_GLOB}))
@@ -1669,8 +1662,7 @@ function ble-syntax:bash/ctx-bracket-expression {
     return 0
   elif ble-syntax:bash/check-brace-expansion; then
     return 0
-  elif [[ $tail == :* ]]; then
-    ((_ble_syntax_attr[i++]=ctx))
+  elif ble-syntax:bash/check-tilde-expansion; then
     return 0
   elif ble-syntax:bash/starts-with-histchars; then
     ble-syntax:bash/check-history-expansion ||
@@ -2041,7 +2033,7 @@ function ble-syntax:bash/ctx-brace-expansion {
     return 0
   fi
 
-  local chars=",${_ble_syntax_bash_chars[CTX_ARGI]//'~'}"
+  local chars=",${_ble_syntax_bash_chars[CTX_ARGI]//'~:'}"
   ((ctx==CTX_BRACE2)) && chars="}$chars"
   ble-syntax:bash/cclass/update/reorder chars
   if local rex='^([^'$chars']|\\.)+'; [[ $tail =~ $rex ]]; then
@@ -2090,7 +2082,15 @@ function ble-syntax:bash/check-tilde-expansion {
 
   if [[ $tail == ':'* ]]; then
     _ble_syntax_attr[i++]=$ctx
-    ((tilde_enabled=_ble_syntax_bash_command_IsAssign[ctx]))
+
+    # 変数代入の右辺、または、その一つ下の角括弧式のときチルダ展開が有効。
+    if ! ((tilde_enabled=_ble_syntax_bash_command_IsAssign[ctx])); then
+      if ((ctx==CTX_BRAX)); then
+        local nctx; ble-syntax/parse/nest-ctx
+        ((tilde_enabled=_ble_syntax_bash_command_IsAssign[nctx]))
+      fi
+    fi
+
     local tail=${text:i}
     [[ $tail == '~'* ]] || return 0
   fi
@@ -2104,7 +2104,17 @@ function ble-syntax:bash/check-tilde-expansion {
 
     local path attr=$ctx
     eval "path=$str"
-    [[ ! ${BASH_REMATCH[2]} && $path != "$str" ]] && ((attr=ATTR_TILDE))
+    if [[ ! ${BASH_REMATCH[2]} && $path != "$str" ]]; then
+      ((attr=ATTR_TILDE))
+
+      if ((ctx==CTX_BRAX)); then
+        # CTX_BRAX は単語先頭には来ないので、
+        # ここに来るのは [[ $tail == ':~'* ]] だった時のみのはず。
+        # このとき、各括弧式は : の直後でキャンセルする。
+        ble-assert 'unset tail; [[ $tail == ":~"* ]]'
+        ble-syntax/parse/nest-pop
+      fi
+    fi
     ((_ble_syntax_attr[i]=attr,i+=${#str}))
   else
     local chars=${_ble_syntax_bash_chars[CTX_ARGI]}
