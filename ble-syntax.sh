@@ -1052,8 +1052,8 @@ function ble-syntax:bash/simple-word/eval-noglob.impl {
   ble-syntax:bash/simple-word/extract-parameter-names "$1"
   if ((${ret[@]})); then
     local __ble_defs
-    ble/util/assign __ble_defs 'ble/util/print-global-definitions "${ret[@]}"'
-    builtin eval -- "$__ble_defs"
+    ble/util/assign __ble_defs 'ble/util/print-global-definitions --hidden-only "${ret[@]}"'
+    builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
   fi
 
   builtin eval -- "__ble_ret=$1"
@@ -1069,8 +1069,8 @@ function ble-syntax:bash/simple-word/eval.impl {
   ble-syntax:bash/simple-word/extract-parameter-names "$1"
   if ((${#ret[@]})); then
     local __ble_defs
-    ble/util/assign __ble_defs 'ble/util/print-global-definitions "${ret[@]}"'
-    builtin eval -- "$__ble_defs"
+    ble/util/assign __ble_defs 'ble/util/print-global-definitions --hidden-only "${ret[@]}"'
+    builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
   fi
 
   if [[ $1 == ['[#']* ]]; then

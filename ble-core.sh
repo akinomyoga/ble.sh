@@ -599,6 +599,8 @@ if ((_ble_bash>=40200)); then
   #   declare -g -r var とすると、ローカルに新しく読み取り専用の var 変数が作られる。
   #   現在の実装では問題にならない。
   function ble/util/print-global-definitions {
+    local hidden_only=
+    [[ $1 == --hidden-only ]] && { hidden_only=1; shift; }
     (
       __ble_error=
       __ble_q="'" __ble_Q="'\''"
@@ -619,16 +621,19 @@ if ((_ble_bash>=40200)); then
 
         ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
 
+        [[ $hidden_only && $__ble_i == 0 ]] && continue
         echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
       done
       
       [[ ! $__ble_error ]]
-    )
+    ) 2>/dev/null
   }
 else
   # 制限: グローバル変数が定義されずローカル変数が定義されているとき、
   #   ローカル変数の値が取得されてしまう。
   function ble/util/print-global-definitions {
+    local hidden_only=
+    [[ $1 == --hidden-only ]] && { hidden_only=1; shift; }
     (
       __ble_error=
       __ble_q="'" __ble_Q="'\''"
@@ -639,19 +644,20 @@ else
         ((__ble_processed_$__ble_name=1))
         [[ $_ble_name == __ble_* ]] && continue
 
-        __ble_value= __ble_found=0
+        __ble_value= __ble_found=
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
-          [[ ${!__ble_name+set} ]] && __ble_value=${!__ble_name} __ble_found=1
+          [[ ${!__ble_name+set} ]] && __ble_value=${!__ble_name} __ble_found=$__ble_i
           unset "$__ble_name" 2>/dev/null
         done
 
-        ((__ble_found)) || __ble_error= __ble_value= # not found
+        [[ $__ble_found ]] || __ble_error= __ble_value= # not found
+        [[ $hidden_only && $__ble_found == 0 ]] && continue
 
         echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
       done
       
       [[ ! $__ble_error ]]
-    )
+    ) 2>/dev/null
   }
 fi
 
