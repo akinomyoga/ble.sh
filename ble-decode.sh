@@ -487,9 +487,9 @@ function ble-decode-char {
       ((char&=~ble_decode_Erro))
       if [[ $bleopt_decode_error_char_vbell ]]; then
         local name; ble/util/sprintf name 'U+%04x' "$char"
-        ble-term/visible-bell "received a misencoded char $name"
+        ble/term/visible-bell "received a misencoded char $name"
       fi
-      [[ $bleopt_decode_error_char_abell ]] && ble-term/audible-bell
+      [[ $bleopt_decode_error_char_abell ]] && ble/term/audible-bell
       [[ $bleopt_decode_error_char_discard ]] && continue
       # ((char&ble_decode_Erro)) : 最適化(過去 sequence は全部吐く)?
     fi
@@ -992,8 +992,8 @@ function ble-decode-key {
       local kcseq=${_ble_decode_key__seq}_$key ret
       ble-decode-unkbd "${kcseq//_/ }"
       local kspecs=$ret
-      [[ $bleopt_decode_error_kseq_vbell ]] && ble-term/visible-bell "unbound keyseq: $kspecs"
-      [[ $bleopt_decode_error_kseq_abell ]] && ble-term/audible-bell
+      [[ $bleopt_decode_error_kseq_vbell ]] && ble/term/visible-bell "unbound keyseq: $kspecs"
+      [[ $bleopt_decode_error_kseq_abell ]] && ble/term/audible-bell
 
       # 残っている文字の処理
       if [[ $_ble_decode_key__seq ]]; then
@@ -1408,60 +1408,6 @@ function ble-bind {
 #------------------------------------------------------------------------------
 # **** binder for bash input ****                                  @decode.bind
 
-# **** stty control ****                                      @decode.bind.stty
-
-## 変数 _ble_stty_stat
-##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
-
-#
-# 改行 (C-m, C-j) の取り扱いについて
-#   入力の C-m が C-j に勝手に変換されない様に -icrnl を指定する必要がある。
-#   (-nl の設定の中に icrnl が含まれているので、これを取り消さなければならない)
-#   一方で、出力の LF は CR LF に変換されて欲しいので onlcr は保持する。
-#   (これは -nl の設定に含まれている)
-#
-# -icanon について
-#   stty icanon を設定するプログラムがある。これを設定すると入力が buffering され
-#   その場で入力を受信する事ができない。結果として hang した様に見える。
-#   従って、enter で -icanon を設定する事にする。
-#
-function ble-stty/initialize {
-  command stty -ixon -nl -icrnl -icanon \
-    kill   undef  lnext  undef  werase undef  erase  undef \
-    intr   undef  quit   undef  susp   undef
-  _ble_stty_stat=1
-}
-function ble-stty/leave {
-  [[ ! $_ble_stty_stat ]] && return
-  command stty  echo -nl icanon \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
-  _ble_stty_stat=
-}
-function ble-stty/enter {
-  [[ $_ble_stty_stat ]] && return
-  command stty -echo -nl -icrnl -icanon \
-    kill   undef  lnext  undef  werase undef  erase  undef \
-    intr   undef  quit   undef  susp   undef
-  _ble_stty_stat=1
-}
-function ble-stty/finalize {
-  [[ ! $_ble_stty_stat ]] && return
-  # detach の場合 -echo を指定する
-  command stty -echo -nl icanon \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
-  _ble_stty_stat=
-}
-function ble-stty/TRAPEXIT {
-  # exit の場合は echo
-  command stty echo -nl \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
-  command rm -f "$_ble_base_run/$$".*
-}
-trap ble-stty/TRAPEXIT EXIT
-
 # **** ESC ESC ****                                           @decode.bind.esc2
 
 ## 関数 ble/widget/.ble-decode-char ...
@@ -1747,7 +1693,7 @@ function ble-decode-attach {
   ble/util/save-editing-mode _ble_decode_bind_state
   [[ $_ble_decode_bind_state == none ]] && return 1
 
-  ble-stty/initialize
+  ble/term/initialize
 
   # 元のキー割り当ての保存
   builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)"
@@ -1774,7 +1720,7 @@ function ble-decode-detach {
   ble/util/save-editing-mode current_editing_mode
   [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode _ble_decode_bind_state
 
-  ble-stty/finalize
+  ble/term/finalize
 
   # ble.sh bind の削除
   ble-decode/unbind

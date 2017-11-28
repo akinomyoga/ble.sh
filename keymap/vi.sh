@@ -288,19 +288,30 @@ _ble_keymap_vi_single_command_overwrite=
 : ${bleopt_term_vi_xmap=}
 : ${bleopt_term_vi_cmap=}
 
+: ${bleopt_keymap_vi_imap_cursor=}
+: ${bleopt_keymap_vi_nmap_cursor=}
+: ${bleopt_keymap_vi_omap_cursor=}
+: ${bleopt_keymap_vi_xmap_cursor=}
+: ${bleopt_keymap_vi_cmap_cursor=}
+
 function ble/keymap:vi/update-mode-name {
-  local kmap=$_ble_decode_key__kmap
+  local kmap=$_ble_decode_key__kmap cursor=
   if [[ $kmap == vi_imap ]]; then
     ble/util/buffer "$bleopt_term_vi_imap"
+    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_imap_cursor"
   elif [[ $kmap == vi_nmap ]]; then
     ble/util/buffer "$bleopt_term_vi_nmap"
+    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_nmap_cursor"
   elif [[ $kmap == vi_xmap ]]; then
     ble/util/buffer "$bleopt_term_vi_xmap"
+    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_xmap_cursor"
   elif [[ $kmap == vi_omap ]]; then
     ble/util/buffer "$bleopt_term_vi_omap"
+    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_omap_cursor"
   elif [[ $kmap == vi_cmap ]]; then
     ble-edit/info/default text ''
     ble/util/buffer "$bleopt_term_vi_cmap"
+    ble/term/cursor-state/set-internal "$bleopt_keymap_vi_cmap_cursor"
     return
   fi
 
@@ -2924,6 +2935,7 @@ function ble/widget/vi-command/clear-screen-and-last-line {
 function ble/widget/vi_nmap/replace-char.impl {
   local key=$1 overwrite_mode=${2:-R}
   _ble_edit_overwrite_mode=
+
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local ret
   if ((key==(ble_decode_Ctrl|91))); then # C-[

@@ -2709,7 +2709,7 @@ function ble/widget/clear-screen {
   ble/textarea#invalidate
   ble/util/buffer "$_ble_term_clear"
   _ble_line_x=0 _ble_line_y=0
-  ble-term/visible-bell/cancel-erasure
+  ble/term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
   ble/widget/.SHELL_COMMAND 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
@@ -2912,8 +2912,8 @@ function ble/widget/copy-region-or {
 # **** bell ****                                                     @edit.bell
 
 function ble/widget/.bell {
-  [[ $bleopt_edit_vbell ]] && ble-term/visible-bell "$1"
-  [[ $bleopt_edit_abell ]] && ble-term/audible-bell
+  [[ $bleopt_edit_vbell ]] && ble/term/visible-bell "$1"
+  [[ $bleopt_edit_abell ]] && ble/term/audible-bell
   return 0
 }
 function ble/widget/bell {
@@ -3119,7 +3119,7 @@ function ble/widget/exit {
 
   #_ble_edit_detach_flag=exit
 
-  #ble-term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
+  #ble/term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   _ble_edit_line_disabled=1 ble/textarea#render
 
   # Note: ble_debug=1 の時 ble/textarea#render の中で info が設定されるので、
@@ -3765,7 +3765,6 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
 }
 
 function ble-edit/exec:exec/.eval-prologue {
-  ble-stty/leave
   ble-edit/exec/restore-BASH_REMATCH
   ble/restore-bash-verbose-option
 
@@ -3789,7 +3788,6 @@ function ble-edit/exec:exec/.eval {
 function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
 
-  ble-stty/enter
   ble/adjust-bash-verbose-option
   _ble_edit_PS1=$PS1
   _ble_edit_IFS=$IFS
@@ -3798,7 +3796,7 @@ function ble-edit/exec:exec/.eval-epilogue {
 
   # lastexit
   if ((_ble_edit_exec_lastexit==0)); then
-    _ble_edit_exec_lastexit="$_ble_edit_exec_INT"
+    _ble_edit_exec_lastexit=$_ble_edit_exec_INT
   fi
   if [ "$_ble_edit_exec_lastexit" -ne 0 ]; then
     # SIGERR処理
@@ -3821,8 +3819,8 @@ function ble-edit/exec:exec/.recursive {
   _ble_edit_exec_lines[$1]=
   if [[ ${BASH_COMMAND//[ 	]/} ]]; then
     # 実行
-    local PS1="$_ble_edit_PS1"
-    local IFS="$_ble_edit_IFS"
+    local PS1=$_ble_edit_PS1
+    local IFS=$_ble_edit_IFS
     local HISTCMD
     ble-edit/history/getcount -v HISTCMD
 
@@ -3926,8 +3924,10 @@ function ble-edit/exec:exec {
   # 以下、配列 _ble_edit_exec_lines に登録されている各コマンドを順に実行する。
   # ループ構文を使うと、ループ構文自体がユーザの入力した C-z (SIGTSTP)
   # を受信して(?)停止してしまう様なので、再帰でループする必要がある。
+  ble/term/leave
   ble/util/buffer.flush >&2
   ble-edit/exec:exec/.recursive 0
+  ble/term/enter
 
   _ble_edit_exec_lines=()
 
@@ -3967,7 +3967,7 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
     # エラーが起きている時
 
     local IFS=$' \t\n'
-    local depth="${#FUNCNAME[*]}"
+    local depth=${#FUNCNAME[*]}
     local rex='^\ble-edit/exec:gexec/.'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
@@ -3989,6 +3989,8 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
 function ble-edit/exec:gexec/.begin {
   local IFS=$' \t\n'
   _ble_decode_bind_hook=
+  ble/term/leave
+  ble/util/buffer.flush >&2
   ble-edit/bind/stdout.on
   set -H
 
@@ -4003,22 +4005,22 @@ function ble-edit/exec:gexec/.end {
 
   ble/util/joblist.flush >&2
   ble-edit/bind/.check-detach && return 0
-  ble-edit/bind/.tail
+  ble/term/enter
+  ble-edit/bind/.tail # flush will be called here
 }
 function ble-edit/exec:gexec/.eval-prologue {
   local IFS=$' \t\n'
   BASH_COMMAND=$1
-  PS1="$_ble_edit_PS1"
+  PS1=$_ble_edit_PS1
   unset HISTCMD; ble-edit/history/getcount -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
-  ble-stty/leave
   ble-edit/exec/restore-BASH_REMATCH
   ble/restore-bash-verbose-option
   ble-edit/exec/.setexit # set $?
 }
 function ble-edit/exec:gexec/.save-last-arg {
-  _ble_edit_exec_lastarg="$_" _ble_edit_exec_lastexit="$?"
+  _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
   ble/adjust-bash-verbose-option
   return "$_ble_edit_exec_lastexit"
 }
@@ -4026,7 +4028,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   # lastexit
   _ble_edit_exec_lastexit=$?
   if ((_ble_edit_exec_lastexit==0)); then
-    _ble_edit_exec_lastexit="$_ble_edit_exec_INT"
+    _ble_edit_exec_lastexit=$_ble_edit_exec_INT
   fi
   _ble_edit_exec_INT=0
 
@@ -4037,7 +4039,6 @@ function ble-edit/exec:gexec/.eval-epilogue {
   local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
 
-  ble-stty/enter
   ble/adjust-bash-verbose-option
   _ble_edit_PS1="$PS1"
   PS1=
@@ -4124,7 +4125,8 @@ function ble/widget/.insert-newline {
 function ble/widget/.newline/clear-content {
   # カーソルを表示する。
   # layer:overwrite でカーソルを消している時の為。
-  [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_cvvis"
+  [[ $_ble_edit_overwrite_mode ]] &&
+    ble/term/cursor-state/reveal
 
   # 行内容の初期化
   _ble_edit_str.reset '' newline
@@ -4210,7 +4212,7 @@ function ble/widget/accept-line {
       return
     fi
 
-    BASH_COMMAND="$hist_expanded"
+    BASH_COMMAND=$hist_expanded
     hist_is_expanded=1
   fi
 
@@ -5534,10 +5536,10 @@ function ble/widget/command-help.impl {
   ble-form/panel#set-height.draw "$_ble_textarea_panel" 0
   ble-form/panel#goto.draw "$_ble_textarea_panel" 0 0
   ble-edit/draw/bflush
+  ble/term/leave
   ble/util/buffer.flush >&2
-  ble-stty/leave
   ble/widget/command-help.core; local ext=$?
-  ble-stty/enter
+  ble/term/enter
   return "$ext"
 }
 
@@ -5597,7 +5599,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
     local file="${1:-$_ble_edit_io_fname2}"
 
     # if the visible bell function is already defined.
-    if ble/util/isfunction ble-term/visible-bell; then
+    if ble/util/isfunction ble/term/visible-bell; then
       # checks if "$file" is an ordinary non-empty file
       #   since the $file might be /dev/null depending on the configuration.
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
@@ -5612,7 +5614,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
           fi
         done < "$file"
 
-        [[ $message ]] && ble-term/visible-bell "$message"
+        [[ $message ]] && ble/term/visible-bell "$message"
         : >| "$file"
       fi
     fi
@@ -5688,7 +5690,7 @@ _ble_edit_detach_flag=
 function ble-edit/bind/.exit-TRAPRTMAX {
   # シグナルハンドラの中では stty は bash によって設定されている。
   local IFS=$' \t\n'
-  ble-stty/TRAPEXIT
+  ble/term/TRAPEXIT
   exit 0
 }
 
@@ -5707,11 +5709,11 @@ function ble-edit/bind/.check-detach {
   if [[ $_ble_edit_detach_flag ]]; then
     type="$_ble_edit_detach_flag"
     _ble_edit_detach_flag=
-    #ble-term/visible-bell ' Bye!! '
+    #ble/term/visible-bell ' Bye!! '
 
     ble-edit-finalize
     ble-decode-detach
-    ble-stty/finalize
+    ble/term/finalize
 
     READLINE_LINE="" READLINE_POINT=0
 
@@ -5803,7 +5805,7 @@ _ble_edit_bind_force_draw=
 function ble-decode/PROLOGUE {
   ble-edit/bind/.head
   ble-decode-bind/uvw
-  ble-stty/enter
+  ble/term/enter
   _ble_edit_bind_force_draw=
 }
 

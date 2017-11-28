@@ -1232,15 +1232,15 @@ function ble-term/.initialize {
 ble-term/.initialize
 
 function ble-term/put {
-  BUFF[${#BUFF[@]}]="$1"
+  BUFF[${#BUFF[@]}]=$1
 }
 function ble-term/cup {
-  local x="$1" y="$2" esc="$_ble_term_cup"
-  esc="${esc//'%x'/$x}"
-  esc="${esc//'%y'/$y}"
-  esc="${esc//'%c'/$((x+1))}"
-  esc="${esc//'%l'/$((y+1))}"
-  BUFF[${#BUFF[@]}]="$esc"
+  local x=$1 y=$2 esc=$_ble_term_cup
+  esc=${esc//'%x'/$x}
+  esc=${esc//'%y'/$y}
+  esc=${esc//'%c'/$((x+1))}
+  esc=${esc//'%l'/$((y+1))}
+  BUFF[${#BUFF[@]}]=$esc
 }
 function ble-term/flush {
   IFS= builtin eval 'builtin echo -n "${BUFF[*]}"'
@@ -1249,8 +1249,8 @@ function ble-term/flush {
 
 # **** vbell/abell ****
 
-function ble-term/visible-bell/.initialize {
-  _ble_term_visible_bell__ftime="$_ble_base_run/$$.visible-bell.time"
+function ble/term/visible-bell/.initialize {
+  _ble_term_visible_bell__ftime=$_ble_base_run/$$.visible-bell.time
 
   local -a BUFF=()
   ble-term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
@@ -1265,18 +1265,18 @@ function ble-term/visible-bell/.initialize {
   IFS= builtin eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
 }
 
-ble-term/visible-bell/.initialize
+ble/term/visible-bell/.initialize
 
 
-function ble-term/audible-bell {
+function ble/term/audible-bell {
   builtin echo -n '' 1>&2
 }
-function ble-term/visible-bell {
+function ble/term/visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
-  local cols="${LINES:-25}"
-  local lines="${COLUMNS:-80}"
+  local cols=${LINES:-25}
+  local lines=${COLUMNS:-80}
   local message="$*"
-  message="${message:-$bleopt_vbell_default_message}"
+  message=${message:-$bleopt_vbell_default_message}
 
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
   (
@@ -1304,9 +1304,146 @@ function ble-term/visible-bell {
     } &
   )
 }
-function ble-term/visible-bell/cancel-erasure {
+function ble/term/visible-bell/cancel-erasure {
   >| "$_ble_term_visible_bell__ftime"
 }
+
+#---- stty --------------------------------------------------------------------
+
+## 変数 _ble_term_stty_state
+##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
+_ble_term_stty_state=
+
+# 改行 (C-m, C-j) の取り扱いについて
+#   入力の C-m が C-j に勝手に変換されない様に -icrnl を指定する必要がある。
+#   (-nl の設定の中に icrnl が含まれているので、これを取り消さなければならない)
+#   一方で、出力の LF は CR LF に変換されて欲しいので onlcr は保持する。
+#   (これは -nl の設定に含まれている)
+#
+# -icanon について
+#   stty icanon を設定するプログラムがある。これを設定すると入力が buffering され
+#   その場で入力を受信する事ができない。結果として hang した様に見える。
+#   従って、enter で -icanon を設定する事にする。
+
+function ble/term/stty/initialize {
+  command stty -ixon -nl -icrnl -icanon \
+    kill   undef  lnext  undef  werase undef  erase  undef \
+    intr   undef  quit   undef  susp   undef
+  _ble_term_stty_state=1
+}
+function ble/term/stty/leave {
+  [[ ! $_ble_term_stty_state ]] && return
+  command stty  echo -nl icanon \
+    kill   ''  lnext  ''  werase ''  erase  '' \
+    intr   ''  quit   ''  susp   ''
+  _ble_term_stty_state=
+}
+function ble/term/stty/enter {
+  [[ $_ble_term_stty_state ]] && return
+  command stty -echo -nl -icrnl -icanon \
+    kill   undef  lnext  undef  werase undef  erase  undef \
+    intr   undef  quit   undef  susp   undef
+  _ble_term_stty_state=1
+}
+function ble/term/stty/finalize {
+  [[ ! $_ble_term_stty_state ]] && return
+  # detach の場合 -echo を指定する
+  command stty -echo -nl icanon \
+    kill   ''  lnext  ''  werase ''  erase  '' \
+    intr   ''  quit   ''  susp   ''
+  _ble_term_stty_state=
+}
+function ble/term/stty/TRAPEXIT {
+  # exit の場合は echo
+  command stty echo -nl \
+    kill   ''  lnext  ''  werase ''  erase  '' \
+    intr   ''  quit   ''  susp   ''
+}
+
+
+#---- cursor state ------------------------------------------------------------
+
+_ble_term_cursor_current=unknown
+_ble_term_cursor_external=0
+_ble_term_cursor_internal=0
+_ble_term_cursor_hidden_current=unknown
+_ble_term_cursor_hidden_internal=reveal
+function ble/term/cursor-state/.update {
+  local state=$(($1))
+  [[ $_ble_term_cursor_current == $state ]] && return
+
+  ble/util/buffer "${_ble_term_Ss//@1/$state}"
+
+  _ble_term_cursor_current=$state
+}
+function ble/term/cursor-state/set-internal {
+  _ble_term_cursor_internal=$1
+  [[ $_ble_term_state == internal ]] &&
+    ble/term/cursor-state/.update "$1"
+}
+
+function ble/term/cursor-state/.update-hidden {
+  local state=$1
+  [[ $state != hidden ]] && state=reveal
+  [[ $_ble_term_cursor_hidden_current == $state ]] && return
+
+  if [[ $state == hidden ]]; then
+    ble/util/buffer "$_ble_term_civis"
+  else
+    ble/util/buffer "$_ble_term_cvvis"
+  fi
+
+  _ble_term_cursor_hidden_current=$state
+}
+function ble/term/cursor-state/hide {
+  _ble_term_cursor_hidden_internal=hidden
+  [[ $_ble_term_state == internal ]] &&
+    ble/term/cursor-state/.update-hidden hidden
+}
+function ble/term/cursor-state/reveal {
+  _ble_term_cursor_hidden_internal=reveal
+  [[ $_ble_term_state == internal ]] &&
+    ble/term/cursor-state/.update-hidden reveal
+}
+
+#---- terminal enter/leave ----------------------------------------------------
+
+_ble_term_state=external
+function ble/term/enter {
+  [[ $_ble_term_state == internal ]] && return
+  ble/term/stty/enter
+  ble/term/cursor-state/.update "$_ble_term_cursor_internal"
+  ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
+  _ble_term_state=internal
+}
+function ble/term/leave {
+  [[ $_ble_term_state == external ]] && return
+  ble/term/stty/leave
+  ble/term/cursor-state/.update "$_ble_term_cursor_external"
+  ble/term/cursor-state/.update-hidden reveal
+  _ble_term_cursor_current=unknown # vim は復元してくれない
+  _ble_term_cursor_hidden_current=unknown
+  _ble_term_state=external
+}
+
+function ble/term/finalize {
+  ble/term/stty/finalize
+  ble/term/leave
+  ble/util/buffer.flush >&2
+}
+function ble/term/initialize {
+  ble/term/stty/initialize
+  ble/term/enter
+}
+
+function ble/term/TRAPEXIT {
+  ble/term/stty/TRAPEXIT
+  ble/term/leave
+  ble/util/buffer.flush >&2
+  command rm -f "$_ble_base_run/$$".*
+}
+trap ble/term/TRAPEXIT EXIT
+
 #------------------------------------------------------------------------------
 # String manipulations
 
@@ -1355,7 +1492,7 @@ else
 fi
 
 function ble-text.s2c {
-  local _var="$ret"
+  local _var=$ret
   if [[ $1 == -v && $# -ge 3 ]]; then
     local ret
     ble/util/s2c "$3" "$4"

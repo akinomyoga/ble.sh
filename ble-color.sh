@@ -683,9 +683,9 @@ function ble-highlight-layer:overwrite_mode/update {
   fi
 
   if ((index>=0)); then
-    builtin echo -n "$_ble_term_civis"
+    ble/term/cursor-state/hide
   else
-    builtin echo -n "$_ble_term_cvvis"
+    ble/term/cursor-state/reveal
   fi
 
   if ((index!=oindex)); then
