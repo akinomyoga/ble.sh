@@ -5977,7 +5977,7 @@ function ble-decode-keymap:vi_cmap/define {
   ble-bind -f 'C-@'      set-mark
   ble-bind -f 'M-SP'     set-mark
   ble-bind -f 'C-x C-x'  exchange-point-and-mark
-  ble-bind -f 'C-w'      'kill-region-or uword'
+  ble-bind -f 'C-w'      vi_imap/delete-backward-word
   ble-bind -f 'M-w'      'copy-region-or uword'
   ble-bind -f 'C-y'      yank
 
