@@ -1073,11 +1073,12 @@ function ble-decode-key/.invoke-partial-match {
     # 通常の文字などは全てここに流れてくる事になる。
 
     # 既定の文字ハンドラ
-    local key="$1"
+    local key=$1 seq_save=$_ble_decode_key__seq
     if ble-decode-key/ischar "$key"; then
       builtin eval "local command=\"\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]:2}\""
       ble-decode-key/.invoke-command; local ext=$?
       ((ext!=125)) && return
+      _ble_decode_key__seq=$seq_save # 125 の時はまた元に戻して次の試行を行う
     fi
 
     # 既定のキーハンドラ
