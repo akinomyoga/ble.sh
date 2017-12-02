@@ -3024,6 +3024,7 @@ function ble/widget/quoted-insert.hook {
 function ble/widget/quoted-insert {
   _ble_edit_mark_active=
   _ble_decode_char__hook=ble/widget/quoted-insert.hook
+  return 148
 }
 
 function ble/widget/transpose-chars {
@@ -3035,6 +3036,49 @@ function ble/widget/transpose-chars {
     _ble_edit_str.replace _ble_edit_ind-1 _ble_edit_ind+1 "$b$a"
     ((_ble_edit_ind++))
   fi
+}
+
+_ble_edit_bracketed_paste=
+_ble_edit_bracketed_paste_hook=
+function ble/widget/bracketed-paste.hook {
+  _ble_edit_bracketed_paste=$_ble_edit_bracketed_paste:$1
+
+  # check terminater
+  local is_end= chars=
+  if chars=${_ble_edit_bracketed_paste%:27:91:50:48:49:126} # ESC [ 2 0 1 ~
+     [[ $chars != $_ble_edit_bracketed_paste ]]; then is_end=1
+  elif chars=${_ble_edit_bracketed_paste%:155:50:48:49:126} # CSI 2 0 1 ~
+       [[ $chars != $_ble_edit_bracketed_paste ]]; then is_end=1
+  fi
+
+  if [[ ! $is_end ]]; then
+    _ble_decode_char__hook=ble/widget/bracketed-paste.hook
+    return 148
+  fi
+
+  chars=$chars:
+  chars=${chars//:13:10:/:10:} # CR LF -> LF
+  chars=${chars//:13:/:10:} # CR -> LF
+  chars=(${chars//:/' '})
+
+  local proc=$_ble_edit_bracketed_paste_proc
+  _ble_edit_bracketed_paste_proc=
+  if [[ $proc ]]; then
+    builtin eval -- "$proc \"\${chars[@]}\""
+  else
+    local char KEYS
+    for char in "${chars[@]}"; do
+      KEYS=("$char")
+      ble/widget/self-insert
+    done
+  fi
+}
+function ble/widget/bracketed-paste {
+  _ble_edit_mark_active=
+  _ble_edit_bracketed_paste=()
+  _ble_edit_bracketed_paste_proc=
+  _ble_decode_char__hook=ble/widget/bracketed-paste.hook
+  return 148
 }
 
 # 

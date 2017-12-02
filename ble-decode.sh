@@ -1156,6 +1156,14 @@ function ble-decode-key/.call-widget {
 
   builtin eval -- "$WIDGET"
 }
+function ble-decode/invoke-widget {
+  local WIDGET=ble/widget/$1 KEYMAP=$_ble_decode_key__kmap
+  local -a KEYS; KEYS=("${@:2}")
+  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
+  builtin eval -- "$WIDGET"; local ext=$?
+  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
+  return "$ext"
+}
 
 #%if debug_keylogger
 _ble_keylogger_enabled=0

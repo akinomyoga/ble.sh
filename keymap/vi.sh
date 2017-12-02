@@ -222,6 +222,14 @@ function ble/keymap:vi/imap-repeat/process {
   fi
 }
 
+function ble/keymap:vi/imap/invoke-widget {
+  local WIDGET=$1
+  local -a KEYS; KEYS=("${@:2}")
+  ble/keymap:vi/imap-repeat/push
+  builtin eval -- "$WIDGET"
+}
+
+
 ## 配列 _ble_keymap_vi_imap_white_list
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
 _ble_keymap_vi_imap_white_list=(
@@ -4173,6 +4181,8 @@ function ble/keymap:vi/setup-map {
   # ble-bind -f 'g q' 'vi-command/operator q' # 整形?
   # ble-bind -f 'z f' 'vi-command/operator f'
 
+  ble-bind -f paste_begin vi-command/bracketed-paste
+
   ble-bind -f home  vi-command/beginning-of-line
   ble-bind -f '$'   vi-command/forward-eol
   ble-bind -f end   vi-command/forward-eol
@@ -5599,16 +5609,70 @@ function ble/widget/vi_imap/delete-backward-word {
 }
 
 # imap C-q, C-v
-function ble/widget/vi_imap/quoted-insert.hook {
-  local -a KEYS=($1);
-  local WIDGET=ble/widget/self-insert
-  ble/keymap:vi/imap-repeat/push
-  builtin eval -- "$WIDGET"
-}
 function ble/widget/vi_imap/quoted-insert {
   ble/keymap:vi/imap-repeat/pop
   _ble_edit_mark_active=
   _ble_decode_char__hook=ble/widget/vi_imap/quoted-insert.hook
+}
+function ble/widget/vi_imap/quoted-insert.hook {
+  local -a KEYS=($1)
+  local WIDGET=ble/widget/self-insert
+  ble/keymap:vi/imap-repeat/push
+  builtin eval -- "$WIDGET"
+}
+
+# bracketed paste mode
+
+function ble/widget/vi_imap/bracketed-paste {
+  ble/keymap:vi/imap-repeat/pop
+  ble/widget/bracketed-paste
+  _ble_edit_bracketed_paste_proc=ble/widget/vi_imap/bracketed-paste.proc
+  return 148
+}
+function ble/widget/vi_imap/bracketed-paste.proc {
+  local -a KEYS
+  local WIDGET=ble/widget/self-insert
+  local char
+  for char; do
+    KEYS=("$char")
+    ble/keymap:vi/imap-repeat/push
+    builtin eval -- "$WIDGET"
+  done
+}
+
+_ble_keymap_vi_brackated_paste_mark_active=
+function ble/widget/vi-command/bracketed-paste {
+  _ble_keymap_vi_brackated_paste_mark_active=$_ble_edit_mark_active
+  _ble_edit_mark_active=
+  ble/widget/bracketed-paste
+  _ble_edit_bracketed_paste_proc=ble/widget/vi-command/bracketed-paste.proc
+  return 148
+}
+function ble/widget/vi-command/bracketed-paste.proc {
+  if [[ $_ble_decode_key__kmap == vi_nmap ]]; then
+    local isbol index=$_ble_edit_ind
+    ble-edit/content/bolp && isbol=1
+    ble-decode/invoke-widget 'vi_nmap/append-mode' 97
+    [[ $isbol ]] && ((_ble_edit_ind!=index)) &&
+      ble/widget/.goto-char "$index" # 行頭にいたときは戻る
+
+    ble/widget/vi_imap/bracketed-paste.proc "$@"
+    ble/keymap:vi/imap/invoke-widget \
+      ble/widget/vi_imap/normal-mode $((ble_decode_Ctrl|0x5b))
+  elif [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    local _ble_edit_mark_active=$_ble_keymap_vi_brackated_paste_mark_active
+    ble-decode/invoke-widget 'vi-command/operator c' 99 || return 1
+    ble/widget/vi_imap/bracketed-paste.proc "$@"
+    ble/keymap:vi/imap/invoke-widget \
+      ble/widget/vi_imap/normal-mode $((ble_decode_Ctrl|0x5b))
+  elif [[ $_ble_decode_key__kmap == vi_omap ]]; then
+    ble/widget/vi_omap/cancel
+    ble/widget/.bell
+    return 1
+  else # vi_omap
+    ble/widget/.bell
+    return 1
+  fi
 }
 
 #------------------------------------------------------------------------------
@@ -5675,9 +5739,10 @@ function ble-decode-keymap:vi_imap/define {
   # bash
 
   # ins
-  ble-bind -f 'C-q'   vi_imap/quoted-insert
-  ble-bind -f 'C-v'   vi_imap/quoted-insert
-  ble-bind -f 'C-RET' newline
+  ble-bind -f 'C-q'       vi_imap/quoted-insert
+  ble-bind -f 'C-v'       vi_imap/quoted-insert
+  ble-bind -f 'C-RET'     newline
+  ble-bind -f paste_begin vi_imap/bracketed-paste
 
   # shell
   ble-bind -f 'C-m' 'vi_imap/accept-single-line-or vi_imap/newline'
@@ -5860,7 +5925,7 @@ function ble/widget/vi_cmap/accept {
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
   if [[ $hook ]]; then
-    eval "$hook \"\$result\""
+    builtin eval -- "$hook \"\$result\""
   else
     ble/keymap:vi/adjust-command-mode
     return 0
@@ -5898,6 +5963,7 @@ function ble-decode-keymap:vi_cmap/define {
   ble-bind -f 'C-v'       quoted-insert
   ble-bind -f 'C-M-m'     newline
   ble-bind -f 'M-RET'     newline
+  ble-bind -f paste_begin bracketed-paste
 
   # shell function
   ble-bind -f  'C-g'     bell

@@ -19,6 +19,7 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f 'C-v'       quoted-insert
   ble-bind -f 'C-M-m'     newline
   ble-bind -f 'M-RET'     newline
+  ble-bind -f paste_begin bracketed-paste
 
   # shell function
   ble-bind -f  'C-c'     discard-line

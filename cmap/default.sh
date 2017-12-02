@@ -125,6 +125,9 @@ function ble-bind-function-key+default {
   ble-bind --csi '33~' f19
   ble-bind --csi '34~' f20
 
+  ble-bind --csi '200~' paste_begin
+  ble-bind --csi '201~' paste_end
+
   # keypad
   #   vt100, xterm, application mode
   #   ESC ? は vt52 由来

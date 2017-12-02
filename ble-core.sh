@@ -1406,12 +1406,22 @@ function ble/term/cursor-state/reveal {
     ble/term/cursor-state/.update-hidden reveal
 }
 
+#---- DECSET(2004): bracketed paste mode --------------------------------------
+
+function ble/term/bracketed-paste-mode/enter {
+  ble/util/buffer $'\e[?2004h'
+}
+function ble/term/bracketed-paste-mode/leave {
+  ble/util/buffer $'\e[?2004l'
+}
+
 #---- terminal enter/leave ----------------------------------------------------
 
 _ble_term_state=external
 function ble/term/enter {
   [[ $_ble_term_state == internal ]] && return
   ble/term/stty/enter
+  ble/term/bracketed-paste-mode/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
   _ble_term_state=internal
@@ -1419,6 +1429,7 @@ function ble/term/enter {
 function ble/term/leave {
   [[ $_ble_term_state == external ]] && return
   ble/term/stty/leave
+  ble/term/bracketed-paste-mode/leave
   ble/term/cursor-state/.update "$_ble_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
   _ble_term_cursor_current=unknown # vim は復元してくれない
