@@ -1922,7 +1922,7 @@ function ble-syntax:bash/ctx-expr {
 
 ## CTX_CONDI 及び CTX_RDRS の時は不活性化したブレース展開として振る舞う
 ## CTX_RDRF 及び CTX_RDRD の時は複数語に展開されるブレース展開はエラーなので、
-## nest-push して解析だけ行いブレース展開であるということが確定した時点でエラーを設定する。 
+## nest-push して解析だけ行いブレース展開であるということが確定した時点でエラーを設定する。
 
 function ble-syntax:bash/check-brace-expansion {
   [[ $tail == '{'* ]] || return 1
@@ -3314,7 +3314,7 @@ function ble-syntax:bash/ctx-heredoc-word/check-word-end {
   # 終了処理
   ble-syntax/parse/word-pop
   ble-syntax/parse/nest-pop
-  
+
   local I
   if ((octx==CTX_RDRI)); then I=I; else I=R; fi
 
@@ -3720,7 +3720,7 @@ function ble-syntax/parse {
     ilook=$((i1+${stat[7]:-1}))
   else
     # 初期値
-    ctx=$CTX_UNSPECIFIED ##!< 現在の解析の文脈 
+    ctx=$CTX_UNSPECIFIED ##!< 現在の解析の文脈
     ble-syntax:"$_ble_syntax_lang"/initialize-ctx # ctx 初期化
     wbegin=-1       ##!< シェル単語内にいる時、シェル単語の開始位置
     wtype=-1        ##!< シェル単語内にいる時、シェル単語の種類
@@ -3794,7 +3794,7 @@ function ble-syntax/parse {
       _ble_syntax_dbeg=_ble_syntax_dend=-1
     ):(
       _ble_syntax_dbeg=i,_ble_syntax_dend=i2)))
-  
+
   # 終端の状態の記録
   if ((i>=iN)); then
     ((i=iN))
@@ -4045,7 +4045,7 @@ function ble-syntax/completion-context/check-here {
     # ここで CTX_CMDI や CTX_ARGI は処理しない。
     # 既に check-prefix で引っかかっている筈だから。
     local ctx=${stat[0]}
-    
+
     if ((ctx==CTX_CMDX||ctx==CTX_CMDXV||ctx==CTX_CMDX1||ctx==CTX_CMDXT)); then
       if ! shopt -q no_empty_cmd_completion; then
         ble-syntax/completion-context/add command "$index"
@@ -4273,10 +4273,10 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_ARGX     syntax_default
   _ble_syntax_attr2iface.define CTX_ARGX0    syntax_default
   _ble_syntax_attr2iface.define CTX_ARGI     syntax_default
-  _ble_syntax_attr2iface.define CTX_ARGQ    syntax_default
+  _ble_syntax_attr2iface.define CTX_ARGQ     syntax_default
   _ble_syntax_attr2iface.define CTX_ARGVX    syntax_default
   _ble_syntax_attr2iface.define CTX_ARGVI    syntax_default
-  _ble_syntax_attr2iface.define CTX_ARGVR   syntax_default
+  _ble_syntax_attr2iface.define CTX_ARGVR    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDX     syntax_default
   _ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXT    syntax_default
@@ -4299,8 +4299,8 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define ATTR_FUNCDEF syntax_function_name
   _ble_syntax_attr2iface.define CTX_VALX     syntax_default
   _ble_syntax_attr2iface.define CTX_VALI     syntax_default
-  _ble_syntax_attr2iface.define CTX_VALR    syntax_default
-  _ble_syntax_attr2iface.define CTX_VALQ    syntax_default
+  _ble_syntax_attr2iface.define CTX_VALR     syntax_default
+  _ble_syntax_attr2iface.define CTX_VALQ     syntax_default
   _ble_syntax_attr2iface.define CTX_CONDX    syntax_default
   _ble_syntax_attr2iface.define CTX_CONDI    syntax_default
   _ble_syntax_attr2iface.define CTX_CONDQ    syntax_default

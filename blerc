@@ -1,40 +1,121 @@
 # -*- mode:sh -*-
 
-if [[ $- == *i* ]]; then
-  . "$HOME/prog/ble/ble.sh" noattach
+## Here settings for ble.sh is given.
+##
+## An example of ~/.bashrc:
+##
+## ```bash
+## if [[ $- == *i* ]] && "$HOME/.local/share/blesh/ble.sh" noattach; then
+##   source ~/.blerc
+## fi
+## 
+## # Your bashrc contents should come here
+## 
+## [[ $- == *i* ]] && ble-attach
+## ```
+##
 
-  # ble-color-setface region                   bg=60,fg=white
-  # ble-color-setface disabled                 fg=gray
-  # ble-color-setface overwrite_mode           fg=black,bg=51
-  # ble-color-setface syntax_default           none
-  # ble-color-setface syntax_command           fg=red
-  # ble-color-setface syntax_quoted            fg=green
-  # ble-color-setface syntax_quotation         fg=green,bold
-  # ble-color-setface syntax_expr              fg=navy
-  # ble-color-setface syntax_error             bg=203,fg=231 # bg=224
-  # ble-color-setface syntax_varname           fg=202
-  # ble-color-setface syntax_delimiter         bold
-  # ble-color-setface syntax_param_expansion   fg=purple
-  # ble-color-setface syntax_history_expansion bg=94,fg=231
-  # ble-color-setface syntax_function_name     fg=purple
-  # ble-color-setface syntax_comment           fg=gray
-  # ble-color-setface command_builtin_dot      fg=red,bold
-  # ble-color-setface command_builtin          fg=red
-  # ble-color-setface command_alias            fg=teal
-  # ble-color-setface command_function         fg=purple
-  # ble-color-setface command_file             fg=green
-  # ble-color-setface command_keyword          fg=blue
-  # ble-color-setface command_jobs             fg=red
-  # ble-color-setface command_directory        fg=navy,underline
-  # ble-color-setface filename_directory       fg=navy,underline
-  # ble-color-setface filename_link            fg=teal,underline
-  # ble-color-setface filename_executable      fg=green,underline
-  # ble-color-setface filename_other           underline
+# bleopt input_encoding=UTF-8
+# bleopt pager=UTF-8
+# bleopt vbell_default_message=' Wuff, -- Wuff!! ' vbell_duration=2000
+
+# bleopt char_width_mode=east
+# bleopt edit_abell=1
+# bleopt edit_vbell=
+# bleopt delete_selection_mode=1
+# bleopt default_keymap=auto
+# bleopt indent_offset=4
+# bleopt indent_tabs=1
+# bleopt tab_width=
+# bleopt complete_stdin_frequency=50
+
+## Color settings
+
+# ble-color-setface syntax_default           none
+# ble-color-setface syntax_command           fg=brown
+# ble-color-setface syntax_quoted            fg=green
+# ble-color-setface syntax_quotation         fg=green,bold
+# ble-color-setface syntax_expr              fg=navy
+# ble-color-setface syntax_error             bg=203,fg=231 # bg=224
+# ble-color-setface syntax_varname           fg=202
+# ble-color-setface syntax_delimiter         bold
+# ble-color-setface syntax_param_expansion   fg=purple
+# ble-color-setface syntax_history_expansion bg=94,fg=231
+# ble-color-setface syntax_function_name     fg=92,bold # fg=purple
+# ble-color-setface syntax_comment           fg=gray
+# ble-color-setface syntax_glob              fg=198,bold
+# ble-color-setface syntax_brace             fg=37,bold
+# ble-color-setface syntax_tilde             fg=navy,bold
+# ble-color-setface syntax_document          fg=94
+# ble-color-setface syntax_document_begin    fg=94,bold
+# ble-color-setface command_builtin_dot      fg=red,bold
+# ble-color-setface command_builtin          fg=red
+# ble-color-setface command_alias            fg=teal
+# ble-color-setface command_function         fg=92 # fg=purple
+# ble-color-setface command_file             fg=green
+# ble-color-setface command_keyword          fg=blue
+# ble-color-setface command_jobs             fg=red
+# ble-color-setface command_directory        fg=navy,underline
+# ble-color-setface filename_directory       fg=navy,underline
+# ble-color-setface filename_link            fg=teal,underline
+# ble-color-setface filename_executable      fg=green,underline
+# ble-color-setface filename_other           underline
+# ble-color-setface filename_socket          fg=cyan,bg=black,underline
+# ble-color-setface filename_pipe            fg=lime,bg=black,underline
+# ble-color-setface filename_character       fg=white,bg=black,underline
+# ble-color-setface filename_block           fg=yellow,bg=black,underline
+# ble-color-setface filename_warning         fg=red,underline
+
+## Settings for vi-mode
+if [[ $bleopt_default_keymap == auto && -o vi || $bleopt_default_keymap == vi ]]; then
+  ((_ble_bash>=40300)) && bind 'set keyseq-timeout 1'
+
+  source "$_ble_base/keymap/vi.sh"
+  # bleopt keymap_vi_macro_depth=64
+  # bleopt keymap_vi_nmap_name:=$'\e[1m~\e[m'
+
+  ## keymap settings with Meta modifiers
+  # ble-bind -f 'M-SP'      set-mark
+  # ble-bind -f 'M-w'       'copy-region-or uword'
+  # ble-bind -f 'M-\'       delete-horizontal-space
+  # ble-bind -f 'M-right'   '@nomarked forward-sword'
+  # ble-bind -f 'M-left'    '@nomarked backward-sword'
+  # ble-bind -f 'S-M-right' '@marked forward-sword'
+  # ble-bind -f 'S-M-left'  '@marked backward-sword'
+  # ble-bind -f 'M-d'       'kill-forward-cword'
+  # ble-bind -f 'M-h'       'kill-backward-cword'
+  # ble-bind -f 'M-delete'  copy-forward-sword
+  # ble-bind -f 'M-DEL'     copy-backward-sword
+  # ble-bind -f 'M-f'       '@nomarked forward-cword'
+  # ble-bind -f 'M-b'       '@nomarked backward-cword'
+  # ble-bind -f 'M-F'       '@marked forward-cword'
+  # ble-bind -f 'M-B'       '@marked backward-cword'
+  # ble-bind -f 'M-m'       '@nomarked beginning-of-line'
+  # ble-bind -f 'S-M-m'     '@marked beginning-of-line'
+
+  ## Cursor settings
+  # bleopt keymap_vi_nmap_cursor=2
+  # bleopt keymap_vi_imap_cursor=5
+  # bleopt keymap_vi_omap_cursor=4
+  # bleopt keymap_vi_xmap_cursor=2
+  # bleopt keymap_vi_cmap_cursor=0
+
+  ## DECSCUSR setting
+  ##
+  ##   If you don't have the entry Ss in terminfo, yet your terminal supports
+  ##   DECSCUSR, please comment out the following line to enable DECSCUSR.
+  ##
+  #_ble_term_Ss=$'\e[@1 q'
+
+  ## Control sequences that will be output on entering each mode
+  # bleopt term_vi_nmap=
+  # bleopt term_vi_imap=
+  # bleopt term_vi_omap=
+  # bleopt term_vi_xmap=
+  # bleopt term_vi_cmap=
+
+  ## vim-surround
+  # source "$_ble_base/lib/vim-surround.sh"
+  # bleopt vim_surround_45:=$'$( \r )'
+  # bleopt vim_surround_61:=$'$(( \r ))'
 fi
-
-# test -f /etc/profile && . /etc/profile
-# test -f /etc/bashrc  && . /etc/bashrc
-
-. "$HOME/.bashrc"
-
-[[ $- == *i* ]] && ble-attach

@@ -702,10 +702,6 @@ tech
     https://stackoverflow.com/questions/43117707/bashs-strange-behavior-on-a-function-named/
     http://lists.gnu.org/archive/html/bug-bash/2017-03/msg00220.html
 
-  * README.md に GitHub アカウントを持っていない時の記述方法を書くと良いのではないか。
-
-  * update blerc -> bashrc
-
 2017-11-26
 
   * complete: nocaseglob 的な補完に対応する?
@@ -3014,6 +3010,12 @@ tech
 -------------------------------------------------------------------------------
 
 2017-12-02
+
+  * 2017-11-29 README.md に GitHub アカウントを持っていない時の記述方法を書くと良いのではないか [#D0641]
+    と思ったら元々 GitHub アカウントを持っていない時の記述であった。
+
+  * 2017-11-29 update blerc -> bashrc [#D0640]
+    やはり名称の変更は行わない。中身は更新した。
 
   * 2015-08-14 DECSET 2004 に対応する? (ref http://srad.jp/~doda/journal/506765/) [#D0639]
 

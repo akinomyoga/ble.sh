@@ -1150,7 +1150,7 @@ function ble/keymap:vi/operator:c {
     local slpad=${sub%%:*} sub=${sub#*:}
     ((smin+=slpad,smax=smin,slpad=0))
     sub_ranges[0]=$smin:$smax:$slpad:$sub
-    
+
     ble/widget/vi_xmap/block-insert-mode.impl insert
   else
     ble/keymap:vi/operator:d "$@" || return 1 # @var beg will be overwritten here
