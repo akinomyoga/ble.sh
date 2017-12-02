@@ -101,7 +101,7 @@ function ble/widget/nop { :; }
 
 function ble/keymap:vi/string#encode-rot13 {
   local text=$*
-  local -a buff ch
+  local -a buff=() ch
   for ((i=0;i<${#text};i++)); do
     ch=${text:i:1}
     if [[ $ch == [A-Z] ]]; then
@@ -113,7 +113,7 @@ function ble/keymap:vi/string#encode-rot13 {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret=${buff[*]}'
+  IFS= eval 'ret=${buff[*]-}'
 }
 
 #------------------------------------------------------------------------------
@@ -197,11 +197,11 @@ function ble/keymap:vi/imap-repeat/pop {
   ((top_index>=0)) && unset '_ble_keymap_vi_irepeat[top_index]'
 }
 function ble/keymap:vi/imap-repeat/push {
-  ble/array#push _ble_keymap_vi_irepeat "${KEYS[*]}:$WIDGET"
+  ble/array#push _ble_keymap_vi_irepeat "${KEYS[*]-}:$WIDGET"
 }
 
 function ble/keymap:vi/imap-repeat/reset {
-  local count=$1
+  local count=${1-}
   _ble_keymap_vi_irepeat_count=
   _ble_keymap_vi_irepeat=()
   ((count>1)) && _ble_keymap_vi_irepeat_count=$count
@@ -806,7 +806,7 @@ function ble/widget/vi_nmap/record-register {
     ble/util/c2s 155; local csi=$ret
 
     local key value
-    local -a buff
+    local -a buff=()
     for key in "${keys[@]}"; do
       # 通常の文字
       if ble-decode-key/ischar "$key"; then
@@ -837,7 +837,7 @@ function ble/widget/vi_nmap/record-register {
         (key&ble_decode_Meta)&&(mod+=0x20)))
       ble/array#push buff "${csi}27;$mod;$c~"
     done
-    IFS= eval 'local value="${buff[*]}"'
+    IFS= eval 'local value=${buff[*]-}'
     ble/keymap:vi/register#set "$_ble_keymap_vi_reg_record" q "$value"
 
     _ble_keymap_vi_reg_record=
@@ -1165,7 +1165,7 @@ function ble/keymap:vi/operator:y {
     ble/keymap:vi/register#set "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
   elif [[ $context == block ]]; then
     local sub
-    local -a afill atext
+    local -a afill=() atext=()
     for sub in "${sub_ranges[@]}"; do
       local sub4=${sub#*:*:*:*:}
       local sfill=${sub4%%:*} stext=${sub4#*:}
@@ -1173,8 +1173,8 @@ function ble/keymap:vi/operator:y {
       ble/array#push atext "$stext"
     done
 
-    IFS=$'\n' eval 'local kill_ring=${atext[*]}'
-    local kill_type=B:${afill[*]}
+    IFS=$'\n' eval 'local kill_ring=${atext[*]-}'
+    local kill_type=B:${afill[*]-}
     ble/keymap:vi/register#set "$reg" "$kill_type" "$kill_ring" || return 1
   else
     ble/keymap:vi/register#set "$reg" '' "${_ble_edit_str:beg:end-beg}" || return 1
@@ -1242,7 +1242,7 @@ function ble/keymap:vi/string#increase-indent {
   local text=$1 delta=$2
   local space=$' \t' it=${bleopt_tab_width:-$_ble_term_it}
   local arr; ble/string#split-lines arr "$text"
-  local -a arr2
+  local -a arr2=()
   local line indent i len x r
   for line in "${arr[@]}"; do
     indent=${line%%[!$space]*}
@@ -1278,7 +1278,7 @@ function ble/keymap:vi/string#increase-indent {
     ble/array#push arr2 "$indent$line"
   done
 
-  IFS=$'\n' eval 'ret=${arr2[*]}'
+  IFS=$'\n' eval 'ret=${arr2[*]-}'
 }
 ## 関数 ble/keymap:vi/operator:increase-indent.impl/increase-block-indent width
 ##   @param[in] width
@@ -1301,7 +1301,7 @@ function ble/keymap:vi/operator:increase-indent.impl/decrease-graphical-block-in
   local width=$1
   local it=${bleopt_tab_width:-$_ble_term_it} cols=$_ble_textmap_cols
   local sub smin slpad ret
-  local -a replaces
+  local -a replaces=()
   local isub=${#sub_ranges[@]}
   while ((isub--)); do
     ble/string#split sub : "${sub_ranges[isub]}"
@@ -1678,17 +1678,17 @@ function ble/keymap:vi/mark/update-mark-history {
     local imark value
 
     # save
-    local -a save
+    local -a save=()
     for imark in "${!_ble_keymap_vi_mark_local[@]}"; do
       local value=${_ble_keymap_vi_mark_local[imark]}
       ble/array#push save "$imark:$value"
     done
-    _ble_keymap_vi_mark_history[_ble_keymap_vi_mark_hindex]=${save[*]}
+    _ble_keymap_vi_mark_history[_ble_keymap_vi_mark_hindex]=${save[*]-}
 
     # load
     _ble_keymap_vi_mark_local=()
     local entry
-    for entry in ${_ble_keymap_vi_mark_history[h]}; do
+    for entry in ${_ble_keymap_vi_mark_history[h]-}; do
       imark=${entry%%:*} value=${entry#*:}
       _ble_keymap_vi_mark_local[imark]=$value
     done
@@ -1771,6 +1771,7 @@ function ble/keymap:vi/mark/get-local-mark {
 }
 
 # `[ `]
+_ble_keymap_vi_mark_suppress_edit=
 function ble/keymap:vi/mark/set-previous-edit-area {
   [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
   local beg=$1 end=$2
@@ -1946,7 +1947,7 @@ function ble/keymap:vi/repeat/record-special {
   return 1
 }
 function ble/keymap:vi/repeat/record-normal {
-  local -a repeat; repeat=("$KEYMAP" "${KEYS[*]}" "$WIDGET" "$ARG" "$FLAG" "$REG" '')
+  local -a repeat; repeat=("$KEYMAP" "${KEYS[*]-}" "$WIDGET" "$ARG" "$FLAG" "$REG" '')
   if [[ $KEYMAP == vi_xmap ]]; then
     repeat[6]=$_ble_keymap_vi_xmap_prev_edit
   fi
@@ -1966,13 +1967,13 @@ function ble/keymap:vi/repeat/record {
 ##   挿入モードで行われた挿入操作の列を記録します。
 function ble/keymap:vi/repeat/record-insert {
   ble/keymap:vi/repeat/record-special && return 0
-  if [[ $_ble_keymap_vi_repeat_insert ]]; then
+  if [[ ${_ble_keymap_vi_repeat_insert-} ]]; then
     # 挿入モード突入操作が未だ有効ならば、挿入操作の有無に拘らず記録
     _ble_keymap_vi_repeat=("${_ble_keymap_vi_repeat_insert[@]}")
     _ble_keymap_vi_repeat_irepeat=("${_ble_keymap_vi_irepeat[@]}")
   elif ((${#_ble_keymap_vi_irepeat[@]})); then
     # 挿入モード突入操作が初期化されていたら、挿入操作がある時のみに記録
-    _ble_keymap_vi_repeat=(vi_nmap "${KEYS[*]}" ble/widget/vi_nmap/insert-mode 1 '' '')
+    _ble_keymap_vi_repeat=(vi_nmap "${KEYS[*]-}" ble/widget/vi_nmap/insert-mode 1 '' '')
     _ble_keymap_vi_repeat_irepeat=("${_ble_keymap_vi_irepeat[@]}")
   fi
   ble/keymap:vi/repeat/clear-insert
@@ -1981,7 +1982,7 @@ function ble/keymap:vi/repeat/record-insert {
 ##   挿入モードにおいて white list にないコマンドが実行された時に、
 ##   挿入モードに入るきっかけになった操作を初期化します。
 function ble/keymap:vi/repeat/clear-insert {
-  _ble_keymap_vi_repeat_insert=
+  _ble_keymap_vi_repeat_insert=()
 }
 
 function ble/keymap:vi/repeat/invoke {
@@ -2529,7 +2530,7 @@ function ble/widget/vi_nmap/paste.impl/block {
     local c=$((_ble_edit_ind-bol))
   fi
 
-  local -a ins_beg ins_end ins_text
+  local -a ins_beg=() ins_end=() ins_text=()
   local i is_newline=
   for ((i=0;i<ntext;i++)); do
     if ((i>0)); then
@@ -5307,7 +5308,7 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   ins=${_ble_edit_str:p1:p2-p1}
 
   # 挿入の決定
-  local -a ins_beg ins_text
+  local -a ins_beg=() ins_text=()
   local iline=1 nline=${data[3]} strlen=${#_ble_edit_str}
   for ((iline=1;iline<nline;iline++)); do
     local index= lpad=
@@ -5912,7 +5913,7 @@ function ble/widget/vi_cmap/accept {
   [[ $result ]] && ble-edit/history/add "$result" # Note: cancel でも登録する
 
   # 消去
-  local -a DRAW_BUFF
+  local -a DRAW_BUFF=()
   ble-form/panel#set-height.draw "$_ble_textarea_panel" 0
   ble-edit/draw/bflush
 

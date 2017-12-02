@@ -962,7 +962,7 @@ function ble-edit/prompt/update/process-backslash {
   ((i+=2))
 
   # \\ の次の文字
-  local c="${tail:1:1}" pat='[]#!$\'
+  local c=${tail:1:1} pat='[]#!$\'
   if [[ ! ${pat##*"$c"*} ]]; then
     case "$c" in
     (\[) ble-edit/draw/put $'\e[99s' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
@@ -1145,7 +1145,7 @@ function ble-edit/prompt/update/eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble-edit/prompt/update {
-  local version="$_ble_edit_LINENO"
+  local version=$_ble_edit_LINENO
   if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
     _ble_edit_prompt.load
     return
@@ -1158,14 +1158,14 @@ function ble-edit/prompt/update {
   fi
   local ps1=$_ble_edit_PS1
 
-  local cache_d cache_t cache_A cache_T cache_at cache_D cache_j cache_wd
+  local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
 
   # 1 特別な Escape \? を処理
-  local i=0 iN="${#ps1}"
-  local -a DRAW_BUFF
+  local i=0 iN=${#ps1}
+  local -a DRAW_BUFF=()
   local rex_letters='^[^\]+|\\$'
   while ((i<iN)); do
-    local tail="${ps1:i}"
+    local tail=${ps1:i}
     if [[ $tail == '\'?* ]]; then
       ble-edit/prompt/update/process-backslash
     elif [[ $tail =~ $rex_letters ]]; then
@@ -1302,7 +1302,6 @@ function ble/textmap#update {
   local it=${bleopt_tab_width:-$_ble_term_it}
   _ble_util_string_prototype.reserve "$it"
 
-  local -a pos
   if ((cols!=_ble_textmap_cols)); then
     # 表示幅が変化したときは全部再計算
     ((dbeg=0,dend0=_ble_textmap_length,dend=iN))
@@ -1315,6 +1314,7 @@ function ble/textmap#update {
   else
     if ((dbeg<0)); then
       # 表示幅も初期位置も内容も変更がない場合はOK
+      local -a pos
       pos=(${_ble_textmap_pos[iN]})
       ((x=pos[0]))
       ((y=pos[1]))
@@ -1323,6 +1323,7 @@ function ble/textmap#update {
       return
     elif ((dbeg>0)); then
       # 途中から計算を再開
+      local -a pos
       pos=(${_ble_textmap_pos[dbeg]})
       ((x=pos[0]))
       ((y=pos[1]))
@@ -1729,7 +1730,7 @@ function ble-edit/info/.construct-content {
   case "$1" in
   (raw)
     local lc=32 lg=0 g=0
-    local -a DRAW_BUFF
+    local -a DRAW_BUFF=()
     ble-edit/draw/trace "$text"
     ble-edit/draw/sflush -v content ;;
   (text)
@@ -1747,7 +1748,7 @@ _ble_line_info=(0 0 "")
 function ble-edit/info/.clear-content {
   [[ ${_ble_line_info[2]} ]] || return
 
-  local -a DRAW_BUFF
+  local -a DRAW_BUFF=()
   ble-form/panel#set-height.draw 1 0
   ble-edit/draw/bflush
 
@@ -1767,7 +1768,7 @@ function ble-edit/info/.render-content {
     return
   fi
 
-  local -a DRAW_BUFF
+  local -a DRAW_BUFF=()
   ble-form/panel#set-height-and-clear.draw 1 $((y+1))
   ble-form/panel#goto.draw 1
   ble-edit/draw/put "$content"
@@ -2377,7 +2378,7 @@ _ble_textarea_caret_state=::
 function ble/textarea#render {
   local caret_state="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
   if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == "$caret_state" ]]; then
-    local -a DRAW_BUFF
+    local -a DRAW_BUFF=()
     ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
     ble-edit/draw/bflush
     return
@@ -2423,7 +2424,7 @@ function ble/textarea#render {
   #-------------------
   # 描画領域の決定とスクロール
 
-  local -a DRAW_BUFF
+  local -a DRAW_BUFF=()
 
   # 1 描画領域の決定
   local begx=$_ble_textmap_begx begy=$_ble_textmap_begy
@@ -2574,7 +2575,7 @@ function ble/textarea#redraw-cache {
   if [[ ! $_ble_textarea_scroll && ${_ble_textarea_cache[0]+set} ]]; then
     local -a d; d=("${_ble_textarea_cache[@]}")
 
-    local -a DRAW_BUFF
+    local -a DRAW_BUFF=()
 
     ble-form/panel#clear.draw "$_ble_textarea_panel"
     ble-form/panel#goto.draw "$_ble_textarea_panel"
@@ -2608,7 +2609,7 @@ function ble/textarea#adjust-for-bash-bind {
   else
     # bash が表示するプロンプトを見えなくする
     # (現在のカーソルの左側にある文字を再度上書きさせる)
-    local -a DRAW_BUFF
+    local -a DRAW_BUFF=()
     PS1=
     local ret lc="${_ble_textarea_cur[2]}" lg="${_ble_textarea_cur[3]}"
     ble/util/c2s "$lc"
@@ -3170,7 +3171,7 @@ function ble/widget/exit {
   #   これは ble/textarea#render より後である必要がある。
   ble-edit/info/hide
 
-  local -a DRAW_BUFF
+  local -a DRAW_BUFF=()
   ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble-edit/draw/bflush
   ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
@@ -3666,7 +3667,7 @@ _ble_edit_exec_lines=()
 _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
 function ble-edit/exec/register {
-  local BASH_COMMAND="$1"
+  local BASH_COMMAND=$1
   ble/array#push _ble_edit_exec_lines "$1"
 }
 function ble-edit/exec/.setexit {
@@ -3676,7 +3677,7 @@ function ble-edit/exec/.setexit {
 function ble-edit/exec/.adjust-eol {
   # 文末調整
   local cols="${COLUMNS:-80}"
-  local -a DRAW_BUFF
+  local -a DRAW_BUFF=()
   ble-edit/draw/put "$_ble_term_sc"
   ble-edit/draw/put "${_ble_term_setaf[12]}[ble: EOF]$_ble_term_sgr0"
   ble-edit/draw/put "$_ble_term_rc"
@@ -3722,7 +3723,7 @@ function ble-edit/exec/save-BASH_REMATCH {
   local rex= i=0
   local text=$BASH_REMATCH sub ret isub
 
-  local -a rparens
+  local -a rparens=()
   local isub rex i=0
   for ((isub=1;isub<size;isub++)); do
     local sub=${BASH_REMATCH[isub]}
@@ -3810,7 +3811,7 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
 
 function ble-edit/exec:exec/.eval-prologue {
   ble-edit/exec/restore-BASH_REMATCH
-  ble/restore-bash-verbose-option
+  ble/restore-bash-options
 
   set -H
 
@@ -3819,8 +3820,8 @@ function ble-edit/exec:exec/.eval-prologue {
   # trap '_ble_edit_exec_INT=126; return 126' TSTP
 }
 function ble-edit/exec:exec/.save-last-arg {
-  _ble_edit_exec_lastarg="$_" _ble_edit_exec_lastexit="$?"
-  ble/adjust-bash-verbose-option
+  _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
+  ble/adjust-bash-options
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:exec/.eval {
@@ -3832,7 +3833,7 @@ function ble-edit/exec:exec/.eval {
 function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
 
-  ble/adjust-bash-verbose-option
+  ble/adjust-bash-options
   _ble_edit_PS1=$PS1
   _ble_edit_IFS=$IFS
   ble-edit/exec/save-BASH_REMATCH
@@ -4060,12 +4061,12 @@ function ble-edit/exec:gexec/.eval-prologue {
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec/restore-BASH_REMATCH
-  ble/restore-bash-verbose-option
+  ble/restore-bash-options
   ble-edit/exec/.setexit # set $?
 }
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
-  ble/adjust-bash-verbose-option
+  ble/adjust-bash-options
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.eval-epilogue {
@@ -4083,8 +4084,8 @@ function ble-edit/exec:gexec/.eval-epilogue {
   local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
 
-  ble/adjust-bash-verbose-option
-  _ble_edit_PS1="$PS1"
+  ble/adjust-bash-options
+  _ble_edit_PS1=$PS1
   PS1=
   ble-edit/exec/save-BASH_REMATCH
   ble-edit/exec/.adjust-eol
@@ -4153,7 +4154,7 @@ function ble/widget/.insert-newline {
   ble/textarea#render
 
   # 新しい描画領域
-  local -a DRAW_BUFF
+  local -a DRAW_BUFF=()
   ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
   ble-edit/draw/put "$_ble_term_nl"
   ble-edit/draw/bflush
@@ -4228,7 +4229,7 @@ function ble-edit/hist_expanded.update {
 }
 
 function ble/widget/accept-line {
-  local BASH_COMMAND="$_ble_edit_str"
+  local BASH_COMMAND=$_ble_edit_str
 
   if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
     ble/widget/.newline
@@ -4491,7 +4492,7 @@ function ble-edit/history/load {
     local x="$_ble_line_x" y="$_ble_line_y"
     ble-edit/info/show text "loading history..."
 
-    local -a DRAW_BUFF
+    local -a DRAW_BUFF=()
     ble-form/goto.draw "$x" "$y"
     ble-edit/draw/flush >&2
   fi
@@ -5576,7 +5577,7 @@ function ble/widget/command-help.impl {
 
   ble-edit/info/hide
   ble/textarea#invalidate
-  local -a DRAW_BUFF
+  local -a DRAW_BUFF=()
   ble-form/panel#set-height.draw "$_ble_textarea_panel" 0
   ble-form/panel#goto.draw "$_ble_textarea_panel" 0 0
   ble-edit/draw/bflush

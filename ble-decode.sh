@@ -545,7 +545,7 @@ function ble-decode-char {
 ##   @var[in] _ble_decode_char2_seq
 ##   @var[in] char
 function ble-decode-char/.getent {
-  builtin eval "ent=\"\${_ble_decode_cmap_$_ble_decode_char2_seq[$char]}\""
+  builtin eval "ent=\"\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}\""
 
   # CSI sequence
   #   ent=     の時 → (CSI の結果)
@@ -556,9 +556,9 @@ function ble-decode-char/.getent {
   ble-decode-char/csi/consume "$char"
   if [[ $csistat && ! ${ent%_} ]]; then
     if [[ ! $ent ]]; then
-      ent="$csistat"
+      ent=$csistat
     else
-      ent="${csistat%_}_"
+      ent=${csistat%_}_
     fi
   fi
 
@@ -566,7 +566,7 @@ function ble-decode-char/.getent {
 }
 
 function ble-decode-char/.process-modifier {
-  local mflag1="$1" mflag="$_ble_decode_char2_modifier"
+  local mflag1=$1 mflag=$_ble_decode_char2_modifier
   if ((mflag1&mflag)); then
     # 既に同じ修飾がある場合は通常と同じ処理をする。
     # 例えば ESC ESC は3番目に来る文字に Meta 修飾をするのではなく、
@@ -591,7 +591,7 @@ function ble-decode-char/.process-modifier {
 ##   @param[in] kcode
 ##     処理対象のキーコードを指定します。
 function ble-decode-char/.send-modified-key {
-  local kcode="$1"
+  local kcode=$1
   if ((0<=kcode&&kcode<32)); then
     ((kcode|=(kcode==0||kcode>26?64:96)|ble_decode_Ctrl))
   fi
@@ -621,8 +621,8 @@ function ble-decode-char/.send-modified-key {
   fi
 
   if [[ $_ble_decode_char2_modifier ]]; then
-    local mflag="$_ble_decode_char2_modifier"
-    local mcode="$_ble_decode_char2_modkcode"
+    local mflag=$_ble_decode_char2_modifier
+    local mcode=$_ble_decode_char2_modkcode
     _ble_decode_char2_modifier=
     _ble_decode_char2_modkcode=
     if ((kcode&mflag)); then
@@ -641,20 +641,20 @@ function ble-decode-char/bind {
 
   local i iN=${#seq[@]} char tseq=
   for ((i=0;i<iN;i++)); do
-    local char="${seq[i]}"
+    local char=${seq[i]}
 
-    builtin eval "local okc=\"\${_ble_decode_cmap_$tseq[$char]}\""
+    builtin eval "local okc=\"\${_ble_decode_cmap_$tseq[char]-}\""
     if ((i+1==iN)); then
       if [[ ${okc//[0-9]/} == _ ]]; then
-        builtin eval "_ble_decode_cmap_$tseq[$char]=\"${kc}_\""
+        builtin eval "_ble_decode_cmap_$tseq[char]=\"${kc}_\""
       else
-        builtin eval "_ble_decode_cmap_$tseq[$char]=\"${kc}\""
+        builtin eval "_ble_decode_cmap_$tseq[char]=\"${kc}\""
       fi
     else
       if [[ ! $okc ]]; then
-        builtin eval "_ble_decode_cmap_$tseq[$char]=_"
+        builtin eval "_ble_decode_cmap_$tseq[char]=_"
       else
-        builtin eval "_ble_decode_cmap_$tseq[$char]=\"${okc%_}_\""
+        builtin eval "_ble_decode_cmap_$tseq[char]=\"${okc%_}_\""
       fi
       tseq="${tseq}_$char"
     fi
@@ -672,32 +672,32 @@ function ble-decode-char/unbind {
   local char=${seq[iN-1]}
   local isfirst=1 ent=
   while
-    builtin eval "ent=\"\${_ble_decode_cmap_$tseq[$char]}\""
+    builtin eval "ent=\${_ble_decode_cmap_$tseq[char]-}"
 
     if [[ $isfirst ]]; then
       # 数字を消す
       isfirst=
       if [[ $ent == *_ ]]; then
         # ent = 1234_ (両方在る時は片方消して終わり)
-        builtin eval _ble_decode_cmap_$tseq[$char]=_
+        builtin eval "_ble_decode_cmap_$tseq[char]=_"
         break
       fi
     else
       # _ を消す
       if [[ $ent != _ ]]; then
         # ent = 1234_ (両方在る時は片方消して終わり)
-        builtin eval _ble_decode_cmap_$tseq[$char]=${ent%_}
+        builtin eval "_ble_decode_cmap_$tseq[char]=${ent%_}"
         break
       fi
     fi
 
-    unset "_ble_decode_cmap_$tseq[$char]"
+    unset "_ble_decode_cmap_$tseq[char]"
     builtin eval "((\${#_ble_decode_cmap_$tseq[@]}!=0))" && break
 
     [[ $tseq ]]
   do
-    char="${tseq##*_}"
-    tseq="${tseq%_*}"
+    char=${tseq##*_}
+    tseq=${tseq%_*}
   done
 }
 function ble-decode-char/dump {
@@ -708,7 +708,7 @@ function ble-decode-char/dump {
     local cnames
     cnames=($nseq $ret)
 
-    builtin eval "local ent=\${_ble_decode_cmap_$tseq[$ccode]}"
+    builtin eval "local ent=\${_ble_decode_cmap_$tseq[ccode]}"
     if [[ ${ent%_} ]]; then
       local kcode=${ent%_} ret
       ble-decode-unkbd "$kcode"; local kspec=$ret
@@ -972,7 +972,7 @@ function ble-decode-key {
 
     local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
 
-    builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$key]}\""
+    builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
     if [[ $ent == 1:* ]]; then
       # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
       local command=${ent:2}
@@ -1047,9 +1047,9 @@ function ble-decode-key/.invoke-partial-match {
     local last="${_ble_decode_key__seq##*_}"
     _ble_decode_key__seq="${_ble_decode_key__seq%_*}"
 
-    builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[$last]}\""
+    builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[last]-}\""
     if [[ $ent == '_:'* ]]; then
-      local command="${ent:2}"
+      local command=${ent:2}
       if [[ $command ]]; then
         ble-decode-key/.invoke-command
       else
@@ -1063,7 +1063,7 @@ function ble-decode-key/.invoke-partial-match {
         return 0
       else
         # 元に戻す
-        _ble_decode_key__seq="${_ble_decode_key__seq}_$last"
+        _ble_decode_key__seq=${_ble_decode_key__seq}_$last
         return 1
       fi
     fi
@@ -1075,14 +1075,18 @@ function ble-decode-key/.invoke-partial-match {
     # 既定の文字ハンドラ
     local key=$1 seq_save=$_ble_decode_key__seq
     if ble-decode-key/ischar "$key"; then
-      builtin eval "local command=\"\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]:2}\""
-      ble-decode-key/.invoke-command; local ext=$?
-      ((ext!=125)) && return
-      _ble_decode_key__seq=$seq_save # 125 の時はまた元に戻して次の試行を行う
+      builtin eval "local command=\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]-}"
+      command=${command:2}
+      if [[ $command ]]; then
+        ble-decode-key/.invoke-command; local ext=$?
+        ((ext!=125)) && return
+        _ble_decode_key__seq=$seq_save # 125 の時はまた元に戻して次の試行を行う
+      fi
     fi
-
+    
     # 既定のキーハンドラ
-    builtin eval "local command=\"\${${dicthead}[$_ble_decode_KCODE_DEFAULT]:2}\""
+    builtin eval "local command=\${${dicthead}[$_ble_decode_KCODE_DEFAULT]-}"
+    command=${command:2}
     ble-decode-key/.invoke-command; local ext=$?
     ((ext!=125)) && return
 
@@ -1097,7 +1101,8 @@ function ble-decode-key/ischar {
 function ble-decode-key/.invoke-hook {
   local kcode=$1
   local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
-  builtin eval "local hook=\"\${$dicthead[$kcode]:2}\""
+  builtin eval "local hook=\${$dicthead[kcode]-}"
+  hook=${hook:2}
   [[ $hook ]] && builtin eval -- "$hook"
 }
 
@@ -1141,9 +1146,9 @@ function ble-decode-key/.invoke-command {
   _ble_decode_key__seq=
 
   ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
-  builtin eval -- "$WIDGET"; local exit=$?
+  builtin eval -- "$WIDGET"; local ext=$?
   ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
-  return "$exit"
+  return "$ext"
 }
 function ble-decode-key/.call-widget {
   # for keylog suppress

@@ -63,19 +63,22 @@ if [ "$_ble_bash" -lt 30000 ]; then
   return 1 2>/dev/null || exit 1
 fi
 
-_ble_bash_verbose_adjusted=
-function ble/adjust-bash-verbose-option {
-  [[ $_ble_bash_verbose_adjusted ]] && return 1
-  _ble_bash_verbose_adjusted=1
-  _ble_edit_SETV=
-  [[ -o verbose ]] && _ble_edit_SETV=1 && set +v
+_ble_bash_setu=
+_ble_bash_setv=
+_ble_bash_options_adjusted=
+function ble/adjust-bash-options {
+  [[ $_ble_bash_options_adjusted ]] && return 1
+  _ble_bash_options_adjusted=1
+  _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
+  _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
 }
-ble/adjust-bash-verbose-option
-function ble/restore-bash-verbose-option {
-  [[ $_ble_bash_verbose_adjusted ]] || return 1
-  _ble_bash_verbose_adjusted=
-  [[ $_ble_edit_SETV && ! -o verbose ]] && set -v
+function ble/restore-bash-options {
+  [[ $_ble_bash_options_adjusted ]] || return 1
+  _ble_bash_options_adjusted=
+  [[ $_ble_bash_setv && ! -o verbose ]] && set -v
+  [[ $_ble_bash_setu && ! -o nounset ]] && set -u
 }
+ble/adjust-bash-options
 
 if [[ -o posix ]]; then
   unset _ble_bash

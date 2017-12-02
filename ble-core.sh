@@ -336,7 +336,7 @@ function ble/string#toggle-case {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret=${buff[*]}'
+  IFS= eval 'ret=${buff[*]-}'
 }
 if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret=${*,,}; }
@@ -353,7 +353,7 @@ else
       fi
       ble/array#push buff "$ch"
     done
-    IFS= eval 'ret=${buff[*]}'
+    IFS= eval 'ret=${buff[*]-}'
   }
   function ble/string#toupper {
     local text=$*
@@ -366,7 +366,7 @@ else
       fi
       ble/array#push buff "$ch"
     done
-    IFS= eval 'ret=${buff[*]}'
+    IFS= eval 'ret=${buff[*]-}'
   }
 fi
 
@@ -417,7 +417,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/readfile { # 155ms for man bash
     local __buffer
     mapfile __buffer < "$2"
-    IFS= eval "$1"'="${__buffer[*]}"'
+    IFS= eval "$1"'="${__buffer[*]-}"'
   }
   function ble/util/mapfile {
     mapfile -t "$1"
@@ -448,7 +448,7 @@ if ((_ble_bash>=40000)); then
     builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
     local _ret=$? __arr
     mapfile -t __arr < "$_ble_util_read_stdout_tmp"
-    IFS=$'\n' eval "$1=\"\${__arr[*]}\""
+    IFS=$'\n' eval "$1=\"\${__arr[*]-}\""
     return "$_ret"
   }
 else
@@ -807,7 +807,7 @@ function ble/util/buffer.print {
   ble/util/buffer "$*"$'\n'
 }
 function ble/util/buffer.flush {
-  IFS= builtin eval 'builtin echo -n "${_ble_util_buffer[*]}"'
+  IFS= builtin eval 'builtin echo -n "${_ble_util_buffer[*]-}"'
   _ble_util_buffer=()
 }
 function ble/util/buffer.clear {
@@ -970,7 +970,11 @@ function ble/util/joblist {
 
   local lines list ijob
   ble/string#split lines $'\n' "$jobs0"
-  ble/util/joblist.split list "${lines[@]}"
+  if ((${#lines[@]})); then
+    ble/util/joblist.split list "${lines[@]}"
+  else
+    list=()
+  fi
 
   # check changed jobs from _ble_util_joblist_list to list
   if [[ $jobs0 != "$_ble_util_joblist_jobs" ]]; then
@@ -1003,8 +1007,8 @@ function ble/util/joblist {
 } 2>/dev/null
 
 function ble/util/joblist.split {
-  local arr="$1"; shift
-  local line ijob rex_ijob='^\[([0-9]+)\]'
+  local arr=$1; shift
+  local line ijob= rex_ijob='^\[([0-9]+)\]'
   for line; do
     [[ $line =~ $rex_ijob ]] && ijob="${BASH_REMATCH[1]}"
     [[ $ijob ]] && eval "$arr[ijob]=\"\${$arr[ijob]}\${$arr[ijob]:+\$_ble_term_nl}\$line\""
@@ -1567,10 +1571,10 @@ fi
 # どうもキャッシュするのが一番速い様だ
 _ble_text_c2s_table=()
 function ble/util/c2s {
-  ret="${_ble_text_c2s_table[$1]}"
+  ret=${_ble_text_c2s_table[$1]-}
   if [[ ! $ret ]]; then
     ble/util/c2s-impl "$1"
-    _ble_text_c2s_table[$1]="$ret"
+    _ble_text_c2s_table[$1]=$ret
   fi
 }
 
