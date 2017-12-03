@@ -424,10 +424,10 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/util/readfile { # 465ms for man bash
-    IFS= read -r -d '' "$1" < "$2"
+    IFS= builtin read -r -d '' "$1" < "$2"
   }
   function ble/util/mapfile {
-    IFS= read -r -d '' "$1"
+    IFS= builtin read -r -d '' "$1"
     ble/string#split-lines "$1" "${!1}"
   }
 fi
@@ -455,7 +455,7 @@ else
   function ble/util/assign {
     builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
     local _ret=$?
-    IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
+    IFS= builtin read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
     eval "$1=\${$1%$'\n'}"
     return "$_ret"
   }
@@ -528,7 +528,7 @@ else
 fi
 
 if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LC_ALL=C read -t 0; } &>/dev/null
+  function ble/util/is-stdin-ready { IFS= LC_ALL=C builtin read -t 0; } &>/dev/null
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -693,8 +693,7 @@ if ((_ble_bash>=40200)); then
 else
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
-      local _result="$(command date +"$3" $4)"
-      builtin eval "$2=\"\$_result\""
+      ble/util/assign "$2" 'command date +"$3" $4'
     else
       command date +"$1" $2
     fi
@@ -706,7 +705,7 @@ if ((_ble_bash>=40000)); then
   _ble_util_sleep_fd=
   _ble_util_sleep_tmp=
   function ble/util/sleep {
-    function ble/util/sleep { local REPLY=; ! read -u "$_ble_util_sleep_fd" -t "$1"; } &>/dev/null
+    function ble/util/sleep { local REPLY=; ! builtin read -u "$_ble_util_sleep_fd" -t "$1"; } &>/dev/null
 
     if [[ $OSTYPE == cygwin* ]]; then
       # Cygwin workaround
@@ -750,11 +749,11 @@ fi
 function ble/util/cat {
   local content=
   if [[ $1 && $1 != - ]]; then
-    IFS= read -r -d '' content < "$1"
+    IFS= builtin read -r -d '' content < "$1"
   else
-    IFS= read -r -d '' content
+    IFS= builtin read -r -d '' content
   fi
-  echo -n "$content"
+  printf %s "$content"
 }
 
 _ble_util_less_fallback=
@@ -1113,21 +1112,33 @@ function ble-autoload {
   for funcname in "$@"; do
     builtin eval "function $funcname {
       unset -f $funcname
-      ble-load '${file//$apos/$APOS}'
+      ble-import '${file//$apos/$APOS}'
       $funcname \"\$@\"
     }"
   done
 }
-function ble-load {
-  local file="$1"
+function ble-import {
+  local file=$1
   if [[ $file == /* ]]; then
-    source "$file"
-  elif [[ -f $_ble_base/local/$file ]]; then
-    source "$_ble_base/local/$file"
-  elif [[ -f $_ble_base/share/$file ]]; then
-    source "$_ble_base/share/$file"
+    local guard=ble-import/guard/$1
+    ble/util/isfunction "$guard" && return 0
+    if [[ -f $file ]]; then
+      source "$file"
+    else
+      return 1
+    fi && eval "function $guard { :; }"
   else
-    return 1
+    local guard=ble-import/guard/ble/$1
+    ble/util/isfunction "$guard" && return 0
+    if [[ -f $_ble_base/$file ]]; then
+      source "$_ble_base/$file"
+    elif [[ -f $_ble_base/local/$file ]]; then
+      source "$_ble_base/local/$file"
+    elif [[ -f $_ble_base/share/$file ]]; then
+      source "$_ble_base/share/$file"
+    else
+      return 1
+    fi && eval "function $guard { :; }"
   fi
 }
 
@@ -1498,7 +1509,7 @@ else
 
     local bytes byte
     ble/util/assign bytes '
-      while IFS= read -r -n 1 byte; do
+      while IFS= builtin read -r -n 1 byte; do
         builtin printf "%d " "'\''$byte"
       done <<< "$s"
     '

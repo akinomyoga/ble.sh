@@ -3661,6 +3661,7 @@ function ble/widget/backward-xword {
 #%x forward-xword .r/generic word/c word/     .r/xword/uword/
 #%x forward-xword .r/generic word/shell word/ .r/xword/sword/
 
+#------------------------------------------------------------------------------
 # **** ble-edit/exec ****                                            @edit.exec
 
 _ble_edit_exec_lines=()
@@ -4317,6 +4318,314 @@ function ble/widget/accept-single-line-or {
 }
 function ble/widget/accept-single-line-or-newline {
   ble/widget/accept-single-line-or newline
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** ble-edit/read ****                                            @edit.read
+
+_ble_edit_read_accept=
+_ble_edit_read_result=
+function ble/widget/read/accept {
+  _ble_edit_read_accept=1
+  _ble_edit_read_result=$_ble_edit_str
+  # [[ $_ble_edit_read_result ]] &&
+  #   ble-edit/history/add "$_ble_edit_read_result" # Note: cancel でも登録する
+  ble/widget/.insert-newline
+  ble-decode/keymap/pop
+}
+function ble/widget/read/cancel {
+  local _ble_edit_line_disabled=1
+  ble/widget/read/accept
+  _ble_edit_read_accept=2
+}
+
+function ble-decode/keymap:read/define {
+  ble-import keymap/isearch.sh
+
+  local ble_bind_keymap=read
+
+  ble-bind -f 'C-c' read/cancel
+  ble-bind -f 'C-\' read/cancel
+  ble-bind -f 'C-m' read/accept
+  ble-bind -f 'RET' read/accept
+  ble-bind -f 'C-j' read/accept
+
+  ble-bind -f insert      overwrite-mode
+
+  # ins
+  ble-bind -f __defchar__ self-insert
+  ble-bind -f 'C-q'       quoted-insert
+  ble-bind -f 'C-v'       quoted-insert
+  ble-bind -f 'C-M-m'     newline
+  ble-bind -f 'M-RET'     newline
+  ble-bind -f paste_begin bracketed-paste
+
+  # shell function
+  ble-bind -f  'C-g'     bell
+  # ble-bind -f  'C-l'     clear-screen
+  ble-bind -f  'C-l'     redraw-line
+  ble-bind -f  'M-l'     redraw-line
+  # ble-bind -f  'C-i'     complete
+  # ble-bind -f  'TAB'     complete
+  ble-bind -f  'C-x C-v' display-shell-version
+
+  # kill
+  ble-bind -f 'C-@'      set-mark
+  ble-bind -f 'M-SP'     set-mark
+  ble-bind -f 'C-x C-x'  exchange-point-and-mark
+  ble-bind -f 'C-w'      'kill-region-or uword'
+  ble-bind -f 'M-w'      'copy-region-or uword'
+  ble-bind -f 'C-y'      yank
+
+  # vi?
+  # ble-bind -f 'C-w' vi_imap/delete-backward-word
+  # ble-bind -f 'ESC' read/cancel
+  # ble-bind -f 'C-[' read/cancel
+
+  # spaces
+  ble-bind -f 'M-\'      delete-horizontal-space
+
+  # charwise operations
+  ble-bind -f 'C-f'      '@nomarked forward-char'
+  ble-bind -f 'C-b'      '@nomarked backward-char'
+  ble-bind -f 'right'    '@nomarked forward-char'
+  ble-bind -f 'left'     '@nomarked backward-char'
+  ble-bind -f 'S-C-f'    '@marked forward-char'
+  ble-bind -f 'S-C-b'    '@marked backward-char'
+  ble-bind -f 'S-right'  '@marked forward-char'
+  ble-bind -f 'S-left'   '@marked backward-char'
+  ble-bind -f 'C-d'      'delete-region-or forward-char'
+  ble-bind -f 'C-h'      'delete-region-or backward-char'
+  ble-bind -f 'delete'   'delete-region-or forward-char'
+  ble-bind -f 'DEL'      'delete-region-or backward-char'
+  ble-bind -f 'C-t'      transpose-chars
+
+  # wordwise operations
+  ble-bind -f 'C-right'   '@nomarked forward-cword'
+  ble-bind -f 'C-left'    '@nomarked backward-cword'
+  ble-bind -f 'M-right'   '@nomarked forward-sword'
+  ble-bind -f 'M-left'    '@nomarked backward-sword'
+  ble-bind -f 'S-C-right' '@marked forward-cword'
+  ble-bind -f 'S-C-left'  '@marked backward-cword'
+  ble-bind -f 'S-M-right' '@marked forward-sword'
+  ble-bind -f 'S-M-left'  '@marked backward-sword'
+  ble-bind -f 'M-d'       kill-forward-cword
+  ble-bind -f 'M-h'       kill-backward-cword
+  ble-bind -f 'C-delete'  delete-forward-cword  # C-delete
+  ble-bind -f 'C-_'       delete-backward-cword # C-BS
+  ble-bind -f 'M-delete'  copy-forward-sword    # M-delete
+  ble-bind -f 'M-DEL'     copy-backward-sword   # M-BS
+
+  ble-bind -f 'M-f'       '@nomarked forward-cword'
+  ble-bind -f 'M-b'       '@nomarked backward-cword'
+  ble-bind -f 'M-F'       '@marked forward-cword'
+  ble-bind -f 'M-B'       '@marked backward-cword'
+
+  # linewise operations
+  ble-bind -f 'C-a'       '@nomarked beginning-of-line'
+  ble-bind -f 'C-e'       '@nomarked end-of-line'
+  ble-bind -f 'home'      '@nomarked beginning-of-line'
+  ble-bind -f 'end'       '@nomarked end-of-line'
+  ble-bind -f 'M-m'       '@nomarked beginning-of-line'
+  ble-bind -f 'S-C-a'     '@marked beginning-of-line'
+  ble-bind -f 'S-C-e'     '@marked end-of-line'
+  ble-bind -f 'S-home'    '@marked beginning-of-line'
+  ble-bind -f 'S-end'     '@marked end-of-line'
+  ble-bind -f 'S-M-m'     '@marked beginning-of-line'
+  ble-bind -f 'C-k'       kill-forward-line
+  ble-bind -f 'C-u'       kill-backward-line
+
+  # history
+  ble-bind -f 'C-r'     history-isearch-backward
+  ble-bind -f 'C-s'     history-isearch-forward
+  ble-bind -f 'M-<'     history-beginning
+  ble-bind -f 'M->'     history-end
+  ble-bind -f 'C-prior' history-beginning
+  ble-bind -f 'C-next'  history-end
+  ble-bind -f 'C-p'    '@nomarked backward-line-or-history-prev'
+  ble-bind -f 'up'     '@nomarked backward-line-or-history-prev'
+  ble-bind -f 'C-n'    '@nomarked forward-line-or-history-next'
+  ble-bind -f 'down'   '@nomarked forward-line-or-history-next'
+
+  # command-history
+  # ble-bind -f 'C-RET'   history-expand-line
+  # ble-bind -f 'SP'      magic-space
+
+  ble-bind -f 'S-C-p'  '@marked backward-line'
+  ble-bind -f 'S-up'   '@marked backward-line'
+  ble-bind -f 'S-C-n'  '@marked forward-line'
+  ble-bind -f 'S-down' '@marked forward-line'
+
+  ble-bind -f 'C-home'   '@nomarked beginning-of-text'
+  ble-bind -f 'C-end'    '@nomarked end-of-text'
+  ble-bind -f 'S-C-home' '@marked beginning-of-text'
+  ble-bind -f 'S-C-end'  '@marked end-of-text'
+
+  ble-bind -f 'C-]' bell
+  ble-bind -f 'C-^' bell
+}
+
+function ble-edit/read/.process-option {
+  case $1 in
+  (-e) opt_readline=1 ;;
+  (-i) opt_default=$2 ;;
+  (-p) opt_prompt=$2 ;;
+  (-u) opt_fd=$2
+       ble/array#push opts_in "$@" ;;
+  (-t) opt_timeout=$2 ;;
+  (*)  ble/array#push opts "$@" ;;
+  esac
+}
+function ble-edit/read/.read-arguments {
+  local is_normal_args=
+  vars=()
+  opts=()
+  while (($#)); do
+    local arg=$1; shift
+    if [[ $is_normal_args || $arg != -* ]]; then
+      ble/array#push vars "$arg"
+      continue
+    fi
+
+    if [[ $arg == -- ]]; then
+      is_normal_args=1
+      continue
+    fi
+
+    local i n=${#arg}
+    for ((i=1;i<n;i++)); do
+      case -${arg:i} in
+      (-[adinNptu])  ble-edit/read/.process-option -${arg:i:1} "$1"; shift; break ;;
+      (-[adinNptu]*) ble-edit/read/.process-option -${arg:i:1} "${arg:i+1}"; break ;;
+      (-[ers]*)      ble-edit/read/.process-option -${arg:i:1} ;;
+      esac
+    done
+  done
+}
+
+function ble-edit/read/.setup-textarea {
+  # 初期化
+  local def_kmap; ble-decode/DEFAULT_KEYMAP -v def_kmap
+  ble-decode/keymap/push read
+
+  _ble_textarea_panel=2
+  _ble_syntax_lang=text
+  _ble_edit_PS1=$opt_prompt
+  _ble_edit_prompt=("" 0 0 0 32 0 "" "")
+  _ble_highlight_layer__list=(plain region disabled overwrite_mode)
+
+  _ble_edit_arg=
+  _ble_edit_dirty_observer=()
+  ble/widget/.newline/clear-content
+  _ble_edit_str.reset "$opt_default"
+  _ble_edit_ind=${#opt_default}
+  ble-edit/info/set-default raw ''
+  ble/textarea#invalidate
+
+  _ble_edit_history_prefix=read
+}
+function ble-edit/read/.loop {
+  ble-edit/read/.setup-textarea
+
+  if [[ $opt_timeout ]]; then
+    local start_time; ble/util/strftime -v start_time %s
+
+    # 実際は 1.99999 で 1 に切り捨てられている可能性もある。
+    # 待ち時間が長くなる方向に倒して処理する。
+    ((start_time&&start_time--))
+  fi
+
+  ble-edit/info/reveal
+  ble/textarea#render
+  ble/util/buffer.flush >&2
+
+  local char= ret=
+  local _ble_edit_read_accept=
+  local _ble_edit_read_result=
+  while [[ ! $_ble_edit_read_accept ]]; do
+    # read 1 byte
+    IFS= builtin read -r -d '' -n 1 char "${opts_in[@]}" ${opt_timeout:+-t "$opt_timeout"}; local ext=$?
+    ((ext==142)) && return "$ext" # timeout
+
+    # update timeout
+    if [[ $opt_timeout ]]; then
+      local current_time; ble/util/strftime -v current_time %s
+      if [[ $opt_timeout == *.* ]]; then
+        local mantissa=${opt_timeout%%.*}
+        local fraction=${opt_timeout#*.}
+        opt_timeout=$((mantissa-(current_time-start_time))).$fraction
+      else
+        opt_timeout=$((opt_timeout-(current_time-start_time)))
+      fi
+      start_time=$current_time
+    fi
+
+    # process
+    ble/util/s2c "$char"
+    ble-decode-char "$ret"
+    [[ $_ble_edit_read_accept ]] && break
+
+    # render
+    ble/util/is-stdin-ready && continue
+    ble-edit/info/reveal
+    ble/textarea#render
+    ble/util/buffer.flush >&2
+  done
+
+  ble/util/buffer.flush >&2
+  if ((_ble_edit_read_accept==1)); then
+    local q=\' Q="'\''"
+    printf %s "__ble_input='${_ble_edit_read_result//$q/$Q}'"
+  else
+    return 1
+  fi
+}
+
+function ble-edit/read/.impl {
+  local -a opts=() vars=() opts_in=()
+  local opt_readline= opt_prompt= opt_default= opt_timeout= opt_fd=0
+  ble-edit/read/.read-arguments "$@"
+  if ! [[ $opt_readline && -t $opt_fd ]]; then
+    # "-e オプションが指定されてかつ端末からの読み取り" のとき以外は builtin read する。
+    [[ $opt_prompt ]] && ble/array#push opts -p "$opt_prompt"
+    [[ $opt_timeout ]] && ble/array#push opts -t "$opt_timeout"
+    __ble_args=("${opts[@]}" "${opts_in[@]}" -- "${vars[@]}")
+    __ble_command='builtin read "${__ble_args[@]}"'
+    return
+  fi
+
+  ble-decode/keymap/load read
+  local result state=$_ble_term_state
+  [[ $state == external ]] && ble/term/enter # 外側にいたら入る
+  result=$(ble-edit/read/.loop); local ext=$?
+  [[ $state == external ]] && ble/term/leave # 元の状態に戻る
+  if ((ext==0)); then
+    builtin eval -- "$result"
+    __ble_args=("${opts[@]}" -- "${vars[@]}")
+    __ble_command='builtin read "${__ble_args[@]}" <<< "$__ble_input"'
+  fi
+  return "$ext"
+}
+
+## 関数 read [-ers] [-adinNptu arg] [name...]
+##
+##   ble.sh の所為で builtin read -e が全く動かなくなるので、
+##   read -e を ble.sh の枠組みで再実装する。
+##
+function read {
+  if [[ $_ble_decode_bind_state == none ]]; then
+    builtin read "$@"
+    return
+  fi
+
+  local __ble_command= __ble_args= __ble_input=
+  ble-edit/read/.impl "$@"; local __ble_ext=$?
+  [[ $__ble_command ]] || return "$__ble_ext"
+
+  # 局所変数により被覆されないように外側で評価
+  builtin eval -- "$__ble_command"
+  return
 }
 
 # 
@@ -5650,7 +5959,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if [[ -f $file && -s $file ]]; then
         local message= line
-        while IFS= read -r line || [[ $line ]]; do
+        while IFS= builtin read -r line || [[ $line ]]; do
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。
@@ -5706,7 +6015,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
           [[ $line == *exit* ]] && command grep -q -F "$line" "$_ble_base"/ignoreeof-messages.txt
         }
 
-        while IFS= read -r line; do
+        while IFS= builtin read -r line; do
           SPACE=$' \n\t'
           if [[ $line == *[^$SPACE]* ]]; then
             builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"

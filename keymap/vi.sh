@@ -4269,7 +4269,7 @@ function ble/keymap:vi/setup-map {
   ble-bind -cf 'C-z' fg
 }
 
-function ble-decode-keymap:vi_omap/define {
+function ble-decode/keymap:vi_omap/define {
   local ble_bind_keymap=vi_omap
   ble/keymap:vi/setup-map
 
@@ -4340,7 +4340,7 @@ function ble/widget/vi-command/cancel {
   return 0
 }
 
-function ble-decode-keymap:vi_nmap/define {
+function ble-decode/keymap:vi_nmap/define {
   local ble_bind_keymap=vi_nmap
 
   ble/keymap:vi/setup-map
@@ -5507,7 +5507,7 @@ function ble/widget/vi_xmap/paste-before {
   ble/widget/vi_xmap/paste.impl before
 }
 
-function ble-decode-keymap:vi_xmap/define {
+function ble-decode/keymap:vi_xmap/define {
   local ble_bind_keymap=vi_xmap
   ble/keymap:vi/setup-map
 
@@ -5714,7 +5714,7 @@ function ble/widget/vi_imap/delete-backward-indent-or {
 
 #------------------------------------------------------------------------------
 
-function ble-decode-keymap:vi_imap/define {
+function ble-decode/keymap:vi_imap/define {
   local ble_bind_keymap=vi_imap
 
   ble-bind -f __attach__         vi_imap/__attach__
@@ -5944,7 +5944,7 @@ function ble/widget/vi_cmap/__before_command__ {
   fi
 }
 
-function ble-decode-keymap:vi_cmap/define {
+function ble-decode/keymap:vi_cmap/define {
   local ble_bind_keymap=vi_cmap
 
   ble-bind -f __before_command__ vi_cmap/__before_command__
@@ -6073,7 +6073,7 @@ function ble-decode-keymap:vi_cmap/define {
 
 #------------------------------------------------------------------------------
 
-function ble-decode-keymap:vi/initialize {
+function ble-decode/keymap:vi/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi.sh &&
           $fname_keymap_cache -nt $_ble_base/keymap/isearch.sh &&
@@ -6082,17 +6082,16 @@ function ble-decode-keymap:vi/initialize {
     return
   fi
 
-  ble-decode-bind/cmap/initialize
-  source "$_ble_base/keymap/isearch.sh"
+  ble-import keymap/isearch.sh
 
   echo -n "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2
 
-  ble-decode-keymap:isearch/define
-  ble-decode-keymap:vi_imap/define
-  ble-decode-keymap:vi_nmap/define
-  ble-decode-keymap:vi_omap/define
-  ble-decode-keymap:vi_xmap/define
-  ble-decode-keymap:vi_cmap/define
+  ble-decode/keymap:isearch/define
+  ble-decode/keymap:vi_imap/define
+  ble-decode/keymap:vi_nmap/define
+  ble-decode/keymap:vi_omap/define
+  ble-decode/keymap:vi_xmap/define
+  ble-decode/keymap:vi_cmap/define
 
   : >| "$fname_keymap_cache"
   ble-decode/keymap/dump vi_imap >> "$fname_keymap_cache"
@@ -6105,4 +6104,4 @@ function ble-decode-keymap:vi/initialize {
   echo "ble.sh: updating cache/keymap.vi... done" >&2
 }
 
-ble-decode-keymap:vi/initialize
+ble-decode/keymap:vi/initialize

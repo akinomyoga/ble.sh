@@ -920,14 +920,33 @@ function ble-decode-key/dump {
 _ble_decode_key__kmap=emacs
 _ble_decode_keymap_stack=()
 
+_ble_decode_keymap_load=
+function ble-decode/keymap/load {
+  eval "((\${#_ble_decode_${1}_kmap_[*]}))" && return 0
+
+  local init=ble-decode/keymap:$1/define
+  if ble/util/isfunction "$init"; then
+    "$init" && eval "((\${#_ble_decode_${1}_kmap_[*]}))"
+  elif [[ $_ble_decode_keymap_load != *s* ]]; then
+    ble-import "keymap/$1.sh" &&
+      local _ble_decode_keymap_load=s &&
+      ble-decode/keymap/load "$1" # 再試行
+  else
+    return 1
+  fi
+}
+
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
   if eval "((\${#_ble_decode_${1}_kmap_[*]}))"; then
     ble/array#push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
-    _ble_decode_key__kmap="$1"
+    _ble_decode_key__kmap=$1
+  elif ble-decode/keymap/load "$1" && eval "((\${#_ble_decode_${1}_kmap_[*]}))"; then
+    ble-decode/keymap/push "$1" # 再実行
   else
     echo "[ble: keymap '$1' not found]" >&2
     declare -p _ble_decode_isearch_kmap_
+    return 1
   fi
 }
 ## 関数 ble-decode/keymap/pop

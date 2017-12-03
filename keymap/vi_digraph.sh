@@ -29,7 +29,7 @@ function ble/widget/vi_digraph/default {
   return 0
 }
 
-function ble-decode-keymap:vi_digraph/define {
+function ble-decode/keymap:vi_digraph/define {
   local ble_bind_keymap=vi_digraph
 
   ble-bind -f __defchar__ vi_digraph/defchar
@@ -47,7 +47,7 @@ function ble-decode-keymap:vi_digraph/define {
   done
 }
 
-function ble-decode-keymap:vi_digraph/initialize {
+function ble-decode/keymap:vi_digraph/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi_digraph
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.sh &&
           $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.txt ]]; then
@@ -57,7 +57,7 @@ function ble-decode-keymap:vi_digraph/initialize {
 
   echo -n "ble.sh: updating cache/keymap.vi_digraph... $_ble_term_cr" >&2
 
-  ble-decode-keymap:vi_digraph/define
+  ble-decode/keymap:vi_digraph/define
 
   : >| "$fname_keymap_cache"
   ble-decode/keymap/dump vi_digraph >> "$fname_keymap_cache"
@@ -65,4 +65,4 @@ function ble-decode-keymap:vi_digraph/initialize {
   echo "ble.sh: updating cache/keymap.vi_digraph... done" >&2
 }
 
-ble-decode-keymap:vi_digraph/initialize
+ble-decode/keymap:vi_digraph/initialize

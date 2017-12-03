@@ -2,7 +2,7 @@
 
 function ble-edit/load-keymap-definition:isearch { :; }
 
-function ble-decode-keymap:isearch/define {
+function ble-decode/keymap:isearch/define {
   local ble_bind_keymap=isearch
 
   ble-bind -f __defchar__ isearch/self-insert

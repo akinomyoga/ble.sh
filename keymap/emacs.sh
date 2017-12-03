@@ -6,7 +6,7 @@
 # $_ble_base_cache/ble-decode-keymap.emacs
 #
 
-function ble-decode-keymap:emacs/define {
+function ble-decode/keymap:emacs/define {
   local ble_bind_keymap=emacs
 
   ble-bind -f __attach__  emacs/.attach
@@ -129,15 +129,14 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f 'C-^' bell
 }
 
-function ble-decode-keymap:emacs/generate {
-  ble-decode-bind/cmap/initialize
-  source "$_ble_base/keymap/isearch.sh"
+function ble-decode/keymap:emacs/initialize {
+  ble-import "keymap/isearch.sh"
 
-  echo -n "ble.sh: updating cache/keymap.emacs... $_ble_term_cr" >&2
+  printf %s "ble.sh: updating cache/keymap.emacs... $_ble_term_cr" >&2
 
   local cache="$_ble_base_cache/keymap.emacs"
-  ble-decode-keymap:isearch/define
-  ble-decode-keymap:emacs/define
+  ble-decode/keymap:isearch/define
+  ble-decode/keymap:emacs/define
 
   : >| "$cache"
   ble-decode/keymap/dump emacs   >> "$cache"
@@ -146,4 +145,4 @@ function ble-decode-keymap:emacs/generate {
   echo "ble.sh: updating cache/keymap.emacs... done" >&2
 }
 
-ble-decode-keymap:emacs/generate
+ble-decode/keymap:emacs/initialize

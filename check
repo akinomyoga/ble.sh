@@ -11,14 +11,14 @@ rex_grep_head="^$esc[[:graph:]]+$esc:$esc[[:digit:]]*$esc:$esc"
 function check-builtin {
   echo "--- $FUNCNAME ---"
   local command="$1" esc='(\[[ -?]*[@-~])*'
-  grc --color --exclude=./test "(^|[^-./\${}])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)' |
+  grc --color --exclude=./test "(^|[^-./\${}=])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)' |
     grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)="
 }
 
 function check-a.txt {
   echo "--- $FUNCNAME ---"
-  grc --exclude=./test a.txt |
+  grc --color --exclude=./test a.txt |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 
@@ -61,6 +61,7 @@ function check-memo-numbering {
 #check-builtin 'history'
 #check-builtin 'echo'
 #check-builtin '(bind|compopt|type|printf|read)'
+check-builtin 'read'
 #check-assign
 
 check-a.txt
