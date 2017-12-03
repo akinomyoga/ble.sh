@@ -1778,6 +1778,7 @@ function ble/keymap:vi/mark/set-previous-edit-area {
   ((beg<end)) && ! ble-edit/content/bolp "$end" && ((end--))
   ble/keymap:vi/mark/set-local-mark 91 "$beg" # `[
   ble/keymap:vi/mark/set-local-mark 93 "$end" # `]
+  ble/keymap:vi/undo/add
 }
 function ble/keymap:vi/mark/start-edit-area {
   [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
@@ -4340,6 +4341,47 @@ function ble/widget/vi-command/cancel {
   return 0
 }
 
+# nmap u, C-r
+#
+#   `[`] は設定する。vim と違って実際に変更のあった範囲を抽出する。
+#   . は設定しない。
+#
+_ble_keymap_vi_undo_suppress=
+function ble/keymap:vi/undo/add {
+  [[ $_ble_keymap_vi_undo_suppress ]] && return
+  ble-edit/undo/add
+}
+function ble/widget/vi_nmap/undo {
+  local _ble_keymap_vi_undo_suppress=1
+  ble/keymap:vi/mark/start-edit-area
+  if ble-edit/undo/undo; then
+    ble/keymap:vi/mark/end-edit-area
+  else
+    ble/widget/vi-command/bell
+    return 1
+  fi
+}
+function ble/widget/vi_nmap/redo {
+  local _ble_keymap_vi_undo_suppress=1
+  ble/keymap:vi/mark/start-edit-area
+  if ble-edit/undo/redo; then
+    ble/keymap:vi/mark/end-edit-area
+  else
+    ble/widget/vi-command/bell
+    return 1
+  fi
+}
+function ble/widget/vi_nmap/revert {
+  local _ble_keymap_vi_undo_suppress=1
+  ble/keymap:vi/mark/start-edit-area
+  if ble-edit/undo/revert-toggle; then
+    ble/keymap:vi/mark/end-edit-area
+  else
+    ble/widget/vi-command/bell
+    return 1
+  fi
+}
+
 function ble-decode/keymap:vi_nmap/define {
   local ble_bind_keymap=vi_nmap
 
@@ -4409,6 +4451,10 @@ function ble-decode/keymap:vi_nmap/define {
 
   ble-bind -f 'q' vi_nmap/record-register
   ble-bind -f '@' vi_nmap/play-register
+
+  ble-bind -f u   vi_nmap/undo
+  ble-bind -f C-r vi_nmap/redo
+  ble-bind -f U   vi_nmap/revert
 
   #----------------------------------------------------------------------------
   # bash
@@ -5885,24 +5931,33 @@ function ble/keymap:vi/async-commandline-mode {
   # 初期化
   ble-decode/keymap/push vi_cmap
   ble/keymap:vi/update-mode-name
+
+  # textarea
   _ble_textarea_panel=2
-  _ble_syntax_lang=text
+  ble/textarea#invalidate
+
+  # edit/prompt
   _ble_edit_PS1=$PS2
   _ble_edit_prompt=("" 0 0 0 32 0 "" "")
-  _ble_highlight_layer__list=(plain region overwrite_mode)
 
-  _ble_edit_arg=
-  _ble_edit_dirty_observer=()
-
-  # Note: ble/widget/.newline/clear-content の中で
+  # edit
+  #   Note: ble/widget/.newline/clear-content の中で
   #   _ble_edit_str.reset が呼び出され、更に _ble_edit_dirty_observer が呼び出さる。
   #   ble/keymap:vi/mark/shift-by-dirty-range が呼び出されないように、
   #   _ble_edit_dirty_observer=() より後である必要がある。
+  _ble_edit_dirty_observer=()
   ble/widget/.newline/clear-content
+  _ble_edit_arg=
 
-  ble/textarea#invalidate
-
+  # edit/undo
+  ble-edit/undo/clear-all
+  
+  # edit/history
   _ble_edit_history_prefix=_ble_keymap_vi_cmap
+
+  # syntax, highlight
+  _ble_syntax_lang=text
+  _ble_highlight_layer__list=(plain region overwrite_mode)
 }
 
 function ble/widget/vi_cmap/accept {

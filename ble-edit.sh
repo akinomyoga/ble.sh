@@ -2641,6 +2641,10 @@ function ble/textarea#save-state {
   ble/array#push vars "${_ble_edit_VARNAMES[@]}"
   ble/array#push arrs "${_ble_edit_ARRNAMES[@]}"
 
+  # _ble_edit_undo_*
+  ble/array#push vars "${_ble_edit_undo_VARNAMES[@]}"
+  ble/array#push arrs "${_ble_edit_undo_ARRNAMES[@]}"
+
   # _ble_textmap_*
   ble/array#push vars "${_ble_textmap_VARNAMES[@]}"
   ble/array#push arrs "${_ble_textmap_ARRNAMES[@]}"
@@ -3040,7 +3044,7 @@ function ble/widget/transpose-chars {
 }
 
 _ble_edit_bracketed_paste=
-_ble_edit_bracketed_paste_hook=
+_ble_edit_bracketed_paste_proc=
 function ble/widget/bracketed-paste.hook {
   _ble_edit_bracketed_paste=$_ble_edit_bracketed_paste:$1
 
@@ -4509,21 +4513,31 @@ function ble-edit/read/.setup-textarea {
   local def_kmap; ble-decode/DEFAULT_KEYMAP -v def_kmap
   ble-decode/keymap/push read
 
+  # textarea, info
   _ble_textarea_panel=2
-  _ble_syntax_lang=text
+  ble/textarea#invalidate
+  ble-edit/info/set-default raw ''
+
+  # edit/prompt
   _ble_edit_PS1=$opt_prompt
   _ble_edit_prompt=("" 0 0 0 32 0 "" "")
-  _ble_highlight_layer__list=(plain region disabled overwrite_mode)
 
-  _ble_edit_arg=
+  # edit
   _ble_edit_dirty_observer=()
   ble/widget/.newline/clear-content
-  _ble_edit_str.reset "$opt_default"
-  _ble_edit_ind=${#opt_default}
-  ble-edit/info/set-default raw ''
-  ble/textarea#invalidate
+  _ble_edit_arg=
+  _ble_edit_str.reset "$opt_default" newline
+  ble/widget/.goto-char ${#opt_default}
 
+  # edit/undo
+  ble-edit/undo/clear-all
+
+  # edit/history
   _ble_edit_history_prefix=read
+
+  # syntax, highlight
+  _ble_syntax_lang=text
+  _ble_highlight_layer__list=(plain region disabled overwrite_mode)
 }
 function ble-edit/read/.loop {
   ble-edit/read/.setup-textarea
@@ -4626,6 +4640,113 @@ function read {
   # 局所変数により被覆されないように外側で評価
   builtin eval -- "$__ble_command"
   return
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** ble-edit/undo ****                                            @edit.undo
+
+## @var _ble_edit_undo_hindex=
+##   現在の _ble_edit_undo が保持する情報の履歴項目番号。
+##   初期は空文字列でどの履歴項目でもない状態を表す。
+##
+
+_ble_edit_undo_VARNAMES=(_ble_edit_undo _ble_edit_undo_history)
+_ble_edit_undo_ARRNAMES=(_ble_edit_undo_index _ble_edit_undo_hindex)
+
+_ble_edit_undo=()
+_ble_edit_undo_index=0
+_ble_edit_undo_history=()
+_ble_edit_undo_hindex=
+
+function ble-edit/undo/.check-hindex {
+  local hindex; ble-edit/history/getindex -v hindex
+  [[ $_ble_edit_undo_hindex == $hindex ]] && return 0
+
+  # save
+  if [[ $_ble_edit_undo_hindex ]]; then
+    local uindex=${_ble_edit_undo_index:-${#_ble_edit_undo[@]}}
+    local q=\' Q="'\''" value
+    ble/util/sprintf value "'%s' " "$uindex" "${_ble_edit_undo[@]//$q/$Q}"
+    _ble_edit_undo_history[_ble_edit_undo_hindex]=$value
+  fi
+
+  # load
+  if [[ ${_ble_edit_undo_history[hindex]} ]]; then
+    builtin eval "local data=(${_ble_edit_undo_history[hindex]})"
+    _ble_edit_undo=("${data[@]:1}")
+    _ble_edit_undo_index=${data[0]}
+  else
+    _ble_edit_undo=()
+    _ble_edit_undo_index=0
+  fi
+  _ble_edit_undo_hindex=$hindex
+}
+function ble-edit/undo/clear-all {
+  _ble_edit_undo=()
+  _ble_edit_undo_index=0
+  _ble_edit_undo_history=()
+  _ble_edit_undo_hindex=
+}
+
+function ble-edit/undo/add {
+  ble-edit/undo/.check-hindex
+
+  # 変更がない場合は記録しない
+  ((_ble_edit_undo_index>0)) &&
+    [[ ${_ble_edit_undo[_ble_edit_undo_index-1]#*:} == "$_ble_edit_str" ]] &&
+    return 0
+
+  _ble_edit_undo[_ble_edit_undo_index++]=$_ble_edit_ind:$_ble_edit_str
+  if ((${#_ble_edit_undo[@]}>_ble_edit_undo_index)); then
+    _ble_edit_undo=("${_ble_edit_undo[@]::_ble_edit_undo_index}")
+  fi
+}
+function ble-edit/undo/.load {
+  if ((_ble_edit_undo_index==0)); then
+    local entry=
+    if [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]]; then
+      local index; ble-edit/history/getindex
+      ble-edit/history/get-entry "$index"
+    fi
+    _ble_edit_str.reset-and-check-dirty "$entry"
+    ble/widget/.goto-char "${#entry}"
+  else
+    local entry=${_ble_edit_undo[_ble_edit_undo_index-1]}
+    local index=${entry%%:*} string=${entry#*:}
+    _ble_edit_str.reset-and-check-dirty "$string"
+    ble/widget/.goto-char "$index"
+  fi
+}
+function ble-edit/undo/undo {
+  ble-edit/undo/.check-hindex
+  ((_ble_edit_undo_index)) || return 1
+  ((--_ble_edit_undo_index))
+  ble-edit/undo/.load
+}
+function ble-edit/undo/redo {
+  ble-edit/undo/.check-hindex
+  ((_ble_edit_undo_index<${#_ble_edit_undo[@]})) || return 1
+  ((++_ble_edit_undo_index))
+  ble-edit/undo/.load
+}
+function ble-edit/undo/revert {
+  ble-edit/undo/.check-hindex
+  ((_ble_edit_undo_index)) || return 1
+  ((_ble_edit_undo_index=0))
+  ble-edit/undo/.load
+}
+function ble-edit/undo/revert-toggle {
+  ble-edit/undo/.check-hindex
+  if ((_ble_edit_undo_index)); then
+    ((_ble_edit_undo_index=0))
+    ble-edit/undo/.load
+  elif ((${#_ble_edit_undo[@]})); then
+    ((_ble_edit_undo_index=${#_ble_edit_undo[@]}))
+    ble-edit/undo/.load
+  else
+    return 1
+  fi
 }
 
 # 
@@ -4834,6 +4955,9 @@ function ble-edit/history/add/.command-history {
       _ble_edit_history_edit[index]=${_ble_edit_history[index]}
     done
     _ble_edit_history_dirt=()
+
+    # 同時に _ble_edit_undo も初期化する。
+    ble-edit/undo/clear-all
   fi
 
   local cmd=$1
