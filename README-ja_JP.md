@@ -1,17 +1,16 @@
 [Languages: [:us: English](README.md) | **:jp: 日本語**]
 # ble.sh
 
-`ble.sh` (*Bash Line Editor*) は Bash スクリプトで書かれたコマンドラインエディタです。
-- GNU Bash 標準のコマンドラインエディタ GNU Readline を置き換える形で動作します
+`ble.sh` (*Bash Line Editor*) はピュア Bash スクリプトで書かれたコマンドラインエディタで、標準の GNU Readline を置き換える形で動作します。
 - コマンドラインを (`fish` シェルみたいに) `bash` 構文に従って色付け
 - 文法構造に従った補完
-- `source ble.sh` するだけ
+- `vim` モードサポートの強化
 
 このスクリプトは `bash-3.0` 以降で利用できます。
 
 現時点では、文字コードとして `UTF-8` のみの対応です。
 
-このスクリプトは **BSD License** (3条項 BSD ライセンス) の下で提供されます。
+このスクリプトは [**BSD License**](LICENSE.md) (3条項 BSD ライセンス) の下で提供されます。
 
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
@@ -86,6 +85,10 @@ fi
 
 ...
 ```
+
+**Vim モード**
+
+Vim モードについては [Wiki の説明ページ](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
 
 **曖昧文字幅**
 
