@@ -4424,66 +4424,42 @@ function ble/widget/read/cancel {
   _ble_edit_read_accept=2
 }
 
-function ble-decode/keymap:read/define {
-  ble-import keymap/isearch.sh
-
-  local ble_bind_keymap=read
-
-  ble-bind -f 'C-c' read/cancel
-  ble-bind -f 'C-\' read/cancel
-  ble-bind -f 'C-m' read/accept
-  ble-bind -f 'RET' read/accept
-  ble-bind -f 'C-j' read/accept
-
-  ble-bind -f insert      overwrite-mode
+function ble-decode/keymap:safe/bind-common {
+  ble-bind -f insert      'overwrite-mode'
 
   # ins
-  ble-bind -f __defchar__ self-insert
-  ble-bind -f 'C-q'       quoted-insert
-  ble-bind -f 'C-v'       quoted-insert
-  ble-bind -f 'C-M-m'     newline
-  ble-bind -f 'M-RET'     newline
-  ble-bind -f paste_begin bracketed-paste
-
-  # shell function
-  ble-bind -f  'C-g'     bell
-  # ble-bind -f  'C-l'     clear-screen
-  ble-bind -f  'C-l'     redraw-line
-  ble-bind -f  'M-l'     redraw-line
-  # ble-bind -f  'C-i'     complete
-  # ble-bind -f  'TAB'     complete
-  ble-bind -f  'C-x C-v' display-shell-version
+  ble-bind -f __defchar__ 'self-insert'
+  ble-bind -f 'C-q'       'quoted-insert'
+  ble-bind -f 'C-v'       'quoted-insert'
+  ble-bind -f 'C-M-m'     'newline'
+  ble-bind -f 'M-RET'     'newline'
+  ble-bind -f paste_begin 'bracketed-paste'
 
   # kill
-  ble-bind -f 'C-@'      set-mark
-  ble-bind -f 'M-SP'     set-mark
-  ble-bind -f 'C-x C-x'  exchange-point-and-mark
-  ble-bind -f 'C-w'      'kill-region-or uword'
-  ble-bind -f 'M-w'      'copy-region-or uword'
-  ble-bind -f 'C-y'      yank
-
-  # vi?
-  # ble-bind -f 'C-w' vi_imap/delete-backward-word
-  # ble-bind -f 'ESC' read/cancel
-  # ble-bind -f 'C-[' read/cancel
+  ble-bind -f 'C-@'       'set-mark'
+  ble-bind -f 'M-SP'      'set-mark'
+  ble-bind -f 'C-x C-x'   'exchange-point-and-mark'
+  ble-bind -f 'C-w'       'kill-region-or uword'
+  ble-bind -f 'M-w'       'copy-region-or uword'
+  ble-bind -f 'C-y'       'yank'
 
   # spaces
-  ble-bind -f 'M-\'      delete-horizontal-space
+  ble-bind -f 'M-\'       'delete-horizontal-space'
 
   # charwise operations
-  ble-bind -f 'C-f'      '@nomarked forward-char'
-  ble-bind -f 'C-b'      '@nomarked backward-char'
-  ble-bind -f 'right'    '@nomarked forward-char'
-  ble-bind -f 'left'     '@nomarked backward-char'
-  ble-bind -f 'S-C-f'    '@marked forward-char'
-  ble-bind -f 'S-C-b'    '@marked backward-char'
-  ble-bind -f 'S-right'  '@marked forward-char'
-  ble-bind -f 'S-left'   '@marked backward-char'
-  ble-bind -f 'C-d'      'delete-region-or forward-char'
-  ble-bind -f 'C-h'      'delete-region-or backward-char'
-  ble-bind -f 'delete'   'delete-region-or forward-char'
-  ble-bind -f 'DEL'      'delete-region-or backward-char'
-  ble-bind -f 'C-t'      transpose-chars
+  ble-bind -f 'C-f'       '@nomarked forward-char'
+  ble-bind -f 'C-b'       '@nomarked backward-char'
+  ble-bind -f 'right'     '@nomarked forward-char'
+  ble-bind -f 'left'      '@nomarked backward-char'
+  ble-bind -f 'S-C-f'     '@marked forward-char'
+  ble-bind -f 'S-C-b'     '@marked backward-char'
+  ble-bind -f 'S-right'   '@marked forward-char'
+  ble-bind -f 'S-left'    '@marked backward-char'
+  ble-bind -f 'C-d'       'delete-region-or forward-char'
+  ble-bind -f 'C-h'       'delete-region-or backward-char'
+  ble-bind -f 'delete'    'delete-region-or forward-char'
+  ble-bind -f 'DEL'       'delete-region-or backward-char'
+  ble-bind -f 'C-t'       'transpose-chars'
 
   # wordwise operations
   ble-bind -f 'C-right'   '@nomarked forward-cword'
@@ -4494,12 +4470,12 @@ function ble-decode/keymap:read/define {
   ble-bind -f 'S-C-left'  '@marked backward-cword'
   ble-bind -f 'S-M-right' '@marked forward-sword'
   ble-bind -f 'S-M-left'  '@marked backward-sword'
-  ble-bind -f 'M-d'       kill-forward-cword
-  ble-bind -f 'M-h'       kill-backward-cword
-  ble-bind -f 'C-delete'  delete-forward-cword  # C-delete
-  ble-bind -f 'C-_'       delete-backward-cword # C-BS
-  ble-bind -f 'M-delete'  copy-forward-sword    # M-delete
-  ble-bind -f 'M-DEL'     copy-backward-sword   # M-BS
+  ble-bind -f 'M-d'       'kill-forward-cword'
+  ble-bind -f 'M-h'       'kill-backward-cword'
+  ble-bind -f 'C-delete'  'delete-forward-cword'
+  ble-bind -f 'C-_'       'delete-backward-cword'
+  ble-bind -f 'M-delete'  'copy-forward-sword'
+  ble-bind -f 'M-DEL'     'copy-backward-sword'
 
   ble-bind -f 'M-f'       '@nomarked forward-cword'
   ble-bind -f 'M-b'       '@nomarked backward-cword'
@@ -4517,38 +4493,76 @@ function ble-decode/keymap:read/define {
   ble-bind -f 'S-home'    '@marked beginning-of-line'
   ble-bind -f 'S-end'     '@marked end-of-line'
   ble-bind -f 'S-M-m'     '@marked beginning-of-line'
-  ble-bind -f 'C-k'       kill-forward-line
-  ble-bind -f 'C-u'       kill-backward-line
+  ble-bind -f 'C-p'       '@nomarked backward-line' # overwritten by bind-history
+  ble-bind -f 'up'        '@nomarked backward-line' # overwritten by bind-history
+  ble-bind -f 'C-n'       '@nomarked forward-line'  # overwritten by bind-history
+  ble-bind -f 'down'      '@nomarked forward-line'  # overwritten by bind-history
+  ble-bind -f 'C-k'       'kill-forward-line'
+  ble-bind -f 'C-u'       'kill-backward-line'
 
-  # history
-  ble-bind -f 'C-r'     history-isearch-backward
-  ble-bind -f 'C-s'     history-isearch-forward
-  ble-bind -f 'M-<'     history-beginning
-  ble-bind -f 'M->'     history-end
-  ble-bind -f 'C-prior' history-beginning
-  ble-bind -f 'C-next'  history-end
-  ble-bind -f 'C-p'    '@nomarked backward-line-or-history-prev'
-  ble-bind -f 'up'     '@nomarked backward-line-or-history-prev'
-  ble-bind -f 'C-n'    '@nomarked forward-line-or-history-next'
-  ble-bind -f 'down'   '@nomarked forward-line-or-history-next'
+  ble-bind -f 'S-C-p'     '@marked backward-line'
+  ble-bind -f 'S-up'      '@marked backward-line'
+  ble-bind -f 'S-C-n'     '@marked forward-line'
+  ble-bind -f 'S-down'    '@marked forward-line'
+
+  ble-bind -f 'C-home'    '@nomarked beginning-of-text'
+  ble-bind -f 'C-end'     '@nomarked end-of-text'
+  ble-bind -f 'S-C-home'  '@marked beginning-of-text'
+  ble-bind -f 'S-C-end'   '@marked end-of-text'
+}
+function ble-decode/keymap:safe/bind-history {
+  ble-bind -f 'C-r'     'history-isearch-backward'
+  ble-bind -f 'C-s'     'history-isearch-forward'
+  ble-bind -f 'M-<'     'history-beginning'
+  ble-bind -f 'M->'     'history-end'
+  ble-bind -f 'C-prior' 'history-beginning'
+  ble-bind -f 'C-next'  'history-end'
+  ble-bind -f 'C-p'     '@nomarked backward-line-or-history-prev'
+  ble-bind -f 'up'      '@nomarked backward-line-or-history-prev'
+  ble-bind -f 'C-n'     '@nomarked forward-line-or-history-next'
+  ble-bind -f 'down'    '@nomarked forward-line-or-history-next'
+}
+
+function ble-decode/keymap:read/define {
+  ble-import keymap/isearch.sh
+
+  local ble_bind_keymap=read
+  ble-decode/keymap:safe/bind-common
+  ble-decode/keymap:safe/bind-history
+
+  ble-bind -f 'C-c' read/cancel
+  ble-bind -f 'C-\' read/cancel
+  ble-bind -f 'C-m' read/accept
+  ble-bind -f 'RET' read/accept
+  ble-bind -f 'C-j' read/accept
+
+  # shell function
+  ble-bind -f  'C-g'     bell
+  # ble-bind -f  'C-l'     clear-screen
+  ble-bind -f  'C-l'     redraw-line
+  ble-bind -f  'M-l'     redraw-line
+  # ble-bind -f  'C-i'     complete
+  # ble-bind -f  'TAB'     complete
+  ble-bind -f  'C-x C-v' display-shell-version
+
+  # vi?
+  # ble-bind -f 'C-w' vi_imap/delete-backward-word
+  # ble-bind -f 'ESC' read/cancel
+  # ble-bind -f 'C-[' read/cancel
 
   # command-history
   # ble-bind -f 'C-RET'   history-expand-line
   # ble-bind -f 'SP'      magic-space
 
-  ble-bind -f 'S-C-p'  '@marked backward-line'
-  ble-bind -f 'S-up'   '@marked backward-line'
-  ble-bind -f 'S-C-n'  '@marked forward-line'
-  ble-bind -f 'S-down' '@marked forward-line'
-
-  ble-bind -f 'C-home'   '@nomarked beginning-of-text'
-  ble-bind -f 'C-end'    '@nomarked end-of-text'
-  ble-bind -f 'S-C-home' '@marked beginning-of-text'
-  ble-bind -f 'S-C-end'  '@marked end-of-text'
-
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
 }
+
+_ble_edit_read_history=()
+_ble_edit_read_history_edit=()
+_ble_edit_read_history_dirt=()
+_ble_edit_read_history_ind=0
+_ble_edit_read_history_onleave=()
 
 function ble-edit/read/.process-option {
   case $1 in
@@ -4613,7 +4627,7 @@ function ble-edit/read/.setup-textarea {
   ble-edit/undo/clear-all
 
   # edit/history
-  _ble_edit_history_prefix=read
+  _ble_edit_history_prefix=_ble_edit_read_
 
   # syntax, highlight
   _ble_syntax_lang=text
@@ -4769,13 +4783,28 @@ function ble-edit/undo/clear-all {
   _ble_edit_undo_hindex=
 }
 
+## 関数 ble-edit/undo/.get-current-state
+##   @var[out] str ind
+function ble-edit/undo/.get-current-state {
+  if ((_ble_edit_undo_index==0)); then
+    str=
+    if [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]]; then
+      local index; ble-edit/history/getindex
+      ble-edit/history/get-entry -v str "$index"
+    fi
+    ind=${#entry}
+  else
+    local entry=${_ble_edit_undo[_ble_edit_undo_index-1]}
+    str=${entry#*:} ind=${entry%%:*}
+  fi
+}
+
 function ble-edit/undo/add {
   ble-edit/undo/.check-hindex
 
   # 変更がない場合は記録しない
-  ((_ble_edit_undo_index>0)) &&
-    [[ ${_ble_edit_undo[_ble_edit_undo_index-1]#*:} == "$_ble_edit_str" ]] &&
-    return 0
+  local str ind; ble-edit/undo/.get-current-state
+  [[ $str == "$_ble_edit_str" ]] && return 0
 
   _ble_edit_undo[_ble_edit_undo_index++]=$_ble_edit_ind:$_ble_edit_str
   if ((${#_ble_edit_undo[@]}>_ble_edit_undo_index)); then
@@ -4783,41 +4812,34 @@ function ble-edit/undo/add {
   fi
 }
 function ble-edit/undo/.load {
-  if ((_ble_edit_undo_index==0)); then
-    local entry=
-    if [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]]; then
-      local index; ble-edit/history/getindex
-      ble-edit/history/get-entry "$index"
-    fi
-    _ble_edit_str.reset-and-check-dirty "$entry"
-    ble/widget/.goto-char "${#entry}"
-  else
-    local entry=${_ble_edit_undo[_ble_edit_undo_index-1]}
-    local index=${entry%%:*} string=${entry#*:}
-    _ble_edit_str.reset-and-check-dirty "$string"
-    ble/widget/.goto-char "$index"
-  fi
+  local str ind; ble-edit/undo/.get-current-state
+  _ble_edit_str.reset-and-check-dirty "$str"
+  ble/widget/.goto-char "$ind"
 }
 function ble-edit/undo/undo {
   ble-edit/undo/.check-hindex
+  ble-edit/undo/add # 最後に add/load してから変更があれば記録
   ((_ble_edit_undo_index)) || return 1
   ((--_ble_edit_undo_index))
   ble-edit/undo/.load
 }
 function ble-edit/undo/redo {
   ble-edit/undo/.check-hindex
+  ble-edit/undo/add # 最後に add/load してから変更があれば記録
   ((_ble_edit_undo_index<${#_ble_edit_undo[@]})) || return 1
   ((++_ble_edit_undo_index))
   ble-edit/undo/.load
 }
 function ble-edit/undo/revert {
   ble-edit/undo/.check-hindex
+  ble-edit/undo/add # 最後に add/load してから変更があれば記録
   ((_ble_edit_undo_index)) || return 1
   ((_ble_edit_undo_index=0))
   ble-edit/undo/.load
 }
 function ble-edit/undo/revert-toggle {
   ble-edit/undo/.check-hindex
+  ble-edit/undo/add # 最後に add/load してから変更があれば記録
   if ((_ble_edit_undo_index)); then
     ((_ble_edit_undo_index=0))
     ble-edit/undo/.load
@@ -5140,7 +5162,7 @@ function ble-edit/history/add {
         PREFIX_history_edit[index]=${PREFIX_history[index]}
       done
       PREFIX_history_dirt=()
-  
+
       local topIndex=${#PREFIX_history[@]}
       PREFIX_history[topIndex]=$cmd
       PREFIX_history_edit[topIndex]=$cmd
