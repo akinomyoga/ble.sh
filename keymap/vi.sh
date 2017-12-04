@@ -5689,6 +5689,7 @@ function ble/widget/vi_imap/bracketed-paste.proc {
 
 _ble_keymap_vi_brackated_paste_mark_active=
 function ble/widget/vi-command/bracketed-paste {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1 # discard args
   _ble_keymap_vi_brackated_paste_mark_active=$_ble_edit_mark_active
   _ble_edit_mark_active=
   ble/widget/bracketed-paste
