@@ -921,12 +921,15 @@ _ble_decode_key__kmap=emacs
 _ble_decode_keymap_stack=()
 
 _ble_decode_keymap_load=
+function ble-decode/keymap/is-keymap {
+  builtin eval -- "((\${#_ble_decode_${1}_kmap_[*]}))"
+}
 function ble-decode/keymap/load {
-  eval "((\${#_ble_decode_${1}_kmap_[*]}))" && return 0
+  ble-decode/keymap/is-keymap "$1" && return 0
 
   local init=ble-decode/keymap:$1/define
   if ble/util/isfunction "$init"; then
-    "$init" && eval "((\${#_ble_decode_${1}_kmap_[*]}))"
+    "$init" && ble-decode/keymap/is-keymap "$1"
   elif [[ $_ble_decode_keymap_load != *s* ]]; then
     ble-import "keymap/$1.sh" &&
       local _ble_decode_keymap_load=s &&
@@ -938,10 +941,10 @@ function ble-decode/keymap/load {
 
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
-  if eval "((\${#_ble_decode_${1}_kmap_[*]}))"; then
+  if ble-decode/keymap/is-keymap "$1"; then
     ble/array#push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
     _ble_decode_key__kmap=$1
-  elif ble-decode/keymap/load "$1" && eval "((\${#_ble_decode_${1}_kmap_[*]}))"; then
+  elif ble-decode/keymap/load "$1" && ble-decode/keymap/is-keymap "$1"; then
     ble-decode/keymap/push "$1" # 再実行
   else
     echo "[ble: keymap '$1' not found]" >&2

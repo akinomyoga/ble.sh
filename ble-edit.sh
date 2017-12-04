@@ -124,7 +124,7 @@ function bleopt/check:exec_type {
 
 function bleopt/check:default_keymap {
   case $value in
-  (auto|emacs|vi) ;;
+  (auto|emacs|vi|safe) ;;
   (*)
     echo "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
     return 1 ;;
@@ -4406,338 +4406,6 @@ function ble/widget/accept-single-line-or-newline {
 
 # 
 #------------------------------------------------------------------------------
-# **** ble-edit/read ****                                            @edit.read
-
-_ble_edit_read_accept=
-_ble_edit_read_result=
-function ble/widget/read/accept {
-  _ble_edit_read_accept=1
-  _ble_edit_read_result=$_ble_edit_str
-  # [[ $_ble_edit_read_result ]] &&
-  #   ble-edit/history/add "$_ble_edit_read_result" # Note: cancel でも登録する
-  ble/widget/.insert-newline
-  ble-decode/keymap/pop
-}
-function ble/widget/read/cancel {
-  local _ble_edit_line_disabled=1
-  ble/widget/read/accept
-  _ble_edit_read_accept=2
-}
-
-function ble-decode/keymap:safe/bind-common {
-  ble-bind -f insert      'overwrite-mode'
-
-  # ins
-  ble-bind -f __defchar__ 'self-insert'
-  ble-bind -f 'C-q'       'quoted-insert'
-  ble-bind -f 'C-v'       'quoted-insert'
-  ble-bind -f 'C-M-m'     'newline'
-  ble-bind -f 'M-RET'     'newline'
-  ble-bind -f paste_begin 'bracketed-paste'
-
-  # kill
-  ble-bind -f 'C-@'       'set-mark'
-  ble-bind -f 'M-SP'      'set-mark'
-  ble-bind -f 'C-x C-x'   'exchange-point-and-mark'
-  ble-bind -f 'C-w'       'kill-region-or uword'
-  ble-bind -f 'M-w'       'copy-region-or uword'
-  ble-bind -f 'C-y'       'yank'
-
-  # spaces
-  ble-bind -f 'M-\'       'delete-horizontal-space'
-
-  # charwise operations
-  ble-bind -f 'C-f'       '@nomarked forward-char'
-  ble-bind -f 'C-b'       '@nomarked backward-char'
-  ble-bind -f 'right'     '@nomarked forward-char'
-  ble-bind -f 'left'      '@nomarked backward-char'
-  ble-bind -f 'S-C-f'     '@marked forward-char'
-  ble-bind -f 'S-C-b'     '@marked backward-char'
-  ble-bind -f 'S-right'   '@marked forward-char'
-  ble-bind -f 'S-left'    '@marked backward-char'
-  ble-bind -f 'C-d'       'delete-region-or forward-char'
-  ble-bind -f 'C-h'       'delete-region-or backward-char'
-  ble-bind -f 'delete'    'delete-region-or forward-char'
-  ble-bind -f 'DEL'       'delete-region-or backward-char'
-  ble-bind -f 'C-t'       'transpose-chars'
-
-  # wordwise operations
-  ble-bind -f 'C-right'   '@nomarked forward-cword'
-  ble-bind -f 'C-left'    '@nomarked backward-cword'
-  ble-bind -f 'M-right'   '@nomarked forward-sword'
-  ble-bind -f 'M-left'    '@nomarked backward-sword'
-  ble-bind -f 'S-C-right' '@marked forward-cword'
-  ble-bind -f 'S-C-left'  '@marked backward-cword'
-  ble-bind -f 'S-M-right' '@marked forward-sword'
-  ble-bind -f 'S-M-left'  '@marked backward-sword'
-  ble-bind -f 'M-d'       'kill-forward-cword'
-  ble-bind -f 'M-h'       'kill-backward-cword'
-  ble-bind -f 'C-delete'  'delete-forward-cword'
-  ble-bind -f 'C-_'       'delete-backward-cword'
-  ble-bind -f 'M-delete'  'copy-forward-sword'
-  ble-bind -f 'M-DEL'     'copy-backward-sword'
-
-  ble-bind -f 'M-f'       '@nomarked forward-cword'
-  ble-bind -f 'M-b'       '@nomarked backward-cword'
-  ble-bind -f 'M-F'       '@marked forward-cword'
-  ble-bind -f 'M-B'       '@marked backward-cword'
-
-  # linewise operations
-  ble-bind -f 'C-a'       '@nomarked beginning-of-line'
-  ble-bind -f 'C-e'       '@nomarked end-of-line'
-  ble-bind -f 'home'      '@nomarked beginning-of-line'
-  ble-bind -f 'end'       '@nomarked end-of-line'
-  ble-bind -f 'M-m'       '@nomarked beginning-of-line'
-  ble-bind -f 'S-C-a'     '@marked beginning-of-line'
-  ble-bind -f 'S-C-e'     '@marked end-of-line'
-  ble-bind -f 'S-home'    '@marked beginning-of-line'
-  ble-bind -f 'S-end'     '@marked end-of-line'
-  ble-bind -f 'S-M-m'     '@marked beginning-of-line'
-  ble-bind -f 'C-p'       '@nomarked backward-line' # overwritten by bind-history
-  ble-bind -f 'up'        '@nomarked backward-line' # overwritten by bind-history
-  ble-bind -f 'C-n'       '@nomarked forward-line'  # overwritten by bind-history
-  ble-bind -f 'down'      '@nomarked forward-line'  # overwritten by bind-history
-  ble-bind -f 'C-k'       'kill-forward-line'
-  ble-bind -f 'C-u'       'kill-backward-line'
-
-  ble-bind -f 'S-C-p'     '@marked backward-line'
-  ble-bind -f 'S-up'      '@marked backward-line'
-  ble-bind -f 'S-C-n'     '@marked forward-line'
-  ble-bind -f 'S-down'    '@marked forward-line'
-
-  ble-bind -f 'C-home'    '@nomarked beginning-of-text'
-  ble-bind -f 'C-end'     '@nomarked end-of-text'
-  ble-bind -f 'S-C-home'  '@marked beginning-of-text'
-  ble-bind -f 'S-C-end'   '@marked end-of-text'
-}
-function ble-decode/keymap:safe/bind-history {
-  ble-bind -f 'C-r'     'history-isearch-backward'
-  ble-bind -f 'C-s'     'history-isearch-forward'
-  ble-bind -f 'M-<'     'history-beginning'
-  ble-bind -f 'M->'     'history-end'
-  ble-bind -f 'C-prior' 'history-beginning'
-  ble-bind -f 'C-next'  'history-end'
-  ble-bind -f 'C-p'     '@nomarked backward-line-or-history-prev'
-  ble-bind -f 'up'      '@nomarked backward-line-or-history-prev'
-  ble-bind -f 'C-n'     '@nomarked forward-line-or-history-next'
-  ble-bind -f 'down'    '@nomarked forward-line-or-history-next'
-}
-
-function ble-decode/keymap:read/define {
-  ble-import keymap/isearch.sh
-
-  local ble_bind_keymap=read
-  ble-decode/keymap:safe/bind-common
-  ble-decode/keymap:safe/bind-history
-
-  ble-bind -f 'C-c' read/cancel
-  ble-bind -f 'C-\' read/cancel
-  ble-bind -f 'C-m' read/accept
-  ble-bind -f 'RET' read/accept
-  ble-bind -f 'C-j' read/accept
-
-  # shell function
-  ble-bind -f  'C-g'     bell
-  # ble-bind -f  'C-l'     clear-screen
-  ble-bind -f  'C-l'     redraw-line
-  ble-bind -f  'M-l'     redraw-line
-  # ble-bind -f  'C-i'     complete
-  # ble-bind -f  'TAB'     complete
-  ble-bind -f  'C-x C-v' display-shell-version
-
-  # vi?
-  # ble-bind -f 'C-w' vi_imap/delete-backward-word
-  # ble-bind -f 'ESC' read/cancel
-  # ble-bind -f 'C-[' read/cancel
-
-  # command-history
-  # ble-bind -f 'C-RET'   history-expand-line
-  # ble-bind -f 'SP'      magic-space
-
-  ble-bind -f 'C-]' bell
-  ble-bind -f 'C-^' bell
-}
-
-_ble_edit_read_history=()
-_ble_edit_read_history_edit=()
-_ble_edit_read_history_dirt=()
-_ble_edit_read_history_ind=0
-_ble_edit_read_history_onleave=()
-
-function ble-edit/read/.process-option {
-  case $1 in
-  (-e) opt_readline=1 ;;
-  (-i) opt_default=$2 ;;
-  (-p) opt_prompt=$2 ;;
-  (-u) opt_fd=$2
-       ble/array#push opts_in "$@" ;;
-  (-t) opt_timeout=$2 ;;
-  (*)  ble/array#push opts "$@" ;;
-  esac
-}
-function ble-edit/read/.read-arguments {
-  local is_normal_args=
-  vars=()
-  opts=()
-  while (($#)); do
-    local arg=$1; shift
-    if [[ $is_normal_args || $arg != -* ]]; then
-      ble/array#push vars "$arg"
-      continue
-    fi
-
-    if [[ $arg == -- ]]; then
-      is_normal_args=1
-      continue
-    fi
-
-    local i n=${#arg}
-    for ((i=1;i<n;i++)); do
-      case -${arg:i} in
-      (-[adinNptu])  ble-edit/read/.process-option -${arg:i:1} "$1"; shift; break ;;
-      (-[adinNptu]*) ble-edit/read/.process-option -${arg:i:1} "${arg:i+1}"; break ;;
-      (-[ers]*)      ble-edit/read/.process-option -${arg:i:1} ;;
-      esac
-    done
-  done
-}
-
-function ble-edit/read/.setup-textarea {
-  # 初期化
-  local def_kmap; ble-decode/DEFAULT_KEYMAP -v def_kmap
-  ble-decode/keymap/push read
-
-  # textarea, info
-  _ble_textarea_panel=2
-  ble/textarea#invalidate
-  ble-edit/info/set-default raw ''
-
-  # edit/prompt
-  _ble_edit_PS1=$opt_prompt
-  _ble_edit_prompt=("" 0 0 0 32 0 "" "")
-
-  # edit
-  _ble_edit_dirty_observer=()
-  ble/widget/.newline/clear-content
-  _ble_edit_arg=
-  _ble_edit_str.reset "$opt_default" newline
-  ble/widget/.goto-char ${#opt_default}
-
-  # edit/undo
-  ble-edit/undo/clear-all
-
-  # edit/history
-  _ble_edit_history_prefix=_ble_edit_read_
-
-  # syntax, highlight
-  _ble_syntax_lang=text
-  _ble_highlight_layer__list=(plain region disabled overwrite_mode)
-}
-function ble-edit/read/.loop {
-  ble-edit/read/.setup-textarea
-
-  if [[ $opt_timeout ]]; then
-    local start_time; ble/util/strftime -v start_time %s
-
-    # 実際は 1.99999 で 1 に切り捨てられている可能性もある。
-    # 待ち時間が長くなる方向に倒して処理する。
-    ((start_time&&start_time--))
-  fi
-
-  ble-edit/info/reveal
-  ble/textarea#render
-  ble/util/buffer.flush >&2
-
-  local char= ret=
-  local _ble_edit_read_accept=
-  local _ble_edit_read_result=
-  while [[ ! $_ble_edit_read_accept ]]; do
-    # read 1 byte
-    IFS= builtin read -r -d '' -n 1 char "${opts_in[@]}" ${opt_timeout:+-t "$opt_timeout"}; local ext=$?
-    ((ext==142)) && return "$ext" # timeout
-
-    # update timeout
-    if [[ $opt_timeout ]]; then
-      local current_time; ble/util/strftime -v current_time %s
-      if [[ $opt_timeout == *.* ]]; then
-        local mantissa=${opt_timeout%%.*}
-        local fraction=${opt_timeout#*.}
-        opt_timeout=$((mantissa-(current_time-start_time))).$fraction
-      else
-        opt_timeout=$((opt_timeout-(current_time-start_time)))
-      fi
-      start_time=$current_time
-    fi
-
-    # process
-    ble/util/s2c "$char"
-    ble-decode-char "$ret"
-    [[ $_ble_edit_read_accept ]] && break
-
-    # render
-    ble/util/is-stdin-ready && continue
-    ble-edit/info/reveal
-    ble/textarea#render
-    ble/util/buffer.flush >&2
-  done
-
-  ble/util/buffer.flush >&2
-  if ((_ble_edit_read_accept==1)); then
-    local q=\' Q="'\''"
-    printf %s "__ble_input='${_ble_edit_read_result//$q/$Q}'"
-  else
-    return 1
-  fi
-}
-
-function ble-edit/read/.impl {
-  local -a opts=() vars=() opts_in=()
-  local opt_readline= opt_prompt= opt_default= opt_timeout= opt_fd=0
-  ble-edit/read/.read-arguments "$@"
-  if ! [[ $opt_readline && -t $opt_fd ]]; then
-    # "-e オプションが指定されてかつ端末からの読み取り" のとき以外は builtin read する。
-    [[ $opt_prompt ]] && ble/array#push opts -p "$opt_prompt"
-    [[ $opt_timeout ]] && ble/array#push opts -t "$opt_timeout"
-    __ble_args=("${opts[@]}" "${opts_in[@]}" -- "${vars[@]}")
-    __ble_command='builtin read "${__ble_args[@]}"'
-    return
-  fi
-
-  ble-decode/keymap/load read
-  local result state=$_ble_term_state
-  [[ $state == external ]] && ble/term/enter # 外側にいたら入る
-  result=$(ble-edit/read/.loop); local ext=$?
-  [[ $state == external ]] && ble/term/leave # 元の状態に戻る
-  if ((ext==0)); then
-    builtin eval -- "$result"
-    __ble_args=("${opts[@]}" -- "${vars[@]}")
-    __ble_command='builtin read "${__ble_args[@]}" <<< "$__ble_input"'
-  fi
-  return "$ext"
-}
-
-## 関数 read [-ers] [-adinNptu arg] [name...]
-##
-##   ble.sh の所為で builtin read -e が全く動かなくなるので、
-##   read -e を ble.sh の枠組みで再実装する。
-##
-function read {
-  if [[ $_ble_decode_bind_state == none ]]; then
-    builtin read "$@"
-    return
-  fi
-
-  local __ble_command= __ble_args= __ble_input=
-  ble-edit/read/.impl "$@"; local __ble_ext=$?
-  [[ $__ble_command ]] || return "$__ble_ext"
-
-  # 局所変数により被覆されないように外側で評価
-  builtin eval -- "$__ble_command"
-  return
-}
-
-# 
-#------------------------------------------------------------------------------
 # **** ble-edit/undo ****                                            @edit.undo
 
 ## @var _ble_edit_undo_hindex=
@@ -5285,6 +4953,7 @@ function ble/widget/backward-line-or-history-prev {
 
 
 # 
+#------------------------------------------------------------------------------
 # **** incremental search ****                                 @history.isearch
 
 ## 変数 _ble_edit_isearch_str
@@ -5401,8 +5070,7 @@ function ble-edit/isearch/.goto-match {
   _ble_edit_bind_force_draw=1
 }
 
-#---------------------------------------
-# Basic search functions
+# ---- basic isearch functions ------------------------------------------------
 
 ## 関数 ble-edit/isearch/search needle opts ; beg end
 ##   @param[in] needle
@@ -5629,8 +5297,7 @@ function ble-edit/isearch/backward-search-history {
   ble-edit/isearch/next-history/forward-search-history.impl "$1:backward"
 }
 
-#---------------------------------------
-# Fibers
+# ---- isearch fibers ---------------------------------------------------------
 
 ## 関数 ble-edit/isearch/next.fib needle isAdd
 function ble-edit/isearch/next.fib {
@@ -5894,6 +5561,400 @@ function ble/widget/history-isearch-forward {
   _ble_edit_isearch_que=()
   _ble_edit_mark="$_ble_edit_ind"
   ble-edit/isearch/.draw-line
+}
+
+# ---- keymap:isearch ---------------------------------------------------------
+
+function ble-decode/keymap:isearch/define {
+  local ble_bind_keymap=isearch
+
+  ble-bind -f __defchar__ isearch/self-insert
+  ble-bind -f C-r         isearch/backward
+  ble-bind -f C-s         isearch/forward
+  ble-bind -f C-h         isearch/prev
+  ble-bind -f DEL         isearch/prev
+
+  ble-bind -f __default__ isearch/exit-default
+  ble-bind -f M-C-j       isearch/exit
+  ble-bind -f C-d         isearch/exit-delete-forward-char
+  ble-bind -f C-g         isearch/cancel
+  ble-bind -f C-j         isearch/accept
+  ble-bind -f C-m         isearch/accept
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** common bindings ****                                          @edit.safe
+
+function ble-decode/keymap:safe/.bind {
+  [[ $ble_bind_nometa && $1 == *M-* ]] && return
+  ble-bind -f "$1" "$2"
+}
+function ble-decode/keymap:safe/bind-common {
+  ble-decode/keymap:safe/.bind insert      'overwrite-mode'
+
+  # ins
+  ble-decode/keymap:safe/.bind __defchar__ 'self-insert'
+  ble-decode/keymap:safe/.bind 'C-q'       'quoted-insert'
+  ble-decode/keymap:safe/.bind 'C-v'       'quoted-insert'
+  ble-decode/keymap:safe/.bind 'C-M-m'     'newline'
+  ble-decode/keymap:safe/.bind 'M-RET'     'newline'
+  ble-decode/keymap:safe/.bind paste_begin 'bracketed-paste'
+
+  # kill
+  ble-decode/keymap:safe/.bind 'C-@'       'set-mark'
+  ble-decode/keymap:safe/.bind 'M-SP'      'set-mark'
+  ble-decode/keymap:safe/.bind 'C-x C-x'   'exchange-point-and-mark'
+  ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or uword'
+  ble-decode/keymap:safe/.bind 'M-w'       'copy-region-or uword'
+  ble-decode/keymap:safe/.bind 'C-y'       'yank'
+
+  # spaces
+  ble-decode/keymap:safe/.bind 'M-\'       'delete-horizontal-space'
+
+  # charwise operations
+  ble-decode/keymap:safe/.bind 'C-f'       '@nomarked forward-char'
+  ble-decode/keymap:safe/.bind 'C-b'       '@nomarked backward-char'
+  ble-decode/keymap:safe/.bind 'right'     '@nomarked forward-char'
+  ble-decode/keymap:safe/.bind 'left'      '@nomarked backward-char'
+  ble-decode/keymap:safe/.bind 'S-C-f'     '@marked forward-char'
+  ble-decode/keymap:safe/.bind 'S-C-b'     '@marked backward-char'
+  ble-decode/keymap:safe/.bind 'S-right'   '@marked forward-char'
+  ble-decode/keymap:safe/.bind 'S-left'    '@marked backward-char'
+  ble-decode/keymap:safe/.bind 'C-d'       'delete-region-or forward-char'
+  ble-decode/keymap:safe/.bind 'C-h'       'delete-region-or backward-char'
+  ble-decode/keymap:safe/.bind 'delete'    'delete-region-or forward-char'
+  ble-decode/keymap:safe/.bind 'DEL'       'delete-region-or backward-char'
+  ble-decode/keymap:safe/.bind 'C-t'       'transpose-chars'
+
+  # wordwise operations
+  ble-decode/keymap:safe/.bind 'C-right'   '@nomarked forward-cword'
+  ble-decode/keymap:safe/.bind 'C-left'    '@nomarked backward-cword'
+  ble-decode/keymap:safe/.bind 'M-right'   '@nomarked forward-sword'
+  ble-decode/keymap:safe/.bind 'M-left'    '@nomarked backward-sword'
+  ble-decode/keymap:safe/.bind 'S-C-right' '@marked forward-cword'
+  ble-decode/keymap:safe/.bind 'S-C-left'  '@marked backward-cword'
+  ble-decode/keymap:safe/.bind 'S-M-right' '@marked forward-sword'
+  ble-decode/keymap:safe/.bind 'S-M-left'  '@marked backward-sword'
+  ble-decode/keymap:safe/.bind 'M-d'       'kill-forward-cword'
+  ble-decode/keymap:safe/.bind 'M-h'       'kill-backward-cword'
+  ble-decode/keymap:safe/.bind 'C-delete'  'delete-forward-cword'
+  ble-decode/keymap:safe/.bind 'C-_'       'delete-backward-cword'
+  ble-decode/keymap:safe/.bind 'M-delete'  'copy-forward-sword'
+  ble-decode/keymap:safe/.bind 'M-DEL'     'copy-backward-sword'
+
+  ble-decode/keymap:safe/.bind 'M-f'       '@nomarked forward-cword'
+  ble-decode/keymap:safe/.bind 'M-b'       '@nomarked backward-cword'
+  ble-decode/keymap:safe/.bind 'M-F'       '@marked forward-cword'
+  ble-decode/keymap:safe/.bind 'M-B'       '@marked backward-cword'
+  ble-decode/keymap:safe/.bind 'C-M-f'     '@marked forward-cword'
+  ble-decode/keymap:safe/.bind 'C-M-b'     '@marked backward-cword'
+
+  # linewise operations
+  ble-decode/keymap:safe/.bind 'C-a'       '@nomarked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'C-e'       '@nomarked end-of-line'
+  ble-decode/keymap:safe/.bind 'home'      '@nomarked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'end'       '@nomarked end-of-line'
+  ble-decode/keymap:safe/.bind 'S-C-a'     '@marked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'S-C-e'     '@marked end-of-line'
+  ble-decode/keymap:safe/.bind 'S-home'    '@marked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'S-end'     '@marked end-of-line'
+  ble-decode/keymap:safe/.bind 'M-m'       '@nomarked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'S-M-m'     '@marked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'M-M'       '@marked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line' # overwritten by bind-history
+  ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line' # overwritten by bind-history
+  ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line'  # overwritten by bind-history
+  ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line'  # overwritten by bind-history
+  ble-decode/keymap:safe/.bind 'C-k'       'kill-forward-line'
+  ble-decode/keymap:safe/.bind 'C-u'       'kill-backward-line'
+
+  ble-decode/keymap:safe/.bind 'S-C-p'     '@marked backward-line'
+  ble-decode/keymap:safe/.bind 'S-up'      '@marked backward-line'
+  ble-decode/keymap:safe/.bind 'S-C-n'     '@marked forward-line'
+  ble-decode/keymap:safe/.bind 'S-down'    '@marked forward-line'
+
+  ble-decode/keymap:safe/.bind 'C-home'    '@nomarked beginning-of-text'
+  ble-decode/keymap:safe/.bind 'C-end'     '@nomarked end-of-text'
+  ble-decode/keymap:safe/.bind 'S-C-home'  '@marked beginning-of-text'
+  ble-decode/keymap:safe/.bind 'S-C-end'   '@marked end-of-text'
+}
+function ble-decode/keymap:safe/bind-history {
+  ble-decode/keymap:safe/.bind 'C-r'       'history-isearch-backward'
+  ble-decode/keymap:safe/.bind 'C-s'       'history-isearch-forward'
+  ble-decode/keymap:safe/.bind 'M-<'       'history-beginning'
+  ble-decode/keymap:safe/.bind 'M->'       'history-end'
+  ble-decode/keymap:safe/.bind 'C-prior'   'history-beginning'
+  ble-decode/keymap:safe/.bind 'C-next'    'history-end'
+  ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line-or-history-prev'
+  ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line-or-history-prev'
+  ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line-or-history-next'
+  ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line-or-history-next'
+}
+
+function ble/widget/safe/__attach__ {
+  ble-edit/info/set-default text ''
+}
+function ble-decode/keymap:safe/define {
+  local ble_bind_keymap=safe
+  local ble_bind_nometa=
+  ble-decode/keymap:safe/bind-common
+  ble-decode/keymap:safe/bind-history
+
+  ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
+
+  ble-bind -f 'SP'       magic-space
+  ble-bind -f 'C-RET'    history-expand-line
+
+  ble-bind -f __attach__ safe/__attach__
+
+  ble-bind -f  'C-c'     discard-line
+  ble-bind -f  'C-j'     accept-line
+  ble-bind -f  'C-m'     accept-single-line-or-newline
+  ble-bind -f  'RET'     accept-single-line-or-newline
+  ble-bind -f  'C-o'     accept-and-next
+  ble-bind -f  'C-g'     bell
+
+  ble-bind -f  'C-l'     clear-screen
+  ble-bind -f  'M-l'     redraw-line
+  ble-bind -f  'C-i'     complete
+  ble-bind -f  'TAB'     complete
+  ble-bind -f  'f1'      command-help
+  ble-bind -f  'C-x C-v' display-shell-version
+  ble-bind -cf 'C-z'     fg
+  ble-bind -cf 'M-z'     fg
+}
+
+function ble-edit/load-keymap-definition:safe {
+  ble-decode/keymap/load safe
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** ble-edit/read ****                                            @edit.read
+
+_ble_edit_read_accept=
+_ble_edit_read_result=
+function ble/widget/read/accept {
+  _ble_edit_read_accept=1
+  _ble_edit_read_result=$_ble_edit_str
+  # [[ $_ble_edit_read_result ]] &&
+  #   ble-edit/history/add "$_ble_edit_read_result" # Note: cancel でも登録する
+  ble/widget/.insert-newline
+  ble-decode/keymap/pop
+}
+function ble/widget/read/cancel {
+  local _ble_edit_line_disabled=1
+  ble/widget/read/accept
+  _ble_edit_read_accept=2
+}
+
+function ble-decode/keymap:read/define {
+  local ble_bind_keymap=read
+  local ble_bind_nometa=
+  ble-decode/keymap:safe/bind-common
+  ble-decode/keymap:safe/bind-history
+
+  ble-bind -f 'C-c' read/cancel
+  ble-bind -f 'C-\' read/cancel
+  ble-bind -f 'C-m' read/accept
+  ble-bind -f 'RET' read/accept
+  ble-bind -f 'C-j' read/accept
+
+  # shell functions
+  ble-bind -f  'C-g'     bell
+  # ble-bind -f  'C-l'     clear-screen
+  ble-bind -f  'C-l'     redraw-line
+  ble-bind -f  'M-l'     redraw-line
+  # ble-bind -f  'C-i'     complete
+  # ble-bind -f  'TAB'     complete
+  ble-bind -f  'C-x C-v' display-shell-version
+
+  # command-history
+  # ble-bind -f 'C-RET'   history-expand-line
+  # ble-bind -f 'SP'      magic-space
+
+  ble-bind -f 'C-[' bell
+  ble-bind -f 'C-]' bell
+  ble-bind -f 'C-^' bell
+}
+
+_ble_edit_read_history=()
+_ble_edit_read_history_edit=()
+_ble_edit_read_history_dirt=()
+_ble_edit_read_history_ind=0
+_ble_edit_read_history_onleave=()
+
+function ble-edit/read/.process-option {
+  case $1 in
+  (-e) opt_readline=1 ;;
+  (-i) opt_default=$2 ;;
+  (-p) opt_prompt=$2 ;;
+  (-u) opt_fd=$2
+       ble/array#push opts_in "$@" ;;
+  (-t) opt_timeout=$2 ;;
+  (*)  ble/array#push opts "$@" ;;
+  esac
+}
+function ble-edit/read/.read-arguments {
+  local is_normal_args=
+  vars=()
+  opts=()
+  while (($#)); do
+    local arg=$1; shift
+    if [[ $is_normal_args || $arg != -* ]]; then
+      ble/array#push vars "$arg"
+      continue
+    fi
+
+    if [[ $arg == -- ]]; then
+      is_normal_args=1
+      continue
+    fi
+
+    local i n=${#arg}
+    for ((i=1;i<n;i++)); do
+      case -${arg:i} in
+      (-[adinNptu])  ble-edit/read/.process-option -${arg:i:1} "$1"; shift; break ;;
+      (-[adinNptu]*) ble-edit/read/.process-option -${arg:i:1} "${arg:i+1}"; break ;;
+      (-[ers]*)      ble-edit/read/.process-option -${arg:i:1} ;;
+      esac
+    done
+  done
+}
+
+function ble-edit/read/.setup-textarea {
+  # 初期化
+  local def_kmap; ble-decode/DEFAULT_KEYMAP -v def_kmap
+  ble-decode/keymap/push read
+
+  # textarea, info
+  _ble_textarea_panel=2
+  ble/textarea#invalidate
+  ble-edit/info/set-default raw ''
+
+  # edit/prompt
+  _ble_edit_PS1=$opt_prompt
+  _ble_edit_prompt=("" 0 0 0 32 0 "" "")
+
+  # edit
+  _ble_edit_dirty_observer=()
+  ble/widget/.newline/clear-content
+  _ble_edit_arg=
+  _ble_edit_str.reset "$opt_default" newline
+  ble/widget/.goto-char ${#opt_default}
+
+  # edit/undo
+  ble-edit/undo/clear-all
+
+  # edit/history
+  _ble_edit_history_prefix=_ble_edit_read_
+
+  # syntax, highlight
+  _ble_syntax_lang=text
+  _ble_highlight_layer__list=(plain region disabled overwrite_mode)
+}
+function ble-edit/read/.loop {
+  ble-edit/read/.setup-textarea
+
+  if [[ $opt_timeout ]]; then
+    local start_time; ble/util/strftime -v start_time %s
+
+    # 実際は 1.99999 で 1 に切り捨てられている可能性もある。
+    # 待ち時間が長くなる方向に倒して処理する。
+    ((start_time&&start_time--))
+  fi
+
+  ble-edit/info/reveal
+  ble/textarea#render
+  ble/util/buffer.flush >&2
+
+  local char= ret=
+  local _ble_edit_read_accept=
+  local _ble_edit_read_result=
+  while [[ ! $_ble_edit_read_accept ]]; do
+    # read 1 byte
+    IFS= builtin read -r -d '' -n 1 char "${opts_in[@]}" ${opt_timeout:+-t "$opt_timeout"}; local ext=$?
+    ((ext==142)) && return "$ext" # timeout
+
+    # update timeout
+    if [[ $opt_timeout ]]; then
+      local current_time; ble/util/strftime -v current_time %s
+      if [[ $opt_timeout == *.* ]]; then
+        local mantissa=${opt_timeout%%.*}
+        local fraction=${opt_timeout#*.}
+        opt_timeout=$((mantissa-(current_time-start_time))).$fraction
+      else
+        opt_timeout=$((opt_timeout-(current_time-start_time)))
+      fi
+      start_time=$current_time
+    fi
+
+    # process
+    ble/util/s2c "$char"
+    ble-decode-char "$ret"
+    [[ $_ble_edit_read_accept ]] && break
+
+    # render
+    ble/util/is-stdin-ready && continue
+    ble-edit/info/reveal
+    ble/textarea#render
+    ble/util/buffer.flush >&2
+  done
+
+  ble/util/buffer.flush >&2
+  if ((_ble_edit_read_accept==1)); then
+    local q=\' Q="'\''"
+    printf %s "__ble_input='${_ble_edit_read_result//$q/$Q}'"
+  else
+    return 1
+  fi
+}
+
+function ble-edit/read/.impl {
+  local -a opts=() vars=() opts_in=()
+  local opt_readline= opt_prompt= opt_default= opt_timeout= opt_fd=0
+  ble-edit/read/.read-arguments "$@"
+  if ! [[ $opt_readline && -t $opt_fd ]]; then
+    # "-e オプションが指定されてかつ端末からの読み取り" のとき以外は builtin read する。
+    [[ $opt_prompt ]] && ble/array#push opts -p "$opt_prompt"
+    [[ $opt_timeout ]] && ble/array#push opts -t "$opt_timeout"
+    __ble_args=("${opts[@]}" "${opts_in[@]}" -- "${vars[@]}")
+    __ble_command='builtin read "${__ble_args[@]}"'
+    return
+  fi
+
+  ble-decode/keymap/load read
+  local result state=$_ble_term_state
+  [[ $state == external ]] && ble/term/enter # 外側にいたら入る
+  result=$(ble-edit/read/.loop); local ext=$?
+  [[ $state == external ]] && ble/term/leave # 元の状態に戻る
+  if ((ext==0)); then
+    builtin eval -- "$result"
+    __ble_args=("${opts[@]}" -- "${vars[@]}")
+    __ble_command='builtin read "${__ble_args[@]}" <<< "$__ble_input"'
+  fi
+  return "$ext"
+}
+
+## 関数 read [-ers] [-adinNptu arg] [name...]
+##
+##   ble.sh の所為で builtin read -e が全く動かなくなるので、
+##   read -e を ble.sh の枠組みで再実装する。
+##
+function read {
+  if [[ $_ble_decode_bind_state == none ]]; then
+    builtin read "$@"
+    return
+  fi
+
+  local __ble_command= __ble_args= __ble_input=
+  ble-edit/read/.impl "$@"; local __ble_ext=$?
+  [[ $__ble_command ]] || return "$__ble_ext"
+
+  # 局所変数により被覆されないように外側で評価
+  builtin eval -- "$__ble_command"
+  return
 }
 
 # 
@@ -6440,35 +6501,28 @@ function ble/widget/.EDIT_COMMAND {
 function ble-decode/DEFAULT_KEYMAP {
   if [[ $bleopt_default_keymap == auto ]]; then
     if [[ -o vi ]]; then
-      ble-edit/load-keymap-definition vi
-      builtin eval "$2=vi_imap"
+      ble-edit/load-keymap-definition vi &&
+        builtin eval -- "$2=vi_imap"
     else
-      ble-edit/load-keymap-definition emacs
-      builtin eval "$2=emacs"
+      ble-edit/load-keymap-definition emacs &&
+        builtin eval -- "$2=emacs"
     fi
   elif [[ $bleopt_default_keymap == vi ]]; then
-    ble-edit/load-keymap-definition vi
-    builtin eval "$2=vi_imap"
+    ble-edit/load-keymap-definition vi &&
+      builtin eval -- "$2=vi_imap"
   else
-    ble-edit/load-keymap-definition "$bleopt_default_keymap"
-    builtin eval "$2=\"\$bleopt_default_keymap\""
-  fi
-}
+    ble-edit/load-keymap-definition "$bleopt_default_keymap" &&
+      builtin eval -- "$2=\"\$bleopt_default_keymap\""
+  fi; local ext=$?
 
-function ble-edit/load-keymap-definition:emacs {
-  function ble-edit/load-keymap-definition:emacs { :; }
-
-  local fname_keymap_cache=$_ble_base_cache/keymap.emacs
-  if [[ $fname_keymap_cache -nt $_ble_base/keymap/emacs.sh &&
-          $fname_keymap_cache -nt $_ble_base/keymap/isearch.sh &&
-          $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]; then
-    source "$fname_keymap_cache"
-  else
-    source "$_ble_base/keymap/emacs.sh"
+  if ((ext==0)) && ble-decode/keymap/is-keymap "${!2}"; then
+    return 0
   fi
-}
-function ble/widget/emacs/.attach {
-  ble-edit/info/set-default text ''
+
+  echo "ble.sh: The definition of the default keymap \"$bleopt_default_keymap\" is not found. ble.sh uses \"safe\" keymap instead."
+  ble-edit/load-keymap-definition safe &&
+    builtin eval -- "$2=safe" &&
+    bleopt_default_keymap=safe
 }
 
 function ble-edit/load-keymap-definition {

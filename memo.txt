@@ -2435,6 +2435,10 @@ tech
   新機能
   - vi-mode: nmap `u` `<C-r>` `U` `#D0644`
   - edit: 絵文字の文字幅 `bleopt emoji_width=2` `#D0645`
+  - vi-mode: nmap/xmap `f1` で `command-help` 呼び出し
+
+  動作修正
+  - vi-mode (nmap/xmap/omap `<paste>`): 引数を無視するように変更
 
   ToDo
   - vi-mode (nmap `/` `?` `n` `N`): 検索開始位置が `vim` のそれと異なる

@@ -4434,6 +4434,7 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f .      vi_nmap/repeat
 
   ble-bind -f K      vi_nmap/command-help
+  ble-bind -f f1     vi_nmap/command-help
 
   ble-bind -f 'z t'   clear-screen
   ble-bind -f 'z z'   redraw-line # 中央
@@ -5605,7 +5606,8 @@ function ble-decode/keymap:vi_xmap/define {
   ble-bind -f p vi_xmap/paste-after
   ble-bind -f P vi_xmap/paste-before
 
-  ble-bind -f K vi_xmap/command-help
+  ble-bind -f f1 vi_xmap/command-help
+  ble-bind -f K  vi_xmap/command-help
 }
 
 #------------------------------------------------------------------------------
@@ -5764,147 +5766,74 @@ function ble/widget/vi_imap/delete-backward-indent-or {
 function ble-decode/keymap:vi_imap/define {
   local ble_bind_keymap=vi_imap
 
-  ble-bind -f __attach__         vi_imap/__attach__
-  ble-bind -f __defchar__        self-insert
-  ble-bind -f __default__        vi_imap/__default__
-  ble-bind -f __before_command__ vi_imap/__before_command__
-
-  ble-bind -f 'ESC' vi_imap/normal-mode
-  ble-bind -f 'C-[' vi_imap/normal-mode
-  ble-bind -f 'C-c' vi_imap/normal-mode-without-insert-leave
-
-  ble-bind -f insert vi_imap/overwrite-mode
-
-  ble-bind -f 'C-o' 'vi_imap/single-command-mode'
-
-  # settings overwritten by bash key bindings
-
-  ble-bind -f 'C-w' vi_imap/delete-backward-word
-  # ble-bind -f 'C-l' vi_imap/normal-mode
-  # ble-bind -f 'C-k' vi_imap/insert-digraph
-
   #----------------------------------------------------------------------------
-  # bash
+  # common bindings + modifications
 
-  # ins
-  ble-bind -f 'C-q'       vi_imap/quoted-insert
-  ble-bind -f 'C-v'       vi_imap/quoted-insert
-  ble-bind -f 'C-RET'     newline
-  ble-bind -f paste_begin vi_imap/bracketed-paste
+  local ble_bind_nometa=1
+  ble-decode/keymap:safe/bind-common
+  ble-decode/keymap:safe/bind-history
 
-  # shell
-  ble-bind -f 'C-m' 'vi_imap/accept-single-line-or vi_imap/newline'
-  ble-bind -f 'RET' 'vi_imap/accept-single-line-or vi_imap/newline'
-  ble-bind -f 'C-i'  complete
-  ble-bind -f 'TAB'  complete
+  ble-bind -f insert      'vi_imap/overwrite-mode'
+
+  # insert
+  ble-bind -f 'C-q'       'vi_imap/quoted-insert'
+  ble-bind -f 'C-v'       'vi_imap/quoted-insert'
+  ble-bind -f 'C-RET'     'newline'
+  ble-bind -f paste_begin 'vi_imap/bracketed-paste'
+
+  # charwise operations
+  ble-bind -f 'C-d'       'delete-region-or forward-char-or-exit'
+  ble-bind -f 'C-h'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
+  ble-bind -f 'DEL'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
+
+  # wordwise operations
+  ble-bind -f 'C-w'       'vi_imap/delete-backward-word'
 
   # history
-  ble-bind -f 'C-r'     history-isearch-backward
-  ble-bind -f 'C-s'     history-isearch-forward
-  ble-bind -f 'C-prior' history-beginning
-  ble-bind -f 'C-next'  history-end
-  ble-bind -f 'SP'      magic-space
-
-  ble-bind -f 'C-l' clear-screen
-  ble-bind -f 'C-k' kill-forward-line
-
-  # ble-bind -f 'C-o' accept-and-next
-  # ble-bind -f 'C-w' 'kill-region-or uword'
+  ble-bind -f 'SP'        'magic-space'
+  # ble-bind -f 'C-RET'     'history-expand-line'
 
   #----------------------------------------------------------------------------
-  # from keymap emacs-standard
+  # shell functions (from keymap emacs-standard)
 
-  # shell function
+  # accept/cancel
+  # ble-bind -f  'C-c'     discard-line
   ble-bind -f  'C-j'     accept-line
+  ble-bind -f  'C-m'     'vi_imap/accept-single-line-or vi_imap/newline'
+  ble-bind -f  'RET'     'vi_imap/accept-single-line-or vi_imap/newline'
+  # ble-bind -f  'C-o'     accept-and-next
   ble-bind -f  'C-g'     bell
+
+  # shell functions
+  ble-bind -f  'C-l'     clear-screen
+  # ble-bind -f  'M-l'     redraw-line
+  ble-bind -f  'C-i'     complete
+  ble-bind -f  'TAB'     complete
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
   ble-bind -cf 'C-z'     fg
-  # ble-bind -f 'C-c'      discard-line
-  # ble-bind -f  'M-l'     redraw-line
   # ble-bind -cf 'M-z'     fg
 
-  # history
-  # ble-bind -f 'C-RET'   history-expand-line
-  # ble-bind -f 'M-<'     history-beginning
-  # ble-bind -f 'M->'     history-end
-
-  # kill
-  ble-bind -f 'C-@'      set-mark
-  ble-bind -f 'C-x C-x'  exchange-point-and-mark
-  ble-bind -f 'C-y'      yank
-  # ble-bind -f M-SP     set-mark
-  # ble-bind -f M-w      'copy-region-or uword'
-
-  # spaces
-  # ble-bind -f 'M-\'      delete-horizontal-space
-
-  # charwise operations
-  ble-bind -f 'C-f'      '@nomarked forward-char'
-  ble-bind -f 'C-b'      '@nomarked backward-char'
-  ble-bind -f 'right'    '@nomarked forward-char'
-  ble-bind -f 'left'     '@nomarked backward-char'
-  ble-bind -f 'S-C-f'    '@marked forward-char'
-  ble-bind -f 'S-C-b'    '@marked backward-char'
-  ble-bind -f 'S-right'  '@marked forward-char'
-  ble-bind -f 'S-left'   '@marked backward-char'
-  ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
-  ble-bind -f 'delete'   'delete-region-or forward-char'
-  ble-bind -f 'C-h'      'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
-  ble-bind -f 'DEL'      'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
-  ble-bind -f 'C-t'      'transpose-chars'
-
-  # wordwise operations
-  ble-bind -f 'C-right'   '@nomarked forward-cword'
-  ble-bind -f 'C-left'    '@nomarked backward-cword'
-  ble-bind -f 'S-C-right' '@marked forward-cword'
-  ble-bind -f 'S-C-left'  '@marked backward-cword'
-  ble-bind -f 'C-delete'  'delete-forward-cword'
-  ble-bind -f 'C-_'       'delete-backward-cword'
-  # ble-bind -f 'M-right'   '@nomarked forward-sword'
-  # ble-bind -f 'M-left'    '@nomarked backward-sword'
-  # ble-bind -f 'S-M-right' '@marked forward-sword'
-  # ble-bind -f 'S-M-left'  '@marked backward-sword'
-  # ble-bind -f 'M-d'       'kill-forward-cword'
-  # ble-bind -f 'M-h'       'kill-backward-cword'
-  # ble-bind -f 'M-delete'  copy-forward-sword    # M-delete
-  # ble-bind -f 'M-DEL'     copy-backward-sword   # M-BS
-
-  # ble-bind -f 'M-f'       '@nomarked forward-cword'
-  # ble-bind -f 'M-b'       '@nomarked backward-cword'
-  # ble-bind -f 'M-F'       '@marked forward-cword'
-  # ble-bind -f 'M-B'       '@marked backward-cword'
-
-  # linewise operations
-  ble-bind -f 'C-a'      '@nomarked beginning-of-line'
-  ble-bind -f 'C-e'      '@nomarked end-of-line'
-  ble-bind -f 'home'     '@nomarked beginning-of-line'
-  ble-bind -f 'end'      '@nomarked end-of-line'
-  ble-bind -f 'S-C-a'    '@marked beginning-of-line'
-  ble-bind -f 'S-C-e'    '@marked end-of-line'
-  ble-bind -f 'S-home'   '@marked beginning-of-line'
-  ble-bind -f 'S-end'    '@marked end-of-line'
-  ble-bind -f 'C-u'      'kill-backward-line'
-  # ble-bind -f 'M-m'      '@nomarked beginning-of-line'
-  # ble-bind -f 'S-M-m'    '@marked beginning-of-line'
-
-  ble-bind -f 'C-p'      '@nomarked backward-line-or-history-prev'
-  ble-bind -f 'up'       '@nomarked backward-line-or-history-prev'
-  ble-bind -f 'C-n'      '@nomarked forward-line-or-history-next'
-  ble-bind -f 'down'     '@nomarked forward-line-or-history-next'
-  ble-bind -f 'S-C-p'    '@marked backward-line'
-  ble-bind -f 'S-up'     '@marked backward-line'
-  ble-bind -f 'S-C-n'    '@marked forward-line'
-  ble-bind -f 'S-down'   '@marked forward-line'
-
-  ble-bind -f 'C-home'   '@nomarked beginning-of-text'
-  ble-bind -f 'C-end'    '@nomarked end-of-text'
-  ble-bind -f 'S-C-home' '@marked beginning-of-text'
-  ble-bind -f 'S-C-end'  '@marked end-of-text'
-
+  # ble-bind -f 'C-[' bell
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
+
+  #----------------------------------------------------------------------------
+  # vi bindings
+
+  ble-bind -f __attach__         vi_imap/__attach__
+  ble-bind -f __default__        vi_imap/__default__
+  ble-bind -f __before_command__ vi_imap/__before_command__
+
+  ble-bind -f 'ESC' 'vi_imap/normal-mode'
+  ble-bind -f 'C-[' 'vi_imap/normal-mode'
+  ble-bind -f 'C-c' 'vi_imap/normal-mode-without-insert-leave'
+
+  ble-bind -f 'C-o' 'vi_imap/single-command-mode'
+
+  # ble-bind -f 'C-l' vi_imap/normal-mode
+  # ble-bind -f 'C-k' vi_imap/insert-digraph
 }
 
 #------------------------------------------------------------------------------
@@ -6003,125 +5932,38 @@ function ble/widget/vi_cmap/__before_command__ {
 function ble-decode/keymap:vi_cmap/define {
   local ble_bind_keymap=vi_cmap
 
+  #----------------------------------------------------------------------------
+  # common bindings + modifications
+
+  local ble_bind_nometa=
+  ble-decode/keymap:safe/bind-common
+  ble-decode/keymap:safe/bind-history
+
+  #----------------------------------------------------------------------------
+
   ble-bind -f __before_command__ vi_cmap/__before_command__
 
+  # accept/cancel
   ble-bind -f 'ESC' vi_cmap/cancel
   ble-bind -f 'C-[' vi_cmap/cancel
   ble-bind -f 'C-c' vi_cmap/cancel
   ble-bind -f 'C-m' vi_cmap/accept
   ble-bind -f 'RET' vi_cmap/accept
   ble-bind -f 'C-j' vi_cmap/accept
-
-  ble-bind -f insert      overwrite-mode
-
-  # ins
-  ble-bind -f __defchar__ self-insert
-  ble-bind -f 'C-q'       quoted-insert
-  ble-bind -f 'C-v'       quoted-insert
-  ble-bind -f 'C-M-m'     newline
-  ble-bind -f 'M-RET'     newline
-  ble-bind -f paste_begin bracketed-paste
+  ble-bind -f 'C-g' bell
 
   # shell function
-  ble-bind -f  'C-g'     bell
   # ble-bind -f  'C-l'     clear-screen
+  ble-bind -f  'C-l'     redraw-line
   ble-bind -f  'M-l'     redraw-line
   # ble-bind -f  'C-i'     complete
   # ble-bind -f  'TAB'     complete
   ble-bind -f  'C-x C-v' display-shell-version
 
-  # kill
-  ble-bind -f 'C-@'      set-mark
-  ble-bind -f 'M-SP'     set-mark
-  ble-bind -f 'C-x C-x'  exchange-point-and-mark
-  ble-bind -f 'C-w'      vi_imap/delete-backward-word
-  ble-bind -f 'M-w'      'copy-region-or uword'
-  ble-bind -f 'C-y'      yank
-
-  # spaces
-  ble-bind -f 'M-\'      delete-horizontal-space
-
-  # charwise operations
-  ble-bind -f 'C-f'      '@nomarked forward-char'
-  ble-bind -f 'C-b'      '@nomarked backward-char'
-  ble-bind -f 'right'    '@nomarked forward-char'
-  ble-bind -f 'left'     '@nomarked backward-char'
-  ble-bind -f 'S-C-f'    '@marked forward-char'
-  ble-bind -f 'S-C-b'    '@marked backward-char'
-  ble-bind -f 'S-right'  '@marked forward-char'
-  ble-bind -f 'S-left'   '@marked backward-char'
-  ble-bind -f 'C-d'      'delete-region-or forward-char'
-  ble-bind -f 'C-h'      'delete-region-or backward-char'
-  ble-bind -f 'delete'   'delete-region-or forward-char'
-  ble-bind -f 'DEL'      'delete-region-or backward-char'
-  ble-bind -f 'C-t'      transpose-chars
-
-  # wordwise operations
-  ble-bind -f 'C-right'   '@nomarked forward-cword'
-  ble-bind -f 'C-left'    '@nomarked backward-cword'
-  ble-bind -f 'M-right'   '@nomarked forward-sword'
-  ble-bind -f 'M-left'    '@nomarked backward-sword'
-  ble-bind -f 'S-C-right' '@marked forward-cword'
-  ble-bind -f 'S-C-left'  '@marked backward-cword'
-  ble-bind -f 'S-M-right' '@marked forward-sword'
-  ble-bind -f 'S-M-left'  '@marked backward-sword'
-  ble-bind -f 'M-d'       kill-forward-cword
-  ble-bind -f 'M-h'       kill-backward-cword
-  ble-bind -f 'C-delete'  delete-forward-cword  # C-delete
-  ble-bind -f 'C-_'       delete-backward-cword # C-BS
-  ble-bind -f 'M-delete'  copy-forward-sword    # M-delete
-  ble-bind -f 'M-DEL'     copy-backward-sword   # M-BS
-
-  ble-bind -f 'M-f'       '@nomarked forward-cword'
-  ble-bind -f 'M-b'       '@nomarked backward-cword'
-  ble-bind -f 'M-F'       '@marked forward-cword'
-  ble-bind -f 'M-B'       '@marked backward-cword'
-
-  # linewise operations
-  ble-bind -f 'C-a'       '@nomarked beginning-of-line'
-  ble-bind -f 'C-e'       '@nomarked end-of-line'
-  ble-bind -f 'home'      '@nomarked beginning-of-line'
-  ble-bind -f 'end'       '@nomarked end-of-line'
-  ble-bind -f 'M-m'       '@nomarked beginning-of-line'
-  ble-bind -f 'S-C-a'     '@marked beginning-of-line'
-  ble-bind -f 'S-C-e'     '@marked end-of-line'
-  ble-bind -f 'S-home'    '@marked beginning-of-line'
-  ble-bind -f 'S-end'     '@marked end-of-line'
-  ble-bind -f 'S-M-m'     '@marked beginning-of-line'
-  ble-bind -f 'C-k'       kill-forward-line
-  ble-bind -f 'C-u'       kill-backward-line
-
-  # history
-  ble-bind -f 'C-r'     history-isearch-backward
-  ble-bind -f 'C-s'     history-isearch-forward
-  ble-bind -f 'M-<'     history-beginning
-  ble-bind -f 'M->'     history-end
-  ble-bind -f 'C-prior' history-beginning
-  ble-bind -f 'C-next'  history-end
-  ble-bind -f 'C-p'    '@nomarked backward-line-or-history-prev'
-  ble-bind -f 'up'     '@nomarked backward-line-or-history-prev'
-  ble-bind -f 'C-n'    '@nomarked forward-line-or-history-next'
-  ble-bind -f 'down'   '@nomarked forward-line-or-history-next'
-  # ble-bind -f 'C-p'    '@nomarked backward-line'
-  # ble-bind -f 'up'     '@nomarked backward-line'
-  # ble-bind -f 'C-n'    '@nomarked forward-line'
-  # ble-bind -f 'down'   '@nomarked forward-line'
-
   # command-history
   # ble-bind -f 'C-RET'   history-expand-line
   # ble-bind -f 'SP'      magic-space
 
-  ble-bind -f 'S-C-p'  '@marked backward-line'
-  ble-bind -f 'S-up'   '@marked backward-line'
-  ble-bind -f 'S-C-n'  '@marked forward-line'
-  ble-bind -f 'S-down' '@marked forward-line'
-
-  ble-bind -f 'C-home'   '@nomarked beginning-of-text'
-  ble-bind -f 'C-end'    '@nomarked end-of-text'
-  ble-bind -f 'S-C-home' '@marked beginning-of-text'
-  ble-bind -f 'S-C-end'  '@marked end-of-text'
-
-  # ble-bind -f 'C-x' bell
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
@@ -6132,15 +5974,11 @@ function ble-decode/keymap:vi_cmap/define {
 function ble-decode/keymap:vi/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi.sh &&
-          $fname_keymap_cache -nt $_ble_base/keymap/isearch.sh &&
           $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]; then
-    source "$fname_keymap_cache"
-    return
+    source "$fname_keymap_cache" && return
   fi
 
-  ble-import keymap/isearch.sh
-
-  echo -n "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2
+  printf %s "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2
 
   ble-decode/keymap:isearch/define
   ble-decode/keymap:vi_imap/define
@@ -6149,13 +5987,14 @@ function ble-decode/keymap:vi/initialize {
   ble-decode/keymap:vi_xmap/define
   ble-decode/keymap:vi_cmap/define
 
-  : >| "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_imap >> "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_nmap >> "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_omap >> "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_xmap >> "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_cmap >> "$fname_keymap_cache"
-  ble-decode/keymap/dump isearch >> "$fname_keymap_cache"
+  {
+    ble-decode/keymap/dump vi_imap
+    ble-decode/keymap/dump vi_nmap
+    ble-decode/keymap/dump vi_omap
+    ble-decode/keymap/dump vi_xmap
+    ble-decode/keymap/dump vi_cmap
+    ble-decode/keymap/dump isearch
+  } >| "$fname_keymap_cache"
 
   echo "ble.sh: updating cache/keymap.vi... done" >&2
 }
