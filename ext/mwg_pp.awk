@@ -95,781 +95,781 @@ function rep_instantiate_tmpl(text,captures,  _ret,_num,_insert){
 
 # -*- mode:awk -*-
 
-function ev1scan_init_opregister(opname,optype,opprec){
-  ev_db_operator[opname]=optype;
-  ev_db_operator[opname,"a"]=opprec;
+function ev1scan_init_opregister(opname, optype, opprec) {
+  ev_db_operator[opname] = optype;
+  ev_db_operator[opname, "a"] = opprec;
 }
 
-function ev1scan_init(){
-  OP_BIN=1;
-  OP_UNA=2; # prefix
-  OP_SGN=3; # prefix or binary
-  OP_INC=4; # prefix or suffix
+function ev1scan_init() {
+  OP_BIN = 1;
+  OP_UNA = 2; # prefix
+  OP_SGN = 3; # prefix or binary
+  OP_INC = 4; # prefix or suffix
 
-  ev1scan_init_opregister("." ,OP_BIN,12.0);
+  ev1scan_init_opregister("." , OP_BIN, 12.0);
 
-  ev1scan_init_opregister("++",OP_INC,11.0);
-  ev1scan_init_opregister("--",OP_INC,11.0);
-  ev1scan_init_opregister("!" ,OP_UNA,11.0);
+  ev1scan_init_opregister("++", OP_INC, 11.0);
+  ev1scan_init_opregister("--", OP_INC, 11.0);
+  ev1scan_init_opregister("!" , OP_UNA, 11.0);
 
-  ev1scan_init_opregister("*" ,OP_BIN,10.0);
-  ev1scan_init_opregister("/" ,OP_BIN,10.0);
-  ev1scan_init_opregister("%" ,OP_BIN,10.0);
+  ev1scan_init_opregister("*" , OP_BIN, 10.0);
+  ev1scan_init_opregister("/" , OP_BIN, 10.0);
+  ev1scan_init_opregister("%" , OP_BIN, 10.0);
 
-  ev1scan_init_opregister("+" ,OP_SGN,9.0);
-  ev1scan_init_opregister("-" ,OP_SGN,9.0);
+  ev1scan_init_opregister("+" , OP_SGN, 9.0);
+  ev1scan_init_opregister("-" , OP_SGN, 9.0);
 
-  ev1scan_init_opregister("==",OP_BIN,8.0);
-  ev1scan_init_opregister("!=",OP_BIN,8.0);
-  ev1scan_init_opregister("<" ,OP_BIN,8.0);
-  ev1scan_init_opregister("<=",OP_BIN,8.0);
-  ev1scan_init_opregister(">" ,OP_BIN,8.0);
-  ev1scan_init_opregister(">=",OP_BIN,8.0);
+  ev1scan_init_opregister("==", OP_BIN, 8.0);
+  ev1scan_init_opregister("!=", OP_BIN, 8.0);
+  ev1scan_init_opregister("<" , OP_BIN, 8.0);
+  ev1scan_init_opregister("<=", OP_BIN, 8.0);
+  ev1scan_init_opregister(">" , OP_BIN, 8.0);
+  ev1scan_init_opregister(">=", OP_BIN, 8.0);
 
-  ev1scan_init_opregister("&" ,OP_BIN,7.4);
-  ev1scan_init_opregister("^" ,OP_BIN,7.2);
-  ev1scan_init_opregister("|" ,OP_BIN,7.0);
-  ev1scan_init_opregister("&&",OP_BIN,6.4);
-  ev1scan_init_opregister("||",OP_BIN,6.0);
+  ev1scan_init_opregister("&" , OP_BIN, 7.4);
+  ev1scan_init_opregister("^" , OP_BIN, 7.2);
+  ev1scan_init_opregister("|" , OP_BIN, 7.0);
+  ev1scan_init_opregister("&&", OP_BIN, 6.4);
+  ev1scan_init_opregister("||", OP_BIN, 6.0);
 
-  ev1scan_init_opregister("=" ,OP_BIN,2.0);
-  ev1scan_init_opregister("+=",OP_BIN,2.0);
-  ev1scan_init_opregister("-=",OP_BIN,2.0);
-  ev1scan_init_opregister("*=",OP_BIN,2.0);
-  ev1scan_init_opregister("/=",OP_BIN,2.0);
-  ev1scan_init_opregister("%=",OP_BIN,2.0);
-  ev1scan_init_opregister("|=",OP_BIN,2.0);
-  ev1scan_init_opregister("^=",OP_BIN,2.0);
-  ev1scan_init_opregister("&=",OP_BIN,2.0);
-  ev1scan_init_opregister("," ,OP_BIN,1.0);
+  ev1scan_init_opregister("=" , OP_BIN, 2.0);
+  ev1scan_init_opregister("+=", OP_BIN, 2.0);
+  ev1scan_init_opregister("-=", OP_BIN, 2.0);
+  ev1scan_init_opregister("*=", OP_BIN, 2.0);
+  ev1scan_init_opregister("/=", OP_BIN, 2.0);
+  ev1scan_init_opregister("%=", OP_BIN, 2.0);
+  ev1scan_init_opregister("|=", OP_BIN, 2.0);
+  ev1scan_init_opregister("^=", OP_BIN, 2.0);
+  ev1scan_init_opregister("&=", OP_BIN, 2.0);
+  ev1scan_init_opregister("," , OP_BIN, 1.0);
 
   # for ev2
-  SE_VALU=1;
-  SE_PREF=0;
-  SE_MARK=-1;
+  SE_VALU = 1;
+  SE_PREF = 0;
+  SE_MARK = -1;
 
-  ATTR_SET="t";
-  ATTR_TYP="T";
-  ATTR_MOD="M";
+  ATTR_SET = "t";
+  ATTR_TYP = "T";
+  ATTR_MOD = "M";
 
-  MOD_NUL=0;
-  MOD_REF=1;
-  ATTR_REF="R";
-  MOD_ARG=2;
-  MOD_ARR=4;
-  MOD_MTH=8;
-  ATTR_MTH_OBJ="Mo";
-  ATTR_MTH_MEM="Mf";
+  MOD_NUL = 0;
+  MOD_REF = 1;
+  ATTR_REF = "R";
+  MOD_ARG = 2;
+  MOD_ARR = 4;
+  MOD_MTH = 8;
+  ATTR_MTH_OBJ = "Mo";
+  ATTR_MTH_MEM = "Mf";
 
-  TYPE_NUM=0;
-  TYPE_STR=1;
+  TYPE_NUM = 0;
+  TYPE_STR = 1;
 }
 
-function ev1scan_scan(expression,words, _wlen,_i,_len,_c,_t,_w){
-  _wlen=0;
-  _len=length(expression);
-  for(_i=0;_i<_len;_i++){
-    _c=substr(expression,_i+1,1);
+function ev1scan_scan(expression, words, _wlen, _i, _len, _c, _t, _w) {
+  _wlen = 0;
+  _len = length(expression);
+  for (_i = 0; _i < _len; _i++) {
+    _c = substr(expression, _i + 1, 1);
 
-    if(_c ~ /[.0-9]/){
-      _t="n";
-      _w=_c;
-      while(_i+1<_len){
-        _c=substr(expression,_i+2,1);
-        if(_c !~ /[.0-9]/)break;
-        _w=_w _c;
+    if (_c ~ /[.0-9]/) {
+      _t = "n";
+      _w = _c;
+      while (_i + 1 < _len) {
+        _c = substr(expression, _i + 2, 1);
+        if (_c !~ /[.0-9]/) break;
+        _w = _w _c;
         _i++;
       }
-      #if(_w==".")_w=0;
-      if(_w=="."){
-        _t="o";
+      #if (_w == ".")_w = 0;
+      if (_w == ".") {
+        _t = "o";
       }
-    }else if(ev_db_operator[_c]!=""){
-      _t="o";
-      _w=_c;
-      while(_i+1<_len){
-        _c=substr(expression,_i+2,1);
-        #print "dbg: ev_db_op[" _w _c "]=" ev_db_operator[_w _c] > "/dev/stderr"
-        if(ev_db_operator[_w _c]!=""){
-          _w=_w _c;
+    } else if (ev_db_operator[_c] != "") {
+      _t = "o";
+      _w = _c;
+      while (_i + 1 < _len) {
+        _c = substr(expression, _i + 2, 1);
+        #print "dbg: ev_db_op[" _w _c "] = " ev_db_operator[_w _c] > "/dev/stderr"
+        if (ev_db_operator[_w _c] != "") {
+          _w = _w _c;
           _i++;
-        }else break;
+        } else break;
       }
-    }else if(_c ~ "[[({?]"){
-      _t="op";
-      _w=_c;
-    }else if(_c ~ "[])}:]"){
-      _t="cl";
-      _w=_c;
-    }else if(_c ~ /[_a-zA-Z]/){
-      _t="w";
-      _w=_c;
-      while(_i+1<_len){
-        _c=substr(expression,_i+2,1);
-        if(_c !~ /[_a-zA-Z0-9]/)break;
-        _w=_w _c;
+    } else if (_c ~ "[[({?]") {
+      _t = "op";
+      _w = _c;
+    } else if (_c ~ "[])}:]") {
+      _t = "cl";
+      _w = _c;
+    } else if (_c ~ /[_a-zA-Z]/) {
+      _t = "w";
+      _w = _c;
+      while (_i + 1 < _len) {
+        _c = substr(expression, _i + 2, 1);
+        if (_c !~ /[_a-zA-Z0-9]/) break;
+        _w = _w _c;
         _i++;
       }
-    }else if(_c=="\""){
+    } else if (_c == "\"") {
       # string literal
-      _t="S";
-      _w="";
-      while(_i+1<_len){
-        _c=substr(expression,_i+2,1);
+      _t = "S";
+      _w = "";
+      while (_i + 1 < _len) {
+        _c = substr(expression, _i + 2, 1);
         _i++;
-        if(_c =="\""){
+        if (_c  == "\"") {
           break;
-        }else if(_c=="\\"){
-          #print_error("dbg: (escchar = " _c " " substr(expression,_i+2,1) ")" );
-          if(_i+1<_len){
-            _w=_w ev1scan_scan_escchar(substr(expression,_i+2,1));
+        } else if (_c == "\\") {
+          #print_error("dbg: (escchar = " _c " " substr(expression, _i + 2, 1) ")" );
+          if (_i + 1 < _len) {
+            _w = _w ev1scan_scan_escchar(substr(expression, _i + 2, 1));
             _i++;
-          }else{
-            _w=_w _c;
+          } else {
+            _w = _w _c;
           }
-        }else{
-          _w=_w _c;
+        } else {
+          _w = _w _c;
         }
       }
-    }else if(_c ~ /\s/){
+    } else if (_c ~ /[[:space:]]/) {
       continue; # ignore blank
-    }else{
-      print_error("mwg_pp.eval_expr","unrecognizable character '" _c "'");
+    } else {
+      print_error("mwg_pp.eval_expr", "unrecognizable character '" _c "'");
       continue; # ignore unknown character
     }
 
-    words[_wlen,"t"]=_t;
-    words[_wlen,"w"]=_w;
+    words[_wlen, "t"] = _t;
+    words[_wlen, "w"] = _w;
     _wlen++;
   }
 
   # debug
-  #for(_i=0;_i<_wlen;_i++){
-  #    print "yield " words[_i,"w"] " as " words[_i,"t"] > "/dev/stderr"
+  #for (_i = 0; _i < _wlen; _i++) {
+  #    print "yield " words[_i, "w"] " as " words[_i, "t"] > "/dev/stderr"
   #}
 
   return _wlen;
 }
 
-function ev1scan_scan_escchar(c){
-  if(c !~ /[nrtvfaeb]/)return c;
-  if(c=="n")return "\n";
-  if(c=="r")return "\r";
-  if(c=="t")return "\t";
-  if(c=="v")return "\v";
-  if(c=="f")return "\f";
-  if(c=="a")return "\a";
-  if(c=="e")return "\33";
-  if(c=="b")return "\b";
+function ev1scan_scan_escchar(c) {
+  if (c !~ /[nrtvfaeb]/) return c;
+  if (c == "n") return "\n";
+  if (c == "r") return "\r";
+  if (c == "t") return "\t";
+  if (c == "v") return "\v";
+  if (c == "f") return "\f";
+  if (c == "a") return "\a";
+  if (c == "e") return "\33";
+  if (c == "b") return "\b";
   return c;
 }
 
-function ev1scan_cast_bool(arg){
-  return arg!=0&&arg!="";
+function ev1scan_cast_bool(arg) {
+  return arg != 0 && arg != "";
 }
-# -*- mode:awk -*-
+# -*- mode: awk -*-
 
-function eval_expr(expression){
+function eval_expr(expression) {
   return ev2_expr(expression);
 }
 
-function ev2_expr(expression, _wlen,_words,_i,_len,_t,_w,_v,_sp,_s,_sp1,_optype){
-  _wlen=ev1scan_scan(expression,_words);
+function ev2_expr(expression, _wlen, _words, _i, _len, _t, _w, _v, _sp, _s, _sp1, _optype) {
+  _wlen = ev1scan_scan(expression, _words);
 
   # <param name="_s">
   #  parsing stack
-  #  _s[index,"t"]  : SE_PREF  SE_MARK  SE_VALU
-  #  _s[index]      : lhs               value
-  #  _s[index,"T"]  : dataType          dataType
-  #  _s[index,"c"]  : b+ u!    op      
-  #  _s[index,"l"]  : assoc             
+  #  _s[index, "t"]  : SE_PREF  SE_MARK  SE_VALU
+  #  _s[index]       : lhs               value
+  #  _s[index, "T"]  : dataType          dataType
+  #  _s[index, "c"]  : b+ u!    op
+  #  _s[index, "l"]  : assoc
   #
-  #  _s[index,"M"]=MOD_ARG;
-  #  _s[index,"A"]=length;
-  #  _s[index,"A",i]=element;
+  #  _s[index, "M"] = MOD_ARG;
+  #  _s[index, "A"] = length;
+  #  _s[index, "A", i] = element;
   # </param>
 
   # parse
-  _sp=-1;
-  for(_i=0;_i<_wlen;_i++){
+  _sp = -1;
+  for (_i = 0; _i < _wlen; _i++) {
     # _t: token type
     # _w: token word
     # _l: token prefix level
-    _t=_words[_i,"t"];
-    _w=_words[_i,"w"];
+    _t = _words[_i, "t"];
+    _w = _words[_i, "w"];
 
     #-- process token --
-    if(_t=="n"){
+    if (_t == "n") {
       _sp++;
-      _s[_sp]=+_w;
-      _s[_sp,"t"]=SE_VALU;
-      _s[_sp,"T"]=TYPE_NUM;
-      _s[_sp,"M"]=MOD_NUL;
+      _s[_sp] = 0 + _w;
+      _s[_sp, "t"] = SE_VALU;
+      _s[_sp, "T"] = TYPE_NUM;
+      _s[_sp, "M"] = MOD_NUL;
     #---------------------------------------------------------------------------
-    }else if(_t=="o"){
-      _optype=ev_db_operator[_w];
-      if(_optype==OP_SGN){ # signature operator +-
-        if(_sp>=0&&_s[_sp,"t"]==SE_VALU){
-          _t="b"; # binary operator
-        }else{
-          _t="u"; # unary operator
+    } else if (_t == "o") {
+      _optype = ev_db_operator[_w];
+      if (_optype == OP_SGN) { # signature operator +-
+        if (_sp >= 0 && _s[_sp, "t"] == SE_VALU) {
+          _t = "b"; # binary operator
+        } else {
+          _t = "u"; # unary operator
         }
-      }else if(_optype==OP_BIN){ # binary operator
-        _t="b";
-      }else if(_optype==OP_UNA){ # unary prefix operator
-        _t="u";
-      }else if(_optype==OP_INC){ # operator++ --
-        if(_sp>=0&&_s[_sp,"t"]==SE_VALU){
-          if(and(_s[_sp,"M"],MOD_REF)){
-            if(_w=="++")
-              d_data[_s[_sp,"R"]]++;
-            else if(_w=="--")
-              d_data[_s[_sp,"R"]]--;
+      } else if (_optype == OP_BIN) { # binary operator
+        _t = "b";
+      } else if (_optype == OP_UNA) { # unary prefix operator
+        _t = "u";
+      } else if (_optype == OP_INC) { # operator++ --
+        if (_sp >= 0 && _s[_sp, "t"] == SE_VALU) {
+          if (and(_s[_sp, "M"], MOD_REF)) {
+            if (_w == "++")
+              d_data[_s[_sp, "R"]]++;
+            else if (_w == "--")
+              d_data[_s[_sp, "R"]]--;
             else
-              print_error("mwg_pp.eval","unknown increment operator " _w);
+              print_error("mwg_pp.eval", "unknown increment operator " _w);
 
-            _s[_sp,"M"]=MOD_NUL;
-            delete _s[_sp,"R"];
+            _s[_sp, "M"] = MOD_NUL;
+            delete _s[_sp, "R"];
           }
 
-          _t="";
-        }else{
-          _t="u"; # unary operator
+          _t = "";
+        } else {
+          _t = "u"; # unary operator
         }
-      }else{
-        print_error("mwg_pp.eval","unknown operator " _w);
+      } else {
+        print_error("mwg_pp.eval", "unknown operator " _w);
       }
 
-      if(_t=="b"){
+      if (_t == "b") {
         #-- binary operator
-        _l=ev_db_operator[_w,"a"];
+        _l = ev_db_operator[_w, "a"];
         #print "dbg: binary operator level = " _l > "/dev/stderr"
-        
+
         # get lhs
-        _sp=ev2_pop_value(_s,_sp,_l); # left assoc
-        #_sp=ev2_pop_value(_s,_sp,_l+0.1); # right assoc # TODO =
-        
+        _sp = ev2_pop_value(_s, _sp, _l); # left assoc
+        #_sp = ev2_pop_value(_s, _sp, _l + 0.1); # right assoc # TODO =
+
         # overwrite to lhs
-        _s[_sp,"t"]=SE_PREF;
-        _s[_sp,"p"]="b";
-        _s[_sp,"P"]=_w;
-        _s[_sp,"l"]=_l; # assoc level
-      }else if(_t=="u"){
+        _s[_sp, "t"] = SE_PREF;
+        _s[_sp, "p"] = "b";
+        _s[_sp, "P"] = _w;
+        _s[_sp, "l"] = _l; # assoc level
+      } else if (_t == "u") {
         # unary operator
-        _l=ev_db_operator[_w,"a"];
+        _l = ev_db_operator[_w, "a"];
 
         _sp++;
-        _s[_sp,"t"]=SE_PREF
-        _s[_sp,"p"]="u";
-        _s[_sp,"P"]=_w;
-        _s[_sp,"l"]=_l; # assoc level
+        _s[_sp, "t"] = SE_PREF
+        _s[_sp, "p"] = "u";
+        _s[_sp, "P"] = _w;
+        _s[_sp, "l"] = _l; # assoc level
       }
     #---------------------------------------------------------------------------
-    }else if(_t=="op"){
+    } else if (_t == "op") {
       _sp++;
-      _s[_sp,"t"]=SE_MARK;
-      _s[_sp,"m"]=_w;
-    }else if(_t=="cl"){
-      if(_sp>=0&&_s[_sp,"t"]==SE_VALU){
-        _sp1=ev2_pop_value(_s,_sp,0);
-        _sp=_sp1-1;
-      }else{
+      _s[_sp, "t"] = SE_MARK;
+      _s[_sp, "m"] = _w;
+    } else if (_t == "cl") {
+      if (_sp >= 0 && _s[_sp, "t"] == SE_VALU) {
+        _sp1 = ev2_pop_value(_s, _sp, 0);
+        _sp = _sp1-1;
+      } else {
         # empty arg
-        _sp1=_sp+1;
-        _s[_sp1]="";
-        _s[_sp1,"t"]=SE_VALU;
-        _s[_sp1,"T"]=TYPE_STR;
-        _s[_sp1,"M"]=MOD_ARG;
-        _s[_sp1,"A"]=0;
+        _sp1 = _sp+1;
+        _s[_sp1] = "";
+        _s[_sp1, "t"] = SE_VALU;
+        _s[_sp1, "T"] = TYPE_STR;
+        _s[_sp1, "M"] = MOD_ARG;
+        _s[_sp1, "A"] = 0;
       }
       # state: [.. _sp=open _sp1]
 
       # parentheses
-      if(!(_sp>=0&&_s[_sp,"t"]==SE_MARK)){
+      if (!(_sp >= 0 && _s[_sp, "t"] == SE_MARK)) {
         print_error("mwg_pp.eval: no matching open paren to " _w " in " expression);
         continue;
       }
-      _w=_s[_sp,"m"] _w;
+      _w = _s[_sp, "m"] _w;
       _sp--;
-      
+
 
       # state: [_sp open _sp1]
-      if(_sp>=0&&_s[_sp,"t"]==SE_VALU){
-        if(_w=="?:"){
-          _sp=ev2_pop_value(_s,_sp,3.0); # assoc_value_3
-          _v=(_s[_sp]!=0&&_s[_sp]!="")?"T":"F";
+      if (_sp >= 0 && _s[_sp, "t"] == SE_VALU) {
+        if (_w == "?:") {
+          _sp = ev2_pop_value(_s, _sp, 3.0); # assoc_value_3
+          _v = (_s[_sp] != 0 && _s[_sp] != "") ? "T" : "F";
           #print_error("dbg: _s[_sp]=" _s[_sp] " _v=" _v);
 
           # last element
-          _s[_sp]=_s[_sp1];
-          _s[_sp,"t"]=SE_VALU;
-          _s[_sp,"T"]=_s[_sp1,"T"];
-          _s[_sp,"M"]=MOD_NUL; #TODO reference copy
+          _s[_sp] = _s[_sp1];
+          _s[_sp, "t"] = SE_VALU;
+          _s[_sp, "T"] = _s[_sp1, "T"];
+          _s[_sp, "M"] = MOD_NUL; #TODO reference copy
 
           # overwrite pref
-          _s[_sp,"t"]=SE_PREF;
-          _s[_sp,"p"]=_w;
-          _s[_sp,"P"]=_v;
-          _s[_sp,"l"]=3.0; # level
-        }else{
-          _sp=ev2_pop_value(_s,_sp,12); # assoc_value_12
+          _s[_sp, "t"] = SE_PREF;
+          _s[_sp, "p"] = _w;
+          _s[_sp, "P"] = _v;
+          _s[_sp, "l"] = 3.0; # level
+        } else {
+          _sp = ev2_pop_value(_s, _sp, 12); # assoc_value_12
 
-          if(_w=="[]"&&and(_s[_sp,"M"],MOD_REF)){
+          if (_w == "[]" && and(_s[_sp, "M"], MOD_REF)) {
             # indexing
-            _s[_sp]=d_data[_s[_sp,"R"],_s[_sp1]];
-            _s[_sp,"t"]=SE_VALU;
-            _s[_sp,"T"]=(_s[_sp]==0+_s[_sp]?TYPE_NUM:TYPE_STR);
-            _s[_sp,"M"]=MOD_REF;
-            _s[_sp,"R"]=_s[_sp,"R"] SUBSEP _s[_sp1];
-          }else if(and(_s[_sp,"M"],MOD_REF)){
+            _s[_sp] = d_data[_s[_sp, "R"], _s[_sp1]];
+            _s[_sp, "t"] = SE_VALU;
+            _s[_sp, "T"] = (_s[_sp] == 0 + _s[_sp]? TYPE_NUM: TYPE_STR);
+            _s[_sp, "M"] = MOD_REF;
+            _s[_sp, "R"] = _s[_sp, "R"] SUBSEP _s[_sp1];
+          } else if (and(_s[_sp, "M"], MOD_REF)) {
             # function call
-            ev2_funcall(_s,_sp,_s[_sp,"R"],_s,_sp1);
-          }else if(and(_s[_sp,"M"],MOD_MTH)){
+            ev2_funcall(_s, _sp, _s[_sp, "R"], _s, _sp1);
+          } else if (and(_s[_sp, "M"], MOD_MTH)) {
             # member function call
-            ev2_memcall(_s,_sp,_s,_sp SUBSEP ATTR_MTH_OBJ,_s[_sp,ATTR_MTH_MEM],_s,_sp1);
-          }else{
+            ev2_memcall(_s, _sp, _s, _sp SUBSEP ATTR_MTH_OBJ, _s[_sp, ATTR_MTH_MEM], _s, _sp1);
+          } else {
             print "mwg_pp.eval: invalid function call " _s[_sp] " " _w " in " expression > "/dev/stderr"
           }
         }
-      }else{
+      } else {
         _sp++;
-        if(_w=="[]"){
+        if (_w == "[]") {
           # array
-          ev2_copy(_s,_sp,_s,_sp1);
-          _s[_sp,"M"]=MOD_ARR;
-        }else{
+          ev2_copy(_s, _sp, _s, _sp1);
+          _s[_sp, "M"] = MOD_ARR;
+        } else {
           # last element
-          _s[_sp]=_s[_sp1];
-          _s[_sp,"t"]=SE_VALU;
-          _s[_sp,"T"]=_s[_sp1,"T"];
-          _s[_sp,"M"]=MOD_NUL;
+          _s[_sp] = _s[_sp1];
+          _s[_sp, "t"] = SE_VALU;
+          _s[_sp, "T"] = _s[_sp1, "T"];
+          _s[_sp, "M"] = MOD_NUL;
         }
       }
     #---------------------------------------------------------------------------
-    }else if(_t=="w"){
+    } else if (_t == "w") {
       _sp++;
-      _s[_sp]=d_data[_w];
-      _s[_sp,"t"]=SE_VALU;
-      _s[_sp,"T"]=(_s[_sp]==0+_s[_sp]?TYPE_NUM:TYPE_STR);
-      _s[_sp,"M"]=MOD_REF;
-      _s[_sp,"R"]=_w;
-    }else if(_t=="S"){
+      _s[_sp] = d_data[_w];
+      _s[_sp, "t"] = SE_VALU;
+      _s[_sp, "T"] = (_s[_sp] == 0 + _s[_sp]? TYPE_NUM: TYPE_STR);
+      _s[_sp, "M"] = MOD_REF;
+      _s[_sp, "R"] = _w;
+    } else if (_t == "S") {
       # string
       _sp++;
-      _s[_sp]=_w;
-      _s[_sp,"t"]=SE_VALU;
-      _s[_sp,"T"]=TYPE_STR;
-      _s[_sp,"M"]=MOD_NUL;
-    }else{
-      print_error("mwg_pp.eval:fatal","unknown token type " _t);
+      _s[_sp] = _w;
+      _s[_sp, "t"] = SE_VALU;
+      _s[_sp, "T"] = TYPE_STR;
+      _s[_sp, "M"] = MOD_NUL;
+    } else {
+      print_error("mwg_pp.eval:fatal", "unknown token type " _t);
     }
   }
 
-  _sp=ev2_pop_value(_s,_sp,0);
-  return _sp>=1?"err":_s[_sp];
+  _sp = ev2_pop_value(_s, _sp, 0);
+  return _sp >= 1? "err": _s[_sp];
 }
 
-function ev2_pop_value(s,sp,assoc,rDict,rName, _vp,_value){
+function ev2_pop_value(s, sp, assoc, rDict, rName, _vp, _value) {
   # <param> rDict [default = s]
   # <param> rName [default = <final stack top>]
   # <returns> sp = <final stack top>
 
   # read value
-  if(sp>=0&&s[sp,"t"]==SE_VALU){
+  if (sp >= 0 && s[sp, "t"] == SE_VALU) {
     sp--;
-  }else{
-    _vp=sp+1;
-    s[_vp]=0;
-    s[_vp,"t"]=SE_VALU;
-    s[_vp,"T"]=TYPE_NUM;
-    s[_vp,"M"]=MOD_NUL;
+  } else {
+    _vp = sp + 1;
+    s[_vp] = 0;
+    s[_vp, "t"] = SE_VALU;
+    s[_vp, "T"] = TYPE_NUM;
+    s[_vp, "M"] = MOD_NUL;
   }
 
   # proc prefices
-  while(sp>=0&&s[sp,"t"]==SE_PREF&&s[sp,"l"]>=assoc){
-    ev2_apply(s,sp,sp+1);
+  while(sp >= 0 && s[sp, "t"] == SE_PREF && s[sp, "l"] >= assoc) {
+    ev2_apply(s, sp, sp + 1);
     sp--;
   }
 
-  if(rDict=="")
+  if (rDict == "")
     sp++;
   else
-    ev2_copy(rDict,rName,s,sp+1);
+    ev2_copy(rDict, rName, s, sp + 1);
 
   return sp;
 }
 
-function ev2_memget(dDict,dName,oDict,oName,memname){
-  #print_error("mwg_pp.eval","dbg: ev2_memget(memname=" memname ")");
+function ev2_memget(dDict, dName, oDict, oName, memname) {
+  #print_error("mwg_pp.eval", "dbg: ev2_memget(memname=" memname ")");
 
   # embedded special member
-  if(oDict[oName,"T"]==TYPE_STR){
-    if(memname=="length"){
-      dDict[dName]=length(oDict[oName]);
-      dDict[dName,"t"]=SE_VALU;
-      dDict[dName,"T"]=TYPE_NUM;
-      dDict[dName,"M"]=MOD_NUL;
+  if (oDict[oName, "T"] == TYPE_STR) {
+    if (memname == "length") {
+      dDict[dName] = length(oDict[oName]);
+      dDict[dName, "t"] = SE_VALU;
+      dDict[dName, "T"] = TYPE_NUM;
+      dDict[dName, "M"] = MOD_NUL;
       return;
-    }else if(memname=="replace"||memname=="Replace"||memname=="slice"||memname ~ /^to(upper|lower)$/){
-      ev2_copy(dDict,dName SUBSEP ATTR_MTH_OBJ,oDict,oName);
-      dDict[dName,ATTR_MTH_MEM]=memname;
-      dDict[dName]="";
-      dDict[dName,"t"]=SE_VALU;
-      dDict[dName,"T"]=TYPE_STR;
-      dDict[dName,"M"]=MOD_MTH;
-      #print_error("mwg_pp.eval","dbg: method = String#" memname);
+    } else if (memname == "replace" || memname == "Replace" || memname == "slice" || memname ~ /^to(upper|lower)$/) {
+      ev2_copy(dDict, dName SUBSEP ATTR_MTH_OBJ, oDict, oName);
+      dDict[dName, ATTR_MTH_MEM] = memname;
+      dDict[dName] = "";
+      dDict[dName, "t"] = SE_VALU;
+      dDict[dName, "T"] = TYPE_STR;
+      dDict[dName, "M"] = MOD_MTH;
+      #print_error("mwg_pp.eval", "dbg: method = String#" memname);
       return;
     }
-  }else{
+  } else {
     # members for other types (TYPE_NUM MOD_ARR etc..)
   }
 
   # normal data member
-  if(and(oDict[oName,ATTR_MOD],MOD_REF)){
-    dDict[dName]=d_data[oDict[oName,ATTR_REF],memname];
-    dDict[dName,"t"]=SE_VALU;
-    dDict[dName,"T"]=(dDict[dName]==0+dDict[dName]?TYPE_NUM:TYPE_STR);
-    dDict[dName,"M"]=MOD_REF;
-    dDict[dName,ATTR_REF]=oDict[oName,ATTR_REF] SUBSEP memname;
-  }else{
-    print_error("mwg.eval","invalid member name '" memname "'");
-    dDict[dName]="";
-    dDict[dName,"t"]=SE_VALU;
-    dDict[dName,"T"]=TYPE_STR;
-    dDict[dName,"M"]=MOD_NUL;
+  if (and(oDict[oName, ATTR_MOD], MOD_REF)) {
+    dDict[dName] = d_data[oDict[oName, ATTR_REF], memname];
+    dDict[dName, "t"] = SE_VALU;
+    dDict[dName, "T"] = (dDict[dName] == 0 + dDict[dName]? TYPE_NUM: TYPE_STR);
+    dDict[dName, "M"] = MOD_REF;
+    dDict[dName, ATTR_REF] = oDict[oName, ATTR_REF] SUBSEP memname;
+  } else {
+    print_error("mwg.eval", "invalid member name '" memname "'");
+    dDict[dName] = "";
+    dDict[dName, "t"] = SE_VALU;
+    dDict[dName, "T"] = TYPE_STR;
+    dDict[dName, "M"] = MOD_NUL;
   }
 
   # rep: dDict dName oDict oName
 }
 
-function ev2_memcall(dDict,dName,oDict,oName,memname,aDict,aName, _a,_i,_c,_result,_resultT){
-  #print_error("mwg_pp.eval","dbg: ev2_memcall(memname=" memname ")");
+function ev2_memcall(dDict, dName, oDict, oName, memname, aDict, aName, _a, _i, _c, _result, _resultT) {
+  #print_error("mwg_pp.eval", "dbg: ev2_memcall(memname=" memname ")");
 
-  _resultT="";
+  _resultT = "";
 
   # read arguments
-  if(aDict[aName,"M"]!=MOD_ARG){
-    _c=1;
-    _a[0]=aDict[aName];
-  }else{
-    _c=aDict[aName,"A"];
-    for(_i=0;_i<_c;_i++)_a[_i]=aDict[aName,"A",_i];
+  if (aDict[aName, "M"] != MOD_ARG) {
+    _c = 1;
+    _a[0] = aDict[aName];
+  } else {
+    _c = aDict[aName, "A"];
+    for (_i = 0; _i < _c; _i++) _a[_i] = aDict[aName, "A", _i];
   }
 
   #-----------------
   # process
-  if(oDict[oName,"T"]==TYPE_STR){
-    if(memname=="replace"){
-      _result=oDict[oName];
-      gsub(_a[0],_a[1],_result);
-      _resultT=TYPE_STR;
-    }else if(memname=="Replace"){
-      _result=replace(oDict[oName],_a[0],_a[1]);
-      _resultT=TYPE_STR;
-    }else if(memname=="slice"){
-      _result=slice(oDict[oName],_a[0],_a[1]);
-      _resultT=TYPE_STR;
-    }else if(memname=="toupper"){
-      _result=toupper(oDict[oName]);
-      _resultT=TYPE_STR;
-    }else if(memname=="tolower"){
-      _result=tolower(oDict[oName]);
-      _resultT=TYPE_STR;
+  if (oDict[oName, "T"] == TYPE_STR) {
+    if (memname == "replace") {
+      _result = oDict[oName];
+      gsub(_a[0], _a[1], _result);
+      _resultT = TYPE_STR;
+    } else if (memname == "Replace") {
+      _result = replace(oDict[oName], _a[0], _a[1]);
+      _resultT = TYPE_STR;
+    } else if (memname == "slice") {
+      _result = slice(oDict[oName], _a[0], _a[1]);
+      _resultT = TYPE_STR;
+    } else if (memname == "toupper") {
+      _result = toupper(oDict[oName]);
+      _resultT = TYPE_STR;
+    } else if (memname == "tolower") {
+      _result = tolower(oDict[oName]);
+      _resultT = TYPE_STR;
     }
   }
 
   #-----------------
   # write value
-  if(_resultT==""){
-    print_error("mwg.eval","invalid member function name '" memname "'");
-    _result="";
-    _resultT=TYPE_STR;
+  if (_resultT == "") {
+    print_error("mwg.eval", "invalid member function name '" memname "'");
+    _result = "";
+    _resultT = TYPE_STR;
   }
 
-  dDict[dName]=_result;
-  dDict[dName,"t"]=SE_VALU;
-  dDict[dName,"T"]=_resultT;
-  dDict[dName,"M"]=MOD_NUL;
+  dDict[dName] = _result;
+  dDict[dName, "t"] = SE_VALU;
+  dDict[dName, "T"] = _resultT;
+  dDict[dName, "M"] = MOD_NUL;
 }
 
-function ev2_funcall(dDict,dName,funcname,aDict,aName, _a,_i,_c,_result,_resultT,_x,_y,_l){
-  _resultT=TYPE_NUM;
+function ev2_funcall(dDict, dName, funcname, aDict, aName, _a, _i, _c, _result, _resultT, _x, _y, _l) {
+  _resultT = TYPE_NUM;
 
-  if(aDict[aName,"M"]!=MOD_ARG){
-    _c=1;
-    _a[0]=aDict[aName];
-  }else{
-    _c=aDict[aName,"A"];
-    for(_i=0;_i<_c;_i++)_a[_i]=aDict[aName,"A",_i];
+  if (aDict[aName, "M"] != MOD_ARG) {
+    _c = 1;
+    _a[0] = aDict[aName];
+  } else {
+    _c = aDict[aName, "A"];
+    for (_i = 0; _i < _c; _i++) _a[_i] = aDict[aName, "A", _i];
   }
 
-  if(funcname=="int"){
-    _result=int(_a[0]);
-  }else if(funcname=="float"){
-    _result=0+_a[0];
-  }else if(funcname=="floor"){
-    if(_a[0]>=0){
-      _result=int(_a[0]);
-    }else{
-      _result=int(1-_a[0]);
-      _result=int(_a[0]+_result)-_result;
+  if (funcname == "int") {
+    _result = int(_a[0]);
+  } else if (funcname == "float") {
+    _result = 0 + _a[0];
+  } else if (funcname == "floor") {
+    if (_a[0] >= 0) {
+      _result = int(_a[0]);
+    } else {
+      _result = int(1 - _a[0]);
+      _result = int(_a[0] + _result)-_result;
     }
-  }else if(funcname=="ceil"){
-    if(_a[0]<=0){
-      _result=int(_a[0]);
-    }else{
-      _result=int(1+_a[0]);
-      _result=int(_a[0]-_result)+_result;
+  } else if (funcname == "ceil") {
+    if (_a[0] <= 0) {
+      _result = int(_a[0]);
+    } else {
+      _result = int(1 + _a[0]);
+      _result = int(_a[0]-_result) + _result;
     }
-  }else if(funcname=="sqrt"){
-    _result=sqrt(_a[0]);
-  }else if(funcname=="sin"){
-    _result=sin(_a[0]);
-  }else if(funcname=="cos"){
-    _result=cos(_a[0]);
-  }else if(funcname=="tan"){
-    _result=sin(_a[0])/cos(_a[0]);
-  }else if(funcname=="atan"){
-    _result=atan2(_a[0],1);
-  }else if(funcname=="atan2"){
-    _result=atan2(_a[0],_a[1]);
-  }else if(funcname=="exp"){
-    _result=exp(_a[0]);
-  }else if(funcname=="log"){
-    _result=log(_a[0]);
-  }else if(funcname=="sinh"){
-    _x=exp(_a[0]);
-    _result=0.5*(_x-1/_x);
-  }else if(funcname=="cosh"){
-    _x=exp(_a[0]);
-    _result=0.5*(_x+1/_x);
-  }else if(funcname=="tanh"){
-    _x=exp(2*_a[0]);
-    _result=(_x-1)/(_x+1);
-  }else if(funcname=="rand"){
-    _result=rand();
-  }else if(funcname=="srand"){
-    _result=srand(_a[0]);
-  }else if(funcname=="trim"){
-    _resultT=TYPE_STR;
-    _result=_a[0];
-    gsub(/^[[:space:]]+|[[:space:]]+$/,"",_result);
-  }else if(funcname=="sprintf"){
-    _resultT=TYPE_STR;
-    _result=sprintf(_a[0],_a[1],_a[2],_a[3],_a[4],_a[5],_a[6],_a[7],_a[8],_a[9]);
-  }else if(funcname=="slice"){
-    _resultT=TYPE_STR;
-    _result=slice(_a[0],_a[1],_a[2]);
-  }else if(funcname=="length"){
-    _result=length(_a[0]);
-  }else{
-    print_error("mwg_pp.eval","unknown function " funcname);
-    _result=0;
+  } else if (funcname == "sqrt") {
+    _result = sqrt(_a[0]);
+  } else if (funcname == "sin") {
+    _result = sin(_a[0]);
+  } else if (funcname == "cos") {
+    _result = cos(_a[0]);
+  } else if (funcname == "tan") {
+    _result = sin(_a[0]) / cos(_a[0]);
+  } else if (funcname == "atan") {
+    _result = atan2(_a[0], 1);
+  } else if (funcname == "atan2") {
+    _result = atan2(_a[0], _a[1]);
+  } else if (funcname == "exp") {
+    _result = exp(_a[0]);
+  } else if (funcname == "log") {
+    _result = log(_a[0]);
+  } else if (funcname == "sinh") {
+    _x = exp(_a[0]);
+    _result = 0.5*(_x-1/_x);
+  } else if (funcname == "cosh") {
+    _x = exp(_a[0]);
+    _result = 0.5 * (_x + 1 / _x);
+  } else if (funcname == "tanh") {
+    _x = exp(2 * _a[0]);
+    _result = (_x - 1) / (_x + 1);
+  } else if (funcname == "rand") {
+    _result = rand();
+  } else if (funcname == "srand") {
+    _result = srand(_a[0]);
+  } else if (funcname == "trim") {
+    _resultT = TYPE_STR;
+    _result = _a[0];
+    gsub(/^[[:space:]]+|[[:space:]]+$/, "", _result);
+  } else if (funcname == "sprintf") {
+    _resultT = TYPE_STR;
+    _result = sprintf(_a[0], _a[1], _a[2], _a[3], _a[4], _a[5], _a[6], _a[7], _a[8], _a[9]);
+  } else if (funcname == "slice") {
+    _resultT = TYPE_STR;
+    _result = slice(_a[0], _a[1], _a[2]);
+  } else if (funcname == "length") {
+    _result = length(_a[0]);
+  } else {
+    print_error("mwg_pp.eval", "unknown function " funcname);
+    _result = 0;
   }
 
-  dDict[dName]=_result;
-  dDict[dName,"t"]=SE_VALU;
-  dDict[dName,"T"]=_resultT;
-  dDict[dName,"M"]=MOD_NUL;
+  dDict[dName] = _result;
+  dDict[dName, "t"] = SE_VALU;
+  dDict[dName, "T"] = _resultT;
+  dDict[dName, "M"] = MOD_NUL;
 }
 
-function ev2_apply(stk,iPre,iVal, _pT,_pW,_lhs,_rhs,_lhsT,_rhsT,_result,_i,_a,_b,_c){
+function ev2_apply(stk, iPre, iVal, _pT, _pW, _lhs, _rhs, _lhsT, _rhsT, _result, _i, _a, _b, _c) {
   # <param name="stk">stack</param>
   # <param name="iPre">prefix operator/resulting value</param>
   # <param name="iVal">input value</param>
 
-  _pT=stk[iPre,"p"];
-  _pW=stk[iPre,"P"];
+  _pT = stk[iPre, "p"];
+  _pW = stk[iPre, "P"];
 
-  if(_pT=="b"){
-    _lhs=stk[iPre];
-    _rhs=stk[iVal];
-    _lhsT=stk[iPre,"T"];
-    _rhsT=stk[iVal,"T"];
-    _resultT=TYPE_NUM;
+  if (_pT == "b") {
+    _lhs = stk[iPre];
+    _rhs = stk[iVal];
+    _lhsT = stk[iPre, "T"];
+    _rhsT = stk[iVal, "T"];
+    _resultT = TYPE_NUM;
 
     #print "binary " _lhs " " _pW " " _rhs > "/dev/stderr"
-    if(_pW=="+"){
-      if(_lhsT==TYPE_STR||_rhsT==TYPE_STR){
-        _result=_lhs _rhs;
-        _resultT=TYPE_STR;
-      }else
-        _result=_lhs+_rhs;
-    }else if(_pW=="-")_result=_lhs-_rhs;
-    else if(_pW=="*")_result=_lhs*_rhs;
-    else if(_pW=="/")_result=_lhs/_rhs;
-    else if(_pW=="%")_result=_lhs%_rhs;
-    else if(_pW=="==")_result=_lhs==_rhs;
-    else if(_pW=="!=")_result=_lhs!=_rhs;
-    else if(_pW==">=")_result=_lhs>=_rhs;
-    else if(_pW=="<=")_result=_lhs<=_rhs;
-    else if(_pW=="<")_result=_lhs<_rhs;
-    else if(_pW==">")_result=_lhs>_rhs;
-    else if(_pW=="|")_result=or(_lhs,_rhs);
-    else if(_pW=="^")_result=xor(_lhs,_rhs);
-    else if(_pW=="&")_result=and(_lhs,_rhs);
-    else if(_pW=="||")_result=ev1scan_cast_bool(_lhs)||ev1scan_cast_bool(_rhs); # not lazy evaluation
-    else if(_pW=="&&")_result=ev1scan_cast_bool(_lhs)&&ev1scan_cast_bool(_rhs); # not lazy evaluation
-    else if(_pW ~ /[-+*/%|^&]?=/){
-      if(and(stk[iPre,"M"],MOD_REF)){
-        _resultT=TYPE_NUM;
-        if(_pW=="="){
-          _result=_rhs;
-          _resultT=_rhsT;
-        }else if(_pW=="+=")_result=_lhs+_rhs;
-        else if(_pW=="-=")_result=_lhs-_rhs;
-        else if(_pW=="*=")_result=_lhs*_rhs;
-        else if(_pW=="/=")_result=_lhs/_rhs;
-        else if(_pW=="%=")_result=_lhs%_rhs;
-        else if(_pW=="|=")_result=or(_lhs,_rhs);
-        else if(_pW=="^=")_result=xor(_lhs,_rhs);
-        else if(_pW=="&=")_result=and(_lhs,_rhs);
+    if (_pW == "+") {
+      if (_lhsT == TYPE_STR || _rhsT == TYPE_STR) {
+        _result = _lhs _rhs;
+        _resultT = TYPE_STR;
+      } else
+        _result = _lhs+_rhs;
+    } else if (_pW == "-") _result = _lhs - _rhs;
+    else if (_pW == "*") _result = _lhs * _rhs;
+    else if (_pW == "/") _result = _lhs / _rhs;
+    else if (_pW == "%") _result = _lhs % _rhs;
+    else if (_pW == "==") _result = _lhs == _rhs;
+    else if (_pW == "!=") _result = _lhs != _rhs;
+    else if (_pW == ">=") _result = _lhs >= _rhs;
+    else if (_pW == "<=") _result = _lhs <= _rhs;
+    else if (_pW == "<") _result = _lhs < _rhs;
+    else if (_pW == ">") _result = _lhs > _rhs;
+    else if (_pW == "|") _result = or(_lhs, _rhs);
+    else if (_pW == "^") _result = xor(_lhs, _rhs);
+    else if (_pW == "&") _result = and(_lhs, _rhs);
+    else if (_pW == "||") _result = ev1scan_cast_bool(_lhs) || ev1scan_cast_bool(_rhs); # not lazy evaluation
+    else if (_pW == "&&") _result = ev1scan_cast_bool(_lhs) && ev1scan_cast_bool(_rhs); # not lazy evaluation
+    else if (_pW ~ /[-+*/%|^&]?=/) {
+      if (and(stk[iPre, "M"], MOD_REF)) {
+        _resultT = TYPE_NUM;
+        if (_pW == "=") {
+          _result = _rhs;
+          _resultT = _rhsT;
+        } else if (_pW == "+=") _result = _lhs + _rhs;
+        else if (_pW == "-=") _result = _lhs - _rhs;
+        else if (_pW == "*=") _result = _lhs * _rhs;
+        else if (_pW == "/=") _result = _lhs / _rhs;
+        else if (_pW == "%=") _result = _lhs % _rhs;
+        else if (_pW == "|=") _result = or(_lhs, _rhs);
+        else if (_pW == "^=") _result = xor(_lhs, _rhs);
+        else if (_pW == "&=") _result = and(_lhs, _rhs);
 
-        stk[iPre]=_result;
-        stk[iPre,"t"]=SE_VALU;
-        stk[iPre,"T"]=_resultT;
-        d_data[stk[iPre,"R"]]=_result;
-        
+        stk[iPre] = _result;
+        stk[iPre, "t"] = SE_VALU;
+        stk[iPre, "T"] = _resultT;
+        d_data[stk[iPre, "R"]] = _result;
+
         # TODO: array copy?
-      }else{
-        ev2_copy(stk,iPre,stk,iVal);
+      } else {
+        ev2_copy(stk, iPre, stk, iVal);
         # err?
       }
       return;
-    }else if(_pW==","){
-      if(stk[iPre,"M"]==MOD_ARG){
-        stk[iPre]=_rhs;
-        stk[iPre,"t"]=SE_VALU;
-        stk[iPre,"T"]=_rhsT;
-        _i=stk[iPre,"A"]++;
-        ev2_copy(stk,iPre SUBSEP "A" SUBSEP _i,stk,iVal);
-      }else{
-        stk[iPre,"t"]=SE_VALU;
-        ev2_copy(stk,iPre SUBSEP "A" SUBSEP 0,stk,iPre);
-        ev2_copy(stk,iPre SUBSEP "A" SUBSEP 1,stk,iVal);
-        stk[iPre]=_rhs;
-        stk[iPre,"T"]=_rhsT;
-        stk[iPre,"M"]=MOD_ARG;
-        stk[iPre,"A"]=2;
+    } else if (_pW == ", ") {
+      if (stk[iPre, "M"] == MOD_ARG) {
+        stk[iPre] = _rhs;
+        stk[iPre, "t"] = SE_VALU;
+        stk[iPre, "T"] = _rhsT;
+        _i = stk[iPre, "A"]++;
+        ev2_copy(stk, iPre SUBSEP "A" SUBSEP _i, stk, iVal);
+      } else {
+        stk[iPre, "t"] = SE_VALU;
+        ev2_copy(stk, iPre SUBSEP "A" SUBSEP 0, stk, iPre);
+        ev2_copy(stk, iPre SUBSEP "A" SUBSEP 1, stk, iVal);
+        stk[iPre] = _rhs;
+        stk[iPre, "T"] = _rhsT;
+        stk[iPre, "M"] = MOD_ARG;
+        stk[iPre, "A"] = 2;
       }
       return;
-    }else if(_pW=="."){
-      _a=and(stk[iVal,"M"],MOD_REF)?stk[iVal,ATTR_REF]:_rhs;
-      stk[iPre,"t"]=SE_VALU;
-      ev2_memget(stk,iPre,stk,iPre,_a);
+    } else if (_pW == ".") {
+      _a = and(stk[iVal, "M"], MOD_REF)? stk[iVal, ATTR_REF]: _rhs;
+      stk[iPre, "t"] = SE_VALU;
+      ev2_memget(stk, iPre, stk, iPre, _a);
       return;
     }
 
-    stk[iPre]=_result;
-    stk[iPre,"t"]=SE_VALU;
-    stk[iPre,"T"]=_resultT;
-    stk[iPre,"M"]=MOD_NUL;
-  }else if(_pT=="u"){
-    _rhs=stk[iVal];
+    stk[iPre] = _result;
+    stk[iPre, "t"] = SE_VALU;
+    stk[iPre, "T"] = _resultT;
+    stk[iPre, "M"] = MOD_NUL;
+  } else if (_pT == "u") {
+    _rhs = stk[iVal];
 
-    if(_pW=="+")_result=_rhs;
-    else if(_pW=="-")_result=-_rhs;
-    else if(_pW=="!")_result=!ev1scan_cast_bool(_rhs);
-    else if(_pW=="++"){
-      _result=_rhs+1;
-      stk[iPre]=_result;
-      stk[iPre,"t"]=SE_VALU;
-      stk[iPre,"T"]=TYPE_NUM;
-      if(and(stk[iVal,"M"],MOD_REF)){
-        stk[iPre,"M"]=MOD_REF;
-        stk[iPre,"R"]=stk[iVal,"R"];
-        d_data[stk[iPre,"R"]]=_result;
-      }else{
-        stk[iPre,"M"]=MOD_NUL;
+    if (_pW == "+") _result = _rhs;
+    else if (_pW == "-") _result = -_rhs;
+    else if (_pW == "!") _result = !ev1scan_cast_bool(_rhs);
+    else if (_pW == "++") {
+      _result = _rhs+1;
+      stk[iPre] = _result;
+      stk[iPre, "t"] = SE_VALU;
+      stk[iPre, "T"] = TYPE_NUM;
+      if (and(stk[iVal, "M"], MOD_REF)) {
+        stk[iPre, "M"] = MOD_REF;
+        stk[iPre, "R"] = stk[iVal, "R"];
+        d_data[stk[iPre, "R"]] = _result;
+      } else {
+        stk[iPre, "M"] = MOD_NUL;
       }
       return;
-    }else if(_pW=="--"){
-      _result=_rhs-1;
-      stk[iPre]=_result;
-      stk[iPre,"t"]=SE_VALU;
-      stk[iPre,"T"]=TYPE_NUM;
-      if(and(stk[iVal,"M"],MOD_REF)){
-        stk[iPre,"M"]=MOD_REF;
-        stk[iPre,"R"]=stk[iVal,"R"];
-        d_data[stk[iPre,"R"]]=_result;
-      }else{
-        stk[iPre,"M"]=MOD_NUL;
+    } else if (_pW == "--") {
+      _result = _rhs-1;
+      stk[iPre] = _result;
+      stk[iPre, "t"] = SE_VALU;
+      stk[iPre, "T"] = TYPE_NUM;
+      if (and(stk[iVal, "M"], MOD_REF)) {
+        stk[iPre, "M"] = MOD_REF;
+        stk[iPre, "R"] = stk[iVal, "R"];
+        d_data[stk[iPre, "R"]] = _result;
+      } else {
+        stk[iPre, "M"] = MOD_NUL;
       }
       return;
     }
 
-    stk[iPre]=_result;
-    stk[iPre,"t"]=SE_VALU;
-    stk[iPre,"T"]=TYPE_NUM;
-    stk[iPre,"M"]=MOD_NUL;
-  }else if(_pT=="?:"){
-    if(_pW=="T"){
-      stk[iPre,"t"]=SE_VALU;
-    }else{
-      ev2_copy(stk,iPre,stk,iVal);
+    stk[iPre] = _result;
+    stk[iPre, "t"] = SE_VALU;
+    stk[iPre, "T"] = TYPE_NUM;
+    stk[iPre, "M"] = MOD_NUL;
+  } else if (_pT == "?:") {
+    if (_pW == "T") {
+      stk[iPre, "t"] = SE_VALU;
+    } else {
+      ev2_copy(stk, iPre, stk, iVal);
     }
-  }else{
-    ev2_copy(stk,iPre,stk,iVal);
+  } else {
+    ev2_copy(stk, iPre, stk, iVal);
   }
 }
 
-function ev2_copy(dDict,dName,sDict,sName, _M,_t,_i,_iN){
+function ev2_copy(dDict, dName, sDict, sName, _M, _t, _i, _iN) {
   # assertion
-  if(sDict[sName,"t"]!=SE_VALU){
-    print_error("mwg_pp.eval:fatal","copying not value element");
+  if (sDict[sName, "t"] != SE_VALU) {
+    print_error("mwg_pp.eval:fatal", "copying not value element");
   }
 
-  dDict[dName]=sDict[sName];            # value
-  _t=dDict[dName,"t"]=sDict[sName,"t"]; # sttype
-  _M=dDict[dName,"M"]=sDict[sName,"M"]; # mod
+  dDict[dName] = sDict[sName];                # value
+  _t = dDict[dName, "t"] = sDict[sName, "t"]; # sttype
+  _M = dDict[dName, "M"] = sDict[sName, "M"]; # mod
 
-  if(_t==SE_VALU)
-    dDict[dName,"T"]=sDict[sName,"T"];  # datatype
+  if (_t == SE_VALU)
+    dDict[dName, "T"] = sDict[sName, "T"];  # datatype
 
   # special data
-  if(and(_M,MOD_REF)){
+  if (and(_M, MOD_REF)) {
     # reference
-    dDict[dName,"R"]=sDict[sName,"R"]; # name in d_data
+    dDict[dName, "R"] = sDict[sName, "R"]; # name in d_data
   }
-  if(and(_M,MOD_ARG)||and(_M,MOD_ARR)){
+  if (and(_M, MOD_ARG) || and(_M, MOD_ARR)) {
     # argument/array
-    _iN=dDict[dName,"A"]=sDict[sName,"A"]; # array length
-    for(_i=0;_i<_iN;_i++)
-      ev2_copy(dDict,dName SUBSEP "A" SUBSEP _i,sDict,sName SUBSEP "A" SUBSEP _i);
+    _iN = dDict[dName, "A"] = sDict[sName, "A"]; # array length
+    for (_i = 0; _i < _iN; _i++)
+      ev2_copy(dDict, dName SUBSEP "A" SUBSEP _i, sDict, sName SUBSEP "A" SUBSEP _i);
   }
-  if(and(_M,MOD_MTH)){
+  if (and(_M, MOD_MTH)) {
     # member function
-    dDict[dName,ATTR_MTH_MEM]=sDict[sName,ATTR_MTH_MEM];
-    ev2_copy(dDict,dName SUBSEP ATTR_MTH_OBJ,sDict,sName SUBSEP ATTR_MTH_OBJ);
+    dDict[dName, ATTR_MTH_MEM] = sDict[sName, ATTR_MTH_MEM];
+    ev2_copy(dDict, dName SUBSEP ATTR_MTH_OBJ, sDict, sName SUBSEP ATTR_MTH_OBJ);
   }
 }
 
-function ev2_delete(sDict,sName){
-  if(sDict[sName,"t"]!=SE_VALU){
-    print_error("mwg_pp.eval:fatal","deleting not value element");
+function ev2_delete(sDict, sName) {
+  if (sDict[sName, "t"] != SE_VALU) {
+    print_error("mwg_pp.eval:fatal", "deleting not value element");
   }
 
   delete sDict[sName];     # value
-  delete sDict[sName,"t"]; # sttype
-  delete sDict[sName,"T"]; # datatype
-  _M=sDict[sName,"M"];     # mod
-  delete sDict[sName,"M"];
+  delete sDict[sName, "t"]; # sttype
+  delete sDict[sName, "T"]; # datatype
+  _M = sDict[sName, "M"];     # mod
+  delete sDict[sName, "M"];
 
   # special data
-  if(_M==MOD_REF){
+  if (_M == MOD_REF) {
     # reference
-    delete sDict[sName,"R"]; # name in d_data
-  }else if(_M==MOD_ARG||_M==MOD_ARR){
+    delete sDict[sName, "R"]; # name in d_data
+  } else if (_M == MOD_ARG || _M == MOD_ARR) {
     # argument/array
-    _iN=sDict[sName,"A"];
-    delete sDict[sName,"A"]; # array length
-    for(_i=0;_i<_iN;_i++)
-      ev2_delete(sDict,sName SUBSEP "A" SUBSEP _i);
+    _iN = sDict[sName, "A"];
+    delete sDict[sName, "A"]; # array length
+    for (_i = 0; _i < _iN; _i++)
+      ev2_delete(sDict, sName SUBSEP "A" SUBSEP _i);
   }
 }
 
-# TODO? Dict[sp]      -> Dict[sp,"v"]
-# TODO? s[i,"c"]="b+" -> s[i,"k"]="b" s["o"]="+"
+# TODO? Dict[sp]       -> Dict[sp, "v"]
+# TODO? s[i, "c"]="b+" -> s[i, "k"]="b" s["o"]="+"
 
 #===============================================================================
 #  Parameter Expansion
@@ -952,7 +952,7 @@ function inline_expand(text, _ret,_ltext,_rtext,_mtext,_name,_r,_s,_a,_caps){
       print "(parameter expansion:" _mtext ")! unrecognized expansion." > "/dev/stderr"
       _r=_mtext;
     }
-        
+
     if(_mtext ~ /^\${/){
       # enable re-expansion ${}
       _ret=_ret _ltext;
@@ -1364,17 +1364,17 @@ function data_define(pair, _sep,_i,_k,_v,_capt,_rex){
       _sep=substr(pair,2,RLENGTH-2);
       pair=trim(substr(pair,RLENGTH+1));
     }
-        
+
     _i=_sep!=""?index(pair,_sep):match(pair,/[ \t]/);
     if(_i<=0){
       printf("(#%%data directive)! ill-formed. (pair=%s, _sep=%s)\n",pair,_sep) > "/dev/stderr"
       return 0;
     }
-        
+
     _k=substr(pair,1,_i-1);
     _v=trim(substr(pair,_i+length(_sep)))
     d_data[_k]=_v;
-        
+
     #_t[0];head_token(pair,_t);
     #d_data[_t[0]]=_t[1];
   }
@@ -1551,14 +1551,15 @@ BEGIN{
 }
 
 {
-  if(NR==1){
+  if(FNR==1){
     if(ENVIRON["PPLINENO_FILE"]!="")
       m_rfile=ENVIRON["PPLINENO_FILE"];
     else
       m_rfile=FILENAME;
+    dependency_add(m_rfile);
   }
   m_lineno_cfile=m_rfile;
-  m_lineno_cline=NR;
+  m_lineno_cline=FNR;
   process_line($1);
 }
 
@@ -1568,29 +1569,43 @@ function dependency_add(file){
     m_dependency[m_dependency_count++]=file;
   }
 }
-function dependency_generate(output,target, _i,_iMax){
-  if(!target){
-    target=m_rfile;
-    sub(/\.pp$/,"",target);
-    target=target ".out";
+function dependency_generate(output, target, is_phony, _i, _iMax, _line, _file){
+  if (!target) {
+    target = m_rfile;
+    sub(/\.pp$/, "", target);
+    target = target ".out";
   }
 
-  if(m_dependency_count==0){
-    print target ": " m_rfile > output
-  }else{
-    print target ": " m_rfile " \\" > output
-    _iMax=m_dependency_count-1;
-    for(_i=0;_i<_iMax;_i++)
-      print "  " m_dependency[_i] " \\" >> output;
-    print "  " m_dependency[_iMax] >> output;
+  if (m_dependency_count == 0)
+    print target ":" > output;
+  else {
+    _iMax = m_dependency_count - 1;
+    for (_i = 0; _i < m_dependency_count; _i++) {
+      _file = m_dependency[_i];
+      gsub(/[[:space:]]/, "\\\\&", _file);
+      _line = _i == 0? target ": ": "  ";
+      _line = _line _file;
+      if (_i < _iMax) _line = _line " \\";
+      print _line > output;
+    }
+
+    if (is_phony) {
+      for (_i = 0; _i < m_dependency_count; _i++) {
+        _file = m_dependency[_i];
+        gsub(/[[:space:]]/, "\\\\&", _file);
+        printf("%s:\n\n", _file) > output;
+      }
+    }
   }
 }
 
-END{
+END {
   # output dependencies
-  DEPENDENCIES_OUTPUT=ENVIRON["DEPENDENCIES_OUTPUT"];
-  if(DEPENDENCIES_OUTPUT)
-    dependency_generate(DEPENDENCIES_OUTPUT,ENVIRON["DEPENDENCIES_TARGET"]);
+  DEPENDENCIES_OUTPUT = ENVIRON["DEPENDENCIES_OUTPUT"];
+  if (DEPENDENCIES_OUTPUT) {
+    is_phony = ENVIRON["DEPENDENCIES_PHONY"];
+    dependency_generate(DEPENDENCIES_OUTPUT, ENVIRON["DEPENDENCIES_TARGET"], is_phony);
+  }
 
-  if(global_errorCount)exit(1);
+  if (global_errorCount) exit(1);
 }
