@@ -688,6 +688,13 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2018-02-11
+
+  * keymap/emacs: 連続する delete-backward-char の場合 undo の記録をまとめる可能性?
+
+    現状では一文字ずつ記録しているので一文字ずつ undo される。
+    現在の振る舞いの方が良いのか emacs と同様にまとめた方が良いかは微妙な所である。
+
 2018-01-19
 
   * 誤って PATH に変な値を設定してしまうと動かなくなる。
@@ -719,12 +726,8 @@ tech
 
   * keymap/vi (mark): erasedup 等のときに履歴番号がずれるのではないか?
 
-  * keymap/emacs: undo/redo に対応する。
-
-    現在はそもそも記録を行っていない。
-    後、各 widget について対応を行うとすると vi_imap とかち合うので注意が必要である。
-    特に、今までの機能は全て safe キーマップの機能という事にして、
-    新しく emacs.sh に実装を追加した方が良いのかもしれない。
+    これは ble-edit/history/add/.command-history 辺りで callback
+    を呼び出す様にするなどの方法にしなければならない。
 
 2017-11-29
 
@@ -3038,6 +3041,30 @@ tech
 -------------------------------------------------------------------------------
 
 2018-02-11
+
+  * 2017-12-03 keymap/emacs: undo/redo に対応する。
+
+    現在はそもそも記録を行っていない。
+    後、各 widget について対応を行うとすると vi_imap とかち合うので注意が必要である。
+    特に、今までの機能は全て safe キーマップの機能という事にして、
+    新しく emacs.sh に実装を追加した方が良いのかもしれない。
+
+    emacs mode では何処で undo/add を呼び出すべきだろうか。
+    変更の発生するすべてのコマンドに一つずつ undo/add を追加するべきだろうか。
+
+    vi では ble/keymap:vi/mark/set-previous-edit-area からしか undo/add を呼び出していない。
+    vi_imap での変更はどの様な過程で検出されるのだろうか。
+    どうやら _ble_keymap_vi_imap_white_list で指定されたコマンドが実行される時以外は、
+    ble/keymap:vi/mark/end-edit-area が呼び出され、其処から undo/add が実行される様だ。
+
+    従って、emacs mode でも white_list を作って、
+    其処に登録されていないコマンドが呼び出される時には必ずと undo/add を実行するという事にすれば良いだろうか。
+
+    Note: delete-backward-char は取り敢えず undo/add する事にした。
+    本来の emacs では複数の連続する delete-backward-char がまとめられる。
+    しかし面倒なので一文字ずつ記録することにしてしまう。
+    その様に考えるとその他の delete-*-?word などについても undo/add して良い気がする。
+    という訳で delete-*-?word も white list から除外した。
 
   * 2018-12-04 keymap/vi (nmap u, U, C-r): 引き数に対応する。
 

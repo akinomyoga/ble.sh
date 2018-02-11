@@ -5118,7 +5118,7 @@ function ble-edit/history/add/.command-history {
         ((lastIndex>=0)) && [[ $cmd == "${_ble_edit_history[lastIndex]}" ]] && return
       fi
       if [[ $erasedups ]]; then
-        local indexNext="$HISTINDEX_NEXT"
+        local indexNext=$HISTINDEX_NEXT
         local i n=-1 N=${#_ble_edit_history[@]}
         for ((i=0;i<N;i++)); do
           if [[ ${_ble_edit_history[i]} != "$cmd" ]]; then

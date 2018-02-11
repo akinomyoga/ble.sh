@@ -26,6 +26,53 @@ function ble/widget/emacs/append-arg {
   fi
 }
 
+_ble_keymap_emacs_white_list=(
+  self-insert
+  nop
+  magic-space
+  copy{,-forward,-backward}-{c,f,s,u}word
+  copy-region{,-or}
+  clear-screen
+  command-help
+  display-shell-version
+  redraw-line
+  # delete-backward-{c,f,s,u}word
+  # delete-bacward-char
+)
+function ble/keymap:emacs/is-command-white {
+  if [[ $1 == ble/widget/self-insert ]]; then
+    # frequently used command is checked first
+    return 0
+  elif [[ $1 == ble/widget/* ]]; then
+    local cmd=${1#ble/widget/}; cmd=${cmd%%[$' \t\n']*}
+    [[ $cmd == emacs/* || " ${_ble_keymap_emacs_white_list[*]} " == *" $cmd "*  ]] && return 0
+  fi
+  return 1
+}
+
+function ble/widget/emacs/__before_command__ {
+  if ! ble/keymap:emacs/is-command-white "$WIDGET"; then
+    ble-edit/undo/add
+  fi
+}
+
+#------------------------------------------------------------------------------
+# 注意: ble/widget/emacs/* の名称の編集関数では、
+# 必要に応じて手動で ble-edit/undo/add を呼び出さなければならない。
+
+function ble/widget/emacs/undo {
+  local arg; ble-edit/content/get-arg 1
+  ble-edit/undo/undo "$arg" || ble/widget/.bell 'no more older undo history'
+}
+function ble/widget/emacs/redo {
+  local arg; ble-edit/content/get-arg 1
+  ble-edit/undo/redo "$arg" || ble/widget/.bell 'no more recent undo history'
+}
+function ble/widget/emacs/revert {
+  local arg; ble-edit/content/clear-arg
+  ble-edit/undo/revert
+}
+
 function ble-decode/keymap:emacs/define {
   local ble_bind_keymap=emacs
 
@@ -45,7 +92,8 @@ function ble-decode/keymap:emacs/define {
 
   #----------------------------------------------------------------------------
 
-  ble-bind -f __attach__ safe/__attach__
+  ble-bind -f __attach__         safe/__attach__
+  ble-bind -f __before_command__ emacs/__before_command__
 
   # accept/cancel
   ble-bind -f  'C-c'     discard-line
@@ -108,6 +156,15 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f 7 emacs/append-arg
   ble-bind -f 8 emacs/append-arg
   ble-bind -f 9 emacs/append-arg
+
+  ble-bind -f 'C-_'       emacs/undo
+  ble-bind -f 'C-DEL'     emacs/undo
+  ble-bind -f 'C-/'       emacs/undo
+  ble-bind -f 'C-x u'     emacs/undo
+  ble-bind -f 'C-x C-u'   emacs/undo
+  ble-bind -f 'C-x U'     emacs/redo
+  ble-bind -f 'C-x C-S-u' emacs/redo
+  ble-bind -f 'M-r'       emacs/revert
 }
 
 function ble-decode/keymap:emacs/initialize {
