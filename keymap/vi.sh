@@ -7,22 +7,8 @@ function ble-edit/load-keymap-definition:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
 
-## オプション keymap_vi_force_update_textmap
-##   1 が設定されているとき、矩形選択に先立って配置計算を強制します。
-##   0 が設定されているとき、配置情報があるときにそれを使い、
-##   配置情報がないときは論理行・論理列による矩形選択にフォールバックします。
-##
-: ${bleopt_keymap_vi_force_update_textmap:=1}
-
 ## オプション keymap_vi_macro_depth
 : ${bleopt_keymap_vi_macro_depth:=64}
-
-function ble/keymap:vi/use-textmap {
-  ble/textmap#is-up-to-date && return 0
-  ((bleopt_keymap_vi_force_update_textmap)) || return 1
-  ble/widget/.update-textmap
-  return 0
-}
 
 function ble/keymap:vi/k2c {
   local key=$1
@@ -79,14 +65,6 @@ function ble/string#last-index-of-chars {
   fi
 }
 
-function ble-edit/content/eolp {
-  local pos=${1:-$_ble_edit_ind}
-  ((pos==${#_ble_edit_str})) || [[ ${_ble_edit_str:pos:1} == $'\n' ]]
-}
-function ble-edit/content/bolp {
-  local pos=${1:-$_ble_edit_ind}
-  ((pos<=0)) || [[ ${_ble_edit_str:pos-1:1} == $'\n' ]]
-}
 function ble-edit/content/nonbol-eolp {
   local pos=${1:-$_ble_edit_ind}
   ! ble-edit/content/bolp "$pos" && ble-edit/content/eolp "$pos"
@@ -1378,7 +1356,7 @@ function ble/keymap:vi/operator:increase-indent.impl {
   if [[ $context == block ]]; then
     if ((delta>=0)); then
       ble/keymap:vi/operator:increase-indent.impl/increase-block-indent "$delta"
-    elif ble/keymap:vi/use-textmap; then
+    elif ble/edit/use-textmap; then
       ble/keymap:vi/operator:increase-indent.impl/decrease-graphical-block-indent $((-delta))
     else
       ble/keymap:vi/operator:increase-indent.impl/decrease-logical-block-indent $((-delta))
@@ -2218,7 +2196,7 @@ function ble/widget/vi-command/relative-line.impl {
   ((count-=nmove))
   if ((count==0)); then
     local index
-    if ble/keymap:vi/use-textmap; then
+    if ble/edit/use-textmap; then
       # 列の表示相対位置 (x,y) を保持
       local b1x b1y; ble/textmap#getxy.cur --prefix=b1 "$bol1"
       local b2x b2y; ble/textmap#getxy.cur --prefix=b2 "$bol2"
@@ -2278,7 +2256,7 @@ function ble/widget/vi-command/backward-line {
 function ble/widget/vi-command/graphical-relative-line.impl {
   local offset=$1 flag=$2 reg=$3 opts=$4
   local index move
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     local x y ax ay
     ble/textmap#getxy.cur "$_ble_edit_ind"
     ((ax=x,ay=y+offset,
@@ -2417,7 +2395,7 @@ function ble/widget/vi-command/forward-eol {
 }
 # nmap g0 g<home>
 function ble/widget/vi-command/beginning-of-graphical-line {
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
     local x y index
     ble/textmap#getxy.cur "$_ble_edit_ind"
@@ -2430,7 +2408,7 @@ function ble/widget/vi-command/beginning-of-graphical-line {
 }
 # nmap g^
 function ble/widget/vi-command/graphical-first-non-space {
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
     local x y index ret
     ble/textmap#getxy.cur "$_ble_edit_ind"
@@ -2444,7 +2422,7 @@ function ble/widget/vi-command/graphical-first-non-space {
 }
 # nmap g$ g<end>
 function ble/widget/vi-command/graphical-forward-eol {
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
     local x y index
     ble/textmap#getxy.cur "$_ble_edit_ind"
@@ -2459,7 +2437,7 @@ function ble/widget/vi-command/graphical-forward-eol {
 function ble/widget/vi-command/middle-of-graphical-line {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local index
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     local x y
     ble/textmap#getxy.cur "$_ble_edit_ind"
     ble/textmap#get-index-at $((_ble_textmap_cols/2)) "$y"
@@ -2511,7 +2489,7 @@ function ble/widget/vi_nmap/paste.impl/block {
   if [[ $type ]]; then
     [[ $type == graphical ]] && graphical=1
   else
-    ble/keymap:vi/use-textmap && graphical=1
+    ble/edit/use-textmap && graphical=1
   fi
 
   local ret cols=$_ble_textmap_cols
@@ -2666,7 +2644,7 @@ function ble/widget/vi_nmap/paste.impl {
     fi
     ble/string#repeat "$_ble_edit_kill_ring" "$arg"
     local beg=$_ble_edit_ind
-    ble/widget/insert-string "$ret"
+    ble/widget/.insert-string "$ret"
     local end=$_ble_edit_ind
     ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
     ble/keymap:vi/repeat/record
@@ -2824,7 +2802,7 @@ function ble/widget/vi-command/nth-column {
   local ret index
   ble-edit/content/find-logical-bol; local bol=$ret
   ble-edit/content/find-logical-eol; local eol=$ret
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     local bx by; ble/textmap#getxy.cur --prefix=b "$bol" # Note: 先頭行はプロンプトにより bx!=0
     local ex ey; ble/textmap#getxy.cur --prefix=e "$eol"
     local dstx=$((bx+ARG-1)) dsty=$by cols=${COLUMNS:-80}
@@ -3044,7 +3022,7 @@ function ble/widget/vi_nmap/insert-mode-at-forward-line {
   ble-edit/content/find-logical-eol; local eol=$ret
   ble-edit/content/find-non-space "$bol"; local indent=${_ble_edit_str:bol:ret-bol}
   ble/widget/.goto-char "$eol"
-  ble/widget/insert-string $'\n'"$indent"
+  ble/widget/.insert-string $'\n'"$indent"
   ble/widget/vi_nmap/.insert-mode "$ARG"
   ble/keymap:vi/repeat/record
   return 0
@@ -3055,7 +3033,7 @@ function ble/widget/vi_nmap/insert-mode-at-backward-line {
   ble-edit/content/find-logical-bol; local bol=$ret
   ble-edit/content/find-non-space "$bol"; local indent=${_ble_edit_str:bol:ret-bol}
   ble/widget/.goto-char "$bol"
-  ble/widget/insert-string "$indent"$'\n'
+  ble/widget/.insert-string "$indent"$'\n'
   ble/widget/.goto-char $((bol+${#indent}))
   ble/widget/vi_nmap/.insert-mode "$ARG"
   ble/keymap:vi/repeat/record
@@ -3771,6 +3749,7 @@ function ble/keymap:vi/commandline/__before_command__ {
 }
 
 function ble/widget/vi-command/commandline {
+  ble/keymap:vi/clear-arg
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
   _ble_edit_PS1=:
   _ble_edit_history_prefix=_ble_keymap_vi_commandline
@@ -4538,7 +4517,7 @@ function ble/keymap:vi/get-logical-rectangle {
   lx=$p rx=$((q+1)) ly=0 ry=0
 }
 function ble/keymap:vi/get-rectangle {
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     ble/keymap:vi/get-graphical-rectangle
   else
     ble/keymap:vi/get-logical-rectangle
@@ -4735,7 +4714,7 @@ function ble/keymap:vi/extract-logical-block {
   ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$lx" "$rx"
 }
 function ble/keymap:vi/extract-block {
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     ble/keymap:vi/extract-graphical-block "$@"
   else
     ble/keymap:vi/extract-logical-block "$@"
@@ -4800,7 +4779,7 @@ function ble/widget/vi_xmap/.save-visual-state {
   local nline nchar mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == block ]]; then
     local p0 q0 lx rx ly ry
-    if ble/keymap:vi/use-textmap; then
+    if ble/edit/use-textmap; then
       local cols=$_ble_textmap_cols
       ble/keymap:vi/get-graphical-rectangle
       ((lx+=ly*cols,rx+=ry*cols))
@@ -4829,7 +4808,7 @@ function ble/widget/vi_xmap/.save-visual-state {
       ble-edit/content/find-logical-bol "$q"; base=$ret
     fi
 
-    if ble/keymap:vi/use-textmap; then
+    if ble/edit/use-textmap; then
       local cols=$_ble_textmap_cols
       local bx by x y
       ble/textmap#getxy.cur --prefix=b "$base"
@@ -4866,7 +4845,7 @@ function ble/widget/vi_xmap/.restore-visual-state {
   ble-edit/content/find-logical-eol "$b2"; local e2=$ret
   if ble/keymap:vi/xmap/has-eol-extension; then
     index=$e2
-  elif ble/keymap:vi/use-textmap; then
+  elif ble/edit/use-textmap; then
     local cols=$_ble_textmap_cols
     local b1x b1y b2x b2y x y
     ble/textmap#getxy.out --prefix=b1 "$b1"
@@ -5280,7 +5259,7 @@ function ble/widget/vi_xmap/block-insert-mode.impl {
   ble/string#count-char "${_ble_edit_str::_ble_edit_ind}" $'\n'; local iline=$ret
   ble-edit/content/find-logical-bol; local bol=$ret
   ble-edit/content/find-logical-eol; local eol=$ret
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     local bx by ex ey
     ble/textmap#getxy.out --prefix=b "$bol"
     ble/textmap#getxy.out --prefix=e "$eol"
@@ -5307,7 +5286,7 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   ble-edit/content/find-logical-bol "$mark"; ((bol==ret)) || return 1 # 記録行 `[ と同じか
 
   local has_textmap=
-  if ble/keymap:vi/use-textmap; then
+  if ble/edit/use-textmap; then
     local cols=$_ble_textmap_cols
     has_textmap=1
   fi
@@ -5745,7 +5724,7 @@ function ble/widget/vi_imap/newline {
   ble-edit/content/find-logical-bol; local bol=$ret
   ble-edit/content/find-non-space "$bol"; local nol=$ret
   ble/widget/newline
-  ((bol<nol)) && ble/widget/insert-string "${_ble_edit_str:bol:nol-bol}"
+  ((bol<nol)) && ble/widget/.insert-string "${_ble_edit_str:bol:nol-bol}"
   return 0
 }
 
@@ -5850,7 +5829,7 @@ _ble_keymap_vi_cmap_history_ind=0
 _ble_keymap_vi_cmap_history_onleave=()
 
 function ble/keymap:vi/async-commandline-mode {
-  local hook="$1"
+  local hook=$1
   _ble_keymap_vi_cmap_hook=$hook
   _ble_keymap_vi_cmap_before_command=
 

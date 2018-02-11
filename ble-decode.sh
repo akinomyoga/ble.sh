@@ -890,8 +890,8 @@ function ble-decode-key/dump {
     if [[ ${ent:2} ]]; then
       local cmd="${ent:2}" q=\' Q="'\''"
       case "$cmd" in
-      # ('ble/widget/insert-string '*)
-      #   echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/insert-string }'" ;;
+      # ('ble/widget/.insert-string '*)
+      #   echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/.insert-string }'" ;;
       ('ble/widget/.SHELL_COMMAND '*)
         echo "ble-bind$kmapopt -cf '${knames//$q/$Q}' '${cmd#ble/widget/.SHELL_COMMAND }'" ;;
       ('ble/widget/.EDIT_COMMAND '*)

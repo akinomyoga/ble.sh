@@ -8,6 +8,24 @@ function ble-edit/load-keymap-definition:emacs { :; }
 
 #------------------------------------------------------------------------------
 
+function ble/widget/emacs/append-arg {
+  local code=$((KEYS[0]&ble_decode_MaskChar))
+  ((code==0)) && return 1
+  local ret; ble/util/c2s "$code"; local ch=$ret
+
+  if 
+    if [[ $_ble_edit_arg ]]; then
+      [[ $ch == [0-9] ]]
+    else
+      ((KEYS[0]&ble_decode_MaskFlag))
+    fi
+  then
+    _ble_edit_arg=$_ble_edit_arg$ch
+  else
+    ble/widget/self-insert
+  fi
+}
+
 function ble-decode/keymap:emacs/define {
   local ble_bind_keymap=emacs
 
@@ -52,6 +70,44 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f 'C-\'      bell
   ble-bind -f 'C-]'      bell
   ble-bind -f 'C-^'      bell
+
+  #----------------------------------------------------------------------------
+
+  ble-bind -f M-- emacs/append-arg
+  ble-bind -f M-0 emacs/append-arg
+  ble-bind -f M-1 emacs/append-arg
+  ble-bind -f M-2 emacs/append-arg
+  ble-bind -f M-3 emacs/append-arg
+  ble-bind -f M-4 emacs/append-arg
+  ble-bind -f M-5 emacs/append-arg
+  ble-bind -f M-6 emacs/append-arg
+  ble-bind -f M-7 emacs/append-arg
+  ble-bind -f M-8 emacs/append-arg
+  ble-bind -f M-9 emacs/append-arg
+
+  ble-bind -f C-- emacs/append-arg
+  ble-bind -f C-0 emacs/append-arg
+  ble-bind -f C-1 emacs/append-arg
+  ble-bind -f C-2 emacs/append-arg
+  ble-bind -f C-3 emacs/append-arg
+  ble-bind -f C-4 emacs/append-arg
+  ble-bind -f C-5 emacs/append-arg
+  ble-bind -f C-6 emacs/append-arg
+  ble-bind -f C-7 emacs/append-arg
+  ble-bind -f C-8 emacs/append-arg
+  ble-bind -f C-9 emacs/append-arg
+
+  ble-bind -f - emacs/append-arg
+  ble-bind -f 0 emacs/append-arg
+  ble-bind -f 1 emacs/append-arg
+  ble-bind -f 2 emacs/append-arg
+  ble-bind -f 3 emacs/append-arg
+  ble-bind -f 4 emacs/append-arg
+  ble-bind -f 5 emacs/append-arg
+  ble-bind -f 6 emacs/append-arg
+  ble-bind -f 7 emacs/append-arg
+  ble-bind -f 8 emacs/append-arg
+  ble-bind -f 9 emacs/append-arg
 }
 
 function ble-decode/keymap:emacs/initialize {

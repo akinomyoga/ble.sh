@@ -157,6 +157,20 @@ function bleopt/check:tab_width {
   fi
 }
 
+## オプション edit_forced_textmap
+##   1 が設定されているとき、矩形選択に先立って配置計算を強制します。
+##   0 が設定されているとき、配置情報があるときにそれを使い、
+##   配置情報がないときは論理行・論理列による矩形選択にフォールバックします。
+##
+: ${bleopt_edit_forced_textmap:=1}
+
+function ble/edit/use-textmap {
+  ble/textmap#is-up-to-date && return 0
+  ((bleopt_edit_forced_textmap)) || return 1
+  ble/widget/.update-textmap
+  return 0
+}
+
 # 
 #------------------------------------------------------------------------------
 # **** char width ****                                                @text.c2w
@@ -1367,7 +1381,7 @@ function ble/textmap#update {
     dend0=_ble_textmap_dend0))
   ble/dirty-range#clear --prefix=_ble_textmap_d
 
-  local iN="${#text}"
+  local iN=${#text}
 
   # 初期位置 x y
   local _pos="$x $y"
@@ -2035,6 +2049,18 @@ function _ble_edit_str.update-syntax {
   fi
 }
 
+## 関数 ble-edit/content/bolp
+##   現在カーソルが行頭に位置しているかどうかを判定します。
+function ble-edit/content/eolp {
+  local pos=${1:-$_ble_edit_ind}
+  ((pos==${#_ble_edit_str})) || [[ ${_ble_edit_str:pos:1} == $'\n' ]]
+}
+## 関数 ble-edit/content/bolp
+##   現在カーソルが行末に位置しているかどうかを判定します。
+function ble-edit/content/bolp {
+  local pos=${1:-$_ble_edit_ind}
+  ((pos<=0)) || [[ ${_ble_edit_str:pos-1:1} == $'\n' ]]
+}
 ## 関数 ble-edit/content/find-logical-eol [index [offset]]; ret
 ##   _ble_edit_str 内で位置 index から offset 行だけ次の行の終端位置を返します。
 ##
@@ -2074,7 +2100,7 @@ function ble-edit/content/find-logical-bol {
   local index=${1:-$_ble_edit_ind} offset=${2:-0}
   if ((offset>0)); then
     local text=${_ble_edit_str:index}
-    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}"
+    local rex="^([^$_ble_term_nl]*$_ble_term_nl){1,$offset}"
     [[ $text =~ $rex ]]
     if [[ $BASH_REMATCH ]]; then
       ((ret=index+${#BASH_REMATCH}))
@@ -2096,15 +2122,22 @@ function ble-edit/content/is-single-line {
   [[ $_ble_edit_str != *$'\n'* ]]
 }
 
-
 function ble-edit/content/get-arg {
   eval "${ble_util_upvar_setup//ret/arg}"
 
   local default_value=$1
-  if [[ $_ble_edit_arg ]]; then
-    arg=$((10#$_ble_edit_arg))
+  if [[ $_ble_edit_arg == -* ]]; then
+    if [[ $_ble_edit_arg == - ]]; then
+      arg=-1
+    else
+      arg=$((-10#${_ble_edit_arg#-}))
+    fi
   else
-    arg=$default_value
+    if [[ $_ble_edit_arg ]]; then
+      arg=$((10#$_ble_edit_arg))
+    else
+      arg=$default_value
+    fi
   fi
   _ble_edit_arg=
 
@@ -2797,6 +2830,7 @@ function ble/widget/clear-screen {
   ble/term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
+  ble-edit/content/clear-arg
   ble/widget/.SHELL_COMMAND 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
 }
 
@@ -2804,6 +2838,7 @@ function ble/widget/display-shell-version {
 # **** mark, kill, copy ****                                       @widget.mark
 
 function ble/widget/overwrite-mode {
+  ble-edit/content/clear-arg
   if [[ $_ble_edit_overwrite_mode ]]; then
     _ble_edit_overwrite_mode=
   else
@@ -2812,35 +2847,40 @@ function ble/widget/overwrite-mode {
 }
 
 function ble/widget/set-mark {
-  _ble_edit_mark="$_ble_edit_ind"
+  ble-edit/content/clear-arg
+  _ble_edit_mark=$_ble_edit_ind
   _ble_edit_mark_active=1
 }
 function ble/widget/kill-forward-text {
+  ble-edit/content/clear-arg
   ((_ble_edit_ind>=${#_ble_edit_str})) && return
 
-  _ble_edit_kill_ring="${_ble_edit_str:_ble_edit_ind}"
+  _ble_edit_kill_ring=${_ble_edit_str:_ble_edit_ind}
   _ble_edit_kill_type=
   _ble_edit_str.replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
 function ble/widget/kill-backward-text {
+  ble-edit/content/clear-arg
   ((_ble_edit_ind==0)) && return
-  _ble_edit_kill_ring="${_ble_edit_str::_ble_edit_ind}"
+  _ble_edit_kill_ring=${_ble_edit_str::_ble_edit_ind}
   _ble_edit_kill_type=
   _ble_edit_str.replace 0 _ble_edit_ind ''
   ((_ble_edit_mark=_ble_edit_mark<=_ble_edit_ind?0:_ble_edit_mark-_ble_edit_ind))
   _ble_edit_ind=0
 }
 function ble/widget/exchange-point-and-mark {
-  local m="$_ble_edit_mark" p="$_ble_edit_ind"
-  _ble_edit_ind="$m" _ble_edit_mark="$p"
+  ble-edit/content/clear-arg
+  local m=$_ble_edit_mark p=$_ble_edit_ind
+  _ble_edit_ind=$m _ble_edit_mark=$p
 }
 function ble/widget/yank {
-  ble/widget/insert-string "$_ble_edit_kill_ring"
+  ble-edit/content/clear-arg
+  ble/widget/.insert-string "$_ble_edit_kill_ring"
 }
 function ble/widget/@marked {
   if [[ $_ble_edit_mark_active != S ]]; then
-    _ble_edit_mark="$_ble_edit_ind"
+    _ble_edit_mark=$_ble_edit_ind
     _ble_edit_mark_active=S
   fi
   "ble/widget/$@"
@@ -2894,7 +2934,7 @@ function ble/widget/.kill-range {
   ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
 
   # copy
-  _ble_edit_kill_ring="${_ble_edit_str:p0:len}"
+  _ble_edit_kill_ring=${_ble_edit_str:p0:len}
   _ble_edit_kill_type=$4
 
   # delete
@@ -2915,7 +2955,7 @@ function ble/widget/.copy-range {
   ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
 
   # copy
-  _ble_edit_kill_ring="${_ble_edit_str:p0:len}"
+  _ble_edit_kill_ring=${_ble_edit_str:p0:len}
   _ble_edit_kill_type=$4
 }
 ## 関数 ble/widget/.replace-range P0 P1 string [allow_empty]
@@ -2935,18 +2975,21 @@ function ble/widget/.replace-range {
 ## 関数 ble/widget/delete-region
 ##   領域を削除します。
 function ble/widget/delete-region {
+  ble-edit/content/clear-arg
   ble/widget/.delete-range "$_ble_edit_mark" "$_ble_edit_ind"
   _ble_edit_mark_active=
 }
 ## 関数 ble/widget/kill-region
 ##   領域を切り取ります。
 function ble/widget/kill-region {
+  ble-edit/content/clear-arg
   ble/widget/.kill-range "$_ble_edit_mark" "$_ble_edit_ind"
   _ble_edit_mark_active=
 }
 ## 関数 ble/widget/copy-region
 ##   領域を転写します。
 function ble/widget/copy-region {
+  ble-edit/content/clear-arg
   ble/widget/.copy-range "$_ble_edit_mark" "$_ble_edit_ind"
   _ble_edit_mark_active=
 }
@@ -3002,6 +3045,7 @@ function ble/widget/.bell {
   return 0
 }
 function ble/widget/bell {
+  ble-edit/content/clear-arg
   ble/widget/.bell
   _ble_edit_mark_active=
   _ble_edit_arg=
@@ -3011,10 +3055,23 @@ function ble/widget/bell {
 # **** insert ****                                                 @edit.insert
 
 function ble/widget/insert-string {
+  local content="$*"
+  local arg; ble-edit/content/get-arg 1
+  if ((arg<0)); then
+    ble/widget/.bell "negative repitition number $arg"
+    return 1
+  elif ((arg==0)); then
+    return 0
+  elif ((arg>1)); then
+    local ret; ble/string#repeat "$content" "$arg"; content=$ret
+  fi
+  ble/widget/.insert-string "$content"
+}
+function ble/widget/.insert-string {
   local ins="$*"
   [[ $ins ]] || return
 
-  local dx="${#ins}"
+  local dx=${#ins}
   _ble_edit_str.replace _ble_edit_ind _ble_edit_ind "$ins"
   (('
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
@@ -3044,7 +3101,10 @@ function ble/widget/self-insert {
   local ret ins; ble/util/c2s "$code"; ins=$ret
 
   local arg; ble-edit/content/get-arg 1
-  if ((arg<1)) || [[ ! $ins ]]; then
+  if ((arg<0)); then
+    ble/widget/.bell "negative repitition number $arg"
+    return 1
+  elif ((arg==0)) || [[ ! $ins ]]; then
     arg=0 ins=
   elif ((arg>1)); then
     ble/string#repeat "$ins" "$arg"; ins=$ret
@@ -3113,14 +3173,35 @@ function ble/widget/quoted-insert {
 }
 
 function ble/widget/transpose-chars {
-  if ((_ble_edit_ind<=0||_ble_edit_ind>=${#_ble_edit_str})); then
-    ble/widget/.bell
-  else
-    local a="${_ble_edit_str:_ble_edit_ind-1:1}"
-    local b="${_ble_edit_str:_ble_edit_ind:1}"
-    _ble_edit_str.replace _ble_edit_ind-1 _ble_edit_ind+1 "$b$a"
-    ((_ble_edit_ind++))
+  local arg; ble-edit/content/get-arg ''
+  if ((arg==0)); then
+    [[ ! $arg ]] && ble-edit/content/eolp &&
+      ((_ble_edit_ind>0&&_ble_edit_ind--))
+    arg=1
   fi
+
+  local p q r
+  if ((arg>0)); then
+    ((p=_ble_edit_ind-1,
+      q=_ble_edit_ind,
+      r=_ble_edit_ind+arg))
+  else # arg<0
+    ((p=_ble_edit_ind-1+arg,
+      q=_ble_edit_ind,
+      r=_ble_edit_ind+1))
+  fi
+
+  if ((p<0||${#_ble_edit_str}<r)); then
+    ((_ble_edit_ind=arg<0?0:${#_ble_edit_str}))
+    ble/widget/.bell
+    return 1
+  fi
+
+  local a=${_ble_edit_str:p:q-p}
+  local b=${_ble_edit_str:q:r-q}
+  _ble_edit_str.replace "$p" "$r" "$b$a"
+  ((_ble_edit_ind+=arg))
+  return 0
 }
 
 _ble_edit_bracketed_paste=
@@ -3159,6 +3240,7 @@ function ble/widget/bracketed-paste.hook {
   fi
 }
 function ble/widget/bracketed-paste {
+  ble-edit/content/clear-arg
   _ble_edit_mark_active=
   _ble_edit_bracketed_paste=()
   _ble_edit_bracketed_paste_proc=
@@ -3170,55 +3252,61 @@ function ble/widget/bracketed-paste {
 # **** delete-char ****                                            @edit.delete
 
 function ble/widget/.delete-backward-char {
-  if ((_ble_edit_ind<=0)); then
+  local a=${1:-1}
+  if ((_ble_edit_ind-a<0)); then
     return 1
-  else
-    local ins=
-    if [[ $_ble_edit_overwrite_mode ]]; then
-      local next="${_ble_edit_str:_ble_edit_ind:1}"
-      if [[ $next && $next != [$'\n\t'] ]]; then
-        local w
-        if [[ $_ble_edit_overwrite_mode == R ]]; then
-          w=1
-        else
-          local ret
-          ble/util/s2c "$_ble_edit_str" "$((_ble_edit_ind-1))"
-          ble/util/c2w-edit "$ret"; w=$ret
-        fi
-        ins="${_ble_util_string_prototype::w}"
+  fi
+
+  local ins=
+  if [[ $_ble_edit_overwrite_mode ]]; then
+    local next=${_ble_edit_str:_ble_edit_ind:1}
+    if [[ $next && $next != [$'\n\t'] ]]; then
+      if [[ $_ble_edit_overwrite_mode == R ]]; then
+        local w=$a
+      else
+        local w=0 ret i
+        for ((i=0;i<a;i++)); do
+          ble/util/s2c "$_ble_edit_str" $((_ble_edit_ind-a+i))
+          ble/util/c2w-edit "$ret"
+          ((w+=ret))
+        done
+      fi
+      if ((w)); then
+        local ret; ble/string#repeat ' ' "$w"; ins=$ret
         ((_ble_edit_mark>=_ble_edit_ind&&(_ble_edit_mark+=w)))
       fi
     fi
-
-    _ble_edit_str.replace _ble_edit_ind-1 _ble_edit_ind "$ins"
-    ((_ble_edit_ind--,
-      _ble_edit_mark>_ble_edit_ind&&_ble_edit_mark--))
-    return 0
   fi
+
+  _ble_edit_str.replace $((_ble_edit_ind-a)) "$_ble_edit_ind" "$ins"
+  ((_ble_edit_ind-=a,
+    _ble_edit_ind+a<_ble_edit_mark?(_ble_edit_mark-=a):
+    _ble_edit_ind<_ble_edit_mark&&(_ble_edit_mark=_ble_edit_ind)))
+  return 0
 }
 
 function ble/widget/.delete-char {
-  local a="${1:-1}"
+  local a=${1:-1}
   if ((a>0)); then
     # delete-forward-char
-    if ((_ble_edit_ind>=${#_ble_edit_str})); then
+    if ((${#_ble_edit_str}<_ble_edit_ind+a)); then
       return 1
     else
-      _ble_edit_str.replace _ble_edit_ind _ble_edit_ind+1 ''
+      _ble_edit_str.replace "$_ble_edit_ind" $((_ble_edit_ind+a)) ''
     fi
   elif ((a<0)); then
     # delete-backward-char
-    ble/widget/.delete-backward-char
+    ble/widget/.delete-backward-char $((-a))
     return
   else
     # delete-forward-backward-char
     if ((${#_ble_edit_str}==0)); then
       return 1
     elif ((_ble_edit_ind<${#_ble_edit_str})); then
-      _ble_edit_str.replace _ble_edit_ind _ble_edit_ind+1 ''
+      _ble_edit_str.replace "$_ble_edit_ind" $((_ble_edit_ind+1)) ''
     else
-      _ble_edit_ind="${#_ble_edit_str}"
-      ble/widget/.delete-backward-char
+      _ble_edit_ind=${#_ble_edit_str}
+      ble/widget/.delete-backward-char 1
       return
     fi
   fi
@@ -3227,12 +3315,17 @@ function ble/widget/.delete-char {
   return 0
 }
 function ble/widget/delete-forward-char {
-  ble/widget/.delete-char 1 || ble/widget/.bell
+  local arg; ble-edit/content/get-arg 1
+  ((arg==0)) && return 0
+  ble/widget/.delete-char "$arg" || ble/widget/.bell
 }
 function ble/widget/delete-backward-char {
-  ble/widget/.delete-char -1 || ble/widget/.bell
+  local arg; ble-edit/content/get-arg 1
+  ((arg==0)) && return 0
+  ble/widget/.delete-char $((-arg)) || ble/widget/.bell
 }
 function ble/widget/exit {
+  ble-edit/content/clear-arg
   local opts=$1
 
   if [[ :$opts: != *:force:* ]]; then
@@ -3271,182 +3364,425 @@ function ble/widget/delete-forward-char-or-exit {
   fi
 }
 function ble/widget/delete-forward-backward-char {
+  ble-edit/content/clear-arg
   ble/widget/.delete-char 0 || ble/widget/.bell
 }
 
 
 function ble/widget/delete-horizontal-space {
-  local a b rex
-  b="${_ble_edit_str::_ble_edit_ind}" rex='[ 	]*$' ; [[ $b =~ $rex ]]; b="${#BASH_REMATCH}"
-  a="${_ble_edit_str:_ble_edit_ind}"  rex='^[ 	]*'; [[ $a =~ $rex ]]; a="${#BASH_REMATCH}"
-  ble/widget/.delete-range "$((_ble_edit_ind-b))" "$((_ble_edit_ind+a))"
+  local arg; ble-edit/content/get-arg ''
+
+  local a=0 rex=$'[ \t]+$'
+  [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]] &&
+    b=${#BASH_REMATCH}
+
+  local b=0 rex=$'^[ \t]+'
+  [[ ! $arg && ${_ble_edit_str:_ble_edit_ind} =~ $rex ]] &&
+    a=${#BASH_REMATCH}
+
+  ble/widget/.delete-range $((_ble_edit_ind-b)) $((_ble_edit_ind+a))
 }
 
 # 
 # **** cursor move ****                                            @edit.cursor
 
 function ble/widget/.goto-char {
-  local -i _ind="$1"
-  _ble_edit_ind="$_ind"
+  local -i _ind=$1
+  _ble_edit_ind=$_ind
 }
 function ble/widget/.forward-char {
-  local _ind=$((_ble_edit_ind+${1:-1}))
-  if ((_ind>${#_ble_edit_str})); then
-    ble/widget/.goto-char "${#_ble_edit_str}"
+  ((_ble_edit_ind+=${1:-1}))
+  if ((_ble_edit_ind>${#_ble_edit_str})); then
+    _ble_edit_ind=${#_ble_edit_str}
     return 1
-  elif ((_ind<0)); then
-    ble/widget/.goto-char 0
+  elif ((_ble_edit_ind<0)); then
+    _ble_edit_ind=0
     return 1
-  else
-    ble/widget/.goto-char "$_ind"
-    return 0
   fi
 }
 function ble/widget/forward-char {
-  ble/widget/.forward-char 1 || ble/widget/.bell
+  local arg; ble-edit/content/get-arg 1
+  ((arg==0)) && return
+  ble/widget/.forward-char "$arg" || ble/widget/.bell
 }
 function ble/widget/backward-char {
-  ble/widget/.forward-char -1 || ble/widget/.bell
+  local arg; ble-edit/content/get-arg 1
+  ((arg==0)) && return
+  ble/widget/.forward-char $((-arg)) || ble/widget/.bell
 }
 function ble/widget/end-of-text {
-  ble/widget/.goto-char ${#_ble_edit_str}
+  local arg; ble-edit/content/get-arg ''
+  if [[ $arg ]]; then
+    if ((arg>=10)); then
+      _ble_edit_ind=0
+    else
+      ((arg<0&&(arg=0)))
+      local index=$(((19-2*arg)*${#_ble_edit_str}/20))
+      local ret; ble-edit/content/find-logical-bol "$index"
+      _ble_edit_ind=$ret
+    fi
+  else
+    _ble_edit_ind=${#_ble_edit_str}
+  fi
 }
 function ble/widget/beginning-of-text {
-  ble/widget/.goto-char 0
+  local arg; ble-edit/content/get-arg ''
+  if [[ $arg ]]; then
+    if ((arg>=10)); then
+      _ble_edit_ind=${#_ble_edit_str}
+    else
+      ((arg<0&&(arg=0)))
+      local index=$(((2*arg+1)*${#_ble_edit_str}/20))
+      local ret; ble-edit/content/find-logical-bol "$index"
+      _ble_edit_ind=$ret
+    fi
+  else
+    _ble_edit_ind=0
+  fi
 }
 
 function ble/widget/beginning-of-logical-line {
-  local ret
-  ble-edit/content/find-logical-bol
-  ble/widget/.goto-char "$ret"
+  local arg; ble-edit/content/get-arg 1
+  local ret; ble-edit/content/find-logical-bol "$_ble_edit_ind" $((arg-1))
+  _ble_edit_ind=$ret
 }
 function ble/widget/end-of-logical-line {
-  local ret
-  ble-edit/content/find-logical-eol
-  ble/widget/.goto-char "$ret"
-}
-function ble/widget/kill-backward-logical-line {
-  local ret
-  ble-edit/content/find-logical-bol
-  ((0<ret&&ret==_ble_edit_ind&&ret--)) # 行頭にいる時は直前の改行を削除
-  ble/widget/.kill-range "$ret" "$_ble_edit_ind"
-}
-function ble/widget/kill-forward-logical-line {
-  local ret
-  ble-edit/content/find-logical-eol
-  ((ret<${#_ble_edit_ind}&&_ble_edit_ind==ret&&ret++)) # 行末にいる時は直後の改行を削除
-  ble/widget/.kill-range "$_ble_edit_ind" "$ret"
-}
-function ble/widget/forward-logical-line {
-  ((_ble_edit_ind<${#_ble_edit_str})) || return 1
-  local ret ind=$_ble_edit_ind
-  ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
-  ble-edit/content/find-logical-bol "$ind" 1; local bol2=$ret
-  if ((bol1==bol2)); then
-    ble-edit/content/find-logical-eol
-    ble/widget/.goto-char "$ret"
-    ((ret!=ind))
-  else
-    ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
-    local dst=$((bol2+ind-bol1))
-    ble/widget/.goto-char $((dst<eol2?dst:eol2))
-    return 0
-  fi
-}
-function ble/widget/backward-logical-line {
-  ((_ble_edit_ind>0)) || return 1
-  local ret ind=$_ble_edit_ind
-  ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
-  ble-edit/content/find-logical-bol "$ind" -1; local bol2=$ret
-  if ((bol1==bol2)); then
-    ble/widget/.goto-char "$bol1"
-    ((bol1!=ind))
-  else
-    ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
-    local dst=$((bol2+ind-bol1))
-    ble/widget/.goto-char $((dst<eol2?dst:eol2))
-    return 0
-  fi
+  local arg; ble-edit/content/get-arg 1
+  local ret; ble-edit/content/find-logical-eol "$_ble_edit_ind" $((arg-1))
+  _ble_edit_ind=$ret
 }
 
-function ble/widget/beginning-of-line {
-  if ble/textmap#is-up-to-date; then
-    # 配置情報があるときは表示行頭
-    local x y index
-    ble/textmap#getxy.cur "$_ble_edit_ind"
-    ble/textmap#get-index-at 0 "$y"
-    ble/widget/.goto-char "$index"
+## 編集関数 ble/widget/kill-backward-logical-line
+##
+##   現在の行の行頭まで削除する。
+##   既に行頭にいる場合には直前の改行を削除する。
+##   引数 arg を与えたときは arg 行前の行末まで削除する。
+##
+function ble/widget/kill-backward-logical-line {
+  local arg; ble-edit/content/get-arg ''
+  if [[ $arg ]]; then
+    local ret; ble-edit/content/find-logical-eol "$_ble_edit_ind" $((-arg)); local index=$ret
+    if ((arg>0)); then
+      if ((_ble_edit_ind<=index)); then
+        index=0
+      else
+        ble/string#count-char "${_ble_edit_str:index:_ble_edit_ind-index}" $'\n'
+        ((ret<arg)) && index=0
+      fi
+      [[ $flag_beg ]] && index=0
+    fi
+    ret=$index
   else
-    # 配置情報がないときは論理行頭
-    ble/widget/beginning-of-logical-line
+    local ret; ble-edit/content/find-logical-bol
+    # 行頭にいるとき無引数で呼び出すと、直前の改行を削除
+    ((0<ret&&ret==_ble_edit_ind&&ret--))
   fi
+  ble/widget/.kill-range "$ret" "$_ble_edit_ind"
 }
-function ble/widget/end-of-line {
-  if ble/textmap#is-up-to-date; then
-    # 配置情報があるときは表示行末
-    local x y index ax ay
-    ble/textmap#getxy.cur "$_ble_edit_ind"
-    ble/textmap#get-index-at 0 "$((y+1))"
+## 編集関数 ble/widget/kill-forward-logical-line
+##
+##   現在の行の行末まで削除する。
+##   既に行末にいる場合は直後の改行を削除する。
+##   引数 arg を与えたときは arg 行次の行頭まで削除する。
+##
+function ble/widget/kill-forward-logical-line {
+  local arg; ble-edit/content/get-arg ''
+  if [[ $arg ]]; then
+    local ret; ble-edit/content/find-logical-bol "$_ble_edit_ind" "$arg"; local index=$ret
+    if ((arg>0)); then
+      if ((index<=_ble_edit_ind)); then
+        index=${#_ble_edit_str}
+      else
+        ble/string#count-char "${_ble_edit_str:_ble_edit_ind:index-_ble_edit_ind}" $'\n'
+        ((ret<arg)) && index=${#_ble_edit_str}
+      fi
+    fi
+    ret=$index
+  else
+    local ret; ble-edit/content/find-logical-eol
+    # 行末にいるとき無引数で呼び出すと、直後の改行を削除
+    ((ret<${#_ble_edit_ind}&&_ble_edit_ind==ret&&ret++))
+  fi
+  ble/widget/.kill-range "$_ble_edit_ind" "$ret"
+}
+
+function ble/widget/forward-history-line.impl {
+  local arg=$1
+  ((arg==0)) && return 0
+
+  local rest=$((arg>0?arg:-arg))
+  if ((arg>0)); then
+    if [[ ! $_ble_edit_history_prefix && ! $_ble_edit_history_loaded ]]; then
+      # 履歴を未だロードしていないので次の項目は存在しない
+      ble/widget/.bell 'end of history'
+      return 1
+    fi
+  fi
+
+  local index; ble-edit/history/getindex
+
+  local expr_next='--index>=0'
+  if ((arg>0)); then
+    local count; ble-edit/history/getcount
+    expr_next="++index<=$count"
+  fi
+
+  while ((expr_next)); do
+    if ((--rest<=0)); then
+      ble-edit/history/goto "$index" # 位置は goto に任せる
+      return
+    fi
+
+    local entry; ble-edit/history/get-editted-entry "$index"
+    if [[ $entry == *$'\n'* ]]; then
+      local ret; ble/string#count-char "$entry" $'\n'
+      if ((rest<=ret)); then
+        ble-edit/history/goto "$index"
+        if ((arg>0)); then
+          ble-edit/content/find-logical-eol 0 "$rest"
+        else
+          ble-edit/content/find-logical-eol ${#entry} $((-rest))
+        fi
+        ble/widget/.goto-char "$ret"
+        return
+      fi
+      ((rest-=ret))
+    fi
+  done
+
+  if ((arg>0)); then
+    ble-edit/history/goto "$count"
+    ble/widget/.goto-char ${#_ble_edit_str}
+    ble/widget/.bell 'end of history'
+  else
+    ble-edit/history/goto 0
+    ble/widget/.goto-char 0
+    ble/widget/.bell 'beginning of history'
+  fi
+  return 0
+}
+
+## 関数 ble/widget/forward-logical-line.impl arg opts
+##
+##   @param arg
+##     移動量を表す整数を指定する。
+##   @param opts
+##     コロン区切りでオプションを指定する。
+##
+function ble/widget/forward-logical-line.impl {
+  local arg=$1 opts=$2
+  ((arg==0)) && return 0
+
+  # 事前チェック
+  local ind=$_ble_edit_ind
+  if ((arg>0)); then
+    ((ind<${#_ble_edit_str})) || return 1
+  else
+    ((ind>0)) || return 1
+  fi
+
+  local ret; ble-edit/content/find-logical-bol "$ind" "$arg"; local bol2=$ret
+  if ((arg>0)); then
+    if ((ind<bol2)); then
+      ble/string#count-char "${_ble_edit_str:ind:bol2-ind}" $'\n'
+      ((arg-=ret))
+    fi
+  else
+    if ((ind>bol2)); then
+      ble/string#count-char "${_ble_edit_str:bol2:ind-bol2}" $'\n'
+      ((arg+=ret))
+    fi
+  fi
+
+  # 同じ履歴項目内に移動先行が見つかった場合
+  if ((arg==0)); then
+    # 元と同じ列に移動して戻る。
+    ble-edit/content/find-logical-bol "$ind" ; local bol1=$ret
+    ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
+    local dst=$((bol2+ind-bol1))
+    ble/widget/.goto-char $((dst<eol2?dst:eol2))
+    return 0
+  fi
+
+  # 取り敢えず移動できる所まで移動する
+  if ((arg>0)); then
+    ble-edit/content/find-logical-eol "$bol2"
+  else
+    ret=$bol2
+  fi
+  ble/widget/.goto-char "$ret"
+
+  # 履歴項目の移動を行う場合
+  if [[ :$opts: == *:history:* && ! $_ble_edit_mark_active ]]; then
+    ble/widget/forward-history-line.impl "$arg"
+    return
+  fi
+
+  # 移動先行がない場合は bell
+  if ((arg>0)); then
+    ble/widget/.bell 'end of string'
+  else
+    ble/widget/.bell 'beginning of string'
+  fi
+  return 0
+}
+function ble/widget/forward-logical-line {
+  local opts=$1
+  local arg; ble-edit/content/get-arg 1
+  ble/widget/forward-logical-line.impl "$arg" "$opts"
+}
+function ble/widget/backward-logical-line {
+  local opts=$1
+  local arg; ble-edit/content/get-arg 1
+  ble/widget/forward-logical-line.impl $((-arg)) "$opts"
+}
+
+## 関数 ble/keymap:emacs/find-graphical-eol [index [offset]]
+function ble/keymap:emacs/find-graphical-eol {
+  local axis=${1:-$_ble_edit_ind} arg=${2:-0}
+  local x y index
+  ble/textmap#getxy.cur "$axis"
+  ble/textmap#get-index-at 0 $((y+arg+1))
+  if ((index>0)); then
+    local ax ay
     ble/textmap#getxy.cur --prefix=a "$index"
-    ((ay>y&&index--))
-    ble/widget/.goto-char "$index"
-  else
-    # 配置情報がないときは論理行末
-    ble/widget/end-of-logical-line
+    ((ay>y+arg&&index--))
   fi
+  ret=$index
 }
-function ble/widget/kill-backward-line {
-  if ble/textmap#is-up-to-date; then
+
+function ble/widget/beginning-of-graphical-line {
+  ble/textmap#is-up-to-date || ble/widget/.update-textmap
+  local arg; ble-edit/content/get-arg 1
+  local x y index
+  ble/textmap#getxy.cur "$_ble_edit_ind"
+  ble/textmap#get-index-at 0 $((y+arg-1))
+  ble/widget/.goto-char "$index"
+}
+function ble/widget/end-of-graphical-line {
+  ble/textmap#is-up-to-date || ble/widget/.update-textmap
+  local arg; ble-edit/content/get-arg 1
+  local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" $((arg-1))
+  ble/widget/.goto-char "$ret"
+}
+
+## 編集関数 ble/widget/kill-backward-graphical-line
+##   現在の行の表示行頭まで削除する。
+##   既に表示行頭にいる場合には直前の文字を削除する。
+##   引数 arg を与えたときは arg 行前の表示行末まで削除する。
+function ble/widget/kill-backward-graphical-line {
+  ble/textmap#is-up-to-date || ble/widget/.update-textmap
+  local arg; ble-edit/content/get-arg ''
+  if [[ ! $arg ]]; then
     local x y index
     ble/textmap#getxy.cur "$_ble_edit_ind"
     ble/textmap#get-index-at 0 "$y"
     ((index==_ble_edit_ind&&index>0&&index--))
     ble/widget/.kill-range "$index" "$_ble_edit_ind"
   else
+    local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" $((-arg))
+    ble/widget/.kill-range "$ret" "$_ble_edit_ind"
+  fi
+}
+## 編集関数 ble/widget/kill-forward-graphical-line
+##   現在の行の表示行末まで削除する。
+##   既に表示行末 (折り返し時は行の最後の文字の手前) にいる場合は直後の文字を削除する。
+##   引数 arg を与えたときは arg 行後の表示行頭まで削除する。
+function ble/widget/kill-forward-graphical-line {
+  ble/textmap#is-up-to-date || ble/widget/.update-textmap
+  local arg; ble-edit/content/get-arg ''
+  local x y index ax ay
+  ble/textmap#getxy.cur "$_ble_edit_ind"
+  ble/textmap#get-index-at 0 $((y+${arg:-1}))
+  if [[ ! $arg ]] && ((_ble_edit_ind<index-1)); then
+    # 無引数でかつ行末より前にいた時、
+    # 行頭までではなくその前の行末までしか消さない。
+    ble/textmap#getxy.cur --prefix=a "$index"
+    ((ay>y&&index--))
+  fi
+  ble/widget/.kill-range "$_ble_edit_ind" "$index"
+}
+
+function ble/widget/forward-graphical-line.impl {
+  ble/textmap#is-up-to-date || ble/widget/.update-textmap
+  local arg=$1 opts=$2
+  ((arg==0)) && return 0
+
+  local x y index ax ay
+  ble/textmap#getxy.cur "$_ble_edit_ind"
+  ble/textmap#get-index-at "$x" $((y+arg))
+  ble/textmap#getxy.cur --prefix=a "$index"
+  ((arg-=ay-y))
+  ble/widget/.goto-char "$index" # 何れにしても移動は行う
+
+  # 現在の履歴項目内で移動が完結する場合
+  ((arg==0)) && return 0
+
+  # 履歴項目の移動を行う場合
+  if [[ :$opts: == *:history:* && ! $_ble_edit_mark_active ]]; then
+    ble/widget/forward-history-line.impl "$arg"
+    return
+  fi
+
+  if ((arg>0)); then
+    ble/widget/.bell 'end of string'
+  else
+    ble/widget/.bell 'beginning of string'
+  fi
+  return 0
+}
+
+function ble/widget/forward-graphical-line {
+  local opts=$1
+  local arg; ble-edit/content/get-arg 1
+  ble/widget/forward-graphical-line.impl "$arg" "$opts"
+}
+function ble/widget/backward-graphical-line {
+  local opts=$1
+  local arg; ble-edit/content/get-arg 1
+  ble/widget/forward-graphical-line.impl $((-arg)) "$opts"
+}
+
+function ble/widget/beginning-of-line {
+  if ble/edit/use-textmap; then
+    ble/widget/beginning-of-graphical-line
+  else
+    ble/widget/beginning-of-logical-line
+  fi
+}
+function ble/widget/end-of-line {
+  if ble/edit/use-textmap; then
+    ble/widget/end-of-graphical-line
+  else
+    ble/widget/end-of-logical-line
+  fi
+}
+function ble/widget/kill-backward-line {
+  if ble/edit/use-textmap; then
+    ble/widget/kill-backward-graphical-line
+  else
     ble/widget/kill-backward-logical-line
   fi
 }
 function ble/widget/kill-forward-line {
-  if ble/textmap#is-up-to-date; then
-    local x y index ax ay
-    ble/textmap#getxy.cur "$_ble_edit_ind"
-    ble/textmap#get-index-at 0 "$((y+1))"
-    ble/textmap#getxy.cur --prefix=a "$index"
-    ((_ble_edit_ind+1<index&&ay>y&&index--))
-    ble/widget/.kill-range "$_ble_edit_ind" "$index"
+  if ble/edit/use-textmap; then
+    ble/widget/kill-forward-graphical-line
   else
     ble/widget/kill-forward-logical-line
   fi
 }
 function ble/widget/forward-line {
-  ((_ble_edit_ind<${#_ble_edit_str})) || return 1
-  if ble/textmap#is-up-to-date; then
-    # 配置情報があるときは表示行を移動
-    local x y index
-    ble/textmap#getxy.cur "$_ble_edit_ind"
-    ble/textmap#get-index-at "$x" "$((y+1))"
-    ble/widget/.goto-char "$index"
-    ((y<_ble_textmap_endy))
+  if ble/edit/use-textmap; then
+    ble/widget/forward-graphical-line "$@"
   else
-    # 配置情報がないときは論理行を移動
-    ble/widget/forward-logical-line
+    ble/widget/forward-logical-line "$@"
   fi
 }
 function ble/widget/backward-line {
-  # 一番初めの文字でも追い出しによって2行目以降に表示される可能性。
-  # その場合に exit status 1 にする為に初めに check してしまう。
-  ((_ble_edit_ind>0)) || return 1
-
-  if ble/textmap#is-up-to-date; then
-    # 配置情報があるときは表示行を移動
-    local x y index
-    ble/textmap#getxy.cur "$_ble_edit_ind"
-    ble/textmap#get-index-at "$x" "$((y-1))"
-    ble/widget/.goto-char "$index"
-    ((y>_ble_textmap_begy))
+  if ble/edit/use-textmap; then
+    ble/widget/backward-graphical-line "$@"
   else
-    # 配置情報がないときは論理行を移動
-    ble/widget/backward-logical-line
+    ble/widget/backward-logical-line "$@"
   fi
 }
 
@@ -3476,10 +3812,10 @@ function ble/widget/.genword-setup-fword {
 ##   @var[out] a,b,c
 ##
 function ble/widget/.locate-backward-genword {
-  local x="${1:-$_ble_edit_ind}"
-  c="${_ble_edit_str::x}"; c="${c##*[$WSET]}"; c=$((x-${#c}))
-  b="${_ble_edit_str::c}"; b="${b##*[$WSEP]}"; b=$((c-${#b}))
-  a="${_ble_edit_str::b}"; a="${a##*[$WSET]}"; a=$((b-${#a}))
+  local x=${1:-$_ble_edit_ind}
+  c=${_ble_edit_str::x}; c=${c##*[$WSET]}; c=$((x-${#c}))
+  b=${_ble_edit_str::c}; b=${b##*[$WSEP]}; b=$((c-${#b}))
+  a=${_ble_edit_str::b}; a=${a##*[$WSET]}; a=$((b-${#a}))
 }
 ## 関数 ble/widget/.locate-backward-genword; s t u
 ##   前方の単語を探索します。
@@ -3491,10 +3827,10 @@ function ble/widget/.locate-backward-genword {
 ##   @var[out] s,t,u
 ##
 function ble/widget/.locate-forward-genword {
-  local x="${1:-$_ble_edit_ind}"
-  s="${_ble_edit_str:x}"; s="${s%%[$WSET]*}"; s=$((x+${#s}))
-  t="${_ble_edit_str:s}"; t="${t%%[$WSEP]*}"; t=$((s+${#t}))
-  u="${_ble_edit_str:t}"; u="${u%%[$WSET]*}"; u=$((t+${#u}))
+  local x=${1:-$_ble_edit_ind}
+  s=${_ble_edit_str:x}; s=${s%%[$WSET]*}; s=$((x+${#s}))
+  t=${_ble_edit_str:s}; t=${t%%[$WSEP]*}; t=$((s+${#t}))
+  u=${_ble_edit_str:t}; u=${u%%[$WSET]*}; u=$((t+${#u}))
 }
 ## 関数 ble/widget/.locate-backward-genword; s t u
 ##   現在位置の単語を探索します。
@@ -3507,12 +3843,12 @@ function ble/widget/.locate-forward-genword {
 ##   @var[out] s,t,u
 ##
 function ble/widget/.locate-current-genword {
-  local x="${1:-$_ble_edit_ind}"
+  local x=${1:-$_ble_edit_ind}
 
   local a b c # <a> *<b>w*<c> *<x>
   ble/widget/.locate-backward-genword
 
-  r="$a"
+  r=$a
   ble/widget/.locate-forward-genword "$r"
 }
 
@@ -3525,7 +3861,7 @@ function ble/widget/.locate-current-genword {
 function ble/widget/.delete-forward-genword {
   # |---|www|---|
   # x   s   t   u
-  local x="${1:-$_ble_edit_ind}" s t u
+  local x=${1:-$_ble_edit_ind} s t u
   ble/widget/.locate-forward-genword
   if ((x!=t)); then
     ble/widget/.delete-range "$x" "$t"
@@ -3541,7 +3877,7 @@ function ble/widget/.delete-forward-genword {
 function ble/widget/.delete-backward-genword {
   # |---|www|---|
   # a   b   c   x
-  local a b c x="${1:-$_ble_edit_ind}"
+  local a b c x=${1:-$_ble_edit_ind}
   ble/widget/.locate-backward-genword
   if ((x>c&&(c=x),b!=c)); then
     ble/widget/.delete-range "$b" "$c"
@@ -3555,7 +3891,7 @@ function ble/widget/.delete-backward-genword {
 ##   @var[in] WSET,WSEP
 ##
 function ble/widget/.delete-genword {
-  local x="${1:-$_ble_edit_ind}" r s t u
+  local x=${1:-$_ble_edit_ind} r s t u
   ble/widget/.locate-current-genword "$x"
   if ((x>t&&(t=x),r!=t)); then
     ble/widget/.delete-range "$r" "$t"
@@ -3570,7 +3906,7 @@ function ble/widget/.delete-genword {
 ##
 function ble/widget/.kill-forward-genword {
   # <x> *<s>w*<t> *<u>
-  local x="${1:-$_ble_edit_ind}" s t u
+  local x=${1:-$_ble_edit_ind} s t u
   ble/widget/.locate-forward-genword
   if ((x!=t)); then
     ble/widget/.kill-range "$x" "$t"
@@ -3585,7 +3921,7 @@ function ble/widget/.kill-forward-genword {
 ##
 function ble/widget/.kill-backward-genword {
   # <a> *<b>w*<c> *<x>
-  local a b c x="${1:-$_ble_edit_ind}"
+  local a b c x=${1:-$_ble_edit_ind}
   ble/widget/.locate-backward-genword
   if ((x>c&&(c=x),b!=c)); then
     ble/widget/.kill-range "$b" "$c"
@@ -3599,7 +3935,7 @@ function ble/widget/.kill-backward-genword {
 ##   @var[in] WSET,WSEP
 ##
 function ble/widget/.kill-genword {
-  local x="${1:-$_ble_edit_ind}" r s t u
+  local x=${1:-$_ble_edit_ind} r s t u
   ble/widget/.locate-current-genword "$x"
   if ((x>t&&(t=x),r!=t)); then
     ble/widget/.kill-range "$r" "$t"
@@ -3614,7 +3950,7 @@ function ble/widget/.kill-genword {
 ##
 function ble/widget/.copy-forward-genword {
   # <x> *<s>w*<t> *<u>
-  local x="${1:-$_ble_edit_ind}" s t u
+  local x=${1:-$_ble_edit_ind} s t u
   ble/widget/.locate-forward-genword
   ble/widget/.copy-range "$x" "$t"
 }
@@ -3625,7 +3961,7 @@ function ble/widget/.copy-forward-genword {
 ##
 function ble/widget/.copy-backward-genword {
   # <a> *<b>w*<c> *<x>
-  local a b c x="${1:-$_ble_edit_ind}"
+  local a b c x=${1:-$_ble_edit_ind}
   ble/widget/.locate-backward-genword
   ble/widget/.copy-range "$b" "$((c>x?c:x))"
 }
@@ -3635,7 +3971,7 @@ function ble/widget/.copy-backward-genword {
 ##   @var[in] WSET,WSEP
 ##
 function ble/widget/.copy-genword {
-  local x="${1:-$_ble_edit_ind}" r s t u
+  local x=${1:-$_ble_edit_ind} r s t u
   ble/widget/.locate-current-genword "$x"
   ble/widget/.copy-range "$r" "$((t>x?t:x))"
 }
@@ -3644,7 +3980,7 @@ function ble/widget/.copy-genword {
 ##   @var[in] WSET,WSEP
 ##
 function ble/widget/.forward-genword {
-  local x="${1:-$_ble_edit_ind}" s t u
+  local x=${1:-$_ble_edit_ind} s t u
   ble/widget/.locate-forward-genword "$x"
   if ((x==t)); then
     ble/widget/.bell
@@ -3657,7 +3993,7 @@ function ble/widget/.forward-genword {
 ##   @var[in] WSET,WSEP
 ##
 function ble/widget/.backward-genword {
-  local a b c x="${1:-$_ble_edit_ind}"
+  local a b c x=${1:-$_ble_edit_ind}
   ble/widget/.locate-backward-genword "$x"
   if ((x==b)); then
     ble/widget/.bell
@@ -3674,54 +4010,63 @@ function ble/widget/.backward-genword {
 ## 関数 ble/widget/delete-forward-xword
 ##   前方の generic word を削除します。
 function ble/widget/delete-forward-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.delete-forward-genword "$@"
 }
 ## 関数 ble/widget/delete-backward-xword
 ##   後方の generic word を削除します。
 function ble/widget/delete-backward-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.delete-backward-genword "$@"
 }
 ## 関数 ble/widget/delete-xword
 ##   現在位置の generic word を削除します。
 function ble/widget/delete-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.delete-genword "$@"
 }
 ## 関数 ble/widget/kill-forward-xword
 ##   前方の generic word を切り取ります。
 function ble/widget/kill-forward-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.kill-forward-genword "$@"
 }
 ## 関数 ble/widget/kill-backward-xword
 ##   後方の generic word を切り取ります。
 function ble/widget/kill-backward-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.kill-backward-genword "$@"
 }
 ## 関数 ble/widget/kill-xword
 ##   現在位置の generic word を切り取ります。
 function ble/widget/kill-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.kill-genword "$@"
 }
 ## 関数 ble/widget/copy-forward-xword
 ##   前方の generic word を転写します。
 function ble/widget/copy-forward-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.copy-forward-genword "$@"
 }
 ## 関数 ble/widget/copy-backward-xword
 ##   後方の generic word を転写します。
 function ble/widget/copy-backward-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.copy-backward-genword "$@"
 }
 ## 関数 ble/widget/copy-xword
 ##   現在位置の generic word を転写します。
 function ble/widget/copy-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.copy-genword "$@"
 }
@@ -3733,10 +4078,12 @@ function ble/widget/copy-xword {
 
 #%m forward-xword (
 function ble/widget/forward-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.forward-genword "$@"
 }
 function ble/widget/backward-xword {
+  ble-edit/content/clear-arg
   local WSET WSEP; ble/widget/.genword-setup-xword
   ble/widget/.backward-genword "$@"
 }
@@ -4276,6 +4623,7 @@ function ble/widget/.newline {
 }
 
 function ble/widget/discard-line {
+  ble-edit/content/clear-arg
   _ble_edit_line_disabled=1 ble/widget/.newline
 }
 
@@ -4314,6 +4662,7 @@ function ble-edit/hist_expanded.update {
 }
 
 function ble/widget/accept-line {
+  ble-edit/content/clear-arg
   local BASH_COMMAND=$_ble_edit_str
 
   if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
@@ -4360,6 +4709,7 @@ function ble/widget/accept-line {
 }
 
 function ble/widget/accept-and-next {
+  ble-edit/content/clear-arg
   local index count
   ble-edit/history/getindex -v index
   ble-edit/history/getcount -v count
@@ -4894,20 +5244,25 @@ function ble-edit/history/goto {
 
 function ble/widget/history-next {
   if [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]]; then
+    local arg; ble-edit/content/get-arg 1
     local index; ble-edit/history/getindex
-    ble-edit/history/goto $((index+1))
+    ble-edit/history/goto $((index+arg))
   else
+    ble-edit/content/clear-arg
     ble/widget/.bell
   fi
 }
 function ble/widget/history-prev {
+  local arg; ble-edit/content/get-arg 1
   local index; ble-edit/history/getindex
-  ble-edit/history/goto $((index-1))
+  ble-edit/history/goto $((index-arg))
 }
 function ble/widget/history-beginning {
+  ble-edit/content/clear-arg
   ble-edit/history/goto 0
 }
 function ble/widget/history-end {
+  ble-edit/content/clear-arg
   if [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]]; then
     local count; ble-edit/history/getcount
     ble-edit/history/goto "$count"
@@ -4917,6 +5272,7 @@ function ble/widget/history-end {
 }
 
 function ble/widget/history-expand-line {
+  ble-edit/content/clear-arg
   local hist_expanded
   ble-edit/hist_expanded.update "$_ble_edit_str" || return
   [[ $_ble_edit_str == "$hist_expanded" ]] && return
@@ -4927,6 +5283,7 @@ function ble/widget/history-expand-line {
   _ble_edit_mark_active=
 }
 function ble/widget/history-expand-backward-line {
+  ble-edit/content/clear-arg
   local prevline="${_ble_edit_str::_ble_edit_ind}" hist_expanded
   ble-edit/hist_expanded.update "$prevline" || return
   [[ $prevline == "$hist_expanded" ]] && return
@@ -4939,18 +5296,12 @@ function ble/widget/history-expand-backward-line {
   _ble_edit_mark_active=
 }
 function ble/widget/magic-space {
+  local arg; ble-edit/content/get-arg ''
   ble/widget/history-expand-backward-line
   local -a KEYS=(32)
+  _ble_edit_arg=$arg
   ble/widget/self-insert
 }
-
-function ble/widget/forward-line-or-history-next {
-  ble/widget/forward-line || ((_ble_edit_mark_active)) || ble/widget/history-next
-}
-function ble/widget/backward-line-or-history-prev {
-  ble/widget/backward-line || ((_ble_edit_mark_active)) || ble/widget/history-prev
-}
-
 
 # 
 #------------------------------------------------------------------------------
@@ -5547,6 +5898,7 @@ function ble/widget/isearch/exit-delete-forward-char {
 }
 
 function ble/widget/history-isearch-backward {
+  ble-edit/content/clear-arg
   ble-decode/keymap/push isearch
   _ble_edit_isearch_dir=-
   _ble_edit_isearch_arr=()
@@ -5555,6 +5907,7 @@ function ble/widget/history-isearch-backward {
   ble-edit/isearch/.draw-line
 }
 function ble/widget/history-isearch-forward {
+  ble-edit/content/clear-arg
   ble-decode/keymap/push isearch
   _ble_edit_isearch_dir=+
   _ble_edit_isearch_arr=()
@@ -5686,10 +6039,10 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'M->'       'history-end'
   ble-decode/keymap:safe/.bind 'C-prior'   'history-beginning'
   ble-decode/keymap:safe/.bind 'C-next'    'history-end'
-  ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line-or-history-prev'
-  ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line-or-history-prev'
-  ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line-or-history-next'
-  ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line-or-history-next'
+  ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line history'
+  ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line history'
+  ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line history'
+  ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line history'
 }
 
 function ble/widget/safe/__attach__ {
@@ -6186,6 +6539,7 @@ function ble/widget/command-help.impl {
 
 function ble/widget/command-help {
   # ToDo: syntax update?
+  ble-edit/content/clear-arg
   local comp_cword comp_words comp_line comp_point
   if ble-syntax:bash/extract-command "$_ble_edit_ind"; then
     local cmd=${comp_words[0]}
@@ -6473,6 +6827,8 @@ function ble-decode/EPILOGUE {
 ## 関数 ble/widget/.SHELL_COMMAND command
 ##   ble-bind -cf で登録されたコマンドを処理します。
 function ble/widget/.SHELL_COMMAND {
+  ble-edit/content/clear-arg
+
   local -a BASH_COMMAND
   BASH_COMMAND=("$*")
 
@@ -6490,6 +6846,7 @@ function ble/widget/.EDIT_COMMAND {
   local READLINE_LINE=$_ble_edit_str
   local READLINE_POINT=$_ble_edit_ind
   eval "$command" || return 1
+  ble-edit/content/clear-arg
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"

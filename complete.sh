@@ -652,5 +652,5 @@ function ble/widget/complete {
   fi
 
   ble/widget/.delete-range "$comp1" "$index"
-  [[ $common ]] && ble/widget/insert-string "$common"
+  [[ $common ]] && ble/widget/.insert-string "$common"
 }
