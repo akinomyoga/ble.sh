@@ -1649,7 +1649,7 @@ function ble/keymap:vi/mark/history-onleave.hook {
 # 履歴がロードされていない時は取り敢えず _ble_edit_history_ind=0 で登録をしておく。
 # 履歴がロードされた後の初めての利用のときに正しい履歴番号に修正する。
 function ble/keymap:vi/mark/update-mark-history {
-  local h; ble-edit/history/getindex -v h
+  local h; ble-edit/history/get-index -v h
   if [[ ! $_ble_keymap_vi_mark_hindex ]]; then
     _ble_keymap_vi_mark_hindex=$h
   elif ((_ble_keymap_vi_mark_hindex!=h)); then
@@ -1688,7 +1688,7 @@ function ble/keymap:vi/mark/shift-by-dirty-range {
       local index=${value%%:*} rest=${value#*:}
       ((index<beg)) || _ble_keymap_vi_mark_local[imark]=$((index<end0?beg:index+shift)):$rest
     done
-    local h; ble-edit/history/getindex -v h
+    local h; ble-edit/history/get-index -v h
     for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
       local value=${_ble_keymap_vi_mark_global[imark]}
       [[ $value == "$h":* ]] || continue
@@ -1708,7 +1708,7 @@ function ble/keymap:vi/mark/set-global-mark {
   local c=$1 index=$2 ret
   ble/keymap:vi/mark/update-mark-history
   ble-edit/content/find-logical-bol "$index"; local bol=$ret
-  local h; ble-edit/history/getindex -v h
+  local h; ble-edit/history/get-index -v h
   _ble_keymap_vi_mark_global[c]=$h:$bol:$((index-bol))
 }
 function ble/keymap:vi/mark/set-local-mark {
@@ -3982,7 +3982,7 @@ function ble/widget/vi-command/search.impl {
   if [[ $FLAG || $_ble_decode_key__kmap == vi_xmap ]]; then
     opt_history=0
   else
-    local old_hindex; ble-edit/history/getindex -v old_hindex
+    local old_hindex; ble-edit/history/get-index -v old_hindex
   fi
 
   local start= # 初めの履歴番号。search.core 内で最初に履歴を読み込んだあとで設定される。
@@ -4017,7 +4017,7 @@ function ble/widget/vi-command/search.impl {
     if ((ntask<ARG)); then
       # 同じ履歴項目内でのジャンプ
       if ((opt_history)); then
-        local new_hindex; ble-edit/history/getindex -v new_hindex
+        local new_hindex; ble-edit/history/get-index -v new_hindex
         ((new_hindex==old_hindex))
       fi && ble/keymap:vi/mark/set-local-mark 96 "$original_index" # ``
 
@@ -4285,8 +4285,8 @@ function ble/widget/vi-command/exit-on-empty-line {
 # nmap C-g (show line and column)
 function ble/widget/vi-command/show-line-info {
   local index count
-  ble-edit/history/getindex -v index
-  ble-edit/history/getcount -v count
+  ble-edit/history/get-index -v index
+  ble-edit/history/get-count -v count
   local hist_ratio=$(((100*index+count-1)/count))%
   local hist_stat=$'!\e[32m'$index$'\e[m / \e[32m'$count$'\e[m (\e[32m'$hist_ratio$'\e[m)'
 

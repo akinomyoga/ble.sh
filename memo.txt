@@ -717,8 +717,6 @@ tech
 
     現状では取り敢えず clear-arg する。後で使用も含めて対応する。
 
-  * todo: refactor getindex, getcount → get-index, get-count
-
 2017-12-03
 
   * keymap/vi (mark): erasedup 等のときに履歴番号がずれるのではないか?
@@ -3042,6 +3040,10 @@ tech
 -------------------------------------------------------------------------------
 
 2018-02-11
+
+  * getindex/getcount の関数名を変更
+
+    refactor getindex, getcount → get-index, get-count
 
   * 2017-12-04 keymap/emacs: 引き数
 
