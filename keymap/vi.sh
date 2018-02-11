@@ -4327,13 +4327,15 @@ function ble/widget/vi-command/cancel {
 #
 _ble_keymap_vi_undo_suppress=
 function ble/keymap:vi/undo/add {
+  ble/keymap:vi/clear-arg
   [[ $_ble_keymap_vi_undo_suppress ]] && return
   ble-edit/undo/add
 }
 function ble/widget/vi_nmap/undo {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local _ble_keymap_vi_undo_suppress=1
   ble/keymap:vi/mark/start-edit-area
-  if ble-edit/undo/undo; then
+  if ble-edit/undo/undo "$ARG"; then
     ble/keymap:vi/mark/end-edit-area
   else
     ble/widget/vi-command/bell
@@ -4341,9 +4343,10 @@ function ble/widget/vi_nmap/undo {
   fi
 }
 function ble/widget/vi_nmap/redo {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local _ble_keymap_vi_undo_suppress=1
   ble/keymap:vi/mark/start-edit-area
-  if ble-edit/undo/redo; then
+  if ble-edit/undo/redo "$ARG"; then
     ble/keymap:vi/mark/end-edit-area
   else
     ble/widget/vi-command/bell
@@ -4351,9 +4354,10 @@ function ble/widget/vi_nmap/redo {
   fi
 }
 function ble/widget/vi_nmap/revert {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local _ble_keymap_vi_undo_suppress=1
   ble/keymap:vi/mark/start-edit-area
-  if ble-edit/undo/revert-toggle; then
+  if ble-edit/undo/revert-toggle "$ARG"; then
     ble/keymap:vi/mark/end-edit-area
   else
     ble/widget/vi-command/bell

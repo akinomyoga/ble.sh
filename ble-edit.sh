@@ -4835,17 +4835,22 @@ function ble-edit/undo/.load {
   ble/widget/.goto-char "$ind"
 }
 function ble-edit/undo/undo {
+  local arg=${1:-1}
   ble-edit/undo/.check-hindex
   ble-edit/undo/add # 最後に add/load してから変更があれば記録
   ((_ble_edit_undo_index)) || return 1
-  ((--_ble_edit_undo_index))
+  ((_ble_edit_undo_index-=arg))
+  ((_ble_edit_undo_index<0&&(_ble_edit_undo_index=0)))
   ble-edit/undo/.load
 }
 function ble-edit/undo/redo {
+  local arg=${1:-1}
   ble-edit/undo/.check-hindex
   ble-edit/undo/add # 最後に add/load してから変更があれば記録
-  ((_ble_edit_undo_index<${#_ble_edit_undo[@]})) || return 1
-  ((++_ble_edit_undo_index))
+  local ucount=${#_ble_edit_undo[@]}
+  ((_ble_edit_undo_index<ucount)) || return 1
+  ((_ble_edit_undo_index+=arg))
+  ((_ble_edit_undo_index>=ucount&&(_ble_edit_undo_index=ucount)))
   ble-edit/undo/.load
 }
 function ble-edit/undo/revert {
@@ -4856,6 +4861,8 @@ function ble-edit/undo/revert {
   ble-edit/undo/.load
 }
 function ble-edit/undo/revert-toggle {
+  local arg=${1:-1}
+  ((arg%2==0)) && return 0
   ble-edit/undo/.check-hindex
   ble-edit/undo/add # 最後に add/load してから変更があれば記録
   if ((_ble_edit_undo_index)); then
