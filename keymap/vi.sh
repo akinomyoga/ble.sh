@@ -4320,7 +4320,7 @@ function ble/widget/vi-command/cancel {
   return 0
 }
 
-# nmap u, C-r
+# nmap u, U, C-r
 #
 #   `[`] は設定する。vim と違って実際に変更のあった範囲を抽出する。
 #   . は設定しない。
@@ -4363,6 +4363,45 @@ function ble/widget/vi_nmap/revert {
     ble/widget/vi-command/bell
     return 1
   fi
+}
+
+# nmap C-a, C-x
+function ble/widget/vi_nmap/increment.impl {
+  local delta=$1
+  ((delta==0)) && return 0
+
+  # 数字の範囲の確定
+  local line=${_ble_edit_str:_ble_edit_ind}
+  line=${line%%$'\n'*}
+  local rex='^([^0-9]*)[0-9]+'
+  if ! [[ $line =~ $rex ]]; then
+    # 行末にいる時(空行を意味する)にはベルは鳴らさない。
+    [[ $line ]] && ble/widget/.bell 'number not found'
+    ble/keymap:vi/adjust-command-mode
+    return 0
+  fi
+  local rematch1=${BASH_REMATCH[1]}
+  local beg=$((_ble_edit_ind+${#rematch1}))
+  local end=$((_ble_edit_ind+${#BASH_REMATCH}))
+  rex='-?[0-9]*$'; [[ ${_ble_edit_str::beg} =~ $rex ]]
+  ((beg-=${#BASH_REMATCH}))
+
+  local number=${_ble_edit_str:beg:end-beg}
+  ((number+=delta))
+  ble/widget/.replace-range "$beg" "$end" "$number" 1
+  ble/keymap:vi/mark/set-previous-edit-area "$beg" $((beg+${#number}))
+  ble/keymap:vi/repeat/record
+  ble/widget/.goto-char $((beg+${#number}-1))
+  ble/keymap:vi/adjust-command-mode
+  return 0
+}
+function ble/widget/vi_nmap/increment {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  ble/widget/vi_nmap/increment.impl "$ARG"
+}
+function ble/widget/vi_nmap/decrement {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  ble/widget/vi_nmap/increment.impl $((-ARG))
 }
 
 function ble-decode/keymap:vi_nmap/define {
@@ -4439,6 +4478,9 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f u   vi_nmap/undo
   ble-bind -f C-r vi_nmap/redo
   ble-bind -f U   vi_nmap/revert
+
+  ble-bind -f C-a vi_nmap/increment
+  ble-bind -f C-x vi_nmap/decrement
 
   #----------------------------------------------------------------------------
   # bash

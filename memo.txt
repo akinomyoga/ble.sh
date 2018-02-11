@@ -690,7 +690,7 @@ tech
 
 2018-02-11
 
-  * keymap/emacs: 連続する delete-backward-char の場合 undo の記録をまとめる可能性?
+  * [保留] keymap/emacs: 連続する delete-backward-char の場合 undo の記録をまとめる可能性?
 
     現状では一文字ずつ記録しているので一文字ずつ undo される。
     現在の振る舞いの方が良いのか emacs と同様にまとめた方が良いかは微妙な所である。
@@ -985,7 +985,7 @@ tech
 
     意外とそんなに残っていないようなので。
 
-    * nmap: C-a C-x C-^ '括弧 `括弧
+    * nmap: C-^ '括弧 `括弧
       C-t C-] M Q ZZ ZQ do dp { }
       [{char} ]{char} z{char} C-w{char}
       g<C-a> g<C-g> g<C-h> g<C-]> g# g* g$ g&
@@ -3041,6 +3041,46 @@ tech
 -------------------------------------------------------------------------------
 
 2018-02-11
+
+  * vi-mode: nmap C-a C-x 対応
+
+    [振る舞い]
+
+    先ずは振る舞いについて調べる。
+
+    現在行が空行の時は何もしない。
+    現在位置から現在行末までから数字を探し、
+    その数字から前方・後方へ拡張する。符号 - も拡張する。符号 + は無視する。
+    引数 (既定値 1) を加算・減算した文字列で置き換える。
+    変更後のカーソルの位置は最後の数字の一つ前。
+
+    `[`] は置き換えた範囲になる。. はそんなに考えなくて良い。
+
+    念のため help の記述についても確認しておく。
+
+    | CTRL-X                  Subtract [count] from the number or alphabetic
+    |                         character at or after the cursor.  {not in Vi}
+    | CTRL-A                  Add [count] to the number or alphabetic character at
+    |                         or after the cursor.  {not in Vi}
+
+    特に目新しいことは書かれていない。
+
+    [実装]
+
+    さて、`[`] 及び . に関連して参照実装として何を選べば良いだろうか。
+    例えば、ble/widget/vi_nmap/forward-char-toggle-case が replace-range を呼び出している編集関数である。
+    実装した。動作確認をする。
+
+    x fixed: その行の一番最後の数字について変更が行われている。
+      正規表現において prefix (.*) の部分に数字を許しているのがいけなかった。
+      これは ([^0-9]*) に書き換えることにする。
+
+    x fixed: 負号より前にカーソルが合った時に負号が考慮に入れられていない。
+      これも正規表現の都合である (.*) によって負号が先に読み取られてしまうので prefix と解釈されている。
+
+    o 空行では何も起こらない。行内で現在位置よりも後に数字がない時はベル。
+
+    o `[`] は設定されている。. も正しく設定されている。
 
   * 2017-12-03 keymap/emacs: undo/redo に対応する。
 
