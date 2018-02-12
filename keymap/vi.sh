@@ -958,7 +958,7 @@ function ble/widget/vi-command/beginning-of-line {
 }
 
 #------------------------------------------------------------------------------
-# operators / movements
+# Operators
 
 
 ## オペレータは以下の形式の関数として定義される。
@@ -1577,6 +1577,89 @@ function ble/keymap:vi/operator:fold-preserve-point {
 }
 
 #--------------------------------------
+# Filter operator: !
+
+_ble_keymap_vi_filter_args=()
+_ble_keymap_vi_filter_repeat=()
+
+_ble_keymap_vi_filter_history=()
+_ble_keymap_vi_filter_history_edit=()
+_ble_keymap_vi_filter_history_dirt=()
+_ble_keymap_vi_filter_history_ind=0
+_ble_keymap_vi_filter_history_onleave=()
+
+function ble/keymap:vi/operator:filter/.cache-repeat {
+  local -a _ble_keymap_vi_repeat _ble_keymap_vi_repeat_irepeat
+  ble/keymap:vi/repeat/record-normal
+  _ble_keymap_vi_filter_repeat=("${_ble_keymap_vi_repeat[@]}")
+}
+function ble/keymap:vi/operator:filter/.record-repeat {
+  ble/keymap:vi/repeat/record-special && return
+  local command=$1
+  _ble_keymap_vi_repeat=("${_ble_keymap_vi_filter_repeat[@]}")
+  _ble_keymap_vi_repeat_irepeat=()
+  _ble_keymap_vi_repeat[10]=$command
+}
+function ble/keymap:vi/operator:filter {
+  local context=$3
+  [[ $context != line ]] && ble/keymap:vi/expand-range-for-linewise-operator
+  _ble_keymap_vi_filter_args=("$beg" "$end" "${@:3}")
+
+  if [[ $_ble_keymap_vi_repeat_invoke ]]; then
+    # nmap . によって繰り返しが要求された時
+    local command=${_ble_keymap_vi_repeat[10]}
+    ble/keymap:vi/operator:filter/.hook "$command"
+    return
+  else
+    # 通常の呼び出し時
+    ble/keymap:vi/operator:filter/.cache-repeat
+    _ble_edit_ind=$beg
+    _ble_edit_mark=$end
+    _ble_edit_mark_active=1
+    ble/keymap:vi/async-commandline-mode 'ble/keymap:vi/operator:filter/.hook'
+    _ble_edit_PS1='!'
+    _ble_edit_history_prefix=_ble_keymap_vi_filter
+    _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
+    return 148
+  fi
+}
+function ble/keymap:vi/operator:filter/.hook {
+  local command=$1 # 入力されたコマンド
+  if [[ ! $command ]]; then
+    ble/widget/vi-command/bell
+    return 1
+  fi
+  local beg=${_ble_keymap_vi_filter_args[0]}
+  local end=${_ble_keymap_vi_filter_args[1]}
+  local context=${_ble_keymap_vi_filter_args[2]}
+
+  _ble_edit_mark_active=
+
+  local old=${_ble_edit_str:beg:end-beg} new
+  old=${old%$'\n'}
+  if ! ble/util/assign new 'eval "$command" <<< "$old" 2>/dev/null'; then
+    ble/widget/vi-command/bell
+    return 1
+  fi
+  new=${new%$'\n'}$'\n'
+  ble/widget/.replace-range "$beg" "$end" "$new" 1
+
+  ble/widget/.goto-char "$beg"
+  if [[ $context == line ]]; then
+    ble/widget/vi-command/first-non-space
+  else
+    ble/keymap:vi/adjust-command-mode
+  fi
+
+  ble/keymap:vi/mark/set-previous-edit-area "$beg" $((beg+${#new}))
+  ble/keymap:vi/operator:filter/.record-repeat "$command"
+  return 0
+}
+
+#------------------------------------------------------------------------------
+# Motions
+
+#--------------------------------------
 # Primitive motion
 
 ## 関数 ble/widget/vi-command/exclusive-range.impl src dst flag reg nobell
@@ -1942,6 +2025,9 @@ function ble/keymap:vi/mark/get-local-mark {
 
 # `[ `]
 _ble_keymap_vi_mark_suppress_edit=
+## 関数 ble/keymap:vi/mark/set-previous-edit-area beg end
+##   @param[in] beg
+##   @param[in] end
 function ble/keymap:vi/mark/set-previous-edit-area {
   [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
   local beg=$1 end=$2
@@ -4344,6 +4430,7 @@ function ble/keymap:vi/setup-map {
   ble-bind -f c 'vi-command/operator c'
   ble-bind -f '<' 'vi-command/operator indent-left'
   ble-bind -f '>' 'vi-command/operator indent-right'
+  ble-bind -f '!' 'vi-command/operator filter'
   ble-bind -f 'g ~' 'vi-command/operator toggle_case'
   ble-bind -f 'g u' 'vi-command/operator u'
   ble-bind -f 'g U' 'vi-command/operator U'
@@ -6076,6 +6163,7 @@ function ble/keymap:vi/async-commandline-mode {
   _ble_keymap_vi_cmap_before_command=
 
   # 記録
+  ble/textarea#render
   ble/textarea#save-state _ble_keymap_vi_cmap
   _ble_keymap_vi_cmap_history_prefix=$_ble_edit_history_prefix
 
