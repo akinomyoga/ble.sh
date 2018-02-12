@@ -982,6 +982,10 @@ function ble/widget/vi-command/beginning-of-line {
 ##     行指向オペレータのとき範囲が拡大されることがある。
 ##     その時 beg に拡大後の開始点を返す。
 ##
+##   @var[out] ble_keymap_vi_operator_index
+##     オペレータ作用後のカーソル位置を明示するとき、
+##     オペレータ内部でこの変数に値を設定する。
+##
 ##   @exit
 ##     operator 関数が終了ステータス 148 を返したとき、
 ##     operator が非同期に入力を読み取ることを表します。
@@ -1023,10 +1027,13 @@ function ble/keymap:vi/call-operator-charwise {
   local ch=$1 beg=$2 end=$3 arg=$4 reg=$5
   ((beg<=end||(beg=$3,end=$2)))
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+    local ble_keymap_vi_operator_index=
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" char "$arg" "$reg"; local ext=$?
     ((ext==148)) && return 148
-    ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
-    ble/widget/.goto-char "$beg"
+
+    local index=${ble_keymap_vi_operator_index:-$beg}
+    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+    ble/widget/.goto-char "$index"
     return 0
   else
     return 1
@@ -1041,13 +1048,20 @@ function ble/keymap:vi/call-operator-linewise {
   ble-edit/content/find-logical-eol "$b" "$ib"; local end=$ret
 
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+    local ble_keymap_vi_operator_index=
     ((end<${#_ble_edit_str}&&end++))
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" line "$arg" "$reg"; local ext=$?
     ((ext==148)) && return 148
-    ble-edit/content/find-logical-bol "$beg"; beg=$ret # operator 中で beg が変更されているかも
-    ble-edit/content/find-non-space "$beg"; local nol=$ret
-    ble/keymap:vi/needs-eol-fix "$nol" && ((nol--))
-    ble/widget/.goto-char "$nol"
+
+    # index
+    if [[ $ble_keymap_vi_operator_index ]]; then
+      local index=$ble_keymap_vi_operator_index
+    else
+      ble-edit/content/find-logical-bol "$beg"; beg=$ret # operator 中で beg が変更されているかも
+      ble-edit/content/find-non-space "$beg"; local index=$ret
+    fi
+    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+    ble/widget/.goto-char "$index"
     return 0
   else
     return 1
@@ -1061,13 +1075,15 @@ function ble/keymap:vi/call-operator-blockwise {
     local nrange=${#sub_ranges[@]}
     ((nrange)) || return 1
 
+    local ble_keymap_vi_operator_index=
     local beg=${sub_ranges[0]}; beg=${beg%%:*}
     local end=${sub_ranges[nrange-1]}; end=${end#*:}; end=${end%%:*}
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" block "$arg" "$reg"
     ((ext==148)) && return 148
 
-    ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
-    ble/widget/.goto-char "$beg"
+    local index=${ble_keymap_vi_operator_index:-$beg}
+    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+    ble/widget/.goto-char "$index"
     return 0
   else
     return 1
@@ -1258,10 +1274,10 @@ function ble/keymap:vi/string#increase-indent {
 
   IFS=$'\n' eval 'ret=${arr2[*]-}'
 }
-## 関数 ble/keymap:vi/operator:increase-indent.impl/increase-block-indent width
+## 関数 ble/keymap:vi/operator:indent.impl/increase-block-indent width
 ##   @param[in] width
 ##   @var[in] sub_ranges
-function ble/keymap:vi/operator:increase-indent.impl/increase-block-indent {
+function ble/keymap:vi/operator:indent.impl/increase-block-indent {
   local width=$1
   local isub=${#sub_ranges[@]}
   local sub smin slpad ret
@@ -1272,10 +1288,10 @@ function ble/keymap:vi/operator:increase-indent.impl/increase-block-indent {
     ble/widget/.replace-range "$smin" "$smin" "$ret" 1
   done
 }
-## 関数 ble/keymap:vi/operator:increase-indent.impl/decrease-graphical-block-indent width
+## 関数 ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent width
 ##   @param[in] width
 ##   @var[in] sub_ranges
-function ble/keymap:vi/operator:increase-indent.impl/decrease-graphical-block-indent {
+function ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent {
   local width=$1
   local it=${bleopt_tab_width:-$_ble_term_it} cols=$_ble_textmap_cols
   local sub smin slpad ret
@@ -1315,10 +1331,10 @@ function ble/keymap:vi/operator:increase-indent.impl/decrease-graphical-block-in
     ble/widget/.replace-range "${rep[@]::3}" 1
   done
 }
-## 関数 ble/keymap:vi/operator:increase-indent.impl/decrease-logical-block-indent width
+## 関数 ble/keymap:vi/operator:indent.impl/decrease-logical-block-indent width
 ##   @param[in] width
 ##   @var[in] sub_ranges
-function ble/keymap:vi/operator:increase-indent.impl/decrease-logical-block-indent {
+function ble/keymap:vi/operator:indent.impl/decrease-logical-block-indent {
   # タブは幅 it で固定と見做して削除する
   local width=$1
   local it=${bleopt_tab_width:-$_ble_term_it}
@@ -1350,16 +1366,16 @@ function ble/keymap:vi/operator:increase-indent.impl/decrease-logical-block-inde
     ble/widget/.replace-range "$smin" "$nsp" "$padding" 1
   done
 }
-function ble/keymap:vi/operator:increase-indent.impl {
+function ble/keymap:vi/operator:indent.impl {
   local delta=$1 context=$2
   ((delta)) || return 0
   if [[ $context == block ]]; then
     if ((delta>=0)); then
-      ble/keymap:vi/operator:increase-indent.impl/increase-block-indent "$delta"
+      ble/keymap:vi/operator:indent.impl/increase-block-indent "$delta"
     elif ble/edit/use-textmap; then
-      ble/keymap:vi/operator:increase-indent.impl/decrease-graphical-block-indent $((-delta))
+      ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent $((-delta))
     else
-      ble/keymap:vi/operator:increase-indent.impl/decrease-logical-block-indent $((-delta))
+      ble/keymap:vi/operator:indent.impl/decrease-logical-block-indent $((-delta))
     fi
   else
     [[ $context == char ]] && ble/keymap:vi/expand-range-for-linewise-operator
@@ -1370,18 +1386,194 @@ function ble/keymap:vi/operator:increase-indent.impl {
     ble/widget/.replace-range "$beg" "$end" "$content" 1
 
     if [[ $context == char ]]; then
-      ble-edit/content/find-non-space "$beg"; beg=$ret
+      ble-edit/content/find-non-space "$beg"
+      ble_keymap_vi_operator_index=$ret
     fi
   fi
   return 0
 }
 function ble/keymap:vi/operator:indent-left {
   local context=$3 arg=${4:-1}
-  ble/keymap:vi/operator:increase-indent.impl $((-bleopt_indent_offset*arg)) "$context"
+  ble/keymap:vi/operator:indent.impl $((-bleopt_indent_offset*arg)) "$context"
 }
 function ble/keymap:vi/operator:indent-right {
   local context=$3 arg=${4:-1}
-  ble/keymap:vi/operator:increase-indent.impl $((bleopt_indent_offset*arg)) "$context"
+  ble/keymap:vi/operator:indent.impl $((bleopt_indent_offset*arg)) "$context"
+}
+
+#--------------------------------------
+# Fold operators gq gw
+
+## 関数 ble/keymap:vi/string#measure-width text
+##   指定した文字列の表示上の幅を計測します。
+##
+##   @param[in] text
+##   @var[out] ret
+##
+##   折り返し処理は行いません。
+##   タブや改行などの特別処理は行いません。
+##   C0 文字は 2 文字として取り扱います。
+##   C1 文字は 4 文字として取り扱います。
+function ble/keymap:vi/string#measure-width {
+  local text=$1 iN=${#1} i=0 s=0
+  while ((i<iN)); do
+    if ble/util/isprint+ "${text:i}"; then
+      ((s+=${#BASH_REMATCH},
+        i+=${#BASH_REMATCH}))
+    else
+      ble/util/s2c "$text" "$i"
+      ble/util/c2w-edit "$ret"
+      ((s+=ret,i++))
+    fi
+  done
+  ret=$s
+}
+## 関数 ble/keymap:vi/string#fold/.get-interval text x
+##   単語間のスペースの表示上の幅を計算します。
+##
+##   @param[in] text
+##     スペース・タブで構成される文字列を指定します。
+##   @param[in] x
+##     画面上の初期位置を指定します。
+##   @var[out] ret
+##
+function ble/keymap:vi/string#fold/.get-interval {
+  local text=$1 x=$2
+  local it=${bleopt_tab_width:-${_ble_term_it:-8}}
+
+  local i=0 iN=${#text}
+  for ((i=0;i<iN;i++)); do
+    if [[ ${text:i:1} == $'\t' ]]; then
+      ((x=(x/it+1)*it))
+    else
+      ((x++))
+    fi
+  done
+  ret=$((x-$2))
+}
+## 関数 ble/keymap:vi/string#fold text [cols]
+##   @param[in]     text
+##   @param[in,opt] cols [既定値 ${COLUMNS:-80}]
+##     折り返す幅を指定します。
+##     cols-1 列以内に表示文字が収まる様に折り返し処理されます。
+##     但し長い単語の途中で折り返しは起こりません。
+##   @var[out] ret
+function ble/keymap:vi/string#fold {
+  local text=$1
+  local cols=${2:-${COLUMNS-80}}
+  local sp=$' \t' nl=$'\n'
+
+  # 途中状態について
+  #   @var i       text 内の現在処理している位置
+  #   @var out     今までに確定した結果文字列
+  #   @var otmp    保留中の単語間スペース。次の単語が来て初めて確定する。
+  #   @var x       $out を処理した後の表示横位置
+  #   @var xtmp    $out$otmp を処理した後の表示横位置
+  #   @var isfirst 初回の正規表現一致かどうか
+  #   @var indent  インデント (改行直後に挿入する空白類)
+  #   @var xindent インデント挿入直後の表示横位置
+  local i=0 out= otmp= x=0 xtmp=0
+  local isfirst=1 indent= xindent=0
+
+  local rex='^([^'$nl$sp']+)|^(['$sp']+)|^.'
+  while [[ ${text:i} =~ $rex ]]; do
+    ((i+=${#BASH_REMATCH}))
+    if [[ ${BASH_REMATCH[1]} ]]; then
+      # 単語
+      local word=${BASH_REMATCH[1]}
+      ble/keymap:vi/string#measure-width "$word"
+      if ((xtmp+ret<cols||xtmp<=xindent)); then
+        out=$out$otmp$word
+        ((x=xtmp+=ret))
+      else
+        out=$out$'\n'$indent$word
+        ((x=xtmp=xindent+ret))
+      fi
+      otmp=
+    else
+      local w=1
+      if [[ ${BASH_REMATCH[2]} ]]; then
+        [[ $otmp ]] && continue # 改行直後の空白は無視
+        # 単語間のスペース
+        otmp=${BASH_REMATCH[2]}
+        ble/keymap:vi/string#fold/.get-interval "$otmp" "$x"; w=$ret
+        [[ $isfirst ]] && indent=$otmp xindent=$ret # インデント記録
+      else
+        # 改行は空白に置換。既存の空白 otmp は消去。
+        otmp=' ' w=1
+      fi
+
+      if ((x+w<cols)); then
+        ((xtmp=x+w))
+      else
+        ((xtmp=xindent))
+        otmp=$'\n'$indent
+      fi
+    fi
+    isfirst=
+  done
+  ret=$out
+}
+function ble/keymap:vi/operator:fold/.fold-paragraphwise {
+  local text=$1
+  local cols=${2:-${COLUMNS:-80}}
+
+  local nl=$'\n' sp=$' \t'
+  local rex_paragraph='^((['$sp']*'$nl')*)(['$sp']*[^'$sp$nl'][^'$nl']*('$nl'|$))+'
+
+  local i=0 out=
+  while [[ ${text:i} =~ $rex_paragraph ]]; do
+    ((i+=${#BASH_REMATCH}))
+    local rematch1=${BASH_REMATCH[1]}
+    local len1=${#rematch1}
+    local paragraph=${BASH_REMATCH:len1}
+
+    # fold (実はここだけ変えれば paragraphwise の様々な処理を実装できる)
+    ble/keymap:vi/string#fold "$paragraph" "$cols"
+    paragraph=${ret%$'\n'}$'\n'
+
+    out=$out$rematch1$paragraph
+  done
+  ret=$out${text:i}
+}
+
+function ble/keymap:vi/operator:fold.impl {
+  local context=$1 opts=$2
+  local ret
+
+  [[ $context != line ]] && ble/keymap:vi/expand-range-for-linewise-operator
+  local old=${_ble_edit_str:beg:end-beg} oind=$_ble_edit_ind
+
+  local cols=${COLUMNS:-80}; ((cols>80&&(cols=80)))
+  ble/keymap:vi/operator:fold/.fold-paragraphwise "$old" "$cols"; local new=$ret
+  ble/widget/.replace-range "$beg" "$end" "$new" 1
+
+  # 変換後のカーソル位置を修正。
+  if [[ :$opts: == *:preserve_point:* ]]; then
+    # gw: もともとカーソルが合った文字に移動。
+    if ((end<=oind)); then
+      ble_keymap_vi_operator_index=$((beg+${#new}))
+    elif ((beg<oind)); then
+      ble/keymap:vi/operator:fold/.fold-paragraphwise "${old::oind-beg}" "$cols"
+      ble_keymap_vi_operator_index=$((beg+${#ret}))
+    fi
+  else
+    # gq: 最終行の非空白行頭 (gq) に移動。
+    if [[ $new ]]; then
+      ble-edit/content/find-logical-bol $((beg+${#new}-1))
+      ble-edit/content/find-non-space "$ret"
+      ble_keymap_vi_operator_index=$ret
+    fi
+  fi
+  return 0
+}
+function ble/keymap:vi/operator:fold {
+  local context=$3
+  ble/keymap:vi/operator:fold.impl "$context"
+}
+function ble/keymap:vi/operator:fold-preserve-point {
+  local context=$3
+  ble/keymap:vi/operator:fold.impl "$context" preserve_point
 }
 
 #--------------------------------------
@@ -4156,6 +4348,8 @@ function ble/keymap:vi/setup-map {
   ble-bind -f 'g u' 'vi-command/operator u'
   ble-bind -f 'g U' 'vi-command/operator U'
   ble-bind -f 'g ?' 'vi-command/operator rot13'
+  ble-bind -f 'g q' 'vi-command/operator fold'
+  ble-bind -f 'g w' 'vi-command/operator fold-preserve-point'
   # ble-bind -f 'g @' 'vi-command/operator @' # (operatorfunc opfunc)
   # ble-bind -f '!'   'vi-command/operator !' # コマンド
   # ble-bind -f '='   'vi-command/operator =' # インデント (equalprg, ep)
@@ -4265,6 +4459,8 @@ function ble-decode/keymap:vi_omap/define {
   ble-bind -f 'u' 'vi-command/operator u'
   ble-bind -f 'U' 'vi-command/operator U'
   ble-bind -f '?' 'vi-command/operator rot13'
+  ble-bind -f 'q' 'vi-command/operator fold'
+  ble-bind -f 'w' 'vi-command/operator fold-preserve-point'
 }
 
 #------------------------------------------------------------------------------

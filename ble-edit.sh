@@ -1782,10 +1782,10 @@ function ble-edit/info/.construct-text {
   local cols=${COLUMNS-80}
   local lines=$(((LINES?LINES:0)-_ble_textarea_gendy-2))
 
-  local text="$1" out=
+  local text=$1 out=
   local i iN=${#text}
   for ((i=0;i<iN;)); do
-    local tail="${text:i}"
+    local tail=${text:i}
 
     if ble/util/isprint+ "$tail"; then
       ble-edit/info/.put-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
