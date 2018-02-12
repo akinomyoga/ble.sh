@@ -1656,6 +1656,23 @@ function ble/keymap:vi/operator:filter/.hook {
   return 0
 }
 
+#--------------------------------------
+# User operator: g@
+
+: ${bleopt_keymap_vi_operatorfunc=}
+
+function ble/keymap:vi/operator:map {
+  local context=$3
+  if [[ $bleopt_keymap_vi_operatorfunc ]]; then
+    local opfunc=ble/keymap:vi/operator:$bleopt_keymap_vi_operatorfunc
+    if ble/util/isfunction "$opfunc"; then
+      "$opfunc" "$@"
+      return
+    fi
+  fi
+  return 1
+}
+
 #------------------------------------------------------------------------------
 # Motions
 
@@ -4437,10 +4454,8 @@ function ble/keymap:vi/setup-map {
   ble-bind -f 'g ?' 'vi-command/operator rot13'
   ble-bind -f 'g q' 'vi-command/operator fold'
   ble-bind -f 'g w' 'vi-command/operator fold-preserve-point'
-  # ble-bind -f 'g @' 'vi-command/operator @' # (operatorfunc opfunc)
-  # ble-bind -f '!'   'vi-command/operator !' # コマンド
+  ble-bind -f 'g @' 'vi-command/operator map'
   # ble-bind -f '='   'vi-command/operator =' # インデント (equalprg, ep)
-  # ble-bind -f 'g q' 'vi-command/operator q' # 整形?
   # ble-bind -f 'z f' 'vi-command/operator f'
 
   ble-bind -f paste_begin vi-command/bracketed-paste
@@ -4548,6 +4563,7 @@ function ble-decode/keymap:vi_omap/define {
   ble-bind -f '?' 'vi-command/operator rot13'
   ble-bind -f 'q' 'vi-command/operator fold'
   ble-bind -f 'w' 'vi-command/operator fold-preserve-point'
+  ble-bind -f '@' 'vi-command/operator map'
 }
 
 #------------------------------------------------------------------------------
@@ -5891,6 +5907,7 @@ function ble-decode/keymap:vi_xmap/define {
   ble-bind -f '~' 'vi-command/operator toggle_case'
   ble-bind -f 'u' 'vi-command/operator u'
   ble-bind -f 'U' 'vi-command/operator U'
+  ble-bind -f '@' 'vi-command/operator map'
 
   ble-bind -f 's' 'vi-command/operator c'
   ble-bind -f 'x'    'vi-command/operator d'

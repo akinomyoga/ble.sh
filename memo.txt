@@ -704,6 +704,11 @@ tech
     その為には現在の描画におけるスクロール量と、
     内部の論理的なスクロール量の二つの変数を用意する必要がある。
 
+  * [保留] vi-mode: operators 保留項目 [#tmp0002]
+
+    * 領域折り畳み zf には対応しない。
+    * gq の formatexpr, formatprg には未対応である。
+
 2018-02-11
 
   * [保留] keymap/emacs: 連続する delete-backward-char の場合 undo の記録をまとめる可能性?
@@ -1096,7 +1101,7 @@ tech
 
 2017-09-18
 
-  * vi-mode: =
+  * vi-mode: operator = [#tmp0001]
 
     :help = を見ると (設定 equalprog || 内部関数 C-indenting, lisp || 外部コマンド indent) が使われるそうだ。
     但し、indentexpr が非空白の時、indentexpr が使われる (参照: indent-expression)。
@@ -1170,35 +1175,6 @@ tech
 
     コマンド名に応じた補完関数の設定を可能にする?
     例えば python3 に対する here document の場合には、import を補完候補に出すなど。
-
-
-2017-09-12
-
-  * vi-mode: operators
-
-    % ydc の他にも色々ある。
-    %
-    % http://vim-jp.org/vimdoc-ja/motion.html#operator
-    %
-    % ! = > < gq zf g@
-    %
-    % この内 g~ gu gU g? g@ は y と同様に文字列の長さを変えないものである。
-    %
-    % また ! = > < gq zf は例え文字列単位の範囲であっても行単位の操作に変換する。
-    % 従って、処理を行った後の beg 及び end の位置は変更を受けることになる。
-    % これは operator:* 関数内からいじっても良いということにすれば現在の枠組みで十分対応可能である。
-    % 何れにしてもそれぞれの機能の動作について調べてから実装する必要はある。
-    %
-    % →実際に < > の実装で (type == char のときに) beg を修正することにした。
-    % ! = gq zf の実装では < > の実装を参考にすれば良い。
-
-    * todo: = g@ zf
-
-    * opfunc/g@ はどうやら Vim script のキーボードマクロで使われるようだ。
-
-    * zf は領域の折り畳み。対話シェルでは長いコマンドの編集は推奨されないし、これには対応しない。
-
-    * gq の formatexpr, formatprg には未対応。
 
 2017-08-19
 
@@ -3037,13 +3013,51 @@ tech
 
 2018-02-12
 
-  * vi-mode: operator ! の実装
+  * 2017-09-12 vi-mode: operators
+
+    % ydc の他にも色々ある。
+    %
+    % http://vim-jp.org/vimdoc-ja/motion.html#operator
+    %
+    % ! = > < gq zf g@
+    %
+    % この内 g~ gu gU g? g@ は y と同様に文字列の長さを変えないものである。
+    %
+    % また ! = > < gq zf は例え文字列単位の範囲であっても行単位の操作に変換する。
+    % 従って、処理を行った後の beg 及び end の位置は変更を受けることになる。
+    % これは operator:* 関数内からいじっても良いということにすれば現在の枠組みで十分対応可能である。
+    % 何れにしてもそれぞれの機能の動作について調べてから実装する必要はある。
+    %
+    % →実際に < > の実装で (type == char のときに) beg を修正することにした。
+    % ! = gq zf の実装では < > の実装を参考にすれば良い。
+
+    > gq, gw #D0652
+    > ! #D0653
+    > g@ #D0654
+    * todo = #tmp0001
+
+    * zf は領域の折り畳み。対話シェルでは長いコマンドの編集は推奨されないし、これには対応しない。
+    * gq の formatexpr, formatprg には未対応。
+
+    取り敢えず = 以外は実装したのでこの項目は Done に移動する事にする。
+    残っている事柄については新しい項目 #tmp0002 を立てる。
+
+  * vi-mode: operator g@ の実装 [#D0654]
+
+    | 2017-09-12
+    | * opfunc/g@ はどうやら Vim script のキーボードマクロで使われるようだ。
+
+    実際に需要があるかどうかはともかくとして対応することにした。
+    これは bleopt 変数 keymap_vi_operatorfunc を定義することにした。
+    この変数に operator:NAME の NAME 部分を指定する。
+
+  * vi-mode: operator ! の実装 [#D0653]
 
     `nmap .` による繰り返しの登録については ble/lib/vim-surround.sh/ysurround.repeat/{entry,record} の使い方を参考にする。
     vim-surround では 繰り返し時のオペレータの名前を変更する事によって区別することにしていたが、
     今回の実装では $_ble_keymap_vi_repeat_invoke が設定されているかどうかで判定する事にした。
 
-  * vi-mode: operator gq, gw
+  * vi-mode: operator gq, gw [#D0652]
 
     取り敢えず、与えられた文字列を変換する関数を書く。
     先ずは、文字の幅を考えずに文字数だけで実装する。
@@ -3136,7 +3150,7 @@ tech
     o 80 桁ではなく 79 桁に収まる様にする。
     o 改行直後の空白類は潰れる
 
-  * 2018-01-19 誤って PATH に変な値を設定してしまうと動かなくなる。
+  * 2018-01-19 誤って PATH に変な値を設定してしまうと動かなくなる。 [#D0651]
 
     呼び出している外部コマンドの一覧を作って、
     更にそれらのコマンドをフルパスで呼び出す様に修正する必要がある。
@@ -3147,7 +3161,7 @@ tech
 
 2018-02-11
 
-  * vi-mode: nmap C-a C-x 対応
+  * vi-mode: nmap C-a C-x 対応 [#D0650]
 
     [振る舞い]
 
@@ -3187,7 +3201,7 @@ tech
 
     o `[`] は設定されている。. も正しく設定されている。
 
-  * 2017-12-03 keymap/emacs: undo/redo に対応する。
+  * 2017-12-03 keymap/emacs: undo/redo に対応する。 [#D0649]
 
     現在はそもそも記録を行っていない。
     後、各 widget について対応を行うとすると vi_imap とかち合うので注意が必要である。
@@ -3211,13 +3225,13 @@ tech
     その様に考えるとその他の delete-*-?word などについても undo/add して良い気がする。
     という訳で delete-*-?word も white list から除外した。
 
-  * 2018-12-04 keymap/vi (nmap u, U, C-r): 引き数に対応する。
+  * 2018-12-04 keymap/vi (nmap u, U, C-r): 引き数に対応する。 [#D0648]
 
-  * getindex/getcount の関数名を変更
+  * getindex/getcount の関数名を変更 [#D0647]
 
     refactor getindex, getcount → get-index, get-count
 
-  * 2017-12-04 keymap/emacs: 引き数
+  * 2017-12-04 keymap/emacs: 引き数 [#D0646]
 
     - done: ble/widget/insert-string
 
