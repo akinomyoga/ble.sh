@@ -440,9 +440,9 @@ function ble-complete/source/argument/.compgen {
   local arr rex_compv
   ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
   if [[ $use_workaround_for_git ]]; then
-    ble/util/assign-array arr 'command sed -n "/^\$/d;/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
+    ble/util/assign-array arr 'ble/bin/sed -n "/^\$/d;/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | ble/bin/sort -u' 2>/dev/null
   else
-    ble/util/assign-array arr 'command sed -n "/^\$/d;/^$rex_compv/p" <<< "$compgen" | command sort -u' 2>/dev/null
+    ble/util/assign-array arr 'ble/bin/sed -n "/^\$/d;/^$rex_compv/p" <<< "$compgen" | ble/bin/sort -u' 2>/dev/null
   fi
 
   local action=argument

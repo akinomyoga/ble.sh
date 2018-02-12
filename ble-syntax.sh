@@ -4422,7 +4422,7 @@ function ble-syntax/highlight/cmdtype2 {
       ((type=ATTR_CMD_JOBS))
     elif ble/util/isfunction "$cmd"; then
       ((type=ATTR_CMD_FUNCTION))
-    elif enable -p | command grep -q -F -x "enable $cmd" &>/dev/null; then
+    elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
       ((type=ATTR_CMD_BUILTIN))
     elif type -P -- "$cmd" &>/dev/null; then
       ((type=ATTR_CMD_FILE))
@@ -4848,8 +4848,8 @@ function ble-highlight-layer:syntax/update {
   if [[ $ble_debug ]]; then
     local status buff= nl=$'\n'
     _ble_syntax_attr_umin=$debug_attr_umin _ble_syntax_attr_umax=$debug_attr_uend ble-syntax/print-status -v status
-    ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | cat -A'; status="$status${buff%$nl}$nl"
-    ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | cat -A'; status="$status${buff%$nl}$nl"
+    ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | ble/bin/cat -A'; status="$status${buff%$nl}$nl"
+    ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | ble/bin/cat -A'; status="$status${buff%$nl}$nl"
     #ble/util/assign buff 'declare -p _ble_textarea_bufferName $_ble_textarea_bufferName | cat -A'; status="$status$buff"
     ble-edit/info/show raw "$status"
   fi

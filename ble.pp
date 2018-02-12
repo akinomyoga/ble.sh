@@ -102,13 +102,44 @@ fi
 _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
 
+#------------------------------------------------------------------------------
 # check environment
 
+# ble/bin
+
+## 関数 ble/bin/.default-utility-path commands...
+##   取り敢えず ble/bin/* からコマンドを呼び出せる様にします。
+function ble/bin/.default-utility-path {
+  local cmd
+  for cmd; do
+    eval "function ble/bin/$cmd { command $cmd \"\$@\"; }"
+  done
+}
+## 関数 ble/bin/.freeze-utility-path commands...
+##   PATH が破壊された後でも ble が動作を続けられる様に、
+##   現在の PATH で基本コマンドのパスを固定して ble/bin/* から使える様にする。
+##
+##   実装に ble/util/assign を使用しているので ble-core 初期化後に実行する必要がある。
+##
+function ble/bin/.freeze-utility-path {
+  local cmd path q=\' Q="'\''" fail=
+  for cmd; do
+    if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
+      eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
+    else
+      fail=1
+    fi
+  done
+  ((!fail))
+}
+
+# POSIX utilities
+
+_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat wc)
 function ble/.check-environment {
-  local posixCommandList='sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat wc'
-  if ! type $posixCommandList &>/dev/null; then
+  if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
     local cmd commandMissing=
-    for cmd in $posixCommandList; do
+    for cmd in "${_ble_init_posix_command_list[@]}"; do
       if ! type "$cmd" &>/dev/null; then
         commandMissing="$commandMissing\`$cmd', "
       fi
@@ -117,13 +148,15 @@ function ble/.check-environment {
 
     # try to fix PATH
     local default_path=$(command -p getconf PATH 2>/dev/null)
-    local original_path=$PATH
-    export PATH=${PATH}${PATH:+:}${default_path}
-    [[ :$PATH: == *:/usr/bin:* ]] || PATH=$PATH${PATH:+:}/usr/bin
-    [[ :$PATH: == *:/bin:* ]] || PATH=$PATH${PATH:+:}/bin
-    if ! type $posixCommandList &>/dev/null; then
-      PATH=$original_path
-      return 1
+    if [[ $default_path ]]; then
+      local original_path=$PATH
+      export PATH=${PATH}${PATH:+:}${default_path}
+      [[ :$PATH: == *:/usr/bin:* ]] || PATH=$PATH${PATH:+:}/usr/bin
+      [[ :$PATH: == *:/bin:* ]] || PATH=$PATH${PATH:+:}/bin
+      if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
+        PATH=$original_path
+        return 1
+      fi
     fi
 
     echo "ble.sh: modified PATH=\$PATH${PATH:${#original_path}}" >&2
@@ -134,7 +167,11 @@ function ble/.check-environment {
     echo "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
     return 1
   fi
+  ble/bin/.default-utility-path gawk
 #%end
+
+  # 暫定的な ble/bin/$cmd 設定
+  ble/bin/.default-utility-path "${_ble_init_posix_command_list[@]}"
 
   return 0
 }
@@ -184,12 +221,12 @@ function ble/base/.create-user-directory {
   local var=$1 dir=$2
   if [[ ! -d $dir ]]; then
     # dangling symlinks are silently removed
-    [[ ! -e $dir && -h $dir ]] && command rm -f "$dir"
+    [[ ! -e $dir && -h $dir ]] && ble/bin/rm -f "$dir"
     if [[ -e $dir || -h $dir ]]; then
       echo "ble.sh: cannot create a directory '$dir' since there is already a file." >&2
       return 1
     fi
-    if ! (umask 077; command mkdir -p "$dir"); then
+    if ! (umask 077; ble/bin/mkdir -p "$dir"); then
       echo "ble.sh: failed to create a directory '$dir'." >&2
       return 1
     fi
@@ -266,13 +303,13 @@ function ble/base/initialize-runtime-directory/.tmp {
 
   local tmp_dir=/tmp/blesh
   if [[ ! -d $tmp_dir ]]; then
-    [[ ! -e $tmp_dir && -h $tmp_dir ]] && command rm -f "$tmp_dir"
+    [[ ! -e $tmp_dir && -h $tmp_dir ]] && ble/bin/rm -f "$tmp_dir"
     if [[ -e $tmp_dir || -h $tmp_dir ]]; then
       echo "ble.sh: cannot create a directory '$tmp_dir' since there is already a file." >&2
       return 1
     fi
-    command mkdir -p "$tmp_dir" || return
-    command chmod a+rwxt "$tmp_dir" || return
+    ble/bin/mkdir -p "$tmp_dir" || return
+    ble/bin/chmod a+rwxt "$tmp_dir" || return
   elif ! [[ -r $tmp_dir && -w $tmp_dir && -x $tmp_dir ]]; then
     echo "ble.sh: permision of '$tmp_dir' is not correct." >&2
     return 1
@@ -287,8 +324,8 @@ function ble/base/initialize-runtime-directory {
   # fallback
   local tmp_dir=$_ble_base/tmp
   if [[ ! -d $tmp_dir ]]; then
-    command mkdir -p "$tmp_dir" || return
-    command chmod a+rwxt "$tmp_dir" || return
+    ble/bin/mkdir -p "$tmp_dir" || return
+    ble/bin/chmod a+rwxt "$tmp_dir" || return
   fi
   ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
 }
@@ -309,7 +346,7 @@ function ble/base/clean-up-runtime-directory {
       removed=("${removed[@]}" "$_ble_base_run/$pid."*)
     fi
   done
-  ((${#removed[@]})) && command rm -f "${removed[@]}"
+  ((${#removed[@]})) && ble/bin/rm -f "${removed[@]}"
 }
 
 # initialization time = 9ms (for 70 files)
@@ -352,8 +389,8 @@ function ble/base/initialize-cache-directory {
   # fallback
   local cache_dir=$_ble_base/cache.d
   if [[ ! -d $cache_dir ]]; then
-    command mkdir -p "$cache_dir" || return
-    command chmod a+rwxt "$cache_dir" || return
+    ble/bin/mkdir -p "$cache_dir" || return
+    ble/bin/chmod a+rwxt "$cache_dir" || return
 
     # relocate an old cache directory if any
     local old_cache_dir=$_ble_base/cache
@@ -375,6 +412,12 @@ fi
 
 ##%x inc.r/@/getopt/
 #%x inc.r/@/core/
+
+ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
+#%if use_gawk
+ble/bin/.freeze-utility-path gawk
+#%end
+
 #%x inc.r/@/decode/
 #%x inc.r/@/color/
 #%x inc.r/@/edit/

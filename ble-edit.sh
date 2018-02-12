@@ -5003,7 +5003,7 @@ function ble-edit/history/.generate-source-to-load-history {
 
   # 285ms for 16437 entries
   local apos="'"
-  builtin history | command awk -v apos="'" '
+  builtin history | ble/bin/awk -v apos="'" '
     BEGIN{
       n="";
       print "_ble_edit_history=("
@@ -6420,9 +6420,9 @@ function ble/widget/command-help.core {
     LESS="$LESS -r" eval 'declare -f "$command" | '"$pager" && return
   fi
 
-  MANOPT= command man "${command##*/}" 2>/dev/null && return
+  MANOPT= ble/bin/man "${command##*/}" 2>/dev/null && return
   # Note: $(man "${command##*/}") と (特に日本語で) 正しい結果が得られない。
-  # if local content=$(MANOPT= command man "${command##*/}" 2>&1) && [[ $content ]]; then
+  # if local content=$(MANOPT= ble/bin/man "${command##*/}" 2>&1) && [[ $content ]]; then
   #   builtin printf '%s\n' "$content" | ble/util/pager
   #   return
   # fi
@@ -6507,7 +6507,7 @@ function ble/widget/command-help/.type {
       type=jobs
     elif ble/util/isfunction "$command"; then
       type=function
-    elif enable -p | command grep -q -F -x "enable $cmd" &>/dev/null; then
+    elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
       type=builtin
     elif type -P -- "$cmd" &>/dev/null; then
       type=file
@@ -6591,8 +6591,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
   }
   function ble-edit/bind/stdout.finalize {
     ble-edit/bind/stdout.on
-    [[ -f $_ble_edit_io_fname1 ]] && command rm -f "$_ble_edit_io_fname1"
-    [[ -f $_ble_edit_io_fname2 ]] && command rm -f "$_ble_edit_io_fname2"
+    [[ -f $_ble_edit_io_fname1 ]] && ble/bin/rm -f "$_ble_edit_io_fname1"
+    [[ -f $_ble_edit_io_fname2 ]] && ble/bin/rm -f "$_ble_edit_io_fname2"
   }
 
   ## 関数 ble-edit/bind/stdout/check-stderr
@@ -6645,8 +6645,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
 
     trap -- 'ble-edit/bind/stdout/TRAPUSR1' USR1
 
-    command rm -f "$_ble_edit_io_fname2.pipe"
-    command mkfifo "$_ble_edit_io_fname2.pipe"
+    ble/bin/rm -f "$_ble_edit_io_fname2.pipe"
+    ble/bin/mkfifo "$_ble_edit_io_fname2.pipe"
     {
       {
         function ble-edit/stdout/check-ignoreeof-message {
@@ -6660,7 +6660,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
                $line = *'Gebruik Kaart na Los Tronk'* ]] && return 0
 
           # ignoreeof-messages.txt の中身をキャッシュする様にする?
-          [[ $line == *exit* ]] && command grep -q -F "$line" "$_ble_base"/ignoreeof-messages.txt
+          [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/ignoreeof-messages.txt
         }
 
         while IFS= builtin read -r line; do

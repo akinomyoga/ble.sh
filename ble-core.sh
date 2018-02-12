@@ -550,7 +550,7 @@ fi
 
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
-    declare -p "$@" | command awk -v _ble_bash="$_ble_bash" '
+    declare -p "$@" | ble/bin/awk -v _ble_bash="$_ble_bash" '
       BEGIN { decl = ""; }
       function declflush(_, isArray) {
         if (decl) {
@@ -693,9 +693,9 @@ if ((_ble_bash>=40200)); then
 else
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
-      ble/util/assign "$2" 'command date +"$3" $4'
+      ble/util/assign "$2" 'ble/bin/date +"$3" $4'
     else
-      command date +"$1" $2
+      ble/bin/date +"$1" $2
     fi
   }
 fi
@@ -712,36 +712,36 @@ if ((_ble_bash>=40000)); then
 
       ble/util/openat _ble_util_sleep_fd '< <(
         [[ $- == *i* ]] && trap -- '' INT QUIT
-        while kill -0 $$; do command sleep 300; done &>/dev/null
+        while kill -0 $$; do ble/bin/sleep 300; done &>/dev/null
       )'
     else
       _ble_util_sleep_tmp="$_ble_base_run/$$.ble_util_sleep.pipe"
       if [[ ! -p $_ble_util_sleep_tmp ]]; then
-        [[ -e $_ble_util_sleep_tmp ]] && command rm -rf "$_ble_util_sleep_tmp"
-        command mkfifo "$_ble_util_sleep_tmp"
+        [[ -e $_ble_util_sleep_tmp ]] && ble/bin/rm -rf "$_ble_util_sleep_tmp"
+        ble/bin/mkfifo "$_ble_util_sleep_tmp"
       fi
       ble/util/openat _ble_util_sleep_fd "<> $_ble_util_sleep_tmp"
     fi
 
     ble/util/sleep "$1"
   }
-elif type sleepenh &>/dev/null; then
-  function ble/util/sleep { command sleepenh "$1" &>/dev/null; }
-elif type usleep &>/dev/null; then
+elif ble/bin/.freeze-utility-path sleepenh; then
+  function ble/util/sleep { ble/bin/sleepenh "$1" &>/dev/null; }
+elif ble/bin/.freeze-utility-path usleep; then
   function ble/util/sleep {
     if [[ $1 == *.* ]]; then
       local sec=${1%%.*} sub=${1#*.}000000
       if (($sec)); then
-        command usleep "$sec${sub::6}"
+        ble/bin/usleep "$sec${sub::6}"
       else
-        command usleep "$((10#${sub::6}))"
+        ble/bin/usleep "$((10#${sub::6}))"
       fi
     else
-      command usleep "${1}000000"
+      ble/bin/usleep "${1}000000"
     fi
   }
 else
-  function ble/util/sleep { command sleep "$1"; }
+  function ble/util/sleep { ble/bin/sleep "$1"; }
 fi
 
 ## 関数 ble/util/cat
@@ -1312,7 +1312,7 @@ function ble/term/visible-bell {
       # check and clear
       declare -a time1 time2
       time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
-      time2=($(command date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
+      time2=($(ble/bin/date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
       if (((time2[0]-time1[0])*1000+(10#0${time2[1]::3}-10#0${time1[1]::3})>=msec)); then
         builtin echo -n "$_ble_term_visible_bell_clear" >&2
       fi
@@ -1341,21 +1341,21 @@ _ble_term_stty_state=
 #   従って、enter で -icanon を設定する事にする。
 
 function ble/term/stty/initialize {
-  command stty -ixon -nl -icrnl -icanon \
+  ble/bin/stty -ixon -nl -icrnl -icanon \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_term_stty_state=1
 }
 function ble/term/stty/leave {
   [[ ! $_ble_term_stty_state ]] && return
-  command stty  echo -nl icanon \
+  ble/bin/stty  echo -nl icanon \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
   _ble_term_stty_state=
 }
 function ble/term/stty/enter {
   [[ $_ble_term_stty_state ]] && return
-  command stty -echo -nl -icrnl -icanon \
+  ble/bin/stty -echo -nl -icrnl -icanon \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_term_stty_state=1
@@ -1363,14 +1363,14 @@ function ble/term/stty/enter {
 function ble/term/stty/finalize {
   [[ ! $_ble_term_stty_state ]] && return
   # detach の場合 -echo を指定する
-  command stty -echo -nl icanon \
+  ble/bin/stty -echo -nl icanon \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
   _ble_term_stty_state=
 }
 function ble/term/stty/TRAPEXIT {
   # exit の場合は echo
-  command stty echo -nl \
+  ble/bin/stty echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
     intr   ''  quit   ''  susp   ''
 }
@@ -1466,7 +1466,7 @@ function ble/term/TRAPEXIT {
   ble/term/stty/TRAPEXIT
   ble/term/leave
   ble/util/buffer.flush >&2
-  command rm -f "$_ble_base_run/$$".*
+  ble/bin/rm -f "$_ble_base_run/$$".*
 }
 trap ble/term/TRAPEXIT EXIT
 

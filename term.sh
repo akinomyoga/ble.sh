@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if type tput &>/dev/null; then
+if ble/bin/.freeze-utility-path tput; then
   _ble_term_hasput=1
-  function ble/term.sh/tput { command tput "$@" 2>/dev/null; }
+  function ble/term.sh/tput { ble/bin/tput "$@" 2>/dev/null; }
 else
   function ble/term.sh/tput { return 1; }
 fi

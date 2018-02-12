@@ -1323,7 +1323,7 @@ function ble-bind/option:csi {
 }
 
 function ble-bind/option:list-functions {
-  declare -f | command sed -n -r 's/^ble\/widget\/([[:alpha:]][^.[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
+  declare -f | ble/bin/sed -n -r 's/^ble\/widget\/([[:alpha:]][^.[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
 }
 
 function ble-bind {
@@ -1552,7 +1552,7 @@ function ble-decode-bind/cmap/initialize {
   [[ $_ble_decode_cmap_initialized ]] && return
   _ble_decode_cmap_initialized=1
 
-  [[ -d $_ble_base_cache ]] || command mkdir -p "$_ble_base_cache"
+  [[ -d $_ble_base_cache ]] || ble/bin/mkdir -p "$_ble_base_cache"
 
   local init="$_ble_base/cmap/default.sh"
   local dump="$_ble_base_cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump"
@@ -1561,7 +1561,7 @@ function ble-decode-bind/cmap/initialize {
   else
     echo 'ble.sh: generating "'"$dump"'"...' 1>&2
     source "$init"
-    ble-bind -D | command sed '
+    ble-bind -D | ble/bin/sed '
       s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
       s/^-- //
       s/["'"'"']//g
@@ -1601,7 +1601,7 @@ function ble-decode-bind/.generate-source-to-unbind-default {
   # (2) LC_ALL 復元時のエラーメッセージ (外側の値が不正な時) を捨てる為に必要。
 } 2>/dev/null
 function ble-decode-bind/.generate-source-to-unbind-default/.process {
-  command ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
+  ble/bin/${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
     BEGIN {
       APOS = apos "\\" apos apos;
@@ -1764,7 +1764,7 @@ function ble-decode-detach {
   # 元のキー割り当ての復元
   if [[ -s "$_ble_base_run/$$.bind.save" ]]; then
     source "$_ble_base_run/$$.bind.save"
-    command rm -f "$_ble_base_run/$$.bind.save"
+    ble/bin/rm -f "$_ble_base_run/$$.bind.save"
   fi
 
   [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode current_editing_mode
