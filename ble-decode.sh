@@ -43,14 +43,14 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bas
   _ble_decode_kbd__n=0
   if ((_ble_bash>=40200)); then
     declare -gA _ble_decode_kbd__k2c
-    declare -gA _ble_decode_kbd__c2k
   else
     declare -A _ble_decode_kbd__k2c
-    declare -A _ble_decode_kbd__c2k
   fi
+  _ble_decode_kbd__c2k=()
 
   function ble-decode-kbd/.set-keycode {
-    local key=$1 code=$2
+    local key=$1
+    local -i code=$2
     : ${_ble_decode_kbd__c2k[$code]:=$key}
     _ble_decode_kbd__k2c[$key]=$code
   }
@@ -64,7 +64,8 @@ else
   _ble_decode_kbd__k2c_vals=()
   _ble_decode_kbd__c2k=()
   function ble-decode-kbd/.set-keycode {
-    local key=$1 code=$2
+    local key=$1
+    local -i code=$2
     : ${_ble_decode_kbd__c2k[$code]:=$key}
     _ble_decode_kbd__k2c_keys="$_ble_decode_kbd__k2c_keys:$key:"
     _ble_decode_kbd__k2c_vals[${#_ble_decode_kbd__k2c_vals[@]}]=$code
@@ -87,11 +88,11 @@ ble_decode_function_key_base=0x110000
 ##   @param[in]  keycode keycode
 ##   @var  [out] ret     keyname
 function ble-decode-kbd/.get-keyname {
-  local keycode=$1
-  ret=${_ble_decode_kbd__c2k[keycode]}
+  local -i keycode=$1
+  ret=${_ble_decode_kbd__c2k[$keycode]}
   if [[ ! $ret ]] && ((keycode<ble_decode_function_key_base)); then
     ble/util/c2s "$keycode"
-    _ble_decode_kbd__c2k[keycode]=$ret
+    _ble_decode_kbd__c2k[$keycode]=$ret
   fi
 }
 ## 関数 ble-decode-kbd/.gen-keycode keyname
@@ -272,10 +273,10 @@ function ble-decode-kbd {
 ##   @var[out] ret
 ##     key の文字列表現を返します。
 function ble-decode-unkbd/.single-key {
-  local key="$1"
+  local key=$1
 
   local f_unknown=
-  local char="$((key&ble_decode_MaskChar))"
+  local char=$((key&ble_decode_MaskChar))
   ble-decode-kbd/.get-keyname "$char"
   if [[ ! $ret ]]; then
     f_unknown=1
