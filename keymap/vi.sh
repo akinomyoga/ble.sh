@@ -886,14 +886,14 @@ function ble/widget/vi-command/operator {
     ((a<=b||(a=_ble_edit_mark,b=_ble_edit_ind)))
 
     ble/widget/vi_xmap/.save-visual-state
-    local old_mark_active=$_ble_edit_mark_active
+    local ble_keymap_vi_mark_active=$_ble_edit_mark_active # used in call-operator-blockwise
     local mark_type=${_ble_edit_mark_active%+}
     ble/widget/vi_xmap/exit
 
     if [[ $mark_type == line ]]; then
       ble/keymap:vi/call-operator-linewise "$opname" "$a" "$b" "$ARG" "$REG"
     elif [[ $mark_type == block ]]; then
-      _ble_edit_mark_active=$old_mark_active ble/keymap:vi/call-operator-blockwise "$opname" "$a" "$b" "$ARG" "$REG"
+      ble/keymap:vi/call-operator-blockwise "$opname" "$a" "$b" "$ARG" "$REG"
     else
       local end=$b
       ((end<${#_ble_edit_str}&&end++))
@@ -988,11 +988,11 @@ function ble/widget/vi-command/beginning-of-line {
 ##
 ##   @exit
 ##     operator 関数が終了ステータス 148 を返したとき、
-##     operator が非同期に入力を読み取ることを表します。
-##     148 を返した operator は、実際に操作が完了した時に
+##     operator が非同期に入力を読み取ることを表す。
+##     148 を返した operator は、実際に操作が完了した時に:
 ##
-##     1 ble/keymap:vi/mark/end-edit-area を呼び出す必要があります。
-##     2 適切な位置にカーソルを移動する必要があります。
+##     1 ble/keymap:vi/mark/end-edit-area を呼び出す必要がある。
+##     2 適切な位置にカーソルを移動する必要がある。
 ##
 ##
 ## オペレータは現在以下の4箇所で呼び出されている。
@@ -1008,6 +1008,13 @@ function ble/widget/vi-command/beginning-of-line {
 ## 関数 ble/keymap:vi/call-operator-charwise op beg end arg reg
 ## 関数 ble/keymap:vi/call-operator-linewise op beg end arg reg
 ## 関数 ble/keymap:vi/call-operator-blockwise op beg end arg reg
+##
+##   @var[in] ble_keymap_vi_mark_active
+##     オペレータ作用前の $_ble_edit_mark_active を指定する。
+##     call-operator-blockwise での矩形領域を決定するのに用いる。
+##     演算子の呼び出し時には既に $_ble_edit_mark_active は
+##     作用後の値に変わっていることに注意する。
+##
 function ble/keymap:vi/call-operator {
   ble/keymap:vi/mark/start-edit-area
   local _ble_keymap_vi_mark_suppress_edit=1
@@ -1070,8 +1077,9 @@ function ble/keymap:vi/call-operator-linewise {
 function ble/keymap:vi/call-operator-blockwise {
   local ch=$1 beg=$2 end=$3 arg=$4 reg=$5
   if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+    local mark_active=${ble_keymap_vi_mark_active:-block}
     local sub_ranges sub_x1 sub_x2
-    ble/keymap:vi/extract-block "$beg" "$end"
+    _ble_edit_mark_active=$mark_active ble/keymap:vi/extract-block "$beg" "$end"
     local nrange=${#sub_ranges[@]}
     ((nrange)) || return 1
 
@@ -1588,6 +1596,9 @@ _ble_keymap_vi_filter_history_dirt=()
 _ble_keymap_vi_filter_history_ind=0
 _ble_keymap_vi_filter_history_onleave=()
 
+function ble-highlight-layer:region/mark:vi_filter/get-sgr {
+  ble-color-face2sgr region_target
+}
 function ble/keymap:vi/operator:filter/.cache-repeat {
   local -a _ble_keymap_vi_repeat _ble_keymap_vi_repeat_irepeat
   ble/keymap:vi/repeat/record-normal
@@ -1615,11 +1626,13 @@ function ble/keymap:vi/operator:filter {
     ble/keymap:vi/operator:filter/.cache-repeat
     _ble_edit_ind=$beg
     _ble_edit_mark=$end
-    _ble_edit_mark_active=1
+    _ble_edit_mark_active=vi_filter
     ble/keymap:vi/async-commandline-mode 'ble/keymap:vi/operator:filter/.hook'
     _ble_edit_PS1='!'
     _ble_edit_history_prefix=_ble_keymap_vi_filter
     _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
+    _ble_syntax_lang=bash
+    _ble_highlight_layer__list=(plain syntax region overwrite_mode)
     return 148
   fi
 }
@@ -1633,7 +1646,7 @@ function ble/keymap:vi/operator:filter/.hook {
   local end=${_ble_keymap_vi_filter_args[1]}
   local context=${_ble_keymap_vi_filter_args[2]}
 
-  _ble_edit_mark_active=
+  _ble_edit_mark_active= # clear mark:vi_filter
 
   local old=${_ble_edit_str:beg:end-beg} new
   old=${old%$'\n'}
@@ -3451,8 +3464,9 @@ function ble/widget/vi-command/search-char-reverse-repeat {
 #------------------------------------------------------------------------------
 # command: %
 
-## @var[in] _ble_edit_str, ch1, ch2, index
-## @var[out] ret
+## 関数 ble/widget/vi-command/search-matchpair/.search-forward
+##   @var[in] _ble_edit_str, ch1, ch2, index
+##   @var[out] ret
 function ble/widget/vi-command/search-matchpair/.search-forward {
   ble/string#index-of-chars "$_ble_edit_str" "$ch1$ch2" $((index+1))
 }
@@ -4430,7 +4444,7 @@ function ble/widget/vi_xmap/command-help {
 #------------------------------------------------------------------------------
 
 ## 関数 ble/keymap:vi/setup-map
-## @var[in] ble_bind_keymap
+##   @var[in] ble_bind_keymap
 function ble/keymap:vi/setup-map {
   ble-bind -f 0 vi-command/append-arg
   ble-bind -f 1 vi-command/append-arg
@@ -5497,10 +5511,10 @@ function ble/widget/vi_xmap/linewise-operator.impl {
     _ble_edit_mark_active=line
   fi
 
-  local old_mark_active=$_ble_edit_mark_active
+  local ble_keymap_vi_mark_active=$_ble_edit_mark_active
   ble/widget/vi_xmap/.save-visual-state
   ble/widget/vi_xmap/exit
-  _ble_edit_mark_active=$old_mark_active "$call_operator" "$op" "$beg" "$end" "$ARG" "$REG"; local ext=$?
+  "$call_operator" "$op" "$beg" "$end" "$ARG" "$REG"; local ext=$?
   ((ext==148)) && return 148
   ((ext)) && ble/widget/.bell
   ble/keymap:vi/adjust-command-mode
