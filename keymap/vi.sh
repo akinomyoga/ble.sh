@@ -4601,6 +4601,15 @@ function ble/keymap:vi/setup-map {
   ble-bind -cf 'C-z' fg
 }
 
+function ble/widget/vi_omap/operator-rot13-or-search-backward {
+  if [[ $_ble_keymap_vi_opfunc == rot13 ]]; then
+    # g?? の時だけは rot13-encode lines
+    ble/widget/vi-command/operator rot13
+  else
+    ble/widget/vi-command/search-backward
+  fi
+}
+
 function ble-decode/keymap:vi_omap/define {
   local ble_bind_keymap=vi_omap
   ble/keymap:vi/setup-map
@@ -4613,13 +4622,14 @@ function ble-decode/keymap:vi_omap/define {
   ble-bind -f a   vi-command/text-object
   ble-bind -f i   vi-command/text-object
 
+  # 2文字オペレータの短縮形
   ble-bind -f '~' 'vi-command/operator toggle_case'
   ble-bind -f 'u' 'vi-command/operator u'
   ble-bind -f 'U' 'vi-command/operator U'
-  ble-bind -f '?' 'vi-command/operator rot13'
+  ble-bind -f '?' 'vi_omap/operator-rot13-or-search-backward'
   ble-bind -f 'q' 'vi-command/operator fold'
-  ble-bind -f 'w' 'vi-command/operator fold-preserve-point'
-  ble-bind -f '@' 'vi-command/operator map'
+  # Note: w は前方単語。例: {N}gww は format {N} words
+  # Note: @ は omap では定義されない。例: {N}g@@ は bell
 }
 
 #------------------------------------------------------------------------------
@@ -5963,7 +5973,6 @@ function ble-decode/keymap:vi_xmap/define {
   ble-bind -f '~' 'vi-command/operator toggle_case'
   ble-bind -f 'u' 'vi-command/operator u'
   ble-bind -f 'U' 'vi-command/operator U'
-  ble-bind -f '@' 'vi-command/operator map'
 
   ble-bind -f 's' 'vi-command/operator c'
   ble-bind -f 'x'    'vi-command/operator d'

@@ -3016,6 +3016,22 @@ tech
 
 2018-02-14
 
+  * vi-mode: g?? は rot13-encode lines だが g~? は backward-search switch case である
+
+    - 現在の実装では vi_omap は "operator rot13" に紐付けているが、
+      g~ g? の様に異なる組み合わせのオペレータを組み合わせた時は元々の motion ? の意味を取り戻す。
+    - 因みに g~ gu gU gq に対応する omap ~, u, U, q に関しては
+      元々 motion ではないので vi_omap で認識できる必要はない。
+    - gw に対応する omap w は単語の意味であって gww の様な重ね方には対応していない。
+
+    a operator を二つ重ねた時の振る舞いについて調整が必要である。
+
+    b もしくは omap ? を特別な処理に差し替えるという事も考えられる。
+      つまり opfunc を見て rot13 ならば operator rot13 を実行し、
+      そうでなければ motion ? を実行する。
+
+    今回は b の方法で対処する事にした。
+
   * 2017-11-03 vi-mode (map / ? n N): backward search の一致の仕方が異なる。
     現在の実装では一致範囲が現在の位置以前にある一致の最後のものが当たる。
     しかし vim を観察すると、"一致範囲の開始位置" が現在の位置より前にある一致の最後のものが当たる。
