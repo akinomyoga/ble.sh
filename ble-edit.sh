@@ -4785,7 +4785,7 @@ function ble-edit/undo/.check-hindex {
 
   # load
   if [[ ${_ble_edit_undo_history[hindex]} ]]; then
-    builtin eval "local data=(${_ble_edit_undo_history[hindex]})"
+    builtin eval "local -a data=(${_ble_edit_undo_history[hindex]})"
     _ble_edit_undo=("${data[@]:1}")
     _ble_edit_undo_index=${data[0]}
   else
