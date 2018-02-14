@@ -4751,8 +4751,29 @@ function ble/widget/vi_nmap/increment.impl {
   rex='-?[0-9]*$'; [[ ${_ble_edit_str::beg} =~ $rex ]]
   ((beg-=${#BASH_REMATCH}))
 
+  # 数の抽出
   local number=${_ble_edit_str:beg:end-beg}
+  local abs=${number#-}
+  if [[ $abs == 0?* ]]; then
+    if [[ $number == -* ]]; then
+      number=-$((10#$abs))
+    else
+      number=$((10#$abs))
+    fi
+  fi
+
+  # 数の増加・減少
   ((number+=delta))
+  if [[ $abs == 0?* ]]; then
+    # Zero padding
+    local wsign=$((number<0?1:0))
+    local zpad=$((wsign+${#abs}-${#number}))
+    if ((zpad>0)); then
+      local ret; ble/string#repeat 0 "$zpad"
+      number=${number::wsign}$ret${number:wsign}
+    fi
+  fi
+
   ble/widget/.replace-range "$beg" "$end" "$number" 1
   ble/keymap:vi/mark/set-previous-edit-area "$beg" $((beg+${#number}))
   ble/keymap:vi/repeat/record
@@ -4885,11 +4906,13 @@ function ble/keymap:vi/xmap/switch-type {
   _ble_edit_mark_active=$1$suffix
 }
 
-
+#--------------------------------------
 # 矩形範囲の抽出
 
 ## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-graphical-rectangle [index1 [index2]]
 ## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-logical-rectangle   [index1 [index2]]
+## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-rectangle [index1 [index2]]
+## 関数 local ret              ; ble/keymap:vi/get-rectangle-height [index1 [index2]]
 ##
 ##   @param[in,opt] index1 [=_ble_edit_mark]
 ##   @param[in,opt] index2 [=_ble_edit_ind]
@@ -4929,14 +4952,14 @@ function ble/keymap:vi/get-logical-rectangle {
 }
 function ble/keymap:vi/get-rectangle {
   if ble/edit/use-textmap; then
-    ble/keymap:vi/get-graphical-rectangle
+    ble/keymap:vi/get-graphical-rectangle "$@"
   else
-    ble/keymap:vi/get-logical-rectangle
+    ble/keymap:vi/get-logical-rectangle "$@"
   fi
 }
 function ble/keymap:vi/mark/get-rectangle-height {
   local p0 q0 lx ly rx ry
-  ble/keymap:vi/get-rectangle
+  ble/keymap:vi/get-rectangle "$@"
   ble/string#count-char "${_ble_edit_str:p0:q0-p0}" $'\n'
   ((ret++))
   return 0
@@ -4946,8 +4969,9 @@ function ble/keymap:vi/mark/get-rectangle-height {
 ## 関数 ble/keymap:vi/extract-graphical-block-by-geometry bol1 bol2 x1:y1 x2:y2
 ## 関数 ble/keymap:vi/extract-logical-block-by-geometry bol1 bol2 c1 c2
 ##   指定した引数の範囲を元に矩形範囲を抽出します。
-## 関数 ble/keymap:vi/extract-graphical-block
-## 関数 ble/keymap:vi/extract-logical-block
+## 関数 ble/keymap:vi/extract-graphical-block [index1 [index2]]
+## 関数 ble/keymap:vi/extract-logical-block [index1 [index2]]
+## 関数 ble/keymap:vi/extract-block [index1 [index2]]
 ##   現在位置 (_ble_edit_ind) とマーク (_ble_edit_mark) を元に矩形範囲を抽出します。
 ##
 ##   @param[in] bol1 bol2
@@ -4956,6 +4980,10 @@ function ble/keymap:vi/mark/get-rectangle-height {
 ##     2つの列を行頭からの相対位置で指定します。
 ##   @param[in] c1 c2
 ##     2つの列を論理列で指定します。
+##
+##   @param[in,opt] index1 [$_ble_edit_mark]
+##   @param[in,opt] index2 [$_ble_edit_ind]
+##     矩形の端点の文字インデックスを指定します。
 ##
 ##   @var[in] _ble_edit_mark_active
 ##     末尾拡張を行うばあいにこの引数の末端に + を指定します。
@@ -5078,7 +5106,7 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
 }
 function ble/keymap:vi/extract-graphical-block {
   local p0 q0 lx ly rx ry
-  ble/keymap:vi/get-graphical-rectangle
+  ble/keymap:vi/get-graphical-rectangle "$@"
   ble/keymap:vi/extract-graphical-block-by-geometry "$p0" "$q0" "$lx:$ly" "$rx:$ry"
 }
 function ble/keymap:vi/extract-logical-block-by-geometry {
@@ -5121,7 +5149,7 @@ function ble/keymap:vi/extract-logical-block-by-geometry {
 }
 function ble/keymap:vi/extract-logical-block {
   local p0 q0 lx ly rx ry
-  ble/keymap:vi/get-logical-rectangle
+  ble/keymap:vi/get-logical-rectangle "$@"
   ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$lx" "$rx"
 }
 function ble/keymap:vi/extract-block {
@@ -5132,7 +5160,8 @@ function ble/keymap:vi/extract-block {
   fi
 }
 
-# 選択範囲の着色の設定
+#--------------------------------------
+# xmap/選択範囲の着色の設定
 
 ## 関数 ble-highlight-layer:region/mark:char/get-selection
 ## 関数 ble-highlight-layer:region/mark:line/get-selection
@@ -5182,8 +5211,8 @@ function ble-highlight-layer:region/mark:block+/get-selection {
   ble-highlight-layer:region/mark:block/get-selection
 }
 
-
-# 前回の選択サイズ
+#--------------------------------------
+# xmap/前回の選択サイズ
 
 _ble_keymap_vi_xmap_prev_edit=char:1:1
 function ble/widget/vi_xmap/.save-visual-state {
@@ -5280,7 +5309,8 @@ function ble/widget/vi_xmap/.restore-visual-state {
   ble/widget/.goto-char "$index"
 }
 
-# 前回の選択範囲
+#--------------------------------------
+# xmap/前回の選択範囲
 
 # mark `< `>
 _ble_keymap_vi_xmap_prev_visual=
@@ -5334,7 +5364,8 @@ function ble/widget/vi-command/previous-visual-area {
   return 0
 }
 
-# モード遷移
+#--------------------------------------
+# xmap/モード遷移
 
 function ble/widget/vi-command/visual-mode.impl {
   local visual_type=$1
@@ -5414,7 +5445,8 @@ function ble/widget/vi_xmap/switch-to-blockwise {
   ble/widget/vi_xmap/switch-visual-mode.impl block
 }
 
-# コマンド
+#--------------------------------------
+# xmap/各種コマンド
 
 # xmap o
 function ble/widget/vi_xmap/exchange-points {
@@ -5483,7 +5515,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
     ((w<=0)) && w=1
 
     local sub_ranges sub_x1 sub_x2
-    _ble_edit_mark_active=$old_mark_active ble/keymap:vi/extract-block "$beg" "$end"
+    _ble_edit_mark_active=$old_mark_active ble/keymap:vi/extract-block
     local n=${#sub_ranges[@]}
     if ((n==0)); then
       ble/widget/.bell
@@ -5512,11 +5544,11 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
       ((srpad)) && { ble/string#repeat ' ' "$srpad"; ins1=$ins1$ret; }
       ble/widget/.replace-range "$smin" "$smax" "$ins1" 1
     done
-    ble/keymap:vi/mark/end-edit-area
-    ble/keymap:vi/repeat/record
     local beg=$smin
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
+    ble/keymap:vi/mark/end-edit-area
+    ble/keymap:vi/repeat/record
   else
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
@@ -5528,12 +5560,12 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
     fi
 
     local ins=${_ble_edit_str:beg:end-beg}
-    ins=${ins//[^$'\n']/"$s"}
+    ins=${ins//[!$'\n']/"$s"}
     ble/widget/.replace-range "$beg" "$end" "$ins" 1
-    ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
-    ble/keymap:vi/repeat/record
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     ble/widget/.goto-char "$beg"
+    ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
+    ble/keymap:vi/repeat/record
   fi
   return 0
 }
@@ -5609,7 +5641,8 @@ function ble/widget/vi_xmap/connect-line {
   ble/widget/vi_xmap/connect-line.impl vi_nmap/connect-line
 }
 
-# 矩形挿入モード
+#--------------------------------------
+# xmap/矩形挿入モード
 
 ## 変数 _ble_keymap_vi_xmap_insert_data
 ##   矩形挿入モードの情報を保持します。
@@ -5855,7 +5888,8 @@ function ble/widget/vi_xmap/append-mode {
   fi
 }
 
-# 貼り付け
+#--------------------------------------
+# xmap/貼り付け
 
 # xmap: p, P
 function ble/widget/vi_xmap/paste.impl {
@@ -5944,6 +5978,120 @@ function ble/widget/vi_xmap/paste-before {
   ble/widget/vi_xmap/paste.impl before
 }
 
+#--------------------------------------
+# xmap <C-a>, <C-x>, g<C-a>, g<C-x>
+
+## 関数 ble/widget/vi_xmap/increment.impl opts
+##
+##   @param[in] opts
+##     以下の項目をコロンで区切って指定したものです。
+##
+##     - increase [既定]
+##       数字を増加させます。
+##     - decrease
+##       数字を減少させるます。
+##     - progressive
+##       k 個目の数字について増加・減少量を k 倍します。
+##
+function ble/widget/vi_xmap/increment.impl {
+  local opts=$1
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  if [[ $FLAG ]]; then
+    ble/widget/.bell
+    return 1
+  fi
+
+  local delta=$ARG
+  [[ :$opts: == *:decrease:* ]] && ((delta=-delta))
+  local progress=0
+  [[ :$opts: == *:progressive:* ]] && progress=$delta
+
+  local old_mark_active=$_ble_edit_mark_active # save
+  local mark_type=${_ble_edit_mark_active%+}
+  ble/widget/vi_xmap/.save-visual-state
+  ble/widget/vi_xmap/exit # Note: _ble_edit_mark_active will be cleared here
+  if [[ $mark_type == block ]]; then
+    local sub_ranges sub_x1 sub_x2
+    _ble_edit_mark_active=$old_mark_active ble/keymap:vi/extract-block
+    if ((${#sub_ranges[@]}==0)); then
+      ble/widget/.bell
+      return 1
+    fi
+  else
+    local beg=$_ble_edit_mark end=$_ble_edit_ind
+    ((beg<=end)) || local beg=$end end=$beg
+    if [[ $mark_type == line ]]; then
+      ble-edit/content/find-logical-bol "$beg"; local beg=$ret
+      ble-edit/content/find-logical-eol "$end"; local end=$ret
+    else
+      ble-edit/content/eolp "$end" || ((end++))
+    fi
+
+    local -a lines
+    ble/string#split-lines lines "${_ble_edit_str:beg:end-beg}"
+
+    # sub_ranges 生成
+    local line index=$beg
+    local -a sub_ranges
+    for line in "${lines[@]}"; do
+      [[ $line ]] && ble/array#push sub_ranges "$index:::::$line"
+      ((index+=${#line}+1))
+    done
+
+    ((${#sub_ranges[@]})) || return 0
+  fi
+
+  local sub rex_number='^([^0-9]*)([0-9]+)' shift=0 dmin=-1 dmax=-1
+  for sub in "${sub_ranges[@]}"; do
+    local stext=${sub#*:*:*:*:*:}
+    [[ $stext =~ $rex_number ]] || continue
+
+    # 元々の数
+    local rematch1=${BASH_REMATCH[1]}
+    local rematch2=${BASH_REMATCH[2]}
+    local offset=${#rematch1} length=${#rematch2}
+    local number=$((10#$rematch2))
+    [[ $rematch1 == *- ]] && ((number=-number,offset--,length++))
+
+    # 新しい数
+    ((number+=delta,delta+=progress))
+    if [[ $rematch2 == 0?* ]]; then
+      # Zero padding
+      local wsign=$((number<0?1:0))
+      local zpad=$((wsign+${#rematch2}-${#number}))
+      if ((zpad>0)); then
+        local ret; ble/string#repeat 0 "$zpad"
+        number=${number::wsign}$ret${number:wsign}
+      fi
+    fi
+
+    local smin=${sub%%:*}
+    local beg=$((shift+smin+offset))
+    local end=$((beg+length))
+    ble/widget/.replace-range "$beg" "$end" "$number" 1
+    ((shift+=${#number}-length,
+      dmin<0&&(dmin=beg),
+      dmax=beg+${#number}))
+  done
+  local beg=${sub_ranges[0]%%:*}
+  ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
+  ble/widget/.goto-char "$beg"
+
+  ((dmin>=0)) && ble/keymap:vi/mark/set-previous-edit-area "$dmin" "$dmax"
+  ble/keymap:vi/repeat/record
+  return 0
+}
+# xmap <C-a>
+function ble/widget/vi_xmap/increment { ble/widget/vi_xmap/increment.impl increase; }
+# xmap <C-x>
+function ble/widget/vi_xmap/decrement { ble/widget/vi_xmap/increment.impl decrease; }
+# xmap g<C-a>
+function ble/widget/vi_xmap/progressive-increment { ble/widget/vi_xmap/increment.impl progressive:increase; }
+# xmap g<C-x>
+function ble/widget/vi_xmap/progressive-decrement { ble/widget/vi_xmap/increment.impl progressive:decrease; }
+
+#--------------------------------------
+
 function ble-decode/keymap:vi_xmap/define {
   local ble_bind_keymap=vi_xmap
   ble/keymap:vi/setup-map
@@ -5995,6 +6143,11 @@ function ble-decode/keymap:vi_xmap/define {
   ble-bind -f A vi_xmap/append-mode
   ble-bind -f p vi_xmap/paste-after
   ble-bind -f P vi_xmap/paste-before
+
+  ble-bind -f 'C-a'   vi_xmap/increment
+  ble-bind -f 'C-x'   vi_xmap/decrement
+  ble-bind -f 'g C-a' vi_xmap/progressive-increment
+  ble-bind -f 'g C-x' vi_xmap/progressive-decrement
 
   ble-bind -f f1 vi_xmap/command-help
   ble-bind -f K  vi_xmap/command-help

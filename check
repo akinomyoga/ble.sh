@@ -59,7 +59,7 @@ function check-memo-numbering {
 # 誤って ((${#arr[@]})) を ((${arr[@]})) などと書いてしまうミス。
 function check-array-count-in-arithmetic-expression {
   echo "--- $FUNCNAME ---"
-  grc '\(\([^[:space:]]*\$\{[[:alnum:]_]+\[@\]\}'
+  grc '\(\([^[:space:]]*\$\{[[:alnum:]_]+\[[@*]\]\}'
 }
 
 # builtin return break continue : eval echo unset は unset しているので大丈夫のはず

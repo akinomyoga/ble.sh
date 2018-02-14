@@ -2965,6 +2965,7 @@ function ble/widget/.replace-range {
   local str=$3 strlen=${#3}
 
   _ble_edit_str.replace p0 p1 "$str"
+  local delta
   ((delta=strlen-len)) &&
     ((_ble_edit_ind>p1?(_ble_edit_ind+=delta):
       _ble_edit_ind>p0+strlen&&(_ble_edit_ind=p0+strlen),

@@ -56,20 +56,10 @@ function ble/keymap:vi_test/show-summary {
   echo "# $title test: result $((nsuccess))/$((ntest)) $tip"
 }
 
-function ble/widget/vi-command:check-vi-mode {
-  # save
-  local original_str=$_ble_edit_str
-  local original_ind=$_ble_edit_ind
-  local original_mark=$_ble_edit_mark
-  local original_mark_active=$_ble_edit_mark_active
-  _ble_edit_line_disabled=1 ble/widget/.insert-newline
-  ble/util/buffer.flush >&2
+#------------------------------------------------------------------------------
+# tests
 
-  local section ntest nsuccess
-
-  #----------------------------------------------------------------------------
-  # <space>
-
+function ble/widget/vi-command:check-vi-mode/space {
   ble/keymap:vi_test/start-section '<space>'
 
   local str=$'    1234\n567890ab\n'
@@ -77,10 +67,9 @@ function ble/widget/vi-command:check-vi-mode {
   ble/keymap:vi_test/check 2 "4:$str" 'd 4 SP' $'3:    \n567890ab\n'
 
   ble/keymap:vi_test/show-summary
+}
 
-  #----------------------------------------------------------------------------
-  # cw
-
+function ble/widget/vi-command:check-vi-mode/cw {
   ble/keymap:vi_test/start-section 'cw'
 
   # provided by cmplstofB
@@ -119,9 +108,9 @@ function ble/widget/vi-command:check-vi-mode {
   ble/keymap:vi_test/check C9 $'@:123 456   \n\n@' '2 c w' $'@:123 456   \n\n@'
 
   ble/keymap:vi_test/show-summary
+}
 
-  #----------------------------------------------------------------------------
-
+function ble/widget/vi-command:check-vi-mode/search {
   ble/keymap:vi_test/start-section '/ ? n N'
   ble/keymap:vi_test/check A1a '@:ech@o abc abc abc' '/ a b c RET'       '@:echo @abc abc abc'
   ble/keymap:vi_test/check A1b '@:ech@o abc abc abc' '/ a b c RET n'     '@:echo abc @abc abc'
@@ -134,6 +123,56 @@ function ble/widget/vi-command:check-vi-mode {
   ble/keymap:vi_test/check A3b '@:echo abc @abc abc' '? a b c RET' '@:echo @abc abc abc'
   ble/keymap:vi_test/check A3c '@:echo abc a@bc abc' '? a b c RET' '@:echo abc @abc abc'
   ble/keymap:vi_test/show-summary
+}
+
+function ble/widget/vi-command:check-vi-mode/increment {
+  ble/keymap:vi_test/start-section '<C-a>, <C-x>'
+
+  ble/keymap:vi_test/check A1a '@:@123' 'C-a' '@:12@4'
+  ble/keymap:vi_test/check A1b '@:@123' 'C-x' '@:12@2'
+  ble/keymap:vi_test/check A1c '@:@-123' 'C-a' '@:-12@2'
+  ble/keymap:vi_test/check A1d '@:@-123' 'C-x' '@:-12@4'
+
+  ble/keymap:vi_test/check A2a '@:@ -123 0' 'C-a' '@: -12@2 0'
+  ble/keymap:vi_test/check A2b '@: @-123 0' 'C-a' '@: -12@2 0'
+  ble/keymap:vi_test/check A2c '@: -@123 0' 'C-a' '@: -12@2 0'
+  ble/keymap:vi_test/check A2d '@: -1@23 0' 'C-a' '@: -12@2 0'
+  ble/keymap:vi_test/check A2e '@: -12@3 0' 'C-a' '@: -12@2 0'
+  ble/keymap:vi_test/check A2f '@: -123@ 0' 'C-a' '@: -123 @1'
+
+  ble/keymap:vi_test/check A3a '@:@000' 'C-a'       '@:00@1'
+  ble/keymap:vi_test/check A3b '@:@000' '1 0 C-a'   '@:01@0'
+  ble/keymap:vi_test/check A3c '@:@000' '1 0 0 C-a' '@:10@0'
+  ble/keymap:vi_test/check A3d '@:@000' 'C-x'       '@:-00@1'
+  ble/keymap:vi_test/check A3e '@:@000' '1 0 C-x'   '@:-01@0'
+  ble/keymap:vi_test/check A3f '@:@000' '1 0 0 C-x' '@:-10@0'
+  ble/keymap:vi_test/check A3g '@:@099' '1 0 0 C-x' '@:-00@1'
+  ble/keymap:vi_test/check A3h '@:@099' '9 9 C-x' '@:00@0'
+
+  ble/keymap:vi_test/check A4a '@:-@0' 'C-a' '@:@1'
+
+  ble/keymap:vi_test/show-summary
+}
+
+#------------------------------------------------------------------------------
+
+function ble/widget/vi-command:check-vi-mode {
+  # save
+  local original_str=$_ble_edit_str
+  local original_ind=$_ble_edit_ind
+  local original_mark=$_ble_edit_mark
+  local original_mark_active=$_ble_edit_mark_active
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+  ble/util/buffer.flush >&2
+
+  local section ntest nsuccess
+
+  #----------------------------------------------------------------------------
+
+  ble/widget/vi-command:check-vi-mode/space
+  ble/widget/vi-command:check-vi-mode/cw
+  ble/widget/vi-command:check-vi-mode/search
+  ble/widget/vi-command:check-vi-mode/increment
 
   #----------------------------------------------------------------------------
 
