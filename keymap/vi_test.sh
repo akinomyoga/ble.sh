@@ -122,6 +122,21 @@ function ble/widget/vi-command:check-vi-mode {
 
   #----------------------------------------------------------------------------
 
+  ble/keymap:vi_test/start-section '/ ? n N'
+  ble/keymap:vi_test/check A1a '@:ech@o abc abc abc' '/ a b c RET'       '@:echo @abc abc abc'
+  ble/keymap:vi_test/check A1b '@:ech@o abc abc abc' '/ a b c RET n'     '@:echo abc @abc abc'
+  ble/keymap:vi_test/check A1c '@:ech@o abc abc abc' '/ a b c RET 2 n'   '@:echo abc abc @abc'
+  ble/keymap:vi_test/check A1d '@:ech@o abc abc abc' '/ a b c RET 2 n N' '@:echo abc @abc abc'
+  ble/keymap:vi_test/check A2a '@:echo@ abc abc abc' '/ a b c RET' '@:echo @abc abc abc'
+  ble/keymap:vi_test/check A2b '@:echo @abc abc abc' '/ a b c RET' '@:echo abc @abc abc'
+  ble/keymap:vi_test/check A2c '@:echo a@bc abc abc' '/ a b c RET' '@:echo abc @abc abc'
+  ble/keymap:vi_test/check A3a '@:echo abc@ abc abc' '? a b c RET' '@:echo @abc abc abc'
+  ble/keymap:vi_test/check A3b '@:echo abc @abc abc' '? a b c RET' '@:echo @abc abc abc'
+  ble/keymap:vi_test/check A3c '@:echo abc a@bc abc' '? a b c RET' '@:echo abc @abc abc'
+  ble/keymap:vi_test/show-summary
+
+  #----------------------------------------------------------------------------
+
   # restore
   _ble_edit_str.reset "$original" edit
   ble/widget/.goto-char "$original_ind"

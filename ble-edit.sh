@@ -5437,7 +5437,8 @@ function ble-edit/isearch/.goto-match {
 ##     コロン区切りのオプションです。
 ##
 ##     + ... forward に検索します (既定)
-##     - ... backward に検索します
+##     - ... backward に検索します。終端位置が現在位置以前にあるものに一致します。
+##     B ... backward に検索します。開始位置が現在位置より前のものに一致します。
 ##
 ##     regex
 ##       正規表現による一致を試みます
@@ -5473,6 +5474,29 @@ function ble-edit/isearch/search {
       fi
     else
       local target=${_ble_edit_str::start}
+      local m=${target%"$needle"*}
+      if [[ $target != "$m" ]]; then
+        beg=${#m}
+        end=$((beg+${#needle}))
+        return 0
+      fi
+    fi
+  elif [[ :$opts: == *:B:* ]]; then
+    local start=$((has_extend?_ble_edit_ind:_ble_edit_ind-1))
+    ((start<0)) && return 1
+
+    if ((has_regex)); then
+      ble-edit/isearch/.shift-backward-references
+      local rex="^.{0,$start}($needle)"
+      ((start==0)) && rex="^($needle)"
+      if [[ $_ble_edit_str =~ $rex ]]; then
+        local rematch1=${BASH_REMATCH[1]}
+        end=${#BASH_REMATCH}
+        beg=$((end-${#rematch1}))
+        return 0
+      fi
+    else
+      local target=${_ble_edit_str::start+${#needle}}
       local m=${target%"$needle"*}
       if [[ $target != "$m" ]]; then
         beg=${#m}

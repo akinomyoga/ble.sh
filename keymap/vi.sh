@@ -4125,6 +4125,12 @@ _ble_keymap_vi_search_history_dirt=()
 _ble_keymap_vi_search_history_ind=0
 _ble_keymap_vi_search_history_onleave=()
 
+## オプション keymap_vi_search_match_current
+##   非空の文字列が設定されている時 /, ?, n, N で
+##   現在のカーソルの下にある単語に一致します。
+##   既定値は空文字列で vim の振る舞いに倣います。
+: ${bleopt_keymap_vi_search_match_current=}
+
 function ble-highlight-layer:region/mark:search/get-selection {
   ble-highlight-layer:region/mark:char/get-selection
 }
@@ -4137,10 +4143,32 @@ function ble/keymap:vi/search/clear-matched {
   [[ $_ble_edit_mark_active == search ]] && _ble_edit_mark_active=
 }
 ## 関数 ble/keymap:vi/search/invoke-search needle opts
-##   @var[in] needle
-##   @var[in,opt] opts
+##
+##   @param[in] needle
+##     検索パターンを表す正規表現を指定する。
+##
 ##   @var[out] beg end
+##     一致範囲を返す。
+##
+##   @exit
+##     一致が見つかった場合に正常終了 0。それ以外の時は 0 以外の値を返す。
+##
+##   @var[in] opt_optional_next
+##     現在位置より後または前の一致を検索する。
+##     vi_omap で呼び出した時、現在位置で一致した時に設定される。
+##     keymap_vi_search_match_current が非空の時はここには来ない。
+##
+##   @var[in] opt_locate
+##     現在位置に一致可能な検索を行う。
+##     履歴を遡って検索して一致する履歴項目が見つかった時、
+##     その履歴項目内で最初に見つかったものを特定する為に使われる。
+##
+##   @var[in] opt_backward
+##     検索方向を指定する。
+##
 function ble/keymap:vi/search/invoke-search {
+  local needle=$1
+  local dir=+; ((opt_backward)) && dir=B
   local ind=$_ble_edit_ind
 
   # 検索開始位置
@@ -4150,8 +4178,20 @@ function ble/keymap:vi/search/invoke-search {
     fi
   elif ((opt_locate)) || ! ble/keymap:vi/search/matched; then
     # 何にも一致していない状態から
-    if ((opt_backward)); then
-      ble-edit/content/eolp || ((_ble_edit_ind++))
+    if ((opt_locate)) || [[ $bleopt_keymap_vi_search_match_current ]]; then
+      # 現在位置に一致可能
+      #   前方検索: @hello → @hello (そのまま)
+      #   後方検索: hell@o → hello@ (ずらす)
+      if ((opt_backward)); then
+        ble-edit/content/eolp || ((_ble_edit_ind++))
+      fi
+    else
+      # 現在位置には一致させない
+      #   前方検索: @hello → h@ello (ずらす)
+      #   後方検索: hell@o → hell@o (そのまま)
+      if ((!opt_backward)); then
+        ble-edit/content/eolp || ((_ble_edit_ind++))
+      fi
     fi
   else
     # _ble_edit_ind .. _ble_edit_mark[+1] に一致しているとき
@@ -4162,16 +4202,19 @@ function ble/keymap:vi/search/invoke-search {
         if ble-edit/isearch/search "$@" && ((beg==_ble_edit_ind)); then
           _ble_edit_ind=$end
         else
-          ((_ble_edit_ind<${#_ble_edit_str&&_ble_edit_ind++))
+          ((_ble_edit_ind<${#_ble_edit_str}&&_ble_edit_ind++))
         fi
       else
         ((_ble_edit_ind=_ble_edit_mark))
         ble-edit/content/eolp || ((_ble_edit_ind++))
       fi
+    else
+      # 2回目以降の一致では opts=- で検索する。
+      dir=-
     fi
   fi
 
-  ble-edit/isearch/search "$@"; local ret=$?
+  ble-edit/isearch/search "$needle" "$dir":regex; local ret=$?
   _ble_edit_ind=$ind
   return "$ret"
 }
@@ -4179,15 +4222,15 @@ function ble/keymap:vi/search/invoke-search {
 ## 関数 ble/widget/vi-command/search.core
 ##
 ##   @var[in] needle
-##   @var[in] opt_backward history
+##   @var[in] opt_backward
 ##   @var[in] opt_history
 ##   @var[in] opt_locate
-##   @var[in] start dir
+##   @var[in] start
 ##   @var[in] ntask
 ##
 function ble/widget/vi-command/search.core {
   local beg= end= is_empty_match=
-  if ble/keymap:vi/search/invoke-search "$needle" "$dir:regex"; then
+  if ble/keymap:vi/search/invoke-search "$needle"; then
     if ((beg<end)); then
       ble-edit/content/bolp "$end" || ((end--))
       _ble_edit_ind=$beg # eol 補正は search.impl 側で最後に行う
@@ -4212,7 +4255,7 @@ function ble/widget/vi-command/search.core {
       ((index++))
     fi
 
-    local _ble_edit_isearch_dir=$dir
+    local _ble_edit_isearch_dir=+; ((opt_backward)) && _ble_edit_isearch_dir=-
     local _ble_edit_isearch_str=$needle
     local isearch_ntask=$ntask
     local isearch_time=0
@@ -4295,7 +4338,6 @@ function ble/widget/vi-command/search.impl {
   fi
 
   local start= # 初めの履歴番号。search.core 内で最初に履歴を読み込んだあとで設定される。
-  local dir=+; ((opt_backward)) && dir=-
   local ntask=$ARG
   while ((ntask)); do
     ble/widget/vi-command/search.core || break
