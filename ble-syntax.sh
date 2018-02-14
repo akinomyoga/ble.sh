@@ -1050,7 +1050,7 @@ function ble-syntax:bash/simple-word/eval-noglob.impl {
   # グローバル変数の復元
   local -a ret
   ble-syntax:bash/simple-word/extract-parameter-names "$1"
-  if ((${ret[@]})); then
+  if ((${#ret[@]})); then
     local __ble_defs
     ble/util/assign __ble_defs 'ble/util/print-global-definitions --hidden-only "${ret[@]}"'
     builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
@@ -4665,7 +4665,6 @@ function ble-highlight-layer:syntax/word/.proc-childnode {
 ## @var[in,out] _ble_syntax_word_umin,_ble_syntax_word_umax
 function ble-highlight-layer:syntax/update-word-table {
   # update table2 (単語の削除に関しては後で考える)
-
   # (1) 単語色の計算
   local color_umin=-1 color_umax=-1 iN=${#_ble_syntax_text}
   ble-highlight-layer:syntax/word/.update-attributes
