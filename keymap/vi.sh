@@ -2623,6 +2623,7 @@ function ble/widget/vi-command/relative-first-non-space.impl {
   local ret ind=$_ble_edit_ind
   ble-edit/content/find-logical-bol "$ind" "$arg"; local bolx=$ret
   ble-edit/content/find-non-space "$bolx"; local nolx=$ret
+echo ind=$ind arg=$arg bolx=$bolx nolx=$nolx >> ~/a.txt
 
   # 2017-09-12 何故か分からないが vim はこういう振る舞いに見える。
   ((_ble_keymap_vi_single_command==2&&_ble_keymap_vi_single_command--))
@@ -2660,7 +2661,9 @@ function ble/widget/vi-command/relative-first-non-space.impl {
   if [[ $_ble_decode_key__kmap == vi_nmap ]] && ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)); then
     ble/widget/vi-command/first-non-space
   elif ((nmove)); then
-    ble/widget/vi-command/first-non-space
+    ble/keymap:vi/needs-eol-fix "$nolx" && ((nolx--))
+    ble/widget/.goto-char "$nolx"
+    ble/keymap:vi/adjust-command-mode
   else
     ble/widget/vi-command/bell
     return 1
@@ -2765,9 +2768,16 @@ function ble/widget/vi-command/last-non-space {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local ret
   ble-edit/content/find-logical-eol "$_ble_edit_ind" $((ARG-1)); local index=$ret
+  if ((ARG>1)) && [[ ${_ble_edit_str:_ble_edit_ind:index-_ble_edit_ind} != *$'\n'* ]]; then
+    # 行移動を起こすはずだったのに一行も進めなかった場合は失敗
+    ble/widget/vi-command/bell
+    return 1
+  fi
+
   local rex=$'([^ \t\n]?[ \t]+|[^ \t\n])$'
   [[ ${_ble_edit_str::index} =~ $rex ]] && ((index-=${#BASH_REMATCH}))
   ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
+
 }
 
 #------------------------------------------------------------------------------
@@ -5576,6 +5586,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
   return 0
 }
 function ble/widget/vi_xmap/visual-replace-char {
+  _ble_edit_overwrite_mode=R
   ble/keymap:vi/async-read-char ble/widget/vi_xmap/visual-replace-char.hook
 }
 

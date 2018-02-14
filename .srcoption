@@ -1,1 +1,2 @@
---exclude=./out --exclude=./a.sh ble.pp ble-syntax-ctx.def
+--exclude=./out --exclude=./a.sh ble.pp ble-syntax-ctx.def -x md
+

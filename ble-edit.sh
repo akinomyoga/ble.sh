@@ -2085,22 +2085,26 @@ function ble-edit/content/find-logical-eol {
   local index=${1:-$_ble_edit_ind} offset=${2:-0}
   if ((offset>0)); then
     local text=${_ble_edit_str:index}
-    local rex="^([^$_ble_term_nl]*$_ble_term_nl){0,$offset}[^$_ble_term_nl]*"
+    local rex=$'^([^\n]*\n){0,'$((offset-1))$'}([^\n]*\n)?[^\n]*'
     [[ $text =~ $rex ]]
     ((ret=index+${#BASH_REMATCH}))
+    [[ ${BASH_REMATCH[2]} ]]
   elif ((offset<0)); then
     local text=${_ble_edit_str::index}
-    local rex="($_ble_term_nl[^$_ble_term_nl]*){0,$((-offset))}$"
+    local rex=$'(\n[^\n]*){0,'$((-offset-1))$'}(\n[^\n]*)?$'
     [[ $text =~ $rex ]]
     if [[ $BASH_REMATCH ]]; then
       ((ret=index-${#BASH_REMATCH}))
+      [[ ${BASH_REMATCH[2]} ]]
     else
       ble-edit/content/find-logical-eol "$index" 0
+      return 1
     fi
   else
     local text=${_ble_edit_str:index}
     text=${text%%$'\n'*}
     ((ret=index+${#text}))
+    return 0
   fi
 }
 ## 関数 ble-edit/content/find-logical-bol [index [offset]]; ret
@@ -2113,21 +2117,24 @@ function ble-edit/content/find-logical-eol {
 function ble-edit/content/find-logical-bol {
   local index=${1:-$_ble_edit_ind} offset=${2:-0}
   if ((offset>0)); then
-    local text=${_ble_edit_str:index}
-    local rex="^([^$_ble_term_nl]*$_ble_term_nl){1,$offset}"
-    [[ $text =~ $rex ]]
+    local rex=$'^([^\n]*\n){0,'$((offset-1))$'}([^\n]*\n)?'
+    [[ ${_ble_edit_str:index} =~ $rex ]]
     if [[ $BASH_REMATCH ]]; then
       ((ret=index+${#BASH_REMATCH}))
+      [[ ${BASH_REMATCH[2]} ]]
     else
       ble-edit/content/find-logical-bol "$index" 0
+      return 1
     fi
   elif ((offset<0)); then
-    ble-edit/content/find-logical-eol "$index" "$offset"
+    ble-edit/content/find-logical-eol "$index" "$offset"; local ext=$ret
     ble-edit/content/find-logical-bol "$ret" 0
+    return "$ext"
   else
     local text=${_ble_edit_str::index}
     text=${text##*$'\n'}
     ((ret=index-${#text}))
+    return 0
   fi
 }
 
