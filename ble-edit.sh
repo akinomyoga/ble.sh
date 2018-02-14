@@ -28,7 +28,7 @@
 # @bind
 # @bind.bind
 
-## オプション bleopt_char_width_mode
+## オプション char_width_mode
 ##   文字の表示幅の計算方法を指定します。
 ## bleopt_char_width_mode=east
 ##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 2 とします
@@ -47,7 +47,7 @@ function bleopt/check:char_width_mode {
   fi
 }
 
-## オプション bleopt_edit_vbell
+## オプション edit_vbell
 ##   編集時の visible bell の有効・無効を設定します。
 ## bleopt_edit_vbell=1
 ##   有効です。
@@ -55,7 +55,7 @@ function bleopt/check:char_width_mode {
 ##   無効です。
 : ${bleopt_edit_vbell=}
 
-## オプション bleopt_edit_abell
+## オプション edit_abell
 ##   編集時の audible bell (BEL 文字出力) の有効・無効を設定します。
 ## bleopt_edit_abell=1
 ##   有効です。
@@ -63,7 +63,7 @@ function bleopt/check:char_width_mode {
 ##   無効です。
 : ${bleopt_edit_abell=1}
 
-## オプション bleopt_history_lazyload
+## オプション history_lazyload
 ## bleopt_history_lazyload=1
 ##   ble-attach 後、初めて必要になった時に履歴の読込を行います。
 ## bleopt_history_lazyload=
@@ -73,7 +73,7 @@ function bleopt/check:char_width_mode {
 ## このオプションの値に関係なく ble-attach の時に履歴の読み込みを行います。
 : ${bleopt_history_lazyload=1}
 
-## オプション bleopt_delete_selection_mode
+## オプション delete_selection_mode
 ##   文字挿入時に選択範囲をどうするかについて設定します。
 ## bleopt_delete_selection_mode=1 (既定)
 ##   選択範囲の内容を新しい文字で置き換えます。
@@ -81,38 +81,7 @@ function bleopt/check:char_width_mode {
 ##   選択範囲を解除して現在位置に新しい文字を挿入します。
 : ${bleopt_delete_selection_mode=1}
 
-## オプション bleopt_exec_type (内部使用)
-##   コマンドの実行の方法を指定します。
-## bleopt_exec_type=exec
-##   関数内で実行します (従来の方法です。将来的に削除されます)
-## bleopt_exec_type=gexec
-##   グローバルな文脈で実行します (新しい方法です)
-## 要件: 関数 ble-edit/exec:$bleopt_exec_type/process
-: ${bleopt_exec_type:=gexec}
-
-function bleopt/check:exec_type {
-  if ! ble/util/isfunction "ble-edit/exec:$value/process"; then
-    echo "bleopt: Invalid value exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
-    return 1
-  fi
-}
-
-## オプション bleopt_suppress_bash_output (内部使用)
-##   bash 自体の出力を抑制するかどうかを指定します。
-## bleopt_suppress_bash_output=1
-##   抑制します。bash のエラーメッセージは visible-bell で表示します。
-## bleopt_suppress_bash_output=
-##   抑制しません。bash のメッセージは全て端末に出力されます。
-##   これはデバグ用の設定です。bash の出力を制御するためにちらつきが発生する事があります。
-##   bash-3 ではこの設定では C-d を捕捉できません。
-: ${bleopt_suppress_bash_output=1}
-
-## オプション bleopt_ignoreeof_message (内部使用)
-##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
-##   これは自分の bash の設定に合わせる必要があります。
-: ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
-
-## オプション bleopt_default_keymap
+## オプション default_keymap
 ##   既定の編集モードに使われるキーマップを指定します。
 ## bleopt_default_keymap=auto
 ##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
@@ -131,17 +100,17 @@ function bleopt/check:default_keymap {
   esac
 }
 
-## オプション bleopt_indent_offset
+## オプション indent_offset
 ##   シェルのインデント幅を指定します。既定では 4 です。
 : ${bleopt_indent_offset:=4}
 
-## オプション bleopt_indent_tabs
+## オプション indent_tabs
 ##   インデントにタブを使用するかどうかを指定します。
 ##   0 を指定するとインデントに空白だけを用います。
 ##   それ以外の場合はインデントにタブを使用します。
 : ${bleopt_indent_tabs:=1}
 
-## オプション bleopt_tab_width
+## オプション tab_width
 ##   タブの表示幅を指定します。
 ##
 ##   bleopt_tab_width= (既定)
@@ -157,6 +126,18 @@ function bleopt/check:tab_width {
   fi
 }
 
+## オプション undo_point
+##   undo/redo 実行直後のカーソル位置を設定します。
+##
+##   undo_point=beg
+##     undo/redo によって変化のあった範囲の先頭に移動します。
+##   undo_point=end
+##     undo/redo によって変化のあった範囲の末端に移動します。
+##   その他の時
+##     undo/redo 後の状態が記録された時のカーソル位置を復元します。
+##
+: ${bleopt_undo_point=end}
+
 ## オプション edit_forced_textmap
 ##   1 が設定されているとき、矩形選択に先立って配置計算を強制します。
 ##   0 が設定されているとき、配置情報があるときにそれを使い、
@@ -170,6 +151,39 @@ function ble/edit/use-textmap {
   ble/widget/.update-textmap
   return 0
 }
+
+## オプション exec_type (内部使用)
+##   コマンドの実行の方法を指定します。
+##
+##   exec_type=exec
+##     関数内で実行します (従来の方法です。将来的に削除されます)
+##   exec_type=gexec
+##     グローバルな文脈で実行します (新しい方法です)
+##
+## 要件: 関数 ble-edit/exec:$bleopt_exec_type/process が定義されていること。
+: ${bleopt_exec_type:=gexec}
+
+function bleopt/check:exec_type {
+  if ! ble/util/isfunction "ble-edit/exec:$value/process"; then
+    echo "bleopt: Invalid value exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
+    return 1
+  fi
+}
+
+## オプション suppress_bash_output (内部使用)
+##   bash 自体の出力を抑制するかどうかを指定します。
+## bleopt_suppress_bash_output=1
+##   抑制します。bash のエラーメッセージは visible-bell で表示します。
+## bleopt_suppress_bash_output=
+##   抑制しません。bash のメッセージは全て端末に出力されます。
+##   これはデバグ用の設定です。bash の出力を制御するためにちらつきが発生する事があります。
+##   bash-3 ではこの設定では C-d を捕捉できません。
+: ${bleopt_suppress_bash_output=1}
+
+## オプション ignoreeof_message (内部使用)
+##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
+##   これは自分の bash の設定に合わせる必要があります。
+: ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
 
 # 
 #------------------------------------------------------------------------------
@@ -2004,11 +2018,11 @@ function _ble_edit_str.reset-and-check-dirty {
 
   local ret pref suff
   ble/string#common-prefix "$_ble_edit_str" "$str"; pref=$ret
-  local dmin="${#pref}"
+  local dmin=${#pref}
   ble/string#common-suffix "${_ble_edit_str:dmin}" "${str:dmin}"; suff=$ret
   local dmax0=$((${#_ble_edit_str}-${#suff})) dmax=$((${#str}-${#suff}))
 
-  _ble_edit_str="$str"
+  _ble_edit_str=$str
   _ble_edit_str/update-dirty-range "$dmin" "$dmax" "$dmax0" "$reason"
 }
 
@@ -4832,8 +4846,26 @@ function ble-edit/undo/add {
 }
 function ble-edit/undo/.load {
   local str ind; ble-edit/undo/.get-current-state
-  _ble_edit_str.reset-and-check-dirty "$str"
+
+  if [[ $bleopt_undo_point == end || $bleopt_undo_point == beg ]]; then
+    ble/string#common-prefix "$_ble_edit_str" "$str"
+    local beg=${#ret}
+    ble/string#common-suffix "${_ble_edit_str:beg}" "${str:beg}"
+    local end0=$((${#_ble_edit_str}-${#ret}))
+    local end=$((${#str}-${#ret}))
+    _ble_edit_str.replace "$beg" "$end0" "${str:beg:end-beg}"
+
+    if [[ $bleopt_undo_point == end ]]; then
+      ind=$end
+    else
+      ind=$beg
+    fi
+  else
+    _ble_edit_str.reset-and-check-dirty "$str"
+  fi
+
   ble/widget/.goto-char "$ind"
+  return
 }
 function ble-edit/undo/undo {
   local arg=${1:-1}

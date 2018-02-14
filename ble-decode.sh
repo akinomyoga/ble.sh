@@ -7,7 +7,7 @@
 : ${bleopt_decode_error_kseq_vbell=1}
 : ${bleopt_decode_error_kseq_discard=1}
 
-## オプション bleopt_decode_isolated_esc
+## オプション decode_isolated_esc
 ##   bleopt decode_isolated_esc=meta
 ##     単体で受信した ESC を、前置詞として受信した ESC と同様に、
 ##     Meta 修飾または特殊キーのエスケープシーケンスとして扱います。

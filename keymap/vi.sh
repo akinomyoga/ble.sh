@@ -263,7 +263,7 @@ _ble_keymap_vi_insert_leave=
 _ble_keymap_vi_single_command=
 _ble_keymap_vi_single_command_overwrite=
 
-## オプション bleopt_keymap_vi_nmap_name
+## オプション keymap_vi_nmap_name
 ##   ノーマルモードの時に表示する文字列を指定します。
 ##   空文字列を指定したときは何も表示しません。
 : ${bleopt_keymap_vi_nmap_name:=$'\e[1m~\e[m'}
@@ -4701,7 +4701,9 @@ function ble/widget/vi_nmap/undo {
   local _ble_keymap_vi_undo_suppress=1
   ble/keymap:vi/mark/start-edit-area
   if ble-edit/undo/undo "$ARG"; then
+    ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
     ble/keymap:vi/mark/end-edit-area
+    ble/keymap:vi/adjust-command-mode
   else
     ble/widget/vi-command/bell
     return 1
@@ -4712,7 +4714,9 @@ function ble/widget/vi_nmap/redo {
   local _ble_keymap_vi_undo_suppress=1
   ble/keymap:vi/mark/start-edit-area
   if ble-edit/undo/redo "$ARG"; then
+    ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
     ble/keymap:vi/mark/end-edit-area
+    ble/keymap:vi/adjust-command-mode
   else
     ble/widget/vi-command/bell
     return 1
@@ -4723,7 +4727,9 @@ function ble/widget/vi_nmap/revert {
   local _ble_keymap_vi_undo_suppress=1
   ble/keymap:vi/mark/start-edit-area
   if ble-edit/undo/revert-toggle "$ARG"; then
+    ble/keymap:vi/needs-eol-fix && ble/widget/.goto-char $((_ble_edit_ind-1))
     ble/keymap:vi/mark/end-edit-area
+    ble/keymap:vi/adjust-command-mode
   else
     ble/widget/vi-command/bell
     return 1

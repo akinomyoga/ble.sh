@@ -1,7 +1,7 @@
 # -*- mode:sh;mode:sh-bash -*-
 # bash script to be sourced from interactive shell
 
-## オプション bleopt_input_encoding
+## オプション input_encoding
 : ${bleopt_input_encoding:=UTF-8}
 
 function bleopt/check:input_encoding {
@@ -27,19 +27,19 @@ function bleopt/check:input_encoding {
   return 0
 }
 
-## オプション bleopt_stackdump_enabled
+## オプション stackdump_enabled
 ##   エラーが起こった時に関数呼出の構造を標準エラー出力に出力するかどうかを制御する。
 ##   算術式評価によって非零の値になる場合にエラーを出力する。
 ##   それ以外の場合にはエラーを出力しない。
 : ${bleopt_stackdump_enabled=0}
 
-## オプション bleopt_openat_base
+## オプション openat_base
 ##   bash-4.1 未満で exec {var}>foo が使えない時に ble.sh で内部的に fd を割り当てる。
 ##   この時の fd の base を指定する。bleopt_openat_base, bleopt_openat_base+1, ...
 ##   という具合に順番に使用される。既定値は 30 である。
 : ${bleopt_openat_base:=30}
 
-## オプション bleopt_pager
+## オプション pager
 : ${bleopt_pager:=}
 
 shopt -s checkwinsize
