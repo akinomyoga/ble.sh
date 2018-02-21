@@ -648,6 +648,22 @@ function ble-syntax/parse/generate-stat {
   _stat="$ctx $((wbegin<0?wbegin:i-wbegin)) $wtype $((inest<0?inest:i-inest)) $((tchild<0?tchild:i-tchild)) $((tprev<0?tprev:i-tprev)) ${nparam:-none} $((ilook-i))"
 }
 
+
+## 関数 ble-syntax/parse/set-lookahead count
+##
+##   @param[in] count
+##     現在位置の何文字先まで参照して動作を決定したかを指定します。
+##   @var[out] i
+##   @var[out] ilook
+##
+##   例えば "a@bcdx" の @ の位置に i があって、
+##   x の文字を見て c 直後までしか読み取らない事を決定したとき、
+##   set-lookahead 4 を実行して i を 2 進めるか、
+##   i を 2 進めてから set-lookahead 2 を実行します。
+##
+##   最終的に i の次の 1 文字までしか参照しない時、
+##   set-lookahead を呼び出す必要はありません。
+##
 function ble-syntax/parse/set-lookahead {
   ((i+$1>ilook&&(ilook=i+$1)))
 }
@@ -2178,7 +2194,11 @@ function ble-syntax:bash/check-variable-assignment {
   local rematch1=${BASH_REMATCH[1]} # for bash-3.1 ${#arr[n]} bug
   if [[ $rematch1 == '+' ]]; then
     # var+... 曖昧状態
-    ((parse_suppressNextStat=1))
+
+    # Note: + の次の文字が = でない時に此処に来るので、
+    # + の次の文字まで先読みしたことになる。
+    ble-syntax/parse/set-lookahead $((${#BASH_REMATCH}+1))
+
     return 1
   fi
 
@@ -3747,7 +3767,7 @@ function ble-syntax/parse {
 
   # 解析
   _ble_syntax_text=$text
-  local i _stat tail parse_suppressNextStat=
+  local i _stat tail
 #%if !release
   local debug_p1
 #%end
@@ -3763,12 +3783,7 @@ function ble-syntax/parse {
         break
       fi
     fi
-
-    if [[ $parse_suppressNextStat ]]; then
-      parse_suppressNextStat=
-    else
-      _ble_syntax_stat[i]=$_stat
-    fi
+    _ble_syntax_stat[i]=$_stat
 
     tail=${text:i}
 #%if !release
