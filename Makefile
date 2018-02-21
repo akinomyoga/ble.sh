@@ -50,7 +50,7 @@ $(OUTDIR)/cmap/%.sh: cmap/%.sh | $(OUTDIR)/cmap
 	cp -p $< $@
 
 outdirs += $(OUTDIR)/keymap
-outfiles += $(OUTDIR)/keymap/isearch.sh $(OUTDIR)/keymap/emacs.sh
+outfiles += $(OUTDIR)/keymap/emacs.sh
 outfiles += $(OUTDIR)/keymap/vi.sh $(OUTDIR)/keymap/vi_digraph.sh $(OUTDIR)/keymap/vi_digraph.txt $(OUTDIR)/keymap/vi_test.sh
 $(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
 	cp -p $< $@
