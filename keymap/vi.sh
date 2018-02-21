@@ -616,6 +616,12 @@ function ble/keymap:vi/get-arg {
 function ble/keymap:vi/register#load {
   local reg=$1
   if [[ $reg ]] && ((reg!=34)); then
+    if [[ $reg == 37 ]]; then # "%
+      _ble_edit_kill_type=
+      _ble_edit_kill_ring=$HISTFILE
+      return 0
+    fi
+
     local value=${_ble_keymap_vi_register[reg]}
     if [[ $value == */* ]]; then
       _ble_edit_kill_type=${value%%/*}
@@ -703,14 +709,59 @@ function ble/keymap:vi/register#set {
     return 0
   fi
 }
-function ble/keymap:vi/register#set-ring {
-  local type=$1 content=$2
-  local n
-  for ((n=9;n>0;n--)); do
-    _ble_keymap_vi_register[48+n]=${_ble_keymap_vi_register[48+n-1]}
-  done
-  ble/keymap:vi/register#set 48 "$type" "$content" # "0
+
+## 関数 ble/keymap:vi/register#set-yank reg type content
+##   レジスタ "0 に文字列を登録します。
+##
+function ble/keymap:vi/register#set-yank {
+  ble/keymap:vi/register#set "$@" || return 1
+  local reg=$1 type=$2 content=$3
+  if [[ $reg == '' || $reg == 34 ]]; then
+    ble/keymap:vi/register#set 48 "$yank" "$content" # "0
+  fi
 }
+## 関数 ble/keymap:vi/register#set-edit reg type content
+##   レジスタ "1 に文字列を登録します。
+##
+##   content に改行が含まれる場合、または、特定の WIDGET の時、
+##   元々レジスタ "1 - "8 にあった内容をレジスタ "2 - "9 に移動し、
+##   新しい文字列をレジスタ "1 に登録します。
+##   それ以外の時、新しい文字列はレジスタ "- に登録します。
+##
+_ble_keymap_vi_register_49_widget_list=(
+  # %
+  ble/widget/vi-command/search-matchpair-or
+  ble/widget/vi-command/percentage-line
+
+  # `
+  ble/widget/vi-command/goto-mark
+
+  # / ? n N
+  ble/widget/vi-command/search-forward
+  ble/widget/vi-command/search-backward
+  ble/widget/vi-command/search-repeat
+  ble/widget/vi-command/search-reverse-repeat
+
+  # ( ) { }
+  # ToDo
+)
+function ble/keymap:vi/register#set-edit {
+  ble/keymap:vi/register#set "$@" || return 1
+  local reg=$1 type=$2 content=$3
+  if [[ $reg == '' || $reg == 34 ]]; then
+    local widget=${WIDGET%%[$' \t\n']*}
+    if [[ $content == *$'\n'* || " $widget " == " ${_ble_keymap_vi_register_49_widget_list[*]} " ]]; then
+      local n
+      for ((n=9;n>=2;n--)); do
+        _ble_keymap_vi_register[48+n]=${_ble_keymap_vi_register[48+n-1]}
+      done
+      ble/keymap:vi/register#set 49 "$type" "$content" # "1
+    else
+      ble/keymap:vi/register#set 45 "$type" "$content" # "-
+    fi
+  fi
+}
+
 function ble/keymap:vi/register#play {
   local reg=$1 value
   if [[ $reg ]] && ((reg!=34)); then
@@ -1174,7 +1225,8 @@ function ble/keymap:vi/call-operator-blockwise {
 function ble/keymap:vi/operator:d {
   local context=$3 arg=$4 reg=$5 # beg end は上書きする
   if [[ $context == line ]]; then
-    ble/keymap:vi/register#set "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
+    ble/keymap:vi/register#set-edit "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
+
     ((end==${#_ble_edit_str}&&beg>0&&beg--)) # fix start position
     ble/widget/.delete-range "$beg" "$end"
   elif [[ $context == block ]]; then
@@ -1192,7 +1244,7 @@ function ble/keymap:vi/operator:d {
     ((beg+=slpad)) # fix start position
   else
     if ((beg<end)); then
-      ble/keymap:vi/register#set "$reg" '' "${_ble_edit_str:beg:end-beg}" || return 1
+      ble/keymap:vi/register#set-edit "$reg" '' "${_ble_edit_str:beg:end-beg}" || return 1
       ble/widget/.delete-range "$beg" "$end" 0
     fi
   fi
@@ -1201,7 +1253,7 @@ function ble/keymap:vi/operator:d {
 function ble/keymap:vi/operator:c {
   local context=$3 arg=$4 reg=$5 # beg は上書き対象
   if [[ $context == line ]]; then
-    ble/keymap:vi/register#set "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
+    ble/keymap:vi/register#set-edit "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
 
     local end2=$end
     ((end2)) && [[ ${_ble_edit_str:end2-1:1} == $'\n' ]] && ((end2--))
@@ -1256,8 +1308,12 @@ function ble/keymap:vi/operator:y {
     yank_type=
     yank_content=${_ble_edit_str:beg:end-beg}
   fi
-  ble/keymap:vi/register#set "$reg" "$yank_type" "$yank_content" || return 1
-  [[ $keymap_vi_operator_d ]] || ble/keymap:vi/register#set-ring "$yank_type" "$yank_content"
+
+  if [[ $keymap_vi_operator_d ]]; then
+    ble/keymap:vi/register#set-edit "$reg" "$yank_type" "$yank_content" || return 1
+  else
+    ble/keymap:vi/register#set-yank "$reg" "$yank_type" "$yank_content" || return 1
+  fi
   ble/keymap:vi/mark/commit-edit-area "$1" "$2"
   return 0
 }
@@ -4156,11 +4212,12 @@ function ble/widget/vi-command/commandline.hook {
   ble/string#split-words command "$1"
   local cmd="ble/widget/vi-command:${command[0]}"
   if ble/util/isfunction "$cmd"; then
-    "$cmd" "${command[@]:1}"
+    "$cmd" "${command[@]:1}"; local ext=$?
   else
-    ble/widget/vi-command/bell "unknown command $1"
-    return 1
+    ble/widget/vi-command/bell "unknown command $1"; local ext=1
   fi
+  [[ $1 ]] && _ble_keymap_vi_register[58]=/$result # ":
+  return "$ext"
 }
 
 function ble/widget/vi-command:w {
