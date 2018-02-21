@@ -855,7 +855,7 @@ function ble/widget/vi_nmap/record-register {
 
     ble/util/c2s 155; local csi=$ret
 
-    local key value
+    local key
     local -a buff=()
     for key in "${keys[@]}"; do
       # 通常の文字
@@ -887,7 +887,7 @@ function ble/widget/vi_nmap/record-register {
         (key&ble_decode_Meta)&&(mod+=0x20)))
       ble/array#push buff "${csi}27;$mod;$c~"
     done
-    IFS= eval 'local value=${buff[*]-}'
+    IFS= eval 'local value="${buff[*]-}"'
     ble/keymap:vi/register#set "$_ble_keymap_vi_reg_record" q "$value"
 
     _ble_keymap_vi_reg_record=

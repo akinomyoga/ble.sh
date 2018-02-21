@@ -492,6 +492,16 @@ bash 配列の宣言に関する仕様・バグと注意点
     a="123 345"; declare -a arr=("$a"); このようにしても駄目だ。
     a="123 345"; declare -a arr; arr=("$a"); こうする必要がある。
 
+  * 配列要素を連結する時
+
+    動く例:
+      IFS= eval 'value=${arr[*]}'
+      IFS= eval 'value="${arr[*]}"'
+      IFS= eval 'local value="${arr[*]}"'
+
+    動かない例 (間に空白が入ってしまう):
+      IFS= eval 'local value=${arr[*]}'
+
 bash_features
 
   * printf -v var %s value
@@ -3020,6 +3030,20 @@ tech
 -------------------------------------------------------------------------------
 
 2018-02-21
+
+  * 2018-02-21 vi-mode: マクロで記録される内容に空白が挿入されている。 [#D0667]
+
+    これは何処かの連結で変な事が起こっている。やはり連結だった。
+
+    動く例:
+      IFS= eval 'value=${arr[*]}'
+      IFS= eval 'value="${arr[*]}"'
+      IFS= eval 'local value="${arr[*]}"'
+
+    動かない例:
+      IFS= eval 'local value=${arr[*]}'
+
+    これは罠である…。Memo にも記録しておく事にする。
 
   * 2018-02-18 vi-mode: register 0..9 に対応する [#D0666]
 
