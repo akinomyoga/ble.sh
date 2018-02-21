@@ -1808,12 +1808,12 @@ function ble-edit/info/.construct-text {
       ble/util/s2c "$text" "$i"
       local code=$ret w=0
       if ((code<32)); then
-        ble/util/c2s "$((code+64))"
+        ble/util/c2s $((code+64))
         ble-edit/info/.put-atomic 2 "$_ble_term_rev^$ret$_ble_term_sgr0"
       elif ((code==127)); then
         ble-edit/info/.put-atomic 2 '$_ble_term_rev^?$_ble_term_sgr0'
       elif ((128<=code&&code<160)); then
-        ble/util/c2s "$((code-64))"
+        ble/util/c2s $((code-64))
         ble-edit/info/.put-atomic 4 "${_ble_term_rev}M-^$ret$_ble_term_sgr0"
       else
         ble/util/c2w "$code"

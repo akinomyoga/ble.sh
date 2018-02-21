@@ -635,6 +635,11 @@ function ble/keymap:vi/register#set {
   # type = B は矩形指向の値
   # type = '' は文字指向の値
   # type = q はキーボードマクロ
+  #
+  # Note: 実際に記録される type は以下の何れかである。
+  #  type = L
+  #  type = B:*
+  #  type = ''
 
   # 追記の場合
   if [[ $reg == +* ]]; then
@@ -698,6 +703,14 @@ function ble/keymap:vi/register#set {
     return 0
   fi
 }
+function ble/keymap:vi/register#set-ring {
+  local type=$1 content=$2
+  local n
+  for ((n=9;n>0;n--)); do
+    _ble_keymap_vi_register[48+n]=${_ble_keymap_vi_register[48+n-1]}
+  done
+  ble/keymap:vi/register#set 48 "$type" "$content" # "0
+}
 function ble/keymap:vi/register#play {
   local reg=$1 value
   if [[ $reg ]] && ((reg!=34)); then
@@ -719,6 +732,65 @@ function ble/keymap:vi/register#play {
     ble-decode-char "$ret"
   done
 }
+function ble/keymap:vi/register#dump/escape {
+  local text=$1
+  local out= i=0 iN=${#text}
+  while ((i<iN)); do
+    local tail=${text:i}
+    if ble/util/isprint+ "$tail"; then
+      out=$out$BASH_REMATCH
+      ((i+=${#BASH_REMATCH}))
+    else
+      ble/util/s2c "$tail"
+      local code=$ret
+      if ((code<32)); then
+        ble/util/c2s $((code+64))
+        out=$out$_ble_term_rev^$ret$_ble_term_sgr0
+      elif ((code==127)); then
+        out=$out$_ble_term_rev^?$_ble_term_sgr0
+      elif ((128<=code&&code<160)); then
+        ble/util/c2s $((code-64))
+        out=$out${_ble_term_rev}M-^$ret$_ble_term_sgr0
+      else
+        out=$out${tail::1}
+      fi
+      ((i++))
+    fi
+  done
+  ret=$out
+}
+function ble/keymap:vi/register#dump {
+  local k ret out=
+  local value type content
+  for k in "${!_ble_keymap_vi_register[@]}"; do
+    if ((k==34)); then
+      type=$_ble_edit_kill_type
+      content=$_ble_edit_kill_ring
+    else
+      value=${_ble_keymap_vi_register[k]}
+      type=${value%%/*} content=${value#*/}
+    fi
+
+    ble/util/c2s "$k"; k=$ret
+    case $type in
+    (L)   type=line ;;
+    (B:*) type=block ;;
+    (*)   type=char ;;
+    esac
+    ble/keymap:vi/register#dump/escape "$content"; content=$ret
+
+    out=$out'"'$k' ('$type') '$content$'\n'
+  done
+  ble-edit/info/show raw "$out"
+  return 0
+}
+function ble/widget/vi-command:reg { ble/keymap:vi/register#dump; }
+function ble/widget/vi-command:regi { ble/keymap:vi/register#dump; }
+function ble/widget/vi-command:regis { ble/keymap:vi/register#dump; }
+function ble/widget/vi-command:regist { ble/keymap:vi/register#dump; }
+function ble/widget/vi-command:registe { ble/keymap:vi/register#dump; }
+function ble/widget/vi-command:register { ble/keymap:vi/register#dump; }
+function ble/widget/vi-command:registers { ble/keymap:vi/register#dump; }
 
 function ble/widget/vi-command/append-arg {
   local ret ch=$1
@@ -1106,6 +1178,7 @@ function ble/keymap:vi/operator:d {
     ((end==${#_ble_edit_str}&&beg>0&&beg--)) # fix start position
     ble/widget/.delete-range "$beg" "$end"
   elif [[ $context == block ]]; then
+    local keymap_vi_operator_d=1
     ble/keymap:vi/operator:y "$@" || return 1
     local isub=${#sub_ranges[@]} sub
     local smin= smax= slpad= srpad=
@@ -1163,8 +1236,10 @@ function ble/keymap:vi/operator:c {
 function ble/keymap:vi/operator:y.record { :; }
 function ble/keymap:vi/operator:y {
   local beg=$1 end=$2 context=$3 arg=$4 reg=$5
+  local yank_type= yank_content=
   if [[ $context == line ]]; then
-    ble/keymap:vi/register#set "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
+    yank_type=L
+    yank_content=${_ble_edit_str:beg:end-beg}
   elif [[ $context == block ]]; then
     local sub
     local -a afill=() atext=()
@@ -1175,12 +1250,14 @@ function ble/keymap:vi/operator:y {
       ble/array#push atext "$stext"
     done
 
-    IFS=$'\n' eval 'local kill_ring=${atext[*]-}'
-    local kill_type=B:${afill[*]-}
-    ble/keymap:vi/register#set "$reg" "$kill_type" "$kill_ring" || return 1
+    IFS=$'\n' eval 'local yank_content=${atext[*]-}'
+    yank_type=B:${afill[*]-}
   else
-    ble/keymap:vi/register#set "$reg" '' "${_ble_edit_str:beg:end-beg}" || return 1
+    yank_type=
+    yank_content=${_ble_edit_str:beg:end-beg}
   fi
+  ble/keymap:vi/register#set "$reg" "$yank_type" "$yank_content" || return 1
+  [[ $keymap_vi_operator_d ]] || ble/keymap:vi/register#set-ring "$yank_type" "$yank_content"
   ble/keymap:vi/mark/commit-edit-area "$1" "$2"
   return 0
 }
@@ -2623,7 +2700,6 @@ function ble/widget/vi-command/relative-first-non-space.impl {
   local ret ind=$_ble_edit_ind
   ble-edit/content/find-logical-bol "$ind" "$arg"; local bolx=$ret
   ble-edit/content/find-non-space "$bolx"; local nolx=$ret
-echo ind=$ind arg=$arg bolx=$bolx nolx=$nolx >> ~/a.txt
 
   # 2017-09-12 何故か分からないが vim はこういう振る舞いに見える。
   ((_ble_keymap_vi_single_command==2&&_ble_keymap_vi_single_command--))
