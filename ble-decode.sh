@@ -1230,6 +1230,7 @@ _ble_decode_keylog_depth=0
 _ble_decode_keylog=()
 function ble-decode/keylog/start {
   _ble_decode_keylog_enabled=1
+  _ble_decode_keylog=()
 }
 function ble-decode/keylog/end {
   ret=("${_ble_decode_keylog[@]}")

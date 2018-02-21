@@ -154,6 +154,13 @@ function ble/widget/vi-command:check-vi-mode/increment {
   ble/keymap:vi_test/show-summary
 }
 
+function ble/widget/vi-command:check-vi-mode/macro {
+  local _ble_decode_keylog_depth=0 # to enable ble-decode/keylog for automatic ble-decode-key
+  ble/keymap:vi_test/start-section 'qx..q'
+  ble/keymap:vi_test/check A1 '@:@123' 'q a A SP h e l l o C-[ q @ a' '@:123 hello hell@o'
+  ble/keymap:vi_test/show-summary
+}
+
 #------------------------------------------------------------------------------
 
 function ble/widget/vi-command:check-vi-mode {
@@ -173,6 +180,7 @@ function ble/widget/vi-command:check-vi-mode {
   ble/widget/vi-command:check-vi-mode/cw
   ble/widget/vi-command:check-vi-mode/search
   ble/widget/vi-command:check-vi-mode/increment
+  ble/widget/vi-command:check-vi-mode/macro
 
   #----------------------------------------------------------------------------
 
