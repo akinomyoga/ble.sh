@@ -638,6 +638,7 @@ function ble/keymap:vi/register#load {
     fi
   fi
 }
+## 関数 ble/keymap:vi/register#set reg type content
 function ble/keymap:vi/register#set {
   local reg=$1 type=$2 content=$3
 
@@ -721,7 +722,7 @@ function ble/keymap:vi/register#set-yank {
   ble/keymap:vi/register#set "$@" || return 1
   local reg=$1 type=$2 content=$3
   if [[ $reg == '' || $reg == 34 ]]; then
-    ble/keymap:vi/register#set 48 "$yank" "$content" # "0
+    ble/keymap:vi/register#set 48 "$type" "$content" # "0
   fi
 }
 ## 関数 ble/keymap:vi/register#set-edit reg type content
@@ -817,7 +818,7 @@ function ble/keymap:vi/register#dump/escape {
 function ble/keymap:vi/register#dump {
   local k ret out=
   local value type content
-  for k in "${!_ble_keymap_vi_register[@]}"; do
+  for k in 34 "${!_ble_keymap_vi_register[@]}"; do
     if ((k==34)); then
       type=$_ble_edit_kill_type
       content=$_ble_edit_kill_ring
@@ -1234,16 +1235,36 @@ function ble/keymap:vi/operator:d {
     ((end==${#_ble_edit_str}&&beg>0&&beg--)) # fix start position
     ble/widget/.delete-range "$beg" "$end"
   elif [[ $context == block ]]; then
-    local keymap_vi_operator_d=1
-    ble/keymap:vi/operator:y "$@" || return 1
-    local isub=${#sub_ranges[@]} sub
-    local smin= smax= slpad= srpad=
-    while ((isub--)); do
-      ble/string#split sub : "${sub_ranges[isub]}"
+    local -a afill=() atext=() arep=()
+    local sub shift=0 slpad0=
+    local smin smax slpad srpad sfill stext
+    for sub in "${sub_ranges[@]}"; do
+      stext=${sub#*:*:*:*:*:}
+      ble/string#split sub : "$sub"
       smin=${sub[0]} smax=${sub[1]}
       slpad=${sub[2]} srpad=${sub[3]}
+      sfill=${sub[4]}
+
+      [[ $slpad0 ]] || slpad0=$slpad # 最初の slpad
+
+      ble/array#push afill "$sfill"
+      ble/array#push atext "$stext"
       local ret; ble/string#repeat ' ' $((slpad+srpad))
-      ble/widget/.replace-range "$smin" "$smax" "$ret" 1
+      ble/array#push arep $((smin+shift)):$((smax+shift)):"$ret"
+      ((shift+=(slpad+srpad)-(smax-smin)))
+    done
+
+    # yank
+    IFS=$'\n' eval 'local yank_content=${atext[*]-}'
+    local yank_type=B:${afill[*]-}
+    ble/keymap:vi/register#set-edit "$reg" "$yank_type" "$yank_content" || return 1
+
+    # delete
+    local rep
+    for rep in "${arep[@]}"; do
+      smin=${rep%%:*}; rep=${rep:${#smin}+1}
+      smax=${rep%%:*}; rep=${rep:${#smax}+1}
+      ble/widget/.replace-range "$smin" "$smax" "$rep" 1
     done
     ((beg+=slpad)) # fix start position
   else
@@ -1294,6 +1315,7 @@ function ble/keymap:vi/operator:y {
   local beg=$1 end=$2 context=$3 arg=$4 reg=$5
   local yank_type= yank_content=
   if [[ $context == line ]]; then
+    ble_keymap_vi_operator_index=$_ble_edit_ind # operator:y では現在位置を動かさない
     yank_type=L
     yank_content=${_ble_edit_str:beg:end-beg}
   elif [[ $context == block ]]; then
@@ -1318,7 +1340,7 @@ function ble/keymap:vi/operator:y {
   else
     ble/keymap:vi/register#set-yank "$reg" "$yank_type" "$yank_content" || return 1
   fi
-  ble/keymap:vi/mark/commit-edit-area "$1" "$2"
+  ble/keymap:vi/mark/commit-edit-area "$beg" "$end"
   return 0
 }
 function ble/keymap:vi/operator:tr.impl {

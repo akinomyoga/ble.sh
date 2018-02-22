@@ -243,6 +243,22 @@ function ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote {
   ble/keymap:vi_test/show-summary
 }
 
+function ble/widget/vi-command:check-vi-mode/op.2018-02-22 {
+  ble/keymap:vi_test/start-section 'op.2018-02-22'
+
+  # 行指向のコピー&貼り付け #D0674
+  ble/keymap:vi_test/check A0 $'@:12@345\n67890\n' 'y y p' $'@:12345\n@12345\n67890\n'
+
+  # Y 及び yy ではカーソル位置は変化しない。 #D0673
+  ble/keymap:vi_test/check B1 $'@:12@345\n67890\n' 'Y' $'@:12@345\n67890\n'
+  ble/keymap:vi_test/check B2 $'@:12@345\n67890\n' 'y y' $'@:12@345\n67890\n'
+
+  # blockwise operator d の書き直し #D0673
+  ble/keymap:vi_test/check C $'@:\n12@34567\n1あ2345\n12い345\n123う45\n1234え5\n' 'C-v 4 j l d' $'@:\n12@567\n1 345\n12345\n12 45\n12え5\n'
+
+  ble/keymap:vi_test/show-summary
+}
+
 #------------------------------------------------------------------------------
 
 function ble/widget/vi-command:check-vi-mode {
@@ -265,6 +281,7 @@ function ble/widget/vi-command:check-vi-mode {
   ble/widget/vi-command:check-vi-mode/macro
   ble/widget/vi-command:check-vi-mode/surround
   ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote
+  ble/widget/vi-command:check-vi-mode/op.2018-02-22
 
   #----------------------------------------------------------------------------
 
