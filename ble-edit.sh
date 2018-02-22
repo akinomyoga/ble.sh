@@ -2194,17 +2194,15 @@ function ble-edit/attach {
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
     _ble_edit_LINENO="${BASH_LINENO[*]: -1}"
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
-    unset LINENO; LINENO="$_ble_edit_LINENO"
-    _ble_edit_CMD="$_ble_edit_LINENO"
+    unset LINENO; LINENO=$_ble_edit_LINENO
+    _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
   trap ble-edit/attach/TRAPWINCH WINCH
 
-  # if [[ ! ${_ble_edit_PS1+set} ]]; then
-  # fi
-  _ble_edit_PS1="$PS1"
+  _ble_edit_PS1=$PS1
   PS1=
-  [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS="$IFS"
+  [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
 
 function ble-edit/detach {
@@ -2510,7 +2508,7 @@ function ble/textarea#render/.show-scroll-at-first-line {
 ##
 _ble_textarea_caret_state=::
 function ble/textarea#render {
-  local caret_state="$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode"
+  local caret_state=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode
   if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == "$caret_state" ]]; then
     local -a DRAW_BUFF=()
     ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
@@ -6810,6 +6808,7 @@ function ble-edit/bind/.check-detach {
     #   [[ ! -o emacs && ! -o vi ]] のときは ble-detach が呼び出されるのでここには来ない。
     local state=$_ble_decode_bind_state
     if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
+      ble-decode/setup-default-keymap
       ble-decode-detach
       ble-decode-attach
     fi
@@ -6961,6 +6960,11 @@ function ble-edit-initialize {
   ble-edit/prompt/initialize
 }
 function ble-edit-attach {
+  ble-edit/attach
+  _ble_line_x=0 _ble_line_y=0
+  ble/util/buffer "$_ble_term_cr"
+}
+function ble-edit/reset-history {
   if ((_ble_bash>=30100)) && [[ $bleopt_history_lazyload ]]; then
     _ble_edit_history_loaded=
   else
@@ -6972,10 +6976,6 @@ function ble-edit-attach {
     #   つまり、初めから load しておかなければならない。
     ble-edit/history/load
   fi
-
-  ble-edit/attach
-  _ble_line_x=0 _ble_line_y=0
-  ble/util/buffer "$_ble_term_cr"
 }
 function ble-edit-finalize {
   ble-edit/bind/stdout.finalize

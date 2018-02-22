@@ -25,7 +25,7 @@ function ble-decode/generate-binder {
   local fbind1="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind"
   local fbind2="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind"
 
-  echo -n "ble.sh: updating binders... $_ble_term_cr" >&2
+  ble-edit/info/show text "ble.sh: updating binders... $_ble_term_cr"
 
   : >| "$fbind1"
   : >| "$fbind2"
@@ -40,7 +40,7 @@ function ble-decode/generate-binder {
   #   bash_execute_unix_command: cannot find keymap for command
   #   になってしまう。"C-@ *" に全て割り当てても駄目である。
   #   bind '"\C-@":""' は使える様なので、UTF-8 の別表現に翻訳してしまう。
-  local esc00="$((_ble_bash>=40300))"
+  local esc00=$((_ble_bash>=40300))
 
   # * C-x (24) に単体で直接 bind -x するとクラッシュする問題。
   #
@@ -198,7 +198,7 @@ function ble-decode/generate-binder {
   local encoding_setting=ble/encoding:$bleopt_input_encoding/generate-binder
   ble/util/isfunction "$encoding_setting" && "$encoding_setting"
 
-  echo "ble.sh: updating binders... done" >&2
+  ble-edit/info/show text "ble.sh: updating binders... done"
 }
 
 ble-decode/generate-binder

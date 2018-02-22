@@ -1076,6 +1076,11 @@ function ble/util/restore-editing-mode {
 }
 #------------------------------------------------------------------------------
 
+function ble/util/invoke-hook {
+  local -a hooks; eval "hooks=(\"\${$1[@]}\")"
+  local hook
+  for hook in "${hooks[@]}"; do eval "$hook"; done
+}
 
 ## 関数 ble-autoload scriptfile functions...
 ##   関数が定義されたファイルを自動で読み取る設定を行います。

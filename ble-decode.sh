@@ -1726,21 +1726,23 @@ function ble-decode-initialize {
 }
 
 _ble_decode_bind_state=none
+function ble-decode/reset-default-keymap {
+  # 現在の ble-decode/keymap の設定
+  ble-decode/DEFAULT_KEYMAP -v _ble_decode_key__kmap # 0ms
+  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
+}
 function ble-decode-attach {
   [[ $_ble_decode_bind_state != none ]] && return
   ble/util/save-editing-mode _ble_decode_bind_state
   [[ $_ble_decode_bind_state == none ]] && return 1
 
-  ble/term/initialize
+  ble/term/initialize # 3ms
 
   # 元のキー割り当ての保存
-  builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)"
+  builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)" # 21ms
 
   # ble.sh bind の設置
-  ble-decode/bind
-
-  # 現在の ble-decode/keymap の設定
-  ble-decode/DEFAULT_KEYMAP -v _ble_decode_key__kmap
+  ble-decode/bind # 20ms
 
   # 失敗すると悲惨なことになるので抜ける。
   if ! ble/is-array "_ble_decode_${_ble_decode_key__kmap}_kmap_"; then
@@ -1748,8 +1750,6 @@ function ble-decode-attach {
     ble-decode-detach
     return 1
   fi
-
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_ATTACH"
 }
 function ble-decode-detach {
   [[ $_ble_decode_bind_state != none ]] || return

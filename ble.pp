@@ -427,22 +427,37 @@ ble/bin/.freeze-utility-path gawk
 # function .ble-time { echo "$*"; time "$@"; }
 
 function ble-initialize {
-  ble-decode-initialize # 54ms
-  ble-edit-initialize # 4ms
+  ble-decode-initialize # 7ms
+  ble-edit-initialize # 3ms
 }
 
 _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
 
+  # 取り敢えずプロンプトを表示する
+  ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
+  ble-edit-attach     # 0ms (_ble_edit_PS1 他の初期化)
+  ble/textarea#redraw # 37ms
+  ble/util/buffer.flush >&2
+
+  # keymap 初期化
   local IFS=$' \t\n'
-  ble-decode-attach || return 1 # 53ms
+  ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
+  if ! ble-decode-attach; then # 53ms
+    ble/term/finalize
+    return 1
+  fi
   _ble_attached=1
   _ble_edit_detach_flag= # do not detach or exit
 
-  ble-edit-attach # 0ms
-  ble-edit/info/reveal
-  ble/textarea#redraw # 34ms
+  ble-edit/reset-history # 27s for bash-3.0
+
+  # Note: ble-decode/reset-default-keymap 内で
+  #   info を設定する事があるので表示する。
+  ble-edit/info/default
+  ble-edit/info/reveal # 2ms
+  ble/textarea#render # カーソル位置を戻す
   ble-edit/bind/stdout.off
 }
 
@@ -461,7 +476,32 @@ ble-initialize
 
 IFS=$_ble_init_original_IFS
 unset _ble_init_original_IFS
-[[ $1 != noattach ]] && ble-attach
+
+function ble/base/process-blesh-arguments {
+  local opt_attach=1
+  local opt_rcfile=
+  local opt_error=
+  while (($#)); do
+    local arg=$1; shift
+    case $arg in
+    (--noattach|noattach)
+      opt_attach= ;;
+    (--rcfile=*|--init-file=*)
+      opt_rcfile=${arg#*=} ;;
+    (--rcfile|--init-file)
+      opt_rcfile=$1; shift ;;
+    (*)
+      echo "ble.sh: unrecognized argument '$arg'" >&2
+      opt_error=1
+    esac
+  done
+
+  [[ $opt_rcfile ]] && source "$opt_rcfile"
+  [[ $opt_attach ]] && ble-attach
+  [[ ! $opt_error ]]
+}
+
+ble/base/process-blesh-arguments "$@"
 #%if measure_load_time
 }
 #%end

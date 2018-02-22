@@ -8,7 +8,11 @@ function sub:install {
   local src=$1
   local dst=$2
   mkd "${dst%/*}"
-  cp "$src" "$dst"
+  if [[ $src == *.sh ]]; then
+    sed '/^[[:space:]]*#/d;/^[[:space:]]*$/d' "$src" > "$dst"
+  else
+    cp "$src" "$dst"
+  fi
 }
 
 function sub:dist {

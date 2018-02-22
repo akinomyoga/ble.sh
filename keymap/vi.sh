@@ -351,7 +351,7 @@ function ble/keymap:vi/update-mode-name {
   if [[ $_ble_keymap_vi_reg_record ]]; then
     name=$name$' \e[1;31mREC @'$_ble_keymap_vi_reg_record_char$'\e[m'
   fi
-  ble-edit/info/default raw "$name"
+  ble-edit/info/default raw "$name" # 6ms
 }
 
 function ble/widget/vi_imap/normal-mode.impl {
@@ -6914,7 +6914,7 @@ function ble-decode/keymap:vi/initialize {
     source "$fname_keymap_cache" && return
   fi
 
-  printf %s "ble.sh: updating cache/keymap.vi... $_ble_term_cr" >&2
+  ble-edit/info/show text "ble.sh: updating cache/keymap.vi..."
 
   ble-decode/keymap:isearch/define
   ble-decode/keymap:vi_imap/define
@@ -6932,7 +6932,9 @@ function ble-decode/keymap:vi/initialize {
     ble-decode/keymap/dump isearch
   } >| "$fname_keymap_cache"
 
-  echo "ble.sh: updating cache/keymap.vi... done" >&2
+  ble-edit/info/show text "ble.sh: updating cache/keymap.vi... done"
 }
 
 ble-decode/keymap:vi/initialize
+ble/util/invoke-hook _ble_keymap_default_load_hook
+ble/util/invoke-hook _ble_keymap_vi_load_hook
