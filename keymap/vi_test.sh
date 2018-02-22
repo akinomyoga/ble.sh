@@ -161,6 +161,88 @@ function ble/widget/vi-command:check-vi-mode/macro {
   ble/keymap:vi_test/show-summary
 }
 
+function ble/widget/vi-command:check-vi-mode/surround {
+  ble/keymap:vi_test/start-section 'surround'
+
+  # ys の時は末端の空白を除く
+  ble/keymap:vi_test/check A1a '@:abcd @fghi jklm nopq' 'y s e a'     '@:abcd @<fghi> jklm nopq'
+  ble/keymap:vi_test/check A1b '@:abcd @fghi jklm nopq' 'y s w a'     '@:abcd @<fghi> jklm nopq'
+  ble/keymap:vi_test/check A1c '@:abcd @fghi jklm nopq' 'y s a w a'   '@:abcd @<fghi> jklm nopq'
+  ble/keymap:vi_test/check A1d '@:abcd @     jklm nopq' 'y s 3 l a'   '@:abcd @<>     jklm nopq'
+
+  # vS の時は末端の空白は除かない
+  ble/keymap:vi_test/check A2a '@:abcd @fghi jklm nopq' 'v 3 l S a'   '@:abcd @<fghi> jklm nopq'
+  ble/keymap:vi_test/check A2b '@:abcd @fghi jklm nopq' 'v 4 l S a'   '@:abcd @<fghi >jklm nopq'
+  ble/keymap:vi_test/check A2c '@:abcd @fghi jklm nopq' 'h v 5 l S a' '@:abcd@< fghi >jklm nopq'
+
+  ble/keymap:vi_test/show-summary
+}
+function ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote {
+  ble/keymap:vi_test/start-section 'xmap text object i" a"'
+
+  # A. xmap txtobj i"/a"、開始点と終了点が同じとき
+
+  # A1. 様々な位置で実行した時
+  ble/keymap:vi_test/check A1a '@:ab@cd " fghi " jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check A1b '@:abcd @" fghi " jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check A1c '@:abcd " fghi@ " jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check A1d '@:abcd " fghi @" jklm " nopq " rstu " vwxyz' 'v i " S a' '@:abcd " fghi "@< jklm >" nopq " rstu " vwxyz'
+  # A2. 引数が指定された時、a" が指定された時
+  ble/keymap:vi_test/check A2a '@:ab@cd " fghi " jklm " nopq " rstu " vwxyz' 'v 2 i " S a' '@:abcd @<" fghi "> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check A2b '@:ab@cd " fghi " jklm " nopq " rstu " vwxyz' 'v a " S a'   '@:abcd @<" fghi " >jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check A2c '@:ab@cd " fghi " jklm " nopq " rstu " vwxyz' 'v 2 a " S a' '@:abcd @<" fghi " >jklm " nopq " rstu " vwxyz'
+  # A3. "" の中が空の時
+  ble/keymap:vi_test/check A3a '@:ab@cd "" jklm " nopq " rstu " vwxyz' 'v i " S a'   '@:abcd @<""> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check A3b '@:ab@cd "" jklm " nopq " rstu " vwxyz' 'v 2 i " S a' '@:abcd @<""> jklm " nopq " rstu " vwxyz'
+
+  # B. xmap txtobj i"/a"、mark より現在位置の方が後のとき
+  # B1. i"
+  ble/keymap:vi_test/check B1a '@:abcd@ " fghi " jklm " nopq " rstu " vwxyz' 'v l i " S a' '@:abcd@< " fghi " jklm >" nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B1b '@:abcd " fghi " jklm " nopq@ " rstu " vwxyz' 'v l i " S a' '@:abcd " fghi " jklm " nopq@< " rstu >" vwxyz'
+  ble/keymap:vi_test/check B1c '@:abc@d " fghi " jklm " nopq " rstu " vwxyz' 'v l i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B1d '@:abcd " fgh@i " jklm " nopq " rstu " vwxyz' 'v l i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B1e '@:abcd " fghi " @jklm " nopq " rstu " vwxyz' 'v l i " S a' '@:abcd " fghi " jklm "@< nopq >" rstu " vwxyz'
+  ble/keymap:vi_test/check B1f '@:abcd " fghi "@ jklm " nopq " rstu " vwxyz' 'v l i " S a' '@:abcd " fghi "@< jklm " nopq >" rstu " vwxyz'
+  # B2. 2i"
+  ble/keymap:vi_test/check B2a '@:abcd@ " fghi " jklm " nopq " rstu " vwxyz' 'v l 2 i " S a' '@:abcd@< " fghi " jklm "> nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B2b '@:abcd " fghi " jklm " nopq@ " rstu " vwxyz' 'v l 2 i " S a' '@:abcd " fghi " jklm " nopq@< " rstu "> vwxyz'
+  ble/keymap:vi_test/check B2c '@:abc@d " fghi " jklm " nopq " rstu " vwxyz' 'v l 2 i " S a' '@:abcd @<" fghi "> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B2d '@:abcd " fgh@i " jklm " nopq " rstu " vwxyz' 'v l 2 i " S a' '@:abcd @<" fghi "> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B2e '@:abcd " fghi " @jklm " nopq " rstu " vwxyz' 'v l 2 i " S a' '@:abcd " fghi " jklm @<" nopq "> rstu " vwxyz'
+  ble/keymap:vi_test/check B2f '@:abcd " fghi "@ jklm " nopq " rstu " vwxyz' 'v l 2 i " S a' '@:abcd " fghi "@< jklm " nopq "> rstu " vwxyz'
+  # B3. a"
+  ble/keymap:vi_test/check B3a '@:abcd@ " fghi " jklm " nopq " rstu " vwxyz' 'v l a " S a' '@:abcd@< " fghi " jklm " >nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B3b '@:abcd " fghi " jklm " nopq@ " rstu " vwxyz' 'v l a " S a' '@:abcd " fghi " jklm " nopq@< " rstu " >vwxyz'
+  ble/keymap:vi_test/check B3c '@:abc@d " fghi " jklm " nopq " rstu " vwxyz' 'v l a " S a' '@:abcd @<" fghi " >jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B3d '@:abcd " fgh@i " jklm " nopq " rstu " vwxyz' 'v l a " S a' '@:abcd @<" fghi " >jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check B3e '@:abcd " fghi " @jklm " nopq " rstu " vwxyz' 'v l a " S a' '@:abcd " fghi " jklm @<" nopq " >rstu " vwxyz'
+  ble/keymap:vi_test/check B3f '@:abcd " fghi "@ jklm " nopq " rstu " vwxyz' 'v l a " S a' '@:abcd " fghi "@< jklm " nopq " >rstu " vwxyz'
+
+  # C. xmap txtobj i"/a"、mark より現在位置の方が前のとき
+  ble/keymap:vi_test/check C1a '@:abc@d " fghi " jklm " nopq " rstu " vwxyz' 'v h i " S a' '@:ab@<cd> " fghi " jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C1b '@:abcd " @fghi " jklm " nopq " rstu " vwxyz' 'v h i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C1c '@:abcd " fghi@ " jklm " nopq " rstu " vwxyz' 'v h i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C1d '@:abcd " fghi @" jklm " nopq " rstu " vwxyz' 'v h i " S a' '@:abcd "@< fghi "> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C1e '@:abcd " fghi " jkl@m " nopq " rstu " vwxyz' 'v h i " S a' '@:abcd "@< fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C1f '@:abcd " fghi " jkl@m " nopq " rstu " vwxyz' 'v 5 h i " S a' '@:abcd "@< fghi " jklm> " nopq " rstu " vwxyz'
+
+  ble/keymap:vi_test/check C2a '@:abc@d " fghi " jklm " nopq " rstu " vwxyz' 'v h 2 i " S a' '@:ab@<cd> " fghi " jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C2b '@:abcd " @fghi " jklm " nopq " rstu " vwxyz' 'v h 2 i " S a' '@:abcd @<" fghi "> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C2c '@:abcd " fghi@ " jklm " nopq " rstu " vwxyz' 'v h 2 i " S a' '@:abcd @<" fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C2d '@:abcd " fghi @" jklm " nopq " rstu " vwxyz' 'v h 2 i " S a' '@:abcd @<" fghi "> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C2e '@:abcd " fghi " jkl@m " nopq " rstu " vwxyz' 'v h 2 i " S a' '@:abcd @<" fghi "> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C2f '@:abcd " fghi " jkl@m " nopq " rstu " vwxyz' 'v 5 h 2 i " S a' '@:abcd @<" fghi " jklm> " nopq " rstu " vwxyz'
+
+  ble/keymap:vi_test/check C3a '@:abc@d " fghi " jklm " nopq " rstu " vwxyz' 'v h a " S a' '@:ab@<cd> " fghi " jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C3b '@:abcd " @fghi " jklm " nopq " rstu " vwxyz' 'v h a " S a' '@:abcd @<" fghi " >jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C3c '@:abcd " fghi@ " jklm " nopq " rstu " vwxyz' 'v h a " S a' '@:abcd @<" fghi >" jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C3d '@:abcd " fghi @" jklm " nopq " rstu " vwxyz' 'v h a " S a' '@:abcd @<" fghi "> jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C3e '@:abcd " fghi " jkl@m " nopq " rstu " vwxyz' 'v h a " S a' '@:abcd @<" fghi " >jklm " nopq " rstu " vwxyz'
+  ble/keymap:vi_test/check C3f '@:abcd " fghi " jkl@m " nopq " rstu " vwxyz' 'v 5 h a " S a' '@:abcd @<" fghi " jklm> " nopq " rstu " vwxyz'
+
+  ble/keymap:vi_test/show-summary
+}
+
 #------------------------------------------------------------------------------
 
 function ble/widget/vi-command:check-vi-mode {
@@ -181,6 +263,8 @@ function ble/widget/vi-command:check-vi-mode {
   ble/widget/vi-command:check-vi-mode/search
   ble/widget/vi-command:check-vi-mode/increment
   ble/widget/vi-command:check-vi-mode/macro
+  ble/widget/vi-command:check-vi-mode/surround
+  ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote
 
   #----------------------------------------------------------------------------
 

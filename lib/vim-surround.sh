@@ -375,10 +375,12 @@ function ble/widget/vim-surround.sh/ysurround.core {
   else
     # text
     local text=${_ble_edit_str:beg:end-beg}
-    if local rex=$'[ \t\n]+$'; [[ $text =~ $rex ]]; then
-      # 範囲末端の空白は囲む対象としない
-      ((end-=${#BASH_REMATCH}))
-      text=${_ble_edit_str:beg:end-beg}
+    if [[ $type == ys ]]; then
+      if local rex=$'[ \t\n]+$'; [[ $text =~ $rex ]]; then
+        # 範囲末端の空白は囲む対象としない
+        ((end-=${#BASH_REMATCH}))
+        text=${_ble_edit_str:beg:end-beg}
+      fi
     fi
 
     # Note: char から linewise への昇格条件の変更は以下の関数にも反映させる必要がある:

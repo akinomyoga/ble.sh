@@ -3778,14 +3778,14 @@ function ble/keymap:vi/text-object/word.impl {
   fi
 }
 
-function ble/keymap:vi/text-object/find-next-quote {
+function ble/keymap:vi/text-object:quote/.next {
   local index=${1:-$((_ble_edit_ind+1))} nl=$'\n'
   local rex="^[^$nl$quote]*$quote"
   [[ ${_ble_edit_str:index} =~ $rex ]] || return 1
-  ((ret=index+${#BASH_REMATCH}))
+  ((ret=index+${#BASH_REMATCH}-1))
   return 0
 }
-function ble/keymap:vi/text-object/find-previous-quote {
+function ble/keymap:vi/text-object:quote/.prev {
   local index=${1:-_ble_edit_ind} nl=$'\n'
   local rex="$quote[^$nl$quote]*\$"
   [[ ${_ble_edit_str::index} =~ $rex ]] || return 1
@@ -3795,6 +3795,15 @@ function ble/keymap:vi/text-object/find-previous-quote {
 function ble/keymap:vi/text-object/quote.impl {
   local arg=$1 flag=$2 reg=$3 type=$4
   local ret quote=${type:1}
+  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+    if ble/keymap:vi/text-object:quote/.xmap; then
+      ble/keymap:vi/adjust-command-mode
+      return 0
+    else
+      ble/widget/vi-command/bell
+      return 1
+    fi
+  fi
 
   local beg= end=
   if [[ ${_ble_edit_str:_ble_edit_ind:1} == "$quote" ]]; then
@@ -3803,29 +3812,105 @@ function ble/keymap:vi/text-object/quote.impl {
     if ((ret%2==1)); then
       # 現在終了引用符
       ((end=_ble_edit_ind+1))
-      ble/keymap:vi/text-object/find-previous-quote && beg=$ret
+      ble/keymap:vi/text-object:quote/.prev && beg=$ret
     else
       ((beg=_ble_edit_ind))
-      ble/keymap:vi/text-object/find-next-quote && end=$ret
+      ble/keymap:vi/text-object:quote/.next && end=$((ret+1))
     fi
-  elif ble/keymap:vi/text-object/find-previous-quote && beg=$ret; then
-    ble/keymap:vi/text-object/find-next-quote && end=$ret
-  elif ble/keymap:vi/text-object/find-next-quote && beg=$((ret-1)); then
-    ble/keymap:vi/text-object/find-next-quote "$((beg+1))" && end=$ret
+  elif ble/keymap:vi/text-object:quote/.prev && beg=$ret; then
+    ble/keymap:vi/text-object:quote/.next && end=$((ret+1))
+  elif ble/keymap:vi/text-object:quote/.next && beg=$ret; then
+    ble/keymap:vi/text-object:quote/.next $((beg+1)) && end=$((ret+1))
   fi
 
-  # Note: ビジュアルモードでは繰り返し使うと範囲を拡大する (?) らしい
   if [[ $beg && $end ]]; then
     [[ $type == i* || arg -gt 1 ]] && ((beg++,end--))
-    if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
-      _ble_edit_mark="$beg"
-      ble/widget/vi-command/exclusive-goto.impl "$end"
-    else
-      ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag" "$reg"
-    fi
+    ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag" "$reg"
   else
     ble/widget/vi-command/bell
     return 1
+  fi
+}
+## 関数 ble/keymap:vi/text-object:quote/.expand-xmap-range mode
+##   @param[in] mode
+##   @var[in,out] beg
+##   @var[in,out] end
+function ble/keymap:vi/text-object:quote/.expand-xmap-range {
+  local inclusive=$1
+  ((end++))
+  if ((inclusive==2)); then
+    local rex
+    rex=$'^[ \t]+'; [[ ${_ble_edit_str:end} =~ $rex ]] && ((end+=${#BASH_REMATCH}))
+  elif ((inclusive==0&&end-beg>2)); then
+    ((beg++,end--))
+  fi
+}
+function ble/keymap:vi/text-object:quote/.xmap {
+  # 複数行に亘る場合は失敗
+  local min=$_ble_edit_ind max=$_ble_edit_mark
+  ((min>max)) && local min=$max max=$min
+  [[ ${_ble_edit_str:min:max+1-min} == *$'\n'* ]] && return 1
+
+  local inclusive=0
+  if [[ $type == a* ]]; then
+    inclusive=2
+  elif ((arg>1)); then
+    inclusive=1
+  fi
+
+  local ret
+  if ((_ble_edit_ind==_ble_edit_mark)); then
+    ble/keymap:vi/text-object:quote/.prev $((_ble_edit_ind+1)) ||
+      ble/keymap:vi/text-object:quote/.next $((_ble_edit_ind+1)) || return 1
+    local beg=$ret
+    ble/keymap:vi/text-object:quote/.next $((beg+1)) || return 1
+    local end=$ret
+
+    ble/keymap:vi/text-object:quote/.expand-xmap-range "$inclusive"
+    _ble_edit_mark=$beg
+    ble/widget/.goto-char $((end-1))
+    return 0
+  elif ((_ble_edit_ind>_ble_edit_mark)); then
+    local updates_mark=
+    if [[ ${_ble_edit_str:_ble_edit_ind:1} == $quote ]]; then
+      # 現在位置に " があるとき。
+      ble/keymap:vi/text-object:quote/.next $((_ble_edit_ind+1)) || return 1; local beg=$ret
+      if ble/keymap:vi/text-object:quote/.next $((beg+1)); then
+        local end=$ret
+      else
+        local end=$beg beg=$_ble_edit_ind
+      fi
+    else
+      # 現在位置以降の最初の 右" (その行の偶数番目の ") と対応する 左"
+      ble-edit/content/find-logical-bol; local bol=$ret
+      ble/string#count-char "${_ble_edit_str:bol:_ble_edit_ind-bol}" "$quote"
+      if ((ret%2==0)); then
+        ble/keymap:vi/text-object:quote/.next $((_ble_edit_ind+1)) || return 1; local beg=$ret
+        ble/keymap:vi/text-object:quote/.next $((beg+1)) || return 1; local end=$ret
+      else
+        ble/keymap:vi/text-object:quote/.prev "$_ble_edit_ind" || return 1; local beg=$ret
+        ble/keymap:vi/text-object:quote/.next $((_ble_edit_ind+1)) || return 1; local end=$ret
+      fi
+      local i1=$((_ble_edit_mark?_ble_edit_mark-1:0))
+      [[ ${_ble_edit_str:i1:_ble_edit_ind-i1} != *"$quote"* ]] && updates_mark=1
+    fi
+
+    ble/keymap:vi/text-object:quote/.expand-xmap-range "$inclusive"
+    [[ $updates_mark ]] && _ble_edit_mark=$beg
+    ble/widget/.goto-char $((end-1))
+    return 0
+  else
+    ble-edit/content/find-logical-bol; local bol=$ret nl=$'\n'
+    local rex="^([^$nl$quote]*$quote[^$nl$quote]*$quote)*[^$nl$quote]*$quote"
+    [[ ${_ble_edit_str:bol:_ble_edit_ind-bol} =~ $rex ]] || return 1
+    local beg=$((bol+${#BASH_REMATCH}-1))
+    ble/keymap:vi/text-object:quote/.next $((beg+1)) || return 1
+    local end=$ret
+
+    ble/keymap:vi/text-object:quote/.expand-xmap-range "$inclusive"
+    [[ ${_ble_edit_str:_ble_edit_ind:_ble_edit_mark+2-_ble_edit_ind} != *"$quote"* ]] && _ble_edit_mark=$((end-1))
+    ble/widget/.goto-char "$beg"
+    return 0
   fi
 }
 
@@ -3872,7 +3957,7 @@ function ble/keymap:vi/text-object/block.impl {
   fi
 
   if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
-    _ble_edit_mark="$beg"
+    _ble_edit_mark=$beg
     ble/widget/vi-command/exclusive-goto.impl "$end"
   elif [[ $linewise ]]; then
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" "$reg" goto_bol
@@ -3881,10 +3966,10 @@ function ble/keymap:vi/text-object/block.impl {
   fi
 }
 
-## 関数 ble/keymap:vi/text-object/tag.impl/.find-end-tag
+## 関数 ble/keymap:vi/text-object:tag/.find-end-tag
 ##   @var[in] beg
 ##   @var[out] end
-function ble/keymap:vi/text-object/tag.impl/.find-end-tag {
+function ble/keymap:vi/text-object:tag/.find-end-tag {
   local ifs=$' \t\n' ret rex
 
   rex="^<([^$ifs/>!]+)"; [[ ${_ble_edit_str:beg} =~ $rex ]] || return 1
@@ -3930,7 +4015,7 @@ function ble/keymap:vi/text-object/tag.impl {
       ((++count))
     else
       if ((--count==0)); then
-        if ble/keymap:vi/text-object/tag.impl/.find-end-tag "$beg" && ((_ble_edit_ind<end)); then
+        if ble/keymap:vi/text-object:tag/.find-end-tag "$beg" && ((_ble_edit_ind<end)); then
           break
         else
           ((count++))
@@ -3948,18 +4033,18 @@ function ble/keymap:vi/text-object/tag.impl {
     rex='<[^>]*>$'; [[ ${_ble_edit_str:beg:end-beg} =~ $rex ]] && ((end-=${#BASH_REMATCH}))
   fi
   if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
-    _ble_edit_mark="$beg"
+    _ble_edit_mark=$beg
     ble/widget/vi-command/exclusive-goto.impl "$end"
   else
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag" "$reg"
   fi
 }
 
-## 関数 ble/keymap:vi/text-object/sentence.impl/.beg
+## 関数 ble/keymap:vi/text-object:sentence/.beg
 ##   @var[out] beg
 ##   @var[out] is_interval
 ##   @var[in] LF, HT
-function ble/keymap:vi/text-object/sentence.impl/.beg {
+function ble/keymap:vi/text-object:sentence/.beg {
   beg= is_interval=
   local pivot=$_ble_edit_ind rex=
   if ble-edit/content/bolp && ble-edit/content/eolp; then
@@ -3994,11 +4079,11 @@ function ble/keymap:vi/text-object/sentence.impl/.beg {
     fi
   fi
 }
-## 関数 ble/keymap:vi/text-object/sentence.impl/.next {
+## 関数 ble/keymap:vi/text-object:sentence/.next {
 ##   @var[in,out] end
 ##   @var[in,out] is_interval
 ##   @var[in] LF, HT
-function ble/keymap:vi/text-object/sentence.impl/.next {
+function ble/keymap:vi/text-object:sentence/.next {
   if [[ $is_interval ]]; then
     is_interval=
     local rex=$'[ \t]*((\n[ \t]+)*\n[ \t]*)?'
@@ -4029,12 +4114,12 @@ function ble/keymap:vi/text-object/sentence.impl {
   local rex
 
   local beg is_interval
-  ble/keymap:vi/text-object/sentence.impl/.beg
+  ble/keymap:vi/text-object:sentence/.beg
 
   local end=$beg i n=$arg
   [[ $type != i* ]] && ((n*=2))
   for ((i=0;i<n;i++)); do
-    ble/keymap:vi/text-object/sentence.impl/.next
+    ble/keymap:vi/text-object:sentence/.next
   done
   ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
 
@@ -4053,7 +4138,7 @@ function ble/keymap:vi/text-object/sentence.impl {
   fi
 
   if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
-    _ble_edit_mark="$beg"
+    _ble_edit_mark=$beg
     ble/widget/vi-command/exclusive-goto.impl "$end"
   elif ble-edit/content/bolp "$beg" && [[ ${_ble_edit_str:end:1} == $'\n' ]]; then
     # 行頭から LF の手前までのときに linewise になる。
@@ -4118,7 +4203,7 @@ function ble/keymap:vi/text-object/paragraph.impl {
   fi
   ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
   if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
-    _ble_edit_mark="$beg"
+    _ble_edit_mark=$beg
     ble/widget/vi-command/exclusive-goto.impl "$end"
   else
     ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" "$reg"
