@@ -4464,7 +4464,7 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bas
       ((_ble_syntax_highlight_filetype_version=_ble_edit_LINENO))
     fi
 
-    type="${_ble_syntax_highlight_filetype[x$_0]}"
+    type=${_ble_syntax_highlight_filetype[x$_0]}
     [[ $type ]] && return
 
     ble-syntax/highlight/cmdtype2 "$cmd" "$_0"
@@ -4484,8 +4484,8 @@ else
 
     local i iN
     for ((i=0,iN=${#_ble_syntax_highlight_filetype[@]}/2;i<iN;i++)); do
-      if [[ ${_ble_syntax_highlight_filetype[2*i]} == x$_0 ]]; then
-        type="${_ble_syntax_highlight_filetype[2*i+1]}"
+      if [[ ${_ble_syntax_highlight_filetype[2*i]} == x"$_0" ]]; then
+        type=${_ble_syntax_highlight_filetype[2*i+1]}
         return
       fi
     done
@@ -4577,7 +4577,8 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     if ((wtype==CTX_RDRS)); then
       ble-syntax:bash/simple-word/eval-noglob "$wtxt"; local ext=$? value=$ret
     else
-      ble-syntax:bash/simple-word/eval "$wtxt"; local ext=$? value=("${ret[@]}")
+      ble-syntax:bash/simple-word/eval "$wtxt"; local ext=$?
+      local -a value; value=("${ret[@]}")
     fi
 
     if ((ext)); then
