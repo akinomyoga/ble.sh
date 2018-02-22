@@ -20,7 +20,7 @@ function ble/keymap:vi_test/check {
   
   local nl=$'\n' NL=$'\e[7m^J\e[m'
   _ble_edit_str.reset "$in" edit
-  ble/widget/.goto-char "$i"
+  _ble_edit_ind=$i
   local ret
   ble-decode-kbd "$kspecs"
   ble-decode-key $ret &>/dev/null
@@ -270,7 +270,7 @@ function ble/widget/vi-command:check-vi-mode {
 
   # restore
   _ble_edit_str.reset "$original" edit
-  ble/widget/.goto-char "$original_ind"
+  _ble_edit_ind=$original_ind
   _ble_edit_mark=$original_mark
   _ble_edit_mark_active=$original_mark_active
   return 0

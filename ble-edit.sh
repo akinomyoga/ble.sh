@@ -3408,10 +3408,6 @@ function ble/widget/delete-horizontal-space {
 # 
 # **** cursor move ****                                            @edit.cursor
 
-function ble/widget/.goto-char {
-  local -i _ind=$1
-  _ble_edit_ind=$_ind
-}
 function ble/widget/.forward-char {
   ((_ble_edit_ind+=${1:-1}))
   if ((_ble_edit_ind>${#_ble_edit_str})); then
@@ -3565,7 +3561,7 @@ function ble/widget/forward-history-line.impl {
         else
           ble-edit/content/find-logical-eol ${#entry} $((-rest))
         fi
-        ble/widget/.goto-char "$ret"
+        _ble_edit_ind=$ret
         return
       fi
       ((rest-=ret))
@@ -3574,11 +3570,11 @@ function ble/widget/forward-history-line.impl {
 
   if ((arg>0)); then
     ble-edit/history/goto "$count"
-    ble/widget/.goto-char ${#_ble_edit_str}
+    _ble_edit_ind=${#_ble_edit_str}
     ble/widget/.bell 'end of history'
   else
     ble-edit/history/goto 0
-    ble/widget/.goto-char 0
+    _ble_edit_ind=0
     ble/widget/.bell 'beginning of history'
   fi
   return 0
@@ -3622,7 +3618,7 @@ function ble/widget/forward-logical-line.impl {
     ble-edit/content/find-logical-bol "$ind" ; local bol1=$ret
     ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
     local dst=$((bol2+ind-bol1))
-    ble/widget/.goto-char $((dst<eol2?dst:eol2))
+    ((_ble_edit_ind=dst<eol2?dst:eol2))
     return 0
   fi
 
@@ -3632,7 +3628,7 @@ function ble/widget/forward-logical-line.impl {
   else
     ret=$bol2
   fi
-  ble/widget/.goto-char "$ret"
+  _ble_edit_ind=$ret
 
   # 履歴項目の移動を行う場合
   if [[ :$opts: == *:history:* && ! $_ble_edit_mark_active ]]; then
@@ -3679,13 +3675,13 @@ function ble/widget/beginning-of-graphical-line {
   local x y index
   ble/textmap#getxy.cur "$_ble_edit_ind"
   ble/textmap#get-index-at 0 $((y+arg-1))
-  ble/widget/.goto-char "$index"
+  _ble_edit_ind=$index
 }
 function ble/widget/end-of-graphical-line {
   ble/textmap#is-up-to-date || ble/widget/.update-textmap
   local arg; ble-edit/content/get-arg 1
   local ret; ble/keymap:emacs/find-graphical-eol "$_ble_edit_ind" $((arg-1))
-  ble/widget/.goto-char "$ret"
+  _ble_edit_ind=$ret
 }
 
 ## 編集関数 ble/widget/kill-backward-graphical-line
@@ -3735,7 +3731,7 @@ function ble/widget/forward-graphical-line.impl {
   ble/textmap#get-index-at "$x" $((y+arg))
   ble/textmap#getxy.cur --prefix=a "$index"
   ((arg-=ay-y))
-  ble/widget/.goto-char "$index" # 何れにしても移動は行う
+  _ble_edit_ind=$index # 何れにしても移動は行う
 
   # 現在の履歴項目内で移動が完結する場合
   ((arg==0)) && return 0
@@ -4007,7 +4003,7 @@ function ble/widget/.forward-genword {
   if ((x==t)); then
     ble/widget/.bell
   else
-    ble/widget/.goto-char "$t"
+    _ble_edit_ind=$t
   fi
 }
 ## 関数 ble/widget/.backward-genword
@@ -4020,7 +4016,7 @@ function ble/widget/.backward-genword {
   if ((x==b)); then
     ble/widget/.bell
   else
-    ble/widget/.goto-char "$b"
+    _ble_edit_ind=$b
   fi
 }
 
@@ -4871,7 +4867,7 @@ function ble-edit/undo/.load {
     _ble_edit_str.reset-and-check-dirty "$str"
   fi
 
-  ble/widget/.goto-char "$ind"
+  _ble_edit_ind=$ind
   return
 }
 function ble-edit/undo/undo {
@@ -6266,7 +6262,7 @@ function ble-edit/read/.setup-textarea {
   ble/widget/.newline/clear-content
   _ble_edit_arg=
   _ble_edit_str.reset "$opt_default" newline
-  ble/widget/.goto-char ${#opt_default}
+  _ble_edit_ind=${#opt_default}
 
   # edit/undo
   ble-edit/undo/clear-all
@@ -6921,8 +6917,7 @@ function ble/widget/.EDIT_COMMAND {
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
-  ((READLINE_POINT!=_ble_edit_ind)) &&
-    ble/widget/.goto-char "$READLINE_POINT"
+  ((_ble_edit_ind=READLINE_POINT))
 }
 
 ## ble-decode.sh 用の設定

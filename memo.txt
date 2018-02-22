@@ -3075,7 +3075,7 @@ tech
 
 2018-02-22
 
-  * ble-edit: ble/widget/.goto-char 廃止
+  * ble-edit: ble/widget/.goto-char 廃止 [#D0671]
 
     #D0407 に多少記録が残っている。
     現在ではこの関数は単に _ble_edit_ind を設定するだけで何もしていない。

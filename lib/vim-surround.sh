@@ -402,7 +402,7 @@ function ble/widget/vim-surround.sh/ysurround.core {
     ble/widget/.replace-range "$beg" "$end" "$text" 1
   fi
 
-  ble/widget/.goto-char "$beg"
+  _ble_edit_ind=$beg
   if [[ $context == line ]]; then
     ble/widget/vi-command/first-non-space
   else
@@ -655,7 +655,7 @@ function ble/widget/vim-surround.sh/nmap/csurround.replace {
 
     local _ble_edit_kill_ring _ble_edit_kill_type
     ble/keymap:vi/text-object.impl "$arg2" y '' "$obj1"; local ext=$?
-    ble/widget/.goto-char "$ind"
+    _ble_edit_ind=$ind
     ((ext!=0)) && return 1
 
     local surround_content=$_ble_edit_kill_ring
@@ -664,12 +664,12 @@ function ble/widget/vim-surround.sh/nmap/csurround.replace {
     # /* ..  */ で囲まれた部分
     local surround_content=${_ble_edit_str:beg+2:end-beg-4}
     ble/keymap:vi/call-operator surround "$beg" "$end" char '' ''
-    ble/widget/.goto-char "$beg"
+    _ble_edit_ind=$beg
   elif [[ $del2 ]]; then
     # 指定した文字で囲まれた部分
     local surround_content=${_ble_edit_str:beg+${#del2}:end-beg-2*${#del2}}
     ble/keymap:vi/call-operator surround "$beg" "$end" char '' ''
-    ble/widget/.goto-char "$beg"
+    _ble_edit_ind=$beg
   else
     ble/widget/vi-command/bell
     return 1
