@@ -2497,6 +2497,14 @@ function ble/textarea#render/.show-scroll-at-first-line {
   fi
 }
 
+## 関数 ble/textarea#focus
+##   プロンプト・編集文字列の現在位置に端末のカーソルを移動します。
+function ble/textarea#focus {
+  local -a DRAW_BUFF=()
+  ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
+  ble-edit/draw/bflush
+}
+
 ## 関数 ble/textarea#render
 ##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
 ##   Post-condition: カーソル位置 (x y) = (_ble_textarea_cur[0] _ble_textarea_cur[1]) に移動する
@@ -2510,9 +2518,7 @@ _ble_textarea_caret_state=::
 function ble/textarea#render {
   local caret_state=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode
   if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == "$caret_state" ]]; then
-    local -a DRAW_BUFF=()
-    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
-    ble-edit/draw/bflush
+    ble/textarea#focus
     return
   fi
 
@@ -6143,7 +6149,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -cf 'M-z'     fg
 }
 
-function ble-edit/load-keymap-definition:safe {
+function ble-edit/bind/load-keymap-definition:safe {
   ble-decode/keymap/load safe
 }
 
@@ -6381,7 +6387,11 @@ function read {
 
 : ${bleopt_complete_stdin_frequency:=50}
 ble-autoload "$_ble_base/complete.sh" ble/widget/complete
+ble/util/isfunction ble/util/idle.push &&
+  ble/util/idle.push 'ble-import "$_ble_base/complete.sh"'
 
+#------------------------------------------------------------------------------
+# **** command-help ****                                          @command-help
 
 ## 設定関数 ble/cmdinfo/help
 ## 設定関数 ble/cmdinfo/help:$command
@@ -6618,9 +6628,7 @@ function ble/widget/command-help {
 
 # 
 #------------------------------------------------------------------------------
-# **** bash key binder ****                                               @bind
-
-# **** binder ****                                                   @bind.bind
+# **** ble-edit/bind ****                                                 @bind
 
 function ble-edit/bind/stdout.on { :;}
 function ble-edit/bind/stdout.off { ble/util/buffer.flush >&2;}
@@ -6849,6 +6857,7 @@ if ((_ble_bash>40000)); then
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
     ble/textarea#adjust-for-bash-bind
+    ble/util/idle.do && ble/textarea#adjust-for-bash-bind # bash-4.0+
     ble-edit/bind/stdout.off
   }
 else
@@ -6856,6 +6865,7 @@ else
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
     ble/textarea#render # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
+    ble/util/idle.do && ble/textare#render # bash-4.0+
     ble-edit/bind/stdout.off
   }
 fi
@@ -6923,17 +6933,17 @@ function ble/widget/.EDIT_COMMAND {
 function ble-decode/DEFAULT_KEYMAP {
   if [[ $bleopt_default_keymap == auto ]]; then
     if [[ -o vi ]]; then
-      ble-edit/load-keymap-definition vi &&
+      ble-edit/bind/load-keymap-definition vi &&
         builtin eval -- "$2=vi_imap"
     else
-      ble-edit/load-keymap-definition emacs &&
+      ble-edit/bind/load-keymap-definition emacs &&
         builtin eval -- "$2=emacs"
     fi
   elif [[ $bleopt_default_keymap == vi ]]; then
-    ble-edit/load-keymap-definition vi &&
+    ble-edit/bind/load-keymap-definition vi &&
       builtin eval -- "$2=vi_imap"
   else
-    ble-edit/load-keymap-definition "$bleopt_default_keymap" &&
+    ble-edit/bind/load-keymap-definition "$bleopt_default_keymap" &&
       builtin eval -- "$2=\"\$bleopt_default_keymap\""
   fi; local ext=$?
 
@@ -6942,19 +6952,22 @@ function ble-decode/DEFAULT_KEYMAP {
   fi
 
   echo "ble.sh: The definition of the default keymap \"$bleopt_default_keymap\" is not found. ble.sh uses \"safe\" keymap instead."
-  ble-edit/load-keymap-definition safe &&
+  ble-edit/bind/load-keymap-definition safe &&
     builtin eval -- "$2=safe" &&
     bleopt_default_keymap=safe
 }
 
-function ble-edit/load-keymap-definition {
+function ble-edit/bind/load-keymap-definition {
   local name=$1
-  if ble/util/isfunction ble-edit/load-keymap-definition:"$name"; then
-    ble-edit/load-keymap-definition:"$name"
+  if ble/util/isfunction ble-edit/bind/load-keymap-definition:"$name"; then
+    ble-edit/bind/load-keymap-definition:"$name"
   else
     source "$_ble_base/keymap/$name.sh"
   fi
 }
+
+#------------------------------------------------------------------------------
+# **** entry points ****
 
 function ble-edit-initialize {
   ble-edit/prompt/initialize

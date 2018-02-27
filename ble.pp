@@ -456,9 +456,7 @@ function ble-attach {
   # Note: ble-decode/reset-default-keymap 内で
   #   info を設定する事があるので表示する。
   ble-edit/info/default
-  ble-edit/info/reveal # 2ms
-  ble/textarea#render # カーソル位置を戻す
-  ble-edit/bind/stdout.off
+  ble-edit/bind/.tail
 }
 
 function ble-detach {

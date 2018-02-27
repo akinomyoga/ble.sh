@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function ble-edit/load-keymap-definition:vi_digraph { :; }
+function ble-edit/bind/load-keymap-definition:vi_digraph { :; }
 
 _ble_keymap_vi_digraph__hook=
 

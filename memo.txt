@@ -699,6 +699,8 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2018-02-27
+
 2018-02-23
 
   * 起動時間: ble-edit, ble-syntax の読み込み遅延の可能性
@@ -845,24 +847,6 @@ tech
     しかしそもそも何故単語着色が起こっているのだったか。
     単語着色は CTX_CMDI としての着色が残っているということ。
     これは単語着色の側の問題であって、解析の問題ではない。
-
-2017-11-25
-
-  * complete: 更新する度に complete.sh の不整合が問題になっている。
-
-    やはり、遅延読み込みはやめた方が良いのでは。
-    然し、それを言い出すと今後対応する予定である
-    cmdinfo の類についても遅延読み込みできなくなる。
-    もしくは、安定した API の下での実装という事になる。
-
-    或いは別の方法として ble.sh の細かい version 毎に
-    complete.sh をインストールするという手もある。
-    version の管理は面倒なので ble.sh の日付をそのまま使っても良い。
-    或いは、起動時にファイル一式を何処かにコピーする。
-
-    →これは idle になった時に遅延読み込みするという方法が良い。
-    history の load 高速化も含めてその仕組みを作りたいので、
-    その時に実装する様にする。
 
 2017-11-22
 
@@ -3092,6 +3076,109 @@ tech
 -------------------------------------------------------------------------------
 
 2018-02-27
+
+  * 2017-11-25 complete: 更新する度に complete.sh の不整合が問題になっている [#D0679]
+
+    % やはり、遅延読み込みはやめた方が良いのでは。
+    % 然し、それを言い出すと今後対応する予定である
+    % cmdinfo の類についても遅延読み込みできなくなる。
+    % もしくは、安定した API の下での実装という事になる。
+    %
+    % 或いは別の方法として ble.sh の細かい version 毎に
+    % complete.sh をインストールするという手もある。
+    % version の管理は面倒なので ble.sh の日付をそのまま使っても良い。
+    % 或いは、起動時にファイル一式を何処かにコピーする。
+
+    →これは idle になった時に遅延読み込みするという方法が良い。
+    history の load 高速化も含めてその仕組みを作りたいので、
+    その時に実装する様にする。
+
+  * idle 時に何かを実行する為の枠組みを整える [#D0678]
+
+    以下の箇所で待ちを行う必要がある。
+
+    - ble-attach
+    - eval "$_ble_decode_bind_hook" 周辺
+
+    read -t 0 (というか ble/util/is-stdin-ready) を実行して何も来ていなければ idle 処理を実行する。
+    idle 処理の内部では ble/util/is-stdin-ready を定期的に実行して
+    何か文字が来たら即時中断できる様に実装する。
+    更に続きの処理を実行できる様に中断時に状態を記録する。
+
+    | - _ble_decode_bind_hook 周りに関しては多少考察が必要になる。
+    |   現在の実装では _ble_decode_bind_hook は専ら exec:gexec で使用される。
+    |   というか、他の場所で値が設定される事はない。
+    |
+    |   もう少し詳しく見る事にする。
+    |
+    |   | 先ず初めに ble-edit/exec:gexec/.setup の中で設定される。
+    |   | 設定内容は以下を含む。
+    |   | - ble-edit/exec:gexec/.begin
+    |   | - コマンドの個数だけ以下を繰り返し実行:
+    |   |   - ble-edit/exec:gexec/.eval-prologue ...
+    |   |   - コマンド実行
+    |   |   - ble-edit/exec:gexec/.save-last-arg
+    |   |   - ble-edit/exec:gexec/.eval-epilogue
+    |   | - trap - INT DEBUG
+    |   | - ble-edit/exec:gexec/.end
+    |   |
+    |   | 次に $_ble_decode_bind_hook 経由で実行が実際に行われる。
+    |   | 一番最初に呼び出される ble-edit/exec:gexec/.begin の中で
+    |   | $_ble_decode_bind_hook はクリアされる。
+    |   |
+    |   | 最終的にコマンドが実行された後に、
+    |   | ble-edit/exec:gexec/.end が呼び出される。
+    |   | 内部で以下の関数が呼び出される。
+    |   |   ble/term/enter
+    |   |   ble-edit/bind/.tail
+    |
+    |   この様に考えてみると、実のところ特別に新しく hook を用意するのではなくて、
+    |   単に ble-edit/bind/.tail 辺りで idle 処理を実行すれば良い様な気もする。
+    |
+    |   因みに ble/term/enter は "ble/term/leave → コマンド実行 → ble/term/enter"
+    |   の流れを構成する物であって、ble.sh による処理はこの外側で実行するべきものの様に思われるので、
+    |   ble/term/enter の中で処理するなどの可能性は最初から除外して良い。
+    |
+    |   さて。ble-edit/bind/.tail の中では info/reveal して textarea#render して stdout.off している。
+    |   アイドル時には textarea#render の後で ble/util/buffer.flush >&2 してから入れば良い。
+    |   stdout.off はそれよりも後で最後に実行すれば良い。
+    |
+    | - ble-edit/bind/.tail がどの状況で呼び出されるのかについて確認しておく必要がある。
+    |   →これは基本的に ble-decode/EPILOGUE で実行される。
+    |   コマンドの実行予定がある場合には ble-edit/exec:$bleopt_exec_type/process を呼び出した時に、
+    |   内部で ble-edit/bind/.tail が予約されるので、そのまま抜ける。
+    |   コマンドの実行と共に $_ble_decode_bind_hook の内部で最終的に ble-edit/bind/.tail が呼び出される。
+    |
+    |   ble-edit/bind/.tail-without-draw については、忙しい時に呼び出される物なので、
+    |   アイドル処理を行うかどうかについては確認しなくて良い。
+
+    これらの様子を総合すると、ble-edit/bind/.tail の textarea#render の直後で
+    アイドル処理を実行する様にすれば良い。
+
+    ble-attach の最後の部分でも ble-edit/bind/.tail を呼び出す事にした。
+
+    o ok: 取り敢えず以下の様なダミーの処理が違和感なく動いている事を確認した。
+      どうも 0.05 程度の遅延が違和感の無いぎりぎりの様に思われる。
+
+      | function ble-edit/test/count-up {
+      |   while ! ble/util/is-stdin-ready; do
+      |     ble-edit/info/show text $((_ble_test_count++))
+      |     ble/textarea#focus
+      |     ble/util/buffer.flush >&2
+      |     ble/util/sleep 0.05
+      |   done
+      |   return 148
+      | }
+      | ble-edit/idle/push ble-edit/test/count-up
+
+    o ok: 試しに以下の様にして見たところ、ちゃんと ble-attach 時に既に入力がある場合には、
+      それらの入力を処理してから履歴のロードが始まるという事を確認した。
+      つまり ble-attach (from bashrc) でも ble/util/is-stdin-ready が正しく認識できている。
+
+      | ble/util/isfunction ble-edit/idle/push &&
+      |   ble-edit/idle/push ble-edit/history/load
+
+    序で complete.sh の遅延ロードに対応した。動いている。
 
   * 2017-11-03 vi-mode (extract-block): [Optimize] 現在の実装では毎回フルに矩形を計算している [#D0677]
 

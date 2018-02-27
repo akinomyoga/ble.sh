@@ -1074,7 +1074,9 @@ function ble/util/restore-editing-mode {
   (none) set +o emacs ;;
   esac
 }
+
 #------------------------------------------------------------------------------
+# Functions for modules
 
 function ble/util/invoke-hook {
   local -a hooks; eval "hooks=(\"\${$1[@]}\")"
@@ -1169,6 +1171,45 @@ function ble-assert {
     return 0
   fi
 }
+
+#------------------------------------------------------------------------------
+# Event loop
+
+if ((_ble_bash>=40000)); then
+  _ble_util_idle_task=()
+
+  ## 関数 ble/util/idle.do
+  ##   待機状態の処理を開始します。
+  ##
+  ##   @exit
+  ##     待機処理を何か実行した時に成功 (0) を返します。
+  ##     何も実行しなかった時に失敗 (1) を返します。
+  ##
+  function ble/util/idle.do {
+    ble/util/is-stdin-ready && return 1
+    ((${#_ble_util_idle_task[@]}==0)) && return 1
+
+    ble/util/buffer.flush >&2
+    local _i _iN=${#_ble_util_idle_task[@]} _processed=
+    for ((_i=0;_i<_iN;_i++)); do
+      local command=${_ble_util_idle_task[_i]}
+      [[ $command ]] || continue
+      _processed=1
+      builtin eval "$command"; local _ext=$?
+      ((_ext==148)) && return 0
+      _ble_util_idle_task[_i]=
+    done
+    _ble_util_idle_task=()
+    [[ $_processed ]]
+  }
+  function ble/util/idle.push {
+    ble/array#push _ble_util_idle_task "$*"
+  }
+else
+  function ble/util/idle.do { false; }
+fi
+
+#------------------------------------------------------------------------------
 
 ## 関数 bleopt args...
 ##   @params[in] args

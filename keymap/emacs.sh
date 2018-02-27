@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # include guard
-ble/util/isfunction ble-edit/load-keymap-definition:emacs && return
-function ble-edit/load-keymap-definition:emacs { :; }
+ble/util/isfunction ble-edit/bind/load-keymap-definition:emacs && return
+function ble-edit/bind/load-keymap-definition:emacs { :; }
 
 # 2015-12-09 keymap cache should be updated due to the refactoring.
 

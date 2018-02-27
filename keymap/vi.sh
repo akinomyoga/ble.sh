@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されうるので、
-# 先に ble-edit/load-keymap-definition:vi を上書きする必要がある。
-ble/util/isfunction ble-edit/load-keymap-definition:vi && return
-function ble-edit/load-keymap-definition:vi { :; }
+# 先に ble-edit/bind/load-keymap-definition:vi を上書きする必要がある。
+ble/util/isfunction ble-edit/bind/load-keymap-definition:vi && return
+function ble-edit/bind/load-keymap-definition:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
 
