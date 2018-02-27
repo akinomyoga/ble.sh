@@ -5146,7 +5146,6 @@ function ble-decode/keymap:vi_nmap/define {
 #------------------------------------------------------------------------------
 # Visual mode
 
-
 # 選択の種類は _ble_edit_mark_active に設定される文字列で区別する。
 #
 #   _ble_edit_mark_active は char, line, block のどれかである
@@ -5229,12 +5228,12 @@ function ble/keymap:vi/get-rectangle-height {
 }
 
 
-## 関数 ble/keymap:vi/extract-graphical-block-by-geometry bol1 bol2 x1:y1 x2:y2
-## 関数 ble/keymap:vi/extract-logical-block-by-geometry bol1 bol2 c1 c2
+## 関数 ble/keymap:vi/extract-graphical-block-by-geometry bol1 bol2 x1:y1 x2:y2 opts
+## 関数 ble/keymap:vi/extract-logical-block-by-geometry bol1 bol2 c1 c2 opts
 ##   指定した引数の範囲を元に矩形範囲を抽出します。
-## 関数 ble/keymap:vi/extract-graphical-block [index1 [index2]]
-## 関数 ble/keymap:vi/extract-logical-block [index1 [index2]]
-## 関数 ble/keymap:vi/extract-block [index1 [index2]]
+## 関数 ble/keymap:vi/extract-graphical-block [index1 [index2 [opts]]]
+## 関数 ble/keymap:vi/extract-logical-block [index1 [index2 [opts]]]
+## 関数 ble/keymap:vi/extract-block [index1 [index2 [opts]]]
 ##   現在位置 (_ble_edit_ind) とマーク (_ble_edit_mark) を元に矩形範囲を抽出します。
 ##
 ##   @param[in] bol1 bol2
@@ -5247,6 +5246,17 @@ function ble/keymap:vi/get-rectangle-height {
 ##   @param[in,opt] index1 [$_ble_edit_mark]
 ##   @param[in,opt] index2 [$_ble_edit_ind]
 ##     矩形の端点の文字インデックスを指定します。
+##
+##   @param[in,opt] opts
+##     コロン区切りのフラグ指定です。
+##
+##     first_line
+##       矩形を構成する最初の行についてだけ情報を取得します。
+##       その他の行については空の情報 (':::::') を sub_ranges に格納します。
+##
+##     skip_middle
+##       矩形を構成する最初と最後の行についてだけ情報を取得します。
+##       その他の行については空の情報 (':::::') を sub_ranges に格納します。
 ##
 ##   @var[in] _ble_edit_mark_active
 ##     末尾拡張を行うばあいにこの引数の末端に + を指定します。
@@ -5270,7 +5280,7 @@ function ble/keymap:vi/get-rectangle-height {
 ##   @var[out] sub_x1 sub_x2
 ##
 function ble/keymap:vi/extract-graphical-block-by-geometry {
-  local bol1=$1 bol2=$2 x1=$3 x2=$4 y1=0 y2=0
+  local bol1=$1 bol2=$2 x1=$3 x2=$4 y1=0 y2=0 opts=$5
   ((bol1<=bol2||(bol1=$2,bol2=$1)))
   [[ $x1 == *:* ]] && local x1=${x1%%:*} y1=${x1#*:}
   [[ $x2 == *:* ]] && local x2=${x2%%:*} y2=${x2#*:}
@@ -5290,69 +5300,76 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   local c1l c1r c2l c2r
   for line in "${lines[@]}"; do
     ((eol=bol+${#line}))
-    ble/textmap#getxy.out --prefix=bol "$bol"
-    ble/textmap#hit out "$x1" "$((boly+y1))" "$bol" "$eol"
-    local smin=$index x1l=$lx y1l=$ly x1r=$rx y1r=$ry
-    if ble/keymap:vi/xmap/has-eol-extension; then
-      local eolx eoly; ble/textmap#getxy.out --prefix=eol "$eol"
-      local smax=$eol x2l=$eolx y2l=$eoly x2r=$eolx y2r=$eoly
+
+    if [[ :$opts: == *:first_line:* ]] && ((${#sub_ranges[@]})); then
+      ble/array#push sub_ranges :::::
+    elif [[ :$opts: == *:skip_middle:* ]] && ((0<${#sub_ranges[@]}&&${#sub_ranges[@]}<${#lines[@]}-1)); then
+      ble/array#push sub_ranges :::::
     else
-      ble/textmap#hit out "$x2" "$((boly+y2))" "$bol" "$eol"
-      local smax=$index x2l=$lx y2l=$ly x2r=$rx y2r=$ry
-    fi
-
-    local sfill=0 slpad=0 srpad=0
-    local stext=${_ble_edit_str:smin:smax-smin}
-    if ((smin<smax)); then
-      # 1. 左の境界 c1 を大きな文字が跨いでいるときは空白に変換する。
-      ((c1l=(y1l-boly)*cols+x1l))
-      if ((c1l<c1)); then
-        ((slpad=c1-c1l))
-
-        # assert: smin < smax <= eol なので行末ではない
-        ble-assert '! ble-edit/content/eolp "$smin"'
-
-        ((c1r=(y1r-boly)*cols+x1r))
-        ble-assert '((c1r>c1))' || ((c1r=c1))
-        ble/string#repeat ' ' $((c1r-c1))
-        stext=$ret${stext:1}
+      ble/textmap#getxy.out --prefix=bol "$bol"
+      ble/textmap#hit out "$x1" $((boly+y1)) "$bol" "$eol"
+      local smin=$index x1l=$lx y1l=$ly x1r=$rx y1r=$ry
+      if ble/keymap:vi/xmap/has-eol-extension; then
+        local eolx eoly; ble/textmap#getxy.out --prefix=eol "$eol"
+        local smax=$eol x2l=$eolx y2l=$eoly x2r=$eolx y2r=$eoly
+      else
+        ble/textmap#hit out "$x2" $((boly+y2)) "$bol" "$eol"
+        local smax=$index x2l=$lx y2l=$ly x2r=$rx y2r=$ry
       fi
 
-      # 2. 右の境界 c2 を大きな文字が跨いでいるときは空白に変換する
-      ((c2l=(y2l-boly)*cols+x2l))
-      if ((c2l<c2)); then
-        if ((smax==eol)); then
-          ((sfill=c2-c2l))
-        else
-          ble/string#repeat ' ' $((c2-c2l))
-          stext=$stext$ret
+      local sfill=0 slpad=0 srpad=0
+      local stext=${_ble_edit_str:smin:smax-smin}
+      if ((smin<smax)); then
+        # 1. 左の境界 c1 を大きな文字が跨いでいるときは空白に変換する。
+        ((c1l=(y1l-boly)*cols+x1l))
+        if ((c1l<c1)); then
+          ((slpad=c1-c1l))
+
+          # assert: smin < smax <= eol なので行末ではない
+          ble-assert '! ble-edit/content/eolp "$smin"'
+
+          ((c1r=(y1r-boly)*cols+x1r))
+          ble-assert '((c1r>c1))' || ((c1r=c1))
+          ble/string#repeat ' ' $((c1r-c1))
+          stext=$ret${stext:1}
+        fi
+
+        # 2. 右の境界 c2 を大きな文字が跨いでいるときは空白に変換する
+        ((c2l=(y2l-boly)*cols+x2l))
+        if ((c2l<c2)); then
+          if ((smax==eol)); then
+            ((sfill=c2-c2l))
+          else
+            ble/string#repeat ' ' $((c2-c2l))
+            stext=$stext$ret
+            ((smax++))
+
+            ((c2r=(y2r-boly)*cols+x2r))
+            ble-assert '((c2r>c2))' || ((c2r=c2))
+            ((srpad=c2r-c2))
+          fi
+        elif ((c2l>c2)); then
+          # ここに来るのは ble/keymap:vi/xmap/has-eol-extension のときのみの筈
+          ((sfill=c2-c2l,
+            sfill<min_sfill&&(min_sfill=sfill)))
+        fi
+      else
+        if ((smin==eol)); then
+          # 行末
+          ((sfill=c2-c1))
+        elif ((c2>c1)); then
+          # 範囲の両端が単一の文字の左端または内部にある
+          ble/string#repeat ' ' $((c2-c1))
+          stext=$ret${stext:1}
           ((smax++))
 
-          ((c2r=(y2r-boly)*cols+x2r))
-          ble-assert '((c2r>c2))' || ((c2r=c2))
-          ((srpad=c2r-c2))
+          ((c1l=(y1l-boly)*cols+x1l,slpad=c1-c1l))
+          ((c1r=(y1r-boly)*cols+x1r,srpad=c1r-c1))
         fi
-      elif ((c2l>c2)); then
-        # ここに来るのは ble/keymap:vi/xmap/has-eol-extension のときのみの筈
-        ((sfill=c2-c2l,
-          sfill<min_sfill&&(min_sfill=sfill)))
       fi
-    else
-      if ((smin==eol)); then
-        # 行末
-        ((sfill=c2-c1))
-      elif ((c2>c1)); then
-        # 範囲の両端が単一の文字の左端または内部にある
-        ble/string#repeat ' ' $((c2-c1))
-        stext=$ret${stext:1}
-        ((smax++))
 
-        ((c1l=(y1l-boly)*cols+x1l,slpad=c1-c1l))
-        ((c1r=(y1r-boly)*cols+x1r,srpad=c1r-c1))
-      fi
+      ble/array#push sub_ranges "$smin:$smax:$slpad:$srpad:$sfill:$stext"
     fi
-
-    ble/array#push sub_ranges "$smin:$smax:$slpad:$srpad:$sfill:$stext"
 
     ((bol=eol+1))
   done
@@ -5368,12 +5385,13 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
   fi
 }
 function ble/keymap:vi/extract-graphical-block {
+  local opts=$3
   local p0 q0 lx ly rx ry
   ble/keymap:vi/get-graphical-rectangle "$@"
-  ble/keymap:vi/extract-graphical-block-by-geometry "$p0" "$q0" "$lx:$ly" "$rx:$ry"
+  ble/keymap:vi/extract-graphical-block-by-geometry "$p0" "$q0" "$lx:$ly" "$rx:$ry" "$opts"
 }
 function ble/keymap:vi/extract-logical-block-by-geometry {
-  local bol1=$1 bol2=$2 x1=$3 x2=$4
+  local bol1=$1 bol2=$2 x1=$3 x2=$4 opts=$5
   ((bol1<=bol2||(bol1=$2,bol2=$1)))
   sub_x1=$c1 sub_x2=$c2
 
@@ -5411,9 +5429,10 @@ function ble/keymap:vi/extract-logical-block-by-geometry {
   fi
 }
 function ble/keymap:vi/extract-logical-block {
+  local opts=$3
   local p0 q0 lx ly rx ry
   ble/keymap:vi/get-logical-rectangle "$@"
-  ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$lx" "$rx"
+  ble/keymap:vi/extract-logical-block-by-geometry "$p0" "$q0" "$lx" "$rx" "$opts"
 }
 function ble/keymap:vi/extract-block {
   if ble/edit/use-textmap; then
@@ -5779,7 +5798,7 @@ function ble/widget/vi_xmap/exchange-boundaries {
     ble/keymap:vi/xmap/remove-eol-extension
 
     local sub_ranges sub_x1 sub_x2
-    ble/keymap:vi/extract-block # Optimize: 実は sub_ranges[0] と sub_ranges[最後] しか使わない
+    ble/keymap:vi/extract-block '' '' skip_middle
     local nline=${#sub_ranges[@]}
     ble-assert '((nline))'
 
@@ -6156,11 +6175,12 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   _ble_edit_ind=$index
   return 0
 }
+# xmap I
 function ble/widget/vi_xmap/insert-mode {
   local mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == block ]]; then
     local sub_ranges sub_x1 sub_x2
-    ble/keymap:vi/extract-block # Optimize: 実は sub_ranges[0] しか使わない
+    ble/keymap:vi/extract-block '' '' first_line
     ble/widget/vi_xmap/block-insert-mode.impl insert
   else
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
@@ -6179,11 +6199,12 @@ function ble/widget/vi_xmap/insert-mode {
     return 0
   fi
 }
+# xmap A
 function ble/widget/vi_xmap/append-mode {
   local mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == block ]]; then
     local sub_ranges sub_x1 sub_x2
-    ble/keymap:vi/extract-block # Optimize: 実は sub_ranges[0] しか使わない
+    ble/keymap:vi/extract-block '' '' first_line
     ble/widget/vi_xmap/block-insert-mode.impl append
   else
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
