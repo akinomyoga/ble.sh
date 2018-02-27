@@ -1,39 +1,4 @@
 #!/bin/bash
-#%begin
-
-_ble_util_array_prototype=()
-function _ble_util_array_prototype.reserve {
-  local n=$1
-  for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
-    _ble_util_array_prototype[i]=
-  done
-}
-
-source ble-color.sh
-
-_ble_stackdump_title=stackdump
-function ble-stackdump {
-  # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
-  local i nl=$'\n'
-  local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
-  for ((i=1;i<${#FUNCNAME[*]};i++)); do
-    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
-  done
-  builtin echo -n "$message" >&2
-}
-function ble-assert {
-  local expr=$1
-  local _ble_stackdump_title='assertion failure'
-  if ! builtin eval -- "$expr"; then
-    shift
-    ble-stackdump "$expr$_ble_term_nl$*"
-    return 1
-  else
-    return 0
-  fi
-}
-
-#%end
 #%m main (
 
 ## 関数 ble-syntax/urange#update prefix p1 p2
@@ -4901,161 +4866,18 @@ function ble-highlight-layer:syntax/getg {
 }
 
 #%#----------------------------------------------------------------------------
-#%# test codes
+#%# old test samples
 #%#----------------------------------------------------------------------------
-#%(
-
-attrg[CTX_ARGX]=$'\e[m'
-attrg[CTX_ARGX0]=$'\e[m'
-attrg[CTX_ARGI]=$'\e[m'
-attrg[CTX_ARGQ]=$'\e[m'
-attrg[CTX_ARGVX]=$'\e[m'
-attrg[CTX_ARGVI]=$'\e[m'
-attrg[CTX_ARGVR]=$'\e[m'
-attrg[CTX_CMDX]=$'\e[m'
-attrg[CTX_CMDX1]=$'\e[m'
-attrg[CTX_CMDXT]=$'\e[m'
-attrg[CTX_CMDXC]=$'\e[m'
-attrg[CTX_CMDXE]=$'\e[m'
-attrg[CTX_CMDXD]=$'\e[m'
-attrg[CTX_CMDXV]=$'\e[m'
-attrg[CTX_CMDI]=$'\e[;91m'
-attrg[CTX_VRHS]=$'\e[m'
-attrg[CTX_RDRD]=$'\e[4m'
-attrg[CTX_RDRF]=$'\e[4m'
-attrg[CTX_RDRS]=$'\e[4m'
-attrg[CTX_QUOT]=$'\e[;32m'
-attrg[CTX_EXPR]=$'\e[;34m'
-attrg[ATTR_ERR]=$'\e[;101;97m'
-attrg[ATTR_VAR]=$'\e[;38;5;202m'
-attrg[ATTR_QDEL]=$'\e[;1;32m'
-attrg[ATTR_DEF]=$'\e[m'
-attrg[ATTR_DEL]=$'\e[;1m'
-attrg[CTX_PARAM]=$'\e[;94m'
-attrg[CTX_PWORD]=$'\e[m'
-
-attrg[CTX_CASE]=$'\e[m'
-attrg[CTX_PATN]=$'\e[m'
-attrg[CTX_BRAX]=$'\e[m'
-attrg[CTX_BRACE1]=$'\e[m'
-attrg[CTX_BRACE2]=$'\e[m'
-attrg[ATTR_COMMENT]=$'\e[90m'
-attrg[ATTR_GLOB]=$'\e[35;1m'
-attrg[ATTR_BRACE]=$'\e[36;1m'
-attrg[ATTR_TILDE]=$'\e[34;1m'
-
-attrg[CTX_VALX]=$'\e[m'
-attrg[CTX_VALI]=$'\e[34m'
-attrg[CTX_VALR]=$'\e[34m'
-attrg[CTX_VALQ]=$'\e[34m'
-attrg[ATTR_CMD_KEYWORD]=$'\e[94m'
-
-attrg[CTX_SARGX1]=$'\e[m'
-attrg[CTX_FARGX1]=$'\e[m'
-attrg[CTX_FARGX2]=$'\e[m'
-attrg[CTX_FARGX3]=$'\e[m'
-attrg[CTX_FARGI1]=$'\e[;38;5;202m'
-attrg[CTX_FARGI2]=$'\e[;94m'
-attrg[CTX_FARGI3]=$'\e[m'
-attrg[CTX_FARGQ3]=$'\e[m'
-attrg[CTX_CARGX1]=$'\e[m'
-attrg[CTX_CARGX2]=$'\e[m'
-attrg[CTX_CARGI1]=$'\e[m'
-attrg[CTX_CARGQ1]=$'\e[m'
-attrg[CTX_CARGI2]=$'\e[;94m'
-attrg[CTX_TARGX1]=$'\e[m'
-attrg[CTX_TARGX2]=$'\e[m'
-attrg[CTX_TARGI1]=$'\e[m'
-attrg[CTX_TARGI2]=$'\e[m'
-
-function mytest/put {
-  buff[${#buff[@]}]="$*"
-}
-function mytest/fflush {
-  IFS= eval 'builtin echo -n "${buff[*]}"'
-  buff=()
-}
-function mytest/print {
-  local -a buff=()
-
-  # echo "$text"
-  local ctxg=$'\e[m'
-  for ((i=0;i<${#text};i++)); do
-    if ((${_ble_syntax_attr[i]})); then
-      ctxg="${attrg[_ble_syntax_attr[i]]:-[40;97m}"
-    fi
-    mytest/put "$ctxg${text:i:1}"
-  done
-  mytest/put $'\e[m\n'
-
-  for ((i=0;i<${#text};i++)); do
-    if ((${_ble_syntax_stat[i]%% *})); then
-      mytest/put '>'
-    else
-      mytest/put ' '
-    fi
-    # local ret
-    # ble/util/s2c "$text" "$i"
-    # ble/util/c2w "$ret"
-  done
-  mytest/put $'\n'
-  mytest/fflush
-
-  # local ctxc=' '
-  # for ((i=0;i<${#text};i++)); do
-  #   if ((${_ble_syntax_attr[i]})); then
-  #     ctxc="${attrc[_ble_syntax_attr[i]]:-'?'}"
-  #   fi
-  #   mytest/put "$ctxc"
-  # done
-  # mytest/put $'\n'
-}
-function mytest {
-  local text=$1
-  ble-syntax/parse "$text"
-  mytest/print
-
-  # update test
-  if ((${#text}>=16)); then
-    ble-syntax/parse "$text" 15 16
-    mytest/print
-  fi
-
-  # insertion test
-  if ((${#text}>=5)); then
-    text="${text::5}""hello; echo""${text:5}"
-    ble-syntax/parse "$text" 5 16 5
-    builtin echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_umax
-    mytest/print
-  fi
-
-  # delete test
-  if ((${#text}>=10)); then
-    text="${text::5}""${text:10}"
-    ble-syntax/parse "$text" 5 5 10
-    builtin echo update $_ble_syntax_attr_umin-$_ble_syntax_attr_umax
-    mytest/print
-  fi
-
-  echo -------------------
-}
+#%begin
 # mytest 'echo hello world'
 # mytest 'echo "hello world"'
 # mytest 'echo a"hed"a "aa"b b"aa" aa'
-
-mytest 'echo a"$"a a"\$\",$*,$var,$12"a $*,$var,$12'
-mytest 'echo a"---$((1+a[12]*3))---$(echo hello)---"a'
-mytest 'a=1 b[x[y]]=1234 echo <( world ) >> hello; ( sub shell); ((1+2*3));'
-mytest 'a=${#hello} b=${world[10]:1:(5+2)*3} c=${arr[*]%%"test"$(cmd).cpp} d+=12'
-mytest 'for ((i=0;i<10;i++)); do echo hello; done; { : '"'worlds'\\'' record'"'; }'
-mytest '[[ echo == echo ]]; echo hello'
-
-# ble-syntax/parse "echo hello"
-# for ((i=0;i<${#_ble_syntax_stat[@]};i++)); do
-#   if [[ ${_ble_syntax_stat[i]} ]]; then
-#     echo "$i ${_ble_syntax_stat[i]}"
-#   fi
-# done
+# mytest 'echo a"$"a a"\$\",$*,$var,$12"a $*,$var,$12'
+# mytest 'echo a"---$((1+a[12]*3))---$(echo hello)---"a'
+# mytest 'a=1 b[x[y]]=1234 echo <( world ) >> hello; ( sub shell); ((1+2*3));'
+# mytest 'a=${#hello} b=${world[10]:1:(5+2)*3} c=${arr[*]%%"test"$(cmd).cpp} d+=12'
+# mytest 'for ((i=0;i<10;i++)); do echo hello; done; { : '"'worlds'\\'' record'"'; }'
+# mytest '[[ echo == echo ]]; echo hello'
 
 # 関数名に使える文字?
 #
@@ -5074,8 +4896,7 @@ mytest '[[ echo == echo ]]; echo hello'
 #   一応 name () と間に空白を挟めば定義できる。
 #   function ?() *() などとすると "?()" という名前で関数が作られる。
 #
-
-#%)
+#%end
 #%#----------------------------------------------------------------------------
 #%)
 #%m main main.r/\<ATTR_/BLE_ATTR_/
