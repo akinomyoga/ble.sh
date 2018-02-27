@@ -1109,7 +1109,7 @@ function ble/util/invoke-hook {
 ##     scriptfile 呼出の起点として使用する関数のみで充分です。
 ##
 function ble-autoload {
-  local apos="'" APOS="'\\''" file="$1" funcname
+  local apos="'" APOS="'\\''" file=$1 funcname
   shift
 
   # ※$FUNCNAME は元から環境変数に設定されている場合、
@@ -1192,6 +1192,7 @@ if ((_ble_bash>=40000)); then
     ble/util/buffer.flush >&2
     local _i _iN=${#_ble_util_idle_task[@]} _processed=
     for ((_i=0;_i<_iN;_i++)); do
+      ((_i>0)) && ble/util/is-stdin-ready && return 0
       local command=${_ble_util_idle_task[_i]}
       [[ $command ]] || continue
       _processed=1

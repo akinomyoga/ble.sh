@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# ble-autoload "$_ble_base/complete.sh" ble/widget/complete
+# ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 #
 
 #==============================================================================
@@ -343,7 +343,8 @@ function ble-complete/source/argument/.compgen-helper-func {
 ## 関数 ble-complete/source/argument/.compgen
 ## @var[out] comp_opts
 ## @var[in] COMPV
-## @var[in] index _ble_syntax_*
+## @var[in] index
+## @var[in] (variables set by ble-syntax/parse)
 ## @var[in] 他色々
 ## @exit 入力がある時に 148 を返します。
 function ble-complete/source/argument/.compgen {
@@ -514,7 +515,8 @@ function ble-complete/.fignore/filter {
 }
 
 function ble/widget/complete {
-  local text="$_ble_edit_str" index="$_ble_edit_ind"
+  local text=$_ble_edit_str index=$_ble_edit_ind
+  ble-syntax/import
   _ble_edit_str.update-syntax
   local context
   ble-syntax/completion-context "$text" "$index"

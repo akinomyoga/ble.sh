@@ -699,8 +699,6 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
-2018-02-27
-
 2018-02-23
 
   * 起動時間: ble-edit, ble-syntax の読み込み遅延の可能性
@@ -728,6 +726,22 @@ tech
     また行数・バイト数の内訳で見ると ble-edit が一番重くて、
     次に ble-syntax.sh が重い。ble-edit の編集関数部分と、
     ble-syntax については遅延する事も可能な様に思われる。
+
+    2018-02-28 ble-syntax に関しては #D0680 で遅延読み込みに変更した。動作している。
+      全体の読み取り時間は 0m0.185s にまで短くなった。実行は 0.070s である。
+      単に ble-syntax.sh の部分が 0.013s から 0.001s になったのを反映している。
+      結局読み取り時間は 0.115s になったと考えて良い。
+      因みに、遅延評価に基づく core-syntax.sh の ble-import は 0.067s かかっている。
+
+      またコメントなどを除去したインストール版を使うと
+      ble.sh のロード時間は 0m0.149s にまで短くなった。
+      ble-attach の時間は (vi.sh の読み込みも含めて) 0.354s もかかっているが、
+      実際の所、プロンプトの表示までにかかる時間は 0.036s である。
+      インストール版を使うと ble-attach は 0.336s になるが、
+      プロンプトの表示までにかかる時間は 0.036s で変わらない。
+
+      何れにしても現在の実装 (インストール版) では
+      プロンプト表示までに合計で 0.185s かかる事になる。
 
 2018-02-21
 
@@ -3076,6 +3090,116 @@ tech
 -------------------------------------------------------------------------------
 
 2018-02-27
+
+  * 2018-02-23 idle: ble-syntax.sh の遅延読み込み [#D0680]
+
+    ble-syntax は比較的重いモジュールなので遅延読み込みにできるならばそうしたい。
+    ble-syntax は外から利用している関数が少ない (疎結合) なので分離可能と判断した。
+
+    [API確認]
+
+    ble/util/idle の仕組みを整えたので改めて考え直す。
+    先ず公開インターフェイスの小さそうな ble-syntax について考える。
+    ble-syntax.sh で定義されている関数について調べると、以下の様な物がある。
+
+    - ble-syntax/*
+    - ble-syntax:*
+    - ble-highlight-layer:syntax/*
+    - _ble_syntax_attr2iface.define 
+
+    これらの内他のファイルから呼び出される関数は以下の通り:
+
+    - ble-syntax/completion-context
+    - ble-syntax/parse
+    - ble-syntax:bash/extract-command
+    - ble-syntax:bash/simple-word/eval
+    - ble-syntax:bash/simple-word/is-simple
+    - ble-highlight-layer:syntax/update
+    - ble-highlight-layer:syntax/getg
+
+    ble-syntax/parse, ble-syntax/completion-context 以外に関しては
+    complete.sh もしくは command-help から呼び出される物であり、
+    半ば ble-syntax/parse が終わっている事が前提になっている物である。
+    従って、ble-syntax/parse 及び ble-syntax/completion-context についてだけ
+    autoload に登録しておけば良い様な気もするが、実際に誤って使う事もあるかもしれないので、
+    これらの関数についても ble-autoload しておいた方が無難であろう。
+
+    他に ble-syntax.sh で定義されている変数を参照している箇所は。
+
+    - _ble_syntax_VARNAMES (ble-edit.sh)
+    - _ble_syntax_ARRNAMES (ble-edit.sh)
+    - _ble_syntax_lang (ble-edit.sh)
+    - _ble_syntax_bash_simple_rex_element (complete.sh)
+    - _ble_syntax_lang (vi.sh)
+
+    ble-edit.sh で参照している変数は何れも単に最初に設定すれば済む話である。
+    vi.sh で参照している変数もこれは最初に設定するので問題ない。
+    complete.sh で参照している部分に関しては…これは ble/widget/complete
+    の呼び出し時に ble-import syntax.sh するしかない。
+
+    [実装方法]
+
+    さて、問題は ble-syntax/parse を如何に遅延するかという事である。
+
+    | a 一つの案は text が空の場合には ble-syntax/parse は呼び出さないという物である。
+    | 
+    |   x しかし、それだと有限の長さの文字列から ble-syntax/parse になった時の更新が為されない。
+    | 
+    |   x ok: 更に、初回の ble-syntax/parse の呼び出しで設定されるべき初期値が変な値になるのではないか?
+    |     と思ったが、よく考えたら ble-syntax/parse では、解析開始点が文字列先頭の時には既定の設定を用いるのだった。
+    |     従ってこれについては問題はない。
+    | 
+    | b 或いは、syntax.sh を読み込むまではダミーの ble-syntax/parse を置いておいて、
+    |   このダミーの ble-syntax/parse では何も実行しないなど?
+    |   そういう意味で言うと ble-highlight-layer:syntax/update 及び getg についても
+    |   それに合わせた実装にしなければならない。
+
+    (結局最終的に b に近い実装になった)
+
+    ble-edit の実装を観察してみると ble-syntax/parse は _ble_edit_str.update-syntax から呼び出している。
+    他からは呼び出していない。なので、弄るとすればここを弄れば良いだろう。
+    扨、観察してみると実は変更範囲がない時には ble-syntax/parse は呼び出されない。
+    つまり、ble-syntax/parse に関してはそのまま ble-autoload しても良さそうに思われる。
+    がしかし…入力したそばから何か入力した場合には、取り敢えず無着色でも良いから呼び出すという態度も考えられる。
+    この辺りはどちらでも良い様な気もする。
+
+    というか ble-syntax/parse を呼び出さないと何が起こるのだろうか…。試してみる価値はある。
+    →試してみた所、何事もなく動いている。着色がされず補完ができないというだけである。
+
+    次に、ble-highlight-layer についても考えてみる。実は既定で region 等は読み込まれるので、
+    これらについての着色はすぐに有効になるのが自然である。
+    問題は syntax をどの段階で処理するのか…という事である。
+    うーん。これについては適当なダミーの ble-highlight-layer を最初に定義すれば良い気がする。
+    ダミーの ble-highlight-layer は選択範囲がない場合の region と同じように動作すれば良い。
+
+    [実装]
+
+    どうやら技術的に可能の様に思われるので ble-syntax.sh の分離を実行する事にする。
+
+    →実装した。動いている。ロード中に補完まで呼び出した場合でも動作する。
+
+    x 但し、ロード中に一頻り何か入力して、その後アイドルになって syntax がロードされたとしても、
+      その場では着色されず、次に何らかの操作があった時に初めて着色される。
+      idle の後には textarea#render を折角実行しているのだから、
+      core-syntax.sh がロードされた瞬間に全体を invalidate すれば良さそう。
+
+      a ×: 文字列全体を reset すれば良いのではないかと思ったが、
+        textarea#render は賢い作りになっていて、文字列の内容が同じならば反応しないようだ。
+
+      b 結局 ble/textarea#invalidate を呼び出すしか無さそうだ。
+        しかしプロンプトの計算も個別にキャッシュされているのでそんなには重くはなさそうだ。
+        単に全体を再描画するシーケンスを出力するというだけである。
+
+      OK ble-syntax.sh の末尾で ble/textarea#invalidate を実行するようにしたら大丈夫。
+
+    o bash-4.0 でも動作するか。
+    o bash-4.1 でも動作するか。
+    o bash-4.4 でも動作するか。
+    o bash-3.2 でも動作するか。
+    o bash-3.1 でも動作するか。
+    o bash-3.0 でも動作するか。
+
+    何れの version でも問題なく動作している。
 
   * 2017-11-25 complete: 更新する度に complete.sh の不整合が問題になっている [#D0679]
 

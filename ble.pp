@@ -422,7 +422,7 @@ ble/bin/.freeze-utility-path gawk
 #%x inc.r/@/color/
 #%x inc.r/@/edit/
 #%x inc.r/@/form/
-#%x inc.r/@/syntax/
+#%x inc.r/@/syntax-lazy/
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
 

@@ -1,5 +1,25 @@
 #!/bin/bash
+#%[release = 0]
 #%m main (
+
+# exported variables
+_ble_syntax_VARNAMES=(
+  _ble_syntax_text
+  _ble_syntax_lang
+  _ble_syntax_attr_umin
+  _ble_syntax_attr_umax
+  _ble_syntax_word_umin
+  _ble_syntax_word_umax
+  _ble_syntax_vanishing_word_umin
+  _ble_syntax_vanishing_word_umax
+  _ble_syntax_dbeg
+  _ble_syntax_dend)
+_ble_syntax_ARRNAMES=(
+  _ble_syntax_stat
+  _ble_syntax_nest
+  _ble_syntax_tree
+  _ble_syntax_attr)
+_ble_syntax_lang=bash
 
 ## 関数 ble-syntax/urange#update prefix p1 p2
 ## 関数 ble-syntax/wrange#update prefix p1 p2
@@ -58,9 +78,6 @@ function ble-syntax/wrange#shift {
     ${prefix}umin>${prefix}umax&&
       (${prefix}umin=${prefix}umax=-1)))
 }
-
-_ble_syntax_VARNAMES=(_ble_syntax_{text,lang,{attr,word,vanishing_word}_u{min,max},d{beg,end}})
-_ble_syntax_ARRNAMES=(_ble_syntax_{stat,nest,tree,attr})
 
 ## @var _ble_syntax_text
 ##   解析対象の文字列を保持する。
@@ -136,7 +153,7 @@ _ble_syntax_ARRNAMES=(_ble_syntax_{stat,nest,tree,attr})
 ## @var _ble_syntax_attr[i]
 ##   文脈・属性の情報
 _ble_syntax_text=
-_ble_syntax_lang=bash
+: ${_ble_syntax_lang:=bash}
 _ble_syntax_stat=()
 _ble_syntax_nest=()
 _ble_syntax_tree=()
@@ -4902,3 +4919,8 @@ function ble-highlight-layer:syntax/getg {
 #%m main main.r/\<ATTR_/BLE_ATTR_/
 #%m main main.r/\<CTX_/BLE_CTX_/
 #%x main
+
+function ble-syntax/import { :; }
+
+ble/util/isfunction ble/textarea#invalidate &&
+  ble/textarea#invalidate

@@ -2054,12 +2054,13 @@ function _ble_edit_str/update-dirty-range {
 }
 
 function _ble_edit_str.update-syntax {
-  local beg end end0
-  ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
-  if ((beg>=0)); then
-    ble/dirty-range#clear --prefix=_ble_edit_dirty_syntax_
-
-    ble-syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
+  if ble/util/isfunction ble-syntax/parse; then
+    local beg end end0
+    ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
+    if ((beg>=0)); then
+      ble/dirty-range#clear --prefix=_ble_edit_dirty_syntax_
+      ble-syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
+    fi
   fi
 }
 
@@ -6386,9 +6387,9 @@ function read {
 # **** completion ****                                                    @comp
 
 : ${bleopt_complete_stdin_frequency:=50}
-ble-autoload "$_ble_base/complete.sh" ble/widget/complete
+ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 ble/util/isfunction ble/util/idle.push &&
-  ble/util/idle.push 'ble-import "$_ble_base/complete.sh"'
+  ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
 
 #------------------------------------------------------------------------------
 # **** command-help ****                                          @command-help

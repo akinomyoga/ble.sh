@@ -25,7 +25,7 @@ function ble-decode/generate-binder {
   local fbind1="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind"
   local fbind2="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind"
 
-  ble-edit/info/show text "ble.sh: updating binders... $_ble_term_cr"
+  ble-edit/info/show text "ble.sh: updating binders..."
 
   : >| "$fbind1"
   : >| "$fbind2"

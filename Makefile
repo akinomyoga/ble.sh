@@ -28,7 +28,7 @@ OUTDIR:=out
 outdirs+=$(OUTDIR)
 
 outfiles+=$(OUTDIR)/ble.sh
-$(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-edit.sh ble-color.sh ble-syntax.sh ble-form.sh | $(OUTDIR)
+$(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-edit.sh ble-color.sh ble-syntax-lazy.sh ble-form.sh | $(OUTDIR)
 	$(MWGPP) $< >/dev/null
 
 outfiles+=$(OUTDIR)/term.sh
@@ -37,9 +37,12 @@ $(OUTDIR)/term.sh: term.sh | $(OUTDIR)
 outfiles+=$(OUTDIR)/bind.sh
 $(OUTDIR)/bind.sh: bind.sh | $(OUTDIR)
 	cp -p $< $@
-outfiles+=$(OUTDIR)/complete.sh
-$(OUTDIR)/complete.sh: complete.sh | $(OUTDIR)
+outfiles+=$(OUTDIR)/lib/core-complete.sh
+$(OUTDIR)/lib/core-complete.sh: lib/core-complete.sh | $(OUTDIR)
 	cp -p $< $@
+outfiles+=$(OUTDIR)/lib/core-syntax.sh
+$(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh | $(OUTDIR)
+	$(MWGPP) $< > $@
 outfiles+=$(OUTDIR)/ignoreeof-messages.txt
 $(OUTDIR)/ignoreeof-messages.txt: ignoreeof-messages.txt | $(OUTDIR)
 	cp -p $< $@
