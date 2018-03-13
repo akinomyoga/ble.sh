@@ -743,6 +743,16 @@ tech
       何れにしても現在の実装 (インストール版) では
       プロンプト表示までに合計で 0.185s かかる事になる。
 
+    ble-edit の遅延読み込みに関しては。
+    前半の textarea の部分まではすぐに使うので遅延できない。
+    widget 群に関しては遅延しても良いがそれほど効果を期待できるかは分からない。
+    一部の使用頻度の低そうな widget に関しては遅延しても良いかもしれないが、
+    ロードに失敗して何も出来なくなったりするのも嫌なので、やはり含めて置いた方が良いような気もする。
+    実のところ、最近のコンピュータは十分速いので現状でもロードに 0.030s しかかからない様である。
+    そういう事であれば、苦労して高速化する必要もないのではという気もする。
+
+    それとは独立に ble-edit.sh の中を整理したいという気もある。
+
 2018-02-21
 
   * vi-mode: nmap (, ), {, }
@@ -1672,6 +1682,66 @@ tech
       改行を含む場合には eval -- の形に変換するなどの工夫が必要になる。
       しかし其処まで行くと、awk でできるだけ処理してからという事もできる。
 
+    2018-03-12 本格的にこの方針での実装について考える。
+    先ず初めにファイルに出力する。
+
+      複数行に亘る history entry が登録されている場合の為に、
+      awk または sed で処理する必要がある。
+      実際に両方で実装してみた所、awk の方が微妙に速かった。
+
+        history | awk ... 0m0.574s for 37002 entries
+        history | sed ... 0m0.634s for 37002 entries
+
+        | # 0m0.634s for 37002 entries
+        | time builtin history | ble/bin/sed '
+        |   s/^ *[0-9]\{1,\}\*\{0,1\} \{1,\}__ble_ext__)//
+        |   s/^ *[0-9]\{1,\}\*\{0,1\} \{1,\}??//
+        |   tF
+        |   ${H;s/.*//;bF;}
+        |   H;d
+        | :F
+        |   x;s/^\n//
+        |   /\n/ {
+        |     s/['\''\\]/&/g
+        |     s/\n/\\n/g
+        |     s/.*/eval -- $'\''&'\''/
+        |   }
+        |   p
+        |   ${s/.*//;x;/./{x;bF;};x}
+        |   d
+        | ' > "$tmpfile"
+
+      awk 版を採用する事にする。
+      さて、この操作は時間がかかるので background で実行する?
+      sleep ring だとかを実装すると良いかもしれない。
+      うーん。取り敢えずは sleep ring だとかは考えずに
+      同期的に待機して処理を行うことにする。
+      少しユーザを待たせることになるが、対策は後で行えば良い。
+
+      次に実行するのは mapfile である。
+      配列を走査して複数行コマンドを修正するのも実装した。
+      _ble_edit_history_edit については、
+      配列の複製は時間がかかるので、これも mapfile で処理することにする。
+      但し、配列は走査せずに _ble_edit_history で修正を行った要素の番号を記録する方法を取る事にした。
+      そうすると 11ms で書き換えは終わった。
+
+    * progress の表示
+
+      配列を走査している間は progress を info に表示する様にした。
+      progress を Unicode の文字を使用して描画するとずれる。
+      調べてみると blesh 及び Poderosa は幅 1 と認識しているが、
+      screen が幅 2 と認識している様だ。
+      使っている screen は ~/local/bin/screen である。
+      cjkwidth emacs は .screenrc に書かれている。
+      もしかすると cjkwidth のコードが誤っているという可能性もある。
+
+      ずれは \r を最後に出力すれば収まる。
+      但し、これで問題が発生しないのは端末の幅が十分にある時のみである。
+
+      todo: screen の cjkwidth emacs のコードを確認する?
+      todo: progress を表示するより効率的な枠組みを作成する?
+
+    2018-03-13 実は awk で書き換えが必要な index を調べておけば、_ble_edit_history も 11ms で終わるのでは?
 
 2016-07-20
 
@@ -3105,7 +3175,7 @@ tech
     - ble-syntax/*
     - ble-syntax:*
     - ble-highlight-layer:syntax/*
-    - _ble_syntax_attr2iface.define 
+    - _ble_syntax_attr2iface.define
 
     これらの内他のファイルから呼び出される関数は以下の通り:
 
@@ -3142,13 +3212,13 @@ tech
     さて、問題は ble-syntax/parse を如何に遅延するかという事である。
 
     | a 一つの案は text が空の場合には ble-syntax/parse は呼び出さないという物である。
-    | 
+    |
     |   x しかし、それだと有限の長さの文字列から ble-syntax/parse になった時の更新が為されない。
-    | 
+    |
     |   x ok: 更に、初回の ble-syntax/parse の呼び出しで設定されるべき初期値が変な値になるのではないか?
     |     と思ったが、よく考えたら ble-syntax/parse では、解析開始点が文字列先頭の時には既定の設定を用いるのだった。
     |     従ってこれについては問題はない。
-    | 
+    |
     | b 或いは、syntax.sh を読み込むまではダミーの ble-syntax/parse を置いておいて、
     |   このダミーの ble-syntax/parse では何も実行しないなど?
     |   そういう意味で言うと ble-highlight-layer:syntax/update 及び getg についても
@@ -4292,6 +4362,7 @@ tech
       →forward/backward-line-or-history-next/prev は廃止し、
         代わりに通常の forward/backward-line に引数 "history" を指定して登録する。
 
+
 2017-12-03
 
   * 絵文字の文字幅に対応する [#D0645]

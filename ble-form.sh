@@ -15,7 +15,7 @@ _ble_line_x=0 _ble_line_y=0
 ##   移動先のカーソルの座標を指定します。
 ##   プロンプト原点が x=0 y=0 に対応します。
 function ble-form/goto.draw {
-  local -i x="$1" y="$2"
+  local -i x=$1 y=$2
   ble-edit/draw/put "$_ble_term_sgr0"
 
   local -i dy=y-_ble_line_y
@@ -38,7 +38,7 @@ function ble-form/goto.draw {
     fi
   fi
 
-  _ble_line_x="$x" _ble_line_y="$y"
+  _ble_line_x=$x _ble_line_y=$y
 }
 
 

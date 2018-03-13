@@ -1949,6 +1949,24 @@ function ble-edit/info/reveal {
   fi
 }
 
+function ble-edit/info/immediate-show {
+  local x=$_ble_line_x y=$_ble_line_y
+  ble-edit/info/show "$@"
+  local -a DRAW_BUFF=()
+  ble-form/goto.draw "$x" "$y"
+  ble-edit/draw/bflush
+  ble/util/buffer.flush >&2
+}
+function ble-edit/info/immediate-clear {
+  local x=$_ble_line_x y=$_ble_line_y
+  ble-edit/info/clear
+  ble-edit/info/reveal
+  local -a DRAW_BUFF=()
+  ble-form/goto.draw "$x" "$y"
+  ble-edit/draw/bflush
+  ble/util/buffer.flush >&2
+}
+
 # 
 #------------------------------------------------------------------------------
 # **** edit ****                                                          @edit
@@ -5034,78 +5052,213 @@ function ble-edit/history/get-editted-entry {
   eval "$__var=\${${_ble_edit_history_prefix:-_ble_edit}_history_edit[\$1]}"
 }
 
+## 関数 ble-edit/history/load
+if ((_ble_bash>=40000)); then
+  # _ble_bash>=40000 で以下の機能を利用する
+  #   ble/util/is-stdin-ready
+  #   ble/util/mapfile
 
-function ble-edit/history/.generate-source-to-load-history {
-  if ! builtin history -p '!1' &>/dev/null; then
-    # rcfile として起動すると history が未だロードされていない。
-    builtin history -n
-  fi
-  HISTTIMEFORMAT=__ble_ext__
+  _ble_edit_history_loading=0
+  _ble_edit_history_loading_index=0
+  _ble_edit_history_loading_indices_to_fix=0
 
-  # 285ms for 16437 entries
-  local apos="'"
-  builtin history | ble/bin/awk -v apos="'" '
-    BEGIN{
-      n="";
-      print "_ble_edit_history=("
-    }
+  # history > tmp
+  function ble-edit/history/background-load/.initialize {
+    if ! builtin history -p '!1' &>/dev/null; then
+      # rcfile から呼び出すと history が未だロードされていない。
+      builtin history -n
+    fi
 
-    # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
-    /^ *[0-9]+\*? +(__ble_ext__|\?\?)/{
-      if(n!=""){
+    local -x HISTTIMEFORMAT=__ble_ext__
+  
+    local apos=\'
+    # 0m0.574s for 37002 entries
+    builtin history | ble/bin/awk -v apos="$apos" '
+      BEGIN { n = 0; }
+  
+      function flush_line() {
+        if (n == 1) {
+          print t;
+        } else if (n > 1) {
+          gsub(/['$apos'\\]/, "\\\\&", t);
+          gsub(/\n/, "\\n", t);
+          print "eval -- $" apos t apos;
+        }
+        n = 0;
+        t = "";
+      }
+  
+      {
+        if (sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/, "", $0))
+          flush_line();
+        t = ++n == 1 ? $0 : t "\n" $0;
+      }
+  
+      END { flush_line(); }
+    ' > "$tmpfile.part"
+    ble/bin/mv -f "$tmpfile.part" "$tmpfile"
+  }
+
+  ## 関数 ble-edit/history/string#create-unicode-progress-bar
+  ##   @var[out] ret
+  function ble-edit/history/string#create-unicode-progress-bar {
+    local value=$1 max=$2 width=$3
+    local progress=$((value*8*width/max))
+    local progress_fraction=$((progress%8)) progress_integral=$((progress/8))
+
+    local out=
+    if ((progress_integral)); then
+      ble/util/c2s $((0x2588))
+      ble/string#repeat "$ret" "$progress_integral"
+      out=$ret
+    fi
+
+    if ((progress_fraction)); then
+      ble/util/c2s $((0x2590-progress_fraction))
+      out=$out$ret
+      ((progress_integral++))
+    fi
+
+    if ((progress_integral<width)); then
+      ble/util/c2w $((0x2588))
+      ble/string#repeat ' ' $((ret*(width-progress_integral)))
+      out=$out$ret
+    fi
+
+    ret=$out
+  }
+
+  function ble-edit/history/load {
+    [[ $_ble_edit_history_prefix ]] && return
+    [[ $_ble_edit_history_loaded ]] && return
+  
+    local async=; [[ $1 == async ]] && async=1
+  
+    local tmpfile=$_ble_base_run/$$.edit-history-load
+    while :; do
+      case $_ble_edit_history_loading in
+      (0) ((_ble_edit_attached)) && ble-edit/info/immediate-show text "loading history..."
+          ble-edit/history/background-load/.initialize
+          _ble_edit_history_loading=1 ;;
+  
+      (1) ble/util/mapfile _ble_edit_history < "$tmpfile"
+          _ble_edit_history_loading=2 ;;
+  
+      (2) ble/util/mapfile _ble_edit_history_edit < "$tmpfile"
+          _ble_edit_history_loading_index=0
+          _ble_edit_history_loading_indices_to_fix=
+          _ble_edit_history_loading=3 ;;
+  
+      (3) local i len=${#_ble_edit_history[@]} rex='^eval -- \$'\''([^\'\'']|\\.)*'\''$'
+          for ((i=_ble_edit_history_loading_index;i<len;i++)); do
+            if ((i%300==0)); then
+              if ((i%1800==0&&i>0&&_ble_edit_attached)); then
+                local ret
+                ble-edit/history/string#create-unicode-progress-bar "$i" "$len" 6
+                local bar=$ret
+                ble-edit/info/immediate-show raw $'processing multiline history [\e[38;5;63m'"$bar"$'\e[m]\r'
+                # ble-edit/info/immediate-show text "[$((100*i/len))%] processing multiline history..."
+              fi
+              if [[ $async ]] && ble/util/is-stdin-ready; then
+                _ble_edit_history_loading_index=$i
+                return 148
+              fi
+            fi
+            if [[ ${_ble_edit_history[i]} == eval* ]] && [[ ${_ble_edit_history[i]} =~ $rex ]]; then
+              eval "_ble_edit_history[i]=${_ble_edit_history[i]:8}"
+              _ble_edit_history_loading_indices_to_fix="$_ble_edit_history_loading_indices_to_fix $i"
+            fi
+          done
+          _ble_edit_history_loading=4 ;;
+  
+      (4) local i
+          for i in $_ble_edit_history_loading_indices_to_fix; do
+            eval "_ble_edit_history_edit[i]=${_ble_edit_history_edit[i]:8}"
+          done
+          _ble_edit_history_count=${#_ble_edit_history[@]}
+          _ble_edit_history_ind=$_ble_edit_history_count
+          _ble_edit_history_loaded=1
+          ((_ble_edit_attached)) && ble-edit/info/immediate-clear
+          _ble_edit_history_loading=5
+          return 0 ;;
+  
+      (*) return 1 ;;
+      esac
+  
+      [[ $async ]] && ble/util/is-stdin-ready && return 148
+    done
+  }
+  function ble-edit/history/clear-background-load {
+    _ble_edit_history_loading=0
+  }
+else
+  function ble-edit/history/.generate-source-to-load-history {
+    if ! builtin history -p '!1' &>/dev/null; then
+      # rcfile として起動すると history が未だロードされていない。
+      builtin history -n
+    fi
+    HISTTIMEFORMAT=__ble_ext__
+
+    # 285ms for 16437 entries
+    local apos="'"
+    builtin history | ble/bin/awk -v apos="'" '
+      BEGIN{
         n="";
-        print "  " apos t apos;
+        print "_ble_edit_history=("
       }
 
-      n=$1;t="";
-      sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/,"",$0);
-    }
-    {
-      line=$0;
-      if(line~/^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
-        line=apos substr(line,9) apos;
-      else
-        gsub(apos,apos "\\" apos apos,line);
+      # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
+      /^ *[0-9]+\*? +(__ble_ext__|\?\?)/ {
+        if (n != "") {
+          n = "";
+          print "  " apos t apos;
+        }
 
-      t=t!=""?t "\n" line:line;
-    }
-    END{
-      if(n!=""){
-        n="";
-        print "  " apos t apos;
+        n = $1; t = "";
+        sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/, "", $0);
       }
+      {
+        line = $0;
+        if (line ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+          line = apos substr(line, 9) apos;
+        else
+          gsub(apos, apos "\\" apos apos, line);
 
-      print ")"
-    }
-  '
-}
+        t = t != "" ? t "\n" line : line;
+      }
+      END {
+        if (n != "") {
+          n = "";
+          print "  " apos t apos;
+        }
 
-## called by ble-edit-initialize
-function ble-edit/history/load {
-  [[ $_ble_edit_history_prefix ]] && return
-  [[ $_ble_edit_history_loaded ]] && return
-  _ble_edit_history_loaded=1
+        print ")"
+      }
+    '
+  }
 
-  if ((_ble_edit_attached)); then
-    local x="$_ble_line_x" y="$_ble_line_y"
-    ble-edit/info/show text "loading history..."
+  ## called by ble-edit-initialize
+  function ble-edit/history/load {
+    [[ $_ble_edit_history_prefix ]] && return
+    [[ $_ble_edit_history_loaded ]] && return
+    _ble_edit_history_loaded=1
 
-    local -a DRAW_BUFF=()
-    ble-form/goto.draw "$x" "$y"
-    ble-edit/draw/flush >&2
-  fi
+    ((_ble_edit_attached)) &&
+      ble-edit/info/immediate-show text "loading history..."
 
-  # * プロセス置換にしてもファイルに書き出しても大した違いはない。
-  #   270ms for 16437 entries (generate-source の時間は除く)
-  # * プロセス置換×source は bash-3 で動かない。eval に変更する。
-  builtin eval -- "$(ble-edit/history/.generate-source-to-load-history)"
-  _ble_edit_history_edit=("${_ble_edit_history[@]}")
-  _ble_edit_history_count=${#_ble_edit_history[@]}
-  _ble_edit_history_ind=$_ble_edit_history_count
-  if ((_ble_edit_attached)); then
-    ble-edit/info/clear
-  fi
-}
+    # * プロセス置換にしてもファイルに書き出しても大した違いはない。
+    #   270ms for 16437 entries (generate-source の時間は除く)
+    # * プロセス置換×source は bash-3 で動かない。eval に変更する。
+    builtin eval -- "$(ble-edit/history/.generate-source-to-load-history)"
+    _ble_edit_history_edit=("${_ble_edit_history[@]}")
+    _ble_edit_history_count=${#_ble_edit_history[@]}
+    _ble_edit_history_ind=$_ble_edit_history_count
+    if ((_ble_edit_attached)); then
+      ble-edit/info/clear
+    fi
+  }
+  function ble-edit/history/clear-background-load { :; }
+fi
 
 # @var[in,out] HISTINDEX_NEXT
 #   used by ble/widget/accept-and-next to get modified next-entry positions
@@ -5214,6 +5367,7 @@ function ble-edit/history/add/.command-history {
     builtin printf '%s\n' "$cmd" >| "$tmp"
     builtin history -r "$tmp"
   else
+    ble-edit/history/clear-background-load
     builtin history -s -- "$cmd"
   fi
 }
@@ -6979,7 +7133,11 @@ function ble-edit-attach {
   ble/util/buffer "$_ble_term_cr"
 }
 function ble-edit/reset-history {
-  if ((_ble_bash>=30100)) && [[ $bleopt_history_lazyload ]]; then
+  if ((_ble_bash>=40000)); then
+    _ble_edit_history_loaded=
+    ble-edit/history/clear-background-load
+    ble/util/idle.push 'ble-edit/history/load async'
+  elif ((_ble_bash>=30100)) && [[ $bleopt_history_lazyload ]]; then
     _ble_edit_history_loaded=
   else
     # * history-load は initialize ではなく attach で行う。

@@ -1186,6 +1186,7 @@ if ((_ble_bash>=40000)); then
   ##     何も実行しなかった時に失敗 (1) を返します。
   ##
   function ble/util/idle.do {
+    local IFS=$' \t\n'
     ble/util/is-stdin-ready && return 1
     ((${#_ble_util_idle_task[@]}==0)) && return 1
 
