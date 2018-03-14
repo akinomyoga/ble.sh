@@ -699,6 +699,29 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2018-03-14
+
+  * info: progress の表示
+
+    history の background loading で一時 progress の表示をしていたが、
+    その後に効率的な実装方法が分かった為に結局現在は使われていない。
+
+    しかし、その時に残っていた課題が幾つかある。
+
+    * info で progress を表示するための専用の仕組みを作る?
+
+      一つは info で表示する事自体に 40ms 程度時間がかかっていた事である。
+      これは progress を表示する事自体によって処理時間が長くなるという事を意味する。
+      また info の表示を行う為に配列を使用しているので、
+      外側のループで巨大配列を触っている時に、これも速度低下の原因となる。
+
+    * screen の文字幅判定のコードをチェックする。
+
+      また Unicode Block Characters を使って作成した progress bar で、
+      文字幅の計算がずれてしまう。これは screen 上で Unicode Block Characters が幅2 なのに、
+      Poderosa 及び ble.sh で幅1で扱われているのが原因である。
+      使用している screen は cjkwidth emacs で動作しているのに変である。
+
 2018-02-23
 
   * 起動時間: ble-edit, ble-syntax の読み込み遅延の可能性
@@ -1480,268 +1503,6 @@ tech
     c やはり正確に処理する為には地の文にある " だけを全て正確に \" に置き換えるしかない。
       そしてその為には $() ${} "" の入れ子の勘定が必要である。\? '...' `...` はスキップする。
       うーん。場合によっては ble-syntax を呼び出した方が賢明かもしれない。
-
-2016-09-11
-
-  * やはり履歴のロード時間が気になる。
-
-    | time test1=$(ble-edit/history/.generate-source-to-load-history)
-    | real    0m3.211s
-    | user    0m3.661s
-    | sys     0m0.535s
-    |
-    | time eval -- "$test1"
-    | real    0m2.472s
-    | user    0m2.383s
-    | sys     0m0.080s
-    |
-    | time _ble_edit_history_edit=("${_ble_edit_history[@]}")
-    | real    0m1.552s
-    | user    0m1.526s
-    | sys     0m0.022s
-
-    generate-source-to-load-history が思いの外遅い。
-
-    time history | cat >/dev/null
-    real    0m0.321s
-    user    0m0.134s
-    sys     0m0.433s
-
-    history 列挙自体はそんなに時間はかからない様だ。
-    time command awk ... 2>|~/a.txt
-    3.08user 0.02system 0:03.13elapsed 99%CPU (0avgtext+0avgdata 3096maxresident)k
-    0inputs+0outputs (0major+281minor)pagefaults 0swaps
-
-    何か変な表示になったが…。
-    何故かは分からないが /bin/time が呼び出されている様だ。
-    どうやら hoge | time ... とすると time は /bin/time になる様だ。知らなかった…。
-    何れにしても awk における処理自体が 3 秒かかっているという事が分かった。
-    と、ここで使っている awk の version が古いという事に気づいた。最新版に更新する。
-    序に CFLAGS='-O3 -march=native' でコンパイルしてみる。2.5s になった。
-    調子に載って icc でも試してみたら 2.6s になった。
-    オプションは -fast にしたらリンク関係で失敗したので、-O3 -march=native にした。
-    padparadscha の動作が重いようなと思って再起動したら 0.677s にまで短くなった。
-    Server というのは長時間起動していると遅くなるものなのか…。
-    或いは、kernel のアップデートをする度に何らかの thunk が登録されて動作を置き換えているとかそういう事なのかもしれない。
-    という訳でずっと起動しながらアップデートを続けていくとどんどん重くなっていくとかそういう事だったりするのだろうか。
-
-    a 或いは history を配列上に展開するということをしないほうが良いのだろうか。
-      つまり ble/util/assign result history ... を用いて各行毎に値を取り出す様にする。
-      これは ble/util/assign と配列を辿る速度の差がどれくらいあるかに依存する。
-      と思ったが、そもそも history を探してみたが特定の番号の項目だけを抽出する方法がない。
-      ということは sed などを起動して目的の行だけを抽出する必要があって、
-      アクセス速度はシステムの fork の速度によって律速される。
-      つまりとても遅いので使いものにならない。
-
-    b 或いは、必要になった部分だけを少しずつロードするという手もあるかもしれない。
-      しかし、そうすると例えば検索で存在しない文字列を入力したりすると、
-      何度もロードし直す事になり、余計に時間が掛かる様になる。
-      実装が面倒な割に対して効果も得られなそうだ。
-
-    c それとも初めに history の内容を何処か別のファイルに変換してすぐ source できるようにしておいて、
-      違いのある部分についてだけ更新を実行するという手もあるかもしれない。
-      しかし、必ずしもファイルが後尾に追記されるだけとは限らないし、
-      それに対処するために diff などを呼び出し始めると余計に時間が掛かる事になる。
-      或いは、history コマンドとは完全に独立に履歴を管理して、
-      自分の管理している履歴から bash_history を生成して、
-      bash の開始時にはその自分の管理している history を読みこませるという手もある。
-
-    というかこれに関しては既に色々と議論している筈だ。
-    → 2016-07-15 #D0346 に記録が残っている。そちらの方が詳しいはず。
-
-    2017-11-11 実は ~/.bash_history を直接読んでしまった方が速い可能性?
-    具体的にどれぐらいの時間差があるのかについて調べる。
-
-      $ time mapfile -t array1 < ~/.bash_history
-
-      real    0m0.049s
-      user    0m0.038s
-      sys     0m0.011s
-      $ len=${#array1[*]}; echo len=$len; rex='^eval -- \$'\''([^\'\'']|\\.)*'\''$'
-      len=34093
-
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} =~ $rex ]] && echo yes; done
-      | real    0m2.205s
-      | user    0m2.197s
-      | sys     0m0.005s
-      |
-      | 高速化を試みる。
-      |
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]::4} == eval && ${array1[i]} =~ $rex ]] && echo yes; done
-      | real    0m1.004s
-      | user    0m1.002s
-      | sys     0m0.001s
-      |
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == 'eval -- $'* && ${array1[i]} =~ $rex ]] && echo -n yes; done
-      | real    0m0.925s
-      | user    0m0.923s
-      | sys     0m0.001s
-      |
-      | 判定を分けて見る。少し速くなる。25ms
-      | $ function check1 { [[ ${array1[i]} =~ $rex ]] && echo -n yes; }
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == 'eval -- $'* ]] && check1; done
-      | real    0m0.900s
-      | user    0m0.897s
-      | sys     0m0.002s
-      |
-      | もっと判定を短くしてみる。クォートはない方が速い (11ms)
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == 'eval'* ]] && check1; done
-      |
-      |         'eval'*   eval*
-      | real    0m0.877s  0m0.866s
-      | user    0m0.876s  0m0.865s
-      | sys     0m0.000s  0m0.001s
-      |
-      | ${array1[i]::4} とすると遅いようだ (114ms)
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]::4} == eval ]] && check1; done
-      |
-      | real    0m0.980s
-      | user    0m0.973s
-      | sys     0m0.005s
-      |
-      | 判定で空白まで含めると遅くなる。逆に短くすると速くなる。
-      | しかし短くしすぎると偽陽性が多くなるので遅くなる。まあ eval が妥当な所だろう。
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == eval\ * ]] && check1; done
-      |
-      |         eval\ *   eva*      ev*       e*
-      | real    0m0.873s  0m0.859s  0m0.856s  0m1.101s
-      | user    0m0.872s  0m0.857s  0m0.846s  0m1.099s
-      | sys     0m0.000s  0m0.001s  0m0.008s  0m0.001s
-      |
-      | for in でループを回す様にしたが寧ろ遅くなった。
-      | $ i=0; time for data in "${array1[@]}"; do [[ $data == eva* ]] && check1; let i++; done
-      |
-      |         let i++   ((i++))
-      | real    0m1.320s  0m1.161s
-      | user    0m1.306s  0m1.154s
-      | sys     0m0.012s  0m0.005s
-      |
-      | 配列の中身を修正するようにしても特に速度低下は見られない
-      | $ function check1 { [[ ${array1[i]} =~ $rex ]] && array1[i]=${array1[i]:8}; }
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == eval* ]] && check1; done
-      |
-      | real    0m0.853s
-      | user    0m0.852s
-      | sys     0m0.000s
-      |
-      | 実際に目的の補正を実施してみる。
-      | $ time mapfile -t array1 < /tmp/hello.txt
-      |
-      | real    0m0.056s
-      | user    0m0.048s
-      | sys     0m0.008s
-      |
-      | $ function check1 { [[ ${array1[i]} =~ $rex ]] && eval "array1[i]=${array1[i]:8}"; }
-      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == eval* ]] && check1; done
-      | real    0m0.864s
-      | user    0m0.863s
-      | sys     0m0.000s
-
-
-      或いは、~/.bash_history でなくて history を何処かに出力するというのでも良い。
-      $ time history | sed 's/[[:space:]]*[0-9]\{1,\}[[:space:]]*//' > /tmp/hello.txt
-
-      real    0m0.146s
-      user    0m0.167s
-      sys     0m0.049s
-
-      もしこれをする位であれば、現状の方法で eval をする代わりに mapfile で読み出せる様にした方が良い?
-      と思ったが、改行を含む場合に何ともできないのでやはり駄目だ。
-      しかし、配列の複製よりも mapfile の方が速い様だ…。
-
-      $ time array2=("${array1[@]}")
-
-      real    0m0.590s
-      user    0m0.577s
-      sys     0m0.012s
-
-      現在の読み取りの枠組みでどれだけ時間がかかっているのかについても確認しておく。
-
-      $ time ble-edit/history/load
-
-      real    0m2.320s
-      user    0m2.453s
-      sys     0m0.228s
-
-      うーん。mapfile による実装を合計すると大体同程度なのでは。
-
-      history > tmp 146ms
-      mapfile       56ms
-      複数行補正    864ms + α
-      配列コピー    590ms
-      --------------------
-      合計          1656ms (71% of 2320)
-
-      計算してみると多少短くなっているが、そんなに変わらない。
-      しかし、この新しい方法の利点は何かというと、
-      一番処理に時間のかかる部分がループになっているので、
-      処理を分割して少しずつ裏で更新を行うことができる点にある。
-
-      さて。この方法の問題点は shopt -s lithist の時に、
-      改行を含むコマンドが分割されてしまうという事にある。
-      改行を含む場合には eval -- の形に変換するなどの工夫が必要になる。
-      しかし其処まで行くと、awk でできるだけ処理してからという事もできる。
-
-    2018-03-12 本格的にこの方針での実装について考える。
-    先ず初めにファイルに出力する。
-
-      複数行に亘る history entry が登録されている場合の為に、
-      awk または sed で処理する必要がある。
-      実際に両方で実装してみた所、awk の方が微妙に速かった。
-
-        history | awk ... 0m0.574s for 37002 entries
-        history | sed ... 0m0.634s for 37002 entries
-
-        | # 0m0.634s for 37002 entries
-        | time builtin history | ble/bin/sed '
-        |   s/^ *[0-9]\{1,\}\*\{0,1\} \{1,\}__ble_ext__)//
-        |   s/^ *[0-9]\{1,\}\*\{0,1\} \{1,\}??//
-        |   tF
-        |   ${H;s/.*//;bF;}
-        |   H;d
-        | :F
-        |   x;s/^\n//
-        |   /\n/ {
-        |     s/['\''\\]/&/g
-        |     s/\n/\\n/g
-        |     s/.*/eval -- $'\''&'\''/
-        |   }
-        |   p
-        |   ${s/.*//;x;/./{x;bF;};x}
-        |   d
-        | ' > "$tmpfile"
-
-      awk 版を採用する事にする。
-      さて、この操作は時間がかかるので background で実行する?
-      sleep ring だとかを実装すると良いかもしれない。
-      うーん。取り敢えずは sleep ring だとかは考えずに
-      同期的に待機して処理を行うことにする。
-      少しユーザを待たせることになるが、対策は後で行えば良い。
-
-      次に実行するのは mapfile である。
-      配列を走査して複数行コマンドを修正するのも実装した。
-      _ble_edit_history_edit については、
-      配列の複製は時間がかかるので、これも mapfile で処理することにする。
-      但し、配列は走査せずに _ble_edit_history で修正を行った要素の番号を記録する方法を取る事にした。
-      そうすると 11ms で書き換えは終わった。
-
-    * progress の表示
-
-      配列を走査している間は progress を info に表示する様にした。
-      progress を Unicode の文字を使用して描画するとずれる。
-      調べてみると blesh 及び Poderosa は幅 1 と認識しているが、
-      screen が幅 2 と認識している様だ。
-      使っている screen は ~/local/bin/screen である。
-      cjkwidth emacs は .screenrc に書かれている。
-      もしかすると cjkwidth のコードが誤っているという可能性もある。
-
-      ずれは \r を最後に出力すれば収まる。
-      但し、これで問題が発生しないのは端末の幅が十分にある時のみである。
-
-      todo: screen の cjkwidth emacs のコードを確認する?
-      todo: progress を表示するより効率的な枠組みを作成する?
-
-    2018-03-13 実は awk で書き換えが必要な index を調べておけば、_ble_edit_history も 11ms で終わるのでは?
 
 2016-07-20
 
@@ -3158,6 +2919,314 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2018-03-14
+
+  * 2016-09-11 やはり履歴のロード時間が気になる。
+
+    | time test1=$(ble-edit/history/.generate-source-to-load-history)
+    | real    0m3.211s
+    | user    0m3.661s
+    | sys     0m0.535s
+    |
+    | time eval -- "$test1"
+    | real    0m2.472s
+    | user    0m2.383s
+    | sys     0m0.080s
+    |
+    | time _ble_edit_history_edit=("${_ble_edit_history[@]}")
+    | real    0m1.552s
+    | user    0m1.526s
+    | sys     0m0.022s
+
+    generate-source-to-load-history が思いの外遅い。
+
+    time history | cat >/dev/null
+    real    0m0.321s
+    user    0m0.134s
+    sys     0m0.433s
+
+    history 列挙自体はそんなに時間はかからない様だ。
+    time command awk ... 2>|~/a.txt
+    3.08user 0.02system 0:03.13elapsed 99%CPU (0avgtext+0avgdata 3096maxresident)k
+    0inputs+0outputs (0major+281minor)pagefaults 0swaps
+
+    何か変な表示になったが…。
+    何故かは分からないが /bin/time が呼び出されている様だ。
+    どうやら hoge | time ... とすると time は /bin/time になる様だ。知らなかった…。
+    何れにしても awk における処理自体が 3 秒かかっているという事が分かった。
+    と、ここで使っている awk の version が古いという事に気づいた。最新版に更新する。
+    序に CFLAGS='-O3 -march=native' でコンパイルしてみる。2.5s になった。
+    調子に載って icc でも試してみたら 2.6s になった。
+    オプションは -fast にしたらリンク関係で失敗したので、-O3 -march=native にした。
+    padparadscha の動作が重いようなと思って再起動したら 0.677s にまで短くなった。
+    Server というのは長時間起動していると遅くなるものなのか…。
+    或いは、kernel のアップデートをする度に何らかの thunk が登録されて動作を置き換えているとかそういう事なのかもしれない。
+    という訳でずっと起動しながらアップデートを続けていくとどんどん重くなっていくとかそういう事だったりするのだろうか。
+
+    a 或いは history を配列上に展開するということをしないほうが良いのだろうか。
+      つまり ble/util/assign result history ... を用いて各行毎に値を取り出す様にする。
+      これは ble/util/assign と配列を辿る速度の差がどれくらいあるかに依存する。
+      と思ったが、そもそも history を探してみたが特定の番号の項目だけを抽出する方法がない。
+      ということは sed などを起動して目的の行だけを抽出する必要があって、
+      アクセス速度はシステムの fork の速度によって律速される。
+      つまりとても遅いので使いものにならない。
+
+    b 或いは、必要になった部分だけを少しずつロードするという手もあるかもしれない。
+      しかし、そうすると例えば検索で存在しない文字列を入力したりすると、
+      何度もロードし直す事になり、余計に時間が掛かる様になる。
+      実装が面倒な割に対して効果も得られなそうだ。
+
+    c それとも初めに history の内容を何処か別のファイルに変換してすぐ source できるようにしておいて、
+      違いのある部分についてだけ更新を実行するという手もあるかもしれない。
+      しかし、必ずしもファイルが後尾に追記されるだけとは限らないし、
+      それに対処するために diff などを呼び出し始めると余計に時間が掛かる事になる。
+      或いは、history コマンドとは完全に独立に履歴を管理して、
+      自分の管理している履歴から bash_history を生成して、
+      bash の開始時にはその自分の管理している history を読みこませるという手もある。
+
+    というかこれに関しては既に色々と議論している筈だ。
+    → 2016-07-15 #D0346 に記録が残っている。そちらの方が詳しいはず。
+
+    2017-11-11 実は ~/.bash_history を直接読んでしまった方が速い可能性?
+    具体的にどれぐらいの時間差があるのかについて調べる。
+
+      $ time mapfile -t array1 < ~/.bash_history
+
+      real    0m0.049s
+      user    0m0.038s
+      sys     0m0.011s
+      $ len=${#array1[*]}; echo len=$len; rex='^eval -- \$'\''([^\'\'']|\\.)*'\''$'
+      len=34093
+
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} =~ $rex ]] && echo yes; done
+      | real    0m2.205s
+      | user    0m2.197s
+      | sys     0m0.005s
+      |
+      | 高速化を試みる。
+      |
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]::4} == eval && ${array1[i]} =~ $rex ]] && echo yes; done
+      | real    0m1.004s
+      | user    0m1.002s
+      | sys     0m0.001s
+      |
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == 'eval -- $'* && ${array1[i]} =~ $rex ]] && echo -n yes; done
+      | real    0m0.925s
+      | user    0m0.923s
+      | sys     0m0.001s
+      |
+      | 判定を分けて見る。少し速くなる。25ms
+      | $ function check1 { [[ ${array1[i]} =~ $rex ]] && echo -n yes; }
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == 'eval -- $'* ]] && check1; done
+      | real    0m0.900s
+      | user    0m0.897s
+      | sys     0m0.002s
+      |
+      | もっと判定を短くしてみる。クォートはない方が速い (11ms)
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == 'eval'* ]] && check1; done
+      |
+      |         'eval'*   eval*
+      | real    0m0.877s  0m0.866s
+      | user    0m0.876s  0m0.865s
+      | sys     0m0.000s  0m0.001s
+      |
+      | ${array1[i]::4} とすると遅いようだ (114ms)
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]::4} == eval ]] && check1; done
+      |
+      | real    0m0.980s
+      | user    0m0.973s
+      | sys     0m0.005s
+      |
+      | 判定で空白まで含めると遅くなる。逆に短くすると速くなる。
+      | しかし短くしすぎると偽陽性が多くなるので遅くなる。まあ eval が妥当な所だろう。
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == eval\ * ]] && check1; done
+      |
+      |         eval\ *   eva*      ev*       e*
+      | real    0m0.873s  0m0.859s  0m0.856s  0m1.101s
+      | user    0m0.872s  0m0.857s  0m0.846s  0m1.099s
+      | sys     0m0.000s  0m0.001s  0m0.008s  0m0.001s
+      |
+      | for in でループを回す様にしたが寧ろ遅くなった。
+      | $ i=0; time for data in "${array1[@]}"; do [[ $data == eva* ]] && check1; let i++; done
+      |
+      |         let i++   ((i++))
+      | real    0m1.320s  0m1.161s
+      | user    0m1.306s  0m1.154s
+      | sys     0m0.012s  0m0.005s
+      |
+      | 配列の中身を修正するようにしても特に速度低下は見られない
+      | $ function check1 { [[ ${array1[i]} =~ $rex ]] && array1[i]=${array1[i]:8}; }
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == eval* ]] && check1; done
+      |
+      | real    0m0.853s
+      | user    0m0.852s
+      | sys     0m0.000s
+      |
+      | 実際に目的の補正を実施してみる。
+      | $ time mapfile -t array1 < /tmp/hello.txt
+      |
+      | real    0m0.056s
+      | user    0m0.048s
+      | sys     0m0.008s
+      |
+      | $ function check1 { [[ ${array1[i]} =~ $rex ]] && eval "array1[i]=${array1[i]:8}"; }
+      | $ time for ((i=0;i<len;i++)); do [[ ${array1[i]} == eval* ]] && check1; done
+      | real    0m0.864s
+      | user    0m0.863s
+      | sys     0m0.000s
+
+
+      或いは、~/.bash_history でなくて history を何処かに出力するというのでも良い。
+      $ time history | sed 's/[[:space:]]*[0-9]\{1,\}[[:space:]]*//' > /tmp/hello.txt
+
+      real    0m0.146s
+      user    0m0.167s
+      sys     0m0.049s
+
+      もしこれをする位であれば、現状の方法で eval をする代わりに mapfile で読み出せる様にした方が良い?
+      と思ったが、改行を含む場合に何ともできないのでやはり駄目だ。
+      しかし、配列の複製よりも mapfile の方が速い様だ…。
+
+      $ time array2=("${array1[@]}")
+
+      real    0m0.590s
+      user    0m0.577s
+      sys     0m0.012s
+
+      現在の読み取りの枠組みでどれだけ時間がかかっているのかについても確認しておく。
+
+      $ time ble-edit/history/load
+
+      real    0m2.320s
+      user    0m2.453s
+      sys     0m0.228s
+
+      うーん。mapfile による実装を合計すると大体同程度なのでは。
+
+      history > tmp 146ms
+      mapfile       56ms
+      複数行補正    864ms + α
+      配列コピー    590ms
+      --------------------
+      合計          1656ms (71% of 2320)
+
+      計算してみると多少短くなっているが、そんなに変わらない。
+      しかし、この新しい方法の利点は何かというと、
+      一番処理に時間のかかる部分がループになっているので、
+      処理を分割して少しずつ裏で更新を行うことができる点にある。
+
+      さて。この方法の問題点は shopt -s lithist の時に、
+      改行を含むコマンドが分割されてしまうという事にある。
+      改行を含む場合には eval -- の形に変換するなどの工夫が必要になる。
+      しかし其処まで行くと、awk でできるだけ処理してからという事もできる。
+
+    2018-03-12 本格的にこの方針での実装について考える。
+    先ず初めにファイルに出力する。
+
+      複数行に亘る history entry が登録されている場合の為に、
+      awk または sed で処理する必要がある。
+      実際に両方で実装してみた所、awk の方が微妙に速かった。
+
+        history | awk ... 0m0.574s for 37002 entries
+        history | sed ... 0m0.634s for 37002 entries
+
+        | # 0m0.634s for 37002 entries
+        | time builtin history | ble/bin/sed '
+        |   s/^ *[0-9]\{1,\}\*\{0,1\} \{1,\}__ble_ext__)//
+        |   s/^ *[0-9]\{1,\}\*\{0,1\} \{1,\}??//
+        |   tF
+        |   ${H;s/.*//;bF;}
+        |   H;d
+        | :F
+        |   x;s/^\n//
+        |   /\n/ {
+        |     s/['\''\\]/&/g
+        |     s/\n/\\n/g
+        |     s/.*/eval -- $'\''&'\''/
+        |   }
+        |   p
+        |   ${s/.*//;x;/./{x;bF;};x}
+        |   d
+        | ' > "$tmpfile"
+
+      awk 版を採用する事にする。
+      さて、この操作は時間がかかるので background で実行する?
+      sleep ring だとかを実装すると良いかもしれない。
+      うーん。取り敢えずは sleep ring だとかは考えずに
+      同期的に待機して処理を行うことにする。
+      少しユーザを待たせることになるが、対策は後で行えば良い。
+
+      次に実行するのは mapfile である。
+      配列を走査して複数行コマンドを修正するのも実装した。
+      _ble_edit_history_edit については、
+      配列の複製は時間がかかるので、これも mapfile で処理することにする。
+      但し、配列は走査せずに _ble_edit_history で修正を行った要素の番号を記録する方法を取る事にした。
+      そうすると 11ms で書き換えは終わった。
+
+      | progress の表示
+      |
+      | 配列を走査している間は progress を info に表示する様にした。
+      | progress を Unicode の文字を使用して描画するとずれる。
+      | 調べてみると blesh 及び Poderosa は幅 1 と認識しているが、
+      | screen が幅 2 と認識している様だ。
+      | 使っている screen は ~/local/bin/screen である。
+      | cjkwidth emacs は .screenrc に書かれている。
+      | もしかすると cjkwidth のコードが誤っているという可能性もある。
+      |
+      | ずれは \r を最後に出力すれば収まる。
+      | 但し、これで問題が発生しないのは端末の幅が十分にある時のみである。
+      |
+      | todo: screen の cjkwidth emacs のコードを確認する?
+      | todo: progress を表示するより効率的な枠組みを作成する?
+
+      →これに関しては新しく独立した項目を立てる事にした。
+
+    2018-03-13 実は awk で書き換えが必要な index を調べておけば、_ble_edit_history も 11ms で終わるのでは?
+
+      | これを実現する為には awk で別のファイルに書き出せる様にしなければならない。
+      | もしくは /dev/stderr に書き出す? /dev/stderr は GNU awk では特別扱いの対象である。
+      | POSIX awk では /dev/stderr が存在する事が保証されているだろうか。
+      | 
+      | 調べてみると保証されていない様だ。そして実際に AIX には /dev/std??? は存在しない。
+      | https://unix.stackexchange.com/questions/338667/unix-systems-without-dev-stdin-dev-stdout-and-dev-stderr
+      | 
+      | POSIX awk のページを見てみると、少なくとも redirection には対応しているので、
+      | これを使ってファイルを保存すれば良い。
+
+      実装した。両配列について 22ms で書き換えが完了する。
+
+        0m0.523s history | awk > tmpfile
+        0m0.049s mapfile -t _ble_edit_history
+        0m0.047s mapfile -t _ble_edit_history_edit
+        0m0.022s 複数行コマンド履歴の補正 (107項目)
+
+      これで合計 641ms になった。
+
+      結局、走査するループがなくなったので progress は使われなくなった。
+      以下に progress を表示するのに使っていたスクリプトの断片を残しておく。
+
+        local ret
+        ble-edit/history/string#create-unicode-progress-bar "$i" "$len" 6
+        local bar=$ret
+        ble-edit/info/immediate-show raw $'processing multiline history [\e[38;5;63m'"$bar"$'\e[m]\r'
+
+    2018-03-14 次に修正するべき事は、history | awk > tmpfile の高速化である。
+
+      history -n に 37ms かかっている。
+      その後の history | awk 本体が 481ms である。
+      因みに history | awk '{print}' > tmpfile だと 188ms なので、
+      具体的に awk で実行している処理によって 300ms 程度時間を消費している事になる。
+      これについては短縮のしようがない様に思われるので、background process を作成する。
+
+      実装した。動く様になった。と思ったら、実行した background process がジョブに登録されている。うーん。
+      % これは subshell の中で shopt -u huponexit で & echo $! を呼び出す様にして、
+      % それを ble/util/assign から読み取る様にした。
+      と思ったが ble/util/assign で subshell を作るぐらいなら、単に result=$(...) を使えば良い。
+
+      これで background で素早くロードすることが可能になった。気にならない。
+
+    これを以て履歴ロードの高速化は解決したものと考える事にする。
 
 2018-02-27
 

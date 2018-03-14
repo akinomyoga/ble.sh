@@ -960,18 +960,18 @@ function ble-edit/draw/trace.impl {
 ## called by ble-edit-initialize
 function ble-edit/prompt/initialize {
   # hostname
-  _ble_edit_prompt__string_h="${HOSTNAME%%.*}"
-  _ble_edit_prompt__string_H="${HOSTNAME}"
+  _ble_edit_prompt__string_h=${HOSTNAME%%.*}
+  _ble_edit_prompt__string_H=${HOSTNAME}
 
   # tty basename
   local tmp; ble/util/assign tmp 'tty 2>/dev/null'
-  _ble_edit_prompt__string_l="${tmp##*/}"
+  _ble_edit_prompt__string_l=${tmp##*/}
 
   # command name
-  _ble_edit_prompt__string_s="${0##*/}"
+  _ble_edit_prompt__string_s=${0##*/}
 
   # user
-  _ble_edit_prompt__string_u="${USER}"
+  _ble_edit_prompt__string_u=${USER}
 
   # bash versions
   ble/util/sprintf _ble_edit_prompt__string_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
@@ -1403,7 +1403,7 @@ function ble/textmap#update {
   _ble_textmap_begy=$y
 
   # ※現在は COLUMNS で決定しているが将来的には変更可能にする?
-  local cols="${COLUMNS-80}" xenl="$_ble_term_xenl"
+  local cols=${COLUMNS-80} xenl=$_ble_term_xenl
   ((COLUMNS&&cols<COLUMNS&&(xenl=1)))
   # local cols="80" xenl="1"
 
@@ -1413,12 +1413,12 @@ function ble/textmap#update {
   if ((cols!=_ble_textmap_cols)); then
     # 表示幅が変化したときは全部再計算
     ((dbeg=0,dend0=_ble_textmap_length,dend=iN))
-    _ble_textmap_pos[0]="$_pos"
+    _ble_textmap_pos[0]=$_pos
   elif [[ ${_ble_textmap_pos[0]} != "$_pos" ]]; then
     # 初期位置の変更がある場合は初めから計算し直し
     ((dbeg<0&&(dend=dend0=0),
       dbeg=0))
-    _ble_textmap_pos[0]="$_pos"
+    _ble_textmap_pos[0]=$_pos
   else
     if ((dbeg<0)); then
       # 表示幅も初期位置も内容も変更がない場合はOK
@@ -1468,12 +1468,12 @@ function ble/textmap#update {
       local w="${#BASH_REMATCH}"
       local n
       for ((n=i+w;i<n;i++)); do
-        local cs="${text:i:1}"
+        local cs=${text:i:1}
         if (((++x==cols)&&(y++,x=0,xenl))); then
-          cs="$cs$_ble_term_nl"
+          cs=$cs$_ble_term_nl
           ble/array#push _ble_textmap_ichg "$i"
         fi
-        _ble_textmap_glyph[i]="$cs"
+        _ble_textmap_glyph[i]=$cs
         _ble_textmap_pos[i+1]="$x $y 0"
       done
     else
@@ -1486,7 +1486,7 @@ function ble/textmap#update {
         if ((code==9)); then
           if ((x+1>=cols)); then
             cs=' '
-            ((xenl)) && cs="$cs$_ble_term_nl"
+            ((xenl)) && cs=$cs$_ble_term_nl
             changed=1
             ((y++,x=0))
           else
@@ -1495,20 +1495,20 @@ function ble/textmap#update {
               x2>=cols&&(x2=cols-1),
               w=x2-x,
               w!=it&&(changed=1)))
-            cs="${_ble_util_string_prototype::w}"
+            cs=${_ble_util_string_prototype::w}
           fi
         elif ((code==10)); then
           ((y++,x=0))
-          cs="$_ble_term_el$_ble_term_nl"
+          cs=$_ble_term_el$_ble_term_nl
         else
           ((w=2))
-          ble/util/c2s "$((code+64))"
+          ble/util/c2s $((code+64))
           cs="^$ret"
         fi
       elif ((code==127)); then
         w=2 cs="^?"
       elif ((128<=code&&code<160)); then
-        ble/util/c2s "$((code-64))"
+        ble/util/c2s $((code-64))
         w=4 cs="M-^$ret"
       else
         ble/util/c2w "$code"
@@ -1599,7 +1599,7 @@ function ble/textmap#getxy.out {
   ble/textmap#assert-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix="${1#--prefix=}"
+    _prefix=${1#--prefix=}
     shift
   fi
 
@@ -1622,7 +1622,7 @@ function ble/textmap#getxy.cur {
   ble/textmap#assert-up-to-date
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix="${1#--prefix=}"
+    _prefix=${1#--prefix=}
     shift
   fi
 
@@ -1646,18 +1646,18 @@ function ble/textmap#get-index-at {
   ble/textmap#assert-up-to-date
   local _var=index
   if [[ $1 == -v ]]; then
-    _var="$2"
+    _var=$2
     shift 2
   fi
 
-  local _x="$1" _y="$2"
+  local _x=$1 _y=$2
   if ((_y>_ble_textmap_endy)); then
     (($_var=_ble_textmap_length))
   elif ((_y<_ble_textmap_begy)); then
     (($_var=0))
   else
     # 2分法
-    local _l=0 _u="$((_ble_textmap_length+1))" _m
+    local _l=0 _u=$((_ble_textmap_length+1)) _m
     local _mx _my
     while ((_l+1<_u)); do
       ble/textmap#getxy.cur --prefix=_m $((_m=(_l+_u)/2))
@@ -1744,16 +1744,16 @@ function ble/textmap#hit {
 ##   指定した文字列を out に追加しつつ、現在位置を更新します。
 ##   文字列は幅 1 の文字で構成されていると仮定します。
 function ble-edit/info/.put-simple {
-  local nchar="$1"
+  local nchar=$1
 
   if ((y+(x+nchar)/cols<lines)); then
-    out="$out$2"
+    out=$out$2
     ((x+=nchar%cols,
       y+=nchar/cols,
       (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)))
   else
     # 画面をはみ出る場合
-    out="$out${2::lines*cols-(y*cols+x)}"
+    out=$out${2::lines*cols-(y*cols+x)}
     ((x=cols,y=lines-1))
     ble-edit/info/.put-nl-if-eol
   fi
@@ -1762,16 +1762,16 @@ function ble-edit/info/.put-simple {
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
 function ble-edit/info/.put-atomic {
   local w c
-  w="$1"
+  w=$1
 
   # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
   if ((x<cols&&cols<x+w)); then
-    _ble_util_string_prototype.reserve "$((cols-x))"
-    out="$out${_ble_util_string_prototype::cols-x}"
+    _ble_util_string_prototype.reserve $((cols-x))
+    out=$out${_ble_util_string_prototype::cols-x}
     ((x=cols))
   fi
 
-  out="$out$2"
+  out=$out$2
 
   # 移動
   if ((w>0)); then
@@ -1785,7 +1785,7 @@ function ble-edit/info/.put-atomic {
 ##   行末にいる場合次の行へ移動します。
 function ble-edit/info/.put-nl-if-eol {
   if ((x==cols)); then
-    ((_ble_term_xenl)) && out="$out"$'\n'
+    ((_ble_term_xenl)) && out=$out$'\n'
     ((y++,x=0))
   fi
 }
@@ -5059,30 +5059,35 @@ if ((_ble_bash>=40000)); then
   #   ble/util/mapfile
 
   _ble_edit_history_loading=0
-  _ble_edit_history_loading_index=0
-  _ble_edit_history_loading_indices_to_fix=0
+  _ble_edit_history_loading_bgpid=
 
   # history > tmp
-  function ble-edit/history/background-load/.initialize {
-    if ! builtin history -p '!1' &>/dev/null; then
-      # rcfile から呼び出すと history が未だロードされていない。
-      builtin history -n
-    fi
-
+  function ble-edit/history/load/.background-initialize {
     local -x HISTTIMEFORMAT=__ble_ext__
+    local -x INDEX_FILE=$history_indfile
   
     local apos=\'
-    # 0m0.574s for 37002 entries
+    # 482ms for 37002 entries
     builtin history | ble/bin/awk -v apos="$apos" '
-      BEGIN { n = 0; }
+      BEGIN {
+        n = 0;
+        hindex = 0;
+        INDEX_FILE = ENVIRON["INDEX_FILE"];
+        printf("") > INDEX_FILE; # create file
+      }
   
       function flush_line() {
         if (n == 1) {
+          if (t ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+            print hindex > INDEX_FILE;
           print t;
+          hindex++;
         } else if (n > 1) {
           gsub(/['$apos'\\]/, "\\\\&", t);
           gsub(/\n/, "\\n", t);
+          print hindex > INDEX_FILE;
           print "eval -- $" apos t apos;
+          hindex++;
         }
         n = 0;
         t = "";
@@ -5095,8 +5100,8 @@ if ((_ble_bash>=40000)); then
       }
   
       END { flush_line(); }
-    ' > "$tmpfile.part"
-    ble/bin/mv -f "$tmpfile.part" "$tmpfile"
+    ' >| "$history_tmpfile.part"
+    ble/bin/mv -f "$history_tmpfile.part" "$history_tmpfile"
   }
 
   ## 関数 ble-edit/history/string#create-unicode-progress-bar
@@ -5132,60 +5137,78 @@ if ((_ble_bash>=40000)); then
     [[ $_ble_edit_history_prefix ]] && return
     [[ $_ble_edit_history_loaded ]] && return
   
-    local async=; [[ $1 == async ]] && async=1
+    local opt_async=; [[ $1 == async ]] && opt_async=1
+    local opt_info=; ((_ble_edit_attached)) && [[ ! $opt_async ]] && opt_info=1
   
-    local tmpfile=$_ble_base_run/$$.edit-history-load
+    local history_tmpfile=$_ble_base_run/$$.edit-history-load
+    local history_indfile=$_ble_base_run/$$.edit-history-load-multiline-index
     while :; do
       case $_ble_edit_history_loading in
-      (0) ((_ble_edit_attached)) && ble-edit/info/immediate-show text "loading history..."
-          ble-edit/history/background-load/.initialize
-          _ble_edit_history_loading=1 ;;
+
+      # 42ms 履歴の読み込み
+      (0) [[ $opt_info ]] && ble-edit/info/immediate-show text "loading history..."
+          if ! builtin history -p '!1' &>/dev/null; then
+            # rcfile から呼び出すと history が未だロードされていない。
+            builtin history -n
+          fi
+
+          # 履歴ファイル生成を Background で開始
+          : >| $history_tmpfile
+
+          if [[ $opt_async ]]; then
+            _ble_edit_history_loading_bgpid=$(
+              shopt -u huponexit; ble-edit/history/load/.background-initialize </dev/null &>/dev/null & echo $!)
+            ((_ble_edit_history_loading++))
+          else
+            ble-edit/history/load/.background-initialize
+            ((_ble_edit_history_loading+=2))
+          fi ;;
+
+      # 515ms ble-edit/history/load/.background-initialize 待機
+      (1) while [[ ! -s $history_tmpfile ]] && kill -0 "$_ble_edit_history_loading_bgpid"; do
+            ble/util/sleep 0.050
+            [[ $opt_async ]] && ble/util/is-stdin-ready && return 148
+          done
+          ((_ble_edit_history_loading++)) ;;
   
-      (1) ble/util/mapfile _ble_edit_history < "$tmpfile"
-          _ble_edit_history_loading=2 ;;
+      # 47ms _ble_edit_history 初期化 (37000項目)
+      (2) ble/util/mapfile _ble_edit_history < "$history_tmpfile"
+          ((_ble_edit_history_loading++)) ;;
   
-      (2) ble/util/mapfile _ble_edit_history_edit < "$tmpfile"
-          _ble_edit_history_loading_index=0
-          _ble_edit_history_loading_indices_to_fix=
-          _ble_edit_history_loading=3 ;;
+      # 47ms _ble_edit_history_edit 初期化 (37000項目)
+      (3) ble/util/mapfile _ble_edit_history_edit < "$history_tmpfile"
+          ((_ble_edit_history_loading++)) ;;
   
-      (3) local i len=${#_ble_edit_history[@]} rex='^eval -- \$'\''([^\'\'']|\\.)*'\''$'
-          for ((i=_ble_edit_history_loading_index;i<len;i++)); do
-            if ((i%300==0)); then
-              if ((i%1800==0&&i>0&&_ble_edit_attached)); then
-                local ret
-                ble-edit/history/string#create-unicode-progress-bar "$i" "$len" 6
-                local bar=$ret
-                ble-edit/info/immediate-show raw $'processing multiline history [\e[38;5;63m'"$bar"$'\e[m]\r'
-                # ble-edit/info/immediate-show text "[$((100*i/len))%] processing multiline history..."
-              fi
-              if [[ $async ]] && ble/util/is-stdin-ready; then
-                _ble_edit_history_loading_index=$i
-                return 148
-              fi
-            fi
-            if [[ ${_ble_edit_history[i]} == eval* ]] && [[ ${_ble_edit_history[i]} =~ $rex ]]; then
+      # 11ms 複数行履歴修正 (107/37000項目)
+      (4) local -a indices_to_fix
+          ble/util/mapfile indices_to_fix < "$history_indfile"
+          local i rex='^eval -- \$'\''([^\'\'']|\\.)*'\''$'
+          for i in "${indices_to_fix[@]}"; do
+            [[ ${_ble_edit_history[i]} =~ $rex ]] &&
               eval "_ble_edit_history[i]=${_ble_edit_history[i]:8}"
-              _ble_edit_history_loading_indices_to_fix="$_ble_edit_history_loading_indices_to_fix $i"
-            fi
           done
-          _ble_edit_history_loading=4 ;;
-  
-      (4) local i
-          for i in $_ble_edit_history_loading_indices_to_fix; do
-            eval "_ble_edit_history_edit[i]=${_ble_edit_history_edit[i]:8}"
+          ((_ble_edit_history_loading++)) ;;
+
+      # 11ms 複数行履歴修正 (107/37000項目)
+      (5) local -a indices_to_fix
+          [[ ${indices_to_fix+set} ]] ||
+            ble/util/mapfile indices_to_fix < "$history_indfile"
+          for i in "${indices_to_fix[@]}"; do
+            [[ ${_ble_edit_history_edit[i]} =~ $rex ]] &&
+              eval "_ble_edit_history_edit[i]=${_ble_edit_history_edit[i]:8}"
           done
+
           _ble_edit_history_count=${#_ble_edit_history[@]}
           _ble_edit_history_ind=$_ble_edit_history_count
           _ble_edit_history_loaded=1
-          ((_ble_edit_attached)) && ble-edit/info/immediate-clear
-          _ble_edit_history_loading=5
+          [[ $opt_info ]] && ble-edit/info/immediate-clear
+          ((_ble_edit_history_loading++))
           return 0 ;;
   
       (*) return 1 ;;
       esac
   
-      [[ $async ]] && ble/util/is-stdin-ready && return 148
+      [[ $opt_async ]] && ble/util/is-stdin-ready && return 148
     done
   }
   function ble-edit/history/clear-background-load {
