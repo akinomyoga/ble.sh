@@ -6619,6 +6619,7 @@ function ble/widget/vi_imap/quoted-insert {
   ble/keymap:vi/imap-repeat/pop
   _ble_edit_mark_active=
   _ble_decode_char__hook=ble/widget/vi_imap/quoted-insert.hook
+  return 148
 }
 function ble/widget/vi_imap/quoted-insert.hook {
   local -a KEYS=($1)

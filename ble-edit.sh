@@ -3208,7 +3208,7 @@ function ble/widget/self-insert {
 
 # quoted insert
 function ble/widget/quoted-insert.hook {
-  local -a KEYS; KEYS=("$1")
+  local WIDGET=ble/widget/self-insert
   ble/widget/self-insert
 }
 function ble/widget/quoted-insert {
@@ -3251,6 +3251,14 @@ function ble/widget/transpose-chars {
 
 _ble_edit_bracketed_paste=
 _ble_edit_bracketed_paste_proc=
+function ble/widget/bracketed-paste {
+  ble-edit/content/clear-arg
+  _ble_edit_mark_active=
+  _ble_edit_bracketed_paste=()
+  _ble_edit_bracketed_paste_proc=ble/widget/bracketed-paste.proc
+  _ble_decode_char__hook=ble/widget/bracketed-paste.hook
+  return 148
+}
 function ble/widget/bracketed-paste.hook {
   _ble_edit_bracketed_paste=$_ble_edit_bracketed_paste:$1
 
@@ -3274,23 +3282,15 @@ function ble/widget/bracketed-paste.hook {
 
   local proc=$_ble_edit_bracketed_paste_proc
   _ble_edit_bracketed_paste_proc=
-  if [[ $proc ]]; then
-    builtin eval -- "$proc \"\${chars[@]}\""
-  else
-    local char KEYS
-    for char in "${chars[@]}"; do
-      KEYS=("$char")
-      ble/widget/self-insert
-    done
-  fi
+  [[ $proc ]] && builtin eval -- "$proc \"\${chars[@]}\""
 }
-function ble/widget/bracketed-paste {
-  ble-edit/content/clear-arg
-  _ble_edit_mark_active=
-  _ble_edit_bracketed_paste=()
-  _ble_edit_bracketed_paste_proc=
-  _ble_decode_char__hook=ble/widget/bracketed-paste.hook
-  return 148
+function ble/widget/bracketed-paste.proc {
+  local -a KEYS
+  local char WIDGET=ble/widget/self-insert
+  for char; do
+    KEYS=("$char")
+    "$WIDGET"
+  done
 }
 
 # 

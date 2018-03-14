@@ -73,6 +73,69 @@ function ble/widget/emacs/revert {
   ble-edit/undo/revert
 }
 
+#------------------------------------------------------------------------------
+# mode name
+#
+#   mode name の更新は基本的に __after_command__ で行う。
+#   但し、_ble_decode_{char,key}__hook 経由で実行されると、
+#   __after_command__ は実行されないので、
+#   その様な編集コマンドについてだけは個別に update-mode-name を呼び出す。
+#
+
+## @var _ble_keymap_emacs_mode
+##   複数行モードかどうか。
+_ble_keymap_emacs_modeline=:
+function ble/keymap:emacs/update-mode-name {
+  local opt_multiline=; [[ $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
+  local mode=$opt_multiline:$_ble_edit_arg
+
+  [[ $mode == "$_ble_keymap_emacs_modeline" ]] && return
+  _ble_keymap_emacs_modeline=$mode
+
+  local name=
+  [[ $opt_multiline ]] && name=$'\e[1m-- MULTILINE --\e[m'
+  if [[ $_ble_edit_arg ]]; then
+    name="$name${name:+ }(arg: $_ble_edit_arg)"
+  elif [[ $opt_multiline ]]; then
+    #name=$name$' (type \e[35mC-j\e[m to run the command)'
+    name=$name$' (\e[35mRET\e[m or \e[35mC-m\e[m: insert a newline, \e[35mC-j\e[m: run)'
+  fi
+  ble-edit/info/default raw "$name"
+}
+
+function ble/widget/emacs/__after_command__ {
+  ble/keymap:emacs/update-mode-name
+}
+
+function ble/widget/emacs/quoted-insert {
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/emacs/quoted-insert.hook
+  return 148
+}
+function ble/widget/emacs/quoted-insert.hook {
+  ble/widget/quoted-insert.hook
+  ble/keymap:emacs/update-mode-name
+}
+
+function ble/widget/emacs/bracketed-paste {
+  ble/widget/bracketed-paste
+  _ble_edit_bracketed_paste_proc=ble/widget/emacs/bracketed-paste.proc
+  return 148
+}
+function ble/widget/emacs/bracketed-paste.proc {
+  ble/widget/bracketed-paste.proc "$@"
+  local WIDGET=ble/widget/self-insert
+  local -a KEYS
+  local char
+  for char; do
+    KEYS=("$char")
+    "$WIDGET"
+  done
+  ble/keymap:emacs/update-mode-name
+}
+
+#------------------------------------------------------------------------------
+
 function ble-decode/keymap:emacs/define {
   local ble_bind_keymap=emacs
 
@@ -94,6 +157,7 @@ function ble-decode/keymap:emacs/define {
 
   ble-bind -f __attach__         safe/__attach__
   ble-bind -f __before_command__ emacs/__before_command__
+  ble-bind -f __after_command__  emacs/__after_command__
 
   # accept/cancel
   ble-bind -f  'C-c'     discard-line
@@ -121,6 +185,7 @@ function ble-decode/keymap:emacs/define {
 
   #----------------------------------------------------------------------------
 
+  # args
   ble-bind -f M-- emacs/append-arg
   ble-bind -f M-0 emacs/append-arg
   ble-bind -f M-1 emacs/append-arg
@@ -145,18 +210,19 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f C-8 emacs/append-arg
   ble-bind -f C-9 emacs/append-arg
 
-  ble-bind -f - emacs/append-arg
-  ble-bind -f 0 emacs/append-arg
-  ble-bind -f 1 emacs/append-arg
-  ble-bind -f 2 emacs/append-arg
-  ble-bind -f 3 emacs/append-arg
-  ble-bind -f 4 emacs/append-arg
-  ble-bind -f 5 emacs/append-arg
-  ble-bind -f 6 emacs/append-arg
-  ble-bind -f 7 emacs/append-arg
-  ble-bind -f 8 emacs/append-arg
-  ble-bind -f 9 emacs/append-arg
+  ble-bind -f -   emacs/append-arg
+  ble-bind -f 0   emacs/append-arg
+  ble-bind -f 1   emacs/append-arg
+  ble-bind -f 2   emacs/append-arg
+  ble-bind -f 3   emacs/append-arg
+  ble-bind -f 4   emacs/append-arg
+  ble-bind -f 5   emacs/append-arg
+  ble-bind -f 6   emacs/append-arg
+  ble-bind -f 7   emacs/append-arg
+  ble-bind -f 8   emacs/append-arg
+  ble-bind -f 9   emacs/append-arg
 
+  # undo
   ble-bind -f 'C-_'       emacs/undo
   ble-bind -f 'C-DEL'     emacs/undo
   ble-bind -f 'C-/'       emacs/undo
@@ -165,6 +231,11 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f 'C-x U'     emacs/redo
   ble-bind -f 'C-x C-S-u' emacs/redo
   ble-bind -f 'M-r'       emacs/revert
+
+  # mode name
+  ble-bind -f 'C-q'       emacs/quoted-insert
+  ble-bind -f 'C-v'       emacs/quoted-insert
+  ble-bind -f paste_begin emacs/bracketed-paste
 }
 
 function ble-decode/keymap:emacs/initialize {
@@ -174,7 +245,7 @@ function ble-decode/keymap:emacs/initialize {
     source "$fname_keymap_cache" && return
   fi
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.emacs... $_ble_term_cr"
+  ble-edit/info/show text "ble.sh: updating cache/keymap.emacs..."
 
   ble-decode/keymap:isearch/define
   ble-decode/keymap:emacs/define

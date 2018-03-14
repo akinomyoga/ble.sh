@@ -500,7 +500,7 @@ function ble-decode-char {
       ((char==ble_decode_IsolatedESC)) && char=27 # isolated ESC -> ESC
       local hook=$_ble_decode_char__hook
       _ble_decode_char__hook=
-      ble-decode-key/.call-widget "$char" "$hook $char"
+      ble-decode-key/.call-widget "$hook $char" "$char"
       continue
     fi
 
@@ -989,7 +989,7 @@ function ble-decode-key {
     if [[ $_ble_decode_key__hook ]]; then
       local hook=$_ble_decode_key__hook
       _ble_decode_key__hook=
-      ble-decode-key/.call-widget "$key" "$hook $key"
+      ble-decode-key/.call-widget "$hook $key" "$key"
       continue
     fi
 
@@ -1179,9 +1179,8 @@ function ble-decode-key/.call-widget {
   local _ble_decode_keylog_depth=$((old_suppress+1))
 
   # setup variables
-  local -a KEYS=($1)
-  local WIDGET=$2
-  local KEYMAP=$_ble_decode_key__kmap
+  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap
+  local -a KEYS=($2)
 
   builtin eval -- "$WIDGET"
 }
