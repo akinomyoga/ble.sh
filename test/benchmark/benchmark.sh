@@ -1,0 +1,87 @@
+#!/bin/bash
+
+function ble-measure/.loop {
+  eval "function _target { $2; }"
+  local _i _n="$1"
+  for ((_i=0;_i<_n;_i++)); do
+    _target
+  done
+}
+
+if [[ $ZSH_VERSION ]]; then
+  function ble-measure/.time {
+    local result
+    result=$({ time ( ble-measure/.loop "$n" "$*" ; ) } 2>&1 )
+    #local result=$({ time ( ble-measure/.loop "$n" "$*" &>/dev/null); } 2>&1)
+    result="${result##*cpu }"
+    local rex='(([0-9]+):)?([0-9]+)\.([0-9]+) total$'
+    if [[ $result =~ $rex ]]; then
+      if [[ -o KSH_ARRAYS ]]; then
+        local m="${match[1]}" s="${match[2]}" ms="${match[3]}"
+      else
+        local m="${match[1]}" s="${match[2]}" ms="${match[3]}"
+      fi
+      m="${m:-0}" ms="${ms}000"; ms="${ms:0:3}"
+     
+      ((utot=((10#$m*60+10#$s)*1000+10#$ms)*1000,
+        usec=utot/n))
+      return 0
+    else
+      echo "ble-measure: failed to read the result of \`time': $result." >&2
+      utot=0 usec=0
+      return 1
+    fi
+  }
+else
+  function ble-measure/.time {
+    local word utot1 usec1
+    local head=
+    for word in $({ time ble-measure/.loop "$n" "$*" &>/dev/null;} 2>&1); do
+      local rex='(([0-9])+m)?([0-9]+)(\.([0-9]+))?s'
+      if [[ $word =~  $rex ]]; then
+        local m="${BASH_REMATCH[2]}"
+        local s="${BASH_REMATCH[3]}"
+        local ms="${BASH_REMATCH[5]}000"; ms="${ms::3}"
+        
+        ((utot1=((10#$m*60+10#$s)*1000+10#$ms)*1000,
+          usec1=utot1/n))
+        # printf '  %-5s%9dus/op\n' "$head" "$usec1"
+        (((utot1>utot)&&(utot=utot1),
+          (usec1>usec)&&(usec=usec1)))
+        head=
+      else
+        head="$head$word "
+      fi
+    done
+
+    [[ $utot1 ]]
+  }
+fi
+
+_ble_measure_base=
+
+## @var[out] ret nsec
+function ble-measure {
+  if [[ ! $_ble_measure_base ]]; then
+    _ble_measure_base=0 nsec=0
+    # : よりも a=1 の方が速い様だ
+    ble-measure a=1 &>/dev/null
+    _ble_measure_base="$nsec"
+  fi
+
+  echo "$*"
+  local n
+  for ((n=1;n<100000;n*=10)); do
+    local utot=0 usec=0
+    ble-measure/.time "$*" || return 1
+
+    if ((utot/1000>=100)); then
+      local nsec0=$_ble_measure_base
+      awk -v utot=$utot -v nsec0=$nsec0 -v n=$n 'BEGIN{printf("  time %6.2f usec/eval\n",utot/n-nsec0/1000);exit}'
+      ((ret=utot/n))
+      ((nsec=n>=1000?(utot/(n/1000)):(utot*1000/n)))
+      ((ret-=nsec0/1000,nsec-=nsec0))
+      return
+    fi
+  done
+}

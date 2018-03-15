@@ -33,7 +33,7 @@ function ble-color-show {
   done
 }
 
-declare -a _ble_color_g2sgr__table=()
+_ble_color_g2sgr__table=()
 function ble-color-g2sgr {
   eval "$ble_util_upvar_setup"
 
@@ -59,7 +59,7 @@ function ble-color-g2sgr {
       ble-color/.color2sgrbg -v "$var" "$bg"
       sgr="$sgr;${!var}"
     fi
-    
+
     ret="[${sgr}m"
     _ble_color_g2sgr__table[$1]="$ret"
   fi
@@ -68,7 +68,7 @@ function ble-color-g2sgr {
 }
 function ble-color-gspec2g {
   eval "$ble_util_upvar_setup"
-  
+
   local g=0 entry
   for entry in ${1//,/ }; do
     case "$entry" in
@@ -260,7 +260,6 @@ function ble-color/faces/initialize {
 #------------------------------------------------------------------------------
 # ble-highlight-layer
 
-_ble_highlight_layer__buff=()
 _ble_highlight_layer__list=(plain)
 #_ble_highlight_layer__list=(plain RandomColor)
 
@@ -324,7 +323,7 @@ function ble-highlight-layer/getg {
 
   LEVEL="${#_ble_highlight_layer__list[*]}" ble-highlight-layer/update/getg "$1"
 
-  ret="$g"; eval "$ble_util_upvar"
+  ret=$g; eval "$ble_util_upvar"
 }
 
 ## レイヤーの実装
@@ -406,23 +405,27 @@ function ble-highlight-layer/getg {
 
 _ble_highlight_layer_plain_buff=()
 
+## 関数 ble-highlight-layer:plain/update/.getch
+##   @var[in,out] ch
 function ble-highlight-layer:plain/update/.getch {
-  if [[ $ch == [-] ]]; then
+  [[ $ch == [' '-'~'] ]] && return
+  if [[ $ch == [-] ]]; then
     if [[ $ch == $'\t' ]]; then
-      ch="${_ble_util_string_prototype::it}"
+      ch=${_ble_util_string_prototype::it}
     elif [[ $ch == $'\n' ]]; then
       ch=$'\e[K\n'
+    elif [[ $ch == '' ]]; then
+      ch='^?'
     else
+      local ret
       ble/util/s2c "$ch" 0
       ble/util/c2s $((ret+64))
       ch="^$ret"
     fi
-  elif [[ $ch == [$''-$'\302\237'] ]]; then
-    # __ENCODING__: ※\302\237 は 0x9F の utf8 表現
-    if [[ $ch == '' ]]; then
-      ch='^?'
-    else
-      ble/util/s2c "$ch" 0
+  else
+    # C1 characters
+    local ret; ble/util/s2c "$ch"
+    if ((0x80<=ret&&ret<=0x9F)); then
       ble/util/c2s $((ret-64))
       ch="M-^$ret"
     fi
@@ -434,15 +437,15 @@ function ble-highlight-layer:plain/update {
   if ((DMIN>=0)); then
     ble-highlight-layer/update/shift _ble_highlight_layer_plain_buff
 
-    local i text="$1" ch
-    local it="$_ble_term_it" ret
-    for((i=DMIN;i<DMAX;i++)); do
-      ch="${text:i:1}"
+    local i text=$1 ch
+    local it=$_ble_term_it
+    for ((i=DMIN;i<DMAX;i++)); do
+      ch=${text:i:1}
 
       # LC_COLLATE for cygwin collation
       LC_COLLATE=C ble-highlight-layer:plain/update/.getch &>/dev/null
 
-      _ble_highlight_layer_plain_buff[i]="$ch"
+      _ble_highlight_layer_plain_buff[i]=$ch
     done
   fi
 
@@ -461,14 +464,23 @@ function ble-highlight-layer:plain/getg {
 
 function ble-color/basic/faces-onload-hook {
   ble-color-defface region         bg=60,fg=white
+  ble-color-defface region_target  bg=153,fg=black
   ble-color-defface disabled       fg=gray
   ble-color-defface overwrite_mode fg=black,bg=51
 }
 ble-color/faces/addhook-onload ble-color/basic/faces-onload-hook
 
+## @arr _ble_highlight_layer_region_buff
+##
+## @arr _ble_highlight_layer_region_osel
+##   前回の選択範囲の端点を保持する配列です。
+##
+## @var _ble_highlight_layer_region_osgr
+##   前回の選択範囲の着色を保持します。
+##
 _ble_highlight_layer_region_buff=()
-_ble_highlight_layer_region_omin=-1
-_ble_highlight_layer_region_omax=-1
+_ble_highlight_layer_region_osel=()
+_ble_highlight_layer_region_osgr=
 
 function ble-highlight-layer:region/update-dirty-range {
   local -i a="$1" b="$2" p q
@@ -479,40 +491,78 @@ function ble-highlight-layer:region/update-dirty-range {
 }
 
 function ble-highlight-layer:region/update {
-  local omin omax
-  ((omin=_ble_highlight_layer_region_omin,
-    omax=_ble_highlight_layer_region_omax))
+  local omin=-1 omax=-1 osgr= olen=${#_ble_highlight_layer_region_osel[@]}
+  if ((olen)); then
+    omin=${_ble_highlight_layer_region_osel[0]}
+    omax=${_ble_highlight_layer_region_osel[olen-1]}
+    osgr=$_ble_highlight_layer_region_osgr
+  fi
+
   if ((DMIN>=0)); then
     ((DMAX0<=omin?(omin+=DMAX-DMAX0):(DMAX<omin&&(omin=DMAX)),
       DMAX0<=omax?(omax+=DMAX-DMAX0):(DMAX<omax&&(omax=DMAX))))
   fi
 
-  local rmin rmax
+  local sgr=
+  local -a selection=()
   if [[ $_ble_edit_mark_active ]]; then
-    if ((_ble_edit_mark>_ble_edit_ind)); then
-      ((rmin=_ble_edit_ind,rmax=_ble_edit_mark))
-    elif ((_ble_edit_mark<_ble_edit_ind)); then
-      ((rmin=_ble_edit_mark,rmax=_ble_edit_ind))
+    # 外部定義の選択範囲があるか確認
+    #   vi-mode のビジュアルモード (文字選択、行選択、矩形選択) の実装で使用する。
+    local get_range=ble-highlight-layer:region/mark:$_ble_edit_mark_active/get-selection
+    if ble/util/isfunction "$get_range"; then
+      "$get_range"
     else
-      ((rmin=-1,rmax=-1))
+      if ((_ble_edit_mark>_ble_edit_ind)); then
+        selection=("$_ble_edit_ind" "$_ble_edit_mark")
+      elif ((_ble_edit_mark<_ble_edit_ind)); then
+        selection=("$_ble_edit_mark" "$_ble_edit_ind")
+      fi
     fi
-  else
-    ((rmin=-1,rmax=-1))
+
+    # sgr の取得
+    local get_sgr=ble-highlight-layer:region/mark:$_ble_edit_mark_active/get-sgr
+    if ble/util/isfunction "$get_sgr"; then
+      "$get_sgr"
+    else
+      ble-color-face2sgr region
+    fi
   fi
+  local rlen=${#selection[@]}
+
+  # 変更がない時はそのまま通過
+  if ((DMIN<0)); then
+    [[ $sgr == $osgr ]] &&
+      [[ ${selection[*]} == ${_ble_highlight_layer_region_osel[*]} ]]
+  else
+    [[ ! ${selection[*]} && ! ${_ble_highlight_layer_region_osel[*]} ]]
+  fi && return 0
 
   local umin=-1 umax=-1
-  if ((rmin<rmax)); then
+  if ((rlen)); then
     # 選択範囲がある時
+    local rmin=${selection[0]}
+    local rmax=${selection[rlen-1]}
 
-    local sgr
-    ble-color-face2sgr region
+    # 描画文字配列の更新
+    local -a buff
     local g sgr2
-    ble-highlight-layer/update/getg "$rmax"
+    local k=0 inext iprev=0
+    for inext in "${selection[@]}"; do
+      if ((k==0)); then
+        ble/array#push buff "\"\${$PREV_BUFF[@]::$inext}\""
+      elif ((k%2)); then
+        ble/array#push buff "\"$sgr\${_ble_highlight_layer_plain_buff[@]:$iprev:$((inext-iprev))}\""
+      else
+        ble-highlight-layer/update/getg "$iprev"
+        ble-color-g2sgr -v sgr2 "$g"
+        ble/array#push buff "\"$sgr2\${$PREV_BUFF[@]:$iprev:$((inext-iprev))}\""
+      fi
+      ((iprev=inext,k++))
+    done
+    ble-highlight-layer/update/getg "$iprev"
     ble-color-g2sgr -v sgr2 "$g"
-    builtin eval "_ble_highlight_layer_region_buff=(
-      \"\${$PREV_BUFF[@]::rmin}\"
-      \"\$sgr\"\"\${_ble_highlight_layer_plain_buff[@]:rmin:rmax-rmin}\"
-      \"\$sgr2\"\"\${$PREV_BUFF[@]:rmax}\")"
+    ble/array#push buff "\"$sgr2\${$PREV_BUFF[@]:$iprev}\""
+    builtin eval "_ble_highlight_layer_region_buff=(${buff[*]})"
     PREV_BUFF=_ble_highlight_layer_region_buff
 
     # DMIN-DMAX の間
@@ -520,41 +570,61 @@ function ble-highlight-layer:region/update {
       ble-highlight-layer:region/update-dirty-range DMIN DMAX
     fi
 
-    # 選択範囲の変更
+    # 選択範囲の変更による再描画範囲
     if ((omin>=0)); then
-      # 端点の移動
-      ble-highlight-layer:region/update-dirty-range omin rmin
-      ble-highlight-layer:region/update-dirty-range omax rmax
+      if [[ $osgr != $sgr ]]; then
+        # 色が変化する場合
+        ble-highlight-layer:region/update-dirty-range omin omax
+        ble-highlight-layer:region/update-dirty-range rmin rmax
+      else
+        # 端点の移動による再描画
+        ble-highlight-layer:region/update-dirty-range omin rmin
+        ble-highlight-layer:region/update-dirty-range omax rmax
+        if ((olen>1||rlen>1)); then
+          # 複数範囲選択
+          ble-highlight-layer:region/update-dirty-range rmin rmax
+        fi
+      fi
     else
-      # 新規の選択
+      # 新規選択
       ble-highlight-layer:region/update-dirty-range rmin rmax
     fi
 
     # 下層の変更 (rmin ～ rmax は表には反映されない)
-    local pmin pmax
-    ((pmin=PREV_UMIN,pmax=PREV_UMAX,
-      rmin<=pmin&&pmin<rmax&&(pmin=rmax),
-      rmin<pmax&&pmax<=rmax&&(pmax=rmin)))
+    local pmin=$PREV_UMIN pmax=$PREV_UMAX
+    if ((rlen==2)); then
+      ((rmin<=pmin&&pmin<rmax&&(pmin=rmax),
+        rmin<pmax&&pmax<=rmax&&(pmax=rmin)))
+    fi
     ble-highlight-layer:region/update-dirty-range pmin pmax
   else
     # 選択範囲がない時
 
     # 下層の変更
-    umin="$PREV_UMIN" umax="$PREV_UMAX"
+    umin=$PREV_UMIN umax=$PREV_UMAX
 
     # 選択解除の範囲
     ble-highlight-layer:region/update-dirty-range omin omax
   fi
-    
-  ((_ble_highlight_layer_region_omin=rmin,
-    _ble_highlight_layer_region_omax=rmax,
-    PREV_UMIN=umin,
+
+  _ble_highlight_layer_region_osel=("${selection[@]}")
+  _ble_highlight_layer_region_osgr=$sgr
+  ((PREV_UMIN=umin,
     PREV_UMAX=umax))
 }
 
 function ble-highlight-layer:region/getg {
   if [[ $_ble_edit_mark_active ]]; then
-    if ((_ble_highlight_layer_region_omin<=$1&&$1<_ble_highlight_layer_region_omax)); then
+    local index=$1 olen=${#_ble_highlight_layer_region_osel[@]}
+    ((olen)) || return
+    ((_ble_highlight_layer_region_osel[0]<=index&&index<_ble_highlight_layer_region_osel[olen-1])) || return
+    if ((olen>=4)); then
+      local l=0 u=$((olen-1)) m
+      while ((l+1<u)); do
+        ((_ble_highlight_layer_region_osel[m=(l+u)/2]<=index?(l=m):(u=m)))
+      done
+      ((l%2==0)) && ble-color-face2g region
+    else
       ble-color-face2g region
     fi
   fi
@@ -642,16 +712,16 @@ function ble-highlight-layer:overwrite_mode/update {
   fi
 
   if ((index>=0)); then
-    builtin echo -n $'\e[?25l'
+    ble/term/cursor-state/hide
   else
-    builtin echo -n $'\e[?25h'
+    ble/term/cursor-state/reveal
   fi
 
   if ((index!=oindex)); then
     ((oindex>=0)) && ble-highlight-layer/update/add-urange "$oindex" "$((oindex+1))"
     ((index>=0)) && ble-highlight-layer/update/add-urange "$index" "$((index+1))"
   fi
-  
+
   _ble_highlight_layer_overwrite_mode_index="$index"
 }
 function ble-highlight-layer:overwrite_mode/getg {

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# ble-autoload "$_ble_base/complete.sh" ble/widget/complete
+# ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 #
 
 #==============================================================================
@@ -77,16 +77,7 @@ function ble-complete/util/escape-specialchars {
 
 function ble-complete/util/escape-regexchars {
   eval "$ble_util_upvar_setup"
-  local a b ret="$*"
-  if [[ $ret == *['\.[*^$/']* ]]; then
-    a=\\ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\. b="\\$a" ret="${ret//"$a"/$b}"
-    a=\[ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\* b="\\$a" ret="${ret//"$a"/$b}"
-    a=\^ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\$ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\/ b="\\$a" ret="${ret//"$a"/$b}"
-  fi
+  ble/string#escape-for-sed-regex "$*"
   eval "$ble_util_upvar"
 }
 
@@ -124,11 +115,10 @@ function ble-complete/action/file/initialize {
   ble-complete/action/plain/initialize
 }
 function ble-complete/action/file/complete {
-  local tail=
   if [[ -e $CAND || -h $CAND ]]; then
     if [[ -d $CAND ]]; then
-      ble-complete/action/util/complete.addtail /
-      tail=/
+      [[ $CAND != */ ]] &&
+        ble-complete/action/util/complete.addtail /
     else
       ble-complete/action/util/complete.addtail ' '
     fi
@@ -140,14 +130,15 @@ function ble-complete/action/file/complete {
 function ble-complete/action/argument/initialize { ble-complete/action/plain/initialize; }
 function ble-complete/action/argument/complete {
   if [[ -d $CAND ]]; then
-    ble-complete/action/util/complete.addtail /
+    [[ $CAND != */ ]] &&
+      ble-complete/action/util/complete.addtail /
   else
     ble-complete/action/util/complete.addtail ' '
   fi
 }
 function ble-complete/action/argument-nospace/initialize { ble-complete/action/plain/initialize; }
 function ble-complete/action/argument-nospace/complete {
-  if [[ -d $CAND ]]; then
+  if [[ -d $CAND && $CAND != */ ]]; then
     ble-complete/action/util/complete.addtail /
   fi
 }
@@ -159,7 +150,8 @@ function ble-complete/action/command/initialize {
 }
 function ble-complete/action/command/complete {
   if [[ -d $CAND ]]; then
-    ble-complete/action/util/complete.addtail /
+    [[ $CAND != */ ]] &&
+      ble-complete/action/util/complete.addtail /
   else
     ble-complete/action/util/complete.addtail ' '
   fi
@@ -209,7 +201,16 @@ function ble-complete/source/command/gen {
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return
   compgen -c -- "$COMPV"
   [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
-  shopt -q autocd &>/dev/null && compgen -d -- "$COMPV"
+
+  # ディレクトリ名列挙 (/ 付きで生成する)
+  #   Note: shopt -q autocd &>/dev/null かどうかに拘らず列挙する。
+  compgen -A directory -S / -- "$COMPV"
+
+  # local ret; ble/util/eval-pathname-expansion '"$COMPV"*/'
+  # local cand
+  # for cand in "${ret[@]}"; do
+  #   [[ -d $cand ]] && printf '%s\n' "$cand"
+  # done
 }
 function ble-complete/source/command {
   [[ ${COMPV+set} ]] || return 1
@@ -218,23 +219,30 @@ function ble-complete/source/command {
   local cand arr i=0
   local compgen
   ble/util/assign compgen ble-complete/source/command/gen
-  ble/string#split arr $'\n' "$compgen"
+  [[ $compgen ]] || return 1
+  ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
-    ((i++%100==0)) && ble/util/is-stdin-ready && return 27
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
+
+    # workaround: 何故か compgen -c -- "$COMPV" で
+    #   厳密一致のディレクトリ名が混入するので削除する。
+    [[ $cand != */ && -d $cand ]] && ! type "$cand" &>/dev/null && continue
+
     ble-complete/yield-candidate "$cand" ble-complete/action/command
   done
-
-  ble-complete/source/dir
 }
 
 # source/file
 
 function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
-  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+
+  local candidates
+  ble/util/assign-array candidates 'compgen -A file -- "$COMPV"'
 
   local cand
-  for cand in "$COMPV"*; do
+  for cand in "${candidates[@]}"; do
     [[ -e $cand || -h $cand ]] || continue
     [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
     ble-complete/yield-candidate "$cand" ble-complete/action/file
@@ -247,11 +255,15 @@ function ble-complete/source/dir {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
 
+  local candidates
+  ble/util/assign-array candidates 'compgen -A directory -S / -- "$COMPV"'
+
   local cand
-  for cand in "$COMPV"*/; do
+  for cand in "${candidates[@]}"; do
     [[ -d $cand ]] || continue
     [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
-    ble-complete/yield-candidate "${cand%/}" ble-complete/action/file
+    [[ $cand == / ]] || cand=${cand%/}
+    ble-complete/yield-candidate "$cand" ble-complete/action/file
   done
 }
 
@@ -280,9 +292,10 @@ function ble-complete/source/argument/.compgen-helper-func {
   [[ $comp_func ]] || return
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
-  ble-complete/source/argument/.compgen-helper-vars
+  ble-complete/source/argument/.compgen-helper-varsz
 
   # compopt に介入して -o/+o option を読み取る。
+  local fDefault=
   function compopt {
     builtin compopt "$@"; local ret="$?"
 
@@ -310,27 +323,30 @@ function ble-complete/source/argument/.compgen-helper-func {
     local s
     for s in "${ospec[@]}"; do
       case "$s" in
-      (-*) comp_opts="$comp_opts${s:1}:" ;;
-      (+*) comp_opts="${comp_opts//:${s:1}/:}" ;;
+      (-*) comp_opts=${comp_opts//:"${s:1}":/:}${s:1}: ;;
+      (+*) comp_opts=${comp_opts//:"${s:1}":/:} ;;
       esac
     done
 
     return "$ret"
   }
 
-
   local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
-  "$comp_func" "$cmd" "$cur" "$prev"
-
+  "$comp_func" "$cmd" "$cur" "$prev"; local ret=$?
   unset -f compopt
+
+  if [[ $is_default_completion && $ret == 124 ]]; then
+    is_default_completion=retry
+  fi
 }
 
 ## 関数 ble-complete/source/argument/.compgen
 ## @var[out] comp_opts
 ## @var[in] COMPV
-## @var[in] index _ble_syntax_*
+## @var[in] index
+## @var[in] (variables set by ble-syntax/parse)
 ## @var[in] 他色々
-## @exit 入力がある時に 27 を返します。
+## @exit 入力がある時に 148 を返します。
 function ble-complete/source/argument/.compgen {
   shopt -q progcomp || return 1
 
@@ -338,29 +354,31 @@ function ble-complete/source/argument/.compgen {
   local comp_prog= comp_func=
   ble-syntax:bash/extract-command "$index" || return 1
 
-  local cmd="${comp_words[0]}" compcmd=
+  local cmd=${comp_words[0]} compcmd= is_default_completion=
   if complete -p "$cmd" &>/dev/null; then
-    compcmd="$cmd"
-  elif [[ ${cmd##*/} != $cmd ]] && complete -p "${cmd##*/}" &>/dev/null; then
-    compcmd="${cmd##*/}"
+    compcmd=$cmd
+  elif [[ ${cmd##*/} != "$cmd" ]] && complete -p "${cmd##*/}" &>/dev/null; then
+    compcmd=${cmd##*/}
   elif complete -p -D &>/dev/null; then
+    is_default_completion=1
     compcmd='-D'
   fi
 
   [[ $compcmd ]] || return 1
 
   local -a compargs compoptions
-  local iarg=1
-  eval "compargs=($(complete -p "$cmd" 2>/dev/null))"
+  local ret iarg=1
+  ble/util/assign ret 'complete -p "$compcmd" 2>/dev/null'
+  ble/string#split-words compargs "$ret"
   while ((iarg<${#compargs[@]})); do
-    local arg="${compargs[iarg++]}"
+    local arg=${compargs[iarg++]}
     case "$arg" in
     (-*)
       local ic c
       for ((ic=1;ic<${#arg};ic++)); do
-        c="${arg:ic:1}"
+        c=${arg:ic:1}
         case "$c" in
-        ([abcdefgjksuvDE])
+        ([abcdefgjksuvE])
           ble/array#push compoptions "-$c" ;;
         ([pr])
           ;; # 無視 (-p 表示 -r 削除)
@@ -368,7 +386,7 @@ function ble-complete/source/argument/.compgen {
           ble/array#push compoptions "-$c" "${compargs[iarg++]}" ;;
         (o)
           local o="${compargs[iarg++]}"
-          comp_opts="$comp_opts$o:"
+          comp_opts=${comp_opts//:"$o":/:}$o:
           ble/array#push compoptions "-$c" "$o" ;;
         (F)
           comp_func="${compargs[iarg++]}"
@@ -377,7 +395,7 @@ function ble-complete/source/argument/.compgen {
           comp_prog="${compargs[iarg++]}"
           ble/array#push compoptions "-$c" ble-complete/source/argument/.compgen-helper-prog ;;
         (*)
-          # just discard
+          # -D, etc. just discard
         esac
       done ;;
     (*)
@@ -385,31 +403,55 @@ function ble-complete/source/argument/.compgen {
     esac
   done
 
-  ble/util/is-stdin-ready && return 27
+  ble/util/is-stdin-ready && return 148
 
-  local rex_compv arr
-  ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
-  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
-  ble/util/assign compgen 'command sed -n "/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | command sort -u' 2>/dev/null
-  ble/string#split arr $'\n' "$compgen"
-  # * 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
+  # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
-  # * "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
+  local compgen
+  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
+
+  # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
+  #   ble-complete/source/argument/.compgen-helper-func 関数内で補間関数の終了ステータスを確認し、
+  #   もし 124 だった場合には is_default_completion に retry を設定する。
+  if [[ $is_default_completion == retry && ! $_ble_complete_retry_guard ]]; then
+    local _ble_complete_retry_guard=1
+    ble-complete/source/argument/.compgen
+    return
+  fi
+
+  [[ $compgen ]] || return 1
+
+  # Note: git の補完関数など勝手に末尾に space をつけ -o nospace を指定する物が存在する。
+  #   単語の後にスペースを挿入する事を意図していると思われるが、
+  #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、
+  #   挿入時のエスケープ対象であるので末尾の space もエスケープされてしまう。
+  #
+  #   仕方がないので sed で各候補の末端の [[:space:]]+ を除去する。
+  #   これだとスペースで終わるファイル名を挿入できないという実害が発生するが、
+  #   そのような変な補完関数を作るのが悪いのである。
+  local use_workaround_for_git=
+  if [[ $comp_func == __git* && $comp_opts == *:nospace:* ]]; then
+    use_workaround_for_git=1
+    comp_opts=${comp_opts//:nospace:/:}
+  fi
+
+  # Note: "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
   #   compgen に -- "$COMPV" を渡しても何故か思うようにフィルタしてくれない為である。
   #   (compgen -W "$(compgen ...)" -- "$COMPV" の様にしないと駄目なのか?)
-  # * sed で末端の [[:space:]]+ を除去する。
-  #   git の補完関数など勝手に末尾に space をつける物が存在する為である。
-  #   単語の後にスペースを挿入する事を意図していると思われるが、
-  #   通常 compgen (例: compgen -f) で生成される候補に含まれるスペースは、挿入時のエスケープ対象である。
-  #   →これだとスペースで終わるファイル名を挿入できない…。
-  # * arr=($(...)) としないのは IFS=$'\n' の影響を $(...) の中に持ち込まないためである。
+  local arr rex_compv
+  ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
+  if [[ $use_workaround_for_git ]]; then
+    ble/util/assign-array arr 'ble/bin/sed -n "/^\$/d;/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | ble/bin/sort -u' 2>/dev/null
+  else
+    ble/util/assign-array arr 'ble/bin/sed -n "/^\$/d;/^$rex_compv/p" <<< "$compgen" | ble/bin/sort -u' 2>/dev/null
+  fi
 
   local action=argument
   [[ $comp_opts == *:nospace:* ]] && action=argument-nospace
 
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
-    ((i++%100==0)) && ble/util/is-stdin-ready && return 27
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
     ((count++))
   done
@@ -422,7 +464,7 @@ function ble-complete/source/argument {
 
   # try complete&compgen
   ble-complete/source/argument/.compgen; local exit="$?"
-  [[ $exit == 0 || $exit == 27 ]] && return "$exit"
+  [[ $exit == 0 || $exit == 148 ]] && return "$exit"
 
   # 候補が見付からない場合
   if [[ $comp_opts == *:dirnames:* ]]; then
@@ -445,11 +487,12 @@ function ble-complete/source/variable {
     action=word # 確定時に ' ' を挿入
   fi
 
-  local cand arr compgen
-  ble/util/assign compgen 'compgen -v -- "$COMPV"'
-  ble/string#split arr $'\n' "$compgen"
+  local cand arr
+  ble/util/assign-array arr 'compgen -v -- "$COMPV"'
 
+  local i=0
   for cand in "${arr[@]}"; do
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
   done
 }
@@ -472,11 +515,12 @@ function ble-complete/.fignore/filter {
 }
 
 function ble/widget/complete {
-  local text="$_ble_edit_str" index="$_ble_edit_ind"
+  local text=$_ble_edit_str index=$_ble_edit_ind
+  ble-syntax/import
   _ble_edit_str.update-syntax
   local context
   ble-syntax/completion-context "$text" "$index"
-  # ble-edit/info/draw-text "${context[*]}"
+  # ble-edit/info/show text "${context[*]}"
   # return
 
   if ((${#context[@]}==0)); then
@@ -492,23 +536,23 @@ function ble/widget/complete {
   local -a cand_show=() # 表示文字列 (～ 分かり易い文字列)
   local -a cand_data=() # 関数で使うデータ
 
-  local rex_raw_paramx='^('"$_ble_syntax_rex_simple_word_element"'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
+  local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
 
   if [[ $FIGNORE ]]; then
     local -a _fignore
     ble-complete/.fignore/prepare
   fi
 
-  local ctx source
+  local ctx source ret
   for ctx in "${context[@]}"; do
     # initialize completion range
-    ctx=($ctx)
+    ble/string#split-words ctx "$ctx"
     ble/string#split source : "${ctx[0]}"
-    local COMP1="${ctx[1]}" COMP2="$index"
-    local COMPS="${text:COMP1:COMP2-COMP1}"
+    local COMP1=${ctx[1]} COMP2=$index
+    local COMPS=${text:COMP1:COMP2-COMP1}
     local COMPV _ble_complete_raw_paramx=
-    if [[ ! $COMPS || $COMPS =~ $_ble_syntax_rex_simple_word ]]; then
-      builtin eval "COMPV=$COMPS"
+    if [[ ! $COMPS ]] || ble-syntax:bash/simple-word/is-simple "$COMPS"; then
+      ble-syntax:bash/simple-word/eval "$COMPS"; COMPV=$ret
       [[ $COMPS =~ $rex_raw_paramx ]] && _ble_complete_raw_paramx=1
     fi
     local COMP_PREFIX=
@@ -520,7 +564,7 @@ function ble/widget/complete {
     fi
   done
 
-  ble/util/is-stdin-ready && return 27
+  ble/util/is-stdin-ready && return 148
 
   if ((cand_count==0)); then
     ble/widget/.bell
@@ -535,25 +579,25 @@ function ble/widget/complete {
   local i common comp1 clen comp2="$index"
   local acount=0 aindex=0
   for ((i=0;i<cand_count;i++)); do
-    ((i%100==0)) && ble/util/is-stdin-ready && return 27
+    ((i%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
 
-    local word="${cand_word[i]}"
+    local word=${cand_word[i]}
     local -a prop
-    prop=(${cand_prop[i]})
+    ble/string#split-words prop "${cand_prop[i]}"
 
     [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter "$word" && continue
 
     if ((i==0)); then
-      common="$word"
-      comp1="${prop[1]}"
-      clen="${#common}"
+      common=$word
+      comp1=${prop[1]}
+      clen=${#common}
       ((acount=1,aindex=i))
     else
       # より近くの開始点の候補を優先する場合
       if ((comp1<prop[1])); then
-        common="$word"
-        comp1="${prop[1]}"
-        clen="${#common}"
+        common=$word
+        comp1=${prop[1]}
+        clen=${#common}
         ((acount=1,aindex=i))
         continue
       elif ((comp1>prop[1])); then
@@ -572,7 +616,7 @@ function ble/widget/complete {
       while [[ ${word::clen} != "${common::clen}" ]]; do
         ((clen--))
       done
-      common="${common::clen}"
+      common=${common::clen}
       ((acount++))
     fi
   done
@@ -580,12 +624,12 @@ function ble/widget/complete {
   # 編集範囲の最小化
   if [[ $common == "${text:comp1:comp2-comp1}"* ]]; then
     # 既存部分の置換がない場合
-    common="${common:comp2-comp1}"
+    common=${common:comp2-comp1}
     ((comp1=comp2))
   else
     # 既存部分の置換がある場合
     while ((comp1<comp2)) && [[ $common == "${text:comp1:1}"* ]]; do
-      common="${common:1}"
+      common=${common:1}
       ((comp1++))
     done
   fi
@@ -593,22 +637,22 @@ function ble/widget/complete {
   if ((acount==1)); then
     # 一意確定の時
     local ACTION
-    ACTION=(${cand_prop[aindex]})
+    ble/string#split-words ACTION "${cand_prop[aindex]}"
     if ble/util/isfunction "$ACTION/complete"; then
-      local COMP1="$comp1" COMP2="$comp2"
-      local INSERT="$common"
-      local CAND="${cand_cand[aindex]}"
-      local DATA="${cand_data[aindex]}"
+      local COMP1=$comp1 COMP2=$comp2
+      local INSERT=$common
+      local CAND=${cand_cand[aindex]}
+      local DATA=${cand_data[aindex]}
 
       "$ACTION/complete"
-      comp1="$COMP1" comp2="$COMP2" common="$INSERT"
+      comp1=$COMP1 comp2=$COMP2 common=$INSERT
     fi
     ble-edit/info/clear
   else
     # 候補が複数ある時
-    ble-edit/info/draw-text "${cand_show[*]}"
+    ble-edit/info/show text "${cand_show[*]}"
   fi
 
   ble/widget/.delete-range "$comp1" "$index"
-  ble/widget/insert-string "$common"
+  [[ $common ]] && ble/widget/.insert-string "$common"
 }

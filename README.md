@@ -1,17 +1,16 @@
 [Languages: **:us: English** | [:jp: 日本語](README-ja_JP.md)]
 # ble.sh
 
-*Bash Line Editor* written in Bash Scripts.
-- Replace GNU Readline, the default command line editor of GNU Bash.
-- Provide syntax highlighting of command lines (as in `fish` shell)
-- Provide syntax-aware completion
-- Provide an easy way to try: just type `source ble.sh`
+*Bash Line Editor* is a command line editor written in pure Bash scripts to replace the default GNU Readline.
+- Syntax highlighting of command lines (as in `fish` shell)
+- Syntax-aware completion
+- Enhanced vim mode
 
 This script supports `bash` with the version 3.0 or later.
 
 Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 
-This script is provided under the **BSD License** (3-clause BSD license).
+This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD license).
 
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
@@ -19,7 +18,7 @@ This script is provided under the **BSD License** (3-clause BSD license).
 **Generate `ble.sh` from source**
 
 To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
-The file `ble.sh` can be generated using the below commands.
+The file `ble.sh` can be generated using the following commands.
 If you have GNU make installed on `gmake`, please use `gmake` instead of `make`.
 ```console
 $ git clone https://github.com/akinomyoga/ble.sh.git
@@ -79,14 +78,15 @@ Most settings for `ble.sh` are to be specified after the `source` of `ble.sh`.
 ```bash
 ...
 
-if [[ $- == *i* ]]; then
-  source /path/to/blesh/ble.sh noattach
-  
+if [[ $- == *i* ]] && source /path/to/blesh/ble.sh noattach; then
   # ***** Settings Here *****
 fi
 
 ...
 ```
+
+**Vim mode***
+For the vi/vim mode, check [the Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
 **CJK Width**
 
@@ -112,7 +112,7 @@ bleopt input_encoding='C'
 
 The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. Defaultly, the audible bell is enabled while the visual bell is disabled.
 
-The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is millisecond. The default values is `2000`.
+The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is millisecond. The default value is `2000`.
 
 For example, the visual bell can be enabled as:
 ```
@@ -184,8 +184,17 @@ $ ble-bind -L
 
 ## Tips
 
-**Using multiline command line**
+**Using multiline mode**
+
+When the command line string contains a newline character, `ble.sh` enters the MULTILINE mode.
 
 By typing `C-v RET` or `C-q RET`, you can insert a newline character in the command line string.
-When the command line string contains a newline character, `RET` (`C-m`) causes insertion of a new newline character.
-The command containing newline characters can be executed by typing `C-j`.
+In the MULTILINE mode, `RET` (`C-m`) causes insertion of a new newline character.
+In the MULTILINE mode, the command can be executed by typing `C-j`.
+
+When the shell option `shopt -s cmdhist` is set (which is the default),
+`RET` (`C-m`) inserts a newline if the current command line string is syntactically incomplete.
+
+## Special thanks
+
+- many thanks for testing the `ble.sh` vi mode: @cmplstofB

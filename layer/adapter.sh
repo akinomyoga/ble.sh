@@ -13,7 +13,7 @@
 
 : ${bleopt_syntax_highlight_mode=default}
 
-declare -a _ble_region_highlight_table
+_ble_region_highlight_table=()
 
 ## 古い実装からの adapter
 _ble_highlight_layer_adapter_buff=()
@@ -47,7 +47,7 @@ function ble-highlight-layer:adapter/update {
   ble-highlight-layer/update/shift _ble_highlight_layer_adapter_buff
   local i g gprev=0 ctx=0 ret
   ((i1>0)) && ble-highlight-layer/getg -v gprev "$((i1-1))"
-  # ble-edit/info/draw-text "layer:adapter u = $i1-$i2"
+  # ble-edit/info/show text "layer:adapter u = $i1-$i2"
   for ((i=i1;i<=i2;i++)); do
     local ch
     if [[ ${_ble_region_highlight_table[i]} ]]; then
@@ -224,13 +224,15 @@ function ble-syntax-highlight+default {
 
         # この部分の判定で fork を沢山する \if 等に対しては 4fork+2exec になる。
         # ■キャッシュ(accept-line 時に clear)するなどした方が良いかもしれない。
-        local type; ble-syntax-highlight+default/type "$(builtin type -t "$cmd" 2>/dev/null)" "$cmd"
+        local type; ble/util/type type "$cmd"
+        ble-syntax-highlight+default/type "$type" "$cmd" # -> type
         if [[ "$type" = alias && "$cmd" != "$_0" ]]; then
           # alias を \ で無効化している場合
           # → unalias して再度 check (2fork)
           type=$(
             unalias "$cmd"
-            ble-syntax-highlight+default/type "$(builtin type -t "$cmd" 2>/dev/null)" "$cmd"
+            ble/util/type type "$cmd"
+            ble-syntax-highlight+default/type "$type" "$cmd" # -> type
             builtin echo -n "$type")
         elif [[ "$type" = keyword && "$cmd" != "$_0" ]]; then
           # keyword (time do if function else elif fi の類) を \ で無効化している場合
@@ -243,7 +245,7 @@ function ble-syntax-highlight+default {
             type=jobs
           elif ble/util/isfunction "$cmd"; then
             type=function
-          elif enable -p | command grep -q -F -x "enable $cmd" &>/dev/null; then
+          elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
             type=builtin
           elif which "$cmd" &>/dev/null; then
             type=file

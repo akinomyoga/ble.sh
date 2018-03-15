@@ -1,26 +1,27 @@
 #!/bin/bash
 #%$> out/ble.sh
-#%[release=0]
-#%[use_gawk=0]
-#%[measure_load_time=0]
+#%[release = 0]
+#%[use_gawk = 0]
+#%[measure_load_time = 0]
+#%[debug_keylogger = 1]
 #%#----------------------------------------------------------------------------
-#%m inc (
-#%%[guard="@_included".replace("[^_a-zA-Z0-9]","_")]
-#%%if @_included!=1
-#%% [@_included=1]
+#%m inc
+#%%[guard = "@_included".replace("[^_a-zA-Z0-9]", "_")]
+#%%if @_included != 1
+#%%%[@_included = 1]
 ###############################################################################
 # Included from ble-@.sh
 
-#%% if measure_load_time
+#%%%if measure_load_time
 time {
 echo ble-@.sh >&2
-#%% end
-#%% include ble-@.sh
-#%% if measure_load_time
+#%%%%include ble-@.sh
 }
-#%% end
+#%%%else
+#%%%%include ble-@.sh
+#%%%end
 #%%end
-#%)
+#%end
 #%#----------------------------------------------------------------------------
 # bash script to souce from interactive shell sessions
 #
@@ -62,19 +63,22 @@ if [ "$_ble_bash" -lt 30000 ]; then
   return 1 2>/dev/null || exit 1
 fi
 
-_ble_bash_verbose_adjusted=
-function ble/adjust-bash-verbose-option {
-  [[ $_ble_bash_verbose_adjusted ]] && return 1
-  _ble_bash_verbose_adjusted=1
-  _ble_edit_SETV=
-  [[ -o verbose ]] && _ble_edit_SETV=1 && set +v
+_ble_bash_setu=
+_ble_bash_setv=
+_ble_bash_options_adjusted=
+function ble/adjust-bash-options {
+  [[ $_ble_bash_options_adjusted ]] && return 1
+  _ble_bash_options_adjusted=1
+  _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
+  _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
 }
-ble/adjust-bash-verbose-option
-function ble/restore-bash-verbose-option {
-  [[ $_ble_bash_verbose_adjusted ]] || return 1
-  _ble_bash_verbose_adjusted=
-  [[ $_ble_edit_SETV && ! -o verbose ]] && set -v
+function ble/restore-bash-options {
+  [[ $_ble_bash_options_adjusted ]] || return 1
+  _ble_bash_options_adjusted=
+  [[ $_ble_bash_setv && ! -o verbose ]] && set -v
+  [[ $_ble_bash_setu && ! -o nounset ]] && set -u
 }
+ble/adjust-bash-options
 
 if [[ -o posix ]]; then
   unset _ble_bash
@@ -82,15 +86,10 @@ if [[ -o posix ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
+bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
-  return 1
-fi
-
-if [[ ! -o emacs ]]; then
-  unset _ble_bash
-  echo "ble.sh: ble.sh is intended to be used in the emacs editing mode (set -o emacs)." >&2
   return 1
 fi
 
@@ -103,13 +102,44 @@ fi
 _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
 
+#------------------------------------------------------------------------------
 # check environment
 
+# ble/bin
+
+## 関数 ble/bin/.default-utility-path commands...
+##   取り敢えず ble/bin/* からコマンドを呼び出せる様にします。
+function ble/bin/.default-utility-path {
+  local cmd
+  for cmd; do
+    eval "function ble/bin/$cmd { command $cmd \"\$@\"; }"
+  done
+}
+## 関数 ble/bin/.freeze-utility-path commands...
+##   PATH が破壊された後でも ble が動作を続けられる様に、
+##   現在の PATH で基本コマンドのパスを固定して ble/bin/* から使える様にする。
+##
+##   実装に ble/util/assign を使用しているので ble-core 初期化後に実行する必要がある。
+##
+function ble/bin/.freeze-utility-path {
+  local cmd path q=\' Q="'\''" fail=
+  for cmd; do
+    if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
+      eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
+    else
+      fail=1
+    fi
+  done
+  ((!fail))
+}
+
+# POSIX utilities
+
+_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat wc mv)
 function ble/.check-environment {
-  local posixCommandList='sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat'
-  if ! type $posixCommandList &>/dev/null; then
+  if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
     local cmd commandMissing=
-    for cmd in $posixCommandList; do
+    for cmd in "${_ble_init_posix_command_list[@]}"; do
       if ! type "$cmd" &>/dev/null; then
         commandMissing="$commandMissing\`$cmd', "
       fi
@@ -118,13 +148,15 @@ function ble/.check-environment {
 
     # try to fix PATH
     local default_path=$(command -p getconf PATH 2>/dev/null)
-    local original_path=$PATH
-    export PATH=${PATH}${PATH:+:}${default_path}
-    [[ :$PATH: == *:/usr/bin:* ]] || PATH=$PATH${PATH:+:}/usr/bin
-    [[ :$PATH: == *:/bin:* ]] || PATH=$PATH${PATH:+:}/bin
-    if ! type $posixCommandList &>/dev/null; then
-      PATH=$original_path
-      return 1
+    if [[ $default_path ]]; then
+      local original_path=$PATH
+      export PATH=${PATH}${PATH:+:}${default_path}
+      [[ :$PATH: == *:/usr/bin:* ]] || PATH=$PATH${PATH:+:}/usr/bin
+      [[ :$PATH: == *:/bin:* ]] || PATH=$PATH${PATH:+:}/bin
+      if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
+        PATH=$original_path
+        return 1
+      fi
     fi
 
     echo "ble.sh: modified PATH=\$PATH${PATH:${#original_path}}" >&2
@@ -135,7 +167,11 @@ function ble/.check-environment {
     echo "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
     return 1
   fi
+  ble/bin/.default-utility-path gawk
 #%end
+
+  # 暫定的な ble/bin/$cmd 設定
+  ble/bin/.default-utility-path "${_ble_init_posix_command_list[@]}"
 
   return 0
 }
@@ -150,6 +186,9 @@ if [[ $_ble_base ]]; then
 fi
 
 #------------------------------------------------------------------------------
+
+_ble_bash_loaded_in_function=0
+[[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
 
 # readlink -f (taken from akinomyoga/mshex.git)
 function ble/util/readlink {
@@ -182,12 +221,12 @@ function ble/base/.create-user-directory {
   local var=$1 dir=$2
   if [[ ! -d $dir ]]; then
     # dangling symlinks are silently removed
-    [[ ! -e $dir && -h $dir ]] && command rm -f "$dir"
+    [[ ! -e $dir && -h $dir ]] && ble/bin/rm -f "$dir"
     if [[ -e $dir || -h $dir ]]; then
       echo "ble.sh: cannot create a directory '$dir' since there is already a file." >&2
       return 1
     fi
-    if ! (umask 077; command mkdir -p "$dir"); then
+    if ! (umask 077; ble/bin/mkdir -p "$dir"); then
       echo "ble.sh: failed to create a directory '$dir'." >&2
       return 1
     fi
@@ -264,13 +303,13 @@ function ble/base/initialize-runtime-directory/.tmp {
 
   local tmp_dir=/tmp/blesh
   if [[ ! -d $tmp_dir ]]; then
-    [[ ! -e $tmp_dir && -h $tmp_dir ]] && command rm -f "$tmp_dir"
+    [[ ! -e $tmp_dir && -h $tmp_dir ]] && ble/bin/rm -f "$tmp_dir"
     if [[ -e $tmp_dir || -h $tmp_dir ]]; then
       echo "ble.sh: cannot create a directory '$tmp_dir' since there is already a file." >&2
       return 1
     fi
-    command mkdir -p "$tmp_dir" || return
-    command chmod a+rwxt "$tmp_dir" || return
+    ble/bin/mkdir -p "$tmp_dir" || return
+    ble/bin/chmod a+rwxt "$tmp_dir" || return
   elif ! [[ -r $tmp_dir && -w $tmp_dir && -x $tmp_dir ]]; then
     echo "ble.sh: permision of '$tmp_dir' is not correct." >&2
     return 1
@@ -285,8 +324,8 @@ function ble/base/initialize-runtime-directory {
   # fallback
   local tmp_dir=$_ble_base/tmp
   if [[ ! -d $tmp_dir ]]; then
-    command mkdir -p "$tmp_dir" || return
-    command chmod a+rwxt "$tmp_dir" || return
+    ble/bin/mkdir -p "$tmp_dir" || return
+    ble/bin/chmod a+rwxt "$tmp_dir" || return
   fi
   ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
 }
@@ -307,11 +346,17 @@ function ble/base/clean-up-runtime-directory {
       removed=("${removed[@]}" "$_ble_base_run/$pid."*)
     fi
   done
-  ((${#removed[@]})) && command rm -f "${removed[@]}"
+  ((${#removed[@]})) && ble/bin/rm -f "${removed[@]}"
 }
 
 # initialization time = 9ms (for 70 files)
-ble/base/clean-up-runtime-directory
+if shopt -q failglob &>/dev/null; then
+  shopt -u failglob
+  ble/base/clean-up-runtime-directory
+  shopt -s failglob
+else
+  ble/base/clean-up-runtime-directory
+fi
 
 ##
 ## @var _ble_base_cache
@@ -344,8 +389,8 @@ function ble/base/initialize-cache-directory {
   # fallback
   local cache_dir=$_ble_base/cache.d
   if [[ ! -d $cache_dir ]]; then
-    command mkdir -p "$cache_dir" || return
-    command chmod a+rwxt "$cache_dir" || return
+    ble/bin/mkdir -p "$cache_dir" || return
+    ble/bin/chmod a+rwxt "$cache_dir" || return
 
     # relocate an old cache directory if any
     local old_cache_dir=$_ble_base/cache
@@ -367,34 +412,51 @@ fi
 
 ##%x inc.r/@/getopt/
 #%x inc.r/@/core/
+
+ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
+#%if use_gawk
+ble/bin/.freeze-utility-path gawk
+#%end
+
 #%x inc.r/@/decode/
 #%x inc.r/@/color/
 #%x inc.r/@/edit/
-#%x inc.r/@/syntax/
+#%x inc.r/@/form/
+#%x inc.r/@/syntax-lazy/
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
 
 function ble-initialize {
-  ble-decode-initialize # 54ms
-  ble-edit/load-default-key-bindings # 4ms
-  ble-edit-initialize # 4ms
+  ble-decode-initialize # 7ms
+  ble-edit-initialize # 3ms
 }
 
 _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
-  if [[ ! -o emacs ]]; then
-    echo "ble-attach: cancelled. ble.sh is intended to be used in the emacs editing mode (set -o emacs)." >&2
+
+  # 取り敢えずプロンプトを表示する
+  ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
+  ble-edit-attach     # 0ms (_ble_edit_PS1 他の初期化)
+  ble/textarea#redraw # 37ms
+  ble/util/buffer.flush >&2
+
+  # keymap 初期化
+  local IFS=$' \t\n'
+  ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
+  if ! ble-decode-attach; then # 53ms
+    ble/term/finalize
     return 1
   fi
-
   _ble_attached=1
   _ble_edit_detach_flag= # do not detach or exit
-  local IFS=$' \t\n'
-  ble-decode-attach # 53ms
-  ble-edit-attach # 0ms
-  ble-edit/render/redraw # 34ms
-  ble-edit/bind/stdout.off
+
+  ble-edit/reset-history # 27s for bash-3.0
+
+  # Note: ble-decode/reset-default-keymap 内で
+  #   info を設定する事があるので表示する。
+  ble-edit/info/default
+  ble-edit/bind/.tail
 }
 
 function ble-detach {
@@ -412,9 +474,35 @@ ble-initialize
 
 IFS=$_ble_init_original_IFS
 unset _ble_init_original_IFS
-[[ $1 != noattach ]] && ble-attach
+
+function ble/base/process-blesh-arguments {
+  local opt_attach=1
+  local opt_rcfile=
+  local opt_error=
+  while (($#)); do
+    local arg=$1; shift
+    case $arg in
+    (--noattach|noattach)
+      opt_attach= ;;
+    (--rcfile=*|--init-file=*)
+      opt_rcfile=${arg#*=} ;;
+    (--rcfile|--init-file)
+      opt_rcfile=$1; shift ;;
+    (*)
+      echo "ble.sh: unrecognized argument '$arg'" >&2
+      opt_error=1
+    esac
+  done
+
+  [[ $opt_rcfile ]] && source "$opt_rcfile"
+  [[ $opt_attach ]] && ble-attach
+  [[ ! $opt_error ]]
+}
+
+ble/base/process-blesh-arguments "$@"
 #%if measure_load_time
 }
 #%end
 
+return 0
 ###############################################################################

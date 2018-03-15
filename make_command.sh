@@ -8,7 +8,14 @@ function sub:install {
   local src=$1
   local dst=$2
   mkd "${dst%/*}"
-  cp "$src" "$dst"
+  if [[ $src == *.sh ]]; then
+    sed '
+      1i# this script is a part of blesh (https://github.com/akinomyoga/ble.sh) under MIT license
+      /^[[:space:]]*#/d;/^[[:space:]]*$/d
+    ' "$src" > "$dst"
+  else
+    cp "$src" "$dst"
+  fi
 }
 
 function sub:dist {

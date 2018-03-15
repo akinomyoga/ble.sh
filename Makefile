@@ -20,18 +20,16 @@ ifeq ($(GAWK),)
   endif
 endif
 
-PP:=$(GAWK) -f ext/mwg_pp.awk
+MWGPP:=$(GAWK) -f ext/mwg_pp.awk
 
 FULLVER:=0.2.alpha
 
 OUTDIR:=out
-outdirs+=$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap
-$(OUTDIR) $(OUTDIR)/keymap $(OUTDIR)/cmap:
-	mkdir -p $@
+outdirs+=$(OUTDIR)
 
 outfiles+=$(OUTDIR)/ble.sh
-$(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-edit.sh ble-color.sh ble-syntax.sh | $(OUTDIR)
-	$(PP) $< >/dev/null
+$(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-edit.sh ble-color.sh ble-syntax-lazy.sh ble-form.sh | $(OUTDIR)
+	$(MWGPP) $< >/dev/null
 
 outfiles+=$(OUTDIR)/term.sh
 $(OUTDIR)/term.sh: term.sh | $(OUTDIR)
@@ -39,21 +37,36 @@ $(OUTDIR)/term.sh: term.sh | $(OUTDIR)
 outfiles+=$(OUTDIR)/bind.sh
 $(OUTDIR)/bind.sh: bind.sh | $(OUTDIR)
 	cp -p $< $@
-outfiles+=$(OUTDIR)/complete.sh
-$(OUTDIR)/complete.sh: complete.sh | $(OUTDIR)
+outfiles+=$(OUTDIR)/lib/core-complete.sh
+$(OUTDIR)/lib/core-complete.sh: lib/core-complete.sh | $(OUTDIR)
 	cp -p $< $@
+outfiles+=$(OUTDIR)/lib/core-syntax.sh
+$(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh | $(OUTDIR)
+	$(MWGPP) $< > $@
 outfiles+=$(OUTDIR)/ignoreeof-messages.txt
 $(OUTDIR)/ignoreeof-messages.txt: ignoreeof-messages.txt | $(OUTDIR)
 	cp -p $< $@
 
-outfiles+=$(OUTDIR)/keymap/emacs.sh
-$(OUTDIR)/keymap/emacs.sh: keymap/emacs.sh | $(OUTDIR)/keymap
+outdirs += $(OUTDIR)/cmap
+outfiles += $(OUTDIR)/cmap/default.sh
+$(OUTDIR)/cmap/%.sh: cmap/%.sh | $(OUTDIR)/cmap
 	cp -p $< $@
 
-outfiles+=$(OUTDIR)/cmap/default.sh
-$(OUTDIR)/cmap/default.sh: cmap/default.sh | $(OUTDIR)/cmap
+outdirs += $(OUTDIR)/keymap
+outfiles += $(OUTDIR)/keymap/emacs.sh
+outfiles += $(OUTDIR)/keymap/vi.sh $(OUTDIR)/keymap/vi_digraph.sh $(OUTDIR)/keymap/vi_digraph.txt $(OUTDIR)/keymap/vi_test.sh
+$(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
+	cp -p $< $@
+$(OUTDIR)/keymap/%.txt: keymap/%.txt | $(OUTDIR)/keymap
 	cp -p $< $@
 
+outdirs += $(OUTDIR)/lib
+outfiles += $(OUTDIR)/lib/vim-surround.sh
+$(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
+	cp -p $< $@
+
+$(outdirs):
+	mkdir -p $@
 all: $(outfiles)
 
 DATA_HOME := $(XDG_DATA_HOME)

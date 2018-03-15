@@ -1,5 +1,34 @@
 #!/bin/bash
 
+#
+# 以下は ble-decode.sh にて既定で定義される特殊キー
+#
+#   __defchar__
+#   __default__
+#   __before_command__
+#   __after_command__
+#   __attach__
+#
+#   shift alter control meta super hyper
+#
+#   TAB  RET
+#
+#   NUL  SOH  STX  ETX  EOT  ENQ  ACK  BEL
+#   BS   HT   LF   VT   FF   CR   SO   SI
+#   DLE  DC1  DC2  DC3  DC4  NAK  SYN  ETB
+#   CAN  EM   SUB  ESC  FS   GS   RS   US
+#
+#   SP   DEL
+#
+#   PAD  HOP  BPH  NBH  IND  NEL  SSA  ESA
+#   HTS  HTJ  VTS  PLD  PLU  RI   SS2  SS3
+#   DCS  PU1  PU2  STS  CCH  MW   SPA  EPA
+#   SOS  SGCI SCI  CSI  ST   OSC  PM   APC
+#
+# Note: ble-decode.sh における特殊キーの変更に際して、
+# この一覧を更新することでキャッシュの更新が起こるようにしている。
+#
+
 function ble/cmap/default/bind-keypad-key {
   local Ft="$1" name="$2"
   ble-bind --csi "$Ft" "$name"
@@ -46,7 +75,16 @@ function ble-bind-function-key+default {
   # ble-bind --csi '5~' end
   # ble-bind --csi '6~' next
 
-  if [[ $(tput kend) == $'\e[5~' ]]; then
+  # 順番を固定
+  ble-decode-kbd/.gen-keycode insert
+  ble-decode-kbd/.gen-keycode home
+  ble-decode-kbd/.gen-keycode prior
+  ble-decode-kbd/.gen-keycode delete
+  ble-decode-kbd/.gen-keycode end
+  ble-decode-kbd/.gen-keycode next
+
+  local kend; ble/util/assign kend 'tput kend'
+  if [[ $kend == $'\e[5~' ]]; then
     # vt100
     ble-bind --csi '1~' insert
     ble-bind --csi '2~' home
@@ -86,6 +124,9 @@ function ble-bind-function-key+default {
   ble-bind --csi '32~' f18
   ble-bind --csi '33~' f19
   ble-bind --csi '34~' f20
+
+  ble-bind --csi '200~' paste_begin
+  ble-bind --csi '201~' paste_end
 
   # keypad
   #   vt100, xterm, application mode

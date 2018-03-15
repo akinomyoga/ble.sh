@@ -1,17 +1,16 @@
 [Languages: [:us: English](README.md) | **:jp: 日本語**]
 # ble.sh
 
-`ble.sh` (*Bash Line Editor*) は Bash スクリプトで書かれたコマンドラインエディタです。
-- GNU Bash 標準のコマンドラインエディタ GNU Readline を置き換える形で動作します
+`ble.sh` (*Bash Line Editor*) はピュア Bash スクリプトで書かれたコマンドラインエディタで、標準の GNU Readline を置き換える形で動作します。
 - コマンドラインを (`fish` シェルみたいに) `bash` 構文に従って色付け
 - 文法構造に従った補完
-- `source ble.sh` するだけ
+- `vim` モードサポートの強化
 
 このスクリプトは `bash-3.0` 以降で利用できます。
 
 現時点では、文字コードとして `UTF-8` のみの対応です。
 
-このスクリプトは **BSD License** (3条項 BSD ライセンス) の下で提供されます。
+このスクリプトは [**BSD License**](LICENSE.md) (3条項 BSD ライセンス) の下で提供されます。
 
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
 
@@ -63,9 +62,7 @@ $ cp -r ble-0.1.7 /path/to/blesh
 # bashrc
 
 # .bashrc の先頭近くに以下を追加して下さい。
-if [[ $- == *i* ]]; then
-  source /path/to/blesh/ble.sh noattach
-  
+if [[ $- == *i* ]] && source /path/to/blesh/ble.sh noattach; then
   # ble.sh の設定 (後述) はここに記述します。
 fi
 
@@ -88,6 +85,10 @@ fi
 
 ...
 ```
+
+**Vim モード**
+
+Vim モードについては [Wiki の説明ページ](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
 
 **曖昧文字幅**
 
@@ -193,8 +194,16 @@ $ ble-bind -L
 
 ## ヒント
 
-**複数行のコマンドライン**
+**複数行モード**
+
+コマンドラインに改行が含まれている場合、複数行モード (MULTILINE モード) になります。
 
 `C-v RET` または `C-q RET` とすると改行をコマンドラインの一部として入力できます。
-コマンドラインに改行が含まれている場合、`RET` (`C-m`) は新しい改行の挿入になります。
-コマンドラインに改行が含まれているときは、`C-j` を用いてコマンドを実行して下さい。
+複数行モードでは、`RET` (`C-m`) はコマンドの実行ではなく新しい改行の挿入になります。
+複数行モードでは、`C-j` を用いてコマンドを実行して下さい。
+
+`shopt -s cmdhist` が設定されているとき (既定)、もし `RET` (`C-m`) を押した時にコマンドラインが構文的に閉じていなければ、コマンドの実行ではなく改行の挿入を行います。
+
+## 謝辞
+
+- @cmplstofB さまには vi モードの実装のテストをしていただき、またさまざまの提案を頂きました。

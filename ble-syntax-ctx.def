@@ -5,17 +5,27 @@
 #   This file contains definition of context values
 #
 #
+#   単語の文脈値の命名法
+#
+#   CTX_FOOX ... 単語 FOO が次に来ることを期待する
+#   CTX_FOOI ... 単語 FOO 中の解析状態であることを意味する
+#   CTX_FOOR ... 単語 FOO 中が変数代入であり、途中のチルダ展開が有効でパス名展開やブレース展開は不活性である
+#   CTX_FOOQ ... 単語 FOO 中が変数代入形式であり、途中のチルダ展開が有効である
+#
 
 CTX_UNSPECIFIED 0
 CTX_ARGX        3  # (コマンド) 次に引数が来る
 CTX_ARGX0       18 # (コマンド)   文法的には次に引数が来そうだがもう引数が来てはならない文脈。例えば ]] や )) の後。
 CTX_ARGI        4  # (コマンド) context,attr: in an argument
+CTX_ARGQ        61 # (コマンド)   v=1 v+=1 a[1]=1 a[1]+=1 の形式の引数の = 以降。: で区切ったチルダ展開が有効である。
 CTX_CMDX        1  # (コマンド) 次にコマンドが来る。
-CTX_CMDXV       13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
 CTX_CMDX1       17 # (コマンド)   次にコマンドが少なくとも一つ来なければならない。例えば ( や && や while の直後。
+CTX_CMDXT       49 # (コマンド)   time や ! の後。次にコマンドが少なくとも1つ来るか ; が来るか、行末が来る。
 CTX_CMDXC       26 # (コマンド)   次に複合コマンド ('(' '{' '((' '[[' for select case if while until) が来る。
 CTX_CMDXE       43 # (コマンド)   次に終端キーワード ('}' 'done' 'fi' 'esac') が来るかも知れないし、来ないかもしれない。
-CTX_CMDXD       38 # (コマンド)   次に 'do', '{' が来るかも知れないし、来ないかもしれない (for (()) の直後) (旧 CTX_ARGX0F)
+CTX_CMDXD0      38 # (コマンド)   次に 'do', '{' または ';' が来る。"for (())" の直後 (旧 CTX_ARGX0F)。
+CTX_CMDXD       68 # (コマンド)   次に 'do', '{' が来る。"for a in 1 2 3" や "for (());" の直後。
+CTX_CMDXV       13 # (コマンド)   var=val の直後。次にコマンドが来るかも知れないし、来ないかもしれない。
 CTX_CMDI        2  # (コマンド) context,attr: in a command
 CTX_VRHS        11 # (コマンド) context,attr: var=rhs
 CTX_QUOT        5  # context,attr: in double quotations
@@ -32,22 +42,34 @@ CTX_PWORD       15 # (パラメータ展開) context,attr: inside of parameter e
 CTX_RDRF        19 # (リダイレクト) リダイレクト対象のファイル。
 CTX_RDRD        20 # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
 CTX_RDRS        27 # (リダイレクト) ヒアストリング
-CTX_VALX        23 # (値リスト) 次に値が来る
-CTX_VALI        24 # (値リスト) 値の中
+CTX_VALX        23 # (値リスト) arr=(@)
+CTX_VALI        24 # (値リスト) arr=(a@b)
+CTX_VALR        65 # (値リスト) arr=([0]=a@b)
+CTX_VALQ        66 # (値リスト) arr=(a=b@c a[0]=b@c)
 ATTR_COMMENT    25 # コメント
-CTX_ARGVX       28 # (コマンド) declare の引数
-CTX_ARGVI       29 # (コマンド) declare の引数
+CTX_ARGVX       28 # (コマンド) declare の引数が来る
+CTX_ARGVI       29 # (コマンド) declare の引数の中
+CTX_ARGVR       62 # (コマンド) declare の引数の右辺
 CTX_CONDX       32
 CTX_CONDI       33
+CTX_CONDQ       67
 CTX_CASE        34 # case パターン待ち
 CTX_PATN        30 # glob 通常文字
 ATTR_GLOB       31 # glob 特別文字
+CTX_BRAX        54 # [...] (角括弧式)
+ATTR_BRACE      55 # {...} (ブレース展開)
+CTX_BRACE1      56 # ブレース展開の中を読み取る文脈 ("," が現れる前)
+CTX_BRACE2      57 # ブレース展開の中を読み取る文脈 ("," が現れた後)
+ATTR_TILDE      60 # チルダ展開
 
 # for var in ...
 CTX_FARGX1      16 # for の直後。直後が (( だったら CTX_CMDX と同じ扱い。(旧 CTX_CMDXF)
 CTX_FARGI1      35
-CTX_FARGX2      36
+CTX_FARGX2      36 # in
 CTX_FARGI2      37
+CTX_FARGX3      58 # args...
+CTX_FARGI3      59
+CTX_FARGQ3      63
 
 # select name in ...
 CTX_SARGX1      48 # select の直後。for の処理 CTX_FARGI1 に合流する。
@@ -55,11 +77,42 @@ CTX_SARGX1      48 # select の直後。for の処理 CTX_FARGI1 に合流する
 # case arg in ...
 CTX_CARGX1      39
 CTX_CARGI1      40
+CTX_CARGQ1      64
 CTX_CARGX2      41
 CTX_CARGI2      42
+
+# time -p -- ...
+CTX_TARGX1      50
+CTX_TARGI1      51
+CTX_TARGX2      52
+CTX_TARGI2      53
 
 # Here documents
 CTX_RDRH        44 # (redirection) ヒアドキュメント単語読み取り <<  word
 CTX_RDRI        45 # (redirection) ヒアドキュメント単語読み取り <<- word
 CTX_HERE0       46 # ヒアドキュメント行頭
 CTX_HERE1       47 # ヒアドキュメント行頭以外
+
+#------------------------------------------------------------------------------
+# syntax highlight の為の属性
+
+ATTR_CMD_BOLD       101
+ATTR_CMD_BUILTIN    102
+ATTR_CMD_ALIAS      103
+ATTR_CMD_FUNCTION   104
+ATTR_CMD_FILE       105
+ATTR_KEYWORD        106
+ATTR_KEYWORD_BEGIN  118 # if, case, while, until, for, select, { など
+ATTR_KEYWORD_END    119 # fi, esac, done, } など
+ATTR_KEYWORD_MID    120 # then, elif, else, do など
+ATTR_CMD_JOBS       107
+ATTR_CMD_DIR        112
+ATTR_FILE_DIR       108
+ATTR_FILE_LINK      109
+ATTR_FILE_EXEC      110
+ATTR_FILE_FILE      111
+ATTR_FILE_FIFO      114
+ATTR_FILE_CHR       115
+ATTR_FILE_BLK       116
+ATTR_FILE_SOCK      117
+ATTR_FILE_WARN      113
