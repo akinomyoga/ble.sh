@@ -4873,18 +4873,20 @@ function ble-highlight-layer:syntax/update {
     gprev=$g
   fi
 
-  local sgr
-  for ((i=umin;i<umax;i++)); do
-    local ch=${_ble_highlight_layer_plain_buff[i]}
-    ble-highlight-layer:syntax/getg "$i"
-    [[ $g ]] || ble-highlight-layer/update/getg "$i"
-    if ((gprev!=g)); then
-      ble-color-g2sgr -v sgr "$g"
-      ch=$sgr$ch
-      ((gprev=g))
-    fi
-    _ble_highlight_layer_syntax_buff[i]=$ch
-  done
+  if ((umin>=0)); then
+    local sgr
+    for ((i=umin;i<=umax;i++)); do
+      local ch=${_ble_highlight_layer_plain_buff[i]}
+      ble-highlight-layer:syntax/getg "$i"
+      [[ $g ]] || ble-highlight-layer/update/getg "$i"
+      if ((gprev!=g)); then
+        ble-color-g2sgr -v sgr "$g"
+        ch=$sgr$ch
+        ((gprev=g))
+      fi
+      _ble_highlight_layer_syntax_buff[i]=$ch
+    done
+  fi
 
   PREV_UMIN=$umin PREV_UMAX=$umax
   PREV_BUFF=_ble_highlight_layer_syntax_buff
