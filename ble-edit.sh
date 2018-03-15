@@ -4782,6 +4782,7 @@ function ble/widget/newline {
 function ble/widget/accept-single-line-or/accepts {
   ble-edit/content/is-single-line || return 1
   [[ $_ble_edit_str ]] && ble/util/is-stdin-ready && return 1
+  shopt -q cmdhist &>/dev/null && ! ble-syntax/is-complete && return 1
   return 0
 }
 function ble/widget/accept-single-line-or {

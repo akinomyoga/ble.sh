@@ -2242,6 +2242,7 @@ _BLE_SYNTAX_FCTX[CTX_CMDXT]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXC]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXE]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXD]=ble-syntax:bash/ctx-command
+_BLE_SYNTAX_FCTX[CTX_CMDXD0]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_CMDXV]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGI]=ble-syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_ARGQ]=ble-syntax:bash/ctx-command
@@ -2369,6 +2370,7 @@ _ble_syntax_bash_command_EndWtype[CTX_CMDXT]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXC]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXE]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXD]=$CTX_CMDI
+_ble_syntax_bash_command_EndWtype[CTX_CMDXD0]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_CMDXV]=$CTX_CMDI
 _ble_syntax_bash_command_EndWtype[CTX_FARGX1]=$CTX_ARGI
 _ble_syntax_bash_command_EndWtype[CTX_SARGX1]=$CTX_ARGI
@@ -2389,7 +2391,7 @@ _ble_syntax_bash_command_EndWtype[CTX_TARGX2]=$CTX_ARGI # --
 ##     この配列が設定されている文脈値については、
 ##     既定でコマンドの属性は ATTR_ERR にする。
 ##     許容するコマンドは何れも予約語なので、
-##     許容された暁には自動的に ATTR_CMD_KEYWORD で上書きされるのでOK
+##     許容された暁には自動的に ATTR_KEYWORD で上書きされるのでOK
 ##
 ##     予約語以外に一致する時には、
 ##     明示的に属性値 ATTR_ERR をキャンセルする必要がある。
@@ -2398,6 +2400,7 @@ _ble_syntax_bash_command_Expect=()
 _ble_syntax_bash_command_Expect[CTX_CMDXC]='^(\(|\{|\(\(|\[\[|for|select|case|if|while|until)$'
 _ble_syntax_bash_command_Expect[CTX_CMDXE]='^(\}|fi|done|esac|then|elif|else|do)$'
 _ble_syntax_bash_command_Expect[CTX_CMDXD]='^(\{|do)$'
+_ble_syntax_bash_command_Expect[CTX_CMDXD0]='^(\{|do)$'
 
 ## 関数 ble-syntax:bash/ctx-command/check-word-end
 ##   @var[in,out] ctx
@@ -2447,20 +2450,21 @@ function ble-syntax:bash/ctx-command/check-word-end {
       i=$wbeg ble-syntax/parse/word-push "$CTX_CMDI" "$wbeg"
       ble-syntax/parse/word-pop
       return 0 ;;
-    ('time')
-      ((ctx=CTX_TARGX1)); processed=keyword ;;
-    ('!')
-      ((ctx=CTX_CMDXT))
-      processed=keyword ;;
-    ('{'|'do'|'if'|'then'|'elif'|'else'|'while'|'until')
+    ('time')               ((ctx=CTX_TARGX1)); processed=keyword ;;
+    ('!')                  ((ctx=CTX_CMDXT)) ; processed=keyword ;;
+    ('if'|'while'|'until') ((ctx=CTX_CMDX1)) ; processed=begin ;;
+    ('for')                ((ctx=CTX_FARGX1)); processed=begin ;;
+    ('select')             ((ctx=CTX_SARGX1)); processed=begin ;;
+    ('case')               ((ctx=CTX_CARGX1)); processed=begin ;;
+    ('{')              
       ((ctx=CTX_CMDX1))
-      processed=keyword ;;
-    ('for')    ((ctx=CTX_FARGX1)); processed=keyword ;;
-    ('select') ((ctx=CTX_SARGX1)); processed=keyword ;;
-    ('case')   ((ctx=CTX_CARGX1)); processed=keyword ;;
-    ('}'|'done'|'fi'|'esac')
-      ((ctx=CTX_CMDXE))
-      processed=keyword ;;
+      if ((wt==CTX_CMDXD||wt==CTX_CMDXD0)); then
+        processed=middle # "for ...; {" などの時
+      else
+        processed=begin
+      fi ;;
+    ('then'|'elif'|'else'|'do') ((ctx=CTX_CMDX1)) ; processed=middle ;;
+    ('}'|'done'|'fi'|'esac')    ((ctx=CTX_CMDXE)) ; processed=end ;;
     ('declare'|'readonly'|'typeset'|'local'|'export'|'alias')
       ((ctx=CTX_ARGVX))
       processed=builtin ;;
@@ -2495,10 +2499,18 @@ function ble-syntax:bash/ctx-command/check-word-end {
     esac
 
     if [[ $processed ]]; then
-      if [[ $processed == keyword ]]; then
+      local attr=
+      case $processed in
+      (keyword) attr=$ATTR_KEYWORD ;;
+      (begin)   attr=$ATTR_KEYWORD_BEGIN ;;
+      (end)     attr=$ATTR_KEYWORD_END ;;
+      (middle)  attr=$ATTR_KEYWORD_MID ;;
+      esac
+      if [[ $attr ]]; then
         ble-syntax/parse/touch-updated-attr "$wbeg"
-        ((_ble_syntax_attr[wbeg]=ATTR_CMD_KEYWORD))
+        ((_ble_syntax_attr[wbeg]=attr))
       fi
+
       return 0
     fi
 
@@ -2567,7 +2579,7 @@ _ble_syntax_bash_command_Opt[CTX_ARGX0]=1
 _ble_syntax_bash_command_Opt[CTX_ARGVX]=1
 _ble_syntax_bash_command_Opt[CTX_CMDXV]=1
 _ble_syntax_bash_command_Opt[CTX_CMDXE]=1
-_ble_syntax_bash_command_Opt[CTX_CMDXD]=1
+_ble_syntax_bash_command_Opt[CTX_CMDXD0]=1
 
 _ble_syntax_bash_is_command_form_for=
 
@@ -2581,7 +2593,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
       ble-syntax:bash/check-here-document-from "$spaces" && return 0
       if ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_CMDXV||ctx==CTX_CMDXT)); then
         ((ctx=CTX_CMDX))
-      elif ((ctx==CTX_FARGX3)); then
+      elif ((ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_CMDXD0)); then
         ((ctx=CTX_CMDXD))
       fi
     fi
@@ -2601,7 +2613,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
       ${#rematch1}<len&&(_ble_syntax_attr[i+${#rematch1}]=CTX_ARGX)))
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT)); then
       ((ctx=CTX_CMDXV))
-    elif ((ctx==CTX_CMDXC||ctx==CTX_CMDXD)); then
+    elif ((ctx==CTX_CMDXC||ctx==CTX_CMDXD||ctx==CTX_CMDXD0)); then
       ((ctx=CTX_CMDXV,
         _ble_syntax_attr[i]=ATTR_ERR))
     elif ((ctx==CTX_CMDXE)); then
@@ -2637,7 +2649,7 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     # 制御演算子 && || | & ; |& ;; ;;& ;&
 
     if [[ $BASH_REMATCH == ';' ]]; then
-      if ((ctx==CTX_FARGX3)); then
+      if ((ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_CMDXD0)); then
         ((_ble_syntax_attr[i++]=ATTR_DEL,ctx=CTX_CMDXD))
         return 0
       elif ((ctx==CTX_CMDXT)); then
@@ -2664,8 +2676,8 @@ function ble-syntax:bash/ctx-command/.check-delimiter-or-redirect {
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC)); then
       ((_ble_syntax_attr[i]=ATTR_DEL))
       ((ctx=CTX_ARGX0))
-      [[ $_ble_syntax_bash_is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD))
-      ble-syntax/parse/nest-push "$((${#m}==1?CTX_CMDX1:CTX_EXPR))" "$m"
+      [[ $_ble_syntax_bash_is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD0))
+      ble-syntax/parse/nest-push $((${#m}==1?CTX_CMDX1:CTX_EXPR)) "$m"
       ((i+=${#m}))
     else
       ble-syntax/parse/nest-push "$CTX_PATN"
@@ -2714,6 +2726,7 @@ _ble_syntax_bash_command_BeginCtx[CTX_CMDXT]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_CMDXC]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_CMDXE]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_CMDXD]=$CTX_CMDI
+_ble_syntax_bash_command_BeginCtx[CTX_CMDXD0]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_CMDXV]=$CTX_CMDI
 _ble_syntax_bash_command_BeginCtx[CTX_FARGX1]=$CTX_FARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_SARGX1]=$CTX_FARGI1
@@ -2776,8 +2789,9 @@ function ble-syntax:bash/ctx-command/.check-word-begin {
 function ble-syntax:bash/ctx-command {
 #%if !release
   if ble-syntax:bash/starts-with-delimiter-or-redirect; then
-    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_FARGX3||
-        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
+    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_FARGX2||ctx==CTX_FARGX3||
+        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
+        ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_CMDXV)) || ble-stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
     ble-syntax:bash/ctx-command/.check-delimiter-or-redirect; return
   fi
@@ -2838,8 +2852,9 @@ function ble-syntax:bash/ctx-command-compound-expect {
     # "for var in ... / case arg in" を処理している途中で delimiter が来た場合。
     if ((ctx==CTX_FARGX2)) && [[ $tail == [$';\n']* ]]; then
       # for var in ... の in 以降が省略された形である。
-      # ここで return せずに以降の CTX_ARGX 用の処理に任せる
-      ((ctx=CTX_ARGX))
+      # ble-syntax:bash/ctx-command で FARGX3 と同様に処理する。
+      ble-syntax:bash/ctx-command
+      return
     elif ((ctx==CTX_FARGX1)) && [[ $tail == '(('* ]]; then
       # for ((...)) の場合
       # ここで return せずに以降の CTX_CMDX1 用の処理に任せる
@@ -3817,6 +3832,47 @@ function ble-syntax/parse {
 }
 
 #==============================================================================
+# Check
+
+function ble-syntax/is-complete {
+  local iN=${#_ble_syntax_text}
+
+  # (1) 最後の点にエラーが設定されていた時
+  # - 閉じていない single quotation などは此処。
+  # - 入れ子が閉じていない時もここで引っかかる。
+  # - 実はヒアドキュメントが閉じていない時もここでかかる。
+  ((iN>0&&_ble_syntax_attr[iN-1]==ATTR_ERR)) && return 1
+
+  local stat=${_ble_syntax_stat[iN]}
+  if [[ $stat ]]; then
+    stat=($stat)
+
+    # (2) 入れ子が閉じていない時
+    local nlen=${stat[3]}; ((nlen>=0)) && return 1
+
+    # (3) ヒアドキュメントの待ちがある時
+    local nparam=${stat[6]}; [[ $nparam == none ]] && nparam=
+    local rex="$_ble_term_fs@([RI][QH][^$_ble_term_fs]*)(.*$)"
+    [[ $nparam =~ $rex ]] && return 1
+
+    # (4) 完結している文脈値の時以外
+    local ctx=${stat[0]}
+    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
+        ctx==CTX_CMDX||ctx==CTX_CMDXT||ctx==CTX_CMDXE||ctx==CTX_CMDXV||
+        ctx==CTX_TARGX1||ctx==CTX_TARGX2)) || return 1
+  fi
+
+  # 構文 if..fi, etc が閉じているか?
+  local attrs ret
+  IFS= eval 'attrs="::${_ble_syntax_attr[*]/%/::}"'
+  ble/string#count-string "$attrs" ":$ATTR_KEYWORD_BEGIN:"; local nbeg=$ret
+  ble/string#count-string "$attrs" ":$ATTR_KEYWORD_END:"; local nend=$ret
+  ((nbeg>nend)) && return 1
+
+  return 0
+}
+
+#==============================================================================
 #
 # syntax-complete
 #
@@ -3954,9 +4010,13 @@ function ble-syntax/completion-context/check-prefix {
     if [[ ${text:i:index-i} =~ $rex_param ]]; then
       ble-syntax/completion-context/add wordlist:fi:done:esac:then:elif:else:do "$i"
     fi
-  elif ((ctx==CTX_CMDXD)); then
+  elif ((ctx==CTX_CMDXD0)); then
     if [[ ${text:i:index-i} =~ $rex_param ]]; then
       ble-syntax/completion-context/add wordlist:';:{:do' "$i"
+    fi
+  elif ((ctx==CTX_CMDXD)); then
+    if [[ ${text:i:index-i} =~ $rex_param ]]; then
+      ble-syntax/completion-context/add wordlist:'{:do' "$i"
     fi
   elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
     # CTX_FARGX1 → (( でなければ 変数名
@@ -4052,8 +4112,10 @@ function ble-syntax/completion-context/check-here {
       ble-syntax/completion-context/add wordlist:'(:{:((:[[:for:select:case:if:while:until' "$index"
     elif ((ctx==CTX_CMDXE)); then
       ble-syntax/completion-context/add wordlist:'}:fi:done:esac:then:elif:else:do' "$index"
-    elif ((ctx==CTX_CMDXD)); then
+    elif ((ctx==CTX_CMDXD0)); then
       ble-syntax/completion-context/add wordlist:';:{:do' "$index"
+    elif ((ctx==CTX_CMDXD)); then
+      ble-syntax/completion-context/add wordlist:'{:do' "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==FARGX3)); then
       ble-syntax/completion-context/add argument "$index"
     elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
@@ -4197,25 +4259,6 @@ function ble-syntax:bash/extract-command {
 #
 #==============================================================================
 
-# filetype
-ATTR_CMD_BOLD=101
-ATTR_CMD_BUILTIN=102
-ATTR_CMD_ALIAS=103
-ATTR_CMD_FUNCTION=104
-ATTR_CMD_FILE=105
-ATTR_CMD_KEYWORD=106
-ATTR_CMD_JOBS=107
-ATTR_CMD_DIR=112
-ATTR_FILE_DIR=108
-ATTR_FILE_LINK=109
-ATTR_FILE_EXEC=110
-ATTR_FILE_FILE=111
-ATTR_FILE_FIFO=114
-ATTR_FILE_CHR=115
-ATTR_FILE_BLK=116
-ATTR_FILE_SOCK=117
-ATTR_FILE_WARN=113
-
 # 遅延初期化対象
 _ble_syntax_attr2iface=()
 function ble-syntax/attr2g { ble-color/faces/initialize && ble-syntax/attr2g "$@"; }
@@ -4280,6 +4323,7 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_CMDXC    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXE    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXD    syntax_default
+  _ble_syntax_attr2iface.define CTX_CMDXD0   syntax_default
   _ble_syntax_attr2iface.define CTX_CMDXV    syntax_default
   _ble_syntax_attr2iface.define CTX_CMDI     syntax_command
   _ble_syntax_attr2iface.define CTX_VRHS     syntax_default
@@ -4338,23 +4382,26 @@ function ble-syntax/faces-onload-hook {
   _ble_syntax_attr2iface.define CTX_HERE0   syntax_document
   _ble_syntax_attr2iface.define CTX_HERE1   syntax_document
 
-  _ble_syntax_attr2iface.define ATTR_CMD_BOLD     command_builtin_dot
-  _ble_syntax_attr2iface.define ATTR_CMD_BUILTIN  command_builtin
-  _ble_syntax_attr2iface.define ATTR_CMD_ALIAS    command_alias
-  _ble_syntax_attr2iface.define ATTR_CMD_FUNCTION command_function
-  _ble_syntax_attr2iface.define ATTR_CMD_FILE     command_file
-  _ble_syntax_attr2iface.define ATTR_CMD_KEYWORD  command_keyword
-  _ble_syntax_attr2iface.define ATTR_CMD_JOBS     command_jobs
-  _ble_syntax_attr2iface.define ATTR_CMD_DIR      command_directory
-  _ble_syntax_attr2iface.define ATTR_FILE_DIR     filename_directory
-  _ble_syntax_attr2iface.define ATTR_FILE_LINK    filename_link
-  _ble_syntax_attr2iface.define ATTR_FILE_EXEC    filename_executable
-  _ble_syntax_attr2iface.define ATTR_FILE_FILE    filename_other
-  _ble_syntax_attr2iface.define ATTR_FILE_WARN    filename_warning
-  _ble_syntax_attr2iface.define ATTR_FILE_FIFO    filename_pipe
-  _ble_syntax_attr2iface.define ATTR_FILE_SOCK    filename_socket
-  _ble_syntax_attr2iface.define ATTR_FILE_BLK     filename_block
-  _ble_syntax_attr2iface.define ATTR_FILE_CHR     filename_character
+  _ble_syntax_attr2iface.define ATTR_CMD_BOLD      command_builtin_dot
+  _ble_syntax_attr2iface.define ATTR_CMD_BUILTIN   command_builtin
+  _ble_syntax_attr2iface.define ATTR_CMD_ALIAS     command_alias
+  _ble_syntax_attr2iface.define ATTR_CMD_FUNCTION  command_function
+  _ble_syntax_attr2iface.define ATTR_CMD_FILE      command_file
+  _ble_syntax_attr2iface.define ATTR_CMD_JOBS      command_jobs
+  _ble_syntax_attr2iface.define ATTR_CMD_DIR       command_directory
+  _ble_syntax_attr2iface.define ATTR_KEYWORD       command_keyword
+  _ble_syntax_attr2iface.define ATTR_KEYWORD_BEGIN command_keyword
+  _ble_syntax_attr2iface.define ATTR_KEYWORD_END   command_keyword
+  _ble_syntax_attr2iface.define ATTR_KEYWORD_MID   command_keyword
+  _ble_syntax_attr2iface.define ATTR_FILE_DIR      filename_directory
+  _ble_syntax_attr2iface.define ATTR_FILE_LINK     filename_link
+  _ble_syntax_attr2iface.define ATTR_FILE_EXEC     filename_executable
+  _ble_syntax_attr2iface.define ATTR_FILE_FILE     filename_other
+  _ble_syntax_attr2iface.define ATTR_FILE_WARN     filename_warning
+  _ble_syntax_attr2iface.define ATTR_FILE_FIFO     filename_pipe
+  _ble_syntax_attr2iface.define ATTR_FILE_SOCK     filename_socket
+  _ble_syntax_attr2iface.define ATTR_FILE_BLK      filename_block
+  _ble_syntax_attr2iface.define ATTR_FILE_CHR      filename_character
 }
 
 ble-color/faces/addhook-onload ble-syntax/faces-onload-hook
@@ -4375,7 +4422,7 @@ function ble-syntax/highlight/cmdtype1 {
   (file:*)
     ((type=ATTR_CMD_FILE)) ;;
   (keyword:*)
-    ((type=ATTR_CMD_KEYWORD)) ;;
+    ((type=ATTR_KEYWORD)) ;;
   (*:%*)
     # jobs
     ble/util/joblist.check
@@ -4406,7 +4453,7 @@ function ble-syntax/highlight/cmdtype2 {
       ble/util/type btype "$cmd"
       ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
       builtin echo -n "$type")
-  elif [[ $type == "$ATTR_CMD_KEYWORD" ]]; then
+  elif [[ $type == "$ATTR_KEYWORD" ]]; then
     # Note: 予約語 (keyword) の時は構文解析の時点で着色しているのでコマンドとしての着色は行わない。
     #   関数 ble-syntax/highlight/cmdtype が呼び出されたとすれば、コマンドとしての文脈である。
     #   予約語がコマンドとして取り扱われるのは、クォートされていたか変数代入やリダイレクトの後だった時。
@@ -4570,7 +4617,8 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
       # 複数語に展開されたら駄目
       type=$ATTR_ERR
     elif ((wtype==CTX_CMDI)); then
-      if ((_ble_syntax_attr[wbeg]!=ATTR_CMD_KEYWORD&&_ble_syntax_attr[wbeg]!=ATTR_DEL)); then
+      local attr=${_ble_syntax_attr[wbeg]}
+      if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
         ble-syntax/highlight/cmdtype "$value" "$wtxt"
       fi
     elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then

@@ -38,6 +38,12 @@ function ble-highlight-layer:syntax/update { return; }
 ##   g を設定せず戻ればそのまま上のレイヤーに問い合わせが行く。
 function ble-highlight-layer:syntax/getg { return; }
 
+
+## 関数 ble-syntax/is-complete
+##   sytax がロードされる迄は常に真値。
+function ble-syntax/is-complete { true; }
+
+
 # 以下の関数に関しては遅延せずにその場で lib/core-syntax.sh をロードする
 ble-autoload "$_ble_base/lib/core-syntax.sh" \
              ble-syntax/completion-context \

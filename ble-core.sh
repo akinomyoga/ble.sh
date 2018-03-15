@@ -285,6 +285,12 @@ function ble/string#count-char {
   ret=${#text}
 }
 
+## 関数 ble/string#count-string text string
+function ble/string#count-string {
+  local text=${1//"$2"}
+  ((ret=(${#1}-${#text})/${#2}))
+}
+
 ## 関数 ble/string#index-of text needle [n]
 ##   @param[in] text
 ##   @param[in] needle
