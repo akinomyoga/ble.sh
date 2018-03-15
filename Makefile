@@ -25,7 +25,9 @@ MWGPP:=$(GAWK) -f ext/mwg_pp.awk
 FULLVER:=0.2.alpha
 
 OUTDIR:=out
-outdirs+=$(OUTDIR)
+
+outdirs += $(OUTDIR)
+outdirs += $(OUTDIR)/lib
 
 outfiles+=$(OUTDIR)/ble.sh
 $(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-edit.sh ble-color.sh ble-syntax-lazy.sh ble-form.sh | $(OUTDIR)
@@ -38,10 +40,10 @@ outfiles+=$(OUTDIR)/bind.sh
 $(OUTDIR)/bind.sh: bind.sh | $(OUTDIR)
 	cp -p $< $@
 outfiles+=$(OUTDIR)/lib/core-complete.sh
-$(OUTDIR)/lib/core-complete.sh: lib/core-complete.sh | $(OUTDIR)
+$(OUTDIR)/lib/core-complete.sh: lib/core-complete.sh | $(OUTDIR)/lib
 	cp -p $< $@
 outfiles+=$(OUTDIR)/lib/core-syntax.sh
-$(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh | $(OUTDIR)
+$(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
 outfiles+=$(OUTDIR)/ignoreeof-messages.txt
 $(OUTDIR)/ignoreeof-messages.txt: ignoreeof-messages.txt | $(OUTDIR)
@@ -60,7 +62,6 @@ $(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
 $(OUTDIR)/keymap/%.txt: keymap/%.txt | $(OUTDIR)/keymap
 	cp -p $< $@
 
-outdirs += $(OUTDIR)/lib
 outfiles += $(OUTDIR)/lib/vim-surround.sh
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
