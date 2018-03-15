@@ -195,6 +195,11 @@ In the MULTILINE mode, the command can be executed by typing `C-j`.
 When the shell option `shopt -s cmdhist` is set (which is the default),
 `RET` (`C-m`) inserts a newline if the current command line string is syntactically incomplete.
 
+**Using vim-mode**
+
+If `set -o vi` is specified in `.bashrc` or `set editing-mode vi` is specified in `.inputrc`, the vim mode is enabled.
+For details, please check the [Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
+
 ## Special thanks
 
-- many thanks for testing the `ble.sh` vi mode: @cmplstofB
+- @cmplstofB for testing vim-mode and a lot of suggestions

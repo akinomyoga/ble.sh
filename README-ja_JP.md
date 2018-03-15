@@ -204,6 +204,11 @@ $ ble-bind -L
 
 `shopt -s cmdhist` が設定されているとき (既定)、もし `RET` (`C-m`) を押した時にコマンドラインが構文的に閉じていなければ、コマンドの実行ではなく改行の挿入を行います。
 
+**Vim モード**
+
+`.bashrc` に `set -o vi` が設定されているとき、または `.inputrc` に `set editing-mode vi` が設定されているとき、vim モードが有効になります。
+Vim モードの詳細な設定については [Wiki のページ (英語)](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
+
 ## 謝辞
 
 - @cmplstofB さまには vi モードの実装のテストをしていただき、またさまざまの提案を頂きました。
