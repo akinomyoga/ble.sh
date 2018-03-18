@@ -4274,18 +4274,21 @@ function ble-syntax/faces-onload-hook {
     g=${_ble_faces[iface]}
   }
 
+  # Note: navy was replaced by 26 for dark background
+  # Note: gray was replaced by 242 for dark background
+
   ble-color-defface syntax_default           none
   ble-color-defface syntax_command           fg=brown
   ble-color-defface syntax_quoted            fg=green
   ble-color-defface syntax_quotation         fg=green,bold
-  ble-color-defface syntax_expr              fg=navy
+  ble-color-defface syntax_expr              fg=26
   ble-color-defface syntax_error             bg=203,fg=231 # bg=224
   ble-color-defface syntax_varname           fg=202
   ble-color-defface syntax_delimiter         bold
   ble-color-defface syntax_param_expansion   fg=purple
   ble-color-defface syntax_history_expansion bg=94,fg=231
   ble-color-defface syntax_function_name     fg=92,bold # fg=purple
-  ble-color-defface syntax_comment           fg=gray
+  ble-color-defface syntax_comment           fg=242
   ble-color-defface syntax_glob              fg=198,bold
   ble-color-defface syntax_brace             fg=37,bold
   ble-color-defface syntax_tilde             fg=navy,bold
@@ -4299,8 +4302,8 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface command_file        fg=green
   ble-color-defface command_keyword     fg=blue
   ble-color-defface command_jobs        fg=red
-  ble-color-defface command_directory   fg=navy,underline
-  ble-color-defface filename_directory  fg=navy,underline
+  ble-color-defface command_directory   fg=26,underline
+  ble-color-defface filename_directory  fg=26,underline
   ble-color-defface filename_link       fg=teal,underline
   ble-color-defface filename_executable fg=green,underline
   ble-color-defface filename_other      underline
