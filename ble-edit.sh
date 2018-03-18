@@ -1180,7 +1180,7 @@ function ble-edit/prompt/update/backslash:u { # = ユーザ名
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_u"
 }
 function ble-edit/prompt/update/backslash:v { # = bash version %d.%d
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_w"
+  ble-edit/prompt/update/append "$_ble_edit_prompt__string_v"
 }
 function ble-edit/prompt/update/backslash:V { # = bash version %d.%d.%d
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_V"
