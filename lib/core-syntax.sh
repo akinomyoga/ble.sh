@@ -3834,14 +3834,14 @@ function ble-syntax/parse {
 #==============================================================================
 # Check
 
-function ble-syntax/is-complete {
+function ble-syntax:bash/is-complete {
   local iN=${#_ble_syntax_text}
 
   # (1) 最後の点にエラーが設定されていた時
   # - 閉じていない single quotation などは此処。
   # - 入れ子が閉じていない時もここで引っかかる。
   # - 実はヒアドキュメントが閉じていない時もここでかかる。
-  ((iN>0&&_ble_syntax_attr[iN-1]==ATTR_ERR)) && return 1
+  ((iN>0)) && ((_ble_syntax_attr[iN-1]==ATTR_ERR)) && return 1
 
   local stat=${_ble_syntax_stat[iN]}
   if [[ $stat ]]; then

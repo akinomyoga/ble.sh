@@ -39,9 +39,9 @@ function ble-highlight-layer:syntax/update { return; }
 function ble-highlight-layer:syntax/getg { return; }
 
 
-## 関数 ble-syntax/is-complete
+## 関数 ble-syntax:bash/is-complete
 ##   sytax がロードされる迄は常に真値。
-function ble-syntax/is-complete { true; }
+function ble-syntax:bash/is-complete { true; }
 
 
 # 以下の関数に関しては遅延せずにその場で lib/core-syntax.sh をロードする
