@@ -946,7 +946,7 @@ function .ble-line-prompt/update/backslash:u { # = ユーザ名
   .ble-line-prompt/update/append "$_ble_cursor_prompt__string_u"
 }
 function .ble-line-prompt/update/backslash:v { # = bash version %d.%d
-  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_w"
+  .ble-line-prompt/update/append "$_ble_cursor_prompt__string_v"
 }
 function .ble-line-prompt/update/backslash:V { # = bash version %d.%d.%d
   .ble-line-prompt/update/append "$_ble_cursor_prompt__string_V"
