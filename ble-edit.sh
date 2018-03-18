@@ -6995,7 +6995,7 @@ function ble-edit/bind/.check-detach {
     #   [[ ! -o emacs && ! -o vi ]] のときは ble-detach が呼び出されるのでここには来ない。
     local state=$_ble_decode_bind_state
     if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
-      ble-decode/setup-default-keymap
+      ble-decode/reset-default-keymap
       ble-decode-detach
       ble-decode-attach
     fi
