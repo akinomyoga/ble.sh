@@ -6455,7 +6455,7 @@ function ble-edit/read/.setup-textarea {
 
   # syntax, highlight
   _ble_syntax_lang=text
-  _ble_highlight_layer__list=(plain region disabled overwrite_mode)
+  _ble_highlight_layer__list=(plain region overwrite_mode disabled)
 }
 function ble-edit/read/.loop {
   ble-edit/read/.setup-textarea

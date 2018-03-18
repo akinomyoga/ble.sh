@@ -707,8 +707,6 @@ tech
 
 2018-03-18
 
-  * bug: insert mode で C-c にしても disabled の着色にならない。何か変だ。
-
   * bug: mintty (横幅 56) で起動すると unbound keyseq ... 等の表示が欠ける。
 
   * アニメーション gif を作る。
@@ -731,8 +729,6 @@ tech
 
     3 どの様な順で操作をするのかまとめておく。
 
-
-    
 
 2018-03-14
 
@@ -2224,7 +2220,7 @@ tech
   バグ修正
   - highlight: 単語着色が乱れるバグの修正 `#D0687`
 
-2018-03-15
+2018-03-15 (#D0644..#D0683)
 
   新機能
   - undo: vi-mode `u` `<C-r>` `U` (`#D0644` `#D0648`); emacs `#D0649`; `#D0662`
@@ -2830,6 +2826,32 @@ tech
 -------------------------------------------------------------------------------
 
 2018-03-18
+
+  * bug: insert mode で C-c にしても disabled の着色にならない。何か変だ [#D0690]
+
+    これは overwrite_mode レイヤーがキャッシュした着色を更新せずに使っていたのが悪い。
+    overwrite_mode ではカーソル位置も文字列内容も変更がなかった時に、
+    キャッシュした内容をそのまま使う様になっている。
+    しかし、実際にはその他の要因 (_ble_edit_line_disabled など) で着色が変わるので、
+    本来は毎回着色を変更するべきなのである。
+
+    しかし、それを言い出すと様々な箇所でキャッシュを使えるかどうかが微妙になって来る。
+    _ble_highlight_layer__list=(plain syntax region disabled overwrite_mode)
+    この設定の下で、より後に来る layer は前の layer の
+    PREV_UMIN..PREV_UMAX について更新しなければならない。
+
+    というか、実は他にも表示が崩れるケースが有る。
+    region 変化を overwrite_mode で検出していないので、
+    $ echo hello world で overwrite-mode で "hello worl" の範囲を選択して home を押すと、
+    "echo " だけが反転されるべきだが、"hello world" の選択着色が残ってしまう。
+
+    →実は、これは DMIN ではなくて PREV_UMIN を見て判定すれば良いだけなのでは。
+      実際に変更があったかどうかは PREV_UMIN..PREV_UMAX を見れば分かる。
+      なので、これだけ見て更新があったかどうかを判定すれば良いのだ。
+    →実装した。動いている。
+
+    それとは別に disabled したのに overwrite_mode のカーソル位置が残るのは変なので、
+    disabled は overwrite_mode レイヤーよりも後に持ってきたほうが良さそうだ。
 
   * bug: PS1 で \v が空文字列である [#D0689]
 

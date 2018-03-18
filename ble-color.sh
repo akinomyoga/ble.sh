@@ -264,18 +264,18 @@ _ble_highlight_layer__list=(plain)
 #_ble_highlight_layer__list=(plain RandomColor)
 
 function ble-highlight-layer/update {
-  local text="$1"
-  local -ir DMIN="$((BLELINE_RANGE_UPDATE[0]))"
-  local -ir DMAX="$((BLELINE_RANGE_UPDATE[1]))"
-  local -ir DMAX0="$((BLELINE_RANGE_UPDATE[2]))"
+  local text=$1
+  local -ir DMIN=$((BLELINE_RANGE_UPDATE[0]))
+  local -ir DMAX=$((BLELINE_RANGE_UPDATE[1]))
+  local -ir DMAX0=$((BLELINE_RANGE_UPDATE[2]))
 
   local PREV_BUFF=_ble_highlight_layer_plain_buff
   local PREV_UMIN=-1
   local PREV_UMAX=-1
   local layer player=plain LEVEL
-  local nlevel="${#_ble_highlight_layer__list[@]}"
+  local nlevel=${#_ble_highlight_layer__list[@]}
   for((LEVEL=0;LEVEL<nlevel;LEVEL++)); do
-    layer="${_ble_highlight_layer__list[LEVEL]}"
+    layer=${_ble_highlight_layer__list[LEVEL]}
 
     "ble-highlight-layer:$layer/update" "$text" "$player"
     # echo "PREV($LEVEL) $PREV_UMIN $PREV_UMAX" >> 1.tmp
@@ -283,19 +283,19 @@ function ble-highlight-layer/update {
     player="$layer"
   done
 
-  HIGHLIGHT_BUFF="$PREV_BUFF"
-  HIGHLIGHT_UMIN="$PREV_UMIN"
-  HIGHLIGHT_UMAX="$PREV_UMAX"
+  HIGHLIGHT_BUFF=$PREV_BUFF
+  HIGHLIGHT_UMIN=$PREV_UMIN
+  HIGHLIGHT_UMAX=$PREV_UMAX
 }
 
 function ble-highlight-layer/update/add-urange {
-  local umin="$1" umax="$2"
+  local umin=$1 umax=$2
   (((PREV_UMIN<0||PREV_UMIN>umin)&&(PREV_UMIN=umin),
     (PREV_UMAX<0||PREV_UMAX<umax)&&(PREV_UMAX=umax)))
 }
 function ble-highlight-layer/update/shift {
-  local __dstArray="$1"
-  local __srcArray="${2:-$__dstArray}"
+  local __dstArray=$1
+  local __srcArray=${2:-$__dstArray}
   if ((DMIN>=0)); then
     _ble_util_array_prototype.reserve "$((DMAX-DMIN))"
     builtin eval "
@@ -310,7 +310,7 @@ function ble-highlight-layer/update/shift {
 
 function ble-highlight-layer/update/getg {
   g=
-  local LEVEL="$LEVEL"
+  local LEVEL=$LEVEL
   while ((--LEVEL>=0)); do
     "ble-highlight-layer:${_ble_highlight_layer__list[LEVEL]}/getg" "$1"
     [[ $g ]] && return
@@ -321,7 +321,7 @@ function ble-highlight-layer/update/getg {
 function ble-highlight-layer/getg {
   eval "$ble_util_upvar_setup"
 
-  LEVEL="${#_ble_highlight_layer__list[*]}" ble-highlight-layer/update/getg "$1"
+  LEVEL=${#_ble_highlight_layer__list[*]} ble-highlight-layer/update/getg "$1"
 
   ret=$g; eval "$ble_util_upvar"
 }
@@ -483,7 +483,7 @@ _ble_highlight_layer_region_osel=()
 _ble_highlight_layer_region_osgr=
 
 function ble-highlight-layer:region/update-dirty-range {
-  local -i a="$1" b="$2" p q
+  local -i a=$1 b=$2 p q
   ((a==b)) && return
   (((a<b?(p=a,q=b):(p=b,q=a)),
     (umin<0||umin>p)&&(umin=p),
@@ -646,17 +646,17 @@ function ble-highlight-layer:disabled/update {
     PREV_BUFF=_ble_highlight_layer_disabled_buff
 
     if [[ $_ble_highlight_layer_disabled_prev ]]; then
-      PREV_UMIN="$DMIN" PREV_UMAX="$DMAX"
+      PREV_UMIN=$DMIN PREV_UMAX=$DMAX
     else
-      PREV_UMIN=0 PREV_UMAX="${#1}"
+      PREV_UMIN=0 PREV_UMAX=${#1}
     fi
   else
     if [[ $_ble_highlight_layer_disabled_prev ]]; then
-      PREV_UMIN=0 PREV_UMAX="${#1}"
+      PREV_UMIN=0 PREV_UMAX=${#1}
     fi
   fi
 
-  _ble_highlight_layer_disabled_prev="$_ble_edit_line_disabled"
+  _ble_highlight_layer_disabled_prev=$_ble_edit_line_disabled
 }
 
 function ble-highlight-layer:disabled/getg {
@@ -668,7 +668,7 @@ function ble-highlight-layer:disabled/getg {
 _ble_highlight_layer_overwrite_mode_index=-1
 _ble_highlight_layer_overwrite_mode_buff=()
 function ble-highlight-layer:overwrite_mode/update {
-  local oindex="$_ble_highlight_layer_overwrite_mode_index"
+  local oindex=$_ble_highlight_layer_overwrite_mode_index
   if ((DMIN>=0)); then
     if ((oindex>=DMAX0)); then
       ((oindex+=DMAX-DMAX0))
@@ -679,18 +679,18 @@ function ble-highlight-layer:overwrite_mode/update {
 
   local index=-1
   if [[ $_ble_edit_overwrite_mode ]]; then
-    local next="${_ble_edit_str:_ble_edit_ind:1}"
+    local next=${_ble_edit_str:_ble_edit_ind:1}
     if [[ $next && $next != [$'\n\t'] ]]; then
-      index="$_ble_edit_ind"
+      index=$_ble_edit_ind
 
       local g sgr
 
       # PREV_BUFF の内容をロード
-      if ((DMIN<0&&oindex>=0)); then
+      if ((PREV_UMIN<0&&oindex>=0)); then
         # 前回の結果が残っている場合
         ble-highlight-layer/update/getg "$oindex"
         ble-color-g2sgr -v sgr "$g"
-        _ble_highlight_layer_overwrite_mode_buff[oindex]="$sgr${_ble_highlight_layer_plain_buff[oindex]}"
+        _ble_highlight_layer_overwrite_mode_buff[oindex]=$sgr${_ble_highlight_layer_plain_buff[oindex]}
       else
         # コピーした方が速い場合
         builtin eval "_ble_highlight_layer_overwrite_mode_buff=(\"\${$PREV_BUFF[@]}\")"
@@ -702,11 +702,11 @@ function ble-highlight-layer:overwrite_mode/update {
       # ((g^=_ble_color_gflags_Revert))
       ble-color-face2g overwrite_mode
       ble-color-g2sgr -v sgr "$g"
-      _ble_highlight_layer_overwrite_mode_buff[index]="$sgr${_ble_highlight_layer_plain_buff[index]}"
+      _ble_highlight_layer_overwrite_mode_buff[index]=$sgr${_ble_highlight_layer_plain_buff[index]}
       if ((index+1<${#1})); then
-        ble-highlight-layer/update/getg "$((index+1))"
+        ble-highlight-layer/update/getg $((index+1))
         ble-color-g2sgr -v sgr "$g"
-        _ble_highlight_layer_overwrite_mode_buff[index+1]="$sgr${_ble_highlight_layer_plain_buff[index+1]}"
+        _ble_highlight_layer_overwrite_mode_buff[index+1]=$sgr${_ble_highlight_layer_plain_buff[index+1]}
       fi
     fi
   fi
@@ -718,14 +718,14 @@ function ble-highlight-layer:overwrite_mode/update {
   fi
 
   if ((index!=oindex)); then
-    ((oindex>=0)) && ble-highlight-layer/update/add-urange "$oindex" "$((oindex+1))"
-    ((index>=0)) && ble-highlight-layer/update/add-urange "$index" "$((index+1))"
+    ((oindex>=0)) && ble-highlight-layer/update/add-urange "$oindex" $((oindex+1))
+    ((index>=0)) && ble-highlight-layer/update/add-urange "$index" $((index+1))
   fi
 
-  _ble_highlight_layer_overwrite_mode_index="$index"
+  _ble_highlight_layer_overwrite_mode_index=$index
 }
 function ble-highlight-layer:overwrite_mode/getg {
-  local index="$_ble_highlight_layer_overwrite_mode_index"
+  local index=$_ble_highlight_layer_overwrite_mode_index
   if ((index>=0&&index==$1)); then
     # ble-highlight-layer/update/getg "$1"
     # ((g^=_ble_color_gflags_Revert))
@@ -738,14 +738,14 @@ function ble-highlight-layer:overwrite_mode/getg {
 
 _ble_highlight_layer_RandomColor_buff=()
 function ble-highlight-layer:RandomColor/update {
-  local text="$1" sgr i
+  local text=$1 sgr i
   _ble_highlight_layer_RandomColor_buff=()
   for ((i=0;i<${#text};i++)); do
     # _ble_highlight_layer_RandomColor_buff[i] に "<sgr><表示文字>" を設定する。
     # "<表示文字>" は ${_ble_highlight_layer_plain_buff[i]} でなければならない
     # (或いはそれと文字幅が同じ物…ただそれが反映される保証はない)。
     ble-color-gspec2sgr -v sgr "fg=$((RANDOM%256))"
-    _ble_highlight_layer_RandomColor_buff[i]="$sgr${_ble_highlight_layer_plain_buff[i]}"
+    _ble_highlight_layer_RandomColor_buff[i]=$sgr${_ble_highlight_layer_plain_buff[i]}
   done
   PREV_BUFF=_ble_highlight_layer_RandomColor_buff
   ((PREV_UMIN=0,PREV_UMAX=${#text}))
@@ -763,7 +763,7 @@ function ble-highlight-layer:RandomColor2/update {
   ble-highlight-layer/update/shift _ble_highlight_layer_RandomColor2_buff
   for ((i=DMIN;i<DMAX;i++)); do
     ble-color-gspec2sgr -v sgr "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
-    _ble_highlight_layer_RandomColor2_buff[i]="$sgr${_ble_highlight_layer_plain_buff[i]}"
+    _ble_highlight_layer_RandomColor2_buff[i]=$sgr${_ble_highlight_layer_plain_buff[i]}
   done
   PREV_BUFF=_ble_highlight_layer_RandomColor2_buff
   ((PREV_UMIN=0,PREV_UMAX=${#text}))
@@ -776,4 +776,4 @@ function ble-highlight-layer:RandomColor2/getg {
   ble-color-gspec2g -v g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
 }
 
-_ble_highlight_layer__list=(plain syntax region disabled overwrite_mode)
+_ble_highlight_layer__list=(plain syntax region overwrite_mode disabled)
