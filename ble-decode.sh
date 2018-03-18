@@ -1231,7 +1231,7 @@ function ble-bind {
 #   従って、enter で -icanon を設定する事にする。
 #
 function .ble-stty.initialize {
-  stty -ixon -nl -icrnl -icanon \
+  stty -ixon -echo -nl -icrnl -icanon \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_stty_stat=1
