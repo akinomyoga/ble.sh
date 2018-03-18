@@ -465,7 +465,7 @@ function ble-highlight-layer:plain/getg {
 function ble-color/basic/faces-onload-hook {
   ble-color-defface region         bg=60,fg=white
   ble-color-defface region_target  bg=153,fg=black
-  ble-color-defface disabled       fg=gray
+  ble-color-defface disabled       fg=242
   ble-color-defface overwrite_mode fg=black,bg=51
 }
 ble-color/faces/addhook-onload ble-color/basic/faces-onload-hook

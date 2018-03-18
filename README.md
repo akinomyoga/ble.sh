@@ -129,22 +129,26 @@ bleopt edit_abell=
 The colors and attributes used in the syntax highlighting are controled by `ble-color-setface` function. The following code reproduces the default configuration:
 ```bash
 ble-color-setface region                   bg=60,fg=white
-ble-color-setface disabled                 fg=gray
+ble-color-setface region_target            bg=153,fg=black
+ble-color-setface disabled                 fg=242
 ble-color-setface overwrite_mode           fg=black,bg=51
 ble-color-setface syntax_default           none
 ble-color-setface syntax_command           fg=red
 ble-color-setface syntax_quoted            fg=green
 ble-color-setface syntax_quotation         fg=green,bold
-ble-color-setface syntax_expr              fg=navy
+ble-color-setface syntax_expr              fg=26
 ble-color-setface syntax_error             bg=203,fg=231
 ble-color-setface syntax_varname           fg=202
 ble-color-setface syntax_delimiter         bold
 ble-color-setface syntax_param_expansion   fg=purple
 ble-color-setface syntax_history_expansion bg=94,fg=231
 ble-color-setface syntax_function_name     fg=purple
-ble-color-setface syntax_comment           fg=gray
-ble-color-defface syntax_document          fg=94
-ble-color-defface syntax_document_begin    fg=94,bold
+ble-color-setface syntax_comment           fg=242
+ble-color-setface syntax_glob              fg=198,bold
+ble-color-setface syntax_brace             fg=37,bold
+ble-color-setface syntax_tilde             fg=navy,bold
+ble-color-setface syntax_document          fg=94
+ble-color-setface syntax_document_begin    fg=94,bold
 ble-color-setface command_builtin_dot      fg=red,bold
 ble-color-setface command_builtin          fg=red
 ble-color-setface command_alias            fg=teal
@@ -152,11 +156,16 @@ ble-color-setface command_function         fg=purple
 ble-color-setface command_file             fg=green
 ble-color-setface command_keyword          fg=blue
 ble-color-setface command_jobs             fg=red
-ble-color-setface command_directory        fg=navy,underline
-ble-color-setface filename_directory       fg=navy,underline
+ble-color-setface command_directory        fg=26,underline
+ble-color-setface filename_directory       fg=26,underline
 ble-color-setface filename_link            fg=teal,underline
 ble-color-setface filename_executable      fg=green,underline
 ble-color-setface filename_other           underline
+ble-color-setface filename_socket          fg=cyan,bg=black,underline
+ble-color-setface filename_pipe            fg=lime,bg=black,underline
+ble-color-setface filename_character       fg=white,bg=black,underline
+ble-color-setface filename_block           fg=yellow,bg=black,underline
+ble-color-setface filename_warning         fg=red,underline
 ```
 
 The color codes can be checked in output of the function `ble-color-show` (defined in `ble.sh`):
