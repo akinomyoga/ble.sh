@@ -1342,8 +1342,7 @@ function ble/term/audible-bell {
 }
 function ble/term/visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
-  local cols=${LINES:-25}
-  local lines=${COLUMNS:-80}
+  local cols=${COLUMNS:-80}
   local message="$*"
   message=${message:-$bleopt_vbell_default_message}
 
