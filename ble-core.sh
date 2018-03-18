@@ -1394,7 +1394,7 @@ _ble_term_stty_state=
 #   従って、enter で -icanon を設定する事にする。
 
 function ble/term/stty/initialize {
-  ble/bin/stty -ixon -nl -icrnl -icanon \
+  ble/bin/stty -ixon -echo -nl -icrnl -icanon \
     kill   undef  lnext  undef  werase undef  erase  undef \
     intr   undef  quit   undef  susp   undef
   _ble_term_stty_state=1

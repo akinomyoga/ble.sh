@@ -719,7 +719,8 @@ tech
       というか '\s-\v\$ ' にするべきの気がして来た。
       そうすれば bash で動かしているという事が分かる。
 
-    1 現在のキー入力を表示する機能を搭載する?
+    - 現在のキー入力を表示する機能を搭載する?
+      →これはやはり何らかのソフトウェアを使うのが現実的だろう。
 
     - done: 黒背景の時の着色の調整を行う。
       コメント・disable の着色が暗い。
@@ -727,6 +728,30 @@ tech
 
     3 どの様な順で操作をするのかまとめておく。
 
+      元々の動画ではどの様にしていたかと言うと…。
+
+      - echo hello world
+      - printf hello
+      - [[ a == b ]]
+      - echo "hello $(echo bash $(echo world))"
+      - history search "done"
+      - echo 'select, copy and paste'
+      - echo insert mode
+      - echo lib/core-complete.sh ble-decode.sh make_command.sh
+      - echo histexpand
+      - cat <<EOF
+        this is the $(echo multiline mode).
+        EOF
+
+      これにインストールの様子も加えると良いだろう。
+
+      - git clone git@github.com:akinomyoga/ble.sh.git
+        cd !$:t:r
+        make
+        make install
+
+      然し、それとは別に現在出ているエラーを修正する必要がある。
+      set -o vi した直後に出るのは何だろう?
 
 2018-03-14
 
@@ -2824,6 +2849,20 @@ tech
 -------------------------------------------------------------------------------
 
 2018-03-18
+
+  * bug: "set -o emacs" もしくは "set -o vi" で切り替えた直後に stty が変
+
+    何度か繰り返しても同じ様である。つまり初回だけなる等の事ではない。
+    うーん。調べてみると、ble/term/finalize して ble/term/initialize している筈である。
+
+    →どうも ble/term/stty/initialize と ble/term/stty/enter で微妙に違いがある。
+    前者の stty に -echo が指定されていない。今回は、新しく指定する事にした。
+    ちゃんと動くか確かめる。
+
+    - ok: set -o vi 及び set -o emacs で動作する。
+    - ok: source ble.sh で動く。
+    - ok: bashrc からの読込でも動く。
+    - ok: ble-detach & ble-attach でも動く。
 
   * bug: mintty (横幅 56) で起動すると unbound keyseq ... 等の表示が欠ける [#D0691]
 
