@@ -941,7 +941,7 @@ function ble-highlight-layer:overwrite_mode/update {
       local g sgr
 
       # PREV_BUFF の内容をロード
-      if ((DMIN<0&&oindex>=0)); then
+      if ((PREV_UMIN<0&&oindex>=0)); then
         # 前回の結果が残っている場合
         ble-highlight-layer/update/getg "$oindex"
         ble-color-g2sgr -v sgr "$g"
@@ -1031,4 +1031,4 @@ function ble-highlight-layer:RandomColor2/getg {
   ble-color-gspec2g -v g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
 }
 
-_ble_highlight_layer__list=(plain syntax region disabled overwrite_mode)
+_ble_highlight_layer__list=(plain syntax region overwrite_mode disabled)

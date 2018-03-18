@@ -1,1 +1,1 @@
---exclude=./out ble.pp
+--exclude=./out --exclude=./dist ble.pp
