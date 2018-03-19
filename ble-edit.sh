@@ -2750,17 +2750,20 @@ function ble/textarea#redraw-cache {
 }
 
 ## 関数 ble/textarea#adjust-for-bash-bind
-##   プロンプト・編集文字列の表示更新を ble/textarea に対して行う。
+##   プロンプト・編集文字列の表示位置修正を行う。
 ##
 ## @remarks
-## この関数は bind -x される関数から呼び出される事を想定している。
-## 通常のコマンドとして実行される関数から呼び出す事は想定していない。
-## 内部で PS1= 等の設定を行うのでプロンプトの情報が失われる。
-## また、READLINE_LINE, READLINE_POINT 等のグローバル変数の値を変更する。
+##   この関数は bind -x される関数から呼び出される事を想定している。
+##   通常のコマンドとして実行される関数から呼び出す事は想定していない。
+##   内部で PS1= 等の設定を行うのでプロンプトの情報が失われる。
+##   また、READLINE_LINE, READLINE_POINT 等のグローバル変数の値を変更する。
+##
+## 2018-03-19
+##   どうやら stty -echo の時には READLINE_LINE に値が設定されていても、
+##   Bash は何も出力しないという事の様である。
+##   従って、単に FEADLINE_LINE に文字を設定すれば良い。
 ##
 function ble/textarea#adjust-for-bash-bind {
-  ble/textarea#render
-
   if [[ $bleopt_suppress_bash_output ]]; then
     PS1= READLINE_LINE=$'\n' READLINE_POINT=0
   else
@@ -2782,7 +2785,9 @@ function ble/textarea#adjust-for-bash-bind {
 
     ble-color-g2sgr "$lg"
     ble-edit/draw/put "$ret"
-    ble-edit/draw/bflush
+
+    # 2018-03-19 stty -echo の時は Bash は何も出力しないので調整は不要
+    #ble-edit/draw/bflush
   fi
 }
 
@@ -7032,11 +7037,12 @@ function ble-edit/bind/.tail-without-draw {
   ble-edit/bind/stdout.off
 }
 
-if ((_ble_bash>40000)); then
+if ((_ble_bash>=40000)); then
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
-    ble/textarea#adjust-for-bash-bind
-    ble/util/idle.do && ble/textarea#adjust-for-bash-bind # bash-4.0+
+    ble/textarea#render
+    ble/util/idle.do && ble/textarea#render
+    ble/textarea#adjust-for-bash-bind # bash-4.0+
     ble-edit/bind/stdout.off
   }
 else

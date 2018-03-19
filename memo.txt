@@ -705,6 +705,16 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
+2018-03-19
+
+  * bash-bug: bash-dev で ble.sh をロードするとクラッシュする。
+
+  * bash-bug: bash-4.4, dev で以下を実行するとエラーメッセージが出る。
+
+    $ function A { bind -x '"\C-t":A'; }
+    $ A
+    <C-t><C-t>...
+
 2018-03-18
 
   * アニメーション gif を作る。
@@ -2850,7 +2860,150 @@ tech
 
 2018-03-18
 
-  * bug: "set -o emacs" もしくは "set -o vi" で切り替えた直後に stty が変
+  * bug: [再現せず] bleopt_suppress_bash_output= で、入力された文字が表示されない [#D0695]
+    これは initialize の -echo を消したら直ったが、
+    何故これで直るのかが分からない。
+    後で調べる必要がある。
+
+    これは chatoyancy での振る舞いである。
+    これは padparadscha では再現しない。
+    bash-4.4 でも再現しない。
+    再度 chatoyancy で試してみたが再現しない。
+
+  * bug: bleopt_suppress_bash_output= で、一文字表示位置がずれる [#D0694]
+
+    | 元々、Bash が文字を出力する事を見越して一文字戻した位置にしているが、
+    | その文字が実際には出力されていない、という事のような気がする。
+    |
+    | 因みに bash-3.2 以下ではずれは発生していない。
+    | →これはそもそも adjust を使用していないからだった。
+    | adjust を使用するのは READLINE_LINE に文字列を設定して置かないと、
+    | C-d を検出する事ができなかったからである。
+    | しかし bash-3.2 ではそもそもそれも出来ないので adjust はしない。
+    |
+    | bash-4.0 以上では READLINE_LINE に文字を設定して C-d で exit しない様にしつつ、
+    | READLINE_LINE の描画が行われる事を前提として調整を行う。
+    | しかし、いつの間にかに READLINE_LINE の内容が描画されない様になっていた。
+    | 昔は確かに描画されていて問題になっていたので、これでちゃんと調整できていたはずだ。
+    |
+    | stty などの何らかの設定の影響を受けて描画されたりされなかったりするのかもしれない。
+    | →どうやら stty -echo の状態だと何も出力されないという事の様だ。
+
+    結論: stty -echo にすると Bash は何も出力しなくなるので、
+      READLINE_LINE に有限の長さの文字列が入っていても問題は起こらない。
+
+2018-03-18
+
+  * bash-bug: chat で "set -o vi/emacs" すると直後にエラーメッセージが出る [#D0693]
+    →これは結局 bash-4.4 のバグの様に思われる。
+      set -o vi/emacs でエラーメッセージが表示されるだけで実害はないので対応はしない。
+
+    エラーメッセージは stdout.off の間に起こっている様である。
+
+    stdout.off stdout.on の呼び出しを観察してみると on が連続で二回呼び出されている箇所がある。
+    (単に、これは stdout.off が呼び出される前にエラーで中断したという事かもしれないが。)
+
+    うーん。エラーメッセージは前回の off とその直後の on の間に起こっている筈である。
+    先ず stdout.off に関しては
+    ble-edit/exec:gexec/.end -> ble-edit/bind/.tail -> stdout.off と呼び出されている。
+    ble-edit/bind/.tail は stdout.off を最後に呼び出しているので、
+    ここでエラーメッセージが出る事はない。
+    ble-edit/exec:gexec/.end についても ble-edit/bind/.tail を最後に呼び出している。
+    そうすると $_ble_decode_bind_hook に設定されている値が怪しい。
+
+    うーん。エラーメッセージが出た可能性のある時の _ble_decode_bind_hook の値は
+    以下の通りである。特に怪しい所はないし gexec/.end は実際に呼び出されているし、
+    gexec/.end より後に実行されている物も存在しない。
+
+    | ble-edit/exec:gexec/.begin
+    | builtin eval -- 'ble-edit/exec:gexec/.eval-prologue '\''set -o vi'\'' "$_ble_edit_exec_lastarg"
+    | set -o vi
+    | ble-edit/exec:gexec/.save-last-arg'
+    | ble-edit/exec:gexec/.eval-epilogue
+    | trap - INT DEBUG
+    | ble-edit/exec:gexec/.end
+
+    という事は、 stdout.off の直後ではなくて、stdout.on の直前が怪しいという事になる。
+    呼び出しの順序は ble-decode/.hook → ble-decode/PROLOGUE → ble-edit/bind/.head → ble-edit/bind/stdout.on
+    の様になっている。chat では特に $bleopt_suppress_bash_output を弄っていないので、
+    この時には ble-edit/bind/.head は単に stdout.on を呼び出すだけである。
+    ble-decode/PROLOGUE を見てみると .head より後に何か呼び出している。と思ったが、
+    エラーメッセージが出てくるのは直後ではなくて直前のはずなので、
+    .head より後に呼び出している物に関しては気にしなくても良い。
+    そうすると ble-decode/.hook が悪いという事になるが、
+    IFS を設定している以外には PROLOGUE より前には何も実行していない。
+
+    こうなってくると次に怪しいのは bind の中身である。
+    更に気付いた事は、これは chat に特有というよりは bash-4.4 に特有の様である。
+    padparadscha の bash-4.4 でも再現した。
+    何れにしても調査を続ける事にする。
+    うーん。bind -spX の出力は stdout.on, off で見張っても変化していない。
+
+    - detach/attach の前後で出力してみようと思ったが…。
+      これらは gexec の実行過程に組み込まれているので、
+      タイミング的には set -o emacs/vi したのと同じ時に実行されている。
+      なので、エラーメッセージがこの時に表示されるという事は元々ない。
+
+    - 或いは、bleopt_suppress_bash_output= として見たら状況は変わるか?
+
+      そうすると今度はまともに動かない…。何故だろう。
+      -echo を指定したせいだろうか→その様だ。
+      うーん。bleopt_suppress_bash_output と stty で何が関係しているのだろう?
+      これについては後で調べる必要がある。
+      取り敢えず調査の為に -echo は外しておく事にする。
+      後、座標の位置が一文字ずれている…。
+      Bash によって出力されると予想される物が出力されていないという事の気がする。
+
+      何れにしても bleopt_suppress_bash_output= でも再現した。
+      (この場合には画面に直接エラーメッセージが出力される事になる)。
+
+    - もしかすると set -o emacs; set -o vi としただけでもエラーメッセージが出るかもしれない。
+      と思ったが何も起こらなかった。やはり binding を弄るとなるという事なのか?
+
+    - 或いは、set -o emacs は全然関係なくて単に ble-decode-detach 及び ble-decode-attach
+      だけでもエラーメッセージが発生するのかもしれない→再現した…。
+      更に、ble-decode/unbind; ble-decode/bind でも再現するか→再現する。
+      これらの関数は基本的に source しているだけである。
+      % と思ったら source しているファイルを cat してくっつけて、それを source すると再現しない。
+      % % source *.unbind; source *.bind をしても再現しない。
+      % % 関数の中では他に特別な事をしている様には見えない。
+      % % という事は関数内から source すると駄目なのか。
+      % % →やはり再現した。
+      →source b.sh (b.sh は unbind と bind をくっつけたファイル) でも再現した。
+
+    - 次に b.sh を編集して試す。先ず初めに bash-4.3 と bash-4.4 の違いと言えば
+      ^X を明示的に bind しているかどうかである。
+      ^X を含まない b.sh を作ってみるとエラーメッセージは再現しなかった。
+      ^X を含む行だけの b.sh を作ってみてもエラーメッセージは再現しない。
+      改めて両方を含むファイルを source するとちゃんと再現する。うーん。
+
+      何と、中身を sort してみたら再現しなくなった。
+      また、ble-decode/bind だけでも再現する。
+      どんどん小さくしていくと、最終的に以下の一行を含むスクリプトで既に再現する。
+
+        bind -x '"\C-m":ble-decode/.hook 13; builtin eval "$_ble_decode_bind_hook"'
+
+      source せずに直接実行しても再現するという事を確認した。
+      更に、これは C-j を使って実行している時には再現しない。
+
+    - つまり、bind -x において現在実行しているキーマップに
+      -x を指定するとエラーになるという事だろうか。
+      と思って bash --norc で以下を試してみた所、再現する。
+
+      $ function A { bind -x '"\C-t":A'; }
+      $ A
+      <C-t><C-t>...
+
+      これは明らかに bash-4.4 のバグである。
+      bash-dev でも確認してみたが未だ治っていない。
+      そして、これは ble.sh 側では何ともならない…というか頑張れば何とかなる可能性もあるが、
+      現在の方法を滅茶苦茶に変更しなければならない気がするので非現実的である。
+
+      これは保留という事にする。
+
+      というか bash-dev で ble.sh をロードするとクラッシュする…。
+
+  * bug: "set -o emacs" もしくは "set -o vi" で切り替えた直後に stty が変 [#D0692]
 
     何度か繰り返しても同じ様である。つまり初回だけなる等の事ではない。
     うーん。調べてみると、ble/term/finalize して ble/term/initialize している筈である。
@@ -2997,21 +3150,21 @@ tech
     そもそも実装する意義を失った。今後も強い需要が出てくるとは考えにくいので削除する。
 
     | 2017-09-25
-    | 
+    |
     | * ble.sh リロード機能?
-    | 
+    |
     |   complete.sh の不整合で度々に問題になるのでリロード機能ぐらいはあっても良いのでは。
     |   また complete.sh はそれ自身として対策は考えたほうが良い気はする。
     |   例えばバージョンごとにディレクトリを作成してその中で管理するなど。
-    | 
+    |
     |   以前 declare -ir だったものを全て消した。
     |   実はリロードできるのではないか。
     |   但し注意するべき点はいくつかある。
-    | 
+    |
     |   先ず bind を再度実行すると変なことになると思われる。
     |   これについては何らかの変数で現在 bind 中かどうかを判定していたはず。
     |   現在の状態に関する類似のものは色々あるが、これらについては上書きしないようにする必要がある。
-    | 
+    |
     |   また bash-3.0 の C-d 対策に使用する子プロセスや、
     |   stdout/on, off の状態などにも気をつける必要がある。
 

@@ -1765,7 +1765,7 @@ function ble-decode-detach {
   # 元のキー割り当ての復元
   if [[ -s "$_ble_base_run/$$.bind.save" ]]; then
     source "$_ble_base_run/$$.bind.save"
-    ble/bin/rm -f "$_ble_base_run/$$.bind.save"
+    : >| "$_ble_base_run/$$.bind.save"
   fi
 
   [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode current_editing_mode
