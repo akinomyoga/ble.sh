@@ -1183,7 +1183,8 @@ function ble-bind {
                 local q=\' Q="''\'"
                 command="ble-edit/bind/execute-edit-command '${command//$q/$Q}'" ;;
               (c) # コマンド実行
-                command=".ble-edit.bind.command $command" ;;
+                local q=\' Q="''\'"
+                command=".ble-edit.bind.command '${command//$q/$Q}'" ;;
               (*)
                 echo "error: combination of -x and -c flags." 1>&2 ;;
               esac
