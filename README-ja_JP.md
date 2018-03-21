@@ -12,7 +12,9 @@
 
 このスクリプトは [**BSD License**](LICENSE.md) (3条項 BSD ライセンス) の下で提供されます。
 
-> ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
+> デモ
+>
+> ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
 ## 使い方
 **最新の git repository のソースから生成して使う場合**

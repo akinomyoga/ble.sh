@@ -12,7 +12,9 @@ Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 
 This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD license).
 
-> ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/demo.gif)
+> Demo
+>
+> ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
 ## Usage
 **Generate `ble.sh` from source**
