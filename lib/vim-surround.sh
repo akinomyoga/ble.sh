@@ -154,7 +154,7 @@ function ble/lib/vim-surround.sh/load-template {
 
   # read user settings
 
-  if [[ ${ins//[0-9]} ]]; then
+  if [[ ${ins//[0-9]} && ! ${ins//[_0-9a-zA-Z]} ]]; then
     local optname=bleopt_vim_surround_$ins
     template=${!optname}
     [[ $template ]] && return
