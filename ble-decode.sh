@@ -1499,7 +1499,8 @@ function ble-bind {
               local q=\' Q="''\'"
               command="ble/widget/.EDIT_COMMAND '${command//$q/$Q}'" ;;
             (c) # コマンド実行
-              command="ble/widget/.SHELL_COMMAND $command" ;;
+              local q=\' Q="''\'"
+              command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
             ('@') ;; # 直接実行
             (*)
               echo "error: unknowon combination of flags \`-$flags'." 1>&2
