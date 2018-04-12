@@ -1180,7 +1180,8 @@ function ble-bind {
               case "$fX$fC" in
               (x)
                 # 編集用の関数
-                command="ble-edit/bind/execute-edit-command $command" ;;
+                local q=\' Q="''\'"
+                command="ble-edit/bind/execute-edit-command '${command//$q/$Q}'" ;;
               (c) # コマンド実行
                 command=".ble-edit.bind.command $command" ;;
               (*)

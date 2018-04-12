@@ -3198,6 +3198,7 @@ function .ble-edit.bind.command {
 }
 
 function ble-edit/bind/execute-edit-command {
+  local command=$1
   local READLINE_LINE="$_ble_edit_str"
   local READLINE_POINT="$_ble_edit_ind"
   eval "$command" || return 1
