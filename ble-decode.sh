@@ -1409,7 +1409,8 @@ function ble-bind {
                 return 1
               fi ;;
             (x) # 編集用の関数
-              command="ble/widget/.EDIT_COMMAND $command" ;;
+              local q=\' Q="''\'"
+              command="ble/widget/.EDIT_COMMAND '${command//$q/$Q}'" ;;
             (c) # コマンド実行
               command="ble/widget/.SHELL_COMMAND $command" ;;
             ('@') ;; # 直接実行
@@ -1735,9 +1736,10 @@ function ble-decode-attach {
   ble/util/save-editing-mode _ble_decode_bind_state
   [[ $_ble_decode_bind_state == none ]] && return 1
 
+  # bind/unbind 中に C-c で中断されると大変なので先に stty を設定する必要がある
   ble/term/initialize # 3ms
 
-  # 元のキー割り当ての保存
+  # 元のキー割り当ての保存・unbind
   builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)" # 21ms
 
   # ble.sh bind の設置

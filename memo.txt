@@ -276,7 +276,7 @@ bash 実装上で注意するべき事
 
 bashbug: 実装上で注意するべき事
 
-  * bash-4.3 \C-@ 関係に bind -x すると正しく動かない
+  * bash-4.3, 4.4 \C-@ 関係に bind -x すると正しく動かない
 
     bash-4.4 での動作については未だ確認していない。
     → bash-4.4 でもやはり動かない。
@@ -352,7 +352,7 @@ bashbug: 実装上で注意するべき事
 
   * bash-4.0 segfault
 
-    以下で segfault を起こすことが分かった。
+    以下で segfault を起こすことが分かった。bash-4.1 以降では直っている。
 
     bash-4.0 -c 'function f1 { COMPREPLY=(alpha); }; compgen -F f1 2>/dev/null'
 
@@ -361,13 +361,14 @@ bashbug: 実装上で注意するべき事
     念のためここに記録に残しておく。
 
   * bash-4.2
+
     declare -g -r var とした時に、
     グローバル変数が定義されていなければローカルに新しく変数を作る様だ。
     bash-4.3 で直っている。
 
 bashbug 算術式周りのバグと注意点
 
-  * bash-3.0 - 4.4 算術式:
+  * bash-3.0 - 4.4.7 算術式:
 
     条件分岐で実行されない部分でも配列の添字は 0 以上でなければならない。
     例えば以下はエラーになる @ bash-3.0, 3.1, 3.2, 4.0, 4.2, 4.3
@@ -705,15 +706,57 @@ tech
     ToDo
 -------------------------------------------------------------------------------
 
-2018-03-19
+2018-04-12
 
-  * bash-bug: bash-dev で ble.sh をロードするとクラッシュする。
+  * ble-bind -xf で cd を実行することについて。
+
+    プロンプトに現在のディレクトリを表示している場合、
+    cd で移動した後にプロンプトを再計算したい。
+    その時は ble-bind -xf 'C-@' 'cd ..; _ble_edit_prompt=; ble/textarea#invalidate' 等のようにすれば良い。
+    しかし面倒なので ble-edit/prompt#invalidate の様なものを用意しても良いのではないかという気がする。
+    同時に ble-edit/prompt/* 系統の関数名についても考え直したい。
+    というより単に ble/edit/prompt/* で良いのかもしれないが。
+    或いは ble/textarea/prompt/* の方が良いかもしれない。
+
+2018-03-19
 
   * bash-bug: bash-4.4, dev で以下を実行するとエラーメッセージが出る。
 
     $ function A { bind -x '"\C-t":A'; }
     $ A
     <C-t><C-t>...
+
+    これは微妙な操作なのでそのまま報告しても無視されるかもしれない。
+    これについても原因を解明してから対処したいものである。
+
+    そもそも bind -x を実行している箇所は何処だろう。
+    bash_execute_unix_command で実行している。
+    うーん。これを解決するには
+
+    a bash_execute_unix_command において
+      実行するコマンドの文字列を予めコピーしておく。
+    b builtins/evalstring.c: parse_string() において
+      一つずつコマンドを実行するのではなくて、
+      まとめて読み取って実行するモードを付け加える。
+
+      然し、その為には yyparse を弄るなどしなければならず大変?
+
+    論点
+
+    - 微妙な操作であるがこれは reduced test case だから。
+      自分はもっと複雑な処理で実際に必要と判断している。
+    - コマンドを
+    - 攻撃の対象になる可能性がある。
+    - 少なくとも、現在実行中のものに bind しても大丈夫にするか、
+      現在実行中かどうかを検出して実行中ならばエラーを吐くなどする必要がある。
+      自分は使っているので大丈夫なようにする方を望む。
+      また大丈夫なようにするのは比較的簡単で、
+      cmd をコピーすれば良い。
+
+      コストが大きいように感じるかもしれないが、
+      どうせ evalstring で command を parse するなどするので、
+      元々のコストが大きいので気にしなくても良い。
+      また、キーボード入力の解釈にそんなに性能は不要のはず。
 
 2018-03-18
 
@@ -744,7 +787,7 @@ tech
       - printf hello
       - [[ a == b ]]
       - echo "hello $(echo bash $(echo world))"
-      - history search "done"
+      - # history search
       - echo 'select, copy and paste'
       - echo insert mode
       - echo lib/core-complete.sh ble-decode.sh make_command.sh
@@ -2857,6 +2900,29 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2018-03-19
+
+  * bash-bug: bash-dev で ble.sh をロードするとクラッシュする [#D0696]
+
+    取り敢えず何処でクラッシュするのかだけは特定しておきたい。
+    どんどん絞っていくと以下を実行しただけでクラッシュする。
+    ~/.bashrc の先頭に書いても其処でクラッシュするので ble.sh の影響ではない。
+
+    bind -r '\C-j'
+    bind -r '\C-m'
+
+    gdb で実行して bt で backtrace を見ると
+    rl_generic_bind でクラッシュしている。
+    bash-dev で見てみると lib/readline/bind.c で実装されている。
+    どうやらクラッシュは、最後の方の
+
+    lib/readline/bind.c:460:  (FUNCTION_TO_KEYMAP(prevmap, prevkey) == rl_binding_keymap) &&
+
+    で起こっている。FUNCTION_TO_KEYMAP は (Keymap) prevmap[prevkey].function に変換される。
+    prevmap 及び prevkey を出力してみると prevkey が滅茶苦茶な負の値になっている。
+
+    →これは報告した https://lists.gnu.org/archive/html/bug-bash/2018-03/msg00155.html
 
 2018-03-18
 

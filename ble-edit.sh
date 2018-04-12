@@ -7104,6 +7104,7 @@ function ble/widget/.SHELL_COMMAND {
 ## 関数 ble/widget/.EDIT_COMMAND command
 ##   ble-bind -xf で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND {
+  local command=$1
   local READLINE_LINE=$_ble_edit_str
   local READLINE_POINT=$_ble_edit_ind
   eval "$command" || return 1
