@@ -55,3 +55,20 @@ ble-measure 'ble/is-array4 arr2' # 1439.90 usec/eval
 ble-measure 'ble/is-array4 arr'  # 1439.90 usec/eval
 
 # 実は出力を確認しなくても良い。こちらの方が速い。
+
+#------------------------------------------------------------------------------
+# 4 bash-4.4 ${parameter@a} を用いる方法
+
+# 2018-07-15 bash-bug メーリングリストで ${param@a} の存在を知った。
+# bash-4.4 以降の機能の様だ。これを使えば簡単に配列属性を確認できる。
+
+if ((_ble_bash>=40400)); then
+  function ble/is-array5 { [[ ${!1@a} == *a* ]]; }
+  ble/is-array5 arr1 || echo 'error: 5 arr1'
+  ble/is-array5 arr2 && echo 'error: 5 arr2'
+  ble/is-array5 arr  && echo 'error: 5 arr'
+
+  ble-measure 'ble/is-array5 arr1' # 24.80 usec/eval
+  ble-measure 'ble/is-array5 arr2' # 23.30 usec/eval
+  ble-measure 'ble/is-array5 arr'  # 23.10 usec/eval
+fi

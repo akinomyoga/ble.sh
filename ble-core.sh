@@ -116,7 +116,11 @@ function _ble_util_array_prototype.reserve {
 ##   * 今の所は compgen -A arrayvar を用いているが、
 ##     この方法だと bash-4.3 以降では連想配列も配列と判定され、
 ##     bash-4.2 以下では連想配列は配列とはならない。
-function ble/is-array { compgen -A arrayvar -X \!"$1" "$1" &>/dev/null; }
+if ((_ble_bash>=40400)); then
+  function ble/is-array { [[ ${!1@a} == *a* ]]; }
+else
+  function ble/is-array { compgen -A arrayvar -X \!"$1" "$1" &>/dev/null; }
+fi
 
 ## 関数 ble/array#push arr value...
 if ((_ble_bash>=30100)); then

@@ -532,6 +532,8 @@ bash_features
     更に bash-4.3 には declare -gA を二度行うとクラッシュするバグがあったらしい。
     現在の最新版ではそのような振る舞いは見られない?
 
+  * ${param@a} (attributes) 及び他の transformation は bash-4.4 より
+
 
 tech
 
