@@ -33,15 +33,19 @@ if [[ $ZSH_VERSION ]]; then
     fi
   }
 else
+  ## @fn ble-measure/.time command
+  ##   @var[in]  n
+  ##   @var[out] utot usec
   function ble-measure/.time {
+    utot=0 usec=0
     local word utot1 usec1
     local head=
     for word in $({ time ble-measure/.loop "$n" "$*" &>/dev/null;} 2>&1); do
       local rex='(([0-9])+m)?([0-9]+)(\.([0-9]+))?s'
       if [[ $word =~  $rex ]]; then
-        local m="${BASH_REMATCH[2]}"
-        local s="${BASH_REMATCH[3]}"
-        local ms="${BASH_REMATCH[5]}000"; ms="${ms::3}"
+        local m=${BASH_REMATCH[2]}
+        local s=${BASH_REMATCH[3]}
+        local ms=${BASH_REMATCH[5]}000; ms=${ms::3}
         
         ((utot1=((10#$m*60+10#$s)*1000+10#$ms)*1000,
           usec1=utot1/n))
@@ -59,6 +63,8 @@ else
 fi
 
 _ble_measure_base=
+_ble_measure_time=1 # 同じ倍率で _ble_measure_time 回計測して最小を取る。
+_ble_measure_threshold=100000 # 一回の計測が threshold [usec] 以上になるようにする
 
 ## @var[out] ret nsec
 function ble-measure {
@@ -69,19 +75,38 @@ function ble-measure {
     _ble_measure_base="$nsec"
   fi
 
-  echo "$*"
-  local n
-  for ((n=1;n<100000;n*=10)); do
-    local utot=0 usec=0
-    ble-measure/.time "$*" || return 1
+  local prev_n= prev_utot=
+  local -i n
+  for n in {1,10,100,1000,10000}\*{1,2,5}; do
+    [[ $prev_n ]] && ((n/prev_n <= 10 && prev_utot*n/prev_n < _ble_measure_threshold*2/5 && n != 50000)) && continue
 
-    if ((utot/1000>=100)); then
-      local nsec0=$_ble_measure_base
-      awk -v utot=$utot -v nsec0=$nsec0 -v n=$n 'BEGIN{printf("  time %6.2f usec/eval\n",utot/n-nsec0/1000);exit}'
-      ((ret=utot/n))
-      ((nsec=n>=1000?(utot/(n/1000)):(utot*1000/n)))
-      ((ret-=nsec0/1000,nsec-=nsec0))
-      return
+    local utot=0 usec=0
+    printf '%s (x%d)...' "$*" "$n" >&2
+    ble-measure/.time "$*" || return 1
+    printf '\r\e[2K' >&2
+
+    prev_n=$n prev_utot=$utot
+
+    ((utot >= _ble_measure_threshold)) || continue
+
+    # 繰り返し計測して最小値を採用
+    if [[ $_ble_measure_time ]]; then
+      local min_utot=$utot i
+      for ((i=2;i<=_ble_measure_time;i++)); do
+        printf '%s' "$* (x$n $i/$_ble_measure_time)..." >&2
+        ble-measure/.time "$*" && ((utot<min_utot)) && min_utot=$utot
+        printf '\r\e[2K' >&2
+      done
+      utot=$min_utot
     fi
+        
+    local nsec0=$_ble_measure_base
+    awk -v utot=$utot -v nsec0=$nsec0 -v n=$n -v title="$* (x$n)" \
+        ' function genround(x, mod) { return int(x / mod + 0.5) * mod; }
+            BEGIN { printf("%12.2f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, 100 / n), title); exit }'
+    ((ret=utot/n))
+    ((nsec=n>=1000?(utot/(n/1000)):(utot*1000/n)))
+    ((ret-=nsec0/1000,nsec-=nsec0))
+    return
   done
 }

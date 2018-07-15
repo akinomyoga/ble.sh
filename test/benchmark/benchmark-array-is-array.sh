@@ -1,6 +1,9 @@
 #!/bin/bash
 
-[[ $_ble_bash ]] || return 1
+if [[ ! $_ble_bash ]]; then
+  echo 'benchmark: Please source from a ble session.' >&2
+  return 1
+fi
 
 source benchmark.sh
 
