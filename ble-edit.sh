@@ -5402,7 +5402,7 @@ function ble-edit/history/add/.command-history {
 }
 
 function ble-edit/history/add {
-  local cmd=$1
+  local command=$1
   if [[ $_ble_edit_history_prefix ]]; then
     local code='
       # PREFIX_history_edit を未編集状態に戻す
@@ -5413,12 +5413,12 @@ function ble-edit/history/add {
       PREFIX_history_dirt=()
 
       local topIndex=${#PREFIX_history[@]}
-      PREFIX_history[topIndex]=$cmd
-      PREFIX_history_edit[topIndex]=$cmd
+      PREFIX_history[topIndex]=$command
+      PREFIX_history_edit[topIndex]=$command
       PREFIX_history_ind=$((topIndex+1))'
     eval "${code//PREFIX/$_ble_edit_history_prefix}"
   else
-    ble-edit/history/add/.command-history "$@"
+    ble-edit/history/add/.command-history "$command"
   fi
 }
 
