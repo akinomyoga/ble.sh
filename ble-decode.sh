@@ -67,7 +67,7 @@ else
     local key=$1
     local -i code=$2
     : ${_ble_decode_kbd__c2k[$code]:=$key}
-    _ble_decode_kbd__k2c_keys="$_ble_decode_kbd__k2c_keys:$key:"
+    _ble_decode_kbd__k2c_keys=$_ble_decode_kbd__k2c_keys:$key:
     _ble_decode_kbd__k2c_vals[${#_ble_decode_kbd__k2c_vals[@]}]=$code
   }
   function ble-decode-kbd/.get-keycode {
@@ -283,12 +283,12 @@ function ble-decode-unkbd/.single-key {
     ret=__UNKNOWN__
   fi
 
-  ((key&ble_decode_Shft)) && ret="S-$ret"
-  ((key&ble_decode_Meta)) && ret="M-$ret"
-  ((key&ble_decode_Ctrl)) && ret="C-$ret"
-  ((key&ble_decode_Altr)) && ret="A-$ret"
-  ((key&ble_decode_Supr)) && ret="s-$ret"
-  ((key&ble_decode_Hypr)) && ret="H-$ret"
+  ((key&ble_decode_Shft)) && ret=S-$ret
+  ((key&ble_decode_Meta)) && ret=M-$ret
+  ((key&ble_decode_Ctrl)) && ret=C-$ret
+  ((key&ble_decode_Altr)) && ret=A-$ret
+  ((key&ble_decode_Supr)) && ret=s-$ret
+  ((key&ble_decode_Hypr)) && ret=H-$ret
 
   [[ ! $f_unknown ]]
 }
@@ -362,7 +362,7 @@ function ble-decode-char/csi/clear {
   _ble_decode_csi_mode=0
 }
 function ble-decode-char/csi/.modify-kcode {
-  local mod="$(($1-1))"
+  local mod=$(($1-1))
   if ((mod>=0)); then
     # Note: Meta 0x20 は独自
     ((mod&0x01&&(kcode|=ble_decode_Shft),
@@ -511,7 +511,7 @@ function ble-decode-char {
       if [[ $_ble_decode_char2_reach ]]; then
         local reach rest
         reach=($_ble_decode_char2_reach)
-        rest="${_ble_decode_char2_seq:reach[1]}"
+        rest=${_ble_decode_char2_seq:reach[1]}
         rest=(${rest//_/ } $char)
 
         _ble_decode_char2_reach=
@@ -525,7 +525,7 @@ function ble-decode-char {
       fi
     elif [[ $ent == *_ ]]; then
       # /\d*_/ (_ は続き (1つ以上の有効なシーケンス) がある事を示す)
-      _ble_decode_char2_seq="${_ble_decode_char2_seq}_$char"
+      _ble_decode_char2_seq=${_ble_decode_char2_seq}_$char
       if [[ ${ent%_} ]]; then
         _ble_decode_char2_reach="${ent%_} ${#_ble_decode_char2_seq}"
       elif [[ ! $_ble_decode_char2_reach ]]; then
@@ -546,7 +546,7 @@ function ble-decode-char {
 ##   @var[in] _ble_decode_char2_seq
 ##   @var[in] char
 function ble-decode-char/.getent {
-  builtin eval "ent=\"\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}\""
+  builtin eval "ent=\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}"
 
   # CSI sequence
   #   ent=     の時 → (CSI の結果)
@@ -638,26 +638,26 @@ function ble-decode-char/.send-modified-key {
 
 function ble-decode-char/bind {
   local -a seq=($1)
-  local kc="$2"
+  local kc=$2
 
   local i iN=${#seq[@]} char tseq=
   for ((i=0;i<iN;i++)); do
     local char=${seq[i]}
 
-    builtin eval "local okc=\"\${_ble_decode_cmap_$tseq[char]-}\""
+    builtin eval "local okc=\${_ble_decode_cmap_$tseq[char]-}"
     if ((i+1==iN)); then
       if [[ ${okc//[0-9]/} == _ ]]; then
-        builtin eval "_ble_decode_cmap_$tseq[char]=\"${kc}_\""
+        builtin eval "_ble_decode_cmap_$tseq[char]=\${kc}_"
       else
-        builtin eval "_ble_decode_cmap_$tseq[char]=\"${kc}\""
+        builtin eval "_ble_decode_cmap_$tseq[char]=\${kc}"
       fi
     else
       if [[ ! $okc ]]; then
         builtin eval "_ble_decode_cmap_$tseq[char]=_"
       else
-        builtin eval "_ble_decode_cmap_$tseq[char]=\"${okc%_}_\""
+        builtin eval "_ble_decode_cmap_$tseq[char]=\${okc%_}_"
       fi
-      tseq="${tseq}_$char"
+      tseq=${tseq}_$char
     fi
   done
 }
@@ -667,7 +667,7 @@ function ble-decode-char/unbind {
   local tseq=
   local i iN=${#seq}
   for ((i=0;i<iN-1;i++)); do
-    tseq="${tseq}_${seq[$i]}"
+    tseq=${tseq}_${seq[i]}
   done
 
   local char=${seq[iN-1]}
@@ -756,9 +756,9 @@ function ble-decode-char/dump {
 ##   既定の kmap (名前無し) は含まれません。
 _ble_decode_kmaps=
 function ble-decode/keymap/register {
-  local kmap="$1"
+  local kmap=$1
   if [[ $kmap && $_ble_decode_kmaps != *":$kmap:"* ]]; then
-    _ble_decode_kmaps="$_ble_decode_kmaps:$kmap:"
+    _ble_decode_kmaps=$_ble_decode_kmaps:$kmap:
   fi
 }
 
@@ -794,30 +794,30 @@ function ble/widget/.EDIT_COMMAND { eval "$*"; }
 
 ## 関数 kmap ; ble-decode-key/bind keycodes command
 function ble-decode-key/bind {
-  local dicthead="_ble_decode_${kmap}_kmap_"
+  local dicthead=_ble_decode_${kmap}_kmap_
   local -a seq=($1)
-  local cmd="$2"
+  local cmd=$2
 
   ble-decode/keymap/register "$kmap"
 
-  local i iN="${#seq[@]}" key tseq=
+  local i iN=${#seq[@]} key tseq=
   for ((i=0;i<iN;i++)); do
-    local key="${seq[i]}"
+    local key=${seq[i]}
 
-    builtin eval "local ocmd=\"\${$dicthead$tseq[$key]}\""
+    builtin eval "local ocmd=\${$dicthead$tseq[$key]}"
     if ((i+1==iN)); then
       if [[ ${ocmd::1} == _ ]]; then
-        builtin eval "$dicthead$tseq[$key]=\"_:\$cmd\""
+        builtin eval "$dicthead$tseq[$key]=_:\$cmd"
       else
-        builtin eval "$dicthead$tseq[$key]=\"1:\$cmd\""
+        builtin eval "$dicthead$tseq[$key]=1:\$cmd"
       fi
     else
       if [[ ! $ocmd ]]; then
         builtin eval "$dicthead$tseq[$key]=_"
       elif [[ ${ocmd::1} == 1 ]]; then
-        builtin eval "$dicthead$tseq[$key]=\"_:\${ocmd#?:}\""
+        builtin eval "$dicthead$tseq[$key]=_:\${ocmd#?:}"
       fi
-      tseq="${tseq}_$key"
+      tseq=${tseq}_$key
     fi
   done
 }
@@ -826,16 +826,16 @@ function ble-decode-key/unbind {
   local dicthead=_ble_decode_${kmap}_kmap_
   local -a seq=($1)
 
-  local key="${seq[$((iN-1))]}"
+  local i iN=${#seq[@]}
+  local key=${seq[iN-1]}
   local tseq=
-  local i iN=${#seq}
   for ((i=0;i<iN-1;i++)); do
-    tseq="${tseq}_${seq[$i]}"
+    tseq=${tseq}_${seq[i]}
   done
 
   local isfirst=1 ent=
   while
-    builtin eval "ent=\"\${$dicthead$tseq[$key]}\""
+    builtin eval "ent=\${$dicthead$tseq[$key]}"
 
     if [[ $isfirst ]]; then
       # command を消す
@@ -851,7 +851,7 @@ function ble-decode-key/unbind {
       if [[ $ent != _ ]]; then
         # _:command の場合には 1:command に書き換える。
         # (1:command の bind が残っているので登録は削除せず break)。
-        builtin eval $dicthead$tseq[$key]="1:${ent#?:}"
+        builtin eval "$dicthead$tseq[$key]=1:\${ent#?:}"
         break
       fi
     fi
@@ -861,8 +861,8 @@ function ble-decode-key/unbind {
 
     [[ $tseq ]]
   do
-    key="${tseq##*_}"
-    tseq="${tseq%_*}"
+    key=${tseq##*_}
+    tseq=${tseq%_*}
   done
 }
 
@@ -877,7 +877,7 @@ function ble-decode-key/dump {
     return
   fi
 
-  local kmap="$1" tseq="$2" nseq="$3"
+  local kmap=$1 tseq=$2 nseq=$3
   local dicthead=_ble_decode_${kmap}_kmap_
   local kmapopt=
   [[ $kmap ]] && kmapopt=" -m '$kmap'"
@@ -889,7 +889,7 @@ function ble-decode-key/dump {
     local knames=$nseq${nseq:+ }$ret
     builtin eval "local ent=\${$dicthead$tseq[$kcode]}"
     if [[ ${ent:2} ]]; then
-      local cmd="${ent:2}" q=\' Q="'\''"
+      local cmd=${ent:2} q=\' Q="'\''"
       case "$cmd" in
       # ('ble/widget/.insert-string '*)
       #   echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/.insert-string }'" ;;
@@ -1065,12 +1065,12 @@ function ble-decode-key {
 function ble-decode-key/.invoke-partial-match {
   local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
 
-  local next="$1"
+  local next=$1
   if [[ $_ble_decode_key__seq ]]; then
-    local last="${_ble_decode_key__seq##*_}"
-    _ble_decode_key__seq="${_ble_decode_key__seq%_*}"
+    local last=${_ble_decode_key__seq##*_}
+    _ble_decode_key__seq=${_ble_decode_key__seq%_*}
 
-    builtin eval "local ent=\"\${$dicthead$_ble_decode_key__seq[last]-}\""
+    builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[last]-}"
     if [[ $ent == '_:'* ]]; then
       local command=${ent:2}
       if [[ $command ]]; then
@@ -1118,7 +1118,7 @@ function ble-decode-key/.invoke-partial-match {
 }
 
 function ble-decode-key/ischar {
-  local key="$1"
+  local key=$1
   (((key&ble_decode_MaskFlag)==0&&32<=key&&key<ble_decode_function_key_base))
 }
 function ble-decode-key/.invoke-hook {
@@ -1316,7 +1316,7 @@ function ble-bind/option:csi {
   elif [[ $1 == [a-zA-Z] ]]; then
     # --csi '<Ft>' kname
     local ret; ble/util/s2c "$1"
-    _ble_decode_csimap_alpha[ret]="$kcode"
+    _ble_decode_csimap_alpha[ret]=$kcode
   else
     echo "ble-bind --csi: not supported type of csi sequences: CSI \`$1'." >&2
     return 1
@@ -1332,7 +1332,7 @@ function ble-bind {
 
   local arg c
   while (($#)); do
-    local arg="$1"; shift
+    local arg=$1; shift
     if [[ $arg == --?* ]]; then
       case "${arg:2}" in
       (help)
@@ -1348,9 +1348,9 @@ function ble-bind {
         return 2 ;;
       esac
     elif [[ $arg == -?* ]]; then
-      arg="${arg:1}"
+      arg=${arg:1}
       while ((${#arg})); do
-        c="${arg::1}" arg="${arg:1}"
+        c=${arg::1} arg=${arg:1}
         case "$c" in
         (D)
           ble/util/declare-print-definitions "${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}" "${!_ble_decode_csimap_@}"
@@ -1379,7 +1379,7 @@ function ble-bind {
             echo "ble-bind: the option \`-m' requires an argument." >&2
             return 2
           fi
-          kmap="$1"
+          kmap=$1
           shift ;;
         (['@xcs']) flags=${flags}$c ;;
         (f)
@@ -1390,7 +1390,7 @@ function ble-bind {
 
           ble-decode-kbd "$1"
           if [[ $2 && $2 != - ]]; then
-            local command="$2"
+            local command=$2
 
             # コマンドの種類
             case "$flags" in
@@ -1476,7 +1476,7 @@ _ble_decode_bind_hook=
 ## 関数 ble-decode-bind/c2dqs code; ret
 ##   bash builtin bind で用いる事のできるキー表記
 function ble-decode-bind/c2dqs {
-  local i="$1"
+  local i=$1
 
   # bind で用いる
   # リテラル "～" 内で特別な表記にする必要がある物
@@ -1556,8 +1556,8 @@ function ble-decode-bind/cmap/initialize {
 
   [[ -d $_ble_base_cache ]] || ble/bin/mkdir -p "$_ble_base_cache"
 
-  local init="$_ble_base/cmap/default.sh"
-  local dump="$_ble_base_cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump"
+  local init=$_ble_base/cmap/default.sh
+  local dump=$_ble_base_cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump
   if [[ $dump -nt $init ]]; then
     source "$dump"
   else
@@ -1572,8 +1572,8 @@ function ble-decode-bind/cmap/initialize {
 
   if ((_ble_bash>=40300)); then
     # 3文字以上 bind/unbind ソースの生成
-    local fbinder="$_ble_base_cache/cmap+default.binder-source"
-    _ble_decode_bind_fbinder="$fbinder"
+    local fbinder=$_ble_base_cache/cmap+default.binder-source
+    _ble_decode_bind_fbinder=$fbinder
     if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
       echo -n 'ble.sh: initializing multichar sequence binders... '
       ble-decode-bind/cmap/.generate-binder-template >| "$fbinder"
@@ -1708,7 +1708,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 }
 
 function ble-decode/bind {
-  local file="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind"
+  local file=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
   [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
   source "$file"
   _ble_decode_bind__uvwflag=
@@ -1807,9 +1807,9 @@ function ble/encoding:UTF-8/clear {
   _ble_decode_byte__utf_8__code=0
 }
 function ble-decode-byte+UTF-8 {
-  local code="$_ble_decode_byte__utf_8__code"
-  local mode="$_ble_decode_byte__utf_8__mode"
-  local byte="$1"
+  local code=$_ble_decode_byte__utf_8__code
+  local mode=$_ble_decode_byte__utf_8__mode
+  local byte=$1
   local cha0= char=
   (('
     byte&=0xFF,
@@ -1863,7 +1863,7 @@ function ble-decode-byte+UTF-8 {
 ##   @param[in]  code
 ##   @var  [out] ret
 function ble-text-c2bc+UTF-8 {
-  local code="$1"
+  local code=$1
   ((ret=code<0x80?1:
     (code<0x800?2:
     (code<0x10000?3:
