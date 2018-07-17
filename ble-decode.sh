@@ -746,9 +746,9 @@ function .ble-decode-key.unbind {
   local dicthead=_ble_decode_${kmap}_kmap_
   local -a seq=($1)
 
-  local key="${seq[$((iN-1))]}"
-  local tseq=
   local i iN=${#seq}
+  local key=${seq[iN-1]}
+  local tseq=
   for ((i=0;i<iN-1;i++)); do
     tseq="${tseq}_${seq[$i]}"
   done
