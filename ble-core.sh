@@ -1605,20 +1605,6 @@ else
   }
 fi
 
-function ble-text.s2c {
-  if [[ $1 == -v && $# -ge 3 ]]; then
-    if [[ $2 != ret ]]; then
-      local ret
-      ble/util/s2c "$3" "$4"
-      (($2=ret))
-    else
-      ble/util/s2c "$3" "$4"
-    fi
-  else
-    ble/util/s2c "$@"
-  fi
-}
-
 # ble/util/c2s
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.

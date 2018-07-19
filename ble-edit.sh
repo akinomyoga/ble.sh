@@ -803,7 +803,7 @@ function ble-edit/draw/trace/process-esc-sequence {
 ##     出力する (制御シーケンスを含む) 文字列を指定します。
 ##   @var[in,out] DRAW_BUFF[]
 ##     出力先の配列を指定します。
-##   @var[in,out] x y
+##   @var[in,out] x y g
 ##     出力の開始位置を指定します。出力終了時の位置を返します。
 ##   @var[in,out] lc lg
 ##     bleopt_suppress_bash_output= の時、
@@ -929,13 +929,14 @@ function ble-edit/draw/trace.impl {
       ble-edit/draw/put "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
       if [[ ! $bleopt_suppress_bash_output ]]; then
-        ble-text.s2c -v lc "$BASH_REMATCH" $((w-1))
-        lg=$g
+        local ret
+        ble/util/s2c "$BASH_REMATCH" $((w-1))
+        lc=$ret lg=$g
       fi
     else
       local w ret
-      ble-text.s2c -v lc "$tail" 0
-      ((lg=g))
+      ble/util/s2c "$tail" 0
+      lc=$ret lg=$g
       ble/util/c2w "$lc"
       w=$ret
       if ((w>=2&&x+w>cols)); then
