@@ -413,7 +413,7 @@ function ble/string#escape-for-extended-regex {
 #
 
 ## 関数 ble/util/readfile var filename
-## 関数 ble/util/mapfile arr filename
+## 関数 ble/util/mapfile arr < filename
 ##   ファイルの内容を変数または配列に読み取ります。
 ##
 ##   @param[in] var
@@ -1556,16 +1556,21 @@ trap ble/term/TRAPEXIT EXIT
 #------------------------------------------------------------------------------
 # String manipulations
 
+_ble_text_s2c_table_enabled=
 if ((_ble_bash>=40100)); then
   # - printf "'c" で Unicode が読める (どの LC_CTYPE でも Unicode になる)
   function ble/util/s2c {
     builtin printf -v ret '%d' "'${1:$2:1}"
   }
-elif ((_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bash_loaded_in_function)); then
+elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # - 連想配列にキャッシュできる
   # - printf "'c" で unicode が読める
   declare -A _ble_text_s2c_table
+  _ble_text_s2c_table_enabled=1
   function ble/util/s2c {
+    [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+      ble/util/.cache/update-locale
+
     local s=${1:$2:1}
     ret=${_ble_text_s2c_table[x$s]}
     [[ $ret ]] && return
@@ -1601,11 +1606,14 @@ else
 fi
 
 function ble-text.s2c {
-  local _var=$ret
   if [[ $1 == -v && $# -ge 3 ]]; then
-    local ret
-    ble/util/s2c "$3" "$4"
-    (($2=ret))
+    if [[ $2 != ret ]]; then
+      local ret
+      ble/util/s2c "$3" "$4"
+      (($2=ret))
+    else
+      ble/util/s2c "$3" "$4"
+    fi
   else
     ble/util/s2c "$@"
   fi
@@ -1618,6 +1626,7 @@ if ((_ble_bash>=40200)); then
   # workarounds of bashbug that printf '\uFFFF' results in a broken surrogate
   # pair in systems where sizeof(wchar_t) == 2.
   function ble/util/.has-bashbug-printf-uffff {
+    local LC_ALL=C.UTF-8
     ((40200<=_ble_bash&&_ble_bash<40500)) || return 1
     local ret
     builtin printf -v ret '\uFFFF'
@@ -1625,8 +1634,8 @@ if ((_ble_bash>=40200)); then
   }
   if ble/util/.has-bashbug-printf-uffff; then
     function ble/util/c2s-impl {
-      if ((0xE000<=$1&&$1<=0xFFFF)); then
-        builtin printf -v ret '\\x%02x' "$((0xE0|$1>>12&0x0F))" "$((0x80|$1>>6&0x3F))" "$((0x80|$1&0x3F))"
+      if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_cache_ctype == *.utf-8 || $_ble_util_cache_ctype == *.utf8 ]]; then
+        builtin printf -v ret '\\x%02x' $((0xE0|$1>>12&0x0F)) $((0x80|$1>>6&0x3F)) $((0x80|$1&0x3F))
       else
         builtin printf -v ret '\\U%08x' "$1"
       fi
@@ -1661,10 +1670,12 @@ else
   }
 fi
 
-
 # どうもキャッシュするのが一番速い様だ
 _ble_text_c2s_table=()
 function ble/util/c2s {
+  [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+    ble/util/.cache/update-locale
+
   ret=${_ble_text_c2s_table[$1]-}
   if [[ ! $ret ]]; then
     ble/util/c2s-impl "$1"
@@ -1679,6 +1690,28 @@ function ble/util/c2s {
 ##   @param[out] ret
 function ble-text-c2bc {
   "ble-text-c2bc+$bleopt_input_encoding" "$1"
+}
+
+## 関数 ble/util/.cache/update-locale
+##
+##  使い方
+##
+##    [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+##      ble/util/.cache/update-locale
+##
+_ble_util_cache_locale=
+_ble_util_cache_ctype=
+function ble/util/.cache/update-locale {
+  _ble_util_cache_locale=$LC_ALL:$LC_CTYPE:$LANG
+
+  # clear cache if LC_CTYPE is changed
+  local ret; ble/string#tolower "${LC_ALL:-${LC_CTYPE:-$LANG}}"
+  if [[ $_ble_util_cache_ctype != $ret ]]; then
+    _ble_util_cache_ctype=$ret
+    _ble_text_c2s_table=()
+    [[ $_ble_text_s2c_table_enabled ]] &&
+      _ble_text_s2c_table=()
+  fi
 }
 
 #------------------------------------------------------------------------------
@@ -1702,7 +1735,7 @@ function ble-text-b2c+UTF-8 {
 ## 関数 ble-text-c2b+UTF-8
 ##   @var[out] bytes[]
 function ble-text-c2b+UTF-8 {
-  local code="$1" n i
+  local code=$1 n i
   ((code=code&0x7FFFFFFF,
     n=code<0x80?0:(
       code<0x800?1:(
@@ -1722,10 +1755,10 @@ function ble-text-c2b+UTF-8 {
 }
 
 function ble-text-b2c+C {
-  local -i byte="$1"
+  local -i byte=$1
   ((ret=byte&0xFF))
 }
 function ble-text-c2b+C {
-  local -i code="$1"
+  local -i code=$1
   bytes=($((code&0xFF)))
 }

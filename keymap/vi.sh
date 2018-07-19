@@ -917,8 +917,14 @@ function ble/widget/vi_nmap/record-register {
       # 通常の文字
       if ble-decode-key/ischar "$key"; then
         ble/util/c2s "$key"
-        ble/array#push buff "$ret"
-        continue
+
+        # Note: 現在の LC_CTYPE で表現できない Unicode の時、
+        #   ret == \u???? もしくは \U???????? の形式になる。
+        #   その場合はここで処理せず、後の部分で CSI 27;1;code ~ の形式で記録する。
+        if ((${#ret}==1)); then
+          ble/array#push buff "$ret"
+          continue
+        fi
       fi
 
       local c=$((key&ble_decode_MaskChar))
@@ -927,7 +933,7 @@ function ble/widget/vi_nmap/record-register {
       if (((key&ble_decode_MaskFlag)==ble_decode_Ctrl&&(c==64||91<=c&&c<=95||97<=c&&c<=122))); then
         # Note: ^@ (NUL) は文字列にできないので除外
         if ((c!=64)); then
-          ble/util/c2s "$((c&0x1F))"
+          ble/util/c2s $((c&0x1F))
           ble/array#push buff "$ret"
           continue
         fi
@@ -4275,7 +4281,7 @@ function ble/keymap:vi/text-object.hook {
 function ble/keymap:vi/.check-text-object {
   ble-decode-key/ischar "${KEYS[0]}" || return 1
 
-  local ret; ble/util/c2s "${KEYS[0]}"; local c="$ret"
+  local ret; ble/util/c2s "${KEYS[0]}"; local c=$ret
   [[ $c == [ia] ]] || return 1
 
   [[ $_ble_keymap_vi_opfunc || $_ble_decode_key__kmap == vi_[xs]map ]] || return 1

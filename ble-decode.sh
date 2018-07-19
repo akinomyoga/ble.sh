@@ -76,7 +76,7 @@ else
     if [[ ${#tmp} == ${#_ble_decode_kbd__k2c_keys} ]]; then
       ret=
     else
-      tmp=(${tmp//:/ })
+      local -a tmp; tmp=(${tmp//:/ })
       ret=${_ble_decode_kbd__k2c_vals[${#tmp[@]}]}
     fi
   }
@@ -85,14 +85,18 @@ fi
 ble_decode_function_key_base=0x110000
 
 ## 関数 ble-decode-kbd/.get-keyname keycode
-##   @param[in]  keycode keycode
-##   @var  [out] ret     keyname
+##
+##   keycode に対応するキーの名前を求めます。
+##   対応するキーが存在しない場合には空文字列を返します。
+##
+##   @param[in] keycode keycode
+##   @var[out]  ret     keyname
+##
 function ble-decode-kbd/.get-keyname {
   local -i keycode=$1
   ret=${_ble_decode_kbd__c2k[$keycode]}
   if [[ ! $ret ]] && ((keycode<ble_decode_function_key_base)); then
     ble/util/c2s "$keycode"
-    _ble_decode_kbd__c2k[$keycode]=$ret
   fi
 }
 ## 関数 ble-decode-kbd/.gen-keycode keyname

@@ -3159,7 +3159,8 @@ function ble/widget/self-insert {
   elif ((arg>1)); then
     ble/string#repeat "$ins" "$arg"; ins=$ret
   fi
-  # Note: arg はこの時点での ins の文字数になっている。
+  # Note: arg はこの時点での ins の文字数になっているとは限らない。
+  #   現在の LC_CTYPE で対応する文字がない場合 \uXXXX 等に変換される為。
 
   if [[ $bleopt_delete_selection_mode && $_ble_edit_mark_active ]]; then
     # 選択範囲を置き換える。
@@ -3176,7 +3177,9 @@ function ble/widget/self-insert {
       removed_width=${#removed_text}
       ((iend+=removed_width))
     else
-      # 上書きモードの時は文字幅を考慮して既存の文字を置き換える。
+      # 上書きモードの時は Unicode 文字幅を考慮して既存の文字を置き換える。
+      # ※現在の LC_CTYPE で対応する文字がない場合でも、意図しない動作を防ぐために、
+      #   対応していたと想定した時の文字幅で削除する。
       local ret w; ble/util/c2w-edit "$code"; w=$((arg*ret))
 
       local iN=${#_ble_edit_str}
@@ -3201,7 +3204,7 @@ function ble/widget/self-insert {
   fi
 
   _ble_edit_str.replace ibeg iend "$ins"
-  ((_ble_edit_ind+=arg,
+  ((_ble_edit_ind+=${#ins},
     _ble_edit_mark>ibeg&&(
       _ble_edit_mark<iend?(
         _ble_edit_mark=_ble_edit_ind
@@ -5120,12 +5123,14 @@ if ((_ble_bash>=40000)); then
     local out=
     if ((progress_integral)); then
       ble/util/c2s $((0x2588))
+      ((${#ret}==1)) || ret='*' # LC_CTYPE が非対応の文字の時
       ble/string#repeat "$ret" "$progress_integral"
       out=$ret
     fi
 
     if ((progress_fraction)); then
       ble/util/c2s $((0x2590-progress_fraction))
+      ((${#ret}==1)) || ret=$progress_fraction # LC_CTYPE が非対応の文字の時
       out=$out$ret
       ((progress_integral++))
     fi

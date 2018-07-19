@@ -110,7 +110,7 @@ function ble/lib/vim-surround.sh/get-char-from-key {
 }
 
 function ble/lib/vim-surround.sh/async-inputtarget.hook {
-  local mode=$1 hook=${@:2:$#-2} key=${@:$#}
+  local mode=$1 hook=${@:2:$#-2} key=${@:$#} ret
   if ! ble/lib/vim-surround.sh/get-char-from-key "$key"; then
     ble/widget/vi-command/bell
     return 1
