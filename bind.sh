@@ -75,8 +75,13 @@ function ble-decode/generate-binder {
   #   ESC ESC として解釈する様にする。
   local esc1B1B="$((40100<=_ble_bash&&_ble_bash<40300))"
 
+  # Note: 'set convert-meta on' 対策
+  #
+  #   bind 'set convert-meta on' の時、bind -p '"\200": ...' などが
+  #   "\C-@" などの cmd_xmap を上書きしてしまう。
+  #   対策として 128-255 を先に bind してから 0-127 を bind する。
   local i
-  for ((i=0;i<256;i++)); do
+  for i in {128..255} {0..127}; do
     local ret; .ble-decode.c2dqs "$i"
 
     # *
