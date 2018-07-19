@@ -80,7 +80,8 @@ function ble-decode/generate-binder {
   # * esc1B=3: 2017-10-22 代替案として
   #
   #     bind '"\e":"\e[27;5;91~"'
-  #     bind '"\e":"\xC0\x9B\e[27;5;91~"'
+  #     bind '"\e?":"\xC0\x9B?"'
+  #     bind '"\e\e":"\xC0\x9B\e[27;5;91~"'
   #
   #   などの様に bind -s で1文字のものと2文字のものを両方登録して、
   #   Readline に ESC に続きがあるかどうかを判定させて単独 ESC を区別するという手がある。
@@ -112,8 +113,14 @@ function ble-decode/generate-binder {
   #
   local esc1B1B=$((40100<=_ble_bash&&_ble_bash<40300))
 
+  # Note: 'set convert-meta on' 対策
+  #
+  #   bind 'set convert-meta on' の時、bind -p '"\200": ...' などが
+  #   "\C-@" などの cmd_xmap を上書きしてしまう。
+  #   呼び出し元で一時的に 'set convert-meta off' になる様にしているが、
+  #   保険として 128-255 を先に bind してから 0-127 を bind する。
   local i
-  for ((i=0;i<256;i++)); do
+  for i in {128..255} {0..127}; do
     local ret; ble-decode-bind/c2dqs "$i"
 
     # *

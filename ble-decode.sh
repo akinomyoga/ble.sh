@@ -1710,6 +1710,19 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 function ble-decode/bind {
   local file=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
   [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
+
+  # * 一時的に 'set convert-meta off' にする。
+  #
+  #   bash-3.0 - 5.0a 全てにおいて 'set convert-meta on' の時、
+  #   128-255 を bind しようとすると 0-127 を bind してしまう。
+  #   32 bit 環境で LC_CTYPE=C で起動すると 'set convert-meta on' になる様だ。
+  #
+  #   一応、以下の関数は ble/term/initialize で呼び出しているので、
+  #   ble-decode/bind の呼び出しが ble/term/initialize より後なら大丈夫の筈だが、
+  #   念の為にここでも呼び出しておく事にする。
+  #
+  ble/term/rl-convert-meta/enter
+
   source "$file"
   _ble_decode_bind__uvwflag=
 }

@@ -1487,6 +1487,30 @@ function ble/term/bracketed-paste-mode/leave {
   ble/util/buffer $'\e[?2004l'
 }
 
+#---- rl variable: convert-meta -----------------------------------------------
+
+_ble_term_rl_convert_meta_adjusted=
+_ble_term_rl_convert_meta_external=
+function ble/term/rl-convert-meta/enter {
+  [[ $_ble_term_rl_convert_meta_adjusted ]] && return
+  _ble_term_rl_convert_meta_adjusted=1
+
+  local rl_variables; ble/util/assign rl_variables 'bind -v'
+  if [[ $rl_variables == *'set convert-meta on'* ]]; then
+    _ble_term_rl_convert_meta_external=on
+    bind 'set convert-meta off'
+  else
+    _ble_term_rl_convert_meta_external=off
+  fi
+}
+function ble/term/rl-convert-meta/leave {
+  [[ $_ble_term_rl_convert_meta_adjusted ]] || return
+  _ble_term_rl_convert_meta_adjusted=
+
+  [[ $_ble_term_rl_convert_meta_external == on ]] &&
+    bind 'set convert-meta on'
+}
+
 #---- terminal enter/leave ----------------------------------------------------
 
 _ble_term_state=external
@@ -1496,6 +1520,7 @@ function ble/term/enter {
   ble/term/bracketed-paste-mode/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
+  ble/term/rl-convert-meta/enter
   _ble_term_state=internal
 }
 function ble/term/leave {
@@ -1504,6 +1529,7 @@ function ble/term/leave {
   ble/term/bracketed-paste-mode/leave
   ble/term/cursor-state/.update "$_ble_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
+  ble/term/rl-convert-meta/leave
   _ble_term_cursor_current=unknown # vim は復元してくれない
   _ble_term_cursor_hidden_current=unknown
   _ble_term_state=external

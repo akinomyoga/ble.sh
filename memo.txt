@@ -708,6 +708,18 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
+2018-07-19
+
+  * ble-decode: 'set convert-meta on' 的な操作
+
+    ble.sh の内部環境では set convert-meta off にしているが
+    (そうしてないと特殊文字の受信時に無限ループになる)、
+    外部環境で set convert-meta on だった時に、
+    それをエミュレートする様な動作を行っても良い。
+
+    外部環境における set convert-meta の状態は
+    変数 _ble_term_rl_convert_meta_external に記録してある。
+
 2018-07-10
 
   * LANG=C とすると c2s がおかしくなる。
@@ -2927,9 +2939,121 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-07-19
+
+  * bug: LANG=C bash で起動すると動かなくなる [#D0699]
+
+    | bind が壊れている様子である。
+    |
+    | - ble-bind -D や ble-bind -d を見ても異常はない。
+    | - .cache/blesh/*.bind の周りを見ても異常はない。
+    | - padparadscha では bash-3.0 から bash-dev まで再現するが、
+    |   chatoyancy では再現しない。
+    | - bind -X を見て気づいたが変な値に bind されている。
+    |   例えば bind -x '"\C-@": ble-decode/.hook 128' などである。
+
+    これは以下の通り bash のバグに起因するものであると判明した。
+
+    - LANG=C bash --norc で起動して
+      bind -x '"\C-a": echo C-a'
+      bind -x '"\201": echo 201'
+      としてから C-a を入力すると 201 が表示される。
+      bash-3.0 から bash-dev まで再現する。
+
+      bind -x '"\201": echo 201' だけだと、
+      bind -X の表示は '"\C-a": echo 201' となるが有効にはならない。
+      恐らく通常の key binding に関しては問題は起こっていないが、
+      内部のコマンド文字列を保持している cmd_xmap に登録する時に問題が起こっている。
+
+    - chatoyancy ではならない。Cygwin, padparadscha 32bit ではなる。
+      32 bit 環境だとなると予想される。
+
+    - LANG はそのままに LC_CTYPE=C とだけしても再現する。
+    - 普通に起動してから LC_CTYPE=C にして、
+      その後で bind しても再現しない。
+      bash を起動した瞬間の LC_CTYPE が効くようだ。
+      cmd_xmap の構築時の問題だろうか。
+
+    Work around として、この問題が発生している時には
+    bind -x で 80-FF に bind しないという手がある。
+    もしくは別の文字を通して迂回する。
+
+    取り敢えず bind の順番を変更して全然動かないという状態にはならない様にした。
+
+    % [80-FF を迂回して読み取る方法を考える]
+    %
+    % a 何れかの文字を犠牲にするしかない。
+    %   0-127 の中で遅延が起こっても
+    %   問題がなさそうな文字はどれだろうか。
+    %   うーん。そんな文字は存在しない気がする。
+    %   制御文字も \C-@ - \C-_ として使われている。
+    %
+    %   と思ったが ESC に関しては遅延が起こっても問題ないのでは。
+    %
+    % b 或いは、何らかの方法を用いて 80-FF に
+    %   bind -x する事ができるだろうか。
+    %   Bash のソースコードを見たら分かるかもしれない。
+    %
+    %   \C-x\C-r の re-read-init-file を呼び出してみたが
+    %   正しく bind できない事に変わりはない。
+    %   LANG や LC_ALL を設定して実行してみても変化はない。
+    %
+    % [bash debug]
+    %
+    % 取り敢えず怪しいのは cmd_xmap の構築時である。
+    % 他に怪しいのは bind_keyseq_to_unix_command 内で kseq が化けてしまっているという可能性。
+    %
+    % bashline.c:4312:  rl_generic_bind (ISMACR, kseq, value, cmd_xmap); の直前で、
+    % kseq を print してみる。bind -x '"\201": echo 201' に対して "\\201" という文字列だった。
+    % この時点では変換前ということなのだろう。
+    %
+    %   FILE* file = fopen("/home/murase/b1.txt", "wb");
+    %   fprintf(file, "kseq='%s'\n", kseq);
+    %   fclose(file);
+    %
+    % bind.c:378: rl_generic_bind の実装の中の rl_translate_keyseq
+    % の呼び出しの直後でどの様に翻訳されているかを確認する。
+    % この時点ではちゃんと "\201" という文字列になっていた。翻訳は大丈夫。
+    %
+    %   FILE* file = fopen("/home/murase/b2.txt", "wb");
+    %   fprintf(file, "kseq='%.*s'\n", keys_len, keys);
+    %   fclose(file);
+    %
+    % bind.c:397:       if (META_CHAR (ic) && _rl_convert_meta_chars_to_ascii)
+    % という怪しい分岐がある。ここで meta を削除している。これなのではないか。
+    % これの前後で ic がどう変化するのかを調べてみる事にする。
+    % 結果として、ここで \201 が \001 (C-a) に変換されている事が判明した。
+    %
+    %   FILE* file = fopen("/home/murase/b3.txt", "wb");
+    %   fprintf(file, "ic='%c' (%d)\n", ic, ic);
+    %     中略
+    %   fprintf(file, "ic='%c' (%d)\n", ic, ic);
+    %   fclose(file);
+    %
+    % _rl_convert_meta_chars_to_ascii というオプションが怪しい。
+    % bind -v してみると set convert-meta on という行がある。
+    % 調べてみると、問題が発生する状況では on になっていて
+    % 問題が発生しない状況では off になっているという事が分かった。
+    % つまり、この変数を変更すればちゃんと bind できるのではなかろうか。
+    %
+    % 取り敢えず set convert-meta off にして試してみる事にする。
+    % 調べてみると set convert-meta on の時には、
+    % 入力された 128-255 の文字は全て Meta + 0-127 と解釈される様だ。
+    % なので bind の瞬間だけ set convert-meta off にしておいて、
+    % bind が終わったら元に戻すようにしたい。
+
+    結局 bash のバグというよりは rl 変数の convert-meta の仕様(?)という事が分かった。
+    仕様だとしても bind -x '"\201": echo 201' が動かないばかりか、
+    既存の別の keymap を上書きしてしまうという動作は変なのではないかという気がするが…。
+
+    bind する時だけ一時的に convert-meta off にする様にして修正した。
+    と思ったがそれで日本語を入力するとメモリを大量に使って死んでしまう。
+    ble.sh をロードしている間は convert-meta は off にしておくべきだろうか。
+    detach する時に元に戻す。
+
 2018-05-24
 
-  * 2018-03-19 bash-bug: bash-4.4, dev で以下を実行するとエラーメッセージが出る。
+  * 2018-03-19 bash-bug: bash-4.4, dev で以下を実行するとエラーメッセージが出る。 [#D0698]
 
     →これは修正報告した。
       https://lists.gnu.org/archive/html/bug-bash/2018-05/msg00020.html
@@ -2970,7 +3094,7 @@ tech
       元々のコストが大きいので気にしなくても良い。
       また、キーボード入力の解釈にそんなに性能は不要のはず。
 
-  * 2018-05-22 どうも history search で見つからない場合に無限ループになる様だ。
+  * 2018-05-22 どうも history search で見つからない場合に無限ループになる様だ。 [#D0697]
 
     →無限ループではなく処理に時間がかかっているだけだった。
       問題は .bash_history に 55KiB の履歴行が魂友していた事にある。
@@ -3002,7 +3126,7 @@ tech
     うーん。(history -p -- 'echo *') も ble/uti/assign aaa 'echo *' も異常はない。
     前後に echo * を展開したらしきものもあったので、
     これは何か特殊な操作を実行した時のテストで生成された結果だったのだろうか。
-    うーん。何れにしても、ble.sh 自体に無限ループがある訳ではないようだし、 
+    うーん。何れにしても、ble.sh 自体に無限ループがある訳ではないようだし、
     その様な変な履歴項目が生成される確率も低い (もしくは一時的なものだったかもしれない) ようなので、
     この問題についてはこれ以上考えなくて良いものと判断する。
 
