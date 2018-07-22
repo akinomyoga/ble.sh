@@ -5075,30 +5075,40 @@ if ((_ble_bash>=40000)); then
   function ble-edit/history/load/.background-initialize {
     local -x HISTTIMEFORMAT=__ble_ext__
     local -x INDEX_FILE=$history_indfile
+    local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
   
     local apos=\'
     # 482ms for 37002 entries
-    builtin history | ble/bin/awk -v apos="$apos" '
+    builtin history | ble/bin/awk -v apos="$apos" -v opt_cygwin="$opt_cygwin" '
       BEGIN {
         n = 0;
         hindex = 0;
         INDEX_FILE = ENVIRON["INDEX_FILE"];
         printf("") > INDEX_FILE; # create file
+        if (opt_cygwin) print "_ble_edit_history=(";
       }
   
       function flush_line() {
+        if (n < 1) return;
+
         if (n == 1) {
           if (t ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
             print hindex > INDEX_FILE;
-          print t;
           hindex++;
-        } else if (n > 1) {
+        } else {
           gsub(/['$apos'\\]/, "\\\\&", t);
           gsub(/\n/, "\\n", t);
           print hindex > INDEX_FILE;
-          print "eval -- $" apos t apos;
+          t = "eval -- $" apos t apos;
           hindex++;
         }
+
+        if (opt_cygwin) {
+          gsub(/'$apos'/, "'$apos'\\'$apos$apos'", t);
+          t = apos t apos;
+        }
+
+        print t;
         n = 0;
         t = "";
       }
@@ -5109,7 +5119,10 @@ if ((_ble_bash>=40000)); then
         t = ++n == 1 ? $0 : t "\n" $0;
       }
   
-      END { flush_line(); }
+      END {
+        flush_line();
+        if (opt_cygwin) print ")";
+      }
     ' >| "$history_tmpfile.part"
     ble/bin/mv -f "$history_tmpfile.part" "$history_tmpfile"
   }
@@ -5151,6 +5164,7 @@ if ((_ble_bash>=40000)); then
   
     local opt_async=; [[ $1 == async ]] && opt_async=1
     local opt_info=; ((_ble_edit_attached)) && [[ ! $opt_async ]] && opt_info=1
+    local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
   
     local history_tmpfile=$_ble_base_run/$$.edit-history-load
     local history_indfile=$_ble_base_run/$$.edit-history-load-multiline-index
@@ -5184,11 +5198,21 @@ if ((_ble_bash>=40000)); then
           ((_ble_edit_history_loading++)) ;;
   
       # 47ms _ble_edit_history 初期化 (37000項目)
-      (2) ble/util/mapfile _ble_edit_history < "$history_tmpfile"
+      (2) if [[ $opt_cygwin ]]; then
+            # 620ms Cygwin (99000項目)
+            source "$history_tmpfile"
+          else
+            ble/util/mapfile _ble_edit_history < "$history_tmpfile"
+          fi
           ((_ble_edit_history_loading++)) ;;
   
       # 47ms _ble_edit_history_edit 初期化 (37000項目)
-      (3) ble/util/mapfile _ble_edit_history_edit < "$history_tmpfile"
+      (3) if [[ $opt_cygwin ]]; then
+            # 504ms Cygwin (99000項目)
+            _ble_edit_history_edit=("${_ble_edit_history[@]}")
+          else
+            ble/util/mapfile _ble_edit_history_edit < "$history_tmpfile"
+          fi
           ((_ble_edit_history_loading++)) ;;
   
       # 11ms 複数行履歴修正 (107/37000項目)
