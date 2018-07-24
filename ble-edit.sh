@@ -5076,7 +5076,7 @@ if ((_ble_bash>=40000)); then
     local -x HISTTIMEFORMAT=__ble_ext__
     local -x INDEX_FILE=$history_indfile
     local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
-  
+
     local apos=\'
     # 482ms for 37002 entries
     builtin history | ble/bin/awk -v apos="$apos" -v opt_cygwin="$opt_cygwin" '
@@ -5174,8 +5174,24 @@ if ((_ble_bash>=40000)); then
       # 42ms 履歴の読み込み
       (0) [[ $opt_info ]] && ble-edit/info/immediate-show text "loading history..."
           if ! builtin history -p '!1' &>/dev/null; then
-            # rcfile から呼び出すと history が未だロードされていない。
+            # rcfile から呼び出すと history が未ロードなのでロードする。
             builtin history -n
+
+            # Note: bashrc の謎の遅延について (memo.txt#D0703)
+            #
+            #   shopt -s histappend の状態で history -n を呼び出すと、
+            #   bashrc を抜けてから Bash 本体によるプロンプトが表示されて、
+            #   入力を受け付けられる様になる迄に、謎の遅延が発生する。
+            #   さりとて、history -n を呼び出す瞬間だけ shopt -u histappend すると、
+            #   後で shopt -s histappend としても histappend が有効にならない。
+            #
+            #   特に履歴項目の数が HISTSIZE の丁度半分より多い時に起こる様なので
+            #   一時的に HISTSIZE を大きくして遅延を回避する事にする。
+            #
+            local count; ble-edit/history/get-count
+            local HISTSIZE_new=$((count*2))
+            _ble_edit_history_HISTSIZE_rewrite=$HISTSIZE:$HISTSIZE_new
+            HISTSIZE=$HISTSIZE_new
           fi
 
           # 履歴ファイル生成を Background で開始
@@ -7048,6 +7064,13 @@ if ((_ble_bash>=40100)); then
       ble/textarea#redraw-cache
       ble/util/buffer.flush >&2
     fi
+
+    # Workaround #D0703 (bash 3.1-5.0)
+    if [[ $_ble_edit_history_HISTSIZE_rewrite ]]; then
+      [[ $HISTSIZE == ${_ble_edit_history_HISTSIZE_rewrite#*:} ]] &&
+        HISTSIZE=${_ble_edit_history_HISTSIZE_rewrite%%:*}
+      _ble_edit_history_HISTSIZE_rewrite=
+    fi
   }
 else
   function ble-edit/bind/.head {
@@ -7059,6 +7082,13 @@ else
       local -a DRAW_BUFF=()
       ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
       ble-edit/draw/flush
+    fi
+
+    # Workaround #D0703 (bash 3.1-5.0)
+    if [[ $_ble_edit_history_HISTSIZE_rewrite ]]; then
+      [[ $HISTSIZE == ${_ble_edit_history_HISTSIZE_rewrite#*:} ]] &&
+        HISTSIZE=${_ble_edit_history_HISTSIZE_rewrite%%:*}
+      _ble_edit_history_HISTSIZE_rewrite=
     fi
   }
 fi
@@ -7080,7 +7110,7 @@ else
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
     ble/textarea#render # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
-    ble/util/idle.do && ble/textare#render # bash-4.0+
+    ble/util/idle.do && ble/textarea#render # bash-4.0+
     ble-edit/bind/stdout.off
   }
 fi

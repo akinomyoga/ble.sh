@@ -736,7 +736,7 @@ tech
             }
         }
 
-  * ble-decode: ble-text.s2c 廃止
+    然しこれは bind -m emacs-meta ... とした時の為にそうなっているとも考えられる。
 
   * 現在の LC_CTYPE で表現できない文字を入力した時の self-insert の振る舞い
 
@@ -785,12 +785,6 @@ tech
     - (4. a. vi-mode n, N) 正規表現ではなくてグロブパターンらしい。
 
     - (4. d. C-v) 負の引数 -N を指定すると、次の N 文字をそのまま挿入するらしい。
-
-2018-05-22
-
-  * もしかすると cygwin で遅延ロードがちゃんと働いていない可能性がある。
-
-    使った感触でそう思っただけなので具体的に確認する必要がある。
 
 2018-04-12
 
@@ -2965,11 +2959,193 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-07-24
+
+  * edit/history: bashrc の謎の遅延に関して [#D0703]
+
+    #D0702 後半に関して再度整理し直す。
+
+    色々調べて分かったこと。
+
+    - bashrc 中で shopt -s histappend の状態で history -n をすると、
+      bashrc を抜けた後に謎の遅延がある。
+    - 当初 Cygwin だけかと思っていたら GNU/Linux でも同様の遅延が生じる。
+      特に padparadscha ではかなり長い遅延が発生する。
+    - Bash 3.0 では遅延はない。Bash 3.1 - 5.0a の全てで遅延がある。
+    - 履歴項目の数から HISTSIZE, HISTFILESIZE の半分を引いた数に比例した遅延である。
+
+    - history -n をする瞬間だけ shopt -u histappend すると遅延はなくなるが、
+      histappend の効果が失われる。
+        shopt -u histappend; history -n; shopt -s histappend
+
+      以下の様にしても遅延はないが histappend の効果はない。
+        shopt -u histappend; history -n
+        shopt -s histappend; history -n
+
+      以下の様にすると遅延があって histappend の効果がある。
+        shopt -s histappend; history -n
+        shopt -u histappend; history -n; shopt -s histappend
+
+    再現するには以下のような bashrc を用意する。
+    参照: memo/D0703.bashrc
+
+      | # bashrc-test
+      |
+      | function measure1 {
+      |   time1=($(date +'%s %N'))
+      | }
+      | function measure2 {
+      |   local -a time2=($(date +'%s %N'))
+      |   local sec=$((time2[0]-time1[0]))
+      |   local usec=$((sec*1000000+10#${time2[1]}/1000-10#${time1[1]}/1000))
+      |   echo "${usec} us" >/dev/tty
+      | }
+      |
+      | export HISTFILE=A.txt
+      | export HISTSIZE=100000
+      | export HISTFILESIZE=100000
+      | shopt -s histappend
+      | history -n
+      | measure1
+      | PS1='$(measure2)'$PS1
+
+      $ printf 'echo hello %d world.\n' {1..100000} > A.txt
+      $ bash --rcfile bashrc-test
+
+    解決の為には
+
+    a 遅延が生じず histappend も有効にできる様な何らかの方法を見つけるか
+    b サブシェルで history -n を実行するか
+    c キーが入力された後に履歴を読み込むか
+    d 履歴の仕組み自体を Bash の履歴とは独立な物かラップした物にするか
+
+    実は一時的に HISTSIZE を増大させれば問題ないのでは? → 遅延がなくなった。
+
+  * 2018-05-22 もしかすると cygwin で遅延ロードがちゃんと働いていない可能性がある [#D0702]
+
+    使った感触でそう思っただけなので具体的に確認する必要がある。
+
+    * done: 調べてみた所遅延ロード自体はちゃんと動いている。
+      但し、履歴項目の読み込み (mapfile) に時間がかかっている様に思われる。
+      有効になっている ble/util/mapfile の実装について確認した所 mapfile -t になっている。
+      10万項目を読み取るのに 3.050 秒かかっている。
+
+      Linux で3.7万項目の ble/util/mapfile の読み込みに 47ms しかかかっていない事と較べると、
+      Cygwin では mapfile が20倍ぐらい遅いという事になる。
+      もしかすると昔ながらの source の方が速いという事もあるかもしれない。
+
+      1. mapfile 3.055 sec
+      2. 配列のコピー 0.522 sec
+      3. source 0.620 sec
+
+      取り敢えず Cygwin に限って _ble_edit_history は source で定義して、
+      _ble_edit_history_edit は _ble_edit_history をコピーする事にした。
+
+    * 後もう一つ。.background-initialize 待機中に一度 148 で抜けると
+      .background-initialize が終わるまで最後まで実行してしまう様である。
+      然し、不思議である…。何処で時間を食っているのかが分からない。
+      分かったこと。148 で抜ける → .background-initialize が終わるまで戻ってこない。
+      .background-iniailize が終わると ble-edit/history/load async が再び呼び出される。
+
+      何が起こっているのだろう。
+
+      | 色々調べてみた所、どうやら問題は .bashrc が終わった直後から、
+      | 最初に入力が来るまでの間にあるようである。
+      | ble-attach → ble-edit/bind/.tail → ble/util/idle.do の中でジョブが投げられると、
+      | 必ず 0.8-1.2 sec 程の遅延が生じる。ジョブを投げないと遅延はない。
+      | ジョブが物凄く時間がかかる者であったとしても遅延は 0.8-1.2 sec のままである。
+      |
+      | 然し、不思議なのは小数 sleep のための background プロセスに関しては遅延が生じていないという事である。
+      |
+      | % →どうやら var=$(command & echo $!) で起動すると駄目の様だ。
+      | % 代わりに ble/util/assign var 'command & echo $!; disown' 2>/dev/null で起動してみると遅延はない様だ。
+      | % Linux でも試してみたが、Linux では違いはない様に見える。
+      | % →やはり ble/util/assign var を用いたとしても遅延は存在する。
+      |
+      | 簡単な bashrc を作って実験してみる事にする。
+      | - 簡単な bashrc を使っている限りに於いては、
+      |   丁寧に </dev/null &>/dev/null にすると、
+      |   ちゃんと遅延無しで動く様になる。
+      | - bind -x しても遅延はない。
+      | - ble-edit/bind/stdout.off の効果でも無いようだ。
+      | - 関数を入れ子にしても再現しない。
+      |
+      | 色々試した結果、犯人は fork ではなくて、それよりも前にある history -n だと分かった。
+      | history -n を bashrc の中で使うだけで遅延が生じる様になる。
+      | 然し、history -n だけでは再現しない様だ。
+      | - 更に調べてみると source bashrc_common.sh; history -n で遅延が出る。
+      |   どちらか一方でも欠けていれば遅延は生じない。
+      | - is-stdin-ready も関係しているのではないかと当初疑っていたが関係ない。
+
+      結局、以下が bashrc に含まれていると遅延が生じるという事が分かった。
+      どれか一つだけでも欠けていると再現しない。
+      また順番を変更しても (特に history -n を shopt -s histappend より先にすると) 遅延しない。
+
+      export HISTSIZE=100000
+      export HISTFILESIZE=100000
+      shopt -s histappend
+      history -n
+
+      a shopt -s histappend の時は一瞬だけ shopt -u histappend にして history -n を実行する?
+
+        順番を変更した時に正しく histappend が適用されるかどうかについては確認が必要である。
+        →順番を変更してみたところ histappend が有効にならないという事が分かった。
+          つまり、history -n する瞬間だけ shopt -u histappend にしても、HISTFILE に全体が書き込まれる。
+          shopt -s histappend にしたまま history -n すると期待通りに実行したコマンドだけが追記される。
+
+        つまり shopt -s histappend が有効になっている時に history -n しないと駄目という事。
+        この方法は使えない。
+
+      b 或いは、Cygwin に於いては history -n
+        をサブシェル内で実行するという手もあるかもしれない。
+        実際にサブシェル内で history -n を実行する様にしたら遅延を改善する事ができた。
+
+        - history -n をサブシェルで実行するという事は二回ファイルを読み込むことになって問題だが、
+          history -n 自体はそんなに時間のかかる処理ではない (71ms/10万項目) ので速度的な問題は生じないだろう。
+
+        x 問題になるとすれば二回に分けてファイルを読む途中でファイル内容が変更された時に、
+          データの内容に不整合が生じてしまう可能性がある事である。
+
+        history の仕組み自体を大幅に変更した上で再考しても良いかもしれないが、
+        現段階では不整合を防ぐために遅延を甘受して一回で読み取る事にする。
+
+      | また、この問題が実は Linux でも発生している事も確認しておいた方が良いかもしれない。
+      | →Linux でも再現した。というかより遅延時間が長い @ padparadscha
+      |   4万行の時は殆ど遅延がなくて10万行に達すると遅延が生じる事から、
+      |   もしかすると HISTSIZE, HISTFILESIZE の上限に達する時特有の遅延なのかもしれない。
+      |
+      | 試しに幾らか余裕をもたせて実行してみる事にする。
+      | 余裕を持たせても遅延が長いのは変わらない様だ。
+      | 50000 まで減らすと遅延がなくなる。70000 だと遅延がある。
+      | 色々調べると 50000 を超えた辺りから急激に遅くなる。
+      | (と思っても増え具合は線形のようではある。)
+      |
+      |   50000   63642 us
+      |   51000  308568 us
+      |   52000  554410 us
+      |   53000  802508 us
+      |   54000 1046543 us
+      |   55000 1290507 us
+      |
+      | HIST{,FILE}SIZE を 200000 に増やしたらまた速くなった。
+      |
+      |   55000   30085 us (with HISTSIZE=200000 HISTFILESIZE=200000)
+      |
+      | つまり、この遅延は HISTSIZE/2, HISTFILESIZE/2 より超過すると発生する。
+      | 本当に、"半分" なのだろうか。また試す。やはり "半分" が閾値になっている様だ。
+      |
+      |   100000  123337 us (with 200000)
+      |   101000 1106749 us (with 200000)
+
+      この遅延は Linux でも生じる。特に padparadscha では遅延が著しい。
+      HISTSIZE, HISTFILESIZE の丁度半分よりも超過した項目の数に比例して時間がかかる。
+
 2018-07-19
 
-  * 2018-07-10 LANG=C とすると c2s がおかしくなる
+  * ble-decode: ble-text.s2c 廃止 [#D0701]
 
-    #D0700
+  * 2018-07-10 LANG=C とすると c2s がおかしくなる [#D0700]
+
     一度キャッシュされるとそのままになってしまう。
 
     うーん。どうしたら良いのか謎である。
@@ -3120,7 +3296,7 @@ tech
         \u???? のままでも良い気がする。しかし、囲むのに使う文字を入力する場合には、
         これは self-insert と一貫していて欲しい。
         取り敢えず self-insert と一貫した設計にするという事にする。
-        
+
 
     使用箇所を調べてみて考えた事は、変換先の文字が存在しない場合には、
     一律で変換後の文字を定めるのではなくて、それぞれの場合で適切な処理をしなければならないという事。
@@ -3140,12 +3316,12 @@ tech
       | 一文字の文字の場合には c2s を用いる様にしたら良い。
       | 特殊キーの場合には…c2k と k2c を同時に登録していれば、
       | c2k に見つからなかった時点で単一の文字と確定するが…
-      | 
+      |
       | 或いは、これについても文字コードが変化した瞬間に
       | 登録されている文字列の文字コード変換を実行するか。
       | 文字コードの変換を実行するのは始末が悪い気がする。
       | また文字コードの変更を検出するのも面倒である。
-      | 
+      |
       | 調べてみたところ k2c を設定した時 c2k も一緒に設定されている。
       | また k2c が設定されるのは特殊キーとしてのみであり、
       | 普通のキーについてわざわざ k2c が設定される事はない。
