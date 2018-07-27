@@ -7056,42 +7056,34 @@ function ble-edit/bind/.check-detach {
 }
 
 if ((_ble_bash>=40100)); then
-  function ble-edit/bind/.head {
-    ble-edit/bind/stdout.on
-
-    if [[ ! $bleopt_suppress_bash_output ]]; then
-      # bash-4.1 以降では呼出直前にプロンプトが消される
-      ble/textarea#redraw-cache
-      ble/util/buffer.flush >&2
-    fi
-
-    # Workaround #D0703 (bash 3.1-5.0)
-    if [[ $_ble_edit_history_HISTSIZE_rewrite ]]; then
-      [[ $HISTSIZE == ${_ble_edit_history_HISTSIZE_rewrite#*:} ]] &&
-        HISTSIZE=${_ble_edit_history_HISTSIZE_rewrite%%:*}
-      _ble_edit_history_HISTSIZE_rewrite=
-    fi
+  function ble-edit/bind/.head/adjust-bash-rendering {
+    # bash-4.1 以降では呼出直前にプロンプトが消される
+    ble/textarea#redraw-cache
+    ble/util/buffer.flush >&2
   }
 else
-  function ble-edit/bind/.head {
-    ble-edit/bind/stdout.on
-
-    if [[ ! $bleopt_suppress_bash_output ]]; then
-      # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
-      ((_ble_line_y++,_ble_line_x=0))
-      local -a DRAW_BUFF=()
-      ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
-      ble-edit/draw/flush
-    fi
-
-    # Workaround #D0703 (bash 3.1-5.0)
-    if [[ $_ble_edit_history_HISTSIZE_rewrite ]]; then
-      [[ $HISTSIZE == ${_ble_edit_history_HISTSIZE_rewrite#*:} ]] &&
-        HISTSIZE=${_ble_edit_history_HISTSIZE_rewrite%%:*}
-      _ble_edit_history_HISTSIZE_rewrite=
-    fi
+  function ble-edit/bind/.head/adjust-bash-rendering {
+    # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
+    ((_ble_line_y++,_ble_line_x=0))
+    local -a DRAW_BUFF=()
+    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+    ble-edit/draw/flush
   }
 fi
+
+function ble-edit/bind/.head {
+  ble-edit/bind/stdout.on
+
+  [[ $bleopt_suppress_bash_output ]] ||
+    ble-edit/bind/.head/adjust-bash-rendering
+
+  # Workaround #D0703 (bash 3.1-5.0)
+  if [[ $_ble_edit_history_HISTSIZE_rewrite ]]; then
+    [[ $HISTSIZE == ${_ble_edit_history_HISTSIZE_rewrite#*:} ]] &&
+      HISTSIZE=${_ble_edit_history_HISTSIZE_rewrite%%:*}
+    _ble_edit_history_HISTSIZE_rewrite=
+  fi
+}
 
 function ble-edit/bind/.tail-without-draw {
   ble-edit/bind/stdout.off
