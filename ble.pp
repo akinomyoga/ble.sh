@@ -190,18 +190,24 @@ fi
 _ble_bash_loaded_in_function=0
 [[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
 
+# will be overwritten by ble-core.sh
+function ble/util/assign {
+  builtin eval "$1=\$(builtin eval \"\${@:2}\")"
+}
+
 # readlink -f (taken from akinomyoga/mshex.git)
 function ble/util/readlink {
+  ret=
   local path=$1
   case "$OSTYPE" in
   (cygwin|linux-gnu)
     # 少なくとも cygwin, GNU/Linux では readlink -f が使える
-    PATH=/bin:/usr/bin readlink -f "$path" ;;
+    ble/util/assign ret 'PATH=/bin:/usr/bin readlink -f "$path"' ;;
   (darwin*|*)
     # Mac OSX には readlink -f がない。
     local PWD=$PWD OLDPWD=$OLDPWD
     while [[ -h $path ]]; do
-      local link=$(PATH=/bin:/usr/bin readlink "$path" 2>/dev/null || true)
+      local link; ble/util/assign link 'PATH=/bin:/usr/bin readlink "$path" 2>/dev/null || true'
       [[ $link ]] || break
 
       if [[ $link = /* || $path != */* ]]; then
@@ -213,7 +219,7 @@ function ble/util/readlink {
         path=${dir%/}/$link
       fi
     done
-    echo -n "$path" ;;
+    ret=$path ;;
   esac
 }
 
@@ -249,7 +255,7 @@ function ble/base/initialize-base-directory {
 
   # resolve symlink
   if [[ -h $src ]] && type -t readlink &>/dev/null; then
-    src=$(ble/util/readlink $src)
+    local ret; ble/util/readlink "$src"; src=$ret
   fi
 
   local dir=${src%/*}

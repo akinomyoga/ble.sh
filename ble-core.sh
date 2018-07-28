@@ -710,7 +710,18 @@ else
   }
 fi
 
-if ((_ble_bash>=40000)); then
+function ble/util/sleep/.check-builtin-sleep {
+  local ret; ble/util/readlink "$BASH"
+  local bash_prefix=${ret%/*/*}
+  if [[ -s $bash_prefix/lib/bash/sleep ]] &&
+    (enable -f "$bash_prefix/lib/bash/sleep" sleep; sleep 0.0) &>/dev/null; then
+    enable -f "$bash_prefix/lib/bash/sleep" sleep
+  fi
+}
+
+if ((_ble_bash>=40400)) && ble/util/sleep/.check-builtin-sleep; then
+  function ble/util/sleep { builtin sleep "$1"; }
+elif ((_ble_bash>=40000)); then
   # 遅延初期化
   _ble_util_sleep_fd=
   _ble_util_sleep_tmp=
