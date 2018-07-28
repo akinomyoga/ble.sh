@@ -714,8 +714,11 @@ function ble/util/sleep/.check-builtin-sleep {
   local ret; ble/util/readlink "$BASH"
   local bash_prefix=${ret%/*/*}
   if [[ -s $bash_prefix/lib/bash/sleep ]] &&
-    (enable -f "$bash_prefix/lib/bash/sleep" sleep; sleep 0.0) &>/dev/null; then
+    (enable -f "$bash_prefix/lib/bash/sleep" sleep && sleep 0.0) &>/dev/null; then
     enable -f "$bash_prefix/lib/bash/sleep" sleep
+    return 0
+  else
+    return 1
   fi
 }
 
