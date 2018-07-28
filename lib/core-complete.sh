@@ -31,7 +31,7 @@
 ##     ※ [[ -v COMPV ]] は bash-4.2 以降です。
 ##
 ##   @var[in    ] COMP_PREFIX
-##   @var[in    ] _ble_complete_raw_paramx
+##   @var[in    ] ble_complete_raw_paramx
 ##
 ## 関数 $ACTION/complete
 ##   一意確定時に、挿入文字列に対する加工を行います。
@@ -94,7 +94,7 @@ function ble-complete/action/plain/initialize {
   if [[ $CAND == "$COMPV"* ]]; then
     local ins
     ble-complete/util/escape-specialchars -v ins "${CAND:${#COMPV}}"
-    [[ $_ble_complete_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
+    [[ $ble_complete_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
     INSERT=$COMPS$ins
   else
     ble-complete/util/escape-specialchars -v INSERT "$CAND"
@@ -174,13 +174,15 @@ function ble-complete/yield-candidate {
   local SHOW=${1#$COMP_PREFIX} INSERT=$CAND
   "$ACTION/initialize"
 
+  [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter "$CAND" && return
+
   local icand
   ((icand=cand_count++))
-  cand_cand[icand]="$CAND"
+  cand_cand[icand]=$CAND
   cand_prop[icand]="$ACTION $COMP1 $COMP2"
-  cand_word[icand]="$INSERT"
-  cand_show[icand]="$SHOW"
-  cand_data[icand]="$DATA"
+  cand_word[icand]=$INSERT
+  cand_show[icand]=$SHOW
+  cand_data[icand]=$DATA
 }
 
 # source/wordlist
@@ -216,7 +218,7 @@ function ble-complete/source/command/gen {
 }
 function ble-complete/source/command {
   [[ ${COMPV+set} ]] || return 1
-  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   local cand arr i=0
   local compgen
@@ -516,19 +518,68 @@ function ble-complete/.fignore/filter {
   done
 }
 
+## 関数 ble-complete/.pick-nearest-context
+##   一番開始点に近い補完源の一覧を求めます。
+##
+##   @var[in] index
+##   @arr[in,out] context
+##
+##   @arr[out] nearest_contexts
+##   @var COMP1 COMP2
+##     補完範囲
+##   @var COMPS
+##     補完範囲の (クオートが含まれうる) コマンド文字列
+##   @var COMPV
+##     補完範囲のコマンド文字列が意味する実際の文字列
+##   @var ble_complete_raw_paramx
+##     Cパラメータ展開 $var の直後かどうか。
+function ble-complete/.pick-nearest-context {
+  COMP1= COMP2=$index
+  nearest_contexts=()
+
+  local -a unused_contexts=()
+  local ctx actx
+  for ctx in "${context[@]}"; do
+    ble/string#split-words actx "$ctx"
+    if ((COMP1<actx[1])); then
+      COMP1=${actx[1]}
+      ble/array#push unused_contexts "${nearest_contexts[@]}"
+      nearest_contexts=("$ctx")
+    elif ((COMP1==actx[1])); then
+      ble/array#push nearest_contexts "$ctx"
+    else
+      ble/array#push unused_contexts "$ctx"
+    fi
+  done
+  context=("${unused_contexts[@]}")
+
+  COMPS=${text:COMP1:COMP2-COMP1}
+  ble_complete_raw_paramx=
+  local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
+  if [[ ! $COMPS ]] || ble-syntax:bash/simple-word/is-simple "$COMPS"; then
+    local ret; ble-syntax:bash/simple-word/eval "$COMPS"; COMPV=$ret
+    [[ $COMPS =~ $rex_raw_paramx ]] && ble_complete_raw_paramx=1
+  fi
+}
+
 function ble/widget/complete {
   local text=$_ble_edit_str index=$_ble_edit_ind
   ble-syntax/import
   _ble_edit_str.update-syntax
   local context
   ble-syntax/completion-context "$text" "$index"
-  # ble-edit/info/show text "${context[*]}"
-  # return
 
   if ((${#context[@]}==0)); then
     ble/widget/.bell
     ble-edit/info/clear
     return
+  fi
+
+  local flag_force_fignore=
+  local -a _fignore=()
+  if [[ $FIGNORE ]]; then
+    ble-complete/.fignore/prepare
+    ((${#_fignore[@]})) && shopt -q force_fignore && flag_force_fignore=1
   fi
 
   local cand_count=0
@@ -537,117 +588,73 @@ function ble/widget/complete {
   local -a cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
   local -a cand_show=() # 表示文字列 (～ 分かり易い文字列)
   local -a cand_data=() # 関数で使うデータ
-
-  local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
-
-  if [[ $FIGNORE ]]; then
-    local -a _fignore
-    ble-complete/.fignore/prepare
-  fi
-
-  local ctx source ret
-  for ctx in "${context[@]}"; do
-    # initialize completion range
-    ble/string#split-words ctx "$ctx"
-    ble/string#split source : "${ctx[0]}"
-    local COMP1=${ctx[1]} COMP2=$index
-    local COMPS=${text:COMP1:COMP2-COMP1}
-    local COMPV _ble_complete_raw_paramx=
-    if [[ ! $COMPS ]] || ble-syntax:bash/simple-word/is-simple "$COMPS"; then
-      ble-syntax:bash/simple-word/eval "$COMPS"; COMPV=$ret
-      [[ $COMPS =~ $rex_raw_paramx ]] && _ble_complete_raw_paramx=1
+  while ((cand_count==0)); do
+    # 候補源が尽きたら終わり
+    if ((${#context[@]}==0)); then
+      ble/widget/.bell
+      ble-edit/info/clear
+      return
     fi
-    local COMP_PREFIX=
 
-    # generate candidates
-    local ACTION DATA
-    if ble/util/isfunction ble-complete/source/"${source[0]}"; then
-      ble-complete/source/"${source[@]}"
-    fi
+    # 次の開始点が近くにある候補源たち
+    local -a nearest_contexts=()
+    local COMP1 COMP2 COMPS COMPV; unset COMPV
+    local ble_complete_raw_paramx=
+    ble-complete/.pick-nearest-context
+
+    # 候補生成
+    local ctx actx source
+    for ctx in "${nearest_contexts[@]}"; do
+      ble/string#split-words actx "$ctx"
+      ble/string#split source : "${actx[0]}"
+      if ble/util/isfunction ble-complete/source/"${source[0]}"; then
+        local COMP_PREFIX= # 既定値 (yield-candidate で参照)
+        ble-complete/source/"${source[@]}"
+      fi
+    done
+
+    ble/util/is-stdin-ready && return 148
   done
 
-  ble/util/is-stdin-ready && return 148
-
-  if ((cand_count==0)); then
-    ble/widget/.bell
-    ble-edit/info/clear
-    return
-  fi
-
-  local flag_force_fignore=
-  shopt -q force_fignore && ((${#_fignore[@]})) && flag_force_fignore=1
-
   # 共通部分
-  local i common comp1 clen comp2=$index
-  local acount=0 aindex=0
-  for ((i=0;i<cand_count;i++)); do
-    ((i%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
-
-    local word=${cand_word[i]}
-    local -a prop
-    ble/string#split-words prop "${cand_prop[i]}"
-
-    [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter "$word" && continue
-
-    if ((i==0)); then
-      common=$word
-      comp1=${prop[1]}
-      clen=${#common}
-      ((acount=1,aindex=i))
-    else
-      # より近くの開始点の候補を優先する場合
-      if ((comp1<prop[1])); then
-        common=$word
-        comp1=${prop[1]}
-        clen=${#common}
-        ((acount=1,aindex=i))
-        continue
-      elif ((comp1>prop[1])); then
-        continue
-      fi
-
-      # # 補完開始点に関係なく共通部分を探す場合
-      # if ((comp1<prop[1])); then
-      #   word="${text:comp1:prop[1]-comp1}""$word"
-      # elif ((comp1>prop[1])); then
-      #   common="${text:prop[1]:comp1-prop[1]}""$common"
-      #   comp1="${prop[1]}"
-      # fi
+  local common=${cand_word[0]} clen=${#cand_word[0]}
+  if ((cand_count>1)); then
+    local word loop=0
+    for word in "${cand_word[@]:1}"; do
+      ((loop++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
 
       ((clen>${#word}&&(clen=${#word})))
       while [[ ${word::clen} != "${common::clen}" ]]; do
         ((clen--))
       done
       common=${common::clen}
-      ((acount++))
-    fi
-  done
-
-  # 編集範囲の最小化
-  if [[ $common == "${text:comp1:comp2-comp1}"* ]]; then
-    # 既存部分の置換がない場合
-    common=${common:comp2-comp1}
-    ((comp1=comp2))
-  else
-    # 既存部分の置換がある場合
-    while ((comp1<comp2)) && [[ $common == "${text:comp1:1}"* ]]; do
-      common=${common:1}
-      ((comp1++))
     done
   fi
 
-  if ((acount==1)); then
+  # 編集範囲の最小化
+  if [[ $common == "${text:COMP1:COMP2-COMP1}"* ]]; then
+    # 既存部分の置換がない場合
+    common=${common:COMP2-COMP1}
+    ((COMP1=COMP2))
+  else
+    # 既存部分の置換がある場合
+    while ((COMP1<COMP2)) && [[ $common == "${text:COMP1:1}"* ]]; do
+      common=${common:1}
+      ((COMP1++))
+    done
+  fi
+
+  if ((cand_count==1)); then
     # 一意確定の時
     local ACTION
-    ble/string#split-words ACTION "${cand_prop[aindex]}"
+    ble/string#split-words ACTION "${cand_prop[0]}"
     if ble/util/isfunction "$ACTION/complete"; then
-      local COMP1=$comp1 COMP2=$comp2
       local INSERT=$common
-      local CAND=${cand_cand[aindex]}
-      local DATA=${cand_data[aindex]}
+      local CAND=${cand_cand[0]}
+      local DATA=${cand_data[0]}
 
       "$ACTION/complete"
-      comp1=$COMP1 comp2=$COMP2 common=$INSERT
+      common=$INSERT
     fi
     ble-edit/info/clear
   else
@@ -655,6 +662,6 @@ function ble/widget/complete {
     ble-edit/info/show text "${cand_show[*]}"
   fi
 
-  ble/widget/.delete-range "$comp1" "$index"
+  ble/widget/.delete-range "$COMP1" "$index"
   [[ $common ]] && ble/widget/.insert-string "$common"
 }
