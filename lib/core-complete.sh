@@ -91,12 +91,14 @@ function ble-complete/action/util/complete.addtail {
 # action/plain
 
 function ble-complete/action/plain/initialize {
-  local ins
-  ble-complete/util/escape-specialchars -v ins "${CAND:${#COMPV}}"
-
-  [[ $_ble_complete_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
-
-  INSERT="$COMPS$ins"
+  if [[ $CAND == "$COMPV"* ]]; then
+    local ins
+    ble-complete/util/escape-specialchars -v ins "${CAND:${#COMPV}}"
+    [[ $_ble_complete_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
+    INSERT=$COMPS$ins
+  else
+    ble-complete/util/escape-specialchars -v INSERT "$CAND"
+  fi
 }
 function ble-complete/action/plain/complete { :; }
 
@@ -168,8 +170,8 @@ function ble-complete/action/variable/complete {
 # source
 
 function ble-complete/yield-candidate {
-  local CAND="$1" ACTION="$2" DATA="${*:3}"
-  local SHOW="${1#"$COMP_PREFIX"}" INSERT="$CAND"
+  local CAND=$1 ACTION=$2 DATA="${*:3}"
+  local SHOW=${1#$COMP_PREFIX} INSERT=$CAND
   "$ACTION/initialize"
 
   local icand
@@ -576,7 +578,7 @@ function ble/widget/complete {
   shopt -q force_fignore && ((${#_fignore[@]})) && flag_force_fignore=1
 
   # 共通部分
-  local i common comp1 clen comp2="$index"
+  local i common comp1 clen comp2=$index
   local acount=0 aindex=0
   for ((i=0;i<cand_count;i++)); do
     ((i%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
