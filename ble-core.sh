@@ -47,7 +47,7 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
-ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var="$2" && shift 2'
+ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var=$2 && shift 2'
 ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
 function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
 function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
@@ -99,7 +99,7 @@ function ble/debug/.check-leak-variable {
 
 _ble_util_array_prototype=()
 function _ble_util_array_prototype.reserve {
-  local -i n="$1" i
+  local -i n=$1 i
   for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
     _ble_util_array_prototype[i]=
   done
@@ -147,9 +147,9 @@ function ble/array#reverse {
 
 _ble_util_string_prototype='        '
 function _ble_util_string_prototype.reserve {
-  local -i n="$1" c
+  local -i n=$1 c
   for ((c=${#_ble_util_string_prototype};c<n;c*=2)); do
-    _ble_util_string_prototype="$_ble_util_string_prototype$_ble_util_string_prototype"
+    _ble_util_string_prototype=$_ble_util_string_prototype$_ble_util_string_prototype
   done
 }
 
@@ -159,7 +159,7 @@ function _ble_util_string_prototype.reserve {
 ##   @var[out] ret
 function ble/string#repeat {
   _ble_util_string_prototype.reserve "$2"
-  ret="${_ble_util_string_prototype::$2}"
+  ret=${_ble_util_string_prototype::$2}
   ret="${ret// /$1}"
 }
 
@@ -385,7 +385,7 @@ function ble/string#escape-for-sed-regex {
   if [[ $ret == *['\.[*^$/']* ]]; then
     local a b
     for a in \\ \. \[ \* \^ \$ \/; do
-      b="\\$a" ret="${ret//"$a"/$b}"
+      b="\\$a" ret=${ret//"$a"/$b}
     done
   fi
 }
@@ -394,7 +394,7 @@ function ble/string#escape-for-awk-regex {
   if [[ $ret == *['\.[*?+|^$(){}/']* ]]; then
     local a b
     for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \} \/; do
-      b="\\$a" ret="${ret//"$a"/$b}"
+      b="\\$a" ret=${ret//"$a"/$b}
     done
   fi
 }
@@ -403,7 +403,7 @@ function ble/string#escape-for-extended-regex {
   if [[ $ret == *['\.[*?+|^$(){}']* ]]; then
     local a b
     for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \}; do
-      b="\\$a" ret="${ret//"$a"/$b}"
+      b="\\$a" ret=${ret//"$a"/$b}
     done
   fi
 }
@@ -519,7 +519,7 @@ else
 fi
 
 function ble/util/type {
-  _cmd="$2" ble/util/assign "$1" 'builtin type -t -- "$_cmd" 2>/dev/null'
+  _cmd=$2 ble/util/assign "$1" 'builtin type -t -- "$_cmd" 2>/dev/null'
   builtin eval "$1=\"\${$1%$_ble_term_nl}\""
 }
 
@@ -546,13 +546,13 @@ fi
 # exec {var}>foo
 if ((_ble_bash>=40100)); then
   function ble/util/openat {
-    local _fdvar="$1" _redirect="$2"
+    local _fdvar=$1 _redirect=$2
     builtin eval "exec {$_fdvar}$_redirect"
   }
 else
-  _ble_util_openat_nextfd="$bleopt_openat_base"
+  _ble_util_openat_nextfd=$bleopt_openat_base
   function ble/util/openat {
-    local _fdvar="$1" _redirect="$2"
+    local _fdvar=$1 _redirect=$2
     (($_fdvar=_ble_util_openat_nextfd++))
     builtin eval "exec ${!_fdvar}$_redirect"
   }
@@ -736,7 +736,7 @@ elif ((_ble_bash>=40000)); then
         while kill -0 $$; do ble/bin/sleep 300; done &>/dev/null
       )'
     else
-      _ble_util_sleep_tmp="$_ble_base_run/$$.ble_util_sleep.pipe"
+      _ble_util_sleep_tmp=$_ble_base_run/$$.ble_util_sleep.pipe
       if [[ ! -p $_ble_util_sleep_tmp ]]; then
         [[ -e $_ble_util_sleep_tmp ]] && ble/bin/rm -rf "$_ble_util_sleep_tmp"
         ble/bin/mkfifo "$_ble_util_sleep_tmp"
@@ -840,7 +840,7 @@ function ble/util/buffer.clear {
 function ble/dirty-range#load {
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix="${1#--prefix=}"
+    _prefix=${1#--prefix=}
     ((beg=${_prefix}beg,
       end=${_prefix}end,
       end0=${_prefix}end0))
@@ -850,7 +850,7 @@ function ble/dirty-range#load {
 function ble/dirty-range#clear {
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
-    _prefix="${1#--prefix=}"
+    _prefix=${1#--prefix=}
     shift
   fi
 
@@ -1020,7 +1020,7 @@ function ble/util/joblist {
     done
   else
     for ijob in "${!list[@]}"; do
-      _ble_util_joblist_list[ijob]="${list[ijob]}"
+      _ble_util_joblist_list[ijob]=${list[ijob]}
     done
   fi
   joblist=("${_ble_util_joblist_list[@]}")
@@ -1030,8 +1030,8 @@ function ble/util/joblist.split {
   local arr=$1; shift
   local line ijob= rex_ijob='^\[([0-9]+)\]'
   for line; do
-    [[ $line =~ $rex_ijob ]] && ijob="${BASH_REMATCH[1]}"
-    [[ $ijob ]] && eval "$arr[ijob]=\"\${$arr[ijob]}\${$arr[ijob]:+\$_ble_term_nl}\$line\""
+    [[ $line =~ $rex_ijob ]] && ijob=${BASH_REMATCH[1]}
+    [[ $ijob ]] && eval "$arr[ijob]=\${$arr[ijob]}\${$arr[ijob]:+\$_ble_term_nl}\$line"
   done
 }
 
@@ -1182,7 +1182,7 @@ function ble-stackdump {
   builtin echo -n "$message" >&2
 }
 function ble-assert {
-  local expr="$1"
+  local expr=$1
   local _ble_stackdump_title='assertion failure'
   if ! builtin eval -- "$expr"; then
     shift
@@ -1281,7 +1281,7 @@ function bleopt {
           fi
         fi
         eval "$var=\"\$value\"" ;;
-      (p*) pvars[ip++]="$var" ;;
+      (p*) pvars[ip++]=$var ;;
       (*)  echo "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
       esac
     done
@@ -1648,7 +1648,7 @@ else
   _ble_text_xdigit=(0 1 2 3 4 5 6 7 8 9 A B C D E F)
   _ble_text_hexmap=()
   for ((i=0;i<256;i++)); do
-    _ble_text_hexmap[i]="${_ble_text_xdigit[i>>4&0xF]}${_ble_text_xdigit[i&0xF]}"
+    _ble_text_hexmap[i]=${_ble_text_xdigit[i>>4&0xF]}${_ble_text_xdigit[i&0xF]}
   done
 
   # 動作確認済 3.1, 3.2, 4.0, 4.2, 4.3
