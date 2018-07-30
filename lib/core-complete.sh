@@ -154,8 +154,13 @@ function ble-complete/action/command/complete {
   if [[ -d $CAND ]]; then
     [[ $CAND != */ ]] &&
       ble-complete/action/util/complete.addtail /
-  else
+  elif type "$CAND" &>/dev/null; then
     ble-complete/action/util/complete.addtail ' '
+
+    # Note: 関数名について縮約されている時、
+    #   本来は一意確定でなくても一意確定として此処に来ることがある。
+    #   一意確定でない時はそのコマンドは存在していない筈なので、
+    #   コマンドが存在している時に限り ' ' を付加する。
   fi
 }
 
@@ -201,10 +206,69 @@ function ble-complete/source/wordlist {
 
 # source/command
 
+function ble-complete/source/command/.contract-by-slashes {
+  local slashes=${COMPV//[!'/']}
+  ble/bin/awk -F / -v baseNF=${#slashes} '
+    function initialize_common() {
+      common_NF = NF;
+      for (i = 1; i <= NF; i++) common[i] = $i;
+      common_degeneracy = 1;
+      common0_NF = NF;
+      common0_str = $0;
+    }
+    function print_common(_, output) {
+      if (!common_NF) return;
+
+      if (common_degeneracy == 1) {
+        print common0_str;
+        common_NF = 0;
+        return;
+      }
+
+      output = common[1];
+      for (i = 2; i <= common_NF; i++)
+        output = output "/" common[i];
+
+      # Note:
+      #   For candidates `a/b/c/1` and `a/b/c/2`, prints `a/b/c/`.
+      #   For candidates `a/b/c` and `a/b/c/1`, prints `a/b/c` and `a/b/c/1`.
+      if (common_NF == common0_NF) print output;
+      print output "/";
+
+      common_NF = 0;
+    }
+
+    {
+      if (NF <= baseNF + 1) {
+        print_common();
+        print $0;
+      } else if (!common_NF) {
+        initialize_common();
+      } else {
+        n = common_NF < NF ? common_NF : NF;
+        for (i = baseNF + 1; i <= n; i++)
+          if (common[i] != $i) break;
+        matched_length = i - 1;
+
+        if (matched_length <= baseNF) {
+          print_common();
+          initialize_common();
+        } else {
+          common_NF = matched_length;
+          common_degeneracy++;
+        }
+      }
+    }
+
+    END { print_common(); }
+  '
+}
+
 function ble-complete/source/command/gen {
-  [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return
-  compgen -c -- "$COMPV"
-  [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
+  {
+    compgen -c -- "$COMPV"
+    [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
+  } | ble-complete/source/command/.contract-by-slashes
 
   # ディレクトリ名列挙 (/ 付きで生成する)
   #   Note: shopt -q autocd &>/dev/null かどうかに拘らず列挙する。
@@ -218,6 +282,7 @@ function ble-complete/source/command/gen {
 }
 function ble-complete/source/command {
   [[ ${COMPV+set} ]] || return 1
+  [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   local cand arr i=0
