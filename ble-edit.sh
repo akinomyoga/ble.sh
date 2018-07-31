@@ -5177,21 +5177,25 @@ if ((_ble_bash>=40000)); then
             # rcfile から呼び出すと history が未ロードなのでロードする。
             builtin history -n
 
-            # Note: bashrc の謎の遅延について (memo.txt#D0703)
-            #
-            #   shopt -s histappend の状態で history -n を呼び出すと、
-            #   bashrc を抜けてから Bash 本体によるプロンプトが表示されて、
-            #   入力を受け付けられる様になる迄に、謎の遅延が発生する。
-            #   さりとて、history -n を呼び出す瞬間だけ shopt -u histappend すると、
-            #   後で shopt -s histappend としても histappend が有効にならない。
-            #
-            #   特に履歴項目の数が HISTSIZE の丁度半分より多い時に起こる様なので
-            #   一時的に HISTSIZE を大きくして遅延を回避する事にする。
-            #
-            local count; ble-edit/history/get-count
-            local HISTSIZE_new=$((count*2))
-            _ble_edit_history_HISTSIZE_rewrite=$HISTSIZE:$HISTSIZE_new
-            HISTSIZE=$HISTSIZE_new
+            if shopt -q histappend; then
+              # Note: bashrc の謎の遅延について (memo.txt#D0703)
+              #
+              #   shopt -s histappend の状態で history -n を呼び出すと、
+              #   bashrc を抜けてから Bash 本体によるプロンプトが表示されて、
+              #   入力を受け付けられる様になる迄に、謎の遅延が発生する。
+              #   さりとて、history -n を呼び出す瞬間だけ shopt -u histappend すると、
+              #   後で shopt -s histappend としても histappend が有効にならない。
+              #
+              #   特に履歴項目の数が HISTSIZE の丁度半分より多い時に起こる様なので
+              #   一時的に HISTSIZE を大きくして遅延を回避する事にする。
+              #
+              local count; ble-edit/history/get-count
+              local HISTSIZE_new=$((count*2))
+              if ((HISTSIZE<HISTSIZE_new)); then
+                _ble_edit_history_HISTSIZE_rewrite=$HISTSIZE:$HISTSIZE_new
+                HISTSIZE=$HISTSIZE_new
+              fi
+            fi
           fi
 
           # 履歴ファイル生成を Background で開始
