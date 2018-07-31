@@ -3,6 +3,8 @@
 # ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 #
 
+: ${bleopt_complete_ambiguous:=1}
+
 #==============================================================================
 # action
 
@@ -627,6 +629,51 @@ function ble-complete/.pick-nearest-context {
   fi
 }
 
+## 関数 ble-complete/util/construct-ambiguous-regex text
+##   曖昧一致に使う正規表現を生成します。
+##   @param[in] text
+##   @var[out] ret
+function ble-complete/util/construct-ambiguous-regex {
+  local text=$1
+  local i=0 n=${#text}
+  local -a buff=()
+  for ((i=0;i<n;i++)); do
+    ((i)) && ble/array#push buff '.*'
+    ble/string#escape-for-extended-regex "${text:i:1}"
+    ble/array#push buff "$ret"
+  done
+  IFS= eval 'ret="${buff[*]}"'
+}
+## 関数 ble-complete/.filter-candidates-by-regex rex_filter
+##   生成された候補 (cand_*) において指定した正規表現に一致する物だけを残します。
+##   @param[in] rex_filter
+##   @var[in,out] cand_count
+##   @arr[in,out] cand_{prop,cand,word,show,data}
+##   @exit
+##     ユーザ入力によって中断された時に 148 を返します。
+function ble-complete/.filter-candidates-by-regex {
+  local rex_filter=$1
+  # todo: 複数の配列に触る非効率な実装だが後で考える
+  local i j=0
+  local -a prop=() cand=() word=() show=() data=()
+  for ((i=0;i<cand_count;i++)); do
+    ((i%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
+    [[ ${cand_cand[i]} =~ $rex_filter ]] || continue
+    prop[j]=${cand_prop[i]}
+    cand[j]=${cand_cand[i]}
+    word[j]=${cand_word[i]}
+    show[j]=${cand_show[i]}
+    data[j]=${cand_data[i]}
+    ((j++))
+  done
+  cand_count=$j
+  cand_prop=("${prop[@]}")
+  cand_cand=("${cand[@]}")
+  cand_word=("${word[@]}")
+  cand_show=("${show[@]}")
+  cand_data=("${data[@]}")
+}
+
 function ble/widget/complete {
   local text=$_ble_edit_str index=$_ble_edit_ind
   ble-syntax/import
@@ -653,7 +700,8 @@ function ble/widget/complete {
   local -a cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
   local -a cand_show=() # 表示文字列 (～ 分かり易い文字列)
   local -a cand_data=() # 関数で使うデータ
-  while ((cand_count==0)); do
+  local opt_ambiguous=
+  while :; do
     # 候補源が尽きたら終わり
     if ((${#context[@]}==0)); then
       ble/widget/.bell
@@ -672,13 +720,31 @@ function ble/widget/complete {
     for ctx in "${nearest_contexts[@]}"; do
       ble/string#split-words actx "$ctx"
       ble/string#split source : "${actx[0]}"
-      if ble/util/isfunction ble-complete/source/"${source[0]}"; then
-        local COMP_PREFIX= # 既定値 (yield-candidate で参照)
-        ble-complete/source/"${source[@]}"
-      fi
+
+      local COMP_PREFIX= # 既定値 (yield-candidate で参照)
+      ble-complete/source/"${source[@]}"
     done
 
     ble/util/is-stdin-ready && return 148
+    ((cand_count)) && break
+
+    if [[ $bleopt_complete_ambiguous ]]; then
+      for ctx in "${nearest_contexts[@]}"; do
+        ble/string#split-words actx "$ctx"
+        ble/string#split source : "${actx[0]}"
+        local COMP_PREFIX= # 既定値 (yield-candidate で参照)
+        COMPS=${COMPV::1} COMPV=${COMPV::1} ble-complete/source/"${source[@]}"
+      done
+
+      local ret; ble-complete/util/construct-ambiguous-regex "$COMPV"
+      local rex_ambiguous_compv=^$ret
+      ble-complete/.filter-candidates-by-regex "$rex_ambiguous_compv"
+      (($?==148)) && return 148
+      if ((cand_count)); then
+        opt_ambiguous=1
+        break
+      fi
+    fi
   done
 
   # 共通部分
@@ -694,6 +760,12 @@ function ble/widget/complete {
       done
       common=${common::clen}
     done
+  fi
+
+  if [[ $opt_ambiguous ]]; then
+    # 曖昧一致に於いて複数の候補の共通部分が
+    # 元の文字列に曖昧一致しない場合は補完しない。
+    [[ $common =~ $rex_ambiguous_compv ]] || common=$COMPV
   fi
 
   # 編集範囲の最小化
