@@ -2328,9 +2328,9 @@ function ble/textarea#update-text-buffer {
     fi
   fi
 }
-## 関数 ble/textare#slice-text-buffer [beg [end]]
+## 関数 ble/textarea#slice-text-buffer [beg [end]]
 ##   @var [out] ret
-function ble/textare#slice-text-buffer {
+function ble/textarea#slice-text-buffer {
   ble/textmap#assert-up-to-date
   local iN=$_ble_textmap_length
   local i1=${1:-0} i2=${2:-$iN}
@@ -2486,7 +2486,7 @@ function ble/textarea#render/.perform-scroll {
 
       ble-form/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
       ((new_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-      local ret; ble/textare#slice-text-buffer "$fmin" "$fmax"
+      local ret; ble/textarea#slice-text-buffer "$fmin" "$fmax"
       ble-edit/draw/put "$ret"
       ((_ble_line_x=fmaxx,
         _ble_line_y+=fmaxy-fminy))
@@ -2623,7 +2623,7 @@ function ble/textarea#render {
       ble/textmap#getxy.out --prefix=umax "$umax"
 
       ble-form/panel#goto.draw "$_ble_textarea_panel" "$uminx" $((uminy-_ble_textarea_scroll))
-      ble/textare#slice-text-buffer "$umin" "$umax"
+      ble/textarea#slice-text-buffer "$umin" "$umax"
       ble-edit/draw/put "$ret"
       ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$umaxx" $((umaxy-_ble_textarea_scroll))
     fi
@@ -2643,7 +2643,7 @@ function ble/textarea#render {
 
     # 全体描画
     if [[ ! $_ble_textarea_scroll ]]; then
-      ble/textare#slice-text-buffer # → ret
+      ble/textarea#slice-text-buffer # → ret
       esc_line=$ret esc_line_set=1
       ble-edit/draw/put "$ret"
       ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
@@ -2661,7 +2661,7 @@ function ble/textarea#render {
 
       ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
       ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-      ble/textare#slice-text-buffer "$gbeg" "$gend"
+      ble/textarea#slice-text-buffer "$gbeg" "$gend"
       ble-edit/draw/put "$ret"
       ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
       ((_ble_line_x=gendx,_ble_line_y+=gendy-gbegy))
@@ -2680,7 +2680,7 @@ function ble/textarea#render {
   if [[ ! $bleopt_suppress_bash_output ]]; then
     if [[ ! $esc_line_set ]]; then
       if [[ ! $_ble_textarea_scroll ]]; then
-        ble/textare#slice-text-buffer
+        ble/textarea#slice-text-buffer
         esc_line=$ret
       else
         local _ble_line_x=$begx _ble_line_y=$begy
@@ -2698,7 +2698,7 @@ function ble/textarea#render {
 
         ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
         ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
-        ble/textare#slice-text-buffer "$gbeg" "$gend"
+        ble/textarea#slice-text-buffer "$gbeg" "$gend"
         ble-edit/draw/put "$ret"
 
         ble-edit/draw/sflush -v esc_line
