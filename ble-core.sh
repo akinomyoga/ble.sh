@@ -407,6 +407,15 @@ function ble/string#escape-for-extended-regex {
     done
   fi
 }
+function ble/string#escape-for-glob {
+  ret="$*"
+  if [[ $ret == *['*?[(']* ]]; then
+    local a b
+    for a in \* \? \[ \(; do
+      b="\\$a" ret=${ret//"$a"/$b}
+    done
+  fi
+}
 
 #
 # miscallaneous utils
