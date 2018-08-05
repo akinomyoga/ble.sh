@@ -50,29 +50,29 @@ function ble-complete/util/escape-specialchars {
   eval "$ble_util_upvar_setup"
   local a b ret="$*" chars=']['$' \t\n\\''"'\''`$|&;<>()*?{}!^'
   if [[ $ret == *["$chars"]* ]]; then
-    a=\\ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\" b="\\$a" ret="${ret//"$a"/$b}"
-    a=\' b="\\$a" ret="${ret//"$a"/$b}"
-    a=\` b="\\$a" ret="${ret//"$a"/$b}"
-    a=\$ b="\\$a" ret="${ret//"$a"/$b}"
-    a=' '   b="\\$a"   ret="${ret//"$a"/$b}"
-    a=$'\t' b="\\$a"   ret="${ret//"$a"/$b}"
-    a=$'\n' b="\$'\n'" ret="${ret//"$a"/$b}"
-    a=\| b="\\$a" ret="${ret//"$a"/$b}"
-    a=\& b="\\$a" ret="${ret//"$a"/$b}"
-    a=\; b="\\$a" ret="${ret//"$a"/$b}"
-    a=\< b="\\$a" ret="${ret//"$a"/$b}"
-    a=\> b="\\$a" ret="${ret//"$a"/$b}"
-    a=\( b="\\$a" ret="${ret//"$a"/$b}"
-    a=\) b="\\$a" ret="${ret//"$a"/$b}"
-    a=\[ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\* b="\\$a" ret="${ret//"$a"/$b}"
-    a=\? b="\\$a" ret="${ret//"$a"/$b}"
-    a=\] b="\\$a" ret="${ret//"$a"/$b}"
-    a=\{ b="\\$a" ret="${ret//"$a"/$b}"
-    a=\} b="\\$a" ret="${ret//"$a"/$b}"
-    a=\! b="\\$a" ret="${ret//"$a"/$b}"
-    a=\^ b="\\$a" ret="${ret//"$a"/$b}"
+    a=\\ b="\\$a" ret=${ret//"$a"/$b}
+    a=\" b="\\$a" ret=${ret//"$a"/$b}
+    a=\' b="\\$a" ret=${ret//"$a"/$b}
+    a=\` b="\\$a" ret=${ret//"$a"/$b}
+    a=\$ b="\\$a" ret=${ret//"$a"/$b}
+    a=' '   b="\\$a"   ret=${ret//"$a"/$b}
+    a=$'\t' b="\\$a"   ret=${ret//"$a"/$b}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
+    a=\| b="\\$a" ret=${ret//"$a"/$b}
+    a=\& b="\\$a" ret=${ret//"$a"/$b}
+    a=\; b="\\$a" ret=${ret//"$a"/$b}
+    a=\< b="\\$a" ret=${ret//"$a"/$b}
+    a=\> b="\\$a" ret=${ret//"$a"/$b}
+    a=\( b="\\$a" ret=${ret//"$a"/$b}
+    a=\) b="\\$a" ret=${ret//"$a"/$b}
+    a=\[ b="\\$a" ret=${ret//"$a"/$b}
+    a=\* b="\\$a" ret=${ret//"$a"/$b}
+    a=\? b="\\$a" ret=${ret//"$a"/$b}
+    a=\] b="\\$a" ret=${ret//"$a"/$b}
+    a=\{ b="\\$a" ret=${ret//"$a"/$b}
+    a=\} b="\\$a" ret=${ret//"$a"/$b}
+    a=\! b="\\$a" ret=${ret//"$a"/$b}
+    a=\^ b="\\$a" ret=${ret//"$a"/$b}
   fi
   eval "$ble_util_upvar"
 }
@@ -84,8 +84,8 @@ function ble-complete/util/escape-regexchars {
 }
 
 function ble-complete/action/util/complete.addtail {
-  INSERT="$INSERT$1"
-  [[ ${text:index} == "$1"* ]] && ((index++))
+  INSERT=$INSERT$1
+  [[ ${comp_text:comp_index} == "$1"* ]] && ((comp_index++))
 }
 
 #------------------------------------------------------------------------------
@@ -213,7 +213,7 @@ function ble-complete/yield-candidate {
 ##   @var[out] COMP_PREFIX
 ##     ble-complete/yield-candidate で参照される一時変数。
 ##
-##   @var[in] ble_comp_type
+##   @var[in] comp_type
 ##     候補生成に関連するフラグ文字列。各フラグに対応する文字を含む。
 ##
 ##     文字 a を含む時、曖昧補完に用いる候補を生成する。
@@ -227,7 +227,7 @@ function ble-complete/yield-candidate {
 
 function ble-complete/source/wordlist {
   [[ ${COMPV+set} ]] || return 1
-  [[ $ble_comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
+  [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   local cand
@@ -316,7 +316,7 @@ function ble-complete/source/command/gen {
 }
 function ble-complete/source/command {
   [[ ${COMPV+set} ]] || return 1
-  [[ $ble_comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
+  [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
@@ -348,7 +348,7 @@ function ble-complete/util/eval-pathname-expansion {
   fi
 
   local old_nocaseglob=
-  if [[ $ble_comp_type == *i* ]]; then
+  if [[ $comp_type == *i* ]]; then
     if ! shopt -q nocaseglob; then
       old_nocaseglob=0
       shopt -s nocaseglob
@@ -373,18 +373,22 @@ function ble-complete/util/eval-pathname-expansion {
   [[ $old_noglob ]] && set -f
 }
 
-## 関数 ble-complete/source/file/.create-ambiguous-path-pattern path
+## 関数 ble-complete/source/file/.construct-ambiguous-pathname-pattern path
+##   指定された path に対応する曖昧一致パターンを生成します。
+##   例えばalpha/beta/gamma に対して a*/b*/g* でファイル名を生成します。
+##
 ##   @param[in] path
 ##   @var[out] ret
 ##
-##   指定された path に対応する曖昧一致パターンを生成する。
-##   例えばalpha/beta/gamma に対して a*/b*/g* でファイル名を生成する。
-##   これだと曖昧一致しないファイル名も生成されるが、
-##   生成後のフィルタによって一致しないものは除去されるので気にしない。
-function ble-complete/source/file/.create-ambiguous-path-pattern {
+##   @remarks
+##     a*/b*/g* だと曖昧一致しないファイル名も生成されるが、
+##     生成後のフィルタによって一致しないものは除去されるので気にしない。
+##
+function ble-complete/source/file/.construct-ambiguous-pathname-pattern {
   local path=$1
   local pattern= i=0
   local names; ble/string#split names / "$1"
+  local name
   for name in "${names[@]}"; do
     ((i++)) && pattern=$pattern/
     if [[ $name ]]; then
@@ -394,22 +398,30 @@ function ble-complete/source/file/.create-ambiguous-path-pattern {
   done
   [[ $pattern ]] || pattern="*"
   ret=$pattern
-
 }
+## 関数 ble-complete/source/file/.construct-pathname-pattern path
+##   @param[in] path
+##   @var[out] ret
+function ble-complete/source/file/.construct-pathname-pattern {
+  local path=$1
+  if [[ $comp_type == *a* ]]; then
+    ble-complete/source/file/.construct-ambiguous-pathname-pattern "$path"; local pattern=$ret/
+  else
+    ble/string#escape-for-glob "$path"; local pattern=$ret*/
+  fi
+  ret=$pattern
+}
+
 function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   # local candidates; ble/util/assign-array candidates 'compgen -A file -- "$COMPV"'
 
-  local candidates ret
-  if [[ $ble_comp_type == *a* ]]; then
-    ble-complete/source/file/.create-ambiguous-path-pattern "$COMPV"; local pattern=$ret
-  else
-    ble/string#escape-for-glob "$COMPV"; local pattern=$ret*
-  fi
-  ble-complete/util/eval-pathname-expansion "$pattern"
-  candidates=("${ret[@]}")
+  local ret
+  ble-complete/source/file/.construct-pathname-pattern "$COMPV"
+  ble-complete/util/eval-pathname-expansion "$ret"
+  local -a candidates; candidates=("${ret[@]}")
 
   local cand
   for cand in "${candidates[@]}"; do
@@ -427,14 +439,10 @@ function ble-complete/source/dir {
 
   # local candidates; ble/util/assign-array candidates 'compgen -A directory -S / -- "$COMPV"'
 
-  local candidates ret
-  if [[ $ble_comp_type == *a* ]]; then
-    ble-complete/source/file/.create-ambiguous-path-pattern "$COMPV"; local pattern=$ret/
-  else
-    ble/string#escape-for-glob "$COMPV"; local pattern=$ret*/
-  fi
-  ble-complete/util/eval-pathname-expansion "$pattern"
-  candidates=("${ret[@]}")
+  local ret
+  ble-complete/source/file/.construct-pathname-pattern "$COMPV"
+  ble-complete/util/eval-pathname-expansion "$ret/"
+  local -a candidates; candidates=("${ret[@]}")
 
   local cand
   for cand in "${candidates[@]}"; do
@@ -447,7 +455,7 @@ function ble-complete/source/dir {
 
 # source/argument (complete -p)
 
-function ble-complete/source/argument/.compgen-helper-vars {
+function ble-complete/source/argument/.progcomp-helper-vars {
   COMP_WORDS=("${comp_words[@]}")
   COMP_LINE="$comp_line"
   COMP_POINT="$comp_point"
@@ -455,22 +463,22 @@ function ble-complete/source/argument/.compgen-helper-vars {
   COMP_TYPE=9
   COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode-key/.invoke-command
 }
-function ble-complete/source/argument/.compgen-helper-prog {
+function ble-complete/source/argument/.progcomp-helper-prog {
   if [[ $comp_prog ]]; then
     (
       local COMP_WORDS COMP_CWORD
       export COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
-      ble-complete/source/argument/.compgen-helper-vars
+      ble-complete/source/argument/.progcomp-helper-vars
       local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
       "$comp_prog" "$cmd" "$cur" "$prev"
     )
   fi
 }
-function ble-complete/source/argument/.compgen-helper-func {
+function ble-complete/source/argument/.progcomp-helper-func {
   [[ $comp_func ]] || return
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
-  ble-complete/source/argument/.compgen-helper-varsz
+  ble-complete/source/argument/.progcomp-helper-vars
 
   # compopt に介入して -o/+o option を読み取る。
   local fDefault=
@@ -518,25 +526,27 @@ function ble-complete/source/argument/.compgen-helper-func {
   fi
 }
 
-## 関数 ble-complete/source/argument/.compgen
-## @var[out] comp_opts
-## @var[in] COMPV
-## @var[in] index
-## @var[in] (variables set by ble-syntax/parse)
-## @var[in] 他色々
-## @exit 入力がある時に 148 を返します。
-function ble-complete/source/argument/.compgen {
+## 関数 ble-complete/source/argument/.progcomp
+##   @var[out] comp_opts
+##
+##   @var[in] COMP1 COMP2 COMPV COMPS comp_type
+##     ble-complete/source の標準的な変数たち。
+##
+##   @var[in] comp_words comp_line comp_point comp_cword
+##     ble-syntax:bash/extract-command によって生成される変数たち。
+##
+##   @var[in] 他色々
+##   @exit 入力がある時に 148 を返します。
+function ble-complete/source/argument/.progcomp {
   shopt -q progcomp || return 1
-  [[ $ble_comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
+  [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
 
-  local comp_words comp_line comp_point comp_cword
   local comp_prog= comp_func=
-  ble-syntax:bash/extract-command "$index" || return 1
-
   local cmd=${comp_words[0]} compcmd= is_default_completion=
+
   if complete -p "$cmd" &>/dev/null; then
     compcmd=$cmd
-  elif [[ ${cmd##*/} != "$cmd" ]] && complete -p "${cmd##*/}" &>/dev/null; then
+  elif [[ $cmd == */?* ]] && complete -p "${cmd##*/}" &>/dev/null; then
     compcmd=${cmd##*/}
   elif complete -p -D &>/dev/null; then
     is_default_completion=1
@@ -569,10 +579,10 @@ function ble-complete/source/argument/.compgen {
           ble/array#push compoptions "-$c" "$o" ;;
         (F)
           comp_func="${compargs[iarg++]}"
-          ble/array#push compoptions "-$c" ble-complete/source/argument/.compgen-helper-func ;;
+          ble/array#push compoptions "-$c" ble-complete/source/argument/.progcomp-helper-func ;;
         (C)
           comp_prog="${compargs[iarg++]}"
-          ble/array#push compoptions "-$c" ble-complete/source/argument/.compgen-helper-prog ;;
+          ble/array#push compoptions "-$c" ble-complete/source/argument/.progcomp-helper-prog ;;
         (*)
           # -D, etc. just discard
         esac
@@ -590,11 +600,11 @@ function ble-complete/source/argument/.compgen {
   ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
 
   # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
-  #   ble-complete/source/argument/.compgen-helper-func 関数内で補間関数の終了ステータスを確認し、
+  #   ble-complete/source/argument/.progcomp-helper-func 関数内で補間関数の終了ステータスを確認し、
   #   もし 124 だった場合には is_default_completion に retry を設定する。
   if [[ $is_default_completion == retry && ! $_ble_complete_retry_guard ]]; then
     local _ble_complete_retry_guard=1
-    ble-complete/source/argument/.compgen
+    ble-complete/source/argument/.progcomp
     return
   fi
 
@@ -638,11 +648,33 @@ function ble-complete/source/argument/.compgen {
   ((count!=0))
 }
 
+## 関数 ble-complete/source/argument/.generate-user-defined-completion
+##   ユーザ定義の補完を実行します。ble/cmdinfo/complete:コマンド名
+##   という関数が定義されている場合はそれを使います。
+##   それ以外の場合は complete によって登録されているプログラム補完が使用されます。
+##
+##   @var[in] comp_index
+##   @var[in] (variables set by ble-syntax/parse)
+##
+function ble-complete/source/argument/.generate-user-defined-completion {
+  local comp_words comp_line comp_point comp_cword
+  ble-syntax:bash/extract-command "$comp_index" || return 1
+
+  local cmd=${comp_words[0]}
+  if ble/util/isfunction "ble/cmdinfo/complete:$cmd"; then
+    "ble/cmdinfo/complete:$cmd"
+  elif [[ $cmd == */?* ]] && ble/util/isfunction "ble/cmdinfo/complete:${cmd##*/}"; then
+    "ble/cmdinfo/complete:${cmd##*/}"
+  else
+    ble-complete/source/argument/.progcomp
+  fi
+}
+
 function ble-complete/source/argument {
   local comp_opts=:
 
   # try complete&compgen
-  ble-complete/source/argument/.compgen; local exit=$?
+  ble-complete/source/argument/.generate-user-defined-completion; local exit=$?
   [[ $exit == 0 || $exit == 148 ]] && return "$exit"
 
   # 候補が見付からない場合
@@ -658,7 +690,7 @@ function ble-complete/source/argument {
 
 function ble-complete/source/variable {
   [[ ${COMPV+set} ]] || return 1
-  [[ $ble_comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
+  [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
 
   local action
   if [[ $1 == '=' ]]; then
@@ -697,7 +729,7 @@ function ble-complete/.fignore/filter {
 ## 関数 ble-complete/.pick-nearest-context
 ##   一番開始点に近い補完源の一覧を求めます。
 ##
-##   @var[in] index
+##   @var[in] comp_index
 ##   @arr[in,out] context
 ##
 ##   @arr[out] nearest_contexts
@@ -710,7 +742,7 @@ function ble-complete/.fignore/filter {
 ##   @var ble_complete_raw_paramx
 ##     Cパラメータ展開 $var の直後かどうか。
 function ble-complete/.pick-nearest-context {
-  COMP1= COMP2=$index
+  COMP1= COMP2=$comp_index
   nearest_contexts=()
 
   local -a unused_contexts=()
@@ -729,7 +761,7 @@ function ble-complete/.pick-nearest-context {
   done
   context=("${unused_contexts[@]}")
 
-  COMPS=${text:COMP1:COMP2-COMP1}
+  COMPS=${comp_text:COMP1:COMP2-COMP1}
   ble_complete_raw_paramx=
   local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
   if [[ ! $COMPS ]] || ble-syntax:bash/simple-word/is-simple "$COMPS"; then
@@ -741,7 +773,7 @@ function ble-complete/.pick-nearest-context {
 ## 関数 ble-complete/util/construct-ambiguous-regex text
 ##   曖昧一致に使う正規表現を生成します。
 ##   @param[in] text
-##   @var[in] ble_comp_type
+##   @var[in] comp_type
 ##   @var[out] ret
 function ble-complete/util/construct-ambiguous-regex {
   local text=$1
@@ -751,7 +783,7 @@ function ble-complete/util/construct-ambiguous-regex {
     ((i)) && ble/array#push buff '.*'
     ch=${text:i:1}
     if [[ $ch == [a-zA-Z] ]]; then
-      if [[ $ble_comp_type == *i* ]]; then
+      if [[ $comp_type == *i* ]]; then
         ble/string#toggle-case "$ch"
         ch=[$ch$ret]
       fi
@@ -793,11 +825,11 @@ function ble-complete/.filter-candidates-by-regex {
 }
 
 function ble/widget/complete {
-  local text=$_ble_edit_str index=$_ble_edit_ind
+  local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   ble-syntax/import
   _ble_edit_str.update-syntax
   local context
-  ble-syntax/completion-context "$text" "$index"
+  ble-syntax/completion-context "$comp_text" "$comp_index"
 
   if ((${#context[@]}==0)); then
     ble/widget/.bell
@@ -812,9 +844,9 @@ function ble/widget/complete {
     ((${#_fignore[@]})) && shopt -q force_fignore && flag_force_fignore=1
   fi
 
-  local ble_comp_type=
+  local comp_type=
   ble/util/test-rl-variable completion-ignore-case &&
-    ble_comp_type=${ble_comp_type}i
+    comp_type=${comp_type}i
 
   local cand_count=0
   local -a cand_cand=() # 候補文字列
@@ -851,7 +883,7 @@ function ble/widget/complete {
     ((cand_count)) && break
 
     if [[ $bleopt_complete_ambiguous ]]; then
-      ble_comp_type=${ble_comp_type}a
+      comp_type=${comp_type}a
       for ctx in "${nearest_contexts[@]}"; do
         ble/string#split-words actx "$ctx"
         ble/string#split source : "${actx[0]}"
@@ -859,7 +891,7 @@ function ble/widget/complete {
         local COMP_PREFIX= # 既定値 (yield-candidate で参照)
         ble-complete/source/"${source[@]}"
       done
-      ble_comp_type=${ble_comp_type//a}
+      comp_type=${comp_type//a}
 
       local ret; ble-complete/util/construct-ambiguous-regex "$COMPV"
       local rex_ambiguous_compv=^$ret
@@ -897,13 +929,13 @@ function ble/widget/complete {
   fi
 
   # 編集範囲の最小化
-  if [[ $common == "${text:COMP1:COMP2-COMP1}"* ]]; then
+  if [[ $common == "${comp_text:COMP1:COMP2-COMP1}"* ]]; then
     # 既存部分の置換がない場合
     common=${common:COMP2-COMP1}
     ((COMP1=COMP2))
   else
     # 既存部分の置換がある場合
-    while ((COMP1<COMP2)) && [[ $common == "${text:COMP1:1}"* ]]; do
+    while ((COMP1<COMP2)) && [[ $common == "${comp_text:COMP1:1}"* ]]; do
       common=${common:1}
       ((COMP1++))
     done
@@ -927,6 +959,63 @@ function ble/widget/complete {
     ble-edit/info/show text "${cand_show[*]}"
   fi
 
-  ble/widget/.delete-range "$COMP1" "$index"
+  ble/widget/.delete-range "$COMP1" "$COMP2"
   [[ $common ]] && ble/widget/.insert-string "$common"
+}
+
+#------------------------------------------------------------------------------
+# default cmdinfo/complete
+
+function ble/cmdinfo/complete:cd/.impl {
+  local type=$1
+  [[ ${COMPV+set} ]] || return 1
+
+  if [[ $COMPV == -* ]]; then
+    local action=ble-complete/action/word
+    case $type in
+    (pushd)
+      if [[ $COMPV == - || $COMPV == -n ]]; then
+        ble-complete/yield-candidate -n "$action"
+      fi ;;
+    (*)
+      COMP_PREFIX=$COMPV
+      local -a list=()
+      [[ $COMPV == -* ]] && ble-complete/yield-candidate "${COMPV}" "$action"
+      [[ $COMPV != *L* ]] && ble-complete/yield-candidate "${COMPV}L" "$action"
+      [[ $COMPV != *P* ]] && ble-complete/yield-candidate "${COMPV}P" "$action"
+      ((_ble_bash>=40200)) && [[ $COMPV != *e* ]] && ble-complete/yield-candidate "${COMPV}e" "$action"
+      ((_ble_bash>=40300)) && [[ $COMPV != *@* ]] && ble-complete/yield-candidate "${COMPV}@" "$action" ;;
+    esac
+    return
+  fi
+
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+
+  ble-complete/source/dir
+
+  if [[ $CDPATH ]]; then
+    local names; ble/string#split names : "$CDPATH"
+    local name
+    for name in "${names[@]}"; do
+      [[ $name ]] || continue
+      name=${name%/}/
+
+      local ret cand
+      ble-complete/source/file/.construct-pathname-pattern "$COMPV"
+      ble-complete/util/eval-pathname-expansion "$name/$ret"
+      for cand in "${ret[@]}"; do
+        [[ $cand && -d $cand ]] || continue
+        [[ $cand == / ]] || cand=${cand%/}
+        cand=${cand#"$name"/}
+        [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
+        ble-complete/yield-candidate "$cand" ble-complete/action/file
+      done
+    done
+  fi
+}
+function ble/cmdinfo/complete:cd {
+  ble/cmdinfo/complete:cd/.impl cd
+}
+function ble/cmdinfo/complete:pushd {
+  ble/cmdinfo/complete:cd/.impl pushd
 }
