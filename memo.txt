@@ -740,8 +740,6 @@ tech
 
 2018-07-30
 
-  * complete: --prefix= などの続きの補完
-
   * complete: menu-completion
 
     曖昧一致の時には自動的に開始しても良いかもしれない。
@@ -3108,6 +3106,12 @@ tech
 
 2018-08-05
 
+  * complete: いつの間にかに共通部分が保持されなくなっている
+
+    例えば echo $HOME で tab を押すと /home/murase に置換されてしまう。
+
+  * complete: --prefix= などの続きの補完
+
   * complete: コマンド名補完ができなくなっている [#D0715]
 
     何と compgen は普通は quote を外すが、
@@ -4355,6 +4359,8 @@ tech
     或いは更に上の layer で範囲が拡大される可能性もあったのである)。
 
     修正した。
+
+  * 欠番 [#D0686]
 
   * 古い ToDo 項目の整理 [#D0685]
 

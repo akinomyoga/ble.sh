@@ -449,7 +449,7 @@ function ble-complete/source/file/.construct-pathname-pattern {
 
 function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
-  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  [[ $comp_type != *a* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   #   Note: compgen -A file (以下のコード参照) はバグがあって、
   #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0715 #M0009)
@@ -474,7 +474,7 @@ function ble-complete/source/file {
 
 function ble-complete/source/dir {
   [[ ${COMPV+set} ]] || return 1
-  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  [[ $comp_type != *a* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   # Note: compgen -A directory (以下のコード参照) はバグがあって、
   #   bash-4.3 以降でクォート除去が実行されないので使わない (#D0715 #M0009)
@@ -728,6 +728,25 @@ function ble-complete/source/argument {
     # filenames, default, bashdefault
     ble-complete/source/file
   fi
+
+  if ((cand_count==0)); then
+    if local rex='^-[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
+      # var=filename --option=filename など。
+
+      local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
+      local COMP_PREFIX=$prefix
+      [[ $comp_type != *a* && $value =~ ^.+/ ]] && COMP_PREFIX=$prefix${BASH_REMATCH[0]}
+
+      local ret cand
+      ble-complete/source/file/.construct-pathname-pattern "$value"
+      ble-complete/util/eval-pathname-expansion "$ret"
+      for cand in "${ret[@]}"; do
+        [[ -e $cand || -h $cand ]] || continue
+        [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
+        ble-complete/yield-candidate "$prefix$cand" ble-complete/action/file
+      done
+    fi
+  fi
 }
 
 # source/variable
@@ -969,9 +988,8 @@ function ble/widget/complete {
     # 曖昧一致に於いて複数の候補の共通部分が
     # 元の文字列に曖昧一致しない場合は補完しない。
     [[ $common =~ $rex_ambiguous_compv ]] || common=$COMPV
-  elif ((cand_count!=1&&${#common}<${#COMPV})); then
-    # 一意確定以外の時には文字数が減る置換はしない。
-    common=$COMPV
+  elif ((cand_count!=1)) && [[ $common != "$COMPS"* ]]; then
+    common=$COMPS
   fi
 
   # 編集範囲の最小化
