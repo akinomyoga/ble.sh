@@ -10,8 +10,12 @@
 
 ## 既存の action
 ##
+##   ble-complete/action/plain
 ##   ble-complete/action/word
 ##   ble-complete/action/file
+##   ble-complete/action/argument
+##   ble-complete/action/command
+##   ble-complete/action/variable
 ##
 ## action の実装
 ##
@@ -156,13 +160,23 @@ function ble-complete/action/command/complete {
   if [[ -d $CAND ]]; then
     [[ $CAND != */ ]] &&
       ble-complete/action/util/complete.addtail /
-  elif type "$CAND" &>/dev/null; then
-    ble-complete/action/util/complete.addtail ' '
-
+  elif ! type "$CAND" &>/dev/null; then
+    # 関数名について縮約されたもので一意確定した時。
+    #
     # Note: 関数名について縮約されている時、
     #   本来は一意確定でなくても一意確定として此処に来ることがある。
-    #   一意確定でない時はそのコマンドは存在していない筈なので、
-    #   コマンドが存在している時に限り ' ' を付加する。
+    #   そのコマンドが存在していない時に、縮約されていると判定する。
+    #
+    if [[ $CAND == */ ]]; then
+      # 縮約されていると想定し続きの補完候補を出す。
+      local COMP_PREFIX=
+      local cand_count=0
+      local -a cand_cand=() cand_prop=() cand_word=() cand_show=() cand_data=()
+      COMPS=$CAND COMPV=$CAND ble-complete/source/command
+      ble-edit/info/show text "${cand_show[*]}"
+    fi
+  else
+    ble-complete/action/util/complete.addtail ' '
   fi
 }
 
@@ -299,25 +313,37 @@ function ble-complete/source/command/.contract-by-slashes {
 }
 
 function ble-complete/source/command/gen {
-  local q="'" Q="'\''"
-  {
-    compgen -c -- "'${COMPV//$q/$Q}'"
-    [[ $COMPV == */* ]] && compgen -A function -- "'${COMPV//$q/$Q}'"
-  } | ble-complete/source/command/.contract-by-slashes
+  (
+    [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
+    # Note: 何故か compgen -A command はクォート除去が実行されない。
+    #   compgen -A function はクォート除去が実行される。
+    #   従って、compgen -A command には直接 COMPV を渡し、
+    #   compgen -A function には compv_quoted を渡す。
+    compgen -c -- "$COMPV"
+    if [[ $COMPV == */* ]]; then
+      local q="'" Q="'\''"
+      local compv_quoted="'${COMPV//$q/$Q}'"
+      compgen -A function -- "$compv_quoted"
+    fi
+  ) | ble-complete/source/command/.contract-by-slashes
 
   # ディレクトリ名列挙 (/ 付きで生成する)
+  #
   #   Note: shopt -q autocd &>/dev/null かどうかに拘らず列挙する。
-  compgen -A directory -S / -- "'${COMPV//$q/$Q}'"
-
-  # local ret; ble/util/eval-pathname-expansion '"$COMPV"*/'
-  # local cand
-  # for cand in "${ret[@]}"; do
-  #   [[ -d $cand ]] && printf '%s\n' "$cand"
-  # done
+  #
+  #   Note: compgen -A directory (以下のコード参照) はバグがあって、
+  #     bash-4.3 以降でクォート除去が実行されないので使わない (#D0715 #M0009)
+  #
+  #     [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
+  #     compgen -A directory -S / -- "$compv_quoted"
+  #
+  local ret
+  ble-complete/source/file/.construct-pathname-pattern "$COMPV"
+  ble-complete/util/eval-pathname-expansion "$ret/"
+  ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
 }
 function ble-complete/source/command {
   [[ ${COMPV+set} ]] || return 1
-  [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
@@ -348,6 +374,12 @@ function ble-complete/util/eval-pathname-expansion {
     set +f
   fi
 
+  local old_nullglob=
+  if ! shopt -q nullglob; then
+    old_nullglob=0
+    shopt -s nullglob
+  fi
+
   local old_nocaseglob=
   if [[ $comp_type == *i* ]]; then
     if ! shopt -q nocaseglob; then
@@ -370,6 +402,8 @@ function ble-complete/util/eval-pathname-expansion {
       shopt -u nocaseglob
     fi
   fi
+
+  [[ $old_nullglob ]] && shopt -u nullglob
 
   [[ $old_noglob ]] && set -f
 }
@@ -417,8 +451,11 @@ function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
-  # local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
-  # local candidates; ble/util/assign-array candidates 'compgen -A file -- "$compv_quoted"'
+  #   Note: compgen -A file (以下のコード参照) はバグがあって、
+  #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0715 #M0009)
+  #
+  #     local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
+  #     local candidates; ble/util/assign-array candidates 'compgen -A file -- "$compv_quoted"'
 
   local ret
   ble-complete/source/file/.construct-pathname-pattern "$COMPV"
@@ -439,8 +476,11 @@ function ble-complete/source/dir {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
-  # local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
-  # local candidates; ble/util/assign-array candidates 'compgen -A directory -S / -- "$compv_quoted"'
+  # Note: compgen -A directory (以下のコード参照) はバグがあって、
+  #   bash-4.3 以降でクォート除去が実行されないので使わない (#D0715 #M0009)
+  #
+  #   local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
+  #   local candidates; ble/util/assign-array candidates 'compgen -A directory -S / -- "$compv_quoted"'
 
   local ret
   ble-complete/source/file/.construct-pathname-pattern "$COMPV"
@@ -949,17 +989,19 @@ function ble/widget/complete {
 
   if ((cand_count==1)); then
     # 一意確定の時
+
+    # Note: $ACTION/complete が info に表示できる様に先に clear する。
+    ble-edit/info/clear
+
     local ACTION
     ble/string#split-words ACTION "${cand_prop[0]}"
     if ble/util/isfunction "$ACTION/complete"; then
       local INSERT=$common
       local CAND=${cand_cand[0]}
       local DATA=${cand_data[0]}
-
       "$ACTION/complete"
       common=$INSERT
     fi
-    ble-edit/info/clear
   else
     # 候補が複数ある時
     ble-edit/info/show text "${cand_show[*]}"
