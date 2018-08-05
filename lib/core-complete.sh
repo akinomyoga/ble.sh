@@ -299,14 +299,15 @@ function ble-complete/source/command/.contract-by-slashes {
 }
 
 function ble-complete/source/command/gen {
+  local q="'" Q="'\''"
   {
-    compgen -c -- "$COMPV"
-    [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
+    compgen -c -- "'${COMPV//$q/$Q}'"
+    [[ $COMPV == */* ]] && compgen -A function -- "'${COMPV//$q/$Q}'"
   } | ble-complete/source/command/.contract-by-slashes
 
   # ディレクトリ名列挙 (/ 付きで生成する)
   #   Note: shopt -q autocd &>/dev/null かどうかに拘らず列挙する。
-  compgen -A directory -S / -- "$COMPV"
+  compgen -A directory -S / -- "'${COMPV//$q/$Q}'"
 
   # local ret; ble/util/eval-pathname-expansion '"$COMPV"*/'
   # local cand
@@ -328,7 +329,7 @@ function ble-complete/source/command {
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
 
-    # workaround: 何故か compgen -c -- "$COMPV" で
+    # workaround: 何故か compgen -c -- "$compv_quoted" で
     #   厳密一致のディレクトリ名が混入するので削除する。
     [[ $cand != */ && -d $cand ]] && ! type "$cand" &>/dev/null && continue
 
@@ -416,7 +417,8 @@ function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
-  # local candidates; ble/util/assign-array candidates 'compgen -A file -- "$COMPV"'
+  # local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
+  # local candidates; ble/util/assign-array candidates 'compgen -A file -- "$compv_quoted"'
 
   local ret
   ble-complete/source/file/.construct-pathname-pattern "$COMPV"
@@ -437,7 +439,8 @@ function ble-complete/source/dir {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
-  # local candidates; ble/util/assign-array candidates 'compgen -A directory -S / -- "$COMPV"'
+  # local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
+  # local candidates; ble/util/assign-array candidates 'compgen -A directory -S / -- "$compv_quoted"'
 
   local ret
   ble-complete/source/file/.construct-pathname-pattern "$COMPV"
@@ -596,8 +599,9 @@ function ble-complete/source/argument/.progcomp {
 
   # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
-  local compgen
-  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$COMPV" 2>/dev/null'
+  local q="'" Q="'\''"
+  local compgen compv_quoted="'${COMPV//$q/$Q}'"
+  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$compv_quoted" 2>/dev/null'
 
   # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
   #   ble-complete/source/argument/.progcomp-helper-func 関数内で補間関数の終了ステータスを確認し、
@@ -699,8 +703,10 @@ function ble-complete/source/variable {
     action=word # 確定時に ' ' を挿入
   fi
 
+  local q="'" Q="'\''"
+  local compv_quoted="'${COMPV//$q/$Q}'"
   local cand arr
-  ble/util/assign-array arr 'compgen -v -- "$COMPV"'
+  ble/util/assign-array arr 'compgen -v -- "$compv_quoted"'
 
   local i=0
   for cand in "${arr[@]}"; do
