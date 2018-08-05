@@ -5178,7 +5178,7 @@ if ((_ble_bash>=40000)); then
             builtin history -n
 
             if shopt -q histappend; then
-              # Note: bashrc の謎の遅延について (memo.txt#D0703)
+              # Note: bashrc の謎の遅延について (memo.txt#D0702)
               #
               #   shopt -s histappend の状態で history -n を呼び出すと、
               #   bashrc を抜けてから Bash 本体によるプロンプトが表示されて、
@@ -7081,7 +7081,7 @@ function ble-edit/bind/.head {
   [[ $bleopt_suppress_bash_output ]] ||
     ble-edit/bind/.head/adjust-bash-rendering
 
-  # Workaround #D0703 (bash 3.1-5.0)
+  # Workaround #D0702 (bash 3.1-5.0)
   if [[ $_ble_edit_history_HISTSIZE_rewrite ]]; then
     [[ $HISTSIZE == ${_ble_edit_history_HISTSIZE_rewrite#*:} ]] &&
       HISTSIZE=${_ble_edit_history_HISTSIZE_rewrite%%:*}

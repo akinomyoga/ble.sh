@@ -51,8 +51,38 @@ function check-assign {
 
 function check-memo-numbering {
   echo "--- $FUNCNAME ---"
-  grep -ao '\[#D....\]' memo.txt | sort | uniq -cd
-  grep -ao '\[#D....\]' memo.txt | wc -l
+
+  grep -ao '\[#D....\]' memo.txt | awk '
+    function report_error(message) {
+      printf("memo-numbering: \x1b[1;31m%s\x1b[m\n", message) > "/dev/stderr";
+    }
+    !/\[#D[0-9]{4}\]/ {
+      report_error("invalid  number \"" $0 "\".");
+      next;
+    }
+    {
+      num = $0;
+      gsub(/^\[#D0+|\]$/, "", num);
+      if (prev != "" && num != prev - 1) {
+        if (prev < num) {
+          report_error("reverse ordering " num " has come after " prev ".");
+        } else if (prev == num) {
+          report_error("duplicate number " num ".");
+        } else {
+          for (i = prev - 1; i > num; i--) {
+            report_error("memo-numbering: missing number " i ".");
+          }
+        }
+      }
+      prev = num;
+    }
+    END {
+      if (prev != 1) {
+        for (i = prev - 1; i >= 1; i--)
+          report_error("memo-numbering: missing number " i ".");
+      }
+    }
+  '
   sed -n '0,/^[[:space:]]\{1,\}Done/d;/  \* .*\[#D....\]$/d;/^  \* /p' memo.txt
 }
 

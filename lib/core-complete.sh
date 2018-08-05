@@ -332,7 +332,7 @@ function ble-complete/source/command/gen {
   #   Note: shopt -q autocd &>/dev/null かどうかに拘らず列挙する。
   #
   #   Note: compgen -A directory (以下のコード参照) はバグがあって、
-  #     bash-4.3 以降でクォート除去が実行されないので使わない (#D0715 #M0009)
+  #     bash-4.3 以降でクォート除去が実行されないので使わない (#D0714 #M0009)
   #
   #     [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   #     compgen -A directory -S / -- "$compv_quoted"
@@ -452,7 +452,7 @@ function ble-complete/source/file {
   [[ $comp_type != *a* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   #   Note: compgen -A file (以下のコード参照) はバグがあって、
-  #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0715 #M0009)
+  #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0714 #M0009)
   #
   #     local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
   #     local candidates; ble/util/assign-array candidates 'compgen -A file -- "$compv_quoted"'
@@ -477,7 +477,7 @@ function ble-complete/source/dir {
   [[ $comp_type != *a* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   # Note: compgen -A directory (以下のコード参照) はバグがあって、
-  #   bash-4.3 以降でクォート除去が実行されないので使わない (#D0715 #M0009)
+  #   bash-4.3 以降でクォート除去が実行されないので使わない (#D0714 #M0009)
   #
   #   local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
   #   local candidates; ble/util/assign-array candidates 'compgen -A directory -S / -- "$compv_quoted"'
