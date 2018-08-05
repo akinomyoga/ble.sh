@@ -333,8 +333,8 @@ function ble/string#last-index-of {
 _ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
 _ble_util_string_upper_list=ABCDEFGHIJKLMNOPQRSTUVWXYZ
 function ble/string#toggle-case {
-  local text=$*
-  local -a buff ch
+  local text=$* ch i
+  local -a buff
   for ((i=0;i<${#text};i++)); do
     ch=${text:i:1}
     if [[ $ch == [A-Z] ]]; then
@@ -409,9 +409,9 @@ function ble/string#escape-for-extended-regex {
 }
 function ble/string#escape-for-glob {
   ret="$*"
-  if [[ $ret == *['*?[(']* ]]; then
+  if [[ $ret == *['\*?[(']* ]]; then
     local a b
-    for a in \* \? \[ \(; do
+    for a in \\ \* \? \[ \(; do
       b="\\$a" ret=${ret//"$a"/$b}
     done
   fi
@@ -1108,6 +1108,11 @@ function ble/util/restore-editing-mode {
   esac
 }
 
+function ble/util/test-rl-variable {
+  local rl_variables; ble/util/assign rl_variables 'bind -v'
+  [[ $rl_variables == *"set $1 on"* ]]
+}
+
 #------------------------------------------------------------------------------
 # Functions for modules
 
@@ -1518,8 +1523,7 @@ function ble/term/rl-convert-meta/enter {
   [[ $_ble_term_rl_convert_meta_adjusted ]] && return
   _ble_term_rl_convert_meta_adjusted=1
 
-  local rl_variables; ble/util/assign rl_variables 'bind -v'
-  if [[ $rl_variables == *'set convert-meta on'* ]]; then
+  if ble/util/test-rl-variable convert-meta; then
     _ble_term_rl_convert_meta_external=on
     bind 'set convert-meta off'
   else

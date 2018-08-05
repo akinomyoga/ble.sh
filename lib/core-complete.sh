@@ -220,13 +220,15 @@ function ble-complete/yield-candidate {
 ##     曖昧一致するかどうかは呼び出し元で判定されるので、
 ##     曖昧一致する可能性のある候補をできるだけ多く生成すれば良い。
 ##
+##     文字 i を含む時、大文字小文字を区別しない補完候補生成を行います。
+##
 
 # source/wordlist
 
 function ble-complete/source/wordlist {
   [[ ${COMPV+set} ]] || return 1
   [[ $ble_comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
-  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX="${BASH_REMATCH[0]}"
+  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   local cand
   for cand; do
@@ -336,12 +338,39 @@ function ble-complete/source/command {
 
 # source/file
 
-function ble-complete/util/glob-expand {
-  local pattern=$1 noglob=
-  [[ -o noglob ]] && noglob=1
-  [[ $noglob ]] && set +f
-  ret=($pattern)
-  [[ $noglob ]] && set -f
+function ble-complete/util/eval-pathname-expansion {
+  local pattern=$1
+
+  local old_noglob=
+  if [[ -o noglob ]]; then
+    noglob=1
+    set +f
+  fi
+
+  local old_nocaseglob=
+  if [[ $ble_comp_type == *i* ]]; then
+    if ! shopt -q nocaseglob; then
+      old_nocaseglob=0
+      shopt -s nocaseglob
+    fi
+  else
+    if shopt -q nocaseglob; then
+      old_nocaseglob=1
+      shopt -u nocaseglob
+    fi
+  fi
+
+  GLOBIGNORE= eval 'ret=($pattern)' 2>/dev/null
+
+  if [[ $old_nocaseglob ]]; then
+    if ((old_nocaseglob)); then
+      shopt -s nocaseglob
+    else
+      shopt -u nocaseglob
+    fi
+  fi
+
+  [[ $old_noglob ]] && set -f
 }
 
 ## 関数 ble-complete/source/file/.create-ambiguous-path-pattern path
@@ -371,15 +400,16 @@ function ble-complete/source/file {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
-  local candidates
+  # local candidates; ble/util/assign-array candidates 'compgen -A file -- "$COMPV"'
+
+  local candidates ret
   if [[ $ble_comp_type == *a* ]]; then
-    local ret
     ble-complete/source/file/.create-ambiguous-path-pattern "$COMPV"; local pattern=$ret
-    ble-complete/util/glob-expand "$pattern"
-    candidates=("${ret[@]}")
   else
-    ble/util/assign-array candidates 'compgen -A file -- "$COMPV"'
+    ble/string#escape-for-glob "$COMPV"; local pattern=$ret*
   fi
+  ble-complete/util/eval-pathname-expansion "$pattern"
+  candidates=("${ret[@]}")
 
   local cand
   for cand in "${candidates[@]}"; do
@@ -395,14 +425,16 @@ function ble-complete/source/dir {
   [[ ${COMPV+set} ]] || return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
-  local candidates
+  # local candidates; ble/util/assign-array candidates 'compgen -A directory -S / -- "$COMPV"'
+
+  local candidates ret
   if [[ $ble_comp_type == *a* ]]; then
     ble-complete/source/file/.create-ambiguous-path-pattern "$COMPV"; local pattern=$ret/
-    ble-complete/util/glob-expand "$pattern"
-    candidates=("${ret[@]}")
   else
-    ble/util/assign-array candidates 'compgen -A directory -S / -- "$COMPV"'
+    ble/string#escape-for-glob "$COMPV"; local pattern=$ret*/
   fi
+  ble-complete/util/eval-pathname-expansion "$pattern"
+  candidates=("${ret[@]}")
 
   local cand
   for cand in "${candidates[@]}"; do
@@ -477,7 +509,7 @@ function ble-complete/source/argument/.compgen-helper-func {
     return "$ret"
   }
 
-  local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
+  local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
   "$comp_func" "$cmd" "$cur" "$prev"; local ret=$?
   unset -f compopt
 
@@ -709,15 +741,24 @@ function ble-complete/.pick-nearest-context {
 ## 関数 ble-complete/util/construct-ambiguous-regex text
 ##   曖昧一致に使う正規表現を生成します。
 ##   @param[in] text
+##   @var[in] ble_comp_type
 ##   @var[out] ret
 function ble-complete/util/construct-ambiguous-regex {
   local text=$1
-  local i=0 n=${#text}
+  local i=0 n=${#text} c=
   local -a buff=()
   for ((i=0;i<n;i++)); do
     ((i)) && ble/array#push buff '.*'
-    ble/string#escape-for-extended-regex "${text:i:1}"
-    ble/array#push buff "$ret"
+    ch=${text:i:1}
+    if [[ $ch == [a-zA-Z] ]]; then
+      if [[ $ble_comp_type == *i* ]]; then
+        ble/string#toggle-case "$ch"
+        ch=[$ch$ret]
+      fi
+    else
+      ble/string#escape-for-extended-regex "$ch"; ch=$ret
+    fi
+    ble/array#push buff "$ch"
   done
   IFS= eval 'ret="${buff[*]}"'
 }
@@ -771,6 +812,10 @@ function ble/widget/complete {
     ((${#_fignore[@]})) && shopt -q force_fignore && flag_force_fignore=1
   fi
 
+  local ble_comp_type=
+  ble/util/test-rl-variable completion-ignore-case &&
+    ble_comp_type=${ble_comp_type}i
+
   local cand_count=0
   local -a cand_cand=() # 候補文字列
   local -a cand_prop=() # 関数 開始 終了
@@ -798,7 +843,6 @@ function ble/widget/complete {
       ble/string#split-words actx "$ctx"
       ble/string#split source : "${actx[0]}"
 
-      local ble_comp_type= # normal
       local COMP_PREFIX= # 既定値 (yield-candidate で参照)
       ble-complete/source/"${source[@]}"
     done
@@ -807,14 +851,15 @@ function ble/widget/complete {
     ((cand_count)) && break
 
     if [[ $bleopt_complete_ambiguous ]]; then
+      ble_comp_type=${ble_comp_type}a
       for ctx in "${nearest_contexts[@]}"; do
         ble/string#split-words actx "$ctx"
         ble/string#split source : "${actx[0]}"
 
-        local ble_comp_type=a # ambiguous
         local COMP_PREFIX= # 既定値 (yield-candidate で参照)
         ble-complete/source/"${source[@]}"
       done
+      ble_comp_type=${ble_comp_type//a}
 
       local ret; ble-complete/util/construct-ambiguous-regex "$COMPV"
       local rex_ambiguous_compv=^$ret
@@ -846,6 +891,9 @@ function ble/widget/complete {
     # 曖昧一致に於いて複数の候補の共通部分が
     # 元の文字列に曖昧一致しない場合は補完しない。
     [[ $common =~ $rex_ambiguous_compv ]] || common=$COMPV
+  elif ((cand_count!=1&&${#common}<${#COMPV})); then
+    # 一意確定以外の時には文字数が減る置換はしない。
+    common=$COMPV
   fi
 
   # 編集範囲の最小化

@@ -708,6 +708,12 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
+2018-08-05
+
+  * edit: set blink-matching-paren on に相当する機能
+
+  * complete: shopt -s complete_fullquote に対応する
+
 2018-07-30
 
   * complete: --prefix= などの続きの補完
@@ -725,16 +731,9 @@ tech
 
 2018-07-28
 
-  * complete: 既存部分の置き換えは一意確定以外の時は起こさない様にする。
-
-    未だ候補が確定していないのに共通部分で置き換えを行うと、
-    今までに生成していた候補が再現されなくなる可能性があるので。
-
-    また、途中で補完をやはりやめようという時に面倒である。
-    補完のキャンセルの仕組みについては後で対応する予定ではあるが、
-    キャンセルに対応したとしてもやはり動作として不自然である。
-
   * complete: compgen に渡す文字列はクォートしなければならない。
+
+    後 compgen の引数が空白を含む場合等にどうなるのかについても確認する。
 
   * complete: 例えば ble-complete/ まで一意確定でコマンド名補完した時に、
     続きの候補も同時に表示した方が便利である。
@@ -817,26 +816,6 @@ tech
 
       weak な優先順位は、候補を表示する時の順序。
       strong な優先順位は、候補絞り込みの際に一番優先順位の高いものが一つしかない場合にはそれに確定する。
-
-  * complete (ble-complete/source/command/gen): compgen の使用の是非について再確認
-
-    - tocheck: compgen -A directory と pathname-expansino の両方の実装がある理由は?
-      compgen だと -- の先の単語の quote がよく分からないという事。
-      一方で pathname-expansion の方を使わない理由もあった筈。
-      これについてはコミットを遡れば良い。
-      後 compgen が空白を含む場合等にどうなるのかについても確認する必要がある。
-
-    これはどうも nocaseglob と関係している様である。
-    nocaseglob の時、
-
-    調べると bash には色々のオプションがある様である。
-
-    - compgen は rl の設定に左右される。bind "set completion-ignore-case on"
-      [autocomplete - getting case insensitive completions with compgen in bash - Unix &amp; Linux Stack Exchange](https://unix.stackexchange.com/questions/204848/getting-case-insensitive-completions-with-compgen-in-bash)
-      % 然し、今 bind -v してもその様な rl 変数はない… と思ったら bind -v の出力は別にソートされている訳でも、同じカテゴリで並んでいる訳でもなかった。
-    - [[ == ]] や case は shopt -s nocasematch に依存する。
-    - パス名展開は shopt -s nocaseglob に依存する。
-
 
 2018-07-19
 
@@ -3101,7 +3080,42 @@ tech
 
 2018-08-05
 
-  * complete: 曖昧一致がサブディレクトリのファイルに効かない [#D0709]
+  * 2018-07-28 complete: 既存部分の置き換えは一意確定以外の時は起こさない様にする [#D0711]
+
+    未だ候補が確定していないのに共通部分で置き換えを行うと、
+    今までに生成していた候補が再現されなくなる可能性があるので。
+
+    また、途中で補完をやはりやめようという時に面倒である。
+    補完のキャンセルの仕組みについては後で対応する予定ではあるが、
+    キャンセルに対応したとしてもやはり動作として不自然である。
+
+    →これは取り敢えず文字数が少なくなる様な置換だけ行わない様にした。
+    それで問題が起こる様であればまた再考する。
+
+  * 2018-07-28 complete (ble-complete/source/command/gen): compgen の使用の是非について再確認 [#D0710]
+
+    - done: compgen -A directory と pathname-expansino の両方の実装がある理由は?
+      compgen だと -- の先の単語の quote がよく分からないという事。
+      一方で pathname-expansion の方を使わない理由もあった筈。
+      これについてはコミットを遡れば良い。
+
+    これはどうも nocaseglob と関係している様である #D0633
+    nocaseglob の時、大文字小文字を区別しない候補の生成を行う。
+
+    調べると bash には大文字・小文字に関して色々のオプションがある様である。
+
+    - compgen は rl の設定に左右される。bind "set completion-ignore-case on"
+      [autocomplete - getting case insensitive completions with compgen in bash - Unix &amp; Linux Stack Exchange](https://unix.stackexchange.com/questions/204848/getting-case-insensitive-completions-with-compgen-in-bash)
+      % 然し、今 bind -v してもその様な rl 変数はない…
+      % と思ったら bind -v の出力は別にソートされている訳でも、同じカテゴリで並んでいる訳でもなかった。
+    - [[ == ]] や case は shopt -s nocasematch に依存する。
+    - パス名展開は shopt -s nocaseglob に依存する。
+
+    ble-complete では bind -v の値に従って候補生成する事にした。
+    glob を用いる時には一時的に shopt -q nocaseglob を変更する。
+    正規表現を用いてフィルターする時には i がある時には各文字を [aA] 等の様にする。
+
+  * 2018-07-30 complete: 曖昧一致がサブディレクトリのファイルに効かない [#D0709]
 
     これは何故かと言うと曖昧一致の候補生成を最初の文字だけで行っているからである。
     サブディレクトリのファイルは生成されない。
