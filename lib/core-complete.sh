@@ -37,7 +37,7 @@
 ##     ※ [[ -v COMPV ]] は bash-4.2 以降です。
 ##
 ##   @var[in    ] COMP_PREFIX
-##   @var[in    ] ble_complete_raw_paramx
+##   @var[in    ] comps_raw_paramx
 ##
 ## 関数 $ACTION/complete
 ##   一意確定時に、挿入文字列に対する加工を行います。
@@ -100,7 +100,7 @@ function ble-complete/action/plain/initialize {
   if [[ $CAND == "$COMPV"* ]]; then
     local ins
     ble-complete/util/escape-specialchars -v ins "${CAND:${#COMPV}}"
-    [[ $ble_complete_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
+    [[ $comps_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
     INSERT=$COMPS$ins
   else
     ble-complete/util/escape-specialchars -v INSERT "$CAND"
@@ -440,9 +440,9 @@ function ble-complete/source/file/.construct-ambiguous-pathname-pattern {
 function ble-complete/source/file/.construct-pathname-pattern {
   local path=$1
   if [[ $comp_type == *a* ]]; then
-    ble-complete/source/file/.construct-ambiguous-pathname-pattern "$path"; local pattern=$ret/
+    ble-complete/source/file/.construct-ambiguous-pathname-pattern "$path"; local pattern=$ret
   else
-    ble/string#escape-for-glob "$path"; local pattern=$ret*/
+    ble/string#escape-for-glob "$path"; local pattern=$ret*
   fi
   ret=$pattern
 }
@@ -804,7 +804,7 @@ function ble-complete/.fignore/filter {
 ##     補完範囲の (クオートが含まれうる) コマンド文字列
 ##   @var COMPV
 ##     補完範囲のコマンド文字列が意味する実際の文字列
-##   @var ble_complete_raw_paramx
+##   @var comps_raw_paramx
 ##     Cパラメータ展開 $var の直後かどうか。
 function ble-complete/.pick-nearest-context {
   COMP1= COMP2=$comp_index
@@ -827,11 +827,11 @@ function ble-complete/.pick-nearest-context {
   context=("${unused_contexts[@]}")
 
   COMPS=${comp_text:COMP1:COMP2-COMP1}
-  ble_complete_raw_paramx=
+  comps_raw_paramx=
   local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
   if [[ ! $COMPS ]] || ble-syntax:bash/simple-word/is-simple "$COMPS"; then
     local ret; ble-syntax:bash/simple-word/eval "$COMPS"; COMPV=$ret
-    [[ $COMPS =~ $rex_raw_paramx ]] && ble_complete_raw_paramx=1
+    [[ $COMPS =~ $rex_raw_paramx ]] && comps_raw_paramx=1
   fi
 }
 
@@ -931,7 +931,7 @@ function ble/widget/complete {
     # 次の開始点が近くにある候補源たち
     local -a nearest_contexts=()
     local COMP1 COMP2 COMPS COMPV; unset COMPV
-    local ble_complete_raw_paramx=
+    local comps_raw_paramx=
     ble-complete/.pick-nearest-context
 
     # 候補生成
