@@ -1013,6 +1013,7 @@ _ble_syntax_bash_simple_rex_element=
 _ble_syntax_bash_simple_rex_letter=
 _ble_syntax_bash_simple_rex_quote=
 _ble_syntax_bash_simple_rex_param=
+_ble_syntax_bash_simple_rex_open_word=
 function ble-syntax:bash/simple-word/update {
   local quot="'"
   local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
@@ -1025,11 +1026,53 @@ function ble-syntax:bash/simple-word/update {
   _ble_syntax_bash_simple_rex_letter=$rex_letter
   _ble_syntax_bash_simple_rex_quote='\\.|'$rex_squot'|'$rex_dquot
   _ble_syntax_bash_simple_rex_param=$rex_param1'|'$rex_param2
+
+  # rex_open_word
+  local rex_open_squot='"[^"]*|\$"([^"\]|\\.)*'; rex_open_squot="${rex_open_squot//\"/$quot}"
+  local rex_open_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)*'
+  _ble_syntax_bash_simple_rex_open_word='^('$_ble_syntax_bash_simple_rex_element'*)('$rex_open_squot'|'$rex_open_dquot')$'
 }
 ble-syntax:bash/simple-word/update
 
 function ble-syntax:bash/simple-word/is-simple {
   [[ $1 =~ $_ble_syntax_bash_simple_rex_word ]]
+}
+function ble-syntax:bash/simple-word/is-simple-or-open-simple {
+  [[ $1 =~ $_ble_syntax_bash_simple_rex_word || $1 =~ $_ble_syntax_bash_simple_rex_open_word ]]
+}
+## 関数 ble-syntax:bash/simple-word/close-open-word word
+##   指定した引数 word がシェルの完全な単純単語の形式を持つ時は、
+##   その値を ret に設定し、close_type に空文字列を設定して、成功します。
+##   指定した引数 word がシェルの単純単語において最後の引用符を閉じていない形式の時、
+##   引用符を閉じた文字列を ret に設定し、close_type 引用符の種類を設定して成功します。
+##   それ以外の場合には失敗します。
+##
+##   @param[in] word
+##
+##   @var[out] ret
+##     word を設定します。必要があれば引用符を閉じます。
+##
+##   @var[out] close_type
+##     引用符 $"..." を閉じた時に close_type='$"' を設定します。
+##     引用符 "..." を閉じた時に close_type='"' を設定します。
+##     引用符 '...' を閉じた時に close_type=\' を設定します。
+##     引用符 $'...' を閉じた時に close_type=\$\' を設定します。
+##
+function ble-syntax:bash/simple-word/close-open-word {
+  if [[ $1 =~ $_ble_syntax_bash_simple_rex_word ]]; then
+    ret=$1 close_type=
+    return 0
+  elif [[ $1 =~ $_ble_syntax_bash_simple_rex_open_word ]]; then
+    local rematch=${BASH_REMATCH[1]}
+    local m_open_quote=${1:${#rematch}}
+    case $m_open_quote in
+    ('$"'*) ret=$1\" close_type=\$\"; return 0 ;;
+    ('"'*)  ret=$1\" close_type=\"  ; return 0 ;;
+    ("$'"*) ret=$1\' close_type=\$\'; return 0 ;;
+    ("'"*)  ret=$1\' close_type=\'  ; return 0 ;;
+    esac
+  fi
+  return 1
 }
 function ble-syntax:bash/simple-word/extract-parameter-names {
   ret=()
@@ -1079,8 +1122,9 @@ function ble-syntax:bash/simple-word/eval.impl {
     builtin eval "__ble_ret=($1)"
   fi &>/dev/null # Note: failglob 時に一致がないとエラーが生じる
 }
-## 関数 ble-syntax:bash/simple-word/eval
-##
+## 関数 ble-syntax:bash/simple-word/eval word
+##   @param[in] word
+##   @var[out] ret
 ##   @exit
 ##     shopt -q failglob の時、パス名展開に失敗すると
 ##     0 以外の終了ステータスを返します。
@@ -3909,24 +3953,220 @@ function ble-syntax/completion-context/add {
 
 function ble-syntax/completion-context/check/parameter-expansion {
   local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$'
-  if [[ ${text:i:index-i} =~ $rex_paramx ]]; then
+  if [[ ${text:istat:index-istat} =~ $rex_paramx ]]; then
     local rematch1=${BASH_REMATCH[1]}
-    ble-syntax/completion-context/add variable $((i+${#rematch1}))
+    ble-syntax/completion-context/add variable $((istat+${#rematch1}))
   fi
 }
 
-_ble_syntax_bash_complete_Arg[CTX_ARGI]=argument
-_ble_syntax_bash_complete_Arg[CTX_ARGQ]=argument
-_ble_syntax_bash_complete_Arg[CTX_FARGI1]=variable
-_ble_syntax_bash_complete_Arg[CTX_FARGI3]=argument
-_ble_syntax_bash_complete_Arg[CTX_FARGQ3]=argument
-_ble_syntax_bash_complete_Arg[CTX_CARGI1]=argument
-_ble_syntax_bash_complete_Arg[CTX_CARGQ1]=argument
-_ble_syntax_bash_complete_Arg[CTX_VALI]=file
-_ble_syntax_bash_complete_Arg[CTX_VALQ]=file
-_ble_syntax_bash_complete_Arg[CTX_CONDI]=file
-_ble_syntax_bash_complete_Arg[CTX_CONDQ]=file
-_ble_syntax_bash_complete_Arg[CTX_ARGVI]=variable:=
+## 関数 ble-syntax/completion-context/check-prefix/ctx:*
+##
+##   @var[in] text index
+##     補完対象のコマンドラインと現在のカーソルの位置を指定します。
+##
+##   @var[in] istat stat
+##     直前の解析再開点の位置と記録されている情報を指定します。
+##
+##   @var[in] ctx wbeg wlen
+##     直前の解析再開点の文脈・単語開始点・
+##     直前の解析再開点に於ける単語の長さを指定します。
+##
+##   @var[in] rex_param
+##
+
+## 関数 ble-syntax/completion-context/check-prefix/ctx:inside-command
+##   CMDI 系統 (コマンドの続き) の文脈に対する補完文脈の生成
+_ble_syntax_bash_complete_check_prefix[CTX_CMDI]=inside-command
+function ble-syntax/completion-context/check-prefix/ctx:inside-command {
+  if ((wlen>=0)); then
+    ble-syntax/completion-context/add command "$wbeg"
+    if [[ ${text:wbeg:index-wbeg} =~ $rex_param ]]; then
+      ble-syntax/completion-context/add variable:= "$wbeg"
+    fi
+  fi
+  ble-syntax/completion-context/check/parameter-expansion
+}
+## 関数 ble-syntax/completion-context/check-prefix/ctx:inside-argument source
+##   ARGI 系統 (引数の続き) の文脈に対する補完文脈の生成
+##   @param[in] source
+_ble_syntax_bash_complete_check_prefix[CTX_ARGI]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_ARGQ]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_FARGI1]='inside-argument variable'
+_ble_syntax_bash_complete_check_prefix[CTX_FARGI3]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_FARGQ3]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_CARGI1]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_CARGQ1]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_VALI]='inside-argument file'
+_ble_syntax_bash_complete_check_prefix[CTX_VALQ]='inside-argument file'
+_ble_syntax_bash_complete_check_prefix[CTX_CONDI]='inside-argument file'
+_ble_syntax_bash_complete_check_prefix[CTX_CONDQ]='inside-argument file'
+_ble_syntax_bash_complete_check_prefix[CTX_ARGVI]='inside-argument variable:='
+function ble-syntax/completion-context/check-prefix/ctx:inside-argument {
+  local source=$1
+  if ((wlen>=0)); then
+    ble-syntax/completion-context/add "$source" "$wbeg"
+
+    local sub=${text:wbeg:index-wbeg}
+    if [[ $sub == *[=:]* ]]; then
+      sub=${sub##*[=:]}
+      ble-syntax/completion-context/add file $((index-${#sub}))
+    fi
+  fi
+  ble-syntax/completion-context/check/parameter-expansion
+}
+
+## 関数 ble-syntax/completion-context/check-prefix/ctx:next-command
+##   CMDX 系統の文脈に対する補完文脈の生成
+_ble_syntax_bash_complete_check_prefix[CTX_CMDX]=next-command
+_ble_syntax_bash_complete_check_prefix[CTX_CMDX1]=next-command
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXT]=next-command
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXV]=next-command
+function ble-syntax/completion-context/check-prefix/ctx:next-command {
+  # 直前の再開点が CMDX だった場合、
+  # 現在地との間にコマンド名があればそれはコマンドである。
+  # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
+  local word=${text:istat:index-istat}
+
+  # コマンドのチェック
+  if ble-syntax:bash/simple-word/is-simple "$word"; then
+    # 単語が istat から開始している場合
+    ble-syntax/completion-context/add command "$istat"
+
+    # 変数・代入のチェック
+    if local rex='^[a-zA-Z_][a-zA-Z_0-9]*(\+?=)?$' && [[ $word =~ $rex ]]; then
+      if [[ $word == *= ]]; then
+        if ((_ble_bash>=30100)) || [[ $word != *+= ]]; then
+          # VAR=<argument>: 現在位置から argument 候補を生成する
+          ble-syntax/completion-context/add argument "$index"
+        fi
+      else
+        # VAR<+variable>: 単語を変数名の一部と思って変数名を生成する
+        ble-syntax/completion-context/add variable:= "$istat"
+      fi
+    fi
+  elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
+    # 単語が未だ開始していない時 (空白)
+    shopt -q no_empty_cmd_completion ||
+      ble-syntax/completion-context/add command "$index"
+  fi
+
+  ble-syntax/completion-context/check/parameter-expansion
+}
+## 関数 ble-syntax/completion-context/check-prefix/ctx:next-argument
+##   ARGX 系統の文脈に対する補完文脈の生成
+_ble_syntax_bash_complete_check_prefix[CTX_ARGX]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_CARGX1]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_FARGX3]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_ARGVX]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_VALX]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_CONDX]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_RDRS]=next-argument
+function ble-syntax/completion-context/check-prefix/ctx:next-argument {
+  local source=file
+  if ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
+    source=argument
+  elif ((ctx==CTX_ARGVX)); then
+    source=variable:=
+  fi
+
+  local word=${text:istat:index-istat}
+  if ble-syntax:bash/simple-word/is-simple-or-open-simple "$word"; then
+    # 単語が istat から開始している場合
+    ble-syntax/completion-context/add "$source" "$istat"
+    local rex="^([^'\"\$\\]|\\.)*="
+    if [[ $word =~ $rex ]]; then
+      word=${word:${#BASH_REMATCH}}
+      ble-syntax/completion-context/add "$source" "$((index-${#word}))"
+    fi
+  elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
+    # 単語が未だ開始していない時 (空白)
+    ble-syntax/completion-context/add "$source" "$index"
+  fi
+  ble-syntax/completion-context/check/parameter-expansion
+}
+## 関数 ble-syntax/completion-context/check-prefix/ctx:next-compound
+##   複合コマンドを補完します。
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXC]=next-compound
+function ble-syntax/completion-context/check-prefix/ctx:next-compound {
+  local rex word=${text:istat:index-istat}
+  if [[ ${text:istat:index-istat} =~ $rex_param ]]; then
+    ble-syntax/completion-context/add wordlist:'for:select:case:if:while:until' "$istat"
+  elif rex='^[[({]+$'; [[ $word =~ $rex ]]; then
+    ble-syntax/completion-context/add wordlist:'(:{:((:[[' "$istat"
+  fi
+}
+## 関数 ble-syntax/completion-context/check-prefix/ctx:next-identifier source
+##   エスケープやクォートのない単純な単語に補完する文脈。
+##   @param[in] source
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXE]="next-identifier wordlist:'fi:done:esac:then:elif:else:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXD0]="next-identifier wordlist:';:{:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXD]="next-identifier wordlist:'{:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_FARGX1]="next-identifier variable" # CTX_FARGX1 → (( でなければ 変数名
+_ble_syntax_bash_complete_check_prefix[CTX_SARGX1]="next-identifier variable"
+_ble_syntax_bash_complete_check_prefix[CTX_CARGX2]="next-identifier wordlist:in"
+_ble_syntax_bash_complete_check_prefix[CTX_CARGI2]="next-identifier wordlist:in"
+_ble_syntax_bash_complete_check_prefix[CTX_FARGX2]="next-identifier wordlist:'in:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_FARGI2]="next-identifier wordlist:'in:do'"
+function ble-syntax/completion-context/check-prefix/ctx:next-identifier {
+  local source=$1
+  if [[ ${text:istat:index-istat} =~ $rex_param ]]; then
+    ble-syntax/completion-context/add "$soruce" "$istat"
+  fi
+}
+## 関数 ble-syntax/completion-context/check-prefix/ctx:time-argument {
+_ble_syntax_bash_complete_check_prefix[CTX_TARGX1]=time-argument
+_ble_syntax_bash_complete_check_prefix[CTX_TARGI1]=time-argument
+_ble_syntax_bash_complete_check_prefix[CTX_TARGX2]=time-argument
+_ble_syntax_bash_complete_check_prefix[CTX_TARGI2]=time-argument
+function ble-syntax/completion-context/check-prefix/ctx:time-argument {
+    ble-syntax/completion-context/add command "$istat"
+    if ((ctx==CTX_TARGX1)); then
+      local rex='^-p?$'
+      [[ ${text:istat:index-istat} =~ $rex ]] &&
+        ble-syntax/completion-context/add wordlist:-p "$istat"
+    elif ((ctx==CTX_TARGX2)); then
+      local rex='^--?$'
+      [[ ${text:istat:index-istat} =~ $rex ]] &&
+        ble-syntax/completion-context/add wordlist:-- "$istat"
+    fi
+}
+## 関数 ble-syntax/completion-context/check-prefix/ctx:quote
+_ble_syntax_bash_complete_check_prefix[CTX_QUOT]=quote
+function ble-syntax/completion-context/check-prefix/ctx:quote {
+  ble-syntax/completion-context/check/parameter-expansion
+  ble-syntax/completion-context/check-prefix/ctx:quote/.check-container-word
+}
+function ble-syntax/completion-context/check-prefix/ctx:quote/.check-container-word {
+  # Note: CTX_QUOTE は nest の中にあるので、一旦外側に出て単語を探す。
+
+  local nlen=${stat[3]}; ((nlen>=0)) || return
+  local inest=$((nlen<0?nlen:istat-nlen))
+
+  local nest; ble/string#split-words nest "${_ble_syntax_nest[inest]}"
+  [[ ${nest[0]} ]] || return
+
+  local wlen2=${nest[1]}; ((wlen2>=0)) || return
+  local wbeg2=$((wlen2<0?wlen2:inest-wlen2))
+
+  if ble-syntax:bash/simple-word/is-simple-or-open-simple "${text:wbeg2:index-wbeg2}"; then
+    ble-syntax/completion-context/add argument "$wbeg2"
+  fi
+}
+
+## 関数 ble-syntax/completion-context/search-last-istat index
+##   @param[in] index
+##   @var[out] ret
+function ble-syntax/completion-context/search-last-istat {
+  local index=$1 istat
+  for ((istat=index;istat>=0;istat--)); do
+    if [[ ${_ble_syntax_stat[istat]} ]]; then
+      ret=$istat
+      return 0
+    fi
+  done
+  ret=
+  return 1
+}
 
 ## 関数 ble-syntax/completion-context/check-prefix
 ##   @var[in] text
@@ -3935,135 +4175,15 @@ _ble_syntax_bash_complete_Arg[CTX_ARGVI]=variable:=
 function ble-syntax/completion-context/check-prefix {
   local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
 
-  local i
-  local -a stat=()
-  for ((i=index-1;i>=0;i--)); do
-    if [[ ${_ble_syntax_stat[i]} ]]; then
-      ble/string#split-words stat "${_ble_syntax_stat[i]}"
-      break
-    fi
-  done
-  [[ ! ${stat[0]} ]] && return
+  ble-syntax/completion-context/search-last-istat $((index-1)) || return
+  local istat=$ret stat
+  ble/string#split-words stat "${_ble_syntax_stat[istat]}"
+  [[ ${stat[0]} ]] || return
 
   local ctx=${stat[0]} wlen=${stat[1]}
-  local wbeg=$((wlen<0?wlen:i-wlen))
-  if ((ctx==CTX_CMDI)); then
-    if ((wlen>=0)); then
-      # CTX_CMDI  → コマンドの続き
-      ble-syntax/completion-context/add command "$wbeg"
-      if [[ ${text:wbeg:index-wbeg} =~ $rex_param ]]; then
-        ble-syntax/completion-context/add variable:= "$wbeg"
-      fi
-    fi
-    ble-syntax/completion-context/check/parameter-expansion
-  elif [[ ${_ble_syntax_bash_complete_Arg[ctx]} ]]; then
-    # CTX_ARGI  → 引数の続き
-    if ((wlen>=0)); then
-      local source=${_ble_syntax_bash_complete_Arg[ctx]}
-      ble-syntax/completion-context/add "$source" "$wbeg"
-
-      local sub=${text:wbeg:index-wbeg}
-      if [[ $sub == *[=:]* ]]; then
-        sub=${sub##*[=:]}
-        ble-syntax/completion-context/add file "$((index-${#sub}))"
-      fi
-    fi
-    ble-syntax/completion-context/check/parameter-expansion
-  elif ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXV)); then
-    # 直前の再開点が CMDX だった場合、
-    # 現在地との間にコマンド名があればそれはコマンドである。
-    # スペースや ;&| 等のコマンド以外の物がある可能性もある事に注意する。
-    local word=${text:i:index-i}
-
-    # コマンドのチェック
-    if ble-syntax:bash/simple-word/is-simple "$word"; then
-      # 単語が i から開始している場合
-      ble-syntax/completion-context/add command "$i"
-
-      # 変数・代入のチェック
-      if local rex='^[a-zA-Z_][a-zA-Z_0-9]*(\+?=)?$' && [[ $word =~ $rex ]]; then
-        if [[ $word == *= ]]; then
-          if ((_ble_bash>=30100)) || [[ $word != *+= ]]; then
-            # VAR=<argument>: 現在位置から argument 候補を生成する
-            ble-syntax/completion-context/add argument "$index"
-          fi
-        else
-          # VAR<+variable>: 単語を変数名の一部と思って変数名を生成する
-          ble-syntax/completion-context/add variable:= "$i"
-        fi
-      fi
-    elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
-      # 単語が未だ開始していない時 (空白)
-      shopt -q no_empty_cmd_completion ||
-        ble-syntax/completion-context/add command "$index"
-    fi
-
-    ble-syntax/completion-context/check/parameter-expansion
-  elif ((ctx==CTX_CMDXC)); then
-    local rex word=${text:i:index-i}
-    if [[ ${text:i:index-i} =~ $rex_param ]]; then
-      ble-syntax/completion-context/add wordlist:'for:select:case:if:while:until' "$i"
-    elif rex='^[[({]+$'; [[ $word =~ $rex ]]; then
-      ble-syntax/completion-context/add wordlist:'(:{:((:[[' "$i"
-    fi
-  elif ((ctx==CTX_CMDXE)); then
-    if [[ ${text:i:index-i} =~ $rex_param ]]; then
-      ble-syntax/completion-context/add wordlist:fi:done:esac:then:elif:else:do "$i"
-    fi
-  elif ((ctx==CTX_CMDXD0)); then
-    if [[ ${text:i:index-i} =~ $rex_param ]]; then
-      ble-syntax/completion-context/add wordlist:';:{:do' "$i"
-    fi
-  elif ((ctx==CTX_CMDXD)); then
-    if [[ ${text:i:index-i} =~ $rex_param ]]; then
-      ble-syntax/completion-context/add wordlist:'{:do' "$i"
-    fi
-  elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
-    # CTX_FARGX1 → (( でなければ 変数名
-    if [[ ${text:i:index-i} =~ $rex_param ]]; then
-      ble-syntax/completion-context/add variable "$i"
-    fi
-  elif ((ctx==CTX_CARGX2||ctx==CTX_CARGI2)); then
-    if [[ ${text:i:index-i} =~ $rex_param ]]; then
-      ble-syntax/completion-context/add wordlist:in "$i"
-    fi
-  elif ((ctx==CTX_FARGX2||ctx==CTX_FARGI2)); then
-    if [[ ${text:i:index-i} =~ $rex_param ]]; then
-      ble-syntax/completion-context/add wordlist:in:do "$i"
-    fi
-  elif ((ctx==CTX_TARGX1||ctx==CTX_TARGI1||ctx==CTX_TARGX2||ctx==CTX_TARGI2)); then
-    ble-syntax/completion-context/add command "$i"
-    if ((ctx==CTX_TARGX1)); then
-      local rex='^-p?$'
-      [[ ${text:i:index-i} =~ $rex ]] &&
-        ble-syntax/completion-context/add wordlist:-p "$i"
-    elif ((ctx==CTX_TARGX2)); then
-      local rex='^--?$'
-      [[ ${text:i:index-i} =~ $rex ]] &&
-        ble-syntax/completion-context/add wordlist:-- "$i"
-    fi
-  elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3||ctx==CTX_ARGVX||ctx==CTX_VALX||ctx==CTX_CONDX||ctx==CTX_RDRS)); then
-    local source=file
-    if ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
-      source=argument
-    elif ((ctx==CTX_ARGVX)); then
-      source=variable:=
-    fi
-
-    local word=${text:i:index-i}
-    if ble-syntax:bash/simple-word/is-simple "$word"; then
-      # 単語が i から開始している場合
-      ble-syntax/completion-context/add "$source" "$i"
-      local rex="^([^'\"\$\\]|\\.)*="
-      if [[ $word =~ $rex ]]; then
-        word=${word:${#BASH_REMATCH}}
-        ble-syntax/completion-context/add "$source" "$((index-${#word}))"
-      fi
-    elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
-      # 単語が未だ開始していない時 (空白)
-      ble-syntax/completion-context/add "$source" "$index"
-    fi
-    ble-syntax/completion-context/check/parameter-expansion
+  local wbeg=$((wlen<0?wlen:istat-wlen))
+  if [[ ${_ble_syntax_bash_complete_check_prefix[ctx]} ]]; then
+    builtin eval "ble-syntax/completion-context/check-prefix/ctx:${_ble_syntax_bash_complete_check_prefix[ctx]}"
   elif ((ctx==CTX_RDRF||ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
     if ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
       # CTX_VRHS: VAR=value の value 部分
@@ -4074,18 +4194,16 @@ function ble-syntax/completion-context/check-prefix {
         local rex='^[a-zA-Z0-9]+\+?='
         [[ ${text:p:index-p} =~ $rex ]] && ((p+=${#BASH_REMATCH}))
       else
-        local p=$i
+        local p=$istat
       fi
     else
       # CTX_RDRF: redirect の filename 部分
-      local p=$((wlen>=0?wbeg:i))
+      local p=$((wlen>=0?wbeg:istat))
     fi
 
     if ble-syntax:bash/simple-word/is-simple "${text:p:index-p}"; then
       ble-syntax/completion-context/add file "$p"
     fi
-  elif ((ctx==CTX_QUOT)); then
-    ble-syntax/completion-context/check/parameter-expansion
   fi
 }
 

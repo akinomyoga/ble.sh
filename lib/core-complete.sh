@@ -38,16 +38,28 @@
 ##
 ##   @var[in    ] COMP_PREFIX
 ##   @var[in    ] comps_raw_paramx
+##   @var[in    ] comps_close_type
 ##
 ## 関数 $ACTION/complete
-##   一意確定時に、挿入文字列に対する加工を行います。
+##   一意確定時に、挿入文字列・範囲に対する加工を行います。
 ##   例えばディレクトリ名の場合に / を後に付け加える等です。
 ##
-##   @var[in    ] CAND
-##   @var[in    ] ACTION
-##   @var[in    ] DATA
+##   @var[in] CAND
+##   @var[in] ACTION
+##   @var[in] DATA
+##   @var[in] COMP1 COMP2
 ##
-##   @var[in,out] COMP1 COMP2 INSERT
+##   @var[in,out] INSERT
+##     補完によって挿入される文字列を指定します。
+##     加工後の挿入する文字列を返します。
+##
+##   @var[in,out] compr_beg compr_end
+##     補完によって置換される範囲を指定します。
+##     加工後の置換範囲を返します。
+##
+##   @var[in] compr_replace
+##     既存の部分を保持したまま補完が実行される場合に 1 を指定します。
+##     既存の部分が置換される場合には空文字列を指定します。
 ##
 
 function ble-complete/util/escape-specialchars {
@@ -89,7 +101,7 @@ function ble-complete/util/escape-regexchars {
 
 function ble-complete/action/util/complete.addtail {
   INSERT=$INSERT$1
-  [[ ${comp_text:comp_index} == "$1"* ]] && ((comp_index++))
+  [[ ${comp_text:compr_end} == "$1"* ]] && ((compr_end++))
 }
 
 #------------------------------------------------------------------------------
@@ -98,9 +110,21 @@ function ble-complete/action/util/complete.addtail {
 
 function ble-complete/action/plain/initialize {
   if [[ $CAND == "$COMPV"* ]]; then
-    local ins
-    ble-complete/util/escape-specialchars -v ins "${CAND:${#COMPV}}"
+    local ins=${CAND:${#COMPV}} ret
+
+    # 単語内の文脈に応じたエスケープ
+    case $comps_close_type in
+    (\')      ble/string#escape-for-bash-single-quote "$ins"; ins=$ret ;;
+    (\$\')    ble/string#escape-for-bash-escape-string "$ins"; ins=$ret ;;
+    (\"|\$\") ble/string#escape-for-bash-double-quote "$ins"; ins=$ret ;;
+    (*)       ble-complete/util/escape-specialchars -v ins "$ins" ;;
+    esac
+
+    # Note: 現在の simple-word の定義だと引用符内にパラメータ展開を許していないので、
+    #  必然的にパラメータ展開が直前にあるのは引用符の外である事が保証されている。
+    #  以下は、今後 simple-word の引用符内にパラメータ展開を許す時には修正が必要。
     [[ $comps_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
+
     INSERT=$COMPS$ins
   else
     ble-complete/util/escape-specialchars -v INSERT "$CAND"
@@ -393,7 +417,7 @@ function ble-complete/util/eval-pathname-expansion {
     fi
   fi
 
-  GLOBIGNORE= eval 'ret=($pattern)' 2>/dev/null
+  IFS= GLOBIGNORE= eval 'ret=($pattern)' 2>/dev/null
 
   if [[ $old_nocaseglob ]]; then
     if ((old_nocaseglob)); then
@@ -427,7 +451,7 @@ function ble-complete/source/file/.construct-ambiguous-pathname-pattern {
   for name in "${names[@]}"; do
     ((i++)) && pattern=$pattern/
     if [[ $name ]]; then
-      ble/string#escape-for-glob "${name::1}"
+      ble/string#escape-for-bash-glob "${name::1}"
       pattern="$pattern$ret*"
     fi
   done
@@ -442,7 +466,7 @@ function ble-complete/source/file/.construct-pathname-pattern {
   if [[ $comp_type == *a* ]]; then
     ble-complete/source/file/.construct-ambiguous-pathname-pattern "$path"; local pattern=$ret
   else
-    ble/string#escape-for-glob "$path"; local pattern=$ret*
+    ble/string#escape-for-bash-glob "$path"; local pattern=$ret*
   fi
   ret=$pattern
 }
@@ -499,12 +523,40 @@ function ble-complete/source/dir {
 # source/argument (complete -p)
 
 function ble-complete/source/argument/.progcomp-helper-vars {
-  COMP_WORDS=("${comp_words[@]}")
-  COMP_LINE="$comp_line"
-  COMP_POINT="$comp_point"
-  COMP_CWORD="$comp_cword"
+  COMP_LINE=
+  COMP_WORDS=()
+  local word delta=0 index=0 q="'" Q="'\''" qq="''"
+  for word in "${comp_words[@]}"; do
+    local ret close_type
+    if ble-syntax:bash/simple-word/close-open-word "$word"; then
+      ble-syntax:bash/simple-word/eval "$ret"
+      ((index)) && ret="'${ret//$q/$Q}'" ret=${ret#"$qq"} ret=${ret%"$qq"} # コマンド名以外はクォート
+      ((index<=comp_cword&&(delta+=${#ret}-${#word})))
+      word=$ret
+    fi
+    ble/array#push COMP_WORDS "$word"
+
+    if ((index++==0)); then
+      COMP_LINE=$word
+    else
+      COMP_LINE="$COMP_LINE $word"
+    fi
+  done
+
+  COMP_CWORD=$comp_cword
+  COMP_POINT=$((comp_point+delta))
   COMP_TYPE=9
   COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode-key/.invoke-command
+
+  # 直接渡す場合。$'' などがあると bash-completion が正しく動かないので、
+  # エスケープを削除して適当に処理する。
+  #
+  # COMP_WORDS=("${comp_words[@]}")
+  # COMP_LINE="$comp_line"
+  # COMP_POINT="$comp_point"
+  # COMP_CWORD="$comp_cword"
+  # COMP_TYPE=9
+  # COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode-key/.invoke-command
 }
 function ble-complete/source/argument/.progcomp-helper-prog {
   if [[ $comp_prog ]]; then
@@ -716,6 +768,7 @@ function ble-complete/source/argument/.generate-user-defined-completion {
 
 function ble-complete/source/argument {
   local comp_opts=:
+  local old_cand_count=$old_cand_count
 
   # try complete&compgen
   ble-complete/source/argument/.generate-user-defined-completion; local exit=$?
@@ -729,7 +782,7 @@ function ble-complete/source/argument {
     ble-complete/source/file
   fi
 
-  if ((cand_count==0)); then
+  if ((cand_count<=old_cand_count)); then
     if local rex='^-[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
       # var=filename --option=filename など。
 
@@ -829,8 +882,12 @@ function ble-complete/.pick-nearest-context {
   COMPS=${comp_text:COMP1:COMP2-COMP1}
   comps_raw_paramx=
   local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
-  if [[ ! $COMPS ]] || ble-syntax:bash/simple-word/is-simple "$COMPS"; then
-    local ret; ble-syntax:bash/simple-word/eval "$COMPS"; COMPV=$ret
+
+  if [[ ! $COMPS ]]; then
+    COMPV=
+  elif local ret close_type; ble-syntax:bash/simple-word/close-open-word "$COMPS"; then
+    comps_close_type=$close_type
+    ble-syntax:bash/simple-word/eval "$ret"; COMPV=$ret
     [[ $COMPS =~ $rex_raw_paramx ]] && comps_raw_paramx=1
   fi
 }
@@ -931,7 +988,7 @@ function ble/widget/complete {
     # 次の開始点が近くにある候補源たち
     local -a nearest_contexts=()
     local COMP1 COMP2 COMPS COMPV; unset COMPV
-    local comps_raw_paramx=
+    local comps_raw_paramx= comps_close_type=
     ble-complete/.pick-nearest-context
 
     # 候補生成
@@ -987,24 +1044,28 @@ function ble/widget/complete {
   if [[ $opt_ambiguous ]]; then
     # 曖昧一致に於いて複数の候補の共通部分が
     # 元の文字列に曖昧一致しない場合は補完しない。
-    [[ $common =~ $rex_ambiguous_compv ]] || common=$COMPV
+    [[ $common =~ $rex_ambiguous_compv ]] || common=$COMPS
   elif ((cand_count!=1)) && [[ $common != "$COMPS"* ]]; then
     common=$COMPS
   fi
 
   # 編集範囲の最小化
-  if [[ $common == "${comp_text:COMP1:COMP2-COMP1}"* ]]; then
+  local compr_beg=$COMP1 compr_end=$COMP2
+  local compr_replace=
+  if [[ $common == "$COMPS"* ]]; then
     # 既存部分の置換がない場合
     common=${common:COMP2-COMP1}
-    ((COMP1=COMP2))
+    ((compr_beg=COMP2))
   else
     # 既存部分の置換がある場合
-    while ((COMP1<COMP2)) && [[ $common == "${comp_text:COMP1:1}"* ]]; do
+    compr_replace=1
+    while ((compr_beg<COMP2)) && [[ $common == "${comp_text:compr_beg:1}"* ]]; do
       common=${common:1}
-      ((COMP1++))
+      ((compr_beg++))
     done
   fi
 
+  local INSERT=$common
   if ((cand_count==1)); then
     # 一意確定の時
 
@@ -1014,19 +1075,19 @@ function ble/widget/complete {
     local ACTION
     ble/string#split-words ACTION "${cand_prop[0]}"
     if ble/util/isfunction "$ACTION/complete"; then
-      local INSERT=$common
       local CAND=${cand_cand[0]}
       local DATA=${cand_data[0]}
       "$ACTION/complete"
-      common=$INSERT
     fi
   else
     # 候補が複数ある時
     ble-edit/info/show text "${cand_show[*]}"
   fi
 
-  ble/widget/.delete-range "$COMP1" "$COMP2"
-  [[ $common ]] && ble/widget/.insert-string "$common"
+  ble/widget/.replace-range "$compr_beg" "$compr_end" "$INSERT" 1
+  ((_ble_edit_ind=compr_beg+${#INSERT},
+    _ble_edit_ind>${#_ble_edit_str}&&
+      (_ble_edit_ind=${#_ble_edit_str})))
 }
 
 #------------------------------------------------------------------------------

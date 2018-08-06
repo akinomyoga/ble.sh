@@ -407,14 +407,36 @@ function ble/string#escape-for-extended-regex {
     done
   fi
 }
-function ble/string#escape-for-glob {
-  ret="$*"
-  if [[ $ret == *['\*?[(']* ]]; then
-    local a b
-    for a in \\ \* \? \[ \(; do
-      b="\\$a" ret=${ret//"$a"/$b}
+
+## 関数 ble/string#escape/.impl-escape-characters chars1 chars2
+##   @var[in,out] ret
+function ble/string#escape/.impl-escape-characters {
+  if [[ $ret == *["$1"]* ]]; then
+    local chars1=$1 chars2=${2:-$1}
+    local i n=${#chars1} a b
+    for ((i=0;i<n;i++)); do
+      a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/$b}
     done
   fi
+}
+
+function ble/string#escape-for-bash-glob {
+  ret="$*"
+  ble/string#escape/.impl-escape-characters '\*?[('
+}
+function ble/string#escape-for-bash-single-quote {
+  ret="$*"
+  local q="'" Q="'\''"
+  ret=${ret//"$q"/$Q}
+}
+function ble/string#escape-for-bash-double-quote {
+  ret="$*"
+  ble/string#escape/.impl-escape-characters '\"$`'
+  a='!' b='"\!"' ret=${ret//"$a"/$b}
+}
+function ble/string#escape-for-bash-escape-string {
+  ret="$*"
+  ble/string#escape/.impl-escape-characters $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
 }
 
 #
