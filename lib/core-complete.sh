@@ -62,43 +62,6 @@
 ##     既存の部分が置換される場合には空文字列を指定します。
 ##
 
-function ble-complete/util/escape-specialchars {
-  eval "$ble_util_upvar_setup"
-  local a b ret="$*" chars=']['$' \t\n\\''"'\''`$|&;<>()*?{}!^'
-  if [[ $ret == *["$chars"]* ]]; then
-    a=\\ b="\\$a" ret=${ret//"$a"/$b}
-    a=\" b="\\$a" ret=${ret//"$a"/$b}
-    a=\' b="\\$a" ret=${ret//"$a"/$b}
-    a=\` b="\\$a" ret=${ret//"$a"/$b}
-    a=\$ b="\\$a" ret=${ret//"$a"/$b}
-    a=' '   b="\\$a"   ret=${ret//"$a"/$b}
-    a=$'\t' b="\\$a"   ret=${ret//"$a"/$b}
-    a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
-    a=\| b="\\$a" ret=${ret//"$a"/$b}
-    a=\& b="\\$a" ret=${ret//"$a"/$b}
-    a=\; b="\\$a" ret=${ret//"$a"/$b}
-    a=\< b="\\$a" ret=${ret//"$a"/$b}
-    a=\> b="\\$a" ret=${ret//"$a"/$b}
-    a=\( b="\\$a" ret=${ret//"$a"/$b}
-    a=\) b="\\$a" ret=${ret//"$a"/$b}
-    a=\[ b="\\$a" ret=${ret//"$a"/$b}
-    a=\* b="\\$a" ret=${ret//"$a"/$b}
-    a=\? b="\\$a" ret=${ret//"$a"/$b}
-    a=\] b="\\$a" ret=${ret//"$a"/$b}
-    a=\{ b="\\$a" ret=${ret//"$a"/$b}
-    a=\} b="\\$a" ret=${ret//"$a"/$b}
-    a=\! b="\\$a" ret=${ret//"$a"/$b}
-    a=\^ b="\\$a" ret=${ret//"$a"/$b}
-  fi
-  eval "$ble_util_upvar"
-}
-
-function ble-complete/util/escape-regexchars {
-  eval "$ble_util_upvar_setup"
-  ble/string#escape-for-sed-regex "$*"
-  eval "$ble_util_upvar"
-}
-
 function ble-complete/action/util/complete.addtail {
   INSERT=$INSERT$1
   [[ ${comp_text:compr_end} == "$1"* ]] && ((compr_end++))
@@ -117,7 +80,7 @@ function ble-complete/action/plain/initialize {
     (\')      ble/string#escape-for-bash-single-quote "$ins"; ins=$ret ;;
     (\$\')    ble/string#escape-for-bash-escape-string "$ins"; ins=$ret ;;
     (\"|\$\") ble/string#escape-for-bash-double-quote "$ins"; ins=$ret ;;
-    (*)       ble-complete/util/escape-specialchars -v ins "$ins" ;;
+    (*)       ble/string#escape-for-bash-specialchars "$ins"; ins=$ret ;;
     esac
 
     # Note: 現在の simple-word の定義だと引用符内にパラメータ展開を許していないので、
@@ -127,7 +90,8 @@ function ble-complete/action/plain/initialize {
 
     INSERT=$COMPS$ins
   else
-    ble-complete/util/escape-specialchars -v INSERT "$CAND"
+    local ret
+    ble/string#escape-for-bash-specialchars "$CAND"; INSERT=$ret
   fi
 }
 function ble-complete/action/plain/complete { :; }
@@ -723,8 +687,8 @@ function ble-complete/source/argument/.progcomp {
   # Note: "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
   #   compgen に -- "$COMPV" を渡しても何故か思うようにフィルタしてくれない為である。
   #   (compgen -W "$(compgen ...)" -- "$COMPV" の様にしないと駄目なのか?)
-  local arr rex_compv
-  ble-complete/util/escape-regexchars -v rex_compv "$COMPV"
+  local arr ret
+  ble/string#escape-for-sed-regex "$COMPV"; local rex_compv=$ret
   if [[ $use_workaround_for_git ]]; then
     ble/util/assign-array arr 'ble/bin/sed -n "/^\$/d;/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | ble/bin/sort -u' 2>/dev/null
   else
@@ -785,6 +749,10 @@ function ble-complete/source/argument {
   if ((cand_count<=old_cand_count)); then
     if local rex='^-[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
       # var=filename --option=filename など。
+      #
+      # Note: 微妙に異なる条件で ble-syntax/completion-context の方でも
+      #   単語の途中の = からの補完に対応しているが、候補生成の異なる優先度
+      #   を持たせるために両方で処理する現在の実装を保持する。
 
       local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
       local COMP_PREFIX=$prefix

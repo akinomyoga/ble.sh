@@ -736,7 +736,7 @@ function ev2_apply(stk, iPre, iVal, _pT, _pW, _lhs, _rhs, _lhsT, _rhsT, _result,
         # err?
       }
       return;
-    } else if (_pW == ", ") {
+    } else if (_pW == ",") {
       if (stk[iPre, "M"] == MOD_ARG) {
         stk[iPre] = _rhs;
         stk[iPre, "t"] = SE_VALU;

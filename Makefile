@@ -30,8 +30,10 @@ outdirs += $(OUTDIR)
 outdirs += $(OUTDIR)/lib
 
 outfiles+=$(OUTDIR)/ble.sh
-$(OUTDIR)/ble.sh: ble.pp ble-core.sh ble-decode.sh ble-edit.sh ble-color.sh ble-syntax-lazy.sh ble-form.sh | $(OUTDIR)
-	$(MWGPP) $< >/dev/null
+-include $(OUTDIR)/ble.dep
+$(OUTDIR)/ble.sh: ble.pp | $(OUTDIR)
+	DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ \
+	  $(MWGPP) $< >/dev/null
 
 outfiles+=$(OUTDIR)/term.sh
 $(OUTDIR)/term.sh: term.sh | $(OUTDIR)
