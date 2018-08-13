@@ -50,7 +50,7 @@ function ble/keymap:emacs/is-command-white {
   return 1
 }
 
-function ble/widget/emacs/__before_command__ {
+function ble/widget/emacs/__before_widget__ {
   if ! ble/keymap:emacs/is-command-white "$WIDGET"; then
     ble-edit/undo/add
   fi
@@ -76,9 +76,9 @@ function ble/widget/emacs/revert {
 #------------------------------------------------------------------------------
 # mode name
 #
-#   mode name の更新は基本的に __after_command__ で行う。
+#   mode name の更新は基本的に __after_widget__ で行う。
 #   但し、_ble_decode_{char,key}__hook 経由で実行されると、
-#   __after_command__ は実行されないので、
+#   __after_widget__ は実行されないので、
 #   その様な編集コマンドについてだけは個別に update-mode-name を呼び出す。
 #
 
@@ -103,7 +103,7 @@ function ble/keymap:emacs/update-mode-name {
   ble-edit/info/default raw "$name"
 }
 
-function ble/widget/emacs/__after_command__ {
+function ble/widget/emacs/__after_widget__ {
   ble/keymap:emacs/update-mode-name
 }
 
@@ -149,8 +149,8 @@ function ble-decode/keymap:emacs/define {
   #----------------------------------------------------------------------------
 
   ble-bind -f __attach__         safe/__attach__
-  ble-bind -f __before_command__ emacs/__before_command__
-  ble-bind -f __after_command__  emacs/__after_command__
+  ble-bind -f __before_widget__ emacs/__before_widget__
+  ble-bind -f __after_widget__  emacs/__after_widget__
 
   # accept/cancel
   ble-bind -f  'C-c'     discard-line

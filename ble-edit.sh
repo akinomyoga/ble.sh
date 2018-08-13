@@ -3217,7 +3217,6 @@ function ble/widget/self-insert {
 
 # quoted insert
 function ble/widget/quoted-insert.hook {
-  local WIDGET=ble/widget/self-insert
   ble/widget/self-insert
 }
 function ble/widget/quoted-insert {
@@ -3295,10 +3294,8 @@ function ble/widget/bracketed-paste.hook {
 }
 function ble/widget/bracketed-paste.proc {
   local -a KEYS
-  local char WIDGET=ble/widget/self-insert
-  for char; do
-    KEYS=("$char")
-    "$WIDGET"
+  for KEYS; do
+    ble/widget/self-insert
   done
 }
 

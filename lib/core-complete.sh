@@ -510,7 +510,7 @@ function ble-complete/source/argument/.progcomp-helper-vars {
   COMP_CWORD=$comp_cword
   COMP_POINT=$((comp_point+delta))
   COMP_TYPE=9
-  COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode-key/.invoke-command
+  COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode/widget/.call-keyseq
 
   # 直接渡す場合。$'' などがあると bash-completion が正しく動かないので、
   # エスケープを削除して適当に処理する。
@@ -520,7 +520,7 @@ function ble-complete/source/argument/.progcomp-helper-vars {
   # COMP_POINT="$comp_point"
   # COMP_CWORD="$comp_cword"
   # COMP_TYPE=9
-  # COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode-key/.invoke-command
+  # COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode/widget/.call-keyseq
 }
 function ble-complete/source/argument/.progcomp-helper-prog {
   if [[ $comp_prog ]]; then

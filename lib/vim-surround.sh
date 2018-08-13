@@ -258,14 +258,14 @@ function ble/lib/vim-surround.sh/surround {
 function ble/lib/vim-surround.sh/async-read-tagname {
   ble/keymap:vi/async-commandline-mode "$1"
   _ble_edit_PS1='<'
-  _ble_keymap_vi_cmap_before_command=ble/lib/vim-surround.sh/async-read-tagname/.before-command
+  _ble_keymap_vi_cmap_before_command=ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook
   return 148
 }
-function ble/lib/vim-surround.sh/async-read-tagname/.before-command {
+function ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook {
   if [[ ${KEYS[0]} == 62 ]]; then # '>'
     ble/widget/self-insert
     ble/widget/vi_cmap/accept
-    WIDGET=
+    ble-decode/widget/suppress-widget
   fi
 }
 
@@ -681,13 +681,26 @@ function ble/widget/vim-surround.sh/nmap/csurround.replace {
 
 #---- repeat ----
 
+## 関数 ble/widget/vim-surround.sh/nmap/csurround.record
 function ble/widget/vim-surround.sh/nmap/csurround.record {
+  # Note: ble/keymap:vi/repeat/record の実装に合わせた条件判定。
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return 0
+
   local type=$1 arg=$2 reg=$3 del=$4 ins=$5
   local WIDGET=ble/widget/vim-surround.sh/nmap/csurround.repeat ARG=$arg FLAG= REG=$reg
   ble/keymap:vi/repeat/record
-  _ble_keymap_vi_repeat[10]=$type
-  _ble_keymap_vi_repeat[11]=$del
-  _ble_keymap_vi_repeat[12]=$ins
+  if [[ $_ble_decode_key__kmap == vi_imap ]]; then
+    # Note: ble/keymap:vi/repeat/record の実装に合わせた条件判定。
+    #   この実装では vi_imap で呼び出される事はない筈だが念の為。
+    #   ble/keymap:vi/repeat/record は keymap が vi_imap の時は異なる場所に記録する。
+    _ble_keymap_vi_repeat_insert[10]=$type
+    _ble_keymap_vi_repeat_insert[11]=$del
+    _ble_keymap_vi_repeat_insert[12]=$ins
+  else
+    _ble_keymap_vi_repeat[10]=$type
+    _ble_keymap_vi_repeat[11]=$del
+    _ble_keymap_vi_repeat[12]=$ins
+  fi
 }
 function ble/widget/vim-surround.sh/nmap/csurround.repeat {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1

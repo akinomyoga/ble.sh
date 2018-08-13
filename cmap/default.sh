@@ -5,8 +5,8 @@
 #
 #   __defchar__
 #   __default__
-#   __before_command__
-#   __after_command__
+#   __before_widget__
+#   __after_widget__
 #   __attach__
 #
 #   shift alter control meta super hyper

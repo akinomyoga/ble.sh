@@ -192,9 +192,7 @@ function ble/keymap:vi/imap-repeat/process {
     local i widget
     for ((i=1;i<repeat;i++)); do
       for widget in "${widgets[@]}"; do
-        local -a KEYS=(${widget%%:*})
-        local WIDGET=${widget#*:} KEYMAP=$_ble_decode_key__kmap
-        builtin eval -- "$WIDGET"
+        ble-decode/widget/call "${widget#*:}" ${widget%%:*}
       done
     done
   fi
@@ -206,7 +204,14 @@ function ble/keymap:vi/imap/invoke-widget {
   ble/keymap:vi/imap-repeat/push
   builtin eval -- "$WIDGET"
 }
-
+function ble/keymap:vi/imap/invoke-widget-charwise {
+  local WIDGET=$1; shift
+  local -a KEYS=()
+  for KEYS; do
+    ble/keymap:vi/imap-repeat/push
+    builtin eval -- "$WIDGET"
+  done
+}
 
 ## 配列 _ble_keymap_vi_imap_white_list
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
@@ -233,7 +238,7 @@ function ble/keymap:vi/imap/is-command-white {
   return 1
 }
 
-function ble/widget/vi_imap/__before_command__ {
+function ble/widget/vi_imap/__before_widget__ {
   if ble/keymap:vi/imap/is-command-white "$WIDGET"; then
     ble/keymap:vi/imap-repeat/push
   else
@@ -1795,7 +1800,7 @@ function ble/keymap:vi/operator:filter {
     ble/keymap:vi/async-commandline-mode 'ble/keymap:vi/operator:filter/.hook'
     _ble_edit_PS1='!'
     _ble_edit_history_prefix=_ble_keymap_vi_filter
-    _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
+    _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
     _ble_syntax_lang=bash
     _ble_highlight_layer__list=(plain syntax region overwrite_mode)
     return 148
@@ -2443,44 +2448,46 @@ function ble/keymap:vi/repeat/invoke {
   local KEYMAP=${_ble_keymap_vi_repeat[0]}
   local -a KEYS=(${_ble_keymap_vi_repeat[1]})
   local WIDGET=${_ble_keymap_vi_repeat[2]}
-  if [[ $KEYMAP == vi_[onxs]map ]]; then
-    if [[ $KEYMAP == vi_omap ]]; then
-      ble-decode/keymap/push vi_omap
-    elif [[ $KEYMAP == vi_[xs]map ]]; then
-      local _ble_keymap_vi_xmap_prev_edit=${_ble_keymap_vi_repeat[6]}
-      ble/widget/vi_xmap/.restore-visual-state
-      ble-decode/keymap/push "$KEYMAP"
-      # Note: vim では . によって領域の大きさは更新されない。
-      #   従ってここでは敢えて _ble_keymap_vi_xmap_prev_edit を unset しない
-    fi
 
-    # ※本体の _ble_keymap_vi_repeat は成功した時にのみ repeat/record で書き換える
-    _ble_edit_arg=
-    _ble_keymap_vi_oparg=${_ble_keymap_vi_repeat[3]}
-    _ble_keymap_vi_opfunc=${_ble_keymap_vi_repeat[4]}
-    [[ $repeat_arg ]] && _ble_keymap_vi_oparg=$repeat_arg
-
-    # vim ではレジスタは記録されたものが優先されるようだ
-    local REG=${_ble_keymap_vi_repeat[5]}
-    [[ $REG ]] && _ble_keymap_vi_reg=$REG
-
-    local _ble_keymap_vi_single_command{,_overwrite}= # single-command-mode は持続させる。
-    local _ble_keymap_vi_repeat_invoke=1
-    builtin eval -- "$WIDGET"
-
-    if [[ $_ble_decode_key__kmap == vi_imap ]]; then
-      ((_ble_keymap_vi_irepeat_count<=1?(_ble_keymap_vi_irepeat_count=2):_ble_keymap_vi_irepeat_count++))
-      local -a _ble_keymap_vi_irepeat
-      _ble_keymap_vi_irepeat=("${_ble_keymap_vi_repeat_irepeat[@]}")
-
-      ble/array#push _ble_keymap_vi_irepeat '0:ble/widget/dummy' # Note: normal-mode が自分自身を pop しようとするので。
-      ble/widget/vi_imap/normal-mode
-    fi
-    unset _ble_keymap_vi_single_command{,_overwrite}
-  else
+  # keymap の状態復元
+  if [[ $KEYMAP != vi_[onxs]map ]]; then
     ble/widget/vi-command/bell
     return 1
+  elif [[ $KEYMAP == vi_omap ]]; then
+    ble-decode/keymap/push vi_omap
+  elif [[ $KEYMAP == vi_[xs]map ]]; then
+    local _ble_keymap_vi_xmap_prev_edit=${_ble_keymap_vi_repeat[6]}
+    ble/widget/vi_xmap/.restore-visual-state
+    ble-decode/keymap/push "$KEYMAP"
+    # Note: vim では . によって領域の大きさは更新されない。
+    #   従ってここでは敢えて _ble_keymap_vi_xmap_prev_edit を unset しない
   fi
+
+  # ※本体の _ble_keymap_vi_repeat は成功した時にのみ repeat/record で書き換える
+  _ble_edit_arg=
+  _ble_keymap_vi_oparg=${_ble_keymap_vi_repeat[3]}
+  _ble_keymap_vi_opfunc=${_ble_keymap_vi_repeat[4]}
+  [[ $repeat_arg ]] && _ble_keymap_vi_oparg=$repeat_arg
+
+  # vim ではレジスタは記録されたものが優先されるようだ
+  local REG=${_ble_keymap_vi_repeat[5]}
+  [[ $REG ]] && _ble_keymap_vi_reg=$REG
+
+  local _ble_keymap_vi_single_command{,_overwrite}= # single-command-mode は持続させる。
+  local _ble_keymap_vi_repeat_invoke=1
+  local LASTWIDGET=$_ble_decode_widget_last
+  _ble_decode_widget_last=$WIDGET
+  builtin eval -- "$WIDGET"
+
+  if [[ $_ble_decode_key__kmap == vi_imap ]]; then
+    ((_ble_keymap_vi_irepeat_count<=1?(_ble_keymap_vi_irepeat_count=2):_ble_keymap_vi_irepeat_count++))
+    local -a _ble_keymap_vi_irepeat
+    _ble_keymap_vi_irepeat=("${_ble_keymap_vi_repeat_irepeat[@]}")
+
+    ble/array#push _ble_keymap_vi_irepeat '0:ble/widget/dummy' # Note: normal-mode が自分自身を pop しようとするので。
+    ble/widget/vi_imap/normal-mode
+  fi
+  unset _ble_keymap_vi_single_command{,_overwrite}
 }
 
 # nmap .
@@ -4309,10 +4316,10 @@ _ble_keymap_vi_commandline_history_dirt=()
 _ble_keymap_vi_commandline_history_ind=0
 _ble_keymap_vi_commandline_history_onleave=()
 
-function ble/keymap:vi/commandline/__before_command__ {
+function ble/keymap:vi/commandline/before-command.hook {
   if [[ ! $_ble_edit_str ]] && ((KEYS[0]==127||KEYS[0]==(104|ble_decode_Ctrl))); then # DEL or C-h
     ble/widget/vi_cmap/cancel
-    WIDGET=
+    ble-decode/widget/suppress-widget
   fi
 }
 
@@ -4321,7 +4328,7 @@ function ble/widget/vi-command/commandline {
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
   _ble_edit_PS1=:
   _ble_edit_history_prefix=_ble_keymap_vi_commandline
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 148
 }
 function ble/widget/vi-command/commandline.hook {
@@ -4649,14 +4656,14 @@ function ble/widget/vi-command/search-forward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
   _ble_edit_PS1='/'
   _ble_edit_history_prefix=_ble_keymap_vi_search
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 148
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
   _ble_edit_history_prefix=_ble_keymap_vi_search
-  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/__before_command__
+  _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 148
 }
 function ble/widget/vi-command/search-repeat {
@@ -6628,10 +6635,7 @@ function ble/widget/vi_imap/quoted-insert {
   return 148
 }
 function ble/widget/vi_imap/quoted-insert.hook {
-  local -a KEYS=($1)
-  local WIDGET=ble/widget/self-insert
-  ble/keymap:vi/imap-repeat/push
-  builtin eval -- "$WIDGET"
+  ble/keymap:vi/imap/invoke-widget ble/widget/self-insert "$1"
 }
 
 # bracketed paste mode
@@ -6643,14 +6647,7 @@ function ble/widget/vi_imap/bracketed-paste {
   return 148
 }
 function ble/widget/vi_imap/bracketed-paste.proc {
-  local -a KEYS
-  local WIDGET=ble/widget/self-insert
-  local char
-  for char; do
-    KEYS=("$char")
-    ble/keymap:vi/imap-repeat/push
-    builtin eval -- "$WIDGET"
-  done
+  ble/keymap:vi/imap/invoke-widget-charwise ble/widget/self-insert "$@"
 }
 
 _ble_keymap_vi_brackated_paste_mark_active=
@@ -6666,7 +6663,7 @@ function ble/widget/vi-command/bracketed-paste.proc {
   if [[ $_ble_decode_key__kmap == vi_nmap ]]; then
     local isbol index=$_ble_edit_ind
     ble-edit/content/bolp && isbol=1
-    ble-decode/invoke-widget 'vi_nmap/append-mode' 97
+    ble-decode/widget/call-interactively 'ble/widget/vi_nmap/append-mode' 97
     [[ $isbol ]] && ((_ble_edit_ind=index)) # 行頭にいたときは戻る
 
     ble/widget/vi_imap/bracketed-paste.proc "$@"
@@ -6674,7 +6671,7 @@ function ble/widget/vi-command/bracketed-paste.proc {
       ble/widget/vi_imap/normal-mode $((ble_decode_Ctrl|0x5b))
   elif [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
     local _ble_edit_mark_active=$_ble_keymap_vi_brackated_paste_mark_active
-    ble-decode/invoke-widget 'vi-command/operator c' 99 || return 1
+    ble-decode/widget/call-interactively 'ble/widget/vi-command/operator c' 99 || return 1
     ble/widget/vi_imap/bracketed-paste.proc "$@"
     ble/keymap:vi/imap/invoke-widget \
       ble/widget/vi_imap/normal-mode $((ble_decode_Ctrl|0x5b))
@@ -6787,7 +6784,7 @@ function ble-decode/keymap:vi_imap/define {
 
   ble-bind -f __attach__         vi_imap/__attach__
   ble-bind -f __default__        vi_imap/__default__
-  ble-bind -f __before_command__ vi_imap/__before_command__
+  ble-bind -f __before_widget__ vi_imap/__before_widget__
 
   ble-bind -f 'ESC' 'vi_imap/normal-mode'
   ble-bind -f 'C-[' 'vi_imap/normal-mode'
@@ -6887,7 +6884,7 @@ function ble/widget/vi_cmap/cancel {
   ble/widget/vi_cmap/accept
 }
 
-function ble/widget/vi_cmap/__before_command__ {
+function ble/widget/vi_cmap/__before_widget__ {
   if [[ $_ble_keymap_vi_cmap_before_command ]]; then
     eval "$_ble_keymap_vi_cmap_before_command"
   fi
@@ -6905,7 +6902,7 @@ function ble-decode/keymap:vi_cmap/define {
 
   #----------------------------------------------------------------------------
 
-  ble-bind -f __before_command__ vi_cmap/__before_command__
+  ble-bind -f __before_widget__ vi_cmap/__before_widget__
 
   # accept/cancel
   ble-bind -f 'ESC' vi_cmap/cancel

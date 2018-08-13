@@ -743,6 +743,10 @@ tech
     全て揃っている場合にのみ吸収する。つまり部分的に INSERT の
     前半部分が続きにあるだけの時には吸収は行わないようにする。
 
+    うーん。emacs の auto-complete の振る舞いを見ると、
+    もう少し柔軟にしても良いかもしれない…と思ったが、
+    本当に auto-complete が柔軟に動いているのかどうかは確かめる必要がある。
+
   * complete: パラメータ展開で厳密一致で一意確定の時にはそもそも候補の生成を行わない?
     曖昧一致も許さない様にする。
     そうすれば別のコマンドが生成できる。
@@ -756,6 +760,9 @@ tech
 
     曖昧一致の時には自動的に開始しても良いかもしれない。
     或いは、その様にすると動作が予期できなくて却って邪魔かもしれない。
+
+    その前に他のシェルでどの様なインターフェイスにしているのかを確認する必要がある。
+    下手に実装して非直感的で使いにくい物にしてしまっても仕方がない。
 
 2018-07-29
 
@@ -2475,6 +2482,8 @@ tech
   - complete: 曖昧補完 `#D0707` `#D0708` `#D0710` `#D0713`
   - complete: Readline 設定 `completion-ignore-case` に対応 `#D0709` `#D0710`
   - complete: ble/cmdinfo/complete:$command_name 対応 `#D0711`
+  - complete: path:... などの続きの補完に対応 `#D0715`
+  - complete: 引用符内のエスケープなどを適切に処理する `#D0717`
 
   バグ修正
   - highlight: 単語着色が乱れるバグの修正 `#D0686`
@@ -2489,6 +2498,7 @@ tech
   - complete: Cygwin でのコマンド名補完に於いて `.exe` の途中まで入力した時に正しく補完できない問題の修正 `#D0703`
   - complete: `complete` によって登録されたプログラム補完に対して変数 `COMP_*` が正しく設定されない問題の修正 `#D0711`
   - complete: `"` や `'` を含むファイル名の補完が正しくできない問題の修正 `#D0712` `#D0714`
+  - emacs: 貼り付け (bracketed paste) で文字列が二重に挿入されるバグの修正 `#D0720`
 
   動作変更
   - complete: 補完候補生成直前の `shopt -s force_ignore` を参照して候補を制限する様に変更 `#D0704`
@@ -3103,9 +3113,255 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-08-13
+
+  * complete: 自動補完1 LASTWIDGET [#D0720]
+
+    取り敢えず LASTWIDGET は実装する事にする。
+
+    | LASTWIDGET の実装方法とし複数を考える事ができる。
+    | 基本的には一番最後に呼び出された ble/widget/* であるが、
+    | "呼び出す" というのはどういう事かというのが問題になる。
+    |
+    | 1 例えば、或る ble/widget/* の中で別の ble/widget/ を呼び出した時にはどうするのか。
+    |   次回の widget において、呼び出し元の widget を LASTWIDGET とするのか、
+    |   それとも一番内側で呼び出した widget を LASTWIDGET とするのか。
+    |
+    | 2 またマクロによって呼び出した ble/widget の場合にはどうするのか。
+    |   マクロ実行後に LASTWIDGET をどの様に設定するのか。
+    |   例えば、マクロ内部で一番最後に呼び出した widget を LASTWIDGET にするのか、
+    |   それとも、マクロの呼び出し自体を LASTWIDGET とするのか。
+    |
+    | 3 マクロ実行に関しては、更に別の観点からも LASTWIDGET をどうするかがある。
+    |   マクロ内部で呼び出される widget から見える LASTWIDGET は何なのか。
+    |   マクロ実行の開始直前の widget なのか、
+    |   それともマクロ内部で直前に呼び出された widget なのか。
+    |
+    | これを考えるためにはどのような用途で LASTWIDGET が必要になるのかという事を考えれば良い。
+    |
+    | 1 一番よくありそうなのは行移動の場合である。
+    |   連続する下カーソルによる移動の時には移動を開始した時の列の位置が保持される。
+    |   途中で短い行があって列が左に移動したとしても、再び長い行に移動した場合には、
+    |   元々の列の位置を回復する。
+    |
+    |   これを実装するためには「連続する行移動」を判定する必要があって、
+    |   そのために LASTWIDGET を参照する。
+    |
+    | 2 今回必要になるのは auto complete をどの様に起動するかである。
+    |   直前が文字入力の時または明示的な要求がある時に限って auto complete を起動したい。
+    |   カーソル移動などをした先で毎回 auto complete が起動していたのではうるさい。
+    |
+    | 思うにこれらの用途であれば ble/widget/ の内部で
+    | 正式に (実装の間借りなどではなく) コマンドとして widget が呼び出されたのであれば、
+    | それを LASTWIDGET に設定して良いという気がした。
+    | 例えばマクロの場合には中で呼び出される一つ一つのコマンドに対して全て LASTWIDGET が更新される。
+    | 或いはユーザに依る widget の実装が複数の既存の widget を呼び出す事によって実装されるならば、
+    | その呼び出された個々の widget において LASTWIDGET が更新されるという様にする。
+    |
+    | これだと auto complete がマクロの実行直後に起動されて妙な気もするが、
+    | しかし一概に auto complete が起動されない方が自然とも決めがたい。
+    | LASTWIDGET の種類に複数あったり条件によって振る舞いが変わったりするようなのだと、
+    | 何だかよくわからない事になってしまうので、ここでは明快さを取って、
+    | 内部で呼び出される場合にもちゃんと LASTWIDGET を更新するという実装にする。
+
+    [仕様]
+
+    - マクロ内部で呼び出されたコマンドによっても LASTWIDGET は設定される。
+    - widget から ble-decode の手続きによって呼び出されたコマンドによっても、
+      LASTWIDGET は設定される。
+
+    Emacs でどのような振る舞いになっているかについても改めて確認しておく。
+    - this-command, last-command, real-last-command がある。
+    - (call-interactively ...) で呼び出せば last-command が更新される
+      …というような事だったと思う。
+
+    [現状の実装]
+
+    現状の実装についても確認しておく。
+    特に WIDGET= を含む関数について確認すれば良いだろう。
+
+    | ble-decode には以下の三つの関数が存在している。
+    | - ok: ble-decode-key/.invoke-command
+    | - ok: ble-decode-key/.call-widget
+    | - ok: ble-decode/invoke-widget -> ble-decode/widget/call-interactively
+    |
+    |   うーん。これらの関数の使い分けについて考える。
+    |   ble-decode/invoke-widget は vi.sh から使われている。
+    |   特に bracketed-paste の実装から使われている。
+    |   ble-decode-key/.invoke-command は内部から使われている。
+    |   キーシーケンスが完成した時にそれに対応するコマンドの呼び出しに使われる。
+    |   ble-decode-key/.call-widget は内部から使われている。
+    |   _ble_decode_{key,char}__hook 経由の呼び出しで使われる。
+    |
+    |   | ble-decode-key/.invoke-command | DB |
+    |   | ble-decode-key/.call-widget    | DB |
+    |   | ble-decode/widget/invoke       | B  |
+    |
+    |   - D: keylog depth の更新を行う。内部では keylog は実行されない。
+    |     invoke-widget において depth の更新がないのは、
+    |     invoke-widget はそもそも widget の中から呼び出される事を想定しているので、
+    |     既に keylog depth は設定されている筈だから、わざわざ更新しなくても良いという事である。
+    |
+    |   - B: __{before,after}_widget__ の呼び出しも行う。
+    |     これは keymap 特有の設定である。
+    |     何故 ble-decode/widget/invoke で必要なのかは不明。
+    |
+    |   取り敢えず整理した。関数名も多少変えた。
+    |   ble-decode/invoke-widget は ble-decode/widget/call-interactively に改名して、
+    |   他に hook を実行しない物として ble-decode/widget/call を追加した。
+    |
+    | ble-edit
+    | - done: ble/widget/quoted-insert.hook
+    |   WIDGET を self-insert に上書きして self-insert に委譲している…。
+    |   始末が悪いので ble-decode 側の関数を経由して呼び出す様にした方が良いか?
+    |   これについては後で考察する事にする。
+    |   →やはり self-insert は内部で WIDGET を触っていないので、
+    |   わざわざここで self-insert を WIDGET に設定する意味がない。単に削除した。
+    | - done: ble/widget/bracketed-paste.proc
+    |   同様。これは処理を軽くする為に一回設定すれば OK な様にしている。
+    |   実は self-insert の方を改良して複数の文字を処理できる様にしても良いのでは。
+    |   という気もする。と思ったが、下手に実装を変えるのも面倒そうだ。
+    |   というか、そもそも self-insert を呼び出すのに WIDGET を設定している理由は何だったのか…。
+    |
+    |   これらの関数の中では WIDGET は参照されていない様に見える。
+    |   何らかの hook が呼び出されるという事もないので、
+    |   別の関数から参照される可能性もない。
+    |   何故 WIDGET が設定されているのだろうか。
+    |   これは vi.sh における同等の処理との対称性から無駄に設定されているだけだろうか。
+    |
+    |   →これも self-insert を呼び出しているだけなので WIDGET を設定する必要はない。
+    |
+    | keymap/emacs.sh
+    | - ble/widget/emacs/bracketed-paste.proc
+    |   これは上記と同様である。
+    |   safe map の物と何が違うのかと思ったら、どうも update-mode-name を実行するという事の様だ。
+    |   他には特に機能はない。
+    |
+    |   * fixed: 何と emacs の bracketed-paste mode で二重に挿入するバグだった。
+    |     結局 ble-edit.sh の brackated-paste.proc を呼び出すのであるから
+    |     此処で self-insert を呼び出す必要は最早ないのであった。
+    |     従って、そもそも WIDGET に此処で触る必要もなかった。
+    |     修正して別のコミットにした。後で 0.2 にも適用する。
+    |
+    | keymap/vi.sh
+    | - done: ble/keymap:vi/imap-repeat/process
+    |   これはまあマクロの呼び出しと思って良い。
+    |   invoke-widget か何かを経由して呼び出す様に変更したい。
+    |   速度が気になるかもしれないが後で考える。
+    |   これは ble-decode/widget/call を用いて実装する事にした。
+    |
+    |   x fixed: 動作確認をする。と思ったら ble/widget/ble/widget が呼び出されてしまう。
+    |     仕様を変更する事にした。今までは内部で ble/widget/ を付加していたが付加しない。
+    |     ble-decode/widget/call{,-interactively} ではフルの関数名を受け取る事にする。
+    |
+    |   o 取り敢えず動作するという事を確認した。
+    |
+    | - ok: ble/keymap:vi/imap/invoke-widget
+    |   これは何だろう…。
+    |   これはどうやら bracketed-paste から呼び出す為に使用している。
+    |   ble/keymap:vi/imap-repeat/push を呼び出す invoke-widget である。
+    |   一方で、quoted-insert などからも使えそうに見えるが使っていない。
+    | - done: ble/widget/vi_imap/quoted-insert.hook
+    | - done: ble/widget/vi_imap/bracketed-paste.proc
+    |   これらは上記の通り ble/keymap:vi/imap/invoke-widget 経由で実装できそう。
+    |   後で確認をして実装を切り替える。
+    |   →bracketed-paste.proc に対してはは速度低下を防ぐために
+    |     invoke-widget-charwise という関数を追加した。
+    |
+    | - done: ble/keymap:vi/repeat/invoke
+    |   コマンド . による繰り返し。これは大分特殊だ…。
+    |   一番最後に ble-decode/invoke... 経由で呼び出せる様にできるかもしれない。
+    |   うーん。個別に LASTWIDGET を設定するか、ble-decode の関数を呼び出して設定するか微妙。後で考える。
+    |
+    |   中で KEYMAP 等の変更がある。ble-decode/widget/call を使うと現在の keymap が使用されてしまうので、
+    |   結局自分で全部設定した方が良さそうである。自分で LASTWIDGET の設定を行う事にした。
+    |
+    | - ok: ble/keymap:vi/commandline/__before_command__
+    |   これは cmap でキャンセルをするために WIDGET= としている。考えなくて良い。
+    |
+    |   * done: これは ble-decode 側でキャンセルする為の関数を用意した方が良いのではないか。
+    |     そんなに重い処理でもないので関数化して良いだろう。
+    |     また、ble-decode 側で処理をキャンセルするという仕組みを明示的に提供するべき。
+    |     後々の変更で WIDGET= をキャンセルと見做すという仕様が曖昧になると行けないので。
+    |
+    |     また Wiki で WIDGET= でキャンセルできるという事を言及していたかもしれないと思ったが、
+    |     確認してみた所 WIDGET の設定に関しては元から言及が無い様である。OK
+    |
+    |     というか改めて調べてみた所 ble-decode 側では特にキャンセルについては意識していなくて、
+    |     vi.sh の側で勝手にハックしているだけという様な気がする。
+    |     また、vi.sh 側で実行しているのはキャンセルというよりは、寧ろ処理が完了しましたという事の気がする。
+    |     現状の実装では __after_command__ が呼び出されていて、それは "キャンセル" にそぐわないのではないかと思ったが、
+    |     実際にやっている事は、処理を行ってからキャンセルという様な事なので、
+    |     これは実質処理が完了しましたという事であって、キャンセルではないので、
+    |     寧ろ __after_command__ を呼び出すという動作で正しいのである。
+    |
+    |     新しい関数 ble-decode/widget/suppress-widget を定義した。
+    |
+    |   * done: ble/keymap:vi/commandline/__before_command__ は
+    |     ble/keymap:vi/commandline/before-command.hook に改名した。
+    |     伴って ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook も改名した。
+    |
+    |   * done: __before_command__ を __before_widget__ に解明する可能性?
+    |
+    |     これは過去にも議論があった筈である。その時の結論は何だったか。
+    |     特に __before_command__ に関しては、言及はあるもののちゃんと議論はしていない様だ。
+    |     議論していたのは WIDGET と同様に BEFORE_WIDGET や AFTER_WIDGET も定義するかどうか。
+    |     これは元々定義していなかったので、それまで通り定義しないという事になった。
+    |     (必要になった時に定義すれば良い)
+    |
+    |     特に __before_command__ 等の名前にしておく理由もない様なのでこの際変更する事にする。
+    |
+    |   * done: rename ble-decode/invoke-widget to ble-decode/widget/invoke
+    |     実は ble/keymap:vi/imap/invoke-widget 等との対称性もあったようだが気にしない。
+    |
+    | lib/vim-surround.sh
+    | - ok: ble/lib/vim-surround.sh/async-read-tagname/.before-command
+    |   これは上記 commandline/__before_command__ と同じ。気にしなくて良い。
+    |   →これは結局 commandline/__before_command__ (commandline/before-command.hook) と同様に、
+    |     ble-decode/widget/suppress-widget を呼び出す事にした。
+    |
+    |   * ok: 関数名は変えても良いかもしれない。
+    |     →改めて確認した所、先の __beore_command__ の場合には直接 keymap に登録していたが、
+    |     今回の .before-command に関しては _ble_keymap_vi_cmap_before_command 経由で呼び出される関数なので、
+    |     その儘の関数名で良かったのであった。
+    |
+    | - ok: ble/widget/vim-surround.sh/nmap/csurround.record
+    |   これは ble/keymap:vi/repeat/record で記録される内容を弄る為に使用している。
+    |   これも気にしなくて良いだろう。
+    |
+    |   * ok: 本当は ble/keymap:vi/repeat/record 側から特別に設定する手段を与えるべきなのかもしれない。
+    |     或いは ble/keymap:vi/repeat/record で設定された内容を後で上書きするべき?
+    |
+    |     調べてみると ble/keymap:vi/repeat/record は内部で
+    |     ble/keymap:vi/repeat/record-normal を呼び出していて、
+    |     その中で repeat 配列の 2 番目の要素に WIDGET が設定される。
+    |
+    |     | そして repeat は、vi_imap の時には _ble_keymap_vi_repeat_insert に、
+    |     | それ以外の時には _ble_keymap_vi_repeat に代入される。
+    |     | ble/widget/vim-surround.sh/nmap/csurround.record の中では
+    |     | vi_imap ではないという前提の元で、ble/keymap:vi/repeat/record が呼び出された後に、
+    |     | _ble_keymap_vi_repeat を修飾している。しかし、
+    |     |
+    |     | _ble_keymap_vi_mark_suppress_edit が設定されている時等に勝手に書き換えてしまうとまずいのでは?
+    |     | 調べてみると _ble_keymap_vi_mark_suppress_edit=1 が設定されるのは
+    |     | ble/keymap:vi/call-operator や ble/widget/vi_xmap/paste.impl において、
+    |     | 外側で record を実行したい時に内部で record されると困るという場合に使っている。
+    |     | つまり、内部で変な repeat 情報を記録したとしても結局外側で上書きされてしまうという事。
+    |     | その様に考えると実は record の内部で suppress している意味は実はないのではないか…とも思うが。
+    |     | 唯、keymap が途中で変化した場合などには上書きが保証されない…。うーん。どうなっているのか。
+    |     | うーん。良くわからないが実装の綺麗さを考えると csurround の側でもちゃんと、
+    |     | record の実装と整合する様にしておくべきの気がする。
+    |
+    |     一応 ble/widget/vim-surround.sh/nmap/csurround.record に条件は付加した。
+    |     一方で後で WIDGET を修飾する様に修正すれば良いというのはやめる事にした。
+    |     record が参照する為に WIDGET を設定するというのは、
+    |     実の所 record のインターフェイスの問題であって、
+    |     ble-decode の仕様とは切り離して考えても差し支えないだろうという事と、
+    |     WIDGET が何番目に格納されるのか、というのを外側の枠組みが意識するのはよくないという事。
+
 2018-08-06
 
-  * complete: ble-complete/util/escape-specialchars を refactor [#D0719]
+  * 2018-08-05 complete: ble-complete/util/escape-specialchars を refactor [#D0719]
 
   * 2018-08-05 complete: 実は completion-context の方で既に --prefix= 等に対応していた… [#D0718]
 

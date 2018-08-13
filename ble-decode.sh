@@ -201,10 +201,10 @@ function ble-decode-kbd/.initialize {
   _ble_decode_KCODE_DEFCHAR=$ret
   ble-decode-kbd/.gen-keycode __default__
   _ble_decode_KCODE_DEFAULT=$ret
-  ble-decode-kbd/.gen-keycode __before_command__
-  _ble_decode_KCODE_BEFORE_COMMAND=$ret
-  ble-decode-kbd/.gen-keycode __after_command__
-  _ble_decode_KCODE_AFTER_COMMAND=$ret
+  ble-decode-kbd/.gen-keycode __before_widget__
+  _ble_decode_KCODE_BEFORE_WIDGET=$ret
+  ble-decode-kbd/.gen-keycode __after_widget__
+  _ble_decode_KCODE_AFTER_WIDGET=$ret
   ble-decode-kbd/.gen-keycode __attach__
   _ble_decode_KCODE_ATTACH=$ret
 
@@ -504,7 +504,7 @@ function ble-decode-char {
       ((char==ble_decode_IsolatedESC)) && char=27 # isolated ESC -> ESC
       local hook=$_ble_decode_char__hook
       _ble_decode_char__hook=
-      ble-decode-key/.call-widget "$hook $char" "$char"
+      ble-decode/widget/.call-async-read "$hook $char" "$char"
       continue
     fi
 
@@ -993,7 +993,7 @@ function ble-decode-key {
     if [[ $_ble_decode_key__hook ]]; then
       local hook=$_ble_decode_key__hook
       _ble_decode_key__hook=
-      ble-decode-key/.call-widget "$hook $key" "$key"
+      ble-decode/widget/.call-async-read "$hook $key" "$key"
       continue
     fi
 
@@ -1004,7 +1004,7 @@ function ble-decode-key {
       # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
       local command=${ent:2}
       if [[ $command ]]; then
-        ble-decode-key/.invoke-command
+        ble-decode/widget/.call-keyseq
       else
         _ble_decode_key__seq=
       fi
@@ -1078,7 +1078,7 @@ function ble-decode-key/.invoke-partial-match {
     if [[ $ent == '_:'* ]]; then
       local command=${ent:2}
       if [[ $command ]]; then
-        ble-decode-key/.invoke-command
+        ble-decode/widget/.call-keyseq
       else
         _ble_decode_key__seq=
       fi
@@ -1105,7 +1105,7 @@ function ble-decode-key/.invoke-partial-match {
       builtin eval "local command=\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]-}"
       command=${command:2}
       if [[ $command ]]; then
-        ble-decode-key/.invoke-command; local ext=$?
+        ble-decode/widget/.call-keyseq; local ext=$?
         ((ext!=125)) && return
         _ble_decode_key__seq=$seq_save # 125 の時はまた元に戻して次の試行を行う
       fi
@@ -1114,7 +1114,7 @@ function ble-decode-key/.invoke-partial-match {
     # 既定のキーハンドラ
     builtin eval "local command=\${${dicthead}[$_ble_decode_KCODE_DEFAULT]-}"
     command=${command:2}
-    ble-decode-key/.invoke-command; local ext=$?
+    ble-decode/widget/.call-keyseq; local ext=$?
     ((ext!=125)) && return
 
     return 1
@@ -1125,7 +1125,23 @@ function ble-decode-key/ischar {
   local key=$1
   (((key&ble_decode_MaskFlag)==0&&32<=key&&key<ble_decode_function_key_base))
 }
-function ble-decode-key/.invoke-hook {
+
+#------------------------------------------------------------------------------
+# ble-decode/widget
+
+## @var _ble_decode_widget_last
+##   次のコマンドで LASTWIDGET として使用するコマンド名を保持します。
+##   以下の関数で使用されます。
+##
+##   - ble-decode/widget/.call-keyseq
+##   - ble-decode/widget/.call-async-read
+##   - ble-decode/widget/call
+##   - ble-decode/widget/call-interactively
+##   - (keymap/vi.sh) ble/keymap:vi/repeat/invoke
+##
+_ble_decode_widget_last=
+
+function ble-decode/widget/.invoke-hook {
   local kcode=$1
   local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
   builtin eval "local hook=\${$dicthead[kcode]-}"
@@ -1133,7 +1149,7 @@ function ble-decode-key/.invoke-hook {
   [[ $hook ]] && builtin eval -- "$hook"
 }
 
-## 関数 ble-decode-key/.invoke-command
+## 関数 ble-decode/widget/.call-keyseq
 ##   コマンドが有効な場合に、指定したコマンドを適切な環境で実行します。
 ##   @var[in] command
 ##     起動するコマンドを指定します。空の場合コマンドは実行されません。
@@ -1160,7 +1176,7 @@ function ble-decode-key/.invoke-hook {
 #   コマンドを呼び出す時には常に _ble_decode_key__seq が空になっている事に注意。
 #   部分一致などの場合に後続のキーが存在する場合には、それらは呼出元で管理しなければならない。
 #
-function ble-decode-key/.invoke-command {
+function ble-decode/widget/.call-keyseq {
   [[ $command ]] || return 125
 
   # for keylog suppress
@@ -1168,34 +1184,59 @@ function ble-decode-key/.invoke-command {
   local _ble_decode_keylog_depth=$((old_suppress+1))
 
   # setup variables
-  local WIDGET=$command KEYMAP=$_ble_decode_key__kmap
+  local WIDGET=$command KEYMAP=$_ble_decode_key__kmap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
+  _ble_decode_widget_last=$WIDGET
   _ble_decode_key__seq=
 
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
   builtin eval -- "$WIDGET"; local ext=$?
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
   return "$ext"
 }
-function ble-decode-key/.call-widget {
+## 関数 ble-decode/widget/.call-async-read
+##   _ble_decode_{char,key}__hook の呼び出しに使用します。
+##   _ble_decode_widget_last は更新しません。
+function ble-decode/widget/.call-async-read {
   # for keylog suppress
   local old_suppress=$_ble_decode_keylog_depth
   local _ble_decode_keylog_depth=$((old_suppress+1))
 
   # setup variables
-  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap
+  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=($2)
-
   builtin eval -- "$WIDGET"
 }
-function ble-decode/invoke-widget {
-  local WIDGET=ble/widget/$1 KEYMAP=$_ble_decode_key__kmap
+## 関数 ble-decode/widget/call-interactively widget keys...
+## 関数 ble-decode/widget/call widget keys...
+##   指定した名前の widget を呼び出します。
+##   call-interactively では、現在の keymap に応じた __before_widget__
+##   及び __after_widget__ フックも呼び出します。
+function ble-decode/widget/call-interactively {
+  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS; KEYS=("${@:2}")
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
+  _ble_decode_widget_last=$WIDGET
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
   builtin eval -- "$WIDGET"; local ext=$?
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
   return "$ext"
 }
+function ble-decode/widget/call {
+  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap LASTWIDGET=$_ble_decode_widget_last
+  local -a KEYS; KEYS=("${@:2}")
+  _ble_decode_widget_last=$WIDGET
+  builtin eval -- "$WIDGET"
+}
+## 関数 ble-decode/widget/suppress-widget
+##   __before_widget__ に登録された関数から呼び出します。
+##   __before_widget__ 内で必要な処理を完了した時に、
+##   WIDGET の呼び出しをキャンセルします。
+##   __after_widget__ の呼び出しはキャンセルされません。
+function ble-decode/widget/suppress-widget {
+  WIDGET=
+}
+
+#------------------------------------------------------------------------------
 
 #%if debug_keylogger
 _ble_keylogger_enabled=0
@@ -1746,7 +1787,7 @@ _ble_decode_bind_state=none
 function ble-decode/reset-default-keymap {
   # 現在の ble-decode/keymap の設定
   ble-decode/DEFAULT_KEYMAP -v _ble_decode_key__kmap # 0ms
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
 }
 function ble-decode-attach {
   [[ $_ble_decode_bind_state != none ]] && return
