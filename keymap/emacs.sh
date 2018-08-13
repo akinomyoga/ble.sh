@@ -124,13 +124,6 @@ function ble/widget/emacs/bracketed-paste {
 }
 function ble/widget/emacs/bracketed-paste.proc {
   ble/widget/bracketed-paste.proc "$@"
-  local WIDGET=ble/widget/self-insert
-  local -a KEYS
-  local char
-  for char; do
-    KEYS=("$char")
-    "$WIDGET"
-  done
   ble/keymap:emacs/update-mode-name
 }
 
