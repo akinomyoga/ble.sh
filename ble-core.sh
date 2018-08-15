@@ -744,6 +744,7 @@ function ble/util/sleep/.check-builtin-sleep {
 }
 
 if ((_ble_bash>=40400)) && ble/util/sleep/.check-builtin-sleep; then
+  _ble_util_sleep_builtin_available=1
   function ble/util/sleep { builtin sleep "$1"; }
 elif ((_ble_bash>=40000)); then
   # 遅延初期化
@@ -1226,36 +1227,280 @@ function ble-assert {
 # Event loop
 
 if ((_ble_bash>=40000)); then
+
+  _ble_util_idle_sclock=0
+  function ble/util/idle/.sleep {
+    local msec=$1
+    local integral=$((msec/1000)) fraction=00$((msec%1000))
+    fraction=${fraction:${#fraction}-3}
+    local sec=$integral.$fraction
+    ble/util/sleep "$sec"
+    ((_ble_util_idle_sclock+=msec))
+  }
+
+  function ble/util/idle.clock/.initialize {
+    function ble/util/idle.clock/.initialize { :; }
+  
+    ## 関数 ble/util/idle/.system-clock
+    ##   可能な場合に軽量な時計を提供します。
+    ##   @var[out] ret
+    _ble_util_idle_rclock_base=
+    _ble_util_idle_rclock_reso=
+    if ((_ble_bash>=50000)) && [[ $EPOCHREALTIME == *.???* ]]; then
+      # implementation with EPOCHREALTIME
+      _ble_util_idle_rclock_base=$((10#${EPOCHREALTIME%.*}))
+      _ble_util_idle_rclock_reso=1
+      function ble/util/idle/.system-clock {
+        local now=$EPOCHREALTIME
+        local integral=$((10#${now%%.*}-_ble_util_idle_rclock_base))
+        local mantissa=${now#*.}000; mantissa=${mantissa::3}
+        ((ret=integral*1000+10#$mantissa))
+      }
+    elif [[ -r /proc/uptime ]] && {
+           local uptime
+           ble/util/readfile uptime /proc/uptime
+           ble/string#split-words uptime "$uptime"
+           [[ $uptime == *.* ]]; }; then
+      # implementation with /proc/uptime
+      _ble_util_idle_rclock_base=$((10#${uptime%.*}))
+      _ble_util_idle_rclock_reso=10
+      function ble/util/idle/.system-clock {
+        local now
+        ble/util/readfile now /proc/uptime
+        ble/string#split-words now "$now"
+        local integral=$((10#${now%%.*}-_ble_util_idle_rclock_base))
+        local fraction=${now#*.}000; fraction=${fraction::3}
+        ((ret=integral*1000+10#$fraction))
+      }
+    elif ((_ble_bash>=40200)); then
+      printf -v _ble_util_idle_rclock_base '%(%s)T'
+      _ble_util_idle_rclock_reso=1000
+      function ble/util/idle/.system-clock {
+        local now; printf -v now '%(%s)T'
+        ((ret=(now-_ble_util_idle_rclock_base)*1000))
+      }
+    else
+      _ble_util_idle_rclock_base=
+      _ble_util_idle_rclock_reso=
+    fi
+
+    ## 関数 ble/util/idle.clock
+    ##   タスクスケジューリングに使用する時計
+    ##   @var[out] ret
+    function ble/util/idle.clock/.restart { :; }
+    if ((_ble_util_idle_rclock_reso<=100)); then
+      function ble/util/idle.clock {
+        ble/util/idle/.system-clock
+      }
+    elif [[ $_ble_util_idle_rclock_reso ]]; then
+      ## 関数 ble/util/idle/.adjusted-clock
+      ##   参照時計 (rclock) と sleep 累積時間 (sclock) を元にして、
+      ##   参照時計を秒以下に解像度を上げた時計 (aclock) を提供します。
+      ##
+      ## @var[in,out] _ble_util_idle_aclock_tick_rclock
+      ## @var[in,out] _ble_util_idle_aclock_tick_sclock
+      ##   最後に参照時計が切り替わった時の rclock と sclock の値を保持します。
+      ##
+      ## @var[in,out] _ble_util_idle_aclock_shift
+      ##   時刻のシフト量を表します。
+      ##
+      ##   初期化時の秒以下の時刻が分からないため、
+      ##   取り敢えず 0.000 になっていると想定して時刻を測り始めます。
+      ##   最初の秒の切り替わりの時点でずれの量が判明するので、それを記録します。
+      ##   一様時計を提供する為に、以降もこのずれを適用する為に使用します。
+      ##
+      _ble_util_idle_aclock_shift=
+      _ble_util_idle_aclock_tick_rclock=
+      _ble_util_idle_aclock_tick_sclock=
+      function ble/util/idle.clock/.restart {
+        _ble_util_idle_aclock_shift=
+        _ble_util_idle_aclock_tick_rclock=
+        _ble_util_idle_aclock_tick_sclock=
+      }
+      function ble/util/idle/.adjusted-clock {
+        local resolution=$_ble_util_idle_rclock_reso
+        local sclock=$_ble_util_idle_sclock
+        local ret; ble/util/idle/.system-clock; local rclock=$((ret/resolution*resolution))
+
+        if [[ $_ble_util_idle_aclock_tick_rclock != $rclock ]]; then
+          if [[ $_ble_util_idle_aclock_tick_rclock && ! $_ble_util_idle_aclock_shift ]]; then
+            local delta=$((sclock-_ble_util_idle_aclock_tick_sclock))
+            ((_ble_util_idle_aclock_shift=delta<resolution?resolution-delta:0))
+          fi
+          _ble_util_idle_aclock_tick_rclock=$rclock
+          _ble_util_idle_aclock_tick_sclock=$sclock
+        fi
+
+        ((ret=rclock+(sclock-_ble_util_idle_aclock_tick_sclock)-_ble_util_idle_aclock_shift))
+      }
+      function ble/util/idle.clock {
+        ble/util/idle/.adjusted-clock
+      }
+    else
+      function ble/util/idle.clock {
+        ret=$_ble_util_idle_sclock
+      }
+    fi
+  }
+
+  : ${bleopt_idle_interval:=}
+  if [[ ! $bleopt_idle_interval ]]; then
+    if ((_ble_bash>50000)) && [[ $_ble_util_sleep_builtin_available ]]; then
+      bleopt_idle_interval=20
+    else
+      bleopt_idle_interval='ble_util_idle_elapsed>600000?500:(ble_util_idle_elapsed>60000?200:(ble_util_idle_elapsed>5000?100:20))'
+    fi
+  fi
+
   _ble_util_idle_task=()
 
   ## 関数 ble/util/idle.do
   ##   待機状態の処理を開始します。
   ##
   ##   @exit
-  ##     待機処理を何か実行した時に成功 (0) を返します。
+  ##     待機処理を何かしら実行した時に成功 (0) を返します。
   ##     何も実行しなかった時に失敗 (1) を返します。
   ##
   function ble/util/idle.do {
     local IFS=$' \t\n'
     ble/util/is-stdin-ready && return 1
     ((${#_ble_util_idle_task[@]}==0)) && return 1
-
     ble/util/buffer.flush >&2
-    local _i _iN=${#_ble_util_idle_task[@]} _processed=
-    for ((_i=0;_i<_iN;_i++)); do
-      ((_i>0)) && ble/util/is-stdin-ready && return 0
-      local command=${_ble_util_idle_task[_i]}
-      [[ $command ]] || continue
-      _processed=1
-      builtin eval "$command"; local _ext=$?
-      ((_ext==148)) && return 0
-      _ble_util_idle_task[_i]=
+
+    ble/util/idle.clock/.initialize
+    ble/util/idle.clock/.restart ## @@ToDo@@ 前回 148 で抜けた時?
+
+    local _idle_start=$_ble_util_idle_sclock
+    local _isfirst=1 _processed=
+    while :; do
+      local _key _idle_next_time= _idle_next_itime=
+      for _key in "${!_ble_util_idle_task[@]}"; do
+        ble/util/is-stdin-ready && return 0
+        local _entry=${_ble_util_idle_task[_key]}
+        if [[ $_entry == R:* || $_entry == I:* && $_isfirst ]]; then
+          _processed=1
+          ble/util/idle.do/.call-task "${_entry#*:}"
+          (($?==148)) && return 0
+        elif [[ $_entry == [SW]*:* ]]; then
+          if ble/util/idle/.check-clock "$_entry"; then
+            _processed=1
+            ble/util/idle.do/.call-task "${_entry#*:}"
+            (($?==148)) && return 0
+          fi
+        else
+          unset '_ble_util_idle_task[_key]'
+        fi
+      done
+
+      _isfirst=
+      ble/util/idle.do/.sleep-until-next "$_idle_next_time" "$_idle_next_itime"
+
+      [[ $_idle_next_itime$_idle_next_time ]] || break
     done
-    _ble_util_idle_task=()
+
     [[ $_processed ]]
   }
+  function ble/util/idle.do/.call-task {
+    local _command=$1
+    local ble_util_idle_status=
+    builtin eval "$_command"; local ext=$?
+    if ((ext==148)); then
+      _ble_util_idle_task[_key]=R:$_command
+    elif [[ $ble_util_idle_status ]]; then
+      _ble_util_idle_task[_key]=$ble_util_idle_status:$_command
+      if [[ $ble_util_idle_status == [WS]* ]]; then
+        local scheduled_time=${ble_util_idle_status:1}
+        if [[ $ble_util_idle_status == W* ]]; then
+          local next=_idle_next_itime
+        else
+          local next=_idle_next_time
+        fi
+        if [[ ! ${!next} ]] || ((scheduled_time<next)); then
+          builtin eval "$next=\$scheduled_time"
+        fi
+      fi
+    else
+      unset '_ble_util_idle_task[_key]'
+    fi
+    return "$ext"
+  }
+  ## 関数 ble/util/idle/.check-clock entry
+  ##   @var[in,out] _idle_next_itime
+  ##   @var[in,out] _idle_next_time
+  function ble/util/idle/.check-clock {
+    local entry=$1
+    if [[ $entry == W* ]]; then
+      local next=_idle_next_itime
+      local current_time=$_ble_util_idle_sclock
+    elif [[ $entry == S* ]]; then
+      local ret
+      local next=_idle_next_time
+      ble/util/idle.clock; local current_time=$ret
+    else
+      return 1
+    fi
+
+    local scheduled_time=${_entry%%:*}; scheduled_time=${scheduled_time:1}
+    if ((scheduled_time<=current_time)); then
+      return 0
+    elif [[ ! ${!next} ]] || ((scheduled_time<next)); then
+      builtin eval "$next=\$scheduled_time"
+    fi
+    return 1
+  }
+  function ble/util/idle.do/.sleep-until-next {
+    local next_time=$1 next_itime=$2
+    local sleep_amount=
+    if [[ $next_itime ]]; then
+      local clock=$_ble_util_idle_sclock
+      local sleep1=$((next_itime-clock))
+      if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
+        sleep_amount=$sleep1
+      fi
+    fi
+    if [[ $next_time ]]; then
+      local ret; ble/util/idle.clock; local clock=$ret
+      local sleep1=$((next_time-clock))
+      if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
+        sleep_amount=$sleep1
+      fi
+    fi
+    if ((sleep_amount>0)); then
+      local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
+      local interval=$((bleopt_idle_interval))
+      ((interval<sleep_amount)) && sleep_amount=$interval
+      ble/util/idle/.sleep "$sleep_amount"
+    fi
+  }
+
+  function ble/util/idle.push/.impl {
+    local base=$1 entry=$2
+    local i=$base
+    while [[ ${_ble_util_idle_task[i]} ]]; do ((i++)); done
+    _ble_util_idle_task[i]=$entry
+  }
   function ble/util/idle.push {
-    ble/array#push _ble_util_idle_task "$*"
+    ble/util/idle.push/.impl 0 "R:$*"
+  }
+  function ble/util/idle.push-background {
+    ble/util/idle.push/.impl 10000 "R:$*"
+  }
+  function ble/util/idle.sleep {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    local ret; ble/util/idle.clock
+    ble_util_idle_status=S$((ret+$1))
+  }
+  function ble/util/idle.isleep {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=W$((_ble_util_idle_sclock+$1))
+  }
+  function ble/util/idle.wait-user {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=I
+  }
+  function ble/util/idle.continue {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=R
   }
 else
   function ble/util/idle.do { false; }
