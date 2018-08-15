@@ -86,6 +86,18 @@ if [[ -o posix ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
+function ble/adjust-POSIXLY_CORRECT {
+  _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
+  _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
+  unset POSIXLY_CORRECT
+}
+function ble/restore-POSIXLY_CORRECT {
+  if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
+    POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
+  fi
+}
+ble/adjust-POSIXLY_CORRECT
+
 bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
   unset _ble_bash

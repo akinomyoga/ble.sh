@@ -735,20 +735,6 @@ tech
   * core: ble/util/idle でバックグラウンドジョブ待ち機能を実装
     history の初期化中に別の task が実行できる様になるはず。
 
-2018-08-13
-
-  * どうやら POSIXLY_CORRECT を使えば unset 上書きを防御できる様だ。
-    https://stackoverflow.com/questions/35916983/how-can-you-use-pure-unset-shell-builtin-can-you-write-shell-scripts-that-are-i
-
-    試してみた所 POSIXLY_CORRECT=1 unset -f ... を使って unset 関数を削除できる。
-    但し、POSIXLY_CORRECT=1 自体が POSIX 通りに環境に残り続ける所まで振る舞いとして一致している。
-    なので明示的に unset POSIXLY_CORRECT をする必要がある。
-
-    また、POSIXLY_CORRECT が設定されていると、ble.sh が動かなくなるので、
-    元から POSIXLY_CORRECT をキャンセルする様にする必要はあった。
-    POSIXLY_CORRECT も IFS 等と同様に記録する必要がある。
-    特に unset/set 状態も記録する必要がある。
-
 2018-08-05
 
   * complete: 候補表示時に着色する
@@ -2496,7 +2482,7 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-07-29 (#D0684..#D0714)
+2018-07-29 (#D0684..#D0722)
 
   新機能
   - edit (`RET`): 文法的に不完全のときに改行を挿入 `#D0684`
@@ -2505,8 +2491,9 @@ tech
   - complete: ble/cmdinfo/complete:$command_name 対応 `#D0711`
   - complete: path:... などの続きの補完に対応 `#D0715`
   - complete: 引用符内のエスケープなどを適切に処理する `#D0717`
+  - core (ble/util/idle): 簡易タスクスケジューラの実装 `#D0721`
 
-  バグ修正
+  バグ修正・対策
   - highlight: 単語着色が乱れるバグの修正 `#D0686`
   - syntax: bash-3.2 以下で `_ble_syntax_attr: bad array subscript` のエラーが出るバグの修正 `#D0687`
   - prompt: PS1 で \v が空文字列になるバグの修正 `#D0688`
@@ -2520,6 +2507,8 @@ tech
   - complete: `complete` によって登録されたプログラム補完に対して変数 `COMP_*` が正しく設定されない問題の修正 `#D0711`
   - complete: `"` や `'` を含むファイル名の補完が正しくできない問題の修正 `#D0712` `#D0714`
   - emacs: 貼り付け (bracketed paste) で文字列が二重に挿入されるバグの修正 `#D0720`
+  - main: POSIXLY_CORRECT が設定されている時の対策 `#D0722`
+  - edit: POSIXLY_CORRECT を用いた組み込みコマンド上書き対策 `#D0722`
 
   動作変更
   - complete: 補完候補生成直前の `shopt -s force_ignore` を参照して候補を制限する様に変更 `#D0704`
@@ -3135,6 +3124,18 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-15
+
+  * 2018-08-13 どうやら POSIXLY_CORRECT を使えば unset 上書きを防御できる様だ [#D0722]
+    https://stackoverflow.com/questions/35916983/how-can-you-use-pure-unset-shell-builtin-can-you-write-shell-scripts-that-are-i
+
+    試してみた所 POSIXLY_CORRECT=1 unset -f ... を使って unset 関数を削除できる。
+    但し、POSIXLY_CORRECT=1 自体が POSIX 通りに環境に残り続ける所まで振る舞いとして一致している。
+    なので明示的に unset POSIXLY_CORRECT をする必要がある。
+
+    また、POSIXLY_CORRECT が設定されていると、ble.sh が動かなくなるので、
+    元から POSIXLY_CORRECT をキャンセルする様にする必要はあった。
+    POSIXLY_CORRECT も IFS 等と同様に記録する必要がある。
+    特に unset/set 状態も記録する必要がある。
 
   * complete: 自動補完2 ble/util/idle 拡張 [#D0721]
 

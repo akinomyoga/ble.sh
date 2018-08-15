@@ -4165,6 +4165,18 @@ function ble-edit/exec/.adjust-eol {
   ble-edit/draw/bflush
 }
 
+function ble-edit/exec/.reset-builtins/1 {
+  # Note: 何故か local POSIXLY_CORRECT の効果が
+  #   unset POSIXLY_CORRECT しても残存するので関数に入れる。
+  local POSIXLY_CORRECT=y
+  builtin unset -f builtin unset enable
+  builtin unset -f return break continue declare typeset local eval echo
+}
+function ble-edit/exec/.reset-builtins {
+  ble-edit/exec/.reset-builtins/1
+  builtin unset -f :
+}
+
 _ble_edit_exec_BASH_REMATCH=()
 _ble_edit_exec_BASH_REMATCH_rex=none
 
@@ -4291,6 +4303,7 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
 function ble-edit/exec:exec/.eval-prologue {
   ble-edit/exec/restore-BASH_REMATCH
   ble/restore-bash-options
+  ble/restore-POSIXLY_CORRECT
 
   set -H
 
@@ -4313,6 +4326,7 @@ function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
 
   ble/adjust-bash-options
+  ble/adjust-POSIXLY_CORRECT
   _ble_edit_PS1=$PS1
   _ble_edit_IFS=$IFS
   ble-edit/exec/save-BASH_REMATCH
@@ -4322,7 +4336,7 @@ function ble-edit/exec:exec/.eval-epilogue {
   if ((_ble_edit_exec_lastexit==0)); then
     _ble_edit_exec_lastexit=$_ble_edit_exec_INT
   fi
-  if [ "$_ble_edit_exec_lastexit" -ne 0 ]; then
+  if ((_ble_edit_exec_lastexit!=0)); then
     # SIGERR処理
     if type -t TRAPERR &>/dev/null; then
       TRAPERR
@@ -4541,6 +4555,7 @@ function ble-edit/exec:gexec/.eval-prologue {
   ble/util/joblist.clear
   ble-edit/exec/restore-BASH_REMATCH
   ble/restore-bash-options
+  ble/restore-POSIXLY_CORRECT
   ble-edit/exec/.setexit # set $?
 }
 function ble-edit/exec:gexec/.save-last-arg {
@@ -4556,14 +4571,13 @@ function ble-edit/exec:gexec/.eval-epilogue {
   fi
   _ble_edit_exec_INT=0
 
-  unset -f builtin unset
-  builtin unset -f builtin unset
-  builtin unset -f return break continue declare typeset local : eval echo
+  ble-edit/exec/.reset-builtins
 
   local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
 
   ble/adjust-bash-options
+  ble/adjust-POSIXLY_CORRECT
   _ble_edit_PS1=$PS1
   PS1=
   ble-edit/exec/save-BASH_REMATCH
