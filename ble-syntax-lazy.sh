@@ -46,7 +46,7 @@ function ble-syntax:bash/is-complete { true; }
 
 # 以下の関数に関しては遅延せずにその場で lib/core-syntax.sh をロードする
 ble-autoload "$_ble_base/lib/core-syntax.sh" \
-             ble-syntax/completion-context \
+             ble-syntax/completion-context/generate \
              ble-syntax:bash/extract-command \
              ble-syntax:bash/simple-word/eval \
              ble-syntax:bash/simple-word/is-simple

@@ -6782,8 +6782,8 @@ function ble-decode/keymap:vi_imap/define {
   #----------------------------------------------------------------------------
   # vi bindings
 
-  ble-bind -f __attach__         vi_imap/__attach__
-  ble-bind -f __default__        vi_imap/__default__
+  ble-bind -f __attach__        vi_imap/__attach__
+  ble-bind -f __default__       vi_imap/__default__
   ble-bind -f __before_widget__ vi_imap/__before_widget__
 
   ble-bind -f 'ESC' 'vi_imap/normal-mode'

@@ -4174,6 +4174,7 @@ function ble-edit/exec/.reset-builtins/1 {
 }
 function ble-edit/exec/.reset-builtins {
   ble-edit/exec/.reset-builtins/1
+  # Note: POSIXLY_CORRECT だと unset -f : できない。
   builtin unset -f :
 }
 
@@ -6631,6 +6632,8 @@ function read {
 # **** completion ****                                                    @comp
 
 : ${bleopt_complete_stdin_frequency:=50}
+: ${bleopt_complete_ambiguous:=1}
+: ${bleopt_complete_contract_function_names:=1}
 ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 ble/util/isfunction ble/util/idle.push &&
   ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'

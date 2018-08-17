@@ -3,8 +3,6 @@
 # ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 #
 
-: ${bleopt_complete_ambiguous:=1}
-
 #==============================================================================
 # action
 
@@ -33,11 +31,18 @@
 ##     COMPS は COMP1-COMP2 にある文字列を表し、
 ##     COMPV は COMPS の評価値 (クォート除去、簡単なパラメータ展開をした値) を表します。
 ##     COMPS に複雑な構造が含まれていて即時評価ができない場合は
-##     COMPV は unset になります。必要な場合は [[ ${COMPV+set} ]] で判定して下さい。
+##     COMPV は unset になります。必要な場合は [[ $comps_flags == *v* ]] で判定して下さい。
 ##     ※ [[ -v COMPV ]] は bash-4.2 以降です。
 ##
 ##   @var[in    ] COMP_PREFIX
-##   @var[in    ] comps_raw_paramx
+##   @var[in    ] comps_flags
+##     以下のフラグ文字からなる文字列です。
+##
+##     p パラメータ展開の直後に於ける補完である事を表します。
+##       直後に識別子を構成する文字を追記する時に対処が必要です。
+##
+##     v COMPV が利用可能である事を表します。
+##
 ##   @var[in    ] comps_close_type
 ##
 ## 関数 $ACTION/complete
@@ -86,7 +91,7 @@ function ble-complete/action/plain/initialize {
     # Note: 現在の simple-word の定義だと引用符内にパラメータ展開を許していないので、
     #  必然的にパラメータ展開が直前にあるのは引用符の外である事が保証されている。
     #  以下は、今後 simple-word の引用符内にパラメータ展開を許す時には修正が必要。
-    [[ $comps_raw_paramx && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
+    [[ $comps_flags == *p* && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
 
     INSERT=$COMPS$ins
   else
@@ -207,7 +212,7 @@ function ble-complete/yield-candidate {
 ##
 ## 関数 ble-complete/source/$name args...
 ##   @param[in] args...
-##     ble-syntax/completion-context で設定されるユーザ定義の引数。
+##     ble-syntax/completion-context/generate で設定されるユーザ定義の引数。
 ##
 ##   @var[in] COMP1 COMP2 COMPS COMPV
 ##     補完を実行しようとしている範囲と文字列が指定される。
@@ -228,7 +233,7 @@ function ble-complete/yield-candidate {
 # source/wordlist
 
 function ble-complete/source/wordlist {
-  [[ ${COMPV+set} ]] || return 1
+  [[ $comps_flags == *v* ]] || return 1
   [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
@@ -300,20 +305,27 @@ function ble-complete/source/command/.contract-by-slashes {
   '
 }
 
+function ble-complete/source/command/gen.1 {
+  [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
+  # Note: 何故か compgen -A command はクォート除去が実行されない。
+  #   compgen -A function はクォート除去が実行される。
+  #   従って、compgen -A command には直接 COMPV を渡し、
+  #   compgen -A function には compv_quoted を渡す。
+  compgen -c -- "$COMPV"
+  if [[ $COMPV == */* ]]; then
+    local q="'" Q="'\''"
+    local compv_quoted="'${COMPV//$q/$Q}'"
+    compgen -A function -- "$compv_quoted"
+  fi
+}
+
 function ble-complete/source/command/gen {
-  (
-    [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
-    # Note: 何故か compgen -A command はクォート除去が実行されない。
-    #   compgen -A function はクォート除去が実行される。
-    #   従って、compgen -A command には直接 COMPV を渡し、
-    #   compgen -A function には compv_quoted を渡す。
-    compgen -c -- "$COMPV"
-    if [[ $COMPV == */* ]]; then
-      local q="'" Q="'\''"
-      local compv_quoted="'${COMPV//$q/$Q}'"
-      compgen -A function -- "$compv_quoted"
-    fi
-  ) | ble-complete/source/command/.contract-by-slashes
+  if [[ $comp_type != *a* && $bleopt_complete_contract_function_names ]]; then
+    ble-complete/source/command/gen.1 |
+      ble-complete/source/command/.contract-by-slashes
+  else
+    ble-complete/source/command/gen.1
+  fi
 
   # ディレクトリ名列挙 (/ 付きで生成する)
   #
@@ -331,7 +343,7 @@ function ble-complete/source/command/gen {
   ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
 }
 function ble-complete/source/command {
-  [[ ${COMPV+set} ]] || return 1
+  [[ $comps_flags == *v* ]] || return 1
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
@@ -436,7 +448,7 @@ function ble-complete/source/file/.construct-pathname-pattern {
 }
 
 function ble-complete/source/file {
-  [[ ${COMPV+set} ]] || return 1
+  [[ $comps_flags == *v* ]] || return 1
   [[ $comp_type != *a* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   #   Note: compgen -A file (以下のコード参照) はバグがあって、
@@ -461,7 +473,7 @@ function ble-complete/source/file {
 # source/dir
 
 function ble-complete/source/dir {
-  [[ ${COMPV+set} ]] || return 1
+  [[ $comps_flags == *v* ]] || return 1
   [[ $comp_type != *a* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   # Note: compgen -A directory (以下のコード参照) はバグがあって、
@@ -750,7 +762,7 @@ function ble-complete/source/argument {
     if local rex='^-[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
       # var=filename --option=filename など。
       #
-      # Note: 微妙に異なる条件で ble-syntax/completion-context の方でも
+      # Note: 微妙に異なる条件で ble-syntax/completion-context/generate の方でも
       #   単語の途中の = からの補完に対応しているが、候補生成の異なる優先度
       #   を持たせるために両方で処理する現在の実装を保持する。
 
@@ -773,7 +785,7 @@ function ble-complete/source/argument {
 # source/variable
 
 function ble-complete/source/variable {
-  [[ ${COMPV+set} ]] || return 1
+  [[ $comps_flags == *v* ]] || return 1
   [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
 
   local action
@@ -796,69 +808,20 @@ function ble-complete/source/variable {
 }
 
 #------------------------------------------------------------------------------
+# 候補生成
 
-function ble-complete/.fignore/prepare {
-  _fignore=()
-  local i=0 leaf tmp
-  ble/string#split tmp ':' "$FIGNORE"
-  for leaf in "${tmp[@]}"; do
-    [[ $leaf ]] && _fignore[i++]="$leaf"
-  done
-}
-function ble-complete/.fignore/filter {
-  local pat
-  for pat in "${_fignore[@]}"; do
-    [[ $1 == *"$pat" ]] && return 1
-  done
-}
-
-## 関数 ble-complete/.pick-nearest-context
-##   一番開始点に近い補完源の一覧を求めます。
-##
-##   @var[in] comp_index
-##   @arr[in,out] context
-##
-##   @arr[out] nearest_contexts
-##   @var COMP1 COMP2
-##     補完範囲
-##   @var COMPS
-##     補完範囲の (クオートが含まれうる) コマンド文字列
-##   @var COMPV
-##     補完範囲のコマンド文字列が意味する実際の文字列
-##   @var comps_raw_paramx
-##     Cパラメータ展開 $var の直後かどうか。
-function ble-complete/.pick-nearest-context {
-  COMP1= COMP2=$comp_index
-  nearest_contexts=()
-
-  local -a unused_contexts=()
-  local ctx actx
-  for ctx in "${context[@]}"; do
-    ble/string#split-words actx "$ctx"
-    if ((COMP1<actx[1])); then
-      COMP1=${actx[1]}
-      ble/array#push unused_contexts "${nearest_contexts[@]}"
-      nearest_contexts=("$ctx")
-    elif ((COMP1==actx[1])); then
-      ble/array#push nearest_contexts "$ctx"
-    else
-      ble/array#push unused_contexts "$ctx"
-    fi
-  done
-  context=("${unused_contexts[@]}")
-
-  COMPS=${comp_text:COMP1:COMP2-COMP1}
-  comps_raw_paramx=
-  local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
-
-  if [[ ! $COMPS ]]; then
-    COMPV=
-  elif local ret close_type; ble-syntax:bash/simple-word/close-open-word "$COMPS"; then
-    comps_close_type=$close_type
-    ble-syntax:bash/simple-word/eval "$ret"; COMPV=$ret
-    [[ $COMPS =~ $rex_raw_paramx ]] && comps_raw_paramx=1
-  fi
-}
+## @var[out] cand_count
+##   候補の数
+## @arr[out] cand_cand
+##   候補文字列
+## @arr[out] cand_prop
+##   関数 開始 終了
+## @arr[out] cand_word
+##   挿入文字列 (～ エスケープされた候補文字列)
+## @arr[out] cand_show
+##   表示文字列 (～ 分かり易い文字列)
+## @arr[out] cand_data
+##   関数で使うデータ
 
 ## 関数 ble-complete/util/construct-ambiguous-regex text
 ##   曖昧一致に使う正規表現を生成します。
@@ -884,14 +847,79 @@ function ble-complete/util/construct-ambiguous-regex {
   done
   IFS= eval 'ret="${buff[*]}"'
 }
-## 関数 ble-complete/.filter-candidates-by-regex rex_filter
+
+function ble-complete/.fignore/prepare {
+  _fignore=()
+  local i=0 leaf tmp
+  ble/string#split tmp ':' "$FIGNORE"
+  for leaf in "${tmp[@]}"; do
+    [[ $leaf ]] && _fignore[i++]="$leaf"
+  done
+}
+function ble-complete/.fignore/filter {
+  local pat
+  for pat in "${_fignore[@]}"; do
+    [[ $1 == *"$pat" ]] && return 1
+  done
+}
+
+## 関数 ble-complete/candidates/.pick-nearest-context
+##   一番開始点に近い補完源の一覧を求めます。
+##
+##   @var[in] comp_index
+##   @arr[in,out] contexts
+##
+##   @arr[out] nearest_contexts
+##   @var COMP1 COMP2
+##     補完範囲
+##   @var COMPS
+##     補完範囲の (クオートが含まれうる) コマンド文字列
+##   @var COMPV
+##     補完範囲のコマンド文字列が意味する実際の文字列
+##   @var comps_flags
+function ble-complete/candidates/.pick-nearest-context {
+  COMP1= COMP2=$comp_index
+  nearest_contexts=()
+
+  local -a unused_contexts=()
+  local ctx actx
+  for ctx in "${contexts[@]}"; do
+    ble/string#split-words actx "$ctx"
+    if ((COMP1<actx[1])); then
+      COMP1=${actx[1]}
+      ble/array#push unused_contexts "${nearest_contexts[@]}"
+      nearest_contexts=("$ctx")
+    elif ((COMP1==actx[1])); then
+      ble/array#push nearest_contexts "$ctx"
+    else
+      ble/array#push unused_contexts "$ctx"
+    fi
+  done
+  contexts=("${unused_contexts[@]}")
+
+  COMPS=${comp_text:COMP1:COMP2-COMP1}
+  comps_flags=
+  local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
+
+  if [[ ! $COMPS ]]; then
+    comps_flags=${comps_flags}v COMPV=
+  elif local ret close_type; ble-syntax:bash/simple-word/close-open-word "$COMPS"; then
+    comps_close_type=$close_type
+    ble-syntax:bash/simple-word/eval "$ret"; comps_flags=${comps_flags}v COMPV=$ret
+    [[ $COMPS =~ $rex_raw_paramx ]] && comps_flags=${comps_flags}p
+  else
+    COMPV=
+  fi
+}
+
+## 関数 ble-complete/candidates/.filter-by-regex rex_filter
 ##   生成された候補 (cand_*) において指定した正規表現に一致する物だけを残します。
 ##   @param[in] rex_filter
 ##   @var[in,out] cand_count
 ##   @arr[in,out] cand_{prop,cand,word,show,data}
 ##   @exit
 ##     ユーザ入力によって中断された時に 148 を返します。
-function ble-complete/.filter-candidates-by-regex {
+function ble-complete/candidates/.filter-by-regex {
   local rex_filter=$1
   # todo: 複数の配列に触る非効率な実装だが後で考える
   local i j=0
@@ -914,19 +942,44 @@ function ble-complete/.filter-candidates-by-regex {
   cand_data=("${data[@]}")
 }
 
-function ble/widget/complete {
-  local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
+## 関数 ble-complete/candidates/get-contexts comp_text comp_index
+## 関数 ble-complete/candidates/get-prefix-contexts comp_text comp_index
+##   @param[in] comp_text
+##   @param[in] comp_index
+##   @var[out] contexts
+function ble-complete/candidates/get-contexts {
+  local comp_text=$1 comp_index=$2
   ble-syntax/import
   _ble_edit_str.update-syntax
-  local context
-  ble-syntax/completion-context "$comp_text" "$comp_index"
+  ble-syntax/completion-context/generate "$comp_text" "$comp_index"
+  ((${#contexts[@]}))
+}
+function ble-complete/candidates/get-prefix-contexts {
+  local comp_text=$1 comp_index=$2
+  ble-complete/candidates/get-contexts "$@" || return
 
-  if ((${#context[@]}==0)); then
-    ble/widget/.bell
-    ble-edit/info/clear
-    return
-  fi
+  # 現在位置より前に始まる補完文脈だけを選択する
+  local -a filtered_contexts=()
+  local ctx actx
+  for ctx in "${contexts[@]}"; do
+    ble/string#split-words actx "$ctx"
+    local comp1=${actx[1]}
+    ((comp1<comp_index)) &&
+      ble/array#push filtered_contexts "$ctx"
+  done
+  contexts=("${filtered_contexts[@]}")
+  ((${#contexts[@]}))
+}
 
+
+## 関数 ble-complete/candidates/generate
+##   @var[in] comp_text comp_index
+##   @arr[in] contexts
+##   @var[out] COMP1 COMP2 COMPS COMPV
+##   @var[out] comp_type comps_flags comps_close_type
+##   @var[out] cand_*
+##   @var[out] rex_ambiguous_compv
+function ble-complete/candidates/generate {
   local flag_force_fignore=
   local -a _fignore=()
   if [[ $FIGNORE ]]; then
@@ -934,30 +987,24 @@ function ble/widget/complete {
     ((${#_fignore[@]})) && shopt -q force_fignore && flag_force_fignore=1
   fi
 
-  local comp_type=
+  comp_type=
   ble/util/test-rl-variable completion-ignore-case &&
     comp_type=${comp_type}i
 
-  local cand_count=0
-  local -a cand_cand=() # 候補文字列
-  local -a cand_prop=() # 関数 開始 終了
-  local -a cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
-  local -a cand_show=() # 表示文字列 (～ 分かり易い文字列)
-  local -a cand_data=() # 関数で使うデータ
-  local opt_ambiguous=
+  cand_count=0
+  cand_cand=() # 候補文字列
+  cand_prop=() # 関数 開始 終了
+  cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
+  cand_show=() # 表示文字列 (～ 分かり易い文字列)
+  cand_data=() # 関数で使うデータ
   while :; do
     # 候補源が尽きたら終わり
-    if ((${#context[@]}==0)); then
-      ble/widget/.bell
-      ble-edit/info/clear
-      return
-    fi
+    ((${#contexts[@]})) || return 1
 
     # 次の開始点が近くにある候補源たち
     local -a nearest_contexts=()
-    local COMP1 COMP2 COMPS COMPV; unset COMPV
-    local comps_raw_paramx= comps_close_type=
-    ble-complete/.pick-nearest-context
+    comps_flags= comps_close_type=
+    ble-complete/candidates/.pick-nearest-context
 
     # 候補生成
     local ctx actx source
@@ -972,7 +1019,7 @@ function ble/widget/complete {
     ble/util/is-stdin-ready && return 148
     ((cand_count)) && break
 
-    if [[ $bleopt_complete_ambiguous ]]; then
+    if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
       comp_type=${comp_type}a
       for ctx in "${nearest_contexts[@]}"; do
         ble/string#split-words actx "$ctx"
@@ -981,19 +1028,24 @@ function ble/widget/complete {
         local COMP_PREFIX= # 既定値 (yield-candidate で参照)
         ble-complete/source/"${source[@]}"
       done
-      comp_type=${comp_type//a}
 
       local ret; ble-complete/util/construct-ambiguous-regex "$COMPV"
-      local rex_ambiguous_compv=^$ret
-      ble-complete/.filter-candidates-by-regex "$rex_ambiguous_compv"
+      rex_ambiguous_compv=^$ret
+      ble-complete/candidates/.filter-by-regex "$rex_ambiguous_compv"
       (($?==148)) && return 148
-      if ((cand_count)); then
-        opt_ambiguous=1
-        break
-      fi
+      ((cand_count)) && break
+      comp_type=${comp_type//a}
     fi
   done
+  return 0
+}
 
+## 関数 ble-complete/candidates/determine-common-prefix
+##   cand_* を元に common prefix を算出します。
+##   @var[in] cand_*
+##   @var[in] rex_ambiguous_compv
+##   @var[out] ret
+function ble-complete/candidates/determine-common-prefix {
   # 共通部分
   local common=${cand_word[0]} clen=${#cand_word[0]}
   if ((cand_count>1)); then
@@ -1009,13 +1061,38 @@ function ble/widget/complete {
     done
   fi
 
-  if [[ $opt_ambiguous ]]; then
+  if [[ $comp_type == *a* ]]; then
     # 曖昧一致に於いて複数の候補の共通部分が
     # 元の文字列に曖昧一致しない場合は補完しない。
     [[ $common =~ $rex_ambiguous_compv ]] || common=$COMPS
   elif ((cand_count!=1)) && [[ $common != "$COMPS"* ]]; then
     common=$COMPS
   fi
+
+  ret=$common
+}
+
+function ble/widget/complete {
+  local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
+  local contexts
+  ble-complete/candidates/get-contexts "$comp_text" "$comp_index" || return 1
+
+  local COMP1 COMP2 COMPS COMPV comp_type
+  local comps_flags comps_close_type
+  local rex_ambiguous_compv
+  local cand_count
+  local -a cand_cand cand_prop cand_word cand_show cand_data
+  ble-complete/candidates/generate; local ext=$?
+  if ((ext==148)); then
+    return 148
+  elif ((ext!=0)); then
+    ble/widget/.bell
+    ble-edit/info/clear
+    return 1
+  fi
+
+  local ret
+  ble-complete/candidates/determine-common-prefix; local common=$ret
 
   # 編集範囲の最小化
   local compr_beg=$COMP1 compr_end=$COMP2
@@ -1038,6 +1115,7 @@ function ble/widget/complete {
     # 一意確定の時
 
     # Note: $ACTION/complete が info に表示できる様に先に clear する。
+    #   関数名について縮約された候補に対して続きを表示するのに使う。
     ble-edit/info/clear
 
     local ACTION
@@ -1058,12 +1136,181 @@ function ble/widget/complete {
       (_ble_edit_ind=${#_ble_edit_str})))
 }
 
+_ble_complete_ac_type=
+_ble_complete_ac_comp1=
+_ble_complete_ac_cand=
+_ble_complete_ac_word=
+_ble_complete_ac_ins=
+function ble-complete/auto-complete.idle {
+  # ※どの場合でも wait-user で抜ける。
+  ble/util/idle.wait-user
+
+  [[ $_ble_decode_key__kmap == emacs || $_ble_decode_key__kmap == vi_imap ]] || return 0
+
+  case $_ble_decode_widget_last in
+  (ble/widget/self-insert) ;;
+  (*) return 0 ;;
+  esac
+
+  local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
+  [[ $comp_text ]] || return 0
+
+  local contexts
+  ble-complete/candidates/get-prefix-contexts "$comp_text" "$comp_index" || return 0
+
+  # ble-complete/candidates/generate 設定
+  local bleopt_complete_contract_function_names=
+  ((bleopt_complete_stdin_frequency>25)) &&
+    local bleopt_complete_stdin_frequency=25
+  local COMP1 COMP2 COMPS COMPV comp_type
+  local comps_flags comps_close_type
+  local rex_ambiguous_compv
+  local cand_count
+  local -a cand_cand cand_prop cand_word cand_show cand_data
+  ble-complete/candidates/generate
+  ((ext)) && return "$ext"
+
+  ((cand_count)) || return
+
+  _ble_complete_ac_comp1=$COMP1
+  _ble_complete_ac_cand=${cand_cand[0]}
+  _ble_complete_ac_word=${cand_word[0]}
+  [[ $_ble_complete_ac_word == "$COMPS" ]] && return
+
+  # addtail 等の修飾
+  local INSERT=$_ble_complete_ac_word
+  local ACTION
+  ble/string#split-words ACTION "${cand_prop[0]}"
+  if ble/util/isfunction "$ACTION/complete"; then
+    local CAND=${cand_cand[0]}
+    local DATA=${cand_data[0]}
+    "$ACTION/complete"
+  fi
+  _ble_complete_ac_ins=$INSERT
+
+  if [[ $_ble_complete_ac_word == "$COMPS"* ]]; then
+    _ble_complete_ac_type=c
+    local ins=${INSERT:${#COMPS}}
+    _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+    ((_ble_edit_mark=_ble_edit_ind+${#ins}))
+  else
+    if [[ $comp_type == *a* ]]; then
+      _ble_complete_ac_type=a
+    else
+      _ble_complete_ac_type=r
+    fi
+    _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" " [$INSERT] "
+    ((_ble_edit_mark=_ble_edit_ind+4+${#INSERT}))
+  fi
+
+  _ble_edit_mark_active=auto_complete
+  ble-decode/keymap/push auto_complete
+
+  return
+}
+ble/util/isfunction ble/util/idle.push-background &&
+  ble/util/idle.push-background ble-complete/auto-complete.idle
+
+ble-color-defface auto_complete fg=247
+
+function ble-highlight-layer:region/mark:auto_complete/get-sgr {
+  ble-color-face2sgr auto_complete
+}
+
+function ble/widget/auto_complete/cancel {
+  ble-decode/keymap/pop
+  _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_mark" ''
+  _ble_edit_mark_active=
+  _ble_complete_ac_ins=
+}
+function ble/widget/auto_complete/accept {
+  ble-decode/keymap/pop
+  if [[ $_ble_complete_ac_type == c ]]; then
+    local ins=${_ble_complete_ac_ins:_ble_edit_ind-_ble_complete_ac_comp1}
+    _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_mark" "$ins"
+    ((_ble_edit_ind+=${#ins},_ble_edit_mark=_ble_edit_ind))
+  else
+    local ins=$_ble_complete_ac_ins
+    _ble_edit_str.replace "$_ble_complete_ac_comp1" "$_ble_edit_mark" "$ins"
+    ((_ble_edit_ind=_ble_complete_ac_comp1+${#ins},_ble_edit_mark=_ble_edit_ind))
+  fi
+  _ble_edit_mark_active=
+  _ble_complete_ac_ins=
+  ble-edit/content/clear-arg
+}
+function ble/widget/auto_complete/exit-default {
+  ble/widget/auto_complete/cancel
+  ble-decode-key "${KEYS[@]}"
+}
+function ble/widget/auto_complete/self-insert {
+  local code=$((KEYS[0]&ble_decode_MaskChar))
+  ((code==0)) && return
+
+  local ret
+
+  # もし挿入によって現在の候補が変わらないのであれば、
+  # 候補を表示したまま挿入を実行する。
+  ble/util/c2s "$code"; local ins=$ret
+  local comps_cur=${_ble_edit_str:_ble_complete_ac_comp1:_ble_edit_ind-_ble_complete_ac_comp1}
+  local comps_new=$comps_cur$ins
+  if [[ $_ble_complete_ac_type == c ]]; then
+    # c: 入力済み部分が補完結果の先頭に含まれる場合
+    #   挿入した後でも補完結果の先頭に含まれる場合、その文字数だけ確定。
+    if [[ $_ble_complete_ac_word == "$comps_new"* ]]; then
+      ((_ble_edit_ind+=${#ins}))
+
+      # Note: 途中で完全一致した場合は tail を挿入せずに終了する事にする
+      [[ ! $_ble_complete_ac_word ]] && ble/widget/auto_complete/cancel
+      return
+    fi
+  elif [[ $_ble_complete_ac_type == [ra] ]]; then
+    if local ret close_type; ble-syntax:bash/simple-word/close-open-word "$comps_new"; then
+      ble-syntax:bash/simple-word/eval "$ret"; local compv_new=$ret
+      if [[ $_ble_complete_ac_type == r ]]; then
+        # r: 遡って書き換わる時
+        #   挿入しても展開後に一致する時、そのまま挿入。
+        #   元から展開後に一致していない場合もあるが、その場合は一旦候補を消してやり直し。
+        if [[ $_ble_complete_ac_cand == "$compv_new"* ]]; then
+          _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+          ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
+          [[ $_ble_complete_ac_cand == "$compv_new" ]] &&
+            ble/widget/auto_complete/cancel
+          return
+        fi
+      elif [[ $_ble_complete_ac_type == a ]]; then
+        # a: 曖昧一致の時
+        #   文字を挿入後に展開してそれが曖昧一致する時、そのまま挿入。
+        ble-complete/util/construct-ambiguous-regex "$compv_new"
+        local rex_ambiguous_compv=^$ret
+        if [[ $_ble_complete_ac_cand =~ $rex_ambiguous_compv ]]; then
+          _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+          ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
+          return
+        fi
+      fi
+    fi
+  fi
+
+  ble/widget/auto_complete/cancel
+  ble-decode-key "${KEYS[@]}"
+}
+function ble-decode/keymap:auto_complete/define {
+  local ble_bind_keymap=auto_complete
+
+  ble-bind -f __defchar__ auto_complete/self-insert
+  ble-bind -f __default__ auto_complete/exit-default
+  ble-bind -f C-g         auto_complete/cancel
+  ble-bind -f S-RET       auto_complete/accept
+  ble-bind -f S-C-m       auto_complete/accept
+}
+
+
 #------------------------------------------------------------------------------
 # default cmdinfo/complete
 
 function ble/cmdinfo/complete:cd/.impl {
   local type=$1
-  [[ ${COMPV+set} ]] || return 1
+  [[ $comps_flags == *v* ]] || return 1
 
   if [[ $COMPV == -* ]]; then
     local action=ble-complete/action/word
