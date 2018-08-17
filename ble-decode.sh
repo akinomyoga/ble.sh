@@ -1514,6 +1514,14 @@ function ble-decode-bind/uvw {
   builtin bind -x '"":ble-decode/.hook 127; builtin eval "$_ble_decode_bind_hook"'
 }
 
+# **** POSIXLY_CORRECT workaround ****
+
+# ble.pp の関数を上書き
+function ble/workaround-POSIXLY_CORRECT {
+  [[ $_ble_decode_bind_state == none ]] && return
+  builtin bind -x '"\C-i":ble-decode/.hook 9; builtin eval "$_ble_decode_bind_hook"'
+}
+
 # **** ble-decode-bind ****                                   @decode.bind.main
 
 _ble_decode_bind_hook=

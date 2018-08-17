@@ -4202,10 +4202,18 @@ function ble-edit/exec/.reset-builtins/1 {
   local POSIXLY_CORRECT=y
   builtin unset -f builtin unset enable
   builtin unset -f return break continue declare typeset local eval echo
+  ble/unset-POSIXLY_CORRECT
 }
 function ble-edit/exec/.reset-builtins {
+  # Workaround (bash-3.0 - 4.3):
+  #
+  #   unset POSIXLY_CORRECT でないと unset -f : できないが、
+  #   bash-3.0 -- 4.3 のバグで、local POSIXLY_CORRECT の時、
+  #   unset POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
+  #   local POSIXLY_CORRECT による処理は
+  #   ble-edit/exec/.reset-builtins/1 の中で実行する。
+  #
   ble-edit/exec/.reset-builtins/1
-  # Note: POSIXLY_CORRECT だと unset -f : できない。
   builtin unset -f :
 }
 

@@ -86,14 +86,26 @@ if [[ -o posix ]]; then
   return 1 2>/dev/null || exit 1
 fi
 
+function ble/workaround-POSIXLY_CORRECT {
+  # This function will be overwritten by ble-decode
+  true
+}
+function ble/unset-POSIXLY_CORRECT {
+  if [[ ${POSIXLY_CORRECT+set} ]]; then
+    unset POSIXLY_CORRECT
+    ble/workaround-POSIXLY_CORRECT 
+  fi
+}
 function ble/adjust-POSIXLY_CORRECT {
   _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
   _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
-  unset POSIXLY_CORRECT
+  ble/unset-POSIXLY_CORRECT
 }
 function ble/restore-POSIXLY_CORRECT {
   if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
     POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
+  else
+    ble/unset-POSIXLY_CORRECT
   fi
 }
 ble/adjust-POSIXLY_CORRECT

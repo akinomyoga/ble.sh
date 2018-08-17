@@ -732,7 +732,25 @@ tech
 
 2018-08-17
 
-  * complete: vim-mode の繰り返しやマクロとの相互作用
+  * bugbash: POSIXLY_CORRECT に触るだけで bind -x C-i が無効になる謎
+    ref #D0726
+
+    Bash-4.2 -- 5.0 で ble.sh の中で再現する。
+    unset POSIXLY_CORRECT をすると起こる。
+    bash --norc においては未だ再現はできていない。
+
+  * auto-complete: 既にカーソルの右に内容が入力されている時にわざわざ表示しない?
+
+    と思ったが、カーソルの右が第一候補に厳密に一致している場合にだけ自動補完を無効にしても、
+    カーソルの右が第二候補以降に厳密一致している場合には対応できないし、
+    或いは、"何れかの候補に厳密一致している場合には自動補完しない" という事にしても、
+    本当に補完したい時に候補が出てくれず困るという事も考えられる。
+
+    思うに、オーバーレイではなくて挿入して表示してしまっているから振動してうるさいのである。
+    後、振動してうるさいという事を考えるのであれば、
+    やはりカーソルの右が厳密に一致している場合に限り自動補完を無効にするというので良い気がする。
+
+  * auto-complete: vim-mode の繰り返しやマクロとの相互作用
     ref `#D0724`
 
     所で… vim-mode の繰り返しの設定だとかマクロだとかとの関係はどうなっているのか…。
@@ -742,10 +760,14 @@ tech
     自動再生の時には自動補完候補が生成されていないのでこれもまた変な事になる。
     この辺りは丁寧に考察する必要がある。
 
-2018-08-16
+  * auto-complete: bug bash-4.1 以下で auto_complete keymap に入ると、
+    何を押しても unbound keyseq の状態になる。
+    isearch では問題になっていないので何か使い方が違っているという事だろうか…。
+    auto_complete という名前の keymap が問題を引き起こしている?
+    :isearch を含む関数は ble-decode/keymap:isearch/define しかない。
+    これに同等な物は auto_complete に対しても定義している。
 
-  * decode: 何故かコマンド実行後に vim-mode において TAB が効かなくなる
-    初め complete の問題かと思ったがそうでも無いようだ。後で対処する。
+2018-08-16
 
   * complete: オーバーレイによる実装?
 
@@ -2516,17 +2538,18 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-07-29 (#D0684..#D0724)
+2018-07-29 (#D0684..#D0726)
 
   新機能
   - edit (`RET`): 文法的に不完全のときに改行を挿入 `#D0684`
   - complete: 曖昧補完 `#D0707` `#D0708` `#D0710` `#D0713`
   - complete: Readline 設定 `completion-ignore-case` に対応 `#D0709` `#D0710`
-  - complete: ble/cmdinfo/complete:$command_name 対応 `#D0711`
-  - complete: path:... などの続きの補完に対応 `#D0715`
+  - complete: `ble/cmdinfo/complete:$command_name` 対応 `#D0711`
+  - complete: `path:...` などと入力した時の続きの補完に対応 `#D0715`
   - complete: 引用符内のエスケープなどを適切に処理する `#D0717`
-  - core (ble/util/idle): 簡易タスクスケジューラの実装 `#D0721`
+  - core (`ble/util/idle`): 簡易タスクスケジューラの実装 `#D0721`
   - complete: 自動補完に対応 `#D0724`
+  - core: add a function `ble/function#try` `#D0725`
 
   バグ修正・対策
   - highlight: 単語着色が乱れるバグの修正 `#D0686`
@@ -2542,13 +2565,14 @@ tech
   - complete: `complete` によって登録されたプログラム補完に対して変数 `COMP_*` が正しく設定されない問題の修正 `#D0711`
   - complete: `"` や `'` を含むファイル名の補完が正しくできない問題の修正 `#D0712` `#D0714`
   - emacs: 貼り付け (bracketed paste) で文字列が二重に挿入されるバグの修正 `#D0720`
-  - main: POSIXLY_CORRECT が設定されている時の対策 `#D0722`
+  - main: POSIXLY_CORRECT が設定されている時の対策 `#D0722` `#D0726`
   - edit: POSIXLY_CORRECT を用いた組み込みコマンド上書き対策 `#D0722`
 
   動作変更
   - complete: 補完候補生成直前の `shopt -s force_ignore` を参照して候補を制限する様に変更 `#D0704`
   - complete: `FIGNORE` はエスケープされた挿入文字列に対してではなくて、候補文字列に対して判定する様に変更 `#D0704`
   - complete: 関数名補完を `/` で区切られた単位で行う `#D0706`, 曖昧一致の時は抑制: `#D0724`
+  - core: `ble/util/isfunction` → `ble/is-function` `#D0725`
 
   他
   - bash-bug: Bash に対するバグ報告 `#D0692` `D0695` `D0697`
@@ -3159,6 +3183,88 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-17
+
+  * decode: 何故かコマンド実行後に vim-mode において TAB が効かなくなる [#D0726]
+    初め complete の問題かと思ったがそうでも無いようだ。後で対処する。
+
+    [原因]
+
+    | どうも調べてみた所、少しでも POSIXLY_CORRECT に触ると問題が発生する。
+    | 先ず初めに関数内で unset POSIXLY_CORRECT すると駄目。
+    | 関数内で local POSIXLY_CORRECT しても駄目。
+    | 関数内で local POSIXLY_CORRECT してから unset POSIXLY_CORRECT しても駄目。
+    | Bash-4.2 -- 5.0 まで同様に問題が再現する。
+    | (Bash-4.1 以下は別の問題によって確認する事ができなかった。これは後で)
+    | 
+    | さて、表面上は POSIXLY_CORRECT が定義されていなければ
+    | 何も問題は起こらない様に見える。
+    | 
+    | もう少し調べる。
+    | ble.sh (bashrc 時に評価) に直接 unset POSIXLY_CORRECT を書いても問題は生じない。
+    | ble.sh (bashrc 時に評価) で関数内から unset POSIXLY_CORRECT としても問題は生じない。
+    | ble.sh (bashrc 時に評価) で関数内から local POSIXLY_CORRECT=y; unset POSIXLY_CORRECT としても問題は生じない。
+    | ble-attach の直後に関数内から local POSIXLY_CORRECT=y; unset POSIXLY_CORRECT とすると再現する。
+    | ble-attach の直後に直接 unset POSIXLY_CORRECT とすると再現する。
+    | ble-attach の直前に unset POSIXLY_CORRECT としても再現しない。
+    | ble-decode-attach; ble-decode-detach すると回復するという事が分かった。
+    | 
+    | どうも POSIXLY_CORRECT を少しでも触ると bind -x \t が壊れる様である。
+
+    これは明らかに bash のバグである。しかも未だ修正されていない。
+
+    [対策]
+
+    取り敢えず unset POSIXLY_CORRECT の直後に再度 bind する事にすれば一応回避できる様だ。直した。
+
+    [報告]
+
+    Bash に報告する為にもう少し調べる事にする。
+    先ず初めに bash --norc で再現させられるか。
+
+    $ bind -x '"\C-i": echo C-i is pressed'
+    $ unset POSIXLY_CORRECT
+    $ function f1 { local POSIXLY_CORRECT=y; unset -f echo; unset POSIXLY_CORRECT; }
+    $ bind -x '"\C-t": f1'
+
+    うーん。再現しない。ちゃんと bind は有効である。
+    上記の様に直接 unset POSIXLY_CORRECT としても、
+    bind -x の内部から unset POSIXLY_CORRECT としても問題は再現しない。
+
+    * bind -x '"\t": ...' でも '"<生のtab>": ...' でも問題は発生しない。
+
+    * bind -x の中から直接 unset POSIXLY_CORRECT したらどうなるか?
+
+      $ bind -x '"\C-t": unset POSIXLY_CORRECT'
+
+      これで C-t を押してみたが、それでもちゃんと C-i は無効になっていない。
+      stty 等の兼ね合いもあるのだろうか…。しかし、そうだとすると bind で直るのも変な気がする。
+
+    * bind -x '"\x89": ...' と bind -x '"\x9": ...' を同時に設定しても何も起こらない。
+
+    * cache.d/$UID/ble-decode-bind.40419.UTF-8.bind をコピーして来て、
+      末尾に以下の関数を追加して、bash --norc から source しても再現しない。
+
+      function ble-decode/.hook {
+        echo ble-decode/.hook: $1
+        if (($1==4)); then
+          # C-d で終了する
+          echo exit
+          exit
+        elif (($1==20)); then
+          # C-t で unset POSIXLY_CORRECT を実行する
+          local POSIXLY_CORRECT=y
+          unset -f echo
+          unset POSIXLY_CORRECT
+        fi
+      }
+
+      もしかすると stty と相互作用している可能性もある。
+      更に stty/enter やら uvw やら加えてみたが再現しない。
+
+    うーん。謎だ。
+
+    * 他に気になるのは、問題が起こっているのは本当に C-i だけなのだろうか。という事。
+      調べてみた所取り敢えず日本語は入力できる様に見える。他に C0 制御文字も C-i 以外は全部大丈夫だった。
 
   * core: ble/util/isfunction func && func ... を関数にできるのでは [#D0725]
 
