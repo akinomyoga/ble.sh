@@ -202,8 +202,7 @@ function ble-decode/generate-binder {
     echo 'source "$_ble_decode_bind_fbinder.unbind"' >> "$fbind2"
   fi
 
-  local encoding_setting=ble/encoding:$bleopt_input_encoding/generate-binder
-  ble/util/isfunction "$encoding_setting" && "$encoding_setting"
+  ble/function#try ble/encoding:"$bleopt_input_encoding"/generate-binder
 
   ble-edit/info/show text "ble.sh: updating binders... done"
 }

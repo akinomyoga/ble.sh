@@ -508,10 +508,7 @@ function ble-highlight-layer:region/update {
   if [[ $_ble_edit_mark_active ]]; then
     # 外部定義の選択範囲があるか確認
     #   vi-mode のビジュアルモード (文字選択、行選択、矩形選択) の実装で使用する。
-    local get_range=ble-highlight-layer:region/mark:$_ble_edit_mark_active/get-selection
-    if ble/util/isfunction "$get_range"; then
-      "$get_range"
-    else
+    if ! ble/function#try ble-highlight-layer:region/mark:"$_ble_edit_mark_active"/get-selection; then
       if ((_ble_edit_mark>_ble_edit_ind)); then
         selection=("$_ble_edit_ind" "$_ble_edit_mark")
       elif ((_ble_edit_mark<_ble_edit_ind)); then
@@ -520,10 +517,7 @@ function ble-highlight-layer:region/update {
     fi
 
     # sgr の取得
-    local get_sgr=ble-highlight-layer:region/mark:$_ble_edit_mark_active/get-sgr
-    if ble/util/isfunction "$get_sgr"; then
-      "$get_sgr"
-    else
+    if ! ble/function#try ble-highlight-layer:region/mark:"$_ble_edit_mark_active"/get-sgr; then
       ble-color-face2sgr region
     fi
   fi

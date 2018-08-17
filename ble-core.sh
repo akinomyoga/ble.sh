@@ -5,16 +5,16 @@
 : ${bleopt_input_encoding:=UTF-8}
 
 function bleopt/check:input_encoding {
-  if ! ble/util/isfunction "ble-decode-byte+$value"; then
+  if ! ble/is-function "ble-decode-byte+$value"; then
     echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-decode-byte+$value' is not defined." >&2
     return 1
-  elif ! ble/util/isfunction "ble-text-b2c+$value"; then
+  elif ! ble/is-function "ble-text-b2c+$value"; then
     echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-b2c+$value' is not defined." >&2
     return 1
-  elif ! ble/util/isfunction "ble-text-c2bc+$value"; then
+  elif ! ble/is-function "ble-text-c2bc+$value"; then
     echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-c2bc+$value' is not defined." >&2
     return 1
-  elif ! ble/util/isfunction "ble/encoding:$value/generate-binder"; then
+  elif ! ble/is-function "ble/encoding:$value/generate-binder"; then
     echo "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/generate-binder' is not defined." >&2
     return 1
   fi
@@ -430,7 +430,7 @@ function ble/string#escape-for-bash-specialchars {
 }
 
 #
-# miscallaneous utils
+# assign: reading files/streams into variables
 #
 
 ## 関数 ble/util/readfile var filename
@@ -518,6 +518,32 @@ else
   }
 fi
 
+#
+# functions
+#
+
+if ((_ble_bash>=30200)); then
+  function ble/is-function {
+    builtin declare -F "$1" &>/dev/null
+  }
+else
+  # bash-3.1 has bug in declare -f.
+  # it does not accept a function name containing non-alnum chars.
+  function ble/is-function {
+    local type
+    ble/util/type type "$1"
+    [[ $type == function ]]
+  }
+fi
+function ble/function#try {
+  ble/is-function "$1" || return 127
+  "$@"
+}
+
+#
+# miscallaneous utils
+#
+
 if ((_ble_bash>=40100)); then
   function ble/util/set {
     builtin printf -v "$1" %s "$2"
@@ -543,20 +569,6 @@ function ble/util/type {
   _cmd=$2 ble/util/assign "$1" 'builtin type -t -- "$_cmd" 2>/dev/null'
   builtin eval "$1=\"\${$1%$_ble_term_nl}\""
 }
-
-if ((_ble_bash>=30200)); then
-  function ble/util/isfunction {
-    builtin declare -F "$1" &>/dev/null
-  }
-else
-  # bash-3.1 has bug in declare -f.
-  # it does not accept a function name containing non-alnum chars.
-  function ble/util/isfunction {
-    local type
-    ble/util/type type "$1"
-    [[ $type == function ]]
-  }
-fi
 
 if ((_ble_bash>=40000)); then
   function ble/util/is-stdin-ready { IFS= LC_ALL=C builtin read -t 0; } &>/dev/null
@@ -839,7 +851,7 @@ elif type stat &>/dev/null; then
   fi
 fi
 # fallback: print current time
-ble/util/isfunction ble/util/getmtime ||
+ble/is-function ble/util/getmtime ||
   function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
 #------------------------------------------------------------------------------
@@ -1179,7 +1191,7 @@ function ble-import {
   local file=$1
   if [[ $file == /* ]]; then
     local guard=ble-import/guard/$1
-    ble/util/isfunction "$guard" && return 0
+    ble/is-function "$guard" && return 0
     if [[ -f $file ]]; then
       source "$file"
     else
@@ -1187,7 +1199,7 @@ function ble-import {
     fi && eval "function $guard { :; }"
   else
     local guard=ble-import/guard/ble/$1
-    ble/util/isfunction "$guard" && return 0
+    ble/is-function "$guard" && return 0
     if [[ -f $_ble_base/$file ]]; then
       source "$_ble_base/$file"
     elif [[ -f $_ble_base/local/$file ]]; then
@@ -1548,7 +1560,7 @@ function bleopt {
       case "$type" in
       (a*)
         [[ ${!var} == "$value" ]] && continue
-        if ble/util/isfunction bleopt/check:"${var#bleopt_}"; then
+        if ble/is-function bleopt/check:"${var#bleopt_}"; then
           if ! bleopt/check:"${var#bleopt_}"; then
             error_flag=1
             continue

@@ -60,8 +60,5 @@ function ble-syntax/import {
   ble-import "$_ble_base/lib/core-syntax.sh"
 }
 
-if ble/util/isfunction ble/util/idle.push; then
-  ble/util/idle.push ble-syntax/import
-else
+ble/function#try ble/util/idle.push ble-syntax/import ||
   ble-syntax/import
-fi

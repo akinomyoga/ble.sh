@@ -744,32 +744,12 @@ tech
 
 2018-08-16
 
-  * core: ble/util/isfunction func && func ... を関数にできるのでは。
-
-    ble/util/calliffunc 的な名前の関数で。
-    これだと繋がっていて単語の切れ目が分からない。
-      ble/util/call-if-func
-      ble/util/call-iffunc
-      ble/util/callif-func
-      ble/util/callIfFunc
-      ble/util/call-if-function
-      ble/util/call-if-fun
-    もっと良い動詞はないだろうか。存在する時だけ呼び出すという事が分かる様な。
-      ble/util/try-call-function
-      ble/util/try-function
-      ble/util/try-fun
-      ble/util/function#try
-      ble/function#try
-      ble/fun#try
-      ble/function#callif
-      ble/function#call-if
-      ble/function#checked-call
-      ble/function#check
-
   * decode: 何故かコマンド実行後に vim-mode において TAB が効かなくなる
     初め complete の問題かと思ったがそうでも無いようだ。後で対処する。
 
-  * complete: 現在の実装では仮挿入しているが、
+  * complete: オーバーレイによる実装?
+
+    現在の実装では仮挿入しているが、
     これによって現在の入力内容でエラー着色するべき所が、
     補完が実行された後の着色になってしまっていて、
     補完前の現状でエラーなのかどうなのかが判別できなくなっている。
@@ -778,6 +758,9 @@ tech
     しかし overlay の仕組みを実装するのは面倒である。
     どの様な仕様にするのが良いのかの吟味から実装まで。
     しかし、これについては後回しで良いだろう。
+
+    以下に仮入力の4種類の方法について言及がある。リンク先は消えている。
+    https://mattn.kaoriya.net/software/vim/20170905113330.htm
 
 2018-08-15
 
@@ -3176,6 +3159,28 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-17
+
+  * core: ble/util/isfunction func && func ... を関数にできるのでは [#D0725]
+
+    ble/util/calliffunc 的な名前の関数で。
+    これだと繋がっていて単語の切れ目が分からない。
+      ble/util/call-if-func
+      ble/util/call-iffunc
+      ble/util/callif-func
+      ble/util/callIfFunc
+      ble/util/call-if-function
+      ble/util/call-if-fun
+    もっと良い動詞はないだろうか。存在する時だけ呼び出すという事が分かる様な。
+      ble/util/try-call-function
+      ble/util/try-function
+      ble/util/try-fun
+      ble/util/function#try
+      ble/function#try
+      ble/fun#try
+      ble/function#callif
+      ble/function#call-if
+      ble/function#checked-call
+      ble/function#check
 
   * 2013-06-06 complete: 入力する側から候補を表示? [#D0724]
 

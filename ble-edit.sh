@@ -41,7 +41,7 @@
 : ${bleopt_emoji_width:=2}
 
 function bleopt/check:char_width_mode {
-  if ! ble/util/isfunction "ble/util/c2w+$value"; then
+  if ! ble/is-function "ble/util/c2w+$value"; then
     echo "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w+$value' is not defined." >&2
     return 1
   fi
@@ -164,7 +164,7 @@ function ble/edit/use-textmap {
 : ${bleopt_exec_type:=gexec}
 
 function bleopt/check:exec_type {
-  if ! ble/util/isfunction "ble-edit/exec:$value/process"; then
+  if ! ble/is-function "ble-edit/exec:$value/process"; then
     echo "bleopt: Invalid value exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
     return 1
   fi
@@ -1089,9 +1089,7 @@ function ble-edit/prompt/update/process-backslash {
       # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
       ble-edit/draw/put '\' ;;
     esac
-  elif local handler=ble-edit/prompt/update/backslash:$c && ble/util/isfunction "$handler"; then
-    "$handler"
-  else
+  elif ! ble/function#try ble-edit/prompt/update/backslash:"$c"; then
     # その他の文字はそのまま出力される。
     # - '\"' '\`' はそのまま出力された後に "" 内で評価され '"' '`' となる。
     # - それ以外の場合は '\?' がそのまま出力された後に、"" 内で評価されても変わらず '\?' 等となる。
@@ -1099,6 +1097,18 @@ function ble-edit/prompt/update/process-backslash {
   fi
 }
 
+## 設定関数 ble-edit/prompt/update/backslash:*
+##   プロンプト PS1 内で使用するバックスラッシュシーケンスを定義します。
+##   内部では ble-edit/draw/put escaped_text もしくは
+##   ble-edit/prompt/update/append unescaped_text を用いて
+##   シーケンスの展開結果を追記します。
+##
+##   @exit
+##     対応する文字列を出力した時に成功します。
+##     0 以外の終了ステータスを返した場合、
+##     シーケンスが処理されなかったと見做され、
+##     呼び出し元によって \c (c: 文字) が代わりに書き込まれます。
+##
 function ble-edit/prompt/update/backslash:0 { # 8進表現
   local rex='^\\[0-7]{1,3}'
   if [[ $tail =~ $rex ]]; then
@@ -1107,6 +1117,7 @@ function ble-edit/prompt/update/backslash:0 { # 8進表現
     builtin eval "c=\$'$seq'"
   fi
   ble-edit/prompt/update/append "$c"
+  return 0
 }
 function ble-edit/prompt/update/backslash:1 { ble-edit/prompt/update/backslash:0; }
 function ble-edit/prompt/update/backslash:2 { ble-edit/prompt/update/backslash:0; }
@@ -1117,26 +1128,32 @@ function ble-edit/prompt/update/backslash:6 { ble-edit/prompt/update/backslash:0
 function ble-edit/prompt/update/backslash:7 { ble-edit/prompt/update/backslash:0; }
 function ble-edit/prompt/update/backslash:a { # 0 BEL
   ble-edit/draw/put ""
+  return 0
 }
 function ble-edit/prompt/update/backslash:d { # ? 日付
   [[ $cache_d ]] || ble/util/strftime -v cache_d '%a %b %d'
   ble-edit/prompt/update/append "$cache_d"
+  return 0
 }
 function ble-edit/prompt/update/backslash:t { # 8 時刻
   [[ $cache_t ]] || ble/util/strftime -v cache_t '%H:%M:%S'
   ble-edit/prompt/update/append "$cache_t"
+  return 0
 }
 function ble-edit/prompt/update/backslash:A { # 5 時刻
   [[ $cache_A ]] || ble/util/strftime -v cache_A '%H:%M'
   ble-edit/prompt/update/append "$cache_A"
+  return 0
 }
 function ble-edit/prompt/update/backslash:T { # 8 時刻
   [[ $cache_T ]] || ble/util/strftime -v cache_T '%I:%M:%S'
   ble-edit/prompt/update/append "$cache_T"
+  return 0
 }
 function ble-edit/prompt/update/backslash:@ { # ? 時刻
   [[ $cache_at ]] || ble/util/strftime -v cache_at '%I:%M %p'
   ble-edit/prompt/update/append "$cache_at"
+  return 0
 }
 function ble-edit/prompt/update/backslash:D {
   local rex='^\\D\{([^{}]*)\}' cache_D
@@ -1147,15 +1164,19 @@ function ble-edit/prompt/update/backslash:D {
   else
     ble-edit/prompt/update/append "\\$c"
   fi
+  return 0
 }
 function ble-edit/prompt/update/backslash:e {
   ble-edit/draw/put $'\e'
+  return 0
 }
 function ble-edit/prompt/update/backslash:h { # = ホスト名
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_h"
+  return 0
 }
 function ble-edit/prompt/update/backslash:H { # = ホスト名
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_H"
+  return 0
 }
 function ble-edit/prompt/update/backslash:j { #   ジョブの数
   if [[ ! $cache_j ]]; then
@@ -1164,31 +1185,40 @@ function ble-edit/prompt/update/backslash:j { #   ジョブの数
     cache_j=${#joblist[@]}
   fi
   ble-edit/draw/put "$cache_j"
+  return 0
 }
 function ble-edit/prompt/update/backslash:l { #   tty basename
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_l"
+  return 0
 }
 function ble-edit/prompt/update/backslash:n {
   ble-edit/draw/put $'\n'
+  return 0
 }
 function ble-edit/prompt/update/backslash:r {
   ble-edit/draw/put "$_ble_term_cr"
+  return 0
 }
 function ble-edit/prompt/update/backslash:s { # 4 "bash"
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_s"
+  return 0
 }
 function ble-edit/prompt/update/backslash:u { # = ユーザ名
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_u"
+  return 0
 }
 function ble-edit/prompt/update/backslash:v { # = bash version %d.%d
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_v"
+  return 0
 }
 function ble-edit/prompt/update/backslash:V { # = bash version %d.%d.%d
   ble-edit/prompt/update/append "$_ble_edit_prompt__string_V"
+  return 0
 }
 function ble-edit/prompt/update/backslash:w { # PWD
   ble-edit/prompt/update/update-cache_wd
   ble-edit/prompt/update/append "$cache_wd"
+  return 0
 }
 function ble-edit/prompt/update/backslash:W { # PWD短縮
   if [[ $PWD == / ]]; then
@@ -1197,6 +1227,7 @@ function ble-edit/prompt/update/backslash:W { # PWD短縮
     ble-edit/prompt/update/update-cache_wd
     ble-edit/prompt/update/append "${cache_wd##*/}"
   fi
+  return 0
 }
 ## 関数 ble-edit/prompt/update/update-cache_wd
 ##   @var[in,out] cache_wd
@@ -2073,7 +2104,7 @@ function _ble_edit_str/update-dirty-range {
 }
 
 function _ble_edit_str.update-syntax {
-  if ble/util/isfunction ble-syntax/parse; then
+  if ble/is-function ble-syntax/parse; then
     local beg end end0
     ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
     if ((beg>=0)); then
@@ -6635,8 +6666,7 @@ function read {
 : ${bleopt_complete_ambiguous:=1}
 : ${bleopt_complete_contract_function_names:=1}
 ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
-ble/util/isfunction ble/util/idle.push &&
-  ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
+ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
 
 #------------------------------------------------------------------------------
 # **** command-help ****                                          @command-help
@@ -6720,10 +6750,8 @@ function ble/widget/command-help/.locate-in-man-bash {
 ##   @var[in] command
 ##   @var[in] comp_cword comp_words comp_line comp_point
 function ble/widget/command-help.core {
-  ble/util/isfunction ble/cmdinfo/help:"$command" &&
-    ble/cmdinfo/help:"$command" && return
-  ble/util/isfunction ble/cmdinfo/help &&
-    ble/cmdinfo/help "$command" && return
+  ble/function#try ble/cmdinfo/help:"$command" && return
+  ble/function#try ble/cmdinfo/help "$command" && return
 
   if [[ $type == builtin || $type == keyword ]]; then
     # 組み込みコマンド・キーワードは man bash を表示
@@ -6821,7 +6849,7 @@ function ble/widget/command-help/.type {
   if [[ $type == keyword && $command != "$literal" ]]; then
     if [[ $command == %* ]] && jobs -- "$command" &>/dev/null; then
       type=jobs
-    elif ble/util/isfunction "$command"; then
+    elif ble/is-function "$command"; then
       type=function
     elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
       type=builtin
@@ -6915,7 +6943,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
     local file=${1:-$_ble_edit_io_fname2}
 
     # if the visible bell function is already defined.
-    if ble/util/isfunction ble/term/visible-bell; then
+    if ble/is-function ble/term/visible-bell; then
       # checks if "$file" is an ordinary non-empty file
       #   since the $file might be /dev/null depending on the configuration.
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
@@ -7215,7 +7243,7 @@ function ble-decode/DEFAULT_KEYMAP {
 
 function ble-edit/bind/load-keymap-definition {
   local name=$1
-  if ble/util/isfunction ble-edit/bind/load-keymap-definition:"$name"; then
+  if ble/is-function ble-edit/bind/load-keymap-definition:"$name"; then
     ble-edit/bind/load-keymap-definition:"$name"
   else
     source "$_ble_base/keymap/$name.sh"

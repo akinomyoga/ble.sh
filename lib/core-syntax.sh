@@ -4585,7 +4585,7 @@ function ble-syntax/highlight/cmdtype2 {
       # (% という名の関数を呼び出す方法はない?)
       # でも % で始まる物が keyword になる事はそもそも無いような。
       ((type=ATTR_CMD_JOBS))
-    elif ble/util/isfunction "$cmd"; then
+    elif ble/is-function "$cmd"; then
       ((type=ATTR_CMD_FUNCTION))
     elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
       ((type=ATTR_CMD_BUILTIN))
@@ -5093,5 +5093,4 @@ function ble-highlight-layer:syntax/getg {
 
 function ble-syntax/import { :; }
 
-ble/util/isfunction ble/textarea#invalidate &&
-  ble/textarea#invalidate
+ble/function#try ble/textarea#invalidate

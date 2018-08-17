@@ -733,9 +733,9 @@ function ble-complete/source/argument/.generate-user-defined-completion {
   ble-syntax:bash/extract-command "$comp_index" || return 1
 
   local cmd=${comp_words[0]}
-  if ble/util/isfunction "ble/cmdinfo/complete:$cmd"; then
+  if ble/is-function "ble/cmdinfo/complete:$cmd"; then
     "ble/cmdinfo/complete:$cmd"
-  elif [[ $cmd == */?* ]] && ble/util/isfunction "ble/cmdinfo/complete:${cmd##*/}"; then
+  elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
     "ble/cmdinfo/complete:${cmd##*/}"
   else
     ble-complete/source/argument/.progcomp
@@ -1120,7 +1120,7 @@ function ble/widget/complete {
 
     local ACTION
     ble/string#split-words ACTION "${cand_prop[0]}"
-    if ble/util/isfunction "$ACTION/complete"; then
+    if ble/is-function "$ACTION/complete"; then
       local CAND=${cand_cand[0]}
       local DATA=${cand_data[0]}
       "$ACTION/complete"
@@ -1181,7 +1181,7 @@ function ble-complete/auto-complete.idle {
   local INSERT=$_ble_complete_ac_word
   local ACTION
   ble/string#split-words ACTION "${cand_prop[0]}"
-  if ble/util/isfunction "$ACTION/complete"; then
+  if ble/is-function "$ACTION/complete"; then
     local CAND=${cand_cand[0]}
     local DATA=${cand_data[0]}
     "$ACTION/complete"
@@ -1208,8 +1208,7 @@ function ble-complete/auto-complete.idle {
 
   return
 }
-ble/util/isfunction ble/util/idle.push-background &&
-  ble/util/idle.push-background ble-complete/auto-complete.idle
+ble/function#try ble/util/idle.push-background ble-complete/auto-complete.idle
 
 ble-color-defface auto_complete fg=247
 

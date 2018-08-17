@@ -2,7 +2,7 @@
 
 # Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されうるので、
 # 先に ble-edit/bind/load-keymap-definition:vi を上書きする必要がある。
-ble/util/isfunction ble-edit/bind/load-keymap-definition:vi && return
+ble/is-function ble-edit/bind/load-keymap-definition:vi && return
 function ble-edit/bind/load-keymap-definition:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
@@ -1161,7 +1161,7 @@ function ble/keymap:vi/call-operator {
   unset _ble_keymap_vi_mark_suppress_edit
   ble/keymap:vi/mark/end-edit-area
   if ((ext==0)); then
-    if ble/util/isfunction ble/keymap:vi/operator:"$1".record; then
+    if ble/is-function ble/keymap:vi/operator:"$1".record; then
       ble/keymap:vi/operator:"$1".record
     else
       ble/keymap:vi/repeat/record
@@ -1172,7 +1172,7 @@ function ble/keymap:vi/call-operator {
 function ble/keymap:vi/call-operator-charwise {
   local ch=$1 beg=$2 end=$3 arg=$4 reg=$5
   ((beg<=end||(beg=$3,end=$2)))
-  if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+  if ble/is-function ble/keymap:vi/operator:"$ch"; then
     local ble_keymap_vi_operator_index=
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" char "$arg" "$reg"; local ext=$?
     ((ext==148)) && return 148
@@ -1193,7 +1193,7 @@ function ble/keymap:vi/call-operator-linewise {
   ble-edit/content/find-logical-bol "$a" "$ia"; local beg=$ret
   ble-edit/content/find-logical-eol "$b" "$ib"; local end=$ret
 
-  if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+  if ble/is-function ble/keymap:vi/operator:"$ch"; then
     local ble_keymap_vi_operator_index=
     ((end<${#_ble_edit_str}&&end++))
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" line "$arg" "$reg"; local ext=$?
@@ -1215,7 +1215,7 @@ function ble/keymap:vi/call-operator-linewise {
 }
 function ble/keymap:vi/call-operator-blockwise {
   local ch=$1 beg=$2 end=$3 arg=$4 reg=$5
-  if ble/util/isfunction ble/keymap:vi/operator:"$ch"; then
+  if ble/is-function ble/keymap:vi/operator:"$ch"; then
     local mark_active=${ble_keymap_vi_mark_active:-block}
     local sub_ranges sub_x1 sub_x2
     _ble_edit_mark_active=$mark_active ble/keymap:vi/extract-block "$beg" "$end"
@@ -1848,7 +1848,7 @@ function ble/keymap:vi/operator:map {
   local context=$3
   if [[ $bleopt_keymap_vi_operatorfunc ]]; then
     local opfunc=ble/keymap:vi/operator:$bleopt_keymap_vi_operatorfunc
-    if ble/util/isfunction "$opfunc"; then
+    if ble/is-function "$opfunc"; then
       "$opfunc" "$@"
       return
     fi
@@ -2004,7 +2004,7 @@ function ble/widget/vi-command/linewise-range.impl {
     fi
 
     ((end<${#_ble_edit_str}&&end++))
-    if ! ble/util/isfunction ble/keymap:vi/operator:"$flag"; then
+    if ! ble/is-function ble/keymap:vi/operator:"$flag"; then
       ble/widget/vi-command/bell
       return 1
     fi
@@ -4335,7 +4335,7 @@ function ble/widget/vi-command/commandline.hook {
   local command
   ble/string#split-words command "$1"
   local cmd="ble/widget/vi-command:${command[0]}"
-  if ble/util/isfunction "$cmd"; then
+  if ble/is-function "$cmd"; then
     "$cmd" "${command[@]:1}"; local ext=$?
   else
     ble/widget/vi-command/bell "unknown command $1"; local ext=1
@@ -4730,7 +4730,7 @@ function ble/widget/vi_nmap/command-help {
 function ble/widget/vi_xmap/command-help.core {
   ble/keymap:vi/clear-arg
   local get_selection=ble-highlight-layer:region/mark:$_ble_edit_mark_active/get-selection
-  ble/util/isfunction "$get_selection" || return 1
+  ble/is-function "$get_selection" || return 1
 
   local selection
   "$get_selection" || return 1

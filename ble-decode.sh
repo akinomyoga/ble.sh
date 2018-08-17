@@ -933,7 +933,7 @@ function ble-decode/keymap/load {
   ble-decode/keymap/is-keymap "$1" && return 0
 
   local init=ble-decode/keymap:$1/define
-  if ble/util/isfunction "$init"; then
+  if ble/is-function "$init"; then
     "$init" && ble-decode/keymap/is-keymap "$1"
   elif [[ $_ble_decode_keymap_load != *s* ]]; then
     ble-import "keymap/$1.sh" &&
@@ -1445,7 +1445,7 @@ function ble-bind {
 
               # check if is function
               local arr; ble/string#split-words arr "$command"
-              if ! ble/util/isfunction "${arr[0]}"; then
+              if ! ble/is-function "${arr[0]}"; then
                 if [[ $command == ble/widget/ble/widget/* ]]; then
                   echo "ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'. Note: The prefix 'ble/widget/' is redundant" 1>&2
                 else
@@ -1772,8 +1772,7 @@ function ble-decode/bind {
   _ble_decode_bind__uvwflag=
 }
 function ble-decode/unbind {
-  local encoding_clear=ble/encoding:$bleopt_input_encoding/clear
-  ble/util/isfunction "$encoding_clear" && "$encoding_clear"
+  ble/function#try ble/encoding:"$bleopt_input_encoding"/clear
   source "$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind"
 }
 

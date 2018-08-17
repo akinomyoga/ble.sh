@@ -19,7 +19,7 @@ _ble_region_highlight_table=()
 _ble_highlight_layer_adapter_buff=()
 _ble_highlight_layer_adapter_table=()
 function ble-highlight-layer:adapter/update {
-  local text="$1" player="$2"
+  local text=$1 player=$2
 
   # update g table
   local LAYER_UMIN LAYER_UMAX
@@ -28,10 +28,10 @@ function ble-highlight-layer:adapter/update {
   if [[ $bleopt_syntax_highlight_mode ]]; then
     # LAYER_UMIN を設定しない highlight_mode の場合はそのまま。
     # LAYER_UMIN を設定する highlight_mode の場合は参照せずに上書きされる。
-    LAYER_UMIN=0 LAYER_UMAX="$iN"
+    LAYER_UMIN=0 LAYER_UMAX=$iN
     "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
   else
-    LAYER_UMIN="$iN" LAYER_UMAX=0
+    LAYER_UMIN=$iN LAYER_UMAX=0
   fi
   _ble_highlight_layer_adapter_table=("${_ble_region_highlight_table[@]}")
 
@@ -40,35 +40,35 @@ function ble-highlight-layer:adapter/update {
   #   実際の更新は text[i2] に対しても行う。
   ((PREV_UMIN>=0&&LAYER_UMIN>PREV_UMIN&&(LAYER_UMIN=PREV_UMIN),
     PREV_UMAX>=0&&LAYER_UMAX<PREV_UMAX&&(LAYER_UMAX=PREV_UMAX)))
-  local i1="$LAYER_UMIN" i2="$LAYER_UMAX"
+  local i1=$LAYER_UMIN i2=$LAYER_UMAX
   ((i2>=iN&&(i2=iN-1)))
 
   # update char buffer
   ble-highlight-layer/update/shift _ble_highlight_layer_adapter_buff
   local i g gprev=0 ctx=0 ret
-  ((i1>0)) && ble-highlight-layer/getg -v gprev "$((i1-1))"
+  ((i1>0)) && ble-highlight-layer/getg -v gprev $((i1-1))
   # ble-edit/info/show text "layer:adapter u = $i1-$i2"
   for ((i=i1;i<=i2;i++)); do
     local ch
     if [[ ${_ble_region_highlight_table[i]} ]]; then
-      ch="${_ble_highlight_layer_plain_buff[i]}"
+      ch=${_ble_highlight_layer_plain_buff[i]}
       ((g=_ble_region_highlight_table[i]))
       if ((ctx!=0||g!=gprev)); then
         ((ctx=0,gprev=g))
         ble-color-g2sgr "$g"
-        ch="$ret$ch"
+        ch=$ret$ch
       fi
     else
-      builtin eval "ch=\"\${$PREV_BUFF[i]}\""
+      builtin eval "ch=\${$PREV_BUFF[i]}"
       if ((ctx!=1)); then
         ((ctx=1,gprev=-1))
         ble-highlight-layer/update/getg
         ble-color-g2sgr "$g"
-        ch="$ret$ch"
+        ch=$ret$ch
       fi
     fi
 
-    _ble_highlight_layer_adapter_buff[i]="$ch"
+    _ble_highlight_layer_adapter_buff[i]=$ch
   done
 
   PREV_BUFF=_ble_highlight_layer_adapter_buff
@@ -81,7 +81,7 @@ function ble-highlight-layer:adapter/update {
 function ble-highlight-layer:adapter/getg {
   # 描画属性がない時は _ble_region_highlight_table[i]
   # には空文字列が入っているのでOK
-  g="${_ble_highlight_layer_adapter_table[$1]}"
+  g=${_ble_highlight_layer_adapter_table[$1]}
 }
 
 
@@ -92,10 +92,10 @@ function ble-syntax-highlight/append {
   while [ $# -gt 0 ]; do
     local -a triplet
     triplet=($1)
-    local ret; ble-color-gspec2g "${triplet[2]}"; local g="$ret"
-    local -i i="${triplet[0]}" iN="${triplet[1]}"
+    local ret; ble-color-gspec2g "${triplet[2]}"; local g=$ret
+    local -i i=${triplet[0]} iN=${triplet[1]}
     for ((;i<iN;i++)); do
-      _ble_region_highlight_table[$i]="$g"
+      _ble_region_highlight_table[$i]=$g
     done
     shift
   done
@@ -112,15 +112,15 @@ function ble-syntax-highlight+region {
 }
 
 function ble-syntax-highlight+test {
-  local text="$1"
+  local text=$1
   local i iN=${#text} w
   local mode=cmd
   for ((i=0;i<iN;)); do
-    local tail="${text:i}" rex
+    local tail=${text:i} rex
     if [[ $mode == cmd ]]; then
       if rex='^[_a-zA-Z][_a-zA-Z0-9]*=' && [[ $tail =~ $rex ]]; then
         # 変数への代入
-        local var="${tail%%=*}"
+        local var=${tail%%=*}
         ble-syntax-highlight/append "$i $((i+${#var})) fg=orange"
         ((i+=${#var}+1))
   
@@ -170,8 +170,8 @@ function ble-syntax-highlight+test {
 }
 
 function ble-syntax-highlight+default/type {
-  type="$1"
-  local cmd="$2"
+  type=$1
+  local cmd=$2
   case "$type:$cmd" in
   (builtin::|builtin:.)
     # 見にくいので太字にする
@@ -201,12 +201,12 @@ function ble-syntax-highlight+default/type {
 
 function ble-syntax-highlight+default {
   local rex IFS=$' \t\n'
-  local text="$1"
+  local text=$1
   local i iN=${#text} w
   local mode=cmd
   for ((i=0;i<iN;)); do
-    local tail="${text:i}"
-    if [[ "$mode" == cmd ]]; then
+    local tail=${text:i}
+    if [[ $mode == cmd ]]; then
       if rex='^([_a-zA-Z][_a-zA-Z0-9]*)\+?=' && [[ $tail =~ $rex ]]; then
         # for bash-3.1 ${#arr[n]} bug
         local rematch1="${BASH_REMATCH[1]}"
@@ -219,14 +219,14 @@ function ble-syntax-highlight+default {
       elif rex='^([^'"$IFS"'|&;()<>'\''"\]|\\.)+' && [[ $tail =~ $rex ]]; then
         # ■ time'hello' 等の場合に time だけが切り出されてしまう
 
-        local _0="${BASH_REMATCH[0]}"
+        local _0=${BASH_REMATCH[0]}
         builtin eval "local cmd=${_0}"
 
         # この部分の判定で fork を沢山する \if 等に対しては 4fork+2exec になる。
         # ■キャッシュ(accept-line 時に clear)するなどした方が良いかもしれない。
         local type; ble/util/type type "$cmd"
         ble-syntax-highlight+default/type "$type" "$cmd" # -> type
-        if [[ "$type" = alias && "$cmd" != "$_0" ]]; then
+        if [[ $type = alias && $cmd != "$_0" ]]; then
           # alias を \ で無効化している場合
           # → unalias して再度 check (2fork)
           type=$(
@@ -243,7 +243,7 @@ function ble-syntax-highlight+default {
             # (% という名の関数を呼び出す方法はない?)
             # でも % で始まる物が keyword になる事はそもそも無いような。
             type=jobs
-          elif ble/util/isfunction "$cmd"; then
+          elif ble/is-function "$cmd"; then
             type=function
           elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
             type=builtin
@@ -274,7 +274,7 @@ function ble-syntax-highlight+default {
         esac
 
         ((i+=${#BASH_REMATCH}))
-        if rex='^keyword:([!{]|time|do|if|then|else|while|until)$|^builtin:eval$' && [[ "$type:$cmd" =~ $rex ]]; then
+        if rex='^keyword:([!{]|time|do|if|then|else|while|until)$|^builtin:eval$' && [[ $type:$cmd =~ $rex ]]; then
           mode=cmd
         else
           mode=arg
@@ -285,10 +285,10 @@ function ble-syntax-highlight+default {
     elif [[ $mode == arg ]]; then
       if rex='^([^"$'"$IFS"'|&;()<>'\''"`\]|\\.)+' && [[ $tail =~ $rex ]]; then
         # ■ time'hello' 等の場合に time だけが切り出されてしまう
-        local arg="${BASH_REMATCH[0]}"
+        local arg=${BASH_REMATCH[0]}
 
-        local file="$arg"
-        [[ ( $file == '~' || $file = '~/'* ) && ! ( -e $file || -h $file ) ]] && file="$HOME${file:1}"
+        local file=$arg
+        [[ ( $file == '~' || $file = '~/'* ) && ! ( -e $file || -h $file ) ]] && file=$HOME${file:1}
         if [[ -d $file ]]; then
           ble-syntax-highlight/append "$i $((i+${#arg})) fg=navy,underline"
         elif [[ -h $file ]]; then
@@ -312,11 +312,11 @@ function ble-syntax-highlight+default {
       continue
     elif rex='^['"$IFS"']+' && [[ $tail =~ $rex ]]; then
       ((i+=${#BASH_REMATCH}))
-      local spaces="${BASH_REMATCH[0]}"
-      if [[ "$spaces" =~ $'\n' ]]; then
+      local spaces=${BASH_REMATCH[0]}
+      if [[ $spaces =~ $'\n' ]]; then
         mode=cmd
       else
-        [[ "$mode" = arg_ ]] && mode=arg
+        [[ $mode = arg_ ]] && mode=arg
       fi
       continue
     elif rex='^;;?|^;;&$|^&&?|^\|\|?' && [[ $tail =~ $rex ]]; then
