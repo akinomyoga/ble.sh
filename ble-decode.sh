@@ -38,14 +38,14 @@ ble_decode_MaskFlag=0x7FC00000
 
 ble_decode_IsolatedESC=$((0x07FF))
 
-if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   _ble_decode_kbd_ver=4
   _ble_decode_kbd__n=0
   if ((_ble_bash>=40200)); then
     declare -gA _ble_decode_kbd__k2c
   else
     declare -A _ble_decode_kbd__k2c
-  fi
+   fi
   _ble_decode_kbd__c2k=()
 
   function ble-decode-kbd/.set-keycode {
@@ -76,8 +76,8 @@ else
     if [[ ${#tmp} == ${#_ble_decode_kbd__k2c_keys} ]]; then
       ret=
     else
-      local -a tmp; tmp=(${tmp//:/ })
-      ret=${_ble_decode_kbd__k2c_vals[${#tmp[@]}]}
+      local -a arr; arr=(${tmp//:/ })
+      ret=${_ble_decode_kbd__k2c_vals[${#arr[@]}]}
     fi
   }
 fi
@@ -1122,7 +1122,7 @@ function ble-decode-key/.invoke-partial-match {
         _ble_decode_key__seq=$seq_save # 125 の時はまた元に戻して次の試行を行う
       fi
     fi
-    
+
     # 既定のキーハンドラ
     builtin eval "local command=\${${dicthead}[$_ble_decode_KCODE_DEFAULT]-}"
     command=${command:2}

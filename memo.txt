@@ -750,13 +750,6 @@ tech
     自動再生の時には自動補完候補が生成されていないのでこれもまた変な事になる。
     この辺りは丁寧に考察する必要がある。
 
-  * auto-complete: bug bash-4.1 以下で auto_complete keymap に入ると、
-    何を押しても unbound keyseq の状態になる。
-    isearch では問題になっていないので何か使い方が違っているという事だろうか…。
-    auto_complete という名前の keymap が問題を引き起こしている?
-    :isearch を含む関数は ble-decode/keymap:isearch/define しかない。
-    これに同等な物は auto_complete に対しても定義している。
-
 2018-08-16
 
   * complete: オーバーレイによる実装?
@@ -3176,6 +3169,29 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-18
+
+  * auto-complete: bug bash-4.1 以下で auto_complete keymap に入ると、 [#D0730]
+    何を押しても unbound keyseq の状態になる。
+    isearch では問題になっていないので何か使い方が違っているという事だろうか…。
+    auto_complete という名前の keymap が問題を引き起こしている?
+    :isearch を含む関数は ble-decode/keymap:isearch/define しかない。
+    これに同等な物は auto_complete に対しても定義している。
+
+    そうすると何処に違いがあるのだろう…。
+    そもそも何故 __defchar__ や __default__ が呼び出されないのか…。
+    調べてみると _ble_decode_auto_complete_kmap_ にちゃんと登録されていない。
+    先ず何故か exit-default が 9 番に登録されている。
+    次に self-insert が何処にも定義されていない。
+    正常に動作している時には 5 項目登録されているが bash-4.1 以下では 4 項目しか無い。
+    恐らく __defchar__ や __default__ が 9 になっていて、
+    先に __defchar__ で登録した物が __default__ によって上書きして 4 項目になったのだ。
+
+    では、何故 __defchar__ や __default__ が 9 になってしまうのか。
+    また isearch は何故平気なのか。
+
+    どうやら ble-decode-kbd/.get-keycode の連想配列を使わない実装が問題である様だ。
+    後、何故か fallback implementation を使う条件判定が恒偽式になっていたので修正した。
+    直した。寧ろ今まで何故動いていたのかが不思議であるが…。
 
   * idle: 矢印キーを押しても is-stdin-ready 判定が偽になって idle.do が止まらない [#D0729]
     一体何が起こっているのか。ble-decode が保持しているキーが残っているという事なのか。
