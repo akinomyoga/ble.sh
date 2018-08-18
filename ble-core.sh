@@ -17,7 +17,12 @@ function bleopt/check:input_encoding {
   elif ! ble/is-function "ble/encoding:$value/generate-binder"; then
     echo "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/generate-binder' is not defined." >&2
     return 1
+  elif ! ble/is-function "ble/encoding:$value/is-intermediate"; then
+    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/is-intermediate' is not defined." >&2
+    return 1
   fi
+
+  # Note: ble/encoding:$value/clear は optional な設定である。
 
   if [[ $bleopt_input_encoding != "$value" ]]; then
     ble-decode/unbind
@@ -1251,6 +1256,11 @@ function ble-assert {
 
 if ((_ble_bash>=40000)); then
 
+  ## 設定関数 ble/util/idle/IS_IDLE { ble/util/is-stdin-ready; }
+  ##   他にするべき処理がない時 (アイドル時) に終了ステータス 0 を返します。
+  ##   Note: この設定関数は ble-decode.sh で上書きされます。
+  function ble/util/idle/IS_IDLE { ! ble/util/is-stdin-ready; }
+
   _ble_util_idle_sclock=0
   function ble/util/idle/.sleep {
     local msec=$1
@@ -1386,19 +1396,19 @@ if ((_ble_bash>=40000)); then
   ##
   function ble/util/idle.do {
     local IFS=$' \t\n'
-    ble/util/is-stdin-ready && return 1
+    ble/util/idle/IS_IDLE || return 1
     ((${#_ble_util_idle_task[@]}==0)) && return 1
     ble/util/buffer.flush >&2
 
     ble/util/idle.clock/.initialize
-    ble/util/idle.clock/.restart ## @@ToDo@@ 前回 148 で抜けた時?
+    ble/util/idle.clock/.restart
 
     local _idle_start=$_ble_util_idle_sclock
     local _isfirst=1 _processed=
     while :; do
       local _key _idle_next_time= _idle_next_itime=
       for _key in "${!_ble_util_idle_task[@]}"; do
-        ble/util/is-stdin-ready && return 0
+        ble/util/idle/IS_IDLE || return 0
         local _entry=${_ble_util_idle_task[_key]}
         if [[ $_entry == R:* || $_entry == I:* && $_isfirst ]]; then
           _processed=1
@@ -1416,7 +1426,8 @@ if ((_ble_bash>=40000)); then
       done
 
       _isfirst=
-      ble/util/idle.do/.sleep-until-next "$_idle_next_time" "$_idle_next_itime"
+      ble/util/idle.do/.sleep-until-next "$_idle_next_time" "$_idle_next_itime"; local ext=$?
+      ((ext==148)) && break
 
       [[ $_idle_next_itime$_idle_next_time ]] || break
     done
@@ -1474,27 +1485,32 @@ if ((_ble_bash>=40000)); then
   }
   function ble/util/idle.do/.sleep-until-next {
     local next_time=$1 next_itime=$2
-    local sleep_amount=
-    if [[ $next_itime ]]; then
-      local clock=$_ble_util_idle_sclock
-      local sleep1=$((next_itime-clock))
-      if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
-        sleep_amount=$sleep1
+    while
+      local sleep_amount=
+      ble/util/idle/IS_IDLE || return 148
+      if [[ $next_itime ]]; then
+        local clock=$_ble_util_idle_sclock
+        local sleep1=$((next_itime-clock))
+        if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
+          sleep_amount=$sleep1
+        fi
       fi
-    fi
-    if [[ $next_time ]]; then
-      local ret; ble/util/idle.clock; local clock=$ret
-      local sleep1=$((next_time-clock))
-      if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
-        sleep_amount=$sleep1
+      if [[ $next_time ]]; then
+        local ret; ble/util/idle.clock; local clock=$ret
+        local sleep1=$((next_time-clock))
+        if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
+          sleep_amount=$sleep1
+        fi
       fi
-    fi
-    if ((sleep_amount>0)); then
+      ((sleep_amount>0))
+    do
+      # Note: 変数 ble_util_idle_elapsed は
+      #   $((bleopt_idle_interval)) の評価時に参照される。
       local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
       local interval=$((bleopt_idle_interval))
       ((interval<sleep_amount)) && sleep_amount=$interval
       ble/util/idle/.sleep "$sleep_amount"
-    fi
+    done
   }
 
   function ble/util/idle.push/.impl {

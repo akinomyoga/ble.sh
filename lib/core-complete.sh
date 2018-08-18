@@ -353,7 +353,7 @@ function ble-complete/source/command {
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
 
     # workaround: 何故か compgen -c -- "$compv_quoted" で
     #   厳密一致のディレクトリ名が混入するので削除する。
@@ -663,7 +663,7 @@ function ble-complete/source/argument/.progcomp {
     esac
   done
 
-  ble/util/is-stdin-ready && return 148
+  ble-decode/has-input && return 148
 
   # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
@@ -712,7 +712,7 @@ function ble-complete/source/argument/.progcomp {
 
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
     ((count++))
   done
@@ -802,7 +802,7 @@ function ble-complete/source/variable {
 
   local i=0
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
   done
 }
@@ -925,7 +925,7 @@ function ble-complete/candidates/.filter-by-regex {
   local i j=0
   local -a prop=() cand=() word=() show=() data=()
   for ((i=0;i<cand_count;i++)); do
-    ((i%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
+    ((i%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
     [[ ${cand_cand[i]} =~ $rex_filter ]] || continue
     prop[j]=${cand_prop[i]}
     cand[j]=${cand_cand[i]}
@@ -1016,7 +1016,7 @@ function ble-complete/candidates/generate {
       ble-complete/source/"${source[@]}"
     done
 
-    ble/util/is-stdin-ready && return 148
+    ble-decode/has-input && return 148
     ((cand_count)) && break
 
     if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
@@ -1051,7 +1051,7 @@ function ble-complete/candidates/determine-common-prefix {
   if ((cand_count>1)); then
     local word loop=0
     for word in "${cand_word[@]:1}"; do
-      ((loop++%bleopt_complete_stdin_frequency==0)) && ble/util/is-stdin-ready && return 148
+      ((loop++%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
 
       ((clen>${#word}&&(clen=${#word})))
       while [[ ${word::clen} != "${common::clen}" ]]; do

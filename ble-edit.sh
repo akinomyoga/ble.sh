@@ -4841,7 +4841,7 @@ function ble/widget/newline {
 }
 function ble/widget/accept-single-line-or/accepts {
   ble-edit/content/is-single-line || return 1
-  [[ $_ble_edit_str ]] && ble/util/is-stdin-ready && return 1
+  [[ $_ble_edit_str ]] && ble-decode/has-input && return 1
   shopt -q cmdhist &>/dev/null && ! ble-syntax:bash/is-complete && return 1
   return 0
 }
@@ -5115,8 +5115,8 @@ function ble-edit/history/get-editted-entry {
 
 ## 関数 ble-edit/history/load
 if ((_ble_bash>=40000)); then
-  # _ble_bash>=40000 で以下の機能を利用する
-  #   ble/util/is-stdin-ready
+  # _ble_bash>=40000 で利用できる以下の機能に依存する
+  #   ble/util/is-stdin-ready (via ble-decode/has-input)
   #   ble/util/mapfile
 
   _ble_edit_history_loading=0
@@ -5264,7 +5264,7 @@ if ((_ble_bash>=40000)); then
       # 515ms ble-edit/history/load/.background-initialize 待機
       (1) while [[ ! -s $history_tmpfile ]] && kill -0 "$_ble_edit_history_loading_bgpid"; do
             ble/util/sleep 0.050
-            [[ $opt_async ]] && ble/util/is-stdin-ready && return 148
+            [[ $opt_async ]] && ble-decode/has-input && return 148
           done
           ((_ble_edit_history_loading++)) ;;
   
@@ -5315,7 +5315,7 @@ if ((_ble_bash>=40000)); then
       (*) return 1 ;;
       esac
   
-      [[ $opt_async ]] && ble/util/is-stdin-ready && return 148
+      [[ $opt_async ]] && ble-decode/has-input && return 148
     done
   }
   function ble-edit/history/clear-background-load {
@@ -5948,7 +5948,7 @@ function ble-edit/isearch/backward-search-history-blockwise {
     fi
 
     ((i-=block))
-    if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble/util/is-stdin-ready; then
+    if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble-decode/has-input; then
       return 148
     elif ((has_progress&&isearch_time%NPROGRESS==0)); then
       ble-edit/isearch/.draw-line-with-progress "$i"
@@ -5977,7 +5977,7 @@ function ble-edit/isearch/next-history/forward-search-history.impl {
 
   for ((;expr_cond;expr_incr)); do
     ((isearch_time++))
-    if ((has_stop_check&&isearch_time%100==0)) && ble/util/is-stdin-ready; then
+    if ((has_stop_check&&isearch_time%100==0)) && ble-decode/has-input; then
       return 148
     fi
 
@@ -7179,7 +7179,7 @@ function ble-decode/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    if [[ ! $_ble_edit_bind_force_draw ]] && ble/util/is-stdin-ready; then
+    if [[ ! $_ble_edit_bind_force_draw ]] && ble-decode/has-input; then
       ble-edit/bind/.tail-without-draw
       return 0
     fi

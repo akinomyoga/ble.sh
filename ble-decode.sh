@@ -547,8 +547,10 @@ function ble-decode-char {
   return 0
 }
 
+## 関数 ble-decode-char/.getent
 ##   @var[in] _ble_decode_char2_seq
 ##   @var[in] char
+##   @var[out] ent
 function ble-decode-char/.getent {
   builtin eval "ent=\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}"
 
@@ -639,6 +641,8 @@ function ble-decode-char/.send-modified-key {
 
   ble-decode-key "$kcode"
 }
+
+function ble-decode-char/is-intermediate { [[ $_ble_decode_char2_seq ]]; }
 
 function ble-decode-char/bind {
   local -a seq=($1)
@@ -967,10 +971,18 @@ function ble-decode/keymap/pop {
 }
 
 
-## 今迄に入力された未処理のキーの列を保持します
-_ble_decode_key__seq= # /(_\d+)*/
+## @var _ble_decode_key__seq
+##   今迄に入力された未処理のキーの列を保持します
+##   /(_\d+)*/ の形式の文字列です。
+_ble_decode_key__seq=
 
+## @var _ble_decode_key__hook
+##   キー処理に対する hook を外部から設定する為の変数です。
 _ble_decode_key__hook=
+
+## 関数 ble-decode-key/is-intermediate
+##   未処理のキーがあるかどうかを判定します。
+function ble-decode-key/is-intermediate { [[ $_ble_decode_key__seq ]]; }
 
 ## 関数 ble-decode-key key
 ##   キー入力の処理を行います。登録されたキーシーケンスに一致した場合、
@@ -1234,6 +1246,36 @@ function ble-decode/widget/call {
 ##   __after_widget__ の呼び出しはキャンセルされません。
 function ble-decode/widget/suppress-widget {
   WIDGET=
+}
+
+#------------------------------------------------------------------------------
+# ble-decode/has-input
+
+## 関数 ble-decode/has-input
+##   ユーザからの未処理の入力があるかどうかを判定します。
+##
+##   @exit
+##     ユーザからの未処理の入力がある場合に成功します。
+##     それ以外の場合に失敗します。
+##
+##   Note: Bash 4.0 未満では read -t 0 が使えない為、
+##     正しく判定する事ができません。
+##
+function ble-decode/has-input {
+  ble/util/is-stdin-ready ||
+    ble/encoding:"$bleopt_input_encoding"/is-intermediate ||
+    ble-decode-char/is-intermediate
+
+  # Note: 文字の途中やキーのエスケープシーケンスの途中の時には、
+  #   標準有力に文字がなくても Readline が先読みして溜めているので、
+  #   それも考慮に入れて未処理の入力があるかどうかを判定する。
+  #
+  # Note: キーシーケンスの途中の時には Readline が溜めているという事もないし、
+  #   またユーザが続きを入力するのを待っている状態なので idle と思って良い。
+  #   従って ble-decode-key/is-intermediate についてはチェックしない。
+}
+function ble/util/idle/IS_IDLE {
+  ! ble-decode/has-input
 }
 
 #------------------------------------------------------------------------------
@@ -1878,6 +1920,9 @@ function ble/encoding:UTF-8/clear {
   _ble_decode_byte__utf_8__mode=0
   _ble_decode_byte__utf_8__code=0
 }
+function ble/encoding:UTF-8/is-intermediate {
+  ((_ble_decode_byte__utf_8__mode))
+}
 function ble-decode-byte+UTF-8 {
   local code=$_ble_decode_byte__utf_8__code
   local mode=$_ble_decode_byte__utf_8__mode
@@ -1969,6 +2014,9 @@ function ble/encoding:C/generate-binder {
 _ble_encoding_c_csi=
 function ble/encoding:C/clear {
   _ble_encoding_c_csi=
+}
+function ble/encoding:C/is-intermediate {
+  [[ $_ble_encoding_c_csi ]]
 }
 function ble-decode-byte+C {
   if [[ $_ble_encoding_c_csi ]]; then
