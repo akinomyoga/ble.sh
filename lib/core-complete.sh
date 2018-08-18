@@ -1142,13 +1142,20 @@ _ble_complete_ac_cand=
 _ble_complete_ac_word=
 _ble_complete_ac_ins=
 function ble-complete/auto-complete.idle {
-  # ※どの場合でも wait-user で抜ける。
+  local rest_delay=$((bleopt_complete_ac_delay-ble_util_idle_elapsed))
+  if ((rest_delay>0)); then
+    ble/util/idle.sleep "$rest_delay"
+    return
+  fi
+
+  # ※以降、どの場合でも wait-user で抜ける。
   ble/util/idle.wait-user
 
   [[ $_ble_decode_key__kmap == emacs || $_ble_decode_key__kmap == vi_imap ]] || return 0
 
   case $_ble_decode_widget_last in
   (ble/widget/self-insert) ;;
+  (ble/widget/complete) ;;
   (*) return 0 ;;
   esac
 

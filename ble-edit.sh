@@ -6673,6 +6673,7 @@ function read {
 : ${bleopt_complete_stdin_frequency:=50}
 : ${bleopt_complete_ambiguous:=1}
 : ${bleopt_complete_contract_function_names:=1}
+: ${bleopt_complete_ac_delay:=200}
 ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
 

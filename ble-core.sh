@@ -1415,6 +1415,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/idle.do/.call-task {
     local _command=$1
     local ble_util_idle_status=
+    local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
     builtin eval "$_command"; local ext=$?
     if ((ext==148)); then
       _ble_util_idle_task[_key]=R:$_command
