@@ -769,15 +769,6 @@ tech
     以下に仮入力の4種類の方法について言及がある。リンク先は消えている。
     https://mattn.kaoriya.net/software/vim/20170905113330.htm
 
-2018-08-15
-
-  * idle: ble/util/idle でバックグラウンドジョブ待ち機能を実装
-    history の初期化中に別の task が実行できる様になるはず。
-    pid を指定してそのプロセスが生きているかどうかで判断する。
-    もしくはファイル名を指定してそのファイルが存在するかどうかで判断する。
-
-    実はこれは既存の history のコードを流用すれば簡単に実装できるのではないか。。
-
 2018-08-05
 
   * complete: 候補表示時に着色する
@@ -3171,6 +3162,21 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-18
+
+  * 2018-08-15 idle: ble/util/idle でバックグラウンドジョブ待ち機能を実装 [#D0731]
+    history の初期化中に別の task が実行できる様になるはず。
+    pid を指定してそのプロセスが生きているかどうかで判断する。
+    もしくはファイル名を指定してそのファイルが存在するかどうかで判断する。
+
+    実はこれは既存の history のコードを流用すれば簡単に実装できるのではないか。。
+
+    以下の関数を追加した。
+    - ble/util/idle.wait-filename filename
+    - ble/util/idle.wait-file-content filename
+    - ble/util/idle.wait-process pid
+    - ble/util/idle.wait-condition command
+
+    idle.do についても整理した。
 
   * auto-complete: bug bash-4.1 以下で auto_complete keymap に入ると、 [#D0730]
     何を押しても unbound keyseq の状態になる。

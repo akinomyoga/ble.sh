@@ -1142,14 +1142,8 @@ _ble_complete_ac_cand=
 _ble_complete_ac_word=
 _ble_complete_ac_ins=
 function ble-complete/auto-complete.idle {
-  local rest_delay=$((bleopt_complete_ac_delay-ble_util_idle_elapsed))
-  if ((rest_delay>0)); then
-    ble/util/idle.sleep "$rest_delay"
-    return
-  fi
-
-  # ※以降、どの場合でも wait-user で抜ける。
-  ble/util/idle.wait-user
+  # ※以降、特に上書きしなければ wait-user-input で抜ける。
+  ble/util/idle.wait-user-input
 
   [[ $_ble_decode_key__kmap == emacs || $_ble_decode_key__kmap == vi_imap ]] || return 0
 
@@ -1161,6 +1155,13 @@ function ble-complete/auto-complete.idle {
 
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   [[ $comp_text ]] || return 0
+
+  # bleopt_complete_ac_delay だけ経過してから処理
+  local rest_delay=$((bleopt_complete_ac_delay-ble_util_idle_elapsed))
+  if ((rest_delay>0)); then
+    ble/util/idle.sleep "$rest_delay"
+    return
+  fi
 
   local contexts
   ble-complete/candidates/get-prefix-contexts "$comp_text" "$comp_index" || return 0

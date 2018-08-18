@@ -1385,6 +1385,37 @@ if ((_ble_bash>=40000)); then
     fi
   fi
 
+  ## @arr _ble_util_idle_task
+  ##   タスク一覧を保持します。各要素は一つのタスクを表し、
+  ##   status:command の形式の文字列です。
+  ##   command にはタスクを実行する coroutine を指定します。
+  ##   status は以下の何れかの値を持ちます。
+  ##
+  ##     R
+  ##       現在実行中のタスクである事を表します。
+  ##       ble/util/idle.push で設定されます。
+  ##     I
+  ##       次のユーザの入力を待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-user-input で設定します。
+  ##     S<rtime>
+  ##       時刻 <rtime> になるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.sleep で設定します。
+  ##     W<stime>
+  ##       sleep 累積時間 <stime> になるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.isleep で設定します。
+  ##     E<filename>
+  ##       ファイルまたはディレクトリ <filename> が現れるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-filename で設定します。
+  ##     F<filename>
+  ##       ファイル <filename> が有限のサイズになるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-file-content で設定します。
+  ##     P<pid>
+  ##       プロセス <pid> (ユーザからアクセス可能) が終了するのを待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-process で設定します。
+  ##     C<command>
+  ##       コマンド <command> の実行結果が真になるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-condition で設定します。
+  ##
   _ble_util_idle_task=()
 
   ## 関数 ble/util/idle.do
@@ -1404,45 +1435,60 @@ if ((_ble_bash>=40000)); then
     ble/util/idle.clock/.restart
 
     local _idle_start=$_ble_util_idle_sclock
-    local _isfirst=1 _processed=
+    local _idle_is_first=1
+    local _idle_processed=
     while :; do
-      local _key _idle_next_time= _idle_next_itime=
-      for _key in "${!_ble_util_idle_task[@]}"; do
-        ble/util/idle/IS_IDLE || return 0
-        local _entry=${_ble_util_idle_task[_key]}
-        if [[ $_entry == R:* || $_entry == I:* && $_isfirst ]]; then
-          _processed=1
-          ble/util/idle.do/.call-task "${_entry#*:}"
+      local _idle_key
+      local _idle_next_time= _idle_next_itime= _idle_running= _idle_waiting=
+      for _idle_key in "${!_ble_util_idle_task[@]}"; do
+        ble/util/idle/IS_IDLE || { [[ $_idle_processed ]]; return; }
+        local _idle_to_process=
+        local _idle_status=${_ble_util_idle_task[_idle_key]%%:*}
+        case ${_idle_status::1} in
+        (R) _idle_to_process=1 ;;
+        (I) [[ $_idle_is_first ]] && _idle_to_process=1 ;;
+        (S) ble/util/idle/.check-clock "$_idle_status" && _idle_to_process=1 ;;
+        (W) ble/util/idle/.check-clock "$_idle_status" && _idle_to_process=1 ;;
+        (F) [[ -s ${_idle_status:1} ]] && _idle_to_process=1 ;;
+        (E) [[ -e ${_idle_status:1} ]] && _idle_to_process=1 ;;
+        (P) ! kill -0 ${_idle_status:1} &>/dev/null && _idle_to_process=1 ;;
+        (C) eval -- "${_idle_status:1}" && _idle_to_process=1 ;;
+        (*) unset '_ble_util_idle_task[_idle_key]'
+        esac
+
+        if [[ $_idle_to_process ]]; then
+          local _idle_command=${_ble_util_idle_task[_idle_key]#*:}
+          _idle_processed=1
+          ble/util/idle.do/.call-task "$_idle_command"
           (($?==148)) && return 0
-        elif [[ $_entry == [SW]*:* ]]; then
-          if ble/util/idle/.check-clock "$_entry"; then
-            _processed=1
-            ble/util/idle.do/.call-task "${_entry#*:}"
-            (($?==148)) && return 0
-          fi
-        else
-          unset '_ble_util_idle_task[_key]'
+        elif [[ $_idle_status == [FEPC]* ]]; then
+          _idle_waiting=1
         fi
       done
 
-      _isfirst=
-      ble/util/idle.do/.sleep-until-next "$_idle_next_time" "$_idle_next_itime"; local ext=$?
+      _idle_is_first=
+      ble/util/idle.do/.sleep-until-next; local ext=$?
       ((ext==148)) && break
 
-      [[ $_idle_next_itime$_idle_next_time ]] || break
+      [[ $_idle_next_itime$_idle_next_time$_idle_running$_idle_waiting ]] || break
     done
 
-    [[ $_processed ]]
+    [[ $_idle_processed ]]
   }
+  ## 関数 ble/util/idle.do/.call-task command
+  ##   @var[in,out] _idle_next_time
+  ##   @var[in,out] _idle_next_itime
+  ##   @var[in,out] _idle_running
+  ##   @var[in,out] _idle_waiting
   function ble/util/idle.do/.call-task {
     local _command=$1
     local ble_util_idle_status=
     local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
     builtin eval "$_command"; local ext=$?
     if ((ext==148)); then
-      _ble_util_idle_task[_key]=R:$_command
+      _ble_util_idle_task[_idle_key]=R:$_command
     elif [[ $ble_util_idle_status ]]; then
-      _ble_util_idle_task[_key]=$ble_util_idle_status:$_command
+      _ble_util_idle_task[_idle_key]=$ble_util_idle_status:$_command
       if [[ $ble_util_idle_status == [WS]* ]]; then
         local scheduled_time=${ble_util_idle_status:1}
         if [[ $ble_util_idle_status == W* ]]; then
@@ -1453,21 +1499,25 @@ if ((_ble_bash>=40000)); then
         if [[ ! ${!next} ]] || ((scheduled_time<next)); then
           builtin eval "$next=\$scheduled_time"
         fi
+      elif [[ $ble_util_idle_status == R ]]; then
+        _idle_running=1
+      elif [[ $ble_util_idle_status == [FEPC]* ]]; then
+        _idle_waiting=1
       fi
     else
-      unset '_ble_util_idle_task[_key]'
+      unset '_ble_util_idle_task[_idle_key]'
     fi
     return "$ext"
   }
-  ## 関数 ble/util/idle/.check-clock entry
+  ## 関数 ble/util/idle/.check-clock status
   ##   @var[in,out] _idle_next_itime
   ##   @var[in,out] _idle_next_time
   function ble/util/idle/.check-clock {
-    local entry=$1
-    if [[ $entry == W* ]]; then
+    local status=$1
+    if [[ $status == W* ]]; then
       local next=_idle_next_itime
       local current_time=$_ble_util_idle_sclock
-    elif [[ $entry == S* ]]; then
+    elif [[ $status == S* ]]; then
       local ret
       local next=_idle_next_time
       ble/util/idle.clock; local current_time=$ret
@@ -1475,7 +1525,7 @@ if ((_ble_bash>=40000)); then
       return 1
     fi
 
-    local scheduled_time=${_entry%%:*}; scheduled_time=${scheduled_time:1}
+    local scheduled_time=${status:1}
     if ((scheduled_time<=current_time)); then
       return 0
     elif [[ ! ${!next} ]] || ((scheduled_time<next)); then
@@ -1483,33 +1533,44 @@ if ((_ble_bash>=40000)); then
     fi
     return 1
   }
+  ## 関数 ble/util/idle.do/.sleep-until-next
+  ##   @var[in] _idle_next_time
+  ##   @var[in] _idle_next_itime
+  ##   @var[in] _idle_running
+  ##   @var[in] _idle_waiting
   function ble/util/idle.do/.sleep-until-next {
-    local next_time=$1 next_itime=$2
+    ble/util/idle/IS_IDLE || return 148
+    [[ $_idle_running ]] && return
+    local isfirst=1
     while
       local sleep_amount=
-      ble/util/idle/IS_IDLE || return 148
-      if [[ $next_itime ]]; then
+      if [[ $_idle_next_itime ]]; then
         local clock=$_ble_util_idle_sclock
-        local sleep1=$((next_itime-clock))
+        local sleep1=$((_idle_next_itime-clock))
         if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
           sleep_amount=$sleep1
         fi
       fi
-      if [[ $next_time ]]; then
+      if [[ $_idle_next_time ]]; then
         local ret; ble/util/idle.clock; local clock=$ret
-        local sleep1=$((next_time-clock))
+        local sleep1=$((_idle_next_time-clock))
         if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
           sleep_amount=$sleep1
         fi
       fi
-      ((sleep_amount>0))
+      [[ $isfirst && $_idle_waiting ]] || ((sleep_amount>0))
     do
       # Note: 変数 ble_util_idle_elapsed は
       #   $((bleopt_idle_interval)) の評価時に参照される。
       local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
       local interval=$((bleopt_idle_interval))
-      ((interval<sleep_amount)) && sleep_amount=$interval
+
+      if [[ ! $sleep_amount ]] || ((interval<sleep_amount)); then
+        sleep_amount=$interval
+      fi
       ble/util/idle/.sleep "$sleep_amount"
+      ble/util/idle/IS_IDLE || return 148
+      isfirst=
     done
   }
 
@@ -1525,6 +1586,9 @@ if ((_ble_bash>=40000)); then
   function ble/util/idle.push-background {
     ble/util/idle.push/.impl 10000 "R:$*"
   }
+  function ble/util/is-running-in-idle {
+    [[ ${ble_util_idle_status+set} ]]
+  }
   function ble/util/idle.sleep {
     [[ ${ble_util_idle_status+set} ]] || return 1
     local ret; ble/util/idle.clock
@@ -1534,9 +1598,25 @@ if ((_ble_bash>=40000)); then
     [[ ${ble_util_idle_status+set} ]] || return 1
     ble_util_idle_status=W$((_ble_util_idle_sclock+$1))
   }
-  function ble/util/idle.wait-user {
+  function ble/util/idle.wait-user-input {
     [[ ${ble_util_idle_status+set} ]] || return 1
     ble_util_idle_status=I
+  }
+  function ble/util/idle.wait-process {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=P$1
+  }
+  function ble/util/idle.wait-file-content {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=F$1
+  }
+  function ble/util/idle.wait-filename {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=E$1
+  }
+  function ble/util/idle.wait-condition {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=C$1
   }
   function ble/util/idle.continue {
     [[ ${ble_util_idle_status+set} ]] || return 1

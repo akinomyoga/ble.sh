@@ -5250,7 +5250,7 @@ if ((_ble_bash>=40000)); then
           fi
 
           # 履歴ファイル生成を Background で開始
-          : >| $history_tmpfile
+          : >| "$history_tmpfile"
 
           if [[ $opt_async ]]; then
             _ble_edit_history_loading_bgpid=$(
@@ -5262,11 +5262,22 @@ if ((_ble_bash>=40000)); then
           fi ;;
 
       # 515ms ble-edit/history/load/.background-initialize 待機
-      (1) while [[ ! -s $history_tmpfile ]] && kill -0 "$_ble_edit_history_loading_bgpid"; do
-            ble/util/sleep 0.050
-            [[ $opt_async ]] && ble-decode/has-input && return 148
-          done
-          ((_ble_edit_history_loading++)) ;;
+      (1) function ble-edit/history/load/.background-initialize-completed {
+            local history_tmpfile=$_ble_base_run/$$.edit-history-load
+            [[ -s $history_tmpfile ]] || ! builtin kill -0 "$_ble_edit_history_loading_bgpid"
+          } &>/dev/null
+
+          if ble/util/is-running-in-idle; then
+            ble/util/idle.wait-condition ble-edit/history/load/.background-initialize-completed
+            ((_ble_edit_history_loading++))
+            return
+          else
+            while ! ble-edit/history/load/.background-initialize-completed; do
+              ble/util/sleep 0.050
+              [[ $opt_async ]] && ble-decode/has-input && return 148
+            done
+            ((_ble_edit_history_loading++))
+          fi ;;
   
       # 47ms _ble_edit_history 初期化 (37000項目)
       (2) if [[ $opt_cygwin ]]; then
