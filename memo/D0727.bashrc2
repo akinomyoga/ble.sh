@@ -1,0 +1,5 @@
+# -*- mode: sh; mode: sh-bash -*-
+
+set -o vi
+bind -x '"\C-t": unset POSIXLY_CORRECT'
+bind -x '"\C-i": echo C-i is pressed'

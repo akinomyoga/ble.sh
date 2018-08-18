@@ -16,7 +16,7 @@ function taisaku1 {
   ((HISTSIZE=count*2))
 }
 
-export HISTFILE=A.txt
+export HISTFILE=memo/D0702.HISTFILE
 export HISTSIZE=100000
 export HISTFILESIZE=100000
 shopt -s histappend
