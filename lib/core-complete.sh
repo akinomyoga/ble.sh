@@ -1196,6 +1196,9 @@ function ble-complete/auto-complete.idle {
   _ble_complete_ac_ins=$INSERT
 
   if [[ $_ble_complete_ac_word == "$COMPS"* ]]; then
+    # 入力候補が既に続きに入力されている時は提示しない
+    [[ ${comp_text:COMP1} == "$_ble_complete_ac_word"* ]] && return
+
     _ble_complete_ac_type=c
     local ins=${INSERT:${#COMPS}}
     _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
