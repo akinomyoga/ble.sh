@@ -99,7 +99,10 @@ function ble/unset-POSIXLY_CORRECT {
 function ble/adjust-POSIXLY_CORRECT {
   _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
   _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
-  ble/unset-POSIXLY_CORRECT
+  unset POSIXLY_CORRECT
+
+  # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
+  ble/workaround-POSIXLY_CORRECT
 }
 function ble/restore-POSIXLY_CORRECT {
   if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then

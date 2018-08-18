@@ -730,14 +730,13 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
+2018-08-18
+
+  * bugbash: D0727 の報告をするか?
+
+    一応 bash に対する修正の案も作ってある。
+
 2018-08-17
-
-  * bugbash: POSIXLY_CORRECT に触るだけで bind -x C-i が無効になる謎
-    ref #D0726
-
-    Bash-4.2 -- 5.0 で ble.sh の中で再現する。
-    unset POSIXLY_CORRECT をすると起こる。
-    bash --norc においては未だ再現はできていない。
 
   * auto-complete: 既にカーソルの右に内容が入力されている時にわざわざ表示しない?
 
@@ -2565,7 +2564,7 @@ tech
   - complete: `complete` によって登録されたプログラム補完に対して変数 `COMP_*` が正しく設定されない問題の修正 `#D0711`
   - complete: `"` や `'` を含むファイル名の補完が正しくできない問題の修正 `#D0712` `#D0714`
   - emacs: 貼り付け (bracketed paste) で文字列が二重に挿入されるバグの修正 `#D0720`
-  - main: POSIXLY_CORRECT が設定されている時の対策 `#D0722` `#D0726`
+  - main: POSIXLY_CORRECT が設定されている時の対策 `#D0722` `#D0726` `#D0727`
   - edit: POSIXLY_CORRECT を用いた組み込みコマンド上書き対策 `#D0722`
 
   動作変更
@@ -3182,6 +3181,186 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-08-18
+
+  * bugbash: POSIXLY_CORRECT に触るだけで bind -x C-i が無効になる謎 [#D0727]
+    ref #D0726
+
+    Bash-4.2 -- 5.0 で ble.sh の中で再現する。
+    unset POSIXLY_CORRECT をすると起こる。
+    bash --norc においては未だ再現はできていない。
+
+    * bind -x '"\x89": ...' と bind -x '"\x9": ...' を同時に設定しても何も起こらない。
+
+    * cache.d/$UID/ble-decode-bind.40419.UTF-8.bind をコピーして来て、
+      末尾に以下の関数を追加して、bash --norc から source しても再現しない。
+
+      function ble-decode/.hook {
+        echo ble-decode/.hook: $1
+        if (($1==4)); then
+          # C-d で終了する
+          echo exit
+          exit
+        elif (($1==20)); then
+          # C-t で unset POSIXLY_CORRECT を実行する
+          local POSIXLY_CORRECT=y
+          unset -f echo
+          unset POSIXLY_CORRECT
+        fi
+      }
+
+      もしかすると stty と相互作用している可能性もある。
+      更に stty/enter やら uvw やら加えてみたが再現しない。
+
+    * ble.sh 本体の ble-decode/.hook を上記の様に書き換えてみた所再現した。
+      結局以下のコードにまで縮小する事ができた。
+      D0726.bind.source1 は bind -r が並んでいるファイルで、
+      D0726.bind.source2 は bind -x が並んでいるファイルである。
+
+      | function ble-decode/.hook {
+      |   echo ble-decode/.hook: $1
+      |   if (($1==4)); then
+      |     echo exit
+      |     exit
+      |   elif (($1==20)); then
+      |     local POSIXLY_CORRECT=y
+      |     unset -f echo
+      |     unset POSIXLY_CORRECT
+      |   fi
+      | }
+      | source D0726.bind.source1
+      | source D0726.bind.source2
+
+      更にこれを元に再現する rcfile を作成する。
+      其処からどんどん縮めていくと結局上のコードに加えて
+      以下の二つのコマンドさえあれば再現する様だ。
+
+      | set -o vi
+      | shopt -s no_empty_cmd_completion
+
+      更に縮めると結局以下のコマンドで再現した。
+      どうやら set -o vi だけでしか起こらない様だ。
+
+      set -o vi
+      bind -x '"\C-t": unset POSIXLY_CORRECT'
+      bind -x '"\C-i": echo C-i is pressed'
+
+    * 試してみると bind -x でなくても生じるようだ。
+
+      $ bash --norc
+      $ set -o vi; bind '"\C-i": "echo hello"'
+      $ echo hello   # <---- echo hello is inserted by typing C-i
+      hello
+      $ declare -p POSIXLY_CORRECT; unset POSIXLY_CORRECT
+      bash: declare: POSIXLY_CORRECT: 見つかりません
+      $
+      Display all 4915 possibilities? (y or n)
+      $
+
+    * 取り敢えずバグ報告を書いてみる。
+
+      % Subject: Why `unset POSIXLY_CORRECT' unbinds the key `\C-i' in the `vi-insert' keymap?
+      % Subject: [PATCH] Fix the bug that `unset POSIXLY_CORRECT' unbinds the key `\C-i' in vi-insert keymap.
+      %
+      % Here I show a reduced case. With the following settings:
+      %
+      %   $ bash --norc
+      %   $ set -o vi
+      %   $ bind '"\C-i": "echo hello"'
+      %   $ bind -s
+      %   "\C-i": "echo hello"
+      %
+      % the string "echo hello" can be inserted by typing TAB.
+      %
+      %   $ echo hello
+      %   hello
+      %
+      % However, after "unset POSIXLY_CORRECT" is executed, TAB loses its custom binding.
+      % Then the readline function `complete', the readline default, is invoked by TAB.
+      %
+      %   $ unset POSIXLY_CORRECT
+      %   $
+      %   Display all 4915 possibilities? (y or n)  <----- Here I typed TAB twice
+      %   $ bind -s                                 <----- Now nothing is output
+      %   $
+      %
+      % This behavior is reproduced in all the versions of Bash, that I tried, from 3.0 to the devel branch.
+      % The behavior can also be reproduced by `f1() { local POSIXLY_CORRECT; }; f1' instead of `unset POSIXLY_CORRECT'.
+      % The behavior is not changed regardless of whether the shell variable `POSIXLY_CORRECT' is initially set or not.
+      % The behavior is only reproduced for `\C-i' (TAB) but not for other key sequences.
+
+      結局、バグというよりは仕様と諦めるしかない感じだという事が分かったので報告はしない。
+
+    * bash の中に入る。
+
+      unset POSIXLY_CORRECT は
+        unset_builtin を呼び出す。
+          更に unbind_variable が呼び出されて、
+            makunbound が呼び出される。
+              更に stupidly_hack_special_variables の中から
+                sv_strict_posix が呼び出される。
+                  posix_readline_initialize (posixly_correct = 0);
+
+      何と明示的に C-i が上書きされている…。
+
+        /* Change the readline VI-mode keymaps into or out of Posix.2 compliance.
+           Called when the shell is put into or out of `posix' mode. */
+        void
+        posix_readline_initialize (on_or_off)
+             int on_or_off;
+        {
+          if (on_or_off)
+            rl_variable_bind ("comment-begin", "#");
+        #if defined (VI_MODE)
+          rl_bind_key_in_map (CTRL ('I'), on_or_off ? rl_insert : rl_complete, vi_insertion_keymap);
+        #endif
+        }
+
+      うーん。これは微妙だ。
+      つまり、POSIXLY_CORRECT は一時的に有効にしようとしても
+      それに応じてシェルの設定を書き換えてしまうので後遺症が残る。
+      「一時的に有効にして元に戻したら上書きした設定も元に戻る」
+      という様にするのはこの様な実装では難しい。
+
+      % これは諦めるしかなさそうだ。
+      % また、これを見る限りは、ユーザが一時的に POSIXLY_CORRECT を弄った場合でも
+      % binding が失われてしまうので、それに対する対策をしなければならない。
+
+      或いは…元々刺さっているのが rl_insert の時には rl_complete にし、
+      元々束縛しているのが rl_complete の時には rl_insert にする、
+      というように条件判断を加える事はできないだろうか。
+      つまり、デフォルトの束縛の時のみに切り替える様にする。
+
+    * bash を直してみた。
+
+      動作確認。基底の束縛ではちゃんと切り替わっている。
+      ユーザの設定した束縛はちゃんと保持されている。
+
+      $ bash-dev --norc
+      $ set -o vi
+      $ bind -ps | grep C-i
+      "\C-i": complete
+      $ POSIXLY_CORRECT=
+      $ bind -ps | grep C-i
+      "\C-i": self-insert
+      $ unset POSIXLY_CORRECT
+      $ bind -ps | grep C-i
+      "\C-i": complete
+      $ bind '"\C-i": "echo hello"'
+      $ echo hello
+      hello
+      $ bind -ps | grep C-i
+      "\C-i": "echo hello"
+      $ POSIXLY_CORRECT=
+      $ bind -ps | grep C-i
+      "\C-i": "echo hello"
+      $ unset POSIXLY_CORRECT
+      $ bind -ps | grep C-i
+      "\C-i": "echo hello"
+
+    * 現状では ble.sh の対策は不完全だという事が分かったので修正を行う。
+
+
 2018-08-17
 
   * decode: 何故かコマンド実行後に vim-mode において TAB が効かなくなる [#D0726]
@@ -3195,10 +3374,10 @@ tech
     | 関数内で local POSIXLY_CORRECT してから unset POSIXLY_CORRECT しても駄目。
     | Bash-4.2 -- 5.0 まで同様に問題が再現する。
     | (Bash-4.1 以下は別の問題によって確認する事ができなかった。これは後で)
-    | 
+    |
     | さて、表面上は POSIXLY_CORRECT が定義されていなければ
     | 何も問題は起こらない様に見える。
-    | 
+    |
     | もう少し調べる。
     | ble.sh (bashrc 時に評価) に直接 unset POSIXLY_CORRECT を書いても問題は生じない。
     | ble.sh (bashrc 時に評価) で関数内から unset POSIXLY_CORRECT としても問題は生じない。
@@ -3207,7 +3386,7 @@ tech
     | ble-attach の直後に直接 unset POSIXLY_CORRECT とすると再現する。
     | ble-attach の直前に unset POSIXLY_CORRECT としても再現しない。
     | ble-decode-attach; ble-decode-detach すると回復するという事が分かった。
-    | 
+    |
     | どうも POSIXLY_CORRECT を少しでも触ると bind -x \t が壊れる様である。
 
     これは明らかに bash のバグである。しかも未だ修正されていない。
@@ -3238,28 +3417,6 @@ tech
 
       これで C-t を押してみたが、それでもちゃんと C-i は無効になっていない。
       stty 等の兼ね合いもあるのだろうか…。しかし、そうだとすると bind で直るのも変な気がする。
-
-    * bind -x '"\x89": ...' と bind -x '"\x9": ...' を同時に設定しても何も起こらない。
-
-    * cache.d/$UID/ble-decode-bind.40419.UTF-8.bind をコピーして来て、
-      末尾に以下の関数を追加して、bash --norc から source しても再現しない。
-
-      function ble-decode/.hook {
-        echo ble-decode/.hook: $1
-        if (($1==4)); then
-          # C-d で終了する
-          echo exit
-          exit
-        elif (($1==20)); then
-          # C-t で unset POSIXLY_CORRECT を実行する
-          local POSIXLY_CORRECT=y
-          unset -f echo
-          unset POSIXLY_CORRECT
-        fi
-      }
-
-      もしかすると stty と相互作用している可能性もある。
-      更に stty/enter やら uvw やら加えてみたが再現しない。
 
     うーん。謎だ。
 

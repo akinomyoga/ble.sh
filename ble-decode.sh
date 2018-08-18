@@ -1517,6 +1517,13 @@ function ble-decode-bind/uvw {
 # **** POSIXLY_CORRECT workaround ****
 
 # ble.pp の関数を上書き
+#
+# Note: bash で set -o vi の時、
+#   unset POSIXLY_CORRECT や local POSIXLY_CORRECT が設定されると、
+#   C-i の既定の動作の切り替えに伴って C-i の束縛が消滅する。
+#   ユーザが POSIXLY_CORRECT を触った時や自分で触った時に、
+#   改めて束縛し直す必要がある。
+#
 function ble/workaround-POSIXLY_CORRECT {
   [[ $_ble_decode_bind_state == none ]] && return
   builtin bind -x '"\C-i":ble-decode/.hook 9; builtin eval "$_ble_decode_bind_hook"'
