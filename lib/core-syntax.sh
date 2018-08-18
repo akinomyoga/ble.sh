@@ -4479,14 +4479,16 @@ function ble-syntax/highlight/cmdtype2 {
   fi
 }
 
-if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bash_loaded_in_function)); then
-  if ((_ble_bash>=40200)); then
-    declare -gA _ble_syntax_highlight_filetype=()
-  else
-    declare -A _ble_syntax_highlight_filetype=()
-  fi
+## 関数 ble-syntax/highlight/cmdtype cmd word
+##   @param[in] cmd
+##     シェル展開・クォート除去を実行した後の文字列を指定します。
+##   @param[in] word
+##     シェル展開・クォート除去を実行する前の文字列を指定します。
+##   @var[out] type
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  # Note: 連想配列 _ble_syntax_highlight_filetype は ble-syntax-lazy.sh で先に定義される。
+
   _ble_syntax_highlight_filetype_version=-1
-  ## @var type[out]
   function ble-syntax/highlight/cmdtype {
     local cmd=$1 _0=$2
 

@@ -65,3 +65,14 @@ if ble/util/isfunction ble/util/idle.push; then
 else
   ble-syntax/import
 fi
+
+#------------------------------------------------------------------------------
+# グローバル変数の定義 (関数内からではできないのでここで先に定義)
+
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_syntax_highlight_filetype=()
+  else
+    declare -A _ble_syntax_highlight_filetype=()
+  fi
+fi
