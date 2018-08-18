@@ -733,7 +733,7 @@ tech
 2018-08-18
 
   * bugbash: #D0727 の報告をするか?
-    一応 bash に対する修正の案も作ってある。
+    一応 bash devel branch に対する修正の案も作ってある。
 
 2018-08-17
 
@@ -784,7 +784,7 @@ tech
 
 2018-08-15
 
-  * core: ble/util/idle でバックグラウンドジョブ待ち機能を実装
+  * idle: ble/util/idle でバックグラウンドジョブ待ち機能を実装
     history の初期化中に別の task が実行できる様になるはず。
     pid を指定してそのプロセスが生きているかどうかで判断する。
     もしくはファイル名を指定してそのファイルが存在するかどうかで判断する。
@@ -933,7 +933,9 @@ tech
     外部環境における set convert-meta の状態は
     変数 _ble_term_rl_convert_meta_external に記録してある。
 
-  * bash:lib/readline/bind.c:397:
+  * bugbash: lib/readline/bind.c:397:
+
+    ref #D0699
 
     以下の ic = UNMETA (ic); の行は if (map ...) の内側であるべきなのではないか。
 

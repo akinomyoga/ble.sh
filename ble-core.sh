@@ -772,6 +772,17 @@ elif ((_ble_bash>=40000)); then
         [[ $- == *i* ]] && trap -- '' INT QUIT
         while kill -0 $$; do ble/bin/sleep 300; done &>/dev/null
       )'
+
+      if [[ $BASH_VERSION ]]; then
+        function ble/util/sleep {
+          local s=${1%%.*}
+          if ((s>0)); then
+            ! read -u "$_ble_util_sleep_fd" -t "$1" s
+          else
+            ! read -t "$1" s < /dev/udp/0.0.0.0/80
+          fi
+        }
+      fi
     else
       _ble_util_sleep_tmp=$_ble_base_run/$$.ble_util_sleep.pipe
       if [[ ! -p $_ble_util_sleep_tmp ]]; then
