@@ -5073,6 +5073,38 @@ if ((_ble_bash>=40000)); then
 
   # history > tmp
   function ble-edit/history/load/.background-initialize {
+    if ! builtin history -p '!1' &>/dev/null; then
+      # Note: rcfile から呼び出すと history が未ロードなのでロードする。
+      #
+      # Note: 当初は親プロセスで history -n にした方が二度手間にならず効率的と考えたが
+      #   以下の様な問題が生じたので、やはりサブシェルの中で history -n する事にした。
+      #
+      #   問題1: bashrc の謎の遅延 (memo.txt#D0702)
+      #     shopt -s histappend の状態で親シェルで history -n を呼び出すと、
+      #     bashrc を抜けてから Bash 本体によるプロンプトが表示されて、
+      #     入力を受け付けられる様になる迄に、謎の遅延が発生する。
+      #     特に履歴項目の数が HISTSIZE の丁度半分より多い時に起こる様である。
+      #
+      #     history -n を呼び出す瞬間だけ shopt -u histappend して
+      #     直後に shopt -s histappend とすると、遅延は解消するが、
+      #     実際の動作を観察すると histappend が無効になってしまっている。
+      #
+      #     対策として、一時的に HISTSIZE を大きくして bashrc を抜けて、
+      #     最初のユーザからの入力の時に HISTSIZE を復元する事にした。
+      #     これで遅延は解消できる様である。
+      #
+      #   問題2: 履歴の数が倍加する問題 (memo.txt#D0732)
+      #     親シェルで history -n を実行すると、
+      #     shopt -s histappend の状態だと履歴項目の数が2倍になってしまう。
+      #     bashrc を抜ける直前から最初にユーザの入力を受けるまでに倍加する。
+      #     bashrc から抜けた後に Readline が独自に履歴を読み取るのだろう。
+      #     一方で shopt -u histappend の状態だとシェルが動作している内は問題ないが、
+      #     シェルを終了した時に2倍に .bash_history の内容が倍になってしまう。
+      #
+      #     これの解決方法は不明。(HISTFILE 等を弄ったりすれば可能かもれないが試していない)
+      #
+      builtin history -n
+    fi
     local -x HISTTIMEFORMAT=__ble_ext__
     local -x INDEX_FILE=$history_indfile
     local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
@@ -5173,29 +5205,9 @@ if ((_ble_bash>=40000)); then
 
       # 42ms 履歴の読み込み
       (0) [[ $opt_info ]] && ble-edit/info/immediate-show text "loading history..."
-          if ! builtin history -p '!1' &>/dev/null; then
-            # rcfile から呼び出すと history が未ロードなのでロードする。
-            builtin history -n
-
-            # Note: bashrc の謎の遅延について (memo.txt#D0703)
-            #
-            #   shopt -s histappend の状態で history -n を呼び出すと、
-            #   bashrc を抜けてから Bash 本体によるプロンプトが表示されて、
-            #   入力を受け付けられる様になる迄に、謎の遅延が発生する。
-            #   さりとて、history -n を呼び出す瞬間だけ shopt -u histappend すると、
-            #   後で shopt -s histappend としても histappend が有効にならない。
-            #
-            #   特に履歴項目の数が HISTSIZE の丁度半分より多い時に起こる様なので
-            #   一時的に HISTSIZE を大きくして遅延を回避する事にする。
-            #
-            local count; ble-edit/history/get-count
-            local HISTSIZE_new=$((count*2))
-            _ble_edit_history_HISTSIZE_rewrite=$HISTSIZE:$HISTSIZE_new
-            HISTSIZE=$HISTSIZE_new
-          fi
 
           # 履歴ファイル生成を Background で開始
-          : >| $history_tmpfile
+          : >| "$history_tmpfile"
 
           if [[ $opt_async ]]; then
             _ble_edit_history_loading_bgpid=$(
@@ -7076,13 +7088,6 @@ function ble-edit/bind/.head {
 
   [[ $bleopt_suppress_bash_output ]] ||
     ble-edit/bind/.head/adjust-bash-rendering
-
-  # Workaround #D0703 (bash 3.1-5.0)
-  if [[ $_ble_edit_history_HISTSIZE_rewrite ]]; then
-    [[ $HISTSIZE == ${_ble_edit_history_HISTSIZE_rewrite#*:} ]] &&
-      HISTSIZE=${_ble_edit_history_HISTSIZE_rewrite%%:*}
-    _ble_edit_history_HISTSIZE_rewrite=
-  fi
 }
 
 function ble-edit/bind/.tail-without-draw {
