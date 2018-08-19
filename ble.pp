@@ -63,6 +63,12 @@ if [ "$_ble_bash" -lt 30000 ]; then
   return 1 2>/dev/null || exit 1
 fi
 
+if [[ -o posix ]]; then
+  unset _ble_bash
+  echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
+  return 1 2>/dev/null || exit 1
+fi
+
 _ble_bash_setu=
 _ble_bash_setv=
 _ble_bash_options_adjusted=
@@ -79,12 +85,6 @@ function ble/restore-bash-options {
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
 }
 ble/adjust-bash-options
-
-if [[ -o posix ]]; then
-  unset _ble_bash
-  echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
-  return 1 2>/dev/null || exit 1
-fi
 
 bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
