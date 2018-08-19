@@ -436,6 +436,7 @@ function ble-decode-char/csi/consume {
   (0)
     # CSI (155) もしくは ESC (27)
     ((_ble_decode_csi_mode=$1==155?2:1))
+    _ble_decode_csi_args=
     csistat=_ ;;
   (1)
     if ((char!=91)); then
