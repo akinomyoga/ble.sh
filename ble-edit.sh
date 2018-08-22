@@ -5694,7 +5694,7 @@ function ble-edit/isearch/.draw-line-with-progress {
 
   if [[ $1 ]]; then
     local pos=$1
-    local percentage=$((pos*1000/$count))
+    local percentage=$((count?pos*1000/count:1000))
     text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
     ((isearch_ntask)) && text="$text *$isearch_ntask"
   fi
