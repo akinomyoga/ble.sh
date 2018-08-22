@@ -1665,7 +1665,7 @@ function ble-decode-bind/cmap/initialize {
   if [[ $dump -nt $init ]]; then
     source "$dump"
   else
-    echo 'ble.sh: generating "'"$dump"'"...' 1>&2
+    ble-edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
     source "$init"
     ble-bind -D | ble/bin/sed '
       s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
@@ -1679,11 +1679,11 @@ function ble-decode-bind/cmap/initialize {
     local fbinder=$_ble_base_cache/cmap+default.binder-source
     _ble_decode_bind_fbinder=$fbinder
     if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
-      echo -n 'ble.sh: initializing multichar sequence binders... '
+      ble-edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... '
       ble-decode-bind/cmap/.generate-binder-template >| "$fbinder"
       binder=ble-decode-bind/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
       binder=ble-decode-bind/cmap/.emit-bindr source "$fbinder" >| "$fbinder.unbind"
-      echo 'done'
+      ble-edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... done'
     fi
   fi
 }
@@ -1837,7 +1837,7 @@ function ble-decode/unbind {
 
 #------------------------------------------------------------------------------
 
-function ble-decode-initialize {
+function ble-decode/initialize {
   ble-decode-bind/cmap/initialize
 }
 

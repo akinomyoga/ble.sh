@@ -30,7 +30,7 @@
 #
 
 function ble/cmap/default/bind-keypad-key {
-  local Ft="$1" name="$2"
+  local Ft=$1 name=$2
   ble-bind --csi "$Ft" "$name"
   (($3&1)) && ble-bind -k "ESC O $Ft" "$name"
   (($3&2)) && ble-bind -k "ESC ? $Ft" "$name"
@@ -46,7 +46,7 @@ function ble-bind-function-key+default {
   #   print = f16 [xterm]
   #   deleteline = A-delete
 
-  echo -n "ble/cmap/default.sh: updating key sequences... " >&2
+  ble-edit/info/immediate-show text "ble/cmap/default.sh: updating key sequences..."
 
   # pc-style keys
   # # vt52, xterm, rxvt
@@ -189,7 +189,7 @@ function ble-bind-function-key+default {
   # ble-bind -k "CAN @ m" meta
   # ble-bind -k "CAN @ s" super
 
-  echo "ble/cmap/default.sh: updating key sequences... done" >&2
+  ble-edit/info/immediate-show text "ble/cmap/default.sh: updating key sequences... done"
 }
 
 ble-bind-function-key+default

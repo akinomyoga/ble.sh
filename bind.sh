@@ -204,7 +204,7 @@ function ble-decode/generate-binder {
 
   ble/function#try ble/encoding:"$bleopt_input_encoding"/generate-binder
 
-  ble-edit/info/show text "ble.sh: updating binders... done"
+  ble-edit/info/immediate-show text "ble.sh: updating binders... done"
 }
 
 ble-decode/generate-binder

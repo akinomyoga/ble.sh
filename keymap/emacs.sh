@@ -238,7 +238,7 @@ function ble-decode/keymap:emacs/initialize {
     source "$fname_keymap_cache" && return
   fi
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.emacs..."
+  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs..."
 
   ble-decode/keymap:isearch/define
   ble-decode/keymap:emacs/define
@@ -248,7 +248,7 @@ function ble-decode/keymap:emacs/initialize {
     ble-decode/keymap/dump emacs
   } >| "$fname_keymap_cache"
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.emacs... done"
+  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs... done"
 }
 
 ble-decode/keymap:emacs/initialize

@@ -55,14 +55,14 @@ function ble-decode/keymap:vi_digraph/initialize {
     return
   fi
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.vi_digraph..."
+  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph..."
 
   ble-decode/keymap:vi_digraph/define
 
   : >| "$fname_keymap_cache"
   ble-decode/keymap/dump vi_digraph >> "$fname_keymap_cache"
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.vi_digraph... done"
+  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph... done"
 }
 
 ble-decode/keymap:vi_digraph/initialize

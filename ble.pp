@@ -459,23 +459,20 @@ ble/bin/.freeze-utility-path gawk
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
 
-function ble-initialize {
-  ble-decode-initialize # 7ms
-  ble-edit-initialize # 3ms
-}
-
 _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
 
   # 取り敢えずプロンプトを表示する
   ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
+  ble-edit-initialize # 3ms
   ble-edit-attach     # 0ms (_ble_edit_PS1 他の初期化)
   ble/textarea#redraw # 37ms
   ble/util/buffer.flush >&2
 
   # keymap 初期化
   local IFS=$' \t\n'
+  ble-decode/initialize # 7ms
   ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
   if ! ble-decode-attach; then # 53ms
     ble/term/finalize
@@ -486,7 +483,7 @@ function ble-attach {
 
   ble-edit/reset-history # 27s for bash-3.0
 
-  # Note: ble-decode/reset-default-keymap 内で
+  # Note: ble-decode/{initialize,reset-default-keymap} 内で
   #   info を設定する事があるので表示する。
   ble-edit/info/default
   ble-edit/bind/.tail
@@ -497,13 +494,6 @@ function ble-detach {
   _ble_attached=
   _ble_edit_detach_flag=${1:-detach} # schedule detach
 }
-
-#%if measure_load_time
-echo ble-initialize >&2
-time ble-initialize
-#%else
-ble-initialize
-#%end
 
 IFS=$_ble_init_original_IFS
 unset _ble_init_original_IFS
