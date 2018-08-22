@@ -3,6 +3,38 @@
 # ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 #
 
+function ble-complete/string#search-longest-suffix-in {
+  local needle=$1 haystack=$2
+  local l=0 u=${#needle}
+  while ((l<u)); do
+    local m=$(((l+u)/2))
+    if [[ $haystack == *"${needle:m}"* ]]; then
+      u=$m
+    else
+      l=$((m+1))
+    fi
+  done
+  ret=${needle:l}
+}
+function ble-complete/string#common-suffix-prefix {
+  local lhs=$1 rhs=$2
+  if ((${#lhs}<${#rhs})); then
+    local i n=${#lhs}
+    for ((i=0;i<n;i++)); do
+      ret=${lhs:i}
+      [[ $rhs == "$ret"* ]] && return
+    done
+    ret=
+  else
+    local j m=${#rhs}
+    for ((j=m;j>0;j--)); do
+      ret=${rhs::j}
+      [[ $lhs == *"$ret" ]] && return
+    done
+    ret=
+  fi
+}
+
 ## ble-complete 内で共通で使われるローカル変数
 ##
 ## @var COMP1 COMP2 COMPS COMPV
@@ -74,22 +106,20 @@ function ble-complete/check-cancel {
 ##   @var[in] DATA
 ##   @var[in] COMP1 COMP2
 ##
-##   @var[in,out] INSERT
+##   @var[in,out] INSERT SUFFIX
 ##     補完によって挿入される文字列を指定します。
 ##     加工後の挿入する文字列を返します。
 ##
-##   @var[in,out] compr_beg compr_end
+##   @var[in] insert_beg insert_end
 ##     補完によって置換される範囲を指定します。
-##     加工後の置換範囲を返します。
 ##
-##   @var[in] compr_replace
+##   @var[in] insert_replace
 ##     既存の部分を保持したまま補完が実行される場合に 1 を指定します。
 ##     既存の部分が置換される場合には空文字列を指定します。
 ##
 
 function ble-complete/action/util/complete.addtail {
-  INSERT=$INSERT$1
-  [[ ${comp_text:compr_end} == "$1"* ]] && ((compr_end++))
+  SUFFIX=$SUFFIX$1
 }
 
 #------------------------------------------------------------------------------
@@ -1081,6 +1111,58 @@ function ble-complete/candidates/determine-common-prefix {
   ret=$common
 }
 
+## 関数 ble-complete/insert insert_beg insert_end insert suffix
+function ble-complete/insert {
+  local insert_beg=$1 insert_end=$2
+  local insert=$3 suffix=$4
+  local original_text=${_ble_edit_str:insert_beg:insert_end-insert_beg}
+
+  # 編集範囲の最小化
+  local insert_replace=
+  if [[ $insert == "$original_text"* ]]; then
+    # 既存部分の置換がない場合
+    insert=${insert:insert_end-insert_beg}
+    ((insert_beg=insert_end))
+  else
+    # 既存部分の置換がある場合
+    ble/string#common-prefix "$insert" "$original_text"
+    if [[ $ret ]]; then
+      insert=${insert:${#ret}}
+      insert_beg+=${#ret}
+    fi
+  fi
+
+  if ble/util/test-rl-variable skip-completed-text; then
+    # カーソルの右のテキストの吸収
+    if [[ $insert ]]; then
+      local right_text=${_ble_edit_str:insert_end}
+      right_text=${right_text%%[$IFS]*}
+      if ble/string#common-prefix "$insert" "$right_text"; [[ $ret ]]; then
+        # カーソルの右に先頭一致する場合に吸収
+        insert_end+=${#ret}
+      elif ble-complete/string#common-suffix-prefix "$insert" "$right_text"; [[ $ret ]]; then
+        # カーソルの右に末尾一致する場合に吸収
+        insert_end+=${#ret}
+      fi
+    fi
+
+    # suffix の吸収
+    if [[ $suffix ]]; then
+      local right_text=${_ble_edit_str:insert_end}
+      if ble/string#common-prefix "$suffix" "$right_text"; [[ $ret ]]; then
+        suffix=${suffix:${#ret}}
+        insert_end+=${#ret}
+      fi
+    fi
+  fi
+
+  local ins=$insert$suffix
+  ble/widget/.replace-range "$insert_beg" "$insert_end" "$ins" 1
+  ((_ble_edit_ind=insert_beg+${#ins},
+    _ble_edit_ind>${#_ble_edit_str}&&
+      (_ble_edit_ind=${#_ble_edit_str})))
+}
+
 function ble/widget/complete {
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   local contexts
@@ -1101,25 +1183,11 @@ function ble/widget/complete {
   fi
 
   local ret
-  ble-complete/candidates/determine-common-prefix; local common=$ret
+  ble-complete/candidates/determine-common-prefix; local INSERT=$ret SUFFIX=
+  local insert_beg=$COMP1 insert_end=$COMP2
+  local insert_replace= #@@@ unused?
+  [[ $INSERT == "$COMPS"* ]] || insert_replace=1
 
-  # 編集範囲の最小化
-  local compr_beg=$COMP1 compr_end=$COMP2
-  local compr_replace=
-  if [[ $common == "$COMPS"* ]]; then
-    # 既存部分の置換がない場合
-    common=${common:COMP2-COMP1}
-    ((compr_beg=COMP2))
-  else
-    # 既存部分の置換がある場合
-    compr_replace=1
-    while ((compr_beg<COMP2)) && [[ $common == "${comp_text:compr_beg:1}"* ]]; do
-      common=${common:1}
-      ((compr_beg++))
-    done
-  fi
-
-  local INSERT=$common
   if ((cand_count==1)); then
     # 一意確定の時
 
@@ -1139,10 +1207,18 @@ function ble/widget/complete {
     ble-edit/info/show text "${cand_show[*]}"
   fi
 
-  ble/widget/.replace-range "$compr_beg" "$compr_end" "$INSERT" 1
-  ((_ble_edit_ind=compr_beg+${#INSERT},
-    _ble_edit_ind>${#_ble_edit_str}&&
-      (_ble_edit_ind=${#_ble_edit_str})))
+  local insert=$INSERT suffix=$SUFFIX
+  ble/util/invoke-hook _ble_complete_insert_hook
+  ble-complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
+}
+
+function ble/widget/complete-insert {
+  local original=$1 insert=$2 suffix=$3
+  [[ ${_ble_edit_str::_ble_edit_ind} == *"$original" ]] || return 1
+
+  local insert_beg=$((_ble_edit_ind-${#original}))
+  local insert_end=$_ble_edit_ind
+  ble-complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
 }
 
 #------------------------------------------------------------------------------
@@ -1167,7 +1243,8 @@ _ble_complete_ac_type=
 _ble_complete_ac_comp1=
 _ble_complete_ac_cand=
 _ble_complete_ac_word=
-_ble_complete_ac_ins=
+_ble_complete_ac_insert=
+_ble_complete_ac_suffix=
 ## 関数 ble-complete/auto-complete.impl opts
 ##   @param[in] opts
 #      コロン区切りのオプションのリストです。
@@ -1203,7 +1280,7 @@ function ble-complete/auto-complete.impl {
   [[ $_ble_complete_ac_word == "$COMPS" ]] && return
 
   # addtail 等の修飾
-  local INSERT=$_ble_complete_ac_word
+  local INSERT=$_ble_complete_ac_word SUFFIX=
   local ACTION
   ble/string#split-words ACTION "${cand_prop[0]}"
   if ble/is-function "$ACTION/complete"; then
@@ -1211,7 +1288,8 @@ function ble-complete/auto-complete.impl {
     local DATA=${cand_data[0]}
     "$ACTION/complete"
   fi
-  _ble_complete_ac_ins=$INSERT
+  _ble_complete_ac_insert=$INSERT
+  _ble_complete_ac_suffix=$SUFFIX
 
   if [[ $_ble_complete_ac_word == "$COMPS"* ]]; then
     # 入力候補が既に続きに入力されている時は提示しない
@@ -1247,6 +1325,7 @@ function ble-complete/auto-complete.idle {
   case $_ble_decode_widget_last in
   (ble/widget/self-insert) ;;
   (ble/widget/complete) ;;
+  (ble/widget/vi_imap/complete) ;;
   (*) return 0 ;;
   esac
 
@@ -1278,21 +1357,24 @@ function ble/widget/auto_complete/cancel {
   ble-decode/keymap/pop
   _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_mark" ''
   _ble_edit_mark_active=
-  _ble_complete_ac_ins=
+  _ble_complete_ac_insert=
+  _ble_complete_ac_suffix=
 }
 function ble/widget/auto_complete/accept {
   ble-decode/keymap/pop
-  if [[ $_ble_complete_ac_type == c ]]; then
-    local ins=${_ble_complete_ac_ins:_ble_edit_ind-_ble_complete_ac_comp1}
-    _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_mark" "$ins"
-    ((_ble_edit_ind+=${#ins},_ble_edit_mark=_ble_edit_ind))
-  else
-    local ins=$_ble_complete_ac_ins
-    _ble_edit_str.replace "$_ble_complete_ac_comp1" "$_ble_edit_mark" "$ins"
-    ((_ble_edit_ind=_ble_complete_ac_comp1+${#ins},_ble_edit_mark=_ble_edit_ind))
-  fi
+  _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_mark" ''
+
+  local comp_text=$_ble_edit_str
+  local insert_beg=$_ble_complete_ac_comp1
+  local insert_end=$_ble_edit_ind
+  local insert=$_ble_complete_ac_insert
+  local suffix=$_ble_complete_ac_suffix
+  ble/util/invoke-hook _ble_complete_insert_hook
+  ble-complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
+
   _ble_edit_mark_active=
-  _ble_complete_ac_ins=
+  _ble_complete_ac_insert=
+  _ble_complete_ac_suffix=
   ble-edit/content/clear-arg
 }
 function ble/widget/auto_complete/exit-default {

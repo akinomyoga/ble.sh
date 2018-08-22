@@ -249,6 +249,20 @@ function ble/widget/vi_imap/__before_widget__ {
   fi
 }
 
+function ble/widget/vi_imap/complete {
+  ble/keymap:vi/imap-repeat/pop
+  ble/widget/complete
+}
+function ble/keymap:vi/complete/insert.hook {
+  [[ $_ble_decode_key__kmap == vi_imap ]] || return
+
+  local original=${comp_text:insert_beg:insert_end-insert_beg}
+  local q="'" Q="'\''"
+  local WIDGET="ble/widget/complete-insert '${original//$q/$Q}' '${insert//$q/$Q}' '${suffix//$q/$Q}'"
+  ble/keymap:vi/imap-repeat/push
+}
+ble/array#push _ble_complete_insert_hook ble/keymap:vi/complete/insert.hook
+
 #------------------------------------------------------------------------------
 # modes
 
@@ -6764,8 +6778,8 @@ function ble-decode/keymap:vi_imap/define {
   # shell functions
   ble-bind -f  'C-l'     clear-screen
   # ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i' complete
-  ble-bind -f  'TAB' complete
+  ble-bind -f  'C-i' vi_imap/complete
+  ble-bind -f  'TAB' vi_imap/complete
   ble-bind -f  'auto_complete_enter' auto-complete-enter
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version

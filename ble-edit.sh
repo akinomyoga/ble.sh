@@ -6697,6 +6697,7 @@ function read {
 : ${bleopt_complete_ambiguous:=1}
 : ${bleopt_complete_contract_function_names:=1}
 : ${bleopt_complete_ac_delay:=200}
+_ble_complete_insert_hook=()
 ble-autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/complete \
              ble/widget/auto-complete-enter
