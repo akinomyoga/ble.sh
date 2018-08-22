@@ -75,8 +75,6 @@ function ble-edit/content/find-non-space {
   ret=$((bol+${#BASH_REMATCH}))
 }
 
-function ble/widget/nop { :; }
-
 function ble/keymap:vi/string#encode-rot13 {
   local text=$*
   local -a buff=() ch
@@ -5150,10 +5148,9 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f 'C-j' 'vi-command/accept-line'
   ble-bind -f 'C-m' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
   ble-bind -f 'RET' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
-
   ble-bind -f 'C-l' clear-screen
-
-  ble-bind -f C-d vi-command/exit-on-empty-line
+  ble-bind -f 'C-d' vi-command/exit-on-empty-line
+  ble-bind -f 'auto_complete_enter' auto-complete-enter
 }
 
 #------------------------------------------------------------------------------
@@ -6767,8 +6764,9 @@ function ble-decode/keymap:vi_imap/define {
   # shell functions
   ble-bind -f  'C-l'     clear-screen
   # ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i'     complete
-  ble-bind -f  'TAB'     complete
+  ble-bind -f  'C-i' complete
+  ble-bind -f  'TAB' complete
+  ble-bind -f  'auto_complete_enter' auto-complete-enter
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
   ble-bind -cf 'C-z'     fg
@@ -6917,8 +6915,9 @@ function ble-decode/keymap:vi_cmap/define {
   # ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'C-l'     redraw-line
   ble-bind -f  'M-l'     redraw-line
-  # ble-bind -f  'C-i'     complete
-  # ble-bind -f  'TAB'     complete
+  # ble-bind -f 'C-i' complete
+  # ble-bind -f 'TAB' complete
+  # ble-bind -f 'auto_complete_enter' auto-complete-enter
   ble-bind -f  'C-x C-v' display-shell-version
 
   # command-history

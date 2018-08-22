@@ -99,13 +99,13 @@ function ble-decode-kbd/.get-keyname {
     ble/util/c2s "$keycode"
   fi
 }
-## 関数 ble-decode-kbd/.gen-keycode keyname
+## 関数 ble-decode-kbd/generate-keycode keyname
 ##   指定した名前に対応する keycode を取得します。
 ##   指定した名前の key が登録されていない場合は、
 ##   新しく kecode を割り当てて返します。
 ##   @param[in]  keyname keyname
 ##   @var  [out] ret     keycode
-function ble-decode-kbd/.gen-keycode {
+function ble-decode-kbd/generate-keycode {
   local key=$1
   if ((${#key}==1)); then
     ble/util/s2c "$1"
@@ -197,28 +197,28 @@ function ble-decode-kbd/.initialize {
   ble-decode-kbd/.set-keycode APC  159
 
   local ret
-  ble-decode-kbd/.gen-keycode __defchar__
+  ble-decode-kbd/generate-keycode __defchar__
   _ble_decode_KCODE_DEFCHAR=$ret
-  ble-decode-kbd/.gen-keycode __default__
+  ble-decode-kbd/generate-keycode __default__
   _ble_decode_KCODE_DEFAULT=$ret
-  ble-decode-kbd/.gen-keycode __before_widget__
+  ble-decode-kbd/generate-keycode __before_widget__
   _ble_decode_KCODE_BEFORE_WIDGET=$ret
-  ble-decode-kbd/.gen-keycode __after_widget__
+  ble-decode-kbd/generate-keycode __after_widget__
   _ble_decode_KCODE_AFTER_WIDGET=$ret
-  ble-decode-kbd/.gen-keycode __attach__
+  ble-decode-kbd/generate-keycode __attach__
   _ble_decode_KCODE_ATTACH=$ret
 
-  ble-decode-kbd/.gen-keycode shift
+  ble-decode-kbd/generate-keycode shift
   _ble_decode_KCODE_SHIFT=$ret
-  ble-decode-kbd/.gen-keycode alter
+  ble-decode-kbd/generate-keycode alter
   _ble_decode_KCODE_ALTER=$ret
-  ble-decode-kbd/.gen-keycode control
+  ble-decode-kbd/generate-keycode control
   _ble_decode_KCODE_CONTROL=$ret
-  ble-decode-kbd/.gen-keycode meta
+  ble-decode-kbd/generate-keycode meta
   _ble_decode_KCODE_META=$ret
-  ble-decode-kbd/.gen-keycode super
+  ble-decode-kbd/generate-keycode super
   _ble_decode_KCODE_SUPER=$ret
-  ble-decode-kbd/.gen-keycode hyper
+  ble-decode-kbd/generate-keycode hyper
   _ble_decode_KCODE_HYPER=$ret
 }
 
@@ -250,7 +250,7 @@ function ble-decode-kbd {
       ((code|=ret))
     elif [[ $key && ! ${key//[_0-9a-zA-Z]/} ]]; then
       ble-decode-kbd/.get-keycode "$key"
-      [[ $ret ]] || ble-decode-kbd/.gen-keycode "$key"
+      [[ $ret ]] || ble-decode-kbd/generate-keycode "$key"
       ((code|=ret))
     elif [[ $key == ^? ]]; then
       if [[ $key == '^?' ]]; then

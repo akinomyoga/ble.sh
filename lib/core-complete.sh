@@ -3,6 +3,32 @@
 # ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 #
 
+## ble-complete 内で共通で使われるローカル変数
+##
+## @var COMP1 COMP2 COMPS COMPV
+##   COMP1-COMP2 は補完対象の範囲を指定します。
+##   COMPS は COMP1-COMP2 にある文字列を表し、
+##   COMPV は COMPS の評価値 (クォート除去、簡単なパラメータ展開をした値) を表します。
+##   COMPS に複雑な構造が含まれていて即時評価ができない場合は
+##   COMPV は unset になります。必要な場合は [[ $comps_flags == *v* ]] で判定して下さい。
+##   ※ [[ -v COMPV ]] は bash-4.2 以降です。
+##
+## @var comp_type
+##   候補生成に関連するフラグ文字列。各フラグに対応する文字を含む。
+##
+##   a 文字 a を含む時、曖昧補完に用いる候補を生成する。
+##     曖昧一致するかどうかは呼び出し元で判定されるので、
+##     曖昧一致する可能性のある候補をできるだけ多く生成すれば良い。
+##
+##   i 文字 i を含む時、大文字小文字を区別しない補完候補生成を行う。
+##
+##   s 文字 s を含む時、ユーザの入力があっても中断しない事を表す。
+##
+
+function ble-complete/check-cancel {
+  [[ $comp_type != *s* ]] && ble-decode/has-input
+}
+
 #==============================================================================
 # action
 
@@ -26,13 +52,7 @@
 ##   @var[in,out] INSERT
 ##     COMP1-COMP2 を置き換える文字列を指定します
 ##
-##   @var[in    ] COMP1 COMP2 COMPS COMPV
-##     COMP1-COMP2 は補完対象の範囲を指定します。
-##     COMPS は COMP1-COMP2 にある文字列を表し、
-##     COMPV は COMPS の評価値 (クォート除去、簡単なパラメータ展開をした値) を表します。
-##     COMPS に複雑な構造が含まれていて即時評価ができない場合は
-##     COMPV は unset になります。必要な場合は [[ $comps_flags == *v* ]] で判定して下さい。
-##     ※ [[ -v COMPV ]] は bash-4.2 以降です。
+##   @var[in] COMP1 COMP2 COMPS COMPV comp_type
 ##
 ##   @var[in    ] COMP_PREFIX
 ##   @var[in    ] comps_flags
@@ -214,20 +234,10 @@ function ble-complete/yield-candidate {
 ##   @param[in] args...
 ##     ble-syntax/completion-context/generate で設定されるユーザ定義の引数。
 ##
-##   @var[in] COMP1 COMP2 COMPS COMPV
-##     補完を実行しようとしている範囲と文字列が指定される。
+##   @var[in] COMP1 COMP2 COMPS COMPV comp_type
 ##
 ##   @var[out] COMP_PREFIX
 ##     ble-complete/yield-candidate で参照される一時変数。
-##
-##   @var[in] comp_type
-##     候補生成に関連するフラグ文字列。各フラグに対応する文字を含む。
-##
-##     文字 a を含む時、曖昧補完に用いる候補を生成する。
-##     曖昧一致するかどうかは呼び出し元で判定されるので、
-##     曖昧一致する可能性のある候補をできるだけ多く生成すれば良い。
-##
-##     文字 i を含む時、大文字小文字を区別しない補完候補生成を行います。
 ##
 
 # source/wordlist
@@ -353,7 +363,7 @@ function ble-complete/source/command {
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
 
     # workaround: 何故か compgen -c -- "$compv_quoted" で
     #   厳密一致のディレクトリ名が混入するので削除する。
@@ -663,7 +673,7 @@ function ble-complete/source/argument/.progcomp {
     esac
   done
 
-  ble-decode/has-input && return 148
+  ble-complete/check-cancel && return 148
 
   # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
@@ -712,7 +722,7 @@ function ble-complete/source/argument/.progcomp {
 
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
     ((count++))
   done
@@ -802,7 +812,7 @@ function ble-complete/source/variable {
 
   local i=0
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
+    ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
     ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
   done
 }
@@ -925,7 +935,7 @@ function ble-complete/candidates/.filter-by-regex {
   local i j=0
   local -a prop=() cand=() word=() show=() data=()
   for ((i=0;i<cand_count;i++)); do
-    ((i%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
+    ((i%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
     [[ ${cand_cand[i]} =~ $rex_filter ]] || continue
     prop[j]=${cand_prop[i]}
     cand[j]=${cand_cand[i]}
@@ -987,7 +997,6 @@ function ble-complete/candidates/generate {
     ((${#_fignore[@]})) && shopt -q force_fignore && flag_force_fignore=1
   fi
 
-  comp_type=
   ble/util/test-rl-variable completion-ignore-case &&
     comp_type=${comp_type}i
 
@@ -1016,7 +1025,7 @@ function ble-complete/candidates/generate {
       ble-complete/source/"${source[@]}"
     done
 
-    ble-decode/has-input && return 148
+    ble-complete/check-cancel && return 148
     ((cand_count)) && break
 
     if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
@@ -1051,7 +1060,7 @@ function ble-complete/candidates/determine-common-prefix {
   if ((cand_count>1)); then
     local word loop=0
     for word in "${cand_word[@]:1}"; do
-      ((loop++%bleopt_complete_stdin_frequency==0)) && ble-decode/has-input && return 148
+      ((loop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
 
       ((clen>${#word}&&(clen=${#word})))
       while [[ ${word::clen} != "${common::clen}" ]]; do
@@ -1077,7 +1086,7 @@ function ble/widget/complete {
   local contexts
   ble-complete/candidates/get-contexts "$comp_text" "$comp_index" || return 1
 
-  local COMP1 COMP2 COMPS COMPV comp_type
+  local COMP1 COMP2 COMPS COMPV comp_type=
   local comps_flags comps_close_type
   local rex_ambiguous_compv
   local cand_count
@@ -1136,32 +1145,40 @@ function ble/widget/complete {
       (_ble_edit_ind=${#_ble_edit_str})))
 }
 
+#------------------------------------------------------------------------------
+#
+# auto-complete
+#
+
+function ble-complete/auto-complete/initialize {
+  ble-color-defface auto_complete fg=247
+
+  local ret
+  ble-decode-kbd/generate-keycode auto_complete_enter
+  _ble_complete_KCODE_ENTER=$ret
+}
+ble-complete/auto-complete/initialize
+
+function ble-highlight-layer:region/mark:auto_complete/get-sgr {
+  ble-color-face2sgr auto_complete
+}
+
 _ble_complete_ac_type=
 _ble_complete_ac_comp1=
 _ble_complete_ac_cand=
 _ble_complete_ac_word=
 _ble_complete_ac_ins=
-function ble-complete/auto-complete.idle {
-  # ※以降、特に上書きしなければ wait-user-input で抜ける。
-  ble/util/idle.wait-user-input
-
-  [[ $_ble_decode_key__kmap == emacs || $_ble_decode_key__kmap == vi_imap ]] || return 0
-
-  case $_ble_decode_widget_last in
-  (ble/widget/self-insert) ;;
-  (ble/widget/complete) ;;
-  (*) return 0 ;;
-  esac
+## 関数 ble-complete/auto-complete.impl opts
+##   @param[in] opts
+#      コロン区切りのオプションのリストです。
+##     sync   ユーザ入力があっても処理を中断しない事を指定します。
+function ble-complete/auto-complete.impl {
+  local opts=$1
+  local comp_type=
+  [[ :$opts: == *:sync:* ]] && comp_type=${comp_type}s
 
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   [[ $comp_text ]] || return 0
-
-  # bleopt_complete_ac_delay だけ経過してから処理
-  local rest_delay=$((bleopt_complete_ac_delay-ble_util_idle_elapsed))
-  if ((rest_delay>0)); then
-    ble/util/idle.sleep "$rest_delay"
-    return
-  fi
 
   local contexts
   ble-complete/candidates/get-prefix-contexts "$comp_text" "$comp_index" || return 0
@@ -1170,7 +1187,7 @@ function ble-complete/auto-complete.idle {
   local bleopt_complete_contract_function_names=
   ((bleopt_complete_stdin_frequency>25)) &&
     local bleopt_complete_stdin_frequency=25
-  local COMP1 COMP2 COMPS COMPV comp_type
+  local COMP1 COMP2 COMPS COMPV
   local comps_flags comps_close_type
   local rex_ambiguous_compv
   local cand_count
@@ -1216,17 +1233,47 @@ function ble-complete/auto-complete.idle {
 
   _ble_edit_mark_active=auto_complete
   ble-decode/keymap/push auto_complete
-
+  ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
   return
+}
+
+## 背景関数 ble/widget/auto-complete.idle
+function ble-complete/auto-complete.idle {
+  # ※特に上書きしなければ常に wait-user-input で抜ける。
+  ble/util/idle.wait-user-input
+
+  [[ $_ble_decode_key__kmap == emacs || $_ble_decode_key__kmap == vi_imap ]] || return 0
+
+  case $_ble_decode_widget_last in
+  (ble/widget/self-insert) ;;
+  (ble/widget/complete) ;;
+  (*) return 0 ;;
+  esac
+
+  [[ $_ble_edit_str ]] || return 0
+
+  # bleopt_complete_ac_delay だけ経過してから処理
+  local rest_delay=$((bleopt_complete_ac_delay-ble_util_idle_elapsed))
+  if ((rest_delay>0)); then
+    ble/util/idle.sleep "$rest_delay"
+    return
+  fi
+
+  ble-complete/auto-complete.impl
 }
 ble/function#try ble/util/idle.push-background ble-complete/auto-complete.idle
 
-ble-color-defface auto_complete fg=247
-
-function ble-highlight-layer:region/mark:auto_complete/get-sgr {
-  ble-color-face2sgr auto_complete
+## 編集関数 ble/widget/auto-complete-enter
+##
+##   Note:
+##     キーボードマクロで自動補完を明示的に起動する時に用いる編集関数です。
+##     auto-complete.idle に於いて ble-decode-key を用いて
+##     キー auto_complete_enter を発生させ、
+##     再生時にはこのキーを通して自動補完が起動されます。
+##
+function ble/widget/auto-complete-enter {
+  ble-complete/auto-complete.impl sync
 }
-
 function ble/widget/auto_complete/cancel {
   ble-decode/keymap/pop
   _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_mark" ''
@@ -1312,8 +1359,8 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f C-g         auto_complete/cancel
   ble-bind -f S-RET       auto_complete/accept
   ble-bind -f S-C-m       auto_complete/accept
+  ble-bind -f auto_complete_enter nop
 }
-
 
 #------------------------------------------------------------------------------
 # default cmdinfo/complete

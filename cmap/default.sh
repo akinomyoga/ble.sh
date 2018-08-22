@@ -76,12 +76,12 @@ function ble-bind-function-key+default {
   # ble-bind --csi '6~' next
 
   # 順番を固定
-  ble-decode-kbd/.gen-keycode insert
-  ble-decode-kbd/.gen-keycode home
-  ble-decode-kbd/.gen-keycode prior
-  ble-decode-kbd/.gen-keycode delete
-  ble-decode-kbd/.gen-keycode end
-  ble-decode-kbd/.gen-keycode next
+  ble-decode-kbd/generate-keycode insert
+  ble-decode-kbd/generate-keycode home
+  ble-decode-kbd/generate-keycode prior
+  ble-decode-kbd/generate-keycode delete
+  ble-decode-kbd/generate-keycode end
+  ble-decode-kbd/generate-keycode next
 
   local kend; ble/util/assign kend 'tput kend'
   if [[ $kend == $'\e[5~' ]]; then

@@ -3133,6 +3133,8 @@ function ble/widget/bell {
   _ble_edit_arg=
 }
 
+function ble/widget/nop { :; }
+
 # 
 # **** insert ****                                                 @edit.insert
 
@@ -6447,6 +6449,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -f  'M-l'     redraw-line
   ble-bind -f  'C-i'     complete
   ble-bind -f  'TAB'     complete
+  ble-bind -f  'auto_complete_enter' auto-complete-enter
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
   ble-bind -cf 'C-z'     fg
@@ -6494,8 +6497,9 @@ function ble-decode/keymap:read/define {
   # ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'C-l'     redraw-line
   ble-bind -f  'M-l'     redraw-line
-  # ble-bind -f  'C-i'     complete
-  # ble-bind -f  'TAB'     complete
+  # ble-bind -f 'C-i' complete
+  # ble-bind -f 'TAB' complete
+  # ble-bind -f 'auto_complete_enter' auto-complete-enter
   ble-bind -f  'C-x C-v' display-shell-version
 
   # command-history
@@ -6693,7 +6697,9 @@ function read {
 : ${bleopt_complete_ambiguous:=1}
 : ${bleopt_complete_contract_function_names:=1}
 : ${bleopt_complete_ac_delay:=200}
-ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
+ble-autoload "$_ble_base/lib/core-complete.sh" \
+             ble/widget/complete \
+             ble/widget/auto-complete-enter
 ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
 
 #------------------------------------------------------------------------------
