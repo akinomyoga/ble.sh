@@ -50,16 +50,17 @@ if [ -z "$BASH_VERSION" ]; then
   return 1 2>/dev/null || exit 1
 fi
 
-if [ -n "${-##*i*}" ]; then
-  echo "ble.sh: This is not an interactive session." >&2
+if [ -z "${BASH_VERSINFO[0]}" ] || [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
+  echo "ble.sh: bash with a version under 3.0 is not supported." >&2
   return 1 2>/dev/null || exit 1
 fi
 
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
-if [ "$_ble_bash" -lt 30000 ]; then
+if [[ $- != *i* ]]; then
   unset _ble_bash
-  echo "ble.sh: bash with a version under 3.0 is not supported." >&2
+  { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
+    echo "ble.sh: This is not an interactive session."
   return 1 2>/dev/null || exit 1
 fi
 
@@ -462,6 +463,7 @@ ble/bin/.freeze-utility-path gawk
 _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
+  _ble_attached=1
 
   # 取り敢えずプロンプトを表示する
   ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
@@ -475,10 +477,10 @@ function ble-attach {
   ble-decode/initialize # 7ms
   ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
   if ! ble-decode-attach; then # 53ms
+    _ble_attached=
     ble/term/finalize
     return 1
   fi
-  _ble_attached=1
   _ble_edit_detach_flag= # do not detach or exit
 
   ble-edit/reset-history # 27s for bash-3.0
@@ -495,18 +497,30 @@ function ble-detach {
   _ble_edit_detach_flag=${1:-detach} # schedule detach
 }
 
-IFS=$_ble_init_original_IFS
-unset _ble_init_original_IFS
+_ble_base_attach_PROMPT_COMMAND=
+function ble/base/attach-from-PROMPT_COMMAND {
+  PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
+  ble-attach
+
+  # Note: 何故か分からないが PROMPT_COMMAND から ble-attach すると
+  # ble/bin/stty や ble/bin/mkfifo や tty 2> /dev/null などが
+  # ジョブとして表示されてしまう。joblist.flush しておくと平気。
+  # これで取り逃がすジョブもあるかもしれないが仕方ない。
+  ble/util/joblist.flush &> /dev/null
+  ble/util/joblist.check
+}
 
 function ble/base/process-blesh-arguments {
-  local opt_attach=1
+  local opt_attach=attach
   local opt_rcfile=
   local opt_error=
   while (($#)); do
     local arg=$1; shift
     case $arg in
     (--noattach|noattach)
-      opt_attach= ;;
+      opt_attach=none ;;
+    (--attach=*) opt_attach=${arg#*=} ;;
+    (--attach)   opt_attach=$1; shift ;;
     (--rcfile=*|--init-file=*)
       opt_rcfile=${arg#*=} ;;
     (--rcfile|--init-file)
@@ -518,11 +532,19 @@ function ble/base/process-blesh-arguments {
   done
 
   [[ $opt_rcfile ]] && source "$opt_rcfile"
-  [[ $opt_attach ]] && ble-attach
+  case $opt_attach in
+  (attach) ble-attach ;;
+  (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
+           PROMPT_COMMAND=ble/base/attach-from-PROMPT_COMMAND ;;
+  esac
   [[ ! $opt_error ]]
 }
 
 ble/base/process-blesh-arguments "$@"
+
+IFS=$_ble_init_original_IFS
+unset _ble_init_original_IFS
+
 #%if measure_load_time
 }
 #%end

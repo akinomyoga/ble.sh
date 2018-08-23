@@ -1,0 +1,21 @@
+# bashrc1 -*- mode: sh-mode; mode: sh-bash; -*-
+
+function TRAPRETURN {
+  echo return
+  declare -p BASH_SOURCE BASH_LINENO FUNCNAME LINENO >> /dev/tty
+}
+function TRAPDEBUG1 {
+  declare -p BASH_SOURCE BASH_LINENO FUNCNAME LINENO >> /dev/tty
+}
+function initialize {
+  trap -- TRAPDEBUG1 DEBUG
+  trap -- TRAPRETURN RETURN
+}
+initialize
+echo hello
+declare -p BASH_SOURCE BASH_LINENO FUNCNAME LINENO
+echo world
+echo hello; echo hello; declare -p BASH_SOURCE BASH_LINENO FUNCNAME LINENO
+#
+#
+#

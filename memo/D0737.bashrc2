@@ -1,0 +1,13 @@
+# bashrc2 -*- mode: sh-mode; mode: sh-bash; -*-
+
+function ble/base/auto-attach {
+  PROMPT_COMMAND=
+  declare -p BASH_SOURCE BASH_LINENO FUNCNAME LINENO >> /dev/tty
+}
+
+PROMPT_COMMAND=ble/base/auto-attach
+
+echo hello world
+echo this is not a world
+echo test
+
