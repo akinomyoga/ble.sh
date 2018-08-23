@@ -2525,7 +2525,7 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-07-29 (#D0684..#D0738)
+2018-07-29 (#D0684..#D0739)
 
   新機能
   - edit (`RET`): 文法的に不完全のときに改行を挿入 `#D0684`
@@ -2565,6 +2565,7 @@ tech
   - edit: 履歴項目の数が倍増するバグの修正 `#D0732`
   - vi: キーボードマクロで特殊キーが再生されないバグの修正 `#D0733`
   - isearch: 現在位置の表示時の 0 除算のバグの修正
+  - complete: クォートを認識しないプログラム補完関数に対する対策 `#D0739`
 
   動作変更
   - complete: 補完候補生成直前の `shopt -s force_ignore` を参照して候補を制限する様に変更 `#D0704`
@@ -3181,6 +3182,28 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-23
+
+  * complete: git の補完が効かない [#D0739]
+
+    % 例えば git com まで入力した状態で補完を実行する場合で考える。
+    % ちゃんと補完関数は呼ばれている。
+    % 試してみると __get_cword_at_cursor_by_ref で cur=com になるべき所 cur=' com' になっている様だ。
+    % 以下を実行してみると分かる。
+    %
+    %   COMP_LINE="git com" COMP_POINT=7 COMP_CWORD=1 COMP_TYPE=9 COMP_KEY=9
+    %   __get_cword_at_cursor_by_ref ""  words cword cur; declare -p words cword cur
+    %
+    %   % これは git の bash completion のバグだろうか。
+    %
+    % COMP_* を何も弄らないと cur="'com'" になっている。
+    % 中途半端に弄ったせいで cur=' com' になったのかもしれない。
+    %
+    %   COMP_WORDS=(git com) COMP_LINE="git com" COMP_POINT=7 COMP_CWORD=1 COMP_TYPE=9 COMP_KEY=9
+    %
+    % で実行してみた所、ちゃんと実行する事ができている。
+
+    つまり git completion はクォートしていると動かないという事になる。
+    これはクォートが要らない場合にはクォートしない様に修正すれば良い。
 
   * complete: 引用符の中にいる時 addtail で閉じる引用符を入れる [#D0738]
     参照: #D0717

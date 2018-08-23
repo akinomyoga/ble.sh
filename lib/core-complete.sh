@@ -558,12 +558,14 @@ function ble-complete/source/dir {
 function ble-complete/source/argument/.progcomp-helper-vars {
   COMP_LINE=
   COMP_WORDS=()
+  local shell_specialchars=']\ ["'\''`$|&;<>()*?{}!^'$'\n\t'
   local word delta=0 index=0 q="'" Q="'\''" qq="''"
   for word in "${comp_words[@]}"; do
     local ret close_type
     if ble-syntax:bash/simple-word/close-open-word "$word"; then
       ble-syntax:bash/simple-word/eval "$ret"
-      ((index)) && ret="'${ret//$q/$Q}'" ret=${ret#"$qq"} ret=${ret%"$qq"} # コマンド名以外はクォート
+      ((index)) && [[ $ret == *["$shell_specialchars"]* ]] &&
+        ret="'${ret//$q/$Q}'" ret=${ret#"$qq"} ret=${ret%"$qq"} # コマンド名以外はクォート
       ((index<=comp_cword&&(delta+=${#ret}-${#word})))
       word=$ret
     fi
@@ -597,7 +599,7 @@ function ble-complete/source/argument/.progcomp-helper-prog {
       local COMP_WORDS COMP_CWORD
       export COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
       ble-complete/source/argument/.progcomp-helper-vars
-      local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
+      local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
       "$comp_prog" "$cmd" "$cur" "$prev"
     )
   fi
