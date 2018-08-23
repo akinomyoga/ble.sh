@@ -859,6 +859,9 @@ function ble-complete/source/variable {
   local cand arr
   ble/util/assign-array arr 'compgen -v -- "$compv_quoted"'
 
+  # 既に完全一致している場合は、より前の起点から補完させるために省略
+  [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return
+
   local i=0
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
@@ -926,9 +929,8 @@ function ble-complete/.fignore/filter {
 ##   一番開始点に近い補完源の一覧を求めます。
 ##
 ##   @var[in] comp_index
-##   @arr[in,out] contexts
-##
-##   @arr[out] nearest_contexts
+##   @arr[in,out] remaining_contexts
+##   @arr[out]    nearest_contexts
 ##   @var COMP1 COMP2
 ##     補完範囲
 ##   @var COMPS
@@ -942,7 +944,7 @@ function ble-complete/candidates/.pick-nearest-context {
 
   local -a unused_contexts=()
   local ctx actx
-  for ctx in "${contexts[@]}"; do
+  for ctx in "${remaining_contexts[@]}"; do
     ble/string#split-words actx "$ctx"
     if ((COMP1<actx[1])); then
       COMP1=${actx[1]}
@@ -954,7 +956,7 @@ function ble-complete/candidates/.pick-nearest-context {
       ble/array#push unused_contexts "$ctx"
     fi
   done
-  contexts=("${unused_contexts[@]}")
+  remaining_contexts=("${unused_contexts[@]}")
 
   COMPS=${comp_text:COMP1:COMP2-COMP1}
   comps_flags=
@@ -1055,12 +1057,12 @@ function ble-complete/candidates/generate {
   cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
   cand_show=() # 表示文字列 (～ 分かり易い文字列)
   cand_data=() # 関数で使うデータ
-  while :; do
-    # 候補源が尽きたら終わり
-    ((${#contexts[@]})) || return 1
 
+  local -a remaining_contexts nearest_contexts
+  remaining_contexts=("${contexts[@]}")
+  while ((${#remaining_contexts[@]})); do
     # 次の開始点が近くにある候補源たち
-    local -a nearest_contexts=()
+    nearest_contexts=()
     comps_flags=
     ble-complete/candidates/.pick-nearest-context
 
@@ -1075,10 +1077,17 @@ function ble-complete/candidates/generate {
     done
 
     ble-complete/check-cancel && return 148
-    ((cand_count)) && break
+    ((cand_count)) && return 0
+  done
 
-    if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
-      comp_type=${comp_type}a
+  if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
+    comp_type=${comp_type}a
+    remaining_contexts=("${contexts[@]}")
+    while ((${#remaining_contexts[@]})); do
+      nearest_contexts=()
+      comps_flags=
+      ble-complete/candidates/.pick-nearest-context
+
       for ctx in "${nearest_contexts[@]}"; do
         ble/string#split-words actx "$ctx"
         ble/string#split source : "${actx[0]}"
@@ -1091,10 +1100,11 @@ function ble-complete/candidates/generate {
       rex_ambiguous_compv=^$ret
       ble-complete/candidates/.filter-by-regex "$rex_ambiguous_compv"
       (($?==148)) && return 148
-      ((cand_count)) && break
-      comp_type=${comp_type//a}
-    fi
-  done
+      ((cand_count)) && return 0
+    done
+    comp_type=${comp_type//a}
+  fi
+
   return 0
 }
 
