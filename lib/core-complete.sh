@@ -87,6 +87,7 @@ function ble-complete/check-cancel {
 ##   @var[in] COMP1 COMP2 COMPS COMPV comp_type
 ##
 ##   @var[in    ] COMP_PREFIX
+##
 ##   @var[in    ] comps_flags
 ##     以下のフラグ文字からなる文字列です。
 ##
@@ -95,7 +96,13 @@ function ble-complete/check-cancel {
 ##
 ##     v COMPV が利用可能である事を表します。
 ##
-##   @var[in    ] comps_close_type
+##     S クォート ''  の中にいる事を表します。
+##     E クォート $'' の中にいる事を表します。
+##     D クォート ""  の中にいる事を表します。
+##     I クォート $"" の中にいる事を表します。
+##
+##     Note: shopt -s nocaseglob のため、フラグ文字は
+##       大文字・小文字でも重複しないように定義する必要がある。
 ##
 ## 関数 $ACTION/complete
 ##   一意確定時に、挿入文字列・範囲に対する加工を行います。
@@ -121,6 +128,12 @@ function ble-complete/check-cancel {
 function ble-complete/action/util/complete.addtail {
   SUFFIX=$SUFFIX$1
 }
+function ble-complete/action/util/complete.close-quotation {
+  case $comps_flags in
+  (*[SE]*) ble-complete/action/util/complete.addtail \' ;;
+  (*[DI]*) ble-complete/action/util/complete.addtail \" ;;
+  esac
+}
 
 #------------------------------------------------------------------------------
 
@@ -131,11 +144,11 @@ function ble-complete/action/plain/initialize {
     local ins=${CAND:${#COMPV}} ret
 
     # 単語内の文脈に応じたエスケープ
-    case $comps_close_type in
-    (\')      ble/string#escape-for-bash-single-quote "$ins"; ins=$ret ;;
-    (\$\')    ble/string#escape-for-bash-escape-string "$ins"; ins=$ret ;;
-    (\"|\$\") ble/string#escape-for-bash-double-quote "$ins"; ins=$ret ;;
-    (*)       ble/string#escape-for-bash-specialchars "$ins"; ins=$ret ;;
+    case $comps_flags in
+    (*S*)    ble/string#escape-for-bash-single-quote "$ins"; ins=$ret ;;
+    (*E*)    ble/string#escape-for-bash-escape-string "$ins"; ins=$ret ;;
+    (*[DI]*) ble/string#escape-for-bash-double-quote "$ins"; ins=$ret ;;
+    (*)   ble/string#escape-for-bash-specialchars "$ins"; ins=$ret ;;
     esac
 
     # Note: 現在の simple-word の定義だと引用符内にパラメータ展開を許していないので、
@@ -157,6 +170,7 @@ function ble-complete/action/word/initialize {
   ble-complete/action/plain/initialize
 }
 function ble-complete/action/word/complete {
+  ble-complete/action/util/complete.close-quotation
   ble-complete/action/util/complete.addtail ' '
 }
 
@@ -171,6 +185,7 @@ function ble-complete/action/file/complete {
       [[ $CAND != */ ]] &&
         ble-complete/action/util/complete.addtail /
     else
+      ble-complete/action/util/complete.close-quotation
       ble-complete/action/util/complete.addtail ' '
     fi
   fi
@@ -184,6 +199,7 @@ function ble-complete/action/argument/complete {
     [[ $CAND != */ ]] &&
       ble-complete/action/util/complete.addtail /
   else
+    ble-complete/action/util/complete.close-quotation
     ble-complete/action/util/complete.addtail ' '
   fi
 }
@@ -219,6 +235,7 @@ function ble-complete/action/command/complete {
       ble-edit/info/show text "${cand_show[*]}"
     fi
   else
+    ble-complete/action/util/complete.close-quotation
     ble-complete/action/util/complete.addtail ' '
   fi
 }
@@ -685,14 +702,14 @@ function ble-complete/source/argument/.progcomp {
         ([AGWXPS])
           ble/array#push compoptions "-$c" "${compargs[iarg++]}" ;;
         (o)
-          local o="${compargs[iarg++]}"
+          local o=${compargs[iarg++]}
           comp_opts=${comp_opts//:"$o":/:}$o:
           ble/array#push compoptions "-$c" "$o" ;;
         (F)
-          comp_func="${compargs[iarg++]}"
+          comp_func=${compargs[iarg++]}
           ble/array#push compoptions "-$c" ble-complete/source/argument/.progcomp-helper-func ;;
         (C)
-          comp_prog="${compargs[iarg++]}"
+          comp_prog=${compargs[iarg++]}
           ble/array#push compoptions "-$c" ble-complete/source/argument/.progcomp-helper-prog ;;
         (*)
           # -D, etc. just discard
@@ -944,7 +961,7 @@ function ble-complete/candidates/.pick-nearest-context {
   if [[ ! $COMPS ]]; then
     comps_flags=${comps_flags}v COMPV=
   elif local ret close_type; ble-syntax:bash/simple-word/close-open-word "$COMPS"; then
-    comps_close_type=$close_type
+    comps_flags=$comps_flags$close_type
     ble-syntax:bash/simple-word/eval "$ret"; comps_flags=${comps_flags}v COMPV=$ret
     [[ $COMPS =~ $rex_raw_paramx ]] && comps_flags=${comps_flags}p
   else
@@ -1016,7 +1033,7 @@ function ble-complete/candidates/get-prefix-contexts {
 ##   @var[in] comp_text comp_index
 ##   @arr[in] contexts
 ##   @var[out] COMP1 COMP2 COMPS COMPV
-##   @var[out] comp_type comps_flags comps_close_type
+##   @var[out] comp_type comps_flags
 ##   @var[out] cand_*
 ##   @var[out] rex_ambiguous_compv
 function ble-complete/candidates/generate {
@@ -1042,7 +1059,7 @@ function ble-complete/candidates/generate {
 
     # 次の開始点が近くにある候補源たち
     local -a nearest_contexts=()
-    comps_flags= comps_close_type=
+    comps_flags=
     ble-complete/candidates/.pick-nearest-context
 
     # 候補生成
@@ -1150,7 +1167,8 @@ function ble-complete/insert {
     if [[ $suffix ]]; then
       local right_text=${_ble_edit_str:insert_end}
       if ble/string#common-prefix "$suffix" "$right_text"; [[ $ret ]]; then
-        suffix=${suffix:${#ret}}
+        insert_end+=${#ret}
+      elif ble-complete/string#common-suffix-prefix "$suffix" "$right_text"; [[ $ret ]]; then
         insert_end+=${#ret}
       fi
     fi
@@ -1169,7 +1187,7 @@ function ble/widget/complete {
   ble-complete/candidates/get-contexts "$comp_text" "$comp_index" || return 1
 
   local COMP1 COMP2 COMPS COMPV comp_type=
-  local comps_flags comps_close_type
+  local comps_flags
   local rex_ambiguous_compv
   local cand_count
   local -a cand_cand cand_prop cand_word cand_show cand_data
@@ -1265,7 +1283,7 @@ function ble-complete/auto-complete.impl {
   ((bleopt_complete_stdin_frequency>25)) &&
     local bleopt_complete_stdin_frequency=25
   local COMP1 COMP2 COMPS COMPV
-  local comps_flags comps_close_type
+  local comps_flags
   local rex_ambiguous_compv
   local cand_count
   local -a cand_cand cand_prop cand_word cand_show cand_data

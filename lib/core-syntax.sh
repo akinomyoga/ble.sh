@@ -1066,10 +1066,10 @@ function ble-syntax:bash/simple-word/close-open-word {
     local rematch=${BASH_REMATCH[1]}
     local m_open_quote=${1:${#rematch}}
     case $m_open_quote in
-    ('$"'*) ret=$1\" close_type=\$\"; return 0 ;;
-    ('"'*)  ret=$1\" close_type=\"  ; return 0 ;;
-    ("$'"*) ret=$1\' close_type=\$\'; return 0 ;;
-    ("'"*)  ret=$1\' close_type=\'  ; return 0 ;;
+    ('$"'*) ret=$1\" close_type=I; return 0 ;;
+    ('"'*)  ret=$1\" close_type=D; return 0 ;;
+    ("$'"*) ret=$1\' close_type=E; return 0 ;;
+    ("'"*)  ret=$1\' close_type=S; return 0 ;;
     esac
   fi
   return 1
