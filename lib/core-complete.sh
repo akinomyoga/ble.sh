@@ -841,13 +841,8 @@ function ble-complete/source/argument {
   fi
 
   if ((cand_count<=old_cand_count)); then
-    if local rex='^-[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
-      # var=filename --option=filename など。
-      #
-      # Note: 微妙に異なる条件で ble-syntax/completion-context/generate の方でも
-      #   単語の途中の = からの補完に対応しているが、候補生成の異なる優先度
-      #   を持たせるために両方で処理する現在の実装を保持する。
-
+    if local rex='^/?[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
+      # var=filename --option=filename /I:filename など。
       local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
       local COMP_PREFIX=$prefix
       [[ $comp_type != *a* && $value =~ ^.+/ ]] && COMP_PREFIX=$prefix${BASH_REMATCH[0]}

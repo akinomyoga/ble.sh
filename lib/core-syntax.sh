@@ -1745,7 +1745,7 @@ _BLE_SYNTAX_FCTX[CTX_PWORD]=ble-syntax:bash/ctx-pword
 function ble-syntax:bash/ctx-param {
   # パラメータ展開 - パラメータの直後
 
-  if [[ $tail == :[^-?=+]* ]]; then
+  if [[ $tail == :[!-?=+]* ]]; then
     ((_ble_syntax_attr[i]=CTX_EXPR,
       ctx=CTX_EXPR,i++))
     return 0
@@ -4007,12 +4007,6 @@ function ble-syntax/completion-context/.check-prefix/ctx:inside-argument {
   local source=$1
   if ((wlen>=0)); then
     ble-syntax/completion-context/.add "$source" "$wbeg"
-
-    local sub=${text:wbeg:index-wbeg}
-    if [[ $sub == *[=:]* ]]; then
-      sub=${sub##*[=:]}
-      ble-syntax/completion-context/.add file $((index-${#sub}))
-    fi
   fi
   ble-syntax/completion-context/.check/parameter-expansion
 }
@@ -4121,16 +4115,16 @@ _ble_syntax_bash_complete_check_prefix[CTX_TARGI1]=time-argument
 _ble_syntax_bash_complete_check_prefix[CTX_TARGX2]=time-argument
 _ble_syntax_bash_complete_check_prefix[CTX_TARGI2]=time-argument
 function ble-syntax/completion-context/.check-prefix/ctx:time-argument {
-    ble-syntax/completion-context/.add command "$istat"
-    if ((ctx==CTX_TARGX1)); then
-      local rex='^-p?$'
-      [[ ${text:istat:index-istat} =~ $rex ]] &&
-        ble-syntax/completion-context/.add wordlist:-p "$istat"
-    elif ((ctx==CTX_TARGX2)); then
-      local rex='^--?$'
-      [[ ${text:istat:index-istat} =~ $rex ]] &&
-        ble-syntax/completion-context/.add wordlist:-- "$istat"
-    fi
+  ble-syntax/completion-context/.add command "$istat"
+  if ((ctx==CTX_TARGX1)); then
+    local rex='^-p?$'
+    [[ ${text:istat:index-istat} =~ $rex ]] &&
+      ble-syntax/completion-context/.add wordlist:-p "$istat"
+  elif ((ctx==CTX_TARGX2)); then
+    local rex='^--?$'
+    [[ ${text:istat:index-istat} =~ $rex ]] &&
+      ble-syntax/completion-context/.add wordlist:-- "$istat"
+  fi
 }
 ## 関数 ble-syntax/completion-context/.check-prefix/ctx:quote
 _ble_syntax_bash_complete_check_prefix[CTX_QUOT]=quote
@@ -4155,6 +4149,65 @@ function ble-syntax/completion-context/.check-prefix/ctx:quote/.check-container-
   fi
 }
 
+## 関数 ble-syntax/completion-context/.check-prefix/ctx:redirection
+##   redirect の filename 部分を補完する文脈
+_ble_syntax_bash_complete_check_prefix[CTX_RDRF]=redirection
+function ble-syntax/completion-context/.check-prefix/ctx:redirection {
+  local p=$((wlen>=0?wbeg:istat))
+  if ble-syntax:bash/simple-word/is-simple "${text:p:index-p}"; then
+    ble-syntax/completion-context/.add file "$p"
+  fi
+}
+
+## 関数 ble-syntax/completion-context/.check-prefix/ctx:rhs
+##   VAR=value の value 部分を補完する文脈
+_ble_syntax_bash_complete_check_prefix[CTX_VRHS]=rhs
+_ble_syntax_bash_complete_check_prefix[CTX_ARGVR]=rhs
+_ble_syntax_bash_complete_check_prefix[CTX_VALR]=rhs
+function ble-syntax/completion-context/.check-prefix/ctx:rhs {
+  if ((wlen>=0)); then
+    # CTX_VRHS における単語は var= または var+= の形式をしている筈
+    # ■ToDo arr[...]= arr[]+=... の時は?
+    local p=$wbeg
+    local rex='^[a-zA-Z0-9]+\+?='
+    [[ ${text:p:index-p} =~ $rex ]] && ((p+=${#BASH_REMATCH}))
+  else
+    local p=$istat
+  fi
+
+  if ble-syntax:bash/simple-word/is-simple "${text:p:index-p}"; then
+    ble-syntax/completion-context/.add file "$p"
+  fi
+}
+
+_ble_syntax_bash_complete_check_prefix[CTX_PARAM]=param
+function ble-syntax/completion-context/.check-prefix/ctx:param {
+  local tail=${text:istat:index-istat}
+  if [[ $tail == : ]]; then
+    return
+  elif [[ $tail == '}'* ]]; then
+    local nlen=${stat[3]}
+    local inest=$((nlen<0?nlen:istat-nlen))
+    ((0<=inest&&inest<istat)) &&
+      ble-syntax/completion-context/.check-prefix "$inest"
+    return
+  else
+    return
+  fi
+}
+
+## 関数 ble-syntax/completion-context/.check-prefix/ctx:expr
+##   数式中の変数名を補完する文脈
+_ble_syntax_bash_complete_check_prefix[CTX_EXPR]=expr
+function ble-syntax/completion-context/.check-prefix/ctx:expr {
+  local tail=${text:istat:index-istat} rex='[a-zA-Z_]+$'
+  if [[ $tail =~ $rex ]]; then
+    local p=$((index-${#BASH_REMATCH}))
+    ble-syntax/completion-context/.add variable "$p"
+    return
+  fi
+}
+
 ## 関数 ble-syntax/completion-context/.search-last-istat index
 ##   @param[in] index
 ##   @var[out] ret
@@ -4170,42 +4223,26 @@ function ble-syntax/completion-context/.search-last-istat {
   return 1
 }
 
-## 関数 ble-syntax/completion-context/.check-prefix
+## 関数 ble-syntax/completion-context/.check-prefix from
+##   @param[in,opt] from
 ##   @var[in] text
 ##   @var[in] index
 ##   @var[out] contexts
 function ble-syntax/completion-context/.check-prefix {
   local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
+  local from=${1:-$((index-1))}
 
-  ble-syntax/completion-context/.search-last-istat $((index-1)) || return
+  local ret
+  ble-syntax/completion-context/.search-last-istat "$from" || return
   local istat=$ret stat
   ble/string#split-words stat "${_ble_syntax_stat[istat]}"
   [[ ${stat[0]} ]] || return
 
   local ctx=${stat[0]} wlen=${stat[1]}
   local wbeg=$((wlen<0?wlen:istat-wlen))
-  if [[ ${_ble_syntax_bash_complete_check_prefix[ctx]} ]]; then
-    builtin eval "ble-syntax/completion-context/.check-prefix/ctx:${_ble_syntax_bash_complete_check_prefix[ctx]}"
-  elif ((ctx==CTX_RDRF||ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
-    if ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
-      # CTX_VRHS: VAR=value の value 部分
-      if ((wlen>=0)); then
-        # CTX_VRHS における単語は var= または var+= の形式をしている筈
-        # ■ToDo arr[...]= arr[]+=... の時は?
-        local p=$wbeg
-        local rex='^[a-zA-Z0-9]+\+?='
-        [[ ${text:p:index-p} =~ $rex ]] && ((p+=${#BASH_REMATCH}))
-      else
-        local p=$istat
-      fi
-    else
-      # CTX_RDRF: redirect の filename 部分
-      local p=$((wlen>=0?wbeg:istat))
-    fi
-
-    if ble-syntax:bash/simple-word/is-simple "${text:p:index-p}"; then
-      ble-syntax/completion-context/.add file "$p"
-    fi
+  local name=${_ble_syntax_bash_complete_check_prefix[ctx]}
+  if [[ $name ]]; then
+    builtin eval "ble-syntax/completion-context/.check-prefix/ctx:$name"
   fi
 }
 
