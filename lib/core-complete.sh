@@ -1171,10 +1171,10 @@ function ble-complete/insert {
     ((insert_beg=insert_end))
   else
     # 既存部分の置換がある場合
-    ble/string#common-prefix "$insert" "$original_text"
+    local ret; ble/string#common-prefix "$insert" "$original_text"
     if [[ $ret ]]; then
       insert=${insert:${#ret}}
-      insert_beg+=${#ret}
+      ((insert_beg+=${#ret}))
     fi
   fi
 
@@ -1185,10 +1185,10 @@ function ble-complete/insert {
       right_text=${right_text%%[$IFS]*}
       if ble/string#common-prefix "$insert" "$right_text"; [[ $ret ]]; then
         # カーソルの右に先頭一致する場合に吸収
-        insert_end+=${#ret}
+        ((insert_end+=${#ret}))
       elif ble-complete/string#common-suffix-prefix "$insert" "$right_text"; [[ $ret ]]; then
         # カーソルの右に末尾一致する場合に吸収
-        insert_end+=${#ret}
+        ((insert_end+=${#ret}))
       fi
     fi
 
@@ -1196,9 +1196,9 @@ function ble-complete/insert {
     if [[ $suffix ]]; then
       local right_text=${_ble_edit_str:insert_end}
       if ble/string#common-prefix "$suffix" "$right_text"; [[ $ret ]]; then
-        insert_end+=${#ret}
+        ((insert_end+=${#ret}))
       elif ble-complete/string#common-suffix-prefix "$suffix" "$right_text"; [[ $ret ]]; then
-        insert_end+=${#ret}
+        ((insert_end+=${#ret}))
       fi
     fi
   fi
