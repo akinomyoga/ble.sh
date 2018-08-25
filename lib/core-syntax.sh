@@ -4007,6 +4007,13 @@ function ble-syntax/completion-context/.check-prefix/ctx:inside-argument {
   local source=$1
   if ((wlen>=0)); then
     ble-syntax/completion-context/.add "$source" "$wbeg"
+    if [[ $source != argument ]]; then
+      local sub=${text:wbeg:index-wbeg}
+      if [[ $sub == *[=:]* ]]; then
+        sub=${sub##*[=:]}
+        ble-syntax/completion-context/.add "$source" $((index-${#sub}))
+      fi
+    fi
   fi
   ble-syntax/completion-context/.check/parameter-expansion
 }
@@ -4069,10 +4076,12 @@ function ble-syntax/completion-context/.check-prefix/ctx:next-argument {
   if ble-syntax:bash/simple-word/is-simple-or-open-simple "$word"; then
     # 単語が istat から開始している場合
     ble-syntax/completion-context/.add "$source" "$istat"
-    local rex="^([^'\"\$\\]|\\.)*="
-    if [[ $word =~ $rex ]]; then
-      word=${word:${#BASH_REMATCH}}
-      ble-syntax/completion-context/.add "$source" "$((index-${#word}))"
+    if [[ $source != argument ]]; then
+      local rex="^([^'\"\$\\]|\\.)*="
+      if [[ $word =~ $rex ]]; then
+        word=${word:${#BASH_REMATCH}}
+        ble-syntax/completion-context/.add "$source" "$((index-${#word}))"
+      fi
     fi
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
     # 単語が未だ開始していない時 (空白)
