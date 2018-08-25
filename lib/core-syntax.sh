@@ -3955,7 +3955,9 @@ function ble-syntax/completion-context/.check/parameter-expansion {
   local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$'
   if [[ ${text:istat:index-istat} =~ $rex_paramx ]]; then
     local rematch1=${BASH_REMATCH[1]}
-    ble-syntax/completion-context/.add variable $((istat+${#rematch1}))
+    local source=variable
+    [[ $rematch1 == '${'* ]] && source=variable:b
+    ble-syntax/completion-context/.add "$source" $((istat+${#rematch1}))
   fi
 }
 

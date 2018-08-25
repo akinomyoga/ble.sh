@@ -3,6 +3,10 @@
 # ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
 #
 
+ble-import "$_ble_base/lib/core-syntax.sh"
+
+_ble_complete_rex_rawparamx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
+
 function ble-complete/string#search-longest-suffix-in {
   local needle=$1 haystack=$2
   local l=0 u=${#needle}
@@ -154,7 +158,19 @@ function ble-complete/action/plain/initialize {
     # Note: 現在の simple-word の定義だと引用符内にパラメータ展開を許していないので、
     #  必然的にパラメータ展開が直前にあるのは引用符の外である事が保証されている。
     #  以下は、今後 simple-word の引用符内にパラメータ展開を許す時には修正が必要。
-    [[ $comps_flags == *p* && $ins == [a-zA-Z_0-9]* ]] && ins='\'"$ins"
+    if [[ $comps_flags == *p* && $ins == [a-zA-Z_0-9]* ]]; then
+      case $comps_flags in
+      (*[DI]*)
+        if [[ $COMPS =~ $_ble_complete_rex_rawparamx ]]; then
+          local rematch1=${BASH_REMATCH[1]}
+          INSERT=$rematch1'${'${COMPS:${#rematch1}+1}'}'$ins
+          return
+        else
+          ins='""'$ins
+        fi ;;
+      (*) ins='\'$ins ;;
+      esac
+    fi
 
     INSERT=$COMPS$ins
   else
@@ -244,7 +260,14 @@ function ble-complete/action/command/complete {
 
 function ble-complete/action/variable/initialize { ble-complete/action/plain/initialize; }
 function ble-complete/action/variable/complete {
-  ble-complete/action/util/complete.addtail '='
+  case $DATA in
+  (assignment) 
+    # var= 等に於いて = を挿入
+    ble-complete/action/util/complete.addtail '=' ;;
+  (braced)
+    # ${var 等に於いて } を挿入
+    ble-complete/action/util/complete.addtail '}' ;;
+  esac
 }
 
 #==============================================================================
@@ -847,12 +870,12 @@ function ble-complete/source/variable {
   [[ $comps_flags == *v* ]] || return 1
   [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
 
-  local action
-  if [[ $1 == '=' ]]; then
-    action=variable # 確定時に '=' を挿入
-  else
-    action=word # 確定時に ' ' を挿入
-  fi
+  local action=variable
+  local data=
+  case $1 in
+  ('=') data=assignment ;;
+  ('b') data=braced ;;
+  esac
 
   local q="'" Q="'\''"
   local compv_quoted="'${COMPV//$q/$Q}'"
@@ -865,7 +888,7 @@ function ble-complete/source/variable {
   local i=0
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
-    ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
+    ble-complete/yield-candidate "$cand" ble-complete/action/"$action" "$data"
   done
 }
 
@@ -960,14 +983,13 @@ function ble-complete/candidates/.pick-nearest-context {
 
   COMPS=${comp_text:COMP1:COMP2-COMP1}
   comps_flags=
-  local rex_raw_paramx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
 
   if [[ ! $COMPS ]]; then
     comps_flags=${comps_flags}v COMPV=
   elif local ret close_type; ble-syntax:bash/simple-word/close-open-word "$COMPS"; then
     comps_flags=$comps_flags$close_type
     ble-syntax:bash/simple-word/eval "$ret"; comps_flags=${comps_flags}v COMPV=$ret
-    [[ $COMPS =~ $rex_raw_paramx ]] && comps_flags=${comps_flags}p
+    [[ $COMPS =~ $_ble_complete_rex_rawparamx ]] && comps_flags=${comps_flags}p
   else
     COMPV=
   fi
@@ -1300,6 +1322,7 @@ function ble-complete/auto-complete.impl {
   local cand_count
   local -a cand_cand cand_prop cand_word cand_show cand_data
   ble-complete/candidates/generate
+  [[ $COMPV ]] || return 0
   ((ext)) && return "$ext"
 
   ((cand_count)) || return
