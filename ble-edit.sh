@@ -5284,32 +5284,37 @@ if ((_ble_bash>=40000)); then
           if [[ $opt_async ]]; then
             _ble_edit_history_loading_bgpid=$(
               shopt -u huponexit; ble-edit/history/load/.background-initialize </dev/null &>/dev/null & echo $!)
+
+            function ble-edit/history/load/.background-initialize-completed {
+              local history_tmpfile=$_ble_base_run/$$.edit-history-load
+              [[ -s $history_tmpfile ]] || ! builtin kill -0 "$_ble_edit_history_loading_bgpid"
+            } &>/dev/null
+
             ((_ble_edit_history_loading++))
           else
             ble-edit/history/load/.background-initialize
-            ((_ble_edit_history_loading+=2))
+            ((_ble_edit_history_loading+=3))
           fi ;;
 
       # 515ms ble-edit/history/load/.background-initialize 待機
-      (1) function ble-edit/history/load/.background-initialize-completed {
-            local history_tmpfile=$_ble_base_run/$$.edit-history-load
-            [[ -s $history_tmpfile ]] || ! builtin kill -0 "$_ble_edit_history_loading_bgpid"
-          } &>/dev/null
-
-          if ble/util/is-running-in-idle; then
+      (1) if [[ $opt_async ]] && ble/util/is-running-in-idle; then
             ble/util/idle.wait-condition ble-edit/history/load/.background-initialize-completed
             ((_ble_edit_history_loading++))
             return
-          else
-            while ! ble-edit/history/load/.background-initialize-completed; do
-              ble/util/sleep 0.050
-              [[ $opt_async ]] && ble-decode/has-input && return 148
-            done
-            ((_ble_edit_history_loading++))
-          fi ;;
-  
+          fi
+          ((_ble_edit_history_loading++)) ;;
+
+      # Note: async でバックグラウンドプロセスを起動した後に、直接 (sync で)
+      #   呼び出された時、未だ処理が完了していなくても次のステップに進んでしまうので、
+      #   此処で条件が満たされるのを待つ (#D0745)
+      (2) while ! ble-edit/history/load/.background-initialize-completed; do
+            ble/util/sleep 0.050
+            [[ $opt_async ]] && ble-decode/has-input && return 148
+          done
+          ((_ble_edit_history_loading++)) ;;
+
       # 47ms _ble_edit_history 初期化 (37000項目)
-      (2) if [[ $opt_cygwin ]]; then
+      (3) if [[ $opt_cygwin ]]; then
             # 620ms Cygwin (99000項目)
             source "$history_tmpfile"
           else
@@ -5318,7 +5323,7 @@ if ((_ble_bash>=40000)); then
           ((_ble_edit_history_loading++)) ;;
   
       # 47ms _ble_edit_history_edit 初期化 (37000項目)
-      (3) if [[ $opt_cygwin ]]; then
+      (4) if [[ $opt_cygwin ]]; then
             # 504ms Cygwin (99000項目)
             _ble_edit_history_edit=("${_ble_edit_history[@]}")
           else
@@ -5327,7 +5332,7 @@ if ((_ble_bash>=40000)); then
           ((_ble_edit_history_loading++)) ;;
   
       # 11ms 複数行履歴修正 (107/37000項目)
-      (4) local -a indices_to_fix
+      (5) local -a indices_to_fix
           ble/util/mapfile indices_to_fix < "$history_indfile"
           local i rex='^eval -- \$'\''([^\'\'']|\\.)*'\''$'
           for i in "${indices_to_fix[@]}"; do
@@ -5337,7 +5342,7 @@ if ((_ble_bash>=40000)); then
           ((_ble_edit_history_loading++)) ;;
 
       # 11ms 複数行履歴修正 (107/37000項目)
-      (5) local -a indices_to_fix
+      (6) local -a indices_to_fix
           [[ ${indices_to_fix+set} ]] ||
             ble/util/mapfile indices_to_fix < "$history_indfile"
           for i in "${indices_to_fix[@]}"; do
