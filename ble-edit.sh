@@ -1772,9 +1772,12 @@ function ble/textmap#hit {
 # 
 # **** information pane ****                                         @line.info
 
-## 関数 x y cols out ; ble-edit/info/.put-atomic ( nchar text )+ ; x y out
+## 関数 ble-edit/info/.put-atomic nchar text
 ##   指定した文字列を out に追加しつつ、現在位置を更新します。
 ##   文字列は幅 1 の文字で構成されていると仮定します。
+##   @var[in,out] x y out
+##   @var[in] cols lines
+##
 function ble-edit/info/.put-simple {
   local nchar=$1
 
@@ -1793,17 +1796,22 @@ function ble-edit/info/.put-simple {
 ## 関数 x y cols out ; ble-edit/info/.put-atomic ( w char )+ ; x y out
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
 function ble-edit/info/.put-atomic {
-  local w c
-  w=$1
+  local w=$1 c=$2
 
   # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
   if ((x<cols&&cols<x+w)); then
+    if ((y+1>=lines)); then
+      # 画面に入らない時は表示しない
+      out=$out$'\n'
+      ((y++,x=0))
+      return
+    fi
     _ble_util_string_prototype.reserve $((cols-x))
     out=$out${_ble_util_string_prototype::cols-x}
     ((x=cols))
   fi
 
-  out=$out$2
+  out=$out$c
 
   # 移動
   if ((w>0)); then
@@ -1822,11 +1830,20 @@ function ble-edit/info/.put-nl-if-eol {
   fi
 }
 
-## 関数 x y; ble-edit/info/.construct-text text ; ret
+## 関数 ble-edit/info/.initialize-size
+##   @var[out] cols lines
+function ble-edit/info/.initialize-size {
+  cols=${COLUMNS-80}
+  lines=$(((LINES?LINES:0)-_ble_textarea_gendy-2))
+}
+
+## 関数 ble-edit/info/.construct-text text
 ##   指定した文字列を表示する為の制御系列に変換します。
+##   @var[in,out] x y
+##   @var[out] ret
 function ble-edit/info/.construct-text {
-  local cols=${COLUMNS-80}
-  local lines=$(((LINES?LINES:0)-_ble_textarea_gendy-2))
+  local cols lines
+  ble-edit/info/.initialize-size
 
   local text=$1 out=
   local i iN=${#text}
@@ -1874,9 +1891,11 @@ function ble-edit/info/.construct-content {
     ble-edit/draw/trace "$text"
     ble-edit/draw/sflush -v content ;;
   (text)
-    local lc=32 ret
+    local ret
     ble-edit/info/.construct-text "$text"
     content=$ret ;;
+  (store)
+    x=$2 y=$3 content=$4 ;;
   (*)
     echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
   esac
@@ -1943,7 +1962,7 @@ function ble-edit/info/show {
   local type=$1 text=$2
   if [[ $text ]]; then
     local x=0 y=0 content=
-    ble-edit/info/.construct-content "$type" "$text"
+    ble-edit/info/.construct-content "$@"
     ble-edit/info/.render-content "$x" "$y" "$content"
     ble/util/buffer.flush >&2
     _ble_line_info_scene=show
@@ -6697,6 +6716,18 @@ function read {
 : ${bleopt_complete_ambiguous:=1}
 : ${bleopt_complete_contract_function_names:=1}
 : ${bleopt_complete_ac_delay:=200}
+
+## オプション complete_menu_style
+##   補完候補のリスト表示のスタイルを指定します。
+##
+##   dense
+##   dense-nowrap
+##   align
+##   align-nowrap
+##
+: ${bleopt_complete_menu_style:=align-nowrap}
+: ${bleopt_complete_menu_align:=20}
+
 _ble_complete_insert_hook=()
 ble-autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/complete \

@@ -248,7 +248,7 @@ function ble-complete/action/command/complete {
       local cand_count=0
       local -a cand_cand=() cand_prop=() cand_word=() cand_show=() cand_data=()
       COMPS=$CAND COMPV=$CAND ble-complete/source/command
-      ble-edit/info/show text "${cand_show[*]}"
+      (($?==148)) && return 148
     fi
   else
     ble-complete/action/util/complete.close-quotation
@@ -275,7 +275,7 @@ function ble-complete/action/variable/complete {
 
 function ble-complete/yield-candidate {
   local CAND=$1 ACTION=$2 DATA="${*:3}"
-  local SHOW=${1#$COMP_PREFIX} INSERT=$CAND
+  local SHOW=${1#"$COMP_PREFIX"} INSERT=$CAND
   "$ACTION/initialize"
 
   [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter "$CAND" && return
@@ -1157,6 +1157,177 @@ function ble-complete/candidates/determine-common-prefix {
   ret=$common
 }
 
+#------------------------------------------------------------------------------
+#
+# 候補表示
+#
+
+_ble_complete_menu_list=()
+
+## 関数 ble-complete/menu/style:$menu_style/construct
+##   候補一覧メニューの表示・配置を計算します。
+##
+##   @var[in] manu_style
+##   @arr[in] cand_show
+##   @arr[out] _ble_complete_cand_list
+##   @var[out] x y esc
+##
+
+## 関数 ble-complete/menu/style:align/construct
+##   complete_menu_style=align{,-nowrap} に対して候補を配置します。
+function ble-complete/menu/style:align/construct {
+  local ret iloop=0
+
+  local cols lines
+  ble-edit/info/.initialize-size
+
+  # 初めに各候補の幅を計算する
+  local measure; measure=()
+  local max_wcell=$bleopt_complete_menu_align max_width=0
+  ((max_wcell<=0?(max_wcell=20):(max_wcell<2&&(max_wcell=2))))
+  local show w esc1 nchar_max=$((cols*lines)) nchar=0
+  for show in "${cand_show[@]}"; do
+    ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+
+    x=0 y=0; ble-edit/info/.construct-text "$show"; esc1=$ret
+    ((w=y*cols+x))
+
+    ble/array#push measure "$w,${#show}:$show$esc1"
+
+    if ((w++,max_width<w)); then
+      ((max_width<max_wcell)) &&
+        ((nchar+=(iloop-1)*((max_wcell<w?max_wcell:w)-max_width)))
+      ((w>max_wcell)) && 
+        ((w=(w+max_wcell-1)/max_wcell*max_wcell))
+      ((max_width=w))
+    fi
+
+    # 画面に入る可能性がある所までで止める
+    (((nchar+=w)>=nchar_max)) && break
+  done
+
+  local wcell=$((max_width<max_wcell?max_width:max_wcell))
+  ((wcell=cols/(cols/wcell)))
+  local ncell=$((cols/wcell))
+
+  x=0 y=0 esc=
+  _ble_complete_menu_list=()
+  local i=0 N=${#measure[@]}
+  local entry index w s show esc1
+  local x0 y0
+  local icell pad
+  for entry in "${measure[@]}"; do
+    ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+
+    index=${entry%%:*} entry=${entry#*:}
+    w=${index%,*} s=${index#*,}
+    show=${entry::s} esc1=${entry:s}
+
+    ((x0=x,y0=y))
+    if ((x==0||x+w<cols)); then
+      ((x+=w%cols,y+=w/cols))
+      ((y>=lines&&(x=x0,y=y0,1))) && break
+    else
+      if [[ $menu_style == align-nowrap ]]; then
+        esc=$esc$'\n'
+        ((x0=x=0,y0=++y,y>=lines)) && break
+        ((x=w%cols,y+=w/cols))
+        ((y>=lines&&(x=x0,y=y0,1))) && break
+      else
+        ble-edit/info/.construct-text "$show"; esc1=$ret
+        ((y>=lines&&(x=x0,y=y0,1))) && break
+      fi
+    fi
+    ble/array#push _ble_complete_menu_list "$x0,$y0,${#show},${#esc1}:$show$esc1"
+    esc=$esc$esc1
+
+    # 候補と候補の間の空白
+    if ((++i<N)); then
+      ((icell=x==0?0:(x+wcell)/wcell))
+      if ((icell<ncell)); then
+        # 次の升目
+        _ble_util_string_prototype.reserve $((pad=icell*wcell-x))
+        esc=$esc${_ble_util_string_prototype::pad}
+        ((x=icell*wcell))
+      else
+        # 次の行
+        esc=$esc$'\n'
+        ((x=0,++y>=lines)) && break
+      fi
+    fi
+  done
+}
+function ble-complete/menu/style:align-nowrap/construct {
+  ble-complete/menu/style:align/construct
+}
+
+## 関数 ble-complete/menu/style:dense/construct
+##   complete_menu_style=align{,-nowrap} に対して候補を配置します。
+function ble-complete/menu/style:dense/construct {
+  local ret iloop=0
+
+  local cols lines
+  ble-edit/info/.initialize-size
+
+  x=0 y=0 esc=
+  _ble_complete_menu_list=()
+
+  local show i=0 N=${#cand_show[@]}
+  for show in "${cand_show[@]}"; do
+    ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+
+    local x0=$x y0=$y esc1
+    ble-edit/info/.construct-text "$show"; esc1=$ret
+    ((y>=lines&&(x=x0,y=y0,1))) && return
+
+    if [[ $menu_style == dense-nowrap ]]; then
+      if ((y>y0&&x>0)); then
+        ((y=++y0,x=x0=0))
+        esc=$esc$'\n'
+        ble-edit/info/.construct-text "$show"; esc1=$ret
+        ((y>=lines&&(x=x0,y=y0,1))) && return
+      fi
+    fi
+
+    ble/array#push _ble_complete_menu_list "$x0,$y0,${#show},${#esc1}:$show$esc1"
+    esc=$esc$esc1
+
+    # 候補と候補の間の空白
+    if ((++i<N)); then
+      if [[ $_ble_complete_menu_style == nowrap ]] && ((x==0)); then
+        : skip
+      elif ((x+1<cols)); then
+        esc=$esc' '
+        ((x++))
+      else
+        esc=$esc$'\n'
+        ((x=0,++y>=lines)) && break
+      fi
+    fi
+  done
+}
+function ble-complete/menu/style:dense-nowrap/construct {
+  ble-complete/menu/style:dense/construct
+}
+
+function bleopt/check:complete_menu_style {
+  if ! ble/is-function "ble-complete/menu/style:$value/construct"; then
+    echo "bleopt: Invalid value complete_menu_style='$value'. A function 'ble-complete/menu/style:$value/construct' is not defined." >&2
+    return 1
+  fi
+}
+
+function ble-complete/menu/show {
+  # ble-edit/info/show text "${cand_show[*]}"
+  local menu_style=$bleopt_complete_menu_style
+  local x y esc
+  ble/function#try ble-complete/menu/style:"$menu_style"/construct &&
+    ble-edit/info/show store "$x" "$y" "$esc"
+}
+
+#------------------------------------------------------------------------------
+# 補完
+
 ## 関数 ble-complete/insert insert_beg insert_end insert suffix
 function ble-complete/insert {
   local insert_beg=$1 insert_end=$2
@@ -1248,10 +1419,12 @@ function ble/widget/complete {
       local CAND=${cand_cand[0]}
       local DATA=${cand_data[0]}
       "$ACTION/complete"
+      (($?==148)) && return 148
     fi
   else
     # 候補が複数ある時
-    ble-edit/info/show text "${cand_show[*]}"
+    ble-complete/menu/show
+    (($?==148)) && return 148
   fi
 
   local insert=$INSERT suffix=$SUFFIX
