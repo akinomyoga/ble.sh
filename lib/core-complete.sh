@@ -84,7 +84,6 @@ function ble-complete/check-cancel {
 ##   @var[in    ] CAND
 ##   @var[in,out] ACTION
 ##   @var[in,out] DATA
-##   @var[in,out] SHOW
 ##   @var[in,out] INSERT
 ##     COMP1-COMP2 を置き換える文字列を指定します
 ##
@@ -117,7 +116,7 @@ function ble-complete/check-cancel {
 ##   @var[in] DATA
 ##   @var[in] COMP1 COMP2
 ##
-##   @var[in,out] INSERT SUFFIX
+##   @var[in,out] insert suffix
 ##     補完によって挿入される文字列を指定します。
 ##     加工後の挿入する文字列を返します。
 ##
@@ -130,7 +129,7 @@ function ble-complete/check-cancel {
 ##
 
 function ble-complete/action/util/complete.addtail {
-  SUFFIX=$SUFFIX$1
+  suffix=$suffix$1
 }
 function ble-complete/action/util/complete.close-quotation {
   case $comps_flags in
@@ -206,23 +205,55 @@ function ble-complete/action/file/complete {
     fi
   fi
 }
+function ble-complete/action/file/getg {
+  if [[ -h $CAND ]]; then
+    ble-color-face2g filename_link
+  elif [[ -d $CAND ]]; then
+    ble-color-face2g filename_directory
+  elif [[ -S $CAND ]]; then
+    ble-color-face2g filename_socket
+  elif [[ -b $CAND ]]; then
+    ble-color-face2g filename_block
+  elif [[ -c $CAND ]]; then
+    ble-color-face2g filename_character
+  elif [[ -p $CAND ]]; then
+    ble-color-face2g filename_pipe
+  elif [[ -x $CAND ]]; then
+    ble-color-face2g filename_executable
+  elif [[ -e $CAND ]]; then
+    ble-color-face2g filename_other
+  else
+    ble-color-face2g filename_warning
+  fi
+}
 
 # action/argument
 
-function ble-complete/action/argument/initialize { ble-complete/action/plain/initialize; }
-function ble-complete/action/argument/complete {
-  if [[ -d $CAND ]]; then
-    [[ $CAND != */ ]] &&
-      ble-complete/action/util/complete.addtail /
+function ble-complete/action/progcomp/initialize {
+  if [[ $DATA == *:filenames:* ]]; then
+    ble-complete/action/file/initialize
   else
-    ble-complete/action/util/complete.close-quotation
-    ble-complete/action/util/complete.addtail ' '
+    ble-complete/action/plain/initialize
   fi
 }
-function ble-complete/action/argument-nospace/initialize { ble-complete/action/plain/initialize; }
-function ble-complete/action/argument-nospace/complete {
-  if [[ -d $CAND && $CAND != */ ]]; then
-    ble-complete/action/util/complete.addtail /
+function ble-complete/action/progcomp/complete {
+  if [[ $DATA == *:filenames:* ]]; then
+    ble-complete/action/file/complete
+  else
+    if [[ -d $CAND ]]; then
+      [[ $CAND != */ ]] &&
+        ble-complete/action/util/complete.addtail /
+    else
+      ble-complete/action/util/complete.close-quotation
+      ble-complete/action/util/complete.addtail ' '
+    fi
+  fi
+
+  [[ $DATA == *:nospace:* ]] && suffix=${suffix%' '}
+}
+function ble-complete/action/progcomp/getg {
+  if [[ $DATA == *:filenames:* ]]; then
+    ble-complete/action/file/getg
   fi
 }
 
@@ -246,7 +277,7 @@ function ble-complete/action/command/complete {
       # 縮約されていると想定し続きの補完候補を出す。
       local COMP_PREFIX=
       local cand_count=0
-      local -a cand_cand=() cand_prop=() cand_word=() cand_show=() cand_data=()
+      local -a cand_cand=() cand_word=() cand_pack=()
       COMPS=$CAND COMPV=$CAND ble-complete/source/command
       (($?==148)) && return 148
     fi
@@ -273,20 +304,43 @@ function ble-complete/action/variable/complete {
 #==============================================================================
 # source
 
-function ble-complete/yield-candidate {
+## 関数 ble-complete/cand/yield CAND ACTION DATA
+##   @param[in] CAND
+##   @param[in] ACTION
+##   @param[in] DATA
+##   @var[in] COMP_PREFIX
+function ble-complete/cand/yield {
   local CAND=$1 ACTION=$2 DATA="${*:3}"
-  local SHOW=${1#"$COMP_PREFIX"} INSERT=$CAND
-  "$ACTION/initialize"
-
   [[ $flag_force_fignore ]] && ! ble-complete/.fignore/filter "$CAND" && return
+
+  local PREFIX_LEN=0
+  [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
+
+  local INSERT=$CAND
+  "$ACTION/initialize"
 
   local icand
   ((icand=cand_count++))
   cand_cand[icand]=$CAND
-  cand_prop[icand]="$ACTION $COMP1 $COMP2"
   cand_word[icand]=$INSERT
-  cand_show[icand]=$SHOW
-  cand_data[icand]=$DATA
+  cand_pack[icand]=$ACTION:${#CAND},${#INSERT},$PREFIX_LEN:$CAND$INSERT$DATA
+}
+
+_ble_complete_cand_varnames=(ACTION CAND INSERT DATA PREFIX_LEN)
+
+## 関数 ble-complete/cand/unpack data
+##   @param[in] data
+##     ACTION:ncand,ninsert,PREFIX_LEN:$CAND$INSERT$DATA
+##   @var[out] ACTION CAND INSERT DATA PREFIX_LEN
+function ble-complete/cand/unpack {
+  local pack=$1
+  ACTION=${pack%%:*} pack=${pack#*:}
+  local text=${pack#*:}
+  ble/string#split pack , "${pack%%:*}"
+  CAND=${text::pack[0]}
+  INSERT=${text:pack[0]:pack[1]}
+  DATA=${text:pack[0]+pack[1]}
+  PREFIX_LEN=${pack[2]}
 }
 
 ## 定義されている source
@@ -307,7 +361,7 @@ function ble-complete/yield-candidate {
 ##   @var[in] COMP1 COMP2 COMPS COMPV comp_type
 ##
 ##   @var[out] COMP_PREFIX
-##     ble-complete/yield-candidate で参照される一時変数。
+##     ble-complete/cand/yield で参照される一時変数。
 ##
 
 # source/wordlist
@@ -320,7 +374,7 @@ function ble-complete/source/wordlist {
   local cand
   for cand; do
     if [[ $cand == "$COMPV"* ]]; then
-      ble-complete/yield-candidate "$cand" ble-complete/action/word
+      ble-complete/cand/yield "$cand" ble-complete/action/word
     fi
   done
 }
@@ -439,7 +493,7 @@ function ble-complete/source/command {
     #   厳密一致のディレクトリ名が混入するので削除する。
     [[ $cand != */ && -d $cand ]] && ! type "$cand" &>/dev/null && continue
 
-    ble-complete/yield-candidate "$cand" ble-complete/action/command
+    ble-complete/cand/yield "$cand" ble-complete/action/command
   done
 }
 
@@ -546,7 +600,7 @@ function ble-complete/source/file {
   for cand in "${candidates[@]}"; do
     [[ -e $cand || -h $cand ]] || continue
     [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
-    ble-complete/yield-candidate "$cand" ble-complete/action/file
+    ble-complete/cand/yield "$cand" ble-complete/action/file
   done
 }
 
@@ -572,7 +626,7 @@ function ble-complete/source/dir {
     [[ -d $cand ]] || continue
     [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
     [[ $cand == / ]] || cand=${cand%/}
-    ble-complete/yield-candidate "$cand" ble-complete/action/file
+    ble-complete/cand/yield "$cand" ble-complete/action/file
   done
 }
 
@@ -789,13 +843,13 @@ function ble-complete/source/argument/.progcomp {
     ble/util/assign-array arr 'ble/bin/sed -n "/^\$/d;/^$rex_compv/p" <<< "$compgen" | ble/bin/sort -u' 2>/dev/null
   fi
 
-  local action=argument
-  [[ $comp_opts == *:nospace:* ]] && action=argument-nospace
+  local action=progcomp
+  [[ $comp_opts == *:filenames:* && $COMPV == */ ]] && COMP_PREFIX=${COMPV%/*}/
 
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
-    ble-complete/yield-candidate "$cand" ble-complete/action/"$action"
+    ble-complete/cand/yield "$cand" ble-complete/action/"$action" "$comp_opts"
     ((count++))
   done
 
@@ -853,7 +907,7 @@ function ble-complete/source/argument {
       for cand in "${ret[@]}"; do
         [[ -e $cand || -h $cand ]] || continue
         [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
-        ble-complete/yield-candidate "$prefix$cand" ble-complete/action/file
+        ble-complete/cand/yield "$prefix$cand" ble-complete/action/file
       done
     fi
   fi
@@ -883,7 +937,7 @@ function ble-complete/source/variable {
   local i=0
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
-    ble-complete/yield-candidate "$cand" ble-complete/action/"$action" "$data"
+    ble-complete/cand/yield "$cand" ble-complete/action/"$action" "$data"
   done
 }
 
@@ -894,14 +948,21 @@ function ble-complete/source/variable {
 ##   候補の数
 ## @arr[out] cand_cand
 ##   候補文字列
-## @arr[out] cand_prop
-##   関数 開始 終了
 ## @arr[out] cand_word
 ##   挿入文字列 (～ エスケープされた候補文字列)
-## @arr[out] cand_show
-##   表示文字列 (～ 分かり易い文字列)
-## @arr[out] cand_data
-##   関数で使うデータ
+##
+## @arr[out] cand_pack
+##   補完候補のデータを一つの配列に纏めたもの。
+##   要素を使用する際は以下の様に変数に展開して使う。
+##
+##     local "${_ble_complete_cand_varnames[@]}"
+##     ble-complete/cand/unpack "${cand_pack[0]}"
+##
+##   先頭に ACTION が格納されているので
+##   ACTION だけ参照する場合には以下の様にする。
+##
+##     local ACTION=${cand_pack[0]%%:*}
+##
 
 ## 関数 ble-complete/util/construct-ambiguous-regex text
 ##   曖昧一致に使う正規表現を生成します。
@@ -1005,19 +1066,15 @@ function ble-complete/candidates/.filter-by-regex {
   for ((i=0;i<cand_count;i++)); do
     ((i%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
     [[ ${cand_cand[i]} =~ $rex_filter ]] || continue
-    prop[j]=${cand_prop[i]}
     cand[j]=${cand_cand[i]}
     word[j]=${cand_word[i]}
-    show[j]=${cand_show[i]}
-    data[j]=${cand_data[i]}
+    data[j]=${cand_pack[i]}
     ((j++))
   done
   cand_count=$j
-  cand_prop=("${prop[@]}")
   cand_cand=("${cand[@]}")
   cand_word=("${word[@]}")
-  cand_show=("${show[@]}")
-  cand_data=("${data[@]}")
+  cand_pack=("${data[@]}")
 }
 
 ## 関数 ble-complete/candidates/get-contexts comp_text comp_index
@@ -1070,10 +1127,8 @@ function ble-complete/candidates/generate {
 
   cand_count=0
   cand_cand=() # 候補文字列
-  cand_prop=() # 関数 開始 終了
   cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
-  cand_show=() # 表示文字列 (～ 分かり易い文字列)
-  cand_data=() # 関数で使うデータ
+  cand_pack=() # 候補の詳細データ
 
   local -a remaining_contexts nearest_contexts
   remaining_contexts=("${contexts[@]}")
@@ -1164,13 +1219,67 @@ function ble-complete/candidates/determine-common-prefix {
 
 _ble_complete_menu_list=()
 
+
+## 関数 ble-complete/menu/initialize
+##   @var[out] menu_common_part
+##   @var[out] cols lines
+function ble-complete/menu/initialize {
+  ble-edit/info/.initialize-size
+
+  menu_common_part=$COMPV
+  if [[ $comp_type != *a* ]]; then
+    local ret close_type
+    if ble-syntax:bash/simple-word/close-open-word "$insert"; then
+      ble-syntax:bash/simple-word/eval "$ret"
+      menu_common_part=$ret
+    fi
+  fi
+}
+
+## 関数 ble-complete/menu/construct-single-entry pack
+##   @param[in] pack
+##     cand_pack の要素と同様の形式
+##   @var[in] g
+##   @var[in,out] x y
+##   @var[out] ret
+##   @var[in] cols lines menu_common_part
+function ble-complete/menu/construct-single-entry {
+  local "${_ble_complete_cand_varnames[@]}"
+  ble-complete/cand/unpack "$1"
+  local show=${CAND:PREFIX_LEN}
+  local g=0; ble/function#try "$ACTION/getg"
+  if [[ $menu_common_part && $CAND == "$menu_common_part"* ]]; then
+    local out= alen=$((${#menu_common_part}-PREFIX_LEN))
+    local sgr0 sgr1
+    if ((alen>0)); then
+      ble-color-g2sgr -v sgr0 $((g|_ble_color_gflags_Bold))
+      ble-color-g2sgr -v sgr1 $((g|_ble_color_gflags_Bold|_ble_color_gflags_Revert))
+      ble-edit/info/.construct-text "${show::alen}"
+      out=$out$sgr0$ret
+    fi
+    if ((alen<${#show})); then
+      ble-color-g2sgr -v sgr0 $((g))
+      ble-color-g2sgr -v sgr1 $((g|_ble_color_gflags_Revert))
+      ble-edit/info/.construct-text "${show:alen}"
+      out=$out$sgr0$ret
+    fi
+    ret=$out$_ble_term_sgr0
+  else
+    local sgr0 sgr1
+    ble-color-g2sgr -v sgr0 $((g))
+    ble-color-g2sgr -v sgr1 $((g|_ble_color_gflags_Revert))
+    ble-edit/info/.construct-text "${CAND:PREFIX_LEN}"
+    ret=$sgr0$ret$_ble_term_sgr0
+  fi
+}
+
 ## 関数 ble-complete/menu/style:$menu_style/construct
 ##   候補一覧メニューの表示・配置を計算します。
 ##
-##   @var[in] manu_style
-##   @arr[in] cand_show
 ##   @arr[out] _ble_complete_cand_list
 ##   @var[out] x y esc
+##   @var[in] manu_style
+##   @arr[in] cand_pack
 ##
 
 ## 関数 ble-complete/menu/style:align/construct
@@ -1178,21 +1287,21 @@ _ble_complete_menu_list=()
 function ble-complete/menu/style:align/construct {
   local ret iloop=0
 
-  local cols lines
-  ble-edit/info/.initialize-size
+  local cols lines menu_common_part
+  ble-complete/menu/initialize
 
   # 初めに各候補の幅を計算する
   local measure; measure=()
-  local max_wcell=$bleopt_complete_menu_align max_width=0
+  local max_wcell=$bleopt_complete_menu_align max_width=1
   ((max_wcell<=0?(max_wcell=20):(max_wcell<2&&(max_wcell=2))))
-  local show w esc1 nchar_max=$((cols*lines)) nchar=0
-  for show in "${cand_show[@]}"; do
+  local pack w esc1 nchar_max=$((cols*lines)) nchar=0
+  for pack in "${cand_pack[@]}"; do
     ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
 
-    x=0 y=0; ble-edit/info/.construct-text "$show"; esc1=$ret
+    x=0 y=0; ble-complete/menu/construct-single-entry "$pack"; esc1=$ret
     ((w=y*cols+x))
 
-    ble/array#push measure "$w,${#show}:$show$esc1"
+    ble/array#push measure "$w:${#pack}:$pack$esc1"
 
     if ((w++,max_width<w)); then
       ((max_width<max_wcell)) &&
@@ -1213,15 +1322,15 @@ function ble-complete/menu/style:align/construct {
   x=0 y=0 esc=
   _ble_complete_menu_list=()
   local i=0 N=${#measure[@]}
-  local entry index w s show esc1
+  local entry index w s pack esc1
   local x0 y0
   local icell pad
   for entry in "${measure[@]}"; do
     ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
 
-    index=${entry%%:*} entry=${entry#*:}
-    w=${index%,*} s=${index#*,}
-    show=${entry::s} esc1=${entry:s}
+    w=${entry%%:*} entry=${entry#*:}
+    s=${entry%%:*} entry=${entry#*:}
+    pack=${entry::s} esc1=${entry:s}
 
     ((x0=x,y0=y))
     if ((x==0||x+w<cols)); then
@@ -1234,11 +1343,11 @@ function ble-complete/menu/style:align/construct {
         ((x=w%cols,y+=w/cols))
         ((y>=lines&&(x=x0,y=y0,1))) && break
       else
-        ble-edit/info/.construct-text "$show"; esc1=$ret
+        ble-complete/menu/construct-single-entry "$pack"; esc1=$ret
         ((y>=lines&&(x=x0,y=y0,1))) && break
       fi
     fi
-    ble/array#push _ble_complete_menu_list "$x0,$y0,${#show},${#esc1}:$show$esc1"
+    ble/array#push _ble_complete_menu_list "$x0,$y0,${#pack},${#esc1}:$pack$esc1"
     esc=$esc$esc1
 
     # 候補と候補の間の空白
@@ -1266,30 +1375,30 @@ function ble-complete/menu/style:align-nowrap/construct {
 function ble-complete/menu/style:dense/construct {
   local ret iloop=0
 
-  local cols lines
-  ble-edit/info/.initialize-size
+  local cols lines menu_common_part
+  ble-complete/menu/initialize
 
   x=0 y=0 esc=
   _ble_complete_menu_list=()
 
-  local show i=0 N=${#cand_show[@]}
-  for show in "${cand_show[@]}"; do
+  local pack i=0 N=${#cand_pack[@]}
+  for pack in "${cand_pack[@]}"; do
     ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
 
     local x0=$x y0=$y esc1
-    ble-edit/info/.construct-text "$show"; esc1=$ret
+    ble-complete/menu/construct-single-entry "$pack"; esc1=$ret
     ((y>=lines&&(x=x0,y=y0,1))) && return
 
     if [[ $menu_style == dense-nowrap ]]; then
       if ((y>y0&&x>0)); then
         ((y=++y0,x=x0=0))
         esc=$esc$'\n'
-        ble-edit/info/.construct-text "$show"; esc1=$ret
+        ble-complete/menu/construct-single-entry "$pack"; esc1=$ret
         ((y>=lines&&(x=x0,y=y0,1))) && return
       fi
     fi
 
-    ble/array#push _ble_complete_menu_list "$x0,$y0,${#show},${#esc1}:$show$esc1"
+    ble/array#push _ble_complete_menu_list "$x0,$y0,${#pack},${#esc1}:$pack$esc1"
     esc=$esc$esc1
 
     # 候補と候補の間の空白
@@ -1318,7 +1427,6 @@ function bleopt/check:complete_menu_style {
 }
 
 function ble-complete/menu/show {
-  # ble-edit/info/show text "${cand_show[*]}"
   local menu_style=$bleopt_complete_menu_style
   local x y esc
   ble/function#try ble-complete/menu/style:"$menu_style"/construct &&
@@ -1390,7 +1498,7 @@ function ble/widget/complete {
   local comps_flags
   local rex_ambiguous_compv
   local cand_count
-  local -a cand_cand cand_prop cand_word cand_show cand_data
+  local -a cand_cand cand_word cand_pack
   ble-complete/candidates/generate; local ext=$?
   if ((ext==148)); then
     return 148
@@ -1401,10 +1509,10 @@ function ble/widget/complete {
   fi
 
   local ret
-  ble-complete/candidates/determine-common-prefix; local INSERT=$ret SUFFIX=
+  ble-complete/candidates/determine-common-prefix; local insert=$ret suffix=
   local insert_beg=$COMP1 insert_end=$COMP2
   local insert_replace= #@@@ unused?
-  [[ $INSERT == "$COMPS"* ]] || insert_replace=1
+  [[ $insert == "$COMPS"* ]] || insert_replace=1
 
   if ((cand_count==1)); then
     # 一意確定の時
@@ -1413,11 +1521,10 @@ function ble/widget/complete {
     #   関数名について縮約された候補に対して続きを表示するのに使う。
     ble-edit/info/clear
 
-    local ACTION
-    ble/string#split-words ACTION "${cand_prop[0]}"
+    local ACTION=${cand_pack[0]%%:*}
     if ble/is-function "$ACTION/complete"; then
-      local CAND=${cand_cand[0]}
-      local DATA=${cand_data[0]}
+      local "${_ble_complete_cand_varnames[@]}"
+      ble-complete/cand/unpack "${cand_pack[0]}"
       "$ACTION/complete"
       (($?==148)) && return 148
     fi
@@ -1427,7 +1534,6 @@ function ble/widget/complete {
     (($?==148)) && return 148
   fi
 
-  local insert=$INSERT suffix=$SUFFIX
   ble/util/invoke-hook _ble_complete_insert_hook
   ble-complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
 }
@@ -1488,7 +1594,7 @@ function ble-complete/auto-complete.impl {
   local comps_flags
   local rex_ambiguous_compv
   local cand_count
-  local -a cand_cand cand_prop cand_word cand_show cand_data
+  local -a cand_cand cand_word cand_pack
   ble-complete/candidates/generate
   [[ $COMPV ]] || return 0
   ((ext)) && return "$ext"
@@ -1501,23 +1607,22 @@ function ble-complete/auto-complete.impl {
   [[ $_ble_complete_ac_word == "$COMPS" ]] && return
 
   # addtail 等の修飾
-  local INSERT=$_ble_complete_ac_word SUFFIX=
-  local ACTION
-  ble/string#split-words ACTION "${cand_prop[0]}"
+  local insert=$_ble_complete_ac_word suffix=
+  local ACTION=${cand_pack[0]%%:*}
   if ble/is-function "$ACTION/complete"; then
-    local CAND=${cand_cand[0]}
-    local DATA=${cand_data[0]}
+    local "${_ble_complete_cand_varnames[@]}"
+    ble-complete/cand/unpack "${cand_pack[0]}"
     "$ACTION/complete"
   fi
-  _ble_complete_ac_insert=$INSERT
-  _ble_complete_ac_suffix=$SUFFIX
+  _ble_complete_ac_insert=$insert
+  _ble_complete_ac_suffix=$suffix
 
   if [[ $_ble_complete_ac_word == "$COMPS"* ]]; then
     # 入力候補が既に続きに入力されている時は提示しない
     [[ ${comp_text:COMP1} == "$_ble_complete_ac_word"* ]] && return
 
     _ble_complete_ac_type=c
-    local ins=${INSERT:${#COMPS}}
+    local ins=${insert:${#COMPS}}
     _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
     ((_ble_edit_mark=_ble_edit_ind+${#ins}))
   else
@@ -1526,8 +1631,8 @@ function ble-complete/auto-complete.impl {
     else
       _ble_complete_ac_type=r
     fi
-    _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" " [$INSERT] "
-    ((_ble_edit_mark=_ble_edit_ind+4+${#INSERT}))
+    _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" " [$insert] "
+    ((_ble_edit_mark=_ble_edit_ind+4+${#insert}))
   fi
 
   _ble_edit_mark_active=auto_complete
@@ -1677,16 +1782,16 @@ function ble/cmdinfo/complete:cd/.impl {
     case $type in
     (pushd)
       if [[ $COMPV == - || $COMPV == -n ]]; then
-        ble-complete/yield-candidate -n "$action"
+        ble-complete/cand/yield -n "$action"
       fi ;;
     (*)
       COMP_PREFIX=$COMPV
       local -a list=()
-      [[ $COMPV == -* ]] && ble-complete/yield-candidate "${COMPV}" "$action"
-      [[ $COMPV != *L* ]] && ble-complete/yield-candidate "${COMPV}L" "$action"
-      [[ $COMPV != *P* ]] && ble-complete/yield-candidate "${COMPV}P" "$action"
-      ((_ble_bash>=40200)) && [[ $COMPV != *e* ]] && ble-complete/yield-candidate "${COMPV}e" "$action"
-      ((_ble_bash>=40300)) && [[ $COMPV != *@* ]] && ble-complete/yield-candidate "${COMPV}@" "$action" ;;
+      [[ $COMPV == -* ]] && ble-complete/cand/yield "${COMPV}" "$action"
+      [[ $COMPV != *L* ]] && ble-complete/cand/yield "${COMPV}L" "$action"
+      [[ $COMPV != *P* ]] && ble-complete/cand/yield "${COMPV}P" "$action"
+      ((_ble_bash>=40200)) && [[ $COMPV != *e* ]] && ble-complete/cand/yield "${COMPV}e" "$action"
+      ((_ble_bash>=40300)) && [[ $COMPV != *@* ]] && ble-complete/cand/yield "${COMPV}@" "$action" ;;
     esac
     return
   fi
@@ -1710,7 +1815,7 @@ function ble/cmdinfo/complete:cd/.impl {
         [[ $cand == / ]] || cand=${cand%/}
         cand=${cand#"$name"/}
         [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
-        ble-complete/yield-candidate "$cand" ble-complete/action/file
+        ble-complete/cand/yield "$cand" ble-complete/action/file
       done
     done
   fi

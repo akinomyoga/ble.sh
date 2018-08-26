@@ -1839,12 +1839,10 @@ function ble-edit/info/.initialize-size {
 
 ## 関数 ble-edit/info/.construct-text text
 ##   指定した文字列を表示する為の制御系列に変換します。
+##   @var[in] cols lines sgr0 sgr1
 ##   @var[in,out] x y
 ##   @var[out] ret
 function ble-edit/info/.construct-text {
-  local cols lines
-  ble-edit/info/.initialize-size
-
   local text=$1 out=
   local i iN=${#text}
   for ((i=0;i<iN;)); do
@@ -1858,12 +1856,12 @@ function ble-edit/info/.construct-text {
       local code=$ret w=0
       if ((code<32)); then
         ble/util/c2s $((code+64))
-        ble-edit/info/.put-atomic 2 "$_ble_term_rev^$ret$_ble_term_sgr0"
+        ble-edit/info/.put-atomic 2 "$sgr1^$ret$sgr0"
       elif ((code==127)); then
-        ble-edit/info/.put-atomic 2 '$_ble_term_rev^?$_ble_term_sgr0'
+        ble-edit/info/.put-atomic 2 '$sgr1^?$sgr0'
       elif ((128<=code&&code<160)); then
         ble/util/c2s $((code-64))
-        ble-edit/info/.put-atomic 4 "${_ble_term_rev}M-^$ret$_ble_term_sgr0"
+        ble-edit/info/.put-atomic 4 "${sgr1}M-^$ret$sgr0"
       else
         ble/util/c2w "$code"
         ble-edit/info/.put-atomic "$ret" "${text:i:1}"
@@ -1891,7 +1889,9 @@ function ble-edit/info/.construct-content {
     ble-edit/draw/trace "$text"
     ble-edit/draw/sflush -v content ;;
   (text)
-    local ret
+    local cols lines
+    ble-edit/info/.initialize-size
+    local ret sgr1=$_ble_term_rev sgr0=$_ble_term_sgr0
     ble-edit/info/.construct-text "$text"
     content=$ret ;;
   (store)
