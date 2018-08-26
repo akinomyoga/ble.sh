@@ -782,9 +782,9 @@ elif ((_ble_bash>=40000)); then
         function ble/util/sleep {
           local s=${1%%.*}
           if ((s>0)); then
-            ! read -u "$_ble_util_sleep_fd" -t "$1" s
+            ! builtin read -u "$_ble_util_sleep_fd" -t "$1" s
           else
-            ! read -t "$1" s < /dev/udp/0.0.0.0/80
+            ! builtin read -t "$1" s < /dev/udp/0.0.0.0/80
           fi
         }
       fi
