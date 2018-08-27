@@ -958,7 +958,6 @@ function ble-decode/keymap/push {
     ble-decode/keymap/push "$1" # 再実行
   else
     echo "[ble: keymap '$1' not found]" >&2
-    declare -p _ble_decode_isearch_kmap_
     return 1
   fi
 }
