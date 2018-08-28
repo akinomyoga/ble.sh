@@ -19,7 +19,7 @@ function ble/keymap:vi_test/check {
   ble/keymap:vi_test/decompose-state "$final"; local f=$ind fin=$str
   
   local nl=$'\n' NL=$'\e[7m^J\e[m'
-  _ble_edit_str.reset "$in" edit
+  ble-edit/content/reset "$in" edit
   _ble_edit_ind=$i
   local ret
   ble-decode-kbd "$kspecs"
@@ -286,7 +286,7 @@ function ble/widget/vi-command:check-vi-mode {
   #----------------------------------------------------------------------------
 
   # restore
-  _ble_edit_str.reset "$original" edit
+  ble-edit/content/reset "$original" edit
   _ble_edit_ind=$original_ind
   _ble_edit_mark=$original_mark
   _ble_edit_mark_active=$original_mark_active

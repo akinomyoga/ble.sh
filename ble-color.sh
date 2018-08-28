@@ -297,11 +297,11 @@ function ble-highlight-layer/update/shift {
   local __dstArray=$1
   local __srcArray=${2:-$__dstArray}
   if ((DMIN>=0)); then
-    _ble_util_array_prototype.reserve "$((DMAX-DMIN))"
+    ble/array#reserve-prototype "$((DMAX-DMIN))"
     builtin eval "
     $__dstArray=(
       \"\${$__srcArray[@]::DMIN}\"
-      \"\${_ble_util_array_prototype[@]::DMAX-DMIN}\"
+      \"\${_ble_array_prototype[@]::DMAX-DMIN}\"
       \"\${$__srcArray[@]:DMAX0}\")"
   else
     [[ $__dstArray != "$__srcArray" ]] && builtin eval "$__dstArray=(\"\${$__srcArray[@]}\")"
@@ -411,7 +411,7 @@ function ble-highlight-layer:plain/update/.getch {
   [[ $ch == [' '-'~'] ]] && return
   if [[ $ch == [-] ]]; then
     if [[ $ch == $'\t' ]]; then
-      ch=${_ble_util_string_prototype::it}
+      ch=${_ble_string_prototype::it}
     elif [[ $ch == $'\n' ]]; then
       ch=$'\e[K\n'
     elif [[ $ch == '' ]]; then

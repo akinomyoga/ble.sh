@@ -855,7 +855,7 @@ function ble-edit/draw/trace.impl {
   # constants
   local cols=${COLUMNS:-80} lines=${LINES:-25}
   local it=${bleopt_tab_width:-$_ble_term_it} xenl=$_ble_term_xenl
-  _ble_util_string_prototype.reserve "$it"
+  ble/string#reserve-prototype "$it"
   # CSI
   local rex_csi='^\[[ -?]*[@-~]'
   # OSC, DCS, SOS, PM, APC Sequences + "GNU screen ESC k"
@@ -904,7 +904,7 @@ function ble-edit/draw/trace.impl {
         ((_x=(x+it)/it*it,
           _x>=cols&&(_x=cols-1)))
         if ((x<_x)); then
-          s=${_ble_util_string_prototype::_x-x}
+          s=${_ble_string_prototype::_x-x}
           ((x=_x,lc=32,lg=g))
         else
           s=
@@ -941,7 +941,7 @@ function ble-edit/draw/trace.impl {
       w=$ret
       if ((w>=2&&x+w>cols)); then
         # 行に入りきらない場合の調整
-        ble-edit/draw/put "${_ble_util_string_prototype::x+w-cols}"
+        ble-edit/draw/put "${_ble_string_prototype::x+w-cols}"
         ((x=cols))
       fi
       ble-edit/draw/put "${tail::1}"
@@ -1026,12 +1026,12 @@ function ble-edit/prompt/initialize {
 _ble_edit_prompt=("" 0 0 0 32 0 "" "")
 
 
-## 関数 _ble_edit_prompt.load
+## 関数 ble-edit/prompt/.load
 ##   @var[out] x y g
 ##   @var[out] lc lg
 ##   @var[out] ret
 ##     プロンプトを描画するための文字列
-function _ble_edit_prompt.load {
+function ble-edit/prompt/.load {
   x=${_ble_edit_prompt[1]}
   y=${_ble_edit_prompt[2]}
   g=${_ble_edit_prompt[3]}
@@ -1040,13 +1040,13 @@ function _ble_edit_prompt.load {
   ret=${_ble_edit_prompt[6]}
 }
 
-## 関数 ble-edit/prompt/update/append text
+## 関数 ble-edit/prompt/print text
 ##   指定された文字列を "" 内に入れる為のエスケープをして出力します。
 ##   @param[in] text
 ##     エスケープされる文字列を指定します。
 ##   @var[out]  DRAW_BUFF[]
 ##     出力先の配列です。
-function ble-edit/prompt/update/append {
+function ble-edit/prompt/print {
   local text=$1 a b
   if [[ $text == *['$\"`']* ]]; then
     a='\' b='\\' text=${text//"$a"/$b}
@@ -1056,7 +1056,7 @@ function ble-edit/prompt/update/append {
   fi
   ble-edit/draw/put "$text"
 }
-function ble-edit/prompt/update/process-text {
+function ble-edit/prompt/update/.process-text {
   local text=$1 a b
   if [[ $text == *'"'* ]]; then
     a='"' b='\"' text=${text//"$a"/$b}
@@ -1064,10 +1064,10 @@ function ble-edit/prompt/update/process-text {
   ble-edit/draw/put "$text"
 }
 
-## 関数 ble-edit/prompt/update/process-backslash
+## 関数 ble-edit/prompt/update/.process-backslash
 ##   @var[in]     tail
 ##   @var[in.out] DRAW_BUFF
-function ble-edit/prompt/update/process-backslash {
+function ble-edit/prompt/update/.process-backslash {
   ((i+=2))
 
   # \\ の次の文字
@@ -1083,13 +1083,13 @@ function ble-edit/prompt/update/process-backslash {
       ble-edit/history/get-count -v count
       ble-edit/draw/put $((count+1)) ;;
     ('$') # # or $
-      ble-edit/prompt/update/append "$_ble_edit_prompt__string_root" ;;
+      ble-edit/prompt/print "$_ble_edit_prompt__string_root" ;;
     (\\)
       # '\\' は '\' と出力された後に、更に "" 内で評価された時に次の文字をエスケープする。
       # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
       ble-edit/draw/put '\' ;;
     esac
-  elif ! ble/function#try ble-edit/prompt/update/backslash:"$c"; then
+  elif ! ble/function#try ble-edit/prompt/backslash:"$c"; then
     # その他の文字はそのまま出力される。
     # - '\"' '\`' はそのまま出力された後に "" 内で評価され '"' '`' となる。
     # - それ以外の場合は '\?' がそのまま出力された後に、"" 内で評価されても変わらず '\?' 等となる。
@@ -1097,10 +1097,10 @@ function ble-edit/prompt/update/process-backslash {
   fi
 }
 
-## 設定関数 ble-edit/prompt/update/backslash:*
+## 設定関数 ble-edit/prompt/backslash:*
 ##   プロンプト PS1 内で使用するバックスラッシュシーケンスを定義します。
 ##   内部では ble-edit/draw/put escaped_text もしくは
-##   ble-edit/prompt/update/append unescaped_text を用いて
+##   ble-edit/prompt/print unescaped_text を用いて
 ##   シーケンスの展開結果を追記します。
 ##
 ##   @exit
@@ -1109,76 +1109,76 @@ function ble-edit/prompt/update/process-backslash {
 ##     シーケンスが処理されなかったと見做され、
 ##     呼び出し元によって \c (c: 文字) が代わりに書き込まれます。
 ##
-function ble-edit/prompt/update/backslash:0 { # 8進表現
+function ble-edit/prompt/backslash:0 { # 8進表現
   local rex='^\\[0-7]{1,3}'
   if [[ $tail =~ $rex ]]; then
     local seq=${BASH_REMATCH[0]}
     ((i+=${#seq}-2))
     builtin eval "c=\$'$seq'"
   fi
-  ble-edit/prompt/update/append "$c"
+  ble-edit/prompt/print "$c"
   return 0
 }
-function ble-edit/prompt/update/backslash:1 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:2 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:3 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:4 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:5 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:6 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:7 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:a { # 0 BEL
+function ble-edit/prompt/backslash:1 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:2 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:3 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:4 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:5 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:6 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:7 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:a { # 0 BEL
   ble-edit/draw/put ""
   return 0
 }
-function ble-edit/prompt/update/backslash:d { # ? 日付
+function ble-edit/prompt/backslash:d { # ? 日付
   [[ $cache_d ]] || ble/util/strftime -v cache_d '%a %b %d'
-  ble-edit/prompt/update/append "$cache_d"
+  ble-edit/prompt/print "$cache_d"
   return 0
 }
-function ble-edit/prompt/update/backslash:t { # 8 時刻
+function ble-edit/prompt/backslash:t { # 8 時刻
   [[ $cache_t ]] || ble/util/strftime -v cache_t '%H:%M:%S'
-  ble-edit/prompt/update/append "$cache_t"
+  ble-edit/prompt/print "$cache_t"
   return 0
 }
-function ble-edit/prompt/update/backslash:A { # 5 時刻
+function ble-edit/prompt/backslash:A { # 5 時刻
   [[ $cache_A ]] || ble/util/strftime -v cache_A '%H:%M'
-  ble-edit/prompt/update/append "$cache_A"
+  ble-edit/prompt/print "$cache_A"
   return 0
 }
-function ble-edit/prompt/update/backslash:T { # 8 時刻
+function ble-edit/prompt/backslash:T { # 8 時刻
   [[ $cache_T ]] || ble/util/strftime -v cache_T '%I:%M:%S'
-  ble-edit/prompt/update/append "$cache_T"
+  ble-edit/prompt/print "$cache_T"
   return 0
 }
-function ble-edit/prompt/update/backslash:@ { # ? 時刻
+function ble-edit/prompt/backslash:@ { # ? 時刻
   [[ $cache_at ]] || ble/util/strftime -v cache_at '%I:%M %p'
-  ble-edit/prompt/update/append "$cache_at"
+  ble-edit/prompt/print "$cache_at"
   return 0
 }
-function ble-edit/prompt/update/backslash:D {
+function ble-edit/prompt/backslash:D {
   local rex='^\\D\{([^{}]*)\}' cache_D
   if [[ $tail =~ $rex ]]; then
     ble/util/strftime -v cache_D "${BASH_REMATCH[1]}"
-    ble-edit/prompt/update/append "$cache_D"
+    ble-edit/prompt/print "$cache_D"
     ((i+=${#BASH_REMATCH}-2))
   else
-    ble-edit/prompt/update/append "\\$c"
+    ble-edit/prompt/print "\\$c"
   fi
   return 0
 }
-function ble-edit/prompt/update/backslash:e {
+function ble-edit/prompt/backslash:e {
   ble-edit/draw/put $'\e'
   return 0
 }
-function ble-edit/prompt/update/backslash:h { # = ホスト名
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_h"
+function ble-edit/prompt/backslash:h { # = ホスト名
+  ble-edit/prompt/print "$_ble_edit_prompt__string_h"
   return 0
 }
-function ble-edit/prompt/update/backslash:H { # = ホスト名
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_H"
+function ble-edit/prompt/backslash:H { # = ホスト名
+  ble-edit/prompt/print "$_ble_edit_prompt__string_H"
   return 0
 }
-function ble-edit/prompt/update/backslash:j { #   ジョブの数
+function ble-edit/prompt/backslash:j { #   ジョブの数
   if [[ ! $cache_j ]]; then
     local joblist
     ble/util/joblist
@@ -1187,51 +1187,51 @@ function ble-edit/prompt/update/backslash:j { #   ジョブの数
   ble-edit/draw/put "$cache_j"
   return 0
 }
-function ble-edit/prompt/update/backslash:l { #   tty basename
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_l"
+function ble-edit/prompt/backslash:l { #   tty basename
+  ble-edit/prompt/print "$_ble_edit_prompt__string_l"
   return 0
 }
-function ble-edit/prompt/update/backslash:n {
+function ble-edit/prompt/backslash:n {
   ble-edit/draw/put $'\n'
   return 0
 }
-function ble-edit/prompt/update/backslash:r {
+function ble-edit/prompt/backslash:r {
   ble-edit/draw/put "$_ble_term_cr"
   return 0
 }
-function ble-edit/prompt/update/backslash:s { # 4 "bash"
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_s"
+function ble-edit/prompt/backslash:s { # 4 "bash"
+  ble-edit/prompt/print "$_ble_edit_prompt__string_s"
   return 0
 }
-function ble-edit/prompt/update/backslash:u { # = ユーザ名
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_u"
+function ble-edit/prompt/backslash:u { # = ユーザ名
+  ble-edit/prompt/print "$_ble_edit_prompt__string_u"
   return 0
 }
-function ble-edit/prompt/update/backslash:v { # = bash version %d.%d
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_v"
+function ble-edit/prompt/backslash:v { # = bash version %d.%d
+  ble-edit/prompt/print "$_ble_edit_prompt__string_v"
   return 0
 }
-function ble-edit/prompt/update/backslash:V { # = bash version %d.%d.%d
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_V"
+function ble-edit/prompt/backslash:V { # = bash version %d.%d.%d
+  ble-edit/prompt/print "$_ble_edit_prompt__string_V"
   return 0
 }
-function ble-edit/prompt/update/backslash:w { # PWD
-  ble-edit/prompt/update/update-cache_wd
-  ble-edit/prompt/update/append "$cache_wd"
+function ble-edit/prompt/backslash:w { # PWD
+  ble-edit/prompt/update/.update-working-directory
+  ble-edit/prompt/print "$cache_wd"
   return 0
 }
-function ble-edit/prompt/update/backslash:W { # PWD短縮
+function ble-edit/prompt/backslash:W { # PWD短縮
   if [[ $PWD == / ]]; then
-    ble-edit/prompt/update/append /
+    ble-edit/prompt/print /
   else
-    ble-edit/prompt/update/update-cache_wd
-    ble-edit/prompt/update/append "${cache_wd##*/}"
+    ble-edit/prompt/update/.update-working-directory
+    ble-edit/prompt/print "${cache_wd##*/}"
   fi
   return 0
 }
-## 関数 ble-edit/prompt/update/update-cache_wd
+## 関数 ble-edit/prompt/update/.update-working-directory
 ##   @var[in,out] cache_wd
-function ble-edit/prompt/update/update-cache_wd {
+function ble-edit/prompt/update/.update-working-directory {
   [[ $cache_wd ]] && return
 
   if [[ $PWD == / ]]; then
@@ -1264,7 +1264,7 @@ function ble-edit/prompt/update/update-cache_wd {
   cache_wd=$head$body
 }
 
-function ble-edit/prompt/update/eval-prompt_command {
+function ble-edit/prompt/update/.eval-prompt_command {
   # return 等と記述されていた時対策として関数内評価。
   eval "$PROMPT_COMMAND"
 }
@@ -1287,13 +1287,13 @@ function ble-edit/prompt/update/eval-prompt_command {
 function ble-edit/prompt/update {
   local version=$_ble_edit_LINENO
   if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
-    _ble_edit_prompt.load
+    ble-edit/prompt/.load
     return
   fi
 
   if [[ $PROMPT_COMMAND ]]; then
     local PS1=$_ble_edit_PS1
-    ble-edit/prompt/update/eval-prompt_command
+    ble-edit/prompt/update/.eval-prompt_command
     _ble_edit_PS1=$PS1
   fi
   local ps1=$_ble_edit_PS1
@@ -1307,9 +1307,9 @@ function ble-edit/prompt/update {
   while ((i<iN)); do
     local tail=${ps1:i}
     if [[ $tail == '\'?* ]]; then
-      ble-edit/prompt/update/process-backslash
+      ble-edit/prompt/update/.process-backslash
     elif [[ $tail =~ $rex_letters ]]; then
-      ble-edit/prompt/update/process-text "$BASH_REMATCH"
+      ble-edit/prompt/update/.process-text "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
     else
       # ? ここには本来来ないはず。
@@ -1325,7 +1325,7 @@ function ble-edit/prompt/update {
   if [[ $ps1esc == "${_ble_edit_prompt[7]}" ]]; then
     # 前回と同じ ps1esc の場合は計測処理は省略
     _ble_edit_prompt[0]=$version
-    _ble_edit_prompt.load
+    ble-edit/prompt/.load
     return
   fi
 
@@ -1440,7 +1440,7 @@ function ble/textmap#update {
   # local cols=80 xenl=1
 
   local it=${bleopt_tab_width:-$_ble_term_it}
-  _ble_util_string_prototype.reserve "$it"
+  ble/string#reserve-prototype "$it"
 
   if ((cols!=_ble_textmap_cols)); then
     # 表示幅が変化したときは全部再計算
@@ -1478,17 +1478,17 @@ function ble/textmap#update {
 #%end
 
   # shift cached data
-  _ble_util_array_prototype.reserve "$iN"
+  ble/array#reserve-prototype "$iN"
   local -a old_pos old_ichg
   old_pos=("${_ble_textmap_pos[@]:dend0:iN-dend+1}")
   old_ichg=("${_ble_textmap_ichg[@]}")
   _ble_textmap_pos=(
     "${_ble_textmap_pos[@]::dbeg+1}"
-    "${_ble_util_array_prototype[@]::dend-dbeg}"
+    "${_ble_array_prototype[@]::dend-dbeg}"
     "${_ble_textmap_pos[@]:dend0+1:iN-dend}")
   _ble_textmap_glyph=(
     "${_ble_textmap_glyph[@]::dbeg}"
-    "${_ble_util_array_prototype[@]::dend-dbeg}"
+    "${_ble_array_prototype[@]::dend-dbeg}"
     "${_ble_textmap_glyph[@]:dend0:iN-dend}")
   _ble_textmap_ichg=()
 
@@ -1527,7 +1527,7 @@ function ble/textmap#update {
               x2>=cols&&(x2=cols-1),
               w=x2-x,
               w!=it&&(changed=1)))
-            cs=${_ble_util_string_prototype::w}
+            cs=${_ble_string_prototype::w}
           fi
         elif ((code==10)); then
           ((y++,x=0))
@@ -1551,7 +1551,7 @@ function ble/textmap#update {
       if ((w>0)); then
         if ((x<cols&&cols<x+w)); then
           ((xenl)) && cs=$_ble_term_nl$cs
-          cs=${_ble_util_string_prototype::cols-x}$cs
+          cs=${_ble_string_prototype::cols-x}$cs
           ((x=cols,changed=1,wrapping=1))
         fi
 
@@ -1806,8 +1806,8 @@ function ble-edit/info/.put-atomic {
       ((y++,x=0))
       return
     fi
-    _ble_util_string_prototype.reserve $((cols-x))
-    out=$out${_ble_util_string_prototype::cols-x}
+    ble/string#reserve-prototype $((cols-x))
+    out=$out${_ble_string_prototype::cols-x}
     ((x=cols))
   fi
 
@@ -2044,13 +2044,13 @@ _ble_edit_kill_type=
 
 # _ble_edit_str は以下の関数を通して変更する。
 # 変更範囲を追跡する為。
-function _ble_edit_str.replace {
+function ble-edit/content/replace {
   local -i beg=$1 end=$2
   local ins=$3 reason=${4:-edit}
 
   # cf. Note#1
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
-  _ble_edit_str/update-dirty-range "$beg" $((beg+${#ins})) "$end" "$reason"
+  ble-edit/content/.update-dirty-range "$beg" $((beg+${#ins})) "$end" "$reason"
 #%if !release
   # Note: 何処かのバグで _ble_edit_ind に変な値が入ってエラーになるので、
   #   ここで誤り訂正を行う。想定として、この関数を呼出した時の _ble_edit_ind の値は、
@@ -2068,11 +2068,11 @@ function _ble_edit_str.replace {
   fi
 #%end
 }
-function _ble_edit_str.reset {
+function ble-edit/content/reset {
   local str=$1 reason=${2:-edit}
   local beg=0 end=${#str} end0=${#_ble_edit_str}
   _ble_edit_str=$str
-  _ble_edit_str/update-dirty-range "$beg" "$end" "$end0" "$reason"
+  ble-edit/content/.update-dirty-range "$beg" "$end" "$end0" "$reason"
 #%if !release
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str"
@@ -2081,7 +2081,7 @@ function _ble_edit_str.reset {
   fi
 #%end
 }
-function _ble_edit_str.reset-and-check-dirty {
+function ble-edit/content/reset-and-check-dirty {
   local str=$1 reason=${2:-edit}
   [[ $_ble_edit_str == "$str" ]] && return
 
@@ -2092,7 +2092,7 @@ function _ble_edit_str.reset-and-check-dirty {
   local dmax0=$((${#_ble_edit_str}-${#suff})) dmax=$((${#str}-${#suff}))
 
   _ble_edit_str=$str
-  _ble_edit_str/update-dirty-range "$dmin" "$dmax" "$dmax0" "$reason"
+  ble-edit/content/.update-dirty-range "$dmin" "$dmax" "$dmax0" "$reason"
 }
 
 _ble_edit_dirty_draw_beg=-1
@@ -2104,12 +2104,12 @@ _ble_edit_dirty_syntax_end=0
 _ble_edit_dirty_syntax_end0=1
 
 _ble_edit_dirty_observer=()
-## 関数 _ble_edit_str/update-dirty-range beg end end0 [reason]
+## 関数 ble-edit/content/.update-dirty-range beg end end0 [reason]
 ##  @param[in] beg end end0
 ##    変更範囲を指定します。
 ##  @param[in] reason
 ##    変更の理由を表す文字列を指定します。
-function _ble_edit_str/update-dirty-range {
+function ble-edit/content/.update-dirty-range {
   ble/dirty-range#update --prefix=_ble_edit_dirty_draw_ "${@:1:3}"
   ble/dirty-range#update --prefix=_ble_edit_dirty_syntax_ "${@:1:3}"
   ble/textmap#update-dirty-range "${@:1:3}"
@@ -2122,7 +2122,7 @@ function _ble_edit_str/update-dirty-range {
   #   _ble_edit_dirty_draw_end0==_ble_edit_dirty_syntax_end0))'
 }
 
-function _ble_edit_str.update-syntax {
+function ble-edit/content/update-syntax {
   if ble/is-function ble-syntax/parse; then
     local beg end end0
     ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
@@ -2957,7 +2957,7 @@ function ble/widget/kill-forward-text {
 
   _ble_edit_kill_ring=${_ble_edit_str:_ble_edit_ind}
   _ble_edit_kill_type=
-  _ble_edit_str.replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
+  ble-edit/content/replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
 function ble/widget/kill-backward-text {
@@ -2965,7 +2965,7 @@ function ble/widget/kill-backward-text {
   ((_ble_edit_ind==0)) && return
   _ble_edit_kill_ring=${_ble_edit_str::_ble_edit_ind}
   _ble_edit_kill_type=
-  _ble_edit_str.replace 0 _ble_edit_ind ''
+  ble-edit/content/replace 0 _ble_edit_ind ''
   ((_ble_edit_mark=_ble_edit_mark<=_ble_edit_ind?0:_ble_edit_mark-_ble_edit_ind))
   _ble_edit_ind=0
 }
@@ -3018,7 +3018,7 @@ function ble/widget/.delete-range {
 
   # delete
   if ((len)); then
-    _ble_edit_str.replace p0 p1 ''
+    ble-edit/content/replace p0 p1 ''
     ((
       _ble_edit_ind>p1? (_ble_edit_ind-=len):
       _ble_edit_ind>p0&&(_ble_edit_ind=p0),
@@ -3039,7 +3039,7 @@ function ble/widget/.kill-range {
 
   # delete
   if ((len)); then
-    _ble_edit_str.replace p0 p1 ''
+    ble-edit/content/replace p0 p1 ''
     ((
       _ble_edit_ind>p1? (_ble_edit_ind-=len):
       _ble_edit_ind>p0&&(_ble_edit_ind=p0),
@@ -3064,7 +3064,7 @@ function ble/widget/.replace-range {
   ble/widget/.process-range-argument "${@:1:2}" || (($4)) || return 1
   local str=$3 strlen=${#3}
 
-  _ble_edit_str.replace p0 p1 "$str"
+  ble-edit/content/replace p0 p1 "$str"
   local delta
   ((delta=strlen-len)) &&
     ((_ble_edit_ind>p1?(_ble_edit_ind+=delta):
@@ -3175,7 +3175,7 @@ function ble/widget/.insert-string {
   [[ $ins ]] || return
 
   local dx=${#ins}
-  _ble_edit_str.replace _ble_edit_ind _ble_edit_ind "$ins"
+  ble-edit/content/replace _ble_edit_ind _ble_edit_ind "$ins"
   (('
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
     _ble_edit_ind+=dx
@@ -3244,7 +3244,7 @@ function ble/widget/self-insert {
         ((removed_width+=w1))
       done
 
-      ((removed_width>w)) && ins=$ins${_ble_util_string_prototype::removed_width-w}
+      ((removed_width>w)) && ins=$ins${_ble_string_prototype::removed_width-w}
     fi
 
     # これは vi.sh の r gr で設定する変数
@@ -3256,7 +3256,7 @@ function ble/widget/self-insert {
     fi
   fi
 
-  _ble_edit_str.replace ibeg iend "$ins"
+  ble-edit/content/replace ibeg iend "$ins"
   ((_ble_edit_ind+=${#ins},
     _ble_edit_mark>ibeg&&(
       _ble_edit_mark<iend?(
@@ -3304,7 +3304,7 @@ function ble/widget/transpose-chars {
 
   local a=${_ble_edit_str:p:q-p}
   local b=${_ble_edit_str:q:r-q}
-  _ble_edit_str.replace "$p" "$r" "$b$a"
+  ble-edit/content/replace "$p" "$r" "$b$a"
   ((_ble_edit_ind+=arg))
   return 0
 }
@@ -3381,7 +3381,7 @@ function ble/widget/.delete-backward-char {
     fi
   fi
 
-  _ble_edit_str.replace $((_ble_edit_ind-a)) "$_ble_edit_ind" "$ins"
+  ble-edit/content/replace $((_ble_edit_ind-a)) "$_ble_edit_ind" "$ins"
   ((_ble_edit_ind-=a,
     _ble_edit_ind+a<_ble_edit_mark?(_ble_edit_mark-=a):
     _ble_edit_ind<_ble_edit_mark&&(_ble_edit_mark=_ble_edit_ind)))
@@ -3395,7 +3395,7 @@ function ble/widget/.delete-char {
     if ((${#_ble_edit_str}<_ble_edit_ind+a)); then
       return 1
     else
-      _ble_edit_str.replace "$_ble_edit_ind" $((_ble_edit_ind+a)) ''
+      ble-edit/content/replace "$_ble_edit_ind" $((_ble_edit_ind+a)) ''
     fi
   elif ((a<0)); then
     # delete-backward-char
@@ -3406,7 +3406,7 @@ function ble/widget/.delete-char {
     if ((${#_ble_edit_str}==0)); then
       return 1
     elif ((_ble_edit_ind<${#_ble_edit_str})); then
-      _ble_edit_str.replace "$_ble_edit_ind" $((_ble_edit_ind+1)) ''
+      ble-edit/content/replace "$_ble_edit_ind" $((_ble_edit_ind+1)) ''
     else
       _ble_edit_ind=${#_ble_edit_str}
       ble/widget/.delete-backward-char 1
@@ -4223,7 +4223,7 @@ function ble-edit/exec/.reset-builtins/1 {
   local POSIXLY_CORRECT=y
   builtin unset -f builtin unset enable
   builtin unset -f return break continue declare typeset local eval echo
-  ble/unset-POSIXLY_CORRECT
+  ble/base/unset-POSIXLY_CORRECT
 }
 function ble-edit/exec/.reset-builtins {
   # Workaround (bash-3.0 - 4.3):
@@ -4363,8 +4363,8 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
 
 function ble-edit/exec:exec/.eval-prologue {
   ble-edit/exec/restore-BASH_REMATCH
-  ble/restore-bash-options
-  ble/restore-POSIXLY_CORRECT
+  ble/base/restore-bash-options
+  ble/base/restore-POSIXLY_CORRECT
 
   set -H
 
@@ -4374,7 +4374,7 @@ function ble-edit/exec:exec/.eval-prologue {
 }
 function ble-edit/exec:exec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
-  ble/adjust-bash-options
+  ble/base/adjust-bash-options
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:exec/.eval {
@@ -4386,8 +4386,8 @@ function ble-edit/exec:exec/.eval {
 function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
 
-  ble/adjust-bash-options
-  ble/adjust-POSIXLY_CORRECT
+  ble/base/adjust-bash-options
+  ble/base/adjust-POSIXLY_CORRECT
   _ble_edit_PS1=$PS1
   _ble_edit_IFS=$IFS
   ble-edit/exec/save-BASH_REMATCH
@@ -4615,13 +4615,13 @@ function ble-edit/exec:gexec/.eval-prologue {
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec/restore-BASH_REMATCH
-  ble/restore-bash-options
-  ble/restore-POSIXLY_CORRECT
+  ble/base/restore-bash-options
+  ble/base/restore-POSIXLY_CORRECT
   ble-edit/exec/.setexit # set $?
 }
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
-  ble/adjust-bash-options
+  ble/base/adjust-bash-options
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.eval-epilogue {
@@ -4637,8 +4637,8 @@ function ble-edit/exec:gexec/.eval-epilogue {
   local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
 
-  ble/adjust-bash-options
-  ble/adjust-POSIXLY_CORRECT
+  ble/base/adjust-bash-options
+  ble/base/adjust-POSIXLY_CORRECT
   _ble_edit_PS1=$PS1
   PS1=
   ble-edit/exec/save-BASH_REMATCH
@@ -4728,7 +4728,7 @@ function ble/widget/.newline/clear-content {
     ble/term/cursor-state/reveal
 
   # 行内容の初期化
-  _ble_edit_str.reset '' newline
+  ble-edit/content/reset '' newline
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
@@ -4806,7 +4806,7 @@ function ble/widget/accept-line {
   if [[ $hist_expanded != "$BASH_COMMAND" ]]; then
     if shopt -q histverify &>/dev/null; then
       _ble_edit_line_disabled=1 ble/widget/.insert-newline
-      _ble_edit_str.reset-and-check-dirty "$hist_expanded"
+      ble-edit/content/reset-and-check-dirty "$hist_expanded"
       _ble_edit_ind=${#hist_expanded}
       _ble_edit_mark=0
       _ble_edit_mark_active=
@@ -4853,7 +4853,7 @@ function ble/widget/accept-and-next {
     fi
 
     [[ $_ble_edit_str != "$content" ]] &&
-      _ble_edit_str.reset "$content"
+      ble-edit/content/reset "$content"
   fi
 }
 function ble/widget/newline {
@@ -4961,7 +4961,7 @@ function ble-edit/undo/.load {
     ble/string#common-suffix "${_ble_edit_str:beg}" "${str:beg}"
     local end0=$((${#_ble_edit_str}-${#ret}))
     local end=$((${#str}-${#ret}))
-    _ble_edit_str.replace "$beg" "$end0" "${str:beg:end-beg}"
+    ble-edit/content/replace "$beg" "$end0" "${str:beg:end-beg}"
 
     if [[ $bleopt_undo_point == end ]]; then
       ind=$end
@@ -4969,7 +4969,7 @@ function ble-edit/undo/.load {
       ind=$beg
     fi
   else
-    _ble_edit_str.reset-and-check-dirty "$str"
+    ble-edit/content/reset-and-check-dirty "$str"
   fi
 
   _ble_edit_ind=$ind
@@ -5597,7 +5597,7 @@ function ble-edit/history/goto {
     # restore
     ble-edit/history/onleave.fire
     PREFIX_history_ind=$index1
-    _ble_edit_str.reset "${PREFIX_history_edit[index1]}" history'
+    ble-edit/content/reset "${PREFIX_history_edit[index1]}" history'
   eval "${code//PREFIX/${_ble_edit_history_prefix:-_ble_edit}}"
 
   # point
@@ -5654,7 +5654,7 @@ function ble/widget/history-expand-line {
   ble-edit/hist_expanded.update "$_ble_edit_str" || return
   [[ $_ble_edit_str == "$hist_expanded" ]] && return
 
-  _ble_edit_str.reset-and-check-dirty "$hist_expanded"
+  ble-edit/content/reset-and-check-dirty "$hist_expanded"
   _ble_edit_ind=${#hist_expanded}
   _ble_edit_mark=0
   _ble_edit_mark_active=
@@ -5667,7 +5667,7 @@ function ble/widget/history-expand-backward-line {
 
   local ret
   ble/string#common-prefix "$prevline" "$hist_expanded"; local dmin=${#ret}
-  _ble_edit_str.replace "$dmin" "$_ble_edit_ind" "${hist_expanded:dmin}"
+  ble-edit/content/replace "$dmin" "$_ble_edit_ind" "${hist_expanded:dmin}"
   _ble_edit_ind=${#hist_expanded}
   _ble_edit_mark=0
   _ble_edit_mark_active=
@@ -6597,7 +6597,7 @@ function ble-edit/read/.setup-textarea {
   _ble_edit_dirty_observer=()
   ble/widget/.newline/clear-content
   _ble_edit_arg=
-  _ble_edit_str.reset "$opt_default" newline
+  ble-edit/content/reset "$opt_default" newline
   _ble_edit_ind=${#opt_default}
 
   # edit/undo
@@ -7274,7 +7274,7 @@ function ble/widget/.EDIT_COMMAND {
   ble-edit/content/clear-arg
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
-    _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
+    ble-edit/content/reset-and-check-dirty "$READLINE_LINE"
   ((_ble_edit_ind=READLINE_POINT))
 }
 

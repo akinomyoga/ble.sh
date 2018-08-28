@@ -6845,7 +6845,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # edit
   #   Note: ble/widget/.newline/clear-content の中で
-  #   _ble_edit_str.reset が呼び出され、更に _ble_edit_dirty_observer が呼び出さる。
+  #   ble-edit/content/reset が呼び出され、更に _ble_edit_dirty_observer が呼び出さる。
   #   ble/keymap:vi/mark/shift-by-dirty-range が呼び出されないように、
   #   _ble_edit_dirty_observer=() より後である必要がある。
   _ble_edit_dirty_observer=()

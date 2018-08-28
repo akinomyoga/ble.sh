@@ -102,11 +102,11 @@ function ble/debug/.check-leak-variable {
 # array and strings
 #
 
-_ble_util_array_prototype=()
-function _ble_util_array_prototype.reserve {
+_ble_array_prototype=()
+function ble/array#reserve-prototype {
   local -i n=$1 i
-  for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
-    _ble_util_array_prototype[i]=
+  for ((i=${#_ble_array_prototype[@]};i<n;i++)); do
+    _ble_array_prototype[i]=
   done
 }
 
@@ -150,11 +150,11 @@ function ble/array#reverse {
   for e$1; do $1[--i$1]=\"\$e$1\"; done"
 }
 
-_ble_util_string_prototype='        '
-function _ble_util_string_prototype.reserve {
+_ble_string_prototype='        '
+function ble/string#reserve-prototype {
   local -i n=$1 c
-  for ((c=${#_ble_util_string_prototype};c<n;c*=2)); do
-    _ble_util_string_prototype=$_ble_util_string_prototype$_ble_util_string_prototype
+  for ((c=${#_ble_string_prototype};c<n;c*=2)); do
+    _ble_string_prototype=$_ble_string_prototype$_ble_string_prototype
   done
 }
 
@@ -163,8 +163,8 @@ function _ble_util_string_prototype.reserve {
 ##   @param[in] count
 ##   @var[out] ret
 function ble/string#repeat {
-  _ble_util_string_prototype.reserve "$2"
-  ret=${_ble_util_string_prototype::$2}
+  ble/string#reserve-prototype "$2"
+  ret=${_ble_string_prototype::$2}
   ret="${ret// /$1}"
 }
 
@@ -1206,7 +1206,7 @@ function ble-autoload {
 function ble-import {
   local file=$1
   if [[ $file == /* ]]; then
-    local guard=ble-import/guard/$1
+    local guard=ble-import/guard:$1
     ble/is-function "$guard" && return 0
     if [[ -f $file ]]; then
       source "$file"
@@ -1214,7 +1214,7 @@ function ble-import {
       return 1
     fi && eval "function $guard { :; }"
   else
-    local guard=ble-import/guard/ble/$1
+    local guard=ble-import/guard:ble/$1
     ble/is-function "$guard" && return 0
     if [[ -f $_ble_base/$file ]]; then
       source "$_ble_base/$file"
@@ -1704,7 +1704,7 @@ function ble-term/.initialize {
     source "$_ble_base_cache/$TERM.term"
   fi
 
-  _ble_util_string_prototype.reserve "$_ble_term_it"
+  ble/string#reserve-prototype "$_ble_term_it"
 }
 
 ble-term/.initialize

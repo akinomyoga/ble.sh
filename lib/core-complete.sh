@@ -1085,7 +1085,7 @@ function ble-complete/candidates/.filter-by-regex {
 function ble-complete/candidates/get-contexts {
   local comp_text=$1 comp_index=$2
   ble-syntax/import
-  _ble_edit_str.update-syntax
+  ble-edit/content/update-syntax
   ble-syntax/completion-context/generate "$comp_text" "$comp_index"
   ((${#contexts[@]}))
 }
@@ -1368,8 +1368,8 @@ function ble-complete/menu/style:align/construct {
       ((icell=x==0?0:(x+wcell)/wcell))
       if ((icell<ncell)); then
         # 次の升目
-        _ble_util_string_prototype.reserve $((pad=icell*wcell-x))
-        esc=$esc${_ble_util_string_prototype::pad}
+        ble/string#reserve-prototype $((pad=icell*wcell-x))
+        esc=$esc${_ble_string_prototype::pad}
         ((x=icell*wcell))
       else
         # 次の行
@@ -1612,6 +1612,10 @@ function ble/widget/complete-insert {
   ble-complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
 }
 
+function ble/widget/menu-complete {
+  ble/widget/complete enter_menu
+}
+
 #------------------------------------------------------------------------------
 #
 # menu-complete
@@ -1671,7 +1675,7 @@ function ble-complete/menu-complete/select {
   ble-form/goto.draw "$x0" "$y0"
   ble-edit/draw/bflush
 
-  _ble_edit_str.replace "$_ble_edit_mark" "$_ble_edit_ind" "$value"
+  ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" "$value"
   ((_ble_edit_ind=_ble_edit_mark+${#value}))
 }
 
@@ -1873,7 +1877,7 @@ function ble-complete/auto-complete.impl {
 
     _ble_complete_ac_type=c
     local ins=${insert:${#COMPS}}
-    _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
     ((_ble_edit_mark=_ble_edit_ind+${#ins}))
   else
     if [[ $comp_type == *a* ]]; then
@@ -1881,7 +1885,7 @@ function ble-complete/auto-complete.impl {
     else
       _ble_complete_ac_type=r
     fi
-    _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" " [$insert] "
+    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" " [$insert] "
     ((_ble_edit_mark=_ble_edit_ind+4+${#insert}))
   fi
 
@@ -1931,14 +1935,14 @@ function ble/widget/auto-complete-enter {
 }
 function ble/widget/auto_complete/cancel {
   ble-decode/keymap/pop
-  _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_mark" ''
+  ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_mark" ''
   _ble_edit_mark_active=
   _ble_complete_ac_insert=
   _ble_complete_ac_suffix=
 }
 function ble/widget/auto_complete/accept {
   ble-decode/keymap/pop
-  _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_mark" ''
+  ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_mark" ''
 
   local comp_text=$_ble_edit_str
   local insert_beg=$_ble_complete_ac_comp1
@@ -1986,7 +1990,7 @@ function ble/widget/auto_complete/self-insert {
         #   挿入しても展開後に一致する時、そのまま挿入。
         #   元から展開後に一致していない場合もあるが、その場合は一旦候補を消してやり直し。
         if [[ $_ble_complete_ac_cand == "$compv_new"* ]]; then
-          _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+          ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
           ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
           [[ $_ble_complete_ac_cand == "$compv_new" ]] &&
             ble/widget/auto_complete/cancel
@@ -1998,7 +2002,7 @@ function ble/widget/auto_complete/self-insert {
         ble-complete/util/construct-ambiguous-regex "$compv_new"
         local rex_ambiguous_compv=^$ret
         if [[ $_ble_complete_ac_cand =~ $rex_ambiguous_compv ]]; then
-          _ble_edit_str.replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+          ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
           ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
           return
         fi

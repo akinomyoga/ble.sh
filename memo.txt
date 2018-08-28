@@ -732,6 +732,8 @@ tech
 
 2018-08-28
 
+  * menu-complete: vi マクロ・繰り返しにおける対応
+
   * complete: 絞り込み
 
     初め fish の様に入力欄を候補一覧の上に表示する事を考えたが管理が面倒だ。
@@ -756,10 +758,6 @@ tech
     より良いサポートをする事ができるはずなので。
     例えば --prefix=... などに於いて。
     実は単にキャンセルすれば ble の既定の filedir 及び =... :... が動く。
-
-2018-08-27
-
-  * edit: refactor function names "_ble_edit_str.*" -> "ble-edit/content/*"
 
 2018-08-26
 
@@ -3208,6 +3206,27 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-28
+
+  * edit: refactor function names "_ble_edit_str.*" -> "ble-edit/content/*" [#D0750]
+
+    * 他にも全般に関数名を見直す。
+      - _ble_* で始まる関数名
+      - ble-edit/prompt/update 周りの関数名で非公開の物に . をつける
+      - ble-edit/prompt/update/backslash:* -> ble-edit/prompt/backslash:*
+      - ble-edit/prompt/update/append -> ble-edit/prompt/print
+      - _ble_util_array_prototype -> _ble_array_prototype
+      - _ble_util_array_prototype.reserve -> ble/array#reserve-prototype
+      - _ble_util_string_prototype -> _ble_string_prototype
+      - _ble_util_string_prototype.reserve -> ble/string#reserve-prototype
+
+    * declare -F で眺めて気になる物を直す。
+
+      refact -F ble/adjust-bash-options        ble/base/adjust-bash-options
+      refact -F ble/restore-bash-options       ble/base/restore-bash-options
+      refact -F ble/workaround-POSIXLY_CORRECT ble/base/workaround-POSIXLY_CORRECT
+      refact -F ble/unset-POSIXLY_CORRECT      ble/base/unset-POSIXLY_CORRECT
+      refact -F ble/adjust-POSIXLY_CORRECT     ble/base/adjust-POSIXLY_CORRECT
+      refact -F ble/restore-POSIXLY_CORRECT    ble/base/restore-POSIXLY_CORRECT
 
   * 2018-07-30 complete: menu-completion [#D0749]
 

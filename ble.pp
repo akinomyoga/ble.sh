@@ -73,46 +73,46 @@ fi
 _ble_bash_setu=
 _ble_bash_setv=
 _ble_bash_options_adjusted=
-function ble/adjust-bash-options {
+function ble/base/adjust-bash-options {
   [[ $_ble_bash_options_adjusted ]] && return 1
   _ble_bash_options_adjusted=1
   _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
   _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
 }
-function ble/restore-bash-options {
+function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1
   _ble_bash_options_adjusted=
   [[ $_ble_bash_setv && ! -o verbose ]] && set -v
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
 }
-ble/adjust-bash-options
+ble/base/adjust-bash-options
 
-function ble/workaround-POSIXLY_CORRECT {
+function ble/base/workaround-POSIXLY_CORRECT {
   # This function will be overwritten by ble-decode
   true
 }
-function ble/unset-POSIXLY_CORRECT {
+function ble/base/unset-POSIXLY_CORRECT {
   if [[ ${POSIXLY_CORRECT+set} ]]; then
     unset POSIXLY_CORRECT
-    ble/workaround-POSIXLY_CORRECT 
+    ble/base/workaround-POSIXLY_CORRECT 
   fi
 }
-function ble/adjust-POSIXLY_CORRECT {
+function ble/base/adjust-POSIXLY_CORRECT {
   _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
   _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
   unset POSIXLY_CORRECT
 
   # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
-  ble/workaround-POSIXLY_CORRECT
+  ble/base/workaround-POSIXLY_CORRECT
 }
-function ble/restore-POSIXLY_CORRECT {
+function ble/base/restore-POSIXLY_CORRECT {
   if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
     POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
   else
-    ble/unset-POSIXLY_CORRECT
+    ble/base/unset-POSIXLY_CORRECT
   fi
 }
-ble/adjust-POSIXLY_CORRECT
+ble/base/adjust-POSIXLY_CORRECT
 
 bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then

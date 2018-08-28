@@ -1567,7 +1567,7 @@ function ble-decode-bind/uvw {
 #   ユーザが POSIXLY_CORRECT を触った時や自分で触った時に、
 #   改めて束縛し直す必要がある。
 #
-function ble/workaround-POSIXLY_CORRECT {
+function ble/base/workaround-POSIXLY_CORRECT {
   [[ $_ble_decode_bind_state == none ]] && return
   builtin bind -x '"\C-i":ble-decode/.hook 9; builtin eval "$_ble_decode_bind_hook"'
 }

@@ -578,9 +578,9 @@ function ble-syntax/print-status/.dump-arrays {
   done
 
   resultA='_ble_syntax_attr/tree/nest/stat?'$'\n'
-  _ble_util_string_prototype.reserve max_tree_width
+  ble/string#reserve-prototype "$max_tree_width"
   for ((i=0;i<=iN;i++)); do
-    local t=${tree[i]}${_ble_util_string_prototype::max_tree_width}
+    local t=${tree[i]}${_ble_string_prototype::max_tree_width}
     resultA="$resultA${char[i]} ${t::max_tree_width}${line[i]}"$'\n'
   done
 }
@@ -3798,11 +3798,11 @@ function ble-syntax/parse {
   _tail_syntax_tree=("${_ble_syntax_tree[@]:j2:iN-i2}")
   _tail_syntax_nest=("${_ble_syntax_nest[@]:j2:iN-i2}")
   _tail_syntax_attr=("${_ble_syntax_attr[@]:j2:iN-i2}")
-  _ble_util_array_prototype.reserve $iN
-  _ble_syntax_stat=("${_ble_syntax_stat[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 再開用データ
-  _ble_syntax_tree=("${_ble_syntax_tree[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 単語
-  _ble_syntax_nest=("${_ble_syntax_nest[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 入れ子の親
-  _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_util_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
+  ble/array#reserve-prototype $iN
+  _ble_syntax_stat=("${_ble_syntax_stat[@]::i1}" "${_ble_array_prototype[@]:i1:iN-i1}") # 再開用データ
+  _ble_syntax_tree=("${_ble_syntax_tree[@]::i1}" "${_ble_array_prototype[@]:i1:iN-i1}") # 単語
+  _ble_syntax_nest=("${_ble_syntax_nest[@]::i1}" "${_ble_array_prototype[@]:i1:iN-i1}") # 入れ子の親
+  _ble_syntax_attr=("${_ble_syntax_attr[@]::i1}" "${_ble_array_prototype[@]:i1:iN-i1}") # 文脈・色とか
 
   ble-syntax:"$_ble_syntax_lang"/initialize-vars
 
@@ -3871,7 +3871,7 @@ function ble-syntax/parse {
 
 #%if !release
   ((${#_ble_syntax_stat[@]}==iN+1)) ||
-    ble-stackdump "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_util_array_prototype[@]} should be >= $iN"
+    ble-stackdump "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_array_prototype[@]} should be >= $iN"
 #%end
 }
 
@@ -4431,7 +4431,7 @@ function ble-syntax/attr2g { ble-color/faces/initialize && ble-syntax/attr2g "$@
 
 # 遅延初期化子
 function ble-syntax/faces-onload-hook {
-  function _ble_syntax_attr2iface.define {
+  function ble-syntax/attr2iface/.define {
     ((_ble_syntax_attr2iface[$1]=_ble_faces__$2))
   }
 
@@ -4479,98 +4479,98 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface filename_block      fg=yellow,bg=black,underline
   ble-color-defface filename_warning    fg=red,underline
 
-  _ble_syntax_attr2iface.define CTX_ARGX     syntax_default
-  _ble_syntax_attr2iface.define CTX_ARGX0    syntax_default
-  _ble_syntax_attr2iface.define CTX_ARGI     syntax_default
-  _ble_syntax_attr2iface.define CTX_ARGQ     syntax_default
-  _ble_syntax_attr2iface.define CTX_ARGVX    syntax_default
-  _ble_syntax_attr2iface.define CTX_ARGVI    syntax_default
-  _ble_syntax_attr2iface.define CTX_ARGVR    syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDX     syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDX1    syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDXT    syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDXC    syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDXE    syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDXD    syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDXD0   syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDXV    syntax_default
-  _ble_syntax_attr2iface.define CTX_CMDI     syntax_command
-  _ble_syntax_attr2iface.define CTX_VRHS     syntax_default
-  _ble_syntax_attr2iface.define CTX_QUOT     syntax_quoted
-  _ble_syntax_attr2iface.define CTX_EXPR     syntax_expr
-  _ble_syntax_attr2iface.define ATTR_ERR     syntax_error
-  _ble_syntax_attr2iface.define ATTR_VAR     syntax_varname
-  _ble_syntax_attr2iface.define ATTR_QDEL    syntax_quotation
-  _ble_syntax_attr2iface.define ATTR_DEF     syntax_default
-  _ble_syntax_attr2iface.define ATTR_DEL     syntax_delimiter
-  _ble_syntax_attr2iface.define CTX_PARAM    syntax_param_expansion
-  _ble_syntax_attr2iface.define CTX_PWORD    syntax_default
-  _ble_syntax_attr2iface.define ATTR_HISTX   syntax_history_expansion
-  _ble_syntax_attr2iface.define ATTR_FUNCDEF syntax_function_name
-  _ble_syntax_attr2iface.define CTX_VALX     syntax_default
-  _ble_syntax_attr2iface.define CTX_VALI     syntax_default
-  _ble_syntax_attr2iface.define CTX_VALR     syntax_default
-  _ble_syntax_attr2iface.define CTX_VALQ     syntax_default
-  _ble_syntax_attr2iface.define CTX_CONDX    syntax_default
-  _ble_syntax_attr2iface.define CTX_CONDI    syntax_default
-  _ble_syntax_attr2iface.define CTX_CONDQ    syntax_default
-  _ble_syntax_attr2iface.define ATTR_COMMENT syntax_comment
-  _ble_syntax_attr2iface.define CTX_CASE     syntax_default
-  _ble_syntax_attr2iface.define CTX_PATN     syntax_default
-  _ble_syntax_attr2iface.define ATTR_GLOB    syntax_glob
-  _ble_syntax_attr2iface.define CTX_BRAX     syntax_default
-  _ble_syntax_attr2iface.define ATTR_BRACE   syntax_brace
-  _ble_syntax_attr2iface.define CTX_BRACE1   syntax_default
-  _ble_syntax_attr2iface.define CTX_BRACE2   syntax_default
-  _ble_syntax_attr2iface.define ATTR_TILDE   syntax_tilde
+  ble-syntax/attr2iface/.define CTX_ARGX     syntax_default
+  ble-syntax/attr2iface/.define CTX_ARGX0    syntax_default
+  ble-syntax/attr2iface/.define CTX_ARGI     syntax_default
+  ble-syntax/attr2iface/.define CTX_ARGQ     syntax_default
+  ble-syntax/attr2iface/.define CTX_ARGVX    syntax_default
+  ble-syntax/attr2iface/.define CTX_ARGVI    syntax_default
+  ble-syntax/attr2iface/.define CTX_ARGVR    syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDX     syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDX1    syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDXT    syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDXC    syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDXE    syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDXD    syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDXD0   syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDXV    syntax_default
+  ble-syntax/attr2iface/.define CTX_CMDI     syntax_command
+  ble-syntax/attr2iface/.define CTX_VRHS     syntax_default
+  ble-syntax/attr2iface/.define CTX_QUOT     syntax_quoted
+  ble-syntax/attr2iface/.define CTX_EXPR     syntax_expr
+  ble-syntax/attr2iface/.define ATTR_ERR     syntax_error
+  ble-syntax/attr2iface/.define ATTR_VAR     syntax_varname
+  ble-syntax/attr2iface/.define ATTR_QDEL    syntax_quotation
+  ble-syntax/attr2iface/.define ATTR_DEF     syntax_default
+  ble-syntax/attr2iface/.define ATTR_DEL     syntax_delimiter
+  ble-syntax/attr2iface/.define CTX_PARAM    syntax_param_expansion
+  ble-syntax/attr2iface/.define CTX_PWORD    syntax_default
+  ble-syntax/attr2iface/.define ATTR_HISTX   syntax_history_expansion
+  ble-syntax/attr2iface/.define ATTR_FUNCDEF syntax_function_name
+  ble-syntax/attr2iface/.define CTX_VALX     syntax_default
+  ble-syntax/attr2iface/.define CTX_VALI     syntax_default
+  ble-syntax/attr2iface/.define CTX_VALR     syntax_default
+  ble-syntax/attr2iface/.define CTX_VALQ     syntax_default
+  ble-syntax/attr2iface/.define CTX_CONDX    syntax_default
+  ble-syntax/attr2iface/.define CTX_CONDI    syntax_default
+  ble-syntax/attr2iface/.define CTX_CONDQ    syntax_default
+  ble-syntax/attr2iface/.define ATTR_COMMENT syntax_comment
+  ble-syntax/attr2iface/.define CTX_CASE     syntax_default
+  ble-syntax/attr2iface/.define CTX_PATN     syntax_default
+  ble-syntax/attr2iface/.define ATTR_GLOB    syntax_glob
+  ble-syntax/attr2iface/.define CTX_BRAX     syntax_default
+  ble-syntax/attr2iface/.define ATTR_BRACE   syntax_brace
+  ble-syntax/attr2iface/.define CTX_BRACE1   syntax_default
+  ble-syntax/attr2iface/.define CTX_BRACE2   syntax_default
+  ble-syntax/attr2iface/.define ATTR_TILDE   syntax_tilde
 
   # for var in ... / case arg in / time -p --
-  _ble_syntax_attr2iface.define CTX_SARGX1   syntax_default
-  _ble_syntax_attr2iface.define CTX_FARGX1   syntax_default
-  _ble_syntax_attr2iface.define CTX_FARGX2   syntax_default
-  _ble_syntax_attr2iface.define CTX_FARGX3   syntax_default
-  _ble_syntax_attr2iface.define CTX_FARGI1   syntax_varname
-  _ble_syntax_attr2iface.define CTX_FARGI2   command_keyword
-  _ble_syntax_attr2iface.define CTX_FARGI3   syntax_default
-  _ble_syntax_attr2iface.define CTX_FARGQ3   syntax_default
+  ble-syntax/attr2iface/.define CTX_SARGX1   syntax_default
+  ble-syntax/attr2iface/.define CTX_FARGX1   syntax_default
+  ble-syntax/attr2iface/.define CTX_FARGX2   syntax_default
+  ble-syntax/attr2iface/.define CTX_FARGX3   syntax_default
+  ble-syntax/attr2iface/.define CTX_FARGI1   syntax_varname
+  ble-syntax/attr2iface/.define CTX_FARGI2   command_keyword
+  ble-syntax/attr2iface/.define CTX_FARGI3   syntax_default
+  ble-syntax/attr2iface/.define CTX_FARGQ3   syntax_default
 
-  _ble_syntax_attr2iface.define CTX_CARGX1   syntax_default
-  _ble_syntax_attr2iface.define CTX_CARGX2   syntax_default
-  _ble_syntax_attr2iface.define CTX_CARGI1   syntax_default
-  _ble_syntax_attr2iface.define CTX_CARGQ1   syntax_default
-  _ble_syntax_attr2iface.define CTX_CARGI2   command_keyword
+  ble-syntax/attr2iface/.define CTX_CARGX1   syntax_default
+  ble-syntax/attr2iface/.define CTX_CARGX2   syntax_default
+  ble-syntax/attr2iface/.define CTX_CARGI1   syntax_default
+  ble-syntax/attr2iface/.define CTX_CARGQ1   syntax_default
+  ble-syntax/attr2iface/.define CTX_CARGI2   command_keyword
 
-  _ble_syntax_attr2iface.define CTX_TARGX1   syntax_default
-  _ble_syntax_attr2iface.define CTX_TARGX2   syntax_default
-  _ble_syntax_attr2iface.define CTX_TARGI1   syntax_default
-  _ble_syntax_attr2iface.define CTX_TARGI2   syntax_default
+  ble-syntax/attr2iface/.define CTX_TARGX1   syntax_default
+  ble-syntax/attr2iface/.define CTX_TARGX2   syntax_default
+  ble-syntax/attr2iface/.define CTX_TARGI1   syntax_default
+  ble-syntax/attr2iface/.define CTX_TARGI2   syntax_default
 
   # here documents
-  _ble_syntax_attr2iface.define CTX_RDRH    syntax_document_begin
-  _ble_syntax_attr2iface.define CTX_RDRI    syntax_document_begin
-  _ble_syntax_attr2iface.define CTX_HERE0   syntax_document
-  _ble_syntax_attr2iface.define CTX_HERE1   syntax_document
+  ble-syntax/attr2iface/.define CTX_RDRH    syntax_document_begin
+  ble-syntax/attr2iface/.define CTX_RDRI    syntax_document_begin
+  ble-syntax/attr2iface/.define CTX_HERE0   syntax_document
+  ble-syntax/attr2iface/.define CTX_HERE1   syntax_document
 
-  _ble_syntax_attr2iface.define ATTR_CMD_BOLD      command_builtin_dot
-  _ble_syntax_attr2iface.define ATTR_CMD_BUILTIN   command_builtin
-  _ble_syntax_attr2iface.define ATTR_CMD_ALIAS     command_alias
-  _ble_syntax_attr2iface.define ATTR_CMD_FUNCTION  command_function
-  _ble_syntax_attr2iface.define ATTR_CMD_FILE      command_file
-  _ble_syntax_attr2iface.define ATTR_CMD_JOBS      command_jobs
-  _ble_syntax_attr2iface.define ATTR_CMD_DIR       command_directory
-  _ble_syntax_attr2iface.define ATTR_KEYWORD       command_keyword
-  _ble_syntax_attr2iface.define ATTR_KEYWORD_BEGIN command_keyword
-  _ble_syntax_attr2iface.define ATTR_KEYWORD_END   command_keyword
-  _ble_syntax_attr2iface.define ATTR_KEYWORD_MID   command_keyword
-  _ble_syntax_attr2iface.define ATTR_FILE_DIR      filename_directory
-  _ble_syntax_attr2iface.define ATTR_FILE_LINK     filename_link
-  _ble_syntax_attr2iface.define ATTR_FILE_EXEC     filename_executable
-  _ble_syntax_attr2iface.define ATTR_FILE_FILE     filename_other
-  _ble_syntax_attr2iface.define ATTR_FILE_WARN     filename_warning
-  _ble_syntax_attr2iface.define ATTR_FILE_FIFO     filename_pipe
-  _ble_syntax_attr2iface.define ATTR_FILE_SOCK     filename_socket
-  _ble_syntax_attr2iface.define ATTR_FILE_BLK      filename_block
-  _ble_syntax_attr2iface.define ATTR_FILE_CHR      filename_character
+  ble-syntax/attr2iface/.define ATTR_CMD_BOLD      command_builtin_dot
+  ble-syntax/attr2iface/.define ATTR_CMD_BUILTIN   command_builtin
+  ble-syntax/attr2iface/.define ATTR_CMD_ALIAS     command_alias
+  ble-syntax/attr2iface/.define ATTR_CMD_FUNCTION  command_function
+  ble-syntax/attr2iface/.define ATTR_CMD_FILE      command_file
+  ble-syntax/attr2iface/.define ATTR_CMD_JOBS      command_jobs
+  ble-syntax/attr2iface/.define ATTR_CMD_DIR       command_directory
+  ble-syntax/attr2iface/.define ATTR_KEYWORD       command_keyword
+  ble-syntax/attr2iface/.define ATTR_KEYWORD_BEGIN command_keyword
+  ble-syntax/attr2iface/.define ATTR_KEYWORD_END   command_keyword
+  ble-syntax/attr2iface/.define ATTR_KEYWORD_MID   command_keyword
+  ble-syntax/attr2iface/.define ATTR_FILE_DIR      filename_directory
+  ble-syntax/attr2iface/.define ATTR_FILE_LINK     filename_link
+  ble-syntax/attr2iface/.define ATTR_FILE_EXEC     filename_executable
+  ble-syntax/attr2iface/.define ATTR_FILE_FILE     filename_other
+  ble-syntax/attr2iface/.define ATTR_FILE_WARN     filename_warning
+  ble-syntax/attr2iface/.define ATTR_FILE_FIFO     filename_pipe
+  ble-syntax/attr2iface/.define ATTR_FILE_SOCK     filename_socket
+  ble-syntax/attr2iface/.define ATTR_FILE_BLK      filename_block
+  ble-syntax/attr2iface/.define ATTR_FILE_CHR      filename_character
 }
 
 ble-color/faces/addhook-onload ble-syntax/faces-onload-hook
@@ -5007,7 +5007,7 @@ function ble-highlight-layer:syntax/update {
   local text="$1" player="$2"
   local i iN="${#text}"
 
-  _ble_edit_str.update-syntax
+  ble-edit/content/update-syntax
 
   #--------------------------------------------------------
 
