@@ -6720,7 +6720,7 @@ function read {
 : ${bleopt_complete_stdin_frequency:=50}
 : ${bleopt_complete_ambiguous:=1}
 : ${bleopt_complete_contract_function_names:=1}
-: ${bleopt_complete_ac_delay:=200}
+: ${bleopt_complete_auto_delay:=200}
 
 ## オプション complete_menu_style
 ##   補完候補のリスト表示のスタイルを指定します。
@@ -6732,6 +6732,7 @@ function read {
 ##
 : ${bleopt_complete_menu_style:=align-nowrap}
 : ${bleopt_complete_menu_align:=20}
+: ${bleopt_complete_menu_complete:=1}
 
 _ble_complete_insert_hook=()
 ble-autoload "$_ble_base/lib/core-complete.sh" \

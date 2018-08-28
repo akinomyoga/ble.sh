@@ -50,6 +50,15 @@ function ble-form/goto.draw {
 ##   それを削除するために最初の編集文字列の行数を 1 とする。
 _ble_form_window_height=(1 0)
 
+
+## 関数 ble-form/panel#get-origin
+##   @var[out] x y
+function ble-form/panel#get-origin {
+  local ret index=$1 prefix=
+  [[ $2 == --prefix=* ]] && prefix=${2#*=}
+  ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
+  ((${prefix}x=0,${prefix}y=ret))
+}
 function ble-form/panel#goto.draw {
   local index=$1 x=${2-0} y=${3-0} ret
   ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
