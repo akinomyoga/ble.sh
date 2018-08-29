@@ -739,19 +739,6 @@ tech
 
 2018-08-28
 
-  * complete: echo ~/m@ から補完を実行すると COMP_PREFIX が効いていない
-    全ての候補に余分に /home/murase/ がついている。
-
-    - 今までの ble.sh ではちゃんと動いていた様子である。
-      これはまた bash-completion だろうか。
-    - また echo ~/@ から補完を実行した時にはちゃんと COMP_PREFIX は効いていて、
-      候補たちには余分なパス /home/murase/ は付加されない状態で表示てきている。
-    - ble-syntax:bash/simple-word/eval '~/m' をしてみると、
-      ちゃんと /home/murase/m に展開されている。
-      従って COMPV の不整合ではないと思われる。
-
-    また後で詳しく調べる事にする。
-
   * menu-complete: vi マクロ・繰り返しにおける対応
     これは対応し始めると大変な気がするので
     menu-complete が実行された場合には imap-repeat は無効化する事にする。
@@ -3235,6 +3222,32 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-29
+
+  * complete: echo ~/m@ から補完を実行すると COMP_PREFIX が効いていない [#D0755]
+    全ての候補に余分に /home/murase/ がついている。
+
+    - 今までの ble.sh ではちゃんと動いていた様子である。
+      これはまた bash-completion だろうか。
+    - また echo ~/@ から補完を実行した時にはちゃんと COMP_PREFIX は効いていて、
+      候補たちには余分なパス /home/murase/ は付加されない状態で表示てきている。
+    - ble-syntax:bash/simple-word/eval '~/m' をしてみると、
+      ちゃんと /home/murase/m に展開されている。
+      従って COMPV の不整合ではないと思われる。
+
+    また後で詳しく調べる事にする。
+
+    - 調べるとどうも action:plain/initialize の直後ではちゃんと ~/m* の形の候補になっている様だ。
+    - 確認してみると先頭を削っているのは action:action/initialize ではなかった。
+      そもそも menu で表示しているのは INSERT ではない。
+      menu/style:style/construct の中で PREFIX_LEN を参照してその分だけ削っている。
+      つまり PREFIX_LEN または COMP_PREFIX の計算が間違っている。
+      実際に COMP_PREFIX は全く設定されていない様だ。
+    - yield の呼び出し元を調べると progcomp である。
+      compopt で filenames が指定されていないという事だろうか。
+      と思ったらちゃんと指定されている。
+    - 分かった。単に自分の作ったバグである。
+      "COMPV に / が含まれている時に COMP_PREFIX を設定する" ところが、
+      "COMPV が / で終わる時" に誤ってなっていた。直した。
 
   * complete: [refactor] $ACTION は ble-complete/action/ は含まない様に変更する [#D0754]
 

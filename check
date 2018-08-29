@@ -18,7 +18,7 @@ function check-builtin {
 
 function check-a.txt {
   echo "--- $FUNCNAME ---"
-  grc --color --exclude=./test a.txt |
+  grc --color --exclude=./test 'a\.txt|/dev/pts/[0-9]*' |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 

@@ -694,12 +694,12 @@ function ble-complete/source:argument/.progcomp-helper-func {
 
     local -a ospec
     while (($#)); do
-      local arg="$1"; shift
+      local arg=$1; shift
       case "$arg" in
       (-*)
         local ic c
         for ((ic=1;ic<${#arg};ic++)); do
-          c="${arg:ic:1}"
+          c=${arg:ic:1}
           case "$c" in
           (o)    ospec[${#ospec[@]}]="-$1"; shift ;;
           ([DE]) fDefault=1; break 2 ;;
@@ -844,7 +844,7 @@ function ble-complete/source:argument/.progcomp {
   fi
 
   local action=progcomp
-  [[ $comp_opts == *:filenames:* && $COMPV == */ ]] && COMP_PREFIX=${COMPV%/*}/
+  [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
 
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
