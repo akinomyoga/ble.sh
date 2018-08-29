@@ -6778,8 +6778,9 @@ function ble-decode/keymap:vi_imap/define {
   # shell functions
   ble-bind -f  'C-l'     clear-screen
   # ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i' vi_imap/complete
-  ble-bind -f  'TAB' vi_imap/complete
+  ble-bind -f  'C-i'     vi_imap/complete
+  ble-bind -f  'TAB'     vi_imap/complete
+  ble-bind -f  'C-TAB'   menu-complete
   ble-bind -f  'auto_complete_enter' auto-complete-enter
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
@@ -6931,6 +6932,7 @@ function ble-decode/keymap:vi_cmap/define {
   ble-bind -f  'M-l'     redraw-line
   # ble-bind -f 'C-i' complete
   # ble-bind -f 'TAB' complete
+  # ble-bind -f 'C-TAB' menu-complete
   # ble-bind -f 'auto_complete_enter' auto-complete-enter
   ble-bind -f  'C-x C-v' display-shell-version
 

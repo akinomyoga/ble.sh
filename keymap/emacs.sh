@@ -165,6 +165,7 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f  'M-l'     redraw-line
   ble-bind -f  'C-i'     complete
   ble-bind -f  'TAB'     complete
+  ble-bind -f  'C-TAB'   menu-complete
   ble-bind -f  'auto_complete_enter' auto-complete-enter
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version

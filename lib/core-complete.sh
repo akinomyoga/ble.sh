@@ -1219,10 +1219,13 @@ function ble-complete/candidates/determine-common-prefix {
 
 _ble_complete_menu_beg=
 _ble_complete_menu_end=
-_ble_complete_menu_state=
-_ble_complete_menu_list=()
-_ble_complete_menu_selected=-1
+_ble_complete_menu_str=
+_ble_complete_menu_active=
 _ble_complete_menu_common_part=
+_ble_complete_menu_items=()
+_ble_complete_menu_pack=()
+_ble_complete_menu_selected=-1
+_ble_complete_menu_filter=
 
 ## 関数 ble-complete/menu/initialize
 ##   @var[out] menu_common_part
@@ -1291,8 +1294,8 @@ function ble-complete/menu/construct-single-entry {
 ## 関数 ble-complete/menu/style:$menu_style/construct
 ##   候補一覧メニューの表示・配置を計算します。
 ##
-##   @arr[out] _ble_complete_cand_list
 ##   @var[out] x y esc
+##   @arr[out] menu_items
 ##   @var[in] manu_style
 ##   @arr[in] cand_pack
 ##   @var[in] cols lines menu_common_part
@@ -1333,7 +1336,7 @@ function ble-complete/menu/style:align/construct {
   local ncell=$((cols/wcell))
 
   x=0 y=0 esc=
-  _ble_complete_menu_list=()
+  menu_items=()
   local i=0 N=${#measure[@]}
   local entry index w s pack esc1
   local x0 y0
@@ -1360,7 +1363,8 @@ function ble-complete/menu/style:align/construct {
         ((y>=lines&&(x=x0,y=y0,1))) && break
       fi
     fi
-    ble/array#push _ble_complete_menu_list "$x0,$y0,$x,$y,${#pack},${#esc1}:$pack$esc1"
+
+    ble/array#push menu_items "$x0,$y0,$x,$y,${#pack},${#esc1}:$pack$esc1"
     esc=$esc$esc1
 
     # 候補と候補の間の空白
@@ -1388,8 +1392,7 @@ function ble-complete/menu/style:align-nowrap/construct {
 function ble-complete/menu/style:dense/construct {
   local ret iloop=0
 
-  x=0 y=0 esc=
-  _ble_complete_menu_list=()
+  x=0 y=0 esc= menu_items=()
 
   local pack i=0 N=${#cand_pack[@]}
   for pack in "${cand_pack[@]}"; do
@@ -1408,12 +1411,12 @@ function ble-complete/menu/style:dense/construct {
       fi
     fi
 
-    ble/array#push _ble_complete_menu_list "$x0,$y0,$x,$y,${#pack},${#esc1}:$pack$esc1"
+    ble/array#push menu_items "$x0,$y0,$x,$y,${#pack},${#esc1}:$pack$esc1"
     esc=$esc$esc1
 
     # 候補と候補の間の空白
     if ((++i<N)); then
-      if [[ $_ble_complete_menu_style == nowrap ]] && ((x==0)); then
+      if [[ $menu_style == nowrap ]] && ((x==0)); then
         : skip
       elif ((x+1<cols)); then
         esc=$esc' '
@@ -1437,34 +1440,78 @@ function bleopt/check:complete_menu_style {
 }
 
 function ble-complete/menu/clear {
-  if [[ $_ble_complete_menu_beg ]]; then
-    _ble_complete_menu_beg=
-    _ble_complete_menu_end=
-    _ble_complete_menu_state=
-    _ble_complete_menu_selected=-1
-    ble-edit/info/clear
+  if [[ $_ble_complete_menu_active ]]; then
+    _ble_complete_menu_active=
+    ble-edit/info/immediate-clear
   fi
 }
+
+## 関数 ble-complete/menu/show opts
+##   @param[in] opts
+##   @arr[in] cand_pack
+##
+##   @var[in] COMPV
+##     入力済み部分を着色するのに使用します。
+##   @var[in] comp_type
+##     曖昧一致候補かどうかを確認するのに使用します。
 function ble-complete/menu/show {
-  _ble_complete_menu_beg=
-  _ble_complete_menu_end=
-  _ble_complete_menu_state=
-  _ble_complete_menu_selected=-1
+  local opts=$1
 
   # settings
   local menu_style=$bleopt_complete_menu_style
   local cols lines menu_common_part
   ble-complete/menu/initialize
 
-  local x y esc
-  ble/function#try ble-complete/menu/style:"$menu_style"/construct; local ext=$?
-  ((ext)) && return "$ext"
+  if ((${#cand_pack[@]})); then
+    local x y esc menu_items
+    ble/function#try ble-complete/menu/style:"$menu_style"/construct; local ext=$?
+    ((ext)) && return "$ext"
 
-  ble-edit/info/show store "$x" "$y" "$esc"
-  _ble_complete_menu_beg=$COMP1
-  _ble_complete_menu_end=$_ble_edit_ind
-  _ble_complete_menu_state=$_ble_edit_ind:$_ble_edit_str
-  _ble_complete_menu_common_part=$menu_common_part
+    info_data=(store "$x" "$y" "$esc")
+  else
+    menu_items=()
+    info_data=(raw $'\e[38;5;242m(no candidates)\e[m')
+  fi
+
+  ble-edit/info/immediate-show "${info_data[@]}"
+  _ble_complete_menu_info_data=("${info_data[@]}")
+  _ble_complete_menu_items=("${menu_items[@]}")
+  if [[ :$opts: != *:filter:* ]]; then
+    _ble_complete_menu_beg=$COMP1
+    _ble_complete_menu_end=$_ble_edit_ind
+    _ble_complete_menu_str=$_ble_edit_str
+    _ble_complete_menu_selected=-1
+    _ble_complete_menu_active=1
+    _ble_complete_menu_common_part=$menu_common_part
+    _ble_complete_menu_pack=("${cand_pack[@]}")
+    _ble_complete_menu_filter=
+  fi
+}
+
+function ble-complete/menu/redraw {
+  if [[ $_ble_complete_menu_active ]]; then
+    ble-edit/info/immediate-show "${_ble_complete_menu_info_data[@]}"
+  fi
+}
+
+## ble-complete/menu/get-active-range [str [ind]]
+##   @param[in,opt] str ind
+##   @var[out] beg end
+function ble-complete/menu/get-active-range {
+  [[ $_ble_complete_menu_active ]] || return 1
+
+  local str=${1-$_ble_edit_str} ind=${2-$_ble_edit_ind}
+  local mbeg=$_ble_complete_menu_beg
+  local mend=$_ble_complete_menu_end
+  local left=${_ble_complete_menu_str::mend}
+  local right=${_ble_complete_menu_str:mend}
+  if [[ ${str::_ble_edit_ind} == "$left"* && ${str:_ble_edit_ind} == *"$right" ]]; then
+    ((beg=mbeg,end=${#str}-${#right}))
+    return 0
+  else
+    ble-complete/menu/clear
+    return 1
+  fi
 }
 
 #------------------------------------------------------------------------------
@@ -1524,15 +1571,16 @@ function ble-complete/insert {
 }
 
 function ble/widget/complete {
+  local opts=$1
   ble-edit/content/clear-arg
 
-  if [[ $bleopt_complete_menu_complete ]]; then
-    if [[ $_ble_edit_ind:$_ble_edit_str == "$_ble_complete_menu_state" ]]; then
-      ble-complete/menu-complete/enter
-      return
-    elif [[ $WIDGET == "$LASTWIDGET" ]]; then
-      opts=$opts:enter_menu
-    fi
+  if [[ :$opts: == *:enter_menu:* ]]; then
+    [[ $_ble_complete_menu_active ]] &&
+      ble-complete/menu-complete/enter && return
+  elif [[ $bleopt_complete_menu_complete ]]; then
+    [[ $_ble_complete_menu_active && $_ble_edit_str == "$_ble_complete_menu_str" ]] &&
+      ble-complete/menu-complete/enter && return
+    [[ $WIDGET == "$LASTWIDGET" ]] && opts=$opts:enter_menu
   fi
 
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
@@ -1562,8 +1610,9 @@ function ble/widget/complete {
   if [[ :$opts: == *:enter_menu:* ]]; then
     ble-complete/menu/show
     (($?==148)) && return 148
-    ble-complete/menu-complete/enter
-    (($?==148)) && return 148
+    ble-complete/menu-complete/enter; local ext=$?
+    ((ext==148)) && return 148
+    ((ext)) && ble/widget/.bell
     return
   elif [[ :$opts: == *:show_menu:* ]]; then
     ble-complete/menu/show
@@ -1573,11 +1622,6 @@ function ble/widget/complete {
 
   if ((cand_count==1)); then
     # 一意確定の時
-
-    # Note: $ACTION/complete が info に表示できる様に先に clear する。
-    #   関数名について縮約された候補に対して続きを表示するのに使う。
-    ble-complete/menu/clear
-
     local ACTION=${cand_pack[0]%%:*}
     if ble/is-function "$ACTION/complete"; then
       local "${_ble_complete_cand_varnames[@]}"
@@ -1617,9 +1661,87 @@ function ble/widget/menu-complete {
 }
 
 #------------------------------------------------------------------------------
+# menu-filter
+
+function ble-complete/menu/filter-incrementally {
+  if [[ $_ble_decode_key__kmap == emacs || $_ble_decode_key__kmap == vi_imap ]]; then
+    local str=$_ble_edit_str
+  elif [[ $_ble_decode_key__kmap == auto_complete ]]; then
+    local str=${_ble_edit_str::_ble_edit_ind}${_ble_edit_str:_ble_edit_mark}
+  elif [[ $_ble_decode_key__kmap == menu_complete ]]; then
+    return 0
+  else
+    return 1
+  fi
+
+  local beg end; ble-complete/menu/get-active-range "$str" "$_ble_edit_ind" || return 1
+  local input=${str:beg:end-beg}
+  [[ $input == "$_ble_complete_menu_filter" ]] && return 0
+
+  local ret close_type
+  ble-syntax:bash/simple-word/close-open-word "$input" || return 1
+  ble-syntax:bash/simple-word/eval "$ret"
+  local COMPV=$ret
+
+  local iloop=0 interval=$bleopt_complete_stdin_frequency
+
+  local comp_type=
+  local -a cand_pack; cand_pack=()
+  local pack "${_ble_complete_cand_varnames[@]}"
+  for pack in "${_ble_complete_menu_pack[@]}"; do
+    ((iloop++%interval==0)) && ble-complete/check-cancel && return 148
+    ble-complete/cand/unpack "$pack"
+    [[ $CAND == "$COMPV"* ]] &&
+      ble/array#push cand_pack "$pack"
+  done
+
+  if ((${#cand_pack[@]}==0)); then
+    # 曖昧一致
+    local ret; ble-complete/util/construct-ambiguous-regex "$COMPV"; local rex=^$ret
+    for pack in "${_ble_complete_menu_pack[@]}"; do
+      ((iloop++%interval==0)) && ble-complete/check-cancel && return 148
+      ble-complete/cand/unpack "$pack"
+      [[ $CAND =~ $rex ]] &&
+        ble/array#push cand_pack "$pack"
+    done
+    ((${#cand_pack[@]})) && comp_type=${comp_type}a
+  fi
+
+  ble-complete/menu/show filter
+  (($?==148)) && return 148
+  _ble_complete_menu_filter=$input
+  return 0
+}
+
+function ble-complete/menu-filter.idle {
+  ble/util/idle.wait-user-input
+  [[ $_ble_complete_menu_active ]] || return
+  ble-complete/menu/filter-incrementally; local ext=$?
+  ((ext==148)) && return 148
+  ((ext)) && ble-complete/menu/clear
+}
+
+ble/function#try ble/util/idle.push-background ble-complete/menu-filter.idle
+
+#------------------------------------------------------------------------------
 #
 # menu-complete
 #
+
+## メニュー補完では以下の変数を参照する
+##
+##   @var[in] _ble_complete_menu_beg
+##   @var[in] _ble_complete_menu_end
+##   @var[in] _ble_complete_menu_original
+##   @var[in] _ble_complete_menu_selected
+##   @var[in] _ble_complete_menu_common_part
+##   @arr[in] _ble_complete_menu_items
+##
+## 更に以下の変数を使用する
+##
+##   @var[in,out] _ble_complete_menu_original=
+
+_ble_complete_menu_original=
 
 ble-color-defface menu_complete fg=12,bg=252
 function ble-highlight-layer:region/mark:menu_complete/get-sgr {
@@ -1637,7 +1759,7 @@ function ble-complete/menu-complete/select {
   local x0=$_ble_line_x y0=$_ble_line_y
   if ((osel>=0)); then
     # 消去
-    local entry=${_ble_complete_menu_list[osel]}
+    local entry=${_ble_complete_menu_items[osel]}
     local fields text=${entry#*:}
     ble/string#split fields , "${entry%%:*}"
 
@@ -1648,7 +1770,7 @@ function ble-complete/menu-complete/select {
 
   local value=
   if ((nsel>=0)); then
-    local entry=${_ble_complete_menu_list[nsel]}
+    local entry=${_ble_complete_menu_items[nsel]}
     local fields text=${entry#*:}
     ble/string#split fields , "${entry%%:*}"
 
@@ -1679,15 +1801,15 @@ function ble-complete/menu-complete/select {
   ((_ble_edit_ind=_ble_edit_mark+${#value}))
 }
 
-_ble_complete_menu_original=
 #ToDo:mark_active menu_complete の着色の定義
 function ble-complete/menu-complete/enter {
-  [[ $_ble_complete_menu_beg && ${#_ble_complete_menu_list[@]} -ge 1 ]] || return
-  local beg=$_ble_complete_menu_beg
-  local end=$_ble_complete_menu_end
+  [[ ${#_ble_complete_menu_items[@]} -ge 1 ]] || return 1
+
+  local beg end; ble-complete/menu/get-active-range || return 1
+  _ble_edit_mark=$beg
+  _ble_edit_ind=$end
   _ble_complete_menu_original=${_ble_edit_str:beg:end-beg}
-  _ble_edit_mark=$_ble_complete_menu_beg
-  _ble_edit_ind=$_ble_complete_menu_end
+  ble-complete/menu/redraw
   ble-complete/menu-complete/select 0
 
   _ble_edit_mark_active=menu_complete
@@ -1697,7 +1819,7 @@ function ble-complete/menu-complete/enter {
 function ble/widget/menu_complete/forward {
   local opts=$1
   local nsel=$((_ble_complete_menu_selected+1))
-  local ncand=${#_ble_complete_menu_list[@]}
+  local ncand=${#_ble_complete_menu_items[@]}
   if ((nsel>=ncand)); then
     if [[ :$opts: == *:cyclic:* ]] && ((ncand>=2)); then
       nsel=0
@@ -1712,7 +1834,7 @@ function ble/widget/menu_complete/backward {
   local opts=$1
   local nsel=$((_ble_complete_menu_selected-1))
   if ((nsel<0)); then
-    local ncand=${#_ble_complete_menu_list[@]}
+    local ncand=${#_ble_complete_menu_items[@]}
     if [[ :$opts: == *:cyclic:* ]] && ((ncand>=2)); then
       ((nsel=ncand-1))
     else
@@ -1725,11 +1847,11 @@ function ble/widget/menu_complete/backward {
 function ble/widget/menu_complete/forward-line {
   local osel=$_ble_complete_menu_selected
   ((osel>=0)) || return
-  local entry=${_ble_complete_menu_list[osel]}
+  local entry=${_ble_complete_menu_items[osel]}
   local fields; ble/string#split fields , "${entry%%:*}"
   local ox=${fields[0]} oy=${fields[1]}
   local i=$osel nsel=-1
-  for entry in "${_ble_complete_menu_list[@]:osel+1}"; do
+  for entry in "${_ble_complete_menu_items[@]:osel+1}"; do
     ble/string#split fields , "${entry%%:*}"
     local x=${fields[0]} y=${fields[1]}
     ((y<=oy||y==oy+1&&x<=ox||nsel<0)) || break
@@ -1746,11 +1868,11 @@ function ble/widget/menu_complete/forward-line {
 function ble/widget/menu_complete/backward-line {
   local osel=$_ble_complete_menu_selected
   ((osel>=0)) || return
-  local entry=${_ble_complete_menu_list[osel]}
+  local entry=${_ble_complete_menu_items[osel]}
   local fields; ble/string#split fields , "${entry%%:*}"
   local ox=${fields[0]} oy=${fields[1]}
   local i=-1 nsel=-1
-  for entry in "${_ble_complete_menu_list[@]::osel}"; do
+  for entry in "${_ble_complete_menu_items[@]::osel}"; do
     ble/string#split fields , "${entry%%:*}"
     local x=${fields[0]} y=${fields[1]}
     ((y<oy-1||y==oy-1&&x<=ox||y<oy&&nsel<0)) || break
@@ -1920,6 +2042,7 @@ function ble-complete/auto-complete.idle {
 
   ble-complete/auto-complete.impl
 }
+
 ble/function#try ble/util/idle.push-background ble-complete/auto-complete.idle
 
 ## 編集関数 ble/widget/auto-complete-enter
@@ -1955,6 +2078,7 @@ function ble/widget/auto_complete/accept {
   _ble_edit_mark_active=
   _ble_complete_ac_insert=
   _ble_complete_ac_suffix=
+  ble-complete/menu/clear
   ble-edit/content/clear-arg
 }
 function ble/widget/auto_complete/exit-default {

@@ -6473,6 +6473,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -f  'M-l'     redraw-line
   ble-bind -f  'C-i'     complete
   ble-bind -f  'TAB'     complete
+  ble-bind -f  'C-TAB'   menu-complete
   ble-bind -f  'auto_complete_enter' auto-complete-enter
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
@@ -6523,6 +6524,7 @@ function ble-decode/keymap:read/define {
   ble-bind -f  'M-l'     redraw-line
   # ble-bind -f 'C-i' complete
   # ble-bind -f 'TAB' complete
+  # ble-bind -f 'C-TAB' menu-complete
   # ble-bind -f 'auto_complete_enter' auto-complete-enter
   ble-bind -f  'C-x C-v' display-shell-version
 
@@ -6737,6 +6739,7 @@ function read {
 _ble_complete_insert_hook=()
 ble-autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/complete \
+             ble/widget/menu-complete \
              ble/widget/auto-complete-enter
 ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
 
