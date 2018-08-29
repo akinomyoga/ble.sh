@@ -38,7 +38,7 @@ function ble/keymap:vi_test/check {
   fi >&2
 
   # restore states
-  case $_ble_decode_key__kmap in
+  case $_ble_decode_keymap in
   (vi_[ixo]map)
     ble-decode-key $((ble_decode_Ctrl|99)) &>/dev/null ;;
   esac

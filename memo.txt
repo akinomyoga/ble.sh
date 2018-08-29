@@ -794,8 +794,6 @@ tech
     文脈値に対応していなければそもそも補完文脈が生成されないだけなので、
     特に問題は起こらない様に思われる。
 
-  * decode: [refactor] _ble_decode_key__kmap -> _ble_decode_keymap
-
   * complete: bash-completion の幾つかの関数を上書きもしくは乗っ取り?
 
     bash-completion の _minimal などは ble 側で乗っ取っても良い様に思う。
@@ -3246,6 +3244,8 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-29
+
+  * decode: [refactor] _ble_decode_key__kmap -> _ble_decode_keymap [#D0753]
 
   * decode: modifyOtherKeys の振る舞いについて [#D0752]
 

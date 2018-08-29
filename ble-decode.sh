@@ -928,7 +928,7 @@ function ble-decode-key/dump {
   done
 }
 
-## 変数 _ble_decode_key__kmap
+## 変数 _ble_decode_keymap
 ##
 ##   現在選択されている keymap
 ##
@@ -936,7 +936,7 @@ function ble-decode-key/dump {
 ##
 ##   呼び出し元の keymap を記録するスタック
 ##
-_ble_decode_key__kmap=emacs
+_ble_decode_keymap=emacs
 _ble_decode_keymap_stack=()
 
 _ble_decode_keymap_load=
@@ -961,8 +961,8 @@ function ble-decode/keymap/load {
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
   if ble-decode/keymap/is-keymap "$1"; then
-    ble/array#push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
-    _ble_decode_key__kmap=$1
+    ble/array#push _ble_decode_keymap_stack "$_ble_decode_keymap"
+    _ble_decode_keymap=$1
   elif ble-decode/keymap/load "$1" && ble-decode/keymap/is-keymap "$1"; then
     ble-decode/keymap/push "$1" # 再実行
   else
@@ -975,7 +975,7 @@ function ble-decode/keymap/pop {
   local count=${#_ble_decode_keymap_stack[@]}
   local last=$((count-1))
   ble-assert '((last>=0))' || return
-  _ble_decode_key__kmap=${_ble_decode_keymap_stack[last]}
+  _ble_decode_keymap=${_ble_decode_keymap_stack[last]}
   unset '_ble_decode_keymap_stack[last]'
 }
 
@@ -1018,7 +1018,7 @@ function ble-decode-key {
       continue
     fi
 
-    local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+    local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
 
     builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
     if [[ $ent == 1:* ]]; then
@@ -1088,7 +1088,7 @@ function ble-decode-key {
 ##     は、呼出元からは変化していない様に見えます。
 ##
 function ble-decode-key/.invoke-partial-match {
-  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+  local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
 
   local next=$1
   if [[ $_ble_decode_key__seq ]]; then
@@ -1164,7 +1164,7 @@ _ble_decode_widget_last=
 
 function ble-decode/widget/.invoke-hook {
   local kcode=$1
-  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+  local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
   builtin eval "local hook=\${$dicthead[kcode]-}"
   hook=${hook:2}
   [[ $hook ]] && builtin eval -- "$hook"
@@ -1205,7 +1205,7 @@ function ble-decode/widget/.call-keyseq {
   local _ble_decode_keylog_depth=$((old_suppress+1))
 
   # setup variables
-  local WIDGET=$command KEYMAP=$_ble_decode_key__kmap LASTWIDGET=$_ble_decode_widget_last
+  local WIDGET=$command KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
   _ble_decode_widget_last=$WIDGET
   _ble_decode_key__seq=
@@ -1224,7 +1224,7 @@ function ble-decode/widget/.call-async-read {
   local _ble_decode_keylog_depth=$((old_suppress+1))
 
   # setup variables
-  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap LASTWIDGET=$_ble_decode_widget_last
+  local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=($2)
   builtin eval -- "$WIDGET"
 }
@@ -1234,7 +1234,7 @@ function ble-decode/widget/.call-async-read {
 ##   call-interactively では、現在の keymap に応じた __before_widget__
 ##   及び __after_widget__ フックも呼び出します。
 function ble-decode/widget/call-interactively {
-  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap LASTWIDGET=$_ble_decode_widget_last
+  local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS; KEYS=("${@:2}")
   _ble_decode_widget_last=$WIDGET
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
@@ -1243,7 +1243,7 @@ function ble-decode/widget/call-interactively {
   return "$ext"
 }
 function ble-decode/widget/call {
-  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap LASTWIDGET=$_ble_decode_widget_last
+  local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS; KEYS=("${@:2}")
   _ble_decode_widget_last=$WIDGET
   builtin eval -- "$WIDGET"
@@ -1852,7 +1852,7 @@ function ble-decode/initialize {
 _ble_decode_bind_state=none
 function ble-decode/reset-default-keymap {
   # 現在の ble-decode/keymap の設定
-  ble-decode/DEFAULT_KEYMAP -v _ble_decode_key__kmap # 0ms
+  ble-decode/DEFAULT_KEYMAP -v _ble_decode_keymap # 0ms
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
 }
 function ble-decode-attach {
@@ -1870,8 +1870,8 @@ function ble-decode-attach {
   ble-decode/bind # 20ms
 
   # 失敗すると悲惨なことになるので抜ける。
-  if ! ble/is-array "_ble_decode_${_ble_decode_key__kmap}_kmap_"; then
-    echo "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_key__kmap' is not defined." >&2
+  if ! ble/is-array "_ble_decode_${_ble_decode_keymap}_kmap_"; then
+    echo "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_keymap' is not defined." >&2
     ble-decode-detach
     return 1
   fi

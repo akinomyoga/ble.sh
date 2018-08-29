@@ -1664,11 +1664,11 @@ function ble/widget/menu-complete {
 # menu-filter
 
 function ble-complete/menu/filter-incrementally {
-  if [[ $_ble_decode_key__kmap == emacs || $_ble_decode_key__kmap == vi_imap ]]; then
+  if [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_imap ]]; then
     local str=$_ble_edit_str
-  elif [[ $_ble_decode_key__kmap == auto_complete ]]; then
+  elif [[ $_ble_decode_keymap == auto_complete ]]; then
     local str=${_ble_edit_str::_ble_edit_ind}${_ble_edit_str:_ble_edit_mark}
-  elif [[ $_ble_decode_key__kmap == menu_complete ]]; then
+  elif [[ $_ble_decode_keymap == menu_complete ]]; then
     return 0
   else
     return 1
@@ -2023,7 +2023,7 @@ function ble-complete/auto-complete.idle {
   # ※特に上書きしなければ常に wait-user-input で抜ける。
   ble/util/idle.wait-user-input
 
-  [[ $_ble_decode_key__kmap == emacs || $_ble_decode_key__kmap == vi_imap ]] || return 0
+  [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_imap ]] || return 0
 
   case $_ble_decode_widget_last in
   (ble/widget/self-insert) ;;

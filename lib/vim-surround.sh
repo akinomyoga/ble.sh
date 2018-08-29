@@ -423,7 +423,7 @@ function ble/widget/vim-surround.sh/vsurround { # vS
   ble/widget/vi-command/operator vS
 }
 function ble/widget/vim-surround.sh/vgsurround { # vgS
-  [[ $_ble_decode_key__kmap == vi_xmap ]] &&
+  [[ $_ble_decode_keymap == vi_xmap ]] &&
     ble/keymap:vi/xmap/add-eol-extension # 末尾拡張
   ble/widget/vi-command/operator vgS
 }
@@ -689,7 +689,7 @@ function ble/widget/vim-surround.sh/nmap/csurround.record {
   local type=$1 arg=$2 reg=$3 del=$4 ins=$5
   local WIDGET=ble/widget/vim-surround.sh/nmap/csurround.repeat ARG=$arg FLAG= REG=$reg
   ble/keymap:vi/repeat/record
-  if [[ $_ble_decode_key__kmap == vi_imap ]]; then
+  if [[ $_ble_decode_keymap == vi_imap ]]; then
     # Note: ble/keymap:vi/repeat/record の実装に合わせた条件判定。
     #   この実装では vi_imap で呼び出される事はない筈だが念の為。
     #   ble/keymap:vi/repeat/record は keymap が vi_imap の時は異なる場所に記録する。

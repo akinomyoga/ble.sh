@@ -254,7 +254,7 @@ function ble/widget/vi_imap/complete {
   ble/widget/complete
 }
 function ble/keymap:vi/complete/insert.hook {
-  [[ $_ble_decode_key__kmap == vi_imap ]] || return
+  [[ $_ble_decode_keymap == vi_imap ]] || return
 
   local original=${comp_text:insert_beg:insert_end-insert_beg}
   local q="'" Q="'\''"
@@ -300,7 +300,7 @@ _ble_keymap_vi_single_command_overwrite=
 : ${bleopt_keymap_vi_cmap_cursor=}
 
 function ble/keymap:vi/update-mode-name {
-  local kmap=$_ble_decode_key__kmap cursor=
+  local kmap=$_ble_decode_keymap cursor=
   if [[ $kmap == vi_imap ]]; then
     ble/util/buffer "$bleopt_term_vi_imap"
     ble/term/cursor-state/set-internal "$bleopt_keymap_vi_imap_cursor"
@@ -422,27 +422,27 @@ function ble/widget/vi_imap/single-command-mode {
 ##     そうしないとノーマルモードにおいてありえない位置にカーソルが来ることになる。
 ##
 function ble/keymap:vi/needs-eol-fix {
-  [[ $_ble_decode_key__kmap == vi_nmap || $_ble_decode_key__kmap == vi_omap ]] || return 1
+  [[ $_ble_decode_keymap == vi_nmap || $_ble_decode_keymap == vi_omap ]] || return 1
   [[ $_ble_keymap_vi_single_command ]] && return 1
   local index=${1:-$_ble_edit_ind}
   ble-edit/content/nonbol-eolp "$index"
 }
 function ble/keymap:vi/adjust-command-mode {
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     # 移動コマンドが来たら末尾拡張を無効にする。
     # 移動コマンドはここを通るはず…
     ble/keymap:vi/xmap/remove-eol-extension
   fi
 
   local kmap_popped=
-  if [[ $_ble_decode_key__kmap == vi_omap ]]; then
+  if [[ $_ble_decode_keymap == vi_omap ]]; then
     ble-decode/keymap/pop
     kmap_popped=1
   fi
 
   # search による mark の設定・解除
   if [[ $_ble_keymap_vi_search_activate ]]; then
-    if [[ $_ble_decode_key__kmap != vi_[xs]map ]]; then
+    if [[ $_ble_decode_keymap != vi_[xs]map ]]; then
       _ble_edit_mark_active=$_ble_keymap_vi_search_activate
     fi
     _ble_keymap_vi_search_matched=1
@@ -452,7 +452,7 @@ function ble/keymap:vi/adjust-command-mode {
     ((_ble_keymap_vi_search_matched)) && _ble_keymap_vi_search_matched=
   fi
 
-  if [[ $_ble_decode_key__kmap == vi_nmap && $_ble_keymap_vi_single_command ]]; then
+  if [[ $_ble_decode_keymap == vi_nmap && $_ble_keymap_vi_single_command ]]; then
     if ((_ble_keymap_vi_single_command==2)); then
       local index=$((_ble_edit_ind+1))
       ble-edit/content/nonbol-eolp "$index" && _ble_edit_ind=$index
@@ -476,8 +476,8 @@ function ble/widget/vi-command/bell {
 ##   @param[in] overwrite
 ##   @param[in] opts
 function ble/widget/vi_nmap/.insert-mode {
-  [[ $_ble_decode_key__kmap == vi_[xs]map ]] && ble-decode/keymap/pop
-  [[ $_ble_decode_key__kmap == vi_omap ]] && ble-decode/keymap/pop
+  [[ $_ble_decode_keymap == vi_[xs]map ]] && ble-decode/keymap/pop
+  [[ $_ble_decode_keymap == vi_omap ]] && ble-decode/keymap/pop
   local arg=$1 overwrite=$2
   ble/keymap:vi/imap-repeat/reset "$arg"
   _ble_edit_mark_active=
@@ -1029,7 +1029,7 @@ function ble/widget/vi_nmap/play-register.hook {
 function ble/widget/vi-command/operator {
   local ret opname=$1
 
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     local ARG FLAG REG; ble/keymap:vi/get-arg ''
     # ※FLAG はユーザにより設定されているかもしれないが無視
 
@@ -1054,14 +1054,14 @@ function ble/widget/vi-command/operator {
     ((ext)) && ble/widget/.bell
     ble/keymap:vi/adjust-command-mode
     return "$ext"
-  elif [[ $_ble_decode_key__kmap == vi_nmap ]]; then
+  elif [[ $_ble_decode_keymap == vi_nmap ]]; then
     ble-decode/keymap/push vi_omap
     _ble_keymap_vi_oparg=$_ble_edit_arg
     _ble_keymap_vi_opfunc=$opname
     _ble_edit_arg=
     ble/keymap:vi/update-mode-name
 
-  elif [[ $_ble_decode_key__kmap == vi_omap ]]; then
+  elif [[ $_ble_decode_keymap == vi_omap ]]; then
     if [[ $opname == "$_ble_keymap_vi_opfunc" ]]; then
       # 2つの同じオペレータ (yy, dd, cc, etc.) = 行指向の処理
       ble/widget/vi_nmap/linewise-operator "$opname"
@@ -2128,7 +2128,7 @@ ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
 ble/array#push _ble_edit_history_onleave ble/keymap:vi/mark/history-onleave.hook
 
 function ble/keymap:vi/mark/history-onleave.hook {
-  if [[ $_ble_decode_key__kmap == vi_[inoxs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[inoxs]map ]]; then
     ble/keymap:vi/mark/set-local-mark 34 "$_ble_edit_ind" # `"
   fi
 }
@@ -2186,7 +2186,7 @@ function ble/keymap:vi/mark/shift-by-dirty-range {
     ble/keymap:vi/mark/set-local-mark 46 "$beg" # `.
   else
     ble/dirty-range#clear --prefix=_ble_keymap_vi_mark_edit_d
-    if [[ $4 == newline && $_ble_decode_key__kmap != vi_cmap ]]; then
+    if [[ $4 == newline && $_ble_decode_keymap != vi_cmap ]]; then
       ble/keymap:vi/mark/set-local-mark 96 0 # ``
     fi
   fi
@@ -2420,7 +2420,7 @@ function ble/keymap:vi/repeat/record-normal {
   if [[ $KEYMAP == vi_[xs]map ]]; then
     repeat[6]=$_ble_keymap_vi_xmap_prev_edit
   fi
-  if [[ $_ble_decode_key__kmap == vi_imap ]]; then
+  if [[ $_ble_decode_keymap == vi_imap ]]; then
     _ble_keymap_vi_repeat_insert=("${repeat[@]}")
   else
     _ble_keymap_vi_repeat=("${repeat[@]}")
@@ -2491,7 +2491,7 @@ function ble/keymap:vi/repeat/invoke {
   _ble_decode_widget_last=$WIDGET
   builtin eval -- "$WIDGET"
 
-  if [[ $_ble_decode_key__kmap == vi_imap ]]; then
+  if [[ $_ble_decode_keymap == vi_imap ]]; then
     ((_ble_keymap_vi_irepeat_count<=1?(_ble_keymap_vi_irepeat_count=2):_ble_keymap_vi_irepeat_count++))
     local -a _ble_keymap_vi_irepeat
     _ble_keymap_vi_irepeat=("${_ble_keymap_vi_repeat_irepeat[@]}")
@@ -2523,7 +2523,7 @@ function ble/widget/vi-command/forward-char {
   local index
   if [[ $1 == wrap ]]; then
     # SP
-    if [[ $FLAG || $_ble_decode_key__kmap == vi_[xs]map ]]; then
+    if [[ $FLAG || $_ble_decode_keymap == vi_[xs]map ]]; then
       ((index=_ble_edit_ind+ARG,
         index>${#_ble_edit_str}&&(index=${#_ble_edit_str})))
     else
@@ -2548,7 +2548,7 @@ function ble/widget/vi-command/backward-char {
   ((ARG>_ble_edit_ind&&(ARG=_ble_edit_ind)))
   if [[ $1 == wrap ]]; then
     # DEL
-    if [[ $FLAG || $_ble_decode_key__kmap == vi_[xs]map ]]; then
+    if [[ $FLAG || $_ble_decode_keymap == vi_[xs]map ]]; then
       ((index=_ble_edit_ind-ARG,index<0&&(index=0)))
     else
       local width=$ARG line
@@ -2713,7 +2713,7 @@ function ble/widget/vi-command/relative-line.impl {
   fi
 
   # 履歴項目を行数を数えつつ移動
-  if [[ $_ble_decode_key__kmap == vi_nmap && :$opts: == *:history:* ]]; then
+  if [[ $_ble_decode_keymap == vi_nmap && :$opts: == *:history:* ]]; then
     if ble/widget/vi-command/.history-relative-line $((offset>=0?count:-count)) || ((nmove)); then
       ble/keymap:vi/adjust-command-mode
       return 0
@@ -2778,7 +2778,7 @@ function ble/widget/vi-command/graphical-relative-line.impl {
     return
   fi
 
-  if [[ ! $flag && $_ble_decode_key__kmap == vi_nmap && :$opts: == *:history:* ]]; then
+  if [[ ! $flag && $_ble_decode_keymap == vi_nmap && :$opts: == *:history:* ]]; then
     if ble/widget/vi-command/.history-relative-line "$offset"; then
       ble/keymap:vi/adjust-command-mode
       return 0
@@ -2841,7 +2841,7 @@ function ble/widget/vi-command/relative-first-non-space.impl {
   fi
 
   # 履歴項目の移動
-  if [[ $_ble_decode_key__kmap == vi_nmap ]] && ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)); then
+  if [[ $_ble_decode_keymap == vi_nmap ]] && ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)); then
     ble/widget/vi-command/first-non-space
   elif ((nmove)); then
     ble/keymap:vi/needs-eol-fix "$nolx" && ((nolx--))
@@ -2884,7 +2884,7 @@ function ble/widget/vi-command/forward-eol {
   ble-edit/content/find-logical-eol "$_ble_edit_ind" $((ARG-1)); index=$ret
   ble/keymap:vi/needs-eol-fix "$index" && ((index--))
   ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
-  [[ $_ble_decode_key__kmap == vi_[xs]map ]] &&
+  [[ $_ble_decode_keymap == vi_[xs]map ]] &&
     ble/keymap:vi/xmap/add-eol-extension # 末尾拡張
 }
 # nmap g0 g<home>
@@ -3313,10 +3313,10 @@ function ble/widget/vi-command/nth-column {
 
     # Note: 何故かノーマルモードで d や c を実行するときには行末に行かないのに、
     # ビジュアルモードでは行末に行くことができるようだ。
-    [[ $_ble_decode_key__kmap != vi_[xs]map ]] &&
+    [[ $_ble_decode_keymap != vi_[xs]map ]] &&
       ble-edit/content/nonbol-eolp "$index" && ((index--))
   else
-    [[ $_ble_decode_key__kmap != vi_[xs]map ]] &&
+    [[ $_ble_decode_keymap != vi_[xs]map ]] &&
       ble-edit/content/nonbol-eolp "$eol" && ((eol--))
     ((index=bol+ARG-1,index>eol?(index=eol)))
   fi
@@ -3785,7 +3785,7 @@ function ble/keymap:vi/text-object/word.impl {
   fi
 
   local index=$_ble_edit_ind
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     if ((index<_ble_edit_mark)); then
       ((index)) && [[ ${_ble_edit_str:index-1:1} == $'\n' ]] && ((index--))
       if local rex="($rex_words)\$"; [[ ${_ble_edit_str::index} =~ $rex ]]; then
@@ -3817,7 +3817,7 @@ function ble/keymap:vi/text-object/word.impl {
   fi
   local end=$((index+${#BASH_REMATCH}))
 
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     ((end--))
     ble-edit/content/nonbol-eolp "$end" && ((end--))
     _ble_edit_ind=$end
@@ -3846,7 +3846,7 @@ function ble/keymap:vi/text-object:quote/.prev {
 function ble/keymap:vi/text-object/quote.impl {
   local arg=$1 flag=$2 reg=$3 type=$4
   local ret quote=${type:1}
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     if ble/keymap:vi/text-object:quote/.xmap; then
       ble/keymap:vi/adjust-command-mode
       return 0
@@ -4007,7 +4007,7 @@ function ble/keymap:vi/text-object/block.impl {
     ((beg<end)) && ble-edit/content/bolp "$beg" && ble-edit/content/eolp "$end" && linewise=1
   fi
 
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     _ble_edit_mark=$beg
     ble/widget/vi-command/exclusive-goto.impl "$end"
   elif [[ $linewise ]]; then
@@ -4083,7 +4083,7 @@ function ble/keymap:vi/text-object/tag.impl {
     rex='^<[^>]*>'; [[ ${_ble_edit_str:beg:end-beg} =~ $rex ]] && ((beg+=${#BASH_REMATCH}))
     rex='<[^>]*>$'; [[ ${_ble_edit_str:beg:end-beg} =~ $rex ]] && ((end-=${#BASH_REMATCH}))
   fi
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     _ble_edit_mark=$beg
     ble/widget/vi-command/exclusive-goto.impl "$end"
   else
@@ -4188,7 +4188,7 @@ function ble/keymap:vi/text-object/sentence.impl {
     fi
   fi
 
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     _ble_edit_mark=$beg
     ble/widget/vi-command/exclusive-goto.impl "$end"
   elif ble-edit/content/bolp "$beg" && [[ ${_ble_edit_str:end:1} == $'\n' ]]; then
@@ -4253,7 +4253,7 @@ function ble/keymap:vi/text-object/paragraph.impl {
     fi
   fi
   ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == $'\n' ]] && ((end--))
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     _ble_edit_mark=$beg
     ble/widget/vi-command/exclusive-goto.impl "$end"
   else
@@ -4303,7 +4303,7 @@ function ble/keymap:vi/.check-text-object {
   local ret; ble/util/c2s "${KEYS[0]}"; local c=$ret
   [[ $c == [ia] ]] || return 1
 
-  [[ $_ble_keymap_vi_opfunc || $_ble_decode_key__kmap == vi_[xs]map ]] || return 1
+  [[ $_ble_keymap_vi_opfunc || $_ble_decode_keymap == vi_[xs]map ]] || return 1
 
   _ble_keymap_vi_text_object=$c
   _ble_decode_key__hook=ble/keymap:vi/text-object.hook
@@ -4481,7 +4481,7 @@ function ble/keymap:vi/search/invoke-search {
   else
     # _ble_edit_ind .. _ble_edit_mark[+1] に一致しているとき
     if ((!opt_backward)); then
-      if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+      if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
         # vi_xmap, vi_smap では _ble_edit_mark は別の用途に使われていて
         # 終端点の情報が失われているので再度一致を試みる。
         if ble-edit/isearch/search "$@" && ((beg==_ble_edit_ind)); then
@@ -4519,7 +4519,7 @@ function ble/widget/vi-command/search.core {
     if ((beg<end)); then
       ble-edit/content/bolp "$end" || ((end--))
       _ble_edit_ind=$beg # eol 補正は search.impl 側で最後に行う
-      [[ $_ble_decode_key__kmap != vi_[xs]map ]] && _ble_edit_mark=$end
+      [[ $_ble_decode_keymap != vi_[xs]map ]] && _ble_edit_mark=$end
       _ble_keymap_vi_search_activate=search
       return 0
     else
@@ -4616,7 +4616,7 @@ function ble/widget/vi-command/search.impl {
   fi
 
   local original_ind=$_ble_edit_ind
-  if [[ $FLAG || $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $FLAG || $_ble_decode_keymap == vi_[xs]map ]]; then
     opt_history=0
   else
     local old_hindex; ble-edit/history/get-index -v old_hindex
@@ -5662,7 +5662,7 @@ function ble/widget/vi-command/previous-visual-area {
   ble/keymap:vi/mark/get-local-mark 62 && end=$ret # `>
   [[ $beg && $end ]] || return 1
 
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     ble/keymap:vi/clear-arg
     ble/keymap:vi/xmap/set-previous-visual-area
     _ble_edit_ind=$end
@@ -5724,7 +5724,7 @@ function ble/widget/vi_xmap/exit {
   #   -> vi_xmap/block-insert-mode.impl
   #   → vi_xmap/cancel 経由で呼び出されるとき、
   #   既に vi_nmap に戻っていることがあるので、vi_xmap, vi_smap のときだけ処理する。
-  if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     ble/keymap:vi/xmap/set-previous-visual-area
     _ble_edit_mark_active=
     ble-decode/keymap/pop
@@ -5772,7 +5772,7 @@ function ble/widget/vi_xmap/switch-to-blockwise {
 }
 # xmap <C-g>
 function ble/widget/vi_xmap/switch-to-select {
-  if [[ $_ble_decode_key__kmap == vi_xmap ]]; then
+  if [[ $_ble_decode_keymap == vi_xmap ]]; then
     ble-decode/keymap/pop
     ble-decode/keymap/push vi_smap
     ble/keymap:vi/update-mode-name
@@ -5780,7 +5780,7 @@ function ble/widget/vi_xmap/switch-to-select {
 }
 # smap <C-g>
 function ble/widget/vi_xmap/switch-to-visual {
-  if [[ $_ble_decode_key__kmap == vi_smap ]]; then
+  if [[ $_ble_decode_keymap == vi_smap ]]; then
     ble-decode/keymap/pop
     ble-decode/keymap/push vi_xmap
     ble/keymap:vi/update-mode-name
@@ -5788,7 +5788,7 @@ function ble/widget/vi_xmap/switch-to-visual {
 }
 # smap <C-v>
 function ble/widget/vi_xmap/switch-to-visual-blockwise {
-  if [[ $_ble_decode_key__kmap == vi_smap ]]; then
+  if [[ $_ble_decode_keymap == vi_smap ]]; then
     ble-decode/keymap/pop
     ble-decode/keymap/push vi_xmap
   fi
@@ -6685,7 +6685,7 @@ function ble/widget/vi-command/bracketed-paste {
   return 148
 }
 function ble/widget/vi-command/bracketed-paste.proc {
-  if [[ $_ble_decode_key__kmap == vi_nmap ]]; then
+  if [[ $_ble_decode_keymap == vi_nmap ]]; then
     local isbol index=$_ble_edit_ind
     ble-edit/content/bolp && isbol=1
     ble-decode/widget/call-interactively 'ble/widget/vi_nmap/append-mode' 97
@@ -6694,13 +6694,13 @@ function ble/widget/vi-command/bracketed-paste.proc {
     ble/widget/vi_imap/bracketed-paste.proc "$@"
     ble/keymap:vi/imap/invoke-widget \
       ble/widget/vi_imap/normal-mode $((ble_decode_Ctrl|0x5b))
-  elif [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+  elif [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     local _ble_edit_mark_active=$_ble_keymap_vi_brackated_paste_mark_active
     ble-decode/widget/call-interactively 'ble/widget/vi-command/operator c' 99 || return 1
     ble/widget/vi_imap/bracketed-paste.proc "$@"
     ble/keymap:vi/imap/invoke-widget \
       ble/widget/vi_imap/normal-mode $((ble_decode_Ctrl|0x5b))
-  elif [[ $_ble_decode_key__kmap == vi_omap ]]; then
+  elif [[ $_ble_decode_keymap == vi_omap ]]; then
     ble/widget/vi_omap/cancel
     ble/widget/.bell
     return 1
