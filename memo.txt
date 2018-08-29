@@ -737,15 +737,6 @@ tech
     これは simple-word の拡張が必要になる。
     また simple-word を使用している各箇所の動作についても確認する必要がある。
 
-  * complete: [refactor] $ACTION は ble-complete/action/ は含まない様に変更する
-
-    また ble-complete/action/ から ble-complete/action: に変更する。
-    元々 ble-complete/action/ の形にしていたのは
-    "外からカスタマイズする時に action というディレクトリにファイルを置けば使える"
-    という様にできたらいいなと思っての事だったが、具体的な計画はないし
-    そもそも結局 $path/complete/action/foo の形で検索しなければならないのだから、
-    関数名を ble-complete/action/ の形式にしておいても余り利点はない。
-
 2018-08-28
 
   * complete: echo ~/m@ から補完を実行すると COMP_PREFIX が効いていない
@@ -3244,6 +3235,17 @@ tech
 -------------------------------------------------------------------------------
 
 2018-08-29
+
+  * complete: [refactor] $ACTION は ble-complete/action/ は含まない様に変更する [#D0754]
+
+    また ble-complete/action/ から ble-complete/action: に変更する。
+    元々 ble-complete/action/ の形にしていたのは
+    "外からカスタマイズする時に action というディレクトリにファイルを置けば使える"
+    という様にできたらいいなと思っての事だったが、具体的な計画はないし
+    そもそも結局 $path/complete/action/foo の形で検索しなければならないのだから、
+    関数名を ble-complete/action/ の形式にしておいても余り利点はない。
+
+    同様に ble-complete/source/foo も ble-complete/source:foo に変更する事にした。
 
   * decode: [refactor] _ble_decode_key__kmap -> _ble_decode_keymap [#D0753]
 
