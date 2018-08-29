@@ -397,6 +397,15 @@ function ble-decode-char/csi/.decode {
         return
       fi
     fi
+  elif ((char==117)); then
+    if rex='^([0-9]*)(;[0-9]*)?$'; [[ $_ble_dcode_csi_args =~ $rex ]]; then
+      # xterm/mlterm "CSI <char> ; <mode> u" sequences
+      local rematch1=${BASH_REMATCH[1]}
+      local kcode=$rematch1 mods=${BASH_REMATCH:${#rematch1}+1}
+      ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[1]}"
+      csistat=$kcode
+      return
+    fi
   elif ((char==94||char==64)); then
     if rex='^[1-9][0-9]*$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # rxvt "CSI <kcode> ^", "CSI <kcode> @" sequences

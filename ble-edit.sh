@@ -6325,8 +6325,10 @@ function ble-decode/keymap:isearch/define {
   ble-bind -f __defchar__ isearch/self-insert
   ble-bind -f C-r         isearch/backward
   ble-bind -f C-s         isearch/forward
-  ble-bind -f C-h         isearch/prev
-  ble-bind -f DEL         isearch/prev
+  ble-bind -f 'C-?'       isearch/prev
+  ble-bind -f 'DEL'       isearch/prev
+  ble-bind -f 'C-h'       isearch/prev
+  ble-bind -f 'BS'        isearch/prev
 
   ble-bind -f __default__ isearch/exit-default
   ble-bind -f M-C-j       isearch/exit
@@ -6334,6 +6336,7 @@ function ble-decode/keymap:isearch/define {
   ble-bind -f C-g         isearch/cancel
   ble-bind -f C-j         isearch/accept
   ble-bind -f C-m         isearch/accept
+  ble-bind -f RET         isearch/accept
 }
 
 # 
@@ -6357,6 +6360,8 @@ function ble-decode/keymap:safe/bind-common {
 
   # kill
   ble-decode/keymap:safe/.bind 'C-@'       'set-mark'
+  ble-decode/keymap:safe/.bind 'C-SP'      'set-mark'
+  ble-decode/keymap:safe/.bind 'NUL'       'set-mark'
   ble-decode/keymap:safe/.bind 'M-SP'      'set-mark'
   ble-decode/keymap:safe/.bind 'C-x C-x'   'exchange-point-and-mark'
   ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or uword'
@@ -6376,9 +6381,11 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'S-right'   '@marked forward-char'
   ble-decode/keymap:safe/.bind 'S-left'    '@marked backward-char'
   ble-decode/keymap:safe/.bind 'C-d'       'delete-region-or forward-char'
-  ble-decode/keymap:safe/.bind 'C-h'       'delete-region-or backward-char'
   ble-decode/keymap:safe/.bind 'delete'    'delete-region-or forward-char'
+  ble-decode/keymap:safe/.bind 'C-?'       'delete-region-or backward-char'
   ble-decode/keymap:safe/.bind 'DEL'       'delete-region-or backward-char'
+  ble-decode/keymap:safe/.bind 'C-h'       'delete-region-or backward-char'
+  ble-decode/keymap:safe/.bind 'BS'        'delete-region-or backward-char'
   ble-decode/keymap:safe/.bind 'C-t'       'transpose-chars'
 
   # wordwise operations
@@ -6394,8 +6401,13 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-h'       'kill-backward-cword'
   ble-decode/keymap:safe/.bind 'C-delete'  'delete-forward-cword'
   ble-decode/keymap:safe/.bind 'C-_'       'delete-backward-cword'
+  ble-decode/keymap:safe/.bind 'C-DEL'     'delete-backward-cword'
+  ble-decode/keymap:safe/.bind 'C-BS'      'delete-backward-cword'
   ble-decode/keymap:safe/.bind 'M-delete'  'copy-forward-sword'
+  ble-decode/keymap:safe/.bind 'M-C-?'     'copy-backward-sword'
   ble-decode/keymap:safe/.bind 'M-DEL'     'copy-backward-sword'
+  ble-decode/keymap:safe/.bind 'M-C-h'     'copy-backward-sword'
+  ble-decode/keymap:safe/.bind 'M-BS'      'copy-backward-sword'
 
   ble-decode/keymap:safe/.bind 'M-f'       '@nomarked forward-cword'
   ble-decode/keymap:safe/.bind 'M-b'       '@nomarked backward-cword'

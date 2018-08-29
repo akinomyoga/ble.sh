@@ -1684,7 +1684,7 @@ function bleopt {
   if ((${#pvars[@]})); then
     local q="'" Q="'\''" var
     for var in "${pvars[@]}"; do
-      builtin printf '%s\n' "${var#bleopt_}='${!var//$q/$Q}'"
+      builtin printf '%s\n' "bleopt ${var#bleopt_}='${!var//$q/$Q}'"
     done
   fi
 
@@ -1840,8 +1840,9 @@ function ble/term/stty/TRAPEXIT {
 
 #---- cursor state ------------------------------------------------------------
 
+bleopt_term_cursor_external=0
+
 _ble_term_cursor_current=unknown
-_ble_term_cursor_external=0
 _ble_term_cursor_internal=0
 _ble_term_cursor_hidden_current=unknown
 _ble_term_cursor_hidden_internal=reveal
@@ -1892,6 +1893,32 @@ function ble/term/bracketed-paste-mode/leave {
   ble/util/buffer $'\e[?2004l'
 }
 
+#---- SGR(>4): modifyOtherKeys ------------------------------------------------
+
+: ${bleopt_term_modifyOtherKeys_external=}
+: ${bleopt_term_modifyOtherKeys_internal=2}
+
+_ble_term_modifyOtherKeys_current=
+function ble/term/modify-other-keys/.update {
+  [[ $1 == $_ble_term_modifyOtherKeys_current ]] && return
+  # Note: 対応していない端末が SGR と勘違いしても
+  #  大丈夫な様に SGR を最後にクリアしておく。
+  # Note: \e[>4;2m の時は、対応していない端末のため
+  #   一端 \e[>4;1m にしてから \e[>4;2m にする。
+  case $1 in
+  (0) ble/util/buffer $'\e[>4;0m\e[m' ;;
+  (1) ble/util/buffer $'\e[>4;1m\e[m' ;;
+  (2) ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
+  esac
+  _ble_term_modifyOtherKeys_current=$1
+}
+function ble/term/modify-other-keys/enter {
+  ble/term/modify-other-keys/.update "$bleopt_term_modifyOtherKeys_internal"
+}
+function ble/term/modify-other-keys/leave {
+  ble/term/modify-other-keys/.update "$bleopt_term_modifyOtherKeys_external"
+}
+
 #---- rl variable: convert-meta -----------------------------------------------
 
 _ble_term_rl_convert_meta_adjusted=
@@ -1922,6 +1949,7 @@ function ble/term/enter {
   [[ $_ble_term_state == internal ]] && return
   ble/term/stty/enter
   ble/term/bracketed-paste-mode/enter
+  ble/term/modify-other-keys/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
   ble/term/rl-convert-meta/enter
@@ -1931,7 +1959,8 @@ function ble/term/leave {
   [[ $_ble_term_state == external ]] && return
   ble/term/stty/leave
   ble/term/bracketed-paste-mode/leave
-  ble/term/cursor-state/.update "$_ble_term_cursor_external"
+  ble/term/modify-other-keys/leave
+  ble/term/cursor-state/.update "$bleopt_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
   ble/term/rl-convert-meta/leave
   _ble_term_cursor_current=unknown # vim は復元してくれない

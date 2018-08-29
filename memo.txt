@@ -3247,7 +3247,56 @@ tech
 
 2018-08-29
 
-  * complete: 絞り込み
+  * decode: modifyOtherKeys の振る舞いについて [#D0752]
+
+    調べると xterm では $'\e[>4;1m' 等を送ると有効になると書いてある。この情報は本当か?
+    https://unix.stackexchange.com/questions/165104/does-gnome-terminal-have-an-equivalent-for-xterms-modifyotherkeys
+
+    更に C-tab を使う為には modifyOtherKeys を 2 にしなければならないが、
+    これを設定すると Ctrl+space が C-@ ではなくて C-SP になるなど色々面倒な事になる。
+    どの設定でも動く様にする為には C-@ と同時に C-SP 等にも束縛して置かなければならない。
+    これらは実際の xterm で試す必要があるだろう。
+
+    なんと xterm.el にもその様な設定が含まれている。
+    https://emacsformacosx.com/emacs-bzr/trunk/lisp/term/xterm.el
+    これを読む限りでは \e[>4m で解除で \e[>4;1m で有効化の様である。
+    実は \e[>4;2m とすれば C-TAB もできるようになるという事ではあるまいか。
+
+    検索してみると mlterm は "CSI > 4 ; 2 m" に対応している。
+    https://sourceforge.net/p/mlterm/feature-requests/16/
+    しかも "ESC[<unicode>;<mod>u" の形式を使っている…。
+
+    うーん。'\e[>4;1m\e[>4;2m\e[m' でも送っておけば良いだろうか。
+    現在の所、端末がこれらの設定に対応しているかどうか調べるのは難しい。
+    解除に関しては、ユーザが敢えて設定している事もあるかもしれないので、
+    \e[>4m は送らないで置く…と思ったが、\e[>4;2m で放置しておくと、
+    C-SP が他のソフトウェアで効きませんという事になるかもしれないので難しい。
+    bleopt で設定できる様にするべきである。
+
+    以下のページによると mintty は C-TAB で \e[1;5I を S-C-TAB で \e[1;6I を送ってくるそうだ。
+    https://tmsanrinsha.net/post/2012/07/%E3%82%BF%E3%83%BC%E3%83%9F%E3%83%8A%E3%83%AB%E3%81%A7ctrltab%E3%81%A8%E3%81%8B%E3%82%92%E4%BD%BF%E3%81%86/
+    cmap/default.sh を参照してみるとこれらは kptab に割り当てられている… (つまり C-kptab, S-C-kptab)。
+
+    [修正]
+
+    - done: 先ず初めに synonym となるキーに関して確認を行う。
+
+      - done: C-@ と一緒に C-SP も登録する事にした。ただそもそも一箇所しかなかった。念の為 NUL も登録した
+      - done: C-m と一緒に RET も登録する事にした。一箇所だけ欠けている所があった
+      - done: C-i と一緒に TAB も登録する事にした。一箇所 S-TAB だけの所があったので C-S-i も登録した
+      - done: C-?, C-h と一緒に DEL, BS も登録する。これは結構修正した。主に C-h と DEL しか登録されていなかった
+      - done: C-_ と一緒に C-DEL, C-BS も登録する。これは一箇所 C-_ だけの所があった。他に C-BS は一つもなかった
+
+    - done: 次に CSI u に対応する。
+
+    - done: kp～ は区別しても役に立たないので
+      ユーザが特に区別したいというのでなければ既存の物と同じにする。
+
+    - done: '\e[>4;1m\e[>4;2m\e[m' を送ることにする。
+      結局状態を管理する事にした。
+      ble.sh の外でどの設定にするかは bleopt_term_modifyOtherKeys_external で設定する。
+
+  * complete: 絞り込み [#D0751]
 
     初め fish の様に入力欄を候補一覧の上に表示する事を考えたが管理が面倒だ。
     更に言うとコマンドラインと別に表示する意味があるのかわからない。

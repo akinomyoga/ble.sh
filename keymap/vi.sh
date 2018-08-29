@@ -4328,8 +4328,14 @@ _ble_keymap_vi_commandline_history_dirt=()
 _ble_keymap_vi_commandline_history_ind=0
 _ble_keymap_vi_commandline_history_onleave=()
 
+## @arr _ble_keymap_vi_cmap_is_cancel_key
+##   コマンドラインが空の時にキャンセルに使うキーの辞書です。
+_ble_keymap_vi_cmap_is_cancel_key[63|ble_decode_Ctrl]=1  # C-?
+_ble_keymap_vi_cmap_is_cancel_key[127]=1                 # DEL
+_ble_keymap_vi_cmap_is_cancel_key[104|ble_decode_Ctrl]=1 # C-h
+_ble_keymap_vi_cmap_is_cancel_key[8]=1                   # BS
 function ble/keymap:vi/commandline/before-command.hook {
-  if [[ ! $_ble_edit_str ]] && ((KEYS[0]==127||KEYS[0]==(104|ble_decode_Ctrl))); then # DEL or C-h
+  if [[ ! $_ble_edit_str ]] && ((_ble_keymap_vi_cmap_is_cancel_key[KEYS[0]])); then
     ble/widget/vi_cmap/cancel
     ble-decode/widget/suppress-widget
   fi
@@ -4816,8 +4822,10 @@ function ble/keymap:vi/setup-map {
   ble-bind -f l     vi-command/forward-char
   ble-bind -f left  vi-command/backward-char
   ble-bind -f right vi-command/forward-char
-  ble-bind -f C-h   'vi-command/backward-char wrap'
-  ble-bind -f DEL   'vi-command/backward-char wrap'
+  ble-bind -f 'C-?' 'vi-command/backward-char wrap'
+  ble-bind -f 'DEL' 'vi-command/backward-char wrap'
+  ble-bind -f 'C-h' 'vi-command/backward-char wrap'
+  ble-bind -f 'BS'  'vi-command/backward-char wrap'
   ble-bind -f SP    'vi-command/forward-char wrap'
 
   ble-bind -f j     vi-command/forward-line
@@ -6534,8 +6542,10 @@ function ble-decode/keymap:vi_smap/define {
   ble-bind -f C-g    vi_xmap/switch-to-visual
 
   ble-bind -f delete 'vi-command/operator d'
-  ble-bind -f C-h    'vi-command/operator d'
-  ble-bind -f DEL    'vi-command/operator d'
+  ble-bind -f 'C-?'  'vi-command/operator d'
+  ble-bind -f 'DEL'  'vi-command/operator d'
+  ble-bind -f 'C-h'  'vi-command/operator d'
+  ble-bind -f 'BS'   'vi-command/operator d'
 
   #----------------------------------------------------------------------------
 
@@ -6566,13 +6576,17 @@ function ble-decode/keymap:vi_smap/define {
 
   ble-bind -f left      'vi_smap/@nomarked vi-command/backward-char'
   ble-bind -f right     'vi_smap/@nomarked vi-command/forward-char'
-  ble-bind -f C-h       'vi_smap/@nomarked vi-command/backward-char wrap'
-  ble-bind -f DEL       'vi_smap/@nomarked vi-command/backward-char wrap'
+  ble-bind -f 'C-?'     'vi_smap/@nomarked vi-command/backward-char wrap'
+  ble-bind -f 'DEL'     'vi_smap/@nomarked vi-command/backward-char wrap'
+  ble-bind -f 'C-h'     'vi_smap/@nomarked vi-command/backward-char wrap'
+  ble-bind -f 'BS'      'vi_smap/@nomarked vi-command/backward-char wrap'
   ble-bind -f SP        'vi_smap/@nomarked vi-command/forward-char wrap'
   ble-bind -f S-left    'vi-command/backward-char'
   ble-bind -f S-right   'vi-command/forward-char'
-  ble-bind -f S-C-h     'vi-command/backward-char wrap'
-  ble-bind -f S-DEL     'vi-command/backward-char wrap'
+  ble-bind -f 'S-C-?'   'vi-command/backward-char wrap'
+  ble-bind -f 'S-DEL'   'vi-command/backward-char wrap'
+  ble-bind -f 'S-C-h'   'vi-command/backward-char wrap'
+  ble-bind -f 'S-BS'    'vi-command/backward-char wrap'
   ble-bind -f S-SP      'vi-command/forward-char wrap'
 
   ble-bind -f down      'vi_smap/@nomarked vi-command/forward-line'
@@ -6754,8 +6768,10 @@ function ble-decode/keymap:vi_imap/define {
 
   # charwise operations
   ble-bind -f 'C-d'       'delete-region-or forward-char-or-exit'
-  ble-bind -f 'C-h'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
+  ble-bind -f 'C-?'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
   ble-bind -f 'DEL'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
+  ble-bind -f 'C-h'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
+  ble-bind -f 'BS'        'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
 
   # wordwise operations
   ble-bind -f 'C-w'       'vi_imap/delete-backward-word'

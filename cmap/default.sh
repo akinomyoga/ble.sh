@@ -131,6 +131,9 @@ function ble-bind-function-key+default {
   # keypad
   #   vt100, xterm, application mode
   #   ESC ? は vt52 由来
+  #
+  #   Note: kp～ と通常のキーを区別しても binding が大変なだけで
+  #   余り利点もないので取り敢えずこの設定では区別しない。
   ble-bind -k 'ESC ? SP' kpspace
   ble-bind -k 'ESC O SP' kpspace
   ble/cmap/default/bind-keypad-key 'A' up    1
@@ -140,32 +143,32 @@ function ble-bind-function-key+default {
   ble/cmap/default/bind-keypad-key 'E' begin 1
   ble/cmap/default/bind-keypad-key 'F' end   1
   ble/cmap/default/bind-keypad-key 'H' home  1
-  ble/cmap/default/bind-keypad-key 'I' kptab 3
-  ble/cmap/default/bind-keypad-key 'M' kpent 3
-  ble/cmap/default/bind-keypad-key 'P' f1    1
-  ble/cmap/default/bind-keypad-key 'Q' f2    1
-  ble/cmap/default/bind-keypad-key 'R' f3    1
-  ble/cmap/default/bind-keypad-key 'S' f4    1
-  ble/cmap/default/bind-keypad-key 'j' kpmul 3 # *
-  ble/cmap/default/bind-keypad-key 'k' kpadd 3 # +
-  ble/cmap/default/bind-keypad-key 'l' kpsep 3 # ,
-  ble/cmap/default/bind-keypad-key 'm' kpsub 3 # -
-  ble/cmap/default/bind-keypad-key 'n' kpdec 3 # .
-  ble/cmap/default/bind-keypad-key 'o' kpdiv 3 # /
-  ble/cmap/default/bind-keypad-key 'p' kp0   3
-  ble/cmap/default/bind-keypad-key 'q' kp1   3
-  ble/cmap/default/bind-keypad-key 'r' kp2   3
-  ble/cmap/default/bind-keypad-key 's' kp3   3
-  ble/cmap/default/bind-keypad-key 't' kp4   3
-  ble/cmap/default/bind-keypad-key 'u' kp5   3
-  ble/cmap/default/bind-keypad-key 'v' kp6   3
-  ble/cmap/default/bind-keypad-key 'w' kp7   3
-  ble/cmap/default/bind-keypad-key 'x' kp8   3
-  ble/cmap/default/bind-keypad-key 'y' kp9   3
-  ble/cmap/default/bind-keypad-key 'X' kpeq  3
+  ble/cmap/default/bind-keypad-key 'I' TAB   3 # kptab
+  ble/cmap/default/bind-keypad-key 'M' RET   3 # kpent
+  ble/cmap/default/bind-keypad-key 'P' f1    1 # kpf1 # Note: 普通の f1-f4
+  ble/cmap/default/bind-keypad-key 'Q' f2    1 # kpf2 #   に対してこれらの
+  ble/cmap/default/bind-keypad-key 'R' f3    1 # kpf3 #   シーケンスを送る
+  ble/cmap/default/bind-keypad-key 'S' f4    1 # kpf4 #   端末もある。
+  ble/cmap/default/bind-keypad-key 'j' '*'   3 # kpmul
+  ble/cmap/default/bind-keypad-key 'k' '+'   3 # kpadd
+  ble/cmap/default/bind-keypad-key 'l' ','   3 # kpsep
+  ble/cmap/default/bind-keypad-key 'm' '-'   3 # kpsub
+  ble/cmap/default/bind-keypad-key 'n' '.'   3 # kpdec
+  ble/cmap/default/bind-keypad-key 'o' '/'   3 # kpdiv
+  ble/cmap/default/bind-keypad-key 'p' '0'   3 # kp0
+  ble/cmap/default/bind-keypad-key 'q' '1'   3 # kp1
+  ble/cmap/default/bind-keypad-key 'r' '2'   3 # kp2
+  ble/cmap/default/bind-keypad-key 's' '3'   3 # kp3
+  ble/cmap/default/bind-keypad-key 't' '4'   3 # kp4
+  ble/cmap/default/bind-keypad-key 'u' '5'   3 # kp5
+  ble/cmap/default/bind-keypad-key 'v' '6'   3 # kp6
+  ble/cmap/default/bind-keypad-key 'w' '7'   3 # kp7
+  ble/cmap/default/bind-keypad-key 'x' '8'   3 # kp8
+  ble/cmap/default/bind-keypad-key 'y' '9'   3 # kp9
+  ble/cmap/default/bind-keypad-key 'X' '='   3 # kpeq
 
   # rxvt
-  ble-bind -k 'ESC [ Z' S-tab
+  ble-bind -k 'ESC [ Z' S-TAB
 
   # cygwin specific
   ble-bind -k 'ESC [ [ A' f1

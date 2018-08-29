@@ -220,6 +220,7 @@ function ble-decode/keymap:emacs/define {
   # undo
   ble-bind -f 'C-_'       emacs/undo
   ble-bind -f 'C-DEL'     emacs/undo
+  ble-bind -f 'C-BS'      emacs/undo
   ble-bind -f 'C-/'       emacs/undo
   ble-bind -f 'C-x u'     emacs/undo
   ble-bind -f 'C-x C-u'   emacs/undo

@@ -1916,6 +1916,7 @@ function ble-decode/keymap:menu_complete/define {
   ble-bind -f TAB         'menu_complete/forward cyclic'
   ble-bind -f C-b         'menu_complete/backward'
   ble-bind -f left        'menu_complete/backward'
+  ble-bind -f C-S-i       'menu_complete/backward cyclic'
   ble-bind -f S-TAB       'menu_complete/backward cyclic'
   ble-bind -f C-n         'menu_complete/forward-line'
   ble-bind -f down        'menu_complete/forward-line'
