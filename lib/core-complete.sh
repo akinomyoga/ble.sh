@@ -1224,6 +1224,7 @@ _ble_complete_menu_active=
 _ble_complete_menu_common_part=
 _ble_complete_menu_items=()
 _ble_complete_menu_pack=()
+_ble_complete_menu_comp=()
 _ble_complete_menu_selected=-1
 _ble_complete_menu_filter=
 
@@ -1454,6 +1455,7 @@ function ble-complete/menu/clear {
 ##     入力済み部分を着色するのに使用します。
 ##   @var[in] comp_type
 ##     曖昧一致候補かどうかを確認するのに使用します。
+##   @var[in] COMP1 COMP2 COMPS comps_flags
 function ble-complete/menu/show {
   local opts=$1
 
@@ -1483,6 +1485,7 @@ function ble-complete/menu/show {
     _ble_complete_menu_selected=-1
     _ble_complete_menu_active=1
     _ble_complete_menu_common_part=$menu_common_part
+    _ble_complete_menu_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type" "$comps_flags")
     _ble_complete_menu_pack=("${cand_pack[@]}")
     _ble_complete_menu_filter=
   fi
@@ -1634,8 +1637,10 @@ function ble/widget/complete {
     insert_flags=${insert_flags}m
   fi
 
-  ble/util/invoke-hook _ble_complete_insert_hook
-  ble-complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
+  if [[ $insert$suffix != "$COMPS" ]]; then
+    ble/util/invoke-hook _ble_complete_insert_hook
+    ble-complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
+  fi
 
   if [[ $insert_flags == *m* ]]; then
     ble-complete/menu/show
@@ -1888,9 +1893,49 @@ function ble/widget/menu_complete/backward-line {
 }
 
 function ble/widget/menu_complete/accept {
+  local opts=$1
   ble-decode/keymap/pop
+
+  if ((_ble_complete_menu_selected>=0)); then
+    # 置換情報を再構成
+    local new=${_ble_edit_str:_ble_edit_mark:_ble_edit_ind-_ble_edit_mark}
+    local old=$_ble_complete_menu_original
+    local comp_text=${_ble_edit_str::_ble_edit_mark}$old${_ble_edit_str:_ble_edit_ind}
+    local insert_beg=$_ble_edit_mark
+    local insert_end=$(($_ble_edit_mark+${#old}))
+    local insert=$new
+    local insert_flags=
+
+    # suffix の決定と挿入
+    local suffix=
+    if [[ :$opts: == *:complete:* ]]; then
+      local pack=${_ble_complete_menu_pack[_ble_complete_menu_selected]}
+      local ACTION=${pack%%:*}
+      if ble/is-function ble-complete/action:"$ACTION"/complete; then
+        # 補完文脈の復元
+        local COMP1=${_ble_complete_menu_comp[0]}
+        local COMP2=${_ble_complete_menu_comp[1]}
+        local COMPS=${_ble_complete_menu_comp[2]}
+        local COMPV=${_ble_complete_menu_comp[3]}
+        local comp_type=${_ble_complete_menu_comp[4]}
+        local comps_flags=${_ble_complete_menu_comp[5]}
+
+        # 補完候補のロード
+        local "${_ble_complete_cand_varnames[@]}"
+        ble-complete/cand/unpack "$pack"
+
+        ble-complete/action:"$ACTION"/complete
+        ble-complete/insert "$_ble_edit_mark" "$_ble_edit_ind" "$insert" "$suffix"
+      fi
+    fi
+
+    # 通知
+    ble/util/invoke-hook _ble_complete_insert_hook
+  fi
+
   ble-complete/menu/clear
   _ble_edit_mark_active=
+
 }
 function ble/widget/menu_complete/cancel {
   ble-decode/keymap/pop
@@ -1907,8 +1952,8 @@ function ble-decode/keymap:menu_complete/define {
 
   # ble-bind -f __defchar__ menu_complete/self-insert
   ble-bind -f __default__ 'menu_complete/exit-default'
-  ble-bind -f C-m         'menu_complete/accept'
-  ble-bind -f RET         'menu_complete/accept'
+  ble-bind -f C-m         'menu_complete/accept complete'
+  ble-bind -f RET         'menu_complete/accept complete'
   ble-bind -f C-g         'menu_complete/cancel'
   ble-bind -f C-f         'menu_complete/forward'
   ble-bind -f right       'menu_complete/forward'
@@ -2097,6 +2142,7 @@ function ble/widget/auto_complete/self-insert {
   ble/util/c2s "$code"; local ins=$ret
   local comps_cur=${_ble_edit_str:_ble_complete_ac_comp1:_ble_edit_ind-_ble_complete_ac_comp1}
   local comps_new=$comps_cur$ins
+  local processed=
   if [[ $_ble_complete_ac_type == c ]]; then
     # c: 入力済み部分が補完結果の先頭に含まれる場合
     #   挿入した後でも補完結果の先頭に含まれる場合、その文字数だけ確定。
@@ -2105,7 +2151,7 @@ function ble/widget/auto_complete/self-insert {
 
       # Note: 途中で完全一致した場合は tail を挿入せずに終了する事にする
       [[ ! $_ble_complete_ac_word ]] && ble/widget/auto_complete/cancel
-      return
+      processed=1
     fi
   elif [[ $_ble_complete_ac_type == [ra] ]]; then
     if local ret close_type; ble-syntax:bash/simple-word/close-open-word "$comps_new"; then
@@ -2119,7 +2165,7 @@ function ble/widget/auto_complete/self-insert {
           ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
           [[ $_ble_complete_ac_cand == "$compv_new" ]] &&
             ble/widget/auto_complete/cancel
-          return
+          processed=1
         fi
       elif [[ $_ble_complete_ac_type == a ]]; then
         # a: 曖昧一致の時
@@ -2129,14 +2175,21 @@ function ble/widget/auto_complete/self-insert {
         if [[ $_ble_complete_ac_cand =~ $rex_ambiguous_compv ]]; then
           ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
           ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
-          return
+          processed=1
         fi
       fi
     fi
   fi
 
-  ble/widget/auto_complete/cancel
-  ble-decode-key "${KEYS[@]}"
+  if [[ $processed ]]; then
+    # notify dummy insertion
+    local comp_text= insert_beg=0 insert_end=0 insert=$ins suffix=
+    ble/util/invoke-hook _ble_complete_insert_hook
+    return 0
+  else
+    ble/widget/auto_complete/cancel
+    ble-decode-key "${KEYS[@]}"
+  fi
 }
 function ble-decode/keymap:auto_complete/define {
   local ble_bind_keymap=auto_complete

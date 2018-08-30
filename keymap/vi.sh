@@ -254,7 +254,8 @@ function ble/widget/vi_imap/complete {
   ble/widget/complete
 }
 function ble/keymap:vi/complete/insert.hook {
-  [[ $_ble_decode_keymap == vi_imap ]] || return
+  [[ $_ble_decode_keymap == vi_imap ||
+       $_ble_decode_keymap == auto_complete ]] || return
 
   local original=${comp_text:insert_beg:insert_end-insert_beg}
   local q="'" Q="'\''"
