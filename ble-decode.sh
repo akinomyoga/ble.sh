@@ -368,14 +368,14 @@ function ble-decode-char/csi/clear {
 function ble-decode-char/csi/.modify-kcode {
   local mod=$(($1-1))
   if ((mod>=0)); then
-    if ((65<=kcode&&kcode<=90||97<=kcode&&kcode<=122)); then
-      # Note: xterm, mintty では modifyOtherKeys で alpha に対するシフトは
-      #   文字自体もそれに応じて変化させ、更に修飾フラグも設定する。
+    # Note: xterm, mintty では modifyOtherKeys で通常文字に対するシフトは
+    #   文字自体もそれに応じて変化させ、更に修飾フラグも設定する。
+    if ((33<=kcode&&kcode<ble_decode_function_key_base)); then
       if ((mod==0x01)); then
         # S- だけの時には単に S- を外す
         mod=0
-      else
-        # 他の修飾がある時は小文字に統一する 0x20
+      elif ((65<=kcode&&kcode<=90)); then
+        # 他の修飾がある時は英大文字は小文字に統一する
         ((kcode|=0x20))
       fi
     fi
