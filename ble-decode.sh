@@ -368,13 +368,25 @@ function ble-decode-char/csi/clear {
 function ble-decode-char/csi/.modify-kcode {
   local mod=$(($1-1))
   if ((mod>=0)); then
-    # Note: Meta 0x20 は独自
+    if ((65<=kcode&&kcode<=90||97<=kcode&&kcode<=122)); then
+      # Note: xterm, mintty では modifyOtherKeys で alpha に対するシフトは
+      #   文字自体もそれに応じて変化させ、更に修飾フラグも設定する。
+      if ((mod==0x01)); then
+        # S- だけの時には単に S- を外す
+        mod=0
+      else
+        # 他の修飾がある時は小文字に統一する 0x20
+        ((kcode|=0x20))
+      fi
+    fi
+
+    # Note: Altr 0x20 は独自
     ((mod&0x01&&(kcode|=ble_decode_Shft),
-      mod&0x02&&(kcode|=ble_decode_Altr),
+      mod&0x02&&(kcode|=ble_decode_Meta),
       mod&0x04&&(kcode|=ble_decode_Ctrl),
       mod&0x08&&(kcode|=ble_decode_Supr),
       mod&0x10&&(kcode|=ble_decode_Hypr),
-      mod&0x20&&(kcode|=ble_decode_Meta)))
+      mod&0x20&&(kcode|=ble_decode_Altr)))
   fi
 }
 function ble-decode-char/csi/.decode {
@@ -398,11 +410,11 @@ function ble-decode-char/csi/.decode {
       fi
     fi
   elif ((char==117)); then
-    if rex='^([0-9]*)(;[0-9]*)?$'; [[ $_ble_dcode_csi_args =~ $rex ]]; then
+    if rex='^([0-9]*)(;[0-9]*)?$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm/mlterm "CSI <char> ; <mode> u" sequences
       local rematch1=${BASH_REMATCH[1]}
       local kcode=$rematch1 mods=${BASH_REMATCH:${#rematch1}+1}
-      ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[1]}"
+      ble-decode-char/csi/.modify-kcode "$mods"
       csistat=$kcode
       return
     fi

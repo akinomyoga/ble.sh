@@ -1895,7 +1895,7 @@ function ble/term/bracketed-paste-mode/leave {
 
 #---- SGR(>4): modifyOtherKeys ------------------------------------------------
 
-: ${bleopt_term_modifyOtherKeys_external=}
+: ${bleopt_term_modifyOtherKeys_external=1}
 : ${bleopt_term_modifyOtherKeys_internal=2}
 
 _ble_term_modifyOtherKeys_current=
