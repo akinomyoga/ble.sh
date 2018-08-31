@@ -1814,10 +1814,14 @@ function ble/keymap:vi/operator:filter {
     _ble_edit_PS1='!'
     _ble_edit_history_prefix=_ble_keymap_vi_filter
     _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
+    _ble_keymap_vi_cmap_cancel_hook=ble/keymap:vi/operator:filter/cancel.hook
     _ble_syntax_lang=bash
     _ble_highlight_layer__list=(plain syntax region overwrite_mode)
     return 148
   fi
+}
+function ble/keymap:vi/operator:filter/cancel.hook {
+  _ble_edit_mark_active= # clear mark:vi_filter
 }
 function ble/keymap:vi/operator:filter/.hook {
   local command=$1 # 入力されたコマンド
@@ -6830,6 +6834,7 @@ function ble-decode/keymap:vi_imap/define {
 # vi_cmap
 
 _ble_keymap_vi_cmap_hook=
+_ble_keymap_vi_cmap_cancel_hook=
 _ble_keymap_vi_cmap_before_command=
 
 # 既定の cmap 履歴
@@ -6842,6 +6847,7 @@ _ble_keymap_vi_cmap_history_onleave=()
 function ble/keymap:vi/async-commandline-mode {
   local hook=$1
   _ble_keymap_vi_cmap_hook=$hook
+  _ble_keymap_vi_cmap_cancel_hook=
   _ble_keymap_vi_cmap_before_command=
 
   # 記録
@@ -6910,7 +6916,7 @@ function ble/widget/vi_cmap/accept {
 }
 
 function ble/widget/vi_cmap/cancel {
-  _ble_keymap_vi_cmap_hook=
+  _ble_keymap_vi_cmap_hook=$_ble_keymap_vi_cmap_cancel_hook
   ble/widget/vi_cmap/accept
 }
 
