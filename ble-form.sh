@@ -49,15 +49,15 @@ function bleopt/check:char_width_mode {
   fi
 }
 
-_ble_text_c2w__table=()
+_ble_util_c2w_table=()
 
 ## 関数 ble/util/c2w ccode
 ##   @var[out] ret
 function ble/util/c2w {
-  # ret=${_ble_text_c2w__table[$1]}
+  # ret=${_ble_util_c2w_table[$1]}
   # [[ $ret ]] && return
   "ble/util/c2w+$bleopt_char_width_mode" "$1"
-  # _ble_text_c2w__table[$1]=$ret
+  # _ble_util_c2w_table[$1]=$ret
 }
 ## 関数 ble/util/c2w-edit ccode
 ##   編集画面での表示上の文字幅を返します。
@@ -118,7 +118,7 @@ function ble/util/c2w/.determine-unambiguous {
   fi
 }
 
-## 配列 _ble_text_c2w_emoji_wranges
+## 配列 _ble_util_c2w_emoji_wranges
 ##
 ##   https://github.com/vim-jp/issues/issues/1086 にある表を
 ##   以下の関数で加工した。
@@ -128,7 +128,7 @@ function ble/util/c2w/.determine-unambiguous {
 ##     printf ' %s %s' "$begin" "$end"
 ##   }
 ##
-_ble_text_c2w_emoji_wranges=(
+_ble_util_c2w_emoji_wranges=(
   8252 8253 8265 8266 8482 8483 8505 8506 8596 8602 8617 8619 8986 8988
   9000 9001 9167 9168 9193 9204 9208 9211 9410 9411 9642 9644 9654 9655
   9664 9665 9723 9727 9728 9733 9742 9743 9745 9746 9748 9750 9752 9753
@@ -164,9 +164,9 @@ function ble/util/c2w/is-emoji {
   # 0x3030 - 0x3299
   ((0x3030<=code&&code<=0x3299&&_ble_util_c2w_non_zenkaku[code]!=-2)) && return 1
 
-  local l=0 u=${#_ble_text_c2w_emoji_wranges[@]} m
+  local l=0 u=${#_ble_util_c2w_emoji_wranges[@]} m
   while ((l+1<u)); do
-    ((_ble_text_c2w_emoji_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+    ((_ble_util_c2w_emoji_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
   done
 
   (((l&1)==0)); return
@@ -177,7 +177,7 @@ function ble/util/c2w/is-emoji {
 ## 関数 ble/util/c2w+emacs
 ##   emacs-24.2.1 default char-width-table
 ##   @var[out] ret
-_ble_text_c2w__emacs_wranges=(
+_ble_util_c2w_emacs_wranges=(
  162 164 167 169 172 173 176 178 180 181 182 183 215 216 247 248 272 273 276 279
  280 282 284 286 288 290 293 295 304 305 306 308 315 316 515 516 534 535 545 546
  555 556 608 618 656 660 722 723 724 725 768 769 770 772 775 777 779 780 785 787
@@ -236,14 +236,14 @@ function ble/util/c2w+emacs {
 
   [[ $tIndex ]] || return 0
 
-  if ((tIndex<_ble_text_c2w__emacs_wranges[0])); then
+  if ((tIndex<_ble_util_c2w_emacs_wranges[0])); then
     ret=1
     return
   fi
 
-  local l=0 u=${#_ble_text_c2w__emacs_wranges[@]} m
+  local l=0 u=${#_ble_util_c2w_emacs_wranges[@]} m
   while ((l+1<u)); do
-    ((_ble_text_c2w__emacs_wranges[m=(l+u)/2]<=tIndex?(l=m):(u=m)))
+    ((_ble_util_c2w_emacs_wranges[m=(l+u)/2]<=tIndex?(l=m):(u=m)))
   done
   ((ret=((l&1)==0)?2:1))
   return 0
@@ -264,7 +264,7 @@ function ble/util/c2w+west {
 
 ## 関数 ble/util/c2w+east
 ##   @var[out] ret
-_ble_text_c2w__east_wranges=(
+_ble_util_c2w_east_wranges=(
  161 162 164 165 167 169 170 171 174 175 176 181 182 187 188 192 198 199 208 209
  215 217 222 226 230 231 232 235 236 238 240 241 242 244 247 251 252 253 254 255
  257 258 273 274 275 276 283 284 294 296 299 300 305 308 312 313 319 323 324 325
@@ -291,54 +291,54 @@ function ble/util/c2w+east {
   fi
 
   local code=$1
-  if ((code<_ble_text_c2w__east_wranges[0])); then
+  if ((code<_ble_util_c2w_east_wranges[0])); then
     ret=1
     return
   fi
 
-  local l=0 u=${#_ble_text_c2w__east_wranges[@]} m
+  local l=0 u=${#_ble_util_c2w_east_wranges[@]} m
   while ((l+1<u)); do
-    ((_ble_text_c2w__east_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+    ((_ble_util_c2w_east_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
   done
   ((ret=((l&1)==0)?2:1))
 }
 
 #------------------------------------------------------------------------------
-# ble-edit/draw
+# ble/canvas
 
-function ble-edit/draw/put {
+function ble/canvas/put.draw {
   DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
 }
-function ble-edit/draw/put.ind {
+function ble/canvas/put-ind.draw {
   local -i count=${1-1}
   local ret; ble/string#repeat "${_ble_term_ind}" "$count"
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
 }
-function ble-edit/draw/put.il {
+function ble/canvas/put-il.draw {
   local -i value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_il//'%d'/$value}
 }
-function ble-edit/draw/put.dl {
+function ble/canvas/put-dl.draw {
   local -i value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
 }
-function ble-edit/draw/put.cuu {
+function ble/canvas/put-cuu.draw {
   local -i value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuu//'%d'/$value}
 }
-function ble-edit/draw/put.cud {
+function ble/canvas/put-cud.draw {
   local -i value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cud//'%d'/$value}
 }
-function ble-edit/draw/put.cuf {
+function ble/canvas/put-cuf.draw {
   local -i value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuf//'%d'/$value}
 }
-function ble-edit/draw/put.cub {
+function ble/canvas/put-cub.draw {
   local -i value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cub//'%d'/$value}
 }
-function ble-edit/draw/put.cup {
+function ble/canvas/put-cup.draw {
   local -i l=${1-1} c=${2-1}
   local out=$_ble_term_cup
   out=${out//'%l'/$l}
@@ -347,44 +347,87 @@ function ble-edit/draw/put.cup {
   out=${out//'%x'/$((c-1))}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
-function ble-edit/draw/put.hpa {
+function ble/canvas/put-hpa.draw {
   local -i c=${1-1}
   local out=$_ble_term_hpa
   out=${out//'%c'/$c}
   out=${out//'%x'/$((c-1))}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
-function ble-edit/draw/put.vpa {
+function ble/canvas/put-vpa.draw {
   local -i l=${1-1}
   local out=$_ble_term_vpa
   out=${out//'%l'/$l}
   out=${out//'%y'/$((l-1))}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
-function ble-edit/draw/flush {
+function ble/canvas/flush.draw {
   IFS= builtin eval 'builtin echo -n "${DRAW_BUFF[*]}"'
   DRAW_BUFF=()
 }
-## 関数 ble-edit/draw/sflush [-v var]
+## 関数 ble/canvas/sflush.draw [-v var]
 ##   @param[in] var
 ##     出力先の変数名を指定します。
 ##   @var[out] !var
-function ble-edit/draw/sflush {
+function ble/canvas/sflush.draw {
   local _var=ret
   [[ $1 == -v ]] && _var=$2
   IFS= builtin eval "$_var=\"\${DRAW_BUFF[*]}\""
   DRAW_BUFF=()
 }
-function ble-edit/draw/bflush {
+function ble/canvas/bflush.draw {
   IFS= builtin eval 'ble/util/buffer "${DRAW_BUFF[*]}"'
   DRAW_BUFF=()
 }
 
-function ble-edit/draw/trace/SC {
+## 関数 ble/canvas/trace.draw text
+##   制御シーケンスを含む文字列を出力すると共にカーソル位置の移動を計算します。
+##
+##   @param[in]   text
+##     出力する (制御シーケンスを含む) 文字列を指定します。
+##   @var[in,out] DRAW_BUFF[]
+##     出力先の配列を指定します。
+##   @var[in,out] x y g
+##     出力の開始位置を指定します。出力終了時の位置を返します。
+##   @var[in,out] lc lg
+##     bleopt_suppress_bash_output= の時、
+##     出力開始時のカーソル左の文字コードを指定します。
+##     出力終了時のカーソル左の文字コードが分かる場合にそれを返します。
+##
+##   以下のシーケンスを認識します
+##
+##   - Control Characters (C0 の文字 及び DEL)
+##     BS HT LF VT CR はカーソル位置の変更を行います。
+##     それ以外の文字はカーソル位置の変更は行いません。
+##
+##   - CSI Sequence (Control Sequence)
+##     | CUU   CSI A | CHB   CSI Z |
+##     | CUD   CSI B | HPR   CSI a |
+##     | CUF   CSI C | VPR   CSI e |
+##     | CUB   CSI D | HPA   CSI ` |
+##     | CNL   CSI E | VPA   CSI d |
+##     | CPL   CSI F | HVP   CSI f |
+##     | CHA   CSI G | SGR   CSI m |
+##     | CUP   CSI H | SCOSC CSI s |
+##     | CHT   CSI I | SCORC CSI u |
+##     上記のシーケンスはカーソル位置の計算に含め、
+##     また、端末 (TERM) に応じた出力を実施します。
+##     上記以外のシーケンスはカーソル位置を変更しません。
+##
+##   - SOS, DCS, SOS, PM, APC, ESC k ～ ESC \
+##   - ISO-2022 に含まれる 3 byte 以上のシーケンス
+##     これらはそのまま通します。位置計算の考慮には入れません。
+##
+##   - ESC Sequence
+##     DECSC DECRC IND RI NEL はカーソル位置の変更を行います。
+##     それ以外はカーソル位置の変更は行いません。
+##
+
+function ble/canvas/trace/.SC {
   trace_scosc="$x $y $g $lc $lg"
-  ble-edit/draw/put "$_ble_term_sc"
+  ble/canvas/put.draw "$_ble_term_sc"
 }
-function ble-edit/draw/trace/RC {
+function ble/canvas/trace/.RC {
   local -a scosc
   scosc=($trace_scosc)
   x=${scosc[0]}
@@ -392,18 +435,18 @@ function ble-edit/draw/trace/RC {
   g=${scosc[2]}
   lc=${scosc[3]}
   lg=${scosc[4]}
-  ble-edit/draw/put "$_ble_term_rc"
+  ble/canvas/put.draw "$_ble_term_rc"
 }
-function ble-edit/draw/trace/NEL {
-  ble-edit/draw/put "$_ble_term_cr"
-  ble-edit/draw/put "$_ble_term_nl"
+function ble/canvas/trace/.NEL {
+  ble/canvas/put.draw "$_ble_term_cr"
+  ble/canvas/put.draw "$_ble_term_nl"
   ((y++,x=0,lc=32,lg=0))
 }
-## 関数 ble-edit/draw/trace/SGR/arg_next
+## 関数 ble/canvas/trace/.SGR/arg_next
 ##   @var[in    ] f
 ##   @var[in,out] j
 ##   @var[   out] arg
-function ble-edit/draw/trace/SGR/arg_next {
+function ble/canvas/trace/.SGR/arg_next {
   local _var=arg _ret
   if [[ $1 == -v ]]; then
     _var=$2
@@ -419,12 +462,12 @@ function ble-edit/draw/trace/SGR/arg_next {
 
   (($_var=_ret))
 }
-function ble-edit/draw/trace/SGR {
+function ble/canvas/trace/.SGR {
   local param=$1 seq=$2 specs i iN
   ble/string#split specs \; "$param"
   if ((${#specs[*]}==0)); then
     g=0
-    ble-edit/draw/put "$_ble_term_sgr0"
+    ble/canvas/put.draw "$_ble_term_sgr0"
     return
   fi
 
@@ -441,16 +484,16 @@ function ble-edit/draw/trace/SGR {
         ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
       elif ((f[0]==38)); then
         local j=1 color cspace
-        ble-edit/draw/trace/SGR/arg_next -v cspace
+        ble/canvas/trace/.SGR/arg_next -v cspace
         if ((cspace==5)); then
-          ble-edit/draw/trace/SGR/arg_next -v color
+          ble/canvas/trace/.SGR/arg_next -v color
           ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
         fi
       elif ((f[0]==48)); then
         local j=1 color cspace
-        ble-edit/draw/trace/SGR/arg_next -v cspace
+        ble/canvas/trace/.SGR/arg_next -v cspace
         if ((cspace==5)); then
-          ble-edit/draw/trace/SGR/arg_next -v color
+          ble/canvas/trace/.SGR/arg_next -v color
           ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
         fi
       elif ((f[0]==39)); then
@@ -498,16 +541,16 @@ function ble-edit/draw/trace/SGR {
   done
 
   ble-color-g2sgr -v seq "$g"
-  ble-edit/draw/put "$seq"
+  ble/canvas/put.draw "$seq"
 }
-function ble-edit/draw/trace/process-csi-sequence {
+function ble/canvas/trace/.process-csi-sequence {
   local seq=$1 seq1=${1:2} rex
   local char=${seq1:${#seq1}-1:1} param=${seq1::${#seq1}-1}
   if [[ ! ${param//[0-9:;]} ]]; then
     # CSI 数字引数 + 文字
     case "$char" in
     (m) # SGR
-      ble-edit/draw/trace/SGR "$param" "$seq"
+      ble/canvas/trace/.SGR "$param" "$seq"
       return ;;
     ([ABCDEFGIZ\`ade])
       local arg=0
@@ -518,47 +561,47 @@ function ble-edit/draw/trace/process-csi-sequence {
       if [[ $char == A ]]; then
         # CUU "CSI A"
         ((y-=arg,y<0&&(y=0)))
-        ((y<y0)) && ble-edit/draw/put.cuu $((y0-y))
+        ((y<y0)) && ble/canvas/put-cuu.draw $((y0-y))
       elif [[ $char == [Be] ]]; then
         # CUD "CSI B"
         # VPR "CSI e"
         ((y+=arg,y>=lines&&(y=lines-1)))
-        ((y>y0)) && ble-edit/draw/put.cud $((y-y0))
+        ((y>y0)) && ble/canvas/put-cud.draw $((y-y0))
       elif [[ $char == [Ca] ]]; then
         # CUF "CSI C"
         # HPR "CSI a"
         ((x+=arg,x>=cols&&(x=cols-1)))
-        ((x>x0)) && ble-edit/draw/put.cuf $((x-x0))
+        ((x>x0)) && ble/canvas/put-cuf.draw $((x-x0))
       elif [[ $char == D ]]; then
         # CUB "CSI D"
         ((x-=arg,x<0&&(x=0)))
-        ((x<x0)) && ble-edit/draw/put.cub $((x0-x))
+        ((x<x0)) && ble/canvas/put-cub.draw $((x0-x))
       elif [[ $char == E ]]; then
         # CNL "CSI E"
         ((y+=arg,y>=lines&&(y=lines-1),x=0))
-        ((y>y0)) && ble-edit/draw/put.cud $((y-y0))
-        ble-edit/draw/put "$_ble_term_cr"
+        ((y>y0)) && ble/canvas/put-cud.draw $((y-y0))
+        ble/canvas/put.draw "$_ble_term_cr"
       elif [[ $char == F ]]; then
         # CPL "CSI F"
         ((y-=arg,y<0&&(y=0),x=0))
-        ((y<y0)) && ble-edit/draw/put.cuu $((y0-y))
-        ble-edit/draw/put "$_ble_term_cr"
+        ((y<y0)) && ble/canvas/put-cuu.draw $((y0-y))
+        ble/canvas/put.draw "$_ble_term_cr"
       elif [[ $char == [G\`] ]]; then
         # CHA "CSI G"
         # HPA "CSI `"
         ((x=arg-1,x<0&&(x=0),x>=cols&&(x=cols-1)))
-        ble-edit/draw/put.hpa $((x+1))
+        ble/canvas/put-hpa.draw $((x+1))
       elif [[ $char == d ]]; then
         # VPA "CSI d"
         ((y=arg-1,y<0&&(y=0),y>=lines&&(y=lines-1)))
-        ble-edit/draw/put.vpa $((y+1))
+        ble/canvas/put-vpa.draw $((y+1))
       elif [[ $char == I ]]; then
         # CHT "CSI I"
         local _x
         ((_x=(x/it+arg)*it,
           _x>=cols&&(_x=cols-1)))
         if ((_x>x)); then
-          ble-edit/draw/put.cuf $((_x-x))
+          ble/canvas/put-cuf.draw $((_x-x))
           ((x=_x))
         fi
       elif [[ $char == Z ]]; then
@@ -567,7 +610,7 @@ function ble-edit/draw/trace/process-csi-sequence {
         ((_x=((x+it-1)/it-arg)*it,
           _x<0&&(_x=0)))
         if ((_x<x)); then
-          ble-edit/draw/put.cub $((x-_x))
+          ble/canvas/put-cub.draw $((x-_x))
           ((x=_x))
         fi
       fi
@@ -582,7 +625,7 @@ function ble-edit/draw/trace/process-csi-sequence {
       ((y=params[0]-1))
       ((x<0&&(x=0),x>=cols&&(x=cols-1),
         y<0&&(y=0),y>=lines&&(y=lines-1)))
-      ble-edit/draw/put.cup $((y+1)) $((x+1))
+      ble/canvas/put-cup.draw $((y+1)) $((x+1))
       lc=-1 lg=0
       return ;;
     ([su]) # SCOSC SCORC
@@ -604,9 +647,9 @@ function ble-edit/draw/trace/process-csi-sequence {
         return
       else
         if [[ $char == s ]]; then
-          ble-edit/draw/trace/SC
+          ble/canvas/trace/.SC
         else
-          ble-edit/draw/trace/RC
+          ble/canvas/trace/.RC
         fi
         return
       fi ;;
@@ -616,88 +659,41 @@ function ble-edit/draw/trace/process-csi-sequence {
     esac
   fi
 
-  ble-edit/draw/put "$seq"
+  ble/canvas/put.draw "$seq"
 }
-function ble-edit/draw/trace/process-esc-sequence {
+function ble/canvas/trace/.process-esc-sequence {
   local seq=$1 char=${1:1}
   case "$char" in
   (7) # DECSC
-    ble-edit/draw/trace/SC
+    ble/canvas/trace/.SC
     return ;;
   (8) # DECRC
-    ble-edit/draw/trace/RC
+    ble/canvas/trace/.RC
     return ;;
   (D) # IND
     ((y++))
-    ble-edit/draw/put "$_ble_term_ind"
+    ble/canvas/put.draw "$_ble_term_ind"
     [[ $_ble_term_ind != $'\eD' ]] &&
-      ble-edit/draw/put.hpa $((x+1)) # tput ind が唯の改行の時がある
+      ble/canvas/put-hpa.draw $((x+1)) # tput ind が唯の改行の時がある
     lc=-1 lg=0
     return ;;
   (M) # RI
     ((y--,y<0&&(y=0)))
-    ble-edit/draw/put "$_ble_term_ri"
+    ble/canvas/put.draw "$_ble_term_ri"
     lc=-1 lg=0
     return ;;
   (E) # NEL
-    ble-edit/draw/trace/NEL
+    ble/canvas/trace/.NEL
     lc=32 lg=0
     return ;;
   # (H) # HTS 面倒だから無視。
   # ([KL]) PLD PLU は何か?
   esac
 
-  ble-edit/draw/put "$seq"
+  ble/canvas/put.draw "$seq"
 }
 
-## 関数 ble-edit/draw/trace text
-##   制御シーケンスを含む文字列を出力すると共にカーソル位置の移動を計算します。
-##
-##   @param[in]   text
-##     出力する (制御シーケンスを含む) 文字列を指定します。
-##   @var[in,out] DRAW_BUFF[]
-##     出力先の配列を指定します。
-##   @var[in,out] x y g
-##     出力の開始位置を指定します。出力終了時の位置を返します。
-##   @var[in,out] lc lg
-##     bleopt_suppress_bash_output= の時、
-##     出力開始時のカーソル左の文字コードを指定します。
-##     出力終了時のカーソル左の文字コードが分かる場合にそれを返します。
-##
-##   以下のシーケンスを認識します
-##
-##   - Control Characters (C0 の文字 及び DEL)
-##     BS HT LF VT CR はカーソル位置の変更を行います。
-##     それ以外の文字はカーソル位置の変更は行いません。
-##
-##   - CSI Sequence (Control Sequence)
-##     | CUU   CSI A | CHB   CSI Z |
-##     | CUD   CSI B | HPR   CSI a |
-##     | CUF   CSI C | VPR   CSI e |
-##     | CUB   CSI D | HPA   CSI ` |
-##     | CNL   CSI E | VPA   CSI d |
-##     | CPL   CSI F | HVP   CSI f |
-##     | CHA   CSI G | SGR   CSI m |
-##     | CUP   CSI H | SCOSC CSI s |
-##     | CHT   CSI I | SCORC CSI u |
-##     上記のシーケンスはカーソル位置の計算に含め、
-##     また、端末 (TERM) に応じた出力を実施します。
-##     上記以外のシーケンスはカーソル位置を変更しません。
-##
-##   - SOS, DCS, SOS, PM, APC, ESC k ～ ESC \
-##   - ISO-2022 に含まれる 3 byte 以上のシーケンス
-##     これらはそのまま通します。位置計算の考慮には入れません。
-##
-##   - ESC Sequence
-##     DECSC DECRC IND RI NEL はカーソル位置の変更を行います。
-##     それ以外はカーソル位置の変更は行いません。
-##
-function ble-edit/draw/trace {
-  # cygwin では LC_COLLATE=C にしないと
-  # 正規表現の range expression が期待通りに動かない。
-  LC_COLLATE=C ble-edit/draw/trace.impl "$@" &>/dev/null
-}
-function ble-edit/draw/trace.impl {
+function ble/canvas/trace/.impl {
   local text=$1
 
   # Note: 文字符号化方式によっては対応する文字が存在しない可能性がある。
@@ -741,7 +737,7 @@ function ble-edit/draw/trace.impl {
           # Control sequences
           s=
           ((i+=${#BASH_REMATCH}-1))
-          ble-edit/draw/trace/process-csi-sequence "$BASH_REMATCH"
+          ble/canvas/trace/.process-csi-sequence "$BASH_REMATCH"
         elif [[ $tail =~ $rex_2022 ]]; then
           # ISO-2022 (素通り)
           s=$BASH_REMATCH
@@ -749,7 +745,7 @@ function ble-edit/draw/trace.impl {
         elif [[ $tail =~ $rex_esc ]]; then
           s=
           ((i+=${#BASH_REMATCH}-1))
-          ble-edit/draw/trace/process-esc-sequence "$BASH_REMATCH"
+          ble/canvas/trace/.process-esc-sequence "$BASH_REMATCH"
         fi ;;
       ('') # BS
         ((x>0&&(x--,lc=32,lg=g))) ;;
@@ -765,22 +761,22 @@ function ble-edit/draw/trace.impl {
         fi ;;
       ($'\n') # LF = CR+LF
         s=
-        ble-edit/draw/trace/NEL ;;
+        ble/canvas/trace/.NEL ;;
       ('') # VT
         s=
-        ble-edit/draw/put "$_ble_term_cr"
-        ble-edit/draw/put "$_ble_term_nl"
-        ((x)) && ble-edit/draw/put.cuf "$x"
+        ble/canvas/put.draw "$_ble_term_cr"
+        ble/canvas/put.draw "$_ble_term_nl"
+        ((x)) && ble/canvas/put-cuf.draw "$x"
         ((y++,lc=32,lg=0)) ;;
       ($'\r') # CR ^M
         s=$_ble_term_cr
         ((x=0,lc=-1,lg=0)) ;;
       # その他の制御文字は  (BEL)  (FF) も含めてゼロ幅と解釈する
       esac
-      [[ $s ]] && ble-edit/draw/put "$s"
+      [[ $s ]] && ble/canvas/put.draw "$s"
     elif ble/util/isprint+ "$tail"; then
       w=${#BASH_REMATCH}
-      ble-edit/draw/put "$BASH_REMATCH"
+      ble/canvas/put.draw "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
       if [[ ! $bleopt_suppress_bash_output ]]; then
         local ret
@@ -795,10 +791,10 @@ function ble-edit/draw/trace.impl {
       w=$ret
       if ((w>=2&&x+w>cols)); then
         # 行に入りきらない場合の調整
-        ble-edit/draw/put "${_ble_string_prototype::x+w-cols}"
+        ble/canvas/put.draw "${_ble_string_prototype::x+w-cols}"
         ((x=cols))
       fi
-      ble-edit/draw/put "${tail::1}"
+      ble/canvas/put.draw "${tail::1}"
       ((i++))
     fi
 
@@ -808,6 +804,11 @@ function ble-edit/draw/trace.impl {
       ((x==0&&(lc=32,lg=0)))
     fi
   done
+}
+function ble/canvas/trace.draw {
+  # cygwin では LC_COLLATE=C にしないと
+  # 正規表現の range expression が期待通りに動かない。
+  LC_COLLATE=C ble/canvas/trace/.impl "$@" &>/dev/null
 }
 
 #------------------------------------------------------------------------------
@@ -1235,156 +1236,156 @@ function ble/textmap#hit {
 }
 
 #------------------------------------------------------------------------------
-# current-position
+# ble/canvas/goto.draw
 
-## 変数 _ble_line_x
-## 変数 _ble_line_y
+## @var _ble_canvas_x
+## @var _ble_canvas_y
 ##   現在の (描画の為に動き回る) カーソル位置を保持します。
-_ble_line_x=0 _ble_line_y=0
+_ble_canvas_x=0 _ble_canvas_y=0
 
-## 関数 ble-form/goto.draw varname x y
+## 関数 ble/canvas/goto.draw varname x y
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
 ## @param[in] x y
 ##   移動先のカーソルの座標を指定します。
 ##   プロンプト原点が x=0 y=0 に対応します。
-function ble-form/goto.draw {
+function ble/canvas/goto.draw {
   local -i x=$1 y=$2
-  ble-edit/draw/put "$_ble_term_sgr0"
+  ble/canvas/put.draw "$_ble_term_sgr0"
 
-  local -i dy=y-_ble_line_y
+  local -i dy=y-_ble_canvas_y
   if ((dy!=0)); then
     if ((dy>0)); then
-      ble-edit/draw/put "${_ble_term_cud//'%d'/$dy}"
+      ble/canvas/put.draw "${_ble_term_cud//'%d'/$dy}"
     else
-      ble-edit/draw/put "${_ble_term_cuu//'%d'/$((-dy))}"
+      ble/canvas/put.draw "${_ble_term_cuu//'%d'/$((-dy))}"
     fi
   fi
 
-  local -i dx=x-_ble_line_x
+  local -i dx=x-_ble_canvas_x
   if ((dx!=0)); then
     if ((x==0)); then
-      ble-edit/draw/put "$_ble_term_cr"
+      ble/canvas/put.draw "$_ble_term_cr"
     elif ((dx>0)); then
-      ble-edit/draw/put "${_ble_term_cuf//'%d'/$dx}"
+      ble/canvas/put.draw "${_ble_term_cuf//'%d'/$dx}"
     else
-      ble-edit/draw/put "${_ble_term_cub//'%d'/$((-dx))}"
+      ble/canvas/put.draw "${_ble_term_cub//'%d'/$((-dx))}"
     fi
   fi
 
-  _ble_line_x=$x _ble_line_y=$y
+  _ble_canvas_x=$x _ble_canvas_y=$y
 }
 
 #------------------------------------------------------------------------------
-# ble-form
+# ble/canvas/panel
 
-## 配列 _ble_form_window_height
+## 配列 _ble_canvas_panel_height
 ##   各パネルの高さを保持する。
 ##   現在 panel 0 が textarea で panel 1 が info に対応する。
 ##
 ##   開始した瞬間にキー入力をすると画面に echo されてしまうので、
 ##   それを削除するために最初の編集文字列の行数を 1 とする。
-_ble_form_window_height=(1 0)
+_ble_canvas_panel_height=(1 0)
 
-## 関数 ble-form/panel#get-origin
+## 関数 ble/canvas/panel#get-origin
 ##   @var[out] x y
-function ble-form/panel#get-origin {
+function ble/canvas/panel#get-origin {
   local ret index=$1 prefix=
   [[ $2 == --prefix=* ]] && prefix=${2#*=}
-  ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
+  ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"
   ((${prefix}x=0,${prefix}y=ret))
 }
-function ble-form/panel#goto.draw {
+function ble/canvas/panel#goto.draw {
   local index=$1 x=${2-0} y=${3-0} ret
-  ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
-  ble-form/goto.draw "$x" $((ret+y))
+  ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"
+  ble/canvas/goto.draw "$x" $((ret+y))
 }
-function ble-form/panel#report-cursor-position {
+function ble/canvas/panel#report-cursor-position {
   local index=$1 x=${2-0} y=${3-0} ret
-  ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
-  ((_ble_line_x=x,_ble_line_y=ret+y))
+  ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"
+  ((_ble_canvas_x=x,_ble_canvas_y=ret+y))
 }
 
-function ble-form/panel#increase-total-height.draw {
+function ble/canvas/panel#increase-total-height.draw {
   local delta=$1
   ((delta>0)) || return
 
   local ret
-  ble/arithmetic/sum "${_ble_form_window_height[@]}"; local old_total_height=$ret
+  ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"; local old_total_height=$ret
   # 下に余白を確保
   if ((old_total_height>0)); then
-    ble-form/goto.draw 0 old_total_height-1
-    ble-edit/draw/put.ind delta; ((_ble_line_y+=delta))
+    ble/canvas/goto.draw 0 old_total_height-1
+    ble/canvas/put-ind.draw delta; ((_ble_canvas_y+=delta))
   else
-    ble-form/goto.draw 0 0
-    ble-edit/draw/put.ind delta-1; ((_ble_line_y+=delta-1))
+    ble/canvas/goto.draw 0 0
+    ble/canvas/put-ind.draw delta-1; ((_ble_canvas_y+=delta-1))
   fi
 }
 
-function ble-form/panel#set-height.draw {
+function ble/canvas/panel#set-height.draw {
   local index=$1 new_height=$2
-  local delta=$((new_height-_ble_form_window_height[index]))
+  local delta=$((new_height-_ble_canvas_panel_height[index]))
   ((delta)) || return
 
   local ret
   if ((delta>0)); then
     # 新しく行を挿入
-    ble-form/panel#increase-total-height.draw "$delta"
+    ble/canvas/panel#increase-total-height.draw "$delta"
 
-    ble/arithmetic/sum "${_ble_form_window_height[@]::index+1}"; local ins_offset=$ret
-    ble-form/goto.draw 0 "$ins_offset"
-    ble-edit/draw/put.il delta
+    ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
+    ble/canvas/goto.draw 0 "$ins_offset"
+    ble/canvas/put-il.draw delta
   else
     # 行を削除
-    ble/arithmetic/sum "${_ble_form_window_height[@]::index+1}"; local ins_offset=$ret
-    ble-form/goto.draw 0 ins_offset+delta
-    ble-edit/draw/put.dl -delta
+    ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
+    ble/canvas/goto.draw 0 ins_offset+delta
+    ble/canvas/put-dl.draw -delta
   fi
 
-  ((_ble_form_window_height[index]=new_height))
+  ((_ble_canvas_panel_height[index]=new_height))
 }
 
-function ble-form/panel#set-height-and-clear.draw {
+function ble/canvas/panel#set-height-and-clear.draw {
   local index=$1 new_height=$2
-  local old_height=${_ble_form_window_height[index]}
+  local old_height=${_ble_canvas_panel_height[index]}
   ((old_height||new_height)) || return
 
   local ret
-  ble-form/panel#increase-total-height.draw $((new_height-old_height))
-  ble/arithmetic/sum "${_ble_form_window_height[@]::index}"; local ins_offset=$ret
-  ble-form/goto.draw 0 "$ins_offset"
-  ((old_height)) && ble-edit/draw/put.dl "$old_height"
-  ((new_height)) && ble-edit/draw/put.il "$new_height"
+  ble/canvas/panel#increase-total-height.draw $((new_height-old_height))
+  ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
+  ble/canvas/goto.draw 0 "$ins_offset"
+  ((old_height)) && ble/canvas/put-dl.draw "$old_height"
+  ((new_height)) && ble/canvas/put-il.draw "$new_height"
 
-  ((_ble_form_window_height[index]=new_height))
+  ((_ble_canvas_panel_height[index]=new_height))
 }
 
-function ble-form/panel#clear.draw {
+function ble/canvas/panel#clear.draw {
   local index=$1
-  local height=${_ble_form_window_height[index]}
+  local height=${_ble_canvas_panel_height[index]}
   if ((height)); then
     local ret
-    ble/arithmetic/sum "${_ble_form_window_height[@]::index}"; local ins_offset=$ret
-    ble-form/goto.draw 0 "$ins_offset"
+    ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
+    ble/canvas/goto.draw 0 "$ins_offset"
     if ((height==1)); then
-      ble-edit/draw/put "$_ble_term_el2"
+      ble/canvas/put.draw "$_ble_term_el2"
     else
-      ble-edit/draw/put.dl "$height"
-      ble-edit/draw/put.il "$height"
+      ble/canvas/put-dl.draw "$height"
+      ble/canvas/put-il.draw "$height"
     fi
   fi
 }
-function ble-form/panel#clear-after.draw {
+function ble/canvas/panel#clear-after.draw {
   local index=$1 x=$2 y=$3
-  local height=${_ble_form_window_height[index]}
+  local height=${_ble_canvas_panel_height[index]}
   ((y<height)) || return
 
-  ble-form/panel#goto.draw "$index" "$x" "$y"
-  ble-edit/draw/put "$_ble_term_el"
+  ble/canvas/panel#goto.draw "$index" "$x" "$y"
+  ble/canvas/put.draw "$_ble_term_el"
   local rest_lines=$((height-(y+1)))
   if ((rest_lines)); then
-    ble-edit/draw/put "$_ble_term_ind"
-    ble-edit/draw/put.dl "$rest_lines"
-    ble-edit/draw/put.il "$rest_lines"
-    ble-edit/draw/put "$_ble_term_ri"
+    ble/canvas/put.draw "$_ble_term_ind"
+    ble/canvas/put-dl.draw "$rest_lines"
+    ble/canvas/put-il.draw "$rest_lines"
+    ble/canvas/put.draw "$_ble_term_ri"
   fi
 }

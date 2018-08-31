@@ -6890,8 +6890,8 @@ function ble/widget/vi_cmap/accept {
 
   # 消去
   local -a DRAW_BUFF=()
-  ble-form/panel#set-height.draw "$_ble_textarea_panel" 0
-  ble-edit/draw/bflush
+  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
+  ble/canvas/bflush.draw
 
   # 復元
   ble/textarea#restore-state _ble_keymap_vi_cmap

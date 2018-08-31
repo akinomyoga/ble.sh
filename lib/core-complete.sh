@@ -1758,19 +1758,19 @@ function ble-complete/menu-complete/select {
   ((osel==nsel)) && return
 
   local infox infoy
-  ble-form/panel#get-origin 1 --prefix=info
+  ble/canvas/panel#get-origin 1 --prefix=info
 
   local -a DRAW_BUFF=()
-  local x0=$_ble_line_x y0=$_ble_line_y
+  local x0=$_ble_canvas_x y0=$_ble_canvas_y
   if ((osel>=0)); then
     # 消去
     local entry=${_ble_complete_menu_items[osel]}
     local fields text=${entry#*:}
     ble/string#split fields , "${entry%%:*}"
 
-    ble-form/panel#goto.draw 1 "${fields[@]::2}"
-    ble-edit/draw/put "${text:fields[4]}"
-    _ble_line_x=${fields[2]} _ble_line_y=$((infoy+fields[3]))
+    ble/canvas/panel#goto.draw 1 "${fields[@]::2}"
+    ble/canvas/put.draw "${text:fields[4]}"
+    _ble_canvas_x=${fields[2]} _ble_canvas_y=$((infoy+fields[3]))
   fi
 
   local value=
@@ -1780,7 +1780,7 @@ function ble-complete/menu-complete/select {
     ble/string#split fields , "${entry%%:*}"
 
     local x=${fields[0]} y=${fields[1]}
-    ble-form/panel#goto.draw 1 "$x" "$y"
+    ble/canvas/panel#goto.draw 1 "$x" "$y"
 
     local "${_ble_complete_cand_varnames[@]}"
     ble-complete/cand/unpack "${text::fields[4]}"
@@ -1791,16 +1791,16 @@ function ble-complete/menu-complete/select {
     ble-edit/info/.initialize-size
     menu_common_part=$_ble_complete_menu_common_part
     ble-complete/menu/construct-single-entry - selected:use_vars
-    ble-edit/draw/put "$ret"
-    _ble_line_x=$x _ble_line_y=$((infoy+y))
+    ble/canvas/put.draw "$ret"
+    _ble_canvas_x=$x _ble_canvas_y=$((infoy+y))
 
     _ble_complete_menu_selected=$nsel
   else
     _ble_complete_menu_selected=-1
     value=$_ble_complete_menu_original
   fi
-  ble-form/goto.draw "$x0" "$y0"
-  ble-edit/draw/bflush
+  ble/canvas/goto.draw "$x0" "$y0"
+  ble/canvas/bflush.draw
 
   ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" "$value"
   ((_ble_edit_ind=_ble_edit_mark+${#value}))

@@ -246,14 +246,14 @@ function ble-edit/prompt/print {
     a='"' b='\"' text=${text//"$a"/$b}
     a='`' b='\`' text=${text//"$a"/$b}
   fi
-  ble-edit/draw/put "$text"
+  ble/canvas/put.draw "$text"
 }
 function ble-edit/prompt/update/.process-text {
   local text=$1 a b
   if [[ $text == *'"'* ]]; then
     a='"' b='\"' text=${text//"$a"/$b}
   fi
-  ble-edit/draw/put "$text"
+  ble/canvas/put.draw "$text"
 }
 
 ## 関数 ble-edit/prompt/update/.process-backslash
@@ -266,32 +266,32 @@ function ble-edit/prompt/update/.process-backslash {
   local c=${tail:1:1} pat='[]#!$\'
   if [[ ! ${pat##*"$c"*} ]]; then
     case "$c" in
-    (\[) ble-edit/draw/put $'\e[99s' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
-    (\]) ble-edit/draw/put $'\e[99u' ;;
+    (\[) ble/canvas/put.draw $'\e[99s' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
+    (\]) ble/canvas/put.draw $'\e[99u' ;;
     ('#') # コマンド番号 (本当は history に入らない物もある…)
-      ble-edit/draw/put "$_ble_edit_CMD" ;;
+      ble/canvas/put.draw "$_ble_edit_CMD" ;;
     (\!) # 編集行の履歴番号
       local count
       ble-edit/history/get-count -v count
-      ble-edit/draw/put $((count+1)) ;;
+      ble/canvas/put.draw $((count+1)) ;;
     ('$') # # or $
       ble-edit/prompt/print "$_ble_edit_prompt__string_root" ;;
     (\\)
       # '\\' は '\' と出力された後に、更に "" 内で評価された時に次の文字をエスケープする。
       # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
-      ble-edit/draw/put '\' ;;
+      ble/canvas/put.draw '\' ;;
     esac
   elif ! ble/function#try ble-edit/prompt/backslash:"$c"; then
     # その他の文字はそのまま出力される。
     # - '\"' '\`' はそのまま出力された後に "" 内で評価され '"' '`' となる。
     # - それ以外の場合は '\?' がそのまま出力された後に、"" 内で評価されても変わらず '\?' 等となる。
-    ble-edit/draw/put "\\$c"
+    ble/canvas/put.draw "\\$c"
   fi
 }
 
 ## 設定関数 ble-edit/prompt/backslash:*
 ##   プロンプト PS1 内で使用するバックスラッシュシーケンスを定義します。
-##   内部では ble-edit/draw/put escaped_text もしくは
+##   内部では ble/canvas/put.draw escaped_text もしくは
 ##   ble-edit/prompt/print unescaped_text を用いて
 ##   シーケンスの展開結果を追記します。
 ##
@@ -319,7 +319,7 @@ function ble-edit/prompt/backslash:5 { ble-edit/prompt/backslash:0; }
 function ble-edit/prompt/backslash:6 { ble-edit/prompt/backslash:0; }
 function ble-edit/prompt/backslash:7 { ble-edit/prompt/backslash:0; }
 function ble-edit/prompt/backslash:a { # 0 BEL
-  ble-edit/draw/put ""
+  ble/canvas/put.draw ""
   return 0
 }
 function ble-edit/prompt/backslash:d { # ? 日付
@@ -359,7 +359,7 @@ function ble-edit/prompt/backslash:D {
   return 0
 }
 function ble-edit/prompt/backslash:e {
-  ble-edit/draw/put $'\e'
+  ble/canvas/put.draw $'\e'
   return 0
 }
 function ble-edit/prompt/backslash:h { # = ホスト名
@@ -376,7 +376,7 @@ function ble-edit/prompt/backslash:j { #   ジョブの数
     ble/util/joblist
     cache_j=${#joblist[@]}
   fi
-  ble-edit/draw/put "$cache_j"
+  ble/canvas/put.draw "$cache_j"
   return 0
 }
 function ble-edit/prompt/backslash:l { #   tty basename
@@ -384,11 +384,11 @@ function ble-edit/prompt/backslash:l { #   tty basename
   return 0
 }
 function ble-edit/prompt/backslash:n {
-  ble-edit/draw/put $'\n'
+  ble/canvas/put.draw $'\n'
   return 0
 }
 function ble-edit/prompt/backslash:r {
-  ble-edit/draw/put "$_ble_term_cr"
+  ble/canvas/put.draw "$_ble_term_cr"
   return 0
 }
 function ble-edit/prompt/backslash:s { # 4 "bash"
@@ -505,14 +505,14 @@ function ble-edit/prompt/update {
       ((i+=${#BASH_REMATCH}))
     else
       # ? ここには本来来ないはず。
-      ble-edit/draw/put "${tail::1}"
+      ble/canvas/put.draw "${tail::1}"
       ((i++))
     fi
   done
 
   # 2 eval 'ps1esc="..."'
   local ps1esc
-  ble-edit/draw/sflush -v ps1esc
+  ble/canvas/sflush.draw -v ps1esc
   builtin eval "ps1esc=\"$ps1esc\""
   if [[ $ps1esc == "${_ble_edit_prompt[7]}" ]]; then
     # 前回と同じ ps1esc の場合は計測処理は省略
@@ -523,7 +523,7 @@ function ble-edit/prompt/update {
 
   # 3 計測
   x=0 y=0 g=0 lc=32 lg=0
-  ble-edit/draw/trace "$ps1esc"
+  ble/canvas/trace.draw "$ps1esc"
   ((lc<0&&(lc=0)))
 
   #echo "ps1=$ps1" >> 1.tmp
@@ -532,7 +532,7 @@ function ble-edit/prompt/update {
 
   # 4 出力
   local ps1out
-  ble-edit/draw/sflush -v ps1out
+  ble/canvas/sflush.draw -v ps1out
   ret=$ps1out
   _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1esc")
 }
@@ -654,8 +654,8 @@ function ble-edit/info/.construct-content {
   (raw)
     local lc=32 lg=0 g=0
     local -a DRAW_BUFF=()
-    ble-edit/draw/trace "$text"
-    ble-edit/draw/sflush -v content ;;
+    ble/canvas/trace.draw "$text"
+    ble/canvas/sflush.draw -v content ;;
   (text)
     local cols lines
     ble-edit/info/.initialize-size
@@ -676,8 +676,8 @@ function ble-edit/info/.clear-content {
   [[ ${_ble_edit_info[2]} ]] || return
 
   local -a DRAW_BUFF=()
-  ble-form/panel#set-height.draw 1 0
-  ble-edit/draw/bflush
+  ble/canvas/panel#set-height.draw 1 0
+  ble/canvas/bflush.draw
 
   _ble_edit_info=(0 0 "")
 }
@@ -696,11 +696,11 @@ function ble-edit/info/.render-content {
   fi
 
   local -a DRAW_BUFF=()
-  ble-form/panel#set-height-and-clear.draw 1 $((y+1))
-  ble-form/panel#goto.draw 1
-  ble-edit/draw/put "$content"
-  ble-edit/draw/bflush
-  ((_ble_line_y+=y,_ble_line_x=x))
+  ble/canvas/panel#set-height-and-clear.draw 1 $((y+1))
+  ble/canvas/panel#goto.draw 1
+  ble/canvas/put.draw "$content"
+  ble/canvas/bflush.draw
+  ((_ble_canvas_y+=y,_ble_canvas_x=x))
   _ble_edit_info=("$x" "$y" "$content")
 }
 
@@ -769,20 +769,20 @@ function ble-edit/info/reveal {
 }
 
 function ble-edit/info/immediate-show {
-  local x=$_ble_line_x y=$_ble_line_y
+  local x=$_ble_canvas_x y=$_ble_canvas_y
   ble-edit/info/show "$@"
   local -a DRAW_BUFF=()
-  ble-form/goto.draw "$x" "$y"
-  ble-edit/draw/bflush
+  ble/canvas/goto.draw "$x" "$y"
+  ble/canvas/bflush.draw
   ble/util/buffer.flush >&2
 }
 function ble-edit/info/immediate-clear {
-  local x=$_ble_line_x y=$_ble_line_y
+  local x=$_ble_canvas_x y=$_ble_canvas_y
   ble-edit/info/clear
   ble-edit/info/reveal
   local -a DRAW_BUFF=()
-  ble-form/goto.draw "$x" "$y"
-  ble-edit/draw/bflush
+  ble/canvas/goto.draw "$x" "$y"
+  ble/canvas/bflush.draw
   ble/util/buffer.flush >&2
 }
 
@@ -1273,10 +1273,10 @@ function ble/textarea#render/.perform-scroll {
     if ((_ble_textarea_scroll>new_scroll)); then
       local shift=$((_ble_textarea_scroll-new_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
-      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
-      ble-edit/draw/put.dl "$draw_shift"
-      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
-      ble-edit/draw/put.il "$draw_shift"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
+      ble/canvas/put-dl.draw "$draw_shift"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
+      ble/canvas/put-il.draw "$draw_shift"
 
       if ((new_scroll==0)); then
         fmin=0
@@ -1287,10 +1287,10 @@ function ble/textarea#render/.perform-scroll {
     else
       local shift=$((new_scroll-_ble_textarea_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
-      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
-      ble-edit/draw/put.dl "$draw_shift"
-      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
-      ble-edit/draw/put.il "$draw_shift"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
+      ble/canvas/put-dl.draw "$draw_shift"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
+      ble/canvas/put-il.draw "$draw_shift"
 
       ble/textmap#get-index-at 0 $((new_scroll+height-draw_shift)); fmin=$index
       ble/textmap#get-index-at "$cols" $((new_scroll+height-1)); fmax=$index
@@ -1302,12 +1302,12 @@ function ble/textarea#render/.perform-scroll {
       ble/textmap#getxy.out --prefix=fmin "$fmin"
       ble/textmap#getxy.out --prefix=fmax "$fmax"
 
-      ble-form/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
-      ((new_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
+      ((new_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
       local ret; ble/textarea#slice-text-buffer "$fmin" "$fmax"
-      ble-edit/draw/put "$ret"
-      ((_ble_line_x=fmaxx,
-        _ble_line_y+=fmaxy-fminy))
+      ble/canvas/put.draw "$ret"
+      ((_ble_canvas_x=fmaxx,
+        _ble_canvas_y+=fmaxy-fminy))
 
       ((umin<umax)) &&
         ((fmin<=umin&&umin<fmax&&(umin=fmax),
@@ -1323,15 +1323,15 @@ function ble/textarea#render/.perform-scroll {
 ##   スクロール時 "(line 3) ..." などの表示
 ##
 ##   @var[in] _ble_textarea_scroll
-##   @var[in,out] DRAW_BUFF _ble_line_x _ble_line_y
+##   @var[in,out] DRAW_BUFF _ble_canvas_x _ble_canvas_y
 ##
 function ble/textarea#render/.show-scroll-at-first-line {
   if ((_ble_textarea_scroll!=0)); then
-    ble-form/panel#goto.draw "$_ble_textarea_panel" "$begx" "$begy"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$begx" "$begy"
     local scroll_status="(line $((_ble_textarea_scroll+2))) ..."
     scroll_status=${scroll_status::cols-1-begx}
-    ble-edit/draw/put "$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
-    ((_ble_line_x+=${#scroll_status}))
+    ble/canvas/put.draw "$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
+    ((_ble_canvas_x+=${#scroll_status}))
   fi
 }
 
@@ -1339,8 +1339,8 @@ function ble/textarea#render/.show-scroll-at-first-line {
 ##   プロンプト・編集文字列の現在位置に端末のカーソルを移動します。
 function ble/textarea#focus {
   local -a DRAW_BUFF=()
-  ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
-  ble-edit/draw/bflush
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
+  ble/canvas/bflush.draw
 }
 
 ## 関数 ble/textarea#render
@@ -1412,7 +1412,7 @@ function ble/textarea#render {
   local height=$((LINES-1)) # ToDo: info の高さも考慮に入れる
   local scroll=$_ble_textarea_scroll
   ble/textarea#render/.determine-scroll # update: height scroll umin umax
-  ble-form/panel#set-height.draw "$_ble_textarea_panel" "$height"
+  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" "$height"
 
   local gend gendx gendy
   if [[ $scroll ]]; then
@@ -1440,31 +1440,31 @@ function ble/textarea#render {
       ble/textmap#getxy.out --prefix=umin "$umin"
       ble/textmap#getxy.out --prefix=umax "$umax"
 
-      ble-form/panel#goto.draw "$_ble_textarea_panel" "$uminx" $((uminy-_ble_textarea_scroll))
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$uminx" $((uminy-_ble_textarea_scroll))
       ble/textarea#slice-text-buffer "$umin" "$umax"
-      ble-edit/draw/put "$ret"
-      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$umaxx" $((umaxy-_ble_textarea_scroll))
+      ble/canvas/put.draw "$ret"
+      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$umaxx" $((umaxy-_ble_textarea_scroll))
     fi
 
     if ((BLELINE_RANGE_UPDATE[0]>=0)); then
       local endY=$((endy-_ble_textarea_scroll))
-      ((endY<height)) && ble-form/panel#clear-after.draw "$_ble_textarea_panel" "$endx" "$endY"
+      ((endY<height)) && ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" "$endx" "$endY"
     fi
   else
     # 全体更新
-    ble-form/panel#clear.draw "$_ble_textarea_panel"
+    ble/canvas/panel#clear.draw "$_ble_textarea_panel"
 
     # プロンプト描画
-    ble-form/panel#goto.draw "$_ble_textarea_panel"
-    ble-edit/draw/put "$esc_prompt"
-    ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$prox" "$proy"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel"
+    ble/canvas/put.draw "$esc_prompt"
+    ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$prox" "$proy"
 
     # 全体描画
     if [[ ! $_ble_textarea_scroll ]]; then
       ble/textarea#slice-text-buffer # → ret
       esc_line=$ret esc_line_set=1
-      ble-edit/draw/put "$ret"
-      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+      ble/canvas/put.draw "$ret"
+      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
     else
       ble/textarea#render/.show-scroll-at-first-line
 
@@ -1477,19 +1477,19 @@ function ble/textarea#render {
       ble/textmap#getxy.out --prefix=gbeg "$gbeg"
       ((gbegy-=_ble_textarea_scroll))
 
-      ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
-      ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
+      ((_ble_textarea_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
       ble/textarea#slice-text-buffer "$gbeg" "$gend"
-      ble-edit/draw/put "$ret"
-      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-      ((_ble_line_x=gendx,_ble_line_y+=gendy-gbegy))
+      ble/canvas/put.draw "$ret"
+      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+      ((_ble_canvas_x=gendx,_ble_canvas_y+=gendy-gbegy))
     fi
   fi
 
   # 3 移動
   local gcx=$cx gcy=$((cy-_ble_textarea_scroll))
-  ble-form/panel#goto.draw "$_ble_textarea_panel" "$gcx" "$gcy"
-  ble-edit/draw/bflush
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gcx" "$gcy"
+  ble/canvas/bflush.draw
 
   # 4 後で使う情報の記録
   _ble_textarea_cur=("$gcx" "$gcy" "$lc" "$lg")
@@ -1501,7 +1501,7 @@ function ble/textarea#render {
         ble/textarea#slice-text-buffer
         esc_line=$ret
       else
-        local _ble_line_x=$begx _ble_line_y=$begy
+        local _ble_canvas_x=$begx _ble_canvas_y=$begy
         DRAW_BUFF=()
 
         ble/textarea#render/.show-scroll-at-first-line
@@ -1514,12 +1514,12 @@ function ble/textarea#render {
         ble/textmap#getxy.out --prefix=gbeg "$gbeg"
         ((gbegy-=_ble_textarea_scroll))
 
-        ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
-        ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+        ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
+        ((_ble_textarea_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
         ble/textarea#slice-text-buffer "$gbeg" "$gend"
-        ble-edit/draw/put "$ret"
+        ble/canvas/put.draw "$ret"
 
-        ble-edit/draw/sflush -v esc_line
+        ble/canvas/sflush.draw -v esc_line
       fi
     fi
 
@@ -1553,16 +1553,16 @@ function ble/textarea#redraw-cache {
 
     local -a DRAW_BUFF=()
 
-    ble-form/panel#clear.draw "$_ble_textarea_panel"
-    ble-form/panel#goto.draw "$_ble_textarea_panel"
-    ble-edit/draw/put "${d[0]}"
-    ble-form/panel#report-cursor-position "$_ble_textarea_panel" "${d[5]}" "${d[6]}"
+    ble/canvas/panel#clear.draw "$_ble_textarea_panel"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel"
+    ble/canvas/put.draw "${d[0]}"
+    ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "${d[5]}" "${d[6]}"
     _ble_textarea_gendx=${d[5]}
     _ble_textarea_gendy=${d[6]}
 
     _ble_textarea_cur=("${d[@]:1:4}")
-    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
-    ble-edit/draw/bflush
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
+    ble/canvas/bflush.draw
   else
     ble/textarea#redraw
   fi
@@ -1597,16 +1597,16 @@ function ble/textarea#adjust-for-bash-bind {
       READLINE_POINT=0
     else
       ble/util/c2w "$lc"
-      ((ret>0)) && ble-edit/draw/put.cub "$ret"
+      ((ret>0)) && ble/canvas/put-cub.draw "$ret"
       ble-text-c2bc "$lc"
       READLINE_POINT=$ret
     fi
 
     ble-color-g2sgr "$lg"
-    ble-edit/draw/put "$ret"
+    ble/canvas/put.draw "$ret"
 
     # 2018-03-19 stty -echo の時は Bash は何も出力しないので調整は不要
-    #ble-edit/draw/bflush
+    #ble/canvas/bflush.draw
   fi
 }
 
@@ -1694,7 +1694,7 @@ function ble/widget/clear-screen {
   ble-edit/info/hide
   ble/textarea#invalidate
   ble/util/buffer "$_ble_term_clear"
-  _ble_line_x=0 _ble_line_y=0
+  _ble_canvas_x=0 _ble_canvas_y=0
   ble/term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
@@ -2220,8 +2220,8 @@ function ble/widget/exit {
   ble-edit/info/hide
 
   local -a DRAW_BUFF=()
-  ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-  ble-edit/draw/bflush
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+  ble/canvas/bflush.draw
   ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
   ble/util/buffer.flush >&2
   exit
@@ -2977,12 +2977,12 @@ function ble-edit/exec/.adjust-eol {
   # 文末調整
   local cols=${COLUMNS:-80}
   local -a DRAW_BUFF=()
-  ble-edit/draw/put "$_ble_term_sc"
-  ble-edit/draw/put "${_ble_term_setaf[12]}[ble: EOF]$_ble_term_sgr0"
-  ble-edit/draw/put "$_ble_term_rc"
-  ble-edit/draw/put.cuf $((_ble_term_xenl?cols-2:cols-3))
-  ble-edit/draw/put "  $_ble_term_cr$_ble_term_el"
-  ble-edit/draw/bflush
+  ble/canvas/put.draw "$_ble_term_sc"
+  ble/canvas/put.draw "${_ble_term_setaf[12]}[ble: EOF]$_ble_term_sgr0"
+  ble/canvas/put.draw "$_ble_term_rc"
+  ble/canvas/put-cuf.draw $((_ble_term_xenl?cols-2:cols-3))
+  ble/canvas/put.draw "  $_ble_term_cr$_ble_term_el"
+  ble/canvas/bflush.draw
 }
 
 function ble-edit/exec/.reset-builtins/1 {
@@ -3477,16 +3477,16 @@ function ble/widget/.insert-newline {
 
   # 新しい描画領域
   local -a DRAW_BUFF=()
-  ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-  ble-edit/draw/put "$_ble_term_nl"
-  ble-edit/draw/bflush
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+  ble/canvas/put.draw "$_ble_term_nl"
+  ble/canvas/bflush.draw
   ble/util/joblist.bflush
 
   # 描画領域情報の初期化
   ble/textarea#invalidate
-  _ble_line_x=0 _ble_line_y=0
+  _ble_canvas_x=0 _ble_canvas_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
-  _ble_form_window_height[_ble_textarea_panel]=0
+  _ble_canvas_panel_height[_ble_textarea_panel]=0
 }
 
 function ble/widget/.newline/clear-content {
@@ -5733,9 +5733,9 @@ function ble/widget/command-help.impl {
   ble-edit/info/hide
   ble/textarea#invalidate
   local -a DRAW_BUFF=()
-  ble-form/panel#set-height.draw "$_ble_textarea_panel" 0
-  ble-form/panel#goto.draw "$_ble_textarea_panel" 0 0
-  ble-edit/draw/bflush
+  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+  ble/canvas/bflush.draw
   ble/term/leave
   ble/util/buffer.flush >&2
   ble/widget/command-help.core; local ext=$?
@@ -5965,10 +5965,10 @@ if ((_ble_bash>=40100)); then
 else
   function ble-edit/bind/.head/adjust-bash-rendering {
     # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
-    ((_ble_line_y++,_ble_line_x=0))
+    ((_ble_canvas_y++,_ble_canvas_x=0))
     local -a DRAW_BUFF=()
-    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
-    ble-edit/draw/flush
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+    ble/canvas/flush.draw
   }
 fi
 
@@ -6106,7 +6106,7 @@ function ble-edit-initialize {
 }
 function ble-edit-attach {
   ble-edit/attach
-  _ble_line_x=0 _ble_line_y=0
+  _ble_canvas_x=0 _ble_canvas_y=0
   ble/util/buffer "$_ble_term_cr"
 }
 function ble-edit/reset-history {

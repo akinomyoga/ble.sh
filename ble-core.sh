@@ -1989,7 +1989,7 @@ trap ble/term/TRAPEXIT EXIT
 #------------------------------------------------------------------------------
 # String manipulations
 
-_ble_text_s2c_table_enabled=
+_ble_util_s2c_table_enabled=
 if ((_ble_bash>=40100)); then
   # - printf "'c" で Unicode が読める (どの LC_CTYPE でも Unicode になる)
   function ble/util/s2c {
@@ -1998,18 +1998,18 @@ if ((_ble_bash>=40100)); then
 elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # - 連想配列にキャッシュできる
   # - printf "'c" で unicode が読める
-  declare -A _ble_text_s2c_table
-  _ble_text_s2c_table_enabled=1
+  declare -A _ble_util_s2c_table
+  _ble_util_s2c_table_enabled=1
   function ble/util/s2c {
     [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
       ble/util/.cache/update-locale
 
     local s=${1:$2:1}
-    ret=${_ble_text_s2c_table[x$s]}
+    ret=${_ble_util_s2c_table[x$s]}
     [[ $ret ]] && return
 
     ble/util/sprintf ret %d "'$s"
-    _ble_text_s2c_table[x$s]=$ret
+    _ble_util_s2c_table[x$s]=$ret
   }
 elif ((_ble_bash>=40000)); then
   function ble/util/s2c {
@@ -2090,15 +2090,15 @@ else
 fi
 
 # どうもキャッシュするのが一番速い様だ
-_ble_text_c2s_table=()
+_ble_util_c2s_table=()
 function ble/util/c2s {
   [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
     ble/util/.cache/update-locale
 
-  ret=${_ble_text_c2s_table[$1]-}
+  ret=${_ble_util_c2s_table[$1]-}
   if [[ ! $ret ]]; then
     ble/util/c2s-impl "$1"
-    _ble_text_c2s_table[$1]=$ret
+    _ble_util_c2s_table[$1]=$ret
   fi
 }
 
@@ -2127,9 +2127,9 @@ function ble/util/.cache/update-locale {
   local ret; ble/string#tolower "${LC_ALL:-${LC_CTYPE:-$LANG}}"
   if [[ $_ble_util_cache_ctype != $ret ]]; then
     _ble_util_cache_ctype=$ret
-    _ble_text_c2s_table=()
-    [[ $_ble_text_s2c_table_enabled ]] &&
-      _ble_text_s2c_table=()
+    _ble_util_c2s_table=()
+    [[ $_ble_util_s2c_table_enabled ]] &&
+      _ble_util_s2c_table=()
   fi
 }
 
