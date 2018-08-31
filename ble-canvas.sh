@@ -882,11 +882,12 @@ function ble/textmap#restore {
   ble/util/restore-arrs "$prefix" "${_ble_textmap_ARRNAMES[@]}"
 }
 
-## 関数 text x y; ble/textmap#update; x y
+## 関数 ble/textmap#update
 ##   @var[in    ] text
 ##   @var[in,out] x y
 ##   @var[in,out] _ble_textmap_*
 function ble/textmap#update {
+  local IFS=$' \t\n'
   local dbeg dend dend0
   ((dbeg=_ble_textmap_dbeg,
     dend=_ble_textmap_dend,
@@ -1040,16 +1041,34 @@ function ble/textmap#update {
       ((i++))
     fi
 
-    # 後は同じなので計算を省略
-    ((i>=dend)) && [[ ${old_pos[i-dend]} == "${_ble_textmap_pos[i]}" ]] && break
+    if ((i>=dend)); then
+      # 後は同じなので計算を省略
+      [[ ${old_pos[i-dend]} == "${_ble_textmap_pos[i]}" ]] && break
+
+      # x 座標が同じならば、以降は最後まで y 座標だけずらす
+      if [[ ${old_pos[i-dend]%%[$IFS]*} == "${_ble_textmap_pos[i]%%[$IFS]*}" ]]; then
+        local -a opos npos pos
+        opos=(${old_pos[i-dend]})
+        npos=(${_ble_textmap_pos[i]})
+        local ydelta=$((npos[1]-opos[1]))
+        while ((i<iN)); do
+          ((i++))
+          pos=(${_ble_textmap_pos[i]})
+          ((pos[1]+=ydelta))
+          _ble_textmap_pos[i]="${pos[*]}"
+        done
+        pos=(${_ble_textmap_pos[iN]})
+        x=${pos[0]} y=${pos[1]}
+        break
+      fi
+    fi
   done
 
   if ((i<iN)); then
     # 途中で一致して中断した場合は、前の iN 番目の位置を読む
     local -a pos
     pos=(${_ble_textmap_pos[iN]})
-    ((x=pos[0]))
-    ((y=pos[1]))
+    x=${pos[0]} y=${pos[1]}
   fi
 
   # 前回までの文字修正位置を shift&add
