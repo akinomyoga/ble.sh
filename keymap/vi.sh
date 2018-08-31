@@ -91,7 +91,7 @@ function ble/keymap:vi/string#encode-rot13 {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret=${buff[*]-}'
+  IFS= eval 'ret="${buff[*]-}"'
 }
 
 #------------------------------------------------------------------------------
@@ -1261,8 +1261,8 @@ function ble/keymap:vi/operator:d {
     done
 
     # yank
-    IFS=$'\n' eval 'local yank_content=${atext[*]-}'
-    local yank_type=B:${afill[*]-}
+    IFS=$'\n' eval 'local yank_content="${atext[*]-}"'
+    local yank_type=B:"${afill[*]-}"
     ble/keymap:vi/register#set-edit "$reg" "$yank_type" "$yank_content" || return 1
 
     # delete
@@ -1334,8 +1334,8 @@ function ble/keymap:vi/operator:y {
       ble/array#push atext "$stext"
     done
 
-    IFS=$'\n' eval 'local yank_content=${atext[*]-}'
-    yank_type=B:${afill[*]-}
+    IFS=$'\n' eval 'local yank_content="${atext[*]-}"'
+    yank_type=B:"${afill[*]-}"
   else
     yank_type=
     yank_content=${_ble_edit_str:beg:end-beg}
@@ -1445,7 +1445,7 @@ function ble/keymap:vi/string#increase-indent {
     ble/array#push arr2 "$indent$line"
   done
 
-  IFS=$'\n' eval 'ret=${arr2[*]-}'
+  IFS=$'\n' eval 'ret="${arr2[*]-}"'
 }
 ## 関数 ble/keymap:vi/operator:indent.impl/increase-block-indent width
 ##   @param[in] width
@@ -2131,7 +2131,7 @@ function ble/keymap:vi/mark/update-mark-history {
       local value=${_ble_keymap_vi_mark_local[imark]}
       ble/array#push save "$imark:$value"
     done
-    _ble_keymap_vi_mark_history[_ble_keymap_vi_mark_hindex]=${save[*]-}
+    _ble_keymap_vi_mark_history[_ble_keymap_vi_mark_hindex]="${save[*]-}"
 
     # load
     _ble_keymap_vi_mark_local=()
