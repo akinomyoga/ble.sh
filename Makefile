@@ -1,7 +1,7 @@
 # -*- mode: makefile-gmake -*-
 
 all:
-.PHONY: all install dist
+.PHONY: all install clean dist
 
 # check GNU Makefile
 ifeq ($(.FEATURES),)
@@ -82,6 +82,9 @@ $(INSDIR)/%: $(OUTDIR)/%
 	bash make_command.sh install "$<" "$@"
 $(INSDIR)/cache.d $(INSDIR)/tmp:
 	mkdir -p $@ && chmod a+rwxt $@
+
+clean:
+	-rm -rf $(outfiles) $(OUTDIR)/ble.dep
 
 dist: $(outfiles)
 	FULLVER=$(FULLVER) bash make_command.sh dist $^

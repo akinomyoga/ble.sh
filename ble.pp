@@ -454,7 +454,7 @@ ble/bin/.freeze-utility-path gawk
 
 #%x inc.r/@/decode/
 #%x inc.r/@/color/
-#%x inc.r/@/form/
+#%x inc.r/@/canvas/
 #%x inc.r/@/edit/
 #%x inc.r/@/syntax-lazy/
 #------------------------------------------------------------------------------
