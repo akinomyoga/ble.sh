@@ -4282,7 +4282,7 @@ function ble-syntax/completion-context/.check-here {
       ble-syntax/completion-context/.add wordlist:';:{:do' "$index"
     elif ((ctx==CTX_CMDXD)); then
       ble-syntax/completion-context/.add wordlist:'{:do' "$index"
-    elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==FARGX3)); then
+    elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
       ble-syntax/completion-context/.add argument "$index"
     elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
       ble-syntax/completion-context/.add variable "$index"

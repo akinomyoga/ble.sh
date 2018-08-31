@@ -1669,7 +1669,7 @@ function ble/widget/menu-complete {
 # menu-filter
 
 function ble-complete/menu/filter-incrementally {
-  if [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_imap ]]; then
+  if [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]]; then
     local str=$_ble_edit_str
   elif [[ $_ble_decode_keymap == auto_complete ]]; then
     local str=${_ble_edit_str::_ble_edit_ind}${_ble_edit_str:_ble_edit_mark}
@@ -1758,7 +1758,7 @@ function ble-complete/menu-complete/select {
   ((osel==nsel)) && return
 
   local infox infoy
-  ble/canvas/panel#get-origin 1 --prefix=info
+  ble/canvas/panel#get-origin "$_ble_edit_info_panel" --prefix=info
 
   local -a DRAW_BUFF=()
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
@@ -1768,7 +1768,7 @@ function ble-complete/menu-complete/select {
     local fields text=${entry#*:}
     ble/string#split fields , "${entry%%:*}"
 
-    ble/canvas/panel#goto.draw 1 "${fields[@]::2}"
+    ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "${fields[@]::2}"
     ble/canvas/put.draw "${text:fields[4]}"
     _ble_canvas_x=${fields[2]} _ble_canvas_y=$((infoy+fields[3]))
   fi
@@ -1780,7 +1780,7 @@ function ble-complete/menu-complete/select {
     ble/string#split fields , "${entry%%:*}"
 
     local x=${fields[0]} y=${fields[1]}
-    ble/canvas/panel#goto.draw 1 "$x" "$y"
+    ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "$x" "$y"
 
     local "${_ble_complete_cand_varnames[@]}"
     ble-complete/cand/unpack "${text::fields[4]}"
@@ -2068,7 +2068,7 @@ function ble-complete/auto-complete.idle {
   # ※特に上書きしなければ常に wait-user-input で抜ける。
   ble/util/idle.wait-user-input
 
-  [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_imap ]] || return 0
+  [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]] || return 0
 
   case $_ble_decode_widget_last in
   (ble/widget/self-insert) ;;

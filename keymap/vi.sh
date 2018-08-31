@@ -6860,7 +6860,7 @@ function ble/keymap:vi/async-commandline-mode {
   ble/keymap:vi/update-mode-name
 
   # textarea
-  _ble_textarea_panel=2
+  _ble_textarea_panel=1
   ble/textarea#invalidate
 
   # edit/prompt
@@ -6953,11 +6953,12 @@ function ble-decode/keymap:vi_cmap/define {
   # ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'C-l'     redraw-line
   ble-bind -f  'M-l'     redraw-line
-  # ble-bind -f 'C-i' complete
-  # ble-bind -f 'TAB' complete
-  # ble-bind -f 'C-TAB' menu-complete
-  # ble-bind -f 'auto_complete_enter' auto-complete-enter
   ble-bind -f  'C-x C-v' display-shell-version
+
+  ble-bind -f 'C-i' complete
+  ble-bind -f 'TAB' complete
+  ble-bind -f 'C-TAB' menu-complete
+  ble-bind -f 'auto_complete_enter' auto-complete-enter
 
   # command-history
   # ble-bind -f 'C-RET'   history-expand-line

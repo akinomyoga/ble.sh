@@ -669,14 +669,14 @@ function ble-edit/info/.construct-content {
   esac
 }
 
-
+_ble_edit_info_panel=2
 _ble_edit_info=(0 0 "")
 
 function ble-edit/info/.clear-content {
   [[ ${_ble_edit_info[2]} ]] || return
 
   local -a DRAW_BUFF=()
-  ble/canvas/panel#set-height.draw 1 0
+  ble/canvas/panel#set-height.draw "$_ble_edit_info_panel" 0
   ble/canvas/bflush.draw
 
   _ble_edit_info=(0 0 "")
@@ -696,8 +696,8 @@ function ble-edit/info/.render-content {
   fi
 
   local -a DRAW_BUFF=()
-  ble/canvas/panel#set-height-and-clear.draw 1 $((y+1))
-  ble/canvas/panel#goto.draw 1
+  ble/canvas/panel#set-height-and-clear.draw "$_ble_edit_info_panel" $((y+1))
+  ble/canvas/panel#goto.draw "$_ble_edit_info_panel"
   ble/canvas/put.draw "$content"
   ble/canvas/bflush.draw
   ((_ble_canvas_y+=y,_ble_canvas_x=x))
@@ -5367,7 +5367,7 @@ function ble-edit/read/.setup-textarea {
   ble-decode/keymap/push read
 
   # textarea, info
-  _ble_textarea_panel=2
+  _ble_textarea_panel=1
   ble/textarea#invalidate
   ble-edit/info/set-default raw ''
 
