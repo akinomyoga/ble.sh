@@ -351,7 +351,7 @@ function ble/string#toggle-case {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret=${buff[*]-}'
+  IFS= eval 'ret="${buff[*]-}"'
 }
 if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret=${*,,}; }
@@ -368,7 +368,7 @@ else
       fi
       ble/array#push buff "$ch"
     done
-    IFS= eval 'ret=${buff[*]-}'
+    IFS= eval 'ret="${buff[*]-}"'
   }
   function ble/string#toupper {
     local text=$*
@@ -381,7 +381,7 @@ else
       fi
       ble/array#push buff "$ch"
     done
-    IFS= eval 'ret=${buff[*]-}'
+    IFS= eval 'ret="${buff[*]-}"'
   }
 fi
 
