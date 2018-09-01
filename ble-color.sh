@@ -33,42 +33,43 @@ function ble-color-show {
   done
 }
 
-_ble_color_g2sgr__table=()
-function ble-color-g2sgr {
-  eval "$ble_util_upvar_setup"
+## 関数 ble-color-g2sgr g
+##   @param[in] g
+##   @var[out] ret
+_ble_color_g2sgr=()
+function ble-color-g2sgr/.impl {
+  local -i g=$1
+  local fg=$((g>> 8&0xFF))
+  local bg=$((g>>16&0xFF))
 
-  ret="${_ble_color_g2sgr__table[$1]}"
-  if [[ -z $ret ]]; then
-    local -i g="$1"
-    local fg="$((g>> 8&0xFF))"
-    local bg="$((g>>16&0xFF))"
-
-    local sgr=0
-    ((g&_ble_color_gflags_Bold))      && sgr="$sgr;${_ble_term_sgr_bold:-1}"
-    ((g&_ble_color_gflags_Italic))    && sgr="$sgr;${_ble_term_sgr_sitm:-3}"
-    ((g&_ble_color_gflags_Underline)) && sgr="$sgr;${_ble_term_sgr_smul:-4}"
-    ((g&_ble_color_gflags_Blink))     && sgr="$sgr;${_ble_term_sgr_blink:-5}"
-    ((g&_ble_color_gflags_Revert))    && sgr="$sgr;${_ble_term_sgr_rev:-7}"
-    ((g&_ble_color_gflags_Invisible)) && sgr="$sgr;${_ble_term_sgr_invis:-8}"
-    ((g&_ble_color_gflags_Strike))    && sgr="$sgr;${_ble_term_sgr_strike:-9}"
-    if ((g&_ble_color_gflags_ForeColor)); then
-      ble-color/.color2sgrfg -v "$var" "$fg"
-      sgr="$sgr;${!var}"
-    fi
-    if ((g&_ble_color_gflags_BackColor)); then
-      ble-color/.color2sgrbg -v "$var" "$bg"
-      sgr="$sgr;${!var}"
-    fi
-
-    ret="[${sgr}m"
-    _ble_color_g2sgr__table[$1]="$ret"
+  local sgr=0
+  ((g&_ble_color_gflags_Bold))      && sgr="$sgr;${_ble_term_sgr_bold:-1}"
+  ((g&_ble_color_gflags_Italic))    && sgr="$sgr;${_ble_term_sgr_sitm:-3}"
+  ((g&_ble_color_gflags_Underline)) && sgr="$sgr;${_ble_term_sgr_smul:-4}"
+  ((g&_ble_color_gflags_Blink))     && sgr="$sgr;${_ble_term_sgr_blink:-5}"
+  ((g&_ble_color_gflags_Revert))    && sgr="$sgr;${_ble_term_sgr_rev:-7}"
+  ((g&_ble_color_gflags_Invisible)) && sgr="$sgr;${_ble_term_sgr_invis:-8}"
+  ((g&_ble_color_gflags_Strike))    && sgr="$sgr;${_ble_term_sgr_strike:-9}"
+  if ((g&_ble_color_gflags_ForeColor)); then
+    ble-color/.color2sgrfg "$fg"
+    sgr="$sgr;$ret"
+  fi
+  if ((g&_ble_color_gflags_BackColor)); then
+    ble-color/.color2sgrbg "$bg"
+    sgr="$sgr;$ret"
   fi
 
-  eval "$ble_util_upvar"
+  ret="[${sgr}m"
+  _ble_color_g2sgr[$1]=$ret
 }
+function ble-color-g2sgr {
+  ret=${_ble_color_g2sgr[$1]}
+  [[ $ret ]] || ble-color-g2sgr/.impl "$1"
+}
+## 関数 ble-color-gspec2g gspec
+##   @param[in] gspec
+##   @var[out] ret
 function ble-color-gspec2g {
-  eval "$ble_util_upvar_setup"
-
   local g=0 entry
   for entry in ${1//,/ }; do
     case "$entry" in
@@ -81,36 +82,42 @@ function ble-color-gspec2g {
     (italic)    ((g|=_ble_color_gflags_Italic)) ;;
     (standout)  ((g|=_ble_color_gflags_Revert|_ble_color_gflags_Bold)) ;;
     (fg=*)
-      ble-color/.name2color -v "$var" "${entry:3}"
-      if ((var<0)); then
+      ble-color/.name2color "${entry:3}"
+      if ((ret<0)); then
         ((g&=~(_ble_color_gflags_ForeColor|_ble_color_gflags_MaskFg)))
       else
-        ((g|=var<<8|_ble_color_gflags_ForeColor))
+        ((g|=ret<<8|_ble_color_gflags_ForeColor))
       fi ;;
     (bg=*)
-      ble-color/.name2color -v "$var" "${entry:3}"
-      if ((var<0)); then
+      ble-color/.name2color "${entry:3}"
+      if ((ret<0)); then
         ((g&=~(_ble_color_gflags_BackColor|_ble_color_gflags_MaskBg)))
       else
-        ((g|=var<<16|_ble_color_gflags_BackColor))
+        ((g|=ret<<16|_ble_color_gflags_BackColor))
       fi ;;
     (none)
       g=0 ;;
     esac
   done
-
-  ret="$g"; eval "$ble_util_upvar"
+  ret=$g
 }
 
+## 関数 ble-color-gspec2sgr gspec
+##   @param[in] gspec
+##   @var[out] ret
 function ble-color-gspec2sgr {
-  eval "$ble_util_upvar_setup"
   local sgr=0 entry
 
   for entry in ${1//,/ }; do
     case "$entry" in
-    (bold)      sgr="$sgr;1" ;;
-    (underline) sgr="$sgr;4" ;;
-    (standout)  sgr="$sgr;7" ;;
+    (bold)      sgr="$sgr;${_ble_term_sgr_bold:-1}" ;;
+    (underline) sgr="$sgr;${_ble_term_sgr_smul:-4}" ;;
+    (blink)     sgr="$sgr;${_ble_term_sgr_blink:-5}" ;;
+    (invis)     sgr="$sgr;${_ble_term_sgr_invis:-8}" ;;
+    (reverse)   sgr="$sgr;${_ble_term_sgr_rev:-7}" ;;
+    (strike)    sgr="$sgr;${_ble_term_sgr_strike:-9}" ;;
+    (italic)    sgr="$sgr;${_ble_term_sgr_sitm:-3}" ;;
+    (standout)  sgr="$sgr;${_ble_term_sgr_bold:-1};${_ble_term_sgr_rev:-7}" ;;
     (fg=*)
       ble-color/.name2color "${entry:3}"
       ble-color/.color2sgrfg "$ret"
@@ -124,12 +131,10 @@ function ble-color-gspec2sgr {
     esac
   done
 
-  ret="[${sgr}m"; eval "$ble_util_upvar"
+  ret="[${sgr}m"
 }
 
 function ble-color/.name2color {
-  eval "$ble_util_upvar_setup"
-
   local colorName="$1"
   if [[ ! ${colorName//[0-9]} ]]; then
     ((ret=10#$colorName&255))
@@ -158,36 +163,31 @@ function ble-color/.name2color {
     (*)       ret=-1 ;;
     esac
   fi
-
-  eval "$ble_util_upvar"
 }
-function ble-color/.color2sgrfg {
-  eval "$ble_util_upvar_setup"
 
-  local ccode="$1"
+## 関数 ble-color/.color2sgrfg color
+## 関数 ble-color/.color2sgrbg color
+##   @param[in] color
+##   @var[out] ret
+function ble-color/.color2sgrfg {
+  local ccode=$1
   if ((ccode<0)); then
     ret=39
   elif ((ccode<16)); then
-    ret="${_ble_term_sgr_af[ccode]}"
+    ret=${_ble_term_sgr_af[ccode]}
   elif ((ccode<256)); then
     ret="38;5;$ccode"
   fi
-
-  eval "$ble_util_upvar"
 }
 function ble-color/.color2sgrbg {
-  eval "$ble_util_upvar_setup"
-
-  local ccode="$1"
+  local ccode=$1
   if ((ccode<0)); then
     ret=49
   elif ((ccode<16)); then
-    ret="${_ble_term_sgr_ab[ccode]}"
+    ret=${_ble_term_sgr_ab[ccode]}
   elif ((ccode<256)); then
     ret="48;5;$ccode"
   fi
-
-  eval "$ble_util_upvar"
 }
 
 #------------------------------------------------------------------------------
@@ -212,16 +212,16 @@ function ble-color-iface2sgr { ble-color/faces/initialize && ble-color-iface2sgr
 function ble-color/faces/initialize {
 
   function ble-color-defface {
-    local name="_ble_faces__$1" gspec="$2"
+    local name=_ble_faces__$1 gspec=$2 ret
     (($name||($name=++_ble_faces_count)))
-    ble-color-gspec2g -v "_ble_faces[$name]" "$gspec"
-    ble-color-g2sgr -v "_ble_faces_sgr[$name]" "${_ble_faces[$name]}"
+    ble-color-gspec2g "$gspec"; _ble_faces[$name]=$ret
+    ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
   }
   function ble-color-setface {
-    local name="_ble_faces__$1" gspec="$2"
+    local name=_ble_faces__$1 gspec=$2 ret
     if [[ ${!name} ]]; then
-      ble-color-gspec2g -v "_ble_faces[$name]" "$gspec"
-      ble-color-g2sgr -v "_ble_faces_sgr[$name]" "${_ble_faces[$name]}"
+      ble-color-gspec2g "$gspec"; _ble_faces[$name]=$ret
+      ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
     else
       echo "ble.sh: the specified face \`$1' is not defined." >&2
       return 1
@@ -318,12 +318,11 @@ function ble-highlight-layer/update/getg {
   g=0
 }
 
+## 関数 ble-highlight-layer/getg index
+##   @param[in] index
+##   @var[out] g
 function ble-highlight-layer/getg {
-  eval "$ble_util_upvar_setup"
-
   LEVEL=${#_ble_highlight_layer__list[*]} ble-highlight-layer/update/getg "$1"
-
-  ret=$g; eval "$ble_util_upvar"
 }
 
 ## レイヤーの実装
@@ -539,7 +538,7 @@ function ble-highlight-layer:region/update {
 
     # 描画文字配列の更新
     local -a buff
-    local g sgr2
+    local g ret
     local k=0 inext iprev=0
     for inext in "${selection[@]}"; do
       if ((k==0)); then
@@ -548,14 +547,14 @@ function ble-highlight-layer:region/update {
         ble/array#push buff "\"$sgr\${_ble_highlight_layer_plain_buff[@]:$iprev:$((inext-iprev))}\""
       else
         ble-highlight-layer/update/getg "$iprev"
-        ble-color-g2sgr -v sgr2 "$g"
-        ble/array#push buff "\"$sgr2\${$PREV_BUFF[@]:$iprev:$((inext-iprev))}\""
+        ble-color-g2sgr "$g"
+        ble/array#push buff "\"$ret\${$PREV_BUFF[@]:$iprev:$((inext-iprev))}\""
       fi
       ((iprev=inext,k++))
     done
     ble-highlight-layer/update/getg "$iprev"
-    ble-color-g2sgr -v sgr2 "$g"
-    ble/array#push buff "\"$sgr2\${$PREV_BUFF[@]:$iprev}\""
+    ble-color-g2sgr "$g"
+    ble/array#push buff "\"$ret\${$PREV_BUFF[@]:$iprev}\""
     builtin eval "_ble_highlight_layer_region_buff=(${buff[*]})"
     PREV_BUFF=_ble_highlight_layer_region_buff
 
@@ -677,14 +676,14 @@ function ble-highlight-layer:overwrite_mode/update {
     if [[ $next && $next != [$'\n\t'] ]]; then
       index=$_ble_edit_ind
 
-      local g sgr
+      local g ret
 
       # PREV_BUFF の内容をロード
       if ((PREV_UMIN<0&&oindex>=0)); then
         # 前回の結果が残っている場合
         ble-highlight-layer/update/getg "$oindex"
-        ble-color-g2sgr -v sgr "$g"
-        _ble_highlight_layer_overwrite_mode_buff[oindex]=$sgr${_ble_highlight_layer_plain_buff[oindex]}
+        ble-color-g2sgr "$g"
+        _ble_highlight_layer_overwrite_mode_buff[oindex]=$ret${_ble_highlight_layer_plain_buff[oindex]}
       else
         # コピーした方が速い場合
         builtin eval "_ble_highlight_layer_overwrite_mode_buff=(\"\${$PREV_BUFF[@]}\")"
@@ -695,12 +694,12 @@ function ble-highlight-layer:overwrite_mode/update {
       # ble-highlight-layer/update/getg "$index"
       # ((g^=_ble_color_gflags_Revert))
       ble-color-face2g overwrite_mode
-      ble-color-g2sgr -v sgr "$g"
-      _ble_highlight_layer_overwrite_mode_buff[index]=$sgr${_ble_highlight_layer_plain_buff[index]}
+      ble-color-g2sgr "$g"
+      _ble_highlight_layer_overwrite_mode_buff[index]=$ret${_ble_highlight_layer_plain_buff[index]}
       if ((index+1<${#1})); then
         ble-highlight-layer/update/getg $((index+1))
-        ble-color-g2sgr -v sgr "$g"
-        _ble_highlight_layer_overwrite_mode_buff[index+1]=$sgr${_ble_highlight_layer_plain_buff[index+1]}
+        ble-color-g2sgr "$g"
+        _ble_highlight_layer_overwrite_mode_buff[index+1]=$ret${_ble_highlight_layer_plain_buff[index+1]}
       fi
     fi
   fi
@@ -732,14 +731,14 @@ function ble-highlight-layer:overwrite_mode/getg {
 
 _ble_highlight_layer_RandomColor_buff=()
 function ble-highlight-layer:RandomColor/update {
-  local text=$1 sgr i
+  local text=$1 ret i
   _ble_highlight_layer_RandomColor_buff=()
   for ((i=0;i<${#text};i++)); do
     # _ble_highlight_layer_RandomColor_buff[i] に "<sgr><表示文字>" を設定する。
     # "<表示文字>" は ${_ble_highlight_layer_plain_buff[i]} でなければならない
     # (或いはそれと文字幅が同じ物…ただそれが反映される保証はない)。
-    ble-color-gspec2sgr -v sgr "fg=$((RANDOM%256))"
-    _ble_highlight_layer_RandomColor_buff[i]=$sgr${_ble_highlight_layer_plain_buff[i]}
+    ble-color-gspec2sgr "fg=$((RANDOM%256))"
+    _ble_highlight_layer_RandomColor_buff[i]=$ret${_ble_highlight_layer_plain_buff[i]}
   done
   PREV_BUFF=_ble_highlight_layer_RandomColor_buff
   ((PREV_UMIN=0,PREV_UMAX=${#text}))
@@ -748,16 +747,16 @@ function ble-highlight-layer:RandomColor/getg {
   # ここでは乱数を返しているが、実際は
   # PREV_BUFF=_ble_highlight_layer_RandomColor_buff
   # に設定した物に対応する物を指定しないと表示が変になる。
-  ble-color-gspec2g -v g "fg=$((RANDOM%256))"
+  local ret; ble-color-gspec2g "fg=$((RANDOM%256))"; g=$ret
 }
 
 _ble_highlight_layer_RandomColor2_buff=()
 function ble-highlight-layer:RandomColor2/update {
-  local text="$1" sgr i x
+  local text="$1" ret i x
   ble-highlight-layer/update/shift _ble_highlight_layer_RandomColor2_buff
   for ((i=DMIN;i<DMAX;i++)); do
-    ble-color-gspec2sgr -v sgr "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
-    _ble_highlight_layer_RandomColor2_buff[i]=$sgr${_ble_highlight_layer_plain_buff[i]}
+    ble-color-gspec2sgr "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
+    _ble_highlight_layer_RandomColor2_buff[i]=$ret${_ble_highlight_layer_plain_buff[i]}
   done
   PREV_BUFF=_ble_highlight_layer_RandomColor2_buff
   ((PREV_UMIN=0,PREV_UMAX=${#text}))
@@ -766,8 +765,8 @@ function ble-highlight-layer:RandomColor2/getg {
   # ここでは乱数を返しているが、実際は
   # PREV_BUFF=_ble_highlight_layer_RandomColor2_buff
   # に設定した物に対応する物を指定しないと表示が変になる。
-  local x
-  ble-color-gspec2g -v g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
+  local x ret
+  ble-color-gspec2g "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"; g=$ret
 }
 
 _ble_highlight_layer__list=(plain syntax region overwrite_mode disabled)

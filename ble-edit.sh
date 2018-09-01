@@ -611,39 +611,45 @@ function ble-edit/info/.initialize-size {
 ##   @var[in,out] x y
 ##   @var[out] ret
 function ble-edit/info/.construct-text {
-  local text=$1 out=
-  local i iN=${#text}
-  for ((i=0;i<iN;)); do
-    local tail=${text:i}
-
-    if ble/util/isprint+ "$tail"; then
-      ble-edit/info/.put-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
-      ((i+=${#BASH_REMATCH}))
-    else
-      ble/util/s2c "$text" "$i"
-      local code=$ret w=0
-      if ((code<32)); then
-        ble/util/c2s $((code+64))
-        ble-edit/info/.put-atomic 2 "$sgr1^$ret$sgr0"
-      elif ((code==127)); then
-        ble-edit/info/.put-atomic 2 '$sgr1^?$sgr0'
-      elif ((128<=code&&code<160)); then
-        ble/util/c2s $((code-64))
-        ble-edit/info/.put-atomic 4 "${sgr1}M-^$ret$sgr0"
+  local out= LC_COLLATE=C glob='*[! -~]*'
+  if [[ $tail != $glob ]]; then
+    # G0 だけで構成された文字列は先に単純に処理する
+    ble-edit/info/.put-simple "${#1}" "$1"
+  else
+    local glob='[ -~]*' globx='[! -~]*'
+    local i iN=${#1} text=$1
+    for ((i=0;i<iN;)); do
+      local tail=${text:i}
+      if [[ $tail == $glob ]]; then
+        local span=${tail%%$globx}
+        ble-edit/info/.put-simple "${#span}" "$span"
+        ((i+=${#span}))
       else
-        ble/util/c2w "$code"
-        ble-edit/info/.put-atomic "$ret" "${text:i:1}"
-      fi
+        ble/util/s2c "$text" "$i"
+        local code=$ret w=0
+        if ((code<32)); then
+          ble/util/c2s $((code+64))
+          ble-edit/info/.put-atomic 2 "$sgr1^$ret$sgr0"
+        elif ((code==127)); then
+          ble-edit/info/.put-atomic 2 '$sgr1^?$sgr0'
+        elif ((128<=code&&code<160)); then
+          ble/util/c2s $((code-64))
+          ble-edit/info/.put-atomic 4 "${sgr1}M-^$ret$sgr0"
+        else
+          ble/util/c2w "$code"
+          ble-edit/info/.put-atomic "$ret" "${text:i:1}"
+        fi
 
-      ((y>=lines)) && break
-      ((i++))
-    fi
-  done
+        ((y>=lines)) && break
+        ((i++))
+      fi
+    done
+  fi
 
   ble-edit/info/.put-nl-if-eol
-
   ret=$out
 }
+
 
 ## 関数 ble-edit/info/.construct-content type text
 ##   @var[in,out] x y
@@ -981,9 +987,9 @@ function ble-edit/content/is-single-line {
   [[ $_ble_edit_str != *$'\n'* ]]
 }
 
+## 関数 ble-edit/content/get-arg
+##   @var[out] arg
 function ble-edit/content/get-arg {
-  eval "${ble_util_upvar_setup//ret/arg}"
-
   local default_value=$1
   if [[ $_ble_edit_arg == -* ]]; then
     if [[ $_ble_edit_arg == - ]]; then
@@ -999,8 +1005,6 @@ function ble-edit/content/get-arg {
     fi
   fi
   _ble_edit_arg=
-
-  eval "${ble_util_upvar//ret/arg}"
 }
 function ble-edit/content/clear-arg {
   _ble_edit_arg=
@@ -1088,13 +1092,13 @@ function ble/textarea#update-text-buffer {
 
   # 変更文字の適用
   if ((${#_ble_textmap_ichg[@]})); then
-    local ichg g sgr
+    local ichg g ret
     builtin eval "_ble_textarea_buffer=(\"\${$HIGHLIGHT_BUFF[@]}\")"
     HIGHLIGHT_BUFF=_ble_textarea_buffer
     for ichg in "${_ble_textmap_ichg[@]}"; do
       ble-highlight-layer/getg "$ichg"
-      ble-color-g2sgr -v sgr "$g"
-      _ble_textarea_buffer[ichg]=$sgr${_ble_textmap_glyph[ichg]}
+      ble-color-g2sgr "$g"
+      _ble_textarea_buffer[ichg]=$ret${_ble_textmap_glyph[ichg]}
     done
   fi
 
@@ -1134,20 +1138,20 @@ function ble/textarea#update-text-buffer {
         fi
 
         # 次が改行の時は空白にする
-        ble-highlight-layer/getg -v lg "$index"
+        local g; ble-highlight-layer/getg "$index"; lg=$g
         ((lc=ret==10?32:ret))
       else
         # 前の文字
         lcs=${_ble_textmap_glyph[index-1]}
         ble/util/s2c "$lcs" $((${#lcs}-1))
-        ble-highlight-layer/getg -v lg $((index-1))
+        local g; ble-highlight-layer/getg $((index-1)); lg=$g
         ((lc=ret))
       fi
     fi
   fi
 }
 ## 関数 ble/textarea#slice-text-buffer [beg [end]]
-##   @var [out] ret
+##   @var[out] ret
 function ble/textarea#slice-text-buffer {
   ble/textmap#assert-up-to-date
   local iN=$_ble_textmap_length
@@ -1155,10 +1159,10 @@ function ble/textarea#slice-text-buffer {
   ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
     i2<0&&(i2+=iN)))
   if ((i1<i2&&i1<iN)); then
-    local g sgr
-    ble-highlight-layer/getg -v g "$i1"
-    ble-color-g2sgr -v sgr "$g"
-    IFS= builtin eval "ret=\"\$sgr\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
+    local g
+    ble-highlight-layer/getg "$i1"
+    ble-color-g2sgr "$g"
+    IFS= builtin eval "ret=\"\$ret\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
   else
     ret=
   fi

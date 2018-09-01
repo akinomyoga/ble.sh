@@ -540,8 +540,9 @@ function ble/canvas/trace/.SGR {
     fi
   done
 
-  ble-color-g2sgr -v seq "$g"
-  ble/canvas/put.draw "$seq"
+  local ret
+  ble-color-g2sgr "$g"
+  ble/canvas/put.draw "$ret"
 }
 function ble/canvas/trace/.process-csi-sequence {
   local seq=$1 seq1=${1:2} rex

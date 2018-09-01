@@ -364,17 +364,13 @@ function ble-syntax/print-status/.dump-arrays/.append-attr-char {
 }
 
 function ble-syntax/print-status/ctx#get-text {
-  eval "$ble_util_upvar_setup"
-
   local sgr
-  ble-syntax/ctx#get_name -v ret "$1"
+  ble-syntax/ctx#get-name "$1"
   ret=${ret#BLE_}
   if [[ ! $ret ]]; then
     ble-color-face2sgr syntax_error
     ret="${sgr}CTX$1$_ble_term_sgr0"
   fi
-
-  eval "$ble_util_upvar"
 }
 ## 関数 ble-syntax/print-status/word.get-text index
 ##   _ble_syntax_tree[index] の内容を文字列にします。
@@ -383,7 +379,7 @@ function ble-syntax/print-status/ctx#get-text {
 function ble-syntax/print-status/word.get-text {
   local index=$1
   ble/string#split-words word "${_ble_syntax_tree[index]}"
-  local ret=
+  local out= ret
   if [[ $word ]]; then
     local nofs=$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))
     while (((nofs-=BLE_SYNTAX_TREE_WIDTH)>=0)); do
@@ -391,7 +387,7 @@ function ble-syntax/print-status/word.get-text {
 
       local wtype=${word[nofs]}
       if [[ $wtype =~ ^[0-9]+$ ]]; then
-        ble-syntax/print-status/ctx#get-text -v wtype "$wtype"
+        ble-syntax/print-status/ctx#get-text "$wtype"; wtype=$ret
       elif [[ $wtype =~ ^n* ]]; then
         # Note: nest-pop 時の tree-append では prefix n を付けている。
         wtype=$sgr_quoted\"${wtype:1}\"$_ble_term_sgr0
@@ -412,13 +408,13 @@ function ble-syntax/print-status/word.get-text {
         _child=
       fi
 
-      ret=" word=$wtype:$_prev$b-$e$_child$ret"
+      out=" word=$wtype:$_prev$b-$e$_child$out"
       for ((;b<index;b++)); do
         ble-syntax/print-status/.tree-prepend b '|'
       done
       ble-syntax/print-status/.tree-prepend index '+'
     done
-    word=$ret
+    word=$out
   fi
 }
 ## 関数 ble-syntax/print-status/nest.get-text index
@@ -429,13 +425,12 @@ function ble-syntax/print-status/nest.get-text {
   local index=$1
   ble/string#split-words nest "${_ble_syntax_nest[index]}"
   if [[ $nest ]]; then
-    local nctx
-    ble-syntax/print-status/ctx#get-text -v nctx 'nest[0]'
+    local ret
+    ble-syntax/print-status/ctx#get-text "${nest[0]}"; local nctx=$ret
 
     local nword=-
     if ((nest[1]>=0)); then
-      local swtype
-      ble-syntax/print-status/ctx#get-text -v swtype 'nest[2]'
+      ble-syntax/print-status/ctx#get-text "${nest[2]}"; local swtype=$ret
       local wbegin=$((index-nest[1]))
       nword="$swtype:$wbegin-"
     fi
@@ -479,13 +474,12 @@ function ble-syntax/print-status/stat.get-text {
   local index=$1
   ble/string#split-words stat "${_ble_syntax_stat[index]}"
   if [[ $stat ]]; then
-    local stat_ctx
-    ble-syntax/print-status/ctx#get-text -v stat_ctx 'stat[0]'
+    local ret
+    ble-syntax/print-status/ctx#get-text "${stat[0]}"; local stat_ctx=$ret
 
     local stat_word=-
     if ((stat[1]>=0)); then
-      local stat_wtype
-      ble-syntax/print-status/ctx#get-text -v stat_wtype 'stat[2]'
+      ble-syntax/print-status/ctx#get-text "${stat[2]}"; local stat_wtype=$ret
       stat_word="$stat_wtype:$((index-stat[1]))-"
     fi
 
@@ -841,17 +835,13 @@ _ble_syntax_bash_ctx_names=(
 #%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
 )
 
-## 関数 ble-syntax/ctx#get_name [-v varname] ctx
+## 関数 ble-syntax/ctx#get-name [-v varname] ctx
 ##   @param[in] varname
 ##     既定値 ret
 ##   @param[in] ctx
 ##   @var[out] !varname
-function ble-syntax/ctx#get_name {
-  if [[ $1 == -v ]]; then
-    eval "$2=\${_ble_syntax_bash_ctx_names[\$3]}"
-  else
-    ble-syntax/ctx#get_name -v ret "$1"
-  fi
+function ble-syntax/ctx#get-name {
+  ret=${_ble_syntax_bash_ctx_names[$1]}
 }
 
 # @var _BLE_SYNTAX_FCTX[]
@@ -5031,9 +5021,9 @@ function ble-highlight-layer:syntax/update {
   if ((DMIN>=0)); then
     ble-highlight-layer/update/shift _ble_highlight_layer_syntax_buff
     if ((DMAX>0)); then
-      local g sgr ch
+      local g sgr ch ret
       ble-highlight-layer:syntax/getg "$DMAX"
-      ble-color-g2sgr -v sgr "$g"
+      ble-color-g2sgr "$g"; sgr=$ret
       ch=${_ble_highlight_layer_plain_buff[DMAX]}
       _ble_highlight_layer_syntax_buff[DMAX]=$sgr$ch
     fi
@@ -5046,14 +5036,14 @@ function ble-highlight-layer:syntax/update {
   fi
 
   if ((umin>=0)); then
-    local sgr
+    local ret
     for ((i=umin;i<=umax;i++)); do
       local ch=${_ble_highlight_layer_plain_buff[i]}
       ble-highlight-layer:syntax/getg "$i"
       [[ $g ]] || ble-highlight-layer/update/getg "$i"
       if ((gprev!=g)); then
-        ble-color-g2sgr -v sgr "$g"
-        ch=$sgr$ch
+        ble-color-g2sgr "$g"
+        ch=$ret$ch
         ((gprev=g))
       fi
       _ble_highlight_layer_syntax_buff[i]=$ch

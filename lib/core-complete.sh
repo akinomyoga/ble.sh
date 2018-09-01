@@ -354,7 +354,7 @@ function ble-complete/cand/unpack {
   local pack=$1
   ACTION=${pack%%:*} pack=${pack#*:}
   local text=${pack#*:}
-  ble/string#split pack , "${pack%%:*}"
+  IFS=, eval 'pack=(${pack%%:*})'
   CAND=${text::pack[0]}
   INSERT=${text:pack[0]:pack[1]}
   DATA=${text:pack[0]+pack[1]}
@@ -1287,24 +1287,36 @@ function ble-complete/menu/construct-single-entry {
   [[ :$opts: == *:selected:* ]] && ((g|=_ble_color_gflags_Revert))
   if [[ $menu_common_part && $CAND == "$menu_common_part"* ]]; then
     local out= alen=$((${#menu_common_part}-PREFIX_LEN))
-    local sgr0 sgr1
+    local sgr0 sgr1 g1
     if ((alen>0)); then
-      ble-color-g2sgr -v sgr0 $((g|_ble_color_gflags_Bold))
-      ble-color-g2sgr -v sgr1 $((g|_ble_color_gflags_Bold|_ble_color_gflags_Revert))
+      # 高速化の為、直接 _ble_color_g2sgr を参照する
+      ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Bold]}
+      [[ $ret ]] || ble-color-g2sgr "$g1"; sgr0=$ret
+      ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Bold|_ble_color_gflags_Revert]}
+      [[ $ret ]] || ble-color-g2sgr "$g1"; sgr1=$ret
+
       ble-edit/info/.construct-text "${show::alen}"
       out=$out$sgr0$ret
     fi
     if ((alen<${#show})); then
-      ble-color-g2sgr -v sgr0 $((g))
-      ble-color-g2sgr -v sgr1 $((g|_ble_color_gflags_Revert))
+      # 高速化の為、直接 _ble_color_g2sgr を参照する
+      ret=${_ble_color_g2sgr[g]}
+      [[ $ret ]] || ble-color-g2sgr "$g"; sgr0=$ret
+      ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
+      [[ $ret ]] || ble-color-g2sgr "$g1"; sgr1=$ret
+
       ble-edit/info/.construct-text "${show:alen}"
       out=$out$sgr0$ret
     fi
     ret=$out$_ble_term_sgr0
   else
+    # 高速化の為、直接 _ble_color_g2sgr を参照する
     local sgr0 sgr1
-    ble-color-g2sgr -v sgr0 $((g))
-    ble-color-g2sgr -v sgr1 $((g|_ble_color_gflags_Revert))
+    ret=${_ble_color_g2sgr[g]}
+    [[ $ret ]] || ble-color-g2sgr "$g"; sgr0=$ret
+    ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
+    [[ $ret ]] || ble-color-g2sgr "$g1"; sgr1=$ret
+
     ble-edit/info/.construct-text "$show"
     ret=$sgr0$ret$_ble_term_sgr0
   fi
@@ -1504,7 +1516,7 @@ function ble-complete/menu/show {
     _ble_complete_menu_common_part=$menu_common_part
     _ble_complete_menu_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type" "$comps_flags")
     _ble_complete_menu_pack=("${cand_pack[@]}")
-    _ble_complete_menu_filter=
+    _ble_complete_menu_filter=${_ble_edit_str:COMP1:COMP2-COMP1}
   fi
   return 0
 }

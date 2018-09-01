@@ -52,6 +52,32 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
+## @var ble_util_upvar_setup
+## @var ble_util_upvar
+##
+##   これらの変数は関数を定義する時に [-v varname] の引数を認識させ、
+##   関数の結果を格納する変数名を外部から指定できるようにするのに用いる。
+##   使用する際は関数を以下の様に記述する。既定の格納先変数は ret となる。
+##
+##     function MyFunction {
+##       eval "$ble_util_upvar_setup"
+##     
+##       ret=... # 処理を行い、変数 ret に結果を格納するコード
+##               # (途中で return などすると正しく動かない事に注意)
+##     
+##       eval "$ble_util_upvar"
+##     }
+##
+##   既定の格納先変数を別の名前 (以下の例では arg) にする場合は次の様にする。
+##
+##     function MyFunction {
+##       eval "${ble_util_upvar_setup//ret/arg}" 
+##     
+##       arg=... # 処理を行い、変数 arg に結果を格納するコード
+##     
+##       eval "${ble_util_upvar//ret/arg}"
+##     }
+##   
 ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var=$2 && shift 2'
 ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
 function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
@@ -725,7 +751,7 @@ function ble/util/eval-pathname-expansion {
 
 
 # 正規表現は _ble_bash>=30000
-_ble_rex_isprint='^[ -~]+'
+_ble_util_rex_isprint='^[ -~]+'
 ## 関数 ble/util/isprint+ str
 ##
 ##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。
@@ -734,7 +760,7 @@ function ble/util/isprint+ {
   LC_COLLATE=C ble/util/isprint+.impl "$@" &>/dev/null
 }
 function ble/util/isprint+.impl {
-  [[ $1 =~ $_ble_rex_isprint ]]
+  [[ $1 =~ $_ble_util_rex_isprint ]]
 }
 
 if ((_ble_bash>=40200)); then
