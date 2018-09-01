@@ -286,6 +286,21 @@ function ble-complete/action:command/complete {
     ble-complete/action/util/complete.addtail ' '
   fi
 }
+function ble-complete/action:command/getg {
+  if [[ -d $CAND ]]; then
+    ble-color-face2g filename_directory
+  else
+    # Note: ble-syntax/highlight/cmdtype はキャッシュ機能がついているが、
+    #   キーワードに対して呼び出さない前提なのでキーワードを渡すと
+    #   BLE_ATTR_ERR を返してしまう。
+    local type; ble/util/type type "$CAND"
+    ble-syntax/highlight/cmdtype1 "$type" "$CAND"
+    if [[ $CAND == */ ]] && ((type==BLE_ATTR_ERR)); then
+      type=BLE_ATTR_CMD_FUNCTION
+    fi
+    ble-syntax/attr2g "$type"
+  fi
+}
 
 # action/variable
 
@@ -299,6 +314,9 @@ function ble-complete/action:variable/complete {
     # ${var 等に於いて } を挿入
     ble-complete/action/util/complete.addtail '}' ;;
   esac
+}
+function ble-complete/action:variable/getg {
+  ble-color-face2g syntax_varname
 }
 
 #==============================================================================

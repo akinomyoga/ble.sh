@@ -841,9 +841,10 @@ _ble_syntax_bash_ctx_names=(
 #%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
 )
 
-## 関数 ble-syntax/ctx#get_name [-v varname]
-##   @var[in] varname
+## 関数 ble-syntax/ctx#get_name [-v varname] ctx
+##   @param[in] varname
 ##     既定値 ret
+##   @param[in] ctx
 ##   @var[out] !varname
 function ble-syntax/ctx#get_name {
   if [[ $1 == -v ]]; then
