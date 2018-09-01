@@ -1484,8 +1484,7 @@ function ble-complete/menu/show {
 
   if ((${#cand_pack[@]})); then
     local x y esc menu_items
-    ble/function#try ble-complete/menu/style:"$menu_style"/construct; local ext=$?
-    ((ext)) && return "$ext"
+    ble/function#try ble-complete/menu/style:"$menu_style"/construct || return
 
     info_data=(store "$x" "$y" "$esc")
   else
@@ -1507,6 +1506,7 @@ function ble-complete/menu/show {
     _ble_complete_menu_pack=("${cand_pack[@]}")
     _ble_complete_menu_filter=
   fi
+  return 0
 }
 
 function ble-complete/menu/redraw {
@@ -1598,7 +1598,7 @@ function ble/widget/complete {
   if [[ :$opts: == *:enter_menu:* ]]; then
     [[ $_ble_complete_menu_active ]] &&
       ble-complete/menu-complete/enter && return
-  elif [[ $bleopt_complete_menu_complete ]]; then
+  elif [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active != auto ]]; then
     [[ $_ble_complete_menu_active && $_ble_edit_str == "$_ble_complete_menu_str" ]] &&
       ble-complete/menu-complete/enter && return
     [[ $WIDGET == "$LASTWIDGET" ]] && opts=$opts:enter_menu
@@ -1629,16 +1629,14 @@ function ble/widget/complete {
   [[ $insert == "$COMPS"* ]] || insert_flags=r
 
   if [[ :$opts: == *:enter_menu:* ]]; then
-    ble-complete/menu/show
-    (($?==148)) && return 148
+    ble-complete/menu/show || return
     ble-complete/menu-complete/enter; local ext=$?
     ((ext==148)) && return 148
     ((ext)) && ble/widget/.bell
     return
   elif [[ :$opts: == *:show_menu:* ]]; then
     ble-complete/menu/show
-    (($?==148)) && return 148
-    return
+    return # exit status of ble-complete/menu/show
   fi
 
   if ((cand_count==1)); then
@@ -1661,13 +1659,14 @@ function ble/widget/complete {
   fi
 
   if [[ $insert_flags == *m* ]]; then
-    ble-complete/menu/show
-    (($?==148)) && return 148
+    ble-complete/menu/show || return
   elif [[ $insert_flags == *n* ]]; then
-    ble/widget/complete show_menu
+    ble/widget/complete show_menu || return
+    _ble_complete_menu_active=auto
   else
     ble-complete/menu/clear
   fi
+  return 0
 }
 
 function ble/widget/complete-insert {
@@ -1730,8 +1729,7 @@ function ble-complete/menu/filter-incrementally {
     ((${#cand_pack[@]})) && comp_type=${comp_type}a
   fi
 
-  ble-complete/menu/show filter
-  (($?==148)) && return 148
+  ble-complete/menu/show filter || return
   _ble_complete_menu_filter=$input
   return 0
 }
@@ -1837,6 +1835,7 @@ function ble-complete/menu-complete/enter {
 
   _ble_edit_mark_active=menu_complete
   ble-decode/keymap/push menu_complete
+  return 0
 }
 
 function ble/widget/menu_complete/forward {
