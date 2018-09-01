@@ -481,7 +481,7 @@ _ble_util_read_stdout_tmp="$_ble_base_run/$$.ble_util_assign.tmp"
 if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    builtin eval "$2" >| "$_ble_util_read_stdout_tmp"
     local _ret=$? __arr
     mapfile -t __arr < "$_ble_util_read_stdout_tmp"
     IFS=$'\n' eval "$1=\"\${__arr[*]-}\""
@@ -489,25 +489,27 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/util/assign {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    builtin eval "$2" >| "$_ble_util_read_stdout_tmp"
     local _ret=$?
     IFS= builtin read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
     eval "$1=\${$1%$'\n'}"
     return "$_ret"
   }
 fi
-## 関数 ble/util/assign-array arr command...
+## 関数 ble/util/assign-array arr command args...
 ##   mapfile -t arr <(command ...) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
 ##
 ##   @param[in] arr
 ##     代入先の配列名を指定します。
-##   @param[in] command...
+##   @param[in] command
 ##     実行するコマンドを指定します。
+##   @param[in] args...
+##     command から参照する引数 ($3 $4 ...) を指定します。
 ##
 if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    builtin eval "$2" >| "$_ble_util_read_stdout_tmp"
     local _ret=$?
     mapfile -t "$1" < "$_ble_util_read_stdout_tmp"
     return "$_ret"
@@ -570,8 +572,13 @@ else
   }
 fi
 
+## 関数 ble/util/type varname command
+##   @param[out] varname
+##     結果を格納する変数名を指定します。
+##   @param[in] command
+##     種類を判定するコマンド名を指定します。
 function ble/util/type {
-  _cmd=$2 ble/util/assign "$1" 'builtin type -t -- "$_cmd" 2>/dev/null'
+  ble/util/assign "$1" 'builtin type -t -- "$3" 2>/dev/null' "$2"
   builtin eval "$1=\"\${$1%$_ble_term_nl}\""
 }
 
@@ -1023,7 +1030,7 @@ _ble_util_joblist_list=()
 _ble_util_joblist_events=()
 function ble/util/joblist {
   local jobs0
-  ble/util/assign jobs0 jobs
+  ble/util/assign jobs0 'jobs'
   if [[ $jobs0 == "$_ble_util_joblist_jobs" ]]; then
     # 前回の呼び出し結果と同じならば状態変化はないものとして良い。終了・強制終
     # 了したジョブがあるとしたら "終了" だとか "Terminated" だとかいう表示にな
@@ -1059,7 +1066,7 @@ function ble/util/joblist {
     done
   fi
 
-  ble/util/assign _ble_util_joblist_jobs jobs
+  ble/util/assign _ble_util_joblist_jobs 'jobs'
   _ble_util_joblist_list=()
   if [[ $_ble_util_joblist_jobs != "$jobs0" ]]; then
     ble/string#split lines $'\n' "$_ble_util_joblist_jobs"

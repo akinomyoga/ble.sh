@@ -8,29 +8,29 @@ else
 fi
 
 function ble/term.sh/register-varname {
-  local name="$1"
-  varnames[${#varnames[@]}]="$name"
+  local name=$1
+  varnames[${#varnames[@]}]=$name
 }
 
 function ble/term.sh/define-cap {
-  local name="$1" def="$2"
+  local name=$1 def=$2
   shift 2
-  ble/util/assign "$name" "ble/term.sh/tput $@ || echo -n \"\$def\""
+  ble/util/assign "$name" "ble/term.sh/tput $* || echo -n \"\$def\""
   ble/term.sh/register-varname "$name"
 }
 function ble/term.sh/define-cap.2 {
-  local name="$1" def="$2"
+  local name=$1 def=$2
   shift 2
-  ble/util/assign "$name" "echo -n x;ble/term.sh/tput $@ || echo -n \"\$def\";echo -n x"
+  ble/util/assign "$name" "echo -n x; ble/term.sh/tput $* || echo -n \"\$def\"; echo -n x"
   builtin eval "$name=\${$name#x}; $name=\${$name%x}"
   ble/term.sh/register-varname "$name"
 }
 
 _ble_term_rex_sgr='\[([0-9;:]+)m'
 function ble/term.sh/define-sgr-param {
-  local name="$1" seq="$2"
+  local name=$1 seq=$2
   if [[ $seq =~ $_ble_term_rex_sgr ]]; then
-    builtin eval "$name=\"\${BASH_REMATCH[1]}\""
+    builtin eval "$name=\${BASH_REMATCH[1]}"
   else
     builtin eval "$name="
   fi

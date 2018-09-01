@@ -501,7 +501,7 @@ function ble-complete/source:command {
 
   local cand arr i=0
   local compgen
-  ble/util/assign compgen ble-complete/source:command/gen
+  ble/util/assign compgen 'ble-complete/source:command/gen'
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do

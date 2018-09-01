@@ -3542,7 +3542,7 @@ function ble-edit/hist_expanded.update {
   if [[ ! -o histexpand || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded=$BASH_COMMAND
     return 0
-  elif ble/util/assign hist_expanded ble-edit/hist_expanded/.expand; then
+  elif ble/util/assign hist_expanded 'ble-edit/hist_expanded/.expand'; then
     hist_expanded=${hist_expanded%$_ble_term_nl:}
     return 0
   else
