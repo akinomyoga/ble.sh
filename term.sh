@@ -64,6 +64,8 @@ function ble/term.sh/initialize {
   ble/term.sh/define-cap   _ble_term_cr  $''  cr
   _ble_term_nl=$'\n'
   ble/term.sh/register-varname _ble_term_nl
+  _ble_term_IFS=$' \t\n'
+  ble/term.sh/register-varname _ble_term_IFS
   _ble_term_fs=$'\034'
   ble/term.sh/register-varname _ble_term_fs
 

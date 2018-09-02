@@ -2022,6 +2022,179 @@ _ble_complete_ac_cand=
 _ble_complete_ac_word=
 _ble_complete_ac_insert=
 _ble_complete_ac_suffix=
+
+## 関数 ble-complete/auto-complete/.search-history-light text
+##   !string もしくは !?string を用いて履歴の検索を行います
+##   @param[in] text
+##   @var[out] ret
+function ble-complete/auto-complete/.search-history-light {
+  local text=$1
+  [[ ! $text ]] && return 1
+
+  # !string による一致を試みる
+  #   string には [$wordbreaks] は含められない。? はOK
+  local wordbreaks="<>();&|:$_ble_term_IFS"
+  local word=
+  if [[ $text != [-0-9#?!]* ]]; then
+    word=${text%%[$wordbreaks]*}
+    local expand
+    BASH_COMMAND='!'$word ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
+    if [[ $expand == "$text"* ]]; then
+      ret=$expand
+      return 0
+    fi
+  fi
+
+  # !?string による一致を試みる
+  #   string には "?" は含められない
+  if [[ $word != "$text" ]]; then
+    # ? を含まない最長一致部分
+    local fragments; ble/string#split fragments '?' "$text"
+    local frag longest_fragments; len=0 longest_fragments=('')
+    for frag in "${fragments[@]}"; do
+      local len1=${#frag}
+      ((len1>len&&(len=len1))) && longest_fragments=()
+      ((len1==len)) && ble/array#push longest_fragments "$frag"
+    done
+
+    for frag in "${longest_fragments[@]}"; do
+      BASH_COMMAND='!?'$frag ble/util/assign expand 'ble/edit/hist_expanded/.core' &>/dev/null || return 1
+      [[ $expand == "$text"* ]] || continue
+      ret=$expand
+      return 0
+    done
+  fi
+
+  return 1
+}
+
+_ble_complete_ac_history_needle=
+_ble_complete_ac_history_index=
+_ble_complete_ac_history_start=
+function ble-complete/auto-complete/.search-history-heavy {
+  local text=$1
+
+  local count; ble-edit/history/get-count -v count
+  local start=$((count-1))
+  local index=$((count-1))
+  local needle=$text
+
+  # 途中からの検索再開
+  ((start==_ble_complete_ac_history_start)) &&
+    [[ $needle == "$_ble_complete_ac_history_needle"* ]] &&
+    index=$_ble_complete_ac_history_index
+
+  local isearch_time=0 isearch_ntask=1
+  local isearch_opts=head
+  [[ $comp_type == *s* ]] || isearch_opts=$isearch_opts:stop_check
+  ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
+  _ble_complete_ac_history_start=$start
+  _ble_complete_ac_history_index=$index
+  _ble_complete_ac_history_needle=$needle
+  ((ext)) && return "$ext"
+
+  ret=${_ble_edit_history_edit[index]}
+  return 0
+}
+
+## 関数 ble-complete/auto-complete/.setup-auto-complete-mode
+##   @var[in] type COMP1 cand word insert suffix
+function ble-complete/auto-complete/.setup-auto-complete-mode {
+  _ble_complete_ac_type=$type
+  _ble_complete_ac_comp1=$COMP1
+  _ble_complete_ac_cand=$cand
+  _ble_complete_ac_word=$word
+  _ble_complete_ac_insert=$insert
+  _ble_complete_ac_suffix=$suffix
+
+  _ble_edit_mark_active=auto_complete
+  ble-decode/keymap/push auto_complete
+  ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
+}
+
+## 関数 ble-complete/auto-complete/.check-context opts
+##   @param[in] opts
+##   @var[in] comp_type comp_text comp_index
+function ble-complete/auto-complete/.check-history {
+  local opts=$1
+  local searcher=.search-history-heavy
+  [[ :$opts: == *:light:*  ]] && searcher=.search-history-light
+
+  local ret
+  ((_ble_edit_ind==${#_ble_edit_str})) || return 1
+  ble-complete/auto-complete/"$searcher" "$_ble_edit_str" || return # 0, 1 or 148
+  local word=$ret cand=
+  local COMP1=0 COMPS=$_ble_edit_str
+  [[ $word == "$COMPS" ]] && return 1
+  local insert=$word suffix=
+
+  local type=h
+  local ins=${insert:${#COMPS}}
+  ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+  ((_ble_edit_mark=_ble_edit_ind+${#ins}))
+
+  # vars: type COMP1 cand word insert suffix
+  ble-complete/auto-complete/.setup-auto-complete-mode
+  return 0
+}
+
+## 関数 ble-complete/auto-complete/.check-context
+##   @var[in] comp_type comp_text comp_index
+function ble-complete/auto-complete/.check-context {
+  local contexts
+  ble-complete/candidates/get-prefix-contexts "$comp_text" "$comp_index" || return 1
+
+  # ble-complete/candidates/generate 設定
+  local bleopt_complete_contract_function_names=
+  ((bleopt_complete_stdin_frequency>25)) &&
+    local bleopt_complete_stdin_frequency=25
+  local COMP1 COMP2 COMPS COMPV
+  local comps_flags
+  local rex_ambiguous_compv
+  local cand_count
+  local -a cand_cand cand_word cand_pack
+  ble-complete/candidates/generate
+  [[ $COMPV ]] || return 1
+  ((ext)) && return "$ext"
+
+  ((cand_count)) || return
+
+  local word=${cand_word[0]} cand=${cand_cand[0]}
+  [[ $word == "$COMPS" ]] && return 1
+
+  # addtail 等の修飾
+  local insert=$word suffix=
+  local ACTION=${cand_pack[0]%%:*}
+  if ble/is-function ble-complete/action:"$ACTION"/complete; then
+    local "${_ble_complete_cand_varnames[@]}"
+    ble-complete/cand/unpack "${cand_pack[0]}"
+    ble-complete/action:"$ACTION"/complete
+  fi
+
+  local type=
+  if [[ $word == "$COMPS"* ]]; then
+    # 入力候補が既に続きに入力されている時は提示しない
+    [[ ${comp_text:COMP1} == "$word"* ]] && return 1
+
+    type=c
+    local ins=${insert:${#COMPS}}
+    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+    ((_ble_edit_mark=_ble_edit_ind+${#ins}))
+  else
+    if [[ $comp_type == *a* ]]; then
+      type=a
+    else
+      type=r
+    fi
+    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" " [$insert] "
+    ((_ble_edit_mark=_ble_edit_ind+4+${#insert}))
+  fi
+
+  # vars: type COMP1 cand word insert suffix
+  ble-complete/auto-complete/.setup-auto-complete-mode
+  return 0
+}
+
 ## 関数 ble-complete/auto-complete.impl opts
 ##   @param[in] opts
 #      コロン区切りのオプションのリストです。
@@ -2034,62 +2207,15 @@ function ble-complete/auto-complete.impl {
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   [[ $comp_text ]] || return 0
 
-  local contexts
-  ble-complete/candidates/get-prefix-contexts "$comp_text" "$comp_index" || return 0
+  if [[ $bleopt_complete_auto_history ]]; then
+    ble-complete/auto-complete/.check-history light; local ext=$?
+    ((ext==0||ext==148)) && return "$ext"
 
-  # ble-complete/candidates/generate 設定
-  local bleopt_complete_contract_function_names=
-  ((bleopt_complete_stdin_frequency>25)) &&
-    local bleopt_complete_stdin_frequency=25
-  local COMP1 COMP2 COMPS COMPV
-  local comps_flags
-  local rex_ambiguous_compv
-  local cand_count
-  local -a cand_cand cand_word cand_pack
-  ble-complete/candidates/generate
-  [[ $COMPV ]] || return 0
-  ((ext)) && return "$ext"
-
-  ((cand_count)) || return
-
-  _ble_complete_ac_comp1=$COMP1
-  _ble_complete_ac_cand=${cand_cand[0]}
-  _ble_complete_ac_word=${cand_word[0]}
-  [[ $_ble_complete_ac_word == "$COMPS" ]] && return
-
-  # addtail 等の修飾
-  local insert=$_ble_complete_ac_word suffix=
-  local ACTION=${cand_pack[0]%%:*}
-  if ble/is-function ble-complete/action:"$ACTION"/complete; then
-    local "${_ble_complete_cand_varnames[@]}"
-    ble-complete/cand/unpack "${cand_pack[0]}"
-    ble-complete/action:"$ACTION"/complete
+    ble-complete/auto-complete/.check-history; local ext=$?
+    ((ext==0||ext==148)) && return "$ext"
   fi
-  _ble_complete_ac_insert=$insert
-  _ble_complete_ac_suffix=$suffix
-
-  if [[ $_ble_complete_ac_word == "$COMPS"* ]]; then
-    # 入力候補が既に続きに入力されている時は提示しない
-    [[ ${comp_text:COMP1} == "$_ble_complete_ac_word"* ]] && return
-
-    _ble_complete_ac_type=c
-    local ins=${insert:${#COMPS}}
-    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
-    ((_ble_edit_mark=_ble_edit_ind+${#ins}))
-  else
-    if [[ $comp_type == *a* ]]; then
-      _ble_complete_ac_type=a
-    else
-      _ble_complete_ac_type=r
-    fi
-    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" " [$insert] "
-    ((_ble_edit_mark=_ble_edit_ind+4+${#insert}))
-  fi
-
-  _ble_edit_mark_active=auto_complete
-  ble-decode/keymap/push auto_complete
-  ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
-  return
+  
+  ble-complete/auto-complete/.check-context
 }
 
 ## 背景関数 ble/widget/auto-complete.idle
@@ -2172,7 +2298,7 @@ function ble/widget/auto_complete/self-insert {
   local comps_cur=${_ble_edit_str:_ble_complete_ac_comp1:_ble_edit_ind-_ble_complete_ac_comp1}
   local comps_new=$comps_cur$ins
   local processed=
-  if [[ $_ble_complete_ac_type == c ]]; then
+  if [[ $_ble_complete_ac_type == [ch] ]]; then
     # c: 入力済み部分が補完結果の先頭に含まれる場合
     #   挿入した後でも補完結果の先頭に含まれる場合、その文字数だけ確定。
     if [[ $_ble_complete_ac_word == "$comps_new"* ]]; then
