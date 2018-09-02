@@ -4750,9 +4750,9 @@ function ble-edit/isearch/.read-search-options {
   (*:tail:*)  search_type=tail ;;
   esac
 
-  [[ :$opts: != *:stop_check:* ]]; local has_stop_check=$?
-  [[ :$opts: != *:progress:* ]]; local has_progress=$?
-  [[ :$opts: != *:backward:* ]]; local has_backward=$?
+  [[ :$opts: != *:stop_check:* ]]; has_stop_check=$?
+  [[ :$opts: != *:progress:* ]]; has_progress=$?
+  [[ :$opts: != *:backward:* ]]; has_backward=$?
 }
 function ble-edit/isearch/backward-search-history-blockwise {
   local search_type has_stop_check has_progress has_backward
