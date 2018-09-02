@@ -744,6 +744,10 @@ tech
 
 2018-09-02
 
+  * auto-complete: 入力している時に時々固まる。history auto-complete が怪しい
+    本当に history auto-complete が原因なのかは未だ確認していない。
+    後で調べる事にする。
+
   * isearch: 文字を入力せずに C-r を連打して遡った後に C-h で戻った時の選択範囲
     何故か編集文字列全体が選択されている。
     何か文字を入力して処理している場合には何も起こっていない。
@@ -808,25 +812,6 @@ tech
 
     また、実は bash-4.3 以降では HIST{FILE,}SIZE に負の値を設定できる様だ。
     更に、それ以前から単に空文字列にしておけば無制限なのだそうだ。
-
-  * complete: "$hello" などでも補完できる様にする
-
-    これは simple-word の拡張が必要になる。
-    また simple-word を使用している各箇所の動作についても確認する必要がある。
-
-    - simple-word の拡張自体はそんなに難しくなさそうだ。
-      然し、これを使っている場所で不都合が起こっては困る。
-      使っている箇所について調べる事にする。
-
-      - ble-edit.sh command-help でコマンド名を抽出するのに使っている。
-        直後に command=$literal を用いて展開を実行しているから、
-        これは "$hello" の様な物があったとしても問題ない。
-        一方で、直接 command=$literal の様な事をしても問題ないのだろうか…。
-
-    - パラメータ展開で終わっている時には挿入時に ${param} または $param\
-      の様に書き換える必要がある。つまり、引用符の中でもこれを実行するという事。
-      一方で ' や $' の中に現れるパラメーて展開と同様の文字列は、
-      実際にはパラメータ展開ではないので書き換える必要はない。
 
 2018-08-28
 
@@ -3298,6 +3283,68 @@ tech
 -------------------------------------------------------------------------------
 
 2018-09-02
+
+  * complete: "$hello" などでも補完できる様にする
+
+    これは simple-word の拡張が必要になる。
+    また simple-word を使用している各箇所の動作についても確認する必要がある。
+
+    - simple-word の拡張自体はそんなに難しくなさそうだ。
+      然し、これを使っている場所で不都合が起こっては困る。
+      使っている箇所について調べる事にする。
+
+      | - ble-edit.sh command-help でコマンド名を抽出するのに使っている。
+      |   直後に command=$literal を用いて展開を実行しているから、
+      |   これは "$hello" の様な物があったとしても問題ない。
+      |   一方で、直接 command=$literal の様な事をしても問題ないのだろうか…。
+      |
+      |   調べてみるとコマンド名であってもパス名展開は有効だし、
+      |   また、パラメータ展開の変数名とローカル変数の変数名が被る可能性もある。
+      |   従って、eval を用いて評価したほうが良い。
+      |
+      | - core-syntax.sh: ble-syntax/completion-context/.check-prefix/ctx:next-command
+      |   ここで is-simple を使っている。これはコマンド名として補完の対象となりうるかを判定する為に使っている。
+      |   所で、ここは is-simple で良いのか…確認してみると next-argument の方では
+      |   is-simple-or-open-simple を使っている。ここは修正する事にした。
+      | - core-syntax.sh: ble-syntax/completion-context/.check-prefix/ctx:redirection
+      | - core-syntax.sh: ble-syntax/completion-context/.check-prefix/ctx:rhs
+      |   ここでも is-simple を使っていたが、is-simple-or-open-simple に書き換えた。
+      | - core-syntax.sh: ble-syntax/completion-context/.check-prefix/ctx:next-argument
+      | - core-syntax.sh: ble-syntax/completion-context/.check-prefix/ctx:quote/.check-container-word
+      |   これらは is-simple-or-open-simple を使っているが "$hello" に対応しても問題はないだろう。
+      |
+      | - core-syntax.sh: ble-highlight-layer:syntax/word/.update-attributes/.proc
+      |   これは is-simple のままで問題ない。着色なので閉じていない単語については処理しなくて良いので。
+      |   また、"$hello" に対応しても大丈夫。
+      |
+      | - core-complete.sh: これは "$hello" に対応しても問題ない。
+      |   特に全て close-open-type & eval を介しての使用である。
+
+      特に使用箇所での使用方法に対して不都合が起こるという事はなさそうである。
+
+    - done: simple-word/eval で変数名を抽出する時にちゃんと "$hello" も抽出する必要がある。
+      特に ble-syntax:bash/simple-word/extract-parameter-names である。
+      →対応した。動作確認した。is-simple も確認した。
+
+    - パラメータ展開で終わっている時には挿入時に ${param} または $param\
+      の様に書き換える必要がある。つまり、引用符の中でもこれを実行するという事。
+      一方で ' や $' の中に現れるパラメーて展開と同様の文字列は、
+      実際にはパラメータ展開ではないので書き換える必要はない。
+
+    x hello=mem; echo "$hello@ に対して o が挿入される筈なのに動かない。
+      menu 補完に入れば期待通りに動くが、通常の補完で "${hello}o までは入力できる筈である。
+      調べてみると cand_word までは "${hello}o になっているが、
+
+      % determine-common-prefix で何故か "$hello になっている。
+      % 実装を調べると、これは ambiguous の時に起こる様である。
+      % と思って調べたが特に ambiguous に誤ってなっているという事もない。
+
+      改めて確認してみると ambiguous でない場合でも、
+      遡って書き換わる時でかつ一意確定でない時には書き換えが起こらない様だ。
+      元々この様にしていた理由は、遡って書き換わる事によって変な書換になって、
+      続きの補完ができなくなってしまう事を懸念しての事だった。
+      そうであるならば、共通部分が変な書き換え (non simple-word) になっていなければ大丈夫という事である。
+      新しく判定する事にした。
 
   * complete: auto_complete keymap における M-f C-f 等の対応 [#D0766]
 

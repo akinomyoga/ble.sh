@@ -5698,7 +5698,7 @@ function ble/widget/command-help/.type/.resolve-alias {
     eval "alias_def=${alias_def#*=}" # remove quote
     literal=${alias_def%%[$' \t\n']*} command= type=
     ble-syntax:bash/simple-word/is-simple "$literal" || break # Note: type=
-    eval "command=$literal"
+    local ret; ble-syntax:bash/simple-word/eval "$literal"; command=$ret
     ble/util/type type "$command"
     [[ $type ]] || break # Note: type=
 
@@ -5728,11 +5728,13 @@ function ble/widget/command-help/.type/.resolve-alias {
   return
 }
 
+## 関数 ble/widget/command-help/.type
+##   @var[out] type command
 function ble/widget/command-help/.type {
   local literal=$1
   type= command=
   ble-syntax:bash/simple-word/is-simple "$literal" || return 1
-  eval "command=$literal"
+  local ret; ble-syntax:bash/simple-word/eval "$literal"; command=$ret
   ble/util/type type "$command"
 
   # alias の時はサブシェルで解決

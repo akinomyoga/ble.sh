@@ -5,8 +5,6 @@
 
 ble-import "$_ble_base/lib/core-syntax.sh"
 
-_ble_complete_rex_rawparamx='^('$_ble_syntax_bash_simple_rex_element'*)\$[a-zA-Z_][a-zA-Z_0-9]*$'
-
 function ble-complete/string#search-longest-suffix-in {
   local needle=$1 haystack=$2
   local l=0 u=${#needle}
@@ -158,13 +156,10 @@ function ble-complete/action:plain/initialize {
     (*)   ble/string#escape-for-bash-specialchars "$ins"; ins=$ret ;;
     esac
 
-    # Note: 現在の simple-word の定義だと引用符内にパラメータ展開を許していないので、
-    #  必然的にパラメータ展開が直前にあるのは引用符の外である事が保証されている。
-    #  以下は、今後 simple-word の引用符内にパラメータ展開を許す時には修正が必要。
     if [[ $comps_flags == *p* && $ins == [a-zA-Z_0-9]* ]]; then
       case $comps_flags in
       (*[DI]*)
-        if [[ $COMPS =~ $_ble_complete_rex_rawparamx ]]; then
+        if [[ $COMPS =~ $rex_raw_paramx ]]; then
           local rematch1=${BASH_REMATCH[1]}
           INSERT=$rematch1'${'${COMPS:${#rematch1}+1}'}'$ins
           return
@@ -1063,7 +1058,7 @@ function ble-complete/candidates/.pick-nearest-context {
   elif local ret close_type; ble-syntax:bash/simple-word/close-open-word "$COMPS"; then
     comps_flags=$comps_flags$close_type
     ble-syntax:bash/simple-word/eval "$ret"; comps_flags=${comps_flags}v COMPV=$ret
-    [[ $COMPS =~ $_ble_complete_rex_rawparamx ]] && comps_flags=${comps_flags}p
+    [[ $COMPS =~ $rex_raw_paramx ]] && comps_flags=${comps_flags}p
   else
     COMPV=
   fi
@@ -1123,7 +1118,11 @@ function ble-complete/candidates/get-prefix-contexts {
   contexts=("${filtered_contexts[@]}")
   ((${#contexts[@]}))
 }
-
+function ble-complete/candidates/.initialize-rex_raw_paramx {
+  local element=$_ble_syntax_bash_simple_rex_element
+  local open_dquot=$_ble_syntax_bash_simple_rex_open_dquot
+  rex_raw_paramx='^('$element'*('$open_dquot')?)\$[a-zA-Z_][a-zA-Z_0-9]*$'
+}
 
 ## 関数 ble-complete/candidates/generate
 ##   @var[in] comp_text comp_index
@@ -1139,6 +1138,9 @@ function ble-complete/candidates/generate {
     ble-complete/.fignore/prepare
     ((${#_fignore[@]})) && shopt -q force_fignore && flag_force_fignore=1
   fi
+
+  local rex_raw_paramx
+  ble-complete/candidates/.initialize-rex_raw_paramx
 
   ble/util/test-rl-variable completion-ignore-case &&
     comp_type=${comp_type}i
@@ -1222,9 +1224,14 @@ function ble-complete/candidates/determine-common-prefix {
   if [[ $comp_type == *a* ]]; then
     # 曖昧一致に於いて複数の候補の共通部分が
     # 元の文字列に曖昧一致しない場合は補完しない。
-    [[ $common =~ $rex_ambiguous_compv ]] || common=$COMPS
+    local ret close_type
+    ble-syntax:bash/simple-word/close-open-word "$common" &&
+      ble-syntax:bash/simple-word/eval "$ret" &&
+      [[ $ret =~ $rex_ambiguous_compv ]] ||
+        common=$COMPS
   elif ((cand_count!=1)) && [[ $common != "$COMPS"* ]]; then
-    common=$COMPS
+    ble-syntax:bash/simple-word/is-simple-or-open-simple "$common" ||
+      common=$COMPS
   fi
 
   ret=$common

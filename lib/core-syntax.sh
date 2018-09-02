@@ -1002,26 +1002,36 @@ ble-syntax:bash/cclass/initialize
 _ble_syntax_bash_simple_rex_word=
 _ble_syntax_bash_simple_rex_element=
 _ble_syntax_bash_simple_rex_letter=
-_ble_syntax_bash_simple_rex_quote=
+_ble_syntax_bash_simple_rex_bquot=
+_ble_syntax_bash_simple_rex_squot=
+_ble_syntax_bash_simple_rex_dquot=
 _ble_syntax_bash_simple_rex_param=
 _ble_syntax_bash_simple_rex_open_word=
+_ble_syntax_bash_simple_rex_open_dquot=
+_ble_syntax_bash_simple_rex_open_squot=
 function ble-syntax:bash/simple-word/update {
   local quot="'"
-  local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
-  local rex_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)*"'
   local rex_param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
   local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
+  local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
+  local rex_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.|'$rex_param1'|'$rex_param2')*"'
   local rex_letter='[^'${_ble_syntax_bashc_simple}']'
+
   _ble_syntax_bash_simple_rex_element='(\\.|'$rex_squot'|'$rex_dquot'|'$rex_param1'|'$rex_param2'|'$rex_letter')'
   _ble_syntax_bash_simple_rex_word='^'$_ble_syntax_bash_simple_rex_element'+$'
+
   _ble_syntax_bash_simple_rex_letter=$rex_letter
-  _ble_syntax_bash_simple_rex_quote='\\.|'$rex_squot'|'$rex_dquot
-  _ble_syntax_bash_simple_rex_param=$rex_param1'|'$rex_param2
+  _ble_syntax_bash_simple_rex_param=$rex_param1'|'$rex_param2 # (3)
+  _ble_syntax_bash_simple_rex_bquot='\\.'
+  _ble_syntax_bash_simple_rex_squot=$rex_squot
+  _ble_syntax_bash_simple_rex_dquot=$rex_dquot
 
   # rex_open_word
   local rex_open_squot='"[^"]*|\$"([^"\]|\\.)*'; rex_open_squot="${rex_open_squot//\"/$quot}"
-  local rex_open_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)*'
+  local rex_open_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.|'$rex_param1'|'$rex_param2')*'
   _ble_syntax_bash_simple_rex_open_word='^('$_ble_syntax_bash_simple_rex_element'*)('$rex_open_squot'|'$rex_open_dquot')$'
+  _ble_syntax_bash_simple_rex_open_squot=$rex_open_squot
+  _ble_syntax_bash_simple_rex_open_dquot=$rex_open_dquot
 }
 ble-syntax:bash/simple-word/update
 
@@ -1065,19 +1075,56 @@ function ble-syntax:bash/simple-word/close-open-word {
   fi
   return 1
 }
+
+## 関数 ble-syntax:bash/simple-word/extract-parameter-names word
+##   単純単語に含まれるパラメータ展開のパラメータ名を抽出します。
+##   @var[in] word
+##   @var[out] ret
 function ble-syntax:bash/simple-word/extract-parameter-names {
   ret=()
-  local word=$1
-  local rex1='^('$_ble_syntax_bash_simple_rex_quote'|'$_ble_syntax_bash_simple_rex_letter')+'
-  local rex2='^'$_ble_syntax_bash_simple_rex_param
-  while [[ $word ]]; do
-    [[ $word =~ $rex1 ]] && word=${word:${#BASH_REMATCH}}
-    [[ $word =~ $rex2 ]] || break
-    word=${word:${#BASH_REMATCH}}
-    local var=${BASH_REMATCH[1]}${BASH_REMATCH[2]}
+  local letter=$_ble_syntax_bash_simple_rex_letter
+  local bquot=$_ble_syntax_bash_simple_rex_bquot
+  local squot=$_ble_syntax_bash_simple_rex_squot
+  local dquot=$_ble_syntax_bash_simple_rex_dquot
+  local param=$_ble_syntax_bash_simple_rex_param
+
+  local value=$1
+  local rex0='^('$letter'|'$bquot'|'$squot')+'
+  local rex1='^('$dquot')'
+  local rex2='^('$param')'
+  while [[ $value ]]; do
+    [[ $value =~ $rex0 ]] && value=${value:${#BASH_REMATCH}}
+    if [[ $value =~ $rex1 ]]; then
+      value=${value:${#BASH_REMATCH}}
+      ble-syntax:bash/simple-word/extract-parameter-names/.process-dquot "$BASH_REMATCH"
+    fi
+    [[ $value =~ $rex2 ]] || break
+    value=${value:${#BASH_REMATCH}}
+    local var=${BASH_REMATCH[2]}${BASH_REMATCH[3]}
     [[ $var == [_a-zA-Z]* ]] && ble/array#push ret "$var"
   done
 }
+function ble-syntax:bash/simple-word/extract-parameter-names/.process-dquot {
+  local value=$1
+  if [[ $value == '$"'*'"' ]]; then
+    value=${value:2:${#value}-3}
+  elif [[ $value == '"'*'"' ]]; then
+    value=${value:1:${#value}-2}
+  else
+    return
+  fi
+
+  local rex0='^([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)+'
+  local rex2='^('$param')'
+  while [[ $value ]]; do
+    [[ $value =~ $rex0 ]] && value=${value:${#BASH_REMATCH}}
+    [[ $value =~ $rex2 ]] || break
+    value=${value:${#BASH_REMATCH}}
+    local var=${BASH_REMATCH[2]}${BASH_REMATCH[3]}
+    [[ $var == [_a-zA-Z]* ]] && ble/array#push ret "$var"
+  done
+}
+
 function ble-syntax:bash/simple-word/eval-noglob.impl {
   # グローバル変数の復元
   local -a ret
@@ -4022,7 +4069,7 @@ function ble-syntax/completion-context/.check-prefix/ctx:next-command {
   local word=${text:istat:index-istat}
 
   # コマンドのチェック
-  if ble-syntax:bash/simple-word/is-simple "$word"; then
+  if ble-syntax:bash/simple-word/is-simple-or-open-simple "$word"; then
     # 単語が istat から開始している場合
     ble-syntax/completion-context/.add command "$istat"
 
@@ -4154,7 +4201,7 @@ function ble-syntax/completion-context/.check-prefix/ctx:quote/.check-container-
 _ble_syntax_bash_complete_check_prefix[CTX_RDRF]=redirection
 function ble-syntax/completion-context/.check-prefix/ctx:redirection {
   local p=$((wlen>=0?wbeg:istat))
-  if ble-syntax:bash/simple-word/is-simple "${text:p:index-p}"; then
+  if ble-syntax:bash/simple-word/is-simple-or-open-simple "${text:p:index-p}"; then
     ble-syntax/completion-context/.add file "$p"
   fi
 }
@@ -4175,7 +4222,7 @@ function ble-syntax/completion-context/.check-prefix/ctx:rhs {
     local p=$istat
   fi
 
-  if ble-syntax:bash/simple-word/is-simple "${text:p:index-p}"; then
+  if ble-syntax:bash/simple-word/is-simple-or-open-simple "${text:p:index-p}"; then
     ble-syntax/completion-context/.add file "$p"
   fi
 }
@@ -5071,7 +5118,7 @@ function ble-highlight-layer:syntax/update {
   #     ble/string#split-words word "${_ble_syntax_tree[i-1]}"
   #     local wtxt="${text:i-word[1]:word[1]}" value
   #     if ble-syntax:bash/simple-word/is-simple "$wtxt"; then
-  #       eval "value=$wtxt"
+  #       local ret; ble-syntax:bash/simple-word/eval "$wtxt"; value=$ret
   #     else
   #       value="? ($wtxt)"
   #     fi

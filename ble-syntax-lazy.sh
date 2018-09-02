@@ -49,7 +49,8 @@ ble-autoload "$_ble_base/lib/core-syntax.sh" \
              ble-syntax/completion-context/generate \
              ble-syntax:bash/extract-command \
              ble-syntax:bash/simple-word/eval \
-             ble-syntax:bash/simple-word/is-simple
+             ble-syntax:bash/simple-word/is-simple \
+             ble-syntax:bash/simple-word/close-open-word
 
 #------------------------------------------------------------------------------
 # 遅延読み込みの設定
