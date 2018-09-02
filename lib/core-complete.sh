@@ -2346,6 +2346,69 @@ function ble/widget/auto_complete/self-insert {
     ble-decode-key "${KEYS[@]}"
   fi
 }
+
+function ble/widget/auto_complete/accept-on-end {
+  if ((_ble_edit_mark==${#_ble_edit_str})); then
+    ble/widget/auto_complete/accept
+  else
+    ble/widget/auto_complete/exit-default
+  fi
+}
+function ble/widget/auto_complete/accept-word {
+  local rex='^['$_ble_term_IFS']*([^'$_ble_term_IFS']+['$_ble_term_IFS']*)?'
+  if [[ $_ble_complete_ac_type == [ch] ]]; then
+    local ins=${_ble_edit_str:_ble_edit_ind:_ble_edit_mark-_ble_edit_ind}
+    [[ $ins =~ $rex ]]
+    if [[ $BASH_REMATCH == "$ins" ]]; then
+      ble/widget/auto_complete/accept
+      return
+    else
+      local ins=$BASH_REMATCH
+
+      # 通知
+      local comp_text=$_ble_edit_str
+      local insert_beg=$_ble_complete_ac_comp1
+      local insert_end=$_ble_edit_ind
+      local insert=${_ble_edit_str:insert_beg:insert_end-insert_beg}$ins
+      local suffix=
+      ble/util/invoke-hook _ble_complete_insert_hook
+
+      # Note: 以下の様に _ble_edit_ind だけずらす。
+      #   <C>he<I>llo world<M> → <C>hello <I>world<M>
+      #   (<C> = comp1, <I> = _ble_edit_ind, <M> = _ble_edit_mark)
+      ((_ble_edit_ind+=${#ins}))
+      return 0
+    fi
+  elif [[ $_ble_complete_ac_type == [ra] ]]; then
+    local ins=$_ble_complete_ac_insert
+    [[ $ins =~ $rex ]]
+    if [[ $BASH_REMATCH == "$ins" ]]; then
+      ble/widget/auto_complete/accept
+      return
+    else
+      local ins=$BASH_REMATCH
+
+      # 通知
+      local comp_text=$_ble_edit_str
+      local insert_beg=$_ble_complete_ac_comp1
+      local insert_end=$_ble_edit_ind
+      local insert=$ins
+      local suffix=
+      ble/util/invoke-hook _ble_complete_insert_hook
+
+      # Note: 以下の様に内容を書き換える。
+      #   <C>hll<I> [hello world] <M> → <C>hello <I>world<M>
+      #   (<C> = comp1, <I> = _ble_edit_ind, <M> = _ble_edit_mark)
+      _ble_complete_ac_type=c
+      ble-edit/content/replace "$_ble_complete_ac_comp1" "$_ble_edit_mark" "$_ble_complete_ac_insert"
+      ((_ble_edit_ind=_ble_complete_ac_comp1+${#ins},
+        _ble_edit_mark=_ble_complete_ac_comp1+${#_ble_complete_ac_insert}))
+      return 0
+    fi
+  fi
+  return 1
+}
+
 function ble-decode/keymap:auto_complete/define {
   local ble_bind_keymap=auto_complete
 
@@ -2354,6 +2417,10 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f C-g         auto_complete/cancel
   ble-bind -f S-RET       auto_complete/accept
   ble-bind -f S-C-m       auto_complete/accept
+  ble-bind -f C-f         auto_complete/accept-on-end
+  ble-bind -f right       auto_complete/accept-on-end
+  ble-bind -f M-f         auto_complete/accept-word
+  ble-bind -f M-right     auto_complete/accept-word
   ble-bind -f auto_complete_enter nop
 }
 
