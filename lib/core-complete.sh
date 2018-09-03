@@ -1,7 +1,4 @@
 #!/bin/bash
-#
-# ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
-#
 
 ble-import "$_ble_base/lib/core-syntax.sh"
 
@@ -156,6 +153,7 @@ function ble-complete/action:plain/initialize {
     (*)   ble/string#escape-for-bash-specialchars "$ins"; ins=$ret ;;
     esac
 
+    # 直前にパラメータ展開があればエスケープ
     if [[ $comps_flags == *p* && $ins == [a-zA-Z_0-9]* ]]; then
       case $comps_flags in
       (*[DI]*)
@@ -187,6 +185,13 @@ function ble-complete/action:word/complete {
   ble-complete/action/util/complete.close-quotation
   ble-complete/action/util/complete.addtail ' '
 }
+
+function ble-complete/action:literal-substr/initialize { :; }
+function ble-complete/action:literal-substr/complete { :; }
+function ble-complete/action:literal-word/initialize { :; }
+function ble-complete/action:literal-word/complete { ble-complete/action:word/complete; }
+function ble-complete/action:substr/initialize { ble-complete/action:word/initialize; }
+function ble-complete/action:substr/complete { :; }
 
 # action/file
 
@@ -384,11 +389,32 @@ function ble-complete/source:wordlist {
   [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
+  # process options
+  local opt_raw= opt_noword=
+  while (($#)) && [[ $1 == -* ]]; do
+    local arg=$1; shift
+    case $arg in
+    (--) break ;;
+    (--*) ;; # ignore
+    (-*)
+      local i iN=${#arg}
+      for ((i=1;i<iN;i++)); do
+        case ${arg:i:1} in
+        (r) opt_raw=1 ;;
+        (W) opt_noword=1 ;;
+        (*) ;; # ignore
+        esac
+      done ;;
+    esac
+  done
+
+  local action=word
+  [[ $opt_noword ]] && action=substr
+  [[ $opt_raw ]] && action=literal-$action
+
   local cand
   for cand; do
-    if [[ $cand == "$COMPV"* ]]; then
-      ble-complete/cand/yield word "$cand"
-    fi
+    [[ $cand == "$COMPV"* ]] && ble-complete/cand/yield "$action" "$cand"
   done
 }
 
@@ -1610,9 +1636,13 @@ function ble-complete/insert {
       (_ble_edit_ind=${#_ble_edit_str})))
 }
 
+_ble_complete_state=
 function ble/widget/complete {
   local opts=$1
   ble-edit/content/clear-arg
+
+  local state=$_ble_complete_state
+  _ble_complete_state=start
 
   if [[ :$opts: == *:enter_menu:* ]]; then
     [[ $_ble_complete_menu_active ]] &&
@@ -1620,7 +1650,7 @@ function ble/widget/complete {
   elif [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active != auto ]]; then
     [[ $_ble_complete_menu_active && $_ble_edit_str == "$_ble_complete_menu_str" ]] &&
       ble-complete/menu-complete/enter && return
-    [[ $WIDGET == "$LASTWIDGET" ]] && opts=$opts:enter_menu
+    [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
   fi
 
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
@@ -1683,6 +1713,7 @@ function ble/widget/complete {
     ble/widget/complete show_menu || return
     _ble_complete_menu_active=auto
   else
+    _ble_complete_state=complete
     ble-complete/menu/clear
   fi
   return 0

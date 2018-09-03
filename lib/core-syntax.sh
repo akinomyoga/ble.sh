@@ -1966,8 +1966,8 @@ function ble-syntax:bash/ctx-expr {
       #       = '('   # 式中の (..)
       ble-syntax:bash/ctx-expr/.count-paren && return
     elif [[ $ntype == *'[' ]]; then
-      # ntype = 'a[' # ${a[...]}
-      #       = 'v[' # v[...]=
+      # ntype = 'a[' # a[...]=
+      #       = 'v[' # ${a[...]}
       #       = 'd[' # a=([...]=)
       #       = '$[' # $[...]
       #       = '['  # 式中の [...]
@@ -4133,23 +4133,23 @@ _ble_syntax_bash_complete_check_prefix[CTX_CMDXC]=next-compound
 function ble-syntax/completion-context/.check-prefix/ctx:next-compound {
   local rex word=${text:istat:index-istat}
   if [[ ${text:istat:index-istat} =~ $rex_param ]]; then
-    ble-syntax/completion-context/.add wordlist:'for:select:case:if:while:until' "$istat"
+    ble-syntax/completion-context/.add wordlist:-r:'for:select:case:if:while:until' "$istat"
   elif rex='^[[({]+$'; [[ $word =~ $rex ]]; then
-    ble-syntax/completion-context/.add wordlist:'(:{:((:[[' "$istat"
+    ble-syntax/completion-context/.add wordlist:-r:'(:{:((:[[' "$istat"
   fi
 }
 ## 関数 ble-syntax/completion-context/.check-prefix/ctx:next-identifier source
 ##   エスケープやクォートのない単純な単語に補完する文脈。
 ##   @param[in] source
-_ble_syntax_bash_complete_check_prefix[CTX_CMDXE]="next-identifier wordlist:'fi:done:esac:then:elif:else:do'"
-_ble_syntax_bash_complete_check_prefix[CTX_CMDXD0]="next-identifier wordlist:';:{:do'"
-_ble_syntax_bash_complete_check_prefix[CTX_CMDXD]="next-identifier wordlist:'{:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXE]="next-identifier wordlist:-r:'fi:done:esac:then:elif:else:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXD0]="next-identifier wordlist:-r:';:{:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXD]="next-identifier wordlist:-r:'{:do'"
 _ble_syntax_bash_complete_check_prefix[CTX_FARGX1]="next-identifier variable" # CTX_FARGX1 → (( でなければ 変数名
 _ble_syntax_bash_complete_check_prefix[CTX_SARGX1]="next-identifier variable"
-_ble_syntax_bash_complete_check_prefix[CTX_CARGX2]="next-identifier wordlist:in"
-_ble_syntax_bash_complete_check_prefix[CTX_CARGI2]="next-identifier wordlist:in"
-_ble_syntax_bash_complete_check_prefix[CTX_FARGX2]="next-identifier wordlist:'in:do'"
-_ble_syntax_bash_complete_check_prefix[CTX_FARGI2]="next-identifier wordlist:'in:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CARGX2]="next-identifier wordlist:-r:'in'"
+_ble_syntax_bash_complete_check_prefix[CTX_CARGI2]="next-identifier wordlist:-r:'in'"
+_ble_syntax_bash_complete_check_prefix[CTX_FARGX2]="next-identifier wordlist:-r:'in:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_FARGI2]="next-identifier wordlist:-r:'in:do'"
 function ble-syntax/completion-context/.check-prefix/ctx:next-identifier {
   local source=$1
   if [[ ${text:istat:index-istat} =~ $rex_param ]]; then
@@ -4166,11 +4166,11 @@ function ble-syntax/completion-context/.check-prefix/ctx:time-argument {
   if ((ctx==CTX_TARGX1)); then
     local rex='^-p?$'
     [[ ${text:istat:index-istat} =~ $rex ]] &&
-      ble-syntax/completion-context/.add wordlist:-p "$istat"
+      ble-syntax/completion-context/.add wordlist:--:'-p' "$istat"
   elif ((ctx==CTX_TARGX2)); then
     local rex='^--?$'
     [[ ${text:istat:index-istat} =~ $rex ]] &&
-      ble-syntax/completion-context/.add wordlist:-- "$istat"
+      ble-syntax/completion-context/.add wordlist:--:'--' "$istat"
   fi
 }
 ## 関数 ble-syntax/completion-context/.check-prefix/ctx:quote
@@ -4213,18 +4213,58 @@ _ble_syntax_bash_complete_check_prefix[CTX_ARGVR]=rhs
 _ble_syntax_bash_complete_check_prefix[CTX_VALR]=rhs
 function ble-syntax/completion-context/.check-prefix/ctx:rhs {
   if ((wlen>=0)); then
-    # CTX_VRHS における単語は var= または var+= の形式をしている筈
-    # ■ToDo arr[...]= arr[]+=... の時は?
     local p=$wbeg
-    local rex='^[a-zA-Z0-9]+\+?='
-    [[ ${text:p:index-p} =~ $rex ]] && ((p+=${#BASH_REMATCH}))
+    local rex='^[a-zA-Z0-9_]+(\+?=|\[)'
+    ((ctx==CTX_VALR)) && rex='^(\[)'
+    if [[ ${text:p:index-p} =~ $rex ]]; then
+      if [[ ${BASH_REMATCH[1]} == '[' ]]; then
+        # CTX_VRHS:  arr[0]=x@ arr[1]+=x@
+        # CTX_ARGVR: declare arr[0]=x@ arr[1]+=x@
+        # CTX_VALR:  arr=([0]=x@ [1]+=x@)
+        ble-syntax/completion-context/.check-prefix/ctx:rhs/.skip-array-element
+      else
+        # CTX_VRHS:  var=x@ var+=x@
+        # CTX_ARGVR: declare var=x@ var+=x@
+        ((p+=${#BASH_REMATCH}))
+      fi
+    fi
   else
     local p=$istat
   fi
 
-  if ble-syntax:bash/simple-word/is-simple-or-open-simple "${text:p:index-p}"; then
+  if [[ $p ]] && ble-syntax:bash/simple-word/is-simple-or-open-simple "${text:p:index-p}"; then
     ble-syntax/completion-context/.add file "$p"
   fi
+}
+## 関数 ble-syntax/completion-context/.check-prefix/ctx:rhs/.skip-array-element
+##   @var[in] wbeg index BASH_REMATCH
+##   @var[in,out] p
+##     通常の補完をキャンセルする時は空文字列を返す。
+function ble-syntax/completion-context/.check-prefix/ctx:rhs/.skip-array-element {
+  local inest0=$((wbeg+${#BASH_REMATCH}-1)) nest0
+  [[ ${_ble_syntax_nest[inest0]} ]] || return
+
+  # r="配列添字の綴じ括弧 ] の直前の位置" を求める
+  local q stat1 nlen1 inest1 r=
+  for ((q=inest0+1;q<index;q++)); do
+    local stat1=${_ble_syntax_stat[q]}
+    [[ $stat1 ]] || continue
+    ble/string#split-words stat1 "$stat1"
+    ((nlen1=stat1[3])) # (workaround Bash-4.2 segfault)
+    ((inest1=nlen1<0?nlen1:q-nlen1))
+    ((inest1<inest0)) && break
+    ((r=q))
+  done
+  [[ $r ]] || return
+
+  local text=${_ble_edit_str:r:index-r}
+  case $text in
+  (']='*)  ((p=r+2)) ;;
+  (']+='*) ((p=r+3)) ;;
+  (']+')
+    ble-syntax/completion-context/.add wordlist:-rW:'+=' $((r+1))
+    p= ;;
+  esac
 }
 
 _ble_syntax_bash_complete_check_prefix[CTX_PARAM]=param
@@ -4252,6 +4292,22 @@ function ble-syntax/completion-context/.check-prefix/ctx:expr {
     local p=$((index-${#BASH_REMATCH}))
     ble-syntax/completion-context/.add variable "$p"
     return
+  elif [[ $tail == ']'* ]]; then
+    local inest=... ntype
+    local nlen=${stat[3]}; ((nlen>=0)) || return
+    local inest=$((istat-nlen))
+    ble-syntax/parse/nest-type -v ntype # ([in] inest; [out] ntype)
+
+    if [[ $ntype == [ad]'[' ]]; then
+      # arr[...]=@ or arr=([...]=@)
+      if [[ $tail == ']' ]]; then
+        ble-syntax/completion-context/.add wordlist:-rW:'=' $((istat+1))
+      elif ((_ble_bash>=30100)) && [[ $tail == ']+' ]]; then
+        ble-syntax/completion-context/.add wordlist:-rW:'+=' $((istat+1))
+      elif [[ $tail == ']=' || _ble_bash -ge 30100 && $tail == ']+=' ]]; then
+        ble-syntax/completion-context/.add file "$index"
+      fi
+    fi
   fi
 }
 
@@ -4313,27 +4369,27 @@ function ble-syntax/completion-context/.check-here {
         ble-syntax/completion-context/.add variable:= "$index"
       fi
     elif ((ctx==CTX_CMDXC)); then
-      ble-syntax/completion-context/.add wordlist:'(:{:((:[[:for:select:case:if:while:until' "$index"
+      ble-syntax/completion-context/.add wordlist:-r:'(:{:((:[[:for:select:case:if:while:until' "$index"
     elif ((ctx==CTX_CMDXE)); then
-      ble-syntax/completion-context/.add wordlist:'}:fi:done:esac:then:elif:else:do' "$index"
+      ble-syntax/completion-context/.add wordlist:-r:'}:fi:done:esac:then:elif:else:do' "$index"
     elif ((ctx==CTX_CMDXD0)); then
-      ble-syntax/completion-context/.add wordlist:';:{:do' "$index"
+      ble-syntax/completion-context/.add wordlist:-r:';:{:do' "$index"
     elif ((ctx==CTX_CMDXD)); then
-      ble-syntax/completion-context/.add wordlist:'{:do' "$index"
+      ble-syntax/completion-context/.add wordlist:-r:'{:do' "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
       ble-syntax/completion-context/.add argument "$index"
     elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
       ble-syntax/completion-context/.add variable "$index"
     elif ((ctx==CTX_CARGX2)); then
-      ble-syntax/completion-context/.add wordlist:in "$index"
+      ble-syntax/completion-context/.add wordlist:-r:'in' "$index"
     elif ((ctx==CTX_FARGX2)); then
-      ble-syntax/completion-context/.add wordlist:in:do "$index"
+      ble-syntax/completion-context/.add wordlist:-r:'in:do' "$index"
     elif ((ctx==CTX_TARGX1)); then
       ble-syntax/completion-context/.add command "$index"
-      ble-syntax/completion-context/.add wordlist:-p "$index"
+      ble-syntax/completion-context/.add wordlist:--:'-p' "$index"
     elif ((ctx==CTX_TARGX2)); then
       ble-syntax/completion-context/.add command "$index"
-      ble-syntax/completion-context/.add wordlist:-- "$index"
+      ble-syntax/completion-context/.add wordlist:--:'--' "$index"
     elif ((ctx==CTX_RDRF||ctx==CTX_RDRS||ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
       ble-syntax/completion-context/.add file "$index"
     fi
