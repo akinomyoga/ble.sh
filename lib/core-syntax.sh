@@ -999,39 +999,52 @@ ble-syntax:bash/cclass/initialize
 ## @var _ble_syntax_bash_simple_rex_element
 ##   単純な単語のパターンとその構成要素を表す正規表現
 ##   histchars に依存しているので変化があった時に更新する。
-_ble_syntax_bash_simple_rex_word=
-_ble_syntax_bash_simple_rex_element=
 _ble_syntax_bash_simple_rex_letter=
+_ble_syntax_bash_simple_rex_param=
 _ble_syntax_bash_simple_rex_bquot=
 _ble_syntax_bash_simple_rex_squot=
 _ble_syntax_bash_simple_rex_dquot=
-_ble_syntax_bash_simple_rex_param=
+_ble_syntax_bash_simple_rex_word=
+_ble_syntax_bash_simple_rex_element=
 _ble_syntax_bash_simple_rex_open_word=
 _ble_syntax_bash_simple_rex_open_dquot=
 _ble_syntax_bash_simple_rex_open_squot=
+_ble_syntax_bash_simple_rex_incomplete_word1=
+_ble_syntax_bash_simple_rex_incomplete_word2=
 function ble-syntax:bash/simple-word/update {
-  local quot="'"
-  local rex_param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
-  local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
-  local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
-  local rex_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.|'$rex_param1'|'$rex_param2')*"'
-  local rex_letter='[^'${_ble_syntax_bashc_simple}']'
+  local q="'"
 
-  _ble_syntax_bash_simple_rex_element='(\\.|'$rex_squot'|'$rex_dquot'|'$rex_param1'|'$rex_param2'|'$rex_letter')'
+  local letter='[^'${_ble_syntax_bashc_simple}']'
+  local param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
+  local param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
+  local param=$param1'|'$param2
+  local bquot='\\.'
+  local squot=$q'[^'$q']*'$q'|\$'$q'([^'$q'\]|\\.)*'$q
+  local dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.|'$param')*"'
+  _ble_syntax_bash_simple_rex_letter=$letter # 0 groups
+  _ble_syntax_bash_simple_rex_param=$param   # 3 groups
+  _ble_syntax_bash_simple_rex_bquot=$bquot   # 0 groups
+  _ble_syntax_bash_simple_rex_squot=$squot   # 1 groups
+  _ble_syntax_bash_simple_rex_dquot=$dquot   # 4 groups
+
+  # @var _ble_syntax_bash_simple_rex_element
+  # @var _ble_syntax_bash_simple_rex_word
+  _ble_syntax_bash_simple_rex_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter')'
   _ble_syntax_bash_simple_rex_word='^'$_ble_syntax_bash_simple_rex_element'+$'
 
-  _ble_syntax_bash_simple_rex_letter=$rex_letter
-  _ble_syntax_bash_simple_rex_param=$rex_param1'|'$rex_param2 # (3)
-  _ble_syntax_bash_simple_rex_bquot='\\.'
-  _ble_syntax_bash_simple_rex_squot=$rex_squot
-  _ble_syntax_bash_simple_rex_dquot=$rex_dquot
+  # @var _ble_syntax_bash_simple_rex_open_word
+  local open_squot=$q'[^'$q']*|\$'$q'([^'$q'\]|\\.)*'
+  local open_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.|'$param')*'
+  _ble_syntax_bash_simple_rex_open_word='^('$_ble_syntax_bash_simple_rex_element'*)('$open_squot'|'$open_dquot')$'
+  _ble_syntax_bash_simple_rex_open_squot=$open_squot
+  _ble_syntax_bash_simple_rex_open_dquot=$open_dquot
 
-  # rex_open_word
-  local rex_open_squot='"[^"]*|\$"([^"\]|\\.)*'; rex_open_squot="${rex_open_squot//\"/$quot}"
-  local rex_open_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.|'$rex_param1'|'$rex_param2')*'
-  _ble_syntax_bash_simple_rex_open_word='^('$_ble_syntax_bash_simple_rex_element'*)('$rex_open_squot'|'$rex_open_dquot')$'
-  _ble_syntax_bash_simple_rex_open_squot=$rex_open_squot
-  _ble_syntax_bash_simple_rex_open_dquot=$rex_open_dquot
+  # @var _ble_syntax_bash_simple_rex_incomplete_word1
+  # @var _ble_syntax_bash_simple_rex_incomplete_word2
+  local letter1='[^{'${_ble_syntax_bashc_simple}']'
+  local letter2='[^'${_ble_syntax_bashc_simple}']'
+  _ble_syntax_bash_simple_rex_incomplete_word1='^('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
+  _ble_syntax_bash_simple_rex_incomplete_word2='^(('$bquot'|'$squot'|'$dquot'|'$param'|'$letter2')*)('$open_squot'|'$open_dquot')?$'
 }
 ble-syntax:bash/simple-word/update
 
@@ -1041,38 +1054,135 @@ function ble-syntax:bash/simple-word/is-simple {
 function ble-syntax:bash/simple-word/is-simple-or-open-simple {
   [[ $1 =~ $_ble_syntax_bash_simple_rex_word || $1 =~ $_ble_syntax_bash_simple_rex_open_word ]]
 }
-## 関数 ble-syntax:bash/simple-word/close-open-word word
-##   指定した引数 word がシェルの完全な単純単語の形式を持つ時は、
-##   その値を ret に設定し、close_type に空文字列を設定して、成功します。
-##   指定した引数 word がシェルの単純単語において最後の引用符を閉じていない形式の時、
-##   引用符を閉じた文字列を ret に設定し、close_type 引用符の種類を設定して成功します。
-##   それ以外の場合には失敗します。
+
+## 関数 ble-syntax:bash/simple-word/evaluate-last-brace-expansion simple_word
+##   @param[in] simple_word
+##   @var[out] ret simple_ibrace
+function ble-syntax:bash/simple-word/evaluate-last-brace-expansion {
+  local value=$1
+  local bquot=$_ble_syntax_bash_simple_rex_bquot
+  local squot=$_ble_syntax_bash_simple_rex_squot
+  local dquot=$_ble_syntax_bash_simple_rex_dquot
+  local param=$_ble_syntax_bash_simple_rex_param
+  local letter='[^{,}'${_ble_syntax_bashc_simple}']'
+  local symbol='[{,}]'
+
+  local rex_range_expansion='^(([-+]?[0-9]+)\.\.\.[-+]?[0-9]+|([a-zA-Z])\.\.[a-zA-Z])(\.\.[-+]?[0-9]+)?$'
+
+  local rex0='^('$bquot'|'$squot'|'$dquot'|'$param'|'$letter')+'
+  local stack; stack=()
+  local out= comma= index=0 iopen=0 no_brace_length=0
+  while [[ $value ]]; do
+    if [[ $value =~ $rex0 ]]; then
+      local len=${#BASH_REMATCH}
+      ((index+=len,no_brace_length+=len))
+      out=$out${value::len}
+      value=${value:len}
+    elif [[ $value == '{'* ]]; then
+      ((iopen=++index,no_brace_length=0))
+      value=${value:1}
+      ble/array#push stack "$comma:$out"
+      out= comma=
+    elif ((${#stack[@]})) && [[ $value == '}'* ]]; then
+      ((++index))
+      value=${value:1}
+      ble/array#pop stack
+      local out0=${ret#*:} comma0=${ret%%:*}
+      if [[ $comma ]]; then
+        ((iopen=index,no_brace_length=0))
+        out=$out0$out
+        comma=$comma0
+      elif [[ $out =~ $rex_range_expansion ]]; then
+        ((iopen=index,no_brace_length=0))
+        out=$out0${2#+}$3
+        comma=$comma0
+      else
+        ((++no_brace_length))
+        ble/array#push stack "$comma0:$out0" # cancel pop
+        out=$out'}'
+      fi
+    elif ((${#stack[@]})) && [[ $value == ','* ]]; then
+      ((iopen=++index,no_brace_length=0))
+      value=${value:1}
+      out= comma=1
+    else
+      ((++index,++no_brace_length))
+      out=$out${value::1}
+      value=${value:1}
+    fi
+  done
+
+  while ((${#stack[@]})); do
+    ble/array#pop stack
+    local out0=${ret#*:} comma0=${ret%%:*}
+    out=$out0$out
+  done
+
+  ret=$out simple_ibrace=$iopen:$((${#out}-no_brace_length))
+}
+
+## 関数 ble-syntax:bash/simple-word/reconstruct-incomplete-word
+##   word について不完全なブレース展開と不完全な引用符を閉じ、
+##   更にブレース展開を実行して最後の単語を取得します。
 ##
 ##   @param[in] word
+##     不完全な単語を指定します。
 ##
 ##   @var[out] ret
-##     word を設定します。必要があれば引用符を閉じます。
+##     word に対して不完全なブレース展開と引用符を閉じ、ブレース展開した結果を返します。
 ##
-##   @var[out] close_type
-##     引用符 $"..." を閉じた時に close_type='$"' を設定します。
-##     引用符 "..." を閉じた時に close_type='"' を設定します。
-##     引用符 '...' を閉じた時に close_type=\' を設定します。
-##     引用符 $'...' を閉じた時に close_type=\$\' を設定します。
+##   @var[out] simple_flags
+##     引用符 $"..." を閉じた時に simple_flags='$"' を設定します。
+##     引用符 "..." を閉じた時に simple_flags='"' を設定します。
+##     引用符 '...' を閉じた時に simple_flags=\' を設定します。
+##     引用符 $'...' を閉じた時に simple_flags=\$\' を設定します。
 ##
-function ble-syntax:bash/simple-word/close-open-word {
-  if [[ $1 =~ $_ble_syntax_bash_simple_rex_word ]]; then
-    ret=$1 close_type=
-    return 0
-  elif [[ $1 =~ $_ble_syntax_bash_simple_rex_open_word ]]; then
-    local rematch=${BASH_REMATCH[1]}
-    local m_open_quote=${1:${#rematch}}
-    case $m_open_quote in
-    ('$"'*) ret=$1\" close_type=I; return 0 ;;
-    ('"'*)  ret=$1\" close_type=D; return 0 ;;
-    ("$'"*) ret=$1\' close_type=E; return 0 ;;
-    ("'"*)  ret=$1\' close_type=S; return 0 ;;
-    esac
+##   @var[out] simple_ibrace=ibrace:jbrace
+##     ブレース展開の構造を破壊せずに変更できる最初の位置を返します。
+##     ibrace には word 内の位置を返し、jbrace には ret 内の位置を返します。
+##
+##   @exit
+##     ブレース展開及び引用符を閉じることによってシェルの完全な単語になる時に成功します。
+##     それ以外の場合に失敗します。
+##
+function ble-syntax:bash/simple-word/reconstruct-incomplete-word {
+  local word=$1
+  ret= simple_flags= simple_ibrace=0:0
+
+  [[ $word ]] || return 0
+
+  if [[ $word =~ $_ble_syntax_bash_simple_rex_incomplete_word1 ]]; then
+    ret=${word::${#BASH_REMATCH}}
+    word=${word:${#BASH_REMATCH}}
+    [[ $word ]] || return 0
   fi
+  
+  if [[ $word =~ $_ble_syntax_bash_simple_rex_incomplete_word2 ]]; then
+    local out=$ret
+
+    local m_brace=${BASH_REMATCH[1]}
+    local m_quote=${word:${#m_brace}}
+
+    if [[ $m_brace ]]; then
+      ble-syntax:bash/simple-word/evaluate-last-brace-expansion "$m_brace"
+      simple_ibrace=$((${#out}+${simple_ibrace%:*})):$((${#out}+${simple_ibrace#*:}))
+      out=$out$ret
+    fi
+
+    if [[ $m_quote ]]; then
+      case $m_quote in
+      ('$"'*) out=$out$m_quote\" simple_flags=I; ;;
+      ('"'*)  out=$out$m_quote\" simple_flags=D; ;;
+      ("$'"*) out=$out$m_quote\' simple_flags=E; ;;
+      ("'"*)  out=$out$m_quote\' simple_flags=S; ;;
+      (*) return 1 ;;
+      esac
+    fi
+
+    ret=$out
+    return
+  fi
+
   return 1
 }
 
@@ -1125,7 +1235,7 @@ function ble-syntax:bash/simple-word/extract-parameter-names/.process-dquot {
   done
 }
 
-function ble-syntax:bash/simple-word/eval-noglob.impl {
+function ble-syntax:bash/simple-word/eval-noglob/.impl {
   # グローバル変数の復元
   local -a ret
   ble-syntax:bash/simple-word/extract-parameter-names "$1"
@@ -1139,10 +1249,10 @@ function ble-syntax:bash/simple-word/eval-noglob.impl {
 }
 function ble-syntax:bash/simple-word/eval-noglob {
   local __ble_ret
-  ble-syntax:bash/simple-word/eval-noglob.impl "$1"
+  ble-syntax:bash/simple-word/eval-noglob/.impl "$1"
   ret=$__ble_ret
 }
-function ble-syntax:bash/simple-word/eval.impl {
+function ble-syntax:bash/simple-word/eval/.impl {
   # グローバル変数の復元
   local -a ret=()
   ble-syntax:bash/simple-word/extract-parameter-names "$1"
@@ -1169,7 +1279,7 @@ function ble-syntax:bash/simple-word/eval.impl {
 ##
 function ble-syntax:bash/simple-word/eval {
   local __ble_ret
-  ble-syntax:bash/simple-word/eval.impl "$1"; local ext=$?
+  ble-syntax:bash/simple-word/eval/.impl "$1"; local ext=$?
   ret=$__ble_ret
   return "$ext"
 }
@@ -2007,7 +2117,7 @@ function ble-syntax:bash/ctx-expr {
 function ble-syntax:bash/check-brace-expansion {
   [[ $tail == '{'* ]] || return 1
 
-  local rex='^\{[0-9a-zA-Z.]*(\}?)'
+  local rex='^\{[-+0-9a-zA-Z.]*(\}?)'
   [[ $tail =~ $rex ]]
   local str=$BASH_REMATCH
 
@@ -2046,7 +2156,7 @@ function ble-syntax:bash/check-brace-expansion {
       ctx=_ble_syntax_bash_command_IsAssign[ctx])))
 
   # {a..b..c} の形式のブレース展開
-  if rex='^\{(([0-9]+)\.\.[0-9]+|[a-zA-Z]\.\.[a-zA-Z])(\.\.[0-9]+)?\}$'; [[ $str =~ $rex ]]; then
+  if rex='^\{(([-+]?[0-9]+)\.\.[-+]?[0-9]+|[a-zA-Z]\.\.[a-zA-Z])(\.\.[-+]?[0-9]+)?\}$'; [[ $str =~ $rex ]]; then
     if [[ $force_attr ]]; then
       ((_ble_syntax_attr[i]=force_attr,i+=${#str}))
     else
@@ -2056,9 +2166,14 @@ function ble-syntax:bash/check-brace-expansion {
       local len2=${#rematch2}; ((len2||(len2=1)))
       local attr=$ATTR_BRACE
       if ((ctx==CTX_RDRF||ctx==CTX_RDRD)); then
-        if [[ ${rematch1::len2} != "${rematch1:len2+2}" ]]; then
-          ((attr=ATTR_ERR))
+        # リダイレクトで複数語に展開される時はエラー
+        local lhs=${rematch1::len2} rhs=${rematch1:len2+2}
+        if [[ $rematch2 ]]; then
+          local lhs1=$((10#${lhs#[-+]})); [[ $lhs == -* ]] && ((lhs1=-lhs1))
+          local rhs1=$((10#${rhs#[-+]})); [[ $rhs == -* ]] && ((rhs1=-rhs1))
+          lhs=$lhs1 rhs=$rhs1
         fi
+        [[ $lhs != "$rhs" ]] && ((attr=ATTR_ERR))
       fi
 
       ((_ble_syntax_attr[i++]=attr))
@@ -4310,6 +4425,41 @@ function ble-syntax/completion-context/.check-prefix/ctx:expr {
     fi
   fi
 }
+
+## 関数 ble-syntax/completion-context/.check-prefix/ctx:expr
+##   数式中の変数名を補完する文脈
+_ble_syntax_bash_complete_check_prefix[CTX_BRACE1]=brace
+_ble_syntax_bash_complete_check_prefix[CTX_BRACE2]=brace
+function ble-syntax/completion-context/.check-prefix/ctx:brace {
+  # (1) CTX_BRACE{1,2} 以外になるまで nest を出る
+  local ctx1=$ctx istat1=$istat nlen1=${stat[3]}
+  ((nlen1>=0)) || return 1
+  local inest1=$((istat1-nlen1))
+  while :; do
+    local nest=${_ble_syntax_nest[inest1]}
+    [[ $nest ]] || return 1
+    ble/string#split-words nest "$nest"
+    ctx1=${nest[0]}
+    ((ctx1==CTX_BRACE1||ctx1==CTX_BRACE2)) || break
+    inest1=${nest[3]}
+    ((inest1>=0)) || return 1
+  done
+
+  # (2) 直前の stat
+  for ((istat1=inest1;1;istat1--)); do
+    ((istat1>=0)) || return 1
+    [[ ${_ble_syntax_stat[istat1]} ]] && break
+  done
+
+  # (3) 単語の開始点
+  local stat1
+  ble/string#split-words stat1 "${_ble_syntax_stat[istat1]}"
+  local wlen=${stat1[1]}
+  local wbeg=$((wlen>=0?istat1-wlen:istat1))
+
+  ble-syntax/completion-context/.add argument "$wbeg"
+}
+
 
 ## 関数 ble-syntax/completion-context/.search-last-istat index
 ##   @param[in] index

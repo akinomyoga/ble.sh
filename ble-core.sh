@@ -168,6 +168,15 @@ else
     done
   }
 fi
+function ble/array#pop {
+  eval "local i$1=\$((\${#$1[@]}-1))"
+  if ((i$1>=0)); then
+    eval "ret=\${$1[i$1]}"
+    unset "$1[i$1]"
+  else
+    ret=
+  fi
+}
 ## 関数 ble/array#reverse arr
 function ble/array#reverse {
   builtin eval "
@@ -452,7 +461,15 @@ function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$*" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
 }
 function ble/string#escape-for-bash-specialchars {
-  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?{}!^'
+  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{'
+  if [[ $ret == *[$']\n\t']* ]]; then
+    a=']'   b=\\$a     ret=${ret//"$a"/$b}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
+    a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
+  fi
+}
+function ble/string#escape-for-bash-specialchars-in-brace {
+  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{,}'
   if [[ $ret == *[$']\n\t']* ]]; then
     a=']'   b=\\$a     ret=${ret//"$a"/$b}
     a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
