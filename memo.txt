@@ -766,8 +766,6 @@ tech
     何か文字を入力して処理している場合には何も起こっていない。
     ble-edit/isearch/search の空文字列に対する振る舞いが原因かもしれない。
 
-  * mwg_pp.awk: PHONY targets for dependncies
-
   * edit: history -p '!!hello' の実行結果が異なる
     元々の Bash で (直前のコマンド)hello になるところが、(現在のコマンド)hello になる。
     というか試すと history -p '!!' の時点で自分自身に展開されてしまって使えない。
@@ -3182,6 +3180,9 @@ tech
 -------------------------------------------------------------------------------
 
 2018-09-05
+
+  * mwg_pp.awk: PHONY targets for dependencies
+    調べたら既にその機能はついていた。単に Makefile に書き忘れていただけである。
 
   * complete (progcomp): 実は simple-word/eval は eval "set_return $1" で行けるのでは [#D0777]
     しかし本当に複数単語に展開してしまうと大量の単語が現れた時に処理が遅くなる。

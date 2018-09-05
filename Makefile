@@ -29,10 +29,14 @@ OUTDIR:=out
 outdirs += $(OUTDIR)
 outdirs += $(OUTDIR)/lib
 
+# Note: the following line is a workaround for the missing
+#   DEPENDENCIES_PHONY option for mwg_pp in older Makefile
+ble-form.sh:
+
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
 $(OUTDIR)/ble.sh: ble.pp | $(OUTDIR)
-	DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ \
+	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ \
 	  $(MWGPP) $< >/dev/null
 
 outfiles+=$(OUTDIR)/term.sh
