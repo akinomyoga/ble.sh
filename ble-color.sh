@@ -194,15 +194,15 @@ function ble-color/.color2sgrbg {
 # _ble_faces
 
 # 遅延初期化登録
-_ble_faces_lazy_loader=()
-function ble-color/faces/addhook-onload { ble/array#push _ble_faces_lazy_loader "hook:$1"; }
+_ble_color_faces_defface_hook=()
+_ble_color_faces_setface_hook=()
 
 # 遅延初期化
 _ble_faces_count=0
 _ble_faces=()
 _ble_faces_sgr=()
-function ble-color-defface   { ble/array#push _ble_faces_lazy_loader "def:$1:$2"; }
-function ble-color-setface   { ble/array#push _ble_faces_lazy_loader "set:$1:$2"; }
+function ble-color-defface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_defface_hook "ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble-color-setface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_setface_hook "ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
 function ble-color-face2g    { ble-color/faces/initialize && ble-color-face2g    "$@"; }
 function ble-color-face2sgr  { ble-color/faces/initialize && ble-color-face2sgr  "$@"; }
 function ble-color-iface2g   { ble-color/faces/initialize && ble-color-iface2g   "$@"; }
@@ -241,20 +241,9 @@ function ble-color/faces/initialize {
     sgr="${_ble_faces_sgr[$1]}"
   }
 
-  function ble-color/faces/addhook-onload { "$1"; }
-
-  local initializer arg ret=0
-  for initializer in "${_ble_faces_lazy_loader[@]}"; do
-    local arg="${initializer#*:}"
-    case "$initializer" in
-    (def:*)  ble-color-defface "${arg%%:*}" "${arg#*:}";;
-    (set:*)  ble-color-setface "${arg%%:*}" "${arg#*:}";;
-    (hook:*) eval "$arg";;
-    esac || ((ret++))
-  done
-  unset _ble_faces_lazy_loader
-
-  return "$ret"
+  ble/util/invoke-hook _ble_color_faces_defface_hook
+  ble/util/invoke-hook _ble_color_faces_setface_hook
+  return 0
 }
 
 #------------------------------------------------------------------------------
@@ -468,7 +457,7 @@ function ble-color/basic/faces-onload-hook {
   ble-color-defface disabled       fg=242
   ble-color-defface overwrite_mode fg=black,bg=51
 }
-ble-color/faces/addhook-onload ble-color/basic/faces-onload-hook
+ble/array#push _ble_color_faces_defface_hook ble-color/basic/faces-onload-hook
 
 ## @arr _ble_highlight_layer_region_buff
 ##
