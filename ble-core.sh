@@ -1209,8 +1209,9 @@ function ble/util/test-rl-variable {
 
 function ble/util/invoke-hook {
   local -a hooks; eval "hooks=(\"\${$1[@]}\")"
-  local hook
-  for hook in "${hooks[@]}"; do eval "$hook"; done
+  local hook ext=0
+  for hook in "${hooks[@]}"; do eval "$hook" || ext=$?; done
+  return "$ext"
 }
 
 ## 関数 ble-autoload scriptfile functions...
