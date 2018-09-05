@@ -1252,6 +1252,7 @@ function ble-syntax:bash/simple-word/eval-noglob {
   ble-syntax:bash/simple-word/eval-noglob/.impl "$1"
   ret=$__ble_ret
 }
+function ble-syntax:bash/simple-word/eval/.set-result { __ble_ret=("$@"); }
 function ble-syntax:bash/simple-word/eval/.impl {
   # グローバル変数の復元
   local -a ret=()
@@ -1262,13 +1263,10 @@ function ble-syntax:bash/simple-word/eval/.impl {
     builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
   fi
 
-  if [[ $1 == ['[#']* ]]; then
-    # 先頭に [ があると配列添字と解釈されて失敗するので '' を前置する。
-    builtin eval "__ble_ret=(''$1)"
-  else
-    # 先頭が [ 以外の時は tilde expansion 等が有効になる様に '' は前置しない。
-    builtin eval "__ble_ret=($1)"
-  fi &>/dev/null # Note: failglob 時に一致がないとエラーが生じる
+  # Note: failglob 時に一致がないと実行されないので予め __ble_ret=() をする。
+  #   また、エラーメッセージが生じるので /dev/null に繋ぐ。
+  __ble_ret=()
+  builtin eval "ble-syntax:bash/simple-word/eval/.set-result $1" &>/dev/null
 }
 ## 関数 ble-syntax:bash/simple-word/eval word
 ##   @param[in] word

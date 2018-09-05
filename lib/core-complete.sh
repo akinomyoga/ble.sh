@@ -1306,7 +1306,7 @@ function ble-complete/candidates/determine-common-prefix {
   if [[ $comp_type == *a* ]]; then
     # 曖昧一致に於いて複数の候補の共通部分が
     # 元の文字列に曖昧一致しない場合は補完しない。
-    local ret simple_flags simple_ibrace
+    local simple_flags simple_ibrace
     ble-syntax:bash/simple-word/reconstruct-incomplete-word "$common" &&
       ble-syntax:bash/simple-word/eval "$ret" &&
       [[ $ret =~ $comps_rex_ambiguous ]] ||
@@ -2257,7 +2257,7 @@ function ble-complete/auto-complete/.check-context {
   local comps_rex_ambiguous
   local cand_count
   local -a cand_cand cand_word cand_pack
-  ble-complete/candidates/generate
+  ble-complete/candidates/generate; local ext=$?
   [[ $COMPV ]] || return 1
   ((ext)) && return "$ext"
 
