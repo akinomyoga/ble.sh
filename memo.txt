@@ -759,8 +759,6 @@ tech
 
 2018-09-02
 
-  * auto-complete: 実は元から灰色の文字がデフォルトのターミナルが存在する
-
   * isearch: 文字を入力せずに C-r を連打して遡った後に C-h で戻った時の選択範囲
     何故か編集文字列全体が選択されている。
     何か文字を入力して処理している場合には何も起こっていない。
@@ -3181,7 +3179,19 @@ tech
 
 2018-09-05
 
-  * mwg_pp.awk: PHONY targets for dependencies
+  * auto-complete: 実は元から灰色の文字がデフォルトのターミナルが存在する
+
+  * complstofB: ble-color-setface がエラーを起こす [#D0779]
+
+    調べた所 ble-color-defface / ble-color-setface の順序が効いている。
+    恐らく defface 自体を遅延させている為に、順序が入れ替わって、
+    結局 ble-color-defface / ble-color-setface の評価順を逆転した意味がなくなっていた。
+
+    確認の為に、defface 及び setface を出力してみることにする。
+    やはり順序が反転している。_ble_color_complete_{defface,setface}_hook の2種類を作る事にした。
+    これで大丈夫のはず。
+
+  * mwg_pp.awk: PHONY targets for dependencies [#D0778]
     調べたら既にその機能はついていた。単に Makefile に書き忘れていただけである。
 
   * complete (progcomp): 実は simple-word/eval は eval "set_return $1" で行けるのでは [#D0777]
