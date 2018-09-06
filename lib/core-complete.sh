@@ -613,7 +613,7 @@ function ble-complete/source/argument/.progcomp-helper-func {
   }
 
   local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
-  "$comp_func" "$cmd" "$cur" "$prev"; local ret=$?
+  eval '"$comp_func" "$cmd" "$cur" "$prev"'; local ret=$?
   unset -f compopt
 
   if [[ $is_default_completion && $ret == 124 ]]; then
