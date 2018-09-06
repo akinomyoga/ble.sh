@@ -296,7 +296,7 @@ function ble-complete/source/argument/.compgen-helper-func {
 
 
   local cmd="${comp_words[0]}" cur="${comp_words[comp_cword]}" prev="${comp_words[comp_cword-1]}"
-  "$comp_func" "$cmd" "$cur" "$prev"
+  eval '"$comp_func" "$cmd" "$cur" "$prev"'
 
   unset -f compopt
 }
