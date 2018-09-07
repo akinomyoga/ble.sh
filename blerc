@@ -27,7 +27,7 @@
 # bleopt indent_offset=4
 # bleopt indent_tabs=1
 # bleopt tab_width=
-
+# bleopt allow_exit_with_jobs=
 
 ## Settings for completion
 

@@ -147,6 +147,18 @@ function bleopt/check:exec_type {
 ##   これは自分の bash の設定に合わせる必要があります。
 : ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
 
+## オプション allow_exit_with_jobs
+##   この変数に空文字列が設定されている時、
+##   ジョブが残っている時には ble/widget/exit からシェルは終了しません。
+##   この変数に空文字列以外が設定されている時、
+##   ジョブがある場合でも条件を満たした時に exit を実行します。
+##   停止中のジョブがある場合、または、shopt -s checkjobs かつ実行中のジョブが存在する時は、
+##   二回連続で同じ widget から exit を呼び出した時にシェルを終了します。
+##   それ以外の場合は常にシェルを終了します。
+##   既定値は空文字列です。
+: ${bleopt_allow_exit_with_jobs=}
+
+# 
 #------------------------------------------------------------------------------
 # **** prompt ****                                                    @line.ps1
 
@@ -2199,9 +2211,26 @@ function ble/widget/delete-backward-char {
   ((arg==0)) && return 0
   ble/widget/.delete-char $((-arg)) || ble/widget/.bell
 }
+
+_ble_edit_exit_lastwidget=
 function ble/widget/exit {
   ble-edit/content/clear-arg
   local opts=$1
+  ((_ble_bash>=40000)) && shopt -q checkjobs &>/dev/null && opts=$opts:checkjobs
+
+  if [[ $bleopt_allow_exit_with_jobs ]]; then
+    local ret
+    if ble/util/assign ret 'compgen -A stopped -- ""' 2>/dev/null; [[ $ret ]]; then
+      [[ $LASTWIDGET == "$_ble_edit_exit_lastwidget" ]] && opts=$opts:force
+    elif [[ :$opts: == *:checkjobs:* ]]; then
+      if ble/util/assign ret 'compgen -A running -- ""' 2>/dev/null; [[ $ret ]]; then
+        [[ $LASTWIDGET == "$_ble_edit_exit_lastwidget" ]] && opts=$opts:force
+      fi
+    else
+      opts=$opts:force
+    fi
+  fi
+  _ble_edit_exit_lastwidget=$WIDGET
 
   if [[ :$opts: != *:force:* ]]; then
     # job が残っている場合
@@ -2212,6 +2241,9 @@ function ble/widget/exit {
       ble/widget/.SHELL_COMMAND jobs
       return
     fi
+  elif [[ :$opts: == *:checkjobs:* ]]; then
+    local joblist
+    ble/util/joblist
   fi
 
   #_ble_edit_detach_flag=exit
@@ -2228,7 +2260,9 @@ function ble/widget/exit {
   ble/canvas/bflush.draw
   ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
   ble/util/buffer.flush >&2
-  exit
+
+  # Note: ジョブが残っている場合でも強制終了させる為 2 回連続で呼び出す必要がある。
+  exit &>/dev/null; exit
 }
 function ble/widget/delete-forward-char-or-exit {
   if [[ $_ble_edit_str ]]; then

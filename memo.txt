@@ -3184,6 +3184,12 @@ tech
 
 2018-09-07
 
+  * edit (request from cmplstofB): ジョブがある時の終了コマンド (C-d) [#D0786]
+    https://github.com/akinomyoga/ble.sh/issues/8
+    bleopt allow_exit_with_jobs=1 として対応した。
+
+  * complete: CentOS 7 で LC_ALL=C.UTF-8 に対してエラーが出る [#D0785]
+
   * complete: 起動時に暫くとまる [#D0784]
 
     調べると auto-complete.idle が止めている。
