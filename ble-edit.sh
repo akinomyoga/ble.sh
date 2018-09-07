@@ -6945,7 +6945,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
           case "$cmd" in
           (eof)
             # C-d
-            ble-decode/.hook 4 ;;
+            ble-decode/.hook 4
+            builtin eval "$_ble_decode_bind_hook" ;;
           esac
         done
       fi
