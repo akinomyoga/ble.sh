@@ -520,21 +520,27 @@ fi
 ##   @param[in] command...
 ##     実行するコマンドを指定します。
 ##
-_ble_util_read_stdout_tmp="$_ble_base_run/$$.ble_util_assign.tmp"
+_ble_util_assign_base="$_ble_base_run/$$.ble_util_assign.tmp"
+_ble_util_assign_level=0
 if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
-    builtin eval "$2" >| "$_ble_util_read_stdout_tmp"
+    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    builtin eval "$2" >| "$_ble_local_tmp"
+    ((_ble_util_assign_level--))
     local _ret=$? __arr
-    mapfile -t __arr < "$_ble_util_read_stdout_tmp"
+    mapfile -t __arr < "$_ble_local_tmp"
     IFS=$'\n' eval "$1=\"\${__arr[*]-}\""
     return "$_ret"
   }
 else
   function ble/util/assign {
-    builtin eval "$2" >| "$_ble_util_read_stdout_tmp"
+    ((_ble_util_assign_level++))
+    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    builtin eval "$2" >| "$_ble_local_tmp"
+    ((_ble_util_assign_level--))
     local _ret=$?
-    IFS= builtin read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
+    IFS= builtin read -r -d '' "$1" < "$_ble_local_tmp"
     eval "$1=\${$1%$'\n'}"
     return "$_ret"
   }
@@ -552,9 +558,9 @@ fi
 ##
 if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
-    builtin eval "$2" >| "$_ble_util_read_stdout_tmp"
+    builtin eval "$2" >| "$_ble_util_assign_base"
     local _ret=$?
-    mapfile -t "$1" < "$_ble_util_read_stdout_tmp"
+    mapfile -t "$1" < "$_ble_util_assign_base"
     return "$_ret"
   }
 else

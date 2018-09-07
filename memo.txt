@@ -744,6 +744,11 @@ tech
 
 2018-09-05
 
+  * highlight (layer:region): 改行直後の色が違う
+
+    ble-highlight-layer:region/getg で face2g region で決め打ちにしている。
+    ここは mark:MARK/getg を呼び出す様に変更する必要がある。
+
   * complete (progcomp): 一応補完開始点に単語の切れ目を入れる #tmp0004
 
     % よく考えてみたら --prefix=... の場合には単語が切れてしまうと不都合である。
@@ -3177,9 +3182,17 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-09-07
+
+  * ble/util/assign 入れ子対策? [#D0782]
+
+2018-09-07
+
+  * complete (reported by cmplstofB): workaround: プログラム補完関数が failglob を踏むとシェルが終了する [#D0781]
+
 2018-09-05
 
-  * auto-complete: 実は元から灰色の文字がデフォルトのターミナルが存在する
+  * auto-complete: 実は元から灰色の文字がデフォルトのターミナルが存在する [#D0780]
 
   * complstofB: ble-color-setface がエラーを起こす [#D0779]
 
