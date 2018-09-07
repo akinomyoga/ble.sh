@@ -1025,9 +1025,56 @@ function ble-edit/content/clear-arg {
 # **** PS1/LINENO ****                                                @edit.ps1
 #
 # 内部使用変数
-## 変数 _ble_edit_PS1
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
+## 変数 _ble_edit_PS1
+## 変数 _ble_edit_IFS
+## 変数 _ble_edit_IGNOREEOF_set
+## 変数 _ble_edit_IGNOREEOF
+
+_ble_edit_IGNOREEOF_adjusted=
+_ble_edit_IGNOREEOF=
+function ble-edit/adjust-IGNOREEOF {
+  [[ $_ble_edit_IGNOREEOF_adjusted ]] && return
+  _ble_edit_IGNOREEOF_adjusted=1
+
+  if [[ ${IGNOREEOF+set} ]]; then
+    _ble_edit_IGNOREEOF=$IGNOREEOF
+  else
+    unset _ble_edit_IGNOREEOF
+  fi
+  if ((_ble_bash>=40000)); then
+    unset IGNOREEOF
+  else
+    IGNOREEOF=9999
+  fi
+}
+function ble-edit/restore-IGNOREEOF {
+  [[ $_ble_edit_IGNOREEOF_adjusted ]] || return
+  _ble_edit_IGNOREEOF_adjusted=
+
+  if [[ ${_ble_edit_IGNOREEOF+set} ]]; then
+    IGNOREEOF=$_ble_edit_IGNOREEOF
+  else
+    unset IGNOREEOF
+  fi
+}
+function ble-edit/eval-IGNOREEOF {
+  local value=
+  if [[ $_ble_edit_IGNOREEOF_adjusted ]]; then
+    value=${_ble_edit_IGNOREEOF-0}
+  else
+    value=${IGNOREEOF-0}
+  fi
+
+  if [[ $value && ! ${value//[0-9]} ]]; then
+    # 正の整数は十進数で解釈
+    ret=$((10#$value))
+  else
+    # 負の整数、空文字列、その他
+    ret=10
+  fi
+}
 
 function ble-edit/attach/TRAPWINCH {
   if ((_ble_edit_attached)); then
@@ -1055,6 +1102,7 @@ function ble-edit/attach {
   trap ble-edit/attach/TRAPWINCH WINCH
 
   _ble_edit_PS1=$PS1
+  ble-edit/adjust-IGNOREEOF
   PS1=
   [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
@@ -1062,6 +1110,7 @@ function ble-edit/attach {
 function ble-edit/detach {
   ((!_ble_edit_attached)) && return
   PS1=$_ble_edit_PS1
+  ble-edit/restore-IGNOREEOF
   [[ $bleopt_exec_type == exec ]] && IFS=$_ble_edit_IFS
   _ble_edit_attached=0
 }
@@ -2212,32 +2261,48 @@ function ble/widget/delete-backward-char {
   ble/widget/.delete-char $((-arg)) || ble/widget/.bell
 }
 
-_ble_edit_exit_lastwidget=
+_ble_edit_exit_count=0
 function ble/widget/exit {
   ble-edit/content/clear-arg
+
+  if [[ $WIDGET == "$LASTWIDGET" ]]; then
+    ((_ble_edit_exit_count++))
+  else
+    _ble_edit_exit_count=1
+  fi
+
+  local ret; ble-edit/eval-IGNOREEOF
+  if ((_ble_edit_exit_count<=ret)); then
+    local remain=$((ret-_ble_edit_exit_count+1))
+    ble/widget/.bell 'IGNOREEOF'
+    ble/widget/.SHELL_COMMAND "echo 'IGNOREEOF($remain): Use \"exit\" to leave the shell.' >&2"
+    return
+  fi
+
   local opts=$1
   ((_ble_bash>=40000)) && shopt -q checkjobs &>/dev/null && opts=$opts:checkjobs
 
   if [[ $bleopt_allow_exit_with_jobs ]]; then
     local ret
     if ble/util/assign ret 'compgen -A stopped -- ""' 2>/dev/null; [[ $ret ]]; then
-      [[ $LASTWIDGET == "$_ble_edit_exit_lastwidget" ]] && opts=$opts:force
+      ((_ble_edit_exit_count>=2)) && opts=$opts:force
     elif [[ :$opts: == *:checkjobs:* ]]; then
       if ble/util/assign ret 'compgen -A running -- ""' 2>/dev/null; [[ $ret ]]; then
-        [[ $LASTWIDGET == "$_ble_edit_exit_lastwidget" ]] && opts=$opts:force
+        ((_ble_edit_exit_count>=2)) && opts=$opts:force
       fi
     else
       opts=$opts:force
     fi
   fi
-  _ble_edit_exit_lastwidget=$WIDGET
+
+  #_ble_edit_exit_count@@@
 
   if [[ :$opts: != *:force:* ]]; then
     # job が残っている場合
     local joblist
     ble/util/joblist
     if ((${#joblist[@]})); then
-      ble/widget/.bell "(exit) ジョブが残っています!"
+      ble/widget/.bell "(exit) jobs remaining!"
       ble/widget/.SHELL_COMMAND jobs
       return
     fi
@@ -3196,6 +3261,7 @@ function ble-edit/exec:exec/.eval-epilogue {
   ble/base/adjust-POSIXLY_CORRECT
   _ble_edit_PS1=$PS1
   _ble_edit_IFS=$IFS
+  ble-edit/adjust-IGNOREEOF
   ble-edit/exec/save-BASH_REMATCH
   ble-edit/exec/.adjust-eol
 
@@ -3226,6 +3292,7 @@ function ble-edit/exec:exec/.recursive {
     # 実行
     local PS1=$_ble_edit_PS1
     local IFS=$_ble_edit_IFS
+    local IGNOREEOF; ble-edit/restore-IGNOREEOF
     local HISTCMD
     ble-edit/history/get-count -v HISTCMD
 
@@ -3417,6 +3484,7 @@ function ble-edit/exec:gexec/.eval-prologue {
   local IFS=$' \t\n'
   BASH_COMMAND=$1
   PS1=$_ble_edit_PS1
+  ble-edit/restore-IGNOREEOF
   unset HISTCMD; ble-edit/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
@@ -3445,6 +3513,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
 
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
+  ble-edit/adjust-IGNOREEOF
   _ble_edit_PS1=$PS1
   PS1=
   ble-edit/exec/save-BASH_REMATCH
@@ -6067,7 +6136,7 @@ if ((_ble_bash>=40000)); then
     ble-edit/bind/stdout.off
   }
 else
-  IGNOREEOF=10000
+  IGNOREEOF=9999
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
     ble/textarea#render # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
