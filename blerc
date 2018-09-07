@@ -5,18 +5,18 @@
 ## An example of ~/.bashrc:
 ##
 ## ```bash
-## if [[ $- == *i* ]] && "$HOME/.local/share/blesh/ble.sh" noattach; then
-##   source ~/.blerc
+## if [[ $- == *i* ]]; then
+##   "$HOME/.local/share/blesh/ble.sh" --noattach --rcfile ~/.blerc
 ## fi
 ## 
 ## # Your bashrc contents should come here
 ## 
-## [[ $- == *i* ]] && ble-attach
+## ((_ble_bash)) && ble-attach
 ## ```
 ##
 
 # bleopt input_encoding=UTF-8
-# bleopt pager=UTF-8
+# bleopt pager=less
 # bleopt vbell_default_message=' Wuff, -- Wuff!! ' vbell_duration=2000
 
 # bleopt char_width_mode=east
@@ -27,6 +27,17 @@
 # bleopt indent_offset=4
 # bleopt indent_tabs=1
 # bleopt tab_width=
+
+
+## Settings for completion
+
+# bleopt complete_ambiguous=1
+# bleopt complete_auto_delay=100
+# bleopt complete_auto_history=1
+# bleopt complete_contract_function_names=1
+# bleopt complete_menu_align=20
+# bleopt complete_menu_complete=1
+# bleopt complete_menu_style=align-nowrap
 # bleopt complete_stdin_frequency=50
 
 ## Color settings
@@ -67,10 +78,11 @@
 # ble-color-setface filename_warning         fg=red,underline
 
 ## Settings for vi-mode
-if [[ $bleopt_default_keymap == auto && -o vi || $bleopt_default_keymap == vi ]]; then
+
+ble/array#push _ble_keymap_vi_load_hook blerc/vim-load-hook
+function blerc/vim-load-hook {
   ((_ble_bash>=40300)) && bind 'set keyseq-timeout 1'
 
-  source "$_ble_base/keymap/vi.sh"
   # bleopt keymap_vi_macro_depth=64
   # bleopt keymap_vi_nmap_name:=$'\e[1m~\e[m'
 
@@ -94,6 +106,7 @@ if [[ $bleopt_default_keymap == auto && -o vi || $bleopt_default_keymap == vi ]]
   # ble-bind -f 'S-M-m'     '@marked beginning-of-line'
 
   ## Cursor settings
+
   # bleopt keymap_vi_nmap_cursor=2
   # bleopt keymap_vi_imap_cursor=5
   # bleopt keymap_vi_omap_cursor=4
@@ -118,4 +131,5 @@ if [[ $bleopt_default_keymap == auto && -o vi || $bleopt_default_keymap == vi ]]
   # source "$_ble_base/lib/vim-surround.sh"
   # bleopt vim_surround_45:=$'$( \r )'
   # bleopt vim_surround_61:=$'$(( \r ))'
-fi
+
+}
