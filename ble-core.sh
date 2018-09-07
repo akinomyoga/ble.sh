@@ -1662,8 +1662,8 @@ if ((_ble_bash>=40200)); then
   # workarounds of bashbug that printf '\uFFFF' results in a broken surrogate
   # pair in systems where sizeof(wchar_t) == 2.
   function ble/util/.has-bashbug-printf-uffff {
-    local LC_ALL=C.UTF-8
     ((40200<=_ble_bash&&_ble_bash<40500)) || return 1
+    local LC_ALL=C.UTF-8 2>/dev/null # Workaround: CentOS 7 に C.UTF-8 がなかった
     local ret
     builtin printf -v ret '\uFFFF'
     ((${#ret}==2))
