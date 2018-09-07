@@ -559,45 +559,33 @@ function ble-complete/source:command {
 
 function ble-complete/util/eval-pathname-expansion {
   local pattern=$1
+  local -a dtor=()
 
-  local old_noglob=
   if [[ -o noglob ]]; then
-    noglob=1
     set +f
+    ble/array#push dtor 'set -f'
   fi
 
-  local old_nullglob=
   if ! shopt -q nullglob; then
-    old_nullglob=0
     shopt -s nullglob
+    ble/array#push dtor 'shopt -u nullglob'
   fi
 
-  local old_nocaseglob=
   if [[ $comp_type == *i* ]]; then
     if ! shopt -q nocaseglob; then
-      old_nocaseglob=0
       shopt -s nocaseglob
+      ble/array#push dtor 'shopt -u nocaseglob'
     fi
   else
     if shopt -q nocaseglob; then
-      old_nocaseglob=1
       shopt -u nocaseglob
+      ble/array#push dtor 'shopt -s nocaseglob'
     fi
   fi
 
-  IFS= GLOBIGNORE= eval 'ret=($pattern)' 2>/dev/null
+  IFS= GLOBIGNORE= eval 'ret=(); ret=($pattern)' 2>/dev/null
 
-  if [[ $old_nocaseglob ]]; then
-    if ((old_nocaseglob)); then
-      shopt -s nocaseglob
-    else
-      shopt -u nocaseglob
-    fi
-  fi
-
-  [[ $old_nullglob ]] && shopt -u nullglob
-
-  [[ $old_noglob ]] && set -f
+  ble/util/invoke-hook dtor
 }
 
 ## 関数 ble-complete/source:file/.construct-ambiguous-pathname-pattern path
