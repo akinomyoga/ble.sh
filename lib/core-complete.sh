@@ -2315,7 +2315,8 @@ function ble-complete/auto-complete.impl {
     ble-complete/auto-complete/.check-history light; local ext=$?
     ((ext==0||ext==148)) && return "$ext"
 
-    ble-complete/auto-complete/.check-history; local ext=$?
+    [[ $_ble_edit_history_loaded ]] &&
+      ble-complete/auto-complete/.check-history; local ext=$?
     ((ext==0||ext==148)) && return "$ext"
   fi
   
