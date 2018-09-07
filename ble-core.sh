@@ -1129,7 +1129,8 @@ function ble/util/joblist {
     done
   else
     for ijob in "${!list[@]}"; do
-      _ble_util_joblist_list[ijob]=${list[ijob]}
+      [[ ${list[ijob]} ]] &&
+        _ble_util_joblist_list[ijob]=${list[ijob]}
     done
   fi
   joblist=("${_ble_util_joblist_list[@]}")

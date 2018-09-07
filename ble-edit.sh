@@ -2295,8 +2295,6 @@ function ble/widget/exit {
     fi
   fi
 
-  #_ble_edit_exit_count@@@
-
   if [[ :$opts: != *:force:* ]]; then
     # job が残っている場合
     local joblist
@@ -5978,7 +5976,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
           case "$cmd" in
           (eof)
             # C-d
-            ble-decode/.hook 4 ;;
+            ble-decode/.hook 4
+            builtin eval "$_ble_decode_bind_hook" ;;
           esac
         done
       fi
@@ -6136,7 +6135,6 @@ if ((_ble_bash>=40000)); then
     ble-edit/bind/stdout.off
   }
 else
-  IGNOREEOF=9999
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
     ble/textarea#render # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
