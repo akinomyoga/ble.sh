@@ -3181,6 +3181,8 @@ tech
   * edit: コマンド exit を上書き。ジョブが残っている場合はユーザに尋ねる [#D0788]
     cf https://github.com/akinomyoga/ble.sh/issues/8
 
+    →サブシェルで exit を実行しても確認が走ってしまう。これはチェックを入れる。
+
   * syntax (bug): Bash-4.1 以下で関数定義の構文解析ができない [#D0788]
     ble_debug で調べると途中で CTX_UNSPECIFIED になっている。
     nest を閉じることができなくて全体がエラーになっている。

@@ -3205,6 +3205,11 @@ function ble-edit/exec/restore-BASH_REMATCH {
 
 function ble-edit/exec/exit {
   local ext=${1-$?}
+  if ((BASHPID!=$$)) || [[ $_ble_decode_bind_state == none ]]; then
+    builtin exit "$ext"
+    return
+  fi
+
   local joblist
   ble/util/joblist
   if ((${#joblist[@]})); then
