@@ -2285,23 +2285,29 @@ function ble/widget/exit {
   if [[ $bleopt_allow_exit_with_jobs ]]; then
     local ret
     if ble/util/assign ret 'compgen -A stopped -- ""' 2>/dev/null; [[ $ret ]]; then
-      ((_ble_edit_exit_count>=2)) && opts=$opts:force
+      opts=$opts:twice
     elif [[ :$opts: == *:checkjobs:* ]]; then
       if ble/util/assign ret 'compgen -A running -- ""' 2>/dev/null; [[ $ret ]]; then
-        ((_ble_edit_exit_count>=2)) && opts=$opts:force
+        opts=$opts:twice
       fi
     else
       opts=$opts:force
     fi
   fi
 
-  if [[ :$opts: != *:force:* ]]; then
+  if ! [[ :$opts: == *:force:* || :$opts: == *:twice:* && _ble_edit_exit_count -ge 2 ]]; then
     # job が残っている場合
     local joblist
     ble/util/joblist
     if ((${#joblist[@]})); then
       ble/widget/.bell "exit: There are remaining jobs."
-      ble/widget/.SHELL_COMMAND 'echo "There are remaining jobs. Use \"exit\" to leave the shell"; jobs'
+      local q=\' Q="'\''" message=
+      if [[ :$opts: == *:twice:* ]]; then
+        message='There are remaining jobs. Input the same key to exit the shell anyway.'
+      else
+        message='There are remaining jobs. Use "exit" to leave the shell.'
+      fi
+      ble/widget/.SHELL_COMMAND "echo '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
       return
     fi
   elif [[ :$opts: == *:checkjobs:* ]]; then
@@ -2326,7 +2332,6 @@ function ble/widget/exit {
   ble/util/buffer.flush >&2
 
   # Note: ジョブが残っている場合でも強制終了させる為 2 回連続で呼び出す必要がある。
-  echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
   builtin exit "$ext" &>/dev/null
   builtin exit "$ext" &>/dev/null
   return 1
@@ -3216,7 +3221,7 @@ function ble-edit/exec/exit {
       [[ $cancel_reason ]]
     do
       jobs
-      ble-edit/read -ep "\e[38;5;12mble.sh\e[m: There are $cancel_reason. Leave the shell anyway? [yes/No] " ret
+      ble-edit/read -ep "\e[38;5;12m[ble: There are $cancel_reason]\e[m Leave the shell anyway? [yes/No] " ret
       case $ret in
       ([yY]|[yY][eE][sS]) break ;;
       ([nN]|[nN][oO]|'')  return ;;
