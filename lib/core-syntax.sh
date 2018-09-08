@@ -1960,8 +1960,8 @@ function ble-syntax:bash/check-brace-expansion {
 
   # ブレース展開がある時チルダ展開は無効化される
   # Note: CTX_VRHS 等のときは inactive なので此処には来ないので OK
-  ((_ble_syntax_bash_command_IsAssign[ctx]&&(
-      ctx=_ble_syntax_bash_command_IsAssign[ctx])))
+  [[ ${_ble_syntax_bash_command_IsAssign[ctx]} ]] &&
+    ctx=${_ble_syntax_bash_command_IsAssign[ctx]}
 
   # {a..b..c} の形式のブレース展開
   if rex='^\{(([0-9]+)\.\.[0-9]+|[a-zA-Z]\.\.[a-zA-Z])(\.\.[0-9]+)?\}$'; [[ $str =~ $rex ]]; then
@@ -2417,7 +2417,8 @@ function ble-syntax:bash/ctx-command/check-word-end {
   local word=${text:wbegin:wlen}
   local wt=$wtype
 
-  ((_ble_syntax_bash_command_EndWtype[wt]&&(wtype=_ble_syntax_bash_command_EndWtype[wt])))
+  [[ ${_ble_syntax_bash_command_EndWtype[wt]} ]] &&
+    wtype=${_ble_syntax_bash_command_EndWtype[wt]}
   local rex_expect_command=${_ble_syntax_bash_command_Expect[wt]}
   if [[ $rex_expect_command ]]; then
     # 特定のコマンドのみを受け付ける文脈
