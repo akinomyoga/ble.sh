@@ -3176,6 +3176,83 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-09-08
+
+  * syntax (bug): Bash-4.1 以下で関数定義の構文解析ができない [#D0788]
+    ble_debug で調べると途中で CTX_UNSPECIFIED になっている。
+    nest を閉じることができなくて全体がエラーになっている。
+
+    | bash-4.2$ f1() { echo hello; }
+    | _ble_syntax_attr/tree/nest/stat?
+    |  2 aw   000 'f' |  stat=(CTX_CMDX w=- n=- t=-:-)
+    |  | aw   001 '1' +  word=ATTR_FUNCDEF:0-2
+    | 12 a    002 '('
+    |  | a    003 ')'
+    | 26 a    004 ' '    stat=(CTX_CMDXC w=- n=- t=$2:-)
+    | 18 a    005 '{' ++ word=CTX_CMDI:@1>5-6>@5 word="none":5-6 nest=(CTX_CMDI w=CTX_CMDXC:5- n=- t=-:$2) stat=(CTX_CMDXC w=- n=- t=$2:-)
+    | 17*a    006 ' '    stat=(CTX_CMDX1 w=- n=- t=$6:-)
+    |  2*aw   007 'e' |  stat=(CTX_CMDX1 w=- n=- t=$6:-)
+    |  |*aw   008 'c' |
+    |  |*aw   009 'h' |
+    |  |*aw   010 'o' +  word=CTX_CMDI:@5>7-11
+    |  3*a    011 ' '
+    |  4*a    012 'h' |  stat=(CTX_ARGX w=- n=- t=$11:-)
+    |  |*a    013 'e' |
+    |  |*a    014 'l' |
+    |  |*a    015 'l' |
+    |  |*a    016 'o' +  word=CTX_ARGI:@10>12-17
+    | 12*a    017 ';'    stat=(CTX_ARGX w=- n=- t=$17:-)
+    |  1*a    018 ' '    stat=(CTX_CMDX w=- n=- t=$17:-)
+    | 19*a    019 '}' +  word=CTX_CMDI:@16>19-20 stat=(CTX_CMDX w=- n=- t=$17:-)
+    |  |    s 020 ^@    stat=(CTX_CMDXE w=- n=- t=$20:-)
+    |
+    |
+    | bash-4.1$ f1() { echo hello; }
+    | _ble_syntax_attr/tree/nest/stat?
+    |  2 aw   000 'f' | stat=(CTX_CMDX w=- n=- t=-:-)
+    |  | aw   001 '1' + word=ATTR_FUNCDEF:0-2
+    | 12 a    002 '('
+    |  | a    003 ')'
+    | 26 a    004 ' '   stat=(CTX_CMDXC w=- n=- t=$2:-)
+    |  6 a    005 '{' + word="none":5-6 nest=(CTX_UNSPECIFIED w=CTX_CMDXC:5- n=- t=-:$2) stat=(CTX_CMDXC w=- n=- t=$2:-)
+    |  |*a    006 ' '   stat=(CTX_UNSPECIFIED w=CTX_CMDXC:5- n=- t=$6:$2)
+    |  |*a    007 'e'
+    |  |*a    008 'c'
+    |  |*a    009 'h'
+    |  |*a    010 'o'
+    |  |*a    011 ' '
+    |  |*a    012 'h'
+    |  |*a    013 'e'
+    |  |*a    014 'l'
+    |  |*a    015 'l'
+    |  |*a    016 'o'
+    |  |*a    017 ';'
+    |  |*a    018 ' '
+    |  |*a    019 '}'
+    |  |    s 020 ^@   stat=(CTX_UNSPECIFIED w=CTX_CMDXC:5- n=- t=$6:$2)
+
+    core-syntax.sh を 40100 または 40200 で探してみても関係ありそうな分岐をしている箇所はない。
+    一つずつ見ていく事にする。直前の文脈は CTX_CMDXC である。これの処理は
+    ble-syntax:bash/ctx-command で行っている。.check-word-begin までは問題ないようだ。
+    取り敢えず現在の ctx である CTX_CMDXC を wtype に設定して単語が始まる。
+    次の check-variable-assingment は CTX_CMDXC ではスキップされる筈である。
+    ${_ble_syntax_bash_chars[CTX_ARGI]} の内容にも違いは見られない。
+    うーん。どうやらブレース展開に入りかけてすぐ出るというのが正しい動作だが、
+
+    そのブレース展開に入る nest で失敗している様子である。
+    ブレース展開に入る所を調べる。nest の前後を見ると、何と push 直前の ctx が 0 になっている。
+    ctx を最後に書き換えているのは同じく check-brace-expansion の中の真ん中あたりにある。
+    _ble_syntax_bash_command_IsAssign という配列を参照している箇所である。
+    _ble_syntax_bash_command_IsAssign の中身を確認してみたが何も変化はない。
+    ctx は 2 → 0 に変化してしまっているがそもそも _ble_syntax_bash_command_IsAssign には 2 は登録されていない。
+
+    これは bash 算術式のバグだろうか。
+    何とこれは既知のバグであった。このバグの存在を忘れていた。
+    最近書いたコードにもこういう物が含まれている可能性はある。
+    他にも似たような物がないか core-syntax.sh の内部は調べた。一箇所直した。
+    vi.sh と ble-edit.sh の中も調べたが特に怪しいものはない。
+    ble-canvas.sh と ble-color.sh の中も調べた。ble-decode.sh の中も調べた。
+
 2018-09-07
 
   * 2015-12-12 IGNOREEOF に対応 (現在 bash-4.0 未満では勝手な値を設定しているので [#D0787]
