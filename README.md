@@ -36,24 +36,24 @@ If you want to install `ble.sh` in a specified directory, use the following comm
 $ make INSDIR=/path/to/blesh install
 ```
 
-**Or, download `ble.sh`** (201803 devel version)
+**Or, download `ble.sh`** (201809 release version)
 
 With `wget`:
 ```console
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.2.a2/ble-0.2.a2.tar.xz
-$ tar xJf ble-0.2.a2.tar.xz
-$ source ble-0.2.a2/ble.sh
+$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.2.0/ble-0.2.0.tar.xz
+$ tar xJf ble-0.2.0.tar.xz
+$ source ble-0.2.0/ble.sh
 ```
 With `curl`:
 ```console
-$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.2.a2/ble-0.2.a2.tar.xz
-$ tar xJf ble-0.2.a2.tar.xz
-$ source ble-0.2.a2/ble.sh
+$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.2.0/ble-0.2.0.tar.xz
+$ tar xJf ble-0.2.0.tar.xz
+$ source ble-0.2.0/ble.sh
 ```
 
 If you want to place `ble.sh` in a specific directory, just copy the directory:
 ```console
-$ cp -r ble-0.2.a2 /path/to/blesh
+$ cp -r ble-0.2.0 /path/to/blesh
 ```
 
 **Setup `.bashrc`**

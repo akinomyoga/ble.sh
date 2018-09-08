@@ -37,24 +37,24 @@ $ source out/ble.sh
 $ make INSDIR=/path/to/blesh install
 ```
 
-**`ble.sh` をダウンロードして使う場合** (201803版)
+**`ble.sh` をダウンロードして使う場合** (201809版)
 
 `wget` を使う場合:
 ```console
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.2.a2/ble-0.2.a2.tar.xz
-$ tar xJf ble-0.2.a2.tar.xz
-$ source ble-0.2.a2/ble.sh
+$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.2.0/ble-0.2.0.tar.xz
+$ tar xJf ble-0.2.0.tar.xz
+$ source ble-0.2.0/ble.sh
 ```
 `curl` を使う場合:
 ```console
-$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.2.a2/ble-0.2.a2.tar.xz
-$ tar xJf ble-0.2.a2.tar.xz
-$ source ble-0.2.a2/ble.sh
+$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.2.0/ble-0.2.0.tar.xz
+$ tar xJf ble-0.2.0.tar.xz
+$ source ble-0.2.0/ble.sh
 ```
 
 指定したディレクトリに `ble.sh` を配置するには単に `ble-0.1.7` ディレクトリをコピーします。
 ```console
-$ cp -r ble-0.2.a2 /path/to/blesh
+$ cp -r ble-0.2.0 /path/to/blesh
 ```
 
 **`.bashrc` の設定**
