@@ -2300,13 +2300,14 @@ function ble/widget/exit {
     local joblist
     ble/util/joblist
     if ((${#joblist[@]})); then
-      ble/widget/.bell "(exit) jobs remaining!"
-      ble/widget/.SHELL_COMMAND jobs
+      ble/widget/.bell "exit: There are remaining jobs."
+      ble/widget/.SHELL_COMMAND 'echo "There are remaining jobs. Use \"exit\" to leave the shell"; jobs'
       return
     fi
   elif [[ :$opts: == *:checkjobs:* ]]; then
     local joblist
     ble/util/joblist
+    ((${#joblist[@]})) && printf '%s\n' "${#joblist[@]}"
   fi
 
   #_ble_edit_detach_flag=exit
@@ -2325,7 +2326,10 @@ function ble/widget/exit {
   ble/util/buffer.flush >&2
 
   # Note: ジョブが残っている場合でも強制終了させる為 2 回連続で呼び出す必要がある。
-  exit &>/dev/null; exit
+  echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
+  builtin exit "$ext" &>/dev/null
+  builtin exit "$ext" &>/dev/null
+  return 1
 }
 function ble/widget/delete-forward-char-or-exit {
   if [[ $_ble_edit_str ]]; then
@@ -3194,6 +3198,39 @@ function ble-edit/exec/restore-BASH_REMATCH {
   [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
 }
 
+function ble-edit/exec/exit {
+  local ext=${1-$?}
+  local joblist
+  ble/util/joblist
+  if ((${#joblist[@]})); then
+    local ret
+    while
+      local cancel_reason=
+      if ble/util/assign ret 'compgen -A stopped -- ""' 2>/dev/null; [[ $ret ]]; then
+        cancel_reason='stopped jobs'
+      elif [[ :$opts: == *:checkjobs:* ]]; then
+        if ble/util/assign ret 'compgen -A running -- ""' 2>/dev/null; [[ $ret ]]; then
+          cancel_reason='running jobs'
+        fi
+      fi
+      [[ $cancel_reason ]]
+    do
+      jobs
+      ble-edit/read -ep "\e[38;5;12mble.sh\e[m: There are $cancel_reason. Leave the shell anyway? [yes/No] " ret
+      case $ret in
+      ([yY]|[yY][eE][sS]) break ;;
+      ([nN]|[nN][oO]|'')  return ;;
+      esac
+    done
+  fi
+
+  echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
+  builtin exit "$ext" &>/dev/null
+  builtin exit "$ext" &>/dev/null
+  return 1 # exit できなかった場合は 1 らしい
+}
+
+function exit { ble-edit/exec/exit; }
 
 ## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_exec_type/process;
 ##   指定したコマンドを実行します。
@@ -5619,7 +5656,7 @@ function ble-edit/read/.impl {
 ##   ble.sh の所為で builtin read -e が全く動かなくなるので、
 ##   read -e を ble.sh の枠組みで再実装する。
 ##
-function read {
+function ble-edit/read {
   if [[ $_ble_decode_bind_state == none ]]; then
     builtin read "$@"
     return
@@ -5633,6 +5670,7 @@ function read {
   builtin eval -- "$__ble_command"
   return
 }
+function read { ble-edit/read; }
 
 # 
 #------------------------------------------------------------------------------
@@ -6033,7 +6071,7 @@ function ble-edit/bind/.exit-TRAPRTMAX {
   # シグナルハンドラの中では stty は bash によって設定されている。
   local IFS=$' \t\n'
   ble/term/TRAPEXIT
-  exit 0
+  builtin exit 0
 }
 
 ## 関数 ble-edit/bind/.check-detach

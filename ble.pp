@@ -47,12 +47,12 @@ echo prologue >&2
 
 if [ -z "$BASH_VERSION" ]; then
   echo "ble.sh: This is not a bash. Please use this script with bash." >&2
-  return 1 2>/dev/null || exit 1
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 if [ -z "${BASH_VERSINFO[0]}" ] || [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
   echo "ble.sh: bash with a version under 3.0 is not supported." >&2
-  return 1 2>/dev/null || exit 1
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
@@ -61,13 +61,13 @@ if [[ $- != *i* ]]; then
   unset _ble_bash
   { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
     echo "ble.sh: This is not an interactive session."
-  return 1 2>/dev/null || exit 1
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 if [[ -o posix ]]; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
-  return 1 2>/dev/null || exit 1
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 _ble_bash_setu=

@@ -32,5 +32,5 @@ if declare -f sub:$1 &>/dev/null; then
   sub:"$@"
 else
   echo "unknown subcommand '$1'" >&2
-  exit 1
+  builtin exit 1
 fi

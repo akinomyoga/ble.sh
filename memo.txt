@@ -3178,6 +3178,9 @@ tech
 
 2018-09-08
 
+  * edit: コマンド exit を上書き。ジョブが残っている場合はユーザに尋ねる [#D0788]
+    cf https://github.com/akinomyoga/ble.sh/issues/8
+
   * syntax (bug): Bash-4.1 以下で関数定義の構文解析ができない [#D0788]
     ble_debug で調べると途中で CTX_UNSPECIFIED になっている。
     nest を閉じることができなくて全体がエラーになっている。
@@ -3256,11 +3259,12 @@ tech
 2018-09-07
 
   * 2015-12-12 IGNOREEOF に対応 (現在 bash-4.0 未満では勝手な値を設定しているので [#D0787]
+    cf https://github.com/akinomyoga/ble.sh/issues/8
     これはコマンド実行の瞬間だけに復元する様にする必要がある。
     PS1 と同様の取り扱いで良いと思われる。)
 
   * edit (request from cmplstofB): ジョブがある時の終了コマンド (C-d) [#D0786]
-    https://github.com/akinomyoga/ble.sh/issues/8
+    cf https://github.com/akinomyoga/ble.sh/issues/8
     bleopt allow_exit_with_jobs=1 として対応した。
 
   * complete: CentOS 7 で LC_ALL=C.UTF-8 に対してエラーが出る [#D0785]

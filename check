@@ -97,7 +97,7 @@ function check-array-count-in-arithmetic-expression {
 #check-builtin 'history'
 #check-builtin 'echo'
 #check-builtin '(bind|compopt|type|printf|read)'
-check-builtin 'read'
+check-builtin '(read|exit)'
 #check-assign
 
 check-a.txt
