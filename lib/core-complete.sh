@@ -2395,6 +2395,7 @@ function ble/widget/auto-complete-enter {
 function ble/widget/auto_complete/cancel {
   ble-decode/keymap/pop
   ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_mark" ''
+  _ble_edit_mark=$_ble_edit_ind
   _ble_edit_mark_active=
   _ble_complete_ac_insert=
   _ble_complete_ac_suffix=
@@ -2402,6 +2403,7 @@ function ble/widget/auto_complete/cancel {
 function ble/widget/auto_complete/accept {
   ble-decode/keymap/pop
   ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_mark" ''
+  _ble_edit_mark=$_ble_edit_ind
 
   local comp_text=$_ble_edit_str
   local insert_beg=$_ble_complete_ac_comp1

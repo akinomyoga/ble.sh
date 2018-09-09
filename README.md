@@ -88,6 +88,7 @@ fi
 ```
 
 **Vim mode**
+
 For the vi/vim mode, check [the Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
 **CJK Width**
