@@ -2093,7 +2093,7 @@ function ble-decode/keymap:menu_complete/define {
 #
 
 function ble-complete/auto-complete/initialize {
-  ble-color-defface auto_complete fg=242
+  ble-color-defface auto_complete bg=254,fg=238
 
   local ret
   ble-decode-kbd/generate-keycode auto_complete_enter
