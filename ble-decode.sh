@@ -707,12 +707,13 @@ function ble-decode-char/unbind {
   done
 }
 function ble-decode-char/dump {
-  local tseq=$1 nseq=$2 ccode
+  local tseq=$1 nseq ccode
+  nseq=("${@:2}")
   builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
   for ccode in "${ccodes[@]}"; do
     local ret; ble-decode-unkbd "$ccode"
     local cnames
-    cnames=($nseq $ret)
+    cnames=("${nseq[@]}" "$ret")
 
     builtin eval "local ent=\${_ble_decode_cmap_$tseq[ccode]}"
     if [[ ${ent%_} ]]; then
@@ -722,7 +723,7 @@ function ble-decode-char/dump {
     fi
 
     if [[ ${ent//[0-9]/} == _ ]]; then
-      ble-decode-char/dump "${tseq}_$ccode" "${cnames[*]}"
+      ble-decode-char/dump "${tseq}_$ccode" "${cnames[@]}"
     fi
   done
 }
