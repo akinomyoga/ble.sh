@@ -678,43 +678,72 @@ function ble-complete/source:dir {
 
 # source/argument (complete -p)
 
+## 関数 ble-complete/source:argument/.progcomp-helper-vars
+##   プログラム補完で提供される変数を構築します。
+##   @param[in]  comp_words comp_cword comp_line comp_point
+##   @param[out] COMP_WORDS COMP_CWORD COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
 function ble-complete/source:argument/.progcomp-helper-vars {
-  COMP_LINE=
-  COMP_WORDS=()
-  local shell_specialchars=']\ ["'\''`$|&;<>()*?{}!^'$'\n\t'
-  local word delta=0 index=0 q="'" Q="'\''" qq="''"
-  for word in "${comp_words[@]}"; do
-    local ret simple_flags simple_ibrace
-    if ble-syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
-      ble-syntax:bash/simple-word/eval "$ret"
-      ((index)) && [[ $ret == *["$shell_specialchars"]* ]] &&
-        ret="'${ret//$q/$Q}'" ret=${ret#"$qq"} ret=${ret%"$qq"} # コマンド名以外はクォート
-      ((index<=comp_cword&&(delta+=${#ret}-${#word})))
-      word=$ret
-    fi
-    ble/array#push COMP_WORDS "$word"
-
-    if ((index++==0)); then
-      COMP_LINE=$word
-    else
-      COMP_LINE="$COMP_LINE $word"
-    fi
-  done
-
-  COMP_CWORD=$comp_cword
-  COMP_POINT=$((comp_point+delta))
   COMP_TYPE=9
   COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode/widget/.call-keyseq
 
-  # 直接渡す場合。$'' などがあると bash-completion が正しく動かないので、
-  # エスケープを削除して適当に処理する。
-  #
-  # COMP_WORDS=("${comp_words[@]}")
-  # COMP_LINE="$comp_line"
-  # COMP_POINT="$comp_point"
-  # COMP_CWORD="$comp_cword"
-  # COMP_TYPE=9
-  # COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode/widget/.call-keyseq
+  # Note: 以降の処理は基本的には comp_words, comp_line, comp_point, comp_cword を
+  #   直接 COMP_WORDS COMP_LINE COMP_POINT COMP_CWORD にコピーするだけである。
+  #   しかし、直接代入する場合。$'' などがあると bash-completion が正しく動かないので、
+  #   エスケープを削除して適当に処理する。
+
+  COMP_LINE=
+  COMP_WORDS=()
+  local shell_specialchars=']\ ["'\''`$|&;<>()*?{}!^'$'\n\t' q="'" Q="'\''" qq="''"
+  local word delta=0 index=0 offset=0
+  for word in "${comp_words[@]}"; do
+    # @var point
+    #   word が現在の単語の時、word 内のカーソル位置を保持する。
+    #   それ以外の時は空文字列。
+    local point=$((comp_point-offset))
+    ((0<=point&&point<=${#word})) || point=
+
+    # 単語が単純単語ならば展開する
+    local ret simple_flags simple_ibrace
+    if [[ ! $word ]]; then
+      # Note: 空文字列に対して正しい単語とする為に '' とすると git の補完関数が動かなくなる。
+      #   仕方がないので空文字列のままで登録する事にする。
+      : do nothing
+      # word="''"; [[ $point ]] && point=2
+    elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
+      ble-syntax:bash/simple-word/eval "$ret"
+      ((${#COMP_WORDS[*]})) && [[ $ret == *["$shell_specialchars"]* ]] &&
+        ret="'${ret//$q/$Q}'" ret=${ret#"$qq"} ret=${ret%"$qq"} # コマンド名以外はクォート
+      word=$ret
+      if [[ $point ]]; then
+        if ((point==${#1})); then
+          point=${#word}
+        elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "${1::point}"; then
+          ble-syntax:bash/simple-word/eval "$ret"
+          ((${#COMP_WORDS[*]})) && [[ $ret == *["$shell_specialchars"]* ]] &&
+            ret="'${ret//$q/$Q}" ret=${ret#"$qq"}
+          point=${#ret}
+        fi
+      fi
+    fi
+
+    # COMP_CWORD / COMP_POINT の更新
+    if [[ $point ]]; then
+      COMP_CWORD=${#COMP_WORDS[*]}
+      COMP_POINT=$point
+      [[ $COMP_LINE ]] && ((COMP_POINT+=${#COMP_LINE}+1))
+    fi
+
+    # COMP_LINE / COMP_WORDS の更新
+    if [[ $COMP_LINE ]]; then
+      COMP_LINE="$COMP_LINE $word"
+    else
+      COMP_LINE=$word
+    fi
+    ble/array#push COMP_WORDS "$word"
+
+    ((offset+=${#word}+1))
+  done
+
 }
 function ble-complete/source:argument/.progcomp-helper-prog {
   if [[ $comp_prog ]]; then
@@ -907,12 +936,28 @@ function ble-complete/source:argument/.progcomp {
 ##   という関数が定義されている場合はそれを使います。
 ##   それ以外の場合は complete によって登録されているプログラム補完が使用されます。
 ##
-##   @var[in] comp_index
+##   @var[in] COMP1 COMP2
 ##   @var[in] (variables set by ble-syntax/parse)
 ##
 function ble-complete/source:argument/.generate-user-defined-completion {
   local comp_words comp_line comp_point comp_cword
-  ble-syntax:bash/extract-command "$comp_index" || return 1
+  ble-syntax:bash/extract-command "$COMP2" || return 1
+
+  # 単語の途中に補完開始点がある時、単語を分割する
+  if
+    # @var point 単語内のカーソルの位置
+    # @var comp1 単語内の補完開始点
+    local forward_words=
+    ((comp_cword)) && IFS=' ' eval 'forward_words="${comp_words[*]::comp_cword} "'
+    local point=$((comp_point-${#forward_words}))
+    local comp1=$((point-(COMP2-COMP1)))
+    ((comp1>0))
+  then
+    local w=${comp_words[comp_cword]}
+    comp_words=("${comp_words[@]::comp_cword}" "${w::comp1}" "${w:comp1}" "${comp_words[@]:comp_cword+1}")
+    IFS=' ' eval 'comp_line="${comp_words[*]}"'
+    ((comp_cword++,comp_point++))
+  fi
 
   local cmd=${comp_words[0]}
   if ble/is-function "ble/cmdinfo/complete:$cmd"; then
