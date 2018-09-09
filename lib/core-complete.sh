@@ -1324,22 +1324,6 @@ _ble_complete_menu_comp=()
 _ble_complete_menu_selected=-1
 _ble_complete_menu_filter=
 
-## 関数 ble-complete/menu/initialize
-##   @var[out] menu_common_part
-##   @var[out] cols lines
-function ble-complete/menu/initialize {
-  ble-edit/info/.initialize-size
-
-  menu_common_part=$COMPV
-  if [[ $comp_type != *a* ]]; then
-    local ret simple_flags simple_ibrace
-    if ble-syntax:bash/simple-word/reconstruct-incomplete-word "$insert"; then
-      ble-syntax:bash/simple-word/eval "$ret"
-      menu_common_part=$ret
-    fi
-  fi
-}
-
 ## 関数 ble-complete/menu/construct-single-entry pack opts
 ##   @param[in] pack
 ##     cand_pack の要素と同様の形式の文字列です。
@@ -1557,20 +1541,19 @@ function ble-complete/menu/clear {
 
 ## 関数 ble-complete/menu/show opts
 ##   @param[in] opts
-##   @arr[in] cand_pack
 ##
-##   @var[in] COMPV
-##     入力済み部分を着色するのに使用します。
 ##   @var[in] comp_type
-##     曖昧一致候補かどうかを確認するのに使用します。
-##   @var[in] COMP1 COMP2 COMPS comps_flags comps_fixed
+##   @var[in] COMP1 COMP2 COMPS COMPV comps_flags comps_fixed
+##   @arr[in] cand_pack
+##   @var[in] menu_common_part
+##
 function ble-complete/menu/show {
   local opts=$1
 
   # settings
   local menu_style=$bleopt_complete_menu_style
-  local cols lines menu_common_part
-  ble-complete/menu/initialize
+  local cols lines
+  ble-edit/info/.initialize-size
 
   if ((${#cand_pack[@]})); then
     local x y esc menu_items
@@ -1586,15 +1569,16 @@ function ble-complete/menu/show {
   _ble_complete_menu_info_data=("${info_data[@]}")
   _ble_complete_menu_items=("${menu_items[@]}")
   if [[ :$opts: != *:filter:* ]]; then
-    _ble_complete_menu_beg=$COMP1
-    _ble_complete_menu_end=$_ble_edit_ind
+    local beg=$COMP1 end=$_ble_edit_ind
+    _ble_complete_menu_beg=$beg
+    _ble_complete_menu_end=$end
     _ble_complete_menu_str=$_ble_edit_str
     _ble_complete_menu_selected=-1
     _ble_complete_menu_active=1
     _ble_complete_menu_common_part=$menu_common_part
     _ble_complete_menu_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type" "$comps_flags" "$comps_fixed")
     _ble_complete_menu_pack=("${cand_pack[@]}")
-    _ble_complete_menu_filter=${_ble_edit_str:COMP1:COMP2-COMP1}
+    _ble_complete_menu_filter=${_ble_edit_str:beg:end-beg}
   fi
   return 0
 }
@@ -1723,12 +1707,14 @@ function ble/widget/complete {
   [[ $insert == "$COMPS"* ]] || insert_flags=r
 
   if [[ :$opts: == *:enter_menu:* ]]; then
+    local menu_common_part=$COMPV
     ble-complete/menu/show || return
     ble-complete/menu-complete/enter; local ext=$?
     ((ext==148)) && return 148
     ((ext)) && ble/widget/.bell
     return
   elif [[ :$opts: == *:show_menu:* ]]; then
+    local menu_common_part=$COMPV
     ble-complete/menu/show
     return # exit status of ble-complete/menu/show
   fi
@@ -1753,6 +1739,16 @@ function ble/widget/complete {
   fi
 
   if [[ $insert_flags == *m* ]]; then
+    # menu_common_part (メニュー強調文字列)
+    #   もし insert が単純単語の場合には
+    #   menu_common_part を挿入後の評価値とする。
+    #   そうでなければ仕方がないので挿入前の値 COMPV とする。
+    local menu_common_part=$COMPV
+    local ret simple_flags simple_ibrace
+    if ble-syntax:bash/simple-word/reconstruct-incomplete-word "$insert"; then
+      ble-syntax:bash/simple-word/eval "$ret"
+      menu_common_part=$ret
+    fi
     ble-complete/menu/show || return
   elif [[ $insert_flags == *n* ]]; then
     ble/widget/complete show_menu || return
@@ -1825,6 +1821,7 @@ function ble-complete/menu/filter-incrementally {
     ((${#cand_pack[@]})) && comp_type=${comp_type}a
   fi
 
+  local menu_common_part=$COMPV
   ble-complete/menu/show filter || return
   _ble_complete_menu_filter=$input
   return 0
