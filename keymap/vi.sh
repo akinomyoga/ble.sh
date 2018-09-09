@@ -1779,8 +1779,8 @@ _ble_keymap_vi_filter_history_dirt=()
 _ble_keymap_vi_filter_history_ind=0
 _ble_keymap_vi_filter_history_onleave=()
 
-function ble-highlight-layer:region/mark:vi_filter/get-sgr {
-  ble-color-face2sgr region_target
+function ble-highlight-layer:region/mark:vi_filter/get-face {
+  face=region_target
 }
 function ble/keymap:vi/operator:filter/.cache-repeat {
   local -a _ble_keymap_vi_repeat _ble_keymap_vi_repeat_irepeat

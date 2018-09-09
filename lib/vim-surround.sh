@@ -304,8 +304,8 @@ function ble-highlight-layer:region/mark:vi_surround/get-selection {
     fi
   fi
 }
-function ble-highlight-layer:region/mark:vi_surround/get-sgr {
-  ble-color-face2sgr region_target
+function ble-highlight-layer:region/mark:vi_surround/get-face {
+  face=region_target
 }
 
 function ble/lib/vim-surround.sh/operator.impl {
@@ -739,8 +739,8 @@ function ble-highlight-layer:region/mark:vi_csurround/get-selection {
   local end=${_ble_lib_vim_surround_cs[15]}
   selection=("$beg" "$end")
 }
-function ble-highlight-layer:region/mark:vi_csurround/get-sgr {
-  ble-color-face2sgr region_target
+function ble-highlight-layer:region/mark:vi_csurround/get-face {
+  face=region_target
 }
 
 function ble/widget/vim-surround.sh/nmap/csurround {

@@ -505,9 +505,9 @@ function ble-highlight-layer:region/update {
     fi
 
     # sgr の取得
-    if ! ble/function#try ble-highlight-layer:region/mark:"$_ble_edit_mark_active"/get-sgr; then
-      ble-color-face2sgr region
-    fi
+    local face=region
+    ble/function#try ble-highlight-layer:region/mark:"$_ble_edit_mark_active"/get-face
+    ble-color-face2sgr "$face"
   fi
   local rlen=${#selection[@]}
 
@@ -600,14 +600,23 @@ function ble-highlight-layer:region/getg {
     local index=$1 olen=${#_ble_highlight_layer_region_osel[@]}
     ((olen)) || return
     ((_ble_highlight_layer_region_osel[0]<=index&&index<_ble_highlight_layer_region_osel[olen-1])) || return
+
+    local flag_region=
     if ((olen>=4)); then
+      # 複数の region に分かれている時は二分法
       local l=0 u=$((olen-1)) m
       while ((l+1<u)); do
         ((_ble_highlight_layer_region_osel[m=(l+u)/2]<=index?(l=m):(u=m)))
       done
-      ((l%2==0)) && ble-color-face2g region
+      ((l%2==0)) && flag_region=1
     else
-      ble-color-face2g region
+      flag_region=1
+    fi
+
+    if [[ $flag_region ]]; then
+      local face=region
+      ble/function#try ble-highlight-layer:region/mark:"$_ble_edit_mark_active"/get-face
+      ble-color-face2g "$face"
     fi
   fi
 }
