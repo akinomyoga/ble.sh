@@ -3540,6 +3540,7 @@ function ble-edit/isearch/.push-isearch-array {
 
   local oind="$_ble_edit_history_ind"
   local obeg="$_ble_edit_ind" oend="$_ble_edit_mark" tmp
+  [[ $_ble_edit_mark_active ]] || oend=$obeg
   ((obeg<=oend||(tmp=obeg,obeg=oend,oend=tmp)))
   local oneedle="$_ble_edit_isearch_str"
   local ohash="$obeg:$oend:$oneedle"
