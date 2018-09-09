@@ -87,7 +87,7 @@ fi
 ...
 ```
 
-**Vim mode***
+**Vim mode**
 For the vi/vim mode, check [the Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
 **CJK Width**
@@ -128,7 +128,7 @@ bleopt edit_abell=
 
 **Highlight Colors**
 
-The colors and attributes used in the syntax highlighting are controled by `ble-color-setface` function. The following code reproduces the default configuration:
+The colors and attributes used in the syntax highlighting are controlled by `ble-color-setface` function. The following code reproduces the default configuration:
 ```bash
 ble-color-setface region                   bg=60,fg=white
 ble-color-setface region_target            bg=153,fg=black

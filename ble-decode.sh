@@ -1524,7 +1524,7 @@ function ble-bind {
               command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
             ('@') ;; # 直接実行
             (*)
-              echo "error: unknowon combination of flags \`-$flags'." 1>&2
+              echo "error: unknown combination of flags \`-$flags'." 1>&2
               return 1 ;;
             esac
 
