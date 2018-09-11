@@ -5447,6 +5447,24 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line history'
   ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line history'
 }
+function ble-decode/keymap:safe/bind-complete {
+  ble-decode/keymap:safe/.bind 'C-i'                 'complete'
+  ble-decode/keymap:safe/.bind 'TAB'                 'complete'
+  ble-decode/keymap:safe/.bind 'M-?'                 'complete show_menu'
+  ble-decode/keymap:safe/.bind 'C-TAB'               'menu-complete'
+  ble-decode/keymap:safe/.bind 'auto_complete_enter' 'auto-complete-enter'
+
+  ble-decode/keymap:safe/.bind 'M-/'   'complete context=filename'
+  ble-decode/keymap:safe/.bind 'M-~'   'complete context=username'
+  ble-decode/keymap:safe/.bind 'M-$'   'complete context=variable'
+  ble-decode/keymap:safe/.bind 'M-@'   'complete context=hostname'
+  ble-decode/keymap:safe/.bind 'M-!'   'complete context=command'
+  ble-decode/keymap:safe/.bind 'C-x /' 'complete show_menu:context=filename'
+  ble-decode/keymap:safe/.bind 'C-x ~' 'complete show_menu:context=username'
+  ble-decode/keymap:safe/.bind 'C-x $' 'complete show_menu:context=variable'
+  ble-decode/keymap:safe/.bind 'C-x @' 'complete show_menu:context=hostname'
+  ble-decode/keymap:safe/.bind 'C-x !' 'complete show_menu:context=command'
+}
 
 function ble/widget/safe/__attach__ {
   ble-edit/info/set-default text ''
@@ -5456,6 +5474,7 @@ function ble-decode/keymap:safe/define {
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
+  ble-decode/keymap:safe/bind-complete
 
   ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
 
@@ -5473,10 +5492,7 @@ function ble-decode/keymap:safe/define {
 
   ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i'     complete
-  ble-bind -f  'TAB'     complete
-  ble-bind -f  'C-TAB'   menu-complete
-  ble-bind -f  'auto_complete_enter' auto-complete-enter
+
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
   ble-bind -cf 'C-z'     fg
@@ -5511,6 +5527,7 @@ function ble-decode/keymap:read/define {
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
+  # ble-decode/keymap:safe/bind-complete
 
   ble-bind -f 'C-c' read/cancel
   ble-bind -f 'C-\' read/cancel
@@ -5523,10 +5540,6 @@ function ble-decode/keymap:read/define {
   # ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'C-l'     redraw-line
   ble-bind -f  'M-l'     redraw-line
-  # ble-bind -f 'C-i' complete
-  # ble-bind -f 'TAB' complete
-  # ble-bind -f 'C-TAB' menu-complete
-  # ble-bind -f 'auto_complete_enter' auto-complete-enter
   ble-bind -f  'C-x C-v' display-shell-version
 
   # command-history

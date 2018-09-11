@@ -4101,7 +4101,7 @@ function ble-syntax/completion-context/.add {
   local source=$1
   local comp1=$2
   ble-assert '[[ $source && comp1 -ge 0 ]]'
-  contexts[${#contexts[*]}]="$source $comp1"
+  sources[${#sources[*]}]="$source $comp1"
 }
 
 function ble-syntax/completion-context/.check/parameter-expansion {
@@ -4146,7 +4146,7 @@ function ble-syntax/completion-context/.check-prefix/ctx:inside-command {
 ##   @param[in] source
 _ble_syntax_bash_complete_check_prefix[CTX_ARGI]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_ARGQ]='inside-argument argument'
-_ble_syntax_bash_complete_check_prefix[CTX_FARGI1]='inside-argument variable'
+_ble_syntax_bash_complete_check_prefix[CTX_FARGI1]='inside-argument variable:w'
 _ble_syntax_bash_complete_check_prefix[CTX_FARGI3]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_FARGQ3]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CARGI1]='inside-argument argument'
@@ -4259,8 +4259,8 @@ function ble-syntax/completion-context/.check-prefix/ctx:next-compound {
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXE]="next-identifier wordlist:-r:'fi:done:esac:then:elif:else:do'"
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXD0]="next-identifier wordlist:-r:';:{:do'"
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXD]="next-identifier wordlist:-r:'{:do'"
-_ble_syntax_bash_complete_check_prefix[CTX_FARGX1]="next-identifier variable" # CTX_FARGX1 → (( でなければ 変数名
-_ble_syntax_bash_complete_check_prefix[CTX_SARGX1]="next-identifier variable"
+_ble_syntax_bash_complete_check_prefix[CTX_FARGX1]="next-identifier variable:w" # CTX_FARGX1 → (( でなければ 変数名
+_ble_syntax_bash_complete_check_prefix[CTX_SARGX1]="next-identifier variable:w"
 _ble_syntax_bash_complete_check_prefix[CTX_CARGX2]="next-identifier wordlist:-r:'in'"
 _ble_syntax_bash_complete_check_prefix[CTX_CARGI2]="next-identifier wordlist:-r:'in'"
 _ble_syntax_bash_complete_check_prefix[CTX_FARGX2]="next-identifier wordlist:-r:'in:do'"
@@ -4405,7 +4405,7 @@ function ble-syntax/completion-context/.check-prefix/ctx:expr {
   local tail=${text:istat:index-istat} rex='[a-zA-Z_]+$'
   if [[ $tail =~ $rex ]]; then
     local p=$((index-${#BASH_REMATCH}))
-    ble-syntax/completion-context/.add variable "$p"
+    ble-syntax/completion-context/.add variable:a "$p"
     return
   elif [[ $tail == ']'* ]]; then
     local inest=... ntype
@@ -4480,7 +4480,7 @@ function ble-syntax/completion-context/.search-last-istat {
 ##   @param[in,opt] from
 ##   @var[in] text
 ##   @var[in] index
-##   @var[out] contexts
+##   @var[out] sources
 function ble-syntax/completion-context/.check-prefix {
   local rex_param='^[a-zA-Z_][a-zA-Z_0-9]*$'
   local from=${1:-$((index-1))}
@@ -4503,9 +4503,9 @@ function ble-syntax/completion-context/.check-prefix {
 ##   現在地点を開始点とする補完の可能性を列挙します
 ##   @var[in]  text
 ##   @var[in]  index
-##   @var[out] contexts
+##   @var[out] sources
 function ble-syntax/completion-context/.check-here {
-  ((${#contexts[*]})) && return
+  ((${#sources[*]})) && return
   local -a stat
   ble/string#split-words stat "${_ble_syntax_stat[index]}"
   if [[ ${stat[0]} ]]; then
@@ -4529,7 +4529,7 @@ function ble-syntax/completion-context/.check-here {
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
       ble-syntax/completion-context/.add argument "$index"
     elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
-      ble-syntax/completion-context/.add variable "$index"
+      ble-syntax/completion-context/.add variable:w "$index"
     elif ((ctx==CTX_CARGX2)); then
       ble-syntax/completion-context/.add wordlist:-r:'in' "$index"
     elif ((ctx==CTX_FARGX2)); then
@@ -4547,10 +4547,10 @@ function ble-syntax/completion-context/.check-here {
 }
 
 ## 関数 ble-syntax/completion-context/generate
-##   @var[out] contexts[]
+##   @var[out] sources[]
 function ble-syntax/completion-context/generate {
   local text=$1 index=$2
-  contexts=()
+  sources=()
   ((index<0&&(index=0)))
 
   ble-syntax/completion-context/.check-prefix

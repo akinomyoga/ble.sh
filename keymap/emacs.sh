@@ -138,6 +138,7 @@ function ble-decode/keymap:emacs/define {
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
+  ble-decode/keymap:safe/bind-complete
 
   # charwise operations
   ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
@@ -148,7 +149,7 @@ function ble-decode/keymap:emacs/define {
 
   #----------------------------------------------------------------------------
 
-  ble-bind -f __attach__         safe/__attach__
+  ble-bind -f __attach__        safe/__attach__
   ble-bind -f __before_widget__ emacs/__before_widget__
   ble-bind -f __after_widget__  emacs/__after_widget__
 
@@ -163,10 +164,6 @@ function ble-decode/keymap:emacs/define {
   # shell functions
   ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i'     complete
-  ble-bind -f  'TAB'     complete
-  ble-bind -f  'C-TAB'   menu-complete
-  ble-bind -f  'auto_complete_enter' auto-complete-enter
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
   ble-bind -cf 'C-z'     fg

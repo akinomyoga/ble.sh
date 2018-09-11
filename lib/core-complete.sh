@@ -145,7 +145,7 @@ function ble-complete/action/util/complete.close-quotation {
 
 #------------------------------------------------------------------------------
 
-# action/plain
+# action:plain
 
 function ble-complete/action:plain/initialize {
   if [[ $CAND == "$COMPV"* ]]; then
@@ -195,7 +195,7 @@ function ble-complete/action:plain/initialize {
 }
 function ble-complete/action:plain/complete { :; }
 
-# action/word
+# action:word
 
 function ble-complete/action:word/initialize {
   ble-complete/action:plain/initialize
@@ -212,7 +212,7 @@ function ble-complete/action:literal-word/complete { ble-complete/action:word/co
 function ble-complete/action:substr/initialize { ble-complete/action:word/initialize; }
 function ble-complete/action:substr/complete { :; }
 
-# action/file
+# action:file
 
 function ble-complete/action:file/initialize {
   ble-complete/action:plain/initialize
@@ -250,7 +250,7 @@ function ble-complete/action:file/getg {
   fi
 }
 
-# action/argument
+# action:progcomp
 
 function ble-complete/action:progcomp/initialize {
   if [[ $DATA == *:filenames:* ]]; then
@@ -280,7 +280,7 @@ function ble-complete/action:progcomp/getg {
   fi
 }
 
-# action/command
+# action:command
 
 function ble-complete/action:command/initialize {
   ble-complete/action:plain/initialize
@@ -321,7 +321,7 @@ function ble-complete/action:command/getg {
   fi
 }
 
-# action/variable
+# action:variable
 
 function ble-complete/action:variable/initialize { ble-complete/action:plain/initialize; }
 function ble-complete/action:variable/complete {
@@ -332,6 +332,8 @@ function ble-complete/action:variable/complete {
   (braced)
     # ${var 等に於いて } を挿入
     ble-complete/action/util/complete.addtail '}' ;;
+  (word)       ble-complete/action:word/complete ;;
+  (arithmetic) ;; # do nothing
   esac
 }
 function ble-complete/action:variable/getg {
@@ -382,12 +384,12 @@ function ble-complete/cand/unpack {
 
 ## 定義されている source
 ##
-##   source/wordlist
-##   source/command
-##   source/file
-##   source/dir
-##   source/argument
-##   source/variable
+##   source:wordlist
+##   source:command
+##   source:file
+##   source:dir
+##   source:argument
+##   source:variable
 ##
 ## source の実装
 ##
@@ -401,7 +403,7 @@ function ble-complete/cand/unpack {
 ##     ble-complete/cand/yield で参照される一時変数。
 ##
 
-# source/wordlist
+# source:wordlist
 
 function ble-complete/source:wordlist {
   [[ $comps_flags == *v* ]] || return 1
@@ -437,7 +439,7 @@ function ble-complete/source:wordlist {
   done
 }
 
-# source/command
+# source:command
 
 function ble-complete/source:command/.contract-by-slashes {
   local slashes=${COMPV//[!'/']}
@@ -555,7 +557,7 @@ function ble-complete/source:command {
   done
 }
 
-# source/file
+# source:file
 
 function ble-complete/util/eval-pathname-expansion {
   local pattern=$1
@@ -650,7 +652,7 @@ function ble-complete/source:file {
   done
 }
 
-# source/dir
+# source:dir
 
 function ble-complete/source:dir {
   [[ $comps_flags == *v* ]] || return 1
@@ -676,7 +678,7 @@ function ble-complete/source:dir {
   done
 }
 
-# source/argument (complete -p)
+# source:argument (complete -p)
 
 ## 関数 ble-complete/source:argument/.progcomp-helper-vars
 ##   プログラム補完で提供される変数を構築します。
@@ -1004,23 +1006,22 @@ function ble-complete/source:argument {
   fi
 }
 
-# source/variable
+# source:variable
+# source:user
+# source:hostname
 
-function ble-complete/source:variable {
+function ble-complete/source/compgen {
   [[ $comps_flags == *v* ]] || return 1
   [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
 
-  local action=variable
-  local data=
-  case $1 in
-  ('=') data=assignment ;;
-  ('b') data=braced ;;
-  esac
+  local compgen_action=$1
+  local action=$2
+  local data=$3
 
   local q="'" Q="'\''"
   local compv_quoted="'${COMPV//$q/$Q}'"
   local cand arr
-  ble/util/assign-array arr 'compgen -v -- "$compv_quoted"'
+  ble/util/assign-array arr 'compgen -A "$compgen_action" -- "$compv_quoted"'
 
   # 既に完全一致している場合は、より前の起点から補完させるために省略
   [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return
@@ -1032,7 +1033,107 @@ function ble-complete/source:variable {
   done
 }
 
-#------------------------------------------------------------------------------
+function ble-complete/source:variable {
+  local data=
+  case $1 in
+  ('=') data=assignment ;;
+  ('b') data=braced ;;
+  ('a') data=arithmetic ;;
+  ('w'|*) data=word ;;
+  esac
+  ble-complete/source/compgen variable variable "$data"
+}
+function ble-complete/source:user {
+  ble-complete/source/compgen user word
+}
+function ble-complete/source:hostname {
+  ble-complete/source/compgen hostname word
+}
+
+#==============================================================================
+# context
+
+## 関数  ble-complete/complete/determine-context-from-opts opts
+##   @param[in] opts
+##   @var[out] context
+function ble-complete/complete/determine-context-from-opts {
+  local opts=$1
+  context=syntax
+  if local rex=':context=([^:]+):'; [[ :$opts: =~ $rex ]]; then
+    local rematch1=${BASH_REMATCH[1]}
+    if ble/is-function ble-complete/context:"$rematch1"/generate-sources; then
+      context=$rematch1
+    else
+      echo "ble/widget/complete: unknown context '$rematch1'" >&2
+    fi
+  fi
+}
+## 関数 ble-complete/context/filter-prefix-sources
+##   @var[in] comp_text comp_index
+##   @var[in,out] sources
+function ble-complete/context/filter-prefix-sources {
+  # 現在位置より前に始まる補完文脈だけを選択する
+  local -a filtered_sources=()
+  local src asrc
+  for src in "${sources[@]}"; do
+    ble/string#split-words asrc "$src"
+    local comp1=${asrc[1]}
+    ((comp1<comp_index)) &&
+      ble/array#push filtered_sources "$src"
+  done
+  sources=("${filtered_sources[@]}")
+  ((${#sources[@]}))
+}
+## 関数 ble-complete/context/overwrite-sources source
+##   @param[in] source
+##   @var[in] comp_text comp_index
+##   @var[in,out] sources
+function ble-complete/context/overwrite-sources {
+  local source_name=$1
+  local -a new_sources=()
+  local src asrc mark
+  for src in "${sources[@]}"; do
+    ble/string#split-words asrc "$src"
+    [[ ${mark[asrc[1]]} ]] && continue
+    ble/array#push new_sources "$source_name ${asrc[1]}"
+    mark[asrc[1]]=1
+  done
+  ((${#new_sources[@]})) ||
+    ble/array#push new_sources "$source_name $comp_index"
+  sources=("${new_sources[@]}")
+}
+
+## 関数 ble-complete/context:syntax/generate-sources comp_text comp_index
+##   @var[in] comp_text comp_index
+##   @var[out] sources
+function ble-complete/context:syntax/generate-sources {
+  ble-syntax/import
+  ble-edit/content/update-syntax
+  ble-syntax/completion-context/generate "$comp_text" "$comp_index"
+  ((${#sources[@]}))
+}
+function ble-complete/context:filename/generate-sources {
+  ble-complete/context:syntax/generate-sources || return
+  ble-complete/context/overwrite-sources file
+}
+function ble-complete/context:command/generate-sources {
+  ble-complete/context:syntax/generate-sources || return
+  ble-complete/context/overwrite-sources command
+}
+function ble-complete/context:variable/generate-sources {
+  ble-complete/context:syntax/generate-sources || return
+  ble-complete/context/overwrite-sources variable
+}
+function ble-complete/context:username/generate-sources {
+  ble-complete/context:syntax/generate-sources || return
+  ble-complete/context/overwrite-sources user
+}
+function ble-complete/context:hostname/generate-sources {
+  ble-complete/context:syntax/generate-sources || return
+  ble-complete/context/overwrite-sources hostname
+}
+
+#==============================================================================
 # 候補生成
 
 ## @var[out] cand_count
@@ -1096,12 +1197,12 @@ function ble-complete/.fignore/filter {
   done
 }
 
-## 関数 ble-complete/candidates/.pick-nearest-context
+## 関数 ble-complete/candidates/.pick-nearest-sources
 ##   一番開始点に近い補完源の一覧を求めます。
 ##
 ##   @var[in] comp_index
-##   @arr[in,out] remaining_contexts
-##   @arr[out]    nearest_contexts
+##   @arr[in,out] remaining_sources
+##   @arr[out]    nearest_sources
 ##   @var[out] COMP1 COMP2
 ##     補完範囲
 ##   @var[out] COMPS
@@ -1109,25 +1210,25 @@ function ble-complete/.fignore/filter {
 ##   @var[out] COMPV
 ##     補完範囲のコマンド文字列が意味する実際の文字列
 ##   @var[out] comps_flags comps_fixed
-function ble-complete/candidates/.pick-nearest-context {
+function ble-complete/candidates/.pick-nearest-sources {
   COMP1= COMP2=$comp_index
-  nearest_contexts=()
+  nearest_sources=()
 
-  local -a unused_contexts=()
-  local ctx actx
-  for ctx in "${remaining_contexts[@]}"; do
-    ble/string#split-words actx "$ctx"
-    if ((COMP1<actx[1])); then
-      COMP1=${actx[1]}
-      ble/array#push unused_contexts "${nearest_contexts[@]}"
-      nearest_contexts=("$ctx")
-    elif ((COMP1==actx[1])); then
-      ble/array#push nearest_contexts "$ctx"
+  local -a unused_sources=()
+  local src asrc
+  for src in "${remaining_sources[@]}"; do
+    ble/string#split-words asrc "$src"
+    if ((COMP1<asrc[1])); then
+      COMP1=${asrc[1]}
+      ble/array#push unused_sources "${nearest_sources[@]}"
+      nearest_sources=("$src")
+    elif ((COMP1==asrc[1])); then
+      ble/array#push nearest_sources "$src"
     else
-      ble/array#push unused_contexts "$ctx"
+      ble/array#push unused_sources "$src"
     fi
   done
-  remaining_contexts=("${unused_contexts[@]}")
+  remaining_sources=("${unused_sources[@]}")
 
   COMPS=${comp_text:COMP1:COMP2-COMP1}
   comps_flags=
@@ -1195,34 +1296,6 @@ function ble-complete/candidates/.filter-word-by-prefix {
   cand_pack=("${data[@]}")
 }
 
-## 関数 ble-complete/candidates/get-contexts comp_text comp_index
-## 関数 ble-complete/candidates/get-prefix-contexts comp_text comp_index
-##   @param[in] comp_text
-##   @param[in] comp_index
-##   @var[out] contexts
-function ble-complete/candidates/get-contexts {
-  local comp_text=$1 comp_index=$2
-  ble-syntax/import
-  ble-edit/content/update-syntax
-  ble-syntax/completion-context/generate "$comp_text" "$comp_index"
-  ((${#contexts[@]}))
-}
-function ble-complete/candidates/get-prefix-contexts {
-  local comp_text=$1 comp_index=$2
-  ble-complete/candidates/get-contexts "$@" || return
-
-  # 現在位置より前に始まる補完文脈だけを選択する
-  local -a filtered_contexts=()
-  local ctx actx
-  for ctx in "${contexts[@]}"; do
-    ble/string#split-words actx "$ctx"
-    local comp1=${actx[1]}
-    ((comp1<comp_index)) &&
-      ble/array#push filtered_contexts "$ctx"
-  done
-  contexts=("${filtered_contexts[@]}")
-  ((${#contexts[@]}))
-}
 function ble-complete/candidates/.initialize-rex_raw_paramx {
   local element=$_ble_syntax_bash_simple_rex_element
   local open_dquot=$_ble_syntax_bash_simple_rex_open_dquot
@@ -1231,7 +1304,7 @@ function ble-complete/candidates/.initialize-rex_raw_paramx {
 
 ## 関数 ble-complete/candidates/generate
 ##   @var[in] comp_text comp_index
-##   @arr[in] contexts
+##   @arr[in] sources
 ##   @var[out] COMP1 COMP2 COMPS COMPV
 ##   @var[out] comp_type comps_flags comps_fixed
 ##   @var[out] cand_*
@@ -1255,18 +1328,18 @@ function ble-complete/candidates/generate {
   cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
   cand_pack=() # 候補の詳細データ
 
-  local -a remaining_contexts nearest_contexts
-  remaining_contexts=("${contexts[@]}")
-  while ((${#remaining_contexts[@]})); do
+  local -a remaining_sources nearest_sources
+  remaining_sources=("${sources[@]}")
+  while ((${#remaining_sources[@]})); do
     # 次の開始点が近くにある候補源たち
-    nearest_contexts=()
-    ble-complete/candidates/.pick-nearest-context
+    nearest_sources=()
+    ble-complete/candidates/.pick-nearest-sources
 
     # 候補生成
-    local ctx actx source
-    for ctx in "${nearest_contexts[@]}"; do
-      ble/string#split-words actx "$ctx"
-      ble/string#split source : "${actx[0]}"
+    local src asrc source
+    for src in "${nearest_sources[@]}"; do
+      ble/string#split-words asrc "$src"
+      ble/string#split source : "${asrc[0]}"
 
       local COMP_PREFIX= # 既定値 (yield-candidate で参照)
       ble-complete/source:"${source[@]}"
@@ -1280,14 +1353,16 @@ function ble-complete/candidates/generate {
 
   if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
     comp_type=${comp_type}a
-    remaining_contexts=("${contexts[@]}")
-    while ((${#remaining_contexts[@]})); do
-      nearest_contexts=()
-      ble-complete/candidates/.pick-nearest-context
+    remaining_sources=("${sources[@]}")
 
-      for ctx in "${nearest_contexts[@]}"; do
-        ble/string#split-words actx "$ctx"
-        ble/string#split source : "${actx[0]}"
+    local src asrc source
+    while ((${#remaining_sources[@]})); do
+      nearest_sources=()
+      ble-complete/candidates/.pick-nearest-sources
+
+      for src in "${nearest_sources[@]}"; do
+        ble/string#split-words asrc "$src"
+        ble/string#split source : "${asrc[0]}"
 
         local COMP_PREFIX= # 既定値 (yield-candidate で参照)
         ble-complete/source:"${source[@]}"
@@ -1719,17 +1794,22 @@ function ble/widget/complete {
   _ble_complete_state=start
 
   if [[ :$opts: == *:enter_menu:* ]]; then
-    [[ $_ble_complete_menu_active ]] &&
+    [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
       ble-complete/menu-complete/enter && return
   elif [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active != auto ]]; then
-    [[ $_ble_complete_menu_active && $_ble_edit_str == "$_ble_complete_menu_str" ]] &&
+    [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
+      [[ $_ble_edit_str == "$_ble_complete_menu_str" ]] &&
       ble-complete/menu-complete/enter && return
     [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
   fi
 
+  # 文脈の決定
+  local context; ble-complete/complete/determine-context-from-opts "$opts"
+
+  # 補完源の生成
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
-  local contexts
-  ble-complete/candidates/get-contexts "$comp_text" "$comp_index" || return 1
+  local sources
+  ble-complete/context:"$context"/generate-sources "$comp_text" "$comp_index" || return 1
 
   local COMP1 COMP2 COMPS COMPV comp_type=
   local comps_flags comps_fixed
@@ -1815,7 +1895,8 @@ function ble/widget/complete-insert {
 }
 
 function ble/widget/menu-complete {
-  ble/widget/complete enter_menu
+  local opts=$1
+  ble/widget/complete enter_menu:$opts
 }
 
 #------------------------------------------------------------------------------
@@ -2246,7 +2327,7 @@ function ble-complete/auto-complete/.setup-auto-complete-mode {
   ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
 }
 
-## 関数 ble-complete/auto-complete/.check-context opts
+## 関数 ble-complete/auto-complete/.check-history opts
 ##   @param[in] opts
 ##   @var[in] comp_type comp_text comp_index
 function ble-complete/auto-complete/.check-history {
@@ -2275,8 +2356,9 @@ function ble-complete/auto-complete/.check-history {
 ## 関数 ble-complete/auto-complete/.check-context
 ##   @var[in] comp_type comp_text comp_index
 function ble-complete/auto-complete/.check-context {
-  local contexts
-  ble-complete/candidates/get-prefix-contexts "$comp_text" "$comp_index" || return 1
+  local sources
+  ble-complete/context:syntax/generate-sources "$comp_text" "$comp_index" &&
+    ble-complete/context/filter-prefix-sources || return 1
 
   # ble-complete/candidates/generate 設定
   local bleopt_complete_contract_function_names=

@@ -249,9 +249,12 @@ function ble/widget/vi_imap/__before_widget__ {
   fi
 }
 
+#------------------------------------------------------------------------------
+# vi_imap/complete
+
 function ble/widget/vi_imap/complete {
   ble/keymap:vi/imap-repeat/pop
-  ble/widget/complete
+  ble/widget/complete "$@"
 }
 function ble/keymap:vi/complete/insert.hook {
   [[ $_ble_decode_keymap == vi_imap ||
@@ -263,6 +266,19 @@ function ble/keymap:vi/complete/insert.hook {
   ble/keymap:vi/imap-repeat/push
 }
 ble/array#push _ble_complete_insert_hook ble/keymap:vi/complete/insert.hook
+
+function ble-decode/keymap:vi_imap/bind-complete {
+  ble-bind -f  'C-i'                 'vi_imap/complete'
+  ble-bind -f  'TAB'                 'vi_imap/complete'
+  ble-bind -f  'C-TAB'               'menu-complete'
+  ble-bind -f  'auto_complete_enter' 'auto-complete-enter'
+
+  ble-decode/keymap:safe/.bind 'C-x /' 'menu-complete context=filename'
+  ble-decode/keymap:safe/.bind 'C-x ~' 'menu-complete context=username'
+  ble-decode/keymap:safe/.bind 'C-x $' 'menu-complete context=variable'
+  ble-decode/keymap:safe/.bind 'C-x @' 'menu-complete context=hostname'
+  ble-decode/keymap:safe/.bind 'C-x !' 'menu-complete context=command'
+}
 
 #------------------------------------------------------------------------------
 # modes
@@ -6785,6 +6801,9 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f 'SP'        'magic-space'
   # ble-bind -f 'C-RET'     'history-expand-line'
 
+  # complete
+  ble-decode/keymap:vi_imap/bind-complete
+
   #----------------------------------------------------------------------------
   # shell functions (from keymap emacs-standard)
 
@@ -6799,10 +6818,6 @@ function ble-decode/keymap:vi_imap/define {
   # shell functions
   ble-bind -f  'C-l'     clear-screen
   # ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i'     vi_imap/complete
-  ble-bind -f  'TAB'     vi_imap/complete
-  ble-bind -f  'C-TAB'   menu-complete
-  ble-bind -f  'auto_complete_enter' auto-complete-enter
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
   ble-bind -cf 'C-z'     fg
@@ -6935,6 +6950,7 @@ function ble-decode/keymap:vi_cmap/define {
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
+  ble-decode/keymap:safe/bind-complete
 
   #----------------------------------------------------------------------------
 
@@ -6955,10 +6971,6 @@ function ble-decode/keymap:vi_cmap/define {
   ble-bind -f  'M-l'     redraw-line
   ble-bind -f  'C-x C-v' display-shell-version
 
-  ble-bind -f 'C-i' complete
-  ble-bind -f 'TAB' complete
-  ble-bind -f 'C-TAB' menu-complete
-  ble-bind -f 'auto_complete_enter' auto-complete-enter
 
   # command-history
   # ble-bind -f 'C-RET'   history-expand-line
