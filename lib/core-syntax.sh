@@ -2153,7 +2153,7 @@ function ble-syntax:bash/check-tilde-expansion {
         # CTX_BRAX は単語先頭には来ないので、
         # ここに来るのは [[ $tail == ':~'* ]] だった時のみのはず。
         # このとき、各括弧式は : の直後でキャンセルする。
-        ble-assert 'unset tail; [[ $tail == ":~"* ]]'
+        ble-assert 'ble/util/unlocal tail; [[ $tail == ":~"* ]]'
         ble-syntax/parse/nest-pop
       fi
     fi

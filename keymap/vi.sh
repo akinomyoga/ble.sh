@@ -1153,7 +1153,7 @@ function ble/keymap:vi/call-operator {
   ble/keymap:vi/mark/start-edit-area
   local _ble_keymap_vi_mark_suppress_edit=1
   ble/keymap:vi/operator:"$@"; local ext=$?
-  unset _ble_keymap_vi_mark_suppress_edit
+  ble/util/unlocal _ble_keymap_vi_mark_suppress_edit
   ble/keymap:vi/mark/end-edit-area
   if ((ext==0)); then
     if ble/util/isfunction ble/keymap:vi/operator:"$1".record; then
@@ -2476,7 +2476,7 @@ function ble/keymap:vi/repeat/invoke {
       ble/array#push _ble_keymap_vi_irepeat '0:ble/widget/dummy' # Note: normal-mode が自分自身を pop しようとするので。
       ble/widget/vi_imap/normal-mode
     fi
-    unset _ble_keymap_vi_single_command{,_overwrite}
+    ble/util/unlocal _ble_keymap_vi_single_command{,_overwrite}
   else
     ble/widget/vi-command/bell
     return 1
@@ -3425,7 +3425,7 @@ function ble/widget/vi_nmap/replace-char.impl {
     local _ble_edit_overwrite_mode=$overwrite_mode
     local ble_widget_self_insert_opts=nolineext
     ble/widget/self-insert
-    unset KEYS
+    ble/util/unlocal KEYS
   }
   ble/keymap:vi/mark/end-edit-area
   ble/keymap:vi/repeat/record
@@ -6313,7 +6313,7 @@ function ble/widget/vi_xmap/paste.impl {
       _ble_edit_ind=$index
     fi
   }
-  unset _ble_keymap_vi_mark_suppress_edit
+  ble/util/unlocal _ble_keymap_vi_mark_suppress_edit
   ble/keymap:vi/mark/end-edit-area
   ble/keymap:vi/repeat/record
   return "$ext"

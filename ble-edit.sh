@@ -4462,11 +4462,11 @@ function ble-edit/exec:exec {
   # 次の呼出の際にここが実行されるのでまあ許容する。
   if [[ $_ble_edit_exec_replacedDeclare ]]; then
     _ble_edit_exec_replacedDeclare=
-    unset declare
+    unset -f declare
   fi
   if [[ $_ble_edit_exec_replacedTypeset ]]; then
     _ble_edit_exec_replacedTypeset=
-    unset typeset
+    unset -f typeset
   fi
 }
 
