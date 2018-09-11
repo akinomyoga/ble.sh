@@ -1452,8 +1452,9 @@ function ble-syntax:bash/check-history-expansion/.initialize {
   _ble_syntax_bash_histexpand_RexWord='('$rex_wordsA'|'$rex_wordsB')?'
 
   # ※本当は /s(.)([^\]|\\.)*?\1([^\]|\\.)*?\1/ 等としたいが *? は ERE にない。
-  #   正しく対応しようと思ったら一回の正規表現でやろうとせずに繰り返し適用する?
-  local rex_modifier=':[htrepqx&gG]|:s(/([^\/]|\\.)*){0,2}(/|$)'
+  #   仕方がないので ble-syntax:bash/check-history-expansion/.check-modifiers
+  #   にて繰り返し正規表現を適用して s?..?..? を読み取る。
+  local rex_modifier=':[htrepqx]|:[gGa]?&|:[gGa]?s(/([^\/]|\\.)*){0,2}(/|$)'
   _ble_syntax_bash_histexpand_RexMods='('$rex_modifier')*'
 
   _ble_syntax_bash_histexpand_RexQuicksubDef='\^([^^\]|\\.)*\^([^^\]|\\.)*\^'
@@ -1489,6 +1490,33 @@ function ble-syntax:bash/check-history-expansion/.initialize-quicksub {
     rex_quicksub=${rex_quicksub//@C/$histc2}
   fi
 }
+function ble-syntax:bash/check-history-expansion/.check-modifiers {
+  # check simple modifiers
+  [[ ${text:i} =~ $_ble_syntax_bash_histexpand_RexMods ]] &&
+    ((i+=${#BASH_REMATCH}))
+
+  # check :s?..?..? form modifier
+  if local rex='^:[gGa]?s(.)'; [[ ${text:i} =~ $rex ]]; then
+    local del=${BASH_REMATCH[1]}
+    local A="[$del]" B="[^$del]"
+    [[ $del == '^' || $del == ']' ]] && A='\'$del
+    [[ $del != '\' ]] && B=$B'|\\.'
+
+    local rex_substitute='^:[gGa]?s('$A'('$B')*){0,2}('$A'|$)'
+    if [[ ${text:i} =~ $rex_substitute ]]; then
+      ((i+=${#BASH_REMATCH}))
+      ble-syntax:bash/check-history-expansion/.check-modifiers
+      return
+    fi
+  fi
+
+  # ErrMsg 'unrecognized modifier'
+  if [[ ${text:i} == ':'[gGa]* ]]; then
+    ((_ble_syntax_attr[i+1]=ATTR_ERR,i+=2))
+  elif [[ ${text:i} == ':'* ]]; then
+    ((_ble_syntax_attr[i]=ATTR_ERR,i++))
+  fi
+}
 ## 関数 ble-syntax:bash/check-history-expansion
 ##   @var[in] i tail
 function ble-syntax:bash/check-history-expansion {
@@ -1521,13 +1549,7 @@ function ble-syntax:bash/check-history-expansion {
     [[ ${text:i} =~ $_ble_syntax_bash_histexpand_RexWord ]] &&
       ((i+=${#BASH_REMATCH}))
 
-    # modifiers
-    [[ ${text:i} =~ $_ble_syntax_bash_histexpand_RexMods ]] &&
-      ((i+=${#BASH_REMATCH}))
-
-    # ErrMsg 'unrecognized modifier'
-    [[ ${text:i} == ':'* ]] &&
-      ((_ble_syntax_attr[i]=ATTR_ERR,i++))
+    ble-syntax:bash/check-history-expansion/.check-modifiers
     return 0
   elif ((i==0)) && [[ $histc2 && $tail == "$histc2"* ]]; then
     ((_ble_syntax_attr[i]=ATTR_HISTX))
@@ -1536,13 +1558,7 @@ function ble-syntax:bash/check-history-expansion {
     if [[ $tail =~ $rex_quicksub ]]; then
       ((i+=${#BASH_REMATCH}))
 
-      # modifiers
-      [[ ${text:i} =~ $_ble_syntax_bash_histexpand_RexMods ]] &&
-        ((i+=${#BASH_REMATCH}))
-
-      # ErrMsg 'unrecognized modifier'
-      [[ ${text:i} == ':'* ]] &&
-        ((_ble_syntax_attr[i]=ATTR_ERR,i++))
+      ble-syntax:bash/check-history-expansion/.check-modifiers
       return 0
     else
       # 末端まで
