@@ -4217,7 +4217,7 @@ function ble-syntax:bash/extract-command/.scan {
     ble-syntax/tree-enumerate-children \
       ble-syntax:bash/extract-command/.scan
     local has_word=$extract_has_word
-    unset extract_has_word
+    ble/util/unlocal extract_has_word
 
     if [[ $has_word && ! $extract_command_found ]]; then
       ble-syntax:bash/extract-command/.construct nested
