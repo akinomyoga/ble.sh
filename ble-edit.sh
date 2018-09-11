@@ -4683,9 +4683,28 @@ if ((_ble_bash>=30100)); then
     builtin history -p -- "$BASH_COMMAND"
   }
 else
-  # workaround for bash-3.0 (see memo.txt#D0233)
+  # Workaround for bash-3.0 bug (see memo.txt#D0233, #D0801)
   function ble/edit/hist_expanded/.core {
-    (builtin history -p -- "$BASH_COMMAND")
+    # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
+    #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
+    #   嘗てはサブシェルで評価していたが、そうすると置換指示子が記録されず
+    #   :& が正しく実行されないことになるのでこちらの実装に切り替える。
+    local _ble_util_read_stdout_tmp=$_ble_util_read_stdout_tmp.1
+    local line1= line2=
+    ble/util/assign line1 'HISTTIMEFORMAT= builtin history 1'
+    builtin history -p -- '' &>/dev/null
+    ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
+    if [[ $line1 != "$line2" ]]; then
+      local rex_head='^[[:space:]]*[0-9]+[[:space:]]*'
+      [[ $line1 =~ $rex_head ]] &&
+        line1=${line1:${#BASH_REMATCH}}
+
+      local tmp=$_ble_base_run/$$.ble_edit_history_add.txt
+      printf '%s\n' "$line1" "$line1" >| "$tmp"
+      builtin history -r "$tmp"
+    fi
+
+    builtin history -p -- "$BASH_COMMAND"
   }
 fi
 
