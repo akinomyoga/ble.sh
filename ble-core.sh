@@ -1322,6 +1322,7 @@ if ((_ble_bash>=40000)); then
   _ble_util_idle_sclock=0
   function ble/util/idle/.sleep {
     local msec=$1
+    ((msec<=0)) && return 0
     local integral=$((msec/1000)) fraction=00$((msec%1000))
     fraction=${fraction:${#fraction}-3}
     local sec=$integral.$fraction
