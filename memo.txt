@@ -761,21 +761,21 @@ tech
 2018-09-11
 
   * 止まってしまう問題。端末の問題なのか ble.sh の問題なのか切り分けが必要
+    と思ったが最新版では再現しない。何だったのだろうか。
 
   * base: --noattach を忘れた時に PS1 が元に戻る問題の対策
     これは元々使い方を誤っているのが問題なのだが、
     多少変な使い方をしても変なことが起こらないようにはしたい。
 
   * bash-3.0: 補完できない時に ble-complete/source/: No such file or directory  のメッセージが出る。
-
-  * bash-3.0: ble-detach した後で " が効かない
-    Bash 4.3 ではこの問題は発生していない。
-    代わりに bash 4.3 では ^L が効かなくなっている。
+    これはまた bash-3.0 配列のバグ回避に失敗している気がする。
 
   * bash-3.0: ble-detach 後に stty sane を実行しろというメッセージが出る事に関して
-    bash-4.3 では stty sane を実行しなくても特に問題は発生せず、
-    一方で bash-3.0 では stty sane がコマンドラインに入らない。
-    →そもそも READLINE_LINE は bash-4.0 からの機能なのでコマンドラインに入らないのは問題ない。
+
+    * ok: bash-3.0 では stty sane がコマンドラインに入らない。
+      →そもそも READLINE_LINE は bash-4.0 からの機能なのでコマンドラインに入らないのは問題ない。
+
+    一方で bash-4.3 では stty sane を実行しなくても特に問題は発生せず、
     しかし、前者に関しては謎である。見た感じ .check-detach で READLINE_LINE に
     stty sane を設定して、そのまま return 0 している。return 0 した時には、
     gexec/.end で bind/.tail を実行せずにそのまま終了する。
@@ -2526,7 +2526,7 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-03 (#D0766..#D0798 1842857)
+2018-09-03 (#D0766..#D0802 d49f862)
 
   補完: 新機能
   - complete: 自動補完において履歴からの検索に対応 `#D0766`, `#D0769` `#D0784` (fix)
@@ -2564,6 +2564,10 @@ tech
   - highlight: `region` レイヤーの着色範囲が改行を跨ぐ場合に既定の着色になるバグの修正 `#D0791`
   - isearch: 空の検索文字列による一致に `C-h` で戻った時に全体が選択されるバグの修正 `#D0794`
   - decode: `failglob` の時 `ble-bind -d` に失敗する問題の修正 `#D0795`
+  - edit: `command-help` のコマンド名抽出に失敗するバグの修正 (reported by cmplstofB) `#D0799`
+  - syntax: 履歴展開の置換指示子の解析が正確でない問題の修正 (report by cmplstofB) `#D0800`
+  - edit: Bash 3.0 で履歴展開 `:&` が使えない問題の修正 `#D0801`
+  - idle: 負の `sleep` を試みてエラーメッセージが出る問題の修正 `#D0802`
 
   他
   - Makefile: 依存ファイルを `.PHONY` target として出力 `#D0778`
@@ -3245,6 +3249,95 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-09-13
+
+  * bash-3.0: ble-detach した後で " が効かない [#D0803]
+    Bash 4.3 ではこの問題は発生していない。
+    代わりに bash 4.3 で試すと ^L が効かなくなっている。
+    Bash 3.0 でも ^L は効かない。
+
+    Bash 3.0 で bind -p してみると "\"" に対してはちゃんと bind できている気がする。
+    他に C-? が色々 self-insert になってしまっている。
+    ^A-^C ^E-^G ^K ^L ^N-^Q ^X ^Z ^\ ^] ^^ である。
+
+      "\C-a": self-insert
+        中略
+      "\C-^": self-insert
+
+    unbind が一体どうなっているか確認する必要がある。
+    調べたら unbind ではなくて $$.bind.save だった。
+
+    % * 中は完全に空である。何故か?
+    %
+    %   普通に起動して attach せずに
+    %   bind -sp | ble-decode-bind/.generate-source-to-unbind-default/.process を実行してみた所、
+    %   ちゃんと内容が出力されている。ということは bashrc の中で bind -sp すると何も出力されないという事か。
+    %   と思って再度実行してみるとちゃんと bind.save は有限のサイズになっている。
+    %   更に bind.save をソースしている途中でエラーになって、跡で確認すると bind.save が空になっている。
+    %   と思ったら単に ble-decode-detach で読み取ったものをクリアしているだけだった。
+
+    * bind.save を読み込んでいる時に出るエラーは何か。
+      ble-attach している状態で bind.save の中を確認する必要がある。
+
+    % * ok: 確認すると何と ^A-^^ の問題のキーは確かに bind '"\C-a": self-insert' 等となっている。
+    %   取り敢えず '"\C-a": self-insert' の原因だけ探る。改めて bind -sp してみる。
+    %   不思議な事に ble-decode-bind/.generate-source-to-unbind-default の中で実行した。
+    %   bind -sp は self-insert になっている。
+    %
+    %   --attach=prompt が悪いのかと思って --noattach に直したが同じである。
+    %
+    %   何と bashrc の中で bind -sp を評価したら "C-a": self-insert になっている…。
+    %   これは実は Bash 4.3 でも同じである。対策する必要がある。
+    %
+    %   更に調べてみると bashrc の中でも source ble.sh する前と後で
+    %   bind -sp の内容が変化するのであった。どうも調べていくと rcfile の前後で変わっている。
+    %   .blerc を見ると set -o vi をしていた。つまり ^A-^^ のキーは set -o vi
+    %   の時には元から bind されていないという事だろうか。その様だ。
+    %   従って、これは問題ない動作なのであった。
+
+    再び元に戻って $$.bind.save について調べる。
+
+    うーん。どうも bind -p で "\"": self-insert が有効になっている様に見えるのに実際は無効である。
+    試しに改めて bind '"\"": self-insert' を実行しても駄目だった。
+    また bind '"\x22": self-insert' や bind '"\042": self-insert' を実行しても駄目だった。
+    double quotation が stty で何か特殊文字になっているという事もない。
+
+    bash-3.0 --norc で起動して bind -r '"' して bind '"\"": self-insert' を実行した場合はちゃんと動く。
+    途中で bind -x '"\"": ...' して bind -r '"' しても大丈夫。
+
+    更に ble-detach してから ble-attach して " を入力して数秒すると SIGSEGV する。
+    もしかしてこれは既知の問題だったりするだろうか…。
+
+    やはりどの様にしたら再現するかについて調べる事にする。
+    これは純粋に bind の問題であろうという気がする。
+    なので取り敢えず bind と unbind について調べる。
+
+      ble-decode-bind.30022.UTF-8.bind -> 30022.bind
+      ble-decode-bind.30022.UTF-8.unbind -> 30022.unbind
+      $_ble_base_run/$$.bind.save -> 30022.restore
+
+    これを source して見たところ再現した。
+      source 30022.bind; source 30022.unbind; source 30022.restore
+    更に、unbind/restore だけでも再現する。
+      source 30022.unbind; source 30022.restore
+    restore だけでは再現しない。
+      source 30022.restore
+
+    unbind を少しずつ削ってみると怪しいものが見つかった。
+    他に可能性として関係がありそうな物も含めると、以下の二つ。
+
+      builtin bind -r '"\e"'
+      builtin bind -r '\"'
+
+    後者についてはエスケープがあっても問題ないのだろうか。
+    →実際に確かめてみるとエスケープがあっても期待の通りに束縛が削除される様だ。
+    前者についてはそもそも -r '\e' はあるのだろうか。
+    →確認してみた所 \e? はあるが \e がない。
+    bind.sh を確認した所、明らかなミスであった。直した。
+
+    ble-detach した後でも " がちゃんと入力できる様になった。
+    また ble-detach して ble-attach した後に "" を入力しても落ちなくなった。
+
 2018-09-12
 
   * "bash: read: 0.0-9: 無効なタイムアウト指定です" @ Cygwin [#D0802]
@@ -3277,38 +3370,38 @@ tech
     | 調べて見た限りでは履歴項目が減少しているという事はない。
     | 逆に history -r で読み取る事により履歴項目の数が矢鱈増えている。
     | 具体的にどのような状況で履歴項目が減少してどのような状況で履歴項目が登録されるのか調べる必要がある。
-    | 
+    |
     | 今試してみると問題なく動いている様な気がする。不思議だ。
     | もしかすると history -s で履歴行を追加している時のみの問題だったのかもしれない。
     | と思ったがやはり不思議だ。history -p する度に履歴行が減少するというのは確かに観測していた筈。
     | bash --norc の上で試してみる。 history -p だと何も起こらない。history -p '' だと減少する。
     | history -p -- '!!' でも減少する。bind -x 経由でも再現するか調べる。
-    | 
+    |
     |   bind -x '"\C-t": history -p -- ""; history | tail -1'
-    | 
+    |
     | やはり減少する様だ。すると、何故 ble.sh の枠組みから呼び出した history -p で減少しないのかは不思議である。
     | 試してみるとやはり減少はしていない。標準入力(もしくは tty)に繋がっている時だけの問題という可能性はあるか?
     | 改めて bash-3.0 --norc の bind -x 内で振る舞いを調べる。
-    | 
+    |
     | - 関数内で呼び出しても履歴項目が減少する (bind -x '"\C-t": f001')
     |   function f001 { history -p -- '!!'; history | tail -1; }
     | - 仮想端末につなげても同様に減少する (bind -x '"\C-t": f001 >>/dev/pts/16')
     | - ファイルに出力してもやはり減少する (bind -x '"\C-t": f001 >>B.txt'; cat B.txt)
     | - 標準エラー出力を捨てても減少する (bind -x '"\C-t": f001 >>B.txt 2>/dev/null'; cat B.txt)
-    | 
+    |
     | - NOBLE で ble.sh だけ読み込まずに mshex だけ読み込んだ状態でも減少は再現する
     | - set -o vi しても再現する
     | - HISTFILE=A.txt bash-3.0 --rcfile ../ble-dev/out/ble.sh で試してみる。
     |   ble-detach してから実行してみる。やはり減少は再現する
     | - ble.sh の側で -o vi と -o emacs を観察すると両方共減少しない。
     | - 別に history コマンドを変な関数で上書きしているという事もない。
-    | 
+    |
     | - 問題の関数 ble/edit/hist_expanded/.core を bind -x から直接呼び出すと減少が再現する。
     | - ble-edit/hist_expanded.update を呼び出しても再現する。
     |   bind -x '"\C-t": eval "ble-edit/hist_expanded.update aiueo"' としても再現する。
     |   bind -x '"\C-t": ! ble-edit/hist_expanded.update aiueo' としても再現する。
     | - 再び attach してみたら再現する様になった。不思議だ。
-    | 
+    |
     | - 再度起動し直して、ble-detach して ble-attach する。再現する。
     |   ble-detach; ble-attach だと再現しない。
     |   ble-detach を実行してから (stty sane を実行せずに) ble-attach を時刻すると再現する。
@@ -3339,7 +3432,7 @@ tech
 
 2018-09-11
 
-  * syntax (report by cmplstofB): 履歴展開のち置換指示子の切り取りが正確でない [#D0800]
+  * syntax (report by cmplstofB): 履歴展開の置換指示子の切り取りが正確でない [#D0800]
     https://github.com/akinomyoga/ble.sh/issues/10
 
     先ず gGa は指示子というよりは指示子に対する接頭辞として働くこと。
@@ -19965,7 +20058,7 @@ tech
     これは後で試してみる。
 
     どうも試してみると stty sane を実行しなくても問題ないようになっている気がする。
-    それよりも、readline が PS1 が体と思っていることによる表示のずれがあるので、
+    それよりも、readline が PS1 が空だと思っていることによる表示のずれがあるので、
     何でもいいからコマンドを一回実行する必要があった。
     stty sane はそれを実行させるための茶番の様だ (当初は意味もあったのだろうが)。
 

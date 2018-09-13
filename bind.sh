@@ -143,11 +143,11 @@ function ble-decode/generate-binder {
       elif ((esc1B==2)); then
         # ENCODING: UTF-8
         ble-decode/generate-binder/bind-s '"\e":"\xC0\x9B"'
-        ble-decode/generate-binder/bind-r '"\e"'
+        ble-decode/generate-binder/bind-r '\e'
       elif ((esc1B==3)); then
         # ENCODING: UTF-8 (ble_decode_IsolatedESC U+07FF)
         ble-decode/generate-binder/bind-s '"\e":"\xDF\xBF"' # C-[
-        ble-decode/generate-binder/bind-r '"\e"'
+        ble-decode/generate-binder/bind-r '\e'
       fi
     else
       ble-decode/generate-binder/append "$ret" "$i"
