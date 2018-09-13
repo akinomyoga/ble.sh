@@ -3240,7 +3240,7 @@ function ble-edit/exec/exit {
   return 1 # exit できなかった場合は 1 らしい
 }
 
-function exit { ble-edit/exec/exit; }
+function exit { ble-edit/exec/exit "$@"; }
 
 ## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_exec_type/process;
 ##   指定したコマンドを実行します。
@@ -5699,7 +5699,7 @@ function ble-edit/read {
   builtin eval -- "$__ble_command"
   return
 }
-function read { ble-edit/read; }
+function read { ble-edit/read "$@"; }
 
 # 
 #------------------------------------------------------------------------------
