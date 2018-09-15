@@ -520,7 +520,7 @@ fi
 ##   @param[in] command...
 ##     実行するコマンドを指定します。
 ##
-_ble_util_assign_base="$_ble_base_run/$$.ble_util_assign.tmp"
+_ble_util_assign_base=$_ble_base_run/$$.ble_util_assign.tmp
 _ble_util_assign_level=0
 if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
@@ -535,7 +535,6 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/util/assign {
-    ((_ble_util_assign_level++))
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
     builtin eval "$2" >| "$_ble_local_tmp"
     ((_ble_util_assign_level--))
