@@ -160,10 +160,8 @@ if ((_ble_bash>=30100)); then
   }
 else
   function ble/array#push {
-    while
+    while (($#>=2)); do
       builtin eval "$1[\${#$1[@]}]=\"\$2\""
-      (($#>=3))
-    do
       set -- "$1" "${@:3}"
     done
   }

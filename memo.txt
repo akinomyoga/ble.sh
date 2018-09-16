@@ -753,17 +753,82 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
-2018-09-13
+2018-09-15
 
-  * mshex: mwg_cdhist が failglob で動かなくなる。
-    これは後で確認する。そんなに難しい事ではないだろう。
-    何箇所か修正したが本当にこれで全部なのかは分からない。
+  * complete: "for a in @" と "do @" の補完で空の補完源が指定されている様だ
+    エラーメッセージが出る。
+
+  * complete: 補完で stackdump が出た。恐らく補完のバグである
+
+    TAB RET を連続で打った。しかし、本当にそれが原因かは分からない。
+    寧ろ menu-filter や auto-complete の方が問題である可能性もある。
+    備考: magnate で発生した。直前に cd で [ble: EOF] が表示される問題が再現している。
+
+    | [murase@magnate2016 0 bin]$ cd
+    | [murase@magnate2016 0 ~]$ c[ble: EOF]
+    | [murase@magnate2016 0 ~]$ cd bin/l
+    | [murase@magnate2016 0 bin]$ stackdump: X1 0 <= beg:0 <= end:1 <= iN:1, beg:0 <= end0:-1 (shift=2 text=l)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble-syntax/parse)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (ble-edit/content/update-syntax)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:14 (ble-highlight-layer:syntax/update)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:5 (ble-highlight-layer/update)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:40 (ble/textarea#update-text-buffer)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#render)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:2 (ble/widget/.insert-newline)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:34 (ble/widget/.newline)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:0 (ble/widget/accept-line)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:21 (ble-decode/widget/.call-keyseq)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:42 (ble-decode-key)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:43 (ble-decode-char/.send-modified-key)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode-char)                            l
+
+2018-09-13
 
   * shell: scp ... chat:... の入力時にタイミングによって入力できたりできなかったりした。
     これは一体どういう事なのだろう…。
 
   * TERM=rosaterm において cd した時の表示が変だ
     何故か [ble: EOF] が表示されてから改行が実行されるという事が起こっている。
+    今試すと再現しない。magnate からだけ再現するという可能性もある。
+    →試してみた所 magnate では再現する。
+
+    | うーん。もしかするとこれは Bash が cd の変更による
+    | プロンプト再表示に対応しているという事なのだろうか。
+    | つまり、余分に表示されているプロンプトは Bash によるものの可能性。
+    | しかし、screen の中では発生しないというのは不思議な事である。
+    |
+    | また builtin cd の呼び出しでは再現しない。
+    | cd を複数回中で呼び出してもプロンプトの余分な表示は一回だけ起こる。
+    | 調べるに当たって複数の方向性が在る。
+    | 一つは ble.sh のどのタイミングでプロンプトの余分な再描画が行われているのか。
+    | そしてもう一つは mwg_cdhist の中のどの行が問題を引き起こしているのか。
+    |
+    | * どうも mwg_cdhist.push "$PWD" &>/dev/null が問題を引き起こしている。
+    |   しかも、何故か &>/dev/null がある時に限って問題が起こる。
+    |   段々と絞れてきた。
+    |
+    |     $ f1() { (echo 1); }; f1 &>/dev/null
+    |
+    |   だと再現するが、
+    |
+    |     $ f1() (echo 1); f1 &>/dev/null
+    |
+    |   だと再現しない。何が原因なのかは不明である。
+    |
+    | * うーん。過去の ble.sh の version に遡ってみる。
+    |   どうも b232a88 からの様である。
+    |   調べると bleopt_term_modifyOtherKeys_external= だとならなくて
+    |   bleopt_term_modifyOtherKeys_external=1 だとなる。
+    |   というより bleopt_term_modifyOtherKeys_external が非空白だとなる。
+    |   この振る舞いは最新版でも再現した。
+
+    * f1() { (echo 1); }; f1 &>/dev/null で発生するが
+      f1() (echo 1); f1 &>/dev/null では発生しない。
+    * bleopt_term_modifyOtherKeys_external に非空白の値が設定されているとなる。
+      つまりコマンド実行直前に CSI > 4 m が送信されるかされないかの違いである。
+
+    うーん。何故上記の組み合わせで起こるのかは謎であるがこれは Poderosa のバグ、だろうか?
+
 
 2018-09-12
 
@@ -775,12 +840,14 @@ tech
   * 止まってしまう問題。端末の問題なのか ble.sh の問題なのか切り分けが必要
     と思ったが最新版では再現しない。何だったのだろうか。
 
-  * base: --noattach を忘れた時に PS1 が元に戻る問題の対策
-    これは元々使い方を誤っているのが問題なのだが、
-    多少変な使い方をしても変なことが起こらないようにはしたい。
-
-  * bash-3.0: 補完できない時に ble-complete/source/: No such file or directory  のメッセージが出る。
-    これはまた bash-3.0 配列のバグ回避に失敗している気がする。
+    - これはやはり今でも起こる様である。
+    - 先ず今までに screen の中で起こった事はない。
+      rosaterm に関して起こった。
+    - Cygwin だけでなく Linux (padparadscha) の上でも起こる。
+    - 別の端末から bash を殺すと再度動く様になることから、
+      端末の表示がおかしくなっているという事ではない。
+    - コマンドの実行直後に起こる事もある
+      実はかなりの頻度で起こっている。
 
 2018-09-10
 
@@ -2568,6 +2635,7 @@ tech
   - idle: 負の `sleep` を試みてエラーメッセージが出る問題の修正 `#D0802`
   - bind: `ble-detach` 時に、Bash 3.0 の '"' のバインディングを破壊するバグの修正 `#D0803`
   - edit: `ble-detach` 直後にコマンドラインに設定される `stty sane` が表示されない問題の対策 `#D0804`
+  - core: Bash-3.0 で補完候補がない場合にエラーメッセージが表示されるバグの修正 `#D0807`
 
   他
   - Makefile: 依存ファイルを `.PHONY` target として出力 `#D0778`
@@ -3248,6 +3316,35 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2018-09-16
+
+
+2018-09-15
+
+  * mshex: mwg_cdhist が failglob で動かなくなる [#D0807]
+    これは後で確認する。そんなに難しい事ではないだろう。
+    何箇所か修正したが本当にこれで全部なのかは分からない。
+    取り敢えず問題は起こらなくなったが、mwg.dict の実装を再度確認する。
+    再確認した。また古いコードを大幅にレファクタリングした。
+
+  * bash-3.0: 補完できない時に ble-complete/source/: No such file or directory  のメッセージが出る [#D0807]
+    % これはまた bash-3.0 配列のバグ回避に失敗している気がする。
+    これは単に ble/array#push の bash-3.0 向けの実装に問題があった。
+    push する要素が一つもない場合にから文字列を追加する様になっていた。
+    これを修正したら直った。
+
+  * [棄却] base: --noattach を忘れた時に PS1 が元に戻る問題の対策 [#D0806]
+    これは元々使い方を誤っているのが問題なのだが、
+    多少変な使い方をしても変なことが起こらないようにはしたい。
+
+    と思ったが最初のキーを受け付ける迄には PS1 は表示しなければならない。
+    つまり最初のキーを受け付けるよりは前に PS1 を読み取って、
+    しかし bashrc の末尾で PS1 を更新するという様にしなければならない。
+    しかし、そもそも ble-attach した瞬間に既にプロンプトを表示するので、
+    PS1 が設定されたのを検出できたとしても
+    最初の一回は必ず設定前のプロンプトになってしまう。
+    やはり遅延初期化をし忘れた場合に PS1 を正しく実行する様にするのは難しい。
 
 2018-09-13
 
