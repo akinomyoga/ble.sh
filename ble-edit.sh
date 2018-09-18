@@ -2196,12 +2196,14 @@ function ble-edit/content/clear-arg {
 ## 変数 _ble_edit_CMD
 
 function ble-edit/attach/TRAPWINCH {
+  local IFS=$' \t\n'
   if ((_ble_edit_attached)); then
-    local IFS=$' \t\n'
-    _ble_textmap_pos=()
-    ble-edit/bind/stdout.on
-    ble/textarea#redraw
-    ble-edit/bind/stdout.off
+    if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
+      _ble_textmap_pos=()
+      ble-edit/bind/stdout.on
+      ble/textarea#redraw
+      ble-edit/bind/stdout.off
+    fi
   fi
 }
 
@@ -6426,7 +6428,6 @@ function ble/widget/read/accept {
   _ble_edit_read_result=$_ble_edit_str
   # [[ $_ble_edit_read_result ]] &&
   #   ble-edit/history/add "$_ble_edit_read_result" # Note: cancel でも登録する
-  ble/widget/.insert-newline
   ble-decode/keymap/pop
 }
 function ble/widget/read/cancel {
@@ -6540,8 +6541,15 @@ function ble-edit/read/.setup-textarea {
   _ble_syntax_lang=text
   _ble_highlight_layer__list=(plain region overwrite_mode disabled)
 }
+function ble-edit/read/TRAPWINCH {
+  local IFS=$_ble_term_IFS
+  _ble_textmap_pos=()
+  ble/textarea#redraw
+}
 function ble-edit/read/.loop {
+  local x0=$_ble_line_x y0=$_ble_line_y
   ble-edit/read/.setup-textarea
+  trap -- ble-edit/read/TRAPWINCH WINCH
 
   if [[ $opt_timeout ]]; then
     local start_time; ble/util/strftime -v start_time %s
@@ -6559,19 +6567,30 @@ function ble-edit/read/.loop {
   local _ble_edit_read_accept=
   local _ble_edit_read_result=
   while [[ ! $_ble_edit_read_accept ]]; do
-    # read 1 byte
-    IFS= builtin read -r -d '' -n 1 char "${opts_in[@]}" ${opt_timeout:+-t "$opt_timeout"}; local ext=$?
-    ((ext==142)) && return "$ext" # timeout
+    # read 1 character
+    IFS= builtin read -r -d '' -n 1 ${opt_timeout:+-t "$opt_timeout"} char "${opts_in[@]}"; local ext=$?
+    if ((ext==142)); then
+      # timeout
+      _ble_edit_read_accept=142
+      break
+    fi
 
     # update timeout
     if [[ $opt_timeout ]]; then
       local current_time; ble/util/strftime -v current_time %s
       if [[ $opt_timeout == *.* ]]; then
-        local mantissa=${opt_timeout%%.*}
+        local mantissa=$((${opt_timeout%%.*}-(current_time-start_time)))
         local fraction=${opt_timeout#*.}
-        opt_timeout=$((mantissa-(current_time-start_time))).$fraction
+        opt_timeout=$mantissa.$fraction
+        ((mantissa<0||mantissa==0&&fraction==0)) && opt_timeout=0
       else
         opt_timeout=$((opt_timeout-(current_time-start_time)))
+        ((opt_timeout<0)) && opt_timeout=0
+      fi
+      if ((opt_timeout<=0)); then
+        # timeout
+        _ble_edit_read_accept=142
+        break
       fi
       start_time=$current_time
     fi
@@ -6588,10 +6607,27 @@ function ble-edit/read/.loop {
     ble/util/buffer.flush >&2
   done
 
+  # 入力が終わったら消すか次の行へ行く
+  if [[ $_ble_edit_read_context == internal ]]; then
+    local -a DRAW_BUFF=()
+    ble-form/panel#set-height.draw "$_ble_textarea_panel" 0
+    ble-form/goto.draw "$x0" "$y0"
+    ble-edit/draw/bflush
+  else
+    if ((_ble_edit_read_accept==1)); then
+      ble/widget/.insert-newline
+    else
+      _ble_edit_line_disabled=1 ble/widget/.insert-newline
+    fi
+  fi
+
   ble/util/buffer.flush >&2
   if ((_ble_edit_read_accept==1)); then
     local q=\' Q="'\''"
     printf %s "__ble_input='${_ble_edit_read_result//$q/$Q}'"
+  elif ((_ble_edit_read_accept==142)); then
+    # timeout
+    return "$ext"
   else
     return 1
   fi
@@ -6611,10 +6647,18 @@ function ble-edit/read/.impl {
   fi
 
   ble-decode/keymap/load read
-  local result state=$_ble_term_state
-  [[ $state == external ]] && ble/term/enter # 外側にいたら入る
+  local result _ble_edit_read_context=$_ble_term_state
+
+  # Note: サブシェル中で重複して出力されない様に空にしておく
+  ble/util/buffer.flush >&2
+
+  [[ $_ble_edit_read_context == external ]] && ble/term/enter # 外側にいたら入る
   result=$(ble-edit/read/.loop); local ext=$?
-  [[ $state == external ]] && ble/term/leave # 元の状態に戻る
+  [[ $_ble_edit_read_context == external ]] && ble/term/leave # 元の状態に戻る
+
+  # Note: サブシェルを抜ける時に set-height 1 0 するので辻褄合わせ。
+  [[ $_ble_edit_read_context == internal ]] && ((_ble_form_window_height[2]=0))
+
   if ((ext==0)); then
     builtin eval -- "$result"
     __ble_args=("${opts[@]}" -- "${vars[@]}")
