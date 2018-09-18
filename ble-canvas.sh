@@ -1263,7 +1263,7 @@ function ble/textmap#hit {
 ##   現在の (描画の為に動き回る) カーソル位置を保持します。
 _ble_canvas_x=0 _ble_canvas_y=0
 
-## 関数 ble/canvas/goto.draw varname x y
+## 関数 ble/canvas/goto.draw x y
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
 ## @param[in] x y
 ##   移動先のカーソルの座標を指定します。
