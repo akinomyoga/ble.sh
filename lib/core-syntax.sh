@@ -4267,7 +4267,7 @@ _ble_syntax_bash_complete_check_prefix[CTX_FARGI2]="next-identifier wordlist:-r:
 function ble-syntax/completion-context/.check-prefix/ctx:next-identifier {
   local source=$1
   if [[ ${text:istat:index-istat} =~ $rex_param ]]; then
-    ble-syntax/completion-context/.add "$soruce" "$istat"
+    ble-syntax/completion-context/.add "$source" "$istat"
   fi
 }
 ## 関数 ble-syntax/completion-context/.check-prefix/ctx:time-argument {
