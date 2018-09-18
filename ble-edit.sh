@@ -1696,11 +1696,14 @@ function ble-edit/dirty-range/update {
 ## 変数 _ble_edit_CMD
 
 function .ble-edit/edit/attach/TRAPWINCH {
+  local IFS=$' \t\n'
   if ((_ble_edit_attached)); then
-    _ble_line_text_cache_pos=()
-    .ble-edit/stdout/on
-    .ble-edit-draw.redraw
-    .ble-edit/stdout/off
+    if [[ $_ble_edit_dirty != '-1' && $_ble_stty_stat ]]; then
+      _ble_line_text_cache_pos=()
+      .ble-edit/stdout/on
+      .ble-edit-draw.redraw
+      .ble-edit/stdout/off
+    fi
   fi
 }
 
