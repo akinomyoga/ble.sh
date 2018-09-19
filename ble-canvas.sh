@@ -1300,11 +1300,11 @@ function ble/canvas/goto.draw {
 
 ## 配列 _ble_canvas_panel_height
 ##   各パネルの高さを保持する。
-##   現在 panel 0 が textarea で panel 1 が info に対応する。
+##   現在 panel 0 が textarea で panel 2 が info に対応する。
 ##
 ##   開始した瞬間にキー入力をすると画面に echo されてしまうので、
 ##   それを削除するために最初の編集文字列の行数を 1 とする。
-_ble_canvas_panel_height=(1 0)
+_ble_canvas_panel_height=(1 0 0)
 
 ## 関数 ble/canvas/panel#get-origin
 ##   @var[out] x y
@@ -1362,6 +1362,10 @@ function ble/canvas/panel#set-height.draw {
   fi
 
   ((_ble_canvas_panel_height[index]=new_height))
+}
+function ble/canvas/panel#increase-height.draw {
+  local index=$1 delta=$2
+  ble/canvas/panel#set-height.draw "$index" $((_ble_canvas_panel_height[index]+delta))
 }
 
 function ble/canvas/panel#set-height-and-clear.draw {

@@ -3623,14 +3623,25 @@ function ble-edit/exec:gexec/process {
 # **** accept-line ****                                            @edit.accept
 
 function ble/widget/.insert-newline {
-  # 最終状態の描画
-  ble-edit/info/hide
-  ble/textarea#render
+  local opts=$1
+  if [[ :$opts: == *:keep-info:* && $_ble_textarea_panel == 0 ]]; then
+    # 最終状態の描画
+    ble/textarea#render
 
-  # 新しい描画領域
-  local -a DRAW_BUFF=()
-  ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-  ble/canvas/put.draw "$_ble_term_nl"
+    # info を表示したまま行を挿入し、今までの panel 0 の内容を範囲外に破棄
+    local -a DRAW_BUFF=()
+    ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" 1
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((_ble_textarea_gendy+1))
+  else
+    # 最終状態の描画
+    ble-edit/info/hide
+    ble/textarea#render
+
+    # 新しい描画領域
+    local -a DRAW_BUFF=()
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+    ble/canvas/put.draw "$_ble_term_nl"
+  fi
   ble/canvas/bflush.draw
   ble/util/joblist.bflush
 
@@ -3638,7 +3649,7 @@ function ble/widget/.insert-newline {
   ble/textarea#invalidate
   _ble_canvas_x=0 _ble_canvas_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
-  _ble_canvas_panel_height[_ble_textarea_panel]=0
+  _ble_canvas_panel_height[_ble_textarea_panel]=1
 }
 
 function ble/widget/.newline/clear-content {
@@ -3655,9 +3666,15 @@ function ble/widget/.newline/clear-content {
   _ble_edit_overwrite_mode=
 }
 
+## 関数 ble/widget/.newline opts
+##   @param[in] opts
+##     コロン区切りのオプションです。
+##     keep-info
+##       info を隠さずに表示したままにします。
 function ble/widget/.newline {
+  local opts=$1
   _ble_edit_mark_active=
-  ble/widget/.insert-newline
+  ble/widget/.insert-newline "$opts"
   ((LINENO=++_ble_edit_LINENO))
 
   ble-edit/history/onleave.fire
@@ -3666,7 +3683,7 @@ function ble/widget/.newline {
 
 function ble/widget/discard-line {
   ble-edit/content/clear-arg
-  _ble_edit_line_disabled=1 ble/widget/.newline
+  _ble_edit_line_disabled=1 ble/widget/.newline keep-info
 }
 
 
@@ -3726,7 +3743,7 @@ function ble/widget/accept-line {
   local BASH_COMMAND=$_ble_edit_str
 
   if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
-    ble/widget/.newline
+    ble/widget/.newline keep-info
     return
   fi
 
