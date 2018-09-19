@@ -5606,24 +5606,45 @@ function ble-edit/read/.loop {
   ble-edit/read/.setup-textarea
   trap -- ble-edit/read/TRAPWINCH WINCH
 
+  local ret= timeout=
   if [[ $opt_timeout ]]; then
-    local start_time; ble/util/strftime -v start_time %s
+    ble/util/clock; local start_time=$ret
 
-    # 実際は 1.99999 で 1 に切り捨てられている可能性もある。
-    # 待ち時間が長くなる方向に倒して処理する。
-    ((start_time&&start_time--))
+    # Note: 時間分解能が低いとき、実際は 1999ms なのに
+    #   1000ms に切り捨てられている可能性もある。
+    #   待ち時間が長くなる方向に倒して処理する。
+    ((start_time&&(start_time-=_ble_util_clock_reso-1)))
+
+    if [[ $opt_timeout == *.* ]]; then
+      local mantissa=${opt_timeout%%.*}
+      local fraction=${opt_timeout##*.}000
+      ((timeout=mantissa*1000+10#${fraction::3}))
+    else
+      ((timeout=opt_timeout*1000))
+    fi
+    ((timeout<0)) && timeout=
   fi
 
   ble-edit/info/reveal
   ble/textarea#render
   ble/util/buffer.flush >&2
 
-  local char= ret=
+  local char=
   local _ble_edit_read_accept=
   local _ble_edit_read_result=
   while [[ ! $_ble_edit_read_accept ]]; do
+    local timeout_option=
+    if [[ $timeout ]]; then
+      if ((_ble_bash>=40000)); then
+        local timeout_frac=000$((timeout%1000))
+        timeout_option="-t $((timeout/1000)).${timeout_frac:${#timeout_frac}-3}"
+      else
+        timeout_option="-t $((timeout/1000))"
+      fi
+    fi
+
     # read 1 character
-    IFS= builtin read -r -d '' -n 1 ${opt_timeout:+-t "$opt_timeout"} char "${opts_in[@]}"; local ext=$?
+    IFS= builtin read -r -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
     if ((ext==142)); then
       # timeout
       _ble_edit_read_accept=142
@@ -5631,18 +5652,10 @@ function ble-edit/read/.loop {
     fi
 
     # update timeout
-    if [[ $opt_timeout ]]; then
-      local current_time; ble/util/strftime -v current_time %s
-      if [[ $opt_timeout == *.* ]]; then
-        local mantissa=$((${opt_timeout%%.*}-(current_time-start_time)))
-        local fraction=${opt_timeout#*.}
-        opt_timeout=$mantissa.$fraction
-        ((mantissa<0||mantissa==0&&fraction==0)) && opt_timeout=0
-      else
-        opt_timeout=$((opt_timeout-(current_time-start_time)))
-        ((opt_timeout<0)) && opt_timeout=0
-      fi
-      if ((opt_timeout<=0)); then
+    if [[ $timeout ]]; then
+      ble/util/clock; local current_time=$ret
+      ((timeout-=current_time-start_time))
+      if ((timeout<=0)); then
         # timeout
         _ble_edit_read_accept=142
         break

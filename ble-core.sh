@@ -1309,8 +1309,63 @@ function ble-assert {
 #------------------------------------------------------------------------------
 # Event loop
 
-if ((_ble_bash>=40000)); then
+## 関数 ble/util/clock
+##   時間を計測するのに使うことができるミリ秒単位の計量な時計です。
+##   計測の起点は ble.sh のロード時です。
+##   @var[out] ret
+_ble_util_clock_base=
+_ble_util_clock_reso=
+_ble_util_clock_type=
+function ble/util/clock/.initialize {
+  if ((_ble_bash>=50000)) && [[ $EPOCHREALTIME == *.???* ]]; then
+    # implementation with EPOCHREALTIME
+    _ble_util_clock_base=$((10#${EPOCHREALTIME%.*}))
+    _ble_util_clock_reso=1
+    _ble_util_clock_type=EPOCHREALTIME
+    function ble/util/clock {
+      local now=$EPOCHREALTIME
+      local integral=$((10#${now%%.*}-_ble_util_clock_base))
+      local mantissa=${now#*.}000; mantissa=${mantissa::3}
+      ((ret=integral*1000+10#$mantissa))
+    }
+  elif [[ -r /proc/uptime ]] && {
+         local uptime
+         ble/util/readfile uptime /proc/uptime
+         ble/string#split-words uptime "$uptime"
+         [[ $uptime == *.* ]]; }; then
+    # implementation with /proc/uptime
+    _ble_util_clock_base=$((10#${uptime%.*}))
+    _ble_util_clock_reso=10
+    _ble_util_clock_type=uptime
+    function ble/util/clock {
+      local now
+      ble/util/readfile now /proc/uptime
+      ble/string#split-words now "$now"
+      local integral=$((10#${now%%.*}-_ble_util_clock_base))
+      local fraction=${now#*.}000; fraction=${fraction::3}
+      ((ret=integral*1000+10#$fraction))
+    }
+  elif ((_ble_bash>=40200)); then
+    printf -v _ble_util_clock_base '%(%s)T'
+    _ble_util_clock_reso=1000
+    _ble_util_clock_type=printf
+    function ble/util/clock {
+      local now; printf -v now '%(%s)T'
+      ((ret=(now-_ble_util_clock_base)*1000))
+    }
+  else
+    ble/util/strftime -v _ble_util_clock_base '%s'
+    _ble_util_clock_reso=1000
+    _ble_util_clock_type=date
+    function ble/util/clock {
+      ble/util/strftime -v ret '%s'
+      ((ret=(ret-_ble_util_clock_base)*1000))
+    }
+  fi
+}
+ble/util/clock/.initialize
 
+if ((_ble_bash>=40000)); then
   ## 設定関数 ble/util/idle/IS_IDLE { ble/util/is-stdin-ready; }
   ##   他にするべき処理がない時 (アイドル時) に終了ステータス 0 を返します。
   ##   Note: この設定関数は ble-decode.sh で上書きされます。
@@ -1329,59 +1384,20 @@ if ((_ble_bash>=40000)); then
 
   function ble/util/idle.clock/.initialize {
     function ble/util/idle.clock/.initialize { :; }
-  
-    ## 関数 ble/util/idle/.system-clock
-    ##   可能な場合に軽量な時計を提供します。
-    ##   @var[out] ret
-    _ble_util_idle_rclock_base=
-    _ble_util_idle_rclock_reso=
-    if ((_ble_bash>=50000)) && [[ $EPOCHREALTIME == *.???* ]]; then
-      # implementation with EPOCHREALTIME
-      _ble_util_idle_rclock_base=$((10#${EPOCHREALTIME%.*}))
-      _ble_util_idle_rclock_reso=1
-      function ble/util/idle/.system-clock {
-        local now=$EPOCHREALTIME
-        local integral=$((10#${now%%.*}-_ble_util_idle_rclock_base))
-        local mantissa=${now#*.}000; mantissa=${mantissa::3}
-        ((ret=integral*1000+10#$mantissa))
-      }
-    elif [[ -r /proc/uptime ]] && {
-           local uptime
-           ble/util/readfile uptime /proc/uptime
-           ble/string#split-words uptime "$uptime"
-           [[ $uptime == *.* ]]; }; then
-      # implementation with /proc/uptime
-      _ble_util_idle_rclock_base=$((10#${uptime%.*}))
-      _ble_util_idle_rclock_reso=10
-      function ble/util/idle/.system-clock {
-        local now
-        ble/util/readfile now /proc/uptime
-        ble/string#split-words now "$now"
-        local integral=$((10#${now%%.*}-_ble_util_idle_rclock_base))
-        local fraction=${now#*.}000; fraction=${fraction::3}
-        ((ret=integral*1000+10#$fraction))
-      }
-    elif ((_ble_bash>=40200)); then
-      printf -v _ble_util_idle_rclock_base '%(%s)T'
-      _ble_util_idle_rclock_reso=1000
-      function ble/util/idle/.system-clock {
-        local now; printf -v now '%(%s)T'
-        ((ret=(now-_ble_util_idle_rclock_base)*1000))
-      }
-    else
-      _ble_util_idle_rclock_base=
-      _ble_util_idle_rclock_reso=
-    fi
 
     ## 関数 ble/util/idle.clock
     ##   タスクスケジューリングに使用する時計
     ##   @var[out] ret
     function ble/util/idle.clock/.restart { :; }
-    if ((_ble_util_idle_rclock_reso<=100)); then
+    if [[ ! $_ble_util_clock_type || $_ble_util_clock_type == date ]]; then
       function ble/util/idle.clock {
-        ble/util/idle/.system-clock
+        ret=$_ble_util_idle_sclock
       }
-    elif [[ $_ble_util_idle_rclock_reso ]]; then
+    elif ((_ble_util_clock_reso<=100)); then
+      function ble/util/idle.clock {
+        ble/util/clock
+      }
+    else
       ## 関数 ble/util/idle/.adjusted-clock
       ##   参照時計 (rclock) と sleep 累積時間 (sclock) を元にして、
       ##   参照時計を秒以下に解像度を上げた時計 (aclock) を提供します。
@@ -1407,9 +1423,9 @@ if ((_ble_bash>=40000)); then
         _ble_util_idle_aclock_tick_sclock=
       }
       function ble/util/idle/.adjusted-clock {
-        local resolution=$_ble_util_idle_rclock_reso
+        local resolution=$_ble_util_clock_reso
         local sclock=$_ble_util_idle_sclock
-        local ret; ble/util/idle/.system-clock; local rclock=$((ret/resolution*resolution))
+        local ret; ble/util/clock; local rclock=$((ret/resolution*resolution))
 
         if [[ $_ble_util_idle_aclock_tick_rclock != $rclock ]]; then
           if [[ $_ble_util_idle_aclock_tick_rclock && ! $_ble_util_idle_aclock_shift ]]; then
@@ -1424,10 +1440,6 @@ if ((_ble_bash>=40000)); then
       }
       function ble/util/idle.clock {
         ble/util/idle/.adjusted-clock
-      }
-    else
-      function ble/util/idle.clock {
-        ret=$_ble_util_idle_sclock
       }
     fi
   }
