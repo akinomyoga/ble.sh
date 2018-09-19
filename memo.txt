@@ -3296,6 +3296,20 @@ tech
 
 2018-09-18
 
+  * decode: ユーザが勝手に先に keymap にキーを追加していると [#D0811]
+    ble-decode/keymap/load が呼び出されずに、既定の設定が呼び出されない可能性がある。
+
+    a 元々存在していない keymap は受け付けるべきではないのではないか。
+      現在の実装はどうなっているだろうか。様々の keymap について明示的に定義していただろうか。
+
+    b 或いは、既に keymap が存在している場合には bind 時に define を呼び出す様にするか。
+      しかし、それだと keymap:$keymap/define も遅延ロードされる時にやはり駄目。
+
+    やはり a の方針で行く事にする。
+    取り敢えず ble-decode/keymap/load を bind 時に実行して、
+    失敗したらエラーという事で良いのではないかと思ったが、
+    よく考えたら ble-decode/keymap/load は内部で bind を呼び出すので無限ループになってしまう。
+
   * 2018-09-15 complete: "for a in @" と "do @" の補完で空の補完源が指定されている様だ [#D0810]
     エラーメッセージが出る。と思ったら
     ble-syntax/completion-context/.check-prefix/ctx:next-identifier 内部の変数名の typo だった。直した。

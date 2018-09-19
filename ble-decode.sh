@@ -782,15 +782,26 @@ function ble-decode-char/dump {
 ##     このシーケンスを受け取った段階で command を実行する事が確定する事を表します。
 ##
 
-## 変数 _ble_decode_kmaps := ( ':' kmap ':' )+
+## 変数 _ble_decode_kmaps := ( ':' kmap )+
 ##   存在している kmap の名前の一覧を保持します。
 ##   既定の kmap (名前無し) は含まれません。
 _ble_decode_kmaps=
+## 関数 ble-decode/keymap/register kmap
+##   @exit 新しく keymap が登録された時に成功します。
+##     既存の keymap だった時に失敗します。
 function ble-decode/keymap/register {
   local kmap=$1
-  if [[ $kmap && $_ble_decode_kmaps != *":$kmap:"* ]]; then
-    _ble_decode_kmaps=$_ble_decode_kmaps:$kmap:
+  if [[ $kmap && :$_ble_decode_kmaps: != *:"$kmap":* ]]; then
+    _ble_decode_kmaps=$_ble_decode_kmaps:$kmap
   fi
+}
+function ble-decode/keymap/unregister {
+  _ble_decode_kmaps=$_ble_decode_kmaps:
+  _ble_decode_kmaps=${_ble_decode_kmaps//:"$1":/:}
+  _ble_decode_kmaps=${_ble_decode_kmaps%:}
+}
+function ble-decode/keymap/is-registered {
+  [[ :$_ble_decode_kmaps: == *:"$1":* ]]
 }
 
 function ble-decode/keymap/dump {
@@ -829,7 +840,14 @@ function ble-decode-key/bind {
   local -a seq=($1)
   local cmd=$2
 
-  ble-decode/keymap/register "$kmap"
+  if ! ble-decode/keymap/is-registered "$kmap"; then
+    ble-decode/keymap/register "$kmap"
+    if ! ble-decode/keymap/load "$kmap"; then
+      ble-decode/keymap/unregister "$kmap"
+      echo "ble-bind: the keymap '$kmap' is not defined"
+      return 1
+    fi
+  fi
 
   local i iN=${#seq[@]} key tseq=
   for ((i=0;i<iN;i++)); do
