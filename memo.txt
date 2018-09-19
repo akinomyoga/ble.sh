@@ -794,10 +794,78 @@ tech
     ble-syntax/parse の中で起こっている更新範囲のエラーである。
     特に ble-syntax/parse から利用する end0 に触っている箇所は限られているはずである。
 
+    * 辿って行くと、ble/dirty-range#update を信頼するならば、
+      ble-edit/content/.update-dirty-range の呼び出し元が怪しい。
+      これの呼び出し元は三箇所で以下の通り
+      - ble-edit/content/replace
+      - ble-edit/content/reset
+      - ble-edit/content/reset-and-check-dirty
+      reset の場合には内部で文字列長を取得しているので end0 が負になる事はありえない。
+      reset-and-check-dirty に関しても ble/string#common-suffix が渡した文字列よりも長い
+      誤った結果を返さない限りは end0 が負になる事はない。
+      従って、ble-edit/content/replace の呼び出し元を調べれば良いはずである。
+      core-complete.sh の中での ble-edit/content/replace の呼び出し元は以下の通り。
+      - ble-complete/menu-complete/select
+        ここは end として _ble_edit_ind を渡している。
+        _ble_edit_ind が負になっていたらもっと色々なエラーが出ている筈であるし、
+        また今回の操作には menu-complete は関係ないのでこれは大丈夫だろう。
+
+      - ble-complete/auto-complete/.check-history
+      - ble-complete/auto-complete/.check-context
+        ここでも _ble_edit_ind を渡している。
+      - ble/widget/auto_complete/cancel
+      - ble/widget/auto_complete/accept
+        これらは _ble_edit_mark の方を渡している。
+      - ble/widget/auto_complete/self-insert
+      - ble/widget/auto_complete/accept-word
+        _ble_edit_ind を渡している。
+      うーん。何れも問題がないように思われる。
+
+    * ble/dirty-range#update の実装を確認する。
+      どうもこれを読むと beg>=0 で end<0, end0<0 という状況も想定している様である。
+      end<0, end0<0 は恐らく末端までという意味であろう。
+      しかし、今回は beg>=0 ならば end>=0 かつ end0>=0 と仮定する。
+      この時 end0 が元にない値になるのは、
+      delta=endA-endB0 が負の時でこの時 end0=endA0-delta とされる。
+      しかし、これは end0 を増加させるのであって、end0 が負になることの説明にはならない。
+      因みに、例えば以下のような形の変更である。処理としても正しい。
+
+        0---bA-----------eA0---e0---$
+        |   |            /    :    /
+        |   |           /    :    /
+        0---bA---bB---eA---eB0---$
+        |   :    |         /    /
+        |   :    |        /    /
+        0---bA---bB------eB---$
+
+    * core-complete.sh 内部で _ble_edit_mark に値を設定している箇所を確認する。
+      何れも _ble_edit_ind に正の値を渡しているか、或いは直接正の値を代入している様に見える。
+      _ble_edit_ind に関しては insert_beg または _ble_complete_ac_comp1, _ble_complete_menu_beg が負の値だと
+      もしかすると負の値になってしまうかもしれない。
+      insert_beg は _ble_complete_menu_beg または _ble_complete_ac_comp1 から値を持ってきている。
+      それ以外の場所は自明に正の値になっているはずである。
+      _ble_complete_menu_beg は COMP1 から値を取ってきている。
+      _ble_complete_menu_comp1 も COMP1 から値を取ってきている。
+      COMP1 は補完文脈から直接値を取得している。
+
+    補完文脈でバグにより負の値が生成される事があるのだろうか。
+    取り敢えず ble-syntax/completion-context/.add に
+    ble-assert を設置して様子を見る事にする。
+    また、エラーが発生した時の修正で end0 も値を設定する様にした。
+    後はまた様子見をする事にする。
+
 2018-09-13
 
   * shell: scp ... chat:... の入力時にタイミングによって入力できたりできなかったりした。
     これは一体どういう事なのだろう…。プログラム補完が入力を奪っている?
+
+    % 今試すと再現しない。特定のホストだけで発生するという事なのだろうか。
+    % うーん。一応標準入力を /dev/null に繋いで勝手に標準入力を食わない様に変更する。
+    % もしユーザから入力を受け取るのであればその補完関数・コマンドが明示的に /dev/tty に繋ぐべきである。
+
+    と思ったが、ユーザから入力を求めて補完候補を絞る機能があっても良い様な気がしてきた。
+    そのような発想で補間関数を設計する人は沢山いるだろうと考えられる。
+    やはり、標準入力を勝手に封じるのは問題の様に思われてきた。取り敢えず保留という事にする。
 
 2018-09-12
 
@@ -817,6 +885,8 @@ tech
       端末の表示がおかしくなっているという事ではない。
     - コマンドの実行直後に起こる事もある
       実はかなりの頻度で起こっている。
+
+    2018-09-19 今試すとやはり動かない。何らかの発生条件があるのだろうか。
 
 2018-09-10
 
@@ -3294,9 +3364,9 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
-2018-09-18
+2018-09-19
 
-  * decode: ユーザが勝手に先に keymap にキーを追加していると [#D0811]
+  * decode: ユーザが勝手に先に keymap にキーを追加していると [#D0813]
     ble-decode/keymap/load が呼び出されずに、既定の設定が呼び出されない可能性がある。
 
     a 元々存在していない keymap は受け付けるべきではないのではないか。
@@ -3309,6 +3379,18 @@ tech
     取り敢えず ble-decode/keymap/load を bind 時に実行して、
     失敗したらエラーという事で良いのではないかと思ったが、
     よく考えたら ble-decode/keymap/load は内部で bind を呼び出すので無限ループになってしまう。
+
+  * complete (request by cmplstofB): 補完関係の設定をする為に補完に load hook を追加した [#D0812]
+
+  * complete (request by cmplstofB): ble/widget/auto_complete/accept-and-execute [#D0811]
+    名称をどうするか悩んだが結局 accept-and-execute にした。
+    accept-and-accept だとよく分からないし、
+    accept-and-accept-line も似たような物である。
+    単に accept-line とすると accept-word との対比から勘違いする。
+    結局 accept-and-execute という事にした。後でまた変更するかもしれない。
+
+
+2018-09-18
 
   * 2018-09-15 complete: "for a in @" と "do @" の補完で空の補完源が指定されている様だ [#D0810]
     エラーメッセージが出る。と思ったら

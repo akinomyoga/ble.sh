@@ -4100,6 +4100,7 @@ function ble-syntax:bash/is-complete {
 function ble-syntax/completion-context/.add {
   local source=$1
   local comp1=$2
+  ble-assert '[[ $source && comp1 -ge 0 ]]'
   contexts[${#contexts[*]}]="$source $comp1"
 }
 

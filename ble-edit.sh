@@ -847,6 +847,7 @@ function ble-edit/content/replace {
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
     _ble_edit_dirty_syntax_beg=0
     _ble_edit_dirty_syntax_end=${#_ble_edit_str}
+    _ble_edit_dirty_syntax_end0=0
     local olen=$((${#_ble_edit_str}-${#ins}+end-beg))
     ((olen<0&&(olen=0),
       _ble_edit_ind>olen&&(_ble_edit_ind=olen),
@@ -864,6 +865,7 @@ function ble-edit/content/reset {
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str"
     _ble_edit_dirty_syntax_beg=0
     _ble_edit_dirty_syntax_end=${#_ble_edit_str}
+    _ble_edit_dirty_syntax_end0=0
   fi
 #%end
 }
@@ -902,10 +904,6 @@ function ble-edit/content/.update-dirty-range {
 
   local obs
   for obs in "${_ble_edit_dirty_observer[@]}"; do "$obs" "$@"; done
-  # ble-assert '((
-  #   _ble_edit_dirty_draw_beg==_ble_edit_dirty_syntax_beg&&
-  #   _ble_edit_dirty_draw_end==_ble_edit_dirty_syntax_end&&
-  #   _ble_edit_dirty_draw_end0==_ble_edit_dirty_syntax_end0))'
 }
 
 function ble-edit/content/update-syntax {
@@ -1800,7 +1798,7 @@ function ble/widget/kill-backward-text {
   ((_ble_edit_ind==0)) && return
   _ble_edit_kill_ring=${_ble_edit_str::_ble_edit_ind}
   _ble_edit_kill_type=
-  ble-edit/content/replace 0 _ble_edit_ind ''
+  ble-edit/content/replace 0 "$_ble_edit_ind" ''
   ((_ble_edit_mark=_ble_edit_mark<=_ble_edit_ind?0:_ble_edit_mark-_ble_edit_ind))
   _ble_edit_ind=0
 }
@@ -1853,7 +1851,7 @@ function ble/widget/.delete-range {
 
   # delete
   if ((len)); then
-    ble-edit/content/replace p0 p1 ''
+    ble-edit/content/replace "$p0" "$p1" ''
     ((
       _ble_edit_ind>p1? (_ble_edit_ind-=len):
       _ble_edit_ind>p0&&(_ble_edit_ind=p0),
@@ -1874,7 +1872,7 @@ function ble/widget/.kill-range {
 
   # delete
   if ((len)); then
-    ble-edit/content/replace p0 p1 ''
+    ble-edit/content/replace "$p0" "$p1" ''
     ((
       _ble_edit_ind>p1? (_ble_edit_ind-=len):
       _ble_edit_ind>p0&&(_ble_edit_ind=p0),
@@ -1899,7 +1897,7 @@ function ble/widget/.replace-range {
   ble/widget/.process-range-argument "${@:1:2}" || (($4)) || return 1
   local str=$3 strlen=${#3}
 
-  ble-edit/content/replace p0 p1 "$str"
+  ble-edit/content/replace "$p0" "$p1" "$str"
   local delta
   ((delta=strlen-len)) &&
     ((_ble_edit_ind>p1?(_ble_edit_ind+=delta):
@@ -2010,7 +2008,7 @@ function ble/widget/.insert-string {
   [[ $ins ]] || return
 
   local dx=${#ins}
-  ble-edit/content/replace _ble_edit_ind _ble_edit_ind "$ins"
+  ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
   (('
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
     _ble_edit_ind+=dx
@@ -2091,7 +2089,7 @@ function ble/widget/self-insert {
     fi
   fi
 
-  ble-edit/content/replace ibeg iend "$ins"
+  ble-edit/content/replace "$ibeg" "$iend" "$ins"
   ((_ble_edit_ind+=${#ins},
     _ble_edit_mark>ibeg&&(
       _ble_edit_mark<iend?(
@@ -5938,7 +5936,7 @@ function ble/widget/command-help/.type/.resolve-alias {
   printf "literal='%s'\n" "${literal//$q/$Q}"
   printf "command='%s'\n" "${command//$q/$Q}"
   return
-}
+} 2>/dev/null
 
 ## 関数 ble/widget/command-help/.type
 ##   @var[out] type command
