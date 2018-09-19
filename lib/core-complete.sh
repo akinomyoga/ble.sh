@@ -658,3 +658,5 @@ function ble/widget/complete {
   ble/widget/.delete-range "$comp1" "$index"
   [[ $common ]] && ble/widget/.insert-string "$common"
 }
+
+ble/util/invoke-hook _ble_complete_load_hook
