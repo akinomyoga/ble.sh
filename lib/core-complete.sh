@@ -2617,3 +2617,5 @@ function ble/cmdinfo/complete:cd {
 function ble/cmdinfo/complete:pushd {
   ble/cmdinfo/complete:cd/.impl pushd
 }
+
+ble/util/invoke-hook _ble_complete_load_hook
