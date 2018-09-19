@@ -2545,6 +2545,11 @@ function ble/widget/auto_complete/accept-word {
   fi
   return 1
 }
+function ble/widget/auto_complete/accept-and-execute {
+  ble/widget/auto_complete/accept
+  ble/widget/accept-single-line-or/accepts &&
+    ble/widget/accept-line
+}
 
 function ble-decode/keymap:auto_complete/define {
   local ble_bind_keymap=auto_complete
