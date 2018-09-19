@@ -210,6 +210,8 @@ function ble-color-iface2sgr { ble-color/faces/initialize && ble-color-iface2sgr
 
 # 遅延初期化子
 function ble-color/faces/initialize {
+  local _ble_color_faces_initializing=1
+  local -a _ble_color_faces_errors=()
 
   function ble-color-defface {
     local name=_ble_faces__$1 gspec=$2 ret
@@ -223,7 +225,12 @@ function ble-color/faces/initialize {
       ble-color-gspec2g "$gspec"; _ble_faces[$name]=$ret
       ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
     else
-      echo "ble.sh: the specified face \`$1' is not defined." >&2
+      local message="ble.sh: the specified face \`$1' is not defined."
+      if [[ $_ble_color_faces_initializing ]]; then
+        ble/array#push _ble_color_faces_errors "$message"
+      else
+        builtin echo "$message" >&2
+      fi
       return 1
     fi
   }
@@ -243,7 +250,18 @@ function ble-color/faces/initialize {
 
   ble/util/invoke-hook _ble_color_faces_defface_hook
   ble/util/invoke-hook _ble_color_faces_setface_hook
-  return 0
+
+  if ((${#_ble_color_faces_errors[@]})); then
+    if ((_ble_edit_attached)) && [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
+      IFS=$'\n' eval 'local message="${_ble_color_faces_errors[@]}"'
+      ble/widget/print "$message"
+    else
+      printf '%s\n' "${_ble_color_faces_errors[@]}" >&2
+    fi
+    return 1
+  else
+    return 0
+  fi
 }
 
 #------------------------------------------------------------------------------

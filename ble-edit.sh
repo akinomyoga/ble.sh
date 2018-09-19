@@ -1764,7 +1764,7 @@ function ble/widget/clear-screen {
 }
 function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
-  ble/widget/.SHELL_COMMAND 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
+  ble/widget/print "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"
 }
 
 # 
@@ -2275,7 +2275,7 @@ function ble/widget/exit {
   if ((_ble_edit_exit_count<=ret)); then
     local remain=$((ret-_ble_edit_exit_count+1))
     ble/widget/.bell 'IGNOREEOF'
-    ble/widget/.SHELL_COMMAND "echo 'IGNOREEOF($remain): Use \"exit\" to leave the shell.' >&2"
+    ble/widget/print "IGNOREEOF($remain): Use \"exit\" to leave the shell."
     return
   fi
 
@@ -2307,7 +2307,7 @@ function ble/widget/exit {
       else
         message='There are remaining jobs. Use "exit" to leave the shell.'
       fi
-      ble/widget/.SHELL_COMMAND "echo '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
+      ble/widget/internal-command "echo '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
       return
     fi
   elif [[ :$opts: == *:checkjobs:* ]]; then
@@ -5994,17 +5994,7 @@ function ble/widget/command-help.impl {
     return 1
   fi
 
-  ble-edit/info/hide
-  ble/textarea#invalidate
-  local -a DRAW_BUFF=()
-  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
-  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
-  ble/canvas/bflush.draw
-  ble/term/leave
-  ble/util/buffer.flush >&2
-  ble/widget/command-help.core; local ext=$?
-  ble/term/enter
-  return "$ext"
+  ble/widget/external-command ble/widget/command-help.core
 }
 
 function ble/widget/command-help {
@@ -6298,21 +6288,59 @@ function ble-decode/EPILOGUE {
   return 0
 }
 
-## 関数 ble/widget/.SHELL_COMMAND command
-##   ble-bind -cf で登録されたコマンドを処理します。
-function ble/widget/.SHELL_COMMAND {
+function ble/widget/print {
   ble-edit/content/clear-arg
+  local message=$1
+  [[ ${message//[$_ble_term_IFS]} ]] || return
 
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+  ble/util/buffer.flush >&2
+  builtin printf '%s\n' "$message" >&2
+}
+function ble/widget/internal-command {
+  ble-edit/content/clear-arg
+  local -a BASH_COMMAND
+  BASH_COMMAND=("$*")
+  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+  eval "$BASH_COMMAND"
+}
+function ble/widget/external-command {
+  ble-edit/content/clear-arg
+  local -a BASH_COMMAND
+  BASH_COMMAND=("$*")
+  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+
+  ble-edit/info/hide
+  ble/textarea#invalidate
+  local -a DRAW_BUFF=()
+  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+  ble/canvas/bflush.draw
+  ble/term/leave
+  ble/util/buffer.flush >&2
+  eval "$BASH_COMMAND"; local ext=$?
+  ble/term/enter
+  return "$ext"
+}
+function ble/widget/execute-command {
+  ble-edit/content/clear-arg
   local -a BASH_COMMAND
   BASH_COMMAND=("$*")
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
 
+  # Note: 空コマンドでも .insert-newline は実行する。
+  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+
   # やはり通常コマンドはちゃんとした環境で評価するべき
-  if [[ "${BASH_COMMAND//[ 	]/}" ]]; then
-    ble-edit/exec/register "$BASH_COMMAND"
-  fi
+  ble-edit/exec/register "$BASH_COMMAND"
 }
+
+## 関数 ble/widget/.SHELL_COMMAND command
+##   ble-bind -cf で登録されたコマンドを処理します。
+function ble/widget/.SHELL_COMMAND { ble/widget/execute-command "$@"; }
 
 ## 関数 ble/widget/.EDIT_COMMAND command
 ##   ble-bind -xf で登録されたコマンドを処理します。
