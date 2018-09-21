@@ -4603,22 +4603,27 @@ function ble/widget/history-end {
   fi
 }
 
+## 編集関数 history-expand-line
+##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
 function ble/widget/history-expand-line {
   ble-edit/content/clear-arg
   local hist_expanded
-  ble-edit/hist_expanded.update "$_ble_edit_str" || return
-  [[ $_ble_edit_str == "$hist_expanded" ]] && return
+  ble-edit/hist_expanded.update "$_ble_edit_str" || return 1
+  [[ $_ble_edit_str == "$hist_expanded" ]] && return 1
 
   ble-edit/content/reset-and-check-dirty "$hist_expanded"
   _ble_edit_ind=${#hist_expanded}
   _ble_edit_mark=0
   _ble_edit_mark_active=
+  return 0
 }
+## 編集関数 history-expand-backward-line
+##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
 function ble/widget/history-expand-backward-line {
   ble-edit/content/clear-arg
   local prevline=${_ble_edit_str::_ble_edit_ind} hist_expanded
-  ble-edit/hist_expanded.update "$prevline" || return
-  [[ $prevline == "$hist_expanded" ]] && return
+  ble-edit/hist_expanded.update "$prevline" || return 1
+  [[ $prevline == "$hist_expanded" ]] && return 1
 
   local ret
   ble/string#common-prefix "$prevline" "$hist_expanded"; local dmin=${#ret}
@@ -4626,10 +4631,14 @@ function ble/widget/history-expand-backward-line {
   _ble_edit_ind=${#hist_expanded}
   _ble_edit_mark=0
   _ble_edit_mark_active=
+  return 0
 }
+## 編集関数 magic-space
+##   履歴展開と静的略語展開を実行してから空白を挿入します。
 function ble/widget/magic-space {
   local arg; ble-edit/content/get-arg ''
-  ble/widget/history-expand-backward-line
+  ble/widget/history-expand-backward-line ||
+    ble/function#try ble-complete/sabbrev/expand
   local -a KEYS=(32)
   _ble_edit_arg=$arg
   ble/widget/self-insert
@@ -5479,7 +5488,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
 
   ble-bind -f 'SP'       magic-space
-  ble-bind -f 'C-RET'    history-expand-line
+  ble-bind -f 'M-^'      history-expand-line
 
   ble-bind -f __attach__ safe/__attach__
 
@@ -5543,8 +5552,8 @@ function ble-decode/keymap:read/define {
   ble-bind -f  'C-x C-v' display-shell-version
 
   # command-history
-  # ble-bind -f 'C-RET'   history-expand-line
-  # ble-bind -f 'SP'      magic-space
+  # ble-bind -f 'M-^'      history-expand-line
+  # ble-bind -f 'SP'       magic-space
 
   ble-bind -f 'C-[' bell
   ble-bind -f 'C-]' bell
@@ -5812,8 +5821,15 @@ _ble_complete_insert_hook=()
 ble-autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/complete \
              ble/widget/menu-complete \
-             ble/widget/auto-complete-enter
+             ble/widget/auto-complete-enter \
+             ble/widget/sabbrev-expand
 ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
+
+if ((_ble_bash>=40200)); then
+  declare -gA _ble_complete_sabbrev=()
+elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  declare -A _ble_complete_sabbrev=()
+fi
 
 #------------------------------------------------------------------------------
 # **** command-help ****                                          @command-help

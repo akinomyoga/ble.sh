@@ -144,7 +144,7 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
 
   # history
-  ble-bind -f 'C-RET'    history-expand-line
+  ble-bind -f 'M-^'      history-expand-line
   ble-bind -f 'SP'       magic-space
 
   #----------------------------------------------------------------------------

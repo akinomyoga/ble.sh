@@ -6799,7 +6799,7 @@ function ble-decode/keymap:vi_imap/define {
 
   # history
   ble-bind -f 'SP'        'magic-space'
-  # ble-bind -f 'C-RET'     'history-expand-line'
+  # ble-bind -f 'M-^'     'history-expand-line'
 
   # complete
   ble-decode/keymap:vi_imap/bind-complete
@@ -6973,7 +6973,7 @@ function ble-decode/keymap:vi_cmap/define {
 
 
   # command-history
-  # ble-bind -f 'C-RET'   history-expand-line
+  # ble-bind -f 'M-^'     history-expand-line
   # ble-bind -f 'SP'      magic-space
 
   ble-bind -f 'C-\' bell

@@ -678,6 +678,10 @@ function ble-complete/source:dir {
   done
 }
 
+# source:rhs
+
+function ble-complete/source:rhs { ble-complete/source:file; }
+
 # source:argument (complete -p)
 
 ## 関数 ble-complete/source:argument/.progcomp-helper-vars
@@ -2646,6 +2650,116 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f M-f         auto_complete/accept-word
   ble-bind -f M-right     auto_complete/accept-word
   ble-bind -f auto_complete_enter nop
+}
+
+#------------------------------------------------------------------------------
+#
+# sabbrev
+#
+
+## 関数 ble-complete/sabbrev/register key value
+##   静的略語展開を登録します。
+##   @param[in] key value
+##
+## 関数 ble-complete/sabbrev/list
+##   登録されている静的略語展開の一覧を表示します。
+##
+## 関数 ble-complete/sabbrev/get key
+##   静的略語展開の展開値を取得します。
+##   @param[in] key
+##   @var[out] ret
+##
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  function ble-complete/sabbrev/register {
+    local key=$1 value=$2
+    _ble_complete_sabbrev[$key]=$value
+  }
+  function ble-complete/sabbrev/list {
+    local key q=\' Q="'\''"
+    for key in "${!_ble_complete_sabbrev[@]}"; do
+      local value=${_ble_complete_sabbrev[$key]}
+      printf 'ble-sabbrev %s=%s\n' "$key" "'${value//$q/$Q}'"
+    done
+  }
+  function ble-complete/sabbrev/get {
+    local key=$1
+    ret=${_ble_complete_sabbrev[$key]}
+    [[ $ret ]]
+  }
+else
+  _ble_complete_sabbrev_keys=()
+  _ble_complete_sabbrev_values=()
+  function ble-complete/sabbrev/register {
+    local key=$1 value=$2 i=0
+    for key2 in "${_ble_complete_sabbrev_keys[@]}"; do
+      [[ $key2 == "$key" ]] && break
+      ((i++))
+    done
+    _ble_complete_sabbrev_keys[i]=$key
+    _ble_complete_sabbrev_values[i]=$value
+  }
+  function ble-complete/sabbrev/list {
+    local i N=${#_ble_complete_sabbrev_keys[@]} q=\' Q="'\''"
+    for ((i=0;i<N;i++)); do
+      local key=${_ble_complete_sabbrev_keys[i]}
+      local value=${_ble_complete_sabbrev_values[i]}
+      printf 'ble-sabbrev %s=%s\n' "$key" "'${value//$q/$Q}'"
+    done
+  }
+  function ble-complete/sabbrev/get {
+    ret=
+    local key=$1 value=$2 i=0
+    for key in "${_ble_complete_sabbrev_keys[@]}"; do
+      if [[ $key == "$1" ]]; then
+        ret=${_ble_complete_sabbrev_values[i]}
+        break
+      fi
+      ((i++))
+    done
+    [[ $ret ]]
+  }
+fi
+
+## 関数 ble-sabbrev key=value
+##   静的略語展開を登録します。
+function ble-sabbrev {
+  if (($#)); then
+    local spec key value
+    for spec; do
+      key=${spec%%=*} value=${spec#*=}
+      ble-complete/sabbrev/register "$key" "$value"
+    done
+  else
+    ble-complete/sabbrev/list
+  fi
+}
+
+function ble-complete/sabbrev/expand {
+  local sources comp_index=$_ble_edit_ind comp_text=$_ble_edit_str
+  ble-complete/context:syntax/generate-sources
+  local src asrc pos=$comp_index
+  for src in "${sources[@]}"; do
+    ble/string#split-words asrc "$src"
+    case ${asrc[0]} in
+    (file|command|argument|variable:w)
+      ((asrc[1]<pos)) && pos=${asrc[1]} ;;
+    esac
+  done
+
+  ((pos<comp_index)) || return 1
+
+  local key=${_ble_edit_str:pos:comp_index-pos}
+  local ret; ble-complete/sabbrev/get "$key" || return 1
+
+  ble/widget/.replace-range "$pos" "$comp_index" "$ret"
+  ((_ble_edit_ind=pos+${#ret}))
+  return 0
+}
+function ble/widget/sabbrev-expand {
+  if ! ble-complete/sabbrev/expand; then
+    ble/widget/.bell
+    return 1
+  fi
 }
 
 #------------------------------------------------------------------------------

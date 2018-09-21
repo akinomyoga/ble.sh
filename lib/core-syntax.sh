@@ -4348,7 +4348,7 @@ function ble-syntax/completion-context/.check-prefix/ctx:rhs {
   fi
 
   if [[ $p ]] && ble-syntax:bash/simple-word/is-simple-or-open-simple "${text:p:index-p}"; then
-    ble-syntax/completion-context/.add file "$p"
+    ble-syntax/completion-context/.add rhs "$p"
   fi
 }
 ## 関数 ble-syntax/completion-context/.check-prefix/ctx:rhs/.skip-array-element
@@ -4420,7 +4420,7 @@ function ble-syntax/completion-context/.check-prefix/ctx:expr {
       elif ((_ble_bash>=30100)) && [[ $tail == ']+' ]]; then
         ble-syntax/completion-context/.add wordlist:-rW:'+=' $((istat+1))
       elif [[ $tail == ']=' || _ble_bash -ge 30100 && $tail == ']+=' ]]; then
-        ble-syntax/completion-context/.add file "$index"
+        ble-syntax/completion-context/.add rhs "$index"
       fi
     fi
   fi
@@ -4540,8 +4540,10 @@ function ble-syntax/completion-context/.check-here {
     elif ((ctx==CTX_TARGX2)); then
       ble-syntax/completion-context/.add command "$index"
       ble-syntax/completion-context/.add wordlist:--:'--' "$index"
-    elif ((ctx==CTX_RDRF||ctx==CTX_RDRS||ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
+    elif ((ctx==CTX_RDRF||ctx==CTX_RDRS)); then
       ble-syntax/completion-context/.add file "$index"
+    elif ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
+      ble-syntax/completion-context/.add rhs "$index"
     fi
   fi
 }
