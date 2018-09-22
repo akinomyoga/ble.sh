@@ -3,13 +3,7 @@
 #
 # 以下は ble-decode.sh にて既定で定義される特殊キー
 #
-#   __defchar__
-#   __default__
-#   __before_widget__
-#   __after_widget__
-#   __attach__
-#
-#   shift alter control meta super hyper
+# 制御文字
 #
 #   TAB  RET
 #
@@ -24,6 +18,22 @@
 #   HTS  HTJ  VTS  PLD  PLU  RI   SS2  SS3
 #   DCS  PU1  PU2  STS  CCH  MW   SPA  EPA
 #   SOS  SGCI SCI  CSI  ST   OSC  PM   APC
+#
+# 特殊キーバインディング
+#
+#   __defchar__
+#   __default__
+#   __before_widget__
+#   __after_widget__
+#   __attach__
+#
+# 修飾キー
+#
+#   shift alter control meta super hyper
+#
+# 端末の応答を処理した時
+#
+#   __ignore__
 #
 # Note: ble-decode.sh における特殊キーの変更に際して、
 # この一覧を更新することでキャッシュの更新が起こるようにしている。

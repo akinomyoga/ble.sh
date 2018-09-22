@@ -220,6 +220,11 @@ function ble-decode-kbd/.initialize {
   _ble_decode_KCODE_SUPER=$ret
   ble-decode-kbd/generate-keycode hyper
   _ble_decode_KCODE_HYPER=$ret
+
+  # Note: 無視するキー。ble-decode-char に於いて
+  #   端末からの通知などを処理した時に使う。
+  ble-decode-kbd/generate-keycode __ignore__
+  _ble_decode_KCODE_IGNORE=$ret
 }
 
 ble-decode-kbd/.initialize
@@ -430,6 +435,13 @@ function ble-decode-char/csi/.decode {
         return
       fi
     fi
+  elif ((char==99)); then
+    if rex='^>'; [[ $_ble_decode_csi_args =~ $rex ]]; then
+      # DA2 応答
+      ble/term/DA2/notify "${_ble_decode_csi_args:1}"
+      csistat=$_ble_decode_KCODE_IGNORE
+      return
+    fi
   fi
 
   # pc-style "CSI 1; <mod> A" sequences
@@ -521,7 +533,7 @@ function ble-decode-char {
       # ((char&ble_decode_Erro)) : 最適化(過去 sequence は全部吐く)?
     fi
 
-    # hook for quoted-insert, etc
+    # hook for quoted-insert etc
     if [[ $_ble_decode_char__hook ]]; then
       ((char==ble_decode_IsolatedESC)) && char=27 # isolated ESC -> ESC
       local hook=$_ble_decode_char__hook
@@ -621,6 +633,8 @@ function ble-decode-char/.process-modifier {
 ##     処理対象のキーコードを指定します。
 function ble-decode-char/.send-modified-key {
   local kcode=$1
+  ((kcode==_ble_decode_KCODE_IGNORE)) && return
+
   if ((0<=kcode&&kcode<32)); then
     ((kcode|=(kcode==0||kcode>26?64:96)|ble_decode_Ctrl))
   fi
@@ -1906,6 +1920,8 @@ function ble-decode-attach {
     ble-decode-detach
     return 1
   fi
+
+  printf '\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
 }
 function ble-decode-detach {
   [[ $_ble_decode_bind_state != none ]] || return

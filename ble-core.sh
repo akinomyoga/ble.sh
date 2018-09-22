@@ -1961,13 +1961,20 @@ function ble/term/bracketed-paste-mode/leave {
   ble/util/buffer $'\e[?2004l'
 }
 
+#---- DA2 ---------------------------------------------------------------------
+
+_ble_term_DA2R=
+function ble/term/DA2/notify {
+  _ble_term_DA2R=$1
+}
+
 #---- SGR(>4): modifyOtherKeys ------------------------------------------------
 
-: ${bleopt_term_modifyOtherKeys_external=1}
-: ${bleopt_term_modifyOtherKeys_internal=2}
+: ${bleopt_term_modifyOtherKeys_external=auto}
+: ${bleopt_term_modifyOtherKeys_internal=auto}
 
 _ble_term_modifyOtherKeys_current=
-function ble/term/modify-other-keys/.update {
+function ble/term/modifyOtherKeys/.update {
   [[ $1 == $_ble_term_modifyOtherKeys_current ]] && return
   # Note: 対応していない端末が SGR と勘違いしても
   #  大丈夫な様に SGR を最後にクリアしておく。
@@ -1980,11 +1987,30 @@ function ble/term/modify-other-keys/.update {
   esac
   _ble_term_modifyOtherKeys_current=$1
 }
-function ble/term/modify-other-keys/enter {
-  ble/term/modify-other-keys/.update "$bleopt_term_modifyOtherKeys_internal"
+function ble/term/modifyOtherKeys/.supported {
+  # libvte は SGR(>4) を直接画面に表示してしまう
+  [[ $_ble_term_DA2R == '1;'* ]] && return 1
+
+  # 改造版 Poderosa は通知でウィンドウサイズを毎回変更するので表示が乱れてしまう
+  [[ $MWG_LOGINTERM == rosaterm ]] && return 1
 }
-function ble/term/modify-other-keys/leave {
-  ble/term/modify-other-keys/.update "$bleopt_term_modifyOtherKeys_external"
+function ble/term/modifyOtherKeys/enter {
+  local value=$bleopt_term_modifyOtherKeys_internal
+  if [[ $value == auto ]]; then
+    value=2
+    # 問題を起こす端末で無効化。
+    ble/term/modifyOtherKeys/.supported || value=
+  fi
+  ble/term/modifyOtherKeys/.update "$bleopt_term_modifyOtherKeys_internal"
+}
+function ble/term/modifyOtherKeys/leave {
+  local value=$bleopt_term_modifyOtherKeys_internal
+  if [[ $value == auto ]]; then
+    value=1
+    # 問題を起こす端末で無効化。
+    ble/term/modifyOtherKeys/.supported || value=
+  fi
+  ble/term/modifyOtherKeys/.update "$bleopt_term_modifyOtherKeys_external"
 }
 
 #---- rl variable: convert-meta -----------------------------------------------
@@ -2017,7 +2043,7 @@ function ble/term/enter {
   [[ $_ble_term_state == internal ]] && return
   ble/term/stty/enter
   ble/term/bracketed-paste-mode/enter
-  ble/term/modify-other-keys/enter
+  ble/term/modifyOtherKeys/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
   ble/term/rl-convert-meta/enter
@@ -2027,7 +2053,7 @@ function ble/term/leave {
   [[ $_ble_term_state == external ]] && return
   ble/term/stty/leave
   ble/term/bracketed-paste-mode/leave
-  ble/term/modify-other-keys/leave
+  ble/term/modifyOtherKeys/leave
   ble/term/cursor-state/.update "$bleopt_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
   ble/term/rl-convert-meta/leave
