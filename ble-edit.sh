@@ -5473,6 +5473,10 @@ function ble-decode/keymap:safe/bind-complete {
   ble-decode/keymap:safe/.bind 'C-x $' 'complete show_menu:context=variable'
   ble-decode/keymap:safe/.bind 'C-x @' 'complete show_menu:context=hostname'
   ble-decode/keymap:safe/.bind 'C-x !' 'complete show_menu:context=command'
+
+  ble-decode/keymap:safe/.bind "M-'"     'sabbrev-expand'
+  ble-decode/keymap:safe/.bind "C-x '"   'sabbrev-expand'
+  ble-decode/keymap:safe/.bind 'C-x C-r' 'dabbrev-expand'
 }
 
 function ble/widget/safe/__attach__ {
@@ -5822,7 +5826,8 @@ ble-autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/complete \
              ble/widget/menu-complete \
              ble/widget/auto-complete-enter \
-             ble/widget/sabbrev-expand
+             ble/widget/sabbrev-expand \
+             ble/widget/dabbrev-expand
 ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
 
 if ((_ble_bash>=40200)); then

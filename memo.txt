@@ -759,98 +759,8 @@ tech
 
   * C-RET ですぐに実行という意味にしたい
 
-2018-09-15
-
-  * complete: 補完で stackdump が出た。恐らく補完のバグである
-
-    TAB RET を連続で打った。しかし、本当にそれが原因かは分からない。
-    寧ろ menu-filter や auto-complete の方が問題である可能性もある。
-    備考: magnate で発生した。直前に cd で [ble: EOF] が表示される問題が再現している。
-
-    | [murase@magnate2016 0 bin]$ cd
-    | [murase@magnate2016 0 ~]$ c[ble: EOF]
-    | [murase@magnate2016 0 ~]$ cd bin/l
-    | [murase@magnate2016 0 bin]$ stackdump: X1 0 <= beg:0 <= end:1 <= iN:1, beg:0 <= end0:-1 (shift=2 text=l)
-    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble-syntax/parse)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (ble-edit/content/update-syntax)
-    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:14 (ble-highlight-layer:syntax/update)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:5 (ble-highlight-layer/update)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:40 (ble/textarea#update-text-buffer)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#render)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:2 (ble/widget/.insert-newline)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:34 (ble/widget/.newline)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:0 (ble/widget/accept-line)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:21 (ble-decode/widget/.call-keyseq)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:42 (ble-decode-key)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:43 (ble-decode-char/.send-modified-key)
-    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode-char)
-
-    padparadscha 上で試しても再現しない。
-    上を観察すると beg, end は正しい値になっているが
-    end0 が設定されていないという状況の様だ。謎である。
-    また、これは今までによく発生していた mark と ind のエラーではなくて、
-    ble-syntax/parse の中で起こっている更新範囲のエラーである。
-    特に ble-syntax/parse から利用する end0 に触っている箇所は限られているはずである。
-
-    * 辿って行くと、ble/dirty-range#update を信頼するならば、
-      ble-edit/content/.update-dirty-range の呼び出し元が怪しい。
-      これの呼び出し元は三箇所で以下の通り
-      - ble-edit/content/replace
-      - ble-edit/content/reset
-      - ble-edit/content/reset-and-check-dirty
-      reset の場合には内部で文字列長を取得しているので end0 が負になる事はありえない。
-      reset-and-check-dirty に関しても ble/string#common-suffix が渡した文字列よりも長い
-      誤った結果を返さない限りは end0 が負になる事はない。
-      従って、ble-edit/content/replace の呼び出し元を調べれば良いはずである。
-      core-complete.sh の中での ble-edit/content/replace の呼び出し元は以下の通り。
-      - ble-complete/menu-complete/select
-        ここは end として _ble_edit_ind を渡している。
-        _ble_edit_ind が負になっていたらもっと色々なエラーが出ている筈であるし、
-        また今回の操作には menu-complete は関係ないのでこれは大丈夫だろう。
-
-      - ble-complete/auto-complete/.check-history
-      - ble-complete/auto-complete/.check-context
-        ここでも _ble_edit_ind を渡している。
-      - ble/widget/auto_complete/cancel
-      - ble/widget/auto_complete/accept
-        これらは _ble_edit_mark の方を渡している。
-      - ble/widget/auto_complete/self-insert
-      - ble/widget/auto_complete/accept-word
-        _ble_edit_ind を渡している。
-      うーん。何れも問題がないように思われる。
-
-    * ble/dirty-range#update の実装を確認する。
-      どうもこれを読むと beg>=0 で end<0, end0<0 という状況も想定している様である。
-      end<0, end0<0 は恐らく末端までという意味であろう。
-      しかし、今回は beg>=0 ならば end>=0 かつ end0>=0 と仮定する。
-      この時 end0 が元にない値になるのは、
-      delta=endA-endB0 が負の時でこの時 end0=endA0-delta とされる。
-      しかし、これは end0 を増加させるのであって、end0 が負になることの説明にはならない。
-      因みに、例えば以下のような形の変更である。処理としても正しい。
-
-        0---bA-----------eA0---e0---$
-        |   |            /    :    /
-        |   |           /    :    /
-        0---bA---bB---eA---eB0---$
-        |   :    |         /    /
-        |   :    |        /    /
-        0---bA---bB------eB---$
-
-    * core-complete.sh 内部で _ble_edit_mark に値を設定している箇所を確認する。
-      何れも _ble_edit_ind に正の値を渡しているか、或いは直接正の値を代入している様に見える。
-      _ble_edit_ind に関しては insert_beg または _ble_complete_ac_comp1, _ble_complete_menu_beg が負の値だと
-      もしかすると負の値になってしまうかもしれない。
-      insert_beg は _ble_complete_menu_beg または _ble_complete_ac_comp1 から値を持ってきている。
-      それ以外の場所は自明に正の値になっているはずである。
-      _ble_complete_menu_beg は COMP1 から値を取ってきている。
-      _ble_complete_menu_comp1 も COMP1 から値を取ってきている。
-      COMP1 は補完文脈から直接値を取得している。
-
-    補完文脈でバグにより負の値が生成される事があるのだろうか。
-    取り敢えず ble-syntax/completion-context/.add に
-    ble-assert を設置して様子を見る事にする。
-    また、エラーが発生した時の修正で end0 も値を設定する様にした。
-    後はまた様子見をする事にする。
+  * [保留] 2018-09-15 complete: 文脈の変更範囲で end0 だけ負になるバグ (ref `#D0818`)
+  * [保留] 2018-09-11 complete: 端末が操作を受け付けなくなるバグ (ref `#D0817`)
 
 2018-09-13
 
@@ -864,135 +774,6 @@ tech
     と思ったが、ユーザから入力を求めて補完候補を絞る機能があっても良い様な気がしてきた。
     そのような発想で補間関数を設計する人は沢山いるだろうと考えられる。
     やはり、標準入力を勝手に封じるのは問題の様に思われてきた。取り敢えず保留という事にする。
-
-2018-09-11
-
-  * 止まってしまう問題。端末の問題なのか ble.sh の問題なのか切り分けが必要
-    と思ったが最新版では再現しない。何だったのだろうか。
-
-    - これはやはり今でも起こる様である。
-    - 先ず今までに screen の中で起こった事はない。
-      rosaterm に関して起こった。
-    - Cygwin だけでなく Linux (padparadscha) の上でも起こる。
-    - 別の端末から bash を殺すと再度動く様になることから、
-      端末の表示がおかしくなっているという事ではない。
-    - コマンドの実行直後に起こる事もある
-      実はかなりの頻度で起こっている。
-
-    2018-09-19 今試すとやはり動かない。何らかの発生条件があるのだろうか。
-
-2018-09-10
-
-  * complete: 略語展開
-
-    動的略語展開に対応するにしても zsh-abbbreviations に対応するにしても、
-    補完文脈を外から指定できる様にする仕組みが必要になる。
-
-    現在の仕組みは ble-syntax:bash/completion-context/generate に固定になっている。
-    この部分を別の補完文脈生成に差し替える事ができる様にする仕組みが欲しい。
-
-    ble-complete/candidates/get-contexts の中で呼び出している。
-    これを ble-complete/context:$context/generate 的な物に置き換えられたら良い。
-    というか補完文脈を生成する物にどのような名前をつけたら良いであろう。
-
-    % 補完文脈を生成するものも context (文脈) と呼ぶのだと混乱の元である。
-    %
-    % 因みに現在は ble-complete/source:SOURCE と ble-complete/action:ACTION がある。
-    % 今 context と読んでいるのは位置と source の組である。
-    % 最近 context 配列を contexts に変更したがこれは失敗したかもしれない。
-    % 実は context == sources だったのかもしれない。
-    % pick-nearest-context なども pick-nearest-source であるべきだったかもしれない。
-    %
-    % うーん。今となっては面倒なので context を生成する機構は switch という事にする。
-
-    2018-09-20 元気があったので今まで context ctx と呼んでいた物は全て source src に改名した。
-    source を生成していた物が今後は context になる。
-
-    改めて思うことは、実は静的略語展開にしても動的略語展開にしても、
-    実は complete の枠組みとは処理の仕方が異なるので、
-    また独立に実装する必要があるのではないかという事。
-    もしそうだとするならば context:??? を用意して実装するというのは変な気がする。
-
-    * 寧ろ context:??? を用意して実装するのは個別の補完の種類を指定した補完なのではないか。
-      取り敢えず実装仕掛けてしまったので個別の補完の種類を指定した補完に対応する事にする。
-      取り敢えず実装して emacs モードでテストした。動いている。
-
-      | 問題は vim mode でどの様に実装するべきかである。
-      | M-/ 等には bind したくない。すると C-x / 等だけに bind する事になり、
-      | 最初から menu-complete を試みる事になる。本当にそれで良いのだろうか。
-      |
-      | * vim での振る舞いについて確認しておく事にする。
-      |   vim の振る舞いは何だかよく分からない。取り敢えず C-x C-v とするとメニュー補完に入る様だ。
-      |   その意味では menu-complete に入るという振る舞いは良い。
-      |   しかし、その後で C-v を再び押すとどんどん次の候補に移動する様である。
-      |   という事は、menu-complete でも例えば C-x / で始まった時には、
-      |   / を連続で押す事によって次の候補に移動するという事をしても良いのではないか。
-      | * と思って bash の振る舞いを再度確認したら、
-      |   これはメニュー補完ではなくて、単にメニューを表示するだけだった。
-      |   C-x $ に続けて連続して $ を入力しても、普通に $ が入力されるだけで、
-      |   別にメニュー補完に突入する等の事はないようだ。
-      |
-      | まとめると
-      | - vim では C-x C-v とするとメニュー補完に入り、続けて C-v を押すとメニュー内の選択をできる。
-      | - bash では C-x / などとすると単にメニューを表示するだけでメニュー補完に入るという事はない。
-
-      これを踏まえて以下の様に実装する事にする。
-
-      - emacs モードでは bash と同様の動作とする。つまりメニューを表示する。
-      - vim モードでは menu-complete に入る。但し、同じキーを続けて打つ事による選択には対応しない?
-
-      まあ、取り敢えずこれで完了という事にする。
-
-    * 次に静的略語展開について考える。
-      静的略語展開は補完候補の生成などは実は行わない。
-      単に文脈を見て完全一致したら置換を実行するだけである。
-      magic-space を改造する必要がある。
-
-      先に静的略語展開に対応する事にした。
-
-    * 動的略語展開は command argument word など?
-      或いは、extract-command で取得できる範囲?
-      それを入力済みの文字列として履歴から合致する単語を探し出す。
-
-      しかし、履歴に含まれる単語を厳密に切り出すと時間がかかる。
-      事前にバックグラウンドで単語の分割を実行したとしてもメモリを食う。
-      更に、入れ子になっている場合なども考えていくと処理は単純ではない。
-      Bash の振る舞いはどうなっているのだろうか?
-
-      調べてみると例えば 'f に対して dabbrev-expand すると、
-      過去の f で始まる単語に一致する。過去の "'f" で始まる単語には一致しない。
-      * 更に実際に挿入される文字列はちゃんと閉じ ' も付加される。
-        →これは core-complete の action:word/complete 辺りで行っているのと同様の事をすれば良い。
-      * また、過去の 'hello f*** world' 的な引用符の中の単語にも一致しない。
-        →これは単純なシェル特殊文字による分割ではなくて入れ子構造も考慮した探索になっている事を表す。
-
-      うーん。これをちゃんと対応するのは難しい。
-      しかし、引用符の中を考えなくて良いのであれば或いは簡単かもしれない。
-
-      引用符をスキップして一致した物を見つければ良いのでは。
-      あと空白とシェルの分割文字 ><;|&(。
-      * また = と : については特別扱いするべきか。
-        調べてみた所 : も = も特別扱いはされていない様だ。
-        : または = で区切られた補完候補も生成されないし、
-        また : または = が含まれていても全体として一つの補完候補となっている。
-      * 単に '' の部分だけ除去するだけでは駄目の様だ。
-        つまり、'bbbb'aaaa が履歴にある時 aaaa は候補にはならない。
-      * コマンド置換の中にある単語も候補にはならない。
-      * 引用符の中での dabbrev はできるが、クォートがある場合には dabbrev はできない。
-        つまり 'f からは dabbrev できるが、\f からは dabrrev できない。
-        もしかすると COMP_WORDBREAKS 以降の文字列に対して dabbrev しているだけなのかもしれない。
-        →なんとそれだった。\ を COMP_WORDBREAKS に入れたら \f から dabbrev できるようになった。
-
-      つまり、以下の様な実装になる。
-      1 COMP_WORDBREAKS 以降の文字列を入力済み部分とする
-      2 入力済み部分に一致する単語を履歴の中から探し出す。
-        単語がどう切り出されているのかは不明
-
-    Change
-    - complete: 種類を指定した補完に対応
-    - complete: 静的略語展開に対応 (`ble-sabbrev key=value` で設定)
-    - edit: `ble/widget/history-expand-line` は <kbd>C-RET</kbd> ではなく <kbd>M-^</kbd> から束縛される様に変更
-    - edit: `ble/widget/magic-space` で履歴展開が行われなかった時、現在位置で静的略語展開を試みる様に変更
 
 2018-08-30
 
@@ -2716,16 +2497,17 @@ tech
 
 2018-09-03 (#D0766..#D0810 47e7357)
 
-  未整理
-  - edit: コマンド実行時に現在のカーソル位置より下に表示されている端末の内容を上書きする様に変更 `#D0816`
-  - edit: コマンド実行時、不要であれば `ble-edit/info` 消去を省略する `#D0816`
-
   補完: 新機能
   - complete: 自動補完において履歴からの検索に対応 `#D0766`, `#D0769` `#D0784` (fix)
   - complete: 自動補完時の `M-f` `C-f` 等に対応 `#D0767`
   - complete: `"$hello"` などの引用符中のパラメータ展開がある場合でも補完に対応 `#D0768`
   - complete: 配列要素代入の右辺での補完に対応 `#D0773`
   - complete: ブレース展開の途中での補完に対応 `#D0774`
+  - auto-complete: `ble/widget/auto_complete/accept-and-execute` 対応 `#D0811`
+  - complete: 補完関係の設定をする為の load hook の追加 `#D0812`
+  - complete: 種類を指定した補完に対応 `#D0820` `#D0819` (fix)
+  - complete: 静的略語展開に対応 (`ble-sabbrev key=value` で設定) `#D0820`
+  - complete: 動的略語展開に対応 `#D0820`
 
   補完: バグ・問題点修正
   - complete: 一意確定した直後の補完ですぐにメニュー補完に入るバグの修正 `#D0771`
@@ -2770,7 +2552,14 @@ tech
 
   他: 動作変更
   - edit: read -e がキャンセル・タイムアウトによって終了した時に入力文字列を灰色で再表示 `#D0809`
-
+  - decode: キーマップの既定の初期化を最初の `ble-bind` 時に確認する様に変更 `#D0813`
+  - core: `ble/util/clock` 導入 `#D0814`
+  - edit: `ble-edit/read -e -t timeout` において、タイムアウトをより高精度で処理 (`ble/util/clock`) `#D0814`
+  - color: `face` が定義されていない時のエラーメッセージの表示方法を変更 `#D0815`
+  - edit: コマンド実行時に現在のカーソル位置より下に表示されている端末の内容を上書きする様に変更 `#D0816`
+  - edit: `accept-line` において、ちらつき防止の為、実際のコマンド実行が伴わない時は info の再描画を行わない `#D0816`
+  - edit: `ble/widget/history-expand-line` は <kbd>C-RET</kbd> ではなく <kbd>M-^</kbd> から束縛される様に変更 `#D0820`
+  - edit: `ble/widget/magic-space` で履歴展開が行われなかった時、現在位置で静的略語展開を試みる様に変更 `#D0820`
 
   他
   - Makefile: 依存ファイルを `.PHONY` target として出力 `#D0778`
@@ -3454,10 +3243,285 @@ tech
 
 2018-09-22
 
-  * complete: メニューが表示されている状態で C-x ~ 等を実行すると [#D0817]
+  * 2018-09-10 complete: 略語展開 [#D0820]
+
+    動的略語展開に対応するにしても zsh-abbbreviations に対応するにしても、
+    補完文脈を外から指定できる様にする仕組みが必要になる。
+
+    現在の仕組みは ble-syntax:bash/completion-context/generate に固定になっている。
+    この部分を別の補完文脈生成に差し替える事ができる様にする仕組みが欲しい。
+
+    ble-complete/candidates/get-contexts の中で呼び出している。
+    これを ble-complete/context:$context/generate 的な物に置き換えられたら良い。
+    というか補完文脈を生成する物にどのような名前をつけたら良いであろう。
+
+    % 補完文脈を生成するものも context (文脈) と呼ぶのだと混乱の元である。
+    %
+    % 因みに現在は ble-complete/source:SOURCE と ble-complete/action:ACTION がある。
+    % 今 context と読んでいるのは位置と source の組である。
+    % 最近 context 配列を contexts に変更したがこれは失敗したかもしれない。
+    % 実は context == sources だったのかもしれない。
+    % pick-nearest-context なども pick-nearest-source であるべきだったかもしれない。
+    %
+    % うーん。今となっては面倒なので context を生成する機構は switch という事にする。
+
+    2018-09-20 元気があったので今まで context ctx と呼んでいた物は全て source src に改名した。
+    source を生成していた物が今後は context になる。
+
+    改めて思うことは、実は静的略語展開にしても動的略語展開にしても、
+    実は complete の枠組みとは処理の仕方が異なるので、
+    また独立に実装する必要があるのではないかという事。
+    もしそうだとするならば context:??? を用意して実装するというのは変な気がする。
+
+    * 寧ろ context:??? を用意して実装するのは個別の補完の種類を指定した補完なのではないか。
+      取り敢えず実装仕掛けてしまったので個別の補完の種類を指定した補完に対応する事にする。
+      取り敢えず実装して emacs モードでテストした。動いている。
+
+      | 問題は vim mode でどの様に実装するべきかである。
+      | M-/ 等には bind したくない。すると C-x / 等だけに bind する事になり、
+      | 最初から menu-complete を試みる事になる。本当にそれで良いのだろうか。
+      |
+      | * vim での振る舞いについて確認しておく事にする。
+      |   vim の振る舞いは何だかよく分からない。取り敢えず C-x C-v とするとメニュー補完に入る様だ。
+      |   その意味では menu-complete に入るという振る舞いは良い。
+      |   しかし、その後で C-v を再び押すとどんどん次の候補に移動する様である。
+      |   という事は、menu-complete でも例えば C-x / で始まった時には、
+      |   / を連続で押す事によって次の候補に移動するという事をしても良いのではないか。
+      | * と思って bash の振る舞いを再度確認したら、
+      |   これはメニュー補完ではなくて、単にメニューを表示するだけだった。
+      |   C-x $ に続けて連続して $ を入力しても、普通に $ が入力されるだけで、
+      |   別にメニュー補完に突入する等の事はないようだ。
+      |
+      | まとめると
+      | - vim では C-x C-v とするとメニュー補完に入り、続けて C-v を押すとメニュー内の選択をできる。
+      | - bash では C-x / などとすると単にメニューを表示するだけでメニュー補完に入るという事はない。
+
+      これを踏まえて以下の様に実装する事にする。
+
+      - emacs モードでは bash と同様の動作とする。つまりメニューを表示する。
+      - vim モードでは menu-complete に入る。但し、同じキーを続けて打つ事による選択には対応しない?
+
+      まあ、取り敢えずこれで完了という事にする。
+
+    * 次に静的略語展開について考える。
+      静的略語展開は補完候補の生成などは実は行わない。
+      単に文脈を見て完全一致したら置換を実行するだけである。
+      magic-space を改造する必要がある。
+
+      先に静的略語展開に対応する事にした。
+
+    * 動的略語展開は command argument word など?
+      或いは、extract-command で取得できる範囲?
+      それを入力済みの文字列として履歴から合致する単語を探し出す。
+
+      しかし、履歴に含まれる単語を厳密に切り出すと時間がかかる。
+      事前にバックグラウンドで単語の分割を実行したとしてもメモリを食う。
+      更に、入れ子になっている場合なども考えていくと処理は単純ではない。
+
+      Bash の振る舞いはどうなっているのだろうか?
+
+      | 調べてみると例えば 'f に対して dabbrev-expand すると、
+      | 過去の f で始まる単語に一致する。過去の "'f" で始まる単語には一致しない。
+      | * 更に実際に挿入される文字列はちゃんと閉じ ' も付加される。
+      |   →これは core-complete の action:word/complete 辺りで行っているのと同様の事をすれば良い。
+      | * また、過去の 'hello f*** world' 的な引用符の中の単語にも一致しない。
+      |   →これは単純なシェル特殊文字による分割ではなくて入れ子構造も考慮した探索になっている事を表す。
+      |
+      | うーん。これをちゃんと対応するのは難しい。
+      | しかし、引用符の中を考えなくて良いのであれば或いは簡単かもしれない。
+      |
+      | 引用符をスキップして一致した物を見つければ良いのでは。
+      | あと空白とシェルの分割文字 ><;|&(。
+      | * また = と : については特別扱いするべきか。
+      |   調べてみた所 : も = も特別扱いはされていない様だ。
+      |   : または = で区切られた補完候補も生成されないし、
+      |   また : または = が含まれていても全体として一つの補完候補となっている。
+      | * 単に '' の部分だけ除去するだけでは駄目の様だ。
+      |   つまり、'bbbb'aaaa が履歴にある時 aaaa は候補にはならない。
+      | * コマンド置換の中にある単語も候補にはならない。
+      | * 引用符の中での dabbrev はできるが、クォートがある場合には dabbrev はできない。
+      |   つまり 'f からは dabbrev できるが、\f からは dabrrev できない。
+      |   もしかすると COMP_WORDBREAKS 以降の文字列に対して dabbrev しているだけなのかもしれない。
+      |   →なんとそれだった。\ を COMP_WORDBREAKS に入れたら \f から dabbrev できるようになった。
+      |
+      | つまり、以下の様な実装になる。
+      | 1 COMP_WORDBREAKS 以降の文字列を入力済み部分とする
+      | 2 入力済み部分に一致する単語を履歴の中から探し出す。
+      |   単語がどう切り出されているのかは不明
+
+      ble でどの様な仕様にするかは色々考えられる。
+
+      | a COMP_WORDBREAKS で区切って最後の単語に対して履歴から検索を行う。
+      |
+      | b 文法構造に従った単語で履歴から検索を行う。
+      |   文法構造を解析しているので単語を抽出する事は容易である。
+      |   しかし、履歴の方については文法構造に従った抽出は困難である。
+      |
+      |
+      | ? 展開した結果の文字列を履歴から検索するのか
+      |   展開前の文字列について履歴から検索するのか。
+      |   これは、履歴を一つ一つ展開するのが困難であるし、
+      |   展開語が一致する様に展開前に対する正規表現を構築するのも不可能であるから、
+      |   整合性を考えるならば展開前の文字列について履歴から検索するのが妥当である。
+      |
+      | ? Bash では履歴の中の引用符に含まれる文字列などには一致しなかった。
+      |   これを正しく実装するのは ble では難しい。
+      |   正規表現で単語を切り出しながら一致させる事も可能であるが、
+      |   そうすると少し複雑な単語が含まれているだけで、
+      |   それ以降の単語について一致させる事ができなくなる。
+      |
+      |   改めて Bash で試してみると、例えば $ から dabbrev-expand すると、
+      |   ちゃんとコマンド置換の単語も抜き出す事ができているという事から、
+      |   やはりトップレベルの単語について全て記録している、
+      |   もしくは一致させる時にちゃんと解析をしているという事になる。
+      |
+      |   これを ble で実現する為には、
+      |   内部的に文法構造の解析を実行するか、
+      |   或いは、簡易な方法で読み飛ばすか、
+      |   という事をしながら履歴を検索していかなければならない。
+      |   因みに Bash は簡易な方法で読み飛ばしているのではないかという気がする。
+      |   元々の解析自体が簡易な方法で読み飛ばしてから、
+      |   中の構造をまた解析し直すという解析方法を取っているように思うので。
+      |   簡易な方法で読み飛ばすとしたらどの様にすれば良いのか。
+      |   ${} と () をカウントすれば良いだろうか。
+      |   それと " についてもちゃんと開く・閉じるを調べる必要がある。
+      |   再帰下降で解析すればそんなには難しくないのだろうという気がする。
+      |   但し Bash で実装するのには重い気がする。
+
+      Bash の動作
+
+        COMP_WORDBREAKS で区切った単語を現在位置から切り出し、
+        文法構造に従ったトップレベルの単語を履歴から検索する。
+        単語のクォート除去などは行わない状態で検索を行う。
+
+      方針1
+
+        文法構造に従った単語を現在位置から切り出し、
+        文法構造に従った単語を履歴から検索する。
+        これは事前に単語の一覧を作っておくか、
+        その場で解析を実行しなければならない。
+
+      方針2
+
+        COMP_WORDBREAKS で区切った単語を現在位置から切り出し、
+        COMP_WORDBREAKS 区切りで単語を履歴から検索する。
+
+      実用性という観点から考えると、例えば $(...)
+      という様な単語を切り出すという事があるのかという疑問がある。
+      それよりは細かい単語を補完させる場合の方が多いのではないかと思う。
+      その様に考えると COMP_WORDBREAKS で区切った物を履歴から検索する方が自然に思われる。
+
+      取り敢えず方針2で実装する事にする。
+
+  * complete: メニューが表示されている状態で C-x ~ 等を実行すると [#D0819]
     その時にメニューに表示されている内容でメニューに入ってしまう。
     context= が指定されている時にはメニューに入るべきではないのではないか。
     →取り敢えずその様に実装した。この仕様は微妙かもしれないが暫く試してみる事にする。
+
+  * 2018-09-15 [保留] complete: 補完で stackdump が出た。恐らく補完のバグである [#D0818]
+
+    TAB RET を連続で打った。しかし、本当にそれが原因かは分からない。
+    寧ろ menu-filter や auto-complete の方が問題である可能性もある。
+    備考: magnate で発生した。直前に cd で [ble: EOF] が表示される問題が再現している。
+
+    | [murase@magnate2016 0 bin]$ cd
+    | [murase@magnate2016 0 ~]$ c[ble: EOF]
+    | [murase@magnate2016 0 ~]$ cd bin/l
+    | [murase@magnate2016 0 bin]$ stackdump: X1 0 <= beg:0 <= end:1 <= iN:1, beg:0 <= end0:-1 (shift=2 text=l)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble-syntax/parse)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (ble-edit/content/update-syntax)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:14 (ble-highlight-layer:syntax/update)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:5 (ble-highlight-layer/update)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:40 (ble/textarea#update-text-buffer)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#render)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:2 (ble/widget/.insert-newline)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:34 (ble/widget/.newline)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:0 (ble/widget/accept-line)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:21 (ble-decode/widget/.call-keyseq)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:42 (ble-decode-key)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:43 (ble-decode-char/.send-modified-key)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode-char)
+
+    padparadscha 上で試しても再現しない。
+    上を観察すると beg, end は正しい値になっているが
+    end0 が設定されていないという状況の様だ。謎である。
+    また、これは今までによく発生していた mark と ind のエラーではなくて、
+    ble-syntax/parse の中で起こっている更新範囲のエラーである。
+    特に ble-syntax/parse から利用する end0 に触っている箇所は限られているはずである。
+
+    * 辿って行くと、ble/dirty-range#update を信頼するならば、
+      ble-edit/content/.update-dirty-range の呼び出し元が怪しい。
+      これの呼び出し元は三箇所で以下の通り
+      - ble-edit/content/replace
+      - ble-edit/content/reset
+      - ble-edit/content/reset-and-check-dirty
+      reset の場合には内部で文字列長を取得しているので end0 が負になる事はありえない。
+      reset-and-check-dirty に関しても ble/string#common-suffix が渡した文字列よりも長い
+      誤った結果を返さない限りは end0 が負になる事はない。
+      従って、ble-edit/content/replace の呼び出し元を調べれば良いはずである。
+      core-complete.sh の中での ble-edit/content/replace の呼び出し元は以下の通り。
+      - ble-complete/menu-complete/select
+        ここは end として _ble_edit_ind を渡している。
+        _ble_edit_ind が負になっていたらもっと色々なエラーが出ている筈であるし、
+        また今回の操作には menu-complete は関係ないのでこれは大丈夫だろう。
+
+      - ble-complete/auto-complete/.check-history
+      - ble-complete/auto-complete/.check-context
+        ここでも _ble_edit_ind を渡している。
+      - ble/widget/auto_complete/cancel
+      - ble/widget/auto_complete/accept
+        これらは _ble_edit_mark の方を渡している。
+      - ble/widget/auto_complete/self-insert
+      - ble/widget/auto_complete/accept-word
+        _ble_edit_ind を渡している。
+      うーん。何れも問題がないように思われる。
+
+    * ble/dirty-range#update の実装を確認する。
+      どうもこれを読むと beg>=0 で end<0, end0<0 という状況も想定している様である。
+      end<0, end0<0 は恐らく末端までという意味であろう。
+      しかし、今回は beg>=0 ならば end>=0 かつ end0>=0 と仮定する。
+      この時 end0 が元にない値になるのは、
+      delta=endA-endB0 が負の時でこの時 end0=endA0-delta とされる。
+      しかし、これは end0 を増加させるのであって、end0 が負になることの説明にはならない。
+      因みに、例えば以下のような形の変更である。処理としても正しい。
+
+        0---bA-----------eA0---e0---$
+        |   |            /    :    /
+        |   |           /    :    /
+        0---bA---bB---eA---eB0---$
+        |   :    |         /    /
+        |   :    |        /    /
+        0---bA---bB------eB---$
+
+    * core-complete.sh 内部で _ble_edit_mark に値を設定している箇所を確認する。
+      何れも _ble_edit_ind に正の値を渡しているか、或いは直接正の値を代入している様に見える。
+      _ble_edit_ind に関しては insert_beg または _ble_complete_ac_comp1, _ble_complete_menu_beg が負の値だと
+      もしかすると負の値になってしまうかもしれない。
+      insert_beg は _ble_complete_menu_beg または _ble_complete_ac_comp1 から値を持ってきている。
+      それ以外の場所は自明に正の値になっているはずである。
+      _ble_complete_menu_beg は COMP1 から値を取ってきている。
+      _ble_complete_menu_comp1 も COMP1 から値を取ってきている。
+      COMP1 は補完文脈から直接値を取得している。
+
+    補完文脈でバグにより負の値が生成される事があるのだろうか。
+    取り敢えず ble-syntax/completion-context/.add に
+    ble-assert を設置して様子を見る事にする。
+    また、エラーが発生した時の修正で end0 も値を設定する様にした。
+    後はまた様子見をする事にする。
+
+  * [保留] 2018-09-11 complete: 止まってしまう問題。端末の問題なのか ble.sh の問題なのか切り分けが必要 [#D0817]
+    と思ったが最新版では再現しない。何だったのだろうか。
+
+    - これはやはり今でも起こる様である。
+    - 先ず今までに screen の中で起こった事はない。
+      rosaterm に関して起こった。
+    - Cygwin だけでなく Linux (padparadscha) の上でも起こる。
+    - 別の端末から bash を殺すと再度動く様になることから、
+      端末の表示がおかしくなっているという事ではない。
+    - コマンドの実行直後に起こる事もある
+      実はかなりの頻度で起こっている。
+
+    2018-09-19 今試すとやはり動かない。何らかの発生条件があるのだろうか。
 
 2018-09-19
 

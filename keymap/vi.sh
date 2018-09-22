@@ -278,6 +278,9 @@ function ble-decode/keymap:vi_imap/bind-complete {
   ble-decode/keymap:safe/.bind 'C-x $' 'menu-complete context=variable'
   ble-decode/keymap:safe/.bind 'C-x @' 'menu-complete context=hostname'
   ble-decode/keymap:safe/.bind 'C-x !' 'menu-complete context=command'
+
+  ble-decode/keymap:safe/.bind "C-x '"   'sabbrev-expand'
+  ble-decode/keymap:safe/.bind 'C-x C-r' 'dabbrev-expand'
 }
 
 #------------------------------------------------------------------------------
