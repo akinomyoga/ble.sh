@@ -145,7 +145,7 @@ ble-color-setface region_target            bg=153,fg=black
 ble-color-setface disabled                 fg=242
 ble-color-setface overwrite_mode           fg=black,bg=51
 ble-color-setface syntax_default           none
-ble-color-setface syntax_command           fg=red
+ble-color-setface syntax_command           fg=brown
 ble-color-setface syntax_quoted            fg=green
 ble-color-setface syntax_quotation         fg=green,bold
 ble-color-setface syntax_expr              fg=26
@@ -154,7 +154,7 @@ ble-color-setface syntax_varname           fg=202
 ble-color-setface syntax_delimiter         bold
 ble-color-setface syntax_param_expansion   fg=purple
 ble-color-setface syntax_history_expansion bg=94,fg=231
-ble-color-setface syntax_function_name     fg=purple
+ble-color-setface syntax_function_name     fg=92,bold
 ble-color-setface syntax_comment           fg=242
 ble-color-setface syntax_glob              fg=198,bold
 ble-color-setface syntax_brace             fg=37,bold
@@ -164,7 +164,7 @@ ble-color-setface syntax_document_begin    fg=94,bold
 ble-color-setface command_builtin_dot      fg=red,bold
 ble-color-setface command_builtin          fg=red
 ble-color-setface command_alias            fg=teal
-ble-color-setface command_function         fg=purple
+ble-color-setface command_function         fg=92
 ble-color-setface command_file             fg=green
 ble-color-setface command_keyword          fg=blue
 ble-color-setface command_jobs             fg=red

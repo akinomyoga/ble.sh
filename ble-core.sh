@@ -1752,7 +1752,11 @@ function bleopt {
   if ((${#pvars[@]})); then
     local q="'" Q="'\''" var
     for var in "${pvars[@]}"; do
-      builtin printf '%s\n' "bleopt ${var#bleopt_}='${!var//$q/$Q}'"
+      if [[ ${!var+set} ]]; then
+        builtin printf '%s\n' "bleopt ${var#bleopt_}='${!var//$q/$Q}'"
+      else
+        builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
+      fi
     done
   fi
 

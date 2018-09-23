@@ -2484,11 +2484,11 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-03 (#D0766..#D0824 2bc1a83)
+2018-09-03 (#D0766..#D0824 8584e82)
 
   補完: 新機能
   - complete: 自動補完において履歴からの検索に対応 `#D0766`, `#D0769` `#D0784` (fix)
-  - complete: 自動補完時の `M-f` `C-f` 等に対応 `#D0767`
+  - complete: 自動補完時の <kbd>M-f</kbd> <kbd>C-f</kbd> 等に対応 `#D0767`
   - complete: `"$hello"` などの引用符中のパラメータ展開がある場合でも補完に対応 `#D0768`
   - complete: 配列要素代入の右辺での補完に対応 `#D0773`
   - complete: ブレース展開の途中での補完に対応 `#D0774`
@@ -2524,26 +2524,26 @@ tech
   - isearch: 非同期検索ができなくなっていたバグの修正
   - color: `ble-color-setface` の遅延初期化順序のバグを修正 (reported by cmplstofB) `#D0779`
   - decode: CentOS 7 で `LC_ALL=C.UTF-8` に対してエラーメッセージが出る問題の対策 `#D0785`
-  - edit: ジョブがある時の終了 `C-d` について `bleopt allow_exit_with_jobs` 対応 (request by cmplstofB) `#D0786`
-  - edit: Bash 3.* で `C-d` によるプログラム実行 (`ble-edit/exec:gexec`) が遅延するバグの修正
+  - edit: ジョブがある時の終了 <kbd>C-d</kbd> について `bleopt allow_exit_with_jobs` 対応 (request by cmplstofB) `#D0786`
+  - edit: Bash 3.* で <kbd>C-d</kbd> によるプログラム実行 (`ble-edit/exec:gexec`) が遅延するバグの修正
   - syntax: Bash 3.2--4.1 の算術式バグによる関数定義の構文解析に失敗する問題の対策 `#D0788`
   - highlight: `region` レイヤーの着色範囲が改行を跨ぐ場合に既定の着色になるバグの修正 `#D0791`
-  - isearch: 空の検索文字列による一致に `C-h` で戻った時に全体が選択されるバグの修正 `#D0794`
+  - isearch: 空の検索文字列による一致に <kbd>C-h</kbd> で戻った時に全体が選択されるバグの修正 `#D0794`
   - decode: `failglob` の時 `ble-bind -d` に失敗する問題の修正 `#D0795`
   - edit: `command-help` のコマンド名抽出に失敗するバグの修正 (reported by cmplstofB) `#D0799`
   - syntax: 履歴展開の置換指示子の解析が正確でない問題の修正 (report by cmplstofB) `#D0800`
   - edit: Bash 3.0 で履歴展開 `:&` が使えない問題の修正 `#D0801`
   - idle: 負の `sleep` を試みてエラーメッセージが出る問題の修正 `#D0802`
-  - bind: `ble-detach` 時に、Bash 3.0 の '"' のバインディングを破壊するバグの修正 `#D0803`
+  - bind: `ble-detach` 時に、Bash 3.0 の <kbd>"</kbd> のバインディングを破壊するバグの修正 `#D0803`
   - edit: `ble-detach` 直後にコマンドラインに設定される `stty sane` が表示されない問題の対策 `#D0804`
   - core: Bash-3.0 で補完候補がない場合にエラーメッセージが表示されるバグの修正 `#D0807`
   - edit: コマンド実行中にウィンドウサイズが変更された時にプロンプトが表示されてしまう問題の解消 `#D0809`
-  - edit: widget 内で read -e を使用した時・read -e がタイムアウトした時に表示が乱れる問題の解消 `#D0809`
-  - edit: read -e でタイムアウトが効かないバグの修正 `#D0809`
+  - edit: widget 内で `read -e` を使用した時・`read -e` がタイムアウトした時に表示が乱れる問題の解消 `#D0809`
+  - edit: `read -e` でタイムアウトが効かないバグの修正 `#D0809`
   - term: 16色の端末で色が化けるバグの修正 `#D0823`
 
   他: 動作変更
-  - edit: read -e がキャンセル・タイムアウトによって終了した時に入力文字列を灰色で再表示 `#D0809`
+  - edit: `read -e` がキャンセル・タイムアウトによって終了した時に入力文字列を灰色で再表示 `#D0809`
   - decode: キーマップの既定の初期化を最初の `ble-bind` 時に確認する様に変更 `#D0813`
   - core: `ble/util/clock` 導入 `#D0814`
   - edit: `ble-edit/read -e -t timeout` において、タイムアウトをより高精度で処理 (`ble/util/clock`) `#D0814`
@@ -2561,12 +2561,12 @@ tech
   - `blerc` の更新
 
   以下は widget 名変更の一覧
-  - menu_complete/accept              → menu_complete/exit
-  - auto_complete/accept              → auto_complete/insert
-  - auto_complete/accept-on-end       → auto_complete/insert-on-end
-  - auto_complete/accept-word         → auto_complete/insert-word
-  - auto_complete/accept-and-execute  → auto_complete/accept-line
-  - isearch/accept                    → isearch/accept-line
+  - `menu_complete/accept`              → `menu_complete/exit`
+  - `auto_complete/accept`              → `auto_complete/insert`
+  - `auto_complete/accept-on-end`       → `auto_complete/insert-on-end`
+  - `auto_complete/accept-word`         → `auto_complete/insert-word`
+  - `auto_complete/accept-and-execute`  → `auto_complete/accept-line`
+  - `isearch/accept`                    → `isearch/accept-line`
 
 2018-07-29 - 2018-09-02 (#D0684..#D0765)
 
