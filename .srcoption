@@ -1,2 +1,2 @@
---exclude=./out --exclude=./dist --exclude=./a.sh ble.pp ble-syntax-ctx.def -x md --exclude=./test/install
+--exclude=./out --exclude=./dist --exclude=./a.sh ble.pp ble-syntax-ctx.def -x md --exclude=./test/install --exclude=./ble.sh
 

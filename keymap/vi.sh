@@ -4909,7 +4909,7 @@ function ble/keymap:vi/setup-map {
   ble-bind -f \'  'vi-command/goto-mark line'
 
   # bash
-  ble-bind -cf 'C-z' fg
+  ble-bind -c 'C-z' fg
 }
 
 function ble/widget/vi_omap/operator-rot13-or-search-backward {
@@ -6580,7 +6580,7 @@ function ble-decode/keymap:vi_smap/define {
   ble-bind -f 'C-a'  vi_xmap/increment
   ble-bind -f 'C-x'  vi_xmap/decrement
   ble-bind -f f1     vi_xmap/command-help
-  ble-bind -cf 'C-z' fg
+  ble-bind -c 'C-z' fg
 
   #----------------------------------------------------------------------------
   # motion, etc.
@@ -6825,8 +6825,8 @@ function ble-decode/keymap:vi_imap/define {
   # ble-bind -f  'M-l'     redraw-line
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
-  ble-bind -cf 'C-z'     fg
-  # ble-bind -cf 'M-z'     fg
+  ble-bind -c 'C-z'     fg
+  # ble-bind -c 'M-z'     fg
 
   # ble-bind -f 'C-[' bell
   ble-bind -f 'C-\' bell

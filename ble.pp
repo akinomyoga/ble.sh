@@ -114,7 +114,7 @@ function ble/base/restore-POSIXLY_CORRECT {
 }
 ble/base/adjust-POSIXLY_CORRECT
 
-bind &>/dev/null # force to load .inputrc
+builtin bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2

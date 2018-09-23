@@ -1204,7 +1204,7 @@ function ble/util/restore-editing-mode {
 }
 
 function ble/util/test-rl-variable {
-  local rl_variables; ble/util/assign rl_variables 'bind -v'
+  local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
   [[ $rl_variables == *"set $1 on"* ]]
 }
 
@@ -2027,7 +2027,7 @@ function ble/term/rl-convert-meta/enter {
 
   if ble/util/test-rl-variable convert-meta; then
     _ble_term_rl_convert_meta_external=on
-    bind 'set convert-meta off'
+    builtin bind 'set convert-meta off'
   else
     _ble_term_rl_convert_meta_external=off
   fi
@@ -2037,7 +2037,7 @@ function ble/term/rl-convert-meta/leave {
   _ble_term_rl_convert_meta_adjusted=
 
   [[ $_ble_term_rl_convert_meta_external == on ]] &&
-    bind 'set convert-meta on'
+    builtin bind 'set convert-meta on'
 }
 
 #---- terminal enter/leave ----------------------------------------------------

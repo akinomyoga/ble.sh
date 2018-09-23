@@ -5516,8 +5516,8 @@ function ble-decode/keymap:safe/define {
 
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
-  ble-bind -cf 'C-z'     fg
-  ble-bind -cf 'M-z'     fg
+  ble-bind -c 'C-z'     fg
+  ble-bind -c 'M-z'     fg
 }
 
 function ble-edit/bind/load-keymap-definition:safe {
@@ -6163,12 +6163,12 @@ if [[ $bleopt_suppress_bash_output ]]; then
         function ble-edit/stdout/check-ignoreeof-message {
           local line=$1
 
-          [[ $line = *$bleopt_ignoreeof_message* ||
-               $line = *'Use "exit" to leave the shell.'* ||
-               $line = *'ログアウトする為には exit を入力して下さい'* ||
-               $line = *'シェルから脱出するには "exit" を使用してください。'* ||
-               $line = *'シェルから脱出するのに "exit" を使いなさい.'* ||
-               $line = *'Gebruik Kaart na Los Tronk'* ]] && return 0
+          [[ $line == *$bleopt_ignoreeof_message* ||
+               $line == *'Use "exit" to leave the shell.'* ||
+               $line == *'ログアウトする為には exit を入力して下さい'* ||
+               $line == *'シェルから脱出するには "exit" を使用してください。'* ||
+               $line == *'シェルから脱出するのに "exit" を使いなさい.'* ||
+               $line == *'Gebruik Kaart na Los Tronk'* ]] && return 0
 
           # ignoreeof-messages.txt の中身をキャッシュする様にする?
           [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/ignoreeof-messages.txt
@@ -6398,11 +6398,11 @@ function ble/widget/execute-command {
 }
 
 ## 関数 ble/widget/.SHELL_COMMAND command
-##   ble-bind -cf で登録されたコマンドを処理します。
+##   ble-bind -c で登録されたコマンドを処理します。
 function ble/widget/.SHELL_COMMAND { ble/widget/execute-command "$@"; }
 
 ## 関数 ble/widget/.EDIT_COMMAND command
-##   ble-bind -xf で登録されたコマンドを処理します。
+##   ble-bind -x で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND {
   local command=$1
   local READLINE_LINE=$_ble_edit_str

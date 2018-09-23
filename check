@@ -9,10 +9,10 @@ esc='(\[[ -?]*[@-~])*'
 rex_grep_head="^$esc[[:graph:]]+$esc:$esc[[:digit:]]*$esc:$esc"
 
 function check-builtin {
-  echo "--- $FUNCNAME ---"
+  echo "--- $FUNCNAME $1 ---"
   local command="$1" esc='(\[[ -?]*[@-~])*'
-  grc --color --exclude=./test "(^|[^-./\${}=])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)' |
-    grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)builtin$esc([[:space:]]$esc)+$command(\b|$esc)" |
+  grc --color --exclude=./test --exclude=*.md "(^|[^-./\${}=])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)' |
+    grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)="
 }
 
@@ -96,8 +96,10 @@ function check-array-count-in-arithmetic-expression {
 
 #check-builtin 'history'
 #check-builtin 'echo'
-#check-builtin '(bind|compopt|type|printf|read)'
-check-builtin '(read|exit)'
+#check-builtin '(compopt|type|printf|read)'
+check-builtin 'bind'
+check-builtin 'read'
+check-builtin 'exit'
 #check-assign
 
 check-a.txt

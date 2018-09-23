@@ -167,8 +167,8 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f  'M-l'     redraw-line
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
-  ble-bind -cf 'C-z'     fg
-  ble-bind -cf 'M-z'     fg
+  ble-bind -c 'C-z'     fg
+  ble-bind -c 'M-z'     fg
 
   # ble-bind -f 'C-x'      bell
   ble-bind -f 'C-['      bell

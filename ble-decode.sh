@@ -841,10 +841,10 @@ function ble-decode/DEFAULT_KEYMAP {
 }
 
 ## 設定関数 ble/widget/.SHELL_COMMAND command
-##   ble-bind -cf で登録されたコマンドを処理します。
+##   ble-bind -c で登録されたコマンドを処理します。
 function ble/widget/.SHELL_COMMAND { eval "$*"; }
 ## 設定関数 ble/widget/.EDIT_COMMAND command
-##   ble-bind -xf で登録されたコマンドを処理します。
+##   ble-bind -x で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND { eval "$*"; }
 
 
@@ -957,13 +957,13 @@ function ble-decode-key/dump {
       # ('ble/widget/.insert-string '*)
       #   echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/.insert-string }'" ;;
       ('ble/widget/.SHELL_COMMAND '*)
-        echo "ble-bind$kmapopt -cf '${knames//$q/$Q}' '${cmd#ble/widget/.SHELL_COMMAND }'" ;;
+        echo "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
       ('ble/widget/.EDIT_COMMAND '*)
-        echo "ble-bind$kmapopt -xf '${knames//$q/$Q}' '${cmd#ble/widget/.EDIT_COMMAND }'" ;;
+        echo "ble-bind$kmapopt -x '${knames//$q/$Q}' ${cmd#ble/widget/.EDIT_COMMAND }" ;;
       ('ble/widget/'*)
         echo "ble-bind$kmapopt -f '${knames//$q/$Q}' '${cmd#ble/widget/}'" ;;
       (*)
-        echo "ble-bind$kmapopt -xf '${knames//$q/$Q}' '${cmd}'" ;;
+        echo "ble-bind$kmapopt -@ '${knames//$q/$Q}' '${cmd}'" ;;
       esac
     fi
 
@@ -1395,7 +1395,7 @@ function ble-bind/option:help {
   ble/util/cat <<EOF
 ble-bind --help
 ble-bind -k charspecs [keyspec]
-ble-bind [-m kmapname] [-scx@] -f keyspecs [command]
+ble-bind [-m kmapname] -fxc@s keyspecs [command]
 ble-bind [-DdL]
 ble-bind --list-functions
 
@@ -1469,7 +1469,7 @@ function ble-bind/option:list-functions {
 }
 
 function ble-bind {
-  local kmap=$ble_bind_keymap flags= ret
+  local kmap=$ble_bind_keymap ret
 
   local arg c
   while (($#)); do
@@ -1492,7 +1492,7 @@ function ble-bind {
       arg=${arg:1}
       while ((${#arg})); do
         c=${arg::1} arg=${arg:1}
-        case "$c" in
+        case $c in
         (D)
           ble/util/declare-print-definitions "${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}" "${!_ble_decode_csimap_@}"
           ble-decode/keymap/dump ;;
@@ -1522,10 +1522,12 @@ function ble-bind {
           fi
           kmap=$1
           shift ;;
-        (['@xcs']) flags=${flags}$c ;;
-        (f)
+        (['fxc@s'])
+          # 旧形式の指定 -xf や -cf に対応する処理
+          [[ $c != f && $arg == f* ]] && arg=${arg:1}
+
           if (($#<2)); then
-            echo "ble-bind: the option \`-f' requires two arguments." >&2
+            echo "ble-bind: the option \`-$c' requires two arguments." >&2
             return 2
           fi
 
@@ -1534,8 +1536,8 @@ function ble-bind {
             local command=$2
 
             # コマンドの種類
-            case "$flags" in
-            ('')
+            case $c in
+            (f)
               # ble/widget/ 関数
               command=ble/widget/$command
 
@@ -1557,7 +1559,7 @@ function ble-bind {
               command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
             ('@') ;; # 直接実行
             (*)
-              echo "error: unknown combination of flags \`-$flags'." 1>&2
+              echo "error: unsupported binding type \`-$c'." 1>&2
               return 1 ;;
             esac
 
@@ -1946,13 +1948,62 @@ function ble-decode-detach {
   _ble_decode_bind_state=none
 }
 
-# function bind {
-#   if ((_ble_decode_bind_state)); then
-#     echo Error
-#   else
-#     builtin bind "$@"
-#   fi
-# }
+function ble-decode/bind.override {
+  local -a options; options=()
+  local opt_error= q=\' Q="'\''"
+  local opt_literal=
+
+  while (($#)); do
+    local arg=$1; shift
+    if [[ ! $opt_literal && $arg == -* ]]; then
+      if [[ $arg == -- ]]; then
+        opt_literal=1
+      else
+        local i iN=${#arg} c
+        for ((i=1;i<iN;i++)); do
+          local c=${arg:i:1}
+          case $c in
+          ([lpsvPSVX])
+            ble/array#push options "$arg" ;;
+          ([mqurfx])
+            echo "ble.sh: bind: unsupported option $arg '${1//$q/$Q}'" >&2; shift
+            opt_error=1 ;;
+          ('-')
+            echo "ble.sh: bind: invalid option '${arg//$q/$Q}'" >&2
+            opt_error=1 ;;
+          (*)
+            echo "ble.sh: bind: invalid option '-${c//$q/$Q}'" >&2
+            opt_error=1 ;;
+          esac
+        done
+      fi
+    else
+      case $arg in
+      ('set '*) ble/array#push options "$arg" ;;
+      (*:*)
+        echo "ble.sh: bind: unsupported binding '${arg//$q/$Q}'" >&2
+        opt_error=1 ;;
+      (*)
+        echo "ble.sh: bind: invalid readline-command '${arg//$q/$Q}'" >&2
+        opt_error=1 ;;
+      esac
+    fi
+  done
+
+  if [[ $opt_error ]]; then
+    return 1
+  else
+    builtin bind "${options[@]}"
+  fi
+}
+
+function bind {
+  if [[ $_ble_decode_bind_state != none ]]; then
+    ble-decode/bind.override "$@"
+  else
+    builtin bind "$@"
+  fi
+}
 
 #------------------------------------------------------------------------------
 # **** encoding = UTF-8 ****
