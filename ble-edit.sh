@@ -3818,7 +3818,10 @@ function ble/widget/newline {
 function ble/widget/accept-single-line-or/accepts {
   ble-edit/content/is-single-line || return 1
   [[ $_ble_edit_str ]] && ble-decode/has-input && return 1
-  shopt -q cmdhist &>/dev/null && ! ble-syntax:bash/is-complete && return 1
+  if shopt -q cmdhist &>/dev/null; then
+    ble-edit/content/update-syntax
+    ble-syntax:bash/is-complete || return 1
+  fi
   return 0
 }
 function ble/widget/accept-single-line-or {
