@@ -14,22 +14,31 @@ _ble_color_gflags_MaskBg=0x00FF0000
 _ble_color_gflags_ForeColor=0x1000000
 _ble_color_gflags_BackColor=0x2000000
 
+if [[ ! ${bleopt_term_index_colors+set} ]]; then
+  if [[ $TERM == xterm* || $TERM == *-256color || $TERM == kterm* ]]; then
+    bleopt_term_index_colors=256
+  elif [[ $TERM == *-88color ]]; then
+    bleopt_term_index_colors=88
+  else
+    bleopt_term_index_colors=0
+  fi
+fi
+
 function ble-color-show {
-  local h l c
-  local lN=16
-  local hN=$((256/lN))
-  for ((h=0;h<hN;h++)); do
-    printf '\e[38;5;15m'
-    for ((l=0;l<lN;l++)); do
-      ((c=h*lN+l))
-      printf '\e[48;5;%dm%03d ' "$c" "$c"
+  local cols=16
+  local bg bg0 bgN ret gflags=$((_ble_color_gflags_BackColor|_ble_color_gflags_ForeColor))
+  for ((bg0=0;bg0<256;bg0+=cols)); do
+    ((bgN=bg0+cols,bgN<256||(bgN=256)))
+    for ((bg=bg0;bg<bgN;bg++)); do
+      ble-color-g2sgr $((gflags|bg<<16))
+      printf '%s%03d ' "$ret" "$bg"
     done
-    printf '\e[m\n\e[38;5;0m'
-    for ((l=0;l<lN;l++)); do
-      ((c=h*lN+l))
-      printf '\e[48;5;%dm%03d ' "$c" "$c"
+    printf '%s\n' "$_ble_term_sgr0"
+    for ((bg=bg0;bg<bgN;bg++)); do
+      ble-color-g2sgr $((gflags|bg<<16|15<<8))
+      printf '%s%03d ' "$ret" "$bg"
     done
-    printf '\e[m\n'
+    printf '%s\n' "$_ble_term_sgr0"
   done
 }
 
@@ -169,25 +178,75 @@ function ble-color/.name2color {
 ## 関数 ble-color/.color2sgrbg color
 ##   @param[in] color
 ##   @var[out] ret
-function ble-color/.color2sgrfg {
-  local ccode=$1
+function ble-color/.color2sgr-impl {
+  local ccode=$1 prefix=$2 # 3 for fg, 4 for bg
   if ((ccode<0)); then
-    ret=39
-  elif ((ccode<16)); then
-    ret=${_ble_term_sgr_af[ccode]}
+    ret=${prefix}9
+  elif ((ccode<(_ble_term_colors<16?_ble_term_colors:16))); then
+    if ((prefix==4)); then
+      ret=${_ble_term_sgr_ab[ccode]}
+    else
+      ret=${_ble_term_sgr_af[ccode]}
+    fi
   elif ((ccode<256)); then
-    ret="38;5;$ccode"
+    if ((ccode<_ble_term_colors||bleopt_term_index_colors==256)); then
+      ret="${prefix}8;5;$ccode"
+    elif ((bleopt_term_index_colors==88)); then
+      if ((ccode>=16)); then
+        if ((ccode>=232)); then
+          local L=$((((ccode-232+1)*9+12)/25))
+          ((ccode=L==0?16:(L==9?79:80+(L-1))))
+        else
+          ((ccode-=16))
+          local R=$((ccode/36)) G=$((ccode/6%6)) B=$((ccode%6))
+          ((R=(R*3+2)/5,G=(G*3+2)/5,B=(B*3+2)/5,
+            ccode=16+R*16+G*4+B))
+        fi
+      fi
+      ret="${prefix}8;5;$ccode"
+    elif ((ccode<bleopt_term_index_colors)); then
+      ret="${prefix}8;5;$ccode"
+    elif ((_ble_term_colors>=16||_ble_term_colors==8)); then
+      if ((ccode>=16)); then
+        if ((ccode>=232)); then
+          local L=$((((ccode-232+1)*3+12)/25))
+          ((ccode=L==0?0:(L==1?8:(L==2?7:15))))
+        else
+          ((ccode-=16))
+          local R=$((ccode/36)) G=$((ccode/6%6)) B=$((ccode%6))
+          if ((R==G&&G==B)); then
+            local L=$(((R*3+2)/5))
+            ((ccode=L==0?0:(L==1?8:(L==2?7:15))))
+          else
+            local min max
+            ((R<G?(min=R,max=G):(min=G,max=R),
+              B<min?(min=B):(B>max&&(max=B))))
+            local Range=$((max-min))
+            ((R=(R-min+Range/2)/Range,
+              G=(G-min+Range/2)/Range,
+              B=(B-min+Range/2)/Range,
+              ccode=R+G*2+B*4+(min+max>=5?8:0)))
+          fi
+        fi
+      fi
+      ((_ble_term_colors==8&&ccode>=8&&(ccode-=8)))
+
+      if ((prefix==4)); then
+        ret=${_ble_term_sgr_ab[ccode]}
+      else
+        ret=${_ble_term_sgr_af[ccode]}
+      fi
+    else
+      ret=${prefix}9
+    fi
   fi
 }
+
+function ble-color/.color2sgrfg {
+  ble-color/.color2sgr-impl "$1" 3
+}
 function ble-color/.color2sgrbg {
-  local ccode=$1
-  if ((ccode<0)); then
-    ret=49
-  elif ((ccode<16)); then
-    ret=${_ble_term_sgr_ab[ccode]}
-  elif ((ccode<256)); then
-    ret="48;5;$ccode"
-  fi
+  ble-color/.color2sgr-impl "$1" 4
 }
 
 #------------------------------------------------------------------------------

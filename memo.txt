@@ -755,8 +755,6 @@ tech
 
 2018-09-21
 
-  * term: term.sh の local j=$((k-i1+j1)) の k は i の誤りである
-
   * [保留] 2018-09-15 complete: 文脈の変更範囲で end0 だけ負になるバグ (ref `#D0818`)
   * [保留] 2018-09-11 complete: 端末が操作を受け付けなくなるバグ (ref `#D0817`)
 
@@ -2218,13 +2216,6 @@ tech
     - 着色の古いコード
       これに関しては現在の複雑な実装と昔の簡単な実装の間の着地点を見つけたい。
 
-2015-03-04
-
-  * 88colors の時の palette について
-
-    16-79 4x4x4 0,58*v+81
-    80-87 gray 46+25*v
-
 2015-03-01
 
   * ble-edit: bind 模倣?
@@ -2493,7 +2484,7 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-03 (#D0766..#D0821 30e8bd4)
+2018-09-03 (#D0766..#D0824 2bc1a83)
 
   補完: 新機能
   - complete: 自動補完において履歴からの検索に対応 `#D0766`, `#D0769` `#D0784` (fix)
@@ -2522,10 +2513,12 @@ tech
   - complete: 入力済み部分の評価方法の内部変更 `#D0777`
   - complete: 自動補完の着色の変更 `#D0780` `#D0792`
   - complete: プログラム補完で提供するコマンドライン (`COMP_*`) にて、補完開始点に単語の切れ目を入れる様に変更 `#D0793`
+  - auto-complete: <kbd>C-RET</kbd> で補完を確定してコマンド実行 `#D0822`
 
   他: 新機能
   - edit: `IGNOREEOF` に対応 `#D0787`
   - edit: コマンド `exit` にて、ジョブが残っている場合はユーザに尋ねて終了 `#D0789`, `#D0805` (bugfix)
+  - term: 256色対応のない端末での減色の実装 `#D0824`
 
   他: バグ・問題点修正
   - isearch: 非同期検索ができなくなっていたバグの修正
@@ -2547,6 +2540,7 @@ tech
   - edit: コマンド実行中にウィンドウサイズが変更された時にプロンプトが表示されてしまう問題の解消 `#D0809`
   - edit: widget 内で read -e を使用した時・read -e がタイムアウトした時に表示が乱れる問題の解消 `#D0809`
   - edit: read -e でタイムアウトが効かないバグの修正 `#D0809`
+  - term: 16色の端末で色が化けるバグの修正 `#D0823`
 
   他: 動作変更
   - edit: read -e がキャンセル・タイムアウトによって終了した時に入力文字列を灰色で再表示 `#D0809`
@@ -2558,12 +2552,21 @@ tech
   - edit: `accept-line` において、ちらつき防止の為、実際のコマンド実行が伴わない時は info の再描画を行わない `#D0816`
   - edit: `ble/widget/history-expand-line` は <kbd>C-RET</kbd> ではなく <kbd>M-^</kbd> から束縛される様に変更 `#D0820`
   - edit: `ble/widget/magic-space` で履歴展開が行われなかった時、現在位置で静的略語展開を試みる様に変更 `#D0820`
+  - isearch: <kbd>RET</kbd> でコマンド実行ではなく検索を終了するだけに変更。<kbd>C-RET</kbd> でコマンド実行 `#D0822`
 
   他
   - Makefile: 依存ファイルを `.PHONY` target として出力 `#D0778`
   - core: `ble/util/assign` をリエントラントに修正 `#D0782`
   - 議論 complete: `#D0770` edit: `#D0796` vi: `#D0796`
   - `blerc` の更新
+
+  以下は widget 名変更の一覧
+  - menu_complete/accept              → menu_complete/exit
+  - auto_complete/accept              → auto_complete/insert
+  - auto_complete/accept-on-end       → auto_complete/insert-on-end
+  - auto_complete/accept-word         → auto_complete/insert-word
+  - auto_complete/accept-and-execute  → auto_complete/accept-line
+  - isearch/accept                    → isearch/accept-line
 
 2018-07-29 - 2018-09-02 (#D0684..#D0765)
 
@@ -3241,7 +3244,14 @@ tech
 
 2018-09-23
 
-  * C-RET ですぐに実行という意味にしたい [#D0822]
+  * 2015-03-04 減色 (88colors の時の palette について) [#D0824]
+    16-79 4x4x4 0,58*v+81
+    80-87 gray 46+25*v
+
+  * term: term.sh の local j=$((k-i1+j1)) の k は i の誤りである [#D0823]
+    序でに端末が256色対応していない場合の減色処理についても追加する。
+
+  * edit: 検索中や auto_complete にて C-RET ですぐに実行という意味にしたい [#D0822]
 
     序でに isearch/accept → isearch/accept-and-execute にしようと思ったが、
     検索を終了して実行しない物は既に isearch/exit という名前が与えられている様なので、
