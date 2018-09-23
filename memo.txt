@@ -757,8 +757,6 @@ tech
 
   * term: term.sh の local j=$((k-i1+j1)) の k は i の誤りである
 
-  * C-RET ですぐに実行という意味にしたい
-
   * [保留] 2018-09-15 complete: 文脈の変更範囲で end0 だけ負になるバグ (ref `#D0818`)
   * [保留] 2018-09-11 complete: 端末が操作を受け付けなくなるバグ (ref `#D0817`)
 
@@ -3240,6 +3238,28 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2018-09-23
+
+  * C-RET ですぐに実行という意味にしたい [#D0822]
+
+    序でに isearch/accept → isearch/accept-and-execute にしようと思ったが、
+    検索を終了して実行しない物は既に isearch/exit という名前が与えられている様なので、
+    isearch/accept のままにする事にした。そうすると、今度は auto_complete/accept-and-execute
+    の方を auto_complete/accept にして、auto_complete/accept を別の単語にしたくなる。
+    accept の代わりに "確定する" という様な意味の単語があれば良いが、
+    検索してみると determine, decide などが出てくる。これらは意味が違う。
+    他に settle や fix 等があるが前者は余りニュアンスが分からない。
+    後者は色々意味がありすぎて auto_complete/fix などとしても伝わらない気がする。
+    もっとよく使われる単語で良さそうな物はないだろうか。
+    insert にしようか。insert が良さそうだ。編集関数名の変更の一覧を作成しておく。
+
+    - menu_complete/accept              → menu_complete/exit
+    - auto_complete/accept              → auto_complete/insert
+    - auto_complete/accept-on-end       → auto_complete/insert-on-end
+    - auto_complete/accept-word         → auto_complete/insert-word
+    - auto_complete/accept-and-execute  → auto_complete/accept-line
+    - isearch/accept                    → isearch/accept-line
 
 2018-09-22
 

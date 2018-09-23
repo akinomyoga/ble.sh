@@ -2139,7 +2139,7 @@ function ble/widget/menu_complete/backward-line {
   fi
 }
 
-function ble/widget/menu_complete/accept {
+function ble/widget/menu_complete/exit {
   local opts=$1
   ble-decode/keymap/pop
 
@@ -2191,7 +2191,7 @@ function ble/widget/menu_complete/cancel {
   _ble_edit_mark_active=
 }
 function ble/widget/menu_complete/exit-default {
-  ble/widget/menu_complete/accept
+  ble/widget/menu_complete/exit
   ble-decode-key "${KEYS[@]}"
 }
 
@@ -2200,8 +2200,8 @@ function ble-decode/keymap:menu_complete/define {
 
   # ble-bind -f __defchar__ menu_complete/self-insert
   ble-bind -f __default__ 'menu_complete/exit-default'
-  ble-bind -f C-m         'menu_complete/accept complete'
-  ble-bind -f RET         'menu_complete/accept complete'
+  ble-bind -f C-m         'menu_complete/exit complete'
+  ble-bind -f RET         'menu_complete/exit complete'
   ble-bind -f C-g         'menu_complete/cancel'
   ble-bind -f C-f         'menu_complete/forward'
   ble-bind -f right       'menu_complete/forward'
@@ -2486,7 +2486,7 @@ function ble/widget/auto_complete/cancel {
   _ble_complete_ac_insert=
   _ble_complete_ac_suffix=
 }
-function ble/widget/auto_complete/accept {
+function ble/widget/auto_complete/insert {
   ble-decode/keymap/pop
   ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_mark" ''
   _ble_edit_mark=$_ble_edit_ind
@@ -2505,7 +2505,7 @@ function ble/widget/auto_complete/accept {
   ble-complete/menu/clear
   ble-edit/content/clear-arg
 }
-function ble/widget/auto_complete/exit-default {
+function ble/widget/auto_complete/cancel-default {
   ble/widget/auto_complete/cancel
   ble-decode-key "${KEYS[@]}"
 }
@@ -2570,20 +2570,20 @@ function ble/widget/auto_complete/self-insert {
   fi
 }
 
-function ble/widget/auto_complete/accept-on-end {
+function ble/widget/auto_complete/insert-on-end {
   if ((_ble_edit_mark==${#_ble_edit_str})); then
-    ble/widget/auto_complete/accept
+    ble/widget/auto_complete/insert
   else
-    ble/widget/auto_complete/exit-default
+    ble/widget/auto_complete/cancel-default
   fi
 }
-function ble/widget/auto_complete/accept-word {
+function ble/widget/auto_complete/insert-word {
   local rex='^['$_ble_term_IFS']*([^'$_ble_term_IFS']+['$_ble_term_IFS']*)?'
   if [[ $_ble_complete_ac_type == [ch] ]]; then
     local ins=${_ble_edit_str:_ble_edit_ind:_ble_edit_mark-_ble_edit_ind}
     [[ $ins =~ $rex ]]
     if [[ $BASH_REMATCH == "$ins" ]]; then
-      ble/widget/auto_complete/accept
+      ble/widget/auto_complete/insert
       return
     else
       local ins=$BASH_REMATCH
@@ -2606,7 +2606,7 @@ function ble/widget/auto_complete/accept-word {
     local ins=$_ble_complete_ac_insert
     [[ $ins =~ $rex ]]
     if [[ $BASH_REMATCH == "$ins" ]]; then
-      ble/widget/auto_complete/accept
+      ble/widget/auto_complete/insert
       return
     else
       local ins=$BASH_REMATCH
@@ -2631,8 +2631,8 @@ function ble/widget/auto_complete/accept-word {
   fi
   return 1
 }
-function ble/widget/auto_complete/accept-and-execute {
-  ble/widget/auto_complete/accept
+function ble/widget/auto_complete/accept-line {
+  ble/widget/auto_complete/insert
   ble/widget/accept-single-line-or/accepts &&
     ble/widget/accept-line
 }
@@ -2641,14 +2641,16 @@ function ble-decode/keymap:auto_complete/define {
   local ble_bind_keymap=auto_complete
 
   ble-bind -f __defchar__ auto_complete/self-insert
-  ble-bind -f __default__ auto_complete/exit-default
+  ble-bind -f __default__ auto_complete/cancel-default
   ble-bind -f C-g         auto_complete/cancel
-  ble-bind -f S-RET       auto_complete/accept
-  ble-bind -f S-C-m       auto_complete/accept
-  ble-bind -f C-f         auto_complete/accept-on-end
-  ble-bind -f right       auto_complete/accept-on-end
-  ble-bind -f M-f         auto_complete/accept-word
-  ble-bind -f M-right     auto_complete/accept-word
+  ble-bind -f S-RET       auto_complete/insert
+  ble-bind -f S-C-m       auto_complete/insert
+  ble-bind -f C-f         auto_complete/insert-on-end
+  ble-bind -f right       auto_complete/insert-on-end
+  ble-bind -f M-f         auto_complete/insert-word
+  ble-bind -f M-right     auto_complete/insert-word
+  ble-bind -f C-j         auto_complete/insert
+  ble-bind -f C-RET       auto_complete/accept-line
   ble-bind -f auto_complete_enter nop
 }
 

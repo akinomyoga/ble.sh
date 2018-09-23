@@ -156,6 +156,7 @@ function ble-decode/keymap:emacs/define {
   # accept/cancel
   ble-bind -f  'C-c'     discard-line
   ble-bind -f  'C-j'     accept-line
+  ble-bind -f  'C-RET'   accept-line
   ble-bind -f  'C-m'     accept-single-line-or-newline
   ble-bind -f  'RET'     accept-single-line-or-newline
   ble-bind -f  'C-o'     accept-and-next

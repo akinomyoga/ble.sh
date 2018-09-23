@@ -5191,11 +5191,12 @@ function ble-decode/keymap:vi_nmap/define {
   #----------------------------------------------------------------------------
   # bash
 
-  ble-bind -f 'C-j' 'vi-command/accept-line'
-  ble-bind -f 'C-m' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
-  ble-bind -f 'RET' 'vi-command/accept-single-line-or vi-command/forward-first-non-space'
-  ble-bind -f 'C-l' clear-screen
-  ble-bind -f 'C-d' vi-command/exit-on-empty-line
+  ble-bind -f 'C-j'   'vi-command/accept-line'
+  ble-bind -f 'C-RET' 'vi-command/accept-line'
+  ble-bind -f 'C-m'   'vi-command/accept-single-line-or vi-command/forward-first-non-space'
+  ble-bind -f 'RET'   'vi-command/accept-single-line-or vi-command/forward-first-non-space'
+  ble-bind -f 'C-l'   'clear-screen'
+  ble-bind -f 'C-d'   'vi-command/exit-on-empty-line'
   ble-bind -f 'auto_complete_enter' auto-complete-enter
 }
 
@@ -6813,6 +6814,7 @@ function ble-decode/keymap:vi_imap/define {
   # accept/cancel
   # ble-bind -f  'C-c'     discard-line
   ble-bind -f  'C-j'     accept-line
+  ble-bind -f  'C-RET'   accept-line
   ble-bind -f  'C-m'     'vi_imap/accept-single-line-or vi_imap/newline'
   ble-bind -f  'RET'     'vi_imap/accept-single-line-or vi_imap/newline'
   # ble-bind -f  'C-o'     accept-and-next

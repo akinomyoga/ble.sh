@@ -5285,7 +5285,7 @@ function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit
   ble-decode-key "${KEYS[@]}"
 }
-function ble/widget/isearch/accept {
+function ble/widget/isearch/accept-line {
   if ((${#_ble_edit_isearch_que[@]})); then
     ble/widget/.bell "isearch: now searching..."
   else
@@ -5330,12 +5330,12 @@ function ble-decode/keymap:isearch/define {
   ble-bind -f 'BS'        isearch/prev
 
   ble-bind -f __default__ isearch/exit-default
-  ble-bind -f M-C-j       isearch/exit
   ble-bind -f C-d         isearch/exit-delete-forward-char
   ble-bind -f C-g         isearch/cancel
-  ble-bind -f C-j         isearch/accept
-  ble-bind -f C-m         isearch/accept
-  ble-bind -f RET         isearch/accept
+  ble-bind -f C-m         isearch/exit
+  ble-bind -f RET         isearch/exit
+  ble-bind -f C-j         isearch/accept-line
+  ble-bind -f C-RET       isearch/accept-line
 }
 
 # 
@@ -5498,6 +5498,7 @@ function ble-decode/keymap:safe/define {
 
   ble-bind -f  'C-c'     discard-line
   ble-bind -f  'C-j'     accept-line
+  ble-bind -f  'C-RET'   accept-line
   ble-bind -f  'C-m'     accept-single-line-or-newline
   ble-bind -f  'RET'     accept-single-line-or-newline
   ble-bind -f  'C-o'     accept-and-next
