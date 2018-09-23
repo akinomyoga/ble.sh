@@ -5258,13 +5258,17 @@ function ble/widget/isearch/prev {
     ble-edit/isearch/prev
   fi
 }
-function ble/widget/isearch/exit {
+function ble/widget/isearch/exit-with-region {
   ble-decode/keymap/pop
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
   _ble_edit_isearch_que=()
   _ble_edit_isearch_str=
   ble-edit/isearch/.erase-line
+}
+function ble/widget/isearch/exit {
+  ble/widget/isearch/exit-with-region
+  _ble_edit_mark_active=
 }
 function ble/widget/isearch/cancel {
   if ((${#_ble_edit_isearch_que[@]})); then
@@ -5282,7 +5286,7 @@ function ble/widget/isearch/cancel {
   fi
 }
 function ble/widget/isearch/exit-default {
-  ble/widget/isearch/exit
+  ble/widget/isearch/exit-with-region
   ble-decode-key "${KEYS[@]}"
 }
 function ble/widget/isearch/accept-line {
@@ -5293,8 +5297,8 @@ function ble/widget/isearch/accept-line {
   fi
 }
 function ble/widget/isearch/exit-delete-forward-char {
-  ble/widget/isearch/exit
-  ble/widget/delete-forward-char
+  ble/widget/isearch/exit-with-region
+  ble/widget/delete-region-or forward-char
 }
 
 function ble/widget/history-isearch-backward {
