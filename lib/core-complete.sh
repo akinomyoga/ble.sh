@@ -977,13 +977,23 @@ function ble-complete/source:argument/.generate-user-defined-completion {
 
 function ble-complete/source:argument {
   local comp_opts=:
-  local old_cand_count=$old_cand_count
+
+  [[ $comp_type == *a* ]] &&
+      ble-complete/candidates/.filter-by-regex "$comps_rex_ambiguous"
+  local old_cand_count=$cand_count
 
   # try complete&compgen
-  ble-complete/source:argument/.generate-user-defined-completion; local exit=$?
-  [[ $exit == 0 || $exit == 148 ]] && return "$exit"
+  ble-complete/source:argument/.generate-user-defined-completion; local ext=$?
+  ((ext==148)) && return "$ext"
+  if ((ext==0)); then
+    if [[ $comp_type == *a* ]]; then
+      ble-complete/candidates/.filter-by-regex "$comps_rex_ambiguous"
+      (($?==148)) && return "$ext"
+    fi
+    ((cand_count>old_cand_count)) && return "$ext"
+  fi
 
-  # 候補が見付からない場合
+  # 候補が見付からない場合 (または曖昧補完で COMPV に / が含まれる場合)
   if [[ $comp_opts == *:dirnames:* ]]; then
     ble-complete/source:dir
   else
@@ -1364,6 +1374,15 @@ function ble-complete/candidates/generate {
       nearest_sources=()
       ble-complete/candidates/.pick-nearest-sources
 
+      # comps_rex_ambiguous 初期化
+      local fixlen=1
+      if [[ $comps_fixed ]]; then
+        local compv_fixed_part=${comps_fixed#*:}
+        [[ $compv_fixed_part ]] && fixlen=${#compv_fixed_part}
+      fi
+      local ret; ble-complete/util/construct-ambiguous-regex "$COMPV" "$fixlen"
+      comps_rex_ambiguous=^$ret
+
       for src in "${nearest_sources[@]}"; do
         ble/string#split-words asrc "$src"
         ble/string#split source : "${asrc[0]}"
@@ -1373,14 +1392,6 @@ function ble-complete/candidates/generate {
         ble-complete/check-cancel && return 148
       done
 
-      local fixlen=1
-      if [[ $comps_fixed ]]; then
-        local compv_fixed_part=${comps_fixed#*:}
-        [[ $compv_fixed_part ]] && fixlen=${#compv_fixed_part}
-      fi
-
-      local ret; ble-complete/util/construct-ambiguous-regex "$COMPV" "$fixlen"
-      comps_rex_ambiguous=^$ret
       ble-complete/candidates/.filter-by-regex "$comps_rex_ambiguous"
       (($?==148)) && return 148
 

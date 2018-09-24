@@ -3165,6 +3165,22 @@ tech
 
 2018-09-24
 
+  * complete: "echo dist/ble1423@" に対して曖昧補完が効かない [#D0841]
+    "cd dist; echo ble1423@" は効く。
+
+    調べてみると generate の所ではちゃんと曖昧補完に入っている様である。
+    但し、source:argument に入っている。source:argument が悪い気がして来た。
+    動作を見てみると source:argument は "d" で始まる候補を列挙して成功している。
+    つまり、d*/b* による候補が列挙されていない。
+    曖昧補完の時にはこれで諦めてはならないはずなのである。
+    しかし、だからと言って曖昧補完の時には常に source:file を実行するというのも変である。
+    本来はフィルタした後に候補が全てなくなったら、source:file による曖昧補完を試みる、
+    という形でなければならない。
+
+    中でフィルタをかける事にした。
+    フィルタをかけた上で候補の数が増えていなかったら
+    source:file または source:dir を使う。
+
   * [自然解消] 2015-06-28 color: PATH=filename の filename の部分 (ref #D0839) [#D0840]
 
   * highlight: wtype==CTX_VALI (a=(1@)) 及び wtype==ATTR_VAR (v=1@) の着色? [#D0839]
