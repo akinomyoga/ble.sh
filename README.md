@@ -184,12 +184,12 @@ For example, with the following setting, "Hello, world!" will be inserted on typ
 ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
 
-The existing key bindings can be checked with the following command:
+The existing key bindings are shown by the following command:
 ```console
-$ ble-bind -d
+$ ble-bind -P
 ```
 
-The list of functions can be checked with the following command:
+The list of widgets is shown by the following command:
 ```console
 $ ble-bind -L
 ```

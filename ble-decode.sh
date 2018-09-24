@@ -1394,10 +1394,11 @@ function ble-decode/keylog/pop {
 function ble-bind/option:help {
   ble/util/cat <<EOF
 ble-bind --help
-ble-bind -k charspecs [keyspec]
-ble-bind [-m kmapname] -fxc@s keyspecs [command]
-ble-bind [-DdL]
-ble-bind --list-functions
+ble-bind -k cspecs [kspec]
+ble-bind --csi PsFt kspec
+ble-bind [-m keymap] -fxc@s kspecs command
+ble-bind [-m keymap]... (-PD|--print|--dump)
+ble-bind (-L|--list-widgets)
 
 EOF
 }
@@ -1464,12 +1465,37 @@ function ble-bind/option:csi {
   fi
 }
 
-function ble-bind/option:list-functions {
+function ble-bind/option:list-widgets {
   declare -f | ble/bin/sed -n -r 's/^ble\/widget\/([[:alpha:]][^.[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
+}
+function ble-bind/option:dump {
+  if (($#)); then
+    local keymap
+    for keymap; do
+      ble-decode/keymap/dump "$keymap"
+    done
+  else
+    ble/util/declare-print-definitions "${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}" "${!_ble_decode_csimap_@}"
+    ble-decode/keymap/dump
+  fi
+}
+function ble-bind/option:print {
+  local keymap
+  ble-decode/DEFAULT_KEYMAP -v keymap # 初期化を強制する
+  if (($#)); then
+    for keymap; do
+      ble-decode-key/dump "$keymap"
+    done
+  else
+    ble-decode-char/csi/print
+    ble-decode-char/dump
+    ble-decode-key/dump
+  fi
 }
 
 function ble-bind {
   local kmap=$ble_bind_keymap ret
+  local -a keymaps; keymaps=()
 
   local arg c
   while (($#)); do
@@ -1482,8 +1508,10 @@ function ble-bind {
         ble-bind/check-argunment --csi 2 "$#" || return
         ble-bind/option:csi "$1" "$2"
         shift 2 ;;
-      (list-functions)
-        ble-bind/option:list-functions ;;
+      (list-widgets|list-functions)
+        ble-bind/option:list-widgets ;;
+      (dump) ble-bind/option:dump "${keymaps[@]}" ;;
+      (print) ble-bind/option:print "${keymaps[@]}" ;;
       (*)
         echo "ble-bind: unrecognized long option $arg" >&2
         return 2 ;;
@@ -1493,14 +1521,6 @@ function ble-bind {
       while ((${#arg})); do
         c=${arg::1} arg=${arg:1}
         case $c in
-        (D)
-          ble/util/declare-print-definitions "${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}" "${!_ble_decode_csimap_@}"
-          ble-decode/keymap/dump ;;
-        (d)
-          ble-decode-char/csi/print
-          ble-decode-char/dump
-          [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
-          ble-decode-key/dump ;;
         (k)
           if (($#<2)); then
             echo "ble-bind: the option \`-k' requires two arguments." >&2
@@ -1521,7 +1541,10 @@ function ble-bind {
             return 2
           fi
           kmap=$1
+          ble/array#push keymaps "$1"
           shift ;;
+        (D) ble-bind/option:dump "${keymaps[@]}" ;;
+        ([Pd]) ble-bind/option:print "${keymaps[@]}" ;;
         (['fxc@s'])
           # 旧形式の指定 -xf や -cf に対応する処理
           [[ $c != f && $arg == f* ]] && arg=${arg:1}
@@ -1544,11 +1567,10 @@ function ble-bind {
               # check if is function
               local arr; ble/string#split-words arr "$command"
               if ! ble/is-function "${arr[0]}"; then
-                if [[ $command == ble/widget/ble/widget/* ]]; then
-                  echo "ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'. Note: The prefix 'ble/widget/' is redundant" 1>&2
-                else
-                  echo "ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'" 1>&2
-                fi
+                local message="ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'."
+                [[ $command == ble/widget/ble/widget/* ]] &&
+                  message="$message Note: The prefix 'ble/widget/' is redundant"
+                echo "$message" 1>&2
                 return 1
               fi ;;
             (x) # 編集用の関数
@@ -1572,7 +1594,7 @@ function ble-bind {
           flags=
           shift 2 ;;
         (L)
-          ble-bind/option:list-functions ;;
+          ble-bind/option:list-widgets ;;
         (*)
           echo "ble-bind: unrecognized short option \`-$c'." >&2
           return 2 ;;

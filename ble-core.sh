@@ -1912,7 +1912,7 @@ function ble/term/stty/TRAPEXIT {
 
 #---- cursor state ------------------------------------------------------------
 
-bleopt_term_cursor_external=0
+: ${bleopt_term_cursor_external=0}
 
 _ble_term_cursor_current=unknown
 _ble_term_cursor_internal=0

@@ -195,10 +195,10 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 
 既存のキーバインディングは以下のコマンドで確認できます。
 ```console
-$ ble-bind -d
+$ ble-bind -P
 ```
 
-以下のコマンドでキーバインディングに使える関数一覧を確認できます。
+以下のコマンドでキーバインディングに使える編集関数一覧を確認できます。
 ```console
 $ ble-bind -L
 ```
