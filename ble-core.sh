@@ -82,6 +82,7 @@ ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var=$2 && shift 2'
 ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
 function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
 function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
+function ble/util/unlocal { builtin unset "$@"; }
 
 function ble/util/save-vars {
   local name prefix=$1; shift
@@ -2143,8 +2144,8 @@ if ((_ble_bash>=40200)); then
   # workarounds of bashbug that printf '\uFFFF' results in a broken surrogate
   # pair in systems where sizeof(wchar_t) == 2.
   function ble/util/.has-bashbug-printf-uffff {
-    local LC_ALL=C.UTF-8
     ((40200<=_ble_bash&&_ble_bash<40500)) || return 1
+    local LC_ALL=C.UTF-8 2>/dev/null # Workaround: CentOS 7 に C.UTF-8 がなかった
     local ret
     builtin printf -v ret '\uFFFF'
     ((${#ret}==2))
