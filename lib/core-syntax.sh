@@ -144,8 +144,19 @@ function ble-syntax/wrange#shift {
 ##     兄要素が同じ位置で終端することはないので必ず正の値になるはず。
 ##     兄要素がないとき (自分が長男要素のとき) 負の値。
 ##
-##   - (または --)
-##     第五要素は現在は使われていない。
+##   attr (wattr) または - or --
+##     単語の着色に関する情報を保持する。
+##     以下の何れかの形式を持つ。
+##
+##     "-"
+##       単語の着色が未だ計算されていない事を表す。
+##     g
+##       描画属性値を保持する。
+##     'm' len ':' attr (',' len ':' attr)*
+##       長さ len の部分列と属性の組。
+##       長さ len として '$' を指定した場合は単語終端までを意味する。
+##     'd'
+##       描画属性を削除することを意味する。
 ##
 ## @var BLE_SYNTAX_TREE_WIDTH
 ##   _ble_syntax_tree に格納される一つの範囲情報のフィールドの数。
@@ -835,9 +846,7 @@ _ble_syntax_bash_ctx_names=(
 #%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
 )
 
-## 関数 ble-syntax/ctx#get-name [-v varname] ctx
-##   @param[in] varname
-##     既定値 ret
+## 関数 ble-syntax/ctx#get-name ctx
 ##   @param[in] ctx
 ##   @var[out] !varname
 function ble-syntax/ctx#get-name {
@@ -3606,8 +3615,135 @@ function ble-syntax:bash/ctx-heredoc-content {
   fi
 }
 
-#==============================================================================
+#------------------------------------------------------------------------------
+# Utilities based on syntactic strutures
 
+function ble-syntax:bash/is-complete {
+  local iN=${#_ble_syntax_text}
+
+  # (1) 最後の点にエラーが設定されていた時
+  # - 閉じていない single quotation などは此処。
+  # - 入れ子が閉じていない時もここで引っかかる。
+  # - 実はヒアドキュメントが閉じていない時もここでかかる。
+  ((iN>0)) && ((_ble_syntax_attr[iN-1]==ATTR_ERR)) && return 1
+
+  local stat=${_ble_syntax_stat[iN]}
+  if [[ $stat ]]; then
+    stat=($stat)
+
+    # (2) 入れ子が閉じていない時
+    local nlen=${stat[3]}; ((nlen>=0)) && return 1
+
+    # (3) ヒアドキュメントの待ちがある時
+    local nparam=${stat[6]}; [[ $nparam == none ]] && nparam=
+    local rex="$_ble_term_fs@([RI][QH][^$_ble_term_fs]*)(.*$)"
+    [[ $nparam =~ $rex ]] && return 1
+
+    # (4) 完結している文脈値の時以外
+    local ctx=${stat[0]}
+    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
+        ctx==CTX_CMDX||ctx==CTX_CMDXT||ctx==CTX_CMDXE||ctx==CTX_CMDXV||
+        ctx==CTX_TARGX1||ctx==CTX_TARGX2)) || return 1
+  fi
+
+  # 構文 if..fi, etc が閉じているか?
+  local attrs ret
+  IFS= eval 'attrs="::${_ble_syntax_attr[*]/%/::}"'
+  ble/string#count-string "$attrs" ":$ATTR_KEYWORD_BEGIN:"; local nbeg=$ret
+  ble/string#count-string "$attrs" ":$ATTR_KEYWORD_END:"; local nend=$ret
+  ((nbeg>nend)) && return 1
+
+  return 0
+}
+
+## 関数 ble-syntax:bash/find-end-of-array-index beg end
+##   "配列添字の綴じ括弧 ] の直前の位置" を求めます。
+##   @param[in] beg
+##     配列要素の添字指定の開始位置 ("[" の位置) を指定します。
+##   @param[in] end
+##     探索の終端位置を指定します。
+##   @var[out] ret
+##     beg に対応する "]" の位置を返します。
+##     対応する終端がない場合は空文字列を返します。
+function ble-syntax:bash/find-end-of-array-index {
+  local beg=$1 end=$2
+  ret=
+
+  local inest0=$beg nest0
+  [[ ${_ble_syntax_nest[inest0]} ]] || return 1
+
+  local q stat1 nlen1 inest1 r=
+  for ((q=inest0+1;q<end;q++)); do
+    local stat1=${_ble_syntax_stat[q]}
+    [[ $stat1 ]] || continue
+    ble/string#split-words stat1 "$stat1"
+    ((nlen1=stat1[3])) # (workaround Bash-4.2 segfault)
+    ((inest1=nlen1<0?nlen1:q-nlen1))
+    ((inest1<inest0)) && break
+    ((r=q))
+  done
+
+  [[ ${_ble_syntax_text:r:end-r} == ']'* ]] && ret=$r
+  [[ $ret ]]
+}
+
+## ble-syntax:bash/find-rhs wtype wbeg wlen opts
+##   変数代入の形式の右辺の開始位置を取得します。
+##   @param[in] wtype wbeg wlen
+##   @param[in] opts
+##     element-assignment
+##       配列要素の場合にも変数代入の形式を許します。
+##   @var[out] ret
+##     右辺の開始位置を返します。
+##     変数代入の形式でない時には単語の開始位置を返します。
+##   @exit
+##     単語が変数代入の形式を持つ時に成功します。
+##     それ以外の場合に失敗します。
+function ble-syntax:bash/find-rhs {
+  local wtype=$1 wbeg=$2 wlen=$3 opts=$4
+
+  local text=$_ble_syntax_text
+  local word=${text:wbeg:wlen} wend=$((wbeg+wlen))
+
+  local rex=
+  if ((wtype==ATTR_VAR)); then
+    rex='^[a-zA-Z0-9_]+(\+?=|\[)'
+  elif ((wtype==CTX_VALI)); then
+    if [[ :$opts: == *:element-assignment:* ]]; then
+      # 配列要素に対しても変数代入の形式を許す
+      rex='^[a-zA-Z0-9_]+(\+?=|\[)|^(\[)'
+    else
+      rex='^(\[)'
+    fi
+  fi
+
+  if [[ $rex && $word =~ $rex ]]; then
+    local last_char=${BASH_REMATCH:${#BASH_REMATCH}-1}
+    if [[ $last_char == '[' ]]; then
+      # wtype==ATTR_VAR: arr[0]=x@ arr[1]+=x@
+      # wtype==ATTR_VAR: declare arr[0]=x@ arr[1]+=x@
+      # wtype==CTX_VALI: arr=([0]=x@ [1]+=x@)
+      local p1=$((wbeg+${#BASH_REMATCH}-1))
+      if ble-syntax:bash/find-end-of-array-index "$p1" "$wend"; then
+        local p2=$ret
+        case ${text:p2:wend-p2} in
+        (']='*)  ((ret=p2+2)); return 0 ;;
+        (']+='*) ((ret=p2+3)); return 0 ;;
+        esac
+      fi
+    else
+      # wtype==ATTR_VAR: var=x@ var+=x@
+      # wtype==ATTR_VAR: declare var=x@ var+=x@
+      ((ret=wbeg+${#BASH_REMATCH}))
+      return 0
+    fi
+  fi
+
+  ret=$wbeg
+  return 1
+}
+
+#==============================================================================
 # 解析部
 
 _ble_syntax_vanishing_word_umin=-1
@@ -4028,47 +4164,6 @@ function ble-syntax/parse {
 }
 
 #==============================================================================
-# Check
-
-function ble-syntax:bash/is-complete {
-  local iN=${#_ble_syntax_text}
-
-  # (1) 最後の点にエラーが設定されていた時
-  # - 閉じていない single quotation などは此処。
-  # - 入れ子が閉じていない時もここで引っかかる。
-  # - 実はヒアドキュメントが閉じていない時もここでかかる。
-  ((iN>0)) && ((_ble_syntax_attr[iN-1]==ATTR_ERR)) && return 1
-
-  local stat=${_ble_syntax_stat[iN]}
-  if [[ $stat ]]; then
-    stat=($stat)
-
-    # (2) 入れ子が閉じていない時
-    local nlen=${stat[3]}; ((nlen>=0)) && return 1
-
-    # (3) ヒアドキュメントの待ちがある時
-    local nparam=${stat[6]}; [[ $nparam == none ]] && nparam=
-    local rex="$_ble_term_fs@([RI][QH][^$_ble_term_fs]*)(.*$)"
-    [[ $nparam =~ $rex ]] && return 1
-
-    # (4) 完結している文脈値の時以外
-    local ctx=${stat[0]}
-    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||
-        ctx==CTX_CMDX||ctx==CTX_CMDXT||ctx==CTX_CMDXE||ctx==CTX_CMDXV||
-        ctx==CTX_TARGX1||ctx==CTX_TARGX2)) || return 1
-  fi
-
-  # 構文 if..fi, etc が閉じているか?
-  local attrs ret
-  IFS= eval 'attrs="::${_ble_syntax_attr[*]/%/::}"'
-  ble/string#count-string "$attrs" ":$ATTR_KEYWORD_BEGIN:"; local nbeg=$ret
-  ble/string#count-string "$attrs" ":$ATTR_KEYWORD_END:"; local nend=$ret
-  ((nbeg>nend)) && return 1
-
-  return 0
-}
-
-#==============================================================================
 #
 # syntax-complete
 #
@@ -4336,7 +4431,17 @@ function ble-syntax/completion-context/.check-prefix/ctx:rhs {
         # CTX_VRHS:  arr[0]=x@ arr[1]+=x@
         # CTX_ARGVR: declare arr[0]=x@ arr[1]+=x@
         # CTX_VALR:  arr=([0]=x@ [1]+=x@)
-        ble-syntax/completion-context/.check-prefix/ctx:rhs/.skip-array-element
+        local p1=$((wbeg+${#BASH_REMATCH}-1))
+        if local ret; ble-syntax:bash/find-end-of-array-index "$p1" "$index"; then
+          local p2=$ret
+          case ${_ble_syntax_text:p2:index-p2} in
+          (']='*)  ((p=p2+2)) ;;
+          (']+='*) ((p=p2+3)) ;;
+          (']+')
+            ble-syntax/completion-context/.add wordlist:-rW:'+=' $((p2+1))
+            p= ;;
+          esac
+        fi
       else
         # CTX_VRHS:  var=x@ var+=x@
         # CTX_ARGVR: declare var=x@ var+=x@
@@ -4350,36 +4455,6 @@ function ble-syntax/completion-context/.check-prefix/ctx:rhs {
   if [[ $p ]] && ble-syntax:bash/simple-word/is-simple-or-open-simple "${text:p:index-p}"; then
     ble-syntax/completion-context/.add rhs "$p"
   fi
-}
-## 関数 ble-syntax/completion-context/.check-prefix/ctx:rhs/.skip-array-element
-##   @var[in] wbeg index BASH_REMATCH
-##   @var[in,out] p
-##     通常の補完をキャンセルする時は空文字列を返す。
-function ble-syntax/completion-context/.check-prefix/ctx:rhs/.skip-array-element {
-  local inest0=$((wbeg+${#BASH_REMATCH}-1)) nest0
-  [[ ${_ble_syntax_nest[inest0]} ]] || return
-
-  # r="配列添字の綴じ括弧 ] の直前の位置" を求める
-  local q stat1 nlen1 inest1 r=
-  for ((q=inest0+1;q<index;q++)); do
-    local stat1=${_ble_syntax_stat[q]}
-    [[ $stat1 ]] || continue
-    ble/string#split-words stat1 "$stat1"
-    ((nlen1=stat1[3])) # (workaround Bash-4.2 segfault)
-    ((inest1=nlen1<0?nlen1:q-nlen1))
-    ((inest1<inest0)) && break
-    ((r=q))
-  done
-  [[ $r ]] || return
-
-  local text=${_ble_edit_str:r:index-r}
-  case $text in
-  (']='*)  ((p=r+2)) ;;
-  (']+='*) ((p=r+3)) ;;
-  (']+')
-    ble-syntax/completion-context/.add wordlist:-rW:'+=' $((r+1))
-    p= ;;
-  esac
 }
 
 _ble_syntax_bash_complete_check_prefix[CTX_PARAM]=param
@@ -5012,22 +5087,35 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
   [[ ${node[nofs+4]} == - ]] || return
   ble-syntax/urange#update color_ "$wbeg" "$wend"
 
+  # @var p0 p1
+  #   文字列を切り出す範囲。
+  local p0=$wbeg p1=$((wbeg+wlen))
+  if ((wtype==ATTR_VAR||wtype==CTX_VALI)); then
+    # 変数代入の場合は右辺だけ切り出す。
+    #   Note: arr=(a=a*b a[1]=a*b) などはパス名展開の対象ではない。
+    #     これは変数代入の形式として認識されているからである。
+    #     以下では element-assignment を指定することで、
+    #     配列要素についても変数代入の形式を抽出する様にしている。
+    local ret
+    ble-syntax:bash/find-rhs "$wtype" "$wbeg" "$wlen" element-assignment && p0=$ret
+  fi
+
   local type=
   if ((wtype==CTX_RDRH||wtype==CTX_RDRI)); then
     # ヒアドキュメントのキーワード指定部分は、
     # 展開・コマンド置換などに従った解析が行われるが、
     # 実行は一切起こらないので一色で塗りつぶす。
     ((type=wtype))
-  elif local wtxt=${text:wbeg:wlen}; ble-syntax:bash/simple-word/is-simple "$wtxt"; then
+  elif local wtxt=${text:p0:p1-p0}; ble-syntax:bash/simple-word/is-simple "$wtxt"; then
     local ret
-    if ((wtype==CTX_RDRS)); then
+    if ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)); then
       ble-syntax:bash/simple-word/eval-noglob "$wtxt"; local ext=$? value=$ret
     else
       ble-syntax:bash/simple-word/eval "$wtxt"; local ext=$?
       local -a value; value=("${ret[@]}")
     fi
 
-    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS))); then
+    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
       # failglob 等の理由で展開に失敗した場合
       type=$ATTR_ERR
     elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
@@ -5040,7 +5128,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
       fi
     elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
       ((type=wtype))
-    elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS)); then
+    elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
       ble-syntax/highlight/filetype "$value" "$wtxt"
 
       # check values
@@ -5086,7 +5174,11 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
   if [[ $type ]]; then
     local g
     ble-syntax/attr2g "$type"
-    node[nofs+4]=$g
+    if ((wbeg<p0)); then
+      node[nofs+4]=m$((p0-wbeg)):d,\$:$g
+    else
+      node[nofs+4]=$g
+    fi
   else
     node[nofs+4]='d'
   fi
@@ -5103,15 +5195,30 @@ function ble-highlight-layer:syntax/word/.update-attributes {
     ble-highlight-layer:syntax/word/.update-attributes/.proc
 }
 
+## 関数 ble-highlight-layer:syntax/word/.apply-attribute wbeg wend wattr
+##   @param[in] wbeg wend wattr
 function ble-highlight-layer:syntax/word/.apply-attribute {
-  local wbeg=$1 wend=$2 attr=$3
+  local wbeg=$1 wend=$2 wattr=$3
   ((wbeg<color_umin&&(wbeg=color_umin),
     wend>color_umax&&(wend=color_umax),
     wbeg<wend)) || return
 
-  if [[ $attr =~ ^[0-9]+$ ]]; then
-    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$attr"
-  else
+  if [[ $wattr =~ ^[0-9]+$ ]]; then
+    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$wattr"
+  elif [[ $wattr == m* ]]; then
+    local ranges; ble/string#split ranges , "${wattr:1}"
+    local i=$wbeg j range
+    for range in "${ranges[@]}"; do
+      local len=${range%%:*} sub_wattr=${range#*:}
+      if [[ $len == '$' ]]; then
+        j=$wend
+      else
+        ((j=i+len,j>wend&&(j=wend)))
+      fi
+      ble-highlight-layer:syntax/word/.apply-attribute "$i" "$j" "$sub_wattr"
+      (((i=j)<wend)) || break
+    done
+  elif [[ $wattr == d ]]; then
     ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
   fi
 }
@@ -5250,8 +5357,8 @@ function ble-highlight-layer:syntax/update-error-table {
 }
 
 function ble-highlight-layer:syntax/update {
-  local text="$1" player="$2"
-  local i iN="${#text}"
+  local text=$1 player=$2
+  local i iN=${#text}
 
   ble-edit/content/update-syntax
 

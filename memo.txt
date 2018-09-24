@@ -753,15 +753,6 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
-2018-09-24
-
-  * highlight: wtype==CTX_VALI (a=(1@)) 及び wtype==ATTR_VAR (v=1@) の着色?
-
-    core-syntax.sh: ble-highlight-layer:syntax/word/.update-attributes/.proc では
-    wtype が CTX_CMDI, CTX_ARGI, CTX_RDRF, CTX_RDRS の時にのみ単語着色している。
-    CTX_VALI または ATTR_VAR の時は変数名や []= の部分を除いて着色する必要がある。
-    その為には先ず範囲を切り出さなければならない。
-
 2018-09-23
 
   * manual: 説明書について書き始める [#tmp0004]
@@ -2109,9 +2100,7 @@ tech
 
 2015-06-28
 
-  * color: --prefix=filename の filename 部分
-  * color: PATH=filename の filename の部分
-
+  * color: --prefix=filename の filename 部分 (ref #D0839, #D0840)
     単語に対して部分的な着色をする場合、現在の単語毎の着色ではない方法を考えるべき。
 
 2015-03-06
@@ -3175,6 +3164,21 @@ tech
 -------------------------------------------------------------------------------
 
 2018-09-24
+
+  * [自然解消] 2015-06-28 color: PATH=filename の filename の部分 (ref #D0839) [#D0840]
+
+  * highlight: wtype==CTX_VALI (a=(1@)) 及び wtype==ATTR_VAR (v=1@) の着色? [#D0839]
+
+    core-syntax.sh: ble-highlight-layer:syntax/word/.update-attributes/.proc では
+    wtype が CTX_CMDI, CTX_ARGI, CTX_RDRF, CTX_RDRS の時にのみ単語着色している。
+    CTX_VALI または ATTR_VAR の時は変数名や []= の部分を除いて着色する必要がある。
+    その為には先ず範囲を切り出さなければならない。
+
+    []= の形式の時に = の位置を特定するコードは、completion-context にあったはず。
+    整理して ble-syntax:bash/find-{end-of-array-index,rhs} という関数にした。
+    更にそれを利用して右辺の位置を特定して着色する様にした。
+    単語の描画属性 (wattr) についても今までの単純な物から、
+    単語内で色分けできる様に m(len:attr)+ の形式に対応した。
 
   * highlight (reported by cmplstofB): 単語着色で配列の指示初期化子が failglob 判定されている [#D0838]
     https://github.com/akinomyoga/ble.sh/issues/13
