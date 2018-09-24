@@ -4632,7 +4632,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
       local -a value; value=("${ret[@]}")
     fi
 
-    if ((ext)); then
+    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS))); then
       # failglob 等の理由で展開に失敗した場合
       type=$ATTR_ERR
     elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
