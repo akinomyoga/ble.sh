@@ -5835,7 +5835,8 @@ ble-autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/menu-complete \
              ble/widget/auto-complete-enter \
              ble/widget/sabbrev-expand \
-             ble/widget/dabbrev-expand
+             ble/widget/dabbrev-expand \
+             ble-sabbrev
 ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
 
 if ((_ble_bash>=40200)); then

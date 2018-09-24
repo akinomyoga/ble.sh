@@ -3170,6 +3170,11 @@ tech
 
 2018-09-24
 
+  * complete: よく考えたら ble-sabbrev はエクスポートするべきなのでは [#D0842]
+    https://github.com/akinomyoga/ble.sh/issues/5 で cmplstofB さんの質問で、
+    ble-sabbrev は _ble_complete_load_hook で設定するのかという問いに対して。
+    修正した。然し、何れにしても遅延ロードを有効にする為にはやはり load hook の中で実行する方が望ましい。
+
   * complete: "echo dist/ble1423@" に対して曖昧補完が効かない [#D0841]
     "cd dist; echo ble1423@" は効く。
 
