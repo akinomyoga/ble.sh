@@ -385,7 +385,7 @@ function ble-decode-char/csi/.modify-kcode {
       fi
     fi
 
-    # Note: Altr 0x20 は独自
+    # Note: Supr 0x08 以降は独自
     ((mod&0x01&&(kcode|=ble_decode_Shft),
       mod&0x02&&(kcode|=ble_decode_Meta),
       mod&0x04&&(kcode|=ble_decode_Ctrl),
@@ -417,10 +417,13 @@ function ble-decode-char/csi/.decode {
   elif ((char==117)); then
     if rex='^([0-9]*)(;[0-9]*)?$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm/mlterm "CSI <char> ; <mode> u" sequences
+      # Note: 実は "CSI 1 ; mod u" が kp5 とする端末がある事に注意する。
       local rematch1=${BASH_REMATCH[1]}
-      local kcode=$rematch1 mods=${BASH_REMATCH:${#rematch1}+1}
-      ble-decode-char/csi/.modify-kcode "$mods"
-      csistat=$kcode
+      if [[ $rematch1 != 1 ]]; then
+        local kcode=$rematch1 mods=${BASH_REMATCH:${#rematch1}+1}
+        ble-decode-char/csi/.modify-kcode "$mods"
+        csistat=$kcode
+      fi
       return
     fi
   elif ((char==94||char==64)); then
@@ -437,7 +440,7 @@ function ble-decode-char/csi/.decode {
     fi
   elif ((char==99)); then
     if rex='^>'; [[ $_ble_decode_csi_args =~ $rex ]]; then
-      # DA2 応答
+      # DA2 応答 "CSI > Pm c"
       ble/term/DA2/notify "${_ble_decode_csi_args:1}"
       csistat=$_ble_decode_KCODE_IGNORE
       return

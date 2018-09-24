@@ -760,9 +760,14 @@ tech
     書き始めると仕様で微妙なところが浮き上がってくるのでその都度修正する事にする。
 
     - core: bleopt に設定名を指定子て設定内容を表示させる時、設定名の存在を確認する 725d09c
-    - decode: ble-bind -cf 及び -xf をそれぞれ -c 及び -x に変更
-    - decode: ble-bind -d に於いて -c 及び -x の引用符が二重になっている問題の修正
-    - decode: 組み込みコマンド bind を上書きして引数をチェックする
+    - decode (ble-bind): オプション `-cf` 及び `-xf` をそれぞれ `-c` 及び `-x` に変更 f7f1ec8
+    - decode (ble-bind): オプション `-d` に於いて `-c` 及び `-x` の引用符が二重になっている問題の修正 f7f1ec8
+    - decode: 組み込みコマンド bind を上書きして引数をチェックする f7f1ec8
+    - decode (ble-bind): オプション `--list-widgets` 64ad962
+    - decode (ble-bind): オプション `[-m keymap]... -P|--print|-D|--dump` 64ad962
+    - decode (cmap/default): rxvt の <kbd>(C-)?(S-)?(up|down|right|left)</kbd> 及び <kbd>S-(f11..f20|home|end|insert|delete|prior|next)</kbd> に対応
+    - decode (cmap/default): <kbd>kpspace</kbd> は <kbd>SP</kbd> として受信する
+    - decode (csi/.decode): <kbd>kp5</kbd> を <kbd>CSI 1 ; <i>mod</i> u</kbd> で送る端末に対する対策
 
 2018-09-21
 

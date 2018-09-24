@@ -144,8 +144,8 @@ function ble-bind-function-key+default {
   #
   #   Note: kp～ と通常のキーを区別しても binding が大変なだけで
   #   余り利点もないので取り敢えずこの設定では区別しない。
-  ble-bind -k 'ESC ? SP' kpspace
-  ble-bind -k 'ESC O SP' kpspace
+  ble-bind -k 'ESC ? SP' SP # kpspace
+  ble-bind -k 'ESC O SP' SP # kpspace
   ble/cmap/default/bind-keypad-key 'A' up    1
   ble/cmap/default/bind-keypad-key 'B' down  1
   ble/cmap/default/bind-keypad-key 'C' right 1
@@ -178,7 +178,32 @@ function ble-bind-function-key+default {
   ble/cmap/default/bind-keypad-key 'X' '='   3 # kpeq
 
   # rxvt
-  ble-bind -k 'ESC [ Z' S-TAB
+  #   Note: "CSI code @", "CSI code ^" は本体側で特別に処理している。
+  ble-bind -k 'ESC [ Z'     S-TAB
+  ble-bind -k 'ESC O a'     C-up
+  ble-bind -k 'ESC [ a'     S-up
+  ble-bind -k 'ESC O b'     C-down
+  ble-bind -k 'ESC [ b'     S-down
+  ble-bind -k 'ESC O c'     C-right
+  ble-bind -k 'ESC [ c'     S-right
+  ble-bind -k 'ESC O d'     C-left
+  ble-bind -k 'ESC [ d'     S-left
+  ble-bind -k 'ESC [ 2 $'   S-insert # ECMA-48 違反
+  ble-bind -k 'ESC [ 3 $'   S-delete # ECMA-48 違反
+  ble-bind -k 'ESC [ 5 $'   S-prior  # ECMA-48 違反
+  ble-bind -k 'ESC [ 6 $'   S-next   # ECMA-48 違反
+  ble-bind -k 'ESC [ 7 $'   S-home   # ECMA-48 違反
+  ble-bind -k 'ESC [ 8 $'   S-end    # ECMA-48 違反
+  ble-bind -k 'ESC [ 2 3 $' S-f11    # ECMA-48 違反
+  ble-bind -k 'ESC [ 2 4 $' S-f12    # ECMA-48 違反
+  ble-bind -k 'ESC [ 2 5 $' S-f13    # ECMA-48 違反
+  ble-bind -k 'ESC [ 2 6 $' S-f14    # ECMA-48 違反
+  ble-bind -k 'ESC [ 2 8 $' S-f15    # ECMA-48 違反
+  ble-bind -k 'ESC [ 2 9 $' S-f16    # ECMA-48 違反
+  ble-bind -k 'ESC [ 3 1 $' S-f17    # ECMA-48 違反
+  ble-bind -k 'ESC [ 3 2 $' S-f18    # ECMA-48 違反
+  ble-bind -k 'ESC [ 3 3 $' S-f19    # ECMA-48 違反
+  ble-bind -k 'ESC [ 3 4 $' S-f20    # ECMA-48 違反
 
   # cygwin specific
   ble-bind -k 'ESC [ [ A' f1
