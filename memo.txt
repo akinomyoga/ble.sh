@@ -753,6 +753,23 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
+2018-09-25
+
+  * decode: 実は ble-decode/.hook で is-stdin-ready をチェックして
+    バイト列を中でキャッシュする様にすれば高速化できるのではないだろうか。
+    特に PROLOGUE と EPILOGUE の呼び出しを省略する事ができる。
+    また、大量のバイト列を受け取った状態でプログレスバーを表示する事も可能である。
+
+    この時 ble-decode/has-input はまた修正が必要になる事に注意する。
+    特にキャッシュしたバイトを処理している途中状態でどう対応するか。
+    一番最後のバイトを処理している時はもう入力がないと判定する必要がある。
+
+    更に言うと今までの has-input も不完全だったのではないか。
+    ble-decode/.hook で二つ以上の引数を受け取った時、
+    一番最後以外のバイトを処理している時には、
+    ちゃんと has-input が成功する様になっていただろうか。
+    今確認した所そうはなっていない。
+
 2018-09-23
 
   * manual: 説明書について書き始める [#tmp0004]
@@ -2394,21 +2411,29 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-24 (#D0825..)
+2018-09-24 (#D0825..#D0843)
 
-  補完の動作変更
+  新機能
+  - highlight: 変数代入の右辺及び配列要素の着色に対応 `#D0839`
+  - nsearch: (非インクリメンタル)履歴検索に対応 <kbd>C-x {C-,}{p,n}</kbd> `history-{substring-,}search-{for,back}ward` `#D0843`
+
+  バグ・問題修正
+  - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#tmp0004`
+  - auto-complete: 構文エラーが自動補完により解決される時、構文エラーによる <kbd>RET</kbd> 抑止が効かない問題の修正 `#D0827`
+  - highlight: `shopt -s failglob` で配列の指示初期化子がエラー着色される問題の修正 (reported by cmplstofB) `#D0838`
+  - complete: プログラム補完に対して曖昧補完が効かない時の対策 `#D0841`
+  - isearch: ユーザ入力による割り込みで検索位置の記録に失敗していたバグの修正 `#D0843`
+
+  動作変更
   - sabbrev, vi_imap: `sabbrev-expand` を <kbd>C-x '</kbd> ではなく <kbd>C-]</kbd> から束縛 `#D0825` e5969b7
   - auto-complete: 構文エラーが自動補完により解決される時 <kbd>RET</kbd> でコマンド実行が抑止されない問題の修正 `#D0827`
-
-  他のバグ・問題修正
-  - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#tmp0004`
-
-  他の動作変更
   - core: `bleopt` に設定名を指定子て設定内容を表示させる時、設定名の存在を確認する `#tmp0004` 725d09c
   - isearch: <kbd>C-d</kbd> で現在の選択範囲を削除する様に変更 `#D0826` c3bb69e
   - isearch: <kbd>C-m</kbd> (<kbd>RET</kbd>) で確定した時は選択範囲を解除する様に変更 `#D0826` c3bb69e
   - decode: `ble-bind -cf` 及び `-xf` をそれぞれ `-c` 及び `-x` に変更 `#tmp0004`
   - decode: 組み込みコマンド `bind` を上書きして `ble.sh` の動作が阻害されない様に引数をチェックして実行 `#tmp0004`
+  - complete: autoload `ble-sabbrev` (`core-complete.sh`), `ble-syntax:bash/is-complete` (`core-syntax.sh`) `#D0842`
+  - isearch: 編集関数 `isearch/accept-line` が <kbd>RET</kbd> 以外から束縛されていても <kbd>RET</kbd> を実行する様に変更 `#D0843`
 
 2018-09-03 -- 2018-09-23 (#D0766..#D0824 8584e82)
 
@@ -3167,6 +3192,136 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2018-09-26
+
+  * edit: history-search [#D0843]
+
+    dabbrev-expand でもそうだが、履歴の検索は遅い。
+    連打したりすると応答がなくなる可能性がある。
+    かと言って単に has-input で停止していると入力が消滅した様に見える。
+    特定の回数連打した時に期待した位置に行かないなどの事が起こる。
+    そうすると isearch の様に fiber を組み合わせて実装する事になる。
+
+    思うに fiber を沢山重ねて実行する統一的な枠組みを作っても良いのではないか。
+
+    * fixed: progress は _ble_edit_isearch_* に依存している。
+      更に検索が完了したら毎回 clear する必要がある。
+
+      これはどの様に実装するのが正しいだろうか。
+      現状の実装では forward/backward-search-history が
+      ble-edit/isearch/.draw-line-with-progress "$i" を呼び出す形になっている。
+
+      % 取り敢えずこの関数の内容を確認してみた所、
+      % 特に isearch 特有の表示はしていない。
+      % なので、この関数自体を任意の場合に使える様に拡張するのが良い。
+      % 
+      % _ble_edit_isearch_str は needle で置き換えられる筈である。
+      % .draw-line-with-progress の呼び出し元を確認する。
+      % - backward-search-history-blockwise 及び forward-search-history は大丈夫。
+      % - .draw-line は様々な場所から呼び出されている。
+      %   これは needle が定義されていない文脈からも呼び出される。
+      %   .draw-line の中で needle を定義する事にすれば良い。
+
+      と思ったが、やはり微妙に思われてきた。
+      現在位置も表示しているが、nsearch の場合には現在位置は移動しない。
+      やはり外部から表示内容を設定する事ができるようにするのが良さそうである。
+      →外部から isearch_progress_callback を指定する事にした。
+      今まで無意味に isearch_ntask に依存していたのを置き換える形である。
+
+    * done: 実は記録されている現在位置と次に検索開始する位置は異なる。
+
+      | 現在は _ble_edit_nsearch_start を最初に検索を開始した位置 (nsearch に入った時の位置) として、
+      | また _ble_edit_nsreach_index を次に検索を開始する位置兼最後に一致した位置としている。
+      | しかし、一番最後に一致に失敗した時は index の位置はどうしたら良いか分からない。
+      | 一回一致に失敗したのだから次に検索を開始する位置は履歴の一番端であるべきだが、
+      | 一方で最後に一致した位置は動いて欲しくない。
+      | 
+      | isearch の場合には index は記録していなくて、全て history/get-index に依っていた。
+      | つまり、最後に一致した位置となっている。
+      | その為、一致しなかった時にはキーを連打した回数だけ、
+      | 最後に一致した位置から履歴の橋までを繰り返し検索する事になる。
+      | isearch の場合にはキーを入力する度に検索の条件が変わるため、
+      | 繰り返し検索を実行する事に意味があった。
+      | 
+      | しかし、nsearch の場合には前に行くか後ろに行くかの二種類しかないので、
+      | 毎回検索の条件は同じである。従って繰り返し検索を実行するというのは不自然である。
+      | やはり最後に一致した位置と次に検索するべき位置というのは別に管理するのが良いのではないか。
+      | 
+      | また、現在の実装では start はどの様に使われているだろうか。
+      | 新しい nsearch の実装では start は nsearch に入った時の位置としている。
+      | しかし、どうも isearch の場合には start は現在処理しているキー入力に対する検索の開始位置の様である。
+      | そういう意味で言えば、実は start を最後に一致していた位置として、
+      | index を次に検索するべき位置と考えるのが良いのかもしれない。
+      | 或いは、そもそも start を記録する意味はないのかもしれない。
+      | 現に isearch の実装では start は記録していない。
+      | suspend の時に suspend データに記録しているだけである。
+
+      以下の様に実装する事にする。
+      - _ble_edit_nsearch_start は廃止する。
+        start は各入力に対して最初にどの位置に居たかを記録する事にする。
+        各入力に対して使用するだけなので、これは fib_suspend に記録する。
+      - _ble_edit_nsearch_index は最後に検索した位置を格納する事にする。
+      - _ble_edit_nsearch_match に最後に一致した位置
+        (現在表示している行内容がどの位置に対応しているか) を入れる事にする。
+
+      変更した。動いている。
+
+    * fixed: nsearch を抜けた後に検索状況の表示が残ってしまう。
+      isearch は ble-edit/isearch/.erase-line を呼び出していた。
+      これは中で ble-edit/info/default を呼び出している。
+      同様に nsearch でも ble-edit/nsearch/erase-status という関数を作る事にする。
+
+    * fixed: C-r して C-s して最初の状態にまで戻った時、
+      囲まれていない。これは最初に nsearch を開始した時に
+      _ble_edit_mark を調整していない為である。
+      _ble_edit_mark を保持する理由もないので _ble_edit_mark を変更する事にする。
+
+      と思ったが、よく考えたら non-incremental-history-search で
+      ユーザに入力してもらった時には現在の行で一致があるとは限らない。
+      C-s で戻る事ができるのは実際の一致に対応する ${_ble_edit_nsearch_stack[1]}
+      以降というように制限するのが良さそうである。直した。
+
+    * fixed: 実は C-r を連打すると fib_suspend した内容が消滅している?
+      確認してみた所、別に C-r によって fiberchain の最後の項目が
+      キャンセルされているという事ではないようだ。
+
+      もしくは正しく検索状態を復元できていない?
+      確認してみた所、何と、index= になっている。
+      つまり、fib_suspend で start も記録する様に変更したのとは別に、
+      元からちゃんと resume できていなかったという事になる。
+      然し、何故 index= になっているのだろう…。
+      →恐らく isearch/{for,back}ward-history-search の仕様であろう。
+      と思ったが、改めて説明を呼んでも 148 を返した時にはちゃんと index を返す筈である。
+      isearch/{for,back}ward-history-search の側のバグであろうか。
+
+      試してみたら実は今までの isearch の振る舞いも変だった様だ。
+      直した方で試すと C-r を連打した回数だけちゃんと記録されている様だ。
+      C-g で溜まっていたものを全てキャンセルする様になっている。
+
+    * done: 未処理の入力がある時、cancel でそれらをクリアする。
+
+    * done: defface で region_search を追加
+
+    * changed: `ble/widget/isearch/accept-line`
+
+      今までは何故か exit-default を実行していたが、
+      これだと accept-line に束縛しているキーによって振る舞いが変わってしまう。
+      % 明示的に accept-single-line-or-newline を呼び出す事にした。
+      % もしくは isearch/accept-{line,single-line-or-newline} を作るべきかもしれない。
+      % autoload し忘れていたのを追加した。
+      調べてみると vi_imap などでは特殊な関数を呼び出す必要がある。
+      やはり `RET` を実行する様に変更する事にした。
+
+    取り敢えずこの時点で commit を作成する事にする。
+
+    - syntax: `ble-syntax:bash/is-complete`
+    - 後で mark の種類の名称を変更する事にする。
+      mark:search -> mark:vi_search mark:nsearch -> mark:search
+      これに併せて char block line についても変更したい。
+    - また isearch で region を復元するのもこれを機に実装するのが良い。
+    - isearch も fiberchain で実装し直す
+    - ble/widget/accept-single-line-or/accepts は別の名前を割り当てる
 
 2018-09-24
 

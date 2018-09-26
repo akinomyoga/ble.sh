@@ -4649,124 +4649,9 @@ function ble/widget/magic-space {
 
 # 
 #------------------------------------------------------------------------------
-# **** incremental search ****                                 @history.isearch
+# **** basic search functions ****                              @history.search
 
-## 変数 _ble_edit_isearch_str
-##   一致した文字列
-## 変数 _ble_edit_isearch_dir
-##   現在・直前の検索方法
-## 配列 _ble_edit_isearch_arr[]
-##   インクリメンタル検索の過程を記録する。
-##   各要素は ind:dir:beg:end:needle の形式をしている。
-##   ind は履歴項目の番号を表す。dir は履歴検索の方向を表す。
-##   beg, end はそれぞれ一致開始位置と終了位置を表す。
-##   丁度 _ble_edit_ind 及び _ble_edit_mark に対応する。
-##   needle は検索に使用した文字列を表す。
-## 配列 _ble_edit_isearch_que
-##   未処理の操作
-_ble_edit_isearch_str=
-_ble_edit_isearch_dir=-
-_ble_edit_isearch_arr=()
-_ble_edit_isearch_que=()
-
-## @var[in] isearch_ntask
-function ble-edit/isearch/.draw-line-with-progress {
-  # 出力
-  local ll rr
-  if [[ $_ble_edit_isearch_dir == - ]]; then
-    # Emacs workaround: '<<' や "<<" と書けない。
-    ll=\<\< rr="  "
-  else
-    ll="  " rr=">>"
-    text="  >>)"
-  fi
-  local index; ble-edit/history/get-index
-  local count; ble-edit/history/get-count
-  local histIndex='!'$((index+1))
-  local text="(${#_ble_edit_isearch_arr[@]}: $ll $histIndex $rr) \`$_ble_edit_isearch_str'"
-
-  if [[ $1 ]]; then
-    local pos=$1
-    local percentage=$((count?pos*1000/count:1000))
-    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
-    ((isearch_ntask)) && text="$text *$isearch_ntask"
-  fi
-
-  ble-edit/info/show text "$text"
-}
-
-function ble-edit/isearch/.draw-line {
-  ble-edit/isearch/.draw-line-with-progress
-}
-function ble-edit/isearch/.erase-line {
-  ble-edit/info/default
-}
-function ble-edit/isearch/.set-region {
-  local beg=$1 end=$2
-  if ((beg<end)); then
-    if [[ $_ble_edit_isearch_dir == - ]]; then
-      _ble_edit_ind=$beg
-      _ble_edit_mark=$end
-    else
-      _ble_edit_ind=$end
-      _ble_edit_mark=$beg
-    fi
-    _ble_edit_mark_active=S
-  else
-    _ble_edit_mark_active=
-  fi
-}
-## 関数 ble-edit/isearch/.push-isearch-array
-##   現在の isearch の情報を配列 _ble_edit_isearch_arr に待避する。
-##
-##   これから登録しようとしている情報が現在のものと同じならば何もしない。
-##   これから登録しようとしている情報が配列の最上にある場合は、
-##   検索の巻き戻しと解釈して配列の最上の要素を削除する。
-##   それ以外の場合は、現在の情報を配列に追加する。
-##   @var[in] ind beg end needle
-##     これから登録しようとしている isearch の情報。
-function ble-edit/isearch/.push-isearch-array {
-  local hash=$beg:$end:$needle
-
-  # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
-  local ilast=$((${#_ble_edit_isearch_arr[@]}-1))
-  if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
-    unset "_ble_edit_isearch_arr[$ilast]"
-    return
-  fi
-
-  local oind; ble-edit/history/get-index -v oind
-  local obeg=$_ble_edit_ind oend=$_ble_edit_mark tmp
-  [[ $_ble_edit_mark_active ]] || oend=$obeg
-  ((obeg<=oend||(tmp=obeg,obeg=oend,oend=tmp)))
-  local oneedle=$_ble_edit_isearch_str
-  local ohash=$obeg:$oend:$oneedle
-
-  # [... A | B] -> B と来た時 (何もしない) [... A | B] になる。
-  [[ $ind == "$oind" && $hash == "$ohash" ]] && return
-
-  # [... A | B] -> C と来た時 (B を _ble_edit_isearch_arr に移動) [... A B | C] になる。
-  ble/array#push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
-}
-function ble-edit/isearch/.goto-match {
-  local ind=$1 beg=$2 end=$3 needle=$4
-  ((beg==end&&(beg=end=-1)))
-
-  # 検索履歴に待避 (変数 ind beg end needle 使用)
-  ble-edit/isearch/.push-isearch-array
-
-  # 状態を更新
-  _ble_edit_isearch_str=$needle
-  local oind; ble-edit/history/get-index -v oind
-  ((oind!=ind)) && ble-edit/history/goto "$ind"
-  ble-edit/isearch/.set-region "$beg" "$end"
-
-  # isearch 表示
-  ble-edit/isearch/.draw-line
-  _ble_edit_bind_force_draw=1
-}
-
-# ---- basic isearch functions ------------------------------------------------
+function ble-highlight-layer:region/mark:_search/get-face { face=region_match; }
 
 ## 関数 ble-edit/isearch/search needle opts ; beg end
 ##   @param[in] needle
@@ -4908,6 +4793,7 @@ function ble-edit/isearch/.shift-backward-references {
 ##
 ##     progress
 ##       検索の途中経過を表示します。
+##       後述の isearch_progress_callback 変数に指定された関数を呼び出します。
 ##
 ##     backward
 ##       内部使用のオプションです。
@@ -4927,8 +4813,9 @@ function ble-edit/isearch/.shift-backward-references {
 ##
 ##   @var[in,out] isearch_time
 ##
-##   @var[in] isearch_ntask
-##     progress 表示に使用します。
+##   @var[in] isearch_progress_callback
+##     progress の表示時に呼び出す関数名を指定します。
+##     第一引数には現在の検索位置 (history index) を指定します。
 ##
 ##   @exit
 ##     見つかったときに 0 を返します。
@@ -4997,9 +4884,10 @@ function ble-edit/isearch/backward-search-history-blockwise {
 
     ((i-=block))
     if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble-decode/has-input; then
+      index=$i
       return 148
     elif ((has_progress&&isearch_time%NPROGRESS==0)); then
-      ble-edit/isearch/.draw-line-with-progress "$i"
+      "$isearch_progress_callback" "$i"
     fi
   done
   return 1
@@ -5028,7 +4916,7 @@ function ble-edit/isearch/next-history/forward-search-history.impl {
         ble-decode/has-input && return 148
       @ && return 0
       ((has_progress&&isearch_time%1000==0)) &&
-        ble-edit/isearch/.draw-line-with-progress "$index"
+        "$isearch_progress_callback" "$index"
     done ;;
 #%end
 #%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} =~ $needle ]]/
@@ -5049,6 +4937,136 @@ function ble-edit/isearch/forward-search-history {
 }
 function ble-edit/isearch/backward-search-history {
   ble-edit/isearch/next-history/forward-search-history.impl "$1:backward"
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** incremental search ****                                 @history.isearch
+
+## 変数 _ble_edit_isearch_str
+##   一致した文字列
+## 変数 _ble_edit_isearch_dir
+##   現在・直前の検索方法
+## 配列 _ble_edit_isearch_arr[]
+##   インクリメンタル検索の過程を記録する。
+##   各要素は ind:dir:beg:end:needle の形式をしている。
+##   ind は履歴項目の番号を表す。dir は履歴検索の方向を表す。
+##   beg, end はそれぞれ一致開始位置と終了位置を表す。
+##   丁度 _ble_edit_ind 及び _ble_edit_mark に対応する。
+##   needle は検索に使用した文字列を表す。
+## 配列 _ble_edit_isearch_que
+##   未処理の操作
+_ble_edit_isearch_str=
+_ble_edit_isearch_dir=-
+_ble_edit_isearch_arr=()
+_ble_edit_isearch_que=()
+
+## 関数 ble-edit/isearch/.draw-line-with-progress [pos]
+##   @param[in,opt] pos
+##     検索の途中の時に現在の検索位置を指定します。
+##     検索の進行状況を表示します。
+##
+##   @var[in] isearch_ntask
+##     現在の待ちスクの数を指定します。
+##
+##   @var[in] _ble_edit_isearch_str
+##   @var[in] _ble_edit_isearch_dir
+##   @var[in] _ble_edit_isearch_arr
+##     現在の検索状態を保持する変数です。
+##
+function ble-edit/isearch/.draw-line-with-progress {
+  # 出力
+  local ll rr
+  if [[ $_ble_edit_isearch_dir == - ]]; then
+    # Emacs workaround: '<<' や "<<" と書けない。
+    ll=\<\< rr="  "
+  else
+    ll="  " rr=">>"
+  fi
+  local index; ble-edit/history/get-index
+  local count; ble-edit/history/get-count
+  local histIndex='!'$((index+1))
+  local text="(${#_ble_edit_isearch_arr[@]}: $ll $histIndex $rr) \`$_ble_edit_isearch_str'"
+
+  if [[ $1 ]]; then
+    local pos=$1
+    local percentage=$((count?pos*1000/count:1000))
+    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
+    ((isearch_ntask)) && text="$text *$isearch_ntask"
+  fi
+
+  ble-edit/info/show text "$text"
+}
+
+function ble-edit/isearch/.draw-line {
+  ble-edit/isearch/.draw-line-with-progress
+}
+function ble-edit/isearch/.erase-line {
+  ble-edit/info/default
+}
+function ble-edit/isearch/.set-region {
+  local beg=$1 end=$2
+  if ((beg<end)); then
+    if [[ $_ble_edit_isearch_dir == - ]]; then
+      _ble_edit_ind=$beg
+      _ble_edit_mark=$end
+    else
+      _ble_edit_ind=$end
+      _ble_edit_mark=$beg
+    fi
+    _ble_edit_mark_active=_search
+  else
+    _ble_edit_mark_active=
+  fi
+}
+## 関数 ble-edit/isearch/.push-isearch-array
+##   現在の isearch の情報を配列 _ble_edit_isearch_arr に待避する。
+##
+##   これから登録しようとしている情報が現在のものと同じならば何もしない。
+##   これから登録しようとしている情報が配列の最上にある場合は、
+##   検索の巻き戻しと解釈して配列の最上の要素を削除する。
+##   それ以外の場合は、現在の情報を配列に追加する。
+##   @var[in] ind beg end needle
+##     これから登録しようとしている isearch の情報。
+function ble-edit/isearch/.push-isearch-array {
+  local hash=$beg:$end:$needle
+
+  # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
+  local ilast=$((${#_ble_edit_isearch_arr[@]}-1))
+  if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
+    unset "_ble_edit_isearch_arr[$ilast]"
+    return
+  fi
+
+  local oind; ble-edit/history/get-index -v oind
+  local obeg=$_ble_edit_ind oend=$_ble_edit_mark tmp
+  [[ $_ble_edit_mark_active ]] || oend=$obeg
+  ((obeg<=oend||(tmp=obeg,obeg=oend,oend=tmp)))
+  local oneedle=$_ble_edit_isearch_str
+  local ohash=$obeg:$oend:$oneedle
+
+  # [... A | B] -> B と来た時 (何もしない) [... A | B] になる。
+  [[ $ind == "$oind" && $hash == "$ohash" ]] && return
+
+  # [... A | B] -> C と来た時 (B を _ble_edit_isearch_arr に移動) [... A B | C] になる。
+  ble/array#push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
+}
+function ble-edit/isearch/.goto-match {
+  local ind=$1 beg=$2 end=$3 needle=$4
+  ((beg==end&&(beg=end=-1)))
+
+  # 検索履歴に待避 (変数 ind beg end needle 使用)
+  ble-edit/isearch/.push-isearch-array
+
+  # 状態を更新
+  _ble_edit_isearch_str=$needle
+  local oind; ble-edit/history/get-index -v oind
+  ((oind!=ind)) && ble-edit/history/goto "$ind"
+  ble-edit/isearch/.set-region "$beg" "$end"
+
+  # isearch 表示
+  ble-edit/isearch/.draw-line
+  _ble_edit_bind_force_draw=1
 }
 
 # ---- isearch fibers ---------------------------------------------------------
@@ -5112,14 +5130,15 @@ function ble-edit/isearch/next-history.fib {
   fi
 
   # 検索
+  local isearch_progress_callback=ble-edit/isearch/.draw-line-with-progress
   if [[ $_ble_edit_isearch_dir == - ]]; then
     ble-edit/isearch/backward-search-history-blockwise stop_check:progress
   else
     ble-edit/isearch/forward-search-history stop_check:progress
   fi
-  local r=$?
+  local ext=$?
 
-  if ((r==0)); then
+  if ((ext==0)); then
     # 見付かった場合
 
     # 一致範囲 beg-end を取得
@@ -5132,7 +5151,7 @@ function ble-edit/isearch/next-history.fib {
     local beg=${#prefix} end=$((${#prefix}+${#needle}))
 
     ble-edit/isearch/.goto-match "$index" "$beg" "$end" "$needle"
-  elif ((r==148)); then
+  elif ((ext==148)); then
     # 中断した場合
     isearch_suspend="index=$index start=$start:$needle"
     return
@@ -5261,7 +5280,7 @@ function ble/widget/isearch/prev {
     ble-edit/isearch/prev
   fi
 }
-function ble/widget/isearch/exit-with-region {
+function ble/widget/isearch/exit.impl {
   ble-decode/keymap/pop
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
@@ -5269,14 +5288,19 @@ function ble/widget/isearch/exit-with-region {
   _ble_edit_isearch_str=
   ble-edit/isearch/.erase-line
 }
+function ble/widget/isearch/exit-with-region {
+  ble/widget/isearch/exit.impl
+  [[ $_ble_edit_mark_active ]] &&
+    _ble_edit_mark_active=S
+}
 function ble/widget/isearch/exit {
-  ble/widget/isearch/exit-with-region
+  ble/widget/isearch/exit.impl
   _ble_edit_mark_active=
 }
 function ble/widget/isearch/cancel {
   if ((${#_ble_edit_isearch_que[@]})); then
     _ble_edit_isearch_que=()
-    ble-edit/isearch/.draw-line # 進捗状況を消去
+    ble-edit/isearch/.draw-line # 進捗状況だけ消去
   else
     if ((${#_ble_edit_isearch_arr[@]})); then
       local step
@@ -5296,7 +5320,8 @@ function ble/widget/isearch/accept-line {
   if ((${#_ble_edit_isearch_que[@]})); then
     ble/widget/.bell "isearch: now searching..."
   else
-    ble/widget/isearch/exit-default
+    ble/widget/isearch/exit
+    ble-decode-key 13 # RET
   fi
 }
 function ble/widget/isearch/exit-delete-forward-char {
@@ -5323,8 +5348,6 @@ function ble/widget/history-isearch-forward {
   ble-edit/isearch/.draw-line
 }
 
-# ---- keymap:isearch ---------------------------------------------------------
-
 function ble-decode/keymap:isearch/define {
   local ble_bind_keymap=isearch
 
@@ -5347,6 +5370,285 @@ function ble-decode/keymap:isearch/define {
 
 # 
 #------------------------------------------------------------------------------
+# **** non-incremental-search ****                             @history.nsearch
+
+## @var _ble_edit_nsearch_needle
+##   検索対象の文字列を保持します。
+## @var _ble_edit_nsearch_opts
+##   検索の振る舞いを制御するオプションを保持します。
+## @arr _ble_edit_nsearch_stack[]
+##   検索が一致する度に記録される。
+##   各要素は "direction,index,ind,mark:line" の形式をしている。
+##   前回の検索の方向 (direction) と、検索前の状態を記録する。
+##   index は検索の履歴位置で ind と mark はカーソル位置とマークの位置。
+##   line は編集文字列である。
+## @var _ble_edit_nsearch_match
+##   現在表示している行内容がどの履歴番号に対応するかを保持します。
+##   nsearch 開始位置もしくは最後に一致した位置に対応します。
+## @var _ble_edit_nsearch_index
+##   最後に検索した位置を表します。
+##   検索が一致した場合は _ble_edit_nsearch_match と同じになります。
+_ble_edit_nsearch_needle=
+_ble_edit_nsearch_opts=
+_ble_edit_nsearch_stack=()
+_ble_edit_nsearch_match=
+_ble_edit_nsearch_index=
+
+## 関数 ble-edit/nsearch/show-status [pos_progress]
+function ble-edit/nsearch/show-status {
+  local ll rr
+  if [[ :$_ble_edit_isearch_opts: == *:forward:* ]]; then
+    ll="  " rr=">>"
+  else
+    ll=\<\< rr="  " # Note: Emacs workaround: '<<' や "<<" と書けない。
+  fi
+
+  local index='!'$((_ble_edit_nsearch_match+1))
+  local nmatch=${#_ble_edit_nsearch_stack[@]}
+  local needle=$_ble_edit_nsearch_needle
+  local text="(nsearch#$nmatch: $ll $index $rr) \`$needle'"
+
+  if [[ $1 ]]; then
+    local pos=$1
+    local count; ble-edit/history/get-count
+
+    local percentage=$((count?pos*1000/count:1000))
+    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
+  fi
+
+  local ntask=$fib_ntask
+  ((ntask)) && text="$text *$ntask"
+
+  ble-edit/info/show text "$text"
+}
+function ble-edit/nsearch/erase-status {
+  ble-edit/info/default
+}
+
+## 関数 ble-edit/nsearch/progress.callback pos
+function ble-edit/nsearch/progress.callback {
+  ble-edit/nsearch/show-status "$1"
+}
+function ble-edit/nsearch/search.impl {
+  local opts=$1
+  local opt_resume= opt_forward=
+  [[ $fib_suspend ]] && opt_resume=1
+  [[ :$opts: == *:forward:* ]] && opt_forward=1
+
+  # 前回の一致と逆方向の時は前回の一致前の状態に戻す
+  # Note: stack[0] は一致結果ではなくて現在行の記録に使われているので
+  #   nstack >= 2 の時にのみ状態を戻すことにする。
+  local nstack=${#_ble_edit_nsearch_stack[@]}
+  if ((nstack>=2)); then
+    local record_type=${_ble_edit_nsearch_stack[nstack-1]%%,*}
+    if 
+      if [[ $opt_forward ]]; then
+        [[ $record_type == backward ]]
+      else
+        [[ $record_type == forward ]]
+      fi
+    then
+      local ret; ble/array#pop _ble_edit_nsearch_stack
+      local record line=${ret#*:}
+      ble/string#split record , "${ret%%:*}"
+
+      ble-edit/content/reset-and-check-dirty "$line"
+      _ble_edit_nsearch_match=${record[1]}
+      _ble_edit_nsearch_index=${record[1]}
+      _ble_edit_ind=${record[2]}
+      _ble_edit_mark=${record[3]}
+      if ((_ble_edit_mark!=_ble_edit_ind)); then
+        _ble_edit_mark_active=_search
+      else
+        _ble_edit_mark_active=
+      fi
+      ble-edit/nsearch/show-status
+      return 0
+    fi
+  fi
+
+  # 検索の実行
+  local index start
+  if [[ $opt_resume ]]; then
+    eval "$fib_suspend"
+  else
+    local start=$_ble_edit_nsearch_match
+    local index=$_ble_edit_nsearch_index
+  fi
+  if
+    if [[ $opt_forward ]]; then
+      local count; ble-edit/history/get-count
+      [[ $opt_resume ]] || ((++index))
+      ((index<count))
+    else
+      [[ $opt_resume ]] || ((--index))
+      ((index>=0))
+    fi
+  then
+    local needle=$_ble_edit_nsearch_needle
+    local isearch_time=$fib_clock
+    local isearch_progress_callback=ble-edit/nsearch/progress.callback
+    local isearch_opts=stop_check:progress; [[ :$opts: != *:substr:* ]] && isearch_opts=$isearch_opts:head
+    if [[ $opt_forward ]]; then
+      ble-edit/isearch/forward-search-history "$isearch_opts"; local ext=$?
+    else
+      ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
+    fi
+    fib_clock=$isearch_time
+    _ble_edit_nsearch_index=$index
+  else
+    local ext=1
+  fi
+
+  # 書き換え
+  if ((ext==0)); then
+    local old_match=$_ble_edit_nsearch_match
+    ble/array#push _ble_edit_nsearch_stack "backward,$old_match,$_ble_edit_ind,$_ble_edit_mark:$_ble_edit_str"
+
+    local line=${_ble_edit_history_edit[index]}
+    local prefix=${line%%"$needle"*}
+    local beg=${#prefix}
+    local end=$((beg+${#needle}))
+    _ble_edit_nsearch_match=$index
+    ble-edit/content/reset-and-check-dirty "$line"
+    ((_ble_edit_mark=beg,_ble_edit_ind=end))
+    if ((_ble_edit_mark!=_ble_edit_ind)); then
+      _ble_edit_mark_active=_search
+    else
+      _ble_edit_mark_active=
+    fi
+    ble-edit/nsearch/show-status
+
+  elif ((ext==148)); then
+    fib_suspend="index=$index start=$start"
+    return 148
+  else
+    fib_suspend=
+    ble/widget/.bell "ble.sh: nsearch: '$needle' not found"
+    ble-edit/nsearch/show-status
+    return "$ext"
+  fi
+}
+function ble-edit/nsearch/forward.fib {
+  ble-edit/nsearch/search.impl "$_ble_edit_nsearch_opts:forward"
+}
+function ble-edit/nsearch/backward.fib {
+  ble-edit/nsearch/search.impl "$_ble_edit_nsearch_opts:backward"
+}
+
+function ble/widget/history-search {
+  local opts=$1
+  ble-edit/content/clear-arg
+  ble-decode/keymap/push nsearch
+  _ble_edit_mark_active=
+
+  # initialize variables
+  _ble_edit_nsearch_needle=${_ble_edit_str::_ble_edit_ind}
+  _ble_edit_nsearch_stack=()
+  local index; ble-edit/history/get-index
+  _ble_edit_nsearch_match=$index
+  _ble_edit_nsearch_index=$index
+  if [[ :$opts: == *:substr:* ]]; then
+    _ble_edit_nsearch_opts=substr
+  else
+    _ble_edit_nsearch_opts=
+  fi
+
+  # start search
+  ble/util/fiberchain#initialize ble-edit/nsearch
+  if [[ :$opts: == *:forward:* ]]; then
+    ble/util/fiberchain#push forward
+  else
+    ble/util/fiberchain#push backward
+  fi
+  ble/util/fiberchain#resume
+}
+function ble/widget/history-search-backward {
+  ble/widget/history-search backward
+}
+function ble/widget/history-search-forward {
+  ble/widget/history-search forward
+}
+function ble/widget/history-substring-search-backward {
+  ble/widget/history-search substr:backward
+}
+function ble/widget/history-substring-search-forward {
+  ble/widget/history-search substr:forward
+}
+
+function ble/widget/nsearch/forward {
+  local ntask=${#_ble_util_fiberchain[@]}
+  if ((ntask>=1)) && [[ ${_ble_util_fiberchain[ntask-1]%%:*} == backward ]]; then
+    # 最後の逆方向の検索をキャンセル
+    local ret; ble/array#pop _ble_util_fiberchain
+  else
+    ble/util/fiberchain#push forward
+  fi
+  ble/util/fiberchain#resume
+}
+function ble/widget/nsearch/backward {
+  local ntask=${#_ble_util_fiberchain[@]}
+  if ((ntask>=1)) && [[ ${_ble_util_fiberchain[ntask-1]%%:*} == forward ]]; then
+    # 最後の逆方向の検索をキャンセル
+    local ret; ble/array#pop _ble_util_fiberchain
+  else
+    ble/util/fiberchain#push backward
+  fi
+  ble/util/fiberchain#resume
+}
+function ble/widget/nsearch/exit {
+  ble-decode/keymap/pop
+  _ble_edit_mark_active=
+  ble-edit/nsearch/erase-status
+}
+function ble/widget/nsearch/exit-default {
+  ble/widget/nsearch/exit
+  ble-decode-key "${KEYS[@]}"
+}
+function ble/widget/nsearch/cancel {
+  if ((${#_ble_util_fiberchain[@]})); then
+    ble/util/fiberchain#clear
+    ble-edit/nsearch/show-status
+  else
+    ble/widget/nsearch/exit
+    local record=${_ble_edit_nsearch_stack[0]}
+    if [[ $record ]]; then
+      local line=${record#*:}
+      ble/string#split record , "${record%%:*}"
+
+      ble-edit/content/reset-and-check-dirty "$line"
+      _ble_edit_ind=${record[2]}
+      _ble_edit_mark=${record[3]}
+    fi
+  fi
+}
+function ble/widget/nsearch/accept-line {
+  if ((${#_ble_util_fiberchain[@]})); then
+    ble/widget/.bell "nsearch: now searching..."
+  else
+    ble/widget/nsearch/exit
+    ble/widget/accept-single-line-or-newline
+  fi
+}
+
+function ble-decode/keymap:nsearch/define {
+  local ble_bind_keymap=nsearch
+
+  ble-bind -f __default__ nsearch/exit-default
+  ble-bind -f C-g         nsearch/cancel
+  ble-bind -f C-m         nsearch/exit
+  ble-bind -f RET         nsearch/exit
+  ble-bind -f C-j         nsearch/accept-line
+  ble-bind -f C-RET       nsearch/accept-line
+
+  ble-bind -f C-p         nsearch/backward
+  ble-bind -f C-n         nsearch/forward
+  ble-bind -f up          nsearch/backward
+  ble-bind -f down        nsearch/forward
+}
+
+# 
+#------------------------------------------------------------------------------
 # **** common bindings ****                                          @edit.safe
 
 function ble-decode/keymap:safe/.bind {
@@ -5360,7 +5662,7 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind __defchar__ 'self-insert'
   ble-decode/keymap:safe/.bind 'C-q'       'quoted-insert'
   ble-decode/keymap:safe/.bind 'C-v'       'quoted-insert'
-  ble-decode/keymap:safe/.bind 'C-M-m'     'newline'
+  ble-decode/keymap:safe/.bind 'M-C-m'     'newline'
   ble-decode/keymap:safe/.bind 'M-RET'     'newline'
   ble-decode/keymap:safe/.bind paste_begin 'bracketed-paste'
 
@@ -5401,8 +5703,8 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-left'    '@nomarked backward-sword'
   ble-decode/keymap:safe/.bind 'S-C-right' '@marked forward-cword'
   ble-decode/keymap:safe/.bind 'S-C-left'  '@marked backward-cword'
-  ble-decode/keymap:safe/.bind 'S-M-right' '@marked forward-sword'
-  ble-decode/keymap:safe/.bind 'S-M-left'  '@marked backward-sword'
+  ble-decode/keymap:safe/.bind 'M-S-right' '@marked forward-sword'
+  ble-decode/keymap:safe/.bind 'M-S-left'  '@marked backward-sword'
   ble-decode/keymap:safe/.bind 'M-d'       'kill-forward-cword'
   ble-decode/keymap:safe/.bind 'M-h'       'kill-backward-cword'
   ble-decode/keymap:safe/.bind 'C-delete'  'delete-forward-cword'
@@ -5419,8 +5721,8 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-b'       '@nomarked backward-cword'
   ble-decode/keymap:safe/.bind 'M-F'       '@marked forward-cword'
   ble-decode/keymap:safe/.bind 'M-B'       '@marked backward-cword'
-  ble-decode/keymap:safe/.bind 'C-M-f'     '@marked forward-cword'
-  ble-decode/keymap:safe/.bind 'C-M-b'     '@marked backward-cword'
+  ble-decode/keymap:safe/.bind 'M-C-f'     '@marked forward-cword'
+  ble-decode/keymap:safe/.bind 'M-C-b'     '@marked backward-cword'
 
   # linewise operations
   ble-decode/keymap:safe/.bind 'C-a'       '@nomarked beginning-of-line'
@@ -5432,7 +5734,7 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'S-home'    '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'S-end'     '@marked end-of-line'
   ble-decode/keymap:safe/.bind 'M-m'       '@nomarked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'S-M-m'     '@marked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'M-S-m'     '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'M-M'       '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line' # overwritten by bind-history
   ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line' # overwritten by bind-history
@@ -5462,6 +5764,12 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line history'
   ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line history'
   ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line history'
+  ble-decode/keymap:safe/.bind 'C-x C-p'   'history-search-backward'
+  ble-decode/keymap:safe/.bind 'C-x up'    'history-search-backward'
+  ble-decode/keymap:safe/.bind 'C-x C-n'   'history-search-forward'
+  ble-decode/keymap:safe/.bind 'C-x down'  'history-search-forward'
+  ble-decode/keymap:safe/.bind 'C-x p'     'history-substring-search-backward'
+  ble-decode/keymap:safe/.bind 'C-x n'     'history-substring-search-forward'
 }
 function ble-decode/keymap:safe/bind-complete {
   ble-decode/keymap:safe/.bind 'C-i'                 'complete'

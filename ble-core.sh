@@ -1696,6 +1696,43 @@ else
 fi
 
 #------------------------------------------------------------------------------
+# ble/util/fiberchain
+
+_ble_util_fiberchain=()
+_ble_util_fiberchain_prefix=
+function ble/util/fiberchain#initialize {
+  _ble_util_fiberchain=()
+  _ble_util_fiberchain_prefix=$1
+}
+function ble/util/fiberchain#resume/.core {
+  local fib_clock=0
+  local fib_ntask=$#
+  while (($#)); do
+    ((fib_ntask--))
+    local key=${1%%:*} fib_suspend=
+    [[ $1 == *:* ]] && fib_suspend=${1#*:}
+    "$_ble_util_fiberchain_prefix/$key.fib"
+
+    if [[ $fib_suspend ]]; then
+      _ble_util_fiberchain=("$key:$fib_suspend" "${@:2}")
+      return 148
+    fi
+    shift
+  done
+
+  _ble_util_fiberchain=()
+}
+function ble/util/fiberchain#resume {
+  ble/util/fiberchain#resume/.core "${_ble_util_fiberchain[@]}"
+}
+function ble/util/fiberchain#push {
+  ble/array#push _ble_util_fiberchain "$1"
+}
+function ble/util/fiberchain#clear {
+  _ble_util_fiberchain=()
+}
+
+#------------------------------------------------------------------------------
 
 ## 関数 bleopt args...
 ##   @params[in] args
