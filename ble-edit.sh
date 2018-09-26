@@ -5258,6 +5258,19 @@ function ble/widget/isearch/prev {
     ble-edit/isearch/prev
   fi
 }
+
+function ble/widget/isearch/.restore-mark-state {
+  local old_mark_active=${_ble_edit_isearch_save[3]}
+  if [[ $old_mark_active ]]; then
+    local index; ble-edit/history/get-index
+    if ((index==_ble_edit_isearch_save[0])); then
+      _ble_edit_mark=${_ble_edit_isearch_save[2]}
+      if [[ $old_mark_active != S ]] || ((_ble_edit_index==_ble_edit_isearch_save[1])); then
+        _ble_edit_mark_active=$old_mark_active
+      fi
+    fi
+  fi
+}
 function ble/widget/isearch/exit.impl {
   ble-decode/keymap/pop
   _ble_edit_isearch_arr=()
@@ -5272,7 +5285,9 @@ function ble/widget/isearch/exit-with-region {
 }
 function ble/widget/isearch/exit {
   ble/widget/isearch/exit.impl
+
   _ble_edit_mark_active=
+  ble/widget/isearch/.restore-mark-state
 }
 function ble/widget/isearch/cancel {
   if ((${#_ble_util_fiberchain[@]})); then
@@ -5306,23 +5321,30 @@ function ble/widget/isearch/exit-delete-forward-char {
   ble/widget/delete-region-or forward-char
 }
 
-function ble/widget/history-isearch-backward {
+## 関数 ble/widget/history-isearch.impl opts
+function ble/widget/history-isearch.impl {
+  local opts=$1
   ble-edit/content/clear-arg
   ble-decode/keymap/push isearch
   ble/util/fiberchain#initialize ble-edit/isearch
-  _ble_edit_isearch_dir=-
+
+  local index; ble-edit/history/get-index
+  _ble_edit_isearch_save=("$index" "$_ble_edit_ind" "$_ble_edit_mark" "$_ble_edit_mark_active")
+
+  if [[ :$opts: == *:forward:* ]]; then
+    _ble_edit_isearch_dir=+
+  else
+    _ble_edit_isearch_dir=-
+  fi
   _ble_edit_isearch_arr=()
   _ble_edit_mark=$_ble_edit_ind
   ble-edit/isearch/.draw-line
 }
+function ble/widget/history-isearch-backward {
+  ble/widget/history-isearch.impl backward
+}
 function ble/widget/history-isearch-forward {
-  ble-edit/content/clear-arg
-  ble-decode/keymap/push isearch
-  ble/util/fiberchain#initialize ble-edit/isearch
-  _ble_edit_isearch_dir=+
-  _ble_edit_isearch_arr=()
-  _ble_edit_mark=$_ble_edit_ind
-  ble-edit/isearch/.draw-line
+  ble/widget/history-isearch.impl forward
 }
 
 function ble-decode/keymap:isearch/define {
