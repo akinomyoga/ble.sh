@@ -5504,7 +5504,8 @@ function ble-edit/nsearch/search.impl {
     local old_match=$_ble_edit_nsearch_match
     ble/array#push _ble_edit_nsearch_stack "backward,$old_match,$_ble_edit_ind,$_ble_edit_mark:$_ble_edit_str"
 
-    local line=${_ble_edit_history_edit[index]}
+
+    local line; ble-edit/history/get-editted-entry -v line "$index"
     local prefix=${line%%"$needle"*}
     local beg=${#prefix}
     local end=$((beg+${#needle}))
@@ -5538,11 +5539,13 @@ function ble-edit/nsearch/backward.fib {
 function ble/widget/history-search {
   local opts=$1
   ble-edit/content/clear-arg
-  ble-decode/keymap/push nsearch
-  _ble_edit_mark_active=
 
   # initialize variables
-  _ble_edit_nsearch_needle=${_ble_edit_str::_ble_edit_ind}
+  if [[ :$opts: == *:input:* ]]; then
+    ble-edit/read -ep "nsearch> " _ble_edit_nsearch_needle || return 1
+  else
+    _ble_edit_nsearch_needle=${_ble_edit_str::_ble_edit_ind}
+  fi
   _ble_edit_nsearch_stack=()
   local index; ble-edit/history/get-index
   _ble_edit_nsearch_match=$index
@@ -5552,6 +5555,8 @@ function ble/widget/history-search {
   else
     _ble_edit_nsearch_opts=
   fi
+  _ble_edit_mark_active=
+  ble-decode/keymap/push nsearch
 
   # start search
   ble/util/fiberchain#initialize ble-edit/nsearch
@@ -5561,6 +5566,12 @@ function ble/widget/history-search {
     ble/util/fiberchain#push backward
   fi
   ble/util/fiberchain#resume
+}
+function ble/widget/history-nsearch-backward {
+  ble/widget/history-search input:substr:backward
+}
+function ble/widget/history-nsearch-forward {
+  ble/widget/history-search input:substr:forward
 }
 function ble/widget/history-search-backward {
   ble/widget/history-search backward
@@ -5626,7 +5637,7 @@ function ble/widget/nsearch/accept-line {
     ble/widget/.bell "nsearch: now searching..."
   else
     ble/widget/nsearch/exit
-    ble/widget/accept-single-line-or-newline
+    ble-decode-key 13 # RET
   fi
 }
 
@@ -5640,6 +5651,8 @@ function ble-decode/keymap:nsearch/define {
   ble-bind -f C-j         nsearch/accept-line
   ble-bind -f C-RET       nsearch/accept-line
 
+  ble-bind -f C-r         nsearch/backward
+  ble-bind -f C-s         nsearch/forward
   ble-bind -f C-p         nsearch/backward
   ble-bind -f C-n         nsearch/forward
   ble-bind -f up          nsearch/backward
@@ -5769,6 +5782,8 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'C-x down'  'history-search-forward'
   ble-decode/keymap:safe/.bind 'C-x p'     'history-substring-search-backward'
   ble-decode/keymap:safe/.bind 'C-x n'     'history-substring-search-forward'
+  ble-decode/keymap:safe/.bind 'C-x <'     'history-nsearch-backward'
+  ble-decode/keymap:safe/.bind 'C-x >'     'history-nsearch-forward'
 }
 function ble-decode/keymap:safe/bind-complete {
   ble-decode/keymap:safe/.bind 'C-i'                 'complete'
