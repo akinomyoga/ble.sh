@@ -1705,28 +1705,40 @@ function ble/util/fiberchain#initialize {
   _ble_util_fiberchain_prefix=$1
 }
 function ble/util/fiberchain#resume/.core {
+  _ble_util_fiberchain=()
   local fib_clock=0
   local fib_ntask=$#
   while (($#)); do
     ((fib_ntask--))
-    local key=${1%%:*} fib_suspend=
+    local fiber=${1%%:*} fib_suspend=
+    local argv; ble/string#split-words argv "$fiber"
     [[ $1 == *:* ]] && fib_suspend=${1#*:}
-    "$_ble_util_fiberchain_prefix/$key.fib"
+    "$_ble_util_fiberchain_prefix/$argv.fib" "${argv[@]:1}"
 
     if [[ $fib_suspend ]]; then
-      _ble_util_fiberchain=("$key:$fib_suspend" "${@:2}")
+      _ble_util_fiberchain=("$fiber:$fib_suspend" "${@:2}")
       return 148
     fi
     shift
   done
-
-  _ble_util_fiberchain=()
 }
 function ble/util/fiberchain#resume {
   ble/util/fiberchain#resume/.core "${_ble_util_fiberchain[@]}"
 }
+## 関数 ble/util/fiberchain#push fiber...
+##   @param[in] fiber
+##     複数指定することができます。
+##     一つ一つは空白区切りの単語を並べた文字列です。
+##     コロン ":" を含むことはできません。
+##     一番最初の単語にファイバー名 name を指定します。
+##     引数 args... があれば二つ目以降の単語として指定します。
+##
+##   @remarks
+##     実際に実行されるファイバーは以下のコマンドになります。
+##     "$_ble_util_fiber_chain_prefix/$name.fib" "${args[@]}"
+##
 function ble/util/fiberchain#push {
-  ble/array#push _ble_util_fiberchain "$1"
+  ble/array#push _ble_util_fiberchain "$@"
 }
 function ble/util/fiberchain#clear {
   _ble_util_fiberchain=()

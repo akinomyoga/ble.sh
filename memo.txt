@@ -3346,8 +3346,10 @@ tech
       まあ、取り敢えず試しにやってみて動けばよいだろう。
       表示は OK C-v による操作も確認した。まあ、問題なかろう。
 
+    * done: isearch も fiberchain で実装し直す
+      直した。fiberchain で fiber に引数を指定できる様に拡張した。
+
     - また isearch で region を復元するのもこれを機に実装するのが良い。
-    - isearch も fiberchain で実装し直す
 
 2018-09-24
 
