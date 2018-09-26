@@ -3315,10 +3315,32 @@ tech
 
     取り敢えずこの時点で commit を作成する事にする。
 
-    - syntax: `ble-syntax:bash/is-complete`
-    - 後で mark の種類の名称を変更する事にする。
+    * 後で mark の種類の名称を変更する事にする。
       mark:search -> mark:vi_search mark:nsearch -> mark:search
       これに併せて char block line についても変更したい。
+
+      mark_active を辿れば良いと思う。
+      - mark_type についても確認する必要がある。
+        一応一通り見た。
+      - _ble_keymap_vi_search_activate も辿る。
+        これも一通り見た。
+      - _ble_keymap_vi_xmap_prev_visual も調べる。
+        これは単に mark_active を記録・復元しているだけの様だ。
+
+      見逃しがないか不安である。改めて mark_active を見る。追加で以下も変更する。
+
+      - _ble_keymap_vi_xmap_prev_edit
+      - ble/widget/vi-command/visual-mode.impl
+      - ble/widget/vi_xmap/switch-visual-mode.impl
+      - ble/keymap:vi/xmap/switch-type も確認した。
+
+      - ble/keymap:vi/call-operator 及び operator の context は変更しなくて良い。
+
+      まあ、取り敢えず試しにやってみて動けばよいだろう。
+      表示は OK C-v による操作も確認した。まあ、問題なかろう。
+
+  ble/keymap:vi/xmap/switch-type
+
     - また isearch で region を復元するのもこれを機に実装するのが良い。
     - isearch も fiberchain で実装し直す
     - ble/widget/accept-single-line-or/accepts は別の名前を割り当てる
@@ -3329,6 +3351,9 @@ tech
     https://github.com/akinomyoga/ble.sh/issues/5 で cmplstofB さんの質問で、
     ble-sabbrev は _ble_complete_load_hook で設定するのかという問いに対して。
     修正した。然し、何れにしても遅延ロードを有効にする為にはやはり load hook の中で実行する方が望ましい。
+
+    後で core-syntax.sh `ble-syntax:bash/is-complete` も autoload されていない事に気づいた。
+    これも autoload する様に変更しておく。
 
   * complete: "echo dist/ble1423@" に対して曖昧補完が効かない [#D0841]
     "cd dist; echo ble1423@" は効く。

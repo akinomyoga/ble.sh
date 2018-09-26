@@ -384,7 +384,7 @@ function ble/widget/vim-surround.sh/ysurround.core {
     fi
 
     # Note: char から linewise への昇格条件の変更は以下の関数にも反映させる必要がある:
-    #  ble-highlight-layer:region/mark:vim_surround/get-selection
+    #  ble-highlight-layer:region/mark:vi_surround/get-selection
     local opts=
     if [[ $type == yS || $type == ySS || $context == char && $type == vgS ]]; then
       opts=linewise:indent

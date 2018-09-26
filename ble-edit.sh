@@ -4651,7 +4651,7 @@ function ble/widget/magic-space {
 #------------------------------------------------------------------------------
 # **** basic search functions ****                              @history.search
 
-function ble-highlight-layer:region/mark:_search/get-face { face=region_match; }
+function ble-highlight-layer:region/mark:search/get-face { face=region_match; }
 
 ## 関数 ble-edit/isearch/search needle opts ; beg end
 ##   @param[in] needle
@@ -5014,7 +5014,7 @@ function ble-edit/isearch/.set-region {
       _ble_edit_ind=$end
       _ble_edit_mark=$beg
     fi
-    _ble_edit_mark_active=_search
+    _ble_edit_mark_active=search
   else
     _ble_edit_mark_active=
   fi
@@ -5458,7 +5458,7 @@ function ble-edit/nsearch/search.impl {
       _ble_edit_ind=${record[2]}
       _ble_edit_mark=${record[3]}
       if ((_ble_edit_mark!=_ble_edit_ind)); then
-        _ble_edit_mark_active=_search
+        _ble_edit_mark_active=search
       else
         _ble_edit_mark_active=
       fi
@@ -5513,7 +5513,7 @@ function ble-edit/nsearch/search.impl {
     ble-edit/content/reset-and-check-dirty "$line"
     ((_ble_edit_mark=beg,_ble_edit_ind=end))
     if ((_ble_edit_mark!=_ble_edit_ind)); then
-      _ble_edit_mark_active=_search
+      _ble_edit_mark_active=search
     else
       _ble_edit_mark_active=
     fi

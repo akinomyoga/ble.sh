@@ -370,9 +370,9 @@ function ble/keymap:vi/update-mode-name {
       local mark_type=${_ble_edit_mark_active%+}
       local visual_name='VISUAL'
       [[ $kmap == vi_smap ]] && visual_name='SELECT'
-      if [[ $mark_type == line ]]; then
+      if [[ $mark_type == vi_line ]]; then
         visual_name=$visual_name' LINE'
-      elif [[ $mark_type == block ]]; then
+      elif [[ $mark_type == vi_block ]]; then
         visual_name=$visual_name' BLOCK'
       fi
 
@@ -468,7 +468,7 @@ function ble/keymap:vi/adjust-command-mode {
     _ble_keymap_vi_search_matched=1
     _ble_keymap_vi_search_activate=
   else
-    [[ $_ble_edit_mark_active == search ]] && _ble_edit_mark_active=
+    [[ $_ble_edit_mark_active == vi_search ]] && _ble_edit_mark_active=
     ((_ble_keymap_vi_search_matched)) && _ble_keymap_vi_search_matched=
   fi
 
@@ -1061,9 +1061,9 @@ function ble/widget/vi-command/operator {
     local mark_type=${_ble_edit_mark_active%+}
     ble/widget/vi_xmap/exit
 
-    if [[ $mark_type == line ]]; then
+    if [[ $mark_type == vi_line ]]; then
       ble/keymap:vi/call-operator-linewise "$opname" "$a" "$b" "$ARG" "$REG"
-    elif [[ $mark_type == block ]]; then
+    elif [[ $mark_type == vi_block ]]; then
       ble/keymap:vi/call-operator-blockwise "$opname" "$a" "$b" "$ARG" "$REG"
     else
       local end=$b
@@ -1248,7 +1248,7 @@ function ble/keymap:vi/call-operator-linewise {
 function ble/keymap:vi/call-operator-blockwise {
   local ch=$1 beg=$2 end=$3 arg=$4 reg=$5
   if ble/is-function ble/keymap:vi/operator:"$ch"; then
-    local mark_active=${ble_keymap_vi_mark_active:-block}
+    local mark_active=${ble_keymap_vi_mark_active:-vi_block}
     local sub_ranges sub_x1 sub_x2
     _ble_edit_mark_active=$mark_active ble/keymap:vi/extract-block "$beg" "$end"
     local nrange=${#sub_ranges[@]}
@@ -4440,16 +4440,16 @@ _ble_keymap_vi_search_history_onleave=()
 ##   既定値は空文字列で vim の振る舞いに倣います。
 : ${bleopt_keymap_vi_search_match_current=}
 
-function ble-highlight-layer:region/mark:search/get-selection {
-  ble-highlight-layer:region/mark:char/get-selection
+function ble-highlight-layer:region/mark:vi_search/get-selection {
+  ble-highlight-layer:region/mark:vi_char/get-selection
 }
 function ble/keymap:vi/search/matched {
-  [[ $_ble_keymap_vi_search_matched || $_ble_edit_mark_active == search || $_ble_keymap_vi_search_activate ]]
+  [[ $_ble_keymap_vi_search_matched || $_ble_edit_mark_active == vi_search || $_ble_keymap_vi_search_activate ]]
 }
 function ble/keymap:vi/search/clear-matched {
   _ble_keymap_vi_search_activate=
   _ble_keymap_vi_search_matched=
-  [[ $_ble_edit_mark_active == search ]] && _ble_edit_mark_active=
+  [[ $_ble_edit_mark_active == vi_search ]] && _ble_edit_mark_active=
 }
 ## 関数 ble/keymap:vi/search/invoke-search needle opts
 ##
@@ -4544,7 +4544,7 @@ function ble/widget/vi-command/search.core {
       ble-edit/content/bolp "$end" || ((end--))
       _ble_edit_ind=$beg # eol 補正は search.impl 側で最後に行う
       [[ $_ble_decode_keymap != vi_[xs]map ]] && _ble_edit_mark=$end
-      _ble_keymap_vi_search_activate=search
+      _ble_keymap_vi_search_activate=vi_search
       return 0
     else
       # vim では空一致は即座に失敗のようだ。
@@ -4597,8 +4597,8 @@ function ble/widget/vi-command/search.core {
     else
       ble/widget/.bell "search: not found"
     fi
-    if [[ $_ble_edit_mark_active == search ]]; then
-      _ble_keymap_vi_search_activate=search
+    if [[ $_ble_edit_mark_active == vi_search ]]; then
+      _ble_keymap_vi_search_activate=vi_search
     fi
   fi
   return 1
@@ -5205,9 +5205,9 @@ function ble-decode/keymap:vi_nmap/define {
 
 # 選択の種類は _ble_edit_mark_active に設定される文字列で区別する。
 #
-#   _ble_edit_mark_active は char, line, block のどれかである
+#   _ble_edit_mark_active は vi_char, vi_line, vi_block のどれかである
 #   更に末尾拡張 (行末までの選択範囲の拡張) が設定されているときには
-#   char+, line+, block+ などの様に + が末尾に付く。
+#   vi_char+, vi_line+, vi_block+ などの様に + が末尾に付く。
 
 function ble/keymap:vi/xmap/has-eol-extension {
   [[ $_ble_edit_mark_active == *+ ]]
@@ -5502,11 +5502,11 @@ function ble/keymap:vi/extract-block {
 #--------------------------------------
 # xmap/選択範囲の着色の設定
 
-## 関数 ble-highlight-layer:region/mark:char/get-selection
-## 関数 ble-highlight-layer:region/mark:line/get-selection
-## 関数 ble-highlight-layer:region/mark:block/get-selection
+## 関数 ble-highlight-layer:region/mark:vi_char/get-selection
+## 関数 ble-highlight-layer:region/mark:vi_line/get-selection
+## 関数 ble-highlight-layer:region/mark:vi_block/get-selection
 ##   @arr[out] selection
-function ble-highlight-layer:region/mark:char/get-selection {
+function ble-highlight-layer:region/mark:vi_char/get-selection {
   local rmin rmax
   if ((_ble_edit_mark<_ble_edit_ind)); then
     rmin=$_ble_edit_mark rmax=$_ble_edit_ind
@@ -5516,7 +5516,7 @@ function ble-highlight-layer:region/mark:char/get-selection {
   ble-edit/content/eolp "$rmax" || ((rmax++))
   selection=("$rmin" "$rmax")
 }
-function ble-highlight-layer:region/mark:line/get-selection {
+function ble-highlight-layer:region/mark:vi_line/get-selection {
   local rmin rmax
   if ((_ble_edit_mark<_ble_edit_ind)); then
     rmin=$_ble_edit_mark rmax=$_ble_edit_ind
@@ -5528,7 +5528,7 @@ function ble-highlight-layer:region/mark:line/get-selection {
   ble-edit/content/find-logical-eol "$rmax"; rmax=$ret
   selection=("$rmin" "$rmax")
 }
-function ble-highlight-layer:region/mark:block/get-selection {
+function ble-highlight-layer:region/mark:vi_block/get-selection {
   local sub_ranges sub_x1 sub_x2
   ble/keymap:vi/extract-block
 
@@ -5540,23 +5540,23 @@ function ble-highlight-layer:region/mark:block/get-selection {
     ble/array#push selection "${sub[0]}" "${sub[1]}"
   done
 }
-function ble-highlight-layer:region/mark:char+/get-selection {
-  ble-highlight-layer:region/mark:char/get-selection
+function ble-highlight-layer:region/mark:vi_char+/get-selection {
+  ble-highlight-layer:region/mark:vi_char/get-selection
 }
-function ble-highlight-layer:region/mark:line+/get-selection {
-  ble-highlight-layer:region/mark:line/get-selection
+function ble-highlight-layer:region/mark:vi_line+/get-selection {
+  ble-highlight-layer:region/mark:vi_line/get-selection
 }
-function ble-highlight-layer:region/mark:block+/get-selection {
-  ble-highlight-layer:region/mark:block/get-selection
+function ble-highlight-layer:region/mark:vi_block+/get-selection {
+  ble-highlight-layer:region/mark:vi_block/get-selection
 }
 
 #--------------------------------------
 # xmap/前回の選択サイズ
 
-_ble_keymap_vi_xmap_prev_edit=char:1:1
+_ble_keymap_vi_xmap_prev_edit=vi_char:1:1
 function ble/widget/vi_xmap/.save-visual-state {
   local nline nchar mark_type=${_ble_edit_mark_active%+}
-  if [[ $mark_type == block ]]; then
+  if [[ $mark_type == vi_block ]]; then
     local p0 q0 lx rx ly ry
     if ble/edit/use-textmap; then
       local cols=$_ble_textmap_cols
@@ -5581,7 +5581,7 @@ function ble/widget/vi_xmap/.save-visual-state {
     nline=$((ret+1))
 
     local base
-    if ((nline==1)) && [[ $mark_type != line ]]; then
+    if ((nline==1)) && [[ $mark_type != vi_line ]]; then
       base=$p
     else
       ble-edit/content/find-logical-bol "$q"; base=$ret
@@ -5603,15 +5603,15 @@ function ble/widget/vi_xmap/.save-visual-state {
 function ble/widget/vi_xmap/.restore-visual-state {
   local arg=$1; ((arg>0)) || arg=1
   local prev; ble/string#split prev : "$_ble_keymap_vi_xmap_prev_edit"
-  _ble_edit_mark_active=${prev[0]:-char}
+  _ble_edit_mark_active=${prev[0]:-vi_char}
   local nchar=${prev[1]:-1}
   local nline=${prev[2]:-1}
   ((nchar<1&&(nchar=1),nline<1&&(nline=1)))
 
   local is_x_relative=0
-  if [[ ${_ble_edit_mark_active%+} == block ]]; then
+  if [[ ${_ble_edit_mark_active%+} == vi_block ]]; then
     ((is_x_relative=1,nchar*=arg,nline*=arg))
-  elif [[ ${_ble_edit_mark_active%+} == line ]]; then
+  elif [[ ${_ble_edit_mark_active%+} == vi_line ]]; then
     ((nline*=arg,is_x_relative=1,nchar=1))
   else
     ((nline==1?(is_x_relative=1,nchar*=arg):(nline*=arg)))
@@ -5656,7 +5656,7 @@ _ble_keymap_vi_xmap_prev_visual=
 function ble/keymap:vi/xmap/set-previous-visual-area {
   local beg end
   local mark_type=${_ble_edit_mark_active%+}
-  if [[ $mark_type == block ]]; then
+  if [[ $mark_type == vi_block ]]; then
     local sub_ranges sub_x1 sub_x2
     ble/keymap:vi/extract-block
     local nrange=${#sub_ranges[*]}
@@ -5668,7 +5668,7 @@ function ble/keymap:vi/xmap/set-previous-visual-area {
   else
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
-    if [[ $mark_type == line ]]; then
+    if [[ $mark_type == vi_line ]]; then
       local ret
       ble-edit/content/find-logical-bol "$beg"; beg=$ret
       ble-edit/content/find-logical-eol "$end"; end=$ret
@@ -5726,22 +5726,22 @@ function ble/widget/vi-command/visual-mode.impl {
   return 0
 }
 function ble/widget/vi_nmap/charwise-visual-mode {
-  ble/widget/vi-command/visual-mode.impl vi_xmap char
+  ble/widget/vi-command/visual-mode.impl vi_xmap vi_char
 }
 function ble/widget/vi_nmap/linewise-visual-mode {
-  ble/widget/vi-command/visual-mode.impl vi_xmap line
+  ble/widget/vi-command/visual-mode.impl vi_xmap vi_line
 }
 function ble/widget/vi_nmap/blockwise-visual-mode {
-  ble/widget/vi-command/visual-mode.impl vi_xmap block
+  ble/widget/vi-command/visual-mode.impl vi_xmap vi_block
 }
 function ble/widget/vi_nmap/charwise-select-mode {
-  ble/widget/vi-command/visual-mode.impl vi_smap char
+  ble/widget/vi-command/visual-mode.impl vi_smap vi_char
 }
 function ble/widget/vi_nmap/linewise-select-mode {
-  ble/widget/vi-command/visual-mode.impl vi_smap line
+  ble/widget/vi-command/visual-mode.impl vi_smap vi_line
 }
 function ble/widget/vi_nmap/blockwise-select-mode {
-  ble/widget/vi-command/visual-mode.impl vi_smap block
+  ble/widget/vi-command/visual-mode.impl vi_smap vi_block
 }
 
 function ble/widget/vi_xmap/exit {
@@ -5785,15 +5785,15 @@ function ble/widget/vi_xmap/switch-visual-mode.impl {
 }
 # xmap v
 function ble/widget/vi_xmap/switch-to-charwise {
-  ble/widget/vi_xmap/switch-visual-mode.impl char
+  ble/widget/vi_xmap/switch-visual-mode.impl vi_char
 }
 # xmap V
 function ble/widget/vi_xmap/switch-to-linewise {
-  ble/widget/vi_xmap/switch-visual-mode.impl line
+  ble/widget/vi_xmap/switch-visual-mode.impl vi_line
 }
 # xmap <C-v>
 function ble/widget/vi_xmap/switch-to-blockwise {
-  ble/widget/vi_xmap/switch-visual-mode.impl block
+  ble/widget/vi_xmap/switch-visual-mode.impl vi_block
 }
 # xmap <C-g>
 function ble/widget/vi_xmap/switch-to-select {
@@ -5817,7 +5817,7 @@ function ble/widget/vi_xmap/switch-to-visual-blockwise {
     ble-decode/keymap/pop
     ble-decode/keymap/push vi_xmap
   fi
-  if [[ ${_ble_edit_mark_active%+} != block ]]; then
+  if [[ ${_ble_edit_mark_active%+} != vi_block ]]; then
     ble/widget/vi_xmap/switch-to-blockwise
   else
     xble/keymap:vi/update-mode-name
@@ -5851,7 +5851,7 @@ function ble/widget/vi_xmap/exchange-points {
 }
 # xmap O
 function ble/widget/vi_xmap/exchange-boundaries {
-  if [[ ${_ble_edit_mark_active%+} == block ]]; then
+  if [[ ${_ble_edit_mark_active%+} == vi_block ]]; then
     ble/keymap:vi/xmap/remove-eol-extension
 
     local sub_ranges sub_x1 sub_x2
@@ -5905,7 +5905,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
   local mark_type=${_ble_edit_mark_active%+}
   ble/widget/vi_xmap/.save-visual-state
   ble/widget/vi_xmap/exit # Note: _ble_edit_mark_active will be cleared here
-  if [[ $mark_type == block ]]; then
+  if [[ $mark_type == vi_block ]]; then
     ble/util/c2w "$c"; local w=$ret
     ((w<=0)) && w=1
 
@@ -5947,7 +5947,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
   else
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
-    if [[ $mark_type == line ]]; then
+    if [[ $mark_type == vi_line ]]; then
       ble-edit/content/find-logical-bol "$beg"; local beg=$ret
       ble-edit/content/find-logical-eol "$end"; local end=$ret
     else
@@ -5982,13 +5982,13 @@ function ble/widget/vi_xmap/linewise-operator.impl {
   ((beg<=end)) || local beg=$end end=$beg
 
   local call_operator=
-  if [[ :$opts: != *:force_line:* && $mark_type == block ]]; then
+  if [[ :$opts: != *:force_line:* && $mark_type == vi_block ]]; then
     call_operator=ble/keymap:vi/call-operator-blockwise
-    _ble_edit_mark_active=block
-    [[ :$opts: == *:extend:* ]] && _ble_edit_mark_active=block+
+    _ble_edit_mark_active=vi_block
+    [[ :$opts: == *:extend:* ]] && _ble_edit_mark_active=vi_block+
   else
     call_operator=ble/keymap:vi/call-operator-linewise
-    _ble_edit_mark_active=line
+    _ble_edit_mark_active=vi_line
   fi
 
   local ble_keymap_vi_mark_active=$_ble_edit_mark_active
@@ -6235,7 +6235,7 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
 # xmap I
 function ble/widget/vi_xmap/insert-mode {
   local mark_type=${_ble_edit_mark_active%+}
-  if [[ $mark_type == block ]]; then
+  if [[ $mark_type == vi_block ]]; then
     local sub_ranges sub_x1 sub_x2
     ble/keymap:vi/extract-block '' '' first_line
     ble/widget/vi_xmap/block-insert-mode.impl insert
@@ -6244,7 +6244,7 @@ function ble/widget/vi_xmap/insert-mode {
 
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
-    if [[ $mark_type == line ]]; then
+    if [[ $mark_type == vi_line ]]; then
       local ret
       ble-edit/content/find-logical-bol "$beg"; beg=$ret
     fi
@@ -6259,7 +6259,7 @@ function ble/widget/vi_xmap/insert-mode {
 # xmap A
 function ble/widget/vi_xmap/append-mode {
   local mark_type=${_ble_edit_mark_active%+}
-  if [[ $mark_type == block ]]; then
+  if [[ $mark_type == vi_block ]]; then
     local sub_ranges sub_x1 sub_x2
     ble/keymap:vi/extract-block '' '' first_line
     ble/widget/vi_xmap/block-insert-mode.impl append
@@ -6268,7 +6268,7 @@ function ble/widget/vi_xmap/append-mode {
 
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
-    if [[ $mark_type == line ]]; then
+    if [[ $mark_type == vi_line ]]; then
       # 行指向のときは最終行の先頭か _ble_edit_ind の内、
       # 後にある文字の後に移動する。
       if ((_ble_edit_mark>_ble_edit_ind)); then
@@ -6302,7 +6302,7 @@ function ble/widget/vi_xmap/paste.impl {
   local kill_type=$_ble_edit_kill_type
 
   local adjustment=
-  if [[ $mark_type == block ]]; then
+  if [[ $mark_type == vi_block ]]; then
     if [[ $kill_type == L ]]; then
       # P: V → C-v のときは C-v の最終行直後に挿入
       if ((is_after)); then
@@ -6322,7 +6322,7 @@ function ble/widget/vi_xmap/paste.impl {
         ble/string#repeat '0 ' "$nline"; kill_type=B:${ret% }
       fi
     fi
-  elif [[ $mark_type == line ]]; then
+  elif [[ $mark_type == vi_line ]]; then
     if [[ $kill_type == L ]]; then
       # V → V のとき
       is_after=0
@@ -6408,7 +6408,7 @@ function ble/widget/vi_xmap/increment.impl {
   local mark_type=${_ble_edit_mark_active%+}
   ble/widget/vi_xmap/.save-visual-state
   ble/widget/vi_xmap/exit # Note: _ble_edit_mark_active will be cleared here
-  if [[ $mark_type == block ]]; then
+  if [[ $mark_type == vi_block ]]; then
     local sub_ranges sub_x1 sub_x2
     _ble_edit_mark_active=$old_mark_active ble/keymap:vi/extract-block
     if ((${#sub_ranges[@]}==0)); then
@@ -6418,7 +6418,7 @@ function ble/widget/vi_xmap/increment.impl {
   else
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
-    if [[ $mark_type == line ]]; then
+    if [[ $mark_type == vi_line ]]; then
       ble-edit/content/find-logical-bol "$beg"; local beg=$ret
       ble-edit/content/find-logical-eol "$end"; local end=$ret
     else
