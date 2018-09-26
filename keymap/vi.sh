@@ -585,7 +585,7 @@ function ble/widget/vi-command/accept-line {
   ble/widget/accept-line
 }
 function ble/widget/vi-command/accept-single-line-or {
-  if ble/widget/accept-single-line-or/accepts; then
+  if ble-edit/is-single-complete-line; then
     ble/widget/vi-command/accept-line
   else
     ble/widget/"$@"
@@ -6638,7 +6638,7 @@ function ble/widget/vi_imap/__attach__ {
   return 0
 }
 function ble/widget/vi_imap/accept-single-line-or {
-  if ble/widget/accept-single-line-or/accepts; then
+  if ble-edit/is-single-complete-line; then
     ble/keymap:vi/imap-repeat/reset
     ble/widget/accept-line
   else

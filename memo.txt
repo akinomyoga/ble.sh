@@ -2434,6 +2434,8 @@ tech
   - decode: 組み込みコマンド `bind` を上書きして `ble.sh` の動作が阻害されない様に引数をチェックして実行 `#tmp0004`
   - complete: autoload `ble-sabbrev` (`core-complete.sh`), `ble-syntax:bash/is-complete` (`core-syntax.sh`) `#D0842`
   - isearch: 編集関数 `isearch/accept-line` が <kbd>RET</kbd> 以外から束縛されていても <kbd>RET</kbd> を実行する様に変更 `#D0843`
+  - vi, [in]search: mark 名を整理 (`char`/`line`/`block`/`search` に接頭辞 `vi_` 付加し、新しい mark 名を `search` とする) `#D0843`
+  - edit: 関数名変更 `ble/widget/accept-single-line-or/accepts` → `ble-edit/is-single-complete-line` `#D0844`
 
 2018-09-03 -- 2018-09-23 (#D0766..#D0824 8584e82)
 
@@ -3195,6 +3197,9 @@ tech
 
 2018-09-26
 
+  * edit: ble/widget/accept-single-line-or/accepts は別の名前を割り当てる [#D0844]
+    現在の名前だと ble-bind -L に表示されてしまう。直した。
+
   * edit: history-search [#D0843]
 
     dabbrev-expand でもそうだが、履歴の検索は遅い。
@@ -3315,7 +3320,9 @@ tech
 
     取り敢えずこの時点で commit を作成する事にする。
 
-    * 後で mark の種類の名称を変更する事にする。
+    * done: key binding として up down を使った物も用意する。
+
+    * done: 後で mark の種類の名称を変更する事にする。
       mark:search -> mark:vi_search mark:nsearch -> mark:search
       これに併せて char block line についても変更したい。
 
@@ -3339,11 +3346,8 @@ tech
       まあ、取り敢えず試しにやってみて動けばよいだろう。
       表示は OK C-v による操作も確認した。まあ、問題なかろう。
 
-  ble/keymap:vi/xmap/switch-type
-
     - また isearch で region を復元するのもこれを機に実装するのが良い。
     - isearch も fiberchain で実装し直す
-    - ble/widget/accept-single-line-or/accepts は別の名前を割り当てる
 
 2018-09-24
 

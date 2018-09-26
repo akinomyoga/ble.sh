@@ -3815,7 +3815,7 @@ function ble/widget/newline {
   local -a KEYS=(10)
   ble/widget/self-insert
 }
-function ble/widget/accept-single-line-or/accepts {
+function ble-edit/is-single-complete-line {
   ble-edit/content/is-single-line || return 1
   [[ $_ble_edit_str ]] && ble-decode/has-input && return 1
   if shopt -q cmdhist &>/dev/null; then
@@ -3825,7 +3825,7 @@ function ble/widget/accept-single-line-or/accepts {
   return 0
 }
 function ble/widget/accept-single-line-or {
-  if ble/widget/accept-single-line-or/accepts; then
+  if ble-edit/is-single-complete-line; then
     ble/widget/accept-line
   else
     ble/widget/"$@"

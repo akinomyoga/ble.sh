@@ -2644,7 +2644,7 @@ function ble/widget/auto_complete/insert-word {
 }
 function ble/widget/auto_complete/accept-line {
   ble/widget/auto_complete/insert
-  ble/widget/accept-single-line-or/accepts &&
+  ble-edit/is-single-complete-line &&
     ble/widget/accept-line
 }
 
