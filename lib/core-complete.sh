@@ -2258,6 +2258,8 @@ _ble_complete_ac_suffix=
 ##   @param[in] text
 ##   @var[out] ret
 function ble-complete/auto-complete/.search-history-light {
+  [[ $_ble_edit_history_prefix ]] && return 1
+
   local text=$1
   [[ ! $text ]] && return 1
 
@@ -2323,7 +2325,7 @@ function ble-complete/auto-complete/.search-history-heavy {
   _ble_complete_ac_history_needle=$needle
   ((ext)) && return "$ext"
 
-  ret=${_ble_edit_history_edit[index]}
+  ble-edit/history/get-editted-entry -v ret "$index"
   return 0
 }
 
@@ -2442,7 +2444,7 @@ function ble-complete/auto-complete.impl {
     ble-complete/auto-complete/.check-history light; local ext=$?
     ((ext==0||ext==148)) && return "$ext"
 
-    [[ $_ble_edit_history_loaded ]] &&
+    [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]] &&
       ble-complete/auto-complete/.check-history; local ext=$?
     ((ext==0||ext==148)) && return "$ext"
   fi
@@ -2781,136 +2783,235 @@ function ble/widget/sabbrev-expand {
 #
 
 _ble_complete_dabbrev_original=
-_ble_complete_dabbrev_wordbreaks=
-_ble_complete_dabbrev_needle=
-_ble_complete_dabbrev_start=
+_ble_complete_dabbrev_regex1=
+_ble_complete_dabbrev_regex2=
 _ble_complete_dabbrev_index=
 _ble_complete_dabbrev_pos=
+_ble_complete_dabbrev_stack=()
 
-## 関数 ble-complete/dabbrev/.initialize
-##   @var[out] wordbreaks
-##   @var[out] p1 p2 original
-##   @var[out] needle start
-function ble-complete/dabbrev/.initialize {
+function ble-complete/dabbrev/.show-status.fib {
+  local index='!'$((_ble_complete_dabbrev_index+1))
+  local nmatch=${#_ble_complete_dabbrev_stack[@]}
+  local needle=$_ble_complete_dabbrev_original
+  local text="(dabbrev#$nmatch: << $index) \`$needle'"
+
+  local pos=$1
+  if [[ $pos ]]; then
+    local count; ble-edit/history/get-count
+    local percentage=$((count?pos*1000/count:1000))
+    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
+  fi
+
+  ((fib_ntask)) && text="$text *$fib_ntask"
+
+  ble-edit/info/show text "$text"
+}
+function ble-complete/dabbrev/show-status {
+  local fib_ntask=${#_ble_util_fiberchain[@]}
+  ble-complete/dabbrev/.show-status.fib
+}
+function ble-complete/dabbrev/erase-status {
+  ble-edit/info/default
+}
+
+## 関数 ble-complete/dabbrev/initialize-variables
+function ble-complete/dabbrev/initialize-variables {
   # Note: _ble_term_IFS を前置しているので ! や ^ が先頭に来ない事は保証される
-  wordbreaks=$_ble_term_IFS$COMP_WORDBREAKS
+  local wordbreaks=$_ble_term_IFS$COMP_WORDBREAKS
   [[ $wordbreaks == *'('* ]] && wordbreaks=${wordbreaks//['()']}'()'
   [[ $wordbreaks == *']'* ]] && wordbreaks=']'${wordbreaks//']'}
   [[ $wordbreaks == *'-'* ]] && wordbreaks=${wordbreaks//'-'}'-'
+  _ble_complete_dabbrev_wordbreaks=$wordbreaks
 
   local left=${_ble_edit_str::_ble_edit_ind}
-  original=${left##*[$wordbreaks]}
-  p1=$((_ble_edit_ind-${#original})) p2=$_ble_edit_ind
+  local original=${left##*[$wordbreaks]}
+  local p1=$((_ble_edit_ind-${#original})) p2=$_ble_edit_ind
+  _ble_edit_mark=$p1
+  _ble_edit_ind=$p2
+  _ble_complete_dabbrev_original=$original
 
   local ret; ble/string#escape-for-extended-regex "$original"
-  needle='(^|['$wordbreaks'])'$ret
+  local needle='(^|['$wordbreaks'])'$ret
+  _ble_complete_dabbrev_regex1=$needle
+  _ble_complete_dabbrev_regex2='('$needle'[^'$wordbreaks']*).*'
 
-  local count; ble-edit/history/get-count -v count
-  start=$((count-1))
-}
-function ble-complete/dabbrev/.search-backward-history {
-  local isearch_time=0 isearch_ntask=1 isearch_opts=regex:stop_check
-  ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
-}
-## 関数 ble-complete/dabbrev/.search-current-history-entry
-##   @var[in] needle
-##     検索に用いる正規表現を指定します。
-##   @var[in] wordbreaks
-##     単語の境界となる文字の集合を指定します。
-##   @var[in] index
-##     検索する履歴項目の番号を指定します。
-##   @var[in,out] pos
-##     履歴項目内の検索開始位置を指定します。
-##     一致した場合、一致範囲の最後の位置を返します。
-function ble-complete/dabbrev/.search-current-history-entry {
-  local line=${_ble_edit_history_edit[index]}
-  local rex='('$needle'[^'$wordbreaks']*).*'
-
-  while [[ ${line:pos} && ${line:pos} =~ $rex ]]; do
-    local rematch1=${BASH_REMATCH[1]} rematch2=${BASH_REMATCH[2]}
-    ret=${rematch1:${#rematch2}}
-    if [[ $ret ]]; then
-      ((pos=${#line}-${#BASH_REMATCH}+${#ret}))
-      return 0
-    else
-      ((pos++))
-    fi
-  done
-
-  return 1
-}
-function ble-complete/dabbrev/expand {
-  local wordbreaks p1 p2 original needle start
-  ble-complete/dabbrev/.initialize
-
-  local index=$start
-  ble-complete/dabbrev/.search-backward-history || return
-
-  local pos=0 ret
-  ble-complete/dabbrev/.search-current-history-entry || return
-  local match=$ret
-
-  ble-edit/content/replace "$p1" "$p2" "$match"
-  _ble_edit_mark=$p1
-  _ble_edit_ind=$((p1+${#match}))
-
-  _ble_edit_mark_active=menu_complete
-  _ble_complete_dabbrev_original=$original
-  _ble_complete_dabbrev_wordbreaks=$wordbreaks
-  _ble_complete_dabbrev_needle=$needle
-  _ble_complete_dabbrev_start=$start
+  local index; ble-edit/history/get-index
   _ble_complete_dabbrev_index=$index
-  _ble_complete_dabbrev_pos=$pos
-  ble-decode/keymap/push dabbrev
-}
-function ble-complete/dabbrev/next {
-  local wordbreaks=$_ble_complete_dabbrev_wordbreaks
-  local needle=$_ble_complete_dabbrev_needle
-  local start=$_ble_complete_dabbrev_start
-  local index=$_ble_complete_dabbrev_index
-  local pos=$_ble_complete_dabbrev_pos
+  _ble_complete_dabbrev_pos=${#_ble_edit_str}
 
-  local current_match=${_ble_edit_str:_ble_edit_mark:_ble_edit_ind-_ble_edit_mark}
-  local ret=
-  local iloop=0
-  while ((index>=0)); do
-    if ! ble-complete/dabbrev/.search-current-history-entry; then
-      ((--index>=0)) || return
-      ble-complete/dabbrev/.search-backward-history || return
-      pos=0
-      ble-complete/dabbrev/.search-current-history-entry || continue
-    fi
-    [[ $ret != "$current_match" ]] && break
-  done
-  local match=$ret
-
-  ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" "$match"
-  ((_ble_edit_ind=_ble_edit_mark+${#match}))
-
-  _ble_complete_dabbrev_index=$index
-  _ble_complete_dabbrev_pos=$pos
+  _ble_complete_dabbrev_stack=()
 }
 
-function ble/widget/dabbrev-expand {
-  if ! ble-complete/dabbrev/expand; then
-    ble/widget/.bell
-  fi
-}
-function ble/widget/dabbrev/next {
-  ble-complete/dabbrev/next; local ext=$?
-  if ((ext!=148&&ext)); then
-    ble/widget/dabbrev/cancel
-    ble/widget/.bell
-    ble/widget/dabbrev-expand
-  fi
-}
-function ble/widget/dabbrev/cancel {
-  ble-decode/keymap/pop
-
+function ble-complete/dabbrev/reset {
   local original=$_ble_complete_dabbrev_original
   ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" "$original"
   ((_ble_edit_ind=_ble_edit_mark+${#original}))
   _ble_edit_mark_active=
+}
+
+## 関数 ble-complete/dabbrev/search-in-history-entry line index
+##   @param[in] line
+##     検索対象の内容を指定します。
+##   @param[in] index
+##     検索対象の履歴番号を指定します。
+##   @var[in] dabbrev_current_match
+##     現在の一致内容を指定します。
+##   @var[in] dabbrev_pos
+##     履歴項目内の検索開始位置を指定します。
+##   @var[out] dabbrev_match
+##     一致した場合に、一致した内容を返します。
+##   @var[out] dabbrev_match_pos
+##     一致した場合に、一致範囲の最後の位置を返します。
+##     これは次の検索開始位置に対応します。
+function ble-complete/dabbrev/search-in-history-entry {
+  local line=$1 index=$2
+
+  # 現在編集している行自身には一致させない。
+  local index_editting; ble-edit/history/get-index -v index_editting
+  if ((index!=index_editting)); then
+    local pos=$dabbrev_pos
+    while [[ ${line:pos} && ${line:pos} =~ $_ble_complete_dabbrev_regex2 ]]; do
+      local rematch1=${BASH_REMATCH[1]} rematch2=${BASH_REMATCH[2]}
+      local match=${rematch1:${#rematch2}}
+      if [[ $match && $match != "$dabbrev_current_match" ]]; then
+        dabbrev_match=$match
+        dabbrev_match_pos=$((${#line}-${#BASH_REMATCH}+${#match}))
+        return 0
+      else
+        ((pos++))
+      fi
+    done
+  fi
+
+  return 1
+}
+
+function ble-complete/dabbrev/.search.fib {
+  if [[ ! $fib_suspend ]]; then
+    local start=$_ble_complete_dabbrev_index
+    local index=$_ble_complete_dabbrev_index
+    local pos=$_ble_complete_dabbrev_pos
+
+    # Note: start は最初に backward-history-search が呼ばれる時の index。
+    #   backward-history-search が呼び出される前に index-- されるので、
+    #   start は最初から 1 減らして定義しておく。
+    #   これにより cyclic 検索で再度自分に一致する事が保証される。
+    # Note: start がこれで負になった時は "履歴項目の数" を設定する。
+    #   未だ "履歴" に登録されていない最新の項目 (_ble_edit_history_edit
+    #   には格納されている) も検索の対象とするため。
+    ((--start>=0)) || ble-edit/history/get-count -v start
+  else
+    local start index pos; eval "$fib_suspend"
+    fib_suspend=
+  fi
+
+  local dabbrev_match=
+  local dabbrev_pos=$pos
+  local dabbrev_current_match=${_ble_edit_str:_ble_edit_mark:_ble_edit_ind-_ble_edit_mark}
+
+  local line; ble-edit/history/get-editted-entry -v line "$index"
+  if ! ble-complete/dabbrev/search-in-history-entry "$line" "$index"; then
+    ((index--,dabbrev_pos=0))
+
+    local isearch_time=0
+    local isearch_opts=stop_check:cyclic
+
+    # 条件による一致判定の設定
+    isearch_opts=$isearch_opts:condition
+    local dabbrev_original=$_ble_complete_dabbrev_original
+    local dabbrev_regex1=$_ble_complete_dabbrev_regex1
+    local needle='[[ $LINE =~ $dabbrev_regex1 ]] && ble-complete/dabbrev/search-in-history-entry "$LINE" "$INDEX"'
+    # Note: glob で先に枝刈りした方が速い。
+    [[ $dabbrev_original ]] && needle='[[ $LINE == *"$dabbrev_original"* ]] && '$needle
+
+    # 検索進捗の表示
+    isearch_opts=$isearch_opts:progress
+    local isearch_progress_callback=ble-complete/dabbrev/.show-status.fib
+
+    ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
+    ((ext==148)) && fib_suspend="start=$start index=$index pos=$pos"
+    if ((ext)); then
+      if ((${#_ble_complete_dabbrev_stack[@]})); then
+        ble/widget/.bell # 周回したので鳴らす
+        return 0
+      else
+        # 一つも見つからない場合
+        return "$ext"
+      fi
+    fi
+  fi
+
+  local rec=$_ble_complete_dabbrev_index,$_ble_complete_dabbrev_pos,$_ble_edit_ind,$_ble_edit_mark
+  ble/array#push _ble_complete_dabbrev_stack "$rec:$_ble_edit_str"
+  ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" "$dabbrev_match"
+  ((_ble_edit_ind=_ble_edit_mark+${#dabbrev_match}))
+
+  ((index>_ble_complete_dabbrev_index)) &&
+    ble/widget/.bell # 周回
+  _ble_complete_dabbrev_index=$index
+  _ble_complete_dabbrev_pos=$dabbrev_match_pos
+}
+function ble-complete/dabbrev/next.fib {
+  ble-complete/dabbrev/.search.fib; local ext=$?
+  if ((ext==0)); then
+    _ble_edit_mark_active=menu_complete
+    ble-complete/dabbrev/.show-status.fib
+  elif ((ext==148)); then
+    ble-complete/dabbrev/.show-status.fib
+  else
+    ble/widget/.bell
+    ble-decode/keymap/pop
+    ble-complete/dabbrev/reset
+    ble-complete/dabbrev/erase-status
+    fib_kill=1
+  fi
+  return "$ext"
+}
+function ble/widget/dabbrev-expand {
+  ble-complete/dabbrev/initialize-variables
+  ble-decode/keymap/push dabbrev
+  ble/util/fiberchain#initialize ble-complete/dabbrev
+  ble/util/fiberchain#push next
+  ble/util/fiberchain#resume
+}
+function ble/widget/dabbrev/next {
+  ble/util/fiberchain#push next
+  ble/util/fiberchain#resume
+}
+function ble/widget/dabbrev/prev {
+  if ((${#_ble_util_fiberchain[@]})); then
+    # 処理中の物がある時はひとつずつ取り消す
+    local ret; ble/array#pop _ble_util_fiberchain
+    if ((${#_ble_util_fiberchain[@]})); then
+      ble/util/fiberchain#resume
+    else
+      ble-complete/dabbrev/show-status
+    fi
+  elif ((${#_ble_complete_dabbrev_stack[@]})); then
+    # 前の一致がある時は遡る
+    local ret; ble/array#pop _ble_complete_dabbrev_stack
+    local rec str=${ret#*:}
+    ble/string#split rec , "${ret%%:*}"
+    _ble_edit_str=$str
+    _ble_edit_ind=${rec[2]}
+    _ble_edit_mark=${rec[3]}
+    _ble_complete_dabbrev_index=${rec[0]}
+    _ble_complete_dabbrev_pos=${rec[1]}
+    ble-complete/dabbrev/show-status
+  else
+    ble/widget/.bell
+    return 1
+  fi
+}
+function ble/widget/dabbrev/cancel {
+  if ((${#_ble_util_fiberchain[@]})); then
+    ble/util/fiberchain#clear
+    ble-complete/dabbrev/show-status
+  else
+    ble-decode/keymap/pop
+    ble-complete/dabbrev/reset
+    ble-complete/dabbrev/erase-status
+  fi
 }
 function ble/widget/dabbrev/exit-default {
   ble-decode/keymap/pop
@@ -2922,6 +3023,7 @@ function ble-decode/keymap:dabbrev/define {
   ble-bind -f __default__ 'dabbrev/exit-default'
   ble-bind -f C-g         'dabbrev/cancel'
   ble-bind -f C-r         'dabbrev/next'
+  ble-bind -f C-s         'dabbrev/prev'
 }
 
 #------------------------------------------------------------------------------

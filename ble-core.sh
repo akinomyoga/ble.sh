@@ -1710,12 +1710,14 @@ function ble/util/fiberchain#resume/.core {
   local fib_ntask=$#
   while (($#)); do
     ((fib_ntask--))
-    local fiber=${1%%:*} fib_suspend=
+    local fiber=${1%%:*} fib_suspend= fib_kill=
     local argv; ble/string#split-words argv "$fiber"
     [[ $1 == *:* ]] && fib_suspend=${1#*:}
     "$_ble_util_fiberchain_prefix/$argv.fib" "${argv[@]:1}"
 
-    if [[ $fib_suspend ]]; then
+    if [[ $fib_kill ]]; then
+      break
+    elif [[ $fib_suspend ]]; then
       _ble_util_fiberchain=("$fiber:$fib_suspend" "${@:2}")
       return 148
     fi

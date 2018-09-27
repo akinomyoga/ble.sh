@@ -4781,10 +4781,12 @@ function ble-edit/isearch/.shift-backward-references {
 ##   @param[in] opts
 ##     コロン区切りのオプションです。
 ##
-##     regex 正規表現による検索を行います。
-##     glob  グロブパターンによる一致を試みます。
-##     head  固定文字列に依る先頭一致を試みます。
-##     tail  固定文字列に依る終端一致を試みます。
+##     regex     正規表現による検索を行います。
+##     glob      グロブパターンによる一致を試みます。
+##     head      固定文字列に依る先頭一致を試みます。
+##     tail      固定文字列に依る終端一致を試みます。
+##     condition 述語コマンドを評価 (eval) して一致を試みます。
+##     predicate 述語関数を呼び出して一致を試みます。
 ##       これらの内の何れか一つを指定します。
 ##       何も指定しない場合は固定文字列の部分一致を試みます。
 ##
@@ -4799,12 +4801,27 @@ function ble-edit/isearch/.shift-backward-references {
 ##       内部使用のオプションです。
 ##       forward-search-history に対して指定して、後方検索を行う事を指定します。
 ##
+##     cyclic
+##       履歴の端まで達した時、履歴の反対側の端から検索を続行します。
+##       一致が見つからずに start の直前の要素まで達した時に失敗します。
+##
 ##   @var[in] _ble_edit_history_edit
 ##     検索対象の配列と全体の検索開始位置を指定します。
 ##   @var[in] start
 ##     全体の検索開始位置を指定します。
+##
 ##   @var[in] needle
 ##     検索文字列を指定します。
+##
+##     opts に regex または glob を指定した場合は、
+##     それぞれ正規表現またはグロブパターンを指定します。
+##
+##     opts に condition を指定した場合は needle を述語コマンドと解釈します。
+##     変数 LINE 及び INDEX にそれぞれ行の内容と履歴番号を設定して eval されます。
+##
+##     opts に predicate を指定した場合は needle を述語関数の関数名と解釈します。
+##     指定する述語関数は検索が一致した時に成功し、それ以外の時に失敗する関数です。
+##     第1引数と第2引数に行の内容と履歴番号を指定して関数が呼び出されます。
 ##
 ##   @var[in,out] index
 ##     今回の呼び出しの検索開始位置を指定します。
@@ -4827,10 +4844,12 @@ function ble-edit/isearch/.read-search-options {
 
   search_type=fixed
   case :$opts: in
-  (*:regex:*) search_type=regex ;;
-  (*:glob:*)  search_type=glob  ;;
-  (*:head:*)  search_type=head ;;
-  (*:tail:*)  search_type=tail ;;
+  (*:regex:*)     search_type=regex ;;
+  (*:glob:*)      search_type=glob  ;;
+  (*:head:*)      search_type=head ;;
+  (*:tail:*)      search_type=tail ;;
+  (*:condition:*) search_type=condition ;;
+  (*:predicate:*) search_type=predicate ;;
   esac
 
   [[ :$opts: != *:stop_check:* ]]; has_stop_check=$?
@@ -4838,8 +4857,9 @@ function ble-edit/isearch/.read-search-options {
   [[ :$opts: != *:backward:* ]]; has_backward=$?
 }
 function ble-edit/isearch/backward-search-history-blockwise {
+  local opts=$1
   local search_type has_stop_check has_progress has_backward
-  ble-edit/isearch/.read-search-options "$1"
+  ble-edit/isearch/.read-search-options "$opts"
 
   ble-edit/history/load
   if [[ $_ble_edit_history_prefix ]]; then
@@ -4851,50 +4871,76 @@ function ble-edit/isearch/backward-search-history-blockwise {
   local NPROGRESS=$((NSTPCHK*2)) # 倍数である必要有り
   local irest block j i=$index
   index=
-  while ((i>=0)); do
-    ((block=start-i,
-      block<5&&(block=5),
-      irest=NSTPCHK-isearch_time%NSTPCHK,
-      block>i+1&&(block=i+1),
-      block>irest&&(block=irest)))
 
-    case $search_type in
-    (regex) for ((j=i-block;++j<=i;)); do
-              [[ ${_ble_edit_history_edit[j]} =~ $needle ]] && index=$j
-            done ;;
-    (glob)  for ((j=i-block;++j<=i;)); do
-              [[ ${_ble_edit_history_edit[j]} == $needle ]] && index=$j
-            done ;;
-    (head)  for ((j=i-block;++j<=i;)); do
-              [[ ${_ble_edit_history_edit[j]} == "$needle"* ]] && index=$j
-            done ;;
-    (tail)  for ((j=i-block;++j<=i;)); do
-              [[ ${_ble_edit_history_edit[j]} == *"$needle" ]] && index=$j
-            done ;;
-    (*)     for ((j=i-block;++j<=i;)); do
-              [[ ${_ble_edit_history_edit[j]} == *"$needle"* ]] && index=$j
-            done ;;
-    esac
-
-    ((isearch_time+=block))
-    if [[ $index ]]; then
-      ((i=j))
-      return 0
+  local flag_cycled= range_min range_max
+  while :; do
+    if ((i<=start)); then
+      range_min=0 range_max=$start
+    else
+      flag_cycled=1
+      range_min=$((start+1)) range_max=$i
     fi
 
-    ((i-=block))
-    if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble-decode/has-input; then
-      index=$i
-      return 148
-    elif ((has_progress&&isearch_time%NPROGRESS==0)); then
-      "$isearch_progress_callback" "$i"
+    while ((i>=range_min)); do
+      ((block=range_max-i,
+        block<5&&(block=5),
+        block>i+1-range_min&&(block=i+1-range_min),
+        irest=NSTPCHK-isearch_time%NSTPCHK,
+        block>irest&&(block=irest)))
+
+      case $search_type in
+      (regex)     for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} =~ $needle ]] && index=$j
+                  done ;;
+      (glob)      for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} == $needle ]] && index=$j
+                  done ;;
+      (head)      for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} == "$needle"* ]] && index=$j
+                  done ;;
+      (tail)      for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} == *"$needle" ]] && index=$j
+                  done ;;
+      (condition) eval "function ble-edit/isearch/.search-block.proc {
+                    local LINE INDEX
+                    for ((j=i-block;++j<=i;)); do
+                      LINE=\${_ble_edit_history_edit[j]} INDEX=\$j
+                      { $needle; } && index=\$j
+                    done
+                  }"
+                  ble-edit/isearch/.search-block.proc ;;
+      (predicate) for ((j=i-block;++j<=i;)); do
+                    "$needle" "${_ble_edit_history_edit[j]}" "$j" && index=$j
+                  done ;;
+      (*)         for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} == *"$needle"* ]] && index=$j
+                  done ;;
+      esac
+
+      ((isearch_time+=block))
+      [[ $index ]] && return 0
+
+      ((i-=block))
+      if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble-decode/has-input; then
+        index=$i
+        return 148
+      elif ((has_progress&&isearch_time%NPROGRESS==0)); then
+        "$isearch_progress_callback" "$i"
+      fi
+    done
+
+    if [[ ! $flag_cycled && :$opts: == *:cyclic:* ]]; then
+      ((i=${#_ble_edit_history_edit[@]}-1))
+      ((start<i)) || return 1
+    else
+      return 1
     fi
   done
-  return 1
 }
 function ble-edit/isearch/next-history/forward-search-history.impl {
+  local opts=$1
   local search_type has_stop_check has_progress has_backward
-  ble-edit/isearch/.read-search-options "$1"
+  ble-edit/isearch/.read-search-options "$opts"
 
   ble-edit/history/load
   if [[ $_ble_edit_history_prefix ]]; then
@@ -4902,35 +4948,60 @@ function ble-edit/isearch/next-history/forward-search-history.impl {
     eval "_ble_edit_history_edit=(\"\${${_ble_edit_history_prefix}_history_edit[@]}\")"
   fi
 
-  if ((has_backward)); then
-    local expr_cond='index>=0' expr_incr='index--'
-  else
-    local expr_cond="index<${#_ble_edit_history_edit[@]}" expr_incr='index++'
-  fi
+  while :; do
+    local flag_cycled= expr_cond expr_incr
+    if ((has_backward)); then
+      if ((index<=start)); then
+        expr_cond='index>=0' expr_incr='index--'
+      else
+        expr_cond='index>start' expr_incr='index--' flag_cycled=1
+      fi
+    else
+      if ((index>=start)); then
+        expr_cond="index<${#_ble_edit_history_edit[@]}" expr_incr='index++'
+      else
+        expr_cond="index<start" expr_incr='index++' flag_cycled=1
+      fi
+    fi
 
-  case $search_type in
-  (regex)
+    case $search_type in
+    (regex)
 #%define search_loop
-    for ((;expr_cond;expr_incr)); do
-      ((isearch_time++,has_stop_check&&isearch_time%100==0)) &&
-        ble-decode/has-input && return 148
-      @ && return 0
-      ((has_progress&&isearch_time%1000==0)) &&
-        "$isearch_progress_callback" "$index"
-    done ;;
+      for ((;expr_cond;expr_incr)); do
+        ((isearch_time++,has_stop_check&&isearch_time%100==0)) &&
+          ble-decode/has-input && return 148
+        @ && return 0
+        ((has_progress&&isearch_time%1000==0)) &&
+          "$isearch_progress_callback" "$index"
+      done ;;
 #%end
 #%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} =~ $needle ]]/
-  (glob)
+    (glob)
 #%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} == $needle ]]/
-  (head)
+    (head)
 #%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} == "$needle"* ]]/
-  (tail)
+    (tail)
 #%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} == *"$needle" ]]/
-  (*)
+    (condition)
+#%expand search_loop.r/@/LINE=${_ble_edit_history_edit[index]} INDEX=$index eval "$needle"/
+    (predicate)
+#%expand search_loop.r/@/"$needle" "${_ble_edit_history_edit[index]}" "$index"/
+    (*)
 #%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} == *"$needle"* ]]/
-  esac
+    esac
 
-  return 1
+    if [[ ! $flag_cycled && :$opts: == *:cyclic:* ]]; then
+      if ((has_backward)); then
+        ((index=${#_ble_edit_history_edit[@]}-1))
+        ((index>start)) || return 1
+      else
+        ((index=0))
+        ((index<start)) || return 1
+      fi
+    else
+      return 1
+    fi
+  done
 }
 function ble-edit/isearch/forward-search-history {
   ble-edit/isearch/next-history/forward-search-history.impl "$1"
@@ -4958,7 +5029,7 @@ _ble_edit_isearch_str=
 _ble_edit_isearch_dir=-
 _ble_edit_isearch_arr=()
 
-## 関数 ble-edit/isearch/.draw-line-with-progress [pos]
+## 関数 ble-edit/isearch/.show-status-with-progress.fib [pos]
 ##   @param[in,opt] pos
 ##     検索の途中の時に現在の検索位置を指定します。
 ##     検索の進行状況を表示します。
@@ -4971,7 +5042,7 @@ _ble_edit_isearch_arr=()
 ##   @var[in] _ble_edit_isearch_arr
 ##     現在の検索状態を保持する変数です。
 ##
-function ble-edit/isearch/.draw-line-with-progress {
+function ble-edit/isearch/.show-status-with-progress.fib {
   # 出力
   local ll rr
   if [[ $_ble_edit_isearch_dir == - ]]; then
@@ -4989,16 +5060,22 @@ function ble-edit/isearch/.draw-line-with-progress {
     local pos=$1
     local percentage=$((count?pos*1000/count:1000))
     text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
-    ((fib_ntask)) && text="$text *$fib_ntask"
   fi
+  ((fib_ntask)) && text="$text *$fib_ntask"
 
   ble-edit/info/show text "$text"
 }
 
-function ble-edit/isearch/.draw-line {
-  ble-edit/isearch/.draw-line-with-progress
+## 関数 ble-edit/isearch/.show-status.fib
+##   @var[in] fib_ntask
+function ble-edit/isearch/.show-status.fib {
+  ble-edit/isearch/.show-status-with-progress.fib
 }
-function ble-edit/isearch/.erase-line {
+function ble-edit/isearch/show-status {
+  local fib_ntask=${#_ble_util_fiberchain[@]}
+  ble-edit/isearch/.show-status.fib
+}
+function ble-edit/isearch/erase-status {
   ble-edit/info/default
 }
 function ble-edit/isearch/.set-region {
@@ -5048,7 +5125,9 @@ function ble-edit/isearch/.push-isearch-array {
   # [... A | B] -> C と来た時 (B を _ble_edit_isearch_arr に移動) [... A B | C] になる。
   ble/array#push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
 }
-function ble-edit/isearch/.goto-match {
+## 関数 ble-edit/isearch/.goto-match.fib
+##   @var[in] fib_ntask
+function ble-edit/isearch/.goto-match.fib {
   local ind=$1 beg=$2 end=$3 needle=$4
   ((beg==end&&(beg=end=-1)))
 
@@ -5062,7 +5141,7 @@ function ble-edit/isearch/.goto-match {
   ble-edit/isearch/.set-region "$beg" "$end"
 
   # isearch 表示
-  ble-edit/isearch/.draw-line
+  ble-edit/isearch/.show-status.fib
   _ble_edit_bind_force_draw=1
 }
 
@@ -5077,7 +5156,7 @@ function ble-edit/isearch/.next.fib {
     local beg= end= search_opts=$_ble_edit_isearch_dir
     ((isAdd)) && search_opts=$search_opts:extend
     if ble-edit/isearch/search "$needle" "$search_opts"; then
-      ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
+      ble-edit/isearch/.goto-match.fib "$ind" "$beg" "$end" "$needle"
       return
     fi
   fi
@@ -5128,7 +5207,7 @@ function ble-edit/isearch/.next-history.fib {
   fi
 
   # 検索
-  local isearch_progress_callback=ble-edit/isearch/.draw-line-with-progress
+  local isearch_progress_callback=ble-edit/isearch/.show-status-with-progress.fib
   if [[ $_ble_edit_isearch_dir == - ]]; then
     ble-edit/isearch/backward-search-history-blockwise stop_check:progress
   else
@@ -5148,7 +5227,7 @@ function ble-edit/isearch/.next-history.fib {
     fi
     local beg=${#prefix} end=$((${#prefix}+${#needle}))
 
-    ble-edit/isearch/.goto-match "$index" "$beg" "$end" "$needle"
+    ble-edit/isearch/.goto-match.fib "$index" "$beg" "$end" "$needle"
   elif ((ext==148)); then
     # 中断した場合
     fib_suspend="index=$index start=$start:$needle"
@@ -5215,13 +5294,13 @@ function ble-edit/isearch/prev {
   _ble_edit_isearch_str=$top
 
   # isearch 表示
-  ble-edit/isearch/.draw-line
+  ble-edit/isearch/show-status
 }
 
 function ble-edit/isearch/process {
   local isearch_time=0
   ble/util/fiberchain#resume
-  ble-edit/isearch/.draw-line
+  ble-edit/isearch/show-status
 }
 function ble/widget/isearch/forward {
   ble/util/fiberchain#push forward
@@ -5276,7 +5355,7 @@ function ble/widget/isearch/exit.impl {
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
   _ble_edit_isearch_str=
-  ble-edit/isearch/.erase-line
+  ble-edit/isearch/erase-status
 }
 function ble/widget/isearch/exit-with-region {
   ble/widget/isearch/exit.impl
@@ -5292,7 +5371,7 @@ function ble/widget/isearch/exit {
 function ble/widget/isearch/cancel {
   if ((${#_ble_util_fiberchain[@]})); then
     ble/util/fiberchain#clear
-    ble-edit/isearch/.draw-line # 進捗状況だけ消去
+    ble-edit/isearch/show-status # 進捗状況だけ消去
   else
     if ((${#_ble_edit_isearch_arr[@]})); then
       local step
@@ -5338,7 +5417,7 @@ function ble/widget/history-isearch.impl {
   fi
   _ble_edit_isearch_arr=()
   _ble_edit_mark=$_ble_edit_ind
-  ble-edit/isearch/.draw-line
+  ble-edit/isearch/show-status
 }
 function ble/widget/history-isearch-backward {
   ble/widget/history-isearch.impl backward
@@ -5393,8 +5472,9 @@ _ble_edit_nsearch_stack=()
 _ble_edit_nsearch_match=
 _ble_edit_nsearch_index=
 
-## 関数 ble-edit/nsearch/show-status [pos_progress]
-function ble-edit/nsearch/show-status {
+## 関数 ble-edit/nsearch/.show-status.fib [pos_progress]
+##   @var[in] fib_ntask
+function ble-edit/nsearch/.show-status.fib {
   local ll rr
   if [[ :$_ble_edit_isearch_opts: == *:forward:* ]]; then
     ll="  " rr=">>"
@@ -5420,18 +5500,17 @@ function ble-edit/nsearch/show-status {
 
   ble-edit/info/show text "$text"
 }
+function ble-edit/nsearch/show-status {
+  local fib_ntask=${#_ble_util_fiberchain[@]}
+  ble-edit/nsearch/.show-status.fib
+}
 function ble-edit/nsearch/erase-status {
   ble-edit/info/default
 }
 
-## 関数 ble-edit/nsearch/progress.callback pos
-function ble-edit/nsearch/progress.callback {
-  ble-edit/nsearch/show-status "$1"
-}
-function ble-edit/nsearch/search.impl {
+function ble-edit/nsearch/.search.fib {
   local opts=$1
-  local opt_resume= opt_forward=
-  [[ $fib_suspend ]] && opt_resume=1
+  local opt_forward=
   [[ :$opts: == *:forward:* ]] && opt_forward=1
 
   # 前回の一致と逆方向の時は前回の一致前の状態に戻す
@@ -5461,15 +5540,18 @@ function ble-edit/nsearch/search.impl {
       else
         _ble_edit_mark_active=
       fi
-      ble-edit/nsearch/show-status
+      ble-edit/nsearch/.show-status.fib
+      fib_suspend=
       return 0
     fi
   fi
 
   # 検索の実行
-  local index start
-  if [[ $opt_resume ]]; then
+  local index start opt_resume=
+  if [[ $fib_suspend ]]; then
+    opt_resume=1
     eval "$fib_suspend"
+    fib_suspend=
   else
     local start=$_ble_edit_nsearch_match
     local index=$_ble_edit_nsearch_index
@@ -5486,7 +5568,7 @@ function ble-edit/nsearch/search.impl {
   then
     local needle=$_ble_edit_nsearch_needle
     local isearch_time=$fib_clock
-    local isearch_progress_callback=ble-edit/nsearch/progress.callback
+    local isearch_progress_callback=ble-edit/nsearch/.show-status.fib
     local isearch_opts=stop_check:progress; [[ :$opts: != *:substr:* ]] && isearch_opts=$isearch_opts:head
     if [[ $opt_forward ]]; then
       ble-edit/isearch/forward-search-history "$isearch_opts"; local ext=$?
@@ -5494,7 +5576,6 @@ function ble-edit/nsearch/search.impl {
       ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
     fi
     fib_clock=$isearch_time
-    _ble_edit_nsearch_index=$index
   else
     local ext=1
   fi
@@ -5504,12 +5585,12 @@ function ble-edit/nsearch/search.impl {
     local old_match=$_ble_edit_nsearch_match
     ble/array#push _ble_edit_nsearch_stack "backward,$old_match,$_ble_edit_ind,$_ble_edit_mark:$_ble_edit_str"
 
-
     local line; ble-edit/history/get-editted-entry -v line "$index"
     local prefix=${line%%"$needle"*}
     local beg=${#prefix}
     local end=$((beg+${#needle}))
     _ble_edit_nsearch_match=$index
+    _ble_edit_nsearch_index=$index
     ble-edit/content/reset-and-check-dirty "$line"
     ((_ble_edit_mark=beg,_ble_edit_ind=end))
     if ((_ble_edit_mark!=_ble_edit_ind)); then
@@ -5517,23 +5598,28 @@ function ble-edit/nsearch/search.impl {
     else
       _ble_edit_mark_active=
     fi
-    ble-edit/nsearch/show-status
+    ble-edit/nsearch/.show-status.fib
 
   elif ((ext==148)); then
     fib_suspend="index=$index start=$start"
     return 148
   else
-    fib_suspend=
     ble/widget/.bell "ble.sh: nsearch: '$needle' not found"
-    ble-edit/nsearch/show-status
+    ble-edit/nsearch/.show-status.fib
+    if [[ $opt_forward ]]; then
+      local count; ble-edit/history/get-count
+      ((_ble_edit_nsearch_index=count-1))
+    else
+      ((_ble_edit_nsearch_index=0))
+    fi
     return "$ext"
   fi
 }
 function ble-edit/nsearch/forward.fib {
-  ble-edit/nsearch/search.impl "$_ble_edit_nsearch_opts:forward"
+  ble-edit/nsearch/.search.fib "$_ble_edit_nsearch_opts:forward"
 }
 function ble-edit/nsearch/backward.fib {
-  ble-edit/nsearch/search.impl "$_ble_edit_nsearch_opts:backward"
+  ble-edit/nsearch/.search.fib "$_ble_edit_nsearch_opts:backward"
 }
 
 function ble/widget/history-search {
