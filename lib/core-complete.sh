@@ -2950,6 +2950,8 @@ function ble-complete/dabbrev/.search.fib {
     ble/widget/.bell # 周回
   _ble_complete_dabbrev_index=$index
   _ble_complete_dabbrev_pos=$dabbrev_match_pos
+
+  ble/textarea#redraw
 }
 function ble-complete/dabbrev/next.fib {
   ble-complete/dabbrev/.search.fib; local ext=$?

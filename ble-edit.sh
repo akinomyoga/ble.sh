@@ -4662,13 +4662,14 @@ function ble-highlight-layer:region/mark:search/get-face { face=region_match; }
 ##     + ... forward に検索します (既定)
 ##     - ... backward に検索します。終端位置が現在位置以前にあるものに一致します。
 ##     B ... backward に検索します。開始位置が現在位置より前のものに一致します。
-##
 ##     extend
 ##       これが指定された時、現在位置における一致の伸長が試みられます。
 ##       指定されなかったとき、現在一致範囲と重複のない新しい一致が試みられます。
-##
 ##     regex
 ##       正規表現による一致を試みます
+##     allow_empty
+##       空一致 (長さ0の一致) が現在位置で起こることを許容します。
+##       既定では空一致の時には一つ次の位置から再検索を実行します。
 ##
 ##   @var[out] beg end
 ##     検索対象が見つかった時に一致範囲の先頭と終端を返します。
@@ -4682,6 +4683,7 @@ function ble-edit/isearch/search {
   [[ :$opts: != *:regex:* ]]; local has_regex=$?
   [[ :$opts: != *:extend:* ]]; local has_extend=$?
 
+  local flag_empty_retry=
   if [[ :$opts: == *:-:* ]]; then
     local start=$((has_extend?_ble_edit_mark+1:_ble_edit_ind))
 
@@ -4691,17 +4693,28 @@ function ble-edit/isearch/search {
       ((padding)) && rex="$rex.{$padding}"
       if [[ $_ble_edit_str =~ $rex ]]; then
         local rematch1=${BASH_REMATCH[1]}
-        end=$((${#BASH_REMATCH}-padding))
-        beg=$((end-${#rematch1}))
-        return 0
+        if [[ $rematch1 || $BASH_REMATCH == $_ble_edit_str || :$opts: == *:allow_empty:* ]]; then
+          ((end=${#BASH_REMATCH}-padding,
+            beg=end-${#rematch1}))
+          return 0
+        else
+          flag_empty_retry=1
+        fi
       fi
     else
-      local target=${_ble_edit_str::start}
-      local m=${target%"$needle"*}
-      if [[ $target != "$m" ]]; then
-        beg=${#m}
-        end=$((beg+${#needle}))
-        return 0
+      if [[ $needle ]]; then
+        local target=${_ble_edit_str::start}
+        local m=${target%"$needle"*}
+        if [[ $target != "$m" ]]; then
+          beg=${#m}
+          end=$((beg+${#needle}))
+          return 0
+        fi
+      else
+        if [[ :$opts: == *:allow_empty:* ]] || ((--start>=0)); then
+          ((beg=end=start))
+          return 0
+        fi
       fi
     fi
   elif [[ :$opts: == *:B:* ]]; then
@@ -4714,17 +4727,28 @@ function ble-edit/isearch/search {
       ((start==0)) && rex="^($needle)"
       if [[ $_ble_edit_str =~ $rex ]]; then
         local rematch1=${BASH_REMATCH[1]}
-        end=${#BASH_REMATCH}
-        beg=$((end-${#rematch1}))
-        return 0
+        if [[ $rematch1 || :$opts: == *:allow_empty:* ]]; then
+          ((end=${#BASH_REMATCH},
+            beg=end-${#rematch1}))
+          return 0
+        else
+          flag_empty_retry=1
+        fi
       fi
     else
-      local target=${_ble_edit_str::start+${#needle}}
-      local m=${target%"$needle"*}
-      if [[ $target != "$m" ]]; then
-        beg=${#m}
-        end=$((beg+${#needle}))
-        return 0
+      if [[ $needle ]]; then
+        local target=${_ble_edit_str::start+${#needle}}
+        local m=${target%"$needle"*}
+        if [[ $target != "$m" ]]; then
+          ((beg=${#m},
+            end=beg+${#needle}))
+          return 0
+        fi
+      else
+        if [[ :$opts: == *:allow_empty:* ]] && ((--start>=0)); then
+          ((beg=end=start))
+          return 0
+        fi
       fi
     fi
   else
@@ -4735,17 +4759,49 @@ function ble-edit/isearch/search {
       ((start)) && rex=".{$start}$rex"
       if [[ $_ble_edit_str =~ $rex ]]; then
         local rematch1=${BASH_REMATCH[1]}
-        beg=$((${#_ble_edit_str}-${#BASH_REMATCH}+start))
-        end=$((beg+${#rematch1}))
-        return 0
+        if [[ $rematch1 || :$opts: == *:allow_empty:* ]]; then
+          ((beg=${#_ble_edit_str}-${#BASH_REMATCH}+start))
+          ((end=beg+${#rematch1}))
+          return 0
+        else
+          flag_empty_retry=1
+        fi
       fi
     else
-      local target=${_ble_edit_str:start}
-      local m=${target#*"$needle"}
-      if [[ $target != "$m" ]]; then
-        end=$((${#_ble_edit_str}-${#m}))
-        beg=$((end-${#needle}))
-        return 0
+      if [[ $needle ]]; then
+        local target=${_ble_edit_str:start}
+        local m=${target#*"$needle"}
+        if [[ $target != "$m" ]]; then
+          ((end=${#_ble_edit_str}-${#m}))
+          ((beg=end-${#needle}))
+          return 0
+        fi
+      else
+        if [[ :$opts: == *:allow_empty:* ]] || ((++start<=${#_ble_edit_str})); then
+          ((beg=end=start))
+          return 0
+        fi
+      fi
+    fi
+  fi
+
+  # (正規表現一致の時) 現在地の空一致に対して再一致
+  if [[ $flag_empty_retry ]]; then
+    if [[ :$opts: == *:[-B]:* ]]; then
+      if ((--start>=0)); then
+        local mark=$_ble_edit_mark; ((mark&&mark--))
+        local ind=$_ble_edit_ind; ((ind&&ind--))
+        opts=$opts:allow_empty
+        _ble_edit_mark=$mark _ble_edit_ind=$ind ble-edit/isearch/search "$needle" "$opts"
+        return
+      fi
+    else
+      if ((++start<=${#_ble_edit_str})); then
+        local mark=$_ble_edit_mark; ((mark<${#_ble_edit_str}&&mark++))
+        local ind=$_ble_edit_ind; ((ind<${#_ble_edit_str}&&ind++))
+        opts=$opts:allow_empty
+        _ble_edit_mark=$mark _ble_edit_ind=$ind ble-edit/isearch/search "$needle" "$opts"
+        return
       fi
     fi
   fi
@@ -5089,6 +5145,10 @@ function ble-edit/isearch/.set-region {
       _ble_edit_mark=$beg
     fi
     _ble_edit_mark_active=search
+  elif ((beg==end)); then
+    _ble_edit_ind=$beg
+    _ble_edit_mark=$beg
+    _ble_edit_mark_active=
   else
     _ble_edit_mark_active=
   fi
@@ -5113,9 +5173,9 @@ function ble-edit/isearch/.push-isearch-array {
   fi
 
   local oind; ble-edit/history/get-index -v oind
-  local obeg=$_ble_edit_ind oend=$_ble_edit_mark tmp
+  local obeg=$_ble_edit_ind oend=$_ble_edit_mark
   [[ $_ble_edit_mark_active ]] || oend=$obeg
-  ((obeg<=oend||(tmp=obeg,obeg=oend,oend=tmp)))
+  ((obeg>oend)) && local obeg=$oend oend=$obeg
   local oneedle=$_ble_edit_isearch_str
   local ohash=$obeg:$oend:$oneedle
 
@@ -5129,7 +5189,6 @@ function ble-edit/isearch/.push-isearch-array {
 ##   @var[in] fib_ntask
 function ble-edit/isearch/.goto-match.fib {
   local ind=$1 beg=$2 end=$3 needle=$4
-  ((beg==end&&(beg=end=-1)))
 
   # 検索履歴に待避 (変数 ind beg end needle 使用)
   ble-edit/isearch/.push-isearch-array
@@ -5142,37 +5201,55 @@ function ble-edit/isearch/.goto-match.fib {
 
   # isearch 表示
   ble-edit/isearch/.show-status.fib
-  _ble_edit_bind_force_draw=1
+  ble/textarea#redraw
 }
 
 # ---- isearch fibers ---------------------------------------------------------
 
-## 関数 ble-edit/isearch/.next.fib needle isAdd
+## 関数 ble-edit/isearch/.next.fib opts [needle]
+##   @param[in] opts
+##     append
+##     forward
+##     backward
 function ble-edit/isearch/.next.fib {
+  local opts=$1
   if [[ ! $fib_suspend ]]; then
-    local needle=${1-$_ble_edit_isearch_str} isAdd=$2
-    local ind; ble-edit/history/get-index -v ind
+    if [[ :$opts: == *:forward:* || :$opts: == *:backward:* ]]; then
+      if [[ :$opts: == *:forward:* ]]; then
+        _ble_edit_isearch_dir=+
+      else
+        _ble_edit_isearch_dir=-
+      fi
+    fi
 
+    # 現在行の別の位置での一致
+    local needle=${2-$_ble_edit_isearch_str}
     local beg= end= search_opts=$_ble_edit_isearch_dir
-    ((isAdd)) && search_opts=$search_opts:extend
-    if ble-edit/isearch/search "$needle" "$search_opts"; then
+    [[ :$opts: == *:append:* ]] && search_opts=$search_opts:extend
+    if [[ $needle ]] && ble-edit/isearch/search "$needle" "$search_opts"; then
+      local ind; ble-edit/history/get-index -v ind
       ble-edit/isearch/.goto-match.fib "$ind" "$beg" "$end" "$needle"
       return
     fi
   fi
-  ble-edit/isearch/.next-history.fib "${@:1:1}"
+  ble-edit/isearch/.next-history.fib "$opts" "$needle"
 }
 
-## 関数 ble-edit/isearch/.next-history.fib [needle isAdd]
+## 関数 ble-edit/isearch/.next-history.fib [opts [needle]]
+##
+##   @param[in,opt] opts
+##     コロン区切りのリストです。
+##     append
+##       現在の履歴項目を検索対象とします。
+##
+##   @param[in,opt] needle
+##     新しい検索を開始する場合に、検索対象を明示的に指定します。
+##     needle に検索対象の文字列を指定します。
 ##
 ##   @var[in,out] fib_suspend
 ##     中断した時にこの変数に再開用のデータを格納します。
 ##     再開する時はこの変数の中断時の内容を復元してこの関数を呼び出します。
 ##     この変数が空の場合は新しい検索を開始します。
-##   @param[in,opt] needle,isAdd
-##     新しい検索を開始する場合に、検索対象を明示的に指定します。
-##     needle に検索対象の文字列を指定します。
-##     isAdd 現在の履歴項目を検索対象とするかどうかを指定します。
 ##   @var[in] _ble_edit_isearch_str
 ##     最後に一致した検索文字列を指定します。
 ##     検索対象を明示的に指定しなかった場合に使う検索対象です。
@@ -5186,6 +5263,7 @@ function ble-edit/isearch/.next.fib {
 ##   @var[in,out] isearch_time
 ##
 function ble-edit/isearch/.next-history.fib {
+  local opts=$1
   if [[ $fib_suspend ]]; then
     # resume the previous search
     local needle=${fib_suspend#*:} isAdd=
@@ -5193,7 +5271,8 @@ function ble-edit/isearch/.next-history.fib {
     fib_suspend=
   else
     # initialize new search
-    local needle=${1-$_ble_edit_isearch_str} isAdd=$2
+    local needle=${2-$_ble_edit_isearch_str} isAdd=
+    [[ :$opts: == *:append:* ]] && isAdd=1
     local start; ble-edit/history/get-index -v start
     local index=$start
   fi
@@ -5220,12 +5299,16 @@ function ble-edit/isearch/.next-history.fib {
 
     # 一致範囲 beg-end を取得
     local str; ble-edit/history/get-editted-entry -v str "$index"
-    if [[ $_ble_edit_isearch_dir == - ]]; then
-      local prefix=${str%"$needle"*}
+    if [[ $needle ]]; then
+      if [[ $_ble_edit_isearch_dir == - ]]; then
+        local prefix=${str%"$needle"*}
+      else
+        local prefix=${str%%"$needle"*}
+      fi
+      local beg=${#prefix} end=$((${#prefix}+${#needle}))
     else
-      local prefix=${str%%"$needle"*}
+      local beg=${#str} end=${#str}
     fi
-    local beg=${#prefix} end=$((${#prefix}+${#needle}))
 
     ble-edit/isearch/.goto-match.fib "$index" "$beg" "$end" "$needle"
   elif ((ext==148)); then
@@ -5240,12 +5323,10 @@ function ble-edit/isearch/.next-history.fib {
 }
 
 function ble-edit/isearch/forward.fib {
-  _ble_edit_isearch_dir=+
-  ble-edit/isearch/.next.fib
+  ble-edit/isearch/.next.fib forward
 }
 function ble-edit/isearch/backward.fib {
-  _ble_edit_isearch_dir=-
-  ble-edit/isearch/.next.fib
+  ble-edit/isearch/.next.fib backward
 }
 function ble-edit/isearch/self-insert.fib {
   if [[ ! $fib_suspend ]]; then
@@ -5254,7 +5335,7 @@ function ble-edit/isearch/self-insert.fib {
     local ret needle
     ble/util/c2s "$code"
   fi
-  ble-edit/isearch/.next.fib "$_ble_edit_isearch_str$ret" 1
+  ble-edit/isearch/.next.fib append "$_ble_edit_isearch_str$ret"
 }
 function ble-edit/isearch/history-forward.fib {
   _ble_edit_isearch_dir=+
@@ -5271,7 +5352,7 @@ function ble-edit/isearch/history-self-insert.fib {
     local ret needle
     ble/util/c2s "$code"
   fi
-  ble-edit/isearch/.next-history.fib "$_ble_edit_isearch_str$ret" 1
+  ble-edit/isearch/.next-history.fib append "$_ble_edit_isearch_str$ret"
 }
 
 function ble-edit/isearch/prev {
@@ -5280,7 +5361,7 @@ function ble-edit/isearch/prev {
 
   local ilast=$((sz-1))
   local top=${_ble_edit_isearch_arr[ilast]}
-  unset "_ble_edit_isearch_arr[$ilast]"
+  unset '_ble_edit_isearch_arr[ilast]'
 
   local ind dir beg end
   ind=${top%%:*}; top=${top#*:}
@@ -5377,10 +5458,12 @@ function ble/widget/isearch/cancel {
       local step
       ble/string#split step : "${_ble_edit_isearch_arr[0]}"
       ble-edit/history/goto "${step[0]}"
-      _ble_edit_ind=${step[2]} _ble_edit_mark=${step[3]}
     fi
 
-    ble/widget/isearch/exit
+    ble/widget/isearch/exit.impl
+    _ble_edit_ind=${_ble_edit_isearch_save[1]}
+    _ble_edit_mark=${_ble_edit_isearch_save[2]}
+    _ble_edit_mark_active=${_ble_edit_isearch_save[3]}
   fi
 }
 function ble/widget/isearch/exit-default {
@@ -5541,6 +5624,7 @@ function ble-edit/nsearch/.search.fib {
         _ble_edit_mark_active=
       fi
       ble-edit/nsearch/.show-status.fib
+      ble/textarea#redraw
       fib_suspend=
       return 0
     fi
@@ -5599,6 +5683,7 @@ function ble-edit/nsearch/.search.fib {
       _ble_edit_mark_active=
     fi
     ble-edit/nsearch/.show-status.fib
+    ble/textarea#redraw
 
   elif ((ext==148)); then
     fib_suspend="index=$index start=$start"
@@ -6726,14 +6811,11 @@ else
   }
 fi
 
-_ble_edit_bind_force_draw=
-
 ## ble-decode.sh 用の設定
 function ble-decode/PROLOGUE {
   ble-edit/bind/.head
   ble-decode-bind/uvw
   ble/term/enter
-  _ble_edit_bind_force_draw=
 }
 
 ## ble-decode.sh 用の設定
@@ -6743,7 +6825,7 @@ function ble-decode/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    if [[ ! $_ble_edit_bind_force_draw ]] && ble-decode/has-input; then
+    if ble-decode/has-input; then
       ble-edit/bind/.tail-without-draw
       return 0
     fi
