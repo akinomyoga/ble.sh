@@ -2994,7 +2994,7 @@ function ble/widget/dabbrev/prev {
     local ret; ble/array#pop _ble_complete_dabbrev_stack
     local rec str=${ret#*:}
     ble/string#split rec , "${ret%%:*}"
-    _ble_edit_str=$str
+    ble-edit/content/reset-and-check-dirty "$str"
     _ble_edit_ind=${rec[2]}
     _ble_edit_mark=${rec[3]}
     _ble_complete_dabbrev_index=${rec[0]}
