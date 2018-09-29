@@ -6997,6 +6997,7 @@ function ble-decode/keymap:vi/initialize {
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi..."
 
   ble-decode/keymap:isearch/define
+  ble-decode/keymap:nsearch/define
   ble-decode/keymap:vi_imap/define
   ble-decode/keymap:vi_nmap/define
   ble-decode/keymap:vi_omap/define
@@ -7004,12 +7005,13 @@ function ble-decode/keymap:vi/initialize {
   ble-decode/keymap:vi_cmap/define
 
   {
+    ble-decode/keymap/dump isearch
+    ble-decode/keymap/dump nsearch
     ble-decode/keymap/dump vi_imap
     ble-decode/keymap/dump vi_nmap
     ble-decode/keymap/dump vi_omap
     ble-decode/keymap/dump vi_xmap
     ble-decode/keymap/dump vi_cmap
-    ble-decode/keymap/dump isearch
   } >| "$fname_keymap_cache"
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi... done"
