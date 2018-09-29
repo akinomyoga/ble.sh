@@ -6,22 +6,22 @@
 #   $_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind
 #
 
-function ble-decode/generate-binder/append {
+function ble/init:bind/append {
   local xarg="\"$1\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\""
   local rarg="$1"
   echo "builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
   echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
 }
-function ble-decode/generate-binder/bind-s {
+function ble/init:bind/bind-s {
   local sarg="$1"
   echo "builtin bind '${sarg//$apos/$APOS}'" >> "$fbind1"
 }
-function ble-decode/generate-binder/bind-r {
+function ble/init:bind/bind-r {
   local rarg="$1"
   echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
 }
 
-function ble-decode/generate-binder {
+function ble/init:bind/generate-binder {
   local fbind1="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind"
   local fbind2="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind"
 
@@ -128,41 +128,41 @@ function ble-decode/generate-binder {
       # C-@
       if ((esc00)); then
         # ENCODING: UTF-8 2-byte code of 0 (UTF-8依存)
-        ble-decode/generate-binder/bind-s '"\C-@":"\xC0\x80"'
-        ble-decode/generate-binder/bind-r '\C-@'
+        ble/init:bind/bind-s '"\C-@":"\xC0\x80"'
+        ble/init:bind/bind-r '\C-@'
       else
-        ble-decode/generate-binder/append "$ret" "$i"
+        ble/init:bind/append "$ret" "$i"
       fi
     elif ((i==24)); then
       # C-x
-      ((bind18XX)) || ble-decode/generate-binder/append "$ret" "$i"
+      ((bind18XX)) || ble/init:bind/append "$ret" "$i"
     elif ((i==27)); then
       # C-[
       if ((esc1B==0)); then
-        ble-decode/generate-binder/append "$ret" "$i"
+        ble/init:bind/append "$ret" "$i"
       elif ((esc1B==2)); then
         # ENCODING: UTF-8
-        ble-decode/generate-binder/bind-s '"\e":"\xC0\x9B"'
-        ble-decode/generate-binder/bind-r '\e'
+        ble/init:bind/bind-s '"\e":"\xC0\x9B"'
+        ble/init:bind/bind-r '\e'
       elif ((esc1B==3)); then
         # ENCODING: UTF-8 (ble_decode_IsolatedESC U+07FF)
-        ble-decode/generate-binder/bind-s '"\e":"\xDF\xBF"' # C-[
-        ble-decode/generate-binder/bind-r '\e'
+        ble/init:bind/bind-s '"\e":"\xDF\xBF"' # C-[
+        ble/init:bind/bind-r '\e'
       fi
     else
-      ble-decode/generate-binder/append "$ret" "$i"
+      ble/init:bind/append "$ret" "$i"
     fi
 
     # # C-@ * for bash-4.3 (2015-02-11) 無駄?
-    # ble-decode/generate-binder/append "\\C-@$ret" "0 $i"
+    # ble/init:bind/append "\\C-@$ret" "0 $i"
 
     # C-x *
-    ((bind18XX)) && ble-decode/generate-binder/append "$ret" "24 $i"
+    ((bind18XX)) && ble/init:bind/append "$ret" "24 $i"
 
     # ESC *
     if ((esc1B==3)); then
-      ble-decode/generate-binder/bind-s '"\e'"$ret"'":"\xC0\x9B'"$ret"'"'
-      ble-decode/generate-binder/bind-r '\e'"$ret"
+      ble/init:bind/bind-s '"\e'"$ret"'":"\xC0\x9B'"$ret"'"'
+      ble/init:bind/bind-r '\e'"$ret"
     else
       if ((esc1B==1)); then
         # ESC [
@@ -175,20 +175,20 @@ function ble-decode/generate-binder {
           # echo "ble-bind -f 'CSI' '.ble-decode-char 27 91'" >> "$fbind1"
 
           # ENCODING: \xC0\x9B is 2-byte code of ESC (UTF-8依存)
-          ble-decode/generate-binder/bind-s '"\e[":"\xC0\x9B["'
-          ble-decode/generate-binder/bind-r '\e['
+          ble/init:bind/bind-s '"\e[":"\xC0\x9B["'
+          ble/init:bind/bind-r '\e['
         else
-          ble-decode/generate-binder/append "\\e$ret" "27 $i"
+          ble/init:bind/append "\\e$ret" "27 $i"
         fi
       fi
 
       # ESC ESC
       if ((i==27&&esc1B1B)); then
         # ESC ESC for bash-4.1
-        ble-decode/generate-binder/bind-s '"\e\e":"\e[^"'
+        ble/init:bind/bind-s '"\e\e":"\e[^"'
         echo "ble-bind -k 'ESC [ ^' __esc__"                >> "$fbind1"
         echo "ble-bind -f __esc__ '.ble-decode-char 27 27'" >> "$fbind1"
-        ble-decode/generate-binder/bind-r '\e\e'
+        ble/init:bind/bind-r '\e\e'
       fi
     fi
   done
@@ -207,4 +207,4 @@ function ble-decode/generate-binder {
   ble-edit/info/immediate-show text "ble.sh: updating binders... done"
 }
 
-ble-decode/generate-binder
+ble/init:bind/generate-binder

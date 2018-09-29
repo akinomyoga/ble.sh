@@ -2039,15 +2039,18 @@ function bind {
 
 function ble/encoding:UTF-8/generate-binder { :; }
 
-# # ble/init-bind.sh の esc1B==3 の設定用
-# # これは ble/init-bind.sh の中にある物と等価なので殊更に設定しなくて良い。
+# 以下は lib/init-bind.sh の中にある物と等価なので殊更に設定しなくて良い。
+
+# ## 関数 ble/encoding:UTF-8/generate-binder
+# ##   lib/init-bind.sh の esc1B==3 の設定用。
+# ##   lib/init-bind.sh の中から呼び出される。
 # function ble/encoding:UTF-8/generate-binder {
-#   ble-decode/generate-binder/bind-s '"\C-@":"\xC0\x80"'
-#   ble-decode/generate-binder/bind-s '"\e":"\xDF\xBF"' # isolated ESC (U+07FF)
+#   ble/init:bind/bind-s '"\C-@":"\xC0\x80"'
+#   ble/init:bind/bind-s '"\e":"\xDF\xBF"' # isolated ESC (U+07FF)
 #   local i ret
 #   for i in {0..255}; do
 #     ble-decode-bind/c2dqs "$i"
-#     ble-decode/generate-binder/bind-s "\"\e$ret\": \"\xC0\x9B$ret\""
+#     ble/init:bind/bind-s "\"\e$ret\": \"\xC0\x9B$ret\""
 #   done
 # }
 
@@ -2124,14 +2127,16 @@ function ble-text-c2bc+UTF-8 {
     (code<0x200000?4:5)))))
 }
 
-# ble/init-bind.sh の esc1B==3 の設定用
+## 関数 ble/encoding:C/generate-binder
+##   lib/init-bind.sh の esc1B==3 の設定用。
+##   lib/init-bind.sh の中から呼び出される。
 function ble/encoding:C/generate-binder {
-  ble-decode/generate-binder/bind-s '"\C-@":"\x9B\x80"'
-  ble-decode/generate-binder/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FF)
+  ble/init:bind/bind-s '"\C-@":"\x9B\x80"'
+  ble/init:bind/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FF)
   local i ret
   for i in {0..255}; do
     ble-decode-bind/c2dqs "$i"
-    ble-decode/generate-binder/bind-s "\"\e$ret\": \"\x9B\x9B$ret\""
+    ble/init:bind/bind-s "\"\e$ret\": \"\x9B\x9B$ret\""
   done
 }
 
