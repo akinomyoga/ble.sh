@@ -6626,8 +6626,8 @@ if [[ $bleopt_suppress_bash_output ]]; then
                $line == *'シェルから脱出するのに "exit" を使いなさい.'* ||
                $line == *'Gebruik Kaart na Los Tronk'* ]] && return 0
 
-          # ignoreeof-messages.txt の中身をキャッシュする様にする?
-          [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/ignoreeof-messages.txt
+          # lib/core-edit.ignoreeof-messages.txt の中身をキャッシュする様にする?
+          [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/lib/core-edit.ignoreeof-messages.txt
         }
 
         while IFS= builtin read -r line; do

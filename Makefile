@@ -39,11 +39,11 @@ $(OUTDIR)/ble.sh: ble.pp lib/core-syntax-ctx.def | $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ \
 	  $(MWGPP) $< >/dev/null
 
-outfiles+=$(OUTDIR)/term.sh
-$(OUTDIR)/term.sh: term.sh | $(OUTDIR)
+outfiles+=$(OUTDIR)/lib/init-term.sh
+$(OUTDIR)/lib/init-term.sh: lib/init-term.sh | $(OUTDIR)
 	cp -p $< $@
-outfiles+=$(OUTDIR)/bind.sh
-$(OUTDIR)/bind.sh: bind.sh | $(OUTDIR)
+outfiles+=$(OUTDIR)/lib/init-bind.sh
+$(OUTDIR)/lib/init-bind.sh: lib/init-bind.sh | $(OUTDIR)
 	cp -p $< $@
 outfiles+=$(OUTDIR)/lib/core-complete.sh
 $(OUTDIR)/lib/core-complete.sh: lib/core-complete.sh | $(OUTDIR)/lib
@@ -51,8 +51,8 @@ $(OUTDIR)/lib/core-complete.sh: lib/core-complete.sh | $(OUTDIR)/lib
 outfiles+=$(OUTDIR)/lib/core-syntax.sh
 $(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
-outfiles+=$(OUTDIR)/ignoreeof-messages.txt
-$(OUTDIR)/ignoreeof-messages.txt: ignoreeof-messages.txt | $(OUTDIR)
+outfiles+=$(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
+$(OUTDIR)/lib/core-edit.ignoreeof-messages.txt: lib/core-edit.ignoreeof-messages.txt | $(OUTDIR)
 	cp -p $< $@
 
 outdirs += $(OUTDIR)/cmap

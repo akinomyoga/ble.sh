@@ -7,7 +7,7 @@ function generate.ignoreeof-messages {
       [[ $line ]] || continue
       echo $(printf "$line" exit) # $() は末端の改行を削除するため
     done
-  ) >| ignoreeof-messages.txt
+  ) >| lib/core-edit.ignoreeof-messages.new
 }
 
 generate.ignoreeof-messages

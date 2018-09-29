@@ -1827,8 +1827,8 @@ function bleopt {
 : ${bleopt_vbell_duration=2000}
 
 function ble-term/.initialize {
-  if [[ $_ble_base/term.sh -nt $_ble_base_cache/$TERM.term ]]; then
-    source "$_ble_base/term.sh"
+  if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
+    source "$_ble_base/lib/init-term.sh"
   else
     source "$_ble_base_cache/$TERM.term"
   fi

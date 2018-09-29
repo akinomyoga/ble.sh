@@ -1622,7 +1622,7 @@ function ble-bind {
 # **** ESC ESC ****                                           @decode.bind.esc2
 
 ## 関数 ble/widget/.ble-decode-char ...
-##   bind.sh で設定する bind で使用する。
+##   lib/init-bind.sh で設定する bind で使用する。
 function ble/widget/.ble-decode-char {
   ble-decode-char "$@"
 }
@@ -1897,7 +1897,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 
 function ble-decode/bind {
   local file=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
-  [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
+  [[ $file -nt $_ble_base/lib/init-bind.sh ]] || source "$_ble_base/lib/init-bind.sh"
 
   # * 一時的に 'set convert-meta off' にする。
   #
@@ -2039,8 +2039,8 @@ function bind {
 
 function ble/encoding:UTF-8/generate-binder { :; }
 
-# # bind.sh の esc1B==3 の設定用
-# # これは bind.sh の中にある物と等価なので殊更に設定しなくて良い。
+# # ble/init-bind.sh の esc1B==3 の設定用
+# # これは ble/init-bind.sh の中にある物と等価なので殊更に設定しなくて良い。
 # function ble/encoding:UTF-8/generate-binder {
 #   ble-decode/generate-binder/bind-s '"\C-@":"\xC0\x80"'
 #   ble-decode/generate-binder/bind-s '"\e":"\xDF\xBF"' # isolated ESC (U+07FF)
@@ -2124,7 +2124,7 @@ function ble-text-c2bc+UTF-8 {
     (code<0x200000?4:5)))))
 }
 
-# bind.sh の esc1B==3 の設定用
+# ble/init-bind.sh の esc1B==3 の設定用
 function ble/encoding:C/generate-binder {
   ble-decode/generate-binder/bind-s '"\C-@":"\x9B\x80"'
   ble-decode/generate-binder/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FF)
