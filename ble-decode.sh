@@ -850,21 +850,13 @@ function ble/widget/.SHELL_COMMAND { eval "$*"; }
 ##   ble-bind -x で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND { eval "$*"; }
 
-
-## 関数 kmap ; ble-decode-key/bind keycodes command
+## 関数 ble-decode-key/bind keycodes command
+##   @param[in] keycodes command
+##   @var[in] kmap
 function ble-decode-key/bind {
   local dicthead=_ble_decode_${kmap}_kmap_
   local -a seq=($1)
   local cmd=$2
-
-  if ! ble-decode/keymap/is-registered "$kmap"; then
-    ble-decode/keymap/register "$kmap"
-    if ! ble-decode/keymap/load "$kmap"; then
-      ble-decode/keymap/unregister "$kmap"
-      echo "ble-bind: the keymap '$kmap' is not defined"
-      return 1
-    fi
-  fi
 
   local i iN=${#seq[@]} key tseq=
   for ((i=0;i<iN;i++)); do
@@ -1394,6 +1386,16 @@ function ble-decode/keylog/pop {
 
 # **** ble-bind ****
 
+function ble-bind/load-keymap {
+  local kmap=$1
+  ble-decode/keymap/is-registered "$kmap" && return 0
+  ble-decode/keymap/register "$kmap"
+  ble-decode/keymap/load "$kmap" && return 0
+  ble-decode/keymap/unregister "$kmap"
+  echo "ble-bind: the keymap '$kmap' is not defined" >&2
+  return 1
+}
+
 function ble-bind/option:help {
   ble/util/cat <<EOF
 ble-bind --help
@@ -1542,6 +1544,8 @@ function ble-bind {
           if (($#<1)); then
             echo "ble-bind: the option \`-m' requires an argument." >&2
             return 2
+          elif ! ble-bind/load-keymap "$1"; then
+            return 1
           fi
           kmap=$1
           ble/array#push keymaps "$1"
