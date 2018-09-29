@@ -1994,7 +1994,7 @@ function ble/widget/insert-string {
   local content="$*"
   local arg; ble-edit/content/get-arg 1
   if ((arg<0)); then
-    ble/widget/.bell "negative repitition number $arg"
+    ble/widget/.bell "negative repetition number $arg"
     return 1
   elif ((arg==0)); then
     return 0
@@ -2038,7 +2038,7 @@ function ble/widget/self-insert {
 
   local arg; ble-edit/content/get-arg 1
   if ((arg<0)); then
-    ble/widget/.bell "negative repitition number $arg"
+    ble/widget/.bell "negative repetition number $arg"
     return 1
   elif ((arg==0)) || [[ ! $ins ]]; then
     arg=0 ins=

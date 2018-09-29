@@ -322,17 +322,68 @@ function ble-decode-unkbd {
 function ble-decode/PROLOGUE { :; }
 function ble-decode/EPILOGUE { :; }
 
+_ble_decode_input_count=0
+_ble_decode_input_buffer=()
+_ble_decode_input_original_info=()
+
+function ble-decode/.hook/show-progress {
+  if [[ $_ble_edit_info_scene == store ]]; then
+    _ble_decode_input_original_info=("${_ble_edit_info[@]}")
+    return
+  elif [[ $_ble_edit_info_scene == default ]]; then
+    _ble_decode_input_original_info=()
+  elif [[ $_ble_edit_info_scene != decode_input_progress ]]; then
+    return
+  fi
+
+  local mill=$(((${#chars[@]}-_ble_decode_input_count-1)*1000/${#chars[@]}))
+  local cent=${mill::${#mill}-1} frac=${mill:${#mill}-1}
+  ble-edit/info/show text "(${cent:-0}.$frac% processing input...)"
+  _ble_edit_info_scene=decode_input_progress
+}
+function ble-decode/.hook/erase-progress {
+  [[ $_ble_edit_info_scene == decode_input_progress ]] || return
+  if ((${#_ble_decode_input_original_info[@]})); then
+    ble-edit/info/show store "${_ble_decode_input_original_info[@]}"
+  else
+    ble-edit/info/default
+  fi
+}
+
 function ble-decode/.hook {
+  if ble/util/is-stdin-ready; then
+    ble/array#push _ble_decode_input_buffer "$@"
+    return
+  fi
+
+  local chars
+  chars=("${_ble_decode_input_buffer[@]}" "$@")
+  _ble_decode_input_buffer=()
+  _ble_decode_input_count=${#chars[@]}
+
   local IFS=$' \t\n'
   ble-decode/PROLOGUE
 
-  local c
-  for c; do
+  if ((_ble_decode_input_count>=100)); then
+    local c
+    for c in "${chars[@]}"; do
+      ((--_ble_decode_input_count%37==0)) && ble-decode/.hook/show-progress
 #%if debug_keylogger
-    ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
+      ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
 #%end
-    "ble-decode-byte+$bleopt_input_encoding" "$c"
-  done
+      "ble-decode-byte+$bleopt_input_encoding" "$c"
+    done
+    ble-decode/.hook/erase-progress
+  else
+    local c
+    for c in "${chars[@]}"; do
+      ((--_ble_decode_input_count))
+#%if debug_keylogger
+      ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
+#%end
+      "ble-decode-byte+$bleopt_input_encoding" "$c"
+    done
+  fi
 
   ble-decode/EPILOGUE
 }
@@ -1311,7 +1362,8 @@ function ble-decode/widget/suppress-widget {
 ##     正しく判定する事ができません。
 ##
 function ble-decode/has-input {
-  ble/util/is-stdin-ready ||
+  ((_ble_decode_input_count)) ||
+    ble/util/is-stdin-ready ||
     ble/encoding:"$bleopt_input_encoding"/is-intermediate ||
     ble-decode-char/is-intermediate
 
