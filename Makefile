@@ -35,7 +35,7 @@ ble-form.sh:
 
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
-$(OUTDIR)/ble.sh: ble.pp | $(OUTDIR)
+$(OUTDIR)/ble.sh: ble.pp lib/core-syntax-ctx.def | $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ \
 	  $(MWGPP) $< >/dev/null
 

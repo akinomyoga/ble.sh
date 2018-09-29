@@ -5,22 +5,24 @@
 #%[measure_load_time = 0]
 #%[debug_keylogger = 1]
 #%#----------------------------------------------------------------------------
-#%m inc
-#%%[guard = "@_included".replace("[^_a-zA-Z0-9]", "_")]
-#%%if @_included != 1
-#%%%[@_included = 1]
+#%define inc
+#%%[guard_name = "@_included".replace("^(.*/)?(ble-)?", "").replace("[^_a-zA-Z0-9]", "_")]
+#%%expand
+#%%%if $"guard_name" != 1
+#%%%%[$"guard_name" = 1]
 ###############################################################################
-# Included from ble-@.sh
+# Included from @.sh
 
-#%%%if measure_load_time
+#%%%%if measure_load_time
 time {
-echo ble-@.sh >&2
-#%%%%include ble-@.sh
+echo @.sh >&2
+#%%%%%include @.sh
 }
-#%%%else
-#%%%%include ble-@.sh
+#%%%%else
+#%%%%%include @.sh
+#%%%%end
 #%%%end
-#%%end
+#%%end.i
 #%end
 #%#----------------------------------------------------------------------------
 # bash script to souce from interactive shell sessions
@@ -444,19 +446,19 @@ fi
 }
 #%end
 
-##%x inc.r/@/getopt/
-#%x inc.r/@/core/
+#%x inc.r|@|ble-core|
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
 #%if use_gawk
 ble/bin/.freeze-utility-path gawk
 #%end
 
-#%x inc.r/@/decode/
-#%x inc.r/@/color/
-#%x inc.r/@/canvas/
-#%x inc.r/@/edit/
-#%x inc.r/@/syntax-lazy/
+#%x inc.r|@|ble-decode|
+#%x inc.r|@|ble-color|
+#%x inc.r|@|ble-canvas|
+#%x inc.r|@|ble-edit|
+#%x inc.r|@|lib/core-complete-def|
+#%x inc.r|@|lib/core-syntax-def|
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
 

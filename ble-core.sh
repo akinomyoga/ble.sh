@@ -6,19 +6,24 @@
 
 function bleopt/check:input_encoding {
   if ! ble/is-function "ble-decode-byte+$value"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-decode-byte+$value' is not defined." >&2
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble-decode-byte+$value' is not defined." >&2
     return 1
   elif ! ble/is-function "ble-text-b2c+$value"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-b2c+$value' is not defined." >&2
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble-text-b2c+$value' is not defined." >&2
     return 1
   elif ! ble/is-function "ble-text-c2bc+$value"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-c2bc+$value' is not defined." >&2
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble-text-c2bc+$value' is not defined." >&2
     return 1
   elif ! ble/is-function "ble/encoding:$value/generate-binder"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/generate-binder' is not defined." >&2
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble/encoding:$value/generate-binder' is not defined." >&2
     return 1
   elif ! ble/is-function "ble/encoding:$value/is-intermediate"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/is-intermediate' is not defined." >&2
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble/encoding:$value/is-intermediate' is not defined." >&2
     return 1
   fi
 

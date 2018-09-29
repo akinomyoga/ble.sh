@@ -1998,7 +1998,6 @@ ble/function#try ble/util/idle.push-background ble-complete/menu-filter.idle
 
 _ble_complete_menu_original=
 
-ble-color-defface menu_complete fg=12,bg=252
 function ble-highlight-layer:region/mark:menu_complete/get-face {
   face=menu_complete
 }
@@ -2234,8 +2233,6 @@ function ble-decode/keymap:menu_complete/define {
 #
 
 function ble-complete/auto-complete/initialize {
-  ble-color-defface auto_complete bg=254,fg=238
-
   local ret
   ble-decode-kbd/generate-keycode auto_complete_enter
   _ble_complete_KCODE_ENTER=$ret

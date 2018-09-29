@@ -6300,44 +6300,6 @@ function ble-edit/read {
 }
 function read { ble-edit/read "$@"; }
 
-# 
-#------------------------------------------------------------------------------
-# **** completion ****                                                    @comp
-
-: ${bleopt_complete_stdin_frequency:=50}
-: ${bleopt_complete_ambiguous:=1}
-: ${bleopt_complete_contract_function_names:=1}
-: ${bleopt_complete_auto_delay:=1}
-: ${bleopt_complete_auto_history:=1}
-
-## オプション complete_menu_style
-##   補完候補のリスト表示のスタイルを指定します。
-##
-##   dense
-##   dense-nowrap
-##   align
-##   align-nowrap
-##
-: ${bleopt_complete_menu_style:=align-nowrap}
-: ${bleopt_complete_menu_align:=20}
-: ${bleopt_complete_menu_complete:=1}
-
-_ble_complete_insert_hook=()
-ble-autoload "$_ble_base/lib/core-complete.sh" \
-             ble/widget/complete \
-             ble/widget/menu-complete \
-             ble/widget/auto-complete-enter \
-             ble/widget/sabbrev-expand \
-             ble/widget/dabbrev-expand \
-             ble-sabbrev
-ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
-
-if ((_ble_bash>=40200)); then
-  declare -gA _ble_complete_sabbrev=()
-elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  declare -A _ble_complete_sabbrev=()
-fi
-
 #------------------------------------------------------------------------------
 # **** command-help ****                                          @command-help
 

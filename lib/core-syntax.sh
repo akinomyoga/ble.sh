@@ -838,12 +838,12 @@ function ble-syntax/parse/touch-updated-word {
 # 文脈値
 #
 
-# 文脈値達 from ble-syntax-ctx.def
-#%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print $1 "=" $2;}'
+# 文脈値達 from lib/core-syntax-ctx.def
+#%$ sed 's/[[:space:]]*#.*//;/^$/d' lib/core-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print $1 "=" $2;}'
 
 # for debug
 _ble_syntax_bash_ctx_names=(
-#%$ sed 's/[[:space:]]*#.*//;/^$/d' ble-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
+#%$ sed 's/[[:space:]]*#.*//;/^$/d' lib/core-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
 )
 
 ## 関数 ble-syntax/ctx#get-name ctx
@@ -4989,7 +4989,7 @@ function ble-syntax/highlight/cmdtype2 {
 ##     シェル展開・クォート除去を実行する前の文字列を指定します。
 ##   @var[out] type
 if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  # Note: 連想配列 _ble_syntax_highlight_filetype は ble-syntax-lazy.sh で先に定義される。
+  # Note: 連想配列 _ble_syntax_highlight_filetype は core-syntax-def.sh で先に定義される。
 
   _ble_syntax_highlight_filetype_version=-1
   function ble-syntax/highlight/cmdtype {
