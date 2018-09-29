@@ -28,6 +28,7 @@ function ble/widget/emacs/append-arg {
 
 _ble_keymap_emacs_white_list=(
   self-insert
+  batch-insert
   nop
   magic-space
   copy{,-forward,-backward}-{c,f,s,u}word

@@ -21,6 +21,7 @@
 #
 # 特殊キーバインディング
 #
+#   __batch_char__
 #   __defchar__
 #   __default__
 #   __before_widget__

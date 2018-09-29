@@ -2100,6 +2100,35 @@ function ble/widget/self-insert {
   return 0
 }
 
+function ble/widget/batch-insert {
+  local -a chars; chars=("${KEYS[@]}")
+
+  if [[ $_ble_edit_overwrite_mode ]]; then
+    local -a KEYS=(0)
+    local char
+    for char in "${chars[@]}"; do
+      KEYS=$char ble/widget/self-insert
+    done
+
+  else
+    local index=0 N=${#chars[@]}
+    while ((index<N)) && [[ $_ble_edit_arg || $_ble_edit_mark_active ]]; do
+      KEYS=${chars[index]} ble/widget/self-insert
+      ((index++))
+    done
+
+    if ((index<N)); then
+      local ins=
+      while ((index<N)); do
+        ble/util/c2s "${chars[index]}"; ins=$ins$ret
+        ((index++))
+      done
+      ble/widget/insert-string "$ins"
+    fi
+  fi
+}
+
+
 # quoted insert
 function ble/widget/quoted-insert.hook {
   ble/widget/self-insert
@@ -2178,10 +2207,8 @@ function ble/widget/bracketed-paste.hook {
   [[ $proc ]] && builtin eval -- "$proc \"\${chars[@]}\""
 }
 function ble/widget/bracketed-paste.proc {
-  local -a KEYS
-  for KEYS; do
-    ble/widget/self-insert
-  done
+  local -a KEYS; KEYS=("$@")
+  ble/widget/batch-insert
 }
 
 # 
@@ -5842,6 +5869,7 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind insert      'overwrite-mode'
 
   # ins
+  ble-decode/keymap:safe/.bind __batch_char__ 'batch-insert'
   ble-decode/keymap:safe/.bind __defchar__ 'self-insert'
   ble-decode/keymap:safe/.bind 'C-q'       'quoted-insert'
   ble-decode/keymap:safe/.bind 'C-v'       'quoted-insert'

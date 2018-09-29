@@ -197,6 +197,8 @@ function ble-decode-kbd/.initialize {
   ble-decode-kbd/.set-keycode APC  159
 
   local ret
+  ble-decode-kbd/generate-keycode __batch_char__
+  _ble_decode_KCODE_BATCH_CHAR=$ret
   ble-decode-kbd/generate-keycode __defchar__
   _ble_decode_KCODE_DEFCHAR=$ret
   ble-decode-kbd/generate-keycode __default__
@@ -367,7 +369,7 @@ function ble-decode/.hook {
   if ((_ble_decode_input_count>=100)); then
     local c
     for c in "${chars[@]}"; do
-      ((--_ble_decode_input_count%37==0)) && ble-decode/.hook/show-progress
+      ((--_ble_decode_input_count%50==0)) && ble-decode/.hook/show-progress
 #%if debug_keylogger
       ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
 #%end
@@ -1084,6 +1086,53 @@ _ble_decode_key__hook=
 ##   未処理のキーがあるかどうかを判定します。
 function ble-decode-key/is-intermediate { [[ $_ble_decode_key__seq ]]; }
 
+## @arr _ble_decode_key_batch
+_ble_decode_key_batch=()
+
+function ble-decode-key/batch/flush {
+  ((${#_ble_decode_key_batch[@]})) || return
+  eval "local command=\${${dicthead}[$_ble_decode_KCODE_BATCH_CHAR]-}"
+  command=${command:2}
+  if [[ $command ]]; then
+    local chars; chars=("${_ble_decode_key_batch[@]}")
+    _ble_decode_key_batch=()
+    ble-decode/widget/call-interactively "$command" "${chars[@]}"; local ext=$?
+    ((ext!=125)) && return
+  fi
+
+  ble-decode/widget/call-interactively ble/widget/__batch_char__.default "${chars[@]}"; local ext=$?
+  return "$ext"
+}
+function ble/widget/__batch_char__.default {
+  builtin eval "local widget_defchar=\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]-}"
+  widget_defchar=${widget_defchar:2}
+  builtin eval "local widget_default=\${${dicthead}[$_ble_decode_KCODE_DEFAULT]-}"
+  widget_default=${widget_default:2}
+
+  local -a unprocessed_chars=()
+  local key command
+  for key in "${KEYS[@]}"; do
+    if [[ $widget_defchar ]]; then
+      ble-decode/widget/call-interactively "$widget_defchar" "$key"; local ext=$?
+      ((ext!=125)) && continue
+    fi
+    if [[ $widget_default ]]; then
+      ble-decode/widget/call-interactively "$widget_default" "$key"; local ext=$?
+      ((ext!=125)) && continue
+    fi
+
+    ble/array#push unprocessed_chars "$key"
+  done
+
+  if ((${#unprocessed_chars[@]})); then
+    local ret; ble-decode-unkbd "${unprocessed_chars[@]}"
+    [[ $bleopt_decode_error_kseq_vbell ]] && ble/term/visible-bell "unprocessed chars: $ret"
+    [[ $bleopt_decode_error_kseq_abell ]] && ble/term/audible-bell
+  fi
+  return 0
+}
+
+
 ## 関数 ble-decode-key key
 ##   キー入力の処理を行います。登録されたキーシーケンスに一致した場合、
 ##   関連付けられたコマンドを実行します。
@@ -1148,6 +1197,12 @@ function ble-decode-key {
     fi
 
   done
+
+  if ((${#_ble_decode_key_batch[@]})); then
+    if ! ble-decode/has-input || ((${#_ble_decode_key_batch[@]}>=50)); then
+      ble-decode-key/batch/flush
+    fi
+  fi
   return 0
 }
 
@@ -1212,11 +1267,17 @@ function ble-decode-key/.invoke-partial-match {
     # 通常の文字などは全てここに流れてくる事になる。
 
     # 既定の文字ハンドラ
-    local key=$1 seq_save=$_ble_decode_key__seq
+    local key=$1
     if ble-decode-key/ischar "$key"; then
+      if ble-decode/has-input && eval "[[ \${${dicthead}[$_ble_decode_KCODE_BATCH_CHAR]-} ]]"; then
+        ble/array#push _ble_decode_key_batch "$key"
+        return 0
+      fi
+
       builtin eval "local command=\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]-}"
       command=${command:2}
       if [[ $command ]]; then
+        local seq_save=$_ble_decode_key__seq
         ble-decode/widget/.call-keyseq; local ext=$?
         ((ext!=125)) && return
         _ble_decode_key__seq=$seq_save # 125 の時はまた元に戻して次の試行を行う
@@ -1289,6 +1350,7 @@ function ble-decode/widget/.invoke-hook {
 #   部分一致などの場合に後続のキーが存在する場合には、それらは呼出元で管理しなければならない。
 #
 function ble-decode/widget/.call-keyseq {
+  ble-decode-key/batch/flush
   [[ $command ]] || return 125
 
   # for keylog suppress

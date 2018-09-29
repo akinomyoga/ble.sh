@@ -215,6 +215,7 @@ function ble/keymap:vi/imap/invoke-widget-charwise {
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
 _ble_keymap_vi_imap_white_list=(
   self-insert
+  batch-insert
   nop
   magic-space
   delete-backward-{c,f,s,u}word
