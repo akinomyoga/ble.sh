@@ -2412,31 +2412,42 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-24 (#D0825..#D0843)
+2018-09-24 (#D0825..#D0847 0b410df)
 
   新機能
-  - highlight: 変数代入の右辺及び配列要素の着色に対応 `#D0839`
-  - nsearch: (非インクリメンタル)履歴検索に対応 <kbd>C-x {C-,}{p,n}</kbd> `history-{substring-,}search-{for,back}ward` `#D0843`
+  - highlight: 変数代入の右辺及び配列要素の着色に対応 `#D0839` 854c3b4
+  - nsearch: (非インクリメンタル)履歴検索に対応 <kbd>C-x {C-,}{p,n}</kbd> `history-{,substring-,n}search-{for,back}ward` `#D0843` e3b7d8b 0d31cd9 253b52e
+  - isearch: 検索前に選択状態でがあれば検索後に復元する `#D0845` 93f3a0f
 
   バグ・問題修正
   - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#tmp0004`
-  - auto-complete: 構文エラーが自動補完により解決される時、構文エラーによる <kbd>RET</kbd> 抑止が効かない問題の修正 `#D0827`
-  - highlight: `shopt -s failglob` で配列の指示初期化子がエラー着色される問題の修正 (reported by cmplstofB) `#D0838`
-  - complete: プログラム補完に対して曖昧補完が効かない時の対策 `#D0841`
+  - auto-complete: 構文エラーが自動補完により解決される時 <kbd>RET</kbd> でコマンド実行が抑止されない問題の修正 `#D0827` daf360e
+  - highlight: `shopt -s failglob` で配列の指示初期化子がエラー着色される問題の修正 (reported by cmplstofB) `#D0838` d6fe413
+  - complete: プログラム補完に対して曖昧補完が効かない時の対策 `#D0841` 713e95d
   - isearch: ユーザ入力による割り込みで検索位置の記録に失敗していたバグの修正 `#D0843`
+  - isearch: キャンセル時に位置とマークが正確に復元されない問題の修正 `#D0847`
+  - isearch, dabbrev: 検索処理中にユーザが何か入力するまで現在行が更新されない問題の修正 `#D0847`
+  - decode: 未ロードのキーマップに対して `ble-bind -m -P` `ble-bind -m kmap -f kspecs -` が使えない問題の修正 66e202a
 
   動作変更
   - sabbrev, vi_imap: `sabbrev-expand` を <kbd>C-x '</kbd> ではなく <kbd>C-]</kbd> から束縛 `#D0825` e5969b7
-  - auto-complete: 構文エラーが自動補完により解決される時 <kbd>RET</kbd> でコマンド実行が抑止されない問題の修正 `#D0827`
   - core: `bleopt` に設定名を指定子て設定内容を表示させる時、設定名の存在を確認する `#tmp0004` 725d09c
   - isearch: <kbd>C-d</kbd> で現在の選択範囲を削除する様に変更 `#D0826` c3bb69e
   - isearch: <kbd>C-m</kbd> (<kbd>RET</kbd>) で確定した時は選択範囲を解除する様に変更 `#D0826` c3bb69e
-  - decode: `ble-bind -cf` 及び `-xf` をそれぞれ `-c` 及び `-x` に変更 `#tmp0004`
+  - decode: `ble-bind` のオプションを再構成 `#tmp0004` f7f1ec8 64ad962
   - decode: 組み込みコマンド `bind` を上書きして `ble.sh` の動作が阻害されない様に引数をチェックして実行 `#tmp0004`
-  - complete: autoload `ble-sabbrev` (`core-complete.sh`), `ble-syntax:bash/is-complete` (`core-syntax.sh`) `#D0842`
+  - complete: autoload `ble-sabbrev` (`core-complete.sh`), `ble-syntax:bash/is-complete` (`core-syntax.sh`) `#D0842` df0b769
   - isearch: 編集関数 `isearch/accept-line` が <kbd>RET</kbd> 以外から束縛されていても <kbd>RET</kbd> を実行する様に変更 `#D0843`
   - vi, [in]search: mark 名を整理 (`char`/`line`/`block`/`search` に接頭辞 `vi_` 付加し、新しい mark 名を `search` とする) `#D0843`
   - edit: 関数名変更 `ble/widget/accept-single-line-or/accepts` → `ble-edit/is-single-complete-line` `#D0844`
+  - isearch: 空文字列で検索した時の振る舞いを再考 `#D0847` d05705e
+  - decode: 入力のキー復号の各種調整 `#tmp0004` dc013ad
+
+  内部的変更
+  - isearch, dabbrev: `ble/util/fiberchain` による再実装 `#D0843`, `#D0846` 2c695cf bdf8072 95268c1
+  - edit, vi: 選択範囲の種類を表す mark 名を整理 a1a6272
+  - edit: 関数名変更 `ble/widget/accept-single-line-or/accepts` → `ble-edit/is-single-complete-line` `#D0844` 63ec9fe
+  - ファイルの整理 5e07e7f 1a03da2 0b410df
 
 2018-09-03 -- 2018-09-23 (#D0766..#D0824 8584e82)
 
@@ -3198,7 +3209,7 @@ tech
 
 2018-09-27
 
-  * complete: isearch で空文字列で検索した時 stack による巻き戻しが無効になっている。何故? [#D0847]
+  * isearch: 空文字列で検索した時 stack による巻き戻しが無効になっている。何故? [#D0847]
 
     | % どうもこれは "空文字列の時に" 起こるのではなくて、
     | % C-r で当たった履歴項目の一つ前の項目に一致する時に起こることである。

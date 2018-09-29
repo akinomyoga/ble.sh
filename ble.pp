@@ -6,7 +6,7 @@
 #%[debug_keylogger = 1]
 #%#----------------------------------------------------------------------------
 #%define inc
-#%%[guard_name = "@_included".replace("^(.*/)?(ble-)?", "").replace("[^_a-zA-Z0-9]", "_")]
+#%%[guard_name = "@_included".replace("[^_a-zA-Z0-9]", "_")]
 #%%expand
 #%%%if $"guard_name" != 1
 #%%%%[$"guard_name" = 1]
@@ -446,17 +446,17 @@ fi
 }
 #%end
 
-#%x inc.r|@|ble-core|
+#%x inc.r|@|src/util|
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
 #%if use_gawk
 ble/bin/.freeze-utility-path gawk
 #%end
 
-#%x inc.r|@|ble-decode|
-#%x inc.r|@|ble-color|
-#%x inc.r|@|ble-canvas|
-#%x inc.r|@|ble-edit|
+#%x inc.r|@|src/decode|
+#%x inc.r|@|src/color|
+#%x inc.r|@|src/canvas|
+#%x inc.r|@|src/edit|
 #%x inc.r|@|lib/core-complete-def|
 #%x inc.r|@|lib/core-syntax-def|
 #------------------------------------------------------------------------------
