@@ -6088,7 +6088,7 @@ function ble-decode/keymap:read/define {
   # ble-bind -f 'M-^'      history-expand-line
   # ble-bind -f 'SP'       magic-space
 
-  ble-bind -f 'C-[' bell
+  # ble-bind -f 'C-[' bell # unbound for "bleopt decode_isolated_esc=auto"
   ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
 }
