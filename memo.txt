@@ -774,11 +774,22 @@ tech
 
     書き始めると仕様で微妙なところが浮き上がってくるのでその都度修正する事にする。
 
+    - auto-complete: C-j が誤って insert になっていた 01476a7
+    - dabbrev: RET, C-m は確定で、C-RET, C-j で実行にした方が良いのでは 01476a7
+    - edit: M-S-f, M-S-b を束縛するべきところ M-C-f, M-C-b を束縛している箇所があった
+
     - complete: auto_complete の M- 事情はどうなっているのか?
       bleopt decode_isolated_esc=auto だと M- が吸収されてしまう。
     - bleopt complete_stdin_frequency は改名したい
-    - C-j が誤って insert になっていた
-    - dabbrev: RET, C-m は確定で、C-RET, C-j で実行にした方が良いのでは。
+    - isearch/exit-delete-forward-char は実態を反映していないのでは。
+    - M-m 及び S-M-m の実装が単なる beginning-of-line になっている
+    - vi でも M- 系列を bind するオプションがあっても良いのでは。
+      しかしキャッシュしていると反映されなくなってしまう。
+      また、keymap vi の初期化の前にそのオプションは指定しなければならない。
+      或いは、キーマップの継承などがあれば簡単なのかもしれない。
+      しかし、これ単体の為に継承を新しく実装する程でも無い。
+      或いは M- 系列を元から bind してしまう…?
+    - auto_complete 及び menu_filter の有効無効も切り替えられた方が良いのでは。
 
 2018-09-21
 
@@ -2399,6 +2410,7 @@ tech
   - isearch: 検索前に選択状態でがあれば検索後に復元する `#D0845` 93f3a0f
   - decode: 貼り付け時など大量の入力があった時に処理の進行状況を表示 `#D0848` c2d6100
   - decode: 貼り付け時などの高速化の為に一括の文字列挿入に対応 (`batch-insert`) `#D0849` 48eeb03
+  - decode: `bleopt decode_isolated_esc=auto` でキーマップに応じて単独 <kbd>ESC</kbd> の取扱を切り替え 9b20b45
 
   バグ・問題修正
   - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#D0850`
@@ -2409,6 +2421,8 @@ tech
   - isearch: キャンセル時に位置とマークが正確に復元されない問題の修正 `#D0847`
   - isearch, dabbrev: 検索処理中にユーザが何か入力するまで現在行が更新されない問題の修正 `#D0847`
   - decode: 未ロードのキーマップに対して `ble-bind -m -P` `ble-bind -m kmap -f kspecs -` が使えない問題の修正 66e202a
+  - auto-complete: <kbd>C-j</kbd> が単なる "確定" になっていたのを "確定して実行" に修正 `#tmp0004` 01476a7
+  - edit: <kbd>M-S-f</kbd>, <kbd>M-S-b</kbd> を束縛するべきところ <kbd>M-C-f</kbd>, <kbd>M-C-b</kbd> を束縛している箇所を修正 `#tmp0004`
 
   動作変更
   - sabbrev, vi_imap: `sabbrev-expand` を <kbd>C-x '</kbd> ではなく <kbd>C-]</kbd> から束縛 `#D0825` e5969b7
@@ -2423,6 +2437,7 @@ tech
   - edit: 関数名変更 `ble/widget/accept-single-line-or/accepts` → `ble-edit/is-single-complete-line` `#D0844`
   - isearch: 空文字列で検索した時の振る舞いを再考 `#D0847` d05705e
   - decode: 入力のキー復号の各種調整 `#D0850` dc013ad
+  - dabbrev: <kbd>C-m</kbd>, <kbd>RET</kbd> で展開終了、<kbd>C-j</kbd>, <kbd>C-RET</kbd> でコマンド実行 `#tmp0004` 01476a7
 
   内部的変更
   - isearch, dabbrev: `ble/util/fiberchain` による再実装 `#D0843`, `#D0846` 2c695cf bdf8072 95268c1

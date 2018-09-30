@@ -5932,8 +5932,8 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-b'       '@nomarked backward-cword'
   ble-decode/keymap:safe/.bind 'M-F'       '@marked forward-cword'
   ble-decode/keymap:safe/.bind 'M-B'       '@marked backward-cword'
-  ble-decode/keymap:safe/.bind 'M-C-f'     '@marked forward-cword'
-  ble-decode/keymap:safe/.bind 'M-C-b'     '@marked backward-cword'
+  ble-decode/keymap:safe/.bind 'M-S-f'     '@marked forward-cword'
+  ble-decode/keymap:safe/.bind 'M-S-b'     '@marked backward-cword'
 
   # linewise operations
   ble-decode/keymap:safe/.bind 'C-a'       '@nomarked beginning-of-line'
@@ -6024,21 +6024,21 @@ function ble-decode/keymap:safe/define {
 
   ble-bind -f __attach__ safe/__attach__
 
-  ble-bind -f  'C-c'     discard-line
-  ble-bind -f  'C-j'     accept-line
-  ble-bind -f  'C-RET'   accept-line
-  ble-bind -f  'C-m'     accept-single-line-or-newline
-  ble-bind -f  'RET'     accept-single-line-or-newline
-  ble-bind -f  'C-o'     accept-and-next
-  ble-bind -f  'C-g'     bell
+  ble-bind -f 'C-c'      discard-line
+  ble-bind -f 'C-j'      accept-line
+  ble-bind -f 'C-RET'    accept-line
+  ble-bind -f 'C-m'      accept-single-line-or-newline
+  ble-bind -f 'RET'      accept-single-line-or-newline
+  ble-bind -f 'C-o'      accept-and-next
+  ble-bind -f 'C-g'      bell
 
-  ble-bind -f  'C-l'     clear-screen
-  ble-bind -f  'M-l'     redraw-line
+  ble-bind -f 'C-l'      clear-screen
+  ble-bind -f 'M-l'      redraw-line
 
-  ble-bind -f  'f1'      command-help
-  ble-bind -f  'C-x C-v' display-shell-version
-  ble-bind -c 'C-z'     fg
-  ble-bind -c 'M-z'     fg
+  ble-bind -f 'f1'       command-help
+  ble-bind -f 'C-x C-v'  display-shell-version
+  ble-bind -c 'C-z'      fg
+  ble-bind -c 'M-z'      fg
 }
 
 function ble-edit/bind/load-keymap-definition:safe {
