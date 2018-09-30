@@ -13,15 +13,26 @@
 ##     Meta 修飾または特殊キーのエスケープシーケンスとして扱います。
 ##   bleopt decode_isolated_esc=esc
 ##     単体で受信した ESC を、C-[ として扱います。
-: ${bleopt_decode_isolated_esc:=esc}
+: ${bleopt_decode_isolated_esc:=auto}
 
 function bleopt/check:decode_isolated_esc {
   case $value in
-  (meta|esc) ;;
+  (meta|esc|auto) ;;
   (*)
-    echo "bleopt: Invalid value decode_isolated_esc='$value'. One of the values 'meta' or 'esc' is expected." >&2
+    echo "bleopt: Invalid value decode_isolated_esc='$value'. One of the values 'auto', 'meta' or 'esc' is expected." >&2
     return 1 ;;
   esac
+}
+function ble-decode/uses-isolated-esc {
+  if [[ $bleopt_decode_isolated_esc == esc ]]; then
+    return 0
+  elif [[ $bleopt_decode_isolated_esc == auto && ! $_ble_decode_key__seq ]]; then
+    local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_ key=$((ble_decode_Ctrl|91))
+    builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
+    [[ ${ent:2} ]] && return 0
+  fi
+
+  return 1
 }
 
 # **** key names ****
@@ -605,7 +616,7 @@ function ble-decode-char/.send-modified-key {
     ble-decode-char/.process-modifier "$ble_decode_Meta" && return
   elif (($1==ble_decode_IsolatedESC)); then
     ((kcode=(ble_decode_Ctrl|91)))
-    if [[ $bleopt_decode_isolated_esc == meta ]]; then
+    if ! ble-decode/uses-isolated-esc; then
       ble-decode-char/.process-modifier "$ble_decode_Meta" && return
     fi
   elif ((_ble_decode_KCODE_SHIFT<=$1&&$1<=_ble_decode_KCODE_HYPER)); then
