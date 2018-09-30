@@ -236,7 +236,7 @@ function ble-decode/keymap:emacs/define {
 function ble-decode/keymap:emacs/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.emacs
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/emacs.sh &&
-          $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]; then
+          $fname_keymap_cache -nt $_ble_base/lib/init-cmap.sh ]]; then
     source "$fname_keymap_cache" && return
   fi
 

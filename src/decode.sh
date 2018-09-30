@@ -1869,7 +1869,7 @@ function ble-decode-bind/cmap/initialize {
 
   [[ -d $_ble_base_cache ]] || ble/bin/mkdir -p "$_ble_base_cache"
 
-  local init=$_ble_base/cmap/default.sh
+  local init=$_ble_base/lib/init-cmap.sh
   local dump=$_ble_base_cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump
   if [[ $dump -nt $init ]]; then
     source "$dump"

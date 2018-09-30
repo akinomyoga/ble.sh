@@ -27,7 +27,6 @@ FULLVER:=0.3.alpha
 OUTDIR:=out
 
 outdirs += $(OUTDIR)
-outdirs += $(OUTDIR)/lib
 
 # Note: the following line is a workaround for the missing
 #   DEPENDENCIES_PHONY option for mwg_pp in older Makefile
@@ -35,30 +34,9 @@ ble-form.sh:
 
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
-$(OUTDIR)/ble.sh: ble.pp lib/core-syntax-ctx.def | $(OUTDIR)
+$(OUTDIR)/ble.sh: ble.pp | $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ \
 	  $(MWGPP) $< >/dev/null
-
-outfiles+=$(OUTDIR)/lib/init-term.sh
-$(OUTDIR)/lib/init-term.sh: lib/init-term.sh | $(OUTDIR)
-	cp -p $< $@
-outfiles+=$(OUTDIR)/lib/init-bind.sh
-$(OUTDIR)/lib/init-bind.sh: lib/init-bind.sh | $(OUTDIR)
-	cp -p $< $@
-outfiles+=$(OUTDIR)/lib/core-complete.sh
-$(OUTDIR)/lib/core-complete.sh: lib/core-complete.sh | $(OUTDIR)/lib
-	cp -p $< $@
-outfiles+=$(OUTDIR)/lib/core-syntax.sh
-$(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh | $(OUTDIR)/lib
-	$(MWGPP) $< > $@
-outfiles+=$(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
-$(OUTDIR)/lib/core-edit.ignoreeof-messages.txt: lib/core-edit.ignoreeof-messages.txt | $(OUTDIR)
-	cp -p $< $@
-
-outdirs += $(OUTDIR)/cmap
-outfiles += $(OUTDIR)/cmap/default.sh
-$(OUTDIR)/cmap/%.sh: cmap/%.sh | $(OUTDIR)/cmap
-	cp -p $< $@
 
 outdirs += $(OUTDIR)/keymap
 outfiles += $(OUTDIR)/keymap/emacs.sh
@@ -68,9 +46,20 @@ $(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
 $(OUTDIR)/keymap/%.txt: keymap/%.txt | $(OUTDIR)/keymap
 	cp -p $< $@
 
+outdirs += $(OUTDIR)/lib
+outfiles += $(OUTDIR)/lib/init-term.sh
+outfiles += $(OUTDIR)/lib/init-bind.sh
+outfiles += $(OUTDIR)/lib/core-complete.sh
+outfiles += $(OUTDIR)/lib/core-syntax.sh
+outfiles += $(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
+outfiles += $(OUTDIR)/lib/init-cmap.sh
 outfiles += $(OUTDIR)/lib/vim-surround.sh
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
+$(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib
+	cp -p $< $@
+$(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh lib/core-syntax-ctx.def | $(OUTDIR)/lib
+	$(MWGPP) $< > $@
 
 $(outdirs):
 	mkdir -p $@
