@@ -774,15 +774,11 @@ tech
 
     書き始めると仕様で微妙なところが浮き上がってくるのでその都度修正する事にする。
 
-    - core: bleopt に設定名を指定子て設定内容を表示させる時、設定名の存在を確認する 725d09c
-    - decode (ble-bind): オプション `-cf` 及び `-xf` をそれぞれ `-c` 及び `-x` に変更 f7f1ec8
-    - decode (ble-bind): オプション `-d` に於いて `-c` 及び `-x` の引用符が二重になっている問題の修正 f7f1ec8
-    - decode: 組み込みコマンド bind を上書きして引数をチェックする f7f1ec8
-    - decode (ble-bind): オプション `--list-widgets` 64ad962
-    - decode (ble-bind): オプション `[-m keymap]... -P|--print|-D|--dump` 64ad962
-    - decode (cmap/default): rxvt の <kbd>(C-)?(S-)?(up|down|right|left)</kbd> 及び <kbd>S-(f11..f20|home|end|insert|delete|prior|next)</kbd> に対応
-    - decode (cmap/default): <kbd>kpspace</kbd> は <kbd>SP</kbd> として受信する
-    - decode (csi/.decode): <kbd>kp5</kbd> を <kbd>CSI 1 ; <i>mod</i> u</kbd> で送る端末に対する対策
+    - complete: auto_complete の M- 事情はどうなっているのか?
+      bleopt decode_isolated_esc=auto だと M- が吸収されてしまう。
+    - bleopt complete_stdin_frequency は改名したい
+    - C-j が誤って insert になっていた
+    - dabbrev: RET, C-m は確定で、C-RET, C-j で実行にした方が良いのでは。
 
 2018-09-21
 
@@ -2395,15 +2391,17 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-24 (#D0825..#D0847 0b410df)
+2018-09-24 (#D0825..#D0849 48eeb03)
 
   新機能
   - highlight: 変数代入の右辺及び配列要素の着色に対応 `#D0839` 854c3b4
   - nsearch: (非インクリメンタル)履歴検索に対応 <kbd>C-x {C-,}{p,n}</kbd> `history-{,substring-,n}search-{for,back}ward` `#D0843` e3b7d8b 0d31cd9 253b52e
   - isearch: 検索前に選択状態でがあれば検索後に復元する `#D0845` 93f3a0f
+  - decode: 貼り付け時など大量の入力があった時に処理の進行状況を表示 `#D0848` c2d6100
+  - decode: 貼り付け時などの高速化の為に一括の文字列挿入に対応 (`batch-insert`) `#D0849` 48eeb03
 
   バグ・問題修正
-  - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#tmp0004`
+  - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#D0850`
   - auto-complete: 構文エラーが自動補完により解決される時 <kbd>RET</kbd> でコマンド実行が抑止されない問題の修正 `#D0827` daf360e
   - highlight: `shopt -s failglob` で配列の指示初期化子がエラー着色される問題の修正 (reported by cmplstofB) `#D0838` d6fe413
   - complete: プログラム補完に対して曖昧補完が効かない時の対策 `#D0841` 713e95d
@@ -2414,17 +2412,17 @@ tech
 
   動作変更
   - sabbrev, vi_imap: `sabbrev-expand` を <kbd>C-x '</kbd> ではなく <kbd>C-]</kbd> から束縛 `#D0825` e5969b7
-  - core: `bleopt` に設定名を指定子て設定内容を表示させる時、設定名の存在を確認する `#tmp0004` 725d09c
+  - core: `bleopt` に設定名を指定子て設定内容を表示させる時、設定名の存在を確認する `#D0850` 725d09c
   - isearch: <kbd>C-d</kbd> で現在の選択範囲を削除する様に変更 `#D0826` c3bb69e
   - isearch: <kbd>C-m</kbd> (<kbd>RET</kbd>) で確定した時は選択範囲を解除する様に変更 `#D0826` c3bb69e
-  - decode: `ble-bind` のオプションを再構成 `#tmp0004` f7f1ec8 64ad962
-  - decode: 組み込みコマンド `bind` を上書きして `ble.sh` の動作が阻害されない様に引数をチェックして実行 `#tmp0004`
+  - decode: `ble-bind` のオプションを再構成 `#D0850` f7f1ec8 64ad962
+  - decode: 組み込みコマンド `bind` を上書きして `ble.sh` の動作が阻害されない様に引数をチェックして実行 `#D0850`
   - complete: autoload `ble-sabbrev` (`core-complete.sh`), `ble-syntax:bash/is-complete` (`core-syntax.sh`) `#D0842` df0b769
   - isearch: 編集関数 `isearch/accept-line` が <kbd>RET</kbd> 以外から束縛されていても <kbd>RET</kbd> を実行する様に変更 `#D0843`
   - vi, [in]search: mark 名を整理 (`char`/`line`/`block`/`search` に接頭辞 `vi_` 付加し、新しい mark 名を `search` とする) `#D0843`
   - edit: 関数名変更 `ble/widget/accept-single-line-or/accepts` → `ble-edit/is-single-complete-line` `#D0844`
   - isearch: 空文字列で検索した時の振る舞いを再考 `#D0847` d05705e
-  - decode: 入力のキー復号の各種調整 `#tmp0004` dc013ad
+  - decode: 入力のキー復号の各種調整 `#D0850` dc013ad
 
   内部的変更
   - isearch, dabbrev: `ble/util/fiberchain` による再実装 `#D0843`, `#D0846` 2c695cf bdf8072 95268c1
@@ -3192,7 +3190,20 @@ tech
 
 2018-09-29
 
-  * decode: バッチで挿入を実行するという事を考えたが、微妙な点が様々ある。
+  * 2018-09-23 manual: 説明書について書き始める (1) decode [#D0850]
+
+    - core: bleopt に設定名を指定子て設定内容を表示させる時、設定名の存在を確認する 725d09c
+    - decode (ble-bind): オプション `-cf` 及び `-xf` をそれぞれ `-c` 及び `-x` に変更 f7f1ec8
+    - decode (ble-bind): オプション `-d` に於いて `-c` 及び `-x` の引用符が二重になっている問題の修正 f7f1ec8
+    - decode: 組み込みコマンド bind を上書きして引数をチェックする f7f1ec8
+    - decode (ble-bind): オプション `--list-widgets` 64ad962
+    - decode (ble-bind): オプション `[-m keymap]... -P|--print|-D|--dump` 64ad962
+    - decode (cmap/default): rxvt の <kbd>(C-)?(S-)?(up|down|right|left)</kbd> 及び <kbd>S-(f11..f20|home|end|insert|delete|prior|next)</kbd> に対応 dc013ad
+    - decode (cmap/default): <kbd>kpspace</kbd> は <kbd>SP</kbd> として受信する dc013ad
+    - decode (csi/.decode): <kbd>kp5</kbd> を <kbd>CSI 1 ; <i>mod</i> u</kbd> で送る端末に対する対策 dc013ad
+    - decode: `bleopt decode_isolated_esc=auto` 設定を追加 9b20b45
+
+  * decode: バッチで挿入を実行するという事を考えたが、微妙な点が様々ある [#D0849]
 
     - 元々のアイディアは emacs もしくは vi_ins において、
       ble-bind -f __batch_chars__ ... 的な設定を追加して、
@@ -3217,7 +3228,7 @@ tech
     %
     % x 更に何らかのキーシーケンスやキー列の後半で通常文字を使う事もある。
     %   その通常文字と区別する事はできるのだろうか。
-    %e   →これはキーシーケンスが途中状態でないかどうかだけ見ればOK?
+    %   →これはキーシーケンスが途中状態でないかどうかだけ見ればOK?
 
     実は __defchar__ を呼び出すところでキャッシュすれば良いだけなのかもしれない。
 
@@ -3285,8 +3296,10 @@ tech
 
     実装した。動いている様な気がする。
     1000文字 8.5s ぐらいだったのが 3.5s ぐらいにまで高速化した。
+    chatoyancy で試したら元から 1000 文字 1.5s ぐらいで、
+    1s ぐらいにしか変化しなかった。chatoyancy は滅茶苦茶速い。
 
-  * 2018-09-25 decode: 実は ble-decode/.hook で is-stdin-ready をチェックして
+  * 2018-09-25 decode: 実は ble-decode/.hook で is-stdin-ready をチェックして [#D0848]
     バイト列を中でキャッシュする様にすれば高速化できるのではないだろうか。
     特に PROLOGUE と EPILOGUE の呼び出しを省略する事ができる。
     また、大量のバイト列を受け取った状態でプログレスバーを表示する事も可能である。

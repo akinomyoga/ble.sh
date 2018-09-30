@@ -2643,8 +2643,7 @@ function ble/widget/auto_complete/insert-word {
 }
 function ble/widget/auto_complete/accept-line {
   ble/widget/auto_complete/insert
-  ble-edit/is-single-complete-line &&
-    ble/widget/accept-line
+  ble-decode-key 13
 }
 
 function ble-decode/keymap:auto_complete/define {
@@ -2659,7 +2658,7 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f right       auto_complete/insert-on-end
   ble-bind -f M-f         auto_complete/insert-word
   ble-bind -f M-right     auto_complete/insert-word
-  ble-bind -f C-j         auto_complete/insert
+  ble-bind -f C-j         auto_complete/accept-line
   ble-bind -f C-RET       auto_complete/accept-line
   ble-bind -f auto_complete_enter nop
 }
@@ -2864,8 +2863,8 @@ function ble-complete/dabbrev/search-in-history-entry {
   local line=$1 index=$2
 
   # 現在編集している行自身には一致させない。
-  local index_editting; ble-edit/history/get-index -v index_editting
-  if ((index!=index_editting)); then
+  local index_editing; ble-edit/history/get-index -v index_editing
+  if ((index!=index_editing)); then
     local pos=$dabbrev_pos
     while [[ ${line:pos} && ${line:pos} =~ $_ble_complete_dabbrev_regex2 ]]; do
       local rematch1=${BASH_REMATCH[1]} rematch2=${BASH_REMATCH[2]}
@@ -2959,9 +2958,8 @@ function ble-complete/dabbrev/next.fib {
     ble-complete/dabbrev/.show-status.fib
   else
     ble/widget/.bell
-    ble-decode/keymap/pop
+    ble/widget/dabbrev/exit
     ble-complete/dabbrev/reset
-    ble-complete/dabbrev/erase-status
     fib_kill=1
   fi
   return "$ext"
@@ -3007,15 +3005,22 @@ function ble/widget/dabbrev/cancel {
     ble/util/fiberchain#clear
     ble-complete/dabbrev/show-status
   else
-    ble-decode/keymap/pop
+    ble/widget/dabbrev/exit
     ble-complete/dabbrev/reset
-    ble-complete/dabbrev/erase-status
   fi
 }
-function ble/widget/dabbrev/exit-default {
+function ble/widget/dabbrev/exit {
   ble-decode/keymap/pop
   _ble_edit_mark_active=
+  ble-complete/dabbrev/erase-status
+}
+function ble/widget/dabbrev/exit-default {
+  ble/widget/dabbrev/exit
   ble-decode-key "${KEYS[@]}"
+}
+function ble/widget/dabbrev/accept-line {
+  ble/widget/dabbrev/exit
+  ble-decode-key 13
 }
 function ble-decode/keymap:dabbrev/define {
   local ble_bind_keymap=dabbrev
@@ -3023,6 +3028,10 @@ function ble-decode/keymap:dabbrev/define {
   ble-bind -f C-g         'dabbrev/cancel'
   ble-bind -f C-r         'dabbrev/next'
   ble-bind -f C-s         'dabbrev/prev'
+  ble-bind -f RET         'dabbrev/exit'
+  ble-bind -f C-m         'dabbrev/exit'
+  ble-bind -f C-RET       'dabbrev/accept-line'
+  ble-bind -f C-j         'dabbrev/accept-line'
 }
 
 #------------------------------------------------------------------------------
