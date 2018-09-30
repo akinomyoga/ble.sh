@@ -1,7 +1,7 @@
 # -*- mode: makefile-gmake -*-
 
 all:
-.PHONY: all install clean dist
+.PHONY: all
 
 # check GNU Makefile
 ifeq ($(.FEATURES),)
@@ -86,12 +86,15 @@ $(INSDIR)/%: $(OUTDIR)/%
 	bash make_command.sh install "$<" "$@"
 $(INSDIR)/cache.d $(INSDIR)/tmp:
 	mkdir -p $@ && chmod a+rwxt $@
+.PHONY: install
 
 clean:
 	-rm -rf $(outfiles) $(OUTDIR)/ble.dep
+.PHONY: clean
 
 dist: $(outfiles)
 	FULLVER=$(FULLVER) bash make_command.sh dist $^
+.PHONY: dist
 
 dist_excludes= \
 	--exclude=./ble/backup \
@@ -102,6 +105,16 @@ dist_excludes= \
 	--exclude=./ble/ble.sh
 dist.date:
 	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble $(dist_excludes)
+.PHONY: dist.date
 
 list-functions:
-	awk '/^[[:space:]]*function[[:space:]]+/{sub(/^[[:space:]]*function[[:space:]]+/,"");sub(/[[:space:]]+\{.*$$/,"");print $$0}' ble.sh |sort
+	awk '/^[[:space:]]*function[[:space:]]+/{sub(/^[[:space:]]*function[[:space:]]+/,"");sub(/[[:space:]]+\{.*$$/,"");print $$0}' out/ble.sh | sort
+.PHONY: list-functions
+
+ignoreeof-messages:
+	bash make_command.sh ignoreeof-messages
+.PHONY: ignoreeof-messages
+
+check:
+	bash make_command.sh check
+.PHONY: check
