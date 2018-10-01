@@ -59,25 +59,6 @@
 ##   選択範囲を解除して現在位置に新しい文字を挿入します。
 : ${bleopt_delete_selection_mode=1}
 
-## オプション default_keymap
-##   既定の編集モードに使われるキーマップを指定します。
-## bleopt_default_keymap=auto
-##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
-## bleopt_default_keymap=emacs
-##   emacs と同様の編集モードを使用します。
-## bleopt_default_keymap=vi
-##   vi と同様の編集モードを使用します。
-: ${bleopt_default_keymap:=auto}
-
-function bleopt/check:default_keymap {
-  case $value in
-  (auto|emacs|vi|safe) ;;
-  (*)
-    echo "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
-    return 1 ;;
-  esac
-}
-
 ## オプション indent_offset
 ##   シェルのインデント幅を指定します。既定では 4 です。
 : ${bleopt_indent_offset:=4}
@@ -6898,24 +6879,14 @@ function ble/widget/.EDIT_COMMAND {
 
 ## ble-decode.sh 用の設定
 function ble-decode/DEFAULT_KEYMAP {
-  if [[ $bleopt_default_keymap == auto ]]; then
-    if [[ -o vi ]]; then
-      ble-edit/bind/load-keymap-definition vi &&
-        builtin eval -- "$2=vi_imap"
-    else
-      ble-edit/bind/load-keymap-definition emacs &&
-        builtin eval -- "$2=emacs"
-    fi
-  elif [[ $bleopt_default_keymap == vi ]]; then
-    ble-edit/bind/load-keymap-definition vi &&
+  local ret
+  bleopt/get:default_keymap; local defmap=$ret
+  if ble-edit/bind/load-keymap-definition "$defmap"; then
+    if [[ $defmap == vi ]]; then
       builtin eval -- "$2=vi_imap"
-  else
-    ble-edit/bind/load-keymap-definition "$bleopt_default_keymap" &&
-      builtin eval -- "$2=\"\$bleopt_default_keymap\""
-  fi; local ext=$?
-
-  if ((ext==0)) && ble-decode/keymap/is-keymap "${!2}"; then
-    return 0
+    else
+      builtin eval -- "$2=\$defmap"
+    fi && ble-decode/keymap/is-keymap "${!2}" && return 0
   fi
 
   echo "ble.sh: The definition of the default keymap \"$bleopt_default_keymap\" is not found. ble.sh uses \"safe\" keymap instead."

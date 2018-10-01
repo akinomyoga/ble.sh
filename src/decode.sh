@@ -7,6 +7,36 @@
 : ${bleopt_decode_error_kseq_vbell=1}
 : ${bleopt_decode_error_kseq_discard=1}
 
+## オプション default_keymap
+##   既定の編集モードに使われるキーマップを指定します。
+## bleopt_default_keymap=auto
+##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
+## bleopt_default_keymap=emacs
+##   emacs と同様の編集モードを使用します。
+## bleopt_default_keymap=vi
+##   vi と同様の編集モードを使用します。
+: ${bleopt_default_keymap:=auto}
+
+function bleopt/check:default_keymap {
+  case $value in
+  (auto|emacs|vi|safe) ;;
+  (*)
+    echo "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
+    return 1 ;;
+  esac
+}
+
+function bleopt/get:default_keymap {
+  ret=$bleopt_default_keymap
+  if [[ $ret == auto ]]; then
+    if [[ -o vi ]]; then
+      ret=vi
+    else
+      ret=emacs
+    fi
+  fi
+}
+
 ## オプション decode_isolated_esc
 ##   bleopt decode_isolated_esc=meta
 ##     単体で受信した ESC を、前置詞として受信した ESC と同様に、
@@ -26,10 +56,14 @@ function bleopt/check:decode_isolated_esc {
 function ble-decode/uses-isolated-esc {
   if [[ $bleopt_decode_isolated_esc == esc ]]; then
     return 0
-  elif [[ $bleopt_decode_isolated_esc == auto && ! $_ble_decode_key__seq ]]; then
-    local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_ key=$((ble_decode_Ctrl|91))
-    builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
-    [[ ${ent:2} ]] && return 0
+  elif [[ $bleopt_decode_isolated_esc == auto ]]; then
+    if local ret; bleopt/get:default_keymap; [[ $ret == vi ]]; then
+      return 0
+    elif [[ ! $_ble_decode_key__seq ]]; then
+      local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_ key=$((ble_decode_Ctrl|91))
+      builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
+      [[ ${ent:2} ]] && return 0
+    fi
   fi
 
   return 1
