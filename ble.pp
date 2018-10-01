@@ -469,8 +469,8 @@ function ble-attach {
 
   # 取り敢えずプロンプトを表示する
   ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
-  ble-edit-initialize # 3ms
-  ble-edit-attach     # 0ms (_ble_edit_PS1 他の初期化)
+  ble-edit/initialize # 3ms
+  ble-edit/attach     # 0ms (_ble_edit_PS1 他の初期化)
   ble/textarea#redraw # 37ms
   ble/util/buffer.flush >&2
 
@@ -478,7 +478,7 @@ function ble-attach {
   local IFS=$' \t\n'
   ble-decode/initialize # 7ms
   ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
-  if ! ble-decode-attach; then # 53ms
+  if ! ble-decode/attach; then # 53ms
     _ble_attached=
     ble/term/finalize
     return 1

@@ -418,7 +418,7 @@ function ble-decode/.hook {
 #%if debug_keylogger
       ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
 #%end
-      "ble-decode-byte+$bleopt_input_encoding" "$c"
+      "ble/encoding:$bleopt_input_encoding/decode" "$c"
     done
     ble-decode/.hook/erase-progress
   else
@@ -428,22 +428,25 @@ function ble-decode/.hook {
 #%if debug_keylogger
       ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
 #%end
-      "ble-decode-byte+$bleopt_input_encoding" "$c"
+      "ble/encoding:$bleopt_input_encoding/decode" "$c"
     done
   fi
 
   ble-decode/EPILOGUE
 }
 
-# ## 関数 ble-decode-byte bytes...
-# ##   バイト値を整数で受け取って、現在の文字符号化方式に従ってデコードをします。
-# ##   デコードした結果得られた文字は ble-decode-char を呼び出す事によって処理します。
-# function ble-decode-byte {
-#   while (($#)); do
-#     "ble-decode-byte+$bleopt_input_encoding" "$1"
-#     shift
-#   done
-# }
+## 公開関数 ble-decode-byte bytes...
+##   バイト値を整数で受け取って、現在の文字符号化方式に従ってデコードをします。
+##   デコードした結果得られた文字は ble-decode-char を呼び出す事によって処理します。
+##
+##   Note: 現在 ble.sh 内部では使用されていません。
+##     この関数はユーザが呼び出す事を想定した関数です。
+function ble-decode-byte {
+  while (($#)); do
+    "ble/encoding:$bleopt_input_encoding/decode" "$1"
+    shift
+  done
+}
 
 # **** ble-decode-char/csi ****
 
@@ -2090,7 +2093,7 @@ function ble-decode/reset-default-keymap {
   ble-decode/DEFAULT_KEYMAP -v _ble_decode_keymap # 0ms
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
 }
-function ble-decode-attach {
+function ble-decode/attach {
   [[ $_ble_decode_bind_state != none ]] && return
   ble/util/save-editing-mode _ble_decode_bind_state
   [[ $_ble_decode_bind_state == none ]] && return 1
@@ -2107,13 +2110,13 @@ function ble-decode-attach {
   # 失敗すると悲惨なことになるので抜ける。
   if ! ble/is-array "_ble_decode_${_ble_decode_keymap}_kmap_"; then
     echo "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_keymap' is not defined." >&2
-    ble-decode-detach
+    ble-decode/detach
     return 1
   fi
 
   printf '\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
 }
-function ble-decode-detach {
+function ble-decode/detach {
   [[ $_ble_decode_bind_state != none ]] || return
 
   local current_editing_mode=
@@ -2222,7 +2225,7 @@ function ble/encoding:UTF-8/clear {
 function ble/encoding:UTF-8/is-intermediate {
   ((_ble_decode_byte__utf_8__mode))
 }
-function ble-decode-byte+UTF-8 {
+function ble/encoding:UTF-8/decode {
   local code=$_ble_decode_byte__utf_8__code
   local mode=$_ble_decode_byte__utf_8__mode
   local byte=$1
@@ -2275,10 +2278,10 @@ function ble-decode-byte+UTF-8 {
   ((${#CHARS[*]})) && ble-decode-char "${CHARS[@]}"
 }
 
-## 関数 ble-text-c2bc+UTF-8 code
+## 関数 ble/encoding:UTF-8/c2bc code
 ##   @param[in]  code
 ##   @var  [out] ret
-function ble-text-c2bc+UTF-8 {
+function ble/encoding:UTF-8/c2bc {
   local code=$1
   ((ret=code<0x80?1:
     (code<0x800?2:
@@ -2299,7 +2302,7 @@ function ble/encoding:C/generate-binder {
   done
 }
 
-## 関数 ble-decode-byte+C byte
+## 関数 ble/encoding:C/decode byte
 ##
 ##   受け取ったバイトをそのまま文字コードと解釈する。
 ##   但し、bind の都合 (bashbug の回避) により以下の変換を行う。
@@ -2319,7 +2322,7 @@ function ble/encoding:C/clear {
 function ble/encoding:C/is-intermediate {
   [[ $_ble_encoding_c_csi ]]
 }
-function ble-decode-byte+C {
+function ble/encoding:C/decode {
   if [[ $_ble_encoding_c_csi ]]; then
     _ble_encoding_c_csi=
     case $1 in
@@ -2340,7 +2343,7 @@ function ble-decode-byte+C {
   fi
 }
 
-## 関数 ble-text-c2bc+C charcode ; ret
-function ble-text-c2bc+C {
+## 関数 ble/encoding:C/c2bc charcode ; ret
+function ble/encoding:C/c2bc {
   ret=1
 }

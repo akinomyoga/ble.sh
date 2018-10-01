@@ -143,7 +143,7 @@ function bleopt/check:exec_type {
 #------------------------------------------------------------------------------
 # **** prompt ****                                                    @line.ps1
 
-## called by ble-edit-initialize
+## called by ble-edit/initialize
 function ble-edit/prompt/initialize {
   # hostname
   _ble_edit_prompt__string_h=${HOSTNAME%%.*}
@@ -1067,9 +1067,9 @@ function ble-edit/attach/TRAPWINCH {
   fi
 }
 
-## called by ble-edit-attach
+## called by ble-edit/attach
 _ble_edit_attached=0
-function ble-edit/attach {
+function ble-edit/attach/.attach {
   ((_ble_edit_attached)) && return
   _ble_edit_attached=1
 
@@ -1088,7 +1088,7 @@ function ble-edit/attach {
   [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
 
-function ble-edit/detach {
+function ble-edit/attach/.detach {
   ((!_ble_edit_attached)) && return
   PS1=$_ble_edit_PS1
   ble-edit/restore-IGNOREEOF
@@ -1644,7 +1644,7 @@ function ble/textarea#adjust-for-bash-bind {
     else
       ble/util/c2w "$lc"
       ((ret>0)) && ble/canvas/put-cub.draw "$ret"
-      ble-text-c2bc "$lc"
+      ble/util/c2bc "$lc"
       READLINE_POINT=$ret
     fi
 
@@ -4378,7 +4378,7 @@ else
     '
   }
 
-  ## called by ble-edit-initialize
+  ## called by ble-edit/initialize
   function ble-edit/history/load {
     [[ $_ble_edit_history_prefix ]] && return
     [[ $_ble_edit_history_loaded ]] && return
@@ -6689,8 +6689,8 @@ function ble-edit/bind/.check-detach {
     _ble_edit_detach_flag=
     #ble/term/visible-bell ' Bye!! '
 
-    ble-edit-finalize
-    ble-decode-detach
+    ble-edit/detach
+    ble-decode/detach
     ble/term/finalize
 
     READLINE_LINE='' READLINE_POINT=0
@@ -6730,8 +6730,8 @@ function ble-edit/bind/.check-detach {
     local state=$_ble_decode_bind_state
     if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
       ble-decode/reset-default-keymap
-      ble-decode-detach
-      ble-decode-attach
+      ble-decode/detach
+      ble-decode/attach
     fi
 
     return 1
@@ -6907,11 +6907,11 @@ function ble-edit/bind/load-keymap-definition {
 #------------------------------------------------------------------------------
 # **** entry points ****
 
-function ble-edit-initialize {
+function ble-edit/initialize {
   ble-edit/prompt/initialize
 }
-function ble-edit-attach {
-  ble-edit/attach
+function ble-edit/attach {
+  ble-edit/attach/.attach
   _ble_canvas_x=0 _ble_canvas_y=0
   ble/util/buffer "$_ble_term_cr"
 }
@@ -6932,7 +6932,7 @@ function ble-edit/reset-history {
     ble-edit/history/load
   fi
 }
-function ble-edit-finalize {
+function ble-edit/detach {
   ble-edit/bind/stdout.finalize
-  ble-edit/detach
+  ble-edit/attach/.detach
 }

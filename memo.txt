@@ -776,10 +776,11 @@ tech
 
     - auto-complete: C-j が誤って insert になっていた 01476a7
     - dabbrev: RET, C-m は確定で、C-RET, C-j で実行にした方が良いのでは 01476a7
-    - edit: M-S-f, M-S-b を束縛するべきところ M-C-f, M-C-b を束縛している箇所があった
-
-    - complete: auto_complete の M- 事情はどうなっているのか?
+    - edit: M-S-f, M-S-b を束縛するべきところ M-C-f, M-C-b を束縛している箇所があった c68e7d7
+    - complete: auto_complete の M- 事情はどうなっているのか? edd481c
       bleopt decode_isolated_esc=auto だと M- が吸収されてしまう。
+      結局 decode_isolated_esc=auto で default_keymap もチェックする事にした。
+
     - bleopt complete_stdin_frequency は改名したい
     - isearch/exit-delete-forward-char は実態を反映していないのでは。
     - M-m 及び S-M-m の実装が単なる beginning-of-line になっている
@@ -2402,7 +2403,7 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-24 (#D0825..#D0849 48eeb03)
+2018-09-24 (#D0825..#D0851 48eeb03)
 
   新機能
   - highlight: 変数代入の右辺及び配列要素の着色に対応 `#D0839` 854c3b4
@@ -2410,7 +2411,7 @@ tech
   - isearch: 検索前に選択状態でがあれば検索後に復元する `#D0845` 93f3a0f
   - decode: 貼り付け時など大量の入力があった時に処理の進行状況を表示 `#D0848` c2d6100
   - decode: 貼り付け時などの高速化の為に一括の文字列挿入に対応 (`batch-insert`) `#D0849` 48eeb03
-  - decode: `bleopt decode_isolated_esc=auto` でキーマップに応じて単独 <kbd>ESC</kbd> の取扱を切り替え 9b20b45
+  - decode: `bleopt decode_isolated_esc=auto` でキーマップに応じて単独 <kbd>ESC</kbd> の取扱を切り替え 9b20b45 edd481c
 
   バグ・問題修正
   - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#D0850`
@@ -2443,7 +2444,8 @@ tech
   - isearch, dabbrev: `ble/util/fiberchain` による再実装 `#D0843`, `#D0846` 2c695cf bdf8072 95268c1
   - edit, vi: 選択範囲の種類を表す mark 名を整理 a1a6272
   - edit: 関数名変更 `ble/widget/accept-single-line-or/accepts` → `ble-edit/is-single-complete-line` `#D0844` 63ec9fe
-  - ファイルの整理 5e07e7f 1a03da2 0b410df 55c4224 9ce944c 9a47c57 25487a7 5679ffc
+  - refactor: ファイルの整理 5e07e7f 1a03da2 0b410df 55c4224 9ce944c 9a47c57 25487a7 5679ffc b7291a7
+  - refactor: 関数名の整理 `#D0851`
 
 2018-09-03 -- 2018-09-23 (#D0766..#D0824 8584e82)
 
@@ -3202,6 +3204,50 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+  * refactor: 関数名を整理する [#D0851]
+
+    特に / を含まない ble から始まる関数は
+    ユーザに公開する関数のみに留める事にする。
+    元々は他のファイルに公開する関数のみに留めようと考えていたが、
+    そんなに疎結合ではなかったので限界がある。
+
+    * 文字符号化方式関連では以下の関数が存在している。
+      - ble-decode-byte+*
+      - ble-text-b2c+*
+      - ble-text-c2b+*
+      - ble-text-c2bc+*
+
+      以下の様に改名したい。
+      - ble/encoding:*/decode
+      - ble/encoding:*/b2c
+      - ble/encoding:*/c2b
+      - ble/encoding:*/c2bc
+
+      改名した。
+
+    * attach/detach 関連は特に初期の公開のポリシーに従っていた為に
+      ble-edit-attach や ble-decode-attach 等が存在している。
+      これらは ble-edit/attach や ble-decode/attach に変更する。
+      然し、ble-edit/attach については既に存在している。使い分けは何だろうか。
+
+      - ble-edit/attach -> ble-edit/attach/.attach # PS1 IFS IGNOREEOF LINENO 等の調整
+      - ble-edit/detach -> ble-edit/attach/.detach # 同上
+      - ble-edit-attach   -> ble-edit/attach # 上 + カーソル位置原点
+      - ble-edit-finalize -> ble-edit/detach # 上 + ごみの削除
+      - ble-edit-initialize -> ble-edit/initialize # プロンプト用定数の初期化
+
+      ble-decode 関連は特に衝突も無い様だ。
+
+      - ble-decode-attach   -> ble-decode/attach
+      - ble-decode-finalize -> ble-decode/detach
+
+      改名した。
+
+    * ble-decode-key 及び ble-decode-char はあるのに
+      ble-decode-byte は存在しない。一応ユーザに提供するという名目で公開する事にしても良い。
+
+      # 然し、実は bind 'kseq: "string"' に対応する時に使う事になる様な気がしている。
 
 2018-09-29
 

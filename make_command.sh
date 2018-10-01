@@ -17,6 +17,9 @@ function sub:install {
     cp "$src" "$dst"
   fi
 }
+function sub:install/help {
+  printf '  install src dst\n'
+}
 
 function sub:dist {
   local tmpdir="ble-$FULLVER"
@@ -39,7 +42,18 @@ function sub:ignoreeof-messages {
 }
 
 function sub:help {
-  declare -F | sed -n 's|^declare -[fx]* sub:\([^/]*\)$|make_command.sh \1|p'
+  printf '%s\n' \
+         'usage: make_command.sh SUBCOMMAND args...' \
+         '' 'SUBCOMMAND' ''
+  local sub
+  for sub in $(declare -F | sed -n 's|^declare -[fx]* sub:\([^/]*\)$|\1|p'); do
+    if declare -f sub:"$sub"/help &>/dev/null; then
+      sub:"$sub"/help
+    else
+      printf '  %s\n' "$sub"
+    fi
+  done
+  printf '\n'
 }
 
 #------------------------------------------------------------------------------
@@ -156,7 +170,50 @@ function sub:check {
 
 #------------------------------------------------------------------------------
 
-if declare -f sub:$1 &>/dev/null; then
+function sub:list-functions/help {
+  printf '  list-functions [-p] files...\n'
+}
+function sub:list-functions {
+  local -a files; files=()
+  local opt_literal=
+  local i=0 N=$# args; args=("$@")
+  while ((i<N)); do
+    local arg=${args[i++]}
+    if [[ ! $opt_literal && $arg == -* ]]; then
+      if [[ $arg == -- ]]; then
+        opt_literal=1
+      elif [[ $arg == --* ]]; then
+        printf 'list-functions: unknown option "%s"\n' "$arg" >&2
+        opt_error=1
+      elif [[ $arg == -* ]]; then
+        local j
+        for ((j=1;j<${#arg};j++)); do
+          local o=${arg:j:1}
+          case $o in
+          (p) opt_public=1 ;;
+          (*) printf 'list-functions: unknown option "-%c"\n' "$o" >&2
+              opt_error=1 ;;
+          esac
+        done
+      fi
+    else
+      files+=("$arg")
+    fi
+  done
+
+  if [[ $opt_public ]]; then
+    local rex_function_name='[^[:space:]()/]*'
+  else
+    local rex_function_name='[^[:space:]()]*'
+  fi
+  sed -n 's/^[[:space:]]*function \('"$rex_function_name"'\)[[:space:]].*/\1/p' "${files[@]}" | sort -u
+}
+
+#------------------------------------------------------------------------------
+
+if (($#==0)); then
+  sub:help
+elif declare -f sub:"$1" &>/dev/null; then
   sub:"$@"
 else
   echo "unknown subcommand '$1'" >&2

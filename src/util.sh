@@ -5,17 +5,17 @@
 : ${bleopt_input_encoding:=UTF-8}
 
 function bleopt/check:input_encoding {
-  if ! ble/is-function "ble-decode-byte+$value"; then
+  if ! ble/is-function "ble/encoding:$value/decode"; then
     echo "bleopt: Invalid value input_encoding='$value'." \
-         "A function 'ble-decode-byte+$value' is not defined." >&2
+         "A function 'ble/encoding:$value/decode' is not defined." >&2
     return 1
-  elif ! ble/is-function "ble-text-b2c+$value"; then
+  elif ! ble/is-function "ble/encoding:$value/b2c"; then
     echo "bleopt: Invalid value input_encoding='$value'." \
-         "A function 'ble-text-b2c+$value' is not defined." >&2
+         "A function 'ble/encoding:$value/b2c' is not defined." >&2
     return 1
-  elif ! ble/is-function "ble-text-c2bc+$value"; then
+  elif ! ble/is-function "ble/encoding:$value/c2bc"; then
     echo "bleopt: Invalid value input_encoding='$value'." \
-         "A function 'ble-text-c2bc+$value' is not defined." >&2
+         "A function 'ble/encoding:$value/c2bc' is not defined." >&2
     return 1
   elif ! ble/is-function "ble/encoding:$value/generate-binder"; then
     echo "bleopt: Invalid value input_encoding='$value'." \
@@ -2189,7 +2189,7 @@ else
         builtin printf "%d " "'\''$byte"
       done <<< "$s"
     '
-    "ble-text-b2c+$bleopt_input_encoding" $bytes
+    "ble/encoding:$bleopt_input_encoding/b2c" $bytes
   }
 fi
 
@@ -2236,7 +2236,7 @@ else
     fi
 
     local bytes i iN seq=
-    ble-text-c2b+UTF-8 "$1"
+    ble/encoding:UTF-8/c2b "$1"
     for ((i=0,iN=${#bytes[@]};i<iN;i++)); do
       seq="$seq\\x${_ble_text_hexmap[bytes[i]&0xFF]}"
     done
@@ -2257,13 +2257,13 @@ function ble/util/c2s {
   fi
 }
 
-## 関数 ble-text-c2bc
+## 関数 ble/util/c2bc
 ##   gets a byte count of the encoded data of the char
 ##   指定した文字を現在の符号化方式で符号化した時のバイト数を取得します。
 ##   @param[in]  $1 = code
 ##   @param[out] ret
-function ble-text-c2bc {
-  "ble-text-c2bc+$bleopt_input_encoding" "$1"
+function ble/util/c2bc {
+  "ble/encoding:$bleopt_input_encoding/c2bc" "$1"
 }
 
 ## 関数 ble/util/.cache/update-locale
@@ -2290,9 +2290,9 @@ function ble/util/.cache/update-locale {
 
 #------------------------------------------------------------------------------
 
-## 関数 ble-text-b2c+UTF-8
+## 関数 ble/encoding:UTF-8/b2c
 ##   @var[out] ret
-function ble-text-b2c+UTF-8 {
+function ble/encoding:UTF-8/b2c {
   local bytes b0 n i
   bytes=("$@")
   ret=0
@@ -2306,9 +2306,9 @@ function ble-text-b2c+UTF-8 {
   done
 }
 
-## 関数 ble-text-c2b+UTF-8
+## 関数 ble/encoding:UTF-8/c2b
 ##   @var[out] bytes[]
-function ble-text-c2b+UTF-8 {
+function ble/encoding:UTF-8/c2b {
   local code=$1 n i
   ((code=code&0x7FFFFFFF,
     n=code<0x80?0:(
@@ -2328,11 +2328,11 @@ function ble-text-c2b+UTF-8 {
   fi
 }
 
-function ble-text-b2c+C {
+function ble/encoding:C/b2c {
   local -i byte=$1
   ((ret=byte&0xFF))
 }
-function ble-text-c2b+C {
+function ble/encoding:C/c2b {
   local -i code=$1
   bytes=($((code&0xFF)))
 }
