@@ -2520,7 +2520,7 @@ function ble/widget/auto_complete/cancel-default {
   ble-decode-key "${KEYS[@]}"
 }
 function ble/widget/auto_complete/self-insert {
-  local code=$((KEYS[0]&ble_decode_MaskChar))
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
   ((code==0)) && return
 
   local ret

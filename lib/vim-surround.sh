@@ -97,8 +97,8 @@ function ble/string#trim {
 function ble/lib/vim-surround.sh/get-char-from-key {
   local key=$1
   if ! ble-decode-key/ischar "$key"; then
-    local flag=$((key&ble_decode_MaskFlag)) code=$((key&ble_decode_MaskChar))
-    if ((flag==ble_decode_Ctrl&&63<=code&&code<128&&(code&0x1F)!=0)); then
+    local flag=$((key&_ble_decode_MaskFlag)) code=$((key&_ble_decode_MaskChar))
+    if ((flag==_ble_decode_Ctrl&&63<=code&&code<128&&(code&0x1F)!=0)); then
       ((key=code==63?127:code&0x1F))
     else
       return 1

@@ -145,7 +145,7 @@ function ble/init:bind/generate-binder {
         ble/init:bind/bind-s '"\e":"\xC0\x9B"'
         ble/init:bind/bind-r '\e'
       elif ((esc1B==3)); then
-        # ENCODING: UTF-8 (ble_decode_IsolatedESC U+07FF)
+        # ENCODING: UTF-8 (_ble_decode_IsolatedESC U+07FF)
         ble/init:bind/bind-s '"\e":"\xDF\xBF"' # C-[
         ble/init:bind/bind-r '\e'
       fi

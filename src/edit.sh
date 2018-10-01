@@ -2011,7 +2011,7 @@ function ble/widget/.insert-string {
 ##     vi.sh の r, gr による挿入を想定する。
 ##
 function ble/widget/self-insert {
-  local code=$((KEYS[0]&ble_decode_MaskChar))
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
   ((code==0)) && return
 
   local ibeg=$_ble_edit_ind iend=$_ble_edit_ind
@@ -5400,7 +5400,7 @@ function ble/widget/isearch/backward {
   ble-edit/isearch/process
 }
 function ble/widget/isearch/self-insert {
-  local code=$((KEYS[0]&ble_decode_MaskChar))
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
   ble/util/fiberchain#push "self-insert $code"
   ble-edit/isearch/process
 }
@@ -5413,7 +5413,7 @@ function ble/widget/isearch/history-backward {
   ble-edit/isearch/process
 }
 function ble/widget/isearch/history-self-insert {
-  local code=$((KEYS[0]&ble_decode_MaskChar))
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
   ble/util/fiberchain#push "history-self-insert $code"
   ble-edit/isearch/process
 }

@@ -12,11 +12,11 @@ source "$_ble_base/keymap/vi_digraph.sh"
 
 function ble/keymap:vi/k2c {
   local key=$1
-  local flag=$((key&ble_decode_MaskFlag)) char=$((key&ble_decode_MaskChar))
-  if ((flag==0&&(32<=char&&char<ble_decode_function_key_base))); then
+  local flag=$((key&_ble_decode_MaskFlag)) char=$((key&_ble_decode_MaskChar))
+  if ((flag==0&&(32<=char&&char<_ble_decode_FunctionKeyBase))); then
     ret=$char
     return 0
-  elif ((flag==ble_decode_Ctrl&&63<=char&&char<128&&(char&0x1F)!=0)); then
+  elif ((flag==_ble_decode_Ctrl&&63<=char&&char<128&&(char&0x1F)!=0)); then
     ((char=char==63?127:char&0x1F))
     ret=$char
     return 0
@@ -101,15 +101,15 @@ _ble_keymap_vi_REX_WORD=$'[a-zA-Z0-9_]+|[!-/:-@[-`{-~]+|[^ \t\na-zA-Z0-9!-/:-@[-
 # vi_imap/__default__, vi-command/decompose-meta
 
 function ble/widget/vi_imap/__default__ {
-  local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
+  local flag=$((KEYS[0]&_ble_decode_MaskFlag)) code=$((KEYS[0]&_ble_decode_MaskChar))
 
   # メタ修飾付きの入力 M-key は ESC + key に分解する
-  if ((flag&ble_decode_Meta)); then
+  if ((flag&_ble_decode_Meta)); then
     ble/keymap:vi/imap-repeat/pop
 
     local esc=27 # ESC
-    # local esc=$((ble_decode_Ctrl|0x5b)) # もしくは C-[
-    ble-decode-key "$esc" "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
+    # local esc=$((_ble_decode_Ctrl|0x5b)) # もしくは C-[
+    ble-decode-key "$esc" "$((KEYS[0]&~_ble_decode_Meta))" "${KEYS[@]:1}"
     return 0
   fi
 
@@ -124,18 +124,18 @@ function ble/widget/vi_imap/__default__ {
 }
 
 function ble/widget/vi-command/decompose-meta {
-  local flag=$((KEYS[0]&ble_decode_MaskFlag)) code=$((KEYS[0]&ble_decode_MaskChar))
+  local flag=$((KEYS[0]&_ble_decode_MaskFlag)) code=$((KEYS[0]&_ble_decode_MaskChar))
 
   # メタ修飾付きの入力 M-key は ESC + key に分解する
-  if ((flag&ble_decode_Meta)); then
-    local esc=$((ble_decode_Ctrl|0x5b)) # C-[ (もしくは esc=27 ESC?)
+  if ((flag&_ble_decode_Meta)); then
+    local esc=$((_ble_decode_Ctrl|0x5b)) # C-[ (もしくは esc=27 ESC?)
 
     # 分解した後のキーを記録させる。
     ble-decode/keylog/pop
     old_suppress=$_ble_decode_keylog_depth
     local _ble_decode_keylog_depth=$((old_suppress-1))
 
-    ble-decode-key "$esc" "$((KEYS[0]&~ble_decode_Meta))" "${KEYS[@]:1}"
+    ble-decode-key "$esc" "$((KEYS[0]&~_ble_decode_Meta))" "${KEYS[@]:1}"
     return 0
   fi
 
@@ -822,7 +822,7 @@ function ble/keymap:vi/register#play {
   local i len=${#value} ret
   for ((i=0;i<len;i++)); do
     ble/util/s2c "$value" "$i"
-    ((ret==27)) && ret=$ble_decode_IsolatedESC
+    ((ret==27)) && ret=$_ble_decode_IsolatedESC
     ble-decode-char "$ret"
   done
 }
@@ -889,7 +889,7 @@ function ble/widget/vi-command:registers { ble/keymap:vi/register#dump; }
 function ble/widget/vi-command/append-arg {
   local ret ch=$1
   if [[ ! $ch ]]; then
-    local code=$((KEYS[0]&ble_decode_MaskChar))
+    local code=$((KEYS[0]&_ble_decode_MaskChar))
     ((code==0)) && return 1
     ble/util/c2s "$code"; ch=$ret
   fi
@@ -965,10 +965,10 @@ function ble/widget/vi_nmap/record-register {
         fi
       fi
 
-      local c=$((key&ble_decode_MaskChar))
+      local c=$((key&_ble_decode_MaskChar))
 
       # C-? は制御文字として登録する
-      if (((key&ble_decode_MaskFlag)==ble_decode_Ctrl&&(c==64||91<=c&&c<=95||97<=c&&c<=122))); then
+      if (((key&_ble_decode_MaskFlag)==_ble_decode_Ctrl&&(c==64||91<=c&&c<=95||97<=c&&c<=122))); then
         # Note: ^@ (NUL) は文字列にできないので除外
         if ((c!=64)); then
           ble/util/c2s $((c&0x1F))
@@ -979,12 +979,12 @@ function ble/widget/vi_nmap/record-register {
 
       # Note: Meta 修飾は単体の ESC と紛らわしいので CSI 27 で記録する。
       local mod=1
-      (((key&ble_decode_Shft)&&(mod+=0x01),
-        (key&ble_decode_Altr)&&(mod+=0x02),
-        (key&ble_decode_Ctrl)&&(mod+=0x04),
-        (key&ble_decode_Supr)&&(mod+=0x08),
-        (key&ble_decode_Hypr)&&(mod+=0x10),
-        (key&ble_decode_Meta)&&(mod+=0x20)))
+      (((key&_ble_decode_Shft)&&(mod+=0x01),
+        (key&_ble_decode_Altr)&&(mod+=0x02),
+        (key&_ble_decode_Ctrl)&&(mod+=0x04),
+        (key&_ble_decode_Supr)&&(mod+=0x08),
+        (key&_ble_decode_Hypr)&&(mod+=0x10),
+        (key&_ble_decode_Meta)&&(mod+=0x20)))
       ble/array#push buff "${csi}27;$mod;$c~"
     done
     IFS= eval 'local value="${buff[*]-}"'
@@ -2109,7 +2109,7 @@ function ble/widget/vi-command/linewise-goto.impl {
 
 function ble/keymap:vi/async-read-char.hook {
   local command=${@:1:$#-1} key=${@:$#}
-  if ((key==(ble_decode_Ctrl|0x6B))); then # C-k
+  if ((key==(_ble_decode_Ctrl|0x6B))); then # C-k
     ble-decode/keymap/push vi_digraph
     _ble_keymap_vi_digraph__hook="$command"
   else
@@ -3452,7 +3452,7 @@ function ble/widget/vi_nmap/replace-char.impl {
 
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local ret
-  if ((key==(ble_decode_Ctrl|91))); then # C-[
+  if ((key==(_ble_decode_Ctrl|91))); then # C-[
     ble/keymap:vi/adjust-command-mode
     return 27
   elif ! ble/keymap:vi/k2c "$key"; then
@@ -3603,7 +3603,7 @@ function ble/widget/vi-command/search-char.impl/core {
   [[ $opts != *r* ]]; local isrepeat=$?
   if ((isrepeat)); then
     c=$key
-  elif ((key==(ble_decode_Ctrl|91))); then # C-[ -> cancel
+  elif ((key==(_ble_decode_Ctrl|91))); then # C-[ -> cancel
     return 27
   else
     ble/keymap:vi/k2c "$key" || return 1
@@ -4355,9 +4355,9 @@ _ble_keymap_vi_commandline_history_onleave=()
 
 ## @arr _ble_keymap_vi_cmap_is_cancel_key
 ##   コマンドラインが空の時にキャンセルに使うキーの辞書です。
-_ble_keymap_vi_cmap_is_cancel_key[63|ble_decode_Ctrl]=1  # C-?
+_ble_keymap_vi_cmap_is_cancel_key[63|_ble_decode_Ctrl]=1  # C-?
 _ble_keymap_vi_cmap_is_cancel_key[127]=1                 # DEL
-_ble_keymap_vi_cmap_is_cancel_key[104|ble_decode_Ctrl]=1 # C-h
+_ble_keymap_vi_cmap_is_cancel_key[104|_ble_decode_Ctrl]=1 # C-h
 _ble_keymap_vi_cmap_is_cancel_key[8]=1                   # BS
 function ble/keymap:vi/commandline/before-command.hook {
   if [[ ! $_ble_edit_str ]] && ((_ble_keymap_vi_cmap_is_cancel_key[KEYS[0]])); then
@@ -5893,7 +5893,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
   if [[ $FLAG ]]; then
     ble/widget/.bell
     return 1
-  elif ((key==(ble_decode_Ctrl|91))); then # C-[ -> cancel
+  elif ((key==(_ble_decode_Ctrl|91))); then # C-[ -> cancel
     return 27
   elif ! ble/keymap:vi/k2c "$key"; then
     ble/widget/.bell
@@ -6719,13 +6719,13 @@ function ble/widget/vi-command/bracketed-paste.proc {
 
     ble/widget/vi_imap/bracketed-paste.proc "$@"
     ble/keymap:vi/imap/invoke-widget \
-      ble/widget/vi_imap/normal-mode $((ble_decode_Ctrl|0x5b))
+      ble/widget/vi_imap/normal-mode $((_ble_decode_Ctrl|0x5b))
   elif [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     local _ble_edit_mark_active=$_ble_keymap_vi_brackated_paste_mark_active
     ble-decode/widget/call-interactively 'ble/widget/vi-command/operator c' 99 || return 1
     ble/widget/vi_imap/bracketed-paste.proc "$@"
     ble/keymap:vi/imap/invoke-widget \
-      ble/widget/vi_imap/normal-mode $((ble_decode_Ctrl|0x5b))
+      ble/widget/vi_imap/normal-mode $((_ble_decode_Ctrl|0x5b))
   elif [[ $_ble_decode_keymap == vi_omap ]]; then
     ble/widget/vi_omap/cancel
     ble/widget/.bell
