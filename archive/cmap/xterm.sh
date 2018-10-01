@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function ble-bind/cmap:xterm/CSI-CMS {
+function ble/cmap:xterm/CSI-CMS {
   local Fp="$1" Ft="$2" key="$3"
   ble-bind -k "ESC [ $Fp $Ft"     "$key"
   ble-bind -k "ESC [ $Fp ; 1 $Ft" "$key"
@@ -12,7 +12,7 @@ function ble-bind/cmap:xterm/CSI-CMS {
   ble-bind -k "ESC [ $Fp ; 7 $Ft" "C-M-$key"
   ble-bind -k "ESC [ $Fp ; 8 $Ft" "C-M-S-$key"
 }
-function ble-bind/cmap:xterm/SS3-CMS {
+function ble/cmap:xterm/SS3-CMS {
   local Ft="$1" key="$2"
   ble-bind -k "ESC O $Ft"     "$key"
 
@@ -39,32 +39,32 @@ ble-bind --csi 'Q' f2
 ble-bind --csi 'R' f3
 ble-bind --csi 'S' f4
 
-ble-bind/cmap:xterm/SS3-CMS 'A' up
-ble-bind/cmap:xterm/SS3-CMS 'B' down
-ble-bind/cmap:xterm/SS3-CMS 'C' right
-ble-bind/cmap:xterm/SS3-CMS 'D' left
-#ble-bind/cmap:xterm/SS3-CMS 'E' begin
-ble-bind/cmap:xterm/SS3-CMS 'F' end
-ble-bind/cmap:xterm/SS3-CMS 'H' home
-ble-bind/cmap:xterm/SS3-CMS 'P' f1
-ble-bind/cmap:xterm/SS3-CMS 'Q' f2
-ble-bind/cmap:xterm/SS3-CMS 'R' f3
-ble-bind/cmap:xterm/SS3-CMS 'S' f4
-ble-bind/cmap:xterm/SS3-CMS 'j' kpmul
-ble-bind/cmap:xterm/SS3-CMS 'k' kpadd
-ble-bind/cmap:xterm/SS3-CMS 'l' kpsep
-ble-bind/cmap:xterm/SS3-CMS 'm' kpsub
-ble-bind/cmap:xterm/SS3-CMS 'o' kpdiv
-ble-bind/cmap:xterm/SS3-CMS 'p' kp0
-ble-bind/cmap:xterm/SS3-CMS 'q' kp1
-ble-bind/cmap:xterm/SS3-CMS 'r' kp2
-ble-bind/cmap:xterm/SS3-CMS 's' kp3
-ble-bind/cmap:xterm/SS3-CMS 't' kp4
-ble-bind/cmap:xterm/SS3-CMS 'u' kp5
-ble-bind/cmap:xterm/SS3-CMS 'v' kp6
-ble-bind/cmap:xterm/SS3-CMS 'w' kp7
-ble-bind/cmap:xterm/SS3-CMS 'x' kp8
-ble-bind/cmap:xterm/SS3-CMS 'y' kp9
+ble/cmap:xterm/SS3-CMS 'A' up
+ble/cmap:xterm/SS3-CMS 'B' down
+ble/cmap:xterm/SS3-CMS 'C' right
+ble/cmap:xterm/SS3-CMS 'D' left
+#ble/cmap:xterm/SS3-CMS 'E' begin
+ble/cmap:xterm/SS3-CMS 'F' end
+ble/cmap:xterm/SS3-CMS 'H' home
+ble/cmap:xterm/SS3-CMS 'P' f1
+ble/cmap:xterm/SS3-CMS 'Q' f2
+ble/cmap:xterm/SS3-CMS 'R' f3
+ble/cmap:xterm/SS3-CMS 'S' f4
+ble/cmap:xterm/SS3-CMS 'j' kpmul
+ble/cmap:xterm/SS3-CMS 'k' kpadd
+ble/cmap:xterm/SS3-CMS 'l' kpsep
+ble/cmap:xterm/SS3-CMS 'm' kpsub
+ble/cmap:xterm/SS3-CMS 'o' kpdiv
+ble/cmap:xterm/SS3-CMS 'p' kp0
+ble/cmap:xterm/SS3-CMS 'q' kp1
+ble/cmap:xterm/SS3-CMS 'r' kp2
+ble/cmap:xterm/SS3-CMS 's' kp3
+ble/cmap:xterm/SS3-CMS 't' kp4
+ble/cmap:xterm/SS3-CMS 'u' kp5
+ble/cmap:xterm/SS3-CMS 'v' kp6
+ble/cmap:xterm/SS3-CMS 'w' kp7
+ble/cmap:xterm/SS3-CMS 'x' kp8
+ble/cmap:xterm/SS3-CMS 'y' kp9
 
 ble-bind --csi '1~' home
 ble-bind --csi '2~' insert
@@ -95,10 +95,10 @@ ble-bind --csi '31~' f17
 ble-bind --csi '32~' f18
 ble-bind --csi '33~' f19
 ble-bind --csi '34~' f20
-ble-bind/cmap:xterm/CSI-CMS '2 3' '$' f21
-ble-bind/cmap:xterm/CSI-CMS '2 4' '$' f22
-ble-bind/cmap:xterm/CSI-CMS '2 5' '$' f23
-ble-bind/cmap:xterm/CSI-CMS '2 6' '$' f24
+ble/cmap:xterm/CSI-CMS '2 3' '$' f21
+ble/cmap:xterm/CSI-CMS '2 4' '$' f22
+ble/cmap:xterm/CSI-CMS '2 5' '$' f23
+ble/cmap:xterm/CSI-CMS '2 6' '$' f24
 
 #
 # xterm "CSI 2 7 ; ... ; code ~" 形式は

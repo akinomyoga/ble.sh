@@ -40,14 +40,14 @@
 # この一覧を更新することでキャッシュの更新が起こるようにしている。
 #
 
-function ble/cmap/default/bind-keypad-key {
+function ble/init:cmap/bind-keypad-key {
   local Ft=$1 name=$2
   ble-bind --csi "$Ft" "$name"
   (($3&1)) && ble-bind -k "ESC O $Ft" "$name"
   (($3&2)) && ble-bind -k "ESC ? $Ft" "$name"
 }
 
-function ble-bind-function-key+default {
+function ble/init:cmap/initialize {
   # Synonyms
   #   paste = S-insert [rxvt]
   #   scroll_up = S-prior [rxvt]
@@ -147,36 +147,36 @@ function ble-bind-function-key+default {
   #   余り利点もないので取り敢えずこの設定では区別しない。
   ble-bind -k 'ESC ? SP' SP # kpspace
   ble-bind -k 'ESC O SP' SP # kpspace
-  ble/cmap/default/bind-keypad-key 'A' up    1
-  ble/cmap/default/bind-keypad-key 'B' down  1
-  ble/cmap/default/bind-keypad-key 'C' right 1
-  ble/cmap/default/bind-keypad-key 'D' left  1
-  ble/cmap/default/bind-keypad-key 'E' begin 1
-  ble/cmap/default/bind-keypad-key 'F' end   1
-  ble/cmap/default/bind-keypad-key 'H' home  1
-  ble/cmap/default/bind-keypad-key 'I' TAB   3 # kptab
-  ble/cmap/default/bind-keypad-key 'M' RET   3 # kpent
-  ble/cmap/default/bind-keypad-key 'P' f1    1 # kpf1 # Note: 普通の f1-f4
-  ble/cmap/default/bind-keypad-key 'Q' f2    1 # kpf2 #   に対してこれらの
-  ble/cmap/default/bind-keypad-key 'R' f3    1 # kpf3 #   シーケンスを送る
-  ble/cmap/default/bind-keypad-key 'S' f4    1 # kpf4 #   端末もある。
-  ble/cmap/default/bind-keypad-key 'j' '*'   3 # kpmul
-  ble/cmap/default/bind-keypad-key 'k' '+'   3 # kpadd
-  ble/cmap/default/bind-keypad-key 'l' ','   3 # kpsep
-  ble/cmap/default/bind-keypad-key 'm' '-'   3 # kpsub
-  ble/cmap/default/bind-keypad-key 'n' '.'   3 # kpdec
-  ble/cmap/default/bind-keypad-key 'o' '/'   3 # kpdiv
-  ble/cmap/default/bind-keypad-key 'p' '0'   3 # kp0
-  ble/cmap/default/bind-keypad-key 'q' '1'   3 # kp1
-  ble/cmap/default/bind-keypad-key 'r' '2'   3 # kp2
-  ble/cmap/default/bind-keypad-key 's' '3'   3 # kp3
-  ble/cmap/default/bind-keypad-key 't' '4'   3 # kp4
-  ble/cmap/default/bind-keypad-key 'u' '5'   3 # kp5
-  ble/cmap/default/bind-keypad-key 'v' '6'   3 # kp6
-  ble/cmap/default/bind-keypad-key 'w' '7'   3 # kp7
-  ble/cmap/default/bind-keypad-key 'x' '8'   3 # kp8
-  ble/cmap/default/bind-keypad-key 'y' '9'   3 # kp9
-  ble/cmap/default/bind-keypad-key 'X' '='   3 # kpeq
+  ble/init:cmap/bind-keypad-key 'A' up    1
+  ble/init:cmap/bind-keypad-key 'B' down  1
+  ble/init:cmap/bind-keypad-key 'C' right 1
+  ble/init:cmap/bind-keypad-key 'D' left  1
+  ble/init:cmap/bind-keypad-key 'E' begin 1
+  ble/init:cmap/bind-keypad-key 'F' end   1
+  ble/init:cmap/bind-keypad-key 'H' home  1
+  ble/init:cmap/bind-keypad-key 'I' TAB   3 # kptab
+  ble/init:cmap/bind-keypad-key 'M' RET   3 # kpent
+  ble/init:cmap/bind-keypad-key 'P' f1    1 # kpf1 # Note: 普通の f1-f4
+  ble/init:cmap/bind-keypad-key 'Q' f2    1 # kpf2 #   に対してこれらの
+  ble/init:cmap/bind-keypad-key 'R' f3    1 # kpf3 #   シーケンスを送る
+  ble/init:cmap/bind-keypad-key 'S' f4    1 # kpf4 #   端末もある。
+  ble/init:cmap/bind-keypad-key 'j' '*'   3 # kpmul
+  ble/init:cmap/bind-keypad-key 'k' '+'   3 # kpadd
+  ble/init:cmap/bind-keypad-key 'l' ','   3 # kpsep
+  ble/init:cmap/bind-keypad-key 'm' '-'   3 # kpsub
+  ble/init:cmap/bind-keypad-key 'n' '.'   3 # kpdec
+  ble/init:cmap/bind-keypad-key 'o' '/'   3 # kpdiv
+  ble/init:cmap/bind-keypad-key 'p' '0'   3 # kp0
+  ble/init:cmap/bind-keypad-key 'q' '1'   3 # kp1
+  ble/init:cmap/bind-keypad-key 'r' '2'   3 # kp2
+  ble/init:cmap/bind-keypad-key 's' '3'   3 # kp3
+  ble/init:cmap/bind-keypad-key 't' '4'   3 # kp4
+  ble/init:cmap/bind-keypad-key 'u' '5'   3 # kp5
+  ble/init:cmap/bind-keypad-key 'v' '6'   3 # kp6
+  ble/init:cmap/bind-keypad-key 'w' '7'   3 # kp7
+  ble/init:cmap/bind-keypad-key 'x' '8'   3 # kp8
+  ble/init:cmap/bind-keypad-key 'y' '9'   3 # kp9
+  ble/init:cmap/bind-keypad-key 'X' '='   3 # kpeq
 
   # rxvt
   #   Note: "CSI code @", "CSI code ^" は本体側で特別に処理している。
@@ -231,4 +231,4 @@ function ble-bind-function-key+default {
   ble-edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences... done"
 }
 
-ble-bind-function-key+default
+ble/init:cmap/initialize
