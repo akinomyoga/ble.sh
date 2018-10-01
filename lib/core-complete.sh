@@ -1970,6 +1970,7 @@ function ble-complete/menu/filter-incrementally {
 
 function ble-complete/menu-filter.idle {
   ble/util/idle.wait-user-input
+  [[ $bleopt_complete_menu_filter ]] || return
   [[ $_ble_complete_menu_active ]] || return
   ble-complete/menu/filter-incrementally; local ext=$?
   ((ext==148)) && return 148
@@ -2454,6 +2455,7 @@ function ble-complete/auto-complete.idle {
   # ※特に上書きしなければ常に wait-user-input で抜ける。
   ble/util/idle.wait-user-input
 
+  [[ $bleopt_complete_auto_complete ]] || return
   [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]] || return 0
 
   case $_ble_decode_widget_last in

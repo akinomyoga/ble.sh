@@ -26,10 +26,11 @@ fi
 # 設定変数
 
 : ${bleopt_complete_stdin_frequency:=50}
-: ${bleopt_complete_ambiguous:=1}
-: ${bleopt_complete_contract_function_names:=1}
+: ${bleopt_complete_ambiguous=1}
+: ${bleopt_complete_contract_function_names=1}
 : ${bleopt_complete_auto_delay:=1}
-: ${bleopt_complete_auto_history:=1}
+: ${bleopt_complete_auto_history=1}
+: ${bleopt_complete_auto_complete=1}
 
 ## オプション complete_menu_style
 ##   補完候補のリスト表示のスタイルを指定します。
@@ -41,7 +42,8 @@ fi
 ##
 : ${bleopt_complete_menu_style:=align-nowrap}
 : ${bleopt_complete_menu_align:=20}
-: ${bleopt_complete_menu_complete:=1}
+: ${bleopt_complete_menu_complete=1}
+: ${bleopt_complete_menu_filter=1}
 
 function bleopt/check:complete_menu_style {
   if ! ble/is-function "ble-complete/menu/style:$value/construct"; then
