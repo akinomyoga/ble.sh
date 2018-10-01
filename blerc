@@ -31,14 +31,16 @@
 
 ## Settings for completion
 
+# bleopt complete_polling_cycle=50
 # bleopt complete_ambiguous=1
-# bleopt complete_auto_delay=100
-# bleopt complete_auto_history=1
 # bleopt complete_contract_function_names=1
+# bleopt complete_auto_complete=1
+# bleopt complete_auto_history=1
+# bleopt complete_auto_delay=100
+# bleopt complete_menu_style=align-nowrap
 # bleopt complete_menu_align=20
 # bleopt complete_menu_complete=1
-# bleopt complete_menu_style=align-nowrap
-# bleopt complete_stdin_frequency=50
+# bleopt complete_menu_filter=1
 
 ## Color settings
 

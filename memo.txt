@@ -774,31 +774,6 @@ tech
 
     書き始めると仕様で微妙なところが浮き上がってくるのでその都度修正する事にする。
 
-    - auto-complete: C-j が誤って insert になっていた 01476a7
-    - dabbrev: RET, C-m は確定で、C-RET, C-j で実行にした方が良いのでは 01476a7
-    - edit: M-S-f, M-S-b を束縛するべきところ M-C-f, M-C-b を束縛している箇所があった c68e7d7
-    - complete: auto_complete の M- 事情はどうなっているのか? edd481c
-      bleopt decode_isolated_esc=auto だと M- が吸収されてしまう。
-      結局 decode_isolated_esc=auto で default_keymap もチェックする事にした。
-    - isearch/exit-delete-forward-char は実態を反映していないのでは。
-      →これは元々 emacs の動作に合わせる為だった気がする。
-      emacs では検索して C-d とするとその位置の文字が削除される。
-      検索して一致した部分が削除される訳ではないのである。
-      改めて試してみると確かにそうだった。
-
-      Bash の振る舞いはどうであっただろうか。
-      Bash はもっと原始的な振る舞いしかしない。
-      常にカーソルは一致範囲の先頭であり、
-      また、C-d とするとその位置の文字が削除される。
-
-      一方で、現在の ble.sh の実装ではその他の様々の操作も全て
-      一致した範囲に作用する様になっている。つまり、
-      C-d だけ別の振る舞いをするというのも不自然である。
-      従って、今の振る舞いのままで良いが、
-      exit-delete-forward-char は Bash/Emacs 互換の動作として、
-      既定では束縛しない様にする。
-
-    - bleopt complete_stdin_frequency は改名したい
     - M-m 及び S-M-m の実装が単なる beginning-of-line になっている
     - vi でも M- 系列を bind するオプションがあっても良いのでは。
       しかしキャッシュしていると反映されなくなってしまう。
@@ -806,7 +781,6 @@ tech
       或いは、キーマップの継承などがあれば簡単なのかもしれない。
       しかし、これ単体の為に継承を新しく実装する程でも無い。
       或いは M- 系列を元から bind してしまう…?
-    - auto_complete 及び menu_filter の有効無効も切り替えられた方が良いのでは。
 
 2018-09-21
 
@@ -2419,7 +2393,7 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-24 (#D0825..#D0851 48eeb03)
+2018-09-24 (#D0825..#D0852 4425d12)
 
   新機能
   - highlight: 変数代入の右辺及び配列要素の着色に対応 `#D0839` 854c3b4
@@ -2427,7 +2401,8 @@ tech
   - isearch: 検索前に選択状態でがあれば検索後に復元する `#D0845` 93f3a0f
   - decode: 貼り付け時など大量の入力があった時に処理の進行状況を表示 `#D0848` c2d6100
   - decode: 貼り付け時などの高速化の為に一括の文字列挿入に対応 (`batch-insert`) `#D0849` 48eeb03
-  - decode: `bleopt decode_isolated_esc=auto` でキーマップに応じて単独 <kbd>ESC</kbd> の取扱を切り替え 9b20b45 edd481c
+  - decode: `bleopt decode_isolated_esc=auto` でキーマップに応じて単独 <kbd>ESC</kbd> の取扱を切り替え `#D0852` 9b20b45 edd481c
+  - complete: `bleopt complete_{auto_complete,menu_filter}=` で自動補完・候補絞り込みの無効化に対応 `#D0852` 4425d12
 
   バグ・問題修正
   - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#D0850`
@@ -2438,13 +2413,13 @@ tech
   - isearch: キャンセル時に位置とマークが正確に復元されない問題の修正 `#D0847`
   - isearch, dabbrev: 検索処理中にユーザが何か入力するまで現在行が更新されない問題の修正 `#D0847`
   - decode: 未ロードのキーマップに対して `ble-bind -m -P` `ble-bind -m kmap -f kspecs -` が使えない問題の修正 66e202a
-  - auto-complete: <kbd>C-j</kbd> が単なる "確定" になっていたのを "確定して実行" に修正 `#tmp0004` 01476a7
-  - edit: <kbd>M-S-f</kbd>, <kbd>M-S-b</kbd> を束縛するべきところ <kbd>M-C-f</kbd>, <kbd>M-C-b</kbd> を束縛している箇所を修正 `#tmp0004` c68e7d7
+  - auto-complete: <kbd>C-j</kbd> が単なる "確定" になっていたのを "確定して実行" に修正 `#D0852` 01476a7
+  - edit: <kbd>M-S-f</kbd>, <kbd>M-S-b</kbd> を束縛するべきところ <kbd>M-C-f</kbd>, <kbd>M-C-b</kbd> を束縛している箇所を修正 `#D0852` c68e7d7
 
   動作変更
   - sabbrev, vi_imap: `sabbrev-expand` を <kbd>C-x '</kbd> ではなく <kbd>C-]</kbd> から束縛 `#D0825` e5969b7
   - core: `bleopt` に設定名を指定子て設定内容を表示させる時、設定名の存在を確認する `#D0850` 725d09c
-  - isearch: <kbd>C-d</kbd> で現在の選択範囲を削除する様に変更 `#D0826` c3bb69e
+  - isearch: <kbd>C-d</kbd> で現在の選択範囲を削除する様に変更 `#D0826` c3bb69e `#D0852` db28f74
   - isearch: <kbd>C-m</kbd> (<kbd>RET</kbd>) で確定した時は選択範囲を解除する様に変更 `#D0826` c3bb69e
   - decode: `ble-bind` のオプションを再構成 `#D0850` f7f1ec8 64ad962
   - decode: 組み込みコマンド `bind` を上書きして `ble.sh` の動作が阻害されない様に引数をチェックして実行 `#D0850`
@@ -2454,7 +2429,7 @@ tech
   - edit: 関数名変更 `ble/widget/accept-single-line-or/accepts` → `ble-edit/is-single-complete-line` `#D0844`
   - isearch: 空文字列で検索した時の振る舞いを再考 `#D0847` d05705e
   - decode: 入力のキー復号の各種調整 `#D0850` dc013ad
-  - dabbrev: <kbd>C-m</kbd>, <kbd>RET</kbd> で展開終了、<kbd>C-j</kbd>, <kbd>C-RET</kbd> でコマンド実行 `#tmp0004` 01476a7
+  - dabbrev: <kbd>C-m</kbd>, <kbd>RET</kbd> で展開終了、<kbd>C-j</kbd>, <kbd>C-RET</kbd> でコマンド実行 `#D0852` 01476a7
 
   内部的変更
   - isearch, dabbrev: `ble/util/fiberchain` による再実装 `#D0843`, `#D0846` 2c695cf bdf8072 95268c1
@@ -3220,6 +3195,48 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2018-10-01
+
+  * 2018-09-23 manual: 説明書について書き始める (2) complete 等 [#D0852]
+
+    - done: auto-complete: C-j が誤って insert になっていた 01476a7
+
+    - done: dabbrev: RET, C-m は確定で、C-RET, C-j で実行にした方が良いのでは 01476a7
+
+    - done: edit: M-S-f, M-S-b を束縛するべきところ M-C-f, M-C-b を束縛している箇所があった c68e7d7
+
+    - done: complete: auto_complete の M- 事情はどうなっているのか? edd481c
+      bleopt decode_isolated_esc=auto だと M- が吸収されてしまう。
+      結局 decode_isolated_esc=auto で default_keymap もチェックする事にした。
+
+    - done: isearch/exit-delete-forward-char は実態を反映していないのでは db28f74
+      →これは元々 emacs の動作に合わせる為だった気がする。
+      emacs では検索して C-d とするとその位置の文字が削除される。
+      検索して一致した部分が削除される訳ではないのである。
+      改めて試してみると確かにそうだった。
+
+      Bash の振る舞いはどうであっただろうか。
+      Bash はもっと原始的な振る舞いしかしない。
+      常にカーソルは一致範囲の先頭であり、
+      また、C-d とするとその位置の文字が削除される。
+
+      一方で、現在の ble.sh の実装ではその他の様々の操作も全て
+      一致した範囲に作用する様になっている。つまり、
+      C-d だけ別の振る舞いをするというのも不自然である。
+      従って、今の振る舞いのままで良いが、
+      exit-delete-forward-char は Bash/Emacs 互換の動作として、
+      既定では束縛しない様にする。
+
+    - done: auto_complete 及び menu_filter の有効無効も切り替えられた方が良いのでは 4425d12
+
+    - done: bleopt complete_stdin_frequency は改名したい
+      これに対応する為にはうーん。
+      complete_stdin_frequency に bind した時に警告を発生する様にしたい。
+      後、どの様な変数名が適当であろうか。
+      complete_stdin_check_interval
+      complete_polling_cycle が良さそうだ。知っていれば何かすぐに分かる。
+      古い変数名に対するチェックも行った。
 
   * refactor: 関数名を整理する [#D0851]
 

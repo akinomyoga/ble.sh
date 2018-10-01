@@ -547,7 +547,7 @@ function ble-complete/source:command {
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+    ((i++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
 
     # workaround: 何故か compgen -c -- "$compv_quoted" で
     #   厳密一致のディレクトリ名が混入するので削除する。
@@ -929,7 +929,7 @@ function ble-complete/source:argument/.progcomp {
 
   local cand i=0 count=0
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+    ((i++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
     ble-complete/cand/yield "$action" "$cand" "$comp_opts"
     ((count++))
   done
@@ -1042,7 +1042,7 @@ function ble-complete/source/compgen {
 
   local i=0
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+    ((i++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
     ble-complete/cand/yield "$action" "$cand" "$data"
   done
 }
@@ -1278,7 +1278,7 @@ function ble-complete/candidates/.filter-by-regex {
   local i j=0
   local -a prop=() cand=() word=() show=() data=()
   for ((i=0;i<cand_count;i++)); do
-    ((i%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+    ((i%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
     [[ ${cand_cand[i]} =~ $rex_filter ]] || continue
     cand[j]=${cand_cand[i]}
     word[j]=${cand_word[i]}
@@ -1297,7 +1297,7 @@ function ble-complete/candidates/.filter-word-by-prefix {
   local i j=0
   local -a prop=() cand=() word=() show=() data=()
   for ((i=0;i<cand_count;i++)); do
-    ((i%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+    ((i%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
     [[ ${cand_word[i]} == "$prefix"* ]] || continue
     cand[j]=${cand_cand[i]}
     word[j]=${cand_word[i]}
@@ -1416,7 +1416,7 @@ function ble-complete/candidates/determine-common-prefix {
   if ((cand_count>1)); then
     local word loop=0
     for word in "${cand_word[@]:1}"; do
-      ((loop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+      ((loop++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
 
       ((clen>${#word}&&(clen=${#word})))
       while [[ ${word::clen} != "${common::clen}" ]]; do
@@ -1540,7 +1540,7 @@ function ble-complete/menu/style:align/construct {
   ((max_wcell<=0?(max_wcell=20):(max_wcell<2&&(max_wcell=2))))
   local pack w esc1 nchar_max=$((cols*lines)) nchar=0
   for pack in "${cand_pack[@]}"; do
-    ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+    ((iloop++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
 
     x=0 y=0; ble-complete/menu/construct-single-entry "$pack"; esc1=$ret
     ((w=y*cols+x))
@@ -1570,7 +1570,7 @@ function ble-complete/menu/style:align/construct {
   local x0 y0
   local icell pad
   for entry in "${measure[@]}"; do
-    ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+    ((iloop++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
 
     w=${entry%%:*} entry=${entry#*:}
     s=${entry%%:*} entry=${entry#*:}
@@ -1624,7 +1624,7 @@ function ble-complete/menu/style:dense/construct {
 
   local pack i=0 N=${#cand_pack[@]}
   for pack in "${cand_pack[@]}"; do
-    ((iloop++%bleopt_complete_stdin_frequency==0)) && ble-complete/check-cancel && return 148
+    ((iloop++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
 
     local x0=$x y0=$y esc1
     ble-complete/menu/construct-single-entry "$pack"; esc1=$ret
@@ -1938,7 +1938,7 @@ function ble-complete/menu/filter-incrementally {
   ble-syntax:bash/simple-word/eval "$ret"
   local COMPV=$ret
 
-  local iloop=0 interval=$bleopt_complete_stdin_frequency
+  local iloop=0 interval=$bleopt_complete_polling_cycle
 
   local comp_type=
   local -a cand_pack; cand_pack=()
@@ -2377,8 +2377,8 @@ function ble-complete/auto-complete/.check-context {
 
   # ble-complete/candidates/generate 設定
   local bleopt_complete_contract_function_names=
-  ((bleopt_complete_stdin_frequency>25)) &&
-    local bleopt_complete_stdin_frequency=25
+  ((bleopt_complete_polling_cycle>25)) &&
+    local bleopt_complete_polling_cycle=25
   local COMP1 COMP2 COMPS COMPV
   local comps_flags comps_fixed
   local comps_rex_ambiguous
