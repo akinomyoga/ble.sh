@@ -5487,8 +5487,8 @@ function ble/widget/isearch/accept-line {
   fi
 }
 function ble/widget/isearch/exit-delete-forward-char {
-  ble/widget/isearch/exit-with-region
-  ble/widget/delete-region-or forward-char
+  ble/widget/isearch/exit
+  ble/widget/delete-forward-char
 }
 
 ## 関数 ble/widget/history-isearch.impl opts
@@ -5529,7 +5529,6 @@ function ble-decode/keymap:isearch/define {
   ble-bind -f 'BS'        isearch/prev
 
   ble-bind -f __default__ isearch/exit-default
-  ble-bind -f C-d         isearch/exit-delete-forward-char
   ble-bind -f C-g         isearch/cancel
   ble-bind -f C-m         isearch/exit
   ble-bind -f RET         isearch/exit
