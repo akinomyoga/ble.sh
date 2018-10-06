@@ -5264,7 +5264,7 @@ function ble-highlight-layer:syntax/update-word-table {
   _ble_syntax_vanishing_word_umin=-1 _ble_syntax_vanishing_word_umax=-1
 
   # (3) 色配列に登録
-  ble-highlight-layer:syntax/word/.apply-attribute 0 "$iN" '' # clear word color
+  ble-highlight-layer:syntax/word/.apply-attribute 0 "$iN" d # clear word color
   local i
   for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;)); do
     if ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]]; then
