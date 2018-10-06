@@ -1,7 +1,7 @@
 ---
-name: 要望
-about: ありがとうございます! 要望・提案など何でも問題ありません!
+name: Feature request
+about: Suggest an idea for this project
 
 ---
 
-[こちらに自由に記述してくださいませ。不明な点があればこちらからお尋ねしますので、ご安心下さいませ。もし端末画面における動作例がありましたら、それを記入して頂けると分かりやすいかもしれないので御一考頂ければ幸いです。]
+[You can describe the request in a free way.]
