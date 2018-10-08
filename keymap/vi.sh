@@ -3788,10 +3788,114 @@ _ble_keymap_vi_text_object=
 ##   @exit テキストオブジェクトの処理が完了したときに 0 を返します。
 ##
 
+
+## 関数 ble/keymap:vi/text-object/word.extend-forward
+##   @var[in] type arg
+##   @var[in] rex_word nl space ifs
+##   @var[in,out] beg end
+##   @var[out] flags
+##     A 先頭に空白が含まれる事を表す。
+##     Z 末尾に空白が含まれる事を表す。
+##     I 単語前半の取り込みが試みられた事を表す。
+function ble/keymap:vi/text-object/word.extend-forward {
+  local rex
+
+  flags=
+  [[ ${_ble_edit_str:beg:1} == ["$ifs"] ]] && flags=${flags}A
+
+  # aw では空行に居る時は次の行の先頭から。
+  [[ $type == a* && ${_ble_edit_str:end:1} == $'\n' ]] && ((end++))
+
+  local rex_unit0 rex_unit
+  if [[ $type == i* ]]; then
+    local rex='('$rex_word'|['$space']*)'
+    rex_unit0='^'$rex
+    rex_unit='^'$nl'?'$rex
+  elif [[ $type == a* ]]; then
+    if [[ $flags == *A* ]]; then
+      local rex='(['$space']+'$nl'?)*('$nl'|'$rex_word')'
+      rex_unit0='^'$rex
+      rex_unit='^'$nl'?'$rex
+    else
+      rex_unit='^('$rex_word')(['$space']+'$nl'?)*'
+      rex_unit0=$rex_unit
+    fi
+  else
+    return 1
+  fi
+
+  local count=$arg
+
+  # 初期化
+  if [[ $_ble_decode_keymap != vi_[xs]map ]] || ((_ble_edit_mark==_ble_edit_ind)); then
+    # 単語前方を取り込む
+    if rex='('$rex_word')$|['$space']+$'; [[ ${_ble_edit_str::beg+1} =~ $rex ]]; then
+      ((beg-=${#BASH_REMATCH}-1))
+    fi
+
+    ((count--))
+    [[ ${_ble_edit_str:end} =~ $rex_unit0 ]] || return 1
+    ((end+=${#BASH_REMATCH}))
+    ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
+  fi
+
+  # 拡張
+  while ((--count>=0)); do
+    [[ ${_ble_edit_str:end:1} == $'\n' ]] && ((end++))
+    [[ ${_ble_edit_str:end} =~ $rex_unit ]] || return 1
+    ((end+=${#BASH_REMATCH}))
+  done
+
+  if [[ $type == i* || $type == a* && $flags == *A* ]]; then
+    [[ $BASH_REMATCH == *[!"$ifs"] ]] && flags=${flags}X
+  fi
+  [[ $BASH_REMATCH == *["$ifs"] ]] && flags=${flags}Z
+
+  if [[ $type == a* && $flags != *[AZ]* ]]; then
+    # aw で前後に空白が含まれない時、前方の空白を取り込む
+    if rex='['$space']+$'; [[ ${_ble_edit_str::beg} =~ $rex ]]; then
+      local p=$((beg-${#BASH_REMATCH}))
+      ble-edit/content/bolp "$p" || beg=$p
+    fi
+  fi
+
+  if [[ $flags == *X* && ${_ble_edit_str:end:1} == $'\n' ]]; then
+    # Note: Vim の実装では非空白で終わった時は exclusive になり、
+    #   その時直後にある行末も範囲に含められる。
+    ((end++))
+  fi
+
+  return 0
+}
+## 関数 ble/keymap:vi/text-object/word.extend-backward
+##   @var[in,out] beg
+##   @var[in] type arg
+##   @var[in] rex_word nl space ifs
+function ble/keymap:vi/text-object/word.extend-backward {
+  local rex_unit=
+  if [[ $type == i* ]]; then
+    rex_unit='('$rex_word')'$nl'?$|['$space']+'$nl'?$'
+  elif [[ $type == a* ]]; then
+    rex_unit='['$ifs']*('$rex_word')$|('$rex_word')['$ifs']+$'
+  else
+    return 1
+  fi
+
+  local count=$arg
+  while ((count--)); do
+    [[ $type != i* && ${_ble_edit_str::beg} == *$'\n' ]] && ((beg--))
+    [[ ${_ble_edit_str::beg} =~ $rex_unit ]] || return 1
+    ((beg-=${#BASH_REMATCH}))
+  done
+
+  [[ ${_ble_edit_str:beg:1} == $'\n' ]] && ((beg++))
+  return 0
+}
+
 function ble/keymap:vi/text-object/word.impl {
   local arg=$1 flag=$2 reg=$3 type=$4
-
   local space=$' \t' nl=$'\n' ifs=$' \t\n'
+  ((arg==0)) && return
 
   local rex_word
   if [[ $type == ?W ]]; then
@@ -3800,56 +3904,43 @@ function ble/keymap:vi/text-object/word.impl {
     rex_word=$_ble_keymap_vi_REX_WORD
   fi
 
-  local rex_words
-  if [[ $type == i* ]]; then
-    rex_words="(($rex_word)$nl?|[$space]+$nl?){$arg}"
-  else
-    local rex1=
-    ((arg>1)) && rex1="(($rex_word)[$ifs]+){$((arg-1))}"
-    rex_words="([$ifs]+($rex_word)){$arg}|$rex1($rex_word)[$space]*"
-  fi
-
   local index=$_ble_edit_ind
   if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     if ((index<_ble_edit_mark)); then
-      ((index)) && [[ ${_ble_edit_str:index-1:1} == $'\n' ]] && ((index--))
-      if local rex="($rex_words)\$"; [[ ${_ble_edit_str::index} =~ $rex ]]; then
-        index=$((index-${#BASH_REMATCH}))
-        [[ ${_ble_edit_str:index:1} == $'\n' ]] && ((index++))
+      local beg=$index
+      if ble/keymap:vi/text-object/word.extend-backward; then
+        _ble_edit_ind=$beg
       else
-        index=0
+        _ble_edit_ind=0
         ble/widget/.bell
       fi
-      _ble_edit_ind=$index
       ble/keymap:vi/adjust-command-mode
       return 0
     fi
-
     ble-edit/content/eolp || ((index++))
     [[ ${_ble_edit_str:index:1} == $'\n' ]] && ((index++))
   fi
 
-  local rex="(($rex_word)|[$space]+)\$"
-  [[ ${_ble_edit_str::index+1} =~ $rex ]]
-  local beg=$((index+1-${#BASH_REMATCH}))
-
-  if rex="^($rex_words)"; ! [[ ${_ble_edit_str:index} =~ $rex ]]; then
+  local beg=$index end=$index flags=
+  if ! ble/keymap:vi/text-object/word.extend-forward; then
+    # 一致失敗
     index=${#_ble_edit_str}
     ble-edit/content/nonbol-eolp "$index" && ((index--))
     _ble_edit_ind=$index
     ble/widget/vi-command/bell
     return 1
   fi
-  local end=$((index+${#BASH_REMATCH}))
 
   if [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     ((end--))
     ble-edit/content/nonbol-eolp "$end" && ((end--))
+    ((beg<_ble_edit_mark)) && _ble_edit_mark=$beg
+    [[ $_ble_edit_mark_active == vi_line ]] &&
+      _ble_edit_mark_active=vi_char
     _ble_edit_ind=$end
     ble/keymap:vi/adjust-command-mode
     return 0
   else
-    [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
     ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag" "$reg"
   fi
 }
