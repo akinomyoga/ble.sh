@@ -1062,6 +1062,7 @@ function ble/widget/vi-command/operator {
     local mark_type=${_ble_edit_mark_active%+}
     ble/widget/vi_xmap/exit
 
+    local _ble_keymap_vi_opmark=$mark_type # ToDo: o_v
     if [[ $mark_type == vi_line ]]; then
       ble/keymap:vi/call-operator-linewise "$opname" "$a" "$b" "$ARG" "$REG"
     elif [[ $mark_type == vi_block ]]; then
@@ -1276,7 +1277,15 @@ function ble/keymap:vi/operator:d {
   if [[ $context == line ]]; then
     ble/keymap:vi/register#set-edit "$reg" L "${_ble_edit_str:beg:end-beg}" || return 1
 
-    ((end==${#_ble_edit_str}&&beg>0&&beg--)) # fix start position
+    # 最後の行が削除される時は前の行の非空白行頭まで後退
+    if ((end==${#_ble_edit_str}&&beg>0)); then
+      # fix start position
+      ((beg--))
+      ble-edit/content/find-logical-bol "$beg"
+      ble-edit/content/find-non-space "$ret"
+      ble_keymap_vi_operator_index=$ret
+    fi
+
     ble/widget/.delete-range "$beg" "$end"
   elif [[ $context == block ]]; then
     local -a afill=() atext=() arep=()
@@ -1313,6 +1322,21 @@ function ble/keymap:vi/operator:d {
     ((beg+=slpad)) # fix start position
   else
     if ((beg<end)); then
+
+      if [[ $_ble_keymap_vi_opmark != vi_char && ${_ble_edit_str:beg:end-beg} == *$'\n'* ]]; then
+        # d の例外動作: 文字単位で開始点と終了点が異なる行で、
+        #   開始点より前・終了点より後に空白しかない時、行指向で処理する。
+        if local rex=$'(^|\n)([ \t]*)$'; [[ ${_ble_edit_str::beg} =~ $rex ]]; then
+          local prefix=${BASH_REMATCH[2]}
+          if rex=$'^[ \t]*(\n|$)'; [[ ${_ble_edit_str:end} =~ $rex ]]; then
+            local suffix=$BASH_REMATCH
+            ((beg-=${#prefix},end+=${#suffix}))
+            ble/keymap:vi/operator:d "$beg" "$end" line "$arg" "$reg"
+            return
+          fi
+        fi
+      fi
+
       ble/keymap:vi/register#set-edit "$reg" '' "${_ble_edit_str:beg:end-beg}" || return 1
       ble/widget/.delete-range "$beg" "$end" 0
     fi
@@ -1349,7 +1373,8 @@ function ble/keymap:vi/operator:c {
 
     ble/widget/vi_xmap/block-insert-mode.impl insert
   else
-    ble/keymap:vi/operator:d "$@" || return 1 # @var beg will be overwritten here
+    local _ble_keymap_vi_opmark=vi_char
+    ble/keymap:vi/operator:d "$@" || return 1
     ble/widget/vi_nmap/.insert-mode
   fi
   return 0
