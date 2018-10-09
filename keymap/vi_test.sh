@@ -1,11 +1,18 @@
 #!/bin/bash
 
-## @var[out] str ind
+## @var[out] str ind mark
 function ble/keymap:vi_test/decompose-state {
   local spec=$1
   ind=${spec%%:*} str=${spec#*:}
-  [[ $ind == [!0-9a-zA-Z] ]] &&
+  if ((${#ind}==1)) && [[ $ind == [!0-9a-zA-Z] ]]; then
     ind=${str%%"$ind"*} ind=${#ind} str=${str::ind}${str:ind+1}
+    mark=
+  elif ((${#ind}==2)) && [[ ${ind::1} == [!0-9a-zA-Z] && ${ind:1:1} == [!0-9a-zA-Z] ]]; then
+    local ind1=${ind::1} ind2=${ind:1:1} text
+    text=${str//"$ind2"} text=${text%%"$ind1"*} ind=${#text}
+    text=${str//"$ind1"} text=${text%%"$ind2"*} mark=${#text}
+    str=${str//["$ind"]*}
+  fi
 }
 
 function ble/keymap:vi_test/start-section {
@@ -14,19 +21,20 @@ function ble/keymap:vi_test/start-section {
 
 function ble/keymap:vi_test/check {
   local id=$1 initial=$2 kspecs=$3 final=$4
-  local str ind
-  ble/keymap:vi_test/decompose-state "$initial"; local i=$ind in=$str
-  ble/keymap:vi_test/decompose-state "$final"; local f=$ind fin=$str
+  local str ind mark
+  ble/keymap:vi_test/decompose-state "$initial"; local i=$ind in=$str ima=$mark
+  ble/keymap:vi_test/decompose-state "$final"; local f=$ind fin=$str fma=$mark
   
   local nl=$'\n' NL=$'\e[7m^J\e[m'
   ble-edit/content/reset "$in" edit
   _ble_edit_ind=$i
+  [[ $ima ]] && _ble_edit_imark=$ima
   local ret
   ble-decode-kbd "$kspecs"
   ble-decode-key $ret &>/dev/null
 
   # check results
-  [[ $_ble_edit_ind == "$f" && $_ble_edit_str == "$fin" ]]; local ext=$?
+  [[ $_ble_edit_ind == "$f" && $_ble_edit_str == "$fin" && ( ! $fma || $_ble_edit_mark == "$fma" ) ]]; local ext=$?
   if ((ext==0)); then
     ((ntest++,nsuccess++))
   else
@@ -243,6 +251,117 @@ function ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote {
   ble/keymap:vi_test/show-summary
 }
 
+function ble/widget/vi-command:check-vi-mode/txtobj_word {
+  ble/keymap:vi_test/start-section 'xmap text object (word)'
+
+  # A. omap iw/aw
+  ble/keymap:vi_test/check A1/iw  '@:echo he@llo world "hello" "world"' 'd i w' '@:echo @ world "hello" "world"'
+  ble/keymap:vi_test/check A1/aw  '@:echo he@llo world "hello" "world"' 'd a w' '@:echo @world "hello" "world"'
+  ble/keymap:vi_test/check A2/iw  '@:echo hello@ world "hello" "world"' 'd i w' '@:echo hello@world "hello" "world"'
+  ble/keymap:vi_test/check A2/aw  '@:echo hello@ world "hello" "world"' 'd a w' '@:echo hello@ "hello" "world"'
+  ble/keymap:vi_test/check A3/iw  '@:echo hello world "he@llo" "world"' 'd i w' '@:echo hello world "@" "world"'
+  ble/keymap:vi_test/check A3/aw  '@:echo hello world "he@llo" "world"' 'd a w' '@:echo hello world "@" "world"'
+  ble/keymap:vi_test/check A4/iw  '@:echo hello world @"hello" "world"' 'd i w' '@:echo hello world @hello" "world"'
+  ble/keymap:vi_test/check A4/aw  '@:echo hello world @"hello" "world"' 'd a w' '@:echo hello world@hello" "world"'
+  ble/keymap:vi_test/check A5/iw  '@:echo hello world "hello@" "world"' 'd i w' '@:echo hello world "hello@ "world"'
+  ble/keymap:vi_test/check A5/aw  '@:echo hello world "hello@" "world"' 'd a w' '@:echo hello world "hello@"world"'
+  ble/keymap:vi_test/check A1/2iw '@:echo he@llo world "hello" "world"' 'd 2 i w' '@:echo @world "hello" "world"'
+  ble/keymap:vi_test/check A1/2aw '@:echo he@llo world "hello" "world"' 'd 2 a w' '@:echo @"hello" "world"'
+  ble/keymap:vi_test/check A2/2iw '@:echo hello@ world "hello" "world"' 'd 2 i w' '@:echo hello@ "hello" "world"'
+  ble/keymap:vi_test/check A2/2aw '@:echo hello@ world "hello" "world"' 'd 2 a w' '@:echo hello@hello" "world"'
+  ble/keymap:vi_test/check A3/2iw '@:echo hello world "he@llo" "world"' 'd 2 i w' '@:echo hello world "@ "world"'
+  ble/keymap:vi_test/check A3/2aw '@:echo hello world "he@llo" "world"' 'd 2 a w' '@:echo hello world "@"world"'
+  ble/keymap:vi_test/check A4/2iw '@:echo hello world @"hello" "world"' 'd 2 i w' '@:echo hello world @" "world"'
+  ble/keymap:vi_test/check A4/2aw '@:echo hello world @"hello" "world"' 'd 2 a w' '@:echo hello world@" "world"'
+  ble/keymap:vi_test/check A5/2iw '@:echo hello world "hello@" "world"' 'd 2 i w' '@:echo hello world "hello@"world"'
+  ble/keymap:vi_test/check A5/2aw '@:echo hello world "hello@" "world"' 'd 2 a w' '@:echo hello world "hello@world"'
+
+  ble/keymap:vi_test/check A6/iw   $'@:echo@ \n hello world' 'd i w' $'@:ech@o\n hello world'
+  ble/keymap:vi_test/check A6/aw   $'@:echo@ \n hello world' 'd a w' $'@:echo@ world'
+
+  ble/keymap:vi_test/check A7.2/iw   $'@:echo\n@\nhello\n\nworld\nZ' 'd i w'   $'@:echo\n@\nhello\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.2/aw   $'@:echo\n@\nhello\n\nworld\nZ' 'd a w'   $'@:echo\n@\nworld\nZ'
+  ble/keymap:vi_test/check A7.2/2iw  $'@:echo\n@\nhello\n\nworld\nZ' 'd 2 i w' $'@:echo\n@\nworld\nZ'
+  ble/keymap:vi_test/check A7.2/2aw  $'@:echo\n@\nhello\n\nworld\nZ' 'd 2 a w' $'@:echo\n@Z'
+
+  ble/keymap:vi_test/check A7.1/1iw $'@:echo\n@\nhello\nworld\nZ'                   'd 1 i w' $'@:echo\n@\nhello\nworld\nZ'
+  ble/keymap:vi_test/check A7.1/2iw $'@:echo\n@\nhello\nworld\nZ'                   'd 2 i w' $'@:echo\n@world\nZ'
+  ble/keymap:vi_test/check A7.1/3iw $'@:echo\n@\nhello\nworld\nZ'                   'd 3 i w' $'@:echo\n@Z'
+  ble/keymap:vi_test/check A7.2/1iw $'@:echo\n@\nhello\n\nworld\nZ'                 'd 1 i w' $'@:echo\n@\nhello\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.2/2iw $'@:echo\n@\nhello\n\nworld\nZ'                 'd 2 i w' $'@:echo\n@\nworld\nZ'
+  ble/keymap:vi_test/check A7.2/3iw $'@:echo\n@\nhello\n\nworld\nZ'                 'd 3 i w' $'@:echo\n@world\nZ'
+  ble/keymap:vi_test/check A7.2/4iw $'@:echo\n@\nhello\n\nworld\nZ'                 'd 4 i w' $'@:echo\n@Z'
+  ble/keymap:vi_test/check A7.3/1iw $'@:echo\n@\nhello\n\n\nworld\nZ'               'd 1 i w' $'@:echo\n@\nhello\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.3/2iw $'@:echo\n@\nhello\n\n\nworld\nZ'               'd 2 i w' $'@:echo\n@\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.3/3iw $'@:echo\n@\nhello\n\n\nworld\nZ'               'd 3 i w' $'@:echo\n@\nworld\nZ'
+  ble/keymap:vi_test/check A7.3/4iw $'@:echo\n@\nhello\n\n\nworld\nZ'               'd 4 i w' $'@:echo\n@Z'
+  ble/keymap:vi_test/check A7.4/1iw $'@:echo\n@\nhello\n\n\n\nworld\nZ'             'd 1 i w' $'@:echo\n@\nhello\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.4/2iw $'@:echo\n@\nhello\n\n\n\nworld\nZ'             'd 2 i w' $'@:echo\n@\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.4/3iw $'@:echo\n@\nhello\n\n\n\nworld\nZ'             'd 3 i w' $'@:echo\n@\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.4/4iw $'@:echo\n@\nhello\n\n\n\nworld\nZ'             'd 4 i w' $'@:echo\n@world\nZ'
+  ble/keymap:vi_test/check A7.4/5iw $'@:echo\n@\nhello\n\n\n\nworld\nZ'             'd 5 i w' $'@:echo\n@Z'
+  ble/keymap:vi_test/check A7.5/1iw $'@:echo\n@\nhello\n\n\n\n\nworld\nZ'           'd 1 i w' $'@:echo\n@\nhello\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.5/2iw $'@:echo\n@\nhello\n\n\n\n\nworld\nZ'           'd 2 i w' $'@:echo\n@\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.5/3iw $'@:echo\n@\nhello\n\n\n\n\nworld\nZ'           'd 3 i w' $'@:echo\n@\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.5/4iw $'@:echo\n@\nhello\n\n\n\n\nworld\nZ'           'd 4 i w' $'@:echo\n@\nworld\nZ'
+  ble/keymap:vi_test/check A7.5/5iw $'@:echo\n@\nhello\n\n\n\n\nworld\nZ'           'd 5 i w' $'@:echo\n@Z'
+  ble/keymap:vi_test/check A7.a/1iw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'd 1 i w' $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/2iw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'd 2 i w' $'@:echo\n@\n\n\n\n\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/3iw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'd 3 i w' $'@:echo\n@\n\n\n\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/4iw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'd 4 i w' $'@:echo\n@\n\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/5iw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'd 5 i w' $'@:echo\n@\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/6iw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'd 6 i w' $'@:echo\n@\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/7iw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'd 7 i w' $'@:echo\n@world\nZ'
+  ble/keymap:vi_test/check A7.a/8iw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'd 8 i w' $'@:echo\n@Z'
+
+  ble/keymap:vi_test/check A7.a/1ciw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'c 1 i w' $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/2ciw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'c 2 i w' $'@:echo\n@\n\n\n\n\n\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/3ciw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'c 3 i w' $'@:echo\n@\n\n\n\n\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/4ciw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'c 4 i w' $'@:echo\n@\n\n\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/5ciw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'c 5 i w' $'@:echo\n@\n\n\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/6ciw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'c 6 i w' $'@:echo\n@\n\n\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/7ciw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'c 7 i w' $'@:echo\n@\nworld\nZ'
+  ble/keymap:vi_test/check A7.a/8ciw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\nZ' 'c 8 i w' $'@:echo\n@\nZ'
+
+  # ble/keymap:vi_test/check A7.a/1aw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\n' 'd 1 a w' $'@:echo\n@\n\n\n\n\n\n\n\n\nworld\n'
+  # ble/keymap:vi_test/check A7.a/2aw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\n' 'd 2 a w' $'@:echo\n@\n\n\n\n\n\n\nworld\n'
+  # ble/keymap:vi_test/check A7.a/3aw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\n' 'd 3 a w' $'@:echo\n@\n\n\n\n\nworld\n'
+  # ble/keymap:vi_test/check A7.a/4aw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\n' 'd 4 a w' $'@:echo\n@\n\n\nworld\n'
+  # ble/keymap:vi_test/check A7.a/5aw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\n' 'd 5 a w' $'@:echo\n@\nworld\n'
+  # ble/keymap:vi_test/check A7.a/6aw $'@:echo\n@\nhello\n\n\n\n\n\n\n\n\n\nworld\n' 'd 6 a w' $'@:echo\n@'
+  # ble/keymap:vi_test/check A8.0/2aw  $'@:echo\n@\nhello\n\nworld\n'    'd 2 a w' $'@:@echo'
+  # ble/keymap:vi_test/check A8.2/2aw  $'@:  echo\n@\nhello\n\nworld\n'  'd 2 a w' $'@:  @echo'
+
+  # B. xmap iw/aw (mark == ind の時)
+  # ble/keymap:vi_test/check B1/viw.1  '@:echo he@llo world "hello" "world"' 'v i w S a' '@:echo @<hello> world "hello" "world"'
+  # ble/keymap:vi_test/check B1/vaw.1  '@:echo he@llo world "hello" "world"' 'v a w S a' '@:echo @<hello >world "hello" "world"'
+  # ble/keymap:vi_test/check B2/viw.2  '@:echo hello@ world "hello" "world"' 'v i w S a' '@:echo hello@< >world "hello" "world"'
+  # ble/keymap:vi_test/check B2/vaw.2  '@:echo hello@ world "hello" "world"' 'v a w S a' '@:echo hello@< world> "hello" "world"'
+  # ble/keymap:vi_test/check B3/viw.3  '@:echo hello world "he@llo" "world"' 'v i w S a' '@:echo hello world "@<hello>" "world"'
+  # ble/keymap:vi_test/check B3/vaw.3  '@:echo hello world "he@llo" "world"' 'v a w S a' '@:echo hello world "@<hello>" "world"'
+  # ble/keymap:vi_test/check B4/viw.4  '@:echo hello world @"hello" "world"' 'v i w S a' '@:echo hello world @<">hello" "world"'
+  # ble/keymap:vi_test/check B4/vaw.4  '@:echo hello world @"hello" "world"' 'v a w S a' '@:echo hello world@< ">hello" "world"'
+  # ble/keymap:vi_test/check B5/viw.5  '@:echo hello world "hello@" "world"' 'v i w S a' '@:echo hello world "hello@<"> "world"'
+  # ble/keymap:vi_test/check B5/vaw.5  '@:echo hello world "hello@" "world"' 'v a w S a' '@:echo hello world "hello@<" >"world"'
+  # ble/keymap:vi_test/check B1/v2iw.1 '@:echo he@llo world "hello" "world"' 'v 2 i w S a' '@:echo @<hello >world "hello" "world"'
+  # ble/keymap:vi_test/check B1/v2aw.1 '@:echo he@llo world "hello" "world"' 'v 2 a w S a' '@:echo @<hello world >"hello" "world"'
+  # ble/keymap:vi_test/check B2/v2iw.2 '@:echo hello@ world "hello" "world"' 'v 2 i w S a' '@:echo hello@< world> "hello" "world"'
+  # ble/keymap:vi_test/check B2/v2aw.2 '@:echo hello@ world "hello" "world"' 'v 2 a w S a' '@:echo hello@< world ">hello" "world"'
+  # ble/keymap:vi_test/check B3/v2iw.3 '@:echo hello world "he@llo" "world"' 'v 2 i w S a' '@:echo hello world "@<hello"> "world"'
+  # ble/keymap:vi_test/check B3/v2aw.3 '@:echo hello world "he@llo" "world"' 'v 2 a w S a' '@:echo hello world "@<hello" >"world"'
+  # ble/keymap:vi_test/check B4/v2iw.4 '@:echo hello world @"hello" "world"' 'v 2 i w S a' '@:echo hello world @<"hello>" "world"'
+  # ble/keymap:vi_test/check B4/v2aw.4 '@:echo hello world @"hello" "world"' 'v 2 a w S a' '@:echo hello world@< "hello>" "world"'
+  # ble/keymap:vi_test/check B5/v2iw.5 '@:echo hello world "hello@" "world"' 'v 2 i w S a' '@:echo hello world "hello@<" >"world"'
+  # ble/keymap:vi_test/check B5/v2aw.5 '@:echo hello world "hello@" "world"' 'v 2 a w S a' '@:echo hello world "hello@<" ">world"'
+
+  # ble/keymap:vi_test/check B2/v1hiw  '@:echo  hello  wo@rld' 'v h i w S a'   '@:echo  hello@< wor>ld'
+  # ble/keymap:vi_test/check B2/v2hiw  '@:echo  hello  wo@rld' 'v 2 h i w S a' '@:echo  @<hello wor>ld'
+  # ble/keymap:vi_test/check B2/v3hiw  '@:echo  hello  wo@rld' 'v 3 h i w S a' '@:echo  @<hello wor>ld'
+  # ble/keymap:vi_test/check B2/v4hiw  '@:echo  hello  wo@rld' 'v 4 h i w S a' '@:echo@<  hello wor>ld'
+
+  ble/keymap:vi_test/show-summary
+}
+
 function ble/widget/vi-command:check-vi-mode/op.2018-02-22 {
   ble/keymap:vi_test/start-section 'op.2018-02-22'
 
@@ -282,6 +401,7 @@ function ble/widget/vi-command:check-vi-mode {
   ble/widget/vi-command:check-vi-mode/surround
   ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote
   ble/widget/vi-command:check-vi-mode/op.2018-02-22
+  ble/widget/vi-command:check-vi-mode/txtobj_word
 
   #----------------------------------------------------------------------------
 

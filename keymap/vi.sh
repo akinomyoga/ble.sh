@@ -3827,54 +3827,49 @@ function ble/keymap:vi/text-object/word.extend-forward {
 
   flags=
   [[ ${_ble_edit_str:beg:1} == ["$ifs"] ]] && flags=${flags}A
+  if [[ $_ble_decode_keymap != vi_[xs]map ]]; then
+    flags=${flags}I
+  elif ((_ble_edit_mark==_ble_edit_ind)); then
+    flags=${flags}I
+  fi
 
-  # aw では空行に居る時は次の行の先頭から。
-  [[ $type == a* && ${_ble_edit_str:end:1} == $'\n' ]] && ((end++))
-
-  local rex_unit0 rex_unit
+  local rex_unit
+  local W='('$rex_word')' b='['$space']' n=$nl
   if [[ $type == i* ]]; then
-    local rex='('$rex_word'|['$space']*)'
-    rex_unit0='^'$rex
-    rex_unit='^'$nl'?'$rex
+    rex_unit='^('$W'|'$b'+'$n'?|'$n''$b'*('$b$n')?)'
   elif [[ $type == a* ]]; then
-    if [[ $flags == *A* ]]; then
-      local rex='(['$space']+'$nl'?)*('$nl'|'$rex_word')'
-      rex_unit0='^'$rex
-      rex_unit='^'$nl'?'$rex
-    else
-      rex_unit='^('$rex_word')(['$space']+'$nl'?)*'
-      rex_unit0=$rex_unit
-    fi
+    rex_unit='^'$W$b'*'$n'?|^'$b'+'$W'|^'$b'*'$n'('$b'+'$n')*('$n'|'$b'*'$W')'
   else
     return 1
   fi
 
-  local count=$arg
-
-  # 初期化
-  if [[ $_ble_decode_keymap != vi_[xs]map ]] || ((_ble_edit_mark==_ble_edit_ind)); then
-    # 単語前方を取り込む
-    if rex='('$rex_word')$|['$space']+$'; [[ ${_ble_edit_str::beg+1} =~ $rex ]]; then
-      ((beg-=${#BASH_REMATCH}-1))
+  local i rematch=
+  for ((i=0;i<arg;i++)); do
+    if ((i==0)) && [[ $flags == *I* ]]; then
+      # 単語前方を取り込む
+      rex='('$rex_word')$|['$space']+$'
+      [[ ${_ble_edit_str::beg+1} =~ $rex ]] &&
+        ((beg-=${#BASH_REMATCH}-1,end=beg))
+    else
+      [[ ${_ble_edit_str:end:1} == $'\n' ]] && ((end++))
     fi
 
-    ((count--))
-    [[ ${_ble_edit_str:end} =~ $rex_unit0 ]] || return 1
-    ((end+=${#BASH_REMATCH}))
-    ((beg<end)) && [[ ${_ble_edit_str:end-1:1} == "$nl" ]] && ((end--))
-  fi
-
-  # 拡張
-  while ((--count>=0)); do
-    [[ ${_ble_edit_str:end:1} == $'\n' ]] && ((end++))
     [[ ${_ble_edit_str:end} =~ $rex_unit ]] || return 1
-    ((end+=${#BASH_REMATCH}))
+    rematch=$BASH_REMATCH
+    ((end+=${#rematch}))
+
+    # Note: vim では何故か最初の一致だけ改行を除去。
+    #   最後の一致の改行(exclusive)は呼び出し元で削除されている気がする。
+    if ((i==0)) && [[ $flags == *I* ]] || ((i==arg-1)); then
+      if [[ $type == i* ]]; then
+        [[ $rematch == *"$nl" ]] && ((end--))
+      elif [[ $type == a* ]]; then
+        [[ $rematch == [!"$ifs"]*"$nl" ]] && ((end--))
+      fi
+    fi
   done
 
-  if [[ $type == i* || $type == a* && $flags == *A* ]]; then
-    [[ $BASH_REMATCH == *[!"$ifs"] ]] && flags=${flags}X
-  fi
-  [[ $BASH_REMATCH == *["$ifs"] ]] && flags=${flags}Z
+  [[ ${_ble_edit_str:end-1:1} == *["$ifs"] ]] && flags=${flags}Z
 
   if [[ $type == a* && $flags != *[AZ]* ]]; then
     # aw で前後に空白が含まれない時、前方の空白を取り込む
@@ -3882,12 +3877,6 @@ function ble/keymap:vi/text-object/word.extend-forward {
       local p=$((beg-${#BASH_REMATCH}))
       ble-edit/content/bolp "$p" || beg=$p
     fi
-  fi
-
-  if [[ $flags == *X* && ${_ble_edit_str:end:1} == $'\n' ]]; then
-    # Note: Vim の実装では非空白で終わった時は exclusive になり、
-    #   その時直後にある行末も範囲に含められる。
-    ((end++))
   fi
 
   return 0
