@@ -3803,6 +3803,7 @@ function ble/keymap:vi/text-object/word.impl {
   local end=$((index+${#BASH_REMATCH}))
 
   if [[ $_ble_decode_key__kmap == vi_[xs]map ]]; then
+    ((beg<_ble_edit_mark)) && _ble_edit_mark=$beg
     ((end--))
     ble-edit/content/nonbol-eolp "$end" && ((end--))
     _ble_edit_ind=$end
