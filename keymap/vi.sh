@@ -3836,9 +3836,9 @@ function ble/keymap:vi/text-object/word.extend-forward {
   local rex_unit
   local W='('$rex_word')' b='['$space']' n=$nl
   if [[ $type == i* ]]; then
-    rex_unit='^('$W'|'$b'+'$n'?|'$n''$b'*('$b$n')?)'
+    rex_unit='^'$W'|^'$b'+|^'$n
   elif [[ $type == a* ]]; then
-    rex_unit='^'$W$b'*'$n'?|^'$b'+'$W'|^'$b'*'$n'('$b'+'$n')*('$n'|'$b'*'$W')'
+    rex_unit='^'$W$b'*|^'$b'+'$W'|^'$b'*'$n'('$b'+'$n')*('$n'|'$b'*'$W')'
   else
     return 1
   fi
@@ -3858,14 +3858,15 @@ function ble/keymap:vi/text-object/word.extend-forward {
     rematch=$BASH_REMATCH
     ((end+=${#rematch}))
 
-    # Note: vim では何故か最初の一致だけ改行を除去。
-    #   最後の一致の改行(exclusive)は呼び出し元で削除されている気がする。
+    # Note: aw に対する正規表現では二重改行を読むが後退する。
+    [[ $type == a* && $rematch == *$'\n\n' ]] && ((end--))
+
+    # Note: Vim では何故か最初の一致だけ改行を除去。
+    #   最後の一致の改行は exclusive にする事で、
+    #   呼び出し元に除去させている様な気がする。
+    # Note: aw の時は "非空白から改行" に一致する事はない。
     if ((i==0)) && [[ $flags == *I* ]] || ((i==arg-1)); then
-      if [[ $type == i* ]]; then
-        [[ $rematch == *"$nl" ]] && ((end--))
-      elif [[ $type == a* ]]; then
-        [[ $rematch == [!"$ifs"]*"$nl" ]] && ((end--))
-      fi
+      [[ $type == i* && $rematch == *"$nl" ]] && ((end--))
     fi
   done
 
@@ -3873,6 +3874,11 @@ function ble/keymap:vi/text-object/word.extend-forward {
 
   if [[ $type == a* && $flags != *[AZ]* ]]; then
     # aw で前後に空白が含まれない時、前方の空白を取り込む
+    # Note: vim の実装 (search.c (current_word)) では
+    #   行頭 exclusive でも前方空白を取り込むが、
+    #   aw において行頭 exclusive になる事は普通はないので謎。
+    #   virtual_active() の時行の途中で oneleft() が失敗する事はあるが、
+    #   この様な状況を意図してこの条件が加えられたとは思えない。
     if rex='['$space']+$'; [[ ${_ble_edit_str::beg} =~ $rex ]]; then
       local p=$((beg-${#BASH_REMATCH}))
       ble-edit/content/bolp "$p" || beg=$p
@@ -3931,8 +3937,6 @@ function ble/keymap:vi/text-object/word.impl {
       ble/keymap:vi/adjust-command-mode
       return 0
     fi
-    ble-edit/content/eolp || ((index++))
-    [[ ${_ble_edit_str:index:1} == $'\n' ]] && ((index++))
   fi
 
   local beg=$index end=$index flags=
