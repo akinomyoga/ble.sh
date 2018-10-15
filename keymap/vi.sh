@@ -3815,6 +3815,7 @@ _ble_keymap_vi_text_object=
 
 
 ## 関数 ble/keymap:vi/text-object/word.extend-forward
+##   Note #D0855
 ##   @var[in] type arg
 ##   @var[in] rex_word nl space ifs
 ##   @var[in,out] beg end
@@ -3847,7 +3848,7 @@ function ble/keymap:vi/text-object/word.extend-forward {
   for ((i=0;i<arg;i++)); do
     if ((i==0)) && [[ $flags == *I* ]]; then
       # 単語前方を取り込む
-      rex='('$rex_word')$|['$space']+$'
+      rex='('$rex_word')$|['$space']*['$ifs']$'
       [[ ${_ble_edit_str::beg+1} =~ $rex ]] &&
         ((beg-=${#BASH_REMATCH}-1,end=beg))
     else
@@ -3888,27 +3889,37 @@ function ble/keymap:vi/text-object/word.extend-forward {
   return 0
 }
 ## 関数 ble/keymap:vi/text-object/word.extend-backward
+##   Note #D0855
 ##   @var[in,out] beg
 ##   @var[in] type arg
 ##   @var[in] rex_word nl space ifs
 function ble/keymap:vi/text-object/word.extend-backward {
   local rex_unit=
+  local W='('$rex_word')' b='['$space']' n=$nl
   if [[ $type == i* ]]; then
-    rex_unit='('$rex_word')'$nl'?$|['$space']+'$nl'?$'
+    rex_unit='('$W'|'$b'+)'$n'?$|'$n'$'
   elif [[ $type == a* ]]; then
-    rex_unit='['$ifs']*('$rex_word')$|('$rex_word')['$ifs']+$'
+    rex_unit=$b'*'$W$n'?$|'$W'?'$b'*('$n'('$b'+'$n')*'$b'*)?('$b$n'?|'$n')$'
   else
     return 1
   fi
 
   local count=$arg
   while ((count--)); do
-    [[ $type != i* && ${_ble_edit_str::beg} == *$'\n' ]] && ((beg--))
     [[ ${_ble_edit_str::beg} =~ $rex_unit ]] || return 1
     ((beg-=${#BASH_REMATCH}))
+
+    # Note: vim の振る舞いに倣って
+    local match=${BASH_REMATCH%"$nl"}
+    if ((beg==0&&${#match}>=2)); then
+      if [[ $type == i* ]]; then
+        [[ $match == ["$space"]* ]] && beg=1
+      elif [[ $type == a* ]]; then
+        [[ $match == *[!"$ifs"] ]] && beg=1
+      fi
+    fi
   done
 
-  [[ ${_ble_edit_str:beg:1} == $'\n' ]] && ((beg++))
   return 0
 }
 

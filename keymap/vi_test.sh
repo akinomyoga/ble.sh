@@ -252,7 +252,7 @@ function ble/widget/vi-command:check-vi-mode/xmap_txtobj_quote {
 }
 
 function ble/widget/vi-command:check-vi-mode/txtobj_word {
-  ble/keymap:vi_test/start-section 'xmap text object (word)'
+  ble/keymap:vi_test/start-section 'txtobj word omap'
 
   # A. omap iw/aw
   ble/keymap:vi_test/check A1/iw  '@:echo he@llo world "hello" "world"' 'd i w' '@:echo @ world "hello" "world"'
@@ -345,8 +345,9 @@ function ble/widget/vi-command:check-vi-mode/txtobj_word {
   ble/keymap:vi_test/check A9.1/ciw $'@:@    \necho'                 'c i w' $'@:@\necho'
   ble/keymap:vi_test/check A9.2/ciw $'@:@\n    echo'                 'c i w' $'@:@\n    echo'
 
-  #ble/keymap:vi_test/check Bn/viw $'@:@echo hello\necho world' 'v $ o $ i w c' $'@:echo hell@\necho world'
-  #ble/keymap:vi_test/check Bn/viw $'@:@echo hello    \necho world' 'v $ o $ i w c' $'@:echo hello@\necho world'
+  ble/keymap:vi_test/show-summary
+
+  ble/keymap:vi_test/start-section 'txtobj word xmap'
 
   # B. xmap iw/aw (mark == ind の時)
   ble/keymap:vi_test/check B1/viw.1  '@:echo he@llo world "hello" "world"' 'v i w S a' '@:echo @<hello> world "hello" "world"'
@@ -370,10 +371,21 @@ function ble/widget/vi-command:check-vi-mode/txtobj_word {
   ble/keymap:vi_test/check B5/v2iw.5 '@:echo hello world "hello@" "world"' 'v 2 i w S a' '@:echo hello world "hello@<" >"world"'
   ble/keymap:vi_test/check B5/v2aw.5 '@:echo hello world "hello@" "world"' 'v 2 a w S a' '@:echo hello world "hello@<" ">world"'
 
-  ble/keymap:vi_test/check B2/v1hiw  '@:echo  hello  wo@rld' 'v 1 h i w S a' '@:echo  hello@< wor>ld'
-  ble/keymap:vi_test/check B2/v2hiw  '@:echo  hello  wo@rld' 'v 2 h i w S a' '@:echo  @<hello wor>ld'
-  ble/keymap:vi_test/check B2/v3hiw  '@:echo  hello  wo@rld' 'v 3 h i w S a' '@:echo  @<hello wor>ld'
-  ble/keymap:vi_test/check B2/v4hiw  '@:echo  hello  wo@rld' 'v 4 h i w S a' '@:echo@<  hello wor>ld'
+  # B. xmap iw/aw (ind < mark の時)
+  ble/keymap:vi_test/check B2/v1hiw '@:echo  hello  wo@rld' 'v 1 h i w S a' '@:echo  hello  @<wor>ld'
+  ble/keymap:vi_test/check B2/v2hiw '@:echo  hello  wo@rld' 'v 2 h i w S a' '@:echo  hello@<  wor>ld'
+  ble/keymap:vi_test/check B2/v3hiw '@:echo  hello  wo@rld' 'v 3 h i w S a' '@:echo  hello@<  wor>ld'
+  ble/keymap:vi_test/check B2/v4hiw '@:echo  hello  wo@rld' 'v 4 h i w S a' '@:echo  @<hello  wor>ld'
+  ble/keymap:vi_test/check B2/v1haw '@:echo  hello  wo@rld' 'v 1 h a w S a' '@:echo  hello@<  wor>ld'
+  ble/keymap:vi_test/check B2/v2haw '@:echo  hello  wo@rld' 'v 2 h a w S a' '@:echo  @<hello  wor>ld'
+  ble/keymap:vi_test/check B2/v3haw '@:echo  hello  wo@rld' 'v 3 h a w S a' '@:echo  @<hello  wor>ld'
+  ble/keymap:vi_test/check B2/v4haw '@:echo  hello  wo@rld' 'v 4 h a w S a' '@:echo@<  hello  wor>ld'
+  ble/keymap:vi_test/check B1/v1haw '@:echo he@llo' 'v 1 h a w S a' '@:echo@< hel>lo'
+  ble/keymap:vi_test/check B1/v2haw '@:echo he@llo' 'v 2 h a w S a' '@:@<echo hel>lo'
+  ble/keymap:vi_test/check B1/v3haw '@:echo he@llo' 'v 3 h a w S a' '@:e@<cho hel>lo'
+  ble/keymap:vi_test/check B1/v4haw '@:echo he@llo' 'v 4 h a w S a' '@:e@<cho hel>lo'
+  ble/keymap:vi_test/check Bn/viw $'@:@echo hello\necho world'     'v $ o $ i w c' $'@:echo hell@echo world'
+  ble/keymap:vi_test/check Bn/viw $'@:@echo hello    \necho world' 'v $ o $ i w c' $'@:echo hello@\necho world'
 
   ble/keymap:vi_test/show-summary
 }
