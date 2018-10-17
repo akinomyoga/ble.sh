@@ -300,7 +300,7 @@ function ble-decode-kbd {
     if [[ $kspec == ? ]]; then
       ble/util/s2c "$kspec" 0
       ((code|=ret))
-    elif [[ $kspec && ! ${kspec//[_0-9a-zA-Z]/} ]]; then
+    elif [[ $kspec && ! ${kspec//[_0-9a-zA-Z]} ]]; then
       ble-decode-kbd/.get-keycode "$kspec"
       [[ $ret ]] || ble-decode-kbd/generate-keycode "$kspec"
       ((code|=ret))
@@ -795,7 +795,7 @@ function ble-decode-char/bind {
 
     builtin eval "local okc=\${_ble_decode_cmap_$tseq[char]-}"
     if ((i+1==iN)); then
-      if [[ ${okc//[0-9]/} == _ ]]; then
+      if [[ ${okc//[0-9]} == _ ]]; then
         builtin eval "_ble_decode_cmap_$tseq[char]=\${kc}_"
       else
         builtin eval "_ble_decode_cmap_$tseq[char]=\${kc}"
@@ -866,7 +866,7 @@ function ble-decode-char/dump {
       builtin echo "ble-bind -k '${cnames[*]}' '$kspec'"
     fi
 
-    if [[ ${ent//[0-9]/} == _ ]]; then
+    if [[ ${ent//[0-9]} == _ ]]; then
       ble-decode-char/dump "${tseq}_$ccode" "${cnames[@]}"
     fi
   done
@@ -1887,7 +1887,7 @@ function ble-decode-bind/cmap/.generate-binder-template {
       fi
     fi
 
-    if [[ ${ent//[0-9]/} == _ ]]; then
+    if [[ ${ent//[0-9]} == _ ]]; then
       ble-decode-bind/cmap/.generate-binder-template "${tseq}_$ccode" "$qseq1" "$nseq1" $((depth+1))
     fi
   done
