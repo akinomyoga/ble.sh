@@ -1,0 +1,9 @@
+#!/bin/bash
+
+HISTFILE=A.txt
+IGNOREEOF=9999
+source out/ble.sh --noattach
+
+function new-bash-session { bash-3.2 --rcfile test2.bashrc; }
+bind -x '"\C-t": new-bash-session'
+bind -x '"\C-d": echo Hello C-d'

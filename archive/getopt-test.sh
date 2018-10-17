@@ -68,7 +68,7 @@ function command1 {
 
   if ! ble/getopt.finalize; then
     echo "usage: getopt-test.sh [options]" >&2
-    exit 1
+    builtin exit 1
   fi
 }
 

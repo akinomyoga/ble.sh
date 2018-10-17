@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # include guard
-ble/util/isfunction ble-edit/bind/load-keymap-definition:emacs && return
+ble/is-function ble-edit/bind/load-keymap-definition:emacs && return
 function ble-edit/bind/load-keymap-definition:emacs { :; }
 
 # 2015-12-09 keymap cache should be updated due to the refactoring.
@@ -9,7 +9,7 @@ function ble-edit/bind/load-keymap-definition:emacs { :; }
 #------------------------------------------------------------------------------
 
 function ble/widget/emacs/append-arg {
-  local code=$((KEYS[0]&ble_decode_MaskChar))
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
   ((code==0)) && return 1
   local ret; ble/util/c2s "$code"; local ch=$ret
 
@@ -17,7 +17,7 @@ function ble/widget/emacs/append-arg {
     if [[ $_ble_edit_arg ]]; then
       [[ $ch == [0-9] ]]
     else
-      ((KEYS[0]&ble_decode_MaskFlag))
+      ((KEYS[0]&_ble_decode_MaskFlag))
     fi
   then
     _ble_edit_arg=$_ble_edit_arg$ch
@@ -28,6 +28,7 @@ function ble/widget/emacs/append-arg {
 
 _ble_keymap_emacs_white_list=(
   self-insert
+  batch-insert
   nop
   magic-space
   copy{,-forward,-backward}-{c,f,s,u}word
@@ -50,7 +51,7 @@ function ble/keymap:emacs/is-command-white {
   return 1
 }
 
-function ble/widget/emacs/__before_command__ {
+function ble/widget/emacs/__before_widget__ {
   if ! ble/keymap:emacs/is-command-white "$WIDGET"; then
     ble-edit/undo/add
   fi
@@ -76,9 +77,9 @@ function ble/widget/emacs/revert {
 #------------------------------------------------------------------------------
 # mode name
 #
-#   mode name の更新は基本的に __after_command__ で行う。
+#   mode name の更新は基本的に __after_widget__ で行う。
 #   但し、_ble_decode_{char,key}__hook 経由で実行されると、
-#   __after_command__ は実行されないので、
+#   __after_widget__ は実行されないので、
 #   その様な編集コマンドについてだけは個別に update-mode-name を呼び出す。
 #
 
@@ -103,7 +104,7 @@ function ble/keymap:emacs/update-mode-name {
   ble-edit/info/default raw "$name"
 }
 
-function ble/widget/emacs/__after_command__ {
+function ble/widget/emacs/__after_widget__ {
   ble/keymap:emacs/update-mode-name
 }
 
@@ -124,13 +125,6 @@ function ble/widget/emacs/bracketed-paste {
 }
 function ble/widget/emacs/bracketed-paste.proc {
   ble/widget/bracketed-paste.proc "$@"
-  local WIDGET=ble/widget/self-insert
-  local -a KEYS
-  local char
-  for char; do
-    KEYS=("$char")
-    "$WIDGET"
-  done
   ble/keymap:emacs/update-mode-name
 }
 
@@ -145,23 +139,25 @@ function ble-decode/keymap:emacs/define {
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
+  ble-decode/keymap:safe/bind-complete
 
   # charwise operations
   ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
 
   # history
-  ble-bind -f 'C-RET'    history-expand-line
+  ble-bind -f 'M-^'      history-expand-line
   ble-bind -f 'SP'       magic-space
 
   #----------------------------------------------------------------------------
 
-  ble-bind -f __attach__         safe/__attach__
-  ble-bind -f __before_command__ emacs/__before_command__
-  ble-bind -f __after_command__  emacs/__after_command__
+  ble-bind -f __attach__        safe/__attach__
+  ble-bind -f __before_widget__ emacs/__before_widget__
+  ble-bind -f __after_widget__  emacs/__after_widget__
 
   # accept/cancel
   ble-bind -f  'C-c'     discard-line
   ble-bind -f  'C-j'     accept-line
+  ble-bind -f  'C-RET'   accept-line
   ble-bind -f  'C-m'     accept-single-line-or-newline
   ble-bind -f  'RET'     accept-single-line-or-newline
   ble-bind -f  'C-o'     accept-and-next
@@ -170,12 +166,10 @@ function ble-decode/keymap:emacs/define {
   # shell functions
   ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i'     complete
-  ble-bind -f  'TAB'     complete
   ble-bind -f  'f1'      command-help
   ble-bind -f  'C-x C-v' display-shell-version
-  ble-bind -cf 'C-z'     fg
-  ble-bind -cf 'M-z'     fg
+  ble-bind -c 'C-z'     fg
+  ble-bind -c 'M-z'     fg
 
   # ble-bind -f 'C-x'      bell
   # ble-bind -f 'C-['      bell # unbound for "bleopt decode_isolated_esc=auto"
@@ -225,6 +219,7 @@ function ble-decode/keymap:emacs/define {
   # undo
   ble-bind -f 'C-_'       emacs/undo
   ble-bind -f 'C-DEL'     emacs/undo
+  ble-bind -f 'C-BS'      emacs/undo
   ble-bind -f 'C-/'       emacs/undo
   ble-bind -f 'C-x u'     emacs/undo
   ble-bind -f 'C-x C-u'   emacs/undo
@@ -241,21 +236,23 @@ function ble-decode/keymap:emacs/define {
 function ble-decode/keymap:emacs/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.emacs
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/emacs.sh &&
-          $fname_keymap_cache -nt $_ble_base/cmap/default.sh ]]; then
+          $fname_keymap_cache -nt $_ble_base/lib/init-cmap.sh ]]; then
     source "$fname_keymap_cache" && return
   fi
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.emacs..."
+  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs..."
 
   ble-decode/keymap:isearch/define
+  ble-decode/keymap:nsearch/define
   ble-decode/keymap:emacs/define
 
   {
     ble-decode/keymap/dump isearch
+    ble-decode/keymap/dump nsearch
     ble-decode/keymap/dump emacs
   } >| "$fname_keymap_cache"
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.emacs... done"
+  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs... done"
 }
 
 ble-decode/keymap:emacs/initialize

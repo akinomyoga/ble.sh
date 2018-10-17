@@ -1,5 +1,3 @@
-`ble.sh` is provided under the 3-clause BSD license.
-
 Copyright (c) 2013-2018, K. Murase @akinomyoga <myoga.murase@gmail.com>,
 All rights reserved.
 

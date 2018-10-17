@@ -97,8 +97,8 @@ function ble/string#trim {
 function ble/lib/vim-surround.sh/get-char-from-key {
   local key=$1
   if ! ble-decode-key/ischar "$key"; then
-    local flag=$((key&ble_decode_MaskFlag)) code=$((key&ble_decode_MaskChar))
-    if ((flag==ble_decode_Ctrl&&63<=code&&code<128&&(code&0x1F)!=0)); then
+    local flag=$((key&_ble_decode_MaskFlag)) code=$((key&_ble_decode_MaskChar))
+    if ((flag==_ble_decode_Ctrl&&63<=code&&code<128&&(code&0x1F)!=0)); then
       ((key=code==63?127:code&0x1F))
     else
       return 1
@@ -258,14 +258,14 @@ function ble/lib/vim-surround.sh/surround {
 function ble/lib/vim-surround.sh/async-read-tagname {
   ble/keymap:vi/async-commandline-mode "$1"
   _ble_edit_PS1='<'
-  _ble_keymap_vi_cmap_before_command=ble/lib/vim-surround.sh/async-read-tagname/.before-command
+  _ble_keymap_vi_cmap_before_command=ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook
   return 148
 }
-function ble/lib/vim-surround.sh/async-read-tagname/.before-command {
+function ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook {
   if [[ ${KEYS[0]} == 62 ]]; then # '>'
     ble/widget/self-insert
     ble/widget/vi_cmap/accept
-    WIDGET=
+    ble-decode/widget/suppress-widget
   fi
 }
 
@@ -304,8 +304,8 @@ function ble-highlight-layer:region/mark:vi_surround/get-selection {
     fi
   fi
 }
-function ble-highlight-layer:region/mark:vi_surround/get-sgr {
-  ble-color-face2sgr region_target
+function ble-highlight-layer:region/mark:vi_surround/get-face {
+  face=region_target
 }
 
 function ble/lib/vim-surround.sh/operator.impl {
@@ -384,7 +384,7 @@ function ble/widget/vim-surround.sh/ysurround.core {
     fi
 
     # Note: char から linewise への昇格条件の変更は以下の関数にも反映させる必要がある:
-    #  ble-highlight-layer:region/mark:vim_surround/get-selection
+    #  ble-highlight-layer:region/mark:vi_surround/get-selection
     local opts=
     if [[ $type == yS || $type == ySS || $context == char && $type == vgS ]]; then
       opts=linewise:indent
@@ -423,7 +423,7 @@ function ble/widget/vim-surround.sh/vsurround { # vS
   ble/widget/vi-command/operator vS
 }
 function ble/widget/vim-surround.sh/vgsurround { # vgS
-  [[ $_ble_decode_key__kmap == vi_xmap ]] &&
+  [[ $_ble_decode_keymap == vi_xmap ]] &&
     ble/keymap:vi/xmap/add-eol-extension # 末尾拡張
   ble/widget/vi-command/operator vgS
 }
@@ -681,13 +681,26 @@ function ble/widget/vim-surround.sh/nmap/csurround.replace {
 
 #---- repeat ----
 
+## 関数 ble/widget/vim-surround.sh/nmap/csurround.record
 function ble/widget/vim-surround.sh/nmap/csurround.record {
+  # Note: ble/keymap:vi/repeat/record の実装に合わせた条件判定。
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return 0
+
   local type=$1 arg=$2 reg=$3 del=$4 ins=$5
   local WIDGET=ble/widget/vim-surround.sh/nmap/csurround.repeat ARG=$arg FLAG= REG=$reg
   ble/keymap:vi/repeat/record
-  _ble_keymap_vi_repeat[10]=$type
-  _ble_keymap_vi_repeat[11]=$del
-  _ble_keymap_vi_repeat[12]=$ins
+  if [[ $_ble_decode_keymap == vi_imap ]]; then
+    # Note: ble/keymap:vi/repeat/record の実装に合わせた条件判定。
+    #   この実装では vi_imap で呼び出される事はない筈だが念の為。
+    #   ble/keymap:vi/repeat/record は keymap が vi_imap の時は異なる場所に記録する。
+    _ble_keymap_vi_repeat_insert[10]=$type
+    _ble_keymap_vi_repeat_insert[11]=$del
+    _ble_keymap_vi_repeat_insert[12]=$ins
+  else
+    _ble_keymap_vi_repeat[10]=$type
+    _ble_keymap_vi_repeat[11]=$del
+    _ble_keymap_vi_repeat[12]=$ins
+  fi
 }
 function ble/widget/vim-surround.sh/nmap/csurround.repeat {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
@@ -726,8 +739,8 @@ function ble-highlight-layer:region/mark:vi_csurround/get-selection {
   local end=${_ble_lib_vim_surround_cs[15]}
   selection=("$beg" "$end")
 }
-function ble-highlight-layer:region/mark:vi_csurround/get-sgr {
-  ble-color-face2sgr region_target
+function ble-highlight-layer:region/mark:vi_csurround/get-face {
+  face=region_target
 }
 
 function ble/widget/vim-surround.sh/nmap/csurround {

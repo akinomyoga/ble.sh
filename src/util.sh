@@ -5,19 +5,29 @@
 : ${bleopt_input_encoding:=UTF-8}
 
 function bleopt/check:input_encoding {
-  if ! ble/util/isfunction "ble-decode-byte+$value"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-decode-byte+$value' is not defined." >&2
+  if ! ble/is-function "ble/encoding:$value/decode"; then
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble/encoding:$value/decode' is not defined." >&2
     return 1
-  elif ! ble/util/isfunction "ble-text-b2c+$value"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-b2c+$value' is not defined." >&2
+  elif ! ble/is-function "ble/encoding:$value/b2c"; then
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble/encoding:$value/b2c' is not defined." >&2
     return 1
-  elif ! ble/util/isfunction "ble-text-c2bc+$value"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble-text-c2bc+$value' is not defined." >&2
+  elif ! ble/is-function "ble/encoding:$value/c2bc"; then
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble/encoding:$value/c2bc' is not defined." >&2
     return 1
-  elif ! ble/util/isfunction "ble/encoding:$value/generate-binder"; then
-    echo "bleopt: Invalid value input_encoding='$value'. A function 'ble/encoding:$value/generate-binder' is not defined." >&2
+  elif ! ble/is-function "ble/encoding:$value/generate-binder"; then
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble/encoding:$value/generate-binder' is not defined." >&2
+    return 1
+  elif ! ble/is-function "ble/encoding:$value/is-intermediate"; then
+    echo "bleopt: Invalid value input_encoding='$value'." \
+         "A function 'ble/encoding:$value/is-intermediate' is not defined." >&2
     return 1
   fi
+
+  # Note: ble/encoding:$value/clear は optional な設定である。
 
   if [[ $bleopt_input_encoding != "$value" ]]; then
     ble-decode/unbind
@@ -47,8 +57,34 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
-ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var=$2 && shift 2'
-ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
+## @var _ble_util_upvar_setup
+## @var _ble_util_upvar
+##
+##   これらの変数は関数を定義する時に [-v varname] の引数を認識させ、
+##   関数の結果を格納する変数名を外部から指定できるようにするのに用いる。
+##   使用する際は関数を以下の様に記述する。既定の格納先変数は ret となる。
+##
+##     function MyFunction {
+##       eval "$_ble_util_upvar_setup"
+##     
+##       ret=... # 処理を行い、変数 ret に結果を格納するコード
+##               # (途中で return などすると正しく動かない事に注意)
+##     
+##       eval "$_ble_util_upvar"
+##     }
+##
+##   既定の格納先変数を別の名前 (以下の例では arg) にする場合は次の様にする。
+##
+##     function MyFunction {
+##       eval "${_ble_util_upvar_setup//ret/arg}" 
+##     
+##       arg=... # 処理を行い、変数 arg に結果を格納するコード
+##     
+##       eval "${_ble_util_upvar//ret/arg}"
+##     }
+##   
+_ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var=$2 && shift 2'
+_ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
 function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
 function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
 function ble/util/unlocal { builtin unset "$@"; }
@@ -98,11 +134,11 @@ function ble/debug/.check-leak-variable {
 # array and strings
 #
 
-_ble_util_array_prototype=()
-function _ble_util_array_prototype.reserve {
+_ble_array_prototype=()
+function ble/array#reserve-prototype {
   local -i n=$1 i
-  for ((i=${#_ble_util_array_prototype[@]};i<n;i++)); do
-    _ble_util_array_prototype[i]=
+  for ((i=${#_ble_array_prototype[@]};i<n;i++)); do
+    _ble_array_prototype[i]=
   done
 }
 
@@ -130,14 +166,21 @@ if ((_ble_bash>=30100)); then
   }
 else
   function ble/array#push {
-    while
+    while (($#>=2)); do
       builtin eval "$1[\${#$1[@]}]=\"\$2\""
-      (($#>=3))
-    do
       set -- "$1" "${@:3}"
     done
   }
 fi
+function ble/array#pop {
+  eval "local i$1=\$((\${#$1[@]}-1))"
+  if ((i$1>=0)); then
+    eval "ret=\${$1[i$1]}"
+    unset "$1[i$1]"
+  else
+    ret=
+  fi
+}
 ## 関数 ble/array#reverse arr
 function ble/array#reverse {
   builtin eval "
@@ -146,11 +189,11 @@ function ble/array#reverse {
   for e$1; do $1[--i$1]=\"\$e$1\"; done"
 }
 
-_ble_util_string_prototype='        '
-function _ble_util_string_prototype.reserve {
+_ble_string_prototype='        '
+function ble/string#reserve-prototype {
   local -i n=$1 c
-  for ((c=${#_ble_util_string_prototype};c<n;c*=2)); do
-    _ble_util_string_prototype=$_ble_util_string_prototype$_ble_util_string_prototype
+  for ((c=${#_ble_string_prototype};c<n;c*=2)); do
+    _ble_string_prototype=$_ble_string_prototype$_ble_string_prototype
   done
 }
 
@@ -159,8 +202,8 @@ function _ble_util_string_prototype.reserve {
 ##   @param[in] count
 ##   @var[out] ret
 function ble/string#repeat {
-  _ble_util_string_prototype.reserve "$2"
-  ret=${_ble_util_string_prototype::$2}
+  ble/string#reserve-prototype "$2"
+  ret=${_ble_string_prototype::$2}
   ret="${ret// /$1}"
 }
 
@@ -347,7 +390,7 @@ function ble/string#toggle-case {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret=${buff[*]-}'
+  IFS= eval 'ret="${buff[*]-}"'
 }
 if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret=${*,,}; }
@@ -364,7 +407,7 @@ else
       fi
       ble/array#push buff "$ch"
     done
-    IFS= eval 'ret=${buff[*]-}'
+    IFS= eval 'ret="${buff[*]-}"'
   }
   function ble/string#toupper {
     local text=$*
@@ -377,43 +420,19 @@ else
       fi
       ble/array#push buff "$ch"
     done
-    IFS= eval 'ret=${buff[*]-}'
+    IFS= eval 'ret="${buff[*]-}"'
   }
 fi
 
-function ble/string#escape-for-sed-regex {
-  ret="$*"
-  if [[ $ret == *['\.[*^$/']* ]]; then
-    local a b
-    for a in \\ \. \[ \* \^ \$ \/; do
-      b="\\$a" ret=${ret//"$a"/$b}
-    done
-  fi
-}
-function ble/string#escape-for-awk-regex {
-  ret="$*"
-  if [[ $ret == *['\.[*?+|^$(){}/']* ]]; then
-    local a b
-    for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \} \/; do
-      b="\\$a" ret=${ret//"$a"/$b}
-    done
-  fi
-}
-function ble/string#escape-for-extended-regex {
-  ret="$*"
-  if [[ $ret == *['\.[*?+|^$(){}']* ]]; then
-    local a b
-    for a in \\ \. \[ \* \? \+ \| \^ \$ \( \) \{ \}; do
-      b="\\$a" ret=${ret//"$a"/$b}
-    done
-  fi
-}
-
-## 関数 ble/string#escape/.impl-escape-characters chars1 chars2
-##   @var[in,out] ret
-function ble/string#escape/.impl-escape-characters {
-  if [[ $ret == *["$1"]* ]]; then
-    local chars1=$1 chars2=${2:-$1}
+## 関数 ble/string#escape-characters chars1 chars2 text
+##   @param[in]     chars1
+##   @param[in,opt] chars2
+##   @param[in]     text
+##   @var[out] ret
+function ble/string#escape-characters {
+  ret=$1
+  if [[ $ret == *["$2"]* ]]; then
+    local chars1=$2 chars2=${3:-$2}
     local i n=${#chars1} a b
     for ((i=0;i<n;i++)); do
       a=${chars1:i:1} b=\\${chars2:i:1} ret=${ret//"$a"/$b}
@@ -421,9 +440,17 @@ function ble/string#escape/.impl-escape-characters {
   fi
 }
 
+function ble/string#escape-for-sed-regex {
+  ble/string#escape-characters "$*" '\.[*^$/'
+}
+function ble/string#escape-for-awk-regex {
+  ble/string#escape-characters "$*" '\.[*?+|^$(){}/'
+}
+function ble/string#escape-for-extended-regex {
+  ble/string#escape-characters "$*" '\.[*?+|^$(){}'
+}
 function ble/string#escape-for-bash-glob {
-  ret="$*"
-  ble/string#escape/.impl-escape-characters '\*?[('
+  ble/string#escape-characters "$*" '\*?[('
 }
 function ble/string#escape-for-bash-single-quote {
   ret="$*"
@@ -431,17 +458,31 @@ function ble/string#escape-for-bash-single-quote {
   ret=${ret//"$q"/$Q}
 }
 function ble/string#escape-for-bash-double-quote {
-  ret="$*"
-  ble/string#escape/.impl-escape-characters '\"$`'
+  ble/string#escape-characters "$*" '\"$`'
   a='!' b='"\!"' ret=${ret//"$a"/$b}
 }
 function ble/string#escape-for-bash-escape-string {
-  ret="$*"
-  ble/string#escape/.impl-escape-characters $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
+  ble/string#escape-characters "$*" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
+}
+function ble/string#escape-for-bash-specialchars {
+  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{'
+  if [[ $ret == *[$']\n\t']* ]]; then
+    a=']'   b=\\$a     ret=${ret//"$a"/$b}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
+    a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
+  fi
+}
+function ble/string#escape-for-bash-specialchars-in-brace {
+  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{,}'
+  if [[ $ret == *[$']\n\t']* ]]; then
+    a=']'   b=\\$a     ret=${ret//"$a"/$b}
+    a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
+    a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
+  fi
 }
 
 #
-# miscallaneous utils
+# assign: reading files/streams into variables
 #
 
 ## 関数 ble/util/readfile var filename
@@ -483,39 +524,46 @@ fi
 ##   @param[in] command...
 ##     実行するコマンドを指定します。
 ##
-_ble_util_read_stdout_tmp="$_ble_base_run/$$.ble_util_assign.tmp"
+_ble_util_assign_base=$_ble_base_run/$$.ble_util_assign.tmp
+_ble_util_assign_level=0
 if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    builtin eval "$2" >| "$_ble_local_tmp"
+    ((_ble_util_assign_level--))
     local _ret=$? __arr
-    mapfile -t __arr < "$_ble_util_read_stdout_tmp"
+    mapfile -t __arr < "$_ble_local_tmp"
     IFS=$'\n' eval "$1=\"\${__arr[*]-}\""
     return "$_ret"
   }
 else
   function ble/util/assign {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    builtin eval "$2" >| "$_ble_local_tmp"
+    ((_ble_util_assign_level--))
     local _ret=$?
-    IFS= builtin read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
+    IFS= builtin read -r -d '' "$1" < "$_ble_local_tmp"
     eval "$1=\${$1%$'\n'}"
     return "$_ret"
   }
 fi
-## 関数 ble/util/assign-array arr command...
+## 関数 ble/util/assign-array arr command args...
 ##   mapfile -t arr <(command ...) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
 ##
 ##   @param[in] arr
 ##     代入先の配列名を指定します。
-##   @param[in] command...
+##   @param[in] command
 ##     実行するコマンドを指定します。
+##   @param[in] args...
+##     command から参照する引数 ($3 $4 ...) を指定します。
 ##
 if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
-    builtin eval "${@:2}" >| "$_ble_util_read_stdout_tmp"
+    builtin eval "$2" >| "$_ble_util_assign_base"
     local _ret=$?
-    mapfile -t "$1" < "$_ble_util_read_stdout_tmp"
+    mapfile -t "$1" < "$_ble_util_assign_base"
     return "$_ret"
   }
 else
@@ -528,6 +576,32 @@ else
     fi
   }
 fi
+
+#
+# functions
+#
+
+if ((_ble_bash>=30200)); then
+  function ble/is-function {
+    builtin declare -F "$1" &>/dev/null
+  }
+else
+  # bash-3.1 has bug in declare -f.
+  # it does not accept a function name containing non-alnum chars.
+  function ble/is-function {
+    local type
+    ble/util/type type "$1"
+    [[ $type == function ]]
+  }
+fi
+function ble/function#try {
+  ble/is-function "$1" || return 127
+  "$@"
+}
+
+#
+# miscallaneous utils
+#
 
 if ((_ble_bash>=40100)); then
   function ble/util/set {
@@ -550,24 +624,15 @@ else
   }
 fi
 
+## 関数 ble/util/type varname command
+##   @param[out] varname
+##     結果を格納する変数名を指定します。
+##   @param[in] command
+##     種類を判定するコマンド名を指定します。
 function ble/util/type {
-  _cmd=$2 ble/util/assign "$1" 'builtin type -t -- "$_cmd" 2>/dev/null'
+  ble/util/assign "$1" 'builtin type -t -- "$3" 2>/dev/null' "$2"
   builtin eval "$1=\"\${$1%$_ble_term_nl}\""
 }
-
-if ((_ble_bash>=30200)); then
-  function ble/util/isfunction {
-    builtin declare -F "$1" &>/dev/null
-  }
-else
-  # bash-3.1 has bug in declare -f.
-  # it does not accept a function name containing non-alnum chars.
-  function ble/util/isfunction {
-    local type
-    ble/util/type type "$1"
-    [[ $type == function ]]
-  }
-fi
 
 if ((_ble_bash>=40000)); then
   function ble/util/is-stdin-ready { IFS= LC_ALL=C builtin read -t 0; } &>/dev/null
@@ -586,7 +651,7 @@ else
   function ble/util/openat {
     local _fdvar=$1 _redirect=$2
     (($_fdvar=_ble_util_openat_nextfd++))
-    builtin eval "exec ${!_fdvar}$_redirect"
+    builtin eval "exec ${!_fdvar}>&- ${!_fdvar}$_redirect"
   }
 fi
 
@@ -712,7 +777,7 @@ function ble/util/eval-pathname-expansion {
 
 
 # 正規表現は _ble_bash>=30000
-_ble_rex_isprint='^[ -~]+'
+_ble_util_rex_isprint='^[ -~]+'
 ## 関数 ble/util/isprint+ str
 ##
 ##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。
@@ -721,7 +786,7 @@ function ble/util/isprint+ {
   LC_COLLATE=C ble/util/isprint+.impl "$@" &>/dev/null
 }
 function ble/util/isprint+.impl {
-  [[ $1 =~ $_ble_rex_isprint ]]
+  [[ $1 =~ $_ble_util_rex_isprint ]]
 }
 
 if ((_ble_bash>=40200)); then
@@ -755,6 +820,7 @@ function ble/util/sleep/.check-builtin-sleep {
 }
 
 if ((_ble_bash>=40400)) && ble/util/sleep/.check-builtin-sleep; then
+  _ble_util_sleep_builtin_available=1
   function ble/util/sleep { builtin sleep "$1"; }
 elif ((_ble_bash>=40000)); then
   # 遅延初期化
@@ -770,6 +836,17 @@ elif ((_ble_bash>=40000)); then
         [[ $- == *i* ]] && trap -- '' INT QUIT
         while kill -0 $$; do ble/bin/sleep 300; done &>/dev/null
       )'
+
+      if [[ $BASH_VERSION ]]; then
+        function ble/util/sleep {
+          local s=${1%%.*}
+          if ((s>0)); then
+            ! builtin read -u "$_ble_util_sleep_fd" -t "$1" s
+          else
+            ! builtin read -t "$1" s < /dev/udp/0.0.0.0/80
+          fi
+        }
+      fi
     else
       _ble_util_sleep_tmp=$_ble_base_run/$$.ble_util_sleep.pipe
       if [[ ! -p $_ble_util_sleep_tmp ]]; then
@@ -849,7 +926,7 @@ elif type stat &>/dev/null; then
   fi
 fi
 # fallback: print current time
-ble/util/isfunction ble/util/getmtime ||
+ble/is-function ble/util/getmtime ||
   function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
 #------------------------------------------------------------------------------
@@ -1005,7 +1082,7 @@ _ble_util_joblist_list=()
 _ble_util_joblist_events=()
 function ble/util/joblist {
   local jobs0
-  ble/util/assign jobs0 jobs
+  ble/util/assign jobs0 'jobs'
   if [[ $jobs0 == "$_ble_util_joblist_jobs" ]]; then
     # 前回の呼び出し結果と同じならば状態変化はないものとして良い。終了・強制終
     # 了したジョブがあるとしたら "終了" だとか "Terminated" だとかいう表示にな
@@ -1041,7 +1118,7 @@ function ble/util/joblist {
     done
   fi
 
-  ble/util/assign _ble_util_joblist_jobs jobs
+  ble/util/assign _ble_util_joblist_jobs 'jobs'
   _ble_util_joblist_list=()
   if [[ $_ble_util_joblist_jobs != "$jobs0" ]]; then
     ble/string#split lines $'\n' "$_ble_util_joblist_jobs"
@@ -1055,7 +1132,8 @@ function ble/util/joblist {
     done
   else
     for ijob in "${!list[@]}"; do
-      _ble_util_joblist_list[ijob]=${list[ijob]}
+      [[ ${list[ijob]} ]] &&
+        _ble_util_joblist_list[ijob]=${list[ijob]}
     done
   fi
   joblist=("${_ble_util_joblist_list[@]}")
@@ -1132,7 +1210,7 @@ function ble/util/restore-editing-mode {
 }
 
 function ble/util/test-rl-variable {
-  local rl_variables; ble/util/assign rl_variables 'bind -v'
+  local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
   [[ $rl_variables == *"set $1 on"* ]]
 }
 
@@ -1189,16 +1267,16 @@ function ble-autoload {
 function ble-import {
   local file=$1
   if [[ $file == /* ]]; then
-    local guard=ble-import/guard/$1
-    ble/util/isfunction "$guard" && return 0
+    local guard=ble-import/guard:$1
+    ble/is-function "$guard" && return 0
     if [[ -f $file ]]; then
       source "$file"
     else
       return 1
     fi && eval "function $guard { :; }"
   else
-    local guard=ble-import/guard/ble/$1
-    ble/util/isfunction "$guard" && return 0
+    local guard=ble-import/guard:ble/$1
+    ble/is-function "$guard" && return 0
     if [[ -f $_ble_base/$file ]]; then
       source "$_ble_base/$file"
     elif [[ -f $_ble_base/local/$file ]]; then
@@ -1237,41 +1315,441 @@ function ble-assert {
 #------------------------------------------------------------------------------
 # Event loop
 
+## 関数 ble/util/clock
+##   時間を計測するのに使うことができるミリ秒単位の計量な時計です。
+##   計測の起点は ble.sh のロード時です。
+##   @var[out] ret
+_ble_util_clock_base=
+_ble_util_clock_reso=
+_ble_util_clock_type=
+function ble/util/clock/.initialize {
+  if ((_ble_bash>=50000)) && [[ $EPOCHREALTIME == *.???* ]]; then
+    # implementation with EPOCHREALTIME
+    _ble_util_clock_base=$((10#${EPOCHREALTIME%.*}))
+    _ble_util_clock_reso=1
+    _ble_util_clock_type=EPOCHREALTIME
+    function ble/util/clock {
+      local now=$EPOCHREALTIME
+      local integral=$((10#${now%%.*}-_ble_util_clock_base))
+      local mantissa=${now#*.}000; mantissa=${mantissa::3}
+      ((ret=integral*1000+10#$mantissa))
+    }
+  elif [[ -r /proc/uptime ]] && {
+         local uptime
+         ble/util/readfile uptime /proc/uptime
+         ble/string#split-words uptime "$uptime"
+         [[ $uptime == *.* ]]; }; then
+    # implementation with /proc/uptime
+    _ble_util_clock_base=$((10#${uptime%.*}))
+    _ble_util_clock_reso=10
+    _ble_util_clock_type=uptime
+    function ble/util/clock {
+      local now
+      ble/util/readfile now /proc/uptime
+      ble/string#split-words now "$now"
+      local integral=$((10#${now%%.*}-_ble_util_clock_base))
+      local fraction=${now#*.}000; fraction=${fraction::3}
+      ((ret=integral*1000+10#$fraction))
+    }
+  elif ((_ble_bash>=40200)); then
+    printf -v _ble_util_clock_base '%(%s)T'
+    _ble_util_clock_reso=1000
+    _ble_util_clock_type=printf
+    function ble/util/clock {
+      local now; printf -v now '%(%s)T'
+      ((ret=(now-_ble_util_clock_base)*1000))
+    }
+  else
+    ble/util/strftime -v _ble_util_clock_base '%s'
+    _ble_util_clock_reso=1000
+    _ble_util_clock_type=date
+    function ble/util/clock {
+      ble/util/strftime -v ret '%s'
+      ((ret=(ret-_ble_util_clock_base)*1000))
+    }
+  fi
+}
+ble/util/clock/.initialize
+
 if ((_ble_bash>=40000)); then
+  ## 設定関数 ble/util/idle/IS_IDLE { ble/util/is-stdin-ready; }
+  ##   他にするべき処理がない時 (アイドル時) に終了ステータス 0 を返します。
+  ##   Note: この設定関数は ble-decode.sh で上書きされます。
+  function ble/util/idle/IS_IDLE { ! ble/util/is-stdin-ready; }
+
+  _ble_util_idle_sclock=0
+  function ble/util/idle/.sleep {
+    local msec=$1
+    ((msec<=0)) && return 0
+    local integral=$((msec/1000)) fraction=00$((msec%1000))
+    fraction=${fraction:${#fraction}-3}
+    local sec=$integral.$fraction
+    ble/util/sleep "$sec"
+    ((_ble_util_idle_sclock+=msec))
+  }
+
+  function ble/util/idle.clock/.initialize {
+    function ble/util/idle.clock/.initialize { :; }
+
+    ## 関数 ble/util/idle.clock
+    ##   タスクスケジューリングに使用する時計
+    ##   @var[out] ret
+    function ble/util/idle.clock/.restart { :; }
+    if [[ ! $_ble_util_clock_type || $_ble_util_clock_type == date ]]; then
+      function ble/util/idle.clock {
+        ret=$_ble_util_idle_sclock
+      }
+    elif ((_ble_util_clock_reso<=100)); then
+      function ble/util/idle.clock {
+        ble/util/clock
+      }
+    else
+      ## 関数 ble/util/idle/.adjusted-clock
+      ##   参照時計 (rclock) と sleep 累積時間 (sclock) を元にして、
+      ##   参照時計を秒以下に解像度を上げた時計 (aclock) を提供します。
+      ##
+      ## @var[in,out] _ble_util_idle_aclock_tick_rclock
+      ## @var[in,out] _ble_util_idle_aclock_tick_sclock
+      ##   最後に参照時計が切り替わった時の rclock と sclock の値を保持します。
+      ##
+      ## @var[in,out] _ble_util_idle_aclock_shift
+      ##   時刻のシフト量を表します。
+      ##
+      ##   初期化時の秒以下の時刻が分からないため、
+      ##   取り敢えず 0.000 になっていると想定して時刻を測り始めます。
+      ##   最初の秒の切り替わりの時点でずれの量が判明するので、それを記録します。
+      ##   一様時計を提供する為に、以降もこのずれを適用する為に使用します。
+      ##
+      _ble_util_idle_aclock_shift=
+      _ble_util_idle_aclock_tick_rclock=
+      _ble_util_idle_aclock_tick_sclock=
+      function ble/util/idle.clock/.restart {
+        _ble_util_idle_aclock_shift=
+        _ble_util_idle_aclock_tick_rclock=
+        _ble_util_idle_aclock_tick_sclock=
+      }
+      function ble/util/idle/.adjusted-clock {
+        local resolution=$_ble_util_clock_reso
+        local sclock=$_ble_util_idle_sclock
+        local ret; ble/util/clock; local rclock=$((ret/resolution*resolution))
+
+        if [[ $_ble_util_idle_aclock_tick_rclock != $rclock ]]; then
+          if [[ $_ble_util_idle_aclock_tick_rclock && ! $_ble_util_idle_aclock_shift ]]; then
+            local delta=$((sclock-_ble_util_idle_aclock_tick_sclock))
+            ((_ble_util_idle_aclock_shift=delta<resolution?resolution-delta:0))
+          fi
+          _ble_util_idle_aclock_tick_rclock=$rclock
+          _ble_util_idle_aclock_tick_sclock=$sclock
+        fi
+
+        ((ret=rclock+(sclock-_ble_util_idle_aclock_tick_sclock)-_ble_util_idle_aclock_shift))
+      }
+      function ble/util/idle.clock {
+        ble/util/idle/.adjusted-clock
+      }
+    fi
+  }
+
+  : ${bleopt_idle_interval:=}
+  if [[ ! $bleopt_idle_interval ]]; then
+    if ((_ble_bash>50000)) && [[ $_ble_util_sleep_builtin_available ]]; then
+      bleopt_idle_interval=20
+    else
+      bleopt_idle_interval='ble_util_idle_elapsed>600000?500:(ble_util_idle_elapsed>60000?200:(ble_util_idle_elapsed>5000?100:20))'
+    fi
+  fi
+
+  ## @arr _ble_util_idle_task
+  ##   タスク一覧を保持します。各要素は一つのタスクを表し、
+  ##   status:command の形式の文字列です。
+  ##   command にはタスクを実行する coroutine を指定します。
+  ##   status は以下の何れかの値を持ちます。
+  ##
+  ##     R
+  ##       現在実行中のタスクである事を表します。
+  ##       ble/util/idle.push で設定されます。
+  ##     I
+  ##       次のユーザの入力を待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-user-input で設定します。
+  ##     S<rtime>
+  ##       時刻 <rtime> になるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.sleep で設定します。
+  ##     W<stime>
+  ##       sleep 累積時間 <stime> になるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.isleep で設定します。
+  ##     E<filename>
+  ##       ファイルまたはディレクトリ <filename> が現れるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-filename で設定します。
+  ##     F<filename>
+  ##       ファイル <filename> が有限のサイズになるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-file-content で設定します。
+  ##     P<pid>
+  ##       プロセス <pid> (ユーザからアクセス可能) が終了するのを待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-process で設定します。
+  ##     C<command>
+  ##       コマンド <command> の実行結果が真になるのを待っているタスクです。
+  ##       タスク内から ble/util/idle.wait-condition で設定します。
+  ##
   _ble_util_idle_task=()
 
   ## 関数 ble/util/idle.do
   ##   待機状態の処理を開始します。
   ##
   ##   @exit
-  ##     待機処理を何か実行した時に成功 (0) を返します。
+  ##     待機処理を何かしら実行した時に成功 (0) を返します。
   ##     何も実行しなかった時に失敗 (1) を返します。
   ##
   function ble/util/idle.do {
     local IFS=$' \t\n'
-    ble/util/is-stdin-ready && return 1
+    ble/util/idle/IS_IDLE || return 1
     ((${#_ble_util_idle_task[@]}==0)) && return 1
-
     ble/util/buffer.flush >&2
-    local _i _iN=${#_ble_util_idle_task[@]} _processed=
-    for ((_i=0;_i<_iN;_i++)); do
-      ((_i>0)) && ble/util/is-stdin-ready && return 0
-      local command=${_ble_util_idle_task[_i]}
-      [[ $command ]] || continue
-      _processed=1
-      builtin eval "$command"; local _ext=$?
-      ((_ext==148)) && return 0
-      _ble_util_idle_task[_i]=
+
+    ble/util/idle.clock/.initialize
+    ble/util/idle.clock/.restart
+
+    local _idle_start=$_ble_util_idle_sclock
+    local _idle_is_first=1
+    local _idle_processed=
+    while :; do
+      local _idle_key
+      local _idle_next_time= _idle_next_itime= _idle_running= _idle_waiting=
+      for _idle_key in "${!_ble_util_idle_task[@]}"; do
+        ble/util/idle/IS_IDLE || { [[ $_idle_processed ]]; return; }
+        local _idle_to_process=
+        local _idle_status=${_ble_util_idle_task[_idle_key]%%:*}
+        case ${_idle_status::1} in
+        (R) _idle_to_process=1 ;;
+        (I) [[ $_idle_is_first ]] && _idle_to_process=1 ;;
+        (S) ble/util/idle/.check-clock "$_idle_status" && _idle_to_process=1 ;;
+        (W) ble/util/idle/.check-clock "$_idle_status" && _idle_to_process=1 ;;
+        (F) [[ -s ${_idle_status:1} ]] && _idle_to_process=1 ;;
+        (E) [[ -e ${_idle_status:1} ]] && _idle_to_process=1 ;;
+        (P) ! kill -0 ${_idle_status:1} &>/dev/null && _idle_to_process=1 ;;
+        (C) eval -- "${_idle_status:1}" && _idle_to_process=1 ;;
+        (*) unset '_ble_util_idle_task[_idle_key]'
+        esac
+
+        if [[ $_idle_to_process ]]; then
+          local _idle_command=${_ble_util_idle_task[_idle_key]#*:}
+          _idle_processed=1
+          ble/util/idle.do/.call-task "$_idle_command"
+          (($?==148)) && return 0
+        elif [[ $_idle_status == [FEPC]* ]]; then
+          _idle_waiting=1
+        fi
+      done
+
+      _idle_is_first=
+      ble/util/idle.do/.sleep-until-next; local ext=$?
+      ((ext==148)) && break
+
+      [[ $_idle_next_itime$_idle_next_time$_idle_running$_idle_waiting ]] || break
     done
-    _ble_util_idle_task=()
-    [[ $_processed ]]
+
+    [[ $_idle_processed ]]
+  }
+  ## 関数 ble/util/idle.do/.call-task command
+  ##   @var[in,out] _idle_next_time
+  ##   @var[in,out] _idle_next_itime
+  ##   @var[in,out] _idle_running
+  ##   @var[in,out] _idle_waiting
+  function ble/util/idle.do/.call-task {
+    local _command=$1
+    local ble_util_idle_status=
+    local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
+    builtin eval "$_command"; local ext=$?
+    if ((ext==148)); then
+      _ble_util_idle_task[_idle_key]=R:$_command
+    elif [[ $ble_util_idle_status ]]; then
+      _ble_util_idle_task[_idle_key]=$ble_util_idle_status:$_command
+      if [[ $ble_util_idle_status == [WS]* ]]; then
+        local scheduled_time=${ble_util_idle_status:1}
+        if [[ $ble_util_idle_status == W* ]]; then
+          local next=_idle_next_itime
+        else
+          local next=_idle_next_time
+        fi
+        if [[ ! ${!next} ]] || ((scheduled_time<next)); then
+          builtin eval "$next=\$scheduled_time"
+        fi
+      elif [[ $ble_util_idle_status == R ]]; then
+        _idle_running=1
+      elif [[ $ble_util_idle_status == [FEPC]* ]]; then
+        _idle_waiting=1
+      fi
+    else
+      unset '_ble_util_idle_task[_idle_key]'
+    fi
+    return "$ext"
+  }
+  ## 関数 ble/util/idle/.check-clock status
+  ##   @var[in,out] _idle_next_itime
+  ##   @var[in,out] _idle_next_time
+  function ble/util/idle/.check-clock {
+    local status=$1
+    if [[ $status == W* ]]; then
+      local next=_idle_next_itime
+      local current_time=$_ble_util_idle_sclock
+    elif [[ $status == S* ]]; then
+      local ret
+      local next=_idle_next_time
+      ble/util/idle.clock; local current_time=$ret
+    else
+      return 1
+    fi
+
+    local scheduled_time=${status:1}
+    if ((scheduled_time<=current_time)); then
+      return 0
+    elif [[ ! ${!next} ]] || ((scheduled_time<next)); then
+      builtin eval "$next=\$scheduled_time"
+    fi
+    return 1
+  }
+  ## 関数 ble/util/idle.do/.sleep-until-next
+  ##   @var[in] _idle_next_time
+  ##   @var[in] _idle_next_itime
+  ##   @var[in] _idle_running
+  ##   @var[in] _idle_waiting
+  function ble/util/idle.do/.sleep-until-next {
+    ble/util/idle/IS_IDLE || return 148
+    [[ $_idle_running ]] && return
+    local isfirst=1
+    while
+      local sleep_amount=
+      if [[ $_idle_next_itime ]]; then
+        local clock=$_ble_util_idle_sclock
+        local sleep1=$((_idle_next_itime-clock))
+        if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
+          sleep_amount=$sleep1
+        fi
+      fi
+      if [[ $_idle_next_time ]]; then
+        local ret; ble/util/idle.clock; local clock=$ret
+        local sleep1=$((_idle_next_time-clock))
+        if [[ ! $sleep_amount ]] || ((sleep1<sleep_amount)); then
+          sleep_amount=$sleep1
+        fi
+      fi
+      [[ $isfirst && $_idle_waiting ]] || ((sleep_amount>0))
+    do
+      # Note: 変数 ble_util_idle_elapsed は
+      #   $((bleopt_idle_interval)) の評価時に参照される。
+      local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
+      local interval=$((bleopt_idle_interval))
+
+      if [[ ! $sleep_amount ]] || ((interval<sleep_amount)); then
+        sleep_amount=$interval
+      fi
+      ble/util/idle/.sleep "$sleep_amount"
+      ble/util/idle/IS_IDLE || return 148
+      isfirst=
+    done
+  }
+
+  function ble/util/idle.push/.impl {
+    local base=$1 entry=$2
+    local i=$base
+    while [[ ${_ble_util_idle_task[i]} ]]; do ((i++)); done
+    _ble_util_idle_task[i]=$entry
   }
   function ble/util/idle.push {
-    ble/array#push _ble_util_idle_task "$*"
+    ble/util/idle.push/.impl 0 "R:$*"
+  }
+  function ble/util/idle.push-background {
+    ble/util/idle.push/.impl 10000 "R:$*"
+  }
+  function ble/util/is-running-in-idle {
+    [[ ${ble_util_idle_status+set} ]]
+  }
+  function ble/util/idle.sleep {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    local ret; ble/util/idle.clock
+    ble_util_idle_status=S$((ret+$1))
+  }
+  function ble/util/idle.isleep {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=W$((_ble_util_idle_sclock+$1))
+  }
+  function ble/util/idle.wait-user-input {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=I
+  }
+  function ble/util/idle.wait-process {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=P$1
+  }
+  function ble/util/idle.wait-file-content {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=F$1
+  }
+  function ble/util/idle.wait-filename {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=E$1
+  }
+  function ble/util/idle.wait-condition {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=C$1
+  }
+  function ble/util/idle.continue {
+    [[ ${ble_util_idle_status+set} ]] || return 1
+    ble_util_idle_status=R
   }
 else
   function ble/util/idle.do { false; }
 fi
+
+#------------------------------------------------------------------------------
+# ble/util/fiberchain
+
+_ble_util_fiberchain=()
+_ble_util_fiberchain_prefix=
+function ble/util/fiberchain#initialize {
+  _ble_util_fiberchain=()
+  _ble_util_fiberchain_prefix=$1
+}
+function ble/util/fiberchain#resume/.core {
+  _ble_util_fiberchain=()
+  local fib_clock=0
+  local fib_ntask=$#
+  while (($#)); do
+    ((fib_ntask--))
+    local fiber=${1%%:*} fib_suspend= fib_kill=
+    local argv; ble/string#split-words argv "$fiber"
+    [[ $1 == *:* ]] && fib_suspend=${1#*:}
+    "$_ble_util_fiberchain_prefix/$argv.fib" "${argv[@]:1}"
+
+    if [[ $fib_kill ]]; then
+      break
+    elif [[ $fib_suspend ]]; then
+      _ble_util_fiberchain=("$fiber:$fib_suspend" "${@:2}")
+      return 148
+    fi
+    shift
+  done
+}
+function ble/util/fiberchain#resume {
+  ble/util/fiberchain#resume/.core "${_ble_util_fiberchain[@]}"
+}
+## 関数 ble/util/fiberchain#push fiber...
+##   @param[in] fiber
+##     複数指定することができます。
+##     一つ一つは空白区切りの単語を並べた文字列です。
+##     コロン ":" を含むことはできません。
+##     一番最初の単語にファイバー名 name を指定します。
+##     引数 args... があれば二つ目以降の単語として指定します。
+##
+##   @remarks
+##     実際に実行されるファイバーは以下のコマンドになります。
+##     "$_ble_util_fiber_chain_prefix/$name.fib" "${args[@]}"
+##
+function ble/util/fiberchain#push {
+  ble/array#push _ble_util_fiberchain "$@"
+}
+function ble/util/fiberchain#clear {
+  _ble_util_fiberchain=()
+}
 
 #------------------------------------------------------------------------------
 
@@ -1315,7 +1793,7 @@ function bleopt {
       case "$type" in
       (a*)
         [[ ${!var} == "$value" ]] && continue
-        if ble/util/isfunction bleopt/check:"${var#bleopt_}"; then
+        if ble/is-function bleopt/check:"${var#bleopt_}"; then
           if ! bleopt/check:"${var#bleopt_}"; then
             error_flag=1
             continue
@@ -1331,7 +1809,11 @@ function bleopt {
   if ((${#pvars[@]})); then
     local q="'" Q="'\''" var
     for var in "${pvars[@]}"; do
-      builtin printf '%s\n' "${var#bleopt_}='${!var//$q/$Q}'"
+      if [[ ${!var+set} ]]; then
+        builtin printf '%s\n' "bleopt ${var#bleopt_}='${!var//$q/$Q}'"
+      else
+        builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
+      fi
     done
   fi
 
@@ -1345,13 +1827,13 @@ function bleopt {
 : ${bleopt_vbell_duration=2000}
 
 function ble-term/.initialize {
-  if [[ $_ble_base/term.sh -nt $_ble_base_cache/$TERM.term ]]; then
-    source "$_ble_base/term.sh"
+  if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
+    source "$_ble_base/lib/init-term.sh"
   else
     source "$_ble_base_cache/$TERM.term"
   fi
 
-  _ble_util_string_prototype.reserve "$_ble_term_it"
+  ble/string#reserve-prototype "$_ble_term_it"
 }
 
 ble-term/.initialize
@@ -1487,8 +1969,9 @@ function ble/term/stty/TRAPEXIT {
 
 #---- cursor state ------------------------------------------------------------
 
+: ${bleopt_term_cursor_external=0}
+
 _ble_term_cursor_current=unknown
-_ble_term_cursor_external=0
 _ble_term_cursor_internal=0
 _ble_term_cursor_hidden_current=unknown
 _ble_term_cursor_hidden_internal=reveal
@@ -1539,6 +2022,58 @@ function ble/term/bracketed-paste-mode/leave {
   ble/util/buffer $'\e[?2004l'
 }
 
+#---- DA2 ---------------------------------------------------------------------
+
+_ble_term_DA2R=
+function ble/term/DA2/notify {
+  _ble_term_DA2R=$1
+}
+
+#---- SGR(>4): modifyOtherKeys ------------------------------------------------
+
+: ${bleopt_term_modifyOtherKeys_external=auto}
+: ${bleopt_term_modifyOtherKeys_internal=auto}
+
+_ble_term_modifyOtherKeys_current=
+function ble/term/modifyOtherKeys/.update {
+  [[ $1 == $_ble_term_modifyOtherKeys_current ]] && return
+  # Note: 対応していない端末が SGR と勘違いしても
+  #  大丈夫な様に SGR を最後にクリアしておく。
+  # Note: \e[>4;2m の時は、対応していない端末のため
+  #   一端 \e[>4;1m にしてから \e[>4;2m にする。
+  case $1 in
+  (0) ble/util/buffer $'\e[>4;0m\e[m' ;;
+  (1) ble/util/buffer $'\e[>4;1m\e[m' ;;
+  (2) ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
+  esac
+  _ble_term_modifyOtherKeys_current=$1
+}
+function ble/term/modifyOtherKeys/.supported {
+  # libvte は SGR(>4) を直接画面に表示してしまう
+  [[ $_ble_term_DA2R == '1;'* ]] && return 1
+
+  # 改造版 Poderosa は通知でウィンドウサイズを毎回変更するので表示が乱れてしまう
+  [[ $MWG_LOGINTERM == rosaterm ]] && return 1
+}
+function ble/term/modifyOtherKeys/enter {
+  local value=$bleopt_term_modifyOtherKeys_internal
+  if [[ $value == auto ]]; then
+    value=2
+    # 問題を起こす端末で無効化。
+    ble/term/modifyOtherKeys/.supported || value=
+  fi
+  ble/term/modifyOtherKeys/.update "$bleopt_term_modifyOtherKeys_internal"
+}
+function ble/term/modifyOtherKeys/leave {
+  local value=$bleopt_term_modifyOtherKeys_internal
+  if [[ $value == auto ]]; then
+    value=1
+    # 問題を起こす端末で無効化。
+    ble/term/modifyOtherKeys/.supported || value=
+  fi
+  ble/term/modifyOtherKeys/.update "$bleopt_term_modifyOtherKeys_external"
+}
+
 #---- rl variable: convert-meta -----------------------------------------------
 
 _ble_term_rl_convert_meta_adjusted=
@@ -1549,7 +2084,7 @@ function ble/term/rl-convert-meta/enter {
 
   if ble/util/test-rl-variable convert-meta; then
     _ble_term_rl_convert_meta_external=on
-    bind 'set convert-meta off'
+    builtin bind 'set convert-meta off'
   else
     _ble_term_rl_convert_meta_external=off
   fi
@@ -1559,7 +2094,7 @@ function ble/term/rl-convert-meta/leave {
   _ble_term_rl_convert_meta_adjusted=
 
   [[ $_ble_term_rl_convert_meta_external == on ]] &&
-    bind 'set convert-meta on'
+    builtin bind 'set convert-meta on'
 }
 
 #---- terminal enter/leave ----------------------------------------------------
@@ -1569,6 +2104,7 @@ function ble/term/enter {
   [[ $_ble_term_state == internal ]] && return
   ble/term/stty/enter
   ble/term/bracketed-paste-mode/enter
+  ble/term/modifyOtherKeys/enter
   ble/term/cursor-state/.update "$_ble_term_cursor_internal"
   ble/term/cursor-state/.update-hidden "$_ble_term_cursor_hidden_internal"
   ble/term/rl-convert-meta/enter
@@ -1578,7 +2114,8 @@ function ble/term/leave {
   [[ $_ble_term_state == external ]] && return
   ble/term/stty/leave
   ble/term/bracketed-paste-mode/leave
-  ble/term/cursor-state/.update "$_ble_term_cursor_external"
+  ble/term/modifyOtherKeys/leave
+  ble/term/cursor-state/.update "$bleopt_term_cursor_external"
   ble/term/cursor-state/.update-hidden reveal
   ble/term/rl-convert-meta/leave
   _ble_term_cursor_current=unknown # vim は復元してくれない
@@ -1607,7 +2144,7 @@ trap ble/term/TRAPEXIT EXIT
 #------------------------------------------------------------------------------
 # String manipulations
 
-_ble_text_s2c_table_enabled=
+_ble_util_s2c_table_enabled=
 if ((_ble_bash>=40100)); then
   # - printf "'c" で Unicode が読める (どの LC_CTYPE でも Unicode になる)
   function ble/util/s2c {
@@ -1616,18 +2153,18 @@ if ((_ble_bash>=40100)); then
 elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # - 連想配列にキャッシュできる
   # - printf "'c" で unicode が読める
-  declare -A _ble_text_s2c_table
-  _ble_text_s2c_table_enabled=1
+  declare -A _ble_util_s2c_table
+  _ble_util_s2c_table_enabled=1
   function ble/util/s2c {
     [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
       ble/util/.cache/update-locale
 
     local s=${1:$2:1}
-    ret=${_ble_text_s2c_table[x$s]}
+    ret=${_ble_util_s2c_table[x$s]}
     [[ $ret ]] && return
 
     ble/util/sprintf ret %d "'$s"
-    _ble_text_s2c_table[x$s]=$ret
+    _ble_util_s2c_table[x$s]=$ret
   }
 elif ((_ble_bash>=40000)); then
   function ble/util/s2c {
@@ -1652,7 +2189,7 @@ else
         builtin printf "%d " "'\''$byte"
       done <<< "$s"
     '
-    "ble-text-b2c+$bleopt_input_encoding" $bytes
+    "ble/encoding:$bleopt_input_encoding/b2c" $bytes
   }
 fi
 
@@ -1699,7 +2236,7 @@ else
     fi
 
     local bytes i iN seq=
-    ble-text-c2b+UTF-8 "$1"
+    ble/encoding:UTF-8/c2b "$1"
     for ((i=0,iN=${#bytes[@]};i<iN;i++)); do
       seq="$seq\\x${_ble_text_hexmap[bytes[i]&0xFF]}"
     done
@@ -1708,25 +2245,25 @@ else
 fi
 
 # どうもキャッシュするのが一番速い様だ
-_ble_text_c2s_table=()
+_ble_util_c2s_table=()
 function ble/util/c2s {
   [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
     ble/util/.cache/update-locale
 
-  ret=${_ble_text_c2s_table[$1]-}
+  ret=${_ble_util_c2s_table[$1]-}
   if [[ ! $ret ]]; then
     ble/util/c2s-impl "$1"
-    _ble_text_c2s_table[$1]=$ret
+    _ble_util_c2s_table[$1]=$ret
   fi
 }
 
-## 関数 ble-text-c2bc
+## 関数 ble/util/c2bc
 ##   gets a byte count of the encoded data of the char
 ##   指定した文字を現在の符号化方式で符号化した時のバイト数を取得します。
 ##   @param[in]  $1 = code
 ##   @param[out] ret
-function ble-text-c2bc {
-  "ble-text-c2bc+$bleopt_input_encoding" "$1"
+function ble/util/c2bc {
+  "ble/encoding:$bleopt_input_encoding/c2bc" "$1"
 }
 
 ## 関数 ble/util/.cache/update-locale
@@ -1745,17 +2282,17 @@ function ble/util/.cache/update-locale {
   local ret; ble/string#tolower "${LC_ALL:-${LC_CTYPE:-$LANG}}"
   if [[ $_ble_util_cache_ctype != $ret ]]; then
     _ble_util_cache_ctype=$ret
-    _ble_text_c2s_table=()
-    [[ $_ble_text_s2c_table_enabled ]] &&
-      _ble_text_s2c_table=()
+    _ble_util_c2s_table=()
+    [[ $_ble_util_s2c_table_enabled ]] &&
+      _ble_util_s2c_table=()
   fi
 }
 
 #------------------------------------------------------------------------------
 
-## 関数 ble-text-b2c+UTF-8
+## 関数 ble/encoding:UTF-8/b2c
 ##   @var[out] ret
-function ble-text-b2c+UTF-8 {
+function ble/encoding:UTF-8/b2c {
   local bytes b0 n i
   bytes=("$@")
   ret=0
@@ -1769,9 +2306,9 @@ function ble-text-b2c+UTF-8 {
   done
 }
 
-## 関数 ble-text-c2b+UTF-8
+## 関数 ble/encoding:UTF-8/c2b
 ##   @var[out] bytes[]
-function ble-text-c2b+UTF-8 {
+function ble/encoding:UTF-8/c2b {
   local code=$1 n i
   ((code=code&0x7FFFFFFF,
     n=code<0x80?0:(
@@ -1791,11 +2328,11 @@ function ble-text-c2b+UTF-8 {
   fi
 }
 
-function ble-text-b2c+C {
+function ble/encoding:C/b2c {
   local -i byte=$1
   ((ret=byte&0xFF))
 }
-function ble-text-c2b+C {
+function ble/encoding:C/c2b {
   local -i code=$1
   bytes=($((code&0xFF)))
 }

@@ -1,0 +1,92 @@
+#!/bin/bash
+
+HISTFILE=A.txt
+IGNOREEOF=9999
+
+bleopt_openat_base=33
+source out/ble.sh --noattach
+
+# p 自分で設置したパイプを使ってみる
+# f 自分で作った通常ファイルを使ってみる
+# r 自分で stdout.off の内部でやっているリダイレクトを実行してみる
+test_flags=
+
+pipe1=
+if [[ $test_flags == *p* ]]; then
+  ble/bin/rm -f memo/D0857.pipe
+  ble/bin/mkfifo memo/D0857.pipe
+  pipe_file=memo/D0857.pipe
+  {
+    {
+      while IFS= builtin read -r line; do
+        echo "[pipe] $line" >> memo/D0857.stderr
+      done < "$pipe_file"
+    } &>/dev/null & disown
+  } &>/dev/null
+  ble/util/openat pipe1 '> "$pipe_file"'
+  echo "pipe1=$pipe1" >&2
+fi
+
+function ble-decode/.hook {
+  if [[ :$test_flags: == *:[spfr]:* ]]; then
+    ble-edit/bind/stdout.on
+  else
+    ble-decode/PROLOGUE
+  fi
+
+  local byte
+  for byte; do
+    case $byte in
+    (20) echo C-t
+         #ls -la /proc/self/fd/
+         exit ;;
+    (4) echo C-d ;;
+    (*) echo $byte;;
+    esac
+  done
+
+  if [[ :$test_flags: == *:p:* ]]; then
+    echo "pipe: $pipe_file (fd: $pipe1)"
+    exec 1>>$_ble_edit_io_fname1 2>&$pipe1
+  elif [[ :$test_flags: == *:f:* ]]; then
+    exec 1>>$_ble_edit_io_fname1 2>>memo/D0857.stderr
+  elif [[ :$test_flags: == *:r:* ]]; then
+    echo "pipe: $_ble_edit_io_fname2.pipe (fd: $_ble_edit_fd_stderr_pipe)"
+    exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_fd_stderr_pipe
+  elif [[ :$test_flags: == *:s:* ]]; then
+    ble-edit/bind/stdout.off
+  else
+    ble-decode/EPILOGUE
+  fi
+}
+
+function ble-attach.1 {
+  # 取り敢えずプロンプトを表示する
+  ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
+  ble-edit/initialize # 3ms
+  ble-edit/attach     # 0ms (_ble_edit_PS1 他の初期化)
+  ble/textarea#redraw # 37ms
+  ble/util/buffer.flush >&2
+
+  # keymap 初期化
+  IFS=$' \t\n'
+  ble-decode/initialize # 7ms
+  ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
+
+  ble-decode/attach
+  _ble_edit_detach_flag= # do not detach or exit
+
+  ble-edit/reset-history # 27s for bash-3.0
+
+  ble-edit/info/default
+  ble-edit/bind/.tail
+}
+
+function ble-attach.2 {
+  source memo/D0857.bind # $_ble_base_cache/ble-decode-bind.$_ble_bash.UTF-8.bind
+  _ble_term_state=internal
+}
+
+# ble-attach.2
+# ble-attach.1
+ble-attach

@@ -2,13 +2,10 @@
 
 # **** sections ****
 #
-# @text.c2w
-# @edit/draw
 # @line.ps1
-# @textmap
 # @line.text
 # @line.info
-# @edit
+# @edit.content
 # @edit.ps1
 # @textarea
 # @textarea.buffer
@@ -27,25 +24,6 @@
 # @comp
 # @bind
 # @bind.bind
-
-## オプション char_width_mode
-##   文字の表示幅の計算方法を指定します。
-## bleopt_char_width_mode=east
-##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 2 とします
-## bleopt_char_width_mode=west
-##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 1 とします
-## bleopt_char_width_mode=emacs
-##   emacs で用いられている既定の文字幅の設定です
-## 定義 ble/util/c2w+$bleopt_char_width_mode
-: ${bleopt_char_width_mode:=east}
-: ${bleopt_emoji_width:=2}
-
-function bleopt/check:char_width_mode {
-  if ! ble/util/isfunction "ble/util/c2w+$value"; then
-    echo "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w+$value' is not defined." >&2
-    return 1
-  fi
-}
 
 ## オプション edit_vbell
 ##   編集時の visible bell の有効・無効を設定します。
@@ -81,25 +59,6 @@ function bleopt/check:char_width_mode {
 ##   選択範囲を解除して現在位置に新しい文字を挿入します。
 : ${bleopt_delete_selection_mode=1}
 
-## オプション default_keymap
-##   既定の編集モードに使われるキーマップを指定します。
-## bleopt_default_keymap=auto
-##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
-## bleopt_default_keymap=emacs
-##   emacs と同様の編集モードを使用します。
-## bleopt_default_keymap=vi
-##   vi と同様の編集モードを使用します。
-: ${bleopt_default_keymap:=auto}
-
-function bleopt/check:default_keymap {
-  case $value in
-  (auto|emacs|vi|safe) ;;
-  (*)
-    echo "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
-    return 1 ;;
-  esac
-}
-
 ## オプション indent_offset
 ##   シェルのインデント幅を指定します。既定では 4 です。
 : ${bleopt_indent_offset:=4}
@@ -109,22 +68,6 @@ function bleopt/check:default_keymap {
 ##   0 を指定するとインデントに空白だけを用います。
 ##   それ以外の場合はインデントにタブを使用します。
 : ${bleopt_indent_tabs:=1}
-
-## オプション tab_width
-##   タブの表示幅を指定します。
-##
-##   bleopt_tab_width= (既定)
-##     空文字列を指定したときは $(tput it) を用います。
-##   bleopt_tab_width=NUM
-##     数字を指定したときはその値をタブの幅として用います。
-: ${bleopt_tab_width:=}
-
-function bleopt/check:tab_width {
-  if [[ $value ]] && (((value=value)<=0)); then
-    echo "bleopt: an empty string or a positive value is required for tab_width." >&2
-    return 1
-  fi
-}
 
 ## オプション undo_point
 ##   undo/redo 実行直後のカーソル位置を設定します。
@@ -164,7 +107,7 @@ function ble/edit/use-textmap {
 : ${bleopt_exec_type:=gexec}
 
 function bleopt/check:exec_type {
-  if ! ble/util/isfunction "ble-edit/exec:$value/process"; then
+  if ! ble/is-function "ble-edit/exec:$value/process"; then
     echo "bleopt: Invalid value exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
     return 1
   fi
@@ -185,780 +128,22 @@ function bleopt/check:exec_type {
 ##   これは自分の bash の設定に合わせる必要があります。
 : ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
 
-# 
-#------------------------------------------------------------------------------
-# **** char width ****                                                @text.c2w
-
-# ※注意 [ -~] の範囲の文字は全て幅1であるという事を仮定したコードが幾らかある
-#   もしこれらの範囲の文字を幅1以外で表示する端末が有ればそれらのコードを実装し
-#   直す必要がある。その様な変な端末があるとは思えないが。
-
-
-_ble_text_c2w__table=()
-
-## 関数 ble/util/c2w ccode
-##   @var[out] ret
-function ble/util/c2w {
-  # ret=${_ble_text_c2w__table[$1]}
-  # [[ $ret ]] && return
-  "ble/util/c2w+$bleopt_char_width_mode" "$1"
-  # _ble_text_c2w__table[$1]=$ret
-}
-## 関数 ble/util/c2w-edit ccode
-##   編集画面での表示上の文字幅を返します。
-##   @var[out] ret
-function ble/util/c2w-edit {
-  if (($1<32||127<=$1&&$1<160)); then
-    # 制御文字は ^? と表示される。
-    ret=2
-    # TAB は???
-
-    # 128-159: M-^?
-    ((128<=$1&&(ret=4)))
-  else
-    ble/util/c2w "$1"
-  fi
-}
-# ## 関数 ble/util/c2w-edit ccode
-# ##   @var[out] ret
-# function ble/util/s2w {
-#   ble/util/s2c "$1" "$2"
-#   "ble/util/c2w+$bleopt_char_width_mode" "$ret"
-# }
-
-# ---- 文字種判定 -------------------------------------------------------------
-
-## 配列 _ble_util_c2w_non_zenkaku
-##   飛び地になっている全角でない文字
-_ble_util_c2w_non_zenkaku=(
-  [0x303F]=1 # 半角スペース
-  [0x3030]=-2 [0x303d]=-2 [0x3297]=-2 [0x3299]=-2 # 絵文字
-)
-## 関数 ble/util/c2w/.determine-unambiguous
-##   @var[out] ret
-function ble/util/c2w/.determine-unambiguous {
-  local code=$1
-  if ((code<0xA0)); then
-    ret=1
-    return
-  fi
-
-  # 取り敢えず曖昧
-  ret=-1
-
-  # 以下は全角に確定している範囲
-  if ((code<0xFB00)); then
-    ((0x2E80<=code&&code<0xA4D0&&!_ble_util_c2w_non_zenkaku[code]||
-      0xAC00<=code&&code<0xD7A4||
-      0xF900<=code||
-      0x1100<=code&&code<0x1160||
-      code==0x2329||code==0x232A)) && ret=2
-  elif ((code<0x10000)); then
-    ((0xFF00<=code&&code<0xFF61||
-      0xFE30<=code&&code<0xFE70||
-      0xFFE0<=code&&code<0xFFE7)) && ret=2
-  else
-    ((0x20000<=code&&code<0x2FFFE||
-      0x30000<=code&&code<0x3FFFE)) && ret=2
-  fi
-}
-
-## 配列 _ble_text_c2w_emoji_wranges
-##
-##   https://github.com/vim-jp/issues/issues/1086 にある表を
-##   以下の関数で加工した。
-##
-##   function process {
-##     local -i begin=$1 end=$(($2+1))
-##     printf ' %s %s' "$begin" "$end"
-##   }
-##
-_ble_text_c2w_emoji_wranges=(
-  8252 8253 8265 8266 8482 8483 8505 8506 8596 8602 8617 8619 8986 8988
-  9000 9001 9167 9168 9193 9204 9208 9211 9410 9411 9642 9644 9654 9655
-  9664 9665 9723 9727 9728 9733 9742 9743 9745 9746 9748 9750 9752 9753
-  9757 9758 9760 9761 9762 9764 9766 9767 9770 9771 9774 9776 9784 9787
-  9792 9793 9794 9795 9800 9812 9824 9825 9827 9828 9829 9831 9832 9833
-  9851 9852 9855 9856 9874 9880 9881 9882 9883 9885 9888 9890 9898 9900
-  9904 9906 9917 9919 9924 9926 9928 9929 9934 9936 9937 9938 9939 9941
-  9961 9963 9968 9974 9975 9979 9981 9982 9986 9987 9989 9990 9992 9998
-  9999 10000 10002 10003 10004 10005 10006 10007 10013 10014 10017 10018
-  10024 10025 10035 10037 10052 10053 10055 10056 10060 10061 10062 10063
-  10067 10070 10071 10072 10083 10085 10133 10136 10145 10146 10160 10161
-  10175 10176 10548 10550 11013 11016 11035 11037 11088 11089 11093 11094
-  # 12336 12337 12349 12350 12951 12952 12953 12954 これらは特別に処理する。
-  126980 126981
-  127183 127184 127344 127346 127358 127360 127374 127375 127377 127387
-  127462 127488 127489 127491 127514 127515 127535 127536 127538 127547
-  127568 127570 127744 127778 127780 127892 127894 127896 127897 127900
-  127902 127985 127987 127990 127991 128254 128255 128318 128329 128335
-  128336 128360 128367 128369 128371 128379 128391 128392 128394 128398
-  128400 128401 128405 128407 128420 128422 128424 128425 128433 128435
-  128444 128445 128450 128453 128465 128468 128476 128479 128481 128482
-  128483 128484 128488 128489 128495 128496 128499 128500 128506 128592
-  128640 128710 128715 128723 128736 128742 128745 128746 128747 128749
-  128752 128753 128755 128761 129296 129339 129340 129343 129344 129350
-  129351 129357 129360 129388 129408 129432 129472 129473 129488 129511)
-
-## 関数 ble/util/c2w/is-emoji code
-##   @param[in] code
-function ble/util/c2w/is-emoji {
-  local code=$1
-  ((8252<=code&&code<=0x2b55||0x1f004<code&&code<=0x1f9e6)) || return 1
-
-  # 0x3030 - 0x3299
-  ((0x3030<=code&&code<=0x3299&&_ble_util_c2w_non_zenkaku[code]!=-2)) && return 1
-
-  local l=0 u=${#_ble_text_c2w_emoji_wranges[@]} m
-  while ((l+1<u)); do
-    ((_ble_text_c2w_emoji_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
-  done
-
-  (((l&1)==0)); return
-}
-
-# ---- char_width_mode ---------------------------------------------------------
-
-## 関数 ble/util/c2w+emacs
-##   emacs-24.2.1 default char-width-table
-##   @var[out] ret
-_ble_text_c2w__emacs_wranges=(
- 162 164 167 169 172 173 176 178 180 181 182 183 215 216 247 248 272 273 276 279
- 280 282 284 286 288 290 293 295 304 305 306 308 315 316 515 516 534 535 545 546
- 555 556 608 618 656 660 722 723 724 725 768 769 770 772 775 777 779 780 785 787
- 794 795 797 801 805 806 807 813 814 815 820 822 829 830 850 851 864 866 870 872
- 874 876 898 900 902 904 933 934 959 960 1042 1043 1065 1067 1376 1396 1536 1540 1548 1549
- 1551 1553 1555 1557 1559 1561 1563 1566 1568 1569 1571 1574 1576 1577 1579 1581 1583 1585 1587 1589
- 1591 1593 1595 1597 1599 1600 1602 1603 1611 1612 1696 1698 1714 1716 1724 1726 1734 1736 1739 1740
- 1742 1744 1775 1776 1797 1799 1856 1857 1858 1859 1898 1899 1901 1902 1903 1904)
-function ble/util/c2w+emacs {
-  local code=$1 al=0 ah=0 tIndex=
-
-  # bash-4.0 bug workaround
-  #   中で使用している変数に日本語などの文字列が入っているとエラーになる。
-  #   その値を参照していなくても、その分岐に入らなくても関係ない。
-  #   なので ret に予め適当な値を設定しておく事にする。
-  ret=1
-  ((code<0xA0)) && return
-
-  if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
-    ((ret=bleopt_emoji_width))
-    return
-  fi
-
-  (('
-    0x3100<=code&&code<0xA4D0||0xAC00<=code&&code<0xD7A4?(
-      ret=2
-    ):(0x2000<=code&&code<0x2700?(
-      tIndex=0x0100+code-0x2000
-    ):(
-      al=code&0xFF,
-      ah=code/256,
-      ah==0x00?(
-        tIndex=al
-      ):(ah==0x03?(
-        ret=0xFF&((al-0x91)&~0x20),
-        ret=ret<25&&ret!=17?2:1
-      ):(ah==0x04?(
-        ret=al==1||0x10<=al&&al<=0x50||al==0x51?2:1
-      ):(ah==0x11?(
-        ret=al<0x60?2:1
-      ):(ah==0x2e?(
-        ret=al>=0x80?2:1
-      ):(ah==0x2f?(
-        ret=2
-      ):(ah==0x30?(
-        ret=al!=0x3f?2:1
-      ):(ah==0xf9||ah==0xfa?(
-        ret=2
-      ):(ah==0xfe?(
-        ret=0x30<=al&&al<0x70?2:1
-      ):(ah==0xff?(
-        ret=0x01<=al&&al<0x61||0xE0<=al&&al<=0xE7?2:1
-      ):(ret=1))))))))))
-    ))
-  '))
-
-  [[ $tIndex ]] || return 0
-
-  if ((tIndex<_ble_text_c2w__emacs_wranges[0])); then
-    ret=1
-    return
-  fi
-
-  local l=0 u=${#_ble_text_c2w__emacs_wranges[@]} m
-  while ((l+1<u)); do
-    ((_ble_text_c2w__emacs_wranges[m=(l+u)/2]<=tIndex?(l=m):(u=m)))
-  done
-  ((ret=((l&1)==0)?2:1))
-  return 0
-}
-
-## 関数 ble/util/c2w+west
-##   @var[out] ret
-function ble/util/c2w+west {
-  ble/util/c2w/.determine-unambiguous "$1"
-  if ((ret<0)); then
-    if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
-      ((ret=bleopt_emoji_width))
-    else
-      ((ret=1))
-    fi
-  fi
-}
-
-## 関数 ble/util/c2w+east
-##   @var[out] ret
-_ble_text_c2w__east_wranges=(
- 161 162 164 165 167 169 170 171 174 175 176 181 182 187 188 192 198 199 208 209
- 215 217 222 226 230 231 232 235 236 238 240 241 242 244 247 251 252 253 254 255
- 257 258 273 274 275 276 283 284 294 296 299 300 305 308 312 313 319 323 324 325
- 328 332 333 334 338 340 358 360 363 364 462 463 464 465 466 467 468 469 470 471
- 472 473 474 475 476 477 593 594 609 610 708 709 711 712 713 716 717 718 720 721
- 728 732 733 734 735 736 913 930 931 938 945 962 963 970 1025 1026 1040 1104 1105 1106
- 8208 8209 8211 8215 8216 8218 8220 8222 8224 8227 8228 8232 8240 8241 8242 8244 8245 8246 8251 8252
- 8254 8255 8308 8309 8319 8320 8321 8325 8364 8365 8451 8452 8453 8454 8457 8458 8467 8468 8470 8471
- 8481 8483 8486 8487 8491 8492 8531 8533 8539 8543 8544 8556 8560 8570 8592 8602 8632 8634 8658 8659
- 8660 8661 8679 8680 8704 8705 8706 8708 8711 8713 8715 8716 8719 8720 8721 8722 8725 8726 8730 8731
- 8733 8737 8739 8740 8741 8742 8743 8749 8750 8751 8756 8760 8764 8766 8776 8777 8780 8781 8786 8787
- 8800 8802 8804 8808 8810 8812 8814 8816 8834 8836 8838 8840 8853 8854 8857 8858 8869 8870 8895 8896
- 8978 8979 9312 9450 9451 9548 9552 9588 9600 9616 9618 9622 9632 9634 9635 9642 9650 9652 9654 9656
- 9660 9662 9664 9666 9670 9673 9675 9676 9678 9682 9698 9702 9711 9712 9733 9735 9737 9738 9742 9744
- 9748 9750 9756 9757 9758 9759 9792 9793 9794 9795 9824 9826 9827 9830 9831 9835 9836 9838 9839 9840
- 10045 10046 10102 10112 57344 63744 65533 65534 983040 1048574 1048576 1114110)
-function ble/util/c2w+east {
-  ble/util/c2w/.determine-unambiguous "$1"
-  ((ret>=0)) && return
-
-  if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
-    ((ret=bleopt_emoji_width))
-    return
-  fi
-
-  local code=$1
-  if ((code<_ble_text_c2w__east_wranges[0])); then
-    ret=1
-    return
-  fi
-
-  local l=0 u=${#_ble_text_c2w__east_wranges[@]} m
-  while ((l+1<u)); do
-    ((_ble_text_c2w__east_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
-  done
-  ((ret=((l&1)==0)?2:1))
-}
+## オプション allow_exit_with_jobs
+##   この変数に空文字列が設定されている時、
+##   ジョブが残っている時には ble/widget/exit からシェルは終了しません。
+##   この変数に空文字列以外が設定されている時、
+##   ジョブがある場合でも条件を満たした時に exit を実行します。
+##   停止中のジョブがある場合、または、shopt -s checkjobs かつ実行中のジョブが存在する時は、
+##   二回連続で同じ widget から exit を呼び出した時にシェルを終了します。
+##   それ以外の場合は常にシェルを終了します。
+##   既定値は空文字列です。
+: ${bleopt_allow_exit_with_jobs=}
 
 # 
 #------------------------------------------------------------------------------
-# **** ble-edit/draw ****                                            @edit/draw
-
-function ble-edit/draw/put {
-  DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
-}
-function ble-edit/draw/put.ind {
-  local -i count=${1-1}
-  local ret; ble/string#repeat "${_ble_term_ind}" "$count"
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
-}
-function ble-edit/draw/put.il {
-  local -i value=${1-1}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_il//'%d'/$value}
-}
-function ble-edit/draw/put.dl {
-  local -i value=${1-1}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
-}
-function ble-edit/draw/put.cuu {
-  local -i value=${1-1}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuu//'%d'/$value}
-}
-function ble-edit/draw/put.cud {
-  local -i value=${1-1}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cud//'%d'/$value}
-}
-function ble-edit/draw/put.cuf {
-  local -i value=${1-1}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuf//'%d'/$value}
-}
-function ble-edit/draw/put.cub {
-  local -i value=${1-1}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cub//'%d'/$value}
-}
-function ble-edit/draw/put.cup {
-  local -i l=${1-1} c=${2-1}
-  local out=$_ble_term_cup
-  out=${out//'%l'/$l}
-  out=${out//'%c'/$c}
-  out=${out//'%y'/$((l-1))}
-  out=${out//'%x'/$((c-1))}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
-}
-function ble-edit/draw/put.hpa {
-  local -i c=${1-1}
-  local out=$_ble_term_hpa
-  out=${out//'%c'/$c}
-  out=${out//'%x'/$((c-1))}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
-}
-function ble-edit/draw/put.vpa {
-  local -i l=${1-1}
-  local out=$_ble_term_vpa
-  out=${out//'%l'/$l}
-  out=${out//'%y'/$((l-1))}
-  DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
-}
-function ble-edit/draw/flush {
-  IFS= builtin eval 'builtin echo -n "${DRAW_BUFF[*]}"'
-  DRAW_BUFF=()
-}
-## 関数 ble-edit/draw/sflush [-v var]
-##   @param[in] var
-##     出力先の変数名を指定します。
-##   @var[out] !var
-function ble-edit/draw/sflush {
-  local _var=ret
-  [[ $1 == -v ]] && _var=$2
-  IFS= builtin eval "$_var=\"\${DRAW_BUFF[*]}\""
-  DRAW_BUFF=()
-}
-function ble-edit/draw/bflush {
-  IFS= builtin eval 'ble/util/buffer "${DRAW_BUFF[*]}"'
-  DRAW_BUFF=()
-}
-
-function ble-edit/draw/trace/SC {
-  trace_scosc="$x $y $g $lc $lg"
-  ble-edit/draw/put "$_ble_term_sc"
-}
-function ble-edit/draw/trace/RC {
-  local -a scosc
-  scosc=($trace_scosc)
-  x=${scosc[0]}
-  y=${scosc[1]}
-  g=${scosc[2]}
-  lc=${scosc[3]}
-  lg=${scosc[4]}
-  ble-edit/draw/put "$_ble_term_rc"
-}
-function ble-edit/draw/trace/NEL {
-  ble-edit/draw/put "$_ble_term_cr"
-  ble-edit/draw/put "$_ble_term_nl"
-  ((y++,x=0,lc=32,lg=0))
-}
-## 関数 ble-edit/draw/trace/SGR/arg_next
-##   @var[in    ] f
-##   @var[in,out] j
-##   @var[   out] arg
-function ble-edit/draw/trace/SGR/arg_next {
-  local _var=arg _ret
-  if [[ $1 == -v ]]; then
-    _var=$2
-    shift 2
-  fi
-
-  if ((j<${#f[*]})); then
-    _ret=${f[j++]}
-  else
-    ((i++))
-    _ret=${specs[i]%%:*}
-  fi
-
-  (($_var=_ret))
-}
-function ble-edit/draw/trace/SGR {
-  local param=$1 seq=$2 specs i iN
-  ble/string#split specs \; "$param"
-  if ((${#specs[*]}==0)); then
-    g=0
-    ble-edit/draw/put "$_ble_term_sgr0"
-    return
-  fi
-
-  for ((i=0,iN=${#specs[@]};i<iN;i++)); do
-    local spec=${specs[i]} f
-    ble/string#split f : "$spec"
-    if ((30<=f[0]&&f[0]<50)); then
-      # colors
-      if ((30<=f[0]&&f[0]<38)); then
-        local color=$((f[0]-30))
-        ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
-      elif ((40<=f[0]&&f[0]<48)); then
-        local color=$((f[0]-40))
-        ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
-      elif ((f[0]==38)); then
-        local j=1 color cspace
-        ble-edit/draw/trace/SGR/arg_next -v cspace
-        if ((cspace==5)); then
-          ble-edit/draw/trace/SGR/arg_next -v color
-          ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
-        fi
-      elif ((f[0]==48)); then
-        local j=1 color cspace
-        ble-edit/draw/trace/SGR/arg_next -v cspace
-        if ((cspace==5)); then
-          ble-edit/draw/trace/SGR/arg_next -v color
-          ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
-        fi
-      elif ((f[0]==39)); then
-        ((g&=~(_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor)))
-      elif ((f[0]==49)); then
-        ((g&=~(_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor)))
-      fi
-    elif ((90<=f[0]&&f[0]<98)); then
-      local color=$((f[0]-90+8))
-      ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
-    elif ((100<=f[0]&&f[0]<108)); then
-      local color=$((f[0]-100+8))
-      ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
-    elif ((f[0]==0)); then
-      g=0
-    elif ((f[0]==1)); then
-      ((g|=_ble_color_gflags_Bold))
-    elif ((f[0]==22)); then
-      ((g&=~_ble_color_gflags_Bold))
-    elif ((f[0]==4)); then
-      ((g|=_ble_color_gflags_Underline))
-    elif ((f[0]==24)); then
-      ((g&=~_ble_color_gflags_Underline))
-    elif ((f[0]==7)); then
-      ((g|=_ble_color_gflags_Revert))
-    elif ((f[0]==27)); then
-      ((g&=~_ble_color_gflags_Revert))
-    elif ((f[0]==3)); then
-      ((g|=_ble_color_gflags_Italic))
-    elif ((f[0]==23)); then
-      ((g&=~_ble_color_gflags_Italic))
-    elif ((f[0]==5)); then
-      ((g|=_ble_color_gflags_Blink))
-    elif ((f[0]==25)); then
-      ((g&=~_ble_color_gflags_Blink))
-    elif ((f[0]==8)); then
-      ((g|=_ble_color_gflags_Invisible))
-    elif ((f[0]==28)); then
-      ((g&=~_ble_color_gflags_Invisible))
-    elif ((f[0]==9)); then
-      ((g|=_ble_color_gflags_Strike))
-    elif ((f[0]==29)); then
-      ((g&=~_ble_color_gflags_Strike))
-    fi
-  done
-
-  ble-color-g2sgr -v seq "$g"
-  ble-edit/draw/put "$seq"
-}
-function ble-edit/draw/trace/process-csi-sequence {
-  local seq=$1 seq1=${1:2} rex
-  local char=${seq1:${#seq1}-1:1} param=${seq1::${#seq1}-1}
-  if [[ ! ${param//[0-9:;]} ]]; then
-    # CSI 数字引数 + 文字
-    case "$char" in
-    (m) # SGR
-      ble-edit/draw/trace/SGR "$param" "$seq"
-      return ;;
-    ([ABCDEFGIZ\`ade])
-      local arg=0
-      [[ $param =~ ^[0-9]+$ ]] && arg=$param
-      ((arg==0&&(arg=1)))
-
-      local x0=$x y0=$y
-      if [[ $char == A ]]; then
-        # CUU "CSI A"
-        ((y-=arg,y<0&&(y=0)))
-        ((y<y0)) && ble-edit/draw/put.cuu $((y0-y))
-      elif [[ $char == [Be] ]]; then
-        # CUD "CSI B"
-        # VPR "CSI e"
-        ((y+=arg,y>=lines&&(y=lines-1)))
-        ((y>y0)) && ble-edit/draw/put.cud $((y-y0))
-      elif [[ $char == [Ca] ]]; then
-        # CUF "CSI C"
-        # HPR "CSI a"
-        ((x+=arg,x>=cols&&(x=cols-1)))
-        ((x>x0)) && ble-edit/draw/put.cuf $((x-x0))
-      elif [[ $char == D ]]; then
-        # CUB "CSI D"
-        ((x-=arg,x<0&&(x=0)))
-        ((x<x0)) && ble-edit/draw/put.cub $((x0-x))
-      elif [[ $char == E ]]; then
-        # CNL "CSI E"
-        ((y+=arg,y>=lines&&(y=lines-1),x=0))
-        ((y>y0)) && ble-edit/draw/put.cud $((y-y0))
-        ble-edit/draw/put "$_ble_term_cr"
-      elif [[ $char == F ]]; then
-        # CPL "CSI F"
-        ((y-=arg,y<0&&(y=0),x=0))
-        ((y<y0)) && ble-edit/draw/put.cuu $((y0-y))
-        ble-edit/draw/put "$_ble_term_cr"
-      elif [[ $char == [G\`] ]]; then
-        # CHA "CSI G"
-        # HPA "CSI `"
-        ((x=arg-1,x<0&&(x=0),x>=cols&&(x=cols-1)))
-        ble-edit/draw/put.hpa $((x+1))
-      elif [[ $char == d ]]; then
-        # VPA "CSI d"
-        ((y=arg-1,y<0&&(y=0),y>=lines&&(y=lines-1)))
-        ble-edit/draw/put.vpa $((y+1))
-      elif [[ $char == I ]]; then
-        # CHT "CSI I"
-        local _x
-        ((_x=(x/it+arg)*it,
-          _x>=cols&&(_x=cols-1)))
-        if ((_x>x)); then
-          ble-edit/draw/put.cuf $((_x-x))
-          ((x=_x))
-        fi
-      elif [[ $char == Z ]]; then
-        # CHB "CSI Z"
-        local _x
-        ((_x=((x+it-1)/it-arg)*it,
-          _x<0&&(_x=0)))
-        if ((_x<x)); then
-          ble-edit/draw/put.cub $((x-_x))
-          ((x=_x))
-        fi
-      fi
-      lc=-1 lg=0
-      return ;;
-    ([Hf])
-      # CUP "CSI H"
-      # HVP "CSI f"
-      local -a params
-      params=(${param//[^0-9]/ })
-      ((x=params[1]-1))
-      ((y=params[0]-1))
-      ((x<0&&(x=0),x>=cols&&(x=cols-1),
-        y<0&&(y=0),y>=lines&&(y=lines-1)))
-      ble-edit/draw/put.cup $((y+1)) $((x+1))
-      lc=-1 lg=0
-      return ;;
-    ([su]) # SCOSC SCORC
-      if [[ $param == 99 ]]; then
-        # PS1 の \[ ... \] の処理。
-        # ble-edit/prompt/update で \e[99s, \e[99u に変換している。
-        if [[ $char == s ]]; then
-          trace_brack[${#trace_brack[*]}]="$x $y"
-        else
-          local lastIndex=$((${#trace_brack[*]}-1))
-          if ((lastIndex>=0)); then
-            local -a scosc
-            scosc=(${trace_brack[lastIndex]})
-            ((x=scosc[0]))
-            ((y=scosc[1]))
-            unset "trace_brack[$lastIndex]"
-          fi
-        fi
-        return
-      else
-        if [[ $char == s ]]; then
-          ble-edit/draw/trace/SC
-        else
-          ble-edit/draw/trace/RC
-        fi
-        return
-      fi ;;
-    # ■その他色々?
-    # ([JPX@MKL]) # 挿入削除→カーソルの位置は不変 lc?
-    # ([hl]) # SM RM DECSM DECRM
-    esac
-  fi
-
-  ble-edit/draw/put "$seq"
-}
-function ble-edit/draw/trace/process-esc-sequence {
-  local seq=$1 char=${1:1}
-  case "$char" in
-  (7) # DECSC
-    ble-edit/draw/trace/SC
-    return ;;
-  (8) # DECRC
-    ble-edit/draw/trace/RC
-    return ;;
-  (D) # IND
-    ((y++))
-    ble-edit/draw/put "$_ble_term_ind"
-    [[ $_ble_term_ind != $'\eD' ]] &&
-      ble-edit/draw/put.hpa $((x+1)) # tput ind が唯の改行の時がある
-    lc=-1 lg=0
-    return ;;
-  (M) # RI
-    ((y--,y<0&&(y=0)))
-    ble-edit/draw/put "$_ble_term_ri"
-    lc=-1 lg=0
-    return ;;
-  (E) # NEL
-    ble-edit/draw/trace/NEL
-    lc=32 lg=0
-    return ;;
-  # (H) # HTS 面倒だから無視。
-  # ([KL]) PLD PLU は何か?
-  esac
-
-  ble-edit/draw/put "$seq"
-}
-
-## 関数 ble-edit/draw/trace text
-##   制御シーケンスを含む文字列を出力すると共にカーソル位置の移動を計算します。
-##
-##   @param[in]   text
-##     出力する (制御シーケンスを含む) 文字列を指定します。
-##   @var[in,out] DRAW_BUFF[]
-##     出力先の配列を指定します。
-##   @var[in,out] x y g
-##     出力の開始位置を指定します。出力終了時の位置を返します。
-##   @var[in,out] lc lg
-##     bleopt_suppress_bash_output= の時、
-##     出力開始時のカーソル左の文字コードを指定します。
-##     出力終了時のカーソル左の文字コードが分かる場合にそれを返します。
-##
-##   以下のシーケンスを認識します
-##
-##   - Control Characters (C0 の文字 及び DEL)
-##     BS HT LF VT CR はカーソル位置の変更を行います。
-##     それ以外の文字はカーソル位置の変更は行いません。
-##
-##   - CSI Sequence (Control Sequence)
-##     | CUU   CSI A | CHB   CSI Z |
-##     | CUD   CSI B | HPR   CSI a |
-##     | CUF   CSI C | VPR   CSI e |
-##     | CUB   CSI D | HPA   CSI ` |
-##     | CNL   CSI E | VPA   CSI d |
-##     | CPL   CSI F | HVP   CSI f |
-##     | CHA   CSI G | SGR   CSI m |
-##     | CUP   CSI H | SCOSC CSI s |
-##     | CHT   CSI I | SCORC CSI u |
-##     上記のシーケンスはカーソル位置の計算に含め、
-##     また、端末 (TERM) に応じた出力を実施します。
-##     上記以外のシーケンスはカーソル位置を変更しません。
-##
-##   - SOS, DCS, SOS, PM, APC, ESC k ～ ESC \
-##   - ISO-2022 に含まれる 3 byte 以上のシーケンス
-##     これらはそのまま通します。位置計算の考慮には入れません。
-##
-##   - ESC Sequence
-##     DECSC DECRC IND RI NEL はカーソル位置の変更を行います。
-##     それ以外はカーソル位置の変更は行いません。
-##
-function ble-edit/draw/trace {
-  # cygwin では LC_COLLATE=C にしないと
-  # 正規表現の range expression が期待通りに動かない。
-  LC_COLLATE=C ble-edit/draw/trace.impl "$@" &>/dev/null
-}
-function ble-edit/draw/trace.impl {
-  local text=$1
-
-  # Note: 文字符号化方式によっては対応する文字が存在しない可能性がある。
-  #   その時は st='\u009C' になるはず。2文字以上のとき変換に失敗したと見做す。
-  local ret
-  ble/util/c2s 156; local st=$ret #  (ST)
-  ((${#st}>=2)) && st=
-
-  # constants
-  local cols=${COLUMNS:-80} lines=${LINES:-25}
-  local it=${bleopt_tab_width:-$_ble_term_it} xenl=$_ble_term_xenl
-  _ble_util_string_prototype.reserve "$it"
-  # CSI
-  local rex_csi='^\[[ -?]*[@-~]'
-  # OSC, DCS, SOS, PM, APC Sequences + "GNU screen ESC k"
-  local rex_osc='^([]PX^_k])([^'$st']|+[^\'$st'])*(\\|'${st:+'|'}$st'|$)'
-  # ISO-2022 関係 (3byte以上の物)
-  local rex_2022='^[ -/]+[@-~]'
-  # ESC ?
-  local rex_esc='^[ -~]'
-
-  # variables
-  local -a trace_brack=()
-  local trace_scosc=
-
-  local i=0 iN=${#text}
-  while ((i<iN)); do
-    local tail=${text:i}
-    local w=0
-    if [[ $tail == [-]* ]]; then
-      local s=${tail::1}
-      ((i++))
-      case "$s" in
-      ('')
-        if [[ $tail =~ $rex_osc ]]; then
-          # 各種メッセージ (素通り)
-          s=$BASH_REMATCH
-          [[ ${BASH_REMATCH[3]} ]] || s="$s\\" # 終端の追加
-          ((i+=${#BASH_REMATCH}-1))
-        elif [[ $tail =~ $rex_csi ]]; then
-          # Control sequences
-          s=
-          ((i+=${#BASH_REMATCH}-1))
-          ble-edit/draw/trace/process-csi-sequence "$BASH_REMATCH"
-        elif [[ $tail =~ $rex_2022 ]]; then
-          # ISO-2022 (素通り)
-          s=$BASH_REMATCH
-          ((i+=${#BASH_REMATCH}-1))
-        elif [[ $tail =~ $rex_esc ]]; then
-          s=
-          ((i+=${#BASH_REMATCH}-1))
-          ble-edit/draw/trace/process-esc-sequence "$BASH_REMATCH"
-        fi ;;
-      ('') # BS
-        ((x>0&&(x--,lc=32,lg=g))) ;;
-      ($'\t') # HT
-        local _x
-        ((_x=(x+it)/it*it,
-          _x>=cols&&(_x=cols-1)))
-        if ((x<_x)); then
-          s=${_ble_util_string_prototype::_x-x}
-          ((x=_x,lc=32,lg=g))
-        else
-          s=
-        fi ;;
-      ($'\n') # LF = CR+LF
-        s=
-        ble-edit/draw/trace/NEL ;;
-      ('') # VT
-        s=
-        ble-edit/draw/put "$_ble_term_cr"
-        ble-edit/draw/put "$_ble_term_nl"
-        ((x)) && ble-edit/draw/put.cuf "$x"
-        ((y++,lc=32,lg=0)) ;;
-      ($'\r') # CR ^M
-        s=$_ble_term_cr
-        ((x=0,lc=-1,lg=0)) ;;
-      # その他の制御文字は  (BEL)  (FF) も含めてゼロ幅と解釈する
-      esac
-      [[ $s ]] && ble-edit/draw/put "$s"
-    elif ble/util/isprint+ "$tail"; then
-      w=${#BASH_REMATCH}
-      ble-edit/draw/put "$BASH_REMATCH"
-      ((i+=${#BASH_REMATCH}))
-      if [[ ! $bleopt_suppress_bash_output ]]; then
-        local ret
-        ble/util/s2c "$BASH_REMATCH" $((w-1))
-        lc=$ret lg=$g
-      fi
-    else
-      local w ret
-      ble/util/s2c "$tail" 0
-      lc=$ret lg=$g
-      ble/util/c2w "$lc"
-      w=$ret
-      if ((w>=2&&x+w>cols)); then
-        # 行に入りきらない場合の調整
-        ble-edit/draw/put "${_ble_util_string_prototype::x+w-cols}"
-        ((x=cols))
-      fi
-      ble-edit/draw/put "${tail::1}"
-      ((i++))
-    fi
-
-    if ((w>0)); then
-      ((x+=w,y+=x/cols,x%=cols,
-        xenl&&x==0&&(y--,x=cols)))
-      ((x==0&&(lc=32,lg=0)))
-    fi
-  done
-}
-
 # **** prompt ****                                                    @line.ps1
 
-## called by ble-edit-initialize
+## called by ble-edit/initialize
 function ble-edit/prompt/initialize {
   # hostname
   _ble_edit_prompt__string_h=${HOSTNAME%%.*}
@@ -1026,12 +211,12 @@ function ble-edit/prompt/initialize {
 _ble_edit_prompt=("" 0 0 0 32 0 "" "")
 
 
-## 関数 _ble_edit_prompt.load
+## 関数 ble-edit/prompt/.load
 ##   @var[out] x y g
 ##   @var[out] lc lg
 ##   @var[out] ret
 ##     プロンプトを描画するための文字列
-function _ble_edit_prompt.load {
+function ble-edit/prompt/.load {
   x=${_ble_edit_prompt[1]}
   y=${_ble_edit_prompt[2]}
   g=${_ble_edit_prompt[3]}
@@ -1040,13 +225,13 @@ function _ble_edit_prompt.load {
   ret=${_ble_edit_prompt[6]}
 }
 
-## 関数 ble-edit/prompt/update/append text
+## 関数 ble-edit/prompt/print text
 ##   指定された文字列を "" 内に入れる為のエスケープをして出力します。
 ##   @param[in] text
 ##     エスケープされる文字列を指定します。
 ##   @var[out]  DRAW_BUFF[]
 ##     出力先の配列です。
-function ble-edit/prompt/update/append {
+function ble-edit/prompt/print {
   local text=$1 a b
   if [[ $text == *['$\"`']* ]]; then
     a='\' b='\\' text=${text//"$a"/$b}
@@ -1054,153 +239,184 @@ function ble-edit/prompt/update/append {
     a='"' b='\"' text=${text//"$a"/$b}
     a='`' b='\`' text=${text//"$a"/$b}
   fi
-  ble-edit/draw/put "$text"
+  ble/canvas/put.draw "$text"
 }
-function ble-edit/prompt/update/process-text {
+function ble-edit/prompt/update/.process-text {
   local text=$1 a b
   if [[ $text == *'"'* ]]; then
     a='"' b='\"' text=${text//"$a"/$b}
   fi
-  ble-edit/draw/put "$text"
+  ble/canvas/put.draw "$text"
 }
 
-## 関数 ble-edit/prompt/update/process-backslash
+## 関数 ble-edit/prompt/update/.process-backslash
 ##   @var[in]     tail
 ##   @var[in.out] DRAW_BUFF
-function ble-edit/prompt/update/process-backslash {
+function ble-edit/prompt/update/.process-backslash {
   ((i+=2))
 
   # \\ の次の文字
   local c=${tail:1:1} pat='[]#!$\'
   if [[ ! ${pat##*"$c"*} ]]; then
     case "$c" in
-    (\[) ble-edit/draw/put $'\e[99s' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
-    (\]) ble-edit/draw/put $'\e[99u' ;;
+    (\[) ble/canvas/put.draw $'\e[99s' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
+    (\]) ble/canvas/put.draw $'\e[99u' ;;
     ('#') # コマンド番号 (本当は history に入らない物もある…)
-      ble-edit/draw/put "$_ble_edit_CMD" ;;
+      ble/canvas/put.draw "$_ble_edit_CMD" ;;
     (\!) # 編集行の履歴番号
       local count
       ble-edit/history/get-count -v count
-      ble-edit/draw/put $((count+1)) ;;
+      ble/canvas/put.draw $((count+1)) ;;
     ('$') # # or $
-      ble-edit/prompt/update/append "$_ble_edit_prompt__string_root" ;;
+      ble-edit/prompt/print "$_ble_edit_prompt__string_root" ;;
     (\\)
       # '\\' は '\' と出力された後に、更に "" 内で評価された時に次の文字をエスケープする。
       # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
-      ble-edit/draw/put '\' ;;
+      ble/canvas/put.draw '\' ;;
     esac
-  elif local handler=ble-edit/prompt/update/backslash:$c && ble/util/isfunction "$handler"; then
-    "$handler"
-  else
+  elif ! ble/function#try ble-edit/prompt/backslash:"$c"; then
     # その他の文字はそのまま出力される。
     # - '\"' '\`' はそのまま出力された後に "" 内で評価され '"' '`' となる。
     # - それ以外の場合は '\?' がそのまま出力された後に、"" 内で評価されても変わらず '\?' 等となる。
-    ble-edit/draw/put "\\$c"
+    ble/canvas/put.draw "\\$c"
   fi
 }
 
-function ble-edit/prompt/update/backslash:0 { # 8進表現
+## 設定関数 ble-edit/prompt/backslash:*
+##   プロンプト PS1 内で使用するバックスラッシュシーケンスを定義します。
+##   内部では ble/canvas/put.draw escaped_text もしくは
+##   ble-edit/prompt/print unescaped_text を用いて
+##   シーケンスの展開結果を追記します。
+##
+##   @exit
+##     対応する文字列を出力した時に成功します。
+##     0 以外の終了ステータスを返した場合、
+##     シーケンスが処理されなかったと見做され、
+##     呼び出し元によって \c (c: 文字) が代わりに書き込まれます。
+##
+function ble-edit/prompt/backslash:0 { # 8進表現
   local rex='^\\[0-7]{1,3}'
   if [[ $tail =~ $rex ]]; then
     local seq=${BASH_REMATCH[0]}
     ((i+=${#seq}-2))
     builtin eval "c=\$'$seq'"
   fi
-  ble-edit/prompt/update/append "$c"
+  ble-edit/prompt/print "$c"
+  return 0
 }
-function ble-edit/prompt/update/backslash:1 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:2 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:3 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:4 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:5 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:6 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:7 { ble-edit/prompt/update/backslash:0; }
-function ble-edit/prompt/update/backslash:a { # 0 BEL
-  ble-edit/draw/put ""
+function ble-edit/prompt/backslash:1 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:2 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:3 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:4 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:5 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:6 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:7 { ble-edit/prompt/backslash:0; }
+function ble-edit/prompt/backslash:a { # 0 BEL
+  ble/canvas/put.draw ""
+  return 0
 }
-function ble-edit/prompt/update/backslash:d { # ? 日付
+function ble-edit/prompt/backslash:d { # ? 日付
   [[ $cache_d ]] || ble/util/strftime -v cache_d '%a %b %d'
-  ble-edit/prompt/update/append "$cache_d"
+  ble-edit/prompt/print "$cache_d"
+  return 0
 }
-function ble-edit/prompt/update/backslash:t { # 8 時刻
+function ble-edit/prompt/backslash:t { # 8 時刻
   [[ $cache_t ]] || ble/util/strftime -v cache_t '%H:%M:%S'
-  ble-edit/prompt/update/append "$cache_t"
+  ble-edit/prompt/print "$cache_t"
+  return 0
 }
-function ble-edit/prompt/update/backslash:A { # 5 時刻
+function ble-edit/prompt/backslash:A { # 5 時刻
   [[ $cache_A ]] || ble/util/strftime -v cache_A '%H:%M'
-  ble-edit/prompt/update/append "$cache_A"
+  ble-edit/prompt/print "$cache_A"
+  return 0
 }
-function ble-edit/prompt/update/backslash:T { # 8 時刻
+function ble-edit/prompt/backslash:T { # 8 時刻
   [[ $cache_T ]] || ble/util/strftime -v cache_T '%I:%M:%S'
-  ble-edit/prompt/update/append "$cache_T"
+  ble-edit/prompt/print "$cache_T"
+  return 0
 }
-function ble-edit/prompt/update/backslash:@ { # ? 時刻
+function ble-edit/prompt/backslash:@ { # ? 時刻
   [[ $cache_at ]] || ble/util/strftime -v cache_at '%I:%M %p'
-  ble-edit/prompt/update/append "$cache_at"
+  ble-edit/prompt/print "$cache_at"
+  return 0
 }
-function ble-edit/prompt/update/backslash:D {
+function ble-edit/prompt/backslash:D {
   local rex='^\\D\{([^{}]*)\}' cache_D
   if [[ $tail =~ $rex ]]; then
     ble/util/strftime -v cache_D "${BASH_REMATCH[1]}"
-    ble-edit/prompt/update/append "$cache_D"
+    ble-edit/prompt/print "$cache_D"
     ((i+=${#BASH_REMATCH}-2))
   else
-    ble-edit/prompt/update/append "\\$c"
+    ble-edit/prompt/print "\\$c"
   fi
+  return 0
 }
-function ble-edit/prompt/update/backslash:e {
-  ble-edit/draw/put $'\e'
+function ble-edit/prompt/backslash:e {
+  ble/canvas/put.draw $'\e'
+  return 0
 }
-function ble-edit/prompt/update/backslash:h { # = ホスト名
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_h"
+function ble-edit/prompt/backslash:h { # = ホスト名
+  ble-edit/prompt/print "$_ble_edit_prompt__string_h"
+  return 0
 }
-function ble-edit/prompt/update/backslash:H { # = ホスト名
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_H"
+function ble-edit/prompt/backslash:H { # = ホスト名
+  ble-edit/prompt/print "$_ble_edit_prompt__string_H"
+  return 0
 }
-function ble-edit/prompt/update/backslash:j { #   ジョブの数
+function ble-edit/prompt/backslash:j { #   ジョブの数
   if [[ ! $cache_j ]]; then
     local joblist
     ble/util/joblist
     cache_j=${#joblist[@]}
   fi
-  ble-edit/draw/put "$cache_j"
+  ble/canvas/put.draw "$cache_j"
+  return 0
 }
-function ble-edit/prompt/update/backslash:l { #   tty basename
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_l"
+function ble-edit/prompt/backslash:l { #   tty basename
+  ble-edit/prompt/print "$_ble_edit_prompt__string_l"
+  return 0
 }
-function ble-edit/prompt/update/backslash:n {
-  ble-edit/draw/put $'\n'
+function ble-edit/prompt/backslash:n {
+  ble/canvas/put.draw $'\n'
+  return 0
 }
-function ble-edit/prompt/update/backslash:r {
-  ble-edit/draw/put "$_ble_term_cr"
+function ble-edit/prompt/backslash:r {
+  ble/canvas/put.draw "$_ble_term_cr"
+  return 0
 }
-function ble-edit/prompt/update/backslash:s { # 4 "bash"
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_s"
+function ble-edit/prompt/backslash:s { # 4 "bash"
+  ble-edit/prompt/print "$_ble_edit_prompt__string_s"
+  return 0
 }
-function ble-edit/prompt/update/backslash:u { # = ユーザ名
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_u"
+function ble-edit/prompt/backslash:u { # = ユーザ名
+  ble-edit/prompt/print "$_ble_edit_prompt__string_u"
+  return 0
 }
-function ble-edit/prompt/update/backslash:v { # = bash version %d.%d
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_v"
+function ble-edit/prompt/backslash:v { # = bash version %d.%d
+  ble-edit/prompt/print "$_ble_edit_prompt__string_v"
+  return 0
 }
-function ble-edit/prompt/update/backslash:V { # = bash version %d.%d.%d
-  ble-edit/prompt/update/append "$_ble_edit_prompt__string_V"
+function ble-edit/prompt/backslash:V { # = bash version %d.%d.%d
+  ble-edit/prompt/print "$_ble_edit_prompt__string_V"
+  return 0
 }
-function ble-edit/prompt/update/backslash:w { # PWD
-  ble-edit/prompt/update/update-cache_wd
-  ble-edit/prompt/update/append "$cache_wd"
+function ble-edit/prompt/backslash:w { # PWD
+  ble-edit/prompt/update/.update-working-directory
+  ble-edit/prompt/print "$cache_wd"
+  return 0
 }
-function ble-edit/prompt/update/backslash:W { # PWD短縮
+function ble-edit/prompt/backslash:W { # PWD短縮
   if [[ $PWD == / ]]; then
-    ble-edit/prompt/update/append /
+    ble-edit/prompt/print /
   else
-    ble-edit/prompt/update/update-cache_wd
-    ble-edit/prompt/update/append "${cache_wd##*/}"
+    ble-edit/prompt/update/.update-working-directory
+    ble-edit/prompt/print "${cache_wd##*/}"
   fi
+  return 0
 }
-## 関数 ble-edit/prompt/update/update-cache_wd
+## 関数 ble-edit/prompt/update/.update-working-directory
 ##   @var[in,out] cache_wd
-function ble-edit/prompt/update/update-cache_wd {
+function ble-edit/prompt/update/.update-working-directory {
   [[ $cache_wd ]] && return
 
   if [[ $PWD == / ]]; then
@@ -1233,7 +449,7 @@ function ble-edit/prompt/update/update-cache_wd {
   cache_wd=$head$body
 }
 
-function ble-edit/prompt/update/eval-prompt_command {
+function ble-edit/prompt/update/.eval-prompt_command {
   # return 等と記述されていた時対策として関数内評価。
   eval "$PROMPT_COMMAND"
 }
@@ -1256,13 +472,13 @@ function ble-edit/prompt/update/eval-prompt_command {
 function ble-edit/prompt/update {
   local version=$_ble_edit_LINENO
   if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
-    _ble_edit_prompt.load
+    ble-edit/prompt/.load
     return
   fi
 
   if [[ $PROMPT_COMMAND ]]; then
     local PS1=$_ble_edit_PS1
-    ble-edit/prompt/update/eval-prompt_command
+    ble-edit/prompt/update/.eval-prompt_command
     _ble_edit_PS1=$PS1
   fi
   local ps1=$_ble_edit_PS1
@@ -1276,31 +492,31 @@ function ble-edit/prompt/update {
   while ((i<iN)); do
     local tail=${ps1:i}
     if [[ $tail == '\'?* ]]; then
-      ble-edit/prompt/update/process-backslash
+      ble-edit/prompt/update/.process-backslash
     elif [[ $tail =~ $rex_letters ]]; then
-      ble-edit/prompt/update/process-text "$BASH_REMATCH"
+      ble-edit/prompt/update/.process-text "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
     else
       # ? ここには本来来ないはず。
-      ble-edit/draw/put "${tail::1}"
+      ble/canvas/put.draw "${tail::1}"
       ((i++))
     fi
   done
 
   # 2 eval 'ps1esc="..."'
   local ps1esc
-  ble-edit/draw/sflush -v ps1esc
+  ble/canvas/sflush.draw -v ps1esc
   builtin eval "ps1esc=\"$ps1esc\""
   if [[ $ps1esc == "${_ble_edit_prompt[7]}" ]]; then
     # 前回と同じ ps1esc の場合は計測処理は省略
     _ble_edit_prompt[0]=$version
-    _ble_edit_prompt.load
+    ble-edit/prompt/.load
     return
   fi
 
   # 3 計測
   x=0 y=0 g=0 lc=32 lg=0
-  ble-edit/draw/trace "$ps1esc"
+  ble/canvas/trace.draw "$ps1esc"
   ((lc<0&&(lc=0)))
 
   #echo "ps1=$ps1" >> 1.tmp
@@ -1309,441 +525,20 @@ function ble-edit/prompt/update {
 
   # 4 出力
   local ps1out
-  ble-edit/draw/sflush -v ps1out
+  ble/canvas/sflush.draw -v ps1out
   ret=$ps1out
   _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1esc")
 }
 
 # 
-# **** textmap ****                                                    @textmap
-
-_ble_textmap_VARNAMES=(_ble_textmap_{cols,length,{beg,end}{x,y},d{beg,end,end0},u{min,max}})
-_ble_textmap_ARRNAMES=(_ble_textmap_{pos,glyph,ichg})
-
-## 文字列の配置計算に関する情報
-##
-##   前回の配置計算の前提と結果を保持する変数群を以下に説明します。
-##   以下は配置計算の前提になる情報です。
-##
-##   @var _ble_textmap_cols
-##     配置幅を保持します。
-##   @var _ble_textmap_begx
-##   @var _ble_textmap_begy
-##     配置の開始位置を保持します。
-##   @var _ble_textmap_length
-##     配置文字列の長さを保持します。
-##
-##   以下は配置計算の結果を保持します。
-##
-##   @arr _ble_textmap_pos[]
-##     各文字の表示位置を保持します。
-##   @arr _ble_textmap_glyph[]
-##     各文字の表現を保持します。
-##     例えば、制御文字は ^C や M-^C などと表されます。
-##     タブは表示開始位置に応じて異なる個数の空白で表現されます。
-##     行送りされた全角文字は前にパディングの空白が付加されます。
-##   @arr _ble_textmap_ichg[]
-##     タブや行送りなどによって標準的な表現と異なる文字
-##     のインデックスのリストです。
-##   @var _ble_textmap_endx
-##   @var _ble_textmap_endy
-##     最後の文字の右端の座標を保持します。
-##
-##   以下は前回の配置計算以降の更新範囲を保持する変数です。
-##   部分更新をするために使用します。
-##
-##   @var _ble_textmap_dbeg
-##   @var _ble_textmap_dend
-##   @var _ble_textmap_dend0
-##
-_ble_textmap_cols=80
-_ble_textmap_length=
-_ble_textmap_begx=0
-_ble_textmap_begy=0
-_ble_textmap_endx=0
-_ble_textmap_endy=0
-_ble_textmap_pos=()
-_ble_textmap_glyph=()
-_ble_textmap_ichg=()
-_ble_textmap_dbeg=-1
-_ble_textmap_dend=-1
-_ble_textmap_dend0=-1
-_ble_textmap_umin=-1
-_ble_textmap_umax=-1
-
-function ble/textmap#update-dirty-range {
-  ble/dirty-range#update --prefix=_ble_textmap_d "$@"
-}
-function ble/textmap#save {
-  local name prefix=$1
-  ble/util/save-vars "$prefix" "${_ble_textmap_VARNAMES[@]}"
-  ble/util/save-arrs "$prefix" "${_ble_textmap_ARRNAMES[@]}"
-}
-function ble/textmap#restore {
-  local name prefix=$1
-  ble/util/restore-vars "$prefix" "${_ble_textmap_VARNAMES[@]}"
-  ble/util/restore-arrs "$prefix" "${_ble_textmap_ARRNAMES[@]}"
-}
-
-## 関数 text x y; ble/textmap#update; x y
-##   @var[in    ] text
-##   @var[in,out] x y
-##   @var[in,out] _ble_textmap_*
-function ble/textmap#update {
-  local dbeg dend dend0
-  ((dbeg=_ble_textmap_dbeg,
-    dend=_ble_textmap_dend,
-    dend0=_ble_textmap_dend0))
-  ble/dirty-range#clear --prefix=_ble_textmap_d
-
-  local iN=${#text}
-
-  # 初期位置 x y
-  local _pos="$x $y"
-  _ble_textmap_begx=$x
-  _ble_textmap_begy=$y
-
-  # ※現在は COLUMNS で決定しているが将来的には変更可能にする?
-  local cols=${COLUMNS-80} xenl=$_ble_term_xenl
-  ((COLUMNS&&cols<COLUMNS&&(xenl=1)))
-  # local cols=80 xenl=1
-
-  local it=${bleopt_tab_width:-$_ble_term_it}
-  _ble_util_string_prototype.reserve "$it"
-
-  if ((cols!=_ble_textmap_cols)); then
-    # 表示幅が変化したときは全部再計算
-    ((dbeg=0,dend0=_ble_textmap_length,dend=iN))
-    _ble_textmap_pos[0]=$_pos
-  elif [[ ${_ble_textmap_pos[0]} != "$_pos" ]]; then
-    # 初期位置の変更がある場合は初めから計算し直し
-    ((dbeg<0&&(dend=dend0=0),
-      dbeg=0))
-    _ble_textmap_pos[0]=$_pos
-  else
-    if ((dbeg<0)); then
-      # 表示幅も初期位置も内容も変更がない場合はOK
-      local -a pos
-      pos=(${_ble_textmap_pos[iN]})
-      ((x=pos[0]))
-      ((y=pos[1]))
-      _ble_textmap_endx=$x
-      _ble_textmap_endy=$y
-      return
-    elif ((dbeg>0)); then
-      # 途中から計算を再開
-      local -a pos
-      pos=(${_ble_textmap_pos[dbeg]})
-      ((x=pos[0]))
-      ((y=pos[1]))
-    fi
-  fi
-
-  _ble_textmap_cols=$cols
-  _ble_textmap_length=$iN
-
-#%if !release
-  ble-assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- ($_ble_textmap_dbeg $_ble_textmap_dend $_ble_textmap_dend0)"
-#%end
-
-  # shift cached data
-  _ble_util_array_prototype.reserve "$iN"
-  local -a old_pos old_ichg
-  old_pos=("${_ble_textmap_pos[@]:dend0:iN-dend+1}")
-  old_ichg=("${_ble_textmap_ichg[@]}")
-  _ble_textmap_pos=(
-    "${_ble_textmap_pos[@]::dbeg+1}"
-    "${_ble_util_array_prototype[@]::dend-dbeg}"
-    "${_ble_textmap_pos[@]:dend0+1:iN-dend}")
-  _ble_textmap_glyph=(
-    "${_ble_textmap_glyph[@]::dbeg}"
-    "${_ble_util_array_prototype[@]::dend-dbeg}"
-    "${_ble_textmap_glyph[@]:dend0:iN-dend}")
-  _ble_textmap_ichg=()
-
-  ble/urange#shift --prefix=_ble_textmap_ "$dbeg" "$dend" "$dend0"
-
-  local i
-  for ((i=dbeg;i<iN;)); do
-    if ble/util/isprint+ "${text:i}"; then
-      local w=${#BASH_REMATCH}
-      local n
-      for ((n=i+w;i<n;i++)); do
-        local cs=${text:i:1}
-        if (((++x==cols)&&(y++,x=0,xenl))); then
-          cs=$cs$_ble_term_nl
-          ble/array#push _ble_textmap_ichg "$i"
-        fi
-        _ble_textmap_glyph[i]=$cs
-        _ble_textmap_pos[i+1]="$x $y 0"
-      done
-    else
-      local ret
-      ble/util/s2c "$text" "$i"
-      local code=$ret
-
-      local w=0 cs= changed=0
-      if ((code<32)); then
-        if ((code==9)); then
-          if ((x+1>=cols)); then
-            cs=' '
-            ((xenl)) && cs=$cs$_ble_term_nl
-            changed=1
-            ((y++,x=0))
-          else
-            local x2
-            ((x2=(x/it+1)*it,
-              x2>=cols&&(x2=cols-1),
-              w=x2-x,
-              w!=it&&(changed=1)))
-            cs=${_ble_util_string_prototype::w}
-          fi
-        elif ((code==10)); then
-          ((y++,x=0))
-          cs=$_ble_term_el$_ble_term_nl
-        else
-          ((w=2))
-          ble/util/c2s $((code+64))
-          cs="^$ret"
-        fi
-      elif ((code==127)); then
-        w=2 cs="^?"
-      elif ((128<=code&&code<160)); then
-        ble/util/c2s $((code-64))
-        w=4 cs="M-^$ret"
-      else
-        ble/util/c2w "$code"
-        w=$ret cs=${text:i:1}
-      fi
-
-      local wrapping=0
-      if ((w>0)); then
-        if ((x<cols&&cols<x+w)); then
-          ((xenl)) && cs=$_ble_term_nl$cs
-          cs=${_ble_util_string_prototype::cols-x}$cs
-          ((x=cols,changed=1,wrapping=1))
-        fi
-
-        ((x+=w))
-        while ((x>cols)); do
-          ((y++,x-=cols))
-        done
-        if ((x==cols)); then
-          if ((xenl)); then
-            cs=$cs$_ble_term_nl
-            changed=1
-          fi
-          ((y++,x=0))
-        fi
-      fi
-
-      _ble_textmap_glyph[i]=$cs
-      ((changed)) && ble/array#push _ble_textmap_ichg "$i"
-      _ble_textmap_pos[i+1]="$x $y $wrapping"
-      ((i++))
-    fi
-
-    # 後は同じなので計算を省略
-    ((i>=dend)) && [[ ${old_pos[i-dend]} == "${_ble_textmap_pos[i]}" ]] && break
-  done
-
-  if ((i<iN)); then
-    # 途中で一致して中断した場合は、前の iN 番目の位置を読む
-    local -a pos
-    pos=(${_ble_textmap_pos[iN]})
-    ((x=pos[0]))
-    ((y=pos[1]))
-  fi
-
-  # 前回までの文字修正位置を shift&add
-  local j jN ichg
-  for ((j=0,jN=${#old_ichg[@]};j<jN;j++)); do
-    if ((ichg=old_ichg[j],
-         (ichg>=dend0)&&(ichg+=dend-dend0),
-         (0<=ichg&&ichg<dbeg||dend<=i&&ichg<iN)))
-    then
-      ble/array#push _ble_textmap_ichg "$ichg"
-    fi
-  done
-
-  ((dbeg<i)) && ble/urange#update --prefix=_ble_textmap_ "$dbeg" "$i"
-
-  _ble_textmap_endx=$x
-  _ble_textmap_endy=$y
-}
-
-function ble/textmap#is-up-to-date {
-  ((_ble_textmap_dbeg==-1))
-}
-## 関数 ble/textmap#assert-up-to-date
-##   編集文字列の文字の配置情報が最新であることを確認します。
-##   以下の変数を参照する場合に事前に呼び出します。
-##
-##   _ble_textmap_pos
-##   _ble_textmap_length
-##
-function ble/textmap#assert-up-to-date {
-  ble-assert 'ble/textmap#is-up-to-date' 'dirty text positions'
-}
-
-## 関数 ble/textmap#getxy.out index
-##   index 番目の文字の出力開始位置を取得します。
-##
-##   @var[out] x y
-##
-##   行末に収まらない文字の場合は行末のスペースを埋める為に
-##   配列 _ble_textmap_glyph において空白文字が文字本体の前に追加されます。
-##   その場合には、追加される空白文字の前の位置を返すことに注意して下さい。
-##   実用上は境界 index の左側の文字の終端位置と解釈できます。
-##
-function ble/textmap#getxy.out {
-  ble/textmap#assert-up-to-date
-  local _prefix=
-  if [[ $1 == --prefix=* ]]; then
-    _prefix=${1#--prefix=}
-    shift
-  fi
-
-  local -a _pos
-  _pos=(${_ble_textmap_pos[$1]})
-  ((${_prefix}x=_pos[0]))
-  ((${_prefix}y=_pos[1]))
-}
-
-## 関数 ble/textmap#getxy.cur index
-##   index 番目の文字の表示開始位置を取得します。
-##
-##   @var[out] x y
-##
-##   ble/textmap#getxy.out の異なり前置される空白は考えずに、
-##   文字本体が開始する位置を取得します。
-##   実用上は境界 index の右側の文字の開始位置と解釈できます。
-##
-function ble/textmap#getxy.cur {
-  ble/textmap#assert-up-to-date
-  local _prefix=
-  if [[ $1 == --prefix=* ]]; then
-    _prefix=${1#--prefix=}
-    shift
-  fi
-
-  local -a _pos
-  _pos=(${_ble_textmap_pos[$1]})
-
-  # 追い出しされたか check
-  if (($1<_ble_textmap_length)); then
-    local -a _eoc
-    _eoc=(${_ble_textmap_pos[$1+1]})
-    ((_eoc[2])) && ((_pos[0]=0,_pos[1]++))
-  fi
-
-  ((${_prefix}x=_pos[0]))
-  ((${_prefix}y=_pos[1]))
-}
-
-## 関数 ble/textmap#get-index-at [-v varname] x y
-##   指定した位置 x y に対応する index を求めます。
-function ble/textmap#get-index-at {
-  ble/textmap#assert-up-to-date
-  local _var=index
-  if [[ $1 == -v ]]; then
-    _var=$2
-    shift 2
-  fi
-
-  local _x=$1 _y=$2
-  if ((_y>_ble_textmap_endy)); then
-    (($_var=_ble_textmap_length))
-  elif ((_y<_ble_textmap_begy)); then
-    (($_var=0))
-  else
-    # 2分法
-    local _l=0 _u=$((_ble_textmap_length+1)) _m
-    local _mx _my
-    while ((_l+1<_u)); do
-      ble/textmap#getxy.cur --prefix=_m $((_m=(_l+_u)/2))
-      (((_y<_my||_y==_my&&_x<_mx)?(_u=_m):(_l=_m)))
-    done
-    (($_var=_l))
-  fi
-}
-
-## 関数 ble/textmap#hit/.getxy.out index
-## 関数 ble/textmap#hit/.getxy.cur index
-##   @var[in,out] pos
-function ble/textmap#hit/.getxy.out {
-  set -- ${_ble_textmap_pos[$1]}
-  x=$1 y=$2
-}
-function ble/textmap#hit/.getxy.cur {
-  local index=$1
-  set -- ${_ble_textmap_pos[index]}
-  x=$1 y=$2
-  if ((index<_ble_textmap_length)); then
-    set -- ${_ble_textmap_pos[index+1]}
-    (($3)) && ((x=0,y++))
-  fi
-}
-
-## 関数 ble/textmap#hit type xh yh [beg [end]]
-##   指定した座標に対応する境界 index を取得します。
-##   指定した座標以前の最も近い境界を求めます。
-##   探索範囲に対応する境界がないときは最初の境界 beg を返します。
-##
-##   @param[in] type
-##     探索する点の種類を指定します。out または cur を指定します。
-##     out を指定したときは文字終端境界を探索します。
-##     cur を指定したときは文字開始境界(行送りを考慮に入れたもの)を探索します。
-##   @param[in] xh yh
-##     探索する点を指定します。
-##   @param[in] beg end
-##     探索する index の範囲を指定します。
-##     beg を省略したときは最初の境界位置が使用されます。
-##     end を省略したときは最後の境界位置が使用されます。
-##
-##   @var[out] index
-##     見つかった境界の番号を返します。
-##   @var[out] lx ly
-##     見つかった境界の座標を返します。
-##   @var[out] rx ry
-##     指定した座標以後の最も近い境界を返します。
-##     index が探索範囲の最後の境界のとき、または、
-##     lx ly が指定した座標と一致するとき lx ly と同一です。
-##
-function ble/textmap#hit {
-  ble/textmap#assert-up-to-date
-  local getxy=ble/textmap#hit/.getxy.$1
-  local xh=$2 yh=$3 beg=${4:-0} end=${5:-$_ble_textmap_length}
-
-  local -a pos
-  if "$getxy" "$end"; ((yh>y||yh==y&&xh>x)); then
-    index=$end
-    lx=$x ly=$y
-    rx=$x ry=$y
-  elif "$getxy" "$beg"; ((yh<y||yh==y&&xh<x)); then
-    index=$beg
-    lx=$x ly=$y
-    rx=$x ry=$y
-  else
-    # 2分法
-    local l=0 u=$((end+1)) m
-    while ((l+1<u)); do
-      "$getxy" $((m=(l+u)/2))
-      (((yh<y||yh==y&&xh<x)?(u=m):(l=m)))
-    done
-    "$getxy" $((index=l))
-    lx=$x ly=$y
-    (((ly<yh||ly==yh&&lx<xh)&&index<end)) && "$getxy" $((index+1))
-    rx=$x ry=$y
-  fi
-}
-
-# 
 # **** information pane ****                                         @line.info
 
-## 関数 x y cols out ; ble-edit/info/.put-atomic ( nchar text )+ ; x y out
+## 関数 ble-edit/info/.put-atomic nchar text
 ##   指定した文字列を out に追加しつつ、現在位置を更新します。
 ##   文字列は幅 1 の文字で構成されていると仮定します。
+##   @var[in,out] x y out
+##   @var[in] cols lines
+##
 function ble-edit/info/.put-simple {
   local nchar=$1
 
@@ -1762,17 +557,22 @@ function ble-edit/info/.put-simple {
 ## 関数 x y cols out ; ble-edit/info/.put-atomic ( w char )+ ; x y out
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
 function ble-edit/info/.put-atomic {
-  local w c
-  w=$1
+  local w=$1 c=$2
 
   # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
   if ((x<cols&&cols<x+w)); then
-    _ble_util_string_prototype.reserve $((cols-x))
-    out=$out${_ble_util_string_prototype::cols-x}
+    if ((y+1>=lines)); then
+      # 画面に入らない時は表示しない
+      out=$out$'\n'
+      ((y++,x=0))
+      return
+    fi
+    ble/string#reserve-prototype $((cols-x))
+    out=$out${_ble_string_prototype::cols-x}
     ((x=cols))
   fi
 
-  out=$out$2
+  out=$out$c
 
   # 移動
   if ((w>0)); then
@@ -1791,45 +591,58 @@ function ble-edit/info/.put-nl-if-eol {
   fi
 }
 
-## 関数 x y; ble-edit/info/.construct-text text ; ret
+## 関数 ble-edit/info/.initialize-size
+##   @var[out] cols lines
+function ble-edit/info/.initialize-size {
+  cols=${COLUMNS-80}
+  lines=$(((LINES?LINES:0)-_ble_textarea_gendy-2))
+}
+
+## 関数 ble-edit/info/.construct-text text
 ##   指定した文字列を表示する為の制御系列に変換します。
+##   @var[in] cols lines sgr0 sgr1
+##   @var[in,out] x y
+##   @var[out] ret
 function ble-edit/info/.construct-text {
-  local cols=${COLUMNS-80}
-  local lines=$(((LINES?LINES:0)-_ble_textarea_gendy-2))
-
-  local text=$1 out=
-  local i iN=${#text}
-  for ((i=0;i<iN;)); do
-    local tail=${text:i}
-
-    if ble/util/isprint+ "$tail"; then
-      ble-edit/info/.put-simple "${#BASH_REMATCH}" "${BASH_REMATCH[0]}"
-      ((i+=${#BASH_REMATCH}))
-    else
-      ble/util/s2c "$text" "$i"
-      local code=$ret w=0
-      if ((code<32)); then
-        ble/util/c2s $((code+64))
-        ble-edit/info/.put-atomic 2 "$_ble_term_rev^$ret$_ble_term_sgr0"
-      elif ((code==127)); then
-        ble-edit/info/.put-atomic 2 '$_ble_term_rev^?$_ble_term_sgr0'
-      elif ((128<=code&&code<160)); then
-        ble/util/c2s $((code-64))
-        ble-edit/info/.put-atomic 4 "${_ble_term_rev}M-^$ret$_ble_term_sgr0"
+  local out= LC_COLLATE=C glob='*[! -~]*'
+  if [[ $tail != $glob ]]; then
+    # G0 だけで構成された文字列は先に単純に処理する
+    ble-edit/info/.put-simple "${#1}" "$1"
+  else
+    local glob='[ -~]*' globx='[! -~]*'
+    local i iN=${#1} text=$1
+    for ((i=0;i<iN;)); do
+      local tail=${text:i}
+      if [[ $tail == $glob ]]; then
+        local span=${tail%%$globx}
+        ble-edit/info/.put-simple "${#span}" "$span"
+        ((i+=${#span}))
       else
-        ble/util/c2w "$code"
-        ble-edit/info/.put-atomic "$ret" "${text:i:1}"
-      fi
+        ble/util/s2c "$text" "$i"
+        local code=$ret w=0
+        if ((code<32)); then
+          ble/util/c2s $((code+64))
+          ble-edit/info/.put-atomic 2 "$sgr1^$ret$sgr0"
+        elif ((code==127)); then
+          ble-edit/info/.put-atomic 2 '$sgr1^?$sgr0'
+        elif ((128<=code&&code<160)); then
+          ble/util/c2s $((code-64))
+          ble-edit/info/.put-atomic 4 "${sgr1}M-^$ret$sgr0"
+        else
+          ble/util/c2w "$code"
+          ble-edit/info/.put-atomic "$ret" "${text:i:1}"
+        fi
 
-      ((y>=lines)) && break
-      ((i++))
-    fi
-  done
+        ((y>=lines)) && break
+        ((i++))
+      fi
+    done
+  fi
 
   ble-edit/info/.put-nl-if-eol
-
   ret=$out
 }
+
 
 ## 関数 ble-edit/info/.construct-content type text
 ##   @var[in,out] x y
@@ -1840,28 +653,32 @@ function ble-edit/info/.construct-content {
   (raw)
     local lc=32 lg=0 g=0
     local -a DRAW_BUFF=()
-    ble-edit/draw/trace "$text"
-    ble-edit/draw/sflush -v content ;;
+    ble/canvas/trace.draw "$text"
+    ble/canvas/sflush.draw -v content ;;
   (text)
-    local lc=32 ret
+    local cols lines
+    ble-edit/info/.initialize-size
+    local ret sgr1=$_ble_term_rev sgr0=$_ble_term_sgr0
     ble-edit/info/.construct-text "$text"
     content=$ret ;;
+  (store)
+    x=$2 y=$3 content=$4 ;;
   (*)
     echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
   esac
 }
 
-
-_ble_line_info=(0 0 "")
+_ble_edit_info_panel=2
+_ble_edit_info=(0 0 "")
 
 function ble-edit/info/.clear-content {
-  [[ ${_ble_line_info[2]} ]] || return
+  [[ ${_ble_edit_info[2]} ]] || return
 
   local -a DRAW_BUFF=()
-  ble-form/panel#set-height.draw 1 0
-  ble-edit/draw/bflush
+  ble/canvas/panel#set-height.draw "$_ble_edit_info_panel" 0
+  ble/canvas/bflush.draw
 
-  _ble_line_info=(0 0 "")
+  _ble_edit_info=(0 0 "")
 }
 
 ## 関数 ble-edit/info/.render-content x y content
@@ -1870,7 +687,7 @@ function ble-edit/info/.render-content {
   local x=$1 y=$2 content=$3
 
   # 既に同じ内容で表示されているとき…。
-  [[ $content == "${_ble_line_info[2]}" ]] && return
+  [[ $content == "${_ble_edit_info[2]}" ]] && return
 
   if [[ ! $content ]]; then
     ble-edit/info/.clear-content
@@ -1878,16 +695,16 @@ function ble-edit/info/.render-content {
   fi
 
   local -a DRAW_BUFF=()
-  ble-form/panel#set-height-and-clear.draw 1 $((y+1))
-  ble-form/panel#goto.draw 1
-  ble-edit/draw/put "$content"
-  ble-edit/draw/bflush
-  ((_ble_line_y+=y,_ble_line_x=x))
-  _ble_line_info=("$x" "$y" "$content")
+  ble/canvas/panel#set-height-and-clear.draw "$_ble_edit_info_panel" $((y+1))
+  ble/canvas/panel#goto.draw "$_ble_edit_info_panel"
+  ble/canvas/put.draw "$content"
+  ble/canvas/bflush.draw
+  ((_ble_canvas_y+=y,_ble_canvas_x=x))
+  _ble_edit_info=("$x" "$y" "$content")
 }
 
-_ble_line_info_default=(0 0 "")
-_ble_line_info_scene=default
+_ble_edit_info_default=(0 0 "")
+_ble_edit_info_scene=default
 
 ## 関数 ble-edit/info/show type text
 ##
@@ -1912,10 +729,10 @@ function ble-edit/info/show {
   local type=$1 text=$2
   if [[ $text ]]; then
     local x=0 y=0 content=
-    ble-edit/info/.construct-content "$type" "$text"
+    ble-edit/info/.construct-content "$@"
     ble-edit/info/.render-content "$x" "$y" "$content"
     ble/util/buffer.flush >&2
-    _ble_line_info_scene=show
+    _ble_edit_info_scene=show
   else
     ble-edit/info/default
   fi
@@ -1924,10 +741,10 @@ function ble-edit/info/set-default {
   local type=$1 text=$2
   local x=0 y=0 content
   ble-edit/info/.construct-content "$type" "$text"
-  _ble_line_info_default=("$x" "$y" "$content")
+  _ble_edit_info_default=("$x" "$y" "$content")
 }
 function ble-edit/info/default {
-  _ble_line_info_scene=default
+  _ble_edit_info_scene=default
   (($#)) && ble-edit/info/set-default "$@"
   return 0
 }
@@ -1945,26 +762,26 @@ function ble-edit/info/hide {
   ble-edit/info/.clear-content
 }
 function ble-edit/info/reveal {
-  if [[ $_ble_line_info_scene == default ]]; then
-    ble-edit/info/.render-content "${_ble_line_info_default[@]}"
+  if [[ $_ble_edit_info_scene == default ]]; then
+    ble-edit/info/.render-content "${_ble_edit_info_default[@]}"
   fi
 }
 
 function ble-edit/info/immediate-show {
-  local x=$_ble_line_x y=$_ble_line_y
+  local x=$_ble_canvas_x y=$_ble_canvas_y
   ble-edit/info/show "$@"
   local -a DRAW_BUFF=()
-  ble-form/goto.draw "$x" "$y"
-  ble-edit/draw/bflush
+  ble/canvas/goto.draw "$x" "$y"
+  ble/canvas/bflush.draw
   ble/util/buffer.flush >&2
 }
 function ble-edit/info/immediate-clear {
-  local x=$_ble_line_x y=$_ble_line_y
+  local x=$_ble_canvas_x y=$_ble_canvas_y
   ble-edit/info/clear
   ble-edit/info/reveal
   local -a DRAW_BUFF=()
-  ble-form/goto.draw "$x" "$y"
-  ble-edit/draw/bflush
+  ble/canvas/goto.draw "$x" "$y"
+  ble/canvas/bflush.draw
   ble/util/buffer.flush >&2
 }
 
@@ -1994,13 +811,13 @@ _ble_edit_kill_type=
 
 # _ble_edit_str は以下の関数を通して変更する。
 # 変更範囲を追跡する為。
-function _ble_edit_str.replace {
+function ble-edit/content/replace {
   local -i beg=$1 end=$2
   local ins=$3 reason=${4:-edit}
 
   # cf. Note#1
   _ble_edit_str="${_ble_edit_str::beg}""$ins""${_ble_edit_str:end}"
-  _ble_edit_str/update-dirty-range "$beg" $((beg+${#ins})) "$end" "$reason"
+  ble-edit/content/.update-dirty-range "$beg" $((beg+${#ins})) "$end" "$reason"
 #%if !release
   # Note: 何処かのバグで _ble_edit_ind に変な値が入ってエラーになるので、
   #   ここで誤り訂正を行う。想定として、この関数を呼出した時の _ble_edit_ind の値は、
@@ -2011,6 +828,7 @@ function _ble_edit_str.replace {
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
     _ble_edit_dirty_syntax_beg=0
     _ble_edit_dirty_syntax_end=${#_ble_edit_str}
+    _ble_edit_dirty_syntax_end0=0
     local olen=$((${#_ble_edit_str}-${#ins}+end-beg))
     ((olen<0&&(olen=0),
       _ble_edit_ind>olen&&(_ble_edit_ind=olen),
@@ -2018,20 +836,21 @@ function _ble_edit_str.replace {
   fi
 #%end
 }
-function _ble_edit_str.reset {
+function ble-edit/content/reset {
   local str=$1 reason=${2:-edit}
   local beg=0 end=${#str} end0=${#_ble_edit_str}
   _ble_edit_str=$str
-  _ble_edit_str/update-dirty-range "$beg" "$end" "$end0" "$reason"
+  ble-edit/content/.update-dirty-range "$beg" "$end" "$end0" "$reason"
 #%if !release
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
     ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str"
     _ble_edit_dirty_syntax_beg=0
     _ble_edit_dirty_syntax_end=${#_ble_edit_str}
+    _ble_edit_dirty_syntax_end0=0
   fi
 #%end
 }
-function _ble_edit_str.reset-and-check-dirty {
+function ble-edit/content/reset-and-check-dirty {
   local str=$1 reason=${2:-edit}
   [[ $_ble_edit_str == "$str" ]] && return
 
@@ -2042,7 +861,7 @@ function _ble_edit_str.reset-and-check-dirty {
   local dmax0=$((${#_ble_edit_str}-${#suff})) dmax=$((${#str}-${#suff}))
 
   _ble_edit_str=$str
-  _ble_edit_str/update-dirty-range "$dmin" "$dmax" "$dmax0" "$reason"
+  ble-edit/content/.update-dirty-range "$dmin" "$dmax" "$dmax0" "$reason"
 }
 
 _ble_edit_dirty_draw_beg=-1
@@ -2054,26 +873,22 @@ _ble_edit_dirty_syntax_end=0
 _ble_edit_dirty_syntax_end0=1
 
 _ble_edit_dirty_observer=()
-## 関数 _ble_edit_str/update-dirty-range beg end end0 [reason]
+## 関数 ble-edit/content/.update-dirty-range beg end end0 [reason]
 ##  @param[in] beg end end0
 ##    変更範囲を指定します。
 ##  @param[in] reason
 ##    変更の理由を表す文字列を指定します。
-function _ble_edit_str/update-dirty-range {
+function ble-edit/content/.update-dirty-range {
   ble/dirty-range#update --prefix=_ble_edit_dirty_draw_ "${@:1:3}"
   ble/dirty-range#update --prefix=_ble_edit_dirty_syntax_ "${@:1:3}"
   ble/textmap#update-dirty-range "${@:1:3}"
 
   local obs
   for obs in "${_ble_edit_dirty_observer[@]}"; do "$obs" "$@"; done
-  # ble-assert '((
-  #   _ble_edit_dirty_draw_beg==_ble_edit_dirty_syntax_beg&&
-  #   _ble_edit_dirty_draw_end==_ble_edit_dirty_syntax_end&&
-  #   _ble_edit_dirty_draw_end0==_ble_edit_dirty_syntax_end0))'
 }
 
-function _ble_edit_str.update-syntax {
-  if ble/util/isfunction ble-syntax/parse; then
+function ble-edit/content/update-syntax {
+  if ble/is-function ble-syntax/parse; then
     local beg end end0
     ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
     if ((beg>=0)); then
@@ -2163,9 +978,9 @@ function ble-edit/content/is-single-line {
   [[ $_ble_edit_str != *$'\n'* ]]
 }
 
+## 関数 ble-edit/content/get-arg
+##   @var[out] arg
 function ble-edit/content/get-arg {
-  eval "${ble_util_upvar_setup//ret/arg}"
-
   local default_value=$1
   if [[ $_ble_edit_arg == -* ]]; then
     if [[ $_ble_edit_arg == - ]]; then
@@ -2181,8 +996,6 @@ function ble-edit/content/get-arg {
     fi
   fi
   _ble_edit_arg=
-
-  eval "${ble_util_upvar//ret/arg}"
 }
 function ble-edit/content/clear-arg {
   _ble_edit_arg=
@@ -2191,23 +1004,72 @@ function ble-edit/content/clear-arg {
 # **** PS1/LINENO ****                                                @edit.ps1
 #
 # 内部使用変数
-## 変数 _ble_edit_PS1
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
+## 変数 _ble_edit_PS1
+## 変数 _ble_edit_IFS
+## 変数 _ble_edit_IGNOREEOF_set
+## 変数 _ble_edit_IGNOREEOF
 
-function ble-edit/attach/TRAPWINCH {
-  if ((_ble_edit_attached)); then
-    local IFS=$' \t\n'
-    _ble_textmap_pos=()
-    ble-edit/bind/stdout.on
-    ble/textarea#redraw
-    ble-edit/bind/stdout.off
+_ble_edit_IGNOREEOF_adjusted=
+_ble_edit_IGNOREEOF=
+function ble-edit/adjust-IGNOREEOF {
+  [[ $_ble_edit_IGNOREEOF_adjusted ]] && return
+  _ble_edit_IGNOREEOF_adjusted=1
+
+  if [[ ${IGNOREEOF+set} ]]; then
+    _ble_edit_IGNOREEOF=$IGNOREEOF
+  else
+    unset _ble_edit_IGNOREEOF
+  fi
+  if ((_ble_bash>=40000)); then
+    unset IGNOREEOF
+  else
+    IGNOREEOF=9999
+  fi
+}
+function ble-edit/restore-IGNOREEOF {
+  [[ $_ble_edit_IGNOREEOF_adjusted ]] || return
+  _ble_edit_IGNOREEOF_adjusted=
+
+  if [[ ${_ble_edit_IGNOREEOF+set} ]]; then
+    IGNOREEOF=$_ble_edit_IGNOREEOF
+  else
+    unset IGNOREEOF
+  fi
+}
+function ble-edit/eval-IGNOREEOF {
+  local value=
+  if [[ $_ble_edit_IGNOREEOF_adjusted ]]; then
+    value=${_ble_edit_IGNOREEOF-0}
+  else
+    value=${IGNOREEOF-0}
+  fi
+
+  if [[ $value && ! ${value//[0-9]} ]]; then
+    # 正の整数は十進数で解釈
+    ret=$((10#$value))
+  else
+    # 負の整数、空文字列、その他
+    ret=10
   fi
 }
 
-## called by ble-edit-attach
+function ble-edit/attach/TRAPWINCH {
+  local IFS=$' \t\n'
+  if ((_ble_edit_attached)); then
+    if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
+      _ble_textmap_pos=()
+      ble-edit/bind/stdout.on
+      ble/textarea#redraw
+      ble-edit/bind/stdout.off
+    fi
+  fi
+}
+
+## called by ble-edit/attach
 _ble_edit_attached=0
-function ble-edit/attach {
+function ble-edit/attach/.attach {
   ((_ble_edit_attached)) && return
   _ble_edit_attached=1
 
@@ -2221,13 +1083,15 @@ function ble-edit/attach {
   trap ble-edit/attach/TRAPWINCH WINCH
 
   _ble_edit_PS1=$PS1
+  ble-edit/adjust-IGNOREEOF
   PS1=
   [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
 
-function ble-edit/detach {
+function ble-edit/attach/.detach {
   ((!_ble_edit_attached)) && return
   PS1=$_ble_edit_PS1
+  ble-edit/restore-IGNOREEOF
   [[ $bleopt_exec_type == exec ]] && IFS=$_ble_edit_IFS
   _ble_edit_attached=0
 }
@@ -2270,13 +1134,13 @@ function ble/textarea#update-text-buffer {
 
   # 変更文字の適用
   if ((${#_ble_textmap_ichg[@]})); then
-    local ichg g sgr
+    local ichg g ret
     builtin eval "_ble_textarea_buffer=(\"\${$HIGHLIGHT_BUFF[@]}\")"
     HIGHLIGHT_BUFF=_ble_textarea_buffer
     for ichg in "${_ble_textmap_ichg[@]}"; do
       ble-highlight-layer/getg "$ichg"
-      ble-color-g2sgr -v sgr "$g"
-      _ble_textarea_buffer[ichg]=$sgr${_ble_textmap_glyph[ichg]}
+      ble-color-g2sgr "$g"
+      _ble_textarea_buffer[ichg]=$ret${_ble_textmap_glyph[ichg]}
     done
   fi
 
@@ -2316,20 +1180,20 @@ function ble/textarea#update-text-buffer {
         fi
 
         # 次が改行の時は空白にする
-        ble-highlight-layer/getg -v lg "$index"
+        local g; ble-highlight-layer/getg "$index"; lg=$g
         ((lc=ret==10?32:ret))
       else
         # 前の文字
         lcs=${_ble_textmap_glyph[index-1]}
         ble/util/s2c "$lcs" $((${#lcs}-1))
-        ble-highlight-layer/getg -v lg $((index-1))
+        local g; ble-highlight-layer/getg $((index-1)); lg=$g
         ((lc=ret))
       fi
     fi
   fi
 }
 ## 関数 ble/textarea#slice-text-buffer [beg [end]]
-##   @var [out] ret
+##   @var[out] ret
 function ble/textarea#slice-text-buffer {
   ble/textmap#assert-up-to-date
   local iN=$_ble_textmap_length
@@ -2337,10 +1201,10 @@ function ble/textarea#slice-text-buffer {
   ((i1<0&&(i1+=iN,i1<0&&(i1=0)),
     i2<0&&(i2+=iN)))
   if ((i1<i2&&i1<iN)); then
-    local g sgr
-    ble-highlight-layer/getg -v g "$i1"
-    ble-color-g2sgr -v sgr "$g"
-    IFS= builtin eval "ret=\"\$sgr\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
+    local g
+    ble-highlight-layer/getg "$i1"
+    ble-color-g2sgr "$g"
+    IFS= builtin eval "ret=\"\$ret\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
   else
     ret=
   fi
@@ -2455,10 +1319,10 @@ function ble/textarea#render/.perform-scroll {
     if ((_ble_textarea_scroll>new_scroll)); then
       local shift=$((_ble_textarea_scroll-new_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
-      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
-      ble-edit/draw/put.dl "$draw_shift"
-      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
-      ble-edit/draw/put.il "$draw_shift"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
+      ble/canvas/put-dl.draw "$draw_shift"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
+      ble/canvas/put-il.draw "$draw_shift"
 
       if ((new_scroll==0)); then
         fmin=0
@@ -2469,10 +1333,10 @@ function ble/textarea#render/.perform-scroll {
     else
       local shift=$((new_scroll-_ble_textarea_scroll))
       local draw_shift=$((shift<scrh?shift:scrh))
-      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
-      ble-edit/draw/put.dl "$draw_shift"
-      ble-form/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
-      ble-edit/draw/put.il "$draw_shift"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 "$scry"
+      ble/canvas/put-dl.draw "$draw_shift"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((height-draw_shift))
+      ble/canvas/put-il.draw "$draw_shift"
 
       ble/textmap#get-index-at 0 $((new_scroll+height-draw_shift)); fmin=$index
       ble/textmap#get-index-at "$cols" $((new_scroll+height-1)); fmax=$index
@@ -2484,12 +1348,12 @@ function ble/textarea#render/.perform-scroll {
       ble/textmap#getxy.out --prefix=fmin "$fmin"
       ble/textmap#getxy.out --prefix=fmax "$fmax"
 
-      ble-form/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
-      ((new_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
+      ((new_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
       local ret; ble/textarea#slice-text-buffer "$fmin" "$fmax"
-      ble-edit/draw/put "$ret"
-      ((_ble_line_x=fmaxx,
-        _ble_line_y+=fmaxy-fminy))
+      ble/canvas/put.draw "$ret"
+      ((_ble_canvas_x=fmaxx,
+        _ble_canvas_y+=fmaxy-fminy))
 
       ((umin<umax)) &&
         ((fmin<=umin&&umin<fmax&&(umin=fmax),
@@ -2505,15 +1369,15 @@ function ble/textarea#render/.perform-scroll {
 ##   スクロール時 "(line 3) ..." などの表示
 ##
 ##   @var[in] _ble_textarea_scroll
-##   @var[in,out] DRAW_BUFF _ble_line_x _ble_line_y
+##   @var[in,out] DRAW_BUFF _ble_canvas_x _ble_canvas_y
 ##
 function ble/textarea#render/.show-scroll-at-first-line {
   if ((_ble_textarea_scroll!=0)); then
-    ble-form/panel#goto.draw "$_ble_textarea_panel" "$begx" "$begy"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$begx" "$begy"
     local scroll_status="(line $((_ble_textarea_scroll+2))) ..."
     scroll_status=${scroll_status::cols-1-begx}
-    ble-edit/draw/put "$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
-    ((_ble_line_x+=${#scroll_status}))
+    ble/canvas/put.draw "$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
+    ((_ble_canvas_x+=${#scroll_status}))
   fi
 }
 
@@ -2521,8 +1385,8 @@ function ble/textarea#render/.show-scroll-at-first-line {
 ##   プロンプト・編集文字列の現在位置に端末のカーソルを移動します。
 function ble/textarea#focus {
   local -a DRAW_BUFF=()
-  ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
-  ble-edit/draw/bflush
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
+  ble/canvas/bflush.draw
 }
 
 ## 関数 ble/textarea#render
@@ -2594,7 +1458,7 @@ function ble/textarea#render {
   local height=$((LINES-1)) # ToDo: info の高さも考慮に入れる
   local scroll=$_ble_textarea_scroll
   ble/textarea#render/.determine-scroll # update: height scroll umin umax
-  ble-form/panel#set-height.draw "$_ble_textarea_panel" "$height"
+  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" "$height"
 
   local gend gendx gendy
   if [[ $scroll ]]; then
@@ -2622,31 +1486,31 @@ function ble/textarea#render {
       ble/textmap#getxy.out --prefix=umin "$umin"
       ble/textmap#getxy.out --prefix=umax "$umax"
 
-      ble-form/panel#goto.draw "$_ble_textarea_panel" "$uminx" $((uminy-_ble_textarea_scroll))
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$uminx" $((uminy-_ble_textarea_scroll))
       ble/textarea#slice-text-buffer "$umin" "$umax"
-      ble-edit/draw/put "$ret"
-      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$umaxx" $((umaxy-_ble_textarea_scroll))
+      ble/canvas/put.draw "$ret"
+      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$umaxx" $((umaxy-_ble_textarea_scroll))
     fi
 
     if ((BLELINE_RANGE_UPDATE[0]>=0)); then
       local endY=$((endy-_ble_textarea_scroll))
-      ((endY<height)) && ble-form/panel#clear-after.draw "$_ble_textarea_panel" "$endx" "$endY"
+      ((endY<height)) && ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" "$endx" "$endY"
     fi
   else
     # 全体更新
-    ble-form/panel#clear.draw "$_ble_textarea_panel"
+    ble/canvas/panel#clear.draw "$_ble_textarea_panel"
 
     # プロンプト描画
-    ble-form/panel#goto.draw "$_ble_textarea_panel"
-    ble-edit/draw/put "$esc_prompt"
-    ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$prox" "$proy"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel"
+    ble/canvas/put.draw "$esc_prompt"
+    ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$prox" "$proy"
 
     # 全体描画
     if [[ ! $_ble_textarea_scroll ]]; then
       ble/textarea#slice-text-buffer # → ret
       esc_line=$ret esc_line_set=1
-      ble-edit/draw/put "$ret"
-      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+      ble/canvas/put.draw "$ret"
+      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
     else
       ble/textarea#render/.show-scroll-at-first-line
 
@@ -2659,19 +1523,19 @@ function ble/textarea#render {
       ble/textmap#getxy.out --prefix=gbeg "$gbeg"
       ((gbegy-=_ble_textarea_scroll))
 
-      ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
-      ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
+      ((_ble_textarea_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
       ble/textarea#slice-text-buffer "$gbeg" "$gend"
-      ble-edit/draw/put "$ret"
-      ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-      ((_ble_line_x=gendx,_ble_line_y+=gendy-gbegy))
+      ble/canvas/put.draw "$ret"
+      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+      ((_ble_canvas_x=gendx,_ble_canvas_y+=gendy-gbegy))
     fi
   fi
 
   # 3 移動
   local gcx=$cx gcy=$((cy-_ble_textarea_scroll))
-  ble-form/panel#goto.draw "$_ble_textarea_panel" "$gcx" "$gcy"
-  ble-edit/draw/bflush
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gcx" "$gcy"
+  ble/canvas/bflush.draw
 
   # 4 後で使う情報の記録
   _ble_textarea_cur=("$gcx" "$gcy" "$lc" "$lg")
@@ -2683,7 +1547,7 @@ function ble/textarea#render {
         ble/textarea#slice-text-buffer
         esc_line=$ret
       else
-        local _ble_line_x=$begx _ble_line_y=$begy
+        local _ble_canvas_x=$begx _ble_canvas_y=$begy
         DRAW_BUFF=()
 
         ble/textarea#render/.show-scroll-at-first-line
@@ -2696,12 +1560,12 @@ function ble/textarea#render {
         ble/textmap#getxy.out --prefix=gbeg "$gbeg"
         ((gbegy-=_ble_textarea_scroll))
 
-        ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
-        ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+        ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
+        ((_ble_textarea_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
         ble/textarea#slice-text-buffer "$gbeg" "$gend"
-        ble-edit/draw/put "$ret"
+        ble/canvas/put.draw "$ret"
 
-        ble-edit/draw/sflush -v esc_line
+        ble/canvas/sflush.draw -v esc_line
       fi
     fi
 
@@ -2735,16 +1599,16 @@ function ble/textarea#redraw-cache {
 
     local -a DRAW_BUFF=()
 
-    ble-form/panel#clear.draw "$_ble_textarea_panel"
-    ble-form/panel#goto.draw "$_ble_textarea_panel"
-    ble-edit/draw/put "${d[0]}"
-    ble-form/panel#report-cursor-position "$_ble_textarea_panel" "${d[5]}" "${d[6]}"
+    ble/canvas/panel#clear.draw "$_ble_textarea_panel"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel"
+    ble/canvas/put.draw "${d[0]}"
+    ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "${d[5]}" "${d[6]}"
     _ble_textarea_gendx=${d[5]}
     _ble_textarea_gendy=${d[6]}
 
     _ble_textarea_cur=("${d[@]:1:4}")
-    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
-    ble-edit/draw/bflush
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
+    ble/canvas/bflush.draw
   else
     ble/textarea#redraw
   fi
@@ -2779,16 +1643,16 @@ function ble/textarea#adjust-for-bash-bind {
       READLINE_POINT=0
     else
       ble/util/c2w "$lc"
-      ((ret>0)) && ble-edit/draw/put.cub "$ret"
-      ble-text-c2bc "$lc"
+      ((ret>0)) && ble/canvas/put-cub.draw "$ret"
+      ble/util/c2bc "$lc"
       READLINE_POINT=$ret
     fi
 
     ble-color-g2sgr "$lg"
-    ble-edit/draw/put "$ret"
+    ble/canvas/put.draw "$ret"
 
     # 2018-03-19 stty -echo の時は Bash は何も出力しないので調整は不要
-    #ble-edit/draw/bflush
+    #ble/canvas/bflush.draw
   fi
 }
 
@@ -2876,12 +1740,12 @@ function ble/widget/clear-screen {
   ble-edit/info/hide
   ble/textarea#invalidate
   ble/util/buffer "$_ble_term_clear"
-  _ble_line_x=0 _ble_line_y=0
+  _ble_canvas_x=0 _ble_canvas_y=0
   ble/term/visible-bell/cancel-erasure
 }
 function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
-  ble/widget/.SHELL_COMMAND 'builtin echo "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"'
+  ble/widget/print "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"
 }
 
 # 
@@ -2907,7 +1771,7 @@ function ble/widget/kill-forward-text {
 
   _ble_edit_kill_ring=${_ble_edit_str:_ble_edit_ind}
   _ble_edit_kill_type=
-  _ble_edit_str.replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
+  ble-edit/content/replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
 function ble/widget/kill-backward-text {
@@ -2915,7 +1779,7 @@ function ble/widget/kill-backward-text {
   ((_ble_edit_ind==0)) && return
   _ble_edit_kill_ring=${_ble_edit_str::_ble_edit_ind}
   _ble_edit_kill_type=
-  _ble_edit_str.replace 0 _ble_edit_ind ''
+  ble-edit/content/replace 0 "$_ble_edit_ind" ''
   ((_ble_edit_mark=_ble_edit_mark<=_ble_edit_ind?0:_ble_edit_mark-_ble_edit_ind))
   _ble_edit_ind=0
 }
@@ -2968,7 +1832,7 @@ function ble/widget/.delete-range {
 
   # delete
   if ((len)); then
-    _ble_edit_str.replace p0 p1 ''
+    ble-edit/content/replace "$p0" "$p1" ''
     ((
       _ble_edit_ind>p1? (_ble_edit_ind-=len):
       _ble_edit_ind>p0&&(_ble_edit_ind=p0),
@@ -2989,7 +1853,7 @@ function ble/widget/.kill-range {
 
   # delete
   if ((len)); then
-    _ble_edit_str.replace p0 p1 ''
+    ble-edit/content/replace "$p0" "$p1" ''
     ((
       _ble_edit_ind>p1? (_ble_edit_ind-=len):
       _ble_edit_ind>p0&&(_ble_edit_ind=p0),
@@ -3014,7 +1878,7 @@ function ble/widget/.replace-range {
   ble/widget/.process-range-argument "${@:1:2}" || (($4)) || return 1
   local str=$3 strlen=${#3}
 
-  _ble_edit_str.replace p0 p1 "$str"
+  ble-edit/content/replace "$p0" "$p1" "$str"
   local delta
   ((delta=strlen-len)) &&
     ((_ble_edit_ind>p1?(_ble_edit_ind+=delta):
@@ -3102,6 +1966,8 @@ function ble/widget/bell {
   _ble_edit_arg=
 }
 
+function ble/widget/nop { :; }
+
 # 
 # **** insert ****                                                 @edit.insert
 
@@ -3109,7 +1975,7 @@ function ble/widget/insert-string {
   local content="$*"
   local arg; ble-edit/content/get-arg 1
   if ((arg<0)); then
-    ble/widget/.bell "negative repitition number $arg"
+    ble/widget/.bell "negative repetition number $arg"
     return 1
   elif ((arg==0)); then
     return 0
@@ -3123,7 +1989,7 @@ function ble/widget/.insert-string {
   [[ $ins ]] || return
 
   local dx=${#ins}
-  _ble_edit_str.replace _ble_edit_ind _ble_edit_ind "$ins"
+  ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
   (('
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
     _ble_edit_ind+=dx
@@ -3145,7 +2011,7 @@ function ble/widget/.insert-string {
 ##     vi.sh の r, gr による挿入を想定する。
 ##
 function ble/widget/self-insert {
-  local code=$((KEYS[0]&ble_decode_MaskChar))
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
   ((code==0)) && return
 
   local ibeg=$_ble_edit_ind iend=$_ble_edit_ind
@@ -3153,7 +2019,7 @@ function ble/widget/self-insert {
 
   local arg; ble-edit/content/get-arg 1
   if ((arg<0)); then
-    ble/widget/.bell "negative repitition number $arg"
+    ble/widget/.bell "negative repetition number $arg"
     return 1
   elif ((arg==0)) || [[ ! $ins ]]; then
     arg=0 ins=
@@ -3192,7 +2058,7 @@ function ble/widget/self-insert {
         ((removed_width+=w1))
       done
 
-      ((removed_width>w)) && ins=$ins${_ble_util_string_prototype::removed_width-w}
+      ((removed_width>w)) && ins=$ins${_ble_string_prototype::removed_width-w}
     fi
 
     # これは vi.sh の r gr で設定する変数
@@ -3204,7 +2070,7 @@ function ble/widget/self-insert {
     fi
   fi
 
-  _ble_edit_str.replace ibeg iend "$ins"
+  ble-edit/content/replace "$ibeg" "$iend" "$ins"
   ((_ble_edit_ind+=${#ins},
     _ble_edit_mark>ibeg&&(
       _ble_edit_mark<iend?(
@@ -3215,9 +2081,37 @@ function ble/widget/self-insert {
   return 0
 }
 
+function ble/widget/batch-insert {
+  local -a chars; chars=("${KEYS[@]}")
+
+  if [[ $_ble_edit_overwrite_mode ]]; then
+    local -a KEYS=(0)
+    local char
+    for char in "${chars[@]}"; do
+      KEYS=$char ble/widget/self-insert
+    done
+
+  else
+    local index=0 N=${#chars[@]}
+    while ((index<N)) && [[ $_ble_edit_arg || $_ble_edit_mark_active ]]; do
+      KEYS=${chars[index]} ble/widget/self-insert
+      ((index++))
+    done
+
+    if ((index<N)); then
+      local ins=
+      while ((index<N)); do
+        ble/util/c2s "${chars[index]}"; ins=$ins$ret
+        ((index++))
+      done
+      ble/widget/insert-string "$ins"
+    fi
+  fi
+}
+
+
 # quoted insert
 function ble/widget/quoted-insert.hook {
-  local WIDGET=ble/widget/self-insert
   ble/widget/self-insert
 }
 function ble/widget/quoted-insert {
@@ -3253,7 +2147,7 @@ function ble/widget/transpose-chars {
 
   local a=${_ble_edit_str:p:q-p}
   local b=${_ble_edit_str:q:r-q}
-  _ble_edit_str.replace "$p" "$r" "$b$a"
+  ble-edit/content/replace "$p" "$r" "$b$a"
   ((_ble_edit_ind+=arg))
   return 0
 }
@@ -3294,12 +2188,8 @@ function ble/widget/bracketed-paste.hook {
   [[ $proc ]] && builtin eval -- "$proc \"\${chars[@]}\""
 }
 function ble/widget/bracketed-paste.proc {
-  local -a KEYS
-  local char WIDGET=ble/widget/self-insert
-  for char; do
-    KEYS=("$char")
-    "$WIDGET"
-  done
+  local -a KEYS; KEYS=("$@")
+  ble/widget/batch-insert
 }
 
 # 
@@ -3332,7 +2222,7 @@ function ble/widget/.delete-backward-char {
     fi
   fi
 
-  _ble_edit_str.replace $((_ble_edit_ind-a)) "$_ble_edit_ind" "$ins"
+  ble-edit/content/replace $((_ble_edit_ind-a)) "$_ble_edit_ind" "$ins"
   ((_ble_edit_ind-=a,
     _ble_edit_ind+a<_ble_edit_mark?(_ble_edit_mark-=a):
     _ble_edit_ind<_ble_edit_mark&&(_ble_edit_mark=_ble_edit_ind)))
@@ -3346,7 +2236,7 @@ function ble/widget/.delete-char {
     if ((${#_ble_edit_str}<_ble_edit_ind+a)); then
       return 1
     else
-      _ble_edit_str.replace "$_ble_edit_ind" $((_ble_edit_ind+a)) ''
+      ble-edit/content/replace "$_ble_edit_ind" $((_ble_edit_ind+a)) ''
     fi
   elif ((a<0)); then
     # delete-backward-char
@@ -3357,7 +2247,7 @@ function ble/widget/.delete-char {
     if ((${#_ble_edit_str}==0)); then
       return 1
     elif ((_ble_edit_ind<${#_ble_edit_str})); then
-      _ble_edit_str.replace "$_ble_edit_ind" $((_ble_edit_ind+1)) ''
+      ble-edit/content/replace "$_ble_edit_ind" $((_ble_edit_ind+1)) ''
     else
       _ble_edit_ind=${#_ble_edit_str}
       ble/widget/.delete-backward-char 1
@@ -3378,19 +2268,60 @@ function ble/widget/delete-backward-char {
   ((arg==0)) && return 0
   ble/widget/.delete-char $((-arg)) || ble/widget/.bell
 }
+
+_ble_edit_exit_count=0
 function ble/widget/exit {
   ble-edit/content/clear-arg
-  local opts=$1
 
-  if [[ :$opts: != *:force:* ]]; then
+  if [[ $WIDGET == "$LASTWIDGET" ]]; then
+    ((_ble_edit_exit_count++))
+  else
+    _ble_edit_exit_count=1
+  fi
+
+  local ret; ble-edit/eval-IGNOREEOF
+  if ((_ble_edit_exit_count<=ret)); then
+    local remain=$((ret-_ble_edit_exit_count+1))
+    ble/widget/.bell 'IGNOREEOF'
+    ble/widget/print "IGNOREEOF($remain): Use \"exit\" to leave the shell."
+    return
+  fi
+
+  local opts=$1
+  ((_ble_bash>=40000)) && shopt -q checkjobs &>/dev/null && opts=$opts:checkjobs
+
+  if [[ $bleopt_allow_exit_with_jobs ]]; then
+    local ret
+    if ble/util/assign ret 'compgen -A stopped -- ""' 2>/dev/null; [[ $ret ]]; then
+      opts=$opts:twice
+    elif [[ :$opts: == *:checkjobs:* ]]; then
+      if ble/util/assign ret 'compgen -A running -- ""' 2>/dev/null; [[ $ret ]]; then
+        opts=$opts:twice
+      fi
+    else
+      opts=$opts:force
+    fi
+  fi
+
+  if ! [[ :$opts: == *:force:* || :$opts: == *:twice:* && _ble_edit_exit_count -ge 2 ]]; then
     # job が残っている場合
     local joblist
     ble/util/joblist
     if ((${#joblist[@]})); then
-      ble/widget/.bell "(exit) ジョブが残っています!"
-      ble/widget/.SHELL_COMMAND jobs
+      ble/widget/.bell "exit: There are remaining jobs."
+      local q=\' Q="'\''" message=
+      if [[ :$opts: == *:twice:* ]]; then
+        message='There are remaining jobs. Input the same key to exit the shell anyway.'
+      else
+        message='There are remaining jobs. Use "exit" to leave the shell.'
+      fi
+      ble/widget/internal-command "echo '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
       return
     fi
+  elif [[ :$opts: == *:checkjobs:* ]]; then
+    local joblist
+    ble/util/joblist
+    ((${#joblist[@]})) && printf '%s\n' "${#joblist[@]}"
   fi
 
   #_ble_edit_detach_flag=exit
@@ -3403,11 +2334,15 @@ function ble/widget/exit {
   ble-edit/info/hide
 
   local -a DRAW_BUFF=()
-  ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-  ble-edit/draw/bflush
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+  ble/canvas/bflush.draw
   ble/util/buffer.print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
   ble/util/buffer.flush >&2
-  exit
+
+  # Note: ジョブが残っている場合でも強制終了させる為 2 回連続で呼び出す必要がある。
+  builtin exit "$ext" &>/dev/null
+  builtin exit "$ext" &>/dev/null
+  return 1
 }
 function ble/widget/delete-forward-char-or-exit {
   if [[ $_ble_edit_str ]]; then
@@ -4160,12 +3095,33 @@ function ble-edit/exec/.adjust-eol {
   # 文末調整
   local cols=${COLUMNS:-80}
   local -a DRAW_BUFF=()
-  ble-edit/draw/put "$_ble_term_sc"
-  ble-edit/draw/put "${_ble_term_setaf[12]}[ble: EOF]$_ble_term_sgr0"
-  ble-edit/draw/put "$_ble_term_rc"
-  ble-edit/draw/put.cuf $((_ble_term_xenl?cols-2:cols-3))
-  ble-edit/draw/put "  $_ble_term_cr$_ble_term_el"
-  ble-edit/draw/bflush
+  ble/canvas/put.draw "$_ble_term_sc"
+  ble/canvas/put.draw "${_ble_term_setaf[12]}[ble: EOF]$_ble_term_sgr0"
+  ble/canvas/put.draw "$_ble_term_rc"
+  ble/canvas/put-cuf.draw $((_ble_term_xenl?cols-2:cols-3))
+  ble/canvas/put.draw "  $_ble_term_cr$_ble_term_el"
+  ble/canvas/bflush.draw
+}
+
+function ble-edit/exec/.reset-builtins/1 {
+  # Note: 何故か local POSIXLY_CORRECT の効果が
+  #   unset POSIXLY_CORRECT しても残存するので関数に入れる。
+  local POSIXLY_CORRECT=y
+  builtin unset -f builtin unset enable
+  builtin unset -f return break continue declare typeset local eval echo
+  ble/base/unset-POSIXLY_CORRECT
+}
+function ble-edit/exec/.reset-builtins {
+  # Workaround (bash-3.0 - 4.3):
+  #
+  #   unset POSIXLY_CORRECT でないと unset -f : できないが、
+  #   bash-3.0 -- 4.3 のバグで、local POSIXLY_CORRECT の時、
+  #   unset POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
+  #   local POSIXLY_CORRECT による処理は
+  #   ble-edit/exec/.reset-builtins/1 の中で実行する。
+  #
+  ble-edit/exec/.reset-builtins/1
+  builtin unset -f :
 }
 
 _ble_edit_exec_BASH_REMATCH=()
@@ -4255,6 +3211,44 @@ function ble-edit/exec/restore-BASH_REMATCH {
   [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
 }
 
+function ble-edit/exec/exit {
+  local ext=${1-$?}
+  if ((BASHPID!=$$)) || [[ $_ble_decode_bind_state == none ]]; then
+    builtin exit "$ext"
+    return
+  fi
+
+  local joblist
+  ble/util/joblist
+  if ((${#joblist[@]})); then
+    local ret
+    while
+      local cancel_reason=
+      if ble/util/assign ret 'compgen -A stopped -- ""' 2>/dev/null; [[ $ret ]]; then
+        cancel_reason='stopped jobs'
+      elif [[ :$opts: == *:checkjobs:* ]]; then
+        if ble/util/assign ret 'compgen -A running -- ""' 2>/dev/null; [[ $ret ]]; then
+          cancel_reason='running jobs'
+        fi
+      fi
+      [[ $cancel_reason ]]
+    do
+      jobs
+      ble-edit/read -ep "\e[38;5;12m[ble: There are $cancel_reason]\e[m Leave the shell anyway? [yes/No] " ret
+      case $ret in
+      ([yY]|[yY][eE][sS]) break ;;
+      ([nN]|[nN][oO]|'')  return ;;
+      esac
+    done
+  fi
+
+  echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
+  builtin exit "$ext" &>/dev/null
+  builtin exit "$ext" &>/dev/null
+  return 1 # exit できなかった場合は 1 らしい
+}
+
+function exit { ble-edit/exec/exit "$@"; }
 
 ## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_exec_type/process;
 ##   指定したコマンドを実行します。
@@ -4293,7 +3287,8 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
 
 function ble-edit/exec:exec/.eval-prologue {
   ble-edit/exec/restore-BASH_REMATCH
-  ble/restore-bash-options
+  ble/base/restore-bash-options
+  ble/base/restore-POSIXLY_CORRECT
 
   set -H
 
@@ -4303,7 +3298,7 @@ function ble-edit/exec:exec/.eval-prologue {
 }
 function ble-edit/exec:exec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
-  ble/adjust-bash-options
+  ble/base/adjust-bash-options
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:exec/.eval {
@@ -4315,9 +3310,11 @@ function ble-edit/exec:exec/.eval {
 function ble-edit/exec:exec/.eval-epilogue {
   trap - INT DEBUG # DEBUG 削除が何故か効かない
 
-  ble/adjust-bash-options
+  ble/base/adjust-bash-options
+  ble/base/adjust-POSIXLY_CORRECT
   _ble_edit_PS1=$PS1
   _ble_edit_IFS=$IFS
+  ble-edit/adjust-IGNOREEOF
   ble-edit/exec/save-BASH_REMATCH
   ble-edit/exec/.adjust-eol
 
@@ -4325,7 +3322,7 @@ function ble-edit/exec:exec/.eval-epilogue {
   if ((_ble_edit_exec_lastexit==0)); then
     _ble_edit_exec_lastexit=$_ble_edit_exec_INT
   fi
-  if [ "$_ble_edit_exec_lastexit" -ne 0 ]; then
+  if ((_ble_edit_exec_lastexit!=0)); then
     # SIGERR処理
     if type -t TRAPERR &>/dev/null; then
       TRAPERR
@@ -4348,6 +3345,7 @@ function ble-edit/exec:exec/.recursive {
     # 実行
     local PS1=$_ble_edit_PS1
     local IFS=$_ble_edit_IFS
+    local IGNOREEOF; ble-edit/restore-IGNOREEOF
     local HISTCMD
     ble-edit/history/get-count -v HISTCMD
 
@@ -4539,16 +3537,18 @@ function ble-edit/exec:gexec/.eval-prologue {
   local IFS=$' \t\n'
   BASH_COMMAND=$1
   PS1=$_ble_edit_PS1
+  ble-edit/restore-IGNOREEOF
   unset HISTCMD; ble-edit/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec/restore-BASH_REMATCH
-  ble/restore-bash-options
+  ble/base/restore-bash-options
+  ble/base/restore-POSIXLY_CORRECT
   ble-edit/exec/.setexit # set $?
 }
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
-  ble/adjust-bash-options
+  ble/base/adjust-bash-options
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.eval-epilogue {
@@ -4559,14 +3559,14 @@ function ble-edit/exec:gexec/.eval-epilogue {
   fi
   _ble_edit_exec_INT=0
 
-  unset -f builtin unset
-  builtin unset -f builtin unset
-  builtin unset -f return break continue declare typeset local : eval echo
+  ble-edit/exec/.reset-builtins
 
   local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
 
-  ble/adjust-bash-options
+  ble/base/adjust-bash-options
+  ble/base/adjust-POSIXLY_CORRECT
+  ble-edit/adjust-IGNOREEOF
   _ble_edit_PS1=$PS1
   PS1=
   ble-edit/exec/save-BASH_REMATCH
@@ -4631,22 +3631,33 @@ function ble-edit/exec:gexec/process {
 # **** accept-line ****                                            @edit.accept
 
 function ble/widget/.insert-newline {
-  # 最終状態の描画
-  ble-edit/info/hide
-  ble/textarea#render
+  local opts=$1
+  if [[ :$opts: == *:keep-info:* && $_ble_textarea_panel == 0 ]]; then
+    # 最終状態の描画
+    ble/textarea#render
 
-  # 新しい描画領域
-  local -a DRAW_BUFF=()
-  ble-form/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-  ble-edit/draw/put "$_ble_term_nl"
-  ble-edit/draw/bflush
+    # info を表示したまま行を挿入し、今までの panel 0 の内容を範囲外に破棄
+    local -a DRAW_BUFF=()
+    ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" 1
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((_ble_textarea_gendy+1))
+  else
+    # 最終状態の描画
+    ble-edit/info/hide
+    ble/textarea#render
+
+    # 新しい描画領域
+    local -a DRAW_BUFF=()
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+    ble/canvas/put.draw "$_ble_term_nl"
+  fi
+  ble/canvas/bflush.draw
   ble/util/joblist.bflush
 
   # 描画領域情報の初期化
   ble/textarea#invalidate
-  _ble_line_x=0 _ble_line_y=0
+  _ble_canvas_x=0 _ble_canvas_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
-  _ble_form_window_height[_ble_textarea_panel]=0
+  _ble_canvas_panel_height[_ble_textarea_panel]=1
 }
 
 function ble/widget/.newline/clear-content {
@@ -4656,16 +3667,22 @@ function ble/widget/.newline/clear-content {
     ble/term/cursor-state/reveal
 
   # 行内容の初期化
-  _ble_edit_str.reset '' newline
+  ble-edit/content/reset '' newline
   _ble_edit_ind=0
   _ble_edit_mark=0
   _ble_edit_mark_active=
   _ble_edit_overwrite_mode=
 }
 
+## 関数 ble/widget/.newline opts
+##   @param[in] opts
+##     コロン区切りのオプションです。
+##     keep-info
+##       info を隠さずに表示したままにします。
 function ble/widget/.newline {
+  local opts=$1
   _ble_edit_mark_active=
-  ble/widget/.insert-newline
+  ble/widget/.insert-newline "$opts"
   ((LINENO=++_ble_edit_LINENO))
 
   ble-edit/history/onleave.fire
@@ -4674,7 +3691,7 @@ function ble/widget/.newline {
 
 function ble/widget/discard-line {
   ble-edit/content/clear-arg
-  _ble_edit_line_disabled=1 ble/widget/.newline
+  _ble_edit_line_disabled=1 ble/widget/.newline keep-info
 }
 
 
@@ -4683,9 +3700,27 @@ if ((_ble_bash>=30100)); then
     builtin history -p -- "$BASH_COMMAND"
   }
 else
-  # workaround for bash-3.0 (see memo.txt#D0233)
+  # Workaround for bash-3.0 bug (see memo.txt#D0233, #D0801)
   function ble/edit/hist_expanded/.core {
-    (builtin history -p -- "$BASH_COMMAND")
+    # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
+    #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
+    #   嘗てはサブシェルで評価していたが、そうすると置換指示子が記録されず
+    #   :& が正しく実行されないことになるのでこちらの実装に切り替える。
+    local line1= line2=
+    ble/util/assign line1 'HISTTIMEFORMAT= builtin history 1'
+    builtin history -p -- '' &>/dev/null
+    ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
+    if [[ $line1 != "$line2" ]]; then
+      local rex_head='^[[:space:]]*[0-9]+[[:space:]]*'
+      [[ $line1 =~ $rex_head ]] &&
+        line1=${line1:${#BASH_REMATCH}}
+
+      local tmp=$_ble_base_run/$$.ble_edit_history_add.txt
+      printf '%s\n' "$line1" "$line1" >| "$tmp"
+      builtin history -r "$tmp"
+    fi
+
+    builtin history -p -- "$BASH_COMMAND"
   }
 fi
 
@@ -4702,7 +3737,7 @@ function ble-edit/hist_expanded.update {
   if [[ ! -o histexpand || ! ${BASH_COMMAND//[ 	]} ]]; then
     hist_expanded=$BASH_COMMAND
     return 0
-  elif ble/util/assign hist_expanded ble-edit/hist_expanded/.expand; then
+  elif ble/util/assign hist_expanded 'ble-edit/hist_expanded/.expand'; then
     hist_expanded=${hist_expanded%$_ble_term_nl:}
     return 0
   else
@@ -4716,7 +3751,7 @@ function ble/widget/accept-line {
   local BASH_COMMAND=$_ble_edit_str
 
   if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
-    ble/widget/.newline
+    ble/widget/.newline keep-info
     return
   fi
 
@@ -4734,7 +3769,7 @@ function ble/widget/accept-line {
   if [[ $hist_expanded != "$BASH_COMMAND" ]]; then
     if shopt -q histverify &>/dev/null; then
       _ble_edit_line_disabled=1 ble/widget/.insert-newline
-      _ble_edit_str.reset-and-check-dirty "$hist_expanded"
+      ble-edit/content/reset-and-check-dirty "$hist_expanded"
       _ble_edit_ind=${#hist_expanded}
       _ble_edit_mark=0
       _ble_edit_mark_active=
@@ -4781,21 +3816,24 @@ function ble/widget/accept-and-next {
     fi
 
     [[ $_ble_edit_str != "$content" ]] &&
-      _ble_edit_str.reset "$content"
+      ble-edit/content/reset "$content"
   fi
 }
 function ble/widget/newline {
   local -a KEYS=(10)
   ble/widget/self-insert
 }
-function ble/widget/accept-single-line-or/accepts {
+function ble-edit/is-single-complete-line {
   ble-edit/content/is-single-line || return 1
-  [[ $_ble_edit_str ]] && ble/util/is-stdin-ready && return 1
-  shopt -q cmdhist &>/dev/null && ! ble-syntax:bash/is-complete && return 1
+  [[ $_ble_edit_str ]] && ble-decode/has-input && return 1
+  if shopt -q cmdhist &>/dev/null; then
+    ble-edit/content/update-syntax
+    ble-syntax:bash/is-complete || return 1
+  fi
   return 0
 }
 function ble/widget/accept-single-line-or {
-  if ble/widget/accept-single-line-or/accepts; then
+  if ble-edit/is-single-complete-line; then
     ble/widget/accept-line
   else
     ble/widget/"$@"
@@ -4889,7 +3927,7 @@ function ble-edit/undo/.load {
     ble/string#common-suffix "${_ble_edit_str:beg}" "${str:beg}"
     local end0=$((${#_ble_edit_str}-${#ret}))
     local end=$((${#str}-${#ret}))
-    _ble_edit_str.replace "$beg" "$end0" "${str:beg:end-beg}"
+    ble-edit/content/replace "$beg" "$end0" "${str:beg:end-beg}"
 
     if [[ $bleopt_undo_point == end ]]; then
       ind=$end
@@ -4897,7 +3935,7 @@ function ble-edit/undo/.load {
       ind=$beg
     fi
   else
-    _ble_edit_str.reset-and-check-dirty "$str"
+    ble-edit/content/reset-and-check-dirty "$str"
   fi
 
   _ble_edit_ind=$ind
@@ -5064,8 +4102,8 @@ function ble-edit/history/get-editted-entry {
 
 ## 関数 ble-edit/history/load
 if ((_ble_bash>=40000)); then
-  # _ble_bash>=40000 で以下の機能を利用する
-  #   ble/util/is-stdin-ready
+  # _ble_bash>=40000 で利用できる以下の機能に依存する
+  #   ble/util/is-stdin-ready (via ble-decode/has-input)
   #   ble/util/mapfile
 
   _ble_edit_history_loading=0
@@ -5073,6 +4111,38 @@ if ((_ble_bash>=40000)); then
 
   # history > tmp
   function ble-edit/history/load/.background-initialize {
+    if ! builtin history -p '!1' &>/dev/null; then
+      # Note: rcfile から呼び出すと history が未ロードなのでロードする。
+      #
+      # Note: 当初は親プロセスで history -n にした方が二度手間にならず効率的と考えたが
+      #   以下の様な問題が生じたので、やはりサブシェルの中で history -n する事にした。
+      #
+      #   問題1: bashrc の謎の遅延 (memo.txt#D0702)
+      #     shopt -s histappend の状態で親シェルで history -n を呼び出すと、
+      #     bashrc を抜けてから Bash 本体によるプロンプトが表示されて、
+      #     入力を受け付けられる様になる迄に、謎の遅延が発生する。
+      #     特に履歴項目の数が HISTSIZE の丁度半分より多い時に起こる様である。
+      #
+      #     history -n を呼び出す瞬間だけ shopt -u histappend して
+      #     直後に shopt -s histappend とすると、遅延は解消するが、
+      #     実際の動作を観察すると histappend が無効になってしまっている。
+      #
+      #     対策として、一時的に HISTSIZE を大きくして bashrc を抜けて、
+      #     最初のユーザからの入力の時に HISTSIZE を復元する事にした。
+      #     これで遅延は解消できる様である。
+      #
+      #   問題2: 履歴の数が倍加する問題 (memo.txt#D0732)
+      #     親シェルで history -n を実行すると、
+      #     shopt -s histappend の状態だと履歴項目の数が2倍になってしまう。
+      #     bashrc を抜ける直前から最初にユーザの入力を受けるまでに倍加する。
+      #     bashrc から抜けた後に Readline が独自に履歴を読み取るのだろう。
+      #     一方で shopt -u histappend の状態だとシェルが動作している内は問題ないが、
+      #     シェルを終了した時に2倍に .bash_history の内容が倍になってしまう。
+      #
+      #     これの解決方法は不明。(HISTFILE 等を弄ったりすれば可能かもれないが試していない)
+      #
+      builtin history -n
+    fi
     local -x HISTTIMEFORMAT=__ble_ext__
     local -x INDEX_FILE=$history_indfile
     local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
@@ -5173,52 +4243,44 @@ if ((_ble_bash>=40000)); then
 
       # 42ms 履歴の読み込み
       (0) [[ $opt_info ]] && ble-edit/info/immediate-show text "loading history..."
-          if ! builtin history -p '!1' &>/dev/null; then
-            # rcfile から呼び出すと history が未ロードなのでロードする。
-            builtin history -n
-
-            if shopt -q histappend; then
-              # Note: bashrc の謎の遅延について (memo.txt#D0702)
-              #
-              #   shopt -s histappend の状態で history -n を呼び出すと、
-              #   bashrc を抜けてから Bash 本体によるプロンプトが表示されて、
-              #   入力を受け付けられる様になる迄に、謎の遅延が発生する。
-              #   さりとて、history -n を呼び出す瞬間だけ shopt -u histappend すると、
-              #   後で shopt -s histappend としても histappend が有効にならない。
-              #
-              #   特に履歴項目の数が HISTSIZE の丁度半分より多い時に起こる様なので
-              #   一時的に HISTSIZE を大きくして遅延を回避する事にする。
-              #
-              local count; ble-edit/history/get-count
-              local HISTSIZE_new=$((count*2))
-              if ((HISTSIZE<HISTSIZE_new)); then
-                _ble_edit_history_HISTSIZE_rewrite=$HISTSIZE:$HISTSIZE_new
-                HISTSIZE=$HISTSIZE_new
-              fi
-            fi
-          fi
 
           # 履歴ファイル生成を Background で開始
-          : >| $history_tmpfile
+          : >| "$history_tmpfile"
 
           if [[ $opt_async ]]; then
             _ble_edit_history_loading_bgpid=$(
               shopt -u huponexit; ble-edit/history/load/.background-initialize </dev/null &>/dev/null & echo $!)
+
+            function ble-edit/history/load/.background-initialize-completed {
+              local history_tmpfile=$_ble_base_run/$$.edit-history-load
+              [[ -s $history_tmpfile ]] || ! builtin kill -0 "$_ble_edit_history_loading_bgpid"
+            } &>/dev/null
+
             ((_ble_edit_history_loading++))
           else
             ble-edit/history/load/.background-initialize
-            ((_ble_edit_history_loading+=2))
+            ((_ble_edit_history_loading+=3))
           fi ;;
 
       # 515ms ble-edit/history/load/.background-initialize 待機
-      (1) while [[ ! -s $history_tmpfile ]] && kill -0 "$_ble_edit_history_loading_bgpid"; do
+      (1) if [[ $opt_async ]] && ble/util/is-running-in-idle; then
+            ble/util/idle.wait-condition ble-edit/history/load/.background-initialize-completed
+            ((_ble_edit_history_loading++))
+            return
+          fi
+          ((_ble_edit_history_loading++)) ;;
+
+      # Note: async でバックグラウンドプロセスを起動した後に、直接 (sync で)
+      #   呼び出された時、未だ処理が完了していなくても次のステップに進んでしまうので、
+      #   此処で条件が満たされるのを待つ (#D0745)
+      (2) while ! ble-edit/history/load/.background-initialize-completed; do
             ble/util/sleep 0.050
-            [[ $opt_async ]] && ble/util/is-stdin-ready && return 148
+            [[ $opt_async ]] && ble-decode/has-input && return 148
           done
           ((_ble_edit_history_loading++)) ;;
-  
+
       # 47ms _ble_edit_history 初期化 (37000項目)
-      (2) if [[ $opt_cygwin ]]; then
+      (3) if [[ $opt_cygwin ]]; then
             # 620ms Cygwin (99000項目)
             source "$history_tmpfile"
           else
@@ -5227,7 +4289,7 @@ if ((_ble_bash>=40000)); then
           ((_ble_edit_history_loading++)) ;;
   
       # 47ms _ble_edit_history_edit 初期化 (37000項目)
-      (3) if [[ $opt_cygwin ]]; then
+      (4) if [[ $opt_cygwin ]]; then
             # 504ms Cygwin (99000項目)
             _ble_edit_history_edit=("${_ble_edit_history[@]}")
           else
@@ -5236,7 +4298,7 @@ if ((_ble_bash>=40000)); then
           ((_ble_edit_history_loading++)) ;;
   
       # 11ms 複数行履歴修正 (107/37000項目)
-      (4) local -a indices_to_fix
+      (5) local -a indices_to_fix
           ble/util/mapfile indices_to_fix < "$history_indfile"
           local i rex='^eval -- \$'\''([^\'\'']|\\.)*'\''$'
           for i in "${indices_to_fix[@]}"; do
@@ -5246,7 +4308,7 @@ if ((_ble_bash>=40000)); then
           ((_ble_edit_history_loading++)) ;;
 
       # 11ms 複数行履歴修正 (107/37000項目)
-      (5) local -a indices_to_fix
+      (6) local -a indices_to_fix
           [[ ${indices_to_fix+set} ]] ||
             ble/util/mapfile indices_to_fix < "$history_indfile"
           for i in "${indices_to_fix[@]}"; do
@@ -5264,7 +4326,7 @@ if ((_ble_bash>=40000)); then
       (*) return 1 ;;
       esac
   
-      [[ $opt_async ]] && ble/util/is-stdin-ready && return 148
+      [[ $opt_async ]] && ble-decode/has-input && return 148
     done
   }
   function ble-edit/history/clear-background-load {
@@ -5316,7 +4378,7 @@ else
     '
   }
 
-  ## called by ble-edit-initialize
+  ## called by ble-edit/initialize
   function ble-edit/history/load {
     [[ $_ble_edit_history_prefix ]] && return
     [[ $_ble_edit_history_loaded ]] && return
@@ -5501,7 +4563,7 @@ function ble-edit/history/goto {
     # restore
     ble-edit/history/onleave.fire
     PREFIX_history_ind=$index1
-    _ble_edit_str.reset "${PREFIX_history_edit[index1]}" history'
+    ble-edit/content/reset "${PREFIX_history_edit[index1]}" history'
   eval "${code//PREFIX/${_ble_edit_history_prefix:-_ble_edit}}"
 
   # point
@@ -5552,33 +4614,42 @@ function ble/widget/history-end {
   fi
 }
 
+## 編集関数 history-expand-line
+##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
 function ble/widget/history-expand-line {
   ble-edit/content/clear-arg
   local hist_expanded
-  ble-edit/hist_expanded.update "$_ble_edit_str" || return
-  [[ $_ble_edit_str == "$hist_expanded" ]] && return
+  ble-edit/hist_expanded.update "$_ble_edit_str" || return 1
+  [[ $_ble_edit_str == "$hist_expanded" ]] && return 1
 
-  _ble_edit_str.reset-and-check-dirty "$hist_expanded"
+  ble-edit/content/reset-and-check-dirty "$hist_expanded"
   _ble_edit_ind=${#hist_expanded}
   _ble_edit_mark=0
   _ble_edit_mark_active=
+  return 0
 }
+## 編集関数 history-expand-backward-line
+##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
 function ble/widget/history-expand-backward-line {
   ble-edit/content/clear-arg
   local prevline=${_ble_edit_str::_ble_edit_ind} hist_expanded
-  ble-edit/hist_expanded.update "$prevline" || return
-  [[ $prevline == "$hist_expanded" ]] && return
+  ble-edit/hist_expanded.update "$prevline" || return 1
+  [[ $prevline == "$hist_expanded" ]] && return 1
 
   local ret
   ble/string#common-prefix "$prevline" "$hist_expanded"; local dmin=${#ret}
-  _ble_edit_str.replace "$dmin" "$_ble_edit_ind" "${hist_expanded:dmin}"
+  ble-edit/content/replace "$dmin" "$_ble_edit_ind" "${hist_expanded:dmin}"
   _ble_edit_ind=${#hist_expanded}
   _ble_edit_mark=0
   _ble_edit_mark_active=
+  return 0
 }
+## 編集関数 magic-space
+##   履歴展開と静的略語展開を実行してから空白を挿入します。
 function ble/widget/magic-space {
   local arg; ble-edit/content/get-arg ''
-  ble/widget/history-expand-backward-line
+  ble/widget/history-expand-backward-line ||
+    ble/function#try ble-complete/sabbrev/expand
   local -a KEYS=(32)
   _ble_edit_arg=$arg
   ble/widget/self-insert
@@ -5586,123 +4657,9 @@ function ble/widget/magic-space {
 
 # 
 #------------------------------------------------------------------------------
-# **** incremental search ****                                 @history.isearch
+# **** basic search functions ****                              @history.search
 
-## 変数 _ble_edit_isearch_str
-##   一致した文字列
-## 変数 _ble_edit_isearch_dir
-##   現在・直前の検索方法
-## 配列 _ble_edit_isearch_arr[]
-##   インクリメンタル検索の過程を記録する。
-##   各要素は ind:dir:beg:end:needle の形式をしている。
-##   ind は履歴項目の番号を表す。dir は履歴検索の方向を表す。
-##   beg, end はそれぞれ一致開始位置と終了位置を表す。
-##   丁度 _ble_edit_ind 及び _ble_edit_mark に対応する。
-##   needle は検索に使用した文字列を表す。
-## 配列 _ble_edit_isearch_que
-##   未処理の操作
-_ble_edit_isearch_str=
-_ble_edit_isearch_dir=-
-_ble_edit_isearch_arr=()
-_ble_edit_isearch_que=()
-
-## @var[in] isearch_ntask
-function ble-edit/isearch/.draw-line-with-progress {
-  # 出力
-  local ll rr
-  if [[ $_ble_edit_isearch_dir == - ]]; then
-    # Emacs workaround: '<<' や "<<" と書けない。
-    ll=\<\< rr="  "
-  else
-    ll="  " rr=">>"
-    text="  >>)"
-  fi
-  local index; ble-edit/history/get-index
-  local count; ble-edit/history/get-count
-  local histIndex='!'$((index+1))
-  local text="(${#_ble_edit_isearch_arr[@]}: $ll $histIndex $rr) \`$_ble_edit_isearch_str'"
-
-  if [[ $1 ]]; then
-    local pos=$1
-    local percentage=$((pos*1000/$count))
-    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
-    ((isearch_ntask)) && text="$text *$isearch_ntask"
-  fi
-
-  ble-edit/info/show text "$text"
-}
-
-function ble-edit/isearch/.draw-line {
-  ble-edit/isearch/.draw-line-with-progress
-}
-function ble-edit/isearch/.erase-line {
-  ble-edit/info/default
-}
-function ble-edit/isearch/.set-region {
-  local beg=$1 end=$2
-  if ((beg<end)); then
-    if [[ $_ble_edit_isearch_dir == - ]]; then
-      _ble_edit_ind=$beg
-      _ble_edit_mark=$end
-    else
-      _ble_edit_ind=$end
-      _ble_edit_mark=$beg
-    fi
-    _ble_edit_mark_active=S
-  else
-    _ble_edit_mark_active=
-  fi
-}
-## 関数 ble-edit/isearch/.push-isearch-array
-##   現在の isearch の情報を配列 _ble_edit_isearch_arr に待避する。
-##
-##   これから登録しようとしている情報が現在のものと同じならば何もしない。
-##   これから登録しようとしている情報が配列の最上にある場合は、
-##   検索の巻き戻しと解釈して配列の最上の要素を削除する。
-##   それ以外の場合は、現在の情報を配列に追加する。
-##   @var[in] ind beg end needle
-##     これから登録しようとしている isearch の情報。
-function ble-edit/isearch/.push-isearch-array {
-  local hash=$beg:$end:$needle
-
-  # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
-  local ilast=$((${#_ble_edit_isearch_arr[@]}-1))
-  if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
-    unset "_ble_edit_isearch_arr[$ilast]"
-    return
-  fi
-
-  local oind; ble-edit/history/get-index -v oind
-  local obeg=$_ble_edit_ind oend=$_ble_edit_mark tmp
-  ((obeg<=oend||(tmp=obeg,obeg=oend,oend=tmp)))
-  local oneedle=$_ble_edit_isearch_str
-  local ohash=$obeg:$oend:$oneedle
-
-  # [... A | B] -> B と来た時 (何もしない) [... A | B] になる。
-  [[ $ind == "$oind" && $hash == "$ohash" ]] && return
-
-  # [... A | B] -> C と来た時 (B を _ble_edit_isearch_arr に移動) [... A B | C] になる。
-  ble/array#push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
-}
-function ble-edit/isearch/.goto-match {
-  local ind=$1 beg=$2 end=$3 needle=$4
-  ((beg==end&&(beg=end=-1)))
-
-  # 検索履歴に待避 (変数 ind beg end needle 使用)
-  ble-edit/isearch/.push-isearch-array
-
-  # 状態を更新
-  _ble_edit_isearch_str=$needle
-  local oind; ble-edit/history/get-index -v oind
-  ((oind!=ind)) && ble-edit/history/goto "$ind"
-  ble-edit/isearch/.set-region "$beg" "$end"
-
-  # isearch 表示
-  ble-edit/isearch/.draw-line
-  _ble_edit_bind_force_draw=1
-}
-
-# ---- basic isearch functions ------------------------------------------------
+function ble-highlight-layer:region/mark:search/get-face { face=region_match; }
 
 ## 関数 ble-edit/isearch/search needle opts ; beg end
 ##   @param[in] needle
@@ -5713,13 +4670,14 @@ function ble-edit/isearch/.goto-match {
 ##     + ... forward に検索します (既定)
 ##     - ... backward に検索します。終端位置が現在位置以前にあるものに一致します。
 ##     B ... backward に検索します。開始位置が現在位置より前のものに一致します。
-##
-##     regex
-##       正規表現による一致を試みます
-##
 ##     extend
 ##       これが指定された時、現在位置における一致の伸長が試みられます。
 ##       指定されなかったとき、現在一致範囲と重複のない新しい一致が試みられます。
+##     regex
+##       正規表現による一致を試みます
+##     allow_empty
+##       空一致 (長さ0の一致) が現在位置で起こることを許容します。
+##       既定では空一致の時には一つ次の位置から再検索を実行します。
 ##
 ##   @var[out] beg end
 ##     検索対象が見つかった時に一致範囲の先頭と終端を返します。
@@ -5733,6 +4691,7 @@ function ble-edit/isearch/search {
   [[ :$opts: != *:regex:* ]]; local has_regex=$?
   [[ :$opts: != *:extend:* ]]; local has_extend=$?
 
+  local flag_empty_retry=
   if [[ :$opts: == *:-:* ]]; then
     local start=$((has_extend?_ble_edit_mark+1:_ble_edit_ind))
 
@@ -5742,17 +4701,28 @@ function ble-edit/isearch/search {
       ((padding)) && rex="$rex.{$padding}"
       if [[ $_ble_edit_str =~ $rex ]]; then
         local rematch1=${BASH_REMATCH[1]}
-        end=$((${#BASH_REMATCH}-padding))
-        beg=$((end-${#rematch1}))
-        return 0
+        if [[ $rematch1 || $BASH_REMATCH == $_ble_edit_str || :$opts: == *:allow_empty:* ]]; then
+          ((end=${#BASH_REMATCH}-padding,
+            beg=end-${#rematch1}))
+          return 0
+        else
+          flag_empty_retry=1
+        fi
       fi
     else
-      local target=${_ble_edit_str::start}
-      local m=${target%"$needle"*}
-      if [[ $target != "$m" ]]; then
-        beg=${#m}
-        end=$((beg+${#needle}))
-        return 0
+      if [[ $needle ]]; then
+        local target=${_ble_edit_str::start}
+        local m=${target%"$needle"*}
+        if [[ $target != "$m" ]]; then
+          beg=${#m}
+          end=$((beg+${#needle}))
+          return 0
+        fi
+      else
+        if [[ :$opts: == *:allow_empty:* ]] || ((--start>=0)); then
+          ((beg=end=start))
+          return 0
+        fi
       fi
     fi
   elif [[ :$opts: == *:B:* ]]; then
@@ -5765,17 +4735,28 @@ function ble-edit/isearch/search {
       ((start==0)) && rex="^($needle)"
       if [[ $_ble_edit_str =~ $rex ]]; then
         local rematch1=${BASH_REMATCH[1]}
-        end=${#BASH_REMATCH}
-        beg=$((end-${#rematch1}))
-        return 0
+        if [[ $rematch1 || :$opts: == *:allow_empty:* ]]; then
+          ((end=${#BASH_REMATCH},
+            beg=end-${#rematch1}))
+          return 0
+        else
+          flag_empty_retry=1
+        fi
       fi
     else
-      local target=${_ble_edit_str::start+${#needle}}
-      local m=${target%"$needle"*}
-      if [[ $target != "$m" ]]; then
-        beg=${#m}
-        end=$((beg+${#needle}))
-        return 0
+      if [[ $needle ]]; then
+        local target=${_ble_edit_str::start+${#needle}}
+        local m=${target%"$needle"*}
+        if [[ $target != "$m" ]]; then
+          ((beg=${#m},
+            end=beg+${#needle}))
+          return 0
+        fi
+      else
+        if [[ :$opts: == *:allow_empty:* ]] && ((--start>=0)); then
+          ((beg=end=start))
+          return 0
+        fi
       fi
     fi
   else
@@ -5786,17 +4767,49 @@ function ble-edit/isearch/search {
       ((start)) && rex=".{$start}$rex"
       if [[ $_ble_edit_str =~ $rex ]]; then
         local rematch1=${BASH_REMATCH[1]}
-        beg=$((${#_ble_edit_str}-${#BASH_REMATCH}+start))
-        end=$((beg+${#rematch1}))
-        return 0
+        if [[ $rematch1 || :$opts: == *:allow_empty:* ]]; then
+          ((beg=${#_ble_edit_str}-${#BASH_REMATCH}+start))
+          ((end=beg+${#rematch1}))
+          return 0
+        else
+          flag_empty_retry=1
+        fi
       fi
     else
-      local target=${_ble_edit_str:start}
-      local m=${target#*"$needle"}
-      if [[ $target != "$m" ]]; then
-        end=$((${#_ble_edit_str}-${#m}))
-        beg=$((end-${#needle}))
-        return 0
+      if [[ $needle ]]; then
+        local target=${_ble_edit_str:start}
+        local m=${target#*"$needle"}
+        if [[ $target != "$m" ]]; then
+          ((end=${#_ble_edit_str}-${#m}))
+          ((beg=end-${#needle}))
+          return 0
+        fi
+      else
+        if [[ :$opts: == *:allow_empty:* ]] || ((++start<=${#_ble_edit_str})); then
+          ((beg=end=start))
+          return 0
+        fi
+      fi
+    fi
+  fi
+
+  # (正規表現一致の時) 現在地の空一致に対して再一致
+  if [[ $flag_empty_retry ]]; then
+    if [[ :$opts: == *:[-B]:* ]]; then
+      if ((--start>=0)); then
+        local mark=$_ble_edit_mark; ((mark&&mark--))
+        local ind=$_ble_edit_ind; ((ind&&ind--))
+        opts=$opts:allow_empty
+        _ble_edit_mark=$mark _ble_edit_ind=$ind ble-edit/isearch/search "$needle" "$opts"
+        return
+      fi
+    else
+      if ((++start<=${#_ble_edit_str})); then
+        local mark=$_ble_edit_mark; ((mark<${#_ble_edit_str}&&mark++))
+        local ind=$_ble_edit_ind; ((ind<${#_ble_edit_str}&&ind++))
+        opts=$opts:allow_empty
+        _ble_edit_mark=$mark _ble_edit_ind=$ind ble-edit/isearch/search "$needle" "$opts"
+        return
       fi
     fi
   fi
@@ -5830,17 +4843,49 @@ function ble-edit/isearch/.shift-backward-references {
 ##   as a workaround for bash slow array access
 ##
 ##   @param[in] opts
-##     コロン区切りのオプション
-##     regex 正規表現による検索
+##     コロン区切りのオプションです。
+##
+##     regex     正規表現による検索を行います。
+##     glob      グロブパターンによる一致を試みます。
+##     head      固定文字列に依る先頭一致を試みます。
+##     tail      固定文字列に依る終端一致を試みます。
+##     condition 述語コマンドを評価 (eval) して一致を試みます。
+##     predicate 述語関数を呼び出して一致を試みます。
+##       これらの内の何れか一つを指定します。
+##       何も指定しない場合は固定文字列の部分一致を試みます。
+##
 ##     stop_check
+##       ユーザの入力があった時に終了ステータス 148 で中断します。
+##
 ##     progress
+##       検索の途中経過を表示します。
+##       後述の isearch_progress_callback 変数に指定された関数を呼び出します。
+##
+##     backward
+##       内部使用のオプションです。
+##       forward-search-history に対して指定して、後方検索を行う事を指定します。
+##
+##     cyclic
+##       履歴の端まで達した時、履歴の反対側の端から検索を続行します。
+##       一致が見つからずに start の直前の要素まで達した時に失敗します。
 ##
 ##   @var[in] _ble_edit_history_edit
-##     検索対象の配列と全体の検索開始位置
+##     検索対象の配列と全体の検索開始位置を指定します。
 ##   @var[in] start
 ##     全体の検索開始位置を指定します。
+##
 ##   @var[in] needle
 ##     検索文字列を指定します。
+##
+##     opts に regex または glob を指定した場合は、
+##     それぞれ正規表現またはグロブパターンを指定します。
+##
+##     opts に condition を指定した場合は needle を述語コマンドと解釈します。
+##     変数 LINE 及び INDEX にそれぞれ行の内容と履歴番号を設定して eval されます。
+##
+##     opts に predicate を指定した場合は needle を述語関数の関数名と解釈します。
+##     指定する述語関数は検索が一致した時に成功し、それ以外の時に失敗する関数です。
+##     第1引数と第2引数に行の内容と履歴番号を指定して関数が呼び出されます。
 ##
 ##   @var[in,out] index
 ##     今回の呼び出しの検索開始位置を指定します。
@@ -5849,19 +4894,36 @@ function ble-edit/isearch/.shift-backward-references {
 ##
 ##   @var[in,out] isearch_time
 ##
-##   @var[in] isearch_ntask
-##     progress 表示に使用
+##   @var[in] isearch_progress_callback
+##     progress の表示時に呼び出す関数名を指定します。
+##     第一引数には現在の検索位置 (history index) を指定します。
 ##
 ##   @exit
 ##     見つかったときに 0 を返します。
 ##     見つからなかったときに 1 を返します。
 ##     中断された時に 148 を返します。
 ##
+function ble-edit/isearch/.read-search-options {
+  local opts=$1
+
+  search_type=fixed
+  case :$opts: in
+  (*:regex:*)     search_type=regex ;;
+  (*:glob:*)      search_type=glob  ;;
+  (*:head:*)      search_type=head ;;
+  (*:tail:*)      search_type=tail ;;
+  (*:condition:*) search_type=condition ;;
+  (*:predicate:*) search_type=predicate ;;
+  esac
+
+  [[ :$opts: != *:stop_check:* ]]; has_stop_check=$?
+  [[ :$opts: != *:progress:* ]]; has_progress=$?
+  [[ :$opts: != *:backward:* ]]; has_backward=$?
+}
 function ble-edit/isearch/backward-search-history-blockwise {
   local opts=$1
-  [[ :$opts: != *:regex:* ]]; local has_regex=$?
-  [[ :$opts: != *:stop_check:* ]]; local has_stop_check=$?
-  [[ :$opts: != *:progress:* ]]; local has_progress=$?
+  local search_type has_stop_check has_progress has_backward
+  ble-edit/isearch/.read-search-options "$opts"
 
   ble-edit/history/load
   if [[ $_ble_edit_history_prefix ]]; then
@@ -5873,44 +4935,76 @@ function ble-edit/isearch/backward-search-history-blockwise {
   local NPROGRESS=$((NSTPCHK*2)) # 倍数である必要有り
   local irest block j i=$index
   index=
-  while ((i>=0)); do
-    ((block=start-i,
-      block<5&&(block=5),
-      irest=NSTPCHK-isearch_time%NSTPCHK,
-      block>i+1&&(block=i+1),
-      block>irest&&(block=irest)))
 
-    if ((has_regex)); then
-      for ((j=i-block;++j<=i;)); do
-        [[ ${_ble_edit_history_edit[j]} =~ $needle ]] && index=$j
-      done
+  local flag_cycled= range_min range_max
+  while :; do
+    if ((i<=start)); then
+      range_min=0 range_max=$start
     else
-      for ((j=i-block;++j<=i;)); do
-        [[ ${_ble_edit_history_edit[j]} == *"$needle"* ]] && index=$j
-      done
+      flag_cycled=1
+      range_min=$((start+1)) range_max=$i
     fi
 
-    ((isearch_time+=block))
-    if [[ $index ]]; then
-      ((i=j))
-      return 0
-    fi
+    while ((i>=range_min)); do
+      ((block=range_max-i,
+        block<5&&(block=5),
+        block>i+1-range_min&&(block=i+1-range_min),
+        irest=NSTPCHK-isearch_time%NSTPCHK,
+        block>irest&&(block=irest)))
 
-    ((i-=block))
-    if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble/util/is-stdin-ready; then
-      return 148
-    elif ((has_progress&&isearch_time%NPROGRESS==0)); then
-      ble-edit/isearch/.draw-line-with-progress "$i"
+      case $search_type in
+      (regex)     for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} =~ $needle ]] && index=$j
+                  done ;;
+      (glob)      for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} == $needle ]] && index=$j
+                  done ;;
+      (head)      for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} == "$needle"* ]] && index=$j
+                  done ;;
+      (tail)      for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} == *"$needle" ]] && index=$j
+                  done ;;
+      (condition) eval "function ble-edit/isearch/.search-block.proc {
+                    local LINE INDEX
+                    for ((j=i-block;++j<=i;)); do
+                      LINE=\${_ble_edit_history_edit[j]} INDEX=\$j
+                      { $needle; } && index=\$j
+                    done
+                  }"
+                  ble-edit/isearch/.search-block.proc ;;
+      (predicate) for ((j=i-block;++j<=i;)); do
+                    "$needle" "${_ble_edit_history_edit[j]}" "$j" && index=$j
+                  done ;;
+      (*)         for ((j=i-block;++j<=i;)); do
+                    [[ ${_ble_edit_history_edit[j]} == *"$needle"* ]] && index=$j
+                  done ;;
+      esac
+
+      ((isearch_time+=block))
+      [[ $index ]] && return 0
+
+      ((i-=block))
+      if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble-decode/has-input; then
+        index=$i
+        return 148
+      elif ((has_progress&&isearch_time%NPROGRESS==0)); then
+        "$isearch_progress_callback" "$i"
+      fi
+    done
+
+    if [[ ! $flag_cycled && :$opts: == *:cyclic:* ]]; then
+      ((i=${#_ble_edit_history_edit[@]}-1))
+      ((start<i)) || return 1
+    else
+      return 1
     fi
   done
-  return 1
 }
 function ble-edit/isearch/next-history/forward-search-history.impl {
   local opts=$1
-  [[ :$opts: != *:regex:* ]]; local has_regex=$?
-  [[ :$opts: != *:stop_check:* ]]; local has_stop_check=$?
-  [[ :$opts: != *:progress:* ]]; local has_progress=$?
-  [[ :$opts: != *:backward:* ]]; local has_backward=$?
+  local search_type has_stop_check has_progress has_backward
+  ble-edit/isearch/.read-search-options "$opts"
 
   ble-edit/history/load
   if [[ $_ble_edit_history_prefix ]]; then
@@ -5918,33 +5012,60 @@ function ble-edit/isearch/next-history/forward-search-history.impl {
     eval "_ble_edit_history_edit=(\"\${${_ble_edit_history_prefix}_history_edit[@]}\")"
   fi
 
-  if ((has_backward)); then
-    local expr_cond='index>=0' expr_incr='index--'
-  else
-    local expr_cond="index<${#_ble_edit_history_edit[@]}" expr_incr='index++'
-  fi
-
-  for ((;expr_cond;expr_incr)); do
-    ((isearch_time++))
-    if ((has_stop_check&&isearch_time%100==0)) && ble/util/is-stdin-ready; then
-      return 148
-    fi
-
-    if
-      if ((has_regex)); then
-        [[ ${_ble_edit_history_edit[index]} =~ $needle ]]
+  while :; do
+    local flag_cycled= expr_cond expr_incr
+    if ((has_backward)); then
+      if ((index<=start)); then
+        expr_cond='index>=0' expr_incr='index--'
       else
-        [[ ${_ble_edit_history_edit[index]} == *"$needle"* ]]
+        expr_cond='index>start' expr_incr='index--' flag_cycled=1
       fi
-    then
-      return 0
+    else
+      if ((index>=start)); then
+        expr_cond="index<${#_ble_edit_history_edit[@]}" expr_incr='index++'
+      else
+        expr_cond="index<start" expr_incr='index++' flag_cycled=1
+      fi
     fi
 
-    if ((has_progress&&isearch_time%1000==0)); then
-      ble-edit/isearch/.draw-line-with-progress "$index"
+    case $search_type in
+    (regex)
+#%define search_loop
+      for ((;expr_cond;expr_incr)); do
+        ((isearch_time++,has_stop_check&&isearch_time%100==0)) &&
+          ble-decode/has-input && return 148
+        @ && return 0
+        ((has_progress&&isearch_time%1000==0)) &&
+          "$isearch_progress_callback" "$index"
+      done ;;
+#%end
+#%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} =~ $needle ]]/
+    (glob)
+#%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} == $needle ]]/
+    (head)
+#%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} == "$needle"* ]]/
+    (tail)
+#%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} == *"$needle" ]]/
+    (condition)
+#%expand search_loop.r/@/LINE=${_ble_edit_history_edit[index]} INDEX=$index eval "$needle"/
+    (predicate)
+#%expand search_loop.r/@/"$needle" "${_ble_edit_history_edit[index]}" "$index"/
+    (*)
+#%expand search_loop.r/@/[[ ${_ble_edit_history_edit[index]} == *"$needle"* ]]/
+    esac
+
+    if [[ ! $flag_cycled && :$opts: == *:cyclic:* ]]; then
+      if ((has_backward)); then
+        ((index=${#_ble_edit_history_edit[@]}-1))
+        ((index>start)) || return 1
+      else
+        ((index=0))
+        ((index<start)) || return 1
+      fi
+    else
+      return 1
     fi
   done
-  return 1
 }
 function ble-edit/isearch/forward-search-history {
   ble-edit/isearch/next-history/forward-search-history.impl "$1"
@@ -5953,33 +5074,190 @@ function ble-edit/isearch/backward-search-history {
   ble-edit/isearch/next-history/forward-search-history.impl "$1:backward"
 }
 
-# ---- isearch fibers ---------------------------------------------------------
+# 
+#------------------------------------------------------------------------------
+# **** incremental search ****                                 @history.isearch
 
-## 関数 ble-edit/isearch/next.fib needle isAdd
-function ble-edit/isearch/next.fib {
-  local needle=${1-$_ble_edit_isearch_str} isAdd=$2
-  local ind; ble-edit/history/get-index -v ind
+## 変数 _ble_edit_isearch_str
+##   一致した文字列
+## 変数 _ble_edit_isearch_dir
+##   現在・直前の検索方法
+## 配列 _ble_edit_isearch_arr[]
+##   インクリメンタル検索の過程を記録する。
+##   各要素は ind:dir:beg:end:needle の形式をしている。
+##   ind は履歴項目の番号を表す。dir は履歴検索の方向を表す。
+##   beg, end はそれぞれ一致開始位置と終了位置を表す。
+##   丁度 _ble_edit_ind 及び _ble_edit_mark に対応する。
+##   needle は検索に使用した文字列を表す。
+_ble_edit_isearch_str=
+_ble_edit_isearch_dir=-
+_ble_edit_isearch_arr=()
 
-  local beg= end= search_opts=$_ble_edit_isearch_dir
-  ((isAdd)) && search_opts=$search_opts:extend
-  if ble-edit/isearch/search "$needle" "$search_opts"; then
-    ble-edit/isearch/.goto-match "$ind" "$beg" "$end" "$needle"
+## 関数 ble-edit/isearch/.show-status-with-progress.fib [pos]
+##   @param[in,opt] pos
+##     検索の途中の時に現在の検索位置を指定します。
+##     検索の進行状況を表示します。
+##
+##   @var[in] fib_ntask
+##     現在の待ちスクの数を指定します。
+##
+##   @var[in] _ble_edit_isearch_str
+##   @var[in] _ble_edit_isearch_dir
+##   @var[in] _ble_edit_isearch_arr
+##     現在の検索状態を保持する変数です。
+##
+function ble-edit/isearch/.show-status-with-progress.fib {
+  # 出力
+  local ll rr
+  if [[ $_ble_edit_isearch_dir == - ]]; then
+    # Emacs workaround: '<<' や "<<" と書けない。
+    ll=\<\< rr="  "
+  else
+    ll="  " rr=">>"
+  fi
+  local index; ble-edit/history/get-index
+  local count; ble-edit/history/get-count
+  local histIndex='!'$((index+1))
+  local text="(${#_ble_edit_isearch_arr[@]}: $ll $histIndex $rr) \`$_ble_edit_isearch_str'"
+
+  if [[ $1 ]]; then
+    local pos=$1
+    local percentage=$((count?pos*1000/count:1000))
+    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
+  fi
+  ((fib_ntask)) && text="$text *$fib_ntask"
+
+  ble-edit/info/show text "$text"
+}
+
+## 関数 ble-edit/isearch/.show-status.fib
+##   @var[in] fib_ntask
+function ble-edit/isearch/.show-status.fib {
+  ble-edit/isearch/.show-status-with-progress.fib
+}
+function ble-edit/isearch/show-status {
+  local fib_ntask=${#_ble_util_fiberchain[@]}
+  ble-edit/isearch/.show-status.fib
+}
+function ble-edit/isearch/erase-status {
+  ble-edit/info/default
+}
+function ble-edit/isearch/.set-region {
+  local beg=$1 end=$2
+  if ((beg<end)); then
+    if [[ $_ble_edit_isearch_dir == - ]]; then
+      _ble_edit_ind=$beg
+      _ble_edit_mark=$end
+    else
+      _ble_edit_ind=$end
+      _ble_edit_mark=$beg
+    fi
+    _ble_edit_mark_active=search
+  elif ((beg==end)); then
+    _ble_edit_ind=$beg
+    _ble_edit_mark=$beg
+    _ble_edit_mark_active=
+  else
+    _ble_edit_mark_active=
+  fi
+}
+## 関数 ble-edit/isearch/.push-isearch-array
+##   現在の isearch の情報を配列 _ble_edit_isearch_arr に待避する。
+##
+##   これから登録しようとしている情報が現在のものと同じならば何もしない。
+##   これから登録しようとしている情報が配列の最上にある場合は、
+##   検索の巻き戻しと解釈して配列の最上の要素を削除する。
+##   それ以外の場合は、現在の情報を配列に追加する。
+##   @var[in] ind beg end needle
+##     これから登録しようとしている isearch の情報。
+function ble-edit/isearch/.push-isearch-array {
+  local hash=$beg:$end:$needle
+
+  # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
+  local ilast=$((${#_ble_edit_isearch_arr[@]}-1))
+  if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
+    unset "_ble_edit_isearch_arr[$ilast]"
     return
   fi
 
-  ble-edit/isearch/next-history.fib "${@:1:1}"
+  local oind; ble-edit/history/get-index -v oind
+  local obeg=$_ble_edit_ind oend=$_ble_edit_mark
+  [[ $_ble_edit_mark_active ]] || oend=$obeg
+  ((obeg>oend)) && local obeg=$oend oend=$obeg
+  local oneedle=$_ble_edit_isearch_str
+  local ohash=$obeg:$oend:$oneedle
+
+  # [... A | B] -> B と来た時 (何もしない) [... A | B] になる。
+  [[ $ind == "$oind" && $hash == "$ohash" ]] && return
+
+  # [... A | B] -> C と来た時 (B を _ble_edit_isearch_arr に移動) [... A B | C] になる。
+  ble/array#push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
+}
+## 関数 ble-edit/isearch/.goto-match.fib
+##   @var[in] fib_ntask
+function ble-edit/isearch/.goto-match.fib {
+  local ind=$1 beg=$2 end=$3 needle=$4
+
+  # 検索履歴に待避 (変数 ind beg end needle 使用)
+  ble-edit/isearch/.push-isearch-array
+
+  # 状態を更新
+  _ble_edit_isearch_str=$needle
+  local oind; ble-edit/history/get-index -v oind
+  ((oind!=ind)) && ble-edit/history/goto "$ind"
+  ble-edit/isearch/.set-region "$beg" "$end"
+
+  # isearch 表示
+  ble-edit/isearch/.show-status.fib
+  ble/textarea#redraw
 }
 
-## 関数 ble-edit/isearch/next-history.fib [needle isAdd]
+# ---- isearch fibers ---------------------------------------------------------
+
+## 関数 ble-edit/isearch/.next.fib opts [needle]
+##   @param[in] opts
+##     append
+##     forward
+##     backward
+function ble-edit/isearch/.next.fib {
+  local opts=$1
+  if [[ ! $fib_suspend ]]; then
+    if [[ :$opts: == *:forward:* || :$opts: == *:backward:* ]]; then
+      if [[ :$opts: == *:forward:* ]]; then
+        _ble_edit_isearch_dir=+
+      else
+        _ble_edit_isearch_dir=-
+      fi
+    fi
+
+    # 現在行の別の位置での一致
+    local needle=${2-$_ble_edit_isearch_str}
+    local beg= end= search_opts=$_ble_edit_isearch_dir
+    [[ :$opts: == *:append:* ]] && search_opts=$search_opts:extend
+    if [[ $needle ]] && ble-edit/isearch/search "$needle" "$search_opts"; then
+      local ind; ble-edit/history/get-index -v ind
+      ble-edit/isearch/.goto-match.fib "$ind" "$beg" "$end" "$needle"
+      return
+    fi
+  fi
+  ble-edit/isearch/.next-history.fib "$opts" "$needle"
+}
+
+## 関数 ble-edit/isearch/.next-history.fib [opts [needle]]
 ##
-##   @var[in,out] isearch_suspend
+##   @param[in,opt] opts
+##     コロン区切りのリストです。
+##     append
+##       現在の履歴項目を検索対象とします。
+##
+##   @param[in,opt] needle
+##     新しい検索を開始する場合に、検索対象を明示的に指定します。
+##     needle に検索対象の文字列を指定します。
+##
+##   @var[in,out] fib_suspend
 ##     中断した時にこの変数に再開用のデータを格納します。
 ##     再開する時はこの変数の中断時の内容を復元してこの関数を呼び出します。
 ##     この変数が空の場合は新しい検索を開始します。
-##   @param[in,opt] needle,isAdd
-##     新しい検索を開始する場合に、検索対象を明示的に指定します。
-##     needle に検索対象の文字列を指定します。
-##     isAdd 現在の履歴項目を検索対象とするかどうかを指定します。
 ##   @var[in] _ble_edit_isearch_str
 ##     最後に一致した検索文字列を指定します。
 ##     検索対象を明示的に指定しなかった場合に使う検索対象です。
@@ -5992,15 +5270,17 @@ function ble-edit/isearch/next.fib {
 ##   @var[in] _ble_edit_history_edit[]
 ##   @var[in,out] isearch_time
 ##
-function ble-edit/isearch/next-history.fib {
-  if [[ $isearch_suspend ]]; then
+function ble-edit/isearch/.next-history.fib {
+  local opts=$1
+  if [[ $fib_suspend ]]; then
     # resume the previous search
-    local needle=${isearch_suspend#*:} isAdd=
-    local index start; eval "${isearch_suspend%%:*}"
-    isearch_suspend=
+    local needle=${fib_suspend#*:} isAdd=
+    local index start; eval "${fib_suspend%%:*}"
+    fib_suspend=
   else
     # initialize new search
-    local needle=${1-$_ble_edit_isearch_str} isAdd=$2
+    local needle=${2-$_ble_edit_isearch_str} isAdd=
+    [[ :$opts: == *:append:* ]] && isAdd=1
     local start; ble-edit/history/get-index -v start
     local index=$start
   fi
@@ -6014,29 +5294,34 @@ function ble-edit/isearch/next-history.fib {
   fi
 
   # 検索
+  local isearch_progress_callback=ble-edit/isearch/.show-status-with-progress.fib
   if [[ $_ble_edit_isearch_dir == - ]]; then
     ble-edit/isearch/backward-search-history-blockwise stop_check:progress
   else
     ble-edit/isearch/forward-search-history stop_check:progress
   fi
-  local r=$?
+  local ext=$?
 
-  if ((r==0)); then
+  if ((ext==0)); then
     # 見付かった場合
 
     # 一致範囲 beg-end を取得
     local str; ble-edit/history/get-editted-entry -v str "$index"
-    if [[ $_ble_edit_isearch_dir == - ]]; then
-      local prefix=${str%"$needle"*}
+    if [[ $needle ]]; then
+      if [[ $_ble_edit_isearch_dir == - ]]; then
+        local prefix=${str%"$needle"*}
+      else
+        local prefix=${str%%"$needle"*}
+      fi
+      local beg=${#prefix} end=$((${#prefix}+${#needle}))
     else
-      local prefix=${str%%"$needle"*}
+      local beg=${#str} end=${#str}
     fi
-    local beg=${#prefix} end=$((${#prefix}+${#needle}))
 
-    ble-edit/isearch/.goto-match "$index" "$beg" "$end" "$needle"
-  elif ((r==148)); then
+    ble-edit/isearch/.goto-match.fib "$index" "$beg" "$end" "$needle"
+  elif ((ext==148)); then
     # 中断した場合
-    isearch_suspend="index=$index start=$start:$needle"
+    fib_suspend="index=$index start=$start:$needle"
     return
   else
     # 見つからなかった場合
@@ -6046,34 +5331,36 @@ function ble-edit/isearch/next-history.fib {
 }
 
 function ble-edit/isearch/forward.fib {
-  _ble_edit_isearch_dir=+
-  ble-edit/isearch/next.fib
+  ble-edit/isearch/.next.fib forward
 }
 function ble-edit/isearch/backward.fib {
-  _ble_edit_isearch_dir=-
-  ble-edit/isearch/next.fib
+  ble-edit/isearch/.next.fib backward
 }
 function ble-edit/isearch/self-insert.fib {
-  local code=$1
-  ((code==0)) && return
-  local ret needle
-  ble/util/c2s "$code"
-  ble-edit/isearch/next.fib "$_ble_edit_isearch_str$ret" 1
+  if [[ ! $fib_suspend ]]; then
+    local code=$1
+    ((code==0)) && return
+    local ret needle
+    ble/util/c2s "$code"
+  fi
+  ble-edit/isearch/.next.fib append "$_ble_edit_isearch_str$ret"
 }
 function ble-edit/isearch/history-forward.fib {
   _ble_edit_isearch_dir=+
-  ble-edit/isearch/next-history.fib
+  ble-edit/isearch/.next-history.fib
 }
 function ble-edit/isearch/history-backward.fib {
   _ble_edit_isearch_dir=-
-  ble-edit/isearch/next-history.fib
+  ble-edit/isearch/.next-history.fib
 }
 function ble-edit/isearch/history-self-insert.fib {
-  local code=$1
-  ((code==0)) && return
-  local ret needle
-  ble/util/c2s "$code"
-  ble-edit/isearch/next-history.fib "$_ble_edit_isearch_str$ret" 1
+  if [[ ! $fib_suspend ]]; then
+    local code=$1
+    ((code==0)) && return
+    local ret needle
+    ble/util/c2s "$code"
+  fi
+  ble-edit/isearch/.next-history.fib append "$_ble_edit_isearch_str$ret"
 }
 
 function ble-edit/isearch/prev {
@@ -6082,7 +5369,7 @@ function ble-edit/isearch/prev {
 
   local ilast=$((sz-1))
   local top=${_ble_edit_isearch_arr[ilast]}
-  unset "_ble_edit_isearch_arr[$ilast]"
+  unset '_ble_edit_isearch_arr[ilast]'
 
   local ind dir beg end
   ind=${top%%:*}; top=${top#*:}
@@ -6096,105 +5383,107 @@ function ble-edit/isearch/prev {
   _ble_edit_isearch_str=$top
 
   # isearch 表示
-  ble-edit/isearch/.draw-line
+  ble-edit/isearch/show-status
 }
 
 function ble-edit/isearch/process {
-  _ble_edit_isearch_que=()
-
-  local isearch_suspend=
   local isearch_time=0
-  local isearch_ntask=$#
-  while (($#)); do
-    ((isearch_ntask--))
-    case "$1" in
-    (sf)  ble-edit/isearch/forward.fib ;;
-    (sb)  ble-edit/isearch/backward.fib ;;
-    (si*) ble-edit/isearch/self-insert.fib "${1:2}";;
-    (hf)  ble-edit/isearch/history-forward.fib ;;
-    (hb)  ble-edit/isearch/history-backward.fib ;;
-    (hi*) ble-edit/isearch/history-self-insert.fib "${1:2}";;
-    (z*)  isearch_suspend=${1:1}
-          ble-edit/isearch/next-history.fib;;
-    (*)   ble-stackdump "unknown isearch process entry '$1'." ;;
-    esac
-    shift
-
-    if [[ $isearch_suspend ]]; then
-      _ble_edit_isearch_que=("z$isearch_suspend" "$@")
-      return
-    fi
-  done
-
-  # 検索処理が完了した時
-  ble-edit/isearch/.draw-line
+  ble/util/fiberchain#resume
+  ble-edit/isearch/show-status
 }
-
 function ble/widget/isearch/forward {
-  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" sf
+  ble/util/fiberchain#push forward
+  ble-edit/isearch/process
 }
 function ble/widget/isearch/backward {
-  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" sb
+  ble/util/fiberchain#push backward
+  ble-edit/isearch/process
 }
 function ble/widget/isearch/self-insert {
-  local code=$((KEYS[0]&ble_decode_MaskChar))
-  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" "si$code"
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  ble/util/fiberchain#push "self-insert $code"
+  ble-edit/isearch/process
 }
 function ble/widget/isearch/history-forward {
-  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" hf
+  ble/util/fiberchain#push history-forward
+  ble-edit/isearch/process
 }
 function ble/widget/isearch/history-backward {
-  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" hb
+  ble/util/fiberchain#push history-backward
+  ble-edit/isearch/process
 }
 function ble/widget/isearch/history-self-insert {
-  local code=$((KEYS[0]&ble_decode_MaskChar))
-  ble-edit/isearch/process "${_ble_edit_isearch_que[@]}" "hi$code"
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  ble/util/fiberchain#push "history-self-insert $code"
+  ble-edit/isearch/process
 }
 function ble/widget/isearch/prev {
   local nque
-  if ((nque=${#_ble_edit_isearch_que[@]})); then
-    unset '_ble_edit_isearch_que[nque-1]'
-    if ((nque>=2)); then
-      ble-edit/isearch/process "${_ble_edit_isearch_que[@]}"
-    else
-      ble-edit/isearch/.draw-line # 進捗状況を消去
-    fi
+  if ((nque=${#_ble_util_fiberchain[@]})); then
+    local ret; ble/array#pop _ble_util_fiberchain
+    ble-edit/isearch/process
   else
     ble-edit/isearch/prev
   fi
 }
-function ble/widget/isearch/exit {
+
+function ble/widget/isearch/.restore-mark-state {
+  local old_mark_active=${_ble_edit_isearch_save[3]}
+  if [[ $old_mark_active ]]; then
+    local index; ble-edit/history/get-index
+    if ((index==_ble_edit_isearch_save[0])); then
+      _ble_edit_mark=${_ble_edit_isearch_save[2]}
+      if [[ $old_mark_active != S ]] || ((_ble_edit_index==_ble_edit_isearch_save[1])); then
+        _ble_edit_mark_active=$old_mark_active
+      fi
+    fi
+  fi
+}
+function ble/widget/isearch/exit.impl {
   ble-decode/keymap/pop
   _ble_edit_isearch_arr=()
   _ble_edit_isearch_dir=
-  _ble_edit_isearch_que=()
   _ble_edit_isearch_str=
-  ble-edit/isearch/.erase-line
+  ble-edit/isearch/erase-status
+}
+function ble/widget/isearch/exit-with-region {
+  ble/widget/isearch/exit.impl
+  [[ $_ble_edit_mark_active ]] &&
+    _ble_edit_mark_active=S
+}
+function ble/widget/isearch/exit {
+  ble/widget/isearch/exit.impl
+
+  _ble_edit_mark_active=
+  ble/widget/isearch/.restore-mark-state
 }
 function ble/widget/isearch/cancel {
-  if ((${#_ble_edit_isearch_que[@]})); then
-    _ble_edit_isearch_que=()
-    ble-edit/isearch/.draw-line # 進捗状況を消去
+  if ((${#_ble_util_fiberchain[@]})); then
+    ble/util/fiberchain#clear
+    ble-edit/isearch/show-status # 進捗状況だけ消去
   else
     if ((${#_ble_edit_isearch_arr[@]})); then
       local step
       ble/string#split step : "${_ble_edit_isearch_arr[0]}"
       ble-edit/history/goto "${step[0]}"
-      _ble_edit_ind=${step[2]} _ble_edit_mark=${step[3]}
     fi
 
-    ble/widget/isearch/exit
+    ble/widget/isearch/exit.impl
+    _ble_edit_ind=${_ble_edit_isearch_save[1]}
+    _ble_edit_mark=${_ble_edit_isearch_save[2]}
+    _ble_edit_mark_active=${_ble_edit_isearch_save[3]}
   fi
 }
 function ble/widget/isearch/exit-default {
-  ble/widget/isearch/exit
+  ble/widget/isearch/exit-with-region
   ble-decode-key "${KEYS[@]}"
 }
-function ble/widget/isearch/accept {
-  if ((${#_ble_edit_isearch_que[@]})); then
+function ble/widget/isearch/accept-line {
+  if ((${#_ble_util_fiberchain[@]})); then
     ble/widget/.bell "isearch: now searching..."
   else
-    ble/widget/isearch/exit-default
+    ble/widget/isearch/exit
+    ble-decode-key 13 # RET
   fi
 }
 function ble/widget/isearch/exit-delete-forward-char {
@@ -6202,26 +5491,31 @@ function ble/widget/isearch/exit-delete-forward-char {
   ble/widget/delete-forward-char
 }
 
-function ble/widget/history-isearch-backward {
+## 関数 ble/widget/history-isearch.impl opts
+function ble/widget/history-isearch.impl {
+  local opts=$1
   ble-edit/content/clear-arg
   ble-decode/keymap/push isearch
-  _ble_edit_isearch_dir=-
+  ble/util/fiberchain#initialize ble-edit/isearch
+
+  local index; ble-edit/history/get-index
+  _ble_edit_isearch_save=("$index" "$_ble_edit_ind" "$_ble_edit_mark" "$_ble_edit_mark_active")
+
+  if [[ :$opts: == *:forward:* ]]; then
+    _ble_edit_isearch_dir=+
+  else
+    _ble_edit_isearch_dir=-
+  fi
   _ble_edit_isearch_arr=()
-  _ble_edit_isearch_que=()
   _ble_edit_mark=$_ble_edit_ind
-  ble-edit/isearch/.draw-line
+  ble-edit/isearch/show-status
+}
+function ble/widget/history-isearch-backward {
+  ble/widget/history-isearch.impl backward
 }
 function ble/widget/history-isearch-forward {
-  ble-edit/content/clear-arg
-  ble-decode/keymap/push isearch
-  _ble_edit_isearch_dir=+
-  _ble_edit_isearch_arr=()
-  _ble_edit_isearch_que=()
-  _ble_edit_mark=$_ble_edit_ind
-  ble-edit/isearch/.draw-line
+  ble/widget/history-isearch.impl forward
 }
-
-# ---- keymap:isearch ---------------------------------------------------------
 
 function ble-decode/keymap:isearch/define {
   local ble_bind_keymap=isearch
@@ -6229,15 +5523,318 @@ function ble-decode/keymap:isearch/define {
   ble-bind -f __defchar__ isearch/self-insert
   ble-bind -f C-r         isearch/backward
   ble-bind -f C-s         isearch/forward
-  ble-bind -f C-h         isearch/prev
-  ble-bind -f DEL         isearch/prev
+  ble-bind -f 'C-?'       isearch/prev
+  ble-bind -f 'DEL'       isearch/prev
+  ble-bind -f 'C-h'       isearch/prev
+  ble-bind -f 'BS'        isearch/prev
 
   ble-bind -f __default__ isearch/exit-default
-  ble-bind -f M-C-j       isearch/exit
-  ble-bind -f C-d         isearch/exit-delete-forward-char
   ble-bind -f C-g         isearch/cancel
-  ble-bind -f C-j         isearch/accept
-  ble-bind -f C-m         isearch/accept
+  ble-bind -f C-m         isearch/exit
+  ble-bind -f RET         isearch/exit
+  ble-bind -f C-j         isearch/accept-line
+  ble-bind -f C-RET       isearch/accept-line
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** non-incremental-search ****                             @history.nsearch
+
+## @var _ble_edit_nsearch_needle
+##   検索対象の文字列を保持します。
+## @var _ble_edit_nsearch_opts
+##   検索の振る舞いを制御するオプションを保持します。
+## @arr _ble_edit_nsearch_stack[]
+##   検索が一致する度に記録される。
+##   各要素は "direction,index,ind,mark:line" の形式をしている。
+##   前回の検索の方向 (direction) と、検索前の状態を記録する。
+##   index は検索の履歴位置で ind と mark はカーソル位置とマークの位置。
+##   line は編集文字列である。
+## @var _ble_edit_nsearch_match
+##   現在表示している行内容がどの履歴番号に対応するかを保持します。
+##   nsearch 開始位置もしくは最後に一致した位置に対応します。
+## @var _ble_edit_nsearch_index
+##   最後に検索した位置を表します。
+##   検索が一致した場合は _ble_edit_nsearch_match と同じになります。
+_ble_edit_nsearch_needle=
+_ble_edit_nsearch_opts=
+_ble_edit_nsearch_stack=()
+_ble_edit_nsearch_match=
+_ble_edit_nsearch_index=
+
+## 関数 ble-edit/nsearch/.show-status.fib [pos_progress]
+##   @var[in] fib_ntask
+function ble-edit/nsearch/.show-status.fib {
+  local ll rr
+  if [[ :$_ble_edit_isearch_opts: == *:forward:* ]]; then
+    ll="  " rr=">>"
+  else
+    ll=\<\< rr="  " # Note: Emacs workaround: '<<' や "<<" と書けない。
+  fi
+
+  local index='!'$((_ble_edit_nsearch_match+1))
+  local nmatch=${#_ble_edit_nsearch_stack[@]}
+  local needle=$_ble_edit_nsearch_needle
+  local text="(nsearch#$nmatch: $ll $index $rr) \`$needle'"
+
+  if [[ $1 ]]; then
+    local pos=$1
+    local count; ble-edit/history/get-count
+
+    local percentage=$((count?pos*1000/count:1000))
+    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
+  fi
+
+  local ntask=$fib_ntask
+  ((ntask)) && text="$text *$ntask"
+
+  ble-edit/info/show text "$text"
+}
+function ble-edit/nsearch/show-status {
+  local fib_ntask=${#_ble_util_fiberchain[@]}
+  ble-edit/nsearch/.show-status.fib
+}
+function ble-edit/nsearch/erase-status {
+  ble-edit/info/default
+}
+
+function ble-edit/nsearch/.search.fib {
+  local opts=$1
+  local opt_forward=
+  [[ :$opts: == *:forward:* ]] && opt_forward=1
+
+  # 前回の一致と逆方向の時は前回の一致前の状態に戻す
+  # Note: stack[0] は一致結果ではなくて現在行の記録に使われているので
+  #   nstack >= 2 の時にのみ状態を戻すことにする。
+  local nstack=${#_ble_edit_nsearch_stack[@]}
+  if ((nstack>=2)); then
+    local record_type=${_ble_edit_nsearch_stack[nstack-1]%%,*}
+    if 
+      if [[ $opt_forward ]]; then
+        [[ $record_type == backward ]]
+      else
+        [[ $record_type == forward ]]
+      fi
+    then
+      local ret; ble/array#pop _ble_edit_nsearch_stack
+      local record line=${ret#*:}
+      ble/string#split record , "${ret%%:*}"
+
+      ble-edit/content/reset-and-check-dirty "$line"
+      _ble_edit_nsearch_match=${record[1]}
+      _ble_edit_nsearch_index=${record[1]}
+      _ble_edit_ind=${record[2]}
+      _ble_edit_mark=${record[3]}
+      if ((_ble_edit_mark!=_ble_edit_ind)); then
+        _ble_edit_mark_active=search
+      else
+        _ble_edit_mark_active=
+      fi
+      ble-edit/nsearch/.show-status.fib
+      ble/textarea#redraw
+      fib_suspend=
+      return 0
+    fi
+  fi
+
+  # 検索の実行
+  local index start opt_resume=
+  if [[ $fib_suspend ]]; then
+    opt_resume=1
+    eval "$fib_suspend"
+    fib_suspend=
+  else
+    local start=$_ble_edit_nsearch_match
+    local index=$_ble_edit_nsearch_index
+  fi
+  if
+    if [[ $opt_forward ]]; then
+      local count; ble-edit/history/get-count
+      [[ $opt_resume ]] || ((++index))
+      ((index<count))
+    else
+      [[ $opt_resume ]] || ((--index))
+      ((index>=0))
+    fi
+  then
+    local needle=$_ble_edit_nsearch_needle
+    local isearch_time=$fib_clock
+    local isearch_progress_callback=ble-edit/nsearch/.show-status.fib
+    local isearch_opts=stop_check:progress; [[ :$opts: != *:substr:* ]] && isearch_opts=$isearch_opts:head
+    if [[ $opt_forward ]]; then
+      ble-edit/isearch/forward-search-history "$isearch_opts"; local ext=$?
+    else
+      ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
+    fi
+    fib_clock=$isearch_time
+  else
+    local ext=1
+  fi
+
+  # 書き換え
+  if ((ext==0)); then
+    local old_match=$_ble_edit_nsearch_match
+    ble/array#push _ble_edit_nsearch_stack "backward,$old_match,$_ble_edit_ind,$_ble_edit_mark:$_ble_edit_str"
+
+    local line; ble-edit/history/get-editted-entry -v line "$index"
+    local prefix=${line%%"$needle"*}
+    local beg=${#prefix}
+    local end=$((beg+${#needle}))
+    _ble_edit_nsearch_match=$index
+    _ble_edit_nsearch_index=$index
+    ble-edit/content/reset-and-check-dirty "$line"
+    ((_ble_edit_mark=beg,_ble_edit_ind=end))
+    if ((_ble_edit_mark!=_ble_edit_ind)); then
+      _ble_edit_mark_active=search
+    else
+      _ble_edit_mark_active=
+    fi
+    ble-edit/nsearch/.show-status.fib
+    ble/textarea#redraw
+
+  elif ((ext==148)); then
+    fib_suspend="index=$index start=$start"
+    return 148
+  else
+    ble/widget/.bell "ble.sh: nsearch: '$needle' not found"
+    ble-edit/nsearch/.show-status.fib
+    if [[ $opt_forward ]]; then
+      local count; ble-edit/history/get-count
+      ((_ble_edit_nsearch_index=count-1))
+    else
+      ((_ble_edit_nsearch_index=0))
+    fi
+    return "$ext"
+  fi
+}
+function ble-edit/nsearch/forward.fib {
+  ble-edit/nsearch/.search.fib "$_ble_edit_nsearch_opts:forward"
+}
+function ble-edit/nsearch/backward.fib {
+  ble-edit/nsearch/.search.fib "$_ble_edit_nsearch_opts:backward"
+}
+
+function ble/widget/history-search {
+  local opts=$1
+  ble-edit/content/clear-arg
+
+  # initialize variables
+  if [[ :$opts: == *:input:* ]]; then
+    ble-edit/read -ep "nsearch> " _ble_edit_nsearch_needle || return 1
+  else
+    _ble_edit_nsearch_needle=${_ble_edit_str::_ble_edit_ind}
+  fi
+  _ble_edit_nsearch_stack=()
+  local index; ble-edit/history/get-index
+  _ble_edit_nsearch_match=$index
+  _ble_edit_nsearch_index=$index
+  if [[ :$opts: == *:substr:* ]]; then
+    _ble_edit_nsearch_opts=substr
+  else
+    _ble_edit_nsearch_opts=
+  fi
+  _ble_edit_mark_active=
+  ble-decode/keymap/push nsearch
+
+  # start search
+  ble/util/fiberchain#initialize ble-edit/nsearch
+  if [[ :$opts: == *:forward:* ]]; then
+    ble/util/fiberchain#push forward
+  else
+    ble/util/fiberchain#push backward
+  fi
+  ble/util/fiberchain#resume
+}
+function ble/widget/history-nsearch-backward {
+  ble/widget/history-search input:substr:backward
+}
+function ble/widget/history-nsearch-forward {
+  ble/widget/history-search input:substr:forward
+}
+function ble/widget/history-search-backward {
+  ble/widget/history-search backward
+}
+function ble/widget/history-search-forward {
+  ble/widget/history-search forward
+}
+function ble/widget/history-substring-search-backward {
+  ble/widget/history-search substr:backward
+}
+function ble/widget/history-substring-search-forward {
+  ble/widget/history-search substr:forward
+}
+
+function ble/widget/nsearch/forward {
+  local ntask=${#_ble_util_fiberchain[@]}
+  if ((ntask>=1)) && [[ ${_ble_util_fiberchain[ntask-1]%%:*} == backward ]]; then
+    # 最後の逆方向の検索をキャンセル
+    local ret; ble/array#pop _ble_util_fiberchain
+  else
+    ble/util/fiberchain#push forward
+  fi
+  ble/util/fiberchain#resume
+}
+function ble/widget/nsearch/backward {
+  local ntask=${#_ble_util_fiberchain[@]}
+  if ((ntask>=1)) && [[ ${_ble_util_fiberchain[ntask-1]%%:*} == forward ]]; then
+    # 最後の逆方向の検索をキャンセル
+    local ret; ble/array#pop _ble_util_fiberchain
+  else
+    ble/util/fiberchain#push backward
+  fi
+  ble/util/fiberchain#resume
+}
+function ble/widget/nsearch/exit {
+  ble-decode/keymap/pop
+  _ble_edit_mark_active=
+  ble-edit/nsearch/erase-status
+}
+function ble/widget/nsearch/exit-default {
+  ble/widget/nsearch/exit
+  ble-decode-key "${KEYS[@]}"
+}
+function ble/widget/nsearch/cancel {
+  if ((${#_ble_util_fiberchain[@]})); then
+    ble/util/fiberchain#clear
+    ble-edit/nsearch/show-status
+  else
+    ble/widget/nsearch/exit
+    local record=${_ble_edit_nsearch_stack[0]}
+    if [[ $record ]]; then
+      local line=${record#*:}
+      ble/string#split record , "${record%%:*}"
+
+      ble-edit/content/reset-and-check-dirty "$line"
+      _ble_edit_ind=${record[2]}
+      _ble_edit_mark=${record[3]}
+    fi
+  fi
+}
+function ble/widget/nsearch/accept-line {
+  if ((${#_ble_util_fiberchain[@]})); then
+    ble/widget/.bell "nsearch: now searching..."
+  else
+    ble/widget/nsearch/exit
+    ble-decode-key 13 # RET
+  fi
+}
+
+function ble-decode/keymap:nsearch/define {
+  local ble_bind_keymap=nsearch
+
+  ble-bind -f __default__ nsearch/exit-default
+  ble-bind -f C-g         nsearch/cancel
+  ble-bind -f C-m         nsearch/exit
+  ble-bind -f RET         nsearch/exit
+  ble-bind -f C-j         nsearch/accept-line
+  ble-bind -f C-RET       nsearch/accept-line
+
+  ble-bind -f C-r         nsearch/backward
+  ble-bind -f C-s         nsearch/forward
+  ble-bind -f C-p         nsearch/backward
+  ble-bind -f C-n         nsearch/forward
+  ble-bind -f up          nsearch/backward
+  ble-bind -f down        nsearch/forward
 }
 
 # 
@@ -6252,15 +5849,18 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind insert      'overwrite-mode'
 
   # ins
+  ble-decode/keymap:safe/.bind __batch_char__ 'batch-insert'
   ble-decode/keymap:safe/.bind __defchar__ 'self-insert'
   ble-decode/keymap:safe/.bind 'C-q'       'quoted-insert'
   ble-decode/keymap:safe/.bind 'C-v'       'quoted-insert'
-  ble-decode/keymap:safe/.bind 'C-M-m'     'newline'
+  ble-decode/keymap:safe/.bind 'M-C-m'     'newline'
   ble-decode/keymap:safe/.bind 'M-RET'     'newline'
   ble-decode/keymap:safe/.bind paste_begin 'bracketed-paste'
 
   # kill
   ble-decode/keymap:safe/.bind 'C-@'       'set-mark'
+  ble-decode/keymap:safe/.bind 'C-SP'      'set-mark'
+  ble-decode/keymap:safe/.bind 'NUL'       'set-mark'
   ble-decode/keymap:safe/.bind 'M-SP'      'set-mark'
   ble-decode/keymap:safe/.bind 'C-x C-x'   'exchange-point-and-mark'
   ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or uword'
@@ -6280,9 +5880,11 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'S-right'   '@marked forward-char'
   ble-decode/keymap:safe/.bind 'S-left'    '@marked backward-char'
   ble-decode/keymap:safe/.bind 'C-d'       'delete-region-or forward-char'
-  ble-decode/keymap:safe/.bind 'C-h'       'delete-region-or backward-char'
   ble-decode/keymap:safe/.bind 'delete'    'delete-region-or forward-char'
+  ble-decode/keymap:safe/.bind 'C-?'       'delete-region-or backward-char'
   ble-decode/keymap:safe/.bind 'DEL'       'delete-region-or backward-char'
+  ble-decode/keymap:safe/.bind 'C-h'       'delete-region-or backward-char'
+  ble-decode/keymap:safe/.bind 'BS'        'delete-region-or backward-char'
   ble-decode/keymap:safe/.bind 'C-t'       'transpose-chars'
 
   # wordwise operations
@@ -6292,21 +5894,26 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-left'    '@nomarked backward-sword'
   ble-decode/keymap:safe/.bind 'S-C-right' '@marked forward-cword'
   ble-decode/keymap:safe/.bind 'S-C-left'  '@marked backward-cword'
-  ble-decode/keymap:safe/.bind 'S-M-right' '@marked forward-sword'
-  ble-decode/keymap:safe/.bind 'S-M-left'  '@marked backward-sword'
+  ble-decode/keymap:safe/.bind 'M-S-right' '@marked forward-sword'
+  ble-decode/keymap:safe/.bind 'M-S-left'  '@marked backward-sword'
   ble-decode/keymap:safe/.bind 'M-d'       'kill-forward-cword'
   ble-decode/keymap:safe/.bind 'M-h'       'kill-backward-cword'
   ble-decode/keymap:safe/.bind 'C-delete'  'delete-forward-cword'
   ble-decode/keymap:safe/.bind 'C-_'       'delete-backward-cword'
+  ble-decode/keymap:safe/.bind 'C-DEL'     'delete-backward-cword'
+  ble-decode/keymap:safe/.bind 'C-BS'      'delete-backward-cword'
   ble-decode/keymap:safe/.bind 'M-delete'  'copy-forward-sword'
+  ble-decode/keymap:safe/.bind 'M-C-?'     'copy-backward-sword'
   ble-decode/keymap:safe/.bind 'M-DEL'     'copy-backward-sword'
+  ble-decode/keymap:safe/.bind 'M-C-h'     'copy-backward-sword'
+  ble-decode/keymap:safe/.bind 'M-BS'      'copy-backward-sword'
 
   ble-decode/keymap:safe/.bind 'M-f'       '@nomarked forward-cword'
   ble-decode/keymap:safe/.bind 'M-b'       '@nomarked backward-cword'
   ble-decode/keymap:safe/.bind 'M-F'       '@marked forward-cword'
   ble-decode/keymap:safe/.bind 'M-B'       '@marked backward-cword'
-  ble-decode/keymap:safe/.bind 'C-M-f'     '@marked forward-cword'
-  ble-decode/keymap:safe/.bind 'C-M-b'     '@marked backward-cword'
+  ble-decode/keymap:safe/.bind 'M-S-f'     '@marked forward-cword'
+  ble-decode/keymap:safe/.bind 'M-S-b'     '@marked backward-cword'
 
   # linewise operations
   ble-decode/keymap:safe/.bind 'C-a'       '@nomarked beginning-of-line'
@@ -6318,7 +5925,7 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'S-home'    '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'S-end'     '@marked end-of-line'
   ble-decode/keymap:safe/.bind 'M-m'       '@nomarked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'S-M-m'     '@marked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'M-S-m'     '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'M-M'       '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line' # overwritten by bind-history
   ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line' # overwritten by bind-history
@@ -6348,6 +5955,36 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line history'
   ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line history'
   ble-decode/keymap:safe/.bind 'down'      '@nomarked forward-line history'
+  ble-decode/keymap:safe/.bind 'C-x C-p'   'history-search-backward'
+  ble-decode/keymap:safe/.bind 'C-x up'    'history-search-backward'
+  ble-decode/keymap:safe/.bind 'C-x C-n'   'history-search-forward'
+  ble-decode/keymap:safe/.bind 'C-x down'  'history-search-forward'
+  ble-decode/keymap:safe/.bind 'C-x p'     'history-substring-search-backward'
+  ble-decode/keymap:safe/.bind 'C-x n'     'history-substring-search-forward'
+  ble-decode/keymap:safe/.bind 'C-x <'     'history-nsearch-backward'
+  ble-decode/keymap:safe/.bind 'C-x >'     'history-nsearch-forward'
+}
+function ble-decode/keymap:safe/bind-complete {
+  ble-decode/keymap:safe/.bind 'C-i'                 'complete'
+  ble-decode/keymap:safe/.bind 'TAB'                 'complete'
+  ble-decode/keymap:safe/.bind 'M-?'                 'complete show_menu'
+  ble-decode/keymap:safe/.bind 'C-TAB'               'menu-complete'
+  ble-decode/keymap:safe/.bind 'auto_complete_enter' 'auto-complete-enter'
+
+  ble-decode/keymap:safe/.bind 'M-/'   'complete context=filename'
+  ble-decode/keymap:safe/.bind 'M-~'   'complete context=username'
+  ble-decode/keymap:safe/.bind 'M-$'   'complete context=variable'
+  ble-decode/keymap:safe/.bind 'M-@'   'complete context=hostname'
+  ble-decode/keymap:safe/.bind 'M-!'   'complete context=command'
+  ble-decode/keymap:safe/.bind 'C-x /' 'complete show_menu:context=filename'
+  ble-decode/keymap:safe/.bind 'C-x ~' 'complete show_menu:context=username'
+  ble-decode/keymap:safe/.bind 'C-x $' 'complete show_menu:context=variable'
+  ble-decode/keymap:safe/.bind 'C-x @' 'complete show_menu:context=hostname'
+  ble-decode/keymap:safe/.bind 'C-x !' 'complete show_menu:context=command'
+
+  ble-decode/keymap:safe/.bind "M-'"     'sabbrev-expand'
+  ble-decode/keymap:safe/.bind "C-x '"   'sabbrev-expand'
+  ble-decode/keymap:safe/.bind 'C-x C-r' 'dabbrev-expand'
 }
 
 function ble/widget/safe/__attach__ {
@@ -6358,29 +5995,30 @@ function ble-decode/keymap:safe/define {
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
+  ble-decode/keymap:safe/bind-complete
 
   ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
 
   ble-bind -f 'SP'       magic-space
-  ble-bind -f 'C-RET'    history-expand-line
+  ble-bind -f 'M-^'      history-expand-line
 
   ble-bind -f __attach__ safe/__attach__
 
-  ble-bind -f  'C-c'     discard-line
-  ble-bind -f  'C-j'     accept-line
-  ble-bind -f  'C-m'     accept-single-line-or-newline
-  ble-bind -f  'RET'     accept-single-line-or-newline
-  ble-bind -f  'C-o'     accept-and-next
-  ble-bind -f  'C-g'     bell
+  ble-bind -f 'C-c'      discard-line
+  ble-bind -f 'C-j'      accept-line
+  ble-bind -f 'C-RET'    accept-line
+  ble-bind -f 'C-m'      accept-single-line-or-newline
+  ble-bind -f 'RET'      accept-single-line-or-newline
+  ble-bind -f 'C-o'      accept-and-next
+  ble-bind -f 'C-g'      bell
 
-  ble-bind -f  'C-l'     clear-screen
-  ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'C-i'     complete
-  ble-bind -f  'TAB'     complete
-  ble-bind -f  'f1'      command-help
-  ble-bind -f  'C-x C-v' display-shell-version
-  ble-bind -cf 'C-z'     fg
-  ble-bind -cf 'M-z'     fg
+  ble-bind -f 'C-l'      clear-screen
+  ble-bind -f 'M-l'      redraw-line
+
+  ble-bind -f 'f1'       command-help
+  ble-bind -f 'C-x C-v'  display-shell-version
+  ble-bind -c 'C-z'      fg
+  ble-bind -c 'M-z'      fg
 }
 
 function ble-edit/bind/load-keymap-definition:safe {
@@ -6398,7 +6036,6 @@ function ble/widget/read/accept {
   _ble_edit_read_result=$_ble_edit_str
   # [[ $_ble_edit_read_result ]] &&
   #   ble-edit/history/add "$_ble_edit_read_result" # Note: cancel でも登録する
-  ble/widget/.insert-newline
   ble-decode/keymap/pop
 }
 function ble/widget/read/cancel {
@@ -6412,6 +6049,7 @@ function ble-decode/keymap:read/define {
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
+  # ble-decode/keymap:safe/bind-complete
 
   ble-bind -f 'C-c' read/cancel
   ble-bind -f 'C-\' read/cancel
@@ -6424,13 +6062,11 @@ function ble-decode/keymap:read/define {
   # ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'C-l'     redraw-line
   ble-bind -f  'M-l'     redraw-line
-  # ble-bind -f  'C-i'     complete
-  # ble-bind -f  'TAB'     complete
   ble-bind -f  'C-x C-v' display-shell-version
 
   # command-history
-  # ble-bind -f 'C-RET'   history-expand-line
-  # ble-bind -f 'SP'      magic-space
+  # ble-bind -f 'M-^'      history-expand-line
+  # ble-bind -f 'SP'       magic-space
 
   # ble-bind -f 'C-[' bell # unbound for "bleopt decode_isolated_esc=auto"
   ble-bind -f 'C-]' bell
@@ -6487,7 +6123,7 @@ function ble-edit/read/.setup-textarea {
   ble-decode/keymap/push read
 
   # textarea, info
-  _ble_textarea_panel=2
+  _ble_textarea_panel=1
   ble/textarea#invalidate
   ble-edit/info/set-default raw ''
 
@@ -6499,7 +6135,7 @@ function ble-edit/read/.setup-textarea {
   _ble_edit_dirty_observer=()
   ble/widget/.newline/clear-content
   _ble_edit_arg=
-  _ble_edit_str.reset "$opt_default" newline
+  ble-edit/content/reset "$opt_default" newline
   _ble_edit_ind=${#opt_default}
 
   # edit/undo
@@ -6512,38 +6148,69 @@ function ble-edit/read/.setup-textarea {
   _ble_syntax_lang=text
   _ble_highlight_layer__list=(plain region overwrite_mode disabled)
 }
+function ble-edit/read/TRAPWINCH {
+  local IFS=$_ble_term_IFS
+  _ble_textmap_pos=()
+  ble/textarea#redraw
+}
 function ble-edit/read/.loop {
+  local x0=$_ble_canvas_x y0=$_ble_canvas_y
   ble-edit/read/.setup-textarea
+  trap -- ble-edit/read/TRAPWINCH WINCH
 
+  local ret= timeout=
   if [[ $opt_timeout ]]; then
-    local start_time; ble/util/strftime -v start_time %s
+    ble/util/clock; local start_time=$ret
 
-    # 実際は 1.99999 で 1 に切り捨てられている可能性もある。
-    # 待ち時間が長くなる方向に倒して処理する。
-    ((start_time&&start_time--))
+    # Note: 時間分解能が低いとき、実際は 1999ms なのに
+    #   1000ms に切り捨てられている可能性もある。
+    #   待ち時間が長くなる方向に倒して処理する。
+    ((start_time&&(start_time-=_ble_util_clock_reso-1)))
+
+    if [[ $opt_timeout == *.* ]]; then
+      local mantissa=${opt_timeout%%.*}
+      local fraction=${opt_timeout##*.}000
+      ((timeout=mantissa*1000+10#${fraction::3}))
+    else
+      ((timeout=opt_timeout*1000))
+    fi
+    ((timeout<0)) && timeout=
   fi
 
   ble-edit/info/reveal
   ble/textarea#render
   ble/util/buffer.flush >&2
 
-  local char= ret=
+  local char=
   local _ble_edit_read_accept=
   local _ble_edit_read_result=
   while [[ ! $_ble_edit_read_accept ]]; do
-    # read 1 byte
-    IFS= builtin read -r -d '' -n 1 char "${opts_in[@]}" ${opt_timeout:+-t "$opt_timeout"}; local ext=$?
-    ((ext==142)) && return "$ext" # timeout
+    local timeout_option=
+    if [[ $timeout ]]; then
+      if ((_ble_bash>=40000)); then
+        local timeout_frac=000$((timeout%1000))
+        timeout_option="-t $((timeout/1000)).${timeout_frac:${#timeout_frac}-3}"
+      else
+        timeout_option="-t $((timeout/1000))"
+      fi
+    fi
+
+    # read 1 character
+    IFS= builtin read -r -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
+    if ((ext==142)); then
+      # timeout
+      _ble_edit_read_accept=142
+      break
+    fi
 
     # update timeout
-    if [[ $opt_timeout ]]; then
-      local current_time; ble/util/strftime -v current_time %s
-      if [[ $opt_timeout == *.* ]]; then
-        local mantissa=${opt_timeout%%.*}
-        local fraction=${opt_timeout#*.}
-        opt_timeout=$((mantissa-(current_time-start_time))).$fraction
-      else
-        opt_timeout=$((opt_timeout-(current_time-start_time)))
+    if [[ $timeout ]]; then
+      ble/util/clock; local current_time=$ret
+      ((timeout-=current_time-start_time))
+      if ((timeout<=0)); then
+        # timeout
+        _ble_edit_read_accept=142
+        break
       fi
       start_time=$current_time
     fi
@@ -6560,10 +6227,27 @@ function ble-edit/read/.loop {
     ble/util/buffer.flush >&2
   done
 
+  # 入力が終わったら消すか次の行へ行く
+  if [[ $_ble_edit_read_context == internal ]]; then
+    local -a DRAW_BUFF=()
+    ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
+    ble/canvas/goto.draw "$x0" "$y0"
+    ble/canvas/bflush.draw
+  else
+    if ((_ble_edit_read_accept==1)); then
+      ble/widget/.insert-newline
+    else
+      _ble_edit_line_disabled=1 ble/widget/.insert-newline
+    fi
+  fi
+
   ble/util/buffer.flush >&2
   if ((_ble_edit_read_accept==1)); then
     local q=\' Q="'\''"
     printf %s "__ble_input='${_ble_edit_read_result//$q/$Q}'"
+  elif ((_ble_edit_read_accept==142)); then
+    # timeout
+    return "$ext"
   else
     return 1
   fi
@@ -6583,10 +6267,18 @@ function ble-edit/read/.impl {
   fi
 
   ble-decode/keymap/load read
-  local result state=$_ble_term_state
-  [[ $state == external ]] && ble/term/enter # 外側にいたら入る
+  local result _ble_edit_read_context=$_ble_term_state
+
+  # Note: サブシェル中で重複して出力されない様に空にしておく
+  ble/util/buffer.flush >&2
+
+  [[ $_ble_edit_read_context == external ]] && ble/term/enter # 外側にいたら入る
   result=$(ble-edit/read/.loop); local ext=$?
-  [[ $state == external ]] && ble/term/leave # 元の状態に戻る
+  [[ $_ble_edit_read_context == external ]] && ble/term/leave # 元の状態に戻る
+
+  # Note: サブシェルを抜ける時に set-height 1 0 するので辻褄合わせ。
+  [[ $_ble_edit_read_context == internal ]] && ((_ble_canvas_panel_height[1]=0))
+
   if ((ext==0)); then
     builtin eval -- "$result"
     __ble_args=("${opts[@]}" -- "${vars[@]}")
@@ -6600,7 +6292,7 @@ function ble-edit/read/.impl {
 ##   ble.sh の所為で builtin read -e が全く動かなくなるので、
 ##   read -e を ble.sh の枠組みで再実装する。
 ##
-function read {
+function ble-edit/read {
   if [[ $_ble_decode_bind_state == none ]]; then
     builtin read "$@"
     return
@@ -6614,15 +6306,7 @@ function read {
   builtin eval -- "$__ble_command"
   return
 }
-
-# 
-#------------------------------------------------------------------------------
-# **** completion ****                                                    @comp
-
-: ${bleopt_complete_stdin_frequency:=50}
-ble-autoload "$_ble_base/lib/core-complete.sh" ble/widget/complete
-ble/util/isfunction ble/util/idle.push &&
-  ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
+function read { ble-edit/read "$@"; }
 
 #------------------------------------------------------------------------------
 # **** command-help ****                                          @command-help
@@ -6650,7 +6334,7 @@ ble/util/isfunction ble/util/idle.push &&
 ## 関数 ble/widget/command-help/.read-man
 ##   @var[out] man_content
 function ble/widget/command-help/.read-man {
-  local pager="sh -c 'cat >| \"\$BLETMPFILE\"'" tmp=$_ble_util_read_stdout_tmp
+  local pager="sh -c 'cat >| \"\$BLETMPFILE\"'" tmp=$_ble_util_assign_base
   BLETMPFILE=$tmp MANPAGER=$pager PAGER=$pager MANOPT= man "$@" 2>/dev/null; local ext=$? # 668ms
   ble/util/readfile man_content "$tmp" # 80ms
   return "$ext"
@@ -6706,10 +6390,8 @@ function ble/widget/command-help/.locate-in-man-bash {
 ##   @var[in] command
 ##   @var[in] comp_cword comp_words comp_line comp_point
 function ble/widget/command-help.core {
-  ble/util/isfunction ble/cmdinfo/help:"$command" &&
-    ble/cmdinfo/help:"$command" && return
-  ble/util/isfunction ble/cmdinfo/help &&
-    ble/cmdinfo/help "$command" && return
+  ble/function#try ble/cmdinfo/help:"$command" && return
+  ble/function#try ble/cmdinfo/help "$command" && return
 
   if [[ $type == builtin || $type == keyword ]]; then
     # 組み込みコマンド・キーワードは man bash を表示
@@ -6762,7 +6444,7 @@ function ble/widget/command-help/.type/.resolve-alias {
     eval "alias_def=${alias_def#*=}" # remove quote
     literal=${alias_def%%[$' \t\n']*} command= type=
     ble-syntax:bash/simple-word/is-simple "$literal" || break # Note: type=
-    eval "command=$literal"
+    local ret; ble-syntax:bash/simple-word/eval "$literal"; command=$ret
     ble/util/type type "$command"
     [[ $type ]] || break # Note: type=
 
@@ -6790,13 +6472,15 @@ function ble/widget/command-help/.type/.resolve-alias {
   printf "literal='%s'\n" "${literal//$q/$Q}"
   printf "command='%s'\n" "${command//$q/$Q}"
   return
-}
+} 2>/dev/null
 
+## 関数 ble/widget/command-help/.type
+##   @var[out] type command
 function ble/widget/command-help/.type {
   local literal=$1
   type= command=
   ble-syntax:bash/simple-word/is-simple "$literal" || return 1
-  eval "command=$literal"
+  local ret; ble-syntax:bash/simple-word/eval "$literal"; command=$ret
   ble/util/type type "$command"
 
   # alias の時はサブシェルで解決
@@ -6807,7 +6491,7 @@ function ble/widget/command-help/.type {
   if [[ $type == keyword && $command != "$literal" ]]; then
     if [[ $command == %* ]] && jobs -- "$command" &>/dev/null; then
       type=jobs
-    elif ble/util/isfunction "$command"; then
+    elif ble/is-function "$command"; then
       type=function
     elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
       type=builtin
@@ -6833,17 +6517,7 @@ function ble/widget/command-help.impl {
     return 1
   fi
 
-  ble-edit/info/hide
-  ble/textarea#invalidate
-  local -a DRAW_BUFF=()
-  ble-form/panel#set-height.draw "$_ble_textarea_panel" 0
-  ble-form/panel#goto.draw "$_ble_textarea_panel" 0 0
-  ble-edit/draw/bflush
-  ble/term/leave
-  ble/util/buffer.flush >&2
-  ble/widget/command-help.core; local ext=$?
-  ble/term/enter
-  return "$ext"
+  ble/widget/external-command ble/widget/command-help.core
 }
 
 function ble/widget/command-help {
@@ -6901,7 +6575,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
     local file=${1:-$_ble_edit_io_fname2}
 
     # if the visible bell function is already defined.
-    if ble/util/isfunction ble/term/visible-bell; then
+    if ble/is-function ble/term/visible-bell; then
       # checks if "$file" is an ordinary non-empty file
       #   since the $file might be /dev/null depending on the configuration.
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
@@ -6927,17 +6601,20 @@ if [[ $bleopt_suppress_bash_output ]]; then
   #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
   if ((_ble_bash<40000)); then
     function ble-edit/bind/stdout/TRAPUSR1 {
+      [[ $_ble_term_state == internal ]] || return
+
       local IFS=$' \t\n'
       local file=$_ble_edit_io_fname2.proc
       if [[ -s $file ]]; then
-        local content
+        local content cmd
         ble/util/readfile content "$file"
         : >| "$file"
         for cmd in $content; do
           case "$cmd" in
           (eof)
             # C-d
-            ble-decode/.hook 4 ;;
+            ble-decode/.hook 4
+            builtin eval "$_ble_decode_bind_hook" ;;
           esac
         done
       fi
@@ -6952,15 +6629,15 @@ if [[ $bleopt_suppress_bash_output ]]; then
         function ble-edit/stdout/check-ignoreeof-message {
           local line=$1
 
-          [[ $line = *$bleopt_ignoreeof_message* ||
-               $line = *'Use "exit" to leave the shell.'* ||
-               $line = *'ログアウトする為には exit を入力して下さい'* ||
-               $line = *'シェルから脱出するには "exit" を使用してください。'* ||
-               $line = *'シェルから脱出するのに "exit" を使いなさい.'* ||
-               $line = *'Gebruik Kaart na Los Tronk'* ]] && return 0
+          [[ $line == *$bleopt_ignoreeof_message* ||
+               $line == *'Use "exit" to leave the shell.'* ||
+               $line == *'ログアウトする為には exit を入力して下さい'* ||
+               $line == *'シェルから脱出するには "exit" を使用してください。'* ||
+               $line == *'シェルから脱出するのに "exit" を使いなさい.'* ||
+               $line == *'Gebruik Kaart na Los Tronk'* ]] && return 0
 
-          # ignoreeof-messages.txt の中身をキャッシュする様にする?
-          [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/ignoreeof-messages.txt
+          # lib/core-edit.ignoreeof-messages.txt の中身をキャッシュする様にする?
+          [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/lib/core-edit.ignoreeof-messages.txt
         }
 
         while IFS= builtin read -r line; do
@@ -6993,7 +6670,7 @@ function ble-edit/bind/.exit-TRAPRTMAX {
   # シグナルハンドラの中では stty は bash によって設定されている。
   local IFS=$' \t\n'
   ble/term/TRAPEXIT
-  exit 0
+  builtin exit 0
 }
 
 ## 関数 ble-edit/bind/.check-detach
@@ -7013,8 +6690,8 @@ function ble-edit/bind/.check-detach {
     _ble_edit_detach_flag=
     #ble/term/visible-bell ' Bye!! '
 
-    ble-edit-finalize
-    ble-decode-detach
+    ble-edit/detach
+    ble-decode/detach
     ble/term/finalize
 
     READLINE_LINE='' READLINE_POINT=0
@@ -7041,7 +6718,10 @@ function ble-edit/bind/.check-detach {
       builtin echo "Please run \`stty sane' to recover the correct TTY state." >&2
       ble/textarea#render
       ble/util/buffer.flush >&2
-      READLINE_LINE='stty sane' READLINE_POINT=9
+      if ((_ble_bash>=40000)); then
+        READLINE_LINE='stty sane;' READLINE_POINT=10
+        printf %s "$READLINE_LINE"
+      fi
     fi
 
     return 0
@@ -7051,8 +6731,8 @@ function ble-edit/bind/.check-detach {
     local state=$_ble_decode_bind_state
     if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
       ble-decode/reset-default-keymap
-      ble-decode-detach
-      ble-decode-attach
+      ble-decode/detach
+      ble-decode/attach
     fi
 
     return 1
@@ -7068,10 +6748,10 @@ if ((_ble_bash>=40100)); then
 else
   function ble-edit/bind/.head/adjust-bash-rendering {
     # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
-    ((_ble_line_y++,_ble_line_x=0))
+    ((_ble_canvas_y++,_ble_canvas_x=0))
     local -a DRAW_BUFF=()
-    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
-    ble-edit/draw/flush
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+    ble/canvas/flush.draw
   }
 fi
 
@@ -7080,13 +6760,6 @@ function ble-edit/bind/.head {
 
   [[ $bleopt_suppress_bash_output ]] ||
     ble-edit/bind/.head/adjust-bash-rendering
-
-  # Workaround #D0702 (bash 3.1-5.0)
-  if [[ $_ble_edit_history_HISTSIZE_rewrite ]]; then
-    [[ $HISTSIZE == ${_ble_edit_history_HISTSIZE_rewrite#*:} ]] &&
-      HISTSIZE=${_ble_edit_history_HISTSIZE_rewrite%%:*}
-    _ble_edit_history_HISTSIZE_rewrite=
-  fi
 }
 
 function ble-edit/bind/.tail-without-draw {
@@ -7102,7 +6775,6 @@ if ((_ble_bash>=40000)); then
     ble-edit/bind/stdout.off
   }
 else
-  IGNOREEOF=10000
   function ble-edit/bind/.tail {
     ble-edit/info/reveal
     ble/textarea#render # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
@@ -7111,14 +6783,11 @@ else
   }
 fi
 
-_ble_edit_bind_force_draw=
-
 ## ble-decode.sh 用の設定
 function ble-decode/PROLOGUE {
   ble-edit/bind/.head
   ble-decode-bind/uvw
   ble/term/enter
-  _ble_edit_bind_force_draw=
 }
 
 ## ble-decode.sh 用の設定
@@ -7128,7 +6797,7 @@ function ble-decode/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    if [[ ! $_ble_edit_bind_force_draw ]] && ble/util/is-stdin-ready; then
+    if ble-decode/has-input; then
       ble-edit/bind/.tail-without-draw
       return 0
     fi
@@ -7141,24 +6810,62 @@ function ble-decode/EPILOGUE {
   return 0
 }
 
-## 関数 ble/widget/.SHELL_COMMAND command
-##   ble-bind -cf で登録されたコマンドを処理します。
-function ble/widget/.SHELL_COMMAND {
+function ble/widget/print {
   ble-edit/content/clear-arg
+  local message=$1
+  [[ ${message//[$_ble_term_IFS]} ]] || return
 
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+  ble/util/buffer.flush >&2
+  builtin printf '%s\n' "$message" >&2
+}
+function ble/widget/internal-command {
+  ble-edit/content/clear-arg
+  local -a BASH_COMMAND
+  BASH_COMMAND=("$*")
+  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+
+  _ble_edit_line_disabled=1 ble/widget/.insert-newline
+  eval "$BASH_COMMAND"
+}
+function ble/widget/external-command {
+  ble-edit/content/clear-arg
+  local -a BASH_COMMAND
+  BASH_COMMAND=("$*")
+  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+
+  ble-edit/info/hide
+  ble/textarea#invalidate
+  local -a DRAW_BUFF=()
+  ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+  ble/canvas/bflush.draw
+  ble/term/leave
+  ble/util/buffer.flush >&2
+  eval "$BASH_COMMAND"; local ext=$?
+  ble/term/enter
+  return "$ext"
+}
+function ble/widget/execute-command {
+  ble-edit/content/clear-arg
   local -a BASH_COMMAND
   BASH_COMMAND=("$*")
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
 
+  # Note: 空コマンドでも .insert-newline は実行する。
+  [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
+
   # やはり通常コマンドはちゃんとした環境で評価するべき
-  if [[ "${BASH_COMMAND//[ 	]/}" ]]; then
-    ble-edit/exec/register "$BASH_COMMAND"
-  fi
+  ble-edit/exec/register "$BASH_COMMAND"
 }
 
+## 関数 ble/widget/.SHELL_COMMAND command
+##   ble-bind -c で登録されたコマンドを処理します。
+function ble/widget/.SHELL_COMMAND { ble/widget/execute-command "$@"; }
+
 ## 関数 ble/widget/.EDIT_COMMAND command
-##   ble-bind -xf で登録されたコマンドを処理します。
+##   ble-bind -x で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND {
   local command=$1
   local READLINE_LINE=$_ble_edit_str
@@ -7167,30 +6874,20 @@ function ble/widget/.EDIT_COMMAND {
   ble-edit/content/clear-arg
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
-    _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
+    ble-edit/content/reset-and-check-dirty "$READLINE_LINE"
   ((_ble_edit_ind=READLINE_POINT))
 }
 
 ## ble-decode.sh 用の設定
 function ble-decode/DEFAULT_KEYMAP {
-  if [[ $bleopt_default_keymap == auto ]]; then
-    if [[ -o vi ]]; then
-      ble-edit/bind/load-keymap-definition vi &&
-        builtin eval -- "$2=vi_imap"
-    else
-      ble-edit/bind/load-keymap-definition emacs &&
-        builtin eval -- "$2=emacs"
-    fi
-  elif [[ $bleopt_default_keymap == vi ]]; then
-    ble-edit/bind/load-keymap-definition vi &&
+  local ret
+  bleopt/get:default_keymap; local defmap=$ret
+  if ble-edit/bind/load-keymap-definition "$defmap"; then
+    if [[ $defmap == vi ]]; then
       builtin eval -- "$2=vi_imap"
-  else
-    ble-edit/bind/load-keymap-definition "$bleopt_default_keymap" &&
-      builtin eval -- "$2=\"\$bleopt_default_keymap\""
-  fi; local ext=$?
-
-  if ((ext==0)) && ble-decode/keymap/is-keymap "${!2}"; then
-    return 0
+    else
+      builtin eval -- "$2=\$defmap"
+    fi && ble-decode/keymap/is-keymap "${!2}" && return 0
   fi
 
   echo "ble.sh: The definition of the default keymap \"$bleopt_default_keymap\" is not found. ble.sh uses \"safe\" keymap instead."
@@ -7201,7 +6898,7 @@ function ble-decode/DEFAULT_KEYMAP {
 
 function ble-edit/bind/load-keymap-definition {
   local name=$1
-  if ble/util/isfunction ble-edit/bind/load-keymap-definition:"$name"; then
+  if ble/is-function ble-edit/bind/load-keymap-definition:"$name"; then
     ble-edit/bind/load-keymap-definition:"$name"
   else
     source "$_ble_base/keymap/$name.sh"
@@ -7211,12 +6908,12 @@ function ble-edit/bind/load-keymap-definition {
 #------------------------------------------------------------------------------
 # **** entry points ****
 
-function ble-edit-initialize {
+function ble-edit/initialize {
   ble-edit/prompt/initialize
 }
-function ble-edit-attach {
-  ble-edit/attach
-  _ble_line_x=0 _ble_line_y=0
+function ble-edit/attach {
+  ble-edit/attach/.attach
+  _ble_canvas_x=0 _ble_canvas_y=0
   ble/util/buffer "$_ble_term_cr"
 }
 function ble-edit/reset-history {
@@ -7236,7 +6933,7 @@ function ble-edit/reset-history {
     ble-edit/history/load
   fi
 }
-function ble-edit-finalize {
+function ble-edit/detach {
   ble-edit/bind/stdout.finalize
-  ble-edit/detach
+  ble-edit/attach/.detach
 }

@@ -7,6 +7,36 @@
 : ${bleopt_decode_error_kseq_vbell=1}
 : ${bleopt_decode_error_kseq_discard=1}
 
+## オプション default_keymap
+##   既定の編集モードに使われるキーマップを指定します。
+## bleopt_default_keymap=auto
+##   [[ -o emacs/vi ]] の状態に応じて emacs/vi を切り替えます。
+## bleopt_default_keymap=emacs
+##   emacs と同様の編集モードを使用します。
+## bleopt_default_keymap=vi
+##   vi と同様の編集モードを使用します。
+: ${bleopt_default_keymap:=auto}
+
+function bleopt/check:default_keymap {
+  case $value in
+  (auto|emacs|vi|safe) ;;
+  (*)
+    echo "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
+    return 1 ;;
+  esac
+}
+
+function bleopt/get:default_keymap {
+  ret=$bleopt_default_keymap
+  if [[ $ret == auto ]]; then
+    if [[ -o vi ]]; then
+      ret=vi
+    else
+      ret=emacs
+    fi
+  fi
+}
+
 ## オプション decode_isolated_esc
 ##   bleopt decode_isolated_esc=meta
 ##     単体で受信した ESC を、前置詞として受信した ESC と同様に、
@@ -26,10 +56,14 @@ function bleopt/check:decode_isolated_esc {
 function ble-decode/uses-isolated-esc {
   if [[ $bleopt_decode_isolated_esc == esc ]]; then
     return 0
-  elif [[ $bleopt_decode_isolated_esc == auto && ! $_ble_decode_key__seq ]]; then
-    local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_ key=$((ble_decode_Ctrl|91))
-    builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
-    [[ ${ent:2} ]] && return 0
+  elif [[ $bleopt_decode_isolated_esc == auto ]]; then
+    if local ret; bleopt/get:default_keymap; [[ $ret == vi ]]; then
+      return 0
+    elif [[ ! $_ble_decode_key__seq ]]; then
+      local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_ key=$((_ble_decode_Ctrl|91))
+      builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
+      [[ ${ent:2} ]] && return 0
+    fi
   fi
 
   return 1
@@ -37,33 +71,34 @@ function ble-decode/uses-isolated-esc {
 
 # **** key names ****
 
-ble_decode_Erro=0x40000000
-ble_decode_Meta=0x08000000
-ble_decode_Ctrl=0x04000000
-ble_decode_Shft=0x02000000
-ble_decode_Hypr=0x01000000
-ble_decode_Supr=0x00800000
-ble_decode_Altr=0x00400000
-ble_decode_MaskChar=0x001FFFFF
-ble_decode_MaskFlag=0x7FC00000
+_ble_decode_Erro=0x40000000
+_ble_decode_Meta=0x08000000
+_ble_decode_Ctrl=0x04000000
+_ble_decode_Shft=0x02000000
+_ble_decode_Hypr=0x01000000
+_ble_decode_Supr=0x00800000
+_ble_decode_Altr=0x00400000
+_ble_decode_MaskChar=0x001FFFFF
+_ble_decode_MaskFlag=0x7FC00000
 
-ble_decode_IsolatedESC=$((0x07FF))
+_ble_decode_IsolatedESC=$((0x07FF))
+_ble_decode_FunctionKeyBase=0x110000
 
-if ((_ble_bash>=40200||_ble_bash>=40000&&_ble_bash_loaded_in_function&&!_ble_bash_loaded_in_function)); then
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   _ble_decode_kbd_ver=4
   _ble_decode_kbd__n=0
   if ((_ble_bash>=40200)); then
     declare -gA _ble_decode_kbd__k2c
   else
     declare -A _ble_decode_kbd__k2c
-  fi
+   fi
   _ble_decode_kbd__c2k=()
 
   function ble-decode-kbd/.set-keycode {
-    local key=$1
+    local keyname=$1
     local -i code=$2
-    : ${_ble_decode_kbd__c2k[$code]:=$key}
-    _ble_decode_kbd__k2c[$key]=$code
+    : ${_ble_decode_kbd__c2k[$code]:=$keyname}
+    _ble_decode_kbd__k2c[$keyname]=$code
   }
   function ble-decode-kbd/.get-keycode {
     ret=${_ble_decode_kbd__k2c[$1]}
@@ -75,25 +110,23 @@ else
   _ble_decode_kbd__k2c_vals=()
   _ble_decode_kbd__c2k=()
   function ble-decode-kbd/.set-keycode {
-    local key=$1
+    local keyname=$1
     local -i code=$2
-    : ${_ble_decode_kbd__c2k[$code]:=$key}
-    _ble_decode_kbd__k2c_keys=$_ble_decode_kbd__k2c_keys:$key:
+    : ${_ble_decode_kbd__c2k[$code]:=$keyname}
+    _ble_decode_kbd__k2c_keys=$_ble_decode_kbd__k2c_keys:$keyname:
     _ble_decode_kbd__k2c_vals[${#_ble_decode_kbd__k2c_vals[@]}]=$code
   }
   function ble-decode-kbd/.get-keycode {
-    local key=$1
-    local tmp=${_ble_decode_kbd__k2c_keys%%:$key:*}
+    local keyname=$1
+    local tmp=${_ble_decode_kbd__k2c_keys%%:$keyname:*}
     if [[ ${#tmp} == ${#_ble_decode_kbd__k2c_keys} ]]; then
       ret=
     else
-      local -a tmp; tmp=(${tmp//:/ })
-      ret=${_ble_decode_kbd__k2c_vals[${#tmp[@]}]}
+      local -a arr; ble/string#split-words arr "${tmp//:/ }"
+      ret=${_ble_decode_kbd__k2c_vals[${#arr[@]}]}
     fi
   }
 fi
-
-ble_decode_function_key_base=0x110000
 
 ## 関数 ble-decode-kbd/.get-keyname keycode
 ##
@@ -106,25 +139,25 @@ ble_decode_function_key_base=0x110000
 function ble-decode-kbd/.get-keyname {
   local -i keycode=$1
   ret=${_ble_decode_kbd__c2k[$keycode]}
-  if [[ ! $ret ]] && ((keycode<ble_decode_function_key_base)); then
+  if [[ ! $ret ]] && ((keycode<_ble_decode_FunctionKeyBase)); then
     ble/util/c2s "$keycode"
   fi
 }
-## 関数 ble-decode-kbd/.gen-keycode keyname
+## 関数 ble-decode-kbd/generate-keycode keyname
 ##   指定した名前に対応する keycode を取得します。
 ##   指定した名前の key が登録されていない場合は、
 ##   新しく kecode を割り当てて返します。
 ##   @param[in]  keyname keyname
 ##   @var  [out] ret     keycode
-function ble-decode-kbd/.gen-keycode {
-  local key=$1
-  if ((${#key}==1)); then
+function ble-decode-kbd/generate-keycode {
+  local keyname=$1
+  if ((${#keyname}==1)); then
     ble/util/s2c "$1"
-  elif [[ $key && ! ${key//[a-zA-Z_0-9]} ]]; then
-    ble-decode-kbd/.get-keycode "$key"
+  elif [[ $keyname && ! ${keyname//[a-zA-Z_0-9]} ]]; then
+    ble-decode-kbd/.get-keycode "$keyname"
     if [[ ! $ret ]]; then
-      ((ret=ble_decode_function_key_base+_ble_decode_kbd__n++))
-      ble-decode-kbd/.set-keycode "$key" "$ret"
+      ((ret=_ble_decode_FunctionKeyBase+_ble_decode_kbd__n++))
+      ble-decode-kbd/.set-keycode "$keyname" "$ret"
     fi
   else
     ret=-1
@@ -208,72 +241,80 @@ function ble-decode-kbd/.initialize {
   ble-decode-kbd/.set-keycode APC  159
 
   local ret
-  ble-decode-kbd/.gen-keycode __defchar__
+  ble-decode-kbd/generate-keycode __batch_char__
+  _ble_decode_KCODE_BATCH_CHAR=$ret
+  ble-decode-kbd/generate-keycode __defchar__
   _ble_decode_KCODE_DEFCHAR=$ret
-  ble-decode-kbd/.gen-keycode __default__
+  ble-decode-kbd/generate-keycode __default__
   _ble_decode_KCODE_DEFAULT=$ret
-  ble-decode-kbd/.gen-keycode __before_command__
-  _ble_decode_KCODE_BEFORE_COMMAND=$ret
-  ble-decode-kbd/.gen-keycode __after_command__
-  _ble_decode_KCODE_AFTER_COMMAND=$ret
-  ble-decode-kbd/.gen-keycode __attach__
+  ble-decode-kbd/generate-keycode __before_widget__
+  _ble_decode_KCODE_BEFORE_WIDGET=$ret
+  ble-decode-kbd/generate-keycode __after_widget__
+  _ble_decode_KCODE_AFTER_WIDGET=$ret
+  ble-decode-kbd/generate-keycode __attach__
   _ble_decode_KCODE_ATTACH=$ret
 
-  ble-decode-kbd/.gen-keycode shift
+  ble-decode-kbd/generate-keycode shift
   _ble_decode_KCODE_SHIFT=$ret
-  ble-decode-kbd/.gen-keycode alter
+  ble-decode-kbd/generate-keycode alter
   _ble_decode_KCODE_ALTER=$ret
-  ble-decode-kbd/.gen-keycode control
+  ble-decode-kbd/generate-keycode control
   _ble_decode_KCODE_CONTROL=$ret
-  ble-decode-kbd/.gen-keycode meta
+  ble-decode-kbd/generate-keycode meta
   _ble_decode_KCODE_META=$ret
-  ble-decode-kbd/.gen-keycode super
+  ble-decode-kbd/generate-keycode super
   _ble_decode_KCODE_SUPER=$ret
-  ble-decode-kbd/.gen-keycode hyper
+  ble-decode-kbd/generate-keycode hyper
   _ble_decode_KCODE_HYPER=$ret
+
+  # Note: 無視するキー。ble-decode-char に於いて
+  #   端末からの通知などを処理した時に使う。
+  ble-decode-kbd/generate-keycode __ignore__
+  _ble_decode_KCODE_IGNORE=$ret
 }
 
 ble-decode-kbd/.initialize
 
-## 関数 ble-decode-kbd
+## 関数 ble-decode-kbd kspecs...
+##   @param[in] kspecs
 ##   @var[out] ret
 function ble-decode-kbd {
-  local keys; ble/string#split-words keys "$*"
-  local key code codes keys
+  local kspecs; ble/string#split-words kspecs "$*"
+  local kspec code codes
   codes=()
-  for key in "${keys[@]}"; do
+  for kspec in "${kspecs[@]}"; do
     code=0
-    while [[ $key == ?-* ]]; do
-      case "${key::1}" in
-      (S) ((code|=ble_decode_Shft)) ;;
-      (C) ((code|=ble_decode_Ctrl)) ;;
-      (M) ((code|=ble_decode_Meta)) ;;
-      (A) ((code|=ble_decode_Altr)) ;;
-      (s) ((code|=ble_decode_Supr)) ;;
-      (H) ((code|=ble_decode_Hypr)) ;;
-      (*) ((code|=ble_decode_Erro)) ;;
+    while [[ $kspec == ?-* ]]; do
+      case "${kspec::1}" in
+      (S) ((code|=_ble_decode_Shft)) ;;
+      (C) ((code|=_ble_decode_Ctrl)) ;;
+      (M) ((code|=_ble_decode_Meta)) ;;
+      (A) ((code|=_ble_decode_Altr)) ;;
+      (s) ((code|=_ble_decode_Supr)) ;;
+      (H) ((code|=_ble_decode_Hypr)) ;;
+      (*) ((code|=_ble_decode_Erro)) ;;
       esac
-      key=${key:2}
+      kspec=${kspec:2}
     done
 
-    if [[ $key == ? ]]; then
-      ble/util/s2c "$key" 0
+    if [[ $kspec == ? ]]; then
+      ble/util/s2c "$kspec" 0
       ((code|=ret))
-    elif [[ $key && ! ${key//[_0-9a-zA-Z]/} ]]; then
-      ble-decode-kbd/.get-keycode "$key"
-      [[ $ret ]] || ble-decode-kbd/.gen-keycode "$key"
+    elif [[ $kspec && ! ${kspec//[_0-9a-zA-Z]/} ]]; then
+      ble-decode-kbd/.get-keycode "$kspec"
+      [[ $ret ]] || ble-decode-kbd/generate-keycode "$kspec"
       ((code|=ret))
-    elif [[ $key == ^? ]]; then
-      if [[ $key == '^?' ]]; then
+    elif [[ $kspec == ^? ]]; then
+      if [[ $kspec == '^?' ]]; then
         ((code|=0x7F))
-      elif [[ $key == '^`' ]]; then
+      elif [[ $kspec == '^`' ]]; then
         ((code|=0x20))
       else
-        ble/util/s2c "$key" 1
+        ble/util/s2c "$kspec" 1
         ((code|=ret&0x1F))
       fi
     else
-      ((code|=ble_decode_Erro))
+      ((code|=_ble_decode_Erro))
     fi
 
     codes[${#codes[@]}]=$code
@@ -291,25 +332,26 @@ function ble-decode-unkbd/.single-key {
   local key=$1
 
   local f_unknown=
-  local char=$((key&ble_decode_MaskChar))
+  local char=$((key&_ble_decode_MaskChar))
   ble-decode-kbd/.get-keyname "$char"
   if [[ ! $ret ]]; then
     f_unknown=1
     ret=__UNKNOWN__
   fi
 
-  ((key&ble_decode_Shft)) && ret=S-$ret
-  ((key&ble_decode_Meta)) && ret=M-$ret
-  ((key&ble_decode_Ctrl)) && ret=C-$ret
-  ((key&ble_decode_Altr)) && ret=A-$ret
-  ((key&ble_decode_Supr)) && ret=s-$ret
-  ((key&ble_decode_Hypr)) && ret=H-$ret
+  ((key&_ble_decode_Shft)) && ret=S-$ret
+  ((key&_ble_decode_Meta)) && ret=M-$ret
+  ((key&_ble_decode_Ctrl)) && ret=C-$ret
+  ((key&_ble_decode_Altr)) && ret=A-$ret
+  ((key&_ble_decode_Supr)) && ret=s-$ret
+  ((key&_ble_decode_Hypr)) && ret=H-$ret
 
   [[ ! $f_unknown ]]
 }
 
 ## 関数 ble-decode-unkbd keys...
-##   @var[in] keys
+##   @param[in] keys
+##     キーを表す整数値の列を指定します。
 ##   @var[out] ret
 function ble-decode-unkbd {
   local -a kspecs
@@ -328,30 +370,84 @@ function ble-decode-unkbd {
 function ble-decode/PROLOGUE { :; }
 function ble-decode/EPILOGUE { :; }
 
+_ble_decode_input_count=0
+_ble_decode_input_buffer=()
+_ble_decode_input_original_info=()
+
+function ble-decode/.hook/show-progress {
+  if [[ $_ble_edit_info_scene == store ]]; then
+    _ble_decode_input_original_info=("${_ble_edit_info[@]}")
+    return
+  elif [[ $_ble_edit_info_scene == default ]]; then
+    _ble_decode_input_original_info=()
+  elif [[ $_ble_edit_info_scene != decode_input_progress ]]; then
+    return
+  fi
+
+  local mill=$(((${#chars[@]}-_ble_decode_input_count-1)*1000/${#chars[@]}))
+  local cent=${mill::${#mill}-1} frac=${mill:${#mill}-1}
+  ble-edit/info/show text "(${cent:-0}.$frac% processing input...)"
+  _ble_edit_info_scene=decode_input_progress
+}
+function ble-decode/.hook/erase-progress {
+  [[ $_ble_edit_info_scene == decode_input_progress ]] || return
+  if ((${#_ble_decode_input_original_info[@]})); then
+    ble-edit/info/show store "${_ble_decode_input_original_info[@]}"
+  else
+    ble-edit/info/default
+  fi
+}
+
 function ble-decode/.hook {
+  if ble/util/is-stdin-ready; then
+    ble/array#push _ble_decode_input_buffer "$@"
+    return
+  fi
+
+  local chars
+  chars=("${_ble_decode_input_buffer[@]}" "$@")
+  _ble_decode_input_buffer=()
+  _ble_decode_input_count=${#chars[@]}
+
   local IFS=$' \t\n'
   ble-decode/PROLOGUE
 
-  local c
-  for c; do
+  if ((_ble_decode_input_count>=100)); then
+    local c
+    for c in "${chars[@]}"; do
+      ((--_ble_decode_input_count%50==0)) && ble-decode/.hook/show-progress
 #%if debug_keylogger
-    ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
+      ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
 #%end
-    "ble-decode-byte+$bleopt_input_encoding" "$c"
-  done
+      "ble/encoding:$bleopt_input_encoding/decode" "$c"
+    done
+    ble-decode/.hook/erase-progress
+  else
+    local c
+    for c in "${chars[@]}"; do
+      ((--_ble_decode_input_count))
+#%if debug_keylogger
+      ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
+#%end
+      "ble/encoding:$bleopt_input_encoding/decode" "$c"
+    done
+  fi
 
   ble-decode/EPILOGUE
 }
 
-# ## 関数 ble-decode-byte bytes...
-# ##   バイト値を整数で受け取って、現在の文字符号化方式に従ってデコードをします。
-# ##   デコードした結果得られた文字は ble-decode-char を呼び出す事によって処理します。
-# function ble-decode-byte {
-#   while (($#)); do
-#     "ble-decode-byte+$bleopt_input_encoding" "$1"
-#     shift
-#   done
-# }
+## 公開関数 ble-decode-byte bytes...
+##   バイト値を整数で受け取って、現在の文字符号化方式に従ってデコードをします。
+##   デコードした結果得られた文字は ble-decode-char を呼び出す事によって処理します。
+##
+##   Note: 現在 ble.sh 内部では使用されていません。
+##     この関数はユーザが呼び出す事を想定した関数です。
+function ble-decode-byte {
+  while (($#)); do
+    "ble/encoding:$bleopt_input_encoding/decode" "$1"
+    shift
+  done
+}
 
 # **** ble-decode-char/csi ****
 
@@ -379,13 +475,25 @@ function ble-decode-char/csi/clear {
 function ble-decode-char/csi/.modify-kcode {
   local mod=$(($1-1))
   if ((mod>=0)); then
-    # Note: Meta 0x20 は独自
-    ((mod&0x01&&(kcode|=ble_decode_Shft),
-      mod&0x02&&(kcode|=ble_decode_Altr),
-      mod&0x04&&(kcode|=ble_decode_Ctrl),
-      mod&0x08&&(kcode|=ble_decode_Supr),
-      mod&0x10&&(kcode|=ble_decode_Hypr),
-      mod&0x20&&(kcode|=ble_decode_Meta)))
+    # Note: xterm, mintty では modifyOtherKeys で通常文字に対するシフトは
+    #   文字自体もそれに応じて変化させ、更に修飾フラグも設定する。
+    if ((33<=kcode&&kcode<_ble_decode_FunctionKeyBase)); then
+      if ((mod==0x01)); then
+        # S- だけの時には単に S- を外す
+        mod=0
+      elif ((65<=kcode&&kcode<=90)); then
+        # 他の修飾がある時は英大文字は小文字に統一する
+        ((kcode|=0x20))
+      fi
+    fi
+
+    # Note: Supr 0x08 以降は独自
+    ((mod&0x01&&(kcode|=_ble_decode_Shft),
+      mod&0x02&&(kcode|=_ble_decode_Meta),
+      mod&0x04&&(kcode|=_ble_decode_Ctrl),
+      mod&0x08&&(kcode|=_ble_decode_Supr),
+      mod&0x10&&(kcode|=_ble_decode_Hypr),
+      mod&0x20&&(kcode|=_ble_decode_Altr)))
   fi
 }
 function ble-decode-char/csi/.decode {
@@ -393,7 +501,7 @@ function ble-decode-char/csi/.decode {
   if ((char==126)); then
     if rex='^27;([1-9][0-9]*);?([1-9][0-9]*)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm "CSI 2 7 ; <mod> ; <char> ~" sequences
-      local kcode=$((BASH_REMATCH[2]&ble_decode_MaskChar))
+      local kcode=$((BASH_REMATCH[2]&_ble_decode_MaskChar))
       ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[1]}"
       csistat=$kcode
       return
@@ -408,17 +516,36 @@ function ble-decode-char/csi/.decode {
         return
       fi
     fi
+  elif ((char==117)); then
+    if rex='^([0-9]*)(;[0-9]*)?$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
+      # xterm/mlterm "CSI <char> ; <mode> u" sequences
+      # Note: 実は "CSI 1 ; mod u" が kp5 とする端末がある事に注意する。
+      local rematch1=${BASH_REMATCH[1]}
+      if [[ $rematch1 != 1 ]]; then
+        local kcode=$rematch1 mods=${BASH_REMATCH:${#rematch1}+1}
+        ble-decode-char/csi/.modify-kcode "$mods"
+        csistat=$kcode
+      fi
+      return
+    fi
   elif ((char==94||char==64)); then
     if rex='^[1-9][0-9]*$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # rxvt "CSI <kcode> ^", "CSI <kcode> @" sequences
       kcode=${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}
       if [[ $kcode ]]; then
-        ((kcode|=ble_decode_Ctrl,
-          char==64&&(kcode|=ble_decode_Shft)))
+        ((kcode|=_ble_decode_Ctrl,
+          char==64&&(kcode|=_ble_decode_Shft)))
         ble-decode-char/csi/.modify-kcode "${BASH_REMATCH[3]}"
         csistat=$kcode
         return
       fi
+    fi
+  elif ((char==99)); then
+    if rex='^>'; [[ $_ble_decode_csi_args =~ $rex ]]; then
+      # DA2 応答 "CSI > Pm c"
+      ble/term/DA2/notify "${_ble_decode_csi_args:1}"
+      csistat=$_ble_decode_KCODE_IGNORE
+      return
     fi
   fi
 
@@ -447,6 +574,7 @@ function ble-decode-char/csi/consume {
   (0)
     # CSI (155) もしくは ESC (27)
     ((_ble_decode_csi_mode=$1==155?2:1))
+    _ble_decode_csi_args=
     csistat=_ ;;
   (1)
     if ((char!=91)); then
@@ -499,23 +627,23 @@ function ble-decode-char {
 #%end
 
     # decode error character
-    if ((char&ble_decode_Erro)); then
-      ((char&=~ble_decode_Erro))
+    if ((char&_ble_decode_Erro)); then
+      ((char&=~_ble_decode_Erro))
       if [[ $bleopt_decode_error_char_vbell ]]; then
         local name; ble/util/sprintf name 'U+%04x' "$char"
         ble/term/visible-bell "received a misencoded char $name"
       fi
       [[ $bleopt_decode_error_char_abell ]] && ble/term/audible-bell
       [[ $bleopt_decode_error_char_discard ]] && continue
-      # ((char&ble_decode_Erro)) : 最適化(過去 sequence は全部吐く)?
+      # ((char&_ble_decode_Erro)) : 最適化(過去 sequence は全部吐く)?
     fi
 
-    # hook for quoted-insert, etc
+    # hook for quoted-insert etc
     if [[ $_ble_decode_char__hook ]]; then
-      ((char==ble_decode_IsolatedESC)) && char=27 # isolated ESC -> ESC
+      ((char==_ble_decode_IsolatedESC)) && char=27 # isolated ESC -> ESC
       local hook=$_ble_decode_char__hook
       _ble_decode_char__hook=
-      ble-decode-key/.call-widget "$hook $char" "$char"
+      ble-decode/widget/.call-async-read "$hook $char" "$char"
       continue
     fi
 
@@ -558,8 +686,10 @@ function ble-decode-char {
   return 0
 }
 
+## 関数 ble-decode-char/.getent
 ##   @var[in] _ble_decode_char2_seq
 ##   @var[in] char
+##   @var[out] ent
 function ble-decode-char/.getent {
   builtin eval "ent=\${_ble_decode_cmap_$_ble_decode_char2_seq[char]-}"
 
@@ -603,36 +733,38 @@ function ble-decode-char/.process-modifier {
 ##   指定されたキーを修飾して ble-decode-key に渡します。
 ##   kcode = 0..31 は C-@ C-a ... C-z C-[ C-\ C-] C-^ C-_ に変換されます。
 ##   ESC は次に来る文字を meta 修飾します。
-##   ble_decode_IsolatedESC は meta にならずに ESC として渡されます。
+##   _ble_decode_IsolatedESC は meta にならずに ESC として渡されます。
 ##   @param[in] kcode
 ##     処理対象のキーコードを指定します。
 function ble-decode-char/.send-modified-key {
   local kcode=$1
+  ((kcode==_ble_decode_KCODE_IGNORE)) && return
+
   if ((0<=kcode&&kcode<32)); then
-    ((kcode|=(kcode==0||kcode>26?64:96)|ble_decode_Ctrl))
+    ((kcode|=(kcode==0||kcode>26?64:96)|_ble_decode_Ctrl))
   fi
 
   if (($1==27)); then
-    ble-decode-char/.process-modifier "$ble_decode_Meta" && return
-  elif (($1==ble_decode_IsolatedESC)); then
-    ((kcode=(ble_decode_Ctrl|91)))
+    ble-decode-char/.process-modifier "$_ble_decode_Meta" && return
+  elif (($1==_ble_decode_IsolatedESC)); then
+    ((kcode=(_ble_decode_Ctrl|91)))
     if ! ble-decode/uses-isolated-esc; then
-      ble-decode-char/.process-modifier "$ble_decode_Meta" && return
+      ble-decode-char/.process-modifier "$_ble_decode_Meta" && return
     fi
   elif ((_ble_decode_KCODE_SHIFT<=$1&&$1<=_ble_decode_KCODE_HYPER)); then
     case "$1" in
     ($_ble_decode_KCODE_SHIFT)
-      ble-decode-char/.process-modifier "$ble_decode_Shft" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Shft" && return ;;
     ($_ble_decode_KCODE_CONTROL)
-      ble-decode-char/.process-modifier "$ble_decode_Ctrl" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Ctrl" && return ;;
     ($_ble_decode_KCODE_ALTER)
-      ble-decode-char/.process-modifier "$ble_decode_Altr" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Altr" && return ;;
     ($_ble_decode_KCODE_META)
-      ble-decode-char/.process-modifier "$ble_decode_Meta" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Meta" && return ;;
     ($_ble_decode_KCODE_SUPER)
-      ble-decode-char/.process-modifier "$ble_decode_Supr" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Supr" && return ;;
     ($_ble_decode_KCODE_HYPER)
-      ble-decode-char/.process-modifier "$ble_decode_Hypr" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Hypr" && return ;;
     esac
   fi
 
@@ -651,8 +783,10 @@ function ble-decode-char/.send-modified-key {
   ble-decode-key "$kcode"
 }
 
+function ble-decode-char/is-intermediate { [[ $_ble_decode_char2_seq ]]; }
+
 function ble-decode-char/bind {
-  local -a seq=($1)
+  local -a seq; ble/string#split-words seq "$1"
   local kc=$2
 
   local i iN=${#seq[@]} char tseq=
@@ -677,7 +811,7 @@ function ble-decode-char/bind {
   done
 }
 function ble-decode-char/unbind {
-  local -a seq=($1)
+  local -a seq; ble/string#split-words seq "$1"
 
   local tseq=
   local i iN=${#seq}
@@ -717,12 +851,13 @@ function ble-decode-char/unbind {
   done
 }
 function ble-decode-char/dump {
-  local tseq=$1 nseq=$2 ccode
+  local tseq=$1 nseq ccode
+  nseq=("${@:2}")
   builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
   for ccode in "${ccodes[@]}"; do
     local ret; ble-decode-unkbd "$ccode"
     local cnames
-    cnames=($nseq $ret)
+    cnames=("${nseq[@]}" "$ret")
 
     builtin eval "local ent=\${_ble_decode_cmap_$tseq[ccode]}"
     if [[ ${ent%_} ]]; then
@@ -732,7 +867,7 @@ function ble-decode-char/dump {
     fi
 
     if [[ ${ent//[0-9]/} == _ ]]; then
-      ble-decode-char/dump "${tseq}_$ccode" "${cnames[*]}"
+      ble-decode-char/dump "${tseq}_$ccode" "${cnames[@]}"
     fi
   done
 }
@@ -766,15 +901,26 @@ function ble-decode-char/dump {
 ##     このシーケンスを受け取った段階で command を実行する事が確定する事を表します。
 ##
 
-## 変数 _ble_decode_kmaps := ( ':' kmap ':' )+
+## 変数 _ble_decode_kmaps := ( ':' kmap )+
 ##   存在している kmap の名前の一覧を保持します。
 ##   既定の kmap (名前無し) は含まれません。
 _ble_decode_kmaps=
+## 関数 ble-decode/keymap/register kmap
+##   @exit 新しく keymap が登録された時に成功します。
+##     既存の keymap だった時に失敗します。
 function ble-decode/keymap/register {
   local kmap=$1
-  if [[ $kmap && $_ble_decode_kmaps != *":$kmap:"* ]]; then
-    _ble_decode_kmaps=$_ble_decode_kmaps:$kmap:
+  if [[ $kmap && :$_ble_decode_kmaps: != *:"$kmap":* ]]; then
+    _ble_decode_kmaps=$_ble_decode_kmaps:$kmap
   fi
+}
+function ble-decode/keymap/unregister {
+  _ble_decode_kmaps=$_ble_decode_kmaps:
+  _ble_decode_kmaps=${_ble_decode_kmaps//:"$1":/:}
+  _ble_decode_kmaps=${_ble_decode_kmaps%:}
+}
+function ble-decode/keymap/is-registered {
+  [[ :$_ble_decode_kmaps: == *:"$1":* ]]
 }
 
 function ble-decode/keymap/dump {
@@ -800,20 +946,19 @@ function ble-decode/DEFAULT_KEYMAP {
 }
 
 ## 設定関数 ble/widget/.SHELL_COMMAND command
-##   ble-bind -cf で登録されたコマンドを処理します。
+##   ble-bind -c で登録されたコマンドを処理します。
 function ble/widget/.SHELL_COMMAND { eval "$*"; }
 ## 設定関数 ble/widget/.EDIT_COMMAND command
-##   ble-bind -xf で登録されたコマンドを処理します。
+##   ble-bind -x で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND { eval "$*"; }
 
-
-## 関数 kmap ; ble-decode-key/bind keycodes command
+## 関数 ble-decode-key/bind keycodes command
+##   @param[in] keycodes command
+##   @var[in] kmap
 function ble-decode-key/bind {
   local dicthead=_ble_decode_${kmap}_kmap_
-  local -a seq=($1)
+  local -a seq; ble/string#split-words seq "$1"
   local cmd=$2
-
-  ble-decode/keymap/register "$kmap"
 
   local i iN=${#seq[@]} key tseq=
   for ((i=0;i<iN;i++)); do
@@ -839,7 +984,7 @@ function ble-decode-key/bind {
 
 function ble-decode-key/unbind {
   local dicthead=_ble_decode_${kmap}_kmap_
-  local -a seq=($1)
+  local -a seq; ble/string#split-words seq "$1"
 
   local i iN=${#seq[@]}
   local key=${seq[iN-1]}
@@ -909,13 +1054,13 @@ function ble-decode-key/dump {
       # ('ble/widget/.insert-string '*)
       #   echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/.insert-string }'" ;;
       ('ble/widget/.SHELL_COMMAND '*)
-        echo "ble-bind$kmapopt -cf '${knames//$q/$Q}' '${cmd#ble/widget/.SHELL_COMMAND }'" ;;
+        echo "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
       ('ble/widget/.EDIT_COMMAND '*)
-        echo "ble-bind$kmapopt -xf '${knames//$q/$Q}' '${cmd#ble/widget/.EDIT_COMMAND }'" ;;
+        echo "ble-bind$kmapopt -x '${knames//$q/$Q}' ${cmd#ble/widget/.EDIT_COMMAND }" ;;
       ('ble/widget/'*)
         echo "ble-bind$kmapopt -f '${knames//$q/$Q}' '${cmd#ble/widget/}'" ;;
       (*)
-        echo "ble-bind$kmapopt -xf '${knames//$q/$Q}' '${cmd}'" ;;
+        echo "ble-bind$kmapopt -@ '${knames//$q/$Q}' '${cmd}'" ;;
       esac
     fi
 
@@ -925,7 +1070,7 @@ function ble-decode-key/dump {
   done
 }
 
-## 変数 _ble_decode_key__kmap
+## 変数 _ble_decode_keymap
 ##
 ##   現在選択されている keymap
 ##
@@ -933,7 +1078,7 @@ function ble-decode-key/dump {
 ##
 ##   呼び出し元の keymap を記録するスタック
 ##
-_ble_decode_key__kmap=emacs
+_ble_decode_keymap=emacs
 _ble_decode_keymap_stack=()
 
 _ble_decode_keymap_load=
@@ -944,7 +1089,7 @@ function ble-decode/keymap/load {
   ble-decode/keymap/is-keymap "$1" && return 0
 
   local init=ble-decode/keymap:$1/define
-  if ble/util/isfunction "$init"; then
+  if ble/is-function "$init"; then
     "$init" && ble-decode/keymap/is-keymap "$1"
   elif [[ $_ble_decode_keymap_load != *s* ]]; then
     ble-import "keymap/$1.sh" &&
@@ -958,13 +1103,12 @@ function ble-decode/keymap/load {
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
   if ble-decode/keymap/is-keymap "$1"; then
-    ble/array#push _ble_decode_keymap_stack "$_ble_decode_key__kmap"
-    _ble_decode_key__kmap=$1
+    ble/array#push _ble_decode_keymap_stack "$_ble_decode_keymap"
+    _ble_decode_keymap=$1
   elif ble-decode/keymap/load "$1" && ble-decode/keymap/is-keymap "$1"; then
     ble-decode/keymap/push "$1" # 再実行
   else
     echo "[ble: keymap '$1' not found]" >&2
-    declare -p _ble_decode_isearch_kmap_
     return 1
   fi
 }
@@ -973,15 +1117,70 @@ function ble-decode/keymap/pop {
   local count=${#_ble_decode_keymap_stack[@]}
   local last=$((count-1))
   ble-assert '((last>=0))' || return
-  _ble_decode_key__kmap=${_ble_decode_keymap_stack[last]}
+  _ble_decode_keymap=${_ble_decode_keymap_stack[last]}
   unset '_ble_decode_keymap_stack[last]'
 }
 
 
-## 今迄に入力された未処理のキーの列を保持します
-_ble_decode_key__seq= # /(_\d+)*/
+## @var _ble_decode_key__seq
+##   今迄に入力された未処理のキーの列を保持します
+##   /(_\d+)*/ の形式の文字列です。
+_ble_decode_key__seq=
 
+## @var _ble_decode_key__hook
+##   キー処理に対する hook を外部から設定する為の変数です。
 _ble_decode_key__hook=
+
+## 関数 ble-decode-key/is-intermediate
+##   未処理のキーがあるかどうかを判定します。
+function ble-decode-key/is-intermediate { [[ $_ble_decode_key__seq ]]; }
+
+## @arr _ble_decode_key_batch
+_ble_decode_key_batch=()
+
+function ble-decode-key/batch/flush {
+  ((${#_ble_decode_key_batch[@]})) || return
+  eval "local command=\${${dicthead}[$_ble_decode_KCODE_BATCH_CHAR]-}"
+  command=${command:2}
+  if [[ $command ]]; then
+    local chars; chars=("${_ble_decode_key_batch[@]}")
+    _ble_decode_key_batch=()
+    ble-decode/widget/call-interactively "$command" "${chars[@]}"; local ext=$?
+    ((ext!=125)) && return
+  fi
+
+  ble-decode/widget/call-interactively ble/widget/__batch_char__.default "${chars[@]}"; local ext=$?
+  return "$ext"
+}
+function ble/widget/__batch_char__.default {
+  builtin eval "local widget_defchar=\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]-}"
+  widget_defchar=${widget_defchar:2}
+  builtin eval "local widget_default=\${${dicthead}[$_ble_decode_KCODE_DEFAULT]-}"
+  widget_default=${widget_default:2}
+
+  local -a unprocessed_chars=()
+  local key command
+  for key in "${KEYS[@]}"; do
+    if [[ $widget_defchar ]]; then
+      ble-decode/widget/call-interactively "$widget_defchar" "$key"; local ext=$?
+      ((ext!=125)) && continue
+    fi
+    if [[ $widget_default ]]; then
+      ble-decode/widget/call-interactively "$widget_default" "$key"; local ext=$?
+      ((ext!=125)) && continue
+    fi
+
+    ble/array#push unprocessed_chars "$key"
+  done
+
+  if ((${#unprocessed_chars[@]})); then
+    local ret; ble-decode-unkbd "${unprocessed_chars[@]}"
+    [[ $bleopt_decode_error_kseq_vbell ]] && ble/term/visible-bell "unprocessed chars: $ret"
+    [[ $bleopt_decode_error_kseq_abell ]] && ble/term/audible-bell
+  fi
+  return 0
+}
+
 
 ## 関数 ble-decode-key key
 ##   キー入力の処理を行います。登録されたキーシーケンスに一致した場合、
@@ -1004,18 +1203,18 @@ function ble-decode-key {
     if [[ $_ble_decode_key__hook ]]; then
       local hook=$_ble_decode_key__hook
       _ble_decode_key__hook=
-      ble-decode-key/.call-widget "$hook $key" "$key"
+      ble-decode/widget/.call-async-read "$hook $key" "$key"
       continue
     fi
 
-    local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+    local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
 
     builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
     if [[ $ent == 1:* ]]; then
       # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
       local command=${ent:2}
       if [[ $command ]]; then
-        ble-decode-key/.invoke-command
+        ble-decode/widget/.call-keyseq
       else
         _ble_decode_key__seq=
       fi
@@ -1027,8 +1226,8 @@ function ble-decode-key {
       ble-decode-key/.invoke-partial-match "$key" && continue
 
       # エラーの表示
-      local kcseq=${_ble_decode_key__seq}_$key ret
-      ble-decode-unkbd "${kcseq//_/ }"
+      local kseq=${_ble_decode_key__seq}_$key ret
+      ble-decode-unkbd "${kseq//_/ }"
       local kspecs=$ret
       [[ $bleopt_decode_error_kseq_vbell ]] && ble/term/visible-bell "unbound keyseq: $kspecs"
       [[ $bleopt_decode_error_kseq_abell ]] && ble/term/audible-bell
@@ -1047,6 +1246,12 @@ function ble-decode-key {
     fi
 
   done
+
+  if ((${#_ble_decode_key_batch[@]})); then
+    if ! ble-decode/has-input || ((${#_ble_decode_key_batch[@]}>=50)); then
+      ble-decode-key/batch/flush
+    fi
+  fi
   return 0
 }
 
@@ -1078,7 +1283,7 @@ function ble-decode-key {
 ##     は、呼出元からは変化していない様に見えます。
 ##
 function ble-decode-key/.invoke-partial-match {
-  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+  local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
 
   local next=$1
   if [[ $_ble_decode_key__seq ]]; then
@@ -1089,7 +1294,7 @@ function ble-decode-key/.invoke-partial-match {
     if [[ $ent == '_:'* ]]; then
       local command=${ent:2}
       if [[ $command ]]; then
-        ble-decode-key/.invoke-command
+        ble-decode/widget/.call-keyseq
       else
         _ble_decode_key__seq=
       fi
@@ -1111,21 +1316,27 @@ function ble-decode-key/.invoke-partial-match {
     # 通常の文字などは全てここに流れてくる事になる。
 
     # 既定の文字ハンドラ
-    local key=$1 seq_save=$_ble_decode_key__seq
+    local key=$1
     if ble-decode-key/ischar "$key"; then
+      if ble-decode/has-input && eval "[[ \${${dicthead}[$_ble_decode_KCODE_BATCH_CHAR]-} ]]"; then
+        ble/array#push _ble_decode_key_batch "$key"
+        return 0
+      fi
+
       builtin eval "local command=\${${dicthead}[$_ble_decode_KCODE_DEFCHAR]-}"
       command=${command:2}
       if [[ $command ]]; then
-        ble-decode-key/.invoke-command; local ext=$?
+        local seq_save=$_ble_decode_key__seq
+        ble-decode/widget/.call-keyseq; local ext=$?
         ((ext!=125)) && return
         _ble_decode_key__seq=$seq_save # 125 の時はまた元に戻して次の試行を行う
       fi
     fi
-    
+
     # 既定のキーハンドラ
     builtin eval "local command=\${${dicthead}[$_ble_decode_KCODE_DEFAULT]-}"
     command=${command:2}
-    ble-decode-key/.invoke-command; local ext=$?
+    ble-decode/widget/.call-keyseq; local ext=$?
     ((ext!=125)) && return
 
     return 1
@@ -1134,17 +1345,33 @@ function ble-decode-key/.invoke-partial-match {
 
 function ble-decode-key/ischar {
   local key=$1
-  (((key&ble_decode_MaskFlag)==0&&32<=key&&key<ble_decode_function_key_base))
+  (((key&_ble_decode_MaskFlag)==0&&32<=key&&key<_ble_decode_FunctionKeyBase))
 }
-function ble-decode-key/.invoke-hook {
+
+#------------------------------------------------------------------------------
+# ble-decode/widget
+
+## @var _ble_decode_widget_last
+##   次のコマンドで LASTWIDGET として使用するコマンド名を保持します。
+##   以下の関数で使用されます。
+##
+##   - ble-decode/widget/.call-keyseq
+##   - ble-decode/widget/.call-async-read
+##   - ble-decode/widget/call
+##   - ble-decode/widget/call-interactively
+##   - (keymap/vi.sh) ble/keymap:vi/repeat/invoke
+##
+_ble_decode_widget_last=
+
+function ble-decode/widget/.invoke-hook {
   local kcode=$1
-  local dicthead=_ble_decode_${_ble_decode_key__kmap}_kmap_
+  local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
   builtin eval "local hook=\${$dicthead[kcode]-}"
   hook=${hook:2}
   [[ $hook ]] && builtin eval -- "$hook"
 }
 
-## 関数 ble-decode-key/.invoke-command
+## 関数 ble-decode/widget/.call-keyseq
 ##   コマンドが有効な場合に、指定したコマンドを適切な環境で実行します。
 ##   @var[in] command
 ##     起動するコマンドを指定します。空の場合コマンドは実行されません。
@@ -1171,7 +1398,8 @@ function ble-decode-key/.invoke-hook {
 #   コマンドを呼び出す時には常に _ble_decode_key__seq が空になっている事に注意。
 #   部分一致などの場合に後続のキーが存在する場合には、それらは呼出元で管理しなければならない。
 #
-function ble-decode-key/.invoke-command {
+function ble-decode/widget/.call-keyseq {
+  ble-decode-key/batch/flush
   [[ $command ]] || return 125
 
   # for keylog suppress
@@ -1179,34 +1407,90 @@ function ble-decode-key/.invoke-command {
   local _ble_decode_keylog_depth=$((old_suppress+1))
 
   # setup variables
-  local WIDGET=$command KEYMAP=$_ble_decode_key__kmap
+  local WIDGET=$command KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
+  _ble_decode_widget_last=$WIDGET
   _ble_decode_key__seq=
 
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
   builtin eval -- "$WIDGET"; local ext=$?
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
   return "$ext"
 }
-function ble-decode-key/.call-widget {
+## 関数 ble-decode/widget/.call-async-read
+##   _ble_decode_{char,key}__hook の呼び出しに使用します。
+##   _ble_decode_widget_last は更新しません。
+function ble-decode/widget/.call-async-read {
   # for keylog suppress
   local old_suppress=$_ble_decode_keylog_depth
   local _ble_decode_keylog_depth=$((old_suppress+1))
 
   # setup variables
-  local WIDGET=$1 KEYMAP=$_ble_decode_key__kmap
+  local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=($2)
-
   builtin eval -- "$WIDGET"
 }
-function ble-decode/invoke-widget {
-  local WIDGET=ble/widget/$1 KEYMAP=$_ble_decode_key__kmap
+## 関数 ble-decode/widget/call-interactively widget keys...
+## 関数 ble-decode/widget/call widget keys...
+##   指定した名前の widget を呼び出します。
+##   call-interactively では、現在の keymap に応じた __before_widget__
+##   及び __after_widget__ フックも呼び出します。
+function ble-decode/widget/call-interactively {
+  local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS; KEYS=("${@:2}")
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_BEFORE_COMMAND"
+  _ble_decode_widget_last=$WIDGET
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
   builtin eval -- "$WIDGET"; local ext=$?
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_AFTER_COMMAND"
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
   return "$ext"
 }
+function ble-decode/widget/call {
+  local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
+  local -a KEYS; KEYS=("${@:2}")
+  _ble_decode_widget_last=$WIDGET
+  builtin eval -- "$WIDGET"
+}
+## 関数 ble-decode/widget/suppress-widget
+##   __before_widget__ に登録された関数から呼び出します。
+##   __before_widget__ 内で必要な処理を完了した時に、
+##   WIDGET の呼び出しをキャンセルします。
+##   __after_widget__ の呼び出しはキャンセルされません。
+function ble-decode/widget/suppress-widget {
+  WIDGET=
+}
+
+#------------------------------------------------------------------------------
+# ble-decode/has-input
+
+## 関数 ble-decode/has-input
+##   ユーザからの未処理の入力があるかどうかを判定します。
+##
+##   @exit
+##     ユーザからの未処理の入力がある場合に成功します。
+##     それ以外の場合に失敗します。
+##
+##   Note: Bash 4.0 未満では read -t 0 が使えない為、
+##     正しく判定する事ができません。
+##
+function ble-decode/has-input {
+  ((_ble_decode_input_count)) ||
+    ble/util/is-stdin-ready ||
+    ble/encoding:"$bleopt_input_encoding"/is-intermediate ||
+    ble-decode-char/is-intermediate
+
+  # Note: 文字の途中やキーのエスケープシーケンスの途中の時には、
+  #   標準有力に文字がなくても Readline が先読みして溜めているので、
+  #   それも考慮に入れて未処理の入力があるかどうかを判定する。
+  #
+  # Note: キーシーケンスの途中の時には Readline が溜めているという事もないし、
+  #   またユーザが続きを入力するのを待っている状態なので idle と思って良い。
+  #   従って ble-decode-key/is-intermediate についてはチェックしない。
+}
+function ble/util/idle/IS_IDLE {
+  ! ble-decode/has-input
+}
+
+#------------------------------------------------------------------------------
 
 #%if debug_keylogger
 _ble_keylogger_enabled=0
@@ -1265,13 +1549,24 @@ function ble-decode/keylog/pop {
 
 # **** ble-bind ****
 
+function ble-bind/load-keymap {
+  local kmap=$1
+  ble-decode/keymap/is-registered "$kmap" && return 0
+  ble-decode/keymap/register "$kmap"
+  ble-decode/keymap/load "$kmap" && return 0
+  ble-decode/keymap/unregister "$kmap"
+  echo "ble-bind: the keymap '$kmap' is not defined" >&2
+  return 1
+}
+
 function ble-bind/option:help {
   ble/util/cat <<EOF
 ble-bind --help
-ble-bind -k charspecs [keyspec]
-ble-bind [-m kmapname] [-scx@] -f keyspecs [command]
-ble-bind [-DdL]
-ble-bind --list-functions
+ble-bind -k cspecs [kspec]
+ble-bind --csi PsFt kspec
+ble-bind [-m keymap] -fxc@s kspecs command
+ble-bind [-m keymap]... (-PD|--print|--dump)
+ble-bind (-L|--list-widgets)
 
 EOF
 }
@@ -1291,11 +1586,12 @@ function ble-bind/check-argunment {
 function ble-bind/option:csi {
   local ret kcode=
   if [[ $2 ]]; then
-    ble-decode-kbd "$2"; kcode=($ret)
+    ble-decode-kbd "$2"
+    ble/string#split-words kcode "$ret"
     if ((${#kcode[@]}!=1)); then
       echo "ble-bind --csi: the second argument is not a single key!" >&2
       return 1
-    elif ((kcode&~ble_decode_MaskChar)); then
+    elif ((kcode&~_ble_decode_MaskChar)); then
       echo "ble-bind --csi: the second argument should not have modifiers!" >&2
       return 1
     fi
@@ -1312,7 +1608,7 @@ function ble-bind/option:csi {
     #   - CSI <num> ^         C-kname (rxvt)
     #   - CSI <num> @         C-S-kname (rxvt)
     #
-    _ble_decode_csimap_tilde[BASH_REMATCH[1]]="$kcode"
+    _ble_decode_csimap_tilde[BASH_REMATCH[1]]=$kcode
 
     # "CSI <num> $" は CSI sequence の形式に沿っていないので、
     # 個別に登録する必要がある。
@@ -1324,7 +1620,7 @@ function ble-bind/option:csi {
       ble/array#push cseq "$ret"
     done
     if [[ $kcode ]]; then
-      ble-decode-char/bind "${cseq[*]}" "$((kcode|ble_decode_Shft))"
+      ble-decode-char/bind "${cseq[*]}" $((kcode|_ble_decode_Shft))
     else
       ble-decode-char/unbind "${cseq[*]}"
     fi
@@ -1338,12 +1634,37 @@ function ble-bind/option:csi {
   fi
 }
 
-function ble-bind/option:list-functions {
+function ble-bind/option:list-widgets {
   declare -f | ble/bin/sed -n -r 's/^ble\/widget\/([[:alpha:]][^.[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
+}
+function ble-bind/option:dump {
+  if (($#)); then
+    local keymap
+    for keymap; do
+      ble-decode/keymap/dump "$keymap"
+    done
+  else
+    ble/util/declare-print-definitions "${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}" "${!_ble_decode_csimap_@}"
+    ble-decode/keymap/dump
+  fi
+}
+function ble-bind/option:print {
+  local keymap
+  ble-decode/DEFAULT_KEYMAP -v keymap # 初期化を強制する
+  if (($#)); then
+    for keymap; do
+      ble-decode-key/dump "$keymap"
+    done
+  else
+    ble-decode-char/csi/print
+    ble-decode-char/dump
+    ble-decode-key/dump
+  fi
 }
 
 function ble-bind {
-  local kmap=$ble_bind_keymap flags= ret
+  local kmap=$ble_bind_keymap ret
+  local -a keymaps; keymaps=()
 
   local arg c
   while (($#)); do
@@ -1356,8 +1677,10 @@ function ble-bind {
         ble-bind/check-argunment --csi 2 "$#" || return
         ble-bind/option:csi "$1" "$2"
         shift 2 ;;
-      (list-functions)
-        ble-bind/option:list-functions ;;
+      (list-widgets|list-functions)
+        ble-bind/option:list-widgets ;;
+      (dump) ble-bind/option:dump "${keymaps[@]}" ;;
+      (print) ble-bind/option:print "${keymaps[@]}" ;;
       (*)
         echo "ble-bind: unrecognized long option $arg" >&2
         return 2 ;;
@@ -1366,15 +1689,7 @@ function ble-bind {
       arg=${arg:1}
       while ((${#arg})); do
         c=${arg::1} arg=${arg:1}
-        case "$c" in
-        (D)
-          ble/util/declare-print-definitions "${!_ble_decode_kbd__@}" "${!_ble_decode_cmap_@}" "${!_ble_decode_csimap_@}"
-          ble-decode/keymap/dump ;;
-        (d)
-          ble-decode-char/csi/print
-          ble-decode-char/dump
-          [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
-          ble-decode-key/dump ;;
+        case $c in
         (k)
           if (($#<2)); then
             echo "ble-bind: the option \`-k' requires two arguments." >&2
@@ -1393,13 +1708,20 @@ function ble-bind {
           if (($#<1)); then
             echo "ble-bind: the option \`-m' requires an argument." >&2
             return 2
+          elif ! ble-bind/load-keymap "$1"; then
+            return 1
           fi
           kmap=$1
+          ble/array#push keymaps "$1"
           shift ;;
-        (['@xcs']) flags=${flags}$c ;;
-        (f)
+        (D) ble-bind/option:dump "${keymaps[@]}" ;;
+        ([Pd]) ble-bind/option:print "${keymaps[@]}" ;;
+        (['fxc@s'])
+          # 旧形式の指定 -xf や -cf に対応する処理
+          [[ $c != f && $arg == f* ]] && arg=${arg:1}
+
           if (($#<2)); then
-            echo "ble-bind: the option \`-f' requires two arguments." >&2
+            echo "ble-bind: the option \`-$c' requires two arguments." >&2
             return 2
           fi
 
@@ -1408,29 +1730,29 @@ function ble-bind {
             local command=$2
 
             # コマンドの種類
-            case "$flags" in
-            ('')
+            case $c in
+            (f)
               # ble/widget/ 関数
               command=ble/widget/$command
 
               # check if is function
               local arr; ble/string#split-words arr "$command"
-              if ! ble/util/isfunction "${arr[0]}"; then
-                if [[ $command == ble/widget/ble/widget/* ]]; then
-                  echo "ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'. Note: The prefix 'ble/widget/' is redundant" 1>&2
-                else
-                  echo "ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'" 1>&2
-                fi
+              if ! ble/is-function "${arr[0]}"; then
+                local message="ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'."
+                [[ $command == ble/widget/ble/widget/* ]] &&
+                  message="$message Note: The prefix 'ble/widget/' is redundant"
+                echo "$message" 1>&2
                 return 1
               fi ;;
             (x) # 編集用の関数
               local q=\' Q="''\'"
               command="ble/widget/.EDIT_COMMAND '${command//$q/$Q}'" ;;
             (c) # コマンド実行
-              command="ble/widget/.SHELL_COMMAND $command" ;;
+              local q=\' Q="''\'"
+              command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
             ('@') ;; # 直接実行
             (*)
-              echo "error: unknowon combination of flags \`-$flags'." 1>&2
+              echo "error: unsupported binding type \`-$c'." 1>&2
               return 1 ;;
             esac
 
@@ -1443,7 +1765,7 @@ function ble-bind {
           flags=
           shift 2 ;;
         (L)
-          ble-bind/option:list-functions ;;
+          ble-bind/option:list-widgets ;;
         (*)
           echo "ble-bind: unrecognized short option \`-$c'." >&2
           return 2 ;;
@@ -1464,7 +1786,7 @@ function ble-bind {
 # **** ESC ESC ****                                           @decode.bind.esc2
 
 ## 関数 ble/widget/.ble-decode-char ...
-##   bind.sh で設定する bind で使用する。
+##   lib/init-bind.sh で設定する bind で使用する。
 function ble/widget/.ble-decode-char {
   ble-decode-char "$@"
 }
@@ -1482,6 +1804,21 @@ function ble-decode-bind/uvw {
   builtin bind -x '"":ble-decode/.hook 22; builtin eval "$_ble_decode_bind_hook"'
   builtin bind -x '"":ble-decode/.hook 23; builtin eval "$_ble_decode_bind_hook"'
   builtin bind -x '"":ble-decode/.hook 127; builtin eval "$_ble_decode_bind_hook"'
+}
+
+# **** POSIXLY_CORRECT workaround ****
+
+# ble.pp の関数を上書き
+#
+# Note: bash で set -o vi の時、
+#   unset POSIXLY_CORRECT や local POSIXLY_CORRECT が設定されると、
+#   C-i の既定の動作の切り替えに伴って C-i の束縛が消滅する。
+#   ユーザが POSIXLY_CORRECT を触った時や自分で触った時に、
+#   改めて束縛し直す必要がある。
+#
+function ble/base/workaround-POSIXLY_CORRECT {
+  [[ $_ble_decode_bind_state == none ]] && return
+  builtin bind -x '"\C-i":ble-decode/.hook 9; builtin eval "$_ble_decode_bind_hook"'
 }
 
 # **** ble-decode-bind ****                                   @decode.bind.main
@@ -1571,12 +1908,12 @@ function ble-decode-bind/cmap/initialize {
 
   [[ -d $_ble_base_cache ]] || ble/bin/mkdir -p "$_ble_base_cache"
 
-  local init=$_ble_base/cmap/default.sh
+  local init=$_ble_base/lib/init-cmap.sh
   local dump=$_ble_base_cache/cmap+default.$_ble_decode_kbd_ver.$TERM.dump
   if [[ $dump -nt $init ]]; then
     source "$dump"
   else
-    echo 'ble.sh: generating "'"$dump"'"...' 1>&2
+    ble-edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
     source "$init"
     ble-bind -D | ble/bin/sed '
       s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
@@ -1590,11 +1927,11 @@ function ble-decode-bind/cmap/initialize {
     local fbinder=$_ble_base_cache/cmap+default.binder-source
     _ble_decode_bind_fbinder=$fbinder
     if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
-      echo -n 'ble.sh: initializing multichar sequence binders... '
+      ble-edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... '
       ble-decode-bind/cmap/.generate-binder-template >| "$fbinder"
       binder=ble-decode-bind/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
       binder=ble-decode-bind/cmap/.emit-bindr source "$fbinder" >| "$fbinder.unbind"
-      echo 'done'
+      ble-edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... done'
     fi
   fi
 }
@@ -1724,7 +2061,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
 
 function ble-decode/bind {
   local file=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
-  [[ $file -nt $_ble_base/bind.sh ]] || source "$_ble_base/bind.sh"
+  [[ $file -nt $_ble_base/lib/init-bind.sh ]] || source "$_ble_base/lib/init-bind.sh"
 
   # * 一時的に 'set convert-meta off' にする。
   #
@@ -1742,24 +2079,23 @@ function ble-decode/bind {
   _ble_decode_bind__uvwflag=
 }
 function ble-decode/unbind {
-  local encoding_clear=ble/encoding:$bleopt_input_encoding/clear
-  ble/util/isfunction "$encoding_clear" && "$encoding_clear"
+  ble/function#try ble/encoding:"$bleopt_input_encoding"/clear
   source "$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind"
 }
 
 #------------------------------------------------------------------------------
 
-function ble-decode-initialize {
+function ble-decode/initialize {
   ble-decode-bind/cmap/initialize
 }
 
 _ble_decode_bind_state=none
 function ble-decode/reset-default-keymap {
   # 現在の ble-decode/keymap の設定
-  ble-decode/DEFAULT_KEYMAP -v _ble_decode_key__kmap # 0ms
-  ble-decode-key/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
+  ble-decode/DEFAULT_KEYMAP -v _ble_decode_keymap # 0ms
+  ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
 }
-function ble-decode-attach {
+function ble-decode/attach {
   [[ $_ble_decode_bind_state != none ]] && return
   ble/util/save-editing-mode _ble_decode_bind_state
   [[ $_ble_decode_bind_state == none ]] && return 1
@@ -1774,13 +2110,15 @@ function ble-decode-attach {
   ble-decode/bind # 20ms
 
   # 失敗すると悲惨なことになるので抜ける。
-  if ! ble/is-array "_ble_decode_${_ble_decode_key__kmap}_kmap_"; then
-    echo "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_key__kmap' is not defined." >&2
-    ble-decode-detach
+  if ! ble/is-array "_ble_decode_${_ble_decode_keymap}_kmap_"; then
+    echo "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_keymap' is not defined." >&2
+    ble-decode/detach
     return 1
   fi
+
+  printf '\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
 }
-function ble-decode-detach {
+function ble-decode/detach {
   [[ $_ble_decode_bind_state != none ]] || return
 
   local current_editing_mode=
@@ -1803,28 +2141,80 @@ function ble-decode-detach {
   _ble_decode_bind_state=none
 }
 
-# function bind {
-#   if ((_ble_decode_bind_state)); then
-#     echo Error
-#   else
-#     builtin bind "$@"
-#   fi
-# }
+function ble-decode/bind.override {
+  local -a options; options=()
+  local opt_error= q=\' Q="'\''"
+  local opt_literal=
+
+  while (($#)); do
+    local arg=$1; shift
+    if [[ ! $opt_literal && $arg == -* ]]; then
+      if [[ $arg == -- ]]; then
+        opt_literal=1
+      else
+        local i iN=${#arg} c
+        for ((i=1;i<iN;i++)); do
+          local c=${arg:i:1}
+          case $c in
+          ([lpsvPSVX])
+            ble/array#push options "$arg" ;;
+          ([mqurfx])
+            echo "ble.sh: bind: unsupported option $arg '${1//$q/$Q}'" >&2; shift
+            opt_error=1 ;;
+          ('-')
+            echo "ble.sh: bind: invalid option '${arg//$q/$Q}'" >&2
+            opt_error=1 ;;
+          (*)
+            echo "ble.sh: bind: invalid option '-${c//$q/$Q}'" >&2
+            opt_error=1 ;;
+          esac
+        done
+      fi
+    else
+      case $arg in
+      ('set '*) ble/array#push options "$arg" ;;
+      (*:*)
+        echo "ble.sh: bind: unsupported binding '${arg//$q/$Q}'" >&2
+        opt_error=1 ;;
+      (*)
+        echo "ble.sh: bind: invalid readline-command '${arg//$q/$Q}'" >&2
+        opt_error=1 ;;
+      esac
+    fi
+  done
+
+  if [[ $opt_error ]]; then
+    return 1
+  else
+    builtin bind "${options[@]}"
+  fi
+}
+
+function bind {
+  if [[ $_ble_decode_bind_state != none ]]; then
+    ble-decode/bind.override "$@"
+  else
+    builtin bind "$@"
+  fi
+}
 
 #------------------------------------------------------------------------------
 # **** encoding = UTF-8 ****
 
 function ble/encoding:UTF-8/generate-binder { :; }
 
-# # bind.sh の esc1B==3 の設定用
-# # これは bind.sh の中にある物と等価なので殊更に設定しなくて良い。
+# 以下は lib/init-bind.sh の中にある物と等価なので殊更に設定しなくて良い。
+
+# ## 関数 ble/encoding:UTF-8/generate-binder
+# ##   lib/init-bind.sh の esc1B==3 の設定用。
+# ##   lib/init-bind.sh の中から呼び出される。
 # function ble/encoding:UTF-8/generate-binder {
-#   ble-decode/generate-binder/bind-s '"\C-@":"\xC0\x80"'
-#   ble-decode/generate-binder/bind-s '"\e":"\xDF\xBF"' # isolated ESC (U+07FF)
+#   ble/init:bind/bind-s '"\C-@":"\xC0\x80"'
+#   ble/init:bind/bind-s '"\e":"\xDF\xBF"' # isolated ESC (U+07FF)
 #   local i ret
 #   for i in {0..255}; do
 #     ble-decode-bind/c2dqs "$i"
-#     ble-decode/generate-binder/bind-s "\"\e$ret\": \"\xC0\x9B$ret\""
+#     ble/init:bind/bind-s "\"\e$ret\": \"\xC0\x9B$ret\""
 #   done
 # }
 
@@ -1834,7 +2224,10 @@ function ble/encoding:UTF-8/clear {
   _ble_decode_byte__utf_8__mode=0
   _ble_decode_byte__utf_8__code=0
 }
-function ble-decode-byte+UTF-8 {
+function ble/encoding:UTF-8/is-intermediate {
+  ((_ble_decode_byte__utf_8__mode))
+}
+function ble/encoding:UTF-8/decode {
   local code=$_ble_decode_byte__utf_8__code
   local mode=$_ble_decode_byte__utf_8__mode
   local byte=$1
@@ -1842,7 +2235,7 @@ function ble-decode-byte+UTF-8 {
   (('
     byte&=0xFF,
     (mode!=0&&(byte&0xC0)!=0x80)&&(
-      cha0=ble_decode_Erro|code,mode=0
+      cha0=_ble_decode_Erro|code,mode=0
     ),
     byte<0xF0?(
       byte<0xC0?(
@@ -1850,7 +2243,7 @@ function ble-decode-byte+UTF-8 {
           char=byte
         ):(
           mode==0?(
-            char=ble_decode_Erro|byte
+            char=_ble_decode_Erro|byte
           ):(
             code=code<<6|byte&0x3F,
             --mode==0&&(char=code)
@@ -1874,7 +2267,7 @@ function ble-decode-byte+UTF-8 {
         byte<0xFE?(
           code=byte&0x01,mode=5
         ):(
-          char=ble_decode_Erro|byte
+          char=_ble_decode_Erro|byte
         )
       )
     )
@@ -1887,10 +2280,10 @@ function ble-decode-byte+UTF-8 {
   ((${#CHARS[*]})) && ble-decode-char "${CHARS[@]}"
 }
 
-## 関数 ble-text-c2bc+UTF-8 code
+## 関数 ble/encoding:UTF-8/c2bc code
 ##   @param[in]  code
 ##   @var  [out] ret
-function ble-text-c2bc+UTF-8 {
+function ble/encoding:UTF-8/c2bc {
   local code=$1
   ((ret=code<0x80?1:
     (code<0x800?2:
@@ -1898,18 +2291,20 @@ function ble-text-c2bc+UTF-8 {
     (code<0x200000?4:5)))))
 }
 
-# bind.sh の esc1B==3 の設定用
+## 関数 ble/encoding:C/generate-binder
+##   lib/init-bind.sh の esc1B==3 の設定用。
+##   lib/init-bind.sh の中から呼び出される。
 function ble/encoding:C/generate-binder {
-  ble-decode/generate-binder/bind-s '"\C-@":"\x9B\x80"'
-  ble-decode/generate-binder/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FF)
+  ble/init:bind/bind-s '"\C-@":"\x9B\x80"'
+  ble/init:bind/bind-s '"\e":"\x9B\x8B"' # isolated ESC (U+07FF)
   local i ret
   for i in {0..255}; do
     ble-decode-bind/c2dqs "$i"
-    ble-decode/generate-binder/bind-s "\"\e$ret\": \"\x9B\x9B$ret\""
+    ble/init:bind/bind-s "\"\e$ret\": \"\x9B\x9B$ret\""
   done
 }
 
-## 関数 ble-decode-byte+C byte
+## 関数 ble/encoding:C/decode byte
 ##
 ##   受け取ったバイトをそのまま文字コードと解釈する。
 ##   但し、bind の都合 (bashbug の回避) により以下の変換を行う。
@@ -1926,7 +2321,10 @@ _ble_encoding_c_csi=
 function ble/encoding:C/clear {
   _ble_encoding_c_csi=
 }
-function ble-decode-byte+C {
+function ble/encoding:C/is-intermediate {
+  [[ $_ble_encoding_c_csi ]]
+}
+function ble/encoding:C/decode {
   if [[ $_ble_encoding_c_csi ]]; then
     _ble_encoding_c_csi=
     case $1 in
@@ -1947,7 +2345,7 @@ function ble-decode-byte+C {
   fi
 }
 
-## 関数 ble-text-c2bc+C charcode ; ret
-function ble-text-c2bc+C {
+## 関数 ble/encoding:C/c2bc charcode ; ret
+function ble/encoding:C/c2bc {
   ret=1
 }

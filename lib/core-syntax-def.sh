@@ -46,10 +46,12 @@ function ble-syntax:bash/is-complete { true; }
 
 # 以下の関数に関しては遅延せずにその場で lib/core-syntax.sh をロードする
 ble-autoload "$_ble_base/lib/core-syntax.sh" \
-             ble-syntax/completion-context \
+             ble-syntax/completion-context/generate \
+             ble-syntax:bash/is-complete \
              ble-syntax:bash/extract-command \
              ble-syntax:bash/simple-word/eval \
-             ble-syntax:bash/simple-word/is-simple
+             ble-syntax:bash/simple-word/is-simple \
+             ble-syntax:bash/simple-word/reconstruct-incomplete-word
 
 #------------------------------------------------------------------------------
 # 遅延読み込みの設定
@@ -60,8 +62,16 @@ function ble-syntax/import {
   ble-import "$_ble_base/lib/core-syntax.sh"
 }
 
-if ble/util/isfunction ble/util/idle.push; then
-  ble/util/idle.push ble-syntax/import
-else
+ble/function#try ble/util/idle.push ble-syntax/import ||
   ble-syntax/import
+
+#------------------------------------------------------------------------------
+# グローバル変数の定義 (関数内からではできないのでここで先に定義)
+
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_syntax_highlight_filetype=()
+  else
+    declare -A _ble_syntax_highlight_filetype=()
+  fi
 fi

@@ -5,22 +5,24 @@
 #%[measure_load_time = 0]
 #%[debug_keylogger = 1]
 #%#----------------------------------------------------------------------------
-#%m inc
-#%%[guard = "@_included".replace("[^_a-zA-Z0-9]", "_")]
-#%%if @_included != 1
-#%%%[@_included = 1]
+#%define inc
+#%%[guard_name = "@_included".replace("[^_a-zA-Z0-9]", "_")]
+#%%expand
+#%%%if $"guard_name" != 1
+#%%%%[$"guard_name" = 1]
 ###############################################################################
-# Included from ble-@.sh
+# Included from @.sh
 
-#%%%if measure_load_time
+#%%%%if measure_load_time
 time {
-echo ble-@.sh >&2
-#%%%%include ble-@.sh
+echo @.sh >&2
+#%%%%%include @.sh
 }
-#%%%else
-#%%%%include ble-@.sh
+#%%%%else
+#%%%%%include @.sh
+#%%%%end
 #%%%end
-#%%end
+#%%end.i
 #%end
 #%#----------------------------------------------------------------------------
 # bash script to souce from interactive shell sessions
@@ -47,46 +49,74 @@ echo prologue >&2
 
 if [ -z "$BASH_VERSION" ]; then
   echo "ble.sh: This is not a bash. Please use this script with bash." >&2
-  return 1 2>/dev/null || exit 1
+  return 1 2>/dev/null || builtin exit 1
 fi
 
-if [ -n "${-##*i*}" ]; then
-  echo "ble.sh: This is not an interactive session." >&2
-  return 1 2>/dev/null || exit 1
+if [ -z "${BASH_VERSINFO[0]}" ] || [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
+  echo "ble.sh: bash with a version under 3.0 is not supported." >&2
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
-if [ "$_ble_bash" -lt 30000 ]; then
+if [[ $- != *i* ]]; then
   unset _ble_bash
-  echo "ble.sh: bash with a version under 3.0 is not supported." >&2
-  return 1 2>/dev/null || exit 1
+  { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
+    echo "ble.sh: This is not an interactive session."
+  return 1 2>/dev/null || builtin exit 1
+fi
+
+if [[ -o posix ]]; then
+  unset _ble_bash
+  echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 _ble_bash_setu=
 _ble_bash_setv=
 _ble_bash_options_adjusted=
-function ble/adjust-bash-options {
+function ble/base/adjust-bash-options {
   [[ $_ble_bash_options_adjusted ]] && return 1
   _ble_bash_options_adjusted=1
   _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
   _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
 }
-function ble/restore-bash-options {
+function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1
   _ble_bash_options_adjusted=
   [[ $_ble_bash_setv && ! -o verbose ]] && set -v
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
 }
-ble/adjust-bash-options
+ble/base/adjust-bash-options
 
-if [[ -o posix ]]; then
-  unset _ble_bash
-  echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
-  return 1 2>/dev/null || exit 1
-fi
+function ble/base/workaround-POSIXLY_CORRECT {
+  # This function will be overwritten by ble-decode
+  true
+}
+function ble/base/unset-POSIXLY_CORRECT {
+  if [[ ${POSIXLY_CORRECT+set} ]]; then
+    unset POSIXLY_CORRECT
+    ble/base/workaround-POSIXLY_CORRECT 
+  fi
+}
+function ble/base/adjust-POSIXLY_CORRECT {
+  _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
+  _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
+  unset POSIXLY_CORRECT
 
-bind &>/dev/null # force to load .inputrc
+  # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
+  ble/base/workaround-POSIXLY_CORRECT
+}
+function ble/base/restore-POSIXLY_CORRECT {
+  if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
+    POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
+  else
+    ble/base/unset-POSIXLY_CORRECT
+  fi
+}
+ble/base/adjust-POSIXLY_CORRECT
+
+builtin bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
@@ -416,50 +446,48 @@ fi
 }
 #%end
 
-##%x inc.r/@/getopt/
-#%x inc.r/@/core/
+#%x inc.r|@|src/util|
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
 #%if use_gawk
 ble/bin/.freeze-utility-path gawk
 #%end
 
-#%x inc.r/@/decode/
-#%x inc.r/@/color/
-#%x inc.r/@/edit/
-#%x inc.r/@/form/
-#%x inc.r/@/syntax-lazy/
+#%x inc.r|@|src/decode|
+#%x inc.r|@|src/color|
+#%x inc.r|@|src/canvas|
+#%x inc.r|@|src/edit|
+#%x inc.r|@|lib/core-complete-def|
+#%x inc.r|@|lib/core-syntax-def|
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
-
-function ble-initialize {
-  ble-decode-initialize # 7ms
-  ble-edit-initialize # 3ms
-}
 
 _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
+  _ble_attached=1
 
   # 取り敢えずプロンプトを表示する
   ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
-  ble-edit-attach     # 0ms (_ble_edit_PS1 他の初期化)
+  ble-edit/initialize # 3ms
+  ble-edit/attach     # 0ms (_ble_edit_PS1 他の初期化)
   ble/textarea#redraw # 37ms
   ble/util/buffer.flush >&2
 
   # keymap 初期化
   local IFS=$' \t\n'
+  ble-decode/initialize # 7ms
   ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
-  if ! ble-decode-attach; then # 53ms
+  if ! ble-decode/attach; then # 53ms
+    _ble_attached=
     ble/term/finalize
     return 1
   fi
-  _ble_attached=1
   _ble_edit_detach_flag= # do not detach or exit
 
   ble-edit/reset-history # 27s for bash-3.0
 
-  # Note: ble-decode/reset-default-keymap 内で
+  # Note: ble-decode/{initialize,reset-default-keymap} 内で
   #   info を設定する事があるので表示する。
   ble-edit/info/default
   ble-edit/bind/.tail
@@ -471,25 +499,30 @@ function ble-detach {
   _ble_edit_detach_flag=${1:-detach} # schedule detach
 }
 
-#%if measure_load_time
-echo ble-initialize >&2
-time ble-initialize
-#%else
-ble-initialize
-#%end
+_ble_base_attach_PROMPT_COMMAND=
+function ble/base/attach-from-PROMPT_COMMAND {
+  PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
+  ble-attach
 
-IFS=$_ble_init_original_IFS
-unset _ble_init_original_IFS
+  # Note: 何故か分からないが PROMPT_COMMAND から ble-attach すると
+  # ble/bin/stty や ble/bin/mkfifo や tty 2> /dev/null などが
+  # ジョブとして表示されてしまう。joblist.flush しておくと平気。
+  # これで取り逃がすジョブもあるかもしれないが仕方ない。
+  ble/util/joblist.flush &> /dev/null
+  ble/util/joblist.check
+}
 
 function ble/base/process-blesh-arguments {
-  local opt_attach=1
+  local opt_attach=attach
   local opt_rcfile=
   local opt_error=
   while (($#)); do
     local arg=$1; shift
     case $arg in
     (--noattach|noattach)
-      opt_attach= ;;
+      opt_attach=none ;;
+    (--attach=*) opt_attach=${arg#*=} ;;
+    (--attach)   opt_attach=$1; shift ;;
     (--rcfile=*|--init-file=*)
       opt_rcfile=${arg#*=} ;;
     (--rcfile|--init-file)
@@ -501,11 +534,19 @@ function ble/base/process-blesh-arguments {
   done
 
   [[ $opt_rcfile ]] && source "$opt_rcfile"
-  [[ $opt_attach ]] && ble-attach
+  case $opt_attach in
+  (attach) ble-attach ;;
+  (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
+           PROMPT_COMMAND=ble/base/attach-from-PROMPT_COMMAND ;;
+  esac
   [[ ! $opt_error ]]
 }
 
 ble/base/process-blesh-arguments "$@"
+
+IFS=$_ble_init_original_IFS
+unset _ble_init_original_IFS
+
 #%if measure_load_time
 }
 #%end

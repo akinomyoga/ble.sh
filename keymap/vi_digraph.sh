@@ -18,8 +18,8 @@ function ble/widget/vi_digraph/defchar {
 
 function ble/widget/vi_digraph/default {
   local kcode=${KEYS[0]}
-  local flag=$((kcode&ble_decode_MaskFlag)) char=$((kcode&ble_decode_MaskChar))
-  if ((flag==ble_decode_Ctrl&&63<=char&&char<128&&(char&0x1F)!=0)); then
+  local flag=$((kcode&_ble_decode_MaskFlag)) char=$((kcode&_ble_decode_MaskChar))
+  if ((flag==_ble_decode_Ctrl&&63<=char&&char<128&&(char&0x1F)!=0)); then
     ((char=char==63?127:char&0x1F))
     ble/widget/vi_digraph/.proc "$char"
     return 0
@@ -55,14 +55,14 @@ function ble-decode/keymap:vi_digraph/initialize {
     return
   fi
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.vi_digraph..."
+  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph..."
 
   ble-decode/keymap:vi_digraph/define
 
   : >| "$fname_keymap_cache"
   ble-decode/keymap/dump vi_digraph >> "$fname_keymap_cache"
 
-  ble-edit/info/show text "ble.sh: updating cache/keymap.vi_digraph... done"
+  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph... done"
 }
 
 ble-decode/keymap:vi_digraph/initialize
