@@ -4007,9 +4007,11 @@ if [[ $bleopt_suppress_bash_output ]]; then
   #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
   if ((_ble_bash<40000)); then
     function .ble-edit/stdout/trap-SIGUSR1 {
+      [[ $_ble_stty_stat ]] || return
+
       local file="$_ble_edit_io_fname2.proc"
       if [[ -s $file ]]; then
-        content="$(< $file)"
+        local content="$(< $file)" cmd
         : > "$file"
         for cmd in $content; do
           case "$cmd" in
