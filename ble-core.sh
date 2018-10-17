@@ -553,7 +553,7 @@ else
   function ble/util/openat {
     local _fdvar=$1 _redirect=$2
     (($_fdvar=_ble_util_openat_nextfd++))
-    builtin eval "exec ${!_fdvar}$_redirect"
+    builtin eval "exec ${!_fdvar}>&- ${!_fdvar}$_redirect"
   }
 fi
 
