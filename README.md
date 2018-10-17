@@ -1,12 +1,12 @@
 [Languages: **:us: English** | [:jp: 日本語](README-ja_JP.md)]
 # ble.sh
 
-*Bash Line Editor* is a command line editor written in pure Bash scripts to replace the default GNU Readline.
+*Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts to replace the default GNU Readline.
 - Syntax highlighting of command lines (as in `fish` shell)
 - Syntax-aware completion
 - Enhanced vim mode
 
-This script supports `bash` with the version 3.0 or later.
+This script supports Bash 3.0 or later although we recommend to use `ble.sh` with Bash 4.0 or later.
 
 Currently, only `UTF-8` encoding is supported for non-ASCII characters.
 
