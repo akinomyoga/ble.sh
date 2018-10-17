@@ -13,3 +13,7 @@
 # memo
 /memo/D0702.HISTFILE*
 /memo/D0727.bind.*
+/memo/D0857.unbind
+/memo/D0857.bind
+/memo/D0857.pipe
+/memo/D0857.stderr

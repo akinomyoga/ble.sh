@@ -1,0 +1,39 @@
+#!/bin/bash
+
+HISTFILE=A.txt
+source out/ble.sh --noattach
+
+function ble/widget/test1 {
+  # これでは直らない
+  ble-edit/bind/stdout.on
+  ble-edit/bind/stdout.off
+}
+function ble/widget/test2 {
+  # これを実行すると直る
+  ble-edit/exec:gexec/.begin
+  ble-edit/exec:gexec/.end
+}
+function ble/widget/test3 {
+  # 実は term/leave,enter で直る
+  ble/term/leave
+  ble/term/enter
+}
+function ble/widget/test4 { # これで直る
+  ble/term/stty/enter
+  ble/term/stty/leave
+}
+function ble/widget/test5 { # 何とこれだけで直る…。
+  /usr/bin/stty &>/dev/null
+}
+
+ble-bind -f 'C-t' test5
+
+function ble/widget/check1 {
+  stty -a >> stty.$_ble_bash.$SHLVL.txt
+}
+
+ble-bind -f 'C-u'  check1
+
+function ble/bin/stty { :; }
+
+((_ble_bash)) && ble-attach

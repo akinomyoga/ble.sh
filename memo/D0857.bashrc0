@@ -1,0 +1,11 @@
+# -*- mode: sh; mode: sh-bash -*-
+
+IGNOREEOF=999
+
+function ble-edit/bind/stdout/TRAPUSR1 {
+  echo TRAPUSR1
+}
+
+trap -- ble-edit/bind/stdout/TRAPUSR1 USR1
+
+bind -x '"\C-t": echo hello C-t'
