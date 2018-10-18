@@ -1,4 +1,4 @@
-[Languages: **:us: English** | [:jp: 日本語](README-ja_JP.md)]
+[Languages: **English** | [日本語](README-ja_JP.md)]
 # ble.sh
 
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts to replace the default GNU Readline.
@@ -17,7 +17,7 @@ This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD li
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
 ## Usage
-**Generate `ble.sh` from source**
+**Generate `ble.sh` from source** (version ble-0.3 devel)
 
 To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
 The file `ble.sh` can be generated using the following commands.
@@ -36,7 +36,7 @@ If you want to install `ble.sh` in a specified directory, use the following comm
 $ make INSDIR=/path/to/blesh install
 ```
 
-**Or, download `ble.sh`** (201809 release version)
+**Or, download `ble.sh`** (version ble-0.2 release 201809)
 
 With `wget`:
 ```console
@@ -214,4 +214,4 @@ For details, please check the [Wiki page](https://github.com/akinomyoga/ble.sh/w
 
 ## Special thanks
 
-- @cmplstofB for testing vim-mode and a lot of suggestions
+- @cmplstofB for testing vim-mode and giving me a lot of suggestions

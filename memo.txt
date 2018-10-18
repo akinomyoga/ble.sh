@@ -377,6 +377,13 @@ bashbug: 実装上で注意するべき事・バグ
     グローバル変数が定義されていなければローカルに新しく変数を作る様だ。
     bash-4.3 で直っている。
 
+  * bash-3.2 -- 3.1
+
+    ref #D0857
+    10 以上のファイルディスクリプタで使用されている物に対して
+    リダイレクションで新しい出力先を設定しようとしても失敗する。
+    これは fd>&- として一旦閉じてからリダイレクションすれば良い。
+
 bashbug 算術式周りのバグと注意点
 
   * bash-3.0 - 4.4.7 算術式:
@@ -2431,7 +2438,9 @@ tech
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-09-24 (#D0825..#D0852 4425d12)
+2018-10-05 (#D0858..)
+
+2018-09-24 (#D0825..#D0857 6ed51e7)
 
   新機能
   - highlight: 変数代入の右辺及び配列要素の着色に対応 `#D0839` 854c3b4
@@ -2441,6 +2450,8 @@ tech
   - decode: 貼り付け時などの高速化の為に一括の文字列挿入に対応 (`batch-insert`) `#D0849` 48eeb03
   - decode: `bleopt decode_isolated_esc=auto` でキーマップに応じて単独 <kbd>ESC</kbd> の取扱を切り替え `#D0852` 9b20b45 edd481c
   - complete: `bleopt complete_{auto_complete,menu_filter}=` で自動補完・候補絞り込みの無効化に対応 `#D0852` 4425d12
+  - vi: テキストオブジェクト単語の再実装 (reported by cmplstofB) `#D0855` 9f2a973 ad308ae 3a5c456 6ebcb35
+  - vi: オペレータ `d` の特殊ルールに対応 `#D0855` fa0d3d3
 
   バグ・問題修正
   - decode: `ble-bind -d` に於いて `-c` 及び `-x` の引数の引用符が二重になっている問題の修正 `#D0850`
@@ -2453,6 +2464,9 @@ tech
   - decode: 未ロードのキーマップに対して `ble-bind -m -P` `ble-bind -m kmap -f kspecs -` が使えない問題の修正 66e202a
   - auto-complete: <kbd>C-j</kbd> が単なる "確定" になっていたのを "確定して実行" に修正 `#D0852` 01476a7
   - edit: <kbd>M-S-f</kbd>, <kbd>M-S-b</kbd> を束縛するべきところ <kbd>M-C-f</kbd>, <kbd>M-C-b</kbd> を束縛している箇所を修正 `#D0852` c68e7d7
+  - color: Bash 3.0 で算術式内の `<()` がプロセス置換と解釈される問題の対策 `#D0853` 520184d
+  - syntax: コメント上の単語が何故か除去されないバグの修正 (reported by cmplstofB) `#D0854` 641583f
+  - vi: Bash 3.1 及び 3.2 で <kbd>C-d</kbd> 受信の為のリダイレクトに失敗する問題の修正 `#D0857` d4b39b3
 
   動作変更
   - sabbrev, vi_imap: `sabbrev-expand` を <kbd>C-x '</kbd> ではなく <kbd>C-]</kbd> から束縛 `#D0825` e5969b7
@@ -2473,7 +2487,7 @@ tech
   - isearch, dabbrev: `ble/util/fiberchain` による再実装 `#D0843`, `#D0846` 2c695cf bdf8072 95268c1
   - edit, vi: 選択範囲の種類を表す mark 名を整理 a1a6272
   - edit: 関数名変更 `ble/widget/accept-single-line-or/accepts` → `ble-edit/is-single-complete-line` `#D0844` 63ec9fe
-  - refactor: ファイルの整理 5e07e7f 1a03da2 0b410df 55c4224 9ce944c 9a47c57 25487a7 5679ffc b7291a7
+  - refactor: ファイルの整理 5e07e7f 1a03da2 673bd1d 55c4224 9ce944c 9a47c57 25487a7 5679ffc b7291a7
   - refactor: 関数名・変数名の整理 `#D0851` d1b780c 9129c47 4d1181a
 
 2018-09-03 -- 2018-09-23 (#D0766..#D0824 8584e82)
@@ -3573,7 +3587,7 @@ tech
 
 2018-10-09
 
-  * 2018-10-06 syntax (reported by cmplstofB): ビジュアルモードにおけるテキストオブジェクトの単語の振る舞い [#D0855]
+  * 2018-10-06 vi (reported by cmplstofB): ビジュアルモードにおけるテキストオブジェクトの単語の振る舞い [#D0855]
     https://github.com/akinomyoga/ble.sh/issues/16
 
     % 調べてみると色々の異なる振る舞いをしている。
