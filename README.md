@@ -4,6 +4,9 @@
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts to replace the default GNU Readline.
 - Syntax highlighting of command lines (as in `fish` shell)
 - Syntax-aware completion
+  - `auto-complete` (similar to `fish` and `zsh-autosuggestions`)
+  - `menu-complete`, `menu-filter` (similar to completions with `peco`/`fzf`/etc.)
+  - `sabbrev` (similar to `zsh-abbreviations`), `dabbrev`, etc.
 - Enhanced vim mode
 
 This script supports Bash 3.0 or later although we recommend to use `ble.sh` with Bash 4.0 or later.
@@ -179,7 +182,7 @@ $ ble-color-show
 **Key Bindings**
 
 Key bindings can be controlled with the shell function, `ble-bind`.
-For example, with the following setting, "Hello, world!" will be inserted on typing `C-x h`
+For example, with the following setting, "Hello, world!" will be inserted on typing <kbd>C-x h</kbd>
 ```bash
 ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
@@ -196,21 +199,40 @@ $ ble-bind -L
 
 ## Tips
 
-**Using multiline mode**
+**Use multiline mode**
 
 When the command line string contains a newline character, `ble.sh` enters the MULTILINE mode.
 
-By typing `C-v RET` or `C-q RET`, you can insert a newline character in the command line string.
-In the MULTILINE mode, `RET` (`C-m`) causes insertion of a new newline character.
-In the MULTILINE mode, the command can be executed by typing `C-j`.
+By typing <kbd>C-v RET</kbd> or <kbd>C-q RET</kbd>, you can insert a newline character in the command line string.
+In the MULTILINE mode, <kbd>RET</kbd> (<kbd>C-m</kbd>) causes insertion of a new newline character.
+In the MULTILINE mode, the command can be executed by typing <kbd>C-j</kbd>.
 
 When the shell option `shopt -s cmdhist` is set (which is the default),
-`RET` (`C-m`) inserts a newline if the current command line string is syntactically incomplete.
+<kbd>RET</kbd> (<kbd>C-m</kbd>) inserts a newline if the current command line string is syntactically incomplete.
 
-**Using vim-mode**
+**Use vim-mode**
 
 If `set -o vi` is specified in `.bashrc` or `set editing-mode vi` is specified in `.inputrc`, the vim mode is enabled.
 For details, please check the [Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
+
+**Use `auto-complete`**
+
+The feature `auto-complete` is available in Bash 4.0 or later. `auto-complete` automatically suggests a possible completion on user input.
+The suggested contents can be inserted by typing <kbd>S-RET</kbd>
+(when the cursor is at the end of the command line, you can also use <kbd>right</kbd> or <kbd>C-f</kbd> to insert the suggestion).
+If you want to insert only first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
+If you want to accept the suggestion and immediately run the command, you can use <kbd>C-RET</kbd> (if your terminal supports this special key combination).
+
+**Use `sabbrev` (static abbrev expansions)**
+
+By registering words to `sabbrev`, the words can be expanded to predefined strings.
+When the cursor is just after a registered word, typing <kbd>SP</kbd> causes `sabbrev` expansion.
+For example, with the following settings, when you type <kbd>SP</kbd> after the command line `command L`, the command line will be expanded to `command | less`.
+
+```bash
+# bashrc (after source ble.sh)
+ble-sabbrev L='| less'
+```
 
 ## Special thanks
 
