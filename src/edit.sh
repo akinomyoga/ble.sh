@@ -604,8 +604,8 @@ function ble-edit/info/.initialize-size {
 ##   @var[in,out] x y
 ##   @var[out] ret
 function ble-edit/info/.construct-text {
-  local out= LC_COLLATE=C glob='*[! -~]*'
-  if [[ $tail != $glob ]]; then
+  local out= LC_ALL= LC_COLLATE=C glob='*[! -~]*'
+  if [[ $1 != $glob ]]; then
     # G0 だけで構成された文字列は先に単純に処理する
     ble-edit/info/.put-simple "${#1}" "$1"
   else
