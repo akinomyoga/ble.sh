@@ -2,10 +2,10 @@
 # ble.sh
 
 `ble.sh` (*Bash Line Editor*) はピュア Bash スクリプトで書かれたコマンドラインエディタで、標準の GNU Readline を置き換える形で動作します。
-- コマンドラインを (`fish` シェルみたいに) `bash` 構文に従って色付け
+- コマンドラインを (`fish` / `zsh-syntax-highlighting` 類似機能) `bash` 構文に従って色付け
 - 文法構造に従った補完
   - 自動補完 (`fish` / `zsh-autosuggestions` 類似機能)
-  - メニュー補完・絞り込み (`peco`/`fzf` などを用いた補完の代替)
+  - メニュー補完・絞り込み (`peco`/`fzf` などを用いた補完の類似機能)
   - 静的略語展開 (`zsh-abbreviations` 類似機能) ・動的略語展開
 - `vim` モードサポートの強化
 
@@ -236,7 +236,7 @@ Bash 4.0 以降では自動補完が有効になり、予測候補が表示さ�
 
 特定の単語を静的略語展開に登録することで好きな文字列に展開することができます。
 登録済み単語に一致する単語の直後で <kbd>SP</kbd> を入力した時に静的略語展開が起きます。
-例えば、以下の設定をしておくと `command L` まで入力した状態で <kbd>SP</kbd> を押すと、コマンドラインが `command | less` に展開されます。
+例えば、以下の設定をしておくと `command L` まで入力した状態で <kbd>SP</kbd> を押した時に、コマンドラインが `command | less` に展開されます。
 
 ```bash
 # bashrc (after source ble.sh)

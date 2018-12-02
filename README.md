@@ -2,7 +2,7 @@
 # ble.sh
 
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts to replace the default GNU Readline.
-- Syntax highlighting of command lines (as in `fish` shell)
+- Syntax highlighting of command lines (as in `fish` shell or `zsh-syntax-highlighting`)
 - Syntax-aware completion
   - `auto-complete` (similar to `fish` and `zsh-autosuggestions`)
   - `menu-complete`, `menu-filter` (similar to completions with `peco`/`fzf`/etc.)
