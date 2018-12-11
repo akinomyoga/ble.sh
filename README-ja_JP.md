@@ -37,7 +37,7 @@ $ make
 ```console
 $ source out/ble.sh
 ```
-指定したディレクトリにインストールするには以下のコマンドを使用します。`INSDIR` の指定を省略したときは既定の場所 `${XDG_DATA_DIR:-$HOME/.local/share}/blesh` にインストールされます。
+指定したディレクトリにインストールするには以下のコマンドを使用します。`INSDIR` の指定を省略したときは既定の場所 `${XDG_DATA_HOME:-$HOME/.local/share}/blesh` にインストールされます。
 ```console
 $ make INSDIR=/path/to/blesh install
 ```
