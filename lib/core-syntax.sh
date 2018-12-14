@@ -4742,17 +4742,9 @@ function ble-syntax:bash/extract-command {
   local extract_has_word=
   ble-syntax/tree-enumerate \
     ble-syntax:bash/extract-command/.scan
-  [[ ! $extract_has_word ]] && return 1
-
-  if [[ ! $extract_command_found ]]; then
+  if [[ ! $extract_command_found && $extract_has_word ]]; then
     ble-syntax:bash/extract-command/.construct
   fi
-
-  # {
-  #   echo "pos=$pos w=$extract_has_word c=$extract_command_found"
-  #   declare -p comp_words comp_cword comp_line comp_point
-  # } >> ~/a.txt
-
   [[ $extract_command_found ]]
 }
 
