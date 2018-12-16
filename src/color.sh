@@ -250,6 +250,140 @@ function ble-color/.color2sgrbg {
 }
 
 #------------------------------------------------------------------------------
+
+## 関数 ble/color/read-sgrspec/.arg-next
+##   @var[in    ] fields
+##   @var[in,out] j
+##   @var[   out] arg
+function ble/color/read-sgrspec/.arg-next {
+  local _var=arg _ret
+  if [[ $1 == -v ]]; then
+    _var=$2
+    shift 2
+  fi
+
+  if ((j<${#fields[*]})); then
+    ((_ret=10#${fields[j++]}))
+  else
+    ((i++))
+    ((_ret=10#${specs[i]%%:*}))
+  fi
+
+  (($_var=_ret))
+}
+
+## 関数 ble-color/read-sgrspec sgrspec opts
+##   @param[in] sgrspec
+##   @var[in,out] g
+function ble/color/read-sgrspec {
+  local specs i iN
+  ble/string#split specs \; "$1"
+  for ((i=0,iN=${#specs[@]};i<iN;i++)); do
+    local spec=${specs[i]} fields
+    ble/string#split fields : "$spec"
+    local arg=$((10#${fields[0]}))
+    if ((arg==0)); then
+      g=0
+      continue
+    elif [[ :$opts: != *:ansi:* ]]; then
+      case $arg in
+      ($_ble_term_sgr_bold)   ((g|=_ble_color_gflags_Bold))      ; continue ;;
+      ($_ble_term_sgr_sitm)   ((g|=_ble_color_gflags_Italic))    ; continue ;;
+      ($_ble_term_sgr_ritm)   ((g&=~_ble_color_gflags_Italic))   ; continue ;;
+      ($_ble_term_sgr_smul)   ((g|=_ble_color_gflags_Underline)) ; continue ;;
+      ($_ble_term_sgr_rmul)   ((g&=~_ble_color_gflags_Underline)); continue ;;
+      ($_ble_term_sgr_blink)  ((g|=_ble_color_gflags_Blink))     ; continue ;;
+      ($_ble_term_sgr_rev)       ((g|=_ble_color_gflags_Revert)) ; continue ;;
+      ($_ble_term_sgr_rev_reset) ((g&=~_ble_color_gflags_Revert)); continue ;;
+      ($_ble_term_sgr_invis)  ((g|=_ble_color_gflags_Invisible)) ; continue ;;
+      ($_ble_term_sgr_strike) ((g|=_ble_color_gflags_Strike))    ; continue ;;
+      esac
+    fi
+
+    if ((30<=arg&&arg<50)); then
+      # colors
+      if ((30<=arg&&arg<38)); then
+        local color=$((arg-30))
+        ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
+      elif ((40<=arg&&arg<48)); then
+        local color=$((arg-40))
+        ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
+      elif ((arg==38)); then
+        local j=1 color cspace
+        ble/color/read-sgrspec/.arg-next -v cspace
+        if ((cspace==5)); then
+          ble/color/read-sgrspec/.arg-next -v color
+          ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
+        fi
+      elif ((arg==48)); then
+        local j=1 color cspace
+        ble/color/read-sgrspec/.arg-next -v cspace
+        if ((cspace==5)); then
+          ble/color/read-sgrspec/.arg-next -v color
+          ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
+        fi
+      elif ((arg==39)); then
+        ((g&=~(_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor)))
+      elif ((arg==49)); then
+        ((g&=~(_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor)))
+      fi
+    elif ((90<=arg&&arg<98)); then
+      local color=$((arg-90+8))
+      ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
+    elif ((100<=arg&&arg<108)); then
+      local color=$((arg-100+8))
+      ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
+    elif ((arg==1)); then
+      ((g|=_ble_color_gflags_Bold))
+    elif ((arg==22)); then
+      ((g&=~_ble_color_gflags_Bold))
+    elif ((arg==4)); then
+      ((g|=_ble_color_gflags_Underline))
+    elif ((arg==24)); then
+      ((g&=~_ble_color_gflags_Underline))
+    elif ((arg==7)); then
+      ((g|=_ble_color_gflags_Revert))
+    elif ((arg==27)); then
+      ((g&=~_ble_color_gflags_Revert))
+    elif ((arg==3)); then
+      ((g|=_ble_color_gflags_Italic))
+    elif ((arg==23)); then
+      ((g&=~_ble_color_gflags_Italic))
+    elif ((arg==5)); then
+      ((g|=_ble_color_gflags_Blink))
+    elif ((arg==25)); then
+      ((g&=~_ble_color_gflags_Blink))
+    elif ((arg==8)); then
+      ((g|=_ble_color_gflags_Invisible))
+    elif ((arg==28)); then
+      ((g&=~_ble_color_gflags_Invisible))
+    elif ((arg==9)); then
+      ((g|=_ble_color_gflags_Strike))
+    elif ((arg==29)); then
+      ((g&=~_ble_color_gflags_Strike))
+    fi
+  done
+}
+
+## 関数 ble-color-sgrspec2g
+##   SGRに対する引数から描画属性を構築します。
+function ble-color-sgrspec2g {
+  local g=0
+  ble/color/read-sgrspec "$1"
+  ret=$g
+}
+
+## 関数 ble-color-ansi2g
+##   ANSI制御シーケンスから描画属性を構築します。
+##   Note: canvas.sh を読み込んで以降でないと使えません。
+function ble-color-ansi2g {
+  local -a DRAW_BUFF=()
+  local g=0 x=0 y=0 lc=0 lg=0
+  ble/function#try ble/canvas/trace.draw "$1"
+  ret=$g
+}
+
+#------------------------------------------------------------------------------
 # _ble_faces
 
 # 遅延初期化登録
@@ -272,28 +406,6 @@ function ble-color/faces/initialize {
   local _ble_color_faces_initializing=1
   local -a _ble_color_faces_errors=()
 
-  function ble-color-defface {
-    local name=_ble_faces__$1 gspec=$2 ret
-    (($name||($name=++_ble_faces_count)))
-    ble-color-gspec2g "$gspec"; _ble_faces[$name]=$ret
-    ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
-  }
-  function ble-color-setface {
-    local name=_ble_faces__$1 gspec=$2 ret
-    if [[ ${!name} ]]; then
-      ble-color-gspec2g "$gspec"; _ble_faces[$name]=$ret
-      ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
-    else
-      local message="ble.sh: the specified face \`$1' is not defined."
-      if [[ $_ble_color_faces_initializing ]]; then
-        ble/array#push _ble_color_faces_errors "$message"
-      else
-        builtin echo "$message" >&2
-      fi
-      return 1
-    fi
-  }
-
   function ble-color-face2g {
     ((g=_ble_faces[_ble_faces__$1]))
   }
@@ -305,6 +417,43 @@ function ble-color/faces/initialize {
   }
   function ble-color-iface2sgr {
     sgr="${_ble_faces_sgr[$1]}"
+  }
+
+  ## 関数 ble-color-setface/.spec2g
+  ##   @var[out] ret
+  function ble-color-setface/.spec2g {
+    local spec=$1
+    case $spec in
+    (gspec:*)   ble-color-gspec2g "${spec#*:}" ;;
+    (g:*)       ret=$((${spec#*:})) ;;
+    (face:*)    ble-color-face2g "${spec#*:}" ;;
+    (iface:*)   ble-color-iface2g "${spec#*:}" ;;
+    (sgrspec:*) ble-color-sgrspec2g "${spec#*:}";;
+    (ansi:*)    ble-color-ansi2g "${spec#*:}";;
+    (*)         ble-color-gspec2g "$spec" ;;
+    esac
+  }
+
+  function ble-color-defface {
+    local name=_ble_faces__$1 spec=$2 ret
+    (($name||($name=++_ble_faces_count)))
+    ble-color-setface/.spec2g "$spec"; _ble_faces[$name]=$ret
+    ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
+  }
+  function ble-color-setface {
+    local name=_ble_faces__$1 spec=$2 ret
+    if [[ ${!name} ]]; then
+      ble-color-setface/.spec2g "$spec"; _ble_faces[$name]=$ret
+      ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
+    else
+      local message="ble.sh: the specified face \`$1' is not defined."
+      if [[ $_ble_color_faces_initializing ]]; then
+        ble/array#push _ble_color_faces_errors "$message"
+      else
+        builtin echo "$message" >&2
+      fi
+      return 1
+    fi
   }
 
   ble/util/invoke-hook _ble_color_faces_defface_hook

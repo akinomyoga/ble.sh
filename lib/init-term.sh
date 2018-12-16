@@ -137,17 +137,30 @@ function ble/init:term/initialize {
 
   # SGR misc
   ble/init:term/define-cap _ble_term_bold $'\e[1m' bold
-  ble/init:term/define-cap _ble_term_sitm $'\e[3m' sitm
-  ble/init:term/define-cap _ble_term_smul $'\e[4m' smul
   ble/init:term/define-cap _ble_term_blink $'\e[5m' blink
   ble/init:term/define-cap _ble_term_rev $'\e[7m' rev
   ble/init:term/define-cap _ble_term_invis $'\e[8m' invis
   ble/init:term/define-sgr-param _ble_term_sgr_bold "$_ble_term_bold"
-  ble/init:term/define-sgr-param _ble_term_sgr_sitm "$_ble_term_sitm"
-  ble/init:term/define-sgr-param _ble_term_sgr_smul "$_ble_term_smul"
   ble/init:term/define-sgr-param _ble_term_sgr_blink "$_ble_term_blink"
   ble/init:term/define-sgr-param _ble_term_sgr_rev "$_ble_term_rev"
   ble/init:term/define-sgr-param _ble_term_sgr_invis "$_ble_term_invis"
+  ble/init:term/define-cap _ble_term_sitm $'\e[3m'  sitm
+  ble/init:term/define-cap _ble_term_ritm $'\e[23m' ritm
+  ble/init:term/define-cap _ble_term_smul $'\e[4m'  smul
+  ble/init:term/define-cap _ble_term_rmul $'\e[24m' rmul
+  ble/init:term/define-cap _ble_term_smso $'\e[7m'  smso
+  ble/init:term/define-cap _ble_term_rmso $'\e[27m' rmso
+  ble/init:term/define-sgr-param _ble_term_sgr_smso "$_ble_term_smso"
+  ble/init:term/define-sgr-param _ble_term_sgr_rmso "$_ble_term_rmso"
+  ble/init:term/define-sgr-param _ble_term_sgr_sitm "$_ble_term_sitm"
+  ble/init:term/define-sgr-param _ble_term_sgr_ritm "$_ble_term_ritm"
+  ble/init:term/define-sgr-param _ble_term_sgr_smul "$_ble_term_smul"
+  ble/init:term/define-sgr-param _ble_term_sgr_rmul "$_ble_term_rmul"
+
+  # Note: rev と smso が同じ場合は、rev の reset に rmso を使用する。
+  if [[ $_ble_term_sgr_smso && $_ble_term_sgr_smso == $_ble_term_sgr_rev ]]; then
+    _ble_term_sgr_rev_reset=$_ble_term_sgr_rmso
+  fi
 
   # SGR colors
   ble/init:term/define-cap _ble_term_colors 256 colors

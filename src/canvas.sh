@@ -462,83 +462,20 @@ function ble/canvas/trace/.SGR/arg_next {
 
   (($_var=_ret))
 }
+## 関数 ble/canvas/trace/.SGR
+##   @param[in] param seq
+##   @var[out] DRAW_BUFF
+##   @var[in,out] g
 function ble/canvas/trace/.SGR {
   local param=$1 seq=$2 specs i iN
-  ble/string#split specs \; "$param"
-  if ((${#specs[*]}==0)); then
+  if [[ ! $param ]]; then
     g=0
     ble/canvas/put.draw "$_ble_term_sgr0"
     return
   fi
 
-  for ((i=0,iN=${#specs[@]};i<iN;i++)); do
-    local spec=${specs[i]} f
-    ble/string#split f : "$spec"
-    if ((30<=f[0]&&f[0]<50)); then
-      # colors
-      if ((30<=f[0]&&f[0]<38)); then
-        local color=$((f[0]-30))
-        ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
-      elif ((40<=f[0]&&f[0]<48)); then
-        local color=$((f[0]-40))
-        ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
-      elif ((f[0]==38)); then
-        local j=1 color cspace
-        ble/canvas/trace/.SGR/arg_next -v cspace
-        if ((cspace==5)); then
-          ble/canvas/trace/.SGR/arg_next -v color
-          ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
-        fi
-      elif ((f[0]==48)); then
-        local j=1 color cspace
-        ble/canvas/trace/.SGR/arg_next -v cspace
-        if ((cspace==5)); then
-          ble/canvas/trace/.SGR/arg_next -v color
-          ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
-        fi
-      elif ((f[0]==39)); then
-        ((g&=~(_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor)))
-      elif ((f[0]==49)); then
-        ((g&=~(_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor)))
-      fi
-    elif ((90<=f[0]&&f[0]<98)); then
-      local color=$((f[0]-90+8))
-      ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
-    elif ((100<=f[0]&&f[0]<108)); then
-      local color=$((f[0]-100+8))
-      ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
-    elif ((f[0]==0)); then
-      g=0
-    elif ((f[0]==1)); then
-      ((g|=_ble_color_gflags_Bold))
-    elif ((f[0]==22)); then
-      ((g&=~_ble_color_gflags_Bold))
-    elif ((f[0]==4)); then
-      ((g|=_ble_color_gflags_Underline))
-    elif ((f[0]==24)); then
-      ((g&=~_ble_color_gflags_Underline))
-    elif ((f[0]==7)); then
-      ((g|=_ble_color_gflags_Revert))
-    elif ((f[0]==27)); then
-      ((g&=~_ble_color_gflags_Revert))
-    elif ((f[0]==3)); then
-      ((g|=_ble_color_gflags_Italic))
-    elif ((f[0]==23)); then
-      ((g&=~_ble_color_gflags_Italic))
-    elif ((f[0]==5)); then
-      ((g|=_ble_color_gflags_Blink))
-    elif ((f[0]==25)); then
-      ((g&=~_ble_color_gflags_Blink))
-    elif ((f[0]==8)); then
-      ((g|=_ble_color_gflags_Invisible))
-    elif ((f[0]==28)); then
-      ((g&=~_ble_color_gflags_Invisible))
-    elif ((f[0]==9)); then
-      ((g|=_ble_color_gflags_Strike))
-    elif ((f[0]==29)); then
-      ((g&=~_ble_color_gflags_Strike))
-    fi
-  done
+  # update g
+  ble/color/read-sgrspec "$param" ansi
 
   local ret
   ble-color-g2sgr "$g"
