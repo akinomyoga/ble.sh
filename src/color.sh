@@ -174,6 +174,41 @@ function ble-color/.name2color {
   fi
 }
 
+## 関数 ble/color/convert-color88-to-color256
+##   @var[out] ret
+function ble/color/convert-color88-to-color256 {
+  local color=$1
+  if ((color>=16)); then
+    if ((color>=80)); then
+      local L=$((((color-80+1)*25+4)/9))
+      ((color=L==0?16:(L==25?231:232+(L-1))))
+    else
+      ((color-=16))
+      local R=$((color/16)) G=$((color/4%4)) B=$((color%4))
+      ((R=(R*5+1)/3,G=(G*5+1)/3,B=(B*5+1)/3,
+        color=16+R*36+G*6+B))
+    fi
+  fi
+  ret=$color
+}
+## 関数 ble/color/convert-color256-to-color88
+##   @var[out] ret
+function ble/color/convert-color256-to-color88 {
+  local color=$1
+  if ((color>=16)); then
+    if ((color>=232)); then
+      local L=$((((color-232+1)*9+12)/25))
+      ((color=L==0?16:(L==9?79:80+(L-1))))
+    else
+      ((color-=16))
+      local R=$((color/36)) G=$((color/6%6)) B=$((color%6))
+      ((R=(R*3+2)/5,G=(G*3+2)/5,B=(B*3+2)/5,
+        color=16+R*16+G*4+B))
+    fi
+  fi
+  ret=$color
+}
+
 ## 関数 ble-color/.color2sgrfg color
 ## 関数 ble-color/.color2sgrbg color
 ##   @param[in] color
@@ -192,18 +227,8 @@ function ble-color/.color2sgr-impl {
     if ((ccode<_ble_term_colors||bleopt_term_index_colors==256)); then
       ret="${prefix}8;5;$ccode"
     elif ((bleopt_term_index_colors==88)); then
-      if ((ccode>=16)); then
-        if ((ccode>=232)); then
-          local L=$((((ccode-232+1)*9+12)/25))
-          ((ccode=L==0?16:(L==9?79:80+(L-1))))
-        else
-          ((ccode-=16))
-          local R=$((ccode/36)) G=$((ccode/6%6)) B=$((ccode%6))
-          ((R=(R*3+2)/5,G=(G*3+2)/5,B=(B*3+2)/5,
-            ccode=16+R*16+G*4+B))
-        fi
-      fi
-      ret="${prefix}8;5;$ccode"
+      ble/color/convert-color256-to-color88 "$ccode"
+      ret="${prefix}8;5;$ret"
     elif ((ccode<bleopt_term_index_colors)); then
       ret="${prefix}8;5;$ccode"
     elif ((_ble_term_colors>=16||_ble_term_colors==8)); then
@@ -286,18 +311,8 @@ function ble/color/read-sgrspec {
       g=0
       continue
     elif [[ :$opts: != *:ansi:* ]]; then
-      case $arg in
-      ($_ble_term_sgr_bold)   ((g|=_ble_color_gflags_Bold))      ; continue ;;
-      ($_ble_term_sgr_sitm)   ((g|=_ble_color_gflags_Italic))    ; continue ;;
-      ($_ble_term_sgr_ritm)   ((g&=~_ble_color_gflags_Italic))   ; continue ;;
-      ($_ble_term_sgr_smul)   ((g|=_ble_color_gflags_Underline)) ; continue ;;
-      ($_ble_term_sgr_rmul)   ((g&=~_ble_color_gflags_Underline)); continue ;;
-      ($_ble_term_sgr_blink)  ((g|=_ble_color_gflags_Blink))     ; continue ;;
-      ($_ble_term_sgr_rev)       ((g|=_ble_color_gflags_Revert)) ; continue ;;
-      ($_ble_term_sgr_rev_reset) ((g&=~_ble_color_gflags_Revert)); continue ;;
-      ($_ble_term_sgr_invis)  ((g|=_ble_color_gflags_Invisible)) ; continue ;;
-      ($_ble_term_sgr_strike) ((g|=_ble_color_gflags_Strike))    ; continue ;;
-      esac
+      [[ ${_ble_term_sgr_term2ansi[arg]} ]] &&
+        arg=${_ble_term_sgr_term2ansi[arg]}
     fi
 
     if ((30<=arg&&arg<50)); then
@@ -313,6 +328,9 @@ function ble/color/read-sgrspec {
         ble/color/read-sgrspec/.arg-next -v cspace
         if ((cspace==5)); then
           ble/color/read-sgrspec/.arg-next -v color
+          if [[ :$opts: != *:ansi:* ]] && ((bleopt_term_index_colors==88)); then
+            local ret; ble/color/convert-color88-to-color256 "$color"; color=$ret
+          fi
           ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
         fi
       elif ((arg==48)); then
@@ -320,6 +338,9 @@ function ble/color/read-sgrspec {
         ble/color/read-sgrspec/.arg-next -v cspace
         if ((cspace==5)); then
           ble/color/read-sgrspec/.arg-next -v color
+          if [[ :$opts: != *:ansi:* ]] && ((bleopt_term_index_colors==88)); then
+            local ret; ble/color/convert-color88-to-color256 "$color"; color=$ret
+          fi
           ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
         fi
       elif ((arg==39)); then

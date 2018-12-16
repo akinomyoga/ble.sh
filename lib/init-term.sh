@@ -26,11 +26,22 @@ function ble/init:term/define-cap.2 {
   ble/init:term/register-varname "$name"
 }
 
+_ble_term_sgr_term2ansi=()
+ble/init:term/register-varname _ble_term_sgr_term2ansi
 _ble_term_rex_sgr=$'\e''\[([0-9;:]+)m'
 function ble/init:term/define-sgr-param {
-  local name=$1 seq=$2
+  local name=$1 seq=$2 ansi=$3
   if [[ $seq =~ $_ble_term_rex_sgr ]]; then
-    builtin eval "$name=\${BASH_REMATCH[1]}"
+    local rematch1=${BASH_REMATCH[1]}
+    builtin eval "$name=\$rematch1"
+
+    # term2ansi
+    if [[ $ansi ]]; then
+      local rex='^[0-9]+$'
+      [[ $rematch1 =~ $rex ]] &&
+        [[ ! ${_ble_term_sgr_term2ansi[rematch1]} ]] &&
+        _ble_term_sgr_term2ansi[rematch1]=$ansi
+    fi
   else
     builtin eval "$name="
   fi
@@ -136,26 +147,26 @@ function ble/init:term/initialize {
   ble/init:term/define-cap _ble_term_sgr0 $'\e[m' sgr0
 
   # SGR misc
-  ble/init:term/define-cap _ble_term_bold $'\e[1m' bold
+  ble/init:term/define-cap _ble_term_bold  $'\e[1m' bold
   ble/init:term/define-cap _ble_term_blink $'\e[5m' blink
-  ble/init:term/define-cap _ble_term_rev $'\e[7m' rev
+  ble/init:term/define-cap _ble_term_rev   $'\e[7m' rev
   ble/init:term/define-cap _ble_term_invis $'\e[8m' invis
-  ble/init:term/define-sgr-param _ble_term_sgr_bold "$_ble_term_bold"
-  ble/init:term/define-sgr-param _ble_term_sgr_blink "$_ble_term_blink"
-  ble/init:term/define-sgr-param _ble_term_sgr_rev "$_ble_term_rev"
-  ble/init:term/define-sgr-param _ble_term_sgr_invis "$_ble_term_invis"
+  ble/init:term/define-sgr-param _ble_term_sgr_bold  "$_ble_term_bold"  1
+  ble/init:term/define-sgr-param _ble_term_sgr_blink "$_ble_term_blink" 5
+  ble/init:term/define-sgr-param _ble_term_sgr_rev   "$_ble_term_rev"   7
+  ble/init:term/define-sgr-param _ble_term_sgr_invis "$_ble_term_invis" 8
   ble/init:term/define-cap _ble_term_sitm $'\e[3m'  sitm
   ble/init:term/define-cap _ble_term_ritm $'\e[23m' ritm
   ble/init:term/define-cap _ble_term_smul $'\e[4m'  smul
   ble/init:term/define-cap _ble_term_rmul $'\e[24m' rmul
   ble/init:term/define-cap _ble_term_smso $'\e[7m'  smso
   ble/init:term/define-cap _ble_term_rmso $'\e[27m' rmso
-  ble/init:term/define-sgr-param _ble_term_sgr_smso "$_ble_term_smso"
-  ble/init:term/define-sgr-param _ble_term_sgr_rmso "$_ble_term_rmso"
-  ble/init:term/define-sgr-param _ble_term_sgr_sitm "$_ble_term_sitm"
-  ble/init:term/define-sgr-param _ble_term_sgr_ritm "$_ble_term_ritm"
-  ble/init:term/define-sgr-param _ble_term_sgr_smul "$_ble_term_smul"
-  ble/init:term/define-sgr-param _ble_term_sgr_rmul "$_ble_term_rmul"
+  ble/init:term/define-sgr-param _ble_term_sgr_sitm "$_ble_term_sitm" 3
+  ble/init:term/define-sgr-param _ble_term_sgr_ritm "$_ble_term_ritm" 23
+  ble/init:term/define-sgr-param _ble_term_sgr_smul "$_ble_term_smul" 4
+  ble/init:term/define-sgr-param _ble_term_sgr_rmul "$_ble_term_rmul" 24
+  ble/init:term/define-sgr-param _ble_term_sgr_smso "$_ble_term_smso" 7
+  ble/init:term/define-sgr-param _ble_term_sgr_rmso "$_ble_term_rmso" 27
 
   # Note: rev と smso が同じ場合は、rev の reset に rmso を使用する。
   if [[ $_ble_term_sgr_smso && $_ble_term_sgr_smso == $_ble_term_sgr_rev ]]; then
@@ -195,8 +206,10 @@ function ble/init:term/initialize {
     # register
     _ble_term_setaf[i]=$af
     _ble_term_setab[i]=$ab
-    ble/init:term/define-sgr-param "_ble_term_sgr_af[i]" "$af"
-    ble/init:term/define-sgr-param "_ble_term_sgr_ab[i]" "$ab"
+    local ansi_sgr_af=3$i1 ansi_sgr_ab=4$i1
+    ((i>=8)) && ansi_sgr_af=9$i1 ansi_sgr_ab=10$i1
+    ble/init:term/define-sgr-param "_ble_term_sgr_af[i]" "$af" "$ansi_sgr_af"
+    ble/init:term/define-sgr-param "_ble_term_sgr_ab[i]" "$ab" "$ansi_sgr_ab"
   done
   ble/init:term/register-varname "_ble_term_setaf"
   ble/init:term/register-varname "_ble_term_setab"
