@@ -61,6 +61,7 @@
 # ble-color-setface syntax_tilde             fg=navy,bold
 # ble-color-setface syntax_document          fg=94
 # ble-color-setface syntax_document_begin    fg=94,bold
+
 # ble-color-setface command_builtin_dot      fg=red,bold
 # ble-color-setface command_builtin          fg=red
 # ble-color-setface command_alias            fg=teal
@@ -69,15 +70,24 @@
 # ble-color-setface command_keyword          fg=blue
 # ble-color-setface command_jobs             fg=red
 # ble-color-setface command_directory        fg=navy,underline
-# ble-color-setface filename_directory       fg=navy,underline
-# ble-color-setface filename_link            fg=teal,underline
-# ble-color-setface filename_executable      fg=green,underline
-# ble-color-setface filename_other           underline
-# ble-color-setface filename_socket          fg=cyan,bg=black,underline
-# ble-color-setface filename_pipe            fg=lime,bg=black,underline
-# ble-color-setface filename_character       fg=white,bg=black,underline
-# ble-color-setface filename_block           fg=yellow,bg=black,underline
-# ble-color-setface filename_warning         fg=red,underline
+
+# ble-color-setface filename_directory        underline,fg=26
+# ble-color-setface filename_directory_sticky underline,fg=white,bg=blue
+# ble-color-setface filename_link             underline,fg=teal
+# ble-color-setface filename_orphan           underline,fg=teal,bg=224
+# ble-color-setface filename_setuid           underline,fg=black,bg=220
+# ble-color-setface filename_setgid           underline,fg=black,bg=191
+# ble-color-setface filename_executable       underline,fg=green
+# ble-color-setface filename_other            underline
+# ble-color-setface filename_socket           underline,fg=cyan,bg=black
+# ble-color-setface filename_pipe             underline,fg=lime,bg=black
+# ble-color-setface filename_character        underline,fg=white,bg=black
+# ble-color-setface filename_block            underline,fg=yellow,bg=black
+# ble-color-setface filename_warning          underline,fg=red
+# ble-color-setface filename_ls_colors        underline
+
+# bleopt filename_ls_colors="$LS_COLORS"
+
 
 ## Settings for vi-mode
 

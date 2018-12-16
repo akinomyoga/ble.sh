@@ -229,25 +229,8 @@ function ble-complete/action:file/complete {
   fi
 }
 function ble-complete/action:file/getg {
-  if [[ -h $CAND ]]; then
-    ble-color-face2g filename_link
-  elif [[ -d $CAND ]]; then
-    ble-color-face2g filename_directory
-  elif [[ -S $CAND ]]; then
-    ble-color-face2g filename_socket
-  elif [[ -b $CAND ]]; then
-    ble-color-face2g filename_block
-  elif [[ -c $CAND ]]; then
-    ble-color-face2g filename_character
-  elif [[ -p $CAND ]]; then
-    ble-color-face2g filename_pipe
-  elif [[ -x $CAND ]]; then
-    ble-color-face2g filename_executable
-  elif [[ -e $CAND ]]; then
-    ble-color-face2g filename_other
-  else
-    ble-color-face2g filename_warning
-  fi
+  ble-syntax/highlight/getg-from-filename "$CAND"
+  [[ $g ]] || ble-color-face2g filename_warning
 }
 
 # action:progcomp

@@ -4798,15 +4798,20 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface command_keyword     fg=blue
   ble-color-defface command_jobs        fg=red
   ble-color-defface command_directory   fg=26,underline
-  ble-color-defface filename_directory  fg=26,underline
-  ble-color-defface filename_link       fg=teal,underline
-  ble-color-defface filename_executable fg=green,underline
-  ble-color-defface filename_other      underline
-  ble-color-defface filename_socket     fg=cyan,bg=black,underline
-  ble-color-defface filename_pipe       fg=lime,bg=black,underline
-  ble-color-defface filename_character  fg=white,bg=black,underline
-  ble-color-defface filename_block      fg=yellow,bg=black,underline
-  ble-color-defface filename_warning    fg=red,underline
+  ble-color-defface filename_directory        underline,fg=26
+  ble-color-defface filename_directory_sticky underline,fg=white,bg=blue
+  ble-color-defface filename_link             underline,fg=teal
+  ble-color-defface filename_orphan           underline,fg=teal,bg=224
+  ble-color-defface filename_setuid           underline,fg=black,bg=220
+  ble-color-defface filename_setgid           underline,fg=black,bg=191
+  ble-color-defface filename_executable       underline,fg=green
+  ble-color-defface filename_other            underline
+  ble-color-defface filename_socket           underline,fg=cyan,bg=black
+  ble-color-defface filename_pipe             underline,fg=lime,bg=black
+  ble-color-defface filename_character        underline,fg=white,bg=black
+  ble-color-defface filename_block            underline,fg=yellow,bg=black
+  ble-color-defface filename_warning          underline,fg=red
+  ble-color-defface filename_ls_colors        underline
 
   ble-syntax/attr2iface/.define CTX_ARGX     syntax_default
   ble-syntax/attr2iface/.define CTX_ARGX0    syntax_default
@@ -4892,9 +4897,13 @@ function ble-syntax/faces-onload-hook {
   ble-syntax/attr2iface/.define ATTR_KEYWORD_END   command_keyword
   ble-syntax/attr2iface/.define ATTR_KEYWORD_MID   command_keyword
   ble-syntax/attr2iface/.define ATTR_FILE_DIR      filename_directory
+  ble-syntax/attr2iface/.define ATTR_FILE_STICKY   filename_directory_sticky
   ble-syntax/attr2iface/.define ATTR_FILE_LINK     filename_link
-  ble-syntax/attr2iface/.define ATTR_FILE_EXEC     filename_executable
+  ble-syntax/attr2iface/.define ATTR_FILE_ORPHAN   filename_orphan
   ble-syntax/attr2iface/.define ATTR_FILE_FILE     filename_other
+  ble-syntax/attr2iface/.define ATTR_FILE_SETUID   filename_setuid
+  ble-syntax/attr2iface/.define ATTR_FILE_SETGID   filename_setgid
+  ble-syntax/attr2iface/.define ATTR_FILE_EXEC     filename_executable
   ble-syntax/attr2iface/.define ATTR_FILE_WARN     filename_warning
   ble-syntax/attr2iface/.define ATTR_FILE_FIFO     filename_pipe
   ble-syntax/attr2iface/.define ATTR_FILE_SOCK     filename_socket
@@ -4903,6 +4912,9 @@ function ble-syntax/faces-onload-hook {
 }
 
 ble/array#push _ble_color_faces_defface_hook ble-syntax/faces-onload-hook
+
+#------------------------------------------------------------------------------
+# ble-syntax/highlight/cmdtype
 
 function ble-syntax/highlight/cmdtype1 {
   type=$1
@@ -4938,7 +4950,7 @@ function ble-syntax/highlight/cmdtype1 {
   esac
 }
 
-function ble-syntax/highlight/cmdtype2 {
+function ble-syntax/highlight/cmdtype/.impl {
   local cmd=$1 _0=$2
   local btype; ble/util/type btype "$cmd"
   ble-syntax/highlight/cmdtype1 "$btype" "$cmd"
@@ -4996,7 +5008,7 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     type=${_ble_syntax_highlight_filetype[x$_0]}
     [[ $type ]] && return
 
-    ble-syntax/highlight/cmdtype2 "$cmd" "$_0"
+    ble-syntax/highlight/cmdtype/.impl "$cmd" "$_0"
     _ble_syntax_highlight_filetype["x$_0"]=$type
   }
 else
@@ -5019,25 +5031,42 @@ else
       fi
     done
 
-    ble-syntax/highlight/cmdtype2 "$cmd" "$_0"
+    ble-syntax/highlight/cmdtype/.impl "$cmd" "$_0"
     _ble_syntax_highlight_filetype[2*iN]=x$_0
     _ble_syntax_highlight_filetype[2*iN+1]=$type
   }
 fi
 
+#------------------------------------------------------------------------------
+# ble-syntax/highlight/filetype
+
 function ble-syntax/highlight/filetype {
-  local file=$1 _0=$2
+  local file=$1
   type=
   [[ ( $file == '~' || $file == '~/'* ) && ! ( -e $file || -h $file ) ]] && file=$HOME${file:1}
-  if [[ -e $file ]]; then
-    if [[ -d $file ]]; then
-      ((type=ATTR_FILE_DIR))
-    elif [[ -h $file ]]; then
+  if [[ -h $file ]]; then
+    if [[ -e $file ]]; then
       ((type=ATTR_FILE_LINK))
-    elif [[ -x $file ]]; then
-      ((type=ATTR_FILE_EXEC))
+    else
+      ((type=ATTR_FILE_ORPHAN))
+    fi
+  elif [[ -e $file ]]; then
+    if [[ -d $file ]]; then
+      if [[ -k $file ]]; then
+        ((type=ATTR_FILE_STICKY))
+      else
+        ((type=ATTR_FILE_DIR))
+      fi
     elif [[ -f $file ]]; then
-      ((type=ATTR_FILE_FILE))
+      if [[ -u $file ]]; then
+        ((type=ATTR_FILE_SETUID))
+      elif [[ -g $file ]]; then
+        ((type=ATTR_FILE_SETGID))
+      elif [[ -x $file ]]; then
+        ((type=ATTR_FILE_EXEC))
+      else
+        ((type=ATTR_FILE_FILE))
+      fi
     elif [[ -c $file ]]; then
       ((type=ATTR_FILE_CHR))
     elif [[ -p $file ]]; then
@@ -5047,11 +5076,128 @@ function ble-syntax/highlight/filetype {
     elif [[ -b $file ]]; then
       ((type=ATTR_FILE_BLK))
     fi
-  elif [[ -h $file ]]; then
-    # dangling link
-    ((type=ATTR_FILE_LINK))
   fi
 }
+
+#------------------------------------------------------------------------------
+# ble-syntax/highlight/ls_colors
+
+function ble-syntax/highlight/ls_colors/.clear {
+  _ble_syntax_highlight_lscolors=()
+  _ble_syntax_highlight_lscolors_ext=()
+}
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  # 連想配列による実装
+  function ble-syntax/highlight/ls_colors/.register-extension {
+    local key=$1 value=$2
+    _ble_syntax_highlight_lscolors_ext[$key]=$value
+  }
+  function ble-syntax/highlight/ls_colors/.read-extension {
+    ret=${_ble_syntax_highlight_lscolors_ext[$1]}
+    [[ $ret ]]
+  }
+else
+  # 通常配列による実装
+  ## 関数 ble-syntax/highlight/ls_colors/.find-extension key
+  ##   @var[out] ret
+  function ble-syntax/highlight/ls_colors/.find-extension {
+    local key=$1
+    local i N=${#_ble_syntax_highlight_lscolors_ext[@]}
+    for ((i=0;i<N;i+=2)); do
+      [[ ${_ble_syntax_highlight_lscolors_ext[i]} == $key ]] && break
+    done
+    ret=$i
+  }
+  function ble-syntax/highlight/ls_colors/.register-extension {
+    local key=$1 value=$2 ret
+    ble-syntax/highlight/ls_colors/.find-extension "$key"
+    _ble_syntax_highlight_lscolors_ext[ret]=$key
+    _ble_syntax_highlight_lscolors_ext[ret+1]=$value
+  }
+  function ble-syntax/highlight/ls_colors/.read-extension {
+    local key=$1 ret
+    ble-syntax/highlight/ls_colors/.find-extension "$key"
+    ret=${_ble_syntax_highlight_lscolors_ext[ret+1]}
+    [[ $ret ]]
+  }
+fi
+
+function ble-syntax/highlight/ls_colors/.parse {
+  ble-syntax/highlight/ls_colors/.clear
+
+  local fields field
+  ble/string#split fields : "$1"
+  for field in "${fields[@]}"; do
+    [[ $field == *=* ]] || continue
+    local lhs=${field%%=*}
+    local ret; ble-color-sgrspec2g "${field#*=}"; local rhs=$ret
+    case $lhs in
+    ('di') _ble_syntax_highlight_lscolors[ATTR_FILE_DIR]=$rhs  ;;
+    ('st') _ble_syntax_highlight_lscolors[ATTR_FILE_STICKY]=$rhs  ;;
+    ('ln') _ble_syntax_highlight_lscolors[ATTR_FILE_LINK]=$rhs ;;
+    ('or') _ble_syntax_highlight_lscolors[ATTR_FILE_ORPHAN]=$rhs ;;
+    ('fi') _ble_syntax_highlight_lscolors[ATTR_FILE_FILE]=$rhs ;;
+    ('su') _ble_syntax_highlight_lscolors[ATTR_FILE_SETUID]=$rhs ;;
+    ('sg') _ble_syntax_highlight_lscolors[ATTR_FILE_SETGID]=$rhs ;;
+    ('ex') _ble_syntax_highlight_lscolors[ATTR_FILE_EXEC]=$rhs ;;
+    ('cd') _ble_syntax_highlight_lscolors[ATTR_FILE_CHR]=$rhs  ;;
+    ('pi') _ble_syntax_highlight_lscolors[ATTR_FILE_FIFO]=$rhs ;;
+    ('so') _ble_syntax_highlight_lscolors[ATTR_FILE_SOCK]=$rhs ;;
+    ('bd') _ble_syntax_highlight_lscolors[ATTR_FILE_BLK]=$rhs  ;;
+    (\*.*)
+      ble-syntax/highlight/ls_colors/.register-extension "${lhs:2}" "$rhs" ;;
+    esac
+  done
+}
+
+## 関数 ble-syntax/highlight/ls_colors
+##   @var[in,out] type
+function ble-syntax/highlight/ls_colors {
+  local file=$1
+  if ((type==ATTR_FILE_FILE)); then
+    if local filename=${file##*/}; [[ $filename == *.* ]]; then
+      if local ext=${filename##*.}; [[ $ext ]]; then
+        if local ret; ble-syntax/highlight/ls_colors/.read-extension "$ext"; then
+          type=g:$ret
+          return 0
+        fi
+      fi
+    fi
+  fi
+
+  local g=${_ble_syntax_highlight_lscolors[type]}
+  if [[ $g ]]; then
+    type=g:$g
+    return 0
+  fi
+
+  return 1
+}
+
+function ble-syntax/highlight/getg-from-filename {
+  local filename=$1 type=
+  ble-syntax/highlight/filetype "$filename"
+  if [[ $bleopt_filename_ls_colors ]]; then
+    if ble-syntax/highlight/ls_colors "$filename" && [[ $type == g:* ]]; then
+      ble-color-face2g filename_ls_colors
+      ((g|=${type:2}))
+      return
+    fi
+  fi
+
+  if [[ $type ]]; then
+    ble-syntax/attr2g "$type"
+  else
+    g=
+  fi
+}
+
+function bleopt/check:filename_ls_colors {
+  ble-syntax/highlight/ls_colors/.parse "$value"
+}
+value=$bleopt_filename_ls_colors bleopt/check:filename_ls_colors
+
+#------------------------------------------------------------------------------
 
 # adapter に頼らず直接実装したい
 function ble-highlight-layer:syntax/touch-range {
@@ -5137,7 +5283,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
       ((type=wtype))
     elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
-      ble-syntax/highlight/filetype "$value" "$wtxt"
+      ble-syntax/highlight/filetype "$value"
 
       # check values
       if ((wtype==CTX_RDRF)); then
@@ -5176,12 +5322,22 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
           fi
         fi
       fi
+
+      if [[ $bleopt_filename_ls_colors ]]; then
+        if ble-syntax/highlight/ls_colors "$value" && [[ $type == g:* ]]; then
+          local g; ble-color-face2g filename_ls_colors
+          type=g:$((${type:2}|g))
+        fi
+      fi
     fi
   fi
 
   if [[ $type ]]; then
-    local g
-    ble-syntax/attr2g "$type"
+    if [[ $type == g:* ]]; then
+      local g=${type:2}
+    else
+      local g; ble-syntax/attr2g "$type"
+    fi
     if ((wbeg<p0)); then
       node[nofs+4]=m$((p0-wbeg)):d,\$:$g
     else
@@ -5401,7 +5557,7 @@ function ble-highlight-layer:syntax/update {
 
   local i j g gprev=0
   if ((umin>0)); then
-    ble-highlight-layer:syntax/getg "$((umin-1))"
+    ble-highlight-layer:syntax/getg $((umin-1))
     gprev=$g
   fi
 

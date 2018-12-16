@@ -68,10 +68,14 @@ ble/function#try ble/util/idle.push ble-syntax/import ||
 #------------------------------------------------------------------------------
 # グローバル変数の定義 (関数内からではできないのでここで先に定義)
 
+: ${bleopt_filename_ls_colors=}
+
 if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   if ((_ble_bash>=40200)); then
     declare -gA _ble_syntax_highlight_filetype=()
+    declare -gA _ble_syntax_highlight_lscolors_ext=()
   else
     declare -A _ble_syntax_highlight_filetype=()
+    declare -A _ble_syntax_highlight_lscolors_ext=()
   fi
 fi

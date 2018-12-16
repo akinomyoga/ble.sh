@@ -1858,17 +1858,6 @@ tech
       そしてその為には $() ${} "" の入れ子の勘定が必要である。\? '...' `...` はスキップする。
       うーん。場合によっては ble-syntax を呼び出した方が賢明かもしれない。
 
-2016-07-20
-
-  * ファイル名の色付けに LS_COLORS を参照する?
-    https://github.com/trapd00r/zsh-syntax-highlighting-filetypes
-
-    ble.sh の枠組で使用する為には ble-color.sh/gflags に変換しなければならない。
-    しかし、実際に使っている terminal と sequence が異なる場合に齟齬が生じる。
-    従って直接 LS_COLORS を用いるよりは、bleopt_filename_ls_colors 的な変数に指定して貰う事にする。
-    そのまま LS_COLORS を使用したい場合は bleopt_filename_ls_colors=$LS_COLORS などとする。
-    展開を実行するようにする。
-
 2016-07-15
 
   * isearch: 現在の履歴内の位置を % で表示しているが、
@@ -3283,6 +3272,93 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-12-17
+
+  * 2016-07-20 ファイル名の色付けに LS_COLORS を参照する? [#D0862]
+    https://github.com/trapd00r/zsh-syntax-highlighting-filetypes
+
+    ble.sh の枠組で使用する為には ble-color.sh/gflags に変換しなければならない。
+    しかし、実際に使っている terminal と sequence が異なる場合に齟齬が生じる。
+    従って直接 LS_COLORS を用いるよりは、bleopt_filename_ls_colors 的な変数に指定して貰う事にする。
+    そのまま LS_COLORS を使用したい場合は bleopt_filename_ls_colors=$LS_COLORS などとする。
+    展開を実行するようにする。
+
+    2018-12-16 https://github.com/akinomyoga/ble.sh/issues/19 に関連して。
+    意味は例えば http://www.bigsoft.co.uk/blog/2008/04/11/configuring-ls_colors に書かれている。
+
+    | no  NORMAL, NORM  Global default, although everything should be something
+    | fi  FILE  Normal file
+    | di  DIR Directory
+    | ln  SYMLINK, LINK, LNK  Symbolic link. If you set this to ‘target’ instead of a numerical value, the color is as for the file pointed to.
+    | pi  FIFO, PIPE  Named pipe
+    | do  DOOR  Door
+    | bd  BLOCK, BLK  Block device
+    | cd  CHAR, CHR Character device
+    | or  ORPHAN  Symbolic link pointing to a non-existent file
+    | so  SOCK  Socket
+    | su  SETUID  File that is setuid (u+s)
+    | sg  SETGID  File that is setgid (g+s)
+    | tw  STICKY_OTHER_WRITABLE Directory that is sticky and other-writable (+t,o+w)
+    | ow  OTHER_WRITABLE  Directory that is other-writable (o+w) and not sticky
+    | st  STICKY  Directory with the sticky bit set (+t) and not other-writable
+    | ex  EXEC  Executable file (i.e. has ‘x’ set in permissions)
+    | mi  MISSING Non-existent file pointed to by a symbolic link (visible when you type ls -l)
+    | lc  LEFTCODE, LEFT  Opening terminal code
+    | rc  RIGHTCODE, RIGHT  Closing terminal code
+    | ec  ENDCODE, END  Non-filename text
+    | *.extension   Every file using this extension e.g. *.jpg
+    |
+    | mh  MULTIHARDLINK for "Regular file[s] with more than one link"
+    | ca  CAPABILITY for "File with capability."
+    | rs  ???? "Reset to ordinary colors"
+
+    取り敢えず *.extension に関しては対応した。
+
+    * ok: うーん。LS_COLORS の具体的な振る舞いが分からない。
+
+      | ? 複数の項目が当てはまる場合には属性は合成されるのか、
+      |   それともどれか一つだけが選択されるのか。
+      |
+      | 面倒なので coreutils を覗いてみる事にする。
+      | 丁度 ~/local/build/coreutils-8.28 があったのでそれを見る。
+      | 恐らく src/ls.c:4677: get_color_indicator (const struct fileinfo *f, bool symlink_target) である。
+      | これを見る限りは、通常ファイルについて setuid, setgid, exec, multihardlink を順に試している。
+      | またディレクトリについて other-writable/sticky を試している。
+
+      順番に試して先に一致した着色を採用する様である。
+      拡張子については通常ファイルの時
+      (setuid, setgid, exec, multihardlink の何れも適用されない時) に適用される。
+
+    * done: 更にファイルの種類について増やす?
+
+      | - do       これはSolaris限定らしい
+      | - or mi    or については対応可能である。
+      | - su sg st Bash から setuid 及び setgid を判定する方法はあったか → -u -g -k だった。
+      | - tw ow    Bash から other writable を判定する方法は無い気がする。
+      | - lc rc ec これらは ble.sh では登場しないのではないか。
+
+      これに関しては or su sg st について対応した。
+      tw ow do については対応できない。
+      lc rc ec は ble.sh では使わない。
+      mi については着色はしない。
+
+    * done: menu-complete で使う着色も core-syntax.sh の関数を呼び出して決める事にする。
+      これは ble-syntax/highlight/getg-from-filename という関数で対応することにした。
+
+    新しい機能名は以下の通り
+    - bleopt:filename_ls_colors
+    - face:filename_ls_colors
+    - face:filename_orphan
+    - face:filename_setuid
+    - face:filename_setgid
+    - face:filename_directory_sticky
+
+    取り敢えず動作テストした。
+    o 拡張子の着色
+    o setuid setgid sticky orphan の着色の確認
+      これは色を調整した。
+    o menu-complete における着色
+
 2018-12-16
 
   * color (ble/color/read-sgrspec): 色番号の対応が不完全なのでは [#D0861]
@@ -3307,13 +3383,13 @@ tech
     SGR値を読み取り時に ANSI の値に置き換えて解釈する事にした。
 
     | (2) に関しては数式を確認する必要がある。#D0824 の記録を見ると、
-    | 
+    |
     |   16-79 4x4x4 0,58*v+81
     |   80-87 gray 46+25*v
-    | 
+    |
     | となっている。6x6x6 に関してはどうだったろうか。
     | 0-255 は 5 等分にする事ができるので、等間隔なのだろう。
-    | 
+    |
     | 0.58*v+81 とはどういう事か。0, 81, 139, 197, 255 と考えると 5 段階になってしまう。
     | 或いは一番暗かったとしても 81 という事になるのだろうか。
     | うーん。6level->4level の変換は R=(R*3+2)/5 という数式で行っている。
@@ -3322,7 +3398,7 @@ tech
     | できるだけ区別が残る様にするのが正しいのであろう。
     | その様に考えると元の値は関係なく変換するのが良い。
     | 適当に試して対称的になる o=1 を採用する事にした。
-    | 
+    |
     | 232-255 = 23段階 であるが実際には一番明るい色と暗い色が含まれていないので 25 段階である。
     | 同様に 80-87 は 7 段階の様に思われるが、実際には一番明るい色と暗い色が含まれていないので 9 段階である。
     | 結局、以下の関数のセットとして作成する事にした。
