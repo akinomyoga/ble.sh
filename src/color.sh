@@ -533,7 +533,7 @@ function ble-highlight-layer/update/shift {
   local __dstArray=$1
   local __srcArray=${2:-$__dstArray}
   if ((DMIN>=0)); then
-    ble/array#reserve-prototype "$((DMAX-DMIN))"
+    ble/array#reserve-prototype $((DMAX-DMIN))
     builtin eval "
     $__dstArray=(
       \"\${$__srcArray[@]::DMIN}\"

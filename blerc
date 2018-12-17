@@ -72,7 +72,7 @@
 # ble-color-setface command_directory        fg=navy,underline
 
 # ble-color-setface filename_directory        underline,fg=26
-# ble-color-setface filename_directory_sticky underline,fg=white,bg=blue
+# ble-color-setface filename_directory_sticky underline,fg=white,bg=26
 # ble-color-setface filename_link             underline,fg=teal
 # ble-color-setface filename_orphan           underline,fg=teal,bg=224
 # ble-color-setface filename_setuid           underline,fg=black,bg=220

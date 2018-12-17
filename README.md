@@ -164,7 +164,7 @@ ble-color-setface command_keyword          fg=blue
 ble-color-setface command_jobs             fg=red
 ble-color-setface command_directory        fg=26,underline
 ble-color-setface filename_directory        underline,fg=26
-ble-color-defface filename_directory_sticky underline,fg=white,bg=blue
+ble-color-defface filename_directory_sticky underline,fg=white,bg=26
 ble-color-setface filename_link             underline,fg=teal
 ble-color-defface filename_orphan           underline,fg=teal,bg=224
 ble-color-setface filename_executable       underline,fg=green

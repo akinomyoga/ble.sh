@@ -869,7 +869,7 @@ elif ble/bin/.freeze-utility-path usleep; then
       if (($sec)); then
         ble/bin/usleep "$sec${sub::6}"
       else
-        ble/bin/usleep "$((10#${sub::6}))"
+        ble/bin/usleep $((10#${sub::6}))
       fi
     else
       ble/bin/usleep "${1}000000"
@@ -1896,7 +1896,7 @@ function ble/term/visible-bell {
 
       # load time duration settings
       declare msec=$bleopt_vbell_duration
-      declare sec=$(builtin printf '%d.%03d' "$((msec/1000))" "$((msec%1000))")
+      declare sec=$(builtin printf '%d.%03d' $((msec/1000)) $((msec%1000)))
 
       # wait
       >| "$_ble_term_visible_bell__ftime"

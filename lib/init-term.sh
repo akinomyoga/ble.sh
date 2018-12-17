@@ -169,8 +169,11 @@ function ble/init:term/initialize {
   ble/init:term/define-sgr-param _ble_term_sgr_rmso "$_ble_term_rmso" 27
 
   # Note: rev と smso が同じ場合は、rev の reset に rmso を使用する。
+  ble/init:term/register-varname _ble_term_sgr_rev_reset
   if [[ $_ble_term_sgr_smso && $_ble_term_sgr_smso == $_ble_term_sgr_rev ]]; then
     _ble_term_sgr_rev_reset=$_ble_term_sgr_rmso
+  else
+    _ble_term_sgr_rev_reset=
   fi
 
   # SGR colors

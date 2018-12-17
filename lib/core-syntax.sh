@@ -345,12 +345,12 @@ function ble-syntax/print-status/.graph {
     ble/util/s2c "$char" 0
     local code=$ret
     if ((code<32)); then
-      ble/util/c2s "$((code+64))"
+      ble/util/c2s $((code+64))
       graph="$_ble_term_rev^$ret$_ble_term_sgr0"
     elif ((code==127)); then
       graph="$_ble_term_rev^?$_ble_term_sgr0"
     elif ((128<=code&&code<160)); then
-      ble/util/c2s "$((code-64))"
+      ble/util/c2s $((code-64))
       graph="${_ble_term_rev}M-^$ret$_ble_term_sgr0"
     else
       graph="'$char' ($code)"
@@ -3911,7 +3911,7 @@ function ble-syntax/parse/shift.impl2/.proc1 {
     return
   fi
 
-  ble-syntax/parse/shift.impl2/.shift-until "$((i+1))"
+  ble-syntax/parse/shift.impl2/.shift-until $((i+1))
   ble-syntax/parse/shift.tree "$nofs"
   ((_shift2_j=j))
 
@@ -4344,7 +4344,7 @@ function ble-syntax/completion-context/.check-prefix/ctx:next-argument {
       local rex="^([^'\"\$\\]|\\.)*="
       if [[ $word =~ $rex ]]; then
         word=${word:${#BASH_REMATCH}}
-        ble-syntax/completion-context/.add "$source" "$((index-${#word}))"
+        ble-syntax/completion-context/.add "$source" $((index-${#word}))
       fi
     fi
   elif [[ $word =~ ^$_ble_syntax_bash_RexSpaces$ ]]; then
@@ -4799,7 +4799,7 @@ function ble-syntax/faces-onload-hook {
   ble-color-defface command_jobs        fg=red
   ble-color-defface command_directory   fg=26,underline
   ble-color-defface filename_directory        underline,fg=26
-  ble-color-defface filename_directory_sticky underline,fg=white,bg=blue
+  ble-color-defface filename_directory_sticky underline,fg=white,bg=26
   ble-color-defface filename_link             underline,fg=teal
   ble-color-defface filename_orphan           underline,fg=teal,bg=224
   ble-color-defface filename_setuid           underline,fg=black,bg=220
@@ -5493,7 +5493,7 @@ function ble-highlight-layer:syntax/update-error-table {
     local i inest
     if ((nlen>0)) || [[ $nparam ]]; then
       # 終端点の着色
-      ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
+      ble-highlight-layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
 
       if ((nlen>0)); then
         ((inest=iN-nlen))
@@ -5516,7 +5516,7 @@ function ble-highlight-layer:syntax/update-error-table {
     # コマンド欠落・引数の欠落
     if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2)); then
       # 終端点の着色
-      ble-highlight-layer:syntax/update-error-table/set "$((iN-1))" "$iN" "$g"
+      ble-highlight-layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
     fi
   fi
 }

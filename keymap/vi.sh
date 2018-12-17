@@ -109,7 +109,7 @@ function ble/widget/vi_imap/__default__ {
 
     local esc=27 # ESC
     # local esc=$((_ble_decode_Ctrl|0x5b)) # もしくは C-[
-    ble-decode-key "$esc" "$((KEYS[0]&~_ble_decode_Meta))" "${KEYS[@]:1}"
+    ble-decode-key "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
     return 0
   fi
 
@@ -135,7 +135,7 @@ function ble/widget/vi-command/decompose-meta {
     old_suppress=$_ble_decode_keylog_depth
     local _ble_decode_keylog_depth=$((old_suppress-1))
 
-    ble-decode-key "$esc" "$((KEYS[0]&~_ble_decode_Meta))" "${KEYS[@]:1}"
+    ble-decode-key "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
     return 0
   fi
 
@@ -2686,7 +2686,7 @@ function ble/widget/vi-command/.history-relative-line {
 
   if ((count)); then
     if ((offset<0)); then
-      ble-edit/content/find-logical-eol 0 "$((nline-count-1))"
+      ble-edit/content/find-logical-eol 0 $((nline-count-1))
       ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
     else
       ble-edit/content/find-logical-bol 0 "$count"
@@ -5759,7 +5759,7 @@ function ble/widget/vi_xmap/.restore-visual-state {
     ((y=c/cols,x=c%cols))
 
     local lx ly rx ry
-    ble/textmap#hit out "$x" "$((b2y+y))" "$b2" "$e2"
+    ble/textmap#hit out "$x" $((b2y+y)) "$b2" "$e2"
   else
     local c=$((is_x_relative?_ble_edit_ind-b1+nchar:nchar))
     ((index=b2+c,index>e2&&(index=e2)))

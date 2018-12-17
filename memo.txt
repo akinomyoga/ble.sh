@@ -2459,7 +2459,7 @@ tech
 
   新機能
   - color (`ble-color-setface`): SGR指定など様々な形式に対応 `#D0860` 82fe96d `#D0861` 257c16d
-  - syntax: `bleopt filename_ls_colors` に対応 `#D0862` c7ff302 `#D0863`
+  - syntax: `bleopt filename_ls_colors` に対応 `#D0862` c7ff302 `#D0863` 3c5bacf
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
