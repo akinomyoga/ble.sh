@@ -5155,14 +5155,15 @@ function ble-syntax/highlight/ls_colors/.parse {
 function ble-syntax/highlight/ls_colors {
   local file=$1
   if ((type==ATTR_FILE_FILE)); then
-    if local filename=${file##*/}; [[ $filename == *.* ]]; then
-      if local ext=${filename##*.}; [[ $ext ]]; then
-        if local ret; ble-syntax/highlight/ls_colors/.read-extension "$ext"; then
-          type=g:$ret
-          return 0
-        fi
+    local ext=${file##*/} ret=
+    while [[ $ext == *.* ]]; do
+      ext=${ext#*.}
+      [[ $ext ]] || break
+      if ble-syntax/highlight/ls_colors/.read-extension "$ext"; then
+        type=g:$ret
+        return 0
       fi
-    fi
+    done
   fi
 
   local g=${_ble_syntax_highlight_lscolors[type]}
