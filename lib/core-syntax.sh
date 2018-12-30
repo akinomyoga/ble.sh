@@ -119,7 +119,7 @@ function ble-syntax/wrange#shift {
 ## @var _ble_syntax_tree[i-1]
 ##   境界 #i で終端した範囲 (単語・入れ子) についての情報を保持する。
 ##   同じ位置で複数の階層の範囲が終端した場合は、それらの情報が連結されて格納される。
-##   各要素は "( wtype wlen tclen tplen - )*" の形式をしている。
+##   各要素は "( wtype wlen tclen tplen wattr )*" の形式をしている。
 ##   より外側の範囲の情報はより左側に格納される。
 ##
 ##   tclen tplen を用いて他の _ble_syntax_tree 要素を参照する。
@@ -419,7 +419,14 @@ function ble-syntax/print-status/word.get-text {
         _child=
       fi
 
-      out=" word=$wtype:$_prev$b-$e$_child$out"
+      local wattr=${word[nofs+4]} _wattr=
+      if [[ $wattr != - ]]; then
+        wattr="/(wattr=$wattr)"
+      else
+        wattr=
+      fi
+
+      out=" word=$wtype:$_prev$b-$e$_child$wattr$out"
       for ((;b<index;b++)); do
         ble-syntax/print-status/.tree-prepend b '|'
       done
@@ -5342,7 +5349,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
     if ((wbeg<p0)); then
       node[nofs+4]=m$((p0-wbeg)):d,\$:$g
     else
-      node[nofs+4]=$g
+      node[nofs+4]=${g:-d}
     fi
   else
     node[nofs+4]='d'

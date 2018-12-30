@@ -447,10 +447,10 @@ function ble-color/faces/initialize {
     case $spec in
     (gspec:*)   ble-color-gspec2g "${spec#*:}" ;;
     (g:*)       ret=$((${spec#*:})) ;;
-    (face:*)    ble-color-face2g "${spec#*:}" ;;
-    (iface:*)   ble-color-iface2g "${spec#*:}" ;;
-    (sgrspec:*) ble-color-sgrspec2g "${spec#*:}";;
-    (ansi:*)    ble-color-ansi2g "${spec#*:}";;
+    (face:*)    local g; ble-color-face2g "${spec#*:}" ; ret=$g ;;
+    (iface:*)   local g; ble-color-iface2g "${spec#*:}"; ret=$g ;;
+    (sgrspec:*) ble-color-sgrspec2g "${spec#*:}" ;;
+    (ansi:*)    ble-color-ansi2g "${spec#*:}" ;;
     (*)         ble-color-gspec2g "$spec" ;;
     esac
   }
