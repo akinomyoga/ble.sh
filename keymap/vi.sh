@@ -2053,12 +2053,70 @@ function ble/widget/vi-command/linewise-range.impl {
   local bolx=; local rex=':bolx=([0-9]+):'; [[ :$opts: =~ $rex ]] && bolx=${BASH_REMATCH[1]}
   local nolx=; local rex=':nolx=([0-9]+):'; [[ :$opts: =~ $rex ]] && nolx=${BASH_REMATCH[1]}
 
-  if [[ $flag ]]; then
-    local opname=${flag%%:*}
+  # 移動時 (オペレータが設定されていない時)
+  if [[ ! $flag ]]; then
+    if [[ ! $nolx ]]; then
+      if [[ ! $bolx ]]; then
+        ble-edit/content/find-logical-bol "$qbase" "$qline"; bolx=$ret
+      fi
+      ble-edit/content/find-non-space "$bolx"; nolx=$ret
+    fi
+    ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
+    _ble_edit_ind=$nolx
+    ble/keymap:vi/adjust-command-mode
+    return 0
+  fi
 
-    local bolp bolq=$bolx nolq=$nolx
-    ble-edit/content/find-logical-bol "$p"; bolp=$ret
-    [[ $bolq ]] || { ble-edit/content/find-logical-bol "$qbase" "$qline"; bolq=$ret; }
+  local opname=${flag%%:*} oparg=${flag#*:}
+  if ! ble/is-function ble/keymap:vi/operator:"$opname"; then
+    ble/widget/vi-command/bell
+    return 1
+  fi
+
+  local bolp bolq=$bolx nolq=$nolx
+  ble-edit/content/find-logical-bol "$p"; bolp=$ret
+  [[ $bolq ]] || { ble-edit/content/find-logical-bol "$qbase" "$qline"; bolq=$ret; }
+
+  # jk+- で1行も移動できない場合は操作をキャンセルする。
+  # Note: qline を用いる場合は必ずしも望みどおり
+  #   qline 行目が存在するとは限らないことに注意する。
+  if [[ :$opts: == *:require_multiline:* ]]; then
+    local is_single_line=$((bolq==bolp))
+    if ((bolq==bolp)); then
+      ble/widget/vi-command/bell
+      return 1
+    fi
+  fi
+
+  # オペレータ呼び出し
+  if [[ :$oparg: == *:vi_char:* || :$oparg: == *:vi_block:* ]]; then
+    # 行き先の決定
+    local beg=$p end
+    if [[ :$opts: == *:preserve_column:* ]]; then
+      local index
+      ble/keymap:vi/get-index-of-relative-line "$qbase" "$qline"; end=$index
+    elif [[ :$opts: == *:goto_bol:* ]]; then
+      end=$bolq
+    else
+      [[ $nolq ]] || { ble-edit/content/find-non-space "$bolq"; nolq=$ret; }
+      end=$nolq
+    fi
+    ((beg<=end)) || local beg=$end end=$beg
+
+    if [[ :$oparg: == *:vi_char:* ]]; then
+      local ble_keymap_vi_opmode=vi_char
+      ble/keymap:vi/call-operator "$opname" "$beg" "$end" char '' "$reg"; local ext=$?
+    else
+      local ble_keymap_vi_opmode=vi_block
+      ble/keymap:vi/call-operator "$opname" "$beg" "$end" block '' "$reg"; local ext=$?
+    fi
+    if ((ext)); then
+      ((ext==148)) && return 148
+      ble/widget/vi-command/bell
+      return "$ext"
+    fi
+  else
+    # 行指向の処理 (既定)
 
     # 最初の行の行頭 beg と最後の行の行末 end
     local beg end
@@ -2067,25 +2125,10 @@ function ble/widget/vi-command/linewise-range.impl {
     else
       ble-edit/content/find-logical-eol "$bolp"; beg=$bolq end=$ret
     fi
-
-    # jk+- で1行も移動できない場合は操作をキャンセルする。
-    # Note: qline を用いる場合は必ずしも望みどおり
-    #   qline 行目が存在するとは限らないことに注意する。
-    if [[ :$opts: == *:require_multiline:* ]]; then
-      local is_single_line=$((bolq==bolp))
-      if ((bolq==bolp)); then
-        ble/widget/vi-command/bell
-        return 1
-      fi
-    fi
-
     ((end<${#_ble_edit_str}&&end++))
-    if ! ble/is-function ble/keymap:vi/operator:"$opname"; then
-      ble/widget/vi-command/bell
-      return 1
-    fi
 
-    # オペレータ呼び出し
+    local ble_keymap_vi_opmode=
+    [[ :$oparg: == *:vi_line:* ]] && ble_keymap_vi_opmode=vi_line
     ble/keymap:vi/call-operator "$opname" "$beg" "$end" line '' "$reg"; local ext=$?
     if ((ext)); then
       ((ext==148)) && return 148
@@ -2108,7 +2151,12 @@ function ble/widget/vi-command/linewise-range.impl {
       else
         ret=0
       fi
-      ((ret)) && ble/widget/vi-command/relative-line.impl "$ret"
+
+      if ((ret)); then
+        local index; ble/keymap:vi/get-index-of-relative-line "$_ble_edit_ind" "$ret"
+        ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+        _ble_edit_ind=$index
+      fi
     elif [[ :$opts: == *:goto_bol:* ]]; then # 行指向 yis
       _ble_edit_ind=$beg
     else # + - gg G L H
@@ -2123,21 +2171,9 @@ function ble/widget/vi-command/linewise-range.impl {
         ((ind<beg||nolb<ind)) && _ble_edit_ind=$nolb
       fi
     fi
-
-    ble/keymap:vi/adjust-command-mode
-    return 0
-  else
-    if [[ ! $nolx ]]; then
-      if [[ ! $bolx ]]; then
-        ble-edit/content/find-logical-bol "$qbase" "$qline"; bolx=$ret
-      fi
-      ble-edit/content/find-non-space "$bolx"; nolx=$ret
-    fi
-    ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
-    _ble_edit_ind=$nolx
-    ble/keymap:vi/adjust-command-mode
-    return 0
   fi
+  ble/keymap:vi/adjust-command-mode
+  return 0
 }
 function ble/widget/vi-command/linewise-goto.impl {
   ble/widget/vi-command/linewise-range.impl "$_ble_edit_ind" "$@"
@@ -2711,6 +2747,44 @@ function ble/widget/vi-command/.history-relative-line {
   return 0
 }
 
+## 関数 ble/keymap:vi/get-index-of-relative-line p offset
+##   列を保持した行移動の先の位置を計算します。
+##   @param[in,opt] p
+##     基準となる位置を指定します。空文字列を指定した時は現在位置が使われます。
+##   @param[in] offset
+##     移動する行数を指定します。
+##   @param[out] index
+function ble/keymap:vi/get-index-of-relative-line {
+  local ind=${1:-$_ble_edit_ind} offset=$2
+  if ((offset==0)); then
+    index=$ind
+    return
+  fi
+
+  local count=$((offset<0?-offset:offset))
+  local ret
+  ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
+  ble-edit/content/find-logical-bol "$ind" "$offset"; local bol2=$ret
+  if ble/edit/use-textmap; then
+    # 列の表示相対位置 (x,y) を保持
+    local b1x b1y; ble/textmap#getxy.cur --prefix=b1 "$bol1"
+    local b2x b2y; ble/textmap#getxy.cur --prefix=b2 "$bol2"
+
+    ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
+    local c1x c1y; ble/textmap#getxy.cur --prefix=c1 "$ind"
+    local e2x e2y; ble/textmap#getxy.cur --prefix=e2 "$eol2"
+
+    local x=$c1x y=$((b2y+c1y-b1y))
+    ((y>e2y&&(x=e2x,y=e2y)))
+
+    ble/textmap#get-index-at "$x" "$y" # local variable "index" is set here
+  else
+    # 論理列を保持
+    ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
+    ((index=bol2+ind-bol1,index>eol2&&(index=eol2)))
+  fi
+}
+
 ## 関数 ble/widget/vi-command/relative-line.impl offset flag reg opts
 ## 編集関数 vi-command/forward-line  # nmap j
 ## 編集関数 vi-command/backward-line # nmap k
@@ -2742,36 +2816,20 @@ function ble/widget/vi-command/relative-line.impl {
     return
   fi
 
+  # 現在履歴項目内で移動できる行数の判定
+  local count=$((offset<0?-offset:offset)) ret
+  if ((offset<0)); then
+    ble/string#count-char "${_ble_edit_str::_ble_edit_ind}" $'\n'
+  else
+    ble/string#count-char "${_ble_edit_str:_ble_edit_ind}" $'\n'
+  fi
+  ((count-=count<ret?count:ret))
+
   # 現在の履歴項目内での探索
-  local count=$((offset<0?-offset:offset))
-  local ret ind=$_ble_edit_ind
-  ble-edit/content/find-logical-bol "$ind" 0; local bol1=$ret
-  ble-edit/content/find-logical-bol "$ind" "$offset"; local bol2=$ret
-  local beg end; ((bol1<=bol2?(beg=bol1,end=bol2):(beg=bol2,end=bol1)))
-  ble/string#count-char "${_ble_edit_str:beg:end-beg}" $'\n'; local nmove=$ret
-  ((count-=nmove))
   if ((count==0)); then
-    local index
-    if ble/edit/use-textmap; then
-      # 列の表示相対位置 (x,y) を保持
-      local b1x b1y; ble/textmap#getxy.cur --prefix=b1 "$bol1"
-      local b2x b2y; ble/textmap#getxy.cur --prefix=b2 "$bol2"
-
-      ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
-      local c1x c1y; ble/textmap#getxy.cur --prefix=c1 "$ind"
-      local e2x e2y; ble/textmap#getxy.cur --prefix=e2 "$eol2"
-
-      local x=$c1x y=$((b2y+c1y-b1y))
-      ((y>e2y&&(x=e2x,y=e2y)))
-
-      ble/textmap#get-index-at "$x" "$y" # local variable "index" is set here
-    else
-      # 論理列を保持
-      ble-edit/content/find-logical-eol "$bol2"; local eol2=$ret
-      ((index=bol2+ind-bol1,index>eol2&&(index=eol2)))
-    fi
+    local index; ble/keymap:vi/get-index-of-relative-line "$_ble_edit_ind" "$offset"
+    ble/keymap:vi/needs-eol-fix "$index" && ((index--))
     _ble_edit_ind=$index
-    ble/keymap:vi/needs-eol-fix && ((_ble_edit_ind--))
     ble/keymap:vi/adjust-command-mode
     return 0
   fi
