@@ -1062,7 +1062,7 @@ function ble/widget/vi-command/operator {
     local mark_type=${_ble_edit_mark_active%+}
     ble/widget/vi_xmap/exit
 
-    local _ble_keymap_vi_opmark=$mark_type # ToDo: o_v
+    local ble_keymap_vi_opmode=$mark_type
     if [[ $mark_type == vi_line ]]; then
       ble/keymap:vi/call-operator-linewise "$opname" "$a" "$b" "$ARG" "$REG"
     elif [[ $mark_type == vi_block ]]; then
@@ -1132,7 +1132,6 @@ function ble/widget/vi-command/beginning-of-line {
 
 #------------------------------------------------------------------------------
 # Operators
-
 
 ## オペレータは以下の形式の関数として定義される。
 ##
@@ -1323,7 +1322,7 @@ function ble/keymap:vi/operator:d {
   else
     if ((beg<end)); then
 
-      if [[ $_ble_keymap_vi_opmark != vi_char && ${_ble_edit_str:beg:end-beg} == *$'\n'* ]]; then
+      if [[ $ble_keymap_vi_opmode != vi_char && ${_ble_edit_str:beg:end-beg} == *$'\n'* ]]; then
         # d の例外動作: 文字単位で開始点と終了点が異なる行で、
         #   開始点より前・終了点より後に空白しかない時、行指向で処理する。
         if local rex=$'(^|\n)([ \t]*)$'; [[ ${_ble_edit_str::beg} =~ $rex ]]; then
@@ -1373,7 +1372,7 @@ function ble/keymap:vi/operator:c {
 
     ble/widget/vi_xmap/block-insert-mode.impl insert
   else
-    local _ble_keymap_vi_opmark=vi_char
+    local ble_keymap_vi_opmode=vi_char
     ble/keymap:vi/operator:d "$@" || return 1
     ble/widget/vi_nmap/.insert-mode
   fi
@@ -1943,7 +1942,20 @@ function ble/keymap:vi/operator:map {
 function ble/widget/vi-command/exclusive-range.impl {
   local src=$1 dst=$2 flag=$3 reg=$4 nobell=$5
   if [[ $flag ]]; then
-    ble/keymap:vi/call-operator-charwise "$flag" "$src" "$dst" '' "$reg"; local ext=$?
+    local opname=${flag%%:*} opts=${flag#*:}
+    if [[ :$opts: == *:vi_line:* ]]; then
+      local ble_keymap_vi_opmode=vi_line
+      ble/keymap:vi/call-operator-linewise "$opname" "$src" "$dst" '' "$reg"; local ext=$?
+    elif [[ :$opts: == *:vi_block:* ]]; then
+      local ble_keymap_vi_opmode=vi_line
+      ble/keymap:vi/call-operator-blockwise "$opname" "$src" "$dst" '' "$reg"; local ext=$?
+    elif [[ :$opts: == *:vi_char:* ]]; then
+      local ble_keymap_vi_opmode=vi_char
+      ble/keymap:vi/call-operator-charwise "$opname" "$src" "$dst" '' "$reg"; local ext=$?
+    else
+      local ble_keymap_vi_opmode=
+      ble/keymap:vi/call-operator-charwise "$opname" "$src" "$dst" '' "$reg"; local ext=$?
+    fi
     ((ext==148)) && return 148
     ((ext)) && ble/widget/.bell
     ble/keymap:vi/adjust-command-mode
@@ -2042,6 +2054,8 @@ function ble/widget/vi-command/linewise-range.impl {
   local nolx=; local rex=':nolx=([0-9]+):'; [[ :$opts: =~ $rex ]] && nolx=${BASH_REMATCH[1]}
 
   if [[ $flag ]]; then
+    local opname=${flag%%:*}
+
     local bolp bolq=$bolx nolq=$nolx
     ble-edit/content/find-logical-bol "$p"; bolp=$ret
     [[ $bolq ]] || { ble-edit/content/find-logical-bol "$qbase" "$qline"; bolq=$ret; }
@@ -2066,13 +2080,13 @@ function ble/widget/vi-command/linewise-range.impl {
     fi
 
     ((end<${#_ble_edit_str}&&end++))
-    if ! ble/is-function ble/keymap:vi/operator:"$flag"; then
+    if ! ble/is-function ble/keymap:vi/operator:"$opname"; then
       ble/widget/vi-command/bell
       return 1
     fi
 
     # オペレータ呼び出し
-    ble/keymap:vi/call-operator "$flag" "$beg" "$end" line '' "$reg"; local ext=$?
+    ble/keymap:vi/call-operator "$opname" "$beg" "$end" line '' "$reg"; local ext=$?
     if ((ext)); then
       ((ext==148)) && return 148
       ble/widget/vi-command/bell
@@ -2081,7 +2095,7 @@ function ble/widget/vi-command/linewise-range.impl {
 
     # 範囲の先頭に移動
     local ind=$_ble_edit_ind
-    if [[ $flag == [cd] ]]; then
+    if [[ $opname == [cd] ]]; then
       # これらは常に first-non-space になる。
       _ble_edit_ind=$beg
       ble/widget/vi-command/first-non-space
@@ -5033,6 +5047,9 @@ function ble/keymap:vi/setup-map {
   ble-bind -c 'C-z' fg
 }
 
+#------------------------------------------------------------------------------
+# Operator pending mode
+
 function ble/widget/vi_omap/operator-rot13-or-search-backward {
   if [[ $_ble_keymap_vi_opfunc == rot13 ]]; then
     # g?? の時だけは rot13-encode lines
@@ -5040,6 +5057,35 @@ function ble/widget/vi_omap/operator-rot13-or-search-backward {
   else
     ble/widget/vi-command/search-backward
   fi
+}
+
+# o_v o_V
+function ble/widget/vi_omap/switch-visual-mode.impl {
+  local old=$_ble_keymap_vi_opfunc
+  [[ $old ]] || return 1
+
+  # clear existing visual-mode
+  local new=$old:
+  new=${new/:vi_char:/:}
+  new=${new/:vi_line:/:}
+  new=${new/:vi_block:/:}
+
+  # add new visual-mode
+  [[ $1 ]] && new=$new:$1
+
+  _ble_keymap_vi_opfunc=$new
+}
+# omap v
+function ble/widget/vi_omap/switch-to-charwise {
+  ble/widget/vi_omap/switch-visual-mode.impl vi_char
+}
+# omap V
+function ble/widget/vi_omap/switch-to-linewise {
+  ble/widget/vi_omap/switch-visual-mode.impl vi_line
+}
+# omap <C-v>
+function ble/widget/vi_omap/switch-to-blockwise {
+  ble/widget/vi_omap/switch-visual-mode.impl vi_block
 }
 
 function ble-decode/keymap:vi_omap/define {
@@ -5053,6 +5099,12 @@ function ble-decode/keymap:vi_omap/define {
 
   ble-bind -f a   vi-command/text-object
   ble-bind -f i   vi-command/text-object
+
+  # 範囲の種類の変更 (vim o_v o_V)
+  ble-bind -f v      vi_omap/switch-to-charwise
+  ble-bind -f V      vi_omap/switch-to-linewise
+  ble-bind -f C-v    vi_omap/switch-to-blockwise
+  ble-bind -f C-q    vi_omap/switch-to-blockwise
 
   # 2文字オペレータの短縮形
   ble-bind -f '~' 'vi-command/operator toggle_case'
@@ -5347,7 +5399,7 @@ function ble/keymap:vi/xmap/switch-type {
 }
 
 #--------------------------------------
-# 矩形範囲の抽出
+# xmap/矩形範囲の抽出
 
 ## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-graphical-rectangle [index1 [index2]]
 ## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-logical-rectangle   [index1 [index2]]

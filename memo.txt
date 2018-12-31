@@ -798,13 +798,12 @@ tech
     カーソル位置も一緒に記録して (或いは既に記録していただろうか)
     その付近で変更があったと解釈して範囲を特定する事は可能だろうか。
 
-  * vi (omap v): o_v o_V に対応する?
-    オペレータの振る舞いに影響を与える。
-    詳しくは help o_v と help o_V を参照すれば良い。
-    オペレータ d の charwise の時の特別な振る舞いも無効化する。
-
   * vi: operator d の特殊ルールは v で適用されるのか?
     少し動かしたら適用されている様な…。後で確認する必要がある。
+
+    2018-12-26 operator d の特殊ルールとは何だったか。。
+    うーん。これは ble/keymap:vi/operator:d の charwise の箇所で
+    実行されている処理のことのはずである。
 
 2018-10-03
 
@@ -2458,8 +2457,9 @@ tech
 2018-10-05 (#D0858..)
 
   新機能
-  - color (`ble-color-setface`): SGR指定など様々な形式に対応 `#D0860` 82fe96d `#D0861` 257c16d
-  - syntax: `bleopt filename_ls_colors` に対応 `#D0862` c7ff302 `#D0863` 3c5bacf
+  - color (`ble-color-setface`): SGR指定など様々な形式に対応 `#D0860` 82fe96d `#D0861` 257c16d `#D0864` 2eaf2a9
+  - syntax: `bleopt filename_ls_colors` に対応 `#D0862` c7ff302 `#D0863` 3c5bacf ec31aab
+  - vi: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> in `vi_omap` `#D0865`
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -3273,16 +3273,224 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2018-12-31
+
+  * 2018-10-08 vi (omap v): o_v o_V に対応する? [#D0865]
+    オペレータの振る舞いに影響を与える。
+    詳しくは help o_v と help o_V を参照すれば良い。
+    オペレータ d の charwise の時の特別な振る舞いも無効化する。
+
+    実際に試してみて分かった振る舞いについて以下にまとめる。
+    - omap C-v も効いている。
+    - omap v, V, C-v を実行しても表示は変わらない。
+
+    [実装方針に対する考察]
+
+    現在の状態をどのように保持するのが良いのかという考察。
+
+    | どの様に実装するのか。
+    | ble/keymap:vi/operator を見る。omap の時にはそもそも operator は呼び出されない。
+    | nmap で operator が呼び出されると opfunc が設定されて、
+    | それを元にして移動などが起こった時に実際の動作に入るのである。
+    | そして、コメントを見ると恐らく opfunc と同等の変数として新しく opmark をつける予定だった。
+    |
+    | 他の実装方法はないのだろうか。というのも opfunc や oparg と同様に実装すると、
+    | また新しく変数を追加する事になってしまい、管理がまた大変になりそうだからである。
+    |
+    | a opfunc に付加する形にするのは難しい。というのも opfunc は二文字以上も可能にしているから。
+    |   一応 opfunc に使える文字の種類を限定して : で区切って付加情報も記録できる様にする事も可能かもしれないが、
+    |   それはそれで大変である。
+    | b では oparg に記録する事は可能だろうか。
+    |   oparg はそのまま _ble_edit_arg をコピーする事によって値が設定されている。
+    |   また、記録していた物を再生する時には ARG がそのまま _ble_keymap_vi_optarg に設定されている。
+    |   やはり面倒そうな気がする。もし oparg に記録するとしても ARG に情報を伝達すると、
+    |   ARG を整数として扱っている数々の関数で問題が起こる事になる。
+    |   何れにしても ARG FLAG REG に新しい変数を追加するか、
+    |   或いは ARG FLAG REG とは別に local _ble_keymap_vi_opmark なる変数を用意して、
+    |   それを経由して値を伝達するという事になる気がする。
+    | c 新しく変数を作成するとしたら oparg と並列になる様に変数を作成すれば良い様な気がする。
+    |   しかし、その時に ARG FLAG REG の3変数に更に新しい変数を追加する事になるのだろうか。。
+    |   或いはグローバルの変数を経由して operator を呼び出せば良いのだろうか。
+    |   グローバルの変数を経由して呼び出す場合には入れ子で operator を呼び出した時にどうなるのか。
+    |   (というかそもそも入れ子で operator を呼び出すという事があるのかどうかも分からないが…)
+    |
+    | うーん。色々考えてみると実は opfunc/FLAG の中に情報を格納する方針の方が良い様な気がしてきた。
+    | opfunc 及び FLAG はどの様に使われているだろうか。
+    | 使用方法を調べてみると FLAG は上に伝達する時にしか使われていない気がする。
+
+    結論: 取り敢えず opfunc 及び FLAG を拡張する方向で考えてみる事にする。
+
+    opfunc/FLAG を拡張するという方針で問題がないかの考察。
+
+    | done: FLAG を渡されている関数は以下の通りである。
+    |
+    |   - ble/keymap:vi/text-object.impl "$ARG" "$FLAG" "$REG" "$type"
+    |     これは辿っていくと (flag が使用される場合には) 何れも以下の何れかに帰着する。
+    |     -> ble/widget/vi-command/exclusive-range.impl "$beg" "$end" "$flag" "$reg"
+    |     -> ble/widget/vi-command/linewise-range.impl "$beg" "$end" "$flag" "$reg" goto_bol
+    |   - ble/widget/vi-command/backward-word-end.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
+    |     -> ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" "$reg"
+    |   - ble/widget/vi-command/backward-word.impl "$ARG" "$FLAG" "$REG" $'[^ \t\n]+'
+    |     -> ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg"
+    |   - ble/widget/vi-command/forward-word-end.impl "$ARG" "$FLAG" "$REG" "$_ble_keymap_vi_REX_WORD"
+    |     -> ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" "$reg"
+    |   - ble/widget/vi-command/forward-word.impl "$ARG" "$FLAG" "$REG" $'[^ \t\n]+'
+    |     -> ble/widget/vi-command/inclusive-goto.impl "$index" "$flag" "$reg"
+    |     -> ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg"
+    |   - ble/widget/vi-command/goto-mark.impl "$index" "$FLAG" "$REG" "$opts"
+    |     -> ble/widget/vi-command/linewise-goto.impl "$index" "$flag" "$reg"
+    |     -> ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg" 1
+    |   - ble/widget/vi-command/graphical-relative-line.impl "$ARG" "$FLAG" "$REG"
+    |     -> ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg"
+    |   - ble/widget/vi-command/relative-first-non-space.impl 0 "$FLAG" "$REG" charwise
+    |     -> ble/widget/vi-command/exclusive-goto.impl "$nolx" "$flag" "$reg" 1
+    |     -> ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg" require_multiline:bolx="$bolx":nolx="$nolx"
+    |   - ble/widget/vi-command/relative-line.impl $((-ARG)) "$FLAG" "$REG" history
+    |     -> ble/widget/vi-command/linewise-goto.impl "$_ble_edit_ind:$offset" "$flag" "$reg" preserve_column:require_multiline
+    |
+    |   結局諸々の関数の呼び出しは以下の関数に帰着するようにである。
+    |
+    |   - ble/widget/vi-command/exclusive-goto.impl "$beg" "$FLAG" "$REG" 1
+    |     -> ble/widget/vi-command/linewise-goto.impl "$index" "$flag" "$reg"
+    |     -> ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$nobell"
+    |   - ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
+    |     -> ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$nobell"
+    |   - ble/widget/vi-command/linewise-goto.impl 0:$((iline-1)) "$FLAG" "$REG"
+    |     -> ble/widget/vi-command/linewise-range.impl "$_ble_edit_ind" "$@"
+    |
+    |   更に以下の関数に委譲されている。
+    |
+    |   - ble/widget/vi-command/linewise-range.impl
+    |
+    |     | ((end<${#_ble_edit_str}&&end++))
+    |     | if ! ble/is-function ble/keymap:vi/operator:"$flag"; then
+    |     |   ble/widget/vi-command/bell
+    |     |   return 1
+    |     | fi
+    |     |
+    |     | # オペレータ呼び出し
+    |     | ble/keymap:vi/call-operator "$flag" "$beg" "$end" line '' "$reg"; local ext=$?
+    |     | if ((ext)); then
+    |     |   ((ext==148)) && return 148
+    |     |   ble/widget/vi-command/bell
+    |     |   return "$ext"
+    |     | fi
+    |
+    |     主に以上の箇所 $flag で使用されている。
+    |     先ず初めに operator:$flag に関しては修正が必要である。
+    |     後ろの方で $flag == [cd] という判定があるこれも修正が必要である。
+    |     更に良く考えてみるとこの関数は linewise の関数なので、
+    |     flag に charwise や blockwise が設定されていたとしても
+    |     linewise として処理を実行しなければならないのではないか。
+    |
+    |     call-operator の実装について確認しておく事にする。
+    |     call-operator の実装では第一引数をそのまま vi/operator:$1 の様に呼び出すのに使っている。
+    |     つまり、何れにしても operator 名で呼び出さなければならないのである。
+    |     また、linewise-range から call-operator-linewise を呼び出すのではなくて、
+    |     直接に call-operator を呼び出しているのは、呼び出し元で行指向にする処理をしているからである。
+    |
+    |     従ってこの部分は単に演算子名にすれば良いのである。
+    |
+    |   - ble/widget/vi-command/exclusive-range.impl
+    |     これは以下の箇所で使われているのみである。
+    |
+    |     | ble/keymap:vi/call-operator-charwise "$flag" "$src" "$dst" '' "$reg"; local ext=$?
+    |
+    |     さて今から実行しようとしている事は何かというと、
+    |     この call-operator-charwise を現在記録されている矩形の種類に置き換えるという事である。
+    |
+    | ok: その他の FLAG の気になる使い方をしている箇所は以下の通りである。
+    |
+    | - ./keymap/vi.sh:2381:    if [[ $FLAG ]]; then
+    | - ./keymap/vi.sh:2576:    if [[ $FLAG || $_ble_decode_keymap == vi_[xs]map ]]; then
+    | - ./keymap/vi.sh:2601:    if [[ $FLAG || $_ble_decode_keymap == vi_[xs]map ]]; then
+    | - ./keymap/vi.sh:3380:  [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
+    | - ./keymap/vi.sh:3386:  [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
+    | - ./keymap/vi.sh:3393:  if [[ $FLAG ]]; then
+    | - ./keymap/vi.sh:3418:  if [[ $FLAG ]]; then
+    | - ./keymap/vi.sh:3444:  [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
+    | - ./keymap/vi.sh:3765:  [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
+    | - ./keymap/vi.sh:4764:  if [[ $FLAG || $_ble_decode_keymap == vi_[xs]map ]]; then
+    | - ./keymap/vi.sh:4777:  if [[ $FLAG ]]; then
+    | - ./keymap/vi.sh:5833:  if [[ $FLAG ]]; then
+    | - ./keymap/vi.sh:5893:  if [[ $FLAG ]]; then
+    | - ./keymap/vi.sh:6013:  if [[ $FLAG ]]; then
+    | - ./keymap/vi.sh:6096:  if [[ $FLAG ]]; then
+    | - ./keymap/vi.sh:6518:  if [[ $FLAG ]]; then
+    |   これらは基本的に FLAG に opname が指定されているかどうかだけを確認している。
+    |   opfunc を拡張するとしても既に何か設定されている時にのみ ~wise を付加するのだから関係ない。
+    |   問題は具体的に値を使って何かを実行する時だけのはずである。なのでこれらは気にしなくて良い。
+    |
+    | - ./lib/vim-surround.sh:690:  local WIDGET=ble/widget/vim-surround.sh/nmap/csurround.repeat ARG=$arg FLAG= REG=$reg
+    |   これは FLAG を空にするという動作であって、
+    |   ~wise は FLAG が非空の時にのみ意味があるのでこれで良いのである。
+    |
+    | - ./keymap/vi.sh:649:   FLAG=$_ble_keymap_vi_opfunc
+    | - ./keymap/vi.sh:3399:    _ble_keymap_vi_opfunc=$FLAG
+    | - ./keymap/vi.sh:3419:    _ble_keymap_vi_opfunc=$FLAG
+    | - ./keymap/vi.sh:3724:    _ble_keymap_vi_opfunc=$FLAG
+    |   opfunc と FLAG は一致する扱いとすればこれで良い。
+    |
+    | - ./keymap/vi.sh:2469:  local -a repeat; repeat=("$KEYMAP" "${KEYS[*]-}" "$WIDGET" "$ARG" "$FLAG" "$REG" '')
+    |   つまり 4 番目の要素に FLAG が格納される。調べてみるとこれが実際に使われるのは
+    |   ./keymap/vi.sh:2531:  _ble_keymap_vi_opfunc=${_ble_keymap_vi_repeat[4]}
+    |   という箇所のみであり、これも opfunc と FLAG が一致しているという前提の下で気にしなくて良い。
+    |
+    | 2018-12-31 少し時間を置いたら分からなくなった。今の状況を整理する事にする。結局、
+    | 1. FLAG が空文字列かどうかを判定している箇所は、FLAG の内容の形式が変更されても問題はない
+    | 2. FLAG の内容を記録している部分についても、FLAG の内容の形式には関係ないので問題ない
+    |   記録時に FLAG の内容によって動作が変わるなどのことはしていないので問題ない。
+    |   　また、記録される内容も v だったか V だったか C-v だったかまで一緒に記録するのが自然に思われる。
+    |   実際の vim の振る舞いがどちらなのかは確認していないけれども。
+    |   しかし v/V/C-v を忘れて再生されるというのは不自然なので当然 vim でもその状態を記録しているはずである。
+    | 3. その様に考えると実際に問題になるのは FLAG の中身を覗いているコードのみである。
+    |   それについては未だ確認していない関数のリストがあるので一つずつ確認していく事にする。
+
+    結論: 使用箇所で修正が必要なのは以下の二つの関数である。
+
+      - ble/widget/vi-command/linewise-range.impl
+      - ble/widget/vi-command/exclusive-range.impl
+
+      $flag を operator 名とそれに付属するオプションに分離する。
+      linewise-range ではオプション部分を無視して operator 名だけ使用するようにすれば良い。
+      exclusive-range においてはオプションによって呼び出す charwise/linewise/blockwise を変更すれば良い。
+
+    opfunc/FLAG の形式を決定する必要がある。
+
+    | どの様な物が良いだろうか。既存の opfunc 名と被らない様にしたい。
+    | そもそも opfunc は operator:opfunc の形式で呼び出すのだから、
+    | ":" 区切りにするのが自然な気がする。
+    | wiki の operator 設計の箇所ではどの様に書いただろうか。
+    | 特に MyOperator を構成する文字列に対する制限は書かれていない。
+    | 一応 MyOperator.record という関数を使っているので、
+    | "." を含む事を可能にするのは不味いだろうというぐらいである。
+    | 恐らく識別子として使える名前に制限しているつもりの気がする。
+    | と思ったら既に surround-extract-region というのがある…。
+    | まあ、然しそんなところだろう。
+    | ":" を使うという事はない気がする。
+
+    結論: /Operator(:options)?/ の形式という事にする。
+      また Operator には ":" や "." を含んではいけない事にする。
+
+    [実装]
+
+    1 done: o_v o_V o_C-v の実装
+    2 done: 使用箇所の修正
+
+    取り敢えず動いている気がする。
+    後は面倒なので不具合報告が出てきた時に対応する事にする。
+
 2018-12-30
 
   * color (ble-color-setface): "face:..." による設定が正しく設定されない (reported by cmplstofB) [#D0864]
+    https://github.com/akinomyoga/ble.sh/issues/20
 
     これは調べてみたところ ble-color-face2g 及び ble-color-iface2g の使い方を間違えていた。
     これは直した。
 
-    * fixed: しかし、face2g\iface2g の呼び出しに失敗するだけで、
+    * fixed: しかし、face2g/iface2g の呼び出しに失敗するだけで、
       後に沢山のエラーメッセージが出てくるのはこれはこれで別のバグである。
-      調べてみると、単語着色に於いて g 値が空白になった時に、
+      調べてみると、単語着色に於いて g 値が空文字列になった時に、
       _ble_syntax_tree に記録されている項目がずれてしまう問題があった。
       そもそも _ble_syntax_tree に記録される項目は空白区切りの単語列なので、
       空の単語が記録されない様に注意する必要があった。これも直した。
