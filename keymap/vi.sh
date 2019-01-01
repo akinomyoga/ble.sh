@@ -1084,9 +1084,10 @@ function ble/widget/vi-command/operator {
     ble/keymap:vi/update-mode-name
 
   elif [[ $_ble_decode_keymap == vi_omap ]]; then
-    if [[ $opname == "$_ble_keymap_vi_opfunc" ]]; then
+    local opname1=${_ble_keymap_vi_opfunc%%:*}
+    if [[ $opname == "$opname1" ]]; then
       # 2つの同じオペレータ (yy, dd, cc, etc.) = 行指向の処理
-      ble/widget/vi_nmap/linewise-operator "$opname"
+      ble/widget/vi_nmap/linewise-operator "$_ble_keymap_vi_opfunc"
     else
       ble/keymap:vi/clear-arg
       ble/widget/vi-command/bell
@@ -1097,10 +1098,21 @@ function ble/widget/vi-command/operator {
 }
 
 function ble/widget/vi_nmap/linewise-operator {
-  local opname=$1
+  local opname=${1%%:*} opflags=${1#*:}
   local ARG FLAG REG; ble/keymap:vi/get-arg 1 # _ble_edit_arg is consumed here
   if ((ARG==1)) || [[ ${_ble_edit_str:_ble_edit_ind} == *$'\n'* ]]; then
-    ble/keymap:vi/call-operator-linewise "$opname" "$_ble_edit_ind" "$_ble_edit_ind:$((ARG-1))" '' "$REG"; local ext=$?
+    if [[ :$opflags: == *:vi_char:* || :$opflags: == *:vi_block:* ]]; then
+      local beg=$_ble_edit_ind
+      local ret; ble-edit/content/find-logical-bol "$beg" $((ARG-1)); local end=$ret
+      ((beg<=end)) || local beg=$end end=$beg
+      if [[ :$opflags: == *:vi_block:* ]]; then
+        ble/keymap:vi/call-operator-blockwise "$opname" "$beg" "$end" '' "$REG"
+      else
+        ble/keymap:vi/call-operator-charwise "$opname" "$beg" "$end" '' "$REG"
+      fi
+    else
+      ble/keymap:vi/call-operator-linewise "$opname" "$_ble_edit_ind" "$_ble_edit_ind:$((ARG-1))" '' "$REG"; local ext=$?
+    fi
     if ((ext==0)); then
       ble/keymap:vi/adjust-command-mode
       return 0

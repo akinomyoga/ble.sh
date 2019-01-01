@@ -794,18 +794,19 @@ function ble/widget/vim-surround.sh/omap {
   fi
   ble/util/c2s "$ret"; local s=$ret
 
-  local opfunc=$_ble_keymap_vi_opfunc$s
+  local opfunc=${_ble_keymap_vi_opfunc%%:*}$s
+  local opflags=${_ble_keymap_vi_opfunc#*:}
   case "$opfunc" in
   (y[sS])
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
     _ble_edit_arg=$ARG
     _ble_keymap_vi_reg=$REG
     ble-decode/keymap/pop
-    ble/widget/vi-command/operator "$opfunc" ;;
+    ble/widget/vi-command/operator "$opfunc:$opflags" ;;
   (yss)
-    ble/widget/vim-surround.sh/ysurround-current-line ;;
+    ble/widget/vi_nmap/linewise-operator "yss:$opflags" ;;
   (yS[sS])
-    ble/widget/vim-surround.sh/ySurround-current-line ;;
+    ble/widget/vi_nmap/linewise-operator "ySS:$opflags" ;;
   (ds) ble/widget/vim-surround.sh/nmap/dsurround ;;
   (cs) ble/widget/vim-surround.sh/nmap/csurround ;;
   (cS) ble/widget/vim-surround.sh/nmap/cSurround ;;
