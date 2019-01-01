@@ -806,42 +806,6 @@ tech
     カーソル位置も一緒に記録して (或いは既に記録していただろうか)
     その付近で変更があったと解釈して範囲を特定する事は可能だろうか。
 
-  * vi: operator d の特殊ルールは v で適用されるのか?
-
-    % 少し動かしたら適用されている様な…。後で確認する必要がある。
-
-    2018-12-26 operator d の特殊ルールとは何だったか。。
-    うーん。これは ble/keymap:vi/operator:d の charwise の箇所で
-    実行されている処理のことのはずである。
-
-    試しに動かしてみる。
-    | AAAAAAAA$
-    |     echo$
-    | world   $
-    | BBBBBBBB$
-
-    vim, blesh: e の位置で d2e とすると2行消える。
-    vim: e の位置で dv2e とすると echo\nworl が削除される。
-    blesh: e の位置で dv2e とすると echo\nworld が削除される。
-    つまり、operator d の特殊ルールは適用されなくなるが、
-    そもそも v の時の適用範囲が誤っている…。
-
-    % これは実は xmap のルーチンを流用して来た方が正しいのかもしれない…。
-    % と思って xmap の時の処理を確認したら
-    % 処理は ble/widget/vi-command/operator で行われていて、
-    % 寧ろ処理の範囲は縮小されるのではなくて拡張されていた…。逆である。
-    % なので xmap は恐らく o_v の動作には関係ない。
-
-    寧ろ :help o_v の方に説明が書かれているかもしれない。
-    o_v の説明を読むと exclusive/inclusive を切り替えると書かれている…。
-
-2018-10-03
-
-  * complete: "type" の補完指定が効いていない
-    調べると complete -c type になっている。
-    調べたら compv_quoted で '' の中に名前を指定すると駄目の様だ。
-    これについては一度確認したような気がするが、その時はどのような結論になったのだったか。
-
 2018-09-28
 
   * isearch: 空文字列で検索を開始すると前回の文字列で検索する様にする可能性?
@@ -2489,11 +2453,12 @@ tech
   新機能
   - color (`ble-color-setface`): SGR指定など様々な形式に対応 `#D0860` 82fe96d `#D0861` 257c16d `#D0864` 2eaf2a9
   - syntax: `bleopt filename_ls_colors` に対応 `#D0862` c7ff302 `#D0863` 3c5bacf ec31aab
-  - vi: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> in `vi_omap` `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3 `#D0868`
+  - vi: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> in `vi_omap` `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3 `#D0868` eb848dc
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
   - syntax: extract-command でネストされたコマンドの抽出結果が常に失敗になるバグの修正 `#D0859` c3270f6
+  - complete: `complete -c` 等の補完設定が効かない問題の修正 `#D0870`
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3308,6 +3273,63 @@ tech
 
 2019-01-01
 
+  * 2018-10-03 complete: "type" の補完指定が効いていない [#D0870]
+    ref #D0714 #M0009
+
+    調べると complete -c type になっている。
+    調べたら compv_quoted で '' の中に名前を指定すると駄目の様だ。
+    これについては一度確認したような気がするが、その時はどのような結論になったのだったか。
+
+    #M0009 に記録が残っている。-A command,directory,file は駄目だそうだ。
+    これは command,directory,file が補完に含まれる時にはクォートしないという方法を取る事にした。
+    他の種類の補完候補が含まれている場合やチルダが含まれている時に問題になるかもしれないが仕方がない。
+
+  * [自然解消] vi: operator d の特殊ルールは v で適用されるのか? [#D0869]
+
+    % 少し動かしたら適用されている様な…。後で確認する必要がある。
+
+    2018-12-26 operator d の特殊ルールとは何だったか。。
+    うーん。これは ble/keymap:vi/operator:d の charwise の箇所で
+    実行されている処理のことのはずである。
+
+    * o_v で適用されるか
+
+      % 試しに動かしてみる。
+      % | AAAAAAAA$
+      % |     echo$
+      % | world   $
+      % | BBBBBBBB$
+      % 
+      % vim, blesh: e の位置で d2e とすると2行消える。
+      % vim: e の位置で dv2e とすると echo\nworl が削除される。
+      % blesh: e の位置で dv2e とすると echo\nworld が削除される。
+      % つまり、operator d の特殊ルールは適用されなくなるが、
+      % そもそも v の時の適用範囲が誤っている…。
+      % 
+      % % これは実は xmap のルーチンを流用して来た方が正しいのかもしれない…。
+      % % と思って xmap の時の処理を確認したら
+      % % 処理は ble/widget/vi-command/operator で行われていて、
+      % % 寧ろ処理の範囲は縮小されるのではなくて拡張されていた…。逆である。
+      % % なので xmap は恐らく o_v の動作には関係ない。
+      % 
+      % 寧ろ :help o_v の方に説明が書かれているかもしれない。
+      % o_v の説明を読むと exclusive/inclusive を切り替えると書かれている…。
+
+      o_v に関しては別に実装する事にした。
+      inclusive/exclusive の切り替えもちゃんと実装したら動作は一致する様になった。
+
+    * v (xmap/smap) で適用されるか
+
+      | AAAAAAAA$
+      |     echo$
+      | world   $
+      | BBBBBBBB$
+
+      以上の e の位置で vjd とすると、vim でも ble.sh でも空白4つを残して他は消えた。
+      どのような振る舞いになっているか考えるのは面倒だがちゃんと動いている。
+      恐らく規則によって先頭の space 類は残したまま行指向になるのだろう。
+      何れにしても既に一致した振る舞いになっているので気にしない事にする。
+
   * vi (omap `v`): dd や yy 等の場合にも omap v/V/C-v を適用する [#D0868]
 
     dd や yy などの時にも間に v や V 等挟んでも良いのだろうか。
@@ -3491,6 +3513,7 @@ tech
     o C-v の時右端が inclusive になっているか。
       これはちゃんと動いた。
 
+
 2018-12-31
 
   * 2018-10-08 vi (omap v): o_v o_V に対応する? [#D0865]

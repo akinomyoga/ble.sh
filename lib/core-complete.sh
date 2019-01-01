@@ -826,7 +826,7 @@ function ble-complete/source:argument/.progcomp {
 
   [[ $compcmd ]] || return 1
 
-  local -a compargs compoptions
+  local -a compargs compoptions flag_noquote=
   local ret iarg=1
   ble/util/assign ret 'complete -p "$compcmd" 2>/dev/null'
   ble/string#split-words compargs "$ret"
@@ -839,10 +839,25 @@ function ble-complete/source:argument/.progcomp {
         c=${arg:ic:1}
         case "$c" in
         ([abcdefgjksuvE])
+          # Note: workaround #D0714 #M0009 #D0870
+          case $c in
+          (c) flag_noquote=1 ;;
+          (d) ((_ble_bash>=40300)) && flag_noquote=1 ;;
+          (f) ((40000<=_ble_bash&&_ble_bash<40200)) && flag_noquote=1 ;;
+          esac
+          [[ $c == [cdf] ]] &&
           ble/array#push compoptions "-$c" ;;
         ([pr])
           ;; # 無視 (-p 表示 -r 削除)
         ([AGWXPS])
+          # Note: workaround #D0714 #M0009 #D0870
+          if [[ $c == A ]]; then
+            case ${compargs[iarg]} in
+            (command) flag_noquote=1 ;;
+            (directory) ((_ble_bash>=40300)) && flag_noquote=1 ;;
+            (file) ((40000<=_ble_bash&&_ble_bash<40200)) && flag_noquote=1 ;;
+            esac
+          fi
           ble/array#push compoptions "-$c" "${compargs[iarg++]}" ;;
         (o)
           local o=${compargs[iarg++]}
@@ -867,9 +882,12 @@ function ble-complete/source:argument/.progcomp {
 
   # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
-  local q="'" Q="'\''"
-  local compgen compv_quoted="'${COMPV//$q/$Q}'"
-  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$compv_quoted" 2>/dev/null'
+  local compgen compgen_compv=$COMPV
+  if [[ ! $flag_noquote ]]; then
+    local q="'" Q="'\''"
+    compgen_compv="'${compgen_compv//$q/$Q}'"
+  fi
+  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
 
   # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
   #   ble-complete/source:argument/.progcomp-helper-func 関数内で補間関数の終了ステータスを確認し、
