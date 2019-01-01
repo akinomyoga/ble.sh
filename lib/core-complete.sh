@@ -845,7 +845,6 @@ function ble-complete/source:argument/.progcomp {
           (d) ((_ble_bash>=40300)) && flag_noquote=1 ;;
           (f) ((40000<=_ble_bash&&_ble_bash<40200)) && flag_noquote=1 ;;
           esac
-          [[ $c == [cdf] ]] &&
           ble/array#push compoptions "-$c" ;;
         ([pr])
           ;; # 無視 (-p 表示 -r 削除)
