@@ -582,6 +582,14 @@ tech
     Memo
 -------------------------------------------------------------------------------
 
+2019-01-01
+
+  * vi: inclusive/exclusive motion の実装に関して [#M0011]
+
+    exclusive な motion は exclusive-goto.impl を呼び出す。
+    inclusive な motion は inclusive-goto.impl を呼び出す。
+    何れの場合も範囲を修正の後に exclustive-range.impl に委譲する。
+
 2018-08-31
 
   * decode: 端末の送信するキーシーケンスについて [#M0010]
@@ -763,24 +771,6 @@ tech
 2018-12-31
 
   * vi (omap `v`): 振る舞いが色々異なる。
-
-    * :help o_v によると元から charwise の時には
-      inclusive/exclusive を切り替えるとの事。
-
-    さて問題は ble.sh の実装では全て exclusive と想定して
-    実装しているという事である。
-    従って、現在 inclusive なのか exclusive なのか、
-    呼び出された側からは判定する事ができない。
-    或いは、常に exclusive だと思って置けば良いのだろうか。
-    改行が絡んでいる時にはどうしたら良いのだろうか…。
-
-    更に、inclusive/exclusive というのも opfunc 内に
-    記録しなければならないという事になる。
-
-    うーん。ble.sh における inclusive/exclusive に関する考察が
-    何処かにあったような気がするがすぐには見つからない。
-    取り敢えず #D0437 に多少の議論があるが、
-    もっと後に何か考察したような気がする。
 
     * dd や yy などの時にも間に v や V 等挟んでも良いのだろうか。
 
@@ -3320,6 +3310,105 @@ tech
 -------------------------------------------------------------------------------
 
 2019-01-01
+
+  * vi (omap `v`): charwise の inclusive/exclusive を toggle する [#D0867]
+
+    :help o_v によると元から charwise の時には
+    inclusive/exclusive を切り替えるとの事。
+
+    | さて問題は ble.sh の実装では全て exclusive と想定して
+    | 実装しているという事である。
+    | 従って、現在 inclusive なのか exclusive なのか、
+    | 呼び出された側からは判定する事ができない。
+    | 或いは、常に exclusive だと思って置けば良いのだろうか。
+    | 改行が絡んでいる時にはどうしたら良いのだろうか…。
+    |
+    | 更に、inclusive/exclusive というのも opfunc 内に
+    | 記録しなければならないという事になる。
+    |
+    | うーん。ble.sh における inclusive/exclusive に関する考察が
+    | 何処かにあったような気がするがすぐには見つからない。
+    | 取り敢えず #D0437 に多少の議論があるが、
+    | もっと後に何か考察したような気がする。
+    |
+    | 改めて inclusive/exclusive について考える事にする。
+    | exclusive-range.impl が charwise で呼び出される時の問題である。
+    | というか exclusive-range.impl は元々 charwise で呼び出されるのであった。
+    |
+    | inclusive の物は数が限られているので inclusive である物を列挙する事にする。
+    | $ (行末) g$ (表示上の行末) g_ (最後の非空白文字) fx tx (検索)
+    | e E ge gE (単語末尾) % (括弧やコメント等の検索)
+    | 取り敢えず https://vim-jp.org/vimdoc-ja/motion.html に載っているのはこれだけである。
+    |
+    | 一方で exclusive-linewise の判定ではどのようにしているのか。
+    | exclusive-linewise は exclusive の時にだけ有効になる筈なのではないか。
+    | どのように判定しているのか。exclusive-linewise で検索すると、
+    | #D0565 で exclusive-linewise が実装されていて、
+    | その記述によると exclusive は exclusive-goto.impl -> exclusive-range.impl と呼び出され、
+    | inclusive は inclusive-goto.impl -> exclusive-range.impl と呼びされるので、
+    | exclusive-linewise は exclusive-goto.impl で実装すれば良いとのこと。
+    | 実際に確認してみるとその様になっている。
+    |
+    | とすれば…inclusive-goto.impl で書き換えれば良いという事になる。
+    | 本当だろうか。一応上記の inclusive なコマンドがどの様に実装されているかを確認していく。
+    | - $ 及び g$ と g_ ... 確かに inclusive-goto.impl を呼び出している。
+    | - fx 及び tx に関しても確かに inclusive-goto.impl を呼び出している。
+    | - e E ge gE についても inclusive-goto.impl を呼び出している。
+    | - % (search-matchpair-or) も inclusive-goto.impl を呼び出している。
+
+    結論: ble.sh の実装では exclusive な motion は、
+      exclusive-goto.impl -> exclusive-range.impl で呼び出される。
+      inclusive な motion は
+      inclusive-goto.impl -> exclusive-range.impl で呼び出される。
+      従って exclusive/inclusive 毎の操作は
+      exclusive/inclusive-goto.impl で実装する事になる。
+      現に exclusive-linewise の機能は exclusive-goto.impl の中で実装されている。
+
+      これについては #M0011 に記録を残して置く事にする。
+
+    | v に対して opfunc 内で偶奇性を保持する様に修正すれば toggle はできる。
+    | さて、問題は修正をどの場所で行うのかという事になる。
+    | inclusive の時にも exclusive の時にも修正を行う必要がある。
+    | そして exclusive-range.impl の呼び出し元は実は
+    | exclusive/inclusive-goto.impl だけではなくて沢山ある。
+    | うーん。実は exclusive-range.impl 側で処理した方が良いのではないか。
+    | inclusive の時だけは元々 inclusive な motion であるという情報を
+    | exclusive-range.impl に何らかの方法で伝達する必要がある。
+    | 
+    | うーん。第5引数に nobell を受け取っているがこれを opts に変更できないだろうか。
+    | 使用箇所を確認してみると2箇所でしか nobell は指定していない。
+    | そしてそれは exclusive-goto.impl 及び inclusive-goto.impl である。
+    | これらを検索するとこれは呼び出し時に確定している様子である。
+    | 従って、nobell を指定する様に変更してしまって良いだろう。
+    | →opts に変更する事にした。
+
+    結論: exclusive-range.impl の第5引数を nobell から opts に拡張する事にする。
+      これを通して exclusive-range.impl に inclusive を伝達する事にする。
+
+    * vim における exclusive/inclusive の動作について確認する。
+      Fh で後退した場合に起点 (終端点) は inclusive に変換されるのか。
+      実際に vim で試してみた所 g~Fh では起点は作用対象にならない (exclusive) だが、
+      g~vFh とすると起点も作用対象になった (inclusive)。
+      つまり、exclusive/inclusive の別は行き先に対して実行されるのではなくて、
+      飽くまで範囲の終端点に対して実行されるのである。
+
+    [実装]
+
+    - done: v に対して偶奇を保持する様に修正
+    - done: exclusive-range.impl の第5引数に opts を受け取る様に修正
+    - done: exclusive-range.impl に於いて vi_char1 の時は exclusive/inclusive を反転する
+
+    [動作確認]
+
+    x fixed: vim の動作を調べてみた所…toggle すると書いてあったが、
+      v を押す度に反転するという訳ではなくて、
+      v を一回でも押したら反転したものになって、それ以降は変わらない様だ。
+      つまり vi_char の偶奇性を判定する必要は全くなかった。
+      偶奇のコードは削除する事にした。
+
+    o linewise の時の動作は正しいか。例えば g~vj でどう振る舞うべきか。
+      vim でどう動くか試してみる。→ exclusive である。g~vvj としても同じ。
+      ble.sh の現在の実装での振る舞いもちゃんと一致している。OK
 
   * vi (omap `v`): linewise-range.impl の時も charwise/blockwise に変換する [#D0866]
 

@@ -1127,7 +1127,7 @@ function ble/widget/vi_nmap/kill-current-line-and-insert {
 function ble/widget/vi-command/beginning-of-line {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local ret; ble-edit/content/find-logical-bol; local beg=$ret
-  ble/widget/vi-command/exclusive-goto.impl "$beg" "$FLAG" "$REG" 1
+  ble/widget/vi-command/exclusive-goto.impl "$beg" "$FLAG" "$REG" nobell
 }
 
 #------------------------------------------------------------------------------
@@ -1936,21 +1936,39 @@ function ble/keymap:vi/operator:map {
 ##   @param[in] reg
 ##     レジスタ番号を指定します。
 ##
-##   @param[in] nobell
-##     1 を指定したとき移動前と移動後の位置が同じときにベルを鳴らしません。
+##   @param[in] opts
+##     コロン区切りのオプションです。
+##     nobell    移動前と移動後の位置が同じときにベルを鳴らしません。
+##     inclusive 移動の既定の動作が inclusive である事を示します。
 ##
 function ble/widget/vi-command/exclusive-range.impl {
-  local src=$1 dst=$2 flag=$3 reg=$4 nobell=$5
+  local src=$1 dst=$2 flag=$3 reg=$4 opts=$5
   if [[ $flag ]]; then
-    local opname=${flag%%:*} opts=${flag#*:}
-    if [[ :$opts: == *:vi_line:* ]]; then
+    local opname=${flag%%:*} opflags=${flag#*:}
+    if [[ :$opflags: == *:vi_line:* ]]; then
       local ble_keymap_vi_opmode=vi_line
       ble/keymap:vi/call-operator-linewise "$opname" "$src" "$dst" '' "$reg"; local ext=$?
-    elif [[ :$opts: == *:vi_block:* ]]; then
+    elif [[ :$opflags: == *:vi_block:* ]]; then
       local ble_keymap_vi_opmode=vi_line
       ble/keymap:vi/call-operator-blockwise "$opname" "$src" "$dst" '' "$reg"; local ext=$?
-    elif [[ :$opts: == *:vi_char:* ]]; then
+    elif [[ :$opflags: == *:vi_char:* ]]; then
       local ble_keymap_vi_opmode=vi_char
+
+      # 規則 o_v (omap v) の toggle inclusive/exclusive
+      if [[ :$opts: == *:inclusive:* ]]; then
+        ((src<dst?dst--:(dst<src&&src--)))
+      else
+        if ((src<=dst)); then
+          ((dst<${#_ble_edit_str})) &&
+            [[ ${_ble_edit_str:dst:1} != $'\n' ]] &&
+            ((dst++))
+        else
+          ((src<${#_ble_edit_str})) &&
+            [[ ${_ble_edit_str:src:1} != $'\n' ]] &&
+            ((src++))
+        fi
+      fi
+
       ble/keymap:vi/call-operator-charwise "$opname" "$src" "$dst" '' "$reg"; local ext=$?
     else
       local ble_keymap_vi_opmode=
@@ -1964,7 +1982,7 @@ function ble/widget/vi-command/exclusive-range.impl {
     ble/keymap:vi/needs-eol-fix "$dst" && ((dst--))
     if ((dst!=_ble_edit_ind)); then
       _ble_edit_ind=$dst
-    elif ((!nobell)); then
+    elif [[ :$opts: != *:nobell:* ]]; then
       ble/widget/vi-command/bell
       return 1
     fi
@@ -1973,7 +1991,7 @@ function ble/widget/vi-command/exclusive-range.impl {
   fi
 }
 function ble/widget/vi-command/exclusive-goto.impl {
-  local index=$1 flag=$2 reg=$3 nobell=$4
+  local index=$1 flag=$2 reg=$3 opts=$4
   if [[ $flag ]]; then
     if ble-edit/content/bolp "$index"; then
       local is_linewise=
@@ -1996,10 +2014,10 @@ function ble/widget/vi-command/exclusive-goto.impl {
       fi
     fi
   fi
-  ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$nobell"
+  ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$opts"
 }
 function ble/widget/vi-command/inclusive-goto.impl {
-  local index=$1 flag=$2 reg=$3 nobell=$4
+  local index=$1 flag=$2 reg=$3 opts=$4
   if [[ $flag ]]; then
     if ((_ble_edit_ind<=index)); then
       ble-edit/content/eolp "$index" || ((index++))
@@ -2007,7 +2025,7 @@ function ble/widget/vi-command/inclusive-goto.impl {
       ble-edit/content/eolp || ((_ble_edit_ind++))
     fi
   fi
-  ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$nobell"
+  ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$opts:inclusive"
 }
 
 ## 関数 ble/widget/vi-command/linewise-range.impl p q flag reg opts
@@ -2067,7 +2085,7 @@ function ble/widget/vi-command/linewise-range.impl {
     return 0
   fi
 
-  local opname=${flag%%:*} oparg=${flag#*:}
+  local opname=${flag%%:*} opflags=${flag#*:}
   if ! ble/is-function ble/keymap:vi/operator:"$opname"; then
     ble/widget/vi-command/bell
     return 1
@@ -2089,7 +2107,7 @@ function ble/widget/vi-command/linewise-range.impl {
   fi
 
   # オペレータ呼び出し
-  if [[ :$oparg: == *:vi_char:* || :$oparg: == *:vi_block:* ]]; then
+  if [[ :$opflags: == *:vi_char:* || :$opflags: == *:vi_block:* ]]; then
     # 行き先の決定
     local beg=$p end
     if [[ :$opts: == *:preserve_column:* ]]; then
@@ -2103,12 +2121,12 @@ function ble/widget/vi-command/linewise-range.impl {
     fi
     ((beg<=end)) || local beg=$end end=$beg
 
-    if [[ :$oparg: == *:vi_char:* ]]; then
-      local ble_keymap_vi_opmode=vi_char
-      ble/keymap:vi/call-operator "$opname" "$beg" "$end" char '' "$reg"; local ext=$?
-    else
+    if [[ :$opflags: == *:vi_block:* ]]; then
       local ble_keymap_vi_opmode=vi_block
       ble/keymap:vi/call-operator "$opname" "$beg" "$end" block '' "$reg"; local ext=$?
+    else
+      local ble_keymap_vi_opmode=vi_char
+      ble/keymap:vi/call-operator "$opname" "$beg" "$end" char '' "$reg"; local ext=$?
     fi
     if ((ext)); then
       ((ext==148)) && return 148
@@ -2128,7 +2146,7 @@ function ble/widget/vi-command/linewise-range.impl {
     ((end<${#_ble_edit_str}&&end++))
 
     local ble_keymap_vi_opmode=
-    [[ :$oparg: == *:vi_line:* ]] && ble_keymap_vi_opmode=vi_line
+    [[ :$opflags: == *:vi_line:* ]] && ble_keymap_vi_opmode=vi_line
     ble/keymap:vi/call-operator "$opname" "$beg" "$end" line '' "$reg"; local ext=$?
     if ((ext)); then
       ((ext==148)) && return 148
@@ -2399,7 +2417,7 @@ function ble/widget/vi-command/goto-mark.impl {
   if [[ :$opts: == *:line:* ]]; then
     ble/widget/vi-command/linewise-goto.impl "$index" "$flag" "$reg"
   else
-    ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg" 1
+    ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg" nobell
   fi
 }
 function ble/widget/vi-command/goto-local-mark.impl {
@@ -2937,7 +2955,7 @@ function ble/widget/vi-command/relative-first-non-space.impl {
     if [[ :$opts: == *:charwise:* ]]; then
       # command: ^
       ble-edit/content/nonbol-eolp "$nolx" && ((nolx--))
-      ble/widget/vi-command/exclusive-goto.impl "$nolx" "$flag" "$reg" 1
+      ble/widget/vi-command/exclusive-goto.impl "$nolx" "$flag" "$reg" nobell
     elif [[ :$opts: == *:multiline:* ]]; then
       # command: + -
       ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg" require_multiline:bolx="$bolx":nolx="$nolx"
@@ -3005,7 +3023,7 @@ function ble/widget/vi-command/forward-eol {
   local ret index
   ble-edit/content/find-logical-eol "$_ble_edit_ind" $((ARG-1)); index=$ret
   ble/keymap:vi/needs-eol-fix "$index" && ((index--))
-  ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
+  ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" nobell
   [[ $_ble_decode_keymap == vi_[xs]map ]] &&
     ble/keymap:vi/xmap/add-eol-extension # 末尾拡張
 }
@@ -3017,7 +3035,7 @@ function ble/widget/vi-command/beginning-of-graphical-line {
     ble/textmap#getxy.cur "$_ble_edit_ind"
     ble/textmap#get-index-at 0 "$y"
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
-    ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" 1
+    ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" nobell
   else
     ble/widget/vi-command/beginning-of-line
   fi
@@ -3031,7 +3049,7 @@ function ble/widget/vi-command/graphical-first-non-space {
     ble/textmap#get-index-at 0 "$y"
     ble-edit/content/find-non-space "$index"
     ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
-    ble/widget/vi-command/exclusive-goto.impl "$ret" "$FLAG" "$REG" 1
+    ble/widget/vi-command/exclusive-goto.impl "$ret" "$FLAG" "$REG" nobell
   else
     ble/widget/vi-command/first-non-space
   fi
@@ -3044,7 +3062,7 @@ function ble/widget/vi-command/graphical-forward-eol {
     ble/textmap#getxy.cur "$_ble_edit_ind"
     ble/textmap#get-index-at $((_ble_textmap_cols-1)) $((y+ARG-1))
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
-    ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
+    ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" nobell
   else
     ble/widget/vi-command/forward-eol
   fi
@@ -3066,7 +3084,7 @@ function ble/widget/vi-command/middle-of-graphical-line {
       index>eol&&(index=eol),
       bol<eol&&index==eol&&(index--)))
   fi
-  ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" 1
+  ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" nobell
 }
 # nmap g_
 function ble/widget/vi-command/last-non-space {
@@ -3081,7 +3099,7 @@ function ble/widget/vi-command/last-non-space {
 
   local rex=$'([^ \t\n]?[ \t]+|[^ \t\n])$'
   [[ ${_ble_edit_str::index} =~ $rex ]] && ((index-=${#BASH_REMATCH}))
-  ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
+  ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" nobell
 
 }
 
@@ -3443,7 +3461,7 @@ function ble/widget/vi-command/nth-column {
     ((index=bol+ARG-1,index>eol?(index=eol)))
   fi
 
-  ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" 1
+  ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" nobell
 }
 
 # nmap H
@@ -3721,7 +3739,7 @@ function ble/widget/vi-command/search-char.impl/core {
     ((ret>=0)) || return 1
 
     ((index=bol+ret,isprev&&index++))
-    ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" 1
+    ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" nobell
     return
   else
     # forward search
@@ -3734,7 +3752,7 @@ function ble/widget/vi-command/search-char.impl/core {
     ((ret>=0)) || return 1
 
     ((index=base+ret,isprev&&index--))
-    ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
+    ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" nobell
     return
   fi
 }
@@ -3835,7 +3853,7 @@ function ble/widget/vi-command/search-matchpair-or {
   fi
 
   [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
-  ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" 1
+  ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" nobell
 }
 
 function ble/widget/vi-command/percentage-line {
@@ -3867,7 +3885,7 @@ function ble/widget/vi-command/nth-byte {
     fi
   done
   ble/keymap:vi/needs-eol-fix "$offset" && ((offset--))
-  ble/widget/vi-command/exclusive-goto.impl "$offset" "$FLAG" "$REG" 1
+  ble/widget/vi-command/exclusive-goto.impl "$offset" "$FLAG" "$REG" nobell
 }
 
 #------------------------------------------------------------------------------
@@ -4864,7 +4882,7 @@ function ble/widget/vi-command/search.impl {
 
       _ble_keymap_vi_search_activate=
       _ble_edit_ind=$original_ind
-      ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" 1
+      ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" nobell
     fi
   else
     if ((ntask<ARG)); then
@@ -5119,6 +5137,8 @@ function ble/widget/vi_omap/operator-rot13-or-search-backward {
 
 # o_v o_V
 function ble/widget/vi_omap/switch-visual-mode.impl {
+  local new_mode=$1
+
   local old=$_ble_keymap_vi_opfunc
   [[ $old ]] || return 1
 
@@ -5129,7 +5149,7 @@ function ble/widget/vi_omap/switch-visual-mode.impl {
   new=${new/:vi_block:/:}
 
   # add new visual-mode
-  [[ $1 ]] && new=$new:$1
+  [[ $new_mode ]] && new=$new:$new_mode
 
   _ble_keymap_vi_opfunc=$new
 }
