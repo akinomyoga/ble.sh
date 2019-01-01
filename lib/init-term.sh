@@ -170,7 +170,7 @@ function ble/init:term/initialize {
 
   # Note: rev と smso が同じ場合は、rev の reset に rmso を使用する。
   ble/init:term/register-varname _ble_term_sgr_rev_reset
-  if [[ $_ble_term_sgr_smso && $_ble_term_sgr_smso == $_ble_term_sgr_rev ]]; then
+  if [[ $_ble_term_sgr_smso && $_ble_term_sgr_smso == "$_ble_term_sgr_rev" ]]; then
     _ble_term_sgr_rev_reset=$_ble_term_sgr_rmso
   else
     _ble_term_sgr_rev_reset=

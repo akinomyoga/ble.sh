@@ -2168,9 +2168,9 @@ function ble/widget/bracketed-paste.hook {
   # check terminater
   local is_end= chars=
   if chars=${_ble_edit_bracketed_paste%:27:91:50:48:49:126} # ESC [ 2 0 1 ~
-     [[ $chars != $_ble_edit_bracketed_paste ]]; then is_end=1
+     [[ $chars != "$_ble_edit_bracketed_paste" ]]; then is_end=1
   elif chars=${_ble_edit_bracketed_paste%:155:50:48:49:126} # CSI 2 0 1 ~
-       [[ $chars != $_ble_edit_bracketed_paste ]]; then is_end=1
+       [[ $chars != "$_ble_edit_bracketed_paste" ]]; then is_end=1
   fi
 
   if [[ ! $is_end ]]; then
@@ -3862,7 +3862,7 @@ _ble_edit_undo_hindex=
 
 function ble-edit/undo/.check-hindex {
   local hindex; ble-edit/history/get-index -v hindex
-  [[ $_ble_edit_undo_hindex == $hindex ]] && return 0
+  [[ $_ble_edit_undo_hindex == "$hindex" ]] && return 0
 
   # save
   if [[ $_ble_edit_undo_hindex ]]; then
@@ -4701,7 +4701,7 @@ function ble-edit/isearch/search {
       ((padding)) && rex="$rex.{$padding}"
       if [[ $_ble_edit_str =~ $rex ]]; then
         local rematch1=${BASH_REMATCH[1]}
-        if [[ $rematch1 || $BASH_REMATCH == $_ble_edit_str || :$opts: == *:allow_empty:* ]]; then
+        if [[ $rematch1 || $BASH_REMATCH == "$_ble_edit_str" || :$opts: == *:allow_empty:* ]]; then
           ((end=${#BASH_REMATCH}-padding,
             beg=end-${#rematch1}))
           return 0

@@ -774,6 +774,11 @@ tech
 
     * dd や yy などの時にも間に v や V 等挟んでも良いのだろうか。
 
+    vim で試してみると dvd は行頭までの削除になって、
+    dC-vd は現在位置から行頭までの削除 (inclusive) になる。
+    dVd は同じ振る舞いである。
+    しかし ble.sh では dvd 等と別の物が間に挟まっているとエラーになる。
+
 2018-12-02
 
   * 座標計算を修正したと思ったが依然として長い日本語名のファイルに対して治っていない?
@@ -2495,7 +2500,7 @@ tech
   新機能
   - color (`ble-color-setface`): SGR指定など様々な形式に対応 `#D0860` 82fe96d `#D0861` 257c16d `#D0864` 2eaf2a9
   - syntax: `bleopt filename_ls_colors` に対応 `#D0862` c7ff302 `#D0863` 3c5bacf ec31aab
-  - vi: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> in `vi_omap` `#D0865`
+  - vi: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> in `vi_omap` `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc

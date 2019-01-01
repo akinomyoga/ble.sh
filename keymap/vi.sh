@@ -4158,7 +4158,7 @@ function ble/keymap:vi/text-object:quote/.xmap {
     return 0
   elif ((_ble_edit_ind>_ble_edit_mark)); then
     local updates_mark=
-    if [[ ${_ble_edit_str:_ble_edit_ind:1} == $quote ]]; then
+    if [[ ${_ble_edit_str:_ble_edit_ind:1} == "$quote" ]]; then
       # 現在位置に " があるとき。
       ble/keymap:vi/text-object:quote/.next $((_ble_edit_ind+1)) || return 1; local beg=$ret
       if ble/keymap:vi/text-object:quote/.next $((beg+1)); then

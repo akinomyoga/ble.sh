@@ -761,8 +761,8 @@ function ble-highlight-layer:region/update {
 
   # 変更がない時はそのまま通過
   if ((DMIN<0)); then
-    [[ $sgr == $osgr ]] &&
-      [[ ${selection[*]} == ${_ble_highlight_layer_region_osel[*]} ]]
+    [[ $sgr == "$osgr" ]] &&
+      [[ ${selection[*]} == "${_ble_highlight_layer_region_osel[*]}" ]]
   else
     [[ ! ${selection[*]} && ! ${_ble_highlight_layer_region_osel[*]} ]]
   fi && return 0
@@ -802,7 +802,7 @@ function ble-highlight-layer:region/update {
 
     # 選択範囲の変更による再描画範囲
     if ((omin>=0)); then
-      if [[ $osgr != $sgr ]]; then
+      if [[ $osgr != "$sgr" ]]; then
         # 色が変化する場合
         ble-highlight-layer:region/update-dirty-range omin omax
         ble-highlight-layer:region/update-dirty-range rmin rmax

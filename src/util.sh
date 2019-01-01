@@ -1435,7 +1435,7 @@ if ((_ble_bash>=40000)); then
         local sclock=$_ble_util_idle_sclock
         local ret; ble/util/clock; local rclock=$((ret/resolution*resolution))
 
-        if [[ $_ble_util_idle_aclock_tick_rclock != $rclock ]]; then
+        if [[ $_ble_util_idle_aclock_tick_rclock != "$rclock" ]]; then
           if [[ $_ble_util_idle_aclock_tick_rclock && ! $_ble_util_idle_aclock_shift ]]; then
             local delta=$((sclock-_ble_util_idle_aclock_tick_sclock))
             ((_ble_util_idle_aclock_shift=delta<resolution?resolution-delta:0))
@@ -1979,7 +1979,7 @@ _ble_term_cursor_hidden_current=unknown
 _ble_term_cursor_hidden_internal=reveal
 function ble/term/cursor-state/.update {
   local state=$(($1))
-  [[ $_ble_term_cursor_current == $state ]] && return
+  [[ $_ble_term_cursor_current == "$state" ]] && return
 
   ble/util/buffer "${_ble_term_Ss//@1/$state}"
 
@@ -1994,7 +1994,7 @@ function ble/term/cursor-state/set-internal {
 function ble/term/cursor-state/.update-hidden {
   local state=$1
   [[ $state != hidden ]] && state=reveal
-  [[ $_ble_term_cursor_hidden_current == $state ]] && return
+  [[ $_ble_term_cursor_hidden_current == "$state" ]] && return
 
   if [[ $state == hidden ]]; then
     ble/util/buffer "$_ble_term_civis"
@@ -2038,7 +2038,7 @@ function ble/term/DA2/notify {
 
 _ble_term_modifyOtherKeys_current=
 function ble/term/modifyOtherKeys/.update {
-  [[ $1 == $_ble_term_modifyOtherKeys_current ]] && return
+  [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] && return
   # Note: 対応していない端末が SGR と勘違いしても
   #  大丈夫な様に SGR を最後にクリアしておく。
   # Note: \e[>4;2m の時は、対応していない端末のため
@@ -2282,7 +2282,7 @@ function ble/util/.cache/update-locale {
 
   # clear cache if LC_CTYPE is changed
   local ret; ble/string#tolower "${LC_ALL:-${LC_CTYPE:-$LANG}}"
-  if [[ $_ble_util_cache_ctype != $ret ]]; then
+  if [[ $_ble_util_cache_ctype != "$ret" ]]; then
     _ble_util_cache_ctype=$ret
     _ble_util_c2s_table=()
     [[ $_ble_util_s2c_table_enabled ]] &&

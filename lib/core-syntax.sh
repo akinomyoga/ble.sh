@@ -5111,7 +5111,7 @@ else
     local key=$1
     local i N=${#_ble_syntax_highlight_lscolors_ext[@]}
     for ((i=0;i<N;i+=2)); do
-      [[ ${_ble_syntax_highlight_lscolors_ext[i]} == $key ]] && break
+      [[ ${_ble_syntax_highlight_lscolors_ext[i]} == "$key" ]] && break
     done
     ret=$i
   }
