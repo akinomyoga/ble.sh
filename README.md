@@ -2,12 +2,18 @@
 # ble.sh
 
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts to replace the default GNU Readline.
-- Syntax highlighting of command lines (as in `fish` shell or `zsh-syntax-highlighting`)
-- Syntax-aware completion
-  - `auto-complete` (similar to `fish` and `zsh-autosuggestions`)
-  - `menu-complete`, `menu-filter` (similar to completions with `peco`/`fzf`/etc.)
-  - `sabbrev` (similar to `zsh-abbreviations`), `dabbrev`, etc.
-- Enhanced vim mode
+- **Syntax highlighting**: Highlight command lines input by users as in `fish` and `zsh-syntax-highlighting`.
+  Unlike the simple highlighting in `zsh-syntax-highlighting`, `ble.sh` performs syntactic analysis to enable the correct highlighting of complex structures such as nested command substitutions, multiple here documents, etc.
+- **Enhanced completion**:
+  Support syntax-aware completion, completion with quotes and parameter expansions in prefix texts, ambiguous candidate generation, etc.
+  Also **menu-complete** supports selection of candidates in menu (candidate list) by cursor keys, <kdb>TAB</kbd> and <kbd>S-TAB</kbd>.
+  **auto-complete** supports the automatic suggestion of completed texts as in `fish` and `zsh-autosuggestions` (with Bash 4.0+).
+  **menu-filter** integrates automatic filtering of candidates into menu completion (with Bash 4.0+).
+  There are other functionalities such as **dabbrev** and **sabbrev** like `zsh-abbreviations`.
+- **Vim mode**: Enhance `readline`'s vi editing mode available with `set -o vi`.
+  `ble.sh` supports various vim modes such as char/line/block visual/select mode, replace mode, command mode, operator pending mode as well as insert mode and normal mode.
+  `ble.sh` supports various text objects, registers, operators, keyboard macros.
+  `ble.sh` also provides `vim-surround` as an option.
 
 This script supports Bash 3.0 or later although we recommend to use `ble.sh` with Bash 4.0 or later.
 
