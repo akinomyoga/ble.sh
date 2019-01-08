@@ -48,7 +48,7 @@ $ source out/ble.sh
 $ make INSDIR=/path/to/blesh install
 ```
 
-**`ble.sh` をダウンロードして使う場合** (バージョン ble-0.2 201809版)
+**`ble.sh` をダウンロードして使う場合** (旧バージョン ble-0.2 201809版)
 
 `wget` を使う場合:
 ```console

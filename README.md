@@ -6,14 +6,14 @@
   Unlike the simple highlighting in `zsh-syntax-highlighting`, `ble.sh` performs syntactic analysis to enable the correct highlighting of complex structures such as nested command substitutions, multiple here documents, etc.
 - **Enhanced completion**:
   Support syntax-aware completion, completion with quotes and parameter expansions in prefix texts, ambiguous candidate generation, etc.
-  Also **menu-complete** supports selection of candidates in menu (candidate list) by cursor keys, <kdb>TAB</kbd> and <kbd>S-TAB</kbd>.
-  **auto-complete** supports the automatic suggestion of completed texts as in `fish` and `zsh-autosuggestions` (with Bash 4.0+).
-  **menu-filter** integrates automatic filtering of candidates into menu completion (with Bash 4.0+).
+  Also **menu-complete** supports selection of candidates in menu (candidate list) by cursor keys, <kbd>TAB</kbd> and <kbd>S-TAB</kbd>.
+  The feature **auto-complete** supports the automatic suggestion of completed texts as in `fish` and `zsh-autosuggestions` (with Bash 4.0+).
+  The feature **menu-filter** integrates automatic filtering of candidates into menu completion (with Bash 4.0+).
   There are other functionalities such as **dabbrev** and **sabbrev** like `zsh-abbreviations`.
-- **Vim mode**: Enhance `readline`'s vi editing mode available with `set -o vi`.
-  `ble.sh` supports various vim modes such as char/line/block visual/select mode, replace mode, command mode, operator pending mode as well as insert mode and normal mode.
-  `ble.sh` supports various text objects, registers, operators, keyboard macros.
-  `ble.sh` also provides `vim-surround` as an option.
+- **Vim editing mode**: Enhance `readline`'s vi editing mode available with `set -o vi`.
+  Vim editing mode supports various vim modes such as char/line/block visual/select mode, replace mode, command mode, operator pending mode as well as insert mode and normal mode.
+  Vim editing mode supports various operators, text objects, registers, keyboard macros, marks, etc.
+  It also provides `vim-surround` as an option.
 
 This script supports Bash 3.0 or later although we recommend to use `ble.sh` with Bash 4.0 or later.
 
@@ -221,7 +221,7 @@ In the MULTILINE mode, the command can be executed by typing <kbd>C-j</kbd>.
 When the shell option `shopt -s cmdhist` is set (which is the default),
 <kbd>RET</kbd> (<kbd>C-m</kbd>) inserts a newline if the current command line string is syntactically incomplete.
 
-**Use vim-mode**
+**Use vim editing mode**
 
 If `set -o vi` is specified in `.bashrc` or `set editing-mode vi` is specified in `.inputrc`, the vim mode is enabled.
 For details, please check the [Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
