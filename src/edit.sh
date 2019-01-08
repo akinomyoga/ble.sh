@@ -3103,7 +3103,7 @@ function ble-edit/exec/.adjust-eol {
   ble/canvas/bflush.draw
 }
 
-function ble-edit/exec/.reset-builtins/1 {
+function ble-edit/exec/.reset-builtins-1 {
   # Note: 何故か local POSIXLY_CORRECT の効果が
   #   unset POSIXLY_CORRECT しても残存するので関数に入れる。
   local POSIXLY_CORRECT=y
@@ -3111,16 +3111,14 @@ function ble-edit/exec/.reset-builtins/1 {
   builtin unset -f return break continue declare typeset local eval echo
   ble/base/unset-POSIXLY_CORRECT
 }
-function ble-edit/exec/.reset-builtins {
-  # Workaround (bash-3.0 - 4.3):
+function ble-edit/exec/.reset-builtins-2 {
+  # Workaround (bash-3.0 - 4.3) #D0722
   #
   #   unset POSIXLY_CORRECT でないと unset -f : できないが、
   #   bash-3.0 -- 4.3 のバグで、local POSIXLY_CORRECT の時、
   #   unset POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
-  #   local POSIXLY_CORRECT による処理は
-  #   ble-edit/exec/.reset-builtins/1 の中で実行する。
+  #   "unset -f :" (非POSIX関数名) は別関数で adjust-POSIXLY_CORRECT の後で実行することにする。
   #
-  ble-edit/exec/.reset-builtins/1
   builtin unset -f :
 }
 
@@ -3559,13 +3557,14 @@ function ble-edit/exec:gexec/.eval-epilogue {
   fi
   _ble_edit_exec_INT=0
 
-  ble-edit/exec/.reset-builtins
+  ble-edit/exec/.reset-builtins-1
 
   local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
 
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
+  ble-edit/exec/.reset-builtins-2
   ble-edit/adjust-IGNOREEOF
   _ble_edit_PS1=$PS1
   PS1=
