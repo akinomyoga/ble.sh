@@ -48,12 +48,12 @@ echo prologue >&2
 # check shell
 
 if [ -z "$BASH_VERSION" ]; then
-  echo "ble.sh: This is not a bash. Please use this script with bash." >&2
+  echo "ble.sh: This shell is not Bash. Please use this script with Bash." >&2
   return 1 2>/dev/null || builtin exit 1
 fi
 
 if [ -z "${BASH_VERSINFO[0]}" ] || [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
-  echo "ble.sh: bash with a version under 3.0 is not supported." >&2
+  echo "ble.sh: Bash with a version under 3.0 is not supported." >&2
   return 1 2>/dev/null || builtin exit 1
 fi
 
@@ -134,6 +134,12 @@ if shopt -q restricted_shell; then
   unset _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
   return 1
+fi
+
+if [[ ${BASH_EXECUTION_STRING+set} ]]; then
+  unset _ble_bash
+  # echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&2
+  return 1 2>/dev/null || builtin exit 1
 fi
 
 _ble_init_original_IFS=$IFS
