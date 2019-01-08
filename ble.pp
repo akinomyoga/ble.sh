@@ -66,12 +66,6 @@ if [[ $- != *i* ]]; then
   return 1 2>/dev/null || builtin exit 1
 fi
 
-if [[ -o posix ]]; then
-  unset _ble_bash
-  echo "ble.sh: ble.sh is not intended to be used in bash POSIX modes (--posix)." >&2
-  return 1 2>/dev/null || builtin exit 1
-fi
-
 _ble_bash_setu=
 _ble_bash_setv=
 _ble_bash_options_adjusted=
@@ -89,6 +83,15 @@ function ble/base/restore-bash-options {
 }
 ble/base/adjust-bash-options
 
+## @var _ble_edit_POSIXLY_CORRECT_adjusted
+##   現在 POSIXLY_CORRECT 状態を待避した状態かどうかを保持します。
+## @var _ble_edit_POSIXLY_CORRECT_set
+##   待避した POSIXLY_CORRECT の設定・非設定状態を保持します。
+## @var _ble_edit_POSIXLY_CORRECT_set
+##   待避した POSIXLY_CORRECT の値を保持します。
+_ble_edit_POSIXLY_CORRECT_adjusted=
+_ble_edit_POSIXLY_CORRECT_set=
+_ble_edit_POSIXLY_CORRECT=
 function ble/base/workaround-POSIXLY_CORRECT {
   # This function will be overwritten by ble-decode
   true
@@ -96,10 +99,12 @@ function ble/base/workaround-POSIXLY_CORRECT {
 function ble/base/unset-POSIXLY_CORRECT {
   if [[ ${POSIXLY_CORRECT+set} ]]; then
     unset POSIXLY_CORRECT
-    ble/base/workaround-POSIXLY_CORRECT 
+    ble/base/workaround-POSIXLY_CORRECT
   fi
 }
 function ble/base/adjust-POSIXLY_CORRECT {
+  [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]] && return
+  _ble_edit_POSIXLY_CORRECT_adjusted=1
   _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
   _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
   unset POSIXLY_CORRECT
@@ -108,6 +113,8 @@ function ble/base/adjust-POSIXLY_CORRECT {
   ble/base/workaround-POSIXLY_CORRECT
 }
 function ble/base/restore-POSIXLY_CORRECT {
+  [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]] || return
+  _ble_edit_POSIXLY_CORRECT_adjusted=
   if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
     POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
   else
@@ -312,7 +319,7 @@ fi
 ## @var _ble_base_run
 ##
 ##   実行時の一時ファイルを格納するディレクトリ。以下の手順で決定する。
-##   
+##
 ##   1. ${XDG_RUNTIME_DIR:=/run/user/$UID} が存在すればその下に blesh を作成して使う。
 ##   2. /tmp/blesh/$UID を作成可能ならば、それを使う。
 ##   3. $_ble_base/tmp/$UID を使う。
@@ -467,6 +474,10 @@ function ble-attach {
   [[ $_ble_attached ]] && return
   _ble_attached=1
 
+  # 特殊シェル設定を待避
+  ble/base/adjust-bash-options
+  ble/base/adjust-POSIXLY_CORRECT
+
   # 取り敢えずプロンプトを表示する
   ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
   ble-edit/initialize # 3ms
@@ -496,6 +507,8 @@ function ble-attach {
 function ble-detach {
   [[ $_ble_attached ]] || return
   _ble_attached=
+
+  # Note: 実際の detach 処理は ble-edit/bind/.check-detach で実行される
   _ble_edit_detach_flag=${1:-detach} # schedule detach
 }
 
@@ -544,8 +557,13 @@ function ble/base/process-blesh-arguments {
 
 ble/base/process-blesh-arguments "$@"
 
+# 状態復元
 IFS=$_ble_init_original_IFS
 unset _ble_init_original_IFS
+if [[ ! $_ble_attached ]]; then
+  ble/base/restore-bash-options
+  ble/base/restore-POSIXLY_CORRECT
+fi
 
 #%if measure_load_time
 }

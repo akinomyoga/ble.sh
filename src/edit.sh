@@ -6723,6 +6723,8 @@ function ble-edit/bind/.check-detach {
       fi
     fi
 
+    ble/base/restore-bash-options
+    ble/base/restore-POSIXLY_CORRECT
     return 0
   else
     # Note: ここに入った時 -o emacs か -o vi のどちらかが成立する。なぜなら、
