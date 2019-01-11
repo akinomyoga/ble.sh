@@ -641,10 +641,13 @@ else
 fi
 
 # exec {var}>foo
+_ble_util_openat_fdlist=()
 if ((_ble_bash>=40100)); then
   function ble/util/openat {
     local _fdvar=$1 _redirect=$2
-    builtin eval "exec {$_fdvar}$_redirect"
+    builtin eval "exec {$_fdvar}$_redirect"; local ret=$?
+    ble/array#push _ble_util_openat_fdlist "${!_fdvar}"
+    return "$ret"
   }
 else
   _ble_util_openat_nextfd=$bleopt_openat_base
@@ -653,9 +656,18 @@ else
     (($_fdvar=_ble_util_openat_nextfd++))
     # Note: Bash 3.2/3.1 のバグを避けるため、
     #   >&- を用いて一旦明示的に閉じる必要がある #D0857
-    builtin eval "exec ${!_fdvar}>&- ${!_fdvar}$_redirect"
+    builtin eval "exec ${!_fdvar}>&- ${!_fdvar}$_redirect"; local ret=$?
+    ble/array#push _ble_util_openat_fdlist "${!_fdvar}"
+    return "$ret"
   }
 fi
+function ble/util/openat/finalize {
+  local fd
+  for fd in "${_ble_util_openat_fdlist[@]}"; do
+    builtin eval "exec $fd>&-"
+  done
+  _ble_util_openat_fdlist=()
+}
 
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
@@ -1266,6 +1278,7 @@ function ble-autoload {
     }"
   done
 }
+_ble_util_import_guards=()
 function ble-import {
   local file=$1
   if [[ $file == /* ]]; then
@@ -1275,7 +1288,8 @@ function ble-import {
       source "$file"
     else
       return 1
-    fi && eval "function $guard { :; }"
+    fi && eval "function $guard { :; }" &&
+      ble/array#push _ble_util_import_guards "$guard"
   else
     local guard=ble-import/guard:ble/$1
     ble/is-function "$guard" && return 0
@@ -1287,8 +1301,15 @@ function ble-import {
       source "$_ble_base/share/$file"
     else
       return 1
-    fi && eval "function $guard { :; }"
+    fi && eval "function $guard { :; }" &&
+      ble/array#push _ble_util_import_guards "$guard"
   fi
+}
+function ble/util/import/finalize {
+  local guard
+  for guard in "${_ble_util_import_guards[@]}"; do
+    unset -f "$guard"
+  done
 }
 
 _ble_stackdump_title=stackdump
@@ -2134,14 +2155,6 @@ function ble/term/initialize {
   ble/term/stty/initialize
   ble/term/enter
 }
-
-function ble/term/TRAPEXIT {
-  ble/term/stty/TRAPEXIT
-  ble/term/leave
-  ble/util/buffer.flush >&2
-  ble/bin/rm -f "$_ble_base_run/$$".*
-}
-trap ble/term/TRAPEXIT EXIT
 
 #------------------------------------------------------------------------------
 # String manipulations

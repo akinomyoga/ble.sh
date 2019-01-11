@@ -224,8 +224,10 @@ if ! ble/.check-environment; then
 fi
 
 if [[ $_ble_base ]]; then
-  echo "ble.sh: ble.sh seems to be already loaded." >&2
-  return 1
+  if ! ble/base/unload-for-reload &>/dev/null; then
+    echo "ble.sh: ble.sh seems to be already loaded." >&2
+    return 1
+  fi
 fi
 
 #------------------------------------------------------------------------------
@@ -455,6 +457,32 @@ if ! ble/base/initialize-cache-directory; then
   return 1
 fi
 
+#%$ pwd=$(pwd) q=\' Q="'\''"; echo "_ble_base_repository='${pwd//$q/$Q}'"
+function ble-update {
+  if ! type git make gawk &>/dev/null; then
+    local command
+    for command in git make gawk; do
+      type "$command" ||
+        echo "ble-update: '$command' command is not available." >&2
+    done
+    return 1
+  fi
+
+  if [[ ! -d $_ble_base_repository/.git ]]; then
+    echo 'ble-update: git repository not found' >&2
+    return 1
+  fi
+
+  ( echo "cd into $_ble_base_repository..." >&2 &&
+    cd "$_ble_base_repository" &&
+    git pull &&
+    ! make -q &&
+    make all &&
+    if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
+      make INSDIR="$_ble_base" install
+    fi ) &&
+    source "$_ble_base/ble.sh"
+}
 #%if measure_load_time
 }
 #%end
@@ -479,6 +507,15 @@ _ble_attached=
 function ble-attach {
   [[ $_ble_attached ]] && return
   _ble_attached=1
+
+  # when detach flag is present
+  if [[ $_ble_edit_detach_flag ]]; then
+    case $_ble_edit_detach_flag in
+    (exit) ;;
+    (*) _ble_edit_detach_flag= ;; # cancel "detach"
+    esac
+    return 0
+  fi
 
   # 特殊シェル設定を待避
   ble/base/adjust-bash-options
@@ -517,6 +554,41 @@ function ble-detach {
   # Note: 実際の detach 処理は ble-edit/bind/.check-detach で実行される
   _ble_edit_detach_flag=${1:-detach} # schedule detach
 }
+function ble-detach/impl {
+  ble-edit/detach
+  ble-decode/detach
+  ble/term/finalize
+  READLINE_LINE='' READLINE_POINT=0
+}
+function ble-detach/message {
+  ble/util/buffer.flush >&2
+  printf '%s\n' "$@" 1>&2
+  ble-edit/info/hide
+  ble/textarea#render
+  ble/util/buffer.flush >&2
+}
+
+function ble/base/unload-for-reload {
+  if [[ $_ble_attached ]]; then
+    _ble_attached=
+    ble-detach/impl
+    echo "${_ble_term_setaf[12]}[ble: reload]$_ble_term_sgr0" 1>&2
+  fi
+  ble/base/unload
+  return 0
+}
+function ble/base/unload {
+  local IFS=$' \t\n'
+  ble/term/stty/TRAPEXIT
+  ble/term/leave
+  ble/util/buffer.flush >&2
+  ble/util/openat/finalize
+  ble/util/import/finalize
+  ble-edit/bind/clear-keymap-definition-loader
+  ble/bin/rm -f "$_ble_base_run/$$".*
+  return 0
+}
+trap ble/base/unload EXIT
 
 _ble_base_attach_PROMPT_COMMAND=
 function ble/base/attach-from-PROMPT_COMMAND {

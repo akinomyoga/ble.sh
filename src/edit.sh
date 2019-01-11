@@ -1008,8 +1008,22 @@ function ble-edit/content/clear-arg {
 ## 変数 _ble_edit_CMD
 ## 変数 _ble_edit_PS1
 ## 変数 _ble_edit_IFS
-## 変数 _ble_edit_IGNOREEOF_set
+## 変数 _ble_edit_IGNOREEOF_adjusted
 ## 変数 _ble_edit_IGNOREEOF
+
+_ble_edit_PS1_adjusted=
+_ble_edit_PS1=
+function ble-edit/adjust-PS1 {
+  [[ $_ble_edit_PS1_adjusted ]] && return
+  _ble_edit_PS1_adjusted=1
+  _ble_edit_PS1=$PS1
+  PS1=
+}
+function ble-edit/restore-PS1 {
+  [[ $_ble_edit_PS1_adjusted ]] || return
+  _ble_edit_PS1_adjusted=
+  PS1=$_ble_edit_PS1
+}
 
 _ble_edit_IGNOREEOF_adjusted=
 _ble_edit_IGNOREEOF=
@@ -1082,15 +1096,14 @@ function ble-edit/attach/.attach {
 
   trap ble-edit/attach/TRAPWINCH WINCH
 
-  _ble_edit_PS1=$PS1
+  ble-edit/adjust-PS1
   ble-edit/adjust-IGNOREEOF
-  PS1=
   [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
 
 function ble-edit/attach/.detach {
   ((!_ble_edit_attached)) && return
-  PS1=$_ble_edit_PS1
+  ble-edit/restore-PS1
   ble-edit/restore-IGNOREEOF
   [[ $bleopt_exec_type == exec ]] && IFS=$_ble_edit_IFS
   _ble_edit_attached=0
@@ -3534,7 +3547,7 @@ function ble-edit/exec:gexec/.end {
 function ble-edit/exec:gexec/.eval-prologue {
   local IFS=$' \t\n'
   BASH_COMMAND=$1
-  PS1=$_ble_edit_PS1
+  ble-edit/restore-PS1
   ble-edit/restore-IGNOREEOF
   unset HISTCMD; ble-edit/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
@@ -3566,8 +3579,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   ble/base/adjust-POSIXLY_CORRECT
   ble-edit/exec/.reset-builtins-2
   ble-edit/adjust-IGNOREEOF
-  _ble_edit_PS1=$PS1
-  PS1=
+  ble-edit/adjust-PS1
   ble-edit/exec/save-BASH_REMATCH
   ble-edit/exec/.adjust-eol
 
@@ -6544,13 +6556,8 @@ function ble-edit/bind/stdout.finalize { :;}
 if [[ $bleopt_suppress_bash_output ]]; then
   _ble_edit_io_stdout=
   _ble_edit_io_stderr=
-  if ((_ble_bash>40100)); then
-    exec {_ble_edit_io_stdout}>&1
-    exec {_ble_edit_io_stderr}>&2
-  else
-    ble/util/openat _ble_edit_io_stdout '>&1'
-    ble/util/openat _ble_edit_io_stderr '>&2'
-  fi
+  ble/util/openat _ble_edit_io_stdout '>&1'
+  ble/util/openat _ble_edit_io_stderr '>&2'
   _ble_edit_io_fname1=$_ble_base_run/$$.stdout
   _ble_edit_io_fname2=$_ble_base_run/$$.stderr
 
@@ -6667,8 +6674,7 @@ fi
 _ble_edit_detach_flag=
 function ble-edit/bind/.exit-TRAPRTMAX {
   # シグナルハンドラの中では stty は bash によって設定されている。
-  local IFS=$' \t\n'
-  ble/term/TRAPEXIT
+  ble/base/unload
   builtin exit 0
 }
 
@@ -6689,34 +6695,23 @@ function ble-edit/bind/.check-detach {
     _ble_edit_detach_flag=
     #ble/term/visible-bell ' Bye!! '
 
-    ble-edit/detach
-    ble-decode/detach
-    ble/term/finalize
-
-    READLINE_LINE='' READLINE_POINT=0
+    ble-detach/impl
 
     if [[ $type == exit ]]; then
       # ※この部分は現在使われていない。
       #   exit 時の処理は trap EXIT を用いて行う事に決めた為。
       #   一応 _ble_edit_detach_flag=exit と直に入力する事で呼び出す事はできる。
-
-      # exit
-      ble/util/buffer.flush >&2
-      builtin echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" 1>&2
-      ble-edit/info/hide
-      ble/textarea#render
-      ble/util/buffer.flush >&2
+      ble-detach/message "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0"
 
       # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
       # シグナルハンドラの中から exit すれば stty がそのままの状態で抜けられる様なのでそうする。
       trap 'ble-edit/bind/.exit-TRAPRTMAX' RTMAX
       kill -RTMAX $$
     else
-      ble/util/buffer.flush >&2
-      builtin echo "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" 1>&2
-      builtin echo "Please run \`stty sane' to recover the correct TTY state." >&2
-      ble/textarea#render
-      ble/util/buffer.flush >&2
+      ble-detach/message \
+        "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" \
+        "Please run \`stty sane' to recover the correct TTY state."
+
       if ((_ble_bash>=40000)); then
         READLINE_LINE='stty sane;' READLINE_POINT=10
         printf %s "$READLINE_LINE"
@@ -6904,6 +6899,11 @@ function ble-edit/bind/load-keymap-definition {
   else
     source "$_ble_base/keymap/$name.sh"
   fi
+}
+function ble-edit/bind/clear-keymap-definition-loader {
+  unset -f ble-edit/bind/load-keymap-definition:safe
+  unset -f ble-edit/bind/load-keymap-definition:emacs
+  unset -f ble-edit/bind/load-keymap-definition:vi
 }
 
 #------------------------------------------------------------------------------
