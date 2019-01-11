@@ -2700,8 +2700,10 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     [[ $ret ]]
   }
 else
-  _ble_complete_sabbrev_keys=()
-  _ble_complete_sabbrev_values=()
+  if ! ble/is-array _ble_complete_sabbrev_keys; then # reload #D0875
+    _ble_complete_sabbrev_keys=()
+    _ble_complete_sabbrev_values=()
+  fi
   function ble-complete/sabbrev/register {
     local key=$1 value=$2 i=0
     for key2 in "${_ble_complete_sabbrev_keys[@]}"; do

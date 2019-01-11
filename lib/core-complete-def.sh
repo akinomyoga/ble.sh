@@ -16,10 +16,12 @@ ble-autoload "$_ble_base/lib/core-complete.sh" \
 _ble_complete_load_hook=()
 _ble_complete_insert_hook=()
 
-if ((_ble_bash>=40200)); then
-  declare -gA _ble_complete_sabbrev=()
-elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  declare -A _ble_complete_sabbrev=()
+if ! declare -p _ble_complete_sabbrev &>/dev/null; then # reload #D0875
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_complete_sabbrev=()
+  elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+    declare -A _ble_complete_sabbrev=()
+  fi
 fi
 
 #------------------------------------------------------------------------------

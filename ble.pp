@@ -603,6 +603,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
   ble/util/joblist.check
 }
 
+: ${_ble_base_rcfile:=$HOME/.blerc}
 function ble/base/process-blesh-arguments {
   local opt_attach=attach
   local opt_rcfile=
@@ -614,17 +615,25 @@ function ble/base/process-blesh-arguments {
       opt_attach=none ;;
     (--attach=*) opt_attach=${arg#*=} ;;
     (--attach)   opt_attach=$1; shift ;;
-    (--rcfile=*|--init-file=*)
-      opt_rcfile=${arg#*=} ;;
-    (--rcfile|--init-file)
-      opt_rcfile=$1; shift ;;
+    (--rcfile=*|--init-file=*|--rcfile|--init-file)
+      if [[ $arg != *=* ]]; then
+        local rcfile=$1; shift
+      else
+        local rcfile=${arg#*=}
+      fi
+      if [[ $rcfile && -f $rcfile ]]; then
+        _ble_base_rcfile=$rcfile
+      else
+        echo "ble.sh ($arg): '$rcfile' is not a regular file." >&2
+        opt_error=1
+      fi ;;
     (*)
       echo "ble.sh: unrecognized argument '$arg'" >&2
       opt_error=1
     esac
   done
 
-  [[ $opt_rcfile ]] && source "$opt_rcfile"
+  [[ -s $_ble_base_rcfile ]] && source "$_ble_base_rcfile"
   case $opt_attach in
   (attach) ble-attach ;;
   (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND

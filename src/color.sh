@@ -412,9 +412,11 @@ _ble_color_faces_defface_hook=()
 _ble_color_faces_setface_hook=()
 
 # 遅延初期化
-_ble_faces_count=0
-_ble_faces=()
-_ble_faces_sgr=()
+if [[ ! $_ble_faces_count ]]; then # reload #D0875
+  _ble_faces_count=0
+  _ble_faces=()
+  _ble_faces_sgr=()
+fi
 function ble-color-defface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_defface_hook "ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
 function ble-color-setface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_setface_hook "ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
 function ble-color-face2g    { ble-color/faces/initialize && ble-color-face2g    "$@"; }
@@ -457,7 +459,8 @@ function ble-color/faces/initialize {
 
   function ble-color-defface {
     local name=_ble_faces__$1 spec=$2 ret
-    (($name||($name=++_ble_faces_count)))
+    (($name)) && return
+    (($name=++_ble_faces_count))
     ble-color-setface/.spec2g "$spec"; _ble_faces[$name]=$ret
     ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
   }
@@ -998,7 +1001,7 @@ function ble-highlight-layer:RandomColor/getg {
 
 _ble_highlight_layer_RandomColor2_buff=()
 function ble-highlight-layer:RandomColor2/update {
-  local text="$1" ret i x
+  local text=$1 ret i x
   ble-highlight-layer/update/shift _ble_highlight_layer_RandomColor2_buff
   for ((i=DMIN;i<DMAX;i++)); do
     ble-color-gspec2sgr "fg=$((16+(x=RANDOM%27)*4-x%9*2-x%3))"
