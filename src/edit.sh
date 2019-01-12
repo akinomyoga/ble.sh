@@ -3931,13 +3931,30 @@ function ble-edit/undo/add {
 }
 function ble-edit/undo/.load {
   local str ind; ble-edit/undo/.get-current-state
-
   if [[ $bleopt_undo_point == end || $bleopt_undo_point == beg ]]; then
-    ble/string#common-prefix "$_ble_edit_str" "$str"
-    local beg=${#ret}
-    ble/string#common-suffix "${_ble_edit_str:beg}" "${str:beg}"
-    local end0=$((${#_ble_edit_str}-${#ret}))
-    local end=$((${#str}-${#ret}))
+
+    # Note: 実際の編集過程に依らず、現在位置 _ble_edit_ind の周辺で
+    #   変更前と変更後の文字列だけから「変更範囲」を決定する事にする。
+    local old=$_ble_edit_str new=$str
+    if [[ $bleopt_undo_point == end ]]; then
+      ble/string#common-suffix "${old:_ble_edit_ind}" "$new"; local s1=${#ret}
+      local old=${old::${#old}-s1} new=${new:${#new}-s1}
+      ble/string#common-prefix "${old::_ble_edit_ind}" "$new"; local p1=${#ret}
+      local old=${old:p1} new=${new:p1}
+      ble/string#common-suffix "$old" "$new"; local s2=${#ret}
+      local old=${old::${#old}-s2} new=${new:${#new}-s2}
+      ble/string#common-prefix "$old" "$new"; local p2=${#ret}
+    else
+      ble/string#common-prefix "${old::_ble_edit_ind}" "$new"; local p1=${#ret}
+      local old=${old:p1} new=${new:p1}
+      ble/string#common-suffix "${old:_ble_edit_ind-p1}" "$new"; local s1=${#ret}
+      local old=${old::${#old}-s1} new=${new:${#new}-s1}
+      ble/string#common-prefix "$old" "$new"; local p2=${#ret}
+      local old=${old:p2} new=${new:p2}
+      ble/string#common-suffix "$old" "$new"; local s2=${#ret}
+    fi
+
+    local beg=$((p1+p2)) end0=$((${#_ble_edit_str}-s1-s2)) end=$((${#str}-s1-s2))
     ble-edit/content/replace "$beg" "$end0" "${str:beg:end-beg}"
 
     if [[ $bleopt_undo_point == end ]]; then

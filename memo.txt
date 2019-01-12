@@ -768,12 +768,6 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
-2019-01-09
-
-  * 確認: 気付いたのだが -o posix で ble-detach, ble-attach しても動くのだろうか。
-    →確認した所 ble-attach の冒頭で adjust を実行しているので問題ないはずである。
-    これについては後で確認することにする。
-
 2018-12-02
 
   * 座標計算を修正したと思ったが依然として長い日本語名のファイルに対して治っていない?
@@ -799,18 +793,8 @@ tech
     どうも再現しない様だ。ウィンドウサイズを変更した後などには再現するがそれは一時的な物である。
     また、確実に再現する状況を作り出してからこれについては考える事にする。
 
-    後は、ハート文字を表示した後に一文字ずれる。
+    後は、曖昧文字幅の文字を表示した後に一文字ずれる。
     これは持っている文字幅の辞書との不一致による物だろう。という事で気にしなくても良い。
-
-2018-10-08
-
-  * vim: u で戻った時のカーソル位置
-    現在の実装では check-dirty と同じ方法を使って切り出しているが、
-    これだと同じ内容が繰り返されているのを削除した場合にどの部分が削除されたのかを特定できない。
-    結果として u で戻った時に元の場所ではなくて繰り返し部分の一番最後に移動してしまう。
-
-    カーソル位置も一緒に記録して (或いは既に記録していただろうか)
-    その付近で変更があったと解釈して範囲を特定する事は可能だろうか。
 
 2018-09-28
 
@@ -2454,7 +2438,10 @@ tech
   - vi: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> in `vi_omap` `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3 `#D0868` eb848dc
   - main: improve support of `[[ -o posix ]]` `#D0871` 07ae3cc `#D0872` 513c543
   - main: do not load ble.sh when bash is started by `bash -i -c command` `#D0873` fc23a6d
-  - main: support `ble-update` `#D0874` fc45be6 `#D0875`
+  - main: support `ble-update` `#D0874` fc45be6 `#D0875` 0b50974
+
+  動作変更
+  - vim: change cursor position after <kbd>u</kbd> `#D0877`
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -3272,7 +3259,75 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-01-12
+
+  * 2018-10-08 vim: u で戻った時のカーソル位置 [#D0877]
+
+    現在の実装では check-dirty と同じ方法を使って切り出しているが、
+    これだと同じ内容が繰り返されているのを削除した場合にどの部分が削除されたのかを特定できない。
+    結果として u で戻った時に元の場所ではなくて繰り返し部分の一番最後に移動してしまう。
+
+    カーソル位置も一緒に記録して (或いは既に記録していただろうか)
+    その付近で変更があったと解釈して範囲を特定する事は可能だろうか。
+
+    これは vim というよりは edit.sh の ble-edit/undo/.load の実装に関係している。
+    実際の所、記録を行った時のカーソル位置は一緒に記録されている。
+    問題は、戻る時に記録を行った時のカーソル位置ではなくて
+    変更範囲の先頭または末尾にカーソルを移動する時に誤った位置になってしまう事にある。
+
+    具体的な例を考える事にする。
+
+    例えば "echo abcabc@abcabc world" において 3x とした時にどの位置に戻るのかという事である。
+    実際に ble.sh で試してみると "echo abcabcabcabc@ world" という状態になる。
+    ここで元々の index の位置は記録していたはずである。
+    削除した時に、"echo abcabc@abc world" になっている筈である。
+
+    うーん。問題は簡単ではない気がしてきた。
+    記録されているのは飽くまでその状態に初めてなった時にどの位置にカーソルが居たかである。
+    従って、変更直前にどの位置にカーソルがいたかは記録されていない。
+    寧ろ、変更直後のカーソル位置が記録されている。
+
+    a なので次に記録されている entry の index から変更位置を探る必要がある。
+
+    b しかし、もっとよく分からないのは一気に複数の変更だけ戻した時にどのように振る舞うべきかである。
+      各ステップの diff を追跡するべきなのだろうか。
+      もし厳密にやろうとするとそういう事になるはずである。うーん。
+
+    c 或いは、戻す直前のカーソル位置に一番近い位置になるように common-prefix/suffix を切るという手。
+
+    試しに現在位置と記録位置を境界として、それらより前の部分の先頭一致と、
+    それらより後の部分の末尾一致を分離してから、改めて先頭一致と末尾一致を取り出す様にしてみた。
+    しかし、記録位置は最初にその状態になってからの一致だったので、変な位置になってしまう。
+
+      ble/string#common-prefix "${_ble_edit_str::_ble_edit_ind}" "${str::ind}"; local p1=${#ret}
+      ble/string#common-suffix "${_ble_edit_str:_ble_edit_ind}" "${str:ind}"; local s1=${#ret}
+      local substr1=${_ble_edit_str:p1:${#_ble_edit_str}-p1-s1}
+      local substr2=${str:p1:${#str}-p1-s1}
+      ble/string#common-prefix "$substr1" "$substr2"; local p2=${#ret}
+      ble/string#common-suffix "${substr1:p2}" "${substr2:p2}"; local s2=${#ret}
+      local beg=$((p1+p2)) end0=$((${#_ble_edit_str}-s1-s2)) end=$((${#str}-s1-s2))
+      ble-edit/content/replace "$beg" "$end0" "${str:beg:end-beg}"
+
+    記録位置を使わない様に実装し直してみる事にする。
+    これは結構いい感じに動いている様な気がする。
+    追記された時のカーソル位置は末端の方が嬉しいのでその様に修正した。
+
+      ble/string#common-suffix "${_ble_edit_str:_ble_edit_ind}" "$str"; local s1=${#ret}
+      ble/string#common-prefix "${_ble_edit_str::_ble_edit_ind}" "${str::${#str}-s1}"; local p1=${#ret}
+      local substr1=${_ble_edit_str:p1:${#_ble_edit_str}-p1-s1}
+      local substr2=${str:p1:${#str}-p1-s1}
+      ble/string#common-suffix "$substr1" "$substr2"; local s2=${#ret}
+      ble/string#common-prefix "${substr1::${#substr1}-s2}" "${substr2::${#substr2}-s2}"; local p2=${#ret}
+      local beg=$((p1+p2)) end0=$((${#_ble_edit_str}-s1-s2)) end=$((${#str}-s1-s2))
+      ble-edit/content/replace "$beg" "$end0" "${str:beg:end-beg}"
+
+    更にコードを整理する。
+
 2019-01-11
+
+  * 2019-01-09 確認: set -o posix で ble-detach, ble-attach しても動くのだろうか [#D0876]
+    →確認した所 ble-attach の冒頭で adjust を実行しているので問題ないはずである。
+    これについては後で確認することにする。
 
   * reload: ユーザ設定の保持 [#D0875]
 
