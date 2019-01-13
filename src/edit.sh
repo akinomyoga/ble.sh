@@ -594,8 +594,9 @@ function ble-edit/info/.put-nl-if-eol {
 ## 関数 ble-edit/info/.initialize-size
 ##   @var[out] cols lines
 function ble-edit/info/.initialize-size {
-  cols=${COLUMNS-80}
-  lines=$(((LINES?LINES:0)-_ble_textarea_gendy-2))
+  local ret
+  ble/canvas/panel/layout/.get-available-height "$_ble_edit_info_panel"
+  cols=${COLUMNS-80} lines=$ret
 }
 
 ## 関数 ble-edit/info/.construct-text text
@@ -643,33 +644,44 @@ function ble-edit/info/.construct-text {
   ret=$out
 }
 
+_ble_edit_info_panel=2
+_ble_edit_info=(0 0 "")
+
+function ble-edit/info#get-height {
+  if [[ ${_ble_edit_info[2]} ]]; then
+    height=1:$((_ble_edit_info[1]+1))
+  else
+    height=0:0
+  fi
+}
 
 ## 関数 ble-edit/info/.construct-content type text
-##   @var[in,out] x y
-##   @var[out]    content
+##   @var[out] x y
+##   @var[out] content
 function ble-edit/info/.construct-content {
+  local cols lines
+  ble-edit/info/.initialize-size
+  x=0 y=0 content=
+
   local type=$1 text=$2
   case "$1" in
   (raw)
     local lc=32 lg=0 g=0
     local -a DRAW_BUFF=()
-    ble/canvas/trace.draw "$text"
+    LINES=$lines ble/canvas/trace.draw "$text"
     ble/canvas/sflush.draw -v content ;;
   (text)
-    local cols lines
-    ble-edit/info/.initialize-size
     local ret sgr1=$_ble_term_rev sgr0=$_ble_term_sgr0
     ble-edit/info/.construct-text "$text"
     content=$ret ;;
   (store)
-    x=$2 y=$3 content=$4 ;;
+    x=$2 y=$3 content=$4
+    # 現在の高さに入らない時は計測し直す。
+    ((y<lines)) || ble-edit/info/.construct-content raw "$content" ;;
   (*)
     echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
   esac
 }
-
-_ble_edit_info_panel=2
-_ble_edit_info=(0 0 "")
 
 function ble-edit/info/.clear-content {
   [[ ${_ble_edit_info[2]} ]] || return
@@ -694,13 +706,15 @@ function ble-edit/info/.render-content {
     return
   fi
 
+  _ble_edit_info=("$x" "$y" "$content")
+
   local -a DRAW_BUFF=()
-  ble/canvas/panel#set-height-and-clear.draw "$_ble_edit_info_panel" $((y+1))
+  ble/canvas/panel#reallocate-height.draw
+  ble/canvas/panel#clear.draw "$_ble_edit_info_panel"
   ble/canvas/panel#goto.draw "$_ble_edit_info_panel"
   ble/canvas/put.draw "$content"
   ble/canvas/bflush.draw
   ((_ble_canvas_y+=y,_ble_canvas_x=x))
-  _ble_edit_info=("$x" "$y" "$content")
 }
 
 _ble_edit_info_default=(0 0 "")
@@ -728,7 +742,7 @@ _ble_edit_info_scene=default
 function ble-edit/info/show {
   local type=$1 text=$2
   if [[ $text ]]; then
-    local x=0 y=0 content=
+    local x y content=
     ble-edit/info/.construct-content "$@"
     ble-edit/info/.render-content "$x" "$y" "$content"
     ble/util/buffer.flush >&2
@@ -739,7 +753,7 @@ function ble-edit/info/show {
 }
 function ble-edit/info/set-default {
   local type=$1 text=$2
-  local x=0 y=0 content
+  local x y content
   ble-edit/info/.construct-content "$type" "$text"
   _ble_edit_info_default=("$x" "$y" "$content")
 }
@@ -1117,6 +1131,25 @@ function ble-edit/attach/.detach {
 _ble_textarea_VARNAMES=(_ble_textarea_{bufferName,scroll,gendx,gendy,invalidated,caret_state,panel})
 _ble_textarea_ARRNAMES=(_ble_textarea_{buffer,cur,cache})
 
+## 関数 ble/textarea/panel#get-height
+##   @var[out] height
+function ble/textarea/panel#get-height {
+  if [[ $1 == "$_ble_textarea_panel" ]]; then
+    local min=$((_ble_edit_prompt[2]+1)) max=$((_ble_textmap_endy+1))
+    ((min<max&&min++))
+    height=$min:$max
+  else
+    height=0:${_ble_canvas_panel_height[$1]}
+  fi
+}
+function ble/textarea/panel#on-height-change {
+  [[ $1 == "$_ble_textarea_panel" ]] || return
+
+  if [[ ! $ble_textarea_render_flag ]]; then
+    ble/textarea#invalidate
+  fi
+}
+
 # **** textarea.buffer ****                                    @textarea.buffer
 
 _ble_textarea_buffer=()
@@ -1244,6 +1277,7 @@ _ble_textarea_cur=(0 0 32 0)
 
 _ble_textarea_panel=0
 _ble_textarea_scroll=
+_ble_textarea_scroll_new=
 _ble_textarea_gendx=0
 _ble_textarea_gendy=0
 
@@ -1413,6 +1447,8 @@ function ble/textarea#focus {
 ##
 _ble_textarea_caret_state=::
 function ble/textarea#render {
+  local ble_textarea_render_flag=1 # ble/textarea/panel#on-height-change から参照する
+
   local caret_state=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode
   if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == "$caret_state" ]]; then
     ble/textarea#focus
@@ -1460,6 +1496,7 @@ function ble/textarea#render {
   # 描画領域の決定とスクロール
 
   local -a DRAW_BUFF=()
+  ble/canvas/panel#reallocate-height.draw
 
   # 1 描画領域の決定
   local begx=$_ble_textmap_begx begy=$_ble_textmap_begy
@@ -1468,8 +1505,8 @@ function ble/textarea#render {
   ble/textmap#getxy.cur --prefix=c "$index" # → cx cy
 
   local cols=$_ble_textmap_cols
-  local height=$((LINES-1)) # ToDo: info の高さも考慮に入れる
-  local scroll=$_ble_textarea_scroll
+  local height=${_ble_canvas_panel_height[_ble_textarea_panel]}
+  local scroll=${_ble_textarea_scroll_new:-$_ble_textarea_scroll}
   ble/textarea#render/.determine-scroll # update: height scroll umin umax
   ble/canvas/panel#set-height.draw "$_ble_textarea_panel" "$height"
 
@@ -1491,7 +1528,9 @@ function ble/textarea#render {
   if [[ ! $_ble_textarea_invalidated ]]; then
     # 部分更新の場合
 
+    # スクロール
     ble/textarea#render/.perform-scroll "$scroll" # update: umin umax
+    _ble_textarea_scroll_new=$_ble_textarea_scroll
 
     # 編集文字列の一部を描画する場合
     if ((umin<umax)); then
@@ -1519,6 +1558,8 @@ function ble/textarea#render {
     ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$prox" "$proy"
 
     # 全体描画
+    _ble_textarea_scroll=$scroll
+    _ble_textarea_scroll_new=$_ble_textarea_scroll
     if [[ ! $_ble_textarea_scroll ]]; then
       ble/textarea#slice-text-buffer # → ret
       esc_line=$ret esc_line_set=1
@@ -1541,7 +1582,6 @@ function ble/textarea#render {
       ble/textarea#slice-text-buffer "$gbeg" "$gend"
       ble/canvas/put.draw "$ret"
       ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-      ((_ble_canvas_x=gendx,_ble_canvas_y+=gendy-gbegy))
     fi
   fi
 

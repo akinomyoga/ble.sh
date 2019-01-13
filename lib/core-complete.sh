@@ -1689,6 +1689,7 @@ function ble-complete/menu/show {
   local menu_style=$bleopt_complete_menu_style
   local cols lines
   ble-edit/info/.initialize-size
+  ((lines&&lines--))
 
   if ((${#cand_pack[@]})); then
     local x y esc menu_items
@@ -2018,9 +2019,14 @@ function ble-complete/menu-complete/select {
     local fields text=${entry#*:}
     ble/string#split fields , "${entry%%:*}"
 
-    ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "${fields[@]::2}"
-    ble/canvas/put.draw "${text:fields[4]}"
-    _ble_canvas_x=${fields[2]} _ble_canvas_y=$((infoy+fields[3]))
+    if ((fields[3]<_ble_canvas_panel_height[_ble_edit_info_panel])); then
+      # Note: 編集文字列の内容の変化により info panel が削れている事がある。
+      # 現在の項目がちゃんと info panel の中にある時にだけ描画する。(#D0880)
+
+      ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "${fields[@]::2}"
+      ble/canvas/put.draw "${text:fields[4]}"
+      _ble_canvas_x=${fields[2]} _ble_canvas_y=$((infoy+fields[3]))
+    fi
   fi
 
   local value=
@@ -2030,7 +2036,6 @@ function ble-complete/menu-complete/select {
     ble/string#split fields , "${entry%%:*}"
 
     local x=${fields[0]} y=${fields[1]}
-    ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "$x" "$y"
 
     local "${_ble_complete_cand_varnames[@]}"
     ble-complete/cand/unpack "${text::fields[4]}"
@@ -2041,8 +2046,15 @@ function ble-complete/menu-complete/select {
     ble-edit/info/.initialize-size
     menu_common_part=$_ble_complete_menu_common_part
     ble-complete/menu/construct-single-entry - selected:use_vars
-    ble/canvas/put.draw "$ret"
-    _ble_canvas_x=$x _ble_canvas_y=$((infoy+y))
+
+    if ((y<_ble_canvas_panel_height[_ble_edit_info_panel])); then
+      # Note: 編集文字列の内容の変化により info panel が削れている事がある。
+      # 現在の項目がちゃんと info panel の中にある時にだけ描画する。(#D0880)
+
+      ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "$x" "$y"
+      ble/canvas/put.draw "$ret"
+      _ble_canvas_x=$x _ble_canvas_y=$((infoy+y))
+    fi
 
     _ble_complete_menu_selected=$nsel
   else

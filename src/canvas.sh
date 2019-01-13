@@ -1235,13 +1235,120 @@ function ble/canvas/goto.draw {
 #------------------------------------------------------------------------------
 # ble/canvas/panel
 
+## 配列 _ble_canvas_panel_type
+##   各パネルを管理する関数接頭辞を保持する。
+##
 ## 配列 _ble_canvas_panel_height
 ##   各パネルの高さを保持する。
 ##   現在 panel 0 が textarea で panel 2 が info に対応する。
 ##
 ##   開始した瞬間にキー入力をすると画面に echo されてしまうので、
 ##   それを削除するために最初の編集文字列の行数を 1 とする。
+_ble_canvas_panel_type=(ble/textarea/panel ble/textarea/panel ble-edit/info)
 _ble_canvas_panel_height=(1 0 0)
+
+## 関数 ble/canvas/panel/layout/.extract-heights
+##   @arr[out] mins maxs
+function ble/canvas/panel/layout/.extract-heights {
+  local i n=${#_ble_canvas_panel_type[@]}
+  for ((i=0;i<n;i++)); do
+    local height
+    "${_ble_canvas_panel_type[i]}#get-height" "$i"
+    mins[i]=${height%:*}
+    maxs[i]=${height#*:}
+  done
+}
+
+## 関数 ble/canvas/panel/layout/.determine-heights
+##   最小高さ mins と希望高さ maxs から実際の高さ heights を決定します。
+##   @var[in] lines
+##   @arr[in] mins maxs
+##   @arr[out] heights
+function ble/canvas/panel/layout/.determine-heights {
+  local i n=${#_ble_canvas_panel_type[@]}
+  ble/arithmetic/sum "${mins[@]}"; local min=$ret
+  ble/arithmetic/sum "${maxs[@]}"; local max=$ret
+  if ((max<=lines)); then
+    heights=("${maxs[@]}")
+  elif ((min<=lines)); then
+    local room=$((lines-min))
+    heights=("${mins[@]}")
+    while ((room)); do
+      local count=0 min_delta=-1 delta
+      for ((i=0;i<n;i++)); do
+        ((delta=maxs[i]-heights[i],delta>0)) || continue
+        ((count++))
+        ((min_delta<0||min_delta>delta)) && min_delta=$delta
+      done
+      ((count==0)) && break
+
+      if ((count*min_delta<=room)); then
+        for ((i=0;i<n;i++)); do
+          ((maxs[i]-heights[i]>0)) || continue
+          ((heights[i]+=min_delta))
+        done
+        ((room-=count*min_delta))
+      else
+        local delta=$((room/count)) rem=$((room%count)) count=0
+        for ((i=0;i<n;i++)); do
+          ((maxs[i]-heights[i]>0)) || continue
+          ((heights[i]+=delta))
+          ((count++<rem&&heights[i]++))
+        done
+        ((room=0))
+      fi
+    done
+  else
+    heights=("${mins[@]}")
+    local excess=$((min-lines))
+    for ((i=n-1;i>=0;i--)); do
+      local sub=$((heights[i]-heights[i]*lines/min))
+      if ((sub<excess)); then
+        ((excess-=sub))
+        ((heights[i]-=sub))
+      else
+        ((heights[i]-=excess))
+        break
+      fi
+    done
+  fi
+}
+
+## 関数 ble/canvas/panel/layout/.get-available-height index
+##   @var[out] ret
+function ble/canvas/panel/layout/.get-available-height {
+  local index=$1
+  local lines=$((${LINES:-25}-1)) # Note: bell の為に一行余裕を入れる
+  local -a mins=() maxs=()
+  ble/canvas/panel/layout/.extract-heights
+  maxs[index]=${LINES:-25}
+  local -a heights=()
+  ble/canvas/panel/layout/.determine-heights
+  ret=${heights[index]}
+}
+
+function ble/canvas/panel#reallocate-height.draw {
+  local lines=$((${LINES:-25}-1)) # Note: bell の為に一行余裕を入れる
+
+  local i n=${#_ble_canvas_panel_type[@]}
+  local -a mins=() maxs=()
+  ble/canvas/panel/layout/.extract-heights
+
+  local -a heights=()
+  ble/canvas/panel/layout/.determine-heights
+
+  # shrink
+  for ((i=0;i<n;i++)); do
+    ((heights[i]<_ble_canvas_panel_height[i])) &&
+      ble/canvas/panel#set-height.draw "$i" "${heights[i]}"
+  done
+
+  # expand
+  for ((i=0;i<n;i++)); do
+    ((heights[i]>_ble_canvas_panel_height[i])) &&
+      ble/canvas/panel#set-height.draw "$i" "${heights[i]}"
+  done
+}
 
 ## 関数 ble/canvas/panel#get-origin
 ##   @var[out] x y
@@ -1299,6 +1406,8 @@ function ble/canvas/panel#set-height.draw {
   fi
 
   ((_ble_canvas_panel_height[index]=new_height))
+  ble/function#try "${_ble_canvas_panel_type[index]}#on-height-change" "$index"
+  return 0
 }
 function ble/canvas/panel#increase-height.draw {
   local index=$1 delta=$2
