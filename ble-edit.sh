@@ -2644,6 +2644,7 @@ function ble/textarea#render {
     ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$prox" "$proy"
 
     # 全体描画
+    _ble_textarea_scroll=$scroll
     if [[ ! $_ble_textarea_scroll ]]; then
       ble/textarea#slice-text-buffer # → ret
       esc_line=$ret esc_line_set=1
@@ -2666,7 +2667,6 @@ function ble/textarea#render {
       ble/textarea#slice-text-buffer "$gbeg" "$gend"
       ble-edit/draw/put "$ret"
       ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
-      ((_ble_line_x=gendx,_ble_line_y+=gendy-gbegy))
     fi
   fi
 
