@@ -1449,8 +1449,19 @@ _ble_textarea_caret_state=::
 function ble/textarea#render {
   local ble_textarea_render_flag=1 # ble/textarea/panel#on-height-change から参照する
 
-  local caret_state=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode
-  if [[ $_ble_edit_dirty_draw_beg -lt 0 && ! $_ble_textarea_invalidated && $_ble_textarea_caret_state == "$caret_state" ]]; then
+  local dirty=
+  if ((_ble_edit_dirty_draw_beg>=0)); then
+    dirty=1
+  elif [[ $_ble_textarea_invalidated ]]; then
+    dirty=1
+  elif local caret_state=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_line_disabled:$_ble_edit_overwrite_mode
+       [[ $_ble_textarea_caret_state != "$caret_state" ]]; then
+    dirty=1
+  elif [[ $_ble_textarea_scroll != "$_ble_textarea_scroll_new" ]]; then
+    dirty=1
+  fi
+
+  if [[ ! $dirty ]]; then
     ble/textarea#focus
     return
   fi

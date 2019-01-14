@@ -683,7 +683,8 @@ tech
       これらのコマンドは "ジャンプ" なので、$flag なしで実際にジャンプに成功する場合には
       set-local-mark 96 をする必要がある。
 
-    * 2017-10-09 取り敢えず今の所はスクロール (C-b C-d C-e C-u C-y など) には対応しない
+    * done: 2017-10-09 取り敢えず今の所はスクロール (C-b C-d C-e C-u C-y など) には対応しない
+      →これは #D0886 で対応した。
 
 2017-09-08
 
@@ -789,7 +790,7 @@ tech
       或いは M- 系列を元から bind してしまう…?
 
     - vi_[nox]map C-end vi-command/last-line は vim の説明に依ると inclusive である筈。
-    - vi_nmap: z z, z b, z -, z . の実装は不完全である
+    - done: vi_nmap: z z, z b, z -, z . の実装は不完全である (ref #D0886)
 
 2018-09-21
 
@@ -2296,13 +2297,16 @@ tech
   新機能
   - color (`ble-color-setface`): SGR指定など様々な形式に対応 `#D0860` 82fe96d `#D0861` 257c16d `#D0864` 2eaf2a9
   - syntax: `bleopt filename_ls_colors` に対応 `#D0862` c7ff302 `#D0863` 3c5bacf ec31aab
-  - vi: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> in `vi_omap` `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3 `#D0868` eb848dc
+  - vi_omap: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3 `#D0868` eb848dc
   - main: improve support of `[[ -o posix ]]` `#D0871` 07ae3cc `#D0872` 513c543
   - main: do not load ble.sh when bash is started by `bash -i -c command` `#D0873` fc23a6d
   - main: support `ble-update` `#D0874` fc45be6 `#D0875` 0b50974
+  - vi_nmap: support <kbd>C-d</kbd>, <kbd>C-u</kbd>, <kbd>C-e</kbd>, <kbd>C-y</kbd>, <kbd>C-f</kbd>, <kbd>next</kbd>, <kbd>C-b</kbd>, <kbd>prior</kbd> `#D0886`
 
   動作変更
-  - vim: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
+  - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
+  - edit: handle panel layouts `#D0878`--`D0882` 6a26894
+  - vi_nmap: support <kbd>z z</kbd>, <kbd>z t</kbd>, <kbd>z b</kbd>, <kbd>z .</kbd>, <kbd>z RET</kbd>, <kbd>z C-m</kbd>, <kbd>z +</kbd>, <kbd>z -</kbd> `#D0886`
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -3119,6 +3123,59 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-01-14
+
+  * vi_nmap: スクロール [#D0886]
+
+    * C-d C-u C-e C-y について対応し始めたら何だか分からなくなってきた。
+      現在の実装だと論理行と表示行の取り扱いが混ざり合っている。
+
+      ble.sh のスクロールは表示行についてのスクロールである。
+      更に、プロンプトの高さの分だけ全体の高さは引き算して考える必要がある。
+      では vim の C-d, C-u は表示行なのだろうか、それとも論理行なのだろうか。
+      更に C-e や C-y は表示行なのか論理行なのか。
+
+      どうも調べてみると C-d 及び C-u は論理行の移動の様である。
+      そして移動した分だけスクロールするという仕組みになっている様子である。
+      何と、C-e や C-y についても論理行のようである。
+      つまり、画面に表示されている先頭行を追加・削除するという形。
+      カーソルはできるだけ移動しないが、画面に入り切らない時には内側に入れる。
+
+      x fixed: ble/textmap を使って実装してみたがどうも動作が変である。
+        もしかすると scroll 値の意味を勘違いしている。
+        例えば scroll=15 なのに何故か表示は 17 行目からになっている。
+        ble/textarea#render/.show-scroll-at-first-line の実装を観察すると、
+        確かに scroll+2 を現在の行番号として表示している。その心は何だろうか。
+
+        また、.determine-scroll の説明を読むと scroll とはスクロール量である。
+        つまり、最初に表示されている行の番号という訳ではない。
+        例えば、scroll=1 の場合を考える。この時、1行目は行番号に置き換えられて、
+        2行目が欠損する形で3行目(y=2)からの表示となる。
+
+        max_scroll の値も再考する必要がある。
+        nline あって枠が height なのだとすれば nline-height だけ欠損すれば全体を表示できる。
+        従って、max_scroll = nline-height = _ble_textmap_endy + 1 - height である。
+        それから ay by の値も修正した。y<ay の時の y=ay が誤って x=ay になっているのも修正した。
+        まあ、何やら動く様になったので良しと言う事にする。
+
+    * ページのスクロールについても実装することにする。
+      基本的には現在見えている一番下の行に移動するという事。
+      引数を指定するとそれを繰り返し実行したのと同じ位置に移動する。
+      つまり、移動後は上から2行目に表示されるので、表示高さを vheight として
+      (ARG-1)*(vheight-2) だけ下に移動した位置に移動する。
+
+      C-b の場合には scroll が 1 以上の時にだけ動作し、
+      現在表示されている画面の一番上から2行目の行が画面の一番下に来る様に移動する。
+      カーソル位置は以前表示されていた内容の1行目の非空白行頭である。
+      (ARG-1)*(vheight-2) だけ上に移動する。
+
+      頁のスクロールについても実装した。動いている気がする。
+
+    * zz 辺りを実装する。
+      引数を指定すると移動先の行番号となる。
+      行は論理行であり、更に相対位置関係で列の位置が決まる。
+      実装した。動いている。
 
 2019-01-13
 

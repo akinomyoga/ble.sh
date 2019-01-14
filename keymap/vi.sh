@@ -2993,7 +2993,7 @@ function ble/widget/vi-command/relative-first-non-space.impl {
   fi
 
   # 履歴項目の移動
-  if [[ $_ble_decode_keymap == vi_nmap ]] && ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)); then
+  if [[ $_ble_decode_keymap == vi_nmap && :$opts: == *:history:* ]] && ble/widget/vi-command/.history-relative-line $((arg>=0?count:-count)); then
     ble/widget/vi-command/first-non-space
   elif ((nmove)); then
     ble/keymap:vi/needs-eol-fix "$nolx" && ((nolx--))
@@ -3007,22 +3007,22 @@ function ble/widget/vi-command/relative-first-non-space.impl {
 # nmap ^
 function ble/widget/vi-command/first-non-space {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/relative-first-non-space.impl 0 "$FLAG" "$REG" charwise
+  ble/widget/vi-command/relative-first-non-space.impl 0 "$FLAG" "$REG" charwise:history
 }
 # nmap +
 function ble/widget/vi-command/forward-first-non-space {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/relative-first-non-space.impl "$ARG" "$FLAG" "$REG" multiline
+  ble/widget/vi-command/relative-first-non-space.impl "$ARG" "$FLAG" "$REG" multiline:history
 }
 # nmap -
 function ble/widget/vi-command/backward-first-non-space {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/relative-first-non-space.impl $((-ARG)) "$FLAG" "$REG" multiline
+  ble/widget/vi-command/relative-first-non-space.impl $((-ARG)) "$FLAG" "$REG" multiline:history
 }
 # nmap _
 function ble/widget/vi-command/first-non-space-forward {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
-  ble/widget/vi-command/relative-first-non-space.impl $((ARG-1)) "$FLAG" "$REG"
+  ble/widget/vi-command/relative-first-non-space.impl $((ARG-1)) "$FLAG" "$REG" history
 }
 # nmap $
 function ble/widget/vi-command/forward-eol {
@@ -3113,6 +3113,279 @@ function ble/widget/vi-command/last-non-space {
   [[ ${_ble_edit_str::index} =~ $rex ]] && ((index-=${#BASH_REMATCH}))
   ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" nobell
 
+}
+
+#------------------------------------------------------------------------------
+# vi_nmap: scroll
+#   C-d, C-u, C-e, C-y
+#   C-b, prior, C-f, next
+
+_ble_keymap_vi_previous_scroll=
+## 関数 ble/widget/vi_nmap/scroll.impl opts
+##   @arg[in] opts
+##     forward
+##     backward
+function ble/widget/vi_nmap/scroll.impl {
+  local opts=$1
+  local height=${_ble_canvas_panel_height[_ble_textarea_panel]}
+
+  # adjust arguments
+  local ARG FLAG REG; ble/keymap:vi/get-arg "$_ble_keymap_vi_previous_scroll"
+  _ble_keymap_vi_previous_scroll=$ARG
+  [[ $ARG ]] || ((ARG=height/2))
+  [[ :$opts: == *:backward:* ]] && ((ARG=-ARG))
+
+  ble/widget/.update-textmap
+  if [[ :$opts: == *:cursor:* ]]; then
+    # move
+    local x y index ret
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    ble/textmap#get-index-at 0 $((y+ARG))
+    ble-edit/content/find-non-space "$index"
+    ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
+    _ble_edit_ind=$ret
+    ble/keymap:vi/adjust-command-mode
+
+    ((_ble_textmap_endy<height)) && return
+    local ax ay
+    ble/textmap#getxy.cur --prefix=a "$_ble_edit_ind"
+    local max_scroll=$((_ble_textmap_endy+1-height))
+    ((_ble_textarea_scroll_new+=ay-y))
+    if ((_ble_textarea_scroll_new<0)); then
+      _ble_textarea_scroll_new=0
+    elif ((_ble_textarea_scroll_new>max_scroll)); then
+      _ble_textarea_scroll_new=$max_scroll
+    fi
+  else
+    ((_ble_textmap_endy<height)) && return
+
+    local max_scroll=$((_ble_textmap_endy+1-height))
+    ((_ble_textarea_scroll_new+=ARG))
+    if ((_ble_textarea_scroll_new<0)); then
+      _ble_textarea_scroll_new=0
+    elif ((_ble_textarea_scroll_new>max_scroll)); then
+      _ble_textarea_scroll_new=$max_scroll
+    fi
+
+    # ax ay 表示範囲
+    local ay=$((_ble_textarea_scroll_new+_ble_textmap_begy))
+    local by=$((_ble_textarea_scroll_new+height-1))
+    ((_ble_textarea_scroll_new&&ay++))
+
+    # カーソル範囲
+    ((_ble_textarea_scroll_new!=0&&ay<by&&ay++,
+      _ble_textarea_scroll_new!=max_scroll&&ay<by&&by--))
+    local x y
+    ble/textmap#getxy.cur "$_ble_edit_ind"
+    if ((y<ay?(y=ay,1):(y>by?(y=by,1):0))); then
+      local index
+      ble/textmap#get-index-at "$x" "$y"
+      _ble_edit_ind=$index
+    fi
+
+    ble/keymap:vi/adjust-command-mode
+  fi
+}
+
+# nmap C-d
+function ble/widget/vi_nmap/forward-line-scroll {
+  ble/widget/vi_nmap/scroll.impl forward:cursor
+}
+# nmap C-u
+function ble/widget/vi_nmap/backward-line-scroll {
+  ble/widget/vi_nmap/scroll.impl backward:cursor
+}
+# nmap C-e
+function ble/widget/vi_nmap/forward-scroll {
+  ble/widget/vi_nmap/scroll.impl forward
+}
+# nmap C-y
+function ble/widget/vi_nmap/backward-scroll {
+  ble/widget/vi_nmap/scroll.impl backward
+}
+
+# nmap C-f, next
+function ble/widget/vi_nmap/pagedown {
+  local height=${_ble_canvas_panel_height[_ble_textarea_panel]}
+
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+
+  ble/widget/.update-textmap
+
+  # 最終行以外にいる事を確認
+  local x y
+  ble/textmap#getxy.cur "$_ble_edit_ind"
+  if ((y==_ble_textmap_endy)); then
+    ble/widget/vi-command/bell
+    return 1
+  fi
+  
+  # 行き先を決定
+  local vheight=$((height-_ble_textmap_begy-1))
+  local ybase=$((_ble_textarea_scroll_new+height-1))
+  local y1=$((ybase+(ARG-1)*(vheight-2)))
+  local index ret
+  ble/textmap#get-index-at 0 "$y1"
+  ble-edit/content/bolp "$index" &&
+    ble-edit/content/find-non-space "$index"; index=$ret
+  _ble_edit_ind=$index
+
+  # スクロール (現在位置が上から2行目になる様に)
+  local max_scroll=$((_ble_textmap_endy+1-height))
+  ble/textmap#getxy.cur "$_ble_edit_ind"
+  local scroll=$((y<=_ble_textmap_begy+1?0:(y-_ble_textmap_begy-1)))
+  ((scroll>max_scroll&&(scroll=max_scroll)))
+  _ble_textarea_scroll_new=$scroll
+  ble/keymap:vi/adjust-command-mode
+}
+# nmap C-b, prior
+function ble/widget/vi_nmap/pageup {
+  local height=${_ble_canvas_panel_height[_ble_textarea_panel]}
+
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+
+  ble/widget/.update-textmap
+
+  # 少なくとも1行目が表示されていない事を確認
+  if ((!_ble_textarea_scroll_new)); then
+    ble/widget/vi-command/bell
+    return 1
+  fi
+
+  # 行き先を決定
+  local vheight=$((height-_ble_textmap_begy-1))
+  local ybase=$((_ble_textarea_scroll_new+_ble_textmap_begy+1))
+  local y1=$((ybase-(ARG-1)*(vheight-2)))
+  ((y1<_ble_textmap_begy&&(y1=_ble_textmap_begy)))
+  local index ret
+  ble/textmap#get-index-at 0 "$y1"
+  ble-edit/content/bolp "$index" &&
+    ble-edit/content/find-non-space "$index"; index=$ret
+  _ble_edit_ind=$index
+
+  # スクロール (現在位置が下から2行目になる様に)
+  local x y
+  ble/textmap#getxy.cur "$_ble_edit_ind"
+  local scroll=$((y-height+2))
+  ((scroll<0&&(scroll=0)))
+  _ble_textarea_scroll_new=$scroll
+  ble/keymap:vi/adjust-command-mode
+}
+
+function ble/widget/vi_nmap/scroll-to-center.impl {
+  local opts=$1
+  ble/widget/.update-textmap
+  local height=${_ble_canvas_panel_height[_ble_textarea_panel]}
+
+  local ARG FLAG REG; ble/keymap:vi/get-arg ''
+  if [[ ! $ARG && :$opts: == *:pagedown:* ]]; then
+    local y1=$((_ble_textarea_scroll_new+height))
+    local index
+    ble/textmap#get-index-at 0 "$y1"
+    ((_ble_edit_ind=index))
+  fi
+
+  local ret
+  ble-edit/content/find-logical-bol "$_ble_edit_ind"; local bol1=$ret
+  if [[ $ARG || :$opts: == *:nol:* ]]; then
+    if [[ $ARG ]]; then
+      ble-edit/content/find-logical-bol 0 $((ARG-1)); local bol2=$ret
+    else
+      local bol2=$bol1
+    fi
+
+    if [[ :$opts: == *:nol:* ]]; then
+      # 非空白行頭に移動する
+      ble-edit/content/find-non-space "$bol2"
+      _ble_edit_ind=$ret
+    elif ((bol1!=bol2)); then
+      # 行内の同じ相対位置に移動する
+
+      # dx dy = 行頭からの相対位置
+      local b1x b1y p1x p1y dx dy
+      ble/textmap#getxy.cur --prefix=b1 "$bol1"
+      ble/textmap#getxy.cur --prefix=p1 "$_ble_edit_ind"
+      ((dx=p1x,dy=p1y-b1y))
+
+      # index = 行き先の行 bol2 の同じ相対位置のインデックス
+      local b2x b2y p2x p2y index
+      ble/textmap#getxy.cur --prefix=b2 "$bol2"
+      ((p2x=b2x,p2y=b2y+dy))
+      ble/textmap#get-index-at "$p2x" "$p2y"
+
+      if ble-edit/content/find-logical-bol "$index"; ((ret==bol2)); then
+        _ble_edit_ind=$index
+      else
+        # 別の行になっている時は行末に移動
+        ble-edit/content/find-logical-eol "$bol2"
+        _ble_edit_ind=$ret
+      fi
+    fi
+    ble/keymap:vi/needs-eol-fix && ((_ble_edit_ind--))
+  fi
+
+  # スクロール量の計算
+  if ((_ble_textmap_endy+1>height)); then
+    local max_scroll=$((_ble_textmap_endy+1-height))
+
+    local b1x b1y
+    ble/textmap#getxy.cur --prefix=b1 "$bol1"
+
+    local scroll=
+    if [[ :$opts: == *:top:* ]]; then
+      ((scroll=b1y-(_ble_textmap_begy+2)))
+    elif [[ :$opts: == *:bottom:* ]]; then
+      ((scroll=b1y-(height-2)))
+    else
+      local vheight=$((height-_ble_textmap_begy-1))
+      ((scroll=b1y-(_ble_textmap_begy+1+vheight/2)))
+    fi
+
+    if ((scroll<0)); then
+      scroll=0
+    elif ((scroll>max_scroll)); then
+      scroll=$max_scroll
+    fi
+    _ble_textarea_scroll_new=$scroll
+  fi
+
+  ble/keymap:vi/adjust-command-mode
+}
+
+# nmap zz
+function ble/widget/vi_nmap/scroll-to-center-and-redraw {
+  ble/widget/vi_nmap/scroll-to-center.impl
+  ble/widget/redraw-line
+}
+# nmap zt
+function ble/widget/vi_nmap/scroll-to-top-and-redraw {
+  ble/widget/vi_nmap/scroll-to-center.impl top
+  ble/widget/redraw-line
+}
+# nmap zb
+function ble/widget/vi_nmap/scroll-to-bottom-and-redraw {
+  ble/widget/vi_nmap/scroll-to-center.impl bottom
+  ble/widget/redraw-line
+}
+# nmap z.
+function ble/widget/vi_nmap/scroll-to-center-non-space-and-redraw {
+  ble/widget/vi_nmap/scroll-to-center.impl nol
+  ble/widget/redraw-line
+}
+# nmap z<C-m>
+function ble/widget/vi_nmap/scroll-to-top-non-space-and-redraw {
+  ble/widget/vi_nmap/scroll-to-center.impl top:nol
+  ble/widget/redraw-line
+}
+# nmap z-
+function ble/widget/vi_nmap/scroll-to-bottom-non-space-and-redraw {
+  ble/widget/vi_nmap/scroll-to-center.impl bottom:nol
+  ble/widget/redraw-line
+}
+# nmap z+
+function ble/widget/vi_nmap/scroll-or-pagedown-and-redraw {
+  ble/widget/vi_nmap/scroll-to-center.impl top:nol:pagedown
+  ble/widget/redraw-line
 }
 
 #------------------------------------------------------------------------------
@@ -3549,22 +3822,6 @@ function ble/widget/vi-command/last-line {
   else
     ble/widget/vi-command/linewise-goto.impl ${#_ble_edit_str}:0 "$FLAG" "$REG"
   fi
-}
-
-function ble/widget/vi-command/clear-screen-and-first-non-space {
-  ble/widget/vi-command/first-non-space; local ext=$?
-  ble/widget/clear-screen
-  return "$ext"
-}
-function ble/widget/vi-command/redraw-line-and-first-non-space {
-  ble/widget/vi-command/first-non-space; local ext=$?
-  ble/widget/redraw-line
-  return "$ext"
-}
-function ble/widget/vi-command/clear-screen-and-last-line {
-  ble/widget/vi-command/last-line; local ext=$?
-  ble/widget/redraw-line
-  return "$ext"
 }
 
 #------------------------------------------------------------------------------
@@ -5212,8 +5469,8 @@ function ble-decode/keymap:vi_omap/define {
 # nmap C-d
 function ble/widget/vi-command/exit-on-empty-line {
   if [[ $_ble_edit_str ]]; then
-    ble/widget/vi-command/bell
-    return 1
+    ble/widget/vi_nmap/forward-scroll
+    return
   else
     ble/widget/exit
     ble/keymap:vi/adjust-command-mode # ジョブがあるときは終了しないので。
@@ -5427,14 +5684,22 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f K      vi_nmap/command-help
   ble-bind -f f1     vi_nmap/command-help
 
-  ble-bind -f 'z t'   clear-screen
-  ble-bind -f 'z z'   redraw-line # 中央
-  ble-bind -f 'z b'   redraw-line # 最下行
-  ble-bind -f 'z RET' vi-command/clear-screen-and-first-non-space
-  ble-bind -f 'z C-m' vi-command/clear-screen-and-first-non-space
-  ble-bind -f 'z +'   vi-command/clear-screen-and-last-line
-  ble-bind -f 'z -'   vi-command/redraw-line-and-first-non-space # 中央
-  ble-bind -f 'z .'   vi-command/redraw-line-and-first-non-space # 最下行
+  ble-bind -f 'C-d'   vi_nmap/forward-line-scroll
+  ble-bind -f 'C-u'   vi_nmap/backward-line-scroll
+  ble-bind -f 'C-e'   vi_nmap/forward-scroll
+  ble-bind -f 'C-y'   vi_nmap/backward-scroll
+  ble-bind -f 'C-f'   vi_nmap/pagedown
+  ble-bind -f 'next'  vi_nmap/pagedown
+  ble-bind -f 'C-b'   vi_nmap/pageup
+  ble-bind -f 'prior' vi_nmap/pageup
+  ble-bind -f 'z t'   vi_nmap/scroll-to-top-and-redraw
+  ble-bind -f 'z z'   vi_nmap/scroll-to-center-and-redraw
+  ble-bind -f 'z b'   vi_nmap/scroll-to-bottom-and-redraw
+  ble-bind -f 'z RET' vi_nmap/scroll-to-top-non-space-and-redraw
+  ble-bind -f 'z C-m' vi_nmap/scroll-to-top-non-space-and-redraw
+  ble-bind -f 'z +'   vi_nmap/scroll-or-pagedown-and-redraw
+  ble-bind -f 'z -'   vi_nmap/scroll-to-bottom-non-space-and-redraw
+  ble-bind -f 'z .'   vi_nmap/scroll-to-center-non-space-and-redraw
 
   ble-bind -f m      vi-command/set-mark
   ble-bind -f '"'    vi-command/register
@@ -5459,7 +5724,7 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f 'C-m'   'vi-command/accept-single-line-or vi-command/forward-first-non-space'
   ble-bind -f 'RET'   'vi-command/accept-single-line-or vi-command/forward-first-non-space'
   ble-bind -f 'C-l'   'clear-screen'
-  ble-bind -f 'C-d'   'vi-command/exit-on-empty-line'
+  ble-bind -f 'C-d'   'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
   ble-bind -f 'auto_complete_enter' auto-complete-enter
 }
 
