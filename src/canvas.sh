@@ -390,7 +390,7 @@ function ble/canvas/bflush.draw {
 ##   @var[in,out] x y g
 ##     出力の開始位置を指定します。出力終了時の位置を返します。
 ##   @var[in,out] lc lg
-##     bleopt_suppress_bash_output= の時、
+##     bleopt_internal_suppress_bash_output= の時、
 ##     出力開始時のカーソル左の文字コードを指定します。
 ##     出力終了時のカーソル左の文字コードが分かる場合にそれを返します。
 ##
@@ -716,7 +716,7 @@ function ble/canvas/trace/.impl {
       w=${#BASH_REMATCH}
       ble/canvas/put.draw "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
-      if [[ ! $bleopt_suppress_bash_output ]]; then
+      if [[ ! $bleopt_internal_suppress_bash_output ]]; then
         local ret
         ble/util/s2c "$BASH_REMATCH" $((w-1))
         lc=$ret lg=$g

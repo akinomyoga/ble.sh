@@ -3124,6 +3124,15 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-01-16
+
+  * bleopt: 内部の設定変数に internal_ を冠する事にした [#D0887]
+
+    - suppress_bash_output -> internal_suppress_bash_output
+    - ignoreeof_message -> internal_ignoreeof_trap
+    - exec_type -> internal_exec_type
+    - stackdump_enabled -> internal_stackdump_enabled
+
 2019-01-14
 
   * vi_nmap: スクロール [#D0886]

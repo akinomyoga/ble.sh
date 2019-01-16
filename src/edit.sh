@@ -95,38 +95,38 @@ function ble/edit/use-textmap {
   return 0
 }
 
-## オプション exec_type (内部使用)
+## オプション internal_exec_type (内部使用)
 ##   コマンドの実行の方法を指定します。
 ##
-##   exec_type=exec
+##   internal_exec_type=exec
 ##     関数内で実行します (従来の方法です。将来的に削除されます)
-##   exec_type=gexec
+##   internal_exec_type=gexec
 ##     グローバルな文脈で実行します (新しい方法です)
 ##
-## 要件: 関数 ble-edit/exec:$bleopt_exec_type/process が定義されていること。
-: ${bleopt_exec_type:=gexec}
+## 要件: 関数 ble-edit/exec:$bleopt_internal_exec_type/process が定義されていること。
+: ${bleopt_internal_exec_type:=gexec}
 
-function bleopt/check:exec_type {
+function bleopt/check:internal_exec_type {
   if ! ble/is-function "ble-edit/exec:$value/process"; then
-    echo "bleopt: Invalid value exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
+    echo "bleopt: Invalid value internal_exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
     return 1
   fi
 }
 
-## オプション suppress_bash_output (内部使用)
+## オプション internal_suppress_bash_output (内部使用)
 ##   bash 自体の出力を抑制するかどうかを指定します。
-## bleopt_suppress_bash_output=1
+## bleopt_internal_suppress_bash_output=1
 ##   抑制します。bash のエラーメッセージは visible-bell で表示します。
-## bleopt_suppress_bash_output=
+## bleopt_internal_suppress_bash_output=
 ##   抑制しません。bash のメッセージは全て端末に出力されます。
 ##   これはデバグ用の設定です。bash の出力を制御するためにちらつきが発生する事があります。
 ##   bash-3 ではこの設定では C-d を捕捉できません。
-: ${bleopt_suppress_bash_output=1}
+: ${bleopt_internal_suppress_bash_output=1}
 
-## オプション ignoreeof_message (内部使用)
+## オプション internal_ignoreeof_trap (内部使用)
 ##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
 ##   これは自分の bash の設定に合わせる必要があります。
-: ${bleopt_ignoreeof_message:='Use "exit" to leave the shell.'}
+: ${bleopt_internal_ignoreeof_trap:='Use "exit" to leave the shell.'}
 
 ## オプション allow_exit_with_jobs
 ##   この変数に空文字列が設定されている時、
@@ -201,7 +201,7 @@ function ble-edit/prompt/initialize {
 ##   @var _ble_edit_prompt[1..3] x y g
 ##     prompt を表示し終わった時のカーソルの位置と描画属性を表します。
 ##   @var _ble_edit_prompt[4..5] lc lg
-##     bleopt_suppress_bash_output= の時、
+##     bleopt_internal_suppress_bash_output= の時、
 ##     prompt を表示し終わった時の左側にある文字とその描画属性を表します。
 ##     それ以外の時はこの値は使われません。
 ##   @var _ble_edit_prompt[6]    ps1out
@@ -466,7 +466,7 @@ function ble-edit/prompt/update/.eval-prompt_command {
 ##     プロンプトの描画開始点を指定します。
 ##     プロンプトを描画した後の位置を返します。
 ##   @var[in,out] lc lg
-##     bleopt_suppress_bash_output= の際に、
+##     bleopt_internal_suppress_bash_output= の際に、
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble-edit/prompt/update {
@@ -1112,14 +1112,14 @@ function ble-edit/attach/.attach {
 
   ble-edit/adjust-PS1
   ble-edit/adjust-IGNOREEOF
-  [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS=$IFS
+  [[ $bleopt_internal_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
 
 function ble-edit/attach/.detach {
   ((!_ble_edit_attached)) && return
   ble-edit/restore-PS1
   ble-edit/restore-IGNOREEOF
-  [[ $bleopt_exec_type == exec ]] && IFS=$_ble_edit_IFS
+  [[ $bleopt_internal_exec_type == exec ]] && IFS=$_ble_edit_IFS
   _ble_edit_attached=0
 }
 
@@ -1194,7 +1194,7 @@ function ble/textarea#update-text-buffer {
 
   # update lc, lg
   #
-  #   lc, lg は bleopt_suppress_bash_output= の時に bash に出力させる文字と
+  #   lc, lg は bleopt_internal_suppress_bash_output= の時に bash に出力させる文字と
   #   その属性を表す。READLINE_LINE が空だと C-d を押した時にその場でログアウト
   #   してしまったり、エラーメッセージが表示されたりする。その為 READLINE_LINE
   #   に有限の長さの文字列を設定したいが、そうするとそれが画面に出てしまう。
@@ -1206,7 +1206,7 @@ function ble/textarea#update-text-buffer {
   #   READLINE_LINE に設定し READLINE_POINT=(左の文字のバイト数) とする。
   #   (READLINE_POINT は文字数ではなくバイトオフセットである事に注意する。)
   #
-  if [[ $bleopt_suppress_bash_output ]]; then
+  if [[ $bleopt_internal_suppress_bash_output ]]; then
     lc=32 lg=0
   else
     # index==0 の場合は受け取った lc lg をそのまま返す
@@ -1605,7 +1605,7 @@ function ble/textarea#render {
   _ble_textarea_cur=("$gcx" "$gcy" "$lc" "$lg")
   _ble_textarea_invalidated= _ble_textarea_caret_state=$caret_state
 
-  if [[ ! $bleopt_suppress_bash_output ]]; then
+  if [[ ! $bleopt_internal_suppress_bash_output ]]; then
     if [[ ! $esc_line_set ]]; then
       if [[ ! $_ble_textarea_scroll ]]; then
         ble/textarea#slice-text-buffer
@@ -1693,7 +1693,7 @@ function ble/textarea#redraw-cache {
 ##   従って、単に FEADLINE_LINE に文字を設定すれば良い。
 ##
 function ble/textarea#adjust-for-bash-bind {
-  if [[ $bleopt_suppress_bash_output ]]; then
+  if [[ $bleopt_internal_suppress_bash_output ]]; then
     PS1= READLINE_LINE=$'\n' READLINE_POINT=0
   else
     # bash が表示するプロンプトを見えなくする
@@ -3312,7 +3312,7 @@ function ble-edit/exec/exit {
 
 function exit { ble-edit/exec/exit "$@"; }
 
-## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_exec_type/process;
+## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_internal_exec_type/process;
 ##   指定したコマンドを実行します。
 ## @param[in,out] _ble_edit_exec_lines
 ##   実行するコマンドの配列を指定します。実行したコマンドは削除するか空文字列を代入します。
@@ -3322,7 +3322,7 @@ function exit { ble-edit/exec/exit "$@"; }
 ##   それ以外の場合には終端処理をしていない事を表します。
 
 #--------------------------------------
-# bleopt_exec_type = exec
+# bleopt_internal_exec_type = exec
 #--------------------------------------
 
 function ble-edit/exec:exec/.eval-TRAPINT {
@@ -3537,7 +3537,7 @@ function ble-edit/exec:exec/process {
 }
 
 #--------------------------------------
-# bleopt_exec_type = gexec
+# bleopt_internal_exec_type = gexec
 #--------------------------------------
 
 function ble-edit/exec:gexec/.eval-TRAPINT {
@@ -6621,7 +6621,7 @@ function ble-edit/bind/stdout.on { :;}
 function ble-edit/bind/stdout.off { ble/util/buffer.flush >&2;}
 function ble-edit/bind/stdout.finalize { :;}
 
-if [[ $bleopt_suppress_bash_output ]]; then
+if [[ $bleopt_internal_suppress_bash_output ]]; then
   _ble_edit_io_stdout=
   _ble_edit_io_stderr=
   ble/util/openat _ble_edit_io_stdout '>&1'
@@ -6703,7 +6703,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
         function ble-edit/stdout/check-ignoreeof-message {
           local line=$1
 
-          [[ $line == *$bleopt_ignoreeof_message* ||
+          [[ $line == *$bleopt_internal_ignoreeof_trap* ||
                $line == *'Use "exit" to leave the shell.'* ||
                $line == *'ログアウトする為には exit を入力して下さい'* ||
                $line == *'シェルから脱出するには "exit" を使用してください。'* ||
@@ -6720,7 +6720,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
             builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
           fi
 
-          if [[ $bleopt_ignoreeof_message ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
+          if [[ $bleopt_internal_ignoreeof_trap ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
             builtin echo eof >> "$_ble_edit_io_fname2.proc"
             kill -USR1 $$
             ble/util/sleep 0.1 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
@@ -6822,7 +6822,7 @@ fi
 function ble-edit/bind/.head {
   ble-edit/bind/stdout.on
 
-  [[ $bleopt_suppress_bash_output ]] ||
+  [[ $bleopt_internal_suppress_bash_output ]] ||
     ble-edit/bind/.head/adjust-bash-rendering
 }
 
@@ -6868,7 +6868,7 @@ function ble-decode/EPILOGUE {
   fi
 
   # _ble_decode_bind_hook で bind/tail される。
-  "ble-edit/exec:$bleopt_exec_type/process" && return 0
+  "ble-edit/exec:$bleopt_internal_exec_type/process" && return 0
 
   ble-edit/bind/.tail
   return 0
