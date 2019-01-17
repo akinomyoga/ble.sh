@@ -5,6 +5,7 @@ ble/is-function ble-edit/bind/load-keymap-definition:emacs && return
 function ble-edit/bind/load-keymap-definition:emacs { :; }
 
 # 2015-12-09 keymap cache should be updated due to the refactoring.
+# 2019-01-18 keymap cache should be updated for recent changes
 
 #------------------------------------------------------------------------------
 

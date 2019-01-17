@@ -986,6 +986,16 @@ function ble-edit/content/find-logical-bol {
     return 0
   fi
 }
+## 関数 ble-edit/content/find-non-space index
+##   指定した位置以降の最初の非空白文字を探します。
+##   @param[in] index
+##   @var[out] ret
+function ble-edit/content/find-non-space {
+  local bol=$1
+  local rex=$'^[ \t]*'; [[ ${_ble_edit_str:bol} =~ $rex ]]
+  ret=$((bol+${#BASH_REMATCH}))
+}
+
 
 ## 関数 ble-edit/content/is-single-line
 function ble-edit/content/is-single-line {
@@ -2798,6 +2808,15 @@ function ble/widget/beginning-of-line {
   else
     ble/widget/beginning-of-logical-line
   fi
+}
+function ble/widget/non-space-beginning-of-line {
+  local old=$_ble_edit_ind
+  ble/widget/beginning-of-logical-line
+  local bol=$_ble_edit_ind ret=
+  ble-edit/content/find-non-space "$bol"
+  [[ $ret == $old ]] && ret=$bol # toggle
+  _ble_edit_ind=$ret
+  return 0
 }
 function ble/widget/end-of-line {
   if ble/edit/use-textmap; then
@@ -6003,9 +6022,9 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'S-C-e'     '@marked end-of-line'
   ble-decode/keymap:safe/.bind 'S-home'    '@marked beginning-of-line'
   ble-decode/keymap:safe/.bind 'S-end'     '@marked end-of-line'
-  ble-decode/keymap:safe/.bind 'M-m'       '@nomarked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'M-S-m'     '@marked beginning-of-line'
-  ble-decode/keymap:safe/.bind 'M-M'       '@marked beginning-of-line'
+  ble-decode/keymap:safe/.bind 'M-m'       '@nomarked non-space-beginning-of-line'
+  ble-decode/keymap:safe/.bind 'M-S-m'     '@marked non-space-beginning-of-line'
+  ble-decode/keymap:safe/.bind 'M-M'       '@marked non-space-beginning-of-line'
   ble-decode/keymap:safe/.bind 'C-p'       '@nomarked backward-line' # overwritten by bind-history
   ble-decode/keymap:safe/.bind 'up'        '@nomarked backward-line' # overwritten by bind-history
   ble-decode/keymap:safe/.bind 'C-n'       '@nomarked forward-line'  # overwritten by bind-history

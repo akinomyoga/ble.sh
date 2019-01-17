@@ -69,11 +69,6 @@ function ble-edit/content/nonbol-eolp {
   local pos=${1:-$_ble_edit_ind}
   ! ble-edit/content/bolp "$pos" && ble-edit/content/eolp "$pos"
 }
-function ble-edit/content/find-non-space {
-  local bol=$1
-  local rex=$'^[ \t]*'; [[ ${_ble_edit_str:bol} =~ $rex ]]
-  ret=$((bol+${#BASH_REMATCH}))
-}
 
 function ble/keymap:vi/string#encode-rot13 {
   local text=$*
