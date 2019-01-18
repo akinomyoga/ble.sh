@@ -3757,7 +3757,7 @@ function ble/widget/vi-command/nth-last-line {
   ble/widget/vi-command/linewise-goto.impl ${#_ble_edit_str}:$((-(ARG-1))) "$FLAG" "$REG"
 }
 
-## gg in history
+# nmap gg in history
 function ble/widget/vi-command/history-beginning {
   local ARG FLAG REG; ble/keymap:vi/get-arg 0
   if [[ $FLAG ]]; then
@@ -3782,7 +3782,7 @@ function ble/widget/vi-command/history-beginning {
   return 0
 }
 
-# G in history
+# nmap G in history
 function ble/widget/vi-command/history-end {
   local ARG FLAG REG; ble/keymap:vi/get-arg 0
   if [[ $FLAG ]]; then
@@ -3808,7 +3808,9 @@ function ble/widget/vi-command/history-end {
   return 0
 }
 
-# G in the current history entry
+# nmap G
+#   Note: vim では G はこの振る舞いだが、blesh では実際には
+#     vi-command/history-end が束縛されるのでこれは既定では使われない。
 function ble/widget/vi-command/last-line {
   local ARG FLAG REG; ble/keymap:vi/get-arg 0
   [[ $FLAG ]] || ble/keymap:vi/mark/set-jump # ``
@@ -3817,6 +3819,28 @@ function ble/widget/vi-command/last-line {
   else
     ble/widget/vi-command/linewise-goto.impl ${#_ble_edit_str}:0 "$FLAG" "$REG"
   fi
+}
+
+# nmap C-home / gg
+#   Note: nth-line (H) との違いは jump でない事のみである。
+#   Note: vim では gg もこの振る舞いだが、blesh では gg は
+#     既定では vi-command/history-beginning に束縛される。
+function ble/widget/vi-command/first-nol {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  ble/widget/vi-command/linewise-goto.impl 0:$((ARG-1)) "$FLAG" "$REG"
+}
+
+# nmap C-end
+function ble/widget/vi-command/last-eol {
+  local ARG FLAG REG; ble/keymap:vi/get-arg ''
+  local ret index
+  if [[ $ARG ]]; then
+    ble-edit/content/find-logical-eol 0 $((ARG-1)); index=$ret
+  else
+    ble-edit/content/find-logical-eol ${#_ble_edit_str}; index=$ret
+  fi
+  ble/keymap:vi/needs-eol-fix "$index" && ((index--))
+  ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" nobell
 }
 
 #------------------------------------------------------------------------------
@@ -5358,8 +5382,8 @@ function ble/keymap:vi/setup-map {
   ble-bind -f L      vi-command/nth-last-line
   ble-bind -f 'g g'  vi-command/history-beginning
   ble-bind -f G      vi-command/history-end
-  ble-bind -f C-home vi-command/nth-line
-  ble-bind -f C-end  vi-command/last-line
+  ble-bind -f C-home vi-command/first-nol
+  ble-bind -f C-end  vi-command/last-eol
 
   ble-bind -f 'f' vi-command/search-forward-char
   ble-bind -f 'F' vi-command/search-backward-char
@@ -7142,15 +7166,15 @@ function ble-decode/keymap:vi_smap/define {
   ble-bind -f C-j       'vi_smap/@nomarked vi-command/forward-line'
   ble-bind -f up        'vi_smap/@nomarked vi-command/backward-line'
   ble-bind -f C-p       'vi_smap/@nomarked vi-command/backward-line'
-  ble-bind -f C-home    'vi_smap/@nomarked vi-command/nth-line'
-  ble-bind -f C-end     'vi_smap/@nomarked vi-command/last-line'
+  ble-bind -f C-home    'vi_smap/@nomarked vi-command/first-nol'
+  ble-bind -f C-end     'vi_smap/@nomarked vi-command/last-eol'
   ble-bind -f S-down    'vi-command/forward-line'
   ble-bind -f S-C-n     'vi-command/forward-line'
   ble-bind -f S-C-j     'vi-command/forward-line'
   ble-bind -f S-up      'vi-command/backward-line'
   ble-bind -f S-C-p     'vi-command/backward-line'
-  ble-bind -f S-C-home  'vi-command/nth-line'
-  ble-bind -f S-C-end   'vi-command/last-line'
+  ble-bind -f S-C-home  'vi-command/first-nol'
+  ble-bind -f S-C-end   'vi-command/last-eol'
 }
 
 #------------------------------------------------------------------------------

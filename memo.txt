@@ -785,7 +785,6 @@ tech
 
     書き始めると仕様で微妙なところが浮き上がってくるのでその都度修正する事にする。
 
-    - done: M-m 及び S-M-m の実装が単なる beginning-of-line になっている
     - vi でも M- 系列を bind するオプションがあっても良いのでは。
       しかしキャッシュしていると反映されなくなってしまう。
       また、keymap vi の初期化の前にそのオプションは指定しなければならない。
@@ -793,7 +792,18 @@ tech
       しかし、これ単体の為に継承を新しく実装する程でも無い。
       或いは M- 系列を元から bind してしまう…?
 
-    - vi_[nox]map C-end vi-command/last-line は vim の説明に依ると inclusive である筈。
+    - done: vi_[nox]map C-end vi-command/last-line は vim の説明に依ると inclusive である筈。
+      実際に試してみようとすると C-end が認識できないので入力できない。
+      しかし、vimindex によると G と C-end は同じと書かれているにも拘わらず、
+      実際に vim motion の頁を見ると G と C-end は異なるように書かれている。
+      G は linewise であり C-end は inclusive であると書かれている。
+
+      実装し直す事にする。実装した。簡単に動かしてみた所、動いているので後は気にしないことにする。
+      C-home に関しても現在の実装では jump になっているが vimindex によると、
+      (H と殆ど動作として同じであっても) jump ではない用なので実装し直した。
+
+    - done: M-m 及び S-M-m の実装が単なる beginning-of-line になっている f77f1aa
+
     - done: vi_nmap: z z, z b, z -, z . の実装は不完全である (ref #D0886)
 
 2018-09-21
@@ -2311,6 +2321,9 @@ tech
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
   - edit: handle panel layouts `#D0878`--`D0882` 6a26894
   - vi_nmap: support <kbd>z z</kbd>, <kbd>z t</kbd>, <kbd>z b</kbd>, <kbd>z .</kbd>, <kbd>z RET</kbd>, <kbd>z C-m</kbd>, <kbd>z +</kbd>, <kbd>z -</kbd> `#D0886`
+  - emacs: change M-m M-S-m from `beginning-of-line` to `non-space-beginning-of-line` f77f1aa
+  - bleopt: rename internal settings to `internal_{ignore_trap,suppress_bash_output,exec_type,stackdump_enabled}` fd042d8
+  - vi_nmap: change the behavior of <kbd>C-home</kbd>, <kbd>C-end</kbd> to match with those of vim
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
