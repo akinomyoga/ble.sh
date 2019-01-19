@@ -5187,9 +5187,12 @@ function ble-edit/isearch/backward-search-history {
 ##   beg, end はそれぞれ一致開始位置と終了位置を表す。
 ##   丁度 _ble_edit_ind 及び _ble_edit_mark に対応する。
 ##   needle は検索に使用した文字列を表す。
+## 変数 _ble_edit_isearch_old
+##   前回の検索に使用した文字列
 _ble_edit_isearch_str=
 _ble_edit_isearch_dir=-
 _ble_edit_isearch_arr=()
+_ble_edit_isearch_old=
 
 ## 関数 ble-edit/isearch/.show-status-with-progress.fib [pos]
 ##   @param[in,opt] pos
@@ -5301,6 +5304,7 @@ function ble-edit/isearch/.goto-match.fib {
 
   # 状態を更新
   _ble_edit_isearch_str=$needle
+  [[ $needle ]] && _ble_edit_isearch_old=$needle
   local oind; ble-edit/history/get-index -v oind
   ((oind!=ind)) && ble-edit/history/goto "$ind"
   ble-edit/isearch/.set-region "$beg" "$end"
@@ -5429,19 +5433,34 @@ function ble-edit/isearch/.next-history.fib {
 }
 
 function ble-edit/isearch/forward.fib {
-  ble-edit/isearch/.next.fib forward
+  if [[ ! $_ble_edit_isearch_str ]]; then
+    ble-edit/isearch/.next.fib forward "$_ble_edit_isearch_old"
+  else
+    ble-edit/isearch/.next.fib forward
+  fi
 }
 function ble-edit/isearch/backward.fib {
-  ble-edit/isearch/.next.fib backward
+  if [[ ! $_ble_edit_isearch_str ]]; then
+    ble-edit/isearch/.next.fib backward "$_ble_edit_isearch_old"
+  else
+    ble-edit/isearch/.next.fib backward
+  fi
 }
 function ble-edit/isearch/self-insert.fib {
+  local needle=
   if [[ ! $fib_suspend ]]; then
     local code=$1
     ((code==0)) && return
-    local ret needle
-    ble/util/c2s "$code"
+    local ret; ble/util/c2s "$code"
+    needle=$_ble_edit_isearch_str$ret
   fi
-  ble-edit/isearch/.next.fib append "$_ble_edit_isearch_str$ret"
+  ble-edit/isearch/.next.fib append "$needle"
+}
+function ble-edit/isearch/insert-string.fib {
+  local needle=
+  [[ ! $fib_suspend ]] &&
+    needle=$_ble_edit_isearch_str$1
+  ble-edit/isearch/.next.fib append "$needle"
 }
 function ble-edit/isearch/history-forward.fib {
   _ble_edit_isearch_dir=+
@@ -5479,6 +5498,7 @@ function ble-edit/isearch/prev {
   ble-edit/history/goto "$ind"
   ble-edit/isearch/.set-region "$beg" "$end"
   _ble_edit_isearch_str=$top
+  [[ $top ]] && _ble_edit_isearch_old=$top
 
   # isearch 表示
   ble-edit/isearch/show-status

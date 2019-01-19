@@ -774,11 +774,7 @@ tech
   * update: .tar.xz から落とした場合でも ble-update を使える様にする
     しかし、これは次の 0.3 のリリースまでは実際には有効にはならないが。
 
-2018-09-28
-
-  * isearch: 空文字列で検索を開始すると前回の文字列で検索する様にする可能性?
-
-    これは bash の既定が空文字列による検索なので微妙かもしれない。
+    後、.tar.xz の時にはコンパイルに使用したディレクトリを記録しない様にするべきでは。
 
 2018-09-23
 
@@ -2317,10 +2313,11 @@ tech
   - main: do not load ble.sh when bash is started by `bash -i -c command` `#D0873` fc23a6d
   - main: support `ble-update` `#D0874` fc45be6 `#D0875` 0b50974
   - vi_nmap: support <kbd>C-d</kbd>, <kbd>C-u</kbd>, <kbd>C-e</kbd>, <kbd>C-y</kbd>, <kbd>C-f</kbd>, <kbd>next</kbd>, <kbd>C-b</kbd>, <kbd>prior</kbd> `#D0886`
+  - isearch: use previous needle for empty string search `#D0889`
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
-  - edit: handle panel layouts `#D0878`--`D0882` 6a26894 `#D0888`
+  - edit: handle panel layouts `#D0878`--`D0882` 6a26894 `#D0888` c8e0d28
   - vi_nmap: support <kbd>z z</kbd>, <kbd>z t</kbd>, <kbd>z b</kbd>, <kbd>z .</kbd>, <kbd>z RET</kbd>, <kbd>z C-m</kbd>, <kbd>z +</kbd>, <kbd>z -</kbd> `#D0886`
   - emacs: change M-m M-S-m from `beginning-of-line` to `non-space-beginning-of-line` f77f1aa
   - bleopt: rename internal settings to `internal_{ignore_trap,suppress_bash_output,exec_type,stackdump_enabled}` fd042d8
@@ -3141,6 +3138,20 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-01-20
+
+  * 2018-09-28 isearch: 空文字列で検索を開始すると前回の文字列で検索する様にする可能性? [#D0889]
+
+    これは bash の既定が空文字列による検索なので微妙かもしれない。
+    然し、よく考えてみると既に確定時の振る舞いが異なるのだし、
+    やはり emacs の振る舞いの方が自然に思われるので、
+    これは実装しても良いのではないかという気がする。
+    →実装した。意外と簡単だった。本当にちゃんと動いているかは自信がないが。
+      取り敢えず暫く使ってみてから考えれば良いだろう。
+
+    記録するのは検索を実行したタイミングではなくて
+    実際に一致したタイミングであるべきなのでは。
 
 2019-01-19
 
