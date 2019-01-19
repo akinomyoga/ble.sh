@@ -2051,7 +2051,7 @@ function ble-complete/menu-complete/select {
       # Note: 編集文字列の内容の変化により info panel が削れている事がある。
       # 現在の項目がちゃんと info panel の中にある時にだけ描画する。(#D0880)
 
-      ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "$x" "$y"
+      ble/canvas/panel#goto.draw "$_ble_edit_info_panel" "${fields[@]::2}"
       ble/canvas/put.draw "$ret"
       _ble_canvas_x=$x _ble_canvas_y=$((infoy+y))
     fi

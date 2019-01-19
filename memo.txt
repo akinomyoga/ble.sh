@@ -771,7 +771,8 @@ tech
 
 2019-01-18
 
-  * complete: 複数行モードにおけるメニュー補完で描画位置がずれている気がする
+  * update: .tar.xz から落とした場合でも ble-update を使える様にする
+    しかし、これは次の 0.3 のリリースまでは実際には有効にはならないが。
 
 2018-09-28
 
@@ -2319,7 +2320,7 @@ tech
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
-  - edit: handle panel layouts `#D0878`--`D0882` 6a26894
+  - edit: handle panel layouts `#D0878`--`D0882` 6a26894 `#D0888`
   - vi_nmap: support <kbd>z z</kbd>, <kbd>z t</kbd>, <kbd>z b</kbd>, <kbd>z .</kbd>, <kbd>z RET</kbd>, <kbd>z C-m</kbd>, <kbd>z +</kbd>, <kbd>z -</kbd> `#D0886`
   - emacs: change M-m M-S-m from `beginning-of-line` to `non-space-beginning-of-line` f77f1aa
   - bleopt: rename internal settings to `internal_{ignore_trap,suppress_bash_output,exec_type,stackdump_enabled}` fd042d8
@@ -3140,6 +3141,12 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-01-19
+
+  * complete: 複数行モードにおけるメニュー補完で描画位置がずれている気がする [#D0888]
+    と思ったら複数行どころか常に描画位置がずれるようになってしまっている。
+    一箇所直したら治った。これは #D0880 で埋め込んだバグであった。
 
 2019-01-16
 
