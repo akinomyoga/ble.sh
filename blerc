@@ -98,24 +98,8 @@ function blerc/vim-load-hook {
   # bleopt keymap_vi_macro_depth=64
   # bleopt keymap_vi_nmap_name:=$'\e[1m~\e[m'
 
-  ## keymap settings with Meta modifiers
-  # ble-bind -f 'M-SP'      set-mark
-  # ble-bind -f 'M-w'       'copy-region-or uword'
-  # ble-bind -f 'M-\'       delete-horizontal-space
-  # ble-bind -f 'M-right'   '@nomarked forward-sword'
-  # ble-bind -f 'M-left'    '@nomarked backward-sword'
-  # ble-bind -f 'S-M-right' '@marked forward-sword'
-  # ble-bind -f 'S-M-left'  '@marked backward-sword'
-  # ble-bind -f 'M-d'       'kill-forward-cword'
-  # ble-bind -f 'M-h'       'kill-backward-cword'
-  # ble-bind -f 'M-delete'  copy-forward-sword
-  # ble-bind -f 'M-DEL'     copy-backward-sword
-  # ble-bind -f 'M-f'       '@nomarked forward-cword'
-  # ble-bind -f 'M-b'       '@nomarked backward-cword'
-  # ble-bind -f 'M-F'       '@marked forward-cword'
-  # ble-bind -f 'M-B'       '@marked backward-cword'
-  # ble-bind -f 'M-m'       '@nomarked beginning-of-line'
-  # ble-bind -f 'S-M-m'     '@marked beginning-of-line'
+  # # keymap settings with Meta modifiers
+  # ble-decode/keymap:vi_imap/define-meta-bindings
 
   ## Cursor settings
 

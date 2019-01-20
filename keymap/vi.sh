@@ -5735,6 +5735,9 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f C-a vi_nmap/increment
   ble-bind -f C-x vi_nmap/decrement
 
+  ble-bind -f 'Z Z' 'vi-command:q'
+  ble-bind -f 'Z Q' 'vi-command:q'
+
   #----------------------------------------------------------------------------
   # bash
 
@@ -7394,6 +7397,68 @@ function ble-decode/keymap:vi_imap/define {
 
   # ble-bind -f 'C-l' vi_imap/normal-mode
   # ble-bind -f 'C-k' vi_imap/insert-digraph
+}
+
+## 関数 ble-decode/keymap:vi_imap/define-meta-bindings
+##   M- で始まるキーバインディングを定義します。
+##   ユーザから呼び出すための関数です。
+function ble-decode/keymap:vi_imap/define-meta-bindings {
+  local ble_bind_keymap=vi_imap
+
+  #----------------------------------------------------------------------------
+  # from ble-decode/keymap:safe/define
+
+  ble-bind -f 'M-l'       'redraw-line'
+  ble-bind -f 'M-^'       'history-expand-line'
+
+  #----------------------------------------------------------------------------
+  # from ble-decode/keymap:safe/bind-common
+
+  ble-bind -f 'M-C-m'     'newline'
+  ble-bind -f 'M-RET'     'newline'
+  ble-bind -f 'M-SP'      'set-mark'
+  ble-bind -f 'M-w'       'copy-region-or uword'
+  ble-bind -f 'M-\'       'delete-horizontal-space'
+
+  ble-bind -f 'M-right'   '@nomarked forward-sword'
+  ble-bind -f 'M-left'    '@nomarked backward-sword'
+  ble-bind -f 'S-M-right' '@marked forward-sword'
+  ble-bind -f 'S-M-left'  '@marked backward-sword'
+  ble-bind -f 'M-d'       'kill-forward-cword'
+  ble-bind -f 'M-h'       'kill-backward-cword'
+  ble-bind -f 'M-delete'  'copy-forward-sword'
+  ble-bind -f 'M-C-?'     'copy-backward-sword'
+  ble-bind -f 'M-DEL'     'copy-backward-sword'
+  ble-bind -f 'M-C-h'     'copy-backward-sword'
+  ble-bind -f 'M-BS'      'copy-backward-sword'
+
+  ble-bind -f 'M-f'       '@nomarked forward-cword'
+  ble-bind -f 'M-b'       '@nomarked backward-cword'
+  ble-bind -f 'M-F'       '@marked forward-cword'
+  ble-bind -f 'M-B'       '@marked backward-cword'
+  ble-bind -f 'M-S-f'     '@marked forward-cword'
+  ble-bind -f 'M-S-b'     '@marked backward-cword'
+
+  ble-bind -f 'M-m'       '@nomarked non-space-beginning-of-line'
+  ble-bind -f 'S-M-m'     '@marked non-space-beginning-of-line'
+  ble-bind -f 'M-M'       '@marked non-space-beginning-of-line'
+
+  #----------------------------------------------------------------------------
+  # from ble-decode/keymap:safe/bind-history
+
+  ble-bind -f 'M-<'       'history-beginning'
+  ble-bind -f 'M->'       'history-end'
+
+  #----------------------------------------------------------------------------
+  # from ble-decode/keymap:safe/bind-complete
+
+  ble-bind -f 'M-?'       'complete show_menu'
+  ble-bind -f 'M-/'       'complete context=filename'
+  ble-bind -f 'M-~'       'complete context=username'
+  ble-bind -f 'M-$'       'complete context=variable'
+  ble-bind -f 'M-@'       'complete context=hostname'
+  ble-bind -f 'M-!'       'complete context=command'
+  ble-bind -f "M-'"       'sabbrev-expand'
 }
 
 #------------------------------------------------------------------------------
