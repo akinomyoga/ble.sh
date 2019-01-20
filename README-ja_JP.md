@@ -75,9 +75,7 @@ $ cp -r ble-0.2.1 /path/to/blesh
 # bashrc
 
 # .bashrc の先頭近くに以下を追加して下さい。
-if [[ $- == *i* ]] && source /path/to/blesh/ble.sh noattach; then
-  # ble.sh の設定 (後述) はここに記述します。
-fi
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
 
 # 間に通常の bashrc の内容を既述します。
 
@@ -85,19 +83,27 @@ fi
 ((_ble_bash)) && ble-attach
 ```
 
-## 基本設定
-殆どの設定は `ble.sh` を読み込んだ後に指定します。
+**アップデート**
+
+`ble-0.3` 以上をお使いの場合は `ble.sh` をロードした状態で `ble-update` を実行して下さい。
+
 ```bash
-...
-
-if [[ $- == *i* ]]; then
-  source /path/to/blesh/ble.sh noattach
-  
-  # ***** 設定はここに書きます *****
-fi
-
-...
+$ ble-update
 ```
+
+それ以外の場合には、以下のように `git pull` で最新版を入手・インストールできます。
+
+```bash
+cd ble.sh   # ※既に持っている git リポジトリに入る
+git pull
+make
+make INSDIR="$HOME/.local/share/blesh" install
+```
+
+## 基本設定
+
+ユーザー設定は Bash スクリプト `~/.blerc` に記述します。`ble.sh` をロードする際に自動で `source` されます。
+他のファイルに設定を記述する時は `source ble.sh` の際にオプション `--rcfile INITFILE` を指定します。
 
 **Vim モード**
 

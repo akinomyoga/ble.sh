@@ -5,14 +5,27 @@ function mkd {
 }
 
 function sub:install {
+  # read options
+  local flag_error= flag_release=
+  while [[ $1 == -* ]]; do
+    local arg=$1; shift
+    case $arg in
+    (--release) flag_release=1 ;;
+    (*) echo "install: unknown option $arg" >&2
+        flag_error=1 ;;
+    esac
+  done
+  [[ $flag_error ]] && return 1
+
   local src=$1
   local dst=$2
   mkd "${dst%/*}"
   if [[ $src == *.sh ]]; then
-    sed '
-      1i# this script is a part of blesh (https://github.com/akinomyoga/ble.sh) under BSD-3-Clause license
-      /^[[:space:]]*#/d;/^[[:space:]]*$/d
-    ' "$src" > "$dst"
+    local nl=$'\n' q=\' script='1i# this script is a part of blesh (https://github.com/akinomyoga/ble.sh) under BSD-3-Clause license'
+    script=$script$nl'/^[[:space:]]*#/d;/^[[:space:]]*$/d'
+    [[ $flag_release ]] &&
+      script=$script$nl's/^\([[:space:]]*_ble_base_repository=\)'$q'.*'$q'\([[:space:]]*\)$/\1'${q}release:$dist_git_branch$q'/'
+    sed "$script" "$src" > "$dst"
   else
     cp "$src" "$dst"
   fi
@@ -22,11 +35,12 @@ function sub:install/help {
 }
 
 function sub:dist {
-  local tmpdir="ble-$FULLVER"
+  local dist_git_branch=$(git rev-parse --abbrev-ref HEAD)
+  local tmpdir=ble-$FULLVER
   local src
   for src in "$@"; do
-    local dst="$tmpdir${src#out}"
-    sub:install "$src" "$dst"
+    local dst=$tmpdir${src#out}
+    sub:install --release "$src" "$dst"
   done
   tar caf "dist/$tmpdir.$(date +'%Y%m%d').tar.xz" "$tmpdir" && rm -r "$tmpdir"
 }

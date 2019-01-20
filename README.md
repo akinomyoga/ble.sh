@@ -72,11 +72,7 @@ If you want to load `ble.sh` defaultly in interactive sessions of `bash`, add th
 # bashrc
 
 # Add these lines at the top of .bashrc:
-if [[ $- == *i* ]]; then
-  source /path/to/blesh/ble.sh noattach
-  
-  # settings for ble.sh...
-fi
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
 
 # your bashrc settings come here...
 
@@ -84,17 +80,28 @@ fi
 ((_ble_bash)) && ble-attach
 ```
 
-## Basic settings
-Most settings for `ble.sh` are to be specified after the `source` of `ble.sh`.
+**Update**
+
+For `ble-0.3+`, run `ble-update` in the session with `ble.sh` loaded:
+
 ```bash
-...
-
-if [[ $- == *i* ]] && source /path/to/blesh/ble.sh noattach; then
-  # ***** Settings Here *****
-fi
-
-...
+$ ble-update
 ```
+
+You can also download the latest version by `git pull` and install it:
+
+```bash
+cd ble.sh   # ※既に持っている git リポジトリに入る
+git pull
+make
+make INSDIR="$HOME/.local/share/blesh" install
+```
+
+
+## Basic settings
+
+User setttings can be placed into the Bash script `~/.blerc` which are to be sourced during the load of `ble.sh`.
+If you want to change the default path to the settings, you can add the option `--rcfile INITFILE` to `source ble.sh`.
 
 **Vim mode**
 

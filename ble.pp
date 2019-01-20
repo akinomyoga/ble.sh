@@ -470,20 +470,29 @@ function ble-update {
     return 1
   fi
 
-  if [[ ! -d $_ble_base_repository/.git ]]; then
-    echo 'ble-update: git repository not found' >&2
-    return 1
+  if [[ $_ble_base_repository == release:* ]]; then
+    # release version
+    local branch=${_ble_base_repository#*:}
+    ( mkdir -p "$_ble_base/src" && cd "$_ble_base/src" &&
+        git clone https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
+        cd ble.sh && make all && make INSDIR="$_ble_base" install ) &&
+      source "$_ble_base/ble.sh"
+    return
   fi
 
-  ( echo "cd into $_ble_base_repository..." >&2 &&
-    cd "$_ble_base_repository" &&
-    git pull &&
-    ! make -q &&
-    make all &&
-    if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
-      make INSDIR="$_ble_base" install
-    fi ) &&
-    source "$_ble_base/ble.sh"
+  if [[ $_ble_base_repository && -d $_ble_base_repository/.git ]]; then
+    ( echo "cd into $_ble_base_repository..." >&2 &&
+        cd "$_ble_base_repository" &&
+        git pull && ! make -q && make all &&
+        if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
+          make INSDIR="$_ble_base" install
+        fi ) &&
+      source "$_ble_base/ble.sh"
+    return
+  fi
+
+  echo 'ble-update: git repository not found' >&2
+  return 1
 }
 #%if measure_load_time
 }
