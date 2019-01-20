@@ -303,8 +303,10 @@ function ble/base/initialize-base-directory {
     local ret; ble/util/readlink "$src"; src=$ret
   fi
 
-  local dir=${src%/*}
-  if [[ $dir != "$src" ]]; then
+  if [[ -s $src && $src != */* ]]; then
+    _ble_base=$PWD
+  elif [[ $src == */* ]]; then
+    local dir=${src%/*}
     if [[ ! $dir ]]; then
       _ble_base=/
     elif [[ $dir != /* ]]; then
