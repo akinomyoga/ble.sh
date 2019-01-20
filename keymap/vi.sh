@@ -165,7 +165,7 @@ _ble_keymap_vi_irepeat=()
 
 function ble/keymap:vi/imap-repeat/pop {
   local top_index=$((${#_ble_keymap_vi_irepeat[*]}-1))
-  ((top_index>=0)) && unset '_ble_keymap_vi_irepeat[top_index]'
+  ((top_index>=0)) && unset -v '_ble_keymap_vi_irepeat[top_index]'
 }
 function ble/keymap:vi/imap-repeat/push {
   ble/array#push _ble_keymap_vi_irepeat "${KEYS[*]-}:$WIDGET"

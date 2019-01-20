@@ -106,7 +106,7 @@ function .ble-getopt.check-oarg-processed {
     echo "$_getopt_cmd: an option argument not processed (oarg=${_getopt_oarg[$_getopt_oind]})." 1>&2
     _getopt_oind=0
     _getopt_olen=0
-    unset '_getopt_oarg[@]'
+    unset -v '_getopt_oarg[@]'
     return 1
   fi
 }
@@ -125,7 +125,7 @@ function ble-getopt {
 
   # 完了
   if ((_getopt_index>=_getopt_len)); then
-    unset 'OPTARGS[@]'
+    unset -v 'OPTARGS[@]'
     return 2
   fi
 

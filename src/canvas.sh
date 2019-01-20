@@ -579,7 +579,7 @@ function ble/canvas/trace/.process-csi-sequence {
             scosc=(${trace_brack[lastIndex]})
             ((x=scosc[0]))
             ((y=scosc[1]))
-            unset "trace_brack[$lastIndex]"
+            unset -v "trace_brack[$lastIndex]"
           fi
         fi
         return

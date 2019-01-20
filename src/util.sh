@@ -85,9 +85,9 @@ shopt -s checkwinsize
 ##   
 _ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var=$2 && shift 2'
 _ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
-function ble/util/upvar { builtin unset "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
-function ble/util/uparr { builtin unset "$1" && builtin eval "$1=(\"\${@:2}\")"; }
-function ble/util/unlocal { builtin unset "$@"; }
+function ble/util/upvar { builtin unset -v "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
+function ble/util/uparr { builtin unset -v "$1" && builtin eval "$1=(\"\${@:2}\")"; }
+function ble/util/unlocal { builtin unset -v "$@"; }
 
 function ble/util/save-vars {
   local name prefix=$1; shift
@@ -176,7 +176,7 @@ function ble/array#pop {
   eval "local i$1=\$((\${#$1[@]}-1))"
   if ((i$1>=0)); then
     eval "ret=\${$1[i$1]}"
-    unset "$1[i$1]"
+    unset -v "$1[i$1]"
   else
     ret=
   fi
@@ -737,7 +737,7 @@ if ((_ble_bash>=40200)); then
 
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
           __ble_value=${!__ble_name}
-          unset "$__ble_name" || break
+          unset -v "$__ble_name" || break
         done 2>/dev/null
 
         ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
@@ -768,7 +768,7 @@ else
         __ble_value= __ble_found=
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
           [[ ${!__ble_name+set} ]] && __ble_value=${!__ble_name} __ble_found=$__ble_i
-          unset "$__ble_name" 2>/dev/null
+          unset -v "$__ble_name" 2>/dev/null
         done
 
         [[ $__ble_found ]] || __ble_error= __ble_value= # not found
@@ -1550,7 +1550,7 @@ if ((_ble_bash>=40000)); then
         (E) [[ -e ${_idle_status:1} ]] && _idle_to_process=1 ;;
         (P) ! kill -0 ${_idle_status:1} &>/dev/null && _idle_to_process=1 ;;
         (C) eval -- "${_idle_status:1}" && _idle_to_process=1 ;;
-        (*) unset '_ble_util_idle_task[_idle_key]'
+        (*) unset -v '_ble_util_idle_task[_idle_key]'
         esac
 
         if [[ $_idle_to_process ]]; then
@@ -1602,7 +1602,7 @@ if ((_ble_bash>=40000)); then
         _idle_waiting=1
       fi
     else
-      unset '_ble_util_idle_task[_idle_key]'
+      unset -v '_ble_util_idle_task[_idle_key]'
     fi
     return "$ext"
   }

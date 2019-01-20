@@ -125,7 +125,7 @@ fi
 
 if [[ $mode == test5 ]]; then
   function call2 {
-    ( unset var
+    ( unset -v var
       echo call2: $var)
   }
 
@@ -147,7 +147,7 @@ if [[ $mode == test5a ]]; then
   function f1a () (
     while [[ ${var+set} ]]; do
       echo "    f1a: var=$var"
-      unset var
+      unset -v var
     done
   )
 
@@ -188,7 +188,7 @@ if [[ $mode == test5b ]]; then
     while [[ ${var+set} ]]; do
       ((count++<count_max)) || break
       echo "   f1a: var=$var"
-      unset var
+      unset -v var
     done
   )
 
@@ -223,7 +223,7 @@ if [[ $mode == test5c ]]; then
   function f1a () (
     while [[ ${var+set} ]]; do
       echo "    f1a: var=$var"
-      unset var
+      unset -v var
     done
   )
 
@@ -264,7 +264,7 @@ if [[ $mode == test5d ]]; then
   echo $'\e[1m0: test for var1\e[m'
   declare -g -r var1
   [[ ${var1+set} ]] && echo "var1 is set; var1=$var1"
-  unset var1
+  unset -v var1
 
   # 存在する変数名では自然な振る舞いをする。
   # 値が消えるという事もない。unset できなくなる。
@@ -273,7 +273,7 @@ if [[ $mode == test5d ]]; then
   var2=
   declare -g -r var2
   [[ ${var2+set} ]] && echo "var2 is set; var2=$var2"
-  unset var2
+  unset -v var2
 
   if ((_ble_bash>=40200)); then
     # 制限: 途中に readonly なローカル変数があるとその変数の値を返す。
@@ -297,7 +297,7 @@ if [[ $mode == test5d ]]; then
           for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
             # echo "get_global_value: $__ble_name=${!__ble_name}"
             __ble_value=${!__ble_name}
-            unset "$__ble_name" || break
+            unset -v "$__ble_name" || break
           done 2>/dev/null
 
           ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value=NOT_FOUND
@@ -326,7 +326,7 @@ if [[ $mode == test5d ]]; then
           for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
             # echo "get_global_value: $__ble_name=${!__ble_name}"
             [[ ${!__ble_name+set} ]] && __ble_value=${!__ble_name} __ble_found=1
-            unset "$__ble_name" 2>/dev/null
+            unset -v "$__ble_name" 2>/dev/null
           done
 
           ((__ble_found)) || __ble_error= __ble_value=NOT_FOUND

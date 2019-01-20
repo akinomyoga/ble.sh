@@ -4150,7 +4150,7 @@ function ble-syntax/parse {
     ble-syntax/parse/check-end
   done
 #%if !release
-  unset debug_p1
+  unset -v debug_p1
 #%end
 
   ble-syntax/vanishing-word/register _tail_syntax_tree -i2 i2+1 i 0 i

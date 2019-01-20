@@ -60,7 +60,7 @@ fi
 _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
 if [[ $- != *i* ]]; then
-  unset _ble_bash
+  unset -v _ble_bash
   { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
     echo "ble.sh: This is not an interactive session."
   return 1 2>/dev/null || builtin exit 1
@@ -98,7 +98,7 @@ function ble/base/workaround-POSIXLY_CORRECT {
 }
 function ble/base/unset-POSIXLY_CORRECT {
   if [[ ${POSIXLY_CORRECT+set} ]]; then
-    unset POSIXLY_CORRECT
+    unset -v POSIXLY_CORRECT
     ble/base/workaround-POSIXLY_CORRECT
   fi
 }
@@ -107,7 +107,7 @@ function ble/base/adjust-POSIXLY_CORRECT {
   _ble_edit_POSIXLY_CORRECT_adjusted=1
   _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
   _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
-  unset POSIXLY_CORRECT
+  unset -v POSIXLY_CORRECT
 
   # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
   ble/base/workaround-POSIXLY_CORRECT
@@ -125,19 +125,19 @@ ble/base/adjust-POSIXLY_CORRECT
 
 builtin bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
-  unset _ble_bash
+  unset -v _ble_bash
   echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
   return 1
 fi
 
 if shopt -q restricted_shell; then
-  unset _ble_bash
+  unset -v _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
   return 1
 fi
 
 if [[ ${BASH_EXECUTION_STRING+set} ]]; then
-  unset _ble_bash
+  unset -v _ble_bash
   # echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&2
   return 1 2>/dev/null || builtin exit 1
 fi
@@ -657,7 +657,7 @@ ble/base/process-blesh-arguments "$@"
 
 # 状態復元
 IFS=$_ble_init_original_IFS
-unset _ble_init_original_IFS
+unset -v _ble_init_original_IFS
 if [[ ! $_ble_attached ]]; then
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT

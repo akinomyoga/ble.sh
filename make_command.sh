@@ -73,11 +73,48 @@ function sub:help {
 #------------------------------------------------------------------------------
 # sub:check
 
+function ble/array#push {
+  while (($#>=2)); do
+    builtin eval "$1[\${#$1[@]}]=\"\$2\""
+    set -- "$1" "${@:3}"
+  done
+}
+
+function sub:check/list-command {
+  # read arguments
+  local flag_exclude_this= flag_error=
+  local command=
+  while (($#)); do
+    local arg=$1; shift
+    case $arg in
+    (--exclude-this)
+      flag_exclude_this=1 ;;
+    (-*)
+      echo "check: unknown option '$arg'" >&2
+      flag_error=1 ;;
+    (--)
+      [[ $1 ]] && command=$1
+      break ;;
+    (*)
+      command=$arg ;;
+    esac
+  done
+  if [[ ! $command ]]; then
+    echo "check: command name is not specified." >&2
+    flag_error=1
+  fi
+  [[ $flag_error ]] && return 1
+
+  local -a options=(--color --exclude=./test --exclude=*.{md,awk})
+  [[ $flag_exclude_this ]] && ble/array#push options --exclude=./make_command.sh
+  grc "${options[@]}" "(^|[^-./\${}=])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)'
+}
+
 function sub:check/builtin {
   echo "--- $FUNCNAME $1 ---"
-  local command="$1" esc='(\[[ -?]*[@-~])*'
-  grc --color --exclude=./test --exclude=*.md --exclude=./make_command.sh "(^|[^-./\${}=])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)' |
-    grep -Ev "^$esc([^[:space:]]$esc)+[[:space:]]*#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
+  local command=$1 esc='(\[[ -?]*[@-~])*'
+  sub:check/list-command --exclude-this "$command" |
+    grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)="
 }
 
@@ -155,6 +192,14 @@ function sub:check/array-count-in-arithmetic-expression {
   grc --exclude=./make_command.sh '\(\([^[:space:]]*\$\{[[:alnum:]_]+\[[@*]\]\}'
 }
 
+# unset 変数名 としていると誤って関数が消えることがある。
+function sub:check/unset-variable {
+  echo "--- $FUNCNAME ---"
+  local esc='(\[[ -?]*[@-~])*'
+  sub:check/list-command unset --exclude-this |
+    grep -Ev "unset$esc[[:space:]]$esc-[vf]|$rex_grep_head[[:space:]]*#"
+}
+
 function sub:check {
   if ! type grc >/dev/null; then
     echo 'blesh check: grc not found. grc can be found in github.com:akinomyoga/mshex.git/' >&2
@@ -178,6 +223,7 @@ function sub:check {
   sub:check/bash300bug
   sub:check/bash301bug-array-element-length
   sub:check/array-count-in-arithmetic-expression
+  sub:check/unset-variable
 
   sub:check/memo-numbering
 }

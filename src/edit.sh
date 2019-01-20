@@ -1058,10 +1058,10 @@ function ble-edit/adjust-IGNOREEOF {
   if [[ ${IGNOREEOF+set} ]]; then
     _ble_edit_IGNOREEOF=$IGNOREEOF
   else
-    unset _ble_edit_IGNOREEOF
+    unset -v _ble_edit_IGNOREEOF
   fi
   if ((_ble_bash>=40000)); then
-    unset IGNOREEOF
+    unset -v IGNOREEOF
   else
     IGNOREEOF=9999
   fi
@@ -1073,7 +1073,7 @@ function ble-edit/restore-IGNOREEOF {
   if [[ ${_ble_edit_IGNOREEOF+set} ]]; then
     IGNOREEOF=$_ble_edit_IGNOREEOF
   else
-    unset IGNOREEOF
+    unset -v IGNOREEOF
   fi
 }
 function ble-edit/eval-IGNOREEOF {
@@ -1114,7 +1114,7 @@ function ble-edit/attach/.attach {
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
     _ble_edit_LINENO="${BASH_LINENO[*]: -1}"
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
-    unset LINENO; LINENO=$_ble_edit_LINENO
+    unset -v LINENO; LINENO=$_ble_edit_LINENO
     _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
@@ -1791,7 +1791,7 @@ function ble/textarea#clear-state {
   local prefix=$1
   if [[ $prefix ]]; then
     local vars=${prefix}_VARNAMES arrs=${prefix}_ARRNAMES
-    eval "unset \"\${$vars[@]/#/$prefix}\" \"\${$arrs[@]/#/$prefix}\" $vars $arrs"
+    eval "unset -v \"\${$vars[@]/#/$prefix}\" \"\${$arrs[@]/#/$prefix}\" $vars $arrs"
   else
     echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
@@ -3188,7 +3188,7 @@ function ble-edit/exec/.adjust-eol {
 
 function ble-edit/exec/.reset-builtins-1 {
   # Note: 何故か local POSIXLY_CORRECT の効果が
-  #   unset POSIXLY_CORRECT しても残存するので関数に入れる。
+  #   unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
   local POSIXLY_CORRECT=y
   builtin unset -f builtin unset enable
   builtin unset -f return break continue declare typeset local eval echo
@@ -3197,9 +3197,9 @@ function ble-edit/exec/.reset-builtins-1 {
 function ble-edit/exec/.reset-builtins-2 {
   # Workaround (bash-3.0 - 4.3) #D0722
   #
-  #   unset POSIXLY_CORRECT でないと unset -f : できないが、
+  #   unset -v POSIXLY_CORRECT でないと unset -f : できないが、
   #   bash-3.0 -- 4.3 のバグで、local POSIXLY_CORRECT の時、
-  #   unset POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
+  #   unset -v POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
   #   "unset -f :" (非POSIX関数名) は別関数で adjust-POSIXLY_CORRECT の後で実行することにする。
   #
   builtin unset -f :
@@ -3259,7 +3259,7 @@ function ble-edit/exec/save-BASH_REMATCH {
       else
         ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
         rex=$rex')'
-        unset 'rparens[r]'
+        unset -v 'rparens[r]'
       fi
     done
 
@@ -3280,7 +3280,7 @@ function ble-edit/exec/save-BASH_REMATCH {
     local end=${rparens[r]}
     ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
     rex=$rex')'
-    unset 'rparens[r]'
+    unset -v 'rparens[r]'
   done
 
   ble-edit/exec/save-BASH_REMATCH/increase $((${#text}-i))
@@ -3619,7 +3619,7 @@ function ble-edit/exec:gexec/.eval-prologue {
   BASH_COMMAND=$1
   ble-edit/restore-PS1
   ble-edit/restore-IGNOREEOF
-  unset HISTCMD; ble-edit/history/get-count -v HISTCMD
+  unset -v HISTCMD; ble-edit/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec/restore-BASH_REMATCH
@@ -4564,8 +4564,8 @@ function ble-edit/history/add/.command-history {
           fi
         done
         for ((i=N-1;i>n;i--)); do
-          unset '_ble_edit_history[i]'
-          unset '_ble_edit_history_edit[i]'
+          unset -v '_ble_edit_history[i]'
+          unset -v '_ble_edit_history_edit[i]'
         done
         [[ ${HISTINDEX_NEXT+set} ]] && HISTINDEX_NEXT=$indexNext
       fi
@@ -5277,7 +5277,7 @@ function ble-edit/isearch/.push-isearch-array {
   # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
   local ilast=$((${#_ble_edit_isearch_arr[@]}-1))
   if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
-    unset "_ble_edit_isearch_arr[$ilast]"
+    unset -v "_ble_edit_isearch_arr[$ilast]"
     return
   fi
 
@@ -5486,7 +5486,7 @@ function ble-edit/isearch/prev {
 
   local ilast=$((sz-1))
   local top=${_ble_edit_isearch_arr[ilast]}
-  unset '_ble_edit_isearch_arr[ilast]'
+  unset -v '_ble_edit_isearch_arr[ilast]'
 
   local ind dir beg end
   ind=${top%%:*}; top=${top#*:}

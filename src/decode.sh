@@ -841,7 +841,7 @@ function ble-decode-char/unbind {
       fi
     fi
 
-    unset "_ble_decode_cmap_$tseq[char]"
+    unset -v "_ble_decode_cmap_$tseq[char]"
     builtin eval "((\${#_ble_decode_cmap_$tseq[@]}!=0))" && break
 
     [[ $tseq ]]
@@ -1016,7 +1016,7 @@ function ble-decode-key/unbind {
       fi
     fi
 
-    unset "$dicthead$tseq[$key]"
+    unset -v "$dicthead$tseq[$key]"
     builtin eval "((\${#$dicthead$tseq[@]}!=0))" && break
 
     [[ $tseq ]]
@@ -1118,7 +1118,7 @@ function ble-decode/keymap/pop {
   local last=$((count-1))
   ble-assert '((last>=0))' || return
   _ble_decode_keymap=${_ble_decode_keymap_stack[last]}
-  unset '_ble_decode_keymap_stack[last]'
+  unset -v '_ble_decode_keymap_stack[last]'
 }
 
 
@@ -1811,7 +1811,7 @@ function ble-decode-bind/uvw {
 # ble.pp の関数を上書き
 #
 # Note: bash で set -o vi の時、
-#   unset POSIXLY_CORRECT や local POSIXLY_CORRECT が設定されると、
+#   unset -v POSIXLY_CORRECT や local POSIXLY_CORRECT が設定されると、
 #   C-i の既定の動作の切り替えに伴って C-i の束縛が消滅する。
 #   ユーザが POSIXLY_CORRECT を触った時や自分で触った時に、
 #   改めて束縛し直す必要がある。
