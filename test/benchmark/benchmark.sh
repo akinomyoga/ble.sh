@@ -2,7 +2,7 @@
 
 function ble-measure/.loop {
   eval "function _target { $2; }"
-  local _i _n="$1"
+  local _i _n=$1
   for ((_i=0;_i<_n;_i++)); do
     _target
   done
@@ -13,15 +13,15 @@ if [[ $ZSH_VERSION ]]; then
     local result
     result=$({ time ( ble-measure/.loop "$n" "$*" ; ) } 2>&1 )
     #local result=$({ time ( ble-measure/.loop "$n" "$*" &>/dev/null); } 2>&1)
-    result="${result##*cpu }"
+    result=${result##*cpu }
     local rex='(([0-9]+):)?([0-9]+)\.([0-9]+) total$'
     if [[ $result =~ $rex ]]; then
       if [[ -o KSH_ARRAYS ]]; then
-        local m="${match[1]}" s="${match[2]}" ms="${match[3]}"
+        local m=${match[1]} s=${match[2]} ms=${match[3]}
       else
-        local m="${match[1]}" s="${match[2]}" ms="${match[3]}"
+        local m=${match[1]} s=${match[2]} ms=${match[3]}
       fi
-      m="${m:-0}" ms="${ms}000"; ms="${ms:0:3}"
+      m=${m:-0} ms=${ms}000; ms=${ms:0:3}
      
       ((utot=((10#$m*60+10#$s)*1000+10#$ms)*1000,
         usec=utot/n))
@@ -72,7 +72,7 @@ function ble-measure {
     _ble_measure_base=0 nsec=0
     # : よりも a=1 の方が速い様だ
     ble-measure a=1 &>/dev/null
-    _ble_measure_base="$nsec"
+    _ble_measure_base=$nsec
   fi
 
   local prev_n= prev_utot=

@@ -826,7 +826,7 @@ _ble_edit_kill_type=
 # _ble_edit_str は以下の関数を通して変更する。
 # 変更範囲を追跡する為。
 function ble-edit/content/replace {
-  local -i beg=$1 end=$2
+  local beg=$1 end=$2
   local ins=$3 reason=${4:-edit}
 
   # cf. Note#1
@@ -1845,7 +1845,7 @@ function ble/widget/kill-forward-text {
 
   _ble_edit_kill_ring=${_ble_edit_str:_ble_edit_ind}
   _ble_edit_kill_type=
-  ble-edit/content/replace "$_ble_edit_ind" "${#_ble_edit_str}" ''
+  ble-edit/content/replace "$_ble_edit_ind" ${#_ble_edit_str} ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
 function ble/widget/kill-backward-text {

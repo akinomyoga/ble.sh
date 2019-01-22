@@ -33,14 +33,14 @@ _ble_syntax_lang=bash
 ##
 function ble-syntax/urange#update {
   local prefix=$1
-  local -i p1=$2 p2=${3:-$2}
+  local p1=$2 p2=${3:-$2}
   ((0<=p1&&p1<p2)) || return
   (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
 }
 function ble-syntax/wrange#update {
   local prefix=$1
-  local -i p1=$2 p2=${3:-$2}
+  local p1=$2 p2=${3:-$2}
   ((0<=p1&&p1<=p2)) || return
   (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
@@ -314,7 +314,7 @@ function ble-syntax/tree-enumerate {
 ##   @var[in,out] node,flagUpdateNode
 ##   @var[in]     nofs
 function ble-syntax/tree-enumerate-in-range {
-  local -i beg=$1 end=$2
+  local beg=$1 end=$2
   local proc=$3
   local -a node
   local i nofs
@@ -360,7 +360,7 @@ function ble-syntax/print-status/.graph {
 
 ## @var[in,out] word
 function ble-syntax/print-status/.tree-prepend {
-  local -i j=$1
+  local j=$1
   local value=$2${tree[j]}
   tree[j]=$value
   ((max_tree_width<${#value}&&(max_tree_width=${#value})))
@@ -428,9 +428,9 @@ function ble-syntax/print-status/word.get-text {
 
       out=" word=$wtype:$_prev$b-$e$_child$wattr$out"
       for ((;b<index;b++)); do
-        ble-syntax/print-status/.tree-prepend b '|'
+        ble-syntax/print-status/.tree-prepend "$b" '|'
       done
-      ble-syntax/print-status/.tree-prepend index '+'
+      ble-syntax/print-status/.tree-prepend "$index" '+'
     done
     word=$out
   fi
@@ -3773,7 +3773,7 @@ _ble_syntax_vanishing_word_umin=-1
 _ble_syntax_vanishing_word_umax=-1
 function ble-syntax/vanishing-word/register {
   local tree_array=$1 tofs=$2
-  local -i beg=$3 end=$4 lbeg=$5 lend=$6
+  local beg=$3 end=$4 lbeg=$5 lend=$6
   (((beg<=0)&&(beg=1)))
 
   local node i nofs
@@ -4058,7 +4058,7 @@ function ble-syntax/parse {
   local end0=${4:-$end}
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 
-  local -ir iN=${#text} shift=end-end0
+  local -r iN=${#text} shift=$((end-end0))
 #%if !release
   if ! ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)); then
     ble-stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
@@ -4072,7 +4072,7 @@ function ble-syntax/parse {
   local i1 i2 j2
   ble-syntax/parse/determine-parse-range
 
-  ble-syntax/vanishing-word/register _ble_syntax_tree 0 i1 j2 0 i1
+  ble-syntax/vanishing-word/register _ble_syntax_tree 0 "$i1" "$j2" 0 "$i1"
 
   ble-syntax/parse/shift
 
@@ -4109,7 +4109,7 @@ function ble-syntax/parse {
   _tail_syntax_tree=("${_ble_syntax_tree[@]:j2:iN-i2}")
   _tail_syntax_nest=("${_ble_syntax_nest[@]:j2:iN-i2}")
   _tail_syntax_attr=("${_ble_syntax_attr[@]:j2:iN-i2}")
-  ble/array#reserve-prototype $iN
+  ble/array#reserve-prototype "$iN"
   _ble_syntax_stat=("${_ble_syntax_stat[@]::i1}" "${_ble_array_prototype[@]:i1:iN-i1}") # 再開用データ
   _ble_syntax_tree=("${_ble_syntax_tree[@]::i1}" "${_ble_array_prototype[@]:i1:iN-i1}") # 単語
   _ble_syntax_nest=("${_ble_syntax_nest[@]::i1}" "${_ble_array_prototype[@]:i1:iN-i1}") # 入れ子の親
@@ -4153,9 +4153,9 @@ function ble-syntax/parse {
   unset -v debug_p1
 #%end
 
-  ble-syntax/vanishing-word/register _tail_syntax_tree -i2 i2+1 i 0 i
+  ble-syntax/vanishing-word/register _tail_syntax_tree $((-i2)) $((i2+1)) "$i" 0 "$i"
 
-  ble-syntax/urange#update _ble_syntax_attr_ i1 i
+  ble-syntax/urange#update _ble_syntax_attr_ "$i1" "$i"
 
   (((i>=i2)?(
       _ble_syntax_dbeg=_ble_syntax_dend=-1
@@ -5363,7 +5363,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
 function ble-highlight-layer:syntax/word/.update-attributes {
   ((_ble_syntax_word_umin>=0)) || return
 
-  ble-syntax/tree-enumerate-in-range _ble_syntax_word_umin _ble_syntax_word_umax \
+  ble-syntax/tree-enumerate-in-range "$_ble_syntax_word_umin" "$_ble_syntax_word_umax" \
     ble-highlight-layer:syntax/word/.update-attributes/.proc
 }
 
@@ -5415,8 +5415,8 @@ function ble-highlight-layer:syntax/update-word-table {
   ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
 
   # 2015-08-16 暫定 (本当は入れ子構造を考慮に入れたい)
-  ble-syntax/wrange#update _ble_syntax_word_ _ble_syntax_vanishing_word_umin _ble_syntax_vanishing_word_umax
-  ble-syntax/wrange#update color_ _ble_syntax_vanishing_word_umin _ble_syntax_vanishing_word_umax
+  ble-syntax/wrange#update _ble_syntax_word_ "$_ble_syntax_vanishing_word_umin" "$_ble_syntax_vanishing_word_umax"
+  ble-syntax/wrange#update color_ "$_ble_syntax_vanishing_word_umin" "$_ble_syntax_vanishing_word_umax"
   _ble_syntax_vanishing_word_umin=-1 _ble_syntax_vanishing_word_umax=-1
 
   # (3) 色配列に登録

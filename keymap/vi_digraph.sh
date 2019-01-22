@@ -17,8 +17,8 @@ function ble/widget/vi_digraph/defchar {
 }
 
 function ble/widget/vi_digraph/default {
-  local kcode=${KEYS[0]}
-  local flag=$((kcode&_ble_decode_MaskFlag)) char=$((kcode&_ble_decode_MaskChar))
+  local key=${KEYS[0]}
+  local flag=$((key&_ble_decode_MaskFlag)) char=$((key&_ble_decode_MaskChar))
   if ((flag==_ble_decode_Ctrl&&63<=char&&char<128&&(char&0x1F)!=0)); then
     ((char=char==63?127:char&0x1F))
     ble/widget/vi_digraph/.proc "$char"

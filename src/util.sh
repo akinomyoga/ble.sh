@@ -136,7 +136,7 @@ function ble/debug/.check-leak-variable {
 
 _ble_array_prototype=()
 function ble/array#reserve-prototype {
-  local -i n=$1 i
+  local n=$1 i
   for ((i=${#_ble_array_prototype[@]};i<n;i++)); do
     _ble_array_prototype[i]=
   done
@@ -191,7 +191,7 @@ function ble/array#reverse {
 
 _ble_string_prototype='        '
 function ble/string#reserve-prototype {
-  local -i n=$1 c
+  local n=$1 c
   for ((c=${#_ble_string_prototype};c<n;c*=2)); do
     _ble_string_prototype=$_ble_string_prototype$_ble_string_prototype
   done
@@ -2344,10 +2344,10 @@ function ble/encoding:UTF-8/c2b {
 }
 
 function ble/encoding:C/b2c {
-  local -i byte=$1
+  local byte=$1
   ((ret=byte&0xFF))
 }
 function ble/encoding:C/c2b {
-  local -i code=$1
+  local code=$1
   bytes=($((code&0xFF)))
 }

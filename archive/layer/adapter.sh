@@ -89,11 +89,11 @@ function ble-highlight-layer:adapter/getg {
 
 ## 関数 _ble_region_highlight_table;  ble-syntax-highlight/append triplets ; _ble_region_highlight_table
 function ble-syntax-highlight/append {
-  while [ $# -gt 0 ]; do
+  while (($#)); do
     local -a triplet
     triplet=($1)
     local ret; ble-color-gspec2g "${triplet[2]}"; local g=$ret
-    local -i i=${triplet[0]} iN=${triplet[1]}
+    local i=${triplet[0]} iN=${triplet[1]}
     for ((;i<iN;i++)); do
       _ble_region_highlight_table[$i]=$g
     done

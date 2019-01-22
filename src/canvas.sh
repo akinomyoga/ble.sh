@@ -124,7 +124,7 @@ function ble/util/c2w/.determine-unambiguous {
 ##   以下の関数で加工した。
 ##
 ##   function process {
-##     local -i begin=$1 end=$(($2+1))
+##     local begin=$1 end=$(($2+1))
 ##     printf ' %s %s' "$begin" "$end"
 ##   }
 ##
@@ -310,36 +310,36 @@ function ble/canvas/put.draw {
   DRAW_BUFF[${#DRAW_BUFF[*]}]="$*"
 }
 function ble/canvas/put-ind.draw {
-  local -i count=${1-1}
+  local count=${1-1}
   local ret; ble/string#repeat "${_ble_term_ind}" "$count"
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
 }
 function ble/canvas/put-il.draw {
-  local -i value=${1-1}
+  local value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_il//'%d'/$value}
 }
 function ble/canvas/put-dl.draw {
-  local -i value=${1-1}
+  local value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
 }
 function ble/canvas/put-cuu.draw {
-  local -i value=${1-1}
+  local value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuu//'%d'/$value}
 }
 function ble/canvas/put-cud.draw {
-  local -i value=${1-1}
+  local value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cud//'%d'/$value}
 }
 function ble/canvas/put-cuf.draw {
-  local -i value=${1-1}
+  local value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cuf//'%d'/$value}
 }
 function ble/canvas/put-cub.draw {
-  local -i value=${1-1}
+  local value=${1-1}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_cub//'%d'/$value}
 }
 function ble/canvas/put-cup.draw {
-  local -i l=${1-1} c=${2-1}
+  local l=${1-1} c=${2-1}
   local out=$_ble_term_cup
   out=${out//'%l'/$l}
   out=${out//'%c'/$c}
@@ -348,14 +348,14 @@ function ble/canvas/put-cup.draw {
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
 function ble/canvas/put-hpa.draw {
-  local -i c=${1-1}
+  local c=${1-1}
   local out=$_ble_term_hpa
   out=${out//'%c'/$c}
   out=${out//'%x'/$((c-1))}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
 function ble/canvas/put-vpa.draw {
-  local -i l=${1-1}
+  local l=${1-1}
   local out=$_ble_term_vpa
   out=${out//'%l'/$l}
   out=${out//'%y'/$((l-1))}
@@ -1206,10 +1206,10 @@ _ble_canvas_x=0 _ble_canvas_y=0
 ##   移動先のカーソルの座標を指定します。
 ##   プロンプト原点が x=0 y=0 に対応します。
 function ble/canvas/goto.draw {
-  local -i x=$1 y=$2
+  local x=$1 y=$2
   ble/canvas/put.draw "$_ble_term_sgr0"
 
-  local -i dy=y-_ble_canvas_y
+  local dy=$((y-_ble_canvas_y))
   if ((dy!=0)); then
     if ((dy>0)); then
       ble/canvas/put.draw "${_ble_term_cud//'%d'/$dy}"
@@ -1218,7 +1218,7 @@ function ble/canvas/goto.draw {
     fi
   fi
 
-  local -i dx=x-_ble_canvas_x
+  local dx=$((x-_ble_canvas_x))
   if ((dx!=0)); then
     if ((x==0)); then
       ble/canvas/put.draw "$_ble_term_cr"
@@ -1377,11 +1377,11 @@ function ble/canvas/panel#increase-total-height.draw {
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"; local old_total_height=$ret
   # 下に余白を確保
   if ((old_total_height>0)); then
-    ble/canvas/goto.draw 0 old_total_height-1
-    ble/canvas/put-ind.draw delta; ((_ble_canvas_y+=delta))
+    ble/canvas/goto.draw 0 $((old_total_height-1))
+    ble/canvas/put-ind.draw "$delta"; ((_ble_canvas_y+=delta))
   else
     ble/canvas/goto.draw 0 0
-    ble/canvas/put-ind.draw delta-1; ((_ble_canvas_y+=delta-1))
+    ble/canvas/put-ind.draw $((delta-1)); ((_ble_canvas_y+=delta-1))
   fi
 }
 
@@ -1397,12 +1397,12 @@ function ble/canvas/panel#set-height.draw {
 
     ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
     ble/canvas/goto.draw 0 "$ins_offset"
-    ble/canvas/put-il.draw delta
+    ble/canvas/put-il.draw "$delta"
   else
     # 行を削除
     ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
-    ble/canvas/goto.draw 0 ins_offset+delta
-    ble/canvas/put-dl.draw -delta
+    ble/canvas/goto.draw 0 $((ins_offset+delta))
+    ble/canvas/put-dl.draw $((-delta))
   fi
 
   ((_ble_canvas_panel_height[index]=new_height))
