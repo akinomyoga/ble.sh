@@ -531,8 +531,8 @@ if ((_ble_bash>=40000)); then
   function ble/util/assign {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
     builtin eval "$2" >| "$_ble_local_tmp"
-    ((_ble_util_assign_level--))
     local _ret=$? __arr
+    ((_ble_util_assign_level--))
     mapfile -t __arr < "$_ble_local_tmp"
     IFS=$'\n' eval "$1=\"\${__arr[*]-}\""
     return "$_ret"
@@ -541,8 +541,8 @@ else
   function ble/util/assign {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
     builtin eval "$2" >| "$_ble_local_tmp"
-    ((_ble_util_assign_level--))
     local _ret=$?
+    ((_ble_util_assign_level--))
     IFS= builtin read -r -d '' "$1" < "$_ble_local_tmp"
     eval "$1=\${$1%$'\n'}"
     return "$_ret"
@@ -561,9 +561,11 @@ fi
 ##
 if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
-    builtin eval "$2" >| "$_ble_util_assign_base"
+    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    builtin eval "$2" >| "$_ble_local_tmp"
     local _ret=$?
-    mapfile -t "$1" < "$_ble_util_assign_base"
+    ((_ble_util_assign_level--))
+    mapfile -t "$1" < "$_ble_local_tmp"
     return "$_ret"
   }
 else
