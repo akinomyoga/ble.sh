@@ -524,6 +524,25 @@ function ble-complete/source:command {
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
+  # Try progcomp by "complete -I"
+  if ((_ble_bash>=50000)); then
+    # first filter candidates to obtain effective 'cand_count'
+    [[ $comp_type == *a* ]] &&
+      ble-complete/candidates/.filter-by-regex "$comps_rex_ambiguous"
+    local old_cand_count=$cand_count
+
+    ble-complete/source:argument/.generate-user-defined-completion initial; local ext=$?
+    ((ext==148)) && return "$ext"
+    if ((ext==0)); then
+      # check 'cand_count' to see if any valid candidates are generated.
+      if [[ $comp_type == *a* ]]; then
+        ble-complete/candidates/.filter-by-regex "$comps_rex_ambiguous"
+        (($?==148)) && return "$ext"
+      fi
+      ((cand_count>old_cand_count)) && return "$ext"
+    fi
+  fi
+
   local cand arr i=0
   local compgen
   ble/util/assign compgen 'ble-complete/source:command/gen'
@@ -673,7 +692,7 @@ function ble-complete/source:rhs { ble-complete/source:file; }
 ##   @param[out] COMP_WORDS COMP_CWORD COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
 function ble-complete/source:argument/.progcomp-helper-vars {
   COMP_TYPE=9
-  COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in ble-decode/widget/.call-keyseq
+  COMP_KEY=${KEYS[${#KEYS[@]}-1]:-9} # KEYS defined in ble-decode/widget/.call-keyseq
 
   # Note: 以降の処理は基本的には comp_words, comp_line, comp_point, comp_cword を
   #   直接 COMP_WORDS COMP_LINE COMP_POINT COMP_CWORD にコピーするだけである。
@@ -797,7 +816,11 @@ function ble-complete/source:argument/.progcomp-helper-func {
   fi
 }
 
-## 関数 ble-complete/source:argument/.progcomp
+## 関数 ble-complete/source:argument/.progcomp opts
+##   @param[in] opts
+##     コロン区切りのオプションリストです。
+##     initial ... 最初の単語 (コマンド名) の補完に用いる関数を指定します。
+##
 ##   @var[out] comp_opts
 ##
 ##   @var[in] COMP1 COMP2 COMPV COMPS comp_type
@@ -812,23 +835,35 @@ function ble-complete/source:argument/.progcomp {
   shopt -q progcomp || return 1
   [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
 
-  local comp_prog= comp_func=
-  local cmd=${comp_words[0]} compcmd= is_default_completion=
+  local opts=$1
 
-  if complete -p "$cmd" &>/dev/null; then
-    compcmd=$cmd
-  elif [[ $cmd == */?* ]] && complete -p "${cmd##*/}" &>/dev/null; then
-    compcmd=${cmd##*/}
-  elif complete -p -D &>/dev/null; then
-    is_default_completion=1
-    compcmd='-D'
+  local comp_prog= comp_func=
+  local cmd=${comp_words[0]} compcmd= is_default_completion= is_special_completion=
+
+  if [[ :$opts: == *:initial:* ]]; then
+    is_special_completion=1
+    compcmd='-I'
+  else
+    if complete -p "$cmd" &>/dev/null; then
+      compcmd=$cmd
+    elif [[ $cmd == */?* ]] && complete -p "${cmd##*/}" &>/dev/null; then
+      compcmd=${cmd##*/}
+    elif complete -p -D &>/dev/null; then
+      is_special_completion=1
+      is_default_completion=1
+      compcmd='-D'
+    fi
   fi
 
   [[ $compcmd ]] || return 1
 
   local -a compargs compoptions flag_noquote=
   local ret iarg=1
-  ble/util/assign ret 'complete -p "$compcmd" 2>/dev/null'
+  if [[ $is_special_completion ]]; then
+    ble/util/assign ret 'complete -p "$compcmd" 2>/dev/null'
+  else
+    ble/util/assign ret 'complete -p -- "$compcmd" 2>/dev/null'
+  fi
   ble/string#split-words compargs "$ret"
   while ((iarg<${#compargs[@]})); do
     local arg=${compargs[iarg++]}
@@ -869,7 +904,7 @@ function ble-complete/source:argument/.progcomp {
           comp_prog=${compargs[iarg++]}
           ble/array#push compoptions "-$c" ble-complete/source:argument/.progcomp-helper-prog ;;
         (*)
-          # -D, etc. just discard
+          # -D, -I, etc. just discard
         esac
       done ;;
     (*)
@@ -937,11 +972,14 @@ function ble-complete/source:argument/.progcomp {
   ((count!=0))
 }
 
-## 関数 ble-complete/source:argument/.generate-user-defined-completion
+## 関数 ble-complete/source:argument/.generate-user-defined-completion opts
 ##   ユーザ定義の補完を実行します。ble/cmdinfo/complete:コマンド名
 ##   という関数が定義されている場合はそれを使います。
 ##   それ以外の場合は complete によって登録されているプログラム補完が使用されます。
 ##
+##   @param[in] opts
+##     コロン区切りのオプションリストを指定します。
+##     initial ... 最初の単語(コマンド名)の補完である事を示します。
 ##   @var[in] COMP1 COMP2
 ##   @var[in] (variables set by ble-syntax/parse)
 ##
@@ -965,13 +1003,18 @@ function ble-complete/source:argument/.generate-user-defined-completion {
     ((comp_cword++,comp_point++))
   fi
 
-  local cmd=${comp_words[0]}
-  if ble/is-function "ble/cmdinfo/complete:$cmd"; then
-    "ble/cmdinfo/complete:$cmd"
-  elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
-    "ble/cmdinfo/complete:${cmd##*/}"
+  local opts=$1
+  if [[ :$opts: == *:initial:* ]]; then
+    ble-complete/source:argument/.progcomp "$opts"
   else
-    ble-complete/source:argument/.progcomp
+    local cmd=${comp_words[0]}
+    if ble/is-function "ble/cmdinfo/complete:$cmd"; then
+      "ble/cmdinfo/complete:$cmd"
+    elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
+      "ble/cmdinfo/complete:${cmd##*/}"
+    else
+      ble-complete/source:argument/.progcomp
+    fi
   fi
 }
 
