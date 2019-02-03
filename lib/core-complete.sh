@@ -721,17 +721,18 @@ function ble-complete/source:argument/.progcomp-helper-vars {
       ble-syntax:bash/simple-word/eval "$ret"
       ((${#COMP_WORDS[*]})) && [[ $ret == *["$shell_specialchars"]* ]] &&
         ret="'${ret//$q/$Q}'" ret=${ret#"$qq"} ret=${ret%"$qq"} # コマンド名以外はクォート
-      word=$ret
+      local word2=$ret
       if [[ $point ]]; then
-        if ((point==${#1})); then
-          point=${#word}
-        elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "${1::point}"; then
+        if ((point==${#word})); then
+          point=${#word2}
+        elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "${word::point}"; then
           ble-syntax:bash/simple-word/eval "$ret"
           ((${#COMP_WORDS[*]})) && [[ $ret == *["$shell_specialchars"]* ]] &&
             ret="'${ret//$q/$Q}" ret=${ret#"$qq"}
           point=${#ret}
         fi
       fi
+      word=$word2
     fi
 
     # COMP_CWORD / COMP_POINT の更新
@@ -928,7 +929,7 @@ function ble-complete/source:argument/.progcomp {
   #   もし 124 だった場合には is_default_completion に retry を設定する。
   if [[ $is_default_completion == retry && ! $_ble_complete_retry_guard ]]; then
     local _ble_complete_retry_guard=1
-    ble-complete/source:argument/.progcomp
+    ble-complete/source:argument/.progcomp "$@"
     return
   fi
 
@@ -948,16 +949,32 @@ function ble-complete/source:argument/.progcomp {
     comp_opts=${comp_opts//:nospace:/:}
   fi
 
-  # Note: "$COMPV" で始まる単語だけを候補として列挙する為に sed /^$rex_compv/ でフィルタする。
-  #   compgen に -- "$COMPV" を渡しても何故か思うようにフィルタしてくれない為である。
-  #   (compgen -W "$(compgen ...)" -- "$COMPV" の様にしないと駄目なのか?)
-  local arr ret
-  ble/string#escape-for-sed-regex "$COMPV"; local rex_compv=$ret
-  if [[ $use_workaround_for_git ]]; then
-    ble/util/assign-array arr 'ble/bin/sed -n "/^\$/d;/^$rex_compv/{s/[[:space:]]\{1,\}\$//;p;}" <<< "$compgen" | ble/bin/sort -u' 2>/dev/null
-  else
-    ble/util/assign-array arr 'ble/bin/sed -n "/^\$/d;/^$rex_compv/p" <<< "$compgen" | ble/bin/sort -u' 2>/dev/null
-  fi
+  # filter/sort/uniq candidates
+  #
+  #   Note: "$COMPV" で始まる単語だけを sed /^$rex_compv/ でフィルタする。
+  #     それで候補が一つもない場合にはフィルタ無しで単語を列挙する。
+  #
+  #     2019-02-03 実は、現在の実装ではわざわざフィルタする必要はないかもしれない。
+  #     以前 compgen に -- "$COMPV" を渡してもフィルタしてくれなかったのは、
+  #     #D0245 cdd38598 で .compgen-helper-func に於いて、
+  #     "$comp_func" に引数を渡し忘れていたのが原因と思われる。
+  #     これは 1929132b に於いて修正されたが念のためにフィルタを残していた気がする。
+  #
+  local arr
+  {
+    local compgen2=
+    if [[ $comp_opts == *:filter_by_prefix:* ]]; then
+      local ret; ble/string#escape-for-sed-regex "$COMPV"; local rex_compv=$ret
+      ble/util/assign compgen2 'ble/bin/sed -n "/^\$/d;/^$rex_compv/p" <<< "$compgen"'
+    fi
+    [[ $compgen2 ]] || ble/util/assign compgen2 'ble/bin/sed "/^\$/d" <<< "$compgen"'
+
+    local compgen3=$compgen2
+    [[ $use_workaround_for_git ]] &&
+      ble/util/assign compgen3 'ble/bin/sed "s/[[:space:]]\{1,\}\$//" <<< "$compgen2"'
+
+    ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen3"'
+  } 2>/dev/null
 
   local action=progcomp
   [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
@@ -1917,7 +1934,15 @@ function ble/widget/complete {
     insert_flags=${insert_flags}m
   fi
 
-  if [[ $insert$suffix != "$COMPS" ]]; then
+  local do_insert=1
+  if ((cand_count>1)) && [[ $insert_flags == *r* ]]; then
+    # 既存部分を置換し、かつ一意確定でない場合は置換しない。
+    do_insert=
+  elif [[ $insert$suffix == "$COMPS" ]]; then
+    # 何も変化がない時は、挿入しない。
+    do_insert=
+  fi
+  if [[ $do_insert ]]; then
     ble/util/invoke-hook _ble_complete_insert_hook
     ble-complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
   fi
