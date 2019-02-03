@@ -143,11 +143,7 @@ function ble-complete/action/util/complete.close-quotation {
   esac
 }
 
-#------------------------------------------------------------------------------
-
-# action:plain
-
-function ble-complete/action:plain/initialize {
+function ble-complete/action/util/quote-insert {
   if [[ $CAND == "$COMPV"* ]]; then
     local ins=${CAND:${#COMPV}} ret
 
@@ -193,12 +189,20 @@ function ble-complete/action:plain/initialize {
     ble/string#escape-for-bash-specialchars "$CAND"; INSERT=$ret
   fi
 }
+
+#------------------------------------------------------------------------------
+
+# action:plain
+
+function ble-complete/action:plain/initialize {
+  ble-complete/action/util/quote-insert
+}
 function ble-complete/action:plain/complete { :; }
 
 # action:word
 
 function ble-complete/action:word/initialize {
-  ble-complete/action:plain/initialize
+  ble-complete/action/util/quote-insert
 }
 function ble-complete/action:word/complete {
   ble-complete/action/util/complete.close-quotation
@@ -215,7 +219,7 @@ function ble-complete/action:substr/complete { :; }
 # action:file
 
 function ble-complete/action:file/initialize {
-  ble-complete/action:plain/initialize
+  ble-complete/action/util/quote-insert
 }
 function ble-complete/action:file/complete {
   if [[ -e $CAND || -h $CAND ]]; then
@@ -236,11 +240,8 @@ function ble-complete/action:file/getg {
 # action:progcomp
 
 function ble-complete/action:progcomp/initialize {
-  if [[ $DATA == *:filenames:* ]]; then
-    ble-complete/action:file/initialize
-  else
-    ble-complete/action:plain/initialize
-  fi
+  [[ $DATA == *:noquote:* ]] ||
+    ble-complete/action/util/quote-insert
 }
 function ble-complete/action:progcomp/complete {
   if [[ $DATA == *:filenames:* ]]; then
@@ -266,7 +267,7 @@ function ble-complete/action:progcomp/getg {
 # action:command
 
 function ble-complete/action:command/initialize {
-  ble-complete/action:plain/initialize
+  ble-complete/action/util/quote-insert
 }
 function ble-complete/action:command/complete {
   if [[ -d $CAND ]]; then
@@ -306,7 +307,7 @@ function ble-complete/action:command/getg {
 
 # action:variable
 
-function ble-complete/action:variable/initialize { ble-complete/action:plain/initialize; }
+function ble-complete/action:variable/initialize { ble-complete/action/util/quote-insert; }
 function ble-complete/action:variable/complete {
   case $DATA in
   (assignment) 
@@ -531,6 +532,7 @@ function ble-complete/source:command {
       ble-complete/candidates/.filter-by-regex "$comps_rex_ambiguous"
     local old_cand_count=$cand_count
 
+    local comp_opts=:
     ble-complete/source:argument/.generate-user-defined-completion initial; local ext=$?
     ((ext==148)) && return "$ext"
     if ((ext==0)); then
@@ -973,20 +975,28 @@ function ble-complete/source:argument/.progcomp {
     [[ $use_workaround_for_git ]] &&
       ble/util/assign compgen3 'ble/bin/sed "s/[[:space:]]\{1,\}\$//" <<< "$compgen2"'
 
-    ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen3"'
+    if [[ $comp_opts == *:nosort:* ]]; then
+      ble/util/assign-array arr 'ble/bin/awk "!a[\$0]++" <<< "$compgen3"'
+    else
+      ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen3"'
+    fi
   } 2>/dev/null
 
   local action=progcomp
   [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
 
-  local cand i=0 count=0
+  local old_cand_count=$cand_count
+  local cand i=0
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
     ble-complete/cand/yield "$action" "$cand" "$comp_opts"
-    ((count++))
   done
 
-  ((count!=0))
+  # plusdirs の時はディレクトリ名も候補として列挙
+  # Note: 重複候補や順序については考えていない
+  [[ $comp_opts == *:plusdirs:* ]] && ble-complete/source:dir
+
+  ((cand_count!=old_cand_count))
 }
 
 ## 関数 ble-complete/source:argument/.generate-user-defined-completion opts

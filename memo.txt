@@ -779,12 +779,6 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
-2019-02-03
-
-  * progcomp: -o nosort noquote plusdir などに対応する。
-    filenames の対応も不完全に見える。
-    dirnames の対応についても再度確認したほうが良さそう。
-
 2019-01-27
 
   * M-* (コマンドライン上でパス名展開を実施) などに対応する
@@ -2312,6 +2306,9 @@ tech
   - isearch: use previous needle for empty string search `#D0889` 362fce3
   - vi_imap: add a function `ble-decode/keymap:vi_imap/define-meta-bindings` `#D0892` a21d22f
   - progcomp: support `complete -I` for Bash 5.0 `#D0895` `#D0896`
+  - progcomp: support candidates which replace the original text before the cursor `#D0897` 41b8cbb 
+  - progcomp: support `compopt -o nosort|noquote|plusdirs` `#D0898`
+
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2328,6 +2325,7 @@ tech
   - main: fix a bug that the determination of `_ble_base` fails when loaded as `source ble.sh` without specifying the directory of `ble.sh` 201deae
   - util: `ble/util/assign` が正しい戻り値を返さないバグの修正 bd14982
   - util: `ble/util/assign-array` の入れ子の呼び出しで内容が混ざり合う問題の修正 bd14982
+  - progcomp: fix a bug that bash-completion does not work properly due to wrong `COMP_POINT` `#D0897` 41b8cbb
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3142,7 +3140,30 @@ tech
 
 2019-02-03
 
-  * progcomp: 現在入力済みの文字列に合致しない物を生成しても全部棄却される
+  * progcomp: -o nosort noquote plusdirs などに対応する [#D0898]
+    filenames の対応も不完全に見える。
+    dirnames の対応についても再度確認したほうが良さそう。
+
+    * nosort の時には uniq は実行するべきかどうか。
+      問題は一意確定なのに確定しない場合があるという事なので、
+      uniq で十分なのではないかとの説。
+      でも結局 uniq で外部コマンドを読み込むのだとしたら awk で処理した方が良いかも。
+      →awk で実装する事にした。
+    * plusdirs ... 対応した
+    * bashdefault, default に関しては、
+      何も候補が生成されなかった時の振る舞いだが、
+      bash ではこれらが指定されなかったとしてもファイル名候補を生成する。
+    * filenames ... これは確認したが quote はデフォルトで実行される。
+      また末尾の空白やスラッシュも現状の実装でちゃんとなる筈。
+      バグがなければ。
+    * dirnames ... これは対応している。
+    * noquote については。action:progcomp/initialize を見る必要がある。
+      quote は initialize で実行されている筈だから。
+      調べた。plain/initialize は結局 quote しかしていない様なので、
+      ble-complete/action/util/quote-insert という関数に分離する事にした。
+      その上で noquote が指定されている場合には quote を実行しない様にした。
+
+  * progcomp: 現在入力済みの文字列に合致しない物を生成しても全部棄却される [#D0897]
     ref #D0895
 
     以下での議論に関連して。
