@@ -6086,6 +6086,7 @@ function ble-decode/keymap:safe/bind-complete {
   ble-decode/keymap:safe/.bind 'C-i'                 'complete'
   ble-decode/keymap:safe/.bind 'TAB'                 'complete'
   ble-decode/keymap:safe/.bind 'M-?'                 'complete show_menu'
+  ble-decode/keymap:safe/.bind 'M-*'                 'complete insert_all'
   ble-decode/keymap:safe/.bind 'C-TAB'               'menu-complete'
   ble-decode/keymap:safe/.bind 'auto_complete_enter' 'auto-complete-enter'
 

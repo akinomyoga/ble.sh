@@ -781,7 +781,10 @@ tech
 
 2019-01-27
 
-  * M-* (コマンドライン上でパス名展開を実施) などに対応する
+  * complete: 前の単語に対してパス名展開を実行する編集関数?
+    M-g (glob-complete-word)
+    C-x * (glob-expand-word)
+    C-x g (glob-list-expansion)
 
 2019-01-20
 
@@ -2307,7 +2310,7 @@ tech
   - vi_imap: add a function `ble-decode/keymap:vi_imap/define-meta-bindings` `#D0892` a21d22f
   - progcomp: support `complete -I` for Bash 5.0 `#D0895` `#D0896`
   - progcomp: support candidates which replace the original text before the cursor `#D0897` 41b8cbb 
-  - progcomp: support `compopt -o nosort|noquote|plusdirs` `#D0898`
+  - progcomp: support `compopt -o nosort|noquote|plusdirs` `#D0898` cc48539
 
 
   動作変更
@@ -3139,6 +3142,20 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-03
+
+  * 2019-01-27 M-* (コマンドライン上でパス名展開を実施) などに対応する
+    →改めて確認してみた所 M-* はパス名展開ではなくて
+    補完候補を全て挿入という機能であった。
+
+    うーん。確かに全て挿入される。また、クォートを閉じるだとか、
+    ファイル名・ディレクトリ名に対してスペース・スラッシュを挿入するだとか、
+    そういう機能はなくて、単にスペース区切りで全て連結している様に見える。
+
+    試しに 'a/b の状態で展開を試みたらクォートは除去されて a/b* a/b* a/b* という
+    内容が挿入される事となった。うーん。ここはやはりちゃんと全て complete を
+    呼び出す様にしようか…。
+
+    実装した。動いているので気にしない事にする。
 
   * progcomp: -o nosort noquote plusdirs などに対応する [#D0898]
     filenames の対応も不完全に見える。

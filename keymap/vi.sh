@@ -7453,6 +7453,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   # from ble-decode/keymap:safe/bind-complete
 
   ble-bind -f 'M-?'       'complete show_menu'
+  ble-bind -f 'M-*'       'complete insert_all'
   ble-bind -f 'M-/'       'complete context=filename'
   ble-bind -f 'M-~'       'complete context=username'
   ble-bind -f 'M-$'       'complete context=variable'

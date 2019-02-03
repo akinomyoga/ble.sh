@@ -1884,6 +1884,7 @@ function ble/widget/complete {
       ble-complete/menu-complete/enter && return
   elif [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active != auto ]]; then
     [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
+      [[ :$opts: != *:insert_all:* ]] &&
       [[ $_ble_edit_str == "$_ble_complete_menu_str" ]] &&
       ble-complete/menu-complete/enter && return
     [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
@@ -1911,13 +1912,29 @@ function ble/widget/complete {
     return 1
   fi
 
-  local ret
-  ble-complete/candidates/determine-common-prefix; local insert=$ret suffix=
-  local insert_beg=$COMP1 insert_end=$COMP2
-  local insert_flags=
-  [[ $insert == "$COMPS"* ]] || insert_flags=r
+  if [[ :$opts: == *:insert_all:* ]]; then
+    local "${_ble_complete_cand_varnames[@]}"
+    local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
+    for pack in "${cand_pack[@]}"; do
+      ble-complete/cand/unpack "$pack"
+      insert=$INSERT suffix=
 
-  if [[ :$opts: == *:enter_menu:* ]]; then
+      if ble/is-function ble-complete/action:"$ACTION"/complete; then
+        ble-complete/action:"$ACTION"/complete
+        (($?==148)) && return 148
+      fi
+      [[ $suffix != *' ' ]] && suffix="$suffix "
+
+      ble/util/invoke-hook _ble_complete_insert_hook
+      ble-complete/insert "$beg" "$end" "$insert" "$suffix"
+      beg=$_ble_edit_ind end=$_ble_edit_ind
+      ((index++))
+    done
+
+    _ble_complete_state=complete
+    ble-complete/menu/clear
+    return
+  elif [[ :$opts: == *:enter_menu:* ]]; then
     local menu_common_part=$COMPV
     ble-complete/menu/show || return
     ble-complete/menu-complete/enter; local ext=$?
@@ -1929,6 +1946,12 @@ function ble/widget/complete {
     ble-complete/menu/show
     return # exit status of ble-complete/menu/show
   fi
+
+  local ret
+  ble-complete/candidates/determine-common-prefix; local insert=$ret suffix=
+  local insert_beg=$COMP1 insert_end=$COMP2
+  local insert_flags=
+  [[ $insert == "$COMPS"* ]] || insert_flags=r
 
   if ((cand_count==1)); then
     # 一意確定の時
