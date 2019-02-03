@@ -459,6 +459,7 @@ function ble/string#escape-for-bash-single-quote {
 }
 function ble/string#escape-for-bash-double-quote {
   ble/string#escape-characters "$*" '\"$`'
+  local a b
   a='!' b='"\!"' ret=${ret//"$a"/$b}
 }
 function ble/string#escape-for-bash-escape-string {
@@ -467,6 +468,7 @@ function ble/string#escape-for-bash-escape-string {
 function ble/string#escape-for-bash-specialchars {
   ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{'
   if [[ $ret == *[$']\n\t']* ]]; then
+    local a b
     a=']'   b=\\$a     ret=${ret//"$a"/$b}
     a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
     a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
@@ -475,6 +477,7 @@ function ble/string#escape-for-bash-specialchars {
 function ble/string#escape-for-bash-specialchars-in-brace {
   ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{,}'
   if [[ $ret == *[$']\n\t']* ]]; then
+    local a b
     a=']'   b=\\$a     ret=${ret//"$a"/$b}
     a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
     a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
