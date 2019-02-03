@@ -45,15 +45,16 @@ function ble-complete/string#common-suffix-prefix {
 ##   ※ [[ -v COMPV ]] は bash-4.2 以降です。
 ##
 ## @var comp_type
-##   候補生成に関連するフラグ文字列。各フラグに対応する文字を含む。
+##   候補生成の方法を制御します。
+##   以下のフラグ文字の組み合わせからなる文字列です。
 ##
-##   a 文字 a を含む時、曖昧補完に用いる候補を生成する。
+##   a 曖昧補完に用いる候補を生成する。
 ##     曖昧一致するかどうかは呼び出し元で判定されるので、
 ##     曖昧一致する可能性のある候補をできるだけ多く生成すれば良い。
 ##
-##   i 文字 i を含む時、大文字小文字を区別しない補完候補生成を行う。
-##
-##   s 文字 s を含む時、ユーザの入力があっても中断しない事を表す。
+##   i 大文字小文字を区別しない補完候補生成を行う。
+##   s ユーザの入力があっても中断しない事を表す。
+##   R COMPV としてシェル評価前の文字列を使用します。
 ##
 
 function ble-complete/check-cancel {
@@ -1171,6 +1172,7 @@ function ble-complete/context/filter-prefix-sources {
 ## 関数 ble-complete/context/overwrite-sources source
 ##   @param[in] source
 ##   @var[in] comp_text comp_index
+##   @var[in,out] comp_type
 ##   @var[in,out] sources
 function ble-complete/context/overwrite-sources {
   local source_name=$1
@@ -1215,6 +1217,28 @@ function ble-complete/context:username/generate-sources {
 function ble-complete/context:hostname/generate-sources {
   ble-complete/context:syntax/generate-sources || return
   ble-complete/context/overwrite-sources hostname
+}
+
+function ble-complete/context:glob/generate-sources {
+  comp_type=${comp_type}R
+  ble-complete/context:syntax/generate-sources || return
+  ble-complete/context/overwrite-sources glob
+}
+function ble-complete/source:glob {
+  [[ $comps_flags == *v* ]] || return 1
+
+  local pattern=$COMPV
+  if [[ $comp_type == *a* ]]; then
+    [[ $pattern == *'*' ]] && return 1
+    pattern=$pattern*
+  fi
+
+  local ret; ble-syntax:bash/simple-word/eval "$pattern"
+  local cand action=file
+  for cand in "${ret[@]}"; do
+    ((i++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
+    ble-complete/cand/yield "$action" "$cand"
+  done
 }
 
 #==============================================================================
@@ -1322,14 +1346,25 @@ function ble-complete/candidates/.pick-nearest-sources {
     comps_flags=${comps_flags}v COMPV=
   elif local ret simple_flags simple_ibrace; ble-syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"; then
     local reconstructed=$ret
-    comps_flags=$comps_flags$simple_flags
-    ble-syntax:bash/simple-word/eval "$reconstructed"; comps_flags=${comps_flags}v COMPV=$ret
+    if [[ $comp_type == *R* ]]; then
+      # 展開前の値を COMPV に格納する。ブレース展開内部の場合は失敗
+      if ((${simple_ibrace%:*})); then
+        COMPV=
+      else
+        comps_flags=$comps_flags${simple_flags}v
+        COMPV=$reconstructed
+      fi
+    else
+      # 展開後の値を COMPV に格納する (既定)
+      comps_flags=$comps_flags${simple_flags}v
+      ble-syntax:bash/simple-word/eval "$reconstructed"; COMPV=("${ret[@]}")
+      if ((${simple_ibrace%:*})); then
+        ble-syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
+        comps_fixed=${simple_ibrace%:*}:$ret
+      fi
+    fi
     [[ $COMPS =~ $rex_raw_paramx ]] && comps_flags=${comps_flags}p
 
-    if ((${simple_ibrace%:*})); then
-      ble-syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
-      comps_fixed=${simple_ibrace%:*}:$ret
-    fi
   else
     COMPV=
   fi
@@ -1894,11 +1929,12 @@ function ble/widget/complete {
   local context; ble-complete/complete/determine-context-from-opts "$opts"
 
   # 補完源の生成
+  local comp_type=
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   local sources
   ble-complete/context:"$context"/generate-sources "$comp_text" "$comp_index" || return 1
 
-  local COMP1 COMP2 COMPS COMPV comp_type=
+  local COMP1 COMP2 COMPS COMPV
   local comps_flags comps_fixed
   local comps_rex_ambiguous
   local cand_count

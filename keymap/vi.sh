@@ -264,19 +264,22 @@ function ble/keymap:vi/complete/insert.hook {
 ble/array#push _ble_complete_insert_hook ble/keymap:vi/complete/insert.hook
 
 function ble-decode/keymap:vi_imap/bind-complete {
-  ble-bind -f  'C-i'                 'vi_imap/complete'
-  ble-bind -f  'TAB'                 'vi_imap/complete'
-  ble-bind -f  'C-TAB'               'menu-complete'
-  ble-bind -f  'auto_complete_enter' 'auto-complete-enter'
+  ble-bind -f 'C-i'                 'vi_imap/complete'
+  ble-bind -f 'TAB'                 'vi_imap/complete'
+  ble-bind -f 'C-TAB'               'menu-complete'
+  ble-bind -f 'auto_complete_enter' 'auto-complete-enter'
 
-  ble-decode/keymap:safe/.bind 'C-x /' 'menu-complete context=filename'
-  ble-decode/keymap:safe/.bind 'C-x ~' 'menu-complete context=username'
-  ble-decode/keymap:safe/.bind 'C-x $' 'menu-complete context=variable'
-  ble-decode/keymap:safe/.bind 'C-x @' 'menu-complete context=hostname'
-  ble-decode/keymap:safe/.bind 'C-x !' 'menu-complete context=command'
+  ble-bind -f 'C-x /' 'menu-complete context=filename'
+  ble-bind -f 'C-x ~' 'menu-complete context=username'
+  ble-bind -f 'C-x $' 'menu-complete context=variable'
+  ble-bind -f 'C-x @' 'menu-complete context=hostname'
+  ble-bind -f 'C-x !' 'menu-complete context=command'
 
-  ble-decode/keymap:safe/.bind 'C-]'     'sabbrev-expand'
-  ble-decode/keymap:safe/.bind 'C-x C-r' 'dabbrev-expand'
+  ble-bind -f 'C-]'     'sabbrev-expand'
+  ble-bind -f 'C-x C-r' 'dabbrev-expand'
+
+  ble-bind -f 'C-x *' 'complete insert_all:context=glob'
+  ble-bind -f 'C-x g' 'complete show_menu:context=glob'
 }
 
 #------------------------------------------------------------------------------
@@ -7460,6 +7463,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-@'       'complete context=hostname'
   ble-bind -f 'M-!'       'complete context=command'
   ble-bind -f "M-'"       'sabbrev-expand'
+  ble-bind -f 'M-g'       'complete context=glob'
 }
 
 #------------------------------------------------------------------------------

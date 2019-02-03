@@ -1294,7 +1294,7 @@ function ble-syntax:bash/simple-word/eval/.impl {
 function ble-syntax:bash/simple-word/eval {
   local __ble_ret
   ble-syntax:bash/simple-word/eval/.impl "$1"; local ext=$?
-  ret=$__ble_ret
+  ret=("${__ble_ret[@]}")
   return "$ext"
 }
 

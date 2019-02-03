@@ -779,13 +779,6 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
-2019-01-27
-
-  * complete: 前の単語に対してパス名展開を実行する編集関数?
-    M-g (glob-complete-word)
-    C-x * (glob-expand-word)
-    C-x g (glob-list-expansion)
-
 2019-01-20
 
   * manual: Emacs 編集モード
@@ -2311,7 +2304,8 @@ tech
   - progcomp: support `complete -I` for Bash 5.0 `#D0895` `#D0896`
   - progcomp: support candidates which replace the original text before the cursor `#D0897` 41b8cbb 
   - progcomp: support `compopt -o nosort|noquote|plusdirs` `#D0898` cc48539
-
+  - edit: support <kdb>M-*</kbd> `#D0899` 3fd7d6e
+  - edit: support <kdb>M-g</kbd>, <kdb>C-x *</kbd>, <kdb>C-x g</kbd> `#D0902`
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2329,6 +2323,7 @@ tech
   - util: `ble/util/assign` が正しい戻り値を返さないバグの修正 bd14982
   - util: `ble/util/assign-array` の入れ子の呼び出しで内容が混ざり合う問題の修正 bd14982
   - progcomp: fix a bug that bash-completion does not work properly due to wrong `COMP_POINT` `#D0897` 41b8cbb
+  - util: fix leak variables `a` and `b` `#D0900` 244f965
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3143,7 +3138,27 @@ tech
 
 2019-02-03
 
-  * 2019-01-27 M-* (コマンドライン上でパス名展開を実施) などに対応する
+  * 2019-01-27 complete: 前の単語に対してパス名展開を実行する編集関数? [#D0902]
+    M-g (glob-complete-word)
+    C-x * (glob-expand-word)
+    C-x g (glob-list-expansion)
+
+    どの様に現在の枠組みを修正するか。
+    COMPV を配列にするか、展開前の値にするか。
+    展開前の値にするのが良い気がする。
+    comp_type に R を指定した時には展開前の値にする。
+
+  * [ok] complete: insert_all で comps_flags をクリアしなければならないのでは [#D0901]
+    と思ったがそうでもないような気もする…。後で実際に試してみる。
+    そもそも候補の生成時点でその状態を前提としてクォートしている筈である。
+
+    →試してみるとちゃんと動いている。${a} 等の補完もちゃんと動いている。
+
+  * util: それよりも何処かで leak variable が存在している… [#D0900]
+    勝手にシェル変数 a の中身が ! に書き換わる
+    これは util.sh の中のエスケープ関連の関数だった→修正した
+
+  * 2019-01-27 M-* (コマンドライン上でパス名展開を実施) などに対応する [#D0899]
     →改めて確認してみた所 M-* はパス名展開ではなくて
     補完候補を全て挿入という機能であった。
 
