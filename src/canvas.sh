@@ -1265,7 +1265,7 @@ function ble/canvas/panel/layout/.extract-heights {
 ##   @arr[in] mins maxs
 ##   @arr[out] heights
 function ble/canvas/panel/layout/.determine-heights {
-  local i n=${#_ble_canvas_panel_type[@]}
+  local i n=${#_ble_canvas_panel_type[@]} ret
   ble/arithmetic/sum "${mins[@]}"; local min=$ret
   ble/arithmetic/sum "${maxs[@]}"; local max=$ret
   if ((max<=lines)); then

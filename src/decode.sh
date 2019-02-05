@@ -1762,7 +1762,6 @@ function ble-bind {
             [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
             ble-decode-key/unbind "$ret"
           fi
-          flags=
           shift 2 ;;
         (L)
           ble-bind/option:list-widgets ;;

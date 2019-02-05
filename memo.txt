@@ -783,6 +783,13 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
+2019-02-05
+
+  * char_width_mode=auto?
+
+    既に起動時に DA2 要求と応答の読み取りを実施している。
+    序でにカーソル位置を用いて文字幅の判定を実行してよいのではないだろうか。
+
 2019-01-20
 
   * manual: Emacs 編集モード
@@ -812,6 +819,11 @@ tech
     より良いサポートをする事ができるはずなので。
     例えば --prefix=... などに於いて。
     実は単にキャンセルすれば ble の既定の filedir 及び =... :... が動く。
+
+    →と思ったが --prefix=... に関しては COMP_WORDBREAKS に対応した今、
+    実は余り気にしなくても自動的に対応される…。
+    その他に乗っ取って利点などはあるだろうか…。
+    もし利点があるようだったら実装するというので良い気がする。
 
 2018-08-26
 
@@ -988,38 +1000,6 @@ tech
     - (4. a. vi-mode n, N) 正規表現ではなくてグロブパターンらしい。
 
     - (4. d. C-v) 負の引数 -N を指定すると、次の N 文字をそのまま挿入するらしい。
-
-2018-04-12
-
-  * ble-bind -xf で cd を実行することについて。
-
-    プロンプトに現在のディレクトリを表示している場合、
-    cd で移動した後にプロンプトを再計算したい。
-    その時は ble-bind -xf 'C-@' 'cd ..; _ble_edit_prompt=; ble/textarea#invalidate' 等のようにすれば良い。
-    しかし面倒なので ble-edit/prompt#invalidate の様なものを用意しても良いのではないかという気がする。
-    同時に ble-edit/prompt/* 系統の関数名についても考え直したい。
-    - というより単に ble/edit/prompt/* で良いのかもしれないが。
-    - 或いは ble/textarea/prompt/* の方が良いかもしれない。
-      →と思ったが確認してみると疎結合なのでやはり textarea の下には置かない。
-    - 或いは ble/prompt/* という可能性もある。
-      然し、そうすると ble-edit.sh の中に沢山の名前空間が出来て始末が悪い。
-
-    現状では ble-edit.sh の中にあるのは以下の通り。
-    他に ble-decode 及び ble-bind に対する設定関数がある。
-
-    - ble-edit
-    - ble/textarea
-    - ble/util/c2w 系統
-    - ble/widget
-
-    この現状を考えると ble/edit/prompt が妥当であろうという気がする。
-    或いは prompt 計算自体を ble-form.sh に移動して、
-    ble/form/prompt にしても良いかもしれない。
-    しかし、prompt は form/control というよりは
-    寧ろ graphics 的な実装方法なのでやはり ble-form.sh に入れるのも微妙か。
-    少なくとも現状では textarea に付属して ble-edit にあった方が良い。
-
-    よく考えたら ble-bind -cf で実行すれば良いだけなのでは…。
 
 2018-03-18
 
@@ -3130,6 +3110,53 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-05
+
+  * 改めて leak variables のチェックを行う。
+    何処かで len, ret, flags という変数が漏れている。
+
+    - fixed: ble-syntax:bash/ctx-heredoc-word/remove-quotes rex
+    - fixed: ble-bind flags
+    - fixed: ble-complete/auto-complete/.search-history-light len
+    - fixed: ble-complete/menu/show info_data menu_items
+
+    | ret は手強い。調べてみると ble-attach で既に出ている。
+    | 更に遡ると ble-edit/bind/.tail で出ている。
+    | →ble-edit/info/reveal
+    | →ble-edit/info/.render-content
+    | →ble/canvas/panel#reallocate-height.draw
+    | →ble/canvas/panel/layout/.determine-heights
+
+    - fixed: ble/canvas/panel/layout/.determine-heights ret
+
+  * 2018-04-12 [棄却] ble-bind -xf で cd を実行することについて [#D0905]
+
+    プロンプトに現在のディレクトリを表示している場合、
+    cd で移動した後にプロンプトを再計算したい。
+    その時は ble-bind -xf 'C-@' 'cd ..; _ble_edit_prompt=; ble/textarea#invalidate' 等のようにすれば良い。
+    しかし面倒なので ble-edit/prompt#invalidate の様なものを用意しても良いのではないかという気がする。
+    同時に ble-edit/prompt/* 系統の関数名についても考え直したい。
+    - というより単に ble/edit/prompt/* で良いのかもしれないが。
+    - 或いは ble/textarea/prompt/* の方が良いかもしれない。
+      →と思ったが確認してみると疎結合なのでやはり textarea の下には置かない。
+    - 或いは ble/prompt/* という可能性もある。
+      然し、そうすると ble-edit.sh の中に沢山の名前空間が出来て始末が悪い。
+
+    現状では ble-edit.sh の中にあるのは以下の通り。
+    他に ble-decode 及び ble-bind に対する設定関数がある。
+
+    - ble-edit
+    - ble/textarea
+    - ble/util/c2w 系統
+    - ble/widget
+
+    この現状を考えると ble/edit/prompt が妥当であろうという気がする。
+    或いは prompt 計算自体を ble-form.sh に移動して、
+    ble/form/prompt にしても良いかもしれない。
+    しかし、prompt は form/control というよりは
+    寧ろ graphics 的な実装方法なのでやはり ble-form.sh に入れるのも微妙か。
+    少なくとも現状では textarea に付属して ble-edit にあった方が良い。
+
+    よく考えたら ble-bind -cf で実行すれば良いだけなのでは…。
 
   * bash-5.0 の localvar_unset [#D0904]
     localvar_unset が on の時には upvar などで使っている unlocal 機能が使えない。

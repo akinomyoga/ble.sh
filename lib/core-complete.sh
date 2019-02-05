@@ -1910,8 +1910,10 @@ function ble-complete/menu/show {
     local x y esc menu_items
     ble/function#try ble-complete/menu/style:"$menu_style"/construct || return
 
+    local info_data
     info_data=(store "$x" "$y" "$esc")
   else
+    local menu_items info_data
     menu_items=()
     info_data=(raw $'\e[38;5;242m(no candidates)\e[m')
   fi
@@ -2539,7 +2541,7 @@ function ble-complete/auto-complete/.search-history-light {
   if [[ $word != "$text" ]]; then
     # ? を含まない最長一致部分
     local fragments; ble/string#split fragments '?' "$text"
-    local frag longest_fragments; len=0 longest_fragments=('')
+    local frag longest_fragments len=0; longest_fragments=('')
     for frag in "${fragments[@]}"; do
       local len1=${#frag}
       ((len1>len&&(len=len1))) && longest_fragments=()
