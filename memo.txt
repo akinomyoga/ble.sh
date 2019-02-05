@@ -171,6 +171,10 @@
       具体的には _ble_syntax_bash_command_IsAssign[ctx] の設定されている文脈は、
       ブレース展開が現れたときに、変数代入形式前の文脈値に戻すようにしている。
 
+  * 2019-02-04 プログラム補完関数の中で標準入力は使えない。
+    どうしてもユーザからの入力を得たい場合には、
+    現在の補完が自動補完でない事を確認してから /dev/tty から直接取る事。
+
 bash 実装上で注意するべき事
 
   * 変数の代入は基本的に quote は必要ないが、
@@ -779,6 +783,10 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
+2019-02-05
+
+  * bash-5.0 の localvar_unset
+
 2019-01-20
 
   * manual: Emacs 編集モード
@@ -787,20 +795,6 @@ tech
 
   * [保留] 2018-09-15 complete: 文脈の変更範囲で end0 だけ負になるバグ (ref `#D0818`)
   * [保留] 2018-09-11 complete: 端末が操作を受け付けなくなるバグ (ref `#D0817`)
-
-2018-09-13
-
-  * shell: scp ... chat:... の入力時にタイミングによって入力できたりできなかったりした
-
-    これは一体どういう事なのだろう…。プログラム補完が入力を奪っている?
-
-    % 今試すと再現しない。特定のホストだけで発生するという事なのだろうか。
-    % うーん。一応標準入力を /dev/null に繋いで勝手に標準入力を食わない様に変更する。
-    % もしユーザから入力を受け取るのであればその補完関数・コマンドが明示的に /dev/tty に繋ぐべきである。
-
-    と思ったが、ユーザから入力を求めて補完候補を絞る機能があっても良い様な気がしてきた。
-    そのような発想で補完関数を設計する人は沢山いるだろうと考えられる。
-    やはり、標準入力を勝手に封じるのは問題の様に思われてきた。取り敢えず保留という事にする。
 
 2018-08-29
 
@@ -2302,10 +2296,11 @@ tech
   - isearch: use previous needle for empty string search `#D0889` 362fce3
   - vi_imap: add a function `ble-decode/keymap:vi_imap/define-meta-bindings` `#D0892` a21d22f
   - progcomp: support `complete -I` for Bash 5.0 `#D0895` `#D0896`
-  - progcomp: support candidates which replace the original text before the cursor `#D0897` 41b8cbb 
+  - progcomp: support candidates which replace the original text before the cursor `#D0897` 41b8cbb
   - progcomp: support `compopt -o nosort|noquote|plusdirs` `#D0898` cc48539
   - edit: support <kdb>M-*</kbd> `#D0899` 3fd7d6e
-  - edit: support <kdb>M-g</kbd>, <kdb>C-x *</kbd>, <kdb>C-x g</kbd> `#D0902`
+  - edit: support <kdb>M-g</kbd>, <kdb>C-x *</kbd>, <kdb>C-x g</kbd> `#D0902` 41797c6
+  - progcomp: support `COMP_WORDBREKS` `#D0903`
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2324,6 +2319,7 @@ tech
   - util: `ble/util/assign-array` の入れ子の呼び出しで内容が混ざり合う問題の修正 bd14982
   - progcomp: fix a bug that bash-completion does not work properly due to wrong `COMP_POINT` `#D0897` 41b8cbb
   - util: fix leak variables `a` and `b` `#D0900` 244f965
+  - progcomp: fix a problem that completion functions can consume stdin `#D0903`
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3135,6 +3131,156 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-02-05
+
+  * 2018-09-13 progcomp: scp の補完の動作が変である [#D0903]
+
+    scp ... chat:... の入力時にタイミングによって文字入力ができなかったりする。
+    これは一体どういう事なのだろう…。プログラム補完が入力を奪っている?
+
+    % 今試すと再現しない。特定のホストだけで発生するという事なのだろうか。
+    % うーん。一応標準入力を /dev/null に繋いで勝手に標準入力を食わない様に変更する。
+    % もしユーザから入力を受け取るのであればその補完関数・コマンドが明示的に /dev/tty に繋ぐべきである。
+
+    と思ったが、ユーザから入力を求めて補完候補を絞る機能があっても良い様な気がしてきた。
+    そのような発想で補完関数を設計する人は沢山いるだろうと考えられる。
+    やはり、標準入力を勝手に封じるのは問題の様に思われてきた。取り敢えず保留という事にする。
+
+    →これが再現しなくなっていたのは実は別のバグで scp の補完関数 _scp に
+    *:* の形式の引数が渡っていなかったからではないかと思われてきた。
+    今修正が入っているので、再度確認してみて良い気がしてきた。
+
+    今実行してみたら scp による補完が動く様になった…が、
+    何故か既存のホスト名の部分まで置き換えてしまう様に補完された…。
+    更に、文字入力が吸収されてしまうという現象が再現した。
+
+    2つの問題がある。
+
+    * 先ず、ble.sh 上で補完するとホスト名が消失するが、
+      bash 上で補完するとホスト名はちゃんと残っているという事。
+      これは ble.sh の側での結果の解釈が誤っているという事である。
+      或いは何かの機能を忘れている。prefix をつけるなどの。
+
+      うーん。取り敢えず観察する。
+
+      ble.sh 上で動かした時。
+      | declare -- COMP_CWORD="1"
+      | declare -- COMP_KEY="67108969"
+      | declare -- COMP_LINE="scp chat:mirr"
+      | declare -- COMP_POINT="13"
+      | declare -- COMP_PREFIX=""
+      | declare -- COMP_TYPE="9"
+      | declare -- COMP_WORDBREAKS="
+      | \"'><=;|&(:"
+      | declare -a COMP_WORDS=([0]="scp" [1]="chat:mirr")
+      | declare -a COMPREPLY=([0]="mirror/")
+      特に _scp 呼び出し前後で COMP_@ の変数の中身が書き換えられているという事もない。
+
+      bash 上で動かした時。
+      | declare -- COMP_CWORD="3"
+      | declare -- COMP_KEY="9"
+      | declare -- COMP_LINE="scp chat:mirr"
+      | declare -- COMP_POINT="13"
+      | declare -- COMP_TYPE="9"
+      | declare -- COMP_WORDBREAKS="
+      | \"'><=;|&(:"
+      | declare -a COMP_WORDS=([0]="scp" [1]="chat" [2]=":" [3]="mirr")
+      | declare -a COMPREPLY=([0]="mirror/")
+      うーん。分かってしまった。ble.sh が COMP_WORDBREAKS に対応していないのが原因だった。
+
+      うーん。COMP_WORDBREAKS の中でもシェルの特殊文字でない物に関しては、
+      ble.sh の側で分割を実行しても良い気がする。
+
+      - ok: ただし、これは ble.sh の補完の枠組みでは適用したくない。
+        ble.sh の補完の枠組みの側では COMP_* は利用していただろうか…。
+        →確認してみた所 COMP_* を初期化しているのは ble-complete/source:argument/.progcomp-helper-vars
+        であり、この関数を使っているのは complete -F または -C に指定した関数・コマンドを呼び出す時だけだった。
+        従って、ble.sh 独自の補完の枠組みでは使用されていない。
+
+      .progcomp-helper-vars の実装を変更する事にする。
+
+      - done: 先ず COMP_WORDBREAKS からシェルの特殊文字を除去する。
+        特殊文字は util.sh から拾ってくる。
+      - done: 次に単語を分割するという事。これも動いている
+      - done: 分割した単語を用いて COMP_@ を構築する
+
+      * done: wordbreaks するのは simple-word/eval してからであるべきでは。
+        そうしないと ${hello:=world} 的な物に対して途中で分断されてしまう。
+        これは文法的にも変である。
+
+        うーん。先に eval してそれから wordbreaks する事にする。
+        →大きく書き換えてしまったが対応した。
+
+      * done: 更にまた整理を行った。
+
+      * done: さて、これで補完関数は正しく動く様になった気がするが、
+        生成された補完候補は単語の一部に対する候補なので、
+        その事を ble.sh 側に正しく伝えないと、
+        単語全体がその候補に置き換えられてしまって問題になる。
+
+        これはどの様に調整すれば良いだろうか。
+        point が単語片の中にある場合には、
+        その単語の eval した結果を保持しておいて、
+        それを COMPREPLY に付加するなどの工夫が必要である。
+
+        或いは COMPREPLY を読み取る時に付加するというのでも良い。
+        progcomp_prefix 的な変数に prefix を保存しておけば良いだろうか。
+        或いは COMP_CWORD0 的な変数に最初の単語片の位置を記録しておけば良い。
+
+        と思ったら compgen 関数を通して実行されるのであった。
+        この時、中で設定したシェル変数を外から参照できるのだったか。
+        試しにやってみたらできた。なのでこれで良いだろう。
+        結局 progcomp_prefix という変数に、
+        現在の単語の現在位置よりも前の単語片を追記していく方法にした。
+        後で progcomp_prefix を候補生成時に付加する。
+
+      動かしてみるとまだ問題が残っている。
+
+      x ok: ディレクトリ名を保管した後にスペースが挿入されてしまう。
+        補完関数はディレクトリ名の補完で / を挿入している。
+        一方で ble.sh が候補を単語と解釈して、更にスペースを挿入してしまう。
+
+        % nospace 的な compopt は設定されていないのだろうか。
+        % うーん。確認してみたが _scp からはその様な物は指定されていない様子…。
+        %
+        % →不思議な事に普通の Bash で _scp を実行するとちゃんとスペースが挿入されずに補完されるが、
+        % _scp_hook を通して実行するとスペースが挿入されてしまう。この振る舞いの違いは何か。
+        %
+        % うーん。調べてみると _ssh_options の中で compopt -o nospace が呼び出されているはず…。
+        % 或いは compgen の中からだと unset -f compopt されてしまうのだろうか。
+        % と思ってよく見てみると _scp は _ssh_options は呼び出していなかった。
+        % 然し、何れにしても _scp の中で compopt +o nospace を呼び出しているのよりも
+        % 前の何処かで compopt -o nospace を呼び出していると考えるのが自然である。
+        %
+        % 何と complete -F _scp_hook scp としてから complete -F _scp scp としても
+        % 余分なスペースが入る様になってしまう…。
+
+        と思ったら実は単に complete -o nospace -F _scp scp という事だった…。
+        つまり、ble.sh の側では complete -p の結果に含まれる -o ... を正しく読み取れていない?
+
+        と思って改めて実行してみたらちゃんと動く…。
+        実はテストのために実行していた complete -F _scp_hook scp
+        が設定を破壊していたというだけの話だった。
+
+      x fixed: compopt 内部で呼び出している builtin compopt は必ず失敗している。
+        "補完機能は現在実行されていません" というエラーメッセージが出ている。
+        Bash 4.1--5.0 の何れでも同様の動作の様なので呼び出さない事にした。
+
+    * resolved: 次に、scp の引数に対して入力をすると
+      入力した文字列が消滅してしまうという問題について。
+      これは ble.sh 上で Linux 上でも Cygwin 上でも再現する事を確認した。
+
+      特に自動補完が有効になっている時に再現する様な気がする。
+      うーん。自動補完が有効になっていてもなっていなくても、
+      勝手に標準入出力が壊れるのは問題である。
+      従って、勝手に補完関数の標準入力は塞ぐ事にする。
+      →標準入力を /dev/null に繋いで実行する様にしたら問題は起こらなくなった。
+
+      実際に補完関数が標準入力を必要とする事があるのかどうか分からないが、
+      特に自動補完の事を考えたりすると標準入力を必要とする補完関数は変だ。
+      という訳なので、補完関数は標準入力を使えないという事にする。
+      敢えて標準入力を使いたければ自動補完でない事を確認して /dev/tty に繋いでもらう。
 
 2019-02-03
 

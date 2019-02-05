@@ -689,95 +689,204 @@ function ble-complete/source:rhs { ble-complete/source:file; }
 
 # source:argument (complete -p)
 
-## 関数 ble-complete/source:argument/.progcomp-helper-vars
+## 関数 ble-complete/source:argument/.compvar-initialize-wordbreaks
+##   @var[out] wordbreaks
+function ble-complete/source:argument/.compvar-initialize-wordbreaks {
+  local ifs=$' \t\n' q=\'\" delim=';&|<>()' glob='[*?' hist='!^{' esc='`$\'
+  local escaped=$ifs$q$delim$glob$hist$esc
+  wordbreaks=${COMP_WORDBREAKS//[$escaped]} # =:
+}
+## 関数 ble-complete/source:argument/.compvar-perform-wordbreaks word
+##   @var[in] wordbreaks
+##   @arr[out] ret
+function ble-complete/source:argument/.compvar-perform-wordbreaks {
+  local word=$1
+  if [[ ! $word ]]; then
+    ret=('')
+    return
+  fi
+
+  ret=()
+  while local head=${word%%["$wordbreaks"]*}; [[ $head != $word ]]; do
+    ble/array#push ret "$head" "${word:${#head}:1}"
+    word=${word:${#head}+1}
+  done
+
+  [[ $word ]] && ble/array#push ret "$word"
+}
+## 関数 ble-complete/source:argument/.compvar-generate-subwords word1
+##   word1 を COMP_WORDBREAKS で分割します。
+##
+##   @arr[out] words
+##     分割して得られた単語片を格納します。
+##
+##   @var[in,out] flag_evaluated
+##   @var[in,out] point
+##
+## Note: 全体が単純単語になっている時には先に eval して COMP_WORDBREAKS で分割する。
+##   この時 flag_evaluated=1 を設定する。
+##   そうでない時には先に COMP_WORDBREAKS で分割して、
+##   各単語片に対して単純単語 eval を試みる。
+##
+function ble-complete/source:argument/.compvar-generate-subwords {
+  local word1=$1 ret simple_flags simple_ibrace
+  if [[ ! $word1 ]]; then
+    # Note: 空文字列に対して正しい単語とする為に '' とすると git の補完関数が動かなくなる。
+    #   仕方がないので空文字列のままで登録する事にする。
+    flag_evaluated=1
+    words=('')
+  elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "$word1"; then
+    ble-syntax:bash/simple-word/eval "$ret"; local value1=$ret
+    if [[ $point ]]; then
+      if ((point==${#word1})); then
+        point=${#value1}
+      elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "${word1::point}"; then
+        ble-syntax:bash/simple-word/eval "$ret"
+        point=${#ret}
+      fi
+    fi
+
+    flag_evaluated=1
+    ble-complete/source:argument/.compvar-perform-wordbreaks "$value1"; words=("${ret[@]}")
+  else
+    ble-complete/source:argument/.compvar-perform-wordbreaks "$word1"; words=("${ret[@]}")
+  fi
+}
+## 関数 ble-complete/source:argument/.compvar-quote-subword word
+##   @var[in] index flag_evaluated
+##   @var[out] ret
+##   @var[in,out] p
+function ble-complete/source:argument/.compvar-quote-subword {
+  local word=$1 to_quote= is_evaluated= is_quoted=
+  if [[ $flag_evaluated ]]; then
+    to_quote=1
+  elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
+    is_evaluated=1
+    ble-syntax:bash/simple-word/eval "$ret"; word=$ret
+    to_quote=1
+  fi
+
+  # コマンド名以外は再クォート
+  if [[ $to_quote ]]; then
+    local shell_specialchars=']\ ["'\''`$|&;<>()*?{}!^'$'\n\t' q="'" Q="'\''" qq="''"
+    if ((index>0)) && [[ $word == *["$shell_specialchars"]* ]]; then
+      is_quoted=1
+      word="'${w//$q/$Q}'" word=${word#"$qq"} word=${word%"$qq"}
+    fi
+  fi
+
+  # 単語片が補正されている時、p も補正する
+  if [[ $p && $word != "$1" ]]; then
+    if ((p==${#1})); then
+      p=${#word}
+    else
+      local left=${word::p}
+      if [[ $is_evaluated ]]; then
+        if ble-syntax:bash/simple-word/reconstruct-incomplete-word "$left"; then
+          ble-syntax:bash/simple-word/eval "$ret"; left=$ret
+        fi
+      fi
+      if [[ $is_quoted ]]; then
+        left="'${left//$q/$Q}" left=${left#"$qq"}
+      fi
+      p=${#left}
+    fi
+  fi
+
+  ret=$word
+}
+
+## 関数 ble-complete/source:argument/.compvar-initialize
 ##   プログラム補完で提供される変数を構築します。
-##   @param[in]  comp_words comp_cword comp_line comp_point
-##   @param[out] COMP_WORDS COMP_CWORD COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
-function ble-complete/source:argument/.progcomp-helper-vars {
+##   @var[in]  comp_words comp_cword comp_line comp_point
+##   @var[out] COMP_WORDS COMP_CWORD COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
+##   @var[out] progcomp_prefix
+function ble-complete/source:argument/.compvar-initialize {
   COMP_TYPE=9
   COMP_KEY=${KEYS[${#KEYS[@]}-1]:-9} # KEYS defined in ble-decode/widget/.call-keyseq
 
   # Note: 以降の処理は基本的には comp_words, comp_line, comp_point, comp_cword を
-  #   直接 COMP_WORDS COMP_LINE COMP_POINT COMP_CWORD にコピーするだけである。
-  #   しかし、直接代入する場合。$'' などがあると bash-completion が正しく動かないので、
+  #   COMP_WORDS COMP_LINE COMP_POINT COMP_CWORD にコピーする。
+  #   (1) 但し、直接代入する場合。$'' などがあると bash-completion が正しく動かないので、
   #   エスケープを削除して適当に処理する。
+  #   (2) シェルの特殊文字以外の COMP_WORDBREAKS に含まれる文字で単語を分割する。
 
+  local wordbreaks
+  ble-complete/source:argument/.compvar-initialize-wordbreaks
+
+  progcomp_prefix=
+  COMP_CWORD=
+  COMP_POINT=
   COMP_LINE=
   COMP_WORDS=()
-  local shell_specialchars=']\ ["'\''`$|&;<>()*?{}!^'$'\n\t' q="'" Q="'\''" qq="''"
-  local word delta=0 index=0 offset=0
-  for word in "${comp_words[@]}"; do
+  local ret simple_flags simple_ibrace
+  local word1 index=0 offset=0 sep=
+  for word1 in "${comp_words[@]}"; do
     # @var point
     #   word が現在の単語の時、word 内のカーソル位置を保持する。
     #   それ以外の時は空文字列。
     local point=$((comp_point-offset))
-    ((0<=point&&point<=${#word})) || point=
+    ((0<=point&&point<=${#word1})) || point=
+    ((offset+=${#word1}))
 
-    # 単語が単純単語ならば展開する
-    local ret simple_flags simple_ibrace
-    if [[ ! $word ]]; then
-      # Note: 空文字列に対して正しい単語とする為に '' とすると git の補完関数が動かなくなる。
-      #   仕方がないので空文字列のままで登録する事にする。
-      : do nothing
-      # word="''"; [[ $point ]] && point=2
-    elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
-      ble-syntax:bash/simple-word/eval "$ret"
-      ((${#COMP_WORDS[*]})) && [[ $ret == *["$shell_specialchars"]* ]] &&
-        ret="'${ret//$q/$Q}'" ret=${ret#"$qq"} ret=${ret%"$qq"} # コマンド名以外はクォート
-      local word2=$ret
+    local words flag_evaluated=
+    ble-complete/source:argument/.compvar-generate-subwords "$word1"
+
+    local w wq o=0 p
+    for w in "${words[@]}"; do
+      # @var p
+      #   現在の単語片の内部におけるカーソルの位置。
+      #   現在の単語片の内部にカーソルがない場合は空文字列。
+      p=
       if [[ $point ]]; then
-        if ((point==${#word})); then
-          point=${#word2}
-        elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "${word::point}"; then
-          ble-syntax:bash/simple-word/eval "$ret"
-          ((${#COMP_WORDS[*]})) && [[ $ret == *["$shell_specialchars"]* ]] &&
-            ret="'${ret//$q/$Q}" ret=${ret#"$qq"}
-          point=${#ret}
-        fi
+        ((p=point-o))
+        ((p<=${#w})) || p=
+        ((o+=${#w}))
       fi
-      word=$word2
-    fi
+      # カーソルが subword の境界にある時は左側の subword に属させる。
+      # 右側の subword で処理が行われない様に point をクリア。
+      [[ $p ]] && point=
+      [[ $point ]] && progcomp_prefix=$progcomp_prefix$w
 
-    # COMP_CWORD / COMP_POINT の更新
-    if [[ $point ]]; then
-      COMP_CWORD=${#COMP_WORDS[*]}
-      COMP_POINT=$point
-      [[ $COMP_LINE ]] && ((COMP_POINT+=${#COMP_LINE}+1))
-    fi
+      ble-complete/source:argument/.compvar-quote-subword "$w"; local wq=$ret
 
-    # COMP_LINE / COMP_WORDS の更新
-    if [[ $COMP_LINE ]]; then
-      COMP_LINE="$COMP_LINE $word"
-    else
-      COMP_LINE=$word
-    fi
-    ble/array#push COMP_WORDS "$word"
+      # 単語登録
+      if [[ $p ]]; then
+        COMP_CWORD=${#COMP_WORDS[*]}
+        ((COMP_POINT=${#COMP_LINE}+${#sep}+p))
+      fi
+      ble/array#push COMP_WORDS "$wq"
+      COMP_LINE=$COMP_LINE$sep$wq
+      sep=
+    done
 
-    ((offset+=${#word}+1))
+    sep=' '
+    ((offset++))
+    ((index++))
   done
-
 }
 function ble-complete/source:argument/.progcomp-helper-prog {
   if [[ $comp_prog ]]; then
-    (
-      local COMP_WORDS COMP_CWORD
-      export COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
-      ble-complete/source:argument/.progcomp-helper-vars
-      local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
-      "$comp_prog" "$cmd" "$cur" "$prev"
-    )
+    local COMP_WORDS COMP_CWORD
+    local -x COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
+    ble-complete/source:argument/.compvar-initialize
+    local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
+    "$comp_prog" "$cmd" "$cur" "$prev" </dev/null
   fi
 }
 function ble-complete/source:argument/.progcomp-helper-func {
   [[ $comp_func ]] || return
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
-  ble-complete/source:argument/.progcomp-helper-vars
+  ble-complete/source:argument/.compvar-initialize
 
   # compopt に介入して -o/+o option を読み取る。
   local fDefault=
   function compopt {
-    builtin compopt "$@"; local ret="$?"
+    # Note: Bash補完以外から builtin compopt を呼び出しても
+    #  エラーになるので呼び出さない事にした (2019-02-05)
+    #builtin compopt "$@" 2>/dev/null; local ext=$?
+    local ext=0
 
     local -a ospec
     while (($#)); do
@@ -790,13 +899,13 @@ function ble-complete/source:argument/.progcomp-helper-func {
           case "$c" in
           (o)    ospec[${#ospec[@]}]="-$1"; shift ;;
           ([DE]) fDefault=1; break 2 ;;
-          (*)    ((ret==0&&(ret=1))) ;;
+          (*)    ((ext==0&&(ext=1))) ;;
           esac
         done ;;
       (+o) ospec[${#ospec[@]}]="+$1"; shift ;;
       (*)
         # 特定のコマンドに対する compopt 指定
-        return "$ret" ;;
+        return "$ext" ;;
       esac
     done
 
@@ -808,11 +917,11 @@ function ble-complete/source:argument/.progcomp-helper-func {
       esac
     done
 
-    return "$ret"
+    return "$ext"
   }
 
   local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
-  eval '"$comp_func" "$cmd" "$cur" "$prev"'; local ret=$?
+  eval '"$comp_func" "$cmd" "$cur" "$prev"' </dev/null; local ret=$?
   unset -f compopt
 
   if [[ $is_default_completion && $ret == 124 ]]; then
@@ -925,6 +1034,7 @@ function ble-complete/source:argument/.progcomp {
     local q="'" Q="'\''"
     compgen_compv="'${compgen_compv//$q/$Q}'"
   fi
+  local progcomp_prefix=
   ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
 
   # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
@@ -990,7 +1100,7 @@ function ble-complete/source:argument/.progcomp {
   local cand i=0
   for cand in "${arr[@]}"; do
     ((i++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
-    ble-complete/cand/yield "$action" "$cand" "$comp_opts"
+    ble-complete/cand/yield "$action" "$progcomp_prefix$cand" "$comp_opts"
   done
 
   # plusdirs の時はディレクトリ名も候補として列挙
