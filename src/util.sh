@@ -85,9 +85,23 @@ shopt -s checkwinsize
 ##   
 _ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var=$2 && shift 2'
 _ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
-function ble/util/upvar { builtin unset -v "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
-function ble/util/uparr { builtin unset -v "$1" && builtin eval "$1=(\"\${@:2}\")"; }
-function ble/util/unlocal { builtin unset -v "$@"; }
+if ((_ble_bash>=50000)); then
+  function ble/util/unlocal {
+    if shopt -q localvar_unset; then
+      shopt -u localvar_unset
+      builtin unset -v "$@"
+      shopt -s localvar_unset
+    else
+      builtin unset -v "$@"
+    fi
+  }
+  function ble/util/upvar { ble/util/unlocal "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
+  function ble/util/uparr { ble/util/unlocal "$1" && builtin eval "$1=(\"\${@:2}\")"; }
+else
+  function ble/util/unlocal { builtin unset -v "$@"; }
+  function ble/util/upvar { builtin unset -v "${1%%\[*\]}" && builtin eval "$1=\"\$2\""; }
+  function ble/util/uparr { builtin unset -v "$1" && builtin eval "$1=(\"\${@:2}\")"; }
+fi
 
 function ble/util/save-vars {
   local name prefix=$1; shift
@@ -728,6 +742,7 @@ if ((_ble_bash>=40200)); then
     local __ble_hidden_only=
     [[ $1 == --hidden-only ]] && { __ble_hidden_only=1; shift; }
     (
+      ((_ble_bash>=50000)) && shopt -u localvar_unset
       __ble_error=
       __ble_q="'" __ble_Q="'\''"
       # 補完で 20 階層も関数呼び出しが重なることはなかろう
@@ -761,6 +776,7 @@ else
     local __ble_hidden_only=
     [[ $1 == --hidden-only ]] && { __ble_hidden_only=1; shift; }
     (
+      ((_ble_bash>=50000)) && shopt -u localvar_unset
       __ble_error=
       __ble_q="'" __ble_Q="'\''"
       __ble_MaxLoop=20

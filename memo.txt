@@ -783,10 +783,6 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
-2019-02-05
-
-  * bash-5.0 の localvar_unset
-
 2019-01-20
 
   * manual: Emacs 編集モード
@@ -2300,7 +2296,7 @@ tech
   - progcomp: support `compopt -o nosort|noquote|plusdirs` `#D0898` cc48539
   - edit: support <kdb>M-*</kbd> `#D0899` 3fd7d6e
   - edit: support <kdb>M-g</kbd>, <kdb>C-x *</kbd>, <kdb>C-x g</kbd> `#D0902` 41797c6
-  - progcomp: support `COMP_WORDBREKS` `#D0903`
+  - progcomp: support `COMP_WORDBREKS` `#D0903` 7cfe425
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2309,6 +2305,7 @@ tech
   - emacs: change M-m M-S-m from `beginning-of-line` to `non-space-beginning-of-line` f77f1aa
   - bleopt: rename internal settings to `internal_{ignore_trap,suppress_bash_output,exec_type,stackdump_enabled}` fd042d8
   - vi_nmap: change the behavior of <kbd>C-home</kbd>, <kbd>C-end</kbd> to match with those of vim
+  - util (`ble/util/unlocal`): add workaround for Bash-5.0 `localvar_unset` `#D0904`
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -2319,7 +2316,7 @@ tech
   - util: `ble/util/assign-array` の入れ子の呼び出しで内容が混ざり合う問題の修正 bd14982
   - progcomp: fix a bug that bash-completion does not work properly due to wrong `COMP_POINT` `#D0897` 41b8cbb
   - util: fix leak variables `a` and `b` `#D0900` 244f965
-  - progcomp: fix a problem that completion functions can consume stdin `#D0903`
+  - progcomp: fix a problem that completion functions can consume stdin `#D0903` 7cfe425
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3133,6 +3130,10 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-05
+
+  * bash-5.0 の localvar_unset [#D0904]
+    localvar_unset が on の時には upvar などで使っている unlocal 機能が使えない。
+    対策をしなければならない。
 
   * 2018-09-13 progcomp: scp の補完の動作が変である [#D0903]
 
