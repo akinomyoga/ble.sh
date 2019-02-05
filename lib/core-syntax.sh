@@ -3268,8 +3268,8 @@ ble-syntax:bash/ctx-heredoc-word/initialize
 function ble-syntax:bash/ctx-heredoc-word/remove-quotes {
   local text=$1 result=
 
-  local rex1='^[^\$"'\'']+|^\$?["'\'']|^\\.?|^.'
-  while [[ $text && $text =~ $rex1 ]]; do
+  local rex='^[^\$"'\'']+|^\$?["'\'']|^\\.?|^.'
+  while [[ $text && $text =~ $rex ]]; do
     local rematch=$BASH_REMATCH
     if [[ $rematch == \" || $rematch == \$\" ]]; then
       if rex='^\$?"(([^\"]|\\.)*)(\\?$|")'; [[ $text =~ $rex ]]; then
