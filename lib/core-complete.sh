@@ -241,8 +241,13 @@ function ble-complete/action:file/getg {
 # action:progcomp
 
 function ble-complete/action:progcomp/initialize {
-  [[ $DATA == *:noquote:* ]] ||
-    ble-complete/action/util/quote-insert
+  [[ $DATA == *:noquote:* ]] && return
+
+  # bash-completion には compopt -o nospace として、
+  # 自分でスペースを付加する補完関数がある。この時クォートすると問題。
+  [[ $DATA == *:nospace:* && $CAND == *' ' && ! -f $CAND ]] && return
+
+  ble-complete/action/util/quote-insert
 }
 function ble-complete/action:progcomp/complete {
   if [[ $DATA == *:filenames:* ]]; then
@@ -562,7 +567,7 @@ function ble-complete/source:command {
   done
 }
 
-# source:file
+# source:file, source:dir
 
 function ble-complete/util/eval-pathname-expansion {
   local pattern=$1
@@ -634,53 +639,63 @@ function ble-complete/source:file/.construct-pathname-pattern {
   ret=$pattern
 }
 
-function ble-complete/source:file {
+function ble-complete/source:file/.impl {
+  local opts=$1
   [[ $comps_flags == *v* ]] || return 1
   [[ $comp_type != *a* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
-  #   Note: compgen -A file (以下のコード参照) はバグがあって、
+  #   Note: compgen -A file/directory (以下のコード参照) はバグがあって、
   #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0714 #M0009)
   #
   #     local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
   #     local candidates; ble/util/assign-array candidates 'compgen -A file -- "$compv_quoted"'
 
-  local ret
-  ble-complete/source:file/.construct-pathname-pattern "$COMPV"
-  ble-complete/util/eval-pathname-expansion "$ret"
-  local -a candidates; candidates=("${ret[@]}")
+  local -a candidates=()
+  local action=file
+
+  # tilde expansion
+  if local rex='^~[^/'\''"$`\!:]*$'; [[ $COMPS =~ $rex ]]; then
+    local pattern=${COMPS#\~}
+    [[ $comp_type == *a* ]] && pattern=
+    ble/util/assign-array candidates 'compgen -P \~ -u -- "$pattern"'
+    ((${#candidates[@]})) && action=tilde
+  fi
+
+  # filenames
+  if ((!${#candidates[@]})); then
+    local ret
+    ble-complete/source:file/.construct-pathname-pattern "$COMPV"
+    [[ :$opts: == *:directory:* ]] && ret=$ret/
+    ble-complete/util/eval-pathname-expansion "$ret"
+
+    candidates=()
+    local cand
+    if [[ :$opts: == *:directory:* ]]; then
+      for cand in "${ret[@]}"; do
+        [[ -d $cand ]] || continue
+        [[ $cand == / ]] || cand=${cand%/}
+        ble/array#push candidates "$cand"
+      done
+    else
+      for cand in "${ret[@]}"; do
+        [[ -e $cand || -h $cand ]] || continue
+        ble/array#push candidates "$cand"
+      done
+    fi
+  fi
 
   local cand
   for cand in "${candidates[@]}"; do
-    [[ -e $cand || -h $cand ]] || continue
     [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
-    ble-complete/cand/yield file "$cand"
+    ble-complete/cand/yield "$action" "$cand"
   done
 }
 
-# source:dir
-
+function ble-complete/source:file {
+  ble-complete/source:file/.impl
+}
 function ble-complete/source:dir {
-  [[ $comps_flags == *v* ]] || return 1
-  [[ $comp_type != *a* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
-
-  # Note: compgen -A directory (以下のコード参照) はバグがあって、
-  #   bash-4.3 以降でクォート除去が実行されないので使わない (#D0714 #M0009)
-  #
-  #   local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
-  #   local candidates; ble/util/assign-array candidates 'compgen -A directory -S / -- "$compv_quoted"'
-
-  local ret
-  ble-complete/source:file/.construct-pathname-pattern "$COMPV"
-  ble-complete/util/eval-pathname-expansion "$ret/"
-  local -a candidates; candidates=("${ret[@]}")
-
-  local cand
-  for cand in "${candidates[@]}"; do
-    [[ -d $cand ]] || continue
-    [[ $FIGNORE ]] && ! ble-complete/.fignore/filter "$cand" && continue
-    [[ $cand == / ]] || cand=${cand%/}
-    ble-complete/cand/yield file "$cand"
-  done
+  ble-complete/source:file/.impl directory
 }
 
 # source:rhs

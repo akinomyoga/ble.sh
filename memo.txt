@@ -811,20 +811,6 @@ tech
     また、実は bash-4.3 以降では HIST{FILE,}SIZE に負の値を設定できる様だ。
     更に、それ以前から単に空文字列にしておけば無制限なのだそうだ。
 
-2018-08-28
-
-  * complete: bash-completion の幾つかの関数を上書きもしくは乗っ取り?
-
-    bash-completion の _minimal などは ble 側で乗っ取っても良い様に思う。
-    より良いサポートをする事ができるはずなので。
-    例えば --prefix=... などに於いて。
-    実は単にキャンセルすれば ble の既定の filedir 及び =... :... が動く。
-
-    →と思ったが --prefix=... に関しては COMP_WORDBREAKS に対応した今、
-    実は余り気にしなくても自動的に対応される…。
-    その他に乗っ取って利点などはあるだろうか…。
-    もし利点があるようだったら実装するというので良い気がする。
-
 2018-08-26
 
   * complete: 候補一覧にて曖昧一致に関しても一致部分を太字にすると便利ではないか?
@@ -2277,6 +2263,7 @@ tech
   - edit: support <kdb>M-*</kbd> `#D0899` 3fd7d6e
   - edit: support <kdb>M-g</kbd>, <kdb>C-x *</kbd>, <kdb>C-x g</kbd> `#D0902` 41797c6
   - progcomp: support `COMP_WORDBREKS` `#D0903` 7cfe425
+  - complete: support completion of tilde expansion `#D0907`
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2285,7 +2272,7 @@ tech
   - emacs: change M-m M-S-m from `beginning-of-line` to `non-space-beginning-of-line` f77f1aa
   - bleopt: rename internal settings to `internal_{ignore_trap,suppress_bash_output,exec_type,stackdump_enabled}` fd042d8
   - vi_nmap: change the behavior of <kbd>C-home</kbd>, <kbd>C-end</kbd> to match with those of vim
-  - util (`ble/util/unlocal`): add workaround for Bash-5.0 `localvar_unset` `#D0904`
+  - util (`ble/util/unlocal`): add workaround for Bash-5.0 `localvar_unset` `#D0904` 8677a71
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -2295,7 +2282,7 @@ tech
   - util: `ble/util/assign` が正しい戻り値を返さないバグの修正 bd14982
   - util: `ble/util/assign-array` の入れ子の呼び出しで内容が混ざり合う問題の修正 bd14982
   - progcomp: fix a bug that bash-completion does not work properly due to wrong `COMP_POINT` `#D0897` 41b8cbb
-  - util: fix leak variables `a` and `b` `#D0900` 244f965
+  - global: fix leak variables `#D0900` 244f965 `#D0906` b8dcbfe
   - progcomp: fix a problem that completion functions can consume stdin `#D0903` 7cfe425
 
   内部的変更
@@ -3109,9 +3096,52 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-02-07
+
+  * 2018-08-28 complete: bash-completion の幾つかの関数を上書きもしくは乗っ取り? [#D0907]
+    [棄却: ただし、ble.sh 側で bash-completion に習って tilde 展開の補完に対応]
+
+    bash-completion の _minimal などは ble 側で乗っ取っても良い様に思う。
+    より良いサポートをする事ができるはずなので。
+    例えば --prefix=... などに於いて。
+    実は単にキャンセルすれば ble の既定の filedir 及び =... :... が動く。
+
+    →と思ったが --prefix=... に関しては COMP_WORDBREAKS に対応した今、
+    実は余り気にしなくても自動的に対応される…。
+    その他に乗っ取って利点などはあるだろうか…。
+    もし利点があるようだったら実装するというので良い気がする。
+
+    * 調べると bash-completion _filedir はチルダ展開にも対応している。
+      bash-completion の方が実は上なのではないか…。
+      →ble.sh の source:file, source:dir でも対応した
+
+      _tilde: COMPV =~ ^~[^/]+$ ならばユーザ名を生成
+        compgen -P '~' -u -- "${COMPV#\~}"
+
+      _filedir
+        先ず _tilde を試みる or
+        第一引数が -d ならディレクトリ名を生成 or
+        第一引数がそれ以外なら、それを拡張子と解釈してファイル名を生成 or
+        ファイル名を生成
+
+      →取り敢えず tilde には対応した。
+
+      [=:] に関しては完全には対応していないが、
+      /C:foo --opt=foo opt=foo 等の形式には対応している。
+      一方で opt=foo:bar の形式には対応していない。
+      まあ、面倒だし、本当にそういう機会があるのかも分からないので取り敢えず放置する。
+      もし対応するのだとしたら完全に [=:] で単語を分割して対応する方が良い。
+
+      よく考えたら。クォートされている場合には発動してはならないのでは。。
+      と思ったが COMPS でパターンマッチングしているのでクォートされている事はない筈。OK
+
+    うーん色々考えたが。現状で _minimal に問題点があるという訳でもないので、
+    取り敢えず乗っ取るのはわざわざする程の事でもないという事で棄却する。
+
 2019-02-05
 
-  * 改めて leak variables のチェックを行う。
+  * 改めて leak variables のチェックを行う [#D0906]
+    ref #M0002
     何処かで len, ret, flags という変数が漏れている。
 
     - fixed: ble-syntax:bash/ctx-heredoc-word/remove-quotes rex
