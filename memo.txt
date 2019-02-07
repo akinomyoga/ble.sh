@@ -811,6 +811,16 @@ tech
     また、実は bash-4.3 以降では HIST{FILE,}SIZE に負の値を設定できる様だ。
     更に、それ以前から単に空文字列にしておけば無制限なのだそうだ。
 
+    2019-02-07 history コマンドで出力される内容と、
+    ble.sh で管理している内容がずれてしまうという問題はある。
+    ただ、それは現実的な問題になるだろうか。
+    履歴展開を確認する場合には何れにしても history を使って番号を取得する。
+    従って、内部の番号を参照する事になるはずである。
+
+    一方で history -d や history -r 等の操作を実行した時に、
+    どの様に ble.sh の方を更新するのかという問題はある。
+    通常の bash では確かにコマンドライン編集時に辿れる履歴も一緒に変更されている。
+
 2018-08-26
 
   * complete: 候補一覧にて曖昧一致に関しても一致部分を太字にすると便利ではないか?
@@ -2262,8 +2272,8 @@ tech
   - progcomp: support `compopt -o nosort|noquote|plusdirs` `#D0898` cc48539
   - edit: support <kdb>M-*</kbd> `#D0899` 3fd7d6e
   - edit: support <kdb>M-g</kbd>, <kdb>C-x *</kbd>, <kdb>C-x g</kbd> `#D0902` 41797c6
-  - progcomp: support `COMP_WORDBREKS` `#D0903` 7cfe425
-  - complete: support completion of tilde expansion `#D0907`
+  - progcomp: support `COMP_WORDBREAKS` `#D0903` 7cfe425
+  - complete: support completion of tilde expansion `#D0907` b4fc40c
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -3097,6 +3107,11 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-07
+
+  * BUG complete: チルダ展開における補完で大量のエラーメッセージが出る [reported by cmplstofB] [#D0908]
+
+    以下のエラーメッセージが出る。単に action:tilde の実装がないだけだった。直した。
+    -bash: ble-complete/action:tilde/initialize: そのようなファイルやディレクトリはありません
 
   * 2018-08-28 complete: bash-completion の幾つかの関数を上書きもしくは乗っ取り? [#D0907]
     [棄却: ただし、ble.sh 側で bash-completion に習って tilde 展開の補完に対応]

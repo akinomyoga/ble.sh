@@ -238,6 +238,19 @@ function ble-complete/action:file/getg {
   [[ $g ]] || ble-color-face2g filename_warning
 }
 
+function ble-complete/action:tilde/initialize {
+  # チルダは quote しない
+  CAND=${CAND#\~} ble-complete/action/util/quote-insert
+  INSERT=\~$INSERT
+}
+function ble-complete/action:tilde/complete {
+  ble-complete/action/util/complete.addtail /
+}
+function ble-complete/action:tilde/getg {
+  ble-color-face2g filename_directory
+}
+
+
 # action:progcomp
 
 function ble-complete/action:progcomp/initialize {
