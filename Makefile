@@ -22,7 +22,7 @@ endif
 
 MWGPP:=$(GAWK) -f ext/mwg_pp.awk
 
-FULLVER:=0.3.alpha
+FULLVER:=0.3.0-alpha
 
 OUTDIR:=out
 
@@ -35,7 +35,7 @@ ble-form.sh:
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
 $(OUTDIR)/ble.sh: ble.pp | $(OUTDIR)
-	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ \
+	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ FULLVER=$(FULLVER) \
 	  $(MWGPP) $< >/dev/null
 
 outdirs += $(OUTDIR)/keymap

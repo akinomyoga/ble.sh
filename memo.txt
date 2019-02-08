@@ -2273,7 +2273,8 @@ tech
   - edit: support <kdb>M-*</kbd> `#D0899` 3fd7d6e
   - edit: support <kdb>M-g</kbd>, <kdb>C-x *</kbd>, <kdb>C-x g</kbd> `#D0902` 41797c6
   - progcomp: support `COMP_WORDBREAKS` `#D0903` 7cfe425
-  - complete: support completion of tilde expansion `#D0907` b4fc40c
+  - complete: support completion of tilde expansion `#D0907` b4fc40c `#D0908` 9fafdb3
+  - main: support `BLE_VERSION` and `BLE_VERSINFO` (suggested by cmplstofB) `#D0909`
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -3106,9 +3107,16 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-02-08
+
+  * main: support BLE_VERSION and BLE_VERSINFO (suggested by cmplstofB) [#D0909]
+    変数名は最近は全て _ble_* に統一してきたが素直に BLE_* を使う事にした。
+    今後は BLE_* はユーザに公開する変数に使う事にする。
+    core-syntax.sh で使っている BLE_ATTR_* 及び BLE_CTX_* は後で改名する。
+
 2019-02-07
 
-  * BUG complete: チルダ展開における補完で大量のエラーメッセージが出る [reported by cmplstofB] [#D0908]
+  * BUG complete: チルダ展開における補完で大量のエラーメッセージが出る (reported by cmplstofB) [#D0908]
 
     以下のエラーメッセージが出る。単に action:tilde の実装がないだけだった。直した。
     -bash: ble-complete/action:tilde/initialize: そのようなファイルやディレクトリはありません

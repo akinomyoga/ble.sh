@@ -231,6 +231,28 @@ if [[ $_ble_base ]]; then
 fi
 
 #------------------------------------------------------------------------------
+#%$ echo "BLE_VERSION=$FULLVER+$(git show -s --format=%h)"
+function ble/base/initialize-version-information {
+  local version=$BLE_VERSION
+
+  local hash=
+  if [[ $version == *+* ]]; then
+    hash=${version#*+}
+    version=${version%%+*}
+  fi
+
+  local status=release
+  if [[ $version == *-* ]]; then
+    status=${version#*-}
+    version=${version%%-*}
+  fi
+
+  local major=${version%%.*}; version=${version#*.}
+  local minor=${version%%.*}; version=${version#*.}
+  local patch=${version%%.*}
+  BLE_VERSINFO=("$major" "$minor" "$patch" "$hash" "$status" noarch)
+}
+ble/base/initialize-version-information
 
 _ble_bash_loaded_in_function=0
 [[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
