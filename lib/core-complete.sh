@@ -3031,8 +3031,8 @@ function ble-sabbrev {
     local -a specs=()
     local arg flag_help= flag_error=
     for arg; do
-      if [[ $arg == *=* ]]; then
-        ble/array#push specs "$spec"
+      if [[ $arg == ?*=* ]]; then
+        ble/array#push specs "$arg"
       else
         case $arg in
         (--help) flag_help=1 ;;
@@ -3049,7 +3049,6 @@ function ble-sabbrev {
       printf '%s\n' \
              'usage: ble-sabbrev key=value' \
              'usage: ble-sabbrev --help' \
-             '' \
              'Register sabbrev expansion.'
       [[ ! $flag_error ]]; return
     fi

@@ -484,9 +484,7 @@ function ble/base/print-usage-for-no-argument-command {
   local name=${FUNCNAME[1]} desc=$1; shift
   printf '%s\n' \
          "usage: $name" \
-         '' \
-         "$desc" \
-         '' >&2
+         "$desc" >&2
   [[ $1 != --help ]] && return 2
   return 0
 }
