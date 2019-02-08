@@ -3028,8 +3028,34 @@ fi
 ##   静的略語展開を登録します。
 function ble-sabbrev {
   if (($#)); then
+    local -a specs=()
+    local arg flag_help= flag_error=
+    for arg; do
+      if [[ $arg == *=* ]]; then
+        ble/array#push specs "$spec"
+      else
+        case $arg in
+        (--help) flag_help=1 ;;
+        (-*)
+          echo "ble-sabbrev: unknown option '$arg'." >&2
+          flag_error=1 ;;
+        (*)
+          echo "ble-sabbrev: unrecognized argument '$arg'." >&2
+          flag_error=1 ;;
+        esac
+      fi
+    done
+    if [[ $flag_help || $flag_error ]]; then
+      printf '%s\n' \
+             'usage: ble-sabbrev key=value' \
+             'usage: ble-sabbrev --help' \
+             '' \
+             'Register sabbrev expansion.'
+      [[ ! $flag_error ]]; return
+    fi
+
     local spec key value
-    for spec; do
+    for spec in "${specs[@]}"; do
       key=${spec%%=*} value=${spec#*=}
       ble-complete/sabbrev/register "$key" "$value"
     done

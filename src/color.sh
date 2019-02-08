@@ -25,6 +25,11 @@ if [[ ! ${bleopt_term_index_colors+set} ]]; then
 fi
 
 function ble-color-show {
+  if (($#)); then
+    ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
+    return
+  fi
+
   local cols=16
   local bg bg0 bgN ret gflags=$((_ble_color_gflags_BackColor|_ble_color_gflags_ForeColor))
   for ((bg0=0;bg0<256;bg0+=cols)); do
@@ -417,8 +422,28 @@ if [[ ! $_ble_faces_count ]]; then # reload #D0875
   _ble_faces=()
   _ble_faces_sgr=()
 fi
-function ble-color-defface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_defface_hook "ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
-function ble-color-setface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_setface_hook "ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+
+function ble-color-defface/.check-argument {
+  local rex='^[a-zA-Z0-9_]+$'
+  [[ $1 =~ $rex && $2 ]] && return 0
+
+  local name=${FUNCNAME[1]}
+  printf '%s\n' "usage: $name FACE_NAME [TYPE:]SPEC" "" \
+         "TYPE" \
+         "  Specifies the format of SPEC. The following values are available." \
+         "" \
+         "  gspec   Comma separated graphic attribute list" \
+         "  g       Integer value" \
+         "  face    Face name" \
+         "  iface   Face id" \
+         "  sgrspec Parameters to the control function SGR" \
+         "  ansi    ANSI Sequences"
+  ext=2; [[ $1 == --help ]] && ext=0
+  return 1
+} >&2
+
+function ble-color-defface   { local ext; ble-color-defface/.check-argument "$@" || return "$ext"; local q=\' Q="'\''"; ble/array#push _ble_color_faces_defface_hook "ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble-color-setface   { local ext; ble-color-defface/.check-argument "$@" || return "$ext"; local q=\' Q="'\''"; ble/array#push _ble_color_faces_setface_hook "ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
 function ble-color-face2g    { ble-color/faces/initialize && ble-color-face2g    "$@"; }
 function ble-color-face2sgr  { ble-color/faces/initialize && ble-color-face2sgr  "$@"; }
 function ble-color-iface2g   { ble-color/faces/initialize && ble-color-iface2g   "$@"; }
@@ -458,6 +483,7 @@ function ble-color/faces/initialize {
   }
 
   function ble-color-defface {
+    local ext; ble-color-defface/.check-argument "$@" || return "$ext"
     local name=_ble_faces__$1 spec=$2 ret
     (($name)) && return
     (($name=++_ble_faces_count))
@@ -465,6 +491,7 @@ function ble-color/faces/initialize {
     ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
   }
   function ble-color-setface {
+    local ext; ble-color-defface/.check-argument "$@" || return "$ext"
     local name=_ble_faces__$1 spec=$2 ret
     if [[ ${!name} ]]; then
       ble-color-setface/.spec2g "$spec"; _ble_faces[$name]=$ret

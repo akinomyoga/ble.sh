@@ -783,6 +783,19 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
+2019-02-08
+
+  * manual: 以下の関数についても説明書に記述して --help に対応しても良いかもしれない。
+    - ble-import, ble-assert, ble-autoload, ble-stackdump
+    - ble-color-ansi2g
+    - ble-color-face2{g,sgr}
+    - ble-color-g2sgr
+    - ble-color-gspec2{g,sgr}
+    - ble-color-iface2{g,sgr}
+    - ble-color-sgrspec2g
+    - ble-decode-{byte,char,key}
+    - ble-decode-{kbd,unkbd}
+
 2019-02-05
 
   * char_width_mode=auto?
@@ -2263,7 +2276,7 @@ tech
   - vi_omap: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3 `#D0868` eb848dc
   - main: improve support of `[[ -o posix ]]` `#D0871` 07ae3cc `#D0872` 513c543
   - main: do not load ble.sh when bash is started by `bash -i -c command` `#D0873` fc23a6d
-  - main: support `ble-update` `#D0874` fc45be6 `#D0875` 0b50974 `#D0891` d010300
+  - main: support `ble-update` `#D0874` fc45be6 `#D0875` 0b50974 `#D0891` d010300 `#D0910`
   - vi_nmap: support <kbd>C-d</kbd>, <kbd>C-u</kbd>, <kbd>C-e</kbd>, <kbd>C-y</kbd>, <kbd>C-f</kbd>, <kbd>next</kbd>, <kbd>C-b</kbd>, <kbd>prior</kbd> `#D0886`
   - isearch: use previous needle for empty string search `#D0889` 362fce3
   - vi_imap: add a function `ble-decode/keymap:vi_imap/define-meta-bindings` `#D0892` a21d22f
@@ -3108,6 +3121,19 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-08
+
+  * global: ユーザ関数に --help を実装する (suggested by cmplstofB) [#D0911]
+
+    正直面倒くさい。沢山ある割に大した複雑な使用方法も存在しない。
+    ble-bind がほぼ唯一の指定が面倒な関数である。
+    他に ble-color-setface 辺りは説明を実装しても良さそう。
+    取り敢えず適当に説明を追加した。
+
+    - ble-bind 対応済み
+    - ble-update
+    - ble-sabbrev
+    - ble-attach, ble-detach
+    - ble-color-show, ble-color-defface, ble-color-setface
 
   * BUG main: /bin/sh が dash/ash の環境で ble-update が動作しない (reported by cmplstofB) [#D0910]
     _ble_base_repository='...' を生成するコマンドが bash の機能に依存していたのが原因であった。

@@ -480,9 +480,23 @@ if ! ble/base/initialize-cache-directory; then
   echo "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
   return 1
 fi
-
+function ble/base/print-usage-for-no-argument-command {
+  local name=${FUNCNAME[1]} desc=$1; shift
+  printf '%s\n' \
+         "usage: $name" \
+         '' \
+         "$desc" \
+         '' >&2
+  [[ $1 != --help ]] && return 2
+  return 0
+}
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 function ble-update {
+  if (($#)); then
+    ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
+    return
+  fi
+
   if ! type git make gawk &>/dev/null; then
     local command
     for command in git make gawk; do
@@ -538,6 +552,11 @@ ble/bin/.freeze-utility-path gawk
 
 _ble_attached=
 function ble-attach {
+  if (($#)); then
+    ble/base/print-usage-for-no-argument-command 'Attach to ble.sh.' "$@"
+    return
+  fi
+
   [[ $_ble_attached ]] && return
   _ble_attached=1
 
@@ -581,6 +600,11 @@ function ble-attach {
 }
 
 function ble-detach {
+  if (($#)); then
+    ble/base/print-usage-for-no-argument-command 'Detach from ble.sh.' "$@"
+    return
+  fi
+
   [[ $_ble_attached ]] || return
   _ble_attached=
 
