@@ -3109,6 +3109,11 @@ tech
 
 2019-02-08
 
+  * BUG main: /bin/sh が dash/ash の環境で ble-update が動作しない (reported by cmplstofB) [#D0910]
+    _ble_base_repository='...' を生成するコマンドが bash の機能に依存していたのが原因であった。
+    パラメータ展開の ${var//before/after} は POSIX には規定されていない。
+    結局 bash を明示的に呼び出す事にした。
+
   * main: support BLE_VERSION and BLE_VERSINFO (suggested by cmplstofB) [#D0909]
     変数名は最近は全て _ble_* に統一してきたが素直に BLE_* を使う事にした。
     今後は BLE_* はユーザに公開する変数に使う事にする。

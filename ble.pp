@@ -481,7 +481,7 @@ if ! ble/base/initialize-cache-directory; then
   return 1
 fi
 
-#%$ pwd=$(pwd) q=\' Q="'\''"; echo "_ble_base_repository='${pwd//$q/$Q}'"
+#%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 function ble-update {
   if ! type git make gawk &>/dev/null; then
     local command
