@@ -2959,6 +2959,16 @@ function ble-decode/keymap:auto_complete/define {
 # sabbrev
 #
 
+function ble-complete/sabbrev/.print-definition {
+  local key=$1 value=$2
+  local q=\' Q="'\''" shell_specialchars=$' \n\t&|;<>()''\$`"'\''[]*?!~'
+  if [[ $key == *["$shell_specialchars"]* ]]; then
+    printf "ble-sabbrev '%s=%s'\n" "${key//$q/$Q}" "${value//$q/$Q}"
+  else
+    printf "ble-sabbrev %s='%s'\n" "$key" "${value//$q/$Q}"
+  fi
+}
+
 ## 関数 ble-complete/sabbrev/register key value
 ##   静的略語展開を登録します。
 ##   @param[in] key value
@@ -2977,10 +2987,10 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     _ble_complete_sabbrev[$key]=$value
   }
   function ble-complete/sabbrev/list {
-    local key q=\' Q="'\''"
+    local key
     for key in "${!_ble_complete_sabbrev[@]}"; do
       local value=${_ble_complete_sabbrev[$key]}
-      printf 'ble-sabbrev %s=%s\n' "$key" "'${value//$q/$Q}'"
+      ble-complete/sabbrev/.print-definition "$key" "$value"
     done
   }
   function ble-complete/sabbrev/get {
@@ -3003,11 +3013,12 @@ else
     _ble_complete_sabbrev_values[i]=$value
   }
   function ble-complete/sabbrev/list {
+    local shell_specialchars=$' \n\t&|;<>()''\$`"'\''[]*?!~'
     local i N=${#_ble_complete_sabbrev_keys[@]} q=\' Q="'\''"
     for ((i=0;i<N;i++)); do
       local key=${_ble_complete_sabbrev_keys[i]}
       local value=${_ble_complete_sabbrev_values[i]}
-      printf 'ble-sabbrev %s=%s\n' "$key" "'${value//$q/$Q}'"
+      ble-complete/sabbrev/.print-definition "$key" "$value"
     done
   }
   function ble-complete/sabbrev/get {
