@@ -71,7 +71,7 @@ If you want to load `ble.sh` defaultly in interactive sessions of `bash`, add th
 ```bash
 # bashrc
 
-# Add these lines at the top of .bashrc:
+# Add this lines at the top of .bashrc:
 [[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
 
 # your bashrc settings come here...
@@ -88,7 +88,7 @@ For `ble-0.3+`, run `ble-update` in the session with `ble.sh` loaded:
 $ ble-update
 ```
 
-You can also download the latest version by `git pull` and install it:
+You can instead download the latest version by `git pull` and install it:
 
 ```bash
 cd ble.sh   # <-- enter the git repository you already have
@@ -203,6 +203,18 @@ Key bindings can be controlled with the shell function, `ble-bind`.
 For example, with the following setting, "Hello, world!" will be inserted on typing <kbd>C-x h</kbd>
 ```bash
 ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
+```
+
+For another example, if you want to invoke a command on typing <kbd>M-c</kbd>, you can write as follows:
+
+```bash
+ble-bind -c 'M-c' 'my-command'
+```
+
+Or, if you want to invoke a edit function (for Bash `bind -x`) on typing <kbd>C-r</kbd>, you can write as follows:
+
+```bash
+ble-bind -x 'C-r' 'my-edit-function'
 ```
 
 The existing key bindings are shown by the following command:

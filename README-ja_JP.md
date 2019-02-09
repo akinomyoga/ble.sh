@@ -215,6 +215,18 @@ $ ble-color-show
 ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ```
 
+<kbd>M-c</kbd> を入力した時にコマンドを実行するには以下のようにします。
+
+```bash
+ble-bind -c 'M-c' 'my-command'
+```
+
+<kbd>C-r</kbd> を入力した時に、ユーザー編集関数 (Bash の `bind -x` で指定するのと同様の物) を実行するには以下のようにします。
+
+```bash
+ble-bind -x 'C-r' 'my-edit-function'
+```
+
 既存のキーバインディングは以下のコマンドで確認できます。
 ```console
 $ ble-bind -P
