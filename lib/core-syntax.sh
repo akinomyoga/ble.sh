@@ -4779,46 +4779,46 @@ function ble-syntax/faces-onload-hook {
   # Note: navy was replaced by 26 for dark background
   # Note: gray was replaced by 242 for dark background
 
-  ble-color-defface syntax_default           none
-  ble-color-defface syntax_command           fg=brown
-  ble-color-defface syntax_quoted            fg=green
-  ble-color-defface syntax_quotation         fg=green,bold
-  ble-color-defface syntax_expr              fg=26
-  ble-color-defface syntax_error             bg=203,fg=231 # bg=224
-  ble-color-defface syntax_varname           fg=202
-  ble-color-defface syntax_delimiter         bold
-  ble-color-defface syntax_param_expansion   fg=purple
-  ble-color-defface syntax_history_expansion bg=94,fg=231
-  ble-color-defface syntax_function_name     fg=92,bold # fg=purple
-  ble-color-defface syntax_comment           fg=242
-  ble-color-defface syntax_glob              fg=198,bold
-  ble-color-defface syntax_brace             fg=37,bold
-  ble-color-defface syntax_tilde             fg=navy,bold
-  ble-color-defface syntax_document          fg=94
-  ble-color-defface syntax_document_begin    fg=94,bold
+  ble/color/defface syntax_default           none
+  ble/color/defface syntax_command           fg=brown
+  ble/color/defface syntax_quoted            fg=green
+  ble/color/defface syntax_quotation         fg=green,bold
+  ble/color/defface syntax_expr              fg=26
+  ble/color/defface syntax_error             bg=203,fg=231 # bg=224
+  ble/color/defface syntax_varname           fg=202
+  ble/color/defface syntax_delimiter         bold
+  ble/color/defface syntax_param_expansion   fg=purple
+  ble/color/defface syntax_history_expansion bg=94,fg=231
+  ble/color/defface syntax_function_name     fg=92,bold # fg=purple
+  ble/color/defface syntax_comment           fg=242
+  ble/color/defface syntax_glob              fg=198,bold
+  ble/color/defface syntax_brace             fg=37,bold
+  ble/color/defface syntax_tilde             fg=navy,bold
+  ble/color/defface syntax_document          fg=94
+  ble/color/defface syntax_document_begin    fg=94,bold
 
-  ble-color-defface command_builtin_dot fg=red,bold
-  ble-color-defface command_builtin     fg=red
-  ble-color-defface command_alias       fg=teal
-  ble-color-defface command_function    fg=92 # fg=purple
-  ble-color-defface command_file        fg=green
-  ble-color-defface command_keyword     fg=blue
-  ble-color-defface command_jobs        fg=red
-  ble-color-defface command_directory   fg=26,underline
-  ble-color-defface filename_directory        underline,fg=26
-  ble-color-defface filename_directory_sticky underline,fg=white,bg=26
-  ble-color-defface filename_link             underline,fg=teal
-  ble-color-defface filename_orphan           underline,fg=teal,bg=224
-  ble-color-defface filename_setuid           underline,fg=black,bg=220
-  ble-color-defface filename_setgid           underline,fg=black,bg=191
-  ble-color-defface filename_executable       underline,fg=green
-  ble-color-defface filename_other            underline
-  ble-color-defface filename_socket           underline,fg=cyan,bg=black
-  ble-color-defface filename_pipe             underline,fg=lime,bg=black
-  ble-color-defface filename_character        underline,fg=white,bg=black
-  ble-color-defface filename_block            underline,fg=yellow,bg=black
-  ble-color-defface filename_warning          underline,fg=red
-  ble-color-defface filename_ls_colors        underline
+  ble/color/defface command_builtin_dot fg=red,bold
+  ble/color/defface command_builtin     fg=red
+  ble/color/defface command_alias       fg=teal
+  ble/color/defface command_function    fg=92 # fg=purple
+  ble/color/defface command_file        fg=green
+  ble/color/defface command_keyword     fg=blue
+  ble/color/defface command_jobs        fg=red
+  ble/color/defface command_directory   fg=26,underline
+  ble/color/defface filename_directory        underline,fg=26
+  ble/color/defface filename_directory_sticky underline,fg=white,bg=26
+  ble/color/defface filename_link             underline,fg=teal
+  ble/color/defface filename_orphan           underline,fg=teal,bg=224
+  ble/color/defface filename_setuid           underline,fg=black,bg=220
+  ble/color/defface filename_setgid           underline,fg=black,bg=191
+  ble/color/defface filename_executable       underline,fg=green
+  ble/color/defface filename_other            underline
+  ble/color/defface filename_socket           underline,fg=cyan,bg=black
+  ble/color/defface filename_pipe             underline,fg=lime,bg=black
+  ble/color/defface filename_character        underline,fg=white,bg=black
+  ble/color/defface filename_block            underline,fg=yellow,bg=black
+  ble/color/defface filename_warning          underline,fg=red
+  ble/color/defface filename_ls_colors        underline
 
   ble-syntax/attr2iface/.define CTX_ARGX     syntax_default
   ble-syntax/attr2iface/.define CTX_ARGX0    syntax_default

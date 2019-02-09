@@ -423,7 +423,9 @@ if [[ ! $_ble_faces_count ]]; then # reload #D0875
   _ble_faces_sgr=()
 fi
 
-function ble-color-defface/.check-argument {
+## 関数 ble/color/setface/.check-argument
+##   @var[out] ext
+function ble/color/setface/.check-argument {
   local rex='^[a-zA-Z0-9_]+$'
   [[ $# == 2 && $1 =~ $rex && $2 ]] && return 0
 
@@ -441,9 +443,18 @@ function ble-color-defface/.check-argument {
   ext=2; [[ $# == 1 && $1 == --help ]] && ext=0
   return 1
 } >&2
+function ble-color-defface {
+  local ext; ble/color/setface/.check-argument "$@" || return "$ext"
+  ble/color/defface "$@"
+}
+function ble-color-setface {
+  local ext; ble/color/setface/.check-argument "$@" || return "$ext"
+  ble/color/setface "$@"
+}
 
-function ble-color-defface   { local ext; ble-color-defface/.check-argument "$@" || return "$ext"; local q=\' Q="'\''"; ble/array#push _ble_color_faces_defface_hook "ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
-function ble-color-setface   { local ext; ble-color-defface/.check-argument "$@" || return "$ext"; local q=\' Q="'\''"; ble/array#push _ble_color_faces_setface_hook "ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+# 遅延関数 (後で上書き)
+function ble/color/defface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_defface_hook "ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble/color/setface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_setface_hook "ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
 function ble-color-face2g    { ble-color/faces/initialize && ble-color-face2g    "$@"; }
 function ble-color-face2sgr  { ble-color/faces/initialize && ble-color-face2sgr  "$@"; }
 function ble-color-iface2g   { ble-color/faces/initialize && ble-color-iface2g   "$@"; }
@@ -467,9 +478,9 @@ function ble-color/faces/initialize {
     sgr=${_ble_faces_sgr[$1]}
   }
 
-  ## 関数 ble-color-setface/.spec2g
+  ## 関数 ble/color/setface/.spec2g
   ##   @var[out] ret
-  function ble-color-setface/.spec2g {
+  function ble/color/setface/.spec2g {
     local spec=$1
     case $spec in
     (gspec:*)   ble-color-gspec2g "${spec#*:}" ;;
@@ -482,19 +493,17 @@ function ble-color/faces/initialize {
     esac
   }
 
-  function ble-color-defface {
-    local ext; ble-color-defface/.check-argument "$@" || return "$ext"
+  function ble/color/defface {
     local name=_ble_faces__$1 spec=$2 ret
     (($name)) && return
     (($name=++_ble_faces_count))
-    ble-color-setface/.spec2g "$spec"; _ble_faces[$name]=$ret
+    ble/color/setface/.spec2g "$spec"; _ble_faces[$name]=$ret
     ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
   }
-  function ble-color-setface {
-    local ext; ble-color-defface/.check-argument "$@" || return "$ext"
+  function ble/color/setface {
     local name=_ble_faces__$1 spec=$2 ret
     if [[ ${!name} ]]; then
-      ble-color-setface/.spec2g "$spec"; _ble_faces[$name]=$ret
+      ble/color/setface/.spec2g "$spec"; _ble_faces[$name]=$ret
       ble-color-g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
     else
       local message="ble.sh: the specified face \`$1' is not defined."
@@ -728,11 +737,11 @@ function ble-highlight-layer:plain/getg {
 # ble-highlight-layer:region
 
 function ble-color/basic/faces-onload-hook {
-  ble-color-defface region         bg=60,fg=white
-  ble-color-defface region_target  bg=153,fg=black
-  ble-color-defface region_match   bg=55,fg=white
-  ble-color-defface disabled       fg=242
-  ble-color-defface overwrite_mode fg=black,bg=51
+  ble/color/defface region         bg=60,fg=white
+  ble/color/defface region_target  bg=153,fg=black
+  ble/color/defface region_match   bg=55,fg=white
+  ble/color/defface disabled       fg=242
+  ble/color/defface overwrite_mode fg=black,bg=51
 }
 ble/array#push _ble_color_faces_defface_hook ble-color/basic/faces-onload-hook
 
