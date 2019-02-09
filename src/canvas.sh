@@ -478,7 +478,7 @@ function ble/canvas/trace/.SGR {
   ble/color/read-sgrspec "$param" ansi
 
   local ret
-  ble-color-g2sgr "$g"
+  ble/color/g2sgr "$g"
   ble/canvas/put.draw "$ret"
 }
 function ble/canvas/trace/.process-csi-sequence {

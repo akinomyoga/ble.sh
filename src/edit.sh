@@ -1195,7 +1195,7 @@ function ble/textarea#update-text-buffer {
     HIGHLIGHT_BUFF=_ble_textarea_buffer
     for ichg in "${_ble_textmap_ichg[@]}"; do
       ble-highlight-layer/getg "$ichg"
-      ble-color-g2sgr "$g"
+      ble/color/g2sgr "$g"
       _ble_textarea_buffer[ichg]=$ret${_ble_textmap_glyph[ichg]}
     done
   fi
@@ -1259,7 +1259,7 @@ function ble/textarea#slice-text-buffer {
   if ((i1<i2&&i1<iN)); then
     local g
     ble-highlight-layer/getg "$i1"
-    ble-color-g2sgr "$g"
+    ble/color/g2sgr "$g"
     IFS= builtin eval "ret=\"\$ret\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
   else
     ret=
@@ -1722,7 +1722,7 @@ function ble/textarea#adjust-for-bash-bind {
       READLINE_POINT=$ret
     fi
 
-    ble-color-g2sgr "$lg"
+    ble/color/g2sgr "$lg"
     ble/canvas/put.draw "$ret"
 
     # 2018-03-19 stty -echo の時は Bash は何も出力しないので調整は不要

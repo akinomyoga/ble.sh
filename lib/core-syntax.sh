@@ -379,7 +379,7 @@ function ble-syntax/print-status/ctx#get-text {
   ble-syntax/ctx#get-name "$1"
   ret=${ret#BLE_}
   if [[ ! $ret ]]; then
-    ble-color-face2sgr syntax_error
+    ble/color/face2sgr syntax_error
     ret="${sgr}CTX$1$_ble_term_sgr0"
   fi
 }
@@ -550,9 +550,9 @@ function ble-syntax/print-status/.dump-arrays {
   line=()
 
   local sgr
-  ble-color-face2sgr syntax_error
+  ble/color/face2sgr syntax_error
   local sgr_error=$sgr
-  ble-color-face2sgr syntax_quoted
+  ble/color/face2sgr syntax_quoted
   local sgr_quoted=$sgr
 
   local i max_tree_width=0
@@ -565,11 +565,11 @@ function ble-syntax/print-status/.dump-arrays {
     fi
 
     local ret
-    [[ ${_ble_highlight_layer_syntax1_table[i]} ]] && ble-color-g2sgr "${_ble_highlight_layer_syntax1_table[i]}"
+    [[ ${_ble_highlight_layer_syntax1_table[i]} ]] && ble/color/g2sgr "${_ble_highlight_layer_syntax1_table[i]}"
     ble-syntax/print-status/.dump-arrays/.append-attr-char "${ret}a${_ble_term_sgr0}"
-    [[ ${_ble_highlight_layer_syntax2_table[i]} ]] && ble-color-g2sgr "${_ble_highlight_layer_syntax2_table[i]}"
+    [[ ${_ble_highlight_layer_syntax2_table[i]} ]] && ble/color/g2sgr "${_ble_highlight_layer_syntax2_table[i]}"
     ble-syntax/print-status/.dump-arrays/.append-attr-char "${ret}w${_ble_term_sgr0}"
-    [[ ${_ble_highlight_layer_syntax3_table[i]} ]] && ble-color-g2sgr "${_ble_highlight_layer_syntax3_table[i]}"
+    [[ ${_ble_highlight_layer_syntax3_table[i]} ]] && ble/color/g2sgr "${_ble_highlight_layer_syntax3_table[i]}"
     ble-syntax/print-status/.dump-arrays/.append-attr-char "${ret}e${_ble_term_sgr0}"
 
     [[ ${_ble_syntax_stat_shift[i]} ]]
@@ -4763,7 +4763,7 @@ function ble-syntax:bash/extract-command {
 
 # 遅延初期化対象
 _ble_syntax_attr2iface=()
-function ble-syntax/attr2g { ble-color/faces/initialize && ble-syntax/attr2g "$@"; }
+function ble-syntax/attr2g { ble/color/initialize-faces && ble-syntax/attr2g "$@"; }
 
 # 遅延初期化子
 function ble-syntax/faces-onload-hook {
@@ -5137,7 +5137,7 @@ function ble-syntax/highlight/ls_colors/.parse {
   for field in "${fields[@]}"; do
     [[ $field == *=* ]] || continue
     local lhs=${field%%=*}
-    local ret; ble-color-sgrspec2g "${field#*=}"; local rhs=$ret
+    local ret; ble/color/sgrspec2g "${field#*=}"; local rhs=$ret
     case $lhs in
     ('di') _ble_syntax_highlight_lscolors[ATTR_FILE_DIR]=$rhs  ;;
     ('st') _ble_syntax_highlight_lscolors[ATTR_FILE_STICKY]=$rhs  ;;
@@ -5187,7 +5187,7 @@ function ble-syntax/highlight/getg-from-filename {
   ble-syntax/highlight/filetype "$filename"
   if [[ $bleopt_filename_ls_colors ]]; then
     if ble-syntax/highlight/ls_colors "$filename" && [[ $type == g:* ]]; then
-      ble-color-face2g filename_ls_colors
+      ble/color/face2g filename_ls_colors
       ((g|=${type:2}))
       return
     fi
@@ -5333,7 +5333,7 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
 
       if [[ $bleopt_filename_ls_colors ]]; then
         if ble-syntax/highlight/ls_colors "$value" && [[ $type == g:* ]]; then
-          local g; ble-color-face2g filename_ls_colors
+          local g; ble/color/face2g filename_ls_colors
           type=g:$((${type:2}|g))
         fi
       fi
@@ -5490,7 +5490,7 @@ function ble-highlight-layer:syntax/update-error-table {
   # set errors
   if ((iN>0)) && [[ ${_ble_syntax_stat[iN]} ]]; then
     # iN==0 の時は実行しない。face 遅延初期化のため(最初は iN==0)。
-    local g; ble-color-face2g syntax_error
+    local g; ble/color/face2g syntax_error
 
     # 入れ子が閉じていないエラー
     local -a stat
@@ -5557,7 +5557,7 @@ function ble-highlight-layer:syntax/update {
     if ((DMAX>0)); then
       local g sgr ch ret
       ble-highlight-layer:syntax/getg "$DMAX"
-      ble-color-g2sgr "$g"; sgr=$ret
+      ble/color/g2sgr "$g"; sgr=$ret
       ch=${_ble_highlight_layer_plain_buff[DMAX]}
       _ble_highlight_layer_syntax_buff[DMAX]=$sgr$ch
     fi
@@ -5576,7 +5576,7 @@ function ble-highlight-layer:syntax/update {
       ble-highlight-layer:syntax/getg "$i"
       [[ $g ]] || ble-highlight-layer/update/getg "$i"
       if ((gprev!=g)); then
-        ble-color-g2sgr "$g"
+        ble/color/g2sgr "$g"
         ch=$ret$ch
         ((gprev=g))
       fi

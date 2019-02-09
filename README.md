@@ -1,7 +1,7 @@
 [Languages: **English** | [日本語](README-ja_JP.md)]
 # ble.sh
 
-*Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts to replace the default GNU Readline.
+*Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts which replaces the default GNU Readline.
 - **Syntax highlighting**: Highlight command lines input by users as in `fish` and `zsh-syntax-highlighting`.
   Unlike the simple highlighting in `zsh-syntax-highlighting`, `ble.sh` performs syntactic analysis to enable the correct highlighting of complex structures such as nested command substitutions, multiple here documents, etc.
 - **Enhanced completion**:
@@ -91,7 +91,7 @@ $ ble-update
 You can also download the latest version by `git pull` and install it:
 
 ```bash
-cd ble.sh   # ※既に持っている git リポジトリに入る
+cd ble.sh   # <-- enter the git repository you already have
 git pull
 make
 make INSDIR="$HOME/.local/share/blesh" install

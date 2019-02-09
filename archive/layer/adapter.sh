@@ -55,7 +55,7 @@ function ble-highlight-layer:adapter/update {
       ((g=_ble_region_highlight_table[i]))
       if ((ctx!=0||g!=gprev)); then
         ((ctx=0,gprev=g))
-        ble-color-g2sgr "$g"
+        ble/color/g2sgr "$g"
         ch=$ret$ch
       fi
     else
@@ -63,7 +63,7 @@ function ble-highlight-layer:adapter/update {
       if ((ctx!=1)); then
         ((ctx=1,gprev=-1))
         ble-highlight-layer/update/getg
-        ble-color-g2sgr "$g"
+        ble/color/g2sgr "$g"
         ch=$ret$ch
       fi
     fi
@@ -92,7 +92,7 @@ function ble-syntax-highlight/append {
   while (($#)); do
     local -a triplet
     triplet=($1)
-    local ret; ble-color-gspec2g "${triplet[2]}"; local g=$ret
+    local ret; ble/color/gspec2g "${triplet[2]}"; local g=$ret
     local i=${triplet[0]} iN=${triplet[1]}
     for ((;i<iN;i++)); do
       _ble_region_highlight_table[$i]=$g

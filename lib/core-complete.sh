@@ -235,7 +235,7 @@ function ble-complete/action:file/complete {
 }
 function ble-complete/action:file/getg {
   ble-syntax/highlight/getg-from-filename "$CAND"
-  [[ $g ]] || ble-color-face2g filename_warning
+  [[ $g ]] || ble/color/face2g filename_warning
 }
 
 function ble-complete/action:tilde/initialize {
@@ -247,7 +247,7 @@ function ble-complete/action:tilde/complete {
   ble-complete/action/util/complete.addtail /
 }
 function ble-complete/action:tilde/getg {
-  ble-color-face2g filename_directory
+  ble/color/face2g filename_directory
 }
 
 
@@ -310,7 +310,7 @@ function ble-complete/action:command/complete {
 }
 function ble-complete/action:command/getg {
   if [[ -d $CAND ]]; then
-    ble-color-face2g filename_directory
+    ble/color/face2g filename_directory
   else
     # Note: ble-syntax/highlight/cmdtype はキャッシュ機能がついているが、
     #   キーワードに対して呼び出さない前提なのでキーワードを渡すと
@@ -340,7 +340,7 @@ function ble-complete/action:variable/complete {
   esac
 }
 function ble-complete/action:variable/getg {
-  ble-color-face2g syntax_varname
+  ble/color/face2g syntax_varname
 }
 
 #==============================================================================
@@ -1731,9 +1731,9 @@ function ble-complete/menu/construct-single-entry {
     if ((alen>0)); then
       # 高速化の為、直接 _ble_color_g2sgr を参照する
       ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Bold]}
-      [[ $ret ]] || ble-color-g2sgr "$g1"; sgr0=$ret
+      [[ $ret ]] || ble/color/g2sgr "$g1"; sgr0=$ret
       ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Bold|_ble_color_gflags_Revert]}
-      [[ $ret ]] || ble-color-g2sgr "$g1"; sgr1=$ret
+      [[ $ret ]] || ble/color/g2sgr "$g1"; sgr1=$ret
 
       ble-edit/info/.construct-text "${show::alen}"
       out=$out$sgr0$ret
@@ -1741,9 +1741,9 @@ function ble-complete/menu/construct-single-entry {
     if ((alen<${#show})); then
       # 高速化の為、直接 _ble_color_g2sgr を参照する
       ret=${_ble_color_g2sgr[g]}
-      [[ $ret ]] || ble-color-g2sgr "$g"; sgr0=$ret
+      [[ $ret ]] || ble/color/g2sgr "$g"; sgr0=$ret
       ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
-      [[ $ret ]] || ble-color-g2sgr "$g1"; sgr1=$ret
+      [[ $ret ]] || ble/color/g2sgr "$g1"; sgr1=$ret
 
       ble-edit/info/.construct-text "${show:alen}"
       out=$out$sgr0$ret
@@ -1753,9 +1753,9 @@ function ble-complete/menu/construct-single-entry {
     # 高速化の為、直接 _ble_color_g2sgr を参照する
     local sgr0 sgr1
     ret=${_ble_color_g2sgr[g]}
-    [[ $ret ]] || ble-color-g2sgr "$g"; sgr0=$ret
+    [[ $ret ]] || ble/color/g2sgr "$g"; sgr0=$ret
     ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
-    [[ $ret ]] || ble-color-g2sgr "$g1"; sgr1=$ret
+    [[ $ret ]] || ble/color/g2sgr "$g1"; sgr1=$ret
 
     ble-edit/info/.construct-text "$show"
     ret=$sgr0$ret$_ble_term_sgr0

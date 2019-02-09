@@ -783,29 +783,36 @@ tech
     ToDo
 ------------------------------------------------------------------------------
 
-2019-02-08
+2019-02-09
 
-  * manual: 以下の関数についても説明書に記述して --help に対応しても良いかもしれない。
-    - done: ble-import, ble-assert, ble-autoload, ble-stackdump
-    - ble-color-ansi2g
-    - ble-color-face2{g,sgr}
-    - ble-color-g2sgr
-    - ble-color-gspec2{g,sgr}
-    - ble-color-iface2{g,sgr}
-    - ble-color-sgrspec2g
-    - ble-decode-{byte,char,key}
-    - ble-decode-{kbd,unkbd}
+  * bash-it でまた誰かが書き込んでいる
+    https://github.com/Bash-it/bash-it/issues/894
 
-    オプション --help の対応は果てしなく面倒くさい。
-    というか引数の解析が必要なかった物全てに引数の解析を実装しなければならないのが駄目。
-    というより、その為に archive/getopt.sh があったのではなかったか。
-    そして archive/getopt.sh は大変に重かったという事と
-    使い方が分かりにくかったという事で archive されたのだった。
+    やはり需要があるという事なのだろう。
+    - ble-0.3 を出す事にする。
+      これまでの変更を Release 時にまとめる事にする。
+    - bash-it をダウンロードしてどうなっているか確認する。
 
-    うーん。引数の解析を実施すると速度が低下するので、
-    特に ble-assert や ble-stackdump 等では実行したくない。
-    結局、引数の解析を行わない内部用の ble/util/{import,assert,autoload,stackdump} と、
-    ユーザに公開する --help 付きの ble-{import,assert,autoload,stackdump} を提供する事にした。
+  * うーん。git や bash-it の様に ble.sh でも ble コマンドの様な物を提供するべき?
+
+    と思ったが既に何処かには ble という名前のコマンドが存在していて、
+    これらは Bluetooth のサービスの開始・終了などを実行するのに使われている様子である。
+    もしこれらが広範に用いられている物なのだとしたら使いにくい。
+
+    また、ble の名前の由来である zle コマンドの事を考えると、
+    ble widget の様な使い方を想像してしまうのではないかとの問題もある。
+
+    混乱を防ぐためには ble ではなくて ble.sh または blesh の様な名前が良いだろう。
+    しかしそうすると現状の ble-import だとかの機能を呼び出すのに余り適していない気がする。
+    つまり、blesh import ... で ble-import が呼び出されるというのは分かりにくい。
+    或いは現状の ble-import を blesh-import に改名するという手もあるかもしれないが、
+    そういう事を考え始めると全ての関数を ble から blesh に改名したくなる。
+    それは面倒だし、元の zle という名前から離れていくので余りやりたくない。
+
+    実のところ、現状のまま ble-* の方が自動的に補完が効くので嬉しい。
+
+    bash-it の場合には bash-it-update だとか bash-it::update だとかだと
+    格好が悪いので bash-it update という形の関数名になるというのは分かる。
 
 2019-02-05
 
@@ -854,6 +861,11 @@ tech
     awk による実装で問題になるのは getg を先に全項目に対して呼び出して置かなければならないという事。
     シェルの実装だと画面の大きさに達したらそこまでで良かったが、awk の実装だとそういう訳には行かない。
     と思ったが、まあ、文字数で数えて上限を設定すればそう問題でもない。
+
+    2019-02-08 更に配列を awk に渡すなどの際に色々面倒な事がある気がする。
+    とにかく実装が汚くなってしまう。何か簡単に一発で着色できる方法の様な物はないだろうか。
+    或いは、部分一致だけ awk で処理して着色部分に関しては ble.sh 側で行うという手も考えられる。
+    何れにしても bash が遅いのが問題なのである。
 
     2018-09-05 ブレース展開の comps_ibrace による固定部分の処理には注意する。
 
@@ -2299,7 +2311,7 @@ tech
   - progcomp: support `COMP_WORDBREAKS` `#D0903` 7cfe425
   - complete: support completion of tilde expansion `#D0907` b4fc40c `#D0908` 9fafdb3
   - main: support `BLE_VERSION` and `BLE_VERSINFO` (suggested by cmplstofB) `#D0909`
-  - global: support `--help` for ble-{update,attach,detach,color-{show,defface,setface},sabbrev} (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7
+  - global: support `--help` for public functions `ble-*` (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7 1209ac6
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -3134,6 +3146,83 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-09
+
+  * manual: 以下の関数についても説明書に記述して --help に対応しても良いかもしれない [#D0913]
+    - done: [public] ble-import, ble-assert, ble-autoload, ble-stackdump 1209ac6
+    - renamed: [private] ble-color-ansi2g
+    - renamed: [private] ble-color-face2{g,sgr}
+    - renamed: [private] ble-color-g2sgr
+    - renamed: [private] ble-color-gspec2{g,sgr}
+    - renamed: [private] ble-color-iface2{g,sgr}
+    - renamed: [private] ble-color-sgrspec2g
+    - reject: [private] ble-decode-{byte,char,key}
+    - reject: [private] ble-decode-{kbd,unkbd}
+
+    オプション --help の対応は果てしなく面倒くさい。
+    というか引数の解析が必要なかった物全てに引数の解析を実装しなければならないのが駄目。
+    というより、その為に archive/getopt.sh があったのではなかったか。
+    そして archive/getopt.sh は大変に重かったという事と
+    使い方が分かりにくかったという事で archive されたのだった。
+
+    うーん。引数の解析を実施すると速度が低下するので、
+    特に ble-assert や ble-stackdump 等では実行したくない。
+    結局、引数の解析を行わない内部用の ble/util/{import,assert,autoload,stackdump} と、
+    ユーザに公開する --help 付きの ble-{import,assert,autoload,stackdump} を提供する事にした。
+
+    ble-color-*2* に関しては、そもそも公開する理由がない。改名する事にする。
+    以下の様なスクリプトを書いて一括で変換した。
+
+    | #!/bin/bash
+    |
+    | function refactor-color-functions {
+    |   local funcs slash fun
+    |   funcs=(
+    |     ble-color-ansi2g
+    |     ble-color-face2{g,sgr}
+    |     ble-color-g2sgr
+    |     ble-color-gspec2{g,sgr}
+    |     ble-color-iface2{g,sgr}
+    |     ble-color-sgrspec2g)
+    |   slash=/
+    |   for fun in "${funcs[@]}"; do
+    |     refact -b "$fun" "${fun//-/$slash}"
+    |   done
+    | }
+    |
+    | refactor-color-functions
+
+    序にその他の ble-color/* 関数も改名する。
+
+    | #!/bin/bash
+    |
+    | function refactor-color-functions {
+    |   local funcs slash fun
+    |   funcs=(
+    |     ble-color/.name2color
+    |     ble-color/.color2sgr-impl
+    |     ble-color/.color2sgrfg
+    |     ble-color/.color2sgrbg)
+    |   slash=/
+    |   for fun in "${funcs[@]}"; do
+    |     refact -b "$fun" "ble/color/${fun#ble-color/}"
+    |   done
+    | }
+    |
+    | refactor-color-functions
+
+    ble-decode-byte に関しては誰も参照していない。
+    ble-decode-key に関しては様々な所から内部使用が見られる。
+    ble-decode-char に関しても微妙に内部使用が見られる。
+    これらの関数名をどうするかは微妙である。
+    元々 "decode byte,key,char" という意味なので、
+    もし真面目に変えるとしたら ble/decode/decode-{byte,key,char} になる。
+    然し長いので気になる。一方で ble/decode/char というのも何か変な気がする。
+    或いは、現状のままで --help に対応しないという方向性も考えられる。
+    というか何故 --help に対応しなければならないのか…。
+
+    ble-decode-kbd や ble-decode-unkbd も似たような物である。
+    面倒になったのでこれらの関数については、
+    これまで通り内部の関数として、但し関数名は今の儘で変えないという事にする。
 
   * ble-sabbrev: 定義の表示において key に含まれる特殊文字がそのまま出力される [#D0912]
     これは ble-complete/sabbrev/list の定義を見直した。
