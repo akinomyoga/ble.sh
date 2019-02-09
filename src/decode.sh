@@ -708,7 +708,7 @@ function ble-decode-char/.getent {
     fi
   fi
 
-  # ble-assert '[[ $ent =~ ^[0-9]*_?$ ]]'
+  # ble/util/assert '[[ $ent =~ ^[0-9]*_?$ ]]'
 }
 
 function ble-decode-char/.process-modifier {
@@ -1092,7 +1092,7 @@ function ble-decode/keymap/load {
   if ble/is-function "$init"; then
     "$init" && ble-decode/keymap/is-keymap "$1"
   elif [[ $_ble_decode_keymap_load != *s* ]]; then
-    ble-import "keymap/$1.sh" &&
+    ble/util/import "keymap/$1.sh" &&
       local _ble_decode_keymap_load=s &&
       ble-decode/keymap/load "$1" # 再試行
   else
@@ -1116,7 +1116,7 @@ function ble-decode/keymap/push {
 function ble-decode/keymap/pop {
   local count=${#_ble_decode_keymap_stack[@]}
   local last=$((count-1))
-  ble-assert '((last>=0))' || return
+  ble/util/assert '((last>=0))' || return
   _ble_decode_keymap=${_ble_decode_keymap_stack[last]}
   unset -v '_ble_decode_keymap_stack[last]'
 }

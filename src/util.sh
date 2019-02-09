@@ -1259,6 +1259,32 @@ function ble/util/invoke-hook {
   return "$ext"
 }
 
+## 関数 ble/util/.read-arguments-for-no-option-command commandname args...
+##   @var[out] flags args
+function ble/util/.read-arguments-for-no-option-command {
+  local commandname=$1; shift
+  flags= args=()
+
+  local flag_literal=
+  while (($#)); do
+    local arg=$1; shift
+    if [[ ! $flag_literal ]]; then
+      case $arg in
+      (--) flag_literal=1 ;;
+      (--help) flags=h$flags ;;
+      (-*)
+        echo "$commandname: unrecognized option '$arg'" >&2
+        flags=e$flags ;;
+      (*)
+        ble/array#push args "$arg" ;;
+      esac
+    else
+      ble/array#push args "$arg"
+    fi
+  done
+}
+
+
 ## 関数 ble-autoload scriptfile functions...
 ##   関数が定義されたファイルを自動で読み取る設定を行います。
 ##   scriptfile には functions の実体を定義します。
@@ -1283,27 +1309,87 @@ function ble/util/invoke-hook {
 ##     scriptfile に定義される関数名を全て列挙する必要はなく、
 ##     scriptfile 呼出の起点として使用する関数のみで充分です。
 ##
-function ble-autoload {
-  local apos="'" APOS="'\\''" file=$1 funcname
-  shift
-
+function ble/util/autoload {
+  local file=$1; shift
   # ※$FUNCNAME は元から環境変数に設定されている場合、
   #   特別変数として定義されない。
   #   この場合無闇にコマンドとして実行するのは危険である。
 
-  for funcname in "$@"; do
+  local q=\' Q="'\''" funcname
+  for funcname; do
     builtin eval "function $funcname {
       unset -f $funcname
-      ble-import '${file//$apos/$APOS}'
+      ble/util/import '${file//$q/$Q}'
       $funcname \"\$@\"
     }"
   done
 }
+function ble/util/autoload/.print-usage {
+  echo 'usage: ble-autoload SCRIPTFILE FUNCTION...'
+  echo '  Setup delayed loading of functions defined in the specified script file.'
+} >&2    
+## 関数 ble/util/autoload/.read-arguments args...
+##   @var[out] file functions flags
+function ble/util/autoload/.read-arguments {
+  file= flags= functions=()
+
+  local args
+  ble/util/.read-arguments-for-no-option-command ble-autoload "$@"
+
+  # check empty arguments
+  local arg index=0
+  for arg in "${args[@]}"; do
+    if [[ ! $arg ]]; then
+      if ((index==0)); then
+        echo 'ble-autoload: the script filename should not be empty.' >&2
+      else
+        echo 'ble-autoload: function names should not be empty.' >&2
+      fi
+      flags=e$flags
+    fi
+    ((index++))
+  done
+
+  [[ $flags == *h* ]] && return
+
+  if ((${#args[*]}==0)); then
+    echo 'ble-autoload: script filename is not specified.' >&2
+    flags=e$flags
+  elif ((${#args[*]}==1)); then
+    echo 'ble-autoload: function names are not specified.' >&2
+    flags=e$flags
+  fi
+
+  file=${args[0]} functions=("${#args[@]:1}")
+}
+function ble-autoload {
+  local file flags
+  local -a functions=()
+  ble/util/autoload/.read-arguments "$@"
+  if [[ $flags == *[eh]* ]]; then
+    [[ $flags == *e* ]] && echo
+    ble/util/autoload/.print-usage
+    [[ $flags == *e* ]] && return 2
+    return 0
+  fi
+
+  ble/util/autoload "$file" "${functions[@]}"
+}
+
+## 関数 ble-import scriptfile...
+##   指定したファイルを検索して source で読み込みます。
+##   既に import 済みのファイルは読み込みません。
+##
+##   @param[in] scriptfile
+##     読み込むファイルを指定します。
+##     絶対パスで指定した場合にはそのファイルを使用します。
+##     それ以外の場合には $_ble_base:$_ble_base/local:$_ble_base/share から検索します。
+##
 _ble_util_import_guards=()
-function ble-import {
+function ble/util/import {
   local file=$1
   if [[ $file == /* ]]; then
-    local guard=ble-import/guard:$1
+    local guard=ble/util/import/guard:$1
     ble/is-function "$guard" && return 0
     if [[ -f $file ]]; then
       source "$file"
@@ -1312,7 +1398,7 @@ function ble-import {
     fi && eval "function $guard { :; }" &&
       ble/array#push _ble_util_import_guards "$guard"
   else
-    local guard=ble-import/guard:ble/$1
+    local guard=ble/util/import/guard:ble/$1
     ble/is-function "$guard" && return 0
     if [[ -f $_ble_base/$file ]]; then
       source "$_ble_base/$file"
@@ -1326,34 +1412,123 @@ function ble-import {
       ble/array#push _ble_util_import_guards "$guard"
   fi
 }
+# called by ble/base/unload (ble.pp)
 function ble/util/import/finalize {
   local guard
   for guard in "${_ble_util_import_guards[@]}"; do
     unset -f "$guard"
   done
 }
+## 関数 ble/util/import/.read-arguments args...
+##   @var[out] files flags
+function ble/util/import/.read-arguments {
+  flags= files=()
 
-_ble_stackdump_title=stackdump
-function ble-stackdump {
+  local args
+  ble/util/.read-arguments-for-no-option-command ble-import "$@"
+
+  [[ $flags == *h* ]] && return
+
+  if ((!${#args[@]})); then
+    echo 'ble-import: argument is not specified.' >&2
+    flags=e$flags
+  fi
+
+  files=("${args[@]}")
+}
+function ble-import {
+  local files flags
+  ble/util/import/.read-arguments "$@"
+  if [[ $flags == *[eh]* ]]; then
+    [[ $flags == *e* ]] && echo
+    {
+      echo 'usage: ble-import SCRIPT_FILE...'
+      echo '  Search and source script files that have not yet been loaded.'
+    } >&2
+    [[ $flags == *e* ]] && return 2
+    return 0
+  fi
+
+  local file
+  for file in "${files[@]}"; do
+    ble/util/import "$file"
+  done
+}
+
+## 関数 ble-stackdump [message]
+##   現在のコールスタックの状態を出力します。
+##
+##   @param[in,opt] message
+##     スタック情報の前に表示するメッセージを指定します。
+##   @var[in] _ble_util_stackdump_title
+##     スタック情報の前に表示するタイトルを指定します。
+##
+_ble_util_stackdump_title=stackdump
+function ble/util/stackdump {
   ((bleopt_internal_stackdump_enabled)) || return
-  # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
+  local message=$1
   local i nl=$'\n'
-  local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
+  local message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
     message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
   done
   builtin echo -n "$message" >&2
 }
-function ble-assert {
-  local expr=$1
-  local _ble_stackdump_title='assertion failure'
+function ble-stackdump {
+  local flags args
+  ble/util/.read-arguments-for-no-option-command ble-stackdump "$@"
+  if [[ $flags == *[eh]* ]]; then
+    [[ $flags == *e* ]] && echo
+    {
+      echo 'usage: ble-stackdump command [message]'
+      echo '  Print stackdump.'
+    } >&2
+    [[ $flags == *e* ]] && return 2
+    return 0
+  fi
+
+  ble/util/stackdump "${args[*]}"
+}
+
+## 関数 ble-assert command [message]
+##   コマンドを評価し失敗した時にメッセージを表示します。
+##
+##   @param[in] command
+##     評価するコマンドを指定します。eval で評価されます。
+##   @param[in,opt] message
+##     失敗した時に表示するメッセージを指定します。
+##
+function ble/util/assert {
+  local expr=$1 message=$2
+  local _ble_util_stackdump_title='assertion failure'
   if ! builtin eval -- "$expr"; then
     shift
-    ble-stackdump "$expr$_ble_term_nl$*"
+    ble/util/stackdump "$expr$_ble_term_nl$message"
     return 1
   else
     return 0
   fi
+}
+function ble-assert {
+  local flags args
+  ble/util/.read-arguments-for-no-option-command ble-assert "$@"
+  if [[ $flags != *h* ]]; then
+    if ((${#args[@]}==0)); then
+      echo 'ble-assert: command is not specified.' >&2
+      flags=e$flags
+    fi
+  fi
+  if [[ $flags == *[eh]* ]]; then
+    [[ $flags == *e* ]] && echo
+    {
+      echo 'usage: ble-assert command [message]'
+      echo '  Evaluate command and print stackdump on fail.'
+    } >&2
+    [[ $flags == *e* ]] && return 2
+    return 0
+  fi
+
+  ble/util/assert "${args[0]}" "${args[*]:1}"
 }
 
 #------------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ble-import "$_ble_base/lib/core-syntax.sh"
+ble/util/import "$_ble_base/lib/core-syntax.sh"
 
 function ble-complete/string#search-longest-suffix-in {
   local needle=$1 haystack=$2

@@ -786,7 +786,7 @@ tech
 2019-02-08
 
   * manual: 以下の関数についても説明書に記述して --help に対応しても良いかもしれない。
-    - ble-import, ble-assert, ble-autoload, ble-stackdump
+    - done: ble-import, ble-assert, ble-autoload, ble-stackdump
     - ble-color-ansi2g
     - ble-color-face2{g,sgr}
     - ble-color-g2sgr
@@ -795,6 +795,17 @@ tech
     - ble-color-sgrspec2g
     - ble-decode-{byte,char,key}
     - ble-decode-{kbd,unkbd}
+
+    オプション --help の対応は果てしなく面倒くさい。
+    というか引数の解析が必要なかった物全てに引数の解析を実装しなければならないのが駄目。
+    というより、その為に archive/getopt.sh があったのではなかったか。
+    そして archive/getopt.sh は大変に重かったという事と
+    使い方が分かりにくかったという事で archive されたのだった。
+
+    うーん。引数の解析を実施すると速度が低下するので、
+    特に ble-assert や ble-stackdump 等では実行したくない。
+    結局、引数の解析を行わない内部用の ble/util/{import,assert,autoload,stackdump} と、
+    ユーザに公開する --help 付きの ble-{import,assert,autoload,stackdump} を提供する事にした。
 
 2019-02-05
 
@@ -2276,7 +2287,7 @@ tech
   - vi_omap: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3 `#D0868` eb848dc
   - main: improve support of `[[ -o posix ]]` `#D0871` 07ae3cc `#D0872` 513c543
   - main: do not load ble.sh when bash is started by `bash -i -c command` `#D0873` fc23a6d
-  - main: support `ble-update` `#D0874` fc45be6 `#D0875` 0b50974 `#D0891` d010300 `#D0910` 4743c00
+  - main: support `ble-update` `#D0874` fc45be6 `#D0875` 0b50974 `#D0891` d010300 `#D0910` 4743c00 2dc3a3f
   - vi_nmap: support <kbd>C-d</kbd>, <kbd>C-u</kbd>, <kbd>C-e</kbd>, <kbd>C-y</kbd>, <kbd>C-f</kbd>, <kbd>next</kbd>, <kbd>C-b</kbd>, <kbd>prior</kbd> `#D0886`
   - isearch: use previous needle for empty string search `#D0889` 362fce3
   - vi_imap: add a function `ble-decode/keymap:vi_imap/define-meta-bindings` `#D0892` a21d22f
@@ -2288,7 +2299,7 @@ tech
   - progcomp: support `COMP_WORDBREAKS` `#D0903` 7cfe425
   - complete: support completion of tilde expansion `#D0907` b4fc40c `#D0908` 9fafdb3
   - main: support `BLE_VERSION` and `BLE_VERSINFO` (suggested by cmplstofB) `#D0909`
-  - global: support `--help` for ble-{update,attach,detach,color-{show,defface,setface},sabbrev} (suggested by cmplstofB) `#D0911` 77d459d f4d03f6
+  - global: support `--help` for ble-{update,attach,detach,color-{show,defface,setface},sabbrev} (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2298,6 +2309,7 @@ tech
   - bleopt: rename internal settings to `internal_{ignore_trap,suppress_bash_output,exec_type,stackdump_enabled}` fd042d8
   - vi_nmap: change the behavior of <kbd>C-home</kbd>, <kbd>C-end</kbd> to match with those of vim
   - util (`ble/util/unlocal`): add workaround for Bash-5.0 `localvar_unset` `#D0904` 8677a71
+  - sabbrev: quote key in printing definitions by `ble-sabbrev` `#D0912` 2994d80
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -3120,6 +3132,11 @@ tech
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-02-09
+
+  * ble-sabbrev: 定義の表示において key に含まれる特殊文字がそのまま出力される [#D0912]
+    これは ble-complete/sabbrev/list の定義を見直した。
 
 2019-02-08
 

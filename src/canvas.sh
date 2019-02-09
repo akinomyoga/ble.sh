@@ -879,7 +879,7 @@ function ble/textmap#update {
   _ble_textmap_length=$iN
 
 #%if !release
-  ble-assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- ($_ble_textmap_dbeg $_ble_textmap_dend $_ble_textmap_dend0)"
+  ble/util/assert '((dbeg<0||(dbeg<=dend&&dbeg<=dend0)))' "($dbeg $dend $dend0) <- ($_ble_textmap_dbeg $_ble_textmap_dend $_ble_textmap_dend0)"
 #%end
 
   # shift cached data
@@ -1037,7 +1037,7 @@ function ble/textmap#is-up-to-date {
 ##   _ble_textmap_length
 ##
 function ble/textmap#assert-up-to-date {
-  ble-assert 'ble/textmap#is-up-to-date' 'dirty text positions'
+  ble/util/assert 'ble/textmap#is-up-to-date' 'dirty text positions'
 }
 
 ## 関数 ble/textmap#getxy.out index

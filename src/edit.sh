@@ -839,7 +839,7 @@ function ble-edit/content/replace {
   #   _ble_edit_ind の更新はこの関数の呼び出しより後で行う様にする必要がある。
   # Note: このバグは恐らく #D0411 で解決したが暫く様子見する。
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
-    ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
+    ble/util/stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
     _ble_edit_dirty_syntax_beg=0
     _ble_edit_dirty_syntax_end=${#_ble_edit_str}
     _ble_edit_dirty_syntax_end0=0
@@ -857,7 +857,7 @@ function ble-edit/content/reset {
   ble-edit/content/.update-dirty-range "$beg" "$end" "$end0" "$reason"
 #%if !release
   if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
-    ble-stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str"
+    ble/util/stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str"
     _ble_edit_dirty_syntax_beg=0
     _ble_edit_dirty_syntax_end=${#_ble_edit_str}
     _ble_edit_dirty_syntax_end0=0
@@ -1490,7 +1490,7 @@ function ble/textarea#render {
   BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
   ble/dirty-range#clear --prefix=_ble_edit_dirty_draw_
 #%if !release
-  ble-assert '((BLELINE_RANGE_UPDATE[0]<0||(
+  ble/util/assert '((BLELINE_RANGE_UPDATE[0]<0||(
        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[1]&&
        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[2])))' "(${BLELINE_RANGE_UPDATE[*]})"
 #%end

@@ -1,11 +1,11 @@
 #!/bin/bash
 
-ble/function#try ble/util/idle.push 'ble-import "$_ble_base/lib/core-complete.sh"'
+ble/function#try ble/util/idle.push 'ble/util/import "$_ble_base/lib/core-complete.sh"'
 
 #------------------------------------------------------------------------------
 # 公開関数と公開関数
 
-ble-autoload "$_ble_base/lib/core-complete.sh" \
+ble/util/autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/complete \
              ble/widget/menu-complete \
              ble/widget/auto-complete-enter \
@@ -64,7 +64,7 @@ function bleopt/check:complete_menu_style {
 : ${bleopt_complete_menu_complete=1}
 : ${bleopt_complete_menu_filter=1}
 
-ble-autoload "$_ble_base/lib/core-complete.sh" \
+ble/util/autoload "$_ble_base/lib/core-complete.sh" \
              ble-complete/menu/style:align/construct \
              ble-complete/menu/style:align-nowrap/construct \
              ble-complete/menu/style:dense/construct \

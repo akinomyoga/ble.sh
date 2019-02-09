@@ -891,7 +891,7 @@ function ble/widget/vi-command/append-arg {
     ((code==0)) && return 1
     ble/util/c2s "$code"; ch=$ret
   fi
-  ble-assert '[[ ! ${ch//[0-9]} ]]'
+  ble/util/assert '[[ ! ${ch//[0-9]} ]]'
 
   # 0
   if [[ $ch == 0 && ! $_ble_edit_arg ]]; then
@@ -5936,10 +5936,10 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
           ((slpad=c1-c1l))
 
           # assert: smin < smax <= eol なので行末ではない
-          ble-assert '! ble-edit/content/eolp "$smin"'
+          ble/util/assert '! ble-edit/content/eolp "$smin"'
 
           ((c1r=(y1r-boly)*cols+x1r))
-          ble-assert '((c1r>c1))' || ((c1r=c1))
+          ble/util/assert '((c1r>c1))' || ((c1r=c1))
           ble/string#repeat ' ' $((c1r-c1))
           stext=$ret${stext:1}
         fi
@@ -5955,7 +5955,7 @@ function ble/keymap:vi/extract-graphical-block-by-geometry {
             ((smax++))
 
             ((c2r=(y2r-boly)*cols+x2r))
-            ble-assert '((c2r>c2))' || ((c2r=c2))
+            ble/util/assert '((c2r>c2))' || ((c2r=c2))
             ((srpad=c2r-c2))
           fi
         elif ((c2l>c2)); then
@@ -6410,7 +6410,7 @@ function ble/widget/vi_xmap/exchange-boundaries {
     local sub_ranges sub_x1 sub_x2
     ble/keymap:vi/extract-block '' '' skip_middle
     local nline=${#sub_ranges[@]}
-    ble-assert '((nline))'
+    ble/util/assert '((nline))'
 
     local data1; ble/string#split data1 : "${sub_ranges[0]}"
     local lpos1=${data1[0]} rpos1=$((data1[4]?data1[1]:data1[1]-1))
@@ -6622,7 +6622,7 @@ function ble/widget/vi_xmap/block-insert-mode.impl {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
 
   local nline=${#sub_ranges[@]}
-  ble-assert '((nline))'
+  ble/util/assert '((nline))'
 
   local index ins_x
   if [[ $type == append ]]; then

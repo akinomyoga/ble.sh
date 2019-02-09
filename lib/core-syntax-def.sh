@@ -45,7 +45,7 @@ function ble-syntax:bash/is-complete { true; }
 
 
 # 以下の関数に関しては遅延せずにその場で lib/core-syntax.sh をロードする
-ble-autoload "$_ble_base/lib/core-syntax.sh" \
+ble/util/autoload "$_ble_base/lib/core-syntax.sh" \
              ble-syntax/completion-context/generate \
              ble-syntax:bash/is-complete \
              ble-syntax:bash/extract-command \
@@ -59,7 +59,7 @@ ble-autoload "$_ble_base/lib/core-syntax.sh" \
 # lib/core-syntax.sh の変数または ble-syntax/parse を使用する必要がある場合は、
 # 以下の関数を用いて lib/core-syntax.sh を必ずロードする様にする。
 function ble-syntax/import {
-  ble-import "$_ble_base/lib/core-syntax.sh"
+  ble/util/import "$_ble_base/lib/core-syntax.sh"
 }
 
 ble/function#try ble/util/idle.push ble-syntax/import ||

@@ -3,7 +3,7 @@
 function ble-test/check-ret {
   local f=$1 in=$2 expected=$3 ret
   "$f" "$in"
-  ble-assert '[[ $ret == "$expected" ]]' ||
+  ble/util/assert '[[ $ret == "$expected" ]]' ||
     echo "fail: command=($f $in) result=($ret) expected=($expected)" >&2
 }
 
