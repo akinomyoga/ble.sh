@@ -785,14 +785,6 @@ tech
 
 2019-02-09
 
-  * bash-it でまた誰かが書き込んでいる
-    https://github.com/Bash-it/bash-it/issues/894
-
-    やはり需要があるという事なのだろう。
-    - ble-0.3 を出す事にする。
-      これまでの変更を Release 時にまとめる事にする。
-    - bash-it をダウンロードしてどうなっているか確認する。
-
   * うーん。git や bash-it の様に ble.sh でも ble コマンドの様な物を提供するべき?
 
     と思ったが既に何処かには ble という名前のコマンドが存在していて、
@@ -813,6 +805,27 @@ tech
 
     bash-it の場合には bash-it-update だとか bash-it::update だとかだと
     格好が悪いので bash-it update という形の関数名になるというのは分かる。
+
+  * manual: 英語版
+
+  * main: --attach=prompt の問題は何だったか
+
+    何か問題があって現在はこれを使っていないが、それは何だったろうか。
+    何処かに記録されていて良い筈なのに何処にも記述がない。
+
+  * bind: `bind -XpPS` 等から現在の設定を読み取る?
+
+    現状で bind -X が信用出来ないので、完全な対応は不可能である。
+    その様に考えるとやはり builtin bind を上書きして設定を読み取る方が現実的である。
+    なので、現在の bashrc の冒頭でロードして、末尾で attach するという形式は当面変わらない。
+
+  * main: bash-it との組み合わせについて考える
+
+    bash-it の初期化内容を idle.do で実行できる様にするのが良いのではないだろうか。
+    或いは bash_it.sh を書き換える様に pull request を出すというのでも良い。
+    しかし、下手に bash-it を刺激すると、ble.sh が bash-it の付属物であるかの様に広まったりしないだろうか。
+    つまり、ble.sh を入れる為には取り敢えず bash-it を入れよう、という具合になってしまうという事。
+    うーん。それは微妙な気がするが、まあ、すぐにそういう事になるとも思えないので気にしなくて良い。
 
 2019-02-05
 
@@ -851,6 +864,56 @@ tech
     一方で history -d や history -r 等の操作を実行した時に、
     どの様に ble.sh の方を更新するのかという問題はある。
     通常の bash では確かにコマンドライン編集時に辿れる履歴も一緒に変更されている。
+
+    history の変更に際して何を修正するべきか。
+
+    * vi.sh において履歴項目ごとに記録している内容
+
+      | history に変化が現れた時の hook という物があった筈である。
+      | それは何で何処から参照されていたか。
+      | _ble_edit_history_onleave という配列がある。
+      | これは onleave.fire で参照されている。
+      | 去る直前に何らかの状態を記録するのに使われている。
+      | 新しい行き先の情報は参照していない様である。
+      | これを使っているのは ble/keymap:vi/mark/history-onleave.hook だけである。
+      | そして ble/keymap:vi/mark/update-mark-history を呼び出している。
+      | 特に _ble_keymap_vi_mark_history と _ble_keymap_vi_mark_global の中身を更新する必要がある様に思う。
+      | その他の箇所で hindex を使用している箇所はあるだろうか。
+      | history/get-index で検索すると他には ble/widget/vi-command/search.impl で使っているが、
+      | これは移動したかどうかなどを判定する為に使っているだけで履歴に関する情報を記録するのには使っていない。
+
+      - _ble_keymap_vi_mark_history
+      - _ble_keymap_vi_mark_global
+
+    * edit.sh
+
+      以下の配列に対して作用すれば良さそう。
+      - _ble_edit_history=()
+      - _ble_edit_history_edit=()
+      - _ble_edit_history_dirt=()
+      - _ble_edit_undo_history=()
+      最初の3つに関しては履歴をロードしている時にのみ更新する。
+      最後の物に関しては履歴をロードしているかどうかに拘らず更新する。
+
+    * core-complete.sh
+
+      他に history/get-index を参照しているのは core-complete.sh だけである。
+      dabbrev で履歴を遡るために使用している。
+      履歴を遡っている最中に history によって履歴が書き換わる事はない筈なので、
+      これについては気にしなくても良いだろう。
+
+    history の操作としてどの様な物があるだろうか。
+
+    * history -c は中身をクリアする
+    * history -d は項目を削除する
+    * history -n [filename] は追加行を読み込む
+    * history -r [filename] は履歴ファイルを読み込み直す
+    * history -aw [filename] は履歴データには変化なし 
+    * history -p args... は一部の bash のバージョンで補正が必要
+    * history -s args... は項目を追加する
+
+    結構対応は面倒そうである。
+    history -nr [filename] に関しては履歴を idle で再初期化する?
 
 2018-08-26
 
@@ -2311,7 +2374,7 @@ tech
   - progcomp: support `COMP_WORDBREAKS` `#D0903` 7cfe425
   - complete: support completion of tilde expansion `#D0907` b4fc40c `#D0908` 9fafdb3
   - main: support `BLE_VERSION` and `BLE_VERSINFO` (suggested by cmplstofB) `#D0909`
-  - global: support `--help` for public functions `ble-*` (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7 1209ac6
+  - global: support `--help` for public functions `ble-*` (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7 1209ac6 `#D0913` 92d9038
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -3146,6 +3209,107 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-09
+
+  * bash-it でまた誰かが書き込んでいる [#D0914]
+    https://github.com/Bash-it/bash-it/issues/894
+
+    やはり需要があるという事なのだろう。
+
+    - ble-0.3 を出す事にする。
+      これまでの変更を Release 時にまとめる事にする?
+      然し、長大になるし時間が掛かるし誰が読むわけでもなさそうなので、
+      今回は見送る事にする。何れにしてもこの memo.txt には残っている訳だから。
+      或いは、そのまま日本語で出してしまっても良いのではないだろうか。
+
+      ble-0.2 changes
+      - vi (xmap `aw`/`iw`): Extend backward to include the current entire word
+      - util (`ble/util/openat`): Add workaround a Bash 3.2 bug that causes problems with <kbd>C-d</kbd> in nested shells
+      - edit (`ble/textarea#render`): Fix a bug of wrong scroll/cursor position after entire redraw
+      - main: Fix a `"$_ble_base"` determination bug on `source ble.sh` for local ble.sh
+      - global: Fix a leak variable
+
+      ble-0.1 changes
+      - util (`ble/util/openat`): Add workaround a Bash 3.2 bug that causes problems with <kbd>C-d</kbd> in nested shells
+      - main: Fix a `"$_ble_base"` determination bug on `source ble.sh` for local ble.sh
+
+      取り敢えず bump して archive を作る。ダウンロードする。
+      というか ble-0.3 についても作成してダウンロードする。
+      ble-0.1 release を更新する。
+
+    - bash-it をダウンロードしてどうなっているか確認する。
+
+      ダウンロードしてみたら 40MB もある。重い。
+      そんなに沢山のデータがあるという事があるのだろうか…。
+      うーん。working tree は軽い。履歴に変な物が入っている?
+
+      install.sh の中を覗いたが複雑なので読む気がしない。
+      試しに実行してみる事にしようか…。実行してみた。
+      現在の bashrc の末尾に追加するというのにしてみた。
+      本当に末尾に追加するだけの様である。
+      ちゃんとシンボリックリンクになっている事を認識して、
+      中身を .bashrc.bak として保存して、
+      更にシンボリックリンクの示す先を書き換えてくれた。
+
+      末尾に追加された内容は基本的に以下に等価である。
+      というか、これらは本当に "export" する必要があるのだろうか…。
+
+      if [[ $- == *i* ]]; then
+        export BASH_IT="/home/murase/prog/ext/github/bash-it"
+        export BASH_IT_THEME='bobby'
+        export GIT_HOSTING='git@github.com:akinomyoga/bash-it.git'
+        unset MAILCHECK # Don't check mail when opening terminal.
+        export IRC_CLIENT='irssi'
+        export TODO="t" # todo.txt-cli
+        export SCM_CHECK=true
+        #export SHORT_HOSTNAME=$(hostname -s)
+        #export SHORT_USER=${USER:0:8}
+        #export SHORT_TERM_LINE=true
+        #export VCPROMPT_EXECUTABLE=~/.vcprompt/bin/vcprompt
+        # export BASH_IT_AUTOMATIC_RELOAD_AFTER_CONFIG_CHANGE=1
+        # export BASH_IT_RELOAD_LEGACY=1
+        source "$BASH_IT"/bash_it.sh
+      fi
+
+      見てみると勝手にプロンプトを書き換えて screen に何か表示する等、
+      色々と勝手な設定を行ってくる様である。
+      自分で色々設定している人に取ってみれば結構厄介であろう。
+
+      取り敢えず試しに実行してみることにする。遅い。滅茶苦茶遅い…。
+      ble.sh の機能とかちあって居るのかもしれないと思って、
+      ble.sh を attach せずに使ってみたがやはり遅い。
+      また ble.sh を使っていてもちゃんとプロンプトは表示されている様子だ。
+      うーん。やはり信じられない遅さだ…。
+
+      更に、green だとか purple だとか reset_color だとか、
+      普通の変数名を思い切り汚染している…。調べてみると
+      それでも PS1 で使うものだけしか汚染していない様だ。
+      無節操に汚染しているという訳でもない。
+
+      まあ、取り敢えず動くのだという事は分かったのでOK。
+
+      * ble.sh を bash-it に組み込むとしたらどの様になるだろうか。
+        或いは bash-it は alias しか許さないのだろうか…。
+
+        うーん。bash_it.sh の中を覗くと enabled aliases 等は
+        割と最初の方で source されている。
+        theme 等の初期化はそれよりも後にある。
+        PS1 が設定されるのは恐らく theme の中なのでこれでは駄目だ。
+        もし ble.sh と組み合わせるのだとしたらば、
+        bash_it.sh の中を弄らなければならない。
+
+        或いは、ble.sh の側でプラグインマネージャ的機能を実装して、
+        bash_it.sh の中で実行している内容を非同期に実行する様にもできるかもしれない。
+        何れにしても bash-it に普通に Pull request として
+        ble.sh の機能を提供するのは難しそうである。書き換えが必要である。
+
+      * 因みに bash-it のロード時間は 0.744s である。
+        ble.sh のロード時間は 0.218s で、attach には 0.437s かかる。
+        bash-it よりは軽いが、そんなに軽いとも言い難い。
+        環境によっては結構時間が掛かるのではないかという気がする。
+        まあ初期化時間に関してはどうしようもない。
+
+    - 説明書の英語版を作るべきだろうか。それは後回しで良い。
+      別項目として立てる事にした。
 
   * manual: 以下の関数についても説明書に記述して --help に対応しても良いかもしれない [#D0913]
     - done: [public] ble-import, ble-assert, ble-autoload, ble-stackdump 1209ac6
