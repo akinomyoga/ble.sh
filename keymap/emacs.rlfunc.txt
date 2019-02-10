@@ -1,0 +1,167 @@
+abort                             bell
+accept-line                       accept-line
+alias-expand-line                 -
+arrow-key-prefix                  -
+backward-byte                     -
+backward-char                     backward-char
+backward-delete-char              delete-backward-char
+backward-kill-line                kill-backward-line
+backward-kill-word                kill-backward-cword
+backward-word                     backward-cword
+beginning-of-history              history-beginning
+beginning-of-line                 beginning-of-line
+bracketed-paste-begin             bracketed-paste
+call-last-kbd-macro               -
+capitalize-word                   -
+character-search                  -
+character-search-backward         -
+clear-screen                      clear-screen
+complete                          complete
+complete-command                  complete context=command
+complete-filename                 complete context=filename
+complete-hostname                 complete context=hostname
+complete-into-braces              -
+complete-username                 complete context=username
+complete-variable                 complete context=variable
+copy-backward-word                copy-backward-cword
+copy-forward-word                 copy-forward-cword
+copy-region-as-kill               copy-region
+dabbrev-expand                    dabbrev-expand
+delete-char                       delete-forward-char
+delete-char-or-list               -
+delete-horizontal-space           delete-horizontal-space
+digit-argument                    emacs/append-arg
+display-shell-version             display-shell-version
+do-lowercase-version              -
+downcase-word                     -
+dump-functions                    -
+dump-macros                       -
+dump-variables                    -
+dynamic-complete-history          -
+edit-and-execute-command          -
+emacs-editing-mode                -
+end-kbd-macro                     -
+end-of-history                    history-end
+end-of-line                       end-of-line
+exchange-point-and-mark           exchange-point-and-mark
+forward-backward-delete-char      delete-forward-backward-char
+forward-byte                      -
+forward-char                      forward-char
+forward-search-history            -
+forward-word                      forward-cword
+glob-complete-word                complete context=glob
+glob-expand-word                  complete context=glob:insert-all
+glob-list-expansions              complete context=glob:show_menu
+history-and-alias-expand-line     -
+history-expand-line               history-expand-line
+history-search-backward           history-search-backward
+history-search-forward            history-search-forward
+history-substring-search-backward history-substring-search-backward
+history-substring-search-forward  history-substring-search-forward
+insert-comment                    -
+insert-completions                complete insert_all
+insert-last-argument              -
+kill-line                         kill-forward-line
+kill-region                       kill-region
+kill-whole-line                   -
+kill-word                         kill-forward-cword
+magic-space                       magic-word
+menu-complete                     menu-complete
+menu-complete-backward            -
+next-history                      history-next
+next-screen-line                  forward-graphical-line
+non-incremental-forward-search-history        history-nsearch-forward
+non-incremental-forward-search-history-again  -
+non-incremental-reverse-search-history        history-nsearch-backward
+non-incremental-reverse-search-history-again  -
+old-menu-complete                 -
+operate-and-get-next              accept-and-next
+overwrite-mode                    overwrite-mode
+possible-command-completions      complete show_menu:context=command
+possible-completions              complete show_menu
+possible-filename-completions     complete show_menu:context=filename
+possible-hostname-completions     complete show_menu:context=hostname
+possible-username-completions     complete show_menu:context=username
+possible-variable-completions     complete show_menu:context=variable
+previous-history                  history-prev
+previous-screen-line              backward-graphical-line
+print-last-kbd-macro              -
+quoted-insert                     quoted-insert
+re-read-init-file                 -
+redraw-current-line               redraw-line
+reverse-search-history            -
+revert-line                       -
+self-insert                       self-insert
+set-mark                          set-mark
+shell-backward-kill-word          kill-backward-sword
+shell-backward-word               backward-sword
+shell-expand-line                 -
+shell-forward-word                forward-sword
+shell-kill-word                   kill-forward-sword
+skip-csi-sequence                 -
+start-kbd-macro                   -
+tab-insert                        -
+tilde-expand                      -
+transpose-chars                   transpose-chars
+transpose-words                   -
+tty-status                        -
+undo                              emacs/undo
+universal-argument                -
+unix-filename-rubout              -
+unix-line-discard                 kill-backward-line
+unix-word-rubout                  kill-backward-uword
+upcase-word                       -
+vi-append-eol                     -
+vi-append-mode                    -
+vi-arg-digit                      -
+vi-bWord                          -
+vi-back-to-indent                 -
+vi-backward-bigword               -
+vi-backward-word                  -
+vi-bword                          -
+vi-change-case                    -
+vi-change-char                    -
+vi-change-to                      -
+vi-char-search                    -
+vi-column                         -
+vi-complete                       -
+vi-delete                         -
+vi-delete-to                      -
+vi-eWord                          -
+vi-editing-mode                   -
+vi-end-bigword                    -
+vi-end-word                       -
+vi-eof-maybe                      -
+vi-eword                          -
+vi-fWord                          -
+vi-fetch-history                  -
+vi-first-print                    -
+vi-forward-bigword                -
+vi-forward-word                   -
+vi-fword                          -
+vi-goto-mark                      -
+vi-insert-beg                     -
+vi-insertion-mode                 -
+vi-match                          -
+vi-movement-mode                  -
+vi-next-word                      -
+vi-overstrike                     -
+vi-overstrike-delete              -
+vi-prev-word                      -
+vi-put                            -
+vi-redo                           -
+vi-replace                        -
+vi-rubout                         -
+vi-search                         -
+vi-search-again                   -
+vi-set-mark                       -
+vi-subst                          -
+vi-tilde-expand                   -
+vi-unix-word-rubout               -
+vi-yank-arg                       -
+vi-yank-pop                       -
+vi-yank-to                        -
+yank                              yank
+yank-last-arg                     -
+yank-nth-arg                      -
+yank-pop                          -

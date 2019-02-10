@@ -407,11 +407,11 @@ function ble/string#toggle-case {
   IFS= eval 'ret="${buff[*]-}"'
 }
 if ((_ble_bash>=40000)); then
-  function ble/string#tolower { ret=${*,,}; }
-  function ble/string#toupper { ret=${*^^}; }
+  function ble/string#tolower { ret="${*,,}"; }
+  function ble/string#toupper { ret="${*^^}"; }
 else
   function ble/string#tolower {
-    local text=$*
+    local text="$*"
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
@@ -424,7 +424,7 @@ else
     IFS= eval 'ret="${buff[*]-}"'
   }
   function ble/string#toupper {
-    local text=$*
+    local text="$*"
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
@@ -437,6 +437,24 @@ else
     IFS= eval 'ret="${buff[*]-}"'
   }
 fi
+
+function ble/string#trim {
+  ret="$*"
+  local rex=$'^[ \t\n]+'
+  [[ $ret =~ $rex ]] && ret=${ret:${#BASH_REMATCH}}
+  local rex=$'[ \t\n]+$'
+  [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
+}
+function ble/string#ltrim {
+  ret="$*"
+  local rex=$'^[ \t\n]+'
+  [[ $ret =~ $rex ]] && ret=${ret:${#BASH_REMATCH}}
+}
+function ble/string#rtrim {
+  ret="$*"
+  local rex=$'[ \t\n]+$'
+  [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
+}
 
 ## 関数 ble/string#escape-characters chars1 chars2 text
 ##   @param[in]     chars1
@@ -2497,6 +2515,102 @@ function ble/util/.cache/update-locale {
     [[ $_ble_util_s2c_table_enabled ]] &&
       _ble_util_s2c_table=()
   fi
+}
+
+#------------------------------------------------------------------------------
+
+function ble/util/s2chars {
+  local text=$1 n=${#1} i chars
+  chars=()
+  for ((i=0;i<n;i++)); do
+    ble/util/s2c "$text" "$i"
+    ble/array#push chars "$ret"
+  done
+  ret=("${chars[@]}")
+}
+
+# bind で使用される keyseq の形式
+
+function ble/util/c2keyseq {
+  local char=$(($1))
+  case $char in
+  (7)   ret='\a' ;;
+  (8)   ret='\b' ;;
+  (9)   ret='\t' ;;
+  (10)  ret='\n' ;;
+  (11)  ret='\v' ;;
+  (12)  ret='\f' ;;
+  (13)  ret='\r' ;;
+  (27)  ret='\e' ;;
+  (92)  ret='\\' ;;
+  (127) ret='\d' ;;
+  (*)
+    if ((char<32||128<=char&&char<160)); then
+      local char7=$((char&0xFF))
+      if ((1<=char7&&char7<=26)); then
+        ble/util/c2s $((char7+96))
+      else
+        ble/util/c2s $((char7+64))
+      fi
+      ret='\C-'$ret
+      ((char&0x80)) && ret='\M-'$ret
+    else
+      ble/util/c2s "$char"
+    fi ;;
+  esac
+}
+function ble/util/chars2keyseq {
+  local char str=
+  for char; do
+    ble/util/c2keyseq "$char"
+    str=$str$ret
+  done
+  ret=$str
+}
+function ble/util/keyseq2chars {
+  local keyseq=$1 chars
+  local rex='^([^\]*)\\([0-7]{1,3}|x{1,2}|(C-(\\M-)?|M-(\\C-)?)*.)'
+  chars=()
+  while [[ $keyseq =~ $rex ]]; do
+    local text=${BASH_REMATCH[1]} esc=${BASH_REMATCH[2]}
+    keyseq=${keyseq:${#BASH_REMATCH}}
+    ble/util/s2chars "$text"
+    ble/array#push chars "${ret[@]}"
+
+    local mflags=
+    case $esc in
+    (x?*) ble/array#push chars $((16#${esc#x}));;
+    ([0-7]*) ble/array#push chars $((8#$esc)) ;;
+    (a) ble/array#push chars 7 ;;
+    (b) ble/array#push chars 8 ;;
+    (t) ble/array#push chars 9 ;;
+    (n) ble/array#push chars 10 ;;
+    (v) ble/array#push chars 11 ;;
+    (f) ble/array#push chars 12 ;;
+    (r) ble/array#push chars 13 ;;
+    (e) ble/array#push chars 27 ;;
+    (d) ble/array#push chars 127 ;;
+    ('C-?')    ble/array#push chars 127 ;;
+    ('M-\C-?') ble/array#push chars 255 ;;
+    ('C-'?)    mflags=sc  ;;
+    ('C-\M-'?) mflags=sec ;;
+    ('M-'?)    mflags=sm  ;;
+    ('M-\C-'?) mflags=scm ;;
+    (*)        mflags=s   ;;
+    esac
+
+    if [[ $mflags == *s* ]]; then
+      ble/util/s2c "${esc:${#esc}-1}"; local key=$ret
+      [[ $mflags == *e* ]] && ble/array#push chars 27
+      [[ $mflags == *c* ]] && ((key&=0x1F))
+      [[ $mflags == *m* ]] && ((key|=0x80))
+      ble/array#push chars "$key"
+    fi
+  done
+
+  ble/util/s2chars "$keyseq"
+  ble/array#push chars "${ret[@]}"
+  ret=("${chars[@]}")
 }
 
 #------------------------------------------------------------------------------

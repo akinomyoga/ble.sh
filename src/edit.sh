@@ -3292,7 +3292,7 @@ function ble-edit/exec/restore-BASH_REMATCH {
   [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
 }
 
-function ble-edit/exec/exit {
+function ble/builtin/exit {
   local ext=${1-$?}
   if ((BASHPID!=$$)) || [[ $_ble_decode_bind_state == none ]]; then
     builtin exit "$ext"
@@ -3315,7 +3315,7 @@ function ble-edit/exec/exit {
       [[ $cancel_reason ]]
     do
       jobs
-      ble-edit/read -ep "\e[38;5;12m[ble: There are $cancel_reason]\e[m Leave the shell anyway? [yes/No] " ret
+      ble/builtin/read -ep "\e[38;5;12m[ble: There are $cancel_reason]\e[m Leave the shell anyway? [yes/No] " ret
       case $ret in
       ([yY]|[yY][eE][sS]) break ;;
       ([nN]|[nN][oO]|'')  return ;;
@@ -3329,7 +3329,7 @@ function ble-edit/exec/exit {
   return 1 # exit できなかった場合は 1 らしい
 }
 
-function exit { ble-edit/exec/exit "$@"; }
+function exit { ble/builtin/exit "$@"; }
 
 ## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_internal_exec_type/process;
 ##   指定したコマンドを実行します。
@@ -3735,6 +3735,17 @@ function ble/widget/.insert-newline {
   ble/util/joblist.bflush
 
   # 描画領域情報の初期化
+  ble/textarea#invalidate
+  _ble_canvas_x=0 _ble_canvas_y=0
+  _ble_textarea_gendx=0 _ble_textarea_gendy=0
+  _ble_canvas_panel_height[_ble_textarea_panel]=1
+}
+function ble/widget/.hide-current-line {
+  ble-edit/info/hide
+  local -a DRAW_BUFF=()
+  ble/canvas/panel#clear.draw "$_ble_textarea_panel"
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+  ble/canvas/bflush.draw
   ble/textarea#invalidate
   _ble_canvas_x=0 _ble_canvas_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
@@ -5838,7 +5849,7 @@ function ble/widget/history-search {
 
   # initialize variables
   if [[ :$opts: == *:input:* ]]; then
-    ble-edit/read -ep "nsearch> " _ble_edit_nsearch_needle || return 1
+    ble/builtin/read -ep "nsearch> " _ble_edit_nsearch_needle || return 1
   else
     _ble_edit_nsearch_needle=${_ble_edit_str::_ble_edit_ind}
   fi
@@ -6148,9 +6159,16 @@ function ble-edit/bind/load-keymap-definition:safe {
   ble-decode/keymap/load safe
 }
 
+ble/util/autoload "keymap/emacs.sh" \
+                  ble-decode/keymap:emacs/define
+ble/util/autoload "keymap/vi.sh" \
+                  ble-decode/keymap:vi_{i,n,o,x,s,c}map/define
+ble/util/autoload "keymap/vi_digraph.sh" \
+                  ble-decode/keymap:vi_digraph/define
+
 # 
 #------------------------------------------------------------------------------
-# **** ble-edit/read ****                                            @edit.read
+# **** ble/builtin/read ****                                         @edit.read
 
 _ble_edit_read_accept=
 _ble_edit_read_result=
@@ -6202,7 +6220,7 @@ _ble_edit_read_history_dirt=()
 _ble_edit_read_history_ind=0
 _ble_edit_read_history_onleave=()
 
-function ble-edit/read/.process-option {
+function ble/builtin/read/.process-option {
   case $1 in
   (-e) opt_readline=1 ;;
   (-i) opt_default=$2 ;;
@@ -6213,7 +6231,7 @@ function ble-edit/read/.process-option {
   (*)  ble/array#push opts "$@" ;;
   esac
 }
-function ble-edit/read/.read-arguments {
+function ble/builtin/read/.read-arguments {
   local is_normal_args=
   vars=()
   opts=()
@@ -6232,15 +6250,15 @@ function ble-edit/read/.read-arguments {
     local i n=${#arg}
     for ((i=1;i<n;i++)); do
       case -${arg:i} in
-      (-[adinNptu])  ble-edit/read/.process-option -${arg:i:1} "$1"; shift; break ;;
-      (-[adinNptu]*) ble-edit/read/.process-option -${arg:i:1} "${arg:i+1}"; break ;;
-      (-[ers]*)      ble-edit/read/.process-option -${arg:i:1} ;;
+      (-[adinNptu])  ble/builtin/read/.process-option -${arg:i:1} "$1"; shift; break ;;
+      (-[adinNptu]*) ble/builtin/read/.process-option -${arg:i:1} "${arg:i+1}"; break ;;
+      (-[ers]*)      ble/builtin/read/.process-option -${arg:i:1} ;;
       esac
     done
   done
 }
 
-function ble-edit/read/.setup-textarea {
+function ble/builtin/read/.setup-textarea {
   # 初期化
   local def_kmap; ble-decode/DEFAULT_KEYMAP -v def_kmap
   ble-decode/keymap/push read
@@ -6271,15 +6289,15 @@ function ble-edit/read/.setup-textarea {
   _ble_syntax_lang=text
   _ble_highlight_layer__list=(plain region overwrite_mode disabled)
 }
-function ble-edit/read/TRAPWINCH {
+function ble/builtin/read/TRAPWINCH {
   local IFS=$_ble_term_IFS
   _ble_textmap_pos=()
   ble/textarea#redraw
 }
-function ble-edit/read/.loop {
+function ble/builtin/read/.loop {
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
-  ble-edit/read/.setup-textarea
-  trap -- ble-edit/read/TRAPWINCH WINCH
+  ble/builtin/read/.setup-textarea
+  trap -- ble/builtin/read/TRAPWINCH WINCH
 
   local ret= timeout=
   if [[ $opt_timeout ]]; then
@@ -6376,10 +6394,10 @@ function ble-edit/read/.loop {
   fi
 }
 
-function ble-edit/read/.impl {
+function ble/builtin/read/.impl {
   local -a opts=() vars=() opts_in=()
   local opt_readline= opt_prompt= opt_default= opt_timeout= opt_fd=0
-  ble-edit/read/.read-arguments "$@"
+  ble/builtin/read/.read-arguments "$@"
   if ! [[ $opt_readline && -t $opt_fd ]]; then
     # "-e オプションが指定されてかつ端末からの読み取り" のとき以外は builtin read する。
     [[ $opt_prompt ]] && ble/array#push opts -p "$opt_prompt"
@@ -6396,7 +6414,7 @@ function ble-edit/read/.impl {
   ble/util/buffer.flush >&2
 
   [[ $_ble_edit_read_context == external ]] && ble/term/enter # 外側にいたら入る
-  result=$(ble-edit/read/.loop); local ext=$?
+  result=$(ble/builtin/read/.loop); local ext=$?
   [[ $_ble_edit_read_context == external ]] && ble/term/leave # 元の状態に戻る
 
   # Note: サブシェルを抜ける時に set-height 1 0 するので辻褄合わせ。
@@ -6415,21 +6433,21 @@ function ble-edit/read/.impl {
 ##   ble.sh の所為で builtin read -e が全く動かなくなるので、
 ##   read -e を ble.sh の枠組みで再実装する。
 ##
-function ble-edit/read {
+function ble/builtin/read {
   if [[ $_ble_decode_bind_state == none ]]; then
     builtin read "$@"
     return
   fi
 
   local __ble_command= __ble_args= __ble_input=
-  ble-edit/read/.impl "$@"; local __ble_ext=$?
+  ble/builtin/read/.impl "$@"; local __ble_ext=$?
   [[ $__ble_command ]] || return "$__ble_ext"
 
   # 局所変数により被覆されないように外側で評価
   builtin eval -- "$__ble_command"
   return
 }
-function read { ble-edit/read "$@"; }
+function read { ble/builtin/read "$@"; }
 
 #------------------------------------------------------------------------------
 # **** command-help ****                                          @command-help
@@ -6978,6 +6996,8 @@ function ble/widget/.EDIT_COMMAND {
   local command=$1
   local READLINE_LINE=$_ble_edit_str
   local READLINE_POINT=$_ble_edit_ind
+  ble/widget/.hide-current-line
+  ble/util/buffer.flush >&2
   eval "$command" || return 1
   ble-edit/content/clear-arg
 

@@ -65,11 +65,13 @@ function bleopt/check:complete_menu_style {
 : ${bleopt_complete_menu_filter=1}
 
 ble/util/autoload "$_ble_base/lib/core-complete.sh" \
-             ble-complete/menu/style:align/construct \
-             ble-complete/menu/style:align-nowrap/construct \
-             ble-complete/menu/style:dense/construct \
-             ble-complete/menu/style:dense-nowrap/construct
-
+                  ble-complete/menu/style:align/construct \
+                  ble-complete/menu/style:align-nowrap/construct \
+                  ble-complete/menu/style:dense/construct \
+                  ble-complete/menu/style:dense-nowrap/construct \
+                  ble-decode/keymap:auto_complete/define \
+                  ble-decode/keymap:menu_complete/define \
+                  ble-decode/keymap:dabbrev/define
 
 #------------------------------------------------------------------------------
 # 描画設定

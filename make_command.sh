@@ -213,7 +213,7 @@ function sub:check {
 
   #sub:check/builtin 'history'
   #sub:check/builtin 'echo'
-  #sub:check/builtin '(compopt|type|printf|read)'
+  #sub:check/builtin '(compopt|type|printf)'
   sub:check/builtin 'bind'
   sub:check/builtin 'read'
   sub:check/builtin 'exit'

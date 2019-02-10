@@ -221,7 +221,7 @@ ble-bind -f 'C-x h' 'insert-string "Hello, world!"'
 ble-bind -c 'M-c' 'my-command'
 ```
 
-<kbd>C-r</kbd> を入力した時に、ユーザー編集関数 (Bash の `bind -x` で指定するのと同様の物) を実行するには以下のようにします。
+<kbd>C-r</kbd> を入力した時に、ユーザー定義編集関数 (Bash の `bind -x` で指定するのと同様の物) を実行するには以下のようにします。
 
 ```bash
 ble-bind -x 'C-r' 'my-edit-function'

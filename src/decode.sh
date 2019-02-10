@@ -1057,6 +1057,9 @@ function ble-decode-key/dump {
         echo "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
       ('ble/widget/.EDIT_COMMAND '*)
         echo "ble-bind$kmapopt -x '${knames//$q/$Q}' ${cmd#ble/widget/.EDIT_COMMAND }" ;;
+      ('ble/widget/.ble-decode-char '*)
+        local ret; ble/util/chars2keyseq ${cmd#*' '}
+        echo "ble-bind$kmapopt -s '${knames//$q/$Q}' '${ret//$q/$Q}'" ;;
       ('ble/widget/'*)
         echo "ble-bind$kmapopt -f '${knames//$q/$Q}' '${cmd#ble/widget/}'" ;;
       (*)
@@ -1725,7 +1728,7 @@ function ble-bind {
             return 2
           fi
 
-          ble-decode-kbd "$1"
+          ble-decode-kbd "$1"; local kbd=$ret
           if [[ $2 && $2 != - ]]; then
             local command=$2
 
@@ -1750,6 +1753,10 @@ function ble-bind {
             (c) # コマンド実行
               local q=\' Q="''\'"
               command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
+            (s)
+              local ret; ble/util/keyseq2chars "$command"
+              command="ble/widget/.ble-decode-char ${ret[*]}"
+              echo "$command" ;;
             ('@') ;; # 直接実行
             (*)
               echo "error: unsupported binding type \`-$c'." 1>&2
@@ -1757,10 +1764,10 @@ function ble-bind {
             esac
 
             [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
-            ble-decode-key/bind "$ret" "$command"
+            ble-decode-key/bind "$kbd" "$command"
           else
             [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
-            ble-decode-key/unbind "$ret"
+            ble-decode-key/unbind "$kbd"
           fi
           shift 2 ;;
         (L)
@@ -1785,7 +1792,8 @@ function ble-bind {
 # **** ESC ESC ****                                           @decode.bind.esc2
 
 ## 関数 ble/widget/.ble-decode-char ...
-##   lib/init-bind.sh で設定する bind で使用する。
+##   - lib/init-bind.sh で設定する bind で使用する。
+##   - bind '"keyseq":"macro"' の束縛に使用する。
 function ble/widget/.ble-decode-char {
   ble-decode-char "$@"
 }
@@ -2140,62 +2148,313 @@ function ble-decode/detach {
   _ble_decode_bind_state=none
 }
 
-function ble-decode/bind.override {
-  local -a options; options=()
-  local opt_error= q=\' Q="'\''"
-  local opt_literal=
+#------------------------------------------------------------------------------
+# ble/builtin/bind
 
-  while (($#)); do
-    local arg=$1; shift
-    if [[ ! $opt_literal && $arg == -* ]]; then
-      if [[ $arg == -- ]]; then
-        opt_literal=1
-      else
-        local i iN=${#arg} c
-        for ((i=1;i<iN;i++)); do
-          local c=${arg:i:1}
-          case $c in
-          ([lpsvPSVX])
-            ble/array#push options "$arg" ;;
-          ([mqurfx])
-            echo "ble.sh: bind: unsupported option $arg '${1//$q/$Q}'" >&2; shift
-            opt_error=1 ;;
-          ('-')
-            echo "ble.sh: bind: invalid option '${arg//$q/$Q}'" >&2
-            opt_error=1 ;;
-          (*)
-            echo "ble.sh: bind: invalid option '-${c//$q/$Q}'" >&2
-            opt_error=1 ;;
-          esac
-        done
-      fi
-    else
-      case $arg in
-      ('set '*) ble/array#push options "$arg" ;;
-      (*:*)
-        echo "ble.sh: bind: unsupported binding '${arg//$q/$Q}'" >&2
-        opt_error=1 ;;
-      (*)
-        echo "ble.sh: bind: invalid readline-command '${arg//$q/$Q}'" >&2
-        opt_error=1 ;;
-      esac
+## 関数 ble/builtin/bind/option:m keymap
+##   @var[in,out] opt_keymap flags
+function ble/builtin/bind/option:m {
+  local name=$1
+  local ret; ble/string#tolower "$name"; local keymap=$ret
+  case $keymap in
+  (emacs|emacs-standard|emacs-meta|emacs-ctlx) ;;
+  (vi|vi-command|vi-move|vi-insert) ;;
+  (*) keymap= ;;
+  esac
+  if [[ ! $keymap ]]; then
+    echo "ble.sh (bind): unrecognized keymap name '$name'" >&2
+    flags=e$flags
+  else
+    opt_keymap=$keymap
+  fi
+}
+## 関数 ble/builtin/bind/.decompose-pair spec
+##   keyseq:command の形式の文字列を keyseq と command に分離します。
+##   @var[out] keyseq value
+function ble/builtin/bind/.decompose-pair {
+  local ret; ble/string#trim "$1"
+  local spec=$ret ifs=$' \t\n' q=\' Q="'\''"
+
+  keyseq= value=
+  [[ ! $spec || $spec == 'set '* ]] && return 3  # bind ''
+
+  # split keyseq / value
+  local rex='^(("([^\"]|\\.)*"|[^":'$ifs'])*("([^\"]|\\.)*)?)['$ifs']*(:['$ifs']*)?'
+  [[ $spec =~ $rex ]]
+  keyseq=${BASH_REMATCH[1]} value=${spec:${#BASH_REMATCH}}
+
+  # check values
+  if [[ $keyseq == '$'* ]]; then
+    # Parser directives such as $if, $else, $endif, $include
+    return 3
+  elif [[ ! $keyseq ]]; then
+    echo "ble.sh (bind): empty keyseq in spec:'${spec//$q/$Q}'" >&2
+    flags=e$flags
+    return 1
+  elif rex='^"([^\"]|\\.)*$'; [[ $keyseq =~ $rex ]]; then
+    echo "ble.sh (bind): no closing '\"' in keyseq:'${keyseq//$q/$Q}'" >&2
+    flags=e$flags
+    return 1
+  elif rex='^"([^\"]|\\.)*"'; [[ $keyseq =~ $rex ]]; then
+    local rematch=${BASH_REMATCH[0]}
+    if ((${#rematch}<${#keyseq})); then
+      local fragment=${keyseq:${#rematch}}
+      echo "ble.sh (bind): warning: unprocessed fragments in keyseq '${fragment//$q/$Q}'" >&2
     fi
+    keyseq=$rematch
+    return 0
+  else
+    return 0
+  fi
+}
+## 関数 ble/builtin/bind/.parse-keyname keyname
+##   @var[out] chars
+function ble/builtin/bind/.parse-keyname {
+  local value=$1
+  local ret rex='^(control-|c-|ctrl-|meta|m-)-*' mflags=
+  while ble/string#tolower "$value"; [[ $ret =~ $rex ]]; do
+    value=${value:${#BASH_REMATCH}}
+    mflags=${BASH_REMATCH::1}$mflags
   done
 
-  if [[ $opt_error ]]; then
-    return 1
-  else
-    builtin bind "${options[@]}"
-  fi
+  local ch=
+  case $ret in
+  (rubout|del) ch=$'\177' ;;
+  (escape|esc) ch=$'\033' ;;
+  (newline|lfd) ch=$'\n' ;;
+  (return|ret) ch=$'\r' ;;
+  (space|spc) ch=' ' ;;
+  (tab) ch=$'\t' ;;
+  (*) LC_ALL=C eval 'local ch=${value::1}' ;;
+  esac
+  ble/util/s2c "$c"; local key=$ret
+
+  [[ $mflags == *c* ]] && ((key&=0x1F))
+  [[ $mflags == *m* ]] && ((key|=0x80))
+  chars=("$key")
+}
+function ble/builtin/bind/.decode-chars.hook {
+  ble/array#push ble_decode_bind_keys "$1"
+  _ble_decode_key__hook=ble/builtin/bind/.decode-chars.hook
+}
+## 関数 ble/builtin/bind/.decode-chars chars...
+##   文字コードの列からキーの列へ変換します。
+##   @arr[out] keys
+function ble/builtin/bind/.decode-chars {
+  # initialize
+  local _ble_decode_csi_mode=0
+  local _ble_decode_csi_args=
+  local _ble_decode_char2_seq=
+  local _ble_decode_char2_reach=
+  local _ble_decode_char2_modifier=
+  local _ble_decode_char2_modkcode=
+
+  # suppress unrelated triggers
+  local _ble_decode_char__hook=
+#%if debug_keylogger
+  local _ble_keylogger_enabled=
+#%end
+  local _ble_decode_keylog_enabled=
+
+  # setup hook and run
+  local -a ble_decode_bind_keys=()
+  local _ble_decode_key__hook=ble/builtin/bind/.decode-chars.hook
+  ble-decode-key "$@"
+
+  keys=("${ble_decode_bind_keys[@]}")
 }
 
-function bind {
-  if [[ $_ble_decode_bind_state != none ]]; then
-    ble-decode/bind.override "$@"
+## 関数 ble/builtin/bind/.initialize-kmap keymap
+##   @var[in,out] keys
+##   @var[out] kmap
+function ble/builtin/bind/.initialize-kmap {
+  local keymap=$1
+  kmap=
+  case $keymap in
+  (emacs|emacs-standard) kmap=emacs ;;
+  (emacs-ctlx) kmap=emacs; keys=(24 "${keys[@]}") ;;
+  (emacs-meta) kmap=emacs; keys=(27 "${keys[@]}") ;;
+  (vi-insert) kmap=vi_imap ;;
+  (vi|vi-command|vi-move) kmap=vi_nmap ;;
+  (*) ble-decode/DEFAULT_KEYMAP -v kmap ;;
+  esac
+  ble-bind/load-keymap "$kmap" || return 1
+  return 0
+}
+## 関数 ble/builtin/bind/.initialize-keys-and-value
+##   @var[out] keys value
+function ble/builtin/bind/.initialize-keys-and-value {
+  local spec=$1 opts=$2
+  keys= value=
+
+  local keyseq
+  ble/builtin/bind/.decompose-pair "$spec" || return
+
+  local chars
+  if [[ $keyseq == \"*\" ]]; then
+    local ret; ble/util/keyseq2chars "${keyseq:1:${#keyseq}-2}"
+    chars=("${ret[@]}")
+    ((${#chars[@]})) || echo "ble.sh (bind): warning: empty keyseq" >&2
   else
-    builtin bind "$@"
+    [[ :$opts: == *:nokeyname:* ]] &&
+      echo "ble.sh (bind): warning: readline \"bind -x\" does not support \"keyname\" spec" >&2
+    ble/builtin/bind/.parse-keyname "$keyseq"
+  fi
+  ble/builtin/bind/.decode-chars "${chars[@]}"
+}
+
+## 関数 ble/builtin/bind/option:x spec
+##   @var[in] opt_keymap
+function ble/builtin/bind/option:x {
+  local keys value kmap
+  ble/builtin/bind/.initialize-keys-and-value "$1" nokeyname || return
+  ble/builtin/bind/.initialize-kmap "$opt_keymap" || return
+
+  local q=\' Q="''\'"
+  if [[ $value == \"* ]]; then
+    local ifs=$' \t\n'
+    local rex='^"(([^\"]|\\.)*)"'
+    if ! [[ $value =~ $rex ]]; then
+      echo "ble.sh (bind): no closing '\"' in spec:'${1//$q/$Q}'" >&2
+      flags=e$flags
+      return 1
+    fi
+
+    if ((${#BASH_REMATCH}<${#value})); then
+      local fragment=${value:${#BASH_REMATCH}}
+      echo "ble.sh (bind): warning: unprocessed fragments:'${fragment//$q/$Q}' in spec:'${1//$q/$Q}'" >&2
+    fi
+
+    value=${BASH_REMATCH[1]}
+  fi
+
+  [[ $value == \"*\" ]] && value=${value:1:${#value}-2}
+  local command="ble/widget/.EDIT_COMMAND '${value//$q/$Q}'"
+  ble-decode-key/bind "${keys[*]}" "$command"
+}
+## 関数 ble/builtin/bind/option:r keyseq
+##   @var[in] opt_keymap
+function ble/builtin/bind/option:r {
+  local keyseq=$1
+
+  local ret chars keys
+  ble/util/keyseq2chars "$keyseq"; chars=("${ret[@]}")
+  ble/builtin/bind/.decode-chars "${chars[@]}"
+
+  local kmap
+  ble/builtin/bind/.initialize-kmap "$opt_keymap" || return
+  ble-decode-key/unbind "${keys[*]}"
+}
+## 関数 ble/builtin/bind/option:-
+##   @var[in] opt_keymap
+function ble/builtin/bind/option:- {
+  local ret; ble/string#trim "$1"; local arg=$ret
+
+  if [[ $arg == 'set '* ]]; then
+    [[ $_ble_decode_bind_state != none ]] && builtin bind "$arg"
+    return
+  fi
+
+  local keys value kmap
+  if ! ble/builtin/bind/.initialize-keys-and-value "$arg"; then
+    local q=\' Q="''\'"
+    echo "ble.sh (bind): unrecognized readline command '${arg//$q/$Q}'." >&2
+    flags=e$flags
+    return 1
+  elif ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
+    echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    flags=e$flags
+    return 1
+  fi
+
+  if [[ $value == \"* ]]; then
+    # keyboard macro
+    value=${value#\"} value=${value%\"}
+    local ret chars; ble/util/keyseq2chars "$value"; chars=("${ret[@]}")
+    local command="ble/widget/.ble-decode-char ${chars[*]}"
+    ble-decode-key/bind "${keys[*]}" "$command"
+  else
+    # readline function
+    local rlfunc_data=
+    case $kmap in
+    (emacs)   rlfunc_data=$_ble_base/keymap/emacs.rlfunc.txt ;;
+    (vi_imap) rlfunc_data=$_ble_base/keymap/vi_imap.rlfunc.txt ;;
+    (vi_nmap) rlfunc_data=$_ble_base/keymap/vi_nmap.rlfunc.txt ;;
+    esac
+    if [[ $rlfunc_data && -s $rlfunc_data ]]; then
+      local awk_script='$1 == ENVIRON["RLFUNC"] { $1=""; print; exit; }'
+      local ret; ble/util/assign ret 'RLFUNC=$value ble/bin/awk "$awk_script" "$rlfunc_data"'
+      ble/string#trim "$ret"
+      local command="ble/widget/$ret"
+      local arr; ble/string#split-words arr "$command"
+      if ble/is-function "${arr[0]}"; then
+        ble-decode-key/bind "${keys[*]}" "$command"
+        return
+      fi
+    fi
+
+    local rlfunc=${arr[0]#ble/widget/}
+    echo "ble.sh (bind): unsupported readline function '${value//$q/$Q}'." >&2
+    flags=e$flags
+    return 1
   fi
 }
+function ble/builtin/bind/.process {
+  flags=
+  local opt_literal= opt_keymap=
+  while (($#)); do
+    local arg=$1; shift
+    if [[ ! $opt_literal ]]; then
+      case $arg in
+      (--) opt_literal=1
+           continue ;;
+      (-*)
+        local i n=${#arg} c
+        for ((i=1;i<n;i++)); do
+          c=${arg:i:1}
+          case $c in
+          ([lpsvPSVX])
+            [[ $_ble_decode_bind_state != none ]] &&
+              builtin bind ${opt_keymap:+-m} $opt_keymap -$c ;;
+          ([mqurfx])
+            if ((!$#)); then
+              echo "ble.sh (bind): missing option argument for -$c" >&2
+              flags=e$flags
+            else
+              local optarg=$1; shift
+              case $c in
+              (m) ble/builtin/bind/option:m "$optarg" ;;
+              (x) ble/builtin/bind/option:x "$optarg" ;;
+              (r) ble/builtin/bind/option:r "$optarg" ;;
+              ([uf])
+                echo "ble.sh (bind): unsupported option -$c $optarg" >&2
+                flags=e$flags ;;
+              esac
+            fi ;;
+          (*)
+            echo "ble.sh (bind): unrecognized option -$c" >&2
+            flags=e$flags ;;
+          esac
+        done
+        continue ;;
+      esac
+    fi
+
+    ble/builtin/bind/option:- "$arg"
+    opt_literal=1
+  done
+  return 0
+}
+function ble/builtin/bind {
+  local flags=
+  ble/builtin/bind/.process "$@"
+  if [[ $_ble_decode_bind_state == none ]]; then
+    builtin bind "$@"
+  else
+    [[ $flags != *e* ]]
+  fi
+}
+function bind { ble/builtin/bind "$@"; }
 
 #------------------------------------------------------------------------------
 # **** encoding = UTF-8 ****

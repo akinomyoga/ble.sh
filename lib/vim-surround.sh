@@ -83,14 +83,6 @@ source "$_ble_base/keymap/vi.sh"
 #------------------------------------------------------------------------------
 # util
 
-function ble/string#trim {
-  ret=$*
-  local rex=$'^[ \t\n]+'
-  [[ $ret =~ $rex ]] && ret=${ret:${#BASH_REMATCH}}
-  local rex=$'[ \t\n]+$'
-  [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
-}
-
 ## 関数 ble/lib/vim-surround.sh/get-char-from-key key
 ##   @param[in] key
 ##   @var[out] ret
