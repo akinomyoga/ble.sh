@@ -785,6 +785,9 @@ tech
 
 2019-02-10
 
+  * keymap: `C-x C-g` や `C-M-g` にも cancel, bell を設定する?
+    実は C-g は keymap によって様々な物が bind されている。
+
   * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
 
     * bind -f filename には対応していない
@@ -2372,7 +2375,7 @@ tech
   - main: support `BLE_VERSION` and `BLE_VERSINFO` (suggested by cmplstofB) `#D0909`
   - global: support `--help` for public functions `ble-*` (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7 1209ac6 `#D0913` 92d9038
   - auto-complete: support <kbd>end</kbd> at the end of line a374635
-  - decode: support `bind` for `ble.sh` settings `#D0915`
+  - decode: replace builtin `bind` for `ble.sh` settings `#D0915`
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -3206,7 +3209,112 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+
 2019-02-10
+
+  * builtin bind --help を実行すると標準出力が変になる… [#D0918]
+    これは最近の実装が問題になっているのだろうか…。
+    しかし builtin で問題になっているから別の問題かもしれない。
+    ble-0.2 と ble-0.1 でも試してみる事にする。
+    うーん。ble-0.1 でも再現する。
+
+    ble-detach してから ble-attach すると直る。
+
+    コマンドラインに内容が消されてしまうという事は、
+    bleopt_internal_suppress_bash_output の関係だろう。
+    と思って観察したが suppress_bash_output は最初のロード時に
+    初期化するだけであって detach/attach に関係するとは思われない。
+
+    set -o emacs で editing mode を変更すると
+    ble-decode/{detach,attach} が呼び出されるはずである。
+    と思って確認してみた所、set -o emacs では治らない。
+    明示的に ble-detach して ble-attach すると確かに直る。
+
+    また一度 ble-detach して ble-attach すると
+    次に builtin bind --help しても問題は発生しない。
+    stty の問題でもなさそうな気がする。
+    念の為 stty -a を調べてみる事にする。
+    discard が undef から ^O になっている。
+    うーん。然し色々調べてみたがこれはやはり関係ない気がする。
+
+    うーん。_ble_attached=; ble-detach/impl; stty sane; ble-attach
+    というのを一気に実行したとしても症状は治らない。
+    ble-detach して ble-attach すると直るのは何故だろう。
+
+    また builtin bind --help が実装された bash-4.4 以降で起こる様になっている。
+
+    ble/util/assign hello 'builtin bind --help' としても症状は発生する。
+    (builtin bind --help) の様にすると症状は発生しない。
+    うーん。bash の状態がおかしくなっている?
+    bind の実装はどうなっているだろうか。うーん。分からない。
+    これを見ると他の組み込みコマンドの時にも同様の問題が発生しても良い様に見える。
+    或いはこの仕組を使って --help を表示しているコマンドは少ないという事なのか。
+    何れにしても最新版の bash-dev で試してみる事にする。
+
+    % bind.def の実装は変わっていない。complete.def と比べると、
+    % bind の方は help を表示した後に未だ何か動作をしている。
+    %
+    % |   begin_unwind_frame ("bind_builtin");
+    % |   builtin_usage ();
+    % |   do { return_code = EX_USAGE; goto bind_exit; } while (0);
+    % | bind_exit:
+    % |   if (saved_keymap)
+    % |     rl_set_keymap (saved_keymap);
+    % |
+    % |   run_unwind_frame ("bind_builtin");
+    % |
+    % |   return (sh_chkwrite (return_code));
+    %
+    % この時点で saved_keymap は NULL なので rl_set_keymap は実行されない。
+    % run_unwind_frame は何をするのか…。どうも begin_unwind_frame と対になっている。
+    %
+    % 調べてみると sh_chkwrite を CASE_HELPOPT の後に呼び出しているのは bind のみである。
+    % 他の builtin では直接に戻り値を返している。では sh_chkwrite とは何か。
+    %
+    % | // builtins/common.c
+    % | int sh_chkwrite (int s) {
+    % |   QUIT;
+    % |   fflush (stdout);
+    % |   QUIT;
+    % |   if (ferror (stdout))
+    % |     {
+    % |       sh_wrerror ();
+    % |       fpurge (stdout);
+    % |       clearerr (stdout);
+    % |       return (EXECUTION_FAILURE);
+    % |     }
+    % |   return (s);
+    % | }
+    % |
+    % | // quit.h
+    % | #define QUIT \
+    % |   do { \
+    % |     if (terminating_signal) termsig_handler (terminating_signal); \
+    % |     if (interrupt_state) throw_to_top_level (); \
+    % |   } while (0)
+    %
+    % うーん。これで振る舞いが変わる物とは思われない…。
+    % 取り敢えず bash-dev で再現するかどうか試してから弄ってみる。
+    % →bash-dev でも再現する。
+    %   sh_chkwrite を呼び出さない様にしても再現する。
+    %
+    % というか、以下の部分が極めて怪しい。
+    % 成る程、unwind_protect とはそういう使い方をする物なのか…。
+    %
+    % | unwind_protect_var (rl_outstream);
+    % | rl_outstream = stdout;
+    %
+    % うーん。調べてみたがそもそも CASE_HELPOPT を通過していない。。
+    % うーん。実は --help は CASE_HELPOPT ではなかった…。
+    % これは変な引数などを指定した時に出るエラーだったのである。
+    % そして、その場合には特に変な現象には悩まされていない。
+
+    改めて。試してみると begin_unwind_frame を呼び出しているのに、
+    run_unwind_frame が呼び出されない、という事になっている様子である。
+    と思ったら…。CASE_HELPOPT はよく見たらラベルじゃなくて文だった…。
+
+    CASE_HELPOPT の中を覗いたら return (EX_USAGE) している。
+    これが犯人である。直した。
 
   * [自然解消] 2013-06-10 ble-bind キーボードマクロの定義に対応 [#D0917]
     ref #D0915

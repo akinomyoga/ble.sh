@@ -2176,7 +2176,7 @@ function ble/builtin/bind/.decompose-pair {
   local spec=$ret ifs=$' \t\n' q=\' Q="'\''"
 
   keyseq= value=
-  [[ ! $spec || $spec == 'set '* ]] && return 3  # bind ''
+  [[ ! $spec || $spec == 'set'["$ifs"]* ]] && return 3  # bind ''
 
   # split keyseq / value
   local rex='^(("([^\"]|\\.)*"|[^":'$ifs'])*("([^\"]|\\.)*)?)['$ifs']*(:['$ifs']*)?'
@@ -2259,7 +2259,7 @@ function ble/builtin/bind/.decode-chars {
   # setup hook and run
   local -a ble_decode_bind_keys=()
   local _ble_decode_key__hook=ble/builtin/bind/.decode-chars.hook
-  ble-decode-key "$@"
+  ble-decode-char "$@"
 
   keys=("${ble_decode_bind_keys[@]}")
 }
@@ -2350,7 +2350,8 @@ function ble/builtin/bind/option:r {
 function ble/builtin/bind/option:- {
   local ret; ble/string#trim "$1"; local arg=$ret
 
-  if [[ $arg == 'set '* ]]; then
+  local ifs=$' \t\n'
+  if [[ $arg == 'set'["$ifs"]* ]]; then
     [[ $_ble_decode_bind_state != none ]] && builtin bind "$arg"
     return
   fi
@@ -2408,12 +2409,28 @@ function ble/builtin/bind/.process {
       case $arg in
       (--) opt_literal=1
            continue ;;
+      (--help)
+        if ((_ble_bash<40400)); then
+          echo "ble.sh (bind): unrecognized option $arg" >&2
+          flags=e$flags
+        else
+          # Note: Bash-4.4, 5.0 のバグで unwind_frame が壊れているので
+          #   サブシェルで評価 #D0918
+          #   https://lists.gnu.org/archive/html/bug-bash/2019-02/msg00033.html
+          [[ $_ble_decode_bind_state != none ]] &&
+            (builtin bind --help)
+        fi
+        continue ;;
+      (--*)
+        echo "ble.sh (bind): unrecognized option $arg" >&2
+        flags=e$flags
+        continue ;;
       (-*)
         local i n=${#arg} c
         for ((i=1;i<n;i++)); do
           c=${arg:i:1}
           case $c in
-          ([lpsvPSVX])
+          ([lpPsSvVX])
             [[ $_ble_decode_bind_state != none ]] &&
               builtin bind ${opt_keymap:+-m} $opt_keymap -$c ;;
           ([mqurfx])

@@ -47,7 +47,7 @@ exchange-point-and-mark           exchange-point-and-mark
 forward-backward-delete-char      delete-forward-backward-char
 forward-byte                      -
 forward-char                      forward-char
-forward-search-history            -
+forward-search-history            history-isearch-forward
 forward-word                      forward-cword
 glob-complete-word                complete context=glob
 glob-expand-word                  complete context=glob:insert-all
@@ -89,8 +89,8 @@ print-last-kbd-macro              -
 quoted-insert                     quoted-insert
 re-read-init-file                 -
 redraw-current-line               redraw-line
-reverse-search-history            -
-revert-line                       -
+reverse-search-history            history-isearch-backward
+revert-line                       emacs/revert
 self-insert                       self-insert
 set-mark                          set-mark
 shell-backward-kill-word          kill-backward-sword
