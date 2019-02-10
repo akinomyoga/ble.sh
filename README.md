@@ -211,7 +211,7 @@ For another example, if you want to invoke a command on typing <kbd>M-c</kbd>, y
 ble-bind -c 'M-c' 'my-command'
 ```
 
-Or, if you want to invoke a edit function (for Bash `bind -x`) on typing <kbd>C-r</kbd>, you can write as follows:
+Or, if you want to invoke a edit function (designed for Bash `bind -x`) on typing <kbd>C-r</kbd>, you can write as follows:
 
 ```bash
 ble-bind -x 'C-r' 'my-edit-function'
@@ -249,7 +249,7 @@ For details, please check the [Wiki page](https://github.com/akinomyoga/ble.sh/w
 
 The feature `auto-complete` is available in Bash 4.0 or later. `auto-complete` automatically suggests a possible completion on user input.
 The suggested contents can be inserted by typing <kbd>S-RET</kbd>
-(when the cursor is at the end of the command line, you can also use <kbd>right</kbd> or <kbd>C-f</kbd> to insert the suggestion).
+(when the cursor is at the end of the command line, you can also use <kbd>right</kbd>, <kbd>C-f</kbd> or <kbd>end</kbd> to insert the suggestion).
 If you want to insert only first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
 If you want to accept the suggestion and immediately run the command, you can use <kbd>C-RET</kbd> (if your terminal supports this special key combination).
 
