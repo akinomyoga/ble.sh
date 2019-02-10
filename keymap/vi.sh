@@ -7372,6 +7372,8 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f  'RET'     'vi_imap/accept-single-line-or vi_imap/newline'
   # ble-bind -f  'C-o'     accept-and-next
   ble-bind -f  'C-g'     bell
+  ble-bind -f  'C-x C-g' bell
+  ble-bind -f  'C-M-g'   bell
 
   # shell functions
   ble-bind -f  'C-l'     clear-screen
@@ -7578,13 +7580,15 @@ function ble-decode/keymap:vi_cmap/define {
   ble-bind -f __before_widget__ vi_cmap/__before_widget__
 
   # accept/cancel
-  ble-bind -f 'ESC' vi_cmap/cancel
-  ble-bind -f 'C-[' vi_cmap/cancel
-  ble-bind -f 'C-c' vi_cmap/cancel
-  ble-bind -f 'C-m' vi_cmap/accept
-  ble-bind -f 'RET' vi_cmap/accept
-  ble-bind -f 'C-j' vi_cmap/accept
-  ble-bind -f 'C-g' bell
+  ble-bind -f 'ESC'     vi_cmap/cancel
+  ble-bind -f 'C-['     vi_cmap/cancel
+  ble-bind -f 'C-c'     vi_cmap/cancel
+  ble-bind -f 'C-m'     vi_cmap/accept
+  ble-bind -f 'RET'     vi_cmap/accept
+  ble-bind -f 'C-j'     vi_cmap/accept
+  ble-bind -f 'C-g'     bell
+  ble-bind -f 'C-x C-g' bell
+  ble-bind -f 'C-M-g'   bell
 
   # shell function
   # ble-bind -f  'C-l'     clear-screen

@@ -785,9 +785,6 @@ tech
 
 2019-02-10
 
-  * keymap: `C-x C-g` や `C-M-g` にも cancel, bell を設定する?
-    実は C-g は keymap によって様々な物が bind されている。
-
   * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
 
     * bind -f filename には対応していない
@@ -2368,14 +2365,15 @@ tech
   - progcomp: support `complete -I` for Bash 5.0 `#D0895` `#D0896`
   - progcomp: support candidates which replace the original text before the cursor `#D0897` 41b8cbb
   - progcomp: support `compopt -o nosort|noquote|plusdirs` `#D0898` cc48539
-  - edit: support <kdb>M-*</kbd> `#D0899` 3fd7d6e
-  - edit: support <kdb>M-g</kbd>, <kdb>C-x *</kbd>, <kdb>C-x g</kbd> `#D0902` 41797c6
+  - edit: support <kbd>M-*</kbd> `#D0899` 3fd7d6e
+  - edit: support <kbd>M-g</kbd>, <kbd>C-x *</kbd>, <kbd>C-x g</kbd> `#D0902` 41797c6
   - progcomp: support `COMP_WORDBREAKS` `#D0903` 7cfe425
   - complete: support completion of tilde expansion `#D0907` b4fc40c `#D0908` 9fafdb3
   - main: support `BLE_VERSION` and `BLE_VERSINFO` (suggested by cmplstofB) `#D0909`
   - global: support `--help` for public functions `ble-*` (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7 1209ac6 `#D0913` 92d9038
   - auto-complete: support <kbd>end</kbd> at the end of line a374635
-  - decode: replace builtin `bind` for `ble.sh` settings `#D0915`
+  - decode: replace builtin `bind` for `ble.sh` settings `#D0915`  90ca3be `#D0918` e0cdd15
+  - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919`
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -3209,6 +3207,10 @@ tech
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-02-11
+
+  * keymap: `C-x C-g` や `C-M-g` にも cancel, bell を設定する? [#D0919]
+    実は C-g は keymap によって様々な物が bind されている。
 
 2019-02-10
 

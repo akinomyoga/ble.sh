@@ -5658,7 +5658,9 @@ function ble-decode/keymap:isearch/define {
   ble-bind -f 'BS'        isearch/prev
 
   ble-bind -f __default__ isearch/exit-default
-  ble-bind -f C-g         isearch/cancel
+  ble-bind -f 'C-g'       isearch/cancel
+  ble-bind -f 'C-x C-g'   isearch/cancel
+  ble-bind -f 'C-M-g'     isearch/cancel
   ble-bind -f C-m         isearch/exit
   ble-bind -f RET         isearch/exit
   ble-bind -f C-j         isearch/accept-line
@@ -5952,7 +5954,9 @@ function ble-decode/keymap:nsearch/define {
   local ble_bind_keymap=nsearch
 
   ble-bind -f __default__ nsearch/exit-default
-  ble-bind -f C-g         nsearch/cancel
+  ble-bind -f 'C-g'       nsearch/cancel
+  ble-bind -f 'C-x C-g'   nsearch/cancel
+  ble-bind -f 'C-M-g'     nsearch/cancel
   ble-bind -f C-m         nsearch/exit
   ble-bind -f RET         nsearch/exit
   ble-bind -f C-j         nsearch/accept-line
@@ -6145,6 +6149,8 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'RET'      accept-single-line-or-newline
   ble-bind -f 'C-o'      accept-and-next
   ble-bind -f 'C-g'      bell
+  ble-bind -f 'C-x C-g'  bell
+  ble-bind -f 'C-M-g'    bell
 
   ble-bind -f 'C-l'      clear-screen
   ble-bind -f 'M-l'      redraw-line

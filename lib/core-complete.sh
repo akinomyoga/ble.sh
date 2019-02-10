@@ -2503,6 +2503,8 @@ function ble-decode/keymap:menu_complete/define {
   ble-bind -f C-m         'menu_complete/exit complete'
   ble-bind -f RET         'menu_complete/exit complete'
   ble-bind -f C-g         'menu_complete/cancel'
+  ble-bind -f 'C-x C-g'   'menu_complete/cancel'
+  ble-bind -f 'C-M-g'     'menu_complete/cancel'
   ble-bind -f C-f         'menu_complete/forward'
   ble-bind -f right       'menu_complete/forward'
   ble-bind -f C-i         'menu_complete/forward cyclic'
@@ -2942,7 +2944,9 @@ function ble-decode/keymap:auto_complete/define {
 
   ble-bind -f __defchar__ auto_complete/self-insert
   ble-bind -f __default__ auto_complete/cancel-default
-  ble-bind -f C-g         auto_complete/cancel
+  ble-bind -f 'C-g'       auto_complete/cancel
+  ble-bind -f 'C-x C-g'   auto_complete/cancel
+  ble-bind -f 'C-M-g'     auto_complete/cancel
   ble-bind -f S-RET       auto_complete/insert
   ble-bind -f S-C-m       auto_complete/insert
   ble-bind -f C-f         auto_complete/insert-on-end
@@ -3355,7 +3359,9 @@ function ble/widget/dabbrev/accept-line {
 function ble-decode/keymap:dabbrev/define {
   local ble_bind_keymap=dabbrev
   ble-bind -f __default__ 'dabbrev/exit-default'
-  ble-bind -f C-g         'dabbrev/cancel'
+  ble-bind -f 'C-g'       'dabbrev/cancel'
+  ble-bind -f 'C-x C-g'   'dabbrev/cancel'
+  ble-bind -f 'C-M-g'     'dabbrev/cancel'
   ble-bind -f C-r         'dabbrev/next'
   ble-bind -f C-s         'dabbrev/prev'
   ble-bind -f RET         'dabbrev/exit'
