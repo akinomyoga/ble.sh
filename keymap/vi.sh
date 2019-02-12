@@ -6373,6 +6373,7 @@ function ble/widget/vi_xmap/increment.impl {
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
     if [[ $mark_type == line ]]; then
+      local ret
       ble-edit/content/find-logical-bol "$beg"; local beg=$ret
       ble-edit/content/find-logical-eol "$end"; local end=$ret
     else

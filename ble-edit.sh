@@ -4905,6 +4905,7 @@ function ble-edit/undo/.load {
   local str ind; ble-edit/undo/.get-current-state
 
   if [[ $bleopt_undo_point == end || $bleopt_undo_point == beg ]]; then
+    local ret
     ble/string#common-prefix "$_ble_edit_str" "$str"
     local beg=${#ret}
     ble/string#common-suffix "${_ble_edit_str:beg}" "${str:beg}"
