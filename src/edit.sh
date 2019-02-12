@@ -2177,7 +2177,7 @@ function ble/widget/batch-insert {
     done
 
     if ((index<N)); then
-      local ins=
+      local ret ins=
       while ((index<N)); do
         ble/util/c2s "${chars[index]}"; ins=$ins$ret
         ((index++))
@@ -4021,7 +4021,7 @@ function ble-edit/undo/.load {
 
     # Note: 実際の編集過程に依らず、現在位置 _ble_edit_ind の周辺で
     #   変更前と変更後の文字列だけから「変更範囲」を決定する事にする。
-    local old=$_ble_edit_str new=$str
+    local old=$_ble_edit_str new=$str ret
     if [[ $bleopt_undo_point == end ]]; then
       ble/string#common-suffix "${old:_ble_edit_ind}" "$new"; local s1=${#ret}
       local old=${old::${#old}-s1} new=${new:${#new}-s1}
@@ -5487,13 +5487,14 @@ function ble-edit/isearch/history-backward.fib {
   ble-edit/isearch/.next-history.fib
 }
 function ble-edit/isearch/history-self-insert.fib {
+  local needle=
   if [[ ! $fib_suspend ]]; then
     local code=$1
     ((code==0)) && return
-    local ret needle
-    ble/util/c2s "$code"
+    local ret; ble/util/c2s "$code"
+    needle=$_ble_edit_isearch_str$ret
   fi
-  ble-edit/isearch/.next-history.fib append "$_ble_edit_isearch_str$ret"
+  ble-edit/isearch/.next-history.fib append "$needle"
 }
 
 function ble-edit/isearch/prev {

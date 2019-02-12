@@ -1298,6 +1298,7 @@ function ble/keymap:vi/operator:d {
     # 最後の行が削除される時は前の行の非空白行頭まで後退
     if ((end==${#_ble_edit_str}&&beg>0)); then
       # fix start position
+      local ret
       ((beg--))
       ble-edit/content/find-logical-bol "$beg"
       ble-edit/content/find-non-space "$ret"
@@ -6989,6 +6990,7 @@ function ble/widget/vi_xmap/increment.impl {
     local beg=$_ble_edit_mark end=$_ble_edit_ind
     ((beg<=end)) || local beg=$end end=$beg
     if [[ $mark_type == vi_line ]]; then
+      local ret
       ble-edit/content/find-logical-bol "$beg"; local beg=$ret
       ble-edit/content/find-logical-eol "$end"; local end=$ret
     else

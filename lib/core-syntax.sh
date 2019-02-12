@@ -5134,7 +5134,7 @@ else
     _ble_syntax_highlight_lscolors_ext[ret+1]=$value
   }
   function ble-syntax/highlight/ls_colors/.read-extension {
-    local key=$1 ret
+    local key=$1
     ble-syntax/highlight/ls_colors/.find-extension "$key"
     ret=${_ble_syntax_highlight_lscolors_ext[ret+1]}
     [[ $ret ]]

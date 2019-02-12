@@ -2004,6 +2004,7 @@ function ble-complete/insert {
   local insert_beg=$1 insert_end=$2
   local insert=$3 suffix=$4
   local original_text=${_ble_edit_str:insert_beg:insert_end-insert_beg}
+  local ret
 
   # 編集範囲の最小化
   local insert_replace=
@@ -2013,7 +2014,7 @@ function ble-complete/insert {
     ((insert_beg=insert_end))
   else
     # 既存部分の置換がある場合
-    local ret; ble/string#common-prefix "$insert" "$original_text"
+    ble/string#common-prefix "$insert" "$original_text"
     if [[ $ret ]]; then
       insert=${insert:${#ret}}
       ((insert_beg+=${#ret}))
