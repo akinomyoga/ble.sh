@@ -820,6 +820,11 @@ tech
 
     実のところ、現状のまま ble-* の方が自動的に補完が効くので嬉しい。
 
+    bash.env は bash.env という名前のコマンドを提供する様である。
+    https://github.com/midwire/bash.env
+    そういう事であれば ble.sh でも ble.sh という名前の関数を提供すれば良い気がする。
+    しかし ble.sh が入力しやすいのかというと微妙ではある。
+
     bash-it の場合には bash-it-update だとか bash-it::update だとかだと
     格好が悪いので bash-it update という形の関数名になるというのは分かる。
 
@@ -829,6 +834,12 @@ tech
 
     何か問題があって現在はこれを使っていないが、それは何だったろうか。
     何処かに記録されていて良い筈なのに何処にも記述がない。
+    対応した時の記録は #D0737 にある。
+    動かしてみた所、ちゃんと動いている様に見える。
+
+    →恐らく、先ず古い ble.sh の version では使えないという事。
+      それから PROMPT_COMMAND を上書きすると使えなくなってしまうからという事。
+      ユーザに PROMPT_COMMAND を設定しないように要求するのは面倒である。
 
   * bind: `bind -XpPS` 等から現在の設定を読み取る?
 
@@ -957,6 +968,10 @@ tech
     結構対応は面倒そうである。
     history -nr [filename] に関しては履歴を idle で再初期化する?
 
+    * 2017-12-03 の項目も対応する必要がある
+    * 2016-07-07/3 についても確認が必要
+
+
 2018-08-26
 
   * complete: 候補一覧にて曖昧一致に関しても一致部分を太字にすると便利ではないか?
@@ -987,14 +1002,6 @@ tech
 
   * highlight: シェル変数 auto_resume?
     一語の単純コマンドでありかつジョブの名前に一致する場合にジョブ名と解釈する。
-
-2018-08-18
-
-  * bugbash: #D0727 の報告をするか?
-    一応 bash devel branch に対する修正の案も作ってある。
-
-    検索してみたら似たような提案が行われた形跡があるが Chet は無視した。
-    http://lists.gnu.org/archive/html/bug-bash/2014-06/msg00053.html
 
 2018-08-16
 
@@ -1069,24 +1076,6 @@ tech
 
     外部環境における set convert-meta の状態は
     変数 _ble_term_rl_convert_meta_external に記録してある。
-
-  * bugbash: lib/readline/bind.c:397:
-
-    ref #D0699
-
-    以下の ic = UNMETA (ic); の行は if (map ...) の内側であるべきなのではないか。
-
-      if (META_CHAR (ic) && _rl_convert_meta_chars_to_ascii)
-        {
-          ic = UNMETA (ic);
-          if (map[ESC].type == ISKMAP)
-            {
-              prevmap = map;
-              map = FUNCTION_TO_KEYMAP (map, ESC);
-            }
-        }
-
-    然しこれは bind -m emacs-meta ... とした時の為にそうなっているとも考えられる。
 
   * 現在の LC_CTYPE で表現できない文字を入力した時の self-insert の振る舞い
 
@@ -3208,6 +3197,41 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-11
+
+  * bash-dev で complete が識別式の関数名しか受け付けなくなった [#D0922]
+    これは本当に意図した動作なのだろうか。
+    と思ったら普通にバグである。これは流石に気づいて直しているだろう…。
+    →これは 439b8c2 で直った。
+
+  * 2018-07-19 bugbash: lib/readline/bind.c:397: [#D0921]
+
+    ref #D0699
+
+    | 以下の ic = UNMETA (ic); の行は if (map ...) の内側であるべきなのではないか。
+    |
+    |   if (META_CHAR (ic) && _rl_convert_meta_chars_to_ascii)
+    |     {
+    |       ic = UNMETA (ic);
+    |       if (map[ESC].type == ISKMAP)
+    |         {
+    |           prevmap = map;
+    |           map = FUNCTION_TO_KEYMAP (map, ESC);
+    |         }
+    |     }
+    |
+    | 然しこれは bind -m emacs-meta ... とした時の為にそうなっているとも考えられる。
+
+    これは別の直し方をした。報告した。
+    https://lists.gnu.org/archive/html/bug-bash/2019-02/msg00036.html
+
+  * 2018-08-18 bugbash: #D0727 の報告をするか? [#D0920]
+    一応 bash devel branch に対する修正の案も作ってある。
+
+    検索してみたら似たような提案が行われた形跡があるが Chet は無視した。
+    http://lists.gnu.org/archive/html/bug-bash/2014-06/msg00053.html
+
+    報告した。
+    https://lists.gnu.org/archive/html/bug-bash/2019-02/msg00035.html
 
   * keymap: `C-x C-g` や `C-M-g` にも cancel, bell を設定する? [#D0919]
     実は C-g は keymap によって様々な物が bind されている。

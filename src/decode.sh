@@ -26,6 +26,8 @@ function bleopt/check:default_keymap {
   esac
 }
 
+## 関数 bleopt/get:default_keymap
+##   @var[out] ret
 function bleopt/get:default_keymap {
   ret=$bleopt_default_keymap
   if [[ $ret == auto ]]; then
@@ -84,6 +86,10 @@ _ble_decode_MaskFlag=0x7FC00000
 _ble_decode_IsolatedESC=$((0x07FF))
 _ble_decode_FunctionKeyBase=0x110000
 
+## 関数 ble-decode-kbd/.set-keycode keyname key
+##
+## 関数 ble-decode-kbd/.get-keycode keyname
+##   @var[out] ret
 if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   _ble_decode_kbd_ver=4
   _ble_decode_kbd__n=0
@@ -1533,6 +1539,8 @@ function ble-decode/keylog/start {
   _ble_decode_keylog_enabled=1
   _ble_decode_keylog=()
 }
+## 関数 ble-decode/keylog/end
+##   @var[out] ret
 function ble-decode/keylog/end {
   ret=("${_ble_decode_keylog[@]}")
   _ble_decode_keylog_enabled=
@@ -1832,8 +1840,9 @@ function ble/base/workaround-POSIXLY_CORRECT {
 
 _ble_decode_bind_hook=
 
-## 関数 ble-decode-bind/c2dqs code; ret
+## 関数 ble-decode-bind/c2dqs code
 ##   bash builtin bind で用いる事のできるキー表記
+##   @var[out] ret
 function ble-decode-bind/c2dqs {
   local i=$1
 
@@ -2620,7 +2629,8 @@ function ble/encoding:C/decode {
   fi
 }
 
-## 関数 ble/encoding:C/c2bc charcode ; ret
+## 関数 ble/encoding:C/c2bc charcode
+##   @var[out] ret
 function ble/encoding:C/c2bc {
   ret=1
 }

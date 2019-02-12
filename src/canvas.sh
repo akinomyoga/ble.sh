@@ -19,6 +19,8 @@ function bleopt/check:tab_width {
 #------------------------------------------------------------------------------
 # ble/arithmetic
 
+## ble/arithmetic/sum integer...
+##   @var[out] ret
 function ble/arithmetic/sum {
   IFS=+ eval 'let "ret=$*+0"'
 }

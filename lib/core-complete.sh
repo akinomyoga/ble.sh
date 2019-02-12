@@ -2,6 +2,8 @@
 
 ble/util/import "$_ble_base/lib/core-syntax.sh"
 
+## 関数 ble-complete/string#search-longest-suffix-in needle haystack
+##   @var[out] ret
 function ble-complete/string#search-longest-suffix-in {
   local needle=$1 haystack=$2
   local l=0 u=${#needle}
@@ -15,6 +17,8 @@ function ble-complete/string#search-longest-suffix-in {
   done
   ret=${needle:l}
 }
+## 関数 ble-complete/string#common-suffix-prefix lhs rhs
+##   @var[out] ret
 function ble-complete/string#common-suffix-prefix {
   local lhs=$1 rhs=$2
   if ((${#lhs}<${#rhs})); then
@@ -582,6 +586,8 @@ function ble-complete/source:command {
 
 # source:file, source:dir
 
+## 関数 ble-complete/util/eval-pathname-expansion pattern
+##   @var[out] ret
 function ble-complete/util/eval-pathname-expansion {
   local pattern=$1
   local -a dtor=()
@@ -2592,6 +2598,8 @@ function ble-complete/auto-complete/.search-history-light {
 _ble_complete_ac_history_needle=
 _ble_complete_ac_history_index=
 _ble_complete_ac_history_start=
+## 関数 ble-complete/auto-complete/.search-history-heavy text
+##   @var[out] ret
 function ble-complete/auto-complete/.search-history-heavy {
   local text=$1
 

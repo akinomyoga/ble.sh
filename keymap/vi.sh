@@ -10,6 +10,8 @@ source "$_ble_base/keymap/vi_digraph.sh"
 ## オプション keymap_vi_macro_depth
 : ${bleopt_keymap_vi_macro_depth:=64}
 
+## 関数 ble/keymap:vi/k2c key
+##   @var[out] ret
 function ble/keymap:vi/k2c {
   local key=$1
   local flag=$((key&_ble_decode_MaskFlag)) char=$((key&_ble_decode_MaskChar))
@@ -39,6 +41,7 @@ function ble/keymap:vi/k2c {
 ##     検索する文字の集合を指定します
 ##   @param[in] index
 ##     text の内の検索開始位置を指定します。
+##   @var[out] ret
 ##
 function ble/string#index-of-chars {
   local chars=$2 index=${3:-0}
@@ -65,11 +68,15 @@ function ble/string#last-index-of-chars {
   fi
 }
 
+## 関数 ble-edit/content/nonbol-eolp text
+##   @var[out] ret
 function ble-edit/content/nonbol-eolp {
   local pos=${1:-$_ble_edit_ind}
   ! ble-edit/content/bolp "$pos" && ble-edit/content/eolp "$pos"
 }
 
+## 関数 ble/keymap:vi/string#encode-rot13 text...
+##   @var[out] ret
 function ble/keymap:vi/string#encode-rot13 {
   local text=$*
   local -a buff=() ch
@@ -824,6 +831,8 @@ function ble/keymap:vi/register#play {
     ble-decode-char "$ret"
   done
 }
+## 関数 ble/keymap:vi/register#dump/escape text
+##   @var[out] ret
 function ble/keymap:vi/register#dump/escape {
   local text=$1
   local out= i=0 iN=${#text}
@@ -1759,6 +1768,8 @@ function ble/keymap:vi/string#fold {
   done
   ret=$out
 }
+## 関数 ble/keymap:vi/operator:fold/.fold-paragraphwise text [cols]
+##   @var[out] ret
 function ble/keymap:vi/operator:fold/.fold-paragraphwise {
   local text=$1
   local cols=${2:-${COLUMNS:-80}}
@@ -4355,6 +4366,8 @@ function ble/keymap:vi/text-object/word.impl {
   fi
 }
 
+## 関数 ble/keymap:vi/text-object:quote/.next [index]
+##   @var[out] ret
 function ble/keymap:vi/text-object:quote/.next {
   local index=${1:-$((_ble_edit_ind+1))} nl=$'\n'
   local rex="^[^$nl$quote]*$quote"
@@ -4362,6 +4375,8 @@ function ble/keymap:vi/text-object:quote/.next {
   ((ret=index+${#BASH_REMATCH}-1))
   return 0
 }
+## 関数 ble/keymap:vi/text-object:quote/.prev [index]
+##   @var[out] ret
 function ble/keymap:vi/text-object:quote/.prev {
   local index=${1:-_ble_edit_ind} nl=$'\n'
   local rex="$quote[^$nl$quote]*\$"
@@ -5829,6 +5844,8 @@ function ble/keymap:vi/get-rectangle {
     ble/keymap:vi/get-logical-rectangle "$@"
   fi
 }
+## 関数 ble/keymap:vi/get-rectangle-height [index1 [index2]]
+##   @var[out] ret
 function ble/keymap:vi/get-rectangle-height {
   local p0 q0 lx ly rx ry
   ble/keymap:vi/get-rectangle "$@"

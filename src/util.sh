@@ -186,6 +186,8 @@ else
     done
   }
 fi
+## 関数 ble/array#pop arr
+##   @var[out] ret
 function ble/array#pop {
   eval "local i$1=\$((\${#$1[@]}-1))"
   if ((i$1>=0)); then
@@ -305,6 +307,7 @@ function ble/string#split-words {
 ##
 ##   @param[out] arr  分割した文字列を格納する配列名を指定します。
 ##   @param[in]  text 分割する文字列を指定します。
+##   @var[out] ret
 ##
 if ((_ble_bash>=40000)); then
   function ble/string#split-lines {
@@ -348,6 +351,7 @@ function ble/string#count-char {
 }
 
 ## 関数 ble/string#count-string text string
+##   @var[out] ret
 function ble/string#count-string {
   local text=${1//"$2"}
   ((ret=(${#1}-${#text})/${#2}))
@@ -358,6 +362,7 @@ function ble/string#count-string {
 ##   @param[in] needle
 ##   @param[in] n
 ##     この引数を指定したとき n 番目の一致を検索します。
+##   @var[out] ret
 function ble/string#index-of {
   local haystack=$1 needle=$2 count=${3:-1}
   ble/string#repeat '*"$needle"' "$count"; local pattern=$ret
@@ -371,6 +376,7 @@ function ble/string#index-of {
 ##   @param[in] needle
 ##   @param[in] n
 ##     この引数を指定したとき n 番目の一致を検索します。
+##   @var[out] ret
 function ble/string#last-index-of {
   local haystack=$1 needle=$2 count=${3:-1}
   ble/string#repeat '"$needle"*' "$count"; local pattern=$ret
@@ -406,6 +412,9 @@ function ble/string#toggle-case {
   done
   IFS= eval 'ret="${buff[*]-}"'
 }
+## 関数 ble/string#tolower text...
+## 関数 ble/string#toupper text...
+##   @var[out] ret
 if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret="${*,,}"; }
   function ble/string#toupper { ret="${*^^}"; }
@@ -438,6 +447,8 @@ else
   }
 fi
 
+## 関数 ble/string#trim text...
+##   @var[out] ret
 function ble/string#trim {
   ret="$*"
   local rex=$'^[ \t\n]+'
@@ -445,21 +456,25 @@ function ble/string#trim {
   local rex=$'[ \t\n]+$'
   [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
 }
+## 関数 ble/string#ltrim text...
+##   @var[out] ret
 function ble/string#ltrim {
   ret="$*"
   local rex=$'^[ \t\n]+'
   [[ $ret =~ $rex ]] && ret=${ret:${#BASH_REMATCH}}
 }
+## 関数 ble/string#rtrim text...
+##   @var[out] ret
 function ble/string#rtrim {
   ret="$*"
   local rex=$'[ \t\n]+$'
   [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
 }
 
-## 関数 ble/string#escape-characters chars1 chars2 text
+## 関数 ble/string#escape-characters text chars1 [chars2]
+##   @param[in]     text
 ##   @param[in]     chars1
 ##   @param[in,opt] chars2
-##   @param[in]     text
 ##   @var[out] ret
 function ble/string#escape-characters {
   ret=$1
@@ -472,6 +487,17 @@ function ble/string#escape-characters {
   fi
 }
 
+## 関数 ble/string#escape-for-sed-regex text...
+## 関数 ble/string#escape-for-awk-regex text...
+## 関数 ble/string#escape-for-extended-regex text...
+## 関数 ble/string#escape-for-bash-glob text...
+## 関数 ble/string#escape-for-bash-single-quote text...
+## 関数 ble/string#escape-for-bash-double-quote text...
+## 関数 ble/string#escape-for-bash-escape-string text...
+## 関数 ble/string#escape-for-bash-specialchars text...
+## 関数 ble/string#escape-for-bash-specialchars-in-brace text...
+##   @param[in] text...
+##   @var[out] ret
 function ble/string#escape-for-sed-regex {
   ble/string#escape-characters "$*" '\.[*^$/'
 }
@@ -821,6 +847,8 @@ else
   }
 fi
 
+## 関数 ble/util/eval-pathname-expansion pattern
+##   @var[out] ret
 function ble/util/eval-pathname-expansion {
   # Note: eval で囲んでおかないと failglob 失敗時に続きが実行されない
   # Note: failglob で失敗した時のエラーメッセージは殺す
@@ -2374,6 +2402,10 @@ function ble/term/initialize {
 # String manipulations
 
 _ble_util_s2c_table_enabled=
+## 関数 ble/util/s2c text [index]
+##   @param[in] text
+##   @param[in,opt] index
+##   @var[out] ret
 if ((_ble_bash>=40100)); then
   # - printf "'c" で Unicode が読める (どの LC_CTYPE でも Unicode になる)
   function ble/util/s2c {
@@ -2423,6 +2455,9 @@ else
 fi
 
 # ble/util/c2s
+
+## 関数 ble/util/c2s-impl char
+##   @var[out] ret
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
 
@@ -2475,6 +2510,8 @@ fi
 
 # どうもキャッシュするのが一番速い様だ
 _ble_util_c2s_table=()
+## 関数 ble/util/c2s char
+##   @var[out] ret
 function ble/util/c2s {
   [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
     ble/util/.cache/update-locale
@@ -2519,6 +2556,8 @@ function ble/util/.cache/update-locale {
 
 #------------------------------------------------------------------------------
 
+## 関数 ble/util/s2chars text
+##   @var[out] ret
 function ble/util/s2chars {
   local text=$1 n=${#1} i chars
   chars=()
@@ -2531,6 +2570,8 @@ function ble/util/s2chars {
 
 # bind で使用される keyseq の形式
 
+## 関数 ble/util/c2keyseq char
+##   @var[out] ret
 function ble/util/c2keyseq {
   local char=$(($1))
   case $char in
@@ -2559,6 +2600,8 @@ function ble/util/c2keyseq {
     fi ;;
   esac
 }
+## 関数 ble/util/chars2keyseq char...
+##   @var[out] ret
 function ble/util/chars2keyseq {
   local char str=
   for char; do
@@ -2567,6 +2610,8 @@ function ble/util/chars2keyseq {
   done
   ret=$str
 }
+## 関数 ble/util/keyseq2chars keyseq
+##   @arr[out] ret
 function ble/util/keyseq2chars {
   local keyseq=$1 chars
   local rex='^([^\]*)\\([0-7]{1,3}|x{1,2}|(C-(\\M-)?|M-(\\C-)?)*.)'
@@ -2615,7 +2660,7 @@ function ble/util/keyseq2chars {
 
 #------------------------------------------------------------------------------
 
-## 関数 ble/encoding:UTF-8/b2c
+## 関数 ble/encoding:UTF-8/b2c byte...
 ##   @var[out] ret
 function ble/encoding:UTF-8/b2c {
   local bytes b0 n i
@@ -2631,8 +2676,8 @@ function ble/encoding:UTF-8/b2c {
   done
 }
 
-## 関数 ble/encoding:UTF-8/c2b
-##   @var[out] bytes[]
+## 関数 ble/encoding:UTF-8/c2b char
+##   @arr[out] bytes
 function ble/encoding:UTF-8/c2b {
   local code=$1 n i
   ((code=code&0x7FFFFFFF,
@@ -2653,10 +2698,14 @@ function ble/encoding:UTF-8/c2b {
   fi
 }
 
+## 関数 ble/encoding:C/b2c byte
+##   @var[out] ret
 function ble/encoding:C/b2c {
   local byte=$1
   ((ret=byte&0xFF))
 }
+## 関数 ble/encoding:C/c2b char
+##   @arr[out] bytes
 function ble/encoding:C/c2b {
   local code=$1
   bytes=($((code&0xFF)))

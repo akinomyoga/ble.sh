@@ -374,6 +374,8 @@ function ble-syntax/print-status/.dump-arrays/.append-attr-char {
   fi
 }
 
+## 関数 ble-syntax/print-status/ctx#get-text ctx
+##   @var[out] ret
 function ble-syntax/print-status/ctx#get-text {
   local sgr
   ble-syntax/ctx#get-name "$1"
@@ -855,7 +857,7 @@ _ble_syntax_bash_ctx_names=(
 
 ## 関数 ble-syntax/ctx#get-name ctx
 ##   @param[in] ctx
-##   @var[out] !varname
+##   @var[out] ret
 function ble-syntax/ctx#get-name {
   ret=${_ble_syntax_bash_ctx_names[$1]}
 }
@@ -1230,6 +1232,8 @@ function ble-syntax:bash/simple-word/extract-parameter-names {
     [[ $var == [_a-zA-Z]* ]] && ble/array#push ret "$var"
   done
 }
+## 関数 ble-syntax:bash/simple-word/extract-parameter-names/.process-dquot match
+##   @var[in,out] ret
 function ble-syntax:bash/simple-word/extract-parameter-names/.process-dquot {
   local value=$1
   if [[ $value == '$"'*'"' ]]; then
@@ -1263,6 +1267,8 @@ function ble-syntax:bash/simple-word/eval-noglob/.impl {
 
   builtin eval -- "__ble_ret=$1"
 }
+## 関数 ble-syntax:bash/simple-word/eval-noglob str
+##   @var[out] ret
 function ble-syntax:bash/simple-word/eval-noglob {
   local __ble_ret
   ble-syntax:bash/simple-word/eval-noglob/.impl "$1"
@@ -5093,6 +5099,12 @@ function ble-syntax/highlight/ls_colors/.clear {
   _ble_syntax_highlight_lscolors=()
   _ble_syntax_highlight_lscolors_ext=()
 }
+
+## 関数 ble-syntax/highlight/ls_colors/.register-extension key value
+##   @param[in] key value
+## 関数 ble-syntax/highlight/ls_colors/.read-extension key
+##   @param[in] key
+##   @var[out] ret
 if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # 連想配列による実装
   function ble-syntax/highlight/ls_colors/.register-extension {

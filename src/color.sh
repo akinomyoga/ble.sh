@@ -148,6 +148,8 @@ function ble/color/gspec2sgr {
   ret="[${sgr}m"
 }
 
+## 関数 ble/color/.name2color colorName
+##   @var[out] ret
 function ble/color/.name2color {
   local colorName=$1
   if [[ ! ${colorName//[0-9]} ]]; then
@@ -272,9 +274,13 @@ function ble/color/.color2sgr-impl {
   fi
 }
 
+## 関数 ble/color/.color2sgrfg color_code
+##   @var[out] ret
 function ble/color/.color2sgrfg {
   ble/color/.color2sgr-impl "$1" 3
 }
+## 関数 ble/color/.color2sgrbg color_code
+##   @var[out] ret
 function ble/color/.color2sgrbg {
   ble/color/.color2sgr-impl "$1" 4
 }
@@ -391,17 +397,19 @@ function ble/color/read-sgrspec {
   done
 }
 
-## 関数 ble/color/sgrspec2g
+## 関数 ble/color/sgrspec2g str
 ##   SGRに対する引数から描画属性を構築します。
+##   @var[out] ret
 function ble/color/sgrspec2g {
   local g=0
   ble/color/read-sgrspec "$1"
   ret=$g
 }
 
-## 関数 ble/color/ansi2g
+## 関数 ble/color/ansi2g str
 ##   ANSI制御シーケンスから描画属性を構築します。
 ##   Note: canvas.sh を読み込んで以降でないと使えません。
+##   @var[out] ret
 function ble/color/ansi2g {
   local -a DRAW_BUFF=()
   local g=0 x=0 y=0 lc=0 lg=0
@@ -478,7 +486,7 @@ function ble/color/initialize-faces {
     sgr=${_ble_faces_sgr[$1]}
   }
 
-  ## 関数 ble/color/setface/.spec2g
+  ## 関数 ble/color/setface/.spec2g spec
   ##   @var[out] ret
   function ble/color/setface/.spec2g {
     local spec=$1

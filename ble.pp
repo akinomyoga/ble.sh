@@ -263,6 +263,8 @@ function ble/util/assign {
 }
 
 # readlink -f (taken from akinomyoga/mshex.git)
+## 関数 ble/util/readlink path
+##   @var[out] ret
 function ble/util/readlink {
   ret=
   local path=$1

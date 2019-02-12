@@ -924,11 +924,12 @@ function ble-edit/content/bolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos<=0)) || [[ ${_ble_edit_str:pos-1:1} == $'\n' ]]
 }
-## 関数 ble-edit/content/find-logical-eol [index [offset]]; ret
+## 関数 ble-edit/content/find-logical-eol [index [offset]]
 ##   _ble_edit_str 内で位置 index から offset 行だけ次の行の終端位置を返します。
 ##
-##   offset が 0 の場合は位置 index を含む行の行末を返します。
-##   offset が正で offset 次の行がない場合は ${#_ble_edit_str} を返します。
+##   @var[out] ret
+##     offset が 0 の場合は位置 index を含む行の行末を返します。
+##     offset が正で offset 次の行がない場合は ${#_ble_edit_str} を返します。
 ##
 function ble-edit/content/find-logical-eol {
   local index=${1:-$_ble_edit_ind} offset=${2:-0}
@@ -956,12 +957,13 @@ function ble-edit/content/find-logical-eol {
     return 0
   fi
 }
-## 関数 ble-edit/content/find-logical-bol [index [offset]]; ret
+## 関数 ble-edit/content/find-logical-bol [index [offset]]
 ##   _ble_edit_str 内で位置 index から offset 行だけ次の行の先頭位置を返します。
 ##
-##   offset が 0 の場合は位置 index を含む行の行頭を返します。
-##   offset が正で offset だけ次の行がない場合は最終行の行頭を返します。
-##   特に次の行がない場合は現在の行頭を返します。
+##   @var[out] ret
+##     offset が 0 の場合は位置 index を含む行の行頭を返します。
+##     offset が正で offset だけ次の行がない場合は最終行の行頭を返します。
+##     特に次の行がない場合は現在の行頭を返します。
 ##
 function ble-edit/content/find-logical-bol {
   local index=${1:-$_ble_edit_ind} offset=${2:-0}
@@ -1076,6 +1078,8 @@ function ble-edit/restore-IGNOREEOF {
     unset -v IGNOREEOF
   fi
 }
+## 関数 ble-edit/eval-IGNOREEOF
+##   @var[out] ret
 function ble-edit/eval-IGNOREEOF {
   local value=
   if [[ $_ble_edit_IGNOREEOF_adjusted ]]; then
@@ -2697,6 +2701,7 @@ function ble/widget/backward-logical-line {
 }
 
 ## 関数 ble/keymap:emacs/find-graphical-eol [index [offset]]
+##   @var[out] ret
 function ble/keymap:emacs/find-graphical-eol {
   local axis=${1:-$_ble_edit_ind} arg=${2:-0}
   local x y index
