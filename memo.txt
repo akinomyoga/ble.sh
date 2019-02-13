@@ -541,6 +541,15 @@ bash 配列の宣言に関する仕様・バグと注意点
     動かない例 (間に空白が入ってしまう):
       IFS= eval 'local value=${arr[*]}'
 
+  * BUG bash-4.0..4.4: ローカルで local -a x; local -A x とすると segfault する。
+    ref http://lists.gnu.org/archive/html/bug-bash/2019-02/msg00047.html, #D0924
+
+    f() { local -a a; local -A a; }; f # これで segfault する
+
+    - 別のスコープで定義された配列を -A とした場合には起こらない。
+    - 同じスコープの場合でも unset a してから local -A a すれば大丈夫。
+    - グローバルでは起こらない。
+
 bash_features
 
   * printf -v var %s value
@@ -566,11 +575,13 @@ bash_features
 
   * ${param@a} (attributes) 及び他の transformation は bash-4.4 より
 
+  * bash-5.0 以降: EPOCHREALTIME, EPOCHSECONDS
+    ref #D0925
 
-tech
+bash_tips
 
   * swap の仕方
-    local a="$b" b="$a"
+    local a=$b b=$a
     local や declare などは必要である。
 
   * [[ ]] の中で =~ で設定された BASH_REMATCH は直後の式で参照できる。
@@ -591,10 +602,27 @@ tech
     * select name [ [ in word ... ] ; ] do ...; done
       ※in word ... がない場合、do の前のセミコロンは省略可能である。
 
+  * "$(case *) ;; esac)" に対応する可能性があるかと思ったが動きはない
+    ref http://lists.gnu.org/archive/html/bug-bash/2017-11/msg00002.html, #D0928
+
+  * function @() { ...; } は成功するが実際には関数は作られない
+    ref http://lists.gnu.org/archive/html/bug-bash/2017-03/msg00220.html, #D0927
+
 
 *******************************************************************************
     Memo
 -------------------------------------------------------------------------------
+
+2019-02-13
+
+  * keymap: 以下のキーについては既定では同じ動作になる様に設定する事にする [#M0012]
+    ref #D0929, #D0752
+
+    - DEL C-? / BS C-h
+    - NUL C-@ C-SP
+    - RET C-m
+    - TAB C-i
+    - C-_ C-DEL C-BS
 
 2019-01-01
 
@@ -714,32 +742,43 @@ tech
 
   * デモ画像の作り方 [#M0004]
 
-    準備
-    $ # PS1=$'[\e[4;38;5;202mfoo@bar\e[m \\j \\W]\\$ '
-    $ TTYREC=1
-    $ ttyrec demo.tty
+    * ble-0.2 のデモ画像はキャプチャソフトを使った (ref #D0926)
 
-    echo hello, world
-    printf hello
-    [[ a == b ]]
-    echo "hello $(echo bash $(echo world))"
-    C-r for
-    echo 'select, copy and paste' コピーする
-    echo insert mode -> overwrite mode
-    ls
-    echo complete ble-TABdTAB histexpand !#:2
-    echo "$HIST[TAB]"
+      - Cygwin の mintty を用いた。
+        画面の幅は56列にし文字の大きさは14程度が良い。
+      - キー入力を表示するソフトも使った。
 
-    $ seq2gif -f 0 -b 15 -h 14 --render-interval=10 -p rosa --play-speed=1.5 < demo.tty > demo2.gif
+      ble-0.1 の時に行った基本的な操作に加えて、
+      ble をダウンロード・展開して試してみるところも含めた。
 
-    gif のフォーマット的には 0.01s よりも小さな遅延は設定できない。
-    また、現実のブラウザでは 0.02s (50fps) よりも小さな遅延にすると強制的に 0.10 になってしまう。
-    更に、Safari や Internet Explorer では 0.06 (16.67fps) よりも小さな遅延は 0.10 になってしまう。
-    更に、Windows に附属している viewer では 0.10 よりも小さな遅延は全部 0.10 になってしまう。
+    * ble-0.1 のデモ画像は ttyrec & seq2gif を用いて作成した
 
-    [[Frame Delay Times for Animated GIFs by humpy77 on DeviantArt>http://humpy77.deviantart.com/journal/Frame-Delay-Times-for-Animated-GIFs-214150546]]
-    [[How to match animation rate of gif files accross browsers (Fenrir Developer's Blog)>http://blog.fenrir-inc.com/us/2012/02/theyre-different-how-to-match-the-animation-rate-of-gif-files-accross-browsers.html]]
-    [[Nullsleep | Jeremiah Johnson - Animated GIF Minimum Frame Delay Browser Compatibility Study>http://nullsleep.tumblr.com/post/16524517190/animated-gif-minimum-frame-delay-browser]]
+      準備
+      $ # PS1=$'[\e[4;38;5;202mfoo@bar\e[m \\j \\W]\\$ '
+      $ TTYREC=1
+      $ ttyrec demo.tty
+
+      echo hello, world
+      printf hello
+      [[ a == b ]]
+      echo "hello $(echo bash $(echo world))"
+      C-r for
+      echo 'select, copy and paste' コピーする
+      echo insert mode -> overwrite mode
+      ls
+      echo complete ble-TABdTAB histexpand !#:2
+      echo "$HIST[TAB]"
+
+      $ seq2gif -f 0 -b 15 -h 14 --render-interval=10 -p rosa --play-speed=1.5 < demo.tty > demo2.gif
+
+      gif のフォーマット的には 0.01s よりも小さな遅延は設定できない。
+      また、現実のブラウザでは 0.02s (50fps) よりも小さな遅延にすると強制的に 0.10 になってしまう。
+      更に、Safari や Internet Explorer では 0.06 (16.67fps) よりも小さな遅延は 0.10 になってしまう。
+      更に、Windows に附属している viewer では 0.10 よりも小さな遅延は全部 0.10 になってしまう。
+
+      [[Frame Delay Times for Animated GIFs by humpy77 on DeviantArt>http://humpy77.deviantart.com/journal/Frame-Delay-Times-for-Animated-GIFs-214150546]]
+      [[How to match animation rate of gif files accross browsers (Fenrir Developer's Blog)>http://blog.fenrir-inc.com/us/2012/02/theyre-different-how-to-match-the-animation-rate-of-gif-files-accross-browsers.html]]
+      [[Nullsleep | Jeremiah Johnson - Animated GIF Minimum Frame Delay Browser Compatibility Study>http://nullsleep.tumblr.com/post/16524517190/animated-gif-minimum-frame-delay-browser]]
 
 
 2015-08-14
@@ -782,6 +821,17 @@ tech
 *******************************************************************************
     ToDo
 ------------------------------------------------------------------------------
+
+2019-02-13
+
+  * set -e で ble.sh をロードしようとすると終了する。
+
+    しかし、対話シェルで set -e にしているとタイプミスしただけで終了してしまう。
+    本当にそんな設定で良いのかというのは疑問であるが、一応 ble.sh がロードできる様にして置きたい。
+    特に、set -e を解除する迄生き長らえれば問題ない。
+    実際に試してみると ble/base/adjust-bash-options を呼び出す所までは到達している様子である。
+    結局、ble/base/adjust-bash-options を多少いじっただけで動く様になってしまった。
+    本当にこれで大丈夫なのか…。
 
 2019-02-12
 
@@ -1109,82 +1159,6 @@ tech
     ble/widget/vi_xmap/visual-replace-char.hook 置換に使う文字の入力
     ble/lib/vim-surround.sh/get-char-from-key 囲み文字の入力 (あらゆる遅延入力)
 
-2018-05-24
-
-  * bash-5.0 alpha が告知された。
-
-    気になる事を幾つか。
-
-    - EPOCHSECONDS, EPOCHREALTIME ... これは sleep に応用できる可能性がある。
-      と思ったが何れも単位は秒の様である。
-      と思って EPOCHSECONDS と EPOCHREALTIME の違いを調べてみた所、
-      EPOCHREALTIME は小数で結果が返ってくるのだった。
-
-    - 今まで ++var++ という算術式が許されていた様だ。
-
-    - 複数行履歴がちゃんと記録されるようになるらしい。
-      従って eval -- $'...' という workaround はしなくてもよくなるかもしれない。
-
-    - %q は未だバグが残っていた様だ。
-
-    - 自分の報告・修正した項目も含まれている:
-
-      1. q. t. oooo. xxxx. ggggg.
-        一つ抜けている気がしたが、よく考えたらそれは
-        4.4 以降に埋め込まれて 5.0 前に直されたバグだった。
-
-    - (4. a. vi-mode n, N) 正規表現ではなくてグロブパターンらしい。
-
-    - (4. d. C-v) 負の引数 -N を指定すると、次の N 文字をそのまま挿入するらしい。
-
-2018-03-18
-
-  * アニメーション gif を作る。
-
-    - 画面の幅や文字の大きさなどを調整しておく。
-
-      mintty を使って撮影することにした。
-      文字の幅は 56 にする。文字の大きさは 14 ぐらいで良かろう。
-
-      うーん。本当はもっと文字を大きくして PS1
-      も簡単なものにするべきかもしれない。
-      というか '\s-\v\$ ' にするべきの気がして来た。
-      そうすれば bash で動かしているという事が分かる。
-
-    - 現在のキー入力を表示する機能を搭載する?
-      →これはやはり何らかのソフトウェアを使うのが現実的だろう。
-
-    - done: 黒背景の時の着色の調整を行う。
-      コメント・disable の着色が暗い。
-      算術式の色が暗い。
-
-    3 どの様な順で操作をするのかまとめておく。
-
-      元々の動画ではどの様にしていたかと言うと…。
-
-      - echo hello world
-      - printf hello
-      - [[ a == b ]]
-      - echo "hello $(echo bash $(echo world))"
-      - # history search
-      - echo 'select, copy and paste'
-      - echo insert mode
-      - echo lib/core-complete.sh ble-decode.sh make_command.sh
-      - echo histexpand
-      - cat <<EOF
-        this is the $(echo multiline mode).
-        EOF
-
-      これにインストールの様子も加えると良いだろう。
-
-      - git clone git@github.com:akinomyoga/ble.sh.git
-        cd !$:t:r
-        make
-        make install
-
-      然し、それとは別に現在出ているエラーを修正する必要がある。
-      set -o vi した直後に出るのは何だろう?
-
 2018-03-14
 
   * emacs: C-w を続けて実行すると kill-ring に追記にするべき。
@@ -1275,17 +1249,6 @@ tech
 
     これは ble-edit/history/add/.command-history 辺りで callback
     を呼び出す様にするなどの方法にしなければならない。
-
-2017-11-29
-
-  * syntax: http://lists.gnu.org/archive/html/bug-bash/2017-11/msg00002.html
-
-    "$(case *) ;; esac)" の問題が報告されて Chet が調べると言っている。
-    もしかしてこれは将来的に修正されるのかもしれない。
-
-  * syntax: function @() { ...; }
-    https://stackoverflow.com/questions/43117707/bashs-strange-behavior-on-a-function-named/
-    http://lists.gnu.org/archive/html/bug-bash/2017-03/msg00220.html
 
 2017-11-26
 
@@ -2170,26 +2133,6 @@ tech
 
 2013-06-10
 
-  * ble-bind 以下の同値なキーに対する処理?
-
-    | + DEL を BS にマップする
-    | + C-_ を C-BS にマップする
-    | + C-m を RET にマップする
-    | + C-i を TAB にマップする
-    | + M-大文字 を M-S-小文字 にマップする? → これは CapsLock に依存するので止めておく
-    | + DEL の bind している物を BS から bind する。
-    | + C-_ の bind している物を C-BS から bind する。
-
-    これは #D0752 で再考された。以下のものはキーマップ上で交換可能であるように注意深く束縛された。
-    しかし、一方で自動的に変換してどれかだけ束縛すれば良い様に実装することも考えて良いかもしれない。
-
-    - DEL C-?
-    - BS C-h
-    - NUL C-@ C-SP
-    - RET C-m
-    - TAB C-i
-    - C-_ C-DEL C-BS
-
   * sword で quote を正しく処理する?
 
     これは少なくとも解析器が出来た後に考える。
@@ -2197,8 +2140,8 @@ tech
 2013-06-05
 
   * bashfc
-  * RPS1
 
+  * RPS1
     zsh で試してみた所、そもそも RPS1 に改行を含めると RPS1 自体表示されない事が分かった。
     改行は含まれていないと仮定して表示してしまっても良いのかも知れない(2015-03-04)。
 
@@ -2257,7 +2200,7 @@ tech
   - global: support `--help` for public functions `ble-*` (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7 1209ac6 `#D0913` 92d9038
   - auto-complete: support <kbd>end</kbd> at the end of line a374635
   - decode: replace builtin `bind` for `ble.sh` settings `#D0915`  90ca3be `#D0918` e0cdd15
-  - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919`
+  - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919` 2e83120
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2265,9 +2208,10 @@ tech
   - vi_nmap: support <kbd>z z</kbd>, <kbd>z t</kbd>, <kbd>z b</kbd>, <kbd>z .</kbd>, <kbd>z RET</kbd>, <kbd>z C-m</kbd>, <kbd>z +</kbd>, <kbd>z -</kbd> `#D0886`
   - emacs: change M-m M-S-m from `beginning-of-line` to `non-space-beginning-of-line` f77f1aa
   - bleopt: rename internal settings to `internal_{ignore_trap,suppress_bash_output,exec_type,stackdump_enabled}` fd042d8
-  - vi_nmap: change the behavior of <kbd>C-home</kbd>, <kbd>C-end</kbd> to match with those of vim
+  - vi_nmap: change the behavior of <kbd>C-home</kbd>, <kbd>C-end</kbd> to match with those of vim 8682f98
   - util (`ble/util/unlocal`): add workaround for Bash-5.0 `localvar_unset` `#D0904` 8677a71
   - sabbrev: quote key in printing definitions by `ble-sabbrev` `#D0912` 2994d80
+  - prompt: support correct handling of escapes `#D0923` 22f9b56
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -2277,7 +2221,7 @@ tech
   - util: `ble/util/assign` が正しい戻り値を返さないバグの修正 bd14982
   - util: `ble/util/assign-array` の入れ子の呼び出しで内容が混ざり合う問題の修正 bd14982
   - progcomp: fix a bug that bash-completion does not work properly due to wrong `COMP_POINT` `#D0897` 41b8cbb
-  - global: fix leak variables `#D0900` 244f965 `#D0906` b8dcbfe
+  - global: fix leak variables `#D0900` 244f965 `#D0906` b8dcbfe 9892d63
   - progcomp: fix a problem that completion functions can consume stdin `#D0903` 7cfe425
 
   内部的変更
@@ -3092,6 +3036,128 @@ tech
 -------------------------------------------------------------------------------
 
 2019-02-13
+
+  * [整理] 2013-06-10 ble-bind 以下の同値なキーに対する処理? [#D0929]
+    ref #M0012, #D0752
+
+    | + DEL を BS にマップする
+    | + C-_ を C-BS にマップする
+    | + C-m を RET にマップする
+    | + C-i を TAB にマップする
+    | + M-大文字 を M-S-小文字 にマップする? → これは CapsLock に依存するので止めておく
+    | + DEL の bind している物を BS から bind する。
+    | + C-_ の bind している物を C-BS から bind する。
+
+    これは #D0752 で再考された。以下のものはキーマップ上で交換可能であるように注意深く束縛された。
+    しかし、一方で自動的に変換してどれかだけ束縛すれば良い様に実装することも考えて良いかもしれない。
+
+    - DEL C-?
+    - BS C-h
+    - NUL C-@ C-SP
+    - RET C-m
+    - TAB C-i
+    - C-_ C-DEL C-BS
+
+  * [整理] 2017-11-29 syntax: http://lists.gnu.org/archive/html/bug-bash/2017-11/msg00002.html [#D0928]
+
+    "$(case *) ;; esac)" の問題が報告されて Chet が調べると言っている。
+    もしかしてこれは将来的に修正されるのかもしれない。
+    →2019-02-13 bash-5.0 で試してみたが全然直っていない。当面は直らないのだろう。
+
+  * [整理] 2017-11-29 syntax: function @() { ...; } [#D0927]
+    https://stackoverflow.com/questions/43117707/bashs-strange-behavior-on-a-function-named/
+    http://lists.gnu.org/archive/html/bug-bash/2017-03/msg00220.html
+    これで関数を定義しても関数は定義されない。
+
+  * [整理] 2018-03-18 アニメーション gif を作る [#D0926]
+    ref #M0004
+
+    - 画面の幅や文字の大きさなどを調整しておく。
+
+      mintty を使って撮影することにした。
+      文字の幅は 56 にする。文字の大きさは 14 ぐらいで良かろう。
+
+      うーん。本当はもっと文字を大きくして PS1
+      も簡単なものにするべきかもしれない。
+      というか '\s-\v\$ ' にするべきの気がして来た。
+      そうすれば bash で動かしているという事が分かる。
+
+    - 現在のキー入力を表示する機能を搭載する?
+      →これはやはり何らかのソフトウェアを使うのが現実的だろう。
+
+    - done: 黒背景の時の着色の調整を行う。
+      コメント・disable の着色が暗い。
+      算術式の色が暗い。
+
+    3 どの様な順で操作をするのかまとめておく。
+
+      元々の動画ではどの様にしていたかと言うと…。
+
+      - echo hello world
+      - printf hello
+      - [[ a == b ]]
+      - echo "hello $(echo bash $(echo world))"
+      - # history search
+      - echo 'select, copy and paste'
+      - echo insert mode
+      - echo lib/core-complete.sh ble-decode.sh make_command.sh
+      - echo histexpand
+      - cat <<EOF
+        this is the $(echo multiline mode).
+        EOF
+
+      これにインストールの様子も加えると良いだろう。
+
+      - git clone git@github.com:akinomyoga/ble.sh.git
+        cd !$:t:r
+        make
+        make install
+
+      然し、それとは別に現在出ているエラーを修正する必要がある。
+      set -o vi した直後に出るのは何だろう?
+
+  * [整理] 2018-05-24 bash-5.0 alpha が告知された [#D0925]
+
+    気になる事を幾つか。
+
+    - EPOCHSECONDS, EPOCHREALTIME ... これは sleep に応用できる可能性がある。
+      と思ったが何れも単位は秒の様である。
+      と思って EPOCHSECONDS と EPOCHREALTIME の違いを調べてみた所、
+      EPOCHREALTIME は小数で結果が返ってくるのだった。
+
+    - 今まで ++var++ という算術式が許されていた様だ。
+
+    - 複数行履歴がちゃんと記録されるようになるらしい。
+      従って eval -- $'...' という workaround はしなくてもよくなるかもしれない。
+
+      →試してみたが何がどう変わったのかよく分からない。
+        全然複数行履歴として記録されていない気がする。
+        この情報は気にしない事にする。
+
+    - %q は未だバグが残っていた様だ。
+
+    - 自分の報告・修正した項目も含まれている:
+
+      1. q. t. oooo. xxxx. ggggg.
+        一つ抜けている気がしたが、よく考えたらそれは
+        4.4 以降に埋め込まれて 5.0 前に直されたバグだった。
+
+    - (4. a. vi-mode n, N) 正規表現ではなくてグロブパターンらしい。
+
+    - (4. d. C-v) 負の引数 -N を指定すると、次の N 文字をそのまま挿入するらしい。
+
+  * [整理] bash 4.0-4.4 で f() { declare -a x; declare -A x; }; f で segfault という報告がある [#D0924]
+
+    知らなかった。これは危険である。
+    http://lists.gnu.org/archive/html/bug-bash/2019-02/msg00047.html
+
+    試してみると unset x; declare -A x とすれば大丈夫の様だ。
+    declare -a A; f() { local -A A; }; f の場合も大丈夫の様だ。
+    まあ、同じ関数内で配列として使っていた物を後になって連想配列にするという事も余りなかろう。
+
+    というより。こういう情報を ToDo にどんどん入れているが、
+    これらは ToDo ではなくて Memo か情報か、そういった物である。
+    これを機に整理したら良いのではないだろうか。
 
   * 2017-02-27 PS1='$(echo "hello")' [#D0923]
 
