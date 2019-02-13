@@ -2163,7 +2163,9 @@ function ble-syntax:bash/check-brace-expansion {
   # Note: {fd}> リダイレクトの先読みに合わせて、
   #   不活性であっても一気に読み取る必要がある。
   #   cf ble-syntax:bash/starts-with-delimiter-or-redirect
-  if ((ctx==CTX_CONDI||ctx==CTX_CONDQ||ctx==CTX_RDRS||ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
+  if [[ $- != *B* ]]; then
+    inactive=1
+  elif ((ctx==CTX_CONDI||ctx==CTX_CONDQ||ctx==CTX_RDRS||ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_VALR)); then
     inactive=1
   elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
     local ntype; ble-syntax/parse/nest-type -v ntype
