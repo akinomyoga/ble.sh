@@ -226,7 +226,8 @@ function ble-edit/prompt/.load {
 }
 
 ## 関数 ble-edit/prompt/print text
-##   指定された文字列を "" 内に入れる為のエスケープをして出力します。
+##   プロンプト構築中に呼び出す関数です。
+##   指定された文字列を、後の評価に対するエスケープをして出力します。
 ##   @param[in] text
 ##     エスケープされる文字列を指定します。
 ##   @var[out]  DRAW_BUFF[]
@@ -241,18 +242,34 @@ function ble-edit/prompt/print {
   fi
   ble/canvas/put.draw "$text"
 }
-function ble-edit/prompt/update/.process-text {
-  local text=$1 a b
-  if [[ $text == *'"'* ]]; then
-    a='"' b='\"' text=${text//"$a"/$b}
-  fi
-  ble/canvas/put.draw "$text"
-}
 
-## 関数 ble-edit/prompt/update/.process-backslash
+## 関数 ble-edit/prompt/process-prompt-string prompt_string
+##   プロンプト構築中に呼び出す関数です。
+##   指定した引数を PS1 と同様の形式と解釈して処理します。
+##   @param[in] prompt_string
+##   @arr[in,out] DRAW_BUFF
+function ble-edit/prompt/process-prompt-string {
+  local ps1=$1
+  local i=0 iN=${#ps1}
+  local rex_letters='^[^\]+|\\$'
+  while ((i<iN)); do
+    local tail=${ps1:i}
+    if [[ $tail == '\'?* ]]; then
+      ble-edit/prompt/.process-backslash
+    elif [[ $tail =~ $rex_letters ]]; then
+      ble/canvas/put.draw "$BASH_REMATCH"
+      ((i+=${#BASH_REMATCH}))
+    else
+      # ? ここには本来来ないはず。
+      ble/canvas/put.draw "${tail::1}"
+      ((i++))
+    fi
+  done
+}
+## 関数 ble-edit/prompt/.process-backslash
 ##   @var[in]     tail
-##   @var[in.out] DRAW_BUFF
-function ble-edit/prompt/update/.process-backslash {
+##   @arr[in.out] DRAW_BUFF
+function ble-edit/prompt/.process-backslash {
   ((i+=2))
 
   # \\ の次の文字
@@ -401,7 +418,7 @@ function ble-edit/prompt/backslash:V { # = bash version %d.%d.%d
   return 0
 }
 function ble-edit/prompt/backslash:w { # PWD
-  ble-edit/prompt/update/.update-working-directory
+  ble-edit/prompt/.update-working-directory
   ble-edit/prompt/print "$cache_wd"
   return 0
 }
@@ -409,14 +426,14 @@ function ble-edit/prompt/backslash:W { # PWD短縮
   if [[ $PWD == / ]]; then
     ble-edit/prompt/print /
   else
-    ble-edit/prompt/update/.update-working-directory
+    ble-edit/prompt/.update-working-directory
     ble-edit/prompt/print "${cache_wd##*/}"
   fi
   return 0
 }
-## 関数 ble-edit/prompt/update/.update-working-directory
+## 関数 ble-edit/prompt/.update-working-directory
 ##   @var[in,out] cache_wd
-function ble-edit/prompt/update/.update-working-directory {
+function ble-edit/prompt/.update-working-directory {
   [[ $cache_wd ]] && return
 
   if [[ $PWD == / ]]; then
@@ -449,11 +466,126 @@ function ble-edit/prompt/update/.update-working-directory {
   cache_wd=$head$body
 }
 
+function ble-edit/prompt/.escape/check-double-quotation {
+  if [[ $tail == '"'* ]]; then
+    if [[ ! $nest ]]; then
+      out=$out'\"'
+      tail=${tail:1}
+    else
+      out=$out'"'
+      tail=${tail:1}
+      nest=\"$nest
+      ble-edit/prompt/.escape/update-rex_skip
+    fi
+    return 0
+  else
+    return 1
+  fi
+}
+function ble-edit/prompt/.escape/check-command-substitution {
+  if [[ $tail == '$('* ]]; then
+    out=$out'$('
+    tail=${tail:2}
+    nest=')'$nest
+    ble-edit/prompt/.escape/update-rex_skip
+    return 0
+  else
+    return 1
+  fi
+}
+function ble-edit/prompt/.escape/check-parameter-expansion {
+  if [[ $tail == '${'* ]]; then
+    out=$out'${'
+    tail=${tail:2}
+    nest='}'$nest
+    ble-edit/prompt/.escape/update-rex_skip
+    return 0
+  else
+    return 1
+  fi
+}
+function ble-edit/prompt/.escape/check-incomplete-quotation {
+  if [[ $tail == '`'* ]]; then
+    local rex='^`([^\`]|\\.)*\\$'
+    [[ $tail =~ $rex ]] && tail=$tail'\'
+    out=$out$tail'`'
+    tail=
+    return 0
+  elif [[ $nest == ['})']* && $tail == \'* ]]; then
+    out=$out$tail$q
+    tail=
+    return 0
+  elif [[ $nest == ['})']* && $tail == \$\'* ]]; then
+    local rex='^\$'$q'([^\'$q']|\\.)*\\$'
+    [[ $tail =~ $rex ]] && tail=$tail'\'
+    out=$out$tail$q
+    tail=
+    return 0
+  elif [[ $tail == '\' ]]; then
+    out=$out'\\'
+    tail=
+    return 0
+  else
+    return 1
+  fi
+}
+function ble-edit/prompt/.escape/update-rex_skip {
+  if [[ $nest == \)* ]]; then
+    rex_skip=$rex_skip_paren
+  elif [[ $nest == \}* ]]; then
+    rex_skip=$rex_skip_brace
+  else
+    rex_skip=$rex_skip_dquot
+  fi
+}
+function ble-edit/prompt/.escape {
+  local tail=$1 out= nest=
+
+  # 地の文の " だけをエスケープする。
+
+  local q=\'
+  local rex_bq='`([^\`]|\\.)*`'
+  local rex_sq=$q'[^'$q']*'$q'|\$'$q'([^\'$q']|\\.)*'$q
+
+  local rex_skip
+  local rex_skip_dquot='^([^\"$`]|'$rex_bq'|\\.)+'
+  local rex_skip_brace='^([^\"$`'$q'}]|'$rex_bq'|'$rex_sq'|\\.)+'
+  local rex_skip_paren='^([^\"$`'$q'()]|'$rex_bq'|'$rex_sq'|\\.)+'
+  ble-edit/prompt/.escape/update-rex_skip
+
+  while [[ $tail ]]; do
+    if [[ $tail =~ $rex_skip ]]; then
+      out=$out$BASH_REMATCH
+      tail=${tail:${#BASH_REMATCH}}
+    elif [[ $nest == ['})"']* && $tail == "${nest::1}"* ]]; then
+      out=$out${nest::1}
+      tail=${tail:1}
+      nest=${nest:1}
+      ble-edit/prompt/.escape/update-rex_skip
+    elif [[ $nest == \)* && $tail == \(* ]]; then
+      out=$out'('
+      tail=${tail:1}
+      nest=')'$nest
+    elif ble-edit/prompt/.escape/check-double-quotation; then
+      continue
+    elif ble-edit/prompt/.escape/check-command-substitution; then
+      continue
+    elif ble-edit/prompt/.escape/check-parameter-expansion; then
+      continue
+    elif ble-edit/prompt/.escape/check-incomplete-quotation; then
+      continue
+    else
+      out=$out${tail::1}
+      tail=${tail:1}
+    fi
+  done
+  ret=$out$nest
+}
+
 function ble-edit/prompt/update/.eval-prompt_command {
   # return 等と記述されていた時対策として関数内評価。
   eval "$PROMPT_COMMAND"
 }
-
 ## 関数 ble-edit/prompt/update
 ##   _ble_edit_PS1 からプロンプトを構築します。
 ##   @var[in]  _ble_edit_PS1
@@ -486,29 +618,16 @@ function ble-edit/prompt/update {
   local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
 
   # 1 特別な Escape \? を処理
-  local i=0 iN=${#ps1}
   local -a DRAW_BUFF=()
-  local rex_letters='^[^\]+|\\$'
-  while ((i<iN)); do
-    local tail=${ps1:i}
-    if [[ $tail == '\'?* ]]; then
-      ble-edit/prompt/update/.process-backslash
-    elif [[ $tail =~ $rex_letters ]]; then
-      ble-edit/prompt/update/.process-text "$BASH_REMATCH"
-      ((i+=${#BASH_REMATCH}))
-    else
-      # ? ここには本来来ないはず。
-      ble/canvas/put.draw "${tail::1}"
-      ((i++))
-    fi
-  done
+  ble-edit/prompt/process-prompt-string "$ps1"
 
-  # 2 eval 'ps1esc="..."'
-  local ps1esc
-  ble/canvas/sflush.draw -v ps1esc
-  builtin eval "ps1esc=\"$ps1esc\""
-  if [[ $ps1esc == "${_ble_edit_prompt[7]}" ]]; then
-    # 前回と同じ ps1esc の場合は計測処理は省略
+  # 2 eval 'ps1val="..."'
+  local ps1prc; ble/canvas/sflush.draw -v ps1prc
+  ble-edit/prompt/.escape "$ps1prc"; local ps1esc=$ret
+  local ps1val=${_ble_edit_prompt[7]} # Note: これは次行が失敗した時の既定値
+  builtin eval "ps1val=\"$ps1esc\""
+  if [[ $ps1val == "${_ble_edit_prompt[7]}" ]]; then
+    # 前回と同じ ps1val の場合は計測処理は省略
     _ble_edit_prompt[0]=$version
     ble-edit/prompt/.load
     return
@@ -516,18 +635,14 @@ function ble-edit/prompt/update {
 
   # 3 計測
   x=0 y=0 g=0 lc=32 lg=0
-  ble/canvas/trace.draw "$ps1esc"
+  ble/canvas/trace.draw "$ps1val"
   ((lc<0&&(lc=0)))
-
-  #echo "ps1=$ps1" >> 1.tmp
-  #echo "ps1esc=$ps1esc" >> 1.tmp
-  #declare -p DRAW_BUFF >> 1.tmp
 
   # 4 出力
   local ps1out
   ble/canvas/sflush.draw -v ps1out
   ret=$ps1out
-  _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1esc")
+  _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1val")
 }
 
 # 
