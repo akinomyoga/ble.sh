@@ -50,28 +50,25 @@ echo prologue >&2
 if [ -z "$BASH_VERSION" ]; then
   echo "ble.sh: This shell is not Bash. Please use this script with Bash." >&2
   return 1 2>/dev/null || builtin exit 1
-fi
+fi >/dev/null 2>&1 # set -x 対策 #D0930
 
 if [ -z "${BASH_VERSINFO[0]}" ] || [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
   echo "ble.sh: Bash with a version under 3.0 is not supported." >&2
   return 1 2>/dev/null || builtin exit 1
-fi
-
-_ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
+fi >/dev/null 2>&1 # set -x 対策 #D0930
 
 if [[ $- != *i* ]]; then
-  unset -v _ble_bash
   { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
     echo "ble.sh: This is not an interactive session."
   return 1 2>/dev/null || builtin exit 1
-fi
+fi &>/dev/null # set -x 対策 #D0930
 
-_ble_bash_setu=
-_ble_bash_setv=
-_ble_bash_options_adjusted=
 function ble/base/adjust-bash-options {
-  [[ $_ble_bash_options_adjusted ]] && return 1
+  [[ $_ble_bash_options_adjusted ]] && return 1 || :
   _ble_bash_options_adjusted=1
+
+  _ble_bash_sete=; [[ -o errexit ]] && _ble_bash_sete=1 && set +e
+  _ble_bash_setx=; [[ -o xtrace  ]] && _ble_bash_setx=1 && set +x
   _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
   _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
 }
@@ -80,8 +77,15 @@ function ble/base/restore-bash-options {
   _ble_bash_options_adjusted=
   [[ $_ble_bash_setv && ! -o verbose ]] && set -v
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
+  [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
+  [[ $_ble_bash_sete && ! -o errexit ]] && set -e
 }
-ble/base/adjust-bash-options
+{
+  _ble_bash_options_adjusted=
+  ble/base/adjust-bash-options
+} &>/dev/null # set -x 対策 #D0930
+
+_ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
 ## @var _ble_edit_POSIXLY_CORRECT_adjusted
 ##   現在 POSIXLY_CORRECT 状態を待避した状態かどうかを保持します。
@@ -707,11 +711,11 @@ unset -v _ble_init_original_IFS
 if [[ ! $_ble_attached ]]; then
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
-fi
+fi &>/dev/null # set -x 対策 #D0930
 
 #%if measure_load_time
 }
 #%end
 
-return 0
+{ return 0; } &>/dev/null # set -x 対策 #D0930
 ###############################################################################

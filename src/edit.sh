@@ -3746,7 +3746,7 @@ function ble-edit/exec:gexec/.eval-prologue {
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
   ble-edit/exec/.setexit # set $?
-}
+} &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
   ble/base/adjust-bash-options
@@ -3778,7 +3778,8 @@ function ble-edit/exec:gexec/.eval-epilogue {
     if builtin type -t TRAPERR &>/dev/null; then
       TRAPERR
     else
-      builtin echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" >&2
+      # Note: >&3 は set -x 対策による呼び出し元のリダイレクトと対応 #D0930
+      builtin echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" >&3
     fi
   fi
 }
@@ -3805,8 +3806,8 @@ function ble-edit/exec:gexec/.setup {
       local prologue="ble-edit/exec:gexec/.eval-prologue '${cmd//$apos/$APOS}' \"\$_ble_edit_exec_lastarg\""
       buff[${#buff[@]}]="builtin eval -- '${prologue//$apos/$APOS}"
       buff[${#buff[@]}]="${cmd//$apos/$APOS}"
-      buff[${#buff[@]}]="ble-edit/exec:gexec/.save-last-arg'"
-      buff[${#buff[@]}]="ble-edit/exec:gexec/.eval-epilogue"
+      buff[${#buff[@]}]="{ ble-edit/exec:gexec/.save-last-arg; } &>/dev/null'" # Note: &>/dev/null は set -x 対策 #D0930
+      buff[${#buff[@]}]="{ ble-edit/exec:gexec/.eval-epilogue; } 3>&2 &>/dev/null"
       ((count++))
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に

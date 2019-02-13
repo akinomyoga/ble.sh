@@ -415,6 +415,10 @@ function ble-decode/.hook {
   _ble_decode_input_buffer=()
   _ble_decode_input_count=${#chars[@]}
 
+  # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
+  # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
+  [[ $_ble_bash_options_adjusted ]] && set +v || :
+
   local IFS=$' \t\n'
   ble-decode/PROLOGUE
 
