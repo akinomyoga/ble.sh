@@ -828,20 +828,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-02-13
-
-  * mshex: remove で pipe が削除できない
-
-2019-02-12
-
-  * M-\ が現在より右側にしか作用していない
-
-    後、誰かが timeout か何かで止めている。screen?
-    →screen を抜けて試してみたら問題なかったので screen が問題である。
-    maptimeout は設定しているはずなので、それとは別の何かがあるのだろう。
-    しかし不思議なのは emacs の中ではその様な事はないという事。
-    やはり ble.sh の方で何か問題があるのだろうか…。後で確認する。
-
 2019-02-10
 
   * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
@@ -2204,6 +2190,7 @@ bash_tips
   - auto-complete: support <kbd>end</kbd> at the end of line a374635
   - decode: replace builtin `bind` for `ble.sh` settings `#D0915`  90ca3be `#D0918` e0cdd15
   - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919` 2e83120
+  - syntax: support `set +B` `#D0931` 12f80dd
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2226,6 +2213,8 @@ bash_tips
   - progcomp: fix a bug that bash-completion does not work properly due to wrong `COMP_POINT` `#D0897` 41b8cbb
   - global: fix leak variables `#D0900` 244f965 `#D0906` b8dcbfe 9892d63
   - progcomp: fix a problem that completion functions can consume stdin `#D0903` 7cfe425
+  - main: workaround `set -evx` `#D0930` 698517d
+  - edit (widget `delete-horizontal-space`): fix a bug that spaces before the cursor is not removed `#D0932`
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3039,6 +3028,19 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-02-13
+
+  * M-\ が現在より右側にしか作用していない [#D0932]
+
+    後、誰かが timeout か何かで止めている。screen?
+    →screen を抜けて試してみたら問題なかったので screen が問題である。
+    maptimeout は設定しているはずなので、それとは別の何かがあるのだろう。
+    しかし不思議なのは emacs の中ではその様な事はないという事。
+    やはり ble.sh の方で何か問題があるのだろうか…。後で確認する。
+
+    →と思って再度試してみた所特に問題はなくなった。
+    もしかすると今回のバグの所為で何らかの条件で
+    問題が発生したりしなかったりしたのかもしれない。
+    取り敢えず気にしないことにする。
 
   * syntax: ブレース展開は [[ $- == *B* ]] の時だけ有効にする [#D0931]
     これは実は ble-syntax:bash/check-brace-expansion の最初の条件を弄るだけなのでは。

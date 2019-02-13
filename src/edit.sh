@@ -2554,11 +2554,11 @@ function ble/widget/delete-forward-backward-char {
 function ble/widget/delete-horizontal-space {
   local arg; ble-edit/content/get-arg ''
 
-  local a=0 rex=$'[ \t]+$'
+  local b=0 rex=$'[ \t]+$'
   [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]] &&
     b=${#BASH_REMATCH}
 
-  local b=0 rex=$'^[ \t]+'
+  local a=0 rex=$'^[ \t]+'
   [[ ! $arg && ${_ble_edit_str:_ble_edit_ind} =~ $rex ]] &&
     a=${#BASH_REMATCH}
 
