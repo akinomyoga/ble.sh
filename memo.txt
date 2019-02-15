@@ -2222,7 +2222,8 @@ bash_tips
   - global: fix leak variables `#D0900` 244f965 `#D0906` b8dcbfe 9892d63
   - progcomp: fix a problem that completion functions can consume stdin `#D0903` 7cfe425
   - main: workaround `set -evx` `#D0930` 698517d
-  - edit (widget `delete-horizontal-space`): fix a bug that spaces before the cursor is not removed `#D0932`
+  - edit (widget `delete-horizontal-space`): fix a bug that spaces before the cursor is not removed `#D0932` 9290adb
+  - bleopt: fix a bug that false error messages are output on reload when `failglob` is set `#D0933`
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3034,6 +3035,82 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-02-15
+
+  * bleopt: ble.sh reload 時に failglob でエラーが出る (reported by cmplstofB) [#D0933]
+    ble-update の時にエラーメッセージが表示されるという話。再現した。
+    普通に source ble.sh で reload した時にも再現する。
+    どうも bleopt 関係である事は間違いない気がしているが、
+    どのタイミングでエラーメッセージが現れているのかを調べる。
+
+    と思っていたら調べる前に分かってしまった。
+    これは : ${hello:=...} のイディオムが火を吹いている。
+    さて : "${hello:=...}" とする事もできるが…。
+    そうすると ... の部分がクォートされている場合にはどうするか。
+
+    試しに "${hello:-$'\e[91mhello\e[m'}" というのを試してみた所、
+    bash-3.0 で変な事になる。bash-3.1 以降では大丈夫。
+    うーん。念の為 shopt -u extquote でも試してみる。
+    →変化はない。extquote はこの場合には関係ないのだった。
+
+    うーん。
+
+    a bleopt に新しいオプションか指定方法を追加するか…。
+
+      * もしその様にするとしたらどの様な形式が良いだろうか。
+        空文字列を上書きする場合と、未設定変数を上書きする場合の二種類がある事に注意する。
+
+        bleopt var::[default]
+        bleopt var:[default]
+
+        微妙。そもそも分かりやすいのかという話。
+        更に default 値に [] が含まれる可能性もあるので、
+        括弧の様な対応があるような物は余り使わない方が良いのでは。
+
+          bleopt var:-default
+          bleopt var-default
+          bleopt var:~default
+          bleopt var~default
+          bleopt var:+default
+          bleopt var+default
+          bleopt var:?=default
+          bleopt var?=default
+          bleopt var:||=default
+          bleopt var||=default
+          bleopt var||=default
+          bleopt var|=default
+
+        うーん。まあ、最後の物が一番良い様な気はする。
+        然し、どちらが || でどちらが | なのかは分かりにくい。
+
+          bleopt var:|=default
+          bleopt var|=default
+
+        こう? しかし、これだと普通の var:=value var=value
+        の区別と混同しそうな気もする。
+
+      * 後もう一つの問題は bleopt 関数の定義より前に
+        bleopt 変数の宣言を置く事ができないという事である。
+
+        →実は最初の bleopt 変数の宣言は util.sh の中であり、
+        更に bleopt 関数は他の関数に一切依存していないので、
+        util.sh の先頭に持ってきても問題ない。
+
+    b 或いはできるだけ : "${}" を使う事にするが、
+      右辺に特別な値を入れたい時には何か別の方法を使うか、
+      一次変数に規定値でも入れてから : "${}" を使う。
+
+    c 手動で [[ ${var+set} ]] || var=... とするか。
+
+    d bleopt とは独立に : ${var=value} を実行する関数を定義する?
+
+      うーん。こちらの方が良い気がしてきた。
+      或いは、bleopt専用の変数定義関数を作成するか。
+
+    現状の候補は b または c である。うーん。
+    c と a を折衷して bleopt を util.sh の先頭に持ってきて、
+    bleopt/declare という関数を作成する事にした。
 
 2019-02-13
 

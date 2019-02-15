@@ -664,7 +664,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
   ble/util/joblist.check
 }
 
-: ${_ble_base_rcfile:=$HOME/.blerc}
+: "${_ble_base_rcfile:=$HOME/.blerc}"
 function ble/base/process-blesh-arguments {
   local opt_attach=attach
   local opt_rcfile=

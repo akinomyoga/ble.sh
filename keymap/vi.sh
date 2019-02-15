@@ -8,7 +8,7 @@ function ble-edit/bind/load-keymap-definition:vi { :; }
 source "$_ble_base/keymap/vi_digraph.sh"
 
 ## オプション keymap_vi_macro_depth
-: ${bleopt_keymap_vi_macro_depth:=64}
+bleopt/declare -n keymap_vi_macro_depth 64
 
 ## 関数 ble/keymap:vi/k2c key
 ##   @var[out] ret
@@ -309,21 +309,21 @@ _ble_keymap_vi_single_command_overwrite=
 ## オプション keymap_vi_nmap_name
 ##   ノーマルモードの時に表示する文字列を指定します。
 ##   空文字列を指定したときは何も表示しません。
-: ${bleopt_keymap_vi_nmap_name:=$'\e[1m~\e[m'}
+bleopt/declare -n keymap_vi_nmap_name $'\e[1m~\e[m'
 
-: ${bleopt_term_vi_imap=}
-: ${bleopt_term_vi_nmap=}
-: ${bleopt_term_vi_omap=}
-: ${bleopt_term_vi_xmap=}
-: ${bleopt_term_vi_smap=}
-: ${bleopt_term_vi_cmap=}
+bleopt/declare -v term_vi_imap ''
+bleopt/declare -v term_vi_nmap ''
+bleopt/declare -v term_vi_omap ''
+bleopt/declare -v term_vi_xmap ''
+bleopt/declare -v term_vi_smap ''
+bleopt/declare -v term_vi_cmap ''
 
-: ${bleopt_keymap_vi_imap_cursor=}
-: ${bleopt_keymap_vi_nmap_cursor=}
-: ${bleopt_keymap_vi_omap_cursor=}
-: ${bleopt_keymap_vi_xmap_cursor=}
-: ${bleopt_keymap_vi_smap_cursor=}
-: ${bleopt_keymap_vi_cmap_cursor=}
+bleopt/declare -v keymap_vi_imap_cursor ''
+bleopt/declare -v keymap_vi_nmap_cursor ''
+bleopt/declare -v keymap_vi_omap_cursor ''
+bleopt/declare -v keymap_vi_xmap_cursor ''
+bleopt/declare -v keymap_vi_smap_cursor ''
+bleopt/declare -v keymap_vi_cmap_cursor ''
 
 function ble/keymap:vi/update-mode-name {
   local kmap=$_ble_decode_keymap cursor=
@@ -1925,7 +1925,7 @@ function ble/keymap:vi/operator:filter/.hook {
 #--------------------------------------
 # User operator: g@
 
-: ${bleopt_keymap_vi_operatorfunc=}
+bleopt/declare -v keymap_vi_operatorfunc ''
 
 function ble/keymap:vi/operator:map {
   local context=$3
@@ -4956,7 +4956,7 @@ _ble_keymap_vi_search_history_onleave=()
 ##   非空の文字列が設定されている時 /, ?, n, N で
 ##   現在のカーソルの下にある単語に一致します。
 ##   既定値は空文字列で vim の振る舞いに倣います。
-: ${bleopt_keymap_vi_search_match_current=}
+bleopt/declare -v keymap_vi_search_match_current ''
 
 function ble-highlight-layer:region/mark:vi_search/get-selection {
   ble-highlight-layer:region/mark:vi_char/get-selection
@@ -6397,7 +6397,7 @@ function ble/widget/vi_xmap/switch-to-visual-blockwise {
 
 ## オプション keymap_vi_keymodel
 ##   選択モードにおける移動コマンドの振る舞いを制御します。
-: ${bleopt_keymap_vi_keymodel=}
+bleopt/declare -v keymap_vi_keymodel ''
 function ble/widget/vi_smap/@nomarked {
   [[ ,$bleopt_keymap_vi_keymodel, == *,stopsel,* ]] &&
     ble/widget/vi_xmap/exit

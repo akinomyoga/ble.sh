@@ -164,7 +164,7 @@ function ble-syntax/wrange#shift {
 ## @var _ble_syntax_attr[i]
 ##   文脈・属性の情報
 _ble_syntax_text=
-: ${_ble_syntax_lang:=bash}
+_ble_syntax_lang=bash
 _ble_syntax_stat=()
 _ble_syntax_nest=()
 _ble_syntax_tree=()

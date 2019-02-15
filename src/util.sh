@@ -1,8 +1,91 @@
 # -*- mode:sh;mode:sh-bash -*-
 # bash script to be sourced from interactive shell
 
+#------------------------------------------------------------------------------
+# ble.sh options
+
+## 関数 bleopt args...
+##   @params[in] args
+##     args は以下の内の何れかの形式を持つ。
+##
+##     var=value
+##       既存の設定変数に値を設定する。
+##       設定変数が存在しないときはエラー。
+##     var:=value
+##       設定変数に値を設定する。
+##       設定変数が存在しないときは新しく作成する。
+##     var
+##       変数の設定内容を表示する
+##
+function bleopt {
+  local error_flag=
+  local -a pvars
+  if (($#==0)); then
+    pvars=("${!bleopt_@}")
+  else
+    local spec var type= value= ip=0 rex
+    pvars=()
+    for spec; do
+      if rex='^[[:alnum:]_]+:='; [[ $spec =~ $rex ]]; then
+        type=a var=${spec%%:=*} value=${spec#*:=}
+      elif rex='^[[:alnum:]_]+='; [[ $spec =~ $rex ]]; then
+        type=ac var=${spec%%=*} value=${spec#*=}
+      elif rex='^[[:alnum:]_]+$'; [[ $spec =~ $rex ]]; then
+        type=p var=$spec
+      else
+        echo "bleopt: unrecognized argument '$spec'" >&2
+        continue
+      fi
+
+      var=bleopt_${var#bleopt_}
+      if [[ $type == *c* && ! ${!var+set} ]]; then
+        error_flag=1
+        echo "bleopt: unknown bleopt option \`${var#bleopt_}'" >&2
+        continue
+      fi
+
+      case "$type" in
+      (a*)
+        [[ ${!var} == "$value" ]] && continue
+        if ble/is-function bleopt/check:"${var#bleopt_}"; then
+          if ! bleopt/check:"${var#bleopt_}"; then
+            error_flag=1
+            continue
+          fi
+        fi
+        eval "$var=\"\$value\"" ;;
+      (p*) pvars[ip++]=$var ;;
+      (*)  echo "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
+      esac
+    done
+  fi
+
+  if ((${#pvars[@]})); then
+    local q="'" Q="'\''" var
+    for var in "${pvars[@]}"; do
+      if [[ ${!var+set} ]]; then
+        builtin printf '%s\n' "bleopt ${var#bleopt_}='${!var//$q/$Q}'"
+      else
+        builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
+      fi
+    done
+  fi
+
+  [[ ! $error_flag ]]
+}
+
+function bleopt/declare {
+  local type=$1 name=bleopt_$2 default_value=$3
+  if [[ $type == -n ]]; then
+    eval ": \"\${$name:=\$default_value}\""
+  else
+    eval ": \"\${$name=\$default_value}\""
+  fi
+  return 0
+}
+
 ## オプション input_encoding
-: ${bleopt_input_encoding:=UTF-8}
+bleopt/declare -n input_encoding UTF-8
 
 function bleopt/check:input_encoding {
   if ! ble/is-function "ble/encoding:$value/decode"; then
@@ -41,16 +124,16 @@ function bleopt/check:input_encoding {
 ##   エラーが起こった時に関数呼出の構造を標準エラー出力に出力するかどうかを制御する。
 ##   算術式評価によって非零の値になる場合にエラーを出力する。
 ##   それ以外の場合にはエラーを出力しない。
-: ${bleopt_internal_stackdump_enabled=0}
+bleopt/declare -v internal_stackdump_enabled 0
 
 ## オプション openat_base
 ##   bash-4.1 未満で exec {var}>foo が使えない時に ble.sh で内部的に fd を割り当てる。
 ##   この時の fd の base を指定する。bleopt_openat_base, bleopt_openat_base+1, ...
 ##   という具合に順番に使用される。既定値は 30 である。
-: ${bleopt_openat_base:=30}
+bleopt/declare -n openat_base 30
 
 ## オプション pager
-: ${bleopt_pager:=}
+bleopt/declare -v pager ''
 
 shopt -s checkwinsize
 
@@ -2017,79 +2100,10 @@ function ble/util/fiberchain#clear {
 }
 
 #------------------------------------------------------------------------------
-
-## 関数 bleopt args...
-##   @params[in] args
-##     args は以下の内の何れかの形式を持つ。
-##
-##     var=value
-##       既存の設定変数に値を設定する。
-##       設定変数が存在しないときはエラー。
-##     var:=value
-##       設定変数に値を設定する。
-##       設定変数が存在しないときは新しく作成する。
-##     var
-##       変数の設定内容を表示する
-##
-function bleopt {
-  local error_flag=
-  local -a pvars
-  if (($#==0)); then
-    pvars=("${!bleopt_@}")
-  else
-    local spec var type= value= ip=0
-    pvars=()
-    for spec; do
-      if [[ $spec == *:=* ]]; then
-        type=a var=${spec%%:=*} value=${spec#*:=}
-      elif [[ $spec == *=* ]]; then
-        type=ac var=${spec%%=*} value=${spec#*=}
-      else
-        type=p var=$spec
-      fi
-
-      var=bleopt_${var#bleopt_}
-      if [[ $type == *c* && ! ${!var+set} ]]; then
-        error_flag=1
-        echo "bleopt: unknown bleopt option \`${var#bleopt_}'" >&2
-        continue
-      fi
-
-      case "$type" in
-      (a*)
-        [[ ${!var} == "$value" ]] && continue
-        if ble/is-function bleopt/check:"${var#bleopt_}"; then
-          if ! bleopt/check:"${var#bleopt_}"; then
-            error_flag=1
-            continue
-          fi
-        fi
-        eval "$var=\"\$value\"" ;;
-      (p*) pvars[ip++]=$var ;;
-      (*)  echo "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
-      esac
-    done
-  fi
-
-  if ((${#pvars[@]})); then
-    local q="'" Q="'\''" var
-    for var in "${pvars[@]}"; do
-      if [[ ${!var+set} ]]; then
-        builtin printf '%s\n' "bleopt ${var#bleopt_}='${!var//$q/$Q}'"
-      else
-        builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
-      fi
-    done
-  fi
-
-  [[ ! $error_flag ]]
-}
-
-#------------------------------------------------------------------------------
 # **** terminal controls ****
 
-: ${bleopt_vbell_default_message=' Wuff, -- Wuff!! '}
-: ${bleopt_vbell_duration=2000}
+bleopt/declare -v vbell_default_message ' Wuff, -- Wuff!! '
+bleopt/declare -v vbell_duration 2000
 
 function ble-term/.initialize {
   if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
@@ -2234,7 +2248,7 @@ function ble/term/stty/TRAPEXIT {
 
 #---- cursor state ------------------------------------------------------------
 
-: ${bleopt_term_cursor_external=0}
+bleopt/declare -v term_cursor_external 0
 
 _ble_term_cursor_current=unknown
 _ble_term_cursor_internal=0
@@ -2296,8 +2310,8 @@ function ble/term/DA2/notify {
 
 #---- SGR(>4): modifyOtherKeys ------------------------------------------------
 
-: ${bleopt_term_modifyOtherKeys_external=auto}
-: ${bleopt_term_modifyOtherKeys_internal=auto}
+bleopt/declare -v term_modifyOtherKeys_external auto
+bleopt/declare -v term_modifyOtherKeys_internal auto
 
 _ble_term_modifyOtherKeys_current=
 function ble/term/modifyOtherKeys/.update {

@@ -11,7 +11,7 @@
 ##
 ##
 
-: ${bleopt_syntax_highlight_mode=default}
+bleopt/declare -v syntax_highlight_mode default
 
 _ble_region_highlight_table=()
 

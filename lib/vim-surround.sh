@@ -74,11 +74,11 @@ source "$_ble_base/keymap/vi.sh"
 #   imap: <C-G>S
 #
 
-: ${bleopt_vim_surround_45:=$'$(\r)'} # ysiw-
-: ${bleopt_vim_surround_61:=$'$((\r))'} # ysiw=
-: ${bleopt_vim_surround_q:=\"} # ysiwQ
-: ${bleopt_vim_surround_Q:=\'} # ysiwq
-: ${bleopt_vim_surround_omap_bind=1}
+bleopt/declare -n vim_surround_45 $'$(\r)' # ysiw-
+bleopt/declare -n vim_surround_61 $'$((\r))' # ysiw=
+bleopt/declare -n vim_surround_q \" # ysiwQ
+bleopt/declare -n vim_surround_Q \' # ysiwq
+bleopt/declare -v vim_surround_omap_bind 1
 
 #------------------------------------------------------------------------------
 # util

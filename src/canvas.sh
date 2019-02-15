@@ -7,7 +7,7 @@
 ##     空文字列を指定したときは $(tput it) を用います。
 ##   bleopt_tab_width=NUM
 ##     数字を指定したときはその値をタブの幅として用います。
-: ${bleopt_tab_width:=}
+bleopt/declare -v tab_width ''
 
 function bleopt/check:tab_width {
   if [[ $value ]] && (((value=value)<=0)); then
@@ -41,8 +41,8 @@ function ble/arithmetic/sum {
 ## bleopt_char_width_mode=emacs
 ##   emacs で用いられている既定の文字幅の設定です
 ## 定義 ble/util/c2w+$bleopt_char_width_mode
-: ${bleopt_char_width_mode:=east}
-: ${bleopt_emoji_width:=2}
+bleopt/declare -n char_width_mode east
+bleopt/declare -n emoji_width 2
 
 function bleopt/check:char_width_mode {
   if ! ble/is-function "ble/util/c2w+$value"; then

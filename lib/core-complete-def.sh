@@ -27,7 +27,7 @@ fi
 #------------------------------------------------------------------------------
 # 設定変数
 
-: ${bleopt_complete_polling_cycle:=50}
+bleopt/declare -n complete_polling_cycle 50
 bleopt_complete_stdin_frequency='[obsoleted]'
 function bleopt/check:complete_stdin_frequency {
   var=bleopt_complete_polling_cycle
@@ -35,11 +35,11 @@ function bleopt/check:complete_stdin_frequency {
   return 0
 }
 
-: ${bleopt_complete_ambiguous=1}
-: ${bleopt_complete_contract_function_names=1}
-: ${bleopt_complete_auto_complete=1}
-: ${bleopt_complete_auto_history=1}
-: ${bleopt_complete_auto_delay:=1}
+bleopt/declare -v complete_ambiguous 1
+bleopt/declare -v complete_contract_function_names 1
+bleopt/declare -v complete_auto_complete 1
+bleopt/declare -v complete_auto_history 1
+bleopt/declare -n complete_auto_delay 1
 
 ## オプション complete_menu_style
 ##   補完候補のリスト表示のスタイルを指定します。
@@ -49,7 +49,7 @@ function bleopt/check:complete_stdin_frequency {
 ##   align
 ##   align-nowrap
 ##
-: ${bleopt_complete_menu_style:=align-nowrap}
+bleopt/declare -n complete_menu_style align-nowrap
 function bleopt/check:complete_menu_style {
   if ! ble/is-function "ble-complete/menu/style:$value/construct"; then
     echo "bleopt: Invalid value complete_menu_style='$value'." \
@@ -60,9 +60,9 @@ function bleopt/check:complete_menu_style {
   return 0
 }
 
-: ${bleopt_complete_menu_align:=20}
-: ${bleopt_complete_menu_complete=1}
-: ${bleopt_complete_menu_filter=1}
+bleopt/declare -n complete_menu_align 20
+bleopt/declare -v complete_menu_complete 1
+bleopt/declare -v complete_menu_filter 1
 
 ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble-complete/menu/style:align/construct \

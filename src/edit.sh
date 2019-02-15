@@ -31,7 +31,7 @@
 ##   有効です。
 ## bleopt_edit_vbell=
 ##   無効です。
-: ${bleopt_edit_vbell=}
+bleopt/declare -v edit_vbell ''
 
 ## オプション edit_abell
 ##   編集時の audible bell (BEL 文字出力) の有効・無効を設定します。
@@ -39,7 +39,7 @@
 ##   有効です。
 ## bleopt_edit_abell=
 ##   無効です。
-: ${bleopt_edit_abell=1}
+bleopt/declare -v edit_abell 1
 
 ## オプション history_lazyload
 ## bleopt_history_lazyload=1
@@ -49,7 +49,7 @@
 ##
 ## bash-3.1 未満では history -s が思い通りに動作しないので、
 ## このオプションの値に関係なく ble-attach の時に履歴の読み込みを行います。
-: ${bleopt_history_lazyload=1}
+bleopt/declare -v history_lazyload 1
 
 ## オプション delete_selection_mode
 ##   文字挿入時に選択範囲をどうするかについて設定します。
@@ -57,17 +57,17 @@
 ##   選択範囲の内容を新しい文字で置き換えます。
 ## bleopt_delete_selection_mode=
 ##   選択範囲を解除して現在位置に新しい文字を挿入します。
-: ${bleopt_delete_selection_mode=1}
+bleopt/declare -v delete_selection_mode 1
 
 ## オプション indent_offset
 ##   シェルのインデント幅を指定します。既定では 4 です。
-: ${bleopt_indent_offset:=4}
+bleopt/declare -n indent_offset 4
 
 ## オプション indent_tabs
 ##   インデントにタブを使用するかどうかを指定します。
 ##   0 を指定するとインデントに空白だけを用います。
 ##   それ以外の場合はインデントにタブを使用します。
-: ${bleopt_indent_tabs:=1}
+bleopt/declare -n indent_tabs 1
 
 ## オプション undo_point
 ##   undo/redo 実行直後のカーソル位置を設定します。
@@ -79,14 +79,14 @@
 ##   その他の時
 ##     undo/redo 後の状態が記録された時のカーソル位置を復元します。
 ##
-: ${bleopt_undo_point=end}
+bleopt/declare -v undo_point end
 
 ## オプション edit_forced_textmap
 ##   1 が設定されているとき、矩形選択に先立って配置計算を強制します。
 ##   0 が設定されているとき、配置情報があるときにそれを使い、
 ##   配置情報がないときは論理行・論理列による矩形選択にフォールバックします。
 ##
-: ${bleopt_edit_forced_textmap:=1}
+bleopt/declare -n edit_forced_textmap 1
 
 function ble/edit/use-textmap {
   ble/textmap#is-up-to-date && return 0
@@ -104,7 +104,7 @@ function ble/edit/use-textmap {
 ##     グローバルな文脈で実行します (新しい方法です)
 ##
 ## 要件: 関数 ble-edit/exec:$bleopt_internal_exec_type/process が定義されていること。
-: ${bleopt_internal_exec_type:=gexec}
+bleopt/declare -n internal_exec_type gexec
 
 function bleopt/check:internal_exec_type {
   if ! ble/is-function "ble-edit/exec:$value/process"; then
@@ -121,12 +121,12 @@ function bleopt/check:internal_exec_type {
 ##   抑制しません。bash のメッセージは全て端末に出力されます。
 ##   これはデバグ用の設定です。bash の出力を制御するためにちらつきが発生する事があります。
 ##   bash-3 ではこの設定では C-d を捕捉できません。
-: ${bleopt_internal_suppress_bash_output=1}
+bleopt/declare -v internal_suppress_bash_output 1
 
 ## オプション internal_ignoreeof_trap (内部使用)
 ##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
 ##   これは自分の bash の設定に合わせる必要があります。
-: ${bleopt_internal_ignoreeof_trap:='Use "exit" to leave the shell.'}
+bleopt/declare -n internal_ignoreeof_trap 'Use "exit" to leave the shell.'
 
 ## オプション allow_exit_with_jobs
 ##   この変数に空文字列が設定されている時、
@@ -137,7 +137,7 @@ function bleopt/check:internal_exec_type {
 ##   二回連続で同じ widget から exit を呼び出した時にシェルを終了します。
 ##   それ以外の場合は常にシェルを終了します。
 ##   既定値は空文字列です。
-: ${bleopt_allow_exit_with_jobs=}
+bleopt/declare -v allow_exit_with_jobs ''
 
 # 
 #------------------------------------------------------------------------------
@@ -4217,7 +4217,7 @@ function ble-edit/undo/revert-toggle {
 #------------------------------------------------------------------------------
 # **** history ****                                                    @history
 
-: ${bleopt_history_preserve_point=}
+bleopt/declare -v history_preserve_point ''
 
 ## @arr _ble_edit_history
 ##   コマンド履歴項目を保持する。

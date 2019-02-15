@@ -1,11 +1,11 @@
 #! /bin/bash
 
-: ${bleopt_decode_error_char_abell=}
-: ${bleopt_decode_error_char_vbell=1}
-: ${bleopt_decode_error_char_discard=}
-: ${bleopt_decode_error_kseq_abell=1}
-: ${bleopt_decode_error_kseq_vbell=1}
-: ${bleopt_decode_error_kseq_discard=1}
+bleopt/declare -v decode_error_char_abell ''
+bleopt/declare -v decode_error_char_vbell 1
+bleopt/declare -v decode_error_char_discard ''
+bleopt/declare -v decode_error_kseq_abell 1
+bleopt/declare -v decode_error_kseq_vbell 1
+bleopt/declare -v decode_error_kseq_discard 1
 
 ## オプション default_keymap
 ##   既定の編集モードに使われるキーマップを指定します。
@@ -15,7 +15,7 @@
 ##   emacs と同様の編集モードを使用します。
 ## bleopt_default_keymap=vi
 ##   vi と同様の編集モードを使用します。
-: ${bleopt_default_keymap:=auto}
+bleopt/declare -n default_keymap auto
 
 function bleopt/check:default_keymap {
   case $value in
@@ -45,7 +45,7 @@ function bleopt/get:default_keymap {
 ##     Meta 修飾または特殊キーのエスケープシーケンスとして扱います。
 ##   bleopt decode_isolated_esc=esc
 ##     単体で受信した ESC を、C-[ として扱います。
-: ${bleopt_decode_isolated_esc:=auto}
+bleopt/declare -n decode_isolated_esc auto
 
 function bleopt/check:decode_isolated_esc {
   case $value in
