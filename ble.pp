@@ -25,11 +25,11 @@ echo @.sh >&2
 #%%end.i
 #%end
 #%#----------------------------------------------------------------------------
-# bash script to souce from interactive shell sessions
+# ble.sh -- Bash Line Editor (https://github.com/akinomyoga/ble.sh)
 #
-# ble - bash line editor
+#   Bash configuration designed to be sourced in interactive bash sessions.
 #
-# Author: 2013, 2015-2017, K. Murase <myoga.murase@gmail.com>
+#   Copyright: 2013, 2015-2019, Koichi Murase <myoga.murase@gmail.com>
 #
 
 #%if measure_load_time
