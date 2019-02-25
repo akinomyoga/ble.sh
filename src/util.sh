@@ -1021,6 +1021,7 @@ function ble/util/msleep/calibrate {
 }
 
 if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
+  _ble_util_msleep_builtin_available=1
   _ble_util_msleep_delay=300
   function ble/util/msleep/.core { builtin sleep "$1"; }
 elif ((_ble_bash>=40000)); then
@@ -1069,7 +1070,7 @@ elif ((_ble_bash>=40000)); then
       local v=$((1000*$1-_ble_util_msleep_delay))
       ((v<=0)) && v=100
       ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
-      ! builtin read -u "$_ble_util_sleep_fd" v -t "$1"
+      ! builtin read -u "$_ble_util_msleep_fd" -t "$v" v
     }
   fi
 elif ble/bin/.freeze-utility-path sleepenh; then
@@ -1851,7 +1852,7 @@ if ((_ble_bash>=40000)); then
 
   : ${bleopt_idle_interval:=}
   if [[ ! $bleopt_idle_interval ]]; then
-    if ((_ble_bash>50000)) && [[ $_ble_util_sleep_builtin_available ]]; then
+    if ((_ble_bash>50000)) && [[ $_ble_util_msleep_builtin_available ]]; then
       bleopt_idle_interval=20
     else
       bleopt_idle_interval='ble_util_idle_elapsed>600000?500:(ble_util_idle_elapsed>60000?200:(ble_util_idle_elapsed>5000?100:20))'
