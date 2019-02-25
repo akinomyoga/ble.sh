@@ -861,16 +861,6 @@ bash_tips
     例えば \branch として展開を実行すると git のブランチ名の中から選択できる、など。
     これは peco だとか fzf だとかを呼び出さなくても menu-complete を呼び出しても良い。
 
-  * bash-4.4 で reload を実行すると \ が入力できなくなる
-    というより ble-detach, ble-attach しただけでも入力できない。
-    うーん。初回はうまく行っているのに2回目以降で失敗するというのが分からない。
-    ble-attach を観察してみると ble-decode/attach ble-decode/bind から、
-    /home/murase/.mwg/src/ble/out/cache.d/1000/ble-decode-bind.40419.UTF-8.bind を
-    source していて、このファイルの中身は特に変な事はない。
-
-    エラーメッセージはコマンドのキーマップが存在しません、という事なので…。
-    うーん。
-
 2019-02-10
 
   * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
@@ -2249,7 +2239,7 @@ bash_tips
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
-  - syntax: rename variables `BLE_(ATTR|CTX|SYNTAX)_(.*)` -> `_ble_${1,,}_$2`
+  - syntax: rename variables `BLE_{ATTR,CTX,SYNTAX}_*` -> `_ble_{attr,ctx,syntax}_*` 1fbcd8b (ref #D0909)
 
 2018-09-24 (#D0825..#D0857 6ed51e7)
 
@@ -3060,6 +3050,38 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-02-25
+
+  * 2019-02-15 bash-4.4 で reload を実行すると \ が入力できなくなる [#D0937]
+    というより ble-detach, ble-attach しただけでも入力できない。
+    うーん。初回はうまく行っているのに2回目以降で失敗するというのが分からない。
+    ble-attach を観察してみると ble-decode/attach ble-decode/bind から、
+    /home/murase/.mwg/src/ble/out/cache.d/1000/ble-decode-bind.40419.UTF-8.bind を
+    source していて、このファイルの中身は特に変な事はない。
+
+    エラーメッセージはコマンドのキーマップが存在しません、という事なので…。
+    うーん。これは bash のソースを見ながら調べなければならないのだろうか。
+
+    * set -o vi をせずに emacs モードで実行しても同様になる。
+      つまり編集モード固有の問題ではない。
+    * ble-detach/impl; _ble_attached=; ble-attach でも再現する。
+    * ble-decode/detach; ble-decode/attach でも再現する
+    * ble-decode/unbind; ble-decode/bind では再現しない
+    * ble-decode/unbind; source $_ble_base_run/$$.bind.save; ble-decode/bind でも再現しない。
+    * どうも builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)" を実行すると駄目の様だ。
+      eval しているスクリプトを覗いてみる。怪しい項目として以下の様な物が見つかる。
+
+      builtin bind -r '\\": '
+      builtin bind -r '\C-x\C-\\": '
+      builtin bind -r '\C-x\\": '
+      builtin bind -r '\C-\\": '
+
+      そもそもこの様な物が現れる原因は何だろうか。
+      うーん。generate-source-to-unbind-default を覗くと bind -X の結果の処理が怪しい。
+      特に2回目の attach で問題になるという事からこれが原因である事は明らかである。
+
+    →うーん。あっさりと直ってしまった。結局 "..." を抜き出す部分のエスケープの取り扱いを誤った所為で、
+      "..." の範囲の切り出しに失敗して、結果として変な bind -r が呼び出されていたのが悪かった。
+      これにより変な keymap entry が構築されてよく分からない事になっていたのである。
 
   * 2017-11-22 syntax: 実は予約語も alias にできてしまう… [#D0936]
 
@@ -4402,7 +4424,7 @@ bash_tips
   * main: support BLE_VERSION and BLE_VERSINFO (suggested by cmplstofB) [#D0909]
     変数名は最近は全て _ble_* に統一してきたが素直に BLE_* を使う事にした。
     今後は BLE_* はユーザに公開する変数に使う事にする。
-    core-syntax.sh で使っている BLE_ATTR_* 及び BLE_CTX_* は後で改名する。
+    core-syntax.sh で使っている BLE_ATTR_* 及び BLE_CTX_* は後で改名する → 改名した 1fbcd8b
 
 2019-02-07
 

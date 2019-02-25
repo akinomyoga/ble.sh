@@ -2012,7 +2012,7 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
     }
 
     function output_bindr(line0, _seq) {
-      if (match(line0, /^"(([^"]|\\.)+)"/) > 0) {
+      if (match(line0, /^"(([^"\\]|\\.)+)"/) > 0) {
         _seq = substr(line0, 2, RLENGTH - 2);
 
 #%      # ※bash-3.1 では bind -sp で \e ではなく \M- と表示されるが、
