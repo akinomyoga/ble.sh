@@ -4504,7 +4504,7 @@ if ((_ble_bash>=40000)); then
       #   呼び出された時、未だ処理が完了していなくても次のステップに進んでしまうので、
       #   此処で条件が満たされるのを待つ (#D0745)
       (2) while ! ble-edit/history/load/.background-initialize-completed; do
-            ble/util/sleep 0.050
+            ble/util/msleep 50
             [[ $opt_async ]] && ble-decode/has-input && return 148
           done
           ((_ble_edit_history_loading++)) ;;
@@ -6913,7 +6913,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
           if [[ $bleopt_internal_ignoreeof_trap ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
             builtin echo eof >> "$_ble_edit_io_fname2.proc"
             kill -USR1 $$
-            ble/util/sleep 0.1 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
+            ble/util/msleep 100 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
           fi
         done < "$_ble_edit_io_fname2.pipe"
       } &>/dev/null & disown

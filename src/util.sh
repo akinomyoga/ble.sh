@@ -971,7 +971,12 @@ else
   }
 fi
 
-function ble/util/sleep/.check-builtin-sleep {
+#------------------------------------------------------------------------------
+# ble/util/msleep
+
+#%include ../test/benchmark/benchmark.sh
+
+function ble/util/msleep/.check-builtin-sleep {
   local ret; ble/util/readlink "$BASH"
   local bash_prefix=${ret%/*/*}
   if [[ -s $bash_prefix/lib/bash/sleep ]] &&
@@ -982,64 +987,113 @@ function ble/util/sleep/.check-builtin-sleep {
     return 1
   fi
 }
+function ble/util/msleep/.check-coreutils-sleep {
+  local version; ble/util/assign version 'LANG=C ble/bin/sleep --version'
+  [[ $version == 'GNU coreutils' ]]
+}
 
-if ((_ble_bash>=40400)) && ble/util/sleep/.check-builtin-sleep; then
-  _ble_util_sleep_builtin_available=1
-  function ble/util/sleep { builtin sleep "$1"; }
+_ble_util_msleep_delay=2000 # [usec]
+function ble/util/msleep/.core {
+  local sec=${1%%.*}
+  ((10#${1##*.}&&sec++)) # 小数部分は切り上げ
+  ble/bin/sleep "$sec"
+}
+function ble/util/msleep {
+  local v=$((1000*$1-_ble_util_msleep_delay))
+  ((v<=0)) && v=0
+  ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+  ble/util/msleep/.core "$v"
+}
+
+_ble_util_msleep_calibrate_count=0
+function ble/util/msleep/.calibrate-loop {
+  local _ble_measure_threshold=10000
+  local ret nsec _ble_measure_time=1 v=0
+  _ble_util_msleep_delay=0 ble-measure 'ble/util/msleep 1'
+  local delay=$((nsec/1000-1000))
+  ((!_ble_util_msleep_calibrate_count||_ble_util_msleep_delay>delay)) &&
+    _ble_util_msleep_delay=$delay
+}
+function ble/util/msleep/calibrate {
+  ble/util/msleep/.calibrate-loop &>/dev/null
+  ((_ble_util_msleep_calibrate_count++<5)) &&
+    ble/util/idle.continue
+}
+
+if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
+  _ble_util_msleep_delay=300
+  function ble/util/msleep/.core { builtin sleep "$1"; }
 elif ((_ble_bash>=40000)); then
-  # 遅延初期化
-  _ble_util_sleep_fd=
-  _ble_util_sleep_tmp=
-  function ble/util/sleep {
-    function ble/util/sleep { local REPLY=; ! builtin read -u "$_ble_util_sleep_fd" -t "$1"; } &>/dev/null
+  if [[ $OSTYPE == cygwin* ]]; then
+    _ble_util_msleep_delay1=10000 # short msleep にかかる時間 [usec]
+    _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
+    _ble_util_msleep_calibrated=0
+    function ble/util/msleep/.core2 {
+      ((v-=_ble_util_msleep_delay2))
+      ble/bin/sleep $((v/1000000))
+      ((v%=1000000))
+    }
+    function ble/util/msleep {
+      local v=$((1000*$1-_ble_util_msleep_delay1))
+      ((v<=0)) && v=100
+      ((v>1000000+_ble_util_msleep_delay2)) &&
+        ble/util/msleep/.core2
+      ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+      ! builtin read -t "$v" v < /dev/udp/0.0.0.0/80
+    }
+    function ble/util/msleep/.calibrate-loop {
+      local _ble_measure_threshold=10000
+      local ret nsec _ble_measure_time=1 v=0
 
-    if [[ $OSTYPE == cygwin* ]]; then
-      # Cygwin workaround
+      _ble_util_msleep_delay1=0 ble-measure 'ble/util/msleep 1'
+      local delay=$((nsec/1000-1000))
+      ((!_ble_util_msleep_calibrate_count||_ble_util_msleep_delay1>delay)) &&
+        _ble_util_msleep_delay1=$delay
 
-      ble/util/openat _ble_util_sleep_fd '< <(
-        [[ $- == *i* ]] && trap -- '' INT QUIT
-        while kill -0 $$; do ble/bin/sleep 300; done &>/dev/null
-      )'
-
-      if [[ $BASH_VERSION ]]; then
-        function ble/util/sleep {
-          local s=${1%%.*}
-          if ((s>0)); then
-            ! builtin read -u "$_ble_util_sleep_fd" -t "$1" s
-          else
-            ! builtin read -t "$1" s < /dev/udp/0.0.0.0/80
-          fi
-        }
-      fi
-    else
-      _ble_util_sleep_tmp=$_ble_base_run/$$.ble_util_sleep.pipe
-      if [[ ! -p $_ble_util_sleep_tmp ]]; then
-        [[ -e $_ble_util_sleep_tmp ]] && ble/bin/rm -rf "$_ble_util_sleep_tmp"
-        ble/bin/mkfifo "$_ble_util_sleep_tmp"
-      fi
-      ble/util/openat _ble_util_sleep_fd "<> $_ble_util_sleep_tmp"
+      _ble_util_msleep_delay2=0 ble-measure 'ble/util/msleep/.core2'
+      local delay=$((nsec/1000))
+      ((!_ble_util_msleep_calibrate_count||_ble_util_msleep_delay2>delay)) &&
+        _ble_util_msleep_delay2=$delay
+    }
+  else
+    _ble_util_msleep_delay=300
+    _ble_util_msleep_fd=
+    _ble_util_msleep_tmp=$_ble_base_run/$$.ble_util_msleep.pipe
+    if [[ ! -p $_ble_util_msleep_tmp ]]; then
+      [[ -e $_ble_util_msleep_tmp ]] && ble/bin/rm -rf "$_ble_util_msleep_tmp"
+      ble/bin/mkfifo "$_ble_util_msleep_tmp"
     fi
+    ble/util/openat _ble_util_msleep_fd "<> $_ble_util_msleep_tmp"
 
-    ble/util/sleep "$1"
-  }
+    function ble/util/msleep {
+      local v=$((1000*$1-_ble_util_msleep_delay))
+      ((v<=0)) && v=100
+      ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+      ! builtin read -u "$_ble_util_sleep_fd" v -t "$1"
+    }
+  fi
 elif ble/bin/.freeze-utility-path sleepenh; then
-  function ble/util/sleep { ble/bin/sleepenh "$1" &>/dev/null; }
+  function ble/util/msleep/.core { ble/bin/sleepenh "$1" &>/dev/null; }
 elif ble/bin/.freeze-utility-path usleep; then
-  function ble/util/sleep {
-    if [[ $1 == *.* ]]; then
-      local sec=${1%%.*} sub=${1#*.}000000
-      if (($sec)); then
-        ble/bin/usleep "$sec${sub::6}"
-      else
-        ble/bin/usleep $((10#${sub::6}))
-      fi
-    else
-      ble/bin/usleep "${1}000000"
-    fi
+  function ble/util/msleep {
+    local v=$((1000*$1-_ble_util_msleep_delay))
+    ((v<=0)) && v=0
+    ble/bin/usleep "$v"
   }
-else
-  function ble/util/sleep { ble/bin/sleep "$1"; }
+elif ble/util/msleep/.check-coreutils-sleep; then
+  function ble/util/msleep/.core { ble/bin/sleep "$1"; }
 fi
+
+function ble/util/sleep {
+  local msec=$((${1%%.*}*1000))
+  if [[ $1 == *.* ]]; then
+    frac=${1##*.}000
+    ((msec+=10#${frac::3}))
+  fi
+  ble/util/msleep "$msec"
+}
+
+#------------------------------------------------------------------------------
 
 ## 関数 ble/util/cat
 ##   cat の代替。但し、ファイル内に \0 が含まれる場合は駄目。
@@ -1729,10 +1783,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/idle/.sleep {
     local msec=$1
     ((msec<=0)) && return 0
-    local integral=$((msec/1000)) fraction=00$((msec%1000))
-    fraction=${fraction:${#fraction}-3}
-    local sec=$integral.$fraction
-    ble/util/sleep "$sec"
+    ble/util/msleep "$msec"
     ((_ble_util_idle_sclock+=msec))
   }
 
@@ -2044,6 +2095,8 @@ if ((_ble_bash>=40000)); then
     [[ ${ble_util_idle_status+set} ]] || return 1
     ble_util_idle_status=R
   }
+
+  ble/util/idle.push-background 'ble/util/msleep/calibrate'
 else
   function ble/util/idle.do { false; }
 fi
@@ -2168,16 +2221,15 @@ function ble/term/visible-bell {
     {
       # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
 
-      ble/util/sleep 0.05
+      ble/util/msleep 50
       builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
 
       # load time duration settings
       declare msec=$bleopt_vbell_duration
-      declare sec=$(builtin printf '%d.%03d' $((msec/1000)) $((msec%1000)))
 
       # wait
       >| "$_ble_term_visible_bell__ftime"
-      ble/util/sleep "$sec"
+      ble/util/msleep "$msec"
 
       # check and clear
       declare -a time1 time2
