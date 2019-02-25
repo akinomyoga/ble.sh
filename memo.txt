@@ -828,6 +828,49 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-02-25
+
+  * main: --attach=prompt (bashrc) で reload すると PS1 が消滅する
+    うーん。PROMPT_COMMAND の評価をする時に PS1 を復元していないから?
+    と思ったが復元はしている筈なのである。これは後で調べる。
+
+  * syntax: 何と eval の引数として a=() の形式が許される様である。
+    eval a=(1) b=(2) c=(3) や eval declare a=(1 2 3) が動く。
+    解析の方法を変えなければならないのではないか。
+    或いは declare 等と同じ様に解析すれば良いのだろうか。
+    しかしその場合には変数名の補完が起こらない様にする必要がある。
+
+    うーん core-syntax-ctx.def の ARGVX ARGVI ARGVR 辺りを複製して
+    eval 専用の ARGEX ARGEI ARGER 的な物を導入するのが早いだろうか。
+
+2019-02-15
+
+  * ble.sh で [ble: EOF] としている内容は zsh では PROMPT_EOL_MARK で設定できるそうだ
+    https://qiita.com/2357gi/items/6d530820402ae776ca66
+
+    ble.sh でもユーザが設定できる様にする? しかし、毎回座標計算するのは面倒である。
+    というより現在の位置が分からなければ tab 等の座標計算ができないのではあるまいか。
+    結局、現在位置を CPR で尋ねるという事をしなければならなくはないか…。
+
+    事前に計算しておく事にするか? その場合には tab 等の文字が含まれていた場合に困る。
+    と思ったが、tab の場合はスペースに変換するので問題ない。
+    垂直タブやカーソル移動等が含まれる場合はサポート外とすれば良い。
+
+  * ble-sabbrev でコマンド・関数を実行する機能?
+    この記事を見て思った。https://qiita.com/kazuooooo/items/92bf3146cafeb8fd8673
+    例えば \branch として展開を実行すると git のブランチ名の中から選択できる、など。
+    これは peco だとか fzf だとかを呼び出さなくても menu-complete を呼び出しても良い。
+
+  * bash-4.4 で reload を実行すると \ が入力できなくなる
+    というより ble-detach, ble-attach しただけでも入力できない。
+    うーん。初回はうまく行っているのに2回目以降で失敗するというのが分からない。
+    ble-attach を観察してみると ble-decode/attach ble-decode/bind から、
+    /home/murase/.mwg/src/ble/out/cache.d/1000/ble-decode-bind.40419.UTF-8.bind を
+    source していて、このファイルの中身は特に変な事はない。
+
+    エラーメッセージはコマンドのキーマップが存在しません、という事なので…。
+    うーん。
+
 2019-02-10
 
   * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
@@ -1289,32 +1332,6 @@ bash_tips
 
 2017-11-22
 
-  * syntax: 実は予約語も alias にできてしまう…
-
-    $ alias end=fi
-    $ if true; then if true; then echo; end end
-
-    現状ではエラーとして検出してしまう。
-    更に以下の様なこともできる。
-
-    $ alias var=declare
-    $ var arr=(echo 1 2 3)
-
-    うーん。指定の単語が alias だった時は、
-    毎回 alias を resolve するのだろうか。
-    然し、alias の展開結果が複数の単語を含む場合に至っては、
-    完全に追跡する事は不可能である。
-    従って、alias までは考慮に入れなくて良いのではという気がする。
-    寧ろ、中途半端に対応するよりは全然対応しない方が良いかもしれない。
-
-    $ alias begin='{'
-    $ for ((i=1;i<=2;i++)) { echo hello; }
-    $ for ((i=1;i<=2;i++)) begin echo hello; }
-    bash: 予期しないトークン `begin' 周辺に構文エラーがあります
-    $ for ((i=1;i<=2;i++)); begin echo hello; }
-
-    for (()) の直後などの文脈では alias の展開は起こらない様だ。
-
   * syntax: ${var##...} における check-glob の対応。
     ctx-bracket-expression に関しては、
     新しい nctx への対応が必要になる。
@@ -1355,6 +1372,9 @@ bash_tips
     改行のエラーは何らかの方法で見える様にするか、
     或いは、改行位置にエラーがある様な時は、
     その前の文字でエラーが発生する様にチェックを行うべき。
+
+    Note: これは端末によっては表示されたりする。端末による。
+    エラー着色はどの様に行われているのか。for の後には FARGX1 に入る。
 
 2017-11-09
 
@@ -2199,6 +2219,7 @@ bash_tips
   - decode: replace builtin `bind` for `ble.sh` settings `#D0915`  90ca3be `#D0918` e0cdd15
   - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919` 2e83120
   - syntax: support `set +B` `#D0931` 12f80dd
+  - syntax: support aliased keywords `#D0936`
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2210,7 +2231,7 @@ bash_tips
   - util (`ble/util/unlocal`): add workaround for Bash-5.0 `localvar_unset` `#D0904` 8677a71
   - sabbrev: quote key in printing definitions by `ble-sabbrev` `#D0912` 2994d80
   - prompt: support correct handling of escapes `#D0923` 22f9b56
-  - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935`
+  - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -3039,6 +3060,62 @@ bash_tips
 
 2019-02-25
 
+  * 2017-11-22 syntax: 実は予約語も alias にできてしまう… [#D0936]
+
+    $ alias end=fi
+    $ if true; then if true; then echo; end end
+
+    現状ではエラーとして検出してしまう。
+    更に以下の様なこともできる。
+
+    $ alias var=declare
+    $ var arr=(echo 1 2 3)
+
+    うーん。指定の単語が alias だった時は、
+    毎回 alias を resolve するのだろうか。
+    然し、alias の展開結果が複数の単語を含む場合に至っては、
+    完全に追跡する事は不可能である。
+    従って、alias までは考慮に入れなくて良いのではという気がする。
+    寧ろ、中途半端に対応するよりは全然対応しない方が良いかもしれない。
+
+    或いは単一の単語の時にだけ展開するという手もあるし、
+    または最初の単語についてのみ alias の展開を実行するという手もある。
+
+    $ alias begin='{'
+    $ for ((i=1;i<=2;i++)) { echo hello; }
+    $ for ((i=1;i<=2;i++)) begin echo hello; }
+    bash: 予期しないトークン `begin' 周辺に構文エラーがあります
+    $ for ((i=1;i<=2;i++)); begin echo hello; }
+
+    for (()) の直後などの文脈では alias の展開は起こらない様だ。
+
+    * 2019-02-25 関数定義 function キーワードも alias にできるのか?
+
+      $ alias defun=function
+      $ defun hello () { echo hello; }
+
+      関数の定義も alias にする事ができる。
+
+    * 2019-02-25 所で alias の展開を実行するコードは既にあったろうか。
+      使っているとすれば ble/util/type 等の周りである。
+      うーん。別に alias の展開を実行している訳ではないのである。
+      alias だったら alias 色に着色するという事と、
+      quote されていたら alias ではない type の評価を実行するという事。
+      alias の中身が何であるかについては調べていない。
+      では、実際に調べるとしたらどの様にすれば良いのだろうか。
+
+      alias name とすると alias name='...' と表示される。
+      ' は '\'' に置換されて出力される。もしこの方法を使うのだとしたら、
+      alias ...= の部分だけを別のものに置き換えて eval すれば良い。
+
+      type name とすると日本語で表示されてしまう。
+      LANG=C type name とすると name is aliased to `...' と表示される。
+      alias の文字列の中に ' が含まれている場合でもそのまま出力される。
+      type --help によって使えそうなオプションがないか見たがなさそうである。
+
+    * 何と alias 名として hello:world だとか A+B だとか指定できる様だ。
+      ; や \ 等の文字を含める事はできなかった。当然 = も含められない筈である。
+
   * util: sleep coreutils check [#D0935]
     bash-3 以下で sleepenh もなく usleep もない時 /bin/sleep が使われるが、
     その sleep が整数しか対応していない時にはエラーが出てしまう事になる。
@@ -3193,6 +3270,8 @@ bash_tips
 2019-02-15
 
   * bleopt: ble.sh reload 時に failglob でエラーが出る (reported by cmplstofB) [#D0933]
+    https://github.com/akinomyoga/ble.sh/issues/22
+
     ble-update の時にエラーメッセージが表示されるという話。再現した。
     普通に source ble.sh で reload した時にも再現する。
     どうも bleopt 関係である事は間違いない気がしているが、
@@ -3263,7 +3342,7 @@ bash_tips
       或いは、bleopt専用の変数定義関数を作成するか。
 
     現状の候補は b または c である。うーん。
-    c と a を折衷して bleopt を util.sh の先頭に持ってきて、
+    d と a を折衷して bleopt を util.sh の先頭に持ってきて、
     bleopt/declare という関数を作成する事にした。
 
 2019-02-13

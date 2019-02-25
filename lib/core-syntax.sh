@@ -2667,18 +2667,28 @@ function ble-syntax:bash/ctx-command/check-word-end {
       return 0
     fi
 
+    local word_expanded=$word
+    local type; ble/util/type type "$word"
+    if [[ $type == alias ]]; then
+      local data; ble/util/assign data 'LANG=C alias "$word"' &>/dev/null
+      [[ $data == 'alias '*=* ]] &&
+        eval "word_expanded=${data#alias *=}"
+    fi
+
     local processed=
-    case "$word" in
+    case "$word_expanded" in
     ('[[')
       # 条件コマンド開始
       ble-syntax/parse/touch-updated-attr "$wbeg"
       ((_ble_syntax_attr[wbeg]=ATTR_DEL,
         ctx=CTX_ARGX0))
 
-      # "[[" は一度角括弧式として読み取られるので、その情報を削除する。
       ble-syntax/parse/word-cancel # 単語 "[[" を削除
-      ble-syntax/parse/word-cancel # 角括弧式の nest を削除
-      _ble_syntax_attr[wbeg+1]= # 角括弧式として着色されているのを消去
+      if [[ $word == '[[' ]]; then
+        # "[[" は一度角括弧式として読み取られるので、その情報を削除する。
+        ble-syntax/parse/word-cancel # 角括弧式の nest を削除
+        _ble_syntax_attr[wbeg+1]= # 角括弧式として着色されているのを消去
+      fi
 
       i=$wbeg ble-syntax/parse/nest-push "$CTX_CONDX"
 
