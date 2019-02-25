@@ -158,7 +158,7 @@ function ble-syntax/wrange#shift {
 ##     'd'
 ##       描画属性を削除することを意味する。
 ##
-## @var BLE_SYNTAX_TREE_WIDTH
+## @var _ble_syntax_TREE_WIDTH
 ##   _ble_syntax_tree に格納される一つの範囲情報のフィールドの数。
 ##
 ## @var _ble_syntax_attr[i]
@@ -170,7 +170,7 @@ _ble_syntax_nest=()
 _ble_syntax_tree=()
 _ble_syntax_attr=()
 
-BLE_SYNTAX_TREE_WIDTH=5
+_ble_syntax_TREE_WIDTH=5
 
 #--------------------------------------
 # ble-syntax/tree-enumerate proc
@@ -284,7 +284,7 @@ function ble-syntax/tree-enumerate/.impl {
 ## @var[in] tchild
 function ble-syntax/tree-enumerate-children {
   ((0<tchild&&tchild<=i)) || return
-  local nofs=$((i==tchild?nofs+BLE_SYNTAX_TREE_WIDTH:0))
+  local nofs=$((i==tchild?nofs+_ble_syntax_TREE_WIDTH:0))
   local i=$tchild
   ble-syntax/tree-enumerate/.impl "$@"
 }
@@ -322,7 +322,7 @@ function ble-syntax/tree-enumerate-in-range {
     ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]] || continue
     ble/string#split-words node "${_ble_syntax_tree[i-1]}"
     local flagUpdateNode=
-    for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
+    for ((nofs=0;nofs<${#node[@]};nofs+=_ble_syntax_TREE_WIDTH)); do
       local wtype=${node[nofs]} wlen=${node[nofs+1]}
       local wbeg=$((wlen<0?wlen:i-wlen)) wend=$i
       "${@:3}"
@@ -394,8 +394,8 @@ function ble-syntax/print-status/word.get-text {
   ble/string#split-words word "${_ble_syntax_tree[index]}"
   local out= ret
   if [[ $word ]]; then
-    local nofs=$((${#word[@]}/BLE_SYNTAX_TREE_WIDTH*BLE_SYNTAX_TREE_WIDTH))
-    while (((nofs-=BLE_SYNTAX_TREE_WIDTH)>=0)); do
+    local nofs=$((${#word[@]}/_ble_syntax_TREE_WIDTH*_ble_syntax_TREE_WIDTH))
+    while (((nofs-=_ble_syntax_TREE_WIDTH)>=0)); do
       local axis=$((index+1))
 
       local wtype=${word[nofs]}
@@ -686,7 +686,7 @@ function ble-syntax/parse/tree-append {
 
   [[ $type =~ ^[0-9]+$ ]] && ble-syntax/parse/touch-updated-word "$i"
 
-  # 追加する要素の数は BLE_SYNTAX_TREE_WIDTH と一致している必要がある。
+  # 追加する要素の数は _ble_syntax_TREE_WIDTH と一致している必要がある。
   _ble_syntax_tree[i-1]="$type $len $ochild $oprev - ${_ble_syntax_tree[i-1]}"
 }
 
@@ -715,7 +715,7 @@ function ble-syntax/parse/word-cancel {
   ble/string#split-words word "${_ble_syntax_tree[i-1]}"
   local tclen=${word[3]}
   tchild=$((tclen<0?tclen:i-tclen))
-  _ble_syntax_tree[i-1]="${word[*]:BLE_SYNTAX_TREE_WIDTH}"
+  _ble_syntax_tree[i-1]="${word[*]:_ble_syntax_TREE_WIDTH}"
 }
 
 # 入れ子構造の管理
@@ -3798,7 +3798,7 @@ function ble-syntax/vanishing-word/register {
   for ((i=end;i>=beg;i--)); do
     builtin eval "node=(\${$tree_array[tofs+i-1]})"
     ((${#node[@]})) || continue
-    for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
+    for ((nofs=0;nofs<${#node[@]};nofs+=_ble_syntax_TREE_WIDTH)); do
       local wtype=${node[nofs]} wlen=${node[nofs+1]}
       local wbeg=$((wlen<0?wlen:i-wlen)) wend=$i
 
@@ -3872,7 +3872,7 @@ function ble-syntax/parse/shift.tree {
   if [[ $1 ]]; then
     nofs=$1 ble-syntax/parse/shift.tree/1
   else
-    for ((nofs=0;nofs<${#node[@]};nofs+=BLE_SYNTAX_TREE_WIDTH)); do
+    for ((nofs=0;nofs<${#node[@]};nofs+=_ble_syntax_TREE_WIDTH)); do
       ble-syntax/parse/shift.tree/1
     done
   fi
@@ -5322,14 +5322,14 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
         if ((type==ATTR_FILE_DIR)); then
           # ディレクトリにリダイレクトはできない
           type=$ATTR_ERR
-        elif ((BLE_SYNTAX_TREE_WIDTH<=nofs)); then
+        elif ((_ble_syntax_TREE_WIDTH<=nofs)); then
           # noclobber の時は既存ファイルを > または <> で上書きできない
           #
           # 仮定: _ble_syntax_word に於いてリダイレクトとファイルは同じ位置で終了すると想定する。
           #   この時、リダイレクトの情報の次にファイル名の情報が格納されている筈で、
-          #   リダイレクトの情報は node[nofs-BLE_SYNTAX_TREE_WIDTH] に入っていると考えられる。
+          #   リダイレクトの情報は node[nofs-_ble_syntax_TREE_WIDTH] に入っていると考えられる。
           #
-          local redirect_ntype=${node[nofs-BLE_SYNTAX_TREE_WIDTH]:1}
+          local redirect_ntype=${node[nofs-_ble_syntax_TREE_WIDTH]:1}
           if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>|' ) ]]; then
             if [[ -e $value || -h $value ]]; then
               if [[ -d $value || ! -w $value ]]; then
@@ -5686,8 +5686,8 @@ function ble-highlight-layer:syntax/getg {
 #%end
 #%#----------------------------------------------------------------------------
 #%)
-#%m main main.r/\<ATTR_/BLE_ATTR_/
-#%m main main.r/\<CTX_/BLE_CTX_/
+#%m main main.r/\<ATTR_/_ble_attr_/
+#%m main main.r/\<CTX_/_ble_ctx_/
 #%x main
 
 function ble-syntax/import { :; }

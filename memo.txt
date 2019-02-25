@@ -2219,7 +2219,7 @@ bash_tips
   - decode: replace builtin `bind` for `ble.sh` settings `#D0915`  90ca3be `#D0918` e0cdd15
   - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919` 2e83120
   - syntax: support `set +B` `#D0931` 12f80dd
-  - syntax: support aliased keywords `#D0936`
+  - syntax: support aliased keywords `#D0936` 7054e28
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2249,6 +2249,7 @@ bash_tips
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
+  - syntax: rename variables `BLE_(ATTR|CTX|SYNTAX)_(.*)` -> `_ble_${1,,}_$2`
 
 2018-09-24 (#D0825..#D0857 6ed51e7)
 

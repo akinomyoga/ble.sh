@@ -318,11 +318,11 @@ function ble-complete/action:command/getg {
   else
     # Note: ble-syntax/highlight/cmdtype はキャッシュ機能がついているが、
     #   キーワードに対して呼び出さない前提なのでキーワードを渡すと
-    #   BLE_ATTR_ERR を返してしまう。
+    #   _ble_attr_ERR を返してしまう。
     local type; ble/util/type type "$CAND"
     ble-syntax/highlight/cmdtype1 "$type" "$CAND"
-    if [[ $CAND == */ ]] && ((type==BLE_ATTR_ERR)); then
-      type=BLE_ATTR_CMD_FUNCTION
+    if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
+      type=_ble_attr_CMD_FUNCTION
     fi
     ble-syntax/attr2g "$type"
   fi
