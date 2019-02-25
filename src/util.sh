@@ -1010,13 +1010,12 @@ function ble/util/msleep/.calibrate-loop {
   local _ble_measure_threshold=10000
   local ret nsec _ble_measure_time=1 v=0
   _ble_util_msleep_delay=0 ble-measure 'ble/util/msleep 1'
-  local delay=$((nsec/1000-1000))
-  ((!_ble_util_msleep_calibrate_count||_ble_util_msleep_delay>delay)) &&
-    _ble_util_msleep_delay=$delay
+  local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count
+  ((_ble_util_msleep_delay=(count*_ble_util_msleep_delay+delay)/(count+1)))
 }
 function ble/util/msleep/calibrate {
   ble/util/msleep/.calibrate-loop &>/dev/null
-  ((_ble_util_msleep_calibrate_count++<5)) &&
+  ((++_ble_util_msleep_calibrate_count<5)) &&
     ble/util/idle.continue
 }
 
@@ -1047,14 +1046,12 @@ elif ((_ble_bash>=40000)); then
       local ret nsec _ble_measure_time=1 v=0
 
       _ble_util_msleep_delay1=0 ble-measure 'ble/util/msleep 1'
-      local delay=$((nsec/1000-1000))
-      ((!_ble_util_msleep_calibrate_count||_ble_util_msleep_delay1>delay)) &&
-        _ble_util_msleep_delay1=$delay
+      local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count
+      ((_ble_util_msleep_delay1=(count*_ble_util_msleep_delay1+delay)/(count+1)))
 
       _ble_util_msleep_delay2=0 ble-measure 'ble/util/msleep/.core2'
       local delay=$((nsec/1000))
-      ((!_ble_util_msleep_calibrate_count||_ble_util_msleep_delay2>delay)) &&
-        _ble_util_msleep_delay2=$delay
+      ((_ble_util_msleep_delay2=(count*_ble_util_msleep_delay2+delay)/(count+1)))
     }
   else
     _ble_util_msleep_delay=300
