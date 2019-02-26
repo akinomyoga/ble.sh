@@ -1847,7 +1847,6 @@ if ((_ble_bash>=40000)); then
     fi
   }
 
-  : ${bleopt_idle_interval:=}
   if [[ ! $bleopt_idle_interval ]]; then
     if ((_ble_bash>50000)) && [[ $_ble_util_msleep_builtin_available ]]; then
       bleopt_idle_interval=20
