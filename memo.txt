@@ -830,10 +830,6 @@ bash_tips
 
 2019-02-25
 
-  * main: --attach=prompt (bashrc) で reload すると PS1 が消滅する
-    うーん。PROMPT_COMMAND の評価をする時に PS1 を復元していないから?
-    と思ったが復元はしている筈なのである。これは後で調べる。
-
   * syntax: 何と eval の引数として a=() の形式が許される様である。
     eval a=(1) b=(2) c=(3) や eval declare a=(1 2 3) が動く。
     解析の方法を変えなければならないのではないか。
@@ -842,6 +838,14 @@ bash_tips
 
     うーん core-syntax-ctx.def の ARGVX ARGVI ARGVR 辺りを複製して
     eval 専用の ARGEX ARGEI ARGER 的な物を導入するのが早いだろうか。
+
+    補完はどの様に起こすのが良いのだろうか。
+    これは通常のコマンドと同様に補完させるのが良い気がする。
+    しかし、コマンドと同じ文脈にしてしまうと今度はコマンドとしての着色が発生して、
+    コマンドが見つからない時にエラー着色になってしまう。
+    コマンドが見つからない場合にはエラー着色ではなくて何も着色しない、
+    というようにする必要がある。また、引数の着色はどの様にするのが良いだろうか。
+    コマンドの抽出…うーん。
 
 2019-02-15
 
@@ -2235,7 +2239,9 @@ bash_tips
   - progcomp: fix a problem that completion functions can consume stdin `#D0903` 7cfe425
   - main: workaround `set -evx` `#D0930` 698517d
   - edit (widget `delete-horizontal-space`): fix a bug that spaces before the cursor is not removed `#D0932` 9290adb
-  - bleopt: fix a bug that false error messages are output on reload when `failglob` is set `#D0933`
+  - bleopt: fix a bug that false error messages are output on reload when `failglob` is set `#D0933` 64cdcba c62db26
+  - decode: fix a bug that <kbd>\\</kbd> cannot be input after reattach `#D0937` a46ada0
+  - attach: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938`
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3049,6 +3055,94 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-02-26
+
+  * main: --attach=prompt (bashrc) で reload すると PS1 が消滅する [#D0938]
+    うーん。PROMPT_COMMAND の評価をする時に PS1 を復元していないから?
+    と思ったが復元はしている筈なのである。これは後で調べる。
+
+    改めて reload が起こる手順について確認する。
+    うーん。source ble.sh するとその場で unload が実施される。
+    この時点で PS1 などは復元されるのではないのかと思う。
+    そして復元など一頻りした後に bashrc で PS1 が設定されて、
+    その後に PROMPT_COMMAND が呼び出された時に PS1 が ble.sh 側に待避される。
+
+    この何処かの段階で PS1 が失われるという事になる。
+    うーん。調べてみると ble-attach の瞬間までは問題ない様である。
+    ble-attach すると PS1= になるが、これは期待している動作である。
+
+    →分かった。PROMPT_COMMAND が実行されているのは
+    何と、ble.sh の枠組みの中なのであった。
+    うーん。中にいる時には attach するとかしないとか。
+    どの様にするのが良いだろうか。中で attach するが、
+    PS1 等は弄らない様にするという動作にするのか…。
+
+    うーん。結局 ble-detach を実行する時にも、
+    ble-detach/impl を exec:gexec/.end から呼び出して、
+    その後で再描画をして終了するという事になっている。
+    という事を考えると、一旦 detach を完全に実行してから、
+    その後の prompt の表示の際に attach するという様にするべきなのではあるまいか。
+
+    うーん。駄目だ変な状態になる。そもそも detach された状態になっていない様な気が…。
+    うーん。改めて調べてみると .check-detach 経由で detach した時には
+    .check-detach が return 0 をして、それにより term/enter, bind/.tail 等の操作がスキップされる。
+    unload の時にもその様に操作しなければならないのではないだろうか。。
+    と思ったがその場で ble-attach するという場合には _ble_edit_detach_flag を設定すると都合が悪い。
+    と思って ble-attach の実装を見てみると、ble-attach の実装では _ble_edit_detach_flag
+    をちゃんとクリアする様になっていた。気にしなくて大丈夫そうだ。
+
+    [実装]
+
+    % % a _ble_attached で _ble_term_state == external で
+    % %   unload を実行するのは .check-detach 経由でという事にする。
+    % %   と思ったが ble-attach と ble-detach が相殺して結局何も起こらないという状況になってしまっては厄介だ。
+    % %   やはり unload はその場で実行しなければならないという事になる。
+    % %   unload が起こったという事だけ通知して .check-detach に return 0 させるという事にすれば良い。
+    %
+    % unload はするけれども detached を _ble_edit_detach_flag に設定する事にした。
+    % しかしそれでも期待通りに動いていない。どういう事だろうか。
+    % 調べてみるとそもそも .check-detach で _ble_edit_detach_flag の分岐に入っていない気がする。
+    % 変数名を間違えているだろうか。と思ったら分かった。
+    % ble.sh を初期化している時に _ble_edit_detach_flag= が設定されてしまうのである。
+    %
+    % さて、動く様にはなったがプロンプトが空文字列で更に、
+    % 次にコマンドを実行する時まで PROMPT_COMMAND が呼び出されないという状況である。
+    % うーん。つまりこの方針は使えないという事になる。別の方針を考える必要がある。
+
+    b 別の方法は PROMPT_COMMAND が内部で実行されているという事を検出して、
+      その場合には PS1 の取り扱いを特別にするという物である。
+      しかし、特別にしなければならないのはそれだけだろうか。
+
+      うーん。というか、そもそも実行中の関数を書き換えてしまった場合に
+      一体どういう事が起こるのかというのも気になる事ではある。
+      まあ、多分、ちゃんとやっているという事にして、
+      これは実際に問題が発生した時に気にする事にすれば良い。
+
+    c 或いは --attach=prompt であっても、
+      内部から reload した時にはその場で attach するという様にするべきか。
+      うーん。一応 PROMPT_COMMAND 経由で実行するという事になっているのだから、
+      特に問題がない限りは PROMPT_COMMAND 経由で実行した方が良い気がする。
+
+    d ble-edit/{adjust,restore}-PS1
+      ble-attach の実装をよく見てみるとこの様な関数を経由して PS1 を待避している。
+      もっと言うとちゃんと現在の状態が待避した状態かそうでないかを管理している。
+      もしかするとこれを用いて PROMPT_COMMAND を呼び出せば解決する問題ではないのか。
+      改めて考えてみる。
+
+      通常は adjust 状態にある。
+      reload をユーザが呼び出すとどうなるかというと、
+      restore 状態で呼び出す事になる。
+      a この時 ble-attach が即座に行われれば、
+        adjust 状態になり正しく PS1 が記録される。
+      b もし --attach=prompt の場合だと、
+        PS1 は restore 状態のまま描画ルーチンに入る。
+        1 そこで restore-PS1 が呼び出されるが何も変化は行わず、
+        2 次に PROMPT_COMMAND が呼ばれて中で ble-attach を実行した時に adjust 状態になる。
+        3 次に adjust-PS1 が呼び出される時には何も変化がない。
+      これでちゃんと動くはずである。
+
+    結局 d の方法で呆気なく動くようになった。
+
 2019-02-25
 
   * 2019-02-15 bash-4.4 で reload を実行すると \ が入力できなくなる [#D0937]
@@ -3237,10 +3331,10 @@ bash_tips
       | 更に短いスケールでは /dev/zero を用いるのだ、
       | という事を考えては見たがよく考えてみると遅延を修正することができるのであれば、
       | /dev/zero に頼らなくても udp だけで事足りるのではあるまいか。
-      | 
+      |
       | 結局 /dev/zero を使う意義はやはり余りないだろうという事で、
       | 以下の /dev/zero を用いた実装は使わない事になった。
-      | 
+      |
       | if [[ $BASH_VERSION && -c /dev/zero ]]; then
       |   function ble/util/sleep {
       |     local sec=${1%%.*} msec=0

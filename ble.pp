@@ -654,6 +654,7 @@ trap ble/base/unload EXIT
 _ble_base_attach_PROMPT_COMMAND=
 function ble/base/attach-from-PROMPT_COMMAND {
   PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
+  ble-edit/prompt/update/.eval-prompt_command
   ble-attach
 
   # Note: 何故か分からないが PROMPT_COMMAND から ble-attach すると
