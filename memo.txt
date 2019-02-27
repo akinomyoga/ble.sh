@@ -828,25 +828,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-02-25
-
-  * syntax: 何と eval の引数として a=() の形式が許される様である。
-    eval a=(1) b=(2) c=(3) や eval declare a=(1 2 3) が動く。
-    解析の方法を変えなければならないのではないか。
-    或いは declare 等と同じ様に解析すれば良いのだろうか。
-    しかしその場合には変数名の補完が起こらない様にする必要がある。
-
-    うーん core-syntax-ctx.def の ARGVX ARGVI ARGVR 辺りを複製して
-    eval 専用の ARGEX ARGEI ARGER 的な物を導入するのが早いだろうか。
-
-    補完はどの様に起こすのが良いのだろうか。
-    これは通常のコマンドと同様に補完させるのが良い気がする。
-    しかし、コマンドと同じ文脈にしてしまうと今度はコマンドとしての着色が発生して、
-    コマンドが見つからない時にエラー着色になってしまう。
-    コマンドが見つからない場合にはエラー着色ではなくて何も着色しない、
-    というようにする必要がある。また、引数の着色はどの様にするのが良いだろうか。
-    コマンドの抽出…うーん。
-
 2019-02-15
 
   * ble.sh で [ble: EOF] としている内容は zsh では PROMPT_EOL_MARK で設定できるそうだ
@@ -1060,7 +1041,6 @@ bash_tips
 
     * 2017-12-03 の項目も対応する必要がある
     * 2016-07-07/3 についても確認が必要
-
 
 2018-08-26
 
@@ -1369,6 +1349,9 @@ bash_tips
 
     Note: これは端末によっては表示されたりする。端末による。
     エラー着色はどの様に行われているのか。for の後には FARGX1 に入る。
+
+    これは ble-syntax:bash/ctx-command/.check-delimiter-or-redirect の冒頭部分が怪しい。
+    と思ったが FARGX1 に関してはチェックが入っていないのでやはり関係ないだろうか。
 
 2017-11-09
 
@@ -2227,6 +2210,7 @@ bash_tips
   - prompt: support correct handling of escapes `#D0923` 22f9b56
   - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
   - complete: use candidates in menu if present `#D0939` 52eaf01
+  - syntax: allow variable assignment in the argument of `eval` `#D0941`
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -2243,7 +2227,7 @@ bash_tips
   - bleopt: fix a bug that false error messages are output on reload when `failglob` is set `#D0933` 64cdcba c62db26
   - decode: fix a bug that <kbd>\\</kbd> cannot be input after reattach `#D0937` a46ada0
   - reload: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938` 1107ca8
-  - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940`
+  - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3058,6 +3042,35 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-02-27
+
+  * syntax: 何と eval の引数として a=() の形式が許される様である [#D0941]
+    eval a=(1) b=(2) c=(3) や eval declare a=(1 2 3) が動く。
+    解析の方法を変えなければならないのではないか。
+    或いは declare 等と同じ様に解析すれば良いのだろうか。
+    しかしその場合には変数名の補完が起こらない様にする必要がある。
+
+    うーん core-syntax-ctx.def の ARGVX ARGVI ARGVR 辺りを複製して
+    eval 専用の ARGEX ARGEI ARGER 的な物を導入するのが早いだろうか。
+
+    * ok: 補完はどの様に起こすのが良いのだろうか。
+      これは通常のコマンドと同様に補完させるのが良い気がする。
+      しかし、コマンドと同じ文脈にしてしまうと今度はコマンドとしての着色が発生して、
+      コマンドが見つからない時にエラー着色になってしまう。
+      コマンドが見つからない場合にはエラー着色ではなくて何も着色しない、
+      というようにする必要がある。また、引数の着色はどの様にするのが良いだろうか。
+      コマンドの抽出…うーん。
+
+      よく考えたら declare と同様に適当な着色のままで良い気がしてきた。
+      取り敢えずは特別な着色は考えずに現状の着色で行く事にした。
+
+    * ok: 所で eval はキーワードではなくてコマンドである。
+      通常のコマンドではあるが文法解釈を変えるというのは自然に実装できるだろうか。
+      等と考えたが、改めて考えてみれば declare や typeset なども同様である。
+      declare や typeset 等と同様に取り扱えば問題ない。
+      そして declare や typeset に関してはやはり 'for' 等と同様の場所で処理していた。
+      ここに eval を追加すれば良いのである。
+
+    取り敢えず対応した。動いている。
 
   * complete: PROMPT_COMMAND に追記が在った時の対策 [#D0940]
     bash-it 等の場合には PROMPT_COMMAND に ';' で区切ってコマンドを追加してくる。

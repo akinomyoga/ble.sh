@@ -93,6 +93,11 @@ CTX_RDRI        45 # (redirection) ヒアドキュメント単語読み取り <<
 CTX_HERE0       46 # ヒアドキュメント行頭
 CTX_HERE1       47 # ヒアドキュメント行頭以外
 
+# eval a=1 b=(1 2 3) declare c=1 d=(1 2 3)
+CTX_ARGEX       69
+CTX_ARGEI       70
+CTX_ARGER       71
+
 #------------------------------------------------------------------------------
 # syntax highlight の為の属性
 
