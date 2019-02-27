@@ -1996,8 +1996,58 @@ function ble-complete/menu/get-active-range {
   fi
 }
 
+## 関数 ble-complete/menu/generate-candidates-from-menu
+##   現在表示されている menu 内容から候補を再抽出します。
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comp_flags comp_fixed comps_rex_ambiguous
+##   @var[out] cand_count cand_cand cand_word cand_pack
+function ble-complete/menu/generate-candidates-from-menu {
+  # completion context information
+  COMP1=${_ble_complete_menu_comp[0]}
+  COMP2=${_ble_complete_menu_comp[1]}
+  COMPS=${_ble_complete_menu_comp[2]}
+  COMPV=${_ble_complete_menu_comp[3]}
+  comp_type=${_ble_complete_menu_comp[4]}
+  comp_flags=${_ble_complete_menu_comp[5]}
+  comp_fixed=${_ble_complete_menu_comp[6]}
+  comps_rex_ambiguous= # これは source が使うだけなので使われない筈…
+
+  # remaining candidates
+  cand_count=${#_ble_complete_menu_items[@]}
+  cand_cand=() cand_word=() cand_pack=()
+  local entry fields
+  for entry in "${_ble_complete_menu_items[@]}"; do
+    local text=${entry#*:}
+    ble/string#split fields , "${entry%%:*}"
+    local pack=${text::fields[4]}
+    local "${_ble_complete_cand_varnames[@]}"
+    ble-complete/cand/unpack "$pack"
+    ble/array#push cand_cand "$CAND"
+    ble/array#push cand_word "$INSERT"
+    ble/array#push cand_pack "$pack"
+  done
+  ((cand_count))
+}
+
 #------------------------------------------------------------------------------
 # 補完
+
+## 関数 ble-complete/generate-candidates-from-opts opts
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comp_flags comp_fixed comps_rex_ambiguous
+##   @var[out] cand_count cand_cand cand_word cand_pack
+function ble-complete/generate-candidates-from-opts {
+  local opts=$1
+
+  # 文脈の決定
+  local context; ble-complete/complete/determine-context-from-opts "$opts"
+
+  # 補完源の生成
+  comp_type=
+  local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
+  local sources
+  ble-complete/context:"$context"/generate-sources "$comp_text" "$comp_index" || return 1
+
+  ble-complete/candidates/generate
+}
 
 ## 関数 ble-complete/insert insert_beg insert_end insert suffix
 function ble-complete/insert {
@@ -2054,12 +2104,20 @@ function ble-complete/insert {
 }
 
 _ble_complete_state=
+## 関数 ble/widget/complete opts
+##   @param[in] opts
+##     コロン区切りのリストです。
+##     enter_menu
+##     insert_all
+##     context=*
 function ble/widget/complete {
   local opts=$1
   ble-edit/content/clear-arg
 
   local state=$_ble_complete_state
   _ble_complete_state=start
+
+  local menu_show_opts=
 
   if [[ :$opts: == *:enter_menu:* ]]; then
     [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
@@ -2072,21 +2130,17 @@ function ble/widget/complete {
     [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
   fi
 
-  # 文脈の決定
-  local context; ble-complete/complete/determine-context-from-opts "$opts"
-
-  # 補完源の生成
-  local comp_type=
-  local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
-  local sources
-  ble-complete/context:"$context"/generate-sources "$comp_text" "$comp_index" || return 1
-
   local COMP1 COMP2 COMPS COMPV
-  local comps_flags comps_fixed
+  local comp_type comps_flags comps_fixed
   local comps_rex_ambiguous
   local cand_count
   local -a cand_cand cand_word cand_pack
-  ble-complete/candidates/generate; local ext=$?
+  if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* && ${#_ble_complete_menu_items[@]} -gt 0 ]]; then
+    menu_show_opts=$menu_show_opts:filter # 既存の filter 前候補を保持する
+    ble-complete/menu/generate-candidates-from-menu; local ext=$?
+  else
+    ble-complete/generate-candidates-from-opts "$opts"; local ext=$?
+  fi
   if ((ext==148)); then
     return 148
   elif ((ext!=0)); then
@@ -2119,14 +2173,14 @@ function ble/widget/complete {
     return
   elif [[ :$opts: == *:enter_menu:* ]]; then
     local menu_common_part=$COMPV
-    ble-complete/menu/show || return
+    ble-complete/menu/show "$menu_show_opts" || return
     ble-complete/menu-complete/enter; local ext=$?
     ((ext==148)) && return 148
     ((ext)) && ble/widget/.bell
     return
   elif [[ :$opts: == *:show_menu:* ]]; then
     local menu_common_part=$COMPV
-    ble-complete/menu/show
+    ble-complete/menu/show "$menu_show_opts"
     return # exit status of ble-complete/menu/show
   fi
 
@@ -2174,7 +2228,7 @@ function ble/widget/complete {
       ble-syntax:bash/simple-word/eval "$ret"
       menu_common_part=$ret
     fi
-    ble-complete/menu/show || return
+    ble-complete/menu/show "$menu_show_opts" || return
   elif [[ $insert_flags == *n* ]]; then
     ble/widget/complete show_menu || return
     _ble_complete_menu_active=auto

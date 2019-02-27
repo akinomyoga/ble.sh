@@ -2226,6 +2226,7 @@ bash_tips
   - sabbrev: quote key in printing definitions by `ble-sabbrev` `#D0912` 2994d80
   - prompt: support correct handling of escapes `#D0923` 22f9b56
   - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
+  - complete: use candidates in menu if present `#D0939`
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -2241,7 +2242,7 @@ bash_tips
   - edit (widget `delete-horizontal-space`): fix a bug that spaces before the cursor is not removed `#D0932` 9290adb
   - bleopt: fix a bug that false error messages are output on reload when `failglob` is set `#D0933` 64cdcba c62db26
   - decode: fix a bug that <kbd>\\</kbd> cannot be input after reattach `#D0937` a46ada0
-  - attach: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938`
+  - reload: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938` 1107ca8
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3054,6 +3055,34 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-02-27
+
+  * complete: C-x $ などで変数名候補が出ている状態で、 [#D0939]
+    多少入力して menu-filter が働いて一意になったという時に
+    TAB を押すと通常の補完が走って候補が消滅してしまう。
+    menu に候補が表示されている時には TAB (complete) で、
+    表示されている候補を使う様に修正するべきなのではないか。
+
+    実はこの振る舞いは今までにも気になっていた物である。
+    一回、メニューが表示されている時にはメニューの内容で補完する様に変更してみる事にする。
+    変更してみた。動いている。何か見落としがあるような気がしないでもないが暫く使ってみる。
+
+    x resolved: この状態で補完が起こると menu 項目が全てクリアされてしまうので、
+      DEL をしても最後に補完で挿入した内容よりも前に戻る事ができない。
+      これは、現在は menu から抽出した候補を用いているという情報を何処かに記録して、
+      その場合には menu の情報の再設定は行わないという様に工夫する必要がある。
+
+      menu の情報の記録は何処で行われているのだったか。
+      どうも menu-filter の場合には ble-complete/menu/show filter を呼び出している。
+      filter を指定して呼び出す事により menu の情報が消滅するのを避けているのである。
+      →これも適当にやったら動いた。
+
+    - ok: 然し、今までの補完だって続きを補完しようとしたら menu-filter
+      で戻る為の情報は記録されないのではなかったか。
+      と思ったが、今回の対応によってそのような場合でもちゃんと menu-filter
+      で戻る事ができるようになったのではあるまいか…。
+      うーん。やはりその様になっている気がする。
 
 2019-02-26
 
