@@ -652,16 +652,23 @@ function ble/base/unload {
 trap ble/base/unload EXIT
 
 _ble_base_attach_PROMPT_COMMAND=
+_ble_base_attach_from_prompt=
 function ble/base/attach-from-PROMPT_COMMAND {
+  # 後続の設定によって PROMPT_COMMAND が置換された場合にはそれを保持する
+  [[ $PROMPT_COMMAND != ble/base/attach-from-PROMPT_COMMAND ]] && local PROMPT_COMMAND
   PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
   ble-edit/prompt/update/.eval-prompt_command
+
+  # 既に attach 状態の時は処理はスキップ
+  [[ $_ble_base_attach_from_prompt ]] || return 0
+  _ble_base_attach_from_prompt=
   ble-attach
 
   # Note: 何故か分からないが PROMPT_COMMAND から ble-attach すると
-  # ble/bin/stty や ble/bin/mkfifo や tty 2> /dev/null などが
+  # ble/bin/stty や ble/bin/mkfifo や tty 2>/dev/null などが
   # ジョブとして表示されてしまう。joblist.flush しておくと平気。
   # これで取り逃がすジョブもあるかもしれないが仕方ない。
-  ble/util/joblist.flush &> /dev/null
+  ble/util/joblist.flush &>/dev/null
   ble/util/joblist.check
 }
 
@@ -699,6 +706,7 @@ function ble/base/process-blesh-arguments {
   case $opt_attach in
   (attach) ble-attach ;;
   (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
+           _ble_base_attach_from_prompt=1
            PROMPT_COMMAND=ble/base/attach-from-PROMPT_COMMAND ;;
   esac
   [[ ! $opt_error ]]

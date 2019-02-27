@@ -2226,7 +2226,7 @@ bash_tips
   - sabbrev: quote key in printing definitions by `ble-sabbrev` `#D0912` 2994d80
   - prompt: support correct handling of escapes `#D0923` 22f9b56
   - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
-  - complete: use candidates in menu if present `#D0939`
+  - complete: use candidates in menu if present `#D0939` 52eaf01
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -2243,6 +2243,7 @@ bash_tips
   - bleopt: fix a bug that false error messages are output on reload when `failglob` is set `#D0933` 64cdcba c62db26
   - decode: fix a bug that <kbd>\\</kbd> cannot be input after reattach `#D0937` a46ada0
   - reload: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938` 1107ca8
+  - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940`
 
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
@@ -3057,6 +3058,18 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-02-27
+
+  * complete: PROMPT_COMMAND に追記が在った時の対策 [#D0940]
+    bash-it 等の場合には PROMPT_COMMAND に ';' で区切ってコマンドを追加してくる。
+    また、別の枠組みで PROMPT_COMMAND を管理している事もある。
+    その様な時には attach-from-PROMPT_COMMAND は呼び出されるけれども、
+    PROMPT_COMMAND は別の文字列になっているという事が考えられる。
+
+    その様な時には attach-from-PROMPT_COMMAND の中から PROMPT_COMMAND を
+    書き換えると後に設定された PROMPT_COMMAND が削除されてしまって問題である。
+    従って、後で設定された PROMPT_COMMAND はそのままにして置いて、
+    attach-from-PROMPT_COMMAND の処理を二回目以降はスキップする、
+    などと言った処理が必要になる。その様に実装した。
 
   * complete: C-x $ などで変数名候補が出ている状態で、 [#D0939]
     多少入力して menu-filter が働いて一意になったという時に
