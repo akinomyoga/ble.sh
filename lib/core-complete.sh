@@ -149,7 +149,7 @@ function ble-complete/action/util/complete.close-quotation {
 }
 
 function ble-complete/action/util/quote-insert {
-  if [[ $CAND == "$COMPV"* ]]; then
+  if [[ $comps_flags == *v* && $CAND == "$COMPV"* ]]; then
     local ins=${CAND:${#COMPV}} ret
 
     # 単語内の文脈に応じたエスケープ
@@ -1956,7 +1956,7 @@ function ble-complete/menu/show {
   _ble_complete_menu_info_data=("${info_data[@]}")
   _ble_complete_menu_items=("${menu_items[@]}")
   if [[ :$opts: != *:filter:* ]]; then
-    local beg=$COMP1 end=$_ble_edit_ind
+    local beg=$COMP1 end=$COMP2
     _ble_complete_menu_beg=$beg
     _ble_complete_menu_end=$end
     _ble_complete_menu_str=$_ble_edit_str
@@ -3028,12 +3028,15 @@ function ble-decode/keymap:auto_complete/define {
 #
 
 function ble-complete/sabbrev/.print-definition {
-  local key=$1 value=$2
+  local key=$1 type=${2%%:*} value=${2#*:}
+  local flags=
+  [[ $type == m ]] && flags='-m '
+
   local q=\' Q="'\''" shell_specialchars=$' \n\t&|;<>()''\$`"'\''[]*?!~'
   if [[ $key == *["$shell_specialchars"]* ]]; then
-    printf "ble-sabbrev '%s=%s'\n" "${key//$q/$Q}" "${value//$q/$Q}"
+    printf "ble-sabbrev %s'%s=%s'\n" "$flags" "${key//$q/$Q}" "${value//$q/$Q}"
   else
-    printf "ble-sabbrev %s='%s'\n" "$key" "${value//$q/$Q}"
+    printf "ble-sabbrev %s%s='%s'\n" "$flags" "$key" "${value//$q/$Q}"
   fi
 }
 
@@ -3103,39 +3106,66 @@ else
   }
 fi
 
+
+function ble-complete/sabbrev/read-arguments {
+  while (($#)); do
+    local arg=$1; shift
+    if [[ $arg == ?*=* ]]; then
+      ble/array#push specs "s:$arg"
+    else
+      case $arg in
+      (--help) flag_help=1 ;;
+      (-*)
+        local i n=${#arg} c
+        for ((i=1;i<n;i++)); do
+          c=${arg:i:1}
+          case $c in
+          (m)
+            if ((!$#)); then
+              echo "ble-sabbrev: option argument for '-$c' is missing" >&2
+              flag_error=1
+            elif [[ $1 != ?*=* ]]; then
+              echo "ble-sabbrev: invalid option argument '-$c $1' (expected form: '-c key=value')" >&2
+              flag_error=1
+            else
+              ble/array#push specs "$c:$1"; shift
+            fi ;;
+          (*)
+            echo "ble-sabbrev: unknown option '-$c'." >&2
+            flag_error=1 ;;
+          esac
+        done ;;
+      (*)
+        echo "ble-sabbrev: unrecognized argument '$arg'." >&2
+        flag_error=1 ;;
+      esac
+    fi
+  done
+}
+
 ## 関数 ble-sabbrev key=value
 ##   静的略語展開を登録します。
 function ble-sabbrev {
   if (($#)); then
     local -a specs=()
-    local arg flag_help= flag_error=
-    for arg; do
-      if [[ $arg == ?*=* ]]; then
-        ble/array#push specs "$arg"
-      else
-        case $arg in
-        (--help) flag_help=1 ;;
-        (-*)
-          echo "ble-sabbrev: unknown option '$arg'." >&2
-          flag_error=1 ;;
-        (*)
-          echo "ble-sabbrev: unrecognized argument '$arg'." >&2
-          flag_error=1 ;;
-        esac
-      fi
-    done
+    local flag_help= flag_error=
+    ble-complete/sabbrev/read-arguments "$@"
     if [[ $flag_help || $flag_error ]]; then
+      [[ $flag_error ]] && echo
       printf '%s\n' \
              'usage: ble-sabbrev key=value' \
+             'usage: ble-sabbrev -m key=function' \
              'usage: ble-sabbrev --help' \
              'Register sabbrev expansion.'
       [[ ! $flag_error ]]; return
     fi
 
-    local spec key value
+    local spec key type value
     for spec in "${specs[@]}"; do
+      # spec は t:key=value の形式
+      type=${spec::1} spec=${spec:2}
       key=${spec%%=*} value=${spec#*=}
-      ble-complete/sabbrev/register "$key" "$value"
+      ble-complete/sabbrev/register "$key" "$type:$value"
     done
   else
     ble-complete/sabbrev/list
@@ -3159,8 +3189,44 @@ function ble-complete/sabbrev/expand {
   local key=${_ble_edit_str:pos:comp_index-pos}
   local ret; ble-complete/sabbrev/get "$key" || return 1
 
-  ble/widget/.replace-range "$pos" "$comp_index" "$ret"
-  ((_ble_edit_ind=pos+${#ret}))
+  local type=${ret%%:*} value=${ret#*:}
+  case $type in
+  (s)
+    ble/widget/.replace-range "$pos" "$comp_index" "$value"
+    ((_ble_edit_ind=pos+${#value})) ;;
+  (m)
+    local -a COMPREPLY=()
+    eval "$value"
+    if ((${#COMPREPLY[@]}==0)); then
+      return 1
+    elif ((${#COMPREPLY[@]}==1)); then
+      local value=${COMPREPLY[0]}
+      ble/widget/.replace-range "$pos" "$comp_index" "$value"
+      ((_ble_edit_ind=pos+${#value}))
+      return 0
+    fi
+
+    # Note: 既存の内容は削除する事にする
+    ble/widget/.replace-range "$pos" "$comp_index" ''
+    comp_index=$pos
+
+    # prepare completion context
+    local comp_type=a comps_flags= comps_fixed=
+    local COMP1=$pos COMP2=$comp_index COMPS=$key COMPV=
+
+    # construct cand_pack
+    local cand_count=0
+    local -a cand_cand=() cand_word=() cand_pack=()
+    local cand COMP_PREFIX= 
+    for cand in "${COMPREPLY[@]}"; do
+      ble-complete/cand/yield word "$cand" ""
+    done
+
+    local menu_common_part=
+    ble-complete/menu/show "$menu_show_opts" || return
+    return 148 ;;
+  (*) return 1 ;;
+  esac
   return 0
 }
 function ble/widget/sabbrev-expand {
