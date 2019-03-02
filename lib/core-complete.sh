@@ -1773,7 +1773,7 @@ function ble-complete/menu/construct-single-entry {
 ##
 ##   @var[out] x y esc
 ##   @arr[out] menu_items
-##   @var[in] manu_style
+##   @var[in] menu_style
 ##   @arr[in] cand_pack
 ##   @var[in] cols lines menu_common_part
 ##

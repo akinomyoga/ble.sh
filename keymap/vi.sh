@@ -5086,6 +5086,7 @@ function ble/widget/vi-command/search.core {
     local _ble_edit_isearch_str=$needle
     local isearch_ntask=$ntask
     local isearch_time=0
+    local isearch_progress_callback=ble-edit/isearch/.show-status-with-progress.fib
     if ((opt_backward)); then
       ble-edit/isearch/backward-search-history-blockwise regex:progress
     else
