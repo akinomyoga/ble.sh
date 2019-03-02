@@ -195,6 +195,16 @@ function ble-complete/action/util/quote-insert {
   fi
 }
 
+function ble-complete/action/inherit-from {
+  local dst=$1 src=$2
+  local member srcfunc dstfunc
+  for member in initialize complete getg get-desc; do
+    srcfunc=ble-complete/action:$src/$member
+    dstfunc=ble-complete/action:$dst/$member
+    ble/is-function "$srcfunc" && eval "function $dstfunc { $srcfunc; }"
+  done
+}
+
 #------------------------------------------------------------------------------
 
 # action:plain
@@ -241,6 +251,23 @@ function ble-complete/action:file/getg {
   ble-syntax/highlight/getg-from-filename "$CAND"
   [[ $g ]] || ble/color/face2g filename_warning
 }
+_ble_complete_action_file_desc[_ble_attr_FILE_LINK]='symbolic link'
+_ble_complete_action_file_desc[_ble_attr_FILE_ORPHAN]='symbolic link (orphan)'
+_ble_complete_action_file_desc[_ble_attr_FILE_DIR]='directory'
+_ble_complete_action_file_desc[_ble_attr_FILE_STICKY]='directory (sticky)'
+_ble_complete_action_file_desc[_ble_attr_FILE_SETUID]='file (setuid)'
+_ble_complete_action_file_desc[_ble_attr_FILE_SETGID]='file (setgid)'
+_ble_complete_action_file_desc[_ble_attr_FILE_EXEC]='file (executable)'
+_ble_complete_action_file_desc[_ble_attr_FILE_FILE]='file'
+_ble_complete_action_file_desc[_ble_attr_FILE_CHR]='character device'
+_ble_complete_action_file_desc[_ble_attr_FILE_FIFO]='named pipe'
+_ble_complete_action_file_desc[_ble_attr_FILE_SOCK]='socket'
+_ble_complete_action_file_desc[_ble_attr_FILE_BLK]='block device'
+function ble-complete/action:file/get-desc {
+  local type; ble-syntax/highlight/filetype "$CAND"
+  desc=${_ble_complete_action_file_desc[type]:-'file (???)'}
+}
+
 
 function ble-complete/action:tilde/initialize {
   # チルダは quote しない
@@ -252,6 +279,9 @@ function ble-complete/action:tilde/complete {
 }
 function ble-complete/action:tilde/getg {
   ble/color/face2g filename_directory
+}
+function ble-complete/action:tilde/get-desc {
+  desc=directory
 }
 
 
@@ -286,6 +316,12 @@ function ble-complete/action:progcomp/getg {
     ble-complete/action:file/getg
   fi
 }
+function ble-complete/action:progcomp/get-desc {
+  if [[ $DATA == *:filenames:* ]]; then
+    ble-complete/action:file/get-desc
+  fi
+}
+
 
 # action:command
 
@@ -325,6 +361,28 @@ function ble-complete/action:command/getg {
       type=_ble_attr_CMD_FUNCTION
     fi
     ble-syntax/attr2g "$type"
+  fi
+}
+
+_ble_complete_action_command_desc[_ble_attr_CMD_BOLD]=builtin
+_ble_complete_action_command_desc[_ble_attr_CMD_BUILTIN]=builtin
+_ble_complete_action_command_desc[_ble_attr_CMD_ALIAS]=alias
+_ble_complete_action_command_desc[_ble_attr_CMD_FUNCTION]=function
+_ble_complete_action_command_desc[_ble_attr_CMD_FILE]=file
+_ble_complete_action_command_desc[_ble_attr_KEYWORD]=keyword
+_ble_complete_action_command_desc[_ble_attr_CMD_JOBS]=job
+_ble_complete_action_command_desc[_ble_attr_ERR]='???'
+_ble_complete_action_command_desc[_ble_attr_CMD_DIR]=directory
+function ble-complete/action:command/get-desc {
+  if [[ -d $CAND ]]; then
+    desc=directory
+  else
+    local type; ble/util/type type "$CAND"
+    ble-syntax/highlight/cmdtype1 "$type" "$CAND"
+    if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
+      type=_ble_attr_CMD_FUNCTION
+    fi
+    desc=${_ble_complete_action_command_desc[type]:-'???'}
   fi
 }
 
@@ -1697,6 +1755,7 @@ function ble-complete/candidates/determine-common-prefix {
 # 候補表示
 #
 
+_ble_complete_menu_style=
 _ble_complete_menu_beg=
 _ble_complete_menu_end=
 _ble_complete_menu_str=
@@ -1741,7 +1800,7 @@ function ble-complete/menu/construct-single-entry {
       ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Bold|_ble_color_gflags_Revert]}
       [[ $ret ]] || ble/color/g2sgr "$g1"; sgr1=$ret
 
-      ble-edit/info/.construct-text "${show::alen}"
+      ble-edit/info/.construct-text "${show::alen}" nonewline
       out=$out$sgr0$ret
     fi
     if ((alen<${#show})); then
@@ -1751,7 +1810,7 @@ function ble-complete/menu/construct-single-entry {
       ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
       [[ $ret ]] || ble/color/g2sgr "$g1"; sgr1=$ret
 
-      ble-edit/info/.construct-text "${show:alen}"
+      ble-edit/info/.construct-text "${show:alen}" nonewline
       out=$out$sgr0$ret
     fi
     ret=$out$_ble_term_sgr0
@@ -1763,7 +1822,7 @@ function ble-complete/menu/construct-single-entry {
     ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
     [[ $ret ]] || ble/color/g2sgr "$g1"; sgr1=$ret
 
-    ble-edit/info/.construct-text "$show"
+    ble-edit/info/.construct-text "$show" nonewline
     ret=$sgr0$ret$_ble_term_sgr0
   fi
 }
@@ -1909,6 +1968,67 @@ function ble-complete/menu/style:dense-nowrap/construct {
   ble-complete/menu/style:dense/construct
 }
 
+function ble-complete/menu/style:desc/construct {
+  local ret iloop=0
+
+  # 各候補を描画して幅を計算する
+  local measure; measure=()
+  local max_cand_width=$(((cols+1)/2))
+  ((max_cand_width<10&&(max_cand_width=cols)))
+  local pack w esc1 max_width=0
+  for pack in "${cand_pack[@]::lines}"; do
+    ((iloop++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
+
+    x=0 y=0
+    lines=1 cols=$max_cand_width ble-complete/menu/construct-single-entry "$pack"; esc1=$ret
+    ((w=y*cols+x,w>max_width&&(max_width=w)))
+
+    ble/array#push measure "$w:${#pack}:$pack$esc1"
+  done
+
+  local cand_width=$max_width
+  local desc_x=$((max_width+1)); ((desc_x>cols&&(desc_x=cols)))
+  local desc_prefix=; ((cols-desc_x>30)) && desc_prefix='| '
+
+  # ble-edit/info/.construct-text 用の設定
+  ble/color/g2sgr "$_ble_color_gflags_Revert"; local sgr1=$ret
+  ble/color/g2sgr 0; local sgr0=$ret
+
+  x=0 y=0 esc=
+  menu_items=()
+  local entry w s pack esc1 x0 y0 pad
+  for entry in "${measure[@]}"; do
+    ((iloop++%bleopt_complete_polling_cycle==0)) && ble-complete/check-cancel && return 148
+
+    w=${entry%%:*} entry=${entry#*:}
+    s=${entry%%:*} entry=${entry#*:}
+    pack=${entry::s} esc1=${entry:s}
+
+    # 候補表示
+    ((x0=x,y0=y,x+=w))
+    ble/array#push menu_items "$x0,$y0,$x,$y,${#pack},${#esc1}:$pack$esc1"
+    esc=$esc$esc1
+
+    # 余白
+    ble/string#reserve-prototype $((pad=desc_x-x))
+    esc=$esc${_ble_string_prototype::pad}$desc_prefix
+    ((x+=pad+${#desc_prefix}))
+
+    # 説明表示
+    local "${_ble_complete_cand_varnames[@]}"
+    ble-complete/cand/unpack "$pack"
+    local desc="(action: $ACTION)"
+    ble/function#try ble-complete/action:"$ACTION"/get-desc
+    y=0 lines=1 ble-edit/info/.construct-text "$desc" nonewline
+    esc=$esc$ret
+
+    ((y+1>=lines)) && break
+    ((x=0,++y))
+    esc=$esc$'\n'
+  done
+}
+
+
 function bleopt/check:complete_menu_style {
   if ! ble/is-function "ble-complete/menu/style:$value/construct"; then
     echo "bleopt: Invalid value complete_menu_style='$value'. A function 'ble-complete/menu/style:$value/construct' is not defined." >&2
@@ -1936,6 +2056,9 @@ function ble-complete/menu/show {
 
   # settings
   local menu_style=$bleopt_complete_menu_style
+  [[ :$opts: == *:filter:* && $_ble_complete_menu_style ]] &&
+    menu_style=$_ble_complete_menu_style
+
   local cols lines
   ble-edit/info/.initialize-size
   ((lines&&lines--))
@@ -1957,6 +2080,7 @@ function ble-complete/menu/show {
   _ble_complete_menu_items=("${menu_items[@]}")
   if [[ :$opts: != *:filter:* ]]; then
     local beg=$COMP1 end=$COMP2
+    _ble_complete_menu_style=$menu_style
     _ble_complete_menu_beg=$beg
     _ble_complete_menu_end=$end
     _ble_complete_menu_str=$_ble_edit_str
@@ -3195,35 +3319,45 @@ function ble-complete/sabbrev/expand {
     ble/widget/.replace-range "$pos" "$comp_index" "$value"
     ((_ble_edit_ind=pos+${#value})) ;;
   (m)
-    local -a COMPREPLY=()
-    eval "$value"
-    if ((${#COMPREPLY[@]}==0)); then
-      return 1
-    elif ((${#COMPREPLY[@]}==1)); then
-      local value=${COMPREPLY[0]}
-      ble/widget/.replace-range "$pos" "$comp_index" "$value"
-      ((_ble_edit_ind=pos+${#value}))
-      return 0
-    fi
-
-    # Note: 既存の内容は削除する事にする
-    ble/widget/.replace-range "$pos" "$comp_index" ''
-    comp_index=$pos
-
     # prepare completion context
     local comp_type=a comps_flags= comps_fixed=
-    local COMP1=$pos COMP2=$comp_index COMPS=$key COMPV=
+    local COMP1=$pos COMP2=$pos COMPS=$key COMPV=
 
     # construct cand_pack
     local cand_count=0
     local -a cand_cand=() cand_word=() cand_pack=()
     local cand COMP_PREFIX= 
+
+    # local settings
+    local bleopt_sabbrev_menu_style=$bleopt_complete_menu_style
+    local bleopt_sabbrev_menu_opts=
+
+    # generate candidates
+    #   COMPREPLY に候補を追加してもらうか、
+    #   或いは手動で ble-complete/cand/yield 等を呼び出してもらう。
+    local -a COMPREPLY=()
+    eval "$value"
     for cand in "${COMPREPLY[@]}"; do
       ble-complete/cand/yield word "$cand" ""
     done
 
+    if ((cand_count==0)); then
+      return 1
+    elif ((cand_count==1)); then
+      local value=${cand_word[0]}
+      ble/widget/.replace-range "$pos" "$comp_index" "$value"
+      ((_ble_edit_ind=pos+${#value}))
+      return 0
+    fi
+
+    # Note: 既存の内容 (key) は削除する
+    ble/widget/.replace-range "$pos" "$comp_index" ''
+
+    local bleopt_complete_menu_style=$bleopt_sabbrev_menu_style
     local menu_common_part=
-    ble-complete/menu/show "$menu_show_opts" || return
+    ble-complete/menu/show || return
+    [[ :$bleopt_sabbrev_menu_opts: == *:enter_menu:* ]] &&
+      ble-complete/menu-complete/enter
     return 148 ;;
   (*) return 1 ;;
   esac

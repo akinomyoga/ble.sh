@@ -678,8 +678,14 @@ function ble-edit/info/.put-atomic {
   if ((x<cols&&cols<x+w)); then
     if ((y+1>=lines)); then
       # 画面に入らない時は表示しない
-      out=$out$'\n'
-      ((y++,x=0))
+      if [[ :$opts: == *:nonewline:* ]]; then
+        ble/string#reserve-prototype $((cols-x))
+        out=$out${_ble_string_prototype::cols-x}
+        ((x=cols))
+      else
+        out=$out$'\n'
+        ((y++,x=0))
+      fi
       return
     fi
     ble/string#reserve-prototype $((cols-x))
@@ -701,6 +707,7 @@ function ble-edit/info/.put-atomic {
 ##   行末にいる場合次の行へ移動します。
 function ble-edit/info/.put-nl-if-eol {
   if ((x==cols)); then
+    [[ :$opts: == *:nonewline:* ]] && return
     ((_ble_term_xenl)) && out=$out$'\n'
     ((y++,x=0))
   fi
@@ -714,13 +721,17 @@ function ble-edit/info/.initialize-size {
   cols=${COLUMNS-80} lines=$ret
 }
 
-## 関数 ble-edit/info/.construct-text text
+## 関数 ble-edit/info/.construct-text text opts
 ##   指定した文字列を表示する為の制御系列に変換します。
+##   @param[in] text
+##   @param[in] opts
+##     nonewline
 ##   @var[in] cols lines sgr0 sgr1
 ##   @var[in,out] x y
 ##   @var[out] ret
 function ble-edit/info/.construct-text {
   local out= LC_ALL= LC_COLLATE=C glob='*[! -~]*'
+  local opts=$2
   if [[ $1 != $glob ]]; then
     # G0 だけで構成された文字列は先に単純に処理する
     ble-edit/info/.put-simple "${#1}" "$1"
@@ -749,9 +760,9 @@ function ble-edit/info/.construct-text {
           ble-edit/info/.put-atomic "$ret" "${text:i:1}"
         fi
 
-        ((y>=lines)) && break
         ((i++))
       fi
+      ((y*cols+x>=lines*cols)) && break
     done
   fi
 

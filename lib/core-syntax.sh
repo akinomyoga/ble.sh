@@ -5103,6 +5103,8 @@ fi
 #------------------------------------------------------------------------------
 # ble-syntax/highlight/filetype
 
+## 関数 ble-syntax/highlight/filetype filename
+##   @var[out] type
 function ble-syntax/highlight/filetype {
   local file=$1
   type=

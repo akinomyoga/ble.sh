@@ -659,8 +659,8 @@ else
   }
 fi
 
-## 関数 ble/util/assign var command...
-##   var=$(command ...) の高速な代替です。
+## 関数 ble/util/assign var command
+##   var=$(command) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
 ##
 ##   @param[in] var
@@ -675,21 +675,21 @@ if ((_ble_bash>=40000)); then
   function ble/util/assign {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
     builtin eval "$2" >| "$_ble_local_tmp"
-    local _ret=$? __arr
+    local _ble_local_ret=$? _ble_local_arr=
     ((_ble_util_assign_level--))
-    mapfile -t __arr < "$_ble_local_tmp"
-    IFS=$'\n' eval "$1=\"\${__arr[*]-}\""
-    return "$_ret"
+    mapfile -t _ble_local_arr < "$_ble_local_tmp"
+    IFS=$'\n' eval "$1=\"\${_ble_local_arr[*]}\""
+    return "$_ble_local_ret"
   }
 else
   function ble/util/assign {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
     builtin eval "$2" >| "$_ble_local_tmp"
-    local _ret=$?
+    local _ble_local_ret=$?
     ((_ble_util_assign_level--))
     IFS= builtin read -r -d '' "$1" < "$_ble_local_tmp"
     eval "$1=\${$1%$'\n'}"
-    return "$_ret"
+    return "$_ble_local_ret"
   }
 fi
 ## 関数 ble/util/assign-array arr command args...
@@ -707,10 +707,10 @@ if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
     builtin eval "$2" >| "$_ble_local_tmp"
-    local _ret=$?
+    local _ble_local_ret=$?
     ((_ble_util_assign_level--))
     mapfile -t "$1" < "$_ble_local_tmp"
-    return "$_ret"
+    return "$_ble_local_ret"
   }
 else
   function ble/util/assign-array {
