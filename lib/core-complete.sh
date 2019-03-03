@@ -2717,7 +2717,7 @@ ble/function#try ble/util/idle.push-background ble-complete/menu-filter.idle
 
 _ble_complete_menu_original=
 
-function ble-highlight-layer:region/mark:menu_complete/get-face {
+function ble/highlight/layer:region/mark:menu_complete/get-face {
   face=menu_complete
 }
 
@@ -2975,7 +2975,7 @@ function ble-complete/auto-complete/initialize {
 }
 ble-complete/auto-complete/initialize
 
-function ble-highlight-layer:region/mark:auto_complete/get-face {
+function ble/highlight/layer:region/mark:auto_complete/get-face {
   face=auto_complete
 }
 

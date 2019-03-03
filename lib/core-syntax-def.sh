@@ -29,14 +29,14 @@ _ble_syntax_lang=bash
 
 # 関数 ble-syntax/parse は実際に import されるまで定義しない
 
-# 関数 ble-highlight-layer:syntax/* は import されるまではダミーの実装にする
+# 関数 ble/highlight/layer:syntax/* は import されるまではダミーの実装にする
 
-## 関数 ble-highlight-layer:syntax/update (暫定)
+## 関数 ble/highlight/layer:syntax/update (暫定)
 ##   PREV_BUFF, PREV_UMIN, PREV_UMAX を変更せずにそのまま戻れば良い。
-function ble-highlight-layer:syntax/update { return; }
-## 関数 ble-highlight-layer:region/getg (暫定)
+function ble/highlight/layer:syntax/update { return; }
+## 関数 ble/highlight/layer:region/getg (暫定)
 ##   g を設定せず戻ればそのまま上のレイヤーに問い合わせが行く。
-function ble-highlight-layer:syntax/getg { return; }
+function ble/highlight/layer:syntax/getg { return; }
 
 
 ## 関数 ble-syntax:bash/is-complete

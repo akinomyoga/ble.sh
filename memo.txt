@@ -2268,6 +2268,8 @@ bash_tips
   内部的変更
   - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
   - syntax: rename variables `BLE_{ATTR,CTX,SYNTAX}_*` -> `_ble_{attr,ctx,syntax}_*` 1fbcd8b (ref #D0909)
+  - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
+  - [refactor] do not use brace expansions for `VARNAMES` `#D0955` 711e7df
 
 2018-09-24 (#D0825..#D0857 6ed51e7)
 
@@ -3080,7 +3082,7 @@ bash_tips
 2019-03-03
 
   * VARNAMES でブレース展開を使うのは良くない。refactoring の置換で変な事になる [#D0955]
-    具体的には edit.sh の _ble_dirty_... など。
+    具体的には edit.sh の _ble_dirty_... など。手で展開した。
 
   * info: ble-edit/info/.construct-content raw は分かりにくい [#D0954]
     結局中で trace するので、raw ではなくて ANSI sequence である。

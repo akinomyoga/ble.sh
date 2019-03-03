@@ -1337,7 +1337,7 @@ function ble/textarea#update-text-buffer {
 
   # highlight -> HIGHLIGHT_BUFF
   local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
-  ble-highlight-layer/update "$text"
+  ble/highlight/layer/update "$text"
   ble/urange#update "$HIGHLIGHT_UMIN" "$HIGHLIGHT_UMAX"
 
   # 変更文字の適用
@@ -1346,7 +1346,7 @@ function ble/textarea#update-text-buffer {
     builtin eval "_ble_textarea_buffer=(\"\${$HIGHLIGHT_BUFF[@]}\")"
     HIGHLIGHT_BUFF=_ble_textarea_buffer
     for ichg in "${_ble_textmap_ichg[@]}"; do
-      ble-highlight-layer/getg "$ichg"
+      ble/highlight/layer/getg "$ichg"
       ble/color/g2sgr "$g"
       _ble_textarea_buffer[ichg]=$ret${_ble_textmap_glyph[ichg]}
     done
@@ -1388,13 +1388,13 @@ function ble/textarea#update-text-buffer {
         fi
 
         # 次が改行の時は空白にする
-        local g; ble-highlight-layer/getg "$index"; lg=$g
+        local g; ble/highlight/layer/getg "$index"; lg=$g
         ((lc=ret==10?32:ret))
       else
         # 前の文字
         lcs=${_ble_textmap_glyph[index-1]}
         ble/util/s2c "$lcs" $((${#lcs}-1))
-        local g; ble-highlight-layer/getg $((index-1)); lg=$g
+        local g; ble/highlight/layer/getg $((index-1)); lg=$g
         ((lc=ret))
       fi
     fi
@@ -1410,7 +1410,7 @@ function ble/textarea#slice-text-buffer {
     i2<0&&(i2+=iN)))
   if ((i1<i2&&i1<iN)); then
     local g
-    ble-highlight-layer/getg "$i1"
+    ble/highlight/layer/getg "$i1"
     ble/color/g2sgr "$g"
     IFS= builtin eval "ret=\"\$ret\${$_ble_textarea_bufferName[*]:i1:i2-i1}\""
   else
@@ -4924,7 +4924,7 @@ function ble/widget/magic-space {
 #------------------------------------------------------------------------------
 # **** basic search functions ****                              @history.search
 
-function ble-highlight-layer:region/mark:search/get-face { face=region_match; }
+function ble/highlight/layer:region/mark:search/get-face { face=region_match; }
 
 ## 関数 ble-edit/isearch/search needle opts ; beg end
 ##   @param[in] needle

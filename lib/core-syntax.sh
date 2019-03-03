@@ -5253,10 +5253,10 @@ value=$bleopt_filename_ls_colors bleopt/check:filename_ls_colors
 #------------------------------------------------------------------------------
 
 # adapter に頼らず直接実装したい
-function ble-highlight-layer:syntax/touch-range {
+function ble/highlight/layer:syntax/touch-range {
   ble-syntax/urange#update '' "$@"
 }
-function ble-highlight-layer:syntax/fill {
+function ble/highlight/layer:syntax/fill {
   local _i _arr=$1 _i1=$2 _i2=$3 _v=$4
   for ((_i=_i1;_i<_i2;_i++)); do
     eval "$_arr[_i]=\"\$_v\""
@@ -5269,10 +5269,10 @@ _ble_highlight_layer_syntax2_table=()
 _ble_highlight_layer_syntax3_list=()
 _ble_highlight_layer_syntax3_table=() # errors
 
-function ble-highlight-layer:syntax/update-attribute-table {
-  ble-highlight-layer/update/shift _ble_highlight_layer_syntax1_table
+function ble/highlight/layer:syntax/update-attribute-table {
+  ble/highlight/layer/update/shift _ble_highlight_layer_syntax1_table
   if ((_ble_syntax_attr_umin>=0)); then
-    ble-highlight-layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_umax
+    ble/highlight/layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_umax
 
     local i g=0
     ((_ble_syntax_attr_umin>0)) &&
@@ -5289,7 +5289,7 @@ function ble-highlight-layer:syntax/update-attribute-table {
   fi
 }
 
-function ble-highlight-layer:syntax/word/.update-attributes/.proc {
+function ble/highlight/layer:syntax/word/.update-attributes/.proc {
   [[ ${node[nofs]} =~ ^[0-9]+$ ]] || return
   [[ ${node[nofs+4]} == - ]] || return
   ble-syntax/urange#update color_ "$wbeg" "$wend"
@@ -5402,26 +5402,26 @@ function ble-highlight-layer:syntax/word/.update-attributes/.proc {
   flagUpdateNode=1
 }
 
-## 関数 ble-highlight-layer:syntax/word/.update-attributes
+## 関数 ble/highlight/layer:syntax/word/.update-attributes
 ## @var[in] _ble_syntax_word_umin,_ble_syntax_word_umax
 ## @var[in,out] color_umin,color_umax
-function ble-highlight-layer:syntax/word/.update-attributes {
+function ble/highlight/layer:syntax/word/.update-attributes {
   ((_ble_syntax_word_umin>=0)) || return
 
   ble-syntax/tree-enumerate-in-range "$_ble_syntax_word_umin" "$_ble_syntax_word_umax" \
-    ble-highlight-layer:syntax/word/.update-attributes/.proc
+    ble/highlight/layer:syntax/word/.update-attributes/.proc
 }
 
-## 関数 ble-highlight-layer:syntax/word/.apply-attribute wbeg wend wattr
+## 関数 ble/highlight/layer:syntax/word/.apply-attribute wbeg wend wattr
 ##   @param[in] wbeg wend wattr
-function ble-highlight-layer:syntax/word/.apply-attribute {
+function ble/highlight/layer:syntax/word/.apply-attribute {
   local wbeg=$1 wend=$2 wattr=$3
   ((wbeg<color_umin&&(wbeg=color_umin),
     wend>color_umax&&(wend=color_umax),
     wbeg<wend)) || return
 
   if [[ $wattr =~ ^[0-9]+$ ]]; then
-    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$wattr"
+    ble/highlight/layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$wattr"
   elif [[ $wattr == m* ]]; then
     local ranges; ble/string#split ranges , "${wattr:1}"
     local i=$wbeg j range
@@ -5432,32 +5432,32 @@ function ble-highlight-layer:syntax/word/.apply-attribute {
       else
         ((j=i+len,j>wend&&(j=wend)))
       fi
-      ble-highlight-layer:syntax/word/.apply-attribute "$i" "$j" "$sub_wattr"
+      ble/highlight/layer:syntax/word/.apply-attribute "$i" "$j" "$sub_wattr"
       (((i=j)<wend)) || break
     done
   elif [[ $wattr == d ]]; then
-    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
+    ble/highlight/layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
   fi
 }
 
-function ble-highlight-layer:syntax/word/.proc-childnode {
+function ble/highlight/layer:syntax/word/.proc-childnode {
   if [[ $wtype =~ ^[0-9]+$ ]]; then
     local wbeg=$wbegin wend=$i
-    ble-highlight-layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
+    ble/highlight/layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
   fi
 
   ((tchild>=0)) && ble-syntax/tree-enumerate-children "$proc_children"
 }
 
 ## @var[in,out] _ble_syntax_word_umin,_ble_syntax_word_umax
-function ble-highlight-layer:syntax/update-word-table {
+function ble/highlight/layer:syntax/update-word-table {
   # update table2 (単語の削除に関しては後で考える)
   # (1) 単語色の計算
   local color_umin=-1 color_umax=-1 iN=${#_ble_syntax_text}
-  ble-highlight-layer:syntax/word/.update-attributes
+  ble/highlight/layer:syntax/word/.update-attributes
 
   # (2) 色配列 shift
-  ble-highlight-layer/update/shift _ble_highlight_layer_syntax2_table
+  ble/highlight/layer/update/shift _ble_highlight_layer_syntax2_table
 
   # 2015-08-16 暫定 (本当は入れ子構造を考慮に入れたい)
   ble-syntax/wrange#update _ble_syntax_word_ "$_ble_syntax_vanishing_word_umin" "$_ble_syntax_vanishing_word_umax"
@@ -5465,7 +5465,7 @@ function ble-highlight-layer:syntax/update-word-table {
   _ble_syntax_vanishing_word_umin=-1 _ble_syntax_vanishing_word_umax=-1
 
   # (3) 色配列に登録
-  ble-highlight-layer:syntax/word/.apply-attribute 0 "$iN" d # clear word color
+  ble/highlight/layer:syntax/word/.apply-attribute 0 "$iN" d # clear word color
   local i
   for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;)); do
     if ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]]; then
@@ -5477,13 +5477,13 @@ function ble-highlight-layer:syntax/update-word-table {
 
       if [[ ${node[0]} =~ ^[0-9]+$ ]]; then
         local attr=${node[4]}
-        ble-highlight-layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
+        ble/highlight/layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
       fi
 
       local tclen=${node[2]}
       if ((tclen>=0)); then
         local tchild=$((i-tclen))
-        local tree= nofs=0 proc_children=ble-highlight-layer:syntax/word/.proc-childnode
+        local tree= nofs=0 proc_children=ble/highlight/layer:syntax/word/.proc-childnode
         ble-syntax/tree-enumerate-children "$proc_children"
       fi
 
@@ -5492,21 +5492,21 @@ function ble-highlight-layer:syntax/update-word-table {
       ((i--))
     fi
   done
-  ((color_umin>=0)) && ble-highlight-layer:syntax/touch-range "$color_umin" "$color_umax"
+  ((color_umin>=0)) && ble/highlight/layer:syntax/touch-range "$color_umin" "$color_umax"
 
   _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
 }
 
-function ble-highlight-layer:syntax/update-error-table/set {
+function ble/highlight/layer:syntax/update-error-table/set {
   local i1=$1 i2=$2 g=$3
   if ((i1<i2)); then
-    ble-highlight-layer:syntax/touch-range "$i1" "$i2"
-    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax3_table "$i1" "$i2" "$g"
+    ble/highlight/layer:syntax/touch-range "$i1" "$i2"
+    ble/highlight/layer:syntax/fill _ble_highlight_layer_syntax3_table "$i1" "$i2" "$g"
     _ble_highlight_layer_syntax3_list[${#_ble_highlight_layer_syntax3_list[@]}]="$i1 $i2"
   fi
 }
-function ble-highlight-layer:syntax/update-error-table {
-  ble-highlight-layer/update/shift _ble_highlight_layer_syntax3_table
+function ble/highlight/layer:syntax/update-error-table {
+  ble/highlight/layer/update/shift _ble_highlight_layer_syntax3_table
 
   # clear old errors
   #   shift の前の方が簡単に更新できるが、
@@ -5521,8 +5521,8 @@ function ble-highlight-layer:syntax/update-error-table {
       ((a>=DMAX0?(a+=DMAX-DMAX0):(a>=DMIN&&(a=DMIN)),
         b>=DMAX0?(b+=DMAX-DMAX0):(b>=DMIN&&(b=DMIN))))
       if ((a<b)); then
-        ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax3_table "$a" "$b" ''
-        ble-highlight-layer:syntax/touch-range "$a" "$b"
+        ble/highlight/layer:syntax/fill _ble_highlight_layer_syntax3_table "$a" "$b" ''
+        ble/highlight/layer:syntax/touch-range "$a" "$b"
       fi
     done
     _ble_highlight_layer_syntax3_list=()
@@ -5545,7 +5545,7 @@ function ble-highlight-layer:syntax/update-error-table {
     local i inest
     if ((nlen>0)) || [[ $nparam ]]; then
       # 終端点の着色
-      ble-highlight-layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
+      ble/highlight/layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
 
       if ((nlen>0)); then
         ((inest=iN-nlen))
@@ -5555,7 +5555,7 @@ function ble-highlight-layer:syntax/update-error-table {
           for((inest2=inest+1;inest2<iN;inest2++)); do
             [[ ${_ble_syntax_attr[inest2]} ]] && break
           done
-          ble-highlight-layer:syntax/update-error-table/set "$inest" "$inest2" "$g"
+          ble/highlight/layer:syntax/update-error-table/set "$inest" "$inest2" "$g"
 
           ((i=inest))
           local wtype wbegin tchild tprev
@@ -5568,12 +5568,12 @@ function ble-highlight-layer:syntax/update-error-table {
     # コマンド欠落・引数の欠落
     if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2)); then
       # 終端点の着色
-      ble-highlight-layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
+      ble/highlight/layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
     fi
   fi
 }
 
-function ble-highlight-layer:syntax/update {
+function ble/highlight/layer:syntax/update {
   local text=$1 player=$2
   local i iN=${#text}
 
@@ -5592,16 +5592,16 @@ function ble-highlight-layer:syntax/update {
   fi
 #%end
 
-  ble-highlight-layer:syntax/update-attribute-table
-  ble-highlight-layer:syntax/update-word-table
-  ble-highlight-layer:syntax/update-error-table
+  ble/highlight/layer:syntax/update-attribute-table
+  ble/highlight/layer:syntax/update-word-table
+  ble/highlight/layer:syntax/update-error-table
 
   # shift&sgr 設定
   if ((DMIN>=0)); then
-    ble-highlight-layer/update/shift _ble_highlight_layer_syntax_buff
+    ble/highlight/layer/update/shift _ble_highlight_layer_syntax_buff
     if ((DMAX>0)); then
       local g sgr ch ret
-      ble-highlight-layer:syntax/getg "$DMAX"
+      ble/highlight/layer:syntax/getg "$DMAX"
       ble/color/g2sgr "$g"; sgr=$ret
       ch=${_ble_highlight_layer_plain_buff[DMAX]}
       _ble_highlight_layer_syntax_buff[DMAX]=$sgr$ch
@@ -5610,7 +5610,7 @@ function ble-highlight-layer:syntax/update {
 
   local i j g gprev=0
   if ((umin>0)); then
-    ble-highlight-layer:syntax/getg $((umin-1))
+    ble/highlight/layer:syntax/getg $((umin-1))
     gprev=$g
   fi
 
@@ -5618,8 +5618,8 @@ function ble-highlight-layer:syntax/update {
     local ret
     for ((i=umin;i<=umax;i++)); do
       local ch=${_ble_highlight_layer_plain_buff[i]}
-      ble-highlight-layer:syntax/getg "$i"
-      [[ $g ]] || ble-highlight-layer/update/getg "$i"
+      ble/highlight/layer:syntax/getg "$i"
+      [[ $g ]] || ble/highlight/layer/update/getg "$i"
       if ((gprev!=g)); then
         ble/color/g2sgr "$g"
         ch=$ret$ch
@@ -5660,7 +5660,7 @@ function ble-highlight-layer:syntax/update {
   # ble-edit/info/show text "${words[*]}"
 }
 
-function ble-highlight-layer:syntax/getg {
+function ble/highlight/layer:syntax/getg {
   local i=$1
   if [[ ${_ble_highlight_layer_syntax3_table[i]} ]]; then
     g=${_ble_highlight_layer_syntax3_table[i]}

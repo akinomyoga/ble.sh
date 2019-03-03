@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##
-## レイヤー ble-highlight-layer:adapter
+## レイヤー ble/highlight/layer:adapter
 ##
 ##   古い枠組みに依る色つけのアダプターを
 ##   レイヤーの実装のサンプルとして此処に残す。
@@ -18,13 +18,13 @@ _ble_region_highlight_table=()
 ## 古い実装からの adapter
 _ble_highlight_layer_adapter_buff=()
 _ble_highlight_layer_adapter_table=()
-function ble-highlight-layer:adapter/update {
+function ble/highlight/layer:adapter/update {
   local text=$1 player=$2
 
   # update g table
   local LAYER_UMIN LAYER_UMAX
   local -a _ble_region_highlight_table
-  ble-highlight-layer/update/shift _ble_region_highlight_table _ble_highlight_layer_adapter_table
+  ble/highlight/layer/update/shift _ble_region_highlight_table _ble_highlight_layer_adapter_table
   if [[ $bleopt_syntax_highlight_mode ]]; then
     # LAYER_UMIN を設定しない highlight_mode の場合はそのまま。
     # LAYER_UMIN を設定する highlight_mode の場合は参照せずに上書きされる。
@@ -44,9 +44,9 @@ function ble-highlight-layer:adapter/update {
   ((i2>=iN&&(i2=iN-1)))
 
   # update char buffer
-  ble-highlight-layer/update/shift _ble_highlight_layer_adapter_buff
+  ble/highlight/layer/update/shift _ble_highlight_layer_adapter_buff
   local i g gprev=0 ctx=0 ret
-  ((i1>0)) && { ble-highlight-layer/getg $((i1-1)); gprev=$g; }
+  ((i1>0)) && { ble/highlight/layer/getg $((i1-1)); gprev=$g; }
   # ble-edit/info/show text "layer:adapter u = $i1-$i2"
   for ((i=i1;i<=i2;i++)); do
     local ch
@@ -62,7 +62,7 @@ function ble-highlight-layer:adapter/update {
       builtin eval "ch=\${$PREV_BUFF[i]}"
       if ((ctx!=1)); then
         ((ctx=1,gprev=-1))
-        ble-highlight-layer/update/getg
+        ble/highlight/layer/update/getg
         ble/color/g2sgr "$g"
         ch=$ret$ch
       fi
@@ -78,7 +78,7 @@ function ble-highlight-layer:adapter/update {
     ((PREV_UMIN=-1,PREV_UMAX=-1))
   fi
 }
-function ble-highlight-layer:adapter/getg {
+function ble/highlight/layer:adapter/getg {
   # 描画属性がない時は _ble_region_highlight_table[i]
   # には空文字列が入っているのでOK
   g=${_ble_highlight_layer_adapter_table[$1]}

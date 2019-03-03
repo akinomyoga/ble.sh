@@ -1845,7 +1845,7 @@ _ble_keymap_vi_filter_history_dirt=()
 _ble_keymap_vi_filter_history_ind=0
 _ble_keymap_vi_filter_history_onleave=()
 
-function ble-highlight-layer:region/mark:vi_filter/get-face {
+function ble/highlight/layer:region/mark:vi_filter/get-face {
   face=region_target
 }
 function ble/keymap:vi/operator:filter/.cache-repeat {
@@ -4958,8 +4958,8 @@ _ble_keymap_vi_search_history_onleave=()
 ##   既定値は空文字列で vim の振る舞いに倣います。
 bleopt/declare -v keymap_vi_search_match_current ''
 
-function ble-highlight-layer:region/mark:vi_search/get-selection {
-  ble-highlight-layer:region/mark:vi_char/get-selection
+function ble/highlight/layer:region/mark:vi_search/get-selection {
+  ble/highlight/layer:region/mark:vi_char/get-selection
 }
 function ble/keymap:vi/search/matched {
   [[ $_ble_keymap_vi_search_matched || $_ble_edit_mark_active == vi_search || $_ble_keymap_vi_search_activate ]]
@@ -5290,7 +5290,7 @@ function ble/widget/vi_nmap/command-help {
 }
 function ble/widget/vi_xmap/command-help.core {
   ble/keymap:vi/clear-arg
-  local get_selection=ble-highlight-layer:region/mark:$_ble_edit_mark_active/get-selection
+  local get_selection=ble/highlight/layer:region/mark:$_ble_edit_mark_active/get-selection
   ble/is-function "$get_selection" || return 1
 
   local selection
@@ -6074,11 +6074,11 @@ function ble/keymap:vi/extract-block {
 #--------------------------------------
 # xmap/選択範囲の着色の設定
 
-## 関数 ble-highlight-layer:region/mark:vi_char/get-selection
-## 関数 ble-highlight-layer:region/mark:vi_line/get-selection
-## 関数 ble-highlight-layer:region/mark:vi_block/get-selection
+## 関数 ble/highlight/layer:region/mark:vi_char/get-selection
+## 関数 ble/highlight/layer:region/mark:vi_line/get-selection
+## 関数 ble/highlight/layer:region/mark:vi_block/get-selection
 ##   @arr[out] selection
-function ble-highlight-layer:region/mark:vi_char/get-selection {
+function ble/highlight/layer:region/mark:vi_char/get-selection {
   local rmin rmax
   if ((_ble_edit_mark<_ble_edit_ind)); then
     rmin=$_ble_edit_mark rmax=$_ble_edit_ind
@@ -6088,7 +6088,7 @@ function ble-highlight-layer:region/mark:vi_char/get-selection {
   ble-edit/content/eolp "$rmax" || ((rmax++))
   selection=("$rmin" "$rmax")
 }
-function ble-highlight-layer:region/mark:vi_line/get-selection {
+function ble/highlight/layer:region/mark:vi_line/get-selection {
   local rmin rmax
   if ((_ble_edit_mark<_ble_edit_ind)); then
     rmin=$_ble_edit_mark rmax=$_ble_edit_ind
@@ -6100,7 +6100,7 @@ function ble-highlight-layer:region/mark:vi_line/get-selection {
   ble-edit/content/find-logical-eol "$rmax"; rmax=$ret
   selection=("$rmin" "$rmax")
 }
-function ble-highlight-layer:region/mark:vi_block/get-selection {
+function ble/highlight/layer:region/mark:vi_block/get-selection {
   local sub_ranges sub_x1 sub_x2
   ble/keymap:vi/extract-block
 
@@ -6112,22 +6112,22 @@ function ble-highlight-layer:region/mark:vi_block/get-selection {
     ble/array#push selection "${sub[0]}" "${sub[1]}"
   done
 }
-function ble-highlight-layer:region/mark:vi_char+/get-selection {
-  ble-highlight-layer:region/mark:vi_char/get-selection
+function ble/highlight/layer:region/mark:vi_char+/get-selection {
+  ble/highlight/layer:region/mark:vi_char/get-selection
 }
-function ble-highlight-layer:region/mark:vi_line+/get-selection {
-  ble-highlight-layer:region/mark:vi_line/get-selection
+function ble/highlight/layer:region/mark:vi_line+/get-selection {
+  ble/highlight/layer:region/mark:vi_line/get-selection
 }
-function ble-highlight-layer:region/mark:vi_block+/get-selection {
-  ble-highlight-layer:region/mark:vi_block/get-selection
+function ble/highlight/layer:region/mark:vi_block+/get-selection {
+  ble/highlight/layer:region/mark:vi_block/get-selection
 }
 
-function ble-highlight-layer:region/mark:vi_char/get-face   { [[ $_ble_edit_overwrite_mode ]] && face=region_target; }
-function ble-highlight-layer:region/mark:vi_char+/get-face  { ble-highlight-layer:region/mark:vi_char/get-face; }
-function ble-highlight-layer:region/mark:vi_line/get-face   { ble-highlight-layer:region/mark:vi_char/get-face; }
-function ble-highlight-layer:region/mark:vi_line+/get-face  { ble-highlight-layer:region/mark:vi_char/get-face; }
-function ble-highlight-layer:region/mark:vi_block/get-face  { ble-highlight-layer:region/mark:vi_char/get-face; }
-function ble-highlight-layer:region/mark:vi_block+/get-face { ble-highlight-layer:region/mark:vi_char/get-face; }
+function ble/highlight/layer:region/mark:vi_char/get-face   { [[ $_ble_edit_overwrite_mode ]] && face=region_target; }
+function ble/highlight/layer:region/mark:vi_char+/get-face  { ble/highlight/layer:region/mark:vi_char/get-face; }
+function ble/highlight/layer:region/mark:vi_line/get-face   { ble/highlight/layer:region/mark:vi_char/get-face; }
+function ble/highlight/layer:region/mark:vi_line+/get-face  { ble/highlight/layer:region/mark:vi_char/get-face; }
+function ble/highlight/layer:region/mark:vi_block/get-face  { ble/highlight/layer:region/mark:vi_char/get-face; }
+function ble/highlight/layer:region/mark:vi_block+/get-face { ble/highlight/layer:region/mark:vi_char/get-face; }
 
 
 #--------------------------------------

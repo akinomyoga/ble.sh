@@ -268,10 +268,10 @@ _ble_lib_vim_surround_ys_type= # ys | yS | vS | vgS
 _ble_lib_vim_surround_ys_args=()
 _ble_lib_vim_surround_ys_ranges=()
 
-## 関数 ble-highlight-layer:region/mark:vi_surround/get-selection
+## 関数 ble/highlight/layer:region/mark:vi_surround/get-selection
 ##   入力待ち状態の時の領域着色を定義します。
 ##   @arr[out] selection
-function ble-highlight-layer:region/mark:vi_surround/get-selection {
+function ble/highlight/layer:region/mark:vi_surround/get-selection {
   local type=$_ble_lib_vim_surround_ys_type
   local context=${_ble_lib_vim_surround_ys_args[2]}
   if [[ $context == block ]]; then
@@ -296,7 +296,7 @@ function ble-highlight-layer:region/mark:vi_surround/get-selection {
     fi
   fi
 }
-function ble-highlight-layer:region/mark:vi_surround/get-face {
+function ble/highlight/layer:region/mark:vi_surround/get-face {
   face=region_target
 }
 
@@ -376,7 +376,7 @@ function ble/widget/vim-surround.sh/ysurround.core {
     fi
 
     # Note: char から linewise への昇格条件の変更は以下の関数にも反映させる必要がある:
-    #  ble-highlight-layer:region/mark:vi_surround/get-selection
+    #  ble/highlight/layer:region/mark:vi_surround/get-selection
     local opts=
     if [[ $type == yS || $type == ySS || $context == char && $type == vgS ]]; then
       opts=linewise:indent
@@ -723,15 +723,15 @@ function ble/widget/vim-surround.sh/nmap/dsurround.hook {
 
 #---- cs ----
 
-## 関数 ble-highlight-layer:region/mark:vi_surround/get-selection
+## 関数 ble/highlight/layer:region/mark:vi_surround/get-selection
 ##   入力待ち状態の時の領域着色を定義します。
 ##   @arr[out] selection
-function ble-highlight-layer:region/mark:vi_csurround/get-selection {
+function ble/highlight/layer:region/mark:vi_csurround/get-selection {
   local beg=${_ble_lib_vim_surround_cs[14]}
   local end=${_ble_lib_vim_surround_cs[15]}
   selection=("$beg" "$end")
 }
-function ble-highlight-layer:region/mark:vi_csurround/get-face {
+function ble/highlight/layer:region/mark:vi_csurround/get-face {
   face=region_target
 }
 
