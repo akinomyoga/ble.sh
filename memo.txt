@@ -2247,8 +2247,8 @@ bash_tips
   - prompt: support correct handling of escapes `#D0923` 22f9b56
   - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
   - complete: use candidates in menu if present `#D0939` 52eaf01
-    - complete: fix a bug that menu-complete is disabled after menu-filter `#D0951`
-    - complete: fix a bug that wrong action is performed after menu-filter `#D0952`
+    - complete: fix a bug that menu-complete is disabled after menu-filter `#D0951` 08cba07
+    - complete: fix a bug that wrong action is performed after menu-filter `#D0952` 08cba07
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950`
 
@@ -3084,7 +3084,8 @@ bash_tips
 
 2019-03-03
 
-  * complete: desc を表示する為の単語候補は既定にしても良いのでは。。
+  * complete: desc を表示する為の単語候補は既定にしても良いのでは。。 [#D0953]
+    対応した。
 
   * complete: menu-filter した後の menu-complete を確定すると / が付加される [#D0952]
     これは起こったり起こらなかったりする。LICENSE.md で起こる。

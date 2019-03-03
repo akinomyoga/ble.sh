@@ -214,14 +214,16 @@ function ble-complete/action/inherit-from {
 #------------------------------------------------------------------------------
 
 # action:plain
-
+#
 function ble-complete/action:plain/initialize {
   ble-complete/action/util/quote-insert
 }
 function ble-complete/action:plain/complete { :; }
 
 # action:word
-
+#
+#   DATA ... 候補の説明として使用する文字列を指定します
+#
 function ble-complete/action:word/initialize {
   ble-complete/action/util/quote-insert
 }
@@ -229,7 +231,13 @@ function ble-complete/action:word/complete {
   ble-complete/action/util/complete.close-quotation
   ble-complete/action/util/complete.addtail ' '
 }
+function ble-complete/action:word/get-desc {
+  [[ $DATA ]] && desc=$DATA
+}
 
+# action:literal-substr
+# action:literal-word
+# action:substr
 function ble-complete/action:literal-substr/initialize { :; }
 function ble-complete/action:literal-substr/complete { :; }
 function ble-complete/action:literal-word/initialize { :; }
@@ -238,7 +246,7 @@ function ble-complete/action:substr/initialize { ble-complete/action:word/initia
 function ble-complete/action:substr/complete { :; }
 
 # action:file
-
+#
 function ble-complete/action:file/initialize {
   ble-complete/action/util/quote-insert
 }
@@ -274,7 +282,8 @@ function ble-complete/action:file/get-desc {
   desc=${_ble_complete_action_file_desc[type]:-'file (???)'}
 }
 
-
+# action:tilde
+#
 function ble-complete/action:tilde/initialize {
   # チルダは quote しない
   CAND=${CAND#\~} ble-complete/action/util/quote-insert
@@ -287,12 +296,14 @@ function ble-complete/action:tilde/getg {
   ble/color/face2g filename_directory
 }
 function ble-complete/action:tilde/get-desc {
-  desc=directory
+  desc='directory (tilde expansion)'
 }
 
 
 # action:progcomp
-
+#
+#   DATA ... compopt 互換のオプションをコロン区切りで指定します
+#
 function ble-complete/action:progcomp/initialize {
   [[ $DATA == *:noquote:* ]] && return
 
@@ -328,9 +339,8 @@ function ble-complete/action:progcomp/get-desc {
   fi
 }
 
-
 # action:command
-
+#
 function ble-complete/action:command/initialize {
   ble-complete/action/util/quote-insert
 }
@@ -393,7 +403,10 @@ function ble-complete/action:command/get-desc {
 }
 
 # action:variable
-
+#
+#   DATA ... 変数名の文脈を指定します。
+#     assignment braced word arithmetic の何れかです。
+#
 function ble-complete/action:variable/initialize { ble-complete/action/util/quote-insert; }
 function ble-complete/action:variable/complete {
   case $DATA in
