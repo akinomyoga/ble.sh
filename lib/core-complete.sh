@@ -262,7 +262,7 @@ function ble/complete/action:file/complete {
   fi
 }
 function ble/complete/action:file/getg {
-  ble-syntax/highlight/getg-from-filename "$CAND"
+  ble/syntax/highlight/getg-from-filename "$CAND"
   [[ $g ]] || ble/color/face2g filename_warning
 }
 _ble_complete_action_file_desc[_ble_attr_FILE_LINK]='symbolic link'
@@ -278,7 +278,7 @@ _ble_complete_action_file_desc[_ble_attr_FILE_FIFO]='named pipe'
 _ble_complete_action_file_desc[_ble_attr_FILE_SOCK]='socket'
 _ble_complete_action_file_desc[_ble_attr_FILE_BLK]='block device'
 function ble/complete/action:file/get-desc {
-  local type; ble-syntax/highlight/filetype "$CAND"
+  local type; ble/syntax/highlight/filetype "$CAND"
   desc=${_ble_complete_action_file_desc[type]:-'file (???)'}
 }
 
@@ -368,15 +368,15 @@ function ble/complete/action:command/getg {
   if [[ -d $CAND ]]; then
     ble/color/face2g filename_directory
   else
-    # Note: ble-syntax/highlight/cmdtype はキャッシュ機能がついているが、
+    # Note: ble/syntax/highlight/cmdtype はキャッシュ機能がついているが、
     #   キーワードに対して呼び出さない前提なのでキーワードを渡すと
     #   _ble_attr_ERR を返してしまう。
     local type; ble/util/type type "$CAND"
-    ble-syntax/highlight/cmdtype1 "$type" "$CAND"
+    ble/syntax/highlight/cmdtype1 "$type" "$CAND"
     if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
       type=_ble_attr_CMD_FUNCTION
     fi
-    ble-syntax/attr2g "$type"
+    ble/syntax/attr2g "$type"
   fi
 }
 
@@ -394,7 +394,7 @@ function ble/complete/action:command/get-desc {
     desc=directory
   else
     local type; ble/util/type type "$CAND"
-    ble-syntax/highlight/cmdtype1 "$type" "$CAND"
+    ble/syntax/highlight/cmdtype1 "$type" "$CAND"
     if [[ $CAND == */ ]] && ((type==_ble_attr_ERR)); then
       type=_ble_attr_CMD_FUNCTION
     fi
@@ -479,7 +479,7 @@ function ble/complete/cand/unpack {
 ##
 ## 関数 ble/complete/source:$name args...
 ##   @param[in] args...
-##     ble-syntax/completion-context/generate で設定されるユーザ定義の引数。
+##     ble/syntax/completion-context/generate で設定されるユーザ定義の引数。
 ##
 ##   @var[in] COMP1 COMP2 COMPS COMPV comp_type
 ##   @var[in] comp_filter_type
@@ -853,13 +853,13 @@ function ble/complete/source:argument/.compvar-generate-subwords {
     #   仕方がないので空文字列のままで登録する事にする。
     flag_evaluated=1
     words=('')
-  elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "$word1"; then
-    ble-syntax:bash/simple-word/eval "$ret"; local value1=$ret
+  elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word1"; then
+    ble/syntax:bash/simple-word/eval "$ret"; local value1=$ret
     if [[ $point ]]; then
       if ((point==${#word1})); then
         point=${#value1}
-      elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "${word1::point}"; then
-        ble-syntax:bash/simple-word/eval "$ret"
+      elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "${word1::point}"; then
+        ble/syntax:bash/simple-word/eval "$ret"
         point=${#ret}
       fi
     fi
@@ -878,9 +878,9 @@ function ble/complete/source:argument/.compvar-quote-subword {
   local word=$1 to_quote= is_evaluated= is_quoted=
   if [[ $flag_evaluated ]]; then
     to_quote=1
-  elif ble-syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
+  elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
     is_evaluated=1
-    ble-syntax:bash/simple-word/eval "$ret"; word=$ret
+    ble/syntax:bash/simple-word/eval "$ret"; word=$ret
     to_quote=1
   fi
 
@@ -900,8 +900,8 @@ function ble/complete/source:argument/.compvar-quote-subword {
     else
       local left=${word::p}
       if [[ $is_evaluated ]]; then
-        if ble-syntax:bash/simple-word/reconstruct-incomplete-word "$left"; then
-          ble-syntax:bash/simple-word/eval "$ret"; left=$ret
+        if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$left"; then
+          ble/syntax:bash/simple-word/eval "$ret"; left=$ret
         fi
       fi
       if [[ $is_quoted ]]; then
@@ -1058,7 +1058,7 @@ function ble/complete/source:argument/.progcomp-helper-func {
 ##     ble/complete/source の標準的な変数たち。
 ##
 ##   @var[in] comp_words comp_line comp_point comp_cword
-##     ble-syntax:bash/extract-command によって生成される変数たち。
+##     ble/syntax:bash/extract-command によって生成される変数たち。
 ##
 ##   @var[in] 他色々
 ##   @exit 入力がある時に 148 を返します。
@@ -1236,7 +1236,7 @@ function ble/complete/source:argument/.progcomp {
 ##     コロン区切りのオプションリストを指定します。
 ##     initial ... 最初の単語(コマンド名)の補完である事を示します。
 ##   @var[in] COMP1 COMP2
-##   @var[in] (variables set by ble-syntax/parse)
+##   @var[in] (variables set by ble/syntax/parse)
 ##
 function ble/complete/source:argument/.generate-user-defined-completion {
   case $comp_type in
@@ -1245,7 +1245,7 @@ function ble/complete/source:argument/.generate-user-defined-completion {
   esac
 
   local comp_words comp_line comp_point comp_cword
-  ble-syntax:bash/extract-command "$COMP2" || return 1
+  ble/syntax:bash/extract-command "$COMP2" || return 1
 
   # 単語の途中に補完開始点がある時、単語を分割する
   if
@@ -1425,9 +1425,9 @@ function ble/complete/context/overwrite-sources {
 ##   @var[in] comp_text comp_index
 ##   @var[out] sources
 function ble/complete/context:syntax/generate-sources {
-  ble-syntax/import
+  ble/syntax/import
   ble-edit/content/update-syntax
-  ble-syntax/completion-context/generate "$comp_text" "$comp_index"
+  ble/syntax/completion-context/generate "$comp_text" "$comp_index"
   ((${#sources[@]}))
 }
 function ble/complete/context:filename/generate-sources {
@@ -1461,9 +1461,9 @@ function ble/complete/source:glob {
   [[ $comp_type == *[amA]* ]] && return 1
 
   local pattern=$COMPV
-  local ret; ble-syntax:bash/simple-word/eval "$pattern"
+  local ret; ble/syntax:bash/simple-word/eval "$pattern"
   if ((!${#ret[@]})) && [[ $pattern != *'*' ]]; then
-    ble-syntax:bash/simple-word/eval "$pattern*"
+    ble/syntax:bash/simple-word/eval "$pattern*"
   fi
 
   local cand action=file
@@ -1576,7 +1576,7 @@ function ble/complete/candidates/.pick-nearest-sources {
 
   if [[ ! $COMPS ]]; then
     comps_flags=${comps_flags}v COMPV=
-  elif local ret simple_flags simple_ibrace; ble-syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"; then
+  elif local ret simple_flags simple_ibrace; ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"; then
     local reconstructed=$ret
     if [[ $comp_type == *R* ]]; then
       # 展開前の値を COMPV に格納する。ブレース展開内部の場合は失敗
@@ -1589,9 +1589,9 @@ function ble/complete/candidates/.pick-nearest-sources {
     else
       # 展開後の値を COMPV に格納する (既定)
       comps_flags=$comps_flags${simple_flags}v
-      ble-syntax:bash/simple-word/eval "$reconstructed"; COMPV=("${ret[@]}")
+      ble/syntax:bash/simple-word/eval "$reconstructed"; COMPV=("${ret[@]}")
       if ((${simple_ibrace%:*})); then
-        ble-syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
+        ble/syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
         comps_fixed=${simple_ibrace%:*}:$ret
       fi
     fi
@@ -1923,8 +1923,8 @@ function ble/complete/candidates/determine-common-prefix {
     common=$COMPS
 
     local simple_flags simple_ibrace
-    if ble-syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
-      ble-syntax:bash/simple-word/eval "$ret"; then
+    if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
+      ble/syntax:bash/simple-word/eval "$ret"; then
       local value=$ret filter_type=
       case $comp_type in
       (*m*) filter_type=substr ;;
@@ -1943,7 +1943,7 @@ function ble/complete/candidates/determine-common-prefix {
     fi
   elif ((cand_count!=1)) && [[ $common != "$COMPS"* ]]; then
     # Note: #D0768 文法的に単純であれば (構造を破壊しなければ) 遡って書き換えが起こることを許す。
-    ble-syntax:bash/simple-word/is-simple-or-open-simple "$common" ||
+    ble/syntax:bash/simple-word/is-simple-or-open-simple "$common" ||
       common=$COMPS
   fi
 
@@ -2596,8 +2596,8 @@ function ble/widget/complete {
     #   そうでなければ仕方がないので挿入前の値 COMPV とする。
     local menu_common_part=$COMPV
     local ret simple_flags simple_ibrace
-    if ble-syntax:bash/simple-word/reconstruct-incomplete-word "$insert"; then
-      ble-syntax:bash/simple-word/eval "$ret"
+    if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$insert"; then
+      ble/syntax:bash/simple-word/eval "$ret"
       menu_common_part=$ret
     fi
     ble/complete/menu/show "$menu_show_opts" || return
@@ -2672,9 +2672,9 @@ function ble/complete/menu-filter {
   [[ $input == "${_ble_complete_menu_filter[2]}" ]] && return 0
 
   local ret simple_flags simple_ibrace
-  ble-syntax:bash/simple-word/reconstruct-incomplete-word "$input" || return 1
+  ble/syntax:bash/simple-word/reconstruct-incomplete-word "$input" || return 1
   [[ $simple_ibrace ]] && ((${simple_ibrace%%:*}>10#${_ble_complete_menu_comp[6]%%:*})) && return 1 # 別のブレース展開要素に入った時
-  ble-syntax:bash/simple-word/eval "$ret"
+  ble/syntax:bash/simple-word/eval "$ret"
   local COMPV=$ret
 
   local comp_type=${_ble_complete_menu_comp[4]} cand_pack
@@ -3281,8 +3281,8 @@ function ble/widget/auto_complete/self-insert {
       processed=1
     fi
   elif [[ $_ble_complete_ac_type == [ra] && $ins != [{,}] ]]; then
-    if local ret simple_flags simple_ibrace; ble-syntax:bash/simple-word/reconstruct-incomplete-word "$comps_new"; then
-      ble-syntax:bash/simple-word/eval "$ret"; local compv_new=$ret
+    if local ret simple_flags simple_ibrace; ble/syntax:bash/simple-word/reconstruct-incomplete-word "$comps_new"; then
+      ble/syntax:bash/simple-word/eval "$ret"; local compv_new=$ret
       if [[ $_ble_complete_ac_type == r ]]; then
         # r: 遡って書き換わる時
         #   挿入しても展開後に一致する時、そのまま挿入。

@@ -29,7 +29,7 @@ function ble/highlight/layer:adapter/update {
     # LAYER_UMIN を設定しない highlight_mode の場合はそのまま。
     # LAYER_UMIN を設定する highlight_mode の場合は参照せずに上書きされる。
     LAYER_UMIN=0 LAYER_UMAX=$iN
-    "ble-syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
+    "ble/syntax-highlight+$bleopt_syntax_highlight_mode" "$text"
   else
     LAYER_UMIN=$iN LAYER_UMAX=0
   fi
@@ -87,8 +87,8 @@ function ble/highlight/layer:adapter/getg {
 
 #------------------------------------------------------------------------------
 
-## 関数 _ble_region_highlight_table;  ble-syntax-highlight/append triplets ; _ble_region_highlight_table
-function ble-syntax-highlight/append {
+## 関数 _ble_region_highlight_table;  ble/syntax-highlight/append triplets ; _ble_region_highlight_table
+function ble/syntax-highlight/append {
   while (($#)); do
     local -a triplet
     triplet=($1)
@@ -101,17 +101,17 @@ function ble-syntax-highlight/append {
   done
 }
 
-function ble-syntax-highlight+region {
+function ble/syntax-highlight+region {
   if [[ $_ble_edit_mark_active ]]; then
     if ((_ble_edit_mark>_ble_edit_ind)); then
-      ble-syntax-highlight/append "$_ble_edit_ind $_ble_edit_mark bg=60,fg=white"
+      ble/syntax-highlight/append "$_ble_edit_ind $_ble_edit_mark bg=60,fg=white"
     elif ((_ble_edit_mark<_ble_edit_ind)); then
-      ble-syntax-highlight/append "$_ble_edit_mark $_ble_edit_ind bg=60,fg=white"
+      ble/syntax-highlight/append "$_ble_edit_mark $_ble_edit_ind bg=60,fg=white"
     fi
   fi
 }
 
-function ble-syntax-highlight+test {
+function ble/syntax-highlight+test {
   local text=$1
   local i iN=${#text} w
   local mode=cmd
@@ -121,19 +121,19 @@ function ble-syntax-highlight+test {
       if rex='^[_a-zA-Z][_a-zA-Z0-9]*=' && [[ $tail =~ $rex ]]; then
         # 変数への代入
         local var=${tail%%=*}
-        ble-syntax-highlight/append "$i $((i+${#var})) fg=orange"
+        ble/syntax-highlight/append "$i $((i+${#var})) fg=orange"
         ((i+=${#var}+1))
   
         mode=rhs
       elif rex='^[_a-zA-Z][_a-zA-Z0-9]*\[[^]]+\]=' && [[ $tail =~ $rex ]]; then
         # 配列変数への代入
         local var="${tail%%\[*}"
-        ble-syntax-highlight/append "$i $((i+${#var})) fg=orange"
+        ble/syntax-highlight/append "$i $((i+${#var})) fg=orange"
         ((i+=${#var}+1))
   
         local tmp="${tail%%\]=*}"
         local ind="${tmp#*\[}"
-        ble-syntax-highlight/append "$i $((i+${#ind})) fg=green"
+        ble/syntax-highlight/append "$i $((i+${#ind})) fg=green"
         ((i+=${#var}+1))
   
         mode=rhs
@@ -142,17 +142,17 @@ function ble-syntax-highlight+test {
         ble/util/type btype "$cmd"
         case "$btype:$cmd" in
         builtin:*)
-          ble-syntax-highlight/append "$i $((i+${#cmd})) fg=red" ;;
+          ble/syntax-highlight/append "$i $((i+${#cmd})) fg=red" ;;
         alias:*)
-          ble-syntax-highlight/append "$i $((i+${#cmd})) fg=teal" ;;
+          ble/syntax-highlight/append "$i $((i+${#cmd})) fg=teal" ;;
         function:*)
-          ble-syntax-highlight/append "$i $((i+${#cmd})) fg=navy" ;;
+          ble/syntax-highlight/append "$i $((i+${#cmd})) fg=navy" ;;
         file:*)
-          ble-syntax-highlight/append "$i $((i+${#cmd})) fg=green" ;;
+          ble/syntax-highlight/append "$i $((i+${#cmd})) fg=green" ;;
         keyword:*)
-          ble-syntax-highlight/append "$i $((i+${#cmd})) fg=blue" ;;
+          ble/syntax-highlight/append "$i $((i+${#cmd})) fg=blue" ;;
         *)
-          ble-syntax-highlight/append "$i $((i+${#cmd})) bg=224" ;;
+          ble/syntax-highlight/append "$i $((i+${#cmd})) bg=224" ;;
         esac
         ((i+=${#cmd}))
         mode=arg
@@ -164,12 +164,12 @@ function ble-syntax-highlight+test {
     fi
   done
 
-  ble-syntax-highlight+region "$@"
+  ble/syntax-highlight+region "$@"
 
-  # ble-syntax-highlight/append "${#text1} $((${#text1}+1)) standout"
+  # ble/syntax-highlight/append "${#text1} $((${#text1}+1)) standout"
 }
 
-function ble-syntax-highlight+default/type {
+function ble/syntax-highlight+default/type {
   type=$1
   local cmd=$2
   case "$type:$cmd" in
@@ -199,7 +199,7 @@ function ble-syntax-highlight+default/type {
   esac
 }
 
-function ble-syntax-highlight+default {
+function ble/syntax-highlight+default {
   local rex IFS=$' \t\n'
   local text=$1
   local i iN=${#text} w
@@ -212,7 +212,7 @@ function ble-syntax-highlight+default {
         local rematch1="${BASH_REMATCH[1]}"
 
         # local var="${BASH_REMATCH[0]::-1}"
-        ble-syntax-highlight/append "$i $((i+$rematch1)) fg=orange"
+        ble/syntax-highlight/append "$i $((i+$rematch1)) fg=orange"
         ((i+=${#BASH_REMATCH}))
         mode=rhs
         continue
@@ -225,14 +225,14 @@ function ble-syntax-highlight+default {
         # この部分の判定で fork を沢山する \if 等に対しては 4fork+2exec になる。
         # ■キャッシュ(accept-line 時に clear)するなどした方が良いかもしれない。
         local type; ble/util/type type "$cmd"
-        ble-syntax-highlight+default/type "$type" "$cmd" # -> type
+        ble/syntax-highlight+default/type "$type" "$cmd" # -> type
         if [[ $type = alias && $cmd != "$_0" ]]; then
           # alias を \ で無効化している場合
           # → unalias して再度 check (2fork)
           type=$(
             unalias "$cmd"
             ble/util/type type "$cmd"
-            ble-syntax-highlight+default/type "$type" "$cmd" # -> type
+            ble/syntax-highlight+default/type "$type" "$cmd" # -> type
             builtin echo -n "$type")
         elif [[ "$type" = keyword && "$cmd" != "$_0" ]]; then
           # keyword (time do if function else elif fi の類) を \ で無効化している場合
@@ -256,21 +256,21 @@ function ble-syntax-highlight+default {
 
         case "$type" in
         (file)
-          ble-syntax-highlight/append "$i $((i+${#_0})) fg=green" ;;
+          ble/syntax-highlight/append "$i $((i+${#_0})) fg=green" ;;
         (alias)
-          ble-syntax-highlight/append "$i $((i+${#_0})) fg=teal" ;;
+          ble/syntax-highlight/append "$i $((i+${#_0})) fg=teal" ;;
         (function)
-          ble-syntax-highlight/append "$i $((i+${#_0})) fg=navy" ;;
+          ble/syntax-highlight/append "$i $((i+${#_0})) fg=navy" ;;
         (builtin)
-          ble-syntax-highlight/append "$i $((i+${#_0})) fg=red" ;;
+          ble/syntax-highlight/append "$i $((i+${#_0})) fg=red" ;;
         (builtin_bold)
-          ble-syntax-highlight/append "$i $((i+${#_0})) fg=red,bold" ;;
+          ble/syntax-highlight/append "$i $((i+${#_0})) fg=red,bold" ;;
         (keyword)
-          ble-syntax-highlight/append "$i $((i+${#_0})) fg=blue" ;;
+          ble/syntax-highlight/append "$i $((i+${#_0})) fg=blue" ;;
         (jobs)
-          ble-syntax-highlight/append "$i $((i+1)) fg=red" ;;
+          ble/syntax-highlight/append "$i $((i+1)) fg=red" ;;
         (error|*)
-          ble-syntax-highlight/append "$i $((i+${#_0})) bg=224" ;;
+          ble/syntax-highlight/append "$i $((i+${#_0})) bg=224" ;;
         esac
 
         ((i+=${#BASH_REMATCH}))
@@ -290,13 +290,13 @@ function ble-syntax-highlight+default {
         local file=$arg
         [[ ( $file == '~' || $file = '~/'* ) && ! ( -e $file || -h $file ) ]] && file=$HOME${file:1}
         if [[ -d $file ]]; then
-          ble-syntax-highlight/append "$i $((i+${#arg})) fg=navy,underline"
+          ble/syntax-highlight/append "$i $((i+${#arg})) fg=navy,underline"
         elif [[ -h $file ]]; then
-          ble-syntax-highlight/append "$i $((i+${#arg})) fg=teal,underline"
+          ble/syntax-highlight/append "$i $((i+${#arg})) fg=teal,underline"
         elif [[ -x $file ]]; then
-          ble-syntax-highlight/append "$i $((i+${#arg})) fg=green,underline"
+          ble/syntax-highlight/append "$i $((i+${#arg})) fg=green,underline"
         elif [[ -f $file ]]; then
-          ble-syntax-highlight/append "$i $((i+${#arg})) underline"
+          ble/syntax-highlight/append "$i $((i+${#arg})) underline"
         fi
 
         ((i+=${#arg}))
@@ -306,7 +306,7 @@ function ble-syntax-highlight+default {
 
     # /^'([^'])*'|^\$'([^\']|\\.)*'|^`([^\`]|\\.)*`|^\\./
     if rex='^'\''([^'\''])*'\''|^\$'\''([^\'\'']|\\.)*'\''|^`([^\`]|\\.)*`|^\\.' && [[ $tail =~ $rex ]]; then
-      ble-syntax-highlight/append "$i $((i+${#BASH_REMATCH})) fg=green"
+      ble/syntax-highlight/append "$i $((i+${#BASH_REMATCH})) fg=green"
       ((i+=${#BASH_REMATCH}))
       mode=arg_
       continue
@@ -321,13 +321,13 @@ function ble-syntax-highlight+default {
       continue
     elif rex='^;;?|^;;&$|^&&?|^\|\|?' && [[ $tail =~ $rex ]]; then
       if [[ $mode = cmd ]]; then
-        ble-syntax-highlight/append "$i $((i+${#BASH_REMATCH})) bg=224"
+        ble/syntax-highlight/append "$i $((i+${#BASH_REMATCH})) bg=224"
       fi
       ((i+=${#BASH_REMATCH}))
       mode=cmd
       continue
     elif rex='^(&?>>?|<>?|[<>]&)' && [[ $tail =~ $rex ]]; then
-      ble-syntax-highlight/append "$i $((i+${#BASH_REMATCH})) bold"
+      ble/syntax-highlight/append "$i $((i+${#BASH_REMATCH})) bold"
       ((i+=${#BASH_REMATCH}))
       mode=arg
       continue
@@ -342,5 +342,5 @@ function ble-syntax-highlight+default {
     # a[]=... の引数は、${} や "" を考慮に入れるだけでなく [] の数を数える。
   done
 
-  ble-syntax-highlight+region "$@"
+  ble/syntax-highlight+region "$@"
 }

@@ -1040,12 +1040,12 @@ function ble-edit/content/.update-dirty-range {
 }
 
 function ble-edit/content/update-syntax {
-  if ble/is-function ble-syntax/parse; then
+  if ble/is-function ble/syntax/parse; then
     local beg end end0
     ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
     if ((beg>=0)); then
       ble/dirty-range#clear --prefix=_ble_edit_dirty_syntax_
-      ble-syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
+      ble/syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
     fi
   fi
 }
@@ -4074,7 +4074,7 @@ function ble-edit/is-single-complete-line {
   [[ $_ble_edit_str ]] && ble-decode/has-input && return 1
   if shopt -q cmdhist &>/dev/null; then
     ble-edit/content/update-syntax
-    ble-syntax:bash/is-complete || return 1
+    ble/syntax:bash/is-complete || return 1
   fi
   return 0
 }
@@ -6747,8 +6747,8 @@ function ble/widget/command-help/.type/.resolve-alias {
     unalias "$command"
     eval "alias_def=${alias_def#*=}" # remove quote
     literal=${alias_def%%[$' \t\n']*} command= type=
-    ble-syntax:bash/simple-word/is-simple "$literal" || break # Note: type=
-    local ret; ble-syntax:bash/simple-word/eval "$literal"; command=$ret
+    ble/syntax:bash/simple-word/is-simple "$literal" || break # Note: type=
+    local ret; ble/syntax:bash/simple-word/eval "$literal"; command=$ret
     ble/util/type type "$command"
     [[ $type ]] || break # Note: type=
 
@@ -6783,8 +6783,8 @@ function ble/widget/command-help/.type/.resolve-alias {
 function ble/widget/command-help/.type {
   local literal=$1
   type= command=
-  ble-syntax:bash/simple-word/is-simple "$literal" || return 1
-  local ret; ble-syntax:bash/simple-word/eval "$literal"; command=$ret
+  ble/syntax:bash/simple-word/is-simple "$literal" || return 1
+  local ret; ble/syntax:bash/simple-word/eval "$literal"; command=$ret
   ble/util/type type "$command"
 
   # alias の時はサブシェルで解決
@@ -6828,7 +6828,7 @@ function ble/widget/command-help {
   # ToDo: syntax update?
   ble-edit/content/clear-arg
   local comp_cword comp_words comp_line comp_point
-  if ble-syntax:bash/extract-command "$_ble_edit_ind"; then
+  if ble/syntax:bash/extract-command "$_ble_edit_ind"; then
     local cmd=${comp_words[0]}
   else
     local args; ble/string#split-words args "$_ble_edit_str"
