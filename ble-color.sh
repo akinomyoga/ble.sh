@@ -933,7 +933,7 @@ function ble-highlight-layer:overwrite_mode/update {
   fi
 
   local index=-1
-  if [[ $_ble_edit_overwrite_mode ]]; then
+  if [[ $_ble_edit_overwrite_mode && ! $_ble_edit_mark_active ]]; then
     local next="${_ble_edit_str:_ble_edit_ind:1}"
     if [[ $next && $next != [$'\n\t'] ]]; then
       index="$_ble_edit_ind"
