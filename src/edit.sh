@@ -4912,7 +4912,7 @@ function ble/widget/history-expand-backward-line {
 function ble/widget/magic-space {
   local arg; ble-edit/content/get-arg ''
   ble/widget/history-expand-backward-line ||
-    ble/function#try ble-complete/sabbrev/expand
+    ble/function#try ble/complete/sabbrev/expand
   local ext=$?
   ((ext==148)) && return 148 # sabbrev/expand でメニュー補完に入った時など。
   local -a KEYS=(32)
