@@ -6122,6 +6122,14 @@ function ble-highlight-layer:region/mark:vi_block+/get-selection {
   ble-highlight-layer:region/mark:vi_block/get-selection
 }
 
+function ble-highlight-layer:region/mark:vi_char/get-face   { [[ $_ble_edit_overwrite_mode ]] && face=region_target; }
+function ble-highlight-layer:region/mark:vi_char+/get-face  { ble-highlight-layer:region/mark:vi_char/get-face; }
+function ble-highlight-layer:region/mark:vi_line/get-face   { ble-highlight-layer:region/mark:vi_char/get-face; }
+function ble-highlight-layer:region/mark:vi_line+/get-face  { ble-highlight-layer:region/mark:vi_char/get-face; }
+function ble-highlight-layer:region/mark:vi_block/get-face  { ble-highlight-layer:region/mark:vi_char/get-face; }
+function ble-highlight-layer:region/mark:vi_block+/get-face { ble-highlight-layer:region/mark:vi_char/get-face; }
+
+
 #--------------------------------------
 # xmap/前回の選択サイズ
 
@@ -6456,7 +6464,7 @@ function ble/widget/vi_xmap/exchange-boundaries {
 
 # xmap r{char}
 function ble/widget/vi_xmap/visual-replace-char.hook {
-  local key=$1 overwrite_mode=${2:-R}
+  local key=$1
   _ble_edit_overwrite_mode=
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
 

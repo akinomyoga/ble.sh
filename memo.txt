@@ -850,9 +850,6 @@ bash_tips
 
   * complete: desc を表示する為の単語候補は既定にしても良いのでは。。
 
-  * complete: REPLACE の時の auto-complete と上書きされる文字の着色について
-    auto-complete で一時的に挿入される内容が上書き対象として着色されてしまっている。
-
 2019-02-28
 
   * complete: sabbrev に登録されている単語の補完もあっても良い気がする
@@ -2192,7 +2189,7 @@ bash_tips
 2018-10-05 (#D0858..)
 
   新機能
-  - color (`ble-color-setface`): SGR指定など様々な形式に対応 `#D0860` 82fe96d `#D0861` 257c16d `#D0864` 2eaf2a9
+  - color (`ble-color-setface`): support various spec such as SGR params `#D0860` 82fe96d `#D0861` 257c16d `#D0864` 2eaf2a9
   - syntax: `bleopt filename_ls_colors` に対応 `#D0862` c7ff302 `#D0863` 3c5bacf ec31aab
   - vi_omap: support <kbd>v</kbd>, <kbd>V</kbd>, <kbd>C-v</kbd> `#D0865` 54942e0 `#D0866` a9a1638 `#D0867` d3d8ea3 `#D0868` eb848dc
   - main: improve support of `[[ -o posix ]]` `#D0871` 07ae3cc `#D0872` 513c543
@@ -2216,6 +2213,10 @@ bash_tips
   - syntax: support `set +B` `#D0931` 12f80dd
   - syntax: support aliased keywords `#D0936` 7054e28
   - complete: support `ble-sabbrev -m key=function` `#D0942` bcdf843
+  - complete: support description of candidates `#D0945` `#D0946` 0fa73bf
+  - complete: support insertion of ambiguous common part `#D0947` 3644a8e
+  - complete: support three levels of ambiguous matching `#D0948` 3644a8e
+  - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2230,6 +2231,7 @@ bash_tips
   - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
   - complete: use candidates in menu if present `#D0939` 52eaf01
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
+  - highlight: do not highlight overwrite modes when mark is active `#D0950`
 
   バグ・問題修正
   - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
@@ -3062,6 +3064,58 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-03
+
+  * complete: REPLACE の時の auto-complete と上書きされる文字の着色について [#D0950]
+    auto-complete で一時的に挿入される内容が上書き対象として着色されてしまっている。
+
+    これは以下の順序が問題である。
+    _ble_highlight_layer__list=(plain syntax region overwrite_mode disabled)
+    然し、この順番になっているのには理由があるのではあるまいか。
+    例えば region で囲まれている時に overwrite だったら…。
+    囲まれている時の self-insert は囲まれている部分を削除するのであって、overwrite は無効になる筈である。
+    したがって、そもそも overwrite_mode は mark_active の時には着色しない?
+
+    然し、mark_active= は色々な場合がある。単なる選択の場合から矩形選択だとか、云々。
+
+      1 ... これは通常の選択 (選択範囲を置換)
+      S ... これは shift による移動中 (選択範囲を置換)
+      search ... これは検索中 (選択範囲を置換)
+      menu_complete ... (範囲を削除した上で上書き)
+      auto_complete ... (範囲を削除した上で上書き)
+      vi_c?surround ... (入力待ちなので self-insert が起こる事はない筈)
+      vi_{char,line,block}+? ...
+        これは xmap の時には self-insert は起こらない。
+        選択モードの時には選択範囲を置換する。というか、
+        選択モードから抜けた時に REPLACE になる事はあるのだろうか。
+      vi_search ... これは normal mode なので挿入は起こらない
+      vi_filter ... これはコマンドを入力している間の話なので関係ない。
+
+    この様に眺めてみると、実は overwrite_mode の着色は、
+    menu_complete/auto_complete の時を除けば mark_active なら無効にして良い気がする。
+    実際に動かしてみた。まあ、大丈夫である。
+
+    menu_complete/auto_complete に関しては妥協する。
+    将来的にオーバーレイかそれに類いする方法を実装した時には、
+    auto_complete は region ではない方法で実装される様になるので、気にしなくて良い。
+    menu_complete に関しては実際に挿入する事になりそうだが、
+    その時に self-insert をした時に何処が上書きされるのか、を表示するのは結局面倒である。
+
+    或いは、mark_active の種類毎に削除した上での overwrite かどうかを取得して、
+    削除した上での overwrite だったら範囲の末尾で着色をするという事もできるのかもしれない…。
+    然し、実装として汚くなるので妥協してそういう実装にはしない事にする。
+
+    x ok: vi_nmap (`!!`): キャンセル時に vi_filter の色が残る。と思ったが勘違いだった。
+      C-g ではキャンセルできないのだった。
+
+    x fixed: xmap r での上書きの着色が見えなくなった。今までは上書きになるという事を示すべく、
+      カーソル位置で色が水色になっていたが、それがなくなった。
+      しかし、それはこのままでも良いような気がしてきた。
+      というのも $ で行末に行っている時には結局水色にならないからである。
+
+      _ble_edit_overwrite_mode=R の時には選択範囲の着色を変えるのが良いのではないかと思ったが、
+      そうすると、vi_{char,line,block}+? のそれぞれに対してコピーを作成する必要があって不毛である。
+      と思ったが、mark:vi_{char,line,block}/get-face の中で _ble_edit_overwrite_mode を参照すれば良いだけ?
+      →その様に実装する事にした。動いている。
 
   * 2018-08-26 complete: 候補一覧にて曖昧一致に関しても一致部分を太字にすると便利ではないか? [#D0949]
 
