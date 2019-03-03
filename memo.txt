@@ -848,22 +848,38 @@ bash_tips
 
 2019-03-03
 
-  * complete: desc を表示する為の単語候補は既定にしても良いのでは。。
+  * complete: desc の着色に対応する?
+
+    これは trace を弄る必要がある。trace は多分、範囲の指定に対応していない。
+    一応見てみると LINES 及び COLULMNS を読み取って使っているが…。
+    行末の処理などが折り返し全体になっていたり、
+    実際に改行を挿入してしまったりなどしているのではないかと思う。
+    これは .construct-text と同様に nonewline 等に対応する必要がある。
+
+    しかし、そもそも色のついた desc を生成する物がないので、
+    実装する意義は今のところない。
+
+  * complete: menu の頁
+
+    現在の実装だと画面に収まる範囲でしか選択できない。
+    commit id 等の場合には入力による絞り込みは難しいので、
+    やはりどの項目も menu からアクセスできる様にしたい。
+    そう考えると menu の頁に対応するのが良い気がする。
+    その為には現在表示している項目の範囲を記録するという事、
+    それから前に表示した頁の先頭位置を記録するという事。
+    S-TAB で戻った時には計算が重くなるが、全頁について計算する。
 
 2019-02-28
 
   * complete: sabbrev に登録されている単語の補完もあっても良い気がする
 
-  * complete: menu-filter した後に TAB で menu-complete に入ろうとしても入れない。
-    どうも新しい補完が発動している様な気がするが…。
-    しかし、menu-filter はクリアされていない様子である。
+  * VARNAMES でブレース展開を使うのは良くない。refactoring の置換で変な事になる。
+    具体的には edit.sh の _ble_dirty_... など。
 
-    これは ble/widget/complete の中で enter_menu になる条件の所を調べる必要がある。
-    うーん。自動補完が関係している様な気もしている。
-
-    具体的に再現する例は Makefile make_command.sh というファイルが存在して、
-    その時に "echo @" で補完を開始して "echo ak" まで絞り込んだ時に、
-    メニュー補完に入る事ができない。
+  * info: ble-edit/info/.construct-content raw は分かりにくい。
+    結局中で trace するので、raw ではなくて ANSI sequence である。
+    これは ansi だとか esc だとかにするべきなのでは。esc が良い。
+    幸いに raw という単語は他に殆ど使っていない様なので一括で置換できそう。
 
 2019-02-15
 
@@ -926,6 +942,7 @@ bash_tips
   * manual: 英語版
 
   * main: --attach=prompt の問題は何だったか
+    ref #D0940
 
     何か問題があって現在はこれを使っていないが、それは何だったろうか。
     何処かに記録されていて良い筈なのに何処にも記述がない。
@@ -2230,6 +2247,8 @@ bash_tips
   - prompt: support correct handling of escapes `#D0923` 22f9b56
   - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
   - complete: use candidates in menu if present `#D0939` 52eaf01
+    - complete: fix a bug that menu-complete is disabled after menu-filter `#D0951`
+    - complete: fix a bug that wrong action is performed after menu-filter `#D0952`
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950`
 
@@ -3064,6 +3083,75 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-03
+
+  * complete: desc を表示する為の単語候補は既定にしても良いのでは。。
+
+  * complete: menu-filter した後の menu-complete を確定すると / が付加される [#D0952]
+    これは起こったり起こらなかったりする。LICENSE.md で起こる。
+    うーん。必ず起こっている気がしてきた…。何故だろう…。
+
+    また動作を調べてみる事にする。
+    これは _ble_complete_menu_items (表示候補) からデータを取り出さなければならないところを、
+    _ble_complete_menu_pack (全候補) からデータを取り出していたのが行けなかった。
+    番号が全く異なるので別の候補 (ディレクトリ) を取り出して処理していた。
+    今まで問題にならなかったのは menu-filter をした後に menu-complete に入る事がなかったので
+    両者の番号が一致していたという所にある。
+
+    これはちゃんと _ble_complete_menu_items からデータを取り出す様にしたら直った。
+
+  * complete: menu-filter した後に TAB で menu-complete に入ろうとしても入れない [#D0951]
+    どうも新しい補完が発動している様な気がするが…。
+    しかし、menu-filter はクリアされていない様子である。
+
+    これは ble/widget/complete の中で enter_menu になる条件の所を調べる必要がある。
+    うーん。自動補完が関係している様な気もしている。
+
+    具体的に再現する例は Makefile make_command.sh というファイルが存在して、
+    その時に "echo @" で補完を開始して "echo ak" まで絞り込んだ時に、
+    メニュー補完に入る事ができない。
+
+    具体的に見てみる事にする。
+
+    連続で素早く TAB を入力するとメニュー補完に入る事ができる。
+    auto-complete が LASTWIDGET を書き換えてしまっているという事だろうか。
+    調べるとたしかに書き換えてしまっている。
+    しかし、別経路でメニュー補完に入るのもある。
+    _ble_edit_str と _ble_complete_menu_str が一致している時である。
+    今までは大体こちらの別経路の方でメニュー補完に入っていた様に思われる。
+    今回これが効かなくなってしまったのは _ble_complete_menu_str の更新が変わったからである。
+    今までだと _ble_complete_menu_str は最後に complete を実行した時の編集文字列だった。
+    然し、現在では complete を実行したとしても必ずしも _ble_complete_menu_str は更新されない。
+    従って、ここでの判定に _ble_complete_menu_str は使えない。
+
+    というか _ble_complete_menu_str は元々 filtering の初期状態を残しておく為の物だった。
+
+    a なので、この用途の為にはまた別の変数を用意するのが良い気がする。
+      うーん。然し変数名はどうした物か。
+      というか str,beg,end は何れも active-range の為の物なので menu を始めに表示した時の物である。
+      str の名称を変えるのだとしたらそれに応じて beg,end も変えなくては変である。
+      従って、str,beg,end の変数名は変えない事にして、
+      最後に TAB で complete を呼び出した時の内容は別の変数名 str2 などに格納するのか。
+
+    b 或いは LASTWIDGET が正しく動く様にするという手も考えられる。
+      というか ble-decode-key を使っているのだから、LASTWIDGET が設定されても良いのでは?
+      と思ったが cancel-default も LASTWIDGET を設定するし、
+      ble-decode-key から呼び出された complete も LASTWIDGET を設定するし、
+      という事になるので難しいし、今の振る舞いが変であると言うこともできない。
+
+    c やはり変数に記録する方法が良いのだろうか。
+      後、カーソル位置についても確認した方が良い気がする。
+
+      うーん。ble/textarea#render の更新でチェックしている _ble_textarea_caret_state
+      と似たような情報を調べたほうが良いだろうか。つまり、カーソル移動等があった後は、
+      いきなりメニュー補完に入るのではなくて、一回は通常の補完を試みる。
+
+      というか menu-filter の途中で auto-complete が起こるのは微妙である。
+      うーん。menu-filter の途中では auto-complete が起こらない様にするか…。
+      その様にした方が振る舞いとしてすっきりする気がする。
+      また、auto-complete がなければ get-active-range の着色も region layer からできる。
+
+    →結局 footprint という変数名にして _ble_edit_{ind,mark,mark_active,overwrite_mode,str} を記録する事にした。
+
 
   * complete: REPLACE の時の auto-complete と上書きされる文字の着色について [#D0950]
     auto-complete で一時的に挿入される内容が上書き対象として着色されてしまっている。

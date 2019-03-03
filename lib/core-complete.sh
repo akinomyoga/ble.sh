@@ -2293,6 +2293,7 @@ function ble-complete/menu/show {
   _ble_complete_menu_items=("${menu_items[@]}")
   if [[ :$opts: == *:menu-source:* ]]; then
     # menu に既に表示されている内容を元にした補完後のメニュー再表示。
+    # 補完開始時の情報を保持したまま調整を行う。
 
     # 編集領域左側の文字列が曖昧補完によって書き換わる可能性がある
     local left0=${_ble_complete_menu_str::_ble_complete_menu_end}
@@ -2306,6 +2307,7 @@ function ble-complete/menu/show {
 
     _ble_complete_menu_str=$left0$right0
     _ble_complete_menu_end=${#left0}
+    _ble_complete_menu_footprint=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_overwrite_mode:$_ble_edit_str
   elif [[ :$opts: != *:filter:* ]]; then
     local beg=$COMP1 end=$_ble_edit_ind # COMP2 でなく補完挿入後の位置
     _ble_complete_menu_style=$menu_style
@@ -2318,6 +2320,7 @@ function ble-complete/menu/show {
     _ble_complete_menu_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type" "$comps_flags" "$comps_fixed")
     _ble_complete_menu_pack=("${cand_pack[@]}")
     _ble_complete_menu_filter=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type")
+    _ble_complete_menu_footprint=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_overwrite_mode:$_ble_edit_str
   fi
   return 0
 }
@@ -2475,10 +2478,11 @@ function ble/widget/complete {
     [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
       ble-complete/menu-complete/enter && return
   elif [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active != auto ]]; then
-    [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
-      [[ :$opts: != *:insert_all:* ]] &&
-      [[ $_ble_edit_str == "$_ble_complete_menu_str" ]] &&
-      ble-complete/menu-complete/enter && return
+    if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* && :$opts: != *:insert_all:* ]]; then
+      local footprint=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_overwrite_mode:$_ble_edit_str
+      [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
+        ble-complete/menu-complete/enter && return
+    fi
     [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
   fi
 
@@ -2879,7 +2883,11 @@ function ble/widget/menu_complete/exit {
     # suffix の決定と挿入
     local suffix=
     if [[ :$opts: == *:complete:* ]]; then
-      local pack=${_ble_complete_menu_pack[_ble_complete_menu_selected]}
+      local item=${_ble_complete_menu_items[_ble_complete_menu_selected]}
+      local item_data=${item#*:} item_fields
+      ble/string#split item_fields , "${item%%:*}"
+      local pack=${item_data::item_fields[4]}
+
       local ACTION=${pack%%:*}
       if ble/is-function ble-complete/action:"$ACTION"/complete; then
         # 補完文脈の復元
@@ -2896,8 +2904,8 @@ function ble/widget/menu_complete/exit {
         ble-complete/cand/unpack "$pack"
 
         ble-complete/action:"$ACTION"/complete
-        ble-complete/insert "$_ble_complete_menu_beg" "$_ble_edit_ind" "$insert" "$suffix"
       fi
+      ble-complete/insert "$_ble_complete_menu_beg" "$_ble_edit_ind" "$insert" "$suffix"
     fi
 
     # 通知
