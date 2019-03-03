@@ -876,9 +876,6 @@ bash_tips
 
   * complete: sabbrev に登録されている単語の補完もあっても良い気がする
 
-  * VARNAMES でブレース展開を使うのは良くない。refactoring の置換で変な事になる。
-    具体的には edit.sh の _ble_dirty_... など。
-
 2019-02-15
 
   * ble.sh で [ble: EOF] としている内容は zsh では PROMPT_EOL_MARK で設定できるそうだ
@@ -3082,7 +3079,10 @@ bash_tips
 
 2019-03-03
 
-  * info: ble-edit/info/.construct-content raw は分かりにくい。 [#D0954]
+  * VARNAMES でブレース展開を使うのは良くない。refactoring の置換で変な事になる [#D0955]
+    具体的には edit.sh の _ble_dirty_... など。
+
+  * info: ble-edit/info/.construct-content raw は分かりにくい [#D0954]
     結局中で trace するので、raw ではなくて ANSI sequence である。
     これは ansi だとか esc だとかにするべきなのでは。esc が良い。
     幸いに raw という単語は他に殆ど使っていない様なので一括で置換できそう。

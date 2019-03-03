@@ -930,9 +930,21 @@ function ble-edit/info/immediate-clear {
 # **** edit ****                                                          @edit
 
 _ble_edit_VARNAMES=(
-  _ble_edit_{str,ind,mark{,_active},overwrite_mode,line_disabled,arg}
-  _ble_edit_kill_{ring,type}
-  _ble_edit_dirty_{draw,syntax}_{beg,end,end0}
+  _ble_edit_str
+  _ble_edit_ind
+  _ble_edit_mark
+  _ble_edit_mark_active
+  _ble_edit_overwrite_mode
+  _ble_edit_line_disabled
+  _ble_edit_arg
+  _ble_edit_dirty_draw_beg
+  _ble_edit_dirty_draw_end
+  _ble_edit_dirty_draw_end0
+  _ble_edit_dirty_syntax_beg
+  _ble_edit_dirty_syntax_end
+  _ble_edit_dirty_syntax_end0
+  _ble_edit_kill_ring
+  _ble_edit_kill_type
   _ble_edit_dirty_observer)
 _ble_edit_ARRNAMES=()
 
@@ -1268,8 +1280,18 @@ function ble-edit/attach/.detach {
 #------------------------------------------------------------------------------
 # **** textarea ****                                                  @textarea
 
-_ble_textarea_VARNAMES=(_ble_textarea_{bufferName,scroll,gendx,gendy,invalidated,caret_state,panel})
-_ble_textarea_ARRNAMES=(_ble_textarea_{buffer,cur,cache})
+_ble_textarea_VARNAMES=(
+  _ble_textarea_bufferName
+  _ble_textarea_scroll
+  _ble_textarea_gendx
+  _ble_textarea_gendy
+  _ble_textarea_invalidated
+  _ble_textarea_caret_state
+  _ble_textarea_panel)
+_ble_textarea_ARRNAMES=(
+  _ble_textarea_buffer
+  _ble_textarea_cur
+  _ble_textarea_cache)
 
 ## 関数 ble/textarea/panel#get-height
 ##   @var[out] height

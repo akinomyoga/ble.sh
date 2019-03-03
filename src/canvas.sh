@@ -754,8 +754,22 @@ function ble/canvas/trace.draw {
 #------------------------------------------------------------------------------
 # ble/textmap
 
-_ble_textmap_VARNAMES=(_ble_textmap_{cols,length,{beg,end}{x,y},d{beg,end,end0},u{min,max}})
-_ble_textmap_ARRNAMES=(_ble_textmap_{pos,glyph,ichg})
+_ble_textmap_VARNAMES=(
+  _ble_textmap_cols
+  _ble_textmap_length
+  _ble_textmap_begx
+  _ble_textmap_begy
+  _ble_textmap_endx
+  _ble_textmap_endy
+  _ble_textmap_dbeg
+  _ble_textmap_dend
+  _ble_textmap_dend0
+  _ble_textmap_umin
+  _ble_textmap_umax)
+_ble_textmap_ARRNAMES=(
+  _ble_textmap_pos
+  _ble_textmap_glyph
+  _ble_textmap_ichg)
 
 ## 文字列の配置計算に関する情報
 ##
