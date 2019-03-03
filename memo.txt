@@ -869,17 +869,15 @@ bash_tips
     それから前に表示した頁の先頭位置を記録するという事。
     S-TAB で戻った時には計算が重くなるが、全頁について計算する。
 
+  * menu-filter が有効の時は auto-complete を無効にする?
+    C-g で menu-filter をキャンセルする (menu を消す)?
+
 2019-02-28
 
   * complete: sabbrev に登録されている単語の補完もあっても良い気がする
 
   * VARNAMES でブレース展開を使うのは良くない。refactoring の置換で変な事になる。
     具体的には edit.sh の _ble_dirty_... など。
-
-  * info: ble-edit/info/.construct-content raw は分かりにくい。
-    結局中で trace するので、raw ではなくて ANSI sequence である。
-    これは ansi だとか esc だとかにするべきなのでは。esc が良い。
-    幸いに raw という単語は他に殆ど使っていない様なので一括で置換できそう。
 
 2019-02-15
 
@@ -3083,6 +3081,11 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-03
+
+  * info: ble-edit/info/.construct-content raw は分かりにくい。 [#D0954]
+    結局中で trace するので、raw ではなくて ANSI sequence である。
+    これは ansi だとか esc だとかにするべきなのでは。esc が良い。
+    幸いに raw という単語は他に殆ど使っていない様なので一括で置換できそう。
 
   * complete: desc を表示する為の単語候補は既定にしても良いのでは。。 [#D0953]
     対応した。

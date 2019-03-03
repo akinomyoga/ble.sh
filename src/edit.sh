@@ -791,7 +791,7 @@ function ble-edit/info/.construct-content {
 
   local type=$1 text=$2
   case "$1" in
-  (raw)
+  (esc)
     local lc=32 lg=0 g=0
     local -a DRAW_BUFF=()
     LINES=$lines ble/canvas/trace.draw "$text"
@@ -803,7 +803,7 @@ function ble-edit/info/.construct-content {
   (store)
     x=$2 y=$3 content=$4
     # 現在の高さに入らない時は計測し直す。
-    ((y<lines)) || ble-edit/info/.construct-content raw "$content" ;;
+    ((y<lines)) || ble-edit/info/.construct-content esc "$content" ;;
   (*)
     echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
   esac
@@ -853,7 +853,7 @@ _ble_edit_info_scene=default
 ##     以下の2つの内の何れかを指定する。
 ##
 ##     type=text
-##     type=raw
+##     type=esc
 ##
 ##   @param[in] text
 ##
@@ -861,7 +861,7 @@ _ble_edit_info_scene=default
 ##     改行などの制御文字は代替表現に置き換えられる。
 ##     画面からはみ出る文字列に関しては自動で truncate される。
 ##
-##     type=raw のとき、引数 text は制御シーケンスを含む文字列を指定する。
+##     type=esc のとき、引数 text は制御シーケンスを含む文字列を指定する。
 ##     画面からはみ出る様なシーケンスに対する対策はない。
 ##     シーケンスを生成する側でその様なことがない様にする必要がある。
 ##
@@ -6407,7 +6407,7 @@ function ble/builtin/read/.setup-textarea {
   # textarea, info
   _ble_textarea_panel=1
   ble/textarea#invalidate
-  ble-edit/info/set-default raw ''
+  ble-edit/info/set-default esc ''
 
   # edit/prompt
   _ble_edit_PS1=$opt_prompt

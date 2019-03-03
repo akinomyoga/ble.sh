@@ -2298,7 +2298,7 @@ function ble-complete/menu/show {
   else
     local menu_items info_data
     menu_items=()
-    info_data=(raw $'\e[38;5;242m(no candidates)\e[m')
+    info_data=(esc $'\e[38;5;242m(no candidates)\e[m')
   fi
 
   ble-edit/info/immediate-show "${info_data[@]}"
