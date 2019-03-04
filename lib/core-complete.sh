@@ -2269,6 +2269,12 @@ function ble/complete/menu/clear {
   fi
 }
 
+## 関数 ble/complete/menu/get-footprint
+##   @var[out] footprint
+function ble/complete/menu/get-footprint {
+  footprint=$_ble_edit_ind:$_ble_edit_mark_active:${_ble_edit_mark_active:+$_ble_edit_mark}:$_ble_edit_overwrite_mode:$_ble_edit_str
+}
+
 ## 関数 ble/complete/menu/show opts
 ##   @param[in] opts
 ##
@@ -2318,11 +2324,13 @@ function ble/complete/menu/show {
     local right1=${_ble_edit_str:_ble_edit_ind}
     local ret; ble/string#common-suffix "$right0" "$right1"; right0=$ret
 
+    local footprint; ble/complete/menu/get-footprint
     _ble_complete_menu_str=$left0$right0
     _ble_complete_menu_end=${#left0}
-    _ble_complete_menu_footprint=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_overwrite_mode:$_ble_edit_str
+    _ble_complete_menu_footprint=$footprint
   elif [[ :$opts: != *:filter:* ]]; then
     local beg=$COMP1 end=$_ble_edit_ind # COMP2 でなく補完挿入後の位置
+    local footprint; ble/complete/menu/get-footprint
     _ble_complete_menu_style=$menu_style
     _ble_complete_menu_beg=$beg
     _ble_complete_menu_end=$end
@@ -2333,7 +2341,7 @@ function ble/complete/menu/show {
     _ble_complete_menu_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type" "$comps_flags" "$comps_fixed")
     _ble_complete_menu_pack=("${cand_pack[@]}")
     _ble_complete_menu_filter=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type")
-    _ble_complete_menu_footprint=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_overwrite_mode:$_ble_edit_str
+    _ble_complete_menu_footprint=$footprint
   fi
   return 0
 }
@@ -2492,7 +2500,7 @@ function ble/widget/complete {
       ble/complete/menu-complete/enter && return
   elif [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active != auto ]]; then
     if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* && :$opts: != *:insert_all:* ]]; then
-      local footprint=$_ble_edit_ind:$_ble_edit_mark:$_ble_edit_mark_active:$_ble_edit_overwrite_mode:$_ble_edit_str
+      local footprint; ble/complete/menu/get-footprint
       [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
         ble/complete/menu-complete/enter && return
     fi

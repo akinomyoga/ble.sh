@@ -846,6 +846,8 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-03-04
+
 2019-03-03
 
   * complete: desc の着色に対応する?
@@ -870,7 +872,7 @@ bash_tips
     S-TAB で戻った時には計算が重くなるが、全頁について計算する。
 
   * menu-filter が有効の時は auto-complete を無効にする?
-    C-g で menu-filter をキャンセルする (menu を消す)?
+    <kbd>C-g</kbd> で menu-filter をキャンセルする (menu を消す)?
 
 2019-02-28
 
@@ -893,11 +895,15 @@ bash_tips
 
   * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
 
-    * bind -f filename には対応していない
+    * bind -f filename には対応していない。
+      $if 等のディレクティブ以外は既に対応している機能を用いれば良い。
+      ディレクティブに関しては何とかして実装する必要がある気がする。
+      或いは bash のコマンドに置換して後で全体を eval するというのでも良いかもしれない。
+
     * bind -q function には対応していない
     * bind -u function には対応していない
 
-    * bind -lpsPSX は元の readline の情報を出力する
+    * bind -lpsPSX は元の readline の情報を出力する。
       ble.sh における情報を出力するように修正しても良いのかもしれない。
 
     * ble-bind -s で bell が呼ばれた時にマクロ実行を中断する?
@@ -2198,7 +2204,45 @@ bash_tips
     ChangeLog
 -------------------------------------------------------------------------------
 
-2018-10-05 (#D0858..)
+2019-02-09 (#D0915) 949e9a8..
+
+  新機能
+  - auto-complete: support <kbd>end</kbd> at the end of line a374635
+  - decode: replace builtin `bind` for `ble.sh` settings `#D0915`  90ca3be `#D0918` e0cdd15
+  - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919` 2e83120
+  - syntax: support `set +B` `#D0931` 12f80dd
+  - syntax: support aliased keywords `#D0936` 7054e28
+  - complete: support `ble-sabbrev -m key=function` `#D0942` bcdf843
+  - complete: support description of candidates `#D0945` `#D0946` 0fa73bf
+  - complete: support insertion of ambiguous common part `#D0947` 3644a8e
+  - complete: support three levels of ambiguous matching `#D0948` 3644a8e
+  - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
+
+  動作変更
+  - prompt: support correct handling of escapes `#D0923` 22f9b56
+  - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
+  - complete: use candidates in menu if present `#D0939` 52eaf01
+    - complete: fix a bug that menu-complete is disabled after `menu-filter` `#D0951` 08cba07
+    - complete: fix a bug that wrong action is performed after `menu-filter` `#D0952` 08cba07
+    - complete: fix a bug that extra <kbd>TAB</kbd> is needed to enter `menu-complete` `#D0956`
+  - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
+  - highlight: do not highlight overwrite modes when mark is active `#D0950` 4efe1a9
+
+  バグ・問題修正
+  - main: workaround `set -evx` `#D0930` 698517d
+  - edit (widget `delete-horizontal-space`): fix a bug that spaces before the cursor is not removed `#D0932` 9290adb
+  - bleopt: fix a bug that false error messages are output on reload when `failglob` is set `#D0933` 64cdcba c62db26
+  - decode: fix a bug that <kbd>\\</kbd> cannot be input after reattach `#D0937` a46ada0
+  - reload: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938` 1107ca8
+  - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
+  - vi_nmap (`/`, `?`, `n`, `N`): fix search progress `#D0944` f20f840
+
+  内部的変更
+  - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
+  - [refactor] do not use brace expansions for `VARNAMES` `#D0955` 711e7df
+  - [refactor] `ble-{highlight,complete,syntax}` -> `ble/*` 7aaa660 ae6be66 8ea903c
+
+2018-10-05 -- 2019-02-09 (#D0858..#D0914) 6ed51e7..949e9a8
 
   新機能
   - color (`ble-color-setface`): support various spec such as SGR params `#D0860` 82fe96d `#D0861` 257c16d `#D0864` 2eaf2a9
@@ -2219,16 +2263,6 @@ bash_tips
   - complete: support completion of tilde expansion `#D0907` b4fc40c `#D0908` 9fafdb3
   - main: support `BLE_VERSION` and `BLE_VERSINFO` (suggested by cmplstofB) `#D0909`
   - global: support `--help` for public functions `ble-*` (suggested by cmplstofB) `#D0911` 77d459d f4d03f6 1d191c7 1209ac6 `#D0913` 92d9038
-  - auto-complete: support <kbd>end</kbd> at the end of line a374635
-  - decode: replace builtin `bind` for `ble.sh` settings `#D0915`  90ca3be `#D0918` e0cdd15
-  - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919` 2e83120
-  - syntax: support `set +B` `#D0931` 12f80dd
-  - syntax: support aliased keywords `#D0936` 7054e28
-  - complete: support `ble-sabbrev -m key=function` `#D0942` bcdf843
-  - complete: support description of candidates `#D0945` `#D0946` 0fa73bf
-  - complete: support insertion of ambiguous common part `#D0947` 3644a8e
-  - complete: support three levels of ambiguous matching `#D0948` 3644a8e
-  - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
 
   動作変更
   - edit: change cursor position after <kbd>u</kbd> `#D0877` 9d5c945
@@ -2239,39 +2273,23 @@ bash_tips
   - vi_nmap: change the behavior of <kbd>C-home</kbd>, <kbd>C-end</kbd> to match with those of vim 8682f98
   - util (`ble/util/unlocal`): add workaround for Bash-5.0 `localvar_unset` `#D0904` 8677a71
   - sabbrev: quote key in printing definitions by `ble-sabbrev` `#D0912` 2994d80
-  - prompt: support correct handling of escapes `#D0923` 22f9b56
-  - util (`ble/util/sleep`): adjust delay `#D0934` `#D0935` 5fd5cd6 ad1208b 188cd98
-  - complete: use candidates in menu if present `#D0939` 52eaf01
-    - complete: fix a bug that menu-complete is disabled after menu-filter `#D0951` 08cba07
-    - complete: fix a bug that wrong action is performed after menu-filter `#D0952` 08cba07
-  - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
-  - highlight: do not highlight overwrite modes when mark is active `#D0950`
 
   バグ・問題修正
-  - info: 日本語を含む内容を info に表示する時に座標計算が乱れるバグの修正 `#D0858` 67c77dc
-  - syntax: extract-command でネストされたコマンドの抽出結果が常に失敗になるバグの修正 `#D0859` c3270f6
-  - complete: `complete -c` 等の補完設定が効かない問題の修正 `#D0870` 1ca5386 82bb154
+  - info: fix a bug that coordinates calculation breaks with Japanese text `#D0858` 67c77dc
+  - syntax (`extract-command`): fix a bug that extraction of nested commands always fails `#D0859` c3270f6
+  - complete: fix a bug that the settings `complete -c` does not work `#D0870` 1ca5386 82bb154
   - main: fix a bug that the determination of `_ble_base` fails when loaded as `source ble.sh` without specifying the directory of `ble.sh` 201deae
   - util: `ble/util/assign` が正しい戻り値を返さないバグの修正 bd14982
   - util: `ble/util/assign-array` の入れ子の呼び出しで内容が混ざり合う問題の修正 bd14982
   - progcomp: fix a bug that bash-completion does not work properly due to wrong `COMP_POINT` `#D0897` 41b8cbb
   - global: fix leak variables `#D0900` 244f965 `#D0906` b8dcbfe 9892d63
   - progcomp: fix a problem that completion functions can consume stdin `#D0903` 7cfe425
-  - main: workaround `set -evx` `#D0930` 698517d
-  - edit (widget `delete-horizontal-space`): fix a bug that spaces before the cursor is not removed `#D0932` 9290adb
-  - bleopt: fix a bug that false error messages are output on reload when `failglob` is set `#D0933` 64cdcba c62db26
-  - decode: fix a bug that <kbd>\\</kbd> cannot be input after reattach `#D0937` a46ada0
-  - reload: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938` 1107ca8
-  - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
-  - vi_nmap (`/`, `?`, `n`, `N`): fix search progress `#D0944` f20f840
 
   内部的変更
-  - global: `[[ lhs == rhs ]]` 右辺を正しくクォート f1c56ab
+  - global: properly quote rhs of `[[ lhs == rhs ]]` f1c56ab
   - syntax: rename variables `BLE_{ATTR,CTX,SYNTAX}_*` -> `_ble_{attr,ctx,syntax}_*` 1fbcd8b (ref #D0909)
-  - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
-  - [refactor] do not use brace expansions for `VARNAMES` `#D0955` 711e7df
 
-2018-09-24 (#D0825..#D0857 6ed51e7)
+2018-09-24 -- 2018-10-05 (#D0825..#D0857 6ed51e7)
 
   新機能
   - highlight: 変数代入の右辺及び配列要素の着色に対応 `#D0839` 854c3b4
@@ -2405,7 +2423,7 @@ bash_tips
   - `auto_complete/accept-and-execute`  → `auto_complete/accept-line`
   - `isearch/accept`                    → `isearch/accept-line`
 
-2018-07-29 - 2018-09-02 (#D0684..#D0765)
+2018-07-29 - 2018-09-02 (#D0684..#D0765 0c28ed9)
 
   補完: 新機能
   - complete: 曖昧補完 `#D0707` `#D0708` `#D0710` `#D0713` `#D0743` (fix)
@@ -2474,7 +2492,7 @@ bash_tips
   - refactor: `#D0725` `#D0750` `#D0753` `#D0754`
   - bash-bug: Bash に対するバグ報告 `#D0692` `D0695` `D0697`
 
-2018-03-15 (#D0644..#D0683)
+2018-03-15 (#D0644..#D0683 7d365d5)
 
   新機能
   - undo: vi-mode `u` `<C-r>` `U` (`#D0644` `#D0648`); emacs `#D0649`; `#D0662`
@@ -3078,6 +3096,25 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-03-04
+
+  * complete: menu-complete に入る条件がやはり何かずれている [#D0956]
+
+    三回目の TAB で漸く menu-complete に入るという状態になっている。
+
+    echo pr [TAB] echo pro [TAB] echo pro [TAB] echo prog
+
+    本当はこの様な時には2回目のTABで menu-complete に入って欲しい。
+    具体的にどの様になっているかを調べてみるのが良い。
+    特に footprint がどの様な状態になっているのかが一番怪しいので調べる。
+
+    どうやら記録されている footprint の _ble_edit_mark の位置が異なるのが原因である。
+    というか _ble_edit_mark の位置は auto-complete に依って書き換えられるのだから、
+    異なっていても仕方がない。なので、_ble_edit_mark は footprint に含めない。
+    もしくは _ble_edit_mark_active が設定されている時にだけ footprint に含める。
+
+    直した。その他の場面でも前よりも違和感のない動作になった様な気がする。
 
 2019-03-03
 
