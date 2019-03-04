@@ -848,6 +848,38 @@ bash_tips
 
 2019-03-04
 
+  * complete: menu-filter の編集領域を着色する案
+
+    編集領域 (get-active-range) を layer:region を用いて着色するのは微妙そうだ。
+    auto-complete と同時に使いたい事もあって、layer:region は
+    auto-complete で一時挿入された部分の着色にも用いられる為である。
+
+    a reject: 実際に試しで実装してみたが region を使って着色するのは色々と微妙である。
+      menu-filter は新しい keymap を導入するわけではないので、
+      self-insert などがそのまま実行される。そうすると region が置換されて消滅してしまう。
+      auto-complete や menu-complete や search の時に問題がなかったのは、
+      特別に keymap を用意しているので self-insert などが region に作用しなかったからである。
+
+      更に当然の事であるが auto-complete が走っている間はそちらを優先しているので着色されない。
+
+    b reject: うーん。別の layer を使って着色を変更する事は可能だろうか。
+      例えば overwrite_mode 及び disabled に関して。
+      然し、着色順序が異なる。syntax の上で region の下に着色を行いたい。
+      overwrite_mode は region と排他的なので、移動は可能かもしれないが、
+      overwrite_mode 自体が self-insert の振る舞いを変更するのでこれは変えられない。
+
+    c 振る舞いは変えないけれども表示だけ変わるというような新しい layer が必要である。
+      更に状態を制御する変数として、caret_state のチェックに menu-filter が有効になっているかどうかも含める必要がある。
+      _ble_complete_menu_* 変数の状態は caret_state として記録しなくても大丈夫だと思われる。
+      というのもこれらが更新されるのは何れにしても _ble_edit_str か _ble_edit_ind が変更される時だからである。
+
+    d 或いは disabled を逆に利用して編集領域以外を灰色で被せるなど?
+      然し、その場合には overwrite_mode や region 等も同じ色で被せてしまう事になるので微妙である。
+
+    やはりもし実現するとしたら新しい layer を作るのが現実的に思われる。
+    現状では余り活性化しない layer が増えてもそんなに重さには影響しないはずである。
+    更に、blink-matching-paren などの機能も考えると結局 layer は増やす事になる気がする。
+
 2019-03-03
 
   * complete: desc の着色に対応する?
@@ -870,9 +902,6 @@ bash_tips
     その為には現在表示している項目の範囲を記録するという事、
     それから前に表示した頁の先頭位置を記録するという事。
     S-TAB で戻った時には計算が重くなるが、全頁について計算する。
-
-  * menu-filter が有効の時は auto-complete を無効にする?
-    <kbd>C-g</kbd> で menu-filter をキャンセルする (menu を消す)?
 
 2019-02-28
 
@@ -1180,7 +1209,7 @@ bash_tips
     外部環境における set convert-meta の状態は
     変数 _ble_term_rl_convert_meta_external に記録してある。
 
-  * 現在の LC_CTYPE で表現できない文字を入力した時の self-insert の振る舞い
+  * 現在の `LC_CTYPE` で表現できない文字を入力した時の `self-insert` の振る舞い
 
     ref #D0699
 
@@ -2224,9 +2253,10 @@ bash_tips
   - complete: use candidates in menu if present `#D0939` 52eaf01
     - complete: fix a bug that menu-complete is disabled after `menu-filter` `#D0951` 08cba07
     - complete: fix a bug that wrong action is performed after `menu-filter` `#D0952` 08cba07
-    - complete: fix a bug that extra <kbd>TAB</kbd> is needed to enter `menu-complete` `#D0956`
+    - complete: fix a bug that extra <kbd>TAB</kbd> is needed to enter `menu-complete` `#D0956` aa6bd73
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950` 4efe1a9
+  - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -3098,6 +3128,27 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-04
+
+  * complete: menu-filter が有効の時は auto-complete を無効にする? [#D0957]
+    <kbd>C-g</kbd> で menu-filter をキャンセルする (menu を消す)?
+
+    うーん。実際に試してみたけれども微妙な気がしてきた。
+    編集領域の途中にカーソルがある時に勝手に auto-complete を挿入されると
+    混乱の元になってしまうので抑制するというのは正しい気がする。
+
+    然し、更に編集領域の末尾にカーソルがある時に
+    auto-complete を抑制する事が果たして自然なのかは分からない。
+
+    % というか、編集領域が "" の時に auto-complete を許していると、
+    % その後の文字入力に対して編集領域が変化した時に auto-complete に食われてしまって
+    % menu-filter が働かないのではないかという気がする。
+    % →と思って実装を調べてみたら auto-complete の時には
+    % menu-filter 側で特別の対策をしていて auto-complete
+    % で挿入された部分をちゃんと取り除いてから処理している。
+
+    うーん。こうなっているとすると、menu-filter の active range を
+    layer:region (_ble_edit_mark_active) を用いて着色するという作戦は微妙?
+    →これは独立した項目として議論する事にする。
 
   * complete: menu-complete に入る条件がやはり何かずれている [#D0956]
 

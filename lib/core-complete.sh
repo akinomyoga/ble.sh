@@ -2663,7 +2663,6 @@ function ble/complete/menu-filter/.filter-candidates {
     ((${#cand_pack[@]}!=0)) && break
   done
 }
-
 function ble/complete/menu-filter {
   if [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]]; then
     local str=$_ble_edit_str
@@ -3182,6 +3181,11 @@ function ble/complete/auto-complete.impl {
 
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   [[ $comp_text ]] || return 0
+
+  # menu-filter 編集領域内部では auto-complete は抑制する
+  if local beg end; ble/complete/menu/get-active-range "$_ble_edit_str" "$_ble_edit_ind"; then
+    ((_ble_edit_ind<end)) && return 0
+  fi
 
   if [[ $bleopt_complete_auto_history ]]; then
     ble/complete/auto-complete/.check-history light; local ext=$?
