@@ -664,6 +664,7 @@ function ble-edit/info/.put-simple {
       (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)))
   else
     # 画面をはみ出る場合
+    flag_overflow=1
     out=$out${2::lines*cols-(y*cols+x)}
     ((x=cols,y=lines-1))
     ble-edit/info/.put-nl-if-eol
@@ -678,6 +679,7 @@ function ble-edit/info/.put-atomic {
   if ((x<cols&&cols<x+w)); then
     if ((y+1>=lines)); then
       # 画面に入らない時は表示しない
+      flag_overflow=1
       if [[ :$opts: == *:nonewline:* ]]; then
         ble/string#reserve-prototype $((cols-x))
         out=$out${_ble_string_prototype::cols-x}
@@ -729,9 +731,11 @@ function ble-edit/info/.initialize-size {
 ##   @var[in] cols lines sgr0 sgr1
 ##   @var[in,out] x y
 ##   @var[out] ret
+##   @exit
+##     指定した範囲に文字列が収まった時に成功します。
 function ble-edit/info/.construct-text {
   local out= LC_ALL= LC_COLLATE=C glob='*[! -~]*'
-  local opts=$2
+  local opts=$2 flag_overflow=
   if [[ $1 != $glob ]]; then
     # G0 だけで構成された文字列は先に単純に処理する
     ble-edit/info/.put-simple "${#1}" "$1"
@@ -768,6 +772,10 @@ function ble-edit/info/.construct-text {
 
   ble-edit/info/.put-nl-if-eol
   ret=$out
+
+  # 収まったかどうか
+  ((y>=lines)) && flag_overflow=1
+  [[ ! $flag_overflow ]]
 }
 
 _ble_edit_info_panel=2
