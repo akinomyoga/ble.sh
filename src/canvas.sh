@@ -411,10 +411,21 @@ function ble/canvas/bflush.draw {
 ##
 ##   @param[in]   text
 ##     出力する (制御シーケンスを含む) 文字列を指定します。
+##
 ##   @param[in,opt] opts
 ##     コロン区切りのオプションの列を指定します。
+##
 ##     nooverflow
 ##       LINES COLUMNS で指定される範囲外になる文字列を出力しません
+##
+##     relative
+##       x y を相対位置と考えて移動を行います。
+##       改行などの制御は全て座標に基づいた移動に変換されます。
+##
+##     measure-bbox
+##       @var[out] x1 x2 y1 y2
+##       描画範囲を x1 x2 y1 y2 に返します。
+##
 ##   @var[in,out] DRAW_BUFF[]
 ##     出力先の配列を指定します。
 ##   @var[in,out] x y g
@@ -703,6 +714,7 @@ function ble/canvas/trace/.impl {
   # options
   local opt_nooverflow=; [[ :$opts: == *:nooverflow:* ]] && opt_nooverflow=1
   local opt_relative=; [[ :$opts: == *:relative:* ]] && opt_relative=1
+  local opt_measure=; [[ :$opts: == *:measure-bbox:* ]] && opt_measure=1
 
   # constants
   local cols=${COLUMNS:-80} lines=${LINES:-25}
@@ -720,6 +732,8 @@ function ble/canvas/trace/.impl {
   # variables
   local -a trace_brack=()
   local -a trace_scosc=()
+
+  [[ $opt_measure ]] && ((x1=x2=x,y1=y2=y))
 
   local i=0 iN=${#text}
   while ((i<iN)); do
@@ -802,13 +816,20 @@ function ble/canvas/trace/.impl {
         ((w>wmax)) && w=$wmax
       fi
       if [[ $opt_relative ]]; then
-        local t=$s tlen=$w len
-        while ((tlen>(len=cols-x))); do
+        local t=$s tlen=$w len=$((cols-x))
+        if [[ $opt_measure ]]; then
+          if ((tlen>len)); then
+            ((x1>0&&(x1=0)))
+            ((x2<cols&&(x2=cols)))
+          fi
+        fi
+        while ((tlen>len)); do
           ble/canvas/put.draw "${t::len}"
           t=${t:len}
-          ((x=cols,tlen-=len))
+          ((x=cols,tlen-=len,len=cols))
           ble/canvas/trace/.NEL
         done
+        w=${#t}
         ble/canvas/put.draw "$t"
       else
         ble/canvas/put.draw "${tail::w}"
@@ -822,7 +843,7 @@ function ble/canvas/trace/.impl {
     else
       local ret
       ble/util/s2c "$tail" 0; local c=$ret
-      ble/util/c2w "$lc"; local w=$ret
+      ble/util/c2w "$c"; local w=$ret
       if [[ $opt_nooverflow ]] && ! ((x+w<=cols||y+1<lines&&w<=cols)); then
         w=0
       else
@@ -835,6 +856,11 @@ function ble/canvas/trace/.impl {
             ble/canvas/put.draw "${_ble_string_prototype::x+w-cols}"
             ((x=cols))
           fi
+          if [[ $opt_measure ]]; then
+            ((x1>0&&(x1=0)))
+            [[ $opt_relative ]] ||
+              ((x2<cols&&(x2=cols)))
+          fi
         fi
         ble/canvas/put.draw "${tail::1}"
       fi
@@ -842,11 +868,22 @@ function ble/canvas/trace/.impl {
     fi
 
     if ((w>0)); then
+      if [[ $opt_measure ]]; then
+        if ((x+w>cols)); then
+          ((x1>0&&(x1=0)))
+          ((x2<cols&&(x2=cols)))
+        fi
+      fi
       ((x+=w,y+=x/cols,x%=cols,
         (opt_relative||xenl)&&x==0&&(y--,x=cols)))
       ((x==0&&(lc=32,lg=0)))
     fi
+    if [[ $opt_measure ]]; then
+      ((x<x1?(x=x1):x>x2?(x2=x):1))
+      ((y<y1?(y=y1):y>y2?(y2=y):1))
+    fi
   done
+  [[ $opt_measure ]] && ((y2++))
 }
 function ble/canvas/trace.draw {
   # cygwin では LC_COLLATE=C にしないと

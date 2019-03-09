@@ -660,9 +660,16 @@ function ble-edit/prompt/update {
   ret=$esc
 
   # update edit_rps1
-  local val esc x y g lc lg # Note: これ以降は local の x y g lc lg
-  LINES=1 ble-edit/prompt/.instantiate "$bleopt_rps1" nooverflow:relative "${_ble_edit_rprompt[@]:1}"
-  _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$val")
+  if [[ $bleopt_rps1 ]]; then
+    local val esc x y g lc lg # Note: これ以降は local の x y g lc lg
+    local x1=${_ble_edit_rprompt_bbox[0]}
+    local y1=${_ble_edit_rprompt_bbox[1]}
+    local x2=${_ble_edit_rprompt_bbox[2]}
+    local y2=${_ble_edit_rprompt_bbox[3]}
+    LINES=1 ble-edit/prompt/.instantiate "$bleopt_rps1" nooverflow:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
+    _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$val")
+    _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
+  fi
 }
 
 # 
@@ -1688,8 +1695,7 @@ function ble/textarea#render {
   local cols=${COLUMNS-80}
   local flag_rps1=
   if [[ $bleopt_rps1 ]]; then
-    # prox instead of maxx?
-    local rps1_width=${_ble_edit_rprompt[1]}
+    local rps1_width=${_ble_edit_rprompt_bbox[2]}
     ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)) &&
       ((flag_rps1=1,cols-=rps1_width+1))
   fi

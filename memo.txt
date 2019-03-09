@@ -846,39 +846,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-08
-
-  * canvas: ble/canvas/trace を大幅に書き換えようと思う。
-
-    complete: desc で色のついた説明を表示できる様にする事に関連して。
-
-    1. 特に先ず初めに範囲内に収まらない場合に出力しない様に修正する。
-    2. 改行などで移動している部分を相対位置の移動でもできるオプションを実装する。
-
-    実装した。これで Window 的な物を実装する事はできる様になったのではないかという気がする。
-    overlay が簡単に実現できる様になったかどうかについては微妙な所ではある。
-    overlay は textarea/info の上でに overlay する事を考えれば、
-    textarea/info それぞれに対して再描画等の処理が必要になる。
-    それぞれに対して指定された範囲を再描画する関数を実装するか。
-
-    * reject: 背景色を設定する場合を考えると。
-      また改行を実行する際に現在位置の右をスペースで埋めるオプションは必要になるだろうか。
-      と思ったが、\r を実行してから改行を実施する場合もあるし、難しい問題である。
-      先にスペースで埋めてから描画するという具合にするしかないのではないか。
-
-      % Note: ble/textmap#update に於いては、
-      % #D0959 での考察により terminfo に ech がある場合にはそれを使い、
-      % もしなければ半角空白で埋めるという事をする事にした。
-      % 
-      % erase-eol (ech で消去する) fill-eol (半角空白で埋める) などの
-      % オプションを用意しても良いのかもしれない。
-      % と思ったが \r を実行してから改行を実行する場合も考えると対応は難しい。
-
-      やはり何か枠の中に描画する際には始めに
-      呼び出し元でその枠の中身を消去しておいてもらう必要がある。
-
-    * done: RPROMPT の表示にも使うことができるかもしれない → #D0959 実装した
-
 2019-03-04
 
   * complete: menu-filter の編集領域を着色する案
@@ -2178,18 +2145,6 @@ bash_tips
 
   * 描画ちらつき: DCH や ICH 等を用いた効率化?
 
-2015-02-21
-
-  * zsh にある機能で気になる物
-
-    menu 補完と言った物もあるようだ。
-      選択肢の説明の表示もできる。
-      考えつきそうな機能は一通り揃っているという事か。
-
-    2018-09-23 メニュー補完は既に対応した。
-    選択肢の説明は表示していない。
-    menu_style で選択肢の説明を表示するモードも提供して良いかもしれない。
-
 2015-02-18
 
   * エラーメッセージの設定を可能にする
@@ -2217,10 +2172,6 @@ bash_tips
 2013-06-05
 
   * bashfc
-
-  * RPS1
-    zsh で試してみた所、そもそも RPS1 に改行を含めると RPS1 自体表示されない事が分かった。
-    改行は含まれていないと仮定して表示してしまっても良いのかも知れない(2015-03-04)。
 
 2013-06-04
 
@@ -2268,7 +2219,7 @@ bash_tips
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
   - complete: support menu pages `#D0958` ff43e01 a488e01
-  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915
+  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0963`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -2277,7 +2228,7 @@ bash_tips
     - complete: fix a bug that menu-complete is disabled after `menu-filter` `#D0951` 08cba07
     - complete: fix a bug that wrong action is performed after `menu-filter` `#D0952` 08cba07
     - complete: fix a bug that extra <kbd>TAB</kbd> is needed to enter `menu-complete` `#D0956` aa6bd73
-    - complete: fix a bug that candidates are not regenerated on function name completions `#D0961`
+    - complete: fix a bug that candidates are not regenerated on function name completions `#D0961` bbea72e
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950` 4efe1a9
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
@@ -3153,6 +3104,72 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-09
+
+  * 2019-03-08 canvas: ble/canvas/trace を大幅に書き換えようと思う [#D0963]
+
+    complete: desc で色のついた説明を表示できる様にする事に関連して。
+
+    1. 特に先ず初めに範囲内に収まらない場合に出力しない様に修正する。
+    2. 改行などで移動している部分を相対位置の移動でもできるオプションを実装する。
+
+    実装した。これで Window 的な物を実装する事はできる様になったのではないかという気がする。
+    overlay が簡単に実現できる様になったかどうかについては微妙な所ではある。
+    overlay は textarea/info の上でに overlay する事を考えれば、
+    textarea/info それぞれに対して再描画等の処理が必要になる。
+    それぞれに対して指定された範囲を再描画する関数を実装するか。
+
+    * reject: 背景色を設定する場合を考えると。
+      また改行を実行する際に現在位置の右をスペースで埋めるオプションは必要になるだろうか。
+      と思ったが、\r を実行してから改行を実施する場合もあるし、難しい問題である。
+      先にスペースで埋めてから描画するという具合にするしかないのではないか。
+
+      % Note: ble/textmap#update に於いては、
+      % #D0959 での考察により terminfo に ech がある場合にはそれを使い、
+      % もしなければ半角空白で埋めるという事をする事にした。
+      % 
+      % erase-eol (ech で消去する) fill-eol (半角空白で埋める) などの
+      % オプションを用意しても良いのかもしれない。
+      % と思ったが \r を実行してから改行を実行する場合も考えると対応は難しい。
+
+      やはり何か枠の中に描画する際には始めに
+      呼び出し元でその枠の中身を消去しておいてもらう必要がある。
+
+    * done: RPROMPT の表示にも使うことができるかもしれない → #D0959 実装した
+
+    * done: trace 中に最大で何処まで右に行ったかを記録したい。
+
+      opts=measure-bbox として実装する事にした。
+      これの実装は面倒そうだと思ったが意外と簡単だった。
+      殆ど全ての動作は直線的に行われ、
+      直線でないのは折返し操作が入る時だけなのであった。
+      折返し操作が入る場合には 0-cols を範囲に含めれば良い。
+      他の操作に関しては操作が終わってからの位置を見るだけで良い。
+
+      →これを用いて rps1 の表示位置を決定する事にした。
+
+      x fixed: と思ったら日本語を含む時に座標計算がずれている…。
+        これは先日 trace を修正した時のバグだった。直した。直った。
+
+    まあ、こんな物である。また本格的に Window System でも作る時に手を入れる
+    必要が出てくるかもしれないが今はこれ以上の拡張は行わない事にする。
+
+  * [自然解消] 2013-06-05 RPS1 [#D0962]
+    zsh で試してみた所、そもそも RPS1 に改行を含めると RPS1 自体表示されない事が分かった。
+    改行は含まれていないと仮定して表示してしまっても良いのかも知れない(2015-03-04)。
+
+    2019-03-09 #D0959 で "bleopt rps1=" として実装した。
+
+  * [自然解消] 2015-02-21 zsh にある機能で気になる物 [#D0962]
+
+    menu 補完と言った物もあるようだ。
+      選択肢の説明の表示もできる。
+      考えつきそうな機能は一通り揃っているという事か。
+
+    2018-09-23 メニュー補完は既に対応した。
+    選択肢の説明は表示していない。
+    menu_style で選択肢の説明を表示するモードも提供して良いかもしれない。
+
+    2019-03-09 選択肢の説明に関しては #D0946 で対応した。
 
   * 2019-03-05 complete: "ble/complete/" の状態から menu-complete に入る事ができない [#D0961]
     これは後で調べる必要がある。
