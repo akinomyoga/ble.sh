@@ -846,10 +846,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-09
-
-  * bleopt: openat_base -> internal_openat_base
-
 2019-03-04
 
   * complete: menu-filter の編集領域を着色する案
@@ -887,22 +883,6 @@ bash_tips
 2019-02-28
 
   * complete: sabbrev に登録されている単語の補完もあっても良い気がする
-
-2019-02-15
-
-  * ble.sh で [ble: EOF] としている内容は zsh では PROMPT_EOL_MARK で設定できるそうだ
-    https://qiita.com/2357gi/items/6d530820402ae776ca66
-
-    ble.sh でもユーザが設定できる様にする? しかし、毎回座標計算するのは面倒である。
-    というより現在の位置が分からなければ tab 等の座標計算ができないのではあるまいか。
-    結局、現在位置を CPR で尋ねるという事をしなければならなくはないか…。
-
-    事前に計算しておく事にするか? その場合には tab 等の文字が含まれていた場合に困る。
-    と思ったが、tab の場合はスペースに変換するので問題ない。
-    垂直タブやカーソル移動等が含まれる場合はサポート外とすれば良い。
-
-    2019-03-09 これは trace.draw で nooverflow を実装したので
-    一行に収まる様にして簡単に実装できる筈。
 
 2019-02-10
 
@@ -2216,6 +2196,7 @@ bash_tips
   - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966`
+  - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3100,6 +3081,33 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * 2019-02-15 ble.sh で [ble: EOF] としている内容は zsh では PROMPT_EOL_MARK で設定できるそうだ [#D0968]
+    https://qiita.com/2357gi/items/6d530820402ae776ca66
+
+    ble.sh でもユーザが設定できる様にする? しかし、毎回座標計算するのは面倒である。
+    というより現在の位置が分からなければ tab 等の座標計算ができないのではあるまいか。
+    結局、現在位置を CPR で尋ねるという事をしなければならなくはないか…。
+
+    事前に計算しておく事にするか? その場合には tab 等の文字が含まれていた場合に困る。
+    と思ったが、tab の場合はスペースに変換するので問題ない。
+    垂直タブやカーソル移動等が含まれる場合はサポート外とすれば良い。
+
+    2019-03-09 これは trace.draw で nooverflow を実装したので
+    一行に収まる様にして簡単に実装できる筈。
+
+    →実際に現在の ble.sh の実装を確認してみたところ、
+      実は EOL_MARK の大きさに関係なく動くような実装になっていた。
+      % というか eol mark の途中で折返し改行が入った場合はどういう動作になるのか…。
+      % 何だかよく分からなくなったがまあ動いているから良いのだろう。
+      これは大丈夫。何れにしても次の行に行くという事。
+      それからもし行頭に居た時には [ble: EOL] を削除するという事。
+      正しく削除する為には eol mark はその行に収まっていなければならない。
+
+  * [棄却] bleopt: openat_base -> internal_openat_base [#D0967]
+    internal をつけるかどうかはユーザが触る可能性があるかないかである。
+    特別な fd を使う時に触ってもらうかもしれないので internal_ は取り敢えず付けない事にする。
+    (とは言いつつユーザがこのオプションに気づいてこれを活用する様になる事があるかは不明だが。)
 
   * menu_complete: support prior, next, home, end [#D0966]
 

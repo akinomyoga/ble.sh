@@ -88,15 +88,18 @@ bleopt/declare -v undo_point end
 ##
 bleopt/declare -n edit_forced_textmap 1
 
-## オプション rps1
-bleopt/declare -v rps1 ''
-
 function ble/edit/use-textmap {
   ble/textmap#is-up-to-date && return 0
   ((bleopt_edit_forced_textmap)) || return 1
   ble/widget/.update-textmap
   return 0
 }
+
+## オプション rps1
+bleopt/declare -v rps1 ''
+
+## オプション prompt_eol_mark
+bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
 
 ## オプション internal_exec_type (内部使用)
 ##   コマンドの実行の方法を指定します。
@@ -3407,13 +3410,36 @@ function ble-edit/exec/.setexit {
   # $? 変数の設定
   return "$_ble_edit_exec_lastexit"
 }
+## 関数 ble-edit/exec/.adjust-eol
+##   文末調整を行います。
+_ble_edit_exec_eol_mark=('' '' 0)
 function ble-edit/exec/.adjust-eol {
-  # 文末調整
+  # update cache
+  if [[ $bleopt_prompt_eol_mark != "${_ble_edit_exec_eol_mark[0]}" ]]; then
+    if [[ $bleopt_prompt_eol_mark ]]; then
+      local -a DRAW_BUFF=()
+      local x=0 y=0 g=0 lc=0 lg=0 x1=0 x2=0 y1=0 y2=0
+      LINES=1 COLUMNS=80 ble/canvas/trace.draw "$bleopt_prompt_eol_mark" nooverflow:measure-bbox
+      local ret; ble/canvas/sflush.draw
+      _ble_edit_exec_eol_mark=("$bleopt_prompt_eol_mark" "$ret" "$x2")
+    else
+      _ble_edit_exec_eol_mark=('' '' 0)
+    fi
+  fi
+
   local cols=${COLUMNS:-80}
   local -a DRAW_BUFF=()
-  ble/canvas/put.draw "$_ble_term_sc"
-  ble/canvas/put.draw "${_ble_term_setaf[12]}[ble: EOF]$_ble_term_sgr0"
-  ble/canvas/put.draw "$_ble_term_rc"
+  local eol_mark=${_ble_edit_exec_eol_mark[1]}
+  if [[ $eol_mark ]]; then
+    ble/canvas/put.draw "$_ble_term_sc"
+    if ((_ble_edit_exec_eol_mark[2]>cols)); then
+      local x=0 y=0 g=0 lc=0 lg=0
+      LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$bleopt_prompt_eol_mark" nooverflow
+    else
+      ble/canvas/put.draw "$eol_mark"
+    fi
+    ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
+  fi
   ble/canvas/put-cuf.draw $((_ble_term_xenl?cols-2:cols-3))
   ble/canvas/put.draw "  $_ble_term_cr$_ble_term_el"
   ble/canvas/bflush.draw
