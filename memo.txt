@@ -880,19 +880,6 @@ bash_tips
     現状では余り活性化しない layer が増えてもそんなに重さには影響しないはずである。
     更に、blink-matching-paren などの機能も考えると結局 layer は増やす事になる気がする。
 
-2019-03-03
-
-  * complete: desc の着色に対応する?
-
-    これは trace を弄る必要がある。trace は多分、範囲の指定に対応していない。
-    一応見てみると LINES 及び COLULMNS を読み取って使っているが…。
-    行末の処理などが折り返し全体になっていたり、
-    実際に改行を挿入してしまったりなどしているのではないかと思う。
-    これは .construct-text と同様に nonewline 等に対応する必要がある。
-
-    しかし、そもそも色のついた desc を生成する物がないので、
-    実装する意義は今のところない。
-
 2019-02-28
 
   * complete: sabbrev に登録されている単語の補完もあっても良い気がする
@@ -2219,7 +2206,7 @@ bash_tips
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
   - complete: support menu pages `#D0958` ff43e01 a488e01
-  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0963`
+  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0963` fa2a874
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3104,6 +3091,73 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-09
+
+  * 2019-03-03 complete: desc の着色に対応する? [#D0964]
+
+    これは trace を弄る必要がある。trace は多分、範囲の指定に対応していない。
+    一応見てみると LINES 及び COLULMNS を読み取って使っているが…。
+    行末の処理などが折り返し全体になっていたり、
+    実際に改行を挿入してしまったりなどしているのではないかと思う。
+    これは .construct-text と同様に nonewline 等に対応する必要がある。
+
+    しかし、そもそも色のついた desc を生成する物がないので、
+    実装する意義は今のところない。
+
+    2019-03-09 #D0963 に於いて範囲をはみ出ない様な trace を実装した。
+    なので実は実装しようと思えば簡単に実装する事ができる。
+    →実際に .construct-text を置き換えてみたところ普通に動作している…。
+    計算時間に関しても特に無駄にかかっているという様な印象はない。
+    というか寧ろ高速だったりする事はあるかしらん。
+
+    * trace.draw と .construct-text の速度に関して
+
+      % 実際に計ってみると .construct-text よりも trace.draw の方が速い…
+      勘違いだった測定する順序を間違えていた。逆だった。
+
+        fa2a874 の上に居る時に .blerc (akinomyoga.dotfiles) の sabbrev \commit の表示で試した。
+        for entry in "${measure[@]}"; do のループの実行時間を計測する。
+        .construct-text による計算時間は:
+
+        real    0m0.027s 1ページ目        
+        real    0m0.248s 最後の頁         
+        real    0m0.074s 最後から2番目の頁
+
+        trace.draw による計算時間は:
+
+        real    0m0.048s 1ページ目
+        real    0m0.739s 最後の頁
+        real    0m0.115s 最後から2番目の頁
+
+      うーん。これを見た感じだと特に日本語の文字が連続している場合には 3 倍ぐらい時間がかかっている。
+      やっぱり配列に大量に触ると遅いという事になるのだろうか。
+
+      うーん。DRAW_BUFF を配列ではなく普通の変数にして見たが計算時間は全く変わらない。
+      宣言部分を local DRAW_BUFF= に変えてみてもやはり速度は変わらない。
+      というか本当に DRAW_BUFF は配列にする事によって速度が向上しているのだろうか。怪しい。
+      JavaScript の場合には配列に入れておいて後で連結したほうが速かったが
+      bash の場合はどうなんだろう。実際に計測してみる事にする。
+
+        $ bash-5.0 benchmark-strbuff.sh
+         4485.78 usec/eval: concat.str (x50)
+         4493.09 usec/eval: concat.ret (x50)
+         2177.40 usec/eval: concat.arr (x50)
+
+      うーん。実際に計ってみると配列を連結したほうが速い様だ。
+
+        5745.09 usec/eval: concatB.str (x20)
+        5899.53 usec/eval: concatB.ret (x20)
+        3574.55 usec/eval: concatB.arr (x50)
+
+      途中で別の配列も一緒に触る様にしてもやはり配列の連結の方が速い。
+      複数の配列を触って遅くなるのは物凄く長い配列の場合だけだろうか。
+      Bash の version 毎に違いがないかも確かめたが違いはない様子である。
+
+      まあ速度的には微々たる物の気がするので気にしない事にする。
+
+      * 着色した場合の速度はどうだろうか。と思って調べたが
+        30ms 程度の遅延が一様にかかる様である。まあ気にしなくて良い。
+
+      * 切り替えられる様にした。desc-raw とした時に trace を用いる事にした。
 
   * 2019-03-08 canvas: ble/canvas/trace を大幅に書き換えようと思う [#D0963]
 

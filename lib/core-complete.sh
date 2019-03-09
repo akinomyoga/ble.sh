@@ -2202,10 +2202,10 @@ function ble/complete/menu/style:align/construct/.construct-page {
   end=$index
 }
 
-## 関数 ble/complete/menu/style:align/construct
+## 関数 ble/complete/menu/style:align/construct opts
 ##   complete_menu_style=align{,-nowrap} に対して候補を配置します。
 function ble/complete/menu/style:align/construct {
-  local ret iloop=0
+  local ret iloop=0 opts=$1
 
   local measure items pages
   measure=() items=() pages=()
@@ -2255,7 +2255,7 @@ function ble/complete/menu/style:align/construct {
   return 0
 }
 function ble/complete/menu/style:align-nowrap/construct {
-  ble/complete/menu/style:align/construct
+  ble/complete/menu/style:align/construct "$@"
 }
 
 #
@@ -2310,10 +2310,10 @@ function ble/complete/menu/style:dense/construct/.construct-page {
 }
 
 
-## 関数 ble/complete/menu/style:dense/construct
+## 関数 ble/complete/menu/style:dense/construct opts
 ##   complete_menu_style=align{,-nowrap} に対して候補を配置します。
 function ble/complete/menu/style:dense/construct {
-  local ret iloop=0
+  local ret iloop=0 opts=$1
 
   local items pages; items=() pages=()
   local version=${#cand_pack[@]}:$lines:$cols
@@ -2357,11 +2357,13 @@ function ble/complete/menu/style:dense/construct {
   return 0
 }
 function ble/complete/menu/style:dense-nowrap/construct {
-  ble/complete/menu/style:dense/construct
+  ble/complete/menu/style:dense/construct "$@"
 }
 
 function ble/complete/menu/style:desc/construct {
   local ret iloop=0 opts=$1
+
+  local opt_raw=; [[ $menu_style == desc-raw ]] && opt_raw=1
 
   # offset 開始位置を scroll から決定
   local offset=0 rex=':scroll=([0-9]+):'
@@ -2420,13 +2422,22 @@ function ble/complete/menu/style:desc/construct {
     ble/complete/cand/unpack "$pack"
     local desc="(action: $ACTION)"
     ble/function#try ble/complete/action:"$ACTION"/get-desc
-    y=0 lines=1 ble-edit/info/.construct-text "$desc" nonewline
+    if [[ $opt_raw ]]; then
+      local -a DRAW_BUFF=()
+      y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$desc" nooverflow
+      ble/canvas/sflush.draw
+    else
+      y=0 lines=1 ble-edit/info/.construct-text "$desc" nonewline
+    fi
     esc=$esc$ret
 
     ((y+1>=lines)) && break
     ((x=0,++y))
     esc=$esc$'\n'
   done
+}
+function ble/complete/menu/style:desc-raw/construct {
+  ble/complete/menu/style:desc/construct "$@"
 }
 
 function bleopt/check:complete_menu_style {
