@@ -88,6 +88,9 @@ bleopt/declare -v undo_point end
 ##
 bleopt/declare -n edit_forced_textmap 1
 
+## オプション rps1
+bleopt/declare -v rps1 ''
+
 function ble/edit/use-textmap {
   ble/textmap#is-up-to-date && return 0
   ((bleopt_edit_forced_textmap)) || return 1
@@ -581,6 +584,41 @@ function ble-edit/prompt/.escape {
   done
   ret=$out$nest
 }
+## 関数 ble-edit/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0]
+##   @var[out] val esc x y g lc lg
+##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
+function ble-edit/prompt/.instantiate {
+  val= esc= x=0 y=0 g=0 lc=32 lg=0
+  local ps=$1 opts=$2 x0=$3 y0=$4 g0=$5 lc0=$6 lg0=$7 esc0=$8 val0=$9
+  [[ ! $ps ]] && return 0
+
+  # 1. PS1 に含まれる \c を処理する
+  local -a DRAW_BUFF=()
+  ble-edit/prompt/process-prompt-string "$ps"
+  local processed; ble/canvas/sflush.draw -v processed
+
+  # 2. PS1 に含まれる \\ や " をエスケープし、
+  #   eval して各種シェル展開を実行する。
+  local ret
+  ble-edit/prompt/.escape "$processed"; local escaped=$ret
+  local expanded=$val0 # Note: これは次行が失敗した時の既定値
+  builtin eval "expanded=\"$escaped\""
+
+  # 3. 端末への出力を構成する
+  _ble_edit_rprompt[0]=$version
+  if [[ $expanded != "$val0" ]]; then
+    x=0 y=0 g=0 lc=32 lg=0
+    LINES=1 ble/canvas/trace.draw "$expanded" "$opts"
+    ((lc<0&&(lc=0)))
+    local traced; ble/canvas/sflush.draw -v traced
+    val=$expanded esc=$traced
+    return 0
+  else
+    x=$x0 y=$y0 g=$g0 lc=$lc0 lg=$lg0
+    val=$val0 esc=$esc0
+    return 2
+  fi
+}
 
 function ble-edit/prompt/update/.eval-prompt_command {
   # return 等と記述されていた時対策として関数内評価。
@@ -608,41 +646,23 @@ function ble-edit/prompt/update {
     return
   fi
 
+  local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
+
+  # update PS1
   if [[ $PROMPT_COMMAND ]]; then
     ble-edit/restore-PS1
     ble-edit/prompt/update/.eval-prompt_command
     ble-edit/adjust-PS1
   fi
-  local ps1=$_ble_edit_PS1
+  local val esc
+  ble-edit/prompt/.instantiate "$_ble_edit_PS1" '' "${_ble_edit_prompt[@]:1}"
+  _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$val")
+  ret=$esc
 
-  local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
-
-  # 1 特別な Escape \? を処理
-  local -a DRAW_BUFF=()
-  ble-edit/prompt/process-prompt-string "$ps1"
-
-  # 2 eval 'ps1val="..."'
-  local ps1prc; ble/canvas/sflush.draw -v ps1prc
-  ble-edit/prompt/.escape "$ps1prc"; local ps1esc=$ret
-  local ps1val=${_ble_edit_prompt[7]} # Note: これは次行が失敗した時の既定値
-  builtin eval "ps1val=\"$ps1esc\""
-  if [[ $ps1val == "${_ble_edit_prompt[7]}" ]]; then
-    # 前回と同じ ps1val の場合は計測処理は省略
-    _ble_edit_prompt[0]=$version
-    ble-edit/prompt/.load
-    return
-  fi
-
-  # 3 計測
-  x=0 y=0 g=0 lc=32 lg=0
-  ble/canvas/trace.draw "$ps1val"
-  ((lc<0&&(lc=0)))
-
-  # 4 出力
-  local ps1out
-  ble/canvas/sflush.draw -v ps1out
-  ret=$ps1out
-  _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1val")
+  # update edit_rps1
+  local val esc x y g lc lg # Note: これ以降は local の x y g lc lg
+  LINES=1 ble-edit/prompt/.instantiate "$bleopt_rps1" nooverflow:relative "${_ble_edit_rprompt[@]:1}"
+  _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$val")
 }
 
 # 
@@ -1464,6 +1484,23 @@ function ble/textarea#invalidate {
   _ble_textarea_invalidated=1
 }
 
+## 関数 ble/textarea#render/.erase-forward-line.draw opts
+##   @var[in] x cols
+function ble/textarea#render/.erase-forward-line.draw {
+  local eraser=$_ble_term_el
+  if [[ :$render_opts: == *:relative:* ]]; then
+    local width=$((cols-x))
+    if ((width==0)); then
+      eraser=
+    elif [[ $_ble_term_ech ]]; then
+      eraser=${_ble_term_ech//'%d'/$width}
+    else
+      ble/string#reserve-prototype "$width"
+      eraser=${_ble_string_prototype::width}${_ble_term_cub//'%d'/$width}
+    fi
+  fi
+  ble/canvas/put.draw "$eraser"
+}
 
 ## 関数 ble/textarea#render/.determine-scroll
 ##   新しい表示高さとスクロール位置を決定します。
@@ -1517,12 +1554,12 @@ function ble/textarea#render/.determine-scroll {
     height=$nline
   fi
 }
-## 関数 ble/textarea#render/.perform-scroll
+## 関数 ble/textarea#render/.perform-scroll new_scroll
 ##
 ##   @var[out] DRAW_BUFF
 ##     スクロールを実行するシーケンスの出力先です。
 ##
-##   @var[in] height cols
+##   @var[in] height cols render_opts
 ##   @var[in] begx begy
 ##
 function ble/textarea#render/.perform-scroll {
@@ -1566,7 +1603,8 @@ function ble/textarea#render/.perform-scroll {
       ble/textmap#getxy.out --prefix=fmax "$fmax"
 
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
-      ((new_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
+      ((new_scroll==0)) &&
+        x=$fminx ble/textarea#render/.erase-forward-line.draw # ... を消す
       local ret; ble/textarea#slice-text-buffer "$fmin" "$fmax"
       ble/canvas/put.draw "$ret"
       ((_ble_canvas_x=fmaxx,
@@ -1586,6 +1624,7 @@ function ble/textarea#render/.perform-scroll {
 ##   スクロール時 "(line 3) ..." などの表示
 ##
 ##   @var[in] _ble_textarea_scroll
+##   @var[in] cols render_opts
 ##   @var[in,out] DRAW_BUFF _ble_canvas_x _ble_canvas_y
 ##
 function ble/textarea#render/.show-scroll-at-first-line {
@@ -1593,7 +1632,8 @@ function ble/textarea#render/.show-scroll-at-first-line {
     ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$begx" "$begy"
     local scroll_status="(line $((_ble_textarea_scroll+2))) ..."
     scroll_status=${scroll_status::cols-1-begx}
-    ble/canvas/put.draw "$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
+    x=$begx ble/textarea#render/.erase-forward-line.draw
+    ble/canvas/put.draw "$eraser$_ble_term_bold$scroll_status$_ble_term_sgr0"
     ((_ble_canvas_x+=${#scroll_status}))
   fi
 }
@@ -1645,6 +1685,15 @@ function ble/textarea#render {
   ble-edit/prompt/update # x y lc ret
   local prox=$x proy=$y prolc=$lc esc_prompt=$ret
 
+  local cols=${COLUMNS-80}
+  local flag_rps1=
+  if [[ $bleopt_rps1 ]]; then
+    # prox instead of maxx?
+    local rps1_width=${_ble_edit_rprompt[1]}
+    ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)) &&
+      ((flag_rps1=1,cols-=rps1_width+1))
+  fi
+
   # BLELINE_RANGE_UPDATE → ble/textarea#update-text-buffer 内でこれを見て update を済ませる
   local -a BLELINE_RANGE_UPDATE
   BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
@@ -1666,7 +1715,9 @@ function ble/textarea#render {
   local umin=-1 umax=-1
 
   # 配置情報の更新
-  ble/textmap#update # text x y → x y
+  local render_opts=
+  [[ $flag_rps1 ]] && render_opts=relative
+  COLUMNS=$cols ble/textmap#update "$text" "$render_opts"
   ble/urange#update "$_ble_textmap_umin" "$_ble_textmap_umax"
   ble/urange#clear --prefix=_ble_textmap_
 
@@ -1721,13 +1772,20 @@ function ble/textarea#render {
 
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$uminx" $((uminy-_ble_textarea_scroll))
       ble/textarea#slice-text-buffer "$umin" "$umax"
-      ble/canvas/put.draw "$ret"
-      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$umaxx" $((umaxy-_ble_textarea_scroll))
+      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$ret" "$umaxx" $((umaxy-_ble_textarea_scroll))
     fi
 
     if ((BLELINE_RANGE_UPDATE[0]>=0)); then
       local endY=$((endy-_ble_textarea_scroll))
-      ((endY<height)) && ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" "$endx" "$endY"
+      if ((endY<height)); then
+        if [[ :$render_opts: == *:relative:* ]]; then
+          ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$endx" "$endY"
+          x=$endx ble/textarea#render/.erase-forward-line.draw
+          ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" 0 $((endY+1))
+        else
+          ble/canvas/panel#clear-after.draw "$_ble_textarea_panel" "$endx" "$endY"
+        fi
+      fi
     fi
   else
     # 全体更新
@@ -1735,8 +1793,15 @@ function ble/textarea#render {
 
     # プロンプト描画
     ble/canvas/panel#goto.draw "$_ble_textarea_panel"
-    ble/canvas/put.draw "$esc_prompt"
-    ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$prox" "$proy"
+    if [[ $flag_rps1 ]]; then
+      local rps1x=${_ble_edit_rprompt[1]}
+      local rps1y=${_ble_edit_rprompt[2]}
+      local rps1out=${_ble_edit_rprompt[6]}
+      # Note: cols は画面右端ではなく textmap の右端
+      ble/canvas/panel#goto.draw "$_ble_text_area_panel" $((cols+1)) 0
+      ble/canvas/panel#put.draw "$_ble_text_area_panel" "$rps1out$_ble_term_cr" 0 0
+    fi
+    ble/canvas/panel#put.draw "$_ble_textarea_panel" "$esc_prompt" "$prox" "$proy"
 
     # 全体描画
     _ble_textarea_scroll=$scroll
@@ -1744,8 +1809,7 @@ function ble/textarea#render {
     if [[ ! $_ble_textarea_scroll ]]; then
       ble/textarea#slice-text-buffer # → ret
       esc_line=$ret esc_line_set=1
-      ble/canvas/put.draw "$ret"
-      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$ret" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
     else
       ble/textarea#render/.show-scroll-at-first-line
 
@@ -1759,10 +1823,11 @@ function ble/textarea#render {
       ((gbegy-=_ble_textarea_scroll))
 
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
-      ((_ble_textarea_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
+      ((_ble_textarea_scroll==0)) &&
+        x=$gbegx ble/textarea#render/.erase-forward-line.draw # ... を消す
+
       ble/textarea#slice-text-buffer "$gbeg" "$gend"
-      ble/canvas/put.draw "$ret"
-      ble/canvas/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
+      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$ret" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
     fi
   fi
 
@@ -1795,7 +1860,8 @@ function ble/textarea#render {
         ((gbegy-=_ble_textarea_scroll))
 
         ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
-        ((_ble_textarea_scroll==0)) && ble/canvas/put.draw "$_ble_term_el" # ... を消す
+        ((_ble_textarea_scroll==0)) &&
+          x=$gbegx ble/textarea#render/.erase-forward-line.draw # ... を消す
         ble/textarea#slice-text-buffer "$gbeg" "$gend"
         ble/canvas/put.draw "$ret"
 
@@ -1963,7 +2029,7 @@ function ble/textarea#clear-state {
 
 function ble/widget/.update-textmap {
   local text=$_ble_edit_str x=$_ble_textmap_begx y=$_ble_textmap_begy
-  ble/textmap#update
+  ble/textmap#update "$text"
 }
 function ble/widget/redraw-line {
   ble-edit/content/clear-arg

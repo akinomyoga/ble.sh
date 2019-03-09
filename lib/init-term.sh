@@ -125,6 +125,15 @@ function ble/init:term/initialize {
   fi
   ble/init:term/register-varname _ble_term_el2
 
+  # ICH/DCH/ECH
+  #   Note: 必ずしも対応しているか分からないので terminfo に載っている時のみ使う。
+  ble/init:term/define-cap _ble_term_ich '' ich 123 # CSI @
+  ble/init:term/define-cap _ble_term_dch '' dch 123 # CSI P
+  ble/init:term/define-cap _ble_term_ech '' ech 123 # CSI X
+  _ble_term_ich=${_ble_term_ich//123/%d}
+  _ble_term_dch=${_ble_term_dch//123/%d}
+  _ble_term_ech=${_ble_term_ech//123/%d}
+
   # DECSC/DECRC or SCOSC/SCORC
   ble/init:term/define-cap _ble_term_sc $'\e[s' sc
   ble/init:term/define-cap _ble_term_rc $'\e[u' rc

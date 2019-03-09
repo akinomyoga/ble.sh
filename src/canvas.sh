@@ -363,6 +363,30 @@ function ble/canvas/put-vpa.draw {
   out=${out//'%y'/$((l-1))}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
+function ble/canvas/rmoveto-x.draw {
+  local dx=$1
+  if ((dx)); then
+    if ((dx>0)); then
+      ble/canvas/put-cuf.draw "$dx"
+    else
+      ble/canvas/put-cub.draw $((-dx))
+    fi
+  fi
+}
+function ble/canvas/rmoveto-y.draw {
+  local dy=$1
+  if ((dy)); then
+    if ((dy>0)); then
+      ble/canvas/put-cud.draw "$dy"
+    else
+      ble/canvas/put-cuu.draw $((-dy))
+    fi
+  fi
+}
+function ble/canvas/rmoveto.draw {
+  ble/canvas/rmoveto-x.draw "$1"
+  ble/canvas/rmoveto-y.draw "$2"
+}
 function ble/canvas/flush.draw {
   IFS= builtin eval 'builtin echo -n "${DRAW_BUFF[*]}"'
   DRAW_BUFF=()
@@ -382,11 +406,15 @@ function ble/canvas/bflush.draw {
   DRAW_BUFF=()
 }
 
-## 関数 ble/canvas/trace.draw text
+## 関数 ble/canvas/trace.draw text [opts]
 ##   制御シーケンスを含む文字列を出力すると共にカーソル位置の移動を計算します。
 ##
 ##   @param[in]   text
 ##     出力する (制御シーケンスを含む) 文字列を指定します。
+##   @param[in,opt] opts
+##     コロン区切りのオプションの列を指定します。
+##     nooverflow
+##       LINES COLUMNS で指定される範囲外になる文字列を出力しません
 ##   @var[in,out] DRAW_BUFF[]
 ##     出力先の配列を指定します。
 ##   @var[in,out] x y g
@@ -426,22 +454,26 @@ function ble/canvas/bflush.draw {
 ##
 
 function ble/canvas/trace/.SC {
-  trace_scosc="$x $y $g $lc $lg"
+  trace_scosc=("$x" "$y" "$g" "$lc" "$lg")
   ble/canvas/put.draw "$_ble_term_sc"
 }
 function ble/canvas/trace/.RC {
-  local -a scosc
-  scosc=($trace_scosc)
-  x=${scosc[0]}
-  y=${scosc[1]}
-  g=${scosc[2]}
-  lc=${scosc[3]}
-  lg=${scosc[4]}
+  x=${trace_scosc[0]}
+  y=${trace_scosc[1]}
+  g=${trace_scosc[2]}
+  lc=${trace_scosc[3]}
+  lg=${trace_scosc[4]}
   ble/canvas/put.draw "$_ble_term_rc"
 }
 function ble/canvas/trace/.NEL {
-  ble/canvas/put.draw "$_ble_term_cr"
-  ble/canvas/put.draw "$_ble_term_nl"
+  [[ $opt_nooverflow ]] && ((y+1>=lines)) && return
+  if [[ $opt_relative ]]; then
+    ((x)) && ble/canvas/put-cub.draw "$x"
+    ble/canvas/put-cud.draw 1
+  else
+    ble/canvas/put.draw "$_ble_term_cr"
+    ble/canvas/put.draw "$_ble_term_nl"
+  fi
   ((y++,x=0,lc=32,lg=0))
 }
 ## 関数 ble/canvas/trace/.SGR/arg_next
@@ -530,11 +562,19 @@ function ble/canvas/trace/.process-csi-sequence {
         # CHA "CSI G"
         # HPA "CSI `"
         ((x=arg-1,x<0&&(x=0),x>=cols&&(x=cols-1)))
-        ble/canvas/put-hpa.draw $((x+1))
+        if [[ $opt_relative ]]; then
+          ble/canvas/rmoveto-x.draw $((x-x0))
+        else
+          ble/canvas/put-hpa.draw $((x+1))
+        fi
       elif [[ $char == d ]]; then
         # VPA "CSI d"
         ((y=arg-1,y<0&&(y=0),y>=lines&&(y=lines-1)))
-        ble/canvas/put-vpa.draw $((y+1))
+        if [[ $opt_relative ]]; then
+          ble/canvas/rmoveto-y.draw $((y-y0))
+        else
+          ble/canvas/put-vpa.draw $((y+1))
+        fi
       elif [[ $char == I ]]; then
         # CHT "CSI I"
         local _x
@@ -565,7 +605,11 @@ function ble/canvas/trace/.process-csi-sequence {
       ((y=params[0]-1))
       ((x<0&&(x=0),x>=cols&&(x=cols-1),
         y<0&&(y=0),y>=lines&&(y=lines-1)))
-      ble/canvas/put-cup.draw $((y+1)) $((x+1))
+      if [[ $opt_relative ]]; then
+        ble/canvas/rmoveto.draw $((x-x0)) $((y-y0))
+      else
+        ble/canvas/put-cup.draw $((y+1)) $((x+1))
+      fi
       lc=-1 lg=0
       return ;;
     ([su]) # SCOSC SCORC
@@ -611,36 +655,54 @@ function ble/canvas/trace/.process-esc-sequence {
     ble/canvas/trace/.RC
     return ;;
   (D) # IND
-    ((y++))
-    ble/canvas/put.draw "$_ble_term_ind"
-    [[ $_ble_term_ind != $'\eD' ]] &&
-      ble/canvas/put-hpa.draw $((x+1)) # tput ind が唯の改行の時がある
+    [[ $opt_nooverflow ]] && ((y+1>=lines)) && return
+    if [[ $opt_relative ]]; then
+      ((y+1>=lines)) && return
+      ((y++))
+      ble/canvas/put-cud.draw 1
+    else
+      ((y++))
+      ble/canvas/put.draw "$_ble_term_ind"
+      [[ $_ble_term_ind != $'\eD' ]] &&
+        ble/canvas/put-hpa.draw $((x+1)) # tput ind が唯の改行の時がある
+    fi
     lc=-1 lg=0
     return ;;
   (M) # RI
-    ((y--,y<0&&(y=0)))
-    ble/canvas/put.draw "$_ble_term_ri"
+    [[ $opt_nooverflow ]] && ((y==0)) && return
+    if [[ $opt_relative ]]; then
+      ((y==0)) && return
+      ((y--))
+      ble/canvas/put-cuu.draw 1
+    else
+      ((y--,y<0&&(y=0)))
+      ble/canvas/put.draw "$_ble_term_ri"
+    fi
     lc=-1 lg=0
     return ;;
   (E) # NEL
     ble/canvas/trace/.NEL
-    lc=32 lg=0
     return ;;
   # (H) # HTS 面倒だから無視。
-  # ([KL]) PLD PLU は何か?
+  # ([KL]) PLD PLU
+  #   上付き・下付き文字 (端末における実装は色々)
   esac
 
   ble/canvas/put.draw "$seq"
 }
 
 function ble/canvas/trace/.impl {
-  local text=$1
+  local text=$1 opts=$2
 
   # Note: 文字符号化方式によっては対応する文字が存在しない可能性がある。
   #   その時は st='\u009C' になるはず。2文字以上のとき変換に失敗したと見做す。
   local ret
   ble/util/c2s 156; local st=$ret #  (ST)
   ((${#st}>=2)) && st=
+
+  # options
+  local opt_nooverflow=; [[ :$opts: == *:nooverflow:* ]] && opt_nooverflow=1
+  local opt_relative=; [[ :$opts: == *:relative:* ]] && opt_relative=1
 
   # constants
   local cols=${COLUMNS:-80} lines=${LINES:-25}
@@ -657,7 +719,7 @@ function ble/canvas/trace/.impl {
 
   # variables
   local -a trace_brack=()
-  local trace_scosc=
+  local -a trace_scosc=()
 
   local i=0 iN=${#text}
   while ((i<iN)); do
@@ -688,7 +750,11 @@ function ble/canvas/trace/.impl {
           ble/canvas/trace/.process-esc-sequence "$BASH_REMATCH"
         fi ;;
       ('') # BS
-        ((x>0&&(x--,lc=32,lg=g))) ;;
+        if ((x>0)); then
+          ((x--,lc=32,lg=g))
+        else
+          s=
+        fi ;;
       ($'\t') # HT
         local _x
         ((_x=(x+it)/it*it,
@@ -704,43 +770,80 @@ function ble/canvas/trace/.impl {
         ble/canvas/trace/.NEL ;;
       ('') # VT
         s=
-        ble/canvas/put.draw "$_ble_term_cr"
-        ble/canvas/put.draw "$_ble_term_nl"
-        ((x)) && ble/canvas/put-cuf.draw "$x"
-        ((y++,lc=32,lg=0)) ;;
+        if ((y+1<lines||!opt_nooverflow)); then
+          if [[ $opt_relative ]]; then
+            if ((y+1<lines)); then
+              ble/canvas/put-cud.draw 1
+              ((y++,lc=32,lg=0))
+            fi
+          else
+            ble/canvas/put.draw "$_ble_term_cr"
+            ble/canvas/put.draw "$_ble_term_nl"
+            ((x)) && ble/canvas/put-cuf.draw "$x"
+            ((y++,lc=32,lg=0))
+          fi
+        fi ;;
       ($'\r') # CR ^M
-        s=$_ble_term_cr
+        if [[ $opt_relative ]]; then
+          s=
+          ble/canvas/put-cub.draw "$x"
+        else
+          s=$_ble_term_cr
+        fi
         ((x=0,lc=-1,lg=0)) ;;
       # その他の制御文字は  (BEL)  (FF) も含めてゼロ幅と解釈する
       esac
       [[ $s ]] && ble/canvas/put.draw "$s"
     elif ble/util/isprint+ "$tail"; then
-      w=${#BASH_REMATCH}
-      ble/canvas/put.draw "$BASH_REMATCH"
-      ((i+=${#BASH_REMATCH}))
+      local s=$BASH_REMATCH
+      w=${#s}
+      if [[ $opt_nooverflow ]]; then
+        local wmax=$((lines*cols-(y*cols+x)))
+        ((w>wmax)) && w=$wmax
+      fi
+      if [[ $opt_relative ]]; then
+        local t=$s tlen=$w len
+        while ((tlen>(len=cols-x))); do
+          ble/canvas/put.draw "${t::len}"
+          t=${t:len}
+          ((x=cols,tlen-=len))
+          ble/canvas/trace/.NEL
+        done
+        ble/canvas/put.draw "$t"
+      else
+        ble/canvas/put.draw "${tail::w}"
+      fi
+      ((i+=${#s}))
       if [[ ! $bleopt_internal_suppress_bash_output ]]; then
         local ret
-        ble/util/s2c "$BASH_REMATCH" $((w-1))
+        ble/util/s2c "$s" $((w-1))
         lc=$ret lg=$g
       fi
     else
-      local w ret
-      ble/util/s2c "$tail" 0
-      lc=$ret lg=$g
-      ble/util/c2w "$lc"
-      w=$ret
-      if ((w>=2&&x+w>cols)); then
-        # 行に入りきらない場合の調整
-        ble/canvas/put.draw "${_ble_string_prototype::x+w-cols}"
-        ((x=cols))
+      local ret
+      ble/util/s2c "$tail" 0; local c=$ret
+      ble/util/c2w "$lc"; local w=$ret
+      if [[ $opt_nooverflow ]] && ! ((x+w<=cols||y+1<lines&&w<=cols)); then
+        w=0
+      else
+        lc=$c lg=$g
+        if ((x+w>cols)); then
+          if [[ $opt_relative ]]; then
+            ble/canvas/trace/.NEL
+          else
+            # 行に入りきらない場合の調整
+            ble/canvas/put.draw "${_ble_string_prototype::x+w-cols}"
+            ((x=cols))
+          fi
+        fi
+        ble/canvas/put.draw "${tail::1}"
       fi
-      ble/canvas/put.draw "${tail::1}"
       ((i++))
     fi
 
     if ((w>0)); then
       ((x+=w,y+=x/cols,x%=cols,
-        xenl&&x==0&&(y--,x=cols)))
+        (opt_relative||xenl)&&x==0&&(y--,x=cols)))
       ((x==0&&(lc=32,lg=0)))
     fi
   done
@@ -836,7 +939,21 @@ function ble/textmap#restore {
   ble/util/restore-arrs "$prefix" "${_ble_textmap_ARRNAMES[@]}"
 }
 
-## 関数 ble/textmap#update
+## 関数 ble/textmap#update/.wrap
+##   @var[in,out] cs x y changed
+function ble/textmap#update/.wrap {
+  if [[ :$opts: == *:relative:* ]]; then
+    ((x)) && cs=$cs${_ble_term_cub//'%d'/$x}
+    cs=$cs${_ble_term_cud//'%d'/1}
+    changed=1
+  elif ((xenl)); then
+    cs=$cs$_ble_term_nl
+    changed=1
+  fi
+  ((y++,x=0))
+}
+
+## 関数 ble/textmap#update text [opts]
 ##   @var[in    ] text
 ##   @var[in,out] x y
 ##   @var[in,out] _ble_textmap_*
@@ -848,6 +965,7 @@ function ble/textmap#update {
     dend0=_ble_textmap_dend0))
   ble/dirty-range#clear --prefix=_ble_textmap_d
 
+  local text=$1 opts=$2
   local iN=${#text}
 
   # 初期位置 x y
@@ -858,6 +976,7 @@ function ble/textmap#update {
   # ※現在は COLUMNS で決定しているが将来的には変更可能にする?
   local cols=${COLUMNS-80} xenl=$_ble_term_xenl
   ((COLUMNS&&cols<COLUMNS&&(xenl=1)))
+  ble/string#reserve-prototype "$cols"
   # local cols=80 xenl=1
 
   local it=${bleopt_tab_width:-$_ble_term_it}
@@ -922,9 +1041,10 @@ function ble/textmap#update {
       local n
       for ((n=i+w;i<n;i++)); do
         local cs=${text:i:1}
-        if (((++x==cols)&&(y++,x=0,xenl))); then
-          cs=$cs$_ble_term_nl
-          ble/array#push _ble_textmap_ichg "$i"
+        if ((++x==cols)); then
+          local changed=0
+          ble/textmap#update/.wrap
+          ((changed)) && ble/array#push _ble_textmap_ichg "$i"
         fi
         _ble_textmap_glyph[i]=$cs
         _ble_textmap_pos[i+1]="$x $y 0"
@@ -939,9 +1059,7 @@ function ble/textmap#update {
         if ((code==9)); then
           if ((x+1>=cols)); then
             cs=' '
-            ((xenl)) && cs=$cs$_ble_term_nl
-            changed=1
-            ((y++,x=0))
+            ble/textmap#update/.wrap
           else
             local x2
             ((x2=(x/it+1)*it,
@@ -951,8 +1069,23 @@ function ble/textmap#update {
             cs=${_ble_string_prototype::w}
           fi
         elif ((code==10)); then
+          if [[ :$opts: == *:relative:* ]]; then
+            local pad=$((cols-x)) eraser=
+            if ((pad)); then
+              if [[ $_ble_term_ech ]]; then
+                eraser=${_ble_term_ech//'%d'/$pad}
+              else
+                eraser=${_ble_string_prototype::cols-x}
+                ((x=cols))
+              fi
+            fi
+            local move=${_ble_term_cub//'%d'/$x}${_ble_term_cud//'%d'/1}
+            cs=$eraser$move
+            changed=1
+          else
+            cs=$_ble_term_el$_ble_term_nl
+          fi
           ((y++,x=0))
-          cs=$_ble_term_el$_ble_term_nl
         else
           ((w=2))
           ble/util/c2s $((code+64))
@@ -971,7 +1104,11 @@ function ble/textmap#update {
       local wrapping=0
       if ((w>0)); then
         if ((x<cols&&cols<x+w)); then
-          ((xenl)) && cs=$_ble_term_nl$cs
+          if [[ :$opts: == *:relative:* ]]; then
+            cs=${_ble_term_cub//'%d'/$cols}${_ble_term_cud//'%d'/1}$cs
+          elif ((xenl)); then
+            cs=$_ble_term_nl$cs
+          fi
           cs=${_ble_string_prototype::cols-x}$cs
           ((x=cols,changed=1,wrapping=1))
         fi
@@ -981,11 +1118,7 @@ function ble/textmap#update {
           ((y++,x-=cols))
         done
         if ((x==cols)); then
-          if ((xenl)); then
-            cs=$cs$_ble_term_nl
-            changed=1
-          fi
-          ((y++,x=0))
+          ble/textmap#update/.wrap
         fi
       fi
 
@@ -1378,6 +1511,11 @@ function ble/canvas/panel#goto.draw {
   local index=$1 x=${2-0} y=${3-0} ret
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"
   ble/canvas/goto.draw "$x" $((ret+y))
+}
+## 関数 ble/canvas/panel#put.draw panel text x y
+function ble/canvas/panel#put.draw {
+  ble/canvas/put.draw "$2"
+  ble/canvas/panel#report-cursor-position "$1" "$3" "$4"
 }
 function ble/canvas/panel#report-cursor-position {
   local index=$1 x=${2-0} y=${3-0} ret
