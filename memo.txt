@@ -846,10 +846,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-09
-
-  * complete: ~/ble 等と ~/ に続けて存在しないファイル名を入力すると物凄く処理に時間がかかる
-
 2019-03-08
 
   * canvas: ble/canvas/trace を大幅に書き換えようと思う。
@@ -2277,7 +2273,7 @@ bash_tips
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
   - complete: support menu pages `#D0958` ff43e01 a488e01
-  - edit: support `bleopt rps1=` for the right prompt `#D0959`
+  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -2298,6 +2294,7 @@ bash_tips
   - reload: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938` 1107ca8
   - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
   - vi_nmap (`/`, `?`, `n`, `N`): fix search progress `#D0944` f20f840
+  - complete: fix a problem of slow ambiguous filename matching in nested directries `#D0960`
 
   内部的変更
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
@@ -3160,6 +3157,13 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-09
+
+  * complete: ~/ble 等と ~/ に続けて存在しないファイル名を入力すると物凄く処理に時間がかかる [#D0960]
+    途中の処理中断が働いていないという事が考えられる。
+
+    ble/complete/source:file/.construct-ambiguous-pathname-pattern が緩すぎて、
+    /home/murase/ble に対して m (substr 一致) で /*/*/* が生成されていた。
+    もっと厳しく判定する事にした。速くなった。
 
   * edit: bleopt rps1 に対応 (RPROMPT (RPS1) 実装) [#D0959]
 

@@ -709,19 +709,23 @@ function ble/complete/util/eval-pathname-expansion {
 ##   @var[out] ret
 ##
 ##   @remarks
-##     a*/b*/g* だと曖昧一致しないファイル名も生成されるが、
-##     生成後のフィルタによって一致しないものは除去されるので気にしない。
+##     当初は a*/b*/g* で生成して、後のフィルタに一致しないものの除外を一任していたが遅い。
+##     従って、a*l*p*h*a*/b*e*t*a*/g*a*m*m*a* の様なパターンを生成する様に変更した。
 ##
 function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
   local path=$1 fixlen=${2:-1}
-  local pattern= i=0
+  local pattern= i=0 j
   local names; ble/string#split names / "$1"
   local name
   for name in "${names[@]}"; do
     ((i++)) && pattern=$pattern/
     if [[ $name ]]; then
       ble/string#escape-for-bash-glob "${name::fixlen}"
-      pattern="$pattern$ret*"
+      pattern=$pattern$ret*
+      for ((j=fixlen;j<${#name};j++)); do
+        ble/string#escape-for-bash-glob "${name:j:1}"
+        pattern=$pattern$ret*
+      done
     fi
   done
   [[ $pattern ]] || pattern="*"
@@ -787,8 +791,9 @@ function ble/complete/source:file/.impl {
     fi
   fi
 
-  local cand
+  local cand i=0
   for cand in "${candidates[@]}"; do
+    ((i++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
     ble/complete/cand/yield "$action" "$cand"
   done
@@ -1282,6 +1287,7 @@ function ble/complete/source:argument {
   local comp_opts=:
 
   ble/complete/candidates/filter:"$comp_filter_type"/filter
+  (($?==148)) && return 148
   local old_cand_count=$cand_count
 
   # try complete&compgen
