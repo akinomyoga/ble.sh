@@ -846,6 +846,10 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-03-09
+
+  * bleopt: openat_base -> internal_openat_base
+
 2019-03-04
 
   * complete: menu-filter の編集領域を着色する案
@@ -896,6 +900,9 @@ bash_tips
     事前に計算しておく事にするか? その場合には tab 等の文字が含まれていた場合に困る。
     と思ったが、tab の場合はスペースに変換するので問題ない。
     垂直タブやカーソル移動等が含まれる場合はサポート外とすれば良い。
+
+    2019-03-09 これは trace.draw で nooverflow を実装したので
+    一行に収まる様にして簡単に実装できる筈。
 
 2019-02-10
 
@@ -2206,7 +2213,9 @@ bash_tips
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
   - complete: support menu pages `#D0958` ff43e01 a488e01
-  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0963` fa2a874
+  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874
+  - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
+  - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3090,9 +3099,13 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-03-10
+
+  * menu_complete: support prior, next, home, end [#D0966]
+
 2019-03-09
 
-  * 2019-03-03 complete: desc の着色に対応する? [#D0964]
+  * 2019-03-03 complete: desc の着色に対応する? [#D0965]
 
     これは trace を弄る必要がある。trace は多分、範囲の指定に対応していない。
     一応見てみると LINES 及び COLULMNS を読み取って使っているが…。
@@ -3103,7 +3116,7 @@ bash_tips
     しかし、そもそも色のついた desc を生成する物がないので、
     実装する意義は今のところない。
 
-    2019-03-09 #D0963 に於いて範囲をはみ出ない様な trace を実装した。
+    2019-03-09 #D0964 に於いて範囲をはみ出ない様な trace を実装した。
     なので実は実装しようと思えば簡単に実装する事ができる。
     →実際に .construct-text を置き換えてみたところ普通に動作している…。
     計算時間に関しても特に無駄にかかっているという様な印象はない。
@@ -3159,7 +3172,7 @@ bash_tips
 
       * 切り替えられる様にした。desc-raw とした時に trace を用いる事にした。
 
-  * 2019-03-08 canvas: ble/canvas/trace を大幅に書き換えようと思う [#D0963]
+  * 2019-03-08 canvas: ble/canvas/trace を大幅に書き換えようと思う [#D0964]
 
     complete: desc で色のついた説明を表示できる様にする事に関連して。
 
@@ -3207,7 +3220,7 @@ bash_tips
     まあ、こんな物である。また本格的に Window System でも作る時に手を入れる
     必要が出てくるかもしれないが今はこれ以上の拡張は行わない事にする。
 
-  * [自然解消] 2013-06-05 RPS1 [#D0962]
+  * [自然解消] 2013-06-05 RPS1 [#D0963]
     zsh で試してみた所、そもそも RPS1 に改行を含めると RPS1 自体表示されない事が分かった。
     改行は含まれていないと仮定して表示してしまっても良いのかも知れない(2015-03-04)。
 

@@ -2929,8 +2929,13 @@ function ble/highlight/layer:region/mark:menu_complete/get-face {
   face=menu_complete
 }
 
+## 関数 ble/complete/menu-complete/select index [opts]
+##   @param[in] opts
+##     goto-page-top
+##       指定した項目を含む頁に移動した後に、
+##       その頁の一番上の項目に移動する事を指定します。
 function ble/complete/menu-complete/select {
-  local osel=$_ble_complete_menu_selected nsel=$1
+  local osel=$_ble_complete_menu_selected nsel=$1 opts=$2
   local ncand=${#_ble_complete_menu_pack[@]}
   ((0<=osel&&osel<ncand)) || osel=-1
   ((0<=nsel&&nsel<ncand)) || nsel=-1
@@ -2976,6 +2981,7 @@ function ble/complete/menu-complete/select {
 
   local value=
   if ((nsel>=0)); then
+    [[ :$opts: == *:goto-page-top:* ]] && nsel=$visible_beg
     local entry=${_ble_complete_menu_items[nsel-visible_beg]}
     local fields text=${entry#*:}
     ble/string#split fields , "${entry%%:*}"
@@ -3110,6 +3116,30 @@ function ble/widget/menu_complete/backward-line {
     return 1
   fi
 }
+function ble/widget/menu_complete/backward-page {
+  if ((_ble_complete_menu_offset>0)); then
+    ble/complete/menu-complete/select $((_ble_complete_menu_offset-1)) goto-page-top
+  else
+    ble/widget/.bell "menu-complete: this is the first page."
+    return 1
+  fi
+}
+function ble/widget/menu_complete/forward-page {
+  local next=$((_ble_complete_menu_offset+${#_ble_complete_menu_items[@]}))
+  if ((next<${#_ble_complete_menu_pack[@]})); then
+    ble/complete/menu-complete/select "$next"
+  else
+    ble/widget/.bell "menu-complete: this is the last page."
+    return 1
+  fi
+}
+function ble/widget/menu_complete/beginning-of-page {
+  ble/complete/menu-complete/select "$_ble_complete_menu_offset"
+}
+function ble/widget/menu_complete/end-of-page {
+  local nitem=${#_ble_complete_menu_items[@]}
+  ((nitem)) && ble/complete/menu-complete/select $((_ble_complete_menu_offset+nitem-1))
+}
 
 function ble/widget/menu_complete/exit {
   local opts=$1
@@ -3193,6 +3223,10 @@ function ble-decode/keymap:menu_complete/define {
   ble-bind -f down        'menu_complete/forward-line'
   ble-bind -f C-p         'menu_complete/backward-line'
   ble-bind -f up          'menu_complete/backward-line'
+  ble-bind -f prior       'menu_complete/backward-page'
+  ble-bind -f next        'menu_complete/forward-page'
+  ble-bind -f home        'menu_complete/beginning-of-page'
+  ble-bind -f end         'menu_complete/end-of-page'
 }
 
 #------------------------------------------------------------------------------
