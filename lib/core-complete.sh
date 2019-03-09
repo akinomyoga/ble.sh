@@ -2687,7 +2687,7 @@ function ble/widget/complete {
   if [[ :$opts: == *:enter_menu:* ]]; then
     [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
       ble/complete/menu-complete/enter && return
-  elif [[ $bleopt_complete_menu_complete && $_ble_complete_menu_active != auto ]]; then
+  elif [[ $bleopt_complete_menu_complete ]]; then
     if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* && :$opts: != *:insert_all:* ]]; then
       local footprint; ble/complete/menu/get-footprint
       [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
@@ -2701,7 +2701,9 @@ function ble/widget/complete {
   local comps_rex_ambiguous
   local cand_count
   local -a cand_cand cand_word cand_pack
-  if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* && ${#_ble_complete_menu_items[@]} -gt 0 ]]; then
+  if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
+          :$opts: != *:context=*:* && ${#_ble_complete_menu_items[@]} -gt 0 ]]
+  then
     menu_show_opts=$menu_show_opts:menu-source # 既存の filter 前候補を保持する
     ble/complete/menu/generate-candidates-from-menu; local ext=$?
   else
@@ -2799,8 +2801,7 @@ function ble/widget/complete {
     fi
     ble/complete/menu/show "$menu_show_opts" || return
   elif [[ $insert_flags == *n* ]]; then
-    ble/widget/complete show_menu || return
-    _ble_complete_menu_active=auto
+    ble/widget/complete show_menu:regenerate || return
   else
     _ble_complete_state=complete
     ble/complete/menu/clear

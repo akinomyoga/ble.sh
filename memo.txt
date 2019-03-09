@@ -879,11 +879,6 @@ bash_tips
 
     * done: RPROMPT の表示にも使うことができるかもしれない → #D0959 実装した
 
-2019-03-05
-
-  * complete: "ble/complete/" の状態から menu-complete に入る事ができない
-    これは後で調べる必要がある。
-
 2019-03-04
 
   * complete: menu-filter の編集領域を着色する案
@@ -2282,6 +2277,7 @@ bash_tips
     - complete: fix a bug that menu-complete is disabled after `menu-filter` `#D0951` 08cba07
     - complete: fix a bug that wrong action is performed after `menu-filter` `#D0952` 08cba07
     - complete: fix a bug that extra <kbd>TAB</kbd> is needed to enter `menu-complete` `#D0956` aa6bd73
+    - complete: fix a bug that candidates are not regenerated on function name completions `#D0961`
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950` 4efe1a9
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
@@ -2294,7 +2290,7 @@ bash_tips
   - reload: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938` 1107ca8
   - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
   - vi_nmap (`/`, `?`, `n`, `N`): fix search progress `#D0944` f20f840
-  - complete: fix a problem of slow ambiguous filename matching in nested directries `#D0960`
+  - complete: fix a problem of slow ambiguous filename matching in nested directries `#D0960` 7b3ee55
 
   内部的変更
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
@@ -3157,6 +3153,28 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-09
+
+  * 2019-03-05 complete: "ble/complete/" の状態から menu-complete に入る事ができない [#D0961]
+    これは後で調べる必要がある。
+
+    調べてみると $_ble_complete_menu_active の値が auto になっているのが原因だった。
+    では何故 _ble_complete_menu_active=auto の時には menu-complete に入らないのか。
+    と思ったら、これは敢えてその様にしているのだった。二回 complete を押して漸く
+    menu_complete に入れる様にというそういう配慮だった。
+    しかし、今 auto-complete の所為で LASTWIDGET が変化しているので、
+    LASTWIDGET による判定に頼る事ができない。
+
+    よく考えてみたら今では footprint による判定を実行しているので、
+    わざわざ _ble_complete_menu_active=auto 等の様な仕組みは用意しなくて良いのだった。
+
+    実際に削除してみたら動作が変である。filter で一意確定になった状態で
+    complete を実行しようとしても enter_menu になってしまう。
+    うーん。filter で一意確定になる所までは良い。
+    問題はその一意確定が唯の prefix として生成された物であって、
+    実際には完全な候補ではないという事である。
+    なので候補を再生成しなければならないが、
+    現在 menu から候補を読み取る機能を実装してしまった為に、
+    再生成が行われなくなったというのが問題点である。
 
   * complete: ~/ble 等と ~/ に続けて存在しないファイル名を入力すると物凄く処理に時間がかかる [#D0960]
     途中の処理中断が働いていないという事が考えられる。
