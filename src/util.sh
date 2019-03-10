@@ -2244,10 +2244,11 @@ ble/term/visible-bell/.initialize
 function ble/term/audible-bell {
   builtin echo -n '' 1>&2
 }
+## 関数 ble/term/visible-bell message [opts]
 function ble/term/visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
   local cols=${COLUMNS:-80}
-  local message="$*"
+  local message=$1 opts=$2
   message=${message:-$bleopt_vbell_default_message}
 
   # 一行に収まる様に切り詰める
@@ -2266,6 +2267,8 @@ function ble/term/visible-bell {
 
       ble/util/msleep 50
       builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
+
+      [[ :$opts: == *:persistent:* ]] && exit
 
       # load time duration settings
       declare msec=$bleopt_vbell_duration

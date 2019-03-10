@@ -1971,6 +1971,7 @@ _ble_complete_menu0_comp=()
 _ble_complete_menu0_pack=()
 _ble_complete_menu_selected=-1
 _ble_complete_menu_comp=()
+_ble_complete_menu_ipage=
 _ble_complete_menu_offset=
 _ble_complete_menu_items=()
 _ble_complete_menu_info_data=()
@@ -2247,6 +2248,7 @@ function ble/complete/menu/style:align/construct {
   done
 
   menu_items=("${items[@]:begin:end-begin}")
+  menu_ipage=$ipage
   menu_offset=$begin
   _ble_complete_menu_style_align_version=$version
   _ble_compelte_menu_style_align_measure=("${measure[@]}")
@@ -2351,6 +2353,7 @@ function ble/complete/menu/style:dense/construct {
   done
 
   menu_items=("${items[@]:begin:end-begin}")
+  menu_ipage=$ipage
   menu_offset=$begin
   _ble_complete_menu_style_dense_version=$version
   _ble_compelte_menu_style_dense_items=("${items[@]}")
@@ -2386,6 +2389,7 @@ function ble/complete/menu/style:desc/construct {
         local begin=${fields[0]} end=${fields[1]}
         x=${fields[2]} y=${fields[3]} esc=${page_data#*:}
         menu_items=("${_ble_compelte_menu_style_desc_items[@]:begin:end-begin}")
+        menu_ipage=$ipage
         menu_offset=$begin
         return
       fi
@@ -2456,6 +2460,7 @@ function ble/complete/menu/style:desc/construct {
   _ble_complete_menu_style_desc_version=$version
   _ble_compelte_menu_style_desc_pages[ipage]=$begin,$end,$x,$y:$esc
   menu_items=("${_ble_compelte_menu_style_desc_items[@]:begin:end-begin}")
+  menu_ipage=$ipage
   menu_offset=$offset
 }
 function ble/complete/menu/style:desc-raw/construct {
@@ -2516,18 +2521,19 @@ function ble/complete/menu/show {
   ble-edit/info/.initialize-size
 
   if ((${#cand_pack[@]})); then
-    local x y esc menu_items menu_offset=0
+    local x y esc menu_items menu_offset=0 menu_ipage=
     ble/function#try ble/complete/menu/style:"$menu_style"/construct "$opts" || return
 
     local info_data
     info_data=(store "$x" "$y" "$esc")
   else
-    local menu_items info_data menu_offset=0
+    local menu_items info_data menu_offset=0 menu_ipage=
     menu_items=()
     info_data=(ansi $'\e[38;5;242m(no candidates)\e[m')
   fi
 
   ble-edit/info/immediate-show "${info_data[@]}"
+  _ble_complete_menu_ipage=$menu_ipage
   _ble_complete_menu_offset=$menu_offset
   _ble_complete_menu_common_part=$menu_common_part
   _ble_complete_menu_pack=("${cand_pack[@]}")
@@ -3093,6 +3099,13 @@ function ble/complete/menu-complete/select {
     ble-edit/info/.initialize-size
     ble/complete/menu/show filter:load-filtered-data:scroll="$nsel"; local ext=$?
     ((ext)) && return "$ext"
+
+    if [[ $_ble_complete_menu_ipage ]]; then
+      local ipage=$_ble_complete_menu_ipage
+      ble/term/visible-bell "menu-complete: Page $((ipage+1))" persistent
+    else
+      ble/term/visible-bell "menu-complete: Offset $_ble_complete_menu_offset/$ncand" persistent
+    fi
 
     visible_beg=$_ble_complete_menu_offset
     visible_end=$((visible_beg+${#_ble_complete_menu_items[@]}))
