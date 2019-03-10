@@ -668,7 +668,7 @@ function ble-edit/prompt/update {
     local y1=${_ble_edit_rprompt_bbox[1]}
     local x2=${_ble_edit_rprompt_bbox[2]}
     local y2=${_ble_edit_rprompt_bbox[3]}
-    LINES=1 ble-edit/prompt/.instantiate "$bleopt_rps1" nooverflow:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
+    LINES=1 ble-edit/prompt/.instantiate "$bleopt_rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
     _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$val")
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
   fi
@@ -707,7 +707,7 @@ function ble-edit/info/.construct-content {
   local type=$1 text=$2
   case "$1" in
   (ansi|esc)
-    local trace_opts=nooverflow
+    local trace_opts=truncate
     [[ $1 == esc ]] && trace_opts=$trace_opts:terminfo
     local ret= g=0
     LINES=$lines ble/canvas/trace "$text" "$trace_opts"
@@ -3301,7 +3301,7 @@ function ble-edit/exec/.adjust-eol {
   if [[ $bleopt_prompt_eol_mark != "${_ble_edit_exec_eol_mark[0]}" ]]; then
     if [[ $bleopt_prompt_eol_mark ]]; then
       local ret= x=0 y=0 g=0 x1=0 x2=0 y1=0 y2=0
-      LINES=1 COLUMNS=80 ble/canvas/trace "$bleopt_prompt_eol_mark" nooverflow:measure-bbox
+      LINES=1 COLUMNS=80 ble/canvas/trace "$bleopt_prompt_eol_mark" truncate:measure-bbox
       _ble_edit_exec_eol_mark=("$bleopt_prompt_eol_mark" "$ret" "$x2")
     else
       _ble_edit_exec_eol_mark=('' '' 0)
@@ -3315,7 +3315,7 @@ function ble-edit/exec/.adjust-eol {
     ble/canvas/put.draw "$_ble_term_sc"
     if ((_ble_edit_exec_eol_mark[2]>cols)); then
       local x=0 y=0 g=0
-      LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$bleopt_prompt_eol_mark" nooverflow
+      LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$bleopt_prompt_eol_mark" truncate
     else
       ble/canvas/put.draw "$eol_mark"
     fi

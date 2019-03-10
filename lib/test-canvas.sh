@@ -16,7 +16,7 @@ function test1 {
   echo
 
   LINES=1 COLUMNS=20 x=0 y=0
-  ble/canvas/trace.draw '12345678901234567890hello' nooverflow
+  ble/canvas/trace.draw '12345678901234567890hello' confine
   ble/canvas/flush.draw
 }
 test1

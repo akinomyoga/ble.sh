@@ -2445,7 +2445,7 @@ function ble/complete/menu/style:desc/construct {
     local desc="(action: $ACTION)"
     ble/function#try ble/complete/action:"$ACTION"/get-desc
     if [[ $opt_raw ]]; then
-      y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace "$desc" nooverflow:relative:ellipsis
+      y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace "$desc" truncate:relative:ellipsis
     else
       y=0 lines=1 ble/canvas/trace-text "$desc" nonewline
     fi

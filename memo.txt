@@ -2126,6 +2126,7 @@ bash_tips
     - menu-filter: cancel menu-filter when the word ends `#D0974` 6ce2ad2
     - menu-filter: improve highlight `#D0975` b89f39f
   - isearch: show progress bar using unicode chars `#D0978` 51e600a
+  - main: support `ble-reload` ef51490
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3013,6 +3014,20 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * menu-complete (desc-raw): 頁生成が遅い [#D0981]
+    trace で nooverflow を指定していても文字列の末尾までスキャンしている気がする。
+    更に言うと、ellipsis を付加する処理を何度でも実行してしまっている。
+    特に ellipsis は余り頻繁に起こらないと思って遅い実装になっているが、
+    今の実装だと ellipsis は全角文字の数だけ起こるのでとても非効率的である。
+
+    trace は制御シーケンスを解釈するので一旦範囲外に行っても、
+    また戻ってきて範囲内に文字列を出力する可能性がある。
+    その為に文字列の末尾まで全てスキャンしているのであった。
+
+    新しく ble/canvas/trace に truncate と confine の二種類を実装した。
+    confine が今まで通り範囲外に行きそうになっても全て処理するもの。
+    truncate は範囲外に行ったら其処で処理を終了するもの。
 
   * menu-complete: ページ番号を visible-bell で表示するのはどうだろうか [#D0980]
 

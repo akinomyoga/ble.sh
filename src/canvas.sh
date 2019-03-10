@@ -418,8 +418,16 @@ function ble/canvas/bflush.draw {
 ##   @param[in,opt] opts
 ##     コロン区切りのオプションの列を指定します。
 ##
-##     nooverflow
-##       LINES COLUMNS で指定される範囲外になる文字列を出力しません
+##     truncate
+##       LINES COLUMNS で指定される範囲外に出た時、処理を中断します。
+##
+##     confine
+##       LINES COLUMNS の範囲外に文字出力・移動を行いません。
+##       制御シーケンスにより範囲内に戻る可能性もあります。
+##
+##     ellipsis
+##       LINES COLUMNS の範囲外に文字を出力しようとした時に、
+##       三点リーダを末尾に上書きします。
 ##
 ##     relative
 ##       x y を相対位置と考えて移動を行います。
@@ -488,19 +496,25 @@ function ble/canvas/trace/.goto {
   fi
   ((x=x1,y=y1))
 }
-function ble/canvas/trace/.put-ellipsis {
-  [[ :$opts: == *:ellipsis:* ]] || return
-  if ble/util/is-unicode-output; then
-    local ellipsis='…' ret
-    ble/util/s2c "$ellipsis"; ble/util/c2w "$ret"; local w=$ret
-  else
-    local ellipsis=... w=3
+function ble/canvas/trace/.process-overflow {
+  [[ :$opts: == *:truncate:* ]] && i=$iN # stop
+  if [[ :$opts: == *:ellipsis:* ]]; then
+    if ble/util/is-unicode-output; then
+      local ellipsis='…' ret
+      ble/util/s2c "$ellipsis"; ble/util/c2w "$ret"; local w=$ret
+    else
+      local ellipsis=... w=3
+    fi
+    local x0=$x y0=$y
+    ble/canvas/trace/.goto $((cols-w)) $((lines-1))
+    ble/canvas/put.draw "$ellipsis"
+    ((x+=w,x>=cols&&!opt_relative&&!xenl)) && ((x=0,y++))
+    ble/canvas/trace/.goto "$x0" "$y0"
+    if [[ $opt_measure ]]; then
+      ((x2<cols&&(x2=cols)))
+      ((y2<lines-1&&(y2=lines-1)))
+    fi
   fi
-  local x0=$x y0=$y
-  ble/canvas/trace/.goto $((cols-w)) $((lines-1))
-  ble/canvas/put.draw "$ellipsis"
-  ((x+=w,x>=cols&&!opt_relative&&!xenl)) && ((x=0,y++))
-  ble/canvas/trace/.goto "$x0" "$y0"
 }
 
 function ble/canvas/trace/.SC {
@@ -517,8 +531,8 @@ function ble/canvas/trace/.RC {
 }
 function ble/canvas/trace/.NEL {
   if [[ $opt_nooverflow ]] && ((y+1>=lines)); then
-    ble/canvas/trace/.put-ellipsis
-    return
+    ble/canvas/trace/.process-overflow
+    return 1
   fi
   if [[ $opt_relative ]]; then
     ((x)) && ble/canvas/put-cub.draw "$x"
@@ -528,6 +542,7 @@ function ble/canvas/trace/.NEL {
     ble/canvas/put.draw "$_ble_term_nl"
   fi
   ((y++,x=0,lc=32,lg=0))
+  return 0
 }
 ## 関数 ble/canvas/trace/.SGR/arg_next
 ##   @var[in    ] f
@@ -755,7 +770,7 @@ function ble/canvas/trace/.impl {
   ((${#st}>=2)) && st=
 
   # options
-  local opt_nooverflow=; [[ :$opts: == *:nooverflow:* ]] && opt_nooverflow=1
+  local opt_nooverflow=; [[ :$opts: == *:truncate:* || :$opts: == *:confine:* ]] && opt_nooverflow=1
   local opt_relative=; [[ :$opts: == *:relative:* ]] && opt_relative=1
   local opt_measure=; [[ :$opts: == *:measure-bbox:* ]] && opt_measure=1
   [[ :$opts: != *:left-char:* ]] && local lc=32 lg=0
@@ -783,7 +798,7 @@ function ble/canvas/trace/.impl {
   local i=0 iN=${#text}
   while ((i<iN)); do
     local tail=${text:i}
-    local w=0
+    local w=0 is_overflow=
     if [[ $tail == [-]* ]]; then
       local s=${tail::1}
       ((i++))
@@ -858,10 +873,7 @@ function ble/canvas/trace/.impl {
       w=${#s}
       if [[ $opt_nooverflow ]]; then
         local wmax=$((lines*cols-(y*cols+x)))
-        if ((w>wmax)); then
-          ble/canvas/trace/.put-ellipsis
-          w=$wmax
-        fi
+        ((w>wmax)) && w=$wmax is_overflow=1
       fi
       if [[ $opt_relative ]]; then
         local t=${s::w} tlen=$w len=$((cols-x))
@@ -893,8 +905,7 @@ function ble/canvas/trace/.impl {
       ble/util/s2c "$tail" 0; local c=$ret
       ble/util/c2w "$c"; local w=$ret
       if [[ $opt_nooverflow ]] && ! ((x+w<=cols||y+1<lines&&w<=cols)); then
-        ble/canvas/trace/.put-ellipsis
-        w=0
+        w=0 is_overflow=1
       else
         lc=$c lg=$g
         if ((x+w>cols)); then
@@ -931,6 +942,7 @@ function ble/canvas/trace/.impl {
       ((x<x1?(x=x1):x>x2?(x2=x):1))
       ((y<y1?(y=y1):y>y2?(y2=y):1))
     fi
+    [[ $is_overflow ]] && ble/canvas/trace/.process-overflow
   done
   [[ $opt_measure ]] && ((y2++))
 }
