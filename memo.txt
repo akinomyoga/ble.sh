@@ -2117,7 +2117,7 @@ bash_tips
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
   - complete: support menu pages `#D0958` ff43e01 a488e01
-    - menu-complete: show page numbers with `visible-bell` `#D0980`
+    - menu-complete: show page numbers with `visible-bell` `#D0980` 6297e65
   - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874 `#D0970` 87c8348
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23

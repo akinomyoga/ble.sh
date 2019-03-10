@@ -494,6 +494,7 @@ function ble/base/print-usage-for-no-argument-command {
   [[ $1 != --help ]] && return 2
   return 0
 }
+function ble-reload { source "$_ble_base/ble.sh"; }
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
 function ble-update {
   if (($#)); then
@@ -516,7 +517,7 @@ function ble-update {
     ( ble/bin/mkdir -p "$_ble_base/src" && builtin cd "$_ble_base/src" &&
         git clone https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
         builtin cd ble.sh && make all && make INSDIR="$_ble_base" install ) &&
-      source "$_ble_base/ble.sh"
+      ble-reload
     return
   fi
 
@@ -527,7 +528,7 @@ function ble-update {
         if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
           make INSDIR="$_ble_base" install
         fi ) &&
-      source "$_ble_base/ble.sh"
+      ble-reload
     return
   fi
 
