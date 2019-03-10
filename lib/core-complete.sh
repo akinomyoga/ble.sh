@@ -2717,6 +2717,7 @@ function ble/widget/complete {
   then
     menu_show_opts=$menu_show_opts:menu-source # 既存の filter 前候補を保持する
     ble/complete/menu/generate-candidates-from-menu; local ext=$?
+    local bleopt_complete_menu_style=$_ble_complete_menu_style
   else
     ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
   fi

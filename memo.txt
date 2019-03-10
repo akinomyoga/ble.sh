@@ -2163,7 +2163,7 @@ bash_tips
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
-  - complete: highlight active ranges of `menu-filter` `#D0969` 500f702 `#D0971`
+  - complete: highlight active ranges of `menu-filter` `#D0969` 500f702 `#D0971` aae8b26
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -2173,6 +2173,7 @@ bash_tips
     - complete: fix a bug that wrong action is performed after `menu-filter` `#D0952` 08cba07
     - complete: fix a bug that extra <kbd>TAB</kbd> is needed to enter `menu-complete` `#D0956` aa6bd73
     - complete: fix a bug that candidates are not regenerated on function name completions `#D0961` bbea72e
+    - complete: fix a problem that the menu style is reset on `menu-complete` `#D0972`
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950` 4efe1a9
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
@@ -3048,6 +3049,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * menu-complete: menu-filter の後に menu-complete に突入する際に menu_style が保持されない [#D0972]
+    これはメニューから候補を読み取る際に _ble_complete_menu_style から
+    bleopt_complete_menu_style を local 復元するという様にする事にした。
 
   * menu-filter: コマンドを実行した時に着色が解除されない [#D0971]
     これは region の時と同じ様に _ble_complete_menu_active を解除すれば良いだろう。
