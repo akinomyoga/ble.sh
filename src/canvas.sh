@@ -469,6 +469,29 @@ function ble/canvas/bflush.draw {
 ##     それ以外はカーソル位置の変更は行いません。
 ##
 
+## 関数 ble/canvas/trace/.goto x1 y1
+##   @var[in,out] x y
+##   Note: lc lg の面倒は呼び出し元で見る。
+function ble/canvas/trace/.goto {
+  local x1=$1 y1=$2
+  if [[ $opt_relative ]]; then
+    ble/canvas/rmoveto.draw $((x1-x)) $((y1-y))
+  else
+    ble/canvas/put-cup.draw $((y1+1)) $((x1+1))
+  fi
+  ((x=x1,y=y1))
+}
+function ble/canvas/trace/.put-ellipsis {
+  [[ :$opts: == *:ellipsis:* ]] || return
+  local ellipsis='…' ret
+  ble/util/s2c "$ellipsis"; ble/util/c2w "$ret"; local w=$ret
+  local x0=$x y0=$y
+  ble/canvas/trace/.goto $((cols-w)) $((lines-1))
+  ble/canvas/put.draw "$ellipsis"
+  ((x+=w,x>=cols&&!opt_relative&&!xenl)) && ((x=0,y++))
+  ble/canvas/trace/.goto "$x0" "$y0"
+}
+
 function ble/canvas/trace/.SC {
   trace_scosc=("$x" "$y" "$g" "$lc" "$lg")
   ble/canvas/put.draw "$_ble_term_sc"
@@ -482,7 +505,10 @@ function ble/canvas/trace/.RC {
   ble/canvas/put.draw "$_ble_term_rc"
 }
 function ble/canvas/trace/.NEL {
-  [[ $opt_nooverflow ]] && ((y+1>=lines)) && return
+  if [[ $opt_nooverflow ]] && ((y+1>=lines)); then
+    ble/canvas/trace/.put-ellipsis
+    return
+  fi
   if [[ $opt_relative ]]; then
     ((x)) && ble/canvas/put-cub.draw "$x"
     ble/canvas/put-cud.draw 1
@@ -617,15 +643,12 @@ function ble/canvas/trace/.process-csi-sequence {
       # HVP "CSI f"
       local -a params
       params=(${param//[^0-9]/ })
-      ((x=params[1]-1))
-      ((y=params[0]-1))
-      ((x<0&&(x=0),x>=cols&&(x=cols-1),
-        y<0&&(y=0),y>=lines&&(y=lines-1)))
-      if [[ $opt_relative ]]; then
-        ble/canvas/rmoveto.draw $((x-x0)) $((y-y0))
-      else
-        ble/canvas/put-cup.draw $((y+1)) $((x+1))
-      fi
+      local x1 y1
+      ((x1=params[1]-1))
+      ((y1=params[0]-1))
+      ((x1<0&&(x1=0),x1>=cols&&(x1=cols-1),
+        y1<0&&(y1=0),y1>=lines&&(y1=lines-1)))
+      ble/canvas/trace/.goto "$x1" "$y1"
       lc=-1 lg=0
       return ;;
     ([su]) # SCOSC SCORC
@@ -819,10 +842,13 @@ function ble/canvas/trace/.impl {
       w=${#s}
       if [[ $opt_nooverflow ]]; then
         local wmax=$((lines*cols-(y*cols+x)))
-        ((w>wmax)) && w=$wmax
+        if ((w>wmax)); then
+          ble/canvas/trace/.put-ellipsis
+          w=$wmax
+        fi
       fi
       if [[ $opt_relative ]]; then
-        local t=$s tlen=$w len=$((cols-x))
+        local t=${s::w} tlen=$w len=$((cols-x))
         if [[ $opt_measure ]]; then
           if ((tlen>len)); then
             ((x1>0&&(x1=0)))
@@ -851,6 +877,7 @@ function ble/canvas/trace/.impl {
       ble/util/s2c "$tail" 0; local c=$ret
       ble/util/c2w "$c"; local w=$ret
       if [[ $opt_nooverflow ]] && ! ((x+w<=cols||y+1<lines&&w<=cols)); then
+        ble/canvas/trace/.put-ellipsis
         w=0
       else
         lc=$c lg=$g

@@ -2352,6 +2352,7 @@ function ble/complete/menu/style:dense/construct {
 
   menu_items=("${items[@]:begin:end-begin}")
   menu_offset=$begin
+  _ble_complete_menu_style_dense_version=$version
   _ble_compelte_menu_style_dense_items=("${items[@]}")
   _ble_compelte_menu_style_dense_pages=("${pages[@]}")
   return 0
@@ -2360,17 +2361,40 @@ function ble/complete/menu/style:dense-nowrap/construct {
   ble/complete/menu/style:dense/construct "$@"
 }
 
+_ble_compelte_menu_style_desc_version=
+_ble_compelte_menu_style_desc_items=()
+_ble_compelte_menu_style_desc_pages=()
 function ble/complete/menu/style:desc/construct {
   local ret iloop=0 opts=$1
 
   local opt_raw=; [[ $menu_style == desc-raw ]] && opt_raw=1
 
   # offset 開始位置を scroll から決定
-  local offset=0 rex=':scroll=([0-9]+):'
+  local version=${#cand_pack[@]}:$lines:$cols
+  local cache_expires=1
+  local ipage=0 offset=0 rex=':scroll=([0-9]+):'
   if [[ :$opts: =~ $rex ]]; then
     local scroll=${BASH_REMATCH[1]}
     ((${#cand_pack[@]}&&(scroll%=${#cand_pack[@]})))
-    ((offset=scroll/lines*lines))
+    ((ipage=scroll/lines,offset=ipage*lines))
+
+    if [[ $_ble_complete_menu_style_desc_version == $version ]]; then
+      cache_expires=
+      local page_data=${_ble_compelte_menu_style_desc_pages[ipage]}
+      if [[ $page_data ]]; then
+        local fields; ble/string#split fields , "${page_data%%:*}"
+        local begin=${fields[0]} end=${fields[1]}
+        x=${fields[2]} y=${fields[3]} esc=${page_data#*:}
+        menu_items=("${_ble_compelte_menu_style_desc_items[@]:begin:end-begin}")
+        menu_offset=$begin
+        return
+      fi
+    fi
+  fi
+  if [[ $cache_expires ]]; then
+    _ble_compelte_menu_style_desc_version=$version
+    _ble_compelte_menu_style_desc_pages=()
+    _ble_compelte_menu_style_desc_items=()
   fi
 
   # 各候補を描画して幅を計算する
@@ -2393,9 +2417,7 @@ function ble/complete/menu/style:desc/construct {
   local desc_prefix=; ((cols-desc_x>30)) && desc_prefix='| '
 
   x=0 y=0 esc=
-  menu_items=()
-  menu_offset=$offset
-  local entry w s pack esc1 x0 y0 pad
+  local entry w s pack esc1 x0 y0 pad index=$offset
   for entry in "${measure[@]}"; do
     ((iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
 
@@ -2405,7 +2427,7 @@ function ble/complete/menu/style:desc/construct {
 
     # 候補表示
     ((x0=x,y0=y,x+=w))
-    ble/array#push menu_items "$x0,$y0,$x,$y,${#pack},${#esc1}:$pack$esc1"
+    _ble_compelte_menu_style_desc_items[index]=$x0,$y0,$x,$y,${#pack},${#esc1}:$pack$esc1
     esc=$esc$esc1
 
     # 余白
@@ -2420,17 +2442,23 @@ function ble/complete/menu/style:desc/construct {
     ble/function#try ble/complete/action:"$ACTION"/get-desc
     if [[ $opt_raw ]]; then
       local -a DRAW_BUFF=()
-      y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$desc" nooverflow
+      y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$desc" nooverflow:relative:ellipsis
       ble/canvas/sflush.draw
     else
       y=0 lines=1 ble/canvas/trace-text "$desc" nonewline
     fi
     esc=$esc$ret
-
     ((y+1>=lines)) && break
     ((x=0,++y))
     esc=$esc$'\n'
+    ((index++))
   done
+
+  local begin=$offset end=$((offset+lines))
+  _ble_complete_menu_style_desc_version=$version
+  _ble_compelte_menu_style_desc_pages[ipage]=$begin,$end,$x,$y:$esc
+  menu_items=("${_ble_compelte_menu_style_desc_items[@]:begin:end-begin}")
+  menu_offset=$offset
 }
 function ble/complete/menu/style:desc-raw/construct {
   ble/complete/menu/style:desc/construct "$@"

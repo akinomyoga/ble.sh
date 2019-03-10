@@ -1163,7 +1163,7 @@ bash_tips
 
 2018-03-14
 
-  * emacs: C-w を続けて実行すると kill-ring に追記にするべき。
+  * emacs: C-w を続けて実行すると kill-ring に追記にするべき
 
   * info: progress の表示
 
@@ -1815,12 +1815,6 @@ bash_tips
     + vbell の色
       + キーボード入力内容を全部 vbell で表示する方法?
 
-  * bug: 複数行編集でカーソルが一番上にない場合 vbell で編集内容が消される。 @@@
-
-    元々 vbell を実装した時は複数行になる事を想定していなかった (複数行にできなかった)。
-    現在は複数行に対応したので特別の配慮が必要である。
-    (ble-edit.sh から値を引っ張ってくる必要があるので interface を決めておく必要はあるが。)
-
 2015-11-06
 
   * まったく同じ nest 状態になると思われるのに解析中断が起こらない
@@ -2153,7 +2147,7 @@ bash_tips
   - syntax: support `set +B` `#D0931` 12f80dd
   - syntax: support aliased keywords `#D0936` 7054e28
   - complete: support `ble-sabbrev -m key=function` `#D0942` bcdf843
-  - complete: support description of candidates `#D0945` `#D0946` 0fa73bf
+  - complete: support description of candidates `#D0945` `#D0946` 0fa73bf `#D0977`
   - complete: support insertion of ambiguous common part `#D0947` 3644a8e
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
@@ -2164,7 +2158,7 @@ bash_tips
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
   - complete: highlight active ranges of `menu-filter` `#D0969` 500f702 `#D0971` aae8b26
     - menu-filter: cancel menu-filter when the word ends `#D0974` 6ce2ad2
-    - menu-filter: improve highlight `#D0975`
+    - menu-filter: improve highlight `#D0975` b89f39f
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3052,6 +3046,17 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * complete (style:desc-raw): 範囲に入り切らない場合に末尾に … を表示する [#D0977]
+    序に style:desc でも頁描画をキャッシュする事にした。
+
+  * [自然解消] 2015-11-21 bug: 複数行編集でカーソルが一番上にない場合 vbell で編集内容が消される [#D0976]
+
+    これは既に #D0878 で解決している。
+
+    元々 vbell を実装した時は複数行になる事を想定していなかった (複数行にできなかった)。
+    現在は複数行に対応したので特別の配慮が必要である。
+    (ble-edit.sh から値を引っ張ってくる必要があるので interface を決めておく必要はあるが。)
 
   * menu-filter: 着色を改良 [#D0975]
     然し、使ってみると menu-filter の範囲の着色は分かりやすいのか分かりにくいのか謎。
