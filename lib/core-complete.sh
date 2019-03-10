@@ -2909,7 +2909,38 @@ ble/function#try ble/util/idle.push-background ble/complete/menu-filter.idle
 
 # ble/highlight/layer:menu_filter
 
-ble/color/defface menu_filter bg=147,bold
+## 関数 ble/highlight/layer/buff#operate-gflags name beg end mask gflags
+function ble/highlight/layer/buff#operate-gflags {
+  local BUFF=$1 beg=$2 end=$3 mask=$4 gflags=$5
+  ((beg<end)) || return
+
+  if [[ $mask == auto ]]; then
+    mask=0
+    (((gflags&_ble_color_gflags_ForeColor)&&(mask|=0xFF<<_ble_color_gflags_ShiftFg)))
+    (((gflags&_ble_color_gflags_BackColor)&&(mask|=0xFF<<_ble_color_gflags_ShiftBg)))
+  fi
+
+  local i g ret
+  for ((i=beg;i<end;i++)); do
+    ble/highlight/layer/update/getg "$i"
+    ((g=g&~mask|gflags))
+    ble/color/g2sgr "$g"
+    builtin eval "$BUFF[$i]=\$ret\${_ble_highlight_layer_plain_buff[$i]}"
+  done
+}
+## 関数 ble/highlight/layer/buff#set-explicit-sgr name index
+function ble/highlight/layer/buff#set-explicit-sgr {
+  local BUFF=$1 index=$2
+  builtin eval "((index<\${#$BUFF[@]}))" || return
+  local g; ble/highlight/layer/update/getg "$index"
+  local ret; ble/color/g2sgr "$g"
+  builtin eval "$BUFF[index]=\$ret\${_ble_highlight_layer_plain_buff[index]}"
+}
+
+# ble/color/defface menu_filter_fixed bg=247,bold
+# ble/color/defface menu_filter_input bg=147,bold
+ble/color/defface menu_filter_fixed bold
+ble/color/defface menu_filter_input fg=16,bg=229
 
 _ble_highlight_layer_menu_filter_buff=()
 _ble_highlight_layer_menu_filter_beg=
@@ -2941,26 +2972,18 @@ function ble/highlight/layer:menu_filter/update {
 
   local umin=$PREV_UMIN umax=$PREV_UMAX
   if [[ $beg ]]; then
-    local g; ble/color/face2g menu_filter; local g0=$g
+    local g
+    ble/color/face2g menu_filter_fixed; local gF=$g
+    ble/color/face2g menu_filter_input; local gI=$g
+    local mid=$_ble_complete_menu0_end
+    ((mid<beg?(mid=beg):(end<mid&&(mid=end))))
 
-    local -a buff=()
-    ble/array#push buff "\"\${$PREV_BUFF[@]::beg}\""
-
-    local i g ret
-    for ((i=beg;i<end;i++)); do
-      ble/highlight/layer/update/getg "$i"
-      ((g=g&~_ble_color_gflags_MaskBg|g0))
-      ble/color/g2sgr "$g"
-      ble/array#push buff "\"$ret\${_ble_highlight_layer_plain_buff[$i]}\""
-    done
-    # local ret; ble/color/g2sgr "$g0"; local sgr=$ret
-    # ble/array#push buff "\"$sgr\${_ble_highlight_layer_plain_buff[@]:beg:end-beg}\""
-
-    local g; ble/highlight/layer/update/getg "$end"
-    local ret; ble/color/g2sgr "$g"
-    ble/array#push buff "\"$ret\${$PREV_BUFF[@]:end}\""
-    builtin eval "_ble_highlight_layer_menu_filter_buff=(${buff[*]})"
-    PREV_BUFF=_ble_highlight_layer_menu_filter_buff
+    local buff_name=_ble_highlight_layer_menu_filter_buff
+    builtin eval "$buff_name=(\"\${$PREV_BUFF[@]}\")"
+    ble/highlight/layer/buff#operate-gflags "$buff_name" "$beg" "$mid" auto "$gF"
+    ble/highlight/layer/buff#operate-gflags "$buff_name" "$mid" "$end" auto "$gI"
+    ble/highlight/layer/buff#set-explicit-sgr "$buff_name" "$end"
+    PREV_BUFF=$buff_name
 
     if [[ $obeg ]]; then :
       ble/highlight/layer:region/.update-dirty-range "$beg" "$obeg"
@@ -2981,10 +3004,17 @@ function ble/highlight/layer:menu_filter/getg {
   local index=$1
   local obeg=$_ble_highlight_layer_menu_filter_beg
   local oend=$_ble_highlight_layer_menu_filter_end
+  local mid=$_ble_complete_menu0_end
   if [[ $obeg ]] && ((obeg<=index&&index<oend)); then
-    ble/color/face2g menu_filter; local g0=$g
+    if ((index<mid)); then
+      ble/color/face2g menu_filter_fixed; local g0=$g
+    else
+      ble/color/face2g menu_filter_input; local g0=$g
+    fi
     ble/highlight/layer/update/getg "$index"
-    ((g=g&~_ble_color_gflags_MaskBg|g0))
+    (((g0&_ble_color_gflags_ForeColor)&&(g&=~_ble_color_gflags_MaskFg)))
+    (((g0&_ble_color_gflags_BackColor)&&(g&=~_ble_color_gflags_MaskBg)))
+    ((g|=g0))
   fi
 }
 

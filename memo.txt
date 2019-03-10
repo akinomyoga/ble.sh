@@ -2163,6 +2163,8 @@ bash_tips
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
   - complete: highlight active ranges of `menu-filter` `#D0969` 500f702 `#D0971` aae8b26
+    - menu-filter: cancel menu-filter when the word ends `#D0974` 6ce2ad2
+    - menu-filter: improve highlight `#D0975`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
