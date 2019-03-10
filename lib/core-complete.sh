@@ -2879,7 +2879,10 @@ function ble/complete/menu-filter {
   [[ $input == "${_ble_complete_menu_comp[2]}" ]] && return 0
 
   local simple_flags simple_ibrace
-  ble/syntax:bash/simple-word/reconstruct-incomplete-word "$input" || return 0
+  if ! ble/syntax:bash/simple-word/reconstruct-incomplete-word "$input"; then
+    ble/syntax:bash/simple-word/is-never-word "$input" && return 1
+    return 0
+  fi
   [[ $simple_ibrace ]] && ((${simple_ibrace%%:*}>10#${_ble_complete_menu0_comp[6]%%:*})) && return 1 # 別のブレース展開要素に入った時
   ble/syntax:bash/simple-word/eval "$ret"
   local COMPV=$ret

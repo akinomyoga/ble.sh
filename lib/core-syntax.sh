@@ -1053,6 +1053,11 @@ function ble/syntax:bash/simple-word/is-simple {
 function ble/syntax:bash/simple-word/is-simple-or-open-simple {
   [[ $1 =~ $_ble_syntax_bash_simple_rex_word || $1 =~ $_ble_syntax_bash_simple_rex_open_word ]]
 }
+function ble/syntax:bash/simple-word/is-never-word {
+  ble/syntax:bash/simple-word/is-simple-or-open-simple && return 1
+  local rex=${_ble_syntax_bash_simple_rex_word%'$'}'[ |&;<>()]'
+  [[ $1 =~ $rex ]]
+}
 
 ## 関数 ble/syntax:bash/simple-word/evaluate-last-brace-expansion simple_word
 ##   @param[in] simple_word

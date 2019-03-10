@@ -2176,7 +2176,7 @@ bash_tips
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950` 4efe1a9
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
-  - util (visible-bell): truncate long messages to fit into a line `#D0973`
+  - util (visible-bell): truncate long messages to fit into a line `#D0973` e55ff86
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -2192,7 +2192,7 @@ bash_tips
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
   - [refactor] do not use brace expansions for `VARNAMES` `#D0955` 711e7df
   - [refactor] `ble-{highlight,complete,syntax}` -> `ble/*` 7aaa660 ae6be66 8ea903c
-  - [refactor] `ble-edit/info/.construct-text` -> `ble/canvas/trace-text` `#D0973`
+  - [refactor] `ble-edit/info/.construct-text` -> `ble/canvas/trace-text` `#D0973` e55ff86
 
 2018-10-05 -- 2019-02-09 (#D0858..#D0914) 6ed51e7..949e9a8
 
@@ -3050,6 +3050,30 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * menu-filter: 着色を改良 [#D0975]
+    然し、使ってみると menu-filter の範囲の着色は分かりやすいのか分かりにくいのか謎。
+    更に、何処が入力の開始点なのかも分からない。
+
+    x 空文字列から補完を開始した時は、
+      menu からの補完を行ってもそれを DEL で戻って修正できるが、
+      有限の長さの文字列から補完を開始した問は、menu からの補完を行うと、
+      補完した部分より前を修正すると menu-filter が終了してしまう。
+      これは何が起こってるのだろうか。
+
+      成る程。分かった。menu-source での更新は行われていない。
+      というか、R を入力した時点で README まで確定しているから、
+      メニューが一番始めに表示されたタイミングが README まで入力した状態だった。
+      従って、其処から絞り込みが開始するというのは自然である。
+      これは寧ろ着色の問題である。
+
+  * menu-filter: 何故か関数名補完で一致する候補が消えても候補が menu-filter で消滅せずに残る [#D0974]
+    うーん。これはあれだろうか。simple-word でなくなった時にそのままにしているのが悪いのか。
+    simple-word でない時には着色だけ解除するという手もあるのかもしれない。
+    或いは、そもそも simple-word でない時には menu-filter を使う気がないと判断するべき?
+
+    うーん。或いは。"simple-word ではあり得ない" という判定を作るのが良いのではないか。
+    →その様に実装した。ble/syntax:bash/simple-word/is-never-word と言う関数名にした。
 
   * 2013-06-01 以前 vbell: メッセージが長い場合に適度に長さを制限する [#D0973]
 
