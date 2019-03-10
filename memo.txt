@@ -846,40 +846,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-04
-
-  * complete: menu-filter の編集領域を着色する案
-
-    編集領域 (get-active-range) を layer:region を用いて着色するのは微妙そうだ。
-    auto-complete と同時に使いたい事もあって、layer:region は
-    auto-complete で一時挿入された部分の着色にも用いられる為である。
-
-    a reject: 実際に試しで実装してみたが region を使って着色するのは色々と微妙である。
-      menu-filter は新しい keymap を導入するわけではないので、
-      self-insert などがそのまま実行される。そうすると region が置換されて消滅してしまう。
-      auto-complete や menu-complete や search の時に問題がなかったのは、
-      特別に keymap を用意しているので self-insert などが region に作用しなかったからである。
-
-      更に当然の事であるが auto-complete が走っている間はそちらを優先しているので着色されない。
-
-    b reject: うーん。別の layer を使って着色を変更する事は可能だろうか。
-      例えば overwrite_mode 及び disabled に関して。
-      然し、着色順序が異なる。syntax の上で region の下に着色を行いたい。
-      overwrite_mode は region と排他的なので、移動は可能かもしれないが、
-      overwrite_mode 自体が self-insert の振る舞いを変更するのでこれは変えられない。
-
-    c 振る舞いは変えないけれども表示だけ変わるというような新しい layer が必要である。
-      更に状態を制御する変数として、caret_state のチェックに menu-filter が有効になっているかどうかも含める必要がある。
-      _ble_complete_menu_* 変数の状態は caret_state として記録しなくても大丈夫だと思われる。
-      というのもこれらが更新されるのは何れにしても _ble_edit_str か _ble_edit_ind が変更される時だからである。
-
-    d 或いは disabled を逆に利用して編集領域以外を灰色で被せるなど?
-      然し、その場合には overwrite_mode や region 等も同じ色で被せてしまう事になるので微妙である。
-
-    やはりもし実現するとしたら新しい layer を作るのが現実的に思われる。
-    現状では余り活性化しない layer が増えてもそんなに重さには影響しないはずである。
-    更に、blink-matching-paren などの機能も考えると結局 layer は増やす事になる気がする。
-
 2019-02-28
 
   * complete: sabbrev に登録されている単語の補完もあっても良い気がする
@@ -2195,8 +2161,9 @@ bash_tips
   - complete: support menu pages `#D0958` ff43e01 a488e01
   - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
-  - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966`
-  - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968`
+  - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
+  - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
+  - complete: highlight active ranges of `menu-filter` `#D0969`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3081,6 +3048,42 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * 2019-03-04 complete: menu-filter の編集領域を着色する案 [#D0969]
+
+    編集領域 (get-active-range) を layer:region を用いて着色するのは微妙そうだ。
+    auto-complete と同時に使いたい事もあって、layer:region は
+    auto-complete で一時挿入された部分の着色にも用いられる為である。
+
+    a reject: 実際に試しで実装してみたが region を使って着色するのは色々と微妙である。
+      menu-filter は新しい keymap を導入するわけではないので、
+      self-insert などがそのまま実行される。そうすると region が置換されて消滅してしまう。
+      auto-complete や menu-complete や search の時に問題がなかったのは、
+      特別に keymap を用意しているので self-insert などが region に作用しなかったからである。
+
+      更に当然の事であるが auto-complete が走っている間はそちらを優先しているので着色されない。
+
+    b reject: うーん。別の layer を使って着色を変更する事は可能だろうか。
+      例えば overwrite_mode 及び disabled に関して。
+      然し、着色順序が異なる。syntax の上で region の下に着色を行いたい。
+      overwrite_mode は region と排他的なので、移動は可能かもしれないが、
+      overwrite_mode 自体が self-insert の振る舞いを変更するのでこれは変えられない。
+
+    c 振る舞いは変えないけれども表示だけ変わるというような新しい layer が必要である。
+      更に状態を制御する変数として、caret_state のチェックに menu-filter が有効になっているかどうかも含める必要がある。
+      _ble_complete_menu_* 変数の状態は caret_state として記録しなくても大丈夫だと思われる。
+      というのもこれらが更新されるのは何れにしても _ble_edit_str か _ble_edit_ind が変更される時だからである。
+
+    d 或いは disabled を逆に利用して編集領域以外を灰色で被せるなど?
+      然し、その場合には overwrite_mode や region 等も同じ色で被せてしまう事になるので微妙である。
+
+    やはりもし実現するとしたら新しい layer を作るのが現実的に思われる。
+    現状では余り活性化しない layer が増えてもそんなに重さには影響しないはずである。
+    更に、blink-matching-paren などの機能も考えると結局 layer は増やす事になる気がする。
+
+    x fixed: menu-filter に入る時に何故か menu がクリアされてしまう様になっている。何故
+      と思ったら、これは menu-filter.idle が menu-filter が失敗した時にメニューを削除するのだった。
+      つまり、今回の変更で menu-filter の戻り値を変更したのが原因である。直した。
 
   * 2019-02-15 ble.sh で [ble: EOF] としている内容は zsh では PROMPT_EOL_MARK で設定できるそうだ [#D0968]
     https://qiita.com/2357gi/items/6d530820402ae776ca66

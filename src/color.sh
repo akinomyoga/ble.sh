@@ -11,6 +11,8 @@ _ble_color_gflags_Strike=0x20
 _ble_color_gflags_Blink=0x40
 _ble_color_gflags_MaskFg=0x0000FF00
 _ble_color_gflags_MaskBg=0x00FF0000
+_ble_color_gflags_ShiftFg=8
+_ble_color_gflags_ShiftBg=16
 _ble_color_gflags_ForeColor=0x1000000
 _ble_color_gflags_BackColor=0x2000000
 
@@ -557,7 +559,7 @@ function ble/highlight/layer/update {
   local PREV_UMAX=-1
   local layer player=plain LEVEL
   local nlevel=${#_ble_highlight_layer__list[@]}
-  for((LEVEL=0;LEVEL<nlevel;LEVEL++)); do
+  for ((LEVEL=0;LEVEL<nlevel;LEVEL++)); do
     layer=${_ble_highlight_layer__list[LEVEL]}
 
     "ble/highlight/layer:$layer/update" "$text" "$player"
@@ -656,8 +658,8 @@ function ble/highlight/layer/getg {
 ##     DMIN DMAX DMAX0 の三つの値を要素とする配列です。
 ##
 ##   @param[in]     player
-##   @var  [in,out] LAYER_UMIN
-##   @var  [in,out] LAYER_UMAX
+##   @var  [in,out] LAYER_UMIN (unused)
+##   @var  [in,out] LAYER_UMAX (unused)
 ##   @param[in]     PREV_BUFF
 ##   @var  [in,out] PREV_UMIN
 ##   @var  [in,out] PREV_UMAX
@@ -765,7 +767,7 @@ _ble_highlight_layer_region_buff=()
 _ble_highlight_layer_region_osel=()
 _ble_highlight_layer_region_osgr=
 
-function ble/highlight/layer:region/update-dirty-range {
+function ble/highlight/layer:region/.update-dirty-range {
   local a=$1 b=$2 p q
   ((a==b)) && return
   (((a<b?(p=a,q=b):(p=b,q=a)),
@@ -782,8 +784,8 @@ function ble/highlight/layer:region/update {
   fi
 
   if ((DMIN>=0)); then
-    ((DMAX0<=omin?(omin+=DMAX-DMAX0):(DMAX<omin&&(omin=DMAX)),
-      DMAX0<=omax?(omax+=DMAX-DMAX0):(DMAX<omax&&(omax=DMAX))))
+    ((DMAX0<=omin?(omin+=DMAX-DMAX0):(DMIN<omin&&(omin=DMIN)),
+      DMAX0<=omax?(omax+=DMAX-DMAX0):(DMIN<omax&&(omax=DMIN))))
   fi
 
   local sgr=
@@ -821,7 +823,7 @@ function ble/highlight/layer:region/update {
     local rmax=${selection[rlen-1]}
 
     # 描画文字配列の更新
-    local -a buff
+    local -a buff=()
     local g ret
     local k=0 inext iprev=0
     for inext in "${selection[@]}"; do
@@ -844,27 +846,27 @@ function ble/highlight/layer:region/update {
 
     # DMIN-DMAX の間
     if ((DMIN>=0)); then
-      ble/highlight/layer:region/update-dirty-range "$DMIN" "$DMAX"
+      ble/highlight/layer:region/.update-dirty-range "$DMIN" "$DMAX"
     fi
 
     # 選択範囲の変更による再描画範囲
     if ((omin>=0)); then
       if [[ $osgr != "$sgr" ]]; then
         # 色が変化する場合
-        ble/highlight/layer:region/update-dirty-range "$omin" "$omax"
-        ble/highlight/layer:region/update-dirty-range "$rmin" "$rmax"
+        ble/highlight/layer:region/.update-dirty-range "$omin" "$omax"
+        ble/highlight/layer:region/.update-dirty-range "$rmin" "$rmax"
       else
         # 端点の移動による再描画
-        ble/highlight/layer:region/update-dirty-range "$omin" "$rmin"
-        ble/highlight/layer:region/update-dirty-range "$omax" "$rmax"
+        ble/highlight/layer:region/.update-dirty-range "$omin" "$rmin"
+        ble/highlight/layer:region/.update-dirty-range "$omax" "$rmax"
         if ((olen>1||rlen>1)); then
           # 複数範囲選択
-          ble/highlight/layer:region/update-dirty-range "$rmin" "$rmax"
+          ble/highlight/layer:region/.update-dirty-range "$rmin" "$rmax"
         fi
       fi
     else
       # 新規選択
-      ble/highlight/layer:region/update-dirty-range "$rmin" "$rmax"
+      ble/highlight/layer:region/.update-dirty-range "$rmin" "$rmax"
     fi
 
     # 下層の変更 (rmin ～ rmax は表には反映されない)
@@ -873,7 +875,7 @@ function ble/highlight/layer:region/update {
       ((rmin<=pmin&&pmin<rmax&&(pmin=rmax),
         rmin<pmax&&pmax<=rmax&&(pmax=rmin)))
     fi
-    ble/highlight/layer:region/update-dirty-range "$pmin" "$pmax"
+    ble/highlight/layer:region/.update-dirty-range "$pmin" "$pmax"
   else
     # 選択範囲がない時
 
@@ -881,7 +883,7 @@ function ble/highlight/layer:region/update {
     umin=$PREV_UMIN umax=$PREV_UMAX
 
     # 選択解除の範囲
-    ble/highlight/layer:region/update-dirty-range "$omin" "$omax"
+    ble/highlight/layer:region/.update-dirty-range "$omin" "$omax"
   fi
 
   _ble_highlight_layer_region_osel=("${selection[@]}")

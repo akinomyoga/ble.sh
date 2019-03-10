@@ -2864,23 +2864,25 @@ function ble/complete/menu-filter/.filter-candidates {
     ((${#cand_pack[@]}!=0)) && break
   done
 }
-function ble/complete/menu-filter {
+function ble/complete/menu-filter/.get-filter-target {
   if [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]]; then
-    local str=$_ble_edit_str
+    ret=$_ble_edit_str
   elif [[ $_ble_decode_keymap == auto_complete ]]; then
-    local str=${_ble_edit_str::_ble_edit_ind}${_ble_edit_str:_ble_edit_mark}
-  elif [[ $_ble_decode_keymap == menu_complete ]]; then
-    return 0
+    ret=${_ble_edit_str::_ble_edit_ind}${_ble_edit_str:_ble_edit_mark}
   else
     return 1
   fi
+}
+function ble/complete/menu-filter {
+  [[ $_ble_decode_keymap == menu_complete ]] && return 0
+  local ret; ble/complete/menu-filter/.get-filter-target || return 1; local str=$ret
 
   local beg end; ble/complete/menu/get-active-range "$str" "$_ble_edit_ind" || return 1
   local input=${str:beg:end-beg}
   [[ $input == "${_ble_complete_menu_comp[2]}" ]] && return 0
 
-  local ret simple_flags simple_ibrace
-  ble/syntax:bash/simple-word/reconstruct-incomplete-word "$input" || return 1
+  local simple_flags simple_ibrace
+  ble/syntax:bash/simple-word/reconstruct-incomplete-word "$input" || return 0
   [[ $simple_ibrace ]] && ((${simple_ibrace%%:*}>10#${_ble_complete_menu0_comp[6]%%:*})) && return 1 # 別のブレース展開要素に入った時
   ble/syntax:bash/simple-word/eval "$ret"
   local COMPV=$ret
@@ -2904,6 +2906,89 @@ function ble/complete/menu-filter.idle {
 }
 
 ble/function#try ble/util/idle.push-background ble/complete/menu-filter.idle
+
+# ble/highlight/layer:menu_filter
+
+ble/color/defface menu_filter bg=147,bold
+
+_ble_highlight_layer_menu_filter_buff=()
+_ble_highlight_layer_menu_filter_beg=
+_ble_highlight_layer_menu_filter_end=
+function ble/highlight/layer:menu_filter/update {
+  local text=$1 player=$2
+
+  # shift
+  local obeg=$_ble_highlight_layer_menu_filter_beg
+  local oend=$_ble_highlight_layer_menu_filter_end
+  if [[ $obeg ]] && ((DMIN>=0)); then
+    ((DMAX0<=obeg?(obeg+=DMAX-DMAX0):(DMIN<obeg&&(obeg=DMIN)),
+      DMAX0<=oend?(oend+=DMAX-DMAX0):(DMIN<oend&&(oend=DMIN))))
+  fi
+  _ble_highlight_layer_menu_filter_beg=$obeg
+  _ble_highlight_layer_menu_filter_end=$oend
+
+  # determine range
+  local beg= end= ret
+  if [[ $_ble_complete_menu_active && ${#_ble_complete_menu_items[@]} -gt 0 ]]; then
+    ble/complete/menu-filter/.get-filter-target && local str=$ret &&
+      ble/complete/menu/get-active-range "$str" "$_ble_edit_ind" &&
+      [[ ${str:beg:end-beg} != "${_ble_complete_menu0_comp[2]}" ]] || beg= end=
+  fi
+
+  # 変更のない場合スキップ
+  [[ ! $obeg && ! $beg ]] && return
+  ((PREV_UMIN<0)) && [[ $beg == "$obeg" && $end == "$oend" ]] && return
+
+  local umin=$PREV_UMIN umax=$PREV_UMAX
+  if [[ $beg ]]; then
+    local g; ble/color/face2g menu_filter; local g0=$g
+
+    local -a buff=()
+    ble/array#push buff "\"\${$PREV_BUFF[@]::beg}\""
+
+    local i g ret
+    for ((i=beg;i<end;i++)); do
+      ble/highlight/layer/update/getg "$i"
+      ((g=g&~_ble_color_gflags_MaskBg|g0))
+      ble/color/g2sgr "$g"
+      ble/array#push buff "\"$ret\${_ble_highlight_layer_plain_buff[$i]}\""
+    done
+    # local ret; ble/color/g2sgr "$g0"; local sgr=$ret
+    # ble/array#push buff "\"$sgr\${_ble_highlight_layer_plain_buff[@]:beg:end-beg}\""
+
+    local g; ble/highlight/layer/update/getg "$end"
+    local ret; ble/color/g2sgr "$g"
+    ble/array#push buff "\"$ret\${$PREV_BUFF[@]:end}\""
+    builtin eval "_ble_highlight_layer_menu_filter_buff=(${buff[*]})"
+    PREV_BUFF=_ble_highlight_layer_menu_filter_buff
+
+    if [[ $obeg ]]; then :
+      ble/highlight/layer:region/.update-dirty-range "$beg" "$obeg"
+      ble/highlight/layer:region/.update-dirty-range "$end" "$oend"
+    else
+      ble/highlight/layer:region/.update-dirty-range "$beg" "$end"
+    fi
+  else
+    if [[ $obeg ]]; then
+      ble/highlight/layer:region/.update-dirty-range "$obeg" "$oend"
+    fi
+  fi
+  _ble_highlight_layer_menu_filter_beg=$beg
+  _ble_highlight_layer_menu_filter_end=$end
+  ((PREV_UMIN=umin,PREV_UMAX=umax))
+}
+function ble/highlight/layer:menu_filter/getg {
+  local index=$1
+  local obeg=$_ble_highlight_layer_menu_filter_beg
+  local oend=$_ble_highlight_layer_menu_filter_end
+  if [[ $obeg ]] && ((obeg<=index&&index<oend)); then
+    ble/color/face2g menu_filter; local g0=$g
+    ble/highlight/layer/update/getg "$index"
+    ((g=g&~_ble_color_gflags_MaskBg|g0))
+  fi
+}
+
+ble/array#insert-before _ble_highlight_layer__list region menu_filter
 
 #------------------------------------------------------------------------------
 #

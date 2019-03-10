@@ -288,6 +288,43 @@ function ble/array#reverse {
   for e$1; do $1[--i$1]=\"\$e$1\"; done"
 }
 
+## 関数 ble/array#insert-at arr index elements...
+function ble/array#insert-at {
+  builtin eval "$1=(\"\${$1[@]::$2}\" \"\${@:3}\" \"\${$1[@]:$2}\")"
+}
+## 関数 ble/array#insert-after arr needle elements...
+function ble/array#insert-after {
+  local script='
+    local i'$1'=0 e'$1' a'$1'=
+    for e'$1' in "${'$1'[@]}"; do
+      ((i'$1'++))
+      [[ $e'$1' == "$2" ]] && a'$1'=i'$1' && break
+    done
+    [[ $a'$1' ]] && ble/array#insert-at "$1" "$a'$1'" "${@:3}"
+  '; builtin eval "$script"
+}
+## 関数 ble/array#insert-before arr needle elements...
+function ble/array#insert-before {
+  local script='
+    local i'$1'=0 e'$1' a'$1'=
+    for e'$1' in "${'$1'[@]}"; do
+      [[ $e'$1' == "$2" ]] && a'$1'=i'$1' && break
+      ((i'$1'++))
+    done
+    [[ $a'$1' ]] && ble/array#insert-at "$1" "$a'$1'" "${@:3}"
+  '; builtin eval "$script"
+}
+## 関数 ble/array#remove arr element
+function ble/array#remove {
+  local script='
+    local -a a'$1'=() e'$1'
+    for e'$1' in "${'$1'[@]}"; do
+      [[ $e'$1' != "$2" ]] && ble/array#push "a$1" "$e'$1'"
+    done
+    '$1'=(${'$1'[@]})
+  '; builtin eval "$script"
+}
+
 _ble_string_prototype='        '
 function ble/string#reserve-prototype {
   local n=$1 c
