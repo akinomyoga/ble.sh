@@ -755,12 +755,12 @@ elif ble/bin/.freeze-utility-path usleep; then
     if [[ $1 == *.* ]]; then
       local sec=${1%%.*} sub=${1#*.}000000
       if (($sec)); then
-        ble/bin/usleep "$sec${sub::6}"
+        ble/bin/usleep "$sec${sub::6}" &>/dev/null
       else
-        ble/bin/usleep "$((10#${sub::6}))"
+        ble/bin/usleep "$((10#${sub::6}))" &>/dev/null
       fi
     else
-      ble/bin/usleep "${1}000000"
+      ble/bin/usleep "${1}000000" &>/dev/null
     fi
   }
 else
