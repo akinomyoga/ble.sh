@@ -2250,6 +2250,15 @@ function ble/term/visible-bell {
   local message="$*"
   message=${message:-$bleopt_vbell_default_message}
 
+  # 一行に収まる様に切り詰める
+  if ble/is-function ble/canvas/trace-text; then
+    local x y ret lines=1 sgr0= sgr1=
+    ble/canvas/trace-text "$message" nonewline:external-sgr
+    message=$ret
+  else
+    message=${message::cols}
+  fi
+
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
   (
     {

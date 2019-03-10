@@ -2045,7 +2045,7 @@ function ble/complete/menu/construct-single-entry {
         else
           local sgr0=$sgrB0 sgr1=$sgrB1
         fi
-        ble-edit/info/.construct-text "${show:p0:p-p0}" nonewline || flag_overflow=1
+        ble/canvas/trace-text "${show:p0:p-p0}" nonewline:external-sgr || flag_overflow=1
         out=$out$sgr0$ret
       fi
       p0=$p
@@ -2055,7 +2055,7 @@ function ble/complete/menu/construct-single-entry {
   # 残りの出力
   if ((p0<${#show})); then
     local sgr0=$sgrN0 sgr1=$sgrN1
-    ble-edit/info/.construct-text "${show:p0}" nonewline || flag_overflow=1
+    ble/canvas/trace-text "${show:p0}" nonewline:external-sgr || flag_overflow=1
     out=$out$sgr0$ret
   fi
   ret=$out$_ble_term_sgr0
@@ -2392,10 +2392,6 @@ function ble/complete/menu/style:desc/construct {
   local desc_x=$((max_width+1)); ((desc_x>cols&&(desc_x=cols)))
   local desc_prefix=; ((cols-desc_x>30)) && desc_prefix='| '
 
-  # ble-edit/info/.construct-text 用の設定
-  ble/color/g2sgr "$_ble_color_gflags_Revert"; local sgr1=$ret
-  ble/color/g2sgr 0; local sgr0=$ret
-
   x=0 y=0 esc=
   menu_items=()
   menu_offset=$offset
@@ -2427,7 +2423,7 @@ function ble/complete/menu/style:desc/construct {
       y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$desc" nooverflow
       ble/canvas/sflush.draw
     else
-      y=0 lines=1 ble-edit/info/.construct-text "$desc" nonewline
+      y=0 lines=1 ble/canvas/trace-text "$desc" nonewline
     fi
     esc=$esc$ret
 

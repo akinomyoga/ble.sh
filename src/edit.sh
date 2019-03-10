@@ -678,134 +678,12 @@ function ble-edit/prompt/update {
 # 
 # **** information pane ****                                         @line.info
 
-## 関数 ble-edit/info/.put-atomic nchar text
-##   指定した文字列を out に追加しつつ、現在位置を更新します。
-##   文字列は幅 1 の文字で構成されていると仮定します。
-##   @var[in,out] x y out
-##   @var[in] cols lines
-##
-function ble-edit/info/.put-simple {
-  local nchar=$1
-
-  if ((y+(x+nchar)/cols<lines)); then
-    out=$out$2
-    ((x+=nchar%cols,
-      y+=nchar/cols,
-      (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)))
-  else
-    # 画面をはみ出る場合
-    flag_overflow=1
-    out=$out${2::lines*cols-(y*cols+x)}
-    ((x=cols,y=lines-1))
-    ble-edit/info/.put-nl-if-eol
-  fi
-}
-## 関数 x y cols out ; ble-edit/info/.put-atomic ( w char )+ ; x y out
-##   指定した文字を out に追加しつつ、現在位置を更新します。
-function ble-edit/info/.put-atomic {
-  local w=$1 c=$2
-
-  # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
-  if ((x<cols&&cols<x+w)); then
-    if ((y+1>=lines)); then
-      # 画面に入らない時は表示しない
-      flag_overflow=1
-      if [[ :$opts: == *:nonewline:* ]]; then
-        ble/string#reserve-prototype $((cols-x))
-        out=$out${_ble_string_prototype::cols-x}
-        ((x=cols))
-      else
-        out=$out$'\n'
-        ((y++,x=0))
-      fi
-      return
-    fi
-    ble/string#reserve-prototype $((cols-x))
-    out=$out${_ble_string_prototype::cols-x}
-    ((x=cols))
-  fi
-
-  out=$out$c
-
-  # 移動
-  if ((w>0)); then
-    ((x+=w))
-    while ((_ble_term_xenl?x>cols:x>=cols)); do
-      ((y++,x-=cols))
-    done
-  fi
-}
-## 関数 x y cols out ; ble-edit/info/.put-nl-if-eol ; x y out
-##   行末にいる場合次の行へ移動します。
-function ble-edit/info/.put-nl-if-eol {
-  if ((x==cols)); then
-    [[ :$opts: == *:nonewline:* ]] && return
-    ((_ble_term_xenl)) && out=$out$'\n'
-    ((y++,x=0))
-  fi
-}
-
 ## 関数 ble-edit/info/.initialize-size
 ##   @var[out] cols lines
 function ble-edit/info/.initialize-size {
   local ret
   ble/canvas/panel/layout/.get-available-height "$_ble_edit_info_panel"
   cols=${COLUMNS-80} lines=$ret
-}
-
-## 関数 ble-edit/info/.construct-text text opts
-##   指定した文字列を表示する為の制御系列に変換します。
-##   @param[in] text
-##   @param[in] opts
-##     nonewline
-##   @var[in] cols lines sgr0 sgr1
-##   @var[in,out] x y
-##   @var[out] ret
-##   @exit
-##     指定した範囲に文字列が収まった時に成功します。
-function ble-edit/info/.construct-text {
-  local out= LC_ALL= LC_COLLATE=C glob='*[! -~]*'
-  local opts=$2 flag_overflow=
-  if [[ $1 != $glob ]]; then
-    # G0 だけで構成された文字列は先に単純に処理する
-    ble-edit/info/.put-simple "${#1}" "$1"
-  else
-    local glob='[ -~]*' globx='[! -~]*'
-    local i iN=${#1} text=$1
-    for ((i=0;i<iN;)); do
-      local tail=${text:i}
-      if [[ $tail == $glob ]]; then
-        local span=${tail%%$globx}
-        ble-edit/info/.put-simple "${#span}" "$span"
-        ((i+=${#span}))
-      else
-        ble/util/s2c "$text" "$i"
-        local code=$ret w=0
-        if ((code<32)); then
-          ble/util/c2s $((code+64))
-          ble-edit/info/.put-atomic 2 "$sgr1^$ret$sgr0"
-        elif ((code==127)); then
-          ble-edit/info/.put-atomic 2 '$sgr1^?$sgr0'
-        elif ((128<=code&&code<160)); then
-          ble/util/c2s $((code-64))
-          ble-edit/info/.put-atomic 4 "${sgr1}M-^$ret$sgr0"
-        else
-          ble/util/c2w "$code"
-          ble-edit/info/.put-atomic "$ret" "${text:i:1}"
-        fi
-
-        ((i++))
-      fi
-      ((y*cols+x>=lines*cols)) && break
-    done
-  fi
-
-  ble-edit/info/.put-nl-if-eol
-  ret=$out
-
-  # 収まったかどうか
-  ((y>=lines)) && flag_overflow=1
-  [[ ! $flag_overflow ]]
 }
 
 _ble_edit_info_panel=2
@@ -830,13 +708,13 @@ function ble-edit/info/.construct-content {
   local type=$1 text=$2
   case "$1" in
   (esc)
-    local lc=32 lg=0 g=0
+    local g=0
     local -a DRAW_BUFF=()
     LINES=$lines ble/canvas/trace.draw "$text"
     ble/canvas/sflush.draw -v content ;;
   (text)
-    local ret sgr1=$_ble_term_rev sgr0=$_ble_term_sgr0
-    ble-edit/info/.construct-text "$text"
+    local ret
+    ble/canvas/trace-text "$text"
     content=$ret ;;
   (store)
     x=$2 y=$3 content=$4
@@ -3424,7 +3302,7 @@ function ble-edit/exec/.adjust-eol {
   if [[ $bleopt_prompt_eol_mark != "${_ble_edit_exec_eol_mark[0]}" ]]; then
     if [[ $bleopt_prompt_eol_mark ]]; then
       local -a DRAW_BUFF=()
-      local x=0 y=0 g=0 lc=0 lg=0 x1=0 x2=0 y1=0 y2=0
+      local x=0 y=0 g=0 x1=0 x2=0 y1=0 y2=0
       LINES=1 COLUMNS=80 ble/canvas/trace.draw "$bleopt_prompt_eol_mark" nooverflow:measure-bbox
       local ret; ble/canvas/sflush.draw
       _ble_edit_exec_eol_mark=("$bleopt_prompt_eol_mark" "$ret" "$x2")
@@ -3439,7 +3317,7 @@ function ble-edit/exec/.adjust-eol {
   if [[ $eol_mark ]]; then
     ble/canvas/put.draw "$_ble_term_sc"
     if ((_ble_edit_exec_eol_mark[2]>cols)); then
-      local x=0 y=0 g=0 lc=0 lg=0
+      local x=0 y=0 g=0
       LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$bleopt_prompt_eol_mark" nooverflow
     else
       ble/canvas/put.draw "$eol_mark"

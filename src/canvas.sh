@@ -406,6 +406,9 @@ function ble/canvas/bflush.draw {
   DRAW_BUFF=()
 }
 
+#------------------------------------------------------------------------------
+# ble/canvas/trace.draw
+
 ## 関数 ble/canvas/trace.draw text [opts]
 ##   制御シーケンスを含む文字列を出力すると共にカーソル位置の移動を計算します。
 ##
@@ -426,14 +429,16 @@ function ble/canvas/bflush.draw {
 ##       @var[out] x1 x2 y1 y2
 ##       描画範囲を x1 x2 y1 y2 に返します。
 ##
+##     left-char
+##       @var[in,out] lc lg
+##       bleopt_internal_suppress_bash_output= の時、
+##       出力開始時のカーソル左の文字コードを指定します。
+##       出力終了時のカーソル左の文字コードが分かる場合にそれを返します。
+##
 ##   @var[in,out] DRAW_BUFF[]
 ##     出力先の配列を指定します。
 ##   @var[in,out] x y g
 ##     出力の開始位置を指定します。出力終了時の位置を返します。
-##   @var[in,out] lc lg
-##     bleopt_internal_suppress_bash_output= の時、
-##     出力開始時のカーソル左の文字コードを指定します。
-##     出力終了時のカーソル左の文字コードが分かる場合にそれを返します。
 ##
 ##   以下のシーケンスを認識します
 ##
@@ -715,6 +720,7 @@ function ble/canvas/trace/.impl {
   local opt_nooverflow=; [[ :$opts: == *:nooverflow:* ]] && opt_nooverflow=1
   local opt_relative=; [[ :$opts: == *:relative:* ]] && opt_relative=1
   local opt_measure=; [[ :$opts: == *:measure-bbox:* ]] && opt_measure=1
+  [[ :$opts: != *:left-char:* ]] && local lc=32 lg=0
 
   # constants
   local cols=${COLUMNS:-80} lines=${LINES:-25}
@@ -889,6 +895,140 @@ function ble/canvas/trace.draw {
   # cygwin では LC_COLLATE=C にしないと
   # 正規表現の range expression が期待通りに動かない。
   LC_COLLATE=C ble/canvas/trace/.impl "$@" &>/dev/null
+}
+
+#------------------------------------------------------------------------------
+# ble/canvas/construct-text
+
+## 関数 ble/canvas/trace-text/.put-atomic nchar text
+##   指定した文字列を out に追加しつつ、現在位置を更新します。
+##   文字列は幅 1 の文字で構成されていると仮定します。
+##   @var[in,out] x y out
+##   @var[in] cols lines
+##
+function ble/canvas/trace-text/.put-simple {
+  local nchar=$1
+
+  if ((y+(x+nchar)/cols<lines)); then
+    out=$out$2
+    ((x+=nchar%cols,
+      y+=nchar/cols,
+      (_ble_term_xenl?x>cols:x>=cols)&&(y++,x-=cols)))
+  else
+    # 画面をはみ出る場合
+    flag_overflow=1
+    out=$out${2::lines*cols-(y*cols+x)}
+    ((x=cols,y=lines-1))
+    ble/canvas/trace-text/.put-nl-if-eol
+  fi
+}
+## 関数 x y cols out ; ble/canvas/trace-text/.put-atomic ( w char )+ ; x y out
+##   指定した文字を out に追加しつつ、現在位置を更新します。
+function ble/canvas/trace-text/.put-atomic {
+  local w=$1 c=$2
+
+  # その行に入りきらない文字は次の行へ (幅 w が2以上の文字)
+  if ((x<cols&&cols<x+w)); then
+    if ((y+1>=lines)); then
+      # 画面に入らない時は表示しない
+      flag_overflow=1
+      if [[ :$opts: == *:nonewline:* ]]; then
+        ble/string#reserve-prototype $((cols-x))
+        out=$out${_ble_string_prototype::cols-x}
+        ((x=cols))
+      else
+        out=$out$'\n'
+        ((y++,x=0))
+      fi
+      return
+    fi
+    ble/string#reserve-prototype $((cols-x))
+    out=$out${_ble_string_prototype::cols-x}
+    ((x=cols))
+  fi
+
+  out=$out$c
+
+  # 移動
+  if ((w>0)); then
+    ((x+=w))
+    while ((_ble_term_xenl?x>cols:x>=cols)); do
+      ((y++,x-=cols))
+    done
+  fi
+}
+## 関数 x y cols out ; ble/canvas/trace-text/.put-nl-if-eol ; x y out
+##   行末にいる場合次の行へ移動します。
+function ble/canvas/trace-text/.put-nl-if-eol {
+  if ((x==cols)); then
+    [[ :$opts: == *:nonewline:* ]] && return
+    ((_ble_term_xenl)) && out=$out$'\n'
+    ((y++,x=0))
+  fi
+}
+
+## 関数 ble/canvas/trace-text text opts
+##   指定した文字列を表示する為の制御系列に変換します。
+##   @param[in] text
+##   @param[in] opts
+##     nonewline
+##
+##     external-sgr
+##       @var[in] sgr0 sgr1
+##       特殊文字の強調に用いる SGR シーケンスを外部から提供します。
+##       sgr0 に通常文字の表示に用いる SGR を、
+##       sgr1 に特殊文字の表示に用いる SGR を指定します。
+##
+##   @var[in] cols lines
+##   @var[in,out] x y
+##   @var[out] ret
+##   @exit
+##     指定した範囲に文字列が収まった時に成功します。
+function ble/canvas/trace-text {
+  local out= LC_ALL= LC_COLLATE=C glob='*[! -~]*'
+  local opts=$2 flag_overflow=
+  [[ :$opts: == *:external-sgr:* ]] ||
+    local sgr0=$_ble_term_sgr0 sgr1=$_ble_term_rev
+  if [[ $1 != $glob ]]; then
+    # G0 だけで構成された文字列は先に単純に処理する
+    ble/canvas/trace-text/.put-simple "${#1}" "$1"
+  else
+    local glob='[ -~]*' globx='[! -~]*'
+    local i iN=${#1} text=$1
+    for ((i=0;i<iN;)); do
+      local tail=${text:i}
+      if [[ $tail == $glob ]]; then
+        local span=${tail%%$globx}
+        ble/canvas/trace-text/.put-simple "${#span}" "$span"
+        ((i+=${#span}))
+      else
+        ble/util/s2c "$text" "$i"
+        local code=$ret w=0
+        if ((code<32)); then
+          ble/util/c2s $((code+64))
+          ble/canvas/trace-text/.put-atomic 2 "$sgr1^$ret$sgr0"
+        elif ((code==127)); then
+          ble/canvas/trace-text/.put-atomic 2 '$sgr1^?$sgr0'
+        elif ((128<=code&&code<160)); then
+          ble/util/c2s $((code-64))
+          ble/canvas/trace-text/.put-atomic 4 "${sgr1}M-^$ret$sgr0"
+        else
+          ble/util/c2w "$code"
+          ble/canvas/trace-text/.put-atomic "$ret" "${text:i:1}"
+        fi
+
+        ((i++))
+      fi
+      ((y*cols+x>=lines*cols)) && break
+    done
+  fi
+
+  ble/canvas/trace-text/.put-nl-if-eol
+  ret=$out
+
+  # 収まったかどうか
+  ((y>=lines)) && flag_overflow=1
+  [[ ! $flag_overflow ]]
 }
 
 #------------------------------------------------------------------------------

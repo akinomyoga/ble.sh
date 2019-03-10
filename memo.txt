@@ -2125,7 +2125,6 @@ bash_tips
   * vbell
     + スタイルを指定できる様にする
     + 位置を指定できる様にする
-    + メッセージが長い場合に適度に長さを制限する
 
   * ble-decode
     + [kbd] terminfo からの読み取り (entry 名は tmux が参考になる)
@@ -2173,10 +2172,11 @@ bash_tips
     - complete: fix a bug that wrong action is performed after `menu-filter` `#D0952` 08cba07
     - complete: fix a bug that extra <kbd>TAB</kbd> is needed to enter `menu-complete` `#D0956` aa6bd73
     - complete: fix a bug that candidates are not regenerated on function name completions `#D0961` bbea72e
-    - complete: fix a problem that the menu style is reset on `menu-complete` `#D0972`
+    - complete: fix a problem that the menu style is reset on `menu-complete` `#D0972` 47c28ff
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950` 4efe1a9
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
+  - util (visible-bell): truncate long messages to fit into a line `#D0973`
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -2192,6 +2192,7 @@ bash_tips
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
   - [refactor] do not use brace expansions for `VARNAMES` `#D0955` 711e7df
   - [refactor] `ble-{highlight,complete,syntax}` -> `ble/*` 7aaa660 ae6be66 8ea903c
+  - [refactor] `ble-edit/info/.construct-text` -> `ble/canvas/trace-text` `#D0973`
 
 2018-10-05 -- 2019-02-09 (#D0858..#D0914) 6ed51e7..949e9a8
 
@@ -3049,6 +3050,16 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * 2013-06-01 以前 vbell: メッセージが長い場合に適度に長さを制限する [#D0973]
+
+    trace を拡張して construct-text と同様の機能を持たせるか。
+    或いは construct-text を trace に統合してしまうか。
+    然し、現状で construct-text はそれなりに高速である。
+    なので、trace に統合すると遅くなってしまう。
+    ble-edit/info/.construct-text は ble/canvas/trace-text に改名する事にした。
+
+    取り敢えず trace-text を利用する事にする。
 
   * menu-complete: menu-filter の後に menu-complete に突入する際に menu_style が保持されない [#D0972]
     これはメニューから候補を読み取る際に _ble_complete_menu_style から

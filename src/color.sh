@@ -414,7 +414,7 @@ function ble/color/sgrspec2g {
 ##   @var[out] ret
 function ble/color/ansi2g {
   local -a DRAW_BUFF=()
-  local g=0 x=0 y=0 lc=0 lg=0
+  local g=0 x=0 y=0
   ble/function#try ble/canvas/trace.draw "$1"
   ret=$g
 }
