@@ -253,28 +253,7 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/string#split-lines {
-    local name=$1 text=${*:2} sep='' esc='\'
-    if [[ $text == *$sep* ]]; then
-      local a b arr ret value
-      a=$esc b=$esc'A' text=${text//"$a"/"$b"}
-      a=$sep b=$esc'B' text=${text//"$a"/"$b"}
-
-      text=${text//$'\n'/"$sep"}
-      ble/string#split arr "$sep" "$text"
-
-      for value in "${arr[@]}"; do
-        if [[ $value == *$esc* ]]; then
-          a=$esc'B' b=$sep value=${value//"$a"/"$b"}
-          a=$esc'A' b=$esc value=${value//"$a"/"$b"}
-        fi
-        ret[${#ret[@]}]=$value
-      done
-    else
-      local ret
-      text=${text//$'\n'/"$sep"}
-      ble/string#split ret "$sep" "$text"
-    fi
-    local "$name" && ble/util/uparr "$name" "${ret[@]}"
+    ble/util/mapfile "$1" <<< "${*:2}"
   }
 fi
 ## 関数 ble/string#count-char text chars
@@ -436,8 +415,11 @@ else
     IFS= builtin read -r -d '' "$1" < "$2"
   }
   function ble/util/mapfile {
-    IFS= builtin read -r -d '' "$1"
-    ble/string#split-lines "$1" "${!1}"
+    local _ble_local_i=0 _ble_local_val _ble_local_arr; _ble_local_arr=()
+    while builtin read -r _ble_local_val || [[ $_ble_local_val ]]; do
+      _ble_local_arr[_ble_local_i++]=$_ble_local_val
+    done
+    builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
   }
 fi
 

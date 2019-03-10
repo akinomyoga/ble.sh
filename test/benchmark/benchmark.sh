@@ -105,7 +105,11 @@ function ble-measure {
         ' function genround(x, mod) { return int(x / mod + 0.5) * mod; }
             BEGIN { printf("%12.2f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, 100 / n), title); exit }'
     ((ret=utot/n))
-    ((nsec=n>=1000?(utot/(n/1000)):(utot*1000/n)))
+    if ((n>=1000)); then
+      ((nsec=utot/(n/1000)))
+    else
+      ((nsec=utot*1000/n))
+    fi
     ((ret-=nsec0/1000,nsec-=nsec0))
     return
   done
