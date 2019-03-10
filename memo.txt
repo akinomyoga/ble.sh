@@ -846,6 +846,15 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-03-10
+
+  * bash-3.1 未満で bleopt_rps1 が動いていない
+  * bash-3.2 未満で sabbrev が動いていない
+  * bash-4.0 未満では物凄く遅くなるので曖昧補完は無効にしたい
+  * bash-4.0 未満では menu-filter.idle に対応していないので、
+    layer:menu_filter は登録しない事にする。
+  * menu-complete: 頁管理の枠組みを統一したい。
+
 2019-02-28
 
   * complete: sabbrev に登録されている単語の補完もあっても良い気がする
@@ -2113,6 +2122,7 @@ bash_tips
   - complete: support `ble-sabbrev -m key=function` `#D0942` bcdf843
   - complete: support description of candidates `#D0945` `#D0946` 0fa73bf `#D0977` 96fe498
     - canvas: use ... instead of … when unicode is not available `#D0979` 51e600a
+    - canvas (`ble/canvas/trace`): support `opts=truncate:confine` `#D0981` 79916d2
   - complete: support insertion of ambiguous common part `#D0947` 3644a8e
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
@@ -3014,6 +3024,55 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * bash-4.1 未満で visible-bell? もしくは menu-complete の頁描画がずれる [#D0983]
+    そもそも1頁に表示されている項目の数が怪しい。
+    ble-edit/info/.initialize-size の計算結果を見てみると、
+
+      $ echo "$COLUMNS x $LINES / $cols x $lines" >>/dev/pts/4
+      bash-4.4: 179 x 68 / 179 x 66
+      bash-4.1: 179 x 68 / 179 x 67
+
+    となっていて、この時点で計算が怪しい。
+    ble/canvas/panel/layout/.get-available-height の中でどうなっているか確認。
+
+      bash-4.4
+      declare -a mins=([0]="1" [1]="0" [2]="1")
+      declare -a maxs=([0]="1" [1]="0" [2]="66")
+      declare -a heights=([0]="1" [1]="0" [2]="66")
+
+      bash-4.1
+      declare -a mins='([0]="1" [1]="0" [2]="1")'
+      declare -a maxs='([0]="1" [1]="0" [2]="67")'
+      declare -a heights='([0]="1" [1]="0" [2]="67")'
+
+    うーん。ble/canvas/panel/layout/.extract-heights が悪いのかとも思ったが、
+    ble/canvas/panel/layout/.determine-heights が怪しい気がしてきた。
+
+      bash-4.4
+      declare -- lines="67"
+      declare -a mins=([0]="1" [1]="0" [2]="1")
+      declare -a maxs=([0]="1" [1]="0" [2]="68")
+      declare -a heights=([0]="1" [1]="0" [2]="66")
+      lines=67 mins=(1 0 1) maxs=(1 0 68) heights=() max=69 min=2
+      heights=(1 0 66)
+
+      bash-4.1
+      declare -- lines="67"
+      declare -a mins='([0]="1" [1]="0" [2]="1")'
+      declare -a maxs='([0]="1" [1]="0" [2]="67")'
+      declare -a heights='([0]="1" [1]="0" [2]="67")'
+      lines=67 mins=(1 0 1) maxs=(1 0 67) heights=() max=68 min=2
+      lines=67 mins=(1 0 1) maxs=(1 0 68) heights=() max=69 min=2
+      heights=(1 0 67)
+
+    やはり変だ。入力が同じなのに結果が異なる。
+    これは算術式のバグを踏んでいた。
+    条件分岐の中に配列要素の参照があると常に処理されてしまう。
+
+  * rosaterm で screen -dr を isearch する時に座標計算がずれている [#D0982]
+    これは rps1 と関係している様子である。xenl の問題だろうか。
+    これは xenl が入っていない時には更に cols-- する様にすれば良い。
 
   * menu-complete (desc-raw): 頁生成が遅い [#D0981]
     trace で nooverflow を指定していても文字列の末尾までスキャンしている気がする。

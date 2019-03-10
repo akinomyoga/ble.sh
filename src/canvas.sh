@@ -1670,7 +1670,7 @@ function ble/canvas/panel/layout/.determine-heights {
         for ((i=0;i<n;i++)); do
           ((maxs[i]-heights[i]>0)) || continue
           ((heights[i]+=delta))
-          ((count++<rem&&heights[i]++))
+          ((count++<rem)) && ((heights[i]++))
         done
         ((room=0))
       fi

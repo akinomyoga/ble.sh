@@ -1583,7 +1583,7 @@ function ble/textarea#render {
   if [[ $bleopt_rps1 ]]; then
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)) &&
-      ((flag_rps1=1,cols-=rps1_width+1))
+      ((flag_rps1=1,cols-=rps1_width+1,_ble_term_xenl||cols--))
   fi
 
   # BLELINE_RANGE_UPDATE → ble/textarea#update-text-buffer 内でこれを見て update を済ませる
