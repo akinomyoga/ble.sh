@@ -939,8 +939,8 @@ function ble/canvas/trace/.impl {
       ((x==0&&(lc=32,lg=0)))
     fi
     if [[ $opt_measure ]]; then
-      ((x<x1?(x=x1):x>x2?(x2=x):1))
-      ((y<y1?(y=y1):y>y2?(y2=y):1))
+      ((x<x1?(x1=x):(x>x2?(x2=x):1)))
+      ((y<y1?(y1=y):(y>y2?(y2=y):1)))
     fi
     [[ $is_overflow ]] && ble/canvas/trace/.process-overflow
   done

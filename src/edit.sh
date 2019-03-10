@@ -589,6 +589,7 @@ function ble-edit/prompt/.escape {
 }
 ## 関数 ble-edit/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0]
 ##   @var[out] val esc x y g lc lg
+##   @var[in,out] x1 x2 y1 y2
 ##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
 function ble-edit/prompt/.instantiate {
   val= esc= x=0 y=0 g=0 lc=32 lg=0
