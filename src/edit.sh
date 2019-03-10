@@ -1807,8 +1807,8 @@ function ble/textarea#render {
       local rps1y=${_ble_edit_rprompt[2]}
       local rps1out=${_ble_edit_rprompt[6]}
       # Note: cols は画面右端ではなく textmap の右端
-      ble/canvas/panel#goto.draw "$_ble_text_area_panel" $((cols+1)) 0
-      ble/canvas/panel#put.draw "$_ble_text_area_panel" "$rps1out$_ble_term_cr" 0 0
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
+      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out$_ble_term_cr" 0 0
     fi
     ble/canvas/panel#put.draw "$_ble_textarea_panel" "$esc_prompt" "$prox" "$proy"
 

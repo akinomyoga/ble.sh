@@ -2163,7 +2163,7 @@ bash_tips
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
-  - complete: highlight active ranges of `menu-filter` `#D0969`
+  - complete: highlight active ranges of `menu-filter` `#D0969` 500f702
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3048,6 +3048,11 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * edit: rps1 を設定していると vi : 等によるサブコマンドラインの表示位置がずれる [#D0970]
+    render_opts を空にしても同じ問題が生じているので、出力部分の問題である。
+    実際に rps1 を put している所をコメントアウトしたら直った。
+    と思ったら _ble_textarea_panel を _ble_text_area_panel と typo していた。修正した。
 
   * 2019-03-04 complete: menu-filter の編集領域を着色する案 [#D0969]
 
