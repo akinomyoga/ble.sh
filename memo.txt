@@ -3027,6 +3027,20 @@ bash_tips
 
 2019-03-10
 
+  * bash-3.2 以下で sabbrev が動いていない [#D0985]
+    正規表現? と思ったがそもそも core-complete.sh が読み込まれていない。
+    ble/complete/sabbrev/expand を autoload に追加しておく事にした。
+    また、物凄く遅いが一応動いている様子である。
+
+    然し、この遅さは何だろう。滅茶苦茶遅い…。
+    もしかすると全ページを構築している?
+    と思ったが次のページに行こうとするとやはり時間がかかるので、
+    恐らく本当に動作が遅いという事なのだろう…。
+
+    調べたら ble/util/assign-array に滅茶苦茶時間がかかっていた。
+    変な split-lines のルーチンよりも while builtin read -r line の方が速いのだった。
+    2m22s から 0.05s にまで短くなった。約 1000 行のファイルである。
+
   * ble/util/msleep の usleep を使う実装に於いて警告が表示されている [#D0984]
     deprecated だそうだ。取り敢えず &>/dev/null で警告を殺す。
 

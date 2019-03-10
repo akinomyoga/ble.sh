@@ -751,12 +751,16 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble/util/assign-array {
-    ble/util/assign "$@"
-    if [[ ${!1} ]]; then
-      ble/string#split-lines "$1" "${!1%$'\n'}"
-    else
-      eval "$1=()"
-    fi
+    local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
+    builtin eval "$2" >| "$_ble_local_tmp"
+    local _ble_local_ret=$?
+    ((_ble_util_assign_level--))
+    local _ble_local_i=0 _ble_local_val _ble_local_arr; _ble_local_arr=()
+    while builtin read -r _ble_local_val || [[ $_ble_local_val ]]; do
+      _ble_local_arr[_ble_local_i++]=$_ble_local_val
+    done < "$_ble_local_tmp"
+    builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
+    return "$_ble_local_ret"
   }
 fi
 
