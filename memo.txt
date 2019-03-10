@@ -859,11 +859,17 @@ bash_tips
 
     これは前に修正した物ではなかったか。
     実際に調べてみると子プロセスが起動していない。
-    また再現するかどうかを見ると 3.1 3.2 の中で 3.1 を起動した時に起こる。
+    また再現するかどうかを見ると 3.0 3.1 3.2 の中で 3.1 を起動した時に起こる。
     前の時と全く同じ症状に見える。しかし、前の対策は有効である。
     exec を2つに分けて実行してみても駄目だった。
 
-  * menu-complete: 頁管理の枠組みを統一したい。
+    うーん。子プロセスが起動していないというのは前にはなかった気がする。
+    子プロセスを起動する部分を見たが特にエラーメッセージが出ている訳でもない。
+    調べるとどうも起動した瞬間は起動している様である。
+    その後で read に失敗して while ループを抜けている。
+
+    openat でその pipe を開かない場合には失敗して終了する事はない様子である。
+    つまり pipe を開くと read に失敗する。
 
 2019-02-28
 
@@ -2136,7 +2142,7 @@ bash_tips
   - complete: support insertion of ambiguous common part `#D0947` 3644a8e
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
-  - complete: support menu pages `#D0958` ff43e01 a488e01
+  - complete: support menu pages `#D0958` ff43e01 a488e01 `#D0990`
     - menu-complete: show page numbers with `visible-bell` `#D0980` 6297e65
     - menu-complete: fix a bug that height of `menu` is too large (<= bash-4.1) `#D0983` 129a1f0
   - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874 `#D0970` 87c8348
@@ -3043,6 +3049,9 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * menu-complete: 頁管理の枠組みを統一したい [#D0990]
+    統一した。
 
   * util: bash-4.0 未満では物凄く遅くなるので曖昧補完は無効にしたい [#D0989]
     と思ったがこれは実は ble/util/array-assign が原因だったのかもしれない。
