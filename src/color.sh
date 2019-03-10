@@ -413,9 +413,8 @@ function ble/color/sgrspec2g {
 ##   Note: canvas.sh を読み込んで以降でないと使えません。
 ##   @var[out] ret
 function ble/color/ansi2g {
-  local -a DRAW_BUFF=()
-  local g=0 x=0 y=0
-  ble/function#try ble/canvas/trace.draw "$1"
+  local x=0 y=0 g=0
+  ble/function#try ble/canvas/trace "$1" # -> ret
   ret=$g
 }
 

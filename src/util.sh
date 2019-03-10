@@ -2819,3 +2819,7 @@ function ble/encoding:C/c2b {
   local code=$1
   bytes=($((code&0xFF)))
 }
+
+function ble/util/is-unicode-output {
+  [[ ${LC_ALL:-${LC_CTYPE:-$LANG}} == *.UTF-8 ]]
+}

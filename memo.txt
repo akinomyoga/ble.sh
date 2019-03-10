@@ -1165,42 +1165,6 @@ bash_tips
 
   * emacs: C-w を続けて実行すると kill-ring に追記にするべき
 
-  * info: progress の表示
-
-    history の background loading で一時 progress の表示をしていたが、
-    その後に効率的な実装方法が分かった為に結局現在は使われていない。
-
-    しかし、その時に残っていた課題が幾つかある。
-
-    * info で progress を表示するための専用の仕組みを作る?
-
-      一つは info で表示する事自体に 40ms 程度時間がかかっていた事である。
-      これは progress を表示する事自体によって処理時間が長くなるという事を意味する。
-      また info の表示を行う為に配列を使用しているので、
-      外側のループで巨大配列を触っている時に、これも速度低下の原因となる。
-
-    * ok: screen の文字幅判定のコードをチェックする。
-
-      % また Unicode Block Characters を使って作成した progress bar で、
-      % 文字幅の計算がずれてしまう。これは screen 上で Unicode Block Characters が幅2 なのに、
-      % Poderosa 及び ble.sh で幅1で扱われているのが原因である。
-      % 使用している screen は cjkwidth emacs で動作しているのに変である。
-
-      これは確かめてみた所、そもそも padparadscha 上ではオリジナルの screen-4.1.0 を用いていた。
-      改造した screen は screen-4.3.1 である。
-      改造した repository を探してみたが padparadscha 上にはなくて magnate 上にあった。
-      GitHub に登録することにした。
-      また、git pull してみると 4.* 系列は既に 4.6.2 まで出ている様である。
-      既存の改造を 4.6.2 に付け替える事にした。
-
-      - Cygwin でコンパイルできない問題に関しては screen-v4 では直されていた。
-        master の方では治っていない (依然として ut_div を用いている)。
-      - SGR mouse (DECSET 1006) は 4.6.2 で対応した様である。
-      - 結局、4.6.2 に対する改造は `cjkwidth emacs` のみである。
-      - 他に Makefile.in の微妙な修正が含まれる。
-
-      新しくした screen で試してみた所、ちゃんと文字幅 1 で計算されている様である。
-
 2018-02-21
 
   * vi-mode: nmap (, ), {, }
@@ -2147,7 +2111,8 @@ bash_tips
   - syntax: support `set +B` `#D0931` 12f80dd
   - syntax: support aliased keywords `#D0936` 7054e28
   - complete: support `ble-sabbrev -m key=function` `#D0942` bcdf843
-  - complete: support description of candidates `#D0945` `#D0946` 0fa73bf `#D0977`
+  - complete: support description of candidates `#D0945` `#D0946` 0fa73bf `#D0977` 96fe498
+    - canvas: use ... instead of … when unicode is not available `#D0979`
   - complete: support insertion of ambiguous common part `#D0947` 3644a8e
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
@@ -2159,6 +2124,7 @@ bash_tips
   - complete: highlight active ranges of `menu-filter` `#D0969` 500f702 `#D0971` aae8b26
     - menu-filter: cancel menu-filter when the word ends `#D0974` 6ce2ad2
     - menu-filter: improve highlight `#D0975` b89f39f
+  - isearch: show progress bar using unicode chars `#D0978`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3046,6 +3012,77 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * util: unicode 文字を使って出力を行うことの是非について [#D0979]
+
+    現在 progress の表示及び trace.draw の ellipsis の表示に Unicode 文字を使用している。
+    然し、output-encoding が unicode とかそういう環境でなければそれは面倒な事になるのでは。
+    古い端末だと文字化けしてしまって変な見た目になってしまうかもしれない。
+    その様に思うと * や ... を用いた代替を用意して置いた方が良いのではないだろうか。
+
+    これは bleopt で設定しても良い気がする。
+    オプション名は何にするのか。
+    例えば output_encoding として置いて、
+    output_encoding に Unicode 文字が使える場合にはそれを使う等。
+    しかし、output_encoding は実のところ LC_CTYPE で制御されている。
+    そういう風に考えれば、bleopt で指定しなくても LC_CTYPE を見て *.UTF-8 ならば
+    unicode 文字を使うという風にして良いのではないかという気がする。
+
+    →LC_CTYPEを使って ble/util/is-unicode-output を判定して、
+    それを使って出力に使う文字を切り替える様に実装を変更した。
+
+    その他の序での変更。
+
+    - (ble-edit/info/show): rename ansi -> esc
+    - (ble-edit/info/show): esc (現在の端末の解釈) に対応
+    - (ble/canvas/trace): 関数追加
+    - test/check-trace.sh: lib/test-canvas.sh にマージ
+    - canvas: rename ble/canvas/rmoveto.draw -> ble/canvas/put-move.draw
+    - canvas: rename ble/canvas/rmoveto-x.draw -> ble/canvas/put-move-x.draw
+    - canvas: rename ble/canvas/rmoveto-y.draw -> ble/canvas/put-move-y.draw
+    - ble/canvas/trace.draw: opts=terminfo に対応
+
+  * 2018-03-14 info: progress の表示 [#D0978]
+
+    history の background loading で一時 progress の表示をしていたが、
+    その後に効率的な実装方法が分かった為に結局現在は使われていない。
+
+    しかし、その時に残っていた課題が幾つかある。
+
+    * info で progress を表示するための専用の仕組みを作る?
+
+      一つは info で表示する事自体に 40ms 程度時間がかかっていた事である。
+      これは progress を表示する事自体によって処理時間が長くなるという事を意味する。
+      また info の表示を行う為に配列を使用しているので、
+      外側のループで巨大配列を触っている時に、これも速度低下の原因となる。
+
+      2019-03-10 何の為に info で progress を表示する専用の仕組みを作るのか分からなくなった。
+      また、実際に progress bar を isearch の検索進捗状況の表示に使ってみたが、
+      "固定文字列部分 プログレスバー 状態表示" の様になっているので、
+      info で表示する為の専用の枠組みを作っても面倒なだけの様に思われる。
+      それよりは各自でプログレスバーを生成した方が良い気がする。
+
+    * ok: screen の文字幅判定のコードをチェックする。
+
+      % また Unicode Block Characters を使って作成した progress bar で、
+      % 文字幅の計算がずれてしまう。これは screen 上で Unicode Block Characters が幅2 なのに、
+      % Poderosa 及び ble.sh で幅1で扱われているのが原因である。
+      % 使用している screen は cjkwidth emacs で動作しているのに変である。
+
+      これは確かめてみた所、そもそも padparadscha 上ではオリジナルの screen-4.1.0 を用いていた。
+      改造した screen は screen-4.3.1 である。
+      改造した repository を探してみたが padparadscha 上にはなくて magnate 上にあった。
+      GitHub に登録することにした。
+      また、git pull してみると 4.* 系列は既に 4.6.2 まで出ている様である。
+      既存の改造を 4.6.2 に付け替える事にした。
+
+      - Cygwin でコンパイルできない問題に関しては screen-v4 では直されていた。
+        master の方では治っていない (依然として ut_div を用いている)。
+      - SGR mouse (DECSET 1006) は 4.6.2 で対応した様である。
+      - 結局、4.6.2 に対する改造は `cjkwidth emacs` のみである。
+      - 他に Makefile.in の微妙な修正が含まれる。
+
+      新しくした screen で試してみた所、ちゃんと文字幅 1 で計算されている様である。
 
   * complete (style:desc-raw): 範囲に入り切らない場合に末尾に … を表示する [#D0977]
     序に style:desc でも頁描画をキャッシュする事にした。

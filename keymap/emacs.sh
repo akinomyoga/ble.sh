@@ -102,7 +102,7 @@ function ble/keymap:emacs/update-mode-name {
     #name=$name$' (type \e[35mC-j\e[m to run the command)'
     name=$name$' (\e[35mRET\e[m or \e[35mC-m\e[m: insert a newline, \e[35mC-j\e[m: run)'
   fi
-  ble-edit/info/default esc "$name"
+  ble-edit/info/default ansi "$name"
 }
 
 function ble/widget/emacs/__after_widget__ {

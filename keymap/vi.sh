@@ -394,7 +394,7 @@ function ble/keymap:vi/update-mode-name {
   if [[ $_ble_keymap_vi_reg_record ]]; then
     name=$name$' \e[1;31mREC @'$_ble_keymap_vi_reg_record_char$'\e[m'
   fi
-  ble-edit/info/default esc "$name" # 6ms
+  ble-edit/info/default ansi "$name" # 6ms
 }
 
 function ble/widget/vi_imap/normal-mode.impl {
@@ -882,7 +882,7 @@ function ble/keymap:vi/register#dump {
 
     out=$out'"'$k' ('$type') '$content$'\n'
   done
-  ble-edit/info/show esc "$out"
+  ble-edit/info/show ansi "$out"
   return 0
 }
 function ble/widget/vi-command:reg { ble/keymap:vi/register#dump; }
@@ -5531,7 +5531,7 @@ function ble/widget/vi-command/show-line-info {
   local line_ratio=$(((100*iline+nline-1)/nline))%
   local line_stat=$'line \e[34m'$iline$'\e[m / \e[34m'$nline$'\e[m --\e[34m'$line_ratio$'\e[m--'
 
-  ble-edit/info/show esc "\"$hist_stat\" $line_stat"
+  ble-edit/info/show ansi "\"$hist_stat\" $line_stat"
   ble/keymap:vi/adjust-command-mode
   return 0
 }
@@ -5546,9 +5546,9 @@ function ble/widget/vi-command/cancel {
     local joblist; ble/util/joblist
     if ((${#joblist[*]})); then
       ble/array#push joblist $'Type  \e[35m:q!\e[m  and press \e[35m<Enter>\e[m to abandon all \e[31mjobs\e[m and exit Bash'
-      IFS=$'\n' eval 'ble-edit/info/show esc "${joblist[*]}"'
+      IFS=$'\n' eval 'ble-edit/info/show ansi "${joblist[*]}"'
     else
-      ble-edit/info/show esc $'Type  \e[35m:q\e[m  and press \e[35m<Enter>\e[m to exit Bash'
+      ble-edit/info/show ansi $'Type  \e[35m:q\e[m  and press \e[35m<Enter>\e[m to exit Bash'
     fi
   fi
   ble/widget/vi-command/bell

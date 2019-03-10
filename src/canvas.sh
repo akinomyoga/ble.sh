@@ -363,29 +363,27 @@ function ble/canvas/put-vpa.draw {
   out=${out//'%y'/$((l-1))}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
-function ble/canvas/rmoveto-x.draw {
+function ble/canvas/put-move-x.draw {
   local dx=$1
-  if ((dx)); then
-    if ((dx>0)); then
-      ble/canvas/put-cuf.draw "$dx"
-    else
-      ble/canvas/put-cub.draw $((-dx))
-    fi
+  ((dx)) || return 1
+  if ((dx>0)); then
+    ble/canvas/put-cuf.draw "$dx"
+  else
+    ble/canvas/put-cub.draw $((-dx))
   fi
 }
-function ble/canvas/rmoveto-y.draw {
+function ble/canvas/put-move-y.draw {
   local dy=$1
-  if ((dy)); then
-    if ((dy>0)); then
-      ble/canvas/put-cud.draw "$dy"
-    else
-      ble/canvas/put-cuu.draw $((-dy))
-    fi
+  ((dy)) || return 1
+  if ((dy>0)); then
+    ble/canvas/put-cud.draw "$dy"
+  else
+    ble/canvas/put-cuu.draw $((-dy))
   fi
 }
-function ble/canvas/rmoveto.draw {
-  ble/canvas/rmoveto-x.draw "$1"
-  ble/canvas/rmoveto-y.draw "$2"
+function ble/canvas/put-move.draw {
+  ble/canvas/put-move-x.draw "$1"
+  ble/canvas/put-move-y.draw "$2"
 }
 function ble/canvas/flush.draw {
   IFS= builtin eval 'builtin echo -n "${DRAW_BUFF[*]}"'
@@ -408,8 +406,10 @@ function ble/canvas/bflush.draw {
 
 #------------------------------------------------------------------------------
 # ble/canvas/trace.draw
+# ble/canvas/trace
 
 ## 関数 ble/canvas/trace.draw text [opts]
+## 関数 ble/canvas/trace text [opts]
 ##   制御シーケンスを含む文字列を出力すると共にカーソル位置の移動を計算します。
 ##
 ##   @param[in]   text
@@ -435,8 +435,15 @@ function ble/canvas/bflush.draw {
 ##       出力開始時のカーソル左の文字コードを指定します。
 ##       出力終了時のカーソル左の文字コードが分かる場合にそれを返します。
 ##
+##     terminfo
+##       ANSI制御シーケンスではなく現在の端末のシーケンスとして
+##       制御機能SGRを解釈します。
+##
 ##   @var[in,out] DRAW_BUFF[]
-##     出力先の配列を指定します。
+##     ble/canvas/trace.draw の出力先の配列です。
+##   @var[out] ret
+##     ble/canvas/trace の結果の格納先の変数です。
+##
 ##   @var[in,out] x y g
 ##     出力の開始位置を指定します。出力終了時の位置を返します。
 ##
@@ -475,7 +482,7 @@ function ble/canvas/bflush.draw {
 function ble/canvas/trace/.goto {
   local x1=$1 y1=$2
   if [[ $opt_relative ]]; then
-    ble/canvas/rmoveto.draw $((x1-x)) $((y1-y))
+    ble/canvas/put-move.draw $((x1-x)) $((y1-y))
   else
     ble/canvas/put-cup.draw $((y1+1)) $((x1+1))
   fi
@@ -483,8 +490,12 @@ function ble/canvas/trace/.goto {
 }
 function ble/canvas/trace/.put-ellipsis {
   [[ :$opts: == *:ellipsis:* ]] || return
-  local ellipsis='…' ret
-  ble/util/s2c "$ellipsis"; ble/util/c2w "$ret"; local w=$ret
+  if ble/util/is-unicode-output; then
+    local ellipsis='…' ret
+    ble/util/s2c "$ellipsis"; ble/util/c2w "$ret"; local w=$ret
+  else
+    local ellipsis=... w=3
+  fi
   local x0=$x y0=$y
   ble/canvas/trace/.goto $((cols-w)) $((lines-1))
   ble/canvas/put.draw "$ellipsis"
@@ -551,7 +562,11 @@ function ble/canvas/trace/.SGR {
   fi
 
   # update g
-  ble/color/read-sgrspec "$param" ansi
+  if [[ $opt_terminfo ]]; then
+    ble/color/read-sgrspec "$param"
+  else
+    ble/color/read-sgrspec "$param" ansi
+  fi
 
   local ret
   ble/color/g2sgr "$g"
@@ -605,7 +620,7 @@ function ble/canvas/trace/.process-csi-sequence {
         # HPA "CSI `"
         ((x=arg-1,x<0&&(x=0),x>=cols&&(x=cols-1)))
         if [[ $opt_relative ]]; then
-          ble/canvas/rmoveto-x.draw $((x-x0))
+          ble/canvas/put-move-x.draw $((x-x0))
         else
           ble/canvas/put-hpa.draw $((x+1))
         fi
@@ -613,7 +628,7 @@ function ble/canvas/trace/.process-csi-sequence {
         # VPA "CSI d"
         ((y=arg-1,y<0&&(y=0),y>=lines&&(y=lines-1)))
         if [[ $opt_relative ]]; then
-          ble/canvas/rmoveto-y.draw $((y-y0))
+          ble/canvas/put-move-y.draw $((y-y0))
         else
           ble/canvas/put-vpa.draw $((y+1))
         fi
@@ -744,6 +759,7 @@ function ble/canvas/trace/.impl {
   local opt_relative=; [[ :$opts: == *:relative:* ]] && opt_relative=1
   local opt_measure=; [[ :$opts: == *:measure-bbox:* ]] && opt_measure=1
   [[ :$opts: != *:left-char:* ]] && local lc=32 lg=0
+  local opt_terminfo=; [[ :$opts: == *:terminfo:* ]] && opt_terminfo=1
 
   # constants
   local cols=${COLUMNS:-80} lines=${LINES:-25}
@@ -922,6 +938,11 @@ function ble/canvas/trace.draw {
   # cygwin では LC_COLLATE=C にしないと
   # 正規表現の range expression が期待通りに動かない。
   LC_COLLATE=C ble/canvas/trace/.impl "$@" &>/dev/null
+}
+function ble/canvas/trace {
+  local -a DRAW_BUFF=()
+  LC_COLLATE=C ble/canvas/trace/.impl "$@" &>/dev/null
+  ble/canvas/sflush.draw # -> ret
 }
 
 #------------------------------------------------------------------------------
@@ -1562,23 +1583,14 @@ function ble/canvas/goto.draw {
   local x=$1 y=$2
   ble/canvas/put.draw "$_ble_term_sgr0"
 
-  local dy=$((y-_ble_canvas_y))
-  if ((dy!=0)); then
-    if ((dy>0)); then
-      ble/canvas/put.draw "${_ble_term_cud//'%d'/$dy}"
-    else
-      ble/canvas/put.draw "${_ble_term_cuu//'%d'/$((-dy))}"
-    fi
-  fi
+  ble/canvas/put-move-y.draw $((y-_ble_canvas_y))
 
   local dx=$((x-_ble_canvas_x))
   if ((dx!=0)); then
     if ((x==0)); then
       ble/canvas/put.draw "$_ble_term_cr"
-    elif ((dx>0)); then
-      ble/canvas/put.draw "${_ble_term_cuf//'%d'/$dx}"
     else
-      ble/canvas/put.draw "${_ble_term_cub//'%d'/$((-dx))}"
+      ble/canvas/put-move-x.draw "$dx"
     fi
   fi
 

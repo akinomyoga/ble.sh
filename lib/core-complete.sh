@@ -2441,9 +2441,7 @@ function ble/complete/menu/style:desc/construct {
     local desc="(action: $ACTION)"
     ble/function#try ble/complete/action:"$ACTION"/get-desc
     if [[ $opt_raw ]]; then
-      local -a DRAW_BUFF=()
-      y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$desc" nooverflow:relative:ellipsis
-      ble/canvas/sflush.draw
+      y=0 g=0 lc=0 lg=0 LINES=1 COLUMNS=$cols ble/canvas/trace "$desc" nooverflow:relative:ellipsis
     else
       y=0 lines=1 ble/canvas/trace-text "$desc" nonewline
     fi
@@ -2526,7 +2524,7 @@ function ble/complete/menu/show {
   else
     local menu_items info_data menu_offset=0
     menu_items=()
-    info_data=(esc $'\e[38;5;242m(no candidates)\e[m')
+    info_data=(ansi $'\e[38;5;242m(no candidates)\e[m')
   fi
 
   ble-edit/info/immediate-show "${info_data[@]}"

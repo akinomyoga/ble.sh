@@ -611,9 +611,8 @@ function ble-edit/prompt/.instantiate {
   _ble_edit_rprompt[0]=$version
   if [[ $expanded != "$val0" ]]; then
     x=0 y=0 g=0 lc=32 lg=0
-    LINES=1 ble/canvas/trace.draw "$expanded" "$opts"
+    LINES=1 ble/canvas/trace "$expanded" "$opts:left-char"; local traced=$ret
     ((lc<0&&(lc=0)))
-    local traced; ble/canvas/sflush.draw -v traced
     val=$expanded esc=$traced
     return 0
   else
@@ -707,11 +706,12 @@ function ble-edit/info/.construct-content {
 
   local type=$1 text=$2
   case "$1" in
-  (esc)
-    local g=0
-    local -a DRAW_BUFF=()
-    LINES=$lines ble/canvas/trace.draw "$text"
-    ble/canvas/sflush.draw -v content ;;
+  (ansi|esc)
+    local trace_opts=nooverflow
+    [[ $1 == esc ]] && trace_opts=$trace_opts:terminfo
+    local ret= g=0
+    LINES=$lines ble/canvas/trace "$text" "$trace_opts"
+    content=$ret ;;
   (text)
     local ret
     ble/canvas/trace-text "$text"
@@ -766,20 +766,19 @@ _ble_edit_info_scene=default
 ##
 ##   @param[in] type
 ##
-##     以下の2つの内の何れかを指定する。
+##     以下の何れかを指定する。
 ##
-##     type=text
-##     type=esc
+##     text, ansi, esc, store
 ##
 ##   @param[in] text
 ##
 ##     type=text のとき、引数 text は表示する文字列を含む。
 ##     改行などの制御文字は代替表現に置き換えられる。
-##     画面からはみ出る文字列に関しては自動で truncate される。
+##     type=ansi のとき、引数 text はANSI制御シーケンスを含む文字列を指定する。
+##     type=esc のとき、引数 text は現在の端末の制御シーケンスを含む文字列を指定する。
 ##
-##     type=esc のとき、引数 text は制御シーケンスを含む文字列を指定する。
-##     画面からはみ出る様なシーケンスに対する対策はない。
-##     シーケンスを生成する側でその様なことがない様にする必要がある。
+##     これらの文字列について
+##     画面からはみ出る文字列に関しては自動で truncate される。
 ##
 function ble-edit/info/show {
   local type=$1 text=$2
@@ -3301,10 +3300,8 @@ function ble-edit/exec/.adjust-eol {
   # update cache
   if [[ $bleopt_prompt_eol_mark != "${_ble_edit_exec_eol_mark[0]}" ]]; then
     if [[ $bleopt_prompt_eol_mark ]]; then
-      local -a DRAW_BUFF=()
-      local x=0 y=0 g=0 x1=0 x2=0 y1=0 y2=0
-      LINES=1 COLUMNS=80 ble/canvas/trace.draw "$bleopt_prompt_eol_mark" nooverflow:measure-bbox
-      local ret; ble/canvas/sflush.draw
+      local ret= x=0 y=0 g=0 x1=0 x2=0 y1=0 y2=0
+      LINES=1 COLUMNS=80 ble/canvas/trace "$bleopt_prompt_eol_mark" nooverflow:measure-bbox
       _ble_edit_exec_eol_mark=("$bleopt_prompt_eol_mark" "$ret" "$x2")
     else
       _ble_edit_exec_eol_mark=('' '' 0)
@@ -5358,6 +5355,16 @@ _ble_edit_isearch_dir=-
 _ble_edit_isearch_arr=()
 _ble_edit_isearch_old=
 
+## 関数 ble-edit/isearch/status/append-progress-bar pos count
+##   @var[in,out] text
+function ble-edit/isearch/status/append-progress-bar {
+  ble/util/is-unicode-output || return
+  local pos=$1 count=$2 dir=$3
+  [[ :$dir: == *:-:* || :$dir: == *:backward:* ]] && ((pos=count-1-pos))
+  local ret; ble-edit/history/string#create-unicode-progress-bar "$pos" "$count" 5
+  text=$text$' \e[1;38;5;69;48;5;253m'$ret$'\e[m '
+}
+
 ## 関数 ble-edit/isearch/.show-status-with-progress.fib [pos]
 ##   @param[in,opt] pos
 ##     検索の途中の時に現在の検索位置を指定します。
@@ -5381,18 +5388,20 @@ function ble-edit/isearch/.show-status-with-progress.fib {
     ll="  " rr=">>"
   fi
   local index; ble-edit/history/get-index
-  local count; ble-edit/history/get-count
   local histIndex='!'$((index+1))
   local text="(${#_ble_edit_isearch_arr[@]}: $ll $histIndex $rr) \`$_ble_edit_isearch_str'"
 
   if [[ $1 ]]; then
     local pos=$1
+    local count; ble-edit/history/get-count
+    text=$text' searching...'
+    ble-edit/isearch/status/append-progress-bar "$pos" "$count" "$_ble_edit_isearch_dir"
     local percentage=$((count?pos*1000/count:1000))
-    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
+    text=$text" @$pos ($((percentage/10)).$((percentage%10))%)"
   fi
   ((fib_ntask)) && text="$text *$fib_ntask"
 
-  ble-edit/info/show text "$text"
+  ble-edit/info/show ansi "$text"
 }
 
 ## 関数 ble-edit/isearch/.show-status.fib
@@ -5865,15 +5874,16 @@ function ble-edit/nsearch/.show-status.fib {
   if [[ $1 ]]; then
     local pos=$1
     local count; ble-edit/history/get-count
-
+    text=$text' searching...'
+    ble-edit/isearch/status/append-progress-bar "$pos" "$count" "$_ble_edit_isearch_opts"
     local percentage=$((count?pos*1000/count:1000))
-    text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
+    text=$text" @$pos ($((percentage/10)).$((percentage%10))%)"
   fi
 
   local ntask=$fib_ntask
   ((ntask)) && text="$text *$ntask"
 
-  ble-edit/info/show text "$text"
+  ble-edit/info/show ansi "$text"
 }
 function ble-edit/nsearch/show-status {
   local fib_ntask=${#_ble_util_fiberchain[@]}
@@ -6426,7 +6436,7 @@ function ble/builtin/read/.setup-textarea {
   # textarea, info
   _ble_textarea_panel=1
   ble/textarea#invalidate
-  ble-edit/info/set-default esc ''
+  ble-edit/info/set-default ansi ''
 
   # edit/prompt
   _ble_edit_PS1=$opt_prompt
