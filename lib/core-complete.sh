@@ -2738,23 +2738,32 @@ function ble/widget/complete {
   local COMP1 COMP2 COMPS COMPV
   local comp_type comps_flags comps_fixed
   local comps_rex_ambiguous
-  local cand_count
+  local cand_count=0
   local -a cand_cand cand_word cand_pack
   if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
           :$opts: != *:context=*:* && ${#_ble_complete_menu_items[@]} -gt 0 ]]
   then
-    menu_show_opts=$menu_show_opts:menu-source # 既存の filter 前候補を保持する
-    ble/complete/menu/generate-candidates-from-menu; local ext=$?
-    local bleopt_complete_menu_style=$_ble_complete_menu_style
-  else
-    ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
+    if [[ $_ble_complete_menu_filter_enabled ]] || {
+         ble/complete/menu-filter; local ext=$?
+         ((ext==148)) && return 148
+         ((ext==0)); }; then
+      ble/complete/menu/generate-candidates-from-menu; local ext=$?
+      ((ext==148)) && return 148
+      if ((ext==0&&cand_count)); then
+        local bleopt_complete_menu_style=$_ble_complete_menu_style
+        menu_show_opts=$menu_show_opts:menu-source # 既存の filter 前候補を保持する
+      fi
+    fi
   fi
-  if ((ext==148)); then
-    return 148
-  elif ((ext!=0)); then
-    ble/widget/.bell
-    ble-edit/info/clear
-    return 1
+  if ((cand_count==0)); then
+    ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
+    if ((ext==148)); then
+      return 148
+    elif ((ext!=0)); then
+      ble/widget/.bell
+      ble-edit/info/clear
+      return 1
+    fi
   fi
 
   if [[ :$opts: == *:insert_all:* ]]; then
@@ -2937,8 +2946,6 @@ function ble/complete/menu-filter.idle {
   ((ext)) && ble/complete/menu/clear
 }
 
-ble/function#try ble/util/idle.push-background ble/complete/menu-filter.idle
-
 # ble/highlight/layer:menu_filter
 
 ## 関数 ble/highlight/layer/buff#operate-gflags name beg end mask gflags
@@ -3050,7 +3057,12 @@ function ble/highlight/layer:menu_filter/getg {
   fi
 }
 
-ble/array#insert-before _ble_highlight_layer__list region menu_filter
+_ble_complete_menu_filter_enabled=
+if ble/is-function ble/util/idle.push-background; then
+  _ble_complete_menu_filter_enabled=1
+  ble/util/idle.push-background ble/complete/menu-filter.idle
+  ble/array#insert-before _ble_highlight_layer__list region menu_filter
+fi
 
 #------------------------------------------------------------------------------
 #

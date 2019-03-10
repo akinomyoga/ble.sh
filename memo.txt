@@ -851,8 +851,6 @@ bash_tips
   * bash-3.1 以下で bleopt_rps1 が動いていない
 
   * bash-4.0 未満では物凄く遅くなるので曖昧補完は無効にしたい
-  * bash-4.0 未満では menu-filter.idle に対応していないので、
-    layer:menu_filter は登録しない事にする。
   * menu-complete: 頁管理の枠組みを統一したい。
 
 2019-02-28
@@ -2149,8 +2147,10 @@ bash_tips
     - complete: fix a bug that extra <kbd>TAB</kbd> is needed to enter `menu-complete` `#D0956` aa6bd73
     - complete: fix a bug that candidates are not regenerated on function name completions `#D0961` bbea72e
     - complete: fix a problem that the menu style is reset on `menu-complete` `#D0972` 47c28ff
+    - menu-filter: explicitly call `ble/complete/menu-filter` (<= bash-3.2) `#D0986`
   - syntax: allow variable assignment in arguments of `eval` `#D0941` 2f2f0eb
   - highlight: do not highlight overwrite modes when mark is active `#D0950` 4efe1a9
+    - highlight: disable `layer:menu_filter` (<= bash-3.2) `#D0987`
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
   - util (visible-bell): truncate long messages to fit into a line `#D0973` e55ff86
 
@@ -2163,6 +2163,9 @@ bash_tips
   - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
   - vi_nmap (`/`, `?`, `n`, `N`): fix search progress `#D0944` f20f840
   - complete: fix a problem of slow ambiguous filename matching in nested directries `#D0960` 7b3ee55
+  - util (ble/util/assign-array): improve performance (<= bash-3.2) `#D0985` ae176b2
+  - sabbrev: fix a bug that sabbrev is disabled (<= bash-3.2) `#D0985` 840af29
+  - util (ble/util/msleep): suppress warnings from `usleep` `#D0984` 8e4180c
 
   内部的変更
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
@@ -3026,6 +3029,14 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * bash-4.0 未満では menu-filter.idle に対応していないので、 [#D0987]
+    layer:menu_filter は登録しない事にする。
+    変な着色が実行されてよく分からない事になっている。
+
+  * bash-3.2 以下で 関数名補完が変だ。というか絞り込みが働かないので [#D0986]
+    menu 候補がいつまで経っても最初と同じ状態で駄目だ。
+    これは menu-filter が働いていない時には menu-filter を手動で呼び出す様にした。
 
   * bash-3.2 以下で sabbrev が動いていない [#D0985]
     正規表現? と思ったがそもそも core-complete.sh が読み込まれていない。
