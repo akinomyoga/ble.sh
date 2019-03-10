@@ -2159,11 +2159,11 @@ bash_tips
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
   - complete: support menu pages `#D0958` ff43e01 a488e01
-  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874
+  - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874 `#D0970` 87c8348
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
-  - complete: highlight active ranges of `menu-filter` `#D0969` 500f702
+  - complete: highlight active ranges of `menu-filter` `#D0969` 500f702 `#D0971`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3048,6 +3048,13 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-10
+
+  * menu-filter: コマンドを実行した時に着色が解除されない [#D0971]
+    これは region の時と同じ様に _ble_complete_menu_active を解除すれば良いだろう。
+    と思って試してみたら駄目だった。caret_state に反映されないので、
+    _ble_complete_menu_active の変化を検出できていないのである。
+    invalidate するか。或いは _ble_textarea_version なる変数を導入するか。導入した。
+    ble/textarea#invalidate を拡張する事にした。
 
   * edit: rps1 を設定していると vi : 等によるサブコマンドラインの表示位置がずれる [#D0970]
     render_opts を空にしても同じ問題が生じているので、出力部分の問題である。
