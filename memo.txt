@@ -863,10 +863,6 @@ bash_tips
     前の時と全く同じ症状に見える。しかし、前の対策は有効である。
     exec を2つに分けて実行してみても駄目だった。
 
-  * bash-4.0 未満では物凄く遅くなるので曖昧補完は無効にしたい
-    と思ったがこれは実は ble/util/array-assign が原因だったのかもしれない。
-    また後で詳しく何が原因だったのか調べる必要がある。
-
   * menu-complete: 頁管理の枠組みを統一したい。
 
 2019-02-28
@@ -2145,13 +2141,13 @@ bash_tips
     - menu-complete: fix a bug that height of `menu` is too large (<= bash-4.1) `#D0983` 129a1f0
   - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874 `#D0970` 87c8348
     - rps1: fix coordinate calculations for rps1 `#D0982` 129a1f0
-    - canvas (`ble/canvas/trace`): fix a bug that `measure-bbox` does not work (<= bash-3.1) `#D0988`
-    - canvas (`ble/canvas/trace`): fix a bug that `x1` and `y1` is not properly updated `#D0988`
+    - canvas (`ble/canvas/trace`): fix a bug that `measure-bbox` does not work (<= bash-3.1) `#D0988` 7f880de
+    - canvas (`ble/canvas/trace`): fix a bug that `x1` and `y1` is not properly updated `#D0988` 7f880de
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
   - complete: highlight active ranges of `menu-filter` `#D0969` 500f702 `#D0971` aae8b26
-    - menu-filter: cancel menu-filter when the word ends `#D0974` 6ce2ad2
+    - menu-filter: cancel `menu-filter` when the word ends `#D0974` 6ce2ad2
     - menu-filter: improve highlight `#D0975` b89f39f
   - isearch: show progress bar using unicode chars `#D0978` 51e600a
   - main: support `ble-reload` ef51490
@@ -2181,7 +2177,7 @@ bash_tips
   - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
   - vi_nmap (`/`, `?`, `n`, `N`): fix search progress `#D0944` f20f840
   - complete: fix a problem of slow ambiguous filename matching in nested directries `#D0960` 7b3ee55
-  - util (ble/util/assign-array): improve performance (<= bash-3.2) `#D0985` ae176b2
+  - util: improve performance of `ble/{util/{mapfile,assign-array},string#split-lines}` (<= bash-3.2) `#D0985` ae176b2 `#D0989`
   - sabbrev: fix a bug that sabbrev is disabled (<= bash-3.2) `#D0985` 840af29
   - util (ble/util/msleep): suppress warnings from `usleep` `#D0984` 8e4180c
 
@@ -3048,6 +3044,19 @@ bash_tips
 
 2019-03-10
 
+  * util: bash-4.0 未満では物凄く遅くなるので曖昧補完は無効にしたい [#D0989]
+    と思ったがこれは実は ble/util/array-assign が原因だったのかもしれない。
+    また後で詳しく何が原因だったのか調べる必要がある。
+
+    後、ble/util/array-assign は本当に高速なのか。
+    後 ble/util/mapfile も遅そうである。
+    というか split-lines が遅いのでは。
+    図ってみたら確かに50倍ぐらい遅い。
+    split-lines は while read で実装し直す事にした。
+
+    それ以外でそんなに bash-3.2 と bash-4.0 に差があるとは思えないので、
+    取り敢えず様子見して固まらない限りは気にしない事にする。
+
   * bash-3.1 以下で bleopt_rps1 が動いていない [#D0988]
 
     これは何だろう。全く動かないというのは不思議な事である。
@@ -3378,8 +3387,8 @@ bash_tips
         for entry in "${measure[@]}"; do のループの実行時間を計測する。
         .construct-text による計算時間は:
 
-        real    0m0.027s 1ページ目        
-        real    0m0.248s 最後の頁         
+        real    0m0.027s 1ページ目
+        real    0m0.248s 最後の頁
         real    0m0.074s 最後から2番目の頁
 
         trace.draw による計算時間は:
@@ -3440,7 +3449,7 @@ bash_tips
       % Note: ble/textmap#update に於いては、
       % #D0959 での考察により terminfo に ech がある場合にはそれを使い、
       % もしなければ半角空白で埋めるという事をする事にした。
-      % 
+      %
       % erase-eol (ech で消去する) fill-eol (半角空白で埋める) などの
       % オプションを用意しても良いのかもしれない。
       % と思ったが \r を実行してから改行を実行する場合も考えると対応は難しい。
