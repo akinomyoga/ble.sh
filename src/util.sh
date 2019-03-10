@@ -1113,7 +1113,7 @@ elif ble/bin/.freeze-utility-path usleep; then
   function ble/util/msleep {
     local v=$((1000*$1-_ble_util_msleep_delay))
     ((v<=0)) && v=0
-    ble/bin/usleep "$v"
+    ble/bin/usleep "$v" &>/dev/null
   }
 elif ble/util/msleep/.check-coreutils-sleep; then
   function ble/util/msleep/.core { ble/bin/sleep "$1"; }
