@@ -71,7 +71,8 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble/complete/menu/style:dense-nowrap/construct \
                   ble-decode/keymap:auto_complete/define \
                   ble-decode/keymap:menu_complete/define \
-                  ble-decode/keymap:dabbrev/define
+                  ble-decode/keymap:dabbrev/define \
+                  ble/complete/sabbrev/expand
 
 #------------------------------------------------------------------------------
 # 描画設定
