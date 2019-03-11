@@ -97,6 +97,7 @@ function ble/edit/use-textmap {
 
 ## オプション rps1
 bleopt/declare -v rps1 ''
+bleopt/declare -v rps1_transient ''
 
 ## オプション prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
@@ -1539,10 +1540,14 @@ function ble/textarea#focus {
   ble/canvas/bflush.draw
 }
 
-## 関数 ble/textarea#render
+## 関数 ble/textarea#render opts
 ##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
 ##   Post-condition: カーソル位置 (x y) = (_ble_textarea_cur[0] _ble_textarea_cur[1]) に移動する
 ##   Post-condition: 編集文字列部分の再描画を実行する
+##
+##   @param[in] opts
+##     leave
+##       bleopt rps1_transient が非空文字列の時、rps1 を消去します。
 ##
 ##   @var _ble_textarea_caret_state := inds ':' mark ':' mark_active ':' line_disabled ':' overwrite_mode
 ##     ble/textarea#render で用いる変数です。
@@ -1551,6 +1556,7 @@ function ble/textarea#focus {
 _ble_textarea_caret_state=::
 _ble_textarea_version=0
 function ble/textarea#render {
+  local opts=$1
   local ble_textarea_render_flag=1 # ble/textarea/panel#on-height-change から参照する
 
   local dirty=
@@ -1563,6 +1569,8 @@ function ble/textarea#render {
     dirty=1
   elif [[ $_ble_textarea_scroll != "$_ble_textarea_scroll_new" ]]; then
     dirty=1
+  elif [[ :$opts: == *:leave:* ]]; then
+    dirty=1
   fi
 
   if [[ ! $dirty ]]; then
@@ -1574,14 +1582,27 @@ function ble/textarea#render {
   # 描画内容の計算 (配置情報、着色文字列)
 
   local ret
+  local cols=${COLUMNS-80}
+
+  # rps1_transient
+  if [[ $bleopt_rps1 && :$opts: == *:leave:* && $bleopt_rps1_transient ]]; then
+    local rps1_width=${_ble_edit_rprompt_bbox[2]}
+    if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
+      ((cols-=rps1_width+1,_ble_term_xenl||cols--))
+      local -a DRAW_BUFF=()
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
+      ble/canvas/put.draw "$_ble_term_el"
+      ble/canvas/bflush.draw
+    fi
+  fi
 
   local x y g lc lg=0
   ble-edit/prompt/update # x y lc ret
   local prox=$x proy=$y prolc=$lc esc_prompt=$ret
 
-  local cols=${COLUMNS-80}
+  # rps1
   local flag_rps1=
-  if [[ $bleopt_rps1 ]]; then
+  if [[ $bleopt_rps1 && ( :$opts: != *:leave:* || $bleopt_rps1_transient ) ]]; then
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)) &&
       ((flag_rps1=1,cols-=rps1_width+1,_ble_term_xenl||cols--))
@@ -1687,8 +1708,6 @@ function ble/textarea#render {
     # プロンプト描画
     ble/canvas/panel#goto.draw "$_ble_textarea_panel"
     if [[ $flag_rps1 ]]; then
-      local rps1x=${_ble_edit_rprompt[1]}
-      local rps1y=${_ble_edit_rprompt[2]}
       local rps1out=${_ble_edit_rprompt[6]}
       # Note: cols は画面右端ではなく textmap の右端
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0

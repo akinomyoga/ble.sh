@@ -1136,6 +1136,7 @@ _ble_textmap_ARRNAMES=(
 ##   @arr _ble_textmap_ichg[]
 ##     タブや行送りなどによって標準的な表現と異なる文字
 ##     のインデックスのリストです。
+##     標準的な表現は ble/highlight/layer:plain/update/.getch で規定されます。
 ##   @var _ble_textmap_endx
 ##   @var _ble_textmap_endy
 ##     最後の文字の右端の座標を保持します。
@@ -1297,6 +1298,7 @@ function ble/textmap#update {
           if ((x+1>=cols)); then
             cs=' '
             ble/textmap#update/.wrap
+            changed=1
           else
             local x2
             ((x2=(x/it+1)*it,

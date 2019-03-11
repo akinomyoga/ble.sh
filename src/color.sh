@@ -696,7 +696,7 @@ function ble/highlight/layer:plain/update/.getch {
     if [[ $ch == $'\t' ]]; then
       ch=${_ble_string_prototype::it}
     elif [[ $ch == $'\n' ]]; then
-      ch=$'\e[K\n'
+      ch=$_ble_term_el$_ble_term_nl
     elif [[ $ch == '' ]]; then
       ch='^?'
     else

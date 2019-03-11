@@ -2155,6 +2155,7 @@ bash_tips
     - rps1: fix coordinate calculations for rps1 `#D0982` 129a1f0
     - canvas (`ble/canvas/trace`): fix a bug that `measure-bbox` does not work (<= bash-3.1) `#D0988` 7f880de
     - canvas (`ble/canvas/trace`): fix a bug that `x1` and `y1` is not properly updated `#D0988` 7f880de
+    - edit: support `bleopt rps1_transient` `#D0993`
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
@@ -3057,6 +3058,9 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-11
+
+  * edit: bleopt rps1_transient 対応 [#D0993]
+    非空文字列が設定されている時、右プロンプトを次の行に行く前に消す。
 
   * util (ble/util/openat): 入れ子の bash-3.1 で C-d を受信できない [#D0992]
     ref #D0857
