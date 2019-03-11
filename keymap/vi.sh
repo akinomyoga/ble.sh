@@ -257,6 +257,7 @@ function ble/widget/vi_imap/__before_widget__ {
 
 function ble/widget/vi_imap/complete {
   ble/keymap:vi/imap-repeat/pop
+  ble/keymap:vi/undo/add more
   ble/widget/complete "$@"
 }
 function ble/keymap:vi/complete/insert.hook {
@@ -267,6 +268,8 @@ function ble/keymap:vi/complete/insert.hook {
   local q="'" Q="'\''"
   local WIDGET="ble/widget/complete-insert '${original//$q/$Q}' '${insert//$q/$Q}' '${suffix//$q/$Q}'"
   ble/keymap:vi/imap-repeat/push
+  [[ $_ble_decode_keymap == vi_imap ]] &&
+    ble/keymap:vi/undo/add more
 }
 ble/array#push _ble_complete_insert_hook ble/keymap:vi/complete/insert.hook
 
@@ -5560,10 +5563,11 @@ function ble/widget/vi-command/cancel {
 #   `[`] は設定する。vim と違って実際に変更のあった範囲を抽出する。
 #   . は設定しない。
 #
+bleopt/declare -v keymap_vi_imap_undo=
 _ble_keymap_vi_undo_suppress=
 function ble/keymap:vi/undo/add {
-  ble/keymap:vi/clear-arg
   [[ $_ble_keymap_vi_undo_suppress ]] && return
+  [[ $1 == more && $bleopt_keymap_vi_imap_undo != more ]] && return
   ble-edit/undo/add
 }
 function ble/widget/vi_nmap/undo {
@@ -7229,7 +7233,11 @@ function ble/widget/vi_imap/accept-single-line-or {
 function ble/widget/vi_imap/delete-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/keymap:vi/imap-repeat/reset
-    ble/widget/delete-region
+    if ((_ble_edit_ind!=_ble_edit_mark)); then
+      ble/keymap:vi/undo/add more
+      ble/widget/delete-region
+      ble/keymap:vi/undo/add more
+    fi
   else
     ble/widget/"$@"
   fi
@@ -7250,7 +7258,11 @@ function ble/widget/vi_imap/delete-backward-word {
   local rex="($_ble_keymap_vi_REX_WORD)[$space]*\$|[$space]+\$|$nl\$"
   if [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
     local index=$((_ble_edit_ind-${#BASH_REMATCH}))
-    ble/widget/.delete-range "$index" "$_ble_edit_ind"
+    if ((index!=_ble_edit_ind)); then
+      ble/keymap:vi/undo/add more
+      ble/widget/.delete-range "$index" "$_ble_edit_ind"
+      ble/keymap:vi/undo/add more
+    fi
     return 0
   else
     ble/widget/.bell
@@ -7345,7 +7357,11 @@ function ble/widget/vi_imap/delete-backward-indent-or {
   local rex=$'(^|\n)([ \t]+)$'
   if [[ ${_ble_edit_str::_ble_edit_ind} =~ $rex ]]; then
     local rematch2=${BASH_REMATCH[2]} # Note: for bash-3.1 ${#arr[n]} bug
-    ble/widget/.delete-range $((_ble_edit_ind-${#rematch2})) "$_ble_edit_ind"
+    if [[ $rematch2 ]]; then
+      ble/keymap:vi/undo/add more
+      ble/widget/.delete-range $((_ble_edit_ind-${#rematch2})) "$_ble_edit_ind"
+      ble/keymap:vi/undo/add more
+    fi
     return 0
   else
     ble/widget/"$@"

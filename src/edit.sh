@@ -2481,7 +2481,14 @@ function ble/widget/delete-forward-char {
 function ble/widget/delete-backward-char {
   local arg; ble-edit/content/get-arg 1
   ((arg==0)) && return 0
+
+  # keymap/vi.sh (white widget)
+  [[ $_ble_decode_keymap == vi_imap ]] && ble/keymap:vi/undo/add more
+
   ble/widget/.delete-char $((-arg)) || ble/widget/.bell
+
+  # keymap/vi.sh (white widget)
+  [[ $_ble_decode_keymap == vi_imap ]] && ble/keymap:vi/undo/add more
 }
 
 _ble_edit_exit_count=0
@@ -3090,7 +3097,13 @@ function ble/widget/.delete-backward-genword {
   local a b c x=${1:-$_ble_edit_ind}
   ble/widget/.locate-backward-genword
   if ((x>c&&(c=x),b!=c)); then
+    # keymap/vi.sh (white list に登録されている編集関数)
+    [[ $_ble_decode_keymap == vi_imap ]] && ble/keymap:vi/undo/add more
+
     ble/widget/.delete-range "$b" "$c"
+
+    # keymap/vi.sh (white list に登録されている編集関数)
+    [[ $_ble_decode_keymap == vi_imap ]] && ble/keymap:vi/undo/add more
   else
     ble/widget/.bell
   fi
@@ -4933,11 +4946,23 @@ function ble/widget/history-expand-backward-line {
 ## 編集関数 magic-space
 ##   履歴展開と静的略語展開を実行してから空白を挿入します。
 function ble/widget/magic-space {
+  # keymap/vi.sh
+  [[ $_ble_decode_keymap == vi_imap ]] &&
+    local oind=$_ble_edit_ind ostr=$_ble_edit_str
+
   local arg; ble-edit/content/get-arg ''
   ble/widget/history-expand-backward-line ||
-    ble/function#try ble/complete/sabbrev/expand
+    ble/complete/sabbrev/expand
   local ext=$?
   ((ext==148)) && return 148 # sabbrev/expand でメニュー補完に入った時など。
+
+  # keymap/vi.sh
+  [[ $_ble_decode_keymap == vi_imap ]] &&
+    if [[ $ostr != "$_ble_edit_str" ]]; then
+      _ble_edit_ind=$oind _ble_edit_str=$ostr ble/keymap:vi/undo/add more
+      ble/keymap:vi/undo/add more
+    fi
+
   local -a KEYS=(32)
   _ble_edit_arg=$arg
   ble/widget/self-insert

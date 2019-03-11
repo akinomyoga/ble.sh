@@ -2719,8 +2719,8 @@ function ble/widget/complete {
       fi
       [[ $suffix != *' ' ]] && suffix="$suffix "
 
-      ble/util/invoke-hook _ble_complete_insert_hook
       ble/complete/insert "$beg" "$end" "$insert" "$suffix"
+      ble/util/invoke-hook _ble_complete_insert_hook
       beg=$_ble_edit_ind end=$_ble_edit_ind
       ((index++))
     done
@@ -2773,8 +2773,8 @@ function ble/widget/complete {
     do_insert=
   fi
   if [[ $do_insert ]]; then
-    ble/util/invoke-hook _ble_complete_insert_hook
     ble/complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
+    ble/util/invoke-hook _ble_complete_insert_hook
   fi
 
   if [[ $insert_flags == *m* ]]; then
@@ -3623,8 +3623,8 @@ function ble/widget/auto_complete/insert {
   local insert_end=$_ble_edit_ind
   local insert=$_ble_complete_ac_insert
   local suffix=$_ble_complete_ac_suffix
-  ble/util/invoke-hook _ble_complete_insert_hook
   ble/complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
+  ble/util/invoke-hook _ble_complete_insert_hook
 
   _ble_edit_mark_active=
   _ble_complete_ac_insert=
@@ -3715,6 +3715,11 @@ function ble/widget/auto_complete/insert-word {
     else
       local ins=$BASH_REMATCH
 
+      # Note: 以下の様に _ble_edit_ind だけずらす。
+      #   <C>he<I>llo world<M> → <C>hello <I>world<M>
+      #   (<C> = comp1, <I> = _ble_edit_ind, <M> = _ble_edit_mark)
+      ((_ble_edit_ind+=${#ins}))
+
       # 通知
       local comp_text=$_ble_edit_str
       local insert_beg=$_ble_complete_ac_comp1
@@ -3722,11 +3727,6 @@ function ble/widget/auto_complete/insert-word {
       local insert=${_ble_edit_str:insert_beg:insert_end-insert_beg}$ins
       local suffix=
       ble/util/invoke-hook _ble_complete_insert_hook
-
-      # Note: 以下の様に _ble_edit_ind だけずらす。
-      #   <C>he<I>llo world<M> → <C>hello <I>world<M>
-      #   (<C> = comp1, <I> = _ble_edit_ind, <M> = _ble_edit_mark)
-      ((_ble_edit_ind+=${#ins}))
       return 0
     fi
   elif [[ $_ble_complete_ac_type == [ra] ]]; then
@@ -3738,6 +3738,14 @@ function ble/widget/auto_complete/insert-word {
     else
       local ins=$BASH_REMATCH
 
+      # Note: 以下の様に内容を書き換える。
+      #   <C>hll<I> [hello world] <M> → <C>hello <I>world<M>
+      #   (<C> = comp1, <I> = _ble_edit_ind, <M> = _ble_edit_mark)
+      _ble_complete_ac_type=c
+      ble-edit/content/replace "$_ble_complete_ac_comp1" "$_ble_edit_mark" "$_ble_complete_ac_insert"
+      ((_ble_edit_ind=_ble_complete_ac_comp1+${#ins},
+        _ble_edit_mark=_ble_complete_ac_comp1+${#_ble_complete_ac_insert}))
+
       # 通知
       local comp_text=$_ble_edit_str
       local insert_beg=$_ble_complete_ac_comp1
@@ -3746,13 +3754,6 @@ function ble/widget/auto_complete/insert-word {
       local suffix=
       ble/util/invoke-hook _ble_complete_insert_hook
 
-      # Note: 以下の様に内容を書き換える。
-      #   <C>hll<I> [hello world] <M> → <C>hello <I>world<M>
-      #   (<C> = comp1, <I> = _ble_edit_ind, <M> = _ble_edit_mark)
-      _ble_complete_ac_type=c
-      ble-edit/content/replace "$_ble_complete_ac_comp1" "$_ble_edit_mark" "$_ble_complete_ac_insert"
-      ((_ble_edit_ind=_ble_complete_ac_comp1+${#ins},
-        _ble_edit_mark=_ble_complete_ac_comp1+${#_ble_complete_ac_insert}))
       return 0
     fi
   fi

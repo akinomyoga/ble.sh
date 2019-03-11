@@ -856,9 +856,6 @@ bash_tips
 
   * syntax: "for a in 1; do done" が文法エラーになっていない
 
-  * vi: imap に於ける undo がちゃんと記録されていないのでは。
-    特に補完のタイミングにおける記録もない。
-
 2019-02-10
 
   * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
@@ -2164,6 +2161,8 @@ bash_tips
   - isearch: show progress bar using unicode chars `#D0978` 51e600a
   - main: support `ble-reload` ef51490
   - complete: support `source:sabbrev` `#D0994` 5c9e579
+  - complete: clear menu on <kbd>C-g</kbd> `#D0995` e0f93a2
+  - vi_imap: support `bleopt keymap_vi_imap_undo=more` `#D0996`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3058,6 +3057,29 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-11
+
+  * vi: imap に於ける undo がちゃんと記録されていないのでは [#D0996]
+    特に補完のタイミングにおける記録もない。
+    やっぱり undo/add が呼び出されていない。
+
+    実装を見ると ble/widget/vi_imap/__before_widget__ 経由で、
+    white でないコマンドを実行する直前に
+    ble/keymap:vi/mark/end-edit-area が実行されて、
+    そのタイミングで undo/add が呼び出される筈の気がするが…。
+
+    と思ったが、実は DEL などは white と認識されている?
+    うーん。vim の動作を調べると実は vim の場合は undo は
+    挿入モード単位で行われている様だ。つまり、
+    現在の様な記録方法で問題ないのである。
+
+    しかし、やはりこれは分かりにくい。というか不便だ。
+    オプションでもっと細かく undo を記録するモードをつけるか。
+    その場合にはどの様に判定するのか。
+    別に判定など考えずに undo を沢山呼び出せば良い様な気もする。
+
+    - done: ble/util/invoke-hook _ble_complete_insert_hook は
+      実際に挿入を行った後に呼び出す様に変更した。
+      実装を見てみるとどちらで行っても良い様な実装になっていたので。
 
   * menu-complete: C-g でキャンセルできる様にしたい [#D0995]
     C-g は bell だったが。bell に何か hook する事は可能だろうか。
