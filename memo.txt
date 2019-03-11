@@ -852,24 +852,9 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-10
+2019-03-11
 
-  * 入れ子の bash-3.1 で C-d を受信できない
-    ref #D0857
-
-    これは前に修正した物ではなかったか。
-    実際に調べてみると子プロセスが起動していない。
-    また再現するかどうかを見ると 3.0 3.1 3.2 の中で 3.1 を起動した時に起こる。
-    前の時と全く同じ症状に見える。しかし、前の対策は有効である。
-    exec を2つに分けて実行してみても駄目だった。
-
-    うーん。子プロセスが起動していないというのは前にはなかった気がする。
-    子プロセスを起動する部分を見たが特にエラーメッセージが出ている訳でもない。
-    調べるとどうも起動した瞬間は起動している様である。
-    その後で read に失敗して while ループを抜けている。
-
-    openat でその pipe を開かない場合には失敗して終了する事はない様子である。
-    つまり pipe を開くと read に失敗する。
+  * syntax: "for a in 1; do done" が文法エラーになっていない
 
 2019-02-28
 
@@ -1333,6 +1318,27 @@ bash_tips
 
     これは ble-syntax:bash/ctx-command/.check-delimiter-or-redirect の冒頭部分が怪しい。
     と思ったが FARGX1 に関してはチェックが入っていないのでやはり関係ないだろうか。
+
+    2019-03-11 rps1 で表示している時に EL を空白で代替していると、
+    改行の着色が空白に反映される。これでも良いような気がしてきた。
+    然し、右側が全て着色されるというのもうるさい。
+    最初の1文字だけ着色して SGR(0) するかと思ったが、
+    そうするとその次にある文字の着色も消えてしまう。
+
+    それの対策のために _ble_textmap_ichg があるのでは。
+    と思ったが、実装を見てみると違っている様に見える。
+    _ble_textmap_ichg は着色の調整に使っている事は確かだが、
+    _ble_textmap_ichg に登録されている文字の着色を計算しているのであって、
+    _ble_textmap_ichg に登録されている文字の次の文字の着色は計算していない様に見える。
+    うーん。_ble_textmap_ichg は他の箇所では全く使っていない。
+
+    そうだ。思い出した…。_ble_textmap_ichg に登録されている文字は、
+    配置の場所によって中身が変わるので、shift が使えないという事だった。
+    特に、中身が変化している場合には文字を取り出して変更を行うのだった。
+    では以前 ichg に登録されていて、現在位置では ichg に登録されていない文字はどうなるのか。
+    と思ったら既定の文字形は別の所で決定されている様だ。
+    ble/highlight/layer:plain/update/.getch である。
+
 
 2017-11-09
 
@@ -2173,6 +2179,7 @@ bash_tips
     - highlight: disable `layer:menu_filter` (<= bash-3.2) `#D0987` 1b14b11
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
   - util (visible-bell): truncate long messages to fit into a line `#D0973` e55ff86
+  - edit: render prompt immediately on newline `#D0991` ea6e758
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -2186,6 +2193,7 @@ bash_tips
   - util: improve performance of `ble/{util/{mapfile,assign-array},string#split-lines}` (<= bash-3.2) `#D0985` ae176b2 `#D0989`
   - sabbrev: fix a bug that sabbrev is disabled (<= bash-3.2) `#D0985` 840af29
   - util (ble/util/msleep): suppress warnings from `usleep` `#D0984` 8e4180c
+  - util: fix a problem that <kbd>C-d</kbd> cannot be input in nested Bash 3.1 `#D0992`
 
   内部的変更
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
@@ -3050,7 +3058,25 @@ bash_tips
 
 2019-03-11
 
-  * edit: RET を連打するとプロンプトの表示前に行頭にカーソルが滞在している。
+  * util (ble/util/openat): 入れ子の bash-3.1 で C-d を受信できない [#D0992]
+    ref #D0857
+
+    これは前に修正した物ではなかったか。
+    実際に調べてみると子プロセスが起動していない。
+    また再現するかどうかを見ると 3.0 3.1 3.2 の中で 3.1 を起動した時に起こる。
+    前の時と全く同じ症状に見える。しかし、前の対策は有効である。
+    exec を2つに分けて実行してみても駄目だった。
+
+    うーん。子プロセスが起動していないというのは前にはなかった気がする。
+    子プロセスを起動する部分を見たが特にエラーメッセージが出ている訳でもない。
+    調べるとどうも起動した瞬間は起動している様である。
+    その後で read に失敗して while ループを抜けている。
+
+    openat でその pipe を開かない場合には失敗して終了する事はない様子である。
+    つまり pipe を開くと read に失敗する。
+    また openat_base をずらすと失敗して終了する事はない。
+
+  * edit: RET を連打するとプロンプトの表示前に行頭にカーソルが滞在している [#D0991]
     これは何故だろうと思っていたが、よく考えたら has-input の時には、
     プロンプトを再描画せずに通過するのであった。
     そして次の RET が来て .insert-line した時に漸く新しい行が描画される。
