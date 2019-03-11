@@ -363,6 +363,21 @@ function ble/canvas/put-vpa.draw {
   out=${out//'%y'/$((l-1))}
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$out
 }
+function ble/canvas/put-ech.draw {
+  local value=${1:-1} esc
+  if [[ $_ble_term_ech ]]; then
+    esc=${_ble_term_ech/'%d'/$value}
+  else
+    ble/string#reserve-prototype "$value"
+    esc=${_ble_string_prototype::value}${_ble_term_cub/'%d'/$value}
+  fi
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$esc
+}
+function ble/canvas/put-spaces.draw {
+  local value=${1:-1}
+  ble/string#reserve-prototype "$value"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_string_prototype::value}
+}
 function ble/canvas/put-move-x.draw {
   local dx=$1
   ((dx)) || return 1

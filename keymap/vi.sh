@@ -5563,7 +5563,7 @@ function ble/widget/vi-command/cancel {
 #   `[`] は設定する。vim と違って実際に変更のあった範囲を抽出する。
 #   . は設定しない。
 #
-bleopt/declare -v keymap_vi_imap_undo=
+bleopt/declare -v keymap_vi_imap_undo ''
 _ble_keymap_vi_undo_suppress=
 function ble/keymap:vi/undo/add {
   [[ $_ble_keymap_vi_undo_suppress ]] && return

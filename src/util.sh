@@ -2201,6 +2201,7 @@ function ble/util/fiberchain#clear {
 
 bleopt/declare -v vbell_default_message ' Wuff, -- Wuff!! '
 bleopt/declare -v vbell_duration 2000
+bleopt/declare -n vbell_align left
 
 function ble-term/.initialize {
   if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
@@ -2232,6 +2233,10 @@ function ble-term/flush {
 
 # **** vbell/abell ****
 
+function ble/term/audible-bell {
+  builtin echo -n '' 1>&2
+}
+
 function ble/term/visible-bell/.initialize {
   _ble_term_visible_bell__ftime=$_ble_base_run/$$.visible-bell.time
 
@@ -2247,13 +2252,60 @@ function ble/term/visible-bell/.initialize {
   ble-term/put "$_ble_term_el2$_ble_term_rc"
   IFS= builtin eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
 }
-
 ble/term/visible-bell/.initialize
 
-
-function ble/term/audible-bell {
-  builtin echo -n '' 1>&2
+function ble/term/visible-bell/defface.hook {
+  ble/color/defface vbell       reverse
+  ble/color/defface vbell_flash reverse,fg=green
+  ble/color/defface vbell_erase bg=252
 }
+ble/array#push _ble_color_faces_defface_hook ble/term/visible-bell/defface.hook
+
+function ble/term/visible-bell/.show {
+  local message=$1 x=$2 y=$3
+  if [[ $opt_canvas ]]; then
+    local x0=0 y0=0
+    if [[ $bleopt_vbell_align == right ]]; then
+      ((x0=COLUMNS-1-x,x0<0&&(x0=0)))
+    elif [[ $bleopt_vbell_align == center ]]; then
+      ((x0=(COLUMNS-1-x)/2,x0<0&&(x0=0)))
+    fi
+
+    local -a DRAW_BUFF=()
+    ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
+    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+    ble/canvas/put.draw "$message$_ble_term_sgr0"
+    ble/canvas/put.draw "$_ble_term_rc"
+    ble/canvas/put-cud.draw 1
+    ble/canvas/flush.draw
+  else
+    builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$sgr1$message}"
+  fi
+} >&2
+function ble/term/visible-bell/.clear {
+  local sgr=$1 x=$2 y=$3
+  if [[ $opt_canvas ]]; then
+    local x0=0 y0=0
+    if [[ $bleopt_vbell_align == right ]]; then
+      ((x0=COLUMNS-1-x,x0<0&&(x0=0)))
+    elif [[ $bleopt_vbell_align == center ]]; then
+      ((x0=(COLUMNS-1-x)/2,x0<0&&(x0=0)))
+    fi
+
+    local -a DRAW_BUFF=()
+    ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
+    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+    ble/canvas/put.draw "$sgrZ"
+    ble/canvas/put-spaces.draw "$x"
+    #ble/canvas/put-ech.draw "$x"
+    #ble/canvas/put.draw "$_ble_term_el"
+    ble/canvas/put.draw "$_ble_term_rc"
+    ble/canvas/flush.draw
+  else
+    builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$sgr1$message}"
+  fi
+} >&2
+
 ## 関数 ble/term/visible-bell message [opts]
 function ble/term/visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
@@ -2262,21 +2314,32 @@ function ble/term/visible-bell {
   message=${message:-$bleopt_vbell_default_message}
 
   # 一行に収まる様に切り詰める
+  local opt_canvas= x y
   if ble/is-function ble/canvas/trace-text; then
-    local x y ret lines=1 sgr0= sgr1=
+    opt_canvas=1
+    local ret lines=1 sgr0= sgr1=
     ble/canvas/trace-text "$message" nonewline:external-sgr
     message=$ret
   else
     message=${message::cols}
   fi
 
-  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
+  local sgr0=$_ble_term_sgr0
+  local sgr1=${_ble_term_setaf[2]}$_ble_term_rev
+  local sgr2=$_ble_term_rev
+  local sgrZ=$_ble_term_rev
+  local sgr
+  ble/color/face2sgr vbell_flash; sgr1=$sgr
+  ble/color/face2sgr vbell; sgr2=$sgr
+  ble/color/face2sgr vbell_erase; sgrZ=$sgr
+
+  ble/term/visible-bell/.show "$sgr1$message" "$x" "$y"
   (
     {
       # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
 
       ble/util/msleep 50
-      builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
+      ble/term/visible-bell/.show "$sgr2$message" "$x" "$y"
 
       [[ :$opts: == *:persistent:* ]] && exit
 
@@ -2292,7 +2355,7 @@ function ble/term/visible-bell {
       time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
       time2=($(ble/bin/date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
       if (((time2[0]-time1[0])*1000+(10#0${time2[1]::3}-10#0${time1[1]::3})>=msec)); then
-        builtin echo -n "$_ble_term_visible_bell_clear" >&2
+        ble/term/visible-bell/.clear "$sgrZ" "$x" "$y"
       fi
     } &
   )

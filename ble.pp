@@ -539,6 +539,7 @@ function ble-update {
 }
 #%end
 
+#%x inc.r|@|src/def|
 #%x inc.r|@|src/util|
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.

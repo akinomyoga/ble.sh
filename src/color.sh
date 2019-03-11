@@ -117,6 +117,30 @@ function ble/color/gspec2g {
   done
   ret=$g
 }
+## 関数 ble/color/g2gspec g
+##   @var[out] ret
+function ble/color/g2gspec {
+  local g=$1 gspec=
+  if ((g&_ble_color_gflags_ForeColor)); then
+    local fg=$(((g&_ble_color_gflags_MaskFg)>>_ble_color_gflags_ShiftFg))
+    ble/color/.color2name "$fg"
+    gspec=$gspec,fg=$ret
+  fi
+  if ((g&_ble_color_gflags_BackColor)); then
+    local bg=$(((g&_ble_color_gflags_MaskBg)>>_ble_color_gflags_ShiftBg))
+    ble/color/.color2name "$bg"
+    gspec=$gspec,bg=$ret
+  fi
+  ((g&_ble_color_gflags_Bold))      && gspec=$gspec,bold
+  ((g&_ble_color_gflags_Underline)) && gspec=$gspec,underline
+  ((g&_ble_color_gflags_Blink))     && gspec=$gspec,blink
+  ((g&_ble_color_gflags_Invisible)) && gspec=$gspec,invis
+  ((g&_ble_color_gflags_Revert))    && gspec=$gspec,reverse
+  ((g&_ble_color_gflags_Strike))    && gspec=$gspec,strike
+  ((g&_ble_color_gflags_Italic))    && gspec=$gspec,italic
+  gspec=${gspec#,}
+  ret=${gspec:-none}
+}
 
 ## 関数 ble/color/gspec2sgr gspec
 ##   @param[in] gspec
@@ -181,6 +205,28 @@ function ble/color/.name2color {
     (*)       ret=-1 ;;
     esac
   fi
+}
+function ble/color/.color2name {
+  ((ret=(10#$1&255)))
+  case $ret in
+  (0)  ret=black   ;;
+  (1)  ret=brown   ;;
+  (2)  ret=green   ;;
+  (3)  ret=olive   ;;
+  (4)  ret=navy    ;;
+  (5)  ret=purple  ;;
+  (6)  ret=teal    ;;
+  (7)  ret=silver  ;;
+  (8)  ret=gray    ;;
+  (9)  ret=red     ;;
+  (10) ret=lime    ;;
+  (11) ret=yellow  ;;
+  (12) ret=blue    ;;
+  (13) ret=magenta ;;
+  (14) ret=cyan    ;;
+  (15) ret=white   ;;
+  (202) ret=orange ;;
+  esac
 }
 
 ## 関数 ble/color/convert-color88-to-color256
@@ -422,8 +468,8 @@ function ble/color/ansi2g {
 # _ble_faces
 
 # 遅延初期化登録
-_ble_color_faces_defface_hook=()
-_ble_color_faces_setface_hook=()
+# _ble_color_faces_defface_hook=() # src/def.sh
+# _ble_color_faces_setface_hook=() # src/def.sh
 
 # 遅延初期化
 if [[ ! $_ble_faces_count ]]; then # reload #D0875
@@ -539,6 +585,17 @@ function ble/color/initialize-faces {
   else
     return 0
   fi
+}
+
+function ble/color/list-faces {
+  local key g ret sgr
+  for key in "${!_ble_faces__@}"; do
+    local name=${key#_ble_faces__}
+    ble/color/iface2sgr $((key))
+    ble/color/g2gspec $((_ble_faces[key]))
+    ret=$sgr$ret$_ble_term_sgr0
+    printf 'ble-color-setface %s %s\n' "$name" "$ret"
+  done
 }
 
 #------------------------------------------------------------------------------

@@ -2175,10 +2175,10 @@ function ble/widget/.bell {
 _ble_widget_bell_hook=()
 function ble/widget/bell {
   ble-edit/content/clear-arg
-  ble/widget/.bell "$1"
   _ble_edit_mark_active=
   _ble_edit_arg=
   ble/util/invoke-hook _ble_widget_bell_hook
+  ble/widget/.bell "$1"
 }
 
 function ble/widget/nop { :; }
