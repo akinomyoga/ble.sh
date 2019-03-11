@@ -527,7 +527,12 @@ else
   function ble/util/is-stdin-ready { false; }
 fi
 
-# exec {var}>foo
+## 関数 ble/util/openat fdvar redirect
+##   "exec {fdvar}>foo" に該当する操作を実行します。
+##   @param[out] fdvar
+##     指定した変数に使用されたファイルディスクリプタを代入します。
+##   @param[in] redirect
+##     リダイレクトを指定します。
 if ((_ble_bash>=40100)); then
   function ble/util/openat {
     local _fdvar=$1 _redirect=$2
@@ -535,10 +540,22 @@ if ((_ble_bash>=40100)); then
   }
 else
   _ble_util_openat_nextfd=$bleopt_openat_base
+  function ble/util/openat/.nextfd {
+    if ((30100<=_ble_bash&&_ble_bash<30200)); then
+      # Bash 3.1 では exec fd>&- で明示的に閉じても駄目。
+      # 開いた後に読み取りプロセスで読み取りに失敗する。
+      # なので開いていない fd を /dev か /proc で調べる。#D0992
+      while [[ -e /dev/fd/$_ble_util_openat_nextfd || -e /proc/self/fd/$_ble_util_openat_nextfd ]]; do
+        ((_ble_util_openat_nextfd++))
+      done
+    fi
+    (($1=_ble_util_openat_nextfd++))
+  }
   function ble/util/openat {
-    local _fdvar=$1 _redirect=$2
-    (($_fdvar=_ble_util_openat_nextfd++))
-    builtin eval "exec ${!_fdvar}>&- ${!_fdvar}$_redirect"
+    ble/util/openat/.nextfd "$1"
+    # Note: Bash 3.2/3.1 のバグを避けるため、
+    #   >&- を用いて一旦明示的に閉じる必要がある #D0857
+    builtin eval "exec ${!1}>&- ${!1}$2"
   }
 fi
 
