@@ -2163,7 +2163,7 @@ bash_tips
     - menu-filter: improve highlight `#D0975` b89f39f
   - isearch: show progress bar using unicode chars `#D0978` 51e600a
   - main: support `ble-reload` ef51490
-  - complete: support `source:sabbrev` `#D0994`
+  - complete: support `source:sabbrev` `#D0994` 5c9e579
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3058,6 +3058,15 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-11
+
+  * menu-complete: C-g でキャンセルできる様にしたい [#D0995]
+    C-g は bell だったが。bell に何か hook する事は可能だろうか。
+    拙速かもしれないが C-g でキャンセルする事ができる様にした。
+
+    然し、layer:manu_filter による着色が解除されない。
+    これに関しては明示的に invalidate するか dirty-range とするかする必要がある?
+    取り敢えず invalidate してしまっているが、まあ面倒なので良いかという具合である。
+    本当は caret_state に自由に外から追加できる様にするべきなのかもしれない。
 
   * 2019-02-28 complete: sabbrev に登録されている単語の補完もあっても良い気がする [#D0994]
     実装してみたがメニュー補完に於ける置換範囲が変である。

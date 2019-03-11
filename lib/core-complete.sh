@@ -2415,8 +2415,11 @@ function ble/complete/menu/clear {
   if [[ $_ble_complete_menu_active ]]; then
     _ble_complete_menu_active=
     ble-edit/info/immediate-clear
+    [[ $_ble_highlight_layer_menu_filter_beg ]] &&
+      ble/textarea#invalidate str # layer:menu_filter 解除 (#D0995)
   fi
 }
+ble/array#push _ble_widget_bell_hook ble/complete/menu/clear
 
 ## 関数 ble/complete/menu/get-footprint
 ##   @var[out] footprint

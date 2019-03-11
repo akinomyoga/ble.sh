@@ -1478,6 +1478,8 @@ function ble/util/test-rl-variable {
 #------------------------------------------------------------------------------
 # Functions for modules
 
+## 関数 ble/util/invoke-hook array
+##   array に登録されているコマンドを実行します。
 function ble/util/invoke-hook {
   local -a hooks; eval "hooks=(\"\${$1[@]}\")"
   local hook ext=0

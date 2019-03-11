@@ -2171,11 +2171,14 @@ function ble/widget/.bell {
   [[ $bleopt_edit_abell ]] && ble/term/audible-bell
   return 0
 }
+
+_ble_widget_bell_hook=()
 function ble/widget/bell {
   ble-edit/content/clear-arg
-  ble/widget/.bell
+  ble/widget/.bell "$1"
   _ble_edit_mark_active=
   _ble_edit_arg=
+  ble/util/invoke-hook _ble_widget_bell_hook
 }
 
 function ble/widget/nop { :; }
@@ -3942,7 +3945,8 @@ function ble/widget/.newline {
   # (for lib/core-complete.sh layer:menu_filter)
   if [[ $_ble_complete_menu_active ]]; then
     _ble_complete_menu_active=
-    ble/textarea#invalidate str
+    [[ $_ble_highlight_layer_menu_filter_beg ]] &&
+      ble/textarea#invalidate str # (#D0995)
   fi
 
   ble/widget/.insert-newline "$opts"
