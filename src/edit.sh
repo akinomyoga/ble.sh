@@ -3855,26 +3855,29 @@ function ble-edit/exec:gexec/process {
 
 function ble/widget/.insert-newline {
   local opts=$1
-  if [[ :$opts: == *:keep-info:* && $_ble_textarea_panel == 0 ]]; then
+  if [[ :$opts: == *:keep-info:* && $_ble_textarea_panel == 0 ]] &&
+       ! ble/util/joblist.has-events
+  then
     # 最終状態の描画
-    ble/textarea#render
+    ble/textarea#render leave
 
     # info を表示したまま行を挿入し、今までの panel 0 の内容を範囲外に破棄
     local -a DRAW_BUFF=()
     ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" 1
     ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((_ble_textarea_gendy+1))
+    ble/canvas/bflush.draw
   else
     # 最終状態の描画
     ble-edit/info/hide
-    ble/textarea#render
+    ble/textarea#render leave
 
     # 新しい描画領域
     local -a DRAW_BUFF=()
     ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
     ble/canvas/put.draw "$_ble_term_nl"
+    ble/canvas/bflush.draw
+    ble/util/joblist.bflush
   fi
-  ble/canvas/bflush.draw
-  ble/util/joblist.bflush
 
   # 描画領域情報の初期化
   ble/textarea#invalidate
@@ -3933,6 +3936,7 @@ function ble/widget/.newline {
 function ble/widget/discard-line {
   ble-edit/content/clear-arg
   _ble_edit_line_disabled=1 ble/widget/.newline keep-info
+  ble/textarea#render
 }
 
 
@@ -3993,6 +3997,7 @@ function ble/widget/accept-line {
 
   if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
     ble/widget/.newline keep-info
+    ble/textarea#render
     return
   fi
 

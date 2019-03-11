@@ -2142,7 +2142,7 @@ bash_tips
   - complete: support insertion of ambiguous common part `#D0947` 3644a8e
   - complete: support three levels of ambiguous matching `#D0948` 3644a8e
   - complete: support menu item highlight of ambiguous matching `#D0949` 3644a8e
-  - complete: support menu pages `#D0958` ff43e01 a488e01 `#D0990`
+  - complete: support menu pages `#D0958` ff43e01 a488e01 `#D0990` 32aeef0
     - menu-complete: show page numbers with `visible-bell` `#D0980` 6297e65
     - menu-complete: fix a bug that height of `menu` is too large (<= bash-4.1) `#D0983` 129a1f0
   - edit: support `bleopt rps1=` for the right prompt `#D0959` 90a8915 `#D0964` fa2a874 `#D0970` 87c8348
@@ -3047,6 +3047,23 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-03-11
+
+  * edit: RET を連打するとプロンプトの表示前に行頭にカーソルが滞在している。
+    これは何故だろうと思っていたが、よく考えたら has-input の時には、
+    プロンプトを再描画せずに通過するのであった。
+    そして次の RET が来て .insert-line した時に漸く新しい行が描画される。
+
+    それなら新しい行を挿入した時点で textarea#render してしまえば良い。
+    と思って render しようとしたら変な事になる。
+    というのも新しい行を挿入した時点では新しい行の状態を指定していないので。
+    従って、新しい行の状態を指定した上で再描画しないと行けない。
+    特に ble/widget/* のレベルで再描画を指定するほうが良さそう。その様にした。
+
+    x ble/util/joblist.bflush を呼び出しているが、
+      keep-info の時にこれを呼び出すと info が消えてしまう。
+      これについても対策した。
 
 2019-03-10
 

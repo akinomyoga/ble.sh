@@ -1394,6 +1394,13 @@ function ble/util/joblist.check {
   local joblist
   ble/util/joblist
 }
+## 関数 ble/util/joblist.has-events
+##   未出力のジョブ状態変化の記録があるかを確認します。
+function ble/util/joblist.has-events {
+  local joblist
+  ble/util/joblist
+  ((${#_ble_util_joblist_events[@]}))
+}
 
 ## 関数 ble/util/joblist.flush
 ##   ジョブ状態変化の確認とそれまでに検出した変化の出力を行います。
