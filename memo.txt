@@ -856,9 +856,8 @@ bash_tips
 
   * syntax: "for a in 1; do done" が文法エラーになっていない
 
-2019-02-28
-
-  * complete: sabbrev に登録されている単語の補完もあっても良い気がする
+  * vi: imap に於ける undo がちゃんと記録されていないのでは。
+    特に補完のタイミングにおける記録もない。
 
 2019-02-10
 
@@ -2155,7 +2154,7 @@ bash_tips
     - rps1: fix coordinate calculations for rps1 `#D0982` 129a1f0
     - canvas (`ble/canvas/trace`): fix a bug that `measure-bbox` does not work (<= bash-3.1) `#D0988` 7f880de
     - canvas (`ble/canvas/trace`): fix a bug that `x1` and `y1` is not properly updated `#D0988` 7f880de
-    - edit: support `bleopt rps1_transient` `#D0993`
+    - edit: support `bleopt rps1_transient` `#D0993` 44edd38
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
@@ -2164,6 +2163,7 @@ bash_tips
     - menu-filter: improve highlight `#D0975` b89f39f
   - isearch: show progress bar using unicode chars `#D0978` 51e600a
   - main: support `ble-reload` ef51490
+  - complete: support `source:sabbrev` `#D0994`
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -2180,7 +2180,7 @@ bash_tips
     - highlight: disable `layer:menu_filter` (<= bash-3.2) `#D0987` 1b14b11
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
   - util (visible-bell): truncate long messages to fit into a line `#D0973` e55ff86
-  - edit: render prompt immediately on newline `#D0991` ea6e758
+  - edit: render prompt immediately on newline `#D0991` cdb8acb
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -2194,7 +2194,7 @@ bash_tips
   - util: improve performance of `ble/{util/{mapfile,assign-array},string#split-lines}` (<= bash-3.2) `#D0985` ae176b2 `#D0989`
   - sabbrev: fix a bug that sabbrev is disabled (<= bash-3.2) `#D0985` 840af29
   - util (ble/util/msleep): suppress warnings from `usleep` `#D0984` 8e4180c
-  - util: fix a problem that <kbd>C-d</kbd> cannot be input in nested Bash 3.1 `#D0992`
+  - util: fix a problem that <kbd>C-d</kbd> cannot be input in nested Bash 3.1 `#D0992` 88a1b0f
 
   内部的変更
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
@@ -3058,6 +3058,21 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-11
+
+  * 2019-02-28 complete: sabbrev に登録されている単語の補完もあっても良い気がする [#D0994]
+    実装してみたがメニュー補完に於ける置換範囲が変である。
+    先頭の \ が抜けている所為で二重に \ が挿入されてしまうのである。
+    これは sabbrev の候補のみを生成した時でも再現する。
+
+    うーん。成る程。初めから \ が除外された状態で補完が開始している気がする。
+    というか。reconstruct-incomplete-word に於いて末尾の \ を除去するべきなのではないか。
+    つまり reconstruct-incomplete-word による COMPV の構築に失敗して、
+    fallback の位置で補完が開始しているという事になる。
+
+    reconstruct-incomplete-word で \\ に対応する事にした。
+    然し、いろいろ考えると対応していない物は沢山ある。
+    "a\ で終わっている様な場合や "a${para で終わっている様な場合。
+    まあ、それらは気になった時に実装していくというので良い気がする。
 
   * edit: bleopt rps1_transient 対応 [#D0993]
     非空文字列が設定されている時、右プロンプトを次の行に行く前に消す。

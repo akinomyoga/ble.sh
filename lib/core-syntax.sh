@@ -1034,7 +1034,7 @@ function ble/syntax:bash/simple-word/update {
   # @var _ble_syntax_bash_simple_rex_open_word
   local open_squot=$q'[^'$q']*|\$'$q'([^'$q'\]|\\.)*'
   local open_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.|'$param')*'
-  _ble_syntax_bash_simple_rex_open_word='^('$_ble_syntax_bash_simple_rex_element'*)('$open_squot'|'$open_dquot')$'
+  _ble_syntax_bash_simple_rex_open_word='^('$_ble_syntax_bash_simple_rex_element'*)(\\|'$open_squot'|'$open_dquot')$'
   _ble_syntax_bash_simple_rex_open_squot=$open_squot
   _ble_syntax_bash_simple_rex_open_dquot=$open_dquot
 
@@ -1043,7 +1043,7 @@ function ble/syntax:bash/simple-word/update {
   local letter1='[^{'${_ble_syntax_bashc_simple}']'
   local letter2='[^'${_ble_syntax_bashc_simple}']'
   _ble_syntax_bash_simple_rex_incomplete_word1='^('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
-  _ble_syntax_bash_simple_rex_incomplete_word2='^(('$bquot'|'$squot'|'$dquot'|'$param'|'$letter2')*)('$open_squot'|'$open_dquot')?$'
+  _ble_syntax_bash_simple_rex_incomplete_word2='^(('$bquot'|'$squot'|'$dquot'|'$param'|'$letter2')*)(\\|'$open_squot'|'$open_dquot')?$'
 }
 ble/syntax:bash/simple-word/update
 
@@ -1175,10 +1175,11 @@ function ble/syntax:bash/simple-word/reconstruct-incomplete-word {
 
     if [[ $m_quote ]]; then
       case $m_quote in
-      ('$"'*) out=$out$m_quote\" simple_flags=I; ;;
-      ('"'*)  out=$out$m_quote\" simple_flags=D; ;;
-      ("$'"*) out=$out$m_quote\' simple_flags=E; ;;
-      ("'"*)  out=$out$m_quote\' simple_flags=S; ;;
+      ('$"'*) out=$out$m_quote\" simple_flags=I ;;
+      ('"'*)  out=$out$m_quote\" simple_flags=D ;;
+      ("$'"*) out=$out$m_quote\' simple_flags=E ;;
+      ("'"*)  out=$out$m_quote\' simple_flags=S ;;
+      ('\')   simple_flags=B ;;
       (*) return 1 ;;
       esac
     fi

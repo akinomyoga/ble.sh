@@ -3368,7 +3368,7 @@ function ble-edit/exec/.reset-builtins-2 {
 _ble_edit_exec_BASH_REMATCH=()
 _ble_edit_exec_BASH_REMATCH_rex=none
 
-## 関数 ble-edit/exec/.save-BASH_REMATCH/increase delta
+## 関数 ble-edit/exec/save-BASH_REMATCH/increase delta
 ##   @param[in] delta
 ##   @var[in,out] i rex
 function ble-edit/exec/save-BASH_REMATCH/increase {

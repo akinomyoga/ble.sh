@@ -105,6 +105,7 @@ function ble/complete/check-cancel {
 ##     E クォート $'' の中にいる事を表します。
 ##     D クォート ""  の中にいる事を表します。
 ##     I クォート $"" の中にいる事を表します。
+##     B クォート \   の直後にいる事を表します。
 ##
 ##     Note: shopt -s nocaseglob のため、フラグ文字は
 ##       大文字・小文字でも重複しないように定義する必要がある。
@@ -186,6 +187,9 @@ function ble/complete/action/util/quote-insert {
       (*) ins='\'$ins ;;
       esac
     fi
+
+    # backslash が前置している時は二重クォートを防ぐ為に削除
+    [[ $comps_flags == *B* && $COMPS == *'\' && $ins == '\'* ]] && ins=${ins:1}
 
     INSERT=$COMPS$ins
   elif [[ $comps_fixed && $CAND == "${comps_fixed#*:}"* ]]; then
@@ -1285,6 +1289,8 @@ function ble/complete/source:argument/.generate-user-defined-completion {
 
 function ble/complete/source:argument {
   local comp_opts=:
+
+  ble/complete/source:sabbrev
 
   ble/complete/candidates/filter:"$comp_filter_type"/filter
   (($?==148)) && return 148
@@ -3821,6 +3827,9 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     ret=${_ble_complete_sabbrev[$key]}
     [[ $ret ]]
   }
+  function ble/complete/sabbrev/get-keys {
+    keys=("${!_ble_complete_sabbrev[@]}")
+  }
 else
   if ! ble/is-array _ble_complete_sabbrev_keys; then # reload #D0875
     _ble_complete_sabbrev_keys=()
@@ -3855,6 +3864,9 @@ else
       ((i++))
     done
     [[ $ret ]]
+  }
+  function ble/complete/sabbrev/get-keys {
+    keys=("${_ble_complete_sabbrev_keys[@]}")
   }
 fi
 
@@ -3996,6 +4008,33 @@ function ble/widget/sabbrev-expand {
     ble/widget/.bell
     return 1
   fi
+}
+
+# sabbrev の補完候補
+function ble/complete/action:sabbrev/initialize { CAND=$value; }
+function ble/complete/action:sabbrev/complete { :; }
+function ble/complete/action:sabbrev/getg { ble/color/face2g command_alias; }
+function ble/complete/action:sabbrev/get-desc {
+  local ret; ble/complete/sabbrev/get "$INSERT"
+  desc="(sabbrev expansion) $ret"
+}
+function ble/complete/source:sabbrev {
+  local keys; ble/complete/sabbrev/get-keys
+  local key CAND
+
+  local COMPV=$COMPS comps_rex_ambiguous=
+  ble/complete/candidates/filter:"$comp_filter_type"/init
+  for CAND in "${keys[@]}"; do
+    ble/complete/candidates/filter:"$comp_filter_type"/test || continue
+
+    # filter で除外されない為に CAND には評価後の値を入れる必要がある。
+    local ret simple_flags simple_ibrace
+    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$CAND" &&
+      ble/syntax:bash/simple-word/eval "$ret" || continue
+
+    local value=$ret
+    ble/complete/cand/yield sabbrev "$CAND"
+  done
 }
 
 #------------------------------------------------------------------------------
