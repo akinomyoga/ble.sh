@@ -1771,7 +1771,7 @@ function ble/syntax:bash/ctx-case {
     ((_ble_syntax_attr[i++]=ATTR_GLOB))
     return 0
   elif [[ $tail == 'esac'$_ble_syntax_bash_RexDelimiter* || $tail == 'esac' ]]; then
-    ((ctx=CTX_CMDX1))
+    ((ctx=CTX_CMDX))
     ble/syntax:bash/ctx-command
   else
     ((ctx=CTX_CMDX))
@@ -2658,6 +2658,10 @@ function ble/syntax:bash/ctx-command/check-word-end {
   if [[ $rex_expect_command ]]; then
     # 特定のコマンドのみを受け付ける文脈
     [[ $word =~ $rex_expect_command ]] || ((wtype=ATTR_ERR))
+  fi
+  if ((wt==CTX_CMDX1)); then
+    local rex='^(then|elif|else|do|\}|done|fi|esac)$'
+    [[ $word =~ $rex ]] && ((wtype=ATTR_ERR))
   fi
   ble/syntax/parse/word-pop
 

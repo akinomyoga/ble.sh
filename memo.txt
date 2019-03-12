@@ -852,10 +852,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-11
-
-  * syntax: "for a in 1; do done" が文法エラーになっていない
-
 2019-02-10
 
   * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
@@ -2253,7 +2249,7 @@ bash_tips
   - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
   - vi_nmap (`/`, `?`, `n`, `N`): fix search progress `#D0944` f20f840
   - complete: fix a problem of slow ambiguous filename matching in nested directries `#D0960` 7b3ee55
-  - util: improve performance of `ble/{util/{mapfile,assign-array},string#split-lines}` (<= bash-3.2) `#D0985` ae176b2 `#D0989`
+  - util: improve performance of `ble/{util/{mapfile,assign-array},string#split-lines}` (<= bash-3.2) `#D0985` ae176b2 `#D0989` 36b9a8f f199215
   - sabbrev: fix a bug that sabbrev is disabled (<= bash-3.2) `#D0985` 840af29
   - util (ble/util/msleep): suppress warnings from `usleep` `#D0984` 8e4180c
   - util: fix a problem that <kbd>C-d</kbd> cannot be input in nested Bash 3.1 `#D0992` 88a1b0f
@@ -3121,6 +3117,24 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-12
+
+  * syntax: "for a in 1; do done" が文法エラーになっていない [#D1001]
+    現在の実装では do の後に任意のコマンドが来ても良い事になっている筈。
+    然し、来ては行けないコマンドという物を指定する事はできない。
+    それでもよく考えてみれば } や done 等の時には来ても良いコマンドを指定する事ができたのだから、
+    それと同じ様に処理すれば良いのではないだろうか。} や done は CTX_CMDXE という文脈を生成する。
+    一方で do は CTX_CMDX1 という文脈を生成する。
+    CTX_CMDX1 になるのは他にも if while until then elif else { 等がある。
+
+    他に case esac で esac を読み取る直前に CTX_CMDX1 を設定している箇所があったが、
+    ここは別に CTX_CMDX で良いきがするのでこれはその様にした。
+    この上で、CTX_CMDX1 の次には then elif else } done esac fi 等は消えてゃ行けないという制限をかけたい。
+    CTX_CMDXE の特別の判定をしている箇所を探す。
+
+    結局 'for' 等を処理している ctx-word-end に於いてやはり判定をしているのだった。
+    実は wtype にその文脈に入った時の ctx が入っている。
+    CTX_CMDXE に関しては _ble_syntax_bash_command_Expect による判定が使われていた。
+    同じ箇所に手動での判定を書き加えることにした。動いている。
 
   * read -e で C-d を入力してから確定すると vbell のジョブメッセージが出る [#D1000]
 
