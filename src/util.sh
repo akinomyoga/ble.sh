@@ -641,6 +641,37 @@ function ble/string#escape-for-bash-specialchars-in-brace {
   fi
 }
 
+## 関数 ble/string#create-unicode-progress-bar value max width
+##   @var[out] ret
+function ble/string#create-unicode-progress-bar {
+  local value=$1 max=$2 width=$3
+  local progress=$((value*8*width/max))
+  local progress_fraction=$((progress%8)) progress_integral=$((progress/8))
+
+  local out=
+  if ((progress_integral)); then
+    ble/util/c2s $((0x2588))
+    ((${#ret}==1)) || ret='*' # LC_CTYPE が非対応の文字の時
+    ble/string#repeat "$ret" "$progress_integral"
+    out=$ret
+  fi
+
+  if ((progress_fraction)); then
+    ble/util/c2s $((0x2590-progress_fraction))
+    ((${#ret}==1)) || ret=$progress_fraction # LC_CTYPE が非対応の文字の時
+    out=$out$ret
+    ((progress_integral++))
+  fi
+
+  if ((progress_integral<width)); then
+    ble/util/c2w $((0x2588))
+    ble/string#repeat ' ' $((ret*(width-progress_integral)))
+    out=$out$ret
+  fi
+
+  ret=$out
+}
+
 #
 # assign: reading files/streams into variables
 #

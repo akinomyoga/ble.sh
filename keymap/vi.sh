@@ -828,11 +828,13 @@ function ble/keymap:vi/register#play {
 
   local _ble_keymap_vi_register_onplay=1
   local i len=${#value} ret
+  local -a chars=()
   for ((i=0;i<len;i++)); do
     ble/util/s2c "$value" "$i"
     ((ret==27)) && ret=$_ble_decode_IsolatedESC
-    ble-decode-char "$ret"
+    ble/array#push chars "$ret"
   done
+  ble-decode-char "${chars[@]}"
 }
 ## 関数 ble/keymap:vi/register#dump/escape text
 ##   @var[out] ret

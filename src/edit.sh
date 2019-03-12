@@ -4496,37 +4496,6 @@ if ((_ble_bash>=40000)); then
     ble/bin/mv -f "$history_tmpfile.part" "$history_tmpfile"
   }
 
-  ## 関数 ble-edit/history/string#create-unicode-progress-bar
-  ##   @var[out] ret
-  function ble-edit/history/string#create-unicode-progress-bar {
-    local value=$1 max=$2 width=$3
-    local progress=$((value*8*width/max))
-    local progress_fraction=$((progress%8)) progress_integral=$((progress/8))
-
-    local out=
-    if ((progress_integral)); then
-      ble/util/c2s $((0x2588))
-      ((${#ret}==1)) || ret='*' # LC_CTYPE が非対応の文字の時
-      ble/string#repeat "$ret" "$progress_integral"
-      out=$ret
-    fi
-
-    if ((progress_fraction)); then
-      ble/util/c2s $((0x2590-progress_fraction))
-      ((${#ret}==1)) || ret=$progress_fraction # LC_CTYPE が非対応の文字の時
-      out=$out$ret
-      ((progress_integral++))
-    fi
-
-    if ((progress_integral<width)); then
-      ble/util/c2w $((0x2588))
-      ble/string#repeat ' ' $((ret*(width-progress_integral)))
-      out=$out$ret
-    fi
-
-    ret=$out
-  }
-
   function ble-edit/history/load {
     [[ $_ble_edit_history_prefix ]] && return
     [[ $_ble_edit_history_loaded ]] && return
@@ -5415,7 +5384,7 @@ function ble-edit/isearch/status/append-progress-bar {
   ble/util/is-unicode-output || return
   local pos=$1 count=$2 dir=$3
   [[ :$dir: == *:-:* || :$dir: == *:backward:* ]] && ((pos=count-1-pos))
-  local ret; ble-edit/history/string#create-unicode-progress-bar "$pos" "$count" 5
+  local ret; ble/string#create-unicode-progress-bar "$pos" "$count" 5
   text=$text$' \e[1;38;5;69;48;5;253m'$ret$'\e[m '
 }
 
@@ -6546,6 +6515,13 @@ function ble/builtin/read/.loop {
   ble/textarea#render
   ble/util/buffer.flush >&2
 
+  # Note: ble-decode-key が中断しない為の設定 #D0998
+  #   ble/encoding:.../is-intermediate の状態にはないと仮定して、
+  #   それによって ble-decode-key が中断する事はないと考える。
+  local _ble_decode_input_count=0
+  local ble_decode_char_nest=
+  local -a _ble_decode_char_buffer=()
+
   local char=
   local _ble_edit_read_accept=
   local _ble_edit_read_result=
@@ -6587,6 +6563,7 @@ function ble/builtin/read/.loop {
 
     # render
     ble/util/is-stdin-ready && continue
+    ble-decode/.hook/erase-progress
     ble-edit/info/reveal
     ble/textarea#render
     ble/util/buffer.flush >&2

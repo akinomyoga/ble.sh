@@ -71,6 +71,9 @@ function ble-decode/uses-isolated-esc {
   return 1
 }
 
+## オプション decode_abort_char
+bleopt/declare -n decode_abort_char 28
+
 # **** key names ****
 
 _ble_decode_Erro=0x40000000
@@ -390,9 +393,32 @@ function ble-decode/.hook/show-progress {
     return
   fi
 
-  local mill=$(((${#chars[@]}-_ble_decode_input_count-1)*1000/${#chars[@]}))
+  if ((_ble_decode_input_count)); then
+    local total=${#chars[@]}
+    local value=$((total-_ble_decode_input_count-1))
+    local label='decoding input...'
+    local sgr=$'\e[1;38;5;69;48;5;253m'
+  elif ((ble_decode_char_total)); then
+    local total=$ble_decode_char_total
+    local value=$((total-ble_decode_char_rest-1))
+    local label='processing input...'
+    local sgr=$'\e[1;38;5;71;48;5;253m'
+  else
+    return
+  fi
+
+  local mill=$((value*1000/total))
   local cent=${mill::${#mill}-1} frac=${mill:${#mill}-1}
-  ble-edit/info/show text "(${cent:-0}.$frac% processing input...)"
+  local text="(${cent:-0}.$frac% $label)"
+
+  if ble/util/is-unicode-output; then
+    local ret
+    ble/string#create-unicode-progress-bar "$value" "$total" 10
+    text=$sgr$ret$'\e[m '$text
+  fi
+
+  ble-edit/info/show ansi "$text"
+
   _ble_edit_info_scene=decode_input_progress
 }
 function ble-decode/.hook/erase-progress {
@@ -410,11 +436,6 @@ function ble-decode/.hook {
     return
   fi
 
-  local chars
-  chars=("${_ble_decode_input_buffer[@]}" "$@")
-  _ble_decode_input_buffer=()
-  _ble_decode_input_count=${#chars[@]}
-
   # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
   # (PROLOGUE 内から呼ばれる) stdout.on より前であれば大丈夫 #D0930
   [[ $_ble_bash_options_adjusted ]] && set +v || :
@@ -422,16 +443,34 @@ function ble-decode/.hook {
   local IFS=$' \t\n'
   ble-decode/PROLOGUE
 
-  if ((_ble_decode_input_count>=100)); then
+  # abort #D0998
+  if (($1==bleopt_decode_abort_char)); then
+    local nbytes=${#_ble_decode_input_buffer[@]}
+    local nchars=${#_ble_decode_char_buffer[@]}
+    if ((nbytes||nchars)); then
+      _ble_decode_input_buffer=()
+      _ble_decode_char_buffer=()
+      ble/term/visible-bell "Abort by 'bleopt decode_abort_char=$bleopt_decode_abort_char'"
+      shift
+      # 何れにしても EPILOGUE を実行する必要があるので下に流れる。
+      # ble/term/visible-bell を表示する為には PROLOGUE の後でなければならない事にも注意する。
+    fi
+  fi
+
+  local chars
+  chars=("${_ble_decode_input_buffer[@]}" "$@")
+  _ble_decode_input_buffer=()
+  _ble_decode_input_count=${#chars[@]}
+
+  if ((_ble_decode_input_count>=200)); then
     local c
     for c in "${chars[@]}"; do
-      ((--_ble_decode_input_count%50==0)) && ble-decode/.hook/show-progress
+      ((--_ble_decode_input_count%100==0)) && ble-decode/.hook/show-progress
 #%if debug_keylogger
       ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
 #%end
       "ble/encoding:$bleopt_input_encoding/decode" "$c"
     done
-    ble-decode/.hook/erase-progress
   else
     local c
     for c in "${chars[@]}"; do
@@ -443,6 +482,7 @@ function ble-decode/.hook {
     done
   fi
 
+  ble-decode/.hook/erase-progress
   ble-decode/EPILOGUE
 }
 
@@ -611,6 +651,18 @@ function ble-decode-char/csi/consume {
 
 # **** ble-decode-char ****
 
+# 内部で使用する変数
+# ble_decode_char_nest=
+# ble_decode_char_sync=
+# ble_decode_char_rest=
+
+_ble_decode_char_buffer=()
+function ble-decode/has-input-for-char {
+  ((_ble_decode_input_count)) ||
+    ble/util/is-stdin-ready ||
+    ble/encoding:"$bleopt_input_encoding"/is-intermediate
+}
+
 _ble_decode_char__hook=
 
 ## 配列 _ble_decode_cmap_${_ble_decode_char__seq}[char]
@@ -630,8 +682,33 @@ _ble_decode_char2_reach=
 _ble_decode_char2_modifier=
 _ble_decode_char2_modkcode=
 function ble-decode-char {
+  # 入れ子の ble-decode-char 呼び出しによる入力は後で実行。
+  if [[ $ble_decode_char_nest && ! $ble_decode_char_sync ]]; then
+    ble/array#push _ble_decode_char_buffer "$@"
+    return 148
+  fi
+  local ble_decode_char_nest=1
+
+  local iloop=0
+  local ble_decode_char_total=$#
+  local ble_decode_char_rest=$#
   while (($#)); do # Note: ループ中で set -- ... を使っている。
+    if ((iloop++%50==0)); then
+      ((iloop>50)) && ble-decode/.hook/show-progress
+      if ble-decode/has-input-for-char && [[ ! $ble_decode_char_sync ]]; then
+        ble/array#push _ble_decode_char_buffer "$@"
+        return 148
+      fi
+    fi
+    # 入れ子の ble-decode-char 呼び出しによる入力。
+    if ((${#_ble_decode_char_buffer[@]})); then
+      ((ble_decode_char_total+=${#_ble_decode_char_buffer[@]}))
+      set -- "${_ble_decode_char_buffer[@]}" "$@"
+      _ble_decode_char_buffer=()
+    fi
+
     local char=$1; shift
+    ble_decode_char_rest=$#
 #%if debug_keylogger
     ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_chars "$char"
 #%end
@@ -672,6 +749,7 @@ function ble-decode-char {
         ble-decode-char/csi/clear
 
         ble-decode-char/.send-modified-key "${reach[0]}"
+        ((ble_decode_char_total+=${#rest[@]}))
         set -- "${rest[@]}" "$@"
       else
         ble-decode-char/.send-modified-key "$char"
@@ -1486,7 +1564,7 @@ function ble-decode/widget/suppress-widget {
 ##     正しく判定する事ができません。
 ##
 function ble-decode/has-input {
-  ((_ble_decode_input_count)) ||
+  ((_ble_decode_input_count||ble_decode_char_rest)) ||
     ble/util/is-stdin-ready ||
     ble/encoding:"$bleopt_input_encoding"/is-intermediate ||
     ble-decode-char/is-intermediate
@@ -2272,6 +2350,7 @@ function ble/builtin/bind/.decode-chars {
   # setup hook and run
   local -a ble_decode_bind_keys=()
   local _ble_decode_key__hook=ble/builtin/bind/.decode-chars.hook
+  local ble_decode_char_sync=1 # ユーザ入力があっても中断しない
   ble-decode-char "$@"
 
   keys=("${ble_decode_bind_keys[@]}")
