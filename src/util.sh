@@ -768,11 +768,7 @@ else
     builtin eval "$2" >| "$_ble_local_tmp"
     local _ble_local_ret=$?
     ((_ble_util_assign_level--))
-    local _ble_local_i=0 _ble_local_val _ble_local_arr; _ble_local_arr=()
-    while builtin read -r _ble_local_val || [[ $_ble_local_val ]]; do
-      _ble_local_arr[_ble_local_i++]=$_ble_local_val
-    done < "$_ble_local_tmp"
-    builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
+    ble/util/mapfile "$1" < "$_ble_local_tmp"
     return "$_ble_local_ret"
   }
 fi

@@ -2257,7 +2257,7 @@ bash_tips
   - sabbrev: fix a bug that sabbrev is disabled (<= bash-3.2) `#D0985` 840af29
   - util (ble/util/msleep): suppress warnings from `usleep` `#D0984` 8e4180c
   - util: fix a problem that <kbd>C-d</kbd> cannot be input in nested Bash 3.1 `#D0992` 88a1b0f
-  - edit: fix a bug of a redundant newline on `read -e` `#D0999`
+  - edit: fix a bug of a redundant newline on `read -e` `#D0999` 700bc91
 
   内部的変更
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
@@ -3120,7 +3120,7 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
-2018-08-22
+2019-03-12
 
   * read -e で C-d を入力してから確定すると vbell のジョブメッセージが出る [#D1000]
 
@@ -3138,11 +3138,14 @@ bash_tips
     直接コマンドの羅列を記述していて長いので関数にする事にした。
     これで何か変なメッセージが表示されるとしても短くて済む。
 
+    * edit: read -e 実は ble-0.2 の時点では変なメッセージなしに vbell が表示できていた。
+      と思ったら気の所為だった。単に bleopt edit_vbell が off になっていただけなのだった。
+
   * read -e で謎の改行が入る [#D0999]
     これは第二の panel を使って入力をしているからである。
     その時に第一の panel の高さをクリアし忘れている。直した。
 
-  * 2019-03-12 vi: マクロ再生の中断? [#D0998]
+  * 2018-08-22 vi: マクロ再生の中断? [#D0998]
     ユーザから入力があったら中断する機能。
     すぐに中断するのではなくて時間を計測しても良い。
 
