@@ -472,11 +472,7 @@ else
     local _ble_local_tmp=$_ble_util_read_stdout_tmp
     builtin eval "$2" >| "$_ble_local_tmp"
     local _ble_local_ret=$?
-    local _ble_local_i=0 _ble_local_val _ble_local_arr; _ble_local_arr=()
-    while builtin read -r _ble_local_val || [[ $_ble_local_val ]]; do
-      _ble_local_arr[_ble_local_i++]=$_ble_local_val
-    done < "$_ble_local_tmp"
-    builtin eval "$1=(\"\${_ble_local_arr[@]}\")"
+    ble/util/mapfile "$1" < "$_ble_local_tmp"
     return "$_ble_local_ret"
   }
 fi
