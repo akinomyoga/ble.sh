@@ -854,8 +854,6 @@ bash_tips
 
 2019-03-11
 
-  * read -e で謎の改行が入る
-  * read -e で C-d を入力してから確定すると vbell のジョブメッセージが出る
   * syntax: "for a in 1; do done" が文法エラーになっていない
 
 2019-02-10
@@ -2227,6 +2225,7 @@ bash_tips
   - complete: clear menu on <kbd>C-g</kbd> `#D0995` e0f93a2
   - vi_imap: support `bleopt keymap_vi_imap_undo=more` `#D0996` 50f8ad2
   - util: support `bleopt vbell_align` and `ble-color-setface vbell{,_flash,_erase}` for vbell `#D0997` 325883e
+  - decode: support "bleopt decode_abort_char=28" `#D0998` b110cb9
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -2258,6 +2257,7 @@ bash_tips
   - sabbrev: fix a bug that sabbrev is disabled (<= bash-3.2) `#D0985` 840af29
   - util (ble/util/msleep): suppress warnings from `usleep` `#D0984` 8e4180c
   - util: fix a problem that <kbd>C-d</kbd> cannot be input in nested Bash 3.1 `#D0992` 88a1b0f
+  - edit: fix a bug of a redundant newline on `read -e` `#D0999`
 
   内部的変更
   - [refactor] info: rename info type `raw` -> `esc` `#D0954` ac86f10
@@ -3121,6 +3121,26 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2018-08-22
+
+  * read -e で C-d を入力してから確定すると vbell のジョブメッセージが出る [#D1000]
+
+    a set +m を用いてジョブ管理の状態を変更しても効果はなかった。
+      ジョブを発動する瞬間に set +m でなければならないという事だろうか。
+    b と思って set +m と set -m で囲んでみても効果がなかった。理由はよく分からない。
+      或いはコマンドが終わった瞬間にジョブ管理が有効になっていると検出してしまうという事だろうか。
+    c そう思って set +m にずっとしたままで実行してみても変わらない。
+
+    もしかすると bind -x の中で実行している限りは状態が復元されてしまうという事なのかもしれない。
+    というか、普通の visible-bell の時には検出できないのが何故 read -e の時にだけ検出できるのだろうか。
+    うーん。よく分からないけれども。まあ余りきにしない事にする。
+
+    visible-bell のサブシェルのコマンドは
+    直接コマンドの羅列を記述していて長いので関数にする事にした。
+    これで何か変なメッセージが表示されるとしても短くて済む。
+
+  * read -e で謎の改行が入る [#D0999]
+    これは第二の panel を使って入力をしているからである。
+    その時に第一の panel の高さをクリアし忘れている。直した。
 
   * 2019-03-12 vi: マクロ再生の中断? [#D0998]
     ユーザから入力があったら中断する機能。

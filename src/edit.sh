@@ -6456,6 +6456,9 @@ function ble/builtin/read/.setup-textarea {
   local def_kmap; ble-decode/DEFAULT_KEYMAP -v def_kmap
   ble-decode/keymap/push read
 
+  [[ $_ble_edit_read_context == external ]] &&
+    _ble_canvas_panel_height[0]=0
+
   # textarea, info
   _ble_textarea_panel=1
   ble/textarea#invalidate
@@ -6488,6 +6491,8 @@ function ble/builtin/read/TRAPWINCH {
   ble/textarea#redraw
 }
 function ble/builtin/read/.loop {
+  set +m # ジョブ管理を無効にする
+
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
   ble/builtin/read/.setup-textarea
   trap -- ble/builtin/read/TRAPWINCH WINCH

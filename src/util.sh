@@ -2337,6 +2337,30 @@ function ble/term/visible-bell/.clear {
   fi
 } >&2
 
+function ble/term/visible-bell/.worker {
+  # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
+
+  ble/util/msleep 50
+  ble/term/visible-bell/.show "$sgr2$message" "$x" "$y"
+
+  [[ :$opts: == *:persistent:* ]] && exit
+
+  # load time duration settings
+  declare msec=$bleopt_vbell_duration
+
+  # wait
+  >| "$_ble_term_visible_bell__ftime"
+  ble/util/msleep "$msec"
+
+  # check and clear
+  declare -a time1 time2
+  time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
+  time2=($(ble/bin/date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
+  if (((time2[0]-time1[0])*1000+(10#0${time2[1]::3}-10#0${time1[1]::3})>=msec)); then
+    ble/term/visible-bell/.clear "$sgrZ" "$x" "$y"
+  fi
+}
+
 ## 関数 ble/term/visible-bell message [opts]
 function ble/term/visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
@@ -2365,31 +2389,7 @@ function ble/term/visible-bell {
   ble/color/face2sgr vbell_erase; sgrZ=$sgr
 
   ble/term/visible-bell/.show "$sgr1$message" "$x" "$y"
-  (
-    {
-      # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
-
-      ble/util/msleep 50
-      ble/term/visible-bell/.show "$sgr2$message" "$x" "$y"
-
-      [[ :$opts: == *:persistent:* ]] && exit
-
-      # load time duration settings
-      declare msec=$bleopt_vbell_duration
-
-      # wait
-      >| "$_ble_term_visible_bell__ftime"
-      ble/util/msleep "$msec"
-
-      # check and clear
-      declare -a time1 time2
-      time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
-      time2=($(ble/bin/date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
-      if (((time2[0]-time1[0])*1000+(10#0${time2[1]::3}-10#0${time1[1]::3})>=msec)); then
-        ble/term/visible-bell/.clear "$sgrZ" "$x" "$y"
-      fi
-    } &
-  )
+  ( ble/term/visible-bell/.worker & )
 }
 function ble/term/visible-bell/cancel-erasure {
   >| "$_ble_term_visible_bell__ftime"
