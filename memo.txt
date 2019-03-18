@@ -852,21 +852,9 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-12
+2019-03-18
 
-  * complete: source:sabbrev の候補表示に \ を入れたい
-
-    menu の表示に使われる文字列と、絞り込みに使われる文字列を別々にしても良いのでは。
-    という様に最初は考えたが、よく考えると menu の表示に使われる文字列を用いて、
-    絞り込みやどのように絞り込まれたかの表示が為されるので、
-    結局、絞り込みに使われる文字列で menu 表示が行われる事になる。
-
-    然し、ファイル名候補の場合に末尾に * 等を追加するだとか、
-    そういう可能性もあるから、prefix 及び suffix を取得する
-    というのがあっても良いのかもしれない。
-    そしてそれは getg と同時に行われるのが良い。
-
-    action:sabbrev の場合には其処で prefix を設定する。
+  * complete: rlvar mark-symlinked-directories, match-hidden-files 等の対応
 
 2019-02-10
 
@@ -2236,9 +2224,9 @@ bash_tips
     - canvas (`ble/canvas/trace`): fix a bug that `measure-bbox` does not work (<= bash-3.1) `#D0988` 7f880de
     - canvas (`ble/canvas/trace`): fix a bug that `x1` and `y1` is not properly updated `#D0988` 7f880de
     - edit: support `bleopt rps1_transient` `#D0993` 44edd38
-    - edit: fix a bug that `rps1` is cleared on execution of the command `#D1003`
-    - edit: erase trailing spaces after newlines when `rps1_transient` is enabled `#D1004`
-    - edit: support multiline `rps1` (Note: still restricted to fit in lines of `PS1`) `#D1005`
+    - edit: fix a bug that `rps1` is cleared on execution of the command `#D1003` 5780154
+    - edit: erase trailing spaces after newlines when `rps1_transient` is enabled `#D1004` 5780154
+    - edit: support multiline `rps1` (Note: still restricted to fit in lines of `PS1`) `#D1005` 5780154
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
@@ -2268,9 +2256,10 @@ bash_tips
     - highlight: disable `layer:menu_filter` (<= bash-3.2) `#D0987` 1b14b11
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
   - util (visible-bell): truncate long messages to fit into a line `#D0973` e55ff86
-  - edit: render prompt immediately on newline `#D0991` cdb8acb `#D1003`
+  - edit: render prompt immediately on newline `#D0991` cdb8acb `#D1003` 5780154
   - syntax: detect syntax errors of `CTX_CMDX1` immediately followed by terminating keywords `#D1001` 7ea02b7
   - complete: improve support of `bind 'completion-ignore-case on'` `#D1002` 25ebc55
+  - complete: support `visible-stats` and `mark-directories` `#D1006` @@@@@@@
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -2292,6 +2281,7 @@ bash_tips
   - [refactor] do not use brace expansions for `VARNAMES` `#D0955` 711e7df
   - [refactor] `ble-{highlight,complete,syntax}` -> `ble/*` 7aaa660 ae6be66 8ea903c
   - [refactor] `ble-edit/info/.construct-text` -> `ble/canvas/trace-text` `#D0973` e55ff86
+  - rename `ble/complete/action:*/getg` -> `ble/complete/action:*/init-menu-item` @@@@@@@
 
 2018-10-05 -- 2019-02-09 (#D0858..#D0914) 6ed51e7..949e9a8
 
@@ -3149,6 +3139,63 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-18
+
+  * 2019-03-12 complete: source:sabbrev の候補表示に \ を入れたい [#D1006]
+
+    menu の表示に使われる文字列と、絞り込みに使われる文字列を別々にしても良いのでは。
+    という様に最初は考えたが、よく考えると menu の表示に使われる文字列を用いて、
+    絞り込みやどのように絞り込まれたかの表示が為されるので、
+    結局、絞り込みに使われる文字列で menu 表示が行われる事になる。
+
+    然し、ファイル名候補の場合に末尾に * 等を追加するだとか、
+    そういう可能性もあるから、prefix 及び suffix を取得する
+    というのがあっても良いのかもしれない。
+    そしてそれは getg と同時に行われるのが良い。
+
+    * done: action:sabbrev の場合には其処で prefix を設定する。
+      と思って途中まで実装してみたが、よく考えてみると、
+      別に sabbrev は必ずしも \keyword の形をしている訳ではない。
+      或いは各文字に対応する文字列がどれかを指定して eval する事は現実的だろうか。
+      うーん。もしその様にしたとしてもどうやって construct-single-entry に伝達するのか。
+      うーん。変数 show の内容を弄るという事になるのだろうか。
+      そして変数の内容を弄った時には一致部分の着色は無効にしてしまうという事。
+
+      show の内容を弄ってもらうという事にした。
+      show の内容が元々の内容と同じであればその時に限り着色を実行する。
+
+    * ok: まあ、その様にするのが自然の気がする。show という変数名は変更しても良い気がする。
+      然し、元々の complete の実装で cand_show などだった事を考えれば、
+      まあ、show のままでも良いような気がする。或いは別の変数名で良さそうな物はあるだろうか。
+      →取り敢えず show のままで良いという事にした。
+
+    * done: また visible-stats が有効の時に * や / を末尾に付加する機能があって良い気がする。
+      毎回 visible-stats を問い合わせるのは大変なので、これは comp_type 等に入れると良いのだろうか。
+      さて、此処で問題になるのは prefix, suffix に着色をするかしないかという事である。
+      それが付加的なマークであると考えるのであれば着色しない。
+      それが候補自体の見た目を整える為の物であれば着色する。
+      まあ、見た目を整える為に prefix/suffix を使うというのは変な気がするので着色はしない事にする。
+
+    * done: うーん。もし show の内容と filter_target の内容が一致していなかったとしても、
+      show の内容に filter_target が部分文字列として含まれている場合には、
+      その部分を対象として着色すれば良い気がする→その様に実装した。
+
+    * done: getg という関数名は最早そぐわない。色々な機能を持っているからである。
+      どの様な関数名が良いだろうか。menu item の見た目の調整である。
+      うーん。decorate-menu-item とか。adjust-menu-item とか。
+      get-menu-item でも良いのかもしれない。と思ったが、
+      何もしなければ既定の表示がされるという事で必須ではないので get-menu-item は変。
+      adjust-menu-item かもしくは setup-menu-item か。
+      menu-item というより entry なのかもしれないとも思いつつ、
+      menu_items という配列も使っているからやはり menu-item でも良いかもしれない。
+      initialize-menu-item が良いかもしれない。或いは initialize-menu-entry か、
+      initialize-menu-item-rendering だとか。うーん。init-menu-item が良い気がする。
+      置換した。
+
+    * done: 序でなので mark-directories にも対応する事にする。対応した。
+
+    * mark-symlinked-directories や match-hidden-files にもこの際対応するべきなのではないか。
+      と思ったが、そもそも sabbrev の為に修正を始めたのであって、色々手を出しすぎると収集が付かないので、
+      取り敢えずここまでで commit してしまう事にする。別項目として立てる事にする。
 
   * 2019-03-13 rps1 の高さを PS1 と同じだけ確保しても良いのではないかという説 [#D1005]
     複数行の PS1 にしている人は rps1 も複数行にできる様にする。

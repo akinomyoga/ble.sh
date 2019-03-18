@@ -58,7 +58,10 @@ function ble/complete/string#common-suffix-prefix {
 ##   m 曖昧補完 (中間部分に一致)
 ##   A 曖昧補完 (部分列・最初の文字も一致しなくて良い)
 ##
-##   i 大文字小文字を区別しない補完候補生成を行う。
+##   i (rlvar completion-ignore-case) 大文字小文字を区別しない補完候補生成を行う。
+##   V (rlvar visible-stats) ファイル名末尾にファイルの種類を示す記号を付加する。
+##   d (rlvar mark-directories) ディレクトリ名の補完後に / を付加する。
+##
 ##   s ユーザの入力があっても中断しない事を表す。
 ##   R COMPV としてシェル評価前の文字列を使用します。
 ##
@@ -257,7 +260,7 @@ function ble/complete/action:file/initialize {
 function ble/complete/action:file/complete {
   if [[ -e $CAND || -h $CAND ]]; then
     if [[ -d $CAND ]]; then
-      [[ $CAND != */ ]] &&
+      [[ $comp_type == *d* && $CAND != */ ]] &&
         ble/complete/action/util/complete.addtail /
     else
       ble/complete/action/util/complete.close-quotation
@@ -265,9 +268,19 @@ function ble/complete/action:file/complete {
     fi
   fi
 }
-function ble/complete/action:file/getg {
+function ble/complete/action:file/init-menu-item {
   ble/syntax/highlight/getg-from-filename "$CAND"
   [[ $g ]] || ble/color/face2g filename_warning
+
+  if [[ $comp_type == *V* ]]; then
+    if [[ -h $CAND ]]; then
+      suffix='@'
+    elif [[ -d $CAND ]]; then
+      suffix='/'
+    elif [[ -x $CAND ]]; then
+      suffix='*'
+    fi
+  fi
 }
 _ble_complete_action_file_desc[_ble_attr_FILE_LINK]='symbolic link'
 _ble_complete_action_file_desc[_ble_attr_FILE_ORPHAN]='symbolic link (orphan)'
@@ -294,9 +307,10 @@ function ble/complete/action:tilde/initialize {
   INSERT=\~$INSERT
 }
 function ble/complete/action:tilde/complete {
-  ble/complete/action/util/complete.addtail /
+  [[ $comp_type == *d* ]] &&
+    ble/complete/action/util/complete.addtail /
 }
-function ble/complete/action:tilde/getg {
+function ble/complete/action:tilde/init-menu-item {
   ble/color/face2g filename_directory
 }
 function ble/complete/action:tilde/get-desc {
@@ -322,7 +336,7 @@ function ble/complete/action:progcomp/complete {
     ble/complete/action:file/complete
   else
     if [[ -d $CAND ]]; then
-      [[ $CAND != */ ]] &&
+      [[ $comp_type == *d* && $CAND != */ ]] &&
         ble/complete/action/util/complete.addtail /
     else
       ble/complete/action/util/complete.close-quotation
@@ -332,9 +346,9 @@ function ble/complete/action:progcomp/complete {
 
   [[ $DATA == *:nospace:* ]] && suffix=${suffix%' '}
 }
-function ble/complete/action:progcomp/getg {
+function ble/complete/action:progcomp/init-menu-item {
   if [[ $DATA == *:filenames:* ]]; then
-    ble/complete/action:file/getg
+    ble/complete/action:file/init-menu-item
   fi
 }
 function ble/complete/action:progcomp/get-desc {
@@ -350,7 +364,7 @@ function ble/complete/action:command/initialize {
 }
 function ble/complete/action:command/complete {
   if [[ -d $CAND ]]; then
-    [[ $CAND != */ ]] &&
+    [[ $comp_type == *d* && $CAND != */ ]] &&
       ble/complete/action/util/complete.addtail /
   elif ! type "$CAND" &>/dev/null; then
     # 関数名について縮約されたもので一意確定した時。
@@ -368,7 +382,7 @@ function ble/complete/action:command/complete {
     ble/complete/action/util/complete.addtail ' '
   fi
 }
-function ble/complete/action:command/getg {
+function ble/complete/action:command/init-menu-item {
   if [[ -d $CAND ]]; then
     ble/color/face2g filename_directory
   else
@@ -424,7 +438,7 @@ function ble/complete/action:variable/complete {
   (arithmetic) ;; # do nothing
   esac
 }
-function ble/complete/action:variable/getg {
+function ble/complete/action:variable/init-menu-item {
   ble/color/face2g syntax_varname
 }
 
@@ -1953,8 +1967,9 @@ function ble/complete/candidates/generate {
   local rex_raw_paramx
   ble/complete/candidates/.initialize-rex_raw_paramx
 
-  ble/util/test-rl-variable completion-ignore-case &&
-    comp_type=${comp_type}i
+  ble/util/test-rl-variable completion-ignore-case && comp_type=${comp_type}i
+  ble/util/test-rl-variable visible-stats && comp_type=${comp_type}V
+  ble/util/test-rl-variable mark-directories && comp_type=${comp_type}d
 
   cand_count=0
   cand_cand=() # 候補文字列
@@ -2099,24 +2114,19 @@ function ble/complete/menu/construct-single-entry {
     local "${_ble_complete_cand_varnames[@]}"
     ble/complete/cand/unpack "$1"
   fi
-  local show=${CAND:PREFIX_LEN}
-  if [[ ! $show ]]; then
+  local filter_target=${CAND:PREFIX_LEN}
+  if [[ ! $filter_target ]]; then
     ret=
     return
   fi
 
-  # 基本色の初期化 (Note: 高速化の為、直接 _ble_color_g2sgr を参照する)
-  local g=0; ble/function#try ble/complete/action:"$ACTION"/getg
-  local g1 sgrN0 sgrN1
-  [[ :$opts: == *:selected:* ]] && ((g|=_ble_color_gflags_Revert))
-  ret=${_ble_color_g2sgr[g1=g]}
-  [[ $ret ]] || ble/color/g2sgr "$g1"; sgrN0=$ret
-  ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
-  [[ $ret ]] || ble/color/g2sgr "$g1"; sgrN1=$ret
+  # 色の設定・表示内容・前置詞・後置詞を取得
+  local g=0 show=$filter_target suffix= prefix=
+  ble/function#try ble/complete/action:"$ACTION"/init-menu-item
 
   # 一致部分の抽出
   local m
-  if [[ $menu_common_part ]]; then
+  if [[ $show == *"$filter_target"* && $menu_common_part ]]; then
     local comp_filter_type=head
     case $comp_type in
     (*m*) comp_filter_type=substr ;;
@@ -2125,12 +2135,26 @@ function ble/complete/menu/construct-single-entry {
     esac
 
     local needle=${menu_common_part:PREFIX_LEN}
-    ble/complete/candidates/filter:"$comp_filter_type"/match "$needle" "$show"; m=("${ret[@]}")
+    ble/complete/candidates/filter:"$comp_filter_type"/match "$needle" "$filter_target"; m=("${ret[@]}")
+
+    # 表示文字列の部分文字列で絞り込みが起こっている場合
+    if [[ $show != "$filter_target" ]]; then
+      local show_prefix=${show%%"$filter_target"*}
+      local offset=${#show_prefix}
+      local i n=${#m[@]}
+      for ((i=0;i<n;i++)); do ((m[i]+=offset)); done
+    fi
   else
     m=()
   fi
 
-  local out= p0=0 flag_overflow=
+  # 基本色の初期化 (Note: 高速化の為、直接 _ble_color_g2sgr を参照する)
+  local g1 sgrN0 sgrN1
+  [[ :$opts: == *:selected:* ]] && ((g|=_ble_color_gflags_Revert))
+  ret=${_ble_color_g2sgr[g1=g]}
+  [[ $ret ]] || ble/color/g2sgr "$g1"; sgrN0=$ret
+  ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
+  [[ $ret ]] || ble/color/g2sgr "$g1"; sgrN1=$ret
   if ((${#m[@]})); then
     # 一致色の初期化
     local g1 sgrB0 sgrB1
@@ -2138,8 +2162,17 @@ function ble/complete/menu/construct-single-entry {
     [[ $ret ]] || ble/color/g2sgr "$g1"; sgrB0=$ret
     ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Bold|_ble_color_gflags_Revert]}
     [[ $ret ]] || ble/color/g2sgr "$g1"; sgrB1=$ret
+  fi
 
-    # 一致部分の出力
+  # 前置部分の出力
+  local out= flag_overflow= p0=0
+  if [[ $prefix ]]; then
+    ble/canvas/trace-text "$prefix" nonewline || flag_overflow=1
+    out=$out$_ble_term_sgr0$ret
+  fi
+
+  # 一致部分の出力
+  if ((${#m[@]})); then
     local i iN=${#m[@]} p p0=0 out=
     for ((i=0;i<iN;i++)); do
       ((p=m[i]))
@@ -2162,6 +2195,13 @@ function ble/complete/menu/construct-single-entry {
     ble/canvas/trace-text "${show:p0}" nonewline:external-sgr || flag_overflow=1
     out=$out$sgr0$ret
   fi
+
+  # 後置部分の出力
+  if [[ $suffix ]]; then
+    ble/canvas/trace-text "$suffix" nonewline || flag_overflow=1
+    out=$out$_ble_term_sgr0$ret
+  fi
+
   ret=$out$_ble_term_sgr0
   [[ ! $flag_overflow ]]
 }
@@ -2639,7 +2679,7 @@ function ble/complete/menu/get-active-range {
 
 ## 関数 ble/complete/menu/generate-candidates-from-menu
 ##   現在表示されている menu 内容から候補を再抽出します。
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comp_flags comp_fixed comps_filter_pattern
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/menu/generate-candidates-from-menu {
   # completion context information
@@ -2648,8 +2688,8 @@ function ble/complete/menu/generate-candidates-from-menu {
   COMPS=${_ble_complete_menu_comp[2]}
   COMPV=${_ble_complete_menu_comp[3]}
   comp_type=${_ble_complete_menu_comp[4]}
-  comp_flags=${_ble_complete_menu0_comp[5]}
-  comp_fixed=${_ble_complete_menu0_comp[6]}
+  comps_flags=${_ble_complete_menu0_comp[5]}
+  comps_fixed=${_ble_complete_menu0_comp[6]}
   comps_filter_pattern= # これは source が使うだけなので使われない筈…
 
   # remaining candidates
@@ -2673,7 +2713,7 @@ function ble/complete/menu/generate-candidates-from-menu {
 # 補完
 
 ## 関数 ble/complete/generate-candidates-from-opts opts
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comp_flags comp_fixed comps_filter_pattern
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/generate-candidates-from-opts {
   local opts=$1
@@ -4117,7 +4157,10 @@ function ble/widget/sabbrev-expand {
 # sabbrev の補完候補
 function ble/complete/action:sabbrev/initialize { CAND=$value; }
 function ble/complete/action:sabbrev/complete { :; }
-function ble/complete/action:sabbrev/getg { ble/color/face2g command_alias; }
+function ble/complete/action:sabbrev/init-menu-item {
+  ble/color/face2g command_alias
+  show=$INSERT
+}
 function ble/complete/action:sabbrev/get-desc {
   local ret; ble/complete/sabbrev/get "$INSERT"
   desc="(sabbrev expansion) $ret"
