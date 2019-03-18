@@ -71,6 +71,10 @@ function ble/base/adjust-bash-options {
   _ble_bash_setx=; [[ -o xtrace  ]] && _ble_bash_setx=1 && set +x
   _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
   _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
+
+  _ble_bash_nocasematch=
+  ((_ble_bash>=30100)) && shopt -q nocasematch &&
+    _ble_bash_nocasematch=1 && shopt -u nocasematch
 }
 function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1
@@ -79,6 +83,7 @@ function ble/base/restore-bash-options {
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
   [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
   [[ $_ble_bash_sete && ! -o errexit ]] && set -e
+  [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
 }
 {
   _ble_bash_options_adjusted=

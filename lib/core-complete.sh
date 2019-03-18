@@ -1533,6 +1533,31 @@ function ble/complete/util/construct-ambiguous-regex {
   done
   IFS= eval 'ret="${buff[*]}"'
 }
+## 関数 ble/complete/util/construct-glob-pattern text
+##   部分一致に使うグロブを生成します。
+function ble/complete/util/construct-glob-pattern {
+  local text=$1
+  if [[ $comps_flags == *i* ]]; then
+    local i n=${#text} c
+    local -a buff=()
+    for ((i=0;i<n;i++)); do
+      c=${text:i:1}
+      if [[ $c == [a-zA-Z] ]]; then
+        if [[ $comp_type == *i* ]]; then
+          ble/string#toggle-case "$c"
+          c=[$c$ret]
+        fi
+      else
+        ble/string#escape-for-bash-glob "$c"; c=$ret
+      fi
+      ble/array#push buff "$c"
+    done
+    IFS= eval 'ret="${buff[*]}"'
+  else
+    ble/string#escape-for-bash-glob "$1"
+  fi
+}
+
 
 function ble/complete/.fignore/prepare {
   _fignore=()
@@ -1680,14 +1705,37 @@ function ble/complete/candidates/.initialize-rex_raw_paramx {
   rex_raw_paramx='^('$element'*('$open_dquot')?)\$[a-zA-Z_][a-zA-Z_0-9]*$'
 }
 
-function ble/complete/candidates/filter:head/init { :; }
+function ble/complete/candidates/filter:head/init {
+  local ret; ble/complete/util/construct-glob-pattern "$1"
+  comps_filter_pattern=$ret*
+}
 function ble/complete/candidates/filter:head/filter { :; }
-function ble/complete/candidates/filter:head/test { [[ $CAND == "$COMPV"* ]]; }
+function ble/complete/candidates/filter:head/count-match-chars { # unused but for completeness
+  local value=$1 compv=$COMPV
+  if [[ $comp_type == *i* ]]; then
+    ble/string#tolower "$value"; value=$ret
+    ble/string#tolower "$compv"; compv=$ret
+  fi
+
+  if [[ $value == "$compv"* ]]; then
+    ret=${#compv}
+  elif [[ $compv == "$value"* ]]; then
+    ret=${#value}
+  else
+    ret=0
+  fi
+}
+function ble/complete/candidates/filter:head/test { [[ $1 == $comps_filter_pattern ]]; }
 
 ## 関数 ble/complete/candidates/filter:head/match needle text
 ##   @arr[out] ret
 function ble/complete/candidates/filter:head/match {
   local needle=$1 text=$2
+  if [[ $comp_type == *i* ]]; then
+    ble/string#tolower "$needle"; needle=$ret
+    ble/string#tolower "$text"; text=$ret
+  fi
+
   if [[ ! $needle || ! $text ]]; then
     ret=()
   elif [[ $text == "$needle"* ]]; then
@@ -1702,22 +1750,35 @@ function ble/complete/candidates/filter:head/match {
   fi
 }
 
-function ble/complete/candidates/filter:substr/init { :; }
+function ble/complete/candidates/filter:substr/init {
+  local ret; ble/complete/util/construct-glob-pattern "$1"
+  comps_filter_pattern=*$ret*
+}
 function ble/complete/candidates/filter:substr/filter {
-  ble/complete/candidates/.filter-by-command '[[ ${cand_cand[i]} == *"$COMPV"* ]]'
+  ble/complete/candidates/.filter-by-command '[[ ${cand_cand[i]} == $comps_filter_pattern ]]'
 }
 function ble/complete/candidates/filter:substr/count-match-chars {
-  local value=$1
-  if [[ $value == *"$COMPV"* ]]; then
-    ret=${#value}
+  local value=$1 compv=$COMPV
+  if [[ $comp_type == *i* ]]; then
+    ble/string#tolower "$value"; value=$ret
+    ble/string#tolower "$compv"; compv=$ret
+  fi
+
+  if [[ $value == *"$compv"* ]]; then
+    ret=${#compv}
     return
   fi
-  ble/complete/string#common-suffix-prefix "$value" "$COMPV"
+  ble/complete/string#common-suffix-prefix "$value" "$compv"
   ret=${#ret}
 }
-function ble/complete/candidates/filter:substr/test { [[ $CAND == *"$COMPV"* ]]; }
+function ble/complete/candidates/filter:substr/test { [[ $1 == $comps_filter_pattern ]]; }
 function ble/complete/candidates/filter:substr/match {
   local needle=$1 text=$2
+  if [[ $comp_type == *i* ]]; then
+    ble/string#tolower "$needle"; needle=$ret
+    ble/string#tolower "$text"; text=$ret
+  fi
+
   if [[ ! $needle ]]; then
     ret=()
   elif [[ $text == *"$needle"* ]]; then
@@ -1741,40 +1802,53 @@ function ble/complete/candidates/filter:hsubseq/.determine-fixlen {
     [[ $compv_fixed_part ]] && fixlen=${#compv_fixed_part}
   fi
 }
-## 関数 ble/complete/candidates/filter:hsubseq/init
-##   @var[in] COMPV
-##   @var[out] comps_rex_ambiguous
+## 関数 ble/complete/candidates/filter:hsubseq/init compv [fixlen]
+##   @param[in] compv
+##   @param[in,opt] fixlen
+##   @var[in] comps_fixed
+##   @var[out] comps_filter_pattern
 function ble/complete/candidates/filter:hsubseq/init {
-  local fixlen; ble/complete/candidates/filter:hsubseq/.determine-fixlen "$1"
-  local ret; ble/complete/util/construct-ambiguous-regex "$COMPV" "$fixlen"
-  comps_rex_ambiguous=^$ret
+  local fixlen; ble/complete/candidates/filter:hsubseq/.determine-fixlen "$2"
+  local ret; ble/complete/util/construct-ambiguous-regex "$1" "$fixlen"
+  comps_filter_pattern=^$ret
 }
 ## 関数 ble/complete/candidates/filter:hsubseq/filter
 ##   @var[in,out] cand_cand cand_word cand_pack cand_count
-##   @var[in] comps_rex_ambiguous
+##   @var[in] comps_filter_pattern
 function ble/complete/candidates/filter:hsubseq/filter {
-  ble/complete/candidates/.filter-by-regex "$comps_rex_ambiguous"
+  ble/complete/candidates/.filter-by-regex "$comps_filter_pattern"
 }
 ## 関数 ble/complete/candidates/filter:hsubseq/count-match-chars value [fixlen]
 ##   指定した文字列が COMPV の何処まで一致するかを返します。
 ##   @var[out] ret
 function ble/complete/candidates/filter:hsubseq/count-match-chars {
-  local value=$1 fixlen
+  local value=$1 compv=$COMPV
+  if [[ $comp_type == *i* ]]; then
+    ble/string#tolower "$value"; value=$ret
+    ble/string#tolower "$compv"; compv=$ret
+  fi
+
+  local fixlen
   ble/complete/candidates/filter:hsubseq/.determine-fixlen "$2"
-  [[ $value == "${COMPV::fixlen}"* ]] || return 1
+  [[ $value == "${compv::fixlen}"* ]] || return 1
 
   value=${value:fixlen}
   local i n=${#COMPV}
   for ((i=fixlen;i<n;i++)); do
-    local a=${value%%"${COMPV:i:1}"*}
+    local a=${value%%"${compv:i:1}"*}
     [[ $a == "$value" ]] && { ret=$i; return; }
     value=${value:${#a}+1}
   done
   ret=$n
 }
-function ble/complete/candidates/filter:hsubseq/test { [[ $CAND =~ $comps_rex_ambiguous ]]; }
+function ble/complete/candidates/filter:hsubseq/test { [[ $1 =~ $comps_filter_pattern ]]; }
 function ble/complete/candidates/filter:hsubseq/match {
   local needle=$1 text=$2
+  if [[ $comp_type == *i* ]]; then
+    ble/string#tolower "$needle"; needle=$ret
+    ble/string#tolower "$text"; text=$ret
+  fi
+
   local fixlen; ble/complete/candidates/filter:hsubseq/.determine-fixlen "$3"
 
   local prefix=${needle::fixlen}
@@ -1811,12 +1885,13 @@ function ble/complete/candidates/filter:hsubseq/match {
   done
 }
 
-## 関数 ble/complete/candidates/filter:subseq/init
-##   @var[in] COMPV
-##   @var[out] comps_rex_ambiguous
+## 関数 ble/complete/candidates/filter:subseq/init compv
+##   @param[in] compv
+##   @var[in] comps_fixed
+##   @var[out] comps_filter_pattern
 function ble/complete/candidates/filter:subseq/init {
   [[ $comps_fixed ]] && return 1
-  ble/complete/candidates/filter:hsubseq/init 0
+  ble/complete/candidates/filter:hsubseq/init "$1" 0
 }
 function ble/complete/candidates/filter:subseq/filter {
   ble/complete/candidates/filter:hsubseq/filter
@@ -1824,7 +1899,7 @@ function ble/complete/candidates/filter:subseq/filter {
 function ble/complete/candidates/filter:subseq/count-match-chars {
   ble/complete/candidates/filter:hsubseq/count-match-chars "$1" 0
 }
-function ble/complete/candidates/filter:subseq/test { [[ $CAND =~ $comps_rex_ambiguous ]]; }
+function ble/complete/candidates/filter:subseq/test { [[ $1 =~ $comps_filter_pattern ]]; }
 function ble/complete/candidates/filter:subseq/match {
   ble/complete/candidates/filter:hsubseq/match "$1" "$2" 0
 }
@@ -1839,7 +1914,7 @@ function ble/complete/candidates/generate-with-filter {
     nearest_sources=()
     ble/complete/candidates/.pick-nearest-sources
 
-    ble/complete/candidates/filter:"$comp_filter_type"/init || continue
+    ble/complete/candidates/filter:"$comp_filter_type"/init "$COMPV" || continue
 
     for src in "${nearest_sources[@]}"; do
       ble/string#split-words asrc "$src"
@@ -1866,7 +1941,7 @@ function ble/complete/candidates/generate-with-filter {
 ##   @var[out] COMP1 COMP2 COMPS COMPV
 ##   @var[out] comp_type comps_flags comps_fixed
 ##   @var[out] cand_*
-##   @var[out] comps_rex_ambiguous
+##   @var[out] comps_filter_pattern
 function ble/complete/candidates/generate {
   local flag_force_fignore=
   local -a _fignore=()
@@ -1909,15 +1984,32 @@ function ble/complete/candidates/generate {
 ## 関数 ble/complete/candidates/determine-common-prefix
 ##   cand_* を元に common prefix を算出します。
 ##   @var[in] cand_*
-##   @var[in] comps_rex_ambiguous
+##   @var[in] comps_filter_pattern
 ##   @var[out] ret
 function ble/complete/candidates/determine-common-prefix {
   # 共通部分
   local common=${cand_word[0]} clen=${#cand_word[0]}
+
   if ((cand_count>1)); then
+    # setup ignore case
+    local unset_nocasematch= flag_tolower=
+    if [[ $comp_type == *i* ]]; then
+      if ((_ble_bash<30100)); then
+        flag_tolower=1
+        ble/string#tolower "$common"; common=$ret
+      else
+        unset_nocasematch=1
+        shopt -s nocasematch
+      fi
+    fi
+
     local word loop=0
     for word in "${cand_word[@]:1}"; do
-      ((loop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+      ((loop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && break
+
+      if [[ $flag_tolower ]]; then
+        ble/string#tolower "$word"; word=$ret
+      fi
 
       ((clen>${#word}&&(clen=${#word})))
       while [[ ${word::clen} != "${common::clen}" ]]; do
@@ -1925,10 +2017,15 @@ function ble/complete/candidates/determine-common-prefix {
       done
       common=${common::clen}
     done
+
+    [[ $unset_nocasematch ]] && shopt -u nocasematch
+    ble/complete/check-cancel && return 148
+
+    [[ $flag_tolower ]] && common=${cand_word[0]::${#common}}
   fi
 
-  if [[ $comp_type == *[amA]* ]]; then
-    # 曖昧一致の時は遡って書き換えを起こすが、
+  if [[ $comp_type == *[amAi]* && $common != "$COMPS"* ]]; then
+    # 曖昧一致の時は遡って書き換えを起こし得る、
     # 一致する部分までを置換し一致しなかった部分を末尾に追加する。
 
     local common0=$common
@@ -1937,7 +2034,7 @@ function ble/complete/candidates/determine-common-prefix {
     local simple_flags simple_ibrace
     if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
       ble/syntax:bash/simple-word/eval "$ret"; then
-      local value=$ret filter_type=
+      local value=$ret filter_type=head
       case $comp_type in
       (*m*) filter_type=substr ;;
       (*a*) filter_type=hsubseq ;;
@@ -2542,7 +2639,7 @@ function ble/complete/menu/get-active-range {
 
 ## 関数 ble/complete/menu/generate-candidates-from-menu
 ##   現在表示されている menu 内容から候補を再抽出します。
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comp_flags comp_fixed comps_rex_ambiguous
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comp_flags comp_fixed comps_filter_pattern
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/menu/generate-candidates-from-menu {
   # completion context information
@@ -2553,7 +2650,7 @@ function ble/complete/menu/generate-candidates-from-menu {
   comp_type=${_ble_complete_menu_comp[4]}
   comp_flags=${_ble_complete_menu0_comp[5]}
   comp_fixed=${_ble_complete_menu0_comp[6]}
-  comps_rex_ambiguous= # これは source が使うだけなので使われない筈…
+  comps_filter_pattern= # これは source が使うだけなので使われない筈…
 
   # remaining candidates
   cand_count=${#_ble_complete_menu_items[@]}
@@ -2576,7 +2673,7 @@ function ble/complete/menu/generate-candidates-from-menu {
 # 補完
 
 ## 関数 ble/complete/generate-candidates-from-opts opts
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comp_flags comp_fixed comps_rex_ambiguous
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comp_flags comp_fixed comps_filter_pattern
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/generate-candidates-from-opts {
   local opts=$1
@@ -2677,7 +2774,7 @@ function ble/widget/complete {
 
   local COMP1 COMP2 COMPS COMPV
   local comp_type comps_flags comps_fixed
-  local comps_rex_ambiguous
+  local comps_filter_pattern
   local cand_count=0
   local -a cand_cand cand_word cand_pack
   if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
@@ -2765,7 +2862,7 @@ function ble/widget/complete {
   if ((cand_count>1)) && [[ $insert_flags == *r* ]]; then
     # 既存部分を置換し、かつ一意確定でない場合は置換しない。
     # 曖昧補完の時は determine-common-prefix 内で調整されるので挿入する。
-    if [[ $comp_type != *[amA]* ]]; then
+    if [[ $comp_type != *[amAi]* ]]; then
       do_insert=
     fi
   elif [[ $insert$suffix == "$COMPS" ]]; then
@@ -2823,7 +2920,7 @@ function ble/complete/menu-filter/.filter-candidates {
 
   local iloop=0 interval=$bleopt_complete_polling_cycle
   local filter_type pack "${_ble_complete_cand_varnames[@]}"
-  local comps_rex_ambiguous
+  local comps_filter_pattern
   for filter_type in head substr hsubseq subseq; do
     comp_type=${comp_type//[amA]}
     case $filter_type in
@@ -2832,11 +2929,11 @@ function ble/complete/menu-filter/.filter-candidates {
     (subseq)  comp_type=${comp_type}A ;;
     esac
 
-    ble/function#try ble/complete/candidates/filter:"$filter_type"/init
+    ble/function#try ble/complete/candidates/filter:"$filter_type"/init "$COMPV"
     for pack in "${_ble_complete_menu0_pack[@]}"; do
       ((iloop++%interval==0)) && ble/complete/check-cancel && return 148
       ble/complete/cand/unpack "$pack"
-      ble/complete/candidates/filter:"$filter_type"/test &&
+      ble/complete/candidates/filter:"$filter_type"/test "$CAND" &&
         ble/array#push cand_pack "$pack"
     done
     ((${#cand_pack[@]}!=0)) && break
@@ -3491,7 +3588,7 @@ function ble/complete/auto-complete/.check-context {
     local bleopt_complete_polling_cycle=25
   local COMP1 COMP2 COMPS COMPV
   local comps_flags comps_fixed
-  local comps_rex_ambiguous
+  local comps_filter_pattern
   local cand_count
   local -a cand_cand cand_word cand_pack
   ble/complete/candidates/generate; local ext=$?
@@ -3522,11 +3619,12 @@ function ble/complete/auto-complete/.check-context {
     ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
     ((_ble_edit_mark=_ble_edit_ind+${#ins}))
   else
-    if [[ $comp_type == *[amA]* ]]; then
-      type=a
-    else
-      type=r
-    fi
+    case $comp_type in
+    (*a*) type=a ;;
+    (*m*) type=m ;;
+    (*A*) type=A ;;
+    (*)   type=r ;;
+    esac
     ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" " [$insert] "
     ((_ble_edit_mark=_ble_edit_ind+4+${#insert}))
   fi
@@ -3661,25 +3759,27 @@ function ble/widget/auto_complete/self-insert {
   elif [[ $_ble_complete_ac_type == [ra] && $ins != [{,}] ]]; then
     if local ret simple_flags simple_ibrace; ble/syntax:bash/simple-word/reconstruct-incomplete-word "$comps_new"; then
       ble/syntax:bash/simple-word/eval "$ret"; local compv_new=$ret
-      if [[ $_ble_complete_ac_type == r ]]; then
+      if [[ $_ble_complete_ac_type == [rmaA] ]]; then
         # r: 遡って書き換わる時
         #   挿入しても展開後に一致する時、そのまま挿入。
         #   元から展開後に一致していない場合もあるが、その場合は一旦候補を消してやり直し。
-        if [[ $_ble_complete_ac_cand == "$compv_new"* ]]; then
+        # a: 曖昧一致の時
+        #   文字を挿入後に展開してそれが曖昧一致する時、そのまま挿入。
+
+        local comp_filter_type=head
+        case $_ble_complete_ac_type in
+        (*m*) comp_filter_type=substr  ;;
+        (*a*) comp_filter_type=hsubseq ;;
+        (*A*) comp_filter_type=subseq  ;;
+        esac
+
+        local comps_fixed= comps_filter_pattern
+        ble/complete/candidates/filter:"$comp_filter_type"/init "$compv_new"
+        if ble/complete/candidates/filter:"$comp_filter_type"/test "$_ble_complete_ac_cand"; then
           ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
           ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
           [[ $_ble_complete_ac_cand == "$compv_new" ]] &&
             ble/widget/auto_complete/cancel
-          processed=1
-        fi
-      elif [[ $_ble_complete_ac_type == a ]]; then
-        # a: 曖昧一致の時
-        #   文字を挿入後に展開してそれが曖昧一致する時、そのまま挿入。
-        ble/complete/util/construct-ambiguous-regex "$compv_new"
-        local comps_rex_ambiguous=^$ret
-        if [[ $_ble_complete_ac_cand =~ $comps_rex_ambiguous ]]; then
-          ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
-          ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
           processed=1
         fi
       fi
@@ -4024,20 +4124,20 @@ function ble/complete/action:sabbrev/get-desc {
 }
 function ble/complete/source:sabbrev {
   local keys; ble/complete/sabbrev/get-keys
-  local key CAND
+  local key cand
 
-  local COMPV=$COMPS comps_rex_ambiguous=
-  ble/complete/candidates/filter:"$comp_filter_type"/init
-  for CAND in "${keys[@]}"; do
-    ble/complete/candidates/filter:"$comp_filter_type"/test || continue
+  local comps_fixed= comps_filter_pattern=
+  ble/complete/candidates/filter:"$comp_filter_type"/init "$COMPS"
+  for cand in "${keys[@]}"; do
+    ble/complete/candidates/filter:"$comp_filter_type"/test "$cand" || continue
 
-    # filter で除外されない為に CAND には評価後の値を入れる必要がある。
+    # filter で除外されない為に cand には評価後の値を入れる必要がある。
     local ret simple_flags simple_ibrace
-    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$CAND" &&
+    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$cand" &&
       ble/syntax:bash/simple-word/eval "$ret" || continue
 
     local value=$ret
-    ble/complete/cand/yield sabbrev "$CAND"
+    ble/complete/cand/yield sabbrev "$cand"
   done
 }
 
