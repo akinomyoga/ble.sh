@@ -613,7 +613,7 @@ function ble-edit/prompt/.instantiate {
   _ble_edit_rprompt[0]=$version
   if [[ $expanded != "$val0" ]]; then
     x=0 y=0 g=0 lc=32 lg=0
-    LINES=1 ble/canvas/trace "$expanded" "$opts:left-char"; local traced=$ret
+    ble/canvas/trace "$expanded" "$opts:left-char"; local traced=$ret
     ((lc<0&&(lc=0)))
     val=$expanded esc=$traced
     return 0
@@ -665,12 +665,13 @@ function ble-edit/prompt/update {
 
   # update edit_rps1
   if [[ $bleopt_rps1 ]]; then
+    local ps1_height=$((y+1))
     local val esc x y g lc lg # Note: これ以降は local の x y g lc lg
     local x1=${_ble_edit_rprompt_bbox[0]}
     local y1=${_ble_edit_rprompt_bbox[1]}
     local x2=${_ble_edit_rprompt_bbox[2]}
     local y2=${_ble_edit_rprompt_bbox[3]}
-    LINES=1 ble-edit/prompt/.instantiate "$bleopt_rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
+    LINES=$ps1_height ble-edit/prompt/.instantiate "$bleopt_rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
     _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$val")
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
   fi
@@ -1532,6 +1533,37 @@ function ble/textarea#render/.show-scroll-at-first-line {
   fi
 }
 
+## 関数 ble/textarea#render/.erase-rps1
+##   @var[in] cols
+##     rps1 の幅の分だけ減少させた後の cols を指定します。
+function ble/textarea#render/.erase-rps1 {
+  local rps1_height=${_ble_edit_rprompt_bbox[3]}
+  local -a DRAW_BUFF=()
+  local y=0
+  for ((y=0;y<rps1_height;y++)); do
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) "$y"
+    ble/canvas/put.draw "$_ble_term_el"
+  done
+  ble/canvas/bflush.draw
+}
+## 関数 ble/textarea#render/.cleanup-trailing-spaces-after-newline
+##   rps1_transient の時に、次の行に行く前に行末の無駄な空白を削除します。
+##   @var[in] text
+##   @var[in] _ble_textmap_pos
+function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
+  local -a DRAW_BUFF=()
+  local -a buffer; ble/string#split-lines buffer "$text"
+  local line index=0 pos
+  for line in "${buffer[@]}"; do
+    ((index+=${#line}))
+    ble/string#split-words pos "${_ble_textmap_pos[index]}"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${pos[0]}" "${pos[1]}"
+    ble/canvas/put.draw "$_ble_term_el"
+    ((index++))
+  done
+  ble/canvas/bflush.draw
+}
+
 ## 関数 ble/textarea#focus
 ##   プロンプト・編集文字列の現在位置に端末のカーソルを移動します。
 function ble/textarea#focus {
@@ -1585,14 +1617,14 @@ function ble/textarea#render {
   local cols=${COLUMNS-80}
 
   # rps1_transient
+  local flag_rps1_clear=
   if [[ $bleopt_rps1 && :$opts: == *:leave:* && $bleopt_rps1_transient ]]; then
+    # Note: ble-edit/prompt/update を実行するよりも前に現在の表示内容を消去する。
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
+      flag_rps1_clear=1
       ((cols-=rps1_width+1,_ble_term_xenl||cols--))
-      local -a DRAW_BUFF=()
-      ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
-      ble/canvas/put.draw "$_ble_term_el"
-      ble/canvas/bflush.draw
+      ble/textarea#render/.erase-rps1
     fi
   fi
 
@@ -1602,7 +1634,7 @@ function ble/textarea#render {
 
   # rps1
   local flag_rps1=
-  if [[ $bleopt_rps1 && ( :$opts: != *:leave:* || $bleopt_rps1_transient ) ]]; then
+  if [[ $bleopt_rps1 && ! $flag_rps1_clear ]]; then
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)) &&
       ((flag_rps1=1,cols-=rps1_width+1,_ble_term_xenl||cols--))
@@ -1669,6 +1701,9 @@ function ble/textarea#render {
   #-------------------
   # 出力
 
+  [[ $flag_rps1_clear ]] &&
+    ble/textarea#render/.cleanup-trailing-spaces-after-newline
+
   # 2 表示内容
   local ret esc_line= esc_line_set=
   if [[ ! $_ble_textarea_invalidated ]]; then
@@ -1709,9 +1744,11 @@ function ble/textarea#render {
     ble/canvas/panel#goto.draw "$_ble_textarea_panel"
     if [[ $flag_rps1 ]]; then
       local rps1out=${_ble_edit_rprompt[6]}
+      local rps1x=${_ble_edit_rprompt[1]} rps1y=${_ble_edit_rprompt[2]}
       # Note: cols は画面右端ではなく textmap の右端
       ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
-      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out$_ble_term_cr" 0 0
+      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out" $((cols+1+rps1x)) "$rps1y"
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
     fi
     ble/canvas/panel#put.draw "$_ble_textarea_panel" "$esc_prompt" "$prox" "$proy"
 
@@ -3975,7 +4012,6 @@ function ble/widget/discard-line {
   ble/textarea#render
 }
 
-
 if ((_ble_bash>=30100)); then
   function ble/edit/hist_expanded/.core {
     builtin history -p -- "$BASH_COMMAND"
@@ -4034,6 +4070,7 @@ function ble/widget/accept-line {
   if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
     ble/widget/.newline keep-info
     ble/textarea#render
+    ble/util/buffer.flush >&2
     return
   fi
 

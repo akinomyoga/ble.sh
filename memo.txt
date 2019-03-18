@@ -852,33 +852,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-13
-
-  * rps1 の高さを PS1 と同じだけ確保しても良いのではないかという説。
-    複数行の PS1 にしている人は rps1 も複数行にできる様にする。
-
-    一方で、rps1 の方が PS1 よりも行数が多いというのは微妙なので止める。
-    例えば、出力と被らない様にする為には rps1 の 2 行目以降を消去するか、
-    コマンドの出力を rps1 の最終行の次の行からにするか、
-    或いは、rps1 とコマンドの出力が被ってしまっても気にしないか。
-    とそういう選択肢しかない。
-
-  * rps1_transient の時 _ble_term_el で最後の文字以降を全て消去しても良いのではないか。
-    実際に zsh の場合にはその様にしている様に見える。
-
-    ただ複数行の時に各行に対して全て実行するというのは面倒である。
-    或いは、一行目の時だけ改行の右側を空白で fill するという手もあると思ったが、
-    2行目以降の改行が1行目に移動した時に問題が発生するので、
-    それはやはり難しいのである。
-
-    全ての改行位置を手早く取得する手法はあるだろうか。
-    と思ったが、よく考えてみれば $'\n' を単に検索すれば良いのだった。
-    その他に折り返しの場合もあるが、折返しは一番右側で起こると決まっているので、
-    殊更に削除するべき空白などがあったりはしない。
-
-  * rps1_transient でコマンドを入力してから次の行に進む時、
-    rps1 が消去される。寧ろ transient の時は空白で埋められている。
-
 2019-03-12
 
   * complete: source:sabbrev の候補表示に \ を入れたい
@@ -2263,6 +2236,9 @@ bash_tips
     - canvas (`ble/canvas/trace`): fix a bug that `measure-bbox` does not work (<= bash-3.1) `#D0988` 7f880de
     - canvas (`ble/canvas/trace`): fix a bug that `x1` and `y1` is not properly updated `#D0988` 7f880de
     - edit: support `bleopt rps1_transient` `#D0993` 44edd38
+    - edit: fix a bug that `rps1` is cleared on execution of the command `#D1003`
+    - edit: erase trailing spaces after newlines when `rps1_transient` is enabled `#D1004`
+    - edit: support multiline `rps1` (Note: still restricted to fit in lines of `PS1`) `#D1005`
   - complete: support "bleopt complete_menu_style=desc-raw" `#D0965` 1fd7a3e
   - complete: support <kbd>prior</kbd>, <kbd>next</kbd>, <kbd>home</kbd>, <kbd>end</kbd> in `menu_complete` keymap `#D0966` b729d23
   - edit: support `bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m' `#D0968` 6c8b52a
@@ -2292,8 +2268,9 @@ bash_tips
     - highlight: disable `layer:menu_filter` (<= bash-3.2) `#D0987` 1b14b11
   - complete: disable `auto-complete` inside the active range of `menu-filter` `#D0957`
   - util (visible-bell): truncate long messages to fit into a line `#D0973` e55ff86
-  - edit: render prompt immediately on newline `#D0991` cdb8acb
+  - edit: render prompt immediately on newline `#D0991` cdb8acb `#D1003`
   - syntax: detect syntax errors of `CTX_CMDX1` immediately followed by terminating keywords `#D1001` 7ea02b7
+  - complete: improve support of `bind 'completion-ignore-case on'` `#D1002` 25ebc55
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -3173,7 +3150,62 @@ bash_tips
 
 2019-03-18
 
-  * 2019-03-12 complete: completion-ignore-case の時に comp_type=i を設定しているが実際に使っていない
+  * 2019-03-13 rps1 の高さを PS1 と同じだけ確保しても良いのではないかという説 [#D1005]
+    複数行の PS1 にしている人は rps1 も複数行にできる様にする。
+
+    一方で、rps1 の方が PS1 よりも行数が多いというのは微妙なので止める。
+    例えば、出力と被らない様にする為には rps1 の 2 行目以降を消去するか、
+    コマンドの出力を rps1 の最終行の次の行からにするか、
+    或いは、rps1 とコマンドの出力が被ってしまっても気にしないか。
+    とそういう選択肢しかない。
+
+    これは PS1 の高さが確定してから、その高さを用いて rps1 を初期化する様にする。
+
+    x fixed: さて複数行の rps1 を許す様にして rps1 を削除するコードを書いてから、
+      実際に rps1 を表示してみると一行になってしまっている。
+      と思ったら prompt/.initialize で trace を呼び出す時に明示的に LINES=1
+      を実行してしまっていた。そして、confine を指定していない PS1 の方については
+      問題が発現していなかったというだけであった。
+
+    x fixed: うーん。表示されるようになったが座標計算が誤っている。
+      rps1 を表示してから y 座標を更新できていない気がする。
+      座標計算も誤っていたし、更に PS1 の描画位置も誤っていた。修正した。
+
+  * 2019-03-13 rps1: rps1_transient の時 _ble_term_el で最後の文字以降を全て消去しても良いのではないか [#D1004]
+    実際に zsh の場合にはその様にしている様に見える。
+
+    ただ複数行の時に各行に対して全て実行するというのは面倒である。
+    或いは、一行目の時だけ改行の右側を空白で fill するという手もあると思ったが、
+    2行目以降の改行が1行目に移動した時に問題が発生するので、
+    それはやはり難しいのである。
+
+    全ての改行位置を手早く取得する手法はあるだろうか。
+    と思ったが、よく考えてみれば $'\n' を単に検索すれば良いのだった。
+    その他に折り返しの場合もあるが、折返しは一番右側で起こると決まっているので、
+    殊更に削除するべき空白などがあったりはしない。
+
+    うーん。これについて試しに実装してみる事にするか…。
+    rps1 を消去する時にどの場所で消去するのだろうか。
+
+    1 先ず始めに幾何を更新する前に消去する。
+    2 次に編集文字列の改行の位置より右側を削除する。
+
+    2回削除しているので無駄の様な気もするが両方必要の様な気もする。
+    というのも 1 がないと複数行プロンプトで複数行の rps1 に対応している時に
+    rps1 が削除されないという事態になる。一方で 2 がないと空白が行末まで続いた状態になっていて
+    コピー&ペーストする時に邪魔になってしまう。従って、この二種類の消去が必要になるのである。
+
+    取り敢えず実装した。最後の行末も消す必要があった。修正した。
+
+  * 2019-03-13 rps1: not rps1_transient でコマンドを入力してから次の行に進む時 [#D1003]
+    rps1 が消去される。寧ろ transient の時は空白で埋められている。
+    →これは条件式を誤っていた。修正した。
+
+    また、何も入力せずに次の行に行く時の再描画についても修正した。
+    次にユーザの入力が途切れるまで buffer.flush が実行されないので、
+    明示的に buffer.flush を呼び出す事にした。
+
+  * 2019-03-12 complete: completion-ignore-case の時に comp_type=i を設定しているが実際に使っていない [#D1002]
     うーん。各 source で本当に正しく実行できているかどうかは分からないが、
     そして compgen がいい感じに候補を生成してくれるのか分からないが、
     取り敢えず見て簡単に分かる所は更新した。簡単に実行して確かめてみる事にする。
