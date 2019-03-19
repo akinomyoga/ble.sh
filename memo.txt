@@ -852,9 +852,19 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-18
+2019-03-19
 
-  * complete: rlvar mark-symlinked-directories, match-hidden-files 等の対応
+  * complete: 実装されていない補完関連の rlvar は以下の通りである。
+    実際に対応するかどうかも含めて考察する必要がある。
+
+    set completion-map-case off
+    set disable-completion off
+    set expand-tilde off
+    set horizontal-scroll-mode off
+    set page-completions on
+    set completion-display-width -1
+    set completion-prefix-display-length 0
+    set completion-query-items 100
 
 2019-02-10
 
@@ -2240,6 +2250,8 @@ bash_tips
   - vi_imap: support `bleopt keymap_vi_imap_undo=more` `#D0996` 50f8ad2
   - util: support `bleopt vbell_align` and `ble-color-setface vbell{,_flash,_erase}` for vbell `#D0997` 325883e
   - decode: support "bleopt decode_abort_char=28" `#D0998` b110cb9
+  - complete: support `visible-stats` and `mark-directories` `#D1006` b389b3b
+  - complete: support `mark-symlinked-directories`, `match-hidden-files` and `menu-complete-display-prefix` `#D1007` @@@@@@@
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -2259,7 +2271,6 @@ bash_tips
   - edit: render prompt immediately on newline `#D0991` cdb8acb `#D1003` 5780154
   - syntax: detect syntax errors of `CTX_CMDX1` immediately followed by terminating keywords `#D1001` 7ea02b7
   - complete: improve support of `bind 'completion-ignore-case on'` `#D1002` 25ebc55
-  - complete: support `visible-stats` and `mark-directories` `#D1006` @@@@@@@
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -2281,7 +2292,7 @@ bash_tips
   - [refactor] do not use brace expansions for `VARNAMES` `#D0955` 711e7df
   - [refactor] `ble-{highlight,complete,syntax}` -> `ble/*` 7aaa660 ae6be66 8ea903c
   - [refactor] `ble-edit/info/.construct-text` -> `ble/canvas/trace-text` `#D0973` e55ff86
-  - rename `ble/complete/action:*/getg` -> `ble/complete/action:*/init-menu-item` @@@@@@@
+  - rename `ble/complete/action:*/getg` -> `ble/complete/action:*/init-menu-item` `#D1006` b389b3b
 
 2018-10-05 -- 2019-02-09 (#D0858..#D0914) 6ed51e7..949e9a8
 
@@ -3137,6 +3148,54 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-03-19
+
+  * complete: rlvar mark-symlinked-directories, match-hidden-files 等の対応 [#D1007]
+
+    * done: comp_type が段々と複雑になって来た。
+      opts の様に名前で指定できる様にするべきではないか。
+
+      x ok: しかし、比較速度の問題もある。
+        - 確認してみた所、候補ループの中では使われていない。
+        - 唯一使われているとすれば、メニュー表示の一致範囲の決定であるが、
+          - 元々この部分は時間がかかる処理なので comp_type の検索時間はそれ程効かない筈である。
+          - また、ループの外で判定結果を変数に入れてしまっても良い。
+            と思ったが別にループがあるという訳でもなかった。
+        →比較速度に関しては気にしなくて良いだろう。
+
+    * done: 実装
+      mark-symlinked-directories には対応した。
+      match-hidden-files にも対応した。
+      両者とも実際に動かして確かめてみた。
+
+    * done: 動作チェック
+      match-hidden-files に関しては絞り込みによって
+      . が入力されても新しく生成されないというのが難点だが、
+      まあ絞り込みと考えれば変な動作でもない。
+      C-g によってキャンセルして改めて補完を実行すれば
+      hidden-files もちゃんと生成される様になったのでOK
+
+    * done: menu-complete-display-prefix にも対応した。
+
+    * done: colored-*
+      set colored-completion-prefix off
+      set colored-stats off
+
+      以上の物に関しては既に機能としては ble.sh で既定で有効になっているが、
+      rl の既定では off になっているのでこの変数に対応するとしたら、
+      ユーザに自分で設定を有効にしてもらう必要がある。
+      もしくは勝手に ble.sh の側で有効にしてしまうという手も考えられるが…。
+      結局対応してしまう事にした。
+      a うーん。勝手に設定を on にする事にする。
+        但し、遅延ロードで設定を on にすると bashrc で制御できないので、
+        遅延ロードでない所で勝手に設定を on にする事にする。
+        この振る舞いに関しては何処か説明書に書くと良いのかもしれない。
+      b と思ったが off にする機能を残しておく必要はあるのだろうか。
+        その様に考えると一応 on/off する仕組みを残して置きつつ、
+        やはり強制的に on にするというのの方が良い気がしてきた。
+        実は他にも沢山の設定項目が rlvar にはあって、
+        それらを全て on にするというのは非現実的な感じがする。
 
 2019-03-18
 

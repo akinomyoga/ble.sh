@@ -1497,9 +1497,19 @@ function ble/util/restore-editing-mode {
   esac
 }
 
+## 関数 ble/util/test-rl-variable name [default_exit]
 function ble/util/test-rl-variable {
   local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
-  [[ $rl_variables == *"set $1 on"* ]]
+  if [[ $rl_variables == *"set $1 on"* ]]; then
+    return 0
+  elif [[ $rl_variables == *"set $1 off"* ]]; then
+    return 1
+  elif (($#>=2)); then
+    (($2))
+    return
+  else
+    return 2
+  fi
 }
 
 #------------------------------------------------------------------------------

@@ -50,7 +50,7 @@ function ble/complete/string#common-suffix-prefix {
 ##
 ## @var comp_type
 ##   候補生成の方法を制御します。
-##   以下のフラグ文字の組み合わせからなる文字列です。
+##   以下のオプションのコロン区切りの組み合わせからなる文字列です。
 ##
 ##   a 曖昧補完に用いる候補を生成する。
 ##     曖昧一致するかどうかは呼び出し元で判定されるので、
@@ -58,16 +58,21 @@ function ble/complete/string#common-suffix-prefix {
 ##   m 曖昧補完 (中間部分に一致)
 ##   A 曖昧補完 (部分列・最初の文字も一致しなくて良い)
 ##
-##   i (rlvar completion-ignore-case) 大文字小文字を区別しない補完候補生成を行う。
-##   V (rlvar visible-stats) ファイル名末尾にファイルの種類を示す記号を付加する。
-##   d (rlvar mark-directories) ディレクトリ名の補完後に / を付加する。
+##   i (rlvar completion-ignore-case)
+##     大文字小文字を区別しない補完候補生成を行う。
+##   vstat (rlvar visible-stats)
+##     ファイル名末尾にファイルの種類を示す記号を付加する。
+##   markdir (rlvar mark-directories)
+##     ディレクトリ名の補完後に / を付加する。
 ##
-##   s ユーザの入力があっても中断しない事を表す。
-##   R COMPV としてシェル評価前の文字列を使用します。
+##   sync
+##     ユーザの入力があっても中断しない事を表す。
+##   raw
+##     COMPV としてシェル評価前の文字列を使用します。
 ##
 
 function ble/complete/check-cancel {
-  [[ $comp_type != *s* ]] && ble-decode/has-input
+  [[ :$comp_type: != *:sync:* ]] && ble-decode/has-input
 }
 
 #==============================================================================
@@ -161,6 +166,11 @@ function ble/complete/string#escape-for-completion-context {
 
 function ble/complete/action/util/complete.addtail {
   suffix=$suffix$1
+}
+function ble/complete/action/util/complete.mark-directory {
+  [[ :$comp_type: == *:markdir:* && $CAND != */ ]] &&
+    [[ :$comp_type: == *:marksymdir:* || ! -h $CAND ]] &&
+    ble/complete/action/util/complete.addtail /
 }
 function ble/complete/action/util/complete.close-quotation {
   case $comps_flags in
@@ -260,8 +270,7 @@ function ble/complete/action:file/initialize {
 function ble/complete/action:file/complete {
   if [[ -e $CAND || -h $CAND ]]; then
     if [[ -d $CAND ]]; then
-      [[ $comp_type == *d* && $CAND != */ ]] &&
-        ble/complete/action/util/complete.addtail /
+      ble/complete/action/util/complete.mark-directory
     else
       ble/complete/action/util/complete.close-quotation
       ble/complete/action/util/complete.addtail ' '
@@ -272,7 +281,7 @@ function ble/complete/action:file/init-menu-item {
   ble/syntax/highlight/getg-from-filename "$CAND"
   [[ $g ]] || ble/color/face2g filename_warning
 
-  if [[ $comp_type == *V* ]]; then
+  if [[ :$comp_type: == *:vstat:* ]]; then
     if [[ -h $CAND ]]; then
       suffix='@'
     elif [[ -d $CAND ]]; then
@@ -307,8 +316,7 @@ function ble/complete/action:tilde/initialize {
   INSERT=\~$INSERT
 }
 function ble/complete/action:tilde/complete {
-  [[ $comp_type == *d* ]] &&
-    ble/complete/action/util/complete.addtail /
+  ble/complete/action/util/complete.mark-directory
 }
 function ble/complete/action:tilde/init-menu-item {
   ble/color/face2g filename_directory
@@ -336,8 +344,7 @@ function ble/complete/action:progcomp/complete {
     ble/complete/action:file/complete
   else
     if [[ -d $CAND ]]; then
-      [[ $comp_type == *d* && $CAND != */ ]] &&
-        ble/complete/action/util/complete.addtail /
+      ble/complete/action/util/complete.mark-directory
     else
       ble/complete/action/util/complete.close-quotation
       ble/complete/action/util/complete.addtail ' '
@@ -364,8 +371,7 @@ function ble/complete/action:command/initialize {
 }
 function ble/complete/action:command/complete {
   if [[ -d $CAND ]]; then
-    [[ $comp_type == *d* && $CAND != */ ]] &&
-      ble/complete/action/util/complete.addtail /
+    ble/complete/action/util/complete.mark-directory
   elif ! type "$CAND" &>/dev/null; then
     # 関数名について縮約されたもので一意確定した時。
     #
@@ -509,9 +515,9 @@ function ble/complete/cand/unpack {
 
 function ble/complete/source:wordlist {
   [[ $comps_flags == *v* ]] || return 1
-  case $comp_type in
-  (*a*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
-  (*[mA]*) local COMPS= COMPV= ;;
+  case :$comp_type: in
+  (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
+  (*:[mA]:*) local COMPS= COMPV= ;;
   esac
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
@@ -605,9 +611,9 @@ function ble/complete/source:command/.contract-by-slashes {
 }
 
 function ble/complete/source:command/gen.1 {
-  case $comp_type in
-  (*a*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
-  (*[mA]*) local COMPS= COMPV= ;;
+  case :$comp_type: in
+  (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
+  (*:[mA]:*) local COMPS= COMPV= ;;
   esac
 
   # Note: 何故か compgen -A command はクォート除去が実行されない。
@@ -623,7 +629,7 @@ function ble/complete/source:command/gen.1 {
 }
 
 function ble/complete/source:command/gen {
-  if [[ $comp_type != *[amA]* && $bleopt_complete_contract_function_names ]]; then
+  if [[ :$comp_type: != *:[amA]:* && $bleopt_complete_contract_function_names ]]; then
     ble/complete/source:command/gen.1 |
       ble/complete/source:command/.contract-by-slashes
   else
@@ -637,7 +643,7 @@ function ble/complete/source:command/gen {
   #   Note: compgen -A directory (以下のコード参照) はバグがあって、
   #     bash-4.3 以降でクォート除去が実行されないので使わない (#D0714 #M0009)
   #
-  #     [[ $comp_type == *a* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
+  #     [[ :$comp_type: == *:a:* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   #     compgen -A directory -S / -- "$compv_quoted"
   #
   local ret
@@ -702,7 +708,7 @@ function ble/complete/util/eval-pathname-expansion {
     ble/array#push dtor 'shopt -u nullglob'
   fi
 
-  if [[ $comp_type == *i* ]]; then
+  if [[ :$comp_type: == *:i:* ]]; then
     if ! shopt -q nocaseglob; then
       shopt -s nocaseglob
       ble/array#push dtor 'shopt -u nocaseglob'
@@ -754,9 +760,9 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
 ##   @var[out] ret
 function ble/complete/source:file/.construct-pathname-pattern {
   local path=$1
-  if [[ $comp_type == *a* ]]; then
+  if [[ :$comp_type: == *:a:* ]]; then
     ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path"; local pattern=$ret
-  elif [[ $comp_type == *[mA]* ]]; then
+  elif [[ :$comp_type: == *:[mA]:* ]]; then
     ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path" 0; local pattern=$ret
   else
     ble/string#escape-for-bash-glob "$path"; local pattern=$ret*
@@ -767,7 +773,7 @@ function ble/complete/source:file/.construct-pathname-pattern {
 function ble/complete/source:file/.impl {
   local opts=$1
   [[ $comps_flags == *v* ]] || return 1
-  [[ $comp_type != *[amA]* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  [[ :$comp_type: != *:[amA]:* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   #   Note: compgen -A file/directory (以下のコード参照) はバグがあって、
   #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0714 #M0009)
@@ -781,7 +787,7 @@ function ble/complete/source:file/.impl {
   # tilde expansion
   if local rex='^~[^/'\''"$`\!:]*$'; [[ $COMPS =~ $rex ]]; then
     local pattern=${COMPS#\~}
-    [[ $comp_type == *[amA]* ]] && pattern=
+    [[ :$comp_type: == *:[amA]:* ]] && pattern=
     ble/util/assign-array candidates 'compgen -P \~ -u -- "$pattern"'
     ((${#candidates[@]})) && action=tilde
   fi
@@ -809,9 +815,14 @@ function ble/complete/source:file/.impl {
     fi
   fi
 
+  local rex_hidden=
+  [[ :$comp_type: != *:match-hidden:* ]] &&
+    rex_hidden=${COMPV:+'.{'${#COMPV}'}'}'(^|/)\.[^/]*$'
+
   local cand i=0
   for cand in "${candidates[@]}"; do
     ((i++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    [[ $rex_hidden && $cand =~ $rex_hidden ]] && continue
     [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
     ble/complete/cand/yield "$action" "$cand"
   done
@@ -1262,9 +1273,9 @@ function ble/complete/source:argument/.progcomp {
 ##   @var[in] (variables set by ble/syntax/parse)
 ##
 function ble/complete/source:argument/.generate-user-defined-completion {
-  case $comp_type in
-  (*a*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} COMP2=$((COMP1+1)) ;;
-  (*[mA]*) local COMPS= COMPV= COMP2=$COMP1 ;;
+  case :$comp_type: in
+  (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} COMP2=$((COMP1+1)) ;;
+  (*:[mA]:*) local COMPS= COMPV= COMP2=$COMP1 ;;
   esac
 
   local comp_words comp_line comp_point comp_cword
@@ -1332,7 +1343,8 @@ function ble/complete/source:argument {
       # var=filename --option=filename /I:filename など。
       local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
       local COMP_PREFIX=$prefix
-      [[ $comp_type != *[amA]* && $value =~ ^.+/ ]] && COMP_PREFIX=$prefix${BASH_REMATCH[0]}
+      [[ :$comp_type: != *:[amA]:* && $value =~ ^.+/ ]] &&
+        COMP_PREFIX=$prefix${BASH_REMATCH[0]}
 
       local ret cand
       ble/complete/source:file/.construct-pathname-pattern "$value"
@@ -1352,9 +1364,9 @@ function ble/complete/source:argument {
 
 function ble/complete/source/compgen {
   [[ $comps_flags == *v* ]] || return 1
-  case $comp_type in
-  (*a*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
-  (*[mA]*) local COMPS= COMPV= ;;
+  case :$comp_type: in
+  (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
+  (*:[mA]:*) local COMPS= COMPV= ;;
   esac
 
   local compgen_action=$1
@@ -1478,13 +1490,13 @@ function ble/complete/context:hostname/generate-sources {
 }
 
 function ble/complete/context:glob/generate-sources {
-  comp_type=${comp_type}R
+  comp_type=$comp_type:raw
   ble/complete/context:syntax/generate-sources || return
   ble/complete/context/overwrite-sources glob
 }
 function ble/complete/source:glob {
   [[ $comps_flags == *v* ]] || return 1
-  [[ $comp_type == *[amA]* ]] && return 1
+  [[ :$comp_type: == *:[amA]:* ]] && return 1
 
   local pattern=$COMPV
   local ret; ble/syntax:bash/simple-word/eval "$pattern"
@@ -1530,13 +1542,14 @@ function ble/complete/source:glob {
 ##   @var[out] ret
 function ble/complete/util/construct-ambiguous-regex {
   local text=$1 fixlen=${2:-1}
-  local i=0 n=${#text} c=
+  local opt_icase=; [[ :$comp_type: == *:i:* ]] && opt_icase=1
   local -a buff=()
+  local i=0 n=${#text} c=
   for ((i=0;i<n;i++)); do
     ((i>=fixlen)) && ble/array#push buff '.*'
     ch=${text:i:1}
     if [[ $ch == [a-zA-Z] ]]; then
-      if [[ $comp_type == *i* ]]; then
+      if [[ $opt_icase ]]; then
         ble/string#toggle-case "$ch"
         ch=[$ch$ret]
       fi
@@ -1552,12 +1565,13 @@ function ble/complete/util/construct-ambiguous-regex {
 function ble/complete/util/construct-glob-pattern {
   local text=$1
   if [[ $comps_flags == *i* ]]; then
+    local opt_icase=; [[ :$comp_type: == *:i:* ]] && opt_icase=1
     local i n=${#text} c
     local -a buff=()
     for ((i=0;i<n;i++)); do
       c=${text:i:1}
       if [[ $c == [a-zA-Z] ]]; then
-        if [[ $comp_type == *i* ]]; then
+        if [[ $opt_icase ]]; then
           ble/string#toggle-case "$c"
           c=[$c$ret]
         fi
@@ -1629,7 +1643,7 @@ function ble/complete/candidates/.pick-nearest-sources {
     comps_flags=${comps_flags}v COMPV=
   elif local ret simple_flags simple_ibrace; ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"; then
     local reconstructed=$ret
-    if [[ $comp_type == *R* ]]; then
+    if [[ :$comp_type: == *:raw:* ]]; then
       # 展開前の値を COMPV に格納する。ブレース展開内部の場合は失敗
       if ((${simple_ibrace%:*})); then
         COMPV=
@@ -1726,7 +1740,7 @@ function ble/complete/candidates/filter:head/init {
 function ble/complete/candidates/filter:head/filter { :; }
 function ble/complete/candidates/filter:head/count-match-chars { # unused but for completeness
   local value=$1 compv=$COMPV
-  if [[ $comp_type == *i* ]]; then
+  if [[ :$comp_type: == *:i:* ]]; then
     ble/string#tolower "$value"; value=$ret
     ble/string#tolower "$compv"; compv=$ret
   fi
@@ -1745,7 +1759,7 @@ function ble/complete/candidates/filter:head/test { [[ $1 == $comps_filter_patte
 ##   @arr[out] ret
 function ble/complete/candidates/filter:head/match {
   local needle=$1 text=$2
-  if [[ $comp_type == *i* ]]; then
+  if [[ :$comp_type: == *:i:* ]]; then
     ble/string#tolower "$needle"; needle=$ret
     ble/string#tolower "$text"; text=$ret
   fi
@@ -1773,7 +1787,7 @@ function ble/complete/candidates/filter:substr/filter {
 }
 function ble/complete/candidates/filter:substr/count-match-chars {
   local value=$1 compv=$COMPV
-  if [[ $comp_type == *i* ]]; then
+  if [[ :$comp_type: == *:i:* ]]; then
     ble/string#tolower "$value"; value=$ret
     ble/string#tolower "$compv"; compv=$ret
   fi
@@ -1788,7 +1802,7 @@ function ble/complete/candidates/filter:substr/count-match-chars {
 function ble/complete/candidates/filter:substr/test { [[ $1 == $comps_filter_pattern ]]; }
 function ble/complete/candidates/filter:substr/match {
   local needle=$1 text=$2
-  if [[ $comp_type == *i* ]]; then
+  if [[ :$comp_type: == *:i:* ]]; then
     ble/string#tolower "$needle"; needle=$ret
     ble/string#tolower "$text"; text=$ret
   fi
@@ -1837,7 +1851,7 @@ function ble/complete/candidates/filter:hsubseq/filter {
 ##   @var[out] ret
 function ble/complete/candidates/filter:hsubseq/count-match-chars {
   local value=$1 compv=$COMPV
-  if [[ $comp_type == *i* ]]; then
+  if [[ :$comp_type: == *:i:* ]]; then
     ble/string#tolower "$value"; value=$ret
     ble/string#tolower "$compv"; compv=$ret
   fi
@@ -1858,7 +1872,7 @@ function ble/complete/candidates/filter:hsubseq/count-match-chars {
 function ble/complete/candidates/filter:hsubseq/test { [[ $1 =~ $comps_filter_pattern ]]; }
 function ble/complete/candidates/filter:hsubseq/match {
   local needle=$1 text=$2
-  if [[ $comp_type == *i* ]]; then
+  if [[ :$comp_type: == *:i:* ]]; then
     ble/string#tolower "$needle"; needle=$ret
     ble/string#tolower "$text"; text=$ret
   fi
@@ -1967,9 +1981,17 @@ function ble/complete/candidates/generate {
   local rex_raw_paramx
   ble/complete/candidates/.initialize-rex_raw_paramx
 
-  ble/util/test-rl-variable completion-ignore-case && comp_type=${comp_type}i
-  ble/util/test-rl-variable visible-stats && comp_type=${comp_type}V
-  ble/util/test-rl-variable mark-directories && comp_type=${comp_type}d
+  ble/util/test-rl-variable completion-ignore-case 0 && comp_type=${comp_type}:i
+  ble/util/test-rl-variable visible-stats 0 && comp_type=${comp_type}:vstat
+  ble/util/test-rl-variable mark-directories 1 && comp_type=${comp_type}:markdir
+  ble/util/test-rl-variable mark-symlinked-directories 1 && comp_type=${comp_type}:marksymdir
+  ble/util/test-rl-variable match-hidden-files 1 && comp_type=${comp_type}:match-hidden
+  ble/util/test-rl-variable menu-complete-display-prefix 0 && comp_type=${comp_type}:menu-show-prefix
+
+  # color settings are always enabled
+  comp_type=$comp_type:menu-color:menu-color-match
+  # ble/util/test-rl-variable colored-stats 1 && comp_type=${comp_type}:menu-color
+  # ble/util/test-rl-variable colored-completion-prefix 1 && comp_type=${comp_type}:menu-color-match
 
   cand_count=0
   cand_cand=() # 候補文字列
@@ -1981,13 +2003,13 @@ function ble/complete/candidates/generate {
 
   if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
     local original_comp_type=$comp_type
-    comp_type=${original_comp_type}m
+    comp_type=${original_comp_type}:m
     ble/complete/candidates/generate-with-filter substr || return
     ((cand_count)) && return 0
-    comp_type=${original_comp_type}a
+    comp_type=${original_comp_type}:a
     ble/complete/candidates/generate-with-filter hsubseq || return
     ((cand_count)) && return 0
-    comp_type=${original_comp_type}A
+    comp_type=${original_comp_type}:A
     ble/complete/candidates/generate-with-filter subseq || return
     ((cand_count)) && return 0
     comp_type=$original_comp_type
@@ -2008,7 +2030,7 @@ function ble/complete/candidates/determine-common-prefix {
   if ((cand_count>1)); then
     # setup ignore case
     local unset_nocasematch= flag_tolower=
-    if [[ $comp_type == *i* ]]; then
+    if [[ :$comp_type: == *:i:* ]]; then
       if ((_ble_bash<30100)); then
         flag_tolower=1
         ble/string#tolower "$common"; common=$ret
@@ -2039,7 +2061,7 @@ function ble/complete/candidates/determine-common-prefix {
     [[ $flag_tolower ]] && common=${cand_word[0]::${#common}}
   fi
 
-  if [[ $comp_type == *[amAi]* && $common != "$COMPS"* ]]; then
+  if [[ :$comp_type: == *:[amAi]:* && $common != "$COMPS"* ]]; then
     # 曖昧一致の時は遡って書き換えを起こし得る、
     # 一致する部分までを置換し一致しなかった部分を末尾に追加する。
 
@@ -2050,10 +2072,10 @@ function ble/complete/candidates/determine-common-prefix {
     if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
       ble/syntax:bash/simple-word/eval "$ret"; then
       local value=$ret filter_type=head
-      case $comp_type in
-      (*m*) filter_type=substr ;;
-      (*a*) filter_type=hsubseq ;;
-      (*A*) filter_type=subseq ;;
+      case :$comp_type: in
+      (*:m:*) filter_type=substr ;;
+      (*:a:*) filter_type=hsubseq ;;
+      (*:A:*) filter_type=subseq ;;
       esac
 
       if [[ $filter_type ]] && ble/complete/candidates/filter:"$filter_type"/count-match-chars "$value"; then
@@ -2114,7 +2136,11 @@ function ble/complete/menu/construct-single-entry {
     local "${_ble_complete_cand_varnames[@]}"
     ble/complete/cand/unpack "$1"
   fi
-  local filter_target=${CAND:PREFIX_LEN}
+
+  local prefix_len=$PREFIX_LEN
+  [[ :$comp_type: == *:menu-show-prefix:* ]] && prefix_len=0
+
+  local filter_target=${CAND:prefix_len}
   if [[ ! $filter_target ]]; then
     ret=
     return
@@ -2123,18 +2149,19 @@ function ble/complete/menu/construct-single-entry {
   # 色の設定・表示内容・前置詞・後置詞を取得
   local g=0 show=$filter_target suffix= prefix=
   ble/function#try ble/complete/action:"$ACTION"/init-menu-item
+  local g0=$g; [[ :$comp_type: == *:menu-color:* ]] || g0=0
 
   # 一致部分の抽出
   local m
-  if [[ $show == *"$filter_target"* && $menu_common_part ]]; then
+  if [[ :$comp_type: == *:menu-color-match:* && $menu_common_part && $show == *"$filter_target"* ]]; then
     local comp_filter_type=head
-    case $comp_type in
-    (*m*) comp_filter_type=substr ;;
-    (*a*) comp_filter_type=hsubseq ;;
-    (*A*) comp_filter_type=subseq ;;
+    case :$comp_type: in
+    (*:m:*) comp_filter_type=substr ;;
+    (*:a:*) comp_filter_type=hsubseq ;;
+    (*:A:*) comp_filter_type=subseq ;;
     esac
 
-    local needle=${menu_common_part:PREFIX_LEN}
+    local needle=${menu_common_part:prefix_len}
     ble/complete/candidates/filter:"$comp_filter_type"/match "$needle" "$filter_target"; m=("${ret[@]}")
 
     # 表示文字列の部分文字列で絞り込みが起こっている場合
@@ -2149,19 +2176,18 @@ function ble/complete/menu/construct-single-entry {
   fi
 
   # 基本色の初期化 (Note: 高速化の為、直接 _ble_color_g2sgr を参照する)
-  local g1 sgrN0 sgrN1
-  [[ :$opts: == *:selected:* ]] && ((g|=_ble_color_gflags_Revert))
-  ret=${_ble_color_g2sgr[g1=g]}
-  [[ $ret ]] || ble/color/g2sgr "$g1"; sgrN0=$ret
-  ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Revert]}
-  [[ $ret ]] || ble/color/g2sgr "$g1"; sgrN1=$ret
+  local sgrB0= sgrB1= sgrN0= sgrN1=
+  [[ :$opts: == *:selected:* ]] && ((g0|=_ble_color_gflags_Revert))
+  ret=${_ble_color_g2sgr[g=g0]}
+  [[ $ret ]] || ble/color/g2sgr "$g"; sgrN0=$ret
+  ret=${_ble_color_g2sgr[g=g0|_ble_color_gflags_Revert]}
+  [[ $ret ]] || ble/color/g2sgr "$g"; sgrN1=$ret
   if ((${#m[@]})); then
     # 一致色の初期化
-    local g1 sgrB0 sgrB1
-    ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Bold]}
-    [[ $ret ]] || ble/color/g2sgr "$g1"; sgrB0=$ret
-    ret=${_ble_color_g2sgr[g1=g|_ble_color_gflags_Bold|_ble_color_gflags_Revert]}
-    [[ $ret ]] || ble/color/g2sgr "$g1"; sgrB1=$ret
+    ret=${_ble_color_g2sgr[g=g0|_ble_color_gflags_Bold]}
+    [[ $ret ]] || ble/color/g2sgr "$g"; sgrB0=$ret
+    ret=${_ble_color_g2sgr[g=g0|_ble_color_gflags_Bold|_ble_color_gflags_Revert]}
+    [[ $ret ]] || ble/color/g2sgr "$g"; sgrB1=$ret
   fi
 
   # 前置部分の出力
@@ -2902,7 +2928,7 @@ function ble/widget/complete {
   if ((cand_count>1)) && [[ $insert_flags == *r* ]]; then
     # 既存部分を置換し、かつ一意確定でない場合は置換しない。
     # 曖昧補完の時は determine-common-prefix 内で調整されるので挿入する。
-    if [[ $comp_type != *[amAi]* ]]; then
+    if [[ :$comp_type: != *:[amAi]:* ]]; then
       do_insert=
     fi
   elif [[ $insert$suffix == "$COMPS" ]]; then
@@ -2962,11 +2988,12 @@ function ble/complete/menu-filter/.filter-candidates {
   local filter_type pack "${_ble_complete_cand_varnames[@]}"
   local comps_filter_pattern
   for filter_type in head substr hsubseq subseq; do
-    comp_type=${comp_type//[amA]}
+    comp_type=:${comp_type}:
+    comp_type=${comp_type//:[amA]:/:}
     case $filter_type in
-    (substr)  comp_type=${comp_type}m ;;
-    (hsubseq) comp_type=${comp_type}a ;;
-    (subseq)  comp_type=${comp_type}A ;;
+    (substr)  comp_type=${comp_type}:m ;;
+    (hsubseq) comp_type=${comp_type}:a ;;
+    (subseq)  comp_type=${comp_type}:A ;;
     esac
 
     ble/function#try ble/complete/candidates/filter:"$filter_type"/init "$COMPV"
@@ -3563,7 +3590,7 @@ function ble/complete/auto-complete/.search-history-heavy {
 
   local isearch_time=0 isearch_ntask=1
   local isearch_opts=head
-  [[ $comp_type == *s* ]] || isearch_opts=$isearch_opts:stop_check
+  [[ :$comp_type: == *:sync:* ]] || isearch_opts=$isearch_opts:stop_check
   ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
   _ble_complete_ac_history_start=$start
   _ble_complete_ac_history_index=$index
@@ -3659,10 +3686,10 @@ function ble/complete/auto-complete/.check-context {
     ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
     ((_ble_edit_mark=_ble_edit_ind+${#ins}))
   else
-    case $comp_type in
-    (*a*) type=a ;;
-    (*m*) type=m ;;
-    (*A*) type=A ;;
+    case :$comp_type: in
+    (*:a:*) type=a ;;
+    (*:m:*) type=m ;;
+    (*:A:*) type=A ;;
     (*)   type=r ;;
     esac
     ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" " [$insert] "
@@ -3681,7 +3708,7 @@ function ble/complete/auto-complete/.check-context {
 function ble/complete/auto-complete.impl {
   local opts=$1
   local comp_type=
-  [[ :$opts: == *:sync:* ]] && comp_type=${comp_type}s
+  [[ :$opts: == *:sync:* ]] && comp_type=${comp_type}:sync
 
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   [[ $comp_text ]] || return 0
