@@ -2274,9 +2274,27 @@ function ble/term/audible-bell {
   builtin echo -n '' 1>&2
 }
 
-function ble/term/visible-bell/.initialize {
-  _ble_term_visible_bell__ftime=$_ble_base_run/$$.visible-bell.time
+# visible-bell の表示の管理について。
+#
+# vbell の表示の削除には worker サブシェルを使用する。
+# 現在の表示内容及び消去に関しては二つのファイルを使う。
+#
+#   workerfile=$_ble_base_run/$$.visible-bell.$i
+#     1つの worker に対して1つ割り当てられ、
+#     その worker が生きている間は非空である。
+#     またそのタイムスタンプは worker 起動時刻を表す。
+#
+#   _ble_term_visible_bell_ftime=$_ble_base_run/$$.visible-bell.time
+#     最後に表示の更新を行った時刻を記録するのに使う。
+#
+# 前回の表示内容は以下の配列に格納する。
+#
+# @arr _ble_term_visible_bell_prev=(message [x0 y0 x y])
 
+_ble_term_visible_bell_ftime=$_ble_base_run/$$.visible-bell.time
+_ble_term_visible_bell_show='%message%'
+_ble_term_visible_bell_clear=
+function ble/term/visible-bell/.initialize {
   local -a BUFF=()
   ble-term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
   ble-term/cup 0 0
@@ -2298,8 +2316,9 @@ function ble/term/visible-bell/defface.hook {
 }
 ble/array#push _ble_color_faces_defface_hook ble/term/visible-bell/defface.hook
 
+_ble_term_visible_bell_prev=()
 function ble/term/visible-bell/.show {
-  local message=$1 x=$2 y=$3
+  local message=$1 sgr=$2 x=$3 y=$4
   if [[ $opt_canvas ]]; then
     local x0=0 y0=0
     if [[ $bleopt_vbell_align == right ]]; then
@@ -2311,71 +2330,111 @@ function ble/term/visible-bell/.show {
     local -a DRAW_BUFF=()
     ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
     ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-    ble/canvas/put.draw "$message$_ble_term_sgr0"
+    ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+    ble/canvas/put.draw "$_ble_term_rc"
+    ble/canvas/put-cud.draw 1
+    ble/canvas/flush.draw
+    _ble_term_visible_bell_prev=("$message" "$x0" "$y0" "$x" "$y")
+  else
+    builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$message}"
+    _ble_term_visible_bell_prev=("$message")
+  fi
+} >&2
+function ble/term/visible-bell/.update {
+  local sgr=$1
+  local message=${_ble_term_visible_bell_prev[0]}
+  if ((${#_ble_term_visible_bell_prev[@]}==5)); then
+    local x0=${_ble_term_visible_bell_prev[1]}
+    local y0=${_ble_term_visible_bell_prev[2]}
+    local x=${_ble_term_visible_bell_prev[3]}
+    local y=${_ble_term_visible_bell_prev[4]}
+
+    local -a DRAW_BUFF=()
+    ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
+    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+    ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
     ble/canvas/put.draw "$_ble_term_rc"
     ble/canvas/put-cud.draw 1
     ble/canvas/flush.draw
   else
-    builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$sgr1$message}"
+    builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$sgr$message}"
   fi
 } >&2
 function ble/term/visible-bell/.clear {
-  local sgr=$1 x=$2 y=$3
-  if [[ $opt_canvas ]]; then
-    local x0=0 y0=0
-    if [[ $bleopt_vbell_align == right ]]; then
-      ((x0=COLUMNS-1-x,x0<0&&(x0=0)))
-    elif [[ $bleopt_vbell_align == center ]]; then
-      ((x0=(COLUMNS-1-x)/2,x0<0&&(x0=0)))
-    fi
+  if ((${#_ble_term_visible_bell_prev[@]}==5)); then
+    local x0=${_ble_term_visible_bell_prev[1]}
+    local y0=${_ble_term_visible_bell_prev[2]}
+    local x=${_ble_term_visible_bell_prev[3]}
+    local y=${_ble_term_visible_bell_prev[4]}
+
+    local sgr; ble/color/face2sgr vbell_erase
 
     local -a DRAW_BUFF=()
     ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
     ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-    ble/canvas/put.draw "$sgrZ"
+    ble/canvas/put.draw "$sgr"
     ble/canvas/put-spaces.draw "$x"
     #ble/canvas/put-ech.draw "$x"
     #ble/canvas/put.draw "$_ble_term_el"
     ble/canvas/put.draw "$_ble_term_rc"
     ble/canvas/flush.draw
   else
-    builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$sgr1$message}"
+    builtin echo -n "$_ble_term_visible_bell_clear"
   fi
+  >| "$_ble_term_visible_bell_ftime"
 } >&2
+function ble/term/visible-bell/.erase-previous-visible-bell {
+  local -a workers=()
+  eval 'workers=("$_ble_base_run/$$.visible-bell."*)' &>/dev/null # failglob 対策
 
+  local workerfile
+  for workerfile in "${workers[@]}"; do
+    if [[ -s $workerfile && ! ( $workerfile -ot $_ble_term_visible_bell_ftime ) ]]; then
+      ble/term/visible-bell/.clear
+      break
+    fi
+  done
+}
+
+function ble/term/visible-bell/.create-workerfile {
+  local i=0
+  while
+    workerfile=$_ble_base_run/$$.visible-bell.$i
+    [[ -s $workerfile ]]
+  do ((i++)); done
+  echo 1 >| "$workerfile"
+}
+## 関数 ble/term/visible-bell/.worker
+##   @var[in] workerfile
 function ble/term/visible-bell/.worker {
   # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
-
   ble/util/msleep 50
-  ble/term/visible-bell/.show "$sgr2$message" "$x" "$y"
+  [[ $workerfile -ot $_ble_term_visible_bell_ftime ]] && return >| "$workerfile"
+  ble/term/visible-bell/.update "$sgr2"
 
-  [[ :$opts: == *:persistent:* ]] && exit
+  [[ :$opts: == *:persistent:* ]] && return >| "$workerfile"
 
   # load time duration settings
-  declare msec=$bleopt_vbell_duration
+  local msec=$bleopt_vbell_duration
 
   # wait
-  >| "$_ble_term_visible_bell__ftime"
   ble/util/msleep "$msec"
+  [[ $workerfile -ot $_ble_term_visible_bell_ftime ]] && return >| "$workerfile"
 
   # check and clear
-  declare -a time1 time2
-  time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
-  time2=($(ble/bin/date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
-  if (((time2[0]-time1[0])*1000+(10#0${time2[1]::3}-10#0${time1[1]::3})>=msec)); then
-    ble/term/visible-bell/.clear "$sgrZ" "$x" "$y"
-  fi
+  ble/term/visible-bell/.clear
+
+  >| "$workerfile"
 }
 
 ## 関数 ble/term/visible-bell message [opts]
 function ble/term/visible-bell {
-  local _count=$((++_ble_term_visible_bell__count))
   local cols=${COLUMNS:-80}
   local message=$1 opts=$2
   message=${message:-$bleopt_vbell_default_message}
 
   # 一行に収まる様に切り詰める
-  local opt_canvas= x y
+  local opt_canvas= x= y=
   if ble/is-function ble/canvas/trace-text; then
     opt_canvas=1
     local ret lines=1 sgr0= sgr1=
@@ -2388,17 +2447,18 @@ function ble/term/visible-bell {
   local sgr0=$_ble_term_sgr0
   local sgr1=${_ble_term_setaf[2]}$_ble_term_rev
   local sgr2=$_ble_term_rev
-  local sgrZ=$_ble_term_rev
   local sgr
   ble/color/face2sgr vbell_flash; sgr1=$sgr
   ble/color/face2sgr vbell; sgr2=$sgr
-  ble/color/face2sgr vbell_erase; sgrZ=$sgr
 
-  ble/term/visible-bell/.show "$sgr1$message" "$x" "$y"
+  ble/term/visible-bell/.erase-previous-visible-bell
+  ble/term/visible-bell/.show "$message" "$sgr1" "$x" "$y"
+
+  local workerfile; ble/term/visible-bell/.create-workerfile
   ( ble/term/visible-bell/.worker & )
 }
 function ble/term/visible-bell/cancel-erasure {
-  >| "$_ble_term_visible_bell__ftime"
+  >| "$_ble_term_visible_bell_ftime"
 }
 
 #---- stty --------------------------------------------------------------------
