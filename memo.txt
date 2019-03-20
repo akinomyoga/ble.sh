@@ -883,11 +883,26 @@ bash_tips
     * bind -lpsPSX は元の readline の情報を出力する。
       ble.sh における情報を出力するように修正しても良いのかもしれない。
 
-    * ble-bind -s で bell が呼ばれた時にマクロ実行を中断する?
+    * reject: ble-bind -s で bell が呼ばれた時にマクロ実行を中断する?
       bind -s の場合にはその様な実装になっているが
       ble.sh では取り敢えずはその振る舞いは実装しない事にした。
 
-    * vi_imap 及び vi_nmap に於ける rlfunc <--> widget 対応表の記入
+      2019-03-20 ユーザによる中断の要求に対しては #D0998 で実装された
+      decode_abort_char で中断できる様になった。
+      ble-bind -s の場合には ble-decode-char を用いてマクロを実行しているので、
+      特に意識しなくても中断を実行する事ができるのである。
+
+      一方でマクロの文字列の中に含まれている C-g 等の文字に関しては
+      マクロを中断する機能はない。というか、それがマクロを中断する能力を
+      持っていて良いのかという疑問も残る。
+      % 然し、decode_abort_char がその機能を持っている限りはやはり、
+      % decode_abort_char がマクロを中断する機能を持ってしまう。
+      % と思ったが調べてみると decode_abort_char は .hook で受信した時のみ
+      % 検査される様なのでこれに関しては問題ない。
+
+      →この実装ではマクロ中に含まれている C-g (bell) も
+      C-\ (decode_abort_char) も特別な処理を実行しない、
+      という実装で良い事にする。
 
 2019-02-09
 
@@ -2242,6 +2257,7 @@ bash_tips
   - decode: support "bleopt decode_abort_char=28" `#D0998` b110cb9
   - complete: support `visible-stats` and `mark-directories` `#D1006` b389b3b
   - complete: support `mark-symlinked-directories`, `match-hidden-files` and `menu-complete-display-prefix` `#D1007` fd66194
+  - canvas: support `bleopt char_width_mode=auto` `#D1011` 3978df3
 
   動作変更
   - prompt: support correct handling of escapes `#D0923` 22f9b56
@@ -3141,7 +3157,61 @@ bash_tips
 
 2019-03-20
 
-  * 2019-02-05 char_width_mode=auto?
+  * vi_imap 及び vi_nmap に於ける rlfunc <--> widget 対応表の記入 [#D1012]
+    vi_imap に関しては多少埋めた。完全ではない。 55cfa22
+    vi_nmap に関しても編集する。
+
+    * done: vi_nmap に関連して単語関連の操作が沢山あって違いが分からない。
+
+      vi-next-word        vi-end-word     vi-prev-word
+      vi-fword            vi-eword        vi-bword
+      vi-fWord            vi-eWord        vi-bWord
+      vi-forward-word     -               vi-backward-word
+      vi-forward-bigword  vi-end-bigword  vi-backward-bigword
+
+      どうやら vi-next-word/vi-end-word/vi-prev-word は入力された文字に応じて
+      動作を変更する物になっているという気がする。
+      試しに eword eWord を e, E に設定してみたが両方共 E の動きしかしない気がする。
+      end-word 及び end-bigword はちゃんと期待通りに動いている気がする。
+      但し end-word は大文字か小文字かで動作を変える。end-bigword は変わらない。
+      うーん。謎である。よく分からないが、取り敢えず憶測で割り当てる事にする。
+
+      もう少し真面目に調べてみる。
+      先ず bigword は実は bWord eWord fWord に等価である。
+      同様に backward-word は bword で、end-word は eword で、
+      forward-word は fword である。なので現在の方針は正しい。
+      更に気になるのは vi-next-word, vi-end-word, vi-prev-word である。
+      実際に vi-prev-word の実装を見てみると、
+      現在の ble.sh の実装と同じ様に文字が大文字かどうかで判定して
+      bword, bWord に分岐している。
+
+      | int rl_vi_prev_word (int count, int key) {
+      |   if (count < 0)
+      |     return (rl_vi_next_word (-count, key));
+      |   if (rl_point == 0) {
+      |     rl_ding ();
+      |     return (0);
+      |   }
+      |   if (_rl_uppercase_p (key))
+      |     rl_vi_bWord (count, key);
+      |   else
+      |     rl_vi_bword (count, key);
+      |   return (0);
+      | }
+
+    * vi_nmap において以下の物は .dispatch を作る必要がある。
+      done: vi-search       (/ or ?)
+      done: vi-search-again (N or n)
+      done: vi-subst        (S or s)
+      done: 更に operator 達も d D y Y c C は動作が区別されている気がする。
+
+    未だまだ不完全の気がするが細かく対応し始めると
+    widget を色々と新しく作る必要が出てくる。
+    emacs でもちゃんと対応しきれていない。
+    これはこの項目の中でするべき事ではなくて、
+    個別の機能について考察するべきである。という訳でこの辺りで止めておく事にする。
+
+  * 2019-02-05 char_width_mode=auto? [#D1011]
 
     既に起動時に DA2 要求と応答の読み取りを実施している。
     序でにカーソル位置を用いて文字幅の判定を実行してよいのではないだろうか。

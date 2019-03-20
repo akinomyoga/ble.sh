@@ -3,13 +3,13 @@ accept-line                       accept-line
 alias-expand-line                 -
 arrow-key-prefix                  -
 backward-byte                     -
-backward-char                     backward-char
-backward-delete-char              delete-backward-char
+backward-char                     @nomarked backward-char
+backward-delete-char              delete-region-or backward-char
 backward-kill-line                kill-backward-line
 backward-kill-word                kill-backward-cword
-backward-word                     backward-cword
+backward-word                     @nomarked backward-cword
 beginning-of-history              history-beginning
-beginning-of-line                 beginning-of-line
+beginning-of-line                 @nomarked beginning-of-line
 bracketed-paste-begin             bracketed-paste
 call-last-kbd-macro               -
 capitalize-word                   -
@@ -46,9 +46,9 @@ end-of-line                       end-of-line
 exchange-point-and-mark           exchange-point-and-mark
 forward-backward-delete-char      delete-forward-backward-char
 forward-byte                      -
-forward-char                      forward-char
+forward-char                      @nomarked forward-char
 forward-search-history            history-isearch-forward
-forward-word                      forward-cword
+forward-word                      @nomarked forward-cword
 glob-complete-word                complete context=glob
 glob-expand-word                  complete context=glob:insert-all
 glob-list-expansions              complete context=glob:show_menu
@@ -62,10 +62,10 @@ insert-comment                    -
 insert-completions                complete insert_all
 insert-last-argument              -
 kill-line                         kill-forward-line
-kill-region                       kill-region
+kill-region                       kill-region-or uword
 kill-whole-line                   -
 kill-word                         kill-forward-cword
-magic-space                       magic-word
+magic-space                       magic-space
 menu-complete                     menu-complete
 menu-complete-backward            -
 next-history                      history-next
@@ -84,7 +84,7 @@ possible-hostname-completions     complete show_menu:context=hostname
 possible-username-completions     complete show_menu:context=username
 possible-variable-completions     complete show_menu:context=variable
 previous-history                  history-prev
-previous-screen-line              backward-graphical-line
+previous-screen-line              @nomarked backward-graphical-line
 print-last-kbd-macro              -
 quoted-insert                     quoted-insert
 re-read-init-file                 -
@@ -94,9 +94,9 @@ revert-line                       emacs/revert
 self-insert                       self-insert
 set-mark                          set-mark
 shell-backward-kill-word          kill-backward-sword
-shell-backward-word               backward-sword
+shell-backward-word               @nomarked backward-sword
 shell-expand-line                 -
-shell-forward-word                forward-sword
+shell-forward-word                @nomarked forward-sword
 shell-kill-word                   kill-forward-sword
 skip-csi-sequence                 -
 start-kbd-macro                   -

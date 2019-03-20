@@ -2474,7 +2474,7 @@ function ble/builtin/bind/option:- {
     local ret chars; ble/util/keyseq2chars "$value"; chars=("${ret[@]}")
     local command="ble/widget/.ble-decode-char ${chars[*]}"
     ble-decode-key/bind "${keys[*]}" "$command"
-  else
+  elif [[ $value ]]; then
     # readline function
     local rlfunc_data=
     case $kmap in
@@ -2497,6 +2497,9 @@ function ble/builtin/bind/option:- {
     local rlfunc=${arr[0]#ble/widget/}
     echo "ble.sh (bind): unsupported readline function '${value//$q/$Q}'." >&2
     flags=e$flags
+    return 1
+  else
+    echo "ble.sh (bind): readline function name is not specified ($arg)." >&2
     return 1
   fi
 }
@@ -2543,7 +2546,7 @@ function ble/builtin/bind/.process {
               (m) ble/builtin/bind/option:m "$optarg" ;;
               (x) ble/builtin/bind/option:x "$optarg" ;;
               (r) ble/builtin/bind/option:r "$optarg" ;;
-              ([uf])
+              ([quf])
                 echo "ble.sh (bind): unsupported option -$c $optarg" >&2
                 flags=e$flags ;;
               esac

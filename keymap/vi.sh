@@ -5349,22 +5349,22 @@ function ble/keymap:vi/setup-map {
 
   ble-bind -f paste_begin vi-command/bracketed-paste
 
-  ble-bind -f home  vi-command/beginning-of-line
-  ble-bind -f '$'   vi-command/forward-eol
-  ble-bind -f end   vi-command/forward-eol
-  ble-bind -f '^'   vi-command/first-non-space
-  ble-bind -f '_'   vi-command/first-non-space-forward
-  ble-bind -f '+'   vi-command/forward-first-non-space
-  ble-bind -f 'C-m' vi-command/forward-first-non-space
-  ble-bind -f 'RET' vi-command/forward-first-non-space
-  ble-bind -f '-'   vi-command/backward-first-non-space
-  ble-bind -f 'g 0'    vi-command/beginning-of-graphical-line
-  ble-bind -f 'g home' vi-command/beginning-of-graphical-line
-  ble-bind -f 'g ^'    vi-command/graphical-first-non-space
-  ble-bind -f 'g $'    vi-command/graphical-forward-eol
-  ble-bind -f 'g end'  vi-command/graphical-forward-eol
-  ble-bind -f 'g m'    vi-command/middle-of-graphical-line
-  ble-bind -f 'g _'    vi-command/last-non-space
+  ble-bind -f 'home'    vi-command/beginning-of-line
+  ble-bind -f '$'       vi-command/forward-eol
+  ble-bind -f 'end'     vi-command/forward-eol
+  ble-bind -f '^'       vi-command/first-non-space
+  ble-bind -f '_'       vi-command/first-non-space-forward
+  ble-bind -f '+'       vi-command/forward-first-non-space
+  ble-bind -f 'C-m'     vi-command/forward-first-non-space
+  ble-bind -f 'RET'     vi-command/forward-first-non-space
+  ble-bind -f '-'       vi-command/backward-first-non-space
+  ble-bind -f 'g 0'     vi-command/beginning-of-graphical-line
+  ble-bind -f 'g home'  vi-command/beginning-of-graphical-line
+  ble-bind -f 'g ^'     vi-command/graphical-first-non-space
+  ble-bind -f 'g $'     vi-command/graphical-forward-eol
+  ble-bind -f 'g end'   vi-command/graphical-forward-eol
+  ble-bind -f 'g m'     vi-command/middle-of-graphical-line
+  ble-bind -f 'g _'     vi-command/last-non-space
 
   ble-bind -f h     vi-command/backward-char
   ble-bind -f l     vi-command/forward-char
@@ -5774,6 +5774,113 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f 'C-l'   'clear-screen'
   ble-bind -f 'C-d'   'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
   ble-bind -f 'auto_complete_enter' auto-complete-enter
+}
+
+# vi_nmap.rlfunc.txt 用
+
+# d or D
+function ble/widget/vi-rlfunc/delete-to {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi_nmap/kill-forward-line
+  else
+    ble/widget/vi-command/operator d
+  fi
+}
+# c or C
+function ble/widget/vi-rlfunc/change-to {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi_nmap/kill-forward-line-and-insert
+  else
+    ble/widget/vi-command/operator c
+  fi
+}
+# y or Y
+function ble/widget/vi-rlfunc/yank-to {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi_nmap/copy-current-line
+  else
+    ble/widget/vi-command/operator y
+  fi
+}
+function ble/widget/vi-rlfunc/char-search {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  ((code==0)) && return 1
+  ble/util/c2s "$code"
+  case $ret in
+  ('f') ble/widget/vi-command/search-forward-char ;;
+  ('F') ble/widget/vi-command/search-backward-char ;;
+  ('t') ble/widget/vi-command/search-forward-char-prev ;;
+  ('T') ble/widget/vi-command/search-backward-char-prev ;;
+  (';') ble/widget/vi-command/search-char-repeat ;;
+  (',') ble/widget/vi-command/search-char-reverse-repeat ;;
+  (*) return 1 ;;
+  esac
+}
+# w or W
+function ble/widget/vi-rlfunc/next-word {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi-command/forward-uword
+  else
+    ble/widget/vi-command/forward-vword
+  fi
+}
+# b or B
+function ble/widget/vi-rlfunc/prev-word {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi-command/backward-uword
+  else
+    ble/widget/vi-command/backward-vword
+  fi
+}
+# e or E
+function ble/widget/vi-rlfunc/end-word {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi-command/forward-uword-end
+  else
+    ble/widget/vi-command/forward-vword-end
+  fi
+}
+# p or P
+function ble/widget/vi-rlfunc/put {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi_nmap/paste-before
+  else
+    ble/widget/vi_nmap/paste-after
+  fi
+}
+# / or ?
+function ble/widget/vi-rlfunc/search {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((code==63)); then
+    ble/widget/vi-command/search-backward
+  else
+    ble/widget/vi-command/search-forward
+  fi
+}
+# n or N
+function ble/widget/vi-rlfunc/search-again {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi-command/search-reverse-repeat
+  else
+    ble/widget/vi-command/search-repeat
+  fi
+}
+# s or S
+function ble/widget/vi-rlfunc/subst {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((0x41<=code&&code<=0x5a)); then
+    ble/widget/vi_nmap/kill-current-line-and-insert
+  else
+    ble/widget/vi_nmap/kill-forward-char-and-insert
+  fi
 }
 
 #------------------------------------------------------------------------------
