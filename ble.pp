@@ -584,6 +584,9 @@ function ble-attach {
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
 
+  # char_width_mode=auto
+  ble/canvas/attach
+
   # 取り敢えずプロンプトを表示する
   ble/term/enter      # 3ms (起動時のずれ防止の為 stty)
   ble-edit/initialize # 3ms

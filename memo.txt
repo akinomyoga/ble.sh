@@ -989,13 +989,6 @@ bash_tips
 
     問題なし
 
-2019-02-05
-
-  * char_width_mode=auto?
-
-    既に起動時に DA2 要求と応答の読み取りを実施している。
-    序でにカーソル位置を用いて文字幅の判定を実行してよいのではないだろうか。
-
 2019-01-20
 
   * manual: Emacs 編集モード
@@ -2245,7 +2238,7 @@ bash_tips
   - complete: clear menu on <kbd>C-g</kbd> `#D0995` e0f93a2
   - vi_imap: support `bleopt keymap_vi_imap_undo=more` `#D0996` 50f8ad2
   - util: support `bleopt vbell_align` and `ble-color-setface vbell{,_flash,_erase}` for vbell `#D0997` 325883e
-    - vbell: fix a bug that garbages remain on short messages just after longer messages `#D1010`
+    - vbell: fix a bug that garbages remain on short messages just after longer messages `#D1010` 3e9ff85
   - decode: support "bleopt decode_abort_char=28" `#D0998` b110cb9
   - complete: support `visible-stats` and `mark-directories` `#D1006` b389b3b
   - complete: support `mark-symlinked-directories`, `match-hidden-files` and `menu-complete-display-prefix` `#D1007` fd66194
@@ -3145,6 +3138,32 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-03-20
+
+  * 2019-02-05 char_width_mode=auto?
+
+    既に起動時に DA2 要求と応答の読み取りを実施している。
+    序でにカーソル位置を用いて文字幅の判定を実行してよいのではないだろうか。
+
+    実装した。まあ、動いているのではないだろうか。
+
+    - done: 幅が 1 または 2 以外の時には失敗しているので既定の幅を用いる。
+      →幅が1以外の時は全て 2 という事にする事にした。
+      幅が1以外の時には常に折り返しの可能性があるので。
+
+    - done: check において変更を検出する。変更時に更新を行う。
+      画面の左上か右下を用いる。画面の左上で RI を使うのが良いのでは。
+      画面の右上で実行する事にした。
+
+    x fixed: s-A-f3 という謎の文字が受信される様になった。
+      然し、文字幅判定自体はちゃんと動いている。
+      % 調べてみると CSI >83;40301;0 c という謎のシーケンスが送られて来ている。
+      % これは何だろう…。と思ったが、これは DA2 応答なので関係ない。
+      →分かった。CPR の処理をした後に return をしていなかった。直した。
+
+    x fixed: bleopt char_width_mode=auto を実行するとカーソル位置がずれる。
+      これは RI を実行しない様にする事で対処する事にした。
 
 2019-03-19
 

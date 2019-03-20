@@ -38,16 +38,23 @@ function ble/arithmetic/sum {
 ##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 2 とします
 ## bleopt_char_width_mode=west
 ##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 1 とします
+## bleopt_char_width_mode=auto
+##   east または west を自動判定します。
 ## bleopt_char_width_mode=emacs
 ##   emacs で用いられている既定の文字幅の設定です
 ## 定義 ble/util/c2w+$bleopt_char_width_mode
-bleopt/declare -n char_width_mode east
+bleopt/declare -n char_width_mode auto
 bleopt/declare -n emoji_width 2
 
 function bleopt/check:char_width_mode {
   if ! ble/is-function "ble/util/c2w+$value"; then
     echo "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w+$value' is not defined." >&2
     return 1
+  fi
+
+  if [[ $_ble_attached && $value == auto ]]; then
+    ble/util/c2w+auto/update.buff first-line
+    ble/util/buffer.flush >&2
   fi
 }
 
@@ -83,7 +90,7 @@ function ble/util/c2w-edit {
 #   "ble/util/c2w+$bleopt_char_width_mode" "$ret"
 # }
 
-# ---- 文字種判定 -------------------------------------------------------------
+# ---- 文字種判定 ----
 
 ## 配列 _ble_util_c2w_non_zenkaku
 ##   飛び地になっている全角でない文字
@@ -174,7 +181,7 @@ function ble/util/c2w/is-emoji {
   (((l&1)==0)); return
 }
 
-# ---- char_width_mode ---------------------------------------------------------
+# ---- char_width_mode ----
 
 ## 関数 ble/util/c2w+emacs
 ##   emacs-24.2.1 default char-width-table
@@ -303,6 +310,60 @@ function ble/util/c2w+east {
     ((_ble_util_c2w_east_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
   done
   ((ret=((l&1)==0)?2:1))
+}
+
+_ble_util_c2w_auto_width=1
+_ble_util_c2w_auto_update_x0=0
+function ble/util/c2w+auto {
+  ble/util/c2w/.determine-unambiguous "$1"
+  ((ret>=0)) && return
+
+  if ((_ble_util_c2w_auto_width==1)); then
+    ble/util/c2w+west "$1"
+  else
+    ble/util/c2w+east "$1"
+    ((ret==2&&(ret=_ble_util_c2w_auto_width)))
+  fi
+}
+function ble/util/c2w+auto/update.buff {
+  local opts=$1
+  if ble/util/is-unicode-output; then
+    local achar='▽'
+    if [[ :$opts: == *:first-line:* ]]; then
+      # 画面の右上で判定を行います。
+      local cols=${COLUMNS:-80}
+      local x0=$((cols-4)); ((x0<0)) && x0=0
+      _ble_util_c2w_auto_update_x0=$x0
+
+      local -a DRAW_BUFF=()
+      ble/canvas/put.draw "$_ble_term_sc"
+      ble/canvas/put-cup.draw 1 $((x0+1))
+      ble/canvas/put.draw "$achar"
+      ble/term/CPR/request.draw ble/util/c2w+auto/update.hook
+      ble/canvas/put-cup.draw 1 $((x0+1))
+      ble/canvas/put.draw "$_ble_term_el"
+      ble/canvas/put.draw "$_ble_term_rc"
+      ble/canvas/bflush.draw
+    else
+      _ble_util_c2w_auto_update_x0=0
+      ble/util/buffer "$_ble_term_sc$_ble_term_cr$achar"
+      ble/term/CPR/request.buff ble/util/c2w+auto/update.hook
+      ble/util/buffer "$_ble_term_rc"
+    fi
+  fi
+}
+function ble/util/c2w+auto/update.hook {
+  local l=$1 c=$2
+  local w=$((c-1-_ble_util_c2w_auto_update_x0))
+  ((_ble_util_c2w_auto_width=w==1?1:2))
+}
+
+#------------------------------------------------------------------------------
+# ble/canvas/attach
+
+function ble/canvas/attach {
+  [[ $bleopt_char_width_mode == auto ]] &&
+    ble/util/c2w+auto/update.buff
 }
 
 #------------------------------------------------------------------------------

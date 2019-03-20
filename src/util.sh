@@ -2576,6 +2576,26 @@ function ble/term/DA2/notify {
   _ble_term_DA2R=$1
 }
 
+#---- DSR(6) ------------------------------------------------------------------
+# CPR (CURSOR POSITION REPORT)
+
+_ble_term_CPR_hook=
+function ble/term/CPR/request.buff {
+  _ble_term_CPR_hook=$1
+  ble/util/buffer $'\e[6n'
+  return 148
+}
+function ble/term/CPR/request.draw {
+  _ble_term_CPR_hook=$1
+  ble/canvas/put.draw $'\e[6n'
+  return 148
+}
+function ble/term/CPR/notify {
+  local hook=$_ble_term_CPR_hook
+  _ble_term_CPR_hook=
+  [[ ! $hook ]] || "$hook" "$1" "$2"
+}
+
 #---- SGR(>4): modifyOtherKeys ------------------------------------------------
 
 bleopt/declare -v term_modifyOtherKeys_external auto
