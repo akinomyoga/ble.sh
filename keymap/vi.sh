@@ -7509,7 +7509,7 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f paste_begin 'vi_imap/bracketed-paste'
 
   # charwise operations
-  ble-bind -f 'C-d'       'delete-region-or forward-char-or-exit'
+  ble-bind -f 'C-d'       'delete-region-or delete-forward-char-or-exit'
   ble-bind -f 'C-?'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
   ble-bind -f 'DEL'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
   ble-bind -f 'C-h'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
@@ -7586,7 +7586,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-C-m'     'newline'
   ble-bind -f 'M-RET'     'newline'
   ble-bind -f 'M-SP'      'set-mark'
-  ble-bind -f 'M-w'       'copy-region-or uword'
+  ble-bind -f 'M-w'       'copy-region-or copy-uword'
   ble-bind -f 'M-\'       'delete-horizontal-space'
 
   ble-bind -f 'M-right'   '@nomarked forward-sword'
