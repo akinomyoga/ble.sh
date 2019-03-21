@@ -597,9 +597,10 @@ function ble-decode-char/csi/.decode {
       csistat=$_ble_decode_KCODE_IGNORE
       return
     fi
-  elif ((char==82)); then
+  elif ((char==82||char==110)); then # R or n
     if rex='^([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
-      # DSR(6) 応答 CPR "CSI Pn ; Pn R"
+      # DSR(6) に対する応答 CPR "CSI Pn ; Pn R"
+      # Note: Poderosa は DSR(Pn;Pn) "CSI Pn ; Pn n" で返す。
       ble/term/CPR/notify $((10#${BASH_REMATCH[1]})) $((10#${BASH_REMATCH[2]}))
       csistat=$_ble_decode_KCODE_IGNORE
       return
