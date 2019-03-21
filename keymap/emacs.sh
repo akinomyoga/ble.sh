@@ -61,8 +61,8 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f 'C-@'      set-mark
   ble-bind -f 'M-SP'     set-mark
   ble-bind -f 'C-x C-x'  exchange-point-and-mark
-  ble-bind -f 'C-w'      'kill-region-or backward-uword'
-  ble-bind -f 'M-w'      'copy-region-or backward-uword'
+  ble-bind -f 'C-w'      'kill-region-or kill-backward-uword'
+  ble-bind -f 'M-w'      'copy-region-or copy-backward-uword'
   ble-bind -f 'C-y'      yank
 
   # spaces
@@ -77,10 +77,10 @@ function ble-decode-keymap:emacs/define {
   ble-bind -f 'S-C-b'    'marked backward-char'
   ble-bind -f 'S-right'  'marked forward-char'
   ble-bind -f 'S-left'   'marked backward-char'
-  ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
-  ble-bind -f 'C-h'      'delete-region-or backward-char'
-  ble-bind -f 'delete'   'delete-region-or forward-char'
-  ble-bind -f 'DEL'      'delete-region-or backward-char'
+  ble-bind -f 'C-d'      'delete-region-or delete-forward-char-or-exit'
+  ble-bind -f 'C-h'      'delete-region-or delete-backward-char'
+  ble-bind -f 'delete'   'delete-region-or delete-forward-char'
+  ble-bind -f 'DEL'      'delete-region-or delete-backward-char'
   ble-bind -f 'C-t'      transpose-chars
 
   # wordwise operations

@@ -2290,7 +2290,7 @@ function ble-edit+delete-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble-edit+delete-region
   else
-    "ble-edit+delete-$@"
+    "ble-edit+$@"
   fi
 }
 ## 関数 ble-edit+kill-region-or type
@@ -2304,7 +2304,7 @@ function ble-edit+kill-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble-edit+kill-region
   else
-    "ble-edit+kill-$@"
+    "ble-edit$@"
   fi
 }
 ## 関数 ble-edit+copy-region-or type
@@ -2318,7 +2318,7 @@ function ble-edit+copy-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble-edit+copy-region
   else
-    "ble-edit+copy-$@"
+    "ble-edit+$@"
   fi
 }
 
