@@ -125,6 +125,9 @@ function ble/init:term/initialize {
   fi
   ble/init:term/register-varname _ble_term_el2
 
+  # ED
+  ble/init:term/define-cap _ble_term_ed  $'\e[J' ed
+
   # ICH/DCH/ECH
   #   Note: 必ずしも対応しているか分からないので terminfo に載っている時のみ使う。
   ble/init:term/define-cap _ble_term_ich '' ich 123 # CSI @

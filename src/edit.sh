@@ -1159,6 +1159,7 @@ function ble-edit/attach/TRAPWINCH {
     if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
       _ble_textmap_pos=()
       ble-edit/bind/stdout.on
+      ble/util/buffer "$_ble_term_ed"
       ble/textarea#redraw
       ble-edit/bind/stdout.off
     fi
@@ -6525,6 +6526,7 @@ function ble/builtin/read/.setup-textarea {
 function ble/builtin/read/TRAPWINCH {
   local IFS=$_ble_term_IFS
   _ble_textmap_pos=()
+  ble/util/buffer "$_ble_term_ed"
   ble/textarea#redraw
 }
 function ble/builtin/read/.loop {
