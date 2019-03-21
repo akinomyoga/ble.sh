@@ -2177,7 +2177,7 @@ bash_tips
     ChangeLog
 -------------------------------------------------------------------------------
 
-2019-02-09 (#D0915) 949e9a8..
+2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
   新機能
   - auto-complete: support <kbd>end</kbd> at the end of line a374635
@@ -2242,7 +2242,7 @@ bash_tips
   - syntax: detect syntax errors of `CTX_CMDX1` immediately followed by terminating keywords `#D1001` 7ea02b7
   - complete: improve support of `bind 'completion-ignore-case on'` `#D1002` 25ebc55
   - complete: preserve original path specifications on ambiguous completion `#D1014` a39d1ac
-  - complete: append `,` instead of ` ` after completion in brace expansions `#D1015`
+  - complete: append `,` instead of ` ` after completion in brace expansions `#D1015` df4feaa
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
