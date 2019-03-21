@@ -2158,46 +2158,37 @@ function ble/widget/copy-region {
   ble/widget/.copy-range "$_ble_edit_mark" "$_ble_edit_ind"
   _ble_edit_mark_active=
 }
-## 関数 ble/widget/delete-region-or type
-##   領域または引数に指定した単位を削除します。
-##   mark が active な場合には領域の削除を行います。
-##   それ以外の場合には第一引数に指定した単位の削除を実行します。
-## @param[in] type
-##   mark が active でない場合に実行される削除の単位を指定します。
-##   実際には ble-edit 関数 delete-type が呼ばれます。
+## 関数 ble/widget/delete-region-or widget
+##   mark が active の時に領域を削除します。
+##   それ以外の時に編集関数 widget を実行します。
+##   @param[in] widget
 function ble/widget/delete-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/delete-region
   else
-    "ble/widget/delete-$@"
+    "ble/widget/$@"
   fi
 }
-## 関数 ble/widget/kill-region-or type
-##   領域または引数に指定した単位を切り取ります。
-##   mark が active な場合には領域の切り取りを行います。
-##   それ以外の場合には第一引数に指定した単位の切り取りを実行します。
-## @param[in] type
-##   mark が active でない場合に実行される切り取りの単位を指定します。
-##   実際には ble-edit 関数 kill-type が呼ばれます。
+## 関数 ble/widget/kill-region-or widget
+##   mark が active の時に領域を切り取ります。
+##   それ以外の時に編集関数 widget を実行します。
+##   @param[in] widget
 function ble/widget/kill-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/kill-region
   else
-    "ble/widget/kill-$@"
+    "ble/widget/$@"
   fi
 }
-## 関数 ble/widget/copy-region-or type
-##   領域または引数に指定した単位を転写します。
-##   mark が active な場合には領域の転写を行います。
-##   それ以外の場合には第一引数に指定した単位の転写を実行します。
-## @param[in] type
-##   mark が active でない場合に実行される転写の単位を指定します。
-##   実際には ble-edit 関数 copy-type が呼ばれます。
+## 関数 ble/widget/copy-region-or widget
+##   mark が active の時に領域を転写します。
+##   それ以外の時に編集関数 widget を実行します。
+##   @param[in] widget
 function ble/widget/copy-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/copy-region
   else
-    "ble/widget/copy-$@"
+    "ble/widget/$@"
   fi
 }
 
@@ -6182,8 +6173,8 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'NUL'       'set-mark'
   ble-decode/keymap:safe/.bind 'M-SP'      'set-mark'
   ble-decode/keymap:safe/.bind 'C-x C-x'   'exchange-point-and-mark'
-  ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or uword'
-  ble-decode/keymap:safe/.bind 'M-w'       'copy-region-or uword'
+  ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or kill-uword'
+  ble-decode/keymap:safe/.bind 'M-w'       'copy-region-or copy-uword'
   ble-decode/keymap:safe/.bind 'C-y'       'yank'
 
   # spaces
@@ -6198,12 +6189,12 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'S-C-b'     '@marked backward-char'
   ble-decode/keymap:safe/.bind 'S-right'   '@marked forward-char'
   ble-decode/keymap:safe/.bind 'S-left'    '@marked backward-char'
-  ble-decode/keymap:safe/.bind 'C-d'       'delete-region-or forward-char'
-  ble-decode/keymap:safe/.bind 'delete'    'delete-region-or forward-char'
-  ble-decode/keymap:safe/.bind 'C-?'       'delete-region-or backward-char'
-  ble-decode/keymap:safe/.bind 'DEL'       'delete-region-or backward-char'
-  ble-decode/keymap:safe/.bind 'C-h'       'delete-region-or backward-char'
-  ble-decode/keymap:safe/.bind 'BS'        'delete-region-or backward-char'
+  ble-decode/keymap:safe/.bind 'C-d'       'delete-region-or delete-forward-char'
+  ble-decode/keymap:safe/.bind 'delete'    'delete-region-or delete-forward-char'
+  ble-decode/keymap:safe/.bind 'C-?'       'delete-region-or delete-backward-char'
+  ble-decode/keymap:safe/.bind 'DEL'       'delete-region-or delete-backward-char'
+  ble-decode/keymap:safe/.bind 'C-h'       'delete-region-or delete-backward-char'
+  ble-decode/keymap:safe/.bind 'BS'        'delete-region-or delete-backward-char'
   ble-decode/keymap:safe/.bind 'C-t'       'transpose-chars'
 
   # wordwise operations
@@ -6325,7 +6316,7 @@ function ble-decode/keymap:safe/define {
   ble-decode/keymap:safe/bind-history
   ble-decode/keymap:safe/bind-complete
 
-  ble-bind -f 'C-d'      'delete-region-or forward-char-or-exit'
+  ble-bind -f 'C-d'      'delete-region-or delete-forward-char-or-exit'
 
   ble-bind -f 'SP'       magic-space
   ble-bind -f 'M-^'      history-expand-line

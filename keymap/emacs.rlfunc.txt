@@ -4,7 +4,7 @@ alias-expand-line                 -
 arrow-key-prefix                  -
 backward-byte                     @nomarked backward-byte
 backward-char                     @nomarked backward-char
-backward-delete-char              delete-region-or backward-char
+backward-delete-char              delete-region-or delete-backward-char
 backward-kill-line                kill-backward-line
 backward-kill-word                kill-backward-cword
 backward-word                     @nomarked backward-cword
@@ -62,7 +62,7 @@ insert-comment                    -
 insert-completions                complete insert_all
 insert-last-argument              -
 kill-line                         kill-forward-line
-kill-region                       kill-region-or uword
+kill-region                       kill-region-or kill-uword
 kill-whole-line                   -
 kill-word                         kill-forward-cword
 magic-space                       magic-space

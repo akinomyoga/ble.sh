@@ -2179,12 +2179,15 @@ bash_tips
 
   New features
   - emacs: support widgets `forward-byte` and `backward-byte` `#D1017` b2951ef
+  - emacs: support arguments of word wise operations `#D1020` 8c46dce
+  - emacs: support widgets `{capitalize,downcase,upcase}-xword` `#D1019` 8c46dce
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
+  - edit: the widgets `{kill,copy,delete}-region-or` now receives widgets as arguments `#D1021`
 
   Fixes
-  - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018`
+  - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3130,7 +3133,10 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
-2019-03-21
+2019-03-22
+
+  * edit: {kill,copy,delete}-region-or の引数に [#D1021]
+    {kill,copy,delete}- を付加して実行するのは分かりにくいのでやめる
 
   * 2017-12-04 emacs: 引き数: 単語関連 [#D1020]
 
@@ -3146,6 +3152,8 @@ bash_tips
 
   * emacs: rlfunc capitalize-word, downcase-word, upcase-word [#D1019]
     対応した。一緒に単語関係の widget の実装を整理した。
+
+2019-03-21
 
   * decode: rosaterm で起動すると "no previous search" というメッセージが表示される [#D1018]
     何か変な物を受信している?

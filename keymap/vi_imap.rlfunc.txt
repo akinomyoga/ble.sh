@@ -25,7 +25,7 @@ complete-username                 complete context=username
 complete-variable                 complete context=variable
 copy-backward-word                copy-backward-sword
 copy-forward-word                 copy-forward-sword
-copy-region-as-kill               copy-region-or uword
+copy-region-as-kill               copy-region-or copy-uword
 dabbrev-expand                    dabbrev-expand
 delete-char                       vi_imap/delete-region-or delete-forward-char
 delete-char-or-list               -
@@ -62,7 +62,7 @@ insert-comment                    -
 insert-completions                complete insert_all
 insert-last-argument              -
 kill-line                         kill-forward-line
-kill-region                       kill-region-or uword
+kill-region                       kill-region-or kill-uword
 kill-whole-line                   -
 kill-word                         kill-forward-uword
 magic-space                       magic-space
