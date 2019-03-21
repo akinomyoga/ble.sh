@@ -1511,6 +1511,13 @@ function ble/util/test-rl-variable {
     return 2
   fi
 }
+## 関数 ble/util/read-rl-variable name [default_value]
+function ble/util/read-rl-variable {
+  ret=$2
+  local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
+  local rhs=${rl_variables#*$'\n'"set $1 "}
+  [[ $rhs != "$rl_variables" ]] && ret=${rhs%%$'\n'*}
+}
 
 #------------------------------------------------------------------------------
 # Functions for modules

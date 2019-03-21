@@ -2194,6 +2194,8 @@ function ble-decode/initialize {
   ble-decode-bind/cmap/initialize
 }
 
+## @var _ble_decode_bind_state
+##   none, emacs, vi
 _ble_decode_bind_state=none
 function ble-decode/reset-default-keymap {
   # 現在の ble-decode/keymap の設定
@@ -2245,6 +2247,127 @@ function ble-decode/detach {
   [[ $_ble_decode_bind_state == "$current_editing_mode" ]] || ble/util/restore-editing-mode current_editing_mode
 
   _ble_decode_bind_state=none
+}
+
+#------------------------------------------------------------------------------
+# ble/decode/read-inputrc
+
+function ble/decode/read-inputrc/test {
+  local text=$1
+  if [[ ! $text ]]; then
+    echo "ble.sh (bind):\$if: test condition is not supplied." >&2
+    return 1
+  elif local rex=$'[ \t]*([<>]=?|[=!]?=)[ \t]*(.*)$'; [[ $text =~ $rex ]]; then
+    local op=${BASH_REMATCH[1]}
+    local rhs=${BASH_REMATCH[2]}
+    local lhs=${text::${#text}-${#BASH_REMATCH}}
+  else
+    local lhs=application
+    local rhs=$text
+  fi
+
+  case $lhs in
+  (application)
+    local ret; ble/string#tolower "$rhs"
+    [[ $ret == bash || $ret == blesh ]]
+    return ;;
+
+  (mode)
+    if [[ -o emacs ]]; then
+      test emacs "$op" "$rhs"
+    elif [[ -o vi ]]; then
+      test vi "$op" "$rhs"
+    else
+      false
+    fi
+    return ;;
+
+  (term)
+    if [[ $op == '!=' ]]; then
+      test "$TERM" "$op" "$rhs" && test "${TERM%%-*}" "$op" "$rhs"
+    else
+      test "$TERM" "$op" "$rhs" || test "${TERM%%-*}" "$op" "$rhs"
+    fi
+    return ;;
+  
+  (version)
+    local lhs_major lhs_minor
+    if ((_ble_bash<40400)); then
+      ((lhs_major=2+_ble_bash/10000,
+        lhs_minor=_ble_bash/100%100))
+    else
+      ((lhs_major=3+_ble_bash/10000,
+        lhs_minor=0))
+    fi
+
+    local rhs_major rhs_minor
+    if [[ $rhs == *.* ]]; then
+      local version
+      ble/string#split version . "$rhs"
+      rhs_major=${version[0]}
+      rhs_minor=${version[1]}
+    else
+      ((rhs_major=rhs,rhs_minor=0))
+    fi
+
+    local lhs_ver=$((lhs_major*10000+lhs_minor))
+    local rhs_ver=$((rhs_major*10000+rhs_minor))
+    [[ $op == '=' ]] && op='=='
+    let "$lhs_ver$op$rhs_ver"
+    return ;;
+
+  (*)
+    if local ret; ble/util/read-rl-variable "$lhs"; then
+      test "$ret" "$op" "$rhs"
+      return
+    else
+      echo "ble.sh (bind):\$if: unknown readline variable '${lhs//$q/$Q}'." >&2
+      return 1
+    fi ;;
+  esac
+}
+
+function ble/decode/read-inputrc {
+  local file=$1 ref=$2 q=\' Q="''\'"
+  if [[ -f $ref && $ref == */* && $file != /* ]]; then
+    local relative_file=${ref%/*}/$file
+    [[ -f $relative_file ]] && file=$relative_file
+  fi
+  if [[ ! -f $file ]]; then
+    echo "ble.sh (bind):\$include: the file '${1//$q/$Q}' not found." >&2
+    return 1
+  fi
+
+  local -a script=()
+  local ret line= iline=0
+  while builtin read -r line || [[ $line ]]; do
+    ((++iline))
+    ble/string#trim "$line"; line=$ret
+    [[ ! $line || $line == '#'* ]] && continue
+
+    if [[ $line == '$'* ]]; then
+      local directive=${line%%[$IFS]*}
+      case $directive in
+      ('$if')
+        local args=${line#'$if'}
+        ble/string#trim "$args"; args=$ret
+        ble/array#push script "if ble/decode/read-inputrc/test '${args//$q/$Q}'; then :" ;;
+      ('$else')  ble/array#push script 'else :' ;;
+      ('$endif') ble/array#push script 'fi' ;;
+      ('$include')
+        local args=${line#'$include'}
+        ble/string#trim "$args"; args=$ret
+        ble/array#push script "ble/decode/read-inputrc '${args//$q/$Q}' '${file//$q/$Q}'" ;;
+      (*)
+        echo "ble.sh (bind):$file:$iline: unrecognized directive '$directive'." >&2 ;;
+      esac
+    else
+      ble/array#push script "ble/builtin/bind/.process '${line//$q/$Q}'"
+    fi
+  done < "$file"
+
+  IFS=$'\n' eval 'script="${script[*]}"'
+  builtin eval "$script"
 }
 
 #------------------------------------------------------------------------------
@@ -2406,11 +2529,18 @@ function ble/builtin/bind/.initialize-keys-and-value {
 ## 関数 ble/builtin/bind/option:x spec
 ##   @var[in] opt_keymap
 function ble/builtin/bind/option:x {
-  local keys value kmap
-  ble/builtin/bind/.initialize-keys-and-value "$1" nokeyname || return
-  ble/builtin/bind/.initialize-kmap "$opt_keymap" || return
-
   local q=\' Q="''\'"
+  local keys value kmap
+  if ! ble/builtin/bind/.initialize-keys-and-value "$1" nokeyname; then
+    echo "ble.sh (bind): unrecognized readline command '${1//$q/$Q}'." >&2
+    flags=e$flags
+    return 1
+  elif ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
+    echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    flags=e$flags
+    return 1
+  fi
+
   if [[ $value == \"* ]]; then
     local ifs=$' \t\n'
     local rex='^"(([^\"]|\\.)*)"'
@@ -2445,6 +2575,68 @@ function ble/builtin/bind/option:r {
   ble/builtin/bind/.initialize-kmap "$opt_keymap" || return
   ble-decode-key/unbind "${keys[*]}"
 }
+
+function ble/builtin/bind/rlfunc2widget {
+  local kmap=$1 rlfunc=$2
+
+  local rlfunc_dict=
+  case $kmap in
+  (emacs)   rlfunc_dict=$_ble_base/keymap/emacs.rlfunc.txt ;;
+  (vi_imap) rlfunc_dict=$_ble_base/keymap/vi_imap.rlfunc.txt ;;
+  (vi_nmap) rlfunc_dict=$_ble_base/keymap/vi_nmap.rlfunc.txt ;;
+  esac
+
+  if [[ $rlfunc_dict && -s $rlfunc_dict ]]; then
+    local awk_script='$1 == ENVIRON["RLFUNC"] { $1=""; print; exit; }'
+    ble/util/assign ret 'RLFUNC=$rlfunc ble/bin/awk "$awk_script" "$rlfunc_dict"'
+    ble/string#trim "$ret"
+    ret=ble/widget/$ret
+    return 0
+  else
+    return 1
+  fi
+}
+
+## 関数 ble/builtin/bind/option:u function
+##   @var[in] opt_keymap
+function ble/builtin/bind/option:u {
+  local rlfunc=$1
+
+  local kmap
+  if ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
+    echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    flags=e$flags
+    return 1
+  fi
+  local ret
+  ble/builtin/bind/rlfunc2widget "$kmap" "$rlfunc" || return 0
+  local command=$ret
+
+  # recursive search
+  local -a unbind_keys_list=()
+  ble/builtin/bind/option:u/search-recursive "$kmap"
+
+  # unbind
+  local keys
+  for keys in "${unbind_keys_list[@]}"; do
+    ble-decode-key/unbind "$keys"
+  done
+}
+function ble/builtin/bind/option:u/search-recursive {
+  local kmap=$1 tseq=$2
+  local dicthead=_ble_decode_${kmap}_kmap_
+  local key keys
+  builtin eval "keys=(\${!$dicthead$tseq[@]})"
+  for key in "${keys[@]}"; do
+    builtin eval "local ent=\${$dicthead$tseq[key]}"
+    if [[ ${ent:2} == "$command" ]]; then
+      ble/array#push unbind_keys_list "${tseq//_/ } $key"
+    fi
+    if [[ ${ent::1} == _ ]]; then
+      ble/builtin/bind/option:u/search-recursive "$kmap" "${tseq}_$key"
+    fi
+  done
+}
 ## 関数 ble/builtin/bind/option:-
 ##   @var[in] opt_keymap
 function ble/builtin/bind/option:- {
@@ -2475,18 +2667,8 @@ function ble/builtin/bind/option:- {
     local command="ble/widget/.ble-decode-char ${chars[*]}"
     ble-decode-key/bind "${keys[*]}" "$command"
   elif [[ $value ]]; then
-    # readline function
-    local rlfunc_data=
-    case $kmap in
-    (emacs)   rlfunc_data=$_ble_base/keymap/emacs.rlfunc.txt ;;
-    (vi_imap) rlfunc_data=$_ble_base/keymap/vi_imap.rlfunc.txt ;;
-    (vi_nmap) rlfunc_data=$_ble_base/keymap/vi_nmap.rlfunc.txt ;;
-    esac
-    if [[ $rlfunc_data && -s $rlfunc_data ]]; then
-      local awk_script='$1 == ENVIRON["RLFUNC"] { $1=""; print; exit; }'
-      local ret; ble/util/assign ret 'RLFUNC=$value ble/bin/awk "$awk_script" "$rlfunc_data"'
-      ble/string#trim "$ret"
-      local command="ble/widget/$ret"
+    if local ret; ble/builtin/bind/rlfunc2widget "$kmap" "$value"; then
+      local command=$ret
       local arr; ble/string#split-words arr "$command"
       if ble/is-function "${arr[0]}"; then
         ble-decode-key/bind "${keys[*]}" "$command"
@@ -2494,7 +2676,6 @@ function ble/builtin/bind/option:- {
       fi
     fi
 
-    local rlfunc=${arr[0]#ble/widget/}
     echo "ble.sh (bind): unsupported readline function '${value//$q/$Q}'." >&2
     flags=e$flags
     return 1
@@ -2505,7 +2686,8 @@ function ble/builtin/bind/option:- {
 }
 function ble/builtin/bind/.process {
   flags=
-  local opt_literal= opt_keymap=
+  local opt_literal= opt_keymap= opt_print=
+  local -a opt_queries=()
   while (($#)); do
     local arg=$1; shift
     if [[ ! $opt_literal ]]; then
@@ -2534,8 +2716,7 @@ function ble/builtin/bind/.process {
           c=${arg:i:1}
           case $c in
           ([lpPsSvVX])
-            [[ $_ble_decode_bind_state != none ]] &&
-              builtin bind ${opt_keymap:+-m} $opt_keymap -$c ;;
+            opt_print=$opt_print$c ;;
           ([mqurfx])
             if ((!$#)); then
               echo "ble.sh (bind): missing option argument for -$c" >&2
@@ -2546,7 +2727,10 @@ function ble/builtin/bind/.process {
               (m) ble/builtin/bind/option:m "$optarg" ;;
               (x) ble/builtin/bind/option:x "$optarg" ;;
               (r) ble/builtin/bind/option:r "$optarg" ;;
-              ([quf])
+              (u) ble/builtin/bind/option:u "$optarg" ;;
+              (q) ble/array#push opt_queries "$optarg" ;;
+              (f) ble/decode/read-inputrc "$optarg" ;;
+              (*)
                 echo "ble.sh (bind): unsupported option -$c $optarg" >&2
                 flags=e$flags ;;
               esac
@@ -2563,6 +2747,24 @@ function ble/builtin/bind/.process {
     ble/builtin/bind/option:- "$arg"
     opt_literal=1
   done
+
+  if [[ $_ble_decode_bind_state != none ]]; then
+    if [[ $opt_print == *[pPsSX]* ]] || ((${#opt_queries[@]})); then
+      # Note: サブシェル内でバインディングを復元してから出力
+      ( ble-decode/unbind
+        [[ -s "$_ble_base_run/$$.bind.save" ]] &&
+          source "$_ble_base_run/$$.bind.save"
+        [[ $opt_print ]] &&
+          builtin bind ${opt_keymap:+-m $opt_keymap} -$opt_print
+        declare rlfunc
+        for rlfunc in "${opt_queries[@]}"; do
+          builtin bind ${opt_keymap:+-m $opt_keymap} -q "$rlfunc"
+        done )
+    elif [[ $opt_print ]]; then
+      builtin bind ${opt_keymap:+-m $opt_keymap} -$opt_print
+    fi
+  fi
+
   return 0
 }
 function ble/builtin/bind {

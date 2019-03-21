@@ -115,7 +115,8 @@ function sub:check/builtin {
   local command=$1 esc='(\[[ -?]*[@-~])*'
   sub:check/list-command --exclude-this "$command" |
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
-    grep -Ev "$command(\b|$esc)="
+    grep -Ev "$command(\b|$esc)=" |
+    grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc"
 }
 
 function sub:check/a.txt {

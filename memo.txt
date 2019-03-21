@@ -852,6 +852,13 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-03-21
+
+  * complete: 曖昧補完であっても既存の部分が一致している場合には置換しなくて良いのでは。
+    例えば chat 上で ~/.in に対する補完で再現している。
+    inputrc がなかったので別のファイルに曖昧一致しているが、
+    その時に ~/ が /home/murase/ に無駄に置換されてしまっている。
+
 2019-03-19
 
   * complete: 実装されていない補完関連の rlvar は以下の通りである。
@@ -865,44 +872,6 @@ bash_tips
     set completion-display-width -1
     set completion-prefix-display-length 0
     set completion-query-items 100
-
-2019-02-10
-
-  * decode: 組み込みコマンド bind 上書き実装で未対応の事柄
-
-    * bind -f filename には対応していない。
-      $if 等のディレクティブ以外は既に対応している機能を用いれば良い。
-      ディレクティブに関しては何とかして実装する必要がある気がする。
-      或いは bash のコマンドに置換して後で全体を eval するというのでも良いかもしれない。
-
-      更に言うと .inputrc についても本当は読み取ると良いのかもしれない。
-
-    * bind -q function には対応していない
-    * bind -u function には対応していない
-
-    * bind -lpsPSX は元の readline の情報を出力する。
-      ble.sh における情報を出力するように修正しても良いのかもしれない。
-
-    * reject: ble-bind -s で bell が呼ばれた時にマクロ実行を中断する?
-      bind -s の場合にはその様な実装になっているが
-      ble.sh では取り敢えずはその振る舞いは実装しない事にした。
-
-      2019-03-20 ユーザによる中断の要求に対しては #D0998 で実装された
-      decode_abort_char で中断できる様になった。
-      ble-bind -s の場合には ble-decode-char を用いてマクロを実行しているので、
-      特に意識しなくても中断を実行する事ができるのである。
-
-      一方でマクロの文字列の中に含まれている C-g 等の文字に関しては
-      マクロを中断する機能はない。というか、それがマクロを中断する能力を
-      持っていて良いのかという疑問も残る。
-      % 然し、decode_abort_char がその機能を持っている限りはやはり、
-      % decode_abort_char がマクロを中断する機能を持ってしまう。
-      % と思ったが調べてみると decode_abort_char は .hook で受信した時のみ
-      % 検査される様なのでこれに関しては問題ない。
-
-      →この実装ではマクロ中に含まれている C-g (bell) も
-      C-\ (decode_abort_char) も特別な処理を実行しない、
-      という実装で良い事にする。
 
 2019-02-09
 
@@ -2220,6 +2189,8 @@ bash_tips
   新機能
   - auto-complete: support <kbd>end</kbd> at the end of line a374635
   - decode: replace builtin `bind` for `ble.sh` settings `#D0915`  90ca3be `#D0918` e0cdd15
+    - decode: update mapping of rl-functions and widgets for vi_imap and vi_nmap `#D1012` 7fec4b6
+    - decode: support `bind [-psPSX] [-quf arg]` `#D1013`
   - edit: support <kbd>C-x C-g</kbd>, <kbd>C-M-g</kbd> for `bell` and `cancel` `#D0919` 2e83120
   - syntax: support `set +B` `#D0931` 12f80dd
   - syntax: support aliased keywords `#D0936` 7054e28
@@ -3154,6 +3125,90 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-03-21
+
+  * 2019-02-10 decode: 組み込みコマンド bind 上書き実装で未対応の事柄 [#D1013]
+
+    * reject: ble-bind -s で bell が呼ばれた時にマクロ実行を中断する?
+      bind -s の場合にはその様な実装になっているが
+      ble.sh では取り敢えずはその振る舞いは実装しない事にした。
+
+      2019-03-20 ユーザによる中断の要求に対しては #D0998 で実装された
+      decode_abort_char で中断できる様になった。
+      ble-bind -s の場合には ble-decode-char を用いてマクロを実行しているので、
+      特に意識しなくても中断を実行する事ができるのである。
+
+      一方でマクロの文字列の中に含まれている C-g 等の文字に関しては
+      マクロを中断する機能はない。というか、それがマクロを中断する能力を
+      持っていて良いのかという疑問も残る。
+      % 然し、decode_abort_char がその機能を持っている限りはやはり、
+      % decode_abort_char がマクロを中断する機能を持ってしまう。
+      % と思ったが調べてみると decode_abort_char は .hook で受信した時のみ
+      % 検査される様なのでこれに関しては問題ない。
+
+      →この実装ではマクロ中に含まれている C-g (bell) も
+      C-\ (decode_abort_char) も特別な処理を実行しない、
+      という実装で良い事にする。
+
+    * done: 現状では bind -lpsPSX は元の readline の情報を出力している。
+      ble.sh における情報を出力するように修正しても良いのかもしれない。
+      ble.sh の bind は元の bind の振る舞いを変更しないままそれに対して介入して
+      ble.sh の設定に反映させるというのが目的である。
+      bind 自体の振る舞いを ble.sh に変更するのが目的ではなかった。
+      更に ble.sh の設定を確認したいのであれば ble-bind 経由で調べれば良い。
+      その様に考えれば bind -lpsPSX で ble.sh の設定を出力する事に意義はない。
+
+      と思ったが、attach している間は bind -lpsPSX の内容は滅茶苦茶な内容になっている。
+      なのでそのまま出力しても仕方のない状態になっている。
+
+      a その事を思えば ble-bind の内容を bind 風に整形した内容を出力するべきなのではあるまいか。
+      b 或いは、サブシェルの中で binding を復元して出力しても良いのかもしれないが…。
+
+      ここは b の方針で修正する事にした。bind 風の出力をしても再利用できないので仕方がないし、
+      かと言って ble.sh の内部で使用している binding を出力してもやはり仕方がない。修正した。
+
+    * done: bind -q function には対応していない
+      これに関しても元の bind の設定を出力させれば良いのではないか。
+      bind -psPSX と同様に元の状態を復元してから呼び出す事にした。
+
+      -q function がある度にちゃんと出力する様にした。
+      元の builtin bind の場合には最後に指定した -q function しか処理しない。
+
+    * done: bind -u function には対応していない
+      →実装した。これは ble.sh の bindings を変更する様にする。
+      実際に試してみた。動いている様に見える。
+
+    * done: bind -f filename には対応していない。
+      $if 等のディレクティブ以外は既に対応している機能を用いれば良い。
+      ディレクティブに関しては何とかして実装する必要がある気がする。
+      或いは bash のコマンドに置換して後で全体を eval するというのでも良いかもしれない。
+
+      更に言うと .inputrc についても本当は読み取ると良いのかもしれない。
+
+      うーん。bash と readline version の対応が分からない。
+      外部 readline を利用している場合には対応していないが、
+      ldd で何とか分かるかもしれない。しかし major version しか分からない可能性もある。
+      組み込まれている readline に関しては以下の日付から推測する事ができる。
+      https://ftp.gnu.org/gnu/bash/
+      https://ftp.gnu.org/gnu/readline/
+
+      Bash 3.0 - Readline 5.0
+      Bash 3.1 - Readline 5.1
+      Bash 3.2 - Readline 5.2
+      Bash 4.0 - Readline 6.0
+      Bash 4.1 - Readline 6.1
+      Bash 4.2 - Readline 6.2
+      Bash 4.3 - Readline 6.3
+      Bash 4.4 - Readline 7.0
+      Bash 5.0 - Readline 8.0
+
+      取り敢えず対応した。動作確認をする。
+
+      - 取り敢えず動作テストした。動いている気がする。
+      - $if $endif $include は動く事を確認した。
+      - 後は $if の条件がちゃんと動いているかである。
+        application, mode, term, version, rlvars の何れも動作確認した。
 
 2019-03-20
 
