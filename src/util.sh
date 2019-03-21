@@ -225,6 +225,19 @@ function ble/debug/.check-leak-variable {
     eval "$1=__t1wJltaP9nmow__"
   fi
 }
+
+function ble/debug/print-variables/.append {
+  local q=\' Q="''\'"
+  _ble_local_out=$_ble_local_out"$1='${2//$q/$Q}'"
+}
+function ble/debug/print-variables {
+  (($#)) || return 0
+  local _ble_local_var=$1 _ble_local_out=
+  while ble/debug/print-variables/.append "$1" "${!1}"; shift; (($#)); do
+    _ble_local_out=$_ble_local_out' '
+  done
+  echo "$_ble_local_out"
+}
 #%end
 
 #
@@ -323,6 +336,27 @@ function ble/array#remove {
     done
     '$1'=(${'$1'[@]})
   '; builtin eval "$script"
+}
+## 関数 ble/array#index arr needle
+function ble/array#index {
+  local script='
+    local eARR iARR=0
+    for eARR in "${ARR[@]}"; do
+      [[ $eARR == "$2" ]] && { ret=$iARR; return 0; }
+      ((iARR++))
+    done
+    ret=-1; return 1
+  '; builtin eval "${script//ARR/$1}"
+}
+## 関数 ble/array#last-index arr needle
+function ble/array#last-index {
+  local script='
+    local eARR iARR=${#ARR[@]}
+    while ((iARR--)); do
+      [[ ${ARR[iARR]} == "$2" ]] && { ret=$iARR; return 0; }
+    done
+    ret=-1; return 1
+  '; builtin eval "${script//ARR/$1}"
 }
 
 _ble_string_prototype='        '

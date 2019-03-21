@@ -2018,6 +2018,33 @@ function ble/complete/candidates/generate {
   return 0
 }
 
+## 関数 ble/complete/candidates/determine-common-prefix/.apply-partial-comps
+##   @var[in] COMPS
+##   @var[in] comps_fixed
+##   @var[in,out] common
+function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
+  local word0=$COMPS word1=$common fixed=
+  if [[ $comps_fixed ]]; then
+    local fixlen=${comps_fixed%%:*}
+    fixed=${word0::fixlen}
+    word0=${word0:fixlen}
+    word1=${word1:fixlen}
+  fi
+
+  local spec path spec0 path0 spec1 path1
+  ble/syntax:bash/simple-word/evaluate-path-spec "$word0"; spec0=("${spec[@]}") path0=("${path[@]}")
+  ble/syntax:bash/simple-word/evaluate-path-spec "$word1"; spec1=("${spec[@]}") path1=("${path[@]}")
+  local i=${#path1[@]}
+  while ((i--)); do
+    if ble/array#last-index path0 "${path1[i]}"; then
+      local elem=${spec1[i]} # workaround bash-3.1 ${#arr[i]} bug
+      word1=${spec0[ret]}${word1:${#elem}}
+      break
+    fi
+  done
+  common=$fixed$word1
+}
+
 ## 関数 ble/complete/candidates/determine-common-prefix
 ##   cand_* を元に common prefix を算出します。
 ##   @var[in] cand_*
@@ -2062,9 +2089,11 @@ function ble/complete/candidates/determine-common-prefix {
   fi
 
   if [[ :$comp_type: == *:[amAi]:* && $common != "$COMPS"* ]]; then
+    # common を部分的に COMPS に置換する試み
+    ble/complete/candidates/determine-common-prefix/.apply-partial-comps
+
     # 曖昧一致の時は遡って書き換えを起こし得る、
     # 一致する部分までを置換し一致しなかった部分を末尾に追加する。
-
     local common0=$common
     common=$COMPS
 

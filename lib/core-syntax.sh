@@ -994,6 +994,9 @@ function ble/syntax:bash/cclass/initialize {
 
 ble/syntax:bash/cclass/initialize
 
+#------------------------------------------------------------------------------
+# ble/syntax:bash/simple-word
+
 ## @var _ble_syntax_bash_simple_rex_word
 ## @var _ble_syntax_bash_simple_rex_element
 ##   単純な単語のパターンとその構成要素を表す正規表現
@@ -1010,6 +1013,7 @@ _ble_syntax_bash_simple_rex_open_dquot=
 _ble_syntax_bash_simple_rex_open_squot=
 _ble_syntax_bash_simple_rex_incomplete_word1=
 _ble_syntax_bash_simple_rex_incomplete_word2=
+
 function ble/syntax:bash/simple-word/update {
   local q="'"
 
@@ -1290,6 +1294,47 @@ function ble/syntax:bash/simple-word/eval {
   ret=("${__ble_ret[@]}")
   return "$ext"
 }
+
+## 関数 ble/syntax:bash/simple-word/evaluate-path-spec path_spec [sep]
+##   @param[in] path_spec
+##   @param[in,opt] sep (default: '/:=')
+##   @arr[out] spec
+##   @arr[out] path
+##
+##   指定した path_spec を sep に含まれる文字で区切ってルートから末端まで順に評価します。
+##   各階層までの評価の対象を spec に評価の結果を path に追加します。
+##   例えば path_spec='~/a/b' の時、
+##     spec=(~ ~/a ~/a/b)
+##     path=(/home/user /home/user/a /home/user/a/b)
+##   という結果が得られます。
+##
+function ble/syntax:bash/simple-word/evaluate-path-spec {
+  local word=$1 sep=${2:-'/:='}
+  spec=() path=()
+
+  # compose regular expressions
+  local param=$_ble_syntax_bash_simple_rex_param
+  local bquot=$_ble_syntax_bash_simple_rex_bquot
+  local squot=$_ble_syntax_bash_simple_rex_squot
+  local dquot=$_ble_syntax_bash_simple_rex_dquot
+  local letter1='[^'$sep$_ble_syntax_bashc_simple']'
+  local rex_path_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
+  local rex='^['$sep']?'$rex_path_element
+
+  local tail=$word s= p=
+  while [[ $tail =~ $rex ]]; do
+    local rematch=$BASH_REMATCH
+    ble/syntax:bash/simple-word/eval "$rematch"
+    s=$s${tail::${#rematch}}
+    p=$p$ret
+    tail=${tail:${#rematch}}
+    ble/array#push spec "$s"
+    ble/array#push path "$p"
+  done
+  [[ ! $tail ]]
+}
+
+#------------------------------------------------------------------------------
 
 function ble/syntax:bash/initialize-ctx {
   ctx=$CTX_CMDX # CTX_CMDX が ble/syntax:bash の最初の文脈
