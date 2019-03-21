@@ -114,6 +114,7 @@ function ble/complete/check-cancel {
 ##     D クォート ""  の中にいる事を表します。
 ##     I クォート $"" の中にいる事を表します。
 ##     B クォート \   の直後にいる事を表します。
+##     b ブレース展開の中にいる事を表します。
 ##
 ##     Note: shopt -s nocaseglob のため、フラグ文字は
 ##       大文字・小文字でも重複しないように定義する必要がある。
@@ -246,7 +247,11 @@ function ble/complete/action:word/initialize {
 }
 function ble/complete/action:word/complete {
   ble/complete/action/util/complete.close-quotation
-  ble/complete/action/util/complete.addtail ' '
+  if [[ $comps_flags == *b* ]]; then
+    ble/complete/action/util/complete.addtail ','
+  else
+    ble/complete/action/util/complete.addtail ' '
+  fi
 }
 function ble/complete/action:word/get-desc {
   [[ $DATA ]] && desc=$DATA
@@ -272,8 +277,7 @@ function ble/complete/action:file/complete {
     if [[ -d $CAND ]]; then
       ble/complete/action/util/complete.mark-directory
     else
-      ble/complete/action/util/complete.close-quotation
-      ble/complete/action/util/complete.addtail ' '
+      ble/complete/action:word/complete
     fi
   fi
 }
@@ -346,8 +350,7 @@ function ble/complete/action:progcomp/complete {
     if [[ -d $CAND ]]; then
       ble/complete/action/util/complete.mark-directory
     else
-      ble/complete/action/util/complete.close-quotation
-      ble/complete/action/util/complete.addtail ' '
+      ble/complete/action:word/complete
     fi
   fi
 
@@ -384,8 +387,7 @@ function ble/complete/action:command/complete {
       insert_flags=${insert_flags}n
     fi
   else
-    ble/complete/action/util/complete.close-quotation
-    ble/complete/action/util/complete.addtail ' '
+    ble/complete/action:word/complete
   fi
 }
 function ble/complete/action:command/init-menu-item {
@@ -1658,6 +1660,7 @@ function ble/complete/candidates/.pick-nearest-sources {
       if ((${simple_ibrace%:*})); then
         ble/syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
         comps_fixed=${simple_ibrace%:*}:$ret
+        comps_flags=${comps_flags}b
       fi
     fi
     [[ $COMPS =~ $rex_raw_paramx ]] && comps_flags=${comps_flags}p

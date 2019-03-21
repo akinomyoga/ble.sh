@@ -852,11 +852,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-21
-
-  * complete: ブレース展開の中ではファイル名の直後に ' ' ではなくて ',' を入れたい。
-    もしくは何も入れない。
-
 2019-03-19
 
   * complete: 実装されていない補完関連の rlvar は以下の通りである。
@@ -2246,7 +2241,8 @@ bash_tips
   - edit: render prompt immediately on newline `#D0991` cdb8acb `#D1003` 5780154
   - syntax: detect syntax errors of `CTX_CMDX1` immediately followed by terminating keywords `#D1001` 7ea02b7
   - complete: improve support of `bind 'completion-ignore-case on'` `#D1002` 25ebc55
-  - complete: preserve original path specifications on ambiguous completion `#D1014`
+  - complete: preserve original path specifications on ambiguous completion `#D1014` a39d1ac
+  - complete: append `,` instead of ` ` after completion in brace expansions `#D1015`
 
   バグ・問題修正
   - main: workaround `set -evx` `#D0930` 698517d
@@ -3126,6 +3122,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-21
+
+  * 2019-03-21 complete: ブレース展開の中ではファイル名の直後に ' ' ではなくて ',' を入れたい [#D1015]
+    もしくは何も入れない。
+    取り敢えず , を入れる事にした。これは簡単に実装できた。
 
   * complete: 曖昧補完であっても既存の部分が一致している場合には置換しなくて良いのでは [#D1014]
     例えば chat 上で ~/.in に対する補完で再現している。
