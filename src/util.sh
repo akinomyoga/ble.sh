@@ -308,36 +308,37 @@ function ble/array#insert-at {
 ## 関数 ble/array#insert-after arr needle elements...
 function ble/array#insert-after {
   local script='
-    local i'$1'=0 e'$1' a'$1'=
-    for e'$1' in "${'$1'[@]}"; do
-      ((i'$1'++))
-      [[ $e'$1' == "$2" ]] && a'$1'=i'$1' && break
+    local iARR=0 eARR aARR=
+    for eARR in "${ARR[@]}"; do
+      ((iARR++))
+      [[ $eARR == "$2" ]] && aARR=iARR && break
     done
-    [[ $a'$1' ]] && ble/array#insert-at "$1" "$a'$1'" "${@:3}"
-  '; builtin eval "$script"
+    [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
+  '; builtin eval "${script//ARR/$1}"
 }
 ## 関数 ble/array#insert-before arr needle elements...
 function ble/array#insert-before {
   local script='
-    local i'$1'=0 e'$1' a'$1'=
-    for e'$1' in "${'$1'[@]}"; do
-      [[ $e'$1' == "$2" ]] && a'$1'=i'$1' && break
-      ((i'$1'++))
+    local iARR=0 eARR aARR=
+    for eARR in "${ARR[@]}"; do
+      [[ $eARR == "$2" ]] && aARR=iARR && break
+      ((iARR++))
     done
-    [[ $a'$1' ]] && ble/array#insert-at "$1" "$a'$1'" "${@:3}"
-  '; builtin eval "$script"
+    [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
+  '; builtin eval "${script//ARR/$1}"
 }
 ## 関数 ble/array#remove arr element
 function ble/array#remove {
   local script='
-    local -a a'$1'=() e'$1'
-    for e'$1' in "${'$1'[@]}"; do
-      [[ $e'$1' != "$2" ]] && ble/array#push "a$1" "$e'$1'"
+    local -a aARR=() eARR
+    for eARR in "${ARR[@]}"; do
+      [[ $eARR != "$2" ]] && ble/array#push "a$1" "$eARR"
     done
-    '$1'=(${'$1'[@]})
-  '; builtin eval "$script"
+    ARR=(${ARR[@]})
+  '; builtin eval "${script//ARR/$1}"
 }
 ## 関数 ble/array#index arr needle
+##   @var[out] ret
 function ble/array#index {
   local script='
     local eARR iARR=0
@@ -349,6 +350,7 @@ function ble/array#index {
   '; builtin eval "${script//ARR/$1}"
 }
 ## 関数 ble/array#last-index arr needle
+##   @var[out] ret
 function ble/array#last-index {
   local script='
     local eARR iARR=${#ARR[@]}

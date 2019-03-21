@@ -1,4 +1,4 @@
-[Languages: **English** | [日本語](README-ja_JP.md)]
+[Languages: **English** | [日本語](README-ja_JP.md) (Japanese) ]
 # ble.sh
 
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts which replaces the default GNU Readline.
@@ -26,7 +26,7 @@ This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD li
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
 ## Usage
-**Generate `ble.sh` from source** (version ble-0.3 devel)
+**Generate `ble.sh` from source** (version ble-0.4 devel)
 
 To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
 The file `ble.sh` can be generated using the following commands.

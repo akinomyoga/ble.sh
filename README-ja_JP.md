@@ -1,4 +1,4 @@
-[Languages: [English](README.md) | **日本語**]
+[Languages: [English](README.md) (英語) | **日本語**]
 # ble.sh
 
 `ble.sh` (*Bash Line Editor*) はピュア Bash スクリプトで書かれたコマンドラインエディタで、標準の GNU Readline を置き換える形で動作します。
@@ -28,7 +28,7 @@
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
 ## 使い方
-**最新の git repository のソースから生成して使う場合** (バージョン ble-0.3)
+**最新の git repository のソースから生成して使う場合** (バージョン ble-0.4)
 
 `ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
 以下のコマンドで生成できます。
