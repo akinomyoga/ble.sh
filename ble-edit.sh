@@ -1701,6 +1701,7 @@ function .ble-edit/edit/attach/TRAPWINCH {
     if [[ $_ble_edit_dirty != '-1' && $_ble_stty_stat ]]; then
       _ble_line_text_cache_pos=()
       .ble-edit/stdout/on
+      builtin echo -n "$_ble_term_ed"
       .ble-edit-draw.redraw
       .ble-edit/stdout/off
     fi
