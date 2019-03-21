@@ -6758,7 +6758,7 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f paste_begin 'vi_imap/bracketed-paste'
 
   # charwise operations
-  ble-bind -f 'C-d'       'delete-region-or forward-char-or-exit'
+  ble-bind -f 'C-d'       'delete-region-or delete-forward-char-or-exit'
   ble-bind -f 'C-h'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
   ble-bind -f 'DEL'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
 
