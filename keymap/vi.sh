@@ -5883,6 +5883,20 @@ function ble/widget/vi-rlfunc/subst {
   fi
 }
 
+# forward-byte, backward-byte
+function ble/widget/vi-rlfunc/forward-byte {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  local index=$_ble_edit_ind
+  ble/widget/.locate-forward-byte "$ARG" || [[ $FLAG ]] || ble/widget/.bell
+  ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG"
+}
+function ble/widget/vi-rlfunc/backward-byte {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  local index=$_ble_edit_ind
+  ble/widget/.locate-forward-byte $((-ARG)) || [[ $FLAG ]] || ble/widget/.bell
+  ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG"
+}
+
 #------------------------------------------------------------------------------
 # Visual mode
 

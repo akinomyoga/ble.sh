@@ -2,7 +2,7 @@ abort                             bell
 accept-line                       vi-command/accept-single-line-or vi-command/forward-first-non-space
 alias-expand-line                 -
 arrow-key-prefix                  -
-backward-byte                     -
+backward-byte                     vi-rlfunc/backward-byte
 backward-char                     vi-command/backward-char
 backward-delete-char              -
 backward-kill-line                -
@@ -45,7 +45,7 @@ end-of-history                    -
 end-of-line                       vi-command/forward-eol
 exchange-point-and-mark           -
 forward-backward-delete-char      -
-forward-byte                      -
+forward-byte                      vi-rlfunc/forward-byte
 forward-char                      vi-command/forward-char
 forward-search-history            history-isearch-forward
 forward-word                      -

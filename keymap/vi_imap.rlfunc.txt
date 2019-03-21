@@ -2,7 +2,7 @@ abort                             bell
 accept-line                       vi_imap/accept-single-line-or vi_imap/newline
 alias-expand-line                 -
 arrow-key-prefix                  -
-backward-byte                     -
+backward-byte                     @nomarked backward-byte
 backward-char                     @nomarked backward-char
 backward-delete-char              vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char
 backward-kill-line                kill-backward-line
@@ -45,7 +45,7 @@ end-of-history                    history-end
 end-of-line                       @nomarked end-of-line
 exchange-point-and-mark           exchange-point-and-mark
 forward-backward-delete-char      delete-forward-backward-char
-forward-byte                      -
+forward-byte                      @nomarked forward-byte
 forward-char                      @nomarked forward-char
 forward-search-history            history-search-forward
 forward-word                      @nomarked forward-uword

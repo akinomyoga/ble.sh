@@ -2655,6 +2655,87 @@ function ble/widget/backward-char {
   ((arg==0)) && return
   ble/widget/.forward-char $((-arg)) || ble/widget/.bell
 }
+
+## 関数 ble/widget/.locate-forward-byte delta
+##   @param[in] delta
+##   @var[in,out] index
+function ble/widget/.locate-forward-byte {
+  local delta=$1
+  if ((delta==0)); then
+    return 0
+  elif ((delta>0)); then
+    local right=${_ble_edit_str:index:delta}
+    local rlen=${#right}
+    LC_ALL=C builtin eval 'local rsz=${#right}'
+    if ((delta>=rsz)); then
+      ((index+=rlen))
+      ((delta==rsz)); return
+    else
+      # 二分法
+      while ((delta&&rlen>=2)); do
+        local mlen=$((rlen/2))
+        local m=${right::mlen}
+        LC_ALL=C builtin eval 'local msz=${#m}'
+        if ((delta>=msz)); then
+          right=${right:mlen}
+          ((index+=mlen,
+            rlen-=mlen,
+            delta-=msz))
+          ((rlen>delta)) &&
+            right=${right::delta} rlen=$delta
+        else
+          right=$m rlen=$mlen
+        fi
+      done
+      ((delta&&rlen&&index++))
+      return 0
+    fi
+  elif ((delta<0)); then
+    ((delta=-delta))
+    local left=${_ble_edit_str::index}
+    local llen=${#left}
+    ((llen>delta)) && left=${left:llen-delta} llen=$delta
+    LC_ALL=C builtin eval 'local lsz=${#left}'
+    if ((delta>=lsz)); then
+      ((index-=llen))
+      ((delta==lsz)); return
+    else
+      # 二分法
+      while ((delta&&llen>=2)); do
+        local mlen=$((llen/2))
+        local m=${left:llen-mlen}
+        LC_ALL=C builtin eval 'local msz=${#m}'
+        if ((delta>=msz)); then
+          left=${left::llen-mlen}
+          ((index-=mlen,
+            llen-=mlen,
+            delta-=msz))
+          ((llen>delta)) &&
+            left=${left:llen-delta} llen=$delta
+        else
+          left=$m llen=$mlen
+        fi
+      done
+      ((delta&&llen&&index--))
+      return 0
+    fi
+  fi
+}
+function ble/widget/forward-byte {
+  local arg; ble-edit/content/get-arg 1
+  ((arg==0)) && return
+  local index=$_ble_edit_ind
+  ble/widget/.locate-forward-byte "$arg" || ble/widget/.bell
+  _ble_edit_ind=$index
+}
+function ble/widget/backward-byte {
+  local arg; ble-edit/content/get-arg 1
+  ((arg==0)) && return
+  local index=$_ble_edit_ind
+  ble/widget/.locate-forward-byte $((-arg)) || ble/widget/.bell
+  _ble_edit_ind=$index
+}
+
 function ble/widget/end-of-text {
   local arg; ble-edit/content/get-arg ''
   if [[ $arg ]]; then
