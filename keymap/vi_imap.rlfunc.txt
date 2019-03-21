@@ -12,7 +12,7 @@ beginning-of-history              history-beginning
 beginning-of-line                 @nomarked beginning-of-line
 bracketed-paste-begin             vi_imap/bracketed-paste
 call-last-kbd-macro               -
-capitalize-word                   -
+capitalize-word                   capitalize-eword
 character-search                  -
 character-search-backward         -
 clear-screen                      clear-screen
@@ -33,7 +33,7 @@ delete-horizontal-space           delete-horizontal-space
 digit-argument                    -
 display-shell-version             display-shell-version
 do-lowercase-version              -
-downcase-word                     -
+downcase-word                     downcase-eword
 dump-functions                    -
 dump-macros                       -
 dump-variables                    -
@@ -110,7 +110,7 @@ universal-argument                -
 unix-filename-rubout              -
 unix-line-discard                 kill-backward-line
 unix-word-rubout                  kill-backward-uword
-upcase-word                       -
+upcase-word                       upcase-eword
 vi-append-eol                     -
 vi-append-mode                    -
 vi-arg-digit                      -

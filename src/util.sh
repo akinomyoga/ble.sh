@@ -582,6 +582,26 @@ else
   }
 fi
 
+function ble/string#capitalize {
+  local tail="$*"
+
+  # prefix
+  local rex='^[^a-zA-Z0-9]*'
+  [[ $tail =~ $rex ]]
+  local out=$BASH_REMATCH
+  tail=${tail:${#BASH_REMATCH}}
+
+  # words
+  rex='^[a-zA-Z0-9]+[^a-zA-Z0-9]*'
+  while [[ $tail =~ $rex ]]; do
+    local rematch=$BASH_REMATCH
+    ble/string#toupper "${rematch::1}"; out=$out$ret
+    ble/string#tolower "${rematch:1}" ; out=$out$ret
+    tail=${tail:${#rematch}}
+  done
+  ret=$out$tail
+}
+
 ## 関数 ble/string#trim text...
 ##   @var[out] ret
 function ble/string#trim {

@@ -5883,19 +5883,31 @@ function ble/widget/vi-rlfunc/subst {
   fi
 }
 
-# forward-byte, backward-byte
-function ble/widget/vi-rlfunc/forward-byte {
+# rlfunc: forward-byte, backward-byte
+function ble/widget/vi-command/forward-byte {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local index=$_ble_edit_ind
   ble/widget/.locate-forward-byte "$ARG" || [[ $FLAG ]] || ble/widget/.bell
   ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG"
 }
-function ble/widget/vi-rlfunc/backward-byte {
+function ble/widget/vi-command/backward-byte {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   local index=$_ble_edit_ind
   ble/widget/.locate-forward-byte $((-ARG)) || [[ $FLAG ]] || ble/widget/.bell
   ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG"
 }
+
+# rlfunc: capitalize-word, downcase-word, upcase-word
+#%define 2
+function ble/widget/vi_nmap/capitalize-XWORD { ble/widget/filter-word.impl XWORD ble/string#capitalize; }
+function ble/widget/vi_nmap/downcase-XWORD   { ble/widget/filter-word.impl XWORD ble/string#tolower; }
+function ble/widget/vi_nmap/upcase-XWORD     { ble/widget/filter-word.impl XWORD ble/string#toupper; }
+#%end
+#%expand 2.r/XWORD/eword/
+#%expand 2.r/XWORD/cword/
+#%expand 2.r/XWORD/uword/
+#%expand 2.r/XWORD/sword/
+#%expand 2.r/XWORD/fword/
 
 #------------------------------------------------------------------------------
 # Visual mode
@@ -7580,7 +7592,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   #----------------------------------------------------------------------------
   # from ble-decode/keymap:safe/define
 
-  ble-bind -f 'M-l'       'redraw-line'
+  ble-bind -f 'C-M-l'     'redraw-line'
   ble-bind -f 'M-^'       'history-expand-line'
 
   #----------------------------------------------------------------------------
@@ -7610,6 +7622,9 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-B'       '@marked backward-cword'
   ble-bind -f 'M-S-f'     '@marked forward-cword'
   ble-bind -f 'M-S-b'     '@marked backward-cword'
+  ble-bind -f 'M-c'       'capitalize-eword'
+  ble-bind -f 'M-l'       'downcase-eword'
+  ble-bind -f 'M-u'       'upcase-eword'
 
   ble-bind -f 'M-m'       '@nomarked non-space-beginning-of-line'
   ble-bind -f 'S-M-m'     '@marked non-space-beginning-of-line'

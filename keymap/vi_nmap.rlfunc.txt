@@ -2,7 +2,7 @@ abort                             bell
 accept-line                       vi-command/accept-single-line-or vi-command/forward-first-non-space
 alias-expand-line                 -
 arrow-key-prefix                  -
-backward-byte                     vi-rlfunc/backward-byte
+backward-byte                     vi-command/backward-byte
 backward-char                     vi-command/backward-char
 backward-delete-char              -
 backward-kill-line                -
@@ -12,7 +12,7 @@ beginning-of-history              -
 beginning-of-line                 vi-command/beginning-of-line
 bracketed-paste-begin             vi-command/bracketed-paste
 call-last-kbd-macro               -
-capitalize-word                   -
+capitalize-word                   vi_nmap/capitalize-eword
 character-search                  -
 character-search-backward         -
 clear-screen                      clear-screen
@@ -33,7 +33,7 @@ delete-horizontal-space           -
 digit-argument                    -
 display-shell-version             -
 do-lowercase-version              -
-downcase-word                     -
+downcase-word                     vi_nmap/downcase-eword
 dump-functions                    -
 dump-macros                       -
 dump-variables                    -
@@ -45,7 +45,7 @@ end-of-history                    -
 end-of-line                       vi-command/forward-eol
 exchange-point-and-mark           -
 forward-backward-delete-char      -
-forward-byte                      vi-rlfunc/forward-byte
+forward-byte                      vi-command/forward-byte
 forward-char                      vi-command/forward-char
 forward-search-history            history-isearch-forward
 forward-word                      -
@@ -110,7 +110,7 @@ universal-argument                -
 unix-filename-rubout              -
 unix-line-discard                 -
 unix-word-rubout                  -
-upcase-word                       -
+upcase-word                       vi_nmap/upcase-eword
 vi-append-eol                     vi_nmap/append-mode-at-end-of-line
 vi-append-mode                    vi_nmap/append-mode
 vi-arg-digit                      vi-command/append-arg

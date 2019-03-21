@@ -1197,12 +1197,6 @@ bash_tips
     しかし、現在の枠組みではそもそも kill_ring に対応していない。
     従って、急には対応できない。取り敢えずの所は clear-arg しておく。
 
-  * keymap/emacs: 引き数: 単語関連
-
-    todo: ble/widget/単語関連
-
-    現状では取り敢えず clear-arg する。後で仕様の確定も含めて対応する。
-
 2017-12-03
 
   * keymap/vi (mark): BUG erasedup 等のときに履歴番号がずれるのではないか?
@@ -3137,6 +3131,21 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-21
+
+  * 2017-12-04 emacs: 引き数: 単語関連 [#D1020]
+
+    todo: ble/widget/単語関連
+    現状では取り敢えず clear-arg する。後で仕様の確定も含めて対応する。
+
+    2019-03-21 capitalize-word の類の実装と同時に実装する事にした。
+    負の引数を与えた時の振る舞いはどうするのか…→適当に実装した。
+    負の引数を与えた時の振る舞いの確認を行う。
+    forward/backward-word は動いている。
+    kill-forward-word も動いている。まあ問題ないだろう。
+    delete-forward-word も動いている。
+
+  * emacs: rlfunc capitalize-word, downcase-word, upcase-word [#D1019]
+    対応した。一緒に単語関係の widget の実装を整理した。
 
   * decode: rosaterm で起動すると "no previous search" というメッセージが表示される [#D1018]
     何か変な物を受信している?

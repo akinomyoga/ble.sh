@@ -3125,314 +3125,194 @@ function ble/widget/backward-line {
 # 
 # **** word location ****                                            @edit.word
 
-function ble/widget/.genword-setup-cword {
+function ble/widget/word.setup-eword {
+  WSET='a-zA-Z0-9'; WSEP="^$WSET"
+}
+function ble/widget/word.setup-cword {
   WSET='_a-zA-Z0-9'; WSEP="^$WSET"
 }
-function ble/widget/.genword-setup-uword {
+function ble/widget/word.setup-uword {
   WSEP="${IFS:-$' \t\n'}"; WSET="^$WSEP"
 }
-function ble/widget/.genword-setup-sword {
+function ble/widget/word.setup-sword {
   WSEP=$'|%WSEP%;()<> \t\n'; WSET="^$WSEP"
 }
-function ble/widget/.genword-setup-fword {
+function ble/widget/word.setup-fword {
   WSEP="/${IFS:-$' \t\n'}"; WSET="^$WSEP"
 }
 
-## 関数 ble/widget/.locate-backward-genword; a b c
-##   後方の単語を探索します。
+## 関数 ble/widget/word.skip-backward set
+## 関数 ble/widget/word.skip-forward set
+##   @var[in,out] x
+function ble/widget/word.skip-backward {
+  local set=$1 head=${_ble_edit_str::x}
+  head=${head##*[$set]}
+  ((x-=${#head}))
+}
+function ble/widget/word.skip-forward {
+  local set=$1 tail=${_ble_edit_str:x}
+  tail=${tail%%[$set]*}
+  ((x+=${#tail}))
+}
+## 関数 ble/widget/word.locate-backward x arg; a b c
+##   左側の単語の範囲を特定します。
 ##
 ##   |---|www|---|
 ##   a   b   c   x
 ##
-##   @var[in] WSET,WSEP
-##   @var[out] a,b,c
+##   @var[in] WSET WSEP
+##   @var[out] a b c
 ##
-function ble/widget/.locate-backward-genword {
-  local x=${1:-$_ble_edit_ind}
-  c=${_ble_edit_str::x}; c=${c##*[$WSET]}; c=$((x-${#c}))
-  b=${_ble_edit_str::c}; b=${b##*[$WSEP]}; b=$((c-${#b}))
-  a=${_ble_edit_str::b}; a=${a##*[$WSET]}; a=$((b-${#a}))
+function ble/widget/word.locate-backward {
+  local x=${1:-$_ble_edit_ind} arg=${2:-1}
+  while ((arg--)); do
+    ble/widget/word.skip-backward "$WSET"; c=$x
+    ble/widget/word.skip-backward "$WSEP"; b=$x
+  done
+  ble/widget/word.skip-backward "$WSET"; a=$x
 }
-## 関数 ble/widget/.locate-backward-genword; s t u
-##   前方の単語を探索します。
+## 関数 ble/widget/word.locate-forward x arg; s t u
+##   右側の単語の範囲を特定します。
 ##
 ##   |---|www|---|
 ##   x   s   t   u
 ##
-##   @var[in] WSET,WSEP
-##   @var[out] s,t,u
+##   @var[in] WSET WSEP
+##   @var[out] s t u
 ##
-function ble/widget/.locate-forward-genword {
-  local x=${1:-$_ble_edit_ind}
-  s=${_ble_edit_str:x}; s=${s%%[$WSET]*}; s=$((x+${#s}))
-  t=${_ble_edit_str:s}; t=${t%%[$WSEP]*}; t=$((s+${#t}))
-  u=${_ble_edit_str:t}; u=${u%%[$WSET]*}; u=$((t+${#u}))
-}
-## 関数 ble/widget/.locate-backward-genword; s t u
-##   現在位置の単語を探索します。
-##
-##   |---|wwww|---|
-##   r   s    t   u
-##        <- x --->
-##
-##   @var[in] WSET,WSEP
-##   @var[out] s,t,u
-##
-function ble/widget/.locate-current-genword {
-  local x=${1:-$_ble_edit_ind}
-
-  local a b c # <a> *<b>w*<c> *<x>
-  ble/widget/.locate-backward-genword
-
-  r=$a
-  ble/widget/.locate-forward-genword "$r"
+function ble/widget/word.locate-forward {
+  local x=${1:-$_ble_edit_ind} arg=${2:-1}
+  while ((arg--)); do
+    ble/widget/word.skip-forward "$WSET"; s=$x
+    ble/widget/word.skip-forward "$WSEP"; t=$x
+  done
+  ble/widget/word.skip-forward "$WSET"; u=$x
 }
 
-
-## 関数 ble/widget/.delete-forward-genword
-##   前方の unix word を削除します。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.delete-forward-genword {
-  # |---|www|---|
-  # x   s   t   u
-  local x=${1:-$_ble_edit_ind} s t u
-  ble/widget/.locate-forward-genword
-  if ((x!=t)); then
-    ble/widget/.delete-range "$x" "$t"
-  else
-    ble/widget/.bell
+## 関数 ble/widget/word.forward-range arg
+## 関数 ble/widget/word.backward-range arg
+## 関数 ble/widget/word.current-range arg
+##   @var[in,out] x y
+function ble/widget/word.forward-range {
+  local arg=$1; ((arg)) || arg=1
+  if ((arg<0)); then
+    ble/widget/word.backward-range $((-arg))
+    return
   fi
+  local s t u; ble/widget/word.locate-forward "$x" "$arg"; y=$t
 }
-## 関数 ble/widget/.delete-backward-genword
-##   後方の単語を削除します。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.delete-backward-genword {
-  # |---|www|---|
-  # a   b   c   x
-  local a b c x=${1:-$_ble_edit_ind}
-  ble/widget/.locate-backward-genword
-  if ((x>c&&(c=x),b!=c)); then
+function ble/widget/word.backward-range {
+  local arg=$1; ((arg)) || arg=1
+  if ((arg<0)); then
+    ble/widget/word.forward-range $((-arg))
+    return
+  fi
+  local a b c; ble/widget/word.locate-backward "$x" "$arg"; y=$b
+}
+function ble/widget/word.current-range {
+  local arg=$1; ((arg)) || arg=1
+  if ((arg>0)); then
+    local a b c; ble/widget/word.locate-backward "$x"
+    local s t u; ble/widget/word.locate-forward "$a" "$arg"
+    ((y=a,x<t&&(x=t)))
+  elif ((arg<0)); then
+    local s t u; ble/widget/word.locate-forward "$x"
+    local a b c; ble/widget/word.locate-backward "$u" $((-arg))
+    ((b<x&&(x=b),y=u))
+  fi
+  return 0
+}
+
+## 関数 ble/widget/word.impl type direction operator
+function ble/widget/word.impl {
+  local operator=$1 direction=$2 wtype=$3
+
+  local arg; ble-edit/content/get-arg 1
+  local WSET WSEP; ble/widget/word.setup-"$wtype"
+
+  local x=$_ble_edit_ind y=$_ble_edit_ind
+  ble/function#try ble/widget/word."$direction"-range "$arg"
+  if ((x==y)); then
+    ble/widget/.bell
+    return 1
+  fi
+
+  case $operator in
+  (goto) _ble_edit_ind=$y ;;
+
+  (delete)
     # keymap/vi.sh (white list に登録されている編集関数)
-    [[ $_ble_decode_keymap == vi_imap ]] && ble/keymap:vi/undo/add more
+    [[ $_ble_decode_keymap == vi_imap && $direction == backward ]] &&
+      ble/keymap:vi/undo/add more
 
-    ble/widget/.delete-range "$b" "$c"
+    ble/widget/.delete-range "$x" "$y"
 
     # keymap/vi.sh (white list に登録されている編集関数)
-    [[ $_ble_decode_keymap == vi_imap ]] && ble/keymap:vi/undo/add more
+    [[ $_ble_decode_keymap == vi_imap && $direction == backward ]] &&
+      ble/keymap:vi/undo/add more ;;
+
+  (kill)   ble/widget/.kill-range "$x" "$y" ;;
+  (copy)   ble/widget/.copy-range "$x" "$y" ;;
+  (*)      ble/widget/.bell; return 1 ;;
+  esac
+}
+
+## 関数 ble/widget/filter-word.impl xword filter
+## keymap: safe vi_nmap
+function ble/widget/filter-word.impl {
+  local xword=$1 filter=$2
+
+  # determine arg
+  if [[ $_ble_decode_keymap == vi_nmap ]]; then
+    local ARG FLAG REG; ble/keymap:vi/get-arg 1
+    local arg=$ARG
   else
-    ble/widget/.bell
+    local arg; ble-edit/content/get-arg 1
   fi
-}
-## 関数 ble/widget/.delete-genword
-##   現在位置の単語を削除します。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.delete-genword {
-  local x=${1:-$_ble_edit_ind} r s t u
-  ble/widget/.locate-current-genword "$x"
-  if ((x>t&&(t=x),r!=t)); then
-    ble/widget/.delete-range "$r" "$t"
-  else
-    ble/widget/.bell
-  fi
-}
-## 関数 ble/widget/.kill-forward-genword
-##   前方の単語を切り取ります。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.kill-forward-genword {
-  # <x> *<s>w*<t> *<u>
-  local x=${1:-$_ble_edit_ind} s t u
-  ble/widget/.locate-forward-genword
-  if ((x!=t)); then
-    ble/widget/.kill-range "$x" "$t"
-  else
-    ble/widget/.bell
-  fi
-}
-## 関数 ble/widget/.kill-backward-genword
-##   後方の単語を切り取ります。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.kill-backward-genword {
-  # <a> *<b>w*<c> *<x>
-  local a b c x=${1:-$_ble_edit_ind}
-  ble/widget/.locate-backward-genword
-  if ((x>c&&(c=x),b!=c)); then
-    ble/widget/.kill-range "$b" "$c"
-  else
-    ble/widget/.bell
-  fi
-}
-## 関数 ble/widget/.kill-genword
-##   現在位置の単語を切り取ります。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.kill-genword {
-  local x=${1:-$_ble_edit_ind} r s t u
-  ble/widget/.locate-current-genword "$x"
-  if ((x>t&&(t=x),r!=t)); then
-    ble/widget/.kill-range "$r" "$t"
-  else
-    ble/widget/.bell
-  fi
-}
-## 関数 ble/widget/.copy-forward-genword
-##   前方の単語を転写します。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.copy-forward-genword {
-  # <x> *<s>w*<t> *<u>
-  local x=${1:-$_ble_edit_ind} s t u
-  ble/widget/.locate-forward-genword
-  ble/widget/.copy-range "$x" "$t"
-}
-## 関数 ble/widget/.copy-backward-genword
-##   後方の単語を転写します。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.copy-backward-genword {
-  # <a> *<b>w*<c> *<x>
-  local a b c x=${1:-$_ble_edit_ind}
-  ble/widget/.locate-backward-genword
-  ble/widget/.copy-range "$b" $((c>x?c:x))
-}
-## 関数 ble/widget/.copy-genword
-##   現在位置の単語を転写します。
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.copy-genword {
-  local x=${1:-$_ble_edit_ind} r s t u
-  ble/widget/.locate-current-genword "$x"
-  ble/widget/.copy-range "$r" $((t>x?t:x))
-}
-## 関数 ble/widget/.forward-genword
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.forward-genword {
-  local x=${1:-$_ble_edit_ind} s t u
-  ble/widget/.locate-forward-genword "$x"
+
+  local WSET WSEP; ble/widget/word.setup-"$xword"
+  local x=$_ble_edit_ind s t u
+  ble/widget/word.locate-forward "$x" "$arg"
   if ((x==t)); then
     ble/widget/.bell
-  else
-    _ble_edit_ind=$t
+    [[ $_ble_decode_keymap == vi_nmap ]] &&
+      ble/keymap:vi/adjust-command-mode
+    return 1
   fi
-}
-## 関数 ble/widget/.backward-genword
-##
-##   @var[in] WSET,WSEP
-##
-function ble/widget/.backward-genword {
-  local a b c x=${1:-$_ble_edit_ind}
-  ble/widget/.locate-backward-genword "$x"
-  if ((x==b)); then
-    ble/widget/.bell
-  else
-    _ble_edit_ind=$b
+
+  local word=${_ble_edit_str:x:t-x}
+  "$filter" "$word"
+  [[ $word != $ret ]] &&
+    ble-edit/content/replace "$x" "$t" "$ret"
+    
+  if [[ $_ble_decode_keymap == vi_nmap ]]; then
+    ble/keymap:vi/mark/set-previous-edit-area "$x" "$t"
+    ble/keymap:vi/repeat/record
+    ble/keymap:vi/adjust-command-mode
   fi
+  _ble_edit_ind=$t
 }
 
-# 
-#%m kill-xword
-
-# generic word
-
-## 関数 ble/widget/delete-forward-xword
-##   前方の generic word を削除します。
-function ble/widget/delete-forward-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.delete-forward-genword "$@"
-}
-## 関数 ble/widget/delete-backward-xword
-##   後方の generic word を削除します。
-function ble/widget/delete-backward-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.delete-backward-genword "$@"
-}
-## 関数 ble/widget/delete-xword
-##   現在位置の generic word を削除します。
-function ble/widget/delete-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.delete-genword "$@"
-}
-## 関数 ble/widget/kill-forward-xword
-##   前方の generic word を切り取ります。
-function ble/widget/kill-forward-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.kill-forward-genword "$@"
-}
-## 関数 ble/widget/kill-backward-xword
-##   後方の generic word を切り取ります。
-function ble/widget/kill-backward-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.kill-backward-genword "$@"
-}
-## 関数 ble/widget/kill-xword
-##   現在位置の generic word を切り取ります。
-function ble/widget/kill-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.kill-genword "$@"
-}
-## 関数 ble/widget/copy-forward-xword
-##   前方の generic word を転写します。
-function ble/widget/copy-forward-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.copy-forward-genword "$@"
-}
-## 関数 ble/widget/copy-backward-xword
-##   後方の generic word を転写します。
-function ble/widget/copy-backward-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.copy-backward-genword "$@"
-}
-## 関数 ble/widget/copy-xword
-##   現在位置の generic word を転写します。
-function ble/widget/copy-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.copy-genword "$@"
-}
+#%define 2
+function ble/widget/forward-XWORD  { ble/widget/word.impl goto forward  XWORD; }
+function ble/widget/backward-XWORD { ble/widget/word.impl goto backward XWORD; }
+#%define 1
+function ble/widget/OPERATOR-forward-XWORD  { ble/widget/word.impl OPERATOR forward  XWORD; }
+function ble/widget/OPERATOR-backward-XWORD { ble/widget/word.impl OPERATOR backward XWORD; }
+function ble/widget/OPERATOR-XWORD          { ble/widget/word.impl OPERATOR current  XWORD; }
 #%end
-#%x kill-xword .r/generic word/unix word/  .r/xword/cword/
-#%x kill-xword .r/generic word/c word/     .r/xword/uword/
-#%x kill-xword .r/generic word/shell word/ .r/xword/sword/
-#%x kill-xword .r/generic word/filename/   .r/xword/fword/
-
-#%m forward-xword (
-function ble/widget/forward-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.forward-genword "$@"
-}
-function ble/widget/backward-xword {
-  ble-edit/content/clear-arg
-  local WSET WSEP; ble/widget/.genword-setup-xword
-  ble/widget/.backward-genword "$@"
-}
-#%)
-#%x forward-xword .r/generic word/unix word/  .r/xword/cword/
-#%x forward-xword .r/generic word/c word/     .r/xword/uword/
-#%x forward-xword .r/generic word/shell word/ .r/xword/sword/
+#%expand 1.r/OPERATOR/delete/
+#%expand 1.r/OPERATOR/kill/
+#%expand 1.r/OPERATOR/copy/
+function ble/widget/capitalize-XWORD { ble/widget/filter-word.impl XWORD ble/string#capitalize; }
+function ble/widget/downcase-XWORD   { ble/widget/filter-word.impl XWORD ble/string#tolower; }
+function ble/widget/upcase-XWORD     { ble/widget/filter-word.impl XWORD ble/string#toupper; }
+#%end
+#%expand 2.r/XWORD/eword/
+#%expand 2.r/XWORD/cword/
+#%expand 2.r/XWORD/uword/
+#%expand 2.r/XWORD/sword/
+#%expand 2.r/XWORD/fword/
 
 #------------------------------------------------------------------------------
 # **** ble-edit/exec ****                                            @edit.exec
@@ -6354,6 +6234,10 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-S-f'     '@marked forward-cword'
   ble-decode/keymap:safe/.bind 'M-S-b'     '@marked backward-cword'
 
+  ble-decode/keymap:safe/.bind 'M-c'       'capitalize-eword'
+  ble-decode/keymap:safe/.bind 'M-l'       'downcase-eword'
+  ble-decode/keymap:safe/.bind 'M-u'       'upcase-eword'
+
   # linewise operations
   ble-decode/keymap:safe/.bind 'C-a'       '@nomarked beginning-of-line'
   ble-decode/keymap:safe/.bind 'C-e'       '@nomarked end-of-line'
@@ -6459,7 +6343,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'C-M-g'    bell
 
   ble-bind -f 'C-l'      clear-screen
-  ble-bind -f 'M-l'      redraw-line
+  ble-bind -f 'C-M-l'    redraw-line
 
   ble-bind -f 'f1'       command-help
   ble-bind -f 'C-x C-v'  display-shell-version
