@@ -856,13 +856,6 @@ bash_tips
 
   * emacs: readline 関数を少しずつ実装して行く事にする
 
-  * rosaterm で起動すると "no previous search" というメッセージが表示される。
-    何か変な物を受信している?
-
-    調べると vi mode の search.impl で n または N の時に表示される。
-    もしくは / ? # * でも表示される事がある?
-    何れにしても最初に何か変な物を受信しているのが原因である事には違いない。
-
 2019-03-19
 
   * complete: 実装されていない補完関連の rlvar は以下の通りである。
@@ -2191,10 +2184,13 @@ bash_tips
 2019-03-21- (#D1015...) df4feaa...
 
   New features
-  - emacs: support widgets `forward-byte` and `backward-byte` `#D1017`
+  - emacs: support widgets `forward-byte` and `backward-byte` `#D1017` b2951ef
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
+
+  Fixes
+  - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018`
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3141,6 +3137,18 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-21
+
+  * decode: rosaterm で起動すると "no previous search" というメッセージが表示される [#D1018]
+    何か変な物を受信している?
+
+    調べると vi mode の search.impl で n または N の時に表示される。
+    もしくは / ? # * でも表示される事がある?
+    何れにしても最初に何か変な物を受信しているのが原因である事には違いない。
+    うーん。やはり ble-decode/.hook 経由で呼び出されている。
+
+    うーん。調べてみるとなんと rosaterm は CPR を "CSI Pn ; Pn n" で返す様だ。
+    むう。因みに n は private sequence という訳でもない。というか DSR である。
+    これは仕方がないので対策する事にした。
 
   * emacs: rlfunc forward-byte, backward-byte [#D1017]
 
