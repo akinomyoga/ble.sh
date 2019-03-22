@@ -229,11 +229,6 @@ function ble/syntax/tree-enumerate/.initialize {
 ## 関数 ble/syntax/tree-enumerate/.impl command...
 ##   @param[in] command...
 ##     各ノードについて呼び出すコマンドを指定します。
-##     コマンドは以下のシェル変数を入力・出力とします。
-##     @var[in]     wtype,wbegin,wlen,attr,tchild
-##     @var[in,out] tprev
-##       列挙を中断する時は ble/syntax/tree-enumerate-break
-##       を呼び出す事によって、tprev=-1 を設定します。
 ##   @var[in] iN
 ##   @var[in] root,i,nofs
 function ble/syntax/tree-enumerate/.impl {
@@ -275,8 +270,19 @@ function ble/syntax/tree-enumerate-break () ((tprev=-1))
 ##   現在の解析状態 _ble_syntax_tree に基いて、
 ##   指定したコマンド command... を
 ##   トップレベルの各ノードに対して末尾にあるノードから順に呼び出します。
+##
 ## @param[in] command...
 ##   呼び出すコマンドを指定します。
+##
+##   コマンドは以下のシェル変数を入力・出力とします。
+##   @var[in]     wtype wbegin wlen attr tchild
+##   @var[in,out] tprev
+##     列挙を中断する時は ble/syntax/tree-enumerate-break
+##     を呼び出す事によって、tprev=-1 を設定します。
+##
+##   内部で ble/syntax/tree-enumerate-children を呼び出すと、
+##   更に入れ子になった単語について処理を実行する事ができます。
+##
 ## @var[in] iN
 ##   解析の起点を指定します。_ble_syntax_stat が設定されている必要があります。
 ##   指定を省略した場合は _ble_syntax_stat の末尾が使用されます。
@@ -840,7 +846,7 @@ _ble_syntax_bash_ctx_names=(
 ##   @param[in] ctx
 ##   @var[out] ret
 function ble/syntax/ctx#get-name {
-  ret=${_ble_syntax_bash_ctx_names[$1]}
+  ret=${_ble_syntax_bash_ctx_names[$1]#_ble_ctx_}
 }
 
 # @var _BLE_SYNTAX_FCTX[]
@@ -2716,13 +2722,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
       return 0
     fi
 
-    local word_expanded=$word
-    local type; ble/util/type type "$word"
-    if [[ $type == alias ]]; then
-      local data; ble/util/assign data 'LANG=C alias "$word"' &>/dev/null
-      [[ $data == 'alias '*=* ]] &&
-        eval "word_expanded=${data#alias *=}"
-    fi
+    ble/util/expand-alias "$word"; local word_expanded=$ret
 
     local processed=
     case "$word_expanded" in

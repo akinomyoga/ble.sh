@@ -852,6 +852,10 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-03-22
+
+  * isearch: どうも編集前の文字列に対して一致している気がする
+
 2019-03-21
 
   * emacs: readline 関数を少しずつ実装して行く事にする
@@ -2148,13 +2152,6 @@ bash_tips
 
   * bashfc
 
-2013-06-04
-
-  * 説明書:
-    + 問題点: 既存の bind を上書きする事
-    + 問題点: 既存の trap を上書きする事
-    →これらは説明書にその様に書いておけば問題ない
-
 2013-06-01 以前
 
   * ble-decode
@@ -2179,12 +2176,13 @@ bash_tips
 
   New features
   - emacs: support widgets `forward-byte` and `backward-byte` `#D1017` b2951ef
-  - emacs: support arguments of word wise operations `#D1020` 8c46dce
-  - emacs: support widgets `{capitalize,downcase,upcase}-xword` `#D1019` 8c46dce
+  - emacs: support arguments of word wise operations `#D1020` 719092c
+  - emacs: support widgets `{capitalize,downcase,upcase}-xword` `#D1019` 719092c
+  - emacs: support widget `alias-expand-line` `#D1024`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
-  - edit: the widgets `{kill,copy,delete}-region-or` now receives widgets as arguments `#D1021`
+  - edit: the widgets `{kill,copy,delete}-region-or` now receives widgets as arguments `#D1021` bbbd155
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3135,6 +3133,42 @@ bash_tips
 
 2019-03-22
 
+  * edit: alias-expand-line 実装 [#D1024]
+
+    これを実装するにはどうしたら良いだろうか。
+    知る限りをこれを実行する様な機能は bash では提供されていない。
+
+    a 従って自前で実装するなどしなければならない。
+
+    b 或いは readline に食わせて処理させる事など可能だろうか。
+      例えば DA2 応答等を無理やり返答させて、続きを処理させるなど。
+      つまり一旦抜けてから次の端末からの送信メッセージで
+      alias-expand-line を実行させて、
+      更にその次の文字を受信した時に続きの処理を実行する事にする。
+      然し、端末が必ずしも応答を返してくれるとは限らない。
+
+      やはり汚い事を実行するよりは自前で実装するのが良い気がする。
+      環境に依存せず動くので安心である。
+
+    自前実装する事にする。ble_debug=1 で観察した限りだと、
+    コマンド名に相当する部分は必ず CMDI の単語になっている。
+    キーワードや組み込みコマンド等の区別はない。
+    どうも [[ ですら CMDI という事になっている。
+    と、ここで alias '[[' を定義したら ble.sh が動かなくなるという問題…。直した #D1023
+
+    CMDI なる全ての単語について alias を確認すれば良いという事だろうか。
+    結局 tree-enumerate を用いて実装する事にした。
+    何故ならば直接 _ble_syntax_tree を弄ろうかとも思ったが、
+    そうすると _ble_syntax_tree の仕様変更があった時に問題になる。
+
+    実際に回してみるとちゃんと動く。内部に単語がある場合には alias 展開は試さなくて良いだろう。
+    alias があるかどうかの確認は cmdtype で実装している筈。
+    と思ったが cmdtype で確認しているのは type -t を用いて alias かどうかを確認しているだけだった。
+    alias の展開を実行しているのは ble/syntax:bash/ctx-command/check-word-end であった。
+    展開している部分を ble/util/expand-alias として分離する。
+
+    動いている。実装してみれば意外と呆気ない物である。
+
   * edit: alias '[['=hello とすると [[ と入力した時点でエラーメッセージが大量に出る [#D1023]
     と思ったら、どうやら ble.sh の処理に使っている [[ が全て hello に置換されている様だ。
     これは凶悪である。unset -f をやっているのと同じ箇所で unalias も実行しておくべきであろう。
@@ -3158,6 +3192,9 @@ bash_tips
     forward/backward-word は動いている。
     kill-forward-word も動いている。まあ問題ないだろう。
     delete-forward-word も動いている。
+
+    x fixed: どうも forward-word が変である。
+      恐らく一番最後に修正した skip-forward,backward が問題なのではないか。
 
   * emacs: rlfunc capitalize-word, downcase-word, upcase-word [#D1019]
     対応した。一緒に単語関係の widget の実装を整理した。

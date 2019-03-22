@@ -5909,6 +5909,15 @@ function ble/widget/vi_nmap/upcase-XWORD     { ble/widget/filter-word.impl XWORD
 #%expand 2.r/XWORD/sword/
 #%expand 2.r/XWORD/fword/
 
+function ble/widget/vi_nmap/@edit {
+  ble/keymap:vi/clear-arg
+  ble/keymap:vi/repeat/record
+  ble/keymap:vi/mark/start-edit-area
+  ble/widget/"$@"
+  ble/keymap:vi/mark/end-edit-area
+  ble/keymap:vi/adjust-command-mode
+}
+
 #------------------------------------------------------------------------------
 # Visual mode
 

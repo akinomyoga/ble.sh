@@ -1,6 +1,6 @@
 abort                             bell
 accept-line                       vi-command/accept-single-line-or vi-command/forward-first-non-space
-alias-expand-line                 -
+alias-expand-line                 vi_nmap/@edit alias-expand-line
 arrow-key-prefix                  -
 backward-byte                     vi-command/backward-byte
 backward-char                     vi-command/backward-char
@@ -52,8 +52,8 @@ forward-word                      -
 glob-complete-word                -
 glob-expand-word                  -
 glob-list-expansions              -
-history-and-alias-expand-line     -
-history-expand-line               -
+history-and-alias-expand-line     vi_nmap/@edit history-and-alias-expand-line
+history-expand-line               vi_nmap/@edit history-expand-line
 history-search-backward           -
 history-search-forward            -
 history-substring-search-backward -

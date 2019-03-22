@@ -3116,6 +3116,12 @@ function ble/widget/backward-line {
 # 
 # **** word location ****                                            @edit.word
 
+## 関数 ble/widget/word.setup-eword
+## 関数 ble/widget/word.setup-cword
+## 関数 ble/widget/word.setup-uword
+## 関数 ble/widget/word.setup-sword
+## 関数 ble/widget/word.setup-fword
+##   @var[out] WSET WSEP
 function ble/widget/word.setup-eword {
   WSET='a-zA-Z0-9'; WSEP="^$WSET"
 }
@@ -3145,14 +3151,15 @@ function ble/widget/word.skip-forward {
   tail=${tail%%[$set]*}
   ((x+=${#tail}))
 }
-## 関数 ble/widget/word.locate-backward x arg; a b c
+
+## 関数 ble/widget/word.locate-backward x arg
 ##   左側の単語の範囲を特定します。
+##   @param[in] x arg
+##   @var[in] WSET WSEP
+##   @var[out] a b c
 ##
 ##   |---|www|---|
 ##   a   b   c   x
-##
-##   @var[in] WSET WSEP
-##   @var[out] a b c
 ##
 function ble/widget/word.locate-backward {
   local x=${1:-$_ble_edit_ind} arg=${2:-1}
@@ -3162,14 +3169,14 @@ function ble/widget/word.locate-backward {
   done
   ble/widget/word.skip-backward "$WSET"; a=$x
 }
-## 関数 ble/widget/word.locate-forward x arg; s t u
+## 関数 ble/widget/word.locate-forward x arg
 ##   右側の単語の範囲を特定します。
+##   @param[in] x arg
+##   @var[in] WSET WSEP
+##   @var[out] s t u
 ##
 ##   |---|www|---|
 ##   x   s   t   u
-##
-##   @var[in] WSET WSEP
-##   @var[out] s t u
 ##
 function ble/widget/word.locate-forward {
   local x=${1:-$_ble_edit_ind} arg=${2:-1}
@@ -3275,7 +3282,7 @@ function ble/widget/filter-word.impl {
   "$filter" "$word"
   [[ $word != $ret ]] &&
     ble-edit/content/replace "$x" "$t" "$ret"
-    
+
   if [[ $_ble_decode_keymap == vi_nmap ]]; then
     ble/keymap:vi/mark/set-previous-edit-area "$x" "$t"
     ble/keymap:vi/repeat/record
@@ -4118,6 +4125,26 @@ function ble/widget/accept-single-line-or-newline {
   ble/widget/accept-single-line-or newline
 }
 
+function ble/widget/alias-expand-line/1 {
+  if ((tchild>=0)); then
+    ble/syntax/tree-enumerate-children \
+      ble/widget/alias-expand-line/1
+  elif [[ $wtype && ! ${wtype//[0-9]} ]] && ((wtype==_ble_ctx_CMDI)); then
+    local word=${_ble_edit_str:wbegin:wlen}
+    ble/util/expand-alias "$word"
+    [[ $word == "$ret" ]] && return
+    changed=1
+    ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$ret" 1
+  fi
+}
+function ble/widget/alias-expand-line {
+  ble-edit/content/clear-arg
+  ble-edit/content/update-syntax
+  local iN= changed=
+  ble/syntax/tree-enumerate ble/widget/alias-expand-line/1
+  [[ $changed ]] && _ble_edit_mark_active=
+}
+
 # 
 #------------------------------------------------------------------------------
 # **** ble-edit/undo ****                                            @edit.undo
@@ -4449,7 +4476,7 @@ if ((_ble_bash>=40000)); then
         printf("") > INDEX_FILE; # create file
         if (opt_cygwin) print "_ble_edit_history=(";
       }
-  
+
       function flush_line() {
         if (n < 1) return;
 
@@ -4474,13 +4501,13 @@ if ((_ble_bash>=40000)); then
         n = 0;
         t = "";
       }
-  
+
       {
         if (sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/, "", $0))
           flush_line();
         t = ++n == 1 ? $0 : t "\n" $0;
       }
-  
+
       END {
         flush_line();
         if (opt_cygwin) print ")";
@@ -4492,11 +4519,11 @@ if ((_ble_bash>=40000)); then
   function ble-edit/history/load {
     [[ $_ble_edit_history_prefix ]] && return
     [[ $_ble_edit_history_loaded ]] && return
-  
+
     local opt_async=; [[ $1 == async ]] && opt_async=1
     local opt_info=; ((_ble_edit_attached)) && [[ ! $opt_async ]] && opt_info=1
     local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
-  
+
     local history_tmpfile=$_ble_base_run/$$.edit-history-load
     local history_indfile=$_ble_base_run/$$.edit-history-load-multiline-index
     while :; do
@@ -4548,7 +4575,7 @@ if ((_ble_bash>=40000)); then
             ble/util/mapfile _ble_edit_history < "$history_tmpfile"
           fi
           ((_ble_edit_history_loading++)) ;;
-  
+
       # 47ms _ble_edit_history_edit 初期化 (37000項目)
       (4) if [[ $opt_cygwin ]]; then
             # 504ms Cygwin (99000項目)
@@ -4557,7 +4584,7 @@ if ((_ble_bash>=40000)); then
             ble/util/mapfile _ble_edit_history_edit < "$history_tmpfile"
           fi
           ((_ble_edit_history_loading++)) ;;
-  
+
       # 11ms 複数行履歴修正 (107/37000項目)
       (5) local -a indices_to_fix
           ble/util/mapfile indices_to_fix < "$history_indfile"
@@ -4583,10 +4610,10 @@ if ((_ble_bash>=40000)); then
           [[ $opt_info ]] && ble-edit/info/immediate-clear
           ((_ble_edit_history_loading++))
           return 0 ;;
-  
+
       (*) return 1 ;;
       esac
-  
+
       [[ $opt_async ]] && ble-decode/has-input && return 148
     done
   }
@@ -4888,6 +4915,10 @@ function ble/widget/history-expand-line {
   _ble_edit_mark=0
   _ble_edit_mark_active=
   return 0
+}
+function ble/widget/history-and-alias-expand-line {
+  ble/widget/history-expand-line
+  ble/widget/alias-expand-line
 }
 ## 編集関数 history-expand-backward-line
 ##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
@@ -5920,7 +5951,7 @@ function ble-edit/nsearch/.search.fib {
   local nstack=${#_ble_edit_nsearch_stack[@]}
   if ((nstack>=2)); then
     local record_type=${_ble_edit_nsearch_stack[nstack-1]%%,*}
-    if 
+    if
       if [[ $opt_forward ]]; then
         [[ $record_type == backward ]]
       else

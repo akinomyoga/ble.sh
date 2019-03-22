@@ -1,6 +1,6 @@
 abort                             bell
 accept-line                       accept-line
-alias-expand-line                 -
+alias-expand-line                 alias-expand-line
 arrow-key-prefix                  -
 backward-byte                     @nomarked backward-byte
 backward-char                     @nomarked backward-char
@@ -39,7 +39,7 @@ dump-macros                       -
 dump-variables                    -
 dynamic-complete-history          -
 edit-and-execute-command          -
-emacs-editing-mode                -
+emacs-editing-mode                nop
 end-kbd-macro                     -
 end-of-history                    history-end
 end-of-line                       end-of-line
@@ -52,7 +52,7 @@ forward-word                      @nomarked forward-cword
 glob-complete-word                complete context=glob
 glob-expand-word                  complete context=glob:insert-all
 glob-list-expansions              complete context=glob:show_menu
-history-and-alias-expand-line     -
+history-and-alias-expand-line     history-and-alias-expand-line
 history-expand-line               history-expand-line
 history-search-backward           history-search-backward
 history-search-forward            history-search-forward

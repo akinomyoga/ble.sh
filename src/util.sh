@@ -885,6 +885,16 @@ function ble/util/type {
   ble/util/assign "$1" 'builtin type -t -- "$3" 2>/dev/null' "$2"
   builtin eval "$1=\"\${$1%$_ble_term_nl}\""
 }
+## 関数 ble/util/expand-alias word
+##   @var[out] ret
+function ble/util/expand-alias {
+  ret=$1
+  local type; ble/util/type type "$ret"
+  if [[ $type == alias ]]; then
+    local data; ble/util/assign data 'LANG=C alias "$ret"' &>/dev/null
+    [[ $data == 'alias '*=* ]] && eval "ret=${data#alias *=}"
+  fi
+}
 
 if ((_ble_bash>=40000)); then
   function ble/util/is-stdin-ready { IFS= LC_ALL=C builtin read -t 0; } &>/dev/null
