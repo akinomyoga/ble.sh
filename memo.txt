@@ -854,7 +854,24 @@ bash_tips
 
 2019-03-22
 
-  * isearch: どうも編集前の文字列に対して一致している気がする
+  * menu-filter の使い心地が微妙なのはもしかして
+    menu-complete を実行中に絞り込みができないからなのではないか。
+    現在は menu-complete を実行している途中に入力をするとその場で確定してしまう。
+
+    では bash の振る舞いはどうなっているだろうか。
+    確認してみた所、bash の menu-complete はもうその場所に挿入してしまう。
+    そして文字を入力すれば続きに挿入される事になる。
+
+    現在の ble.sh の振る舞いはどうだろうか。
+    その場で入力すると addtail 等の処理をせずにいきなり続きから入力されてしまう。
+    少なくとも addtail ぐらいはするべきなのではないか。
+    また、絞り込みを実行しても良いのではないかという気もする。
+    然し、それでも何か違う様な気がする。
+
+    絞り込みの入力欄と現在選択されている内容というのは別に一致している必要はない。
+
+  * 実は menu の枠組みは他に流用できるのではないだろうか。
+    補完とは切り離して利用できる様になると便利である。
 
 2019-03-21
 
@@ -2178,7 +2195,7 @@ bash_tips
   - emacs: support widgets `forward-byte` and `backward-byte` `#D1017` b2951ef
   - emacs: support arguments of word wise operations `#D1020` 719092c
   - emacs: support widgets `{capitalize,downcase,upcase}-xword` `#D1019` 719092c
-  - emacs: support widget `alias-expand-line` `#D1024`
+  - emacs: support widgets `alias-expand-line` and `history-and-alias-expand-line` `#D1024` fdaf579
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2186,6 +2203,7 @@ bash_tips
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
+  - isearch: fix a bug to match with the old content of the current line `#D1025`
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3130,6 +3148,18 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-03-23
+
+  * isearch: どうも編集前の文字列に対して一致している気がする [#D1025]
+    と思ったがそうでもないようだ。
+    と思ったら履歴を移動した先で削除を行って、
+    その場で検索を開始するとその場で一致している気がする。
+
+    うーん。現在の項目で何故一致する事ができるのか…。
+
+    分かった append になっていると現在の項目から next-history.fib が始まる。
+    そして現在の項目は未だ edit に格納されていない。
 
 2019-03-22
 

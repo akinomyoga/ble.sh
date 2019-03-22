@@ -5555,7 +5555,12 @@ function ble-edit/isearch/.next.fib {
     # 現在行の別の位置での一致
     local needle=${2-$_ble_edit_isearch_str}
     local beg= end= search_opts=$_ble_edit_isearch_dir
-    [[ :$opts: == *:append:* ]] && search_opts=$search_opts:extend
+    if [[ :$opts: == *:append:* ]]; then
+      search_opts=$search_opts:extend
+      # Note: 現在の項目はここで処理するので
+      #   .next-history.fib には append は指定しない #D1025
+      ble/path#remove opts append
+    fi
     if [[ $needle ]] && ble-edit/isearch/search "$needle" "$search_opts"; then
       local ind; ble-edit/history/get-index -v ind
       ble-edit/isearch/.goto-match.fib "$ind" "$beg" "$end" "$needle"

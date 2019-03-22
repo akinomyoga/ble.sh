@@ -307,58 +307,58 @@ function ble/array#insert-at {
 }
 ## 関数 ble/array#insert-after arr needle elements...
 function ble/array#insert-after {
-  local script='
+  local _ble_local_script='
     local iARR=0 eARR aARR=
     for eARR in "${ARR[@]}"; do
       ((iARR++))
       [[ $eARR == "$2" ]] && aARR=iARR && break
     done
     [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
-  '; builtin eval "${script//ARR/$1}"
+  '; builtin eval "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#insert-before arr needle elements...
 function ble/array#insert-before {
-  local script='
+  local _ble_local_script='
     local iARR=0 eARR aARR=
     for eARR in "${ARR[@]}"; do
       [[ $eARR == "$2" ]] && aARR=iARR && break
       ((iARR++))
     done
     [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
-  '; builtin eval "${script//ARR/$1}"
+  '; builtin eval "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#remove arr element
 function ble/array#remove {
-  local script='
+  local _ble_local_script='
     local -a aARR=() eARR
     for eARR in "${ARR[@]}"; do
       [[ $eARR != "$2" ]] && ble/array#push "a$1" "$eARR"
     done
     ARR=(${ARR[@]})
-  '; builtin eval "${script//ARR/$1}"
+  '; builtin eval "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#index arr needle
 ##   @var[out] ret
 function ble/array#index {
-  local script='
+  local _ble_local_script='
     local eARR iARR=0
     for eARR in "${ARR[@]}"; do
       [[ $eARR == "$2" ]] && { ret=$iARR; return 0; }
       ((iARR++))
     done
     ret=-1; return 1
-  '; builtin eval "${script//ARR/$1}"
+  '; builtin eval "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#last-index arr needle
 ##   @var[out] ret
 function ble/array#last-index {
-  local script='
+  local _ble_local_script='
     local eARR iARR=${#ARR[@]}
     while ((iARR--)); do
       [[ ${ARR[iARR]} == "$2" ]] && { ret=$iARR; return 0; }
     done
     ret=-1; return 1
-  '; builtin eval "${script//ARR/$1}"
+  '; builtin eval "${_ble_local_script//ARR/$1}"
 }
 
 _ble_string_prototype='        '
@@ -727,6 +727,22 @@ function ble/string#create-unicode-progress-bar {
 
   ret=$out
 }
+
+function ble/path#remove {
+  local _ble_local_script='
+    opts=:$opts:
+    opts=${opts//:"$2":/:}
+    opts=${opts#:} opts=${opts%:}'
+  builtin eval "${_ble_local_script//opts/$1}"
+}
+function ble/path#remove-glob {
+  local _ble_local_script='
+    opts=:$opts:
+    opts=${opts//:$2:/:}
+    opts=${opts#:} opts=${opts%:}'
+  builtin eval "${_ble_local_script//opts/$1}"
+}
+
 
 #
 # assign: reading files/streams into variables
