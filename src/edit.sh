@@ -3404,8 +3404,12 @@ function ble-edit/exec/.reset-builtins-1 {
   # Note: 何故か local POSIXLY_CORRECT の効果が
   #   unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
   local POSIXLY_CORRECT=y
-  builtin unset -f builtin unset enable
-  builtin unset -f return break continue declare typeset local eval echo
+  local -a builtins1; builtins1=(builtin unset enable unalias)
+  local -a builtins2; builtins2=(return break continue declare typeset local eval echo)
+  local -a keywords1; keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
+  builtin unset -f "${builtins1[@]}"
+  builtin unset -f "${builtins2[@]}"
+  builtin unalias "${builtins1[@]}" "${builtins2[@]}" "${keywords1[@]}"
   ble/base/unset-POSIXLY_CORRECT
 }
 function ble-edit/exec/.reset-builtins-2 {
@@ -3849,12 +3853,11 @@ function ble-edit/exec:gexec/.save-last-arg {
 function ble-edit/exec:gexec/.eval-epilogue {
   # lastexit
   _ble_edit_exec_lastexit=$?
+  ble-edit/exec/.reset-builtins-1
   if ((_ble_edit_exec_lastexit==0)); then
     _ble_edit_exec_lastexit=$_ble_edit_exec_INT
   fi
   _ble_edit_exec_INT=0
-
-  ble-edit/exec/.reset-builtins-1
 
   local IFS=$' \t\n'
   trap - DEBUG # DEBUG 削除が何故か効かない
