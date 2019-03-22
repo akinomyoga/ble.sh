@@ -3020,8 +3020,7 @@ function ble/complete/menu-filter/.filter-candidates {
   local filter_type pack "${_ble_complete_cand_varnames[@]}"
   local comps_filter_pattern
   for filter_type in head substr hsubseq subseq; do
-    comp_type=:${comp_type}:
-    comp_type=${comp_type//:[amA]:/:}
+    ble/path#remove-glob comp_type '[amA]'
     case $filter_type in
     (substr)  comp_type=${comp_type}:m ;;
     (hsubseq) comp_type=${comp_type}:a ;;
