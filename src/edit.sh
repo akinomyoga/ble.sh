@@ -1620,13 +1620,16 @@ function ble/textarea#render {
   local ret
   local cols=${COLUMNS-80}
 
+  # rps1: _ble_textarea_panel==1 の時だけ有効 #D1027
+  local rps1_enabled=; [[ $bleopt_rps1 ]] && ((_ble_textarea_panel==0)) && rps1_enabled=1
+
   # rps1_transient
-  local flag_rps1_clear=
-  if [[ $bleopt_rps1 && :$opts: == *:leave:* && $bleopt_rps1_transient ]]; then
+  local rps1_clear=
+  if [[ $rps1_enabled && :$opts: == *:leave:* && $bleopt_rps1_transient ]]; then
     # Note: ble-edit/prompt/update を実行するよりも前に現在の表示内容を消去する。
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
-      flag_rps1_clear=1
+      rps1_clear=1
       ((cols-=rps1_width+1,_ble_term_xenl||cols--))
       ble/textarea#render/.erase-rps1
     fi
@@ -1637,11 +1640,11 @@ function ble/textarea#render {
   local prox=$x proy=$y prolc=$lc esc_prompt=$ret
 
   # rps1
-  local flag_rps1=
-  if [[ $bleopt_rps1 && ! $flag_rps1_clear ]]; then
+  local rps1_show=
+  if [[ $rps1_enabled && ! $rps1_clear ]]; then
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)) &&
-      ((flag_rps1=1,cols-=rps1_width+1,_ble_term_xenl||cols--))
+      ((rps1_show=1,cols-=rps1_width+1,_ble_term_xenl||cols--))
   fi
 
   # BLELINE_RANGE_UPDATE → ble/textarea#update-text-buffer 内でこれを見て update を済ませる
@@ -1666,7 +1669,7 @@ function ble/textarea#render {
 
   # 配置情報の更新
   local render_opts=
-  [[ $flag_rps1 ]] && render_opts=relative
+  [[ $rps1_show ]] && render_opts=relative
   COLUMNS=$cols ble/textmap#update "$text" "$render_opts"
   ble/urange#update "$_ble_textmap_umin" "$_ble_textmap_umax"
   ble/urange#clear --prefix=_ble_textmap_
@@ -1705,7 +1708,7 @@ function ble/textarea#render {
   #-------------------
   # 出力
 
-  [[ $flag_rps1_clear ]] &&
+  [[ $rps1_clear ]] &&
     ble/textarea#render/.cleanup-trailing-spaces-after-newline
 
   # 2 表示内容
@@ -1746,7 +1749,7 @@ function ble/textarea#render {
 
     # プロンプト描画
     ble/canvas/panel#goto.draw "$_ble_textarea_panel"
-    if [[ $flag_rps1 ]]; then
+    if [[ $rps1_show ]]; then
       local rps1out=${_ble_edit_rprompt[6]}
       local rps1x=${_ble_edit_rprompt[1]} rps1y=${_ble_edit_rprompt[2]}
       # Note: cols は画面右端ではなく textmap の右端

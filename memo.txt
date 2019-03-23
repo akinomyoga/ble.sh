@@ -2200,6 +2200,7 @@ bash_tips
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
   - edit: the widgets `{kill,copy,delete}-region-or` now receives widgets as arguments `#D1021` bbbd155
+  - edit: disable `rps1` in secondary textareas `#D1027`
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3151,6 +3152,19 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-23
+
+  * edit: vi_cmap に於いて rps1 が表示されている [#D1027]
+    read -e の時には抑制していた筈である。と思ったら抑制していなかった。
+    read -e でも rps1 が表示されている。うーん。これはこのままで良いのだろうか…。
+    read -e に関してはユーザ側で適当に rps1 を設定してもらえば良い話である。
+    一方で、vi_cmap についてはやはり抑制した方が良い様な気がするが…。
+
+    どの様に抑制するのが正しいのだろうか。
+    例えば _ble_textarea_panel==0 の時にだけ表示する等?
+    read に関して言えば元々 _ble_textarea_panel==0 で起動するのでこれだと消えない。
+    一方で編集関数の中などから使った時には 1 で起動するので表示されない。
+    ユーザが普通に使った時はユーザが自由に設定できて良い筈なので残しておいて良い気がして来た。
+    従って、_ble_textarea_panel==0 の時だけ rps1 を処理する事にした。
 
   * vi: q によるマクロの記録で、quoted-insert 等が正しく記録されない [#D1026]
     実は quoted-insert 等 char hook を用いている機能は
