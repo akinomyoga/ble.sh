@@ -132,11 +132,9 @@ function ble/widget/vi-command/decompose-meta {
   if ((flag&_ble_decode_Meta)); then
     local esc=$((_ble_decode_Ctrl|0x5b)) # C-[ (もしくは esc=27 ESC?)
 
-    # 分解した後のキーを記録させる。
-    ble-decode/keylog/pop
-    old_suppress=$_ble_decode_keylog_depth
-    local _ble_decode_keylog_depth=$((old_suppress-1))
-
+    # 分解した後のキーを再記録させる。
+    ble/decode/keylog#pop
+    local _ble_decode_keylog_depth=$((_ble_decode_keylog_depth-1))
     ble-decode-key "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
     return 0
   fi
@@ -827,14 +825,8 @@ function ble/keymap:vi/register#play {
   fi
 
   local _ble_keymap_vi_register_onplay=1
-  local i len=${#value} ret
-  local -a chars=()
-  for ((i=0;i<len;i++)); do
-    ble/util/s2c "$value" "$i"
-    ((ret==27)) && ret=$_ble_decode_IsolatedESC
-    ble/array#push chars "$ret"
-  done
-  ble-decode-char "${chars[@]}"
+  local ret; ble/decode/charlog#decode "$value"
+  ble-decode-char "${ret[@]}"
 }
 ## 関数 ble/keymap:vi/register#dump/escape text
 ##   @var[out] ret
@@ -956,51 +948,10 @@ function ble/widget/vi_nmap/record-register {
   if [[ $_ble_keymap_vi_reg_record ]]; then
     ble/keymap:vi/clear-arg
     local -a ret
-    ble-decode/keylog/pop
-    ble-decode/keylog/end; local -a keys; keys=("${ret[@]}")
-
-    ble/util/c2s 155; local csi=$ret
-
-    local key
-    local -a buff=()
-    for key in "${keys[@]}"; do
-      # 通常の文字
-      if ble-decode-key/ischar "$key"; then
-        ble/util/c2s "$key"
-
-        # Note: 現在の LC_CTYPE で表現できない Unicode の時、
-        #   ret == \u???? もしくは \U???????? の形式になる。
-        #   その場合はここで処理せず、後の部分で CSI 27;1;code ~ の形式で記録する。
-        if ((${#ret}==1)); then
-          ble/array#push buff "$ret"
-          continue
-        fi
-      fi
-
-      local c=$((key&_ble_decode_MaskChar))
-
-      # C-? は制御文字として登録する
-      if (((key&_ble_decode_MaskFlag)==_ble_decode_Ctrl&&(c==64||91<=c&&c<=95||97<=c&&c<=122))); then
-        # Note: ^@ (NUL) は文字列にできないので除外
-        if ((c!=64)); then
-          ble/util/c2s $((c&0x1F))
-          ble/array#push buff "$ret"
-          continue
-        fi
-      fi
-
-      # Note: Meta 修飾は単体の ESC と紛らわしいので CSI 27 で記録する。
-      local mod=1
-      (((key&_ble_decode_Shft)&&(mod+=0x01),
-        (key&_ble_decode_Altr)&&(mod+=0x02),
-        (key&_ble_decode_Ctrl)&&(mod+=0x04),
-        (key&_ble_decode_Supr)&&(mod+=0x08),
-        (key&_ble_decode_Hypr)&&(mod+=0x10),
-        (key&_ble_decode_Meta)&&(mod+=0x20)))
-      ble/array#push buff "${csi}27;$mod;$c~"
-    done
-    IFS= eval 'local value="${buff[*]-}"'
-    ble/keymap:vi/register#set "$_ble_keymap_vi_reg_record" q "$value"
+    ble/decode/charlog#pop
+    ble/decode/charlog#end
+    ble/decode/charlog#encode "${ret[@]}"
+    ble/keymap:vi/register#set "$_ble_keymap_vi_reg_record" q "$ret"
 
     _ble_keymap_vi_reg_record=
     ble/keymap:vi/update-mode-name
@@ -1026,7 +977,7 @@ function ble/widget/vi_nmap/record-register.hook {
       ble/util/c2s "$c"
       _ble_keymap_vi_reg_record=$reg
       _ble_keymap_vi_reg_record_char=$ret
-      ble-decode/keylog/start
+      ble/decode/charlog#start
       ble/keymap:vi/update-mode-name
       return 0
     fi

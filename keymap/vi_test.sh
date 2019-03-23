@@ -163,7 +163,9 @@ function ble/widget/vi-command:check-vi-mode/increment {
 }
 
 function ble/widget/vi-command:check-vi-mode/macro {
-  local _ble_decode_keylog_depth=0 # to enable ble-decode/keylog for automatic ble-decode-key
+  # enable ble-decode/keylog for automatic ble-decode-key
+  local _ble_decode_keylog_depth=0
+
   ble/keymap:vi_test/start-section 'qx..q'
   ble/keymap:vi_test/check A1 '@:@123' 'q a A SP h e l l o C-[ q @ a' '@:123 hello hell@o'
   ble/keymap:vi_test/show-summary

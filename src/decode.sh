@@ -87,6 +87,7 @@ _ble_decode_MaskChar=0x001FFFFF
 _ble_decode_MaskFlag=0x7FC00000
 
 _ble_decode_IsolatedESC=$((0x07FF))
+_ble_decode_EscapedNUL=$((0x07FE)) # charlog#encode で用いる
 _ble_decode_FunctionKeyBase=0x110000
 
 ## 関数 ble-decode-kbd/.set-keycode keyname key
@@ -720,6 +721,10 @@ function ble-decode-char {
 #%if debug_keylogger
     ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_chars "$char"
 #%end
+    if [[ $_ble_decode_keylog_chars_enabled && $_ble_decode_keylog_depth == 0 ]]; then
+      ble/array#push _ble_decode_keylog_chars "$char"
+      ((_ble_decode_keylog_chars_count++))
+    fi
 
     # decode error character
     if ((char&_ble_decode_Erro)); then
@@ -1296,8 +1301,8 @@ function ble-decode-key {
 #%if debug_keylogger
     ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_keys "$key"
 #%end
-    [[ $_ble_decode_keylog_enabled && $_ble_decode_keylog_depth == 0 ]] &&
-      ble/array#push _ble_decode_keylog "$key"
+    [[ $_ble_decode_keylog_keys_enabled && $_ble_decode_keylog_depth == 0 ]] &&
+      ble/array#push _ble_decode_keylog_keys "$key"
 
     if [[ $_ble_decode_key__hook ]]; then
       local hook=$_ble_decode_key__hook
@@ -1502,8 +1507,7 @@ function ble-decode/widget/.call-keyseq {
   [[ $command ]] || return 125
 
   # for keylog suppress
-  local old_suppress=$_ble_decode_keylog_depth
-  local _ble_decode_keylog_depth=$((old_suppress+1))
+  local _ble_decode_keylog_depth=$((_ble_decode_keylog_depth+1))
 
   # setup variables
   local WIDGET=$command KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
@@ -1514,6 +1518,7 @@ function ble-decode/widget/.call-keyseq {
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
   builtin eval -- "$WIDGET"; local ext=$?
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
+  _ble_decode_keylog_chars_count=0
   return "$ext"
 }
 ## 関数 ble-decode/widget/.call-async-read
@@ -1521,13 +1526,14 @@ function ble-decode/widget/.call-keyseq {
 ##   _ble_decode_widget_last は更新しません。
 function ble-decode/widget/.call-async-read {
   # for keylog suppress
-  local old_suppress=$_ble_decode_keylog_depth
-  local _ble_decode_keylog_depth=$((old_suppress+1))
+  local _ble_decode_keylog_depth=$((_ble_decode_keylog_depth+1))
 
   # setup variables
   local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=($2)
-  builtin eval -- "$WIDGET"
+  builtin eval -- "$WIDGET"; local ext=$?
+  _ble_decode_keylog_chars_count=0
+  return "$ext"
 }
 ## 関数 ble-decode/widget/call-interactively widget keys...
 ## 関数 ble-decode/widget/call widget keys...
@@ -1589,7 +1595,9 @@ function ble/util/idle/IS_IDLE {
   ! ble-decode/has-input
 }
 
+# 
 #------------------------------------------------------------------------------
+# logging
 
 #%if debug_keylogger
 _ble_keylogger_enabled=0
@@ -1622,32 +1630,154 @@ function ble-decode/end-keylog {
   _ble_keylogger_keys=()
 }
 #%end
-_ble_decode_keylog_enabled=
+
+## @var _ble_decode_keylog_depth
+##   現在の widget 呼び出しの深さを表します。
+##   入れ子の ble-decode-char, ble-decode-key による
+##   文字・キーを記録しない様にする為に用います。
+## @var _ble_decode_keylog_keys_enabled
+##   現在キーの記録が有効かどうかを保持します。
+## @arr _ble_decode_keylog_keys
+##   記録したキーを保持します。
+## @var _ble_decode_keylog_chars_enabled
+##   現在文字の記録が有効かどうかを保持します。
+## @arr _ble_decode_keylog_chars
+##   記録した文字を保持します。
+## @var _ble_decode_keylog_chars_count
+##   1 widget を呼び出す迄に記録された文字の数です。
 _ble_decode_keylog_depth=0
-_ble_decode_keylog=()
-function ble-decode/keylog/start {
-  _ble_decode_keylog_enabled=1
-  _ble_decode_keylog=()
+_ble_decode_keylog_keys_enabled=
+_ble_decode_keylog_keys=()
+_ble_decode_keylog_chars_enabled=
+_ble_decode_keylog_chars_count=0
+_ble_decode_keylog_chars=()
+
+## 関数 ble/decode/keylog#start [tag]
+function ble/decode/keylog#start {
+  _ble_decode_keylog_keys_enabled=${1:-1}
+  _ble_decode_keylog_keys=()
 }
-## 関数 ble-decode/keylog/end
+## 関数 ble/decode/keylog#end
 ##   @var[out] ret
-function ble-decode/keylog/end {
-  ret=("${_ble_decode_keylog[@]}")
-  _ble_decode_keylog_enabled=
-  _ble_decode_keylog=()
+function ble/decode/keylog#end {
+  ret=("${_ble_decode_keylog_keys[@]}")
+  _ble_decode_keylog_keys_enabled=
+  _ble_decode_keylog_keys=()
 }
-## 関数 ble-decode/keylog/pop
+## 関数 ble/decode/keylog#pop
 ##   現在の WIDGET 呼び出しに対応する KEYS が記録されているとき、これを削除します。
-##   @var[in] _ble_decode_keylog_enabled
 ##   @var[in] _ble_decode_keylog_depth
+##   @var[in] _ble_decode_keylog_keys_enabled
 ##   @arr[in] KEYS
-function ble-decode/keylog/pop {
-  [[ $_ble_decode_keylog_enabled && $_ble_decode_keylog_depth == 1 ]] || return
-  local new_size=$((${#_ble_decode_keylog[@]}-${#KEYS[@]}))
-  _ble_decode_keylog=("${_ble_decode_keylog[@]::new_size}")
+function ble/decode/keylog#pop {
+  [[ $_ble_decode_keylog_keys_enabled && $_ble_decode_keylog_depth == 1 ]] || return
+  local new_size=$((${#_ble_decode_keylog_keys[@]}-${#KEYS[@]}))
+  _ble_decode_keylog_keys=("${_ble_decode_keylog_keys[@]::new_size}")
+}
+
+## 関数 ble/decode/charlog#start [tag]
+function ble/decode/charlog#start {
+  _ble_decode_keylog_chars_enabled=${1:-1}
+  _ble_decode_keylog_chars=()
+}
+## 関数 ble/decode/charlog#end
+##   @var[out] ret
+function ble/decode/charlog#end {
+  ret=("${_ble_decode_keylog_chars[@]}")
+  _ble_decode_keylog_chars_enabled=
+  _ble_decode_keylog_chars=()
+}
+## 関数 ble/decode/charlog#pop
+##   現在の WIDGET 呼び出しに対応する文字が記録されているとき、これを削除します。
+function ble/decode/charlog#pop {
+  [[ $_ble_decode_keylog_chars_enabled ]] || return
+  local new_size=$((${#_ble_decode_keylog_chars[@]}-_ble_decode_keylog_chars_count))
+  _ble_decode_keylog_chars=("${_ble_decode_keylog_chars[@]::new_size}")
+}
+
+## 関数 ble/decode/charlog#encode chars...
+function ble/decode/charlog#encode {
+  local -a buff=()
+  for char; do
+    ((char==0)) && char=$_ble_decode_EscapedNUL
+    ble/util/c2s "$char"
+    ble/array#push buff "$ret"
+  done
+  IFS= eval 'ret="${buff[*]}"'
+}
+## 関数 ble/decode/charlog#decode text
+function ble/decode/charlog#decode {
+  local text=$1 n=${#1} i chars
+  chars=()
+  for ((i=0;i<n;i++)); do
+    ble/util/s2c "$text" "$i"
+    ((ret==_ble_decode_EscapedNUL)) && ret=0
+    ble/array#push chars "$ret"
+  done
+  ret=("${chars[@]}")
+}
+
+## 関数 ble/decode/keylog#encode keys...
+##   キーの列からそれに対応する文字列を構築します
+function ble/decode/keylog#encode {
+  ret=
+  ble/util/c2s 155; local csi=$ret
+
+  local key
+  local -a buff=()
+  for key; do
+    # 通常の文字
+    if ble-decode-key/ischar "$key"; then
+      ble/util/c2s "$key"
+
+      # Note: 現在の LC_CTYPE で表現できない Unicode の時、
+      #   ret == \u???? もしくは \U???????? の形式になる。
+      #   その場合はここで処理せず、後の部分で CSI 27;1;code ~ の形式で記録する。
+      if ((${#ret}==1)); then
+        ble/array#push buff "$ret"
+        continue
+      fi
+    fi
+
+    local c=$((key&_ble_decode_MaskChar))
+
+    # C-? は制御文字として登録する
+    if (((key&_ble_decode_MaskFlag)==_ble_decode_Ctrl&&(c==64||91<=c&&c<=95||97<=c&&c<=122))); then
+      # Note: ^@ (NUL) は文字列にできないので除外
+      if ((c!=64)); then
+        ble/util/c2s $((c&0x1F))
+        ble/array#push buff "$ret"
+        continue
+      fi
+    fi
+
+    # Note: Meta 修飾は単体の ESC と紛らわしいので CSI 27 で記録する。
+    local mod=1
+    (((key&_ble_decode_Shft)&&(mod+=0x01),
+      (key&_ble_decode_Altr)&&(mod+=0x02),
+      (key&_ble_decode_Ctrl)&&(mod+=0x04),
+      (key&_ble_decode_Supr)&&(mod+=0x08),
+      (key&_ble_decode_Hypr)&&(mod+=0x10),
+      (key&_ble_decode_Meta)&&(mod+=0x20)))
+    ble/array#push buff "${csi}27;$mod;$c~"
+  done
+  IFS= eval 'ret="${buff[*]-}"'
+}
+## 関数 ble/decode/keylog#decode-chars text
+function ble/decode/keylog#decode-chars {
+  local text=$1 n=${#1} i
+  local -a chars=()
+  for ((i=0;i<n;i++)); do
+    ble/util/s2c "$text" "$i"
+    ((ret==27)) && ret=$_ble_decode_IsolatedESC
+    ble/array#push chars "$ret"
+  done
+  ret=("${chars[@]}")
 }
 
 
+# 
+#------------------------------------------------------------------------------
 # **** ble-bind ****
 
 function ble-bind/load-keymap {
@@ -2477,7 +2607,8 @@ function ble/builtin/bind/.decode-chars {
 #%if debug_keylogger
   local _ble_keylogger_enabled=
 #%end
-  local _ble_decode_keylog_enabled=
+  local _ble_decode_keylog_keys_enabled=
+  local _ble_decode_keylog_chars_enabled=
 
   # setup hook and run
   local -a ble_decode_bind_keys=()

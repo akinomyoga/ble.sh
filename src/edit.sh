@@ -678,6 +678,7 @@ function ble-edit/prompt/update {
 }
 
 # 
+#------------------------------------------------------------------------------
 # **** information pane ****                                         @line.info
 
 ## 関数 ble-edit/info/.initialize-size
@@ -1083,7 +1084,9 @@ function ble-edit/content/clear-arg {
   _ble_edit_arg=
 }
 
-# **** PS1/LINENO ****                                                @edit.ps1
+# 
+#------------------------------------------------------------------------------
+# **** saved variables such as (PS1/LINENO) ****                      @edit.ps1
 #
 # 内部使用変数
 ## 変数 _ble_edit_LINENO
@@ -1975,6 +1978,7 @@ function ble/textarea#clear-state {
 }
 
 # 
+#------------------------------------------------------------------------------
 # **** redraw, clear-screen, etc ****                             @widget.clear
 
 function ble/widget/.update-textmap {
@@ -1998,7 +2002,6 @@ function ble/widget/display-shell-version {
   ble/widget/print "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"
 }
 
-# 
 # **** mark, kill, copy ****                                       @widget.mark
 
 function ble/widget/overwrite-mode {
@@ -2192,7 +2195,6 @@ function ble/widget/copy-region-or {
   fi
 }
 
-# 
 # **** bell ****                                                     @edit.bell
 
 function ble/widget/.bell {
@@ -2212,7 +2214,6 @@ function ble/widget/bell {
 
 function ble/widget/nop { :; }
 
-# 
 # **** insert ****                                                 @edit.insert
 
 function ble/widget/insert-string {
