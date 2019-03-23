@@ -4351,8 +4351,7 @@ function ble/widget/end-keyboard-macro {
   fi
   _ble_edit_kbdmacro_record=
 
-  ble/decode/charlog#pop # 記録された C-x ) を除去
-  ble/decode/charlog#end
+  ble/decode/charlog#end-exclusive-depth1
   _ble_edit_kbdmacro_last=("${ret[@]}")
   if [[ $_ble_decode_keymap == emacs ]]; then
     ble/keymap:emacs/update-mode-name
@@ -4365,16 +4364,17 @@ function ble/widget/call-keyboard-macro {
   local arg; ble-edit/content/get-arg 1
   ble/keymap:generic/clear-arg
   ((arg>0)) || return
+  [[ $_ble_edit_kbdmacro_onplay ]] && return # 再生中は無視
 
   local _ble_edit_kbdmacro_onplay=1
   if ((arg==1)); then
-    ble-decode-char "${_ble_edit_kbdmacro_last[@]}"
+    ble/widget/.MACRO "${_ble_edit_kbdmacro_last[@]}"
   else
     local -a chars=()
     while ((arg-->0)); do
       ble/array#push chars "${_ble_edit_kbdmacro_last[@]}"
     done
-    ble-decode-char "${chars[@]}"
+    ble/widget/.MACRO "${chars[@]}"
   fi
   [[ $_ble_decode_keymap == vi_nmap ]] &&
     ble/keymap:vi/adjust-command-mode
@@ -5906,7 +5906,7 @@ function ble/widget/isearch/cancel {
 }
 function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit-with-region
-  ble-decode-key "${KEYS[@]}"
+  ble-decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/widget/isearch/accept-line {
   if ((${#_ble_util_fiberchain[@]})); then
@@ -6224,7 +6224,7 @@ function ble/widget/nsearch/exit {
 }
 function ble/widget/nsearch/exit-default {
   ble/widget/nsearch/exit
-  ble-decode-key "${KEYS[@]}"
+  ble-decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/widget/nsearch/cancel {
   if ((${#_ble_util_fiberchain[@]})); then

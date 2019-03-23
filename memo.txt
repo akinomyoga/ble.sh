@@ -866,6 +866,15 @@ bash_tips
 
   * menu-filter の機能についても部分的に ble/complete/menu に移行する。
 
+  * menu: 取り敢えず menu 選択機能だけは実装する
+
+    * done: iloop をもっと別の名前にする
+      →これは主に menu#construct の中だけで使われている。menu_iloop にした。
+      更に complete 中に使う判定ではなくて menu 専用の判定に切り替えた。
+
+    * linewise に項目番号を表示する機能をつけても良いのではないか
+      或いは > だとかそういう装飾を設定できる様な自由度があって良いと思う。
+
 2019-03-22
 
   * menu-filter の使い心地が微妙なのはもしかして
@@ -2208,6 +2217,7 @@ bash_tips
   - emacs: support widgets `{capitalize,downcase,upcase}-xword` `#D1019` 719092c
   - emacs: support widgets `alias-expand-line` and `history-and-alias-expand-line` `#D1024` fdaf579
   - emacs: support keyboard macros `#D1028` 284668a
+    - decode: workaround recursive charlog/keylog `#D1030`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2221,7 +2231,7 @@ bash_tips
   - decode: fix a bug that chars from nested widgets are not processed immediately `#D1028` c79d89b
 
   Internal changes
-  - complete: isolate menu related codes `#D1029`
+  - complete: isolate menu related codes `#D1029` 43bb074
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3166,6 +3176,175 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-03-24
+
+  * decode: charlog/keylog に関して再考 [#D1030]
+
+    うーん。menu_complete/exit-default 等は redispatch でなくても本当に良いのか。
+    改めて考えてみる事にする。入れ子の呼び出しの場合には keylog は記録されない。
+
+    x fixed: また、ble-decode-char の _ble_decode_keylog_chars に登録する場所で
+
+      | _ble_decode_keylog_depth のチェックが本当に効いているのかというと怪しい。
+      | というのも ble-decode-char は入れ子の呼び出しの場合には、
+      | 実際の実行を呼び出し元に任せてすぐに抜けるからである。
+      | つまり、常に一番外側でしか char を処理しないので、
+      | _ble_decode_keylog_depth は常に 0 になっている。
+      | 従って、入れ子の呼び出しによって再度 ble-decode-char を処理する、
+      | というような場合にも全て処理した文字が登録されてしまう事になる。
+      |
+      | これを正しく処理する為にはどの様にしたら良いだろうか。
+      | 例えば ble-decode-char を呼び出す際に charlog に記録されている内容を pop するなど?
+      | どういう箇所で ble-decode-char が呼び出されているだろうか。確認する。
+      | - マクロ再生の箇所2箇所 (vi, emacs)
+      | - ble/builtin/read のループ
+      |
+      | うーん。逆にこの箇所に於いて charlog の suppress を明示的に指定すれば、
+      | 他は全て charlog に記録されてしまっても問題ないのでは。。
+      | と思ったが、此処で明示的に suppress を指定したとしても、
+      | 結局処理が遅延されるのであれば suppress が効果を発揮しない。
+      | (char buffer に登録する時に suppress の情報も一緒に記録する、
+      | というようにするのは無駄に処理が複雑になるので余り考えたくない。)
+      |
+      | 逆に再生中は記録状態にはないと考えて、
+      | そのまま記録させてしまうというのでも良いのかもしれない。
+      | 或いは、再生に用いた文字を pop して、
+      | 再生内容で置き換えるという様に考える。
+      | そちらの方が現実的の様な気がしてきた。
+      |
+      | と思ったが本当だろうか。やはり "再生" という処理をしたというのは
+      | 記録に残っても良いのではないかという気もする。うーん。
+      |
+      | うーん。何故こんなにも複雑になってしまうのか。
+      | 本来はもっと簡単な事ではないのか。
+      | 例えば、ユーザから入力された文字については記録するけれども、
+      | マクロ再生などによって入ってきた文字については記録しないという具合に。
+      | 問題は何処にあるのかというと。処理の順番にある。
+      | 処理の遅延を考えないのだとしたら、
+      | 普通にユーザから入力された文字を受け取った時点で記録すれば良い。
+      | マクロ再生などの場合には記録せずに処理を行えば良い。
+      | 然し、処理を遅延させている場合には、単に記録すれば良い訳ではない。
+      | 例えばマクロの記録をしている時には、
+      | マクロの終了が呼び出された段階での charlog の内容を見ると問題になる。
+      | charlog には未だ処理されていないが既に受信した文字などが全て入っているからである。
+      | 従って、charlog には実際に処理した文字を追加するという様にしなければならない。
+      |
+      | うーん。現在エラー文字に関しては特別のフラグを立てて処理している。
+      | 結局、同様に特別なフラグを立てて charlog に入れないという様にするのが良さそうである。
+      | depth のチェックは意味をなしていないので削除する。
+
+      結局 buffering を行う ble-decode-char に於いて
+      自動的に charlog に登録するかしないかを判定するのは困難であるという結論。
+      従って、ble-decode-char に文字を渡す時点で、
+      文字にフラグを設定して charlog に登録しない事を明示する事にした。
+
+    改めて exit-default における redispatch について考える。
+
+    * resolved: charlog に関してはこれで多分問題ないと思われる。本当か。
+
+      | 具体的に動作を考えてみる。
+      |
+      | 1. exit-default が呼ばれる
+      | 2. ble-decode-key で改めてキーが処理される
+      |   然し、charlog は通過しないので勝手に新しい文字が増える事はない。
+      | 3a. (2) の結果として例えば普通のコマンドが選択されたとする。
+      |   この場合にはやはり charlog に対しては何も起こらない。
+      |   また、この呼出は入れ子の呼び出しになっている為、
+      |   _ble_decode_keylog_depth が多い。従って charlog のクリアも起こらない。
+      | 3b. (2) の結果として end-keyboard-macro が呼び出されたとする。
+      |   この場合には charlog#pop が呼び出されて
+      |   元々の exit-default 呼び出しに要した文字の列が削除される。
+      |
+      |   うーん。この動作は本当に大丈夫なのだろうか。
+      |   考えてみれば end-keyboard-macro が複数回呼び出される様な事があると、
+      |   charlog#pop が複数回呼び出されて変な事になる気がする。
+      |   従って、charlog#pop に相当する操作は配列を得た後で行うべきなのでは。
+      |   もしくは charlog#end-without-current-call 的な物。
+      |   charlog#end-exclusive という名前にする。
+      |
+      |   と思ってよく考えてみたらどうせ #pop した後に #end して
+      |   中身は空になるので複数回呼び出しても余り問題はなかった気もする。
+      |   然し、設計としてはこちらの方が自然なのでそれで良い。
+      |
+      | 4. ble-decode-key が終わったら exit-default に戻る。
+      |   そして exit-default を抜けると keylog_chars_count がクリアされる。
+
+      charlog#pop & charlog#end ではなくて、
+      charlog#end-exclusive という関数で取り出した後に削る事にした。
+      これで良い気がする。
+
+      うーん。よく考えたら駄目な気がして来た。
+      というのも、再生した時には exit-default までを実行したいはずなのでは。
+      然し、現在の記録方法だと exit-default も exclude されてしまう。
+      とは言っても、一方だけを exclude するのは不可能である。
+      うーん。入れ子の呼び出しの時には exclude しないという事にするか。
+      →charlog#end-exclusive-depth1 というのを実装した。
+
+    * resolved: keylog に関しては真面目に考え直す。現状使っていないとは言え。
+
+      | 例えば次の様に動作をする事にする。
+      |
+      | 1. exit-default を呼び出す (KEY が記録される)
+      | 2. 中で ble-decode-key を呼び出す。
+      |   この時 _ble_decode_keylog_depth の効果により、
+      |   KEY が重複して記録されるという事はない。
+      | 3a. これで呼び出されるのが通常コマンドの時は何も問題はない。
+      | 3b. もし呼び出されるのが keylog#end を利用する物だったら。
+      |   keylog#pop & keylog#end をしてそれまでの記録を取得する。
+      |   この時 ${#KEYS[*]} は本当に正しいのだろうか。これはとても怪しい。
+      |   うーん。_ble_decode_keylog_chars_count と同様に処理するべきなのでは。
+      |   →_ble_decode_keylog_keys_count を導入した。
+      | 4. ble-decode-key, exit-default を抜けると終わる。問題はない。
+      |
+      | keylog を用いてマクロを実装するとしたら、
+      | charlog#end-exclusive-depth1 と同様の事をしなければならない。
+      | 因みに vi.sh の qx...q の側でも迷い込んだ q は無視する様に既になっていた。
+
+      _ble_decode_keylog_keys_count を導入した。
+      今後 keylog によるマクロを実装する場合には、
+      charlog#end-exclusive-depth1 と同様に処理する。
+
+      他にも keylog に干渉するパターンがある。decompose-meta の類である。
+      この場合には既に入力されたと思っているデータを書き換える目的がある。
+      従って、redispatch の様な操作が必要になるのである。
+
+    * ok: auto-complete は本当に redispatch が必要なのか。
+
+      | これは勝手に起動した auto-complete を終了する為のキーとして記録が行われて、
+      | 更にその時点で _ble_decode_keylog_keys_count がクリアされてしまうのが問題。
+      |
+      | 然し、それだと charlog の方もちゃんと対策が必要なのではないか。
+      | と思ったが、よく考えたら depth=0 としている事によってそれを免れていたのだった。
+      | なので、現状ではちゃんと期待通りに動いているのである。
+
+      →つまり必要であるという結論になる。
+
+    * 然し、そうすると menu-complete 等の exit-default の場合にも必要ではないかと思われてくる。
+      これもまた抜けるのに使ったキーが其処で記録されて中途半端に記録が終了してしまう。
+      然し、だからと言って redispatch するとその記録自体が exclusive-depth1 で消えてしまい、
+      再生した時には exit-default の exit 部分自体も実行されずに終わるという事になる。
+      だからといって exit-default -> end-keyboard-macro を検出できるかは謎である。
+      直ぐに呼び出される場合には良いが、end-keyboard-macro を呼び出すための
+      1文字目だけが exit-default で処理されたとすると、
+      実際に再生を行った時に 1 文字目だけが中途半端に入力された状態で
+
+      再生が終了するという事になる。その様な事になるぐらいであれば、
+      そもそも exit-default も呼び出さないか、或いは end-keyboard-macro まで呼び出す。
+      end-keyboard-macro まで呼び出すかどうかを判定するのは難しい。
+      というかそもそも end-keyboard-macro を呼び出す為に使ったシーケンスなのであれば、
+      exit-default の exit を起こすのが目的ではなかったと思われて、
+      その場合には exit-default が再生で呼び出されなくても良いのではないか…。
+
+      うーん。面倒なので menu-complete の exit-default の場合にも redispatch で処理する事にする。
+
+    * では ble/widget/auto_complete/accept-line 等の ble-decode-key 13 はどうするのか。
+      これも redispatch で処理するべきなのだろうか。
+      原理的には 13 が end-keyboard-macro を呼び出すキーシーケンスの最初の文字になっている可能性はある。
+      然し、一方で accept-line を呼び出すのに別のキーを使った可能性もあって、
+      その場合には 13 に redispatch してしまうとそもそも accept-line が再現されなくなる可能性もある。
+      うーん。これに関しては accept-line を呼び出すのに使ったキーが消滅するのは嫌なので、
+      redispatch は実行しない事にする。
 
 2019-03-23
 

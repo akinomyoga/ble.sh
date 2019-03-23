@@ -825,7 +825,7 @@ function ble/keymap:vi/register#play {
 
   local _ble_keymap_vi_register_onplay=1
   local ret; ble/decode/charlog#decode "$value"
-  ble-decode-char "${ret[@]}"
+  ble/widget/.MACRO "${ret[@]}"
   return 0
 }
 ## 関数 ble/keymap:vi/register#dump/escape text
@@ -948,8 +948,7 @@ function ble/widget/vi_nmap/record-register {
   if [[ $_ble_keymap_vi_reg_record ]]; then
     ble/keymap:vi/clear-arg
     local -a ret
-    ble/decode/charlog#pop
-    ble/decode/charlog#end
+    ble/decode/charlog#end-exclusive-depth1
     ble/decode/charlog#encode "${ret[@]}"
     ble/keymap:vi/register#set "$_ble_keymap_vi_reg_record" q "$ret"
 

@@ -3560,7 +3560,7 @@ function ble/widget/menu_complete/accept {
 }
 function ble/widget/menu_complete/exit-default {
   ble/widget/menu_complete/exit
-  ble-decode-key "${KEYS[@]}"
+  ble-decode/widget/redispatch "${KEYS[@]}"
 }
 
 function ble-decode/keymap:menu_complete/define {
@@ -4545,7 +4545,7 @@ function ble/widget/dabbrev/exit {
 }
 function ble/widget/dabbrev/exit-default {
   ble/widget/dabbrev/exit
-  ble-decode-key "${KEYS[@]}"
+  ble-decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/widget/dabbrev/accept-line {
   ble/widget/dabbrev/exit

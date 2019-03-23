@@ -76,7 +76,6 @@ bleopt/declare -n decode_abort_char 28
 
 # **** key names ****
 
-_ble_decode_Erro=0x40000000
 _ble_decode_Meta=0x08000000
 _ble_decode_Ctrl=0x04000000
 _ble_decode_Shft=0x02000000
@@ -85,6 +84,16 @@ _ble_decode_Supr=0x00800000
 _ble_decode_Altr=0x00400000
 _ble_decode_MaskChar=0x001FFFFF
 _ble_decode_MaskFlag=0x7FC00000
+
+## @var _ble_decode_Erro
+##   文字復号に異常があった事を表します。
+## @var _ble_decode_Macr
+##   マクロ再生で生成された文字である事を表します。
+_ble_decode_Erro=0x40000000
+_ble_decode_Macr=0x20000000
+
+_ble_decode_Flag3=0x10000000 # unused
+_ble_decode_FlagA=0x00200000 # unused
 
 _ble_decode_IsolatedESC=$((0x07FF))
 _ble_decode_EscapedNUL=$((0x07FE)) # charlog#encode で用いる
@@ -723,10 +732,13 @@ function ble-decode-char {
 #%if debug_keylogger
     ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_chars "$char"
 #%end
-    if [[ $_ble_decode_keylog_chars_enabled && $_ble_decode_keylog_depth == 0 ]]; then
-      ble/array#push _ble_decode_keylog_chars "$char"
-      ((_ble_decode_keylog_chars_count++))
+    if [[ $_ble_decode_keylog_chars_enabled ]]; then
+      if ! ((char&_ble_decode_Macr)); then
+        ble/array#push _ble_decode_keylog_chars "$char"
+        ((_ble_decode_keylog_chars_count++))
+      fi
     fi
+    ((char&=~_ble_decode_Macr))
 
     # decode error character
     if ((char&_ble_decode_Erro)); then
@@ -1160,7 +1172,7 @@ function ble-decode-key/dump {
         echo "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
       ('ble/widget/.EDIT_COMMAND '*)
         echo "ble-bind$kmapopt -x '${knames//$q/$Q}' ${cmd#ble/widget/.EDIT_COMMAND }" ;;
-      ('ble/widget/.ble-decode-char '*)
+      ('ble/widget/.MACRO '*)
         local ret; ble/util/chars2keyseq ${cmd#*' '}
         echo "ble-bind$kmapopt -s '${knames//$q/$Q}' '${ret//$q/$Q}'" ;;
       ('ble/widget/'*)
@@ -1303,8 +1315,10 @@ function ble-decode-key {
 #%if debug_keylogger
     ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_keys "$key"
 #%end
-    [[ $_ble_decode_keylog_keys_enabled && $_ble_decode_keylog_depth == 0 ]] &&
+    if [[ $_ble_decode_keylog_keys_enabled && $_ble_decode_keylog_depth == 0 ]]; then
       ble/array#push _ble_decode_keylog_keys "$key"
+      ((_ble_decode_keylog_keys_count++))
+    fi
 
     if [[ $_ble_decode_key__hook ]]; then
       local hook=$_ble_decode_key__hook
@@ -1520,7 +1534,8 @@ function ble-decode/widget/.call-keyseq {
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
   builtin eval -- "$WIDGET"; local ext=$?
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
-  ((_ble_decode_keylog_depth==1&&(_ble_decode_keylog_chars_count=0)))
+  ((_ble_decode_keylog_depth==1)) &&
+    _ble_decode_keylog_chars_count=0 _ble_decode_keylog_keys_count=0
   return "$ext"
 }
 ## 関数 ble-decode/widget/.call-async-read
@@ -1534,7 +1549,8 @@ function ble-decode/widget/.call-async-read {
   local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=($2)
   builtin eval -- "$WIDGET"; local ext=$?
-  ((_ble_decode_keylog_depth==1&&(_ble_decode_keylog_chars_count=0)))
+  ((_ble_decode_keylog_depth==1)) &&
+    _ble_decode_keylog_chars_count=0 _ble_decode_keylog_keys_count=0
   return "$ext"
 }
 ## 関数 ble-decode/widget/call-interactively widget keys...
@@ -1664,6 +1680,7 @@ function ble-decode/end-keylog {
 ##   1 widget を呼び出す迄に記録された文字の数です。
 _ble_decode_keylog_depth=0
 _ble_decode_keylog_keys_enabled=
+_ble_decode_keylog_keys_count=0
 _ble_decode_keylog_keys=()
 _ble_decode_keylog_chars_enabled=
 _ble_decode_keylog_chars_count=0
@@ -1689,8 +1706,10 @@ function ble/decode/keylog#end {
 ##   @arr[in] KEYS
 function ble/decode/keylog#pop {
   [[ $_ble_decode_keylog_keys_enabled && $_ble_decode_keylog_depth == 1 ]] || return
-  local new_size=$((${#_ble_decode_keylog_keys[@]}-${#KEYS[@]}))
+  local new_size=$((${#_ble_decode_keylog_keys[@]}-_ble_decode_keylog_keys_count))
+  ((new_size<0)) && new_size=0
   _ble_decode_keylog_keys=("${_ble_decode_keylog_keys[@]::new_size}")
+  _ble_decode_keylog_keys_count=0
 }
 
 ## 関数 ble/decode/charlog#start [tag]
@@ -1702,16 +1721,42 @@ function ble/decode/charlog#start {
 ## 関数 ble/decode/charlog#end
 ##   @var[out] ret
 function ble/decode/charlog#end {
+  [[ $_ble_decode_keylog_chars_enabled ]] || { ret=(); return 1; }
   ret=("${_ble_decode_keylog_chars[@]}")
   _ble_decode_keylog_chars_enabled=
   _ble_decode_keylog_chars=()
 }
-## 関数 ble/decode/charlog#pop
-##   現在の WIDGET 呼び出しに対応する文字が記録されているとき、これを削除します。
-function ble/decode/charlog#pop {
+## 関数 ble/decode/charlog#end-exclusive
+##   現在の WIDGET 呼び出しに対応する文字を除いて記録を取得して完了します。
+##   @var[out] ret
+function ble/decode/charlog#end-exclusive {
+  ret=()
   [[ $_ble_decode_keylog_chars_enabled ]] || return
-  local new_size=$((${#_ble_decode_keylog_chars[@]}-_ble_decode_keylog_chars_count))
-  _ble_decode_keylog_chars=("${_ble_decode_keylog_chars[@]::new_size}")
+  local size=$((${#_ble_decode_keylog_chars[@]}-_ble_decode_keylog_chars_count))
+  ((size>0)) && ret=("${_ble_decode_keylog_chars[@]::size}")
+  _ble_decode_keylog_chars_enabled=
+  _ble_decode_keylog_chars=()
+}
+## 関数 ble/decode/charlog#end-exclusive-depth1
+##   トップレベルの WIDGET 呼び出しの時は end-exclusive にします。
+##   二次的な WIDGET 呼び出しの時には inclusive に end します。
+##
+##   @var[out] ret
+##     記録を返します。
+##
+##   これは exit-default -> end-keyboard-macro という具合に
+##   WIDGET が呼び出されて記録が完了する場合がある為です。
+##   この場合 exit-default は記録に残したいので自身を呼び出した
+##   文字の列も記録に含ませる必要があります。
+##   但し、マクロ再生中に呼び出される end-keyboard-macro
+##   は無視する必要があります。
+##
+function ble/decode/charlog#end-exclusive-depth1 {
+  if ((_ble_decode_keylog_depth==1)); then
+    ble/decode/charlog#end-exclusive
+  else
+    ble/decode/charlog#end
+  fi
 }
 
 ## 関数 ble/decode/charlog#encode chars...
@@ -1794,6 +1839,14 @@ function ble/decode/keylog#decode-chars {
   ret=("${chars[@]}")
 }
 
+function ble/widget/.MACRO {
+  local -a chars=()
+  local char
+  for char; do
+    ble/array#push chars $((char|_ble_decode_Macr))
+  done
+  ble-decode-char "${chars[@]}"
+}
 
 # 
 #------------------------------------------------------------------------------
@@ -2002,7 +2055,7 @@ function ble-bind {
               command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
             (s)
               local ret; ble/util/keyseq2chars "$command"
-              command="ble/widget/.ble-decode-char ${ret[*]}"
+              command="ble/widget/.MACRO ${ret[*]}"
               echo "$command" ;;
             ('@') ;; # 直接実行
             (*)
@@ -2044,7 +2097,6 @@ function ble-bind {
 function ble/widget/.ble-decode-char {
   ble-decode-char "$@"
 }
-
 
 # **** ^U ^V ^W ^? 対策 ****                                   @decode.bind.uvw
 
@@ -2815,7 +2867,7 @@ function ble/builtin/bind/option:- {
     # keyboard macro
     value=${value#\"} value=${value%\"}
     local ret chars; ble/util/keyseq2chars "$value"; chars=("${ret[@]}")
-    local command="ble/widget/.ble-decode-char ${chars[*]}"
+    local command="ble/widget/.MACRO ${chars[*]}"
     ble-decode-key/bind "${keys[*]}" "$command"
   elif [[ $value ]]; then
     if local ret; ble/builtin/bind/rlfunc2widget "$kmap" "$value"; then
