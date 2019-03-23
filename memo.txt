@@ -2196,16 +2196,18 @@ bash_tips
   - emacs: support arguments of word wise operations `#D1020` 719092c
   - emacs: support widgets `{capitalize,downcase,upcase}-xword` `#D1019` 719092c
   - emacs: support widgets `alias-expand-line` and `history-and-alias-expand-line` `#D1024` fdaf579
+  - emacs: support keyboard macros `#D1028`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
   - edit: the widgets `{kill,copy,delete}-region-or` now receives widgets as arguments `#D1021` bbbd155
-  - edit: disable `rps1` in secondary textareas `#D1027`
+  - edit: disable `rps1` in secondary textareas `#D1027` b86709a
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
   - isearch: fix a bug to match with the old content of the current line `#D1025` 605dcd0
-  - vi: fix a bug that quoted-insert is not properly recorded with `qx...q` `#D1026`
+  - vi: fix a bug that quoted-insert is not properly recorded with `qx...q` `#D1026` 06698a4
+  - decode: fix a bug that chars from nested widgets are not processed immediately `#D1028` c79d89b
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3152,6 +3154,115 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-23
+
+  * emacs: kbd-macro に対応する [#D1028]
+
+    [実装案]
+
+    既に vi の側で類似の機能を提供しているのだから何も考えずにそれを実装すれば良いのでは。
+    vi での実装は ble/widget/vi_nmap/record-register にある。
+    _ble_decode_key__hook="ble/widget/vi_nmap/record-register.hook" を設定して、
+    ble/widget/vi_nmap/record-register.hook で記録先のレジスタの番号を取得すると、
+    其処から記録を開始する。結局、実際に行っている処理は以下の通りである。
+
+    | _ble_keymap_vi_reg_record=$reg
+    | _ble_keymap_vi_reg_record_char=$ret
+    | ble-decode/keylog/start
+    | ble/keymap:vi/update-mode-name
+    | return 0
+
+    - さて何処に実装するのが良いのか。
+      どんどんと emacs モードではなくて本体の edit.sh の方に機能を実装している気がするが、
+      それで良いのだろうか。考えるに readline の機能は両方で使う可能性があるので、
+      edit.sh に記録したいという気分である。一方で、emacs.sh に定義しておいて、
+      vi 側から使いたい時には autoload で呼び出すという考えもある。
+
+      うーん。所でマクロに関しては vi 側では qx...q があるので、
+      その機能との混線を避ける事を考えれば vi 側では実行できない様にするべきなのでは。
+      その様に考えるとやはり emacs.sh に実装したほうが良い気がする。
+
+      一方で、そもそも混線しない様に設計するべきなのではないかという話もある。
+      うーん。取り敢えず edit.sh に実装する事にする。
+
+    - 記録の形態はキーの列で行う事にする。
+      bash の振る舞いを見ると (print-last-kbd-macro で出力すると)
+      文字単位で記録されている様に見える。
+      然し、特殊キーなどを端末依存で記録するのも嫌なので、
+      ble.sh の実装では、キーの列として記録して、
+      print を求められた時には vi の記録と同様に内部形式で文字列に戻す事にする。
+
+    - うーん。やはり文字列に変換して表示するのは分かりにくいだけで意味がないので、
+      unkbd で戻した結果を表示することにするのが良い
+
+    - [棄却] ble-decode-key abort/buffering 機能?
+
+      然しキーの列として処理させようとして気づいたが、
+      現在の枠組みでは byte または char に対して abort は効くが、
+      key に対する abort は効かない。前回対応した時には char を buffering する様にしたが、
+      文字に関しては buffering する様にはしていないのである。
+      key についても同様に buffering する様にする必要があるだろうか。
+
+      ? 然し、そうすると実は char に対する buffering は必要なかったのではないかとも
+        思われてしまう。何故ならば char->key の処理は byte->char にも増して軽い気がするからである。
+        まあ、実際にどうかは分からない。色々なシーケンスの検査をするので、
+        実は char->key の方が重いような気もする。
+        そのまま通過する char も多いと言いつつ、それは byte->char の時にも同様である。
+        実測してみれば良い。
+
+      ? 次に気になるのは _ble_decode_char_hook だとか、
+        _ble_decode_key_hook の処理の順序が乱れないのか、という事である。
+        例えば或る widget が _ble_decode_char_hook を要求したとして、
+        実は既に後続の文字が ble-decode-key に全部吸収されている場合、
+        _ble_decode_char_hook を通過せずに全部キー入力になってしまっている。
+
+        従って、ble-decode-key の側で完全に処理しきらないまま
+        ble-decode-char に戻してしまうと処理の順序が変わってしまう事になる。
+
+        しかし本当にそうだろうか…。実はユーザからの入力が来た場合には、
+        ble-decode-char が中断して ble-decode-key も中断して、
+        という具合になって中途半端な事は起こらない、という事になったりはしないか。
+        真面目に考えてみる。ユーザからの入力が大量に来るとする。
+        ble-decode-char に文字が大量に現れる。
+        ble-decode-key は key が来る度に真面目に処理をする。
+        処理の途中で追加のユーザの入力が現れるとする。
+        この時 ble-decode-key は制御を戻す。
+        ble-decode-char も制御を戻す。
+        ble-decode/.hook に於いて abort のチェックが行われる。
+        abort があれば処理中の ble-decode-char/key の列は廃棄される。
+        もし abort でなければ ble-decode-char の待ち行列に追加される。
+        さて、処理は続きから実行される事になる。
+        ble-decode-char に入り、もしこの時点で hook が定義されていればそれを実行する。
+        そうでなければ ble-decode-key に入る。
+        うーん。ble-decode-key の中で無駄に buffering していない限りは大丈夫の気がする。
+
+        →実際に vi の実装で試してみたら問題になっている。駄目だ。
+        vi は keylog ではなくて char レベルの記録 charlog に実装を切り替えた。
+        従って emacs でも charlog にしないという手はないだろう。
+
+    [実装]
+
+    * done: 引数に対する仕様を確認する
+      →再生時には繰り返し回数になる。記録時には何も意味しないだろう。対応した。
+
+    * done: keylog が混線しないように現在の処理にタグを付けるなどする。
+      →これは対策した。
+
+    x fixed: 何故か再生がその場では成されない。
+      一番外側の ble-decode-char ではないからだろう。
+      これは ble-decode-char のループを修正した。
+
+    x fixed: vi のマクロ再生時に必ず bell が鳴る。
+      記録されている内容を見ると別に何か変な物が混入している訳でもない。
+      →実は register#play の戻り値は意味があって、
+      マクロの再生ができなかった時に失敗を返すのだった。
+
+      では ble-decode-char が失敗を返しているのは何故だろうという話になるが、
+      これは調べてみた所、入れ子の ble-decode-char はその場で登録するだけで、
+      処理は外側の ble-decode-char に任せるからなのであった。
+
+    * fixed: emacs の mode name に現在記録中である事を表す記号を表示する。
+      →これは対応したはずだが何故か動いていない。
+      これは footprint で変更がなければ更新しない様になっていたのが原因だった。直した。
 
   * edit: vi_cmap に於いて rps1 が表示されている [#D1027]
     read -e の時には抑制していた筈である。と思ったら抑制していなかった。

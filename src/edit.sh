@@ -1084,6 +1084,14 @@ function ble-edit/content/clear-arg {
   _ble_edit_arg=
 }
 
+function ble/keymap:generic/clear-arg {
+  if [[ $_ble_decode_keymap == vi_[noxs]map ]]; then
+    ble/keymap:vi/clear-arg
+  else
+    ble-edit/content/clear-arg
+  fi
+}
+
 # 
 #------------------------------------------------------------------------------
 # **** saved variables such as (PS1/LINENO) ****                      @edit.ps1
@@ -2368,38 +2376,6 @@ function ble/widget/quoted-insert {
   return 148
 }
 
-function ble/widget/transpose-chars {
-  local arg; ble-edit/content/get-arg ''
-  if ((arg==0)); then
-    [[ ! $arg ]] && ble-edit/content/eolp &&
-      ((_ble_edit_ind>0&&_ble_edit_ind--))
-    arg=1
-  fi
-
-  local p q r
-  if ((arg>0)); then
-    ((p=_ble_edit_ind-1,
-      q=_ble_edit_ind,
-      r=_ble_edit_ind+arg))
-  else # arg<0
-    ((p=_ble_edit_ind-1+arg,
-      q=_ble_edit_ind,
-      r=_ble_edit_ind+1))
-  fi
-
-  if ((p<0||${#_ble_edit_str}<r)); then
-    ((_ble_edit_ind=arg<0?0:${#_ble_edit_str}))
-    ble/widget/.bell
-    return 1
-  fi
-
-  local a=${_ble_edit_str:p:q-p}
-  local b=${_ble_edit_str:q:r-q}
-  ble-edit/content/replace "$p" "$r" "$b$a"
-  ((_ble_edit_ind+=arg))
-  return 0
-}
-
 _ble_edit_bracketed_paste=
 _ble_edit_bracketed_paste_proc=
 function ble/widget/bracketed-paste {
@@ -2438,6 +2414,39 @@ function ble/widget/bracketed-paste.hook {
 function ble/widget/bracketed-paste.proc {
   local -a KEYS; KEYS=("$@")
   ble/widget/batch-insert
+}
+
+
+function ble/widget/transpose-chars {
+  local arg; ble-edit/content/get-arg ''
+  if ((arg==0)); then
+    [[ ! $arg ]] && ble-edit/content/eolp &&
+      ((_ble_edit_ind>0&&_ble_edit_ind--))
+    arg=1
+  fi
+
+  local p q r
+  if ((arg>0)); then
+    ((p=_ble_edit_ind-1,
+      q=_ble_edit_ind,
+      r=_ble_edit_ind+arg))
+  else # arg<0
+    ((p=_ble_edit_ind-1+arg,
+      q=_ble_edit_ind,
+      r=_ble_edit_ind+1))
+  fi
+
+  if ((p<0||${#_ble_edit_str}<r)); then
+    ((_ble_edit_ind=arg<0?0:${#_ble_edit_str}))
+    ble/widget/.bell
+    return 1
+  fi
+
+  local a=${_ble_edit_str:p:q-p}
+  local b=${_ble_edit_str:q:r-q}
+  ble-edit/content/replace "$p" "$r" "$b$a"
+  ((_ble_edit_ind+=arg))
+  return 0
 }
 
 # 
@@ -4304,6 +4313,79 @@ function ble-edit/undo/revert-toggle {
   else
     return 1
   fi
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** ble-edit/keyboard-macro ****                                 @edit.macro
+
+_ble_edit_kbdmacro_record=
+_ble_edit_kbdmacro_last=()
+_ble_edit_kbdmacro_onplay=
+function ble/widget/start-keyboard-macro {
+  ble/keymap:generic/clear-arg
+  [[ $_ble_edit_kbdmacro_onplay ]] && return # 再生中は無視
+  if ! ble/decode/charlog#start kbd-macro; then
+    if [[ $_ble_decode_keylog_chars_enabled == kbd-macro ]]; then
+      ble/widget/.bell 'kbd-macro: recording is already started'
+    else
+      ble/widget/.bell 'kbd-macro: the logging system is currently busy'
+    fi
+    return 1
+  fi
+
+  _ble_edit_kbdmacro_record=1
+  if [[ $_ble_decode_keymap == emacs ]]; then
+    ble/keymap:emacs/update-mode-name
+  elif [[ $_ble_decode_keymap == vi_nmap ]]; then
+    ble/keymap:vi/adjust-command-mode
+  fi
+  return 0
+}
+function ble/widget/end-keyboard-macro {
+  ble/keymap:generic/clear-arg
+  [[ $_ble_edit_kbdmacro_onplay ]] && return # 再生中は無視
+  if [[ $_ble_decode_keylog_chars_enabled != kbd-macro ]]; then
+    ble/widget/.bell 'kbd-macro: recording is not running'
+    return 1
+  fi
+  _ble_edit_kbdmacro_record=
+
+  ble/decode/charlog#pop # 記録された C-x ) を除去
+  ble/decode/charlog#end
+  _ble_edit_kbdmacro_last=("${ret[@]}")
+  if [[ $_ble_decode_keymap == emacs ]]; then
+    ble/keymap:emacs/update-mode-name
+  elif [[ $_ble_decode_keymap == vi_nmap ]]; then
+    ble/keymap:vi/adjust-command-mode
+  fi
+  return 0
+}
+function ble/widget/call-keyboard-macro {
+  local arg; ble-edit/content/get-arg 1
+  ble/keymap:generic/clear-arg
+  ((arg>0)) || return
+
+  local _ble_edit_kbdmacro_onplay=1
+  if ((arg==1)); then
+    ble-decode-char "${_ble_edit_kbdmacro_last[@]}"
+  else
+    local -a chars=()
+    while ((arg-->0)); do
+      ble/array#push chars "${_ble_edit_kbdmacro_last[@]}"
+    done
+    ble-decode-char "${chars[@]}"
+  fi
+  [[ $_ble_decode_keymap == vi_nmap ]] &&
+    ble/keymap:vi/adjust-command-mode
+}
+function ble/widget/print-keyboard-macro {
+  ble/keymap:generic/clear-arg
+  local ret; ble/decode/charlog#encode "${_ble_edit_kbdmacro_last[@]}"
+  ble-edit/info/show text "kbd-macro: $ret"
+  [[ $_ble_decode_keymap == vi_nmap ]] &&
+    ble/keymap:vi/adjust-command-mode
+  return 0
 }
 
 # 
@@ -6300,6 +6382,12 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'C-end'     '@nomarked end-of-text'
   ble-decode/keymap:safe/.bind 'S-C-home'  '@marked beginning-of-text'
   ble-decode/keymap:safe/.bind 'S-C-end'   '@marked end-of-text'
+
+  # macros
+  ble-decode/keymap:safe/.bind 'C-x ('     'start-keyboard-macro'
+  ble-decode/keymap:safe/.bind 'C-x )'     'end-keyboard-macro'
+  ble-decode/keymap:safe/.bind 'C-x e'     'call-keyboard-macro'
+  ble-decode/keymap:safe/.bind 'C-x P'     'print-keyboard-macro'
 }
 function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'C-r'       'history-isearch-backward'

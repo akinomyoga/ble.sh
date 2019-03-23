@@ -111,7 +111,7 @@ function ble/widget/vi_imap/__default__ {
 
     local esc=27 # ESC
     # local esc=$((_ble_decode_Ctrl|0x5b)) # もしくは C-[
-    ble-decode-key "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
+    ble-decode/widget/redispatch "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
     return 0
   fi
 
@@ -131,11 +131,7 @@ function ble/widget/vi-command/decompose-meta {
   # メタ修飾付きの入力 M-key は ESC + key に分解する
   if ((flag&_ble_decode_Meta)); then
     local esc=$((_ble_decode_Ctrl|0x5b)) # C-[ (もしくは esc=27 ESC?)
-
-    # 分解した後のキーを再記録させる。
-    ble/decode/keylog#pop
-    local _ble_decode_keylog_depth=$((_ble_decode_keylog_depth-1))
-    ble-decode-key "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
+    ble-decode/widget/redispatch "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
     return 0
   fi
 
@@ -394,6 +390,8 @@ function ble/keymap:vi/update-mode-name {
   fi
   if [[ $_ble_keymap_vi_reg_record ]]; then
     name=$name$' \e[1;31mREC @'$_ble_keymap_vi_reg_record_char$'\e[m'
+  elif [[ $_ble_edit_kbdmacro_record ]]; then
+    name=$name$' \e[1;31mREC\e[m'
   fi
   ble-edit/info/default ansi "$name" # 6ms
 }
@@ -819,6 +817,7 @@ function ble/keymap:vi/register#play {
       value=${value#*/}
     else
       value=
+      return 1
     fi
   else
     value=$_ble_edit_kill_ring
@@ -827,6 +826,7 @@ function ble/keymap:vi/register#play {
   local _ble_keymap_vi_register_onplay=1
   local ret; ble/decode/charlog#decode "$value"
   ble-decode-char "${ret[@]}"
+  return 0
 }
 ## 関数 ble/keymap:vi/register#dump/escape text
 ##   @var[out] ret
@@ -960,11 +960,12 @@ function ble/widget/vi_nmap/record-register {
   fi
 }
 function ble/widget/vi_nmap/record-register.hook {
-  local key=$1
+  local key=$1 ret
   ble/keymap:vi/clear-arg
-  local ret
-  if ble/keymap:vi/k2c "$key" && local c=$ret; then
-    local reg=
+
+  # check register
+  local reg= c=
+  if ble/keymap:vi/k2c "$key" && c=$ret; then
     if ((65<=c&&c<91)); then # q{A-Z}
       reg=+$((c+32))
     elif ((48<=c&&c<58||97<=c&&c<123)); then # q{0-9a-z}
@@ -972,18 +973,24 @@ function ble/widget/vi_nmap/record-register.hook {
     elif ((c==34)); then # q"
       reg=$c
     fi
-
-    if [[ $reg ]]; then
-      ble/util/c2s "$c"
-      _ble_keymap_vi_reg_record=$reg
-      _ble_keymap_vi_reg_record_char=$ret
-      ble/decode/charlog#start
-      ble/keymap:vi/update-mode-name
-      return 0
-    fi
   fi
-  ble/widget/vi-command/bell "invalid register key=$key"
-  return 1
+  if [[ ! $reg ]]; then
+    ble/widget/vi-command/bell "invalid register key=$key"
+    return 1
+  fi
+
+  # start logging
+  if ! ble/decode/charlog#start vi-macro; then
+    ble/widget/.bell 'vi-macro: the logging system is currently busy'
+    return 1
+  fi
+
+  # update status
+  ble/util/c2s "$c"
+  _ble_keymap_vi_reg_record=$reg
+  _ble_keymap_vi_reg_record_char=$ret
+  ble/keymap:vi/update-mode-name
+  return 0
 }
 # nmap @
 function ble/widget/vi_nmap/play-register {

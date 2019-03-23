@@ -3830,7 +3830,7 @@ function ble/widget/auto_complete/insert {
 }
 function ble/widget/auto_complete/cancel-default {
   ble/widget/auto_complete/cancel
-  ble-decode-key "${KEYS[@]}"
+  ble-decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/widget/auto_complete/self-insert {
   local code=$((KEYS[0]&_ble_decode_MaskChar))
@@ -3891,7 +3891,7 @@ function ble/widget/auto_complete/self-insert {
     return 0
   else
     ble/widget/auto_complete/cancel
-    ble-decode-key "${KEYS[@]}"
+    ble-decode/widget/redispatch "${KEYS[@]}"
   fi
 }
 

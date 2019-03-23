@@ -87,22 +87,27 @@ function ble/widget/emacs/revert {
 
 ## @var _ble_keymap_emacs_mode
 ##   複数行モードかどうか。
-_ble_keymap_emacs_modeline=:
+_ble_keymap_emacs_modeline=::
 function ble/keymap:emacs/update-mode-name {
   local opt_multiline=; [[ $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
-  local mode=$opt_multiline:$_ble_edit_arg
+  local footprint=$opt_multiline:$_ble_edit_arg:$_ble_edit_kbdmacro_record
 
-  [[ $mode == "$_ble_keymap_emacs_modeline" ]] && return
-  _ble_keymap_emacs_modeline=$mode
+  [[ $footprint == "$_ble_keymap_emacs_modeline" ]] && return
+  _ble_keymap_emacs_modeline=$footprint
 
   local name=
   [[ $opt_multiline ]] && name=$'\e[1m-- MULTILINE --\e[m'
-  if [[ $_ble_edit_arg ]]; then
-    name="$name${name:+ }(arg: $_ble_edit_arg)"
-  elif [[ $opt_multiline ]]; then
-    #name=$name$' (type \e[35mC-j\e[m to run the command)'
-    name=$name$' (\e[35mRET\e[m or \e[35mC-m\e[m: insert a newline, \e[35mC-j\e[m: run)'
-  fi
+
+  local info=
+  [[ $_ble_edit_arg ]] &&
+    info=$info$' (arg: \e[1;34m'$_ble_edit_arg$'\e[m)'
+  [[ $_ble_edit_kbdmacro_record ]] &&
+    info=$info$' \e[1;31mREC\e[m'
+  [[ ! $info && $opt_multiline ]] &&
+    info=$' (\e[35mRET\e[m or \e[35mC-m\e[m: insert a newline, \e[35mC-j\e[m: run)'
+
+  [[ $name ]] || info=${info#' '}
+  name=$name$info
   ble-edit/info/default ansi "$name"
 }
 

@@ -11,7 +11,7 @@ backward-word                     @nomarked backward-cword
 beginning-of-history              history-beginning
 beginning-of-line                 @nomarked beginning-of-line
 bracketed-paste-begin             bracketed-paste
-call-last-kbd-macro               -
+call-last-kbd-macro               call-keyboard-macro
 capitalize-word                   capitalize-eword
 character-search                  -
 character-search-backward         -
@@ -40,7 +40,7 @@ dump-variables                    -
 dynamic-complete-history          -
 edit-and-execute-command          -
 emacs-editing-mode                nop
-end-kbd-macro                     -
+end-kbd-macro                     end-keyboard-macro
 end-of-history                    history-end
 end-of-line                       end-of-line
 exchange-point-and-mark           exchange-point-and-mark
@@ -85,7 +85,7 @@ possible-username-completions     complete show_menu:context=username
 possible-variable-completions     complete show_menu:context=variable
 previous-history                  history-prev
 previous-screen-line              @nomarked backward-graphical-line
-print-last-kbd-macro              -
+print-last-kbd-macro              print-keyboard-macro
 quoted-insert                     quoted-insert
 re-read-init-file                 -
 redraw-current-line               redraw-line
@@ -99,7 +99,7 @@ shell-expand-line                 -
 shell-forward-word                @nomarked forward-sword
 shell-kill-word                   kill-forward-sword
 skip-csi-sequence                 -
-start-kbd-macro                   -
+start-kbd-macro                   start-keyboard-macro
 tab-insert                        -
 tilde-expand                      -
 transpose-chars                   transpose-chars

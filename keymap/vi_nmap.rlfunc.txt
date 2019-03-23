@@ -11,7 +11,7 @@ backward-word                     -
 beginning-of-history              -
 beginning-of-line                 vi-command/beginning-of-line
 bracketed-paste-begin             vi-command/bracketed-paste
-call-last-kbd-macro               -
+call-last-kbd-macro               call-keyboard-macro
 capitalize-word                   vi_nmap/capitalize-eword
 character-search                  -
 character-search-backward         -
@@ -40,7 +40,7 @@ dump-variables                    -
 dynamic-complete-history          -
 edit-and-execute-command          -
 emacs-editing-mode                -
-end-kbd-macro                     -
+end-kbd-macro                     end-keyboard-macro
 end-of-history                    -
 end-of-line                       vi-command/forward-eol
 exchange-point-and-mark           -
@@ -85,7 +85,7 @@ possible-username-completions     complete show_menu:context=username
 possible-variable-completions     complete show_menu:context=variable
 previous-history                  history-prev
 previous-screen-line              -
-print-last-kbd-macro              -
+print-last-kbd-macro              print-keyboard-macro
 quoted-insert                     -
 re-read-init-file                 -
 redraw-current-line               redraw-line
@@ -99,7 +99,7 @@ shell-expand-line                 -
 shell-forward-word                -
 shell-kill-word                   -
 skip-csi-sequence                 -
-start-kbd-macro                   -
+start-kbd-macro                   start-keyboard-macro
 tab-insert                        -
 tilde-expand                      -
 transpose-chars                   transpose-chars

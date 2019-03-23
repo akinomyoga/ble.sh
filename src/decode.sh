@@ -1520,7 +1520,7 @@ function ble-decode/widget/.call-keyseq {
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_BEFORE_WIDGET"
   builtin eval -- "$WIDGET"; local ext=$?
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
-  _ble_decode_keylog_chars_count=0
+  ((_ble_decode_keylog_depth==1&&(_ble_decode_keylog_chars_count=0)))
   return "$ext"
 }
 ## 関数 ble-decode/widget/.call-async-read
@@ -1534,7 +1534,7 @@ function ble-decode/widget/.call-async-read {
   local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=($2)
   builtin eval -- "$WIDGET"; local ext=$?
-  _ble_decode_keylog_chars_count=0
+  ((_ble_decode_keylog_depth==1&&(_ble_decode_keylog_chars_count=0)))
   return "$ext"
 }
 ## 関数 ble-decode/widget/call-interactively widget keys...
@@ -1564,6 +1564,21 @@ function ble-decode/widget/call {
 ##   __after_widget__ の呼び出しはキャンセルされません。
 function ble-decode/widget/suppress-widget {
   WIDGET=
+}
+
+## 関数 ble-decode/widget/redispatch
+##   @var[in] KEYS
+##   @var[out] _ble_decode_keylog_depth
+function ble-decode/widget/redispatch {
+  if ((_ble_decode_keylog_depth==1)); then
+    # Note: 一旦 pop してから _ble_decode_keylog_depth=0
+    #   で ble-decode-key を呼び出す事により再記録させる。
+    # Note: 更に _ble_decode_keylog_depth=0 にする事で、
+    #   _ble_decode_keylog_chars_count の呼び出し元によるクリアを抑制する。
+    ble/decode/keylog#pop
+    _ble_decode_keylog_depth=0
+  fi
+  ble-decode-key "${KEYS[@]}"
 }
 
 #------------------------------------------------------------------------------
@@ -1656,6 +1671,7 @@ _ble_decode_keylog_chars=()
 
 ## 関数 ble/decode/keylog#start [tag]
 function ble/decode/keylog#start {
+  [[ $_ble_decode_keylog_keys_enabled ]] && return 1
   _ble_decode_keylog_keys_enabled=${1:-1}
   _ble_decode_keylog_keys=()
 }
@@ -1679,6 +1695,7 @@ function ble/decode/keylog#pop {
 
 ## 関数 ble/decode/charlog#start [tag]
 function ble/decode/charlog#start {
+  [[ $_ble_decode_keylog_chars_enabled ]] && return 1
   _ble_decode_keylog_chars_enabled=${1:-1}
   _ble_decode_keylog_chars=()
 }
