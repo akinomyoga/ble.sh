@@ -852,6 +852,20 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-03-23
+
+  * vbell: menu complete でページを移動している時に、
+    ページ番号が短くなった時に前の表示を消しきれていない。
+
+  * menu-complete: \commit での menu の項目の着色が消えている?
+
+  * menu-complete: 現在 "表示" されているメニュー項目から候補を生成している?
+    ble/complete/menu/generate-candidates-from-menu の実装を見て思った。
+    menu-filter した後の menu_items ではなくて、
+    更にその後に表示を行っている menu_icons から読み取っている気がする。
+
+  * menu-filter の機能についても部分的に ble/complete/menu に移行する。
+
 2019-03-22
 
   * menu-filter の使い心地が微妙なのはもしかして
@@ -869,9 +883,6 @@ bash_tips
     然し、それでも何か違う様な気がする。
 
     絞り込みの入力欄と現在選択されている内容というのは別に一致している必要はない。
-
-  * 実は menu の枠組みは他に流用できるのではないだろうか。
-    補完とは切り離して利用できる様になると便利である。
 
 2019-03-21
 
@@ -2196,7 +2207,7 @@ bash_tips
   - emacs: support arguments of word wise operations `#D1020` 719092c
   - emacs: support widgets `{capitalize,downcase,upcase}-xword` `#D1019` 719092c
   - emacs: support widgets `alias-expand-line` and `history-and-alias-expand-line` `#D1024` fdaf579
-  - emacs: support keyboard macros `#D1028`
+  - emacs: support keyboard macros `#D1028` 284668a
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2208,6 +2219,9 @@ bash_tips
   - isearch: fix a bug to match with the old content of the current line `#D1025` 605dcd0
   - vi: fix a bug that quoted-insert is not properly recorded with `qx...q` `#D1026` 06698a4
   - decode: fix a bug that chars from nested widgets are not processed immediately `#D1028` c79d89b
+
+  Internal changes
+  - complete: isolate menu related codes `#D1029`
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3154,6 +3168,39 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-23
+
+  * complete: menu の枠組みの分離 [#D1029]
+    実は menu の枠組みは他に流用できるのではないだろうか。
+    補完とは切り離して利用できる様になると便利である。
+
+    うーん。menu の表示部分と補完の処理部分の分離を試みる。
+
+    * done: desc の説明取得部分は未だ分離できていない
+
+    * done: 現在 menu_onselect だとか menu_item_renderer だとかで
+      外部から振る舞いを変更できる様にしているが、
+      どんどんと外部からの振る舞いが追加されていくと辛い。
+      menu_class menu_param という二つの変数で制御できないだろうか。
+
+        menu_class=ble/complete/menu-complete
+        menu_param=object-id
+
+      として置いて
+
+        menu_param=$menu_param "$menu_class"/render-item
+
+      の様にして呼び出してもらう事にする。
+
+    * self-insert をどの様に取り扱うか。
+      これは二種類の keymap を用意しても良いのではないかという気がする。
+      特に積極的に filtering を行うモードの場合には、
+      自由に keymap を弄り回したい気がするので。
+
+      というか現在の menu_complete keymap はそのままにして、
+      menu keymap としてその様な物を提供すれば良い気がしてきた。
+
+    * accept だとか exit だとか cancel についても callback にする?
+      これは具体的に menu の機能を利用する機能が出てきたら考える。
 
   * emacs: kbd-macro に対応する [#D1028]
 

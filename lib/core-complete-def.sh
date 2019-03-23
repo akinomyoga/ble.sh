@@ -51,9 +51,9 @@ bleopt/declare -n complete_auto_delay 1
 ##
 bleopt/declare -n complete_menu_style align-nowrap
 function bleopt/check:complete_menu_style {
-  if ! ble/is-function "ble/complete/menu/style:$value/construct"; then
+  if ! ble/is-function "ble/complete/menu-style:$value/construct"; then
     echo "bleopt: Invalid value complete_menu_style='$value'." \
-         "A function 'ble/complete/menu/style:$value/construct' is not defined." >&2
+         "A function 'ble/complete/menu-style:$value/construct' is not defined." >&2
     return 1
   fi
 
@@ -65,10 +65,7 @@ bleopt/declare -v complete_menu_complete 1
 bleopt/declare -v complete_menu_filter 1
 
 ble/util/autoload "$_ble_base/lib/core-complete.sh" \
-                  ble/complete/menu/style:align/construct \
-                  ble/complete/menu/style:align-nowrap/construct \
-                  ble/complete/menu/style:dense/construct \
-                  ble/complete/menu/style:dense-nowrap/construct \
+                  ble/complete/menu#construct \
                   ble-decode/keymap:auto_complete/define \
                   ble-decode/keymap:menu_complete/define \
                   ble-decode/keymap:dabbrev/define \
