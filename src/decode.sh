@@ -700,7 +700,8 @@ function ble-decode-char {
   local iloop=0
   local ble_decode_char_total=$#
   local ble_decode_char_rest=$#
-  while (($#)); do # Note: ループ中で set -- ... を使っている。
+  # Note: ループ中で set -- ... を使っている。
+  while
     if ((iloop++%50==0)); then
       ((iloop>50)) && ble-decode/.hook/show-progress
       if ble-decode/has-input-for-char && [[ ! $ble_decode_char_sync ]]; then
@@ -714,7 +715,8 @@ function ble-decode-char {
       set -- "${_ble_decode_char_buffer[@]}" "$@"
       _ble_decode_char_buffer=()
     fi
-
+    (($#))
+  do
     local char=$1; shift
     ble_decode_char_rest=$#
 #%if debug_keylogger
