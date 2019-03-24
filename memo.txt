@@ -863,11 +863,6 @@ bash_tips
 
     もし置き換える事ができるのであれば便利かもしれないという程度である。
 
-  * menu-complete: 現在 "表示" されているメニュー項目から候補を生成している?
-    ble/complete/menu/generate-candidates-from-menu の実装を見て思った。
-    menu-filter した後の menu_items ではなくて、
-    更にその後に表示を行っている menu_icons から読み取っている気がする。
-
   * menu: 今後の拡張性
 
     * 因みにフィルタリング機能は menu-filter を統合・整理する形で実装したい。
@@ -2247,10 +2242,11 @@ bash_tips
   - menu: fix a bug that fails to retrieve menu item description `#D1031` c936db8
   - menu: fix a bug that menu item color is disabled `#D1032` c936db8
   - vbell: fix a bug that persistent vbell is not erased before next vbell `#D1034` a3af6c0
+  - menu-complete: fix a bug that candidates from menu only contained visible ones `#D1036`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
-  - global: use builtin echo explicitly `#D1035` e0085ba
+  - global: use `builtin echo` explicitly `#D1035` a6232c2
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3197,6 +3193,11 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-24
+
+  * menu-complete: 現在 "表示" されているメニュー項目から候補を生成している? [#D1036]
+    ble/complete/menu/generate-candidates-from-menu の実装を見て思った。
+    menu-filter した後の menu_items ではなくて、
+    更にその後に表示を行っている menu_icons から読み取っている気がする。
 
   * global: builtin echo を関数に置き換えるというのはどうだろうか [#D1035]
 

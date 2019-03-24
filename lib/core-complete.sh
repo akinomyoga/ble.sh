@@ -3190,14 +3190,10 @@ function ble/complete/menu/generate-candidates-from-menu {
   comps_filter_pattern= # これは source が使うだけなので使われない筈…
 
   # remaining candidates
-  cand_count=${#_ble_complete_menu_icons[@]}
+  cand_count=${#_ble_complete_menu_items[@]}
   cand_cand=() cand_word=() cand_pack=()
-  local entry fields
-  for entry in "${_ble_complete_menu_icons[@]}"; do
-    local text=${entry#*:}
-    ble/string#split fields , "${entry%%:*}"
-    local pack=${text::fields[4]}
-    local "${_ble_complete_cand_varnames[@]}"
+  local pack "${_ble_complete_cand_varnames[@]}"
+  for pack in "${_ble_complete_menu_items[@]}"; do
     ble/complete/cand/unpack "$pack"
     ble/array#push cand_cand "$CAND"
     ble/array#push cand_word "$INSERT"
