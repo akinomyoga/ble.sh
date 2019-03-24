@@ -1966,6 +1966,20 @@ function ble/complete/candidates/generate-with-filter {
   return 0
 }
 
+function ble/complete/candidates/comp_type#read-rl-variables {
+  ble/util/test-rl-variable completion-ignore-case 0 && comp_type=${comp_type}:i
+  ble/util/test-rl-variable visible-stats 0 && comp_type=${comp_type}:vstat
+  ble/util/test-rl-variable mark-directories 1 && comp_type=${comp_type}:markdir
+  ble/util/test-rl-variable mark-symlinked-directories 1 && comp_type=${comp_type}:marksymdir
+  ble/util/test-rl-variable match-hidden-files 1 && comp_type=${comp_type}:match-hidden
+  ble/util/test-rl-variable menu-complete-display-prefix 0 && comp_type=${comp_type}:menu-show-prefix
+
+  # color settings are always enabled
+  comp_type=$comp_type:menu-color:menu-color-match
+  # ble/util/test-rl-variable colored-stats 1 && comp_type=${comp_type}:menu-color
+  # ble/util/test-rl-variable colored-completion-prefix 1 && comp_type=${comp_type}:menu-color-match
+}
+
 ## 関数 ble/complete/candidates/generate
 ##   @var[in] comp_text comp_index
 ##   @arr[in] sources
@@ -1983,18 +1997,7 @@ function ble/complete/candidates/generate {
 
   local rex_raw_paramx
   ble/complete/candidates/.initialize-rex_raw_paramx
-
-  ble/util/test-rl-variable completion-ignore-case 0 && comp_type=${comp_type}:i
-  ble/util/test-rl-variable visible-stats 0 && comp_type=${comp_type}:vstat
-  ble/util/test-rl-variable mark-directories 1 && comp_type=${comp_type}:markdir
-  ble/util/test-rl-variable mark-symlinked-directories 1 && comp_type=${comp_type}:marksymdir
-  ble/util/test-rl-variable match-hidden-files 1 && comp_type=${comp_type}:match-hidden
-  ble/util/test-rl-variable menu-complete-display-prefix 0 && comp_type=${comp_type}:menu-show-prefix
-
-  # color settings are always enabled
-  comp_type=$comp_type:menu-color:menu-color-match
-  # ble/util/test-rl-variable colored-stats 1 && comp_type=${comp_type}:menu-color
-  # ble/util/test-rl-variable colored-completion-prefix 1 && comp_type=${comp_type}:menu-color-match
+  ble/complete/candidates/comp_type#read-rl-variables
 
   cand_count=0
   cand_cand=() # 候補文字列
@@ -2164,6 +2167,20 @@ _ble_complete_menu_info_data=()
 ##   @var[in] cols lines menu_common_part
 function ble/complete/menu/construct-single-entry {
   local opts=$2
+
+  # Note: select は menu 表示の文脈ではないので、
+  #   補完文脈を復元しなければ参照できない。
+  if [[ :$opts: == *:selected:* ]]; then
+    local COMP1=${_ble_complete_menu_comp[0]}
+    local COMP2=${_ble_complete_menu_comp[1]}
+    local COMPS=${_ble_complete_menu_comp[2]}
+    local COMPV=${_ble_complete_menu_comp[3]}
+    local comp_type=${_ble_complete_menu_comp[4]}
+    local comps_flags=${_ble_complete_menu0_comp[5]}
+    local comps_fixed=${_ble_complete_menu0_comp[6]}
+    local menu_common_part=$_ble_complete_menu_common_part
+  fi
+
   if [[ :$opts: != *:use_vars:* ]]; then
     local "${_ble_complete_cand_varnames[@]}"
     ble/complete/cand/unpack "$1"
@@ -2208,7 +2225,7 @@ function ble/complete/menu/construct-single-entry {
   fi
 
   # 基本色の初期化 (Note: 高速化の為、直接 _ble_color_g2sgr を参照する)
-  local sgrB0= sgrB1= sgrN0= sgrN1=
+  local sgrN0= sgrN1= sgrB0= sgrB1=
   [[ :$opts: == *:selected:* ]] && ((g0|=_ble_color_gflags_Revert))
   ret=${_ble_color_g2sgr[g=g0]}
   [[ $ret ]] || ble/color/g2sgr "$g"; sgrN0=$ret
@@ -4164,11 +4181,12 @@ function ble/complete/sabbrev/expand {
     # prepare completion context
     local comp_type= comps_flags= comps_fixed=
     local COMP1=$pos COMP2=$pos COMPS=$key COMPV=
+    ble/complete/candidates/comp_type#read-rl-variables
 
     # construct cand_pack
     local cand_count=0
     local -a cand_cand=() cand_word=() cand_pack=()
-    local cand COMP_PREFIX= 
+    local cand COMP_PREFIX=
 
     # local settings
     local bleopt_sabbrev_menu_style=$bleopt_complete_menu_style
