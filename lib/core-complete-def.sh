@@ -60,12 +60,14 @@ function bleopt/check:complete_menu_style {
   return 0
 }
 
+bleopt/declare -v menu_linewise_prefix ''
 bleopt/declare -n complete_menu_align 20
 bleopt/declare -v complete_menu_complete 1
 bleopt/declare -v complete_menu_filter 1
 
 ble/util/autoload "$_ble_base/lib/core-complete.sh" \
-                  ble/complete/menu#construct \
+                  ble/complete/menu#start \
+                  ble-decode/keymap:menu/define \
                   ble-decode/keymap:auto_complete/define \
                   ble-decode/keymap:menu_complete/define \
                   ble-decode/keymap:dabbrev/define \

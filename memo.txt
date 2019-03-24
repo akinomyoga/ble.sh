@@ -854,6 +854,15 @@ bash_tips
 
 2019-03-23
 
+  * menu: alias select='while myselect' 等として select を上書きできるのでは。
+
+    というか現在の ble.sh で select を実行すると悲惨な事になる気がする…。
+    と思ったが select は別に readline は使っていない様子だ。
+    元の bash でも全然行編集できない感じの入力になっている。
+    なので現状で問題が発生しているという訳でもない。
+
+    もし置き換える事ができるのであれば便利かもしれないという程度である。
+
   * vbell: menu complete でページを移動している時に、
     ページ番号が短くなった時に前の表示を消しきれていない。
 
@@ -861,19 +870,6 @@ bash_tips
     ble/complete/menu/generate-candidates-from-menu の実装を見て思った。
     menu-filter した後の menu_items ではなくて、
     更にその後に表示を行っている menu_icons から読み取っている気がする。
-
-  * menu: 取り敢えず menu 選択機能だけは実装する
-
-    * done: iloop をもっと別の名前にする
-      →これは主に menu#construct の中だけで使われている。menu_iloop にした。
-      更に complete 中に使う判定ではなくて menu 専用の判定に切り替えた。
-
-    * linewise に項目番号を表示する機能をつけても良いのではないか
-      或いは > だとかそういう装飾を設定できる様な自由度があって良いと思う。
-
-    実装はしてみたが何の役に立つのかよく分からなくなってきた。
-    これ以上編集するとごちゃごちゃしそうなので取り敢えず commit する事にする。
-
 
   * menu: 今後の拡張性
 
@@ -2239,6 +2235,7 @@ bash_tips
   - emacs: support widgets `alias-expand-line` and `history-and-alias-expand-line` `#D1024` fdaf579
   - emacs: support keyboard macros `#D1028` 284668a
     - decode: workaround recursive charlog/keylog `#D1030` ea421a3
+  - complete: define `menu` keymap `#D1033`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2250,8 +2247,8 @@ bash_tips
   - isearch: fix a bug to match with the old content of the current line `#D1025` 605dcd0
   - vi: fix a bug that quoted-insert is not properly recorded with `qx...q` `#D1026` 06698a4
   - decode: fix a bug that chars from nested widgets are not processed immediately `#D1028` c79d89b
-  - menu: fix a bug that fails to retrieve menu item description `#D1031`
-  - menu: fix a bug that menu item color is disabled `#D1032`
+  - menu: fix a bug that fails to retrieve menu item description `#D1031` c936db8
+  - menu: fix a bug that menu item color is disabled `#D1032` c936db8
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3202,6 +3199,77 @@ bash_tips
 
 2019-03-24
 
+  * menu: 取り敢えず menu 選択機能だけは実装する [#D1033]
+
+    * done: iloop をもっと別の名前にする
+      →これは主に menu#construct の中だけで使われている。menu_iloop にした。
+      更に complete 中に使う判定ではなくて menu 専用の判定に切り替えた。
+
+    * linewise に項目番号を表示する機能をつけても良いのではないか
+      或いは > だとかそういう装飾を設定できる様な自由度があって良いと思う。
+
+      考えてみたがどういう自由度を持たせるのかというのは難しい。
+      項目番号だけしか提供しないのであればそれで良いのかもしれないが、
+      例えば複数選択時に選択されているかどうかの表示を含めるとか、
+      或いは何かの文字を表示するとか、番号に応じて色を変えるだとか、
+      或いは番号を二種類表示するとかそういう事があったらどうするのだろう。
+
+      例えば PS1 の様に \? という形式で指定できる様にするとしても、
+      フォーマットをどの様に指定するかが問題である。
+      printf の様に %d 等の形式にするとすると、
+      フィールドの順序と数は固定しなければならなくなってしまう。
+      然し、現実的な事を考えれば複数選択時には別の枠組みで表示するべきだし
+      (ユーザの設定によって表示されたりされなかったりというのは不便である)、
+      番号の他に表示するべき項目などはあるだろうか。
+
+      その様に考えるとやはり printf と %d を用いた形式で
+      指定できる様にするのが現実的な感じがする。
+      問題はどの様に外部から指定するのかという事。
+      bleopt で指定する仕組みにすると (一時的な変数だとしても)
+      何だか global な設定を指定している様な感じがして変である。
+      或いは menu_style 変数に引数を指定できる様にするか。
+      うーん。やはり bleopt で指定できる様にするのが良い気がしてきた。
+
+      変数名はどの様な物が良いだろうか。
+        bleopt menu_linewise_number_format
+        bleopt menu_linewise_ps
+        bleopt menu_linewise_fmt
+        bleopt menu_linewise_bullet_format
+        bleopt menu_linewise_prefix
+      長いのも何だか面倒なので最後のにしようか。
+      然し、prefix は乱用しすぎて何だかわからない。
+
+      * reject: 或いは bleopt menu_linewise_format='%d %s'等にして、
+        番号と項目の両方を指定させてしまうという手もあるかもしれない。
+
+        x うーん。幅がずれたりするのを調整するのが面倒である。
+          しかし、幅という事で言えば %3d 等とした時点で
+          予想外の数の候補が来た時には何れにしてもずれる事になる。
+        ? 後は、%s に何を指定するのかという事もある。
+          %s に指定するのは SGR も含めた文字列だろうか。
+          だとすると printf を適用するのは SGR の処理の後である。
+          従って番号の着色は指定する事ができない。
+        x というか項目の選択範囲の計算がこれだとできないから駄目。
+
+      まあ、取り敢えず最後の物を使うことにする。
+      取り敢えず実装してみた。動いている。
+
+    実装はしてみたが何の役に立つのかよく分からなくなってきた。
+    もっと高機能になってから具体的な用途を持って使わないとインターフェイスが定まらない。
+    これ以上編集するとごちゃごちゃしそうなので取り敢えず commit する事にする。
+
+    そもそも現在の menu#start という関数は適切なのだろうか。
+    menu_style は決め打ちだし、menu.class も決め打ちである。
+    そして、引数に与えた文字列を選択できるだけという物である。
+    また、気になるのはこれを widget の中で使う分には良いが、
+    通常のコマンドとして実行してしまうと、
+    すぐに終了して読み取り待機状態になるので表示が乱れてしまうという事。
+
+    うーん。vi_cmap と同様に新しいプロンプトを出して処理するとか、
+    そういう事が必要になるのではないか等。
+    然し、現状では使い道がないのでサンプル実装として menu#start を置いて置く事にする。
+    これに依存したコードは未だ書かない様に注意する必要がある。
+
   * menu: \commit での menu の項目の着色が消えている? [#D1032]
     調べてみると comp_type が空になっていて着色が無効になっていた。何故だろうか。
     →これは sabbrev では comp_type が空のままだからであった。
@@ -3210,6 +3278,12 @@ bash_tips
     更に選択するとやはり着色が無効になっていた。
     これも選択の度に comp_type が空になっているのが原因であった。
     comp_type を初期化する様に修正した。
+
+    readline variables の読み取りの箇所は comp_type を宣言した所であるべきでは。
+    と思ったが別に現状で良い気がしてきた。menu から読み取る場合には
+    結局以前使った comp_type を復元するのだから、
+    実際に候補を生成する場所で comp_type を作れば良いのである。
+    その様に考えると現在の場所で問題ない様に思われる。
 
   * menu: desc の説明が取得できなくなっている… [#D1031]
     これは local desc としてしまっていたのが問題だった。直した。
