@@ -2012,6 +2012,24 @@ function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
   ble/widget/print "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"
 }
+function ble/widget/readline-dump-functions {
+  ble-edit/content/clear-arg
+  local ret
+  ble/util/assign ret 'ble/builtin/bind -P'
+  ble/widget/print "$ret"
+}
+function ble/widget/readline-dump-macros {
+  ble-edit/content/clear-arg
+  local ret
+  ble/util/assign ret 'ble/builtin/bind -S'
+  ble/widget/print "$ret"
+}
+function ble/widget/readline-dump-variables {
+  ble-edit/content/clear-arg
+  local ret
+  ble/util/assign ret 'ble/builtin/bind -V'
+  ble/widget/print "$ret"
+}
 function ble/widget/re-read-init-file {
   ble-edit/content/clear-arg
 

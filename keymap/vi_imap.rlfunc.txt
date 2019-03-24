@@ -34,9 +34,9 @@ digit-argument                    -
 display-shell-version             display-shell-version
 do-lowercase-version              -
 downcase-word                     downcase-eword
-dump-functions                    -
-dump-macros                       -
-dump-variables                    -
+dump-functions                    readline-dump-functions
+dump-macros                       readline-dump-macros
+dump-variables                    readline-dump-variables
 dynamic-complete-history          -
 edit-and-execute-command          -
 emacs-editing-mode                -

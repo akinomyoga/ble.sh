@@ -2229,7 +2229,8 @@ bash_tips
     - decode: workaround recursive charlog/keylog `#D1030` ea421a3
   - complete: define `menu` keymap `#D1033` abfd060
   - emacs: support widgets `kill{,-graphical,-logical}-line` `#D1037` 3bb3d33
-  - emacs: support a widget `re-read-init-file` `#D1038`
+  - emacs: support a widget `re-read-init-file` `#D1038` ebe2928
+  - emacs: support widgets `readline-dump-{functions,macros,variables}` `#D1039`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3195,6 +3196,17 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-24
+
+  * emacs: readline-dump-{functions,macros,variables} に対応する [#D1039]
+    これはとても簡単だった。本来は ble-bind の設定を出力するべきなのではないか、
+    と思わないでもないが面倒なのでこれで良い。
+
+    もし実装するとしたら dump-macros については
+    ble-bind -P | grep 'ble-bind -m [^ ]+ -s ' 等として出力するしかない。
+    また dump-functions の様な逆引き機能を提供するのは難しい。
+    真面目にやろうと思うと全ての widget について keymap を検索しなければならないので非効率的である。
+    dump-variables はそのまま readline の変数を出力してしまえば問題ない。
+    何れにしても余り必要性を感じないので現段階では ble-bind 版は提供しない事にする。
 
   * edit: re-read-init-file に対応する [#D1038]
     既に decode.sh で ble/decode/read-inputrc を実装しているから簡単だと思ったが、

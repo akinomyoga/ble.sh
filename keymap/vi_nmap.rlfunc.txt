@@ -34,9 +34,9 @@ digit-argument                    -
 display-shell-version             vi_nmap/@adjust display-shell-version
 do-lowercase-version              -
 downcase-word                     vi_nmap/downcase-eword
-dump-functions                    -
-dump-macros                       -
-dump-variables                    -
+dump-functions                    vi_nmap/@adjust readline-dump-functions
+dump-macros                       vi_nmap/@adjust readline-dump-macros
+dump-variables                    vi_nmap/@adjust readline-dump-variables
 dynamic-complete-history          -
 edit-and-execute-command          -
 emacs-editing-mode                -
