@@ -1034,7 +1034,7 @@ function ble-edit/content/find-logical-bol {
       return 1
     fi
   elif ((offset<0)); then
-    ble-edit/content/find-logical-eol "$index" "$offset"; local ext=$ret
+    ble-edit/content/find-logical-eol "$index" "$offset"; local ext=$?
     ble-edit/content/find-logical-bol "$ret" 0
     return "$ext"
   else
