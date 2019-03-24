@@ -5879,6 +5879,17 @@ function ble/widget/vi_nmap/@adjust {
   ble/widget/"$@"
   ble/keymap:vi/adjust-command-mode
 }
+function ble/widget/vi_nmap/@motion {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  local _ble_edit_ind=$_ble_edit_ind _ble_edit_arg=$ARG
+  if ble/widget/"$@"; then
+    local index=$_ble_edit_ind
+    ble/util/unlocal _ble_edit_ind
+    ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" nobell
+  else
+    ble/keymap:vi/adjust-command-mode
+  fi
+}
 
 #------------------------------------------------------------------------------
 # Visual mode
@@ -7480,11 +7491,40 @@ function ble-decode/keymap:vi_imap/define {
   local ble_bind_keymap=vi_imap
 
   #----------------------------------------------------------------------------
-  # common bindings + modifications
+  # common bindings
 
   local ble_bind_nometa=1
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
+
+  #----------------------------------------------------------------------------
+  # from ble-decode/keymap:safe/define
+
+  ble-bind -f 'C-d'       'delete-region-or delete-forward-char-or-exit'
+
+  ble-bind -f 'SP'        'magic-space'
+  # ble-bind -f 'M-^'      history-expand-line
+
+  # ble-bind -f  'C-c'     discard-line
+  ble-bind -f  'C-j'     accept-line
+  ble-bind -f  'C-RET'   accept-line
+  ble-bind -f  'C-m'     'vi_imap/accept-single-line-or vi_imap/newline'
+  ble-bind -f  'RET'     'vi_imap/accept-single-line-or vi_imap/newline'
+  # ble-bind -f  'C-o'     accept-and-next
+  ble-bind -f  'C-g'     bell
+  ble-bind -f  'C-x C-g' bell
+  # ble-bind -f  'C-M-g'   bell
+
+  ble-bind -f  'C-l'     clear-screen
+  # ble-bind -f 'C-M-l'     'redraw-line'
+
+  ble-bind -f  'f1'      command-help
+  ble-bind -f  'C-x C-v' display-shell-version
+  ble-bind -c 'C-z'     fg
+  # ble-bind -c 'M-z'     fg
+
+  #----------------------------------------------------------------------------
+  # vi_imap modifications
 
   ble-bind -f insert      'vi_imap/overwrite-mode'
 
@@ -7495,7 +7535,6 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f paste_begin 'vi_imap/bracketed-paste'
 
   # charwise operations
-  ble-bind -f 'C-d'       'delete-region-or delete-forward-char-or-exit'
   ble-bind -f 'C-?'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
   ble-bind -f 'DEL'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
   ble-bind -f 'C-h'       'vi_imap/delete-region-or vi_imap/delete-backward-indent-or delete-backward-char'
@@ -7504,36 +7543,12 @@ function ble-decode/keymap:vi_imap/define {
   # wordwise operations
   ble-bind -f 'C-w'       'vi_imap/delete-backward-word'
 
-  # history
-  ble-bind -f 'SP'        'magic-space'
-  # ble-bind -f 'M-^'     'history-expand-line'
-
   # complete
   ble-decode/keymap:vi_imap/bind-complete
 
   #----------------------------------------------------------------------------
   # shell functions (from keymap emacs-standard)
 
-  # accept/cancel
-  # ble-bind -f  'C-c'     discard-line
-  ble-bind -f  'C-j'     accept-line
-  ble-bind -f  'C-RET'   accept-line
-  ble-bind -f  'C-m'     'vi_imap/accept-single-line-or vi_imap/newline'
-  ble-bind -f  'RET'     'vi_imap/accept-single-line-or vi_imap/newline'
-  # ble-bind -f  'C-o'     accept-and-next
-  ble-bind -f  'C-g'     bell
-  ble-bind -f  'C-x C-g' bell
-  ble-bind -f  'C-M-g'   bell
-
-  # shell functions
-  ble-bind -f  'C-l'     clear-screen
-  # ble-bind -f  'M-l'     redraw-line
-  ble-bind -f  'f1'      command-help
-  ble-bind -f  'C-x C-v' display-shell-version
-  ble-bind -c 'C-z'     fg
-  # ble-bind -c 'M-z'     fg
-
-  # ble-bind -f 'C-[' bell
   ble-bind -f 'C-\' bell
   ble-bind -f 'C-^' bell
 
@@ -7563,8 +7578,10 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   #----------------------------------------------------------------------------
   # from ble-decode/keymap:safe/define
 
-  ble-bind -f 'C-M-l'     'redraw-line'
   ble-bind -f 'M-^'       'history-expand-line'
+  ble-bind -f 'C-M-l'     'redraw-line'
+  ble-bind -f 'C-M-g'     'bell'
+  ble-bind -c 'M-z'       'fg'
 
   #----------------------------------------------------------------------------
   # from ble-decode/keymap:safe/bind-common
@@ -7746,16 +7763,14 @@ function ble-decode/keymap:vi_cmap/define {
   # shell function
   # ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'C-l'     redraw-line
-  ble-bind -f  'M-l'     redraw-line
+  ble-bind -f  'C-M-l'   redraw-line
   ble-bind -f  'C-x C-v' display-shell-version
-
 
   # command-history
   # ble-bind -f 'M-^'     history-expand-line
   # ble-bind -f 'SP'      magic-space
 
   ble-bind -f 'C-\' bell
-  ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
 }
 

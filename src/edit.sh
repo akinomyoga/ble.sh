@@ -2649,7 +2649,14 @@ function ble/widget/delete-forward-backward-char {
   ble-edit/content/clear-arg
   ble/widget/.delete-char 0 || ble/widget/.bell
 }
-
+function ble/widget/delete-forward-char-or-list {
+  local right=${_ble_edit_str:_ble_edit_ind}
+  if [[ ! $right || $right == $'\n'* ]]; then
+    ble/widget/complete show_menu
+  else
+    ble/widget/delete-forward-char
+  fi
+}
 
 function ble/widget/delete-horizontal-space {
   local arg; ble-edit/content/get-arg ''
@@ -2687,6 +2694,50 @@ function ble/widget/backward-char {
   local arg; ble-edit/content/get-arg 1
   ((arg==0)) && return
   ble/widget/.forward-char $((-arg)) || ble/widget/.bell
+}
+
+_ble_edit_character_search_arg=
+function ble/widget/character-search-forward {
+  local arg; ble-edit/content/get-arg 1
+  _ble_edit_character_search_arg=$arg
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/character-search.hook
+}
+function ble/widget/character-search-backward {
+  local arg; ble-edit/content/get-arg 1
+  ((_ble_edit_character_search_arg=-arg))
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/character-search.hook
+}
+function ble/widget/character-search.hook {
+  local char=${KEYS[0]}
+  local ret; ble/util/c2s "${KEYS[0]}"; local c=$ret
+  [[ $c ]] || return # Note: C-@ の時は無視
+  local arg=$_ble_edit_character_search_arg
+  if ((arg>0)); then
+    local right=${_ble_edit_str:_ble_edit_ind+1}
+    if ble/string#index-of "$right" "$c" "$arg"; then
+      ((_ble_edit_ind=_ble_edit_ind+1+ret))
+    elif ble/string#last-index-of "$right" "$c"; then
+      ble/widget/.bell "${arg}th character not found"
+      ((_ble_edit_ind=_ble_edit_ind+1+ret))
+    else
+      ble/widget/.bell 'character not found'
+      return 1
+    fi
+  elif ((arg<0)); then
+    local left=${_ble_edit_str::_ble_edit_ind}
+    if ble/string#last-index-of "$left" "$c" $((-arg)); then
+      _ble_edit_ind=$ret
+    elif ble/string#index-of "$left" "$c"; then
+      ble/widget/.bell "$((-arg))th last character not found"
+      _ble_edit_ind=$ret
+    else
+      ble/widget/.bell 'character not found'
+      return 1
+    fi
+  fi
+  return 0
 }
 
 ## 関数 ble/widget/.locate-forward-byte delta
@@ -6448,6 +6499,10 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'C-x )'     'end-keyboard-macro'
   ble-decode/keymap:safe/.bind 'C-x e'     'call-keyboard-macro'
   ble-decode/keymap:safe/.bind 'C-x P'     'print-keyboard-macro'
+
+  # Note: vi では C-] は sabbrev-expand で上書きされる
+  ble-decode/keymap:safe/.bind 'C-]'       'character-search-forward'
+  ble-decode/keymap:safe/.bind 'M-C-]'     'character-search-backward'
 }
 function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'C-r'       'history-isearch-backward'
@@ -6580,7 +6635,7 @@ function ble-decode/keymap:read/define {
   ble-bind -f  'C-g'     bell
   # ble-bind -f  'C-l'     clear-screen
   ble-bind -f  'C-l'     redraw-line
-  ble-bind -f  'M-l'     redraw-line
+  ble-bind -f  'C-M-l'   redraw-line
   ble-bind -f  'C-x C-v' display-shell-version
 
   # command-history
@@ -6588,7 +6643,6 @@ function ble-decode/keymap:read/define {
   # ble-bind -f 'SP'       magic-space
 
   # ble-bind -f 'C-[' bell # unbound for "bleopt decode_isolated_esc=auto"
-  ble-bind -f 'C-]' bell
   ble-bind -f 'C-^' bell
 }
 

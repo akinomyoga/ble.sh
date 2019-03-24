@@ -13,8 +13,8 @@ beginning-of-line                 @nomarked beginning-of-line
 bracketed-paste-begin             bracketed-paste
 call-last-kbd-macro               call-keyboard-macro
 capitalize-word                   capitalize-eword
-character-search                  -
-character-search-backward         -
+character-search                  character-search-forward
+character-search-backward         character-search-backward
 clear-screen                      clear-screen
 complete                          complete
 complete-command                  complete context=command
@@ -28,7 +28,7 @@ copy-forward-word                 copy-forward-cword
 copy-region-as-kill               copy-region
 dabbrev-expand                    dabbrev-expand
 delete-char                       delete-forward-char
-delete-char-or-list               -
+delete-char-or-list               delete-forward-char-or-list
 delete-horizontal-space           delete-horizontal-space
 digit-argument                    emacs/append-arg
 display-shell-version             display-shell-version
@@ -107,7 +107,7 @@ transpose-words                   -
 tty-status                        -
 undo                              emacs/undo
 universal-argument                -
-unix-filename-rubout              -
+unix-filename-rubout              kill-backward-fword
 unix-line-discard                 kill-backward-line
 unix-word-rubout                  kill-backward-uword
 upcase-word                       upcase-eword

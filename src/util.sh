@@ -498,6 +498,10 @@ function ble/string#count-string {
 ##   @param[in] n
 ##     この引数を指定したとき n 番目の一致を検索します。
 ##   @var[out] ret
+##     一致した場合に見つかった位置を返します。
+##     見つからなかった場合に -1 を返します。
+##   @exit
+##     一致した場合に成功し、見つからなかった場合に失敗します。
 function ble/string#index-of {
   local haystack=$1 needle=$2 count=${3:-1}
   ble/string#repeat '*"$needle"' "$count"; local pattern=$ret

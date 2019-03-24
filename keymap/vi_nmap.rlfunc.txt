@@ -13,8 +13,8 @@ beginning-of-line                 vi-command/beginning-of-line
 bracketed-paste-begin             vi-command/bracketed-paste
 call-last-kbd-macro               call-keyboard-macro
 capitalize-word                   vi_nmap/capitalize-eword
-character-search                  -
-character-search-backward         -
+character-search                  vi_nmap/@motion character-search-forward
+character-search-backward         vi_nmap/@motion character-search-backward
 clear-screen                      clear-screen
 complete                          -
 complete-command                  -
@@ -30,7 +30,7 @@ dabbrev-expand                    -
 delete-char                       vi_nmap/kill-forward-char
 delete-char-or-list               -
 delete-horizontal-space           -
-digit-argument                    -
+digit-argument                    vi-command/append-arg
 display-shell-version             vi_nmap/@adjust display-shell-version
 do-lowercase-version              -
 downcase-word                     vi_nmap/downcase-eword

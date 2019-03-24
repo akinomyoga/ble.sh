@@ -2230,7 +2230,8 @@ bash_tips
   - complete: define `menu` keymap `#D1033` abfd060
   - emacs: support widgets `kill{,-graphical,-logical}-line` `#D1037` 3bb3d33
   - emacs: support a widget `re-read-init-file` `#D1038` ebe2928
-  - emacs: support widgets `readline-dump-{functions,macros,variables}` `#D1039`
+  - emacs: support widgets `readline-dump-{functions,macros,variables}` `#D1039` 49256a9
+  - emacs: support widgets `character-search-{for,back}ward` and `delete-forward-char-or-list` `#D1040`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3194,6 +3195,16 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-03-25
+
+  * emacs: character-search{,-backward} に対応する [#D1040]
+
+    これは文字を一つ受け取って実施する所も含めて vi の f と同様の機能である。
+    但し、key を受け取るのではなくて本当に char を受け取る。
+    つまり、quoted-insert と同様という事である。
+
+    delete-forward-char-or-list も実装が簡単だったので一緒に実装した。
 
 2019-03-24
 
