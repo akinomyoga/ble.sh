@@ -60,7 +60,7 @@ function ble/complete/menu#check-cancel {
 
 function bleopt/check:complete_menu_style {
   if ! ble/is-function "ble/complete/menu-style:$value/construct-page"; then
-    echo "bleopt: Invalid value complete_menu_style='$value'. A function 'ble/complete/menu-style:$value/construct' is not defined." >&2
+    ble/bin/echo "bleopt: Invalid value complete_menu_style='$value'. A function 'ble/complete/menu-style:$value/construct' is not defined." >&2
     return 1
   fi
 }
@@ -2187,7 +2187,7 @@ function ble/complete/complete/determine-context-from-opts {
     if ble/is-function ble/complete/context:"$rematch1"/generate-sources; then
       context=$rematch1
     else
-      echo "ble/widget/complete: unknown context '$rematch1'" >&2
+      ble/bin/echo "ble/widget/complete: unknown context '$rematch1'" >&2
     fi
   fi
 }
@@ -4338,21 +4338,21 @@ function ble/complete/sabbrev/read-arguments {
           case $c in
           (m)
             if ((!$#)); then
-              echo "ble-sabbrev: option argument for '-$c' is missing" >&2
+              ble/bin/echo "ble-sabbrev: option argument for '-$c' is missing" >&2
               flag_error=1
             elif [[ $1 != ?*=* ]]; then
-              echo "ble-sabbrev: invalid option argument '-$c $1' (expected form: '-c key=value')" >&2
+              ble/bin/echo "ble-sabbrev: invalid option argument '-$c $1' (expected form: '-c key=value')" >&2
               flag_error=1
             else
               ble/array#push specs "$c:$1"; shift
             fi ;;
           (*)
-            echo "ble-sabbrev: unknown option '-$c'." >&2
+            ble/bin/echo "ble-sabbrev: unknown option '-$c'." >&2
             flag_error=1 ;;
           esac
         done ;;
       (*)
-        echo "ble-sabbrev: unrecognized argument '$arg'." >&2
+        ble/bin/echo "ble-sabbrev: unrecognized argument '$arg'." >&2
         flag_error=1 ;;
       esac
     fi
@@ -4367,7 +4367,7 @@ function ble-sabbrev {
     local flag_help= flag_error=
     ble/complete/sabbrev/read-arguments "$@"
     if [[ $flag_help || $flag_error ]]; then
-      [[ $flag_error ]] && echo
+      [[ $flag_error ]] && ble/bin/echo
       printf '%s\n' \
              'usage: ble-sabbrev key=value' \
              'usage: ble-sabbrev -m key=function' \

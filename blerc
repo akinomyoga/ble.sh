@@ -1,4 +1,4 @@
-# -*- mode:sh -*-
+# -*- mode: sh; mode: sh-bash -*-
 
 ## Here settings for ble.sh is given.
 ##
@@ -93,7 +93,7 @@
 
 ble/array#push _ble_keymap_vi_load_hook blerc/vim-load-hook
 function blerc/vim-load-hook {
-  ((_ble_bash>=40300)) && bind 'set keyseq-timeout 1'
+  ((_ble_bash>=40300)) && builtin bind 'set keyseq-timeout 1'
 
   # bleopt keymap_vi_macro_depth=64
   # bleopt keymap_vi_nmap_name:=$'\e[1m~\e[m'

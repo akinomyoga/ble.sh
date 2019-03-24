@@ -82,11 +82,11 @@ function ble/getopt.init {
 }
 function ble/getopt.print-argument-message {
   local index=$((OPTIND-1))
-  echo "${_optargs[0]##*/} (argument#$index \`${_optargs[index]}'): $*" >&2
+  ble/bin/echo "${_optargs[0]##*/} (argument#$index \`${_optargs[index]}'): $*" >&2
 }
 function ble/getopt.print-message {
   local index=$((OPTIND-1))
-  echo "${_optargs[0]##*/} (arguments): $*" >&2
+  ble/bin/echo "${_optargs[0]##*/} (arguments): $*" >&2
 }
 
 function ble/getopt.next {

@@ -9,16 +9,16 @@
 function ble/init:bind/append {
   local xarg="\"$1\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\""
   local rarg="$1"
-  echo "builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
-  echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
+  ble/bin/echo "builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
+  ble/bin/echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
 }
 function ble/init:bind/bind-s {
   local sarg="$1"
-  echo "builtin bind '${sarg//$apos/$APOS}'" >> "$fbind1"
+  ble/bin/echo "builtin bind '${sarg//$apos/$APOS}'" >> "$fbind1"
 }
 function ble/init:bind/bind-r {
   local rarg="$1"
-  echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
+  ble/bin/echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
 }
 
 function ble/init:bind/generate-binder {
@@ -172,7 +172,7 @@ function ble/init:bind/generate-binder {
           #   受信した後で CSI を ESC [ に戻す。
           #   CSI = \u009B = utf8{\xC2\x9B} = utf8{\302\233}
           # printf 'bind %q' '"\e[":"\302\233"'               >> "$fbind1"
-          # echo "ble-bind -f 'CSI' '.ble-decode-char 27 91'" >> "$fbind1"
+          # ble/bin/echo "ble-bind -f 'CSI' '.ble-decode-char 27 91'" >> "$fbind1"
 
           # ENCODING: \xC0\x9B is 2-byte code of ESC (UTF-8依存)
           ble/init:bind/bind-s '"\e[":"\xC0\x9B["'
@@ -186,8 +186,8 @@ function ble/init:bind/generate-binder {
       if ((i==27&&esc1B1B)); then
         # ESC ESC for bash-4.1
         ble/init:bind/bind-s '"\e\e":"\e[^"'
-        echo "ble-bind -k 'ESC [ ^' __esc__"                >> "$fbind1"
-        echo "ble-bind -f __esc__ '.ble-decode-char 27 27'" >> "$fbind1"
+        ble/bin/echo "ble-bind -k 'ESC [ ^' __esc__"                >> "$fbind1"
+        ble/bin/echo "ble-bind -f __esc__ '.ble-decode-char 27 27'" >> "$fbind1"
         ble/init:bind/bind-r '\e\e'
       fi
     fi
@@ -198,8 +198,8 @@ function ble/init:bind/generate-binder {
     #   bash-4.3 で keymap が見付かりませんのエラーが出るので。
     # ※3文字以上の bind -x ができるのは bash-4.3 以降
     #   (bash-4.3-alpha で bugfix が入っている)
-    echo 'source "$_ble_decode_bind_fbinder.bind"' >> "$fbind1"
-    echo 'source "$_ble_decode_bind_fbinder.unbind"' >> "$fbind2"
+    ble/bin/echo 'source "$_ble_decode_bind_fbinder.bind"' >> "$fbind1"
+    ble/bin/echo 'source "$_ble_decode_bind_fbinder.unbind"' >> "$fbind2"
   fi
 
   ble/function#try ble/encoding:"$bleopt_input_encoding"/generate-binder

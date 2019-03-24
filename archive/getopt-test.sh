@@ -25,38 +25,38 @@ function command1 {
 
   while ble/getopt.next; do
     case "$OPTION" in
-    (-b|--bytes)  echo bytes  ;;
-    (-s|--spaces) echo spaces ;;
+    (-b|--bytes)  ble/bin/echo bytes  ;;
+    (-s|--spaces) ble/bin/echo spaces ;;
     (-w|--width)
       if ! ble/getopt.get-optarg; then
         ble/getopt.print-argument-message "missing an option argument for $OPTION"
         _opterror=1
         continue
       fi
-      echo "width=$OPTARG" ;;
+      ble/bin/echo "width=$OPTARG" ;;
     (--char-width|--tab-width|--indent-type)
       if ! ble/getopt.get-optarg; then
         ble/getopt.print-argument-message "missing an option argument for $OPTION"
         _opterror=1
         continue
       fi
-      echo "${OPTION#--} = $OPTARG" ;;
+      ble/bin/echo "${OPTION#--} = $OPTARG" ;;
     (--continue)
       if ble/getopt.has-optarg; then
         ble/getopt.get-optarg
-        echo "continue = $OPTARG"
+        ble/bin/echo "continue = $OPTARG"
       else
-        echo "continue"
+        ble/bin/echo "continue"
       fi ;;
     (-i|--indent)
       if ble/getopt.has-optarg; then
         ble/getopt.get-optarg
-        echo "indent = $OPTARG"
+        ble/bin/echo "indent = $OPTARG"
       else
-        echo "indent"
+        ble/bin/echo "indent"
       fi ;;
     (--text-justify|--no-text-justify)
-      echo "${OPTION#--}" ;;
+      ble/bin/echo "${OPTION#--}" ;;
     (-[^-]*|--?*)
       ble/getopt.print-argument-message "unknown option."
       _opterror=1 ;;
@@ -67,7 +67,7 @@ function command1 {
   done
 
   if ! ble/getopt.finalize; then
-    echo "usage: getopt-test.sh [options]" >&2
+    ble/bin/echo "usage: getopt-test.sh [options]" >&2
     builtin exit 1
   fi
 }

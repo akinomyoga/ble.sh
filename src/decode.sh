@@ -21,7 +21,7 @@ function bleopt/check:default_keymap {
   case $value in
   (auto|emacs|vi|safe) ;;
   (*)
-    echo "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
+    ble/bin/echo "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
     return 1 ;;
   esac
 }
@@ -51,7 +51,7 @@ function bleopt/check:decode_isolated_esc {
   case $value in
   (meta|esc|auto) ;;
   (*)
-    echo "bleopt: Invalid value decode_isolated_esc='$value'. One of the values 'auto', 'meta' or 'esc' is expected." >&2
+    ble/bin/echo "bleopt: Invalid value decode_isolated_esc='$value'. One of the values 'auto', 'meta' or 'esc' is expected." >&2
     return 1 ;;
   esac
 }
@@ -519,13 +519,13 @@ function ble-decode-char/csi/print {
   local num ret
   for num in "${!_ble_decode_csimap_tilde[@]}"; do
     ble-decode-unkbd "${_ble_decode_csimap_tilde[num]}"
-    echo "ble-bind --csi '$num~' $ret"
+    ble/bin/echo "ble-bind --csi '$num~' $ret"
   done
 
   for num in "${!_ble_decode_csimap_alpha[@]}"; do
     local s; ble/util/c2s "$num"; s=$ret
     ble-decode-unkbd "${_ble_decode_csimap_alpha[num]}"
-    echo "ble-bind --csi '$s' $ret"
+    ble/bin/echo "ble-bind --csi '$s' $ret"
   done
 }
 
@@ -978,7 +978,7 @@ function ble-decode-char/dump {
     if [[ ${ent%_} ]]; then
       local key=${ent%_} ret
       ble-decode-unkbd "$key"; local kspec=$ret
-      builtin echo "ble-bind -k '${cnames[*]}' '$kspec'"
+      ble/bin/echo "ble-bind -k '${cnames[*]}' '$kspec'"
     fi
 
     if [[ ${ent//[0-9]} == _ ]]; then
@@ -1042,7 +1042,7 @@ function ble-decode/keymap/dump {
   if (($#)); then
     local kmap=$1 arrays
     builtin eval "arrays=(\"\${!_ble_decode_${kmap}_kmap_@}\")"
-    builtin echo "ble-decode/keymap/register $kmap"
+    ble/bin/echo "ble-decode/keymap/register $kmap"
     ble/util/declare-print-definitions "${arrays[@]}"
   else
     local keymap_name
@@ -1146,7 +1146,7 @@ function ble-decode-key/dump {
   local kmap
   if (($#==0)); then
     for kmap in ${_ble_decode_kmaps//:/ }; do
-      echo "# keymap $kmap"
+      ble/bin/echo "# keymap $kmap"
       ble-decode-key/dump "$kmap"
     done
     return
@@ -1167,18 +1167,18 @@ function ble-decode-key/dump {
       local cmd=${ent:2} q=\' Q="'\''"
       case "$cmd" in
       # ('ble/widget/.insert-string '*)
-      #   echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/.insert-string }'" ;;
+      #   ble/bin/echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/.insert-string }'" ;;
       ('ble/widget/.SHELL_COMMAND '*)
-        echo "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
+        ble/bin/echo "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
       ('ble/widget/.EDIT_COMMAND '*)
-        echo "ble-bind$kmapopt -x '${knames//$q/$Q}' ${cmd#ble/widget/.EDIT_COMMAND }" ;;
+        ble/bin/echo "ble-bind$kmapopt -x '${knames//$q/$Q}' ${cmd#ble/widget/.EDIT_COMMAND }" ;;
       ('ble/widget/.MACRO '*)
         local ret; ble/util/chars2keyseq ${cmd#*' '}
-        echo "ble-bind$kmapopt -s '${knames//$q/$Q}' '${ret//$q/$Q}'" ;;
+        ble/bin/echo "ble-bind$kmapopt -s '${knames//$q/$Q}' '${ret//$q/$Q}'" ;;
       ('ble/widget/'*)
-        echo "ble-bind$kmapopt -f '${knames//$q/$Q}' '${cmd#ble/widget/}'" ;;
+        ble/bin/echo "ble-bind$kmapopt -f '${knames//$q/$Q}' '${cmd#ble/widget/}'" ;;
       (*)
-        echo "ble-bind$kmapopt -@ '${knames//$q/$Q}' '${cmd}'" ;;
+        ble/bin/echo "ble-bind$kmapopt -@ '${knames//$q/$Q}' '${cmd}'" ;;
       esac
     fi
 
@@ -1226,7 +1226,7 @@ function ble-decode/keymap/push {
   elif ble-decode/keymap/load "$1" && ble-decode/keymap/is-keymap "$1"; then
     ble-decode/keymap/push "$1" # 再実行
   else
-    echo "[ble: keymap '$1' not found]" >&2
+    ble/bin/echo "[ble: keymap '$1' not found]" >&2
     return 1
   fi
 }
@@ -1642,19 +1642,19 @@ function ble-decode/start-keylog {
 }
 function ble-decode/end-keylog {
   {
-    echo '===== bytes ====='
+    ble/bin/echo '===== bytes ====='
     printf '%s\n' "${_ble_keylogger_bytes[*]}"
-    echo
-    echo '===== chars ====='
+    ble/bin/echo
+    ble/bin/echo '===== chars ====='
     local ret; ble-decode-unkbd "${_ble_keylogger_chars[@]}"
     ble/string#split ret ' ' "$ret"
     printf '%s\n' "${ret[*]}"
-    echo
-    echo '===== keys ====='
+    ble/bin/echo
+    ble/bin/echo '===== keys ====='
     local ret; ble-decode-unkbd "${_ble_keylogger_keys[@]}"
     ble/string#split ret ' ' "$ret"
     printf '%s\n' "${ret[*]}"
-    echo
+    ble/bin/echo
   } | fold -w 40
 
   _ble_keylogger_enabled=0
@@ -1858,7 +1858,7 @@ function ble-bind/load-keymap {
   ble-decode/keymap/register "$kmap"
   ble-decode/keymap/load "$kmap" && return 0
   ble-decode/keymap/unregister "$kmap"
-  echo "ble-bind: the keymap '$kmap' is not defined" >&2
+  ble/bin/echo "ble-bind: the keymap '$kmap' is not defined" >&2
   return 1
 }
 
@@ -1877,9 +1877,9 @@ EOF
 function ble-bind/check-argunment {
   if (($3<$2)); then
     if (($2==1)); then
-      echo "ble-bind: the option \`$1' requires an argument." >&2
+      ble/bin/echo "ble-bind: the option \`$1' requires an argument." >&2
     else
-      echo "ble-bind: the option \`$1' requires $2 arguments." >&2
+      ble/bin/echo "ble-bind: the option \`$1' requires $2 arguments." >&2
     fi
     return 2
   fi
@@ -1892,10 +1892,10 @@ function ble-bind/option:csi {
     ble-decode-kbd "$2"
     ble/string#split-words key "$ret"
     if ((${#key[@]}!=1)); then
-      echo "ble-bind --csi: the second argument is not a single key!" >&2
+      ble/bin/echo "ble-bind --csi: the second argument is not a single key!" >&2
       return 1
     elif ((key&~_ble_decode_MaskChar)); then
-      echo "ble-bind --csi: the second argument should not have modifiers!" >&2
+      ble/bin/echo "ble-bind --csi: the second argument should not have modifiers!" >&2
       return 1
     fi
   fi
@@ -1932,7 +1932,7 @@ function ble-bind/option:csi {
     local ret; ble/util/s2c "$1"
     _ble_decode_csimap_alpha[ret]=$key
   else
-    echo "ble-bind --csi: not supported type of csi sequences: CSI \`$1'." >&2
+    ble/bin/echo "ble-bind --csi: not supported type of csi sequences: CSI \`$1'." >&2
     return 1
   fi
 }
@@ -1985,7 +1985,7 @@ function ble-bind {
       (dump) ble-bind/option:dump "${keymaps[@]}" ;;
       (print) ble-bind/option:print "${keymaps[@]}" ;;
       (*)
-        echo "ble-bind: unrecognized long option $arg" >&2
+        ble/bin/echo "ble-bind: unrecognized long option $arg" >&2
         return 2 ;;
       esac
     elif [[ $arg == -?* ]]; then
@@ -1995,7 +1995,7 @@ function ble-bind {
         case $c in
         (k)
           if (($#<2)); then
-            echo "ble-bind: the option \`-k' requires two arguments." >&2
+            ble/bin/echo "ble-bind: the option \`-k' requires two arguments." >&2
             return 2
           fi
 
@@ -2009,7 +2009,7 @@ function ble-bind {
           shift 2 ;;
         (m)
           if (($#<1)); then
-            echo "ble-bind: the option \`-m' requires an argument." >&2
+            ble/bin/echo "ble-bind: the option \`-m' requires an argument." >&2
             return 2
           elif ! ble-bind/load-keymap "$1"; then
             return 1
@@ -2024,7 +2024,7 @@ function ble-bind {
           [[ $c != f && $arg == f* ]] && arg=${arg:1}
 
           if (($#<2)); then
-            echo "ble-bind: the option \`-$c' requires two arguments." >&2
+            ble/bin/echo "ble-bind: the option \`-$c' requires two arguments." >&2
             return 2
           fi
 
@@ -2044,7 +2044,7 @@ function ble-bind {
                 local message="ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'."
                 [[ $command == ble/widget/ble/widget/* ]] &&
                   message="$message Note: The prefix 'ble/widget/' is redundant"
-                echo "$message" 1>&2
+                ble/bin/echo "$message" 1>&2
                 return 1
               fi ;;
             (x) # 編集用の関数
@@ -2056,10 +2056,10 @@ function ble-bind {
             (s)
               local ret; ble/util/keyseq2chars "$command"
               command="ble/widget/.MACRO ${ret[*]}"
-              echo "$command" ;;
+              ble/bin/echo "$command" ;;
             ('@') ;; # 直接実行
             (*)
-              echo "error: unsupported binding type \`-$c'." 1>&2
+              ble/bin/echo "error: unsupported binding type \`-$c'." 1>&2
               return 1 ;;
             esac
 
@@ -2073,12 +2073,12 @@ function ble-bind {
         (L)
           ble-bind/option:list-widgets ;;
         (*)
-          echo "ble-bind: unrecognized short option \`-$c'." >&2
+          ble/bin/echo "ble-bind: unrecognized short option \`-$c'." >&2
           return 2 ;;
         esac
       done
     else
-      echo "ble-bind: unrecognized argument \`$arg'." >&2
+      ble/bin/echo "ble-bind: unrecognized argument \`$arg'." >&2
       return 2
     fi
   done
@@ -2190,7 +2190,7 @@ function ble-decode-bind/cmap/.generate-binder-template {
     builtin eval "local ent=\${_ble_decode_cmap_$tseq[ccode]}"
     if [[ ${ent%_} ]]; then
       if ((depth>=3)); then
-        echo "\$binder \"$qseq1\" \"${nseq1# }\""
+        ble/bin/echo "\$binder \"$qseq1\" \"${nseq1# }\""
       fi
     fi
 
@@ -2202,10 +2202,10 @@ function ble-decode-bind/cmap/.generate-binder-template {
 
 function ble-decode-bind/cmap/.emit-bindx {
   local ap="'" eap="'\\''"
-  echo "builtin bind -x '\"${1//$ap/$eap}\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\"'"
+  ble/bin/echo "builtin bind -x '\"${1//$ap/$eap}\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\"'"
 }
 function ble-decode-bind/cmap/.emit-bindr {
-  echo "builtin bind -r \"$1\""
+  ble/bin/echo "builtin bind -r \"$1\""
 }
 
 _ble_decode_cmap_initialized=
@@ -2252,7 +2252,7 @@ function ble-decode-bind/.generate-source-to-unbind-default {
   {
     builtin bind -sp
     if ((_ble_bash>=40300)); then
-      echo '__BINDX__'
+      ble/bin/echo '__BINDX__'
       builtin bind -X
     fi
 #%x
@@ -2420,7 +2420,7 @@ function ble-decode/attach {
 
   # 失敗すると悲惨なことになるので抜ける。
   if ! ble/is-array "_ble_decode_${_ble_decode_keymap}_kmap_"; then
-    echo "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_keymap' is not defined." >&2
+    ble/bin/echo "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_keymap' is not defined." >&2
     ble-decode/detach
     return 1
   fi
@@ -2457,7 +2457,7 @@ function ble-decode/detach {
 function ble/decode/read-inputrc/test {
   local text=$1
   if [[ ! $text ]]; then
-    echo "ble.sh (bind):\$if: test condition is not supplied." >&2
+    ble/bin/echo "ble.sh (bind):\$if: test condition is not supplied." >&2
     return 1
   elif local rex=$'[ \t]*([<>]=?|[=!]?=)[ \t]*(.*)$'; [[ $text =~ $rex ]]; then
     local op=${BASH_REMATCH[1]}
@@ -2523,7 +2523,7 @@ function ble/decode/read-inputrc/test {
       test "$ret" "$op" "$rhs"
       return
     else
-      echo "ble.sh (bind):\$if: unknown readline variable '${lhs//$q/$Q}'." >&2
+      ble/bin/echo "ble.sh (bind):\$if: unknown readline variable '${lhs//$q/$Q}'." >&2
       return 1
     fi ;;
   esac
@@ -2536,7 +2536,7 @@ function ble/decode/read-inputrc {
     [[ -f $relative_file ]] && file=$relative_file
   fi
   if [[ ! -f $file ]]; then
-    echo "ble.sh (bind):\$include: the file '${1//$q/$Q}' not found." >&2
+    ble/bin/echo "ble.sh (bind):\$include: the file '${1//$q/$Q}' not found." >&2
     return 1
   fi
 
@@ -2561,7 +2561,7 @@ function ble/decode/read-inputrc {
         ble/string#trim "$args"; args=$ret
         ble/array#push script "ble/decode/read-inputrc '${args//$q/$Q}' '${file//$q/$Q}'" ;;
       (*)
-        echo "ble.sh (bind):$file:$iline: unrecognized directive '$directive'." >&2 ;;
+        ble/bin/echo "ble.sh (bind):$file:$iline: unrecognized directive '$directive'." >&2 ;;
       esac
     else
       ble/array#push script "ble/builtin/bind/.process '${line//$q/$Q}'"
@@ -2586,7 +2586,7 @@ function ble/builtin/bind/option:m {
   (*) keymap= ;;
   esac
   if [[ ! $keymap ]]; then
-    echo "ble.sh (bind): unrecognized keymap name '$name'" >&2
+    ble/bin/echo "ble.sh (bind): unrecognized keymap name '$name'" >&2
     flags=e$flags
   else
     opt_keymap=$keymap
@@ -2612,18 +2612,18 @@ function ble/builtin/bind/.decompose-pair {
     # Parser directives such as $if, $else, $endif, $include
     return 3
   elif [[ ! $keyseq ]]; then
-    echo "ble.sh (bind): empty keyseq in spec:'${spec//$q/$Q}'" >&2
+    ble/bin/echo "ble.sh (bind): empty keyseq in spec:'${spec//$q/$Q}'" >&2
     flags=e$flags
     return 1
   elif rex='^"([^\"]|\\.)*$'; [[ $keyseq =~ $rex ]]; then
-    echo "ble.sh (bind): no closing '\"' in keyseq:'${keyseq//$q/$Q}'" >&2
+    ble/bin/echo "ble.sh (bind): no closing '\"' in keyseq:'${keyseq//$q/$Q}'" >&2
     flags=e$flags
     return 1
   elif rex='^"([^\"]|\\.)*"'; [[ $keyseq =~ $rex ]]; then
     local rematch=${BASH_REMATCH[0]}
     if ((${#rematch}<${#keyseq})); then
       local fragment=${keyseq:${#rematch}}
-      echo "ble.sh (bind): warning: unprocessed fragments in keyseq '${fragment//$q/$Q}'" >&2
+      ble/bin/echo "ble.sh (bind): warning: unprocessed fragments in keyseq '${fragment//$q/$Q}'" >&2
     fi
     keyseq=$rematch
     return 0
@@ -2720,10 +2720,10 @@ function ble/builtin/bind/.initialize-keys-and-value {
   if [[ $keyseq == \"*\" ]]; then
     local ret; ble/util/keyseq2chars "${keyseq:1:${#keyseq}-2}"
     chars=("${ret[@]}")
-    ((${#chars[@]})) || echo "ble.sh (bind): warning: empty keyseq" >&2
+    ((${#chars[@]})) || ble/bin/echo "ble.sh (bind): warning: empty keyseq" >&2
   else
     [[ :$opts: == *:nokeyname:* ]] &&
-      echo "ble.sh (bind): warning: readline \"bind -x\" does not support \"keyname\" spec" >&2
+      ble/bin/echo "ble.sh (bind): warning: readline \"bind -x\" does not support \"keyname\" spec" >&2
     ble/builtin/bind/.parse-keyname "$keyseq"
   fi
   ble/builtin/bind/.decode-chars "${chars[@]}"
@@ -2735,11 +2735,11 @@ function ble/builtin/bind/option:x {
   local q=\' Q="''\'"
   local keys value kmap
   if ! ble/builtin/bind/.initialize-keys-and-value "$1" nokeyname; then
-    echo "ble.sh (bind): unrecognized readline command '${1//$q/$Q}'." >&2
+    ble/bin/echo "ble.sh (bind): unrecognized readline command '${1//$q/$Q}'." >&2
     flags=e$flags
     return 1
   elif ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
-    echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    ble/bin/echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
     flags=e$flags
     return 1
   fi
@@ -2748,14 +2748,14 @@ function ble/builtin/bind/option:x {
     local ifs=$' \t\n'
     local rex='^"(([^\"]|\\.)*)"'
     if ! [[ $value =~ $rex ]]; then
-      echo "ble.sh (bind): no closing '\"' in spec:'${1//$q/$Q}'" >&2
+      ble/bin/echo "ble.sh (bind): no closing '\"' in spec:'${1//$q/$Q}'" >&2
       flags=e$flags
       return 1
     fi
 
     if ((${#BASH_REMATCH}<${#value})); then
       local fragment=${value:${#BASH_REMATCH}}
-      echo "ble.sh (bind): warning: unprocessed fragments:'${fragment//$q/$Q}' in spec:'${1//$q/$Q}'" >&2
+      ble/bin/echo "ble.sh (bind): warning: unprocessed fragments:'${fragment//$q/$Q}' in spec:'${1//$q/$Q}'" >&2
     fi
 
     value=${BASH_REMATCH[1]}
@@ -2807,7 +2807,7 @@ function ble/builtin/bind/option:u {
 
   local kmap
   if ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
-    echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    ble/bin/echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
     flags=e$flags
     return 1
   fi
@@ -2854,11 +2854,11 @@ function ble/builtin/bind/option:- {
   local keys value kmap
   if ! ble/builtin/bind/.initialize-keys-and-value "$arg"; then
     local q=\' Q="''\'"
-    echo "ble.sh (bind): unrecognized readline command '${arg//$q/$Q}'." >&2
+    ble/bin/echo "ble.sh (bind): unrecognized readline command '${arg//$q/$Q}'." >&2
     flags=e$flags
     return 1
   elif ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
-    echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
+    ble/bin/echo "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
     flags=e$flags
     return 1
   fi
@@ -2879,11 +2879,11 @@ function ble/builtin/bind/option:- {
       fi
     fi
 
-    echo "ble.sh (bind): unsupported readline function '${value//$q/$Q}'." >&2
+    ble/bin/echo "ble.sh (bind): unsupported readline function '${value//$q/$Q}'." >&2
     flags=e$flags
     return 1
   else
-    echo "ble.sh (bind): readline function name is not specified ($arg)." >&2
+    ble/bin/echo "ble.sh (bind): readline function name is not specified ($arg)." >&2
     return 1
   fi
 }
@@ -2899,7 +2899,7 @@ function ble/builtin/bind/.process {
            continue ;;
       (--help)
         if ((_ble_bash<40400)); then
-          echo "ble.sh (bind): unrecognized option $arg" >&2
+          ble/bin/echo "ble.sh (bind): unrecognized option $arg" >&2
           flags=e$flags
         else
           # Note: Bash-4.4, 5.0 のバグで unwind_frame が壊れているので
@@ -2910,7 +2910,7 @@ function ble/builtin/bind/.process {
         fi
         continue ;;
       (--*)
-        echo "ble.sh (bind): unrecognized option $arg" >&2
+        ble/bin/echo "ble.sh (bind): unrecognized option $arg" >&2
         flags=e$flags
         continue ;;
       (-*)
@@ -2922,7 +2922,7 @@ function ble/builtin/bind/.process {
             opt_print=$opt_print$c ;;
           ([mqurfx])
             if ((!$#)); then
-              echo "ble.sh (bind): missing option argument for -$c" >&2
+              ble/bin/echo "ble.sh (bind): missing option argument for -$c" >&2
               flags=e$flags
             else
               local optarg=$1; shift
@@ -2934,12 +2934,12 @@ function ble/builtin/bind/.process {
               (q) ble/array#push opt_queries "$optarg" ;;
               (f) ble/decode/read-inputrc "$optarg" ;;
               (*)
-                echo "ble.sh (bind): unsupported option -$c $optarg" >&2
+                ble/bin/echo "ble.sh (bind): unsupported option -$c $optarg" >&2
                 flags=e$flags ;;
               esac
             fi ;;
           (*)
-            echo "ble.sh (bind): unrecognized option -$c" >&2
+            ble/bin/echo "ble.sh (bind): unrecognized option -$c" >&2
             flags=e$flags ;;
           esac
         done

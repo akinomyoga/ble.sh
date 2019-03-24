@@ -75,12 +75,14 @@ function sub:help {
 
 function ble/array#push {
   while (($#>=2)); do
-    builtin eval "$1[\${#$1[@]}]=\"\$2\""
+    builtin eval "$1[\${#$1[@]}]=\$2"
     set -- "$1" "${@:3}"
   done
 }
 
 function sub:check/list-command {
+  local -a options=(--color --exclude=./{test,memo,ext} --exclude=\*.{md,awk})
+
   # read arguments
   local flag_exclude_this= flag_error=
   local command=
@@ -89,12 +91,14 @@ function sub:check/list-command {
     case $arg in
     (--exclude-this)
       flag_exclude_this=1 ;;
-    (-*)
-      echo "check: unknown option '$arg'" >&2
-      flag_error=1 ;;
+    (--exclude=*)
+      ble/array#push options "$arg" ;;
     (--)
       [[ $1 ]] && command=$1
       break ;;
+    (-*)
+      echo "check: unknown option '$arg'" >&2
+      flag_error=1 ;;
     (*)
       command=$arg ;;
     esac
@@ -105,7 +109,6 @@ function sub:check/list-command {
   fi
   [[ $flag_error ]] && return 1
 
-  local -a options=(--color --exclude=./test --exclude=*.{md,awk})
   [[ $flag_exclude_this ]] && ble/array#push options --exclude=./make_command.sh
   grc "${options[@]}" "(^|[^-./\${}=])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)'
 }
@@ -113,7 +116,7 @@ function sub:check/list-command {
 function sub:check/builtin {
   echo "--- $FUNCNAME $1 ---"
   local command=$1 esc='(\[[ -?]*[@-~])*'
-  sub:check/list-command --exclude-this "$command" |
+  sub:check/list-command --exclude-this "$command" "${@:2}" |
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)=" |
     grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc"
@@ -213,7 +216,7 @@ function sub:check {
   # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
 
   #sub:check/builtin 'history'
-  #sub:check/builtin 'echo'
+  sub:check/builtin 'echo' --exclude=./keymap/vi_test.sh --exclude=./ble.pp
   #sub:check/builtin '(compopt|type|printf)'
   sub:check/builtin 'bind'
   sub:check/builtin 'read'

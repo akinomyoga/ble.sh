@@ -31,7 +31,7 @@ bleopt/declare -n complete_polling_cycle 50
 bleopt_complete_stdin_frequency='[obsoleted]'
 function bleopt/check:complete_stdin_frequency {
   var=bleopt_complete_polling_cycle
-  echo 'bleopt: The option "complete_stdin_frequency" is obsoleted. Please use "complete_polling_cycle".' >&2
+  ble/bin/echo 'bleopt: The option "complete_stdin_frequency" is obsoleted. Please use "complete_polling_cycle".' >&2
   return 0
 }
 
@@ -52,8 +52,8 @@ bleopt/declare -n complete_auto_delay 1
 bleopt/declare -n complete_menu_style align-nowrap
 function bleopt/check:complete_menu_style {
   if ! ble/is-function "ble/complete/menu-style:$value/construct"; then
-    echo "bleopt: Invalid value complete_menu_style='$value'." \
-         "A function 'ble/complete/menu-style:$value/construct' is not defined." >&2
+    ble/bin/echo "bleopt: Invalid value complete_menu_style='$value'." \
+                 "A function 'ble/complete/menu-style:$value/construct' is not defined." >&2
     return 1
   fi
 

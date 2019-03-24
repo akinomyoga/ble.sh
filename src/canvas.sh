@@ -11,7 +11,7 @@ bleopt/declare -v tab_width ''
 
 function bleopt/check:tab_width {
   if [[ $value ]] && (((value=value)<=0)); then
-    echo "bleopt: an empty string or a positive value is required for tab_width." >&2
+    ble/bin/echo "bleopt: an empty string or a positive value is required for tab_width." >&2
     return 1
   fi
 }
@@ -48,7 +48,7 @@ bleopt/declare -n emoji_width 2
 
 function bleopt/check:char_width_mode {
   if ! ble/is-function "ble/util/c2w+$value"; then
-    echo "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w+$value' is not defined." >&2
+    ble/bin/echo "bleopt: Invalid value char_width_mode='$value'. A function 'ble/util/c2w+$value' is not defined." >&2
     return 1
   fi
 
@@ -462,7 +462,7 @@ function ble/canvas/put-move.draw {
   ble/canvas/put-move-y.draw "$2"
 }
 function ble/canvas/flush.draw {
-  IFS= builtin eval 'builtin echo -n "${DRAW_BUFF[*]}"'
+  IFS= builtin eval 'ble/bin/echo -n "${DRAW_BUFF[*]}"'
   DRAW_BUFF=()
 }
 ## 関数 ble/canvas/sflush.draw [-v var]

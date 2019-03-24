@@ -15,13 +15,13 @@ function ble/init:term/register-varname {
 function ble/init:term/define-cap {
   local name=$1 def=$2
   shift 2
-  ble/util/assign "$name" "ble/init:term/tput $* || echo -n \"\$def\""
+  ble/util/assign "$name" "ble/init:term/tput $* || ble/bin/echo -n \"\$def\""
   ble/init:term/register-varname "$name"
 }
 function ble/init:term/define-cap.2 {
   local name=$1 def=$2
   shift 2
-  ble/util/assign "$name" "echo -n x; ble/init:term/tput $* || echo -n \"\$def\"; echo -n x"
+  ble/util/assign "$name" "ble/bin/echo -n x; ble/init:term/tput $* || ble/bin/echo -n \"\$def\"; ble/bin/echo -n x"
   builtin eval "$name=\${$name#x}; $name=\${$name%x}"
   ble/init:term/register-varname "$name"
 }
@@ -235,6 +235,6 @@ function ble/init:term/initialize {
   ble/util/declare-print-definitions "${varnames[@]}" >| "$_ble_base_cache/$TERM.term"
 }
 
-echo -n "ble/term.sh: updating tput cache for TERM=$TERM... " >&2
+ble/bin/echo -n "ble/term.sh: updating tput cache for TERM=$TERM... " >&2
 ble/init:term/initialize
-echo  "ble/term.sh: updating tput cache for TERM=$TERM... done" >&2
+ble/bin/echo $'\r'"ble/term.sh: updating tput cache for TERM=$TERM... done" >&2

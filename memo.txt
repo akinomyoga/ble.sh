@@ -2232,7 +2232,7 @@ bash_tips
   - emacs: support widgets `alias-expand-line` and `history-and-alias-expand-line` `#D1024` fdaf579
   - emacs: support keyboard macros `#D1028` 284668a
     - decode: workaround recursive charlog/keylog `#D1030` ea421a3
-  - complete: define `menu` keymap `#D1033` 6eee67b
+  - complete: define `menu` keymap `#D1033` abfd060
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2246,9 +2246,11 @@ bash_tips
   - decode: fix a bug that chars from nested widgets are not processed immediately `#D1028` c79d89b
   - menu: fix a bug that fails to retrieve menu item description `#D1031` c936db8
   - menu: fix a bug that menu item color is disabled `#D1032` c936db8
+  - vbell: fix a bug that persistent vbell is not erased before next vbell `#D1034` a3af6c0
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
+  - global: use builtin echo explicitly `#D1035` e0085ba
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3195,6 +3197,58 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-24
+
+  * global: builtin echo を関数に置き換えるというのはどうだろうか [#D1035]
+
+    実際に benchmark-201903-builtin-echo.sh というスクリプトで試してみる。
+     7.37 usec/eval: echo.normal (x10000) (echo)
+     7.70 usec/eval: echo.builtin (x10000) (builtin echo)
+    10.97 usec/eval: echo.function1 (x10000) (関数内で builtin echo)
+    12.37 usec/eval: echo.function2 (x10000) (printf %s\n による実装)
+
+    まあ、誤差の範囲内である。
+    ふと思って &>/dev/null の繋ぎ変えを削除して実行してみる。
+
+    3.22 usec/eval: echo.normal (x20000)
+    3.63 usec/eval: echo.builtin (x20000)
+    6.75 usec/eval: echo.function1 (x10000) ble/builtin/echo1
+    7.67 usec/eval: echo.function2 (x10000) ble/builtin/echo2
+
+    うーん。実は二倍ぐらいの時間がかかっているという事か。
+    echo の呼び出しと、関数呼び出しと、&>/dev/null の時間は大体同じぐらいという事。
+    然し、ユーザで echo を置き換えてやろうという事を考える人は本当にいるだろうか。
+    例えば、echo の振る舞いを標準化してやろうとして echo を置き換えたいという人はいるかもしれない。
+
+    6.35 usec/eval: echo.functionS (x10000) ble/print
+    6.29 usec/eval: echo.functiont (x10000) ble/p
+
+    うーん。やはり関数名は短い方が高速に動作する様子である。
+
+    a ble/print 的な関数を作ってしまっても良いのかもしれない。
+
+    b ble/p でも良い? 然し汚い感じがする。
+      というか其処まで速度を気にする必要はない筈である。
+
+    c ble/builtin/echo という事にしようか。
+      しかし ble/builtin/* は builtin を置き換える関数の為の名前だった気がする。
+      従って、やはり別の名前の方が良いのではないか。
+      本当に builtin の関数を呼び出したければ builtin echo とする。とそういう物。
+
+    d ble/bin/echo は大丈夫だろうか。
+      ble/bin は command として実行する為に置き換えられてしまうのではないか。
+      と思って調べてみたが、別に明示的に指定しない限りは特に置き換えは起こらない様である。
+      考えてみれば当たり前である。わざわざ呼び出される度に検査する訳ではないので、
+      勝手な置き換えは起こらない。
+
+      問題は ble/bin/echo だと command 版が呼び出される様に錯覚してしまう事である。
+      うーん。やはりコマンド版が呼び出されると勘違いしそうなので良くない。
+
+    e 或いは ble/util/print でやはり良いのでは。。ble/util/p とか。
+      と思ったが -n に対する処理を考えるとやはり echo が良い。
+
+    f そう思うと ble/util/echo という手もある。
+
+    うーん。考えるのが面倒になったので、取り敢えず ble/bin/echo という事にする。
 
   * vbell: menu complete でページを移動している時に [#D1034]
     ページ番号が短くなった時に前の表示を消しきれていない。

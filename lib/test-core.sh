@@ -4,7 +4,7 @@ function ble-test/check-ret {
   local f=$1 in=$2 expected=$3 ret
   "$f" "$in"
   ble/util/assert '[[ $ret == "$expected" ]]' ||
-    echo "fail: command=($f $in) result=($ret) expected=($expected)" >&2
+    ble/bin/echo "fail: command=($f $in) result=($ret) expected=($expected)" >&2
 }
 
 function ble-test:ble/array#pop {

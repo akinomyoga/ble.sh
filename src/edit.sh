@@ -115,7 +115,7 @@ bleopt/declare -n internal_exec_type gexec
 
 function bleopt/check:internal_exec_type {
   if ! ble/is-function "ble-edit/exec:$value/process"; then
-    echo "bleopt: Invalid value internal_exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
+    ble/bin/echo "bleopt: Invalid value internal_exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
     return 1
   fi
 }
@@ -725,7 +725,7 @@ function ble-edit/info/.construct-content {
     # 現在の高さに入らない時は計測し直す。
     ((y<lines)) || ble-edit/info/.construct-content esc "$content" ;;
   (*)
-    echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
+    ble/bin/echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
   esac
 }
 
@@ -1973,7 +1973,7 @@ function ble/textarea#restore-state {
     eval "ble/util/restore-vars $prefix \"\${${prefix}_VARNAMES[@]}\""
     eval "ble/util/restore-arrs $prefix \"\${${prefix}_ARRNAMES[@]}\""
   else
-    echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
+    ble/bin/echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
   fi
 }
@@ -1983,7 +1983,7 @@ function ble/textarea#clear-state {
     local vars=${prefix}_VARNAMES arrs=${prefix}_ARRNAMES
     eval "unset -v \"\${$vars[@]/#/$prefix}\" \"\${$arrs[@]/#/$prefix}\" $vars $arrs"
   else
-    echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
+    ble/bin/echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
   fi
 }
@@ -2579,7 +2579,7 @@ function ble/widget/exit {
       else
         message='There are remaining jobs. Use "exit" to leave the shell.'
       fi
-      ble/widget/internal-command "echo '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
+      ble/widget/internal-command "ble/bin/echo '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
       return
     fi
   elif [[ :$opts: == *:checkjobs:* ]]; then
@@ -3377,7 +3377,7 @@ function ble-edit/exec/.reset-builtins-1 {
   #   unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
   local POSIXLY_CORRECT=y
   local -a builtins1; builtins1=(builtin unset enable unalias)
-  local -a builtins2; builtins2=(return break continue declare typeset local eval echo)
+  local -a builtins2; builtins2=(return break continue declare typeset local eval)
   local -a keywords1; keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
   builtin unset -f "${builtins1[@]}"
   builtin unset -f "${builtins2[@]}"
@@ -3393,6 +3393,7 @@ function ble-edit/exec/.reset-builtins-2 {
   #   "unset -f :" (非POSIX関数名) は別関数で adjust-POSIXLY_CORRECT の後で実行することにする。
   #
   builtin unset -f :
+  builtin unalias :
 }
 
 _ble_edit_exec_BASH_REMATCH=()
@@ -3513,7 +3514,7 @@ function ble/builtin/exit {
     done
   fi
 
-  echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
+  ble/bin/echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
   builtin exit "$ext" &>/dev/null
   builtin exit "$ext" &>/dev/null
   return 1 # exit できなかった場合は 1 らしい
@@ -3535,8 +3536,8 @@ function exit { ble/builtin/exit "$@"; }
 #--------------------------------------
 
 function ble-edit/exec:exec/.eval-TRAPINT {
-  builtin echo >&2
-  # echo "SIGINT ${FUNCNAME[1]}"
+  ble/bin/echo >&2
+  # ble/bin/echo "SIGINT ${FUNCNAME[1]}"
   if ((_ble_bash>=40300)); then
     _ble_edit_exec_INT=130
   else
@@ -3548,7 +3549,7 @@ function ble-edit/exec:exec/.eval-TRAPDEBUG {
   # 一旦 DEBUG を設定すると bind -x を抜けるまで削除できない様なので、
   # _ble_edit_exec_INT のチェックと _ble_edit_exec_in_eval のチェックを行う。
   if ((_ble_edit_exec_INT&&_ble_edit_exec_in_eval)); then
-    builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2" >&2
+    ble/bin/echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2" >&2
     return 0
   else
     trap - DEBUG # 何故か効かない
@@ -3598,7 +3599,7 @@ function ble-edit/exec:exec/.eval-epilogue {
     if type -t TRAPERR &>/dev/null; then
       TRAPERR
     else
-      builtin echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" >&2
+      ble/bin/echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" >&2
     fi
   fi
 }
@@ -3750,7 +3751,7 @@ function ble-edit/exec:exec/process {
 #--------------------------------------
 
 function ble-edit/exec:gexec/.eval-TRAPINT {
-  builtin echo >&2
+  ble/bin/echo >&2
   if ((_ble_bash>=40300)); then
     _ble_edit_exec_INT=130
   else
@@ -3767,14 +3768,14 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
     local rex='^\ble-edit/exec:gexec/.'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
-      builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2" >&2
+      ble/bin/echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2" >&2
       return 0
     fi
 
     local rex='^(\ble-edit/exec:gexec/.|trap - )'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
-      builtin echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2" >&2
+      ble/bin/echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2" >&2
       return 0
     fi
   fi
@@ -3848,7 +3849,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
       TRAPERR
     else
       # Note: >&3 は set -x 対策による呼び出し元のリダイレクトと対応 #D0930
-      builtin echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" >&3
+      ble/bin/echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" >&3
     fi
   fi
 }
@@ -4019,8 +4020,8 @@ fi
 
 function ble-edit/hist_expanded/.expand {
   ble/edit/hist_expanded/.core 2>/dev/null; local ext=$?
-  ((ext)) && echo "$BASH_COMMAND"
-  builtin echo -n :
+  ((ext)) && ble/bin/echo "$BASH_COMMAND"
+  ble/bin/echo -n :
   return "$ext"
 }
 
@@ -4623,7 +4624,7 @@ if ((_ble_bash>=40000)); then
 
           if [[ $opt_async ]]; then
             _ble_edit_history_loading_bgpid=$(
-              shopt -u huponexit; ble-edit/history/load/.background-initialize </dev/null &>/dev/null & echo $!)
+              shopt -u huponexit; ble-edit/history/load/.background-initialize </dev/null &>/dev/null & ble/bin/echo $!)
 
             function ble-edit/history/load/.background-initialize-completed {
               local history_tmpfile=$_ble_base_run/$$.edit-history-load
@@ -6889,7 +6890,7 @@ function ble/widget/command-help.core {
     return 0
   fi
 
-  echo "ble: help of \`$command' not found" >&2
+  ble/bin/echo "ble: help of \`$command' not found" >&2
   return 1
 }
 
@@ -7115,7 +7116,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
           fi
 
           if [[ $bleopt_internal_ignoreeof_trap ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
-            builtin echo eof >> "$_ble_edit_io_fname2.proc"
+            ble/bin/echo eof >> "$_ble_edit_io_fname2.proc"
             kill -USR1 $$
             ble/util/msleep 100 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
           fi
@@ -7148,7 +7149,7 @@ function ble-edit/bind/.check-detach {
   if [[ ! -o emacs && ! -o vi ]]; then
     # 実は set +o emacs などとした時点で eval の評価が中断されるので、これを検知することはできない。
     # 従って、現状ではここに入ってくることはないようである。
-    builtin echo "${_ble_term_setaf[9]}[ble: unsupported]$_ble_term_sgr0 Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
+    ble/bin/echo "${_ble_term_setaf[9]}[ble: unsupported]$_ble_term_sgr0 Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
     ble-detach
   fi
 
@@ -7350,7 +7351,7 @@ function ble-decode/DEFAULT_KEYMAP {
     fi && ble-decode/keymap/is-keymap "${!2}" && return 0
   fi
 
-  echo "ble.sh: The definition of the default keymap \"$bleopt_default_keymap\" is not found. ble.sh uses \"safe\" keymap instead."
+  ble/bin/echo "ble.sh: The definition of the default keymap \"$bleopt_default_keymap\" is not found. ble.sh uses \"safe\" keymap instead."
   ble-edit/bind/load-keymap-definition safe &&
     builtin eval -- "$2=safe" &&
     bleopt_default_keymap=safe
