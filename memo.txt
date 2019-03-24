@@ -863,9 +863,6 @@ bash_tips
 
     もし置き換える事ができるのであれば便利かもしれないという程度である。
 
-  * vbell: menu complete でページを移動している時に、
-    ページ番号が短くなった時に前の表示を消しきれていない。
-
   * menu-complete: 現在 "表示" されているメニュー項目から候補を生成している?
     ble/complete/menu/generate-candidates-from-menu の実装を見て思った。
     menu-filter した後の menu_items ではなくて、
@@ -2235,7 +2232,7 @@ bash_tips
   - emacs: support widgets `alias-expand-line` and `history-and-alias-expand-line` `#D1024` fdaf579
   - emacs: support keyboard macros `#D1028` 284668a
     - decode: workaround recursive charlog/keylog `#D1030` ea421a3
-  - complete: define `menu` keymap `#D1033`
+  - complete: define `menu` keymap `#D1033` 6eee67b
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3198,6 +3195,52 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-24
+
+  * vbell: menu complete でページを移動している時に [#D1034]
+    ページ番号が短くなった時に前の表示を消しきれていない。
+
+    うーん。persistent だったとしても前の表示を消して良い筈。
+    と思ったが、persistent の時にはすぐに終了してしまう?
+    そして終了してしまうともう表示されていないのではないかと判定されてしまう。
+    workerfile を空にせずに終了すれば良いのではないか。
+    そうすれば未だ表示されている内容があるという事の意思表示になる。
+
+    問題になっていたのは worker が生きているのにも拘わらず、
+    workerfile の中身が空になって、他の worker の為に同じ
+    workerfile が使われてしまうという事だった。
+    従って、worker だけが生き続けて workerfile が有限の内容を持ったまま残るというのは問題ないのでは。
+
+    x と思ったのだが、よく考えたらそうでもない。これだとその workerfile はずっと残り続けてしまう。
+      うーん。worker が終了したらやはり消去するべきなのである。
+
+    * 所で worker が予期せず終了して workerfile をクリアしなかったらどうなるのだろうか。
+      その様な場合にも workerfile が残り続けてしまうが、
+      そういった事故はそんなには起こらない筈なので多少残っていても問題はない。
+
+    結局、思っていたよりも様々な状態があるという事。
+
+    - 次の表示が始まっていて既に表示は消えている状態
+      これは ftime と有限サイズ workerfile のタイムスタンプを比較して判定できる。
+    - 未だ表示されていてそして worker も生きているという状態
+      これは workerfile が有限の大きさを持っている事によって判定できる。
+    - 表示が消されていて worker も消えているという状態
+      これは workerfile が空になっている事で確認する事ができる。
+
+    if [[ -s $workerfile && $workerfile -ot $ftime ]]; then
+      # worker は生きているが、既に消去済み
+    elif [[ -s $workerfile ]]; then
+      # worker は生きていて、表示も消されていない。
+    else
+      # worker は死んでいる。workerfile は再利用可能。
+    fi
+
+    これに加えて表示は未だされているが worker は死んでいるという状態がある。。
+    これはどう判定したら良いのだろうか…。
+    実は単純にダミーの workerfile を作れば良いという事になるだろうか。
+    "死んでいて動いていない worker" の workerfile として *.Z というのを作る。
+    これは .erase-previous-visible-bell の判定に入るのでこれで動く筈。
+
+    動作確認した。ちゃんと動く様になっている。
 
   * menu: 取り敢えず menu 選択機能だけは実装する [#D1033]
 

@@ -2501,7 +2501,11 @@ function ble/term/visible-bell/.worker {
   [[ $workerfile -ot $_ble_term_visible_bell_ftime ]] && return >| "$workerfile"
   ble/term/visible-bell/.update "$sgr2"
 
-  [[ :$opts: == *:persistent:* ]] && return >| "$workerfile"
+  if [[ :$opts: == *:persistent:* ]]; then
+    local dead_workerfile=$_ble_base_run/$$.visible-bell.Z
+    builtin echo 1 >| "$dead_workerfile"
+    return >| "$workerfile"
+  fi
 
   # load time duration settings
   local msec=$bleopt_vbell_duration
