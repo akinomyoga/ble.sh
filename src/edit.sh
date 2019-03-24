@@ -3871,6 +3871,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   ble-edit/adjust-IGNOREEOF
   ble-edit/adjust-PS1
   ble-edit/exec/save-BASH_REMATCH
+  ble/util/reset-keymap-of-editing-mode
   ble-edit/exec/.adjust-eol
 
   if ((_ble_edit_exec_lastexit)); then

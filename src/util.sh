@@ -1549,6 +1549,18 @@ function ble/util/restore-editing-mode {
   esac
 }
 
+## 関数 ble/util/reset-keymap-of-editing-mode
+##   既定の keymap に戻す。bind 'set keymap vi-insert' 等で
+##   既定の keymap 以外になっている事がある。
+##   set -o emacs/vi を実行すれば既定の keymap に戻る。#D1038
+function ble/util/reset-keymap-of-editing-mode {
+  if [[ -o emacs ]]; then
+    set -o emacs
+  elif [[ -o vi ]]; then
+    set -o vi
+  fi
+}
+
 ## 関数 ble/util/test-rl-variable name [default_exit]
 function ble/util/test-rl-variable {
   local rl_variables; ble/util/assign rl_variables 'builtin bind -v'

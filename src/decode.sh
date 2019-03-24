@@ -2213,6 +2213,9 @@ function ble-decode/attach {
   # bind/unbind 中に C-c で中断されると大変なので先に stty を設定する必要がある
   ble/term/initialize # 3ms
 
+  # 既定の keymap に戻す
+  ble/util/reset-keymap-of-editing-mode
+
   # 元のキー割り当ての保存・unbind
   builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)" # 21ms
 
