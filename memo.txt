@@ -857,14 +857,10 @@ bash_tips
   * vbell: menu complete でページを移動している時に、
     ページ番号が短くなった時に前の表示を消しきれていない。
 
-  * menu-complete: \commit での menu の項目の着色が消えている?
-
   * menu-complete: 現在 "表示" されているメニュー項目から候補を生成している?
     ble/complete/menu/generate-candidates-from-menu の実装を見て思った。
     menu-filter した後の menu_items ではなくて、
     更にその後に表示を行っている menu_icons から読み取っている気がする。
-
-  * menu-filter の機能についても部分的に ble/complete/menu に移行する。
 
   * menu: 取り敢えず menu 選択機能だけは実装する
 
@@ -874,6 +870,31 @@ bash_tips
 
     * linewise に項目番号を表示する機能をつけても良いのではないか
       或いは > だとかそういう装飾を設定できる様な自由度があって良いと思う。
+
+    実装はしてみたが何の役に立つのかよく分からなくなってきた。
+    これ以上編集するとごちゃごちゃしそうなので取り敢えず commit する事にする。
+
+
+  * menu: 今後の拡張性
+
+    * 因みにフィルタリング機能は menu-filter を統合・整理する形で実装したい。
+      フィルタリング文字列の入力に関しては isearch や iswitchb の様な、
+      単に文字を入力するか BS で戻るかだけしかできない様なものでも良い事にする。
+
+    * cdhist では更にリスト編集機能までついている。
+      つまり項目を並び替えたり削除したりと言った事ができる。
+
+      うーん。これをどの様に返すかは微妙かもしれないが、
+      _ble_complete_menu_items にある物を呼び出し元で参照してもらうというので良い気がする。
+      或いは callback でどの様に並び替えたかを返すという手もあるが分かりにくいだろうか。
+      両方という事で良い気がする。使う側で便利そうな方を選んでもらう。
+      どの様に並び替えたかの操作が欲しければ callback を使うし、
+      最終的な結果だけ欲しければ _ble_complete_menu_items を参照してもらう事にする。
+
+    * callback という事で思ったが、実は accept だとか cancel だとかも
+      全て menu_class 経由で定義した方が良いのではないだろうか。
+      一つずつ全て callback を変数に設定していくのは面倒である。
+      更に、並び替えの callback だとかどんどん増やしていくと際限がない。
 
 2019-03-22
 
@@ -2217,7 +2238,7 @@ bash_tips
   - emacs: support widgets `{capitalize,downcase,upcase}-xword` `#D1019` 719092c
   - emacs: support widgets `alias-expand-line` and `history-and-alias-expand-line` `#D1024` fdaf579
   - emacs: support keyboard macros `#D1028` 284668a
-    - decode: workaround recursive charlog/keylog `#D1030`
+    - decode: workaround recursive charlog/keylog `#D1030` ea421a3
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2229,6 +2250,8 @@ bash_tips
   - isearch: fix a bug to match with the old content of the current line `#D1025` 605dcd0
   - vi: fix a bug that quoted-insert is not properly recorded with `qx...q` `#D1026` 06698a4
   - decode: fix a bug that chars from nested widgets are not processed immediately `#D1028` c79d89b
+  - menu: fix a bug that fails to retrieve menu item description `#D1031`
+  - menu: fix a bug that menu item color is disabled `#D1032`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3178,6 +3201,18 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-24
+
+  * menu: \commit での menu の項目の着色が消えている? [#D1032]
+    調べてみると comp_type が空になっていて着色が無効になっていた。何故だろうか。
+    →これは sabbrev では comp_type が空のままだからであった。
+      readline variables の読み取りを sabbrev でも行う様にした。
+
+    更に選択するとやはり着色が無効になっていた。
+    これも選択の度に comp_type が空になっているのが原因であった。
+    comp_type を初期化する様に修正した。
+
+  * menu: desc の説明が取得できなくなっている… [#D1031]
+    これは local desc としてしまっていたのが問題だった。直した。
 
   * decode: charlog/keylog に関して再考 [#D1030]
 
