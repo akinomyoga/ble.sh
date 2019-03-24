@@ -168,6 +168,7 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f 'C-m'      accept-single-line-or-newline
   ble-bind -f 'RET'      accept-single-line-or-newline
   ble-bind -f 'C-o'      accept-and-next
+  ble-bind -f 'M-#'      insert-comment
   ble-bind -f 'C-g'      bell
   ble-bind -f 'C-x C-g'  bell
   ble-bind -f 'C-M-g'    bell

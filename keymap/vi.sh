@@ -7511,6 +7511,7 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f  'C-m'     'vi_imap/accept-single-line-or vi_imap/newline'
   ble-bind -f  'RET'     'vi_imap/accept-single-line-or vi_imap/newline'
   # ble-bind -f  'C-o'     accept-and-next
+  # ble-bind -f 'M-#'      insert-comment
   ble-bind -f  'C-g'     bell
   ble-bind -f  'C-x C-g' bell
   # ble-bind -f  'C-M-g'   bell
@@ -7580,6 +7581,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
 
   ble-bind -f 'M-^'       'history-expand-line'
   ble-bind -f 'C-M-l'     'redraw-line'
+  ble-bind -f 'M-#'       'insert-comment'
   ble-bind -f 'C-M-g'     'bell'
   ble-bind -c 'M-z'       'fg'
 

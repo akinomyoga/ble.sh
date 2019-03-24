@@ -28,11 +28,11 @@ copy-forward-word                 copy-forward-sword
 copy-region-as-kill               copy-region-or copy-uword
 dabbrev-expand                    dabbrev-expand
 delete-char                       vi_imap/delete-region-or delete-forward-char
-delete-char-or-list               -
+delete-char-or-list               delete-forward-char-or-list
 delete-horizontal-space           delete-horizontal-space
 digit-argument                    -
 display-shell-version             display-shell-version
-do-lowercase-version              -
+do-lowercase-version              do-lowercase-version
 downcase-word                     downcase-eword
 dump-functions                    readline-dump-functions
 dump-macros                       readline-dump-macros
@@ -58,7 +58,7 @@ history-search-backward           history-search-backward
 history-search-forward            history-search-forward
 history-substring-search-backward history-substring-search-backward
 history-substring-search-forward  history-substring-search-forward
-insert-comment                    -
+insert-comment                    insert-comment
 insert-completions                complete insert_all
 insert-last-argument              -
 kill-line                         kill-forward-line
@@ -128,7 +128,7 @@ vi-complete                       -
 vi-delete                         -
 vi-delete-to                      -
 vi-eWord                          -
-vi-editing-mode                   -
+vi-editing-mode                   nop
 vi-end-bigword                    -
 vi-end-word                       -
 vi-eof-maybe                      -

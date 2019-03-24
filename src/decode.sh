@@ -1594,7 +1594,7 @@ function ble-decode/widget/redispatch {
     ble/decode/keylog#pop
     _ble_decode_keylog_depth=0
   fi
-  ble-decode-key "${KEYS[@]}"
+  ble-decode-key "$@"
 }
 
 #------------------------------------------------------------------------------

@@ -32,7 +32,7 @@ delete-char-or-list               delete-forward-char-or-list
 delete-horizontal-space           delete-horizontal-space
 digit-argument                    emacs/append-arg
 display-shell-version             display-shell-version
-do-lowercase-version              -
+do-lowercase-version              do-lowercase-version
 downcase-word                     downcase-eword
 dump-functions                    readline-dump-functions
 dump-macros                       readline-dump-macros
@@ -58,7 +58,7 @@ history-search-backward           history-search-backward
 history-search-forward            history-search-forward
 history-substring-search-backward history-substring-search-backward
 history-substring-search-forward  history-substring-search-forward
-insert-comment                    -
+insert-comment                    insert-comment
 insert-completions                complete insert_all
 insert-last-argument              -
 kill-line                         kill-forward-line

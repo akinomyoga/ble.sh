@@ -2231,7 +2231,8 @@ bash_tips
   - emacs: support widgets `kill{,-graphical,-logical}-line` `#D1037` 3bb3d33
   - emacs: support a widget `re-read-init-file` `#D1038` ebe2928
   - emacs: support widgets `readline-dump-{functions,macros,variables}` `#D1039` 49256a9
-  - emacs: support widgets `character-search-{for,back}ward` and `delete-forward-char-or-list` `#D1040`
+  - emacs: support widgets `character-search-{for,back}ward` and `delete-forward-char-or-list` `#D1040` 2b20c88
+  - emacs: support widgets `insert-comment` and `do-lowercase-version` `#D1041`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3197,6 +3198,17 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-25
+
+  * emacs: insert-comment に対応する [#D1041]
+
+    x fixed: 実行している途中で落ちると思ったら
+      redispatch の実装を誤っていて無限ループになっていた。
+      decompose-meta で修正した物に置き換えている積もりが、
+      元と同じキーシーケンスを食わせていた為であった。修正した。
+
+    対応した。動いている様に見える。
+    元の bash では先頭にしか # を入れないが、
+    ble.sh の実装では各行に挿入する事にした。
 
   * emacs: character-search{,-backward} に対応する [#D1040]
 

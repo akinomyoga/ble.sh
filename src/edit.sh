@@ -1990,12 +1990,23 @@ function ble/textarea#clear-state {
 
 # 
 #------------------------------------------------------------------------------
-# **** redraw, clear-screen, etc ****                             @widget.clear
 
 function ble/widget/.update-textmap {
   local text=$_ble_edit_str x=$_ble_textmap_begx y=$_ble_textmap_begy
   ble/textmap#update "$text"
 }
+function ble/widget/do-lowercase-version {
+  local flag=$((KEYS[0]&_ble_decode_MaskFlag)) char=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((65<=char&&char<=90)); then
+    ble-decode/widget/redispatch $((flag|char+32)) "${KEYS[@]:1}"
+  else
+    return 125
+  fi
+}
+
+# 
+# **** redraw, clear-screen, etc ****                             @widget.clear
+
 function ble/widget/redraw-line {
   ble-edit/content/clear-arg
   ble/textarea#invalidate
@@ -4249,10 +4260,48 @@ function ble/widget/accept-single-line-or-newline {
   ble/widget/accept-single-line-or newline
 }
 
-function ble/widget/alias-expand-line/1 {
+function ble/widget/insert-comment/.remove-comment {
+  local comment_begin=$1
+  ret=
+
+  [[ $comment_begin ]] || return
+  ble/string#escape-for-extended-regex "$comment_begin"; local rex_comment_begin=$ret
+  local rex1=$'([ \t]*'$rex_comment_begin$')[^\n]*(\n|$)|[ \t]+(\n|$)|\n'
+  local rex=$'^('$rex1')*$'; [[ $_ble_edit_str =~ $rex ]] || return
+
+  local tail=$_ble_edit_str out=
+  while [[ $tail && $tail =~ ^$rex1 ]]; do
+    local rematch1=${BASH_REMATCH[1]}
+    if [[ $rematch1 ]]; then
+      out=$out${rematch1%?}${BASH_REMATCH:${#rematch1}}
+    else
+      out=$out$BASH_REMATCH
+    fi
+    tail=${tail:${#BASH_REMATCH}}
+  done
+
+  [[ $tail ]] && return 1
+
+  ret=$out
+}
+function ble/widget/insert-comment {
+  local arg; ble-edit/content/get-arg ''
+  local ret='#'; ble/util/read-rl-variable comment-begin
+  local comment_begin=${ret::1}
+  local text=
+  if [[ $arg ]] && ble/widget/insert-comment/.remove-comment "$comment_begin"; then
+    text=$ret
+  else
+    text=$comment_begin${_ble_edit_str//$'\n'/$'\n'"$comment_begin"}
+  fi
+  ble-edit/content/reset-and-check-dirty "$text"
+  ble/widget/accept-line
+}
+
+function ble/widget/alias-expand-line.proc {
   if ((tchild>=0)); then
     ble/syntax/tree-enumerate-children \
-      ble/widget/alias-expand-line/1
+      ble/widget/alias-expand-line.proc
   elif [[ $wtype && ! ${wtype//[0-9]} ]] && ((wtype==_ble_ctx_CMDI)); then
     local word=${_ble_edit_str:wbegin:wlen}
     ble/util/expand-alias "$word"
@@ -4265,7 +4314,7 @@ function ble/widget/alias-expand-line {
   ble-edit/content/clear-arg
   ble-edit/content/update-syntax
   local iN= changed=
-  ble/syntax/tree-enumerate ble/widget/alias-expand-line/1
+  ble/syntax/tree-enumerate ble/widget/alias-expand-line.proc
   [[ $changed ]] && _ble_edit_mark_active=
 }
 
@@ -6575,6 +6624,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'C-m'      accept-single-line-or-newline
   ble-bind -f 'RET'      accept-single-line-or-newline
   ble-bind -f 'C-o'      accept-and-next
+  ble-bind -f 'M-#'      insert-comment
   ble-bind -f 'C-g'      bell
   ble-bind -f 'C-x C-g'  bell
   ble-bind -f 'C-M-g'    bell
