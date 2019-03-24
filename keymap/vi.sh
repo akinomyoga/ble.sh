@@ -5874,6 +5874,11 @@ function ble/widget/vi_nmap/@edit {
   ble/keymap:vi/mark/end-edit-area
   ble/keymap:vi/adjust-command-mode
 }
+function ble/widget/vi_nmap/@adjust {
+  ble/keymap:vi/clear-arg
+  ble/widget/"$@"
+  ble/keymap:vi/adjust-command-mode
+}
 
 #------------------------------------------------------------------------------
 # Visual mode

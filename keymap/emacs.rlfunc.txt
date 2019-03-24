@@ -87,7 +87,7 @@ previous-history                  history-prev
 previous-screen-line              @nomarked backward-graphical-line
 print-last-kbd-macro              print-keyboard-macro
 quoted-insert                     quoted-insert
-re-read-init-file                 -
+re-read-init-file                 re-read-init-file
 redraw-current-line               redraw-line
 reverse-search-history            history-isearch-backward
 revert-line                       emacs/revert

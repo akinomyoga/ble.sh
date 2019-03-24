@@ -2228,7 +2228,8 @@ bash_tips
   - emacs: support keyboard macros `#D1028` 284668a
     - decode: workaround recursive charlog/keylog `#D1030` ea421a3
   - complete: define `menu` keymap `#D1033` abfd060
-  - emacs: support widgets `kill{,-graphical,-logical}-line` `#D1037`
+  - emacs: support widgets `kill{,-graphical,-logical}-line` `#D1037` 3bb3d33
+  - emacs: support a widget `re-read-init-file` `#D1038`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3194,6 +3195,110 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-24
+
+  * edit: re-read-init-file に対応する [#D1038]
+    既に decode.sh で ble/decode/read-inputrc を実装しているから簡単だと思ったが、
+    よく考えたら本当にそうだろうか。
+    set keymap に応じて現在の keymap を切り替える必要があるのではあるまいか。
+    これは以前 ble/decode/read-inputrc を実装した時の手落ちである。
+
+    [調査]
+
+    opt_keymap が空の時には set keymap で指定した所から読み出す必要がある。
+    うーん。本当だろうか。実はこれが有効なのは inputrc の中だけだったりはしないだろうか。
+    振る舞いを調べなければならない。
+
+    | 実際に set keymap をすると完全に keymap が切り替わってしまう。
+    | うーん。これはどの様に処理したら良いのだろうか。
+    | 要するに bind の呼び出しを跨いで "現在の keymap" という物が存在するという事になる。
+    | これはグローバル変数にでも記録しておくしかないだろうか。
+    | 然し、グローバル変数に記録した "現在の keymap" というのをクリアするタイミングというのは何か。
+    | 例えば bash の場合にはコマンドを実行する度に keymap はリセットされる様である。
+    | 然し、コマンドが実行されない限りはリセットされずに保持されている。
+    | 本当だろうか。と思ったが、コマンドが実行されてもリセットされずに保持されている。
+    | そして bind の適用対象は相変わらず set keymap で指定した keymap になっている。
+    |
+    | - done: $include を跨いでも持続するのかどうか → yes
+    | - done: bind -f を跨いでも持続するのかどうか → yes
+    |   D1038.test1.* を用いて調べた。結果は
+    |   $ source D1038.test1.0.sh
+    |   # keymap emacs
+    |   "A": "from 0.sh"
+    |   # keymap vi-insert
+    |   "B": "from 1.inputrc"
+    |   # keymap vi-command
+    |   "C": "from 2.inputrc"
+    |   "D": "from 1.inputrc"
+    |   "E": "from 0.sh"
+    |   set keymap vi
+    | 
+    |   内部で設定した keymap が外側にも残っているという事が分かる。
+    |   つまり $include を使っても bind -f を使っても設定は持続する。
+    | 
+    | - 因みに bind -f はそれを記述しているソースファイルからの相対パスではなく
+    |   現在のディレクトリからの相対パスとして解釈される。
+    |   一方で $include に関しては、それを記述している inputrc ファイルからの相対パスで行ける。
+    |   と思ったら勘違いだった。現在のディレクトリからの相対パスでなければならない。
+    |   ファイルが見つからなかった場合には何もエラーメッセージがなく失敗する。
+    | 
+    | - done: re-read-init-file (inputrc) を跨いでも持続するのか
+    |   →抜ける時に既定の物になる(入る前の状態に復元する訳ではなく editing mode に固有の keymap に矯正される)
+    | 
+    |   これはどの様に調べれば良いか。C-xC-r で re-read-init-file を呼び出す事ができる。
+    |     INPUTRC=D1038.test1.1.inputrc
+    |     \C-x\C-r
+    |   という具合にすれば良いだろうか。
+    |   うーん。 D1038.test1.0.sh の中身で bind -f の行の部分だけ
+    |     INPUTRC=D1038.test1.1.inputrc
+    |     \C-x\C-r
+    |   に置き換えて実行すれば良い気がする。
+    |   うーん。そもそも C-xC-r で読み込まれていない気がする。
+    | 
+    |   実際に試してみると re-read-init-file の中で設定した keymap は見えない様である。
+    |   というか re-read-init-file を実行すると keymap はリセットされる様子である。
+    |   また、re-read-init-file の中では外側で設定されていた keymap は見えるのだろうか。
+    |   確認してみた所外側で設定されていた keymap が保持されている様である。
+
+    まとめ
+
+    * set keymap をすると本当に編集に用いている keymap が切り替わる。
+      当然 bind の既定の対象も切り替わる。
+      * コマンド実行を跨いでもその効果は持続している。
+      * bind -f や $include の中で行った切り替えも外側に影響を与える。
+      * 外側の設定は re-read-init-file の中で見えるが、
+        re-read-init-file が終わる時に既定の keymap に強制的に戻る。
+    * bind -f filename 及び $include filename は現在のディレクトリからの相対パスである。
+      これらのコマンドを記述しているスクリプト・初期化ファイルからの相対パスではない。
+      (ble.sh ではファイルからの相対パスに対応しているが余計な機能だったかもしれない)
+
+    [実装]
+
+    * fixed: うーん。何と現在の editing mode と関係なく keymap を切り替える事ができて、
+      しかも切り替えるとその editing mode でコマンドラインが編集できるという状況である。
+      これは微妙である。ble.sh が動かなくなってしまう原因なので、修正する必要がある。
+      因みに set -o emacs もしくは bind 'set editing-mode emacs' を明示的に呼び出せば、
+      既定の keymap に自動的に戻る様子である。つまり、ble-decode/attach する直前に
+      set -o emacs もしくは set -o vi を呼び出せば良いという事になる。
+
+    * fixed: うーん。ユーザのコマンドによって keymap が勝手に切り替えられてしまうという事はあるだろうか。
+      そういう事があった場合でも ble.sh は動作を停止してしまう事になる。
+      その様な場合への対策として、やはりコマンドを実行した後に keymap を復元する必要がある。
+      実際に試してみた所、確かに一時的に変な状態になってしまうが RET を押すと治る。
+      恐らくコマンドを一つ実行すれば元の keymap になって動作が戻るという事なのだろう。
+
+    * done: 現在の bind の対象の keymap を _ble_builtin_bind_keymap に保持する事にした
+
+    * ok: bind -f 及び $include は現在のパスからの相対パスを優先させる?
+      うーん。普通に考えたらファイルパスからの相対パスを優先させる方が自然である。
+      なので、bash の振る舞いと変わってしまう所ではあるが現在の振る舞いを保持する事にする。
+
+    まあ、これで多分大丈夫だろうという気がする。動作チェックは面倒なのでしない。
+    試しに source D1038.test1.0.sh を実行してみた所、ちゃんと動いていた。
+    但し、bind -s は代わりに ble-bind -P | grep ' -s ' としなければならない。
+    re-read-init-file についても動作確認してみた。
+
+    * fixed: ble-bind のエラーメッセージに ble edit function という語句が含まれている
+    * fixed: bind 'set editing-mode' の時に keymap はクリアするべきではないのか。
 
   * edit: kill-while-line に対応する物があったのではないかと思ったが [#D1037]
     そういう物は実装されていない様だった。kill-forward-line (C-k) 及び

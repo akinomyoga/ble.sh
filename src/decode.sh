@@ -2041,7 +2041,7 @@ function ble-bind {
               # check if is function
               local arr; ble/string#split-words arr "$command"
               if ! ble/is-function "${arr[0]}"; then
-                local message="ble-bind: Unknown ble edit function \`${arr[0]#'ble/widget/'}'."
+                local message="ble-bind: Unknown ble widget \`${arr[0]#'ble/widget/'}'."
                 [[ $command == ble/widget/ble/widget/* ]] &&
                   message="$message Note: The prefix 'ble/widget/' is redundant"
                 ble/bin/echo "$message" 1>&2
@@ -2412,6 +2412,9 @@ function ble-decode/attach {
   # bind/unbind 中に C-c で中断されると大変なので先に stty を設定する必要がある
   ble/term/initialize # 3ms
 
+  # 既定の keymap に戻す
+  ble/util/reset-keymap-of-editing-mode
+
   # 元のキー割り当ての保存・unbind
   builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)" # 21ms
 
@@ -2575,6 +2578,13 @@ function ble/decode/read-inputrc {
 #------------------------------------------------------------------------------
 # ble/builtin/bind
 
+_ble_builtin_bind_keymap=
+function ble/builtin/bind/set-keymap {
+  local opt_keymap= flags=
+  ble/builtin/bind/option:m "$1" &&
+    _ble_builtin_bind_keymap=$opt_keymap
+}
+
 ## 関数 ble/builtin/bind/option:m keymap
 ##   @var[in,out] opt_keymap flags
 function ble/builtin/bind/option:m {
@@ -2588,8 +2598,10 @@ function ble/builtin/bind/option:m {
   if [[ ! $keymap ]]; then
     ble/bin/echo "ble.sh (bind): unrecognized keymap name '$name'" >&2
     flags=e$flags
+    return 1
   else
     opt_keymap=$keymap
+    return 0
   fi
 }
 ## 関数 ble/builtin/bind/.decompose-pair spec
@@ -2847,7 +2859,20 @@ function ble/builtin/bind/option:- {
 
   local ifs=$' \t\n'
   if [[ $arg == 'set'["$ifs"]* ]]; then
-    [[ $_ble_decode_bind_state != none ]] && builtin bind "$arg"
+    if [[ $_ble_decode_bind_state != none ]]; then
+      local variable= value= rex=$'^set[ \t]+([^ \t]+)[ \t]+([^ \t].*)$'
+      [[ $arg =~ $rex ]] && variable=${BASH_REMATCH[1]} value=${BASH_REMATCH[2]}
+
+      case $variable in
+      (keymap)
+        ble/builtin/bind/set-keymap "$value"
+        return ;;
+      (editing-mode)
+        _ble_builtin_bind_keymap= ;;
+      esac
+
+      builtin bind "$arg"
+    fi
     return
   fi
 
@@ -2889,7 +2914,7 @@ function ble/builtin/bind/option:- {
 }
 function ble/builtin/bind/.process {
   flags=
-  local opt_literal= opt_keymap= opt_print=
+  local opt_literal= opt_keymap=$_ble_builtin_bind_keymap opt_print=
   local -a opt_queries=()
   while (($#)); do
     local arg=$1; shift

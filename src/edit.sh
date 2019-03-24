@@ -2012,6 +2012,17 @@ function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
   ble/widget/print "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"
 }
+function ble/widget/re-read-init-file {
+  ble-edit/content/clear-arg
+
+  local inputrc=$INPUTRC
+  [[ $inputrc && -e $inputrc ]] || inputrc=~/.inputrc
+  [[ -e $inputrc ]] || return 0
+  ble/decode/read-inputrc "$inputrc"
+
+  # Note: 読み終わった "後" に "既定" に戻す #D1038
+  _ble_builtin_bind_keymap=
+}
 
 # **** mark, kill, copy ****                                       @widget.mark
 
@@ -3870,6 +3881,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   ble-edit/adjust-IGNOREEOF
   ble-edit/adjust-PS1
   ble-edit/exec/save-BASH_REMATCH
+  ble/util/reset-keymap-of-editing-mode
   ble-edit/exec/.adjust-eol
 
   if ((_ble_edit_exec_lastexit)); then

@@ -31,7 +31,7 @@ delete-char                       vi_nmap/kill-forward-char
 delete-char-or-list               -
 delete-horizontal-space           -
 digit-argument                    -
-display-shell-version             -
+display-shell-version             vi_nmap/@adjust display-shell-version
 do-lowercase-version              -
 downcase-word                     vi_nmap/downcase-eword
 dump-functions                    -
@@ -87,7 +87,7 @@ previous-history                  history-prev
 previous-screen-line              -
 print-last-kbd-macro              print-keyboard-macro
 quoted-insert                     -
-re-read-init-file                 -
+re-read-init-file                 vi_nmap/@adjust re-read-init-file
 redraw-current-line               redraw-line
 reverse-search-history            history-isearch-backward
 revert-line                       vi_nmap/revert
