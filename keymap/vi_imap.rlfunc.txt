@@ -63,7 +63,7 @@ insert-completions                complete insert_all
 insert-last-argument              -
 kill-line                         kill-forward-line
 kill-region                       kill-region-or kill-uword
-kill-whole-line                   -
+kill-whole-line                   kill-line
 kill-word                         kill-forward-uword
 magic-space                       magic-space
 menu-complete                     menu-complete

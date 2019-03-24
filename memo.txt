@@ -2228,6 +2228,7 @@ bash_tips
   - emacs: support keyboard macros `#D1028` 284668a
     - decode: workaround recursive charlog/keylog `#D1030` ea421a3
   - complete: define `menu` keymap `#D1033` abfd060
+  - emacs: support widgets `kill{,-graphical,-logical}-line` `#D1037`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3193,6 +3194,14 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-24
+
+  * edit: kill-while-line に対応する物があったのではないかと思ったが [#D1037]
+    そういう物は実装されていない様だった。kill-forward-line (C-k) 及び
+    kill-backward-line (C-u) に倣って実装しようと思ったが、
+    それぞれ logical/graphical の二種類があって、
+    更に引数の有り無しで改行も一緒に消すかどうかの動作まで切り替わる様で、
+    何だか複雑だったので最初から実装し直す事にした。
+    最初から実装し直したらすっきりとした実装になった。
 
   * menu-complete: 現在 "表示" されているメニュー項目から候補を生成している? [#D1036]
     ble/complete/menu/generate-candidates-from-menu の実装を見て思った。

@@ -1035,7 +1035,7 @@ function ble-edit/content/find-logical-bol {
       return 1
     fi
   elif ((offset<0)); then
-    ble-edit/content/find-logical-eol "$index" "$offset"; local ext=$ret
+    ble-edit/content/find-logical-eol "$index" "$offset"; local ext=$?
     ble-edit/content/find-logical-bol "$ret" 0
     return "$ext"
   else
@@ -2835,6 +2835,15 @@ function ble/widget/kill-forward-logical-line {
   fi
   ble/widget/.kill-range "$_ble_edit_ind" "$ret"
 }
+function ble/widget/kill-logical-line {
+  local arg; ble-edit/content/get-arg 0
+  local bofs=0 eofs=0 bol=0 eol=${#_ble_edit_str}
+  ((arg>0?(eofs=arg-1):(arg<0&&(bofs=arg+1))))
+  ble-edit/content/find-logical-bol "$_ble_edit_ind" "$bofs" && local bol=$ret
+  ble-edit/content/find-logical-eol "$_ble_edit_ind" "$eofs" && local eol=$ret
+  [[ ${_ble_edit_str:eol:1} == $'\n' ]] && ((eol++))
+  ((bol<eol)) && ble/widget/.kill-range "$bol" "$eol"
+}
 
 function ble/widget/forward-history-line.impl {
   local arg=$1
@@ -3033,6 +3042,19 @@ function ble/widget/kill-forward-graphical-line {
   fi
   ble/widget/.kill-range "$_ble_edit_ind" "$index"
 }
+## 編集関数 ble/widget/kill-graphical-line
+##   現在の表示行を削除する。
+function ble/widget/kill-graphical-line {
+  ble/textmap#is-up-to-date || ble/widget/.update-textmap
+  local arg; ble-edit/content/get-arg 0
+  local bofs=0 eofs=0
+  ((arg>0?(eofs=arg-1):(arg<0&&(bofs=arg+1))))
+  local x y index ax ay
+  ble/textmap#getxy.cur "$_ble_edit_ind"
+  ble/textmap#get-index-at 0 $((y+bofs))  ; local bol=$index
+  ble/textmap#get-index-at 0 $((y+eofs+1)); local eol=$index
+  ((bol<eol)) && ble/widget/.kill-range "$bol" "$eol"
+}
 
 function ble/widget/forward-graphical-line.impl {
   ble/textmap#is-up-to-date || ble/widget/.update-textmap
@@ -3109,6 +3131,13 @@ function ble/widget/kill-forward-line {
     ble/widget/kill-forward-graphical-line
   else
     ble/widget/kill-forward-logical-line
+  fi
+}
+function ble/widget/kill-line {
+  if ble/edit/use-textmap; then
+    ble/widget/kill-graphical-line
+  else
+    ble/widget/kill-logical-line
   fi
 }
 function ble/widget/forward-line {
