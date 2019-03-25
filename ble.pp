@@ -45,6 +45,53 @@ time {
 echo prologue >&2
 #%end
 #------------------------------------------------------------------------------
+# check --help or --version
+
+{
+  #%$ echo "_ble_init_version=$FULLVER+$(git show -s --format=%h)"
+  _ble_init_exit=
+  for _ble_init_arg; do
+    case $_ble_init_arg in
+    (--version)
+      _ble_init_exit=1
+      builtin echo "ble.sh -- Bash Line Editor (ble-$_ble_init_version)" ;;
+    (--help)
+      _ble_init_exit=1
+      printf '%s\n' \
+             "# ble.sh -- Bash Line Editor (ble-$_ble_init_version)" \
+             'usage: source ble.sh [OPTION...]' \
+             '' \
+             'OPTION' \
+             '' \
+             '  --help' \
+             '    Show this help' \
+             '  --version' \
+             '    Show version' \
+             '' \
+             '  --rcfile=BLERC' \
+             '  --init-file=BLERC' \
+             '    Specify the ble init file. The default is ~/.blerc.' \
+             '' \
+             '  --attach=ATTACH' \
+             '  --noattach' \
+             '    The option "--attach" selects the strategy of "ble-attach" from the' \
+             '    list: ATTACH = "attach" | "prompt" | "none". The default strategy is' \
+             '    "attach". The option "--noattach" is a synonym for "--attach=none".' \
+             '' \
+             '  --debug-bash-output' \
+             '    Internal settings for debugging' \
+             '' ;;
+    esac
+  done
+  if [ -n "$_ble_init_exit" ]; then
+    unset _ble_init_version
+    unset _ble_init_arg
+    unset _ble_init_exit
+    return 1 2>/dev/null || builtin exit 1
+  fi
+} 2>/dev/null # set -x 対策 #D0930
+
+#------------------------------------------------------------------------------
 # check shell
 
 if [ -z "$BASH_VERSION" ]; then
@@ -242,7 +289,7 @@ if [[ $_ble_base ]]; then
 fi
 
 #------------------------------------------------------------------------------
-#%$ echo "BLE_VERSION=$FULLVER+$(git show -s --format=%h)"
+BLE_VERSION=$_ble_init_version
 function ble/base/initialize-version-information {
   local version=$BLE_VERSION
 
@@ -689,6 +736,7 @@ function ble/base/process-blesh-arguments {
   local opt_attach=attach
   local opt_rcfile=
   local opt_error=
+  local opts=
   while (($#)); do
     local arg=$1; shift
     case $arg in
@@ -696,6 +744,8 @@ function ble/base/process-blesh-arguments {
       opt_attach=none ;;
     (--attach=*) opt_attach=${arg#*=} ;;
     (--attach)   opt_attach=$1; shift ;;
+    (--noinputrc)
+      opts=$opts:noinputrc ;;
     (--rcfile=*|--init-file=*|--rcfile|--init-file)
       if [[ $arg != *=* ]]; then
         local rcfile=$1; shift
@@ -708,11 +758,19 @@ function ble/base/process-blesh-arguments {
         ble/bin/echo "ble.sh ($arg): '$rcfile' is not a regular file." >&2
         opt_error=1
       fi ;;
+    (--debug-bash-output)
+      bleopt_internal_suppress_bash_output= ;;
     (*)
       ble/bin/echo "ble.sh: unrecognized argument '$arg'" >&2
       opt_error=1
     esac
   done
+
+  # inputrc の読み込み
+  if [[ :$opts: != *:noinputrc:* ]]; then
+    local inputrc=${INPUTRC:-$HOME/.inputrc}
+    [[ -e $inputrc ]] && ble-decode/read-inputrc "$inputrc"
+  fi
 
   [[ -s $_ble_base_rcfile ]] && source "$_ble_base_rcfile"
   case $opt_attach in
@@ -725,6 +783,11 @@ function ble/base/process-blesh-arguments {
 }
 
 ble/base/process-blesh-arguments "$@"
+
+# 一時グローバル変数消去
+unset -v _ble_init_version
+unset -v _ble_init_arg
+unset -v _ble_init_exit
 
 # 状態復元
 IFS=$_ble_init_original_IFS

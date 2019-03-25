@@ -1057,7 +1057,9 @@ function ble-decode/keymap/dump {
 ##   ble-decode.sh 使用コードで上書きして使用します。
 function ble-decode/DEFAULT_KEYMAP {
   [[ $1 == -v ]] || return 1
-  builtin eval "$2=emacs"
+  local ret; bleopt/get:default_keymap
+  [[ $ret == vi ]] && ret=vi_imap
+  builtin eval "$2=\$ret"
 }
 
 ## 設定関数 ble/widget/.SHELL_COMMAND command
@@ -2567,7 +2569,7 @@ function ble/decode/read-inputrc {
         ble/bin/echo "ble.sh (bind):$file:$iline: unrecognized directive '$directive'." >&2 ;;
       esac
     else
-      ble/array#push script "ble/builtin/bind/.process '${line//$q/$Q}'"
+      ble/array#push script "ble/builtin/bind/.process -- '${line//$q/$Q}'"
     fi
   done < "$file"
 

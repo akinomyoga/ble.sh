@@ -2232,7 +2232,9 @@ bash_tips
   - emacs: support a widget `re-read-init-file` `#D1038` ebe2928
   - emacs: support widgets `readline-dump-{functions,macros,variables}` `#D1039` 49256a9
   - emacs: support widgets `character-search-{for,back}ward` and `delete-forward-char-or-list` `#D1040` 2b20c88
-  - emacs: support widgets `insert-comment` and `do-lowercase-version` `#D1041`
+  - emacs: support widgets `insert-comment` and `do-lowercase-version` `#D1041` 7aae37b
+  - main: support options `--version` and `--help` `#D1042`
+  - main: read `.inputrc` as `ble.sh` settings `#D1042`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3198,6 +3200,73 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-25
+
+  * main: 今や inputrc を勝手に読み込んでも良いのではないか [#D1042]
+
+    後、inputrc を読み込まない様にする設定も欲しい。
+    然し、bleopt を呼び出すのは blerc の中か ble.sh を source した後である。
+    然し、その時には既に inputrc は読み込まれている。
+
+    * fixed: うーん。所で .inputrc の中で set editing-mode vi 等とした時に、
+      ちゃんと keymap が正しいものに選択されるのだろうか。
+      opt_keymap に使われる既定の文字列は空文字列にしている。
+      という事を考えたが辿ってみると、ちゃんと空の時には、
+      ble-decode/DEFAULT_KEYMAP → bleopt/get:default_keymap
+      という経由で正しい物が選択される様になっている。
+      但し、 ble-decode/DEFAULT_KEYMAP は edit.sh 側で上書きされた物でなければならない。
+
+      うーん。decode.sh の ble-decode/DEFAULT_KEYMAP の時点で
+      ちゃんと切り替わる様になっているべきなのではないか。
+      →最初からその様になるように実装し直した。
+
+    * ok: 後、read-inputrc の中で呼び出している bind は…。
+      勝手に二重に起動されていたりはしないだろうか。
+      →大丈夫。ble/builtin/bind/.process しか呼び出していない。
+        そして ble/builtin/bind/.process が呼び出しているのは
+        オプションを指定した時の builtin bind だけである。
+
+    * fixed: 万が一 - で始まる内容が inputrc の中に含まれていたとしても、
+      それをオプションとしてではなく束縛の設定として解釈させるために、
+      -- をつける必要があるのではないか→つけた。動く事を確認した。
+
+    inputrc を読み込まない為の設定として
+    ble.pp に --noinputrc というオプションを追加した。
+    これを指定していない限りは .inputrc を読みに行く事にする。
+
+    * done: bleopt_internal_suppress_bash_output に対応する機能も
+      引数から指定できる様にするべきなのでは。
+      というかそもそも bleopt_internal_suppress_bash_output= は動作するのだろうか。
+      今試してみた所、一応ちゃんと動いてはいる様である。
+      オプションの名前を考える事にする。
+
+      --debug-enable-bash-output
+      --debug-keep-bash-stdout
+      --debug-keep-bash-output
+      --debug-no-interrupt-bash-output
+      --debug-free-bash-output
+      --debug-full-bash-output
+
+      うーん。keep が良い気がする。debug という prefix は必要だろうか。
+      まあ、debug 用の機能という事が分かる様に debug はつけるべきである。
+      或いは debug が動詞だと考えるのであれば、
+
+      --debug-bash-output
+
+      でも良いのではないだろうか。うーん。これが良い気がする。
+
+    * done: --help にも対応するべきなのでは
+      うーん。引数を解析するのは実は全ての初期化を終わった後である。
+      然し、--help や --version を表示する為だけに全部ロードするというのは変である。
+      その様に考えると最初に引数の解析は終わらせて置くべきなのだろうか。
+
+      因みに version を解析する箇所は check-environment の後である。
+      version だけは一番最初に初期化してしまっても良い気がする。
+
+      うーん。--help や --version は実はシェルに依存せずに動作して欲しいのではないだろうか。
+      その様に考えると、実は引数の解析は sh 準拠で実装しなければならないという事になるだろうか。
+
+      対応した。簡単な対応なので --rcfile --help 等の指定があっても反応してしまうが、
+      面倒なので妥協する事にしようと思う。sh で解析するのは面倒である。
 
   * emacs: insert-comment に対応する [#D1041]
 
