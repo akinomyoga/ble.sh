@@ -3224,6 +3224,352 @@ function ble/complete/generate-candidates-from-opts {
   ble/complete/candidates/generate
 }
 
+## 関数 ble/complete/candidates/compose-braces words...
+##   指定した単語をブレース展開に圧縮します。
+##   @var[in] comp_type
+##   @stdout
+##     圧縮したブレース展開を返します。
+function ble/complete/candidates/compose-braces {
+  # Note: awk が RS = "\0" に対応していれば \0 で区切る。
+  #   それ以外の場合には \x1E (ASCII RS) で区切る。
+  if ble/bin/awk-supports-null-record-separator; then
+    local printf_format='%s\0' RS='"\0"'
+  else
+    local printf_format='%s\x1E' RS='"\x1E"'
+  fi
+
+  local q=\'
+  local -x rex_atom='^(\\.|[0-9]+|.)' del_close= del_open=
+  if [[ :$comp_type: != *:[amAi]:* ]]; then
+    case $comps_flags in
+    (*S*)    rex_atom='^('$q'\\'$q$q'|[0-9]+|.)' # '...'
+             del_close=\' del_open=\' ;;
+    (*E*)    rex_atom='^(\\.|[0-9]+|.)'          # $'...'
+             del_close=\' del_open=\$\' ;;
+    (*[DI]*) rex_atom='^(\\[\"$`]|[0-9]+|.)'     # "...", $"..."
+             del_close=\" del_open=\" ;;
+    esac
+  fi
+
+  printf "$printf_format" "$@" | ble/bin/awk '
+    BEGIN {
+      RS = '"$RS"';
+      rex_atom = ENVIRON["rex_atom"];
+      del_close = ENVIRON["del_close"];
+      del_open = ENVIRON["del_open"];
+    }
+
+    function to_atoms(str, arr, _, chr, atom, level, count, rex) {
+      count = 0;
+      while (match(str, rex_atom) > 0) {
+        chr = substr(str, 1, RLENGTH);
+        str = substr(str, RLENGTH + 1);
+        if (chr == "{") {
+          atom = chr;
+          level = 1;
+          while (match(str, /^\\.|./) > 0) {
+            chr = substr(str, 1, RLENGTH);
+            str = substr(str, RLENGTH + 1);
+            atom = atom chr;
+            if (chr == "{")
+              level++; 
+            else if (chr == "}" && --level==0)
+              break;
+          }
+        } else {
+          atom = chr;
+        }
+        arr[count++] = atom;
+      }
+      return count;
+    }
+
+    function zpad(value, width, _, wpad, i, pad) {
+      wpad = width - length(value);
+      pad = "";
+      for (i = 0; i < wpad; i++) pad = "0" pad;
+      if (value < 0)
+        return "-" pad (-value);
+      else
+        return pad value;
+    }
+    function zpad_remove(value) {
+      if (value ~ /^0+$/)
+        value = "0";
+      else if (value ~ /^-/)
+        sub(/^-0+/, "-", value);
+      else
+        sub(/^0+/, "", value);
+      return value;
+    }
+
+    function simple_integral_range(arr, len, _, i, len0, flag_zpad, value, min, max, dict) {
+      if (len < 3) return "";
+
+      # zpadding is enabled only when all the width is the same
+      flag_zpad = 0;
+      len0 = length(arr[0]);
+      for (i = 1; i < len; i++) {
+        if (len0 != length(arr[i])) break;
+        if (arr[i] ~ /^-0+$/) return "";
+      }
+      if (i == len) flag_zpad = len0;
+    
+      for (i = 0; i < len; i++) {
+        value = arr[i];
+
+        if (flag_zpad) value = zpad_remove(value);
+
+        # if there is non numbers, disable range.
+        if (!(value ~ /^(0|-?[1-9][0-9]*)$/)) return "";
+
+        value = 0 + value;
+
+        # if there is duplicate, disable range.
+        if (dict[value]) return "";
+        dict[value] = 1;
+
+        if (i == 0) {
+          min = value;
+          max = value;
+        } else {
+          if (value < min) min = value;
+          if (value > max) max = value;
+        }
+      }
+      if (max - min + 1 != len) return "";
+
+      if (flag_zpad) {
+        min = zpad(min, flag_zpad);
+        max = zpad(max, flag_zpad);
+      }
+      return del_close "{" min ".." max "}" del_open;
+    }
+    function simple_alphabetical_range(arr, len, _, hay, i, value) {
+      if (len < 3) return "";
+      hay = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+      for (i = 0; i < len; i++) {
+        value = arr[i];
+        if (length(value) != 1) return "";
+        r = index(hay, value);
+        if (r == 0) return "";
+
+        if (i == 0) {
+          min = r;
+          max = r;
+        } else {
+          if (r < min) min = r;
+          if (r > max) max = r;
+        }
+      }
+      if (max - min + 1 != len) return "";
+      if (min <= 26 && 27 <= max) return "";
+      return del_close "{" substr(hay, min, 1) ".." substr(hay, max, 1) "}" del_open;
+    }
+    function simple_brace(arr, len, _, ret, i) {
+      if (len == 0) return "";
+      if (len == 1) return arr[0];
+
+      ret = simple_integral_range(arr, len);
+      if (ret != "") return ret;
+
+      ret = simple_alphabetical_range(arr, len);
+      if (ret != "") return ret;
+
+      ret = del_close "{" del_open arr[0];
+      for (i = 1; i < len; i++)
+        ret = ret del_close "," del_open arr[i];
+      return ret del_close "}" del_open;
+    }
+
+    #--------------------------------------------------------------------------
+    # right factorization
+
+    function rfrag_strlen_common(a, b, _, la, lb, tmp, i, n) {
+      ret = 0;
+      alen = to_atoms(a, abuf);
+      blen = to_atoms(b, bbuf);
+      while (alen > 0 && blen > 0) {
+        if (abuf[alen - 1] != bbuf[blen - 1]) break;
+        ret += length(abuf[alen - 1]);
+        alen--;
+        blen--;
+      }
+      return ret;
+    }
+    function rfrag_get_level(str, _, len, i, rfrag0, rfrag0len, rfrag1) {
+      len = length(str);
+      rfrag_matching_offset = len;
+      for (i = 0; i < rfrag_depth - 1; i++) {
+        rfrag0 = rfrag[i];
+        rfrag0len = length(rfrag0);
+        rfrag1 = substr(str, len - rfrag0len + 1);
+        str = substr(str, 1, len -= rfrag0len);
+        if (rfrag0 != rfrag1) break;
+        rfrag_matching_offset -= rfrag0len;
+      }
+      while (i && rfrag[i - 1] == "") i--; # empty fragment
+      return i;
+    }
+    function rfrag_reduce(new_depth, _, c, i, brace, frags) {
+      while (rfrag_depth > new_depth) {
+        rfrag_depth--;
+        c = rfrag_count[rfrag_depth];
+        for (i = 0; i < c; i++)
+          frags[i] = rfrag[rfrag_depth, i];
+        frags[c] = rfrag[rfrag_depth];
+        brace = simple_brace(frags, c + 1);
+
+        if (rfrag_depth == 0)
+          return brace;
+        else
+          rfrag[rfrag_depth - 1] = brace rfrag[rfrag_depth - 1];
+      }
+    }
+    function rfrag_register(str, level, _, rfrag0, rfrag1, len) {
+      if (level == rfrag_depth) {
+        rfrag_depth = level + 1;
+        rfrag[level] = "";
+        rfrag_count[level] = 0;
+      } else if (rfrag_depth != level + 1) {
+        print "ERR(rfrag)";
+      }
+
+      rfrag0 = rfrag[level];
+      rfrag1 = substr(str, 1, rfrag_matching_offset);
+      len = rfrag_strlen_common(rfrag0, rfrag1);
+      if (len == 0) {
+        rfrag[level, rfrag_count[level]++] = rfrag0;
+        rfrag[level] = rfrag1;
+      } else {
+        rfrag[level] = substr(rfrag0, length(rfrag0) - len + 1);
+        rfrag[level + 1, 0] = substr(rfrag0, 1, length(rfrag0) - len);
+        rfrag[level + 1] = substr(rfrag1, 1, length(rfrag1) - len);
+        rfrag_count[level + 1] = 1;
+        rfrag_depth++;
+      }
+    }
+    function rfrag_dump(_, i, j, prefix) {
+      print "depth = " rfrag_depth;
+      for (i = 0; i < rfrag_depth; i++) {
+        prefix = "";
+        for (j = 0; j < i; j++) prefix = prefix "  ";
+        for (j = 0; j < rfrag_count[i]; j++)
+          print prefix "rfrag[" i "," j "] = " rfrag[i,j];
+        print prefix "rfrag[" i "] = " rfrag[i];
+      }
+    }
+    function rfrag_brace(arr, len, _, i, level) {
+      if (len == 0) return "";
+      if (len == 1) return arr[0];
+
+      rfrag_depth = 1;
+      rfrag[0] = arr[0];
+      rfrag_count[0] = 0;
+      for (i = 1; i < len; i++) {
+        level = rfrag_get_level(arr[i]);
+        rfrag_reduce(level + 1);
+        rfrag_register(arr[i], level);
+      }
+
+      return rfrag_reduce(0);
+    }
+
+    #--------------------------------------------------------------------------
+    # left factorization
+
+    function lfrag_strlen_common(a, b, _, ret, abuf, bbuf, alen, blen, ia, ib) {
+      ret = 0;
+      alen = to_atoms(a, abuf);
+      blen = to_atoms(b, bbuf);
+      for (ia = ib = 0; ia < alen && ib < blen; ia++ + ib++) {
+        if (abuf[ia] != bbuf[ib]) break;
+        ret += length(abuf[ia]);
+      }
+      return ret;
+    }
+    function lfrag_get_level(str, _, i, frag0, frag0len, frag1) {
+      lfrag_matching_offset = 0;
+      for (i = 0; i < lfrag_depth - 1; i++) {
+        frag0 = frag[i]
+        frag0len = length(frag0);
+        frag1 = substr(str, lfrag_matching_offset + 1, frag0len);
+        if (frag0 != frag1) break;
+        lfrag_matching_offset += frag0len;
+      }
+      while (i && frag[i - 1] == "") i--; # empty fragment
+      return i;
+    }
+    function lfrag_reduce(new_depth, _, c, i, brace, frags) {
+      while (lfrag_depth > new_depth) {
+        lfrag_depth--;
+        c = frag_count[lfrag_depth];
+        for (i = 0; i < c; i++)
+          frags[i] = frag[lfrag_depth, i];
+        frags[c] = frag[lfrag_depth];
+        brace = rfrag_brace(frags, c + 1);
+
+        if (lfrag_depth == 0)
+          return brace;
+        else
+          frag[lfrag_depth - 1] = frag[lfrag_depth - 1] brace;
+      }
+    }
+    function lfrag_register(str, level, _, frag0, frag1, len) {
+      if (lfrag_depth == level) {
+        lfrag_depth = level + 1;
+        frag[level] = "";
+        frag_count[level] = 0;
+      } else if (lfrag_depth != level + 1) {
+        print "ERR";
+      }
+
+      frag0 = frag[level];
+      frag1 = substr(str, lfrag_matching_offset + 1);
+      len = lfrag_strlen_common(frag0, frag1);
+      if (len == 0) {
+        frag[level, frag_count[level]++] = frag0;
+        frag[level] = frag1;
+      } else {
+        frag[level] = substr(frag0, 1, len);
+        frag[level + 1, 0] = substr(frag0, len + 1);
+        frag[level + 1] = substr(frag1, len + 1);
+        frag_count[level + 1] = 1;
+        lfrag_depth++;
+      }
+    }
+
+    function lfrag_dump(_, i, j, prefix) {
+      print "depth = " lfrag_depth;
+      for (i = 0; i < lfrag_depth; i++) {
+        prefix = "";
+        for (j = 0; j < i; j++) prefix = prefix "  ";
+        for (j = 0; j < frag_count[i]; j++)
+          print prefix "frag[" i "," j "] = " frag[i,j];
+        print prefix "frag[" i "] = " frag[i];
+      }
+    }
+
+    NR == 1 {
+      lfrag_depth = 1;
+      frag[0] = $0;
+      frag_count[0] = 0;
+      #lfrag_dump();
+      next
+    }
+    {
+      level = lfrag_get_level($0);
+      lfrag_reduce(level + 1);
+      lfrag_register($0, level);
+      #lfrag_dump();
+    }
+
+    END {
+      print lfrag_reduce(0);
+    }
+  '
+}
+
 ## 関数 ble/complete/insert insert_beg insert_end insert suffix
 function ble/complete/insert {
   local insert_beg=$1 insert_end=$2
@@ -3337,7 +3683,25 @@ function ble/widget/complete {
     fi
   fi
 
-  if [[ :$opts: == *:insert_all:* ]]; then
+  if [[ :$opts: == *:insert_braces:* ]]; then
+    local "${_ble_complete_cand_varnames[@]}"
+    local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
+    local -a inserts=()
+    for pack in "${cand_pack[@]}"; do
+      ble/complete/cand/unpack "$pack"
+      ble/array#push inserts "$INSERT"
+    done
+
+    local insert= suffix=
+    ble/util/assign insert 'ble/complete/candidates/compose-braces "${inserts[@]}"'
+    ble/complete/action:word/complete
+    ble/complete/insert "$beg" "$end" "$insert" "$suffix"
+    ble/util/invoke-hook _ble_complete_insert_hook
+    _ble_complete_state=complete
+    ble/complete/menu/clear
+    return
+
+  elif [[ :$opts: == *:insert_all:* ]]; then
     local "${_ble_complete_cand_varnames[@]}"
     local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
     for pack in "${cand_pack[@]}"; do
@@ -3359,6 +3723,7 @@ function ble/widget/complete {
     _ble_complete_state=complete
     ble/complete/menu/clear
     return
+
   elif [[ :$opts: == *:enter_menu:* ]]; then
     local menu_common_part=$COMPV
     ble/complete/menu/show "$menu_show_opts" || return

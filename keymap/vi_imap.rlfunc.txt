@@ -20,7 +20,7 @@ complete                          complete
 complete-command                  complete context=command
 complete-filename                 complete context=filename
 complete-hostname                 complete context=hostname
-complete-into-braces              -
+complete-into-braces              complete insert_braces
 complete-username                 complete context=username
 complete-variable                 complete context=variable
 copy-backward-word                copy-backward-sword

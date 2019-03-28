@@ -201,6 +201,13 @@ fi
 _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
 
+if [[ $_ble_base ]]; then
+  if ! ble/base/unload-for-reload &>/dev/null; then
+    ble/bin/echo "ble.sh: ble.sh seems to be already loaded." >&2
+    return 1
+  fi
+fi
+
 #------------------------------------------------------------------------------
 # check environment
 
@@ -281,12 +288,19 @@ if ! ble/.check-environment; then
   return 1
 fi
 
-if [[ $_ble_base ]]; then
-  if ! ble/base/unload-for-reload &>/dev/null; then
-    ble/bin/echo "ble.sh: ble.sh seems to be already loaded." >&2
-    return 1
+_ble_bin_awk_supports_null_RS=
+function ble/bin/awk-supports-null-record-separator {
+  if [[ ! $_ble_bin_awk_supports_null_RS ]]; then
+    local count=0 awk_script='BEGIN { RS = "\0"; } { count++; } END { print count; }'
+    ble/util/assign count 'printf "a\0b\0" | ble/bin/awk "$awk_script" '
+    if ((count==2)); then
+      _ble_bin_awk_supports_null_RS=yes
+    else
+      _ble_bin_awk_supports_null_RS=no
+    fi
   fi
-fi
+  [[ $_ble_bin_awk_supports_null_RS == yes ]]
+}
 
 #------------------------------------------------------------------------------
 BLE_VERSION=$_ble_init_version

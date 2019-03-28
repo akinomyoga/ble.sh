@@ -216,18 +216,20 @@ function sub:check {
   # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
 
   #sub:check/builtin 'history'
-  sub:check/builtin 'echo' --exclude=./keymap/vi_test.sh --exclude=./ble.pp
+  sub:check/builtin 'echo' --exclude=./keymap/vi_test.sh --exclude=./ble.pp |
+    sed -E 'h;s/'"$esc"'//g;\Z\bstty[[:space:]]+echoZd;g'
   #sub:check/builtin '(compopt|type|printf)'
   sub:check/builtin 'bind'
   sub:check/builtin 'read'
-  sub:check/builtin 'exit'
+  sub:check/builtin 'exit' |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//;\Z^[-[:space:][:alnum:]_./:=$#*]+('\''[^'\'']*|"[^"()`]*|([[:space:]]|^)#.*)\bexit\bZd;g'
   #sub:check/assign
 
   sub:check/a.txt
   sub:check/bash300bug
   sub:check/bash301bug-array-element-length
   sub:check/array-count-in-arithmetic-expression
-  sub:check/unset-variable
+  sub:check/unset-variable | grep -Ev "unset$esc ${esc}_ble_init_"
 
   sub:check/memo-numbering
 }
