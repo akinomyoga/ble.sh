@@ -47,7 +47,7 @@ exchange-point-and-mark           exchange-point-and-mark
 forward-backward-delete-char      delete-forward-backward-char
 forward-byte                      -
 forward-char                      @nomarked forward-char
-forward-search-history            history-search-forward
+forward-search-history            history-isearch-forward
 forward-word                      @nomarked forward-uword
 glob-complete-word                complete context=glob
 glob-expand-word                  complete context=glob:insert-all
