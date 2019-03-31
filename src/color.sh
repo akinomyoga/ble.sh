@@ -867,7 +867,8 @@ function ble/highlight/layer:region/update {
   # 変更がない時はそのまま通過
   if ((DMIN<0)); then
     [[ $sgr == "$osgr" ]] &&
-      [[ ${selection[*]} == "${_ble_highlight_layer_region_osel[*]}" ]]
+      [[ ${selection[*]} == "${_ble_highlight_layer_region_osel[*]}" ]] &&
+      PREV_BUFF=_ble_highlight_layer_region_buff
   else
     [[ ! ${selection[*]} && ! ${_ble_highlight_layer_region_osel[*]} ]]
   fi && return 0
