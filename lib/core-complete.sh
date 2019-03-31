@@ -3224,12 +3224,154 @@ function ble/complete/generate-candidates-from-opts {
   ble/complete/candidates/generate
 }
 
-## 関数 ble/complete/candidates/compose-braces words...
+## 関数 ble/complete/insert insert_beg insert_end insert suffix
+function ble/complete/insert {
+  local insert_beg=$1 insert_end=$2
+  local insert=$3 suffix=$4
+  local original_text=${_ble_edit_str:insert_beg:insert_end-insert_beg}
+  local ret
+
+  # 編集範囲の最小化
+  local insert_replace=
+  if [[ $insert == "$original_text"* ]]; then
+    # 既存部分の置換がない場合
+    insert=${insert:insert_end-insert_beg}
+    ((insert_beg=insert_end))
+  else
+    # 既存部分の置換がある場合
+    ble/string#common-prefix "$insert" "$original_text"
+    if [[ $ret ]]; then
+      insert=${insert:${#ret}}
+      ((insert_beg+=${#ret}))
+    fi
+  fi
+
+  if ble/util/test-rl-variable skip-completed-text; then
+    # カーソルの右のテキストの吸収
+    if [[ $insert ]]; then
+      local right_text=${_ble_edit_str:insert_end}
+      right_text=${right_text%%[$IFS]*}
+      if ble/string#common-prefix "$insert" "$right_text"; [[ $ret ]]; then
+        # カーソルの右に先頭一致する場合に吸収
+        ((insert_end+=${#ret}))
+      elif ble/complete/string#common-suffix-prefix "$insert" "$right_text"; [[ $ret ]]; then
+        # カーソルの右に末尾一致する場合に吸収
+        ((insert_end+=${#ret}))
+      fi
+    fi
+
+    # suffix の吸収
+    if [[ $suffix ]]; then
+      local right_text=${_ble_edit_str:insert_end}
+      if ble/string#common-prefix "$suffix" "$right_text"; [[ $ret ]]; then
+        ((insert_end+=${#ret}))
+      elif ble/complete/string#common-suffix-prefix "$suffix" "$right_text"; [[ $ret ]]; then
+        ((insert_end+=${#ret}))
+      fi
+    fi
+  fi
+
+  local ins=$insert$suffix
+  ble/widget/.replace-range "$insert_beg" "$insert_end" "$ins" 1
+  ((_ble_edit_ind=insert_beg+${#ins},
+    _ble_edit_ind>${#_ble_edit_str}&&
+      (_ble_edit_ind=${#_ble_edit_str})))
+}
+
+## 関数 ble/complete/insert-common
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
+##   @var[out] cand_count cand_cand cand_word cand_pack
+function ble/complete/insert-common {
+  local ret
+  ble/complete/candidates/determine-common-prefix; local insert=$ret suffix=
+  local insert_beg=$COMP1 insert_end=$COMP2
+  local insert_flags=
+  [[ $insert == "$COMPS"* ]] || insert_flags=r
+
+  if ((cand_count==1)); then
+    # 一意確定の時
+    local ACTION=${cand_pack[0]%%:*}
+    if ble/is-function ble/complete/action:"$ACTION"/complete; then
+      local "${_ble_complete_cand_varnames[@]}"
+      ble/complete/cand/unpack "${cand_pack[0]}"
+      ble/complete/action:"$ACTION"/complete
+      (($?==148)) && return 148
+    fi
+  else
+    # 候補が複数ある時
+    insert_flags=${insert_flags}m
+  fi
+
+  local do_insert=1
+  if ((cand_count>1)) && [[ $insert_flags == *r* ]]; then
+    # 既存部分を置換し、かつ一意確定でない場合は置換しない。
+    # 曖昧補完の時は determine-common-prefix 内で調整されるので挿入する。
+    if [[ :$comp_type: != *:[amAi]:* ]]; then
+      do_insert=
+    fi
+  elif [[ $insert$suffix == "$COMPS" ]]; then
+    # 何も変化がない時は、挿入しない。
+    do_insert=
+  fi
+  if [[ $do_insert ]]; then
+    ble/complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
+    ble/util/invoke-hook _ble_complete_insert_hook
+  fi
+
+  if [[ $insert_flags == *m* ]]; then
+    # menu_common_part (メニュー強調文字列)
+    #   もし insert が単純単語の場合には
+    #   menu_common_part を挿入後の評価値とする。
+    #   そうでなければ仕方がないので挿入前の値 COMPV とする。
+    local menu_common_part=$COMPV
+    local ret simple_flags simple_ibrace
+    if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$insert"; then
+      ble/syntax:bash/simple-word/eval "$ret"
+      menu_common_part=$ret
+    fi
+    ble/complete/menu/show "$menu_show_opts" || return
+  elif [[ $insert_flags == *n* ]]; then
+    ble/widget/complete show_menu:regenerate || return
+  else
+    _ble_complete_state=complete
+    ble/complete/menu/clear
+  fi
+  return 0
+}
+
+## 関数 ble/complete/insert-all
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
+##   @var[out] cand_count cand_cand cand_word cand_pack
+function ble/complete/insert-all {
+  local "${_ble_complete_cand_varnames[@]}"
+  local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
+  for pack in "${cand_pack[@]}"; do
+    ble/complete/cand/unpack "$pack"
+    insert=$INSERT suffix=
+
+    if ble/is-function ble/complete/action:"$ACTION"/complete; then
+      ble/complete/action:"$ACTION"/complete
+      (($?==148)) && return 148
+    fi
+    [[ $suffix != *' ' ]] && suffix="$suffix "
+
+    ble/complete/insert "$beg" "$end" "$insert" "$suffix"
+    ble/util/invoke-hook _ble_complete_insert_hook
+    beg=$_ble_edit_ind end=$_ble_edit_ind
+    ((index++))
+  done
+
+  _ble_complete_state=complete
+  ble/complete/menu/clear
+  return
+}
+
+## 関数 ble/complete/insert-braces/.compose words...
 ##   指定した単語をブレース展開に圧縮します。
 ##   @var[in] comp_type
 ##   @stdout
 ##     圧縮したブレース展開を返します。
-function ble/complete/candidates/compose-braces {
+function ble/complete/insert-braces/.compose {
   # Note: awk が RS = "\0" に対応していれば \0 で区切る。
   #   それ以外の場合には \x1E (ASCII RS) で区切る。
   if ble/bin/awk-supports-null-record-separator; then
@@ -3239,24 +3381,35 @@ function ble/complete/candidates/compose-braces {
   fi
 
   local q=\'
-  local -x rex_atom='^(\\.|[0-9]+|.)' del_close= del_open=
+  local -x rex_atom='^(\\.|[0-9]+|.)' del_close= del_open= quote_type=
+  local -x COMPS=$COMPS
   if [[ :$comp_type: != *:[amAi]:* ]]; then
+    local rex_brace='[,{}]|\{[-[:alnum:]]+\.\.[-[:alnum:]]+\}'
     case $comps_flags in
-    (*S*)    rex_atom='^('$q'\\'$q$q'|[0-9]+|.)' # '...'
-             del_close=\' del_open=\' ;;
-    (*E*)    rex_atom='^(\\.|[0-9]+|.)'          # $'...'
-             del_close=\' del_open=\$\' ;;
-    (*[DI]*) rex_atom='^(\\[\"$`]|[0-9]+|.)'     # "...", $"..."
-             del_close=\" del_open=\" ;;
+    (*S*)    rex_atom='^('$q'(\\'$q'|'$rex_brace')'$q'|[0-9]+|.)' # '...'
+             del_close=\' del_open=\' quote_type=S ;;
+    (*E*)    rex_atom='^(\\.|'$q'('$rex_brace')\$'$q'|[0-9]+|.)'  # $'...'
+             del_close=\' del_open=\$\' quote_type=E ;;
+    (*[DI]*) rex_atom='^(\\[\"$`]|"('$rex_brace')"|[0-9]+|.)'     # "...", $"..."
+             del_close=\" del_open=\" quote_type=D ;;
     esac
   fi
 
   printf "$printf_format" "$@" | ble/bin/awk '
+    function starts_with(str, head) {
+      return substr(str, 1, length(head)) == head;
+    }
+
     BEGIN {
       RS = '"$RS"';
       rex_atom = ENVIRON["rex_atom"];
       del_close = ENVIRON["del_close"];
       del_open = ENVIRON["del_open"];
+      quote_type = ENVIRON["quote_type"];
+      COMPS = ENVIRON["COMPS"];
+
+      BRACE_OPEN = del_close "{" del_open;
+      BRACE_CLOS = del_close "}" del_open;
     }
 
     function to_atoms(str, arr, _, chr, atom, level, count, rex) {
@@ -3264,16 +3417,16 @@ function ble/complete/candidates/compose-braces {
       while (match(str, rex_atom) > 0) {
         chr = substr(str, 1, RLENGTH);
         str = substr(str, RLENGTH + 1);
-        if (chr == "{") {
+        if (chr == BRACE_OPEN) {
           atom = chr;
           level = 1;
-          while (match(str, /^\\.|./) > 0) {
+          while (match(str, rex_atom) > 0) {
             chr = substr(str, 1, RLENGTH);
             str = substr(str, RLENGTH + 1);
             atom = atom chr;
-            if (chr == "{")
+            if (chr == BRACE_OPEN)
               level++; 
-            else if (chr == "}" && --level==0)
+            else if (chr == BRACE_CLOS && --level==0)
               break;
           }
         } else {
@@ -3282,6 +3435,39 @@ function ble/complete/candidates/compose-braces {
         arr[count++] = atom;
       }
       return count;
+    }
+
+    function remove_empty_quote(str, _, rex_quote_first, rex_quote, out, empty, m) {
+      if (quote_type == "S" || quote_type == "E") {
+        rex_quote_first = "^[^'$q']*'$q'";
+        rex_quote = "'$q'[^'$q']*'$q'|(\\\\.|[^'$q'])+";
+      } else if (quote_type == "D") {
+        rex_quote_first = "^[^\"]*\"";
+        rex_quote = "\"([^\\\"]|\\\\.)*\"|(\\\\.|[^\"])+";
+      } else return str;
+      empty = del_open del_close;
+
+      out = "";
+
+      if (starts_with(str, COMPS)) {
+        out = COMPS;
+        str = substr(str, length(COMPS) + 1);
+        if (match(str, rex_quote_first) > 0) {
+          out = out substr(str, 1, RLENGTH);
+          str = substr(str, RLENGTH + 1);
+        }
+      }
+
+      while (match(str, rex_quote) > 0) {
+        m = substr(str, 1, RLENGTH);
+        if (m != empty) out = out m;
+        str = substr(str, RLENGTH + 1);
+      }
+
+      if (str == del_open)
+        return out
+      else
+        return out str del_close;
     }
 
     function zpad(value, width, _, wpad, i, pad) {
@@ -3302,84 +3488,107 @@ function ble/complete/candidates/compose-braces {
         sub(/^0+/, "", value);
       return value;
     }
+    function zpad_a2i(text) {
+      sub(/^-0+/, "-", text) || sub(/^0+/, "", text);
+      return 0 + text;
+    }
 
-    function simple_integral_range(arr, len, _, i, len0, flag_zpad, value, min, max, dict) {
-      if (len < 3) return "";
-
-      # zpadding is enabled only when all the width is the same
-      flag_zpad = 0;
-      len0 = length(arr[0]);
-      for (i = 1; i < len; i++) {
-        if (len0 != length(arr[i])) break;
-        if (arr[i] ~ /^-0+$/) return "";
-      }
-      if (i == len) flag_zpad = len0;
-    
+    function range_contract(arr, len, _, i, value, alpha, lower, upper, keys, ikey, dict, b, e, beg, end, tmp) {
+      lower = "abcdefghijklmnopqrstuvwxyz";
+      upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
       for (i = 0; i < len; i++) {
         value = arr[i];
-
-        if (flag_zpad) value = zpad_remove(value);
-
-        # if there is non numbers, disable range.
-        if (!(value ~ /^(0|-?[1-9][0-9]*)$/)) return "";
-
-        value = 0 + value;
-
-        # if there is duplicate, disable range.
-        if (dict[value]) return "";
-        dict[value] = 1;
-
-        if (i == 0) {
-          min = value;
-          max = value;
+        if (dict[value]) {
+          dict[value]++;
         } else {
-          if (value < min) min = value;
-          if (value > max) max = value;
+          keys[ikey++] = value;
+          dict[value] = 1;
         }
       }
-      if (max - min + 1 != len) return "";
-
-      if (flag_zpad) {
-        min = zpad(min, flag_zpad);
-        max = zpad(max, flag_zpad);
-      }
-      return del_close "{" min ".." max "}" del_open;
-    }
-    function simple_alphabetical_range(arr, len, _, hay, i, value) {
-      if (len < 3) return "";
-      hay = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-      for (i = 0; i < len; i++) {
-        value = arr[i];
-        if (length(value) != 1) return "";
-        r = index(hay, value);
-        if (r == 0) return "";
-
-        if (i == 0) {
-          min = r;
-          max = r;
-        } else {
-          if (r < min) min = r;
-          if (r > max) max = r;
+      
+      len = 0;
+      
+      for (i = 0; i < ikey; i++) {
+        while (dict[value = keys[i]]--) {
+          if (value ~ /^([a-zA-Z])$/) {
+            alpha = (value ~ /^[a-z]$/) ? lower : upper;
+            beg = end = value;
+            b = e = index(alpha, value);
+            while (b > 1 && dict[tmp = substr(alpha, b - 1, 1)]) {
+              dict[beg = tmp]--;
+              b--;
+            }
+            while (e < 26 && dict[tmp = substr(alpha, e + 1, 1)]) {
+              dict[end = tmp]--;
+              e++;
+            }
+        
+            if (e == b) {
+              arr[len++] = beg;
+            } else if (e == b + 1) {
+              arr[len++] = beg;
+              arr[len++] = end;
+            } else {
+              arr[len++] = del_close "{" beg ".." end "}" del_open;
+            }
+          
+          } else if (value ~ /^(0+|-?0*[1-9][0-9]*)$/) {
+            beg = end = value;
+            b = e = zpad_a2i(value);
+            wmax = wmin = length(value);
+          
+            # range extension for normal numbers
+            if (value ~ /^(0|-?[1-9][0-9]*)$/) {
+              while (dict[b - 1]) dict[--b]--;
+              while (dict[e + 1]) dict[++e]--;
+          
+              tmp = length(beg = "" b);
+              if (tmp < wmin) wmin = tmp;
+              else if (tmp > wmax) wmax = tmp;
+          
+              tmp = length(end = "" e);
+              if (tmp < wmin) wmin = tmp;
+              else if (tmp > wmax) wmax = tmp;
+            }
+          
+            # try range extension for zpad numbers
+            if (wmax == wmin) {
+              while (length(tmp = zpad(b - 1, wmin)) == wmin && dict[tmp]) { dict[tmp]--; --b; }
+              while (length(tmp = zpad(e + 1, wmin)) == wmin && dict[tmp]) { dict[tmp]--; ++e; }
+              beg = zpad(b, wmin);
+              end = zpad(e, wmin);
+            }
+          
+            if (e == b) {
+              arr[len++] = beg;
+            } else if (e == b + 1) {
+              arr[len++] = beg;
+              arr[len++] = end;
+            } else if (b < 0 && e < 0) {
+              # if all the numbers are negative, factorize -
+              arr[len++] = del_close "-{" substr(end, 2) ".." substr(beg, 2) "}" del_open;
+            } else {
+              arr[len++] = del_close "{" beg ".." end "}" del_open;
+            }
+          
+          } else {
+            arr[len++] = value;
+          }
         }
       }
-      if (max - min + 1 != len) return "";
-      if (min <= 26 && 27 <= max) return "";
-      return del_close "{" substr(hay, min, 1) ".." substr(hay, max, 1) "}" del_open;
+      return len;
     }
+
     function simple_brace(arr, len, _, ret, i) {
       if (len == 0) return "";
+
+      len = range_contract(arr, len);
       if (len == 1) return arr[0];
 
-      ret = simple_integral_range(arr, len);
-      if (ret != "") return ret;
-
-      ret = simple_alphabetical_range(arr, len);
-      if (ret != "") return ret;
-
-      ret = del_close "{" del_open arr[0];
+      ret = BRACE_OPEN arr[0];
       for (i = 1; i < len; i++)
         ret = ret del_close "," del_open arr[i];
-      return ret del_close "}" del_open;
+      return ret BRACE_CLOS;
     }
 
     #--------------------------------------------------------------------------
@@ -3565,63 +3774,96 @@ function ble/complete/candidates/compose-braces {
     }
 
     END {
-      print lfrag_reduce(0);
+      result = lfrag_reduce(0);
+      result = remove_empty_quote(result);
+      print result;
     }
   '
 }
 
-## 関数 ble/complete/insert insert_beg insert_end insert suffix
-function ble/complete/insert {
-  local insert_beg=$1 insert_end=$2
-  local insert=$3 suffix=$4
-  local original_text=${_ble_edit_str:insert_beg:insert_end-insert_beg}
-  local ret
+## 関数 ble/complete/insert-braces
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
+##   @var[out] cand_count cand_cand cand_word cand_pack
+function ble/complete/insert-braces {
+  if ((cand_count==1)); then
+    ble/complete/insert-common; return
+  fi
 
-  # 編集範囲の最小化
-  local insert_replace=
-  if [[ $insert == "$original_text"* ]]; then
-    # 既存部分の置換がない場合
-    insert=${insert:insert_end-insert_beg}
-    ((insert_beg=insert_end))
+  local comps_len=${#COMPS} loop=0
+  local -a tails=()
+
+  # 共通部分 (大文字・小文字は区別する)
+  local common=${cand_word[0]}
+  ble/array#push tails "${common:comps_len}"
+  local word clen=${#common}
+  for word in "${cand_word[@]:1}"; do
+    ((loop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+
+    # 共通部分
+    ((clen>${#word}&&(clen=${#word})))
+    while [[ ${word::clen} != "${common::clen}" ]]; do
+      ((clen--))
+    done
+    common=${common::clen}
+
+    # COMPS 以降の部分
+    ble/array#push tails "${word:comps_len}"
+  done
+
+  local fixed=$COMPS
+  if [[ $common != "$COMPS"* ]]; then
+    # 遡って書き換えが起こる場合
+    tails=()
+
+    # 前方固定部分
+    local fixed= fixval=
+    {
+      # comps_fixed 迄は確実に固定する
+      [[ $comps_fixed ]] &&
+        fixed=${COMPS::${comps_fixed%%:*}} fixval=${comps_fixed#*:}
+
+      # もし COMPS を部分的に適用できればそれを用いる
+      local ret simple_flags simple_ibrace
+      ble/complete/candidates/determine-common-prefix/.apply-partial-comps # var[in,out] common
+      if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common"; then
+        ble/syntax:bash/simple-word/eval "$ret"
+        fixed=$common fixval=$ret
+      fi
+    }
+
+    # cand_cand から cand_word を再構築
+    local cand ret fixval_len=${#fixval}
+    for cand in "${cand_cand[@]}"; do
+      ((loop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+      [[ $cand == "$fixval"* ]] || continue
+
+      ble/complete/string#escape-for-completion-context "${cand:fixval_len}"
+      case $comps in
+      (*S*) cand=\'$ret\'   ;;
+      (*E*) cand=\$\'$ret\' ;;
+      (*D*) cand=\"$ret\"   ;;
+      (*I*) cand=\$\"$ret\" ;;
+      (*)   cand=$ret ;;
+      esac
+
+      ble/array#push tails "$cand"
+    done
+  fi
+
+  local tail; ble/util/assign tail 'ble/complete/insert-braces/.compose "${tails[@]}"'
+  local beg=$COMP1 end=$COMP2 insert=$fixed$tail suffix=
+
+  if [[ $comps_flags == *b* ]]; then
+    ble/complete/action/util/complete.addtail ','
   else
-    # 既存部分の置換がある場合
-    ble/string#common-prefix "$insert" "$original_text"
-    if [[ $ret ]]; then
-      insert=${insert:${#ret}}
-      ((insert_beg+=${#ret}))
-    fi
+    ble/complete/action/util/complete.addtail ' '
   fi
 
-  if ble/util/test-rl-variable skip-completed-text; then
-    # カーソルの右のテキストの吸収
-    if [[ $insert ]]; then
-      local right_text=${_ble_edit_str:insert_end}
-      right_text=${right_text%%[$IFS]*}
-      if ble/string#common-prefix "$insert" "$right_text"; [[ $ret ]]; then
-        # カーソルの右に先頭一致する場合に吸収
-        ((insert_end+=${#ret}))
-      elif ble/complete/string#common-suffix-prefix "$insert" "$right_text"; [[ $ret ]]; then
-        # カーソルの右に末尾一致する場合に吸収
-        ((insert_end+=${#ret}))
-      fi
-    fi
-
-    # suffix の吸収
-    if [[ $suffix ]]; then
-      local right_text=${_ble_edit_str:insert_end}
-      if ble/string#common-prefix "$suffix" "$right_text"; [[ $ret ]]; then
-        ((insert_end+=${#ret}))
-      elif ble/complete/string#common-suffix-prefix "$suffix" "$right_text"; [[ $ret ]]; then
-        ((insert_end+=${#ret}))
-      fi
-    fi
-  fi
-
-  local ins=$insert$suffix
-  ble/widget/.replace-range "$insert_beg" "$insert_end" "$ins" 1
-  ((_ble_edit_ind=insert_beg+${#ins},
-    _ble_edit_ind>${#_ble_edit_str}&&
-      (_ble_edit_ind=${#_ble_edit_str})))
+  ble/complete/insert "$beg" "$end" "$insert" "$suffix"
+  ble/util/invoke-hook _ble_complete_insert_hook
+  _ble_complete_state=complete
+  ble/complete/menu/clear
+  return
 }
 
 _ble_complete_state=
@@ -3644,7 +3886,9 @@ function ble/widget/complete {
     [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
       ble/complete/menu-complete/enter && return
   elif [[ $bleopt_complete_menu_complete ]]; then
-    if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* && :$opts: != *:insert_all:* ]]; then
+    if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
+         [[ :$opts: != *:insert_all:* && :$opts: != *:insert_braces:* ]]
+    then
       local footprint; ble/complete/menu/get-footprint
       [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
         ble/complete/menu-complete/enter && return
@@ -3676,7 +3920,7 @@ function ble/widget/complete {
     ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
     if ((ext==148)); then
       return 148
-    elif ((ext!=0)); then
+    elif ((ext!=0||cand_count==0)); then
       ble/widget/.bell
       ble-edit/info/clear
       return 1
@@ -3684,45 +3928,10 @@ function ble/widget/complete {
   fi
 
   if [[ :$opts: == *:insert_braces:* ]]; then
-    local "${_ble_complete_cand_varnames[@]}"
-    local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
-    local -a inserts=()
-    for pack in "${cand_pack[@]}"; do
-      ble/complete/cand/unpack "$pack"
-      ble/array#push inserts "$INSERT"
-    done
-
-    local insert= suffix=
-    ble/util/assign insert 'ble/complete/candidates/compose-braces "${inserts[@]}"'
-    ble/complete/action:word/complete
-    ble/complete/insert "$beg" "$end" "$insert" "$suffix"
-    ble/util/invoke-hook _ble_complete_insert_hook
-    _ble_complete_state=complete
-    ble/complete/menu/clear
-    return
+    ble/complete/insert-braces; return
 
   elif [[ :$opts: == *:insert_all:* ]]; then
-    local "${_ble_complete_cand_varnames[@]}"
-    local pack beg=$COMP1 end=$COMP2 insert= suffix= index=0
-    for pack in "${cand_pack[@]}"; do
-      ble/complete/cand/unpack "$pack"
-      insert=$INSERT suffix=
-
-      if ble/is-function ble/complete/action:"$ACTION"/complete; then
-        ble/complete/action:"$ACTION"/complete
-        (($?==148)) && return 148
-      fi
-      [[ $suffix != *' ' ]] && suffix="$suffix "
-
-      ble/complete/insert "$beg" "$end" "$insert" "$suffix"
-      ble/util/invoke-hook _ble_complete_insert_hook
-      beg=$_ble_edit_ind end=$_ble_edit_ind
-      ((index++))
-    done
-
-    _ble_complete_state=complete
-    ble/complete/menu/clear
-    return
+    ble/complete/insert-all; return
 
   elif [[ :$opts: == *:enter_menu:* ]]; then
     local menu_common_part=$COMPV
@@ -3737,61 +3946,7 @@ function ble/widget/complete {
     return # exit status of ble/complete/menu/show
   fi
 
-  local ret
-  ble/complete/candidates/determine-common-prefix; local insert=$ret suffix=
-  local insert_beg=$COMP1 insert_end=$COMP2
-  local insert_flags=
-  [[ $insert == "$COMPS"* ]] || insert_flags=r
-
-  if ((cand_count==1)); then
-    # 一意確定の時
-    local ACTION=${cand_pack[0]%%:*}
-    if ble/is-function ble/complete/action:"$ACTION"/complete; then
-      local "${_ble_complete_cand_varnames[@]}"
-      ble/complete/cand/unpack "${cand_pack[0]}"
-      ble/complete/action:"$ACTION"/complete
-      (($?==148)) && return 148
-    fi
-  else
-    # 候補が複数ある時
-    insert_flags=${insert_flags}m
-  fi
-
-  local do_insert=1
-  if ((cand_count>1)) && [[ $insert_flags == *r* ]]; then
-    # 既存部分を置換し、かつ一意確定でない場合は置換しない。
-    # 曖昧補完の時は determine-common-prefix 内で調整されるので挿入する。
-    if [[ :$comp_type: != *:[amAi]:* ]]; then
-      do_insert=
-    fi
-  elif [[ $insert$suffix == "$COMPS" ]]; then
-    # 何も変化がない時は、挿入しない。
-    do_insert=
-  fi
-  if [[ $do_insert ]]; then
-    ble/complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
-    ble/util/invoke-hook _ble_complete_insert_hook
-  fi
-
-  if [[ $insert_flags == *m* ]]; then
-    # menu_common_part (メニュー強調文字列)
-    #   もし insert が単純単語の場合には
-    #   menu_common_part を挿入後の評価値とする。
-    #   そうでなければ仕方がないので挿入前の値 COMPV とする。
-    local menu_common_part=$COMPV
-    local ret simple_flags simple_ibrace
-    if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$insert"; then
-      ble/syntax:bash/simple-word/eval "$ret"
-      menu_common_part=$ret
-    fi
-    ble/complete/menu/show "$menu_show_opts" || return
-  elif [[ $insert_flags == *n* ]]; then
-    ble/widget/complete show_menu:regenerate || return
-  else
-    _ble_complete_state=complete
-    ble/complete/menu/clear
-  fi
-  return 0
+  ble/complete/insert-common; return
 }
 
 function ble/widget/complete-insert {
