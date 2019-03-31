@@ -6012,9 +6012,10 @@ function ble-edit/nsearch/.search.fib {
     eval "$fib_suspend"
     fib_suspend=
   else
-    local start=$_ble_edit_nsearch_match
     local index=$_ble_edit_nsearch_index
+    local start=$index
   fi
+  local needle=$_ble_edit_nsearch_needle
   if
     if [[ $opt_forward ]]; then
       local count; ble-edit/history/get-count
@@ -6025,7 +6026,6 @@ function ble-edit/nsearch/.search.fib {
       ((index>=0))
     fi
   then
-    local needle=$_ble_edit_nsearch_needle
     local isearch_time=$fib_clock
     local isearch_progress_callback=ble-edit/nsearch/.show-status.fib
     local isearch_opts=stop_check:progress; [[ :$opts: != *:substr:* ]] && isearch_opts=$isearch_opts:head
