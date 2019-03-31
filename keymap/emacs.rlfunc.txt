@@ -38,7 +38,7 @@ dump-functions                    readline-dump-functions
 dump-macros                       readline-dump-macros
 dump-variables                    readline-dump-variables
 dynamic-complete-history          complete context=dynamic-history
-edit-and-execute-command          -
+edit-and-execute-command          edit-and-execute-command
 emacs-editing-mode                nop
 end-kbd-macro                     end-keyboard-macro
 end-of-history                    history-end

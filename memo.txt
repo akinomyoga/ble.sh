@@ -2245,6 +2245,7 @@ bash_tips
     - complete (insert_braces): remove empty quotations `#D1045` `#D1046` dc586da
     - complete (insert_braces): fix support of replacement of existing part `#D1047` dc586da
   - complete: support `complete context=dynamic-history` `#D1048` 4f7b284
+  - emacs: support a widget `edit-and-execute-command` `#D1050`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2260,7 +2261,7 @@ bash_tips
   - menu: fix a bug that menu item color is disabled `#D1032` c936db8
   - vbell: fix a bug that persistent vbell is not erased before next vbell `#D1034` a3af6c0
   - menu-complete: fix a bug that candidates from menu only contained visible ones `#D1036` 275779f
-  - menu-complete: fix a bug that original texts were lost on cancel `#D1049`
+  - menu-complete: fix a bug that original texts were lost on cancel `#D1049` 3bbfef6
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3211,6 +3212,25 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-31
+
+  * emacs: edit-and-execute-command [#D1050]
+
+    以前以下に書いた https://ja.stackoverflow.com/questions/8808 の実装は参考になるだろうか。
+    結局エディタで編集した結果を accept-line と同様に実行すれば良いのである。
+
+    エディタの中に記述した履歴展開はちゃんと展開されるのだろうか。
+    どうやら履歴展開は無効になっている様だ。
+
+    うーん。まあ動いている気がする。
+
+    ? ok: bash の edit-and-execute の場合 LINENO が増えない
+      bash の振る舞いは変である。ble.sh では LINENO はちゃんと増える事にする。
+      それどころか bash では CMD も増えない…。ble.sh では増える事にする。
+
+    ? ok: gexec/.begin, prologue, epilogue, end 等は呼び出さなくて良いのか。
+      うーん。$_ だとか $? だとか $BASH_REMATCH を保存するかどうかも関係してくる。
+      面倒なので呼び出さなくても良いという事にする。
+      エディタコマンドであればそれぞれに勝手に stty してくれるだろう。
 
   * 何故か menu-complete に入って C-g すると入力済み部分が消える様になっている… [#D1049]
     これは修正した。

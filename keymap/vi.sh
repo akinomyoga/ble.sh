@@ -596,6 +596,14 @@ function ble/widget/vi-command/accept-single-line-or {
     ble/widget/"$@"
   fi
 }
+function ble/widget/vi-command/edit-and-execute-command {
+  ble/keymap:vi/clear-arg
+  ble/widget/vi_nmap/.insert-mode
+  ble/keymap:vi/repeat/clear-insert
+  [[ $_ble_keymap_vi_reg_record ]] &&
+    ble/widget/vi_nmap/record-register
+  ble/widget/edit-and-execute-command
+}
 
 #------------------------------------------------------------------------------
 # args
@@ -5724,12 +5732,13 @@ function ble-decode/keymap:vi_nmap/define {
   #----------------------------------------------------------------------------
   # bash
 
-  ble-bind -f 'C-j'   'vi-command/accept-line'
-  ble-bind -f 'C-RET' 'vi-command/accept-line'
-  ble-bind -f 'C-m'   'vi-command/accept-single-line-or vi-command/forward-first-non-space'
-  ble-bind -f 'RET'   'vi-command/accept-single-line-or vi-command/forward-first-non-space'
-  ble-bind -f 'C-l'   'clear-screen'
-  ble-bind -f 'C-d'   'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
+  ble-bind -f 'C-j'     'vi-command/accept-line'
+  ble-bind -f 'C-RET'   'vi-command/accept-line'
+  ble-bind -f 'C-m'     'vi-command/accept-single-line-or vi-command/forward-first-non-space'
+  ble-bind -f 'RET'     'vi-command/accept-single-line-or vi-command/forward-first-non-space'
+  ble-bind -f 'C-x C-e' 'vi-command/edit-and-execute-command'
+  ble-bind -f 'C-l'     'clear-screen'
+  ble-bind -f 'C-d'     'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
   ble-bind -f 'auto_complete_enter' auto-complete-enter
 }
 
@@ -7503,26 +7512,27 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f 'C-d'       'delete-region-or delete-forward-char-or-exit'
 
   ble-bind -f 'SP'        'magic-space'
-  # ble-bind -f 'M-^'      history-expand-line
+  # ble-bind -f 'M-^'      'history-expand-line'
 
-  # ble-bind -f  'C-c'     discard-line
-  ble-bind -f  'C-j'     accept-line
-  ble-bind -f  'C-RET'   accept-line
-  ble-bind -f  'C-m'     'vi_imap/accept-single-line-or vi_imap/newline'
-  ble-bind -f  'RET'     'vi_imap/accept-single-line-or vi_imap/newline'
-  # ble-bind -f  'C-o'     accept-and-next
-  # ble-bind -f 'M-#'      insert-comment
-  ble-bind -f  'C-g'     bell
-  ble-bind -f  'C-x C-g' bell
-  # ble-bind -f  'C-M-g'   bell
+  # ble-bind -f  'C-c'     'discard-line'
+  ble-bind -f 'C-j'      'accept-line'
+  ble-bind -f 'C-RET'    'accept-line'
+  ble-bind -f 'C-m'      'vi_imap/accept-single-line-or vi_imap/newline'
+  ble-bind -f 'RET'      'vi_imap/accept-single-line-or vi_imap/newline'
+  # ble-bind -f  'C-o'     'accept-and-next'
+  # ble-bind -f 'M-#'      'insert-comment'
+  ble-bind -f 'C-x C-e'  'edit-and-execute-command'
+  ble-bind -f 'C-g'      'bell'
+  ble-bind -f 'C-x C-g'  'bell'
+  # ble-bind -f 'C-M-g'    'bell'
 
-  ble-bind -f  'C-l'     clear-screen
-  # ble-bind -f 'C-M-l'     'redraw-line'
+  ble-bind -f 'C-l'      'clear-screen'
+  # ble-bind -f 'C-M-l'    'redraw-line'
 
-  ble-bind -f  'f1'      command-help
-  ble-bind -f  'C-x C-v' display-shell-version
-  ble-bind -c 'C-z'     fg
-  # ble-bind -c 'M-z'     fg
+  ble-bind -f 'f1'       'command-help'
+  ble-bind -f 'C-x C-v'  'display-shell-version'
+  ble-bind -c 'C-z'      'fg'
+  # ble-bind -c 'M-z'      'fg'
 
   #----------------------------------------------------------------------------
   # vi_imap modifications

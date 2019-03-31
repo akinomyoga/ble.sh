@@ -4259,6 +4259,29 @@ function ble/widget/accept-single-line-or {
 function ble/widget/accept-single-line-or-newline {
   ble/widget/accept-single-line-or newline
 }
+function ble/widget/edit-and-execute-command {
+  local file=$_ble_base_run/$$.blesh-fc.bash
+  echo "$_ble_edit_str" >| "$file"
+  ble/widget/.newline
+
+  if ! ${VISUAL:-${EDITOR:-emacs}} "$file"; then
+    ble/widget/.bell
+    return 1
+  fi
+
+  local BASH_COMMAND; ble/util/readfile BASH_COMMAND "$file"
+  BASH_COMMAND=${BASH_COMMAND%$'\n'}
+  if [[ ! ${BASH_COMMAND//["$IFS"]} ]]; then
+    ble/widget/.bell
+    return 1
+  fi
+
+  # Note: accept-line を参考にした
+  ble/util/buffer.print "${_ble_term_setaf[12]}[ble: fc]$_ble_term_sgr0 $BASH_COMMAND"
+  ((++_ble_edit_CMD))
+  ble-edit/history/add "$BASH_COMMAND"
+  ble-edit/exec/register "$BASH_COMMAND"
+}
 
 function ble/widget/insert-comment/.remove-comment {
   local comment_begin=$1
@@ -6627,6 +6650,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'C-m'      accept-single-line-or-newline
   ble-bind -f 'RET'      accept-single-line-or-newline
   ble-bind -f 'C-o'      accept-and-next
+  ble-bind -f 'C-x C-e'  edit-and-execute-command
   ble-bind -f 'M-#'      insert-comment
   ble-bind -f 'C-g'      bell
   ble-bind -f 'C-x C-g'  bell
