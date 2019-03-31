@@ -60,7 +60,7 @@ history-substring-search-backward history-substring-search-backward
 history-substring-search-forward  history-substring-search-forward
 insert-comment                    insert-comment
 insert-completions                complete insert_all
-insert-last-argument              -
+insert-last-argument              insert-last-argument
 kill-line                         kill-forward-line
 kill-region                       kill-region-or kill-uword
 kill-whole-line                   kill-line
@@ -162,6 +162,6 @@ vi-yank-arg                       -
 vi-yank-pop                       -
 vi-yank-to                        -
 yank                              yank
-yank-last-arg                     -
-yank-nth-arg                      -
+yank-last-arg                     insert-last-argument
+yank-nth-arg                      insert-nth-argument
 yank-pop                          -

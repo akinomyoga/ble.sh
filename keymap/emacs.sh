@@ -11,21 +11,7 @@ function ble-edit/bind/load-keymap-definition:emacs { :; }
 #------------------------------------------------------------------------------
 
 function ble/widget/emacs/append-arg {
-  local code=$((KEYS[0]&_ble_decode_MaskChar))
-  ((code==0)) && return 1
-  local ret; ble/util/c2s "$code"; local ch=$ret
-
-  if 
-    if [[ $_ble_edit_arg ]]; then
-      [[ $ch == [0-9] ]]
-    else
-      ((KEYS[0]&_ble_decode_MaskFlag))
-    fi
-  then
-    _ble_edit_arg=$_ble_edit_arg$ch
-  else
-    ble/widget/self-insert
-  fi
+  ble/widget/append-arg-or self-insert
 }
 
 _ble_keymap_emacs_white_list=(

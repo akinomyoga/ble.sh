@@ -7635,6 +7635,9 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
 
   ble-bind -f 'M-<'       'history-beginning'
   ble-bind -f 'M->'       'history-end'
+  ble-bind -f 'M-.'       'insert-last-argument'
+  ble-bind -f 'M-_'       'insert-last-argument'
+  ble-bind -f 'M-C-y'     'insert-nth-argument'
 
   #----------------------------------------------------------------------------
   # from ble-decode/keymap:safe/bind-complete
@@ -7650,6 +7653,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f "M-'"       'sabbrev-expand'
   ble-bind -f 'M-g'       'complete context=glob'
   ble-bind -f 'M-C-i'     'complete context=dynamic-history'
+  ble-bind -f 'M-TAB'     'complete context=dynamic-history'
 }
 
 #------------------------------------------------------------------------------

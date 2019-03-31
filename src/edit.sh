@@ -1092,6 +1092,23 @@ function ble/keymap:generic/clear-arg {
   fi
 }
 
+function ble/widget/append-arg-or {
+  local code=$((KEYS[0]&_ble_decode_MaskChar))
+  ((code==0)) && return 1
+  local ret; ble/util/c2s "$code"; local ch=$ret
+  if 
+    if [[ $_ble_edit_arg ]]; then
+      [[ $ch == [0-9] ]]
+    else
+      ((KEYS[0]&_ble_decode_MaskFlag))
+    fi
+  then
+    _ble_edit_arg=$_ble_edit_arg$ch
+  else
+    ble/widget/"$@"
+  fi
+}
+
 # 
 #------------------------------------------------------------------------------
 # **** saved variables such as (PS1/LINENO) ****                      @edit.ps1
@@ -2291,6 +2308,172 @@ function ble/widget/.insert-string {
     _ble_edit_ind+=dx
   '))
   _ble_edit_mark_active=
+}
+
+## 関数 ble/widget/insert-arg.impl beg end index delta nth
+##   @param[in] beg end
+##     置換範囲を指定します。
+##   @param[in] index
+##     起点の履歴番号を指定します。
+##   @param[in] delta
+##     (最低の)移動量を指定します。
+##   @param[in] nth
+##     '$', '^', n 等の単語指定子を指定します。
+##
+##   @var _ble_edit_lastarg_index
+##     最後に挿入した最終引数の履歴番号です。
+##   @var _ble_edit_lastarg_delta
+##     最後に挿入した時の移動量です。
+##     繰り返し呼び出した時の移動方向を決定するのに使います。
+##   @var _ble_edit_lastarg_nth
+##     最後に挿入した時の単語指定子です。
+##
+_ble_edit_lastarg_index=
+_ble_edit_lastarg_delta=
+_ble_edit_lastarg_nth=
+function ble/widget/insert-arg.impl {
+  local beg=$1 end=$2 index=$3 delta=$4 nth=$5
+  ((delta)) || delta=1
+
+  local hit= lastarg=
+  local decl=$(
+    local original=${_ble_edit_str:beg:end-beg}
+    local count=; ((delta>0)) && ble-edit/history/get-count
+    while :; do
+      # index = next history index to check
+      if ((delta>0)); then
+        ((index+1>=count)) && break
+        ((index+=delta,delta=1))
+        ((index>=count&&(index=count-1)))
+      else
+        ((index-1<0)) && break
+        ((index+=delta,delta=-1))
+        ((index<0&&(index=0)))
+      fi
+
+      local entry; ble-edit/history/get-editted-entry "$index"
+      builtin history -s -- "$entry"
+      local hist_expanded
+      if ble-edit/hist_expanded.update '!!:'"$nth" &&
+          [[ $hist_expanded != "$original" ]]; then
+        hit=1 lastarg=$hist_expanded
+        ble/util/declare-print-definitions hit lastarg
+        break
+      fi
+    done
+    _ble_edit_lastarg_index=$index
+    _ble_edit_lastarg_delta=$delta
+    _ble_edit_lastarg_nth=$nth
+    ble/util/declare-print-definitions \
+      _ble_edit_lastarg_index \
+      _ble_edit_lastarg_delta \
+      _ble_edit_lastarg_nth
+  )
+  builtin eval -- "$decl"
+
+  if [[ $hit ]]; then
+    ble-edit/content/replace "$beg" "$end" "$lastarg"
+    ((_ble_edit_mark=beg,_ble_edit_ind=beg+${#lastarg}))
+    return 0
+  else
+    ble/widget/.bell
+    return 1
+  fi
+}
+function ble/widget/insert-nth-argument {
+  local arg; ble-edit/content/get-arg '^'
+  local beg=$_ble_edit_ind end=$_ble_edit_ind
+  local index; ble-edit/history/get-index
+  local delta=-1 nth=$arg
+  ble/widget/insert-arg.impl "$beg" "$end" "$index" "$delta" "$nth"
+}
+function ble/widget/insert-last-argument {
+  local arg; ble-edit/content/get-arg '$'
+  local beg=$_ble_edit_ind end=$_ble_edit_ind
+  local index; ble-edit/history/get-index
+  local delta=-1 nth=$arg
+  ble/widget/insert-arg.impl "$beg" "$end" "$index" "$delta" "$nth" || return
+  _ble_edit_mark_active=insert
+  ble-decode/keymap/push lastarg
+}
+function ble/widget/lastarg/next {
+  local arg; ble-edit/content/get-arg 1
+  local beg=$_ble_edit_mark
+  local end=$_ble_edit_ind
+  local index=$_ble_edit_lastarg_index
+
+  local delta
+  if [[ $arg ]]; then
+    delta=$((-arg))
+  else
+    ((delta=_ble_edit_lastarg_delta>=0?1:-1))
+  fi
+
+  local nth=$_ble_edit_lastarg_nth
+  ble/widget/insert-arg.impl "$beg" "$end" "$index" "$delta" "$nth"
+}
+function ble/widget/lastarg/exit {
+  ble-decode/keymap/pop
+  _ble_edit_mark_active=
+}
+function ble/widget/lastarg/cancel {
+  ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" ''
+  _ble_edit_ind=$_ble_edit_mark
+  ble/widget/lastarg/exit
+}
+function ble/widget/lastarg/exit-default {
+  ble/widget/lastarg/exit
+  ble-decode/widget/redispatch "${KEYS[@]}"
+}
+function ble/highlight/layer:region/mark:insert/get-face {
+  face=region_insert
+}
+
+function ble-decode/keymap:lastarg/define {
+  local ble_bind_keymap=lastarg
+
+  ble-bind -f __default__ 'lastarg/exit-default'
+  ble-bind -f 'C-g'       'lastarg/cancel'
+  ble-bind -f 'C-x C-g'   'lastarg/cancel'
+  ble-bind -f 'C-M-g'     'lastarg/cancel'
+  ble-bind -f 'M-.'       'lastarg/next'
+  ble-bind -f 'M-_'       'lastarg/next'
+
+  ble-bind -f M-- 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-0 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-1 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-2 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-3 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-4 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-5 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-6 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-7 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-8 'append-arg-or lastarg/exit-default'
+  ble-bind -f M-9 'append-arg-or lastarg/exit-default'
+
+  ble-bind -f C-- 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-0 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-1 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-2 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-3 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-4 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-5 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-6 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-7 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-8 'append-arg-or lastarg/exit-default'
+  ble-bind -f C-9 'append-arg-or lastarg/exit-default'
+
+  ble-bind -f -   'append-arg-or lastarg/exit-default'
+  ble-bind -f 0   'append-arg-or lastarg/exit-default'
+  ble-bind -f 1   'append-arg-or lastarg/exit-default'
+  ble-bind -f 2   'append-arg-or lastarg/exit-default'
+  ble-bind -f 3   'append-arg-or lastarg/exit-default'
+  ble-bind -f 4   'append-arg-or lastarg/exit-default'
+  ble-bind -f 5   'append-arg-or lastarg/exit-default'
+  ble-bind -f 6   'append-arg-or lastarg/exit-default'
+  ble-bind -f 7   'append-arg-or lastarg/exit-default'
+  ble-bind -f 8   'append-arg-or lastarg/exit-default'
+  ble-bind -f 9   'append-arg-or lastarg/exit-default'
 }
 
 ## 編集関数 self-insert
@@ -4260,6 +4443,8 @@ function ble/widget/accept-single-line-or-newline {
   ble/widget/accept-single-line-or newline
 }
 function ble/widget/edit-and-execute-command {
+  ble-edit/content/clear-arg
+
   local file=$_ble_base_run/$$.blesh-fc.bash
   echo "$_ble_edit_str" >| "$file"
   ble/widget/.newline
@@ -6595,6 +6780,10 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'C-x n'     'history-substring-search-forward'
   ble-decode/keymap:safe/.bind 'C-x <'     'history-nsearch-backward'
   ble-decode/keymap:safe/.bind 'C-x >'     'history-nsearch-forward'
+
+  ble-decode/keymap:safe/.bind 'M-.'       'insert-last-argument'
+  ble-decode/keymap:safe/.bind 'M-_'       'insert-last-argument'
+  ble-decode/keymap:safe/.bind 'M-C-y'     'insert-nth-argument'
 }
 function ble-decode/keymap:safe/bind-complete {
   ble-decode/keymap:safe/.bind 'C-i'       'complete'
@@ -6625,6 +6814,7 @@ function ble-decode/keymap:safe/bind-complete {
   ble-decode/keymap:safe/.bind 'C-x g'     'complete show_menu:context=glob'
 
   ble-decode/keymap:safe/.bind 'M-C-i'     'complete context=dynamic-history'
+  ble-decode/keymap:safe/.bind 'M-TAB'     'complete context=dynamic-history'
 }
 
 function ble/widget/safe/__attach__ {

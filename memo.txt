@@ -3213,6 +3213,78 @@ bash_tips
 
 2019-03-31
 
+  * emacs: insert-last-argument [#D1051]
+
+    取り敢えず実装してみたは良いが Bash のマニュアルを見ると
+    yank-nth-arg だとか yank-last-arg だとかがあって、
+    引数に対する取り扱いが全く異なる。
+    更に、挿入内容は !n や !$ を使って展開されるという話。
+
+    うーん。再実装の必要の予感…。と思ったが、
+    editted entry からという事を考えると、
+    やはり自分で履歴項目を取り出して処理する必要があるのではないだろうか。
+    うーん。サブシェル内で評価する。
+    builtin history -s -- "$cmd" で登録してから !!:$ 等で単語を切り出す。
+
+    以下は再実装前の実装。
+
+    | ## @var _ble_edit_lastarg_index
+    | ##   最後に挿入した最終引数の履歴番号です。
+    | ## @var _ble_edit_lastarg_arg
+    | ##   最後に挿入した時の編集関数の引数です。
+    | ##   次に編集関数を引数無しで呼び出した時の
+    | ##   既定の方向を決定するのに使われます。
+    | _ble_edit_lastarg_index=
+    | _ble_edit_lastarg_arg=
+    | function ble/widget/insert-last-argument {
+    |   local arg; ble-edit/content/get-arg ''
+    |
+    |   # current position
+    |   local beg=$_ble_edit_ind end=$_ble_edit_ind index=
+    |   if [[ ${LASTWIDGET%%' '*} == ble/widget/insert-last-argument && $_ble_edit_lastarg_index ]]; then
+    |     beg=$_ble_edit_mark
+    |     index=$_ble_edit_lastarg_index
+    |     [[ $arg ]] || ((arg=_ble_edit_lastarg_arg>=0?1:-1))
+    |   else
+    |     ble-edit/history/get-index
+    |     [[ $arg ]] || arg=1
+    |   fi
+    |
+    |   # next position
+    |   local index2=$((index-arg))
+    |   if ((arg<0)); then
+    |     local count; ble-edit/history/get-count
+    |     ((index2>=count&&(index2=count-1)))
+    |   else
+    |     ((index2<0&&(index2=0)))
+    |   fi
+    |   if ((index==index2)); then
+    |     ble/widget/.bell
+    |     _ble_edit_lastarg_index=$index2
+    |     _ble_edit_lastarg_arg=$arg
+    |     return 1
+    |   fi
+    |
+    |   while :; do
+    |     local entry; ble-edit/history/get-editted-entry "$index2"
+    |     local wordbreaks; ble/complete/get-wordbreaks
+    |     local rex='([^'$wordbreaks']+)['$wordbreaks']*$'
+    |     if [[ $entry =~ $rex ]]; then
+    |       local rematch1=${BASH_REMATCH[1]}
+    |       ble-edit/content/replace "$beg" "$end" "$rematch1"
+    |       ((_ble_edit_mark=beg,_ble_edit_ind=beg+${#remtach1}))
+    |       _ble_edit_mark_active=menu_complete
+    |       break
+    |     elif ((arg<0)); then
+    |       ((++index2>=count)) && break
+    |     else
+    |       ((--index2<0)) && break
+    |     fi
+    |   done
+    |   _ble_edit_lastarg_index=$index2
+    |   _ble_edit_lastarg_arg=$arg
+    | }
+
   * emacs: edit-and-execute-command [#D1050]
 
     以前以下に書いた https://ja.stackoverflow.com/questions/8808 の実装は参考になるだろうか。

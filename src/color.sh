@@ -806,6 +806,7 @@ function ble/color/faces-defface-hook {
   ble/color/defface region         bg=60,fg=white
   ble/color/defface region_target  bg=153,fg=black
   ble/color/defface region_match   bg=55,fg=white
+  ble/color/defface region_insert  fg=12,bg=252
   ble/color/defface disabled       fg=242
   ble/color/defface overwrite_mode fg=black,bg=51
 }

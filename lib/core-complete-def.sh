@@ -76,5 +76,4 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
 #------------------------------------------------------------------------------
 # 描画設定
 
-ble-color-defface menu_complete fg=12,bg=252
 ble-color-defface auto_complete bg=254,fg=238

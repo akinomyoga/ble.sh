@@ -38,6 +38,15 @@ function ble/complete/string#common-suffix-prefix {
   fi
 }
 
+## 関数 ble/complete/get-wordbreaks
+##   @var[out] wordbreaks
+function ble/complete/get-wordbreaks {
+  wordbreaks=$_ble_term_IFS$COMP_WORDBREAKS
+  [[ $wordbreaks == *'('* ]] && wordbreaks=${wordbreaks//['()']}'()'
+  [[ $wordbreaks == *']'* ]] && wordbreaks=']'${wordbreaks//']'}
+  [[ $wordbreaks == *'-'* ]] && wordbreaks=${wordbreaks//'-'}'-'
+}
+
 # 
 #==============================================================================
 # 選択インターフェイス (ble/complete/menu)
@@ -2289,7 +2298,9 @@ function ble/complete/source:dynamic-history {
   [[ :$comp_type: == *:[amA]:* ]] && return 1
   [[ $COMPV ]] || return 1
 
-  local wordbreaks=$_ble_term_IFS$COMP_WORDBREAKS; wordbreaks=${wordbreaks//$'\n'}
+  local wordbreaks; ble/complete/get-wordbreaks
+  wordbreaks=${wordbreaks//$'\n'}
+
   local ret; ble/string#escape-for-extended-regex "$COMPV"
   local rex_needle='(^|['$wordbreaks'])'$ret'[^'$wordbreaks']+'
   local rex_wordbreaks='['$wordbreaks']'
@@ -4199,10 +4210,6 @@ fi
 
 _ble_complete_menu_original=
 
-function ble/highlight/layer:region/mark:menu_complete/get-face {
-  face=menu_complete
-}
-
 ## 関数 ble/complete/menu-complete/select index [opts]
 function ble/complete/menu-complete/select {
   ble/complete/menu#select "$@"
@@ -4226,7 +4233,7 @@ function ble/complete/menu-complete/enter {
   ble/complete/menu/redraw
   ble/complete/menu#select 0
 
-  _ble_edit_mark_active=menu_complete
+  _ble_edit_mark_active=insert
   ble-decode/keymap/push menu_complete
   return 0
 }
@@ -5073,10 +5080,7 @@ function ble/complete/dabbrev/erase-status {
 ## 関数 ble/complete/dabbrev/initialize-variables
 function ble/complete/dabbrev/initialize-variables {
   # Note: _ble_term_IFS を前置しているので ! や ^ が先頭に来ない事は保証される
-  local wordbreaks=$_ble_term_IFS$COMP_WORDBREAKS
-  [[ $wordbreaks == *'('* ]] && wordbreaks=${wordbreaks//['()']}'()'
-  [[ $wordbreaks == *']'* ]] && wordbreaks=']'${wordbreaks//']'}
-  [[ $wordbreaks == *'-'* ]] && wordbreaks=${wordbreaks//'-'}'-'
+  local wordbreaks; ble/complete/get-wordbreaks
   _ble_complete_dabbrev_wordbreaks=$wordbreaks
 
   local left=${_ble_edit_str::_ble_edit_ind}
@@ -5212,7 +5216,7 @@ function ble/complete/dabbrev/.search.fib {
 function ble/complete/dabbrev/next.fib {
   ble/complete/dabbrev/.search.fib; local ext=$?
   if ((ext==0)); then
-    _ble_edit_mark_active=menu_complete
+    _ble_edit_mark_active=insert
     ble/complete/dabbrev/.show-status.fib
   elif ((ext==148)); then
     ble/complete/dabbrev/.show-status.fib
