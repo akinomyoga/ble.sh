@@ -47,7 +47,7 @@ exchange-point-and-mark           exchange-point-and-mark
 forward-backward-delete-char      delete-forward-backward-char
 forward-byte                      @nomarked forward-byte
 forward-char                      @nomarked forward-char
-forward-search-history            history-search-forward
+forward-search-history            history-isearch-forward
 forward-word                      @nomarked forward-uword
 glob-complete-word                complete context=glob
 glob-expand-word                  complete context=glob:insert-all
@@ -71,9 +71,9 @@ menu-complete-backward            menu-complete backward
 next-history                      history-next
 next-screen-line                  forward-graphical-line
 non-incremental-forward-search-history        history-nsearch-forward
-non-incremental-forward-search-history-again  -
+non-incremental-forward-search-history-again  history-nsearch-forward-again
 non-incremental-reverse-search-history        history-nsearch-backward
-non-incremental-reverse-search-history-again  -
+non-incremental-reverse-search-history-again  history-nsearch-backward-again
 old-menu-complete                 menu-complete
 operate-and-get-next              accept-and-next
 overwrite-mode                    vi_imap/overwrite-mode

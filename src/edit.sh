@@ -6342,6 +6342,8 @@ function ble-decode/keymap:isearch/define {
 
 ## @var _ble_edit_nsearch_needle
 ##   検索対象の文字列を保持します。
+## @var _ble_edit_nsearch_input
+##   最後にユーザ入力された検索対象を保持します。
 ## @var _ble_edit_nsearch_opts
 ##   検索の振る舞いを制御するオプションを保持します。
 ## @arr _ble_edit_nsearch_stack[]
@@ -6356,6 +6358,7 @@ function ble-decode/keymap:isearch/define {
 ## @var _ble_edit_nsearch_index
 ##   最後に検索した位置を表します。
 ##   検索が一致した場合は _ble_edit_nsearch_match と同じになります。
+_ble_edit_nsearch_input=
 _ble_edit_nsearch_needle=
 _ble_edit_nsearch_opts=
 _ble_edit_nsearch_stack=()
@@ -6520,8 +6523,11 @@ function ble/widget/history-search {
   ble-edit/content/clear-arg
 
   # initialize variables
-  if [[ :$opts: == *:input:* ]]; then
+  if [[ :$opts: == *:input:* || :$opts: == *:again:* && ! $_ble_edit_nsearch_input ]]; then
     ble/builtin/read -ep "nsearch> " _ble_edit_nsearch_needle || return 1
+    _ble_edit_nsearch_input=$_ble_edit_nsearch_needle
+  elif [[ :$opts: == *:again:* ]]; then
+    _ble_edit_nsearch_needle=$_ble_edit_nsearch_input
   else
     _ble_edit_nsearch_needle=${_ble_edit_str::_ble_edit_ind}
   fi
@@ -6551,6 +6557,12 @@ function ble/widget/history-nsearch-backward {
 }
 function ble/widget/history-nsearch-forward {
   ble/widget/history-search input:substr:forward
+}
+function ble/widget/history-nsearch-backward-again {
+  ble/widget/history-search again:substr:backward
+}
+function ble/widget/history-nsearch-forward-again {
+  ble/widget/history-search again:substr:forward
 }
 function ble/widget/history-search-backward {
   ble/widget/history-search backward
@@ -6780,6 +6792,8 @@ function ble-decode/keymap:safe/bind-history {
   ble-decode/keymap:safe/.bind 'C-x n'     'history-substring-search-forward'
   ble-decode/keymap:safe/.bind 'C-x <'     'history-nsearch-backward'
   ble-decode/keymap:safe/.bind 'C-x >'     'history-nsearch-forward'
+  ble-decode/keymap:safe/.bind 'C-x ,'     'history-nsearch-backward-again'
+  ble-decode/keymap:safe/.bind 'C-x .'     'history-nsearch-forward-again'
 
   ble-decode/keymap:safe/.bind 'M-.'       'insert-last-argument'
   ble-decode/keymap:safe/.bind 'M-_'       'insert-last-argument'

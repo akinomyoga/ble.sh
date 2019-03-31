@@ -230,13 +230,44 @@ function ble/debug/print-variables/.append {
   local q=\' Q="''\'"
   _ble_local_out=$_ble_local_out"$1='${2//$q/$Q}'"
 }
+function ble/debug/print-variables/.append-array {
+  local q=\' Q="''\'" arr=$1 index=0; shift
+  local index=0 elem out=$arr'=('
+  for elem; do
+    ((index++)) && out=$out' '
+    out=$out$q${elem//$q/$Q}$q
+  done
+  out=$out')'
+  _ble_local_out=$_ble_local_out$out
+}
 function ble/debug/print-variables {
   (($#)) || return 0
-  local _ble_local_var=$1 _ble_local_out=
-  while ble/debug/print-variables/.append "$1" "${!1}"; shift; (($#)); do
+
+  local flags= tag=
+  local -a _ble_local_vars=()
+  while (($#)); do
+    local arg=$1; shift
+    case $arg in
+    (-t) tag=$1; shift ;;
+    (-*) echo "print-variables: unknown option '$arg'" >&2
+         flags=${flags}e ;;
+    (*) ble/array#push _ble_local_vars "$arg" ;;
+    esac
+  done
+  [[ $flags == *e* ]] && return 1
+
+  local _ble_local_out= _ble_local_var=
+  [[ $tag ]] && _ble_local_out="$tag: "
+  ble/util/unlocal flags tag arg
+  for _ble_local_var in "${_ble_local_vars[@]}"; do
+    if ble/is-array "$_ble_local_var"; then
+      builtin eval -- "ble/debug/print-variables/.append-array \"\$_ble_local_var\" \"\${$_ble_local_var[@]}\""
+    else
+      ble/debug/print-variables/.append "$_ble_local_var" "${!_ble_local_var}"
+    fi
     _ble_local_out=$_ble_local_out' '
   done
-  ble/bin/echo "$_ble_local_out"
+  ble/bin/echo "${_ble_local_out%' '}"
 }
 #%end
 
