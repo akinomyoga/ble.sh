@@ -7639,6 +7639,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-!'       'complete context=command'
   ble-bind -f "M-'"       'sabbrev-expand'
   ble-bind -f 'M-g'       'complete context=glob'
+  ble-bind -f 'M-C-i'     'complete context=dynamic-history'
 }
 
 #------------------------------------------------------------------------------

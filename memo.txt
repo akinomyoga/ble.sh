@@ -852,6 +852,10 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-03-31
+
+  * 何故か menu-complete に入って C-g すると入力済み部分が消える様になっている…。
+
 2019-03-23
 
   * menu: alias select='while myselect $# "$@"' 等として select を上書きできるのでは。
@@ -2244,6 +2248,7 @@ bash_tips
     - complete (insert_braces): reimplement range contraction `#D1044`
     - complete (insert_braces): remove empty quotations `#D1045` `#D1046`
     - complete (insert_braces): fix support of replacement of existing part `#D1047`
+  - complete: support `complete context=dynamic-history` `#D1048`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3209,6 +3214,32 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-31
+
+  * complete: dynamic-complete-history とは何だろう [#D1048]
+
+    実際に実行してみた所、履歴の中から単語を切り出して、
+    更にその単語を候補として利用する物の様である。
+
+    しかも適当に試してみるとちゃんと引用符も認識している様な…。
+    これは対応が難しい。
+
+    というか以前にも考察した様な気がする。
+    dynamic-complete-history は memo.txt を検索しても当たらない。
+    → #D0820 に議論が残っていた。dabbrev-expand の振る舞いについてだった。
+    恐らく dabbrev-expand は dynamic-complete-history の menu-complete 版だ。
+    逆に言えば、dabbrev-expand の実装を調べれば良い?
+    議論によると COMP_WORDBREAKS によって区切っている。
+
+    dabbrev-expand の実装を調べようとしたらこれは incremental である。
+    どの様に判定しているかだけ確認して実装し直す事にする。
+    dabbrev で条件判定に使う正規表現などを構築しているのは以下。
+
+      local ret; ble/string#escape-for-extended-regex "$original"
+      local needle='(^|['$wordbreaks'])'$ret
+
+    まあ sed 辺りで実装する事にする。というか grep -o が良い。
+    HISTTIMEFORMAT= builtin history | ble/bin/grep -o "$needle" という具合にする。
+    実装した。一応動いてはいる。
 
   * 2019-03-28 complete (insert_braces): 遡って書き換わる場合に対応できているか謎 [#D1047]
     特にちゃんと前方が置き換わらない様に全候補が調整されているかどうかで振る舞いが変わる。

@@ -1442,13 +1442,13 @@ function ble/complete/source:command {
     fi
   fi
 
-  local cand arr i=0
+  local cand arr
   local compgen
   ble/util/assign compgen 'ble/complete/source:command/gen'
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
 
     # workaround: 何故か compgen -c -- "$compv_quoted" で
     #   厳密一致のディレクトリ名が混入するので削除する。
@@ -1587,9 +1587,9 @@ function ble/complete/source:file/.impl {
   [[ :$comp_type: != *:match-hidden:* ]] &&
     rex_hidden=${COMPV:+'.{'${#COMPV}'}'}'(^|/)\.[^/]*$'
 
-  local cand i=0
+  local cand
   for cand in "${candidates[@]}"; do
-    ((i++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     [[ $rex_hidden && $cand =~ $rex_hidden ]] && continue
     [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
     ble/complete/cand/yield "$action" "$cand"
@@ -2016,9 +2016,9 @@ function ble/complete/source:argument/.progcomp {
   [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
 
   local old_cand_count=$cand_count
-  local cand i=0
+  local cand
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     ble/complete/cand/yield "$action" "$progcomp_prefix$cand" "$comp_opts"
   done
 
@@ -2143,15 +2143,15 @@ function ble/complete/source/compgen {
 
   local q="'" Q="'\''"
   local compv_quoted="'${COMPV//$q/$Q}'"
-  local cand arr
+  local arr
   ble/util/assign-array arr 'compgen -A "$compgen_action" -- "$compv_quoted"'
 
   # 既に完全一致している場合は、より前の起点から補完させるために省略
   [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return
 
-  local i=0
+  local cand
   for cand in "${arr[@]}"; do
-    ((i++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     ble/complete/cand/yield "$action" "$cand" "$data"
   done
 }
@@ -2274,7 +2274,30 @@ function ble/complete/source:glob {
 
   local cand action=file
   for cand in "${ret[@]}"; do
-    ((i++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    ble/complete/cand/yield "$action" "$cand"
+  done
+}
+
+function ble/complete/context:dynamic-history/generate-sources {
+  comp_type=$comp_type:raw
+  ble/complete/context:syntax/generate-sources || return
+  ble/complete/context/overwrite-sources dynamic-history
+}
+function ble/complete/source:dynamic-history {
+  [[ $comps_flags == *v* ]] || return 1
+  [[ :$comp_type: == *:[amA]:* ]] && return 1
+  [[ $COMPV ]] || return 1
+
+  local wordbreaks=$_ble_term_IFS$COMP_WORDBREAKS; wordbreaks=${wordbreaks//$'\n'}
+  local ret; ble/string#escape-for-extended-regex "$COMPV"
+  local rex_needle='(^|['$wordbreaks'])'$ret'[^'$wordbreaks']+'
+  local rex_wordbreaks='['$wordbreaks']'
+  ble/util/assign-array ret 'HISTTIMEFORMAT= builtin history | ble/bin/grep -Eo "$rex_needle" | ble/bin/sed "s/^$rex_wordbreaks//" | ble/bin/sort -u'
+
+  local cand action=literal-word
+  for cand in "${ret[@]}"; do
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
     ble/complete/cand/yield "$action" "$cand"
   done
 }
@@ -2766,6 +2789,7 @@ function ble/complete/candidates/generate {
   ble/complete/candidates/.initialize-rex_raw_paramx
   ble/complete/candidates/comp_type#read-rl-variables
 
+  local cand_iloop=0
   cand_count=0
   cand_cand=() # 候補文字列
   cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)

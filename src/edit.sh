@@ -6600,6 +6600,8 @@ function ble-decode/keymap:safe/bind-complete {
   ble-decode/keymap:safe/.bind 'M-g'       'complete context=glob'
   ble-decode/keymap:safe/.bind 'C-x *'     'complete insert_all:context=glob'
   ble-decode/keymap:safe/.bind 'C-x g'     'complete show_menu:context=glob'
+
+  ble-decode/keymap:safe/.bind 'M-C-i'     'complete context=dynamic-history'
 }
 
 function ble/widget/safe/__attach__ {

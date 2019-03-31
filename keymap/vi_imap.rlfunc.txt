@@ -37,7 +37,7 @@ downcase-word                     downcase-eword
 dump-functions                    readline-dump-functions
 dump-macros                       readline-dump-macros
 dump-variables                    readline-dump-variables
-dynamic-complete-history          -
+dynamic-complete-history          complete context=dynamic-history
 edit-and-execute-command          -
 emacs-editing-mode                -
 end-kbd-macro                     end-keyboard-macro
