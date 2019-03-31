@@ -852,10 +852,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-03-31
-
-  * 何故か menu-complete に入って C-g すると入力済み部分が消える様になっている…。
-
 2019-03-23
 
   * menu: alias select='while myselect $# "$@"' 等として select を上書きできるのでは。
@@ -2245,10 +2241,10 @@ bash_tips
   - main: support options `--version` and `--help` `#D1042` b5ab789
   - main: read `.inputrc` as `ble.sh` settings `#D1042` b5ab789
   - complete: support widget `menu-complete insert_braces` `#D1043` 3d29c8d
-    - complete (insert_braces): reimplement range contraction `#D1044`
-    - complete (insert_braces): remove empty quotations `#D1045` `#D1046`
-    - complete (insert_braces): fix support of replacement of existing part `#D1047`
-  - complete: support `complete context=dynamic-history` `#D1048`
+    - complete (insert_braces): reimplement range contraction `#D1044` dc586da
+    - complete (insert_braces): remove empty quotations `#D1045` `#D1046` dc586da
+    - complete (insert_braces): fix support of replacement of existing part `#D1047` dc586da
+  - complete: support `complete context=dynamic-history` `#D1048` 4f7b284
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2263,7 +2259,8 @@ bash_tips
   - menu: fix a bug that fails to retrieve menu item description `#D1031` c936db8
   - menu: fix a bug that menu item color is disabled `#D1032` c936db8
   - vbell: fix a bug that persistent vbell is not erased before next vbell `#D1034` a3af6c0
-  - menu-complete: fix a bug that candidates from menu only contained visible ones `#D1036`
+  - menu-complete: fix a bug that candidates from menu only contained visible ones `#D1036` 275779f
+  - menu-complete: fix a bug that original texts were lost on cancel `#D1049`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3214,6 +3211,9 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-31
+
+  * 何故か menu-complete に入って C-g すると入力済み部分が消える様になっている… [#D1049]
+    これは修正した。
 
   * complete: dynamic-complete-history とは何だろう [#D1048]
 

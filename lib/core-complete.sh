@@ -3071,7 +3071,7 @@ function ble/complete/menu-complete.class/get-desc {
 
 function ble/complete/menu-complete.class/onselect {
   local nsel=$1 osel=$2
-  local insert=
+  local insert=$_ble_complete_menu_common_part
   if ((nsel>=0)); then
     local "${_ble_complete_cand_varnames[@]}"
     ble/complete/cand/unpack "${_ble_complete_menu_items[nsel]}"
