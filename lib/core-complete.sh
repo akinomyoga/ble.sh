@@ -3905,9 +3905,24 @@ _ble_complete_state=
 ## 関数 ble/widget/complete opts
 ##   @param[in] opts
 ##     コロン区切りのリストです。
-##     enter_menu
+##     以下は動作を指定するオプションです。
+##
+##     insert_common (既定)
+##       共通一致部分を挿入します。
 ##     insert_all
+##       候補を全て挿入します。
+##     insert_braces
+##       候補をブレース展開にまとめて挿入します。
+##     show_menu
+##       メニューを表示します。
+##     enter_menu
+##       メニュー補完に入ります。
+##
 ##     context=*
+##       候補生成の文脈を指定します。
+##     backward
+##       メニュー補完に入る時に最後の候補に移動します。
+##
 function ble/widget/complete {
   local opts=$1
   ble-edit/content/clear-arg
@@ -3917,18 +3932,18 @@ function ble/widget/complete {
 
   local menu_show_opts=
 
-  if [[ :$opts: == *:enter_menu:* ]]; then
-    [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
-      ble/complete/menu-complete/enter && return
-  elif [[ $bleopt_complete_menu_complete ]]; then
-    if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
-         [[ :$opts: != *:insert_all:* && :$opts: != *:insert_braces:* ]]
-    then
-      local footprint; ble/complete/menu/get-footprint
-      [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
-        ble/complete/menu-complete/enter && return
+  if [[ :$opts: != *:insert_*:* && :$opts: != *:show_menu:* ]]; then
+    if [[ :$opts: == *:enter_menu:* ]]; then
+      [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
+        ble/complete/menu-complete/enter "$opts" && return
+    elif [[ $bleopt_complete_menu_complete ]]; then
+      if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]]; then
+        local footprint; ble/complete/menu/get-footprint
+        [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
+          ble/complete/menu-complete/enter && return
+      fi
+      [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
     fi
-    [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
   fi
 
   local COMP1 COMP2 COMPS COMPV
@@ -3962,7 +3977,10 @@ function ble/widget/complete {
     fi
   fi
 
-  if [[ :$opts: == *:insert_braces:* ]]; then
+  if [[ :$opts: == *:insert_common:* ]]; then
+    ble/complete/insert-common; return
+
+  elif [[ :$opts: == *:insert_braces:* ]]; then
     ble/complete/insert-braces; return
 
   elif [[ :$opts: == *:insert_all:* ]]; then
@@ -3971,14 +3989,16 @@ function ble/widget/complete {
   elif [[ :$opts: == *:enter_menu:* ]]; then
     local menu_common_part=$COMPV
     ble/complete/menu/show "$menu_show_opts" || return
-    ble/complete/menu-complete/enter; local ext=$?
+    ble/complete/menu-complete/enter "$opts"; local ext=$?
     ((ext==148)) && return 148
     ((ext)) && ble/widget/.bell
     return
+
   elif [[ :$opts: == *:show_menu:* ]]; then
     local menu_common_part=$COMPV
     ble/complete/menu/show "$menu_show_opts"
     return # exit status of ble/complete/menu/show
+
   fi
 
   ble/complete/insert-common; return
@@ -4215,11 +4235,11 @@ function ble/complete/menu-complete/select {
   ble/complete/menu#select "$@"
 }
 
-#ToDo:mark_active menu_complete の着色の定義
 function ble/complete/menu-complete/enter {
-  [[ ${#_ble_complete_menu_icons[@]} -ge 1 ]] || return 1
-
+  ((${#_ble_complete_menu_icons[@]}>=1)) || return 1
   local beg end; ble/complete/menu/get-active-range || return 1
+
+  local opts=$1
 
   _ble_edit_mark=$beg
   _ble_edit_ind=$end
@@ -4231,7 +4251,12 @@ function ble/complete/menu-complete/enter {
 
   _ble_complete_menu_original=${_ble_edit_str:beg:end-beg}
   ble/complete/menu/redraw
-  ble/complete/menu#select 0
+
+  if [[ :$opts: == *:backward:* ]]; then
+    ble/complete/menu#select $((${#_ble_complete_menu_items[@]}-1))
+  else
+    ble/complete/menu#select 0
+  fi
 
   _ble_edit_mark_active=insert
   ble-decode/keymap/push menu_complete

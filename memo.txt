@@ -2245,7 +2245,9 @@ bash_tips
     - complete (insert_braces): remove empty quotations `#D1045` `#D1046` dc586da
     - complete (insert_braces): fix support of replacement of existing part `#D1047` dc586da
   - complete: support `complete context=dynamic-history` `#D1048` 4f7b284
-  - emacs: support a widget `edit-and-execute-command` `#D1050`
+  - emacs: support a widget `edit-and-execute-command` `#D1050` ca5fe08
+  - emacs: support widgets `insert-{last,nth}-argument` `#D1051` 24458be
+  - complete: support `menu-complete backward` `#D1052`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3212,6 +3214,9 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-03-31
+
+  * emacs: menu-complete-backward [#D1052]
+    これは簡単である。
 
   * emacs: insert-last-argument [#D1051]
 

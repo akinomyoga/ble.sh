@@ -271,6 +271,8 @@ function ble-decode/keymap:vi_imap/bind-complete {
   ble-bind -f 'C-i'                 'vi_imap/complete'
   ble-bind -f 'TAB'                 'vi_imap/complete'
   ble-bind -f 'C-TAB'               'menu-complete'
+  ble-bind -f 'S-C-i'               'menu-complete backward'
+  ble-bind -f 'S-TAB'               'menu-complete backward'
   ble-bind -f 'auto_complete_enter' 'auto-complete-enter'
 
   ble-bind -f 'C-x /' 'menu-complete context=filename'

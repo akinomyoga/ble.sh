@@ -67,14 +67,14 @@ kill-whole-line                   kill-line
 kill-word                         kill-forward-cword
 magic-space                       magic-space
 menu-complete                     menu-complete
-menu-complete-backward            -
+menu-complete-backward            menu-complete backward
 next-history                      history-next
 next-screen-line                  forward-graphical-line
 non-incremental-forward-search-history        history-nsearch-forward
 non-incremental-forward-search-history-again  -
 non-incremental-reverse-search-history        history-nsearch-backward
 non-incremental-reverse-search-history-again  -
-old-menu-complete                 -
+old-menu-complete                 menu-complete
 operate-and-get-next              accept-and-next
 overwrite-mode                    overwrite-mode
 possible-command-completions      complete show_menu:context=command
