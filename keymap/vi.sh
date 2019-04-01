@@ -418,6 +418,7 @@ function ble/widget/vi_imap/normal-mode.impl {
   ble-decode/keymap/push vi_nmap
 }
 function ble/widget/vi_imap/normal-mode {
+  ble-edit/content/clear-arg
   ble/keymap:vi/imap-repeat/pop
   ble/keymap:vi/imap-repeat/process
   ble/keymap:vi/repeat/record-insert
@@ -426,6 +427,7 @@ function ble/widget/vi_imap/normal-mode {
   return 0
 }
 function ble/widget/vi_imap/normal-mode-without-insert-leave {
+  ble-edit/content/clear-arg
   ble/keymap:vi/imap-repeat/pop
   ble/keymap:vi/repeat/record-insert
   ble/widget/vi_imap/normal-mode.impl
@@ -433,6 +435,7 @@ function ble/widget/vi_imap/normal-mode-without-insert-leave {
   return 0
 }
 function ble/widget/vi_imap/single-command-mode {
+  ble-edit/content/clear-arg
   local single_command=1
   local single_command_overwrite=$_ble_edit_overwrite_mode
   ble-edit/content/eolp && _ble_keymap_vi_single_command=2

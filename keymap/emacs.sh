@@ -177,6 +177,9 @@ function ble-decode/keymap:emacs/define {
   #----------------------------------------------------------------------------
 
   # args
+
+  ble-bind -f M-C-u universal-arg
+
   ble-bind -f M-- emacs/append-arg
   ble-bind -f M-0 emacs/append-arg
   ble-bind -f M-1 emacs/append-arg

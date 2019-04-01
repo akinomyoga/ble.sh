@@ -1061,27 +1061,60 @@ function ble-edit/content/is-single-line {
   [[ $_ble_edit_str != *$'\n'* ]]
 }
 
+## @var _ble_edit_arg
+##   入力された引数を保持します。以下の何れかの状態を示します。
+##   /^$/
+##     引数の未入力状態である事を示します。
+##   /^\+$/
+##     universal-arugument (M-C-u) 開始直後である事を示します。
+##     次に入力する - または数字を引数として解釈します。
+##   /^([0-9]+|-[0-9]*)$/
+##     引数の入力途中である事を表します。
+##     次に入力する数字を引数として解釈します。
+##   /^\+([0-9]+|-[0-9]*)$/
+##     引数の入力が完了した事を示します。
+##     次に来る数字は引数として解釈しません。
+
 ## 関数 ble-edit/content/get-arg
 ##   @var[out] arg
 function ble-edit/content/get-arg {
   local default_value=$1
-  if [[ $_ble_edit_arg == -* ]]; then
-    if [[ $_ble_edit_arg == - ]]; then
+  local value=$_ble_edit_arg
+  _ble_edit_arg=
+
+  if [[ $value == +* ]]; then
+    if [[ $value == + ]]; then
+      arg=4
+      return
+    fi
+    value=${value#+}
+  fi
+
+  if [[ $value == -* ]]; then
+    if [[ $value == - ]]; then
       arg=-1
     else
-      arg=$((-10#${_ble_edit_arg#-}))
+      arg=$((-10#${value#-}))
     fi
   else
-    if [[ $_ble_edit_arg ]]; then
-      arg=$((10#$_ble_edit_arg))
+    if [[ $value ]]; then
+      arg=$((10#$value))
     else
       arg=$default_value
     fi
   fi
-  _ble_edit_arg=
 }
 function ble-edit/content/clear-arg {
   _ble_edit_arg=
+}
+function ble-edit/content/toggle-arg {
+  if [[ $_ble_edit_arg == + ]]; then
+    _ble_edit_arg=
+  elif [[ $_ble_edit_arg && $_ble_edit_arg != +* ]]; then
+    _ble_edit_arg=+$_ble_edit_arg
+  else
+    _ble_edit_arg=+
+  fi
 }
 
 function ble/keymap:generic/clear-arg {
@@ -1097,7 +1130,11 @@ function ble/widget/append-arg-or {
   ((code==0)) && return 1
   local ret; ble/util/c2s "$code"; local ch=$ret
   if 
-    if [[ $_ble_edit_arg ]]; then
+    if [[ $_ble_edit_arg == + ]]; then
+      [[ $ch == [-0-9] ]] && _ble_edit_arg=
+    elif [[ $_ble_edit_arg == +* ]]; then
+      false
+    elif [[ $_ble_edit_arg ]]; then
       [[ $ch == [0-9] ]]
     else
       ((KEYS[0]&_ble_decode_MaskFlag))
@@ -1107,6 +1144,12 @@ function ble/widget/append-arg-or {
   else
     ble/widget/"$@"
   fi
+}
+function ble/widget/append-arg {
+  ble/widget/append-arg-or self-insert
+}
+function ble/widget/universal-arg {
+  ble-edit/content/toggle-arg
 }
 
 # 
@@ -2438,6 +2481,8 @@ function ble-decode/keymap:lastarg/define {
   ble-bind -f 'C-M-g'     'lastarg/cancel'
   ble-bind -f 'M-.'       'lastarg/next'
   ble-bind -f 'M-_'       'lastarg/next'
+
+  ble-bind -f M-C-u 'universal-arg'
 
   ble-bind -f M-- 'append-arg-or lastarg/exit-default'
   ble-bind -f M-0 'append-arg-or lastarg/exit-default'

@@ -2098,19 +2098,19 @@ bash_tips
 
   * ble-edit: 対応する物がない readline 関数
 
-    > history-expand-line magic-space
-    > delete-horizontal-space
-    history-search-forward/backward
-    yank-nth-arg yank-last-arg insert-last-argument
-    shell-expand-line alias-expand-line
-    tilde-expand history-and-alias-expand-line
-    edit-and-execute-command
-    transpose-words upcase-word downcase-word capitalize-word
-    kill-whole-line
-    yank-pop これはkill-ringを正しく実装する必要がある
-    digit-argument universal-argument 入力しやすい様に?
-    complete関連
-    > redo, undo
+    - done: history-expand-line magic-space
+    - done: delete-horizontal-space
+    - done: history-search-forward/backward
+    - done: yank-nth-arg yank-last-arg insert-last-argument
+    - done: shell-expand-line alias-expand-line
+    - done: tilde-expand history-and-alias-expand-line
+    - done: edit-and-execute-command
+    - done: transpose-words upcase-word downcase-word capitalize-word
+    - done: kill-whole-line
+    - done: complete関連
+    - done: redo, undo
+    - yank-pop これはkill-ringを正しく実装する必要がある
+    - digit-argument universal-argument 入力しやすい様に?
 
 2015-02-24
 
@@ -2250,7 +2250,9 @@ bash_tips
   - complete: support `menu-complete backward` `#D1052` 2b0c7e8
   - emacs: `history-nsearch-{for,back}ward-again` `#D1053` 60dde2c
   - emacs: support widgets `tab-insert`, `tilde-expand` and `shell-expand-line` `#D1054` 156b76e
-  - emacs: support a widget `transpose-{c,u,s,f,e}words` `#D1055`
+  - emacs: support a widget `transpose-{c,u,s,f,e}words` `#D1055` d72c2d4
+  - emacs: support `bleopt decode_error_cseq_{abell,vbell,discard}` `#D1056` ab1b8b0
+  - emacs: support a widget `universal-arg` `#D1057`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3222,6 +3224,18 @@ bash_tips
 
 2019-04-01
 
+  * edit: universal-argument [#D1057]
+
+    これの実装は面倒である。
+    C-u が入った状態は + で始まるという事にしようか。
+
+    うーん。arg=+ の時は M-C-u が入った状態とする。
+    この時点で何か数字を入れると通常の状態になる。
+    更にここで M-C-u を押すと +数字 という状態になる。
+    この状態の時には M-C-u から抜けた状態になっていると考える。
+
+    実装してみた。動いている様に見える。これで良いという事にする。
+
   * edit: skip-csi-sequence は ble.sh では bleopt の [#D1056]
     decode_error_char_discard か decode_error_kseq_discard
     に対応していると思ったが、調べてみると前者は誤ったバイト列の時で、
@@ -3238,6 +3252,8 @@ bash_tips
     登録されている cseq の探索コードとの両方を統合する箇所でエラーを判定して、
     その上で vbell, abell の処理をすれば良いだろう。
     というか discard に関してもここで判定した方が見通しが良いのではないだろうか。
+
+    取り敢えず bleopt decode_error_cseq_{abell,vbell,discard} を追加した。
 
   * edit: transpose-words [#D1055]
 

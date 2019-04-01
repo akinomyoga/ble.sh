@@ -106,7 +106,7 @@ transpose-chars                   transpose-chars
 transpose-words                   transpose-ewords
 tty-status                        -
 undo                              emacs/undo
-universal-argument                -
+universal-argument                universal-arg
 unix-filename-rubout              kill-backward-fword
 unix-line-discard                 kill-backward-line
 unix-word-rubout                  kill-backward-uword

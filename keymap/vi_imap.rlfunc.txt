@@ -30,7 +30,7 @@ dabbrev-expand                    dabbrev-expand
 delete-char                       vi_imap/delete-region-or delete-forward-char
 delete-char-or-list               delete-forward-char-or-list
 delete-horizontal-space           delete-horizontal-space
-digit-argument                    -
+digit-argument                    append-arg
 display-shell-version             display-shell-version
 do-lowercase-version              do-lowercase-version
 downcase-word                     downcase-eword
@@ -106,7 +106,7 @@ transpose-chars                   transpose-chars
 transpose-words                   transpose-ewords
 tty-status                        -
 undo                              -
-universal-argument                -
+universal-argument                universal-arg
 unix-filename-rubout              kill-backward-fword
 unix-line-discard                 kill-backward-line
 unix-word-rubout                  kill-backward-uword
