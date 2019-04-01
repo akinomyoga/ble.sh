@@ -7631,6 +7631,7 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-c'       'capitalize-eword'
   ble-bind -f 'M-l'       'downcase-eword'
   ble-bind -f 'M-u'       'upcase-eword'
+  ble-bind -f 'M-t'       'transpose-ewords'
 
   ble-bind -f 'M-m'       '@nomarked non-space-beginning-of-line'
   ble-bind -f 'S-M-m'     '@marked non-space-beginning-of-line'

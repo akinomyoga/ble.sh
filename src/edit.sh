@@ -3460,12 +3460,12 @@ function ble/widget/word.setup-fword {
 function ble/widget/word.skip-backward {
   local set=$1 head=${_ble_edit_str::x}
   head=${head##*[$set]}
-  ((x-=${#head}))
+  ((x-=${#head},${#head}))
 }
 function ble/widget/word.skip-forward {
   local set=$1 tail=${_ble_edit_str:x}
   tail=${tail%%[$set]*}
-  ((x+=${#tail}))
+  ((x+=${#tail},${#tail}))
 }
 
 ## 関数 ble/widget/word.locate-backward x arg
@@ -3571,6 +3571,57 @@ function ble/widget/word.impl {
   esac
 }
 
+function ble/widget/transpose-words.impl1 {
+  local wtype=$1 arg=$2
+  local WSET WSEP; ble/widget/word.setup-"$wtype"
+  if ((arg==0)); then
+    local x=$_ble_edit_ind
+    ble/widget/word.skip-forward "$WSET"
+    ble/widget/word.skip-forward "$WSEP"; local e1=$x
+    ble/widget/word.skip-backward "$WSEP"; local b1=$x
+    local x=$_ble_edit_mark
+    ble/widget/word.skip-forward "$WSET"
+    ble/widget/word.skip-forward "$WSEP"; local e2=$x
+    ble/widget/word.skip-backward "$WSEP"; local b2=$x
+  else
+    local x=$_ble_edit_ind
+    ble/widget/word.skip-backward "$WSET"
+    ble/widget/word.skip-backward "$WSEP"; local b1=$x
+    ble/widget/word.skip-forward "$WSEP"; local e1=$x
+    if ((arg>0)); then
+      x=$e1
+      ble/widget/word.skip-forward "$WSET"; local b2=$x
+      while ble/widget/word.skip-forward "$WSEP" || return 1; ((--arg>0)); do
+        ble/widget/word.skip-forward "$WSET"
+      done; local e2=$x
+    else
+      x=$b1
+      ble/widget/word.skip-backward "$WSET"; local e2=$x
+      while ble/widget/word.skip-backward "$WSEP" || return 1; ((++arg<0)); do
+        ble/widget/word.skip-backward "$WSET"
+      done; local b2=$x
+    fi
+  fi
+
+  ((b1>b2)) && local b1=$b2 e1=$e2 b2=$b1 e2=$e1
+  if ! ((b1<e1&&e1<=b2&&b2<e2)); then
+    ble/widget/.bell
+    return 1
+  fi
+
+  local word1=${_ble_edit_str:b1:e1-b1}
+  local word2=${_ble_edit_str:b2:e2-b2}
+  local sep=${_ble_edit_str:e1:b2-e1}
+  ble/widget/.replace-range "$b1" "$e2" "$word2$sep$word1" 1
+  _ble_edit_ind=$e2
+}
+function ble/widget/transpose-words.impl {
+  local wtype=$1 arg; ble-edit/content/get-arg 1
+  ble/widget/transpose-words.impl1 "$wtype" "$arg" && return 0
+  ble/widget/.bell
+  return 1
+}
+
 ## 関数 ble/widget/filter-word.impl xword filter
 ## keymap: safe vi_nmap
 function ble/widget/filter-word.impl {
@@ -3621,6 +3672,7 @@ function ble/widget/OPERATOR-XWORD          { ble/widget/word.impl OPERATOR curr
 function ble/widget/capitalize-XWORD { ble/widget/filter-word.impl XWORD ble/string#capitalize; }
 function ble/widget/downcase-XWORD   { ble/widget/filter-word.impl XWORD ble/string#tolower; }
 function ble/widget/upcase-XWORD     { ble/widget/filter-word.impl XWORD ble/string#toupper; }
+function ble/widget/transpose-XWORDs { ble/widget/transpose-words.impl XWORD; }
 #%end
 #%expand 2.r/XWORD/eword/
 #%expand 2.r/XWORD/cword/
@@ -6844,6 +6896,7 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'M-c'       'capitalize-eword'
   ble-decode/keymap:safe/.bind 'M-l'       'downcase-eword'
   ble-decode/keymap:safe/.bind 'M-u'       'upcase-eword'
+  ble-decode/keymap:safe/.bind 'M-t'       'transpose-ewords'
 
   # linewise operations
   ble-decode/keymap:safe/.bind 'C-a'       '@nomarked beginning-of-line'

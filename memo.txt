@@ -2249,7 +2249,8 @@ bash_tips
   - emacs: support widgets `insert-{last,nth}-argument` `#D1051` 24458be
   - complete: support `menu-complete backward` `#D1052` 2b0c7e8
   - emacs: `history-nsearch-{for,back}ward-again` `#D1053` 60dde2c
-  - edit: support widgets `tab-insert`, `tilde-expand` and `shell-expand-line` `#D1054`
+  - emacs: support widgets `tab-insert`, `tilde-expand` and `shell-expand-line` `#D1054` 156b76e
+  - emacs: support a widget `transpose-{c,u,s,f,e}words` `#D1055`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3220,6 +3221,48 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-04-01
+
+  * edit: transpose-words [#D1055]
+
+    単語の切り出しがどの様に起こるのかについて調べる。
+    調べてみると bash と emacs で振る舞いが異なる。
+    というか bash の振る舞いは物凄く分かりにくい。
+    emacs の振る舞いに倣う事にする。
+
+      echo hello_world
+
+    echo hello world this is a pen
+    echo+hello*world-this=is@a:pen
+
+    1. 単語の先頭にいる時はその前の単語を移動
+    2. 単語の二文字目以降にいる時は後の単語と交換
+    3. 引数を指定した時は後のN単語を一まとまりと見て
+      交換する。つまり word1+(word2-word3-word4)
+      を (word2-word3-word4)+word1 にするという具合。
+
+    開始点は locate-backward で b を拾えば良い。
+
+    echo+hello*world-this=is@a:pen
+    echo+hello*world-this=is@a:pen
+    echo+hello*world-this=is@a:pen
+
+    4. 引数0を指定した時は mark の位置の単語と、
+      現在位置の単語を交換する。
+      交換する単語は何れも前方に検索する。
+      skip-forward, skip-backward して特定する。
+
+    5. 負の引数を指定した時には
+      1.2. と同様に移動単語を決定し、
+      そして更に負の方向に単語を探索する。
+
+    取り敢えず実装してみた。動いている。良しとする。
+
+    * tty-status は呼び出しても何も起こらない気がする。
+      stty raw として見て tty-status を呼び出しても状態が治るとか、
+      現在の状態が変である事を示す表示が出るとかそういう事はない様だ。
+      もちろん、元の振る舞い (C-t) も上書きしているので起こらない。
+      bash-5.0 の man を見ても何も説明はない。
+      これはよく分からないので無視する方向で行く。
 
   * edit: shell-expand-line [#D1054]
 

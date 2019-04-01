@@ -103,7 +103,7 @@ start-kbd-macro                   start-keyboard-macro
 tab-insert                        tab-insert
 tilde-expand                      tilde-expand
 transpose-chars                   transpose-chars
-transpose-words                   -
+transpose-words                   transpose-ewords
 tty-status                        -
 undo                              emacs/undo
 universal-argument                -
