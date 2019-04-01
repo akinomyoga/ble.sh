@@ -3,6 +3,9 @@
 bleopt/declare -v decode_error_char_abell ''
 bleopt/declare -v decode_error_char_vbell 1
 bleopt/declare -v decode_error_char_discard ''
+bleopt/declare -v decode_error_cseq_abell ''
+bleopt/declare -v decode_error_cseq_vbell 1
+bleopt/declare -v decode_error_cseq_discard 1
 bleopt/declare -v decode_error_kseq_abell 1
 bleopt/declare -v decode_error_kseq_vbell 1
 bleopt/declare -v decode_error_kseq_discard 1
@@ -290,6 +293,10 @@ function ble-decode-kbd/.initialize {
   #   端末からの通知などを処理した時に使う。
   ble-decode-kbd/generate-keycode __ignore__
   _ble_decode_KCODE_IGNORE=$ret
+
+  # Note: bleopt decode_error_cseq_discard
+  ble-decode-kbd/generate-keycode __error__
+  _ble_decode_KCODE_ERROR=$ret
 }
 
 ble-decode-kbd/.initialize
@@ -626,6 +633,8 @@ function ble-decode-char/csi/.decode {
       return
     fi
   fi
+
+  csistat=$_ble_decode_KCODE_ERROR
 }
 
 ## 関数 ble-decode-char/csi/consume char
@@ -816,6 +825,18 @@ function ble-decode-char/.getent {
   local csistat=
   ble-decode-char/csi/consume "$char"
   if [[ $csistat && ! ${ent%_} ]]; then
+    if ((csistat==_ble_decode_KCODE_ERROR)); then
+      if [[ $bleopt_decode_error_cseq_vbell ]]; then
+        local ret; ble-decode-unkbd ${_ble_decode_char2_seq//_/ } $char
+        ble/term/visible-bell "unrecognized CSI sequence: $ret"
+      fi
+      [[ $bleopt_decode_error_cseq_abell ]] && ble/term/audible-bell
+      if [[ $bleopt_decode_error_cseq_discard ]]; then
+        csistat=$_ble_decode_KCODE_IGNORE
+      else
+        csistat=
+      fi
+    fi
     if [[ ! $ent ]]; then
       ent=$csistat
     else

@@ -3222,6 +3222,23 @@ bash_tips
 
 2019-04-01
 
+  * edit: skip-csi-sequence は ble.sh では bleopt の [#D1056]
+    decode_error_char_discard か decode_error_kseq_discard
+    に対応していると思ったが、調べてみると前者は誤ったバイト列の時で、
+    後者は誤ったキーの列の時であった。
+
+    これは入り組みそうなので別の項目として処理する事にする。
+    csistat で IGNORE を返す様にすれば良い気がする。
+    csi/consume の側では、登録されている cseq が存在しているかもしれないので、
+    その場ではエラーになるかどうか判定する事ができない。
+    一方で、ここで IGNORE を返してしまうと正しく認識できた上で IGNORE として
+    返る CSI シーケンスとの区別がつかなくなる。
+
+    結局 IGNORE (__ignore__) ではなく ERROR (__error__) というキーを新規作成する事にした。
+    登録されている cseq の探索コードとの両方を統合する箇所でエラーを判定して、
+    その上で vbell, abell の処理をすれば良いだろう。
+    というか discard に関してもここで判定した方が見通しが良いのではないだろうか。
+
   * edit: transpose-words [#D1055]
 
     単語の切り出しがどの様に起こるのかについて調べる。
