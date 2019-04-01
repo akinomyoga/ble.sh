@@ -156,6 +156,8 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f 'C-o'      accept-and-next
   ble-bind -f 'C-x C-e'  edit-and-execute-command
   ble-bind -f 'M-#'      insert-comment
+  ble-bind -f 'M-C-e'    shell-expand-line
+  ble-bind -f 'M-&'      tilde-expand
   ble-bind -f 'C-g'      bell
   ble-bind -f 'C-x C-g'  bell
   ble-bind -f 'C-M-g'    bell

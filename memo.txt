@@ -2247,7 +2247,9 @@ bash_tips
   - complete: support `complete context=dynamic-history` `#D1048` 4f7b284
   - emacs: support a widget `edit-and-execute-command` `#D1050` ca5fe08
   - emacs: support widgets `insert-{last,nth}-argument` `#D1051` 24458be
-  - complete: support `menu-complete backward` `#D1052`
+  - complete: support `menu-complete backward` `#D1052` 2b0c7e8
+  - emacs: `history-nsearch-{for,back}ward-again` `#D1053` 60dde2c
+  - edit: support widgets `tab-insert`, `tilde-expand` and `shell-expand-line` `#D1054`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2264,6 +2266,10 @@ bash_tips
   - vbell: fix a bug that persistent vbell is not erased before next vbell `#D1034` a3af6c0
   - menu-complete: fix a bug that candidates from menu only contained visible ones `#D1036` 275779f
   - menu-complete: fix a bug that original texts were lost on cancel `#D1049` 3bbfef6
+  - edit: fix a bug that rendering is caused twice `#D1053` c7599a2
+  - color (layer:region): fix a bug that highlighting is cleared without dirty ranges `#D1053` 23796bc
+  - edit (nsearch): fix a bug that the search range is narrowed after fail `#D1053` 3b2237e
+  - edit (nsearch): fix a bug of messages on search fail `#D1053` 3b2237e
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3212,6 +3218,99 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-04-01
+
+  * edit: shell-expand-line [#D1054]
+
+    * これの実装をする為には、先ずどの様な展開が実行されるのかを調べる必要がある。
+      エイリアスの展開は実行される。チルダ展開は実行されない。
+      パス名展開は実行されない。コマンド置換は実行される。
+      パラメータ展開は実行される。算術式展開は実行される。
+      何とクォート除去も実行されてしまう…。プロセス置換すら実行されてしまう…。
+
+      - 履歴展開
+      - コマンド置換・パラメータ展開・算術式展開
+      - プロセス置換
+      - エイリアス展開
+      - クォート除去
+      - 単語分割
+      x チルダ展開・パス名展開
+
+      因みにコマンド置換・クォート除去の後にエイリアス展開が起こるという事はない。
+      コマンド置換の後にクォート除去が起こるという事もない。
+      つまり、複数の展開が一気に起こるという事はないのである。
+
+      然し、履歴展開によって現れた内容に対してコマンド置換は適用される様である…。
+      というかそのコマンド置換でエラーが生じたところ bash が落ちる。
+      と思ったが勘違いか? 再度試したら落ちなかった。
+
+    * カーソルの位置は末尾に移動する? と思ったら、dirty range の前に居る場合は dirty range 直前に、
+      dirty range の中にいる場合は dirty 末尾に、dirty range の後に居る場合は
+      文字列の末尾に移動するという事になっている様だ。
+
+      これは既に実装しているエイリアス展開の実装を参考にして実装するのが良さそう。
+      但し、どうせ展開されるので nest の中の実行はしなくても良い。
+
+      というか今の実装では .replace-range を使っているので自動的にカーソルが計算される。
+      寧ろ、.replace-range に任せる方が良いのではないかという気がする。
+      唯、振る舞いの違いは .replace-range だと置換範囲の末尾ではなくて、
+      できるだけカーソルが移動しない様になっているという事である。
+      →.replace-range のカーソル移動の仕様に関しては特に意味がなかった様な気がするので、
+        振る舞いを変更してしまう事にする。mark, ind が変更に巻き込まれる時、
+        mark は 変更範囲の先頭に、ind は変更範囲の末尾に移動する。
+      * .replace-range を使っている箇所を一応確認する。
+        大抵は _ble_edit_ind を設定している。
+        多くは operator の中で使われているが、operator の場合は
+        呼び出し元で位置を設定するはずなので気にしていないのだろう。
+        他に変更範囲外の時には曖昧なく移動が起こるという事を仮定している
+        様に思われる箇所はあった。確かにこれは妥当な仮定である。
+        そしてこれは新しい振る舞いでも保たれる。
+      .replace-range の振る舞いは変更する事にした。
+
+    というかそれぞれの単語について展開を実行すれば良いのでは?
+
+    * うーん。どの様にしたら展開対象の単語の文脈を網羅する事ができるだろうか。
+      単語を閉じる時に検査など行っていなかっただろうか。
+
+      ble/syntax:bash/ctx-command/check-word-end を確認したがチェックはない。
+      ble/syntax:bash/ctx-command/.check-word-begin にコードがあった。
+      _ble_syntax_bash_command_BeginCtx というテーブルを使って単語の wtype に変換している。
+      確認できる物は以下の通りである。
+
+        CTX_CMDI
+        CTX_ARGI CTX_ARGEI CTX_ARGVI
+        CTX_FARGI1 CTX_FARGI2 CTX_FARGI3
+        CTX_TARGI1 CTX_TARGI2
+        CTX_CARGI1 CTX_CARGI2
+
+      然し、実際に確認できる物はこれよりも少ない。実は、もっと後で更に変換をしている気がする。
+      と思ったが実装をよく見るとテーブルで変換した後の値を wtype にしているのではなくて、
+      その前の文脈値を wtype にしている様だ。
+      と思ったらちゃんとコメントに説明が書かれている _ble_syntax_bash_command_EndWtype で
+      更に最後に変換が行われるという事が述べられている。このテーブルによると以下の値が確認できる。
+
+        CTX_CMDI
+        CTX_ARGI CTX_ARGVI CTX_ARGEI
+        CTX_CARGI2 CTX_FARGI2
+
+      CARGI2 FARGI2 は in というキーワードなので展開の対象ではない。
+      他に試していると CTX_VALI という物も確認することができる。
+      うーん。ctx.def を観察する CTX_CONDI は対象である。
+      RDRI というのもあるがこれは展開の対象ではない。
+
+    * fixed: うーん。eval-noglob としているのにパス名展開が実行されている…。
+      と思ったら、eval-noglob では変数代入の右辺にする事で
+      パス名展開を免れていたのであった。
+      今は単純単語以外も許すために、
+      配列代入で単語を展開しているのでパス名展開が有効になってしまっている。修正した。
+
+    チルダ展開についても一緒に実装する事にする。
+    チルダ展開についても alias-expand-line と同様に tree-enumerate で実行しようと考えたが、
+    よく考えてみるとチルダ展開は tree に登録していない。
+    というか内部構造がなくて単に syntax の解析の時点で特定できているから、
+    _ble_syntax_attr だけ確認して置換すればよいのではないか。
+    簡単に実装してみた。動かしてみる。動いている気がする。良しとする。
 
 2019-03-31
 

@@ -1262,14 +1262,18 @@ function ble/syntax:bash/simple-word/eval-noglob/.impl {
     builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
   fi
 
-  builtin eval -- "__ble_ret=$1"
+  local __ble_unset_f=
+  [[ $- != *f* ]] && { __ble_unset_f=1; set -f; }
+  builtin eval -- "__ble_ret=($1)"; local ext=$?
+  [[ $__ble_unset_f ]] && set +f
+  return "$ext"
 }
 ## 関数 ble/syntax:bash/simple-word/eval-noglob str
 ##   @var[out] ret
 function ble/syntax:bash/simple-word/eval-noglob {
   local __ble_ret
   ble/syntax:bash/simple-word/eval-noglob/.impl "$1"
-  ret=$__ble_ret
+  ret=("${__ble_ret[@]}")
 }
 function ble/syntax:bash/simple-word/eval/.set-result { __ble_ret=("$@"); }
 function ble/syntax:bash/simple-word/eval/.impl {

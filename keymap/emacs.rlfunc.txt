@@ -95,13 +95,13 @@ self-insert                       self-insert
 set-mark                          set-mark
 shell-backward-kill-word          kill-backward-sword
 shell-backward-word               @nomarked backward-sword
-shell-expand-line                 -
+shell-expand-line                 shell-expand-line
 shell-forward-word                @nomarked forward-sword
 shell-kill-word                   kill-forward-sword
 skip-csi-sequence                 -
 start-kbd-macro                   start-keyboard-macro
-tab-insert                        -
-tilde-expand                      -
+tab-insert                        tab-insert
+tilde-expand                      tilde-expand
 transpose-chars                   transpose-chars
 transpose-words                   -
 tty-status                        -

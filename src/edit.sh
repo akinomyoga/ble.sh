@@ -2203,9 +2203,9 @@ function ble/widget/.replace-range {
   local delta
   ((delta=strlen-len)) &&
     ((_ble_edit_ind>p1?(_ble_edit_ind+=delta):
-      _ble_edit_ind>p0+strlen&&(_ble_edit_ind=p0+strlen),
+      _ble_edit_ind>p0&&(_ble_edit_ind=p0+strlen),
       _ble_edit_mark>p1?(_ble_edit_mark+=delta):
-      _ble_edit_mark>p0+strlen&&(_ble_edit_mark=p0+strlen)))
+      _ble_edit_mark>p0&&(_ble_edit_mark=p0)))
   return 0
 }
 ## 関数 ble/widget/delete-region
@@ -4423,6 +4423,10 @@ function ble/widget/newline {
   local -a KEYS=(10)
   ble/widget/self-insert
 }
+function ble/widget/tab-insert {
+  local -a KEYS=(9)
+  ble/widget/self-insert
+}
 function ble-edit/is-single-complete-line {
   ble-edit/content/is-single-line || return 1
   [[ $_ble_edit_str ]] && ble-decode/has-input && return 1
@@ -4523,6 +4527,113 @@ function ble/widget/alias-expand-line {
   ble-edit/content/update-syntax
   local iN= changed=
   ble/syntax/tree-enumerate ble/widget/alias-expand-line.proc
+  [[ $changed ]] && _ble_edit_mark_active=
+}
+
+function ble/widget/tilde-expand {
+  ble-edit/content/clear-arg
+  ble-edit/content/update-syntax
+  local len=${#_ble_edit_str}
+  local i=$len j=$len
+  while ((--i>=0)); do
+    ((_ble_syntax_attr[i])) || continue
+    if ((_ble_syntax_attr[i]==_ble_attr_TILDE)); then
+      local word=${_ble_edit_str:i:j-i}
+      builtin eval "local path=$word"
+      [[ $path != "$word" ]] &&
+        ble/widget/.replace-range "$i" "$j" "$path" 1
+    fi
+    j=$i
+  done
+}
+
+_ble_edit_shell_expand_ExpandWtype=()
+function ble/widget/shell-expand-line.initialize {
+  function ble/widget/shell-expand-line.initialize { :; }
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_CMDI]=1
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_ARGI]=1
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_ARGEI]=1
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_ARGVI]=1
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_RDRF]=1
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_RDRD]=1
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_RDRS]=1
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_VALI]=1
+  _ble_edit_shell_expand_ExpandWtype[_ble_ctx_CONDI]=1
+}
+## 関数 ble/widget/shell-expand-line.expand-word
+##   @var[in] wtype
+##   @var[out] ret flags
+function ble/widget/shell-expand-line.expand-word {
+  local word=$1
+
+  # 未知の wtype については処理しない。
+  ble/widget/shell-expand-line.initialize
+  if [[ ! ${_ble_edit_shell_expand_ExpandWtype[wtype]} ]]; then
+    ret=$word
+    return
+  fi
+
+  # 単語展開
+  ret=$word; [[ $ret == '~'* ]] && ret='\'$word
+  ble/syntax:bash/simple-word/eval-noglob "$ret"
+  if [[ $word != $ret || ${#ret[@]} -ne 1 ]]; then
+    flags=${flags}q
+    return
+  fi
+
+  # エイリアス展開
+  if ((wtype==_ble_ctx_CMDI)); then
+    ble/util/expand-alias "$word"
+    [[ $word != $ret ]] && return
+  fi
+
+  ret=$word
+}
+function ble/widget/shell-expand-line.proc {
+  [[ $wtype ]] || return 0
+
+  # 単語以外の構造の場合には中に入る (例: < file や [[ arg ]] など)
+  if [[ ${wtype//[0-9]} ]]; then
+    ble/syntax/tree-enumerate-children ble/widget/shell-expand-line.proc
+    return
+  fi
+
+  local word=${_ble_edit_str:wbegin:wlen}
+
+  # 配列代入の時は配列要素に対して適用
+  local rex_arr='^[[:alpha:]_][[:alnum:]_]*=+?\('
+  if ((wtype==_ble_attr_VAR)) && [[ $word =~ $rex ]]; then
+    ble/syntax/tree-enumerate-children ble/widget/shell-expand-line.proc
+    return
+  fi
+
+  local flags=
+  local -a ret=() words=()
+  ble/widget/shell-expand-line.expand-word "$word"
+  words=("${ret[@]}")
+  [[ ${#words[@]} -eq 1 && $word == "$ret" ]] && return
+
+  if ((wtype==_ble_ctx_RDRF||wtype==_ble_ctx_RDRD||wtype==_ble_ctx_RDRS)); then
+    words=("${words[*]}")
+  fi
+
+  local q=\' Q="'\''" specialchars='\ ["'\''`$|&;<>()*?!^{,}'
+  local w index=0 out=
+  for w in "${words[@]}"; do
+    ((index++)) && out=$out' '
+    [[ $flags == *q* && $w == *["$specialchars"]* ]] && w=$q${w//$q/$Q}$q
+    out=$out$w
+  done
+
+  changed=1
+  ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$out" 1
+}
+function ble/widget/shell-expand-line {
+  ble-edit/content/clear-arg
+  ble/widget/history-expand-line
+  ble-edit/content/update-syntax
+  local iN= changed=
+  ble/syntax/tree-enumerate ble/widget/shell-expand-line.proc
   [[ $changed ]] && _ble_edit_mark_active=
 }
 
@@ -6858,6 +6969,8 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'C-o'      accept-and-next
   ble-bind -f 'C-x C-e'  edit-and-execute-command
   ble-bind -f 'M-#'      insert-comment
+  ble-bind -f 'M-C-e'    shell-expand-line
+  ble-bind -f 'M-&'      tilde-expand
   ble-bind -f 'C-g'      bell
   ble-bind -f 'C-x C-g'  bell
   ble-bind -f 'C-M-g'    bell
