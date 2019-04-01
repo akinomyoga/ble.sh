@@ -783,7 +783,7 @@ function ble/base/process-blesh-arguments {
   # inputrc の読み込み
   if [[ :$opts: != *:noinputrc:* ]]; then
     local inputrc=${INPUTRC:-$HOME/.inputrc}
-    [[ -e $inputrc ]] && ble-decode/read-inputrc "$inputrc"
+    [[ -e $inputrc ]] && ble/decode/read-inputrc "$inputrc"
   fi
 
   [[ -s $_ble_base_rcfile ]] && source "$_ble_base_rcfile"

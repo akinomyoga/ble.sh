@@ -2252,7 +2252,7 @@ bash_tips
   - emacs: support widgets `tab-insert`, `tilde-expand` and `shell-expand-line` `#D1054` 156b76e
   - emacs: support a widget `transpose-{c,u,s,f,e}words` `#D1055` d72c2d4
   - emacs: support `bleopt decode_error_cseq_{abell,vbell,discard}` `#D1056` ab1b8b0
-  - emacs: support a widget `universal-arg` `#D1057`
+  - emacs: support a widget `universal-arg` `#D1057` 8b1dd07
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
