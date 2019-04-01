@@ -5,6 +5,8 @@
 ble/is-function ble-edit/bind/load-keymap-definition:vi && return
 function ble-edit/bind/load-keymap-definition:vi { :; }
 
+# 2019-04-01 keymap cache should be updated for adding __error__
+
 source "$_ble_base/keymap/vi_digraph.sh"
 
 ## オプション keymap_vi_macro_depth
