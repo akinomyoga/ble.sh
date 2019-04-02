@@ -2824,25 +2824,36 @@ function ble/builtin/bind/option:r {
   ble-decode-key/unbind "${keys[*]}"
 }
 
+_ble_decode_rlfunc2widget_emacs=()
+_ble_decode_rlfunc2widget_vi_imap=()
+_ble_decode_rlfunc2widget_vi_nmap=()
 function ble/builtin/bind/rlfunc2widget {
   local kmap=$1 rlfunc=$2
 
-  local rlfunc_dict=
+  local rlfunc_file= rlfunc_dict=
   case $kmap in
-  (emacs)   rlfunc_dict=$_ble_base/keymap/emacs.rlfunc.txt ;;
-  (vi_imap) rlfunc_dict=$_ble_base/keymap/vi_imap.rlfunc.txt ;;
-  (vi_nmap) rlfunc_dict=$_ble_base/keymap/vi_nmap.rlfunc.txt ;;
+  (emacs)   rlfunc_file=$_ble_base/keymap/emacs.rlfunc.txt
+            rlfunc_dict=_ble_decode_rlfunc2widget_emacs ;;
+  (vi_imap) rlfunc_file=$_ble_base/keymap/vi_imap.rlfunc.txt
+            rlfunc_dict=_ble_decode_rlfunc2widget_vi_imap ;;
+  (vi_nmap) rlfunc_file=$_ble_base/keymap/vi_nmap.rlfunc.txt
+            rlfunc_dict=_ble_decode_rlfunc2widget_vi_nmap ;;
   esac
 
-  if [[ $rlfunc_dict && -s $rlfunc_dict ]]; then
-    local awk_script='$1 == ENVIRON["RLFUNC"] { $1=""; print; exit; }'
-    ble/util/assign ret 'RLFUNC=$rlfunc ble/bin/awk "$awk_script" "$rlfunc_dict"'
-    ble/string#trim "$ret"
-    ret=ble/widget/$ret
+  local dict script='
+    ((${#RLFUNC_DICT[@]})) ||
+      ble/util/mapfile RLFUNC_DICT < "$rlfunc_file"
+    dict=("${RLFUNC_DICT[@]}")'
+  builtin eval -- "${script//RLFUNC_DICT/$rlfunc_dict}"
+
+  local line
+  for line in "${dict[@]}"; do
+    [[ $line == "$rlfunc "* ]] || continue
+    local rl widget; builtin read -r rl widget <<< "$line"
+    ret=ble/widget/$widget
     return 0
-  else
-    return 1
-  fi
+  done
+  return 1
 }
 
 ## 関数 ble/builtin/bind/option:u function
