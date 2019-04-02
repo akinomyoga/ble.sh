@@ -1632,17 +1632,17 @@ function ble-decode-bind/.generate-source-to-unbind-default/.process {
       return apos text apos;
     }
 
-    function unescape_control_modifier(str, _i, _esc) {
-      for (_i = 0; _i < 32; _i++) {
+    function unescape_control_modifier(str, _, i, esc, chr) {
+      for (i = 0; i < 32; i++) {
         if (i == 0 || i == 31)
-          _esc = sprintf("\\\\C-%c", i + 64);
+          esc = sprintf("\\\\C-%c", i + 64);
         else if (27 <= i && i <= 30)
-          _esc = sprintf("\\\\C-\\%c", i + 64);
+          esc = sprintf("\\\\C-\\%c", i + 64);
         else
-          _esc = sprintf("\\\\C-%c", i + 96);
+          esc = sprintf("\\\\C-%c", i + 96);
 
-        _chr = sprintf("%c", i);
-        gsub(_esc, _chr, str);
+        chr = sprintf("%c", i);
+        gsub(esc, chr, str);
       }
       gsub(/\\C-\?/, sprintf("%c", 127), str);
       return str;
