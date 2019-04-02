@@ -332,7 +332,7 @@
 # ble-color-setface command_function          fg=92 # fg=purple
 # ble-color-setface command_file              fg=green
 # ble-color-setface command_keyword           fg=blue
-# ble-color-setface command_jobs              fg=red
+# ble-color-setface command_jobs              fg=red,bold
 # ble-color-setface command_directory         fg=navy,underline
 # ble-color-setface filename_directory        underline,fg=26
 # ble-color-setface filename_directory_sticky underline,fg=white,bg=26

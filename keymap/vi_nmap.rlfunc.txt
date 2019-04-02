@@ -145,7 +145,7 @@ vi-goto-mark                      vi-command/goto-mark
 vi-insert-beg                     vi_nmap/insert-mode-at-first-non-space
 vi-insertion-mode                 vi_nmap/insert-mode
 vi-match                          vi-command/search-matchpair-or vi-command/percentage-line
-vi-movement-mode                  -
+vi-movement-mode                  nop
 vi-overstrike                     -
 vi-overstrike-delete              -
 vi-put                            vi-rlfunc/put

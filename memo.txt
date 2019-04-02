@@ -1109,11 +1109,6 @@ bash_tips
     * 2017-12-03 の項目も対応する必要がある
     * 2016-07-07/3 についても確認が必要
 
-2018-08-19
-
-  * highlight: シェル変数 auto_resume?
-    一語の単純コマンドでありかつジョブの名前に一致する場合にジョブ名と解釈する。
-
 2018-08-16
 
   * complete: オーバーレイによる実装?
@@ -2223,6 +2218,7 @@ bash_tips
   - emacs: support `bleopt decode_error_cseq_{abell,vbell,discard}` `#D1056` ab1b8b0
   - emacs: support a widget `universal-arg` `#D1057` 8b1dd07
   - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
+  - highlight: support job names by `auto_resume` `#D1065`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2248,7 +2244,7 @@ bash_tips
   - complete: isolate menu related codes `#D1029` 43bb074
   - global: use `builtin echo` explicitly `#D1035` a6232c2
   - decode: re-implement rlfunc2widget without fork `#D1063` d2e7dbe
-  - blerc: add descriptions `#D1064`
+  - blerc: add descriptions `#D1064` d61b6af
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3196,6 +3192,27 @@ bash_tips
 
 2019-04-02
 
+  * 2018-08-19 highlight: シェル変数 auto_resume? [#D1065]
+    一語の単純コマンドでありかつジョブの名前に一致する場合にジョブ名と解釈する。
+
+    | 先ず初めに一語の単純コマンドとはどういう条件であるかを調べる必要がある。
+    | value=less; $value でも成立するのだろうか。
+    | →成立した…。更に "echo; $value" とやってもちゃんと実行される。うーん。
+    | "一語から成る" というのは難しい条件であるが、
+    | 何も考えずに単体のコマンドとして着色しても良いのかもしれない。
+    |
+    | うーん。よく分からない。$value だとできるが \less や 'less' だとできない。
+    | "$value" 等もできない。\ や "' が含まれていると駄目という事なのか。
+    | 何と $(echo less) でもできる。$(echo "less") でもできる…。
+    | `echo less` はできない。
+    | うーん。ble.sh では \"'` が含まれていなければ OK という事にしようか…。
+    |
+    | 調べてみると alias の方が優先される。function よりはこちらの方が優先される。
+
+    ble.sh の仕様としては (1) 一語のコマンドかどうかの判定は諦める。
+    (2) 単純コマンドかどうかは展開前に \'"` 等の文字が含まれていない事とする。
+    (3) alias が優先されその次にジョブ名と解釈できるかどうかを判定する。
+
   * blerc: 設定に関する質問が来たので取り敢えず blerc に記述する事にした [#D1064]
     https://github.com/akinomyoga/ble.sh/issues/23
 
@@ -3320,12 +3337,12 @@ bash_tips
     | 続けて入力するとどんどん遡っていく。
     | どの位置から置き換えを行うかは mark に記録されている様子だ。
     | また、前回実行された関数が yank-last-arg だった時にのみ遡る。
-    | 
+    |
     | 前回実行されたコマンドを記録する仕組みを整える必要がある。
     | 難しい点は marked/nomarked をどの様に取り扱うかである。
     | そう考えると呼び出し元 (ble-decode) で記録するのは難しいかもしれない。
     | かと言って呼び出される側 (ble-edit) の各 widget で記録するのも面倒である。
-    | 
+    |
     | うーん。取り敢えず ble-decode の側で最後に呼び出したコマンド文字列を記録するぐらいはできるし、
     | その程度の機能ぐらいはあってしかるべきと思うので実装する。
     | marked/nomarked などの無駄な文字列は、記録した文字列を使用する側で何とかする仕組みにすれば良い。

@@ -4896,7 +4896,7 @@ function ble/syntax/faces-onload-hook {
   ble/color/defface command_function    fg=92 # fg=purple
   ble/color/defface command_file        fg=green
   ble/color/defface command_keyword     fg=blue
-  ble/color/defface command_jobs        fg=red
+  ble/color/defface command_jobs        fg=red,bold
   ble/color/defface command_directory   fg=26,underline
   ble/color/defface filename_directory        underline,fg=26
   ble/color/defface filename_directory_sticky underline,fg=white,bg=26
@@ -5053,6 +5053,34 @@ function ble/syntax/highlight/cmdtype1 {
   esac
 }
 
+function ble/syntax/highlight/cmdtype/.is-job-name {
+  ble/util/joblist.check
+
+  local value=$1 word=$2
+  if [[ $value == '%'* ]] && jobs -- "$value" &>/dev/null; then
+    return 0
+  fi
+
+  local quote=\'\"\\\`
+  if [[ ${auto_resume+set} && $word != *["$quote"]* ]]; then
+    if [[ $auto_resume == exact ]]; then
+      local jobs job ret
+      ble/util/assign-array jobs 'LC_ALL=C jobs 2>/dev/null'
+      for job in "${jobs[@]}"; do
+        ble/string#trim "${job#*' '}"
+        ble/string#trim "${ret#*' '}"
+        [[ $value == "$ret" ]] && return 0
+      done
+      return 1
+    elif [[ $auto_resume == substring ]]; then
+      jobs -- "%?$value" &>/dev/null; return
+    else
+      jobs -- "%$value" &>/dev/null; return
+    fi
+  fi
+
+  return 1
+}
 function ble/syntax/highlight/cmdtype/.impl {
   local cmd=$1 _0=$2
   local btype; ble/util/type btype "$cmd"
@@ -5066,18 +5094,17 @@ function ble/syntax/highlight/cmdtype/.impl {
       ble/util/type btype "$cmd"
       ble/syntax/highlight/cmdtype1 "$btype" "$cmd"
       builtin echo -n "$type")
+  elif ble/syntax/highlight/cmdtype/.is-job-name "$cmd" "$_0"; then
+    # %() { :; } として 関数を定義できるが jobs の方が優先される。
+    # (% という名の関数を呼び出す方法はない?)
+    # でも % で始まる物が keyword になる事はそもそも無いような。
+    ((type=ATTR_CMD_JOBS))
   elif [[ $type == "$ATTR_KEYWORD" ]]; then
     # Note: 予約語 (keyword) の時は構文解析の時点で着色しているのでコマンドとしての着色は行わない。
     #   関数 ble/syntax/highlight/cmdtype が呼び出されたとすれば、コマンドとしての文脈である。
     #   予約語がコマンドとして取り扱われるのは、クォートされていたか変数代入やリダイレクトの後だった時。
     #   この時 file, function, builtin, jobs のどれかになる。以下、最悪で 3fork+2exec
-    ble/util/joblist.check
-    if [[ ! ${cmd##%*} ]] && jobs -- "$cmd" &>/dev/null; then
-      # %() { :; } として 関数を定義できるが jobs の方が優先される。
-      # (% という名の関数を呼び出す方法はない?)
-      # でも % で始まる物が keyword になる事はそもそも無いような。
-      ((type=ATTR_CMD_JOBS))
-    elif ble/is-function "$cmd"; then
+    if ble/is-function "$cmd"; then
       ((type=ATTR_CMD_FUNCTION))
     elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
       ((type=ATTR_CMD_BUILTIN))

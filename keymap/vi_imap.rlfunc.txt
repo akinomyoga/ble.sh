@@ -141,7 +141,7 @@ vi-forward-word                   -
 vi-fword                          -
 vi-goto-mark                      -
 vi-insert-beg                     -
-vi-insertion-mode                 -
+vi-insertion-mode                 nop
 vi-match                          -
 vi-movement-mode                  vi_imap/normal-mode
 vi-next-word                      -
