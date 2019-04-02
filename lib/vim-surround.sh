@@ -257,7 +257,7 @@ function ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook {
   if [[ ${KEYS[0]} == 62 ]]; then # '>'
     ble/widget/self-insert
     ble/widget/vi_cmap/accept
-    ble-decode/widget/suppress-widget
+    ble/decode/widget/suppress-widget
   fi
 }
 

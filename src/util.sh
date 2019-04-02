@@ -324,6 +324,10 @@ function ble/array#pop {
     ret=
   fi
 }
+## 関数 ble/array#unshift arr value...
+function ble/array#unshift {
+  builtin eval "$1=(\"\${@:2}\" \"\${$1[@]}\")"
+}
 ## 関数 ble/array#reverse arr
 function ble/array#reverse {
   builtin eval "

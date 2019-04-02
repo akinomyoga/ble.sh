@@ -1286,11 +1286,11 @@ function ble-decode-key/batch/flush {
   if [[ $command ]]; then
     local chars; chars=("${_ble_decode_key_batch[@]}")
     _ble_decode_key_batch=()
-    ble-decode/widget/call-interactively "$command" "${chars[@]}"; local ext=$?
+    ble/decode/widget/call-interactively "$command" "${chars[@]}"; local ext=$?
     ((ext!=125)) && return
   fi
 
-  ble-decode/widget/call-interactively ble/widget/__batch_char__.default "${chars[@]}"; local ext=$?
+  ble/decode/widget/call-interactively ble/widget/__batch_char__.default "${chars[@]}"; local ext=$?
   return "$ext"
 }
 function ble/widget/__batch_char__.default {
@@ -1303,11 +1303,11 @@ function ble/widget/__batch_char__.default {
   local key command
   for key in "${KEYS[@]}"; do
     if [[ $widget_defchar ]]; then
-      ble-decode/widget/call-interactively "$widget_defchar" "$key"; local ext=$?
+      ble/decode/widget/call-interactively "$widget_defchar" "$key"; local ext=$?
       ((ext!=125)) && continue
     fi
     if [[ $widget_default ]]; then
-      ble-decode/widget/call-interactively "$widget_default" "$key"; local ext=$?
+      ble/decode/widget/call-interactively "$widget_default" "$key"; local ext=$?
       ((ext!=125)) && continue
     fi
 
@@ -1500,8 +1500,8 @@ function ble-decode-key/ischar {
 ##
 ##   - ble-decode/widget/.call-keyseq
 ##   - ble-decode/widget/.call-async-read
-##   - ble-decode/widget/call
-##   - ble-decode/widget/call-interactively
+##   - ble/decode/widget/call
+##   - ble/decode/widget/call-interactively
 ##   - (keymap/vi.sh) ble/keymap:vi/repeat/invoke
 ##
 _ble_decode_widget_last=
@@ -1576,12 +1576,12 @@ function ble-decode/widget/.call-async-read {
     _ble_decode_keylog_chars_count=0 _ble_decode_keylog_keys_count=0
   return "$ext"
 }
-## 関数 ble-decode/widget/call-interactively widget keys...
-## 関数 ble-decode/widget/call widget keys...
+## 関数 ble/decode/widget/call-interactively widget keys...
+## 関数 ble/decode/widget/call widget keys...
 ##   指定した名前の widget を呼び出します。
 ##   call-interactively では、現在の keymap に応じた __before_widget__
 ##   及び __after_widget__ フックも呼び出します。
-function ble-decode/widget/call-interactively {
+function ble/decode/widget/call-interactively {
   local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS; KEYS=("${@:2}")
   _ble_decode_widget_last=$WIDGET
@@ -1590,25 +1590,25 @@ function ble-decode/widget/call-interactively {
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_AFTER_WIDGET"
   return "$ext"
 }
-function ble-decode/widget/call {
+function ble/decode/widget/call {
   local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS; KEYS=("${@:2}")
   _ble_decode_widget_last=$WIDGET
   builtin eval -- "$WIDGET"
 }
-## 関数 ble-decode/widget/suppress-widget
+## 関数 ble/decode/widget/suppress-widget
 ##   __before_widget__ に登録された関数から呼び出します。
 ##   __before_widget__ 内で必要な処理を完了した時に、
 ##   WIDGET の呼び出しをキャンセルします。
 ##   __after_widget__ の呼び出しはキャンセルされません。
-function ble-decode/widget/suppress-widget {
+function ble/decode/widget/suppress-widget {
   WIDGET=
 }
 
-## 関数 ble-decode/widget/redispatch
+## 関数 ble/decode/widget/redispatch
 ##   @var[in] KEYS
 ##   @var[out] _ble_decode_keylog_depth
-function ble-decode/widget/redispatch {
+function ble/decode/widget/redispatch {
   if ((_ble_decode_keylog_depth==1)); then
     # Note: 一旦 pop してから _ble_decode_keylog_depth=0
     #   で ble-decode-key を呼び出す事により再記録させる。
@@ -1618,6 +1618,9 @@ function ble-decode/widget/redispatch {
     _ble_decode_keylog_depth=0
   fi
   ble-decode-key "$@"
+}
+function ble/decode/widget/skip-lastwidget {
+  _ble_decode_widget_last=$LASTWIDGET
 }
 
 #------------------------------------------------------------------------------

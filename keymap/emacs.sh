@@ -11,10 +11,6 @@ function ble-edit/bind/load-keymap-definition:emacs { :; }
 
 #------------------------------------------------------------------------------
 
-function ble/widget/emacs/append-arg {
-  ble/widget/append-arg-or self-insert
-}
-
 _ble_keymap_emacs_white_list=(
   self-insert
   batch-insert
@@ -134,6 +130,7 @@ function ble-decode/keymap:emacs/define {
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
   ble-decode/keymap:safe/bind-complete
+  ble-decode/keymap:safe/bind-arg
 
   # charwise operations
   ble-bind -f 'C-d'      'delete-region-or delete-forward-char-or-exit'
@@ -175,46 +172,6 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f 'C-^'      bell
 
   #----------------------------------------------------------------------------
-
-  # args
-
-  ble-bind -f M-C-u universal-arg
-
-  ble-bind -f M-- emacs/append-arg
-  ble-bind -f M-0 emacs/append-arg
-  ble-bind -f M-1 emacs/append-arg
-  ble-bind -f M-2 emacs/append-arg
-  ble-bind -f M-3 emacs/append-arg
-  ble-bind -f M-4 emacs/append-arg
-  ble-bind -f M-5 emacs/append-arg
-  ble-bind -f M-6 emacs/append-arg
-  ble-bind -f M-7 emacs/append-arg
-  ble-bind -f M-8 emacs/append-arg
-  ble-bind -f M-9 emacs/append-arg
-
-  ble-bind -f C-- emacs/append-arg
-  ble-bind -f C-0 emacs/append-arg
-  ble-bind -f C-1 emacs/append-arg
-  ble-bind -f C-2 emacs/append-arg
-  ble-bind -f C-3 emacs/append-arg
-  ble-bind -f C-4 emacs/append-arg
-  ble-bind -f C-5 emacs/append-arg
-  ble-bind -f C-6 emacs/append-arg
-  ble-bind -f C-7 emacs/append-arg
-  ble-bind -f C-8 emacs/append-arg
-  ble-bind -f C-9 emacs/append-arg
-
-  ble-bind -f -   emacs/append-arg
-  ble-bind -f 0   emacs/append-arg
-  ble-bind -f 1   emacs/append-arg
-  ble-bind -f 2   emacs/append-arg
-  ble-bind -f 3   emacs/append-arg
-  ble-bind -f 4   emacs/append-arg
-  ble-bind -f 5   emacs/append-arg
-  ble-bind -f 6   emacs/append-arg
-  ble-bind -f 7   emacs/append-arg
-  ble-bind -f 8   emacs/append-arg
-  ble-bind -f 9   emacs/append-arg
 
   # undo
   ble-bind -f 'C-_'       emacs/undo

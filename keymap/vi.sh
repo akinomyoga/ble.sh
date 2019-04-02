@@ -113,7 +113,8 @@ function ble/widget/vi_imap/__default__ {
 
     local esc=27 # ESC
     # local esc=$((_ble_decode_Ctrl|0x5b)) # もしくは C-[
-    ble-decode/widget/redispatch "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
+    ble/decode/widget/skip-lastwidget
+    ble/decode/widget/redispatch "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
     return 0
   fi
 
@@ -133,7 +134,8 @@ function ble/widget/vi-command/decompose-meta {
   # メタ修飾付きの入力 M-key は ESC + key に分解する
   if ((flag&_ble_decode_Meta)); then
     local esc=$((_ble_decode_Ctrl|0x5b)) # C-[ (もしくは esc=27 ESC?)
-    ble-decode/widget/redispatch "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
+    ble/decode/widget/skip-lastwidget
+    ble/decode/widget/redispatch "$esc" $((KEYS[0]&~_ble_decode_Meta)) "${KEYS[@]:1}"
     return 0
   fi
 
@@ -188,7 +190,7 @@ function ble/keymap:vi/imap-repeat/process {
     local i widget
     for ((i=1;i<repeat;i++)); do
       for widget in "${widgets[@]}"; do
-        ble-decode/widget/call "${widget#*:}" ${widget%%:*}
+        ble/decode/widget/call "${widget#*:}" ${widget%%:*}
       done
     done
   fi
@@ -678,19 +680,16 @@ function ble/keymap:vi/register#load {
   local reg=$1
   if [[ $reg ]] && ((reg!=34)); then
     if [[ $reg == 37 ]]; then # "%
-      _ble_edit_kill_type=
-      _ble_edit_kill_ring=$HISTFILE
+      ble-edit/content/push-kill-ring "$HISTFILE" ''
       return 0
     fi
 
     local value=${_ble_keymap_vi_register[reg]}
     if [[ $value == */* ]]; then
-      _ble_edit_kill_type=${value%%/*}
-      _ble_edit_kill_ring=${value#*/}
+      ble-edit/content/push-kill-ring "${value#*/}" "${value%%/*}"
       return 0
     else
-      _ble_edit_kill_type=
-      _ble_edit_kill_ring=
+      ble-edit/content/push-kill-ring
       return 1
     fi
   fi
@@ -752,8 +751,7 @@ function ble/keymap:vi/register#set {
 
   if [[ ! $reg ]] || ((reg==34)); then # ""
     # unnamed register
-    _ble_edit_kill_type=$type
-    _ble_edit_kill_ring=$content
+    ble-edit/content/push-kill-ring "$content" "$type"
     return 0
   elif ((reg==58||reg==46||reg==37||reg==126)); then # ": ". "% "~
     # read only register
@@ -764,8 +762,7 @@ function ble/keymap:vi/register#set {
     return 0
   else
     if [[ ! $suppress_default ]]; then
-      _ble_edit_kill_type=$type
-      _ble_edit_kill_ring=$content
+      ble-edit/content/push-kill-ring "$content" "$type"
     fi
     _ble_keymap_vi_register[reg]=$type/$content
     return 0
@@ -4856,7 +4853,7 @@ _ble_keymap_vi_cmap_is_cancel_key[8]=1                   # BS
 function ble/keymap:vi/commandline/before-command.hook {
   if [[ ! $_ble_edit_str ]] && ((_ble_keymap_vi_cmap_is_cancel_key[KEYS[0]])); then
     ble/widget/vi_cmap/cancel
-    ble-decode/widget/suppress-widget
+    ble/decode/widget/suppress-widget
   fi
 }
 
@@ -7439,7 +7436,7 @@ function ble/widget/vi-command/bracketed-paste.proc {
   if [[ $_ble_decode_keymap == vi_nmap ]]; then
     local isbol index=$_ble_edit_ind
     ble-edit/content/bolp && isbol=1
-    ble-decode/widget/call-interactively 'ble/widget/vi_nmap/append-mode' 97
+    ble/decode/widget/call-interactively 'ble/widget/vi_nmap/append-mode' 97
     [[ $isbol ]] && ((_ble_edit_ind=index)) # 行頭にいたときは戻る
 
     ble/widget/vi_imap/bracketed-paste.proc "$@"
@@ -7447,7 +7444,7 @@ function ble/widget/vi-command/bracketed-paste.proc {
       ble/widget/vi_imap/normal-mode $((_ble_decode_Ctrl|0x5b))
   elif [[ $_ble_decode_keymap == vi_[xs]map ]]; then
     local _ble_edit_mark_active=$_ble_keymap_vi_brackated_paste_mark_active
-    ble-decode/widget/call-interactively 'ble/widget/vi-command/operator c' 99 || return 1
+    ble/decode/widget/call-interactively 'ble/widget/vi-command/operator c' 99 || return 1
     ble/widget/vi_imap/bracketed-paste.proc "$@"
     ble/keymap:vi/imap/invoke-widget \
       ble/widget/vi_imap/normal-mode $((_ble_decode_Ctrl|0x5b))
@@ -7613,6 +7610,9 @@ function ble-decode/keymap:vi_imap/define-meta-bindings {
   ble-bind -f 'M-RET'     'newline'
   ble-bind -f 'M-SP'      'set-mark'
   ble-bind -f 'M-w'       'copy-region-or copy-uword'
+  ble-bind -f 'M-y'       'yank-pop'
+  ble-bind -f 'M-S-y'     'yank-pop backward'
+  ble-bind -f 'M-Y'       'yank-pop backward'
   ble-bind -f 'M-\'       'delete-horizontal-space'
 
   ble-bind -f 'M-right'   '@nomarked forward-sword'

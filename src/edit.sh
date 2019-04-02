@@ -862,10 +862,11 @@ _ble_edit_VARNAMES=(
   _ble_edit_dirty_syntax_beg
   _ble_edit_dirty_syntax_end
   _ble_edit_dirty_syntax_end0
+  _ble_edit_dirty_observer
+  _ble_edit_kill_index)
+_ble_edit_ARRNAMES=(
   _ble_edit_kill_ring
-  _ble_edit_kill_type
-  _ble_edit_dirty_observer)
-_ble_edit_ARRNAMES=()
+  _ble_edit_kill_type)
 
 # 現在の編集状態は以下の変数で表現される
 _ble_edit_str=
@@ -877,8 +878,9 @@ _ble_edit_line_disabled=
 _ble_edit_arg=
 
 # 以下は複数の編集文字列が合ったとして全体で共有して良いもの
-_ble_edit_kill_ring=
-_ble_edit_kill_type=
+_ble_edit_kill_index=0
+_ble_edit_kill_ring=()
+_ble_edit_kill_type=()
 
 # _ble_edit_str は以下の関数を通して変更する。
 # 変更範囲を追跡する為。
@@ -1140,6 +1142,7 @@ function ble/widget/append-arg-or {
       ((KEYS[0]&_ble_decode_MaskFlag))
     fi
   then
+    ble/decode/widget/skip-lastwidget
     _ble_edit_arg=$_ble_edit_arg$ch
   else
     ble/widget/"$@"
@@ -1149,8 +1152,16 @@ function ble/widget/append-arg {
   ble/widget/append-arg-or self-insert
 }
 function ble/widget/universal-arg {
+  ble/decode/widget/skip-lastwidget
   ble-edit/content/toggle-arg
 }
+
+function ble-edit/content/push-kill-ring {
+  _ble_edit_kill_index=0
+  ble/array#unshift _ble_edit_kill_ring "$1"
+  ble/array#unshift _ble_edit_kill_type "$2"
+}
+
 
 # 
 #------------------------------------------------------------------------------
@@ -2058,7 +2069,8 @@ function ble/widget/.update-textmap {
 function ble/widget/do-lowercase-version {
   local flag=$((KEYS[0]&_ble_decode_MaskFlag)) char=$((KEYS[0]&_ble_decode_MaskChar))
   if ((65<=char&&char<=90)); then
-    ble-decode/widget/redispatch $((flag|char+32)) "${KEYS[@]:1}"
+    ble/decode/widget/skip-lastwidget
+    ble/decode/widget/redispatch $((flag|char+32)) "${KEYS[@]:1}"
   else
     return 125
   fi
@@ -2132,17 +2144,14 @@ function ble/widget/set-mark {
 function ble/widget/kill-forward-text {
   ble-edit/content/clear-arg
   ((_ble_edit_ind>=${#_ble_edit_str})) && return
-
-  _ble_edit_kill_ring=${_ble_edit_str:_ble_edit_ind}
-  _ble_edit_kill_type=
+  ble-edit/content/push-kill-ring "${_ble_edit_str:_ble_edit_ind}"
   ble-edit/content/replace "$_ble_edit_ind" ${#_ble_edit_str} ''
   ((_ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark=_ble_edit_ind)))
 }
 function ble/widget/kill-backward-text {
   ble-edit/content/clear-arg
   ((_ble_edit_ind==0)) && return
-  _ble_edit_kill_ring=${_ble_edit_str::_ble_edit_ind}
-  _ble_edit_kill_type=
+  ble-edit/content/push-kill-ring "${_ble_edit_str::_ble_edit_ind}"
   ble-edit/content/replace 0 "$_ble_edit_ind" ''
   ((_ble_edit_mark=_ble_edit_mark<=_ble_edit_ind?0:_ble_edit_mark-_ble_edit_ind))
   _ble_edit_ind=0
@@ -2151,10 +2160,6 @@ function ble/widget/exchange-point-and-mark {
   ble-edit/content/clear-arg
   local m=$_ble_edit_mark p=$_ble_edit_ind
   _ble_edit_ind=$m _ble_edit_mark=$p
-}
-function ble/widget/yank {
-  ble-edit/content/clear-arg
-  ble/widget/.insert-string "$_ble_edit_kill_ring"
 }
 function ble/widget/@marked {
   if [[ $_ble_edit_mark_active != S ]]; then
@@ -2212,8 +2217,7 @@ function ble/widget/.kill-range {
   ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
 
   # copy
-  _ble_edit_kill_ring=${_ble_edit_str:p0:len}
-  _ble_edit_kill_type=$4
+  ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4"
 
   # delete
   if ((len)); then
@@ -2233,8 +2237,7 @@ function ble/widget/.copy-range {
   ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
 
   # copy
-  _ble_edit_kill_ring=${_ble_edit_str:p0:len}
-  _ble_edit_kill_type=$4
+  ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4"
 }
 ## 関数 ble/widget/.replace-range P0 P1 string [allow_empty]
 function ble/widget/.replace-range {
@@ -2246,7 +2249,7 @@ function ble/widget/.replace-range {
   local delta
   ((delta=strlen-len)) &&
     ((_ble_edit_ind>p1?(_ble_edit_ind+=delta):
-      _ble_edit_ind>p0&&(_ble_edit_ind=p0+strlen),
+      _ble_edit_ind>=p0&&(_ble_edit_ind=p0+strlen),
       _ble_edit_mark>p1?(_ble_edit_mark+=delta):
       _ble_edit_mark>p0&&(_ble_edit_mark=p0)))
   return 0
@@ -2304,6 +2307,94 @@ function ble/widget/copy-region-or {
   else
     "ble/widget/$@"
   fi
+}
+
+## 編集関数 ble/widget/yank
+function ble/widget/yank {
+  local arg; ble-edit/content/get-arg 1
+
+  local nkill=${#_ble_edit_kill_ring[@]}
+  if ((nkill==0)); then
+    ble/widget/.bell 'no strings in kill-ring'
+    _ble_edit_yank_index=
+    return 1
+  fi
+
+  local index=$_ble_edit_kill_index
+  local delta=$((arg-1))
+  if ((delta)); then
+    ((index=(index+delta)%nkill,
+      index=(index+nkill)%nkill))
+    _ble_edit_kill_index=$index
+  fi
+
+  local insert=${_ble_edit_kill_ring[index]}
+  _ble_edit_yank_index=$index
+  if [[ $insert ]]; then
+    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$insert"
+    ((_ble_edit_mark=_ble_edit_ind,
+      _ble_edit_ind+=${#insert}))
+    _ble_edit_mark_active=
+  fi
+}
+
+_ble_edit_yank_index=
+function ble/edit/yankpop.impl {
+  local arg=$1
+  local nkill=${#_ble_edit_kill_ring[@]}
+  ((_ble_edit_yank_index=(_ble_edit_yank_index+arg)%nkill,
+    _ble_edit_yank_index=(_ble_edit_yank_index+nkill)%nkill))
+  local insert=${_ble_edit_kill_ring[_ble_edit_yank_index]}
+  ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" "$insert"
+  ((_ble_edit_ind=_ble_edit_mark+${#insert}))
+}
+function ble/widget/yank-pop {
+  local opts=$1
+  local arg; ble-edit/content/get-arg 1
+  if ! [[ $_ble_edit_yank_index && ${LASTWIDGET%%' '*} == ble/widget/yank ]]; then
+    ble/widget/.bell
+    return 1
+  fi
+
+  [[ :$opts: == *:backward:* ]] && ((arg=-arg))
+
+  ble/edit/yankpop.impl "$arg"
+  _ble_edit_mark_active=insert
+  ble-decode/keymap/push yankpop
+}
+function ble/widget/yankpop/next {
+  local arg; ble-edit/content/get-arg 1
+  ble/edit/yankpop.impl "$arg"
+}
+function ble/widget/yankpop/prev {
+  local arg; ble-edit/content/get-arg 1
+  ble/edit/yankpop.impl $((-arg))
+}
+function ble/widget/yankpop/exit {
+  ble-decode/keymap/pop
+  _ble_edit_mark_active=
+}
+function ble/widget/yankpop/cancel {
+  ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" ''
+  _ble_edit_ind=$_ble_edit_mark
+  ble/widget/yankpop/exit
+}
+function ble/widget/yankpop/exit-default {
+  ble/widget/yankpop/exit
+  ble/decode/widget/skip-lastwidget
+  ble/decode/widget/redispatch "${KEYS[@]}"
+}
+function ble-decode/keymap:yankpop/define {
+  local ble_bind_keymap=yankpop
+
+  ble-decode/keymap:safe/bind-arg yankpop/exit-default
+  ble-bind -f __default__ 'yankpop/exit-default'
+  ble-bind -f 'C-g'       'yankpop/cancel'
+  ble-bind -f 'C-x C-g'   'yankpop/cancel'
+  ble-bind -f 'C-M-g'     'yankpop/cancel'
+  ble-bind -f 'M-y'       'yankpop/next'
+  ble-bind -f 'M-S-y'     'yankpop/prev'
+  ble-bind -f 'M-Y'       'yankpop/prev'
 }
 
 # **** bell ****                                                     @edit.bell
@@ -2466,7 +2557,8 @@ function ble/widget/lastarg/cancel {
 }
 function ble/widget/lastarg/exit-default {
   ble/widget/lastarg/exit
-  ble-decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/skip-lastwidget
+  ble/decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/highlight/layer:region/mark:insert/get-face {
   face=region_insert
@@ -2475,50 +2567,14 @@ function ble/highlight/layer:region/mark:insert/get-face {
 function ble-decode/keymap:lastarg/define {
   local ble_bind_keymap=lastarg
 
+  ble-decode/keymap:safe/bind-arg lastarg/exit-default
+
   ble-bind -f __default__ 'lastarg/exit-default'
   ble-bind -f 'C-g'       'lastarg/cancel'
   ble-bind -f 'C-x C-g'   'lastarg/cancel'
   ble-bind -f 'C-M-g'     'lastarg/cancel'
   ble-bind -f 'M-.'       'lastarg/next'
   ble-bind -f 'M-_'       'lastarg/next'
-
-  ble-bind -f M-C-u 'universal-arg'
-
-  ble-bind -f M-- 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-0 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-1 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-2 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-3 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-4 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-5 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-6 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-7 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-8 'append-arg-or lastarg/exit-default'
-  ble-bind -f M-9 'append-arg-or lastarg/exit-default'
-
-  ble-bind -f C-- 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-0 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-1 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-2 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-3 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-4 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-5 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-6 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-7 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-8 'append-arg-or lastarg/exit-default'
-  ble-bind -f C-9 'append-arg-or lastarg/exit-default'
-
-  ble-bind -f -   'append-arg-or lastarg/exit-default'
-  ble-bind -f 0   'append-arg-or lastarg/exit-default'
-  ble-bind -f 1   'append-arg-or lastarg/exit-default'
-  ble-bind -f 2   'append-arg-or lastarg/exit-default'
-  ble-bind -f 3   'append-arg-or lastarg/exit-default'
-  ble-bind -f 4   'append-arg-or lastarg/exit-default'
-  ble-bind -f 5   'append-arg-or lastarg/exit-default'
-  ble-bind -f 6   'append-arg-or lastarg/exit-default'
-  ble-bind -f 7   'append-arg-or lastarg/exit-default'
-  ble-bind -f 8   'append-arg-or lastarg/exit-default'
-  ble-bind -f 9   'append-arg-or lastarg/exit-default'
 }
 
 ## 編集関数 self-insert
@@ -6482,7 +6538,8 @@ function ble/widget/isearch/cancel {
 }
 function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit-with-region
-  ble-decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/skip-lastwidget
+  ble/decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/widget/isearch/accept-line {
   if ((${#_ble_util_fiberchain[@]})); then
@@ -6812,7 +6869,8 @@ function ble/widget/nsearch/exit {
 }
 function ble/widget/nsearch/exit-default {
   ble/widget/nsearch/exit
-  ble-decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/skip-lastwidget
+  ble/decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/widget/nsearch/cancel {
   if ((${#_ble_util_fiberchain[@]})); then
@@ -6889,6 +6947,9 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or kill-uword'
   ble-decode/keymap:safe/.bind 'M-w'       'copy-region-or copy-uword'
   ble-decode/keymap:safe/.bind 'C-y'       'yank'
+  ble-decode/keymap:safe/.bind 'M-y'       'yank-pop'
+  ble-decode/keymap:safe/.bind 'M-S-y'     'yank-pop backward'
+  ble-decode/keymap:safe/.bind 'M-Y'       'yank-pop backward'
 
   # spaces
   ble-decode/keymap:safe/.bind 'M-\'       'delete-horizontal-space'
@@ -7040,6 +7101,47 @@ function ble-decode/keymap:safe/bind-complete {
 
   ble-decode/keymap:safe/.bind 'M-C-i'     'complete context=dynamic-history'
   ble-decode/keymap:safe/.bind 'M-TAB'     'complete context=dynamic-history'
+}
+function ble-decode/keymap:safe/bind-arg {
+  local append_arg=append-arg${1:+'-or '}$1
+
+  ble-decode/keymap:safe/.bind M-C-u 'universal-arg'
+
+  ble-decode/keymap:safe/.bind M-- "$append_arg"
+  ble-decode/keymap:safe/.bind M-0 "$append_arg"
+  ble-decode/keymap:safe/.bind M-1 "$append_arg"
+  ble-decode/keymap:safe/.bind M-2 "$append_arg"
+  ble-decode/keymap:safe/.bind M-3 "$append_arg"
+  ble-decode/keymap:safe/.bind M-4 "$append_arg"
+  ble-decode/keymap:safe/.bind M-5 "$append_arg"
+  ble-decode/keymap:safe/.bind M-6 "$append_arg"
+  ble-decode/keymap:safe/.bind M-7 "$append_arg"
+  ble-decode/keymap:safe/.bind M-8 "$append_arg"
+  ble-decode/keymap:safe/.bind M-9 "$append_arg"
+
+  ble-decode/keymap:safe/.bind C-- "$append_arg"
+  ble-decode/keymap:safe/.bind C-0 "$append_arg"
+  ble-decode/keymap:safe/.bind C-1 "$append_arg"
+  ble-decode/keymap:safe/.bind C-2 "$append_arg"
+  ble-decode/keymap:safe/.bind C-3 "$append_arg"
+  ble-decode/keymap:safe/.bind C-4 "$append_arg"
+  ble-decode/keymap:safe/.bind C-5 "$append_arg"
+  ble-decode/keymap:safe/.bind C-6 "$append_arg"
+  ble-decode/keymap:safe/.bind C-7 "$append_arg"
+  ble-decode/keymap:safe/.bind C-8 "$append_arg"
+  ble-decode/keymap:safe/.bind C-9 "$append_arg"
+
+  ble-decode/keymap:safe/.bind -   "$append_arg"
+  ble-decode/keymap:safe/.bind 0   "$append_arg"
+  ble-decode/keymap:safe/.bind 1   "$append_arg"
+  ble-decode/keymap:safe/.bind 2   "$append_arg"
+  ble-decode/keymap:safe/.bind 3   "$append_arg"
+  ble-decode/keymap:safe/.bind 4   "$append_arg"
+  ble-decode/keymap:safe/.bind 5   "$append_arg"
+  ble-decode/keymap:safe/.bind 6   "$append_arg"
+  ble-decode/keymap:safe/.bind 7   "$append_arg"
+  ble-decode/keymap:safe/.bind 8   "$append_arg"
+  ble-decode/keymap:safe/.bind 9   "$append_arg"
 }
 
 function ble/widget/safe/__attach__ {

@@ -4322,7 +4322,8 @@ function ble/widget/menu_complete/accept {
 }
 function ble/widget/menu_complete/exit-default {
   ble/widget/menu_complete/exit
-  ble-decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/skip-lastwidget
+  ble/decode/widget/redispatch "${KEYS[@]}"
 }
 
 function ble-decode/keymap:menu_complete/define {
@@ -4652,7 +4653,8 @@ function ble/widget/auto_complete/insert {
 }
 function ble/widget/auto_complete/cancel-default {
   ble/widget/auto_complete/cancel
-  ble-decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/skip-lastwidget
+  ble/decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/widget/auto_complete/self-insert {
   local code=$((KEYS[0]&_ble_decode_MaskChar))
@@ -4713,7 +4715,8 @@ function ble/widget/auto_complete/self-insert {
     return 0
   else
     ble/widget/auto_complete/cancel
-    ble-decode/widget/redispatch "${KEYS[@]}"
+    ble/decode/widget/skip-lastwidget
+    ble/decode/widget/redispatch "${KEYS[@]}"
   fi
 }
 
@@ -4783,7 +4786,9 @@ function ble/widget/auto_complete/accept-line {
   ble/widget/auto_complete/insert
   ble-decode-key 13
 }
-
+function ble/widget/auto_complete/notify-enter {
+  ble/decode/widget/skip-lastwidget
+}
 function ble-decode/keymap:auto_complete/define {
   local ble_bind_keymap=auto_complete
 
@@ -4801,7 +4806,7 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f M-right     auto_complete/insert-word
   ble-bind -f C-j         auto_complete/accept-line
   ble-bind -f C-RET       auto_complete/accept-line
-  ble-bind -f auto_complete_enter nop
+  ble-bind -f auto_complete_enter auto_complete/notify-enter
 }
 
 #------------------------------------------------------------------------------
@@ -5305,7 +5310,8 @@ function ble/widget/dabbrev/exit {
 }
 function ble/widget/dabbrev/exit-default {
   ble/widget/dabbrev/exit
-  ble-decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/skip-lastwidget
+  ble/decode/widget/redispatch "${KEYS[@]}"
 }
 function ble/widget/dabbrev/accept-line {
   ble/widget/dabbrev/exit
