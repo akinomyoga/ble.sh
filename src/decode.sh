@@ -4,7 +4,7 @@ bleopt/declare -v decode_error_char_abell ''
 bleopt/declare -v decode_error_char_vbell 1
 bleopt/declare -v decode_error_char_discard ''
 bleopt/declare -v decode_error_cseq_abell ''
-bleopt/declare -v decode_error_cseq_vbell 1
+bleopt/declare -v decode_error_cseq_vbell ''
 bleopt/declare -v decode_error_cseq_discard 1
 bleopt/declare -v decode_error_kseq_abell 1
 bleopt/declare -v decode_error_kseq_vbell 1
@@ -2193,7 +2193,7 @@ function ble-decode-bind/c2dqs {
   fi
 }
 
-## 関数 binder; ble-decode-bind/cmap/.generate-binder-template
+## 関数 binder; ble/decode/cmap/.generate-binder-template
 ##   3文字以上の bind -x を _ble_decode_cmap から自動的に行うソースを生成
 ##   binder には bind を行う関数を指定する。
 #
@@ -2203,7 +2203,7 @@ function ble-decode-bind/c2dqs {
 #   幸いこの関数は bash-3.1 では使っていないのでこのままにしてある。
 #   追記: 公開されている patch を見たら bash-3.1.4 で修正されている様だ。
 #
-function ble-decode-bind/cmap/.generate-binder-template {
+function ble/decode/cmap/.generate-binder-template {
   local tseq=$1 qseq=$2 nseq=$3 depth=${4:-1} ccode
   local apos="'" escapos="'\\''"
   builtin eval "local -a ccodes; ccodes=(\${!_ble_decode_cmap_$tseq[@]})"
@@ -2221,21 +2221,21 @@ function ble-decode-bind/cmap/.generate-binder-template {
     fi
 
     if [[ ${ent//[0-9]} == _ ]]; then
-      ble-decode-bind/cmap/.generate-binder-template "${tseq}_$ccode" "$qseq1" "$nseq1" $((depth+1))
+      ble/decode/cmap/.generate-binder-template "${tseq}_$ccode" "$qseq1" "$nseq1" $((depth+1))
     fi
   done
 }
 
-function ble-decode-bind/cmap/.emit-bindx {
+function ble/decode/cmap/.emit-bindx {
   local ap="'" eap="'\\''"
   ble/bin/echo "builtin bind -x '\"${1//$ap/$eap}\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\"'"
 }
-function ble-decode-bind/cmap/.emit-bindr {
+function ble/decode/cmap/.emit-bindr {
   ble/bin/echo "builtin bind -r \"$1\""
 }
 
 _ble_decode_cmap_initialized=
-function ble-decode-bind/cmap/initialize {
+function ble/decode/cmap/initialize {
   [[ $_ble_decode_cmap_initialized ]] && return
   _ble_decode_cmap_initialized=1
 
@@ -2261,18 +2261,18 @@ function ble-decode-bind/cmap/initialize {
     _ble_decode_bind_fbinder=$fbinder
     if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
       ble-edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... '
-      ble-decode-bind/cmap/.generate-binder-template >| "$fbinder"
-      binder=ble-decode-bind/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
-      binder=ble-decode-bind/cmap/.emit-bindr source "$fbinder" >| "$fbinder.unbind"
+      ble/decode/cmap/.generate-binder-template >| "$fbinder"
+      binder=ble/decode/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
+      binder=ble/decode/cmap/.emit-bindr source "$fbinder" >| "$fbinder.unbind"
       ble-edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... done'
     fi
   fi
 }
 
-## 関数 ble-decode-bind/.generate-source-to-unbind-default
+## 関数 ble/decode/attach/.generate-source-to-unbind-default
 ##   既存の ESC で始まる binding を削除するコードを生成し標準出力に出力します。
 ##   更に、既存の binding を復元する為のコードを同時に生成し tmp/$$.bind.save に保存します。
-function ble-decode-bind/.generate-source-to-unbind-default {
+function ble/decode/attach/.generate-source-to-unbind-default {
   # 1 ESC で始まる既存の binding を全て削除
   # 2 bind を全て記録 at $$.bind.save
   {
@@ -2282,12 +2282,12 @@ function ble-decode-bind/.generate-source-to-unbind-default {
       builtin bind -X
     fi
 #%x
-  } | LC_ALL=C ble-decode-bind/.generate-source-to-unbind-default/.process
+  } | LC_ALL=C ble/decode/attach/.generate-source-to-unbind-default/.process
 
   # Note: 2>/dev/null は、(1) bind -X のエラーメッセージ、及び、
   # (2) LC_ALL 復元時のエラーメッセージ (外側の値が不正な時) を捨てる為に必要。
 } 2>/dev/null
-function ble-decode-bind/.generate-source-to-unbind-default/.process {
+function ble/decode/attach/.generate-source-to-unbind-default/.process {
   ble/bin/${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
     BEGIN {
@@ -2418,8 +2418,8 @@ function ble-decode/unbind {
 
 #------------------------------------------------------------------------------
 
-function ble-decode/initialize {
-  ble-decode-bind/cmap/initialize
+function ble/decode/initialize {
+  ble/decode/cmap/initialize
 }
 
 ## @var _ble_decode_bind_state
@@ -2430,7 +2430,7 @@ function ble-decode/reset-default-keymap {
   ble-decode/DEFAULT_KEYMAP -v _ble_decode_keymap # 0ms
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
 }
-function ble-decode/attach {
+function ble/decode/attach {
   [[ $_ble_decode_bind_state != none ]] && return
   ble/util/save-editing-mode _ble_decode_bind_state
   [[ $_ble_decode_bind_state == none ]] && return 1
@@ -2442,7 +2442,7 @@ function ble-decode/attach {
   ble/util/reset-keymap-of-editing-mode
 
   # 元のキー割り当ての保存・unbind
-  builtin eval -- "$(ble-decode-bind/.generate-source-to-unbind-default)" # 21ms
+  builtin eval -- "$(ble/decode/attach/.generate-source-to-unbind-default)" # 21ms
 
   # ble.sh bind の設置
   ble-decode/bind # 20ms
@@ -2703,6 +2703,8 @@ function ble/builtin/bind/.decode-chars.hook {
 ##   文字コードの列からキーの列へ変換します。
 ##   @arr[out] keys
 function ble/builtin/bind/.decode-chars {
+  ble/decode/cmap/initialize
+
   # initialize
   local _ble_decode_csi_mode=0
   local _ble_decode_csi_args=
@@ -2718,6 +2720,11 @@ function ble/builtin/bind/.decode-chars {
 #%end
   local _ble_decode_keylog_keys_enabled=
   local _ble_decode_keylog_chars_enabled=
+
+  # suppress errors
+  local bleopt_decode_error_cseq_abell=
+  local bleopt_decode_error_cseq_vbell=
+  local bleopt_decode_error_cseq_discard=
 
   # setup hook and run
   local -a ble_decode_bind_keys=()

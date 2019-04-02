@@ -659,9 +659,9 @@ function ble-attach {
 
   # keymap 初期化
   local IFS=$' \t\n'
-  ble-decode/initialize # 7ms
+  ble/decode/initialize # 7ms
   ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
-  if ! ble-decode/attach; then # 53ms
+  if ! ble/decode/attach; then # 53ms
     _ble_attached=
     ble/term/finalize
     return 1

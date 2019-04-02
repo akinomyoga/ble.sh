@@ -7900,7 +7900,7 @@ function ble-edit/bind/.check-detach {
     if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
       ble-decode/reset-default-keymap
       ble-decode/detach
-      ble-decode/attach
+      ble/decode/attach
     fi
 
     return 1

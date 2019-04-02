@@ -2208,6 +2208,7 @@ bash_tips
   - emacs: support widgets `insert-comment` and `do-lowercase-version` `#D1041` 7aae37b
   - main: support options `--version` and `--help` `#D1042` b5ab789
   - main: read `.inputrc` as `ble.sh` settings `#D1042` b5ab789
+    - decode: fix a bug of error messages on reading `.inputrc` `#D1062`
   - complete: support widget `menu-complete insert_braces` `#D1043` 3d29c8d
     - complete (insert_braces): reimplement range contraction `#D1044` dc586da
     - complete (insert_braces): remove empty quotations `#D1045` `#D1046` dc586da
@@ -2221,6 +2222,7 @@ bash_tips
   - emacs: support a widget `transpose-{c,u,s,f,e}words` `#D1055` d72c2d4
   - emacs: support `bleopt decode_error_cseq_{abell,vbell,discard}` `#D1056` ab1b8b0
   - emacs: support a widget `universal-arg` `#D1057` 8b1dd07
+  - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3190,14 +3192,30 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-04-02
+
+  * decode: 起動時に error_cseq_vbell で変なエラーメッセージが出る様になった… [#D1062]
+    と思ったらこれは inputrc の decode で発生している様だ。
+    成る程、decode で visible-bell が表示されては困る。
+
+    (1) 先ず始めに ble/builtin/bind/.decode-chars の中で
+      エラーが発生しても無視する様にする。
+    (2) 更に ble/decode/read-inputrc を実行する前に
+      cmap を初期化する必要がある。
+      ble-decode-bind/cmap/initialize で初期化を実行している。
+      これは ble-decode/initialize から呼び出されている。
+      ble-decode/initialize は ble.pp の中から呼び出されている。
+
 2019-04-01
 
   * [自然解消] 2018-02-12 emacs: kill-ring [#D1061]
+    ref #D1059
 
     M-y にも対応したい。C-y の引数に対応する。
     然し、今の所は vim-mode 対応の方を優先させるので、これは後回しにする。
 
   * [自然解消] 2017-12-04 keymap/emacs: 引き数: ble/widget/yank [#D1060]
+    ref #D1059
 
     引き数の解釈がよく分からない。
     1 以外の引き数を指定すると rotate するのだろうか。
