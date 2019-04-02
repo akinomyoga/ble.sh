@@ -15,7 +15,7 @@
   テキストオブジェクト・各種レジスタ・オペレータ・キーボードマクロなどにも対応しています。
   拡張として `vim-surround` も提供しています。
 
-詳細な使い方は[マニュアル](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8)を御覧ください。ここでは簡単な使い方を説明します。
+詳細な使い方は[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8)を御覧ください。ここでは簡単な使い方を説明します。
 
 このスクリプトは `bash-3.0` 以降で利用できますが、速度・機能などの観点から Bash 4.0 以降でお使い頂くことがお薦めです。
 
@@ -104,6 +104,9 @@ make INSDIR="$HOME/.local/share/blesh" install
 
 ユーザー設定は Bash スクリプト `~/.blerc` に記述します。`ble.sh` をロードする際に自動で `source` されます。
 他のファイルに設定を記述する時は `source ble.sh` の際にオプション `--rcfile INITFILE` を指定します。
+リポジトリに含まれる `blerc` は `~/.blerc` のテンプレートとしてご利用いただけます。
+以下に最も基本的な設定を幾つか紹介します。
+より詳細な設定項目については[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8)を御覧ください。
 
 **Vim モード**
 
@@ -112,7 +115,7 @@ Vim モードについては [Wiki の説明ページ](https://github.com/akinom
 **曖昧文字幅**
 
 設定 `char_width_mode` を用いて、曖昧文字幅を持つ文字 (Unicode 参考特性 `East_Asian_Width` が `A` (Ambiguous) の文字) の幅を制御できます。
-現在は 3 つの選択肢 `emacs`, `west`, `east`, `auto` が用意されています。
+現在は 4 つの選択肢 `emacs`, `west`, `east`, `auto` が用意されています。
 設定値 `emacs` を指定した場合、GNU Emacs における既定の文字幅と同じ物を使います。
 設定値 `west` を指定した場合、全ての曖昧文字幅を 1 (半角) と解釈します。
 設定値 `east` を指定した場合、全ての曖昧文字幅を 2 (全角) と解釈します。

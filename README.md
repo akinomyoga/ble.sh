@@ -100,8 +100,9 @@ make INSDIR="$HOME/.local/share/blesh" install
 
 ## Basic settings
 
-User setttings can be placed into the Bash script `~/.blerc` which are to be sourced during the load of `ble.sh`.
+User setttings can be placed into the Bash script `~/.blerc` which will be sourced during the load of `ble.sh`.
 If you want to change the default path to the settings, you can add the option `--rcfile INITFILE` to `source ble.sh`.
+A template of `~/.blerc` is available as the file `blerc` in the repository.
 
 **Vim mode**
 
@@ -110,7 +111,7 @@ For the vi/vim mode, check [the Wiki page](https://github.com/akinomyoga/ble.sh/
 **CJK Width**
 
 The option `char_width_mode` controls the width of the unicode characters with `East_Asian_Width=A` (Ambiguous characters).
-Currently three values `emacs`, `west`, `east`, and `auto` are supported. With the value `emacs`, the default width in emacs is used.
+Currently four values `emacs`, `west`, `east`, and `auto` are supported. With the value `emacs`, the default width in emacs is used.
 With `west` all the ambiguous characters have width 1 (Hankaku). With `east` all the ambiguous characters have width 2 (Zenkaku).
 With `auto` the width mode `west` or `east` is automatically chosen based on the terminal behavior.
 The default value is `auto`. Appropriate value should be chosen in accordance with your terminal behavior.

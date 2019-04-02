@@ -2247,7 +2247,8 @@ bash_tips
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
   - global: use `builtin echo` explicitly `#D1035` a6232c2
-  - decode: re-implement rlfunc2widget without fork `#D1063` bee35d8
+  - decode: re-implement rlfunc2widget without fork `#D1063` d2e7dbe
+  - blerc: add descriptions `#D1064`
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3194,6 +3195,9 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-04-02
+
+  * blerc: 設定に関する質問が来たので取り敢えず blerc に記述する事にした [#D1064]
+    https://github.com/akinomyoga/ble.sh/issues/23
 
   * 2019-04-02 decode: ble/builtin/bind/rlfunc2widget が遅い [#D1063]
     呼び出し回数がそんなになければ良いが inputrc に沢山の項目が書かれていると、

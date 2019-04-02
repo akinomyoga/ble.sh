@@ -1,76 +1,339 @@
 # -*- mode: sh; mode: sh-bash -*-
 
-## Here settings for ble.sh is given.
+## This is a template for "~/.blerc".
 ##
-## An example of ~/.bashrc:
+## To use ble.sh in bash, please setup "~/.bashrc" as follows:
 ##
 ## ```bash
-## if [[ $- == *i* ]]; then
-##   "$HOME/.local/share/blesh/ble.sh" --noattach --rcfile ~/.blerc
-## fi
+## # bashrc
+##
+## # Please put the following line in the beginning of .bashrc
+## # Note: Please replace $HOME/.local/share/blesh with the path to your ble.sh
+## [[ $- == *i* ]] && "$HOME/.local/share/blesh/ble.sh" --noattach
 ## 
-## # Your bashrc contents should come here
+## # Your bashrc contents should come between the two lines.
 ## 
+## # Please put the following line in the end of .bashrc
 ## ((_ble_bash)) && ble-attach
 ## ```
 ##
 
-# bleopt input_encoding=UTF-8
-# bleopt pager=less
-# bleopt vbell_default_message=' Wuff, -- Wuff!! ' vbell_duration=2000
+##-----------------------------------------------------------------------------
+## Basic settings
 
-# bleopt char_width_mode=east
-# bleopt edit_abell=1
-# bleopt edit_vbell=
-# bleopt delete_selection_mode=1
-# bleopt default_keymap=auto
-# bleopt indent_offset=4
-# bleopt indent_tabs=1
-# bleopt tab_width=
-# bleopt allow_exit_with_jobs=
 
+## The following setting specifies the input encoding. Currently only "UTF-8"
+## and "C" is available.
+
+#bleopt input_encoding=UTF-8
+
+
+## The following setting specifies the pager used by ble.sh.
+
+#bleopt pager=less
+
+
+## The following settings sets the behavior of visible bells (vbell).
+## "vbell_duration" sets the time duration to show the vbell. "vbell_align"
+## controls the position of vbell. The value "left" (default) specifies that
+## the vbell should be shown up on the top left corner of the terminal. The
+## values "center" and "right" specify that the vbell is shown on the top
+## center and the top right corner, respectively.
+
+#bleopt vbell_default_message=' Wuff, -- Wuff!! '
+#bleopt vbell_duration=2000
+#bleopt vbell_align=right
+
+
+##-----------------------------------------------------------------------------
+## Line editor settings
+
+
+## The following settings turns on/off the audible bells and visible bells for
+## errors while user edit. The non-empty value turns on the bells.
+
+#bleopt edit_abell=1
+#bleopt edit_vbell=
+
+
+## The following setting turns on the delayed load of history when an
+## non-empty value is set.
+
+#bleopt history_lazyload=1
+
+
+## The following setting turns on the delete selection mode when an non-empty
+## value is set. When the mode is turned on the selection is removed when a
+## user inserts a character.
+
+#bleopt delete_selection_mode=1
+
+
+## The following settings control the indentation. "indent_offset" sets the
+## indent width. "indent_tabs" controls if tabs can be used for indentation
+## or not. If "indent_tabs" is set to 0, tabs will never be used. Otherwise
+## indentation is made with tabs and spaces.
+
+#bleopt indent_offset=4
+#bleopt indent_tabs=1
+
+
+## "undo_point" controls the cursor position after "undo". When "beg" or
+## "end" is specified, the cursor will be moved to the beginning or the end of
+## the dirty section, respectively. When other values are specified, the
+## original cursor position is reproduced.
+
+#bleopt undo_point=end
+
+
+## The following settings controls forced layout calculations before
+## graphical operations. When a non-empty value is specified, the forced
+## calculations are enabled. When an empty string is set, the operations are
+## switched to logical ones.
+
+#bleopt edit_forced_textmap=1
+
+
+## The following settings controls the right prompt. "rps1" specifies the
+## contents of the right prompt in the format of PS1. When "rps1_transient"
+## is set to a non-empty value, the right prompt vanishes when the cursor
+## leaves the current command line.
+
+#bleopt rps1='\w'
+#bleopt rps1_transient=''
+
+
+## "prompt_eol_mark" specifies the contents of the mark used to indicate the
+## command output is not ended with newlines. The value can contain ANSI
+## escape sequences.
+
+#bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m'
+
+
+## The following setting controls the exit when jobs are remaining. When an
+## empty string is set, the shell will never exit with remaining jobs through
+## widgets. When an non-empty value is set, the shell will exit when exit is
+## attempted twice consecutively.
+
+#bleopt allow_exit_with_jobs=
+
+
+## The following setting controls the cursor position after the move to other
+## history entries. When non-empty values are specified, the offset of the
+## cursor from the beginning of the command line is preserved. When an empty
+## value is specified the cursor position is the beginning or the end of the
+## command lines when the move is to a newer or older entry, respectively.
+
+#bleopt history_preserve_point=
+
+
+##-----------------------------------------------------------------------------
+## Terminal state control
+
+
+## The following setting specifies the cursor type when commands are executed.
+## The cursor type is specified by the argument of the control function
+## DECSCUSR.
+
+#bleopt term_cursor_external=0
+
+
+## The following settings, external and internal, specify the "modifyOtherKeys"
+## states [the control function SM(>4)] when commands are executed and when
+## ble.sh has control, respectively.
+
+#bleopt term_modifyOtherKeys_external=auto
+#bleopt term_modifyOtherKeys_internal=auto
+
+
+##-----------------------------------------------------------------------------
+## Rendering options
+
+
+## "tab_width" specifies the width of TAB on the command line. When an empty
+## value is specified, the width in terminfo (tput it) is used.
+
+#bleopt tab_width=
+
+
+## "char_width_mode" specifies the width of East_Asian_Width=A characters.
+## When the value "east" is specified, the width is 2. When the value "west"
+## is specified, the width is 1. When "auto" is specified, "east" or "west"
+## is automatically selected based on interactions with the terminal. When
+## the value "emacs" is specified, the width table (depending on characaters)
+## used in Emacs is used.
+
+#bleopt char_width_mode=auto
+
+
+## "emoji_width" specifies the width of emoji characters.
+
+#bleopt emoji_width=2
+
+
+##-----------------------------------------------------------------------------
+## User input settings
+
+
+## The following setting sets the default keymap. The value "emacs" specifies
+## that the emacs keymap should be used. The value "vi" specifies that the vi
+## keymap (insert mode) should be used as the default. The value "auto"
+## specifies that the keymap should be automatically selected from "emacs" or
+## "vi" according to the current readline state "set -o emacs" or "set -o vi".
+
+#bleopt default_keymap=auto
+
+
+## The following setting controls the treatment of isolated ESCs.
+## The value "esc" indicates that it should be treated as ESC.
+## The value "meta" indicates that it should be treated as Meta modifier.
+## The value "auto" indicates that the behavior will be switched to an
+## appropriate side of "esc" or "meta" depending on the current keymap.
+
+#bleopt decode_isolated_esc=esc
+
+
+## The following setting specifies the byte code used to abort the currently
+## processed inputs. The default value 28 corresponds to "C-\".
+
+#bleopt decode_abort_char=28
+
+
+## The following settings setups the behavior for errors while user input
+## decoding. "error_char" is the decoding error for the current character
+## encoding. "error_cseq" indicates the unrecognized CSI sequences.
+## "error_kseq" indicates the unbound key sequences. "abell" and "vbell"
+## turn on/off the audible bells and visible bells on errors. If the variable
+## is empty the bells are turned off, or otherwise turned on. "discard"
+## controls if the chars/sequences will be discarded or processed in later
+## stage. If a non-empty value is given, chars/sequences are discarded.
+
+#bleopt decode_error_char_abell=
+#bleopt decode_error_char_vbell=1
+#bleopt decode_error_char_discard=
+#bleopt decode_error_cseq_abell=
+#bleopt decode_error_cseq_vbell=1
+#bleopt decode_error_cseq_discard=1
+#bleopt decode_error_kseq_abell=1
+#bleopt decode_error_kseq_vbell=1
+#bleopt decode_error_kseq_discard=1
+
+
+##-----------------------------------------------------------------------------
 ## Settings for completion
 
-# bleopt complete_polling_cycle=50
-# bleopt complete_ambiguous=1
-# bleopt complete_contract_function_names=1
-# bleopt complete_auto_complete=1
-# bleopt complete_auto_history=1
-# bleopt complete_auto_delay=100
-# bleopt complete_menu_style=align-nowrap
-# bleopt complete_menu_align=20
-# bleopt complete_menu_complete=1
-# bleopt complete_menu_filter=1
 
+## The following settings turn on/off the corresponding functionalities. When
+## non-empty strings are set, the functionality is enabled. Otherwise, the
+## functionality is inactive.
+
+#bleopt complete_auto_complete=1
+#bleopt complete_menu_complete=1
+#bleopt complete_menu_filter=1
+
+
+## If "complete_ambiguous" has non-empty values, ambiguous completion
+## candidates are generated for completion.
+
+#bleopt complete_ambiguous=1
+
+
+## If "complete_contract_function_names" has non-empty values, the function
+## name candidates are grouped by prefices of the directory-like form "*/".
+
+#bleopt complete_contract_function_names=1
+
+
+## If "complete_auto_history" has non-empty values, auto-complete searchs
+## matching command lines from history.
+
+#bleopt complete_auto_history=1
+
+
+## The following setting controls the delay of auto-complete after the last
+## user input. The unit is millisecond.
+
+#bleopt complete_auto_delay=100
+
+
+## When there are user inputs while generating completion candidates, the
+## candidates generation will be canceled to process the user inputs. The
+## following setting controls the interval of checking user inputs while
+## generating completion candidates.
+
+#bleopt complete_polling_cycle=50
+
+
+## The following setting specifies the style of the menu to show completion
+## candidates. The value "dense" and "dense-nowrap" shows candidates separated
+## by spaces. "dense-nowrap" is different from "dense" in the behavior that
+## it inserts a new line before the candidates that does not fit into the
+## remaining part of the current line. The value "align" and "align-nowrap"
+## aligns the candidates. The value "linewise" shows a candidate per line.
+## The value "desc" and "desc-raw" shows a candidate per line with description
+## for each. "desc-raw" is different from "desc" in the behavior that it
+## interprets ANSI escape sequences in the descriptions.
+
+#bleopt complete_menu_style=align-nowrap
+
+
+## The following setting specifies the maximal align width for
+## complete_menu_style="align" and "align-nowrap".
+
+#bleopt complete_menu_align=20
+
+
+## The following setting specifies the prefix for complete_menu_style=linewise.
+## For example, the candidate number can be shown by setting the value "%d".
+## ANSI escape sequences can be used.
+
+#bleopt menu_linewise_prefix=
+
+
+##-----------------------------------------------------------------------------
 ## Color settings
 
-# ble-color-setface syntax_default           none
-# ble-color-setface syntax_command           fg=brown
-# ble-color-setface syntax_quoted            fg=green
-# ble-color-setface syntax_quotation         fg=green,bold
-# ble-color-setface syntax_expr              fg=navy
-# ble-color-setface syntax_error             bg=203,fg=231 # bg=224
-# ble-color-setface syntax_varname           fg=202
-# ble-color-setface syntax_delimiter         bold
-# ble-color-setface syntax_param_expansion   fg=purple
-# ble-color-setface syntax_history_expansion bg=94,fg=231
-# ble-color-setface syntax_function_name     fg=92,bold # fg=purple
-# ble-color-setface syntax_comment           fg=gray
-# ble-color-setface syntax_glob              fg=198,bold
-# ble-color-setface syntax_brace             fg=37,bold
-# ble-color-setface syntax_tilde             fg=navy,bold
-# ble-color-setface syntax_document          fg=94
-# ble-color-setface syntax_document_begin    fg=94,bold
 
-# ble-color-setface command_builtin_dot      fg=red,bold
-# ble-color-setface command_builtin          fg=red
-# ble-color-setface command_alias            fg=teal
-# ble-color-setface command_function         fg=92 # fg=purple
-# ble-color-setface command_file             fg=green
-# ble-color-setface command_keyword          fg=blue
-# ble-color-setface command_jobs             fg=red
-# ble-color-setface command_directory        fg=navy,underline
+# bleopt filename_ls_colors="$LS_COLORS"
 
+# ble-color-setface region                    fg=white,bg=60
+# ble-color-setface region_insert             fg=blue,bg=252
+# ble-color-setface region_match              fg=white,bg=55
+# ble-color-setface region_target             fg=black,bg=153
+# ble-color-setface disabled                  fg=242
+# ble-color-setface overwrite_mode            fg=black,bg=51
+# ble-color-setface auto_complete             fg=238,bg=254
+# ble-color-setface menu_filter_fixed         bold
+# ble-color-setface menu_filter_input         fg=16,bg=229
+# ble-color-setface vbell                     reverse
+# ble-color-setface vbell_erase               bg=252
+# ble-color-setface vbell_flash               fg=green,reverse
+
+# ble-color-setface syntax_default            none
+# ble-color-setface syntax_command            fg=brown
+# ble-color-setface syntax_quoted             fg=green
+# ble-color-setface syntax_quotation          fg=green,bold
+# ble-color-setface syntax_expr               fg=navy
+# ble-color-setface syntax_error              bg=203,fg=231 # bg=224
+# ble-color-setface syntax_varname            fg=202
+# ble-color-setface syntax_delimiter          bold
+# ble-color-setface syntax_param_expansion    fg=purple
+# ble-color-setface syntax_history_expansion  bg=94,fg=231
+# ble-color-setface syntax_function_name      fg=92,bold # fg=purple
+# ble-color-setface syntax_comment            fg=gray
+# ble-color-setface syntax_glob               fg=198,bold
+# ble-color-setface syntax_brace              fg=37,bold
+# ble-color-setface syntax_tilde              fg=navy,bold
+# ble-color-setface syntax_document           fg=94
+# ble-color-setface syntax_document_begin     fg=94,bold
+# ble-color-setface command_builtin_dot       fg=red,bold
+# ble-color-setface command_builtin           fg=red
+# ble-color-setface command_alias             fg=teal
+# ble-color-setface command_function          fg=92 # fg=purple
+# ble-color-setface command_file              fg=green
+# ble-color-setface command_keyword           fg=blue
+# ble-color-setface command_jobs              fg=red
+# ble-color-setface command_directory         fg=navy,underline
 # ble-color-setface filename_directory        underline,fg=26
 # ble-color-setface filename_directory_sticky underline,fg=white,bg=26
 # ble-color-setface filename_link             underline,fg=teal
@@ -86,10 +349,9 @@
 # ble-color-setface filename_warning          underline,fg=red
 # ble-color-setface filename_ls_colors        underline
 
-# bleopt filename_ls_colors="$LS_COLORS"
 
-
-## Settings for vi-mode
+##-----------------------------------------------------------------------------
+## Settings for vim-mode
 
 ble/array#push _ble_keymap_vi_load_hook blerc/vim-load-hook
 function blerc/vim-load-hook {
@@ -129,3 +391,12 @@ function blerc/vim-load-hook {
   # bleopt vim_surround_61:=$'$(( \r ))'
 
 }
+
+##-----------------------------------------------------------------------------
+## Internal settings
+
+#bleopt internal_stackdump_enabled=0
+#bleopt openat_base=30
+#bleopt internal_exec_type=gexec
+#bleopt internal_suppress_bash_output=1
+#bleopt internal_ignoreeof_trap='Use "exit" to leave the shell.'
