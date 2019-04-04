@@ -531,12 +531,13 @@ function ble-highlight-layer:region/update {
 
   # 変更がない時はそのまま通過
   if ((DMIN<0)); then
-    [[ $sgr == $osgr ]] &&
-      [[ ${selection[*]} == ${_ble_highlight_layer_region_osel[*]} ]] &&
-      PREV_BUFF=_ble_highlight_layer_region_buff
+    if [[ $sgr == $osgr && ${selection[*]} == ${_ble_highlight_layer_region_osel[*]} ]]; then
+      [[ ${selection[*]} ]] && PREV_BUFF=_ble_highlight_layer_region_buff
+      return 0
+    fi
   else
-    [[ ! ${selection[*]} && ! ${_ble_highlight_layer_region_osel[*]} ]]
-  fi && return 0
+    [[ ! ${selection[*]} && ! ${_ble_highlight_layer_region_osel[*]} ]] && return 0
+  fi
 
   local umin=-1 umax=-1
   if ((rlen)); then
