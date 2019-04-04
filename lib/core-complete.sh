@@ -4153,7 +4153,8 @@ function ble/highlight/layer:menu_filter/update {
 
   # 変更のない場合スキップ
   [[ ! $obeg && ! $beg ]] && return
-  ((PREV_UMIN<0)) && [[ $beg == "$obeg" && $end == "$oend" ]] && return
+  ((PREV_UMIN<0)) && [[ $beg == "$obeg" && $end == "$oend" ]] &&
+    PREV_BUFF=_ble_highlight_layer_menu_filter_buff && return
 
   local umin=$PREV_UMIN umax=$PREV_UMAX
   if [[ $beg ]]; then
