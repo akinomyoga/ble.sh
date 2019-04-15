@@ -39,6 +39,8 @@
 # Note: ble-decode.sh における特殊キーの変更に際して、
 # この一覧を更新することでキャッシュの更新が起こるようにしている。
 #
+# 2019-04-15 __error__ を追加したので keycode の再生成が必要
+#
 
 function ble/init:cmap/bind-keypad-key {
   local Ft=$1 name=$2

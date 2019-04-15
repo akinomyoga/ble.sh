@@ -297,6 +297,10 @@ function ble-decode-kbd/.initialize {
   # Note: bleopt decode_error_cseq_discard
   ble-decode-kbd/generate-keycode __error__
   _ble_decode_KCODE_ERROR=$ret
+
+  # Note: ここに新しく kcode を追加した時には init-cmap.sh に何か変更をして、
+  # cmap 及び keymap が更新される様にする必要がある。emacs.sh, vi.sh については
+  # init-cmap.sh を見て自動的に更新されるので特別な処置は必要ない。
 }
 
 ble-decode-kbd/.initialize

@@ -3814,7 +3814,7 @@ function ble-edit/exec/.adjust-eol {
   local -a DRAW_BUFF=()
   local eol_mark=${_ble_edit_exec_eol_mark[1]}
   if [[ $eol_mark ]]; then
-    ble/canvas/put.draw "$_ble_term_sc"
+    ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_sc"
     if ((_ble_edit_exec_eol_mark[2]>cols)); then
       local x=0 y=0 g=0
       LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$bleopt_prompt_eol_mark" truncate

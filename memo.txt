@@ -854,7 +854,7 @@ bash_tips
 
 2019-03-23
 
-  * menu: alias select='while myselect $# "$@"' 等として select を上書きできるのでは。
+  * menu: alias select='while myselect $# "$@"' 等として select を上書きできるのでは
 
     というか現在の ble.sh で select を実行すると悲惨な事になる気がする…。
     と思ったが select は別に readline は使っていない様子だ。
@@ -907,23 +907,19 @@ bash_tips
 
     絞り込みの入力欄と現在選択されている内容というのは別に一致している必要はない。
 
-2019-03-21
-
-  * emacs: readline 関数を少しずつ実装して行く事にする
-
 2019-03-19
 
   * complete: 実装されていない補完関連の rlvar は以下の通りである。
     実際に対応するかどうかも含めて考察する必要がある。
 
-    set completion-map-case off
-    set disable-completion off
-    set expand-tilde off
-    set horizontal-scroll-mode off
-    set page-completions on
-    set completion-display-width -1
-    set completion-prefix-display-length 0
-    set completion-query-items 100
+    - set completion-map-case off
+    - set disable-completion off
+    - set expand-tilde off
+    - set horizontal-scroll-mode off
+    - set page-completions on
+    - set completion-display-width -1
+    - set completion-prefix-display-length 0
+    - set completion-query-items 100
 
 2019-02-09
 
@@ -972,58 +968,6 @@ bash_tips
     現状で bind -X が信用出来ないので、完全な対応は不可能である。
     その様に考えるとやはり builtin bind を上書きして設定を読み取る方が現実的である。
     なので、現在の bashrc の冒頭でロードして、末尾で attach するという形式は当面変わらない。
-
-  * main: bash-it との組み合わせについて考える
-
-    https://github.com/Bash-it/bash-it/issues/894 に投稿してみたが、
-    投稿直後に一人反応した以外は何も反応はない。
-    というか 340 も Watch していてそもそもサイトに訪れたのが1人である。
-    余りアクティブなので結局皆見ていないという事なのかもしれない。
-    しかし、メンテナーらしき nwinkler という人ぐらいは見てくれても良さそうだが。
-    土日だから見ていないという事なのかもしれない。
-    GitHub ユーザには土日にしか対応しない人と平日にしか対応しない人の二種類の人がいる。
-
-    bash-it の初期化内容を idle.do で実行できる様にするのが良いのではないだろうか。
-    或いは bash_it.sh を書き換える様に pull request を出すというのでも良い。
-    しかし、下手に bash-it を刺激すると、ble.sh が bash-it の付属物であるかの様に広まったりしないだろうか。
-    つまり、ble.sh を入れる為には取り敢えず bash-it を入れよう、という具合になってしまうという事。
-    うーん。それは微妙な気がするが、まあ、すぐにそういう事になるとも思えないので気にしなくて良い。
-
-    bash-it のコードを観察してみたが、余り質の良いものではない。
-    沢山の人がコミットしているからなのかと思いきや、
-    コアとなる部分のコードも微妙である。
-    そもそも何故 local を使わない? と思われる箇所が沢山ある。
-    というか local で宣言した物を他の関数から参照できるという事を知らない?
-    或いは知ってはいるがそれは bash のデザインが悪いからと言う様に考えていて、
-    積極的には使用しないよという方針なのかもしれない。
-
-    * 2019-03-12 Traffic を見ると GitHub 経由でやって来る人が結構いる。
-      それから検索経由でやって来る人も結構いる。
-      これはつまり、GitHub 経由でやってきて、その後で名前を覚えてくれて、
-      それから検索を使って到達してくれるという事なのだろうという気がする。
-
-      では GitHub 経由というのは具体的に何だろうか。
-      この bash-it に書いたコメントなのだろうか。
-      しかし、これは閉じられた Issue なので余り見る人が多くいるとも思われない。
-      或いは、自分の Profile を見て一番上にあるからと思って見に来るのだろうか。
-      何だかそれが一番多いということの様に思われてきた。
-
-  * main: oh-my-bash との相性についても調べておく。
-
-    | oh-my-bash は勝手に .bashrc を丸ごと変えてしまう。
-    | bash-it にしろ oh-my-bash にしろ、
-    | これらはツールというよりは .bashrc を丸ごと提供する「設定」である。
-    | さて oh-my-bash の中についても確認したが、
-    | これも PS1 と completion と alias を設定するぐらいで大した設定ではない。
-    |
-    | ble.sh との相性も別に問題はなさそうな気がする。が、念の為両方ロードしてみる。
-    | ちゃんと動いている。但し、bash-it 程ではないがやはり遅い気がする。
-    | やはり git コマンドを呼び出すのは遅いという事なのである。
-    | 直接 .git の構造を探索して現在のブランチ名を取り出すぐらいしないと駄目である。
-    | うーん。後、意味不明な alias が大量に定義されている…。
-    | 一文字の alias は勝手に定義しないで欲しいものである。
-
-    問題なし
 
 2019-01-20
 
@@ -1207,7 +1151,7 @@ bash_tips
 
 2018-03-14
 
-  *  emacs: C-w を続けて実行すると kill-ring に追記にするべき
+  * emacs: C-w を続けて実行すると kill-ring に追記にするべき
 
 2018-02-21
 
@@ -2057,24 +2001,6 @@ bash_tips
   * color: --prefix=filename の filename 部分 (ref #D0839, #D0840)
     単語に対して部分的な着色をする場合、現在の単語毎の着色ではない方法を考えるべき。
 
-2015-03-01
-
-  * ble-edit: 対応する物がない readline 関数
-
-    - done: history-expand-line magic-space
-    - done: delete-horizontal-space
-    - done: history-search-forward/backward
-    - done: yank-nth-arg yank-last-arg insert-last-argument
-    - done: shell-expand-line alias-expand-line
-    - done: tilde-expand history-and-alias-expand-line
-    - done: edit-and-execute-command
-    - done: transpose-words upcase-word downcase-word capitalize-word
-    - done: kill-whole-line
-    - done: complete関連
-    - done: redo, undo
-    - yank-pop これはkill-ringを正しく実装する必要がある
-    - digit-argument universal-argument 入力しやすい様に?
-
 2015-02-24
 
   * layer の仕組みに対する問題提起
@@ -2159,20 +2085,13 @@ bash_tips
 2013-06-10
 
   * sword で quote を正しく処理する?
-
     これは少なくとも解析器が出来た後に考える。
 
-2013-06-05
-
-  * bashfc
-
-2013-06-01 以前
+2013-06-01以前
 
   * ble-decode
     + [kbd] terminfo からの読み取り (entry 名は tmux が参考になる)
     * ble-bind: -s オプションで文字入力の羅列を指定できる様にする (2019-02-10 #D0915 で実装)
-
-  * デフォルトで bind されている readline 関数の一覧をチェック
 
   * 説明書
     + 文字コード decoder の追加方法
@@ -2216,6 +2135,7 @@ bash_tips
   - emacs: support widgets `tab-insert`, `tilde-expand` and `shell-expand-line` `#D1054` 156b76e
   - emacs: support a widget `transpose-{c,u,s,f,e}words` `#D1055` d72c2d4
   - emacs: support `bleopt decode_error_cseq_{abell,vbell,discard}` `#D1056` ab1b8b0
+    - decode: fix a bug that cmap cache update is not triggered for `ab1b8b0` `#D1073`
   - emacs: support a widget `universal-arg` `#D1057` 8b1dd07
   - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
   - highlight: support job names by `auto_resume` `#D1065`
@@ -3190,7 +3110,125 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-04-15
+
+  * decode: RLogin で delete が何故か効かない問題 [#D1073]
+    delete を一回押しても無視される。他の文字を続けて入力するとそのまま素通りする。
+    delete を2,3回押すと unbound keyseq のエラーが発生する。
+    因みに別の Function Keys については特に問題も発生していない気がする。
+    全く受信されないという訳でもなく、何が起こっているのかよく分からない。
+    実際に受け取っているバイト・デコードされた結果などを観察してみる必要がある。
+
+    dyna の上で実行してみると今度は insert が効かない。
+    これは全く効かない。連続で押しても何のエラーも発生しないし、
+    続いて他の入力をしても何事もなく操作する事ができる。
+    これは RLogin の側の設定だろうか。設定を探したが何も見つからない。
+
+    受信しているバイト列について確認を行う。
+    どうもちゃんと受信できている気がする。
+    デコード結果についても確認する。insert の decode に失敗している様だ。
+    ESC [ 2 ~ は unrecognized csi sequence という事になっている。何故だろうか。
+    ble-bind -P | grep csi とするとちゃんと insert で 2~ に登録されている。
+    他の home end prior next delete も同様である。それなのに insert だけ動かない。
+
+    うーん。変だ。ent に何も入って来ないのである。
+    _ble_decode_cmap__... の配列を見ると変な物しか登録されていない。
+    という事は何を意味するのかというと、CSI ... ~ は一つも登録されていないという事。
+    うーん。もしかして別の所に登録されていただろうか。
+    と思ったら insert が登録されているのは _ble_decode_csimap_tilde の方であった。
+
+    うーん。ちゃんと hit している気がする…。と思ったら…。
+    もしかして insert の kcode と error の kcode が衝突している?
+    つまり、正しくキャッシュがクリアされていなかった事が問題なのである。
+
+    - reject: というかキャッシュをクリアする為の関数を作っても良いのかもしれない。
+      とも思ったがこれは全て ble.sh の内部実装の欠陥による物なので、
+      ユーザにそれを実行してもらう為に作るというよりはデバグの為に作るべきである。
+      という事を考えると、自分で使うのに必要でなければわざわざこれを作る必要はない。
+
+2019-04-04
+
+  * complete: menu-filter の途中で確定して実行すると自動補完前の状態に戻ってしまう [#D1072]
+    これは一体何が起こっているのか…。恐らく layer が変な事をしている…。
+    試しに layer:menu_filter を除外してみたら変な事を起こらなくなった。
+
 2019-04-02
+
+  * [考察] main: bash-it との組み合わせについて考える [#D1071]
+
+    https://github.com/Bash-it/bash-it/issues/894 に投稿してみたが、
+    投稿直後に一人反応した以外は何も反応はない。
+    というか 340 も Watch していてそもそもサイトに訪れたのが1人である。
+    余りアクティブなので結局皆見ていないという事なのかもしれない。
+    しかし、メンテナーらしき nwinkler という人ぐらいは見てくれても良さそうだが。
+    土日だから見ていないという事なのかもしれない。
+    GitHub ユーザには土日にしか対応しない人と平日にしか対応しない人の二種類の人がいる。
+
+    bash-it の初期化内容を idle.do で実行できる様にするのが良いのではないだろうか。
+    或いは bash_it.sh を書き換える様に pull request を出すというのでも良い。
+    しかし、下手に bash-it を刺激すると、ble.sh が bash-it の付属物であるかの様に広まったりしないだろうか。
+    つまり、ble.sh を入れる為には取り敢えず bash-it を入れよう、という具合になってしまうという事。
+    うーん。それは微妙な気がするが、まあ、すぐにそういう事になるとも思えないので気にしなくて良い。
+
+    bash-it のコードを観察してみたが、余り質の良いものではない。
+    沢山の人がコミットしているからなのかと思いきや、
+    コアとなる部分のコードも微妙である。
+    そもそも何故 local を使わない? と思われる箇所が沢山ある。
+    というか local で宣言した物を他の関数から参照できるという事を知らない?
+    或いは知ってはいるがそれは bash のデザインが悪いからと言う様に考えていて、
+    積極的には使用しないよという方針なのかもしれない。
+
+    * 2019-03-12 Traffic を見ると GitHub 経由でやって来る人が結構いる。
+      それから検索経由でやって来る人も結構いる。
+      これはつまり、GitHub 経由でやってきて、その後で名前を覚えてくれて、
+      それから検索を使って到達してくれるという事なのだろうという気がする。
+
+      では GitHub 経由というのは具体的に何だろうか。
+      この bash-it に書いたコメントなのだろうか。
+      しかし、これは閉じられた Issue なので余り見る人が多くいるとも思われない。
+      或いは、自分の Profile を見て一番上にあるからと思って見に来るのだろうか。
+      何だかそれが一番多いということの様に思われてきた。
+
+  * [考察] main: oh-my-bash との相性についても調べておく [#D1070]
+
+    | oh-my-bash は勝手に .bashrc を丸ごと変えてしまう。
+    | bash-it にしろ oh-my-bash にしろ、
+    | これらはツールというよりは .bashrc を丸ごと提供する「設定」である。
+    | さて oh-my-bash の中についても確認したが、
+    | これも PS1 と completion と alias を設定するぐらいで大した設定ではない。
+    |
+    | ble.sh との相性も別に問題はなさそうな気がする。が、念の為両方ロードしてみる。
+    | ちゃんと動いている。但し、bash-it 程ではないがやはり遅い気がする。
+    | やはり git コマンドを呼び出すのは遅いという事なのである。
+    | 直接 .git の構造を探索して現在のブランチ名を取り出すぐらいしないと駄目である。
+    | うーん。後、意味不明な alias が大量に定義されている…。
+    | 一文字の alias は勝手に定義しないで欲しいものである。
+
+    問題なし
+
+  * [自然解消] 2015-03-01 ble-edit: 対応する物がない readline 関数 [#D1069]
+
+    - done: history-expand-line magic-space
+    - done: delete-horizontal-space
+    - done: history-search-forward/backward
+    - done: yank-nth-arg yank-last-arg insert-last-argument
+    - done: shell-expand-line alias-expand-line
+    - done: tilde-expand history-and-alias-expand-line
+    - done: edit-and-execute-command
+    - done: transpose-words upcase-word downcase-word capitalize-word
+    - done: kill-whole-line
+    - done: complete関連
+    - done: redo, undo
+    - done: yank-pop これはkill-ringを正しく実装する必要がある
+    - done: digit-argument universal-argument 入力しやすい様に?
+
+  * [自然解消] 2013-06-01以前 デフォルトで bind されている readline 関数の一覧をチェック [#D1068]
+
+  * [自然解消] 2013-06-05 bashfc [#D1067]
+    ref #D1050
+
+  * [解消] 2019-03-21 emacs: readline 関数を少しずつ実装して行く事にする [#D1066]
+    ref #D1059 取り敢えず全て実装した気がする。
 
   * 2018-08-19 highlight: シェル変数 auto_resume? [#D1065]
     一語の単純コマンドでありかつジョブの名前に一致する場合にジョブ名と解釈する。
@@ -3238,13 +3276,13 @@ bash_tips
 
 2019-04-01
 
-  * [自然解消] 2018-02-12 emacs: kill-ring [#D1061]
+  * [解消] 2018-02-12 emacs: kill-ring [#D1061]
     ref #D1059
 
     M-y にも対応したい。C-y の引数に対応する。
     然し、今の所は vim-mode 対応の方を優先させるので、これは後回しにする。
 
-  * [自然解消] 2017-12-04 keymap/emacs: 引き数: ble/widget/yank [#D1060]
+  * [解消] 2017-12-04 keymap/emacs: 引き数: ble/widget/yank [#D1060]
     ref #D1059
 
     引き数の解釈がよく分からない。
