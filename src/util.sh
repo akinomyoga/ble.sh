@@ -2447,7 +2447,7 @@ function ble/term/visible-bell/.clear {
     ble/canvas/put-spaces.draw "$x"
     #ble/canvas/put-ech.draw "$x"
     #ble/canvas/put.draw "$_ble_term_el"
-    ble/canvas/put.draw "$_ble_term_rc"
+    ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
     ble/canvas/flush.draw
   else
     builtin echo -n "$_ble_term_visible_bell_clear"
