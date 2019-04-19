@@ -593,17 +593,43 @@ function ble/canvas/trace/.process-overflow {
   fi
 }
 
-function ble/canvas/trace/.SC {
+function ble/canvas/trace/.decsc {
+  trace_decsc=("$x" "$y" "$g" "$lc" "$lg")
+  ble/canvas/put.draw "$_ble_term_sc"
+}
+function ble/canvas/trace/.decrc {
+  x=${trace_decsc[0]}
+  y=${trace_decsc[1]}
+  g=${trace_decsc[2]}
+  lc=${trace_decsc[3]}
+  lg=${trace_decsc[4]}
+  local ret; ble/color/g2sgr "$g" # g を明示的に復元。
+  ble/canvas/put.draw "$ret$_ble_term_rc"
+}
+function ble/canvas/trace/.scosc {
   trace_scosc=("$x" "$y" "$g" "$lc" "$lg")
   ble/canvas/put.draw "$_ble_term_sc"
 }
-function ble/canvas/trace/.RC {
+function ble/canvas/trace/.scorc {
   x=${trace_scosc[0]}
   y=${trace_scosc[1]}
-  g=${trace_scosc[2]}
   lc=${trace_scosc[3]}
   lg=${trace_scosc[4]}
-  ble/canvas/put.draw "$_ble_term_rc"
+  local ret; ble/color/g2sgr "$g" # g は変わらない様に。
+  ble/canvas/put.draw "$_ble_term_rc$ret"
+}
+function ble/canvas/trace/.ps1sc {
+  trace_brack[${#trace_brack[*]}]="$x $y"
+}
+function ble/canvas/trace/.ps1rc {
+  local lastIndex=$((${#trace_brack[*]}-1))
+  if ((lastIndex>=0)); then
+    local -a scosc
+    scosc=(${trace_brack[lastIndex]})
+    ((x=scosc[0]))
+    ((y=scosc[1]))
+    unset -v "trace_brack[$lastIndex]"
+  fi
 }
 function ble/canvas/trace/.NEL {
   if [[ $opt_nooverflow ]] && ((y+1>=lines)); then
@@ -758,30 +784,12 @@ function ble/canvas/trace/.process-csi-sequence {
       lc=-1 lg=0
       return ;;
     ([su]) # SCOSC SCORC
-      if [[ $param == 99 ]]; then
-        # PS1 の \[ ... \] の処理。
-        # ble-edit/prompt/update で \e[99s, \e[99u に変換している。
-        if [[ $char == s ]]; then
-          trace_brack[${#trace_brack[*]}]="$x $y"
-        else
-          local lastIndex=$((${#trace_brack[*]}-1))
-          if ((lastIndex>=0)); then
-            local -a scosc
-            scosc=(${trace_brack[lastIndex]})
-            ((x=scosc[0]))
-            ((y=scosc[1]))
-            unset -v "trace_brack[$lastIndex]"
-          fi
-        fi
-        return
+      if [[ $char == s ]]; then
+        ble/canvas/trace/.scosc
       else
-        if [[ $char == s ]]; then
-          ble/canvas/trace/.SC
-        else
-          ble/canvas/trace/.RC
-        fi
-        return
-      fi ;;
+        ble/canvas/trace/.scorc
+      fi
+      return ;;
     # ■その他色々?
     # ([JPX@MKL]) # 挿入削除→カーソルの位置は不変 lc?
     # ([hl]) # SM RM DECSM DECRM
@@ -794,10 +802,10 @@ function ble/canvas/trace/.process-esc-sequence {
   local seq=$1 char=${1:1}
   case "$char" in
   (7) # DECSC
-    ble/canvas/trace/.SC
+    ble/canvas/trace/.decsc
     return ;;
   (8) # DECRC
-    ble/canvas/trace/.RC
+    ble/canvas/trace/.decrc
     return ;;
   (D) # IND
     [[ $opt_nooverflow ]] && ((y+1>=lines)) && return
@@ -868,6 +876,7 @@ function ble/canvas/trace/.impl {
   # variables
   local -a trace_brack=()
   local -a trace_scosc=()
+  local -a trace_decsc=()
 
   [[ $opt_measure ]] && ((x1=x2=x,y1=y2=y))
 
@@ -879,7 +888,7 @@ function ble/canvas/trace/.impl {
       local s=${tail::1}
       ((i++))
       case "$s" in
-      ('')
+      ($'\e')
         if [[ $tail =~ $rex_osc ]]; then
           # 各種メッセージ (素通り)
           s=$BASH_REMATCH
@@ -899,7 +908,7 @@ function ble/canvas/trace/.impl {
           ((i+=${#BASH_REMATCH}-1))
           ble/canvas/trace/.process-esc-sequence "$BASH_REMATCH"
         fi ;;
-      ('') # BS
+      ($'\b') # BS
         if ((x>0)); then
           ((x--,lc=32,lg=g))
         else
@@ -918,7 +927,7 @@ function ble/canvas/trace/.impl {
       ($'\n') # LF = CR+LF
         s=
         ble/canvas/trace/.NEL ;;
-      ('') # VT
+      ($'\v') # VT
         s=
         if ((y+1<lines||!opt_nooverflow)); then
           if [[ $opt_relative ]]; then
@@ -941,6 +950,9 @@ function ble/canvas/trace/.impl {
           s=$_ble_term_cr
         fi
         ((x=0,lc=-1,lg=0)) ;;
+      # Note: \001 (^A) 及び \002 (^B) は PS1 の処理で \[ \] を意味するそうだ。#D1074
+      ($'\001') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1sc ;;
+      ($'\002') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1rc ;;
       # その他の制御文字は  (BEL)  (FF) も含めてゼロ幅と解釈する
       esac
       [[ $s ]] && ble/canvas/put.draw "$s"

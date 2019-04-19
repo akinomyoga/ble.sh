@@ -283,8 +283,8 @@ function ble-edit/prompt/.process-backslash {
   local c=${tail:1:1} pat='[]#!$\'
   if [[ ! ${pat##*"$c"*} ]]; then
     case "$c" in
-    (\[) ble/canvas/put.draw $'\e[99s' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
-    (\]) ble/canvas/put.draw $'\e[99u' ;;
+    (\[) ble/canvas/put.draw $'\001' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
+    (\]) ble/canvas/put.draw $'\002' ;;
     ('#') # コマンド番号 (本当は history に入らない物もある…)
       ble/canvas/put.draw "$_ble_edit_CMD" ;;
     (\!) # 編集行の履歴番号
@@ -607,13 +607,14 @@ function ble-edit/prompt/.instantiate {
   local ret
   ble-edit/prompt/.escape "$processed"; local escaped=$ret
   local expanded=$val0 # Note: これは次行が失敗した時の既定値
+  ble-edit/exec/.setexit
   builtin eval "expanded=\"$escaped\""
 
   # 3. 端末への出力を構成する
   _ble_edit_rprompt[0]=$version
   if [[ $expanded != "$val0" ]]; then
     x=0 y=0 g=0 lc=32 lg=0
-    ble/canvas/trace "$expanded" "$opts:left-char"; local traced=$ret
+    ble/canvas/trace "$expanded" "$opts:prompt:left-char"; local traced=$ret
     ((lc<0&&(lc=0)))
     val=$expanded esc=$traced
     return 0
@@ -626,6 +627,7 @@ function ble-edit/prompt/.instantiate {
 
 function ble-edit/prompt/update/.eval-prompt_command {
   # return 等と記述されていた時対策として関数内評価。
+  ble-edit/exec/.setexit
   eval "$PROMPT_COMMAND"
 }
 ## 関数 ble-edit/prompt/update
