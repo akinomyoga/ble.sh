@@ -852,6 +852,41 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-04-21
+
+  * decode: key code の更新が実行されていない。うーん。
+    これは単にバグのあったバージョンを使っていた所為かもしれないと思ったが、
+    修正直後のバージョンを使っている様だった。うーん。
+    今後は強制的に全て更新する様に調整した方が良いのかもしれない。
+    あるいは、init-cmap で全て更新する様に調整する。
+    一応 touch vi.sh emacs.sh init-cmap.sh としたら動く様になった。
+
+  * うーん reload した後に無限ループになって落ちるバグがある。
+    以前に起こった時には偶にしか起こらないと思っていたが2回目である。
+    しかし、そう思って実行してみると再現しない。
+    過去の特定のバージョンから最新のにアップデートした時になるという可能性もある。。
+
+  * syntax: ファイル名の着色でディレクトリ部分の着色を別にする事が可能なのではないか。
+    特に simple-word に於いて / で区切られる場合について
+    各 pathspec に対しての展開を既に実装していた気がする。
+    これを利用すればディレクトリ部分を切り離して着色する事が可能なのではないか。
+
+  * 実は背景色を判定する方法はなくはない様だ。
+    https://qiita.com/kefir_/items/c2bd46728364bdc7470b
+    しかしそうだからと言って暗い背景用に配色を調整する必要があるので、
+    それを実行するまでは対応しても仕方がないかもしれない。
+
+  * stty? contra ./impl3 を実行した直後の状態が変である。
+    rm を実行しようとするとファイルのクローズに失敗しましたと表示されて終わる。
+    cat を実行している途中に失敗する。ble.sh ではなくて bash --norc の中から
+    ./impl3 を実行して抜けた場合には変な状態にはならない。
+    一旦 bash --norc を実行して抜ければ元の状態に戻る。
+    stty -a で出力される内容には変化はない。
+
+    →これは fcntl(STDIN_FILENO, F_SETFL, flags) で O_NONBLOCK
+      を立てたまま終了していたのが悪かった。終了する時に元に戻す様にした。
+      然し、こういった状態をコマンドから操作する事は可能なのだろうか。
+
 2019-03-23
 
   * menu: alias select='while myselect $# "$@"' 等として select を上書きできるのでは
@@ -2143,7 +2178,9 @@ bash_tips
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
   - edit: the widgets `{kill,copy,delete}-region-or` now receives widgets as arguments `#D1021` bbbd155
+  - edit: disable aliases for builtins and keywords `#D1023` 61da093
   - edit: disable `rps1` in secondary textareas `#D1027` b86709a
+  - edit: support `$?` in `PROMPT_COMMAND` and `PS1` evaluation `#D1074` 43f2967
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2159,6 +2196,7 @@ bash_tips
   - color (layer:region): fix a bug that highlighting is cleared without dirty ranges `#D1053` 23796bc
   - edit (nsearch): fix a bug that the search range is narrowed after fail `#D1053` 3b2237e
   - edit (nsearch): fix a bug of messages on search fail `#D1053` 3b2237e
+  - util: fix a bug that SGR of visible-bell remains 799f6d3
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
