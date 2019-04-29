@@ -852,6 +852,12 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-04-29
+
+  * bashbug: #D1078 の bash-5.0 のバグを報告する?
+    一応最新版で確認はしておいた方が良いかもしれない。
+    と思ったが、どうせパッチを作るのであればその時に気づく筈である。
+
 2019-04-21
 
   * decode: key code の更新が実行されていない。うーん。
@@ -3145,6 +3151,55 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-04-29
+
+  * bash-5.0 で reload を 2 回実行すると以下の様なエラーメッセージが出る [#D1078]
+
+    $ source out/ble.sh
+    readline: "\C-\\\": self-insert: no closing `"' in key binding
+    readline: "\C-\": self-insert: no closing `"' in key binding
+
+    Bash-4.4 では再現していない。確認すると
+    /tmp/blesh/1000/16071.bind.save の中身が変になっている。
+    内容を生成しているのは ble/decode/attach/.generate-source-to-unbind-default/.process である。
+    食わせるデータを出しているのは ble/decode/attach/.generate-source-to-unbind-default (#2) である。
+    #2 に対して介入してどの様なデータが出力されているかを調べる事にする。
+
+    うーん。何と Bash-5.0 の bind -p 時点で何故か "\C-\\\" や "\C-\" という内容を出力している。。
+    うーん。bind '"\C-\\": set-mark' を試してみた所、"\C-\\\" は再現した。
+    "\C-\" がどうやって現れるのかについては分からない。まあ、何れにしても bash-5.0 が悪いのだ。
+    更に言うと何故 self-insert なのかも不明である…。と思ったがこれは恐らく vi mode だからだろう。
+    vi mode で実行したら再現した。
+
+      $ bash-5.0 --norc
+      $ bind -p | grep '"\\C-\\'
+      $ bind '"\C-\\": self-insert'
+      $ bind -p | grep '"\\C-\\'
+      "\C-\\\": self-insert
+
+      $ bash-5.0 --norc
+      $ set -o vi
+      $ bind -p | grep '"\\C-\\'
+      "\C-\\": self-insert
+      $ bind '"\C-\\": self-insert'
+      $ bind -p | grep '"\\C-\\'
+      "\C-\\\": self-insert
+      "\C-\": self-insert
+
+      $ bash-4.4 --norc
+      $ bind -p | grep '"\\C-\\'
+      $ bind '"\C-\\": self-insert'
+      $ bind -p | grep '"\\C-\\'
+      "\C-\\": self-insert
+
+      $ bash-4.4 --norc
+      $ set -o vi
+      $ bind -p | grep '"\\C-\\'
+      "\C-\\": self-insert
+      $ bind '"\C-\\": self-insert'
+      $ bind -p | grep '"\\C-\\'
+      "\C-\\": self-insert
+
+    一応 ble.sh 側で対策はしておく事にする。修正した。エラーメッセージは出なくなった。
 
   * decode: うーん reload した後に無限ループになって落ちるバグがある [#D1077]
     以前に起こった時には偶にしか起こらないと思っていたが2回目である。

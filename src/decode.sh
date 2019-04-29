@@ -2389,6 +2389,10 @@ function ble/decode/attach/.generate-source-to-unbind-default/.process {
     }
 
     mode == 0 && $0 ~ /^"/ {
+      # Workaround Bash-5.0 bug (cf #D1078)
+      sub(/^"\\C-\\\\\\"/, "\"\\C-\\\\\"");
+      sub(/^"\\C-\\"/, "\"\\C-\\\\\"");
+
       output_bindr($0);
 
       print "builtin bind " quote($0) > "/dev/stderr";
