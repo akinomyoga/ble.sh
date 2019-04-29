@@ -2198,7 +2198,8 @@ bash_tips
   - edit (nsearch): fix a bug that the search range is narrowed after fail `#D1053` 3b2237e
   - edit (nsearch): fix a bug of messages on search fail `#D1053` 3b2237e
   - util: fix a bug that SGR of visible-bell remains 799f6d3
-  - decode: fix a bug of infinite loops on `ble-reload` `#D1077` 0f01bcf
+  - decode: fix a bug of infinite loops on `ble-reload` `#D1077` 0f01bcf `#D1079`
+  - decode: workaround a bash-5.0 bug of `bind -p` `#D1078` b52da28
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3151,6 +3152,25 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-04-29
+
+  * main: うーん。ble-update したら駄目な事になった [#D1079]
+    (#D1077 に対する修正)
+
+    keymap=auto のロードに失敗する。
+    誤った代入ですというエラーメッセージが先ず表示される。
+
+    取り敢えず keymap.emacs を削除して実行すると問題が発生する事は確認した。
+
+    * done: 先ず "safe" keymap を使います、というエラーメッセージが表示を乱している。
+      取り敢えずエラーメッセージが表示されても表示が乱れない様に修正した。
+
+      と思ったが端末の画面の一番下の行にいる時に正しく領域を確保する事ができていない。
+      本来は高さを設定する時に LF で領域を増やさなければならないのではないか。
+      と思って調べたがこれは ble/util/buffer の flush の都合だった。直した。
+
+    * それから何故失敗するのかについても調べる必要がある。
+      _ble_decode_keymap_list に vi_imap が登録されていないという事の様に見える。
+      何と $_ble_decode_keymap_list を確認してみると :vi_digraph だけしか登録されていない…。
 
   * bash-5.0 で reload を 2 回実行すると以下の様なエラーメッセージが出る [#D1078]
 

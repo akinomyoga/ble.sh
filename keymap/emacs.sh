@@ -214,4 +214,4 @@ function ble-decode/keymap:emacs/initialize {
 ble-decode/keymap:emacs/initialize
 ble/util/invoke-hook _ble_keymap_default_load_hook
 ble/util/invoke-hook _ble_keymap_emacs_load_hook
-
+return 0

@@ -8055,15 +8055,26 @@ function ble-decode/DEFAULT_KEYMAP {
   local ret
   bleopt/get:default_keymap; local defmap=$ret
   if ble-edit/bind/load-keymap-definition "$defmap"; then
-    if [[ $defmap == vi ]]; then
-      builtin eval -- "$2=vi_imap"
-    else
-      builtin eval -- "$2=\$defmap"
-    fi && ble-decode/keymap/is-keymap "${!2}" && return 0
+    local base_keymap=$defmap
+    [[ $defmap == vi ]] && base_keymap=vi_imap
+    builtin eval -- "$2=\$base_keymap"
+    if ble-decode/keymap/is-keymap "$base_keymap" || ble/is-function "ble-decode/keymap:$base_keymap/define"; then
+      return 0
+    fi
   fi
 
-  ble/bin/echo "ble.sh: The definition of the default keymap \"$bleopt_default_keymap\" is not found. ble.sh uses \"safe\" keymap instead."
+  # エラーメッセージ
+  ble/widget/.hide-current-line
+  local -a DRAW_BUFF=()
+  ble/canvas/put.draw "$_ble_term_cr$_ble_term_el${_ble_term_setaf[9]}"
+  ble/canvas/put.draw "[ble.sh: The definition of the default keymap \"$defmap\" is not found. ble.sh uses \"safe\" keymap instead.]"
+  ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_nl"
+  ble/canvas/bflush.draw
+  ble/util/buffer.flush >&2
+
+  # Fallback keymap "safe"
   ble-edit/bind/load-keymap-definition safe &&
+    ble-decode/keymap/load safe &&
     builtin eval -- "$2=safe" &&
     bleopt_default_keymap=safe
 }

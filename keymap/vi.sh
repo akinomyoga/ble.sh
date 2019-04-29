@@ -7837,3 +7837,4 @@ function ble-decode/keymap:vi/initialize {
 ble-decode/keymap:vi/initialize
 ble/util/invoke-hook _ble_keymap_default_load_hook
 ble/util/invoke-hook _ble_keymap_vi_load_hook
+return 0
