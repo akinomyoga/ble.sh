@@ -718,6 +718,7 @@ function ble/base/unload {
   ble/util/buffer.flush >&2
   ble/util/openat/finalize
   ble/util/import/finalize
+  ble-decode/keymap/unload
   ble-edit/bind/clear-keymap-definition-loader
   ble/bin/rm -f "$_ble_base_run/$$".*
   return 0

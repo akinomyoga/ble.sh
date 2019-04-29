@@ -2153,8 +2153,8 @@ if ((_ble_bash>=40000)); then
         if [[ $_idle_to_process ]]; then
           local _idle_command=${_ble_util_idle_task[_idle_key]#*:}
           _idle_processed=1
-          ble/util/idle.do/.call-task "$_idle_command"
-          (($?==148)) && return 0
+          ble/util/idle.do/.call-task "$_idle_command"; local ext=$?
+          ((ext==148)) && return 0
         elif [[ $_idle_status == [FEPC]* ]]; then
           _idle_waiting=1
         fi

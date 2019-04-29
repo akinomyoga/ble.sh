@@ -1041,27 +1041,93 @@ function ble-decode-char/dump {
 ##     このシーケンスを受け取った段階で command を実行する事が確定する事を表します。
 ##
 
-## 変数 _ble_decode_kmaps := ( ':' kmap )+
+## 変数 _ble_decode_keymap_list := ( ':' kmap )+
 ##   存在している kmap の名前の一覧を保持します。
 ##   既定の kmap (名前無し) は含まれません。
-_ble_decode_kmaps=
-## 関数 ble-decode/keymap/register kmap
+_ble_decode_keymap_list=
+function ble-decode/keymap/is-keymap {
+  [[ :$_ble_decode_keymap_list: == *:"$1":* ]]
+}
+## 関数 ble-decode/keymap/.register kmap
 ##   @exit 新しく keymap が登録された時に成功します。
 ##     既存の keymap だった時に失敗します。
+##   @remarks
+##     この関数は keymap cache から読み出されます。
 function ble-decode/keymap/register {
   local kmap=$1
-  if [[ $kmap && :$_ble_decode_kmaps: != *:"$kmap":* ]]; then
-    _ble_decode_kmaps=$_ble_decode_kmaps:$kmap
+  if [[ $kmap && :$_ble_decode_keymap_list: != *:"$kmap":* ]]; then
+    _ble_decode_keymap_list=$_ble_decode_keymap_list:$kmap
   fi
 }
 function ble-decode/keymap/unregister {
-  _ble_decode_kmaps=$_ble_decode_kmaps:
-  _ble_decode_kmaps=${_ble_decode_kmaps//:"$1":/:}
-  _ble_decode_kmaps=${_ble_decode_kmaps%:}
+  _ble_decode_keymap_list=$_ble_decode_keymap_list:
+  _ble_decode_keymap_list=${_ble_decode_keymap_list//:"$1":/:}
+  _ble_decode_keymap_list=${_ble_decode_keymap_list%:}
 }
-function ble-decode/keymap/is-registered {
-  [[ :$_ble_decode_kmaps: == *:"$1":* ]]
+
+function ble-decode/keymap/.is-valid-keymap {
+  builtin eval -- "((\${#_ble_decode_${1}_kmap_[*]}))"
 }
+_ble_decode_keymap_load=
+function ble-decode/keymap/load {
+  ble-decode/keymap/is-keymap "$1" && return 0
+
+  local init=ble-decode/keymap:$1/define
+
+  # もし関数がなければ keymap/$1.sh から読み込むのを試行する。
+  if ! ble/is-function "$init"; then
+    ble/util/import "keymap/$1.sh" || return 1
+    ble/is-function "$init" || return 1
+  fi
+
+  "$init" || return 1
+  ble-decode/keymap/.is-valid-keymap "$1" || return 1
+  ble-decode/keymap/register "$1"
+  return 0
+}
+## 関数 ble-decode/keymap/unload [keymap_name...]
+function ble-decode/keymap/unload {
+  if (($#==0)); then
+    local list; ble/string#split-words list "${_ble_decode_keymap_list//:/ }"
+    set -- "${list[@]}"
+  fi
+
+  while (($#)); do
+    local array_names array_name
+    builtin eval -- "array_names=(\"\${!_ble_decode_${1}_kmap_@}\")"
+    for array_name in "${array_names[@]}"; do
+      unset -v "$array_name"
+    done
+    ble-decode/keymap/unregister "$1"
+    shift
+  done
+}
+
+if [[ $_ble_decode_kmaps ]]; then
+  ## 関数 ble-decode/keymap/cleanup-old-keymaps
+  ##   古い形式の keymap を削除する (#D1076)
+  ##   0.4.0-devel1+e13e979 以前は unload 時に keymaps を削除していなかった為に、
+  ##   reload した時に keycode 不整合で無限ループになってしまうバグがあった。
+  function ble-decode/keymap/cleanup-old-keymaps {
+    # Note: 古い形式では必ずしも _ble_decode_kmaps に keymap
+    #   が登録されていなかったので、配列データから抽出する必要がある。
+    local -a list=()
+    local var
+    for var in "${!_ble_decode_@}"; do
+      [[ $var == _ble_decode_*_kmap_ ]] || continue
+      var=${var#_ble_decode_}
+      var=${var%_kmap_}
+      ble/array#push list "$var"
+    done
+
+    local keymap_name
+    for keymap_name in "${list[@]}"; do
+      ble-decode/keymap/unload "$keymap_name"
+    done
+    unset -v _ble_decode_kmaps
+  }
+  ble-decode/keymap/cleanup-old-keymaps
+fi
 
 function ble-decode/keymap/dump {
   if (($#)); then
@@ -1070,8 +1136,9 @@ function ble-decode/keymap/dump {
     ble/bin/echo "ble-decode/keymap/register $kmap"
     ble/util/declare-print-definitions "${arrays[@]}"
   else
+    local list; ble/string#split-words list "${_ble_decode_keymap_list//:/ }"
     local keymap_name
-    for keymap_name in ${_ble_decode_kmaps//:/ }; do
+    for keymap_name in "${list[@]}"; do
       ble-decode/keymap/dump "$keymap_name"
     done
   fi
@@ -1172,7 +1239,7 @@ function ble-decode-key/dump {
   # 引数の無い場合: 全ての kmap を dump
   local kmap
   if (($#==0)); then
-    for kmap in ${_ble_decode_kmaps//:/ }; do
+    for kmap in ${_ble_decode_keymap_list//:/ }; do
       ble/bin/echo "# keymap $kmap"
       ble-decode-key/dump "$kmap"
     done
@@ -1225,25 +1292,6 @@ function ble-decode-key/dump {
 ##
 _ble_decode_keymap=emacs
 _ble_decode_keymap_stack=()
-
-_ble_decode_keymap_load=
-function ble-decode/keymap/is-keymap {
-  builtin eval -- "((\${#_ble_decode_${1}_kmap_[*]}))"
-}
-function ble-decode/keymap/load {
-  ble-decode/keymap/is-keymap "$1" && return 0
-
-  local init=ble-decode/keymap:$1/define
-  if ble/is-function "$init"; then
-    "$init" && ble-decode/keymap/is-keymap "$1"
-  elif [[ $_ble_decode_keymap_load != *s* ]]; then
-    ble/util/import "keymap/$1.sh" &&
-      local _ble_decode_keymap_load=s &&
-      ble-decode/keymap/load "$1" # 再試行
-  else
-    return 1
-  fi
-}
 
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
@@ -1884,12 +1932,12 @@ function ble/widget/.MACRO {
 
 function ble-bind/load-keymap {
   local kmap=$1
-  ble-decode/keymap/is-registered "$kmap" && return 0
-  ble-decode/keymap/register "$kmap"
-  ble-decode/keymap/load "$kmap" && return 0
-  ble-decode/keymap/unregister "$kmap"
-  ble/bin/echo "ble-bind: the keymap '$kmap' is not defined" >&2
-  return 1
+  if ! ble-decode/keymap/load "$kmap"; then
+    ble-decode/keymap/unload "$kmap"
+    ble/bin/echo "ble-bind: the keymap '$kmap' is not defined" >&2
+    return 1
+  fi
+  return 0
 }
 
 function ble-bind/option:help {
