@@ -76,7 +76,7 @@ echo prologue >&2
              '  --noattach' \
              '    The option "--attach" selects the strategy of "ble-attach" from the' \
              '    list: ATTACH = "attach" | "prompt" | "none". The default strategy is' \
-             '    "attach". The option "--noattach" is a synonym for "--attach=none".' \
+             '    "prompt". The option "--noattach" is a synonym for "--attach=none".' \
              '' \
              '  --debug-bash-output' \
              '    Internal settings for debugging' \
@@ -243,7 +243,7 @@ function ble/bin/.freeze-utility-path {
 
 # POSIX utilities
 
-_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat wc mv)
+_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep man cat wc mv)
 function ble/.check-environment {
   if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
     local cmd commandMissing=
@@ -747,7 +747,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
 
 : "${_ble_base_rcfile:=$HOME/.blerc}"
 function ble/base/process-blesh-arguments {
-  local opt_attach=attach
+  local opt_attach=prompt
   local opt_rcfile=
   local opt_error=
   local opts=

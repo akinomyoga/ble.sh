@@ -1455,7 +1455,7 @@ function ble/complete/source:command {
   local compgen
   ble/util/assign compgen 'ble/complete/source:command/gen'
   [[ $compgen ]] || return 1
-  ble/util/assign-array arr 'sort -u <<< "$compgen"' # 1 fork/exec
+  ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
 

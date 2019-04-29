@@ -45,7 +45,7 @@ If you want to install `ble.sh` in a specified directory, use the following comm
 $ make INSDIR=/path/to/blesh install
 ```
 
-**Or, download `ble.sh`** (version ble-0.3 alpha 201902)
+**Or, download `ble.sh`** (version ble-0.3 beta 201902)
 
 With `wget`:
 ```console

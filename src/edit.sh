@@ -157,7 +157,7 @@ function ble-edit/prompt/initialize {
   _ble_edit_prompt__string_H=${HOSTNAME}
 
   # tty basename
-  local tmp; ble/util/assign tmp 'tty 2>/dev/null'
+  local tmp; ble/util/assign tmp 'ble/bin/tty 2>/dev/null'
   _ble_edit_prompt__string_l=${tmp##*/}
 
   # command name
@@ -7536,7 +7536,7 @@ function ble/widget/command-help/.locate-in-man-bash {
   [[ ${pager_cmd##*/} == less ]] || return 1
 
   # awk/gawk
-  local awk=awk; type -t gawk &>/dev/null && awk=gawk
+  local awk=ble/bin/awk; type -t gawk &>/dev/null && awk=gawk
 
   # man bash
   local man_content; ble/widget/command-help/.read-man bash || return 1 # 733ms (3 fork: man, sh, cat)
