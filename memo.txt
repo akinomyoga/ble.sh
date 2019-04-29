@@ -2175,6 +2175,7 @@ bash_tips
   - edit: disable aliases for builtins and keywords `#D1023` 61da093
   - edit: disable `rps1` in secondary textareas `#D1027` b86709a
   - edit: support `$?` in `PROMPT_COMMAND` and `PS1` evaluation `#D1074` 43f2967
+  - main: main: change default attach strategy to `--attach=prompt` `#D1076` 197f752
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2191,6 +2192,7 @@ bash_tips
   - edit (nsearch): fix a bug that the search range is narrowed after fail `#D1053` 3b2237e
   - edit (nsearch): fix a bug of messages on search fail `#D1053` 3b2237e
   - util: fix a bug that SGR of visible-bell remains 799f6d3
+  - decode: fix a bug of infinite loops on `ble-reload` `#D1077` 0f01bcf
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3144,7 +3146,7 @@ bash_tips
 
 2019-04-29
 
-  * うーん reload した後に無限ループになって落ちるバグがある [#D1077]
+  * decode: うーん reload した後に無限ループになって落ちるバグがある [#D1077]
     以前に起こった時には偶にしか起こらないと思っていたが2回目である。
     しかし、そう思って実行してみると再現しない。
     過去の特定のバージョンから最新のにアップデートした時になるという可能性もある。。
