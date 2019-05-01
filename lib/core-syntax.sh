@@ -2894,7 +2894,7 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
     local spaces=$BASH_REMATCH
     if [[ $spaces == *$'\n'* ]]; then
       ble/syntax:bash/check-here-document-from "$spaces" && return 0
-      if ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_CMDXV||ctx==CTX_CMDXT)); then
+      if ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_CMDXV||ctx==CTX_CMDXT||ctx==CTX_CMDXE)); then
         ((ctx=CTX_CMDX))
       elif ((ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_CMDXD0)); then
         ((ctx=CTX_CMDXD))

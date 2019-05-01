@@ -2185,7 +2185,8 @@ bash_tips
   - edit: disable aliases for builtins and keywords `#D1023` 61da093
   - edit: disable `rps1` in secondary textareas `#D1027` b86709a
   - edit: support `$?` in `PROMPT_COMMAND` and `PS1` evaluation `#D1074` 43f2967
-  - main: main: change default attach strategy to `--attach=prompt` `#D1076` 197f752
+  - main: change default attach strategy to `--attach=prompt` `#D1076` 197f752
+  - main: change exit status of `ble-update` when it is already upto date `#D1081` d94f691
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2204,7 +2205,8 @@ bash_tips
   - util: fix a bug that SGR of visible-bell remains 799f6d3
   - decode: fix a bug of infinite loops on `ble-reload` `#D1077` 0f01bcf `#D1079` fee22b1
   - decode: workaround a bash-5.0 bug of `bind -p` `#D1078` b52da28
-  - complete: workaround slow command candidates generation in Cygwin `#D1080`
+  - complete: workaround slow command candidates generation in Cygwin `#D1080` 376bfe7
+  - syntax: fix false error highlighting of commands after `}`, `fi`, `done` and `esac` `#D1082`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3157,6 +3159,15 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-05-01
+
+  * syntax: 何と、fi の直後のコマンドは改行を隔ててもエラーのまま… [#D1082]
+    CTX_CMDXE がずっと生きている様だ。
+    試してみると ble-0.2 でも再現している。
+    つまり、ずっとバグがありながら気づいていなかったという事になる。
+    ble-0.1 では再現しない。ble-0.3 では当然再現する。
+    実は CTX_CMDXE に対応した瞬間からずっとバグが残っていたという事なのか?
+    取り敢えず修正した。すぐに問題の箇所は見つかった。
+    また他の文脈値に関しては大丈夫そうに思われる。
 
   * main: ble-update で更新の必要がなかった時の終了ステータス (suggested by cmplstofB) [#D1081]
 
