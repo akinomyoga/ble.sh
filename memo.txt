@@ -2200,6 +2200,7 @@ bash_tips
   - util: fix a bug that SGR of visible-bell remains 799f6d3
   - decode: fix a bug of infinite loops on `ble-reload` `#D1077` 0f01bcf `#D1079`
   - decode: workaround a bash-5.0 bug of `bind -p` `#D1078` b52da28
+  - complete: workaround slow command candidates generation in Cygwin `#D1080`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3150,6 +3151,17 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-05-01
+
+  * complete: cygwin で存在しないコマンド名を打つと遅い [#D1080]
+    以前何か修正した筈なのに何故なのかと思って調べたら異なる原因だった。
+    Cygwin では compgen -c -- '' 自体が物凄く遅い。2.6s かかっている。
+    遅い計算機ではもっと遅くなるだろう。更に曖昧補完の場合には、
+    no_empty_command_completion による予防もすり抜けてしまう。
+
+    先ず、no_empty_command_completion を設定する事にして、
+    更に no_empty_command_completion がなくても遅くならない様に修正する事にした。
 
 2019-04-29
 

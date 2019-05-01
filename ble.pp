@@ -491,7 +491,7 @@ function ble/base/clean-up-runtime-directory {
     pid=${file##*/}; pid=${pid%%.*}
     [[ ${mark[pid]} ]] && continue
     mark[pid]=1
-    if ! kill -0 "$pid" &>/dev/null; then
+    if ! builtin kill -0 "$pid" &>/dev/null; then
       removed=("${removed[@]}" "$_ble_base_run/$pid."*)
     fi
   done

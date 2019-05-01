@@ -1397,7 +1397,14 @@ function ble/complete/source:command/gen.1 {
   #   compgen -A function はクォート除去が実行される。
   #   従って、compgen -A command には直接 COMPV を渡し、
   #   compgen -A function には compv_quoted を渡す。
-  compgen -c -- "$COMPV"
+  if [[ ! $COMPV ]]; then
+    shopt -q no_empty_cmd_completion && return
+    ble/util/conditional-sync \
+      'compgen -c -- "$COMPV"' \
+      '! ble/complete/check-cancel' 128 progressive-weight
+  else
+    compgen -c -- "$COMPV"
+  fi
   if [[ $COMPV == */* ]]; then
     local q="'" Q="'\''"
     local compv_quoted="'${COMPV//$q/$Q}'"

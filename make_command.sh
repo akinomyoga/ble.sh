@@ -124,7 +124,7 @@ function sub:check/builtin {
 
 function sub:check/a.txt {
   echo "--- $FUNCNAME ---"
-  grc --color --exclude=./test --exclude=./make_command.sh 'a\.txt|/dev/pts/[0-9]*' |
+  grc --color --exclude=./test --exclude=./make_command.sh 'a\.txt|/dev/(pts/|pty)[0-9]*' |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 

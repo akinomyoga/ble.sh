@@ -1278,6 +1278,33 @@ function ble/util/sleep {
 }
 
 #------------------------------------------------------------------------------
+# ble/util/conditional-sync
+
+## 関数 ble/util/conditional-sync command [condition weight opts]
+function ble/util/conditional-sync {
+  local command=$1
+  local cancel=${2:-'! ble-decode/has-input'}
+  local weight=$3; ((weight<=0&&(weight=100)))
+  local opts=$4
+  [[ :$opts: == *:progressive-weight:* ]] &&
+    local weight_max=$weight weight=1
+  (
+    eval "$command" & local pid=$!
+    while
+      ble/util/msleep "$weight"
+      [[ :$opts: == *:progressive-weight:* ]] &&
+        ((weight<<=1,weight>weight_max&&(weight=weight_max)))
+      builtin kill -0 "$pid" &>/dev/null
+    do
+      if ! eval "$cancel"; then
+        builtin kill "$pid" &>/dev/null
+        return 148
+      fi
+    done
+  )
+}
+
+#------------------------------------------------------------------------------
 
 ## 関数 ble/util/cat
 ##   cat の代替。但し、ファイル内に \0 が含まれる場合は駄目。
@@ -2145,7 +2172,7 @@ if ((_ble_bash>=40000)); then
         (W) ble/util/idle/.check-clock "$_idle_status" && _idle_to_process=1 ;;
         (F) [[ -s ${_idle_status:1} ]] && _idle_to_process=1 ;;
         (E) [[ -e ${_idle_status:1} ]] && _idle_to_process=1 ;;
-        (P) ! kill -0 ${_idle_status:1} &>/dev/null && _idle_to_process=1 ;;
+        (P) ! builtin kill -0 ${_idle_status:1} &>/dev/null && _idle_to_process=1 ;;
         (C) eval -- "${_idle_status:1}" && _idle_to_process=1 ;;
         (*) unset -v '_ble_util_idle_task[_idle_key]'
         esac
