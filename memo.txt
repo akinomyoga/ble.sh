@@ -702,6 +702,7 @@ bash_tips
   * ble 関数の典型的な終了ステータスについて [#M0008]
 
     127 適切な widget が見つからなかった
+      (由来: Bash でコマンドが見つからなかった時の値)
 
     126 widget を呼び出すことができなかった
       未使用
@@ -712,11 +713,14 @@ bash_tips
 
     148 ユーザの入力を非同期に待つ為に一時停止した
       vi-mode のオペレータが 148 を返したとき
-      後処理を実行せずにそのまま抜ける
+      後処理を実行せずにそのまま抜ける (由来: 128+SIGTSTP)
 
     124 プログラム補完において補完の再実行を要求する
+      (由来: これは Bash の仕様に倣った)
 
-    27 widget の動作がユーザによってキャンセルされた
+    27 widget の動作がユーザによってキャンセルされた (由来: ESC = 27))
+
+    6 ble-update で更新の必要がなかった時に内部的に使用 (由来: ACK = 6)
 
 2017-10-18
 
@@ -2198,7 +2202,7 @@ bash_tips
   - edit (nsearch): fix a bug that the search range is narrowed after fail `#D1053` 3b2237e
   - edit (nsearch): fix a bug of messages on search fail `#D1053` 3b2237e
   - util: fix a bug that SGR of visible-bell remains 799f6d3
-  - decode: fix a bug of infinite loops on `ble-reload` `#D1077` 0f01bcf `#D1079`
+  - decode: fix a bug of infinite loops on `ble-reload` `#D1077` 0f01bcf `#D1079` fee22b1
   - decode: workaround a bash-5.0 bug of `bind -p` `#D1078` b52da28
   - complete: workaround slow command candidates generation in Cygwin `#D1080`
 
@@ -3153,6 +3157,19 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-05-01
+
+  * main: ble-update で更新の必要がなかった時の終了ステータス (suggested by cmplstofB) [#D1081]
+
+    https://twitter.com/cmplstofB/status/1123552437963329537
+    > @akinomyoga こんばんわ。PRする程でもない提案なので，Twitterで失礼します。
+    > bleshのble-updateコマンドは何も更新が無い時に終了値1で〝失敗〟しますが，
+    > 個人的にこの挙動に違和感を覚えます。例えばdnfコマンドは，`dnf upgrade`と
+    > 実行したときにパッケージの更新が無くても失敗しません。
+
+    確かに dnf も git pull も更新の必要がなかった時には成功する。
+    そして ble-update が明示的に失敗するのは repository が見つからなかった場合や
+    その他、失敗しないと想定している操作が失敗した時のみである。
+    なので、更新の必要がなかった場合には成功する事にする。
 
   * complete: cygwin で存在しないコマンド名を打つと遅い [#D1080]
     以前何か修正した筈なのに何故なのかと思って調べたら異なる原因だった。
@@ -14928,7 +14945,7 @@ bash_tips
 
   * auto-complete: 実は元から灰色の文字がデフォルトのターミナルが存在する [#D0780]
 
-  * color (reported by complstofB): ble-color-setface がエラーを起こす [#D0779]
+  * color (reported by cmplstofB): ble-color-setface がエラーを起こす [#D0779]
     https://github.com/akinomyoga/ble.sh/issues/6
 
     調べた所 ble-color-defface / ble-color-setface の順序が効いている。
