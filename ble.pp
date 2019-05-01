@@ -529,12 +529,13 @@ function ble-update {
   if [[ $_ble_base_repository && -d $_ble_base_repository/.git ]]; then
     ( echo "cd into $_ble_base_repository..." >&2 &&
         builtin cd "$_ble_base_repository" &&
-        git pull && ! make -q && make all &&
+        git pull && { ! make -q || exit 6; } && make all &&
         if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
           make INSDIR="$_ble_base" install
-        fi ) &&
-      ble-reload
-    return
+        fi ); local ext=$?
+    ((ext==6)) && return
+    ((ext==0)) && ble-reload
+    return "$ext"
   fi
 
   echo 'ble-update: git repository not found' >&2
