@@ -2792,6 +2792,8 @@ function ble/term/modifyOtherKeys/.supported {
 
   # 改造版 Poderosa は通知でウィンドウサイズを毎回変更するので表示が乱れてしまう
   [[ $MWG_LOGINTERM == rosaterm ]] && return 1
+
+  return 0
 }
 function ble/term/modifyOtherKeys/enter {
   local value=$bleopt_term_modifyOtherKeys_internal
@@ -2800,16 +2802,16 @@ function ble/term/modifyOtherKeys/enter {
     # 問題を起こす端末で無効化。
     ble/term/modifyOtherKeys/.supported || value=
   fi
-  ble/term/modifyOtherKeys/.update "$bleopt_term_modifyOtherKeys_internal"
+  ble/term/modifyOtherKeys/.update "$value"
 }
 function ble/term/modifyOtherKeys/leave {
-  local value=$bleopt_term_modifyOtherKeys_internal
+  local value=$bleopt_term_modifyOtherKeys_external
   if [[ $value == auto ]]; then
     value=1
     # 問題を起こす端末で無効化。
     ble/term/modifyOtherKeys/.supported || value=
   fi
-  ble/term/modifyOtherKeys/.update "$bleopt_term_modifyOtherKeys_external"
+  ble/term/modifyOtherKeys/.update "$value"
 }
 
 #---- rl variable: convert-meta -----------------------------------------------
