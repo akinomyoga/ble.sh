@@ -2177,7 +2177,8 @@ bash_tips
     - decode: fix a bug that cmap cache update is not triggered for `ab1b8b0` `#D1073`
   - emacs: support a widget `universal-arg` `#D1057` 8b1dd07
   - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
-  - highlight: support job names by `auto_resume` `#D1065`
+  - highlight: support job names by `auto_resume` `#D1065` ce46024
+  - decode: add support for `S8C1T` key sequences `#D1083`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2206,7 +2207,7 @@ bash_tips
   - decode: fix a bug of infinite loops on `ble-reload` `#D1077` 0f01bcf `#D1079` fee22b1
   - decode: workaround a bash-5.0 bug of `bind -p` `#D1078` b52da28
   - complete: workaround slow command candidates generation in Cygwin `#D1080` 376bfe7
-  - syntax: fix false error highlighting of commands after `}`, `fi`, `done` and `esac` `#D1082`
+  - syntax: fix false error highlighting of commands after `}`, `fi`, `done` or `esac` `#D1082` 4ce2753
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3157,6 +3158,14 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-05-02
+
+  * decode: S8C1T かつ DECCKM の時のキーシーケンスに対応 [#D1083]
+    contra の fuzzing で生じた状態でキー入力ができなくなったので。
+    確かに CSI シーケンスの時は C1 を解釈していたが、
+    個別に登録しているシーケンスに関しては 8bit C1 を解釈していなかった。
+    ちゃんと 8bit 表現も一緒に登録する様に修正した。
 
 2019-05-01
 
