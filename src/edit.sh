@@ -1159,8 +1159,10 @@ function ble-edit/attach/TRAPWINCH {
     if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
       _ble_textmap_pos=()
       ble-edit/bind/stdout.on
+      ble-edit/info/hide
       ble/util/buffer "$_ble_term_ed"
       ble/textarea#redraw
+      ble-edit/info/reveal
       ble-edit/bind/stdout.off
     fi
   fi
