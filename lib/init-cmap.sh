@@ -40,6 +40,7 @@
 # この一覧を更新することでキャッシュの更新が起こるようにしている。
 #
 # 2019-04-15 __error__ を追加したので keycode の再生成が必要
+# 2019-05-04 実験的に mouse, mouse_move を追加した。
 #
 
 function ble/init:cmap/bind-single-csi {
@@ -52,7 +53,7 @@ function ble/init:cmap/bind-single-ss3 {
 }
 function ble/init:cmap/bind-keypad-key {
   local Ft=$1 name=$2
-  ble-bind --csi "$Ft" "$name"
+  (($3&4)) && ble-bind --csi "$Ft" "$name"
   (($3&1)) && ble/init:cmap/bind-single-ss3 "$Ft" "$name"
   (($3&2)) && ble-bind -k "ESC ? $Ft" "$name"
 }
@@ -155,38 +156,44 @@ function ble/init:cmap/initialize {
   #
   #   Note: kp～ と通常のキーを区別しても binding が大変なだけで
   #   余り利点もないので取り敢えずこの設定では区別しない。
-  ble-bind -k 'ESC ? SP' SP # kpspace
-  ble/init:cmap/bind-single-ss3 'SP' SP # kpspace
-  ble/init:cmap/bind-keypad-key 'A' up    1
-  ble/init:cmap/bind-keypad-key 'B' down  1
-  ble/init:cmap/bind-keypad-key 'C' right 1
-  ble/init:cmap/bind-keypad-key 'D' left  1
-  ble/init:cmap/bind-keypad-key 'E' begin 1
-  ble/init:cmap/bind-keypad-key 'F' end   1
-  ble/init:cmap/bind-keypad-key 'H' home  1
-  ble/init:cmap/bind-keypad-key 'I' TAB   3 # kptab
-  ble/init:cmap/bind-keypad-key 'M' RET   3 # kpent
-  ble/init:cmap/bind-keypad-key 'P' f1    1 # kpf1 # Note: 普通の f1-f4
-  ble/init:cmap/bind-keypad-key 'Q' f2    1 # kpf2 #   に対してこれらの
-  ble/init:cmap/bind-keypad-key 'R' f3    1 # kpf3 #   シーケンスを送る
-  ble/init:cmap/bind-keypad-key 'S' f4    1 # kpf4 #   端末もある。
-  ble/init:cmap/bind-keypad-key 'j' '*'   3 # kpmul
-  ble/init:cmap/bind-keypad-key 'k' '+'   3 # kpadd
-  ble/init:cmap/bind-keypad-key 'l' ','   3 # kpsep
-  ble/init:cmap/bind-keypad-key 'm' '-'   3 # kpsub
-  ble/init:cmap/bind-keypad-key 'n' '.'   3 # kpdec
-  ble/init:cmap/bind-keypad-key 'o' '/'   3 # kpdiv
-  ble/init:cmap/bind-keypad-key 'p' '0'   3 # kp0
-  ble/init:cmap/bind-keypad-key 'q' '1'   3 # kp1
-  ble/init:cmap/bind-keypad-key 'r' '2'   3 # kp2
-  ble/init:cmap/bind-keypad-key 's' '3'   3 # kp3
-  ble/init:cmap/bind-keypad-key 't' '4'   3 # kp4
-  ble/init:cmap/bind-keypad-key 'u' '5'   3 # kp5
-  ble/init:cmap/bind-keypad-key 'v' '6'   3 # kp6
-  ble/init:cmap/bind-keypad-key 'w' '7'   3 # kp7
-  ble/init:cmap/bind-keypad-key 'x' '8'   3 # kp8
-  ble/init:cmap/bind-keypad-key 'y' '9'   3 # kp9
-  ble/init:cmap/bind-keypad-key 'X' '='   3 # kpeq
+  #
+  # Note: ble/init:cmap/bind-keypad-key 第3引数は
+  #   1: ESC ? X, 2: SS3 X, 4: CSI X の和。
+  ble/init:cmap/bind-keypad-key 'SP' SP   3 # kpspace
+  ble/init:cmap/bind-keypad-key 'A' up    5
+  ble/init:cmap/bind-keypad-key 'B' down  5
+  ble/init:cmap/bind-keypad-key 'C' right 5
+  ble/init:cmap/bind-keypad-key 'D' left  5
+  ble/init:cmap/bind-keypad-key 'E' begin 5
+  ble/init:cmap/bind-keypad-key 'F' end   5
+  ble/init:cmap/bind-keypad-key 'H' home  5
+  ble/init:cmap/bind-keypad-key 'I' TAB   3 # kptab (Note: CSI I は xterm SM(?1004) focus と重複)
+  ble/init:cmap/bind-keypad-key 'M' RET   7 # kpent
+  ble/init:cmap/bind-keypad-key 'P' f1    5 # kpf1 # Note: 普通の f1-f4
+  ble/init:cmap/bind-keypad-key 'Q' f2    5 # kpf2 #   に対してこれらの
+  ble/init:cmap/bind-keypad-key 'R' f3    5 # kpf3 #   シーケンスを送る
+  ble/init:cmap/bind-keypad-key 'S' f4    5 # kpf4 #   端末もある。
+  ble/init:cmap/bind-keypad-key 'j' '*'   7 # kpmul
+  ble/init:cmap/bind-keypad-key 'k' '+'   7 # kpadd
+  ble/init:cmap/bind-keypad-key 'l' ','   7 # kpsep
+  ble/init:cmap/bind-keypad-key 'm' '-'   7 # kpsub
+  ble/init:cmap/bind-keypad-key 'n' '.'   7 # kpdec
+  ble/init:cmap/bind-keypad-key 'o' '/'   7 # kpdiv
+  ble/init:cmap/bind-keypad-key 'p' '0'   7 # kp0
+  ble/init:cmap/bind-keypad-key 'q' '1'   7 # kp1
+  ble/init:cmap/bind-keypad-key 'r' '2'   7 # kp2
+  ble/init:cmap/bind-keypad-key 's' '3'   7 # kp3
+  ble/init:cmap/bind-keypad-key 't' '4'   7 # kp4
+  ble/init:cmap/bind-keypad-key 'u' '5'   7 # kp5
+  ble/init:cmap/bind-keypad-key 'v' '6'   7 # kp6
+  ble/init:cmap/bind-keypad-key 'w' '7'   7 # kp7
+  ble/init:cmap/bind-keypad-key 'x' '8'   7 # kp8
+  ble/init:cmap/bind-keypad-key 'y' '9'   7 # kp9
+  ble/init:cmap/bind-keypad-key 'X' '='   7 # kpeq
+
+  # xterm SM(?1004) Focus In/Out の通知
+  ble-bind --csi 'I' focus
+  ble-bind --csi 'O' blur
 
   # rxvt
   #   Note: "CSI code @", "CSI code ^" は本体側で特別に処理している。

@@ -298,9 +298,15 @@ function ble-decode-kbd/.initialize {
   ble-decode-kbd/generate-keycode __error__
   _ble_decode_KCODE_ERROR=$ret
 
+  # Note: 暫定的な対応なので後で変更するかもしれない
+  ble-decode-kbd/generate-keycode mouse
+  _ble_decode_KCODE_MOUSE=$ret
+  ble-decode-kbd/generate-keycode mouse_move
+  _ble_decode_KCODE_MOUSE_MOVE=$ret
+
   # Note: ここに新しく kcode を追加した時には init-cmap.sh に何か変更をして、
   # cmap 及び keymap が更新される様にする必要がある。emacs.sh, vi.sh については
-  # init-cmap.sh を見て自動的に更新されるので特別な処置は必要ない。
+  # init-cmap.sh を見て自動的に更新されるので特別な処置は必要ない筈。
 }
 
 ble-decode-kbd/.initialize
@@ -569,7 +575,7 @@ function ble-decode-char/csi/.modify-key {
 }
 function ble-decode-char/csi/.decode {
   local char=$1 rex key
-  if ((char==126)); then
+  if ((char==126)); then # ~
     if rex='^27;([1-9][0-9]*);?([1-9][0-9]*)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm "CSI 2 7 ; <mod> ; <char> ~" sequences
       local key=$((BASH_REMATCH[2]&_ble_decode_MaskChar))
@@ -587,7 +593,7 @@ function ble-decode-char/csi/.decode {
         return
       fi
     fi
-  elif ((char==117)); then
+  elif ((char==117)); then # u
     if rex='^([0-9]*)(;[0-9]*)?$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm/mlterm "CSI <char> ; <mode> u" sequences
       # Note: 実は "CSI 1 ; mod u" が kp5 とする端末がある事に注意する。
@@ -599,7 +605,7 @@ function ble-decode-char/csi/.decode {
       fi
       return
     fi
-  elif ((char==94||char==64)); then
+  elif ((char==94||char==64)); then # ^, @
     if rex='^[1-9][0-9]*$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # rxvt "CSI <key> ^", "CSI <key> @" sequences
       key=${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}
@@ -611,7 +617,7 @@ function ble-decode-char/csi/.decode {
         return
       fi
     fi
-  elif ((char==99)); then
+  elif ((char==99)); then # c
     if rex='^>'; [[ $_ble_decode_csi_args =~ $rex ]]; then
       # DA2 応答 "CSI > Pm c"
       ble/term/DA2/notify "${_ble_decode_csi_args:1}"
@@ -625,6 +631,38 @@ function ble-decode-char/csi/.decode {
       ble/term/CPR/notify $((10#${BASH_REMATCH[1]})) $((10#${BASH_REMATCH[2]}))
       csistat=$_ble_decode_KCODE_IGNORE
       return
+    fi
+  elif ((char==77||char==109)); then # M or m
+    if rex='^<([0-9]+);([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
+      # マウスイベント
+      #   button の bit 達
+      #     modifiers (mask 0x1C): 4  shift, 8  meta, 16 control
+      #     button: 0 mouse1, 1 mouse2, 2 mouse3, 3 release, 64 wheel_up, 65 wheel_down
+      #     他のフラグ: 32 移動
+      #   可能な button のパターン:
+      #     mouse1 mouse2 mouse3 mouse4 mouse5
+      #     mouse1up mouse2up mouse3up mouse4up mouse5up
+      #     mouse1drag mouse2drag mouse3drag mouse4drag mouse5drag
+      #     wheelup wheeldown mouse_move
+      local button=$((10#${BASH_REMATCH[1]}))
+      ((_ble_term_mouse_button=button&~0x1C,
+        char==109&&(_ble_term_mouse_button|=0x70),
+        _ble_term_mouse_x=10#${BASH_REMATCH[2]},
+        _ble_term_mouse_y=10#${BASH_REMATCH[3]}))
+      local key=$_ble_decode_KCODE_MOUSE
+      ((button&32)) && key=$_ble_decode_KCODE_MOUSE_MOVE
+      ble-decode-char/csi/.modify-key $((button>>2&0x07))
+      csistat=$key
+      return
+    fi
+  elif ((char==116)); then # t
+    if rex='^<([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
+      ## mouse_select
+      ((_ble_term_mouse_button=128,
+        _ble_term_mouse_x=10#${BASH_REMATCH[1]},
+        _ble_term_mouse_y=10#${BASH_REMATCH[2]}))
+      local key=$_ble_decode_KCODE_MOUSE
+      csistat=$key
     fi
   fi
 
@@ -1393,6 +1431,15 @@ function ble-decode-key {
     if [[ $_ble_decode_keylog_keys_enabled && $_ble_decode_keylog_depth == 0 ]]; then
       ble/array#push _ble_decode_keylog_keys "$key"
       ((_ble_decode_keylog_keys_count++))
+    fi
+
+    # Note: マウス移動はシーケンスの一部と見做さず独立に処理する。
+    #   widget が登録されていれば処理しそれ以外は無視。
+    if (((key&_ble_decode_MaskChar)==_ble_decode_KCODE_MOUSE_MOVE)); then
+      builtin eval "local command=\${${dicthead}[key]-}"
+      command=${command:2}
+      ble-decode/widget/.call-keyseq
+      continue
     fi
 
     if [[ $_ble_decode_key__hook ]]; then

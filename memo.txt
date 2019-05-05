@@ -856,6 +856,10 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-05-06
+
+  * edit: ウィンドウをリサイズした時に info が消えたままになる。
+
 2019-04-29
 
   * bashbug: #D1078 の bash-5.0 のバグを報告する?
@@ -2178,7 +2182,7 @@ bash_tips
   - emacs: support a widget `universal-arg` `#D1057` 8b1dd07
   - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
   - highlight: support job names by `auto_resume` `#D1065` ce46024
-  - decode: add support for `S8C1T` key sequences `#D1083`
+  - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2208,12 +2212,14 @@ bash_tips
   - decode: workaround a bash-5.0 bug of `bind -p` `#D1078` b52da28
   - complete: workaround slow command candidates generation in Cygwin `#D1080` 376bfe7
   - syntax: fix false error highlighting of commands after `}`, `fi`, `done` or `esac` `#D1082` 4ce2753
+  - decode: fix a bug that modifyOtherKeys did not work at all 1666ec2
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
   - global: use `builtin echo` explicitly `#D1035` a6232c2
   - decode: re-implement rlfunc2widget without fork `#D1063` d2e7dbe
   - blerc: add descriptions `#D1064` d61b6af
+  - decode: decode mouse events `#D1083`
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3158,6 +3164,50 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-05-04
+
+  * decode: mouse が有効になっていると大量のシーケンスが送られてくる [#D1084]
+    完全に対応はしなくても少なくともデコードはしなければならない。
+    そもそも mouse を keyseq の一員と見做して処理して良いのだろうか。
+    例えば C-x まで入力してその瞬間にマウスに触ってしまって mouse move が起きた時に、
+    シーケンスがなかった事になって良いのだろうか。
+
+    一方で、シーケンスの途中として使いたいという場合も実はあるのではないか。
+    例えば vim の normal mode で y としてそれからマウスで行き先の位置をクリックして、
+    其処までをコピーするという動作として取り扱っても良いのではないだろうか。など。
+    然し、何だか分かりにくい。やはりそういう変なのはやめた方が良いのでは。
+
+    一方で、keyseq を入力している途中でマウス等により編集位置が変化した時、
+    果たして keyseq は有効のまま続きを入力できても良いのかというのも分からない。
+    うーん。まあ続きが入力できても良い気もする。
+    或いは、入力途中の keyseq は消去してしまっても良い気もする。
+
+    うーん。望ましい動作は、
+    (1) マウスの移動に際しては keyseq と独立に処理する。
+    (2) マウスの押下や解放や選択やドラッグに関しては、
+      既存の keyseq を消去して処理する。という事。
+
+    ? yes: 一般のアプリケーションでも上が望ましい動作だろうか。
+      然し、本当にそうだろうか。現状ではマウスを使って操作するという状況が分からない。
+      まあ、編集位置の移動や選択ぐらいである。本当にマウスを使って効果があるのは、
+      もっと GUI っぽいアプリケーションなどを作成した時なのではないだろうか。
+      例えば life game を実装したとする。クリックした位置に新しく点を打ったり、
+      ドラッグした範囲を乱数で初期化したりなどができると面白いと感じる。
+      そういう状況に於いての望ましい動作はラインエディタとしての望ましい動作と同じだろうか。
+      マウスの移動に関して独立に処理するのもそうだろうと思うし、
+      また、マウスの押下や解放があった場合にそれまでの keyseq を棄却するというのも良い気がする。
+      →結論: つまり、その他の一般の用途であっても上記の様な動作で良いという様に思われる。
+
+    それを踏まえて考えるとやはり mouse という単純なキーではなくて、
+    mouse mouse_up(m) mouse_drag(32) mouse_select(t) mouse_move(35) wheel(64)
+    ぐらいの区別はあって欲しいように思われるのである。
+
+    取り敢えずドラッグ・移動に関しては独立に処理する事にした。
+    うーん。(2) の既存の keyseq の消去に関しては対応していないが、
+    まあ、mouse up/down/select/wheel ぐらいはそんなに沢山送られてくる物でもないので気にしない。
+    後は具体的にこれを利用したものを書く機会があった時に、
+    その需要に合わせて調整すれば良い。
 
 2019-05-02
 
