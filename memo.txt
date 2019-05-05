@@ -856,10 +856,6 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-05-06
-
-  * edit: ウィンドウをリサイズした時に info が消えたままになる。
-
 2019-04-29
 
   * bashbug: #D1078 の bash-5.0 のバグを報告する?
@@ -2219,7 +2215,7 @@ bash_tips
   - global: use `builtin echo` explicitly `#D1035` a6232c2
   - decode: re-implement rlfunc2widget without fork `#D1063` d2e7dbe
   - blerc: add descriptions `#D1064` d61b6af
-  - decode: decode mouse events `#D1083`
+  - decode: decode mouse events `#D1083` 51fae67
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3164,6 +3160,10 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-05-06
+
+  * edit: ウィンドウをリサイズした時に info が消えたままになる [#D1085]
 
 2019-05-04
 
