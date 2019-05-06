@@ -864,13 +864,6 @@ bash_tips
 
 2019-04-21
 
-  * decode: key code の更新が実行されていない。うーん。
-    これは単にバグのあったバージョンを使っていた所為かもしれないと思ったが、
-    修正直後のバージョンを使っている様だった。うーん。
-    今後は強制的に全て更新する様に調整した方が良いのかもしれない。
-    あるいは、init-cmap で全て更新する様に調整する。
-    一応 touch vi.sh emacs.sh init-cmap.sh としたら動く様になった。
-
   * syntax: ファイル名の着色でディレクトリ部分の着色を別にする事が可能なのではないか。
     特に simple-word に於いて / で区切られる場合について
     各 pathspec に対しての展開を既に実装していた気がする。
@@ -2209,13 +2202,15 @@ bash_tips
   - complete: workaround slow command candidates generation in Cygwin `#D1080` 376bfe7
   - syntax: fix false error highlighting of commands after `}`, `fi`, `done` or `esac` `#D1082` 4ce2753
   - decode: fix a bug that modifyOtherKeys did not work at all 1666ec2
+  - edit: fix a problem that status line vanishes on window resize `#D1085` 467b7a4
+  - decode: fix a bug that `ble-update` breaks keymap cache `#D1086`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
   - global: use `builtin echo` explicitly `#D1035` a6232c2
   - decode: re-implement rlfunc2widget without fork `#D1063` d2e7dbe
   - blerc: add descriptions `#D1064` d61b6af
-  - decode: decode mouse events `#D1083` 51fae67
+  - decode: decode mouse events `#D1084` 51fae67
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3162,6 +3157,21 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-05-06
+
+  * 2019-04-21 decode: key code の更新が実行されていない。うーん [#D1086]
+    これは単にバグのあったバージョンを使っていた所為かもしれないと思ったが、
+    修正直後のバージョンを使っている様だった。うーん。
+    今後は強制的に全て更新する様に調整した方が良いのかもしれない。
+    あるいは、init-cmap で全て更新する様に調整する。
+    一応 touch vi.sh emacs.sh init-cmap.sh としたら動く様になった。
+
+    やはり問題が発生する。更新のタイミングが悪いのかと思って
+    $_ble_edit_cache の中のファイルと init-cmap.sh のタイムスタンプを確認する。
+    ちゃんと正しい順序で更新されている様に見える。
+    という事は問題になっているのは keyname2code の変換をしている関数の
+    キャッシュが残っている等の事なのだろうか。
+
+    うーん。分かった。配列を初期化する時にちゃんと空にしておかなければならなかったのだ。
 
   * edit: ウィンドウをリサイズした時に info が消えたままになる [#D1085]
 
