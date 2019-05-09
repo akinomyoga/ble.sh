@@ -456,6 +456,28 @@ function .ble-term/visible-bell/initialize {
 function .ble-term.audible-bell {
   builtin echo -n '' 1>&2
 }
+function .ble-term.visible-bell.worker {
+  sleep 0.05
+  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
+
+  # load time duration settings
+  declare msec=$bleopt_vbell_duration
+  declare sec=$msec
+  ((sec<1000)) && sec=$(builtin printf '%04d' $sec)
+  sec=${sec%???}.${sec: -3}
+
+  # wait
+  > "$_ble_term_visible_bell__ftime"
+  sleep $sec
+
+  # check and clear
+  declare -a time1 time2
+  time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
+  time2=($(date +'%s %N'))
+  if (((time2[0]-time1[0])*1000+(1${time2[1]::3}-1${time1[1]::3})>=msec)); then
+    builtin echo -n "$_ble_term_visible_bell_clear" >&2
+  fi
+}
 function .ble-term.visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
   local cols=${COLUMNS:-80}
@@ -463,30 +485,7 @@ function .ble-term.visible-bell {
   message="${message:-$bleopt_vbell_default_message}"
 
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
-  (
-    {
-      sleep 0.05
-      builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
-
-      # load time duration settings
-      declare msec=$bleopt_vbell_duration
-      declare sec=$msec
-      ((sec<1000)) && sec=$(builtin printf '%04d' $sec)
-      sec=${sec%???}.${sec: -3}
-
-      # wait
-      > "$_ble_term_visible_bell__ftime"
-      sleep $sec
-
-      # check and clear
-      declare -a time1 time2
-      time1=($(date +'%s %N' -r "$_ble_term_visible_bell__ftime" 2>/dev/null))
-      time2=($(date +'%s %N'))
-      if (((time2[0]-time1[0])*1000+(1${time2[1]::3}-1${time1[1]::3})>=msec)); then
-        builtin echo -n "$_ble_term_visible_bell_clear" >&2
-      fi
-    } &
-  )
+  ( .ble-term.visible-bell.worker 1>/dev/null & )
 }
 function .ble-term.visible-bell.cancel-erasure {
   > "$_ble_term_visible_bell__ftime"
