@@ -861,9 +861,6 @@ bash_tips
   * edit: source ble.sh (--attach=prompt) だと source に使ったコマンドの履歴が残らない?
     というかコマンド履歴が一切無効化されている気がする?
 
-  * main: bashrc から起動すると read が使えたり使えなかったりする。
-    具体的には vbell を表示するタイミングで read が終了してしまう。
-
 2019-04-29
 
   * bashbug: #D1078 の bash-5.0 のバグを報告する?
@@ -2211,10 +2208,11 @@ bash_tips
   - syntax: fix false error highlighting of commands after `}`, `fi`, `done` or `esac` `#D1082` 4ce2753
   - decode: fix a bug that modifyOtherKeys did not work at all 1666ec2
   - edit: fix a problem that status line vanishes on window resize `#D1085` 467b7a4
-    - edit: recalculate prompts after resize `#D1088`
-    - edit: fix the position of cursor after resize `#D1089`
+    - edit: recalculate prompts after resize `#D1088` b29f248
+    - edit: fix the position of cursor after resize `#D1089` b29f248
   - decode: fix a bug that `ble-update` breaks keymap cache `#D1086`
   - edit (`ble/builtin/read`): suppress noisy job messages and delay caused by vbell `#D1087` 309b9e4
+  - edit (`ble/builtin/read`): workaround failglob crash on vbell inside `read` `#D1090`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3168,6 +3166,20 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-05-09
+
+  * main: bashrc から起動すると read が使えたり使えなかったりする [#D1090]
+    具体的には vbell を表示するタイミングで read が終了してしまう。
+
+    - bashrc から起動すると --attach=prompt, none に関係なく駄目。
+    - bash --norc で起動してから source すると大丈夫。
+      --attach=prompt, --attach=none に関係なく大丈夫。
+    - ble-reload を実行すると治る。
+
+    調べてみると ble/util/visible-bell の内部で死んでいる。
+    うーん。再現性が分かった。一度でも外側で vbell を呼び出していれば問題は起こらない。
+
+    うーん。failglob っぽい。どうもサブシェルの中だと failglob を eval で防げない様だ…。
+    サブシェルの中では shopt -u failglob してしまう事にする。
 
   * edit: うーん。リサイズした後のカーソルの位置がおかしい [#D1089]
     ちゃんとテストしておくべきだった。何度も似たような修正を繰り返している…。

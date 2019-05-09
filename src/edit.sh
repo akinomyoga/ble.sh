@@ -7335,6 +7335,12 @@ function ble/builtin/read/TRAPWINCH {
 function ble/builtin/read/.loop {
   set +m # ジョブ管理を無効にする
 
+  # Note: サブシェルの中では eval で failglob を防御できない様だ。
+  #   それが理由で visible-bell を呼び出すと read が終了してしまう。
+  #   対策として failglob を外す。サブシェルの中なので影響はない筈。
+  # ref #D1090
+  shopt -u failglob
+
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
   ble/builtin/read/.setup-textarea
   trap -- ble/builtin/read/TRAPWINCH WINCH
