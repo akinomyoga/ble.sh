@@ -791,7 +791,7 @@ function .ble-line-prompt/initialize {
 ##     それ以外の時はこの値は使われません。
 ##   @var _ble_line_prompt[6]    ps1out
 ##     prompt を表示する為に出力する制御シーケンスを含んだ文字列です。
-##   @var _ble_line_prompt[7]    ps1esc
+##   @var _ble_line_prompt[7]    COLUMNS:ps1esc
 ##     調整前の ps1out を格納します。ps1out の計算を省略する為に使用します。
 _ble_line_prompt=("" 0 0 0 32 0 "" "")
 
@@ -983,7 +983,7 @@ function .ble-line-prompt/update/eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function .ble-line-prompt/update {
-  local version="$_ble_edit_LINENO"
+  local version="$COLUMNS:$_ble_edit_LINENO"
   if [[ ${_ble_line_prompt[0]} == "$version" ]]; then
     _ble_line_prompt.load
     return
@@ -1027,7 +1027,8 @@ function .ble-line-prompt/update {
   local ps1esc
   ble-edit/draw/sflush -v ps1esc
   builtin eval "ps1esc=\"$ps1esc\""
-  if [[ $ps1esc == "${_ble_line_prompt[7]}" ]]; then
+  local trace_hash=$COLUMNS:$ps1esc
+  if [[ $trace_hash == "${_ble_line_prompt[7]}" ]]; then
     # 前回と同じ ps1esc の場合は計測処理は省略
     _ble_line_prompt[0]="$version"
     _ble_line_prompt.load
@@ -1047,7 +1048,7 @@ function .ble-line-prompt/update {
   local ps1out
   ble-edit/draw/sflush -v ps1out
   ret="$ps1out"
-  _ble_line_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$ps1esc")
+  _ble_line_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$ps1out" "$trace_hash")
 }
 
 # 
