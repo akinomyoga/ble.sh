@@ -6553,6 +6553,12 @@ function ble-edit/read/TRAPWINCH {
   ble/textarea#redraw
 }
 function ble-edit/read/.loop {
+  # Note: サブシェルの中では eval で failglob を防御できない様だ。
+  #   それが理由で visible-bell を呼び出すと read が終了してしまう。
+  #   対策として failglob を外す。サブシェルの中なので影響はない筈。
+  # ref #D1090
+  shopt -u failglob
+
   local x0=$_ble_line_x y0=$_ble_line_y
   ble-edit/read/.setup-textarea
   trap -- ble-edit/read/TRAPWINCH WINCH
