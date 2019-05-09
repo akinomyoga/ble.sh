@@ -1000,7 +1000,9 @@ function ble/util/joblist {
   if [[ $jobs0 != "$_ble_util_joblist_jobs" ]]; then
     for ijob in "${!list[@]}"; do
       if [[ ${_ble_util_joblist_list[ijob]} && ${list[ijob]#'['*']'[-+ ]} != "${_ble_util_joblist_list[ijob]#'['*']'[-+ ]}" ]]; then
-        ble/array#push _ble_util_joblist_events "${list[ijob]}"
+        if [[ ${list[ijob]} != *__ble_suppress_joblist__* ]]; then
+          ble/array#push _ble_util_joblist_events "${list[ijob]}"
+        fi
         list[ijob]=
       fi
     done
@@ -1015,7 +1017,9 @@ function ble/util/joblist {
     # check removed jobs through list -> _ble_util_joblist_list.
     for ijob in "${!list[@]}"; do
       if [[ ${list[ijob]} && ! ${_ble_util_joblist_list[ijob]} ]]; then
-        ble/array#push _ble_util_joblist_events "${list[ijob]}"
+        if [[ ${list[ijob]} != *__ble_suppress_joblist__* ]]; then
+          ble/array#push _ble_util_joblist_events "${list[ijob]}"
+        fi
       fi
     done
   else
@@ -1356,6 +1360,28 @@ ble/term/visible-bell/.initialize
 function ble/term/audible-bell {
   builtin echo -n '' 1>&2
 }
+function ble/term/visible-bell/.worker {
+  # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
+
+  ble/util/sleep 0.05
+  builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
+
+  # load time duration settings
+  declare msec=$bleopt_vbell_duration
+  declare sec=$(builtin printf '%d.%03d' "$((msec/1000))" "$((msec%1000))")
+
+  # wait
+  >| "$_ble_term_visible_bell__ftime"
+  ble/util/sleep "$sec"
+
+  # check and clear
+  declare -a time1 time2
+  time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
+  time2=($(ble/bin/date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
+  if (((time2[0]-time1[0])*1000+(10#0${time2[1]::3}-10#0${time1[1]::3})>=msec)); then
+    builtin echo -n "$_ble_term_visible_bell_clear" >&2
+  fi
+}
 function ble/term/visible-bell {
   local _count=$((++_ble_term_visible_bell__count))
   local cols=${COLUMNS:-80}
@@ -1363,30 +1389,7 @@ function ble/term/visible-bell {
   message=${message:-$bleopt_vbell_default_message}
 
   builtin echo -n "${_ble_term_visible_bell_show//'%message%'/${_ble_term_setaf[2]}$_ble_term_rev${message::cols}}" >&2
-  (
-    {
-      # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
-
-      ble/util/sleep 0.05
-      builtin echo -n "${_ble_term_visible_bell_show//'%message%'/$_ble_term_rev${message::cols}}" >&2
-
-      # load time duration settings
-      declare msec=$bleopt_vbell_duration
-      declare sec=$(builtin printf '%d.%03d' "$((msec/1000))" "$((msec%1000))")
-
-      # wait
-      >| "$_ble_term_visible_bell__ftime"
-      ble/util/sleep "$sec"
-
-      # check and clear
-      declare -a time1 time2
-      time1=($(ble/util/getmtime "$_ble_term_visible_bell__ftime"))
-      time2=($(ble/bin/date +'%s %N' 2>/dev/null)) # ※ble/util/strftime だとミリ秒まで取れない
-      if (((time2[0]-time1[0])*1000+(10#0${time2[1]::3}-10#0${time1[1]::3})>=msec)); then
-        builtin echo -n "$_ble_term_visible_bell_clear" >&2
-      fi
-    } &
-  )
+  ( ble/term/visible-bell/.worker __ble_suppress_joblist__ 1>/dev/null & )
 }
 function ble/term/visible-bell/cancel-erasure {
   >| "$_ble_term_visible_bell__ftime"
