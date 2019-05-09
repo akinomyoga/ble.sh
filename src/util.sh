@@ -1472,7 +1472,9 @@ function ble/util/joblist {
   if [[ $jobs0 != "$_ble_util_joblist_jobs" ]]; then
     for ijob in "${!list[@]}"; do
       if [[ ${_ble_util_joblist_list[ijob]} && ${list[ijob]#'['*']'[-+ ]} != "${_ble_util_joblist_list[ijob]#'['*']'[-+ ]}" ]]; then
-        ble/array#push _ble_util_joblist_events "${list[ijob]}"
+        if [[ ${list[ijob]} != *'__ble_suppress_joblist__'* ]]; then
+          ble/array#push _ble_util_joblist_events "${list[ijob]}"
+        fi
         list[ijob]=
       fi
     done
@@ -1486,8 +1488,11 @@ function ble/util/joblist {
 
     # check removed jobs through list -> _ble_util_joblist_list.
     for ijob in "${!list[@]}"; do
-      if [[ ${list[ijob]} && ! ${_ble_util_joblist_list[ijob]} ]]; then
-        ble/array#push _ble_util_joblist_events "${list[ijob]}"
+      local job0=${list[ijob]}
+      if [[ $job0 && ! ${_ble_util_joblist_list[ijob]} ]]; then
+        if [[ $job0 != *'__ble_suppress_joblist__'* ]]; then
+          ble/array#push _ble_util_joblist_events "$job0"
+        fi
       fi
     done
   else
@@ -2557,7 +2562,13 @@ function ble/term/visible-bell {
   ble/term/visible-bell/.show "$message" "$sgr1" "$x" "$y"
 
   local workerfile; ble/term/visible-bell/.create-workerfile
-  ( ble/term/visible-bell/.worker & )
+  # Note: __ble_suppress_joblist__ を指定する事によって、
+  #   終了したジョブの一覧に現れない様にする。
+  #   対策しないと read の置き換え実装でジョブ一覧が表示されてしまう。
+  # Note: 標準出力を閉じて置かないと $() の中で
+  #   read を呼び出した時に visible-bell worker がブロックしてしまう。
+  # ref #D1000, #D1087
+  ( ble/term/visible-bell/.worker __ble_suppress_joblist__ 1>/dev/null & )
 }
 function ble/term/visible-bell/cancel-erasure {
   >| "$_ble_term_visible_bell_ftime"
