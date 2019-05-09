@@ -213,8 +213,10 @@ function ble-edit/prompt/initialize {
 ##     それ以外の時はこの値は使われません。
 ##   @var _ble_edit_prompt[6]    ps1out
 ##     prompt を表示する為に出力する制御シーケンスを含んだ文字列です。
-##   @var _ble_edit_prompt[7]    ps1esc
-##     調整前の ps1out を格納します。ps1out の計算を省略する為に使用します。
+##   @var _ble_edit_prompt[7]    trace_hash
+##     COLUMNS:ps1esc の形式の文字列です。
+##     調整前の ps1out を格納します。
+##     ps1out の計算 (trace) を省略する為に使用します。
 _ble_edit_prompt=("" 0 0 0 32 0 "" "")
 
 
@@ -593,8 +595,8 @@ function ble-edit/prompt/.escape {
 ##   @var[in,out] x1 x2 y1 y2
 ##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
 function ble-edit/prompt/.instantiate {
-  val= esc= x=0 y=0 g=0 lc=32 lg=0
-  local ps=$1 opts=$2 x0=$3 y0=$4 g0=$5 lc0=$6 lg0=$7 esc0=$8 val0=$9
+  trace_hash= esc= x=0 y=0 g=0 lc=32 lg=0
+  local ps=$1 opts=$2 x0=$3 y0=$4 g0=$5 lc0=$6 lg0=$7 esc0=$8 trace_hash0=$9
   [[ ! $ps ]] && return 0
 
   # 1. PS1 に含まれる \c を処理する
@@ -606,20 +608,20 @@ function ble-edit/prompt/.instantiate {
   #   eval して各種シェル展開を実行する。
   local ret
   ble-edit/prompt/.escape "$processed"; local escaped=$ret
-  local expanded=$val0 # Note: これは次行が失敗した時の既定値
+  local expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
   builtin eval "expanded=\"$escaped\""
 
   # 3. 端末への出力を構成する
-  _ble_edit_rprompt[0]=$version
-  if [[ $expanded != "$val0" ]]; then
+  trace_hash=$COLUMNS:$expanded
+  if [[ $trace_hash != "$trace_hash0" ]]; then
     x=0 y=0 g=0 lc=32 lg=0
     ble/canvas/trace "$expanded" "$opts:left-char"; local traced=$ret
     ((lc<0&&(lc=0)))
-    val=$expanded esc=$traced
+    esc=$traced
     return 0
   else
     x=$x0 y=$y0 g=$g0 lc=$lc0 lg=$lg0
-    val=$val0 esc=$esc0
+    esc=$esc0
     return 2
   fi
 }
@@ -644,7 +646,7 @@ function ble-edit/prompt/update/.eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble-edit/prompt/update {
-  local version=$_ble_edit_LINENO
+  local version=$COLUMNS:$_ble_edit_LINENO
   if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
     ble-edit/prompt/.load
     return
@@ -658,21 +660,21 @@ function ble-edit/prompt/update {
     ble-edit/prompt/update/.eval-prompt_command
     ble-edit/adjust-PS1
   fi
-  local val esc
+  local trace_hash esc
   ble-edit/prompt/.instantiate "$_ble_edit_PS1" '' "${_ble_edit_prompt[@]:1}"
-  _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$val")
+  _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
   ret=$esc
 
   # update edit_rps1
   if [[ $bleopt_rps1 ]]; then
     local ps1_height=$((y+1))
-    local val esc x y g lc lg # Note: これ以降は local の x y g lc lg
+    local trace_hash esc x y g lc lg # Note: これ以降は local の x y g lc lg
     local x1=${_ble_edit_rprompt_bbox[0]}
     local y1=${_ble_edit_rprompt_bbox[1]}
     local x2=${_ble_edit_rprompt_bbox[2]}
     local y2=${_ble_edit_rprompt_bbox[3]}
     LINES=$ps1_height ble-edit/prompt/.instantiate "$bleopt_rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
-    _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$val")
+    _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
   fi
 }
@@ -1161,8 +1163,8 @@ function ble-edit/attach/TRAPWINCH {
       ble-edit/bind/stdout.on
       ble-edit/info/hide
       ble/util/buffer "$_ble_term_ed"
-      ble/textarea#redraw
       ble-edit/info/reveal
+      ble/textarea#redraw
       ble-edit/bind/stdout.off
     fi
   fi
