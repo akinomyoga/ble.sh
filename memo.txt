@@ -858,17 +858,11 @@ bash_tips
 
 2019-05-08
 
-  * edit: うーん。リサイズした後のカーソルの位置がおかしい。
-    ちゃんとテストしておくべきだった。何度も似たような修正を繰り返している…。
-
-    所で read の方の TRAPWINCH は大丈夫だったのか。
-    確認すると大丈夫の様な気がする。所で vim mode の時の read はどういう振る舞いをするのだったか。
-
-  * edit: 後気付いたのはプロンプトの途中で改行が起こっている時に座標計算が正しくない。
-    これについても本来対応しているつもりだったが何かを間違えているのだろう。
-
   * edit: source ble.sh (--attach=prompt) だと source に使ったコマンドの履歴が残らない?
     というかコマンド履歴が一切無効化されている気がする?
+
+  * main: bashrc から起動すると read が使えたり使えなかったりする。
+    具体的には vbell を表示するタイミングで read が終了してしまう。
 
 2019-04-29
 
@@ -2217,7 +2211,10 @@ bash_tips
   - syntax: fix false error highlighting of commands after `}`, `fi`, `done` or `esac` `#D1082` 4ce2753
   - decode: fix a bug that modifyOtherKeys did not work at all 1666ec2
   - edit: fix a problem that status line vanishes on window resize `#D1085` 467b7a4
+    - edit: recalculate prompts after resize `#D1088`
+    - edit: fix the position of cursor after resize `#D1089`
   - decode: fix a bug that `ble-update` breaks keymap cache `#D1086`
+  - edit (`ble/builtin/read`): suppress noisy job messages and delay caused by vbell `#D1087` 309b9e4
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3171,6 +3168,27 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-05-09
+
+  * edit: うーん。リサイズした後のカーソルの位置がおかしい [#D1089]
+    ちゃんとテストしておくべきだった。何度も似たような修正を繰り返している…。
+
+    所で read の方の TRAPWINCH は大丈夫だったのか。
+    確認すると大丈夫の様な気がする。所で vim mode の時の read はどういう振る舞いをするのだったか。
+
+  * edit: 後気付いたのはプロンプトの途中で改行が起こっている時に座標計算が正しくない [#D1088]
+    これについても本来対応しているつもりだったが何かを間違えているのだろう。
+    座標計算がどの様にされているか確認する。
+
+    うーん。COLUMNS が 20 であるのにも関わらず x が 30 になっている…。
+    分かった…。結果がキャッシュされていた。座標計算をする時には COLUMNS の幅も影響するので、
+    それも一緒に比較するべきだった。
+
+    うーん。考えた末に COLUMNS を version の一部に含めれば良いだけだと気付いた。修正する。
+    と思ったが効果はなかった。チェックが二段階になっている。先ず version が同じだったらスキップする。
+    更に expanded の値が同じだったらスキップする。
+
+    これを修正したら色々と他にも直った。今まではリサイズした後の rps1 の位置が
+    なにかコマンドを実行するまでおかしかったのがちゃんと再計算される様になった。
 
   * edit: read -e でベルを鳴らした後に C-c で終わると [#D1087]
     ref #D1000
