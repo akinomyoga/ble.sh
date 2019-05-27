@@ -4452,34 +4452,36 @@ function ble/widget/discard-line {
   ble/textarea#render
 }
 
-if ((_ble_bash>=30100)); then
-  function ble/edit/hist_expanded/.core {
-    builtin history -p -- "$BASH_COMMAND"
-  }
-else
-  # Workaround for bash-3.0 bug (see memo.txt#D0233, #D0801)
-  function ble/edit/hist_expanded/.core {
-    # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
-    #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
-    #   嘗てはサブシェルで評価していたが、そうすると置換指示子が記録されず
-    #   :& が正しく実行されないことになるのでこちらの実装に切り替える。
-    local line1= line2=
-    ble/util/assign line1 'HISTTIMEFORMAT= builtin history 1'
-    builtin history -p -- '' &>/dev/null
-    ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
-    if [[ $line1 != "$line2" ]]; then
-      local rex_head='^[[:space:]]*[0-9]+[[:space:]]*'
-      [[ $line1 =~ $rex_head ]] &&
-        line1=${line1:${#BASH_REMATCH}}
+# Workaround for bash-3.0 -- 5.0 bug (See memo.txt #D0233, #D0801, #D1091)
+function ble/edit/hist_expanded/.core {
+  # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
+  #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
+  #   嘗てはサブシェルで評価していたが、そうすると置換指示子が記録されず
+  #   :& が正しく実行されないことになるのでこちらの実装に切り替える。
+  local line1= line2=
+  ble/util/assign line1 'HISTTIMEFORMAT= builtin history 1'
+  builtin history -p -- '' &>/dev/null
+  ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
+  if [[ $line1 != "$line2" ]]; then
+    local rex_head='^[[:space:]]*[0-9]+[[:space:]]*'
+    [[ $line1 =~ $rex_head ]] &&
+      line1=${line1:${#BASH_REMATCH}}
 
+    if ((_ble_bash<30100)); then
+      # Note: history -r するとそれまでの履歴項目が終了時に
+      #   .bash_history に反映されなくなるが、
+      #   Bash 3.0 では明示的に書き込んでいるので問題ない。
       local tmp=$_ble_base_run/$$.ble_edit_history_add.txt
       printf '%s\n' "$line1" "$line1" >| "$tmp"
       builtin history -r "$tmp"
+    else
+      builtin history -s -- "$line1"
+      builtin history -s -- "$line1"
     fi
+  fi
 
-    builtin history -p -- "$BASH_COMMAND"
-  }
-fi
+  builtin history -p -- "$BASH_COMMAND"
+}
 
 function ble-edit/hist_expanded/.expand {
   ble/edit/hist_expanded/.core 2>/dev/null; local ext=$?
@@ -5514,7 +5516,7 @@ function ble-edit/history/add/.command-history {
   fi
 
   if [[ $histfile ]]; then
-    # bash-3.1 workaround
+    # bash < 3.1 workaround
     local tmp=$_ble_base_run/$$.ble_edit_history_add.txt
     builtin printf '%s\n' "$cmd" >> "$histfile"
     builtin printf '%s\n' "$cmd" >| "$tmp"

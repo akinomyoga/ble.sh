@@ -856,10 +856,34 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
-2019-05-08
+2019-05-27
 
-  * edit: source ble.sh (--attach=prompt) だと source に使ったコマンドの履歴が残らない?
-    というかコマンド履歴が一切無効化されている気がする?
+  * edit: .bash_history と常に同期する設定を ble.sh で提供しても良いのではないか。
+
+    新しく追加された行を毎回読み込む様にする。
+
+    a 具体的には巷にある設定と同様にして history -r すれば良いのではないか。
+      とも思ったが少し微妙かもしれない。巷にある設定だと history -c してから history -r している様な…。
+      それだと ble.sh を実行している場合には毎回履歴を初期化しなければならなくなって面倒である。
+      もっとコストの低い方法を考えても良いのではないかという気がする。
+
+    b 或いは、コマンドを実行する前に新しい項目が追加されていないかチェックする、という具合で良いのでは。
+      新しい項目が追加されていたら追加分を履歴に反映させる様にする。
+
+2019-05-24
+
+  * edit: 実は rlvar bind-tty-special-chars で C-u C-v C-w の bind の振る舞いが変わる?
+    http://lists.gnu.org/archive/html/bug-bash/2019-05/msg00069.html
+
+    →これに対する workaround は既に @decode.bind.uvw で実行している。
+    既にこの rlvar の設定がどうなっていたとしても動作する様になっているので、
+    わざわざ現在の workaround を bind-tty-special-chars の設定に置き換える必要はない。
+    然し、この rlvar の動作については確認しておく必要がある。
+
+    一応 rlvar bind-tty-special-chars の設定を変更した時の振る舞いについて調べて、
+    (設定を変更した時にこの workaround が不要になるのかどうか、
+    また設定を変更した時の現在の workaround が動作しなくなったりしないか)
+    それで問題がなければ注記として残してこの項目は解決した事にすれば良い。
 
 2019-04-29
 
@@ -2212,7 +2236,8 @@ bash_tips
     - edit: fix the position of cursor after resize `#D1089` b29f248
   - decode: fix a bug that `ble-update` breaks keymap cache `#D1086`
   - edit (`ble/builtin/read`): suppress noisy job messages and delay caused by vbell `#D1087` 309b9e4
-  - edit (`ble/builtin/read`): workaround failglob crash on vbell inside `read` `#D1090`
+  - edit (`ble/builtin/read`): workaround failglob crash on vbell inside `read` `#D1090` 2e6f44c
+  - edit: workaround a bash bug that history entries are removed by `history -p` `#D1091` 3cc9cf5
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3164,6 +3189,135 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-05-27
+
+  * 2019-05-09 edit: source ble.sh (--attach=prompt) だと source に使ったコマンドの履歴が残らない? [#D1091]
+    というかコマンド履歴が一切無効化されている気がする?
+
+    うーん。そのセッションのコマンド履歴は全て消える。
+    --attach=none にして ble-attach しても再現する。
+    --attach=none にしてそのまま抜ければ記録される。
+
+    bashrc からロードしてその上で ble-reload しても大丈夫。
+
+    attach 処理の中のどの時点で問題が発生する様になっているのか特定して、
+    それで原因を探し当てるのが最初にするべきことの様に思われる。
+
+    * 試しに ble-edit/reset-history の中の ble/util/idle.push 'ble-edit/history/load async'
+      という部分を無効化してみたが変化はなかった。やはりコマンド履歴に記録されない。
+    * 以前 HISTSIZE 関連で変な workaround を実行していた様な気がしたので調べてみたが、
+      今回の場合には関係なさそうである。該当コードは ble-edit/history/load/.background-initialize
+      でありコメントに色々と書かれている (#D0702, #D0732) が結局、様々の問題の為に
+      サブシェルで履歴項目の処理を行う事にして HISTSIZE は弄らない方針に変更されたのであった。
+    * そもそも履歴に登録されているのだろうか。という事を調べる必要がある。
+      色々 history | tail を実行してみるとこの時点で振る舞いがおかしいという事が分かった。
+      履歴項目が消滅している気がする…。
+
+      | $ bash --norc
+      | $ source out/ble.sh --attach=none
+      | $ history | tail
+      | 14370  screen -ls
+      | 14371  screen -dr
+      | 14372  bind -v
+      | 14373  echo hello1234
+      | 14374  echo world4321
+      | 14375  history | tail
+      | 14376  echo test1234
+      | 14377  history | tail
+      | 14378  source out/ble.sh --attach=none
+      | 14379  history | tail
+      | $ echo 1234
+      | $ echo 4321
+      | $ echo 1111
+      | $ history | tail
+      | 14374  echo world4321
+      | 14375  history | tail
+      | 14376  echo test1234
+      | 14377  history | tail
+      | 14378  source out/ble.sh --attach=none
+      | 14379  history | tail
+      | 14380  echo 1234
+      | 14381  echo 4321
+      | 14382  echo 1111
+      | 14383  history | tail
+      | $ ble-attach
+      | $ history | tail
+      | 14373  echo hello1234
+      | 14374  echo world4321
+      | 14375  history | tail
+      | 14376  echo test1234
+      | 14377  history | tail
+      | 14378  source out/ble.sh --attach=none
+      | 14379  history | tail
+      | 14380  echo 1234
+      | 14381  echo 4321
+      | 14382  echo 1111
+      | $ echo 9999
+      | $ history | tail
+      | 14365  bind -x '"\C-@": "echo abc"'
+      | 14366  command
+      | 14367  screen -ls
+      | 14368  screen -dr
+      | 14369  screen -dr
+      | 14370  screen -ls
+      | 14371  screen -dr
+      | 14372  bind -v
+      | 14373  echo 9999
+      | 14374  history | tail
+
+      この時点で 14372 番目まで履歴が削れてしまっている。
+      特に 14373--14377 は bash_history から読み取った物の筈である。
+      これ以降に実行したコマンドは普通に登録される様である。
+
+      うーん。history -s -- "$cmd" をコメントアウトしたら余計に酷い事になった。
+      どんどん履歴が削れてなくなっていく…。
+      前に似たような事があった。と思って調べると bash-3.1 以下の時の
+      ble/edit/hist_expanded/.core で対策が書かれている。
+      試しに bash 3.1 以降での処理をサブシェルにしてみた所、
+      問題は起こらなくなった。履歴もちゃんと記録されている。
+      つまり Bash-4.4 でも Bash 3.0 と同様の問題が起こるという事。
+
+      % Bash 5.0 では再現するだろうか。と思って試したら再現しない。
+      % というか Bash 4.4 でも再現しなくなった。
+      % 何か特別な履歴項目の数などがあるのだろうか。。
+      % screen の記録を探ると以下の .bash_history の内容で再現していた筈。
+      % 
+      % $ tail ~/.bash_history                                                                                                                                                                    ble.sh master (2e6f44c)
+      % screen -dr
+      % screen -dr
+      % screen -ls
+      % screen -dr
+      % bind -v
+      % echo hello1234
+      % echo world4321
+      % history | tail
+      % echo test1234
+      % history | tail
+      % 
+      % .bash_history の内容を削って再度試してみる事にする。
+      % うーん。再現しない。と思ったら history の内容が追記されて増えていた。
+      % また減らして調べる必要がある。減らしてみたら再現した。
+      % 
+      % うーん。複数の要素が絡み合っているので再現するかどうか判定する為には
+      % 一時的に history -s を無効にしておかなければならない。
+      % というか寧ろ history 1 を繰り返し実行しても変化しないという事こそが
+      % 再現しているという事の証拠になっているのでは? とも思ったがよく分からない。
+
+      Bash-3.1 -- 5.0 の全てで再現する事を確認した。
+      結局 Bash 3.0 で使っていたのと同じ workaround で
+      問題が解決できる事が分かったのでそれを使う事にする。
+
+    うーん。履歴項目が消滅する問題については解決されたが、
+    履歴が保存されないという問題に関しては未だ残っている。
+    というより、今迄問題なかったのが新しく問題になっている気がする。
+    改めて調べる。history -r を使って履歴項目を追加したのは
+    Bash 3.0 が history -s を持っていない (or 動かない) 為であろう。
+    history -s -- "$cmd" をしている箇所でも Bash 3.0 は特別扱いしている。
+
+    今回の workaround でも Bash 3.0 以外では history -s で項目を追加する事にした。
+    Bash 3.0 に関しては history -r してもどうせ自分で histfile に記入するので問題にならない。
+    実際に動かしてみた。問題なく動いている。OK
 
 2019-05-09
 
