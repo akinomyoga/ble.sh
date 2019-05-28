@@ -2600,6 +2600,10 @@ function ble/widget/self-insert {
   local code=$((KEYS[0]&_ble_decode_MaskChar))
   ((code==0)) && return
 
+  # Note: Bash 3.0 では ^? (DEL) の処理に問題があるので、
+  #   ^@ (NUL) と同様に単に無視する事にする #D1093
+  ((code==127&&_ble_bash<30100)) && return
+
   local ibeg=$_ble_edit_ind iend=$_ble_edit_ind
   local ret ins; ble/util/c2s "$code"; ins=$ret
 

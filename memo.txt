@@ -870,20 +870,12 @@ bash_tips
     b 或いは、コマンドを実行する前に新しい項目が追加されていないかチェックする、という具合で良いのでは。
       新しい項目が追加されていたら追加分を履歴に反映させる様にする。
 
-2019-05-24
+  * 次に機能を追加するとしたらマウスなのだろうという気がする。
+    fish は未だマウスに対応していない。zsh はそういう拡張があるらしいがちゃんと動くのかは知らない。
 
-  * edit: 実は rlvar bind-tty-special-chars で C-u C-v C-w の bind の振る舞いが変わる?
-    http://lists.gnu.org/archive/html/bug-bash/2019-05/msg00069.html
-
-    →これに対する workaround は既に @decode.bind.uvw で実行している。
-    既にこの rlvar の設定がどうなっていたとしても動作する様になっているので、
-    わざわざ現在の workaround を bind-tty-special-chars の設定に置き換える必要はない。
-    然し、この rlvar の動作については確認しておく必要がある。
-
-    一応 rlvar bind-tty-special-chars の設定を変更した時の振る舞いについて調べて、
-    (設定を変更した時にこの workaround が不要になるのかどうか、
-    また設定を変更した時の現在の workaround が動作しなくなったりしないか)
-    それで問題がなければ注記として残してこの項目は解決した事にすれば良い。
+    zsh extension: https://unix.stackexchange.com/questions/444601/any-terminal-shell-with-mouse-support
+    fish suggestion: https://github.com/fish-shell/fish-shell/issues/4918
+    question: https://superuser.com/questions/322367/are-there-any-unix-shells-that-support-mouse-reporting
 
 2019-04-29
 
@@ -2237,7 +2229,8 @@ bash_tips
   - decode: fix a bug that `ble-update` breaks keymap cache `#D1086`
   - edit (`ble/builtin/read`): suppress noisy job messages and delay caused by vbell `#D1087` 309b9e4
   - edit (`ble/builtin/read`): workaround failglob crash on vbell inside `read` `#D1090` 2e6f44c
-  - edit: workaround a bash bug that history entries are removed by `history -p` `#D1091` 3cc9cf5
+  - edit: workaround a bash bug that history entries are removed by `history -p` `#D1091` 146f9e7
+  - edit (self-insert): workaround Bash-3.0 bug that ^? cannot be handled properly `#D1093`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3190,7 +3183,99 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-05-28
+
+  * bash-3.0 で  ^V^V^V^? を入力すると stackdump が出る [#D1093]
+    bash-3.1 以降では再現しない。
+
+    stackdump: X1 0 <= beg:1 <= end:2 <= iN:1, beg:1 <= end0:1 (shift=1 text=)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:9125 (ble/syntax/parse)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (ble-edit/content/update-syntax)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:3954 (ble/highlight/layer:syntax/update)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:5 (ble/highlight/layer/update)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:9855 (ble/textarea#update-text-buffer)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:7295 (ble/textarea#render)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3705 (ble-edit/bind/.tail)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:58 (ble-decode/EPILOGUE)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble-decode/.hook)
+
+    どうやら文字列の長さが 1 になってしまっている様子である。
+    本来期待するのは ^V^? という内容である。うーん。
+    $ ble/util/c2s 127; v=^V$ret; echo "${#v}"
+    の結果はちゃんと 2 になっているので本質的に対応が難しいという訳ではなさそう。
+    quoted insert について調べる。
+
+    どうも edit.sh ble-edit/content/update-syntax で ble/syntax/parse を呼び出す時に、
+    末尾にある ^? が消滅してしまうという問題が発生している様である。
+
+    $ bash-3.0
+    $ function f1 { a=$'\177'; b=a$a; f2 "$b"; }; function f2 { echo "${#1}"; }; f1
+    1
+    $ bash-3.1
+    $ function f1 { a=$'\177'; b=a$a; f2 "$b"; }; function f2 { echo "${#1}"; }; f1
+    2
+
+    うーん。つまり bash-3.0 では全般に引数として ^? で終わる物を渡す事ができないという事になる。
+    workaround について試してみたが、"$b""" としても"""$b""" としても駄目であった。
+    $b と裸で引数に渡してみたら大丈夫だったが、これだと空白類やグロブ文字を含んでいる時に駄目である。
+
+    a 代替手段として ^? を入力したい場合には
+      bash 3.0 では別の Unicode 文字を入れるという手もあるかもしれない。
+      実行する時にだけ ^? に置換して実行を行う。
+      うーん。可也汚い方法ではあるが動かない事はないのではという気がする。
+      面倒なのは文字幅や表示を ^? に変換するという処理が必要な事。
+
+      x 然し、そうしたとしても bash_history に記録されている ^? もある。
+        これも全て変換するとするととても面倒である。
+      x また、入力文字列以外のあらゆるユーティリティ関数についても
+        ^? に対する処理に問題があるという事になり、
+        これは入力された文字列の表現を変更してもどうにもならない。
+      x 代替文字に対して s2c を実行した時の振る舞いも変更しなければならない。
+
+    b 或いは bash-3.0 では単に ^? の入力を無効にするか。
+      元々 ^@ は入力できないのだからそれと似たような意味の
+      ^? も入力できなくて仕方がないのではないか。
+
+    中途半端な対応をしても仕方がない気がする。
+    一応単純な対策として b を採用する事にする。。
+
 2019-05-27
+
+  * 2019-05-24 edit: 実は rlvar bind-tty-special-chars で C-u C-v C-w の bind の振る舞いが変わる? [#D1092]
+    http://lists.gnu.org/archive/html/bug-bash/2019-05/msg00069.html
+
+    →これに対する workaround は既に @decode.bind.uvw で実行している。
+    既にこの rlvar の設定がどうなっていたとしても動作する様になっているので、
+    わざわざ現在の workaround を bind-tty-special-chars の設定に置き換える必要はない。
+    然し、この rlvar の動作については確認しておく必要がある。
+
+    一応 rlvar bind-tty-special-chars の設定を変更した時の振る舞いについて調べて、
+    (設定を変更した時にこの workaround が不要になるのかどうか、
+    また設定を変更した時の現在の workaround が動作しなくなったりしないか)
+    それで問題がなければ注記として残してこの項目は解決した事にすれば良い。
+
+    | うーん。今確認すると manual attach にしてもしなくても uvw の対策無しで動いて見える。
+    | % uvw の中で builtin bind -X | grep '[UVW?]' を実行してみると bind されていない。
+    | % 対策を施した直後でも bind されていない。これはどういう事か。
+    | % 実は UVW? では捕まえられない?→ grep 'C-[uvw?]' にしたらちゃんと取れた。
+    | % 何れの場合でも少なくとも表面上は取れている。
+    |
+    | bind 'set bind-tty-special-chars on' にしても off にしても bind の変化はない。
+    | どうも bind-tty-special-chars が追加されたのは bash-3.1 の様である。
+    | 然し bash 3.0 で試しても特に問題が発生している様子は見られない。
+    |
+    | #D0003 を確認すると別の関数に配置した時点で問題が発生しなくなったという様に書かれている。
+    | つまり現在の実装では実は問題になっていない、という事なのだろうか。
+    | しかし #D0329 を確認してみると問題が発生していた様である。
+    | Bash 4.3 で再現した。Bash 4.4 でも再現した。
+    |
+    | builtin bind -X は一度 bind されると xmap に情報が残ってしまうので確認には使えなかった。
+    | 実際には bind -p を使って確認する必要があったのである。
+
+    試してみたところ set bind-tty-special-chars on の時には ^U ^V ^W ^? の上書きが必要になった。
+    つまり self-insert が勝手に設定されている。
+    set bind-tty-special-chars off の時には特に必要ない様である。
+    何れにしてもこの設定の変更によって何か問題が起こることはないようだ。
 
   * 2019-05-09 edit: source ble.sh (--attach=prompt) だと source に使ったコマンドの履歴が残らない? [#D1091]
     というかコマンド履歴が一切無効化されている気がする?
@@ -3282,7 +3367,7 @@ bash_tips
       % というか Bash 4.4 でも再現しなくなった。
       % 何か特別な履歴項目の数などがあるのだろうか。。
       % screen の記録を探ると以下の .bash_history の内容で再現していた筈。
-      % 
+      %
       % $ tail ~/.bash_history                                                                                                                                                                    ble.sh master (2e6f44c)
       % screen -dr
       % screen -dr
@@ -3294,11 +3379,11 @@ bash_tips
       % history | tail
       % echo test1234
       % history | tail
-      % 
+      %
       % .bash_history の内容を削って再度試してみる事にする。
       % うーん。再現しない。と思ったら history の内容が追記されて増えていた。
       % また減らして調べる必要がある。減らしてみたら再現した。
-      % 
+      %
       % うーん。複数の要素が絡み合っているので再現するかどうか判定する為には
       % 一時的に history -s を無効にしておかなければならない。
       % というか寧ろ history 1 を繰り返し実行しても変化しないという事こそが

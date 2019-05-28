@@ -2225,12 +2225,14 @@ function ble/widget/.ble-decode-char {
 
 # **** ^U ^V ^W ^? 対策 ****                                   @decode.bind.uvw
 
+# ref #D0003, #D1092
 _ble_decode_bind__uvwflag=
 function ble-decode-bind/uvw {
   [[ $_ble_decode_bind__uvwflag ]] && return
   _ble_decode_bind__uvwflag=1
 
   # 何故か stty 設定直後には bind できない物たち
+  # Note: bind 'set bind-tty-special-chars on' の時に以下が必要である (#D1092)
   builtin bind -x '"":ble-decode/.hook 21; builtin eval "$_ble_decode_bind_hook"'
   builtin bind -x '"":ble-decode/.hook 22; builtin eval "$_ble_decode_bind_hook"'
   builtin bind -x '"":ble-decode/.hook 23; builtin eval "$_ble_decode_bind_hook"'
