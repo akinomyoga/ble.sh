@@ -1644,11 +1644,18 @@ function ble/complete/source:argument/.compvar-perform-wordbreaks {
 
   ret=()
   while local head=${word%%["$wordbreaks"]*}; [[ $head != $word ]]; do
-    ble/array#push ret "$head" "${word:${#head}:1}"
-    word=${word:${#head}+1}
+    # Note: #D1094 bash の動作に倣って wordbreaks の連続は一つにまとめる。
+    ble/array#push ret "$head"
+    word=${word:${#head}}
+    head=${word%%[!"$wordbreaks"]*}
+    ble/array#push ret "$head"
+    word=${word:${#head}}
   done
 
-  [[ $word ]] && ble/array#push ret "$word"
+  # Note: #D1094 $word が空の時でも ret に push する。
+  #   $word が空の時は wordbreaks で終わっている事を意味するが、
+  #   その場合には wordbreaks の次に新しい単語を開始していると考える。
+  ble/array#push ret "$word"
 }
 ## 関数 ble/complete/source:argument/.compvar-generate-subwords word1
 ##   word1 を COMP_WORDBREAKS で分割します。
@@ -1768,7 +1775,7 @@ function ble/complete/source:argument/.compvar-initialize {
     local words flag_evaluated=
     ble/complete/source:argument/.compvar-generate-subwords "$word1"
 
-    local w wq o=0 p
+    local w wq i=0 o=0 p
     for w in "${words[@]}"; do
       # @var p
       #   現在の単語片の内部におけるカーソルの位置。
@@ -1776,8 +1783,10 @@ function ble/complete/source:argument/.compvar-initialize {
       p=
       if [[ $point ]]; then
         ((p=point-o))
-        ((p<=${#w})) || p=
-        ((o+=${#w}))
+        # Note: #D1094 境界上にいる場合には偶数番目の単語片
+        #   (非 wordbreaks) に属させる。
+        ((i%2==0?p<=${#w}:p<${#w})) || p=
+        ((o+=${#w},i++))
       fi
       # カーソルが subword の境界にある時は左側の subword に属させる。
       # 右側の subword で処理が行われない様に point をクリア。

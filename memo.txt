@@ -3183,6 +3183,68 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-06-05
+
+  * complete: = が含まれるファイル名について補完すると = より前の部分が重複する [#D1094]
+
+    例えば hello= という状態で補完しようとすると hellohello=... という
+    候補が生成されてしまう。complete -r とすると治るので、
+    これは bash-completion を呼び出す時の問題である。
+
+    | function ble/complete/minimal1 {
+    |   ble/debug/print-variables COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY COMP_WORDS >>/dev/pts/14
+    |   _minimal "$@"
+    |   ble/debug/print-variables COMPREPLY >>/dev/pts/14
+    | }
+    | complete -F ble/complete/minimal1 echo
+
+    先ずは bash のプログラム補完で呼び出した時の結果。
+
+      COMP_LINE='echo b=' COMP_POINT='7' COMP_CWORD='2' COMP_TYPE='9' COMP_KEY='9' COMP_WORDS=('echo' 'b' '=')
+      COMPREPLY=('b=hello1' 'b=hello2' 'b=hello3' 'b=hello4' 'b=hello5' 'b=hello6' 'b=hello7' 'b=hello8' 'b=hello9')
+
+    ble.sh の枠組みで呼び出した時にはどうなるかというと。
+
+      COMP_LINE='echo b=' COMP_POINT='7' COMP_CWORD='2' COMP_TYPE='9' COMP_KEY='9' COMP_WORDS=('echo' 'b' '=')
+      COMPREPLY=('b=hello1' 'b=hello2' 'b=hello3' 'b=hello4' 'b=hello5' 'b=hello6' 'b=hello7' 'b=hello8' 'b=hello9')
+
+    うーん。全く同じ結果になっている。という事は COMPREPLY を読み出して処理する側に問題がある。
+    うーん。その後の処理でもやはり b=hello1 的な候補がちゃんと生成されている。
+    これは挿入時の問題である様に思われる。
+
+    調べてみると progcomp_prefix が
+    ble/complete/source:argument/.compvar-initialize で設定されている。
+
+    これに対して bash はどの様に動くのだろうか…。
+    と思ったら変な動き方をしている。b=b\=hello という具合に補完されている。
+    つまりどういう事かというと bash-completion の動作の方がおかしい。
+    一方で = に対して b=hello という候補を生成している時に、
+    ble.sh は = を b=hello に置き換える様に動作するが、
+    bash は = の続きに "b=hello" を追記する様に動作している気がする。
+    これに対する対策は必要になるだろうか、というか bash の振る舞いがどういう事なのか確認したい。
+    例えば生成した候補が = で始まる場合にも = が重複して挿入されるのだろうか。。
+    うーん。どうやら = が重複して挿入される様子である。
+
+    うーん。COMP_CWORD 及び COMP_WORDS を確認する限りは生成候補は '=' の補完に使われる様に見える。
+    然し、実際には = の更に次に新しい単語があるとして補完が実行されている気がする。
+    うーん。bash-5.0 も bash-3.2 も同様の動作である。
+
+    * done: 試していて気付いたが bash は連続する : や = を繋いで一つの単語としている。
+      ble.sh では : や = を 1 文字ずつ全部分解して取り扱っている。
+      ble.sh でも : や = を繋げて一つの単語片として取り扱う事にした。
+
+    取り敢えず bash-completion が動く様にするかどうかについては置いておく事にして、
+    = や : がある場合にはその直後から補完を開始する様にする事にする。
+    その為に空の単語片を登録する事にして、更にカーソルを偶数番目の単語片に属させる事とした。
+
+    以下にテストに用いた補完設定を残す。
+
+    | function ble/complete/minimal1 {
+    |   ble/debug/print-variables COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY COMP_WORDS >>/dev/pts/14
+    |   COMPREPLY=('b=world')
+    | }
+    | complete -F ble/complete/minimal1 echo
+
 2019-05-28
 
   * bash-3.0 で  ^V^V^V^? を入力すると stackdump が出る [#D1093]
