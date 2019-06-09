@@ -2495,7 +2495,6 @@ fi
 
 function ble-syntax/highlight/filetype {
   local file="$1" _0="$2"
-  [[ ! -e "$file" && ( $file == '~' || $file == '~/'* ) ]] && file="$HOME${file:1}"
   if [[ -d $file ]]; then
     ((type=ATTR_FILE_DIR))
   elif [[ -h $file ]]; then
