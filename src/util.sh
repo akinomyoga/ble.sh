@@ -718,7 +718,9 @@ function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$*" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
 }
 function ble/string#escape-for-bash-specialchars {
-  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{'
+  # Note: = と : は文法的にはエスケープは不要だが
+  #   補完の際の COMP_WORDBREAKS を避ける為に必要である。
+  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^=:{'
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
     a=']'   b=\\$a     ret=${ret//"$a"/$b}
@@ -727,7 +729,7 @@ function ble/string#escape-for-bash-specialchars {
   fi
 }
 function ble/string#escape-for-bash-specialchars-in-brace {
-  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^{,}'
+  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^=:{,}'
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
     a=']'   b=\\$a     ret=${ret//"$a"/$b}

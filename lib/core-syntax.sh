@@ -1146,10 +1146,10 @@ function ble/syntax:bash/simple-word/evaluate-last-brace-expansion {
 ##     word に対して不完全なブレース展開と引用符を閉じ、ブレース展開した結果を返します。
 ##
 ##   @var[out] simple_flags
-##     引用符 $"..." を閉じた時に simple_flags='$"' を設定します。
-##     引用符 "..." を閉じた時に simple_flags='"' を設定します。
-##     引用符 '...' を閉じた時に simple_flags=\' を設定します。
-##     引用符 $'...' を閉じた時に simple_flags=\$\' を設定します。
+##     引用符 $"..." を閉じた時に simple_flags=I を設定します。
+##     引用符 "..." を閉じた時に simple_flags=D を設定します。
+##     引用符 $'...' を閉じた時に simple_flags=E を設定します。
+##     引用符 '...' を閉じた時に simple_flags=S を設定します。
 ##
 ##   @var[out] simple_ibrace=ibrace:jbrace
 ##     ブレース展開の構造を破壊せずに変更できる最初の位置を返します。
@@ -1305,6 +1305,18 @@ function ble/syntax:bash/simple-word/eval {
   return "$ext"
 }
 
+## 関数 ble/syntax:bash/simple-word/.get-rex_element sep
+##   指定した分割文字 (sep) で区切られた単純単語片に一致する正規表現を構築します。
+##   @var[out] rex_element
+function ble/syntax:bash/simple-word/.get-rex_element {
+  local sep=$1
+  local param=$_ble_syntax_bash_simple_rex_param
+  local bquot=$_ble_syntax_bash_simple_rex_bquot
+  local squot=$_ble_syntax_bash_simple_rex_squot
+  local dquot=$_ble_syntax_bash_simple_rex_dquot
+  local letter1='[^'$sep$_ble_syntax_bashc_simple']'
+  rex_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
+}
 ## 関数 ble/syntax:bash/simple-word/evaluate-path-spec path_spec [sep]
 ##   @param[in] path_spec
 ##   @param[in,opt] sep (default: '/:=')
@@ -1334,13 +1346,8 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   [[ :$opts: == *:notilde:* ]] && notilde=\'\' # チルダ展開の抑制
 
   # compose regular expressions
-  local param=$_ble_syntax_bash_simple_rex_param
-  local bquot=$_ble_syntax_bash_simple_rex_bquot
-  local squot=$_ble_syntax_bash_simple_rex_squot
-  local dquot=$_ble_syntax_bash_simple_rex_dquot
-  local letter1='[^'$sep$_ble_syntax_bashc_simple']'
-  local rex_path_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
-  local rex='^['$sep']?'$rex_path_element'|^['$sep']'
+  local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
+  local rex='^['$sep']?'$rex_element'|^['$sep']'
 
   local tail=$word s= p=
   while [[ $tail =~ $rex ]]; do
@@ -1365,13 +1372,8 @@ function ble/syntax:bash/simple-word/locate-filename {
   [[ :$opts: == *:noglob:* ]] && eval_word=ble/syntax:bash/simple-word/eval-noglob
 
   # compose regular expressions
-  local param=$_ble_syntax_bash_simple_rex_param
-  local bquot=$_ble_syntax_bash_simple_rex_bquot
-  local squot=$_ble_syntax_bash_simple_rex_squot
-  local dquot=$_ble_syntax_bash_simple_rex_dquot
-  local letter1='[^'$sep$_ble_syntax_bashc_simple']'
-  local rex_path_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
-  local rex='^'$rex_path_element'['$sep']|^['$sep']'
+  local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
+  local rex='^'$rex_element'['$sep']|^['$sep']'
 
   local tail=$word p=0
   while
@@ -1382,6 +1384,45 @@ function ble/syntax:bash/simple-word/locate-filename {
     tail=${tail:${#BASH_REMATCH}}
   done
   ret=$p
+  return 0
+}
+
+## 関数 ble/syntax:bash/simple-word#break-word word sep
+##   単語を指定した分割子で分割します。評価は行いません。
+##   progcomp で単語を COMP_WORDBREAKS で分割するのに使います。
+##   例えば a==b:c\=d に対して ret=(a == b : c=d) という結果を生成します。
+##
+##   @param[in] word
+##     前提: simple-word/is-simple である必要があります。
+##
+##   @arr[out] ret
+##     単語片を含む配列を返します。
+##     偶数番目の要素は分割子以外の文字列です。
+##     奇数番目の要素は分割子からなる文字列です。
+##
+function ble/syntax:bash/simple-word#break-word {
+  local word=$1 sep=${2:-':='}
+  if [[ ! $word ]]; then
+    ret=('')
+    return 0
+  fi
+
+  sep=${sep//[\"\'\$\`]}
+
+  # compose regular expressions
+  local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
+  local rex='^('$rex_element')?['$sep']+'
+
+  local -a out=()
+  local tail=$word p=0
+  while [[ $tail =~ $rex ]]; do
+    local rematch1=${BASH_REMATCH[1]}
+    ble/array#push out "$rematch1"
+    ble/array#push out "${BASH_REMATCH:${#rematch1}}"
+    tail=${tail:${#BASH_REMATCH}}
+  done
+  ble/array#push out "$tail"
+  ret=("${out[@]}")
   return 0
 }
 

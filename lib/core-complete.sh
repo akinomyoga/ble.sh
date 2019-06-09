@@ -1667,6 +1667,98 @@ function ble/complete/source:argument/.compvar-perform-wordbreaks {
   #   その場合には wordbreaks の次に新しい単語を開始していると考える。
   ble/array#push ret "$word"
 }
+
+## 関数 ble/complete/source:argument/.compvar-generate-subwords/impl1 word
+##   $wordbreaks で分割してから評価する戦略。
+##
+##   @param word
+##   @arr[out] words
+##   @var[in,out] point
+##   @var[in] wordbreaks
+##   @exit
+##     単純単語として処理できなかった場合に失敗します。
+##     それ以外の場合は 0 を返します。
+function ble/complete/source:argument/.compvar-generate-subwords/impl1 {
+  local word=$1 ret simple_flags simple_ibrace
+  if [[ $point ]]; then
+    # point で単語を前半と後半に分割
+    local left=${word::point} right=${word:point}
+  else
+    local left=$word right=
+    local point= # hide
+  fi
+
+  ble/syntax:bash/simple-word/reconstruct-incomplete-word "$left" || return 1
+  left=$ret
+  if [[ $right ]]; then
+    case $simple_flags in
+    (*I*) right=\$\"$right ;;
+    (*D*) right=\"$right ;;
+    (*E*) right=\$\'$right ;;
+    (*S*) right=\'$right ;;
+    (*B*) right=\\$right ;;
+    esac
+    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$right" || return 1
+    right=$ret
+  fi
+
+  point=0 words=()
+
+  # 単語毎に評価 (前半)
+  local evaluator=eval-noglob
+  ((${#ret[@]}==1)) && evaluator=eval
+  ble/syntax:bash/simple-word#break-word "$left"
+  local subword
+  for subword in "${ret[@]}"; do
+    ble/syntax:bash/simple-word/"$evaluator" "$subword"
+    ble/array#push words "$ret"
+    ((point+=${#ret}))
+  done
+
+  # 単語毎に評価 (後半)
+  if [[ $right ]]; then
+    ble/syntax:bash/simple-word#break-word "$right"
+    local subword isfirst=1
+    for subword in "${ret[@]}"; do
+      ble/syntax:bash/simple-word/eval-noglob "$subword"
+      if [[ $isfirst ]]; then
+        isfirst=
+        local iword=${#words[@]}; ((iword&&iword--))
+        words[iword]=${words[iword]}$ret
+      else
+        ble/array#push words "$ret"
+      fi
+    done
+  fi
+  return 0
+}
+## 関数 ble/complete/source:argument/.compvar-generate-subwords/impl1 word
+##   評価してから $wordbreaks で分割する戦略。
+##
+##   @param word
+##   @arr[out] words
+##   @var[in,out] point
+##   @var[in] wordbreaks
+##   @exit
+##     単純単語として処理できなかった場合に失敗します。
+##     それ以外の場合は 0 を返します。
+function ble/complete/source:argument/.compvar-generate-subwords/impl2 {
+  local word=$1
+  ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word" || return 1
+
+  ble/syntax:bash/simple-word/eval "$ret"; local value1=$ret
+  if [[ $point ]]; then
+    if ((point==${#word})); then
+      point=${#value1}
+    elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "${word::point}"; then
+      ble/syntax:bash/simple-word/eval "$ret"
+      point=${#ret}
+    fi
+  fi
+
+  ble/complete/source:argument/.compvar-perform-wordbreaks "$value1"; words=("${ret[@]}")
+  return 0
+}
 ## 関数 ble/complete/source:argument/.compvar-generate-subwords word1
 ##   word1 を COMP_WORDBREAKS で分割します。
 ##
@@ -1675,6 +1767,7 @@ function ble/complete/source:argument/.compvar-perform-wordbreaks {
 ##
 ##   @var[in,out] flag_evaluated
 ##   @var[in,out] point
+##   @var[in] wordbreaks
 ##
 ## Note: 全体が単純単語になっている時には先に eval して COMP_WORDBREAKS で分割する。
 ##   この時 flag_evaluated=1 を設定する。
@@ -1688,19 +1781,12 @@ function ble/complete/source:argument/.compvar-generate-subwords {
     #   仕方がないので空文字列のままで登録する事にする。
     flag_evaluated=1
     words=('')
-  elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word1"; then
-    ble/syntax:bash/simple-word/eval "$ret"; local value1=$ret
-    if [[ $point ]]; then
-      if ((point==${#word1})); then
-        point=${#value1}
-      elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "${word1::point}"; then
-        ble/syntax:bash/simple-word/eval "$ret"
-        point=${#ret}
-      fi
-    fi
-
+  elif ble/complete/source:argument/.compvar-generate-subwords/impl1 "$word1"; then
+    # 初めに、先に分割してから評価する戦略を試す。
     flag_evaluated=1
-    ble/complete/source:argument/.compvar-perform-wordbreaks "$value1"; words=("${ret[@]}")
+  elif ble/complete/source:argument/.compvar-generate-subwords/impl2 "$word1"; then
+    # 次に、評価してから分割する戦略を試す。
+    flag_evaluated=1
   else
     ble/complete/source:argument/.compvar-perform-wordbreaks "$word1"; words=("${ret[@]}")
   fi
