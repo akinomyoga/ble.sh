@@ -1300,6 +1300,10 @@ function ble/syntax:bash/simple-word/eval {
 ##   @param[in,opt] sep (default: '/:=')
 ##   @arr[out] spec
 ##   @arr[out] path
+##   @arr[out] ret
+##     path_spec 全体を評価した時の結果を返します。
+##     パス名展開によって複数のパスに展開された場合に、
+##     全ての展開結果を含む配列になります。
 ##
 ##   指定した path_spec を sep に含まれる文字で区切ってルートから末端まで順に評価します。
 ##   各階層までの評価の対象を spec に評価の結果を path に追加します。
@@ -5144,7 +5148,6 @@ fi
 function ble/syntax/highlight/filetype {
   local file=$1
   type=
-  [[ ( $file == '~' || $file == '~/'* ) && ! ( -e $file || -h $file ) ]] && file=$HOME${file:1}
   if [[ -h $file ]]; then
     if [[ -e $file ]]; then
       ((type=ATTR_FILE_LINK))

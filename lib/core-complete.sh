@@ -2044,7 +2044,7 @@ function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
     word1=${word1:fixlen}
   fi
 
-  local spec path spec0 path0 spec1 path1
+  local ret spec path spec0 path0 spec1 path1
   ble/syntax:bash/simple-word/evaluate-path-spec "$word0"; spec0=("${spec[@]}") path0=("${path[@]}")
   ble/syntax:bash/simple-word/evaluate-path-spec "$word1"; spec1=("${spec[@]}") path1=("${path[@]}")
   local i=${#path1[@]}
@@ -2065,7 +2065,8 @@ function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
 ##   @var[out] ret
 function ble/complete/candidates/determine-common-prefix {
   # 共通部分
-  local common=${cand_word[0]} clen=${#cand_word[0]}
+  local common=${cand_word[0]}
+  local clen=${#common}
 
   if ((cand_count>1)); then
     # setup ignore case

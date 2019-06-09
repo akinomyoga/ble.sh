@@ -42,7 +42,7 @@ ble-test/check-ret ble-test:ble/syntax:bash/simple-word/reconstruct-incomplete-w
 ble-test/check-ret ble-test:ble/syntax:bash/simple-word/reconstruct-incomplete-word 'a{{c,dx$"aa'          'I:[5:1]:adx$"aa"'
 
 function ble-test:ble/syntax:bash/simple-word/evaluate-path-spec {
-  local path spec
+  local ret path spec
   ble/syntax:bash/simple-word/evaluate-path-spec "$1"
   ret="${spec[*]} >>> ${path[*]}"
 }
