@@ -856,6 +856,21 @@ bash_tips
     ToDo
 ------------------------------------------------------------------------------
 
+2019-06-07
+
+  * progcomp: どうも bash は \= は COMP_WORDBREAKS の対象ではない様である
+    確かにその様に動作するのが自然に思われる。
+    これが意味する所は挿入時に COMP_WORDBREAKS に含まれる文字もエスケープする必要があるという事でもある。
+
+    現在の実装はどうなっているか。完全にクォート等を除去した上で処理している。
+    処理を行っているのは以下の部分である。
+    ble/complete/source:argument/.compvar-generate-subwords
+    ble/complete/source:argument/.compvar-perform-wordbreaks
+
+    クォートをせずに裸で存在している COMP_WORBREAKS だけについて
+    分割をするようにするにはどうしたら良いか。
+    というより既に存在している関数でその様な物はあるだろうか。
+
 2019-05-27
 
   * edit: .bash_history と常に同期する設定を ble.sh で提供しても良いのではないか。
@@ -884,11 +899,6 @@ bash_tips
     と思ったが、どうせパッチを作るのであればその時に気づく筈である。
 
 2019-04-21
-
-  * syntax: ファイル名の着色でディレクトリ部分の着色を別にする事が可能なのではないか。
-    特に simple-word に於いて / で区切られる場合について
-    各 pathspec に対しての展開を既に実装していた気がする。
-    これを利用すればディレクトリ部分を切り離して着色する事が可能なのではないか。
 
   * 実は背景色を判定する方法はなくはない様だ。
     https://qiita.com/kefir_/items/c2bd46728364bdc7470b
@@ -2049,11 +2059,6 @@ bash_tips
     1 コマンドライン着色の効率的方法の模索
     > 2 shift の高速化の為の _ble_syntax_word, etc. のデータ構造の変更
 
-2015-06-28
-
-  * color: --prefix=filename の filename 部分 (ref #D0839, #D0840)
-    単語に対して部分的な着色をする場合、現在の単語毎の着色ではない方法を考えるべき。
-
 2015-02-24
 
   * layer の仕組みに対する問題提起
@@ -2202,6 +2207,7 @@ bash_tips
   - edit: support `$?` in `PROMPT_COMMAND` and `PS1` evaluation `#D1074` 43f2967
   - main: change default attach strategy to `--attach=prompt` `#D1076` 197f752
   - main: change exit status of `ble-update` when it is already upto date `#D1081` d94f691
+  - progcomp: improve treatment of `COMP_WORDBREAKS` `#D1094` f6740b5
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2231,6 +2237,7 @@ bash_tips
   - edit (`ble/builtin/read`): workaround failglob crash on vbell inside `read` `#D1090` 2e6f44c
   - edit: workaround a bash bug that history entries are removed by `history -p` `#D1091` 146f9e7
   - edit (self-insert): workaround Bash-3.0 bug that ^? cannot be handled properly `#D1093`
+  - highlight: fix a bug that quoted tilde expansions are processed for filename highlighting `#D1095`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3182,6 +3189,62 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-06-09
+
+  * 2015-06-28 color: --prefix=filename の filename 部分 (ref #D0839, #D0840, #D1095) [#D1096]
+    単語に対して部分的な着色をする場合、現在の単語毎の着色ではない方法を考えるべき。
+    → #D1095 で完全に対応した。
+
+  * 2019-04-21 syntax: ファイル名の着色でディレクトリ部分の着色を別にする事が可能なのではないか [#D1095]
+    特に simple-word に於いて / で区切られる場合について
+    各 pathspec に対しての展開を既に実装していた気がする。
+    これを利用すればディレクトリ部分を切り離して着色する事が可能なのではないか。
+
+    また単語の途中で着色を変更する枠組みも既に用意してあった筈。
+
+    * 確か = または : の後だけファイル名着色する時に使っていた。
+      と思ったら = または : の後にある単語の着色は有効になっていない…。
+      これは 2015-06-28 から todo にずっと残っている項目である。
+
+    取り敢えず着色を行っている箇所を調べる事にする。
+    実装は ble/highlight/layer:syntax/word/.update-attributes/.proc で行われている。
+    単語着色の中でもファイル名の着色は特に ble/syntax/highlight/filetype を呼び出した後に行われている。
+
+    * fixed: ble/syntax:bash/simple-word/evaluate-path-spec の実装を確認する。
+      glob がある時に failglob で全然駄目になる様な気がする…。
+      取り敢えず修正してみる事にする。
+      試してみたところやはり駄目だった。修正が必要である。
+      修正した。動いている気がする。OK
+
+    * done: 一応単語の中に = や : が存在する時にはそれ以降をファイル名と解釈する様にした。
+
+    x resolved: しかしこれだとチルダ展開が起こらない文脈でもチルダ展開を前提とした着色になってしまいややこしい。
+      →途中からの着色の場合 ATTR_TILDE が設定されていなければチルダ展開を抑制する事にした。
+
+    x fixed: 何故かチルダ展開を抑制しているのにチルダが着色される。
+      というか echo '~' としてもチルダ展開が内部で実行されている気がする…。
+      調べてみると filetype の中で明示的に ~ を処理している様だ。
+      これは恐らく昔展開を実行する前のコードなので今は消して良いだろうと思われる。
+      念の為呼び出し元を一つずつ確認していく事にする。
+
+      - core-complete.sh からの呼び出しでは CAND を渡している。
+        CAND にはファイル名が入っていると考えている。
+        チルダに置換して短縮した名前は INSERT の方に入っている筈である。
+      - 他に core-syntax.sh ble/syntax/highlight/getg-from-filename
+        からの呼び出しがある。これはやはり core-complete.sh から CAND
+        を渡して処理する物である。
+      - 他は現在の実装部分だけである。
+
+    x fixed: a= の形式の補完でディレクトリ名の後に / が挿入されないのは不便だ
+      →うーん。原因が分かった。cand/yield file で a= の部分も一緒に渡すので、
+      tail 設定のためのファイル名・ディレクトリ名判定が働かないのである。
+      いや、yield というより最後の complete の時の処理である。
+      これに関しては取り敢えず新しい action:file_rhs を追加して実装する事にした。
+
+    x filename/aaaa とした時に filename/ までが着色されてしまう。
+      ファイル名はディレクトリとして取り扱えないのでこれは不自然。
+      前置部分の着色をする時にはディレクトリかどうかのチェックを実行する事にした。
 
 2019-06-05
 

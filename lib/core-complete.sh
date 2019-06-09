@@ -1043,7 +1043,7 @@ function ble/complete/action:substr/initialize { ble/complete/action:word/initia
 function ble/complete/action:substr/complete { :; }
 
 # action:file
-
+# action:file_rhs (source:argument 内部使用)
 function ble/complete/action:file/initialize {
   ble/complete/action/util/quote-insert
 }
@@ -1070,6 +1070,16 @@ function ble/complete/action:file/init-menu-item {
     fi
   fi
 }
+function ble/complete/action:file_rhs/initialize {
+  ble/complete/action/util/quote-insert
+}
+function ble/complete/action:file_rhs/complete {
+  CAND=${CAND:${#DATA}} ble/complete/action:file/complete
+}
+function ble/complete/action:file_rhs/init-menu-item {
+  CAND=${CAND:${#DATA}} ble/complete/action:file/init-menu-item
+}
+
 _ble_complete_action_file_desc[_ble_attr_FILE_LINK]='symbolic link'
 _ble_complete_action_file_desc[_ble_attr_FILE_ORPHAN]='symbolic link (orphan)'
 _ble_complete_action_file_desc[_ble_attr_FILE_DIR]='directory'
@@ -2145,7 +2155,7 @@ function ble/complete/source:argument {
       for cand in "${ret[@]}"; do
         [[ -e $cand || -h $cand ]] || continue
         [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
-        ble/complete/cand/yield file "$prefix$cand"
+        ble/complete/cand/yield file_rhs "$prefix$cand" "$prefix"
       done
     fi
   fi
@@ -2855,7 +2865,7 @@ function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
     word1=${word1:fixlen}
   fi
 
-  local spec path spec0 path0 spec1 path1
+  local ret spec path spec0 path0 spec1 path1
   ble/syntax:bash/simple-word/evaluate-path-spec "$word0"; spec0=("${spec[@]}") path0=("${path[@]}")
   ble/syntax:bash/simple-word/evaluate-path-spec "$word1"; spec1=("${spec[@]}") path1=("${path[@]}")
   local i=${#path1[@]}
@@ -2876,7 +2886,8 @@ function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
 ##   @var[out] ret
 function ble/complete/candidates/determine-common-prefix {
   # 共通部分
-  local common=${cand_word[0]} clen=${#cand_word[0]}
+  local common=${cand_word[0]}
+  local clen=${#common}
 
   if ((cand_count>1)); then
     # setup ignore case

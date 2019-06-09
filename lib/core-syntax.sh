@@ -1310,6 +1310,10 @@ function ble/syntax:bash/simple-word/eval {
 ##   @param[in,opt] sep (default: '/:=')
 ##   @arr[out] spec
 ##   @arr[out] path
+##   @arr[out] ret
+##     path_spec 全体を評価した時の結果を返します。
+##     パス名展開によって複数のパスに展開された場合に、
+##     全ての展開結果を含む配列になります。
 ##
 ##   指定した path_spec を sep に含まれる文字で区切ってルートから末端まで順に評価します。
 ##   各階層までの評価の対象を spec に評価の結果を path に追加します。
@@ -1319,8 +1323,15 @@ function ble/syntax:bash/simple-word/eval {
 ##   という結果が得られます。
 ##
 function ble/syntax:bash/simple-word/evaluate-path-spec {
-  local word=$1 sep=${2:-'/:='}
-  spec=() path=()
+  local word=$1 sep=${2:-'/:='} opts=$3
+  ret=() spec=() path=()
+  [[ $word ]] || return 0
+
+  # read options
+  local eval_word=ble/syntax:bash/simple-word/eval
+  [[ :$opts: == *:noglob:* ]] && eval_word=ble/syntax:bash/simple-word/eval-noglob
+  local notilde=
+  [[ :$opts: == *:notilde:* ]] && notilde=\'\' # チルダ展開の抑制
 
   # compose regular expressions
   local param=$_ble_syntax_bash_simple_rex_param
@@ -1329,19 +1340,49 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   local dquot=$_ble_syntax_bash_simple_rex_dquot
   local letter1='[^'$sep$_ble_syntax_bashc_simple']'
   local rex_path_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
-  local rex='^['$sep']?'$rex_path_element
+  local rex='^['$sep']?'$rex_path_element'|^['$sep']'
 
   local tail=$word s= p=
   while [[ $tail =~ $rex ]]; do
     local rematch=$BASH_REMATCH
-    ble/syntax:bash/simple-word/eval "$rematch"
-    s=$s${tail::${#rematch}}
-    p=$p$ret
+    s=$s$rematch
+    "$eval_word" "$notilde$s"
+    p=$ret
     tail=${tail:${#rematch}}
     ble/array#push spec "$s"
     ble/array#push path "$p"
   done
-  [[ ! $tail ]]
+  [[ $p && ! $tail ]]
+}
+
+function ble/syntax:bash/simple-word/locate-filename {
+  local word=$1 sep=${2:-':='}
+  ret=0
+  [[ $word ]] || return 0
+
+  # prepare evaluator
+  local eval_word=ble/syntax:bash/simple-word/eval
+  [[ :$opts: == *:noglob:* ]] && eval_word=ble/syntax:bash/simple-word/eval-noglob
+
+  # compose regular expressions
+  local param=$_ble_syntax_bash_simple_rex_param
+  local bquot=$_ble_syntax_bash_simple_rex_bquot
+  local squot=$_ble_syntax_bash_simple_rex_squot
+  local dquot=$_ble_syntax_bash_simple_rex_dquot
+  local letter1='[^'$sep$_ble_syntax_bashc_simple']'
+  local rex_path_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
+  local rex='^'$rex_path_element'['$sep']|^['$sep']'
+
+  local tail=$word p=0
+  while
+    "$eval_word" "$tail" && [[ -e $ret || -h $ret ]] && break
+    [[ $tail =~ $rex ]]
+  do
+    ((p+=${#BASH_REMATCH}))
+    tail=${tail:${#BASH_REMATCH}}
+  done
+  ret=$p
+  return 0
 }
 
 #------------------------------------------------------------------------------
@@ -5175,7 +5216,6 @@ fi
 function ble/syntax/highlight/filetype {
   local file=$1
   type=
-  [[ ( $file == '~' || $file == '~/'* ) && ! ( -e $file || -h $file ) ]] && file=$HOME${file:1}
   if [[ -h $file ]]; then
     if [[ -e $file ]]; then
       ((type=ATTR_FILE_LINK))
@@ -5375,6 +5415,89 @@ function ble/highlight/layer:syntax/update-attribute-table {
   fi
 }
 
+## 関数 ble/highlight/layer:syntax/word/.update-for-filename value
+##   @param[in] value
+##   @var[in] wbeg p0 wtype
+##   @var[in] path spec
+function ble/highlight/layer:syntax/word/.update-for-filename {
+  local value=$1
+
+  local -a wattr_buff=()
+  ((wbeg<p0)) &&
+    ble/array#push wattr_buff $((p0-wbeg)):d
+
+  local npath=${#path[@]}
+  if ((npath>1)); then
+    local ipath p=$p0
+    for ((ipath=0;ipath<npath-1;ipath++)); do
+      local epath=${path[ipath]} espec=${spec[ipath]}
+      local p_end=$((p0+${#espec}+1))
+      local g=d type=
+      [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
+      [[ $type ]] && ble/syntax/attr2g "$type"
+      ble/array#push wattr_buff $((p_end-p)):$g
+      p=$p_end
+    done
+  fi
+
+  local type=
+  ble/syntax/highlight/filetype "$value"
+
+  # check values
+  if ((wtype==CTX_RDRF)); then
+    if ((type==ATTR_FILE_DIR)); then
+      # ディレクトリにリダイレクトはできない
+      type=$ATTR_ERR
+    elif ((_ble_syntax_TREE_WIDTH<=nofs)); then
+      # noclobber の時は既存ファイルを > または <> で上書きできない
+      #
+      # 仮定: _ble_syntax_word に於いてリダイレクトとファイルは同じ位置で終了すると想定する。
+      #   この時、リダイレクトの情報の次にファイル名の情報が格納されている筈で、
+      #   リダイレクトの情報は node[nofs-_ble_syntax_TREE_WIDTH] に入っていると考えられる。
+      #
+      local redirect_ntype=${node[nofs-_ble_syntax_TREE_WIDTH]:1}
+      if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>|' ) ]]; then
+        if [[ -e $value || -h $value ]]; then
+          if [[ -d $value || ! -w $value ]]; then
+            # ディレクトリまたは書き込み権限がない
+            type=$ATTR_ERR
+          elif [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' ) && -f $value ]]; then
+            if [[ -o noclobber ]]; then
+              # 上書き禁止
+              type=$ATTR_ERR
+            else
+              # 上書き注意
+              type=$ATTR_FILE_WARN
+            fi
+          fi
+        elif [[ $value == */* && ! -w ${value%/*}/ || $value != */* && ! -w ./ ]]; then
+          # ディレクトリに書き込み権限がない
+          type=$ATTR_ERR
+        fi
+      elif [[ $redirect_ntype == '<' && ! -r $value ]]; then
+        # ファイルがないまたは読み取り権限がない
+        type=$ATTR_ERR
+      fi
+    fi
+  fi
+
+  local g=
+  if [[ $bleopt_filename_ls_colors ]]; then
+    if ble/syntax/highlight/ls_colors "$value" && [[ $type == g:* ]]; then
+      local g; ble/color/face2g filename_ls_colors
+      type=g:$((${type:2}|g))
+    fi
+  fi
+  [[ $type && ! $g ]] && ble/syntax/attr2g "$type"
+
+  if ((${#wattr_buff[@]})); then
+    IFS=, eval 'node[nofs+4]="m${wattr_buff[*]},\$:${g:-d}"'
+  else
+    node[nofs+4]=${g:-d}
+  fi
+  flagUpdateNode=1
+  return 0
+}
 function ble/highlight/layer:syntax/word/.update-attributes/.proc {
   [[ ${node[nofs]} =~ ^[0-9]+$ ]] || return
   [[ ${node[nofs+4]} == - ]] || return
@@ -5394,20 +5517,27 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
   fi
 
   local type=
-  if ((wtype==CTX_RDRH||wtype==CTX_RDRI)); then
+  if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
     # ヒアドキュメントのキーワード指定部分は、
     # 展開・コマンド置換などに従った解析が行われるが、
     # 実行は一切起こらないので一色で塗りつぶす。
     ((type=wtype))
   elif local wtxt=${text:p0:p1-p0}; ble/syntax:bash/simple-word/is-simple "$wtxt"; then
-    local ret
-    if ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)); then
-      ble/syntax:bash/simple-word/eval-noglob "$wtxt"; local ext=$? value=$ret
-    else
-      ble/syntax:bash/simple-word/eval "$wtxt"; local ext=$?
-      local -a value; value=("${ret[@]}")
+    local opts=
+
+    # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
+    local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt"
+    if ((ret)); then
+      ((p0+=ret))
+      wtxt=${wtxt:ret}
+
+      # チルダ展開の抑制
+      [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && opts=$opts:notilde
     fi
 
+    ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && opts=$opts:noglob
+    local ret path spec ext value
+    ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$opts"; ext=$? value=("${ret[@]}")
     if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
       # failglob 等の理由で展開に失敗した場合
       type=$ATTR_ERR
@@ -5419,64 +5549,13 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
       if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
         ble/syntax/highlight/cmdtype "$value" "$wtxt"
       fi
-    elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
-      ((type=wtype))
     elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
-      ble/syntax/highlight/filetype "$value"
-
-      # check values
-      if ((wtype==CTX_RDRF)); then
-        if ((type==ATTR_FILE_DIR)); then
-          # ディレクトリにリダイレクトはできない
-          type=$ATTR_ERR
-        elif ((_ble_syntax_TREE_WIDTH<=nofs)); then
-          # noclobber の時は既存ファイルを > または <> で上書きできない
-          #
-          # 仮定: _ble_syntax_word に於いてリダイレクトとファイルは同じ位置で終了すると想定する。
-          #   この時、リダイレクトの情報の次にファイル名の情報が格納されている筈で、
-          #   リダイレクトの情報は node[nofs-_ble_syntax_TREE_WIDTH] に入っていると考えられる。
-          #
-          local redirect_ntype=${node[nofs-_ble_syntax_TREE_WIDTH]:1}
-          if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>|' ) ]]; then
-            if [[ -e $value || -h $value ]]; then
-              if [[ -d $value || ! -w $value ]]; then
-                # ディレクトリまたは書き込み権限がない
-                type=$ATTR_ERR
-              elif [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' ) && -f $value ]]; then
-                if [[ -o noclobber ]]; then
-                  # 上書き禁止
-                  type=$ATTR_ERR
-                else
-                  # 上書き注意
-                  type=$ATTR_FILE_WARN
-                fi
-              fi
-            elif [[ $value == */* && ! -w ${value%/*}/ || $value != */* && ! -w ./ ]]; then
-              # ディレクトリに書き込み権限がない
-              type=$ATTR_ERR
-            fi
-          elif [[ $redirect_ntype == '<' && ! -r $value ]]; then
-            # ファイルがないまたは読み取り権限がない
-            type=$ATTR_ERR
-          fi
-        fi
-      fi
-
-      if [[ $bleopt_filename_ls_colors ]]; then
-        if ble/syntax/highlight/ls_colors "$value" && [[ $type == g:* ]]; then
-          local g; ble/color/face2g filename_ls_colors
-          type=g:$((${type:2}|g))
-        fi
-      fi
+      ble/highlight/layer:syntax/word/.update-for-filename "$value" && return
     fi
   fi
 
   if [[ $type ]]; then
-    if [[ $type == g:* ]]; then
-      local g=${type:2}
-    else
-      local g; ble/syntax/attr2g "$type"
-    fi
+    local g; ble/syntax/attr2g "$type"
     if ((wbeg<p0)); then
       node[nofs+4]=m$((p0-wbeg)):d,\$:$g
     else
