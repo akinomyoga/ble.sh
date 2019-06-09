@@ -3109,7 +3109,7 @@ function ble/complete/menu-complete.class/get-desc {
 
 function ble/complete/menu-complete.class/onselect {
   local nsel=$1 osel=$2
-  local insert=$_ble_complete_menu_common_part
+  local insert=${_ble_complete_menu_original:-${_ble_complete_menu_comp[2]}}
   if ((nsel>=0)); then
     local "${_ble_complete_cand_varnames[@]}"
     ble/complete/cand/unpack "${_ble_complete_menu_items[nsel]}"
@@ -4339,11 +4339,13 @@ function ble/widget/menu_complete/exit {
 
   ble/complete/menu/clear
   _ble_edit_mark_active=
+  _ble_complete_menu_original=
 }
 function ble/widget/menu_complete/cancel {
   ble-decode/keymap/pop
   ble/complete/menu#select -1
   _ble_edit_mark_active=
+  _ble_complete_menu_original=
 }
 function ble/widget/menu_complete/accept {
   ble/widget/menu_complete/exit complete

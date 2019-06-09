@@ -2237,7 +2237,7 @@ bash_tips
   - edit (`ble/builtin/read`): workaround failglob crash on vbell inside `read` `#D1090` 2e6f44c
   - edit: workaround a bash bug that history entries are removed by `history -p` `#D1091` 146f9e7
   - edit (self-insert): workaround Bash-3.0 bug that ^? cannot be handled properly `#D1093`
-  - highlight: fix a bug that quoted tilde expansions are processed for filename highlighting `#D1095`
+  - highlight: fix a bug that quoted tilde expansions are processed for filename highlighting `#D1095` 3f1f472
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3191,6 +3191,28 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-06-09
+
+  * menu_complete: C-g でキャンセルすると何故か展開が実行されてしまう [#D1097]
+    因みに確定をした時にはちゃんと前の展開が保持される。
+
+    更にエスケープ等も消えてしまう。
+    調べてみると ble/complete/menu-complete.class/onselect で
+    local insert=$_ble_complete_menu_common_part としているのが原因である。
+    ここは menu_common_part ではなくて元々の文字列を指定するべきなのでは。
+
+    _ble_complete_menu0_comp を見たら良いだろうか?
+    と思ったがこれは候補を一番始めに表示した時の値が入っていて、
+    その後の補完や入力に依る絞り込みの状態を判定していない。
+    _ble_complete_menu_comp を観察してみるとそれらしい値が入っている気がする。
+
+    menu_common_part に代入している部分を遡ってみると何れも COMPV を代入している。
+    従って COMPV の代わりに COMPS を使う様にすれば良い筈である。
+    そしてそれは ${_ble_complete_menu_comp[2]} に入っている気がする。
+
+    と思ったが本来 menu_complete を開始する時に元々の文字列を記録しているべきなのではないか。
+    と思って調べてみると _ble_complete_menu_original にちゃんと記録してある。
+    これを使うべきなのである。と思ったが menu-complete.class は必ずしも
+    menu_complete の中からだけ呼び出されるとは限らない様だ…。
 
   * 2015-06-28 color: --prefix=filename の filename 部分 (ref #D0839, #D0840, #D1095) [#D1096]
     単語に対して部分的な着色をする場合、現在の単語毎の着色ではない方法を考えるべき。
