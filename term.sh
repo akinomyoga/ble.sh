@@ -110,7 +110,7 @@ function ble/term.sh/initialize {
   ble/term.sh/register-varname _ble_term_el2
 
   # ED
-  ble/init:term/define-cap _ble_term_ed  $'\e[J' ed
+  ble/term.sh/define-cap _ble_term_ed  $'\e[J' ed
 
   # DECSC/DECRC or SCOSC/SCORC
   ble/term.sh/define-cap _ble_term_sc $'\e[s' sc
