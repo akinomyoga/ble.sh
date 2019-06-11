@@ -146,6 +146,10 @@ bleopt/declare -n internal_ignoreeof_trap 'Use "exit" to leave the shell.'
 ##   既定値は空文字列です。
 bleopt/declare -v allow_exit_with_jobs ''
 
+## オプション history_share
+##   この変数に空文字列が設定されている時、履歴を共有します。
+bleopt/declare -v history_share ''
+
 # 
 #------------------------------------------------------------------------------
 # **** prompt ****                                                    @line.ps1
@@ -4514,6 +4518,8 @@ function ble/widget/accept-line {
   local BASH_COMMAND=$_ble_edit_str
 
   if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
+    [[ $bleopt_history_share ]] && ((_ble_bash>=30100)) &&
+      ble/builtin/history/option:n
     ble/widget/.newline keep-info
     ble/textarea#render
     ble/util/buffer.flush >&2
@@ -5361,8 +5367,8 @@ else
     # 285ms for 16437 entries
     local apos="'"
     builtin history | ble/bin/awk -v apos="'" '
-      BEGIN{
-        n="";
+      BEGIN {
+        n = "";
         print "_ble_edit_history=("
       }
 
@@ -5419,27 +5425,80 @@ else
   function ble-edit/history/clear-background-load { :; }
 fi
 
-# @var[in,out] HISTINDEX_NEXT
-#   used by ble/widget/accept-and-next to get modified next-entry positions
-function ble-edit/history/add/.command-history {
-  # 注意: bash-3.2 未満では何故か bind -x の中では常に history off になっている。
-  [[ -o history ]] || ((_ble_bash<30200)) || return
+function ble/builtin/history/.touch-histfile {
+  local touch=$_ble_base_run/$$.histfile.touch
+  : >| "$touch"
+}
+function ble/builtin/history/.get-count {
+  ble/util/assign ret 'builtin history 1'
+  ble/string#split-words ret "$ret"
+}
+## 関数 ble/builtin/history/option:n
+function ble/builtin/history/option:n {
+  # HISTFILE が更新されていなければスキップ
+  local histfile=${HISTFILE:-$HOME/.bash_history}
+  local touch=$_ble_base_run/$$.histfile.touch
+  [[ $touch -nt $histfile ]] && return 0
+  : >| "$touch"
 
-  if [[ $_ble_edit_history_loaded ]]; then
-    # 登録・不登録に拘わらず取り敢えず初期化
-    _ble_edit_history_ind=${#_ble_edit_history[@]}
-
-    # _ble_edit_history_edit を未編集状態に戻す
-    local index
-    for index in "${!_ble_edit_history_dirt[@]}"; do
-      _ble_edit_history_edit[index]=${_ble_edit_history[index]}
-    done
-    _ble_edit_history_dirt=()
-
-    # 同時に _ble_edit_undo も初期化する。
-    ble-edit/undo/clear-all
+  # history が load されていなければ単に history -n して戻る。
+  if [[ ! $_ble_edit_history_loaded ]]; then
+    ble-edit/history/clear-background-load
+    builtin history -n
+    _ble_edit_history_count=
+    return
   fi
 
+  local ret
+  ble/builtin/history/.get-count; local old=${ret[0]}
+  builtin history -n
+  ble/builtin/history/.get-count; local new=${ret[0]}
+  local delta=$((new-old))
+  ((delta>0)) || return 0
+
+  # 新しく追加された項目を配列に追加する
+  local result=$(
+    HISTTIMEFORMAT=__ble_ext__
+    apos=\'
+    builtin history "$delta" | awk -v apos=\' -v begin_index=${#_ble_edit_history[@]} '
+      BEGIN {
+        n = "";
+        hindex = begin_index;
+      }
+      function flush_line() {
+        if (n == "") return;
+        n = "";
+        print "ARRAY[" hindex++ "]=" apos t apos;
+      }
+
+      /^ *[0-9]+\*? +(__ble_ext__|\?\?)/ {
+        flush_line();
+        n = $1; t = "";
+        sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/, "", $0);
+      }
+      {
+        line = $0;
+        if (line ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/)
+          line = apos substr(line, 9) apos;
+        else
+          gsub(apos, apos "\\" apos apos, line);
+
+        t = t != "" ? t "\n" line : line;
+      }
+
+      END {
+        flush_line();
+      }
+    '
+  )
+  eval -- "${result//ARRAY/_ble_edit_history}"
+  eval -- "${result//ARRAY/_ble_edit_history_edit}"
+  local count=${#_ble_edit_history[@]}
+  ((_ble_edit_history_ind==_ble_edit_history_count)) && _ble_edit_history_ind=$count
+  _ble_edit_history_count=$count
+}
+## 関数 ble/builtin/history/option:s
+function ble/builtin/history/option:s {
   local cmd=$1
   if [[ $HISTIGNORE ]]; then
     local pats pat
@@ -5528,6 +5587,38 @@ function ble-edit/history/add/.command-history {
   else
     ble-edit/history/clear-background-load
     builtin history -s -- "$cmd"
+  fi
+}
+
+
+# @var[in,out] HISTINDEX_NEXT
+#   used by ble/widget/accept-and-next to get modified next-entry positions
+function ble-edit/history/add/.command-history {
+  # 注意: bash-3.2 未満では何故か bind -x の中では常に history off になっている。
+  [[ -o history ]] || ((_ble_bash<30200)) || return
+
+  if [[ $_ble_edit_history_loaded ]]; then
+    # 登録・不登録に拘わらず取り敢えず初期化
+    _ble_edit_history_ind=${#_ble_edit_history[@]}
+
+    # _ble_edit_history_edit を未編集状態に戻す
+    local index
+    for index in "${!_ble_edit_history_dirt[@]}"; do
+      _ble_edit_history_edit[index]=${_ble_edit_history[index]}
+    done
+    _ble_edit_history_dirt=()
+
+    # 同時に _ble_edit_undo も初期化する。
+    ble-edit/undo/clear-all
+  fi
+
+  if [[ $bleopt_history_share ]] && ((_ble_bash>=30100)); then
+    ble/builtin/history/option:n
+    ble/builtin/history/option:s "$1"
+    builtin history -a
+    ble/builtin/history/.touch-histfile
+  else
+    ble/builtin/history/option:s "$1"
   fi
 }
 
