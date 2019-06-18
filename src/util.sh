@@ -249,7 +249,7 @@ function ble/debug/print-variables {
     local arg=$1; shift
     case $arg in
     (-t) tag=$1; shift ;;
-    (-*) echo "print-variables: unknown option '$arg'" >&2
+    (-*) ble/bin/echo "print-variables: unknown option '$arg'" >&2
          flags=${flags}e ;;
     (*) ble/array#push _ble_local_vars "$arg" ;;
     esac

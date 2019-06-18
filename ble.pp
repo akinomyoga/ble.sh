@@ -592,7 +592,7 @@ function ble-update {
   if [[ $_ble_base_repository && -d $_ble_base_repository/.git ]]; then
     ( ble/bin/echo "cd into $_ble_base_repository..." >&2 &&
         builtin cd "$_ble_base_repository" &&
-        git pull && { ! make -q || exit 6; } && make all &&
+        git pull && { ! make -q || builtin exit 6; } && make all &&
         if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
           make INSDIR="$_ble_base" install
         fi ); local ext=$?

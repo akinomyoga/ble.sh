@@ -4460,37 +4460,9 @@ function ble/widget/discard-line {
   ble/textarea#render
 }
 
-# Workaround for bash-3.0 -- 5.0 bug (See memo.txt #D0233, #D0801, #D1091)
 function ble/edit/hist_expanded/.core {
-  # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
-  #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
-  #   嘗てはサブシェルで評価していたが、そうすると置換指示子が記録されず
-  #   :& が正しく実行されないことになるのでこちらの実装に切り替える。
-  local line1= line2=
-  ble/util/assign line1 'HISTTIMEFORMAT= builtin history 1'
-  builtin history -p -- '' &>/dev/null
-  ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
-  if [[ $line1 != "$line2" ]]; then
-    local rex_head='^[[:space:]]*[0-9]+[[:space:]]*'
-    [[ $line1 =~ $rex_head ]] &&
-      line1=${line1:${#BASH_REMATCH}}
-
-    if ((_ble_bash<30100)); then
-      # Note: history -r するとそれまでの履歴項目が終了時に
-      #   .bash_history に反映されなくなるが、
-      #   Bash 3.0 では明示的に書き込んでいるので問題ない。
-      local tmp=$_ble_base_run/$$.ble_edit_history_add.txt
-      printf '%s\n' "$line1" "$line1" >| "$tmp"
-      builtin history -r "$tmp"
-    else
-      builtin history -s -- "$line1"
-      builtin history -s -- "$line1"
-    fi
-  fi
-
-  builtin history -p -- "$BASH_COMMAND"
+  ble/builtin/history/option:p "$BASH_COMMAND"
 }
-
 function ble-edit/hist_expanded/.expand {
   ble/edit/hist_expanded/.core 2>/dev/null; local ext=$?
   ((ext)) && ble/bin/echo "$BASH_COMMAND"
@@ -4518,7 +4490,7 @@ function ble/widget/accept-line {
   local BASH_COMMAND=$_ble_edit_str
 
   if [[ ! ${BASH_COMMAND//[ 	]} ]]; then
-    [[ $bleopt_history_share ]] && ((_ble_bash>=30100)) &&
+    [[ $bleopt_history_share ]] &&
       ble/builtin/history/option:n
     ble/widget/.newline keep-info
     ble/textarea#render
@@ -4621,7 +4593,7 @@ function ble/widget/edit-and-execute-command {
   ble-edit/content/clear-arg
 
   local file=$_ble_base_run/$$.blesh-fc.bash
-  echo "$_ble_edit_str" >| "$file"
+  ble/bin/echo "$_ble_edit_str" >| "$file"
   ble/widget/.newline
 
   if ! ${VISUAL:-${EDITOR:-emacs}} "$file"; then
@@ -5433,34 +5405,101 @@ function ble/builtin/history/.get-count {
   ble/util/assign ret 'builtin history 1'
   ble/string#split-words ret "$ret"
 }
-## 関数 ble/builtin/history/option:n
-function ble/builtin/history/option:n {
-  # HISTFILE が更新されていなければスキップ
-  local histfile=${HISTFILE:-$HOME/.bash_history}
-  local touch=$_ble_base_run/$$.histfile.touch
-  [[ $touch -nt $histfile ]] && return 0
-  : >| "$touch"
 
-  # history が load されていなければ単に history -n して戻る。
+_ble_builtin_history_initialized=
+_ble_builtin_history_histnew_count=0
+_ble_builtin_history_histapp_count=0
+## @var _ble_builtin_history_wskip
+##   履歴のどの行までがファイルに書き込み済みの行かを管理する変数です。
+_ble_builtin_history_wskip=0
+##
+## 以下の関数は各ファイルに関して何処まで読み取ったかを記録します。
+##
+## 関数 ble/builtin/history/.get-rskip file
+##   @param[in] file
+##   @var[out] rskip
+## 関数 ble/builtin/history/.set-rskip file value
+##   @param[in] file
+## 関数 ble/builtin/history/.add-rskip file delta
+##   @param[in] file
+##
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_builtin_history_rskip_dict=()
+  else
+    declare -A _ble_builtin_history_rskip_dict=()
+  fi
+  function ble/builtin/history/.get-rskip {
+    local file=$1
+    rskip=${_ble_builtin_history_rskip_dict[$file]}
+  }
+  function ble/builtin/history/.set-rskip {
+    local file=$1
+    _ble_builtin_history_rskip_dict[$file]=$2
+  }
+  function ble/builtin/history/.add-rskip {
+    local file=$1
+    ((_ble_builtin_history_rskip_dict[\$file]+=$2))
+  }
+else
+  _ble_builtin_history_rskip_path=()
+  _ble_builtin_history_rskip_skip=()
+  function ble/builtin/history/.find-rskip-index {
+    local file=$1
+    local n=${#_ble_builtin_history_rskip_path[@]}
+    for ((index=0;index<n;index++)); do
+      [[ $file == ${_ble_builtin_history_rskip_path[index]} ]] && return
+    done
+    _ble_builtin_history_rskip_path[index]=$file
+  }
+  function ble/builtin/history/.get-rskip {
+    local index; ble/builtin/history/.find-rskip-index "$1"
+    rskip=${_ble_builtin_history_rskip_skip[index]}
+  }
+  function ble/builtin/history/.set-rskip {
+    local index; ble/builtin/history/.find-rskip-index "$1"
+    _ble_builtin_history_rskip_skip[index]=$2
+  }
+  function ble/builtin/history/.add-rskip {
+    local index; ble/builtin/history/.find-rskip-index "$1"
+    ((_ble_builtin_history_rskip_skip[index]+=$2))
+  }
+fi
+
+function ble/builtin/history/.initialize {
+  [[ $_ble_builtin_history_initialized ]] && return
+  _ble_builtin_history_initialized=1
+
+  local histnew=$_ble_base_run/$$.history.new
+  : >| "$histnew"
+
+  local histfile=${HISTFILE:-$HOME/.bash_history}
+  local skip=$(ble/bin/wc -l "$histfile")
+  ble/string#split-words skip "$skip"
+  local ret; ble/builtin/history/.get-count
+  ((ret&&ret<skip)) && skip=$ret
+  _ble_builtin_history_wskip=$skip
+  ble/builtin/history/.set-rskip "$histfile" "$skip"
+}
+## 関数 ble/builtin/history/.load-recent-entries delta
+##   history の最新 count 件を配列 _ble_edit_history に読み込みます。
+function ble/builtin/history/.load-recent-entries {
+  local delta=$1
+
   if [[ ! $_ble_edit_history_loaded ]]; then
+    # history load が完了していなければ読み途中のデータを破棄して戻る
     ble-edit/history/clear-background-load
-    builtin history -n
     _ble_edit_history_count=
     return
   fi
 
-  local ret
-  ble/builtin/history/.get-count; local old=${ret[0]}
-  builtin history -n
-  ble/builtin/history/.get-count; local new=${ret[0]}
-  local delta=$((new-old))
   ((delta>0)) || return 0
 
   # 新しく追加された項目を配列に追加する
   local result=$(
     HISTTIMEFORMAT=__ble_ext__
     apos=\'
-    builtin history "$delta" | awk -v apos=\' -v begin_index=${#_ble_edit_history[@]} '
+    builtin history "$delta" | ble/bin/awk -v apos=\' -v begin_index=${#_ble_edit_history[@]} '
       BEGIN {
         n = "";
         hindex = begin_index;
@@ -5497,6 +5536,229 @@ function ble/builtin/history/option:n {
   ((_ble_edit_history_ind==_ble_edit_history_count)) && _ble_edit_history_ind=$count
   _ble_edit_history_count=$count
 }
+## 関数 ble/builtin/history/.read file [skip [fetch]]
+function ble/builtin/history/.read {
+  local file=$1 skip=${2:-0} fetch=$3
+  local -x histnew=$_ble_base_run/$$.history.new
+  local script=$(ble/bin/awk -v skip=$skip '
+    BEGIN { histnew = ENVIRON["histnew"]; count = 0; }
+    NR <= skip { next; }
+    { print $0 >> histnew; count++; }
+    END {
+      print "ble/builtin/history/.set-rskip \"$file\" " NR;
+      print "((_ble_builtin_history_histnew_count+=" count "))";
+    }
+  ' "$file")
+  eval -- "$script"
+  if [[ ! $fetch && -s $histnew ]]; then
+    local nline=$_ble_builtin_history_histnew_count
+    builtin history -r "$histnew"
+    : >| "$histnew"
+    _ble_builtin_history_histnew_count=0
+    ble/builtin/history/.load-recent-entries "$nline"
+    ((_ble_builtin_history_wskip+=nline))
+  fi
+}
+## 関数 ble/builtin/history/.write file [skip [opts]]
+function ble/builtin/history/.write {
+  local -x file=$1 skip=${2:-0} opts=$3
+  local -x histapp=$_ble_base_run/$$.history.app
+
+  local ret; ble/builtin/history/.get-count; local count=$ret
+  local delta=$((count-skip))
+  if ((delta>0)); then
+    local HISTTIMEFORMAT=__ble_ext__
+    if [[ :$opts: == *:append:* ]]; then
+      builtin history "$delta" >> "$histapp"
+      ((_ble_builtin_history_histapp_count+=delta))
+    else
+      builtin history "$delta" > "$histapp"
+      _ble_builtin_history_histapp_count=$delta
+    fi
+  fi
+
+  if [[ :$opts: != *:fetch:* && -s $histapp ]]; then
+    if [[ ! -e $file ]]; then
+      (umask 077; : >| "$file")
+    elif [[ :$opts: != *:append:* ]]; then
+      : >| "$file"
+    fi
+
+    local apos=\'
+    < "$histapp" ble/bin/awk '
+      BEGIN { file = ENVIRON["file"]; mode = 0; }
+      function flush_line() {
+        if (!mode) return;
+        mode = 0;
+        if (text ~ /\n/) {
+          gsub(/\\/, "\\\\");
+          gsub(/\n/, "\\n");
+          gsub(/\t/, "\\t");
+          gsub(/\'$apos'/, "\\'$apos'");
+          print "eval -- $'$apos'" text "'$apos'" >> file;
+        } else {
+          print text >> file;
+        }
+      }
+
+      /^ *[0-9]+\*? +(__ble_ext__|\?\?)?/ {
+        flush_line();
+        mode = 1; text = "";
+        sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)?/, "", $0);
+      }
+      { text = text != "" ? text "\n" $0 : $0; }
+      END { flush_line(); }
+    '
+    ble/builtin/history/.add-rskip "$file" "$_ble_builtin_history_histapp_count"
+    : >| "$histapp"
+    _ble_builtin_history_histapp_count=0
+  fi
+  _ble_builtin_history_wskip=$count
+}
+
+## 関数 ble/builtin/history/option:c
+function ble/builtin/history/option:c {
+  ble/builtin/history/.initialize
+  builtin history -c
+  _ble_builtin_history_wskip=0
+  if [[ $_ble_edit_history_loaded ]]; then
+    _ble_edit_history=()
+    _ble_edit_history_edit=()
+    _ble_edit_history_count=0
+    _ble_edit_history_ind=0
+  else
+    # history load が完了していなければ読み途中のデータを破棄して戻る
+    ble-edit/history/clear-background-load
+    _ble_edit_history_count=
+  fi
+}
+## 関数 ble/builtin/history/option:d index
+function ble/builtin/history/option:d {
+  ble/builtin/history/.initialize
+  local rex='^(-?[0-9]+)-(-?[0-9]+)$'
+  if [[ $1 =~ $rex ]]; then
+    local beg=${BASH_REMATCH[1]} end=${BASH_REMATCH[2]}
+  else
+    local beg=$(($1))
+    local end=$beg
+  fi
+  local ret; ble/builtin/history/.get-count; local count=$ret
+  ((beg<0)) && ((beg+=count+1))
+  ((end<0)) && ((end+=count+1))
+  ((beg<=end)) || return 0
+
+  if ((_ble_base>=50000&&beg<end)); then
+    builtin history -d "$beg-$end"
+  else
+    local i
+    for ((i=beg;i<=end;i++)); do
+      builtin history -d "$i"
+    done
+  fi
+
+  if [[ $_ble_edit_history_loaded ]]; then
+    local d=$((beg-1)) s=$end
+    local i N=${#_ble_edit_history[@]}
+    for ((;s<N;d++,s++)); do
+      _ble_edit_history[d]=${_ble_edit_history[s]}
+      _ble_edit_history_edit[d]=${_ble_edit_history_edit[s]}
+    done
+    for ((i=N-1;i>=d;i--)); do
+      unset -v '_ble_edit_history[i]'
+      unset -v '_ble_edit_history_edit[i]'
+    done
+    _ble_edit_history_count=$d
+    if ((_ble_edit_history_ind>=end)); then
+      ((_ble_edit_history_ind-=end-beg+1))
+    elif ((_ble_edit_history_ind>=end)); then
+      ((_ble_edit_history_ind=beg-1))
+    fi
+    if ((_ble_builtin_history_wskip>=end)); then
+      ((_ble_builtin_history_wskip-=end-beg+1))
+    elif ((_ble_builtin_history_wskip>beg-1)); then
+      ((_ble_builtin_history_wskip=beg-1))
+    fi
+  else
+    # history load が完了していなければ読み途中のデータを破棄して戻る
+    ble-edit/history/clear-background-load
+    _ble_edit_history_count=
+  fi
+}
+## 関数 ble/builtin/history/option:a [filename]
+function ble/builtin/history/option:a {
+  local histfile=${HISTFILE:-$HOME/.bash_history}
+  local filename=${1:-$histfile}
+  ble/builtin/history/.initialize
+  local rskip; ble/builtin/history/.get-rskip "$filename"
+  ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append:fetch
+  [[ -r $filename ]] && ble/builtin/history/.read "$filename" "$rskip" fetch
+  ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append
+  builtin history -a /dev/null # Bash 終了時に書き込まない
+}
+## 関数 ble/builtin/history/option:n [filename]
+function ble/builtin/history/option:n {
+  # HISTFILE が更新されていなければスキップ
+  local histfile=${HISTFILE:-$HOME/.bash_history}
+  local filename=${1:-$histfile}
+  if [[ $filename == $histfile ]]; then
+    local touch=$_ble_base_run/$$.histfile.touch
+    [[ $touch -nt $histfile ]] && return 0
+    : >| "$touch"
+  fi
+
+  ble/builtin/history/.initialize
+  local rskip; ble/builtin/history/.get-rskip "$filename"
+  ble/builtin/history/.read "$filename" "$rskip"
+}
+## 関数 ble/builtin/history/option:w [filename]
+function ble/builtin/history/option:w {
+  local histfile=${HISTFILE:-$HOME/.bash_history}
+  local filename=${1:-$histfile}
+  ble/builtin/history/.initialize
+  local rskip; ble/builtin/history/.get-rskip "$filename"
+  [[ -r $filename ]] && ble/builtin/history/.read "$filename" "$rskip" fetch
+  ble/builtin/history/.write "$filename" 0
+  builtin history -a /dev/null # Bash 終了時に書き込まない
+}
+## 関数 ble/builtin/history/option:r [filename]
+function ble/builtin/history/option:r {
+  local histfile=${HISTFILE:-$HOME/.bash_history}
+  local filename=${1:-$histfile}
+  ble/builtin/history/.initialize
+  ble/builtin/history/.read "$filename" 0
+}
+## 関数 ble/builtin/history/option:p
+##   Workaround for bash-3.0 -- 5.0 bug
+##   (See memo.txt #D0233, #D0801, #D1091)
+function ble/builtin/history/option:p {
+  # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
+  #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
+  #   嘗てはサブシェルで評価していたが、そうすると置換指示子が記録されず
+  #   :& が正しく実行されないことになるのでこちらの実装に切り替える。
+  local line1= line2=
+  ble/util/assign line1 'HISTTIMEFORMAT= builtin history 1'
+  builtin history -p -- '' &>/dev/null
+  ble/util/assign line2 'HISTTIMEFORMAT= builtin history 1'
+  if [[ $line1 != "$line2" ]]; then
+    local rex_head='^[[:space:]]*[0-9]+[[:space:]]*'
+    [[ $line1 =~ $rex_head ]] &&
+      line1=${line1:${#BASH_REMATCH}}
+
+    if ((_ble_bash<30100)); then
+      # Note: history -r するとそれまでの履歴項目が終了時に
+      #   .bash_history に反映されなくなるが、
+      #   Bash 3.0 では明示的に書き込んでいるので問題ない。
+      local tmp=$_ble_base_run/$$.history.tmp
+      printf '%s\n' "$line1" "$line1" >| "$tmp"
+      builtin history -r "$tmp"
+    else
+      builtin history -s -- "$line1"
+      builtin history -s -- "$line1"
+    fi
+  fi
+
+  builtin history -p -- "$@"
+}
 ## 関数 ble/builtin/history/option:s
 function ble/builtin/history/option:s {
   local cmd=$1
@@ -5508,6 +5770,7 @@ function ble/builtin/history/option:s {
     done
   fi
 
+  ble/builtin/history/.initialize
   local histfile=
 
   if [[ $_ble_edit_history_loaded ]]; then
@@ -5539,6 +5802,7 @@ function ble/builtin/history/option:s {
               _ble_edit_history_edit[n]=${_ble_edit_history_edit[i]}
             fi
           else
+            ((i<_ble_builtin_history_wskip&&_ble_builtin_history_wskip--))
             ((i<HISTINDEX_NEXT&&HISTINDEX_NEXT--))
           fi
         done
@@ -5580,8 +5844,9 @@ function ble/builtin/history/option:s {
 
   if [[ $histfile ]]; then
     # bash < 3.1 workaround
-    local tmp=$_ble_base_run/$$.ble_edit_history_add.txt
-    builtin printf '%s\n' "$cmd" >> "$histfile"
+    local tmp=$_ble_base_run/$$.history.tmp
+    [[ $bleopt_history_share ]] ||
+      builtin printf '%s\n' "$cmd" >> "$histfile"
     builtin printf '%s\n' "$cmd" >| "$tmp"
     builtin history -r "$tmp"
   else
@@ -5589,7 +5854,74 @@ function ble/builtin/history/option:s {
     builtin history -s -- "$cmd"
   fi
 }
+function ble/builtin/history {
+  while [[ $1 == -* ]]; do
+    local arg=$1; shift
+    [[ $arg == -- ]] && break
 
+    local opt_d= flag_error=
+    local opt_c= opt_p= opt_s=
+    local opt_a=
+    local i n=${#arg}
+    for ((i=1;i<n;i++)); do
+      local c=${arg:i:1}
+      case $c in
+      (c) opt_c=1 ;;
+      (s) opt_s=1 ;;
+      (p) opt_p=1 ;;
+      (d)
+        if ((!$#)); then
+          echo 'ble/builtin/history: missing option argument for "-d".' >&2
+          flag_error=1
+        elif ((i+1<n)); then
+          opt_d=${arg:i+1}; i=$n
+        else
+          opt_d=$1; shift
+        fi ;;
+      ([anwr])
+        if [[ $opt_a && $c != $opt_a ]]; then
+          echo 'ble/builtin/history: cannot use more than one of "-anrw".' >&2
+          flag_error=1
+        elif ((i+1<n)); then
+          opt_a=$c
+          set -- "${arg:i+1}" "$@"
+        else
+          opt_a=$c
+        fi ;;
+      (*)
+        echo 'ble/builtin/history: unknown option "-$c".' >&2
+        flag_error=1 ;;
+      esac
+    done
+  done
+  [[ $flag_error ]] && return 1
+
+  # -cdanwr
+  local flag_processed=
+  if [[ $opt_c ]]; then
+    ble/builtin/history/option:c
+    flag_processed=1
+  fi
+  if [[ $opt_s ]]; then
+    ble/builtin/history/option:s "$*"
+    flag_processed=1
+  elif [[ $opt_d ]]; then
+    ble/builtin/history/option:d "$opt_d"
+    flag_processed=1
+  elif [[ $opt_a ]]; then
+    ble/builtin/history/option:"$opt_a" "$1"
+    flag_processed=1
+  fi
+  [[ $flag_processed ]] && return 0
+
+  # -p
+  if [[ $opt_p ]]; then
+    ble/builtin/history/option:p "$@"
+  else
+    builtin history "$@"
+  fi
+}
+function history { ble/builtin/history "$@"; }
 
 # @var[in,out] HISTINDEX_NEXT
 #   used by ble/widget/accept-and-next to get modified next-entry positions
@@ -5612,10 +5944,10 @@ function ble-edit/history/add/.command-history {
     ble-edit/undo/clear-all
   fi
 
-  if [[ $bleopt_history_share ]] && ((_ble_bash>=30100)); then
+  if [[ $bleopt_history_share ]]; then
     ble/builtin/history/option:n
     ble/builtin/history/option:s "$1"
-    builtin history -a
+    ble/builtin/history/option:a
     ble/builtin/history/.touch-histfile
   else
     ble/builtin/history/option:s "$1"

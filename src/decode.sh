@@ -113,7 +113,7 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     declare -gA _ble_decode_kbd__k2c=()
   else
     declare -A _ble_decode_kbd__k2c=()
-   fi
+  fi
   _ble_decode_kbd__c2k=()
 
   function ble-decode-kbd/.set-keycode {
