@@ -2239,6 +2239,7 @@ _ble_keymap_vi_mark_edit_dend0=-1
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
 ble/array#push _ble_edit_history_onleave ble/keymap:vi/mark/history-onleave.hook
 
+## 関数 ble/keymap:vi/mark/history-onleave.hook
 function ble/keymap:vi/mark/history-onleave.hook {
   if [[ $_ble_decode_keymap == vi_[inoxs]map ]]; then
     ble/keymap:vi/mark/set-local-mark 34 "$_ble_edit_ind" # `"
@@ -2273,6 +2274,46 @@ function ble/keymap:vi/mark/update-mark-history {
     _ble_keymap_vi_mark_hindex=$h
   fi
 }
+ble/array#push _ble_builtin_history_delete_hook ble/keymap:vi/mark/history-delete.hook
+ble/array#push _ble_builtin_history_clear_hook ble/keymap:vi/mark/history-clear.hook
+## 関数 ble/keymap:vi/mark/history-delete.hook index...
+##   @param[in] index...
+##     昇順に並んでいる事と重複がない事を仮定する。
+function ble/keymap:vi/mark/history-delete.hook {
+  # update _ble_keymap_vi_mark_global
+  local -a out=()
+  for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
+    local value=${_ble_keymap_vi_mark_global[imark]}
+    local h=${value%%:*} v=${value#*:}
+    local idel shift=0
+    for idel; do
+      if [[ $idel == *-* ]]; then
+        local b=${idel%-*} e=${idel#*-}
+        ((b<=h&&h<e)) && shift= # delete
+        ((h<e)) && break
+        ((shift+=e-b))
+      else
+        ((idel==h)) && shift= # delete
+        ((idel>=h)) && break
+        ((shift++))
+      fi
+    done
+    [[ $shift ]] && out[imark]=$((h-shift)):$v
+  done
+  _ble_keymap_vi_mark_global=("${out[@]}")
+
+  # update _ble_keymap_vi_mark_history
+  ble/builtin/history/array#delete-hindex _ble_keymap_vi_mark_history "$@"
+
+  # reset _ble_keymap_vi_mark_hindex
+  _ble_keymap_vi_mark_hindex=
+}
+function ble/keymap:vi/mark/history-clear.hook {
+  _ble_keymap_vi_mark_global=()
+  _ble_keymap_vi_mark_history=()
+  _ble_keymap_vi_mark_hindex=
+}
+
 function ble/keymap:vi/mark/shift-by-dirty-range {
   local beg=$1 end=$2 end0=$3 reason=$4
   if [[ $4 == edit ]]; then

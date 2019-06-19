@@ -881,7 +881,33 @@ bash_tips
 @todo
 *******************************************************************************
     ToDo
-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+2019-06-19
+
+  * history: ble/keymap:vi/mark/history-delete.hook の動作テスト
+    一応動いている様な気がする。
+
+  * 2019-02-07 history: history -nr [filename] に関しては履歴を idle で再初期化する?
+
+  * 2016-07-07 history: HISTCONTROL=erasedups の時 ble-edit/history/add が遅いかもしれない
+
+    重複する項目がないかぎりはそんなに遅くないのではないかと思われる。
+    何れにしても bash 配列において何が遅くて何が速いのかについて計測する必要がある。
+    filter 部分の操作とそれから truncate の部分について。
+    →benchmark-array.sh で filter を実装して試してみたが、
+      実装の仕方でそんなに速度が変化するということはなかった。
+      もっと巨大な配列の場合などでしか効かないという事だろうか。
+    →しかし何れにしても実測してみたところによると
+      重複する項目がある時はかなり重くなるという事が予想される。
+
+    というか unset して再度 arr=("${arr[@]}") したら速い気がする。
+
+  * history: clipboard が全く効かなくなっている。
+    これは HISTSIZE を小さな値にすると発生する様子である。
+    最近の変更が悪い訳ではない様に思う。
+    emacs mode の時には問題は発生していない? と思ったら
+    vi mode でも再現しない。うーん。発生条件がわからない。
 
 2019-06-18
 
@@ -1081,68 +1107,27 @@ bash_tips
     また、実は bash-4.3 以降では HIST{FILE,}SIZE に負の値を設定できる様だ。
     更に、それ以前から単に空文字列にしておけば無制限なのだそうだ。
 
-    2019-02-07 history コマンドで出力される内容と、
-    ble.sh で管理している内容がずれてしまうという問題はある。
-    ただ、それは現実的な問題になるだろうか。
-    履歴展開を確認する場合には何れにしても history を使って番号を取得する。
-    従って、内部の番号を参照する事になるはずである。
+    →2019-06-19 実際に動作を確認してみた所、
+      HISTSIZE に達しても履歴への登録が止まったり、
+      古いものから順に削除されていくなどの動作はしない様だ。
+      だとすればそもそもHISTSIZEとは何だったのか…。
+      うーん。不思議だ。或いは初期化時の HISTSIZE に意味があるのだろうか。
 
-    一方で history -d や history -r 等の操作を実行した時に、
-    どの様に ble.sh の方を更新するのかという問題はある。
-    通常の bash では確かにコマンドライン編集時に辿れる履歴も一緒に変更されている。
+      と思ったら…。実は HISTSIZE に達すると番号を保持したまま
+      先頭部分が削れていくという事の様だ…。
 
-    history の変更に際して何を修正するべきか。
+    * だとすれば今までの history 1 による count の計測なども誤っていた事になる。
+      うーん。修正するとすれば history に登録されている最初の項目の番号が必要になる。
+      最初の項目の番号を取得する最も速い方法は何だろうか。
+      history | head -1 だと 3 fork 必要になる。
+      history を変数に入れると計算時間がかかる。
+      と思ったが 13k 項目で 0.017s だった @chatoyancy
+      それ程には時間はかからない。
+      しかし history | head -1 の方が 0.007s と速い。
 
-    * vi.sh において履歴項目ごとに記録している内容
-
-      | history に変化が現れた時の hook という物があった筈である。
-      | それは何で何処から参照されていたか。
-      | _ble_edit_history_onleave という配列がある。
-      | これは onleave.fire で参照されている。
-      | 去る直前に何らかの状態を記録するのに使われている。
-      | 新しい行き先の情報は参照していない様である。
-      | これを使っているのは ble/keymap:vi/mark/history-onleave.hook だけである。
-      | そして ble/keymap:vi/mark/update-mark-history を呼び出している。
-      | 特に _ble_keymap_vi_mark_history と _ble_keymap_vi_mark_global の中身を更新する必要がある様に思う。
-      | その他の箇所で hindex を使用している箇所はあるだろうか。
-      | history/get-index で検索すると他には ble/widget/vi-command/search.impl で使っているが、
-      | これは移動したかどうかなどを判定する為に使っているだけで履歴に関する情報を記録するのには使っていない。
-
-      - _ble_keymap_vi_mark_history
-      - _ble_keymap_vi_mark_global
-
-    * edit.sh
-
-      以下の配列に対して作用すれば良さそう。
-      - _ble_edit_history=()
-      - _ble_edit_history_edit=()
-      - _ble_edit_history_dirt=()
-      - _ble_edit_undo_history=()
-      最初の3つに関しては履歴をロードしている時にのみ更新する。
-      最後の物に関しては履歴をロードしているかどうかに拘らず更新する。
-
-    * core-complete.sh
-
-      他に history/get-index を参照しているのは core-complete.sh だけである。
-      dabbrev で履歴を遡るために使用している。
-      履歴を遡っている最中に history によって履歴が書き換わる事はない筈なので、
-      これについては気にしなくても良いだろう。
-
-    history の操作としてどの様な物があるだろうか。
-
-    * history -c は中身をクリアする
-    * history -d は項目を削除する
-    * history -n [filename] は追加行を読み込む
-    * history -r [filename] は履歴ファイルを読み込み直す
-    * history -aw [filename] は履歴データには変化なし
-    * history -p args... は一部の bash のバージョンで補正が必要
-    * history -s args... は項目を追加する
-
-    結構対応は面倒そうである。
-    history -nr [filename] に関しては履歴を idle で再初期化する?
-
-    * 2017-12-03 の項目も対応する必要がある
-    * 2016-07-07/3 についても確認が必要
+      history 1 は4箇所で使用している。
+      うーん。history | head をする位であれば
+      history | wc -l で取得した方が速い。
 
 2018-08-16
 
@@ -1258,6 +1243,7 @@ bash_tips
   * [保留] vi-mode: operators 保留項目 [#tmp0002]
 
     * 領域折り畳み zf には対応しない。
+
     * gq の formatexpr, formatprg には未対応である。
 
 2018-02-11
@@ -1266,13 +1252,6 @@ bash_tips
 
     現状では一文字ずつ記録しているので一文字ずつ undo される。
     現在の振る舞いの方が良いのか emacs と同様にまとめた方が良いかは微妙な所である。
-
-2017-12-03
-
-  * keymap/vi (mark): BUG erasedup 等のときに履歴番号がずれるのではないか?
-
-    これは ble-edit/history/add/.command-history 辺りで callback
-    を呼び出す様にするなどの方法にしなければならない。
 
 2017-11-26
 
@@ -1824,17 +1803,6 @@ bash_tips
 
     その為には置換前・置換後を入力する欄を別に表示する必要がある。
     入力欄でも様々な binding が使えた方が嬉しい。
-
-  * HISTCONTROL=erasedups の時 ble-edit/history/add が遅いかもしれない
-
-    重複する項目がないかぎりはそんなに遅くないのではないかと思われる。
-    何れにしても bash 配列において何が遅くて何が速いのかについて計測する必要がある。
-    filter 部分の操作とそれから truncate の部分について。
-    →benchmark-array.sh で filter を実装して試してみたが、
-      実装の仕方でそんなに速度が変化するということはなかった。
-      もっと巨大な配列の場合などでしか効かないという事だろうか。
-    →しかし何れにしても実測してみたところによると
-      重複する項目がある時はかなり重くなるという事が予想される。
 
 2016-06-22
 
@@ -3211,6 +3179,94 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-06-19
+
+  * 2019-02-07 history コマンドで出力される内容と、 [#D1103]
+    ble.sh で管理している内容がずれてしまうという問題はある。
+    ただ、それは現実的な問題になるだろうか。
+    履歴展開を確認する場合には何れにしても history を使って番号を取得する。
+    従って、内部の番号を参照する事になるはずである。
+
+    一方で history -d や history -r 等の操作を実行した時に、
+    どの様に ble.sh の方を更新するのかという問題はある。
+    通常の bash では確かにコマンドライン編集時に辿れる履歴も一緒に変更されている。
+
+    history の変更に際して何を修正するべきか。
+
+    * done: vi.sh において履歴項目ごとに記録している内容
+
+      | history に変化が現れた時の hook という物があった筈である。
+      | それは何で何処から参照されていたか。
+      | _ble_edit_history_onleave という配列がある。
+      | これは onleave.fire で参照されている。
+      | 去る直前に何らかの状態を記録するのに使われている。
+      | 新しい行き先の情報は参照していない様である。
+      | これを使っているのは ble/keymap:vi/mark/history-onleave.hook だけである。
+      | そして ble/keymap:vi/mark/update-mark-history を呼び出している。
+      | 特に _ble_keymap_vi_mark_history と _ble_keymap_vi_mark_global の中身を更新する必要がある様に思う。
+      | その他の箇所で hindex を使用している箇所はあるだろうか。
+      | history/get-index で検索すると他には ble/widget/vi-command/search.impl で使っているが、
+      | これは移動したかどうかなどを判定する為に使っているだけで履歴に関する情報を記録するのには使っていない。
+
+      - _ble_keymap_vi_mark_history
+      - _ble_keymap_vi_mark_global
+
+      _ble_keymap_vi_mark_global に関しては探索する必要があるので、
+      やはり hook は削除範囲で指定する様にしたい。
+      →ble/keymap:vi/mark/history-delete.hook に実装した。
+        動作テストは一度も行っていない。適当な実装なのでテストは是非に行うべきである。
+
+    * done: edit.sh
+
+      以下の配列に対して作用すれば良さそう。
+      - _ble_edit_history=()
+      - _ble_edit_history_edit=()
+      - _ble_edit_history_dirt=()
+      - _ble_edit_undo_history=()
+      最初の3つに関しては履歴をロードしている時にのみ更新する。
+      最後の物に関しては履歴をロードしているかどうかに拘らず更新する。
+
+      _ble_edit_history 及び _ble_edit_history_edit に関しては対応しているが
+      _ble_edit_history_dirt に関しては対応していない。
+
+    * ok: core-complete.sh
+
+      他に history/get-index を参照しているのは core-complete.sh だけである。
+      dabbrev で履歴を遡るために使用している。
+      履歴を遡っている最中に history によって履歴が書き換わる事はない筈なので、
+      これについては気にしなくても良いだろう。
+
+    | history の操作としてどの様な物があるだろうか。
+    | 
+    | * history -c は中身をクリアする
+    | * history -d は項目を削除する
+    | * history -n [filename] は追加行を読み込む
+    | * history -r [filename] は履歴ファイルを読み込み直す
+    | * history -aw [filename] は履歴データには変化なし
+    | * history -p args... は一部の bash のバージョンで補正が必要
+    | * history -s args... は項目を追加する
+    |
+    | 結構対応は面倒そうである。
+
+    * done: 2017-12-03 の項目も対応する必要がある
+    * 2016-07-07/3 についても確認が必要
+
+    [実装]
+
+    * clear.hook も追加した。
+    * 取り敢えず実装した様な気がする。
+
+  * 2017-12-03 keymap/vi (mark): BUG erasedup 等のときに履歴番号がずれるのではないか? [#D1102]
+
+    これは ble-edit/history/add/.command-history 辺りで callback
+    を呼び出す様にするなどの方法にしなければならない。
+
+    ble/keymap:vi/mark/update-mark-history の仕様を観察すれば、
+    erasedups 等に際してどの様に更新すれば良いかが分かる筈…。
+    _ble_keymap_vi_mark_history の index をずらす。
+    それから _ble_keymap_vi_mark_hindex を書き換える。
+    -1 にでもすればよいか。
 
 2019-06-18
 

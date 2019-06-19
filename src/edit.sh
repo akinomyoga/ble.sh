@@ -4826,6 +4826,14 @@ function ble-edit/undo/clear-all {
   _ble_edit_undo_history=()
   _ble_edit_undo_hindex=
 }
+function ble-edit/undo/history-delete.hook {
+  ble/builtin/history/array#delete-hindex _ble_edit_undo_history "$@"
+  _ble_edit_undo_hindex=
+}
+function ble-edit/undo/history-clear.hook {
+  ble-edit/undo/clear-all
+}
+
 
 ## 関数 ble-edit/undo/.get-current-state
 ##   @var[out] str ind
@@ -5409,6 +5417,10 @@ function ble/builtin/history/.get-count {
 _ble_builtin_history_initialized=
 _ble_builtin_history_histnew_count=0
 _ble_builtin_history_histapp_count=0
+_ble_builtin_history_delete_hook=()
+_ble_builtin_history_clear_hook=()
+ble/array#push _ble_builtin_history_delete_hook ble-edit/undo/history-delete.hook
+ble/array#push _ble_builtin_history_clear_hook ble-edit/undo/history-clear.hook
 ## @var _ble_builtin_history_wskip
 ##   履歴のどの行までがファイルに書き込み済みの行かを管理する変数です。
 _ble_builtin_history_wskip=0
@@ -5616,6 +5628,49 @@ function ble/builtin/history/.write {
   _ble_builtin_history_wskip=$count
 }
 
+## 関数 ble/builtin/history/array#delete-hindex array_name index...
+##   @param[in] index
+##     昇順に並んでいる事と重複がない事を仮定する。
+function ble/builtin/history/array#delete-hindex {
+  local array_name=$1; shift
+  local script='
+    local -a out=()
+    local i
+    for i in "${!ARRAY[@]}"; do
+      local delete=
+      while (($#)); do
+        if [[ $1 == *-* ]]; then
+          local b=${1%-*} e=${1#*-}
+          ((i<b)) && break
+          if ((i<e)); then
+            delete=1 # delete
+            break
+          else
+            ((shift+=e-b))
+            shift
+          fi
+        else
+          ((i<$1)) && break
+          ((i==$1)) && delete=1
+          ((shift++))
+          shift
+        fi
+      done
+      [[ ! $delete ]] &&
+        out[i-shift]=${ARRAY[i]}
+    done
+    ARRAY=()
+    for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
+  eval -- "${script//ARRAY/$array_name}"
+}
+ble/array#push _ble_builtin_history_delete_hook ble/builtin/history/delete.hook
+ble/array#push _ble_builtin_history_clear_hook ble/builtin/history/clear.hook
+function ble/builtin/history/delete.hook {
+  ble/builtin/history/array#delete-hindex _ble_edit_history_dirt "$@"
+}
+function ble/builtin/history/clear.hook {
+  _ble_edit_history_dirt=()
+}
 ## 関数 ble/builtin/history/option:c
 function ble/builtin/history/option:c {
   ble/builtin/history/.initialize
@@ -5631,6 +5686,7 @@ function ble/builtin/history/option:c {
     ble-edit/history/clear-background-load
     _ble_edit_history_count=
   fi
+  ble/util/invoke-hook _ble_builtin_history_clear_hook
 }
 ## 関数 ble/builtin/history/option:d index
 function ble/builtin/history/option:d {
@@ -5647,7 +5703,7 @@ function ble/builtin/history/option:d {
   ((end<0)) && ((end+=count+1))
   ((beg<=end)) || return 0
 
-  if ((_ble_base>=50000&&beg<end)); then
+  if ((_ble_bash>=50000&&beg<end)); then
     builtin history -d "$beg-$end"
   else
     local i
@@ -5657,6 +5713,7 @@ function ble/builtin/history/option:d {
   fi
 
   if [[ $_ble_edit_history_loaded ]]; then
+    ble/util/invoke-hook _ble_builtin_history_delete_hook "$((beg-1))-$end"
     local d=$((beg-1)) s=$end
     local i N=${#_ble_edit_history[@]}
     for ((;s<N;d++,s++)); do
@@ -5793,6 +5850,7 @@ function ble/builtin/history/option:s {
         ((lastIndex>=0)) && [[ $cmd == "${_ble_edit_history[lastIndex]}" ]] && return
       fi
       if [[ $erasedups ]]; then
+        local -a delete_indices=()
         local indexNext=$HISTINDEX_NEXT
         local i n=-1 N=${#_ble_edit_history[@]}
         for ((i=0;i<N;i++)); do
@@ -5802,6 +5860,7 @@ function ble/builtin/history/option:s {
               _ble_edit_history_edit[n]=${_ble_edit_history_edit[i]}
             fi
           else
+            ble/array#push delete_indices "$i"
             ((i<_ble_builtin_history_wskip&&_ble_builtin_history_wskip--))
             ((i<HISTINDEX_NEXT&&HISTINDEX_NEXT--))
           fi
@@ -5810,6 +5869,7 @@ function ble/builtin/history/option:s {
           unset -v '_ble_edit_history[i]'
           unset -v '_ble_edit_history_edit[i]'
         done
+        ble/util/invoke-hook _ble_builtin_history_delete_hook "${delete_indices[@]}"
         [[ ${HISTINDEX_NEXT+set} ]] && HISTINDEX_NEXT=$indexNext
       fi
     fi

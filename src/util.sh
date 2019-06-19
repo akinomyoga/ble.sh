@@ -1694,7 +1694,7 @@ function ble/util/read-rl-variable {
 function ble/util/invoke-hook {
   local -a hooks; eval "hooks=(\"\${$1[@]}\")"
   local hook ext=0
-  for hook in "${hooks[@]}"; do eval "$hook" || ext=$?; done
+  for hook in "${hooks[@]}"; do eval "$hook \"\${@:2}\"" || ext=$?; done
   return "$ext"
 }
 
