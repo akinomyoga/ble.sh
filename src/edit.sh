@@ -5112,10 +5112,10 @@ function ble-edit/history/get-count {
     _ret=${#_ble_edit_history[@]}
   else
     if [[ ! $_ble_edit_history_count ]]; then
-      local history_line
-      ble/util/assign history_line 'builtin history 1'
-      ble/string#split-words history_line "$history_line"
-      _ble_edit_history_count=${history_line[0]}
+      local min max
+      ble/builtin/history/.get-min
+      ble/builtin/history/.get-max
+      ((_ble_edit_history_count=max-min+1))
     fi
     _ret=$_ble_edit_history_count
   fi
@@ -5148,7 +5148,7 @@ if ((_ble_bash>=40000)); then
   ## 関数 ble-edit/history/load/.background-initialize
   ##   @var[in] arg_count
   function ble-edit/history/load/.background-initialize {
-    if ! builtin history -p '!1' &>/dev/null; then
+    if ! builtin history -p '!!' &>/dev/null; then
       # Note: rcfile から呼び出すと history が未ロードなのでロードする。
       #
       # Note: 当初は親プロセスで history -n にした方が二度手間にならず効率的と考えたが
@@ -5355,7 +5355,7 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble-edit/history/.generate-source-to-load-history {
-    if ! builtin history -p '!1' &>/dev/null; then
+    if ! builtin history -p '!!' &>/dev/null; then
       # rcfile として起動すると history が未だロードされていない。
       builtin history -n
     fi
@@ -5444,9 +5444,13 @@ function ble/builtin/history/.touch-histfile {
   local touch=$_ble_base_run/$$.histfile.touch
   : >| "$touch"
 }
-function ble/builtin/history/.get-count {
-  ble/util/assign ret 'builtin history 1'
-  ble/string#split-words ret "$ret"
+function ble/builtin/history/.get-min {
+  ble/util/assign min 'builtin history | head -1'
+  ble/string#split-words min "$min"
+}
+function ble/builtin/history/.get-max {
+  ble/util/assign max 'builtin history 1'
+  ble/string#split-words max "$max"
 }
 
 _ble_builtin_history_initialized=
@@ -5521,12 +5525,13 @@ function ble/builtin/history/.initialize {
   : >| "$histnew"
 
   local histfile=${HISTFILE:-$HOME/.bash_history}
-  local skip=$(ble/bin/wc -l "$histfile")
-  ble/string#split-words skip "$skip"
-  local ret; ble/builtin/history/.get-count
-  ((ret&&ret<skip)) && skip=$ret
-  _ble_builtin_history_wskip=$skip
-  ble/builtin/history/.set-rskip "$histfile" "$skip"
+  local rskip=$(ble/bin/wc -l "$histfile")
+  ble/string#split-words rskip "$rskip"
+  local min; ble/builtin/history/.get-min
+  local max; ble/builtin/history/.get-max
+  ((max&&max-min+1<rskip&&(rskip=max-min+1)))
+  _ble_builtin_history_wskip=$max
+  ble/builtin/history/.set-rskip "$histfile" "$rskip"
 }
 ## 関数 ble/builtin/history/.load-recent-entries delta
 ##   history の最新 count 件を配列 _ble_edit_history に読み込みます。
@@ -5574,7 +5579,8 @@ function ble/builtin/history/.read {
     : >| "$histnew"
     _ble_builtin_history_histnew_count=0
     ble/builtin/history/.load-recent-entries "$nline"
-    ((_ble_builtin_history_wskip+=nline))
+    local max; ble/builtin/history/.get-max
+    _ble_builtin_history_wskip=$max
   fi
 }
 ## 関数 ble/builtin/history/.write file [skip [opts]]
@@ -5582,8 +5588,10 @@ function ble/builtin/history/.write {
   local -x file=$1 skip=${2:-0} opts=$3
   local -x histapp=$_ble_base_run/$$.history.app
 
-  local ret; ble/builtin/history/.get-count; local count=$ret
-  local delta=$((count-skip))
+  local min; ble/builtin/history/.get-min
+  local max; ble/builtin/history/.get-max
+  ((skip<min-1&&(skip=min-1)))
+  local delta=$((max-skip))
   if ((delta>0)); then
     local HISTTIMEFORMAT=__ble_ext__
     if [[ :$opts: == *:append:* ]]; then
@@ -5631,7 +5639,7 @@ function ble/builtin/history/.write {
     : >| "$histapp"
     _ble_builtin_history_histapp_count=0
   fi
-  _ble_builtin_history_wskip=$count
+  _ble_builtin_history_wskip=$max
 }
 
 ## 関数 ble/builtin/history/array#delete-hindex array_name index...
@@ -5704,43 +5712,37 @@ function ble/builtin/history/option:d {
     local beg=$(($1))
     local end=$beg
   fi
-  local ret; ble/builtin/history/.get-count; local count=$ret
-  ((beg<0)) && ((beg+=count+1,beg<0&&(beg=0)))
-  ((end<0)) && ((end+=count+1,end<0&&(end=0)))
-  ((end>count)) && end=$count
+  local min; ble/builtin/history/.get-min
+  local max; ble/builtin/history/.get-max
+  ((beg<0)) && ((beg+=max+1)); ((beg<min?(beg=min):(beg>max&&(beg=max))))
+  ((end<0)) && ((end+=max+1)); ((end<min?(end=min):(end>max&&(end=max))))
   ((beg<=end)) || return 0
 
   if ((_ble_bash>=50000&&beg<end)); then
     builtin history -d "$beg-$end"
   else
     local i
-    for ((i=beg;i<=end;i++)); do
+    for ((i=end;i>=beg;i--)); do
       builtin history -d "$i"
     done
   fi
+  if ((_ble_builtin_history_wskip>=end)); then
+    ((_ble_builtin_history_wskip-=end-beg+1))
+  elif ((_ble_builtin_history_wskip>beg-1)); then
+    ((_ble_builtin_history_wskip=beg-1))
+  fi
 
   if [[ $_ble_edit_history_loaded ]]; then
-    ble/util/invoke-hook _ble_builtin_history_delete_hook "$((beg-1))-$end"
-    local d=$((beg-1)) s=$end
-    local i N=${#_ble_edit_history[@]}
-    for ((;s<N;d++,s++)); do
-      _ble_edit_history[d]=${_ble_edit_history[s]}
-      _ble_edit_history_edit[d]=${_ble_edit_history_edit[s]}
-    done
-    for ((i=N-1;i>=d;i--)); do
-      unset -v '_ble_edit_history[i]'
-      unset -v '_ble_edit_history_edit[i]'
-    done
-    _ble_edit_history_count=$d
-    if ((_ble_edit_history_ind>=end)); then
-      ((_ble_edit_history_ind-=end-beg+1))
-    elif ((_ble_edit_history_ind>=end)); then
-      ((_ble_edit_history_ind=beg-1))
-    fi
-    if ((_ble_builtin_history_wskip>=end)); then
-      ((_ble_builtin_history_wskip-=end-beg+1))
-    elif ((_ble_builtin_history_wskip>beg-1)); then
-      ((_ble_builtin_history_wskip=beg-1))
+    local N=${#_ble_edit_history[@]}
+    local b=$((beg-1+N-max)) e=$((end+N-max))
+    ble/util/invoke-hook _ble_builtin_history_delete_hook "$b-$e"
+    _ble_edit_history=("${_ble_edit_history[@]::b}" "${_ble_edit_history[@]:e}")
+    _ble_edit_history_edit=("${_ble_edit_history_edit[@]::b}" "${_ble_edit_history_edit[@]:e}")
+    _ble_edit_history_count=${#_ble_edit_history[@]}
+    if ((_ble_edit_history_ind>=e)); then
+      ((_ble_edit_history_ind-=e-b))
+    elif ((_ble_edit_history_ind>=e)); then
+      ((_ble_edit_history_ind=b))
     fi
   else
     # history load が完了していなければ読み途中のデータを破棄して戻る

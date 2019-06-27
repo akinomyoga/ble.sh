@@ -1079,42 +1079,6 @@ bash_tips
   * [保留] 2018-09-15 complete: 文脈の変更範囲で end0 だけ負になるバグ (ref `#D0818`)
   * [保留] 2018-09-11 complete: 端末が操作を受け付けなくなるバグ (ref `#D0817`)
 
-2018-08-29
-
-  * history: HISTSIZE に達した時の動作?
-
-    今気づいたが HISTSIZE に達した時、何が起こるだろうか。
-    何かがずれるのではないだろうか…。
-    と思ったが history コマンドを使うのは初期化時と履歴展開だけである。
-    実は大した影響はないのではないかという気がしてきた…。
-
-    また、実は bash-4.3 以降では HIST{FILE,}SIZE に負の値を設定できる様だ。
-    更に、それ以前から単に空文字列にしておけば無制限なのだそうだ。
-
-    →2019-06-19 実際に動作を確認してみた所、
-      HISTSIZE に達しても履歴への登録が止まったり、
-      古いものから順に削除されていくなどの動作はしない様だ。
-      だとすればそもそもHISTSIZEとは何だったのか…。
-      うーん。不思議だ。或いは初期化時の HISTSIZE に意味があるのだろうか。
-
-      と思ったら…。実は HISTSIZE に達すると番号を保持したまま
-      先頭部分が削れていくという事の様だ…。
-
-    * だとすれば今までの history 1 による count の計測なども誤っていた事になる。
-      うーん。修正するとすれば history に登録されている最初の項目の番号が必要になる。
-      最初の項目の番号を取得する最も速い方法は何だろうか。
-      history | head -1 だと 3 fork 必要になる。
-      history を変数に入れると計算時間がかかる。
-      と思ったが 13k 項目で 0.017s だった @chatoyancy
-      それ程には時間はかからない。
-      しかし history | head -1 の方が 0.007s と速い。
-
-      history 1 は4箇所で使用している。
-      うーん。history | head をする位であれば
-      history | wc -l で取得した方が速い。
-
-    * HISTSIZE に関連して history -p '!1' も危ないのではないか
-
 2018-08-16
 
   * complete: オーバーレイによる実装?
@@ -2185,8 +2149,10 @@ bash_tips
   - main: change exit status of `ble-update` when it is already upto date `#D1081` d94f691
   - progcomp: improve treatment of `COMP_WORDBREAKS` `#D1094` f6740b5 `#D1098` 6c6bae5
   - history: replace builtin `history` `#D1101` 655d73e
-    - history: improve performance of `history -r` `#D1105` `#D1106` 4a5982b
     - history: synchronize undo/mark/dirty data with history changes `#D1102` `#D1103` `#D1104` 5367360
+    - history: improve performance of `history -r` `#D1105` `#D1106` f204bc7
+  - history: improve performance of `erasedups` `#D1107` 518e2ee
+  - history: correctly handle `HISTSIZE` overflow `#D1108`
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3171,6 +3137,89 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-06-27
+
+  * 2018-08-29 history: HISTSIZE に達した時の動作? [#D1108]
+
+    今気づいたが HISTSIZE に達した時、何が起こるだろうか。
+    何かがずれるのではないだろうか…。
+    と思ったが history コマンドを使うのは初期化時と履歴展開だけである。
+    実は大した影響はないのではないかという気がしてきた…。
+
+    また、実は bash-4.3 以降では HIST{FILE,}SIZE に負の値を設定できる様だ。
+    更に、それ以前から単に空文字列にしておけば無制限なのだそうだ。
+
+    →2019-06-19 実際に動作を確認してみた所、
+
+      % HISTSIZE に達しても履歴への登録が止まったり、
+      % 古いものから順に削除されていくなどの動作はしない様だ。
+      % だとすればそもそもHISTSIZEとは何だったのか…。
+      % うーん。不思議だ。或いは初期化時の HISTSIZE に意味があるのだろうか。
+
+      と思ったら…。実は HISTSIZE に達すると番号を保持したまま
+      先頭部分が削れていくという事の様だ…。
+
+    * fixed: だとすれば今までの history 1 による count の計測なども誤っていた事になる。
+      うーん。修正するとすれば history に登録されている最初の項目の番号が必要になる。
+      最初の項目の番号を取得する最も速い方法は何だろうか。
+      history | head -1 だと 3 fork 必要になる。
+      history を変数に入れると計算時間がかかる。
+      と思ったが 13k 項目で 0.017s だった @chatoyancy
+      それ程には時間はかからない。
+      しかし history | head -1 の方が 0.007s と速い。
+
+      history 1 は4箇所で使用している。
+      うーん。history | head をする位であれば
+      history | wc -l で取得した方が速い。
+
+    * fixed: HISTSIZE に関連して history -p '!1' も危ないのではないか
+
+    先頭が削れた時に _ble_edit_history 等はどうしたら良いのか…。
+    実は _ble_edit_history と builtin history は内容が異なっても良い?
+    うーん。微妙である。例えば ble/builtin/history/option:d の実装は
+    history の番号と _ble_edit_history の番号が一致している事を想定している。
+    他にも考察が必要な箇所が幾らか見られる。
+
+    そもそも _ble_edit_history の内容をどの様にするかの可能性が幾つかある。
+
+    a history の番号と同じインデックスに記録する。
+
+      x 然し、これだと ble.sh をロードした時から history の offset が有限である場合に、
+        offset までを空文字列で初期化しなければならない。
+
+    b history の内容と同期する。つまり HISTSIZE に達して先頭が削れた場合、
+      _ble_edit_history も一緒に shift を実行する様にする。
+      この実装の為には、現在の _ble_edit_history の先頭の項目の
+      history における対応する番号を一緒に記録しておく必要がある。
+
+      x HISTSIZE に達すると毎回 shift が起こって効率が悪い。
+        hook も毎回呼ばれる事になる。
+
+      そもそも大量にメモリを使用しているし、
+      履歴によって多少メモリを追加で食らっても問題ない気がする。
+      なので HISTSIZE に構わず現在までの履歴を全て記録しても良いのでは。
+
+    c history とは独立に _ble_edit_history の開始番号を記録する。
+
+      x 然し、これだと history -r で HISTSIZE よりも多い行数を読み取った時に、
+        その上で読み取った行数の一部だけが _ble_edit_history に追記される。
+        この時、_ble_edit_history に記録される項目の番号は連続でなくなる。
+        つまりずれが生じてしまう。
+
+    d 或いは、末端からの行数で対応関係を取る事にする。
+      つまり、history に於ける末端から N 番目の項目は
+      _ble_edit_history に於ける末端から N 番目の要素と解釈する。
+      この様にしておけば少なくとも history に現在ある項目に関しては、
+      _ble_edit_history に於ける項目と正しく対応が取れる筈である。
+
+    取り敢えず d の方策で問題なく実装できるかについて確認する。
+
+    - option:d に関しては history の offset/count を取得して、
+      削除範囲を限定する。そしてその後で対応する
+      _ble_edit_history を削除する事にすれば良い。
+
+    うーん。取り敢えず ble/builtin/history に関しては対応した気がする。
+    他に対応するべき箇所はあるだろうか。。。
+    ble-edit/history/load は特に対応を取っている訳ではないので関係ない。
 
   * 2016-07-07 history: HISTCONTROL=erasedups の時 ble-edit/history/add が遅いかもしれない [#D1107]
 
