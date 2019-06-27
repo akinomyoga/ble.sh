@@ -885,11 +885,6 @@ bash_tips
 
 2019-06-19
 
-  * history: ble/keymap:vi/mark/history-delete.hook の動作テスト
-    一応動いている様な気がする。
-
-  * 2019-02-07 history: history -nr [filename] に関しては履歴を idle で再初期化する?
-
   * 2016-07-07 history: HISTCONTROL=erasedups の時 ble-edit/history/add が遅いかもしれない
 
     重複する項目がないかぎりはそんなに遅くないのではないかと思われる。
@@ -909,11 +904,13 @@ bash_tips
     emacs mode の時には問題は発生していない? と思ったら
     vi mode でも再現しない。うーん。発生条件がわからない。
 
+    これは .get-count の計算がずれるからだろうか。
+    取り敢えず .get-count に関しては修正する事にして、
+    それから .get-count を修正する事にする。
+
 2019-06-18
 
   * history: interactive な history 編集に対応できたらする
-
-  * history: ble/builtin/history -r に時間がかかる
 
 2019-05-27
 
@@ -1128,6 +1125,8 @@ bash_tips
       history 1 は4箇所で使用している。
       うーん。history | head をする位であれば
       history | wc -l で取得した方が速い。
+
+    * HISTSIZE に関連して history -p '!1' も危ないのではないか
 
 2018-08-16
 
@@ -3179,6 +3178,50 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-06-27
+
+  * 2019-02-07 history: history -nr [filename] に関しては履歴を idle で再初期化する?
+
+    特に追加項目の数が大量にある場合には background で初期化しても良いのかもしれない。
+    これは bash 4.0 以降に於いて ble-edit/reset-history を呼び出せば良い。
+
+    では追加項目の数が何個以上の時に background で初期化を実行するべきか。
+    % 取り敢えず delta>=_ble_edit_history_count/2 で判定する事にした。
+    やはり delta>=10000 で判定する事にした。
+
+  * 2019-06-18 history: ble/builtin/history -r に時間がかかる
+
+    調べてみると eval に時間がかかっている。
+    やはり mapfile 等を用いてロードし直した方が早いという事か。
+    5000項目ロードするのに20秒かかっている。
+    1秒で250項目である。0.1秒で25項目である。
+    うーん。
+
+    結局、既存の ble-edit/history/load を拡張して、
+    追加の項目を初期化できる様に変更した。
+    動いている。
+
+  * 2019-06-19 history: ble/keymap:vi/mark/history-delete.hook の動作テスト
+    一応動いている様な気がする。
+
+    x ずれが見られた…。試しに以下を実行してみると
+      declare -a fire=([5]="B" [6]="C") となるべき所が
+      declare -a fire=([0]="B" [1]="C") となってしまう。
+
+      $ fire[7]=1
+      $ fire[9]=A
+      $ fire[10]=B
+      $ fire[11]=C
+      $ declare -p fire
+      $ ble/builtin/history/array#delete-hindex fire 5-10
+      $ declare -p fire
+
+      調べてみた所 local shift=0 を宣言するのを忘れて shift を使っていた。
+      前回の shift の値が使われていたという事だった。直した。
+      取り敢えず一番最初にずれを見つけた例でも試して直っている事を確かめた。
+
+    まあ、これに関しては動いていると見做して良いという事にする。
 
 2019-06-19
 

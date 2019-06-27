@@ -2764,7 +2764,7 @@ function ble/widget/vi-command/.history-relative-line {
   # 履歴が初期化されていないとき最終行にいる。
   if [[ ! $_ble_edit_history_loaded ]]; then
     ((offset<0)) || return 1
-    ble-edit/history/load # to use _ble_edit_history_ind
+    ble-edit/history/initialize # to use _ble_edit_history_ind
   fi
 
   local ret count=$((offset<0?-offset:offset)) exit=1
@@ -5086,7 +5086,7 @@ function ble/widget/vi-command/search.core {
   fi
 
   if ((opt_history)) && [[ $_ble_edit_history_loaded || opt_backward -ne 0 ]]; then
-    ble-edit/history/load
+    ble-edit/history/initialize
     local index=$_ble_edit_history_ind
     [[ $start ]] || start=$index
     if ((opt_backward)); then
