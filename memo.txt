@@ -885,19 +885,6 @@ bash_tips
 
 2019-06-19
 
-  * 2016-07-07 history: HISTCONTROL=erasedups の時 ble-edit/history/add が遅いかもしれない
-
-    重複する項目がないかぎりはそんなに遅くないのではないかと思われる。
-    何れにしても bash 配列において何が遅くて何が速いのかについて計測する必要がある。
-    filter 部分の操作とそれから truncate の部分について。
-    →benchmark-array.sh で filter を実装して試してみたが、
-      実装の仕方でそんなに速度が変化するということはなかった。
-      もっと巨大な配列の場合などでしか効かないという事だろうか。
-    →しかし何れにしても実測してみたところによると
-      重複する項目がある時はかなり重くなるという事が予想される。
-
-    というか unset して再度 arr=("${arr[@]}") したら速い気がする。
-
   * history: clipboard が全く効かなくなっている。
     これは HISTSIZE を小さな値にすると発生する様子である。
     最近の変更が悪い訳ではない様に思う。
@@ -2186,6 +2173,7 @@ bash_tips
   - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
   - highlight: support job names by `auto_resume` `#D1065` ce46024
   - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
+  - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2196,6 +2184,9 @@ bash_tips
   - main: change default attach strategy to `--attach=prompt` `#D1076` 197f752
   - main: change exit status of `ble-update` when it is already upto date `#D1081` d94f691
   - progcomp: improve treatment of `COMP_WORDBREAKS` `#D1094` f6740b5 `#D1098` 6c6bae5
+  - history: replace builtin `history` `#D1101` 655d73e
+    - history: improve performance of `history -r` `#D1105` `#D1106` 4a5982b
+    - history: synchronize undo/mark/dirty data with history changes `#D1102` `#D1103` `#D1104` 5367360
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3181,7 +3172,24 @@ bash_tips
 
 2019-06-27
 
-  * 2019-02-07 history: history -nr [filename] に関しては履歴を idle で再初期化する?
+  * 2016-07-07 history: HISTCONTROL=erasedups の時 ble-edit/history/add が遅いかもしれない [#D1107]
+
+    重複する項目がないかぎりはそんなに遅くないのではないかと思われる。
+    何れにしても bash 配列において何が遅くて何が速いのかについて計測する必要がある。
+    filter 部分の操作とそれから truncate の部分について。
+    →benchmark-array.sh で filter を実装して試してみたが、
+      実装の仕方でそんなに速度が変化するということはなかった。
+      もっと巨大な配列の場合などでしか効かないという事だろうか。
+    →しかし何れにしても実測してみたところによると
+      重複する項目がある時はかなり重くなるという事が予想される。
+
+    というか unset して再度 arr=("${arr[@]}") したら速い気がする。
+    →その方針で再実装した。遅い場合には 0.800 程度かかるのが
+    0.120 程度に抑えられる事を確認した。もしかすると、
+    項目数がもっとずっと大きい場合にはそれでも問題になるかもしれないが、
+    従来の実装で遅くなるよりは格段に増しになっている筈である。
+
+  * 2019-02-07 history: history -nr [filename] に関しては履歴を idle で再初期化する? [#D1106]
 
     特に追加項目の数が大量にある場合には background で初期化しても良いのかもしれない。
     これは bash 4.0 以降に於いて ble-edit/reset-history を呼び出せば良い。
@@ -3190,7 +3198,7 @@ bash_tips
     % 取り敢えず delta>=_ble_edit_history_count/2 で判定する事にした。
     やはり delta>=10000 で判定する事にした。
 
-  * 2019-06-18 history: ble/builtin/history -r に時間がかかる
+  * 2019-06-18 history: ble/builtin/history -r に時間がかかる [#D1105]
 
     調べてみると eval に時間がかかっている。
     やはり mapfile 等を用いてロードし直した方が早いという事か。
@@ -3202,7 +3210,7 @@ bash_tips
     追加の項目を初期化できる様に変更した。
     動いている。
 
-  * 2019-06-19 history: ble/keymap:vi/mark/history-delete.hook の動作テスト
+  * 2019-06-19 history: ble/keymap:vi/mark/history-delete.hook の動作テスト [#D1104]
     一応動いている様な気がする。
 
     x ずれが見られた…。試しに以下を実行してみると

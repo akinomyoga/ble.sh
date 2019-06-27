@@ -5858,27 +5858,26 @@ function ble/builtin/history/option:s {
       fi
       if [[ $erasedups ]]; then
         local -a delete_indices=()
-        local indexNext=$HISTINDEX_NEXT
-        local i n=-1 N=${#_ble_edit_history[@]}
-        for ((i=0;i<N;i++)); do
-          if [[ ${_ble_edit_history[i]} != "$cmd" ]]; then
-            if ((++n!=i)); then
-              _ble_edit_history[n]=${_ble_edit_history[i]}
-              _ble_edit_history_edit[n]=${_ble_edit_history_edit[i]}
-            fi
-          else
+        local shift_histindex_next=0
+        local shift_wskip=0
+        local i N=${#_ble_edit_history[@]}
+        for ((i=0;i<N-1;i++)); do
+          if [[ ${_ble_edit_history[i]} == "$cmd" ]]; then
+            unset -v '_ble_edit_history[i]'
+            unset -v '_ble_edit_history_edit[i]'
             ble/array#push delete_indices "$i"
-            ((i<_ble_builtin_history_wskip&&_ble_builtin_history_wskip--))
-            ((i<HISTINDEX_NEXT&&HISTINDEX_NEXT--))
+            ((i<_ble_builtin_history_wskip&&shift_wskip++))
+            ((i<HISTINDEX_NEXT&&shift_histindex_next++))
           fi
         done
-        for ((i=N-1;i>n;i--)); do
-          unset -v '_ble_edit_history[i]'
-          unset -v '_ble_edit_history_edit[i]'
-        done
-        ((${#delete_indices[@]})) &&
+        if ((${#delete_indices[@]})); then
+          _ble_edit_history=("${_ble_edit_history[@]}")
+          _ble_edit_history_edit=("${_ble_edit_history_edit[@]}")
           ble/util/invoke-hook _ble_builtin_history_delete_hook "${delete_indices[@]}"
-        [[ ${HISTINDEX_NEXT+set} ]] && HISTINDEX_NEXT=$indexNext
+          ((_ble_builtin_history_wskip-=shift_wskip))
+          [[ ${HISTINDEX_NEXT+set} ]] && ((HISTINDEX_NEXT-=shift_histindex_next))
+        fi
+        ((N)) && [[ ${_ble_edit_history[N-1]} == "$cmd" ]] && return
       fi
     fi
     local topIndex=${#_ble_edit_history[@]}
