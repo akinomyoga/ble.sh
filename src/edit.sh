@@ -5578,16 +5578,20 @@ function ble/builtin/history/.load-recent-entries {
 function ble/builtin/history/.read {
   local file=$1 skip=${2:-0} fetch=$3
   local -x histnew=$_ble_base_run/$$.history.new
-  local script=$(ble/bin/awk -v skip=$skip '
-    BEGIN { histnew = ENVIRON["histnew"]; count = 0; }
-    NR <= skip { next; }
-    { print $0 >> histnew; count++; }
-    END {
-      print "ble/builtin/history/.set-rskip \"$file\" " NR;
-      print "((_ble_builtin_history_histnew_count+=" count "))";
-    }
-  ' "$file")
-  eval -- "$script"
+  if [[ -s $file ]]; then
+    local script=$(ble/bin/awk -v skip=$skip '
+      BEGIN { histnew = ENVIRON["histnew"]; count = 0; }
+      NR <= skip { next; }
+      { print $0 >> histnew; count++; }
+      END {
+        print "ble/builtin/history/.set-rskip \"$file\" " NR;
+        print "((_ble_builtin_history_histnew_count+=" count "))";
+      }
+    ' "$file")
+    eval -- "$script"
+  else
+    ble/builtin/history/.set-rskip "$file" 0
+  fi
   if [[ ! $fetch && -s $histnew ]]; then
     local nline=$_ble_builtin_history_histnew_count
     builtin history -r "$histnew"

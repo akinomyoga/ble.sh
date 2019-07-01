@@ -896,7 +896,7 @@ bash_tips
 2019-06-18
 
   * history: interactive な history 編集に対応できたらする
-    つまりメニューを表示して其処で選択肢たり削除したりする。
+    つまりメニューを表示して其処で選択したり削除したりする。
     検索などもできる様にする。遅延で着色をする。
 
 2019-05-27
@@ -2165,9 +2165,9 @@ bash_tips
   - history: replace builtin `history` `#D1101` 655d73e
     - history: synchronize undo/mark/dirty data with history changes `#D1102` `#D1103` `#D1104` 5367360
     - history: improve performance of `history -r` `#D1105` `#D1106` f204bc7
-    - history: fix a problem that history file is doubled with `history -cr` in `PROMPT_COMMAND` `#D1110`
-    - history: suppress errors on new history file `#D1111`
-    - history: fix a problem that `_ble_edit_history` is not synchronized with `history -r` `#D1112`
+    - history: fix a problem that history file is doubled with `history -cr` in `PROMPT_COMMAND` `#D1110` e64edb7
+    - history: suppress errors on new history file `#D1111` e64edb7 `#D1113`
+    - history: fix a problem that `_ble_edit_history` is not synchronized with `history -r` `#D1112` e64edb7
   - history: improve performance of `erasedups` `#D1107` 518e2ee
   - history: correctly handle `HISTSIZE` overflow `#D1108`
 
@@ -3154,6 +3154,9 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-01
+
+  * HISTFILE を削除すると awk が警告メッセージを出す [#D1113]
+    読み取るべきファイルが存在していない場合には単に無視するべきである。
 
   * history: 履歴に変化がない時 history -r で履歴データが同期されない [#D1112]
     これは ble-edit/history/load の問題だった。
