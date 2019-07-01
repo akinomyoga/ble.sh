@@ -883,25 +883,25 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-06-19
+2019-06-28
 
-  * history: clipboard が全く効かなくなっている。
-    これは HISTSIZE を小さな値にすると発生する様子である。
-    最近の変更が悪い訳ではない様に思う。
-    emacs mode の時には問題は発生していない? と思ったら
-    vi mode でも再現しない。うーん。発生条件がわからない。
-
-    これは .get-count の計算がずれるからだろうか。
-    取り敢えず .get-count に関しては修正する事にして、
-    それから .get-count を修正する事にする。
+  * history: history -d で現在編集の項目が削除された時
+    現在の実装ではどの様に動くだろうか。
+    編集中の文字列は現在編集の項目がそのまま残る。
+    この状態で移動を行うと、別の項目の edit として
+    現在編集中の内容が記録されてしまって、
+    元々其処にあった項目の内容が見えなくなってしまう。
+    削除後の index に明示的に移動するべきなのではないか。
 
 2019-06-18
 
   * history: interactive な history 編集に対応できたらする
+    つまりメニューを表示して其処で選択肢たり削除したりする。
+    検索などもできる様にする。遅延で着色をする。
 
 2019-05-27
 
-  * history: 履歴の同期。
+  * history: 履歴のリアルタイム同期?
     現在は新しくコマンドを実行した時にだけ同期を行っている。
     履歴を参照する度に毎回同期を行う様にしたい。
 
@@ -921,6 +921,20 @@ bash_tips
     実のところそちらを先に実装してからの方が良いのかもしれない。
     - history: _ble_edit_history_ind の修正などが必要
     - ble-edit/undo: hindex の修正などが必要
+
+    同期のタイミングは難しい。
+    例えば履歴を遡っている時に編集中の最新のコマンドはどうなるのか。
+    最新のコマンドは _ble_edit_history_edit[N] に記録されている。
+    この時新しいコマンドを読み取ってしまうと最新のコマンドは上書きされてしまう。
+    vi.sh の mark や undo 等も同様である。
+    最新の内容は新しいコマンドを読み取る前に待避して置かなければならない。
+
+    そもそも勝手に読み込みが為されるのが分かりやすいのかどうかというのもある。
+    他の端末で大量にコマンドを実行した時に、
+    現在の編集中のコマンド履歴が遠くなってしまうのは分かりにくくないか。
+    しかし、それはそもそもコマンド履歴の共有をする時の分かりにくさでもある。
+    コマンド履歴の共有を行っているのであれば実は大量のコマンドがあっても
+    それを共有するというのが自然な振る舞いなのではないだろうか。
 
   * 次に機能を追加するとしたらマウスなのだろうという気がする。
     fish は未だマウスに対応していない。
@@ -2151,6 +2165,9 @@ bash_tips
   - history: replace builtin `history` `#D1101` 655d73e
     - history: synchronize undo/mark/dirty data with history changes `#D1102` `#D1103` `#D1104` 5367360
     - history: improve performance of `history -r` `#D1105` `#D1106` f204bc7
+    - history: fix a problem that history file is doubled with `history -cr` in `PROMPT_COMMAND` `#D1110`
+    - history: suppress errors on new history file `#D1111`
+    - history: fix a problem that `_ble_edit_history` is not synchronized with `history -r` `#D1112`
   - history: improve performance of `erasedups` `#D1107` 518e2ee
   - history: correctly handle `HISTSIZE` overflow `#D1108`
 
@@ -3136,7 +3153,121 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-07-01
+
+  * history: 履歴に変化がない時 history -r で履歴データが同期されない [#D1112]
+    これは ble-edit/history/load の問題だった。
+
+  * history: 履歴ファイルが存在しない時、警告が出る [#D1111]
+    これは wc の警告を殺すことにした。
+    ファイルが存在しない時 wc の結果は空になるが算術式では空は 0 になるので気にしない事にする
+
+  * history: PROMPT_COMMAND で history -cr すると履歴が倍化する (reported by cmplstofB) [#D1110]
+
+    これは ble-attach した時に内部で初回の PROMPT_COMMAND を評価する時に
+    history -a && history -c && history -r を実行するとなるという事の様である。
+
+    色々実行しても倍加するタイミングが分からないのでもっと詳しく調べてみる。
+
+    | ble/textarea#render ble/textarea#redraw ble-attach source                                                                                                                                                         ~
+    | -rw-------. 1 murase murase 2994 2019-07-01 16:59:01 /home/murase/A.bash
+    | ble/textarea#render ble-edit/bind/.tail ble-attach source
+    | -rw-------. 1 murase murase 2994 2019-07-01 16:59:01 /home/murase/A.bash
+    | ble/textarea#render ble-edit/bind/.tail ble-decode/EPILOGUE ble-decode/.hook
+    | -rw-------. 1 murase murase 5988 2019-07-01 16:59:15 /home/murase/A.bash
+    | ble/textarea#render ble-edit/bind/.tail ble-decode/EPILOGUE ble-decode/.hook
+    | -rw-------. 1 murase murase 5988 2019-07-01 16:59:15 /home/murase/A.bash
+
+    どうも最初の epilogue の呼び出しの瞬間になる様である。
+    うーん。history -a で倍加しているのだろうか。
+    history -a は wskip を基準にしている。調べてみる。
+    と思ったら wskip に関しては history 1 の出力と同期している様子である。
+
+    | ble/textarea#render ble/textarea#redraw ble-attach source
+    | # Note: history 1 で何も出力されない
+    | wskip=0
+    | -rw-------. 1 murase murase 12010 2019-07-01 17:13:32 /home/murase/A.bash
+    | -rw-------. 1 murase murase 12010 2019-07-01 17:13:32 /home/murase/A.bash
+    | ble/textarea#render ble-edit/bind/.tail ble-attach source
+    |  1088  bash
+    | wskip=1088
+    | -rw-------. 1 murase murase 12010 2019-07-01 17:13:32 /home/murase/A.bash
+    | -rw-------. 1 murase murase 12010 2019-07-01 17:13:32 /home/murase/A.bash
+    | ble/textarea#render ble-edit/bind/.tail ble-decode/EPILOGUE ble-decode/.hook
+    |  2176  bash
+    | wskip=1088
+    | -rw-------. 1 murase murase 12010 2019-07-01 17:13:32 /home/murase/A.bash
+    | -rw-------. 1 murase murase 24020 2019-07-01 17:13:35 /home/murase/A.bash
+
+    したがってこれは関係ない。先に history のリストの方が倍加している。
+    という事は読み取りの方が問題になっているのだろうか。
+
+    | ble/textarea#render ble/textarea#redraw ble-attach source
+    | history 1:declare -A _ble_builtin_history_rskip_dict=()
+    | wskip=0
+    | -rw-------. 1 murase murase 48051 2019-07-01 17:19:00 /home/murase/A.bash
+    | -rw-------. 1 murase murase 48051 2019-07-01 17:19:00 /home/murase/A.bash
+    | ble/textarea#render ble-edit/bind/.tail ble-attach source
+    | history 1: 4355  bash
+    | declare -A _ble_builtin_history_rskip_dict=([/home/murase/A.bash]="4355" )
+    | wskip=4355
+    | -rw-------. 1 murase murase 48051 2019-07-01 17:19:00 /home/murase/A.bash
+    | -rw-------. 1 murase murase 48051 2019-07-01 17:19:00 /home/murase/A.bash
+    | ble/textarea#render ble-edit/bind/.tail ble-decode/EPILOGUE ble-decode/.hook
+    | history 1: 8710  bash
+    | declare -A _ble_builtin_history_rskip_dict=([/home/murase/A.bash]="4355" )
+    | wskip=4355
+    | -rw-------. 1 murase murase 48051 2019-07-01 17:19:00 /home/murase/A.bash
+    | -rw-------. 1 murase murase 96102 2019-07-01 17:19:01 /home/murase/A.bash
+
+    と思って rskip の方を出力してみるがこちらも問題ない。
+    というかやはり history のリストが倍加している…。
+    分かった気がする…。bashrc の中で history -r を呼び出すと、X行読み込まれて、
+    更に最初の bind 呼び出しまでに更にデフォルトの動作として X 行が読み込まれる事になる。
+
+    大分特定できた。そもそもの原因は history -r を bashrc の中で呼び出すと、
+    実際に対話モードに入った時に項目が二倍になってしまっているという事。
+    うーん。最初に bind を受信した時に項目の数を rskip/wskip に記録するべきなのだろうか。
+    しかし、そうしたとしても履歴ファイルの倍化が防げるだけであって、
+    history や _ble_edit_history が二倍になってしまうという問題を防ぐことはできない。
+
+    a だとすれば bashrc の中での history に対する操作は全てキャッシュしておいて、
+      その場では発動しない様にしておくという事が必要になるのだろうか。うーん。
+
+    b うーん。或いは bashrc の中で呼び出した ble-attach の場合には最後に history -c を実行してしまう?
+      それと同時に ble/builtin/history/initialize に関してもデータを消去してしまう。
+      うーん。対症療法的である…。実際にユーザが意図的に特別な履歴項目を予め読み込んで置きたいという時に問題になる。
+
+    c 或いは ble/builtin/history/initialize は具体的に履歴が読み込まれている時にのみ実行して、
+      そうでない時には初期化せずに放置しておく事にする? と思ったが、それは解決にならない。
+      結局 history -r よりも後に更に何らかの別の history -r を実行するとずれてしまう。
+
+      初回の bind の時に wskip を再設定するという事にするのが良いのかもしれない。
+      うーん。綺麗な解決方法が見つからない。ble/builtin/history/.initialize が
+      呼び出された後に Bash による history -r が暗黙で走る、という事が問題になっている。
+
+    d それならば history が呼び出される度に履歴項目の数を監視しておいて、
+      勝手に増えたらそれは何らかの別の枠組みによって履歴項目が増えた物として、
+      その分だけ wskip を増加させるという事にしてはどうだろうか。
+      今 wskip が変化するのは read/write/delete の時だけである。
+
+      その様に実装するのであれば埒外の builtin history
+      による履歴項目の変化は全て追跡する必要がある。
+
 2019-06-27
+
+  * 2019-06-19 history: clipboard が全く効かなくなっている [#D1109]
+    これは HISTSIZE を小さな値にすると発生する様子である。
+    最近の変更が悪い訳ではない様に思う。
+    emacs mode の時には問題は発生していない? と思ったら
+    vi mode でも再現しない。うーん。発生条件がわからない。
+
+    これは .get-count の計算がずれるからだろうか。
+    取り敢えず .get-count に関しては修正する事にして、
+    それから .get-count を修正する事にする。
+
+    これは再現しないし、また HISTSIZE の取り扱いについて #D1108 で修正を行ったので、
+    それにより解決した可能性もある。再度発現した時に対処する事にする。
 
   * 2018-08-29 history: HISTSIZE に達した時の動作? [#D1108]
 

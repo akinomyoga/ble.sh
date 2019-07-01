@@ -1742,8 +1742,8 @@ function ble/textarea#render {
   ble/dirty-range#clear --prefix=_ble_edit_dirty_draw_
 #%if !release
   ble/util/assert '((BLELINE_RANGE_UPDATE[0]<0||(
-       BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[1]&&
-       BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[2])))' "(${BLELINE_RANGE_UPDATE[*]})"
+        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[1]&&
+        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[2])))' "(${BLELINE_RANGE_UPDATE[*]})"
 #%end
 
   # local graphic_dbeg graphic_dend graphic_dend0
@@ -5260,6 +5260,7 @@ if ((_ble_bash>=40000)); then
 
     local history_tmpfile=$_ble_base_run/$$.edit-history-load
     local history_indfile=$_ble_base_run/$$.edit-history-load-multiline-index
+    [[ $opt_async || :$opts: == *:init:* ]] || _ble_edit_history_loading=0
     while :; do
       case $_ble_edit_history_loading in
 
@@ -5433,7 +5434,7 @@ fi
 function ble-edit/history/initialize {
   [[ $_ble_edit_history_prefix ]] && return
   [[ $_ble_edit_history_loaded ]] && return
-  ble-edit/history/load "$@"; local ext=$?
+  ble-edit/history/load "init:$@"; local ext=$?
   ((ext)) && return "$ext"
   _ble_edit_history_loaded=1
   _ble_edit_history_count=${#_ble_edit_history[@]}
@@ -5462,7 +5463,10 @@ ble/array#push _ble_builtin_history_delete_hook ble-edit/undo/history-delete.hoo
 ble/array#push _ble_builtin_history_clear_hook ble-edit/undo/history-clear.hook
 ## @var _ble_builtin_history_wskip
 ##   履歴のどの行までがファイルに書き込み済みの行かを管理する変数です。
+## @var _ble_builtin_history_prevmax
+##   最後の ble/builtin/history における builtin history の項目番号
 _ble_builtin_history_wskip=0
+_ble_builtin_history_prevmax=0
 ##
 ## 以下の関数は各ファイルに関して何処まで読み取ったかを記録します。
 ##
@@ -5525,13 +5529,24 @@ function ble/builtin/history/.initialize {
   : >| "$histnew"
 
   local histfile=${HISTFILE:-$HOME/.bash_history}
-  local rskip=$(ble/bin/wc -l "$histfile")
+  local rskip=$(ble/bin/wc -l "$histfile" 2>/dev/null)
   ble/string#split-words rskip "$rskip"
   local min; ble/builtin/history/.get-min
   local max; ble/builtin/history/.get-max
   ((max&&max-min+1<rskip&&(rskip=max-min+1)))
   _ble_builtin_history_wskip=$max
+  _ble_builtin_history_prevmax=$max
   ble/builtin/history/.set-rskip "$histfile" "$rskip"
+}
+## 関数 ble/builtin/history/.check-uncontrolled-change
+##   ble/builtin/history の管理外で履歴が読み込まれた時、
+##   それを history -a の対象から除外する為に wskip を更新する。
+function ble/builtin/history/.check-uncontrolled-change {
+  local max; ble/builtin/history/.get-max
+  if ((max!=_ble_builtin_history_prevmax)); then
+    _ble_builtin_history_wskip=$max
+    _ble_builtin_history_prevmax=$max
+  fi
 }
 ## 関数 ble/builtin/history/.load-recent-entries delta
 ##   history の最新 count 件を配列 _ble_edit_history に読み込みます。
@@ -5581,6 +5596,7 @@ function ble/builtin/history/.read {
     ble/builtin/history/.load-recent-entries "$nline"
     local max; ble/builtin/history/.get-max
     _ble_builtin_history_wskip=$max
+    _ble_builtin_history_prevmax=$max
   fi
 }
 ## 関数 ble/builtin/history/.write file [skip [opts]]
@@ -5640,6 +5656,7 @@ function ble/builtin/history/.write {
     _ble_builtin_history_histapp_count=0
   fi
   _ble_builtin_history_wskip=$max
+  _ble_builtin_history_prevmax=$max
 }
 
 ## 関数 ble/builtin/history/array#delete-hindex array_name index...
@@ -5690,6 +5707,7 @@ function ble/builtin/history/option:c {
   ble/builtin/history/.initialize
   builtin history -c
   _ble_builtin_history_wskip=0
+  _ble_builtin_history_prevmax=0
   if [[ $_ble_edit_history_loaded ]]; then
     _ble_edit_history=()
     _ble_edit_history_edit=()
@@ -5749,12 +5767,15 @@ function ble/builtin/history/option:d {
     ble-edit/history/clear-background-load
     _ble_edit_history_count=
   fi
+  local max; ble/builtin/history/.get-max
+  _ble_builtin_history_prevmax=$max
 }
 ## 関数 ble/builtin/history/option:a [filename]
 function ble/builtin/history/option:a {
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local filename=${1:-$histfile}
   ble/builtin/history/.initialize
+  ble/builtin/history/.check-uncontrolled-change
   local rskip; ble/builtin/history/.get-rskip "$filename"
   ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append:fetch
   [[ -r $filename ]] && ble/builtin/history/.read "$filename" "$rskip" fetch
@@ -5922,6 +5943,8 @@ function ble/builtin/history/option:s {
     ble-edit/history/clear-background-load
     builtin history -s -- "$cmd"
   fi
+  local max; ble/builtin/history/.get-max
+  _ble_builtin_history_prevmax=$max
 }
 function ble/builtin/history {
   while [[ $1 == -* ]]; do

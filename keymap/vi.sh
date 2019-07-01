@@ -4919,10 +4919,10 @@ function ble/widget/vi-command/commandline.hook {
 
 function ble/widget/vi-command:w {
   if [[ $1 ]]; then
-    builtin history -a "$1"
+    ble/builtin/history -a "$1"
     local file=$1
   else
-    builtin history -a
+    ble/builtin/history -a
     local file=${HISTFILE:-'~/.bash_history'}
   fi
   local wc
