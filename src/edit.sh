@@ -5258,8 +5258,8 @@ if ((_ble_bash>=40000)); then
     fi
     local rex=':count=([0-9]+):'; [[ :$opts: =~ $rex ]] && arg_count=${BASH_REMATCH[1]}
 
-    local history_tmpfile=$_ble_base_run/$$.edit-history-load
-    local history_indfile=$_ble_base_run/$$.edit-history-load-multiline-index
+    local history_tmpfile=$_ble_base_run/$$.history.load
+    local history_indfile=$_ble_base_run/$$.history.multiline-index
     [[ $opt_async || :$opts: == *:init:* ]] || _ble_edit_history_loading=0
     while :; do
       case $_ble_edit_history_loading in
@@ -5275,7 +5275,7 @@ if ((_ble_bash>=40000)); then
               shopt -u huponexit; ble-edit/history/load/.background-initialize </dev/null &>/dev/null & ble/bin/echo $!)
 
             function ble-edit/history/load/.background-initialize-completed {
-              local history_tmpfile=$_ble_base_run/$$.edit-history-load
+              local history_tmpfile=$_ble_base_run/$$.history.load
               [[ -s $history_tmpfile ]] || ! builtin kill -0 "$_ble_edit_history_loading_bgpid"
             } &>/dev/null
 
@@ -5442,7 +5442,7 @@ function ble-edit/history/initialize {
 }
 
 function ble/builtin/history/.touch-histfile {
-  local touch=$_ble_base_run/$$.histfile.touch
+  local touch=$_ble_base_run/$$.history.touch
   : >| "$touch"
 }
 function ble/builtin/history/.get-min {
@@ -5551,7 +5551,10 @@ function ble/builtin/history/.check-uncontrolled-change {
 ## 関数 ble/builtin/history/.load-recent-entries delta
 ##   history の最新 count 件を配列 _ble_edit_history に読み込みます。
 function ble/builtin/history/.load-recent-entries {
+  [[ $_ble_decode_bind_state == none ]] && return
+
   local delta=$1
+  ((delta>0)) || return 0
 
   if [[ ! $_ble_edit_history_loaded ]]; then
     # history load が完了していなければ読み途中のデータを破棄して戻る
@@ -5559,8 +5562,6 @@ function ble/builtin/history/.load-recent-entries {
     _ble_edit_history_count=
     return
   fi
-
-  ((delta>0)) || return 0
 
   # 追加項目が大量にある場合には background で完全再初期化する
   if ((_ble_bash>=40000&&delta>=10000)); then
@@ -5712,17 +5713,19 @@ function ble/builtin/history/option:c {
   builtin history -c
   _ble_builtin_history_wskip=0
   _ble_builtin_history_prevmax=0
-  if [[ $_ble_edit_history_loaded ]]; then
-    _ble_edit_history=()
-    _ble_edit_history_edit=()
-    _ble_edit_history_count=0
-    _ble_edit_history_ind=0
-  else
-    # history load が完了していなければ読み途中のデータを破棄して戻る
-    ble-edit/history/clear-background-load
-    _ble_edit_history_count=
+  if [[ $_ble_decode_bind_state != none ]]; then
+    if [[ $_ble_edit_history_loaded ]]; then
+      _ble_edit_history=()
+      _ble_edit_history_edit=()
+      _ble_edit_history_count=0
+      _ble_edit_history_ind=0
+    else
+      # history load が完了していなければ読み途中のデータを破棄して戻る
+      ble-edit/history/clear-background-load
+      _ble_edit_history_count=
+    fi
+    ble/util/invoke-hook _ble_builtin_history_clear_hook
   fi
-  ble/util/invoke-hook _ble_builtin_history_clear_hook
 }
 ## 関数 ble/builtin/history/option:d index
 function ble/builtin/history/option:d {
@@ -5754,22 +5757,25 @@ function ble/builtin/history/option:d {
     ((_ble_builtin_history_wskip=beg-1))
   fi
 
-  if [[ $_ble_edit_history_loaded ]]; then
-    local N=${#_ble_edit_history[@]}
-    local b=$((beg-1+N-max)) e=$((end+N-max))
-    ble/util/invoke-hook _ble_builtin_history_delete_hook "$b-$e"
-    _ble_edit_history=("${_ble_edit_history[@]::b}" "${_ble_edit_history[@]:e}")
-    _ble_edit_history_edit=("${_ble_edit_history_edit[@]::b}" "${_ble_edit_history_edit[@]:e}")
-    _ble_edit_history_count=${#_ble_edit_history[@]}
-    if ((_ble_edit_history_ind>=e)); then
-      ((_ble_edit_history_ind-=e-b))
-    elif ((_ble_edit_history_ind>=e)); then
-      ((_ble_edit_history_ind=b))
+  if [[ $_ble_decode_bind_state != none ]]; then
+    if [[ $_ble_edit_history_loaded ]]; then
+      local N=${#_ble_edit_history[@]}
+      local b=$((beg-1+N-max)) e=$((end+N-max))
+      ble/util/invoke-hook _ble_builtin_history_delete_hook "$b-$e"
+      if ((_ble_edit_history_ind>=e)); then
+        ((_ble_edit_history_ind-=e-b))
+      elif ((_ble_edit_history_ind>=b)); then
+        [[ ! $_ble_edit_history_prefix ]] && ble-edit/history/goto "$e"
+        _ble_edit_history_ind=$b
+      fi
+      _ble_edit_history=("${_ble_edit_history[@]::b}" "${_ble_edit_history[@]:e}")
+      _ble_edit_history_edit=("${_ble_edit_history_edit[@]::b}" "${_ble_edit_history_edit[@]:e}")
+      _ble_edit_history_count=${#_ble_edit_history[@]}
+    else
+      # history load が完了していなければ読み途中のデータを破棄して戻る
+      ble-edit/history/clear-background-load
+      _ble_edit_history_count=
     fi
-  else
-    # history load が完了していなければ読み途中のデータを破棄して戻る
-    ble-edit/history/clear-background-load
-    _ble_edit_history_count=
   fi
   local max; ble/builtin/history/.get-max
   _ble_builtin_history_prevmax=$max
@@ -5792,7 +5798,7 @@ function ble/builtin/history/option:n {
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local filename=${1:-$histfile}
   if [[ $filename == $histfile ]]; then
-    local touch=$_ble_base_run/$$.histfile.touch
+    local touch=$_ble_base_run/$$.history.touch
     [[ $touch -nt $histfile ]] && return 0
     : >| "$touch"
   fi
@@ -5852,6 +5858,11 @@ function ble/builtin/history/option:p {
 }
 ## 関数 ble/builtin/history/option:s
 function ble/builtin/history/option:s {
+  if [[ $_ble_decode_bind_state == none ]]; then
+    builtin history -s -- "$@"
+    return
+  fi
+
   local cmd=$1
   if [[ $HISTIGNORE ]]; then
     local pats pat
@@ -5863,7 +5874,6 @@ function ble/builtin/history/option:s {
 
   ble/builtin/history/.initialize
   local histfile=
-
   if [[ $_ble_edit_history_loaded ]]; then
     if [[ $HISTCONTROL ]]; then
       local ignorespace ignoredups erasedups spec
