@@ -1349,17 +1349,19 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
   local rex='^['$sep']?'$rex_element'|^['$sep']'
 
-  local tail=$word s= p=
+  local tail=$word s= p= ext=0
   while [[ $tail =~ $rex ]]; do
     local rematch=$BASH_REMATCH
     s=$s$rematch
-    "$eval_word" "$notilde$s"
+    "$eval_word" "$notilde$s"; ext=$?
     p=$ret
     tail=${tail:${#rematch}}
     ble/array#push spec "$s"
     ble/array#push path "$p"
   done
-  [[ $p && ! $tail ]]
+  [[ $tail ]] && return 1
+  ((ext)) && return "$ext"
+  return 0
 }
 
 function ble/syntax:bash/simple-word/locate-filename {

@@ -883,11 +883,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-07-02
-
-  * highlight: 何故か空文字列に展開される引数がエラー着色されている
-    これはファイル名着色が有効になってしまっているからと思われる。
-
 2019-06-18
 
   * history: interactive な history 編集に対応できたらする
@@ -2163,6 +2158,8 @@ bash_tips
     - history: fix a problem that history file is doubled with `history -cr` in `PROMPT_COMMAND` `#D1110` e64edb7
     - history: suppress errors on new history file `#D1111` e64edb7 `#D1113` 91f07b6
     - history: fix a problem that `_ble_edit_history` is not synchronized with `history -r` `#D1112` e64edb7
+    - history: do not process `_ble_edit_history` in detached state `#D1115` bf3b014
+    - history: move history item on delete of current item with `history -d` `#D1114` bf3b014
   - history: improve performance of `erasedups` `#D1107` 518e2ee
   - history: correctly handle `HISTSIZE` overflow `#D1108`
 
@@ -2196,6 +2193,7 @@ bash_tips
   - edit (self-insert): workaround Bash-3.0 bug that ^? cannot be handled properly `#D1093`
   - highlight: fix a bug that quoted tilde expansions are processed for filename highlighting `#D1095` 3f1f472
   - menu-complete: fix a bug that word is expanded on cancel `#D1097` 001b914
+  - highlight: fix a problem that empty arguments are highlighted as errors `#D1116`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3149,6 +3147,13 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-02
+
+  * highlight: 何故か空文字列に展開される引数がエラー着色されている [#D1116]
+    これはファイル名着色が有効になってしまっているからと思われる。
+
+    ファイル名が問題なのかと思って調べてみたらそもそもファイル名着色のコードに入っていない?
+    然し ble_debug=1 で確認すると確かに単語着色で実装されている。
+    詳しく調べてみると ble/syntax:bash/simple-word/evaluate-path-spec の時点で失敗しているという事が分かった。
 
   * history: ble-detach 時の ble/builtin/history の振る舞いについて [#D1115]
     history -na 等の操作がずれてしまうと困るので detach している状態でも、
