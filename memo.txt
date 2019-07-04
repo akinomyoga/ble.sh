@@ -2202,7 +2202,7 @@ bash_tips
   - emacs: support widgets `tab-insert`, `tilde-expand` and `shell-expand-line` `#D1054` 156b76e
   - emacs: support a widget `transpose-{c,u,s,f,e}words` `#D1055` d72c2d4
   - emacs: support `bleopt decode_error_cseq_{abell,vbell,discard}` `#D1056` ab1b8b0
-    - decode: fix a bug that cmap cache update is not triggered for `ab1b8b0` `#D1073`
+    - decode: fix a bug that cmap cache update is not triggered for `#D1073` f1e7674
   - emacs: support a widget `universal-arg` `#D1057` 8b1dd07
   - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
   - highlight: support job names by `auto_resume` `#D1065` ce46024
@@ -2227,7 +2227,8 @@ bash_tips
     - history: do not process `_ble_edit_history` in detached state `#D1115` bf3b014
     - history: move history item on delete of current item with `history -d` `#D1114` bf3b014
   - history: improve performance of `erasedups` `#D1107` 518e2ee
-  - history: correctly handle `HISTSIZE` overflow `#D1108`
+  - history: correctly handle `HISTSIZE` overflow `#D1108` 7be255c
+  - sabbrev: support sabbrev expansion in wider contexts (reported by cmplstofB) `#D1117` ca6e03d
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2252,14 +2253,15 @@ bash_tips
   - edit: fix a problem that status line vanishes on window resize `#D1085` 467b7a4
     - edit: recalculate prompts after resize `#D1088` b29f248
     - edit: fix the position of cursor after resize `#D1089` b29f248
-  - decode: fix a bug that `ble-update` breaks keymap cache `#D1086`
+  - decode: fix a bug that `ble-update` breaks keymap cache `#D1086` ab8dad2
   - edit (`ble/builtin/read`): suppress noisy job messages and delay caused by vbell `#D1087` 309b9e4
   - edit (`ble/builtin/read`): workaround failglob crash on vbell inside `read` `#D1090` 2e6f44c
   - edit: workaround a bash bug that history entries are removed by `history -p` `#D1091` 146f9e7
-  - edit (self-insert): workaround Bash-3.0 bug that ^? cannot be handled properly `#D1093`
+  - edit (self-insert): workaround Bash-3.0 bug that ^? cannot be handled properly `#D1093` e09c7b5
   - highlight: fix a bug that quoted tilde expansions are processed for filename highlighting `#D1095` 3f1f472
   - menu-complete: fix a bug that word is expanded on cancel `#D1097` 001b914
-  - highlight: fix a problem that empty arguments are highlighted as errors `#D1116`
+  - highlight: fix a problem that empty arguments are highlighted as errors `#D1116` 64ae8ce
+  - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3213,6 +3215,25 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-05
+
+  * sabbrev: メニュー絞り込み中に静的略語展開すると [#D1118]
+    メニュー絞り込み状態が残存してしまう。そして何だか変な状態になる。
+    と思ったが再現しない。再現した。
+
+    "fi " で一旦補完候補を出しておいて其処で \L として SP をすると再現する。
+
+    - 不思議な事に \date 等では再現しない。展開後の内容が "less" だと再現しない。
+      展開後の内容が "| less" だと発生する。"| less -r" でも発生する。
+    - "echo " の場合にも再現した。
+
+    どうも menu-filter の編集範囲を抽出する時に "| less" 等が挿入されると
+    simple-word ではなくなって、その事により menu-filter の更新が止まってしまう様だ。
+    本来であれば is-never-word の判定で単語ではないという事になって、
+    それによって menu 絞り込みがキャンセルされる筈だが、
+    何故か is-never-word が反応していない。
+
+    is-never-word の正規表現を修正した。
+    最初から非単語文字が存在している場合に対応していなかった。
 
   * sabbrev: 複合コマンド直後で展開されない (reported by cmplstofB) [#D1117]
     https://github.com/akinomyoga/ble.sh/issues/25

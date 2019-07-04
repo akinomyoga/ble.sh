@@ -1065,7 +1065,7 @@ function ble/syntax:bash/simple-word/is-simple-or-open-simple {
 }
 function ble/syntax:bash/simple-word/is-never-word {
   ble/syntax:bash/simple-word/is-simple-or-open-simple && return 1
-  local rex=${_ble_syntax_bash_simple_rex_word%'$'}'[ |&;<>()]'
+  local rex=${_ble_syntax_bash_simple_rex_word%'$'}'[ |&;<>()]|^[ |&;<>()]'
   [[ $1 =~ $rex ]]
 }
 
