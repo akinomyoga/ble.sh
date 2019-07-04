@@ -410,6 +410,8 @@ _ble_decode_input_count=0
 _ble_decode_input_buffer=()
 _ble_decode_input_original_info=()
 
+_ble_decode_show_progress_hook=ble-decode/.hook/show-progress
+_ble_decode_erase_progress_hook=ble-decode/.hook/erase-progress
 function ble-decode/.hook/show-progress {
   if [[ $_ble_edit_info_scene == store ]]; then
     _ble_decode_input_original_info=("${_ble_edit_info[@]}")
@@ -492,7 +494,7 @@ function ble-decode/.hook {
   if ((_ble_decode_input_count>=200)); then
     local c
     for c in "${chars[@]}"; do
-      ((--_ble_decode_input_count%100==0)) && ble-decode/.hook/show-progress
+      ((--_ble_decode_input_count%100==0)) && eval -- "$_ble_decode_show_progress_hook"
 #%if debug_keylogger
       ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_bytes "$c"
 #%end
@@ -509,7 +511,7 @@ function ble-decode/.hook {
     done
   fi
 
-  ble-decode/.hook/erase-progress
+  eval -- "$_ble_decode_erase_progress_hook"
   ble-decode/EPILOGUE
 }
 
@@ -764,7 +766,7 @@ function ble-decode-char {
   # Note: ループ中で set -- ... を使っている。
   while
     if ((iloop++%50==0)); then
-      ((iloop>50)) && ble-decode/.hook/show-progress
+      ((iloop>50)) && eval -- "$_ble_decode_show_progress_hook"
       if ble-decode/has-input-for-char && [[ ! $ble_decode_char_sync ]]; then
         ble/array#push _ble_decode_char_buffer "$@"
         return 148
@@ -2825,6 +2827,8 @@ function ble/builtin/bind/.decode-chars {
 #%end
   local _ble_decode_keylog_keys_enabled=
   local _ble_decode_keylog_chars_enabled=
+  local _ble_decode_show_progress_hook=
+  local _ble_decode_erase_progress_hook=
 
   # suppress errors
   local bleopt_decode_error_cseq_abell=

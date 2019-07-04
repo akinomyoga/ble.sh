@@ -106,7 +106,7 @@ fi >/dev/null 2>&1 # set -x 対策 #D0930
 
 if [[ $- != *i* ]]; then
   { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
-    builtin echo "ble.sh: This is not an interactive session."
+    builtin echo "ble.sh: This is not an interactive session." >&2
   return 1 2>/dev/null || builtin exit 1
 fi &>/dev/null # set -x 対策 #D0930
 
