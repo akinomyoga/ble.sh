@@ -1299,7 +1299,12 @@ function ble/complete/cand/unpack {
 ##
 
 # source:wordlist
-
+#
+#  -r 指定された単語をエスケープせずにそのまま挿入する
+#  -W 補完完了時に空白を挿入しない
+#  -s sabbrev 候補も一緒に生成する
+#
+#
 function ble/complete/source:wordlist {
   [[ $comps_flags == *v* ]] || return 1
   case :$comp_type: in
@@ -1309,7 +1314,7 @@ function ble/complete/source:wordlist {
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   # process options
-  local opt_raw= opt_noword=
+  local opt_raw= opt_noword= opt_sabbrev=
   while (($#)) && [[ $1 == -* ]]; do
     local arg=$1; shift
     case $arg in
@@ -1321,11 +1326,15 @@ function ble/complete/source:wordlist {
         case ${arg:i:1} in
         (r) opt_raw=1 ;;
         (W) opt_noword=1 ;;
+        (s) opt_sabbrev=1 ;;
         (*) ;; # ignore
         esac
       done ;;
     esac
   done
+
+  [[ $opt_sabbrev ]] &&
+    ble/complete/source:sabbrev
 
   local action=word
   [[ $opt_noword ]] && action=substr
@@ -1467,6 +1476,8 @@ function ble/complete/source:command {
       ((cand_count>old_cand_count)) && return "$ext"
     fi
   fi
+
+  ble/complete/source:sabbrev
 
   local cand arr
   local compgen
@@ -5088,7 +5099,7 @@ function ble/complete/sabbrev/expand {
   for src in "${sources[@]}"; do
     ble/string#split-words asrc "$src"
     case ${asrc[0]} in
-    (file|command|argument|variable:w)
+    (file|command|argument|variable:w|wordlist:*|sabbrev)
       ((asrc[1]<pos)) && pos=${asrc[1]} ;;
     esac
   done

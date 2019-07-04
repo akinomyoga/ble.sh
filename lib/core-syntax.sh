@@ -4550,18 +4550,25 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-compound {
 ## 関数 ble/syntax/completion-context/.check-prefix/ctx:next-identifier source
 ##   エスケープやクォートのない単純な単語に補完する文脈。
 ##   @param[in] source
-_ble_syntax_bash_complete_check_prefix[CTX_CMDXE]="next-identifier wordlist:-r:'fi:done:esac:then:elif:else:do'"
-_ble_syntax_bash_complete_check_prefix[CTX_CMDXD0]="next-identifier wordlist:-r:';:{:do'"
-_ble_syntax_bash_complete_check_prefix[CTX_CMDXD]="next-identifier wordlist:-r:'{:do'"
 _ble_syntax_bash_complete_check_prefix[CTX_FARGX1]="next-identifier variable:w" # CTX_FARGX1 → (( でなければ 変数名
 _ble_syntax_bash_complete_check_prefix[CTX_SARGX1]="next-identifier variable:w"
-_ble_syntax_bash_complete_check_prefix[CTX_CARGX2]="next-identifier wordlist:-r:'in'"
-_ble_syntax_bash_complete_check_prefix[CTX_CARGI2]="next-identifier wordlist:-r:'in'"
-_ble_syntax_bash_complete_check_prefix[CTX_FARGX2]="next-identifier wordlist:-r:'in:do'"
-_ble_syntax_bash_complete_check_prefix[CTX_FARGI2]="next-identifier wordlist:-r:'in:do'"
 function ble/syntax/completion-context/.check-prefix/ctx:next-identifier {
-  local source=$1
-  if [[ ${text:istat:index-istat} =~ $rex_param ]]; then
+  local source=$1 word=${text:istat:index-istat}
+  if [[ $word =~ $rex_param ]]; then
+    ble/syntax/completion-context/.add "$source" "$istat"
+  fi
+}
+_ble_syntax_bash_complete_check_prefix[CTX_ARGX0]="next-word sabbrev"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXD0]="next-word wordlist:-rs:';:{:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXD]="next-word wordlist:-rs:'{:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CMDXE]="next-word wordlist:-rs:'}:fi:done:esac:then:elif:else:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_CARGX2]="next-word wordlist:-rs:'in'"
+_ble_syntax_bash_complete_check_prefix[CTX_CARGI2]="next-word wordlist:-rs:'in'"
+_ble_syntax_bash_complete_check_prefix[CTX_FARGX2]="next-word wordlist:-rs:'in:do'"
+_ble_syntax_bash_complete_check_prefix[CTX_FARGI2]="next-word wordlist:-rs:'in:do'"
+function ble/syntax/completion-context/.check-prefix/ctx:next-word {
+  local source=$1 word=${text:istat:index-istat} rex=$'^[^ \t]*$'
+  if [[ $word =~ $rex ]]; then
     ble/syntax/completion-context/.add "$source" "$istat"
   fi
 }
@@ -4794,21 +4801,24 @@ function ble/syntax/completion-context/.check-here {
         ble/syntax/completion-context/.add variable:= "$index"
       fi
     elif ((ctx==CTX_CMDXC)); then
-      ble/syntax/completion-context/.add wordlist:-r:'(:{:((:[[:for:select:case:if:while:until' "$index"
+      ble/syntax/completion-context/.add wordlist:-rs:'(:{:((:[[:for:select:case:if:while:until' "$index"
     elif ((ctx==CTX_CMDXE)); then
-      ble/syntax/completion-context/.add wordlist:-r:'}:fi:done:esac:then:elif:else:do' "$index"
+      ble/syntax/completion-context/.add wordlist:-rs:'}:fi:done:esac:then:elif:else:do' "$index"
     elif ((ctx==CTX_CMDXD0)); then
-      ble/syntax/completion-context/.add wordlist:-r:';:{:do' "$index"
+      ble/syntax/completion-context/.add wordlist:-rs:';:{:do' "$index"
     elif ((ctx==CTX_CMDXD)); then
-      ble/syntax/completion-context/.add wordlist:-r:'{:do' "$index"
+      ble/syntax/completion-context/.add wordlist:-rs:'{:do' "$index"
+    elif ((ctx==CTX_ARGX0)); then
+      ble/syntax/completion-context/.add sabbrev "$index"
     elif ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
       ble/syntax/completion-context/.add argument "$index"
     elif ((ctx==CTX_FARGX1||ctx==CTX_SARGX1)); then
       ble/syntax/completion-context/.add variable:w "$index"
+      ble/syntax/completion-context/.add sabbrev "$index"
     elif ((ctx==CTX_CARGX2)); then
-      ble/syntax/completion-context/.add wordlist:-r:'in' "$index"
+      ble/syntax/completion-context/.add wordlist:-rs:'in' "$index"
     elif ((ctx==CTX_FARGX2)); then
-      ble/syntax/completion-context/.add wordlist:-r:'in:do' "$index"
+      ble/syntax/completion-context/.add wordlist:-rs:'in:do' "$index"
     elif ((ctx==CTX_TARGX1)); then
       ble/syntax/completion-context/.add command "$index"
       ble/syntax/completion-context/.add wordlist:--:'-p' "$index"
