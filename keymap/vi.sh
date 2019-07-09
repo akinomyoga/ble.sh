@@ -2237,7 +2237,7 @@ _ble_keymap_vi_mark_edit_dend0=-1
 #
 
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
-ble/array#push _ble_edit_history_onleave ble/keymap:vi/mark/history-onleave.hook
+ble/array#push _ble_history_onleave ble/keymap:vi/mark/history-onleave.hook
 
 ## 関数 ble/keymap:vi/mark/history-onleave.hook
 function ble/keymap:vi/mark/history-onleave.hook {
@@ -2246,7 +2246,7 @@ function ble/keymap:vi/mark/history-onleave.hook {
   fi
 }
 
-# 履歴がロードされていない時は取り敢えず _ble_edit_history_ind=0 で登録をしておく。
+# 履歴がロードされていない時は取り敢えず _ble_history_ind=0 で登録をしておく。
 # 履歴がロードされた後の初めての利用のときに正しい履歴番号に修正する。
 function ble/keymap:vi/mark/update-mark-history {
   local h; ble-edit/history/get-index -v h
@@ -2480,7 +2480,7 @@ function ble/widget/vi-command/goto-global-mark.impl {
   ble/string#split data : "$value"
 
   # find a history entry by data[0]
-  if ((_ble_edit_history_ind!=data[0])); then
+  if ((_ble_history_ind!=data[0])); then
     if [[ $FLAG ]]; then
       ble/widget/vi-command/bell
       return 1
@@ -2762,22 +2762,22 @@ function ble/widget/vi-command/.history-relative-line {
   ((offset)) || return 0
 
   # 履歴が初期化されていないとき最終行にいる。
-  if [[ ! $_ble_edit_history_loaded ]]; then
+  if [[ ! $_ble_history_load_done ]]; then
     ((offset<0)) || return 1
-    ble-edit/history/initialize # to use _ble_edit_history_ind
+    ble-edit/history/initialize # to use _ble_history_ind
   fi
 
   local ret count=$((offset<0?-offset:offset)) exit=1
   ((count--))
   while ((count>=0)); do
     if ((offset<0)); then
-      ((_ble_edit_history_ind>0)) || return "$exit"
+      ((_ble_history_ind>0)) || return "$exit"
       ble/widget/history-prev
       ret=${#_ble_edit_str}
       ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
       _ble_edit_ind=$ret
     else
-      ((_ble_edit_history_ind<${#_ble_edit_history[@]})) || return "$exit"
+      ((_ble_history_ind<${#_ble_history[@]})) || return "$exit"
       ble/widget/history-next
       _ble_edit_ind=0
     fi
@@ -5085,9 +5085,9 @@ function ble/widget/vi-command/search.core {
     fi
   fi
 
-  if ((opt_history)) && [[ $_ble_edit_history_loaded || opt_backward -ne 0 ]]; then
+  if ((opt_history)) && [[ $_ble_history_load_done || opt_backward -ne 0 ]]; then
     ble-edit/history/initialize
-    local index=$_ble_edit_history_ind
+    local index=$_ble_history_ind
     [[ $start ]] || start=$index
     if ((opt_backward)); then
       ((index--))
@@ -5108,7 +5108,7 @@ function ble/widget/vi-command/search.core {
     ble-edit/info/default
 
     if ((r==0)); then
-      [[ $index != "$_ble_edit_history_ind" ]] &&
+      [[ $index != "$_ble_history_ind" ]] &&
         ble-edit/history/goto "$index"
       if ((opt_backward)); then
         local i=${#_ble_edit_str}

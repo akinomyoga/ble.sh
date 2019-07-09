@@ -4703,7 +4703,7 @@ function ble/complete/auto-complete.impl {
     ble/complete/auto-complete/.check-history light; local ext=$?
     ((ext==0||ext==148)) && return "$ext"
 
-    [[ $_ble_edit_history_prefix || $_ble_edit_history_loaded ]] &&
+    [[ $_ble_edit_history_prefix || $_ble_history_load_done ]] &&
       ble/complete/auto-complete/.check-history; local ext=$?
     ((ext==0||ext==148)) && return "$ext"
   fi
@@ -5314,7 +5314,7 @@ function ble/complete/dabbrev/.search.fib {
     #   start は最初から 1 減らして定義しておく。
     #   これにより cyclic 検索で再度自分に一致する事が保証される。
     # Note: start がこれで負になった時は "履歴項目の数" を設定する。
-    #   未だ "履歴" に登録されていない最新の項目 (_ble_edit_history_edit
+    #   未だ "履歴" に登録されていない最新の項目 (_ble_history_edit
     #   には格納されている) も検索の対象とするため。
     ((--start>=0)) || ble-edit/history/get-count -v start
   else

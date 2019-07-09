@@ -738,6 +738,9 @@ bash_tips
       __defchar__ に登録した widget がこれを返したとき
       次のハンドラを用いる。具体的には __default__ の呼び出しを試みる。
 
+    147 ble/util/idle の処理に於いて条件待ち状態に入る為に、
+      一時中断した時に返す値。
+
     148 ユーザの入力を非同期に待つ為に一時停止した
       vi-mode のオペレータが 148 を返したとき
       後処理を実行せずにそのまま抜ける (由来: 128+SIGTSTP)
@@ -882,6 +885,167 @@ bash_tips
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
+
+2019-07-09
+
+  * history: 複数行モードの履歴展開 (reported by cmplstofB) [#D1119]
+    https://github.com/akinomyoga/ble.sh/issues/26
+
+    これは前から問題があるなあと常々思っていて放置していたものである。
+    既知の問題と書いてはいたが memo.txt には明記はしていなかった様に思う。
+
+    履歴展開を自前で再実装するという様な愚は犯したくない。
+    従ってできるだけ bash の枠組みの中で解決したい。
+    目的は二つ。複数行コマンドの履歴をそのままの形で保持する。
+    それから履歴展開も正しく実行される様に工夫する。
+
+    履歴展開が正しく実行される様にする為には
+    history には複数行コマンドを登録するという事は必須である。
+    そして bash_history に登録された複数行に亘るコマンドを
+    ちゃんと分断せずに読み取らせる方法は存在していない事から、
+    bash_history への記録を行う場合には eval -- $'' の形式に変換する必要がある。
+    history に複数行コマンドを登録する為には自前で history を再構築しなければならない。
+    この再構築に一番時間がかかると予想される。
+
+    試しに history -s -- '' の羅列を出力させて、
+    更にそれを source するスクリプトを書いてみた。
+    chatoyancy の上では 5000 行を読み取るのに 0.033s であったが、
+    padparadscha では 47k 項目を読み取るのに 1.895s かかってしまう。
+    どのタイミングで再構築するのかによるが 1.895s は時間がかかり過ぎである。
+
+    history -r でまとめて読み取る様にしたらどうなるだろうか。
+    chatoyancy 上で 0.012s にまで短くなった。
+
+    * history -r でまとめて読み取るにしても例えばまとまりが単一行の場合には
+      history -r に置き換えて却って遅くなるのではないかと思われる。
+      次に何個のファイルであれば history -r が history -s * N に勝つのか調べる。
+      計測結果は以下の通り
+
+      |     9.30 usec/eval: _read_r 1 (x10000)
+      |    26.20 usec/eval: _read_s 1 (x5000)
+      |     9.20 usec/eval: _read_r 2 (x10000)
+      |    31.20 usec/eval: _read_s 2 (x5000)
+      |    10.20 usec/eval: _read_r 5 (x10000)
+      |    45.50 usec/eval: _read_s 5 (x2000)
+      |    10.90 usec/eval: _read_r 10 (x10000)
+      |    69.00 usec/eval: _read_s 10 (x2000)
+      |    12.60 usec/eval: _read_r 20 (x10000)
+      |   114.00 usec/eval: _read_s 20 (x1000)
+      |    21.20 usec/eval: _read_r 50 (x5000)
+      |   257.00 usec/eval: _read_s 50 (x500)
+      |    32.20 usec/eval: _read_r 100 (x5000)
+      |   489.00 usec/eval: _read_s 100 (x500)
+      | 
+      | 何というか、始めから -r が勝っている気がする。
+      | source の分が抜けているからであろう。
+      | source の分を一致させて計測してみたがやはり _read_r の方が高速だ…。
+      |    30.60 usec/eval: _read_r 1 (x5000)
+      |    35.00 usec/eval: _read_s 1 (x5000)
+      |    31.20 usec/eval: _read_r 2 (x5000)
+      |    41.40 usec/eval: _read_s 2 (x5000)
+      |    31.20 usec/eval: _read_r 5 (x5000)
+      |    60.50 usec/eval: _read_s 5 (x2000)
+      |    32.20 usec/eval: _read_r 10 (x5000)
+      |    89.50 usec/eval: _read_s 10 (x2000)
+      |    34.60 usec/eval: _read_r 20 (x5000)
+      |   153.00 usec/eval: _read_s 20 (x1000)
+      |    44.00 usec/eval: _read_r 50 (x5000)
+      |   331.00 usec/eval: _read_s 50 (x500)
+      |    55.50 usec/eval: _read_r 100 (x2000)
+      |   625.00 usec/eval: _read_s 100 (x200)
+      | 
+      | 然し、よく考えてみたら _read_r の方はファイル作成について考えていなかった。
+      | つまり here string を使っているとその場でファイルを作成・削除する筈なのだ。
+      |    59.00 usec/eval: _read_r 1 (x2000)
+      |    34.60 usec/eval: _read_s 1 (x5000)
+      |    62.00 usec/eval: _read_r 2 (x2000)
+      |    41.20 usec/eval: _read_s 2 (x5000)
+      |    70.00 usec/eval: _read_r 5 (x2000)
+      |    60.00 usec/eval: _read_s 5 (x2000)
+      |    82.50 usec/eval: _read_r 10 (x2000)
+      |    89.50 usec/eval: _read_s 10 (x2000)
+      |   105.00 usec/eval: _read_r 20 (x1000)
+      |   155.00 usec/eval: _read_s 20 (x1000)
+      |   176.00 usec/eval: _read_r 50 (x1000)
+      |   331.00 usec/eval: _read_s 50 (x500)
+      |   293.00 usec/eval: _read_r 100 (x500)
+      |   625.00 usec/eval: _read_s 100 (x200)
+      | 
+      | 漸く単一行では history -s の方が早いという結果になった。
+      | N=1-10 でもう少し詳しく見てみる事にする。
+      |    62.50 usec/eval: _read_r 2 (x2000)
+      |    41.40 usec/eval: _read_s 2 (x5000)
+      |    65.00 usec/eval: _read_r 3 (x2000)
+      |    47.00 usec/eval: _read_s 3 (x2000)
+      |    67.00 usec/eval: _read_r 4 (x2000)
+      |    54.50 usec/eval: _read_s 4 (x2000)
+      |    70.00 usec/eval: _read_r 5 (x2000)
+      |    60.50 usec/eval: _read_s 5 (x2000)
+      |    72.00 usec/eval: _read_r 6 (x2000)
+      |    66.00 usec/eval: _read_s 6 (x2000)
+      |    75.50 usec/eval: _read_r 7 (x2000)
+      |    71.50 usec/eval: _read_s 7 (x2000)
+      |    77.50 usec/eval: _read_r 8 (x2000)
+      |    82.00 usec/eval: _read_s 8 (x2000)
+      |    79.50 usec/eval: _read_r 9 (x2000)
+      |    83.50 usec/eval: _read_s 9 (x2000)
+      |    81.00 usec/eval: _read_r 10 (x2000)
+      |    89.50 usec/eval: _read_s 10 (x2000)
+      | 
+      | N=7,8辺りが怪しい? 何回か測ったがやはり N=7,8 が境目の様である。
+
+    history -r にまとめる事の最適化を行って、
+    しかしそれでも 47k 項目の再構築をするのに padparadscha では 1.250s かかっている。
+    30% ぐらいは高速化したがそれでも高速とは言い難いのである。
+
+    すると次に試みるのは history の再構築自体を分断して少しずつ実行するという事である。
+    うーん。何というか段々と複雑になって行く…。本当に他に方法はないのだろうか。
+    或いは、自前で履歴展開を実装するという方向性に行くのだろうか…。
+    自前で履歴展開を実装するという方向性になると
+    その細かな文法 (クォートの負い方) 等にも気を配らなければならない。
+    Bash の振る舞いを完全に再現する必要があるのではないだろうか。
+    それは面倒だし無為な気がする。
+
+    やはり idle 中に history が実行されないという前提で、
+    history の再構築を実施するしかないのだろうか。。
+    その為には先ず履歴に関連するコードを整理して置きたい。
+
+  * history 移行: 検索機能だとか、或いは他の履歴の管理などに関しては、
+    追々 history.sh に移行する事にしようと考える。
+    取り敢えず、今回の移行では bash history との接続部分だけにしておく。
+
+  * history 移行: blehook の枠組みを整える?
+    bleopt と同様に。既存の hook に関しては変数名を変更する等して移行する。
+    _ble_decode_char_hook 等に関しては揮発性の hook で少し性質が異なるので関係ない。
+
+  * history: vi.sh は _ble_history の上で動作する事を前提としている様に見える
+    然し、実際には read 等を用いた時に _ble_history 以外の上で動作する。
+    ちゃんと _ble_edit_history_prefix を参照して動作する様に書き換える必要があるのではないか。
+
+  * 148 と 147 の区別をしたい
+    現在の実装では広範に亘って 148 が用いられているが、
+    実は 148 は二種類あって has-input の時と、
+    或いは唯単にユーザの入力を待つ状態というのがある。
+    更に 148 の中でも実際に read で読み取れる状態と、
+    或いは ble.sh の枠組みの中に未処理のデータが残っている場合がある。
+
+    % というか async で呼び出すのは idle.do の中からだけなので、
+    % 実は ble-decode/has-input ではなくて ble/util/is-stdin-ready を使うべきでは。
+    % と思って ble/util/idle を調べてみると ble/util/idle/IS_IDLE を使っている。
+    % ble/util/idle/IS_IDLE は decode.sh で上書きされていて、
+    % 其処の説明によると decode 途中の状態の場合にはすぐに続きのバイトが来るはず、
+    % という論理になっている様だ。うーん。何だか分からないが取り敢えず
+    % ble/util/idle/IS_IDLE を使っておくのが綺麗の様に思う。
+
+    取り敢えず、idle 処理の中でどのようにするかというと。
+    ble/util/idle/IS_IDLE じゃなくなったら return 148 するという事。
+    それ以外の理由で一旦処理を停止するという時には return 147 するという事。
+
+    また ble/util/idle/IS_IDLE は decode に於いて
+    has-input で上書きされているがこれが妥当なのかについても考察の必要がある。
+    そもそも ble/util/idle.do が呼び出された時点で中途半端な状態で
+    入力がずっと来ないという事はないのではないかと思われるのである。
+    これは ble/util/idle.do の呼び出し箇所を一つ一つ確認していく必要がある。
 
 2019-07-02
 
@@ -2261,7 +2425,7 @@ bash_tips
   - highlight: fix a bug that quoted tilde expansions are processed for filename highlighting `#D1095` 3f1f472
   - menu-complete: fix a bug that word is expanded on cancel `#D1097` 001b914
   - highlight: fix a problem that empty arguments are highlighted as errors `#D1116` 64ae8ce
-  - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118`
+  - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118` 30cc31c
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -2269,6 +2433,7 @@ bash_tips
   - decode: re-implement rlfunc2widget without fork `#D1063` d2e7dbe
   - blerc: add descriptions `#D1064` d61b6af
   - decode: decode mouse events `#D1084` 51fae67
+  - history: move history related codes to `src/history.sh` `#D1120` 1bfc8eb 0000000
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3213,6 +3378,61 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-07-09
+
+  * history: 履歴に関連するコードの整理 [#D1120]
+
+    特に新しいファイル src/history.sh に移動する事で整理を行いたい。
+    先ず、どの部分を edit.sh から独立させる事ができるかについて考察する必要がある。
+
+    ble/builtin/history の部分に関しては大体は大丈夫だが
+    _ble_edit_history に関連する部分は一緒に移動しなければならないと思われる。
+
+    * done: ble-edit/info を呼び出している場所もある。
+      これに関しても適当な hook を用意すれば問題ないだろうという気がする。
+      というか bleopt と同様に hook 専用の枠組みを整えても良いのかもしれない。
+      例えば blehook_ で始まる変数名を予約してしまうなど。。
+      まあそれに関してはまた別項目として後々で対応する事にすれば良い。
+
+    * done: ble-edit/history/initialize に関しては
+      _ble_edit_history_prefix をチェックする版とチェックしない版に分ける。
+
+    * ok: うーん。実は _ble_edit_history_ind はやはり
+      history の方で管理した方が良いのではないか。
+      というのも履歴の種類毎に *_history_ind という変数が存在している。
+      寧ろ _ble_edit_history_ind が変更された時に
+      その事を通知する様にした方が良いのではないのかという事。
+
+    * fixed: うーん。ble/builtin/history/option:d の中で ble-edit/history/goto を呼び出している…。
+      % →これに関しては _ble_builtin_history_delete_hook の中で実行すれば良いのではないか。
+      %   基本的に _ble_edit_history_ind に関連する処理と
+      %   _ble_edit_history_prefix に関連する処理は hook の中で処理すれば良いのではないか。
+
+      _ble_history_ind はやはり ble/history 側に属しているとして処理する事にした。
+      この時、どの様に ble-edit/history/goto を処理するべきだろうか。
+      →結局 _ble_history_ind の補正は呼び出し元で行って、
+        それとは別に履歴項目の移動に関しては delete hook で処理する事にした。
+
+    x fixed: 書き換えていたら初期の _ble_history_ind が 0 になってしまっている気がする。
+      何故だろう。_ble_history_load_done=1 になった瞬間での値を出力してみたらちゃんと有限の値になっている。
+      get-index で見張ってみると3回問い合わせがあって初回が 0 になっている…。
+      →これは ble/history/update-count が正しく動作していなかったのが原因であった。直した。
+
+    x fixed: 後、async の途中で history/initialize の要求があって sync load が要求された時に、
+      loading... のメッセージが表示されない状態になっている。これは表示する様に修正した。
+
+    x fixed: どうも background load が動いていない様な気がする。
+      最初にアクセスしようとした瞬間に読み込まれている様な気がする。
+      async で呼び出すとどうも 148 で終了してしまっている気がする。
+      うーん。どうしてだろう。。調べてみると恐らく idle.wait-condition が働いていない?
+      どうも結局 148 を戻していたのがいけない様だ。148 を返すというのは
+      ble/util/idle の枠組みに於いては入力があったという事を示している。
+      従って、直後に再び ble/util/idle が呼ばれるという事を予期している。
+      然し、実際には呼ばれない、という事によって問題になっている。
+      では入力がないけれども制御を戻すという事の為の専用の戻り値はあるだろうか。
+
+      取り敢えず 147 を返す事にした。148/147 のもっと詳しい考察については別の項目で行う事にする。
 
 2019-07-05
 
