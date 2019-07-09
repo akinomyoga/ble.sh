@@ -1,6 +1,6 @@
 #!/bin/bash
 #%$> out/ble.sh
-#%[release = 0]
+#%[release = 1]
 #%[use_gawk = 0]
 #%[measure_load_time = 0]
 #%[debug_keylogger = 1]
