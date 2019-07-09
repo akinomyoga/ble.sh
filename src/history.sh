@@ -35,6 +35,20 @@ _ble_history_count=
 ## @var _ble_history_load_done
 _ble_history_load_done=
 
+_ble_history_load_reset_background_hook=()
+function ble/history/clear-background-load {
+  ble/util/invoke-hook _ble_history_load_reset_background_hook
+}
+function ble/builtin/history/is-empty {
+  # Note: 状況によって history -p で項目が減少するので
+  #  サブシェルの中で評価する必要がある。
+  if [[ $BASHPID == "$$" ]]; then
+    (! builtin history -p '!!')
+  else
+    ! builtin history -p '!!'
+  fi
+} &>/dev/null
+
 ## 関数 ble/history/load
 if ((_ble_bash>=40000)); then
   # _ble_bash>=40000 で利用できる以下の機能に依存する
@@ -48,7 +62,7 @@ if ((_ble_bash>=40000)); then
   ## 関数 ble/history/load/.background-initialize
   ##   @var[in] arg_count
   function ble/history/load/.background-initialize {
-    if ! builtin history -p '!!' &>/dev/null; then
+    if ble/builtin/history/is-empty; then
       # Note: rcfile から呼び出すと history が未ロードなのでロードする。
       #
       # Note: 当初は親プロセスで history -n にした方が二度手間にならず効率的と考えたが
@@ -80,7 +94,7 @@ if ((_ble_bash>=40000)); then
       #
       builtin history -n
     fi
-    local -x HISTTIMEFORMAT=__ble_ext__
+    local HISTTIMEFORMAT=__ble_ext__
     local -x INDEX_FILE=$history_indfile
     local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
 
@@ -170,6 +184,11 @@ if ((_ble_bash>=40000)); then
       (0) # 履歴ファイル生成を Background で開始
           : >| "$history_tmpfile"
 
+          if [[ $_ble_history_load_bgpid ]]; then
+            builtin kill -9 "$_ble_history_load_bgpid"
+            _ble_history_load_bgpid=
+          fi
+
           if [[ $opt_async ]]; then
             _ble_history_load_bgpid=$(
               shopt -u huponexit; ble/history/load/.background-initialize </dev/null &>/dev/null & ble/bin/echo $!)
@@ -218,6 +237,7 @@ if ((_ble_bash>=40000)); then
           else
             builtin mapfile -O "$arg_offset" -t _ble_history_edit < "$history_tmpfile"
           fi
+          : >| "$history_tmpfile"
           ((_ble_history_load_resume++)) ;;
 
       # 11ms 複数行履歴修正 (107/37000項目)
@@ -252,16 +272,14 @@ if ((_ble_bash>=40000)); then
       [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
     done
   }
-  function ble/history/clear-background-load {
-    _ble_history_load_resume=0
-  }
+  ble/array#push _ble_history_load_reset_background_hook _ble_history_load_resume=0
 else
   function ble/history/load/.generate-source {
-    if ! builtin history -p '!!' &>/dev/null; then
+    if ble/builtin/history/is-empty; then
       # rcfile として起動すると history が未だロードされていない。
       builtin history -n
     fi
-    HISTTIMEFORMAT=__ble_ext__
+    local HISTTIMEFORMAT=__ble_ext__
 
     # 285ms for 16437 entries
     local apos="'"
@@ -326,7 +344,6 @@ else
 
     ble/util/invoke-hook _ble_builtin_history_message_hook
   }
-  function ble/history/clear-background-load { :; }
 fi
 
 function ble/history/initialize {
@@ -337,6 +354,237 @@ function ble/history/initialize {
   _ble_history_count=${#_ble_history[@]}
   _ble_history_ind=$_ble_history_count
 }
+
+#------------------------------------------------------------------------------
+# Bash history resolve-multiline
+
+if ((_ble_bash>=30100)); then
+  # Note: Bash 3.0 では history -s がまともに動かないので
+  # 複数行の履歴項目を builtin history に追加する方法が今の所不明である。
+
+  _ble_history_mlfix_done=
+  _ble_history_mlfix_resume=0
+  _ble_history_mlfix_bgpid=
+
+  ## 関数 ble/history/resolve-multiline/.awk reason
+  ##   @param[in] reason
+  ##     呼び出しの用途を指定する文字列です。
+  ##     resolve ... 初期化時の history 再構築
+  ##     read    ... history -r によるファイルからの読み出し
+  ##   @var[in] TMPBASE
+  function ble/history/resolve-multiline/.awk {
+    local -x reason=$1
+    local apos=\'
+    ble/bin/awk -v apos="$apos" '
+      BEGIN {
+        q = apos;
+        Q = apos "\\" apos apos;
+        reason = ENVIRON["reason"];
+        is_resolve = reason == "resolve";
+
+        TMPBASE = ENVIRON["TMPBASE"];
+        filename_source = TMPBASE ".part";
+        if (is_resolve)
+          print "builtin history -c" > filename_source
+
+        n = 0;
+        multiline_count = 0;
+        modification_count = 0;
+        read_section_count = 0;
+      }
+  
+      function write_scalar(line) {
+        scalar_array[scalar_count++] = line;
+      }
+      function write_complex(value) {
+        write_flush();
+        print "builtin history -s -- " value > filename_source;
+      }
+      function write_flush(_, i, text, filename) {
+        if (scalar_count == 0) return;
+        if (scalar_count >= 2) {
+          filename_section = TMPBASE "." read_section_count++ ".part";
+          for (i = 0; i < scalar_count; i++)
+            print scalar_array[i] > filename_section;
+          print "builtin history -r " filename_section > filename_source;
+        } else {
+          for (i = 0; i < scalar_count; i++) {
+            text = scalar_array[i];
+            gsub(/'$apos'/, Q, text);
+            print "builtin history -s -- " q text q > filename_source;
+          }
+        }
+        scalar_count = 0;
+      }
+  
+      function flush_line() {
+        if (n < 1) return;
+  
+        if (entry ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/) {
+          multiline_count++;
+          modification_count++;
+          write_complex(substr(entry, 9));
+        } else if (n > 1) {
+          multiline_count++;
+          gsub(/'$apos'/, Q, entry);
+          write_complex(q entry q);
+        } else {
+          write_scalar(entry);
+        }
+  
+        n = 0;
+        entry = "";
+      }
+  
+      {
+        if (!is_resolve || sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/, "", $0))
+          flush_line();
+        entry = ++n == 1 ? $0 : entry "\n" $0;
+      }
+  
+      END {
+        flush_line();
+        write_flush();
+        if (is_resolve)
+          print "builtin history -a /dev/null" > filename_source
+        print "multiline_count=" multiline_count;
+        print "modification_count=" modification_count;
+      }
+    '
+  }
+  ## 関数 ble/history/resolve-multiline/.cleanup
+  ##   @var[in] TMPBASE
+  function ble/history/resolve-multiline/.cleanup {
+    local file
+    for file in "$TMPBASE".*; do : >| "$file"; done
+  }
+  function ble/history/resolve-multiline/.worker {
+    local HISTTIMEFORMAT=__ble_ext__ 
+    local -x TMPBASE=$_ble_base_run/$$.history.mlfix
+    local multiline_count=0 modification_count=0
+    eval -- "$(builtin history | ble/history/resolve-multiline/.awk resolve 2>/dev/null)"
+    if ((modification_count)); then
+      ble/bin/mv -f "$TMPBASE.part" "$TMPBASE.sh"
+    else
+      echo : >| "$TMPBASE.sh"
+    fi
+  }
+  function ble/history/resolve-multiline/.load {
+    local TMPBASE=$_ble_base_run/$$.history.mlfix
+    local HISTCONTROL= HISTSIZE= HISTIGNORE=
+    source "$TMPBASE.sh"
+    ble/history/resolve-multiline/.cleanup
+  }
+
+  ## 関数 ble/history/resolve-multiline opts
+  ##   @param[in] opts
+  ##     async
+  ##       非同期で読み取ります。
+  function ble/history/resolve-multiline.impl {
+    local opts=$1
+    local opt_async=; [[ :$opts: == *:async:* ]] && opt_async=1
+
+    local history_tmpfile=$_ble_base_run/$$.history.mlfix.sh
+    [[ $opt_async || :$opts: == *:init:* ]] || _ble_history_mlfix_resume=0
+
+    [[ ! $opt_async ]] && ((_ble_history_mlfix_resume<=4)) &&
+      ble/util/invoke-hook _ble_builtin_history_message_hook "resolving multiline history ..."
+    while :; do
+      case $_ble_history_mlfix_resume in
+
+      (0) if [[ $opt_async ]] && ble/builtin/history/is-empty; then
+            # Note: bashrc の中では resolve-multiline はしない。
+            #   一旦 bash が履歴を読み込んだ後に再度試す。
+            ble/util/idle.wait-user-input
+            ((_ble_history_mlfix_resume++))
+            return 147
+          fi
+          ((_ble_history_mlfix_resume++)) ;;
+
+      (1) # 履歴ファイル生成を Background で開始
+        : >| "$history_tmpfile"
+        
+        if [[ $_ble_history_mlfix_bgpid ]]; then
+          builtin kill -9 "$_ble_history_mlfix_bgpid"
+          _ble_history_mlfix_bgpid=
+        fi
+
+        if [[ $opt_async ]]; then
+          _ble_history_mlfix_bgpid=$(
+            shopt -u huponexit; ble/history/resolve-multiline/.worker </dev/null &>/dev/null & ble/bin/echo $!)
+
+          function ble/history/resolve-multiline/.worker-completed {
+            local history_tmpfile=$_ble_base_run/$$.history.mlfix.sh
+            [[ -s $history_tmpfile ]] || ! builtin kill -0 "$_ble_history_mlfix_bgpid"
+          } &>/dev/null
+
+          ((_ble_history_mlfix_resume++))
+        else
+          ble/history/resolve-multiline/.worker
+          ((_ble_history_mlfix_resume+=3))
+        fi ;;
+
+      (2) if [[ $opt_async ]] && ble/util/is-running-in-idle; then
+            ble/util/idle.wait-condition ble/history/resolve-multiline/.worker-completed
+            ((_ble_history_mlfix_resume++))
+            return 147
+          fi
+          ((_ble_history_mlfix_resume++)) ;;
+
+      # Note: async でバックグラウンドプロセスを起動した後に、直接 (sync で)
+      #   呼び出された時、未だ処理が完了していなくても次のステップに進んでしまうので、
+      #   此処で条件が満たされるのを待つ (#D0745)
+      (3) while ! ble/history/resolve-multiline/.worker-completed; do
+            ble/util/msleep 50
+            [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
+          done
+          ((_ble_history_mlfix_resume++)) ;;
+
+      # 80ms history 再構築 (47000項目)
+      (4) ble/history/resolve-multiline/.load
+          [[ $opt_async ]] || ble/util/invoke-hook _ble_builtin_history_message_hook
+          ((_ble_history_mlfix_resume++))
+          return 0 ;;
+
+      (*) return 1 ;;
+      esac
+
+      [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
+    done
+  }
+
+  function ble/history/resolve-multiline {
+    [[ $_ble_history_mlfix_done ]] && return
+    [[ $1 == init ]] && ble/builtin/history/is-empty && return
+
+    ble/history/resolve-multiline.impl "$@"; local ext=$?
+    ((ext)) && return "$ext"
+    _ble_history_mlfix_done=1
+    return 0
+  }
+  ble/util/idle.push 'ble/history/resolve-multiline async'
+
+  ble/array#push _ble_history_load_reset_background_hook _ble_history_mlfix_resume=0
+
+  function ble/history/resolve-multiline/readfile {
+    local filename=$1
+    local -x TMPBASE=$_ble_base_run/$$.history.read
+    ble/history/resolve-multiline/.awk read < "$filename" &>/dev/null
+    source "$TMPBASE.part"
+    ble/history/resolve-multiline/.cleanup
+  }
+fi
+
+# Note: 複数行コマンドは eval -- $'' の形に変換して
+#   書き込みたいので自前で処理する。
+function ble/history/TRAPEXIT {
+  if shopt -q histappend &>/dev/null; then
+    ble/builtin/history -a
+  else
+    ble/builtin/history -w
+  fi
+}
+ble/array#push _ble_builtin_trap_exit_hook ble/history/TRAPEXIT
 
 #------------------------------------------------------------------------------
 # ble/builtin/history
@@ -494,7 +742,7 @@ function ble/builtin/history/.read {
   fi
   if [[ ! $fetch && -s $histnew ]]; then
     local nline=$_ble_builtin_history_histnew_count
-    builtin history -r "$histnew"
+    ble/history/resolve-multiline/readfile "$histnew"
     : >| "$histnew"
     _ble_builtin_history_histnew_count=0
     ble/builtin/history/.load-recent-entries "$nline"
@@ -537,10 +785,9 @@ function ble/builtin/history/.write {
         if (!mode) return;
         mode = 0;
         if (text ~ /\n/) {
-          gsub(/\\/, "\\\\");
-          gsub(/\n/, "\\n");
-          gsub(/\t/, "\\t");
-          gsub(/\'$apos'/, "\\'$apos'");
+          gsub(/['$apos'\\]/, "\\\\&", text);
+          gsub(/\n/, "\\n", text);
+          gsub(/\t/, "\\t", text);
           print "eval -- $'$apos'" text "'$apos'" >> file;
         } else {
           print text >> file;
@@ -726,6 +973,8 @@ function ble/builtin/history/option:r {
 ##   Workaround for bash-3.0 -- 5.0 bug
 ##   (See memo.txt #D0233, #D0801, #D1091)
 function ble/builtin/history/option:p {
+  ble/history/resolve-multiline init
+
   # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
   #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
   #   嘗てはサブシェルで評価していたが、そうすると置換指示子が記録されず
@@ -839,13 +1088,12 @@ function ble/builtin/history/option:s {
     fi
   fi
 
-  if [[ $cmd == *$'\n'* ]]; then
-    # Note: 改行を含む場合は %q は常に $'' の形式になる。
-    ble/util/sprintf cmd 'eval -- %q' "$cmd"
-  fi
-
   if [[ $histfile ]]; then
     # bash < 3.1 workaround
+    if [[ $cmd == *$'\n'* ]]; then
+      # Note: 改行を含む場合は %q は常に $'' の形式になる。
+      ble/util/sprintf cmd 'eval -- %q' "$cmd"
+    fi
     local tmp=$_ble_base_run/$$.history.tmp
     [[ $bleopt_history_share ]] ||
       builtin printf '%s\n' "$cmd" >> "$histfile"

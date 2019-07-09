@@ -888,127 +888,8 @@ bash_tips
 
 2019-07-09
 
-  * history: 複数行モードの履歴展開 (reported by cmplstofB) [#D1119]
-    https://github.com/akinomyoga/ble.sh/issues/26
-
-    これは前から問題があるなあと常々思っていて放置していたものである。
-    既知の問題と書いてはいたが memo.txt には明記はしていなかった様に思う。
-
-    履歴展開を自前で再実装するという様な愚は犯したくない。
-    従ってできるだけ bash の枠組みの中で解決したい。
-    目的は二つ。複数行コマンドの履歴をそのままの形で保持する。
-    それから履歴展開も正しく実行される様に工夫する。
-
-    履歴展開が正しく実行される様にする為には
-    history には複数行コマンドを登録するという事は必須である。
-    そして bash_history に登録された複数行に亘るコマンドを
-    ちゃんと分断せずに読み取らせる方法は存在していない事から、
-    bash_history への記録を行う場合には eval -- $'' の形式に変換する必要がある。
-    history に複数行コマンドを登録する為には自前で history を再構築しなければならない。
-    この再構築に一番時間がかかると予想される。
-
-    試しに history -s -- '' の羅列を出力させて、
-    更にそれを source するスクリプトを書いてみた。
-    chatoyancy の上では 5000 行を読み取るのに 0.033s であったが、
-    padparadscha では 47k 項目を読み取るのに 1.895s かかってしまう。
-    どのタイミングで再構築するのかによるが 1.895s は時間がかかり過ぎである。
-
-    history -r でまとめて読み取る様にしたらどうなるだろうか。
-    chatoyancy 上で 0.012s にまで短くなった。
-
-    * history -r でまとめて読み取るにしても例えばまとまりが単一行の場合には
-      history -r に置き換えて却って遅くなるのではないかと思われる。
-      次に何個のファイルであれば history -r が history -s * N に勝つのか調べる。
-      計測結果は以下の通り
-
-      |     9.30 usec/eval: _read_r 1 (x10000)
-      |    26.20 usec/eval: _read_s 1 (x5000)
-      |     9.20 usec/eval: _read_r 2 (x10000)
-      |    31.20 usec/eval: _read_s 2 (x5000)
-      |    10.20 usec/eval: _read_r 5 (x10000)
-      |    45.50 usec/eval: _read_s 5 (x2000)
-      |    10.90 usec/eval: _read_r 10 (x10000)
-      |    69.00 usec/eval: _read_s 10 (x2000)
-      |    12.60 usec/eval: _read_r 20 (x10000)
-      |   114.00 usec/eval: _read_s 20 (x1000)
-      |    21.20 usec/eval: _read_r 50 (x5000)
-      |   257.00 usec/eval: _read_s 50 (x500)
-      |    32.20 usec/eval: _read_r 100 (x5000)
-      |   489.00 usec/eval: _read_s 100 (x500)
-      | 
-      | 何というか、始めから -r が勝っている気がする。
-      | source の分が抜けているからであろう。
-      | source の分を一致させて計測してみたがやはり _read_r の方が高速だ…。
-      |    30.60 usec/eval: _read_r 1 (x5000)
-      |    35.00 usec/eval: _read_s 1 (x5000)
-      |    31.20 usec/eval: _read_r 2 (x5000)
-      |    41.40 usec/eval: _read_s 2 (x5000)
-      |    31.20 usec/eval: _read_r 5 (x5000)
-      |    60.50 usec/eval: _read_s 5 (x2000)
-      |    32.20 usec/eval: _read_r 10 (x5000)
-      |    89.50 usec/eval: _read_s 10 (x2000)
-      |    34.60 usec/eval: _read_r 20 (x5000)
-      |   153.00 usec/eval: _read_s 20 (x1000)
-      |    44.00 usec/eval: _read_r 50 (x5000)
-      |   331.00 usec/eval: _read_s 50 (x500)
-      |    55.50 usec/eval: _read_r 100 (x2000)
-      |   625.00 usec/eval: _read_s 100 (x200)
-      | 
-      | 然し、よく考えてみたら _read_r の方はファイル作成について考えていなかった。
-      | つまり here string を使っているとその場でファイルを作成・削除する筈なのだ。
-      |    59.00 usec/eval: _read_r 1 (x2000)
-      |    34.60 usec/eval: _read_s 1 (x5000)
-      |    62.00 usec/eval: _read_r 2 (x2000)
-      |    41.20 usec/eval: _read_s 2 (x5000)
-      |    70.00 usec/eval: _read_r 5 (x2000)
-      |    60.00 usec/eval: _read_s 5 (x2000)
-      |    82.50 usec/eval: _read_r 10 (x2000)
-      |    89.50 usec/eval: _read_s 10 (x2000)
-      |   105.00 usec/eval: _read_r 20 (x1000)
-      |   155.00 usec/eval: _read_s 20 (x1000)
-      |   176.00 usec/eval: _read_r 50 (x1000)
-      |   331.00 usec/eval: _read_s 50 (x500)
-      |   293.00 usec/eval: _read_r 100 (x500)
-      |   625.00 usec/eval: _read_s 100 (x200)
-      | 
-      | 漸く単一行では history -s の方が早いという結果になった。
-      | N=1-10 でもう少し詳しく見てみる事にする。
-      |    62.50 usec/eval: _read_r 2 (x2000)
-      |    41.40 usec/eval: _read_s 2 (x5000)
-      |    65.00 usec/eval: _read_r 3 (x2000)
-      |    47.00 usec/eval: _read_s 3 (x2000)
-      |    67.00 usec/eval: _read_r 4 (x2000)
-      |    54.50 usec/eval: _read_s 4 (x2000)
-      |    70.00 usec/eval: _read_r 5 (x2000)
-      |    60.50 usec/eval: _read_s 5 (x2000)
-      |    72.00 usec/eval: _read_r 6 (x2000)
-      |    66.00 usec/eval: _read_s 6 (x2000)
-      |    75.50 usec/eval: _read_r 7 (x2000)
-      |    71.50 usec/eval: _read_s 7 (x2000)
-      |    77.50 usec/eval: _read_r 8 (x2000)
-      |    82.00 usec/eval: _read_s 8 (x2000)
-      |    79.50 usec/eval: _read_r 9 (x2000)
-      |    83.50 usec/eval: _read_s 9 (x2000)
-      |    81.00 usec/eval: _read_r 10 (x2000)
-      |    89.50 usec/eval: _read_s 10 (x2000)
-      | 
-      | N=7,8辺りが怪しい? 何回か測ったがやはり N=7,8 が境目の様である。
-
-    history -r にまとめる事の最適化を行って、
-    しかしそれでも 47k 項目の再構築をするのに padparadscha では 1.250s かかっている。
-    30% ぐらいは高速化したがそれでも高速とは言い難いのである。
-
-    すると次に試みるのは history の再構築自体を分断して少しずつ実行するという事である。
-    うーん。何というか段々と複雑になって行く…。本当に他に方法はないのだろうか。
-    或いは、自前で履歴展開を実装するという方向性に行くのだろうか…。
-    自前で履歴展開を実装するという方向性になると
-    その細かな文法 (クォートの負い方) 等にも気を配らなければならない。
-    Bash の振る舞いを完全に再現する必要があるのではないだろうか。
-    それは面倒だし無為な気がする。
-
-    やはり idle 中に history が実行されないという前提で、
-    history の再構築を実施するしかないのだろうか。。
-    その為には先ず履歴に関連するコードを整理して置きたい。
+  * history.mlfix: bash-3.0 で実現する方法?
+    history -s が使えないので複数行の履歴を登録する事が不可能である。
 
   * history 移行: 検索機能だとか、或いは他の履歴の管理などに関しては、
     追々 history.sh に移行する事にしようと考える。
@@ -2372,6 +2253,7 @@ bash_tips
   - highlight: support job names by `auto_resume` `#D1065` ce46024
   - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
   - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f
+  - history: support full multiline history `#D1120`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2433,7 +2315,7 @@ bash_tips
   - decode: re-implement rlfunc2widget without fork `#D1063` d2e7dbe
   - blerc: add descriptions `#D1064` d61b6af
   - decode: decode mouse events `#D1084` 51fae67
-  - history: move history related codes to `src/history.sh` `#D1120` 1bfc8eb 0000000
+  - history: move history related codes to `src/history.sh` `#D1119` 1bfc8eb e5b1980
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3381,7 +3263,224 @@ bash_tips
 
 2019-07-09
 
-  * history: 履歴に関連するコードの整理 [#D1120]
+  * history: 複数行モードの履歴展開 (reported by cmplstofB) [#D1120]
+    https://github.com/akinomyoga/ble.sh/issues/26
+
+    これは前から問題があるなあと常々思っていて放置していたものである。
+    既知の問題と書いてはいたが memo.txt には明記はしていなかった様に思う。
+
+    履歴展開を自前で再実装するという様な愚は犯したくない。
+    従ってできるだけ bash の枠組みの中で解決したい。
+    目的は二つ。複数行コマンドの履歴をそのままの形で保持する。
+    それから履歴展開も正しく実行される様に工夫する。
+
+    履歴展開が正しく実行される様にする為には
+    history には複数行コマンドを登録するという事は必須である。
+    そして bash_history に登録された複数行に亘るコマンドを
+    ちゃんと分断せずに読み取らせる方法は存在していない事から、
+    bash_history への記録を行う場合には eval -- $'' の形式に変換する必要がある。
+    history に複数行コマンドを登録する為には自前で history を再構築しなければならない。
+    この再構築に一番時間がかかると予想される。
+
+    | 試しに history -s -- '' の羅列を出力させて、
+    | 更にそれを source するスクリプトを書いてみた。
+    | chatoyancy の上では 5000 行を読み取るのに 0.033s であったが、
+    | padparadscha では 47k 項目を読み取るのに 1.895s かかってしまう。
+    | どのタイミングで再構築するのかによるが 1.895s は時間がかかり過ぎである。
+    | 
+    | history -r でまとめて読み取る様にしたらどうなるだろうか。
+    | chatoyancy 上で 0.012s にまで短くなった。
+    | 
+    | * history -r でまとめて読み取るにしても例えばまとまりが単一行の場合には
+    |   history -r に置き換えて却って遅くなるのではないかと思われる。
+    |   次に何個のファイルであれば history -r が history -s * N に勝つのか調べる。
+    |   計測結果は以下の通り
+    | 
+    |   |     9.30 usec/eval: _read_r 1 (x10000)
+    |   |    26.20 usec/eval: _read_s 1 (x5000)
+    |   |     9.20 usec/eval: _read_r 2 (x10000)
+    |   |    31.20 usec/eval: _read_s 2 (x5000)
+    |   |    10.20 usec/eval: _read_r 5 (x10000)
+    |   |    45.50 usec/eval: _read_s 5 (x2000)
+    |   |    10.90 usec/eval: _read_r 10 (x10000)
+    |   |    69.00 usec/eval: _read_s 10 (x2000)
+    |   |    12.60 usec/eval: _read_r 20 (x10000)
+    |   |   114.00 usec/eval: _read_s 20 (x1000)
+    |   |    21.20 usec/eval: _read_r 50 (x5000)
+    |   |   257.00 usec/eval: _read_s 50 (x500)
+    |   |    32.20 usec/eval: _read_r 100 (x5000)
+    |   |   489.00 usec/eval: _read_s 100 (x500)
+    |   | 
+    |   | 何というか、始めから -r が勝っている気がする。
+    |   | source の分が抜けているからであろう。
+    |   | source の分を一致させて計測してみたがやはり _read_r の方が高速だ…。
+    |   |    30.60 usec/eval: _read_r 1 (x5000)
+    |   |    35.00 usec/eval: _read_s 1 (x5000)
+    |   |    31.20 usec/eval: _read_r 2 (x5000)
+    |   |    41.40 usec/eval: _read_s 2 (x5000)
+    |   |    31.20 usec/eval: _read_r 5 (x5000)
+    |   |    60.50 usec/eval: _read_s 5 (x2000)
+    |   |    32.20 usec/eval: _read_r 10 (x5000)
+    |   |    89.50 usec/eval: _read_s 10 (x2000)
+    |   |    34.60 usec/eval: _read_r 20 (x5000)
+    |   |   153.00 usec/eval: _read_s 20 (x1000)
+    |   |    44.00 usec/eval: _read_r 50 (x5000)
+    |   |   331.00 usec/eval: _read_s 50 (x500)
+    |   |    55.50 usec/eval: _read_r 100 (x2000)
+    |   |   625.00 usec/eval: _read_s 100 (x200)
+    |   | 
+    |   | 然し、よく考えてみたら _read_r の方はファイル作成について考えていなかった。
+    |   | つまり here string を使っているとその場でファイルを作成・削除する筈なのだ。
+    |   |    59.00 usec/eval: _read_r 1 (x2000)
+    |   |    34.60 usec/eval: _read_s 1 (x5000)
+    |   |    62.00 usec/eval: _read_r 2 (x2000)
+    |   |    41.20 usec/eval: _read_s 2 (x5000)
+    |   |    70.00 usec/eval: _read_r 5 (x2000)
+    |   |    60.00 usec/eval: _read_s 5 (x2000)
+    |   |    82.50 usec/eval: _read_r 10 (x2000)
+    |   |    89.50 usec/eval: _read_s 10 (x2000)
+    |   |   105.00 usec/eval: _read_r 20 (x1000)
+    |   |   155.00 usec/eval: _read_s 20 (x1000)
+    |   |   176.00 usec/eval: _read_r 50 (x1000)
+    |   |   331.00 usec/eval: _read_s 50 (x500)
+    |   |   293.00 usec/eval: _read_r 100 (x500)
+    |   |   625.00 usec/eval: _read_s 100 (x200)
+    |   | 
+    |   | 漸く単一行では history -s の方が早いという結果になった。
+    |   | N=1-10 でもう少し詳しく見てみる事にする。
+    |   |    62.50 usec/eval: _read_r 2 (x2000)
+    |   |    41.40 usec/eval: _read_s 2 (x5000)
+    |   |    65.00 usec/eval: _read_r 3 (x2000)
+    |   |    47.00 usec/eval: _read_s 3 (x2000)
+    |   |    67.00 usec/eval: _read_r 4 (x2000)
+    |   |    54.50 usec/eval: _read_s 4 (x2000)
+    |   |    70.00 usec/eval: _read_r 5 (x2000)
+    |   |    60.50 usec/eval: _read_s 5 (x2000)
+    |   |    72.00 usec/eval: _read_r 6 (x2000)
+    |   |    66.00 usec/eval: _read_s 6 (x2000)
+    |   |    75.50 usec/eval: _read_r 7 (x2000)
+    |   |    71.50 usec/eval: _read_s 7 (x2000)
+    |   |    77.50 usec/eval: _read_r 8 (x2000)
+    |   |    82.00 usec/eval: _read_s 8 (x2000)
+    |   |    79.50 usec/eval: _read_r 9 (x2000)
+    |   |    83.50 usec/eval: _read_s 9 (x2000)
+    |   |    81.00 usec/eval: _read_r 10 (x2000)
+    |   |    89.50 usec/eval: _read_s 10 (x2000)
+    |   | 
+    |   | N=7,8辺りが怪しい? 何回か測ったがやはり N=7,8 が境目の様である。
+    | 
+    | history -r にまとめる事の最適化を行って、
+    | しかしそれでも 47k 項目の再構築をするのに padparadscha では 1.250s かかっている。
+    | 30% ぐらいは高速化したがそれでも高速とは言い難いのである。
+    |
+    | a すると次に試みるのは history の再構築自体を分断して少しずつ実行するという事である。
+    |   うーん。何というか段々と複雑になって行く…。本当に他に方法はないのだろうか。
+    |   或いは、自前で履歴展開を実装するという方向性に行くのだろうか…。
+    |   自前で履歴展開を実装するという方向性になると
+    |   その細かな文法 (クォートの負い方) 等にも気を配らなければならない。
+    |   Bash の振る舞いを完全に再現する必要があるのではないだろうか。
+    |   それは面倒だし無為な気がする。
+    | 
+    |   やはり idle 中に history が実行されないという前提で、
+    |   history の再構築を実施するしかないのだろうか。。
+    |   その為には先ず履歴に関連するコードを整理して置きたい。
+    | 
+    |   history/initialize で history の再構築まで実施してしまうのが良いだろうか。
+    |   と思ったが独立な処理だし history/initialize を呼び出す処理では必ずしも
+    |   history 複数行再構築が必要とは限らないし、また history 複数行再構築が
+    |   必要な文脈では必ずしも _ble_history 初期化を必要とはしない。
+    |   従って、それぞれ独立に処理すれば良いという気がするのである。
+    | 
+    |   他に気になるのは history -r で読み取った時に、
+    |   追加業だけでなく全ての行に関して再度 history 複数行再構築が
+    |   全体に対して必要になってしまうのではないかという事。
+    |   うーん。history -r で読み取るという処理自体を止める必要があるだろうか。
+    |   history -r で読み取るのではなくて source する方式にする必要がある。
+    |   然し、それだと ' について追跡をする必要が出てくるなど、
+    |   やはり処理が遅くなってしまう原因である。
+    | 
+    |   然し、完全な対応をする為には避けて通れない処理であるし、
+    |   まあ、仕方がないのかなという気はする。
+    | 
+    | b 実は複数の一時ファイルを作ってしまう事を許せばもっと高速になるのでは。
+    |   処理が遅くなるのは '...' の対応を取る処理を bash が行うからなのではないかと仮定。
+    |   だとすれば始めからファイルに書き出してしまえば別に遅くはならないのではないか。
+    | 
+    |   うーん。これは爆速である…。chatoyancy で 2ms になった。
+    |   padparadscha でも 47k 項目で 79ms になった。
+    |   これは十分な速度である。但し、その前処理の awk で1秒近くかかっている。
+
+    結局 b の方法で history の書き換えを実行する事にした。
+    然し、それでも前準備の awk の処理に時間がかかるという事は否めない。
+    history -r でファイルから読み取る度に全て再構築するというのは現実的でない。
+
+    うーん。history -r で読み取るのはやめて全部自前で読み取る様にするべきなんだろうか。
+    というか builtin history -r を実行している場所を置き換えてしまえば良いのである。
+
+    * done: Bash に history に書き込ませない様に修正する。
+      これは EXIT で history -a /dev/null とかやっておけば良いだろうか。
+      もし EXIT が正しく呼び出されなかった暁には Bash が history を書き込むという仕組み。
+      というか history -a tmpfile; < tmpfile awk >> histfile とすれば良い気がする。
+      うーん。然し、そうとなると histappend に依存した振る舞いにしなければならないのでは…。
+      histappend が設定されている時とされていない時で実装を分ける様にする。
+
+      後、EXIT trap に既に ble/base/unload が住んでいる。
+      ble/base/unload の中で histfile に書き込むのは変な気がする
+      (例えば ble-reload や ble-update でも呼ばれる物である) ので、
+      やはり別に EXIT trap のハンドラを作って、
+      其処から EXIT trap を実行する様にするのが良いだろう。
+
+      というか実は EXIT で ble/builtin/history -aw を呼び出せば良いだけだった。
+      これを実行してしまえば bash が自前で書き込むという事もないだろう。
+      また history -w は中身をちゃんとクリアしてくれるので自前でクリアする必要もない。
+
+      取り敢えず動作確認だけはしておく。
+      →OKちゃんと重複なく書き込まれている事も確認した。
+
+    * done: 起動時の history 複数行書き換えを実装する。
+      書き換え中は history を編集させない様にする必要がある。
+      実は ble/history/load と同じなので clear-background-load で一緒に補正すれば良い気がする。
+      取り敢えず ble-dev で試していた物を持ってくる事にする。
+
+      取り敢えず非同期実行を実装した。
+      本当に動くのかどうか怪しいが試してみる事にする。
+      そもそも起動していない様だ…。と思ったがこれは違った。
+      単に clear-background が走っていただけだった。
+      タイミングが分からないので出力してみる事にする。
+      どうもちゃんと動いている様である。
+      但し、一瞬で処理が終了してしまうので非同期がちゃんとなっているかは不明。
+      何れにしても既に実装してある ble/history/load を参考にしたのでそんなに間違ってはいないだろう。
+
+    * ok: bash-3.0 に関しては history -s が使い物にならないので、
+      複数行の履歴項目を history に入れる事はそもそも不可能である。
+      従って bash-3.0 に関しては履歴展開は諦める物とする。
+
+    * done: bash history に登録する箇所では複数行エスケープはせずに登録する。
+      但し bash-3.0 では複数行エスケープを実施する。
+
+    * done: builtin history -r を実行している場所を置き換えてしまう。
+      それで良い筈。実装の順番はどうしたら良いだろうか。
+      というか同時に実装すれば良いのだろうか。
+      と思ったが一旦どちらかを実装してそれを汎用化する形にした方が見通しは良いだろう。
+      その時には history -c は外側で実行する様にするべきである。
+
+    * done: 履歴項目が読み込まれるまでは (bashrc の外に出るまでは)
+      待っていた方が良いのではないだろうかと思われる。
+      或いは、履歴項目が前回から変化していたら全て初期化し直す。
+
+    取り敢えず実装した気がする。実際に動かしてみる。
+
+    x fixed: 自前で書き込んでいる筈なのにちゃんと改行が \n になっていない…。
+      少なくとも eval -- $'' で囲まれているので自前の書き込みは実行されている。
+      と思ったら ble/builtin/history/.write のエスケープが間違っていた。
+      text という変数の中身を書き換えるべきなのに現在行を書き換えていただけだった。
+
+    x fixed: 直したと思ったら今度は末尾に無駄な ' が挿入されている…。
+      どうやら gawk で /\'/ というのを使うと文字列の末端に一致してしまう様だ。
+      つまり /'/ としなければならなかった。
+      或いは gsub(/['\\]/, "\\\\&", text) とするべきだった。後者の方法に修正した。
+
+  * history: 履歴に関連するコードの整理 [#D1119]
 
     特に新しいファイル src/history.sh に移動する事で整理を行いたい。
     先ず、どの部分を edit.sh から独立させる事ができるかについて考察する必要がある。
