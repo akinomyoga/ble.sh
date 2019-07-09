@@ -2253,7 +2253,7 @@ bash_tips
   - highlight: support job names by `auto_resume` `#D1065` ce46024
   - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
   - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f
-  - history: support full multiline history `#D1120`
+  - history: support full multiline history `#D1120` c699d4a `#D1121` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3262,6 +3262,15 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-09
+
+  * history (resolve-multiline): 開始時に引っかかる [#D1121]
+    どうも引っ掛かると思ったら .search-history-light だとか、
+    或いは magic-space だとかが history -p を呼び出していて、
+    その経由で resolve-multiline init が実行される様だ。
+    仕方がないので history -p に関しては resolve-multiline を待たない事にした。
+    一応現実的な速度で動いている様な気がする。
+
+    他には特に問題は起こっていない気がする。
 
   * history: 複数行モードの履歴展開 (reported by cmplstofB) [#D1120]
     https://github.com/akinomyoga/ble.sh/issues/26

@@ -555,7 +555,10 @@ if ((_ble_bash>=30100)); then
 
   function ble/history/resolve-multiline {
     [[ $_ble_history_mlfix_done ]] && return
-    [[ $1 == init ]] && ble/builtin/history/is-empty && return
+    if [[ $1 == sync ]]; then
+      [[ $BASHPID == $$ ]] || return
+      ble/builtin/history/is-empty && return
+    fi
 
     ble/history/resolve-multiline.impl "$@"; local ext=$?
     ((ext)) && return "$ext"
@@ -973,7 +976,11 @@ function ble/builtin/history/option:r {
 ##   Workaround for bash-3.0 -- 5.0 bug
 ##   (See memo.txt #D0233, #D0801, #D1091)
 function ble/builtin/history/option:p {
-  ble/history/resolve-multiline init
+  # Note: auto-complete .search-history-light や
+  #   magic-space 等経由で history -p が呼び出されて、
+  #   その時に resolve-multiline が sync されると引っ掛かる。
+  #   従って history -p では sync しない事に決めた。
+  #ble/history/resolve-multiline sync
 
   # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
   #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
