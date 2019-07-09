@@ -619,6 +619,7 @@ ble/bin/.freeze-utility-path gawk
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|
 #%x inc.r|@|src/canvas|
+#%x inc.r|@|src/history|
 #%x inc.r|@|src/edit|
 #%x inc.r|@|lib/core-complete-def|
 #%x inc.r|@|lib/core-syntax-def|
