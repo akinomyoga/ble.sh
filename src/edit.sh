@@ -1293,18 +1293,21 @@ function ble-edit/attach/.detach {
 # **** textarea ****                                                  @textarea
 
 _ble_textarea_VARNAMES=(
-  _ble_textarea_bufferName
-  _ble_textarea_scroll
-  _ble_textarea_gendx
-  _ble_textarea_gendy
-  _ble_textarea_invalidated
-  _ble_textarea_version
-  _ble_textarea_caret_state
+  _ble_textarea_bufferName 
+  _ble_textarea_scroll 
+  _ble_textarea_gendx 
+  _ble_textarea_gendy 
+  _ble_textarea_invalidated 
+  _ble_textarea_version 
+  _ble_textarea_caret_state 
   _ble_textarea_panel)
 _ble_textarea_ARRNAMES=(
-  _ble_textarea_buffer
-  _ble_textarea_cur
+  _ble_textarea_buffer 
+  _ble_textarea_cur 
   _ble_textarea_cache)
+
+_ble_textarea_local_VARNAMES=()
+_ble_textarea_local_ARRNAMES=()
 
 ## 関数 ble/textarea/panel#get-height
 ##   @var[out] height
@@ -2014,10 +2017,6 @@ function ble/textarea#save-state {
   ble/array#push vars "${_ble_edit_VARNAMES[@]}"
   ble/array#push arrs "${_ble_edit_ARRNAMES[@]}"
 
-  # _ble_edit_undo_*
-  ble/array#push vars "${_ble_edit_undo_VARNAMES[@]}"
-  ble/array#push arrs "${_ble_edit_undo_ARRNAMES[@]}"
-
   # _ble_textmap_*
   ble/array#push vars "${_ble_textmap_VARNAMES[@]}"
   ble/array#push arrs "${_ble_textmap_ARRNAMES[@]}"
@@ -2043,6 +2042,10 @@ function ble/textarea#save-state {
   # _ble_syntax_*
   ble/array#push vars "${_ble_syntax_VARNAMES[@]}"
   ble/array#push arrs "${_ble_syntax_ARRNAMES[@]}"
+
+  # user-defined local variables
+  ble/array#push vars "${_ble_textarea_local_VARNAMES[@]}"
+  ble/array#push arrs "${_ble_textarea_local_ARRNAMES[@]}"
 
   eval "${prefix}_VARNAMES=(\"\${vars[@]}\")"
   eval "${prefix}_ARRNAMES=(\"\${arrs[@]}\")"
@@ -4791,14 +4794,17 @@ function ble/widget/shell-expand-line {
 ##   初期は空文字列でどの履歴項目でもない状態を表す。
 ##
 
-_ble_edit_undo_VARNAMES=(_ble_edit_undo _ble_edit_undo_history)
-_ble_edit_undo_ARRNAMES=(_ble_edit_undo_index _ble_edit_undo_hindex)
 
 _ble_edit_undo=()
 _ble_edit_undo_index=0
 _ble_edit_undo_history=()
 _ble_edit_undo_hindex=
-
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_edit_undo_index \
+               _ble_edit_undo_hindex
+ble/array#push _ble_textarea_local_ARRNAMES \
+               _ble_edit_undo \
+               _ble_edit_undo_history
 function ble-edit/undo/.check-hindex {
   local hindex; ble-edit/history/get-index -v hindex
   [[ $_ble_edit_undo_hindex == "$hindex" ]] && return 0

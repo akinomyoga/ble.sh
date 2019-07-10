@@ -70,6 +70,8 @@ function ble/widget/emacs/revert {
 ## @var _ble_keymap_emacs_mode
 ##   複数行モードかどうか。
 _ble_keymap_emacs_modeline=::
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_emacs_modeline
 function ble/keymap:emacs/update-mode-name {
   local opt_multiline=; [[ $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
   local footprint=$opt_multiline:$_ble_edit_arg:$_ble_edit_kbdmacro_record

@@ -166,6 +166,11 @@ _ble_keymap_vi_irepeat_count=
 ##
 _ble_keymap_vi_irepeat=()
 
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_vi_irepeat_count
+ble/array#push _ble_textarea_local_ARRNAMES \
+               _ble_keymap_vi_irepeat
+
 function ble/keymap:vi/imap-repeat/pop {
   local top_index=$((${#_ble_keymap_vi_irepeat[*]}-1))
   ((top_index>=0)) && unset -v '_ble_keymap_vi_irepeat[top_index]'
@@ -306,6 +311,12 @@ _ble_keymap_vi_insert_leave=
 ##   元の挿入モードに戻るモード (C-o) にいるかどうかを表します。
 _ble_keymap_vi_single_command=
 _ble_keymap_vi_single_command_overwrite=
+
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_vi_insert_overwrite \
+               _ble_keymap_vi_insert_leave \
+               _ble_keymap_vi_single_command \
+               _ble_keymap_vi_single_command_overwrite
 
 ## オプション keymap_vi_nmap_name
 ##   ノーマルモードの時に表示する文字列を指定します。
@@ -621,6 +632,11 @@ function ble/widget/vi-command/edit-and-execute-command {
 _ble_keymap_vi_oparg=
 _ble_keymap_vi_opfunc=
 _ble_keymap_vi_reg=
+
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_vi_oparg \
+               _ble_keymap_vi_opfunc \
+               _ble_keymap_vi_reg
 
 # ble/keymap:vi における _ble_edit_kill_ring の扱いついて
 #
@@ -946,6 +962,11 @@ function ble/widget/vi-command/register.hook {
 _ble_keymap_vi_reg_record=
 _ble_keymap_vi_reg_record_char=
 _ble_keymap_vi_reg_record_play=0
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_vi_reg_record \
+               _ble_keymap_vi_reg_record_char \
+               _ble_keymap_vi_reg_record_play
+
 # nmap q
 function ble/widget/vi_nmap/record-register {
   # レジスタに含まれる q は再生中には何も起こさない
@@ -2226,6 +2247,15 @@ _ble_keymap_vi_mark_history=()
 _ble_keymap_vi_mark_edit_dbeg=-1
 _ble_keymap_vi_mark_edit_dend=-1
 _ble_keymap_vi_mark_edit_dend0=-1
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_vi_mark_hindex \
+               _ble_keymap_vi_mark_edit_dbeg \
+               _ble_keymap_vi_mark_edit_dend \
+               _ble_keymap_vi_mark_edit_dend0
+ble/array#push _ble_textarea_local_ARRNAMES \
+               _ble_keymap_vi_mark_local \
+               _ble_keymap_vi_mark_global \
+               _ble_keymap_vi_mark_history
 
 # mark 番号と用途の対応
 #
@@ -2480,7 +2510,8 @@ function ble/widget/vi-command/goto-global-mark.impl {
   ble/string#split data : "$value"
 
   # find a history entry by data[0]
-  if ((_ble_history_ind!=data[0])); then
+  local index; ble-edit/history/get-index
+  if ((index!=data[0])); then
     if [[ $FLAG ]]; then
       ble/widget/vi-command/bell
       return 1
@@ -2762,22 +2793,26 @@ function ble/widget/vi-command/.history-relative-line {
   ((offset)) || return 0
 
   # 履歴が初期化されていないとき最終行にいる。
-  if [[ ! $_ble_history_load_done ]]; then
+  if [[ ! $_ble_edit_history_prefix && ! $_ble_history_load_done ]]; then
     ((offset<0)) || return 1
     ble-edit/history/initialize # to use _ble_history_ind
   fi
+
+  local index histsize
+  ble-edit/history/get-index
+  ble-edit/history/get-count -v histsize
 
   local ret count=$((offset<0?-offset:offset)) exit=1
   ((count--))
   while ((count>=0)); do
     if ((offset<0)); then
-      ((_ble_history_ind>0)) || return "$exit"
+      ((index>0)) || return "$exit"
       ble/widget/history-prev
       ret=${#_ble_edit_str}
       ble/keymap:vi/needs-eol-fix "$ret" && ((ret--))
       _ble_edit_ind=$ret
     else
-      ((_ble_history_ind<${#_ble_history[@]})) || return "$exit"
+      ((index<histsize)) || return "$exit"
       ble/widget/history-next
       _ble_edit_ind=0
     fi
@@ -5087,7 +5122,7 @@ function ble/widget/vi-command/search.core {
 
   if ((opt_history)) && [[ $_ble_history_load_done || opt_backward -ne 0 ]]; then
     ble-edit/history/initialize
-    local index=$_ble_history_ind
+    local index; ble-edit/history/get-index
     [[ $start ]] || start=$index
     if ((opt_backward)); then
       ((index--))
@@ -5108,7 +5143,8 @@ function ble/widget/vi-command/search.core {
     ble-edit/info/default
 
     if ((r==0)); then
-      [[ $index != "$_ble_history_ind" ]] &&
+      local new_index; ble-edit/history/get-index -v new_index
+      [[ $index != "$new_index" ]] &&
         ble-edit/history/goto "$index"
       if ((opt_backward)); then
         local i=${#_ble_edit_str}
@@ -6307,6 +6343,8 @@ function ble/highlight/layer:region/mark:vi_block+/get-face { ble/highlight/laye
 # xmap/前回の選択サイズ
 
 _ble_keymap_vi_xmap_prev_edit=vi_char:1:1
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_vi_xmap_prev_edit
 function ble/widget/vi_xmap/.save-visual-state {
   local nline nchar mark_type=${_ble_edit_mark_active%+}
   if [[ $mark_type == vi_block ]]; then
@@ -6406,6 +6444,8 @@ function ble/widget/vi_xmap/.restore-visual-state {
 
 # mark `< `>
 _ble_keymap_vi_xmap_prev_visual=
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_vi_xmap_prev_visual
 function ble/keymap:vi/xmap/set-previous-visual-area {
   local beg end
   local mark_type=${_ble_edit_mark_active%+}
@@ -6807,8 +6847,10 @@ function ble/widget/vi_xmap/connect-line {
 ##     行数を保持します。
 ##
 _ble_keymap_vi_xmap_insert_data=
-
 _ble_keymap_vi_xmap_insert_dbeg=-1
+ble/array#push _ble_textarea_local_VARNAMES \
+               _ble_keymap_vi_xmap_insert_data \
+               _ble_keymap_vi_xmap_insert_dbeg
 function ble/keymap:vi/xmap/update-dirty-range {
   [[ $_ble_keymap_vi_insert_leave == ble/widget/vi_xmap/block-insert-mode.onleave ]] &&
     ((_ble_keymap_vi_xmap_insert_dbeg<0||beg<_ble_keymap_vi_xmap_insert_dbeg)) &&
