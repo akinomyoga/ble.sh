@@ -2253,7 +2253,7 @@ bash_tips
   - highlight: support job names by `auto_resume` `#D1065` ce46024
   - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
   - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f
-  - history: support full multiline history `#D1120` c699d4a `#D1121` 0000000
+  - history: support full multiline history `#D1120` 8cf17f7 `#D1121` 9e56b7b `#D1122` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3262,6 +3262,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-09
+
+  * history.mlfix: Bash-3.* でエラーメッセージが出る [#D1122]
+    bash-3 系列では ble/util/idle を使えないのだった。
+    必要になった時にロードする様に変更した。
 
   * history (resolve-multiline): 開始時に引っかかる [#D1121]
     どうも引っ掛かると思ったら .search-history-light だとか、

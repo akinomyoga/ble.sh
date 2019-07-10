@@ -42,7 +42,7 @@ function ble/history/clear-background-load {
 function ble/builtin/history/is-empty {
   # Note: 状況によって history -p で項目が減少するので
   #  サブシェルの中で評価する必要がある。
-  if [[ $BASHPID == "$$" ]]; then
+  if ((_ble_base<40000)) || [[ $BASHPID == "$$" ]]; then
     (! builtin history -p '!!')
   else
     ! builtin history -p '!!'
@@ -556,7 +556,7 @@ if ((_ble_bash>=30100)); then
   function ble/history/resolve-multiline {
     [[ $_ble_history_mlfix_done ]] && return
     if [[ $1 == sync ]]; then
-      [[ $BASHPID == $$ ]] || return
+      ((_ble_bash>=40000)) && [[ $BASHPID != $$ ]] && return
       ble/builtin/history/is-empty && return
     fi
 
@@ -565,7 +565,8 @@ if ((_ble_bash>=30100)); then
     _ble_history_mlfix_done=1
     return 0
   }
-  ble/util/idle.push 'ble/history/resolve-multiline async'
+  ((_ble_bash>=40000)) &&
+    ble/util/idle.push 'ble/history/resolve-multiline async'
 
   ble/array#push _ble_history_load_reset_background_hook _ble_history_mlfix_resume=0
 
@@ -979,8 +980,10 @@ function ble/builtin/history/option:p {
   # Note: auto-complete .search-history-light や
   #   magic-space 等経由で history -p が呼び出されて、
   #   その時に resolve-multiline が sync されると引っ掛かる。
-  #   従って history -p では sync しない事に決めた。
-  #ble/history/resolve-multiline sync
+  #   従って history -p では sync しない事に決めた (#D1121)
+  # Note: bash-3 では background load ができないので
+  #   最初に history -p が呼び出されるタイミングで初期化する事にする (#D1122)
+  ((_ble_bash>=40000)) || ble/history/resolve-multiline sync
 
   # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
   #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
