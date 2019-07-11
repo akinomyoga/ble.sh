@@ -182,13 +182,12 @@ if ((_ble_bash>=40000)); then
 
       # 42ms 履歴の読み込み
       (0) # 履歴ファイル生成を Background で開始
-          : >| "$history_tmpfile"
-
           if [[ $_ble_history_load_bgpid ]]; then
-            builtin kill -9 "$_ble_history_load_bgpid"
+            builtin kill -9 "$_ble_history_load_bgpid" &>/dev/null
             _ble_history_load_bgpid=
           fi
 
+          : >| "$history_tmpfile"
           if [[ $opt_async ]]; then
             _ble_history_load_bgpid=$(
               shopt -u huponexit; ble/history/load/.background-initialize </dev/null &>/dev/null & ble/bin/echo $!)
@@ -222,7 +221,8 @@ if ((_ble_bash>=40000)); then
           ((_ble_history_load_resume++)) ;;
 
       # 47ms _ble_history 初期化 (37000項目)
-      (3) if [[ $opt_cygwin ]]; then
+      (3) _ble_history_load_bgpid=
+          if [[ $opt_cygwin ]]; then
             # 620ms Cygwin (99000項目)
             source "$history_tmpfile"
           else
@@ -502,13 +502,12 @@ if ((_ble_bash>=30100)); then
           ((_ble_history_mlfix_resume++)) ;;
 
       (1) # 履歴ファイル生成を Background で開始
-        : >| "$history_tmpfile"
-        
         if [[ $_ble_history_mlfix_bgpid ]]; then
-          builtin kill -9 "$_ble_history_mlfix_bgpid"
+          builtin kill -9 "$_ble_history_mlfix_bgpid" &>/dev/null
           _ble_history_mlfix_bgpid=
         fi
 
+        : >| "$history_tmpfile"
         if [[ $opt_async ]]; then
           _ble_history_mlfix_bgpid=$(
             shopt -u huponexit; ble/history/resolve-multiline/.worker </dev/null &>/dev/null & ble/bin/echo $!)
@@ -541,7 +540,8 @@ if ((_ble_bash>=30100)); then
           ((_ble_history_mlfix_resume++)) ;;
 
       # 80ms history 再構築 (47000項目)
-      (4) ble/history/resolve-multiline/.load
+      (4) _ble_history_mlfix_bgpi=
+          ble/history/resolve-multiline/.load
           [[ $opt_async ]] || ble/util/invoke-hook _ble_builtin_history_message_hook
           ((_ble_history_mlfix_resume++))
           return 0 ;;

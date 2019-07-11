@@ -896,6 +896,35 @@ bash_tips
   * highlight: コマンド名は : で区切った着色をしても仕方がないのでは。。
     現状では例えば : を含む関数名をクォートなしで入力するとエラー着色になる。
 
+  * main: --prompt で attach するとプロンプト表示までに時間がかかる気がする
+    と思ったが今試してみると再現しない。というより、
+    padparadscha の bashrc を変更したら治ってしまった気もする。
+
+  * main: ble.sh をロードした状態で
+    source ble.sh --attach をすると固まってしまう。
+    一方で source ble.sh --attach=attach としても固まらない。この違いは何だろうか。
+    どうも調べてみると単に --attach とすると
+    --attach=none という意味になり、そうすると固まる様である。
+    --attach=none で再現する事を確認した。--noattach でも再現するのだろう。
+
+    もしかしてこれは source ~/.bashrc で問題になるのではないだろうか。
+    と思ったが、もし --noattach を指定していたとしても、
+    bashrc の末尾で ble-attach を呼び出している筈だから大丈夫の筈なのである。
+
+    試しに ble/base/unload-for-reload を呼び出してみるとその場で固まった。
+    ble-detach/impl を実行してみてもやはり固まった。何が悪いのだろうか。
+    どうも固まると言っても C-d によるログアウトはできる様である。
+
+    C-f や C-g に ble.sh の枠組みでログアウトを登録しても何も起こらなかった。
+    つまり C-d によるログアウトを支配しているのは bash の枠組みの方である気がする。
+    実際に bind -p を出力したところ bind は復元されている様子であった。
+    では標準出力等が繋がっている先がおかしな事になっているという事だろうか。
+
+    la /proc/self/fd を実行してみたところ 0 と 2 は普通だが 1 は変な所に繋がっている。
+    と思ったが、これは元からそうである様である。普通に実行しても pipe:[...] になっている。
+    普通に ble-detach してその上で実行してもやはり pipe:[...] になっている。
+    なので接続先がおかしくなっているとかそういう事ではないのだろうという気がする。
+
 2019-07-09
 
   * history.mlfix: bash-3.0 で実現する方法?
@@ -945,43 +974,6 @@ bash_tips
   * term: tput が terminfo (ncurses) ではなくて termcap の場合?
     sentaku ではそれに対応している。ble.sh では terminfo ではなかった場合には、
     既定で ANSI のシーケンスを用いる様になっている。
-
-  * [不要] 現在 bashrc を実行中かどうかを判定する方法?
-
-    以前 bashrc の中にいるかどうかを判定できたら良いという話があった。
-
-    実は以下の条件で bashrc の中にいるかどうかを判定できるのではないだろうか。
-    [[ $(builtin history -s -- echo; HISTTIMEFORMAT=X builtin history 1) == *'??'* ]]
-    と思ったがこの方法が使えるのは bash-4.3 以降であった。
-    というよりも寧ろ HISTTIMEFORMAT が動かなくなってしまうのは bash-4.3 以降のバグだろうと思われる。
-    何れにしても実現する為にはもっと別の方法を模索する必要がある。
-
-    何処で bashrc の中にいるかどうかの判定ができたら良いという話だったろうか。
-
-    * 見つかった。#D0737 である。しかし、読んでみると結局 trap -- RETURN は、
-      bashrc の末尾では呼び出されないとの事で、
-      bashrc の中にいるかどうかの判定ができても意味がないという結論になっていた。
-    * 或いは ble.pp のスタートアップの判断の時に何か使えるかもしれない。
-      と思ったがやはり特に使えそうな物はない様な気もした。
-      もし使えるとしたら $ source ble.sh した時はその場で attach して、
-      bashrc の中で source ble.sh した時には manual attach という可能性があったが、
-      どうせ manual attach をユーザに書かせるのであれば
-      明示的に noattach を指定させた方が混乱がない。
-      更にもし PROMPT_COMMAND を使うのであれば実はわざわざ場合分けする必要もなかった。
-      というより今確認したら既に attach=prompt がデフォルトになっていたので、
-      bashrc の中で単に source ble.sh を記述しただけでも
-      PROMPT_COMMAND を上書きしない限りは動くには動く。
-    * 対話シェル以外で起動した時に警告を発するかどうかを
-      bashrc の中にいるかどうかで切り替えていた。
-      然し、そもそも対話シェル以外の時には履歴が無効になっているので、
-      上記で挙げた様な方法は使えないのであった。
-
-    というか今や noattach を指定しなくても prompt で取り敢えず設定しておいて、
-    もし末尾で manual attach されなかったら PROMPT_COMMAND 経由で attach を試みるというので良いのでは。
-    実際に試してみるとそれで動作している気がするのでOK
-
-    もしかすると知られた方法があるかもしれないと思って検索したが見つからない。
-    というかどのようなキーワードで検索したら良いのかがよく分からない。
 
 2019-06-18
 
@@ -2259,7 +2251,7 @@ bash_tips
   - highlight: support job names by `auto_resume` `#D1065` ce46024
   - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
   - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f
-  - history: support full multiline history `#D1120` 8cf17f7 `#D1121` 9e56b7b `#D1122` 0000000
+  - history: support full multiline history `#D1120` 8cf17f7 `#D1121` 9e56b7b `#D1122` 4fe7a0c `#D1125` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2322,6 +2314,7 @@ bash_tips
   - blerc: add descriptions `#D1064` d61b6af
   - decode: decode mouse events `#D1084` 51fae67
   - history: move history related codes to `src/history.sh` `#D1119` 1bfc8eb e5b1980
+  - keymap/vi: deal with textarea local data properly `#D1123` 2ea7cfd
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3267,7 +3260,59 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-07-11
+
+  * history: ble-detach してそれから ble-attach すると [#D1125]
+    bash: kill: (9952) - そのようなプロセスはありません 
+    と言った様なメッセージが表示される。何処の kill かを先ず特定する必要がある。
+    →これは最近追加した history の bgpid の kill であった。
+      前回使用した background-worker の情報が残っていて、
+      それを kill しようとしているのである。
+
+      何故 kill するのかというと、clear-background で再度
+      background 処理がやり直しになった時に古い bgworker によって
+      ファイルが上書きされると困るからであった。
+      従ってファイルが完成した時点で bgpid をクリアしてしまえば良いのである。
+      ファイルが完成した時点で bgworker が再びファイルを上書きしてしまうという心配はない。
+
 2019-07-10
+
+  * 2019-07-02 [不要] 現在 bashrc を実行中かどうかを判定する方法? [#D1124]
+
+    以前 bashrc の中にいるかどうかを判定できたら良いという話があった。
+
+    実は以下の条件で bashrc の中にいるかどうかを判定できるのではないだろうか。
+    [[ $(builtin history -s -- echo; HISTTIMEFORMAT=X builtin history 1) == *'??'* ]]
+    と思ったがこの方法が使えるのは bash-4.3 以降であった。
+    というよりも寧ろ HISTTIMEFORMAT が動かなくなってしまうのは bash-4.3 以降のバグだろうと思われる。
+    何れにしても実現する為にはもっと別の方法を模索する必要がある。
+
+    何処で bashrc の中にいるかどうかの判定ができたら良いという話だったろうか。
+
+    * 見つかった。#D0737 である。しかし、読んでみると結局 trap -- RETURN は、
+      bashrc の末尾では呼び出されないとの事で、
+      bashrc の中にいるかどうかの判定ができても意味がないという結論になっていた。
+    * 或いは ble.pp のスタートアップの判断の時に何か使えるかもしれない。
+      と思ったがやはり特に使えそうな物はない様な気もした。
+      もし使えるとしたら $ source ble.sh した時はその場で attach して、
+      bashrc の中で source ble.sh した時には manual attach という可能性があったが、
+      どうせ manual attach をユーザに書かせるのであれば
+      明示的に noattach を指定させた方が混乱がない。
+      更にもし PROMPT_COMMAND を使うのであれば実はわざわざ場合分けする必要もなかった。
+      というより今確認したら既に attach=prompt がデフォルトになっていたので、
+      bashrc の中で単に source ble.sh を記述しただけでも
+      PROMPT_COMMAND を上書きしない限りは動くには動く。
+    * 対話シェル以外で起動した時に警告を発するかどうかを
+      bashrc の中にいるかどうかで切り替えていた。
+      然し、そもそも対話シェル以外の時には履歴が無効になっているので、
+      上記で挙げた様な方法は使えないのであった。
+
+    というか今や noattach を指定しなくても prompt で取り敢えず設定しておいて、
+    もし末尾で manual attach されなかったら PROMPT_COMMAND 経由で attach を試みるというので良いのでは。
+    実際に試してみるとそれで動作している気がするのでOK
+
+    もしかすると知られた方法があるかもしれないと思って検索したが見つからない。
+    というかどのようなキーワードで検索したら良いのかがよく分からない。
 
   * history: vi.sh は _ble_history の上で動作する事を前提としている様に見える [#D1123]
     然し、実際には read 等を用いた時に _ble_history 以外の上で動作する。
