@@ -2527,6 +2527,7 @@ function ble-decode/unbind {
 
 function ble/decode/initialize {
   ble/decode/cmap/initialize
+  ble/builtin/bind/initialize-inputrc
 }
 
 ## @var _ble_decode_bind_state
@@ -3148,7 +3149,16 @@ function ble/builtin/bind/.process {
 
   return 0
 }
+# inputrc の読み込み
+_ble_builtin_bind_inputrc_done=
+function ble/builtin/bind/initialize-inputrc {
+  [[ $_ble_builtin_bind_inputrc_done ]] && return
+  _ble_builtin_bind_inputrc_done=1
+  local inputrc=${INPUTRC:-$HOME/.inputrc}
+  [[ -e $inputrc ]] && ble/decode/read-inputrc "$inputrc"
+}
 function ble/builtin/bind {
+  ble/builtin/bind/initialize-inputrc
   local flags=
   ble/builtin/bind/.process "$@"
   if [[ $_ble_decode_bind_state == none ]]; then

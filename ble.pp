@@ -765,7 +765,7 @@ function ble/base/process-blesh-arguments {
     (--attach=*) opt_attach=${arg#*=} ;;
     (--attach)   opt_attach=$1; shift ;;
     (--noinputrc)
-      opts=$opts:noinputrc ;;
+      _ble_builtin_bind_inputrc_done=noinputrc ;;
     (--rcfile=*|--init-file=*|--rcfile|--init-file)
       if [[ $arg != *=* ]]; then
         local rcfile=$1; shift
@@ -785,12 +785,6 @@ function ble/base/process-blesh-arguments {
       opt_error=1
     esac
   done
-
-  # inputrc の読み込み
-  if [[ :$opts: != *:noinputrc:* ]]; then
-    local inputrc=${INPUTRC:-$HOME/.inputrc}
-    [[ -e $inputrc ]] && ble/decode/read-inputrc "$inputrc"
-  fi
 
   [[ -s $_ble_base_rcfile ]] && source "$_ble_base_rcfile"
   case $opt_attach in
