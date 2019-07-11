@@ -606,7 +606,9 @@ function ble/builtin/history/.get-max {
   ble/string#split-words max "$max"
 }
 
-_ble_builtin_history_initialized=
+# Note: #D1126 一度置き換えたら戻せない。二回は初期化しない。
+[[ ${_ble_builtin_history_initialized+set} ]] ||
+  _ble_builtin_history_initialized=
 _ble_builtin_history_histnew_count=0
 _ble_builtin_history_histapp_count=0
 _ble_builtin_history_delete_hook=()
@@ -678,6 +680,15 @@ function ble/builtin/history/.initialize {
 
   local histnew=$_ble_base_run/$$.history.new
   : >| "$histnew"
+
+  # Note: #D1126 ble.sh ロード前に追加された履歴項目があれば保存する。
+  local histini=$_ble_base_run/$$.history.ini
+  local histapp=$_ble_base_run/$$.history.app
+  builtin history -a "$histini"
+  if [[ -s $histini ]]; then
+    ble/bin/sed 's/^/ 0 __ble_edt__/' "$histini" >> "$histapp"
+    : >| "$histini"
+  fi
 
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local rskip=$(ble/bin/wc -l "$histfile" 2>/dev/null)

@@ -900,6 +900,12 @@ bash_tips
     と思ったが今試してみると再現しない。というより、
     padparadscha の bashrc を変更したら治ってしまった気もする。
 
+    うーん。今 Cygwin で試してみると再現する。
+    Cygwin の上と Linux の上で振る舞いが違うという事なのだろうか。
+    一応 cygwin は bash 4.4.12 で linux は bash 4.4.23 である。
+    linux 上の bash 4.3.48 でも再現はしない。4.2.53 でも再現しない。
+    Cygwin の上でどのタイミングでプロンプトが表示されるのか調べる事にする。
+
   * main: ble.sh をロードした状態で
     source ble.sh --attach をすると固まってしまう。
     一方で source ble.sh --attach=attach としても固まらない。この違いは何だろうか。
@@ -2251,7 +2257,10 @@ bash_tips
   - highlight: support job names by `auto_resume` `#D1065` ce46024
   - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
   - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f
-  - history: support full multiline history `#D1120` 8cf17f7 `#D1121` 9e56b7b `#D1122` 4fe7a0c `#D1125` 0000000
+  - history: support full multiline history `#D1120` 8cf17f7
+    - history: do not synchronize multiline resolution on "history -p" `#D1121` 9e56b7b
+    - history.mlfix: suppress errors on Bash 3 `#D1122` 4fe7a0c
+    - history: suppress error messages trying to kill background worker on reattach `#D1125` f045fec
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2270,6 +2279,7 @@ bash_tips
     - history: fix a problem that `_ble_edit_history` is not synchronized with `history -r` `#D1112` e64edb7
     - history: do not process `_ble_edit_history` in detached state `#D1115` bf3b014
     - history: move history item on delete of current item with `history -d` `#D1114` bf3b014
+    - history: fix a problem that history before load of ble.sh is lost `#D1126` 0000000
   - history: improve performance of `erasedups` `#D1107` 518e2ee
   - history: correctly handle `HISTSIZE` overflow `#D1108` 7be255c
   - sabbrev: support sabbrev expansion in wider contexts (reported by cmplstofB) `#D1117` ca6e03d
@@ -3261,6 +3271,46 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-11
+
+  * history: ble-reload するとそれ以前の履歴が bash_history に書き込まれない [#D1126]
+    これは ble/builtin/history/.initialize がもう一度呼び出される為である。
+    ここで _ble_builtin_history_wskip が reload した瞬間の値に書き換えられてしまう。
+
+    a _ble_builtin_history_initialized が既に設定されている時にはクリアしない様にする?
+
+    と思ったが問題はそれだけではない。例えば途中まで素の bash で操作していて、
+    途中から ble.sh に切り替えたとする。するとやはり ble.sh をロードする以前の
+    履歴の内容が bash_history に書き込まれないという事になってしまう。
+    従って、ble.sh をロードした瞬間に残っているデータに関しては、
+    その時点で何処かに書き出して置く必要があるのである。
+
+    既にその仕組は整っている。fetch である。
+
+    b うーん。histapp=$_ble_base_run/$$.history.app に history -a してしまえば良い?
+
+      と思ったが本当に大丈夫だろうか。例えば history -a && history -c && history -r
+      を実行しているという場合には history -r した内容が
+      history -a で書き出されてしまうのではあるまいか。
+
+      今試してみると history -cr; history -r した後で
+      history -a x.txt で全ての履歴が書き出されてしまっている。
+      と思ってもう一度試してみたがこれは再現しない。どういう事だろう。
+      よく分からないが幻だったという事にする。
+
+      取り敢えず他で history -r だとかしていたとしても
+      履歴が倍化してしまうなどの現象は起こらないのではないかと予想する。
+      然し、念の為対応した後に変な事が起こらないか確認する事にする。
+
+    - 実装中に気になった事。/dev/stdin, /dev/stdout 等は POSIX にないのだろうか。
+      http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap10.html
+      を見ると /dev/null 及び /dev/tty しか定義されていない。
+      他に /dev/console という目慣れない物がある。これはよく分からない。
+      システムのエラーメッセージを出力する端末に繋がっている?
+
+    - うーん。builtin history -a で大丈夫なのだろうか。
+      一回 load した後だと bash の中で記録している index が
+      色々と狂ってしまっているのではないか。
+      その様に考えると a と b の対策の両方をしておくのが懸命と思われる。
 
   * history: ble-detach してそれから ble-attach すると [#D1125]
     bash: kill: (9952) - そのようなプロセスはありません 
