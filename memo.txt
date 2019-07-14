@@ -896,31 +896,6 @@ bash_tips
   * highlight: コマンド名は : で区切った着色をしても仕方がないのでは。。
     現状では例えば : を含む関数名をクォートなしで入力するとエラー着色になる。
 
-  * main: BUG ble.sh をロードした状態で
-    source ble.sh --attach をすると固まってしまう。
-    一方で source ble.sh --attach=attach としても固まらない。この違いは何だろうか。
-    どうも調べてみると単に --attach とすると
-    --attach=none という意味になり、そうすると固まる様である。
-    --attach=none で再現する事を確認した。--noattach でも再現するのだろう。
-
-    もしかしてこれは source ~/.bashrc で問題になるのではないだろうか。
-    と思ったが、もし --noattach を指定していたとしても、
-    bashrc の末尾で ble-attach を呼び出している筈だから大丈夫の筈なのである。
-
-    試しに ble/base/unload-for-reload を呼び出してみるとその場で固まった。
-    ble-detach/impl を実行してみてもやはり固まった。何が悪いのだろうか。
-    どうも固まると言っても C-d によるログアウトはできる様である。
-
-    C-f や C-g に ble.sh の枠組みでログアウトを登録しても何も起こらなかった。
-    つまり C-d によるログアウトを支配しているのは bash の枠組みの方である気がする。
-    実際に bind -p を出力したところ bind は復元されている様子であった。
-    では標準出力等が繋がっている先がおかしな事になっているという事だろうか。
-
-    la /proc/self/fd を実行してみたところ 0 と 2 は普通だが 1 は変な所に繋がっている。
-    と思ったが、これは元からそうである様である。普通に実行しても pipe:[...] になっている。
-    普通に ble-detach してその上で実行してもやはり pipe:[...] になっている。
-    なので接続先がおかしくなっているとかそういう事ではないのだろうという気がする。
-
 2019-07-09
 
   * history.mlfix: bash-3.0 で実現する方法?
@@ -2308,6 +2283,7 @@ bash_tips
   - menu-complete: fix a bug that word is expanded on cancel `#D1097` 001b914
   - highlight: fix a problem that empty arguments are highlighted as errors `#D1116` 64ae8ce
   - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118` 30cc31c
+  - main: fix a bug that `source ble.sh --noattach` hangs `#D1130` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3263,6 +3239,108 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-14
+
+  * main: BUG ble.sh セッションで source ble.sh --attach=none すると固まる [#D1130]
+
+    [症状]
+    ble.sh をロードした状態で source ble.sh --attach をすると固まってしまう。
+    一方で source ble.sh --attach=attach としても固まらない。この違いは何だろうか。
+    どうも調べてみると単に --attach とすると
+    --attach=none という意味になり、そうすると固まる様である。
+    --attach=none で再現する事を確認した。--noattach でも再現するのだろう。
+
+    もしかしてこれは source ~/.bashrc で問題になるのではないだろうか。
+    と思ったが、もし --noattach を指定していたとしても、
+    bashrc の末尾で ble-attach を呼び出している筈だから大丈夫の筈なのである。
+
+    試しに ble/base/unload-for-reload を呼び出してみるとその場で固まった。
+    ble-detach/impl を実行してみてもやはり固まった。何が悪いのだろうか。
+    どうも固まると言っても C-d によるログアウトはできる様である。
+
+    [原因解明]
+
+    C-f や C-g に ble.sh の枠組みでログアウトを登録しても何も起こらなかった。
+    つまり C-d によるログアウトを支配しているのは bash の枠組みの方である気がする。
+    実際に bind -p を出力したところ bind は復元されている様子であった。
+    では標準出力等が繋がっている先がおかしな事になっているという事だろうか。
+
+    la /proc/self/fd を実行してみたところ 0 と 2 は普通だが 1 は変な所に繋がっている。
+    と思ったが、これは元からそうである様である。普通に実行しても pipe:[...] になっている。
+    普通に ble-detach してその上で実行してもやはり pipe:[...] になっている。
+    なので接続先がおかしくなっているとかそういう事ではないのだろうという気がする。
+
+    * 2019-07-14 うーん。そもそもキー入力を受信しているのかどうかから調べる事にする。
+      どうもキー入力を受信してはいない様である。次に bind の状態を調べてみたい。
+      うーん。bind は通常の bash になっている気がする。
+
+      その直後に PROMPT_COMMAND 経由で hook が実行されているのだろうか…。
+      試しに PROMPT_COMMAND= を付けてみてもやはり反応がなくなる問題は継続している。
+      うーん。ble-attach を直後に実行しておけば操作できなくなる事はない。
+      因みに ble-attach の直後の builtin bind -p は何も出力されない…。
+      何が起こっているのだろうか。と思ったが ble-attach の直後は出力は抑制されるのだった。
+      ファイルに書き出してみた所 builtin bind -p によって期待通りに、
+      何にも束縛されていない結果が出力される事を確かめた。
+
+      うーん。source out/ble.sh --noattach の直後に stty sane をしても効果はなかった。
+      というかそもそも stty sane を実行したとしても epilogue が走るのではあるまいか。。
+      epilogue がどうなっているのかについて確かめて置きたい。
+
+      成る程…分かった気がする。detach された時には
+      ble-edit/exec:gexec/.end で本来チェックに引っ掛かって、
+      bind/tail が呼び出されないという仕組みになっている筈だが、
+      ble-reload をした場合にはそれがチェックされないという事の様だ。
+
+    [修正]
+
+    問題の箇所を修正したら完全に固まるという事はなくなった。
+    然し依然として状態はおかしい。stty sane は実行して置かなければならないし、
+    更に PS1 などが消滅してしまっている。どうやらコマンドを実行中は
+    PS1 は消えていないので、その後で消滅しているという事の様である。
+
+    うーん。調べてみると ble-detach/impl の後に PS1 の類が復元されている様である。
+    これはどの様に対処したら良いだろうか。_ble_attached の状態で unload が起こったら…。
+    detach のタイミングを遅延させて後で detach するという事にするか?
+    然し、その場で unload しないと変な事になってしまう…。
+    更に、attach が始まってしまう。或いは別の手として、
+    _ble_edit_detach_flag == reload になっていたら
+    その場で強制的に ble-attach してしまうという可能性?
+
+    と思ったが既に PS1 等が破壊されている状態で
+    ble-attach すると余計に変な事になってしまう。
+
+    結局、そのまま detach する事は許して、
+    然し、状態をちゃんと復元するという事にした。
+    通常の detach の場合には epilogue の外で detach/impl するから問題なかったのが、
+    今回の場合は prologue-epilogue の中で detach/impl して、
+    その後で epilogue が実行されて内部状態に入ってしまうのが駄目だった。
+    従って再び prologue を呼び出して誤魔化す事にした。
+    面倒なので exec:gexec の枠組みの方の prologue を呼び出してしまう事にする。
+
+    * というか exec:exec はちゃんとメンテナンスされているのだろうか…。
+
+      うーん。一応 ble-edit/attach/.detach という関数があって、
+      それでちゃんと処理をするという事になっているが、
+      reload の時にはそれが後で覆されてしまう。
+      しかし、ble-edit が保持している _ble_edit_attached 変数に記録されてしまっているので、
+      再度この関数を呼び出しても意味はない。
+      その様な事を考えると、実際汚いが prologue を呼び出して誤魔化すしかないのである。
+
+      時に、ecec:gexec の prologue でなければならない。
+      exec:exec は PS1, IGNOREEOF は local で被覆されていると仮定して
+      復元処理をスキップしている為である。
+      と思ったが restore-PS1 の枠組み自体が調整済みかそうでないかを記録しているのでは。
+      exec:exec を利用している時にはそもそも adjust-PS1 を呼び出していないので、
+      この時に破壊されてしまう気がする…と思ったが、よく考えたら exec:exec の場合には
+      そもそも PS1= にしていないから問題にならないのであるという事か?
+      否、exec:exec であっても起動時に adjust している。
+      reload 時に restore して (しかし local PS1 に対して restore してしまう)
+      その後で exec:exec/epilogue では adjust されない為に、
+      改めて restore を実行したとしても復元されないという事になる。
+
+      exec:exec に対する対応は複雑になってしまう。
+      うーん。というか exec:exec はメンテナンスされていないし、
+      今後使う事があるとも思われないのでこの際削除してしまって良い気がする。
+      削除する事にした。
 
   * history: BUG #D1126 について対応したと思っていたら駄目だ [#D1129]
 

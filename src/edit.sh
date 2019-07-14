@@ -7499,7 +7499,8 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   fi
 fi
 
-_ble_edit_detach_flag=
+[[ $_ble_edit_detach_flag != reload ]] &&
+  _ble_edit_detach_flag=
 function ble-edit/bind/.exit-TRAPRTMAX {
   # シグナルハンドラの中では stty は bash によって設定されている。
   ble/base/unload
@@ -7511,6 +7512,21 @@ function ble-edit/bind/.exit-TRAPRTMAX {
 ##   @exit detach した場合に 0 を返します。それ以外の場合に 1 を返します。
 ##
 function ble-edit/bind/.check-detach {
+  # Note: #D1130 reload の為に detach して attach しなかった場合
+  if [[ $_ble_edit_detach_flag == reload ]]; then
+    ble-detach/message \
+      "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" \
+      "Please run \`stty sane' to recover the correct TTY state."
+
+    if ((_ble_bash>=40000)); then
+      READLINE_LINE='stty sane;' READLINE_POINT=10
+      printf %s "$READLINE_LINE"
+    fi
+
+    ble-edit/exec:gexec/.eval-prologue
+    return 0
+  fi
+
   if [[ ! -o emacs && ! -o vi ]]; then
     # 実は set +o emacs などとした時点で eval の評価が中断されるので、これを検知することはできない。
     # 従って、現状ではここに入ってくることはないようである。

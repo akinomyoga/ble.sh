@@ -712,6 +712,7 @@ function ble/base/unload-for-reload {
     _ble_attached=
     ble-detach/impl
     ble/bin/echo "${_ble_term_setaf[12]}[ble: reload]$_ble_term_sgr0" 1>&2
+    _ble_edit_detach_flag=reload
   fi
   ble/base/unload
   return 0
