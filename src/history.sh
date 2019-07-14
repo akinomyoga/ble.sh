@@ -606,72 +606,75 @@ function ble/builtin/history/.get-max {
   ble/string#split-words max "$max"
 }
 
-# Note: #D1126 一度置き換えたら戻せない。二回は初期化しない。
-[[ ${_ble_builtin_history_initialized+set} ]] ||
-  _ble_builtin_history_initialized=
-_ble_builtin_history_histnew_count=0
-_ble_builtin_history_histapp_count=0
 _ble_builtin_history_delete_hook=()
 _ble_builtin_history_clear_hook=()
 _ble_builtin_history_message_hook=()
-## @var _ble_builtin_history_wskip
-##   履歴のどの行までがファイルに書き込み済みの行かを管理する変数です。
-## @var _ble_builtin_history_prevmax
-##   最後の ble/builtin/history における builtin history の項目番号
-_ble_builtin_history_wskip=0
-_ble_builtin_history_prevmax=0
-##
-## 以下の関数は各ファイルに関して何処まで読み取ったかを記録します。
-##
-## 関数 ble/builtin/history/.get-rskip file
-##   @param[in] file
-##   @var[out] rskip
-## 関数 ble/builtin/history/.set-rskip file value
-##   @param[in] file
-## 関数 ble/builtin/history/.add-rskip file delta
-##   @param[in] file
-##
-if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
-  if ((_ble_bash>=40200)); then
-    declare -gA _ble_builtin_history_rskip_dict=()
+
+# Note: #D1126 一度置き換えたら戻せない。二回は初期化しない。
+if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
+  _ble_builtin_history_initialized=
+  _ble_builtin_history_histnew_count=0
+  _ble_builtin_history_histapp_count=0
+  ## @var _ble_builtin_history_wskip
+  ##   履歴のどの行までがファイルに書き込み済みの行かを管理する変数です。
+  ## @var _ble_builtin_history_prevmax
+  ##   最後の ble/builtin/history における builtin history の項目番号
+  _ble_builtin_history_wskip=0
+  _ble_builtin_history_prevmax=0
+
+  ##
+  ## 以下の関数は各ファイルに関して何処まで読み取ったかを記録します。
+  ##
+  ## 関数 ble/builtin/history/.get-rskip file
+  ##   @param[in] file
+  ##   @var[out] rskip
+  ## 関数 ble/builtin/history/.set-rskip file value
+  ##   @param[in] file
+  ## 関数 ble/builtin/history/.add-rskip file delta
+  ##   @param[in] file
+  ##
+  if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+    if ((_ble_bash>=40200)); then
+      declare -gA _ble_builtin_history_rskip_dict=()
+    else
+      declare -A _ble_builtin_history_rskip_dict=()
+    fi
+    function ble/builtin/history/.get-rskip {
+      local file=$1
+      rskip=${_ble_builtin_history_rskip_dict[$file]}
+    }
+    function ble/builtin/history/.set-rskip {
+      local file=$1
+      _ble_builtin_history_rskip_dict[$file]=$2
+    }
+    function ble/builtin/history/.add-rskip {
+      local file=$1
+      ((_ble_builtin_history_rskip_dict[\$file]+=$2))
+    }
   else
-    declare -A _ble_builtin_history_rskip_dict=()
+    _ble_builtin_history_rskip_path=()
+    _ble_builtin_history_rskip_skip=()
+    function ble/builtin/history/.find-rskip-index {
+      local file=$1
+      local n=${#_ble_builtin_history_rskip_path[@]}
+      for ((index=0;index<n;index++)); do
+        [[ $file == ${_ble_builtin_history_rskip_path[index]} ]] && return
+      done
+      _ble_builtin_history_rskip_path[index]=$file
+    }
+    function ble/builtin/history/.get-rskip {
+      local index; ble/builtin/history/.find-rskip-index "$1"
+      rskip=${_ble_builtin_history_rskip_skip[index]}
+    }
+    function ble/builtin/history/.set-rskip {
+      local index; ble/builtin/history/.find-rskip-index "$1"
+      _ble_builtin_history_rskip_skip[index]=$2
+    }
+    function ble/builtin/history/.add-rskip {
+      local index; ble/builtin/history/.find-rskip-index "$1"
+      ((_ble_builtin_history_rskip_skip[index]+=$2))
+    }
   fi
-  function ble/builtin/history/.get-rskip {
-    local file=$1
-    rskip=${_ble_builtin_history_rskip_dict[$file]}
-  }
-  function ble/builtin/history/.set-rskip {
-    local file=$1
-    _ble_builtin_history_rskip_dict[$file]=$2
-  }
-  function ble/builtin/history/.add-rskip {
-    local file=$1
-    ((_ble_builtin_history_rskip_dict[\$file]+=$2))
-  }
-else
-  _ble_builtin_history_rskip_path=()
-  _ble_builtin_history_rskip_skip=()
-  function ble/builtin/history/.find-rskip-index {
-    local file=$1
-    local n=${#_ble_builtin_history_rskip_path[@]}
-    for ((index=0;index<n;index++)); do
-      [[ $file == ${_ble_builtin_history_rskip_path[index]} ]] && return
-    done
-    _ble_builtin_history_rskip_path[index]=$file
-  }
-  function ble/builtin/history/.get-rskip {
-    local index; ble/builtin/history/.find-rskip-index "$1"
-    rskip=${_ble_builtin_history_rskip_skip[index]}
-  }
-  function ble/builtin/history/.set-rskip {
-    local index; ble/builtin/history/.find-rskip-index "$1"
-    _ble_builtin_history_rskip_skip[index]=$2
-  }
-  function ble/builtin/history/.add-rskip {
-    local index; ble/builtin/history/.find-rskip-index "$1"
-    ((_ble_builtin_history_rskip_skip[index]+=$2))
-  }
 fi
 
 function ble/builtin/history/.initialize {

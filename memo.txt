@@ -888,7 +888,7 @@ bash_tips
 
 2019-07-10
 
-  * edit: bash-3.2 で "echo \改行" と入力するとエラーメッセージが出る。
+  * edit: BUG bash-3.2 で "echo \改行" と入力するとエラーメッセージが出る。
 
   * highlight: ファイル名のディレクトリ部分の着色で、
     ディレクトリ名にパス名展開があると正しく着色されない。
@@ -896,7 +896,7 @@ bash_tips
   * highlight: コマンド名は : で区切った着色をしても仕方がないのでは。。
     現状では例えば : を含む関数名をクォートなしで入力するとエラー着色になる。
 
-  * main: ble.sh をロードした状態で
+  * main: BUG ble.sh をロードした状態で
     source ble.sh --attach をすると固まってしまう。
     一方で source ble.sh --attach=attach としても固まらない。この違いは何だろうか。
     どうも調べてみると単に --attach とすると
@@ -2269,10 +2269,12 @@ bash_tips
     - history: fix a problem that `_ble_edit_history` is not synchronized with `history -r` `#D1112` e64edb7
     - history: do not process `_ble_edit_history` in detached state `#D1115` bf3b014
     - history: move history item on delete of current item with `history -d` `#D1114` bf3b014
-    - history: fix a problem that history before load of ble.sh is lost `#D1126` 0000000
+    - history: fix a problem that history before load of ble.sh is lost `#D1126` 37cd154
+    - history: fix problems of history output after `ble-reload` `#D1129` 0000000
   - history: improve performance of `erasedups` `#D1107` 518e2ee
   - history: correctly handle `HISTSIZE` overflow `#D1108` 7be255c
   - sabbrev: support sabbrev expansion in wider contexts (reported by cmplstofB) `#D1117` ca6e03d
+  - main: change loading point of `.inputrc` `#D1127` af758e5
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3260,6 +3262,57 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-07-14
+
+  * history: BUG #D1126 について対応したと思っていたら駄目だ [#D1129]
+
+    % ble-reload した直後に C-d で終了すると履歴が書き込まれない。
+    % 何かコマンドを実行した後だと書き込まれる。
+    % 但し、":" の様な単純なコマンドだと書き込まれなかった。
+    % "echo" でも駄目だった。どういう事なんだろう…。
+    % また調べ直す必要がある。
+    %
+    % 終了するのに exit を実行した場合には問題は再現しない。
+    % やはり C-d を実行すると行けないのだろうか。
+    % というかそもそもちゃんと C-d を受信できているのだろうか。
+    % 実は Bash の枠組みの側で C-d が受信されている可能性はあるだろうか。
+    % そして Bash の機能としてログアウトが実行されている。
+    %
+    % 調べてみると何と ble/history/TRAPEXIT は実行されている。
+    % つまり、問題は何かが呼び出されていないとかそういう事ではなくて、
+    % ble.sh の中での skip の管理の方であると思われる。
+    %
+    % 気づいた事は、実は履歴の項目数が上限に達しているという事。
+    % 更に history -a で全ての履歴が書き出されてしまっているという事。
+    % wskip なのに何故だろう…。うーん。結局履歴が増殖するのも分からないし、
+    % 更に、あー。何だか分かった気がする。履歴が初期化されるタイミングが色々なんだ。
+
+    問題を切り分ける必要がある。今発生している問題は。
+    1. ble-reload をするとコマンドが記録されない。
+    2. ble-reload をした後にコマンドを実行して終了すると
+      履歴が倍加してしまうという減少が発生していた。
+
+    取り敢えず 2. が今も再現するのかどうかについて確認する。
+    再現した。bash RET ble-reload RET echo RET C-d で再現する。
+
+    取り敢えず 1. について調べる事にする。
+    どうも ble/builtin/history/.check-uncontrolled-change が悪さをしている様子である。
+    ここでは一体どういう判断をしていただろうか。
+    max!=_ble_builtin_history_prevmax だった時に
+    _ble_builtin_history_wskip を更新している。
+    というか _ble_builtin_history_prevmax や
+    _ble_builtin_history_wskip がクリアされているのがいけないんだ。
+    ちゃんと初期化されない様にしたら治った。
+
+    2. の問題も一緒に治ってしまった。考えてみれば当たり前の気がする。
+    そもそも reload さえしなければ変な事は起こっていなかったのでこれは気にしない事にする。
+
+  * [棄却] decode: BUG bind -sS が効いていない気がする [#D1128]
+    →確認してみた所、わざわざ ble.sh の設定を解除してから
+    出力する様になっていた。つまりこれは意図的な動作である。
+    よく見ると -pP 等の場合にも復元する様になっている。
+    確かに実行してみると復元した後の状態が出力されている様である。
+
 2019-07-11
 
   * main: --prompt で attach するとプロンプト表示までに時間がかかる気がする [#D1127]
@@ -3344,7 +3397,7 @@ bash_tips
       その様に考えると a と b の対策の両方をしておくのが懸命と思われる。
 
   * history: ble-detach してそれから ble-attach すると [#D1125]
-    bash: kill: (9952) - そのようなプロセスはありません 
+    bash: kill: (9952) - そのようなプロセスはありません
     と言った様なメッセージが表示される。何処の kill かを先ず特定する必要がある。
     →これは最近追加した history の bgpid の kill であった。
       前回使用した background-worker の情報が残っていて、
@@ -3459,15 +3512,15 @@ bash_tips
     | chatoyancy の上では 5000 行を読み取るのに 0.033s であったが、
     | padparadscha では 47k 項目を読み取るのに 1.895s かかってしまう。
     | どのタイミングで再構築するのかによるが 1.895s は時間がかかり過ぎである。
-    | 
+    |
     | history -r でまとめて読み取る様にしたらどうなるだろうか。
     | chatoyancy 上で 0.012s にまで短くなった。
-    | 
+    |
     | * history -r でまとめて読み取るにしても例えばまとまりが単一行の場合には
     |   history -r に置き換えて却って遅くなるのではないかと思われる。
     |   次に何個のファイルであれば history -r が history -s * N に勝つのか調べる。
     |   計測結果は以下の通り
-    | 
+    |
     |   |     9.30 usec/eval: _read_r 1 (x10000)
     |   |    26.20 usec/eval: _read_s 1 (x5000)
     |   |     9.20 usec/eval: _read_r 2 (x10000)
@@ -3482,7 +3535,7 @@ bash_tips
     |   |   257.00 usec/eval: _read_s 50 (x500)
     |   |    32.20 usec/eval: _read_r 100 (x5000)
     |   |   489.00 usec/eval: _read_s 100 (x500)
-    |   | 
+    |   |
     |   | 何というか、始めから -r が勝っている気がする。
     |   | source の分が抜けているからであろう。
     |   | source の分を一致させて計測してみたがやはり _read_r の方が高速だ…。
@@ -3500,7 +3553,7 @@ bash_tips
     |   |   331.00 usec/eval: _read_s 50 (x500)
     |   |    55.50 usec/eval: _read_r 100 (x2000)
     |   |   625.00 usec/eval: _read_s 100 (x200)
-    |   | 
+    |   |
     |   | 然し、よく考えてみたら _read_r の方はファイル作成について考えていなかった。
     |   | つまり here string を使っているとその場でファイルを作成・削除する筈なのだ。
     |   |    59.00 usec/eval: _read_r 1 (x2000)
@@ -3517,7 +3570,7 @@ bash_tips
     |   |   331.00 usec/eval: _read_s 50 (x500)
     |   |   293.00 usec/eval: _read_r 100 (x500)
     |   |   625.00 usec/eval: _read_s 100 (x200)
-    |   | 
+    |   |
     |   | 漸く単一行では history -s の方が早いという結果になった。
     |   | N=1-10 でもう少し詳しく見てみる事にする。
     |   |    62.50 usec/eval: _read_r 2 (x2000)
@@ -3538,9 +3591,9 @@ bash_tips
     |   |    83.50 usec/eval: _read_s 9 (x2000)
     |   |    81.00 usec/eval: _read_r 10 (x2000)
     |   |    89.50 usec/eval: _read_s 10 (x2000)
-    |   | 
+    |   |
     |   | N=7,8辺りが怪しい? 何回か測ったがやはり N=7,8 が境目の様である。
-    | 
+    |
     | history -r にまとめる事の最適化を行って、
     | しかしそれでも 47k 項目の再構築をするのに padparadscha では 1.250s かかっている。
     | 30% ぐらいは高速化したがそれでも高速とは言い難いのである。
@@ -3552,17 +3605,17 @@ bash_tips
     |   その細かな文法 (クォートの負い方) 等にも気を配らなければならない。
     |   Bash の振る舞いを完全に再現する必要があるのではないだろうか。
     |   それは面倒だし無為な気がする。
-    | 
+    |
     |   やはり idle 中に history が実行されないという前提で、
     |   history の再構築を実施するしかないのだろうか。。
     |   その為には先ず履歴に関連するコードを整理して置きたい。
-    | 
+    |
     |   history/initialize で history の再構築まで実施してしまうのが良いだろうか。
     |   と思ったが独立な処理だし history/initialize を呼び出す処理では必ずしも
     |   history 複数行再構築が必要とは限らないし、また history 複数行再構築が
     |   必要な文脈では必ずしも _ble_history 初期化を必要とはしない。
     |   従って、それぞれ独立に処理すれば良いという気がするのである。
-    | 
+    |
     |   他に気になるのは history -r で読み取った時に、
     |   追加業だけでなく全ての行に関して再度 history 複数行再構築が
     |   全体に対して必要になってしまうのではないかという事。
@@ -3570,14 +3623,14 @@ bash_tips
     |   history -r で読み取るのではなくて source する方式にする必要がある。
     |   然し、それだと ' について追跡をする必要が出てくるなど、
     |   やはり処理が遅くなってしまう原因である。
-    | 
+    |
     |   然し、完全な対応をする為には避けて通れない処理であるし、
     |   まあ、仕方がないのかなという気はする。
-    | 
+    |
     | b 実は複数の一時ファイルを作ってしまう事を許せばもっと高速になるのでは。
     |   処理が遅くなるのは '...' の対応を取る処理を bash が行うからなのではないかと仮定。
     |   だとすれば始めからファイルに書き出してしまえば別に遅くはならないのではないか。
-    | 
+    |
     |   うーん。これは爆速である…。chatoyancy で 2ms になった。
     |   padparadscha でも 47k 項目で 79ms になった。
     |   これは十分な速度である。但し、その前処理の awk で1秒近くかかっている。
@@ -4103,7 +4156,7 @@ bash_tips
       これについては気にしなくても良いだろう。
 
     | history の操作としてどの様な物があるだろうか。
-    | 
+    |
     | * history -c は中身をクリアする
     | * history -d は項目を削除する
     | * history -n [filename] は追加行を読み込む
