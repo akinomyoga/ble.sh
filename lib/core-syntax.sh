@@ -1289,7 +1289,9 @@ function ble/syntax:bash/simple-word/eval/.impl {
   # Note: failglob 時に一致がないと実行されないので予め __ble_ret=() をする。
   #   また、エラーメッセージが生じるので /dev/null に繋ぐ。
   __ble_ret=()
-  builtin eval "ble/syntax:bash/simple-word/eval/.set-result $1" &>/dev/null
+  builtin eval "ble/syntax:bash/simple-word/eval/.set-result $1" &>/dev/null; local ext=$?
+  builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
+  return "$ext"
 }
 ## 関数 ble/syntax:bash/simple-word/eval word
 ##   @param[in] word

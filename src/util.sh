@@ -227,7 +227,7 @@ function ble/debug/.check-leak-variable {
 }
 
 function ble/debug/print-variables/.append {
-  local q=\' Q="''\'"
+  local q=\' Q="'\''"
   _ble_local_out=$_ble_local_out"$1='${2//$q/$Q}'"
 }
 function ble/debug/print-variables/.append-array {

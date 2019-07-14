@@ -888,8 +888,6 @@ bash_tips
 
 2019-07-10
 
-  * edit: BUG bash-3.2 で "echo \改行" と入力するとエラーメッセージが出る。
-
   * highlight: ファイル名のディレクトリ部分の着色で、
     ディレクトリ名にパス名展開があると正しく着色されない。
 
@@ -2284,6 +2282,7 @@ bash_tips
   - highlight: fix a problem that empty arguments are highlighted as errors `#D1116` 64ae8ce
   - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118` 30cc31c
   - main: fix a bug that `source ble.sh --noattach` in `ble.sh` sessions hangs `#D1130` d35682a
+  - syntax: workaround bashbug 3.1/3.2 that `eval` ending with <kbd>\ + LF</kbd> causes error messages `#D1132` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -2293,7 +2292,7 @@ bash_tips
   - decode: decode mouse events `#D1084` 51fae67
   - history: move history related codes to `src/history.sh` `#D1119` 1bfc8eb e5b1980
   - keymap/vi: deal with textarea local data properly `#D1123` 2ea7cfd
-  - edit: remove `ble-edit/exec:exec` `#D1131` 0000000
+  - edit: remove `ble-edit/exec:exec` `#D1131` 0cb9c6d
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3240,6 +3239,94 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-14
+
+  * edit: BUG bash-3.2 で "echo \改行" と入力するとエラーメッセージが出る [#D1132]
+    bash-3.2: syntax error near unexpected token `"${@:2}"' というメッセージ。
+    然し、その様な物が書かれている箇所は限られている。
+
+    [問題位置特定]
+
+    一つの場所は以下の所。何が文法的な問題が起こるとも思われない。
+    実際にここを &>/dev/null して見たが何も変化はなかった。
+    というかよく考えたらこれは bash-3.0 用のコードなので関係ない。
+
+    function ble/util/sprintf {
+      local -a args; args=("${@:2}")
+      ble/util/assign "$1" 'builtin printf "${args[@]}"'
+    }
+
+    その次の箇所は ble/util/fiberchain#resume/.core の中である。
+    これも同様に配列の初期化をしているだけなので文法的にどうという
+    事がある用には思われない。実際に &>/dev/null してもメッセージに変化はない。
+
+    他は decode 関係しか無いので多分関係はないだろう。
+
+    では何処から ${@:2} という文字列が出てきたのだろう。
+    $ grep -E '"\$\{@:2\}"' ~/.bash_history としても結果は
+    echo "${@:2}" という1行だけである。これはこのデバグの為に実行したコマンドだ。
+
+    仕方がないので次の方策として絞り込みをかける事にする。
+    先ず auto-complete と menu-filter を切る…と思ったが、
+    よく考えたら bash-3.2 なのでそもそも切られている。
+
+    振る舞いを見るとちょうど "echo \改行" の状態の時にのみ発生する様である。
+    続きを記述するとそのメッセージは発生しなくなる。更にカーソル移動では発生しない。
+    ble_debug=1 で見ても文法構造的に何か偏という事はない気がする。
+
+    ble/syntax/parse &>/dev/null してもメッセージは表示されたので parse は関係ない。
+    ble/textarea#update-text-buffer &>/dev/null で何もでなくなったのでこの中である。
+    ble/highlight/layer/update "$text" の中である。
+    "ble/highlight/layer:$layer/update" "$text" "$player" の中で起こっている。
+    LEVEL=1 である。syntax だった。
+    ble/highlight/layer:syntax/update-word-table &>/dev/null の中だった。
+    ble/highlight/layer:syntax/word/.update-attributes &>/dev/null の中である。
+    ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$opts" の中だ。
+    ble/array#push spec "$s" なんとこれが駄目だ…。type で出力すると以下の通り。
+
+    ble/array#push ()
+    {
+        builtin eval "$1+=(\"\${@:2}\")"
+    }。
+
+    不思議だ。bash-3.2 で色々動かして見るが似たような例が駄目に場合は見当たらない。
+    以下の様にしてもエラーを出力せずに実行できる。
+    ff() { b=(); builtin eval '\''b+=("${@:2}")'\''; declare -p b; }; ff 111 222 333 444 555
+    ff() { local b=1; builtin eval '\''b+=("${@:2}")'\''; declare -p b; }; ff 111 222 333 444 555
+    うーん。不思議な事に ble/debug/print-variables s が何も出力しない…。
+
+    再現性は謎だが少なくとも ble/syntax:bash/simple-word/evaluate-path-spec $'\\\n' を実行すれば再現する。
+    $ ble/array#push spec $'\\\n' としても再現性はない。
+
+    うーん。ble-detach した状態でも再現はする。
+
+    [原因解明]
+
+    仕方がないので ble/syntax:bash/simple-word/evaluate-path-spec を少しずつ縮めて行った結果、
+    以下の形にまで縮小する事ができた。B と C の間でエラーになる。
+    どうも bash-3.2 eval は前に評価した時の途中状態を残して構文解析するらしい?
+    然し、コマンドの実行に関しては前回の途中状態からではなくて、
+    今回読み取られた新しい単語をコマンドとして読み取る様である。
+
+    function debug1 {
+      echo A
+      builtin eval $': \\\n'
+      echo B
+      builtin eval 'B=()'
+      echo C
+    }
+
+    他の bash はどうだろうか。ファイルに問題のスクリプトを記述して試してみる。
+      builtin eval $': \\\n'
+      builtin eval 'B=()'
+    だと再現しない。
+      builtin eval $': \\\n'; builtin eval 'B=()'
+    で再現する。つまり途中に実行の区切れがあれば eval 状態はクリアされるという事。
+    これで試すと bash-3.1 及び bash-3.2 で問題になる。bash-3.0 はOK
+
+    [解決方法]
+
+    これに対してどの様に対処したら良いだろうか。
+    変な物を eval した後は eval -- ':' とかやっておけば良いのだろうか。
 
   * edit: exec:exec の枠組みは削除する事にする [#D1131]
     #D1130 の対応が面倒になってしまう為。
