@@ -2245,7 +2245,7 @@ bash_tips
     - history: do not process `_ble_edit_history` in detached state `#D1115` bf3b014
     - history: move history item on delete of current item with `history -d` `#D1114` bf3b014
     - history: fix a problem that history before load of ble.sh is lost `#D1126` 37cd154
-    - history: fix problems of history output after `ble-reload` `#D1129` 0000000
+    - history: fix problems of history output after `ble-reload` `#D1129` 9c8d858
   - history: improve performance of `erasedups` `#D1107` 518e2ee
   - history: correctly handle `HISTSIZE` overflow `#D1108` 7be255c
   - sabbrev: support sabbrev expansion in wider contexts (reported by cmplstofB) `#D1117` ca6e03d
@@ -2283,7 +2283,7 @@ bash_tips
   - menu-complete: fix a bug that word is expanded on cancel `#D1097` 001b914
   - highlight: fix a problem that empty arguments are highlighted as errors `#D1116` 64ae8ce
   - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118` 30cc31c
-  - main: fix a bug that `source ble.sh --noattach` hangs `#D1130` 0000000
+  - main: fix a bug that `source ble.sh --noattach` in `ble.sh` sessions hangs `#D1130` d35682a
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -2293,6 +2293,7 @@ bash_tips
   - decode: decode mouse events `#D1084` 51fae67
   - history: move history related codes to `src/history.sh` `#D1119` 1bfc8eb e5b1980
   - keymap/vi: deal with textarea local data properly `#D1123` 2ea7cfd
+  - edit: remove `ble-edit/exec:exec` `#D1131` 0000000
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3239,6 +3240,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-14
+
+  * edit: exec:exec の枠組みは削除する事にする [#D1131]
+    #D1130 の対応が面倒になってしまう為。
+    更に全くテストしていないので他にも様々な問題が在るだろう。単に削除する。
 
   * main: BUG ble.sh セッションで source ble.sh --attach=none すると固まる [#D1130]
 
