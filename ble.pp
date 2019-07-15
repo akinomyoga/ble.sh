@@ -792,7 +792,9 @@ function ble/base/process-blesh-arguments {
   (attach) ble-attach ;;
   (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
            _ble_base_attach_from_prompt=1
-           PROMPT_COMMAND=ble/base/attach-from-PROMPT_COMMAND ;;
+           PROMPT_COMMAND=ble/base/attach-from-PROMPT_COMMAND
+           [[ $_ble_edit_detach_flag == reload ]] &&
+             _ble_edit_detach_flag= ;;
   esac
   [[ ! $opt_error ]]
 }

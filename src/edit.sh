@@ -7298,7 +7298,7 @@ function ble-edit/bind/.exit-TRAPRTMAX {
 ##
 function ble-edit/bind/.check-detach {
   # Note: #D1130 reload の為に detach して attach しなかった場合
-  if [[ $_ble_edit_detach_flag == reload ]]; then
+  if [[ ! $_ble_attached && $_ble_edit_detach_flag == reload ]]; then
     ble-detach/message \
       "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" \
       "Please run \`stty sane' to recover the correct TTY state."
