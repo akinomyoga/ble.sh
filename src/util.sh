@@ -688,8 +688,8 @@ function ble/string#escape-characters {
 ## 関数 ble/string#escape-for-bash-single-quote text...
 ## 関数 ble/string#escape-for-bash-double-quote text...
 ## 関数 ble/string#escape-for-bash-escape-string text...
-## 関数 ble/string#escape-for-bash-specialchars text...
-## 関数 ble/string#escape-for-bash-specialchars-in-brace text...
+## 関数 ble/string#escape-for-bash-specialchars text flags
+## 関数 ble/string#escape-for-bash-specialchars-in-brace text flags
 ##   @param[in] text...
 ##   @var[out] ret
 function ble/string#escape-for-sed-regex {
@@ -718,18 +718,12 @@ function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$*" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
 }
 function ble/string#escape-for-bash-specialchars {
+  local chars='\ ["'\''`$|&;<>()*?!^'
   # Note: = と : は文法的にはエスケープは不要だが
   #   補完の際の COMP_WORDBREAKS を避ける為に必要である。
-  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^=:{'
-  if [[ $ret == *[$']\n\t']* ]]; then
-    local a b
-    a=']'   b=\\$a     ret=${ret//"$a"/$b}
-    a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
-    a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
-  fi
-}
-function ble/string#escape-for-bash-specialchars-in-brace {
-  ble/string#escape-characters "$*" '\ ["'\''`$|&;<>()*?!^=:{,}'
+  [[ $2 == *c* ]] && chars=$chars'=:'
+  [[ $2 == *b* ]] && chars=$chars'{,}'
+  ble/string#escape-characters "$1" "$chars"
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
     a=']'   b=\\$a     ret=${ret//"$a"/$b}

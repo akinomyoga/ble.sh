@@ -5581,13 +5581,16 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
     local opts=
 
     # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
-    local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt"
-    if ((ret)); then
-      ((p0+=ret))
-      wtxt=${wtxt:ret}
+    # コマンド名やリダイレクト先ファイル名等の場合は途中で区切って解釈する等の事はしない。
+    if ((wtype==CTX_ARGI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)); then
+      local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt"
+      if ((ret)); then
+        ((p0+=ret))
+        wtxt=${wtxt:ret}
 
-      # チルダ展開の抑制
-      [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && opts=$opts:notilde
+        # チルダ展開の抑制
+        [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && opts=$opts:notilde
+      fi
     fi
 
     ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && opts=$opts:noglob

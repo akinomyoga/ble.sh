@@ -891,9 +891,6 @@ bash_tips
   * highlight: ファイル名のディレクトリ部分の着色で、
     ディレクトリ名にパス名展開があると正しく着色されない。
 
-  * highlight: コマンド名は : で区切った着色をしても仕方がないのでは。。
-    現状では例えば : を含む関数名をクォートなしで入力するとエラー着色になる。
-
 2019-07-09
 
   * history.mlfix: bash-3.0 で実現する方法?
@@ -2248,6 +2245,7 @@ bash_tips
   - history: correctly handle `HISTSIZE` overflow `#D1108` 7be255c
   - sabbrev: support sabbrev expansion in wider contexts (reported by cmplstofB) `#D1117` ca6e03d
   - main: change loading point of `.inputrc` `#D1127` af758e5
+  - highlight: do not split command names with `:` and `=` `#D1133` 0000000
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2281,8 +2279,8 @@ bash_tips
   - menu-complete: fix a bug that word is expanded on cancel `#D1097` 001b914
   - highlight: fix a problem that empty arguments are highlighted as errors `#D1116` 64ae8ce
   - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118` 30cc31c
-  - main: fix a bug that `source ble.sh --noattach` in `ble.sh` sessions hangs `#D1130` d35682a
-  - syntax: workaround bashbug 3.1/3.2 that `eval` ending with <kbd>\ + LF</kbd> causes error messages `#D1132` 0000000
+  - main: fix a bug that `source ble.sh --noattach` in `ble.sh` sessions hangs `#D1130` d35682a caa46c2
+  - syntax: workaround bashbug 3.1/3.2 that `eval` ending with <kbd>\ + LF</kbd> causes error messages `#D1132` a4b7e00
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3237,6 +3235,32 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-07-16
+
+  * highlight: コマンド名は : で区切った着色をしても仕方がないのでは [#D1133]
+    現状では例えば : を含む関数名をクォートなしで入力するとエラー着色になる。
+
+    ? ok: そもそも : を含むコマンド名を補完する事は可能だったか
+      →確認したところ、補完に関しては : があってもちゃんと動作する様だ。
+      : 以降の文字列に基づいた補完が起動するという事もなくて、
+      始めから全体に対する補完が試みられているので問題ない。
+
+    着色をするコードが何処にあったのかを確認する。
+    これは ble/highlight/layer:syntax/word/.update-attributes/.proc の中で
+    取り敢えず単語の種類に依らずに単語の開始位置をずらしているのが良くない。
+    特に、ble/syntax:bash/simple-word/locate-filename "$wtxt" を呼び出して処理している箇所。
+    これは文脈依存で実行する様にしなければならない。
+
+    更にコマンド名の補完の場合には : による区切りは有効でない。
+    従って : まで escape する必要性は実はない。
+    core-complete の中を調べて見ると quote-insert の中で殆どは escape を実行している。
+    その他の箇所では common-prefix で曖昧一致をした時に escape をしている。
+    曖昧一致の時は流石にエスケープしても仕方がないと認める事にする。
+
+    取り敢えず quote-insert の方を調べる。quote-insert の呼び出し元を探すと、
+    結局全て action:action/initialize の中からである。
+    特に action:command の時に関しては直接 quote-insert を呼び出している。
 
 2019-07-14
 

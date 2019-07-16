@@ -928,16 +928,16 @@ function ble/complete/check-cancel {
 ##
 
 function ble/complete/string#escape-for-completion-context {
-  local str=$1
+  local str=$1 escape_flags=$2
   case $comps_flags in
   (*S*)    ble/string#escape-for-bash-single-quote "$str"  ;;
   (*E*)    ble/string#escape-for-bash-escape-string "$str" ;;
   (*[DI]*) ble/string#escape-for-bash-double-quote "$str"  ;;
   (*)
     if [[ $comps_fixed ]]; then
-      ble/string#escape-for-bash-specialchars-in-brace "$str"
+      ble/string#escape-for-bash-specialchars "$str" "b$escape_flags"
     else
-      ble/string#escape-for-bash-specialchars "$str"
+      ble/string#escape-for-bash-specialchars "$str" "$escape_flags"
     fi ;;
   esac
 }
@@ -957,12 +957,14 @@ function ble/complete/action/util/complete.close-quotation {
   esac
 }
 
+## 関数 ble/complete/action/util/quote-insert type
 function ble/complete/action/util/quote-insert {
+  local escape_flags=c; [[ $1 == command ]] && escape_flags=
   if [[ $comps_flags == *v* && $CAND == "$COMPV"* ]]; then
     local ins=${CAND:${#COMPV}} ret
 
     # 単語内の文脈に応じたエスケープ
-    ble/complete/string#escape-for-completion-context "$ins"; ins=$ret
+    ble/complete/string#escape-for-completion-context "$ins" "$escape_flags"; ins=$ret
 
     # 直前にパラメータ展開があればエスケープ
     if [[ $comps_flags == *p* && $ins == [a-zA-Z_0-9]* ]]; then
@@ -987,12 +989,12 @@ function ble/complete/action/util/quote-insert {
     local comps_fixed_part=${COMPS::${comps_fixed%%:*}}
     local compv_fixed_part=${comps_fixed#*:}
     local ins=${CAND:${#compv_fixed_part}}
-    local ret; ble/string#escape-for-bash-specialchars-in-brace "$ins"
+    local ret; ble/string#escape-for-bash-specialchars "$ins" "b$escape_flags"
     INSERT=$comps_fixed_part$ret
 
   else
     local ret
-    ble/string#escape-for-bash-specialchars "$CAND"; INSERT=$ret
+    ble/string#escape-for-bash-specialchars "$CAND" "$escape_flags"; INSERT=$ret
   fi
 }
 
@@ -1155,7 +1157,7 @@ function ble/complete/action:progcomp/get-desc {
 # action:command
 
 function ble/complete/action:command/initialize {
-  ble/complete/action/util/quote-insert
+  ble/complete/action/util/quote-insert command
 }
 function ble/complete/action:command/complete {
   if [[ -d $CAND ]]; then
@@ -3041,7 +3043,7 @@ function ble/complete/candidates/determine-common-prefix {
 
       if [[ $filter_type ]] && ble/complete/candidates/filter:"$filter_type"/count-match-chars "$value"; then
         if ((ret)); then
-          ble/string#escape-for-bash-specialchars "${COMPV:ret}"
+          ble/string#escape-for-bash-specialchars "${COMPV:ret}" c
           common=$common0$ret
         else
           common=$common0$COMPS
