@@ -1319,9 +1319,11 @@ function ble/syntax:bash/simple-word/.get-rex_element {
   local letter1='[^'$sep$_ble_syntax_bashc_simple']'
   rex_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
 }
-## 関数 ble/syntax:bash/simple-word/evaluate-path-spec path_spec [sep]
+## 関数 ble/syntax:bash/simple-word/evaluate-path-spec path_spec [sep] [opts]
 ##   @param[in] path_spec
 ##   @param[in,opt] sep (default: '/:=')
+##   @param[in,opt] opts
+##     noglob notilde after-sep
 ##   @arr[out] spec
 ##   @arr[out] path
 ##   @arr[out] ret
@@ -1350,6 +1352,8 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   # compose regular expressions
   local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
   local rex='^['$sep']?'$rex_element'|^['$sep']'
+  [[ :$opts: == *:after-sep:* ]] &&
+    local rex='^'$rex_element'['$sep']?|^['$sep']'
 
   local tail=$word s= p= ext=0
   while [[ $tail =~ $rex ]]; do
@@ -5470,6 +5474,44 @@ function ble/highlight/layer:syntax/update-attribute-table {
   fi
 }
 
+## 関数 ble/highlight/layer:syntax/word/.update-for-pathname filename
+##   @param[in] filename
+##   @var[out] type
+##   @var[in] wbeg p0 wtype
+##   @var[in] path spec
+function ble/highlight/layer:syntax/word/.update-for-pathname {
+  local filetype=$1
+  local -a wattr_buff=()
+  ((wbeg<p0)) && ble/array#push wattr_buff $((p0-wbeg)):d
+
+  local npath=${#path[@]}
+  if ((npath>1)); then
+    local ipath p=$p0
+    for ((ipath=0;ipath<npath-1;ipath++)); do
+      local epath=${path[ipath]} espec=${spec[ipath]}
+      local p_end=$((p0+${#espec}))
+      local g=d
+      type=
+      [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
+      [[ $type ]] && ble/syntax/attr2g "$type"
+
+      # コマンド名の時は下線は引かない様にする
+      ((wtype==CTX_CMDI&&(g&=~_ble_color_gflags_Underline)))
+
+      ble/array#push wattr_buff $((p_end-p)):$g
+      p=$p_end
+    done
+  fi
+
+  type=$filetype
+
+  # ディレクトリ名を含まない場合は通常どおりに処理
+  ((${#wattr_buff[@]})) || return 1
+
+  local g; ble/syntax/attr2g "$type"
+  IFS=, eval 'node[nofs+4]="m${wattr_buff[*]},\$:${g:-d}"'
+  flagUpdateNode=1
+}
 ## 関数 ble/highlight/layer:syntax/word/.update-for-filename value
 ##   @param[in] value
 ##   @var[in] wbeg p0 wtype
@@ -5486,7 +5528,7 @@ function ble/highlight/layer:syntax/word/.update-for-filename {
     local ipath p=$p0
     for ((ipath=0;ipath<npath-1;ipath++)); do
       local epath=${path[ipath]} espec=${spec[ipath]}
-      local p_end=$((p0+${#espec}+1))
+      local p_end=$((p0+${#espec}))
       local g=d type=
       [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
       [[ $type ]] && ble/syntax/attr2g "$type"
@@ -5578,7 +5620,7 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
     # 実行は一切起こらないので一色で塗りつぶす。
     ((type=wtype))
   elif local wtxt=${text:p0:p1-p0}; ble/syntax:bash/simple-word/is-simple "$wtxt"; then
-    local opts=
+    local path_opts=after-sep
 
     # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
     # コマンド名やリダイレクト先ファイル名等の場合は途中で区切って解釈する等の事はしない。
@@ -5589,16 +5631,16 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
         wtxt=${wtxt:ret}
 
         # チルダ展開の抑制
-        [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && opts=$opts:notilde
+        [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
       fi
     fi
 
-    ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && opts=$opts:noglob
+    ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
     local ret path spec ext value
-    ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$opts"; ext=$? value=("${ret[@]}")
+    ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
     if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
       # failglob 等の理由で展開に失敗した場合
-      type=$ATTR_ERR
+      ble/highlight/layer:syntax/word/.update-for-pathname "$ATTR_ERR" && return
     elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
       # 複数語に展開されたら駄目
       type=$ATTR_ERR
@@ -5606,6 +5648,7 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
       local attr=${_ble_syntax_attr[wbeg]}
       if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
         ble/syntax/highlight/cmdtype "$value" "$wtxt"
+        ble/highlight/layer:syntax/word/.update-for-pathname "$type" && return
       fi
     elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
       ble/highlight/layer:syntax/word/.update-for-filename "$value" && return

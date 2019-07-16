@@ -886,10 +886,15 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-07-10
+2019-07-16
 
-  * highlight: ファイル名のディレクトリ部分の着色で、
-    ディレクトリ名にパス名展開があると正しく着色されない。
+  * complete: パス名展開の関わる補完に関して
+    現在の実装ではパス名展開が起こったとしても展開された最初のファイル名を使って補完を実行する。
+    然し、実際には展開された各パス名について補完を実施しても良いのではないだろうか。うーん。
+
+    更に failglob の場合には続きを入力したら一致したかもしれなくても常に展開に失敗してしまう。
+    というか現状でそもそも failglob だった時にそれを検出しているのかどうかすら怪しい。
+    確認する必要があるのである。
 
 2019-07-09
 
@@ -2221,6 +2226,7 @@ bash_tips
     - history: do not synchronize multiline resolution on "history -p" `#D1121` 9e56b7b
     - history.mlfix: suppress errors on Bash 3 `#D1122` 4fe7a0c
     - history: suppress error messages trying to kill background worker on reattach `#D1125` f045fec
+  - highlight: support dirname colors with pathname expansion, failglob and command names `#D1134` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2245,7 +2251,7 @@ bash_tips
   - history: correctly handle `HISTSIZE` overflow `#D1108` 7be255c
   - sabbrev: support sabbrev expansion in wider contexts (reported by cmplstofB) `#D1117` ca6e03d
   - main: change loading point of `.inputrc` `#D1127` af758e5
-  - highlight: do not split command names with `:` and `=` `#D1133` 0000000
+  - highlight: do not split command names with `:` and `=` `#D1133` 8a1bd8f
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3237,6 +3243,26 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-16
+
+  * highlight: ファイル名のディレクトリ部分の着色で、 [#D1134]
+    ディレクトリ名にパス名展開があると正しく着色されない。
+    と思ったら理由が分かった…。
+
+    * fixed: 一番最初に一致した物がディレクトリ名でないという事なのだ。
+      ディレクトリまたはシンボリックリンクだった時にのみ着色をしているのが行けないのである。
+      うーん。これに対処する為には / も含めて展開する必要があるのではないか。
+      つまり単語の区切れ目を / の直前ではなくて / の直後にする必要があるのである。
+      然し今の振る舞いになっている理由があった筈である。
+      という事を考えるとオプションで制御する様にする?
+
+    x fixed: 今度は */a.txt について */a.t 等の様に途中まで入力した状態では
+      全体がエラー着色されてしまうという事が分かった。
+      と思ったが、これは実は failglob による問題である。
+      failglob であっても途中のディレクトリ名まで一致している時には
+      ディレクトリ名を着色しても良いのではないだろうか。
+
+    x supported: 更にコマンド名の時にもディレクトリ部分に着色がされていない。
+      これについても対応した。
 
   * highlight: コマンド名は : で区切った着色をしても仕方がないのでは [#D1133]
     現状では例えば : を含む関数名をクォートなしで入力するとエラー着色になる。

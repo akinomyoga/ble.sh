@@ -42,8 +42,10 @@ ble-test/check-ret ble-test:ble/syntax:bash/simple-word/reconstruct-incomplete-w
 ble-test/check-ret ble-test:ble/syntax:bash/simple-word/reconstruct-incomplete-word 'a{{c,dx$"aa'          'I:[5:1]:adx$"aa"'
 
 function ble-test:ble/syntax:bash/simple-word/evaluate-path-spec {
-  local ret path spec
-  ble/syntax:bash/simple-word/evaluate-path-spec "$1"
+  local path spec
+  ble/syntax:bash/simple-word/evaluate-path-spec $1
   ret="${spec[*]} >>> ${path[*]}"
 }
 ble-test/check-ret ble-test:ble/syntax:bash/simple-word/evaluate-path-spec '~/a/b/c' "~ ~/a ~/a/b ~/a/b/c >>> $HOME $HOME/a $HOME/a/b $HOME/a/b/c"
+ble-test/check-ret ble-test:ble/syntax:bash/simple-word/evaluate-path-spec '~/a/b/c / after-sep' "~/ ~/a/ ~/a/b/ ~/a/b/c >>> $HOME/ $HOME/a/ $HOME/a/b/ $HOME/a/b/c"
+ble-test/check-ret ble-test:ble/syntax:bash/simple-word/evaluate-path-spec '/x/y/z / after-sep' "/ /x/ /x/y/ /x/y/z >>> / /x/ /x/y/ /x/y/z"
