@@ -5,7 +5,7 @@ function process {
   ##   この配列は after:before の形式の要素を持つ。
   ##   但し after は前の version から release までに加えられた変更の commit である。
   ##   そして before は after に対応する master における commit である。
-  local -a commits=("$@")
+  local -a commits; commits=("$@")
 
   for commit_pair in "${commits[@]}"; do
     local b=${commit_pair#*:}

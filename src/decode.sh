@@ -2744,9 +2744,10 @@ function ble/builtin/bind/option:m {
 function ble/builtin/bind/.decompose-pair {
   local ret; ble/string#trim "$1"
   local spec=$ret ifs=$' \t\n' q=\' Q="'\''"
-
   keyseq= value=
-  [[ ! $spec || $spec == 'set'["$ifs"]* ]] && return 3  # bind ''
+
+  # bind '' と指定した時は無視する
+  [[ ! $spec || $spec == 'set'["$ifs"]* ]] && return 3
 
   # split keyseq / value
   local rex='^(("([^\"]|\\.)*"|[^":'$ifs'])*("([^\"]|\\.)*)?)['$ifs']*(:['$ifs']*)?'

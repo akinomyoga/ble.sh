@@ -81,7 +81,7 @@ function ble/array#push {
 }
 
 function sub:check/list-command {
-  local -a options=(--color --exclude=./{test,memo,ext} --exclude=\*.{md,awk})
+  local -a options=(--color --exclude=./{test,memo,ext,wiki} --exclude=\*.{md,awk})
 
   # read arguments
   local flag_exclude_this= flag_error=
@@ -116,10 +116,11 @@ function sub:check/list-command {
 function sub:check/builtin {
   echo "--- $FUNCNAME $1 ---"
   local command=$1 esc='(\[[ -?]*[@-~])*'
-  sub:check/list-command --exclude-this "$command" "${@:2}" |
+  sub:check/list-command --exclude-this --exclude=generate-release-note.sh "$command" "${@:2}" |
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)=" |
-    grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc"
+    grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc" |
+    sed -E 'h;s/'"$esc"'//g;\Z(\.awk|push|load|==) \b'"$command"'\bZd;g' 
 }
 
 function sub:check/a.txt {
@@ -222,14 +223,17 @@ function sub:check {
   sub:check/builtin 'bind'
   sub:check/builtin 'read'
   sub:check/builtin 'exit' |
-    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//;\Z^[-[:space:][:alnum:]_./:=$#*]+('\''[^'\'']*|"[^"()`]*|([[:space:]]|^)#.*)\bexit\bZd;g'
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z^[-[:space:][:alnum:]_./:=$#*]+('\''[^'\'']*|"[^"()`]*|([[:space:]]|^)#.*)\bexit\bZd
+      \Z\(exit\) ;;Zd;\Zprint NR; exit;Zd;g'
   #sub:check/assign
 
   sub:check/a.txt
   sub:check/bash300bug
   sub:check/bash301bug-array-element-length
   sub:check/array-count-in-arithmetic-expression
-  sub:check/unset-variable | grep -Ev "unset$esc ${esc}_ble_init_"
+  sub:check/unset-variable |
+    grep -Ev "unset$esc ${esc}_ble_init_|\bbuiltins1\b"
 
   sub:check/memo-numbering
 }

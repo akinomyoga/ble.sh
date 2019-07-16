@@ -466,7 +466,7 @@ if ((_ble_bash>=30100)); then
     if ((modification_count)); then
       ble/bin/mv -f "$TMPBASE.part" "$TMPBASE.sh"
     else
-      echo : >| "$TMPBASE.sh"
+      ble/bin/echo : >| "$TMPBASE.sh"
     fi
   }
   function ble/history/resolve-multiline/.load {
@@ -1147,7 +1147,7 @@ function ble/builtin/history {
       (p) opt_p=1 ;;
       (d)
         if ((!$#)); then
-          echo 'ble/builtin/history: missing option argument for "-d".' >&2
+          ble/bin/echo 'ble/builtin/history: missing option argument for "-d".' >&2
           flag_error=1
         elif ((i+1<n)); then
           opt_d=${arg:i+1}; i=$n
@@ -1156,7 +1156,7 @@ function ble/builtin/history {
         fi ;;
       ([anwr])
         if [[ $opt_a && $c != $opt_a ]]; then
-          echo 'ble/builtin/history: cannot use more than one of "-anrw".' >&2
+          ble/bin/echo 'ble/builtin/history: cannot use more than one of "-anrw".' >&2
           flag_error=1
         elif ((i+1<n)); then
           opt_a=$c
@@ -1165,7 +1165,7 @@ function ble/builtin/history {
           opt_a=$c
         fi ;;
       (*)
-        echo 'ble/builtin/history: unknown option "-$c".' >&2
+        ble/bin/echo 'ble/builtin/history: unknown option "-$c".' >&2
         flag_error=1 ;;
       esac
     done
