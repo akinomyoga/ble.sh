@@ -673,7 +673,7 @@ function ble-attach {
   fi
   _ble_edit_detach_flag= # do not detach or exit
 
-  ble/history/reset # 27s for bash-3.0
+  ble/history:bash/reset # 27s for bash-3.0
 
   # Note: ble-decode/{initialize,reset-default-keymap} 内で
   #   info を設定する事があるので表示する。

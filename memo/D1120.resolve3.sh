@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function ble/history/resolve-multiline/.worker {
+function ble/history:bash/resolve-multiline/.worker {
   local apos=\'
   local HISTTIMEFORMAT=__ble_ext__
   builtin history | ble/bin/awk -v apos="$apos" '
@@ -78,13 +78,13 @@ function ble/history/resolve-multiline/.worker {
     }
   '
 }
-function ble/history/resolve-multiline {
+function ble/history:bash/resolve-multiline {
   local -x TMPBASE=$_ble_base_run/$$.history.multiline-resolve
   local multiline_count=0 modification_count=0
-  eval -- $(ble/history/resolve-multiline/.worker 2>/dev/null)
+  eval -- $(ble/history:bash/resolve-multiline/.worker 2>/dev/null)
   if ((modification_count)); then
      local HISTCONTROL= HISTSIZE= HISTIGNORE=
      time source "$TMPBASE.sh"
   fi
 }
-ble/history/resolve-multiline
+ble/history:bash/resolve-multiline

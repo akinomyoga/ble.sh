@@ -2109,7 +2109,7 @@ if ((_ble_bash>=40000)); then
 
   ## @arr _ble_util_idle_task
   ##   タスク一覧を保持します。各要素は一つのタスクを表し、
-  ##   status:command の形式の文字列です。
+  ##   status|command の形式の文字列です。
   ##   command にはタスクを実行する coroutine を指定します。
   ##   status は以下の何れかの値を持ちます。
   ##
@@ -2140,6 +2140,8 @@ if ((_ble_bash>=40000)); then
   ##
   _ble_util_idle_task=()
 
+  _ble_util_idle_SEP='\'
+
   ## 関数 ble/util/idle.do
   ##   待機状態の処理を開始します。
   ##
@@ -2165,7 +2167,7 @@ if ((_ble_bash>=40000)); then
       for _idle_key in "${!_ble_util_idle_task[@]}"; do
         ble/util/idle/IS_IDLE || { [[ $_idle_processed ]]; return; }
         local _idle_to_process=
-        local _idle_status=${_ble_util_idle_task[_idle_key]%%:*}
+        local _idle_status=${_ble_util_idle_task[_idle_key]%%"$_ble_util_idle_SEP"*}
         case ${_idle_status::1} in
         (R) _idle_to_process=1 ;;
         (I) [[ $_idle_is_first ]] && _idle_to_process=1 ;;
@@ -2179,7 +2181,7 @@ if ((_ble_bash>=40000)); then
         esac
 
         if [[ $_idle_to_process ]]; then
-          local _idle_command=${_ble_util_idle_task[_idle_key]#*:}
+          local _idle_command=${_ble_util_idle_task[_idle_key]#*"$_ble_util_idle_SEP"}
           _idle_processed=1
           ble/util/idle.do/.call-task "$_idle_command"; local ext=$?
           ((ext==148)) && return 0
@@ -2208,9 +2210,9 @@ if ((_ble_bash>=40000)); then
     local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
     builtin eval "$_command"; local ext=$?
     if ((ext==148)); then
-      _ble_util_idle_task[_idle_key]=R:$_command
+      _ble_util_idle_task[_idle_key]=R$_ble_util_idle_SEP$_command
     elif [[ $ble_util_idle_status ]]; then
-      _ble_util_idle_task[_idle_key]=$ble_util_idle_status:$_command
+      _ble_util_idle_task[_idle_key]=$ble_util_idle_status$_ble_util_idle_SEP$_command
       if [[ $ble_util_idle_status == [WS]* ]]; then
         local scheduled_time=${ble_util_idle_status:1}
         if [[ $ble_util_idle_status == W* ]]; then
@@ -2303,10 +2305,10 @@ if ((_ble_bash>=40000)); then
     _ble_util_idle_task[i]=$entry
   }
   function ble/util/idle.push {
-    ble/util/idle.push/.impl 0 "R:$*"
+    ble/util/idle.push/.impl 0 "R$_ble_util_idle_SEP$*"
   }
   function ble/util/idle.push-background {
-    ble/util/idle.push/.impl 10000 "R:$*"
+    ble/util/idle.push/.impl 10000 "R$_ble_util_idle_SEP$*"
   }
   function ble/util/is-running-in-idle {
     [[ ${ble_util_idle_status+set} ]]

@@ -914,6 +914,21 @@ bash_tips
     追々 history.sh に移行する事にしようと考える。
     取り敢えず、今回の移行では bash history との接続部分だけにしておく。
 
+    Bash のコマンド履歴と、その他の独立な履歴の管理について。
+    移行するにしても名前を分かりやすくしたい。
+    Bash のコマンド履歴を ble/history と名付けてしまっている。
+    一方で、その他の独立した履歴およびそれらを統合的に扱う仕組みをどう名付けるか。
+    同じ様に ble/history という名前にしてしまうと両者が混ざってしまって厄介である。
+
+    コマンド履歴と同期した物を ble/history のままにして、
+    新しい枠組みを ble/hist, ble/history/general 等の別名か子として定義するか。
+    或いは、コマンド履歴と同期した物を ble/history:edit だとか、
+    或いは ble/history:bash 等のようにするか。これが良さそう。
+
+    さて移動するとしてもどの関数を移動したら良いだろうか。
+    先ず履歴検索ルーチンに関しては移動しなければならない。
+    と思って調べてみたが実は関数二個だけで閉じていた。238行しかない。
+
   * history 移行: blehook の枠組みを整える?
     bleopt と同様に。既存の hook に関しては変数名を変更する等して移行する。
     _ble_decode_char_hook 等に関しては揮発性の hook で少し性質が異なるので関係ない。
@@ -2261,6 +2276,7 @@ bash_tips
   - sabbrev: support sabbrev expansion in wider contexts (reported by cmplstofB) `#D1117` ca6e03d
   - main: change loading point of `.inputrc` `#D1127` af758e5
   - highlight: do not split command names with `:` and `=` `#D1133` 8a1bd8f
+  - decode: support DA1 responses sent by some terminals (reported by miba072) `#D1135` 0000000
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
