@@ -1836,7 +1836,6 @@ _ble_keymap_vi_filter_history=()
 _ble_keymap_vi_filter_history_edit=()
 _ble_keymap_vi_filter_history_dirt=()
 _ble_keymap_vi_filter_history_ind=0
-_ble_keymap_vi_filter_history_onleave=()
 
 function ble/highlight/layer:region/mark:vi_filter/get-face {
   face=region_target
@@ -4916,7 +4915,6 @@ _ble_keymap_vi_commandline_history=()
 _ble_keymap_vi_commandline_history_edit=()
 _ble_keymap_vi_commandline_history_dirt=()
 _ble_keymap_vi_commandline_history_ind=0
-_ble_keymap_vi_commandline_history_onleave=()
 
 ## @arr _ble_keymap_vi_cmap_is_cancel_key
 ##   コマンドラインが空の時にキャンセルに使うキーの辞書です。
@@ -4998,7 +4996,6 @@ _ble_keymap_vi_search_history=()
 _ble_keymap_vi_search_history_edit=()
 _ble_keymap_vi_search_history_dirt=()
 _ble_keymap_vi_search_history_ind=0
-_ble_keymap_vi_search_history_onleave=()
 
 ## オプション keymap_vi_search_match_current
 ##   非空の文字列が設定されている時 /, ?, n, N で
@@ -7761,7 +7758,6 @@ _ble_keymap_vi_cmap_history=()
 _ble_keymap_vi_cmap_history_edit=()
 _ble_keymap_vi_cmap_history_dirt=()
 _ble_keymap_vi_cmap_history_ind=0
-_ble_keymap_vi_cmap_history_onleave=()
 
 function ble/keymap:vi/async-commandline-mode {
   local hook=$1

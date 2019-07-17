@@ -6308,7 +6308,6 @@ _ble_edit_read_history=()
 _ble_edit_read_history_edit=()
 _ble_edit_read_history_dirt=()
 _ble_edit_read_history_ind=0
-_ble_edit_read_history_onleave=()
 
 function ble/builtin/read/.process-option {
   case $1 in

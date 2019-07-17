@@ -16,14 +16,10 @@
 ## @var _ble_history_ind
 ##   現在の履歴項目の番号
 ##
-## @arr _ble_history_onleave
-##   履歴移動の通知先を格納する配列
-##
 _ble_history=()
 _ble_history_edit=()
 _ble_history_dirt=()
 _ble_history_ind=0
-_ble_history_onleave=()
 
 ## @var _ble_history_count
 ##   現在の履歴項目の総数
@@ -1246,7 +1242,6 @@ function history { ble/builtin/history "$@"; }
 ##     _ble_history_ind
 ##     _ble_history_edit
 ##     _ble_history_dirt
-##     _ble_history_onleave
 ##
 ##   空でない文字列 prefix のとき、以下の変数を操作対象とする。
 ##
@@ -1254,7 +1249,6 @@ function history { ble/builtin/history "$@"; }
 ##     ${prefix}_history_ind
 ##     ${prefix}_history_edit
 ##     ${prefix}_history_dirt
-##     ${prefix}_history_onleave
 ##
 ##   何れの関数も _ble_history_prefix を適切に処理する必要がある。
 ##
@@ -1267,6 +1261,15 @@ function history { ble/builtin/history "$@"; }
 ##   この要請の下で、各関数は呼び出し元のすり替えを意識せずに動作できる。
 ##
 _ble_history_prefix=
+
+## @arr _ble_history_onleave
+##   履歴移動の通知先を格納する配列
+##
+_ble_history_onleave=()
+
+function ble/history/onleave.fire {
+  ble/util/invoke-hook _ble_history_onleave "$@"
+}
 
 ## called by ble-edit/initialize in Bash 3
 function ble/history/initialize {
@@ -1376,12 +1379,6 @@ function ble/history/add {
   else
     ble/history/.add-command-history "$command"
   fi
-}
-
-function ble/history/onleave.fire {
-  local -a observers
-  eval "observers=(\"\${${_ble_history_prefix:-_ble}_history_onleave[@]}\")"
-  local obs; for obs in "${observers[@]}"; do "$obs" "$@"; done
 }
 
 #------------------------------------------------------------------------------

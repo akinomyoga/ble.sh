@@ -2231,7 +2231,7 @@ bash_tips
     - history: do not synchronize multiline resolution on "history -p" `#D1121` 9e56b7b
     - history.mlfix: suppress errors on Bash 3 `#D1122` 4fe7a0c
     - history: suppress error messages trying to kill background worker on reattach `#D1125` f045fec
-  - highlight: support dirname colors with pathname expansion, failglob and command names `#D1134` 0000000
+  - highlight: support dirname colors with pathname expansion, failglob and command names `#D1134` edaf495
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2257,7 +2257,7 @@ bash_tips
   - sabbrev: support sabbrev expansion in wider contexts (reported by cmplstofB) `#D1117` ca6e03d
   - main: change loading point of `.inputrc` `#D1127` af758e5
   - highlight: do not split command names with `:` and `=` `#D1133` 8a1bd8f
-  - decode: support DA1 responses sent by some terminals (reported by miba072) `#D1135` 0000000
+  - decode: support DA1 responses sent by some terminals (reported by miba072) `#D1135` 362ab05
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2301,6 +2301,8 @@ bash_tips
   - blerc: add descriptions `#D1064` d61b6af
   - decode: decode mouse events `#D1084` 51fae67
   - history: move history related codes to `src/history.sh` `#D1119` 1bfc8eb e5b1980
+    - history: move codes related to history prefixes and history searches to `history.sh` `#D1136` 1cda6ff d14d3e7
+    - history: use common "_ble_history_onleave" for different histories `#D1137` c6b8683
   - keymap/vi: deal with textarea local data properly `#D1123` 2ea7cfd
   - edit: remove `ble-edit/exec:exec` `#D1131` 0cb9c6d
 
@@ -3257,6 +3259,7 @@ bash_tips
     というかそもそも PREFIX_history_onleave を PREFIX 毎にする理由は何か。
     実は全体に対して登録して良い気がする。そして、
     PREFIX 毎の操作をしたければ PREFIX を調べれば良いのである。
+    この修正もそんなに難しくなかった。簡単である。
 
   * 2019-07-09 history 移行: 検索機能だとか、或いは他の履歴の管理などに関しては [#D1136]
     追々 history.sh に移行する事にしようと考える。
@@ -3281,6 +3284,13 @@ bash_tips
 
     やってみると意外と簡単にできた。ちゃんと疎結合になっていたので
     多少書き換えるだけで簡単に分離する事が可能だった。
+
+    x fixed: bash:history にしたら無限にエラーメッセージが表示される様になってしまった。
+      これは ble/util/idle に登録するコマンド名に : を使えないという事だろう…。
+
+    x 更に実は履歴が全く動かなくなっていた。うーん。
+      どうも set-index がちゃんと動いていないという事?
+      OK これも修正した。
 
   * decode: DA1 応答の読み取りに失敗して変な文字列が入力される (reported by miba072) [#D1135]
     https://github.com/akinomyoga/ble.sh/issues/28
