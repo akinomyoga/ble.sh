@@ -597,10 +597,15 @@ function ble-decode-char/csi/.decode {
         return
       fi
     fi
-  elif ((char==99)); then
-    if rex='^>'; [[ $_ble_decode_csi_args =~ $rex ]]; then
+  elif ((char==99)); then # c
+    if rex='^[?>]'; [[ $_ble_decode_csi_args =~ $rex ]]; then
+      # DA1 応答 "CSI ? Pm c" (何故か DA2 要求に対して DA1 で返す端末がある?)
       # DA2 応答 "CSI > Pm c"
-      ble/term/DA2/notify "${_ble_decode_csi_args:1}"
+      if [[ $_ble_decode_csi_args == '?'* ]]; then
+        ble/term/DA1/notify "${_ble_decode_csi_args:1}"
+      else
+        ble/term/DA2/notify "${_ble_decode_csi_args:1}"
+      fi
       csistat=$_ble_decode_KCODE_IGNORE
       return
     fi
