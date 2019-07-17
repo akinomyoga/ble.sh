@@ -4511,7 +4511,7 @@ _ble_complete_ac_suffix=
 ##   @param[in] text
 ##   @var[out] ret
 function ble/complete/auto-complete/.search-history-light {
-  [[ $_ble_edit_history_prefix ]] && return 1
+  [[ $_ble_history_prefix ]] && return 1
 
   local text=$1
   [[ ! $text ]] && return 1
@@ -4561,7 +4561,7 @@ _ble_complete_ac_history_start=
 function ble/complete/auto-complete/.search-history-heavy {
   local text=$1
 
-  local count; ble-edit/history/get-count -v count
+  local count; ble/history/get-count -v count
   local start=$((count-1))
   local index=$((count-1))
   local needle=$text
@@ -4574,13 +4574,13 @@ function ble/complete/auto-complete/.search-history-heavy {
   local isearch_time=0 isearch_ntask=1
   local isearch_opts=head
   [[ :$comp_type: == *:sync:* ]] || isearch_opts=$isearch_opts:stop_check
-  ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
+  ble/history/isearch-backward-blockwise "$isearch_opts"; local ext=$?
   _ble_complete_ac_history_start=$start
   _ble_complete_ac_history_index=$index
   _ble_complete_ac_history_needle=$needle
   ((ext)) && return "$ext"
 
-  ble-edit/history/get-editted-entry -v ret "$index"
+  ble/history/get-editted-entry -v ret "$index"
   return 0
 }
 
@@ -4705,7 +4705,7 @@ function ble/complete/auto-complete.impl {
     ble/complete/auto-complete/.check-history light; local ext=$?
     ((ext==0||ext==148)) && return "$ext"
 
-    [[ $_ble_edit_history_prefix || $_ble_history_load_done ]] &&
+    [[ $_ble_history_prefix || $_ble_history_load_done ]] &&
       ble/complete/auto-complete/.check-history; local ext=$?
     ((ext==0||ext==148)) && return "$ext"
   fi
@@ -5219,7 +5219,7 @@ function ble/complete/dabbrev/.show-status.fib {
 
   local pos=$1
   if [[ $pos ]]; then
-    local count; ble-edit/history/get-count
+    local count; ble/history/get-count
     local percentage=$((count?pos*1000/count:1000))
     text="$text searching... @$pos ($((percentage/10)).$((percentage%10))%)"
   fi
@@ -5254,7 +5254,7 @@ function ble/complete/dabbrev/initialize-variables {
   _ble_complete_dabbrev_regex1=$needle
   _ble_complete_dabbrev_regex2='('$needle'[^'$wordbreaks']*).*'
 
-  local index; ble-edit/history/get-index
+  local index; ble/history/get-index
   _ble_complete_dabbrev_index=$index
   _ble_complete_dabbrev_pos=${#_ble_edit_str}
 
@@ -5286,7 +5286,7 @@ function ble/complete/dabbrev/search-in-history-entry {
   local line=$1 index=$2
 
   # 現在編集している行自身には一致させない。
-  local index_editing; ble-edit/history/get-index -v index_editing
+  local index_editing; ble/history/get-index -v index_editing
   if ((index!=index_editing)); then
     local pos=$dabbrev_pos
     while [[ ${line:pos} && ${line:pos} =~ $_ble_complete_dabbrev_regex2 ]]; do
@@ -5318,7 +5318,7 @@ function ble/complete/dabbrev/.search.fib {
     # Note: start がこれで負になった時は "履歴項目の数" を設定する。
     #   未だ "履歴" に登録されていない最新の項目 (_ble_history_edit
     #   には格納されている) も検索の対象とするため。
-    ((--start>=0)) || ble-edit/history/get-count -v start
+    ((--start>=0)) || ble/history/get-count -v start
   else
     local start index pos; eval "$fib_suspend"
     fib_suspend=
@@ -5328,7 +5328,7 @@ function ble/complete/dabbrev/.search.fib {
   local dabbrev_pos=$pos
   local dabbrev_current_match=${_ble_edit_str:_ble_edit_mark:_ble_edit_ind-_ble_edit_mark}
 
-  local line; ble-edit/history/get-editted-entry -v line "$index"
+  local line; ble/history/get-editted-entry -v line "$index"
   if ! ble/complete/dabbrev/search-in-history-entry "$line" "$index"; then
     ((index--,dabbrev_pos=0))
 
@@ -5347,7 +5347,7 @@ function ble/complete/dabbrev/.search.fib {
     isearch_opts=$isearch_opts:progress
     local isearch_progress_callback=ble/complete/dabbrev/.show-status.fib
 
-    ble-edit/isearch/backward-search-history-blockwise "$isearch_opts"; local ext=$?
+    ble/history/isearch-backward-blockwise "$isearch_opts"; local ext=$?
     ((ext==148)) && fib_suspend="start=$start index=$index pos=$pos"
     if ((ext)); then
       if ((${#_ble_complete_dabbrev_stack[@]})); then

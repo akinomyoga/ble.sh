@@ -1871,7 +1871,7 @@ function ble/keymap:vi/operator:filter {
     _ble_edit_mark_active=vi_filter
     ble/keymap:vi/async-commandline-mode 'ble/keymap:vi/operator:filter/.hook'
     _ble_edit_PS1='!'
-    _ble_edit_history_prefix=_ble_keymap_vi_filter
+    _ble_history_prefix=_ble_keymap_vi_filter
     _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
     _ble_keymap_vi_cmap_cancel_hook=ble/keymap:vi/operator:filter/cancel.hook
     _ble_syntax_lang=bash
@@ -2279,7 +2279,7 @@ function ble/keymap:vi/mark/history-onleave.hook {
 # 履歴がロードされていない時は取り敢えず _ble_history_ind=0 で登録をしておく。
 # 履歴がロードされた後の初めての利用のときに正しい履歴番号に修正する。
 function ble/keymap:vi/mark/update-mark-history {
-  local h; ble-edit/history/get-index -v h
+  local h; ble/history/get-index -v h
   if [[ ! $_ble_keymap_vi_mark_hindex ]]; then
     _ble_keymap_vi_mark_hindex=$h
   elif ((_ble_keymap_vi_mark_hindex!=h)); then
@@ -2358,7 +2358,7 @@ function ble/keymap:vi/mark/shift-by-dirty-range {
       local index=${value%%:*} rest=${value#*:}
       ((index<beg)) || _ble_keymap_vi_mark_local[imark]=$((index<end0?beg:index+shift)):$rest
     done
-    local h; ble-edit/history/get-index -v h
+    local h; ble/history/get-index -v h
     for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
       local value=${_ble_keymap_vi_mark_global[imark]}
       [[ $value == "$h":* ]] || continue
@@ -2378,7 +2378,7 @@ function ble/keymap:vi/mark/set-global-mark {
   local c=$1 index=$2 ret
   ble/keymap:vi/mark/update-mark-history
   ble-edit/content/find-logical-bol "$index"; local bol=$ret
-  local h; ble-edit/history/get-index -v h
+  local h; ble/history/get-index -v h
   _ble_keymap_vi_mark_global[c]=$h:$bol:$((index-bol))
 }
 function ble/keymap:vi/mark/set-local-mark {
@@ -2510,7 +2510,7 @@ function ble/widget/vi-command/goto-global-mark.impl {
   ble/string#split data : "$value"
 
   # find a history entry by data[0]
-  local index; ble-edit/history/get-index
+  local index; ble/history/get-index
   if ((index!=data[0])); then
     if [[ $FLAG ]]; then
       ble/widget/vi-command/bell
@@ -2793,14 +2793,14 @@ function ble/widget/vi-command/.history-relative-line {
   ((offset)) || return 0
 
   # 履歴が初期化されていないとき最終行にいる。
-  if [[ ! $_ble_edit_history_prefix && ! $_ble_history_load_done ]]; then
+  if [[ ! $_ble_history_prefix && ! $_ble_history_load_done ]]; then
     ((offset<0)) || return 1
-    ble-edit/history/initialize # to use _ble_history_ind
+    ble/history/initialize # to use ble/history/get-index
   fi
 
   local index histsize
-  ble-edit/history/get-index
-  ble-edit/history/get-count -v histsize
+  ble/history/get-index
+  ble/history/get-count -v histsize
 
   local ret count=$((offset<0?-offset:offset)) exit=1
   ((count--))
@@ -4935,7 +4935,7 @@ function ble/widget/vi-command/commandline {
   ble/keymap:vi/clear-arg
   ble/keymap:vi/async-commandline-mode ble/widget/vi-command/commandline.hook
   _ble_edit_PS1=:
-  _ble_edit_history_prefix=_ble_keymap_vi_commandline
+  _ble_history_prefix=_ble_keymap_vi_commandline
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 148
 }
@@ -5121,8 +5121,8 @@ function ble/widget/vi-command/search.core {
   fi
 
   if ((opt_history)) && [[ $_ble_history_load_done || opt_backward -ne 0 ]]; then
-    ble-edit/history/initialize
-    local index; ble-edit/history/get-index
+    ble/history/initialize
+    local index; ble/history/get-index
     [[ $start ]] || start=$index
     if ((opt_backward)); then
       ((index--))
@@ -5136,14 +5136,14 @@ function ble/widget/vi-command/search.core {
     local isearch_time=0
     local isearch_progress_callback=ble-edit/isearch/.show-status-with-progress.fib
     if ((opt_backward)); then
-      ble-edit/isearch/backward-search-history-blockwise regex:progress
+      ble/history/isearch-backward-blockwise regex:progress
     else
-      ble-edit/isearch/forward-search-history regex:progress
+      ble/history/isearch-forward regex:progress
     fi; local r=$?
     ble-edit/info/default
 
     if ((r==0)); then
-      local new_index; ble-edit/history/get-index -v new_index
+      local new_index; ble/history/get-index -v new_index
       [[ $index != "$new_index" ]] &&
         ble-edit/history/goto "$index"
       if ((opt_backward)); then
@@ -5211,7 +5211,7 @@ function ble/widget/vi-command/search.impl {
   if [[ $FLAG || $_ble_decode_keymap == vi_[xs]map ]]; then
     opt_history=0
   else
-    local old_hindex; ble-edit/history/get-index -v old_hindex
+    local old_hindex; ble/history/get-index -v old_hindex
   fi
 
   local start= # 初めの履歴番号。search.core 内で最初に履歴を読み込んだあとで設定される。
@@ -5245,7 +5245,7 @@ function ble/widget/vi-command/search.impl {
     if ((ntask<ARG)); then
       # 同じ履歴項目内でのジャンプ
       if ((opt_history)); then
-        local new_hindex; ble-edit/history/get-index -v new_hindex
+        local new_hindex; ble/history/get-index -v new_hindex
         ((new_hindex==old_hindex))
       fi && ble/keymap:vi/mark/set-local-mark 96 "$original_index" # ``
 
@@ -5265,14 +5265,14 @@ function ble/widget/vi-command/search.impl {
 function ble/widget/vi-command/search-forward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl +:history'
   _ble_edit_PS1='/'
-  _ble_edit_history_prefix=_ble_keymap_vi_search
+  _ble_history_prefix=_ble_keymap_vi_search
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 148
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
-  _ble_edit_history_prefix=_ble_keymap_vi_search
+  _ble_history_prefix=_ble_keymap_vi_search
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
   return 148
 }
@@ -5569,8 +5569,8 @@ function ble/widget/vi-command/exit-on-empty-line {
 # nmap C-g (show line and column)
 function ble/widget/vi-command/show-line-info {
   local index count
-  ble-edit/history/get-index -v index
-  ble-edit/history/get-count -v count
+  ble/history/get-index -v index
+  ble/history/get-count -v count
   local hist_ratio=$(((100*index+count-1)/count))%
   local hist_stat=$'!\e[32m'$index$'\e[m / \e[32m'$count$'\e[m (\e[32m'$hist_ratio$'\e[m)'
 
@@ -7772,7 +7772,7 @@ function ble/keymap:vi/async-commandline-mode {
   # 記録
   ble/textarea#render
   ble/textarea#save-state _ble_keymap_vi_cmap
-  _ble_keymap_vi_cmap_history_prefix=$_ble_edit_history_prefix
+  _ble_keymap_vi_cmap_history_prefix=$_ble_history_prefix
 
   # 初期化
   ble-decode/keymap/push vi_cmap
@@ -7799,7 +7799,7 @@ function ble/keymap:vi/async-commandline-mode {
   ble-edit/undo/clear-all
   
   # edit/history
-  _ble_edit_history_prefix=_ble_keymap_vi_cmap
+  _ble_history_prefix=_ble_keymap_vi_cmap
 
   # syntax, highlight
   _ble_syntax_lang=text
@@ -7811,7 +7811,7 @@ function ble/widget/vi_cmap/accept {
   _ble_keymap_vi_cmap_hook=
 
   local result=$_ble_edit_str
-  [[ $result ]] && ble-edit/history/add "$result" # Note: cancel でも登録する
+  [[ $result ]] && ble/history/add "$result" # Note: cancel でも登録する
 
   # 消去
   local -a DRAW_BUFF=()
@@ -7822,7 +7822,7 @@ function ble/widget/vi_cmap/accept {
   ble/textarea#restore-state _ble_keymap_vi_cmap
   ble/textarea#clear-state _ble_keymap_vi_cmap
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_civis"
-  _ble_edit_history_prefix=$_ble_keymap_vi_cmap_history_prefix
+  _ble_history_prefix=$_ble_keymap_vi_cmap_history_prefix
 
   ble-decode/keymap/pop
   ble/keymap:vi/update-mode-name
