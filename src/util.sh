@@ -2749,10 +2749,10 @@ function ble/term/bracketed-paste-mode/leave {
 
 #---- DA2 ---------------------------------------------------------------------
 
+_ble_term_DA1R=
 _ble_term_DA2R=
-function ble/term/DA2/notify {
-  _ble_term_DA2R=$1
-}
+function ble/term/DA1/notify { _ble_term_DA1R=$1; }
+function ble/term/DA2/notify { _ble_term_DA2R=$1; }
 
 #---- DSR(6) ------------------------------------------------------------------
 # CPR (CURSOR POSITION REPORT)

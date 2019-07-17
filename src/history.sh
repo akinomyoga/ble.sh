@@ -223,7 +223,7 @@ if ((_ble_bash>=40000)); then
       # 47ms _ble_history 初期化 (37000項目)
       (3) _ble_history_load_bgpid=
           if [[ $opt_cygwin ]]; then
-            # 620ms Cygwin (99000項目)
+            # 620ms Cygwin (99000項目) cf #D0701
             source "$history_tmpfile"
           else
             builtin mapfile -O "$arg_offset" -t _ble_history < "$history_tmpfile"
