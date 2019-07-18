@@ -7,6 +7,7 @@ blehook_color_init_setface=()
 
 # history.sh
 
+blehook_ADDHISTORY=()
 blehook_history_reset_background=()
 blehook_history_onleave=()
 blehook_history_delete=()
@@ -15,6 +16,10 @@ blehook_history_message=()
 
 # edit.sh
 
+blehook_CHPWD=()
+blehook_PRECMD=()
+blehook_PREEXEC=()
+blehook_POSTEXEC=()
 blehook_widget_bell=()
 
 # keymap

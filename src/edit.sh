@@ -665,6 +665,7 @@ function ble-edit/prompt/update {
   if [[ $PROMPT_COMMAND ]]; then
     ble-edit/restore-PS1
     ble-edit/prompt/update/.eval-prompt_command
+    ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
     ble-edit/adjust-PS1
   fi
   local trace_hash esc
@@ -4043,9 +4044,19 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
   trap - DEBUG # 何故か効かない
   return 1
 }
+function ble-edit/exec:gexec/invoke-hook-with-setexit {
+  local -a hooks; eval "hooks=(\"\${blehook_$1[@]}\")"
+  local hook ext=0
+  for hook in "${hooks[@]}"; do
+    ble-edit/exec/.setexit # set $?
+    eval "$hook \"\${@:2}\"" || ext=$?
+  done
+  return "$ext"
+}
 function ble-edit/exec:gexec/.begin {
   local IFS=$' \t\n'
   _ble_decode_bind_hook=
+  _ble_edit_exec_PWD=$PWD
   ble/term/leave
   ble/util/buffer.flush >&2
   ble-edit/bind/stdout.on
@@ -4060,6 +4071,7 @@ function ble-edit/exec:gexec/.end {
   # ↑何故か効かないので、
   #   end の呼び出しと同じレベルで明示的に実行する。
 
+  [[ $PWD != "$_ble_edit_exec_PWD" ]] && blehook/invoke CHPWD
   ble/util/joblist.flush >&2
   ble-edit/bind/.check-detach && return 0
   ble/term/enter
@@ -4073,11 +4085,12 @@ function ble-edit/exec:gexec/.eval-prologue {
   unset -v HISTCMD; ble/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
+  ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$BASH_COMMAND" &>/dev/tty
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
   ble-edit/exec/.setexit # set $?
-} &>/dev/null # set -x 対策 #D0930
+} 31>&1 32>&2 &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
   ble/base/adjust-bash-options
@@ -4103,6 +4116,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   ble-edit/exec/save-BASH_REMATCH
   ble/util/reset-keymap-of-editing-mode
   ble-edit/exec/.adjust-eol
+  ble-edit/exec:gexec/invoke-hook-with-setexit POSTEXEC &>/dev/tty
 
   if ((_ble_edit_exec_lastexit)); then
     # SIGERR処理

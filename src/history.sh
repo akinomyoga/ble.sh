@@ -608,7 +608,7 @@ function ble/history:bash/TRAPEXIT {
     ble/builtin/history -w
   fi
 }
-blehook trap_exit+=ble/history:bash/TRAPEXIT
+blehook EXIT+=ble/history:bash/TRAPEXIT
 
 function ble/history:bash/reset {
   if ((_ble_bash>=40000)); then
@@ -1376,7 +1376,8 @@ function ble/history/add {
       PREFIX_history_ind=$((topIndex+1))'
     eval "${code//PREFIX/$_ble_history_prefix}"
   else
-    ble/history/.add-command-history "$command"
+    blehook/invoke ADDHISTORY "$command" &&
+      ble/history/.add-command-history "$command"
   fi
 }
 

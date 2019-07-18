@@ -890,6 +890,10 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2019-07-18
+
+  * blehook: trap を置き換える?
+
 2019-07-16
 
   * complete: パス名展開で複数語に展開される場合の補完に関して
@@ -1080,6 +1084,13 @@ bash_tips
     - set completion-display-width -1
     - set completion-prefix-display-length 0
     - set completion-query-items 100
+
+    うーん。これらの設定は bash の既定値では余り便利ではなかったりする。
+    ble.sh で折角実装してもユーザに使ってもらえないのでは仕方がない。
+    それならば最初から ble.sh の bleopt として提供してしまった方が良いのでは。
+    元々 bash を普通に使っていて設定している人の為に、
+    bash の規定値と異なる値を敢えて選択している時に限り
+    ble.sh でその効果を再現する様にすれば良い。
 
 2019-02-09
 
@@ -2205,7 +2216,8 @@ bash_tips
     - history.mlfix: suppress errors on Bash 3 `#D1122` 4fe7a0c
     - history: suppress error messages trying to kill background worker on reattach `#D1125` f045fec
   - highlight: support dirname colors with pathname expansion, failglob and command names `#D1134` edaf495
-  - util: introduce `blehook` `#D1139` 0000000
+  - util: introduce `blehook` `#D1139` d1a78fb
+  - util: support `blehook PRECMD PREEXEC POSTEXEC CHPWD ADDHISTORY` `#D1142` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2280,6 +2292,7 @@ bash_tips
     - history: use common "_ble_history_onleave" for different histories `#D1137` ec19d51
   - keymap/vi: deal with textarea local data properly `#D1123` 2ea7cfd
   - edit: remove `ble-edit/exec:exec` `#D1131` 0cb9c6d
+  - global: distinguish exit status 147 and 148 `#D1141` d1a78fb
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3227,7 +3240,31 @@ bash_tips
 
 2019-07-18
 
-  * 2019-07-09 global: 148 と 147 の区別をしたい
+  * blehook: zsh の add-zsh-hook で提供している物を提供できるのではないか [#D1142]
+    https://qiita.com/mollifier/items/558712f1a93ee07e22e2
+
+    zsh の chpwd について試してみたが cd を実行する度に実行される様だ。
+    つまりコマンド実行中にN回ディレクトリを移動すればN回実行される。
+    正直便利なのかよく分からない。中で cd して処理をしてまた元のディレクトリに戻る、
+    という様なシェル関数を書いたりすると、例えば chpwd に ls を仕掛けていたりすると
+    何度も ls が表示されて悲しい事になってしまうのではないか。
+
+    それよりはまたプロンプトに戻ってきた時に chpwd が呼び出される方が便利である。
+    他に addhistory 及び periodic が存在する。後者は存在意義が不明。
+
+    * done: trap_exit は exit に改名して良い気がする。対応した。
+
+    * done: ユーザ向けと内部向けの hook が混ざって分かりにくいので
+      ユーザ向けの hook は大文字で提供する事にした。
+
+    * done: zshaddhistory は履歴に追加するかしないかを終了ステータスで指定するらしい。
+      →対応した。と思ったが思うように動いていない。と思ったら
+      blehook/invoke するのを大文字にするのを忘れていた。
+  
+    * ok: periodic については対応しない事にした。
+      対応したければ各自で時刻を記録すれば良い。
+
+  * 2019-07-09 global: 148 と 147 の区別をしたい [#D1141]
     現在の実装では広範に亘って 148 が用いられているが、
     実は 148 は二種類あって has-input の時と、
     或いは唯単にユーザの入力を待つ状態というのがある。

@@ -616,8 +616,8 @@ ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses
 ble/bin/.freeze-utility-path gawk
 #%end
 
-blehook_trap_exit=()
-trap -- 'blehook/invoke trap_exit' EXIT
+blehook_EXIT=()
+trap -- 'blehook/invoke EXIT' EXIT
 
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|
@@ -729,7 +729,7 @@ function ble/base/unload {
   ble/bin/rm -f "$_ble_base_run/$$".*
   return 0
 }
-blehook trap_exit+=ble/base/unload
+blehook EXIT+=ble/base/unload
 
 _ble_base_attach_PROMPT_COMMAND=
 _ble_base_attach_from_prompt=
