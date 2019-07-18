@@ -2206,7 +2206,7 @@ function ble/syntax:bash/check-brace-expansion {
   #   cf ble/syntax:bash/starts-with-delimiter-or-redirect
   if [[ $- != *B* ]]; then
     inactive=1
-  elif ((ctx==CTX_CONDI||ctx==CTX_CONDQ||ctx==CTX_RDRS||ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR)); then
+  elif ((ctx==CTX_CONDI||ctx==CTX_CONDQ||ctx==CTX_RDRS||ctx==CTX_VRHS)); then
     inactive=1
   elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
     local ntype; ble/syntax/parse/nest-type -v ntype
