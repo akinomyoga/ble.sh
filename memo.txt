@@ -945,8 +945,6 @@ bash_tips
     C-@ で toggle をする等。抜ける時に全てを挿入する?
     然し使いみちがよく分からない。使いたくなったら追加するというので良い気がする。
 
-  * highlight: declare の引数でブレース展開が着色されていない
-
   * term: tput が terminfo (ncurses) ではなくて termcap の場合?
     sentaku ではそれに対応している。ble.sh では terminfo ではなかった場合には、
     既定で ANSI のシーケンスを用いる様になっている。
@@ -2258,6 +2256,7 @@ bash_tips
   - main: change loading point of `.inputrc` `#D1127` af758e5
   - highlight: do not split command names with `:` and `=` `#D1133` 8a1bd8f
   - decode: support DA1 responses sent by some terminals (reported by miba072) `#D1135` 362ab05
+  - highlight: make brace expansions active for RHS of variable-assignment-form arguments `#D1138` 0000000
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2301,8 +2300,8 @@ bash_tips
   - blerc: add descriptions `#D1064` d61b6af
   - decode: decode mouse events `#D1084` 51fae67
   - history: move history related codes to `src/history.sh` `#D1119` 1bfc8eb e5b1980
-    - history: move codes related to history prefixes and history searches to `history.sh` `#D1136` 1cda6ff d14d3e7
-    - history: use common "_ble_history_onleave" for different histories `#D1137` c6b8683
+    - history: move codes related to history prefixes and history searches to `history.sh` `#D1136` 1cda6ff 20024d2
+    - history: use common "_ble_history_onleave" for different histories `#D1137` ec19d51
   - keymap/vi: deal with textarea local data properly `#D1123` 2ea7cfd
   - edit: remove `ble-edit/exec:exec` `#D1131` 0cb9c6d
 
@@ -3249,6 +3248,57 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-07-18
+
+  * highlight: declare の引数でブレース展開が着色されていない [#D1138]
+    解析の途中状態を確認してみると ARGVR になっている。
+
+    * どうもこれは check-brace-expansion の実装が悪い気がする。
+      inactive になる条件として文脈値が以下の何れかという事になっているが。
+
+        CTX_CONDI CTX_CONDQ CTX_RDRS CTX_VRHS
+        CTX_ARGVR CTX_ARGER CTX_VALR
+
+      今試してみると declare a={a,b,c} でも a=([0]={a,b,c}) でも
+      ブレース展開は実施される様だ。更に eval a={x,y,z} でもブレース展開が実施される。
+      興味深い事に a=([0]={a,b,c}) でブレース展開が実施されると要素 0 に対する代入ではなくて、
+      '[0]=a' '[0]=b' '[0]=c' という三つの要素を持った配列が初期化される。
+      因みに a=([0]=a [0]=b [0]=c) とやるとちゃんと要素 0 に対する代入になっている。
+      a=([{0..10}]=c) とするとちゃんと 11 個の要素の全てに c を代入するという意味になる。
+      値の側でブレース展開を実行した時にだけ変な事になるのだ。
+
+      取り敢えず上記の文脈値の内の最後の三つに関してはブレース展開無効化を解除する。
+
+    * もう一つの疑問は declare -p ble_{a,b,c}_ とすると、
+      = も来ていないのに何故か { から右辺になってしまうという事である。
+      うーん。ARGER の時や VALR の時にはちゃんと判断できているという事を思うと、
+      ARGVR の時にすぐに ARGVR になってしまうのは意図的な物だろうか。
+      例えば着色を変数の色ではなくて黒色に変えるという事を目的とした。
+
+      ble/syntax:bash/check-variable-assignment の以下の部分が原因である。
+      確かにこれは何かの理由があってこの様にした記憶がある。
+      記録には残っているだろうか。うーん。見つからない。
+
+      | if ((ctx==CTX_ARGVI||ctx==CTX_ARGEI)); then
+      |   suffix="$suffix|\[?"
+
+      試しにこの部分を除いてみると今度は単語着色が為されなくなる。
+      この部分が書かれたのは 1823c540 で 2017-11-27 23:46:09 である。
+      確認すると #D0636 で ARGVR の導入について書かれている。
+
+      うーん。試しに ARGVR ではなくて ARGVI の儘になるようにしてみたが、
+      着色としては余り変わっていない。a{1..3}b=10 とした時に
+      b の位置まで変数として着色するのかどうかというのが問題である。
+      因みに a{1..3}b=~ とした時にはチルダ展開とは見做されなかった。
+      つまり a{1..3}b=~ は bash の構文解析としては変数代入ではないのだ。
+      その様に考えると a までで ARGVR に変化してしまうという振る舞いでも
+      まあ矛盾はないのかなという気はする。寧ろ b まで着色して
+      = 以降を右辺として扱うという事だとチルダ展開が有効になってしまう。
+      (チルダ展開が有効でない = の右辺) の様な文脈を無駄には作りたくない。
+      従って即座に ARGVI は ARGVX に変換するというので良い気がする。
+
+      結局これに関しては現状のままという事にする。
 
 2019-07-17
 
