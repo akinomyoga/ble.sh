@@ -64,9 +64,9 @@ function ble/history:bash/update-count {
 ## @var _ble_history_load_done
 _ble_history_load_done=
 
-_ble_history_load_reset_background_hook=()
+# blehook_history_reset_background=() defined in def.sh
 function ble/history:bash/clear-background-load {
-  ble/util/invoke-hook _ble_history_load_reset_background_hook
+  blehook/invoke history_reset_background
 }
 
 ## 関数 ble/history:bash/load
@@ -196,7 +196,7 @@ if ((_ble_bash>=40000)); then
     [[ $opt_async || :$opts: == *:init:* ]] || _ble_history_load_resume=0
 
     [[ ! $opt_async ]] && ((_ble_history_load_resume<6)) &&
-      ble/util/invoke-hook _ble_builtin_history_message_hook "loading history ..."
+      blehook/invoke history_message "loading history ..."
     while :; do
       case $_ble_history_load_resume in
 
@@ -281,7 +281,7 @@ if ((_ble_bash>=40000)); then
               eval "_ble_history_edit[i]=${_ble_history_edit[i]:8}"
           done
 
-          [[ $opt_async ]] || ble/util/invoke-hook _ble_builtin_history_message_hook
+          [[ $opt_async ]] || blehook/invoke history_message
 
           ((_ble_history_load_resume++))
           return 0 ;;
@@ -292,7 +292,7 @@ if ((_ble_bash>=40000)); then
       [[ $opt_async ]] && ! ble/util/idle/IS_IDLE && return 148
     done
   }
-  ble/array#push _ble_history_load_reset_background_hook _ble_history_load_resume=0
+  blehook history_reset_background+=_ble_history_load_resume=0
 else
   function ble/history:bash/load/.generate-source {
     if ble/builtin/history/is-empty; then
@@ -342,7 +342,7 @@ else
     local arg_count= rex=':count=([0-9]+):'
     [[ :$opts: =~ $rex ]] && arg_count=${BASH_REMATCH[1]}
 
-    ble/util/invoke-hook _ble_builtin_history_message_hook "loading history..."
+    blehook/invoke history_message "loading history..."
 
     # * プロセス置換にしてもファイルに書き出しても大した違いはない。
     #   270ms for 16437 entries (generate-source の時間は除く)
@@ -362,7 +362,7 @@ else
       _ble_history_edit=("${_ble_history[@]}")
     fi
 
-    ble/util/invoke-hook _ble_builtin_history_message_hook
+    blehook/invoke history_message
   }
 fi
 
@@ -508,7 +508,7 @@ if ((_ble_bash>=30100)); then
     [[ $opt_async || :$opts: == *:init:* ]] || _ble_history_mlfix_resume=0
 
     [[ ! $opt_async ]] && ((_ble_history_mlfix_resume<=4)) &&
-      ble/util/invoke-hook _ble_builtin_history_message_hook "resolving multiline history ..."
+      blehook/invoke history_message "resolving multiline history ..."
     while :; do
       case $_ble_history_mlfix_resume in
 
@@ -562,7 +562,7 @@ if ((_ble_bash>=30100)); then
       # 80ms history 再構築 (47000項目)
       (4) _ble_history_mlfix_bgpi=
           ble/history:bash/resolve-multiline/.load
-          [[ $opt_async ]] || ble/util/invoke-hook _ble_builtin_history_message_hook
+          [[ $opt_async ]] || blehook/invoke history_message
           ((_ble_history_mlfix_resume++))
           return 0 ;;
 
@@ -588,7 +588,7 @@ if ((_ble_bash>=30100)); then
   ((_ble_bash>=40000)) &&
     ble/util/idle.push 'ble/history:bash/resolve-multiline async'
 
-  ble/array#push _ble_history_load_reset_background_hook _ble_history_mlfix_resume=0
+  blehook history_reset_background+=_ble_history_mlfix_resume=0
 
   function ble/history:bash/resolve-multiline/readfile {
     local filename=$1
@@ -608,7 +608,7 @@ function ble/history:bash/TRAPEXIT {
     ble/builtin/history -w
   fi
 }
-ble/array#push _ble_builtin_trap_exit_hook ble/history:bash/TRAPEXIT
+blehook trap_exit+=ble/history:bash/TRAPEXIT
 
 function ble/history:bash/reset {
   if ((_ble_bash>=40000)); then
@@ -637,9 +637,9 @@ function ble/builtin/history/.touch-histfile {
   : >| "$touch"
 }
 
-_ble_builtin_history_delete_hook=()
-_ble_builtin_history_clear_hook=()
-_ble_builtin_history_message_hook=()
+blehook_history_delete=()
+blehook_history_clear=()
+blehook_history_message=()
 
 # Note: #D1126 一度置き換えたら戻せない。二回は初期化しない。
 if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
@@ -894,8 +894,8 @@ function ble/builtin/history/array#delete-hindex {
     for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
   eval -- "${script//ARRAY/$array_name}"
 }
-ble/array#push _ble_builtin_history_delete_hook ble/builtin/history/delete.hook
-ble/array#push _ble_builtin_history_clear_hook ble/builtin/history/clear.hook
+blehook history_delete+=ble/builtin/history/delete.hook
+blehook history_clear+=ble/builtin/history/clear.hook
 function ble/builtin/history/delete.hook {
   ble/builtin/history/array#delete-hindex _ble_history_dirt "$@"
 }
@@ -919,7 +919,7 @@ function ble/builtin/history/option:c {
       ble/history:bash/clear-background-load
       _ble_history_count=
     fi
-    ble/util/invoke-hook _ble_builtin_history_clear_hook
+    blehook/invoke history_clear
   fi
 }
 ## 関数 ble/builtin/history/option:d index
@@ -956,7 +956,7 @@ function ble/builtin/history/option:d {
     if [[ $_ble_history_load_done ]]; then
       local N=${#_ble_history[@]}
       local b=$((beg-1+N-max)) e=$((end+N-max))
-      ble/util/invoke-hook _ble_builtin_history_delete_hook "$b-$e"
+      blehook/invoke history_delete "$b-$e"
       if ((_ble_history_ind>=e)); then
         ((_ble_history_ind-=e-b))
       elif ((_ble_history_ind>=b)); then
@@ -1112,7 +1112,7 @@ function ble/builtin/history/option:s {
         if ((${#delete_indices[@]})); then
           _ble_history=("${_ble_history[@]}")
           _ble_history_edit=("${_ble_history_edit[@]}")
-          ble/util/invoke-hook _ble_builtin_history_delete_hook "${delete_indices[@]}"
+          blehook/invoke history_delete "${delete_indices[@]}"
           ((_ble_builtin_history_wskip-=shift_wskip))
           [[ ${HISTINDEX_NEXT+set} ]] && ((HISTINDEX_NEXT-=shift_histindex_next))
         fi
@@ -1262,13 +1262,12 @@ function history { ble/builtin/history "$@"; }
 ##
 _ble_history_prefix=
 
-## @arr _ble_history_onleave
+## @arr blehook_history_onleave
 ##   履歴移動の通知先を格納する配列
-##
-_ble_history_onleave=()
+##   defined in def.sh
 
 function ble/history/onleave.fire {
-  ble/util/invoke-hook _ble_history_onleave "$@"
+  blehook/invoke history_onleave "$@"
 }
 
 ## called by ble-edit/initialize in Bash 3

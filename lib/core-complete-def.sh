@@ -13,9 +13,6 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/dabbrev-expand \
              ble-sabbrev
 
-_ble_complete_load_hook=()
-_ble_complete_insert_hook=()
-
 if ! declare -p _ble_complete_sabbrev &>/dev/null; then # reload #D0875
   if ((_ble_bash>=40200)); then
     declare -gA _ble_complete_sabbrev=()

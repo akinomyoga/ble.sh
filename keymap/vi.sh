@@ -272,7 +272,7 @@ function ble/keymap:vi/complete/insert.hook {
   [[ $_ble_decode_keymap == vi_imap ]] &&
     ble/keymap:vi/undo/add more
 }
-ble/array#push _ble_complete_insert_hook ble/keymap:vi/complete/insert.hook
+blehook complete_insert+=ble/keymap:vi/complete/insert.hook
 
 function ble-decode/keymap:vi_imap/bind-complete {
   ble-bind -f 'C-i'                 'vi_imap/complete'
@@ -2266,7 +2266,7 @@ ble/array#push _ble_textarea_local_ARRNAMES \
 #
 
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
-ble/array#push _ble_history_onleave ble/keymap:vi/mark/history-onleave.hook
+blehook history_onleave+=ble/keymap:vi/mark/history-onleave.hook
 
 ## 関数 ble/keymap:vi/mark/history-onleave.hook
 function ble/keymap:vi/mark/history-onleave.hook {
@@ -2303,8 +2303,8 @@ function ble/keymap:vi/mark/update-mark-history {
     _ble_keymap_vi_mark_hindex=$h
   fi
 }
-ble/array#push _ble_builtin_history_delete_hook ble/keymap:vi/mark/history-delete.hook
-ble/array#push _ble_builtin_history_clear_hook ble/keymap:vi/mark/history-clear.hook
+blehook history_delete+=ble/keymap:vi/mark/history-delete.hook
+blehook history_clear+=ble/keymap:vi/mark/history-clear.hook
 ## 関数 ble/keymap:vi/mark/history-delete.hook index...
 ##   @param[in] index...
 ##     昇順に並んでいる事と重複がない事を仮定する。
@@ -7914,6 +7914,6 @@ function ble-decode/keymap:vi/initialize {
 }
 
 ble-decode/keymap:vi/initialize
-ble/util/invoke-hook _ble_keymap_default_load_hook
-ble/util/invoke-hook _ble_keymap_vi_load_hook
+blehook/invoke keymap_load
+blehook/invoke keymap_vi_load
 return 0

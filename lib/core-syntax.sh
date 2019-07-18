@@ -5114,7 +5114,7 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define ATTR_FILE_CHR      filename_character
 }
 
-ble/array#push _ble_color_faces_defface_hook ble/syntax/faces-onload-hook
+blehook color_init_defface+=ble/syntax/faces-onload-hook
 
 #------------------------------------------------------------------------------
 # ble/syntax/highlight/cmdtype

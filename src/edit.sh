@@ -2419,12 +2419,12 @@ function ble/widget/.bell {
   return 0
 }
 
-_ble_widget_bell_hook=()
+# blehook_widget_bell=() defined in def.sh
 function ble/widget/bell {
   ble-edit/content/clear-arg
   _ble_edit_mark_active=
   _ble_edit_arg=
-  ble/util/invoke-hook _ble_widget_bell_hook
+  blehook/invoke widget_bell
   ble/widget/.bell "$1"
 }
 
@@ -4626,8 +4626,8 @@ function ble-edit/undo/history-delete.hook {
 function ble-edit/undo/history-clear.hook {
   ble-edit/undo/clear-all
 }
-ble/array#push _ble_builtin_history_delete_hook ble-edit/undo/history-delete.hook
-ble/array#push _ble_builtin_history_clear_hook ble-edit/undo/history-clear.hook
+blehook history_delete+=ble-edit/undo/history-delete.hook
+blehook history_clear+=ble-edit/undo/history-clear.hook
 
 ## 関数 ble-edit/undo/.get-current-state
 ##   @var[out] str ind
@@ -4888,8 +4888,8 @@ function ble-edit/history/history-delete.hook {
   ((index!=_ble_history_ind)) &&
     ble-edit/history/goto "$index"
 }
-ble/array#push _ble_builtin_history_message_hook ble-edit/history/history-message.hook
-ble/array#push _ble_builtin_history_delete_hook ble-edit/history/history-delete.hook
+blehook history_message+=ble-edit/history/history-message.hook
+blehook history_delete+=ble-edit/history/history-delete.hook
 
 # 
 #------------------------------------------------------------------------------

@@ -468,8 +468,8 @@ function ble/color/ansi2g {
 # _ble_faces
 
 # 遅延初期化登録
-# _ble_color_faces_defface_hook=() # src/def.sh
-# _ble_color_faces_setface_hook=() # src/def.sh
+# blehook_color_init_defface=() # src/def.sh
+# blehook_color_init_setface=() # src/def.sh
 
 # 遅延初期化
 if [[ ! $_ble_faces_count ]]; then # reload #D0875
@@ -508,8 +508,8 @@ function ble-color-setface {
 }
 
 # 遅延関数 (後で上書き)
-function ble/color/defface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_defface_hook "ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
-function ble/color/setface   { local q=\' Q="'\''"; ble/array#push _ble_color_faces_setface_hook "ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble/color/defface   { local q=\' Q="'\''"; blehook color_init_defface+="ble-color-defface '${1//$q/$Q}' '${2//$q/$Q}'"; }
+function ble/color/setface   { local q=\' Q="'\''"; blehook color_init_setface+="ble-color-setface '${1//$q/$Q}' '${2//$q/$Q}'"; }
 function ble/color/face2g    { ble/color/initialize-faces && ble/color/face2g    "$@"; }
 function ble/color/face2sgr  { ble/color/initialize-faces && ble/color/face2sgr  "$@"; }
 function ble/color/iface2g   { ble/color/initialize-faces && ble/color/iface2g   "$@"; }
@@ -571,8 +571,8 @@ function ble/color/initialize-faces {
     fi
   }
 
-  ble/util/invoke-hook _ble_color_faces_defface_hook
-  ble/util/invoke-hook _ble_color_faces_setface_hook
+  blehook/invoke color_init_defface
+  blehook/invoke color_init_setface
 
   if ((${#_ble_color_faces_errors[@]})); then
     if ((_ble_edit_attached)) && [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
@@ -810,7 +810,7 @@ function ble/color/faces-defface-hook {
   ble/color/defface disabled       fg=242
   ble/color/defface overwrite_mode fg=black,bg=51
 }
-ble/array#push _ble_color_faces_defface_hook ble/color/faces-defface-hook
+blehook color_init_defface+=ble/color/faces-defface-hook
 
 ## @arr _ble_highlight_layer_region_buff
 ##

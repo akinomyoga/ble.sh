@@ -353,7 +353,7 @@
 ##-----------------------------------------------------------------------------
 ## Settings for vim-mode
 
-ble/array#push _ble_keymap_vi_load_hook blerc/vim-load-hook
+blehook keymap_vi_load+=blerc/vim-load-hook
 function blerc/vim-load-hook {
   ((_ble_bash>=40300)) && builtin bind 'set keyseq-timeout 1'
 

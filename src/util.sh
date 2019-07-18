@@ -62,9 +62,21 @@ function bleopt {
 
   if ((${#pvars[@]})); then
     local q="'" Q="'\''" var
+
+    # 着色
+    local sgr{0..3}=
+    if [[ -t 1 ]]; then
+      local sgr
+      ble/color/face2sgr command_function; sgr1=$sgr
+      ble/color/face2sgr syntax_varname; sgr2=$sgr
+      ble/color/face2sgr syntax_quoted; sgr3=$sgr
+      sgr0=$_ble_term_sgr0
+      Q=$q$sgr0"\'"$sgr3$q
+    fi
+
     for var in "${pvars[@]}"; do
       if [[ ${!var+set} ]]; then
-        builtin printf '%s\n' "bleopt ${var#bleopt_}='${!var//$q/$Q}'"
+        builtin printf '%s\n' "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$sgr3'${!var//$q/$Q}'$sgr0"
       else
         builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
       fi
@@ -367,9 +379,9 @@ function ble/array#remove {
   local _ble_local_script='
     local -a aARR=() eARR
     for eARR in "${ARR[@]}"; do
-      [[ $eARR != "$2" ]] && ble/array#push "a$1" "$eARR"
+      [[ $eARR != "$2" ]] && ble/array#push "aARR" "$eARR"
     done
-    ARR=(${ARR[@]})
+    ARR=("${aARR[@]}")
   '; builtin eval "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#index arr needle
@@ -393,6 +405,13 @@ function ble/array#last-index {
       [[ ${ARR[iARR]} == "$2" ]] && { ret=$iARR; return 0; }
     done
     ret=-1; return 1
+  '; builtin eval "${_ble_local_script//ARR/$1}"
+}
+## 関数 ble/array#remove arr index
+function ble/array#remove-at {
+  local _ble_local_script='
+    unset "ARR[$2]"
+    ARR=("${ARR[@]}")
   '; builtin eval "${_ble_local_script//ARR/$1}"
 }
 
@@ -778,8 +797,115 @@ function ble/path#remove-glob {
   builtin eval "${_ble_local_script//opts/$1}"
 }
 
+#------------------------------------------------------------------------------
+# blehook
 
-#
+function blehook/.print {
+  local out= q=\' Q="'\''" nl=$'\n'
+
+  local sgr{0..3}=
+  if [[ -t 1 ]]; then
+    local sgr
+    ble/color/face2sgr command_function; sgr1=$sgr
+    ble/color/face2sgr syntax_varname; sgr2=$sgr
+    ble/color/face2sgr syntax_quoted; sgr3=$sgr
+    sgr0=$_ble_term_sgr0
+    Q=$q$sgr0"\'"$sgr3$q
+  fi
+
+  local elem code='
+    if ((${#blehook_NAME[@]})); then
+      for elem in "${blehook_NAME[@]}"; do
+        out="${out}${sgr1}blehook$sgr0 ${sgr2}NAME$sgr0+=${sgr3}$q${elem//$q/$Q}$q$sgr0$nl"
+      done
+    else
+      out="${out}${sgr1}blehook$sgr0 ${sgr2}NAME$sgr0=$nl"
+    fi'
+
+  (($#)) || set -- "${!blehook_@}"
+  local hookname
+  for hookname; do
+    ble/is-array "$hookname" || continue
+    eval -- "${code//NAME/${hookname#blehook_}}"
+  done
+  builtin printf %s "$out"
+}
+function blehook/.print-help {
+  ble/bin/echo 'usage: blehook hook_name+=shell-command'
+}
+
+function blehook {
+  if (($#==0)); then
+    blehook/.print
+    return 0
+  fi
+
+  local -a print=()
+  local -a process=()
+  local flag_help= flag_error=
+  local rex1='^([a-zA-Z_][a-zA-Z_0-9]*)$'
+  local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?[-+]?=)(.*)$'
+  while (($#)); do
+    local arg=$1; shift
+    if [[ $arg == -* ]]; then
+      if [[ $arg == --help ]]; then
+        flag_help=1
+      else
+        flag_error=1
+      fi
+    elif [[ $arg =~ $rex1 ]]; then
+      ble/array#push print "$arg"
+    elif [[ $arg =~ $rex2 ]]; then
+      local name=${BASH_REMATCH[1]}
+      if [[ ${BASH_REMATCH[2]} != :* ]] && ! ble/is-array "blehook_$name"; then
+        ble/bin/echo "blehook: hook \"$name\" is not defined." >&2
+        flag_error=1
+      fi
+      ble/array#push process "$arg"
+    else
+      ble/bin/echo "blehook: invalid hook spec \"$arg\"" >&2
+      flag_error=1
+    fi
+  done
+  if [[ $flag_help$flag_error ]]; then
+    if [[ $flag_help ]]; then
+      blehook/.print-help
+    else
+      blehook/.print-help >&2
+    fi
+    [[ ! $flag_error ]]; return
+  fi
+
+  if ((${#print[@]}||${#process[@]}+${#print[@]}==0)); then
+    blehook/.print "${print[@]}"
+  fi
+
+  local proc ext=0
+  for proc in "${process[@]}"; do
+    [[ $proc =~ $rex2 ]]
+    local name=${BASH_REMATCH[1]}
+    local type=${BASH_REMATCH[2]}
+    local value=${BASH_REMATCH[3]}
+    if [[ $type == *-= ]]; then
+      local ret
+      ble/array#last-index "blehook_$name" "$value"
+      if ((ret>=0)); then
+        ble/array#remove-at "blehook_$name" "$ret"
+      else
+        ext=1
+      fi
+    else
+      [[ $type != *+= ]] && eval "blehook_$name=()"
+      [[ $value ]] && ble/array#push "blehook_$name" "$value"
+    fi
+  done
+  return "$ext"
+}
+blehook/.compatibility-ble-0.3
+
+function blehook/invoke { ble/util/invoke-hook "blehook_$@"; }
+
+#------------------------------------------------------------------------------
 # assign: reading files/streams into variables
 #
 
@@ -2484,7 +2610,7 @@ function ble/term/visible-bell/defface.hook {
   ble/color/defface vbell_flash reverse,fg=green
   ble/color/defface vbell_erase bg=252
 }
-ble/array#push _ble_color_faces_defface_hook ble/term/visible-bell/defface.hook
+blehook color_init_defface+=ble/term/visible-bell/defface.hook
 
 _ble_term_visible_bell_prev=()
 function ble/term/visible-bell/.show {

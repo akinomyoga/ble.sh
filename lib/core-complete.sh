@@ -3226,7 +3226,7 @@ function ble/complete/menu/clear {
       ble/textarea#invalidate str # layer:menu_filter 解除 (#D0995)
   fi
 }
-ble/array#push _ble_widget_bell_hook ble/complete/menu/clear
+blehook widget_bell+=ble/complete/menu/clear
 
 ## 関数 ble/complete/menu/get-footprint
 ##   @var[out] footprint
@@ -3476,7 +3476,7 @@ function ble/complete/insert-common {
   fi
   if [[ $do_insert ]]; then
     ble/complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
-    ble/util/invoke-hook _ble_complete_insert_hook
+    blehook/invoke complete_insert
   fi
 
   if [[ $insert_flags == *m* ]]; then
@@ -3517,7 +3517,7 @@ function ble/complete/insert-all {
     [[ $suffix != *' ' ]] && suffix="$suffix "
 
     ble/complete/insert "$beg" "$end" "$insert" "$suffix"
-    ble/util/invoke-hook _ble_complete_insert_hook
+    blehook/invoke complete_insert
     beg=$_ble_edit_ind end=$_ble_edit_ind
     ((index++))
   done
@@ -4021,7 +4021,7 @@ function ble/complete/insert-braces {
   fi
 
   ble/complete/insert "$beg" "$end" "$insert" "$suffix"
-  ble/util/invoke-hook _ble_complete_insert_hook
+  blehook/invoke complete_insert
   _ble_complete_state=complete
   ble/complete/menu/clear
   return
@@ -4433,7 +4433,7 @@ function ble/widget/menu_complete/exit {
     fi
 
     # 通知
-    ble/util/invoke-hook _ble_complete_insert_hook
+    blehook/invoke complete_insert
   fi
 
   ble/complete/menu/clear
@@ -4772,7 +4772,7 @@ function ble/widget/auto_complete/insert {
   local insert=$_ble_complete_ac_insert
   local suffix=$_ble_complete_ac_suffix
   ble/complete/insert "$insert_beg" "$insert_end" "$insert" "$suffix"
-  ble/util/invoke-hook _ble_complete_insert_hook
+  blehook/invoke complete_insert
 
   _ble_edit_mark_active=
   _ble_complete_ac_insert=
@@ -4840,7 +4840,7 @@ function ble/widget/auto_complete/self-insert {
   if [[ $processed ]]; then
     # notify dummy insertion
     local comp_text= insert_beg=0 insert_end=0 insert=$ins suffix=
-    ble/util/invoke-hook _ble_complete_insert_hook
+    blehook/invoke complete_insert
     return 0
   else
     ble/widget/auto_complete/cancel
@@ -4878,7 +4878,7 @@ function ble/widget/auto_complete/insert-word {
       local insert_end=$_ble_edit_ind
       local insert=${_ble_edit_str:insert_beg:insert_end-insert_beg}$ins
       local suffix=
-      ble/util/invoke-hook _ble_complete_insert_hook
+      blehook/invoke complete_insert
       return 0
     fi
   elif [[ $_ble_complete_ac_type == [ra] ]]; then
@@ -4904,7 +4904,7 @@ function ble/widget/auto_complete/insert-word {
       local insert_end=$_ble_edit_ind
       local insert=$ins
       local suffix=
-      ble/util/invoke-hook _ble_complete_insert_hook
+      blehook/invoke complete_insert
 
       return 0
     fi
@@ -5517,4 +5517,4 @@ function ble/cmdinfo/complete:pushd {
   ble/cmdinfo/complete:cd/.impl pushd
 }
 
-ble/util/invoke-hook _ble_complete_load_hook
+blehook/invoke complete_load

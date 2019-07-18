@@ -46,11 +46,21 @@ function ble/syntax:bash/is-complete { true; }
 
 # 以下の関数に関しては遅延せずにその場で lib/core-syntax.sh をロードする
 ble/util/autoload "$_ble_base/lib/core-syntax.sh" \
+             ble/syntax/parse \
+             ble/syntax/tree-enumerate \
+             ble/syntax/tree-enumerate-children \
              ble/syntax/completion-context/generate \
-             ble/syntax:bash/is-complete \
+             ble/syntax/highlight/cmdtype \
+             ble/syntax/highlight/cmdtype1 \
+             ble/syntax/highlight/filetype \
+             ble/syntax/highlight/getg-from-filename \
              ble/syntax:bash/extract-command \
              ble/syntax:bash/simple-word/eval \
+             ble/syntax:bash/simple-word/eval-noglob \
+             ble/syntax:bash/simple-word/evaluate-path-spec \
+             ble/syntax:bash/simple-word/is-never-word \
              ble/syntax:bash/simple-word/is-simple \
+             ble/syntax:bash/simple-word/is-simple-or-open-simple \
              ble/syntax:bash/simple-word/reconstruct-incomplete-word
 
 #------------------------------------------------------------------------------
