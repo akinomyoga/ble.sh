@@ -1072,7 +1072,7 @@ function ble/widget/vi-command/operator {
       ((end<${#_ble_edit_str}&&end++))
       ble/keymap:vi/call-operator-charwise "$opname" "$a" "$end" "$ARG" "$REG"
     fi; local ext=$?
-    ((ext==148)) && return 148
+    ((ext==147)) && return 147
     ((ext)) && ble/widget/.bell
     ble/keymap:vi/adjust-command-mode
     return "$ext"
@@ -1116,8 +1116,8 @@ function ble/widget/vi_nmap/linewise-operator {
     if ((ext==0)); then
       ble/keymap:vi/adjust-command-mode
       return 0
-    elif ((ext==148)); then
-      return 148
+    elif ((ext==147)); then
+      return 147
     fi
   fi
   ble/widget/vi-command/bell
@@ -1171,9 +1171,9 @@ function ble/widget/vi-command/beginning-of-line {
 ##     オペレータ内部でこの変数に値を設定する。
 ##
 ##   @exit
-##     operator 関数が終了ステータス 148 を返したとき、
+##     operator 関数が終了ステータス 147 を返したとき、
 ##     operator が非同期に入力を読み取ることを表す。
-##     148 を返した operator は、実際に操作が完了した時に:
+##     147 を返した operator は、実際に操作が完了した時に:
 ##
 ##     1 ble/keymap:vi/mark/end-edit-area を呼び出す必要がある。
 ##     2 適切な位置にカーソルを移動する必要がある。
@@ -1220,7 +1220,7 @@ function ble/keymap:vi/call-operator-charwise {
   if ble/is-function ble/keymap:vi/operator:"$ch"; then
     local ble_keymap_vi_operator_index=
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" char "$arg" "$reg"; local ext=$?
-    ((ext==148)) && return 148
+    ((ext==147)) && return 147
 
     local index=${ble_keymap_vi_operator_index:-$beg}
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
@@ -1242,7 +1242,7 @@ function ble/keymap:vi/call-operator-linewise {
     local ble_keymap_vi_operator_index=
     ((end<${#_ble_edit_str}&&end++))
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" line "$arg" "$reg"; local ext=$?
-    ((ext==148)) && return 148
+    ((ext==147)) && return 147
 
     # index
     if [[ $ble_keymap_vi_operator_index ]]; then
@@ -1271,7 +1271,7 @@ function ble/keymap:vi/call-operator-blockwise {
     local beg=${sub_ranges[0]}; beg=${beg%%:*}
     local end=${sub_ranges[nrange-1]}; end=${end#*:}; end=${end%%:*}
     ble/keymap:vi/call-operator "$ch" "$beg" "$end" block "$arg" "$reg"
-    ((ext==148)) && return 148
+    ((ext==147)) && return 147
 
     local index=${ble_keymap_vi_operator_index:-$beg}
     ble/keymap:vi/needs-eol-fix "$index" && ((index--))
@@ -1875,7 +1875,7 @@ function ble/keymap:vi/operator:filter {
     _ble_keymap_vi_cmap_cancel_hook=ble/keymap:vi/operator:filter/cancel.hook
     _ble_syntax_lang=bash
     _ble_highlight_layer__list=(plain syntax region overwrite_mode)
-    return 148
+    return 147
   fi
 }
 function ble/keymap:vi/operator:filter/cancel.hook {
@@ -1988,7 +1988,7 @@ function ble/widget/vi-command/exclusive-range.impl {
       local ble_keymap_vi_opmode=
       ble/keymap:vi/call-operator-charwise "$opname" "$src" "$dst" '' "$reg"; local ext=$?
     fi
-    ((ext==148)) && return 148
+    ((ext==147)) && return 147
     ((ext)) && ble/widget/.bell
     ble/keymap:vi/adjust-command-mode
     return "$ext"
@@ -2143,7 +2143,7 @@ function ble/widget/vi-command/linewise-range.impl {
       ble/keymap:vi/call-operator "$opname" "$beg" "$end" char '' "$reg"; local ext=$?
     fi
     if ((ext)); then
-      ((ext==148)) && return 148
+      ((ext==147)) && return 147
       ble/widget/vi-command/bell
       return "$ext"
     fi
@@ -2163,7 +2163,7 @@ function ble/widget/vi-command/linewise-range.impl {
     [[ :$opflags: == *:vi_line:* ]] && ble_keymap_vi_opmode=vi_line
     ble/keymap:vi/call-operator "$opname" "$beg" "$end" line '' "$reg"; local ext=$?
     if ((ext)); then
-      ((ext==148)) && return 148
+      ((ext==147)) && return 147
       ble/widget/vi-command/bell
       return "$ext"
     fi
@@ -2226,7 +2226,7 @@ function ble/keymap:vi/async-read-char.hook {
 
 function ble/keymap:vi/async-read-char {
   _ble_decode_key__hook="ble/keymap:vi/async-read-char.hook $*"
-  return 148
+  return 147
 }
 
 #------------------------------------------------------------------------------
@@ -2453,7 +2453,7 @@ function ble/keymap:vi/mark/set-jump {
 
 function ble/widget/vi-command/set-mark {
   _ble_decode_key__hook="ble/widget/vi-command/set-mark.hook"
-  return 148
+  return 147
 }
 function ble/widget/vi-command/set-mark.hook {
   local key=$1
@@ -2526,7 +2526,7 @@ function ble/widget/vi-command/goto-global-mark.impl {
 
 function ble/widget/vi-command/goto-mark {
   _ble_decode_key__hook="ble/widget/vi-command/goto-mark.hook ${1:-char}"
-  return 148
+  return 147
 }
 function ble/widget/vi-command/goto-mark.hook {
   local opts=$1 key=$2
@@ -4935,7 +4935,7 @@ function ble/widget/vi-command/commandline {
   _ble_edit_PS1=:
   _ble_history_prefix=_ble_keymap_vi_commandline
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
-  return 148
+  return 147
 }
 function ble/widget/vi-command/commandline.hook {
   local command
@@ -5264,14 +5264,14 @@ function ble/widget/vi-command/search-forward {
   _ble_edit_PS1='/'
   _ble_history_prefix=_ble_keymap_vi_search
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
-  return 148
+  return 147
 }
 function ble/widget/vi-command/search-backward {
   ble/keymap:vi/async-commandline-mode 'ble/widget/vi-command/search.impl -:history'
   _ble_edit_PS1='?'
   _ble_history_prefix=_ble_keymap_vi_search
   _ble_keymap_vi_cmap_before_command=ble/keymap:vi/commandline/before-command.hook
-  return 148
+  return 147
 }
 function ble/widget/vi-command/search-repeat {
   ble/widget/vi-command/search.impl repeat:+
@@ -6785,7 +6785,7 @@ function ble/widget/vi_xmap/linewise-operator.impl {
   ble/widget/vi_xmap/.save-visual-state
   ble/widget/vi_xmap/exit
   "$call_operator" "$op" "$beg" "$end" "$ARG" "$REG"; local ext=$?
-  ((ext==148)) && return 148
+  ((ext==147)) && return 147
   ((ext)) && ble/widget/.bell
   ble/keymap:vi/adjust-command-mode
   return "$ext"
@@ -7483,7 +7483,7 @@ function ble/widget/vi_imap/quoted-insert {
   ble/keymap:vi/imap-repeat/pop
   _ble_edit_mark_active=
   _ble_decode_char__hook=ble/widget/vi_imap/quoted-insert.hook
-  return 148
+  return 147
 }
 function ble/widget/vi_imap/quoted-insert.hook {
   ble/keymap:vi/imap/invoke-widget ble/widget/self-insert "$1"
@@ -7495,7 +7495,7 @@ function ble/widget/vi_imap/bracketed-paste {
   ble/keymap:vi/imap-repeat/pop
   ble/widget/bracketed-paste
   _ble_edit_bracketed_paste_proc=ble/widget/vi_imap/bracketed-paste.proc
-  return 148
+  return 147
 }
 function ble/widget/vi_imap/bracketed-paste.proc {
   ble/keymap:vi/imap/invoke-widget-charwise ble/widget/self-insert "$@"
@@ -7508,7 +7508,7 @@ function ble/widget/vi-command/bracketed-paste {
   _ble_edit_mark_active=
   ble/widget/bracketed-paste
   _ble_edit_bracketed_paste_proc=ble/widget/vi-command/bracketed-paste.proc
-  return 148
+  return 147
 }
 function ble/widget/vi-command/bracketed-paste.proc {
   if [[ $_ble_decode_keymap == vi_nmap ]]; then

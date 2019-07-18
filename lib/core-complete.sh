@@ -808,7 +808,7 @@ function ble/complete/menu#start {
   ble/complete/menu#show
   ble/complete/menu#select 0
   ble-decode/keymap/push menu
-  return 148
+  return 147
 }
 
 # 
@@ -5157,7 +5157,7 @@ function ble/complete/sabbrev/expand {
     ble/complete/menu/show || return
     [[ :$bleopt_sabbrev_menu_opts: == *:enter_menu:* ]] &&
       ble/complete/menu-complete/enter
-    return 148 ;;
+    return 147 ;;
   (*) return 1 ;;
   esac
   return 0

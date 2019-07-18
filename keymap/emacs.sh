@@ -102,7 +102,7 @@ function ble/widget/emacs/__after_widget__ {
 function ble/widget/emacs/quoted-insert {
   _ble_edit_mark_active=
   _ble_decode_char__hook=ble/widget/emacs/quoted-insert.hook
-  return 148
+  return 147
 }
 function ble/widget/emacs/quoted-insert.hook {
   ble/widget/quoted-insert.hook
@@ -112,7 +112,7 @@ function ble/widget/emacs/quoted-insert.hook {
 function ble/widget/emacs/bracketed-paste {
   ble/widget/bracketed-paste
   _ble_edit_bracketed_paste_proc=ble/widget/emacs/bracketed-paste.proc
-  return 148
+  return 147
 }
 function ble/widget/emacs/bracketed-paste.proc {
   ble/widget/bracketed-paste.proc "$@"

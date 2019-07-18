@@ -2889,12 +2889,12 @@ _ble_term_CPR_hook=
 function ble/term/CPR/request.buff {
   _ble_term_CPR_hook=$1
   ble/util/buffer $'\e[6n'
-  return 148
+  return 147
 }
 function ble/term/CPR/request.draw {
   _ble_term_CPR_hook=$1
   ble/canvas/put.draw $'\e[6n'
-  return 148
+  return 147
 }
 function ble/term/CPR/notify {
   local hook=$_ble_term_CPR_hook

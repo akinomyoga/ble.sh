@@ -112,10 +112,10 @@ function ble/lib/vim-surround.sh/async-inputtarget.hook {
   if [[ :$mode: == *:digit:* && $c == [0-9] ]]; then
     _ble_edit_arg=$_ble_edit_arg$c
     _ble_decode_key__hook="ble/lib/vim-surround.sh/async-inputtarget.hook digit $hook"
-    return 148
+    return 147
   elif [[ :$mode: == *:init:* && $c == ' ' ]]; then
     _ble_decode_key__hook="ble/lib/vim-surround.sh/async-inputtarget.hook space $hook"
-    return 148
+    return 147
   fi
 
   if [[ $c == [$'\e\003'] ]]; then # C-[, C-c
@@ -129,11 +129,11 @@ function ble/lib/vim-surround.sh/async-inputtarget.hook {
 }
 function ble/lib/vim-surround.sh/async-inputtarget {
   _ble_decode_key__hook="ble/lib/vim-surround.sh/async-inputtarget.hook init:digit $*"
-  return 148
+  return 147
 }
 function ble/lib/vim-surround.sh/async-inputtarget-noarg {
   _ble_decode_key__hook="ble/lib/vim-surround.sh/async-inputtarget.hook init $*"
-  return 148
+  return 147
 }
 
 _ble_lib_vim_surround_previous_tag=html
@@ -251,7 +251,7 @@ function ble/lib/vim-surround.sh/async-read-tagname {
   ble/keymap:vi/async-commandline-mode "$1"
   _ble_edit_PS1='<'
   _ble_keymap_vi_cmap_before_command=ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook
-  return 148
+  return 147
 }
 function ble/lib/vim-surround.sh/async-read-tagname/.before-command.hook {
   if [[ ${KEYS[0]} == 62 ]]; then # '>'
@@ -307,7 +307,7 @@ function ble/lib/vim-surround.sh/operator.impl {
   _ble_edit_mark_active=vi_surround
   ble/lib/vim-surround.sh/async-inputtarget-noarg ble/widget/vim-surround.sh/ysurround.hook1
   ble/lib/vim-surround.sh/ysurround.repeat/entry
-  return 148
+  return 147
 }
 function ble/keymap:vi/operator:yS { ble/lib/vim-surround.sh/operator.impl yS "$@"; }
 function ble/keymap:vi/operator:ys { ble/lib/vim-surround.sh/operator.impl ys "$@"; }
@@ -520,7 +520,7 @@ function ble/keymap:vi/operator:surround {
 ##   @var[out] surround_end
 function ble/keymap:vi/operator:surround-extract-region {
   surround_beg=$beg surround_end=$end
-  return 148 # 強制中断する為
+  return 147 # 強制中断する為
 }
 
 ## @arr _ble_lib_vim_surround_cs

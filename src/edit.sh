@@ -2715,7 +2715,7 @@ function ble/widget/quoted-insert.hook {
 function ble/widget/quoted-insert {
   _ble_edit_mark_active=
   _ble_decode_char__hook=ble/widget/quoted-insert.hook
-  return 148
+  return 147
 }
 
 _ble_edit_bracketed_paste=
@@ -2726,7 +2726,7 @@ function ble/widget/bracketed-paste {
   _ble_edit_bracketed_paste=()
   _ble_edit_bracketed_paste_proc=ble/widget/bracketed-paste.proc
   _ble_decode_char__hook=ble/widget/bracketed-paste.hook
-  return 148
+  return 147
 }
 function ble/widget/bracketed-paste.hook {
   _ble_edit_bracketed_paste=$_ble_edit_bracketed_paste:$1
@@ -2741,7 +2741,7 @@ function ble/widget/bracketed-paste.hook {
 
   if [[ ! $is_end ]]; then
     _ble_decode_char__hook=ble/widget/bracketed-paste.hook
-    return 148
+    return 147
   fi
 
   chars=$chars:
@@ -4969,7 +4969,7 @@ function ble/widget/magic-space {
   ble/widget/history-expand-backward-line ||
     ble/complete/sabbrev/expand
   local ext=$?
-  ((ext==148)) && return 148 # sabbrev/expand でメニュー補完に入った時など。
+  ((ext==147)) && return 147 # sabbrev/expand でメニュー補完に入った時など。
 
   # keymap/vi.sh
   [[ $_ble_decode_keymap == vi_imap ]] &&

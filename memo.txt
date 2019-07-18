@@ -738,12 +738,16 @@ bash_tips
       __defchar__ に登録した widget がこれを返したとき
       次のハンドラを用いる。具体的には __default__ の呼び出しを試みる。
 
-    147 ble/util/idle の処理に於いて条件待ち状態に入る為に、
-      一時中断した時に返す値。
+    147 ble/util/idle の処理に於いて条件待ち状態に入る時や、
+      widget に於いてユーザの入力を待つ為に、
+      自発的に一時中断した時に返す値。
 
-    148 ユーザの入力を非同期に待つ為に一時停止した
+      ユーザの入力を非同期に待つ為に一時停止した
       vi-mode のオペレータが 148 を返したとき
       後処理を実行せずにそのまま抜ける (由来: 128+SIGTSTP)
+
+    148 ble/util/idle や isearch や complete に於いて、
+      ユーザ入力を処理する為に一旦現在の処理を中断する時に返す値。
 
     124 プログラム補完において補完の再実行を要求する
       (由来: これは Bash の仕様に倣った)
@@ -886,10 +890,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-07-18
-
-  * highlight: / で区切られた関数名の着色
-
 2019-07-16
 
   * complete: パス名展開で複数語に展開される場合の補完に関して
@@ -913,31 +913,6 @@ bash_tips
 
   * history.mlfix: bash-3.0 で実現する方法?
     history -s が使えないので複数行の履歴を登録する事が不可能である。
-
-  * 148 と 147 の区別をしたい
-    現在の実装では広範に亘って 148 が用いられているが、
-    実は 148 は二種類あって has-input の時と、
-    或いは唯単にユーザの入力を待つ状態というのがある。
-    更に 148 の中でも実際に read で読み取れる状態と、
-    或いは ble.sh の枠組みの中に未処理のデータが残っている場合がある。
-
-    % というか async で呼び出すのは idle.do の中からだけなので、
-    % 実は ble-decode/has-input ではなくて ble/util/is-stdin-ready を使うべきでは。
-    % と思って ble/util/idle を調べてみると ble/util/idle/IS_IDLE を使っている。
-    % ble/util/idle/IS_IDLE は decode.sh で上書きされていて、
-    % 其処の説明によると decode 途中の状態の場合にはすぐに続きのバイトが来るはず、
-    % という論理になっている様だ。うーん。何だか分からないが取り敢えず
-    % ble/util/idle/IS_IDLE を使っておくのが綺麗の様に思う。
-
-    取り敢えず、idle 処理の中でどのようにするかというと。
-    ble/util/idle/IS_IDLE じゃなくなったら return 148 するという事。
-    それ以外の理由で一旦処理を停止するという時には return 147 するという事。
-
-    また ble/util/idle/IS_IDLE は decode に於いて
-    has-input で上書きされているがこれが妥当なのかについても考察の必要がある。
-    そもそも ble/util/idle.do が呼び出された時点で中途半端な状態で
-    入力がずっと来ないという事はないのではないかと思われるのである。
-    これは ble/util/idle.do の呼び出し箇所を一つ一つ確認していく必要がある。
 
 2019-07-02
 
@@ -2230,6 +2205,7 @@ bash_tips
     - history.mlfix: suppress errors on Bash 3 `#D1122` 4fe7a0c
     - history: suppress error messages trying to kill background worker on reattach `#D1125` f045fec
   - highlight: support dirname colors with pathname expansion, failglob and command names `#D1134` edaf495
+  - util: introduce `blehook` `#D1139` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2256,7 +2232,7 @@ bash_tips
   - main: change loading point of `.inputrc` `#D1127` af758e5
   - highlight: do not split command names with `:` and `=` `#D1133` 8a1bd8f
   - decode: support DA1 responses sent by some terminals (reported by miba072) `#D1135` 362ab05
-  - highlight: make brace expansions active for RHS of variable-assignment-form arguments `#D1138` 0000000
+  - highlight: make brace expansions active for RHS of variable-assignment-form arguments `#D1138` 93cc8da
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3250,6 +3226,50 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-18
+
+  * 2019-07-09 global: 148 と 147 の区別をしたい
+    現在の実装では広範に亘って 148 が用いられているが、
+    実は 148 は二種類あって has-input の時と、
+    或いは唯単にユーザの入力を待つ状態というのがある。
+    更に 148 の中でも実際に read で読み取れる状態と、
+    或いは ble.sh の枠組みの中に未処理のデータが残っている場合がある。
+
+    % というか async で呼び出すのは idle.do の中からだけなので、
+    % 実は ble-decode/has-input ではなくて ble/util/is-stdin-ready を使うべきでは。
+    % と思って ble/util/idle を調べてみると ble/util/idle/IS_IDLE を使っている。
+    % ble/util/idle/IS_IDLE は decode.sh で上書きされていて、
+    % 其処の説明によると decode 途中の状態の場合にはすぐに続きのバイトが来るはず、
+    % という論理になっている様だ。うーん。何だか分からないが取り敢えず
+    % ble/util/idle/IS_IDLE を使っておくのが綺麗の様に思う。
+
+    取り敢えず、idle 処理の中でどのようにするかというと。
+    ble/util/idle/IS_IDLE じゃなくなったら return 148 するという事。
+    それ以外の理由で一旦処理を停止するという時には return 147 するという事。
+
+    また ble/util/idle/IS_IDLE は decode に於いて
+    has-input で上書きされているがこれが妥当なのかについても考察の必要がある。
+    そもそも ble/util/idle.do が呼び出された時点で中途半端な状態で
+    入力がずっと来ないという事はないのではないかと思われるのである。
+    これは ble/util/idle.do の呼び出し箇所を一つ一つ確認していく必要がある。
+
+    [変更に関して]
+
+    - decode.sh では実は 148 か 147 かというのはチェックしていない。
+    - vi.sh における 148 は全てユーザーの次の入力を待つ為の物だから
+      実は全て 147 である。
+    - 逆に complete.sh における 148 は全て中断の為の物だからそのままで良さそう。
+      ble/complete/menu#start に関してだけは 147 の様な気がする。
+      但し現状ではこの関数は誰も使っていない。
+      ble/complete/sabbrev/expand も 147 である。
+    - history.sh の中は全て 148 である。
+    - vim-surround.sh は全部 147
+    - edit.sh は検索関連は 148 で他は 147 だった。
+    - util.sh は idle/fiberchain は 148 で、CPR request は 147 である。
+
+  * highlight: / で区切られた関数名の着色 [#D1140]
+    / より前の部分をディレクトリ名と解釈しようとして、
+    然しディレクトリが存在しないので黒色になってしまう。
+    これは簡単な修正だった。
 
   * history 移行: blehook の枠組みを整える? [#D1139]
     bleopt と同様に。既存の hook に関しては変数名を変更する等して移行する。

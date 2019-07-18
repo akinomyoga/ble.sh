@@ -5648,7 +5648,8 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
       local attr=${_ble_syntax_attr[wbeg]}
       if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
         ble/syntax/highlight/cmdtype "$value" "$wtxt"
-        ble/highlight/layer:syntax/word/.update-for-pathname "$type" && return
+        ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)) &&
+          ble/highlight/layer:syntax/word/.update-for-pathname "$type" && return
       fi
     elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
       ble/highlight/layer:syntax/word/.update-for-filename "$value" && return
