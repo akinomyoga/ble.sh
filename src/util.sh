@@ -2536,9 +2536,12 @@ bleopt/declare -v vbell_default_message ' Wuff, -- Wuff!! '
 bleopt/declare -v vbell_duration 2000
 bleopt/declare -n vbell_align left
 
+_ble_term_cygwin=
 function ble/term:cygwin/initialize.hook {
   local rex='^67;[0-9]{3,};0$'
   [[ $_ble_term_DA2R =~ $rex ]] || return 0
+
+  _ble_term_cygwin=1
 
   # RIの修正
   # Note: Cygwin console では何故か RI (ESC M) が

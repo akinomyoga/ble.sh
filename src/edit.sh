@@ -3842,7 +3842,20 @@ function ble-edit/exec/.adjust-eol {
     fi
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
   fi
-  ble/canvas/put-cuf.draw $((_ble_term_xenl?cols-2:cols-3))
+
+  local advance=$((_ble_term_xenl?cols-2:cols-3))
+  if [[ $_ble_term_cygwin ]]; then
+    # Note (#D1144): Cygwin console では何故か行き先が
+    #   丁度 cols+1 列目になる様な CUF は一文字も動かない。
+    #   cols列目またはcols+2列目以降は大丈夫である。
+    #   仕方がないので少しずつ慎重に前進する事にする。
+    while ((advance)); do
+      ble/canvas/put-cuf.draw $((advance-advance/2))
+      ((advance/=2))
+    done
+  else
+    ble/canvas/put-cuf.draw "$advance"
+  fi
   ble/canvas/put.draw "  $_ble_term_cr$_ble_term_el"
   ble/canvas/bflush.draw
 }
