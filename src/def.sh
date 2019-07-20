@@ -1,5 +1,10 @@
 # -*- mode: sh; mode: sh-bash -*-
 
+# util.sh
+
+blehook_DA1R=()
+blehook_DA2R=()
+
 # color.sh
 
 blehook_color_init_defface=()

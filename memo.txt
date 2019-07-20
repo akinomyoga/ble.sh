@@ -890,6 +890,33 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2019-07-20
+
+  * cygwin で M-b 等が全部 ESC b と解釈されている
+
+    0.4.0-devel1+30cc31c の既存のセッションでは再現していない
+    0.4.0-devel1+362ab05 の既存のセッションでは再現している。
+    最新の version でも再現している。
+    確かに checkout して比較してみるとそれぞれその通りになった。
+    二分法で絞り込む。2ea7cfd は未だ大丈夫である。
+    caa46c2 はもう駄目になっている。af758e5 も駄目。
+    af758e5~ だと大丈夫である。という事は犯人は af758e5 である。
+    .inputrc の読み取りタイミングの変更で駄目になった。
+
+    特に bind で ESC から始まる何かを登録するともう駄目なのだろう。
+    と思ったがそれを削除しても問題は再現するままである。
+    --noinputrc を指定したら再現しなくなった。
+
+    うーん。ble-bind -m vi_imap -P の結果を見比べた所、
+    そもそも inputrc で ESC で始まる物が登録されていた場合、
+    hook が呼び出されていない? という事の様だ。うーん。
+    つまり inputrc の中で vi_imap がロードされて、
+    その後で blerc などの設定が適用されている?
+
+    というのも変だ。そもそも mshex による設定も消えてなくなっている。
+    という事を思えばまた別の理由によって load hook
+    が呼び出されなくなっているという事か。
+
 2019-07-18
 
   * blehook: trap を置き換える?
@@ -2280,6 +2307,7 @@ bash_tips
   - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118` 30cc31c
   - main: fix a bug that `source ble.sh --noattach` in `ble.sh` sessions hangs `#D1130` d35682a caa46c2
   - syntax: workaround bashbug 3.1/3.2 that `eval` ending with <kbd>\ + LF</kbd> causes error messages `#D1132` a4b7e00
+  - term: workaround "cygwin" console glitches `#D1143`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3238,6 +3266,221 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-07-20
+
+  * cygwin terminal で久しぶりに動かしてみたら様子がおかしい [#D1143]
+    一番下の行で -- INSERT -- が残った儘になってしまうし、
+    vbell が表示される度に描画位置がどんどんずれていく。
+    うーん。全然駄目だ。実は 0.1 の時からずっと動いていなかったらしい。
+
+    試してみて分かった事は、cygwin terminal では、
+    1. RI 及び IND は必ず其処に行を挿入してしまうという事
+      本来は画面の一番上にいる時にのみ行を挿入するべきなのである。
+    2. DL で現在行以降の行数以上を引数に指定すると何も起こらないという事。
+    3. 更に \e[$((LINES+1))H すると画面の
+      一番下に行って IND したのと同じ効果がある…。
+
+    さて対策或いは代替手段はあるだろうか。
+    効率の悪い方法だったとしても TERM=cygwin の時にだけそれをすれば良い。
+
+    [Cygwin の振る舞いについて調査]
+
+    | というか cygwin に patch を送りたい気分ではある。
+    | cygwin のソースコードを確認してみる。
+    | 以前 cygwin の release note で DECSCUSR の事が書いてあった事を思い出して
+    | newlib-cygwin/winsup/cygwin の中で grc DECSCUSR したら直ぐに見つかった。
+    |
+    | $ grc DECSC
+    | ./fhandler_console.cc:1980:    case 'q': /* Set cursor style (DECSCUSR) */
+    | ./fhandler_console.cc:2642:       else if (*src == '7')         /* DECSC Save cursor position */
+    |
+    | というか cygwin をビルドし直した所でそれをテストするのは面倒である。
+    | うーん。或いは bash を同じディレクトリに入れてダブルクリックすれば良いだけか?
+    |
+    | * IL,DLのコードは以下の通り。
+    |
+    |   | case 'L':                           /* AL - insert blank lines */
+    |   |   n = con.args[0] ?: 1;
+    |   |   cursor_get (&x, &y);
+    |   |   scroll_buffer (0, y, -1, -1, 0, y + n);
+    |   |   break;
+    |   | case 'M':                           /* DL - delete lines */
+    |   |   n = con.args[0] ?: 1;
+    |   |   cursor_get (&x, &y);
+    |   |   scroll_buffer (0, y + n, -1, -1, 0, y);
+    |   |   break;
+    |
+    |   而もILをALとtypoしている? 然し ICH を IC
+    |   と書いていたりもするから何か古い略号なのかもしれない。
+    |   肝心の部分は恐らく 0..y+n を y だけ scroll するという意味?
+    |   本来は y..$ を n 行スクロールするべきの気がする。
+    |
+    |   振る舞いを見るとどうも y+n が範囲外の時には何も起こらないという事の様だ。
+    |   でもよく分からない。scroll_buffer の実装を観察しようか。
+    |
+    |   | void __reg3
+    |   | dev_console::scroll_buffer (HANDLE h, int x1, int y1, int x2, int y2,
+    |   |                             int xn, int yn)
+    |   | {
+    |   | /* Scroll the screen context.
+    |   |    x1, y1 - ul corner
+    |   |    x2, y2 - dr corner
+    |   |    xn, yn - new ul corner
+    |   |    Negative values represents current screen dimensions
+    |   | */
+    |   |   SMALL_RECT sr1, sr2;
+    |   |   CHAR_INFO fill;
+    |   |   COORD dest;
+    |   |   fill.Char.UnicodeChar = L' ';
+    |   |   fill.Attributes = current_win32_attr;
+    |   |
+    |   |   fillin (h);
+    |   |   sr1.Left = x1 >= 0 ? x1 : dwWinSize.X - 1;
+    |   |   sr1.Top = y1 >= 0 ? y1 : b.srWindow.Bottom;
+    |   |   sr1.Right = x2 >= 0 ? x2 : dwWinSize.X - 1;
+    |   |   sr1.Bottom = y2 >= 0 ? y2 : b.srWindow.Bottom;
+    |   |   sr2.Top = b.srWindow.Top + scroll_region.Top;
+    |   |   sr2.Left = 0;
+    |   |   sr2.Bottom = (scroll_region.Bottom < 0) ?
+    |   |     b.srWindow.Bottom : b.srWindow.Top + scroll_region.Bottom;
+    |   |   sr2.Right = dwWinSize.X - 1;
+    |   |   if (sr1.Bottom > sr2.Bottom && sr1.Top <= sr2.Bottom)
+    |   |     sr1.Bottom = sr2.Bottom;
+    |   |   dest.X = xn >= 0 ? xn : dwWinSize.X - 1;
+    |   |   dest.Y = yn >= 0 ? yn : b.srWindow.Bottom;
+    |   |   ScrollConsoleScreenBufferW (h, &sr1, &sr2, dest, &fill);
+    |   | }
+    |   |
+    |   | inline void
+    |   | fhandler_console::scroll_buffer (int x1, int y1, int x2, int y2,
+    |   |                                  int xn, int yn)
+    |   | {
+    |   |   con.scroll_buffer (get_output_handle (), x1, y1, x2, y2, xn, yn);
+    |   | }
+    |   |
+    |   | inline void
+    |   | fhandler_console::scroll_buffer_screen (int x1, int y1, int x2, int y2,
+    |   |                                         int xn, int yn)
+    |   | {
+    |   |   if (y1 >= 0)
+    |   |     y1 += con.b.srWindow.Top;
+    |   |   if (y2 >= 0)
+    |   |     y2 += con.b.srWindow.Top;
+    |   |   if (yn >= 0)
+    |   |     yn += con.b.srWindow.Top;
+    |   |   con.scroll_buffer (get_output_handle (), x1, y1, x2, y2, xn, yn);
+    |   | }
+    |
+    |   コメントを読んで引数の意味が分かった。
+    |   結局矩形 (0,y+n)-($,$) に関して、左上を (0,y) に持って行きなさい、
+    |   とそういう指定の仕方をしているのである。
+    |   そして基本的にはそれを ScrollConsoleScreenBufferW に渡している。
+    |   実はこれは Win API である。
+    |   https://docs.microsoft.com/en-us/windows/console/scrollconsolescreenbuffer
+    |   これは BitBlt 的なそういう感じの API なのである。
+    |   従って、もし移動する元の rectangle が潰れていると何も起きないという事だろうか。
+    |
+    |   うーん。これを直すとすると、移動する矩形が潰れる時には代わりに消去を行うという事。
+    |   もしくは、スクロールした後の部分を明示的に空白で埋めるという事。
+    |   余り綺麗な方法ではない。単に cygwin にバグ報告するだけに留めて置くか。
+    |
+    | * RI の方に関しては…
+    |
+    |   何と単純に "scroll down" として実装されている…。
+    |
+    |   | else if (*src == 'M')         /* Reverse Index (scroll down) */
+    |   |   {
+    |   |     con.fillin (get_output_handle ());
+    |   |     scroll_buffer_screen (0, 0, -1, -1, 0, 1);
+    |   |     con.state = normal;
+    |   |   }
+
+    まとめると。Cygwin はスクロールには Win API を使っていて、
+    スクロール対象が潰れてしまう時は DL が効かない。
+    また RI に関しては完全に1行スクロールとして実装されてしまっている。
+
+    Cygwin のこの様な変な振る舞いを逆に利用して何かいい感じに処理できないだろうか。
+    \e[H で範囲外に移動できてしまうという事を思えば実は \e[A でも範囲外に移動できるのでは?
+    と思ったらそうだった…。RI に関してはそれで何とかする事にする…。
+    但し、本当に一番始めに起動した時には \e[A で上に行く事ができない。RI なら上に行く事ができる。
+    仕方がないので、\e[A に補正する時に RI で上に行を挿入してしまう事にした。
+
+
+    [Cygwin の識別に関して]
+
+    | 一応 Cygwin terminal の DA2R を見ておく事にする。
+    | 67;201102;0 であった。うーん。これは version によって変わったりするのだろうか。
+    | Google で検索してみる。どれだけ安定しているのか。と思ったら検索すると一件として当たらない…。
+    | Cygwin DA2 で検索しても有用な情報は出てこない。というか直接ソースコードを見れば良いのか?
+    | 以下の行が当たった。
+    |
+    | ./fhandler_console.cc:2204:     __small_sprintf (buf, "\033[>67;%d%02d;0c",
+    |
+    | 実際にソースコードを当たってみると…
+    | うーん。そもそも 67 は Cygwin 固有の様である。
+    | というか contra で採用した 67 と被っている気がする。。
+    | まあそれは後で考える事にする。
+    |
+    |     /* Generate Secondary Device Attribute report, using 67 = ASCII 'C'
+    |        to indicate Cygwin (convention used by Rxvt, Urxvt, Screen, Mintty),
+    |        and cygwin version for terminal version. */
+    |     __small_sprintf (buf, "\033[>67;%d%02d;0c",
+    |                      CYGWIN_VERSION_DLL_MAJOR, CYGWIN_VERSION_DLL_MINOR);
+    |
+    | マクロの値を確認すると…。
+    |
+    |   ./include/cygwin/version.h:13:#define CYGWIN_VERSION_DLL_MAJOR 3001
+    |   ./include/cygwin/version.h:14:#define CYGWIN_VERSION_DLL_MINOR 0
+    |
+    | ぜんぜん違う値である気がする。blame で追跡してみる。
+    |
+    |   $ g blame -L 2200,2300 fhandler_console.cc
+    |   ...
+    |   8fd4bd2bf1 (Corinna Vinschen   2009-12-19 15:37:10 +0000 2203)     and cygwin version for terminal version. */
+    |   8382778cdb (Takashi Yano       2019-04-01 00:47:47 +0900 2204)  __small_sprintf (buf, "\033[>67;%d%02d;0c",
+    |   8382778cdb (Takashi Yano       2019-04-01 00:47:47 +0900 2205)                   CYGWIN_VERSION_DLL_MAJOR, CYGWIN_VERSION_DLL_MINOR);
+    |   8fd4bd2bf1 (Corinna Vinschen   2009-12-19 15:37:10 +0000 2206)       else
+    |   ...
+    |
+    | 何と最近書き換わっている…。しかも日本人…。
+    | http://cygwin.1069669.n5.nabble.com/PATCH-Reworks-for-console-code-td145437.html#a145459
+    | ここに記録が残っている。巨大な変更と一緒にしれっと DA2 を書き換えている。
+    | 何れにしても 24bit color が cygwin で使える様になったのだろうか…。
+    |
+    | と思ったがただ単に改行が追加されただけの様である。
+    | というか体裁を勝手に変更するというので追跡をしにくくするのはやめて欲しい。
+    | 而も別の変更に紛れ込ませてそれを実行するというのが行儀が悪い。やばい。
+    | 何れにしても、その前の変更は 2009 年なので大分昔である。
+    |
+    |   $ g blame -L 1600,2300 8382778cdb~ -- fhandler_console.cc
+    |   ...
+    |   b86f999af1 (Christopher Faylor 2011-06-06 05:02:13 +0000 2078)  /* Generate Secondary Device Attribute report, using 67 = ASCII 'C'
+    |   b86f999af1 (Christopher Faylor 2011-06-06 05:02:13 +0000 2079)     to indicate Cygwin (convention used by Rxvt, Urxvt, Screen, Mintty),
+    |   8fd4bd2bf1 (Corinna Vinschen   2009-12-19 15:37:10 +0000 2080)     and cygwin version for terminal version. */
+    |   8fd4bd2bf1 (Corinna Vinschen   2009-12-19 15:37:10 +0000 2081)  __small_sprintf (buf, "\033[>67;%d%02d;0c", CYGWIN_VERSION_DLL_MAJOR, CYGWIN_VERSION_DLL_MINOR);
+    |   8fd4bd2bf1 (Corinna Vinschen   2009-12-19 15:37:10 +0000 2082)       else
+
+    [実装]
+
+    結局 DA2R が ^67;[0-9]{3,};0$ の形であれば良さそうなのである。
+    というかこれは何処で判定すれば良いのだろうか…。
+
+    DL に関してはどの様にしようか。
+    使用箇所を確認すると ble/canvas/put-dl.draw からしか使っていない。
+    そして ble/canvas/put-dl.draw は複数の箇所から使われている。
+    うーん。ble/canvas/put-dl.draw のレベルで何か修正はできるだろうか。
+    つまり正しい DL の振る舞いをそれ単体で模倣する事ができるか、という事。
+
+    うーん。DLする前にDLされる予定の行を消去しておけば良いのでは。。
+    つまり EL を実行してしまえば良いのである。と思ったが EL は行数指定による消去ではない。
+    つまり、各行に移動して EL を実行しなければならないので面倒である。
+    範囲を消去する制御機能は他にあったろうか。他には CSI J (ED) ぐらいしかない。
+    然し、これは全消去的になってしまうので駄目。
+
+    各行に移動するとしても cygwin の \e[B 等の移動は勝手にスクロールを引き起こしてしまう。
+    と思ったが却って都合が良いのかもしれない。
+    同じ回数 \e[A を呼び出せばちゃんと戻ってくるという事だから。
+
 2019-07-18
 
   * blehook: zsh の add-zsh-hook で提供している物を提供できるのではないか [#D1142]
@@ -3260,7 +3503,7 @@ bash_tips
     * done: zshaddhistory は履歴に追加するかしないかを終了ステータスで指定するらしい。
       →対応した。と思ったが思うように動いていない。と思ったら
       blehook/invoke するのを大文字にするのを忘れていた。
-  
+
     * ok: periodic については対応しない事にした。
       対応したければ各自で時刻を記録すれば良い。
 

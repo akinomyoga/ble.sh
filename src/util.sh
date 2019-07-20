@@ -2536,7 +2536,34 @@ bleopt/declare -v vbell_default_message ' Wuff, -- Wuff!! '
 bleopt/declare -v vbell_duration 2000
 bleopt/declare -n vbell_align left
 
-function ble-term/.initialize {
+function ble/term:cygwin/initialize.hook {
+  local rex='^67;[0-9]{3,};0$'
+  [[ $_ble_term_DA2R =~ $rex ]] || return 0
+
+  # RIの修正
+  # Note: Cygwin console では何故か RI (ESC M) が
+  #   1行スクロールアップとして実装されている。
+  #   一方で CUU (CSI A) で上にスクロールできる。
+  printf '\eM\e[B' >/dev/tty
+  _ble_term_ri=$'\e[A'
+
+  # DLの修正
+  # Note: Cygwin console では DL が最終行まで
+  #   消去する時、何も消去されない…。
+  function ble/canvas/put-dl.draw {
+    local value=${1-1} i
+    ((value)) || return
+    DRAW_BUFF[${#DRAW_BUFF[*]}]=$'\e[2K'
+    if ((value>1)); then
+      local ret
+      ble/string#repeat $'\e[B\e[2K' $((value-1)); local a=$ret
+      DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret$'\e['$((value-1))'A'
+    fi
+    DRAW_BUFF[${#DRAW_BUFF[*]}]=${_ble_term_dl//'%d'/$value}
+  }
+}
+
+function ble/term/.initialize {
   if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
     source "$_ble_base/lib/init-term.sh"
   else
@@ -2544,14 +2571,17 @@ function ble-term/.initialize {
   fi
 
   ble/string#reserve-prototype "$_ble_term_it"
+
+  if [[ $TERM == cygwin ]]; then
+    blehook DA2R+=ble/term:cygwin/initialize.hook
+  fi
 }
+ble/term/.initialize
 
-ble-term/.initialize
-
-function ble-term/put {
+function ble/term/put {
   BUFF[${#BUFF[@]}]=$1
 }
-function ble-term/cup {
+function ble/term/cup {
   local x=$1 y=$2 esc=$_ble_term_cup
   esc=${esc//'%x'/$x}
   esc=${esc//'%y'/$y}
@@ -2559,7 +2589,7 @@ function ble-term/cup {
   esc=${esc//'%l'/$((y+1))}
   BUFF[${#BUFF[@]}]=$esc
 }
-function ble-term/flush {
+function ble/term/flush {
   IFS= builtin eval 'ble/bin/echo -n "${BUFF[*]}"'
   BUFF=()
 }
@@ -2592,15 +2622,15 @@ _ble_term_visible_bell_show='%message%'
 _ble_term_visible_bell_clear=
 function ble/term/visible-bell/.initialize {
   local -a BUFF=()
-  ble-term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
-  ble-term/cup 0 0
-  ble-term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//'%d'/1}"
+  ble/term/put "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
+  ble/term/cup 0 0
+  ble/term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//'%d'/1}"
   IFS= builtin eval '_ble_term_visible_bell_show="${BUFF[*]}"'
   
   BUFF=()
-  ble-term/put "$_ble_term_sc$_ble_term_sgr0"
-  ble-term/cup 0 0
-  ble-term/put "$_ble_term_el2$_ble_term_rc"
+  ble/term/put "$_ble_term_sc$_ble_term_sgr0"
+  ble/term/cup 0 0
+  ble/term/put "$_ble_term_el2$_ble_term_rc"
   IFS= builtin eval '_ble_term_visible_bell_clear="${BUFF[*]}"'
 }
 ble/term/visible-bell/.initialize
@@ -2879,8 +2909,8 @@ function ble/term/bracketed-paste-mode/leave {
 
 _ble_term_DA1R=
 _ble_term_DA2R=
-function ble/term/DA1/notify { _ble_term_DA1R=$1; }
-function ble/term/DA2/notify { _ble_term_DA2R=$1; }
+function ble/term/DA1/notify { _ble_term_DA1R=$1; blehook/invoke DA1R; }
+function ble/term/DA2/notify { _ble_term_DA2R=$1; blehook/invoke DA2R; }
 
 #---- DSR(6) ------------------------------------------------------------------
 # CPR (CURSOR POSITION REPORT)
