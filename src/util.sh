@@ -854,7 +854,7 @@ function blehook {
         flag_error=1
       fi
     elif [[ $arg =~ $rex1 ]]; then
-      ble/array#push print "$arg"
+      ble/array#push print "_ble_hook_h_$arg"
     elif [[ $arg =~ $rex2 ]]; then
       local name=${BASH_REMATCH[1]}
       if eval "[[ ! \${_ble_hook_c_$name+set} ]]"; then

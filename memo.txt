@@ -2226,7 +2226,9 @@ bash_tips
     - history: suppress error messages trying to kill background worker on reattach `#D1125` f045fec
   - highlight: support dirname colors with pathname expansion, failglob and command names `#D1134` edaf495
   - util: introduce `blehook` `#D1139` d1a78fb
-  - util: support `blehook PRECMD PREEXEC POSTEXEC CHPWD ADDHISTORY` `#D1142` 0000000
+    - blehook: support `blehook PRECMD PREEXEC POSTEXEC CHPWD ADDHISTORY` `#D1142` bedc2ba
+    - blehook: add `blehook/eval-after-load` `#D1145` c1f7aa9
+    - blehook: fix a bug that the definition of specified hooks are not printed `#D1146` 000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2289,7 +2291,7 @@ bash_tips
   - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118` 30cc31c
   - main: fix a bug that `source ble.sh --noattach` in `ble.sh` sessions hangs `#D1130` d35682a caa46c2
   - syntax: workaround bashbug 3.1/3.2 that `eval` ending with <kbd>\ + LF</kbd> causes error messages `#D1132` a4b7e00
-  - term: workaround `cygwin` console glitches `#D1143`
+  - term: workaround `cygwin` console glitches `#D1143` b79c35f `#D1144` ef19d17
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3249,6 +3251,9 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-21
+
+  * blehook: blehook に hook 名を指定しても無視される [#D1146]
+    これは単純なミスだった。修正した
 
   * blehook: 初期化の順序によって load hook が実行されない事がある [#D1145]
 
