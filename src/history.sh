@@ -64,7 +64,7 @@ function ble/history:bash/update-count {
 ## @var _ble_history_load_done
 _ble_history_load_done=
 
-# blehook_history_reset_background=() defined in def.sh
+# @hook history_reset_background (defined in def.sh)
 function ble/history:bash/clear-background-load {
   blehook/invoke history_reset_background
 }
@@ -637,9 +637,10 @@ function ble/builtin/history/.touch-histfile {
   : >| "$touch"
 }
 
-blehook_history_delete=()
-blehook_history_clear=()
-blehook_history_message=()
+# in def.sh
+# @hook history_delete
+# @hook history_clear
+# @hook history_message
 
 # Note: #D1126 一度置き換えたら戻せない。二回は初期化しない。
 if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
@@ -1262,9 +1263,7 @@ function history { ble/builtin/history "$@"; }
 ##
 _ble_history_prefix=
 
-## @arr blehook_history_onleave
-##   履歴移動の通知先を格納する配列
-##   defined in def.sh
+## @hook history_onleave (defined in def.sh)
 
 function ble/history/onleave.fire {
   blehook/invoke history_onleave "$@"

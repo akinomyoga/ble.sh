@@ -2420,7 +2420,7 @@ function ble/widget/.bell {
   return 0
 }
 
-# blehook_widget_bell=() defined in def.sh
+# blehook/declare widget_bell (defined in def.sh)
 function ble/widget/bell {
   ble-edit/content/clear-arg
   _ble_edit_mark_active=
@@ -4058,7 +4058,8 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
   return 1
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
-  local -a hooks; eval "hooks=(\"\${blehook_$1[@]}\")"
+  ((_ble_hook_c_$1++))
+  local -a hooks; eval "hooks=(\"\${_ble_hook_h_$1[@]}\")"
   local hook ext=0
   for hook in "${hooks[@]}"; do
     ble-edit/exec/.setexit # set $?

@@ -468,8 +468,8 @@ function ble/color/ansi2g {
 # _ble_faces
 
 # 遅延初期化登録
-# blehook_color_init_defface=() # src/def.sh
-# blehook_color_init_setface=() # src/def.sh
+# @hook color_init_defface (defined in src/def.sh)
+# @hook color_init_setface (defined in src/def.sh)
 
 # 遅延初期化
 if [[ ! $_ble_faces_count ]]; then # reload #D0875

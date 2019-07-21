@@ -353,7 +353,6 @@
 ##-----------------------------------------------------------------------------
 ## Settings for vim-mode
 
-blehook keymap_vi_load+=blerc/vim-load-hook
 function blerc/vim-load-hook {
   ((_ble_bash>=40300)) && builtin bind 'set keyseq-timeout 1'
 
@@ -391,6 +390,7 @@ function blerc/vim-load-hook {
   # bleopt vim_surround_61:=$'$(( \r ))'
 
 }
+blehook/eval-after-load keymap_vi blerc/vim-load-hook
 
 ##-----------------------------------------------------------------------------
 ## Internal settings

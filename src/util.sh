@@ -814,19 +814,19 @@ function blehook/.print {
   fi
 
   local elem code='
-    if ((${#blehook_NAME[@]})); then
-      for elem in "${blehook_NAME[@]}"; do
+    if ((${#_ble_hook_h_NAME[@]})); then
+      for elem in "${_ble_hook_h_NAME[@]}"; do
         out="${out}${sgr1}blehook$sgr0 ${sgr2}NAME$sgr0+=${sgr3}$q${elem//$q/$Q}$q$sgr0$nl"
       done
     else
       out="${out}${sgr1}blehook$sgr0 ${sgr2}NAME$sgr0=$nl"
     fi'
 
-  (($#)) || set -- "${!blehook_@}"
+  (($#)) || set -- "${!_ble_hook_h_@}"
   local hookname
   for hookname; do
     ble/is-array "$hookname" || continue
-    eval -- "${code//NAME/${hookname#blehook_}}"
+    eval -- "${code//NAME/${hookname#_ble_hook_h_}}"
   done
   builtin printf %s "$out"
 }
@@ -857,9 +857,13 @@ function blehook {
       ble/array#push print "$arg"
     elif [[ $arg =~ $rex2 ]]; then
       local name=${BASH_REMATCH[1]}
-      if [[ ${BASH_REMATCH[2]} != :* ]] && ! ble/is-array "blehook_$name"; then
-        ble/bin/echo "blehook: hook \"$name\" is not defined." >&2
-        flag_error=1
+      if eval "[[ ! \${_ble_hook_c_$name+set} ]]"; then
+        if [[ ${BASH_REMATCH[2]} == :* ]]; then
+          ((_ble_hook_c_$name=0))
+        else
+          ble/bin/echo "blehook: hook \"$name\" is not defined." >&2
+          flag_error=1
+        fi
       fi
       ble/array#push process "$arg"
     else
@@ -888,22 +892,33 @@ function blehook {
     local value=${BASH_REMATCH[3]}
     if [[ $type == *-= ]]; then
       local ret
-      ble/array#last-index "blehook_$name" "$value"
+      ble/array#last-index "_ble_hook_h_$name" "$value"
       if ((ret>=0)); then
-        ble/array#remove-at "blehook_$name" "$ret"
+        ble/array#remove-at "_ble_hook_h_$name" "$ret"
       else
         ext=1
       fi
     else
-      [[ $type != *+= ]] && eval "blehook_$name=()"
-      [[ $value ]] && ble/array#push "blehook_$name" "$value"
+      [[ $type != *+= ]] && eval "_ble_hook_h_$name=()"
+      [[ $value ]] && ble/array#push "_ble_hook_h_$name" "$value"
     fi
   done
   return "$ext"
 }
 blehook/.compatibility-ble-0.3
 
-function blehook/invoke { ble/util/invoke-hook "blehook_$@"; }
+function blehook/invoke {
+  ((_ble_hook_c_$1++))
+  ble/util/invoke-hook "_ble_hook_h_$@"
+}
+function blehook/eval-after-load {
+  local hook_name=${1}_load value=$2
+  if ((_ble_hook_c_$hook_name)); then
+    eval "$value"
+  else
+    blehook "$hook_name+=$value"
+  fi
+}
 
 #------------------------------------------------------------------------------
 # assign: reading files/streams into variables

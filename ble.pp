@@ -303,6 +303,7 @@ function ble/bin/awk-supports-null-record-separator {
 }
 
 #------------------------------------------------------------------------------
+_ble_version=0
 BLE_VERSION=$_ble_init_version
 function ble/base/initialize-version-information {
   local version=$BLE_VERSION
@@ -323,6 +324,7 @@ function ble/base/initialize-version-information {
   local minor=${version%%.*}; version=${version#*.}
   local patch=${version%%.*}
   BLE_VERSINFO=("$major" "$minor" "$patch" "$hash" "$status" noarch)
+  ((_ble_version=major*10000+minor*100+patch))
 }
 ble/base/initialize-version-information
 
@@ -616,7 +618,6 @@ ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses
 ble/bin/.freeze-utility-path gawk
 #%end
 
-blehook_EXIT=()
 trap -- 'blehook/invoke EXIT' EXIT
 
 #%x inc.r|@|src/decode|
@@ -787,7 +788,10 @@ function ble/base/process-blesh-arguments {
     esac
   done
 
-  [[ -s $_ble_base_rcfile ]] && source "$_ble_base_rcfile"
+  if [[ -s $_ble_base_rcfile ]]; then
+    source "$_ble_base_rcfile"
+    blehook/.compatibility-ble-0.3/check
+  fi
   case $opt_attach in
   (attach) ble-attach ;;
   (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
@@ -798,7 +802,6 @@ function ble/base/process-blesh-arguments {
   esac
   [[ ! $opt_error ]]
 }
-
 ble/base/process-blesh-arguments "$@"
 
 # 一時グローバル変数消去
