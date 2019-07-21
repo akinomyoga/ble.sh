@@ -890,15 +890,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-07-20
-
-  * Cygwin console のバグについて
-
-    - Cygwin は ED(2) "ESC [ 2 J" が駄目
-    - Cygwin は RI の振る舞いがおかしい
-    - Cygwin は最終行での DL "ESC [ M" が駄目
-    - Cygwin は CUF() の行き先が行末 $ の時に何処にも移動しない。
-
 2019-07-18
 
   * blehook: trap を置き換える?
@@ -2256,6 +2247,7 @@ bash_tips
   - highlight: do not split command names with `:` and `=` `#D1133` 8a1bd8f
   - decode: support DA1 responses sent by some terminals (reported by miba072) `#D1135` 362ab05
   - highlight: make brace expansions active for RHS of variable-assignment-form arguments `#D1138` 93cc8da
+  - main: adjust readline variables for `ble.sh` `#D1148` 0000000
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3252,6 +3244,25 @@ bash_tips
 
 2019-07-21
 
+  * 以下の設定に関してはもう ble.sh 側で勝手に弄っても良いのではないか? [#D1148]
+    どうせ bashrc の一番始めに書いてもらう事になっている。
+
+    ((_ble_bash>=40100)) && builtin bind 'set skip-completed-text on'
+    ((_ble_bash>=40300)) && builtin bind 'set colored-stats on'
+    ((_ble_bash>=40400)) && builtin bind 'set colored-completion-prefix on'
+
+  * Cygwin console のバグについて [#D1147]
+
+    - Cygwin は ED(2) "ESC [ 2 J" が駄目
+    - Cygwin は RI の振る舞いがおかしい
+    - Cygwin は最終行での DL "ESC [ M" が駄目
+    - Cygwin は CUF() の行き先が行末 $ の時に何処にも移動しない。
+
+    これは最新の cygwin を確認したら全て直っていた。
+    但し、TERM=xterm-256color になっているので区別はできる。
+    また最新版でも ED(2) はカーソル位置を変える、等の振る舞いの違いはある。
+    何れにしてもこれは別の場所で扱う事にする。
+
   * blehook: blehook に hook 名を指定しても無視される [#D1146]
     これは単純なミスだった。修正した
 
@@ -3270,21 +3281,21 @@ bash_tips
     | caa46c2 はもう駄目になっている。af758e5 も駄目。
     | af758e5~ だと大丈夫である。という事は犯人は af758e5 である。
     | .inputrc の読み取りタイミングの変更で駄目になった。
-    | 
+    |
     | 特に bind で ESC から始まる何かを登録するともう駄目なのだろう。
     | と思ったがそれを削除しても問題は再現するままである。
     | --noinputrc を指定したら再現しなくなった。
-    | 
+    |
     | うーん。ble-bind -m vi_imap -P の結果を見比べた所、
     | そもそも inputrc で ESC で始まる物が登録されていた場合、
     | hook が呼び出されていない? という事の様だ。うーん。
     | つまり inputrc の中で vi_imap がロードされて、
     | その後で blerc などの設定が適用されている?
-    | 
+    |
     | というのも変だ。そもそも mshex による設定も消えてなくなっている。
     | という事を思えばまた別の理由によって load hook
     | が呼び出されなくなっているという事か。
-    | 
+    |
     | 実際に試してみるとやはり load hook が起動された瞬間には未だ
     | 登録されていない様である。
     | うーん。そもそも mshex の load hook も定義されていない。

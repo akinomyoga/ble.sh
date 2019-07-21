@@ -78,6 +78,12 @@ echo prologue >&2
              '    list: ATTACH = "attach" | "prompt" | "none". The default strategy is' \
              '    "prompt". The option "--noattach" is a synonym for "--attach=none".' \
              '' \
+             '  --noinputrc' \
+             '    Do not read inputrc settings for ble.sh' \
+             '' \
+             '  --keep-rlvars' \
+             '    Do not change readline settings for ble.sh' \
+             '' \
              '  --debug-bash-output' \
              '    Internal settings for debugging' \
              '' ;;
@@ -780,6 +786,8 @@ function ble/base/process-blesh-arguments {
         ble/bin/echo "ble.sh ($arg): '$rcfile' is not a regular file." >&2
         opt_error=1
       fi ;;
+    (--keep-rlvars)
+      opts=V$opts ;;
     (--debug-bash-output)
       bleopt_internal_suppress_bash_output= ;;
     (*)
@@ -788,10 +796,24 @@ function ble/base/process-blesh-arguments {
     esac
   done
 
+  # blerc
   if [[ -s $_ble_base_rcfile ]]; then
     source "$_ble_base_rcfile"
     blehook/.compatibility-ble-0.3/check
   fi
+
+  # rlvar (#D1148)
+  #   勝手だが ble.sh の参照する readline 変数を
+  #   便利だと思われる設定の方向に書き換えてしまう。
+  #   多くのユーザは自分で設定しないので ble.sh の便利な機能が off になっている。
+  #   一方で設定するユーザは自分で off に設定するぐらいはできるだろう。
+  if [[ $opts != *V* ]]; then
+    ((_ble_bash>=40100)) && builtin bind 'set skip-completed-text on'
+    ((_ble_bash>=40300)) && builtin bind 'set colored-stats on'
+    ((_ble_bash>=40400)) && builtin bind 'set colored-completion-prefix on'
+  fi
+
+  # attach
   case $opt_attach in
   (attach) ble-attach ;;
   (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
