@@ -93,7 +93,7 @@ echo prologue >&2
     unset _ble_init_version
     unset _ble_init_arg
     unset _ble_init_exit
-    return 1 2>/dev/null || builtin exit 1
+    return 1 2>/dev/null || exit 1
   fi
 } 2>/dev/null # set -x 対策 #D0930
 
@@ -101,20 +101,20 @@ echo prologue >&2
 # check shell
 
 if [ -z "$BASH_VERSION" ]; then
-  echo "ble.sh: This shell is not Bash. Please use this script with Bash." >&2
-  return 1 2>/dev/null || builtin exit 1
-fi >/dev/null 2>&1 # set -x 対策 #D0930
+  echo "ble.sh: This shell is not Bash. Please use this script with Bash." >&3
+  return 1 2>/dev/null || exit 1
+fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
 if [ -z "${BASH_VERSINFO[0]}" ] || [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
-  echo "ble.sh: Bash with a version under 3.0 is not supported." >&2
-  return 1 2>/dev/null || builtin exit 1
-fi >/dev/null 2>&1 # set -x 対策 #D0930
+  echo "ble.sh: Bash with a version under 3.0 is not supported." >&3
+  return 1 2>/dev/null || exit 1
+fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
 if [[ $- != *i* ]]; then
   { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
-    builtin echo "ble.sh: This is not an interactive session." >&2
+    builtin echo "ble.sh: This is not an interactive session." >&3
   return 1 2>/dev/null || builtin exit 1
-fi &>/dev/null # set -x 対策 #D0930
+fi 3>&2 &>/dev/null # set -x 対策 #D0930
 
 function ble/base/adjust-bash-options {
   [[ $_ble_bash_options_adjusted ]] && return 1 || :
