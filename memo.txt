@@ -2290,6 +2290,7 @@ bash_tips
   - term: workaround `cygwin` console glitches `#D1143` b79c35f `#D1144` ef19d17
   - main: fix a bug that error messages for unsupported shells are not printed `#D1149` 34bd6f8
   - main: workaround `set -ex` `#D1153` 0000000
+  - main: workaround shell variable `FUNCNEST` `#D1154`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3249,6 +3250,54 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-23
+
+  * main: 実は FUNCNEST 対策はそんなに難しくないのではないか [#D1154]
+
+    試してみる。
+    - FUNCNEST=0 の時には制限はない。
+    - FUNCNEST=1 の時には一回は関数を呼び出すことができる。
+    - eval f1 や eval 'eval f1' や eval "eval 'eval f1'" の様な入れ子は幾らでもできる。
+    - 更に初めに呼び出した関数の中で local FUNCNEST= 等としておけば
+      その中では自由に関数を呼び出す事ができる。
+    - 関数の中で FUNCNEST を小さな値にしたらその場で死んでしまうのか?
+      →別に何も問題は起こらない。続きも実行されるし、
+        関数を抜ける時にエラーになるという事もない。
+        つまり FUNCNEST は関数に入る時にだけチェックされるのである。
+
+
+    set -ex の類と同様に ble/base/adjust-bash-options と
+    ble/base/restore-bash-options で退避・復元する事にした。
+    問題は ble/base/adjust-bash-options を呼び出す迄に死なないかという事と、
+    それから ble/base/restore-bash-options を呼び出した後に死なないかという事。
+
+    ble/base/adjust-bash-options を呼び出している箇所は以下の通り。
+    - ble.pp ロードの初め → 最初の関数呼び出しがこれなので OK
+    - ble/attach → これも ble/attach さえ呼び出す事ができていればOK?
+      と思ったが微妙かも知れない…。FUNCNEST=1 だと ble/attach は呼び出せるけれども、
+      その退避を行う為の adjust-bash-options は呼び出せないという事になる。うーん。
+      local FUNCNEST で呼び出してから unlocal を使ってグローバルを修正する?
+      と思ったけれども、それだと unlocal が必要かどうかの判定ができない。
+      やはり外で FUNCNEST 退避を行うべきだろうか。
+
+      仕方がないので変数に実行するべきコマンドを入れて、それを eval する事にした。
+    - edit.sh の save-last-exit 及び epilogue で呼び出されている。
+      これに関しては save-last-exit, epilogue で FUNCNEST を調整すれば良い。
+
+    ble/base/restore-bash-options を呼び出している箇所は以下の通り。
+    - ble.pp ロードの末尾。これはOK。一番最後に付け加えれば良い。
+    - prologue の中。.setexit は直接記述する様に変更しなければならなかった。
+    - ble-edit/bind/.check-detach の中。
+      check-detach で return 0 すればもう関数は呼び出さない?
+      check-detach は exec:gexec/.end からしか呼ばれていなくて、
+      この .end の中では check-detach が 0 を返したらすぐ終了する様になっている。
+      また gexec/.end はトップレベルで呼び出される事になっているので、
+      改めて関数が呼び出されるという事もない。OK
+
+    多分。これで大丈夫。これで動かなかったらそもそも set -e で死んでいる筈。
+    取り敢えず死ぬという事はないけれども実は FUNCNEST が消去されてしまっている。
+
+    うーん。どうやらコマンド実行中に trap 経由で実行される物は FUNCNEST が退避できていない。
+    - blehook/invoke では local FUNCNEST= してしまう事にする。
 
   * main: set -e の設定が消滅している気がする [#D1153]
     % と思ったが…。うーん。もしかすると意図的に対応を諦めた?

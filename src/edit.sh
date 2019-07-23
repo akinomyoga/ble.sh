@@ -1246,6 +1246,7 @@ function ble-edit/eval-IGNOREEOF {
 }
 
 function ble-edit/attach/TRAPWINCH {
+  local FUNCNEST=
   local IFS=$' \t\n'
   if ((_ble_edit_attached)); then
     if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
@@ -4031,6 +4032,7 @@ function ble-edit/exec:gexec/.TRAPERR {
   if ((_ble_edit_exec_traperr_suppress>0)); then
     ((_ble_edit_exec_traperr_suppress--))
   else
+    local FUNCNEST=
     ble/builtin/trap/invoke ERR 2>&32
   fi
 } 32>&2 &>/dev/null # set -x 対策 #D0930
@@ -4129,10 +4131,12 @@ function ble-edit/exec:gexec/.prologue {
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
-  ble-edit/exec/.setexit # set $?
+  builtin eval "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
+  return "$_ble_edit_exec_lastexit" # set $?
 } 31>&1 32>&2 &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
+  eval "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
   ble/base/adjust-bash-options
   # Note: ERR 抑制 #D1152 (.save-last-arg を抜ける時と eval を抜ける時の2回)
   ((_ble_edit_exec_lastexit)) && _ble_edit_exec_traperr_suppress=2
@@ -4141,6 +4145,7 @@ function ble-edit/exec:gexec/.save-last-arg {
 function ble-edit/exec:gexec/.epilogue {
   # lastexit
   _ble_edit_exec_lastexit=$?
+  eval "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
   ble-edit/exec/.reset-builtins-1
   if ((_ble_edit_exec_lastexit==0)); then
     _ble_edit_exec_lastexit=$_ble_edit_exec_INT
@@ -6909,6 +6914,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     function ble-edit/bind/stdout/TRAPUSR1 {
       [[ $_ble_term_state == internal ]] || return
 
+      local FUNCNEST=
       local IFS=$' \t\n'
       local file=$_ble_edit_io_fname2.proc
       if [[ -s $file ]]; then
@@ -6976,6 +6982,7 @@ fi
   _ble_edit_detach_flag=
 function ble-edit/bind/.exit-TRAPRTMAX {
   # シグナルハンドラの中では stty は bash によって設定されている。
+  local FUNCNEST=
   ble/base/unload
   builtin exit 0
 }
@@ -7037,6 +7044,7 @@ function ble-edit/bind/.check-detach {
 
     ble/base/restore-bash-options
     ble/base/restore-POSIXLY_CORRECT
+    builtin eval "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
     return 0
   else
     # Note: ここに入った時 -o emacs か -o vi のどちらかが成立する。なぜなら、

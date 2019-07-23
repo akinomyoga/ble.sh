@@ -138,7 +138,20 @@ function ble/base/restore-bash-options {
   [[ $_ble_bash_sete && ! -o errexit ]] && set -e
   if [[ $_ble_bash_nocasematch ]]; then shopt -s nocasematch; fi # Note: set -e により && は駄目
 }
+_ble_base_adjust_FUNCNEST='
+  if [[ ! $_ble_bash_funcnest_adjusted ]]; then
+    _ble_bash_funcnest_adjusted=1
+    _ble_bash_funcnest=$FUNCNEST FUNCNEST=
+  fi'
+_ble_base_restore_FUNCNEST='
+  if [[ $_ble_bash_funcnest_adjusted ]]; then
+    _ble_bash_funcnest_adjusted=
+    FUNCNEST=$_ble_bash_funcnest
+  fi'
+
 {
+  _ble_bash_funcnest_adjusted=
+  builtin eval "$_ble_base_adjust_FUNCNEST"
   _ble_bash_options_adjusted=
   ble/base/adjust-bash-options
 } &>/dev/null # set -x 対策 #D0930
@@ -666,6 +679,7 @@ function ble-attach {
   fi
 
   # 特殊シェル設定を待避
+  builtin eval "$_ble_base_adjust_FUNCNEST"
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
 
@@ -847,6 +861,7 @@ unset -v _ble_init_original_IFS
 if [[ ! $_ble_attached ]]; then
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
+  builtin eval "$_ble_base_restore_FUNCNEST"
 fi &>/dev/null # set -x 対策 #D0930
 
 #%if measure_load_time

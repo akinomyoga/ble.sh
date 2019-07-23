@@ -908,6 +908,7 @@ function blehook {
 blehook/.compatibility-ble-0.3
 
 function blehook/invoke {
+  local FUNCNEST=
   ((_ble_hook_c_$1++))
   local -a hooks; eval "hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
   local hook ext=0
