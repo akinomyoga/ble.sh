@@ -653,7 +653,7 @@ function ble-edit/prompt/update/.eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble-edit/prompt/update {
-  local version=$COLUMNS:$_ble_edit_LINENO
+  local version=$COLUMNS:$_ble_edit_lineno
   if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
     ble-edit/prompt/.load
     return
@@ -4191,6 +4191,7 @@ function ble-edit/exec:gexec/process {
 
 # **** accept-line ****                                            @edit.accept
 
+: ${_ble_edit_lineno:=0}
 function ble/widget/.insert-newline {
   local opts=$1
   if [[ :$opts: == *:keep-info:* && $_ble_textarea_panel == 0 ]] &&
@@ -4218,6 +4219,7 @@ function ble/widget/.insert-newline {
   fi
 
   # 描画領域情報の初期化
+  ((_ble_edit_lineno++))
   ble/textarea#invalidate
   _ble_canvas_x=0 _ble_canvas_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0
