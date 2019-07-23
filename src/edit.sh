@@ -4027,25 +4027,24 @@ function exit { ble/builtin/exit "$@"; }
 # bleopt_internal_exec_type = gexec
 #--------------------------------------
 
-_ble_edit_exec_traperr_suppress=
-function ble-edit/exec:gexec/.TRAPERR {
-  if ((_ble_edit_exec_traperr_suppress>0)); then
-    ((_ble_edit_exec_traperr_suppress--))
-  else
-    local FUNCNEST=
-    ble/builtin/trap/invoke ERR 2>&32
-  fi
-} 32>&2 &>/dev/null # set -x 対策 #D0930
-ble/builtin/trap/reserve ERR
-builtin trap -- 'ble-edit/exec:gexec/.TRAPERR' ERR
-
+_ble_edit_exec_TRAPDEBUG_enabled=
+ble/builtin/trap/reserve DEBUG
 function ble-edit/exec:gexec/.TRAPDEBUG/trap {
-  blehook DEBUG+='ble-edit/exec:gexec/.TRAPDEBUG SIGINT "$*" && { return || break; } &>/dev/null'
+  builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*" || { (($?==2)) && return || break; } &>/dev/null' DEBUG
 }
-function ble-edit/exec:gexec/.TRAPDEBUG/reset {
-  blehook DEBUG-='ble-edit/exec:gexec/.TRAPDEBUG SIGINT "$*" && { return || break; } &>/dev/null'
+function ble-edit/exec:gexec/.TRAPDEBUG/enter {
+  ble/builtin/trap/.initialize
+  if [[ ${_ble_builtin_trap_handlers[_ble_builtin_trap_DEBUG]} ]]; then
+    ble-edit/exec:gexec/.TRAPDEBUG/trap
+  fi
 }
 function ble-edit/exec:gexec/.TRAPDEBUG {
+  [[ ! $_ble_edit_exec_TRAPDEBUG_enabled ]] && return 0
+  [[ $BASH_COMMAND == ble-edit/exec:gexec/.* ]] && return 0
+  [[ $_ble_builtin_trap_inside ]] && return 0
+
+  ble/builtin/trap/invoke DEBUG; local ext=$?
+
   if ((_ble_edit_exec_INT!=0)); then
     # エラーが起きている時
 
@@ -4054,24 +4053,32 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
     local rex='^\ble-edit/exec:gexec/.'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
-      ble/bin/echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 ${FUNCNAME[1]} $2" >&2
-      return 0
+      ble/bin/echo "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 ${FUNCNAME[1]} $1" >&2
+      return 2
     fi
 
     local rex='^(\ble-edit/exec:gexec/\.)'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
-      ble/bin/echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2" >&2
-      return 0
+      ble/bin/echo "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 $BASH_COMMAND $1" >&2
+      return 2
     fi
   fi
 
   # Note: builtin trap - DEBUG は何故か此処では効かない
-  ble-edit/exec:gexec/.TRAPDEBUG/reset
-  return 1
+  builtin trap -- - DEBUG
+  return "$ext"
 }
+function ble/builtin/trap:DEBUG {
+  # Note (#D1155): ユーザコマンド実行中に新しく ble/builtin/trap DEBUG
+  # が設定された場合は builtin trap DEBUG を仕掛ける。
+  if [[ $1 != - && $_ble_edit_exec_TRAPDEBUG_enabled ]]; then
+    ble-edit/exec:gexec/.TRAPDEBUG/trap
+  fi
+}
+
 function ble-edit/exec:gexec/.TRAPINT {
-  ble/bin/echo >&2
+  ble/bin/echo "$_ble_term_bold^C$_ble_term_sgr0" >&2
   if ((_ble_bash>=40300)); then
     _ble_edit_exec_INT=130
   else
@@ -4092,6 +4099,21 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
   done
   return "$ext"
 }
+
+## 関数 ble-edit/exec:gexec/.begin
+## 関数 ble-edit/exec:gexec/.end
+##   端末や入出力などの設定をコマンド実行用に調整します。
+##   また DEBUG や INT に対する trap の設定も行います。
+##   DEBUG の設定の解除はトップレベルでないと実行できないので、
+##   実際に使う時には以下の様にする必要があります。
+##
+##     ble-edit/exec:gexec/.begin
+##
+##     コマンド実行
+##
+##     builtin trap -- - DEBUG
+##     ble-edit/exec:gexec/.end
+##
 function ble-edit/exec:gexec/.begin {
   local IFS=$' \t\n'
   _ble_decode_bind_hook=
@@ -4102,14 +4124,17 @@ function ble-edit/exec:gexec/.begin {
   set -H
 
   # C-c に対して
+  builtin trap -- 'blehook/invoke INT' INT # 何故か改めて実行しないと有効にならない
   blehook INT+='ble-edit/exec:gexec/.TRAPINT'
+  ble-edit/exec:gexec/.TRAPDEBUG/enter
 }
 function ble-edit/exec:gexec/.end {
   local IFS=$' \t\n'
 
-  # Note: builtin trap -- - DEBUG は何故か此処では効かない。
+  # Note: builtin trap -- - DEBUG は何故か此処では効かないので
+  #   ble-edit/exec:gexec/.end を呼び出す直前に外側で実行する。
   ble-edit/exec:gexec/.TRAPINT/reset
-  ble-edit/exec:gexec/.TRAPDEBUG/reset
+  builtin trap -- - DEBUG
 
   [[ $PWD != "$_ble_edit_exec_PWD" ]] && blehook/invoke CHPWD
   ble/util/joblist.flush >&2
@@ -4117,6 +4142,7 @@ function ble-edit/exec:gexec/.end {
   ble/term/enter
   ble-edit/bind/.tail # flush will be called here
 }
+
 function ble-edit/exec:gexec/.prologue {
   local IFS=$' \t\n'
   BASH_COMMAND=$1
@@ -4126,25 +4152,24 @@ function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$BASH_COMMAND" &>/dev/tty
-  ((_ble_edit_exec_lastexit)) &&
-    _ble_edit_exec_traperr_suppress=1 # Note: .setexit による ERR を抑制 #D1152
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
   builtin eval "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
+  _ble_edit_exec_TRAPDEBUG_enabled=1
   return "$_ble_edit_exec_lastexit" # set $?
 } 31>&1 32>&2 &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
+  _ble_edit_exec_TRAPDEBUG_enabled=
   eval "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
   ble/base/adjust-bash-options
-  # Note: ERR 抑制 #D1152 (.save-last-arg を抜ける時と eval を抜ける時の2回)
-  ((_ble_edit_exec_lastexit)) && _ble_edit_exec_traperr_suppress=2
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.epilogue {
   # lastexit
   _ble_edit_exec_lastexit=$?
+  _ble_edit_exec_TRAPDEBUG_enabled=
   eval "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
   ble-edit/exec/.reset-builtins-1
   if ((_ble_edit_exec_lastexit==0)); then
@@ -4153,8 +4178,8 @@ function ble-edit/exec:gexec/.epilogue {
   _ble_edit_exec_INT=0
 
   local IFS=$' \t\n'
-  ble-edit/exec:gexec/.TRAPDEBUG/reset
   # Note: builtin trap -- - DEBUG は此処では何故か効かない
+  builtin trap -- - DEBUG
 
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
@@ -4213,6 +4238,7 @@ function ble-edit/exec:gexec/.setup {
 
   # Note: 現在は blehook 経由で処理しているので問題ないが、
   #   builtin trap - INT DEBUG を使う時一番外側 (此処) でないと効かない
+  buff[${#buff[@]}]='builtin trap -- - DEBUG'
   buff[${#buff[@]}]=ble-edit/exec:gexec/.end
   IFS=$'\n' builtin eval '_ble_decode_bind_hook="${buff[*]}"'
   return 0

@@ -2252,6 +2252,7 @@ bash_tips
   - main: adjust readline variables for `ble.sh` `#D1148` 36312f7
   - edit: update prompt after execution of command through `ble-bind` `#D1151` 27208ea
   - blehook: replace builtin `trap` `#D1152` d6c555e
+    - blehook: suppress extra `DEBUG` trap calls `#D1155`
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2290,7 +2291,7 @@ bash_tips
   - term: workaround `cygwin` console glitches `#D1143` b79c35f `#D1144` ef19d17
   - main: fix a bug that error messages for unsupported shells are not printed `#D1149` 34bd6f8
   - main: workaround `set -ex` `#D1153` 0000000
-  - main: workaround shell variable `FUNCNEST` `#D1154`
+  - main: workaround shell variable `FUNCNEST` `#D1154` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3248,6 +3249,92 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-07-24
+
+  * edit: 何と DEBUG トラップが物凄く大量に呼び出されている気がする [#D1155]
+    うーん。そもそも DEBUG を登録するのは SIGINT を停止する為である。
+    それなのに DEBUG を常に trap していると処理が遅くなるのではないか。
+
+    実際に何回呼び出されたのか、というのを調べてみると
+    やはり物凄い勢いで呼び出されている。
+    すぐに数百回の呼び出しに到達してしまう。
+    やはり動的に trap/untrap を実行する様にした方が良い気がしてきた。
+
+    うーん。どの様にするのが良いか。
+    現状ではどの様に動作するか…。
+    というかそもそも ble.sh の内部で動いている時には DEBUG trap は不要である。
+    という事を考えればコマンドを実行する直前に DEBUG trap を有効にして、
+    コマンドを実行した後に DEBUG trap を削除するという様にしても良い気がする。
+    更に言うとコマンドを実効する前ですら DEBUG trap を必ず入れる必要があるかは微妙。
+    そもそも DEBUG trap を入れるのは SIGINT を捕まえた時にそれを停止する為である。
+    それならばその時点で DEBUG trap を仕掛ける様にすれば良いのではないだろうか。
+
+    * done: 先ず設計としては blehook DEBUG は取り敢えず廃止するという事。
+    * done: 次に必要のある時にだけ builtin trap DEBUG するという事。
+
+    x fixed: うーん。C-c が動かなくなっている。
+      前は確かに動いていたのだという事は確認した。何がいけないのだろうか。
+      うーん。そもそも SIGINT を捕まえられていない気がする。
+      然し、builtin trap を見るとちゃんと登録されているし、
+      手で blehook/invoke INT を呼び出してもちゃんと動くと確認できる。
+      → builtin trap -- 'blehook/invoke INT' INT を改めて実行する様にしたら動く様になった。
+
+    * done: 次に ble/builtin/trap DEBUG は prologue/epilogue の間でしか起こらない様にするという事。
+
+    x fixed: やはり漏れがある。ble-edit/exec:gexec/.* に対しては呼び出さない事にした。
+    x fixed: 未だ変だ。と思ったら直接 builtin trap -- ... DEBUG されている?
+      これは ble/builtin/trap/reserve を忘れていた。
+    x fixed: コマンドの終了ステータスが0以外の時にも何故か余分に呼び出されている。
+      しかも同じコマンドに対して2回呼び出されている。何故?
+
+      % echo A; false; echo C という具合にすると
+      % false の直前で TRAPDEBUG が2回呼び出される。
+
+      echo A; bash -c 'echo X;false'; echo C で調べた所、
+      直前で2回呼ばれるのではなくて、実行直前と実行直後の2回呼ばれる様子である。
+      うーん。もしかして ERR トラップを実行する直前に
+      DEBUG も呼び出されているという事か?
+
+      どの様に解決するかというと…。
+      例えば ERR トラップを解除してそれからまた設定するという具合にする?
+      というよりそもそも何の為に ERR を捕まえていたのだったか…。
+      現状のコードを見ても何か特別な処理をしている様には見えない。
+      元々のソースコードを見ると ERR は実際には使われていないのだった。
+
+      うーん。ERR関連は削除する事にした。
+      ユーザが自分で ERR を設定した時には諦める事にする。
+      というか bash の既定の振る舞いとしてそれは正しいのだろう。
+
+    * done: ble/builtin/trap DEBUG を prologue/epilogue の間で呼び出した時には、
+      その場で exec:gexec/trap を実行する様にする必要がある。
+
+      これには ble/builtin/trap 側で set/reset
+      関連で関数を呼び出す仕組みを追加すれば良い。
+
+      x fixed: 実際に実装してみた所、ble/builtin/trap の中で実行している
+        return 0 に対しても反応してしまっている…。
+        まあ、これは面倒なので気にしない事にしようか…。
+
+        a 或いは、現状の振る舞いの方が寧ろ自然とも考えられるかもしれない。
+          何れにしても ble の関数をユーザから呼び出せば trap は発動するのである。
+          と思ったらそんな事はなかった trap を設定した関数呼び出しより外にしか効果はないのである。
+        b 或いはグローバルで発生した DEBUG だけを取り扱う様にすれば良いだろうか…
+          と思ったがグローバルかどうかを検出する方法は実は存在しない。
+        c 或いは ble/builtin/trap を明示的に跳ねる? と思ったが、
+          これも BASH_COMMAND に ble/builtin/trap が入っている訳ではないので
+          検出する事ができない。
+        d trap 側で return 0 を使わない様にする?
+          と思ったがそれだけだと不十分である。複数の trap を同時に仕掛ける場合などに
+          続く trap を設定する段階で沢山の DEBUG を呼び出してしまう。
+        e その様に考えると ble/builtin/trap の中にいるかどうかを
+          表す変数を作っても良いのかもしれない。
+          結局 _ble_builtin_trap_inside という変数を作ってそれで判定する事にした。
+
+    * done: DEBUG の trap は終了ステータスが意味を持つ
+      .TRAPDEBUG の意味を反転させれば良い?
+      →紆余曲折あったが意味は反転させた。
+      ちゃんと 2 以外の時には単に終了ステータス失敗を返す様になっている。
 
 2019-07-23
 

@@ -645,10 +645,6 @@ ble/builtin/trap/reserve INT
 blehook INT+='ble/builtin/trap/invoke INT'
 builtin trap -- 'blehook/invoke INT' INT
 
-ble/builtin/trap/reserve DEBUG
-blehook DEBUG+='ble/builtin/trap/invoke DEBUG'
-builtin trap -- 'blehook/invoke DEBUG "$@"' DEBUG
-
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|
 #%x inc.r|@|src/canvas|

@@ -916,7 +916,7 @@ function blehook/invoke {
     if type "$hook" &>/dev/null; then
       "$hook" "$@" 2>&3
     else
-      eval "$hook \"\$@\"" 2>&3
+      eval "$hook" 2>&3
     fi || ext=$?
   done
   return "$ext"
@@ -1010,6 +1010,8 @@ function ble/builtin/trap/.initialize {
   _ble_builtin_trap_signames[1000]=DEBUG
   _ble_builtin_trap_signames[1001]=RETURN
   _ble_builtin_trap_signames[1002]=ERR
+
+  _ble_builtin_trap_DEBUG=1000
 }
 function ble/builtin/trap/reserve {
   local ret
@@ -1023,6 +1025,7 @@ function ble/builtin/trap/invoke {
   ble/builtin/trap/.get-sig-index "$1" || return 1
   eval "${_ble_builtin_trap_handlers[ret]}" 2>&3
 } 3>&2 2>/dev/null # set -x 対策 #D0930
+_ble_builtin_trap_inside=
 function ble/builtin/trap {
   local flags command sigspecs
   ble/builtin/trap/.read-arguments "$@"
@@ -1060,6 +1063,7 @@ function ble/builtin/trap {
       fi
     done
   else
+    local _ble_builtin_trap_inside=1
     local spec ret
     for spec in "${sigspecs[@]}"; do
       ble/builtin/trap/.get-sig-index "$spec" || continue
@@ -1069,10 +1073,14 @@ function ble/builtin/trap {
         _ble_builtin_trap_handlers[ret]=$command
       fi
 
-      [[ ${_ble_builtin_trap_reserved[ret]} ]] ||
+      if [[ ${_ble_builtin_trap_reserved[ret]} ]]; then
+        ble/function#try ble/builtin/trap:"${_ble_builtin_trap_signames[ret]}" "$command" "$spec"
+      else
         builtin trap -- "$command" "$spec"
+      fi
     done
   fi
+  return 0
 }
 function trap { ble/builtin/trap "$@"; }
 
