@@ -1258,6 +1258,7 @@ function ble-edit/attach/TRAPWINCH {
       ble-edit/bind/stdout.off
     fi
   fi
+  ble/builtin/trap/invoke WINCH
 }
 
 ## called by ble-edit/attach
@@ -1273,7 +1274,8 @@ function ble-edit/attach/.attach {
     _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
-  trap ble-edit/attach/TRAPWINCH WINCH
+  ble/builtin/trap/reserve WINCH
+  builtin trap -- ble-edit/attach/TRAPWINCH WINCH
 
   ble-edit/adjust-PS1
   ble-edit/adjust-IGNOREEOF
@@ -4024,14 +4026,22 @@ function exit { ble/builtin/exit "$@"; }
 # bleopt_internal_exec_type = gexec
 #--------------------------------------
 
-function ble-edit/exec:gexec/.eval-TRAPINT {
-  ble/bin/echo >&2
-  if ((_ble_bash>=40300)); then
-    _ble_edit_exec_INT=130
+_ble_edit_exec_traperr_suppress=
+function ble-edit/exec:gexec/.TRAPERR {
+  if ((_ble_edit_exec_traperr_suppress>0)); then
+    ((_ble_edit_exec_traperr_suppress--))
   else
-    _ble_edit_exec_INT=128
+    ble/builtin/trap/invoke ERR
   fi
-  trap 'ble-edit/exec:gexec/.eval-TRAPDEBUG SIGINT "$*" && { return &>/dev/null || break &>/dev/null;}' DEBUG
+}
+ble/builtin/trap/reserve ERR
+builtin trap -- 'ble-edit/exec:gexec/.TRAPERR' ERR
+
+function ble-edit/exec:gexec/.eval-TRAPDEBUG/trap {
+  blehook DEBUG+='ble-edit/exec:gexec/.eval-TRAPDEBUG SIGINT "$*" && { return || break; } &>/dev/null'
+}
+function ble-edit/exec:gexec/.eval-TRAPDEBUG/reset {
+  blehook DEBUG-='ble-edit/exec:gexec/.eval-TRAPDEBUG SIGINT "$*" && { return || break; } &>/dev/null'
 }
 function ble-edit/exec:gexec/.eval-TRAPDEBUG {
   if ((_ble_edit_exec_INT!=0)); then
@@ -4046,7 +4056,7 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
       return 0
     fi
 
-    local rex='^(\ble-edit/exec:gexec/.|trap - )'
+    local rex='^(\ble-edit/exec:gexec/\.)'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
       ble/bin/echo "${_ble_term_setaf[9]}[ble: $1]$_ble_term_sgr0 $BASH_COMMAND $2" >&2
@@ -4054,8 +4064,21 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
     fi
   fi
 
-  trap - DEBUG # 何故か効かない
+  # Note: builtin trap - DEBUG は何故か此処では効かない
+  ble-edit/exec:gexec/.eval-TRAPDEBUG/reset
   return 1
+}
+function ble-edit/exec:gexec/.eval-TRAPINT {
+  ble/bin/echo >&2
+  if ((_ble_bash>=40300)); then
+    _ble_edit_exec_INT=130
+  else
+    _ble_edit_exec_INT=128
+  fi
+  ble-edit/exec:gexec/.eval-TRAPDEBUG/trap
+}
+function ble-edit/exec:gexec/.eval-TRAPINT/reset {
+  blehook INT-='ble-edit/exec:gexec/.eval-TRAPINT'
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
   ((_ble_hook_c_$1++))
@@ -4077,13 +4100,14 @@ function ble-edit/exec:gexec/.begin {
   set -H
 
   # C-c に対して
-  trap 'ble-edit/exec:gexec/.eval-TRAPINT' INT
+  blehook INT+='ble-edit/exec:gexec/.eval-TRAPINT'
 }
 function ble-edit/exec:gexec/.end {
   local IFS=$' \t\n'
-  trap - INT DEBUG
-  # ↑何故か効かないので、
-  #   end の呼び出しと同じレベルで明示的に実行する。
+
+  # Note: builtin trap -- - DEBUG は何故か此処では効かない。
+  ble-edit/exec:gexec/.eval-TRAPINT/reset
+  ble-edit/exec:gexec/.eval-TRAPDEBUG/reset
 
   [[ $PWD != "$_ble_edit_exec_PWD" ]] && blehook/invoke CHPWD
   ble/util/joblist.flush >&2
@@ -4100,6 +4124,8 @@ function ble-edit/exec:gexec/.eval-prologue {
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$BASH_COMMAND" &>/dev/tty
+  ((_ble_edit_exec_lastexit)) &&
+    _ble_edit_exec_traperr_suppress=1 # Note: .setexit による ERR を抑制 #D1152
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
@@ -4108,6 +4134,8 @@ function ble-edit/exec:gexec/.eval-prologue {
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
   ble/base/adjust-bash-options
+  # Note: ERR 抑制 #D1152 (.save-last-arg を抜ける時と eval を抜ける時の2回)
+  ((_ble_edit_exec_lastexit)) && _ble_edit_exec_traperr_suppress=2
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.eval-epilogue {
@@ -4120,7 +4148,8 @@ function ble-edit/exec:gexec/.eval-epilogue {
   _ble_edit_exec_INT=0
 
   local IFS=$' \t\n'
-  trap - DEBUG # DEBUG 削除が何故か効かない
+  ble-edit/exec:gexec/.eval-TRAPDEBUG/reset
+  # Note: builtin trap -- - DEBUG は此処では何故か効かない
 
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
@@ -4177,9 +4206,9 @@ function ble-edit/exec:gexec/.setup {
 
   ((count==0)) && return 1
 
-  buff[${#buff[@]}]='trap - INT DEBUG' # trap - は一番外側でないと効かない様だ
+  # Note: 現在は blehook 経由で処理しているので問題ないが、
+  #   builtin trap - INT DEBUG を使う時一番外側 (此処) でないと効かない
   buff[${#buff[@]}]=ble-edit/exec:gexec/.end
-
   IFS=$'\n' builtin eval '_ble_decode_bind_hook="${buff[*]}"'
   return 0
 }
@@ -6418,6 +6447,8 @@ function ble/builtin/read/TRAPWINCH {
   ble/textarea#redraw
 }
 function ble/builtin/read/.loop {
+  # この関数はサブシェルの中で実行される事を前提としている。
+
   set +m # ジョブ管理を無効にする
 
   # Note: サブシェルの中では eval で failglob を防御できない様だ。
@@ -6428,7 +6459,7 @@ function ble/builtin/read/.loop {
 
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
   ble/builtin/read/.setup-textarea
-  trap -- ble/builtin/read/TRAPWINCH WINCH
+  builtin trap -- ble/builtin/read/TRAPWINCH WINCH
 
   local ret= timeout=
   if [[ $opt_timeout ]]; then
@@ -6893,9 +6924,10 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
           esac
         done
       fi
+      ble/builtin/trap/invoke USR1
     }
-
-    trap -- 'ble-edit/bind/stdout/TRAPUSR1' USR1
+    ble/builtin/trap/reserve USR1
+    builtin trap -- 'ble-edit/bind/stdout/TRAPUSR1' USR1
 
     ble/bin/rm -f "$_ble_edit_io_fname2.pipe"
     ble/bin/mkfifo "$_ble_edit_io_fname2.pipe"
@@ -6990,7 +7022,7 @@ function ble-edit/bind/.check-detach {
 
       # bind -x の中から exit すると bash が stty を「前回の状態」に復元してしまう様だ。
       # シグナルハンドラの中から exit すれば stty がそのままの状態で抜けられる様なのでそうする。
-      trap 'ble-edit/bind/.exit-TRAPRTMAX' RTMAX
+      builtin trap 'ble-edit/bind/.exit-TRAPRTMAX' RTMAX
       kill -RTMAX $$
     else
       ble-detach/message \

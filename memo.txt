@@ -892,7 +892,7 @@ bash_tips
 
 2019-07-18
 
-  * blehook: trap を置き換える?
+  * main: set -e の設定が消滅している気がする
 
 2019-07-16
 
@@ -2254,7 +2254,8 @@ bash_tips
   - decode: support DA1 responses sent by some terminals (reported by miba072) `#D1135` 362ab05
   - highlight: make brace expansions active for RHS of variable-assignment-form arguments `#D1138` 93cc8da
   - main: adjust readline variables for `ble.sh` `#D1148` 36312f7
-  - edit: update prompt after execution of command through `ble-bind` `#D1151` 0000000
+  - edit: update prompt after execution of command through `ble-bind` `#D1151` 27208ea
+  - blehook: replace builtin `trap` `#D1152` 0000000
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3251,6 +3252,16 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-23
+
+  * blehook: trap を置き換える? [#D1152]
+    その為には trap の仕様を確認しなければならない。
+
+    * done: blehook で引数を渡すのは関数名またはコマンド名を指定した時だけにする事にした。
+
+    * 取り敢えず実装した。少し動かしてみたがちゃんと動いている気がする。置き換えても良い気がする。
+
+    * ERR が無駄に沢山呼ばれる。setexit で呼ばれている気がする…。
+      ERR に対しても介入するべきではあるまいか。
 
   * bind: コマンドを実行した後はプロンプトを再計算するべきなのではないか [#D1151]
     特に C-z を fg に割り当てているが、これによって出入りしてプログラムが終了した後には

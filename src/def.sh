@@ -9,6 +9,8 @@ function blehook/declare {
 # ble.pp
 
 blehook/declare EXIT
+blehook/declare INT
+blehook/declare DEBUG
 
 # util.sh
 

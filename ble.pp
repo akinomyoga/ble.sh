@@ -624,7 +624,17 @@ ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses
 ble/bin/.freeze-utility-path gawk
 #%end
 
-trap -- 'blehook/invoke EXIT' EXIT
+ble/builtin/trap/reserve EXIT
+blehook EXIT+='ble/builtin/trap/invoke EXIT'
+builtin trap -- 'blehook/invoke EXIT' EXIT
+
+ble/builtin/trap/reserve INT
+blehook INT+='ble/builtin/trap/invoke INT'
+builtin trap -- 'blehook/invoke INT' INT
+
+ble/builtin/trap/reserve DEBUG
+blehook DEBUG+='ble/builtin/trap/invoke DEBUG'
+builtin trap -- 'blehook/invoke DEBUG "$@"' DEBUG
 
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|

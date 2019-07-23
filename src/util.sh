@@ -909,7 +909,16 @@ blehook/.compatibility-ble-0.3
 
 function blehook/invoke {
   ((_ble_hook_c_$1++))
-  ble/util/invoke-hook "_ble_hook_h_$@"
+  local -a hooks; eval "hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
+  local hook ext=0
+  for hook in "${hooks[@]}"; do
+    if type "$hook" &>/dev/null; then
+      "$hook" "$@"
+    else
+      eval "$hook \"\$@\""
+    fi || ext=$?
+  done
+  return "$ext"
 }
 function blehook/eval-after-load {
   local hook_name=${1}_load value=$2
@@ -919,6 +928,152 @@ function blehook/eval-after-load {
     blehook "$hook_name+=$value"
   fi
 }
+
+## 関数 ble/builtin/trap/.read-arguments args...
+##   @var[out] flags
+function ble/builtin/trap/.read-arguments {
+  flags= command= sigspecs=()
+  while (($#)); do
+    local arg=$1; shift
+    if [[ $arg == -* && flags != *A* ]]; then
+      if [[ $arg == -- ]]; then
+        flags=A$flags
+        continue
+      elif [[ $arg == --* ]]; then
+        case $arg in
+        (--help)
+          flags=h$flags
+          continue ;;
+        (*)
+          ble/bin/echo "ble/builtin/trap: unknown long option \"$arg\"." >&2
+          flags=E$flags
+          continue ;;
+        esac
+      fi
+
+      local i
+      for ((i=1;i<${#arg};i++)); do
+        case ${arg:i:1} in
+        (l) flags=l$flags ;;
+        (p) flags=p$flags ;;
+        (*)
+          ble/bin/echo "ble/builtin/trap: unknown long option \"$arg\"." >&2
+          flags=E$flags ;;
+        esac
+      done
+    else
+      if [[ $flags != *[pc]* ]]; then
+        command=$arg
+        flags=c$flags
+      else
+        ble/array#push sigspecs "$arg"
+      fi
+    fi
+  done
+
+  if [[ $flags != *[hlpE]* ]]; then
+    if [[ $flags != *c* ]]; then
+      flags=p$flags
+    elif ((${#sigspecs[@]}==0)); then
+      command=-
+      sigspecs=("$command")
+    fi
+  fi
+}
+_ble_builtin_trap_signames=()
+_ble_builtin_trap_reserved=()
+_ble_builtin_trap_handlers=()
+function ble/builtin/trap/.get-sig-index {
+  if [[ ! ${1//[0-9]} ]]; then
+    ret=$1
+  else
+    ble/string#toupper "$1"; local spec=$ret
+    for ret in "${!_ble_builtin_trap_signames[@]}"; do
+      local name=${_ble_builtin_trap_signames[ret]}
+      [[ $spec == $name || SIG$spec == $name ]] && return
+    done
+    ret=
+  fi
+}
+function ble/builtin/trap/.initialize {
+  function ble/builtin/trap/.initialize { :; }
+  local ret i
+  ble/util/assign ret 'builtin trap -l' 2>/dev/null
+  ble/string#split-words ret "$ret"
+  for ((i=0;i<${#ret[@]};i+=2)); do
+    local index=${ret[i]%')'}
+    local name=${ret[i+1]}
+    _ble_builtin_trap_signames[index]=$name
+  done
+  _ble_builtin_trap_signames[0]=EXIT
+  _ble_builtin_trap_signames[1000]=DEBUG
+  _ble_builtin_trap_signames[1001]=RETURN
+  _ble_builtin_trap_signames[1002]=ERR
+}
+function ble/builtin/trap/reserve {
+  local ret
+  ble/builtin/trap/.initialize
+  ble/builtin/trap/.get-sig-index "$1" || return 1
+  _ble_builtin_trap_reserved[ret]=1
+}
+function ble/builtin/trap/invoke {
+  local ret
+  ble/builtin/trap/.initialize
+  ble/builtin/trap/.get-sig-index "$1" || return 1
+  eval "${_ble_builtin_trap_handlers[ret]}"
+}
+function ble/builtin/trap {
+  local flags command sigspecs
+  ble/builtin/trap/.read-arguments "$@"
+
+  if [[ $flags == *h* ]]; then
+    builtin trap --help
+    [[ $flags == *E* ]] && return 2
+    return 0
+  elif [[ $flags == *E* ]]; then
+    return 2
+  elif [[ $flags == *l* ]]; then
+    builtin trap -l
+  fi
+
+  if [[ $flags == *p* ]]; then
+    ble/builtin/trap/.initialize
+
+    local -a indices=()
+    if ((${#sigspecs[@]})); then
+      local spec ret
+      for spec in "${sigspecs[@]}"; do
+        ble/builtin/trap/.get-sig-index "$spec" &&
+          ble/array#push indices "$ret"
+      done
+    else
+      indices=("${!_ble_builtin_trap_handlers[@]}")
+    fi
+
+    local q=\' Q="'\''" index
+    for index in "${indices[@]}"; do
+      if [[ ${_ble_builtin_trap_handlers[index]+set} ]]; then
+        local h=${_ble_builtin_trap_handlers[index]}
+        local n=${_ble_builtin_trap_signames[index]}
+        ble/bin/echo "trap -- '${h//$Q/$q}' $n"
+      fi
+    done
+  else
+    local spec ret
+    for spec in "${sigspecs[@]}"; do
+      ble/builtin/trap/.get-sig-index "$spec" || continue
+      if [[ $command == - ]]; then
+        unset "_ble_builtin_trap_handlers[ret]"
+      else
+        _ble_builtin_trap_handlers[ret]=$command
+      fi
+
+      [[ ${_ble_builtin_trap_reserved[ret]} ]] ||
+        builtin trap -- "$command" "$spec"
+    done
+  fi
+}
+function trap { ble/builtin/trap "$@"; }
 
 #------------------------------------------------------------------------------
 # assign: reading files/streams into variables

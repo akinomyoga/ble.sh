@@ -224,9 +224,12 @@ function sub:check {
   sub:check/builtin 'read'
   sub:check/builtin 'exit' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zble.pp.*return 1 2>/dev/null || exit 1Zd
       \Z^[-[:space:][:alnum:]_./:=$#*]+('\''[^'\'']*|"[^"()`]*|([[:space:]]|^)#.*)\bexit\bZd
-      \Z\(exit\) ;;Zd;\Zprint NR; exit;Zd;g'
+      \Z\(exit\) ;;Zd
+      \Zprint NR; exit;Zd;g'
   #sub:check/assign
+  sub:check/builtin trap
 
   sub:check/a.txt
   sub:check/bash300bug
