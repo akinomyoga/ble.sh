@@ -4031,19 +4031,19 @@ function ble-edit/exec:gexec/.TRAPERR {
   if ((_ble_edit_exec_traperr_suppress>0)); then
     ((_ble_edit_exec_traperr_suppress--))
   else
-    ble/builtin/trap/invoke ERR
+    ble/builtin/trap/invoke ERR 2>&32
   fi
-}
+} 32>&2 &>/dev/null # set -x 対策 #D0930
 ble/builtin/trap/reserve ERR
 builtin trap -- 'ble-edit/exec:gexec/.TRAPERR' ERR
 
-function ble-edit/exec:gexec/.eval-TRAPDEBUG/trap {
-  blehook DEBUG+='ble-edit/exec:gexec/.eval-TRAPDEBUG SIGINT "$*" && { return || break; } &>/dev/null'
+function ble-edit/exec:gexec/.TRAPDEBUG/trap {
+  blehook DEBUG+='ble-edit/exec:gexec/.TRAPDEBUG SIGINT "$*" && { return || break; } &>/dev/null'
 }
-function ble-edit/exec:gexec/.eval-TRAPDEBUG/reset {
-  blehook DEBUG-='ble-edit/exec:gexec/.eval-TRAPDEBUG SIGINT "$*" && { return || break; } &>/dev/null'
+function ble-edit/exec:gexec/.TRAPDEBUG/reset {
+  blehook DEBUG-='ble-edit/exec:gexec/.TRAPDEBUG SIGINT "$*" && { return || break; } &>/dev/null'
 }
-function ble-edit/exec:gexec/.eval-TRAPDEBUG {
+function ble-edit/exec:gexec/.TRAPDEBUG {
   if ((_ble_edit_exec_INT!=0)); then
     # エラーが起きている時
 
@@ -4065,20 +4065,20 @@ function ble-edit/exec:gexec/.eval-TRAPDEBUG {
   fi
 
   # Note: builtin trap - DEBUG は何故か此処では効かない
-  ble-edit/exec:gexec/.eval-TRAPDEBUG/reset
+  ble-edit/exec:gexec/.TRAPDEBUG/reset
   return 1
 }
-function ble-edit/exec:gexec/.eval-TRAPINT {
+function ble-edit/exec:gexec/.TRAPINT {
   ble/bin/echo >&2
   if ((_ble_bash>=40300)); then
     _ble_edit_exec_INT=130
   else
     _ble_edit_exec_INT=128
   fi
-  ble-edit/exec:gexec/.eval-TRAPDEBUG/trap
+  ble-edit/exec:gexec/.TRAPDEBUG/trap
 }
-function ble-edit/exec:gexec/.eval-TRAPINT/reset {
-  blehook INT-='ble-edit/exec:gexec/.eval-TRAPINT'
+function ble-edit/exec:gexec/.TRAPINT/reset {
+  blehook INT-='ble-edit/exec:gexec/.TRAPINT'
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
   ((_ble_hook_c_$1++))
@@ -4100,14 +4100,14 @@ function ble-edit/exec:gexec/.begin {
   set -H
 
   # C-c に対して
-  blehook INT+='ble-edit/exec:gexec/.eval-TRAPINT'
+  blehook INT+='ble-edit/exec:gexec/.TRAPINT'
 }
 function ble-edit/exec:gexec/.end {
   local IFS=$' \t\n'
 
   # Note: builtin trap -- - DEBUG は何故か此処では効かない。
-  ble-edit/exec:gexec/.eval-TRAPINT/reset
-  ble-edit/exec:gexec/.eval-TRAPDEBUG/reset
+  ble-edit/exec:gexec/.TRAPINT/reset
+  ble-edit/exec:gexec/.TRAPDEBUG/reset
 
   [[ $PWD != "$_ble_edit_exec_PWD" ]] && blehook/invoke CHPWD
   ble/util/joblist.flush >&2
@@ -4115,7 +4115,7 @@ function ble-edit/exec:gexec/.end {
   ble/term/enter
   ble-edit/bind/.tail # flush will be called here
 }
-function ble-edit/exec:gexec/.eval-prologue {
+function ble-edit/exec:gexec/.prologue {
   local IFS=$' \t\n'
   BASH_COMMAND=$1
   ble-edit/restore-PS1
@@ -4138,7 +4138,7 @@ function ble-edit/exec:gexec/.save-last-arg {
   ((_ble_edit_exec_lastexit)) && _ble_edit_exec_traperr_suppress=2
   return "$_ble_edit_exec_lastexit"
 }
-function ble-edit/exec:gexec/.eval-epilogue {
+function ble-edit/exec:gexec/.epilogue {
   # lastexit
   _ble_edit_exec_lastexit=$?
   ble-edit/exec/.reset-builtins-1
@@ -4148,7 +4148,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   _ble_edit_exec_INT=0
 
   local IFS=$' \t\n'
-  ble-edit/exec:gexec/.eval-TRAPDEBUG/reset
+  ble-edit/exec:gexec/.TRAPDEBUG/reset
   # Note: builtin trap -- - DEBUG は此処では何故か効かない
 
   ble/base/adjust-bash-options
@@ -4191,11 +4191,11 @@ function ble-edit/exec:gexec/.setup {
   for cmd in "${_ble_edit_exec_lines[@]}"; do
     if [[ "$cmd" == *[^' 	']* ]]; then
       # Note: $_ble_edit_exec_lastarg は $_ を設定するためのものである。
-      local prologue="ble-edit/exec:gexec/.eval-prologue '${cmd//$apos/$APOS}' \"\$_ble_edit_exec_lastarg\""
+      local prologue="ble-edit/exec:gexec/.prologue '${cmd//$apos/$APOS}' \"\$_ble_edit_exec_lastarg\""
       buff[${#buff[@]}]="builtin eval -- '${prologue//$apos/$APOS}"
       buff[${#buff[@]}]="${cmd//$apos/$APOS}"
       buff[${#buff[@]}]="{ ble-edit/exec:gexec/.save-last-arg; } &>/dev/null'" # Note: &>/dev/null は set -x 対策 #D0930
-      buff[${#buff[@]}]="{ ble-edit/exec:gexec/.eval-epilogue; } 3>&2 &>/dev/null"
+      buff[${#buff[@]}]="{ ble-edit/exec:gexec/.epilogue; } 3>&2 &>/dev/null"
       ((count++))
 
       # ※直接 $cmd と書き込むと文法的に破綻した物を入れた時に
@@ -6996,7 +6996,7 @@ function ble-edit/bind/.check-detach {
       printf %s "$READLINE_LINE"
     fi
 
-    ble-edit/exec:"$bleopt_internal_exec_type"/.eval-prologue
+    ble-edit/exec:"$bleopt_internal_exec_type"/.prologue
     return 0
   fi
 

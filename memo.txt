@@ -890,10 +890,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-07-18
-
-  * main: set -e の設定が消滅している気がする
-
 2019-07-16
 
   * complete: パス名展開で複数語に展開される場合の補完に関して
@@ -2255,7 +2251,7 @@ bash_tips
   - highlight: make brace expansions active for RHS of variable-assignment-form arguments `#D1138` 93cc8da
   - main: adjust readline variables for `ble.sh` `#D1148` 36312f7
   - edit: update prompt after execution of command through `ble-bind` `#D1151` 27208ea
-  - blehook: replace builtin `trap` `#D1152` 0000000
+  - blehook: replace builtin `trap` `#D1152` d6c555e
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2293,6 +2289,7 @@ bash_tips
   - syntax: workaround bashbug 3.1/3.2 that `eval` ending with <kbd>\ + LF</kbd> causes error messages `#D1132` a4b7e00
   - term: workaround `cygwin` console glitches `#D1143` b79c35f `#D1144` ef19d17
   - main: fix a bug that error messages for unsupported shells are not printed `#D1149` 34bd6f8
+  - main: workaround `set -ex` `#D1153` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3252,6 +3249,18 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-23
+
+  * main: set -e の設定が消滅している気がする [#D1153]
+    % と思ったが…。うーん。もしかすると意図的に対応を諦めた?
+    % そんな気もする。しかし #D0930 では特に議論されていない様にも思う。
+    % それに ble/base/restore-bash-options では明示的に復元を試みている。
+    うーん set -e にすると何も起こっていないのではなくて、
+    その場ですぐに抜けてしまっていてそれに気づいていなかったという事らしい。
+    然し、エラーを発生させていないのに終了してしまうというのは怖い。
+    何があったのだろうか…。あー。分かった気がする…。直した。
+
+    また set -x にすると trap/invoke DEBUG が物凄く沢山のメッセージを出してしまう。
+    これに関しても対策を施した。
 
   * blehook: trap を置き換える? [#D1152]
     その為には trap の仕様を確認しなければならない。

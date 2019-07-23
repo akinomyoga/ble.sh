@@ -913,13 +913,13 @@ function blehook/invoke {
   local hook ext=0
   for hook in "${hooks[@]}"; do
     if type "$hook" &>/dev/null; then
-      "$hook" "$@"
+      "$hook" "$@" 2>&3
     else
-      eval "$hook \"\$@\""
+      eval "$hook \"\$@\"" 2>&3
     fi || ext=$?
   done
   return "$ext"
-}
+} 3>&2 2>/dev/null # set -x 対策 #D0930
 function blehook/eval-after-load {
   local hook_name=${1}_load value=$2
   if ((_ble_hook_c_$hook_name)); then
@@ -1020,8 +1020,8 @@ function ble/builtin/trap/invoke {
   local ret
   ble/builtin/trap/.initialize
   ble/builtin/trap/.get-sig-index "$1" || return 1
-  eval "${_ble_builtin_trap_handlers[ret]}"
-}
+  eval "${_ble_builtin_trap_handlers[ret]}" 2>&3
+} 3>&2 2>/dev/null # set -x 対策 #D0930
 function ble/builtin/trap {
   local flags command sigspecs
   ble/builtin/trap/.read-arguments "$@"
