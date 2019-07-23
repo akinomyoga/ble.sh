@@ -83,7 +83,7 @@ function ble/base/restore-bash-options {
   [[ $_ble_bash_setu && ! -o nounset ]] && set -u
   [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
   [[ $_ble_bash_sete && ! -o errexit ]] && set -e
-  [[ $_ble_bash_nocasematch ]] && shopt -s nocasematch
+  if [[ $_ble_bash_nocasematch ]]; then shopt -s nocasematch; fi # Note: set -e により && は駄目
 }
 {
   _ble_bash_options_adjusted=
@@ -122,7 +122,7 @@ function ble/base/adjust-POSIXLY_CORRECT {
   ble/base/workaround-POSIXLY_CORRECT
 }
 function ble/base/restore-POSIXLY_CORRECT {
-  [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]] || return
+  if [[ ! $_ble_edit_POSIXLY_CORRECT_adjusted ]]; then return; fi # Note: set -e の為 || は駄目
   _ble_edit_POSIXLY_CORRECT_adjusted=
   if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
     POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
