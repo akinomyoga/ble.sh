@@ -1094,6 +1094,7 @@ _ble_complete_action_file_desc[_ble_attr_FILE_CHR]='character device'
 _ble_complete_action_file_desc[_ble_attr_FILE_FIFO]='named pipe'
 _ble_complete_action_file_desc[_ble_attr_FILE_SOCK]='socket'
 _ble_complete_action_file_desc[_ble_attr_FILE_BLK]='block device'
+_ble_complete_action_file_desc[_ble_attr_FILE_URL]='URL'
 function ble/complete/action:file/get-desc {
   local type; ble/syntax/highlight/filetype "$CAND"
   desc=${_ble_complete_action_file_desc[type]:-'file (???)'}

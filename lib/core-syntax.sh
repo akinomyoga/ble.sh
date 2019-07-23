@@ -1370,8 +1370,13 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   return 0
 }
 
+## 関数 ble/syntax:bash/simple-word/locate-filename word [sep] [opts]
+##   @param[in] word
+##   @param[in] sep
+##   @param[in] opts
+##     url
 function ble/syntax:bash/simple-word/locate-filename {
-  local word=$1 sep=${2:-':='}
+  local word=$1 sep=${2:-':='} opts=$3
   ret=0
   [[ $word ]] || return 0
 
@@ -1382,10 +1387,14 @@ function ble/syntax:bash/simple-word/locate-filename {
   # compose regular expressions
   local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
   local rex='^'$rex_element'['$sep']|^['$sep']'
+  if [[ :$opts: == *:url:* ]]; then
+    rex='^[a-z]+://'$_ble_syntax_bash_simple_rex_element'*|'$rex
+  fi
 
   local tail=$word p=0
   while
     "$eval_word" "$tail" && [[ -e $ret || -h $ret ]] && break
+    local rex=^[a-z]+://; [[ :$opts: == *:url:* && $ret =~ $rex ]] && break
     [[ $tail =~ $rex ]]
   do
     ((p+=${#BASH_REMATCH}))
@@ -5011,6 +5020,7 @@ function ble/syntax/faces-onload-hook {
   ble/color/defface filename_character        underline,fg=white,bg=black
   ble/color/defface filename_block            underline,fg=yellow,bg=black
   ble/color/defface filename_warning          underline,fg=red
+  ble/color/defface filename_url              underline,fg=blue
   ble/color/defface filename_ls_colors        underline
 
   ble/syntax/attr2iface/.define CTX_ARGX     syntax_default
@@ -5112,6 +5122,7 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define ATTR_FILE_SOCK     filename_socket
   ble/syntax/attr2iface/.define ATTR_FILE_BLK      filename_block
   ble/syntax/attr2iface/.define ATTR_FILE_CHR      filename_character
+  ble/syntax/attr2iface/.define ATTR_FILE_URL      filename_url
 }
 
 blehook color_init_defface+=ble/syntax/faces-onload-hook
@@ -5307,6 +5318,8 @@ function ble/syntax/highlight/filetype {
     elif [[ -b $file ]]; then
       ((type=ATTR_FILE_BLK))
     fi
+  elif local rex='^https?://[^ ^`"<>\{|}]+$'; [[ $file =~ $rex ]]; then
+    ((type=ATTR_FILE_URL))
   fi
 }
 
@@ -5519,26 +5532,30 @@ function ble/highlight/layer:syntax/word/.update-for-pathname {
 function ble/highlight/layer:syntax/word/.update-for-filename {
   local value=$1
 
+  local type=
+  ble/syntax/highlight/filetype "$value"; local filetype=$type
+
   local -a wattr_buff=()
   ((wbeg<p0)) &&
     ble/array#push wattr_buff $((p0-wbeg)):d
 
-  local npath=${#path[@]}
-  if ((npath>1)); then
-    local ipath p=$p0
-    for ((ipath=0;ipath<npath-1;ipath++)); do
-      local epath=${path[ipath]} espec=${spec[ipath]}
-      local p_end=$((p0+${#espec}))
-      local g=d type=
-      [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
-      [[ $type ]] && ble/syntax/attr2g "$type"
-      ble/array#push wattr_buff $((p_end-p)):$g
-      p=$p_end
-    done
+  if ((filetype!=ATTR_FILE_URL)); then
+    local npath=${#path[@]}
+    if ((npath>1)); then
+      local ipath p=$p0
+      for ((ipath=0;ipath<npath-1;ipath++)); do
+        local epath=${path[ipath]} espec=${spec[ipath]}
+        local p_end=$((p0+${#espec}))
+        local g=d type=
+        [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
+        [[ $type ]] && ble/syntax/attr2g "$type"
+        ble/array#push wattr_buff $((p_end-p)):$g
+        p=$p_end
+      done
+    fi
   fi
 
-  local type=
-  ble/syntax/highlight/filetype "$value"
+  type=$filetype
 
   # check values
   if ((wtype==CTX_RDRF)); then
@@ -5625,7 +5642,7 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
     # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
     # コマンド名やリダイレクト先ファイル名等の場合は途中で区切って解釈する等の事はしない。
     if ((wtype==CTX_ARGI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)); then
-      local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt"
+      local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt" '' url
       if ((ret)); then
         ((p0+=ret))
         wtxt=${wtxt:ret}

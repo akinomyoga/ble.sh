@@ -193,6 +193,7 @@ ble-color-setface filename_pipe             underline,fg=lime,bg=black
 ble-color-setface filename_character        underline,fg=white,bg=black
 ble-color-setface filename_block            underline,fg=yellow,bg=black
 ble-color-setface filename_warning          underline,fg=red
+ble-color-setface filename_url              underline,fg=blue
 ble-color-defface filename_ls_colors        underline
 ```
 
