@@ -984,18 +984,57 @@ function ble/builtin/trap/.read-arguments {
 _ble_builtin_trap_signames=()
 _ble_builtin_trap_reserved=()
 _ble_builtin_trap_handlers=()
-function ble/builtin/trap/.get-sig-index {
-  if [[ ! ${1//[0-9]} ]]; then
-    ret=$1
+_ble_builtin_trap_DEBUG=
+_ble_builtin_trap_inside=
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  if ((_ble_bash>=40200)); then
+    declare -gA _ble_builtin_trap_n2i=()
   else
-    ble/string#toupper "$1"; local spec=$ret
-    for ret in "${!_ble_builtin_trap_signames[@]}"; do
-      local name=${_ble_builtin_trap_signames[ret]}
-      [[ $spec == $name || SIG$spec == $name ]] && return
-    done
-    ret=
+    declare -A _ble_builtin_trap_n2i=()
   fi
-}
+  function ble/builtin/trap/.register {
+    local index=$1 name=$2
+    _ble_builtin_trap_signames[index]=$name
+    _ble_builtin_trap_n2i[$name]=$index
+  }
+  function ble/builtin/trap/.get-sig-index {
+    if [[ $1 && ! ${1//[0-9]} ]]; then
+      ret=$1
+      return 0
+    else
+      ret=${_ble_builtin_trap_n2i[$1]}
+      [[ $ret ]] && return 0
+
+      ble/string#toupper "$1"; local upper=$ret
+      ret=${_ble_builtin_trap_n2i[$upper]}
+      if [[ ! $ret ]]; then
+        ret=${_ble_builtin_trap_n2i[SIG$upper]}
+        [[ $ret ]] || return 1
+      fi
+      _ble_builtin_trap_n2i[$1]=$ret
+      return 0
+    fi
+  }
+else
+  function ble/builtin/trap/.register {
+    local index=$1 name=$2
+    _ble_builtin_trap_signames[index]=$name
+  }
+  function ble/builtin/trap/.get-sig-index {
+    if [[ $1 && ! ${1//[0-9]} ]]; then
+      ret=$1
+      return 0
+    else
+      ble/string#toupper "$1"; local spec=$ret
+      for ret in "${!_ble_builtin_trap_signames[@]}"; do
+        local name=${_ble_builtin_trap_signames[ret]}
+        [[ $spec == $name || SIG$spec == $name ]] && return 0
+      done
+      ret=
+      return 1
+    fi
+  }
+fi
 function ble/builtin/trap/.initialize {
   function ble/builtin/trap/.initialize { :; }
   local ret i
@@ -1004,12 +1043,12 @@ function ble/builtin/trap/.initialize {
   for ((i=0;i<${#ret[@]};i+=2)); do
     local index=${ret[i]%')'}
     local name=${ret[i+1]}
-    _ble_builtin_trap_signames[index]=$name
+    ble/builtin/trap/.register "$index" "$name"
   done
-  _ble_builtin_trap_signames[0]=EXIT
-  _ble_builtin_trap_signames[1000]=DEBUG
-  _ble_builtin_trap_signames[1001]=RETURN
-  _ble_builtin_trap_signames[1002]=ERR
+  ble/builtin/trap/.register 0 EXIT
+  ble/builtin/trap/.register 1000 DEBUG
+  ble/builtin/trap/.register 1001 RETURN
+  ble/builtin/trap/.register 1002 ERR
 
   _ble_builtin_trap_DEBUG=1000
 }
@@ -1025,7 +1064,6 @@ function ble/builtin/trap/invoke {
   ble/builtin/trap/.get-sig-index "$1" || return 1
   eval "${_ble_builtin_trap_handlers[ret]}" 2>&3
 } 3>&2 2>/dev/null # set -x 対策 #D0930
-_ble_builtin_trap_inside=
 function ble/builtin/trap {
   local flags command sigspecs
   ble/builtin/trap/.read-arguments "$@"
@@ -1047,8 +1085,11 @@ function ble/builtin/trap {
     if ((${#sigspecs[@]})); then
       local spec ret
       for spec in "${sigspecs[@]}"; do
-        ble/builtin/trap/.get-sig-index "$spec" &&
-          ble/array#push indices "$ret"
+        if ! ble/builtin/trap/.get-sig-index "$spec"; then
+          ble/bin/echo "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
+          continue
+        fi
+        ble/array#push indices "$ret"
       done
     else
       indices=("${!_ble_builtin_trap_handlers[@]}")
@@ -1066,7 +1107,11 @@ function ble/builtin/trap {
     local _ble_builtin_trap_inside=1
     local spec ret
     for spec in "${sigspecs[@]}"; do
-      ble/builtin/trap/.get-sig-index "$spec" || continue
+      if ! ble/builtin/trap/.get-sig-index "$spec"; then
+        ble/bin/echo "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
+        continue
+      fi
+
       if [[ $command == - ]]; then
         unset "_ble_builtin_trap_handlers[ret]"
       else
