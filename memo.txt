@@ -2184,7 +2184,7 @@ bash_tips
     - blehook: fix a bug that the definition of specified hooks are not printed `#D1146` a4a7cbc
   - highlight: highlight word with the form of URL `#D1150` f48f2d7
   - syntax: support syntax/globpat in param expansions `#D1157` `#D1158` 051222e
-    - syntax: fix attr of nested extglob in param expansions `#D1159`
+    - syntax: fix attr of nested extglob in param expansions `#D1159` 2d019f0
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3215,6 +3215,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-07-27
+
+  * syntax: echo "${var/[a/b]/c}" これが正しく解析できていない [#D1160]
+    echo "${var#[a}" これも駄目である。
+    →これは物凄く単純なミスだった。修正した。
 
   * syntax: echo ${var##@(((a)))} とした時の着色が変だ [#D1159]
     echo @(((a))) に対してはちゃんと動いている。

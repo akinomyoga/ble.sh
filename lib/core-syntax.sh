@@ -2012,7 +2012,7 @@ function ble/syntax:bash/ctx-bracket-expression {
   if ((nctx==CTX_PATN)); then
     local chars; ble/syntax:bash/ctx-globpat/get-stop-chars
   elif ((nctx==CTX_PWORD||nctx==CTX_PWORDR)); then
-    local chars=${_ble_syntax_bash_chars[ctx]}
+    local chars=${_ble_syntax_bash_chars[nctx]}
   else
     # 以下の文脈では ctx-command と同様の処理で問題ない。
     #
