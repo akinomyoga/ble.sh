@@ -1252,6 +1252,7 @@ function ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot {
   done
 }
 
+function ble/syntax:bash/simple-word/eval/.set-result { __ble_ret=("$@"); }
 function ble/syntax:bash/simple-word/eval-noglob/.impl {
   # グローバル変数の復元
   local -a ret
@@ -1264,7 +1265,7 @@ function ble/syntax:bash/simple-word/eval-noglob/.impl {
 
   local __ble_unset_f=
   [[ $- != *f* ]] && { __ble_unset_f=1; set -f; }
-  builtin eval -- "__ble_ret=($1)"; local ext=$?
+  builtin eval "ble/syntax:bash/simple-word/eval/.set-result $1"; local ext=$?
   [[ $__ble_unset_f ]] && set +f
   return "$ext"
 }
@@ -1275,7 +1276,6 @@ function ble/syntax:bash/simple-word/eval-noglob {
   ble/syntax:bash/simple-word/eval-noglob/.impl "$1"
   ret=("${__ble_ret[@]}")
 }
-function ble/syntax:bash/simple-word/eval/.set-result { __ble_ret=("$@"); }
 function ble/syntax:bash/simple-word/eval/.impl {
   # グローバル変数の復元
   local -a ret=()

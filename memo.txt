@@ -2251,8 +2251,8 @@ bash_tips
   - highlight: make brace expansions active for RHS of variable-assignment-form arguments `#D1138` 93cc8da
   - main: adjust readline variables for `ble.sh` `#D1148` 36312f7
   - edit: update prompt after execution of command through `ble-bind` `#D1151` 27208ea
-  - blehook: replace builtin `trap` `#D1152` d6c555e
-    - blehook: suppress extra `DEBUG` trap calls `#D1155`
+  - blehook: replace builtin `trap` `#D1152` d6c555e 7d4fd03
+    - blehook: suppress extra `DEBUG` trap calls `#D1155` 25c3e19
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2290,8 +2290,8 @@ bash_tips
   - syntax: workaround bashbug 3.1/3.2 that `eval` ending with <kbd>\ + LF</kbd> causes error messages `#D1132` a4b7e00
   - term: workaround `cygwin` console glitches `#D1143` b79c35f `#D1144` ef19d17
   - main: fix a bug that error messages for unsupported shells are not printed `#D1149` 34bd6f8
-  - main: workaround `set -ex` `#D1153` 0000000
-  - main: workaround shell variable `FUNCNEST` `#D1154` 0000000
+  - main: workaround `set -ex` `#D1153` 06ebf9f
+  - main: workaround shell variable `FUNCNEST` `#D1154` fa2aa47
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3249,6 +3249,21 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-07-27
+
+  * syntax: 'a=[' と入力するとエラーメッセージが出る [#D1156]
+
+    というか試していたら凄いバグを見つけた。
+    a=[ と入力しただけでエラーメッセージが出力される。
+    これは failglob か? と思ったが failglob を外していてもメッセージは出る。
+    先にこれを片付ける事にする。何処から発生しているのだろうか。
+
+    うーん。構文解析か或いは単語着色か…うーん。単語着色が怪しい気がする。
+    →試しに update-word-table を /dev/null にして見た所メッセージが出なくなった。
+    どうも ble/syntax:bash/simple-word/evaluate-path-spec の中で発生している。
+    ble/syntax:bash/simple-word/evaluate-path-spec [ / noglob  で再現する。
+    ble/syntax:bash/simple-word/eval-noglob [ でまた再現した…。うーん。
 
 2019-07-24
 
