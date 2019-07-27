@@ -1677,16 +1677,10 @@ function ble/syntax:bash/check-glob {
       force_attr=$ctx
       ntype="glob_attr=$force_attr"
     elif ((ctx==CTX_PATN)); then
-      if [[ $ntype == glob_ctx=* ]]; then
-        exit_attr=$ATTR_GLOB
-        # ntype は子に継承する
-      elif [[ $ntype == glob_nest ]]; then
-        exit_attr=$CTX_PATN
-        ntype=
-      else
-        exit_attr=$ATTR_GLOB
-        ntype=
-      fi
+      ((exit_attr=_ble_syntax_attr[inest]))
+
+      # glob_ctx=* の時は ntype は子に継承する
+      [[ $ntype != glob_ctx=* ]] && ntype=
     else
       ntype=
     fi
@@ -1733,7 +1727,7 @@ function ble/syntax:bash/check-glob {
     return 0
   elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
     if [[ $tail == '('* ]]; then
-      ble/syntax/parse/nest-push "$CTX_PATN" "${ntype:-glob_nest}"
+      ble/syntax/parse/nest-push "$CTX_PATN" "$ntype"
       ((_ble_syntax_attr[i++]=${force_attr:-ctx}))
       return 0
     elif [[ $tail == ')'* ]]; then
