@@ -39,6 +39,7 @@ ATTR_HISTX      21 # 履歴展開 (!!$ など)
 ATTR_FUNCDEF    22 # 関数名 ( hoge() や function fuga など)
 CTX_PARAM       14 # (パラメータ展開) context,attr: inside of parameter expansion
 CTX_PWORD       15 # (パラメータ展開) context,attr: inside of parameter expansion
+CTX_PWORDR      72 # (パラメータ展開) ${var//before/after} の before に居る時
 CTX_RDRF        19 # (リダイレクト) リダイレクト対象のファイル。
 CTX_RDRD        20 # (リダイレクト) リダイレクト対象のファイルディスクリプタ。
 CTX_RDRS        27 # (リダイレクト) ヒアストリング

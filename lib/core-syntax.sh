@@ -758,7 +758,7 @@ function ble/syntax/parse/nest-pop {
 }
 function ble/syntax/parse/nest-type {
   local _var=ntype
-  [[ $1 == -v ]] && _var="$2"
+  [[ $1 == -v ]] && _var=$2
   if ((inest<0)); then
     eval "$_var="
     return 1
@@ -938,12 +938,13 @@ function ble/syntax:bash/cclass/update {
     _ble_syntax_bashc_simple=$a
   fi
 
-
   if [[ $seed == *x ]]; then
     # extglob: ?() *() +() @() !()
     local extglob='@+!' # *? は既に登録されている筈
     _ble_syntax_bash_chars[CTX_ARGI]=${_ble_syntax_bash_chars[CTX_ARGI]}$extglob
     _ble_syntax_bash_chars[CTX_PATN]=${_ble_syntax_bash_chars[CTX_PATN]}$extglob
+    _ble_syntax_bash_chars[CTX_PWORD]=${_ble_syntax_bash_chars[CTX_PWORD]}$extglob
+    _ble_syntax_bash_chars[CTX_PWORDR]=${_ble_syntax_bash_chars[CTX_PWORDR]}$extglob
   fi
 
   if [[ $modified ]]; then
@@ -980,7 +981,8 @@ function ble/syntax:bash/cclass/initialize {
   _ble_syntax_bash_charsDef[CTX_PATN]="$expansions$glob(|)<>{!" # <> はプロセス置換のため。
   _ble_syntax_bash_charsDef[CTX_QUOT]="\$\"\`\\!"         # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bash_charsDef[CTX_EXPR]="][}()$expansions!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
-  _ble_syntax_bash_charsDef[CTX_PWORD]="}$expansions!"    # パラメータ展開 ${～}
+  _ble_syntax_bash_charsDef[CTX_PWORD]="}$expansions$glob!" # パラメータ展開 ${～}
+  _ble_syntax_bash_charsDef[CTX_PWORDR]="}/$expansions$glob!" # パラメータ展開 ${～}
   _ble_syntax_bash_charsDef[CTX_RDRH]="$delimiters$expansions"
 
   # templates
@@ -988,7 +990,8 @@ function ble/syntax:bash/cclass/initialize {
   _ble_syntax_bash_charsFmt[CTX_PATN]="$expansions$glob(|)<>{@h"
   _ble_syntax_bash_charsFmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bash_charsFmt[CTX_EXPR]="][}()$expansions@h"
-  _ble_syntax_bash_charsFmt[CTX_PWORD]="}$expansions@h"
+  _ble_syntax_bash_charsFmt[CTX_PWORD]="}$expansions$glob@h"
+  _ble_syntax_bash_charsFmt[CTX_PWORDR]="}/$expansions$glob@h"
   _ble_syntax_bash_charsFmt[CTX_RDRH]=${_ble_syntax_bash_charsDef[CTX_RDRH]}
 
   _ble_syntax_bash_chars_simpleDef="$delimiters$expansions^!"
@@ -1509,7 +1512,7 @@ function ble/syntax:bash/check-dollar {
       local ntype='${'
       if ((ctx==CTX_QUOT)); then
         ntype='"${'
-      elif ((ctx==CTX_PWORD||ctx==CTX_EXPR)); then
+      elif ((ctx==CTX_PWORD||ctx==CTX_PWORDR||ctx==CTX_EXPR)); then
         local ntype2; ble/syntax/parse/nest-type -v ntype2
         [[ $ntype2 == '"${' ]] && ntype='"${'
       fi
@@ -1562,7 +1565,7 @@ function ble/syntax:bash/check-quotes {
   # 字句的に解釈されるが除去はされない場合
   if ((ctx==CTX_EXPR)); then
     local ntype
-    ble/syntax/parse/nest-type -v ntype
+    ble/syntax/parse/nest-type
     if [[ $ntype == '${' || $ntype == '$[' || $ntype == '$((' || $ntype == 'NQ(' ]]; then
       # $[...] / $((...)) / ${var:...} の中では
       # 如何なる quote も除去されない (字句的には解釈される)。
@@ -1573,13 +1576,13 @@ function ble/syntax:bash/check-quotes {
       # quote は除去されない (字句的には解釈される)。
       ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
     fi
-  elif ((ctx==CTX_PWORD)); then
+  elif ((ctx==CTX_PWORD||ctx==CTX_PWORDR)); then
     # "${var ～}" の中では $'' $"" は ! shopt -q extquote の時除去されない。
     if [[ $tail == '$'[\'\"]* ]] && ! shopt -q extquote; then
       local ntype
-      ble/syntax/parse/nest-type -v ntype
+      ble/syntax/parse/nest-type
       if [[ $ntype == '"${' ]]; then
-        ((aqdel=CTX_PWORD,aquot=CTX_PWORD))
+        ((aqdel=ctx,aquot=ctx))
       fi
     fi
   fi
@@ -1604,7 +1607,7 @@ function ble/syntax:bash/check-quotes {
       else
         # 中に構造がある場合
         ble/syntax/parse/nest-push "$CTX_QUOT"
-        if ((ctx==CTX_PWORD&&aqdel!=ATTR_QDEL)); then
+        if (((ctx==CTX_PWORD||ctx==CTX_PWORDR)&&aqdel!=ATTR_QDEL)); then
           # CTX_PWORD (パラメータ展開) でクォート除去が有効でない文脈の場合、
           # 「$」 だけ aqdel で着色し、「" ... "」 は通常通り着色する。
           ((_ble_syntax_attr[i]=aqdel,
@@ -1662,8 +1665,10 @@ function ble/syntax:bash/check-glob {
   if ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR||ctx==CTX_RDRS)); then
     force_attr=$ctx
     ntype="glob_attr=$force_attr"
+  elif ((ctx==CTX_PWORD||ctx==CTX_PWORDR)); then
+    ntype="glob_ctx=$ctx"
   elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
-    ble/syntax/parse/nest-type -v ntype
+    ble/syntax/parse/nest-type
     local exit_attr=
     if [[ $ntype == glob_attr=* ]]; then
       force_attr=${ntype#*=}
@@ -1672,12 +1677,16 @@ function ble/syntax:bash/check-glob {
       force_attr=$ctx
       ntype="glob_attr=$force_attr"
     elif ((ctx==CTX_PATN)); then
-      if [[ $ntype == glob_nest ]]; then
+      if [[ $ntype == glob_ctx=* ]]; then
+        exit_attr=$ATTR_GLOB
+        # ntype は子に継承する
+      elif [[ $ntype == glob_nest ]]; then
         exit_attr=$CTX_PATN
+        ntype=
       else
         exit_attr=$ATTR_GLOB
+        ntype=
       fi
-      ntype=
     else
       ntype=
     fi
@@ -1936,10 +1945,26 @@ function ble/syntax:bash/ctx-case {
 
 # 文脈 CTX_PATN (extglob/case-pattern)
 _BLE_SYNTAX_FCTX[CTX_PATN]=ble/syntax:bash/ctx-globpat
+_BLE_SYNTAX_FEND[CTX_PATN]=ble/syntax:bash/ctx-globpat.end
+
+## 関数 ble/syntax:bash/ctx-globpat/get-stop-chars
+##   @var[out] chars
+function ble/syntax:bash/ctx-globpat/get-stop-chars {
+  chars=${_ble_syntax_bash_chars[CTX_PATN]}
+  local ntype; ble/syntax/parse/nest-type
+  if [[ $ntype == glob_ctx=* ]]; then
+    local gctx=${ntype#glob_ctx=}
+    if ((gctx==CTX_PWORD)); then
+      chars=}$chars
+    elif ((gctx==CTX_PWORDR)); then
+      chars=}/$chars
+    fi
+  fi
+}
 function ble/syntax:bash/ctx-globpat {
   # glob () の中身 (extglob @(...) や case in (...) の中)
-  local rex
-  if rex='^([^'${_ble_syntax_bash_chars[CTX_PATN]}']|\\.)+' && [[ $tail =~ $rex ]]; then
+  local chars; ble/syntax:bash/ctx-globpat/get-stop-chars
+  if local rex='^([^'$chars']|\\.)+'; [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -1964,6 +1989,26 @@ function ble/syntax:bash/ctx-globpat {
 
   return 1
 }
+function ble/syntax:bash/ctx-globpat.end {
+  local is_end= tail=${text:i}
+  local ntype; ble/syntax/parse/nest-type
+  if [[ $ntype == glob_ctx=* ]]; then
+    local gctx=${ntype#glob_ctx=}
+    if ((gctx==CTX_PWORD)); then
+      [[ ! $tail || $tail == '}'* ]] && is_end=1
+    elif ((gctx==CTX_PWORDR)); then
+      [[ ! $tail || $tail == ['/}']* ]] && is_end=1
+    fi
+  fi
+
+  if [[ $is_end ]]; then
+    ble/syntax/parse/nest-pop
+    ble/syntax/parse/check-end
+    return
+  fi
+
+  return 0
+}
 
 # 文脈 CTX_BRAX (bracket expression)
 _BLE_SYNTAX_FCTX[CTX_BRAX]=ble/syntax:bash/ctx-bracket-expression
@@ -1971,7 +2016,9 @@ _BLE_SYNTAX_FEND[CTX_BRAX]=ble/syntax:bash/ctx-bracket-expression.end
 function ble/syntax:bash/ctx-bracket-expression {
   local nctx; ble/syntax/parse/nest-ctx
   if ((nctx==CTX_PATN)); then
-    local chars=${_ble_syntax_bash_chars[CTX_PATN]}
+    local chars; ble/syntax:bash/ctx-globpat/get-stop-chars
+  elif ((nctx==CTX_PWORD||nctx==CTX_PWORDR)); then
+    local chars=${_ble_syntax_bash_chars[ctx]}
   else
     # 以下の文脈では ctx-command と同様の処理で問題ない。
     #
@@ -1987,7 +2034,7 @@ function ble/syntax:bash/ctx-bracket-expression {
   fi
   chars="]${chars#']'}"
 
-  local ntype; ble/syntax/parse/nest-type -v ntype
+  local ntype; ble/syntax/parse/nest-type
   local force_attr=; [[ $ntype == glob_attr=* ]] && force_attr=${ntype#*=}
 
   local rex
@@ -2045,15 +2092,32 @@ function ble/syntax:bash/ctx-bracket-expression {
 function ble/syntax:bash/ctx-bracket-expression.end {
   local is_end=
 
-  local nctx; ble/syntax/parse/nest-ctx
-  if ((nctx==CTX_PATN)); then
-    # 外側は ctx-globpat
-    local tail=${text:i}
-    [[ ! $tail || $tail == ')'* ]] && is_end=1
+  local tail=${text:i}
+  if [[ ! $tail ]]; then
+    is_end=1
   else
-    # 外側は ctx-command など。
-    ble/syntax:bash/check-word-end/is-delimiter && is_end=1
-    [[ $tail == ':'* && ${_ble_syntax_bash_command_IsAssign[ctx]} ]] && is_end=1
+    local nctx; ble/syntax/parse/nest-ctx
+    local external_ctx=$nctx
+    if ((nctx==CTX_PATN)); then
+      local ntype; ble/syntax/parse/nest-type
+      [[ $ntype == glob_ctx=* ]] &&
+        external_ctx=${ntype#glob_ctx=}
+    fi
+
+    if ((external_ctx==CTX_PATN)); then
+      [[ $tail == ')'* ]] && is_end=1
+    elif ((external_ctx==CTX_PWORD)); then
+      [[ $tail == '}'* ]] && is_end=1
+    elif ((external_ctx==CTX_PWORDR)); then
+      [[ $tail == ['}/']* ]] && is_end=1
+    else
+      # 外側は ctx-command など。
+      if ble/syntax:bash/check-word-end/is-delimiter; then
+        is_end=1
+      elif [[ $tail == ':'* && ${_ble_syntax_bash_command_IsAssign[ctx]} ]]; then
+        is_end=1
+      fi
+    fi
   fi
 
   if [[ $is_end ]]; then
@@ -2067,22 +2131,42 @@ function ble/syntax:bash/ctx-bracket-expression.end {
 
 _BLE_SYNTAX_FCTX[CTX_PARAM]=ble/syntax:bash/ctx-param
 _BLE_SYNTAX_FCTX[CTX_PWORD]=ble/syntax:bash/ctx-pword
+_BLE_SYNTAX_FCTX[CTX_PWORDR]=ble/syntax:bash/ctx-pword
 function ble/syntax:bash/ctx-param {
   # パラメータ展開 - パラメータの直後
-
-  if [[ $tail == :[!-?=+]* ]]; then
-    ((_ble_syntax_attr[i]=CTX_EXPR,
-      ctx=CTX_EXPR,i++))
-    return 0
-  elif [[ $tail == '}'* ]]; then
+  if [[ $tail == '}'* ]]; then
     ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
     ((i+=1))
     ble/syntax/parse/nest-pop
     return 0
+  fi
+
+  local rex='##?|%%?|:?[-?=+]|:|//?'
+  ((_ble_bash>=40000)) && rex=$rex'|,,?|\^\^?'
+  rex='^('$rex')'
+  if [[ $tail =~ $rex ]]; then
+    ((_ble_syntax_attr[i]=CTX_PARAM,
+      i+=${#BASH_REMATCH}))
+    if [[ $BASH_REMATCH == '/'* ]]; then
+      ((ctx=CTX_PWORDR))
+    elif [[ $BASH_REMATCH == : ]]; then
+      ((ctx=CTX_EXPR,_ble_syntax_attr[i]=CTX_EXPR))
+    else
+      ((ctx=CTX_PWORD))
+    fi
+    return 0
   else
+    local i0=$i
     ((ctx=CTX_PWORD))
-    ble/syntax:bash/ctx-pword
-    return
+    ble/syntax:bash/ctx-pword || return 1
+
+    # 一文字だけエラー着色
+    if ((i0+2<=i)); then
+      ((_ble_syntax_attr[i0+1])) ||
+        ((_ble_syntax_attr[i0+1]=_ble_syntax_attr[i0]))
+    fi
+    ((_ble_syntax_attr[i0]=ATTR_ERR))
+    return 0
   fi
 }
 function ble/syntax:bash/ctx-pword {
@@ -2092,6 +2176,9 @@ function ble/syntax:bash/ctx-pword {
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
+  elif ((ctx==CTX_PWORDR)) && [[ $tail == '/'* ]]; then
+    ((_ble_syntax_attr[i++]=CTX_PARAM,ctx=CTX_PWORD))
+    return 0
   elif [[ $tail == '}'* ]]; then
     ((_ble_syntax_attr[i]=_ble_syntax_attr[inest]))
     ((i+=1))
@@ -2100,6 +2187,8 @@ function ble/syntax:bash/ctx-pword {
   elif ble/syntax:bash/check-quotes; then
     return 0
   elif ble/syntax:bash/check-dollar; then
+    return 0
+  elif ble/syntax:bash/check-glob; then
     return 0
   elif ble/syntax:bash/starts-with-histchars; then
     ble/syntax:bash/check-history-expansion ||
@@ -2249,7 +2338,7 @@ function ble/syntax:bash/ctx-expr {
     return 0
   elif [[ $tail == ['][()}']* ]]; then
     local char=${tail::1} ntype
-    ble/syntax/parse/nest-type -v ntype
+    ble/syntax/parse/nest-type
     if [[ $ntype == *'(' ]]; then
       # ntype = '(('  # ((...))
       #       = '$((' # $((...))
@@ -2290,7 +2379,7 @@ function ble/syntax:bash/ctx-expr {
 #------------------------------------------------------------------------------
 # ブレース展開
 
-## CTX_CONDI 及び CTX_RDRS の時は不活性化したブレース展開として振る舞う
+## CTX_CONDI 及び CTX_RDRS の時は不活性化したブレース展開として振る舞う。
 ## CTX_RDRF 及び CTX_RDRD の時は複数語に展開されるブレース展開はエラーなので、
 ## nest-push して解析だけ行いブレース展開であるということが確定した時点でエラーを設定する。
 
@@ -2312,7 +2401,7 @@ function ble/syntax:bash/check-brace-expansion {
   elif ((ctx==CTX_CONDI||ctx==CTX_CONDQ||ctx==CTX_RDRS||ctx==CTX_VRHS)); then
     inactive=1
   elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
-    local ntype; ble/syntax/parse/nest-type -v ntype
+    local ntype; ble/syntax/parse/nest-type
     if [[ $ntype == glob_attr=* ]]; then
       force_attr=${ntype#*=}
       (((force_attr==CTX_RDRS||force_attr==CTX_VRHS||force_attr==CTX_ARGVR||force_attr==CTX_ARGER||force_attr==CTX_VALR)&&(inactive=1)))
@@ -2321,7 +2410,7 @@ function ble/syntax:bash/check-brace-expansion {
       (((nctx==CTX_CONDI||octx==CTX_CONDQ)&&(inactive=1)))
     fi
   elif ((ctx==CTX_BRACE1||ctx==CTX_BRACE2)); then
-    local ntype; ble/syntax/parse/nest-type -v ntype
+    local ntype; ble/syntax/parse/nest-type
     if [[ $ntype == glob_attr=* ]]; then
       force_attr=${ntype#*=}
     fi
@@ -2394,7 +2483,7 @@ _BLE_SYNTAX_FEND[CTX_BRACE2]=ble/syntax:bash/ctx-brace-expansion.end
 function ble/syntax:bash/ctx-brace-expansion {
   if [[ $tail == '}'* ]] && ((ctx==CTX_BRACE2)); then
     local force_attr=
-    local ntype; ble/syntax/parse/nest-type -v ntype
+    local ntype; ble/syntax/parse/nest-type
     [[ $ntype == glob_attr=* ]] && force_attr=$ATTR_ERR # ※${ntype#*=} ではなくエラー
 
     ((_ble_syntax_attr[i++]=${force_attr:-ATTR_BRACE}))
@@ -2402,7 +2491,7 @@ function ble/syntax:bash/ctx-brace-expansion {
     return 0
   elif [[ $tail == ','* ]]; then
     local force_attr=
-    local ntype; ble/syntax/parse/nest-type -v ntype
+    local ntype; ble/syntax/parse/nest-type
     [[ $ntype == glob_attr=* ]] && force_attr=${ntype#*=}
 
     ((_ble_syntax_attr[i++]=${force_attr:-ATTR_BRACE}))
@@ -3088,7 +3177,7 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
     return 0
   elif [[ $tail == ')'* ]]; then
     local ntype
-    ble/syntax/parse/nest-type -v ntype
+    ble/syntax/parse/nest-type
     local attr=
     if [[ $ntype == '(' || $ntype == '$(' || $ntype == '((' || $ntype == '$((' ]]; then
       # 1 $ntype == '('
@@ -4708,7 +4797,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:expr {
     local inest=... ntype
     local nlen=${stat[3]}; ((nlen>=0)) || return
     local inest=$((istat-nlen))
-    ble/syntax/parse/nest-type -v ntype # ([in] inest; [out] ntype)
+    ble/syntax/parse/nest-type # ([in] inest; [out] ntype)
 
     if [[ $ntype == [ad]'[' ]]; then
       # arr[...]=@ or arr=([...]=@)
@@ -5052,6 +5141,7 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define ATTR_DEL     syntax_delimiter
   ble/syntax/attr2iface/.define CTX_PARAM    syntax_param_expansion
   ble/syntax/attr2iface/.define CTX_PWORD    syntax_default
+  ble/syntax/attr2iface/.define CTX_PWORDR   syntax_default
   ble/syntax/attr2iface/.define ATTR_HISTX   syntax_history_expansion
   ble/syntax/attr2iface/.define ATTR_FUNCDEF syntax_function_name
   ble/syntax/attr2iface/.define CTX_VALX     syntax_default
