@@ -65,8 +65,8 @@ function blehook/.compatibility-ble-0.3/check {
     ble/bin/cat << EOF
 # [Change in ble-0.4.0]
 #
-# Please update your blerc settings for ble-0.4.
-# In ble-0.4, use the following form:
+# Please update your blerc settings for ble-0.4+.
+# In ble-0.4+, use the following form:
 # 
 #   blehook/eval-after-load keymap SHELL-COMMAND
 #   blehook/eval-after-load keymap_vi SHELL-COMMAND

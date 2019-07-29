@@ -936,7 +936,7 @@ function ble/builtin/trap/.read-arguments {
   flags= command= sigspecs=()
   while (($#)); do
     local arg=$1; shift
-    if [[ $arg == -* && flags != *A* ]]; then
+    if [[ $arg == -?* && flags != *A* ]]; then
       if [[ $arg == -- ]]; then
         flags=A$flags
         continue
@@ -958,7 +958,7 @@ function ble/builtin/trap/.read-arguments {
         (l) flags=l$flags ;;
         (p) flags=p$flags ;;
         (*)
-          ble/bin/echo "ble/builtin/trap: unknown long option \"$arg\"." >&2
+          ble/bin/echo "ble/builtin/trap: unknown option \"-${arg:i:1}\"." >&2
           flags=E$flags ;;
         esac
       done

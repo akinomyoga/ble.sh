@@ -2183,7 +2183,7 @@ bash_tips
     - blehook: add `blehook/eval-after-load` `#D1145` c1f7aa9
     - blehook: fix a bug that the definition of specified hooks are not printed `#D1146` a4a7cbc
   - highlight: highlight word with the form of URL `#D1150` f48f2d7
-  - syntax: support syntax/globpat in param expansions `#D1157` `#D1158` 051222e
+  - syntax: support syntax/globpat in param expansions `#D1157` `#D1158` 051222e `#D1160` 57b42ba
     - syntax: fix attr of nested extglob in param expansions `#D1159` 2d019f0
 
   Changes
@@ -3213,6 +3213,22 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-07-30
+
+  * bash: INT 云々というエラーメッセージが出る [#D1161]
+    declare | less で \<INT\> を検索して見てみると
+    _ble_builtin_trap_handlers=([1000]="INT") という状況になっている。
+    そしてこれは以下の部分で引き起こされているのではないかという気がする。
+    function ble-edit/exec:exec/.eval-epilogue {
+      trap - INT DEBUG
+      ble/base/adjust-bash-options
+
+    と思ったがこれは gexec ではなくて exec なので関係ない気がする…。
+    という事はまた何処か別の所で引き起こされている…。
+    何れにしても恐らく古い trap 呼び出しによって変な物が登録されているのである。
+    そしてそれは状況を見るに trap - INT DEBUG なのである。
+    試しに実行してみる事にする。再現した…。引数の読み取りが変なんだ。
 
 2019-07-27
 
