@@ -8,9 +8,9 @@
 
 function ble-decode/generate-binder/append {
   local xarg="\"$1\":ble-decode-byte:bind $2; builtin eval \"\$_ble_decode_bind_hook\""
-  local rarg="$1"
-  echo "builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
-  echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
+  local rarg=$1 condition=$3
+  echo "$condition${condition:+ && }builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
+  echo "$condition${condition:+ && }builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
 }
 function ble-decode/generate-binder/bind-s {
   local sarg="$1"
@@ -22,8 +22,8 @@ function ble-decode/generate-binder/bind-r {
 }
 
 function ble-decode/generate-binder {
-  local fbind1="$_ble_base/cache/ble-decode-bind.$_ble_bash.bind"
-  local fbind2="$_ble_base/cache/ble-decode-bind.$_ble_bash.unbind"
+  local fbind1=$_ble_base/cache/ble-decode-bind.$_ble_bash.bind
+  local fbind2=$_ble_base/cache/ble-decode-bind.$_ble_bash.unbind
 
   echo -n "ble.sh: updating binders... $_ble_term_cr" >&2
 
@@ -43,11 +43,24 @@ function ble-decode/generate-binder {
   #   bind '"\C-@":""' は使える様なので、UTF-8 の別表現に翻訳してしまう。
   local esc00="$((_ble_bash>=40300))"
 
-  # * C-x (24) は直接 bind -x すると何故か bash が crash する。
-  #   なので C-x は割り当てないで、
-  #   代わりに C-x ? の組合せを全て登録する事にする。
-  #   bash-3.1 ～ bash-4.2 で再現する。bash-4.3 では問題ない。
-  local bind18XX="$((_ble_bash<40300))"
+  # * C-x (24) に単体で直接 bind -x するとクラッシュする問題。
+  #
+  #   [症状]
+  #   bash-4.3 を除く bash-3.0 ～ bash-4.4 の全てで、set -o emacs で問題が生じる。
+  #   例えば C-x C-b C-b などと入力すると、bash-3.2 では無限ループになって固まる。
+  #   bash-4.4 では "コマンドのキーマップがありません" というエラーメッセージになる。
+  #   それ以外の bash では、何秒かしてクラッシュする。
+  #   bash-5.0 では修正されたので対策は不要になった (#D1163)
+  #
+  #   [対処法1]
+  #   C-x には直接 bind せずに 2 文字の組み合わせで bind -x '"\C-x?": ...' とする。
+  #
+  #   [対処法2] 却下 #D0582
+  #   bind -s '"\C-x": "\xC0\x98"' のようにする。
+  #   クラッシュはしなくなるが、謎の遅延が残る。
+  #   遅延をなくすには 対処法1 を実行するしかない。
+  #
+  local bind18XX=$((_ble_bash<40300||40400<=_ble_bash&&_ble_bash<50000))
 
   # * bash-3 では "ESC *" の組合せも全部登録しておかないと駄目??
   #   (もしかすると bind -r 等に失敗していただけかも知れないが)
@@ -96,7 +109,11 @@ function ble-decode/generate-binder {
       fi
     elif ((i==24)); then
       # C-x
-      ((bind18XX)) || $binder "$ret" "$i"
+      if ((bind18XX)); then
+        $binder "$ret" "$i" '[[ ! -o emacs ]]'
+      else
+        $binder "$ret" "$i"
+      fi
     elif ((i==27)); then
       ((bind1BXX)) || $binder "$ret" "$i"
     else
@@ -109,7 +126,7 @@ function ble-decode/generate-binder {
     # $binder "\\C-@$ret" "0 $i"
 
     # C-x *
-    ((bind18XX)) && $binder "$ret" "24 $i"
+    ((bind18XX)) && $binder "$ret" "24 $i" '[[ -o emacs ]]'
 
     # ESC *
     if ((bind1BXX)); then
