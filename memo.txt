@@ -2258,6 +2258,7 @@ bash_tips
   - highlight: fix error messages on the command line `a=[` `#D1156` b159ea2
   - util: fix a bug of "ble/builtin/trap" not recognizing "-" `#D1161`
   - init-bind: workaround a bash-5.0 bug that `bind '"\C-\\": ...'` does not work `#D1162`
+  - init-bind: do not use workaround of `C-x` in vi mode `#D1163`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3217,6 +3218,23 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-08-03
+
+  * vi_nmap: C-x が効かなくなっていると思ったら、 [#D1163]
+    C-x C-e を登録してしまった為に動かなくなっていたのだった。
+    うーん。テストは通る様になったがそれでもやはり C-x がすぐには効かない。
+    C-x は二個の組でしか受信できていない様子である。
+    vi_test で実行するとちゃんと一個ずつ受信できているので、
+    decode.sh の中で詰まっているという訳ではない様に思う。
+
+    何と bash-4.3 では動くけれども bash-4.4 以降では動かなくなっている。
+    うーん。実際に出力してみると C-x に対する作戦が異なる様だ。
+    というか emacs と vi で bind の戦略を変更しても良いのかも知れない…。
+    面倒なので binder の中に emacs/vi の判定条件を入れる事にした。
+
+    (というかそもそも何故条件判定を使わずに bash version 毎に
+    スクリプトを生成していたのだったか。恐らく初期化の速度を気にしての事だろう。
+    実は物凄く高速なので気にしなくても良いという気もするが、
+    何れにしても bash-5.0 では条件分岐も必要ないのでこれで良いという気がする)
 
   * init-bind: "C-\ C-\" が効かなくなっている @ bash-5.0 [#D1162]
     そもそも受信できているのだろうか…。

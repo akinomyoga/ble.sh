@@ -8,22 +8,22 @@
 
 function ble/init:bind/append {
   local xarg="\"$1\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\""
-  local rarg="$1"
-  ble/bin/echo "builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
-  ble/bin/echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
+  local rarg=$1 condition=$3
+  ble/bin/echo "$condition${condition:+ && }builtin bind -x '${xarg//$apos/$APOS}'" >> "$fbind1"
+  ble/bin/echo "$condition${condition:+ && }builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
 }
 function ble/init:bind/bind-s {
-  local sarg="$1"
+  local sarg=$1
   ble/bin/echo "builtin bind '${sarg//$apos/$APOS}'" >> "$fbind1"
 }
 function ble/init:bind/bind-r {
-  local rarg="$1"
+  local rarg=$1
   ble/bin/echo "builtin bind -r '${rarg//$apos/$APOS}'" >> "$fbind2"
 }
 
 function ble/init:bind/generate-binder {
-  local fbind1="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind"
-  local fbind2="$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind"
+  local fbind1=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
+  local fbind2=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind
 
   ble-edit/info/show text "ble.sh: updating binders..."
 
@@ -49,6 +49,7 @@ function ble/init:bind/generate-binder {
   #   例えば C-x C-b C-b などと入力すると、bash-3.2 では無限ループになって固まる。
   #   bash-4.4 では "コマンドのキーマップがありません" というエラーメッセージになる。
   #   それ以外の bash では、何秒かしてクラッシュする。
+  #   bash-5.0 では修正されたので対策は不要になった (#D1163)
   #
   #   [対処法1]
   #   C-x には直接 bind せずに 2 文字の組み合わせで bind -x '"\C-x?": ...' とする。
@@ -58,7 +59,7 @@ function ble/init:bind/generate-binder {
   #   クラッシュはしなくなるが、謎の遅延が残る。
   #   遅延をなくすには 対処法1 を実行するしかない。
   #
-  local bind18XX=$((_ble_bash<40300||40400<=_ble_bash))
+  local bind18XX=$((_ble_bash<40300||40400<=_ble_bash&&_ble_bash<50000))
 
   # ESC について
   #
@@ -135,7 +136,11 @@ function ble/init:bind/generate-binder {
       fi
     elif ((i==24)); then
       # C-x
-      ((bind18XX)) || ble/init:bind/append "$ret" "$i"
+      if ((bind18XX)); then
+        ble/init:bind/append "$ret" "$i" '[[ ! -o emacs ]]'
+      else
+        ble/init:bind/append "$ret" "$i"
+      fi
     elif ((i==27)); then
       # C-[
       if ((esc1B==0)); then
@@ -159,7 +164,7 @@ function ble/init:bind/generate-binder {
     # ble/init:bind/append "\\C-@$ret" "0 $i"
 
     # C-x *
-    ((bind18XX)) && ble/init:bind/append "$ret" "24 $i"
+    ((bind18XX)) && ble/init:bind/append "$ret" "24 $i" '[[ -o emacs ]]'
 
     # ESC *
     if ((esc1B==3)); then
