@@ -2256,6 +2256,8 @@ bash_tips
   - main: workaround `set -ex` `#D1153` 06ebf9f
   - main: workaround shell variable `FUNCNEST` `#D1154` fa2aa47
   - highlight: fix error messages on the command line `a=[` `#D1156` b159ea2
+  - util: fix a bug of "ble/builtin/trap" not recognizing "-" `#D1161`
+  - init-bind: workaround a bash-5.0 bug that `bind '"\C-\\": ...'` does not work `#D1162`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3214,9 +3216,19 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-08-03
+
+  * init-bind: "C-\ C-\" が効かなくなっている @ bash-5.0 [#D1162]
+    そもそも受信できているのだろうか…。
+    うーん。受信できていない…。
+    どうも bash-5.0 から受信できなくなっている様である。
+    うーん。前に修正した物との関連は? #D1078 これである。
+    これの気がする。単に表示が変なだけではなく実際に振る舞いが変なのである…。
+    取り敢えず bind "\x1c" とすれば動かない事は無いようである。
+
 2019-07-30
 
-  * bash: INT 云々というエラーメッセージが出る [#D1161]
+  * util: "bash: INT 云々" というエラーメッセージが出る [#D1161]
     declare | less で \<INT\> を検索して見てみると
     _ble_builtin_trap_handlers=([1000]="INT") という状況になっている。
     そしてこれは以下の部分で引き起こされているのではないかという気がする。
