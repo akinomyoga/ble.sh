@@ -150,6 +150,8 @@ function ble/init:bind/generate-binder {
         ble/init:bind/bind-r '\e'
       fi
     else
+      # Note: Bash-5.0 では \C-\\ で bind すると変な事になる #D1162 #D1078
+      ((i==28&&_ble_bash>=50000)) && ret='\x1C'
       ble/init:bind/append "$ret" "$i"
     fi
 
