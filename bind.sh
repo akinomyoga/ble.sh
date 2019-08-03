@@ -100,6 +100,8 @@ function ble-decode/generate-binder {
     elif ((i==27)); then
       ((bind1BXX)) || $binder "$ret" "$i"
     else
+      # Note: Bash-5.0 では \C-\\ で bind すると変な事になる #D1162 #D1078
+      ((i==28&&_ble_bash>=50000)) && ret='\x1C'
       $binder "$ret" "$i"
     fi
 
