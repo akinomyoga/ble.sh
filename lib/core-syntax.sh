@@ -3160,7 +3160,7 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
     local m=${BASH_REMATCH[0]}
     if ((ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC)); then
       ((_ble_syntax_attr[i]=ATTR_DEL))
-      ((ctx=CTX_ARGX0))
+      ((ctx=${#m}==1?CTX_CMDXE:CTX_ARGX0))
       [[ $_ble_syntax_bash_is_command_form_for && $tail == '(('* ]] && ((ctx=CTX_CMDXD0))
       ble/syntax/parse/nest-push $((${#m}==1?CTX_CMDX1:CTX_EXPR)) "$m"
       ((i+=${#m}))

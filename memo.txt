@@ -890,6 +890,10 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2019-08-05
+
+  * vi: 起動した瞬間のカーソルの形状
+
 2019-07-16
 
   * complete: パス名展開で複数語に展開される場合の補完に関して
@@ -2216,6 +2220,7 @@ bash_tips
   - edit: update prompt after execution of command through `ble-bind` `#D1151` 27208ea
   - blehook: replace builtin `trap` `#D1152` d6c555e 7d4fd03
     - blehook: suppress extra `DEBUG` trap calls `#D1155` 25c3e19
+  - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165`
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2256,9 +2261,10 @@ bash_tips
   - main: workaround `set -ex` `#D1153` 06ebf9f
   - main: workaround shell variable `FUNCNEST` `#D1154` fa2aa47
   - highlight: fix error messages on the command line `a=[` `#D1156` b159ea2
-  - util: fix a bug of "ble/builtin/trap" not recognizing "-" `#D1161`
-  - init-bind: workaround a bash-5.0 bug that `bind '"\C-\\": ...'` does not work `#D1162`
-  - init-bind: do not use workaround of `C-x` in vi mode `#D1163`
+  - util: fix a bug of "ble/builtin/trap" not recognizing "-" `#D1161` 11fddba
+  - init-bind: workaround a bash-5.0 bug that `bind '"\C-\\": ...'` does not work `#D1162` 80edf44
+  - init-bind: do not use workaround of `C-x` in vi mode `#D1163` e6a3d33
+  - vi_test: fix test for the macro playing `#D1164` 636517c
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3216,6 +3222,15 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-08-06
+
+  * syntax: 何とサブシェル () の直後に then 等を置いても OK らしい [#D1165]
+    yash のサンプルを見ていて気づいた。bash でもそうだった。
+    試すと then, fi, 等が置ける。(()) の直後は駄目の様だ。
+    [[ ]] の直後も駄目の様子である。} の直後は大丈夫。
+    その様に考えると } の直後と同じ文脈という事になるか。
+    どうも完全に CTX_CMDXE の様である。CTX_CMDXE にする。
 
 2019-08-03
 
