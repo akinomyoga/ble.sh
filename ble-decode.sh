@@ -1262,6 +1262,7 @@ function .ble-stty.finalize {
   _ble_stty_stat=
 }
 function .ble-stty.exit-trap {
+  [[ $$ == $BASHPID ]] || return
   # exit の場合は echo
   stty echo -nl \
     kill   ''  lnext  ''  werase ''  erase  '' \
