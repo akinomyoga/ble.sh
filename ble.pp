@@ -745,6 +745,7 @@ function ble/base/unload-for-reload {
   return 0
 }
 function ble/base/unload {
+  [[ $$ == $BASHPID ]] || return
   local IFS=$' \t\n'
   ble/term/stty/TRAPEXIT
   ble/term/leave

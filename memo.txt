@@ -892,6 +892,15 @@ bash_tips
 
 2019-08-05
 
+  * char_width_mode=emacs での斜め矢印の文字幅
+    この文字である ↗
+
+    ble.sh の上では幅2と計算されている。しかし、
+    emacs 上での取り扱いは幅1であり、そして contra でも1である。
+    自前の screen の cjkwidth emacs でも 1 であり、
+    それから自前の Poderosa の文字幅計算でも 1 である。
+    これは ble.sh の方を合わせるべきの気がする。
+
   * vi: 起動した瞬間のカーソルの形状
 
 2019-07-16
@@ -2220,7 +2229,7 @@ bash_tips
   - edit: update prompt after execution of command through `ble-bind` `#D1151` 27208ea
   - blehook: replace builtin `trap` `#D1152` d6c555e 7d4fd03
     - blehook: suppress extra `DEBUG` trap calls `#D1155` 25c3e19
-  - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165`
+  - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165` fdb49f3
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3222,6 +3231,15 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-08-13
+
+  * exec: failglob したコマンドがサブシェルにあると固まって動かなくなる [#D1166]
+    例えば echo ? | echo で固まってしまう。
+    よく考えたらどう対処したら良いか分からない…。
+    →分かった…これは subshell で ble/base/unload が起こっているのが原因である。
+    ble/base/unload で BASHPID をチェックする様にしたらあっさりと直った。
+    他の hook に関してもチェックした方が良いのではないか。
 
 2019-08-06
 

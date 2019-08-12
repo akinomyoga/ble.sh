@@ -602,6 +602,7 @@ fi
 # Note: 複数行コマンドは eval -- $'' の形に変換して
 #   書き込みたいので自前で処理する。
 function ble/history:bash/TRAPEXIT {
+  [[ $$ == $BASHPID ]] || return
   if shopt -q histappend &>/dev/null; then
     ble/builtin/history -a
   else
