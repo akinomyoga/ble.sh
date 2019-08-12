@@ -1561,6 +1561,7 @@ function ble/term/initialize {
 }
 
 function ble/term/TRAPEXIT {
+  [[ $$ == $BASHPID ]] || return
   ble/term/stty/TRAPEXIT
   ble/term/leave
   ble/util/buffer.flush >&2
