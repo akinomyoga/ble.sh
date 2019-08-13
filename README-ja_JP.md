@@ -100,17 +100,54 @@ make
 make INSDIR="$HOME/.local/share/blesh" install
 ```
 
+**初期化スクリプト `~/.blerc`**
+
+ユーザー設定は初期化スクリプト `~/.blerc` に記述します。
+テンプレートとしてリポジトリの [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) というファイルを利用できます。
+初期化スクリプトは `ble.sh` ロード時に自動で読み込まれる Bash スクリプトなので、Bash で使えるコマンドを初期化スクリプトの中で利用できます。
+初期化スクリプトの位置を変更する場合には、`source ble.sh` 時に `--rcfile INITFILE` を指定します。以下に例を挙げます。
+
+```bash
+# in bashrc
+
+# Example 1: ~/.blerc will be used by default
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+
+# Example 2: /path/to/your/blerc will be used
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
+```
+
 ## 基本設定
 
-ユーザー設定は Bash スクリプト `~/.blerc` に記述します。`ble.sh` をロードする際に自動で `source` されます。
-他のファイルに設定を記述する時は `source ble.sh` の際にオプション `--rcfile INITFILE` を指定します。
-リポジトリに含まれる `blerc` は `~/.blerc` のテンプレートとしてご利用いただけます。
-以下に最も基本的な設定を幾つか紹介します。
-より詳細な設定項目については[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8)を御覧ください。
+ここでは `~/.blerc` に記述する基本的な設定を幾つか紹介します。
+他の様々な設定に関してはテンプレート [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) を参照して下さい。
+完全な説明に関しては[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8)を参照して下さい。
 
 **Vim モード**
 
 Vim モードについては [Wiki の説明ページ](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
+
+**自動補完**
+
+自動補完は Bash 4.0 以上で利用することができ、既定で有効化されます。
+自動補完機能を無効にするには以下の設定を `~/.blerc` に記述します。
+
+```bash
+bleopt complete_auto_complete=
+```
+
+完全に自動補完を切るのではなくて、自動補完候補を表示するまでの遅延を設定するには以下のようにします。
+
+```bash
+# 例: 遅延を 300 ミリ秒に設定する
+bleopt complete_auto_delay=300
+```
+
+Bash のコマンド履歴に基づく補完候補を無効にするには以下のようにします。
+
+```bash
+bleopt complete_auto_history=
+```
 
 **曖昧文字幅**
 

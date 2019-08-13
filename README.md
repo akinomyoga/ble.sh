@@ -67,7 +67,7 @@ $ cp -r ble-0.3.0 /path/to/blesh
 
 **Setup `.bashrc`**
 
-If you want to load `ble.sh` defaultly in interactive sessions of `bash`, add the following codes to your `.bashrc` file:
+If you want to load `ble.sh` by default in interactive sessions of `bash`, add the following codes to your `.bashrc` file:
 ```bash
 # bashrc
 
@@ -97,20 +97,57 @@ make
 make INSDIR="$HOME/.local/share/blesh" install
 ```
 
+**Init script `~/.blerc`**
+
+User settings can be placed in the init script `~/.blerc`
+whose template is available as the file [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) in the repository.
+The init script is a Bash script which will be sourced during the load of `ble.sh`, so any shell commands can be used in `~/.blerc`.
+If you want to change the default path of the init script, you can add the option `--rcfile INITFILE` to `source ble.sh` as the following example:
+
+```bash
+# in bashrc
+
+# Example 1: ~/.blerc will be used by default
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+
+# Example 2: /path/to/your/blerc will be used
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
+```
 
 ## Basic settings
 
-User setttings can be placed into the Bash script `~/.blerc` which will be sourced during the load of `ble.sh`.
-If you want to change the default path to the settings, you can add the option `--rcfile INITFILE` to `source ble.sh`.
-A template of `~/.blerc` is available as the file `blerc` in the repository.
+Here some of the settings for `~/.blerc` are picked up.
+For more settings please check the template [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc).
 
 **Vim mode**
 
 For the vi/vim mode, check [the Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
+**Configure auto-complete**
+
+The feature `auto-complete` is available for Bash 4.0+ and enabled by default.
+If you want to turn off `auto-complete`, please put the following line in your `~/.blerc`.
+
+```bash
+bleopt complete_auto_complete=
+```
+
+Instead of completely turning off `auto-complete`, you can set a delay for `auto-complete`.
+
+```bash
+# Set the delay of the auto-complete to 300 milliseconds
+bleopt complete_auto_delay=300
+```
+
+`auto-complete` candidates based on the bash command history can be turned off by the following line.
+
+```bash
+bleopt complete_auto_history=
+```
+
 **CJK Width**
 
-The option `char_width_mode` controls the width of the unicode characters with `East_Asian_Width=A` (Ambiguous characters).
+The option `char_width_mode` controls the width of the Unicode characters with `East_Asian_Width=A` (Ambiguous characters).
 Currently four values `emacs`, `west`, `east`, and `auto` are supported. With the value `emacs`, the default width in emacs is used.
 With `west` all the ambiguous characters have width 1 (Hankaku). With `east` all the ambiguous characters have width 2 (Zenkaku).
 With `auto` the width mode `west` or `east` is automatically chosen based on the terminal behavior.
@@ -131,7 +168,7 @@ bleopt input_encoding='C'
 
 **Bell**
 
-The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. Defaultly, the audible bell is enabled while the visual bell is disabled.
+The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. By default, the audible bell is enabled while the visual bell is disabled.
 
 The option `vbell_default_message` specifies the message shown as the visual bell. The default value is `' Wuff, -- Wuff!! '`. The option `vbell_duration` specifies the display duration of the visual-bell message. The unit is millisecond. The default value is `2000`.
 
