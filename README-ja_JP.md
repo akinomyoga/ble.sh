@@ -27,8 +27,9 @@
 >
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
-## 使い方
-**最新の git repository のソースから生成して使う場合** (バージョン ble-0.4)
+# 1 使い方
+
+## 最新の git repository のソースから生成して試す (バージョン ble-0.4)
 
 `ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
 以下のコマンドで生成できます。
@@ -48,7 +49,7 @@ $ source out/ble.sh
 $ make INSDIR=/path/to/blesh install
 ```
 
-**`ble.sh` をダウンロードして使う場合** (旧バージョン ble-0.3 beta 201902版)
+## `ble.sh` をダウンロードして試す (旧バージョン ble-0.3 201902版)
 
 `wget` を使う場合:
 ```console
@@ -68,7 +69,7 @@ $ source ble-0.3.0/ble.sh
 $ cp -r ble-0.3.0 /path/to/blesh
 ```
 
-**`.bashrc` の設定**
+## `.bashrc` に設定する
 
 対話シェルで常用する場合には `.bashrc` に設定を行います。以下の様にコードを追加して下さい。
 ```bash
@@ -83,7 +84,7 @@ $ cp -r ble-0.3.0 /path/to/blesh
 ((_ble_bash)) && ble-attach
 ```
 
-**アップデート**
+## アップデートする
 
 `ble-0.3` 以上をお使いの場合は `ble.sh` をロードした状態で `ble-update` を実行して下さい。
 
@@ -100,7 +101,7 @@ make
 make INSDIR="$HOME/.local/share/blesh" install
 ```
 
-**初期化スクリプト `~/.blerc`**
+## 初期化スクリプト `~/.blerc` について
 
 ユーザー設定は初期化スクリプト `~/.blerc` に記述します。
 テンプレートとしてリポジトリの [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) というファイルを利用できます。
@@ -117,17 +118,17 @@ make INSDIR="$HOME/.local/share/blesh" install
 [[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
 ```
 
-## 基本設定
+# 2 基本設定
 
 ここでは `~/.blerc` に記述する基本的な設定を幾つか紹介します。
 他の様々な設定に関してはテンプレート [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) を参照して下さい。
 完全な説明に関しては[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8)を参照して下さい。
 
-**Vim モード**
+## Vim モード
 
 Vim モードについては [Wiki の説明ページ](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
 
-**自動補完**
+## 自動補完
 
 自動補完は Bash 4.0 以上で利用することができ、既定で有効化されます。
 自動補完機能を無効にするには以下の設定を `~/.blerc` に記述します。
@@ -149,7 +150,7 @@ Bash のコマンド履歴に基づく補完候補を無効にするには以下
 bleopt complete_auto_history=
 ```
 
-**曖昧文字幅**
+## 曖昧文字幅
 
 設定 `char_width_mode` を用いて、曖昧文字幅を持つ文字 (Unicode 参考特性 `East_Asian_Width` が `A` (Ambiguous) の文字) の幅を制御できます。
 現在は 4 つの選択肢 `emacs`, `west`, `east`, `auto` が用意されています。
@@ -164,7 +165,7 @@ bleopt complete_auto_history=
 bleopt char_width_mode='west'
 ```
 
-**文字コード**
+## 文字コード
 
 設定 `input_encoding` は入力の文字コードを制御するのに使います。現在 `UTF-8` と `C` のみに対応しています。
 設定値 `C` を指定した場合は、受信したバイト値が直接文字コードであると解釈されます。
@@ -174,7 +175,7 @@ bleopt char_width_mode='west'
 bleopt input_encoding='C'
 ```
 
-**ベル**
+## ベル
 
 設定 `edit_abell` と設定 `edit_vbell` は、編集関数 `bell` の振る舞いを制御します。
 `edit_abell` が非空白の文字列の場合、音による通知が有効になります (つまり、制御文字の `BEL` (0x07) が `stderr` に出力されます)。
@@ -193,7 +194,7 @@ bleopt edit_vbell=1 vbell_default_message=' BEL ' vbell_duration=3000
 bleopt edit_abell=
 ```
 
-**着色の設定**
+## 着色の設定
 
 構文に従った着色で使用される、各文法要素の色と属性は `ble-color-setface` シェル関数で設定します。
 既定の設定は以下のコードに対応します:
@@ -251,7 +252,7 @@ ble-color-defface filename_ls_colors        underline
 $ ble-color-show
 ```
 
-**キーバインディング**
+## キーバインディング
 
 キーバインディングはシェル関数 `ble-bind` を使って変更できます。
 例えば <kbd>C-x h</kbd> を入力した時に "Hello, world!" と挿入させたければ以下のようにします。
@@ -281,9 +282,9 @@ $ ble-bind -P
 $ ble-bind -L
 ```
 
-## ヒント
+# 3 ヒント
 
-**複数行モード**
+## 複数行モード
 
 コマンドラインに改行が含まれている場合、複数行モード (MULTILINE モード) になります。
 
@@ -293,19 +294,19 @@ $ ble-bind -L
 
 `shopt -s cmdhist` が設定されているとき (既定)、もし <kbd>RET</kbd> (<kbd>C-m</kbd>) を押した時にコマンドラインが構文的に閉じていなければ、コマンドの実行ではなく改行の挿入を行います。
 
-**Vim モード**
+## Vim モード
 
 `.bashrc` に `set -o vi` が設定されているとき、または `.inputrc` に `set editing-mode vi` が設定されているとき、vim モードが有効になります。
 Vim モードの詳細な設定については [Wiki のページ (英語)](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
 
-**自動補完**
+## 自動補完
 
 Bash 4.0 以降では自動補完が有効になり、予測候補が表示されます。
 候補を確定するには <kbd>S-RET</kbd> を入力します (編集文字列の末尾にいる時は <kbd>right</kbd>, <kbd>C-f</kbd> または <kbd>end</kbd> でも確定できます)。
 表示されている候補の初めの単語だけ部分的に確定する時は <kbd>M-f</kbd> または <kbd>M-right</kbd> を入力します。
 現在の候補で確定しそのままコマンドを実行する場合には <kbd>C-RET</kbd> (※お使いの端末が対応している時) を入力します。
 
-**静的略語展開**
+## 静的略語展開
 
 特定の単語を静的略語展開に登録することで好きな文字列に展開することができます。
 登録済み単語に一致する単語の直後で <kbd>SP</kbd> を入力した時に静的略語展開が起きます。
@@ -316,7 +317,7 @@ Bash 4.0 以降では自動補完が有効になり、予測候補が表示さ�
 ble-sabbrev L='| less'
 ```
 
-## 謝辞
+# 4 謝辞
 
 - @cmplstofB さまには vi モードの実装のテストをしていただき、またさまざまの提案を頂きました。
 

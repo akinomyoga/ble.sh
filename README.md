@@ -25,8 +25,9 @@ This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD li
 >
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
-## Usage
-**Generate `ble.sh` from source** (version ble-0.4 devel)
+# 1 Usage
+
+## Generate `ble.sh` from source (version ble-0.4 devel)
 
 To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
 The file `ble.sh` can be generated using the following commands.
@@ -45,7 +46,7 @@ If you want to install `ble.sh` in a specified directory, use the following comm
 $ make INSDIR=/path/to/blesh install
 ```
 
-**Or, download `ble.sh`** (version ble-0.3 beta 201902)
+## Or, download `ble.sh` (version ble-0.3 201902)
 
 With `wget`:
 ```console
@@ -65,7 +66,7 @@ If you want to place `ble.sh` in a specific directory, just copy the directory:
 $ cp -r ble-0.3.0 /path/to/blesh
 ```
 
-**Setup `.bashrc`**
+## Setup `.bashrc`
 
 If you want to load `ble.sh` by default in interactive sessions of `bash`, add the following codes to your `.bashrc` file:
 ```bash
@@ -80,7 +81,7 @@ If you want to load `ble.sh` by default in interactive sessions of `bash`, add t
 ((_ble_bash)) && ble-attach
 ```
 
-**Update**
+## Update
 
 For `ble-0.3+`, run `ble-update` in the session with `ble.sh` loaded:
 
@@ -97,7 +98,7 @@ make
 make INSDIR="$HOME/.local/share/blesh" install
 ```
 
-**Init script `~/.blerc`**
+## User settings `~/.blerc`
 
 User settings can be placed in the init script `~/.blerc`
 whose template is available as the file [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) in the repository.
@@ -114,16 +115,16 @@ If you want to change the default path of the init script, you can add the optio
 [[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
 ```
 
-## Basic settings
+# 2 Basic settings
 
 Here some of the settings for `~/.blerc` are picked up.
 For more settings please check the template [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc).
 
-**Vim mode**
+## Vim mode
 
 For the vi/vim mode, check [the Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
-**Configure auto-complete**
+## Configure `auto-complete`
 
 The feature `auto-complete` is available for Bash 4.0+ and enabled by default.
 If you want to turn off `auto-complete`, please put the following line in your `~/.blerc`.
@@ -145,7 +146,7 @@ bleopt complete_auto_delay=300
 bleopt complete_auto_history=
 ```
 
-**CJK Width**
+## CJK Width
 
 The option `char_width_mode` controls the width of the Unicode characters with `East_Asian_Width=A` (Ambiguous characters).
 Currently four values `emacs`, `west`, `east`, and `auto` are supported. With the value `emacs`, the default width in emacs is used.
@@ -158,7 +159,7 @@ For example, the value can be changed to `west` as:
 bleopt char_width_mode='west'
 ```
 
-**Input Encoding**
+## Input Encoding
 
 The option `input_encoding` controls the encoding scheme used in the decode of input. Currently `UTF-8` and `C` are available. With the value `C`, byte values are directly interpreted as character codes. The default value is `UTF-8`. For example, the value can be changed to `C` as:
 
@@ -166,7 +167,7 @@ The option `input_encoding` controls the encoding scheme used in the decode of i
 bleopt input_encoding='C'
 ```
 
-**Bell**
+## Bell
 
 The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. By default, the audible bell is enabled while the visual bell is disabled.
 
@@ -182,7 +183,7 @@ For another instance, the audible bell is disabled as:
 bleopt edit_abell=
 ```
 
-**Highlight Colors**
+## Highlight Colors
 
 The colors and attributes used in the syntax highlighting are controlled by `ble-color-setface` function. The following code reproduces the default configuration:
 ```bash
@@ -239,7 +240,7 @@ The color codes can be checked in output of the function `ble-color-show` (defin
 $ ble-color-show
 ```
 
-**Key Bindings**
+## Key Bindings
 
 Key bindings can be controlled with the shell function, `ble-bind`.
 For example, with the following setting, "Hello, world!" will be inserted on typing <kbd>C-x h</kbd>
@@ -269,9 +270,9 @@ The list of widgets is shown by the following command:
 $ ble-bind -L
 ```
 
-## Tips
+# 3 Tips
 
-**Use multiline mode**
+## Use multiline mode
 
 When the command line string contains a newline character, `ble.sh` enters the MULTILINE mode.
 
@@ -282,12 +283,12 @@ In the MULTILINE mode, the command can be executed by typing <kbd>C-j</kbd>.
 When the shell option `shopt -s cmdhist` is set (which is the default),
 <kbd>RET</kbd> (<kbd>C-m</kbd>) inserts a newline if the current command line string is syntactically incomplete.
 
-**Use vim editing mode**
+## Use vim editing mode
 
 If `set -o vi` is specified in `.bashrc` or `set editing-mode vi` is specified in `.inputrc`, the vim mode is enabled.
 For details, please check the [Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
-**Use `auto-complete`**
+## Use `auto-complete`
 
 The feature `auto-complete` is available in Bash 4.0 or later. `auto-complete` automatically suggests a possible completion on user input.
 The suggested contents can be inserted by typing <kbd>S-RET</kbd>
@@ -295,7 +296,7 @@ The suggested contents can be inserted by typing <kbd>S-RET</kbd>
 If you want to insert only first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
 If you want to accept the suggestion and immediately run the command, you can use <kbd>C-RET</kbd> (if your terminal supports this special key combination).
 
-**Use `sabbrev` (static abbrev expansions)**
+## Use `sabbrev` (static abbrev expansions)
 
 By registering words to `sabbrev`, the words can be expanded to predefined strings.
 When the cursor is just after a registered word, typing <kbd>SP</kbd> causes `sabbrev` expansion.
@@ -306,6 +307,6 @@ For example, with the following settings, when you type <kbd>SP</kbd> after the 
 ble-sabbrev L='| less'
 ```
 
-## Special thanks
+# 4 Special thanks
 
 - @cmplstofB for testing vim-mode and giving me a lot of suggestions
