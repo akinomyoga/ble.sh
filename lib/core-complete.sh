@@ -1504,6 +1504,7 @@ function ble/complete/source:command {
 ##   @var[out] ret
 function ble/complete/util/eval-pathname-expansion {
   local pattern=$1
+
   local -a dtor=()
 
   if [[ -o noglob ]]; then
@@ -1525,6 +1526,15 @@ function ble/complete/util/eval-pathname-expansion {
     if shopt -q nocaseglob; then
       shopt -u nocaseglob
       ble/array#push dtor 'shopt -s nocaseglob'
+    fi
+  fi
+
+  if ble/util/is-cygwin-slow-glob "$pattern"; then # Note: #D1168
+    if shopt -q failglob &>/dev/null || shopt -q nullglob &>/dev/null; then
+      pattern=
+    else
+      set -f
+      ble/array#push dtor 'set +f'
     fi
   fi
 

@@ -1280,6 +1280,18 @@ function ble/syntax:bash/simple-word/eval-noglob {
   ret=("${__ble_ret[@]}")
 }
 function ble/syntax:bash/simple-word/eval/.impl {
+  if ble/util/is-cygwin-slow-glob "$1"; then # Note: #D1168
+    if shopt -q failglob &>/dev/null; then
+      __ble_ret=()
+      return 1
+    elif shopt -q nullglob &>/dev/null; then
+      __ble_ret=()
+      return 0
+    else
+      ble/syntax:bash/simple-word/eval-noglob "$1"; return
+    fi
+  fi
+
   # グローバル変数の復元
   local -a ret=()
   ble/syntax:bash/simple-word/extract-parameter-names "$1"
@@ -1390,14 +1402,19 @@ function ble/syntax:bash/simple-word/locate-filename {
   # compose regular expressions
   local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
   local rex='^'$rex_element'['$sep']|^['$sep']'
-  if [[ :$opts: == *:url:* ]]; then
-    rex='^[a-z]+://'$_ble_syntax_bash_simple_rex_element'*|'$rex
-  fi
+  local rex_url='^[a-z]+://'
 
   local tail=$word p=0
   while
-    "$eval_word" "$tail" && [[ -e $ret || -h $ret ]] && break
-    local rex=^[a-z]+://; [[ :$opts: == *:url:* && $ret =~ $rex ]] && break
+    if "$eval_word" "$tail"; then
+      # Note: #D1168 Cygwin では // で始まるパスの判定は遅いので直接文字列で判定する
+      if [[ $OSTYPE == cygwin && $ret == //* ]]; then
+        [[ $ret == // ]] && break
+      else
+        [[ -e $ret || -h $ret ]] && break
+      fi
+    fi
+    [[ :$opts: == *:url:* && $ret =~ $rex_url ]] && break
     [[ $tail =~ $rex ]]
   do
     ((p+=${#BASH_REMATCH}))
@@ -5369,6 +5386,13 @@ fi
 ##   @var[out] type
 function ble/syntax/highlight/filetype {
   local file=$1
+
+  # Note: #D1168 Cygwin では // で始まるパスはとても遅い
+  if [[ $OSTYPE == cygwin && $file == //* ]]; then
+    [[ $file == // ]] && ((type=ATTR_FILE_DIR))
+    return
+  fi
+
   type=
   if [[ -h $file ]]; then
     if [[ -e $file ]]; then

@@ -1462,12 +1462,43 @@ else
   }
 fi
 
+function ble/util/has-glob-pattern {
+  local dummy=$_ble_base_run/$$.dummy ret
+  if shopt -q failglob &>/dev/null; then
+    eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
+  else
+    shopt -s failglob
+    eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
+    shopt -u failglob
+  fi
+  ((ext!=0)); return
+}
+
+# Note: Cygwin では // で始まるパスの展開は遅い (#D1168)
+function ble/util/is-cygwin-slow-glob {
+  [[ $OSTYPE == cygwin && $1 == //* && ! -o noglob ]] &&
+    ble/util/has-glob-pattern "$1"
+}
+
 ## 関数 ble/util/eval-pathname-expansion pattern
 ##   @var[out] ret
 function ble/util/eval-pathname-expansion {
+  ret=()
+  if ble/util/is-cygwin-slow-glob; then # Note: #D1168
+    if shopt -q failglob &>/dev/null; then
+      return 1
+    elif shopt -q nullglob &>/dev/null; then
+      return 0
+    else
+      set -f
+      ble/util/eval-pathname-expansion "$1"; local ext=$1
+      set +f
+      return "$ext"
+    fi
+  fi
+
   # Note: eval で囲んでおかないと failglob 失敗時に続きが実行されない
   # Note: failglob で失敗した時のエラーメッセージは殺す
-  ret=()
   eval "ret=($1)" 2>/dev/null
 }
 
