@@ -432,8 +432,8 @@ function ble-edit/prompt/backslash:w { # PWD
   return 0
 }
 function ble-edit/prompt/backslash:W { # PWD短縮
-  if [[ $PWD == / ]]; then
-    ble-edit/prompt/print /
+  if [[ ! ${PWD//'/'} ]]; then
+    ble-edit/prompt/print "$PWD"
   else
     ble-edit/prompt/.update-working-directory
     ble-edit/prompt/print "${cache_wd##*/}"
@@ -445,8 +445,8 @@ function ble-edit/prompt/backslash:W { # PWD短縮
 function ble-edit/prompt/.update-working-directory {
   [[ $cache_wd ]] && return
 
-  if [[ $PWD == / ]]; then
-    cache_wd=/
+  if [[ ! ${PWD//'/'} ]]; then
+    cache_wd=$PWD
     return
   fi
 
