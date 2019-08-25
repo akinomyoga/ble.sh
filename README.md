@@ -303,7 +303,7 @@ When the cursor is just after a registered word, typing <kbd>SP</kbd> causes `sa
 For example, with the following settings, when you type <kbd>SP</kbd> after the command line `command L`, the command line will be expanded to `command | less`.
 
 ```bash
-# bashrc (after source ble.sh)
+# blerc
 ble-sabbrev L='| less'
 ```
 

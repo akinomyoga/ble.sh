@@ -890,6 +890,10 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2019-08-24
+
+  * edit: コマンド a[{1,2}]=3 を実行するとエラーになって状態がおかしくなる
+
 2019-08-05
 
   * vi: 起動した瞬間のカーソルの形状
@@ -2265,6 +2269,9 @@ bash_tips
   - init-bind: workaround a bash-5.0 bug that `bind '"\C-\\": ...'` does not work `#D1162` 80edf44
   - init-bind: do not use workaround of `C-x` in vi mode `#D1163` e6a3d33
   - vi_test: fix test for the macro playing `#D1164` 636517c
+  - exec: fix a problem that the shell hangs with failglob in pipe `#D1166` ac8ba6e
+  - complete: fix a problem of delay with path `//` in Cygwin `#D1168` 2cf8cc7
+  - prompt: fix the expansion of `\w` and `\W` in `PS1` for working directories with double slashes `#D1169` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3223,6 +3230,12 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-08-25
+
+  * prompt: bash の cd //... と PS1 \w の表示 (information by cmplstofB) [#D1169]
+    https://github.com/akinomyoga/ble.sh/commit/2cf8cc7a2c39f1c0ceb3016a5f3ca745c27b9b5d#r34820891
+    試したら PS1 の中の \w と \W の表示が変になるという事が分かったので修正する。
+
 2019-08-17
 
   * complete: cygwin で "echo //" と入力すると待たされる [#D1168]
@@ -3251,7 +3264,7 @@ bash_tips
 
 2019-08-13
 
-  * char_width_mode=emacs での斜め矢印の文字幅 [#D1167]
+  * [棄却] char_width_mode=emacs での斜め矢印の文字幅 [#D1167]
     この文字である ↗
 
     ble.sh の上では幅2と計算されている。しかし、
@@ -3263,6 +3276,11 @@ bash_tips
     どうも contra のコードを調べてみると、
     これは絵文字と判定されている様である。
     一方で A ではない文字とも判定されている。
+
+    これは emoji_width の設定の問題なので bash 自体の問題ではない。
+    取り敢えず emoji_width を設定せずに使う事にした。
+    絵文字を使う為にはやはり emacs/screen/端末 などが
+    全て対応していないと幅の計算が駄目になるのである。
 
   * exec: failglob したコマンドがサブシェルにあると固まって動かなくなる [#D1166]
     例えば echo ? | echo で固まってしまう。

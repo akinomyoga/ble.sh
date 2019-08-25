@@ -313,7 +313,7 @@ Bash 4.0 以降では自動補完が有効になり、予測候補が表示さ�
 例えば、以下の設定をしておくと `command L` まで入力した状態で <kbd>SP</kbd> を押した時に、コマンドラインが `command | less` に展開されます。
 
 ```bash
-# bashrc (after source ble.sh)
+# blerc
 ble-sabbrev L='| less'
 ```
 
