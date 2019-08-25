@@ -955,8 +955,8 @@ function .ble-line-prompt/update/backslash:w { # PWD
   .ble-line-prompt/update/append "$param_wd"
 }
 function .ble-line-prompt/update/backslash:W { # PWD短縮
-  if [[ $PWD == / ]]; then
-    .ble-line-prompt/update/append /
+  if [[ ! ${PWD//'/'} ]]; then
+    .ble-line-prompt/update/append "$PWD"
   else
     .ble-line-prompt/update/append "${param_wd##*/}"
   fi
