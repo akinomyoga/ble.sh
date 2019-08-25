@@ -1982,13 +1982,13 @@ function ble/textarea#redraw-cache {
 ##   従って、単に FEADLINE_LINE に文字を設定すれば良い。
 ##
 function ble/textarea#adjust-for-bash-bind {
+  ble-edit/adjust-PS1
   if [[ $bleopt_internal_suppress_bash_output ]]; then
-    PS1= READLINE_LINE=$'\n' READLINE_POINT=0
+    READLINE_LINE=$'\n' READLINE_POINT=0
   else
     # bash が表示するプロンプトを見えなくする
     # (現在のカーソルの左側にある文字を再度上書きさせる)
     local -a DRAW_BUFF=()
-    PS1=
     local ret lc=${_ble_textarea_cur[2]} lg=${_ble_textarea_cur[3]}
     ble/util/c2s "$lc"
     READLINE_LINE=$ret
@@ -4028,6 +4028,8 @@ function exit { ble/builtin/exit "$@"; }
 #--------------------------------------
 
 _ble_edit_exec_TRAPDEBUG_enabled=
+_ble_edit_exec_inside_begin=
+_ble_edit_exec_inside_prologue=
 ble/builtin/trap/reserve DEBUG
 function ble-edit/exec:gexec/.TRAPDEBUG/trap {
   builtin trap -- 'ble-edit/exec:gexec/.TRAPDEBUG "$*" || { (($?==2)) && return || break; } &>/dev/null' DEBUG
@@ -4115,6 +4117,7 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
 ##     ble-edit/exec:gexec/.end
 ##
 function ble-edit/exec:gexec/.begin {
+  _ble_edit_exec_inside_begin=1
   local IFS=$' \t\n'
   _ble_decode_bind_hook=
   _ble_edit_exec_PWD=$PWD
@@ -4129,6 +4132,7 @@ function ble-edit/exec:gexec/.begin {
   ble-edit/exec:gexec/.TRAPDEBUG/enter
 }
 function ble-edit/exec:gexec/.end {
+  _ble_edit_exec_inside_begin=
   local IFS=$' \t\n'
 
   # Note: builtin trap -- - DEBUG は何故か此処では効かないので
@@ -4140,10 +4144,12 @@ function ble-edit/exec:gexec/.end {
   ble/util/joblist.flush >&2
   ble-edit/bind/.check-detach && return 0
   ble/term/enter
+  [[ $1 == restore ]] && return # Note: 前回の呼出で .end に失敗した時 #D1170
   ble-edit/bind/.tail # flush will be called here
 }
 
 function ble-edit/exec:gexec/.prologue {
+  _ble_edit_exec_inside_prologue=1
   local IFS=$' \t\n'
   BASH_COMMAND=$1
   ble-edit/restore-PS1
@@ -4167,9 +4173,9 @@ function ble-edit/exec:gexec/.save-last-arg {
   return "$_ble_edit_exec_lastexit"
 }
 function ble-edit/exec:gexec/.epilogue {
-  # lastexit
-  _ble_edit_exec_lastexit=$?
+  _ble_edit_exec_lastexit=$? # lastexit
   _ble_edit_exec_TRAPDEBUG_enabled=
+  _ble_edit_exec_inside_prologue=
   eval "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
   ble-edit/exec/.reset-builtins-1
   if ((_ble_edit_exec_lastexit==0)); then
@@ -4247,6 +4253,11 @@ function ble-edit/exec:gexec/.setup {
 function ble-edit/exec:gexec/process {
   ble-edit/exec:gexec/.setup
   return $?
+}
+function ble-edit/exec:gexec/restore-state {
+  # 構文エラー等で epilogue/end が呼び出されなかった時の為 #D1170
+  [[ $_ble_edit_exec_inside_prologue ]] &&  ble-edit/exec:gexec/.epilogue 3>&2 &>/dev/null
+  [[ $_ble_edit_exec_inside_begin ]] &&  ble-edit/exec:gexec/.end restore
 }
 
 # **** accept-line ****                                            @edit.accept
@@ -7132,6 +7143,7 @@ fi
 
 ## ble-decode.sh 用の設定
 function ble-decode/PROLOGUE {
+  ble-edit/exec:gexec/restore-state
   ble-edit/bind/.head
   ble-decode-bind/uvw
   ble/term/enter

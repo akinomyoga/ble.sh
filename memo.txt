@@ -890,10 +890,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-08-24
-
-  * edit: コマンド a[{1,2}]=3 を実行するとエラーになって状態がおかしくなる
-
 2019-08-05
 
   * vi: 起動した瞬間のカーソルの形状
@@ -2271,7 +2267,7 @@ bash_tips
   - vi_test: fix test for the macro playing `#D1164` 636517c
   - exec: fix a problem that the shell hangs with failglob in pipe `#D1166` ac8ba6e
   - complete: fix a problem of delay with path `//` in Cygwin `#D1168` 2cf8cc7
-  - prompt: fix the expansion of `\w` and `\W` in `PS1` for working directories with double slashes `#D1169` 0000000
+  - prompt: fix the expansion of `\w` and `\W` in `PS1` for working directories with double slashes `#D1169` d1288dd
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3231,6 +3227,36 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-08-25
+
+  * edit: コマンド a[{1,2}]=3 を実行するとエラーになって状態がおかしくなる [#D1170]
+
+    $ a[1+]=2
+    でもなる。
+    $ eval 'a[1+]=2; echo hello'
+    としてもなる。
+    $ a[1+]=2; echo ]
+    としてもなる。eval の中でも影響が残ってしまうというのは不思議だ。
+
+    以下の様にして試してみる。"a" とエラーメッセージしか表示されない。
+    配列添字で算術式のエラーが生じると、
+    eval どころか関数呼び出しの入れ子も全て無視して実行が中断する様だ。
+    $ function f() { eval 'a[1+]=1'; }
+    $ echo a; f; echo b
+
+    failglob の時には中断は eval の外までは波及しなかった。
+    これに対する対策はどうした物だろうか。
+    そもそも全く実行しないという手?
+
+    少なくとも epilogue 等の呼び出しに失敗したとしても、
+    正しく状態が復元される様にはしたい所なのである。
+    そもそも何故 PS1 が失われてしまうのか。
+    調べると adjust/restore-PS1 とは独立に明示的に PS1= している箇所がある。
+    これは adjust-PS1 経由でクリアする事にした。
+
+    また、途中で実行が中断されて epilogue/end が呼び出されなかった場合の為、
+    それを検出して必要に応じてその場で epilogue/end を呼び出す様に修正する。
+    関数呼び出しが深いので FUNCNEST があると動かなくなるが
+    滅多に起こらない事なので気にしない事にする。
 
   * prompt: bash の cd //... と PS1 \w の表示 (information by cmplstofB) [#D1169]
     https://github.com/akinomyoga/ble.sh/commit/2cf8cc7a2c39f1c0ceb3016a5f3ca745c27b9b5d#r34820891
