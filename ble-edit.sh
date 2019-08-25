@@ -1191,8 +1191,8 @@ function ble-edit/prompt/update/backslash:w { # PWD
   ble-edit/prompt/update/append "$cache_wd"
 }
 function ble-edit/prompt/update/backslash:W { # PWD短縮
-  if [[ $PWD == / ]]; then
-    ble-edit/prompt/update/append /
+  if [[ ! ${PWD//'/'} ]]; then
+    ble-edit/prompt/update/append "$PWD"
   else
     ble-edit/prompt/update/update-cache_wd
     ble-edit/prompt/update/append "${cache_wd##*/}"
@@ -1203,8 +1203,8 @@ function ble-edit/prompt/update/backslash:W { # PWD短縮
 function ble-edit/prompt/update/update-cache_wd {
   [[ $cache_wd ]] && return
 
-  if [[ $PWD == / ]]; then
-    cache_wd=/
+  if [[ ! ${PWD//'/'} ]]; then
+    cache_wd=$PWD
     return
   fi
 
