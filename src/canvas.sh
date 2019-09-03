@@ -951,8 +951,8 @@ function ble/canvas/trace/.impl {
         fi
         ((x=0,lc=-1,lg=0)) ;;
       # Note: \001 (^A) 及び \002 (^B) は PS1 の処理で \[ \] を意味するそうだ。#D1074
-      ($'\001') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1sc ;;
-      ($'\002') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1rc ;;
+      ($'\001') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1sc; s= ;;
+      ($'\002') [[ :$opts: == *:prompt:* ]] && ble/canvas/trace/.ps1rc; s= ;;
       # その他の制御文字は  (BEL)  (FF) も含めてゼロ幅と解釈する
       esac
       [[ $s ]] && ble/canvas/put.draw "$s"

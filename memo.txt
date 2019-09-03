@@ -890,9 +890,10 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-08-05
+2019-09-03
 
-  * vi: 起動した瞬間のカーソルの形状
+  * menu-complete: グロブパターンを含む単語をメニュー補完すると正しくない結果になる。
+    echo *.p として menu-complete から a.pdf を選択すると *.pa.pdf になってしまう。
 
 2019-07-16
 
@@ -2268,6 +2269,7 @@ bash_tips
   - exec: fix a problem that the shell hangs with failglob in pipe `#D1166` ac8ba6e
   - complete: fix a problem of delay with path `//` in Cygwin `#D1168` 2cf8cc7
   - prompt: fix the expansion of `\w` and `\W` in `PS1` for working directories with double slashes `#D1169` d1288dd
+  - exec: workaround termination of command execution on syntax error in array subscripts `#D1170` 4f442d0
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3225,6 +3227,24 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-09-04
+
+  * prompt: 変な文字が出力されてしまう (reported by Dave-Elec)
+    https://github.com/akinomyoga/ble.sh/issues/30
+
+    調べてみると \[\] に対応して出力している筈の
+    \1 \2 がそのまま出力されている気がする。うーん。
+    ble/canvas/trace を調べてみた所、\001, \002 を処理しているが、
+    それに伴って \001, \002 自体の出力を抑止する処理を忘れていた。直した。
+
+2019-09-03
+
+  * 2019-08-05 [自然解消] vi: 起動した瞬間のカーソルの形状
+    調べてみるとちゃんと最初に 0 を設定している。
+    これは完全に contra のバグだったと思って良いのだろうか?
+    現状で tx11 を起動してみると確かに問題は解消している様な気がする。
+    これに関しては再現したらその時に考え直す事にする。
 
 2019-08-25
 
