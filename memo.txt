@@ -2222,6 +2222,7 @@ bash_tips
   - blehook: replace builtin `trap` `#D1152` d6c555e 7d4fd03
     - blehook: suppress extra `DEBUG` trap calls `#D1155` 25c3e19
   - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165` fdb49f3
+  - edit: support options `--help` for `read` and `exit` `#D1173` 0000000
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3228,9 +3229,14 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-09-22
+
+  * edit: read, exit に --help を指定しても説明が表示されない [#D1173]
+    対応した。
+
 2019-09-04
 
-  * prompt: 変な文字が出力されてしまう (reported by Dave-Elec)
+  * prompt: 変な文字が出力されてしまう (reported by Dave-Elec) [#D1172]
     https://github.com/akinomyoga/ble.sh/issues/30
 
     調べてみると \[\] に対応して出力している筈の
@@ -3240,7 +3246,7 @@ bash_tips
 
 2019-09-03
 
-  * 2019-08-05 [自然解消] vi: 起動した瞬間のカーソルの形状
+  * 2019-08-05 [自然解消] vi: 起動した瞬間のカーソルの形状 [#D1171]
     調べてみるとちゃんと最初に 0 を設定している。
     これは完全に contra のバグだったと思って良いのだろうか?
     現状で tx11 を起動してみると確かに問題は解消している様な気がする。

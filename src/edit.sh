@@ -3974,13 +3974,39 @@ function ble-edit/exec/restore-BASH_REMATCH {
   [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
 }
 
+function ble/builtin/exit/.read-arguments {
+  while (($#)); do
+    local arg=$1; shift
+    if [[ $arg == --help ]]; then
+      opt_flags=${opt_flags}H
+    elif local rex='^[-+]?[0-9]+$'; [[ $arg =~ $rex ]]; then
+      ble/array#push opt_args "$arg"
+    else
+      ble/bin/echo "exit: unrecognized argument '$arg'" >&2
+      opt_flags=${opt_flags}E
+    fi
+  done
+}
 function ble/builtin/exit {
   # Note: BASHPID は Bash-4.0 以上
-  local ext=${1-$?}
+  local ext=$?
   if ((_ble_bash>=40000&&BASHPID!=$$)) || [[ $_ble_decode_bind_state == none ]]; then
-    builtin exit "$ext"
+    if (($#)); then
+      builtin exit "$@"
+    else
+      builtin exit "$ext"
+    fi
     return
   fi
+
+  local opt_flags=
+  local -a opt_args=()
+  ble/builtin/exit/.read-arguments "$@"
+  if [[ $opt_flags == *[EH]* ]]; then
+    [[ $opt_flags == *H* ]] && builtin exit --help
+    [[ $opt_flags != *E* ]]; return
+  fi
+  ((${#opt_args[@]})) || ble/array#push opt_args "$ext"
 
   local joblist
   ble/util/joblist
@@ -4007,8 +4033,8 @@ function ble/builtin/exit {
   fi
 
   ble/bin/echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
-  builtin exit "$ext" &>/dev/null
-  builtin exit "$ext" &>/dev/null
+  builtin exit "${opt_args[@]}" &>/dev/null
+  builtin exit "${opt_args[@]}" &>/dev/null
   return 1 # exit できなかった場合は 1 らしい
 }
 
@@ -6412,7 +6438,7 @@ _ble_edit_read_history_ind=0
 
 function ble/builtin/read/.process-option {
   case $1 in
-  (-e) opt_readline=1 ;;
+  (-e) opt_flags=${opt_flags}r ;;
   (-i) opt_default=$2 ;;
   (-p) opt_prompt=$2 ;;
   (-u) opt_fd=$2
@@ -6429,22 +6455,37 @@ function ble/builtin/read/.read-arguments {
     local arg=$1; shift
     if [[ $is_normal_args || $arg != -* ]]; then
       ble/array#push vars "$arg"
-      continue
-    fi
-
-    if [[ $arg == -- ]]; then
+    elif [[ $arg == -- ]]; then
       is_normal_args=1
-      continue
-    fi
-
-    local i n=${#arg}
-    for ((i=1;i<n;i++)); do
-      case -${arg:i} in
-      (-[adinNptu])  ble/builtin/read/.process-option -${arg:i:1} "$1"; shift; break ;;
-      (-[adinNptu]*) ble/builtin/read/.process-option -${arg:i:1} "${arg:i+1}"; break ;;
-      (-[ers]*)      ble/builtin/read/.process-option -${arg:i:1} ;;
+    elif [[ $arg == --* ]]; then
+      case $arg in
+      (--help)
+        opt_flags=${opt_flags}H ;;
+      (*)
+        ble/bin/echo "read: unrecognized long option '$arg'" >&2
+        opt_flags=${opt_flags}E ;;
       esac
-    done
+    else
+      local i n=${#arg} c
+      for ((i=1;i<n;i++)); do
+        c=${arg:i:1}
+        case ${arg:i} in
+        ([adinNptu])
+          if (($#)); then
+            ble/builtin/read/.process-option -$c "$1"; shift
+          else
+            ble/bin/echo "read: missing option argument for '-$c'" >&2
+            opt_flags=${opt_flags}E
+          fi
+          break ;;
+        ([adinNptu]*) ble/builtin/read/.process-option -$c "${arg:i+1}"; break ;;
+        ([ers]*)      ble/builtin/read/.process-option -$c ;;
+        (*)
+          ble/bin/echo "read: unrecognized option '-$c'" >&2
+          opt_flags=${opt_flags}E ;;
+        esac
+      done
+    fi
   done
 }
 
@@ -6608,9 +6649,16 @@ function ble/builtin/read/.loop {
 
 function ble/builtin/read/.impl {
   local -a opts=() vars=() opts_in=()
-  local opt_readline= opt_prompt= opt_default= opt_timeout= opt_fd=0
+  # opt_flags ... E: error, H: help (--help), r: readline (-e)
+  local opt_flags= opt_prompt= opt_default= opt_timeout= opt_fd=0
   ble/builtin/read/.read-arguments "$@"
-  if ! [[ $opt_readline && -t $opt_fd ]]; then
+  if [[ $opt_flags == *[HE]* ]]; then
+    [[ $opt_flags == *H* ]] &&
+      builtin read --help
+    [[ $opt_flags != *E* ]]; return
+  fi
+
+  if ! [[ $opt_flags == *r* && -t $opt_fd ]]; then
     # "-e オプションが指定されてかつ端末からの読み取り" のとき以外は builtin read する。
     [[ $opt_prompt ]] && ble/array#push opts -p "$opt_prompt"
     [[ $opt_timeout ]] && ble/array#push opts -t "$opt_timeout"
