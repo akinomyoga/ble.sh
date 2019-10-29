@@ -722,7 +722,7 @@ function ble/builtin/history/.initialize {
   local histapp=$_ble_base_run/$$.history.app
   builtin history -a "$histini"
   if [[ -s $histini ]]; then
-    ble/bin/sed 's/^/ 0 __ble_edt__/' "$histini" >> "$histapp"
+    ble/bin/sed 's/^/ 0 __ble_edit__/' "$histini" >> "$histapp"
     : >| "$histini"
   fi
 
