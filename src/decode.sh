@@ -2187,8 +2187,7 @@ function ble-bind {
               command="ble/widget/.SHELL_COMMAND '${command//$q/$Q}'" ;;
             (s)
               local ret; ble/util/keyseq2chars "$command"
-              command="ble/widget/.MACRO ${ret[*]}"
-              ble/bin/echo "$command" ;;
+              command="ble/widget/.MACRO ${ret[*]}" ;;
             ('@') ;; # 直接実行
             (*)
               ble/bin/echo "error: unsupported binding type \`-$c'." 1>&2
