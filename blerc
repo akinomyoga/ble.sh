@@ -386,10 +386,14 @@ function blerc/vim-load-hook {
   # bleopt term_vi_cmap=
 
   ## vim-surround
-  # source "$_ble_base/lib/vim-surround.sh"
-  # bleopt vim_surround_45:=$'$( \r )'
-  # bleopt vim_surround_61:=$'$(( \r ))'
+  #source "$_ble_base/lib/vim-surround.sh"
+  #bleopt vim_surround_45:=$'$( \r )'
+  #bleopt vim_surround_61:=$'$(( \r ))'
 
+  ## vim-arpeggio
+  #source "$_ble_base/lib/vim-arpeggio.sh"
+  #bleopt vim_arpeggio_timeoutlen=10
+  #ble/lib/vim-arpeggio.sh/bind -s jk 'hello'
 }
 blehook/eval-after-load keymap_vi blerc/vim-load-hook
 

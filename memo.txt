@@ -890,6 +890,10 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2019-11-14
+
+  * vim-arpeggio 及び ble-bind -T wiki に追記する
+
 2019-10-21
 
   * ずっと起動していると段々と遅くなっていくのは何故か。
@@ -2211,6 +2215,7 @@ bash_tips
   - highlight: highlight word with the form of URL `#D1150` f48f2d7
   - syntax: support syntax/globpat in param expansions `#D1157` `#D1158` 051222e `#D1160` 57b42ba
     - syntax: fix attr of nested extglob in param expansions `#D1159` 2d019f0
+  - decode: support `ble-bind -T kspecs timeout` for timeout and `lib/vim-arpeggio.sh` `#D1174` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2243,7 +2248,7 @@ bash_tips
   - blehook: replace builtin `trap` `#D1152` d6c555e 7d4fd03
     - blehook: suppress extra `DEBUG` trap calls `#D1155` 25c3e19
   - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165` fdb49f3
-  - edit: support options `--help` for `read` and `exit` `#D1173` 0000000
+  - edit: support options `--help` for `read` and `exit` `#D1173` faccc6b
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2292,6 +2297,8 @@ bash_tips
   - complete: fix a problem of delay with path `//` in Cygwin `#D1168` 2cf8cc7
   - prompt: fix the expansion of `\w` and `\W` in `PS1` for working directories with double slashes `#D1169` d1288dd
   - exec: workaround termination of command execution on syntax error in array subscripts `#D1170` 4f442d0
+  - history: fix a bug that garbage `__ble_edt__` is added in front of history entries 61f4bd1
+  - decode: remove debug messages for `ble-bind -s` 64a17c3
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3249,6 +3256,64 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-11-14
+
+  * kj 及び jk の "同時押し" による操作の要望が来た [#D1174]
+    https://github.com/akinomyoga/ble.sh/issues/31
+
+    単独の k, j と区別する為には timeout に対応する必要がある。
+    これに対応する為にはどうすればよいか。
+
+    a ESC の受信に用いている方法は汎用的には使えない。
+      特に ESC の timeout と他の timeout を独立に設定できない。
+      そんなに重要な機能ではない様に思われるので、
+
+    b idle (bash-4.0 以降) を用いて実装するというのが良い気がする。
+      idle を用いて実装するとして timeout の情報をどの様に記録するのか
+      という問題が存在する。
+
+    調べてみると現在の実装ではそれまでに入力されたキーの
+    列から続きがあるかないかについて判定している。
+    つまりキーの列を登録する時に続きがあるかどうかも含めて
+    木の情報を構築している。ここに timeout の情報を記録するには、
+    先ず、各キー列に対する timeout を記録すると共に、
+    キー束縛を更新する度に最長の timeout を更新するという事が必要になる。
+
+    或いは別の方法として各キー列に対して timeout を設定するのではなくて、
+    各ノードに対して timeout を設定するという事にしても良いのかもしれない。
+    例えば jk 同時押しに対応するのだとしたら "j" と "k" に対して timeout
+    を設定しておく事にする。もし timeout が設定されていて続きがあるキーの場合には
+    "_100:command" を登録する事にする (100 が timeout である)。
+    もし待っているキーが存在しなくてかつ 100 待っても何も来なければこの時点で
+    command を実行する。待っているキーがあって 100 待つ内に続きのキーが到着したら、
+    続きのキーを処理してそれでも解決しなければ command を実行する様にすれば良い。
+    うーん。"解決しなかった時" は続きのキーが存在しない場合として処理する必要がある?
+
+    つまり、以下の様な方針で実装する必要がある。
+    * キー列の解決に失敗した時の再一致の際には timeout は無視してその場で確定する
+    * 通常の解決の際にだけ timeout を処理する事にする
+
+    現状の実装で再一致はどの様に実装していただろうか。
+    →.invoke-partial-match で特別に処理していた。
+      timeout を導入してもこの部分の処理を変更する必要はなさそう。OK
+
+    とりあえず実装した。結局 idle を使って実装するのではなくて、
+    その場で入力待ちをして実装する事にした。
+    timeout 待ちの状態で自動補完が走ったりしても混乱の元であるから、
+    却ってこの実装で良かったのではないかという気がする。
+
+    - bind, unbind, print で対応した。
+    - dispatch 及び invoke-partial-match でも対応した。
+    - "ble-bind -T kspecs timeout" に対応した。
+      注意としては kspecs を先頭部分に含む別の kspecs に対して
+      既に key bindings を設定している時にのみ使えるという事。
+
+    - github のページを確認して何が要求されているか改めて確認する。
+    - ユーティリティ関数を追加しても良いという気がする。
+      vim-arpeggio というのの説明を読んだ。
+      vim-arpeggio では3つ以上のキーも受け付ける様である。
+      何れにしてもユーティリティ関数を vim-arpeggio.sh という名前の拡張で提供する事にした。
 
 2019-09-22
 

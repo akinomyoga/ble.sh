@@ -57,6 +57,7 @@ outfiles += $(OUTDIR)/lib/core-syntax.sh
 outfiles += $(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
 outfiles += $(OUTDIR)/lib/init-cmap.sh
 outfiles += $(OUTDIR)/lib/vim-surround.sh
+outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
 $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib

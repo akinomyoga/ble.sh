@@ -1072,14 +1072,16 @@ function ble-decode-char/dump {
 ##
 ##   @value
 ##     以下の形式の何れかです。
-##     - "_"
-##     - "_:command"
+##     - "_" [TIMEOUT]
+##     - "_" [TIMEOUT] ":command"
 ##     - "1:command"
 ##
 ##     始めの文字が "_" の場合はキーシーケンスに続きがある事を表します。
 ##     つまり、このキーシーケンスを prefix とするより長いキーシーケンスが登録されている事を表します。
 ##     command が指定されている場合には、より長いシーケンスでの一致に全て失敗した時点で
 ##     command が実行されます。シーケンスを受け取った段階では実行されません。
+##     TIMEOUT (整数値) が指定されている場合は、このキーを受け取った後に続きのキーが TIMEOUT msec
+##     以内に到着しなかった時に限りその場で command を実行します。
 ##
 ##     初めの文字が "1" の場合はキーシーケンスが確定的である事を表します。
 ##     つまり、このキーシーケンスを prefix とするより長いシーケンスが登録されてなく、
@@ -1221,7 +1223,7 @@ function ble-decode-key/bind {
     builtin eval "local ocmd=\${$dicthead$tseq[key]}"
     if ((i+1==iN)); then
       if [[ ${ocmd::1} == _ ]]; then
-        builtin eval "$dicthead$tseq[key]=_:\$cmd"
+        builtin eval "$dicthead$tseq[key]=${ocmd%%:*}:\$cmd"
       else
         builtin eval "$dicthead$tseq[key]=1:\$cmd"
       fi
@@ -1229,11 +1231,33 @@ function ble-decode-key/bind {
       if [[ ! $ocmd ]]; then
         builtin eval "$dicthead$tseq[key]=_"
       elif [[ ${ocmd::1} == 1 ]]; then
-        builtin eval "$dicthead$tseq[key]=_:\${ocmd#?:}"
+        builtin eval "$dicthead$tseq[key]=_:\${ocmd#*:}"
       fi
       tseq=${tseq}_$key
     fi
   done
+}
+
+function ble-decode-key/set-timeout {
+  local dicthead=_ble_decode_${kmap}_kmap_
+  local -a seq; ble/string#split-words seq "$1"
+  local timeout=$2; [[ $timeout == - ]] && timeout=
+
+  local i iN=${#seq[@]}
+  local key=${seq[iN-1]}
+  local tseq=
+  for ((i=0;i<iN-1;i++)); do
+    tseq=${tseq}_${seq[i]}
+  done
+
+  builtin eval "local ent=\${$dicthead$tseq[key]}"
+  if [[ $ent == _* ]]; then
+    local cmd=; [[ $ent == *:* ]] && cmd=${ent#*:}
+    builtin eval "$dicthead$tseq[key]=_$timeout${cmd:+:}\$cmd"
+  else
+    ble/bin/echo "ble-bind -T: specified partial keyspec not found." >&2
+    return 1
+  fi
 }
 
 function ble-decode-key/unbind {
@@ -1255,17 +1279,17 @@ function ble-decode-key/unbind {
       # command を消す
       isfirst=
       if [[ ${ent::1} == _ ]]; then
-        # ent = _ または _:command の時は、単に command を消して終わる。
+        # ent = _[TIMEOUT] または _[TIMEOUT]:command の時は、単に command を消して終わる。
         # (未だ bind が残っているので、登録は削除せず break)。
-        builtin eval "$dicthead$tseq[key]=_"
+        builtin eval "$dicthead$tseq[key]=\${ent%%:*}"
         break
       fi
     else
       # prefix の ent は _ か _:command のどちらかの筈。
-      if [[ $ent != _ ]]; then
+      if [[ $ent == *:* ]]; then
         # _:command の場合には 1:command に書き換える。
         # (1:command の bind が残っているので登録は削除せず break)。
-        builtin eval "$dicthead$tseq[key]=1:\${ent#?:}"
+        builtin eval "$dicthead$tseq[key]=1:\${ent#*:}"
         break
       fi
     fi
@@ -1302,11 +1326,9 @@ function ble-decode-key/dump {
     local ret; ble-decode-unkbd "$key"
     local knames=$nseq${nseq:+ }$ret
     builtin eval "local ent=\${$dicthead$tseq[key]}"
-    if [[ ${ent:2} ]]; then
-      local cmd=${ent:2} q=\' Q="'\''"
+    if [[ $ent == *:* ]]; then
+      local cmd=${ent#*:} q=\' Q="'\''"
       case "$cmd" in
-      # ('ble/widget/.insert-string '*)
-      #   ble/bin/echo "ble-bind -sf '${knames//$q/$Q}' '${cmd#ble/widget/.insert-string }'" ;;
       ('ble/widget/.SHELL_COMMAND '*)
         ble/bin/echo "ble-bind$kmapopt -c '${knames//$q/$Q}' ${cmd#ble/widget/.SHELL_COMMAND }" ;;
       ('ble/widget/.EDIT_COMMAND '*)
@@ -1323,6 +1345,10 @@ function ble-decode-key/dump {
 
     if [[ ${ent::1} == _ ]]; then
       ble-decode-key/dump "$kmap" "${tseq}_$key" "$knames"
+      if [[ $ent == _[0-9]* ]]; then
+        local timeout=${ent%%:*}; timeout=${timeout:1}
+        ble/bin/echo "ble-bind$kmapopt -T '${knames//$q/$Q}' $timeout"
+      fi
     fi
   done
 }
@@ -1431,7 +1457,8 @@ function ble/widget/__batch_char__.default {
 ##
 function ble-decode-key {
   local key
-  for key; do
+  while (($#)); do
+    key=$1; shift
 #%if debug_keylogger
     ((_ble_keylogger_enabled)) && ble/array#push _ble_keylogger_keys "$key"
 #%end
@@ -1459,6 +1486,22 @@ function ble-decode-key {
     local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
 
     builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
+
+    # TIMEOUT: timeout が設定されている場合はその時間だけ待って
+    # 続きを処理するかその場で確定するか判断する。
+    if [[ $ent == _[0-9]* ]]; then
+      local node_type=_
+      if (($#==0)) && ! ble-decode/has-input; then
+        local timeout=${ent%%:*}; timeout=${timeout:1}
+        ble-decode/wait-input "$timeout" || node_type=1
+      fi
+      if [[ $ent == *:* ]]; then
+        ent=$node_type:${ent#*:}
+      else
+        ent=$node_type
+      fi
+    fi
+
     if [[ $ent == 1:* ]]; then
       # /1:command/    (続きのシーケンスはなく ent で確定である事を示す)
       local command=${ent:2}
@@ -1540,8 +1583,8 @@ function ble-decode-key/.invoke-partial-match {
     _ble_decode_key__seq=${_ble_decode_key__seq%_*}
 
     builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[last]-}"
-    if [[ $ent == '_:'* ]]; then
-      local command=${ent:2}
+    if [[ $ent == _*:* ]]; then
+      local command=${ent#*:}
       if [[ $command ]]; then
         ble-decode/widget/.call-keyseq
       else
@@ -1756,6 +1799,19 @@ function ble-decode/has-input {
   #   またユーザが続きを入力するのを待っている状態なので idle と思って良い。
   #   従って ble-decode-key/is-intermediate についてはチェックしない。
 }
+
+## 関数 ble-decode/wait-input timeout
+function ble-decode/wait-input {
+  local timeout=$1
+  while ((timeout>0)); do
+    ble-decode/has-input && return 0
+    local w=$((timeout<20?timeout:20))
+    ble/util/msleep "$w"
+    ((timeout-=w))
+  done
+  return 1
+}
+
 function ble/util/idle/IS_IDLE {
   ! ble-decode/has-input
 }
@@ -2000,6 +2056,7 @@ ble-bind --help
 ble-bind -k cspecs [kspec]
 ble-bind --csi PsFt kspec
 ble-bind [-m keymap] -fxc@s kspecs command
+ble-bind [-m keymap] -T kspecs timeout
 ble-bind [-m keymap]... (-PD|--print|--dump)
 ble-bind (-L|--list-widgets)
 
@@ -2200,6 +2257,16 @@ function ble-bind {
             [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
             ble-decode-key/unbind "$kbd"
           fi
+          shift 2 ;;
+        (T)
+          ble-decode-kbd "$1"; local kbd=$ret
+          if (($#<2)); then
+            ble/bin/echo "ble-bind: the option \`-T' requires two arguments." >&2
+            return 2
+          fi
+
+          [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
+          ble-decode-key/set-timeout "$kbd" "$2"
           shift 2 ;;
         (L)
           ble-bind/option:list-widgets ;;
