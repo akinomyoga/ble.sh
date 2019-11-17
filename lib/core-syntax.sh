@@ -944,6 +944,7 @@ function ble/syntax:bash/cclass/update {
     _ble_syntax_bash_chars[CTX_ARGI]=${_ble_syntax_bash_chars[CTX_ARGI]}$extglob
     _ble_syntax_bash_chars[CTX_PATN]=${_ble_syntax_bash_chars[CTX_PATN]}$extglob
     _ble_syntax_bash_chars[CTX_PWORD]=${_ble_syntax_bash_chars[CTX_PWORD]}$extglob
+    _ble_syntax_bash_chars[CTX_PWORDE]=${_ble_syntax_bash_chars[CTX_PWORDE]}$extglob
     _ble_syntax_bash_chars[CTX_PWORDR]=${_ble_syntax_bash_chars[CTX_PWORDR]}$extglob
   fi
 
@@ -982,7 +983,8 @@ function ble/syntax:bash/cclass/initialize {
   _ble_syntax_bash_charsDef[CTX_QUOT]="\$\"\`\\!"         # 文字列 "～" で特別な意味を持つのは $ ` \ " のみ。+履歴展開の ! も。
   _ble_syntax_bash_charsDef[CTX_EXPR]="][}()$expansions!" # ()[] は入れ子を数える為。} は ${var:ofs:len} の為。
   _ble_syntax_bash_charsDef[CTX_PWORD]="}$expansions$glob!" # パラメータ展開 ${～}
-  _ble_syntax_bash_charsDef[CTX_PWORDR]="}/$expansions$glob!" # パラメータ展開 ${～}
+  _ble_syntax_bash_charsDef[CTX_PWORDE]="}$expansions$glob!" # パラメータ展開 ${～} エラー
+  _ble_syntax_bash_charsDef[CTX_PWORDR]="}/$expansions$glob!" # パラメータ展開 ${～} 置換前
   _ble_syntax_bash_charsDef[CTX_RDRH]="$delimiters$expansions"
 
   # templates
@@ -991,6 +993,7 @@ function ble/syntax:bash/cclass/initialize {
   _ble_syntax_bash_charsFmt[CTX_QUOT]="\$\"\`\\@h"
   _ble_syntax_bash_charsFmt[CTX_EXPR]="][}()$expansions@h"
   _ble_syntax_bash_charsFmt[CTX_PWORD]="}$expansions$glob@h"
+  _ble_syntax_bash_charsFmt[CTX_PWORDE]="}$expansions$glob@h"
   _ble_syntax_bash_charsFmt[CTX_PWORDR]="}/$expansions$glob@h"
   _ble_syntax_bash_charsFmt[CTX_RDRH]=${_ble_syntax_bash_charsDef[CTX_RDRH]}
 
@@ -1529,7 +1532,7 @@ function ble/syntax:bash/check-dollar {
       local ntype='${'
       if ((ctx==CTX_QUOT)); then
         ntype='"${'
-      elif ((ctx==CTX_PWORD||ctx==CTX_PWORDR||ctx==CTX_EXPR)); then
+      elif ((ctx==CTX_PWORD||ctx==CTX_PWORDE||ctx==CTX_PWORDR||ctx==CTX_EXPR)); then
         local ntype2; ble/syntax/parse/nest-type -v ntype2
         [[ $ntype2 == '"${' ]] && ntype='"${'
       fi
@@ -1539,7 +1542,11 @@ function ble/syntax:bash/check-dollar {
         i+=${#rematch1},
         _ble_syntax_attr[i]=ATTR_VAR,
         i+=${#rematch2}))
-      if [[ $rematch3 ]]; then
+
+      if rex='^\$\{![a-zA-Z_][a-zA-Z_0-9]*[*@]'; [[ $tail =~ $rex ]]; then
+        # ${!head<@>} の時は末尾の @* を個別に読み取る。
+        ((i++,ctx=CTX_PWORDE))
+      elif [[ $rematch3 ]]; then
         ble/syntax/parse/nest-push "$CTX_EXPR" 'v['
         ((_ble_syntax_attr[i]=CTX_EXPR,
           i+=${#rematch3}))
@@ -1564,7 +1571,7 @@ function ble/syntax:bash/check-dollar {
     ble/syntax/parse/nest-push "$CTX_CMDX" '$('
     ((i+=2))
     return 0
-  elif rex='^\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)' && [[ $tail =~ $rex ]]; then
+  elif rex='^\$([-*@#?$!0_]|[1-9]|[a-zA-Z_][a-zA-Z_0-9]*)' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=CTX_PARAM,
       _ble_syntax_attr[i+1]=ATTR_VAR,
       i+=${#BASH_REMATCH}))
@@ -1593,7 +1600,7 @@ function ble/syntax:bash/check-quotes {
       # quote は除去されない (字句的には解釈される)。
       ((aqdel=ATTR_ERR,aquot=CTX_EXPR))
     fi
-  elif ((ctx==CTX_PWORD||ctx==CTX_PWORDR)); then
+  elif ((ctx==CTX_PWORD||ctx==CTX_PWORDE||ctx==CTX_PWORDR)); then
     # "${var ～}" の中では $'' $"" は ! shopt -q extquote の時除去されない。
     if [[ $tail == '$'[\'\"]* ]] && ! shopt -q extquote; then
       local ntype
@@ -1624,7 +1631,7 @@ function ble/syntax:bash/check-quotes {
       else
         # 中に構造がある場合
         ble/syntax/parse/nest-push "$CTX_QUOT"
-        if (((ctx==CTX_PWORD||ctx==CTX_PWORDR)&&aqdel!=ATTR_QDEL)); then
+        if (((ctx==CTX_PWORD||ctx==CTX_PWORDE||ctx==CTX_PWORDR)&&aqdel!=ATTR_QDEL)); then
           # CTX_PWORD (パラメータ展開) でクォート除去が有効でない文脈の場合、
           # 「$」 だけ aqdel で着色し、「" ... "」 は通常通り着色する。
           ((_ble_syntax_attr[i]=aqdel,
@@ -1682,7 +1689,7 @@ function ble/syntax:bash/check-glob {
   if ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR||ctx==CTX_RDRS)); then
     force_attr=$ctx
     ntype="glob_attr=$force_attr"
-  elif ((ctx==CTX_PWORD||ctx==CTX_PWORDR)); then
+  elif ((ctx==CTX_PWORD||ctx==CTX_PWORDE||ctx==CTX_PWORDR)); then
     ntype="glob_ctx=$ctx"
   elif ((ctx==CTX_PATN||ctx==CTX_BRAX)); then
     ble/syntax/parse/nest-type
@@ -1965,7 +1972,7 @@ function ble/syntax:bash/ctx-globpat/get-stop-chars {
   local ntype; ble/syntax/parse/nest-type
   if [[ $ntype == glob_ctx=* ]]; then
     local gctx=${ntype#glob_ctx=}
-    if ((gctx==CTX_PWORD)); then
+    if ((gctx==CTX_PWORD||gctx==CTX_PWORDE)); then
       chars=}$chars
     elif ((gctx==CTX_PWORDR)); then
       chars=}/$chars
@@ -2005,7 +2012,7 @@ function ble/syntax:bash/ctx-globpat.end {
   local ntype; ble/syntax/parse/nest-type
   if [[ $ntype == glob_ctx=* ]]; then
     local gctx=${ntype#glob_ctx=}
-    if ((gctx==CTX_PWORD)); then
+    if ((gctx==CTX_PWORD||gctx==CTX_PWORDE)); then
       [[ ! $tail || $tail == '}'* ]] && is_end=1
     elif ((gctx==CTX_PWORDR)); then
       [[ ! $tail || $tail == ['/}']* ]] && is_end=1
@@ -2028,7 +2035,7 @@ function ble/syntax:bash/ctx-bracket-expression {
   local nctx; ble/syntax/parse/nest-ctx
   if ((nctx==CTX_PATN)); then
     local chars; ble/syntax:bash/ctx-globpat/get-stop-chars
-  elif ((nctx==CTX_PWORD||nctx==CTX_PWORDR)); then
+  elif ((nctx==CTX_PWORD||nctx==CTX_PWORDE||nctx==CTX_PWORDR)); then
     local chars=${_ble_syntax_bash_chars[nctx]}
   else
     # 以下の文脈では ctx-command と同様の処理で問題ない。
@@ -2117,7 +2124,7 @@ function ble/syntax:bash/ctx-bracket-expression.end {
 
     if ((external_ctx==CTX_PATN)); then
       [[ $tail == ')'* ]] && is_end=1
-    elif ((external_ctx==CTX_PWORD)); then
+    elif ((external_ctx==CTX_PWORD||external_ctx==CTX_PWORDE)); then
       [[ $tail == '}'* ]] && is_end=1
     elif ((external_ctx==CTX_PWORDR)); then
       [[ $tail == ['}/']* ]] && is_end=1
@@ -2143,6 +2150,7 @@ function ble/syntax:bash/ctx-bracket-expression.end {
 _BLE_SYNTAX_FCTX[CTX_PARAM]=ble/syntax:bash/ctx-param
 _BLE_SYNTAX_FCTX[CTX_PWORD]=ble/syntax:bash/ctx-pword
 _BLE_SYNTAX_FCTX[CTX_PWORDR]=ble/syntax:bash/ctx-pword
+_BLE_SYNTAX_FCTX[CTX_PWORDE]=ble/syntax:bash/ctx-pword-error
 function ble/syntax:bash/ctx-param {
   # パラメータ展開 - パラメータの直後
   if [[ $tail == '}'* ]]; then
@@ -2208,6 +2216,16 @@ function ble/syntax:bash/ctx-pword {
   fi
 
   return 1
+}
+function ble/syntax:bash/ctx-pword-error {
+  local i0=$i
+  if ble/syntax:bash/ctx-pword; then
+    [[ $tail == '}'* ]] ||
+      ((_ble_syntax_attr[i0]=ATTR_ERR))
+    return 0
+  else
+    return 1
+  fi
 }
 
 ## @const CTX_EXPR
@@ -5152,6 +5170,7 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define ATTR_DEL     syntax_delimiter
   ble/syntax/attr2iface/.define CTX_PARAM    syntax_param_expansion
   ble/syntax/attr2iface/.define CTX_PWORD    syntax_default
+  ble/syntax/attr2iface/.define CTX_PWORDE   syntax_error
   ble/syntax/attr2iface/.define CTX_PWORDR   syntax_default
   ble/syntax/attr2iface/.define ATTR_HISTX   syntax_history_expansion
   ble/syntax/attr2iface/.define ATTR_FUNCDEF syntax_function_name
