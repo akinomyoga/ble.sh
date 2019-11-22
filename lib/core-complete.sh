@@ -885,6 +885,7 @@ function ble/complete/check-cancel {
 ##       直後に識別子を構成する文字を追記する時に対処が必要です。
 ##
 ##     v COMPV が利用可能である事を表します。
+##     f failglob で COMPV 評価が失敗した事を表します。
 ##
 ##     S クォート ''  の中にいる事を表します。
 ##     E クォート $'' の中にいる事を表します。
@@ -1587,6 +1588,21 @@ function ble/complete/source:file/.construct-pathname-pattern {
   fi
   ret=$pattern
 }
+function ble/complete/source:file/yield-filenames {
+  local action=$1; shift
+
+  local rex_hidden=
+  [[ :$comp_type: != *:match-hidden:* ]] &&
+    rex_hidden=${COMPV:+'.{'${#COMPV}'}'}'(^|/)\.[^/]*$'
+
+  local cand
+  for cand; do
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    [[ $rex_hidden && $cand =~ $rex_hidden ]] && continue
+    [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
+    ble/complete/cand/yield "$action" "$cand"
+  done
+}
 
 function ble/complete/source:file/.impl {
   local opts=$1
@@ -1633,17 +1649,7 @@ function ble/complete/source:file/.impl {
     fi
   fi
 
-  local rex_hidden=
-  [[ :$comp_type: != *:match-hidden:* ]] &&
-    rex_hidden=${COMPV:+'.{'${#COMPV}'}'}'(^|/)\.[^/]*$'
-
-  local cand
-  for cand in "${candidates[@]}"; do
-    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
-    [[ $rex_hidden && $cand =~ $rex_hidden ]] && continue
-    [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
-    ble/complete/cand/yield "$action" "$cand"
-  done
+  ble/complete/source:file/yield-filenames "$action" "${candidates[@]}"
 }
 
 function ble/complete/source:file {
@@ -2230,6 +2236,14 @@ function ble/complete/source:argument {
 
   ble/complete/source:sabbrev
 
+  if [[ $comps_flags == *f* ]]; then
+    local ret simple_flags simple_ibrace
+    ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"
+    ble/syntax:bash/simple-word/eval "$ret*" && ((${#ret[*]})) &&
+      ble/complete/source:file/yield-filenames file "${ret[@]}"
+    (($?==148)) && return 148
+  fi
+
   ble/complete/candidates/filter:"$comp_filter_type"/filter
   (($?==148)) && return 148
   local old_cand_count=$cand_count
@@ -2590,15 +2604,20 @@ function ble/complete/candidates/.pick-nearest-sources {
         comps_flags=$comps_flags${simple_flags}v
         COMPV=$reconstructed
       fi
-    else
+    elif ble/syntax:bash/simple-word/eval "$reconstructed"; then
       # 展開後の値を COMPV に格納する (既定)
+      COMPV=("${ret[@]}")
       comps_flags=$comps_flags${simple_flags}v
-      ble/syntax:bash/simple-word/eval "$reconstructed"; COMPV=("${ret[@]}")
+
       if ((${simple_ibrace%:*})); then
         ble/syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
         comps_fixed=${simple_ibrace%:*}:$ret
         comps_flags=${comps_flags}b
       fi
+    else
+      # Note: failglob により simple-word/eval が失敗した時にここに来る。
+      COMPV=
+      comps_flags=$comps_flags${simple_flags}f
     fi
     [[ $COMPS =~ $rex_raw_paramx ]] && comps_flags=${comps_flags}p
 
