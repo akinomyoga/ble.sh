@@ -890,6 +890,9 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2019-12-16
+
+  * wiki: add `bleopt accept_line_threshold`
 
 2019-11-23
 
@@ -2223,6 +2226,7 @@ bash_tips
     - syntax: fix attr of nested extglob in param expansions `#D1159` 2d019f0
   - decode: support `ble-bind -T kspecs timeout` for timeout and `lib/vim-arpeggio.sh` (request by divramod) `#D1174` 272344e
   - complete: use `WORD*` pathname expansion for candidates on failglob with `WORD` `#D1177` 0000000
+  - edit: support `bleopt accept_line_threshold` `#D1178` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3264,6 +3268,40 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-12-16
+
+  * edit: 現状の実装では改行と同時に更に次の文字が来ている時、 [#D1178]
+    その場でコマンドを実行せずに複数行編集に入るようになっている。
+    然し、ssh を使っている場合やそもそも使っている機械が遅い時、
+    簡単に複数行モードに突入してしまって使いづらい。
+
+    * 先ず初めにこの振る舞いをオプションにする。
+
+      この振る舞いは何処で判定していただろうか。
+      ble-edit/is-single-complete-line という関数だろうか。
+
+      →bleopt accept_line_threshold という変数を追加した。
+
+    誤ってペーストしてしまった時には悲惨な事になるが仕方がない。
+    或いは何文字以上の時には複数行編集モードに入るなど、
+    そう言った制御をする事は一応可能である様に思う。
+    現状で大量の入力があった場合には取りあえず読み取るだけ読み取って
+    その後で処理するという仕組みになっている。
+
+    * 大量の入力があった時 (n文字以上) の時にだけ
+      複数行編集モードに入る様にする。
+
+      これに対応する為には現状で大量の入力があった時に
+      どの様に振る舞うのだったかを確認しておく必要がある。
+      →_ble_decode_input_buffer に格納している。
+
+      _ble_decode_input_count は has-input 等からも参照している変数である。
+      この変数を元にして残り文字数を判定してそれで改行を実行するかどうかを
+      判定するというので良い気がする。
+      →実際にやってみると動かない。どうも文字デコードまで終わった上で
+      実際のコマンドが実行されている様だ。つまり、ble_decode_char_rest
+      も参照すれば良い?
 
 2019-11-23
 

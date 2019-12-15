@@ -151,6 +151,14 @@ bleopt/declare -v allow_exit_with_jobs ''
 ##   この変数に空文字列が設定されている時、履歴を共有します。
 bleopt/declare -v history_share ''
 
+
+## オプション accept_line_threshold
+##   編集関数 accept-single-line-or-newline の単一行モードにおける振る舞いを制御します。
+##   この変数が負の整数の時、常にコマンドを実行します。
+##   この変数が 0 の時、ユーザの入力がある場合は改行を挿入して複数行モードに入ります。
+##   正の整数 n の時、未処理のユーザ入力が n 以上の時に改行を挿入して複数行モードに入ります。
+bleopt/declare -v accept_line_threshold 5
+
 # 
 #------------------------------------------------------------------------------
 # **** prompt ****                                                    @line.ps1
@@ -4489,7 +4497,9 @@ function ble/widget/tab-insert {
 }
 function ble-edit/is-single-complete-line {
   ble-edit/content/is-single-line || return 1
-  [[ $_ble_edit_str ]] && ble-decode/has-input && return 1
+  [[ $_ble_edit_str ]] && ble-decode/has-input &&
+    ((0<=bleopt_accept_line_threshold&&bleopt_accept_line_threshold<=_ble_decode_input_count+ble_decode_char_rest)) &&
+    return 1
   if shopt -q cmdhist &>/dev/null; then
     ble-edit/content/update-syntax
     ble/syntax:bash/is-complete || return 1
