@@ -272,7 +272,7 @@ function ble/color/.color2sgr-impl {
   local ccode=$1 prefix=$2 # 3 for fg, 4 for bg
   if ((ccode<0)); then
     ret=${prefix}9
-  elif ((ccode<\(_ble_term_colors<16?_ble_term_colors:16\))); then
+  elif ((ccode<16&&ccode<_ble_term_colors)); then
     if ((prefix==4)); then
       ret=${_ble_term_sgr_ab[ccode]}
     else
