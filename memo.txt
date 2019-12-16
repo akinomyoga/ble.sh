@@ -890,10 +890,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2019-12-16
-
-  * wiki: add `bleopt accept_line_threshold`
-
 2019-11-23
 
   * complete: comps_flags の b と B が重複している。

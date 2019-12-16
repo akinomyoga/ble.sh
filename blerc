@@ -127,6 +127,24 @@
 #bleopt history_preserve_point=
 
 
+## The following setting controls the history sharing. If it has non-empty
+## value, the history sharing is enabled. With the history sharing, the
+## command history is shared with the other Bash ble.sh sessions with the
+## history sharing turned on.
+
+#bleopt history_share=
+
+
+## The following setting controls the behavior of the widget "accept-single-"
+## line-or-newline" in the single-line editing mode. The value is a subject of
+## arithmetic evaluation. When it evaluates to negative integers, the line is
+## always accepted. When it evaluates to 0, it enters the multiline editing
+## mode when there is any unprocessed user inputs, or otherwise the line is
+## accepted. When it evaluates to a positive integer "n", it enters the
+## multiline editing mode when there is more than "n"unprocessed user inputs.
+
+#bleopt accept_line_threshold=5
+
 ##-----------------------------------------------------------------------------
 ## Terminal state control
 
