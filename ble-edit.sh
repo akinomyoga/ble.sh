@@ -346,7 +346,7 @@ function ble/util/c2w+emacs {
     return
   fi
 
-  (('
+  ((
     0x3100<=code&&code<0xA4D0||0xAC00<=code&&code<0xD7A4?(
       ret=2
     ):(0x2000<=code&&code<0x2700?(
@@ -377,7 +377,7 @@ function ble/util/c2w+emacs {
         ret=0x01<=al&&al<0x61||0xE0<=al&&al<=0xE7?2:1
       ):(ret=1))))))))))
     ))
-  '))
+  ))
 
   [[ $tIndex ]] || return 0
 
@@ -3130,10 +3130,10 @@ function ble/widget/.insert-string {
 
   local dx=${#ins}
   _ble_edit_str.replace _ble_edit_ind _ble_edit_ind "$ins"
-  (('
+  ((
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
     _ble_edit_ind+=dx
-  '))
+  ))
   _ble_edit_mark_active=
 }
 
