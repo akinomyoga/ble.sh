@@ -2250,10 +2250,10 @@ function ble/widget/.insert-string {
 
   local dx=${#ins}
   ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
-  (('
+  ((
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
     _ble_edit_ind+=dx
-  '))
+  ))
   _ble_edit_mark_active=
 }
 

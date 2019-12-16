@@ -2847,7 +2847,7 @@ function ble/encoding:UTF-8/decode {
   local mode=$_ble_decode_byte__utf_8__mode
   local byte=$1
   local cha0= char=
-  (('
+  ((
     byte&=0xFF,
     (mode!=0&&(byte&0xC0)!=0x80)&&(
       cha0=_ble_decode_Erro|code,mode=0
@@ -2886,7 +2886,7 @@ function ble/encoding:UTF-8/decode {
         )
       )
     )
-  '))
+  ))
 
   _ble_decode_byte__utf_8__code=$code
   _ble_decode_byte__utf_8__mode=$mode
