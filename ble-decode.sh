@@ -1417,17 +1417,18 @@ function .ble-decode-bind/generate-source-to-unbind-default {
   # 1 ESC で始まる既存の binding を全て削除
   # 2 bind を全て記録 at $$.bind.save
   {
-    builtin bind -sp
     if ((_ble_bash>=40300)); then
       echo '__BINDX__'
       builtin bind -X
     fi
+    ble/bin/echo '__BINDP__'
+    builtin bind -sp
 #%x
   } 2>/dev/null | LANG=C ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
     BEGIN{
       APOS=apos "\\" apos apos;
-      mode=0;
+      mode=1;
     }
 
     function quote(text){
@@ -1471,7 +1472,10 @@ function .ble-decode-bind/generate-source-to-unbind-default {
       }
     }
 
-    mode==0&&$0~/^"/{
+    /^__BINDP__$/ { mode = 1; next; }
+    /^__BINDX__$/ { mode = 2; next; }
+
+    mode == 1 && $0 ~ /^"/ {
       # Workaround Bash-5.0 bug (cf #D1078)
       sub(/^"\\C-\\\\\\"/, "\"\\C-\\\\\"");
       sub(/^"\\C-\\"/, "\"\\C-\\\\\"");
@@ -1481,9 +1485,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
       print "builtin bind " quote($0) >"/dev/stderr";
     }
 
-    /^__BINDX__$/{mode=1;}
-
-    mode==1&&$0~/^"/{
+    mode == 2 && $0 ~ /^"/ {
       output_bindr($0);
 
       line=$0;
