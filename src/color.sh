@@ -484,6 +484,12 @@ function ble/color/setface/.check-argument {
   local rex='^[a-zA-Z0-9_]+$'
   [[ $# == 2 && $1 =~ $rex && $2 ]] && return 0
 
+  if (($#==0)); then
+    ble/color/list-faces
+    ext=0
+    return 1
+  fi
+
   local name=${FUNCNAME[1]}
   printf '%s\n' "usage: $name FACE_NAME [TYPE:]SPEC" '' \
          'TYPE' \
@@ -494,10 +500,10 @@ function ble/color/setface/.check-argument {
          '  face    Face name' \
          '  iface   Face id' \
          '  sgrspec Parameters to the control function SGR' \
-         '  ansi    ANSI Sequences'
+         '  ansi    ANSI Sequences' >&2
   ext=2; [[ $# == 1 && $1 == --help ]] && ext=0
   return 1
-} >&2
+}
 function ble-color-defface {
   local ext; ble/color/setface/.check-argument "$@" || return "$ext"
   ble/color/defface "$@"
@@ -588,12 +594,15 @@ function ble/color/initialize-faces {
 }
 
 function ble/color/list-faces {
-  local key g ret sgr
+  local key g ret sgr opt_color=
+  [[ -t 1 ]] && opt_color=1
   for key in "${!_ble_faces__@}"; do
     local name=${key#_ble_faces__}
-    ble/color/iface2sgr $((key))
     ble/color/g2gspec $((_ble_faces[key]))
-    ret=$sgr$ret$_ble_term_sgr0
+    if [[ $opt_color ]]; then
+      ble/color/iface2sgr $((key))
+      ret=$sgr$ret$_ble_term_sgr0
+    fi
     printf 'ble-color-setface %s %s\n' "$name" "$ret"
   done
 }

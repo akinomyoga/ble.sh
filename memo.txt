@@ -2256,6 +2256,7 @@ bash_tips
     - blehook: suppress extra `DEBUG` trap calls `#D1155` 25c3e19
   - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165` fdb49f3
   - edit: support options `--help` for `read` and `exit` `#D1173` faccc6b
+  - color (`ble-color-{set,def}face`): list faces without arguments `#D1180` 0000000
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3264,6 +3265,15 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-12-27
+
+  * 検索してみたら丁度2時間前に質問が superuser.com に来ていた… [#D1180]
+    https://superuser.com/questions/1512618/autocompletion-background-colour-in-ble-sh
+
+    Issue を建てるのが恥ずかしかったのだろうか。取り敢えず対応して返信してしまう事にする。
+    * done: ble-color-{set,def}face を無引数で呼び出した時に現在の設定の一覧を出力する様にした。
+    * done: README に追記した。OK
 
 2019-12-18
 

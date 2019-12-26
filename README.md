@@ -219,12 +219,12 @@ ble-color-setface command_keyword          fg=blue
 ble-color-setface command_jobs             fg=red
 ble-color-setface command_directory        fg=26,underline
 ble-color-setface filename_directory        underline,fg=26
-ble-color-defface filename_directory_sticky underline,fg=white,bg=26
+ble-color-setface filename_directory_sticky underline,fg=white,bg=26
 ble-color-setface filename_link             underline,fg=teal
-ble-color-defface filename_orphan           underline,fg=teal,bg=224
+ble-color-setface filename_orphan           underline,fg=teal,bg=224
 ble-color-setface filename_executable       underline,fg=green
-ble-color-defface filename_setuid           underline,fg=black,bg=220
-ble-color-defface filename_setgid           underline,fg=black,bg=191
+ble-color-setface filename_setuid           underline,fg=black,bg=220
+ble-color-setface filename_setgid           underline,fg=black,bg=191
 ble-color-setface filename_other            underline
 ble-color-setface filename_socket           underline,fg=cyan,bg=black
 ble-color-setface filename_pipe             underline,fg=lime,bg=black
@@ -232,7 +232,10 @@ ble-color-setface filename_character        underline,fg=white,bg=black
 ble-color-setface filename_block            underline,fg=yellow,bg=black
 ble-color-setface filename_warning          underline,fg=red
 ble-color-setface filename_url              underline,fg=blue
-ble-color-defface filename_ls_colors        underline
+ble-color-setface filename_ls_colors        underline
+ble-color-setface auto_complete             fg=238,bg=254
+ble-color-setface menu_filter_fixed         bold
+ble-color-setface menu_filter_input         fg=16,bg=229
 ```
 
 The color codes can be checked in output of the function `ble-color-show` (defined in `ble.sh`):
