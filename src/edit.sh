@@ -159,6 +159,11 @@ bleopt/declare -v history_share ''
 ##   正の整数 n の時、未処理のユーザ入力が n 以上の時に改行を挿入して複数行モードに入ります。
 bleopt/declare -v accept_line_threshold 5
 
+## オプション exec_errexit_mark
+##   終了ステータスが非零の時に表示するマークの書式を指定します。
+##   この変数が空の時、終了ステータスは表示しません。
+bleopt/declare -v exec_errexit_mark $'\e[91m[ble: exit %d]\e[m'
+
 # 
 #------------------------------------------------------------------------------
 # **** prompt ****                                                    @line.ps1
@@ -4233,12 +4238,16 @@ function ble-edit/exec:gexec/.epilogue {
 
   if ((_ble_edit_exec_lastexit)); then
     # SIGERR処理
-    if builtin type -t TRAPERR &>/dev/null; then
-      TRAPERR
-    else
-      # Note: >&3 は set -x 対策による呼び出し元のリダイレクトと対応 #D0930
+    ble-edit/exec/.setexit
+    blehook/invoke ERR
+    if [[ $bleopt_exec_errexit_mark == $'\e[91m[ble: exit %d]\e[m' ]]; then
       ble/bin/echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0"
-    fi >&3
+    elif [[ $bleopt_exec_errexit_mark ]]; then
+      local ret
+      ble/util/sprintf ret "$bleopt_exec_errexit_mark" "$_ble_edit_exec_lastexit"
+      x=0 y=0 g=0 ble/canvas/trace "$ret"
+      ble/bin/echo "$ret"
+    fi >&3 # Note: >&3 は set -x 対策による呼び出し元のリダイレクトと対応 #D0930
   fi
 }
 function ble-edit/exec:gexec/.setup {

@@ -110,6 +110,13 @@
 #bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m'
 
 
+## "exec_errexit_mark" specifies the format of the mark to show the exit status
+## of the command when it is non-zero.  If this setting is an empty string the
+## exit status will not be shown.  The value can contain ANSI escape sequences.
+
+#bleopt exec_errexit_mark=$'\e[91m[ble: exit %d]\e[m'
+
+
 ## The following setting controls the exit when jobs are remaining. When an
 ## empty string is set, the shell will never exit with remaining jobs through
 ## widgets. When an non-empty value is set, the shell will exit when exit is

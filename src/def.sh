@@ -10,6 +10,7 @@ function blehook/declare {
 
 blehook/declare EXIT
 blehook/declare INT
+blehook/declare ERR
 
 # util.sh
 

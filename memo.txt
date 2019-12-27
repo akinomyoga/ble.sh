@@ -890,6 +890,16 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2019-12-28
+
+  * 設定集を書く事にする Recipes とでも名前をつけようか。
+
+    - [ble: exit %d] の消し方
+    - auto-complete の色の変更の仕方
+
+    うーん。Q&A的だが他にも色々書ける筈。
+    rps1 に現在の git の位置を表示するとか。
+
 2019-11-23
 
   * complete: comps_flags の b と B が重複している。
@@ -2224,6 +2234,7 @@ bash_tips
   - complete: use `WORD*` pathname expansion for candidates on failglob with `WORD` `#D1177` c1b0532
   - edit: support `bleopt accept_line_threshold` `#D1178` a3385f6 82a1e0b
   - complete: support `bleopt complete_allow_reduction` `#D1181` 0000000
+  - edit: support `bleopt exec_errexit_mark` `#D1182`
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3269,9 +3280,37 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2019-12-28
+
+  * edit: [ble: exit %d] のメッセージを消したいという要望があった [#D1182]
+    https://superuser.com/questions/1512618/autocompletion-background-colour-in-ble-sh#comment2288342_1512656
+
+    取り敢えず TRAPERR を定義してくれという様に書いたが分かりにくい。
+    そういう設定変数を用意しようと思う。
+
+    * done: 実装した。
+    * done: update blerc
+    * done: update wiki
+
+    * done: TRAPERR と関係なく常に実行する様にしてはどうか。
+    * done: trap ERR の設定も実行するべきなのではないか。
+    * done: 終了ステータスを再設定して TRAPERR, trap ERR を呼び出すべきでは。
+      ble/builtin/trap/invoke, blehook/invoke, ble/function#try で
+      終了ステータスを伝播する様に修正した。
+
+    * 仕様変更について comment を残す。
+
+    README か何処かに設定について記述する。
+    Q&Aページでも作る事にしようか。英語で書く?
+    Wiki に英語版と日本語版を作りたい。
+    説明書の下部に作るか。或いは別のページとして作るか。
+    うーん。説明書とは独立なページにしたい気がする。
+    Q&Aというよりは設定集という感じにするのが良さそう。
+    →これは別項目を建てる事にした。
+
 2019-12-27
 
-  * bash-completion-partial-path を試してみたら変な動作をする [#D1181]
+  * complete: bash-completion-partial-path を試してみたら変な動作をする [#D1181]
 
     元々 bash-completion-partial-path は以下の help-bash に対する投稿で知った。
     https://lists.gnu.org/archive/html/help-bash/2019-12/msg00014.html

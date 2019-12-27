@@ -645,6 +645,9 @@ ble/builtin/trap/reserve INT
 blehook INT+='ble/builtin/trap/invoke INT'
 builtin trap -- 'blehook/invoke INT' INT
 
+blehook ERR+='ble/builtin/trap/invoke ERR'
+blehook ERR+='ble/function#try TRAPERR'
+
 #%x inc.r|@|src/decode|
 #%x inc.r|@|src/color|
 #%x inc.r|@|src/canvas|

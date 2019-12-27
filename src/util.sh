@@ -152,6 +152,8 @@ shopt -s checkwinsize
 #------------------------------------------------------------------------------
 # util
 
+function ble/util/setexit { return "$1"; }
+
 ## @var _ble_util_upvar_setup
 ## @var _ble_util_upvar
 ##
@@ -908,14 +910,16 @@ function blehook {
 blehook/.compatibility-ble-0.3
 
 function blehook/invoke {
-  local FUNCNEST=
+  local lastexit=$? FUNCNEST=
   ((_ble_hook_c_$1++))
   local -a hooks; eval "hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
   local hook ext=0
   for hook in "${hooks[@]}"; do
     if type "$hook" &>/dev/null; then
+      ble/util/setexit "$lastexit"
       "$hook" "$@" 2>&3
     else
+      ble/util/setexit "$lastexit"
       eval "$hook" 2>&3
     fi || ext=$?
   done
@@ -1059,9 +1063,10 @@ function ble/builtin/trap/reserve {
   _ble_builtin_trap_reserved[ret]=1
 }
 function ble/builtin/trap/invoke {
-  local ret
+  local lastexit=$? ret
   ble/builtin/trap/.initialize
   ble/builtin/trap/.get-sig-index "$1" || return 1
+  ble/util/setexit "$lastexit"
   eval "${_ble_builtin_trap_handlers[ret]}" 2>&3
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 function ble/builtin/trap {
@@ -1248,7 +1253,9 @@ else
   }
 fi
 function ble/function#try {
+  local lastexit=$?
   ble/is-function "$1" || return 127
+  ble/util/setexit "$lastexit"
   "$@"
 }
 
