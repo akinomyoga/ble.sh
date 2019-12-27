@@ -4237,8 +4237,8 @@ function ble-edit/exec:gexec/.epilogue {
       TRAPERR
     else
       # Note: >&3 は set -x 対策による呼び出し元のリダイレクトと対応 #D0930
-      ble/bin/echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0" >&3
-    fi
+      ble/bin/echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0"
+    fi >&3
   fi
 }
 function ble-edit/exec:gexec/.setup {

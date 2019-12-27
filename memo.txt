@@ -2221,8 +2221,9 @@ bash_tips
   - syntax: support syntax/globpat in param expansions `#D1157` `#D1158` 051222e `#D1160` 57b42ba
     - syntax: fix attr of nested extglob in param expansions `#D1159` 2d019f0
   - decode: support `ble-bind -T kspecs timeout` for timeout and `lib/vim-arpeggio.sh` (request by divramod) `#D1174` 272344e
-  - complete: use `WORD*` pathname expansion for candidates on failglob with `WORD` `#D1177` 0000000
-  - edit: support `bleopt accept_line_threshold` `#D1178` 0000000
+  - complete: use `WORD*` pathname expansion for candidates on failglob with `WORD` `#D1177` c1b0532
+  - edit: support `bleopt accept_line_threshold` `#D1178` a3385f6 82a1e0b
+  - complete: support `bleopt complete_allow_reduction` `#D1181` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2256,7 +2257,7 @@ bash_tips
     - blehook: suppress extra `DEBUG` trap calls `#D1155` 25c3e19
   - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165` fdb49f3
   - edit: support options `--help` for `read` and `exit` `#D1173` faccc6b
-  - color (`ble-color-{set,def}face`): list faces without arguments `#D1180` 0000000
+  - color (`ble-color-{set,def}face`): list faces without arguments `#D1180` 50327c3
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2307,7 +2308,7 @@ bash_tips
   - exec: workaround termination of command execution on syntax error in array subscripts `#D1170` 4f442d0
   - history: fix a bug that garbage `__ble_edt__` is added in front of history entries 61f4bd1
   - decode: remove debug messages for `ble-bind -s` 64a17c3
-  - syntax: fix highlighting of `${!var@}` `#D1176` 0000000
+  - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -2321,6 +2322,8 @@ bash_tips
   - keymap/vi: deal with textarea local data properly `#D1123` 2ea7cfd
   - edit: remove `ble-edit/exec:exec` `#D1131` 0cb9c6d
   - global: distinguish exit status 147 and 148 `#D1141` d1a78fb
+  - global: follow bash syntactic changes on arithmentic command 16e0f0e
+  - decode: check `bind -X` first to store the original bindings `#D1179` 4057ff0
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3267,6 +3270,134 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2019-12-27
+
+  * bash-completion-partial-path を試してみたら変な動作をする [#D1181]
+
+    元々 bash-completion-partial-path は以下の help-bash に対する投稿で知った。
+    https://lists.gnu.org/archive/html/help-bash/2019-12/msg00014.html
+    この作者は今年の 7 月にプロジェクトを始めた段階で大々的に宣伝している。
+    StackOverflow でもあらゆる場所で関連する質問に対して回答しているのだった。
+
+    展開内容が重複して挿入されてしまう。置換されるべき内容が消えてくれない。
+    何が起こっているのだろうか。生成した候補を insert-common の見ると自前での候補生成と同じだ。
+    更に調べてみるとどうやら comps_flags に a が含まれているかいないかの違いの気がする。
+    然し a が含まれていなかったとしてもそれはそれでそれなりの結果になるべきなのではないか。
+
+    更に調べると determine-common-prefix の時点で変な結果が返ってきている様子だ。
+    うーん。原因が分かった。comp_type に amAi が含まれている時には、
+    曖昧前方一致であると解釈して一致しない部分に関しては保持する様になっている。
+    然し、実際には曖昧一致という訳ではないのに i が入っている所為でこの処理が入ってしまっている。
+    i だけしかない時には強制的に置換してしまって良いのではあるまいか。
+
+      然し果たしてそれで良いのだろうか。もし候補が複数あって、
+      共通部分だけを挿入した時に候補が減少する様だと困る。
+      問題はそういう曖昧一致を progcomp の側で実行された時。
+      どのような曖昧一致戦略を取ったのか分からないので、
+      曖昧一致部分だけを挿入するという事ができない。
+      結局挿入は行わないというのが正しい選択なのだろうか。
+
+    [対策]
+
+    * done: 曖昧一致共通部分に含まれない部分を保持する処理を cand_count>1 の時にだけ実行する?
+
+      うーん。結局この処理の部分全体を cand_count>1 の時に実行する様にすれば良いのか?
+
+      * 前にこの辺りの判定については弄った事がある気がする。
+
+        | どのように弄ったのか確認する必要がある。
+        | →調べてみた 6456d87d (2018-09-05) の時点で既に cand_count に関わらず
+        |   曖昧一致の場合には一致しなかった部分を保持する様になっている。
+        | →更に遡ると 64cdadc7 (2018-08-01) に於いて曖昧一致が実装されて
+        |   この時点では cand_count に関わらず曖昧一致で
+        |   元の文字列に一致しない場合は一切の補完を実行しない様になっていた。
+        |
+        |   | Commit 64cdadc "complete: implement ambiguous matching (bleopt complete_ambiguous)"
+        |   | lib/core-complete.sh
+        |   |
+        |   | if [[ $opt_ambiguous ]]; then
+        |   |   # 曖昧一致に於いて複数の候補の共通部分が
+        |   |   # 元の文字列に曖昧一致しない場合は補完しない。
+        |   |   [[ $common =~ $rex_ambiguous_compv ]] || common=$COMPV
+        |   | fi
+        |
+        | つまり。cand_count>1 を敢えて cand_count==1 でも同様に処理する様にしたのではなく、
+        | 始めから何も考えずに cand_count==1 でも制限をかけていた。という事になる。
+        | うーん。或いは一番最初の設計の時にその辺りまで考察したのだったか。
+        | 調べて見る必要がある。該当する項目は #D0707 であった。
+        | 読んでみると其処までは考えていなかった様だ。
+        | つまりこの部分の処理は全て cand_count > 1 の時にのみ実行する様に変更して良い気がする。
+
+        結論: 最初の実装から cand_count については確認していなかった。
+
+      * 改めてこの変更によってどのような影響が出るかについて少し考察しておく事にする。
+
+        先ず曖昧一致の候補を生成する時に、生成時点で filter してしまって、
+        実のところ入力済みの部分全体に一致する訳ではない候補が生成される可能性はあるだろうか。
+        例えば function name で最初の */ までしか候補として列挙しないという処置など
+        によって曖昧一致候補の前半部分だけが単一の候補として列挙されて、
+        入力文字列の後半部分が補完挿入時に失われてしまう可能性について。
+
+        うーん。その様な可能性はない気がする。やはり既に入力している文字列があるのであれば、
+        候補生成ではそれも含めて生成しなければならない。
+        もしそれを省略してしまって補完によって挿入済みの部分が失われてしまっても、
+        それは補完候補生成器が意図した事なのかそうでないのかは外からは判定できない。
+
+        その様に考えるとやはり単一候補の場合には完全に置換してしまって良い気がする。
+
+      結論: 実施する。cand_count>1 の時にだけこの対処を実行する。
+
+    * done: 上の対策だけでは不十分である。実際に候補生成器が曖昧一致で複数候補を生成した時に
+      どの様にして挿入を実行したら良いのだろうか。
+      ble.sh の側ではどの様に曖昧一致が実施されたのかを知る術はない。
+      挿入は行わない様にするのが自然な気がする。
+
+      x ok: 然しそうだとしても menu-filter が走ると候補が全て消滅してしまう。
+        →と思ったが menu-filter の実装を見てみると head, substr, hsubseq, subseq の
+        順番に試して一番最初に生き残る物を採用するという仕組みになっている。
+        従って候補生成器が勝手に曖昧一致で生成してもちゃんと生成できる。OK
+
+      うーん。曖昧一致でないのに先頭一致しない候補が複数生成された時は
+      補完挿入は実行しない。という実装に問題はあるだろうか。
+
+      →結局、曖昧一致でない時は共通部分が入力文字列の拡張になっていない場合には、
+        補完挿入を実行しないという実装にする事にした。
+        もし共通部分が入力文字列を拡張する場合には、
+        補完挿入を許す事にする。
+
+    * done: ignore-case でない場合も対策しなければならない
+      然し、よく考えたら i が入っていなくても progcomp が
+      前方を書き換える様な候補を複数生成する事は可能性として残る。
+      その様な場合にはどうしたら良いのだろうか。
+
+      現状の実装ではコメントに "Note: #D0768 文法的に単純であれば (構造を破壊しなければ)
+      遡って書き換えが起こることを許す。" と書かれている。
+      #D0768 の議論を確認した。うーん。ここの考察では勝手に progcomp が
+      前方一致しない候補を生成する事に関しては想定していない様だ。
+      前方一致するかどうかの判定を追加する事にする。
+
+    [検証]
+
+    取り敢えず動いている。候補が複数生成される場合にちゃんと展開が抑止される事も確認した。
+    実のところ bash-completion-partial-path を読み込まない時の方が良好に動作する。
+    というのも ble.sh がちゃんと曖昧一致であるという事を知って determine-common-prefix する為。
+
+    然し、普通に ble.sh なしで bcpp を動かしてみるとちゃんと
+    共通部分の挿入まで実施してくれる。うーん。どうするのが良いのだろうか。
+    実際に bash で mkdir -p aloha/hello/{wip/tt,world/{tech,test}} としてやってみると、
+    echo a/h/w/t が echo aloha/hello/w になってしまう。t の情報が消える。
+    但し、続けて TAB を押した時に限れば menu-complete に入って候補が選べる。
+    menu-complete に入らずに別の操作をすると入力内容が失われる。
+
+    そういう意味で言えば ble.sh でも曖昧な候補によって
+    入力済み文字列が消滅する事を許しても良いのかもしれない?
+    menu-complete を既に実装しているのであるから。
+    試しに一回消滅する事を許してみる。うーん。動く。
+
+    [対策2]
+
+    オプションで外部の枠組みで生成された先頭一致しない候補によって、
+    入力済み文字列が失われてしまう事を許可する事にする。
+    設定変数 complete_allow_reduction を追加した。
 
   * 検索してみたら丁度2時間前に質問が superuser.com に来ていた… [#D1180]
     https://superuser.com/questions/1512618/autocompletion-background-colour-in-ble-sh

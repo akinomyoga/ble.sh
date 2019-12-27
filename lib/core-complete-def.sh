@@ -37,6 +37,7 @@ bleopt/declare -v complete_contract_function_names 1
 bleopt/declare -v complete_auto_complete 1
 bleopt/declare -v complete_auto_history 1
 bleopt/declare -n complete_auto_delay 1
+bleopt/declare -v complete_allow_reduction ''
 
 ## オプション complete_menu_style
 ##   補完候補のリスト表示のスタイルを指定します。

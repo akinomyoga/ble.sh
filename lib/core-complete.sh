@@ -3017,7 +3017,6 @@ function ble/complete/candidates/determine-common-prefix {
   # 共通部分
   local common=${cand_word[0]}
   local clen=${#common}
-
   if ((cand_count>1)); then
     # setup ignore case
     local unset_nocasematch= flag_tolower=
@@ -3052,38 +3051,59 @@ function ble/complete/candidates/determine-common-prefix {
     [[ $flag_tolower ]] && common=${cand_word[0]::${#common}}
   fi
 
-  if [[ :$comp_type: == *:[amAi]:* && $common != "$COMPS"* ]]; then
+  if [[ $common != "$COMPS"* && ! ( $cand_count -eq 1 && $comp_type == *:i:* ) ]]; then
     # common を部分的に COMPS に置換する試み
+    # Note: ignore-case で一意確定の時は case を
+    #   候補に合わせたいので COMPS には置換しない。
     ble/complete/candidates/determine-common-prefix/.apply-partial-comps
+  fi
 
-    # 曖昧一致の時は遡って書き換えを起こし得る、
-    # 一致する部分までを置換し一致しなかった部分を末尾に追加する。
+  if ((cand_count>1)) && [[ $common != "$COMPS"* ]]; then
     local common0=$common
-    common=$COMPS
+    common=$COMPS # 取り敢えず補完挿入をキャンセル
 
-    local simple_flags simple_ibrace
-    if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
-      ble/syntax:bash/simple-word/eval "$ret"; then
-      local value=$ret filter_type=head
-      case :$comp_type: in
-      (*:m:*) filter_type=substr ;;
-      (*:a:*) filter_type=hsubseq ;;
-      (*:A:*) filter_type=subseq ;;
-      esac
+    if [[ :$comp_type: == *:[amAi]:* ]]; then
+      # 曖昧一致の時は遡って書き換えを起こし得る、
+      # 一致する部分までを置換し一致しなかった部分を末尾に追加する。
 
-      if [[ $filter_type ]] && ble/complete/candidates/filter:"$filter_type"/count-match-chars "$value"; then
-        if ((ret)); then
-          ble/string#escape-for-bash-specialchars "${COMPV:ret}" c
-          common=$common0$ret
-        else
-          common=$common0$COMPS
+      local simple_flags simple_ibrace
+      if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
+          ble/syntax:bash/simple-word/eval "$ret"; then
+        local value=$ret filter_type=head
+        case :$comp_type: in
+        (*:m:*) filter_type=substr ;;
+        (*:a:*) filter_type=hsubseq ;;
+        (*:A:*) filter_type=subseq ;;
+        esac
+
+        if ble/complete/candidates/filter:"$filter_type"/count-match-chars "$value"; then
+          if [[ $filter_type == head ]] && ((ret<${#COMPV})); then
+            # Note: #D1181 ここに来たという事は外部の枠組みで
+            #   生成された先頭一致しない候補があるという事。
+            #   入力済み文字列が失われてしまう危険性を承知の上と思われるので書き換えを許可する。
+            [[ $bleopt_complete_allow_reduction ]] &&
+              common=$common0
+          elif ((ret)); then
+            ble/string#escape-for-bash-specialchars "${COMPV:ret}" c
+            common=$common0$ret
+          else
+            common=$common0$COMPS
+          fi
+        fi
+      fi
+    else
+      # Note: #D0768 文法的に単純であれば (構造を破壊しなければ) 遡って書き換えが起こることを許す。
+      # Note: #D1181 外部の枠組みで生成された先頭一致しない共通部分の時でも書き換えを許す。
+      if ble/syntax:bash/simple-word/is-simple-or-open-simple "$common"; then
+        if [[ $bleopt_complete_allow_reduction ]] ||
+             { local simple_flags simple_ibrace
+               ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
+                 ble/syntax:bash/simple-word/eval "$ret" &&
+                 [[ $ret == "$COMPV"* ]]; }; then
+          common=$common0
         fi
       fi
     fi
-  elif ((cand_count!=1)) && [[ $common != "$COMPS"* ]]; then
-    # Note: #D0768 文法的に単純であれば (構造を破壊しなければ) 遡って書き換えが起こることを許す。
-    ble/syntax:bash/simple-word/is-simple-or-open-simple "$common" ||
-      common=$COMPS
   fi
 
   ret=$common
@@ -3474,7 +3494,8 @@ function ble/complete/insert {
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-common {
   local ret
-  ble/complete/candidates/determine-common-prefix; local insert=$ret suffix=
+  ble/complete/candidates/determine-common-prefix; (($?==148)) && return 148
+  local insert=$ret suffix=
   local insert_beg=$COMP1 insert_end=$COMP2
   local insert_flags=
   [[ $insert == "$COMPS"* ]] || insert_flags=r

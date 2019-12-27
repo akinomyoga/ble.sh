@@ -262,6 +262,13 @@
 #bleopt complete_contract_function_names=1
 
 
+## Defaultly, ble.sh does not allow rewriting the existing text if non-unique
+## candidates does not contain the existing text.  If this setting has
+## non-empty values, ble.sh rewrites the existing text.
+
+#bleopt complete_allow_reduction=1
+
+
 ## If "complete_auto_history" has non-empty values, auto-complete searchs
 ## matching command lines from history.
 
