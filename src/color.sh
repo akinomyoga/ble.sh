@@ -167,6 +167,22 @@ function ble/color/g#setbg-rgb {
     ((g=g&~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)|R<<48|G<<40|B<<32)) # true color
   fi
 }
+function ble/color/g#setfg-cmyk {
+  local C=$1 M=$2 Y=$3 K=${4:-0}
+  ((K=~K&0xFF,
+    C=(~C&0xFF)*K/255,
+    M=(~M&0xFF)*K/255,
+    Y=(~Y&0xFF)*K/255))
+  ble/color/g#setfg-rgb "$C" "$M" "$Y"
+}
+function ble/color/g#setbg-cmyk {
+  local C=$1 M=$2 Y=$3 K=${4:-0}
+  ((K=~K&0xFF,
+    C=(~C&0xFF)*K/255,
+    M=(~M&0xFF)*K/255,
+    Y=(~Y&0xFF)*K/255))
+  ble/color/g#setbg-rgb "$C" "$M" "$Y"
+}
 function ble/color/g#setfg {
   local color=$1
   if ((color<0)); then
@@ -301,6 +317,52 @@ function ble/color/gspec2sgr {
   ret="[${sgr}m"
 }
 
+function ble/color/.name2color/.clamp {
+  local text=$1 max=$2
+  if [[ $text == *% ]]; then
+    ((ret=10#${text%'%'}*max/100))
+  else
+    ((ret=10#$text))
+  fi
+  ((ret>max)) && ret=max
+}
+function ble/color/.name2color/.wrap {
+  local text=$1 max=$2
+  if [[ $text == *% ]]; then
+    ((ret=10#${text%'%'}*max/100))
+  else
+    ((ret=10#$text))
+  fi
+  ((ret%=max))
+}
+function ble/color/.hxx2color {
+  local H=$1 Min=$2 Range=$3 Unit=$4
+  local h1 h2 x=$Min y=$Min z=$Min
+  ((h1=H%120,h2=120-h1,
+    x+=Range*(h2<60?h2:60)/60,
+    y+=Range*(h1<60?h1:60)/60))
+  ((x=x*255/Unit,
+    y=y*255/Unit,
+    z=z*255/Unit))
+  case $((H/120)) in
+  (0) local R=$x G=$y B=$z ;;
+  (1) local R=$z G=$x B=$y ;;
+  (2) local R=$y G=$z B=$x ;;
+  esac
+  ((ret=1<<24|R<<16|G<<8|B))
+}
+function ble/color/.hsl2color {
+  local H=$1 S=$2 L=$3 Unit=$4
+  local Range=$((2*(L<=Unit/2?L:Unit-L)*S/Unit))
+  local Min=$((L-Range/2))
+  ble/color/.hxx2color "$H" "$Min" "$Range" "$Unit"
+}
+function ble/color/.hsb2color {
+  local H=$1 S=$2 B=$3 Unit=$4
+  local Range=$((B*S/Unit))
+  local Min=$((B-Range))
+  ble/color/.hxx2color "$H" "$Min" "$Range" "$Unit"
+}
 ## 関数 ble/color/.name2color colorName
 ##   @var[out] ret
 function ble/color/.name2color {
@@ -312,6 +374,38 @@ function ble/color/.name2color {
       let "ret=1<<24|16#${colorName:1:1}*0x11<<16|16#${colorName:2:1}*0x11<<8|16#${colorName:3:1}*0x11"
     elif rex='^#[0-9a-fA-F]{6}$'; [[ $colorName =~ $rex ]]; then
       let "ret=1<<24|16#${colorName:1:2}<<16|16#${colorName:3:2}<<8|16#${colorName:5:2}"
+    else
+      ret=-1
+    fi
+  elif [[ $colorName == *:* ]]; then
+    if local rex='^rgb:([0-9]+%?)/([0-9]+%?)/([0-9]+%?)$'; [[ $colorName =~ $rex ]]; then
+      ble/color/.name2color/.clamp "${BASH_REMATCH[1]}" 255; local R=$ret
+      ble/color/.name2color/.clamp "${BASH_REMATCH[2]}" 255; local G=$ret
+      ble/color/.name2color/.clamp "${BASH_REMATCH[3]}" 255; local B=$ret
+      ((ret=1<<24|R<<16|G<<8|B))
+    elif
+      local rex1='^cmy:([0-9]+%?)/([0-9]+%?)/([0-9]+%?)$'
+      local rex2='^cmyk:([0-9]+%?)/([0-9]+%?)/([0-9]+%?)/([0-9]+%?)$'
+      [[ $colorName =~ $rex1 || $colorName =~ $rex2 ]]
+    then
+      ble/color/.name2color/.clamp "${BASH_REMATCH[1]}" 255; local C=$ret
+      ble/color/.name2color/.clamp "${BASH_REMATCH[2]}" 255; local M=$ret
+      ble/color/.name2color/.clamp "${BASH_REMATCH[3]}" 255; local Y=$ret
+      ble/color/.name2color/.clamp "${BASH_REMATCH[4]:-0}" 255; local K=$ret
+      local K=$((~K&0xFF))
+      local R=$(((~C&0xFF)*K/255))
+      local G=$(((~M&0xFF)*K/255))
+      local B=$(((~Y&0xFF)*K/255))
+      ((ret=1<<24|R<<16|G<<8|B))
+    elif rex='^hs[lvb]:([0-9]+)/([0-9]+%)/([0-9]+%)$'; [[ $colorName =~ $rex ]]; then
+      ble/color/.name2color/.wrap  "${BASH_REMATCH[1]}" 360; local H=$ret
+      ble/color/.name2color/.clamp "${BASH_REMATCH[2]}" 1000; local S=$ret
+      ble/color/.name2color/.clamp "${BASH_REMATCH[3]}" 1000; local X=$ret
+      if [[ $colorName = hsl:* ]]; then
+        ble/color/.hsl2color "$H" "$S" "$X" 1000
+      else
+        ble/color/.hsb2color "$H" "$S" "$X" 1000
+      fi
     else
       ret=-1
     fi
@@ -612,11 +706,25 @@ function ble/color/read-sgrspec {
           fi
           ble/color/g#setfg-index "$color"
         elif ((cspace==2)); then
-          local R G B
+          local S R G B
+          ((${#fields[@]}>5)) &&
+            ble/color/read-sgrspec/.arg-next -v S
           ble/color/read-sgrspec/.arg-next -v R
           ble/color/read-sgrspec/.arg-next -v G
           ble/color/read-sgrspec/.arg-next -v B
           ble/color/g#setfg-rgb "$R" "$G" "$B"
+        elif ((cspace==3||cspace==4)); then
+          local S C M Y K=0
+          ((${#fields[@]}>2+cspace)) &&
+            ble/color/read-sgrspec/.arg-next -v S
+          ble/color/read-sgrspec/.arg-next -v C
+          ble/color/read-sgrspec/.arg-next -v M
+          ble/color/read-sgrspec/.arg-next -v Y
+          ((cspace==4)) &&
+            ble/color/read-sgrspec/.arg-next -v K
+          ble/color/g#setfg-cmyk "$C" "$M" "$Y" "$K"
+        else
+          ble/color/g#setfg-clear
         fi
       elif ((arg==48)); then
         local j=1 color cspace
@@ -628,12 +736,25 @@ function ble/color/read-sgrspec {
           fi
           ble/color/g#setbg-index "$color"
         elif ((cspace==2)); then
-          local R G B
+          local S R G B
+          ((${#fields[@]}>5)) &&
+            ble/color/read-sgrspec/.arg-next -v S
           ble/color/read-sgrspec/.arg-next -v R
           ble/color/read-sgrspec/.arg-next -v G
           ble/color/read-sgrspec/.arg-next -v B
           ble/color/g#setbg-rgb "$R" "$G" "$B"
-printf '%016x %s\n' "$g" "color=$R,$G,$B" >> /dev/pts/9
+        elif ((cspace==3||cspace==4)); then
+          local S C M Y K=0
+          ((${#fields[@]}>2+cspace)) &&
+            ble/color/read-sgrspec/.arg-next -v S
+          ble/color/read-sgrspec/.arg-next -v C
+          ble/color/read-sgrspec/.arg-next -v M
+          ble/color/read-sgrspec/.arg-next -v Y
+          ((cspace==4)) &&
+            ble/color/read-sgrspec/.arg-next -v K
+          ble/color/g#setbg-cmyk "$C" "$M" "$Y" "$K"
+        else
+          ble/color/g#setbg-clear
         fi
       elif ((arg==39)); then
         ble/color/g#setfg-clear
@@ -676,7 +797,6 @@ printf '%016x %s\n' "$g" "color=$R,$G,$B" >> /dev/pts/9
       ((g&=~_ble_color_gflags_Strike))
     fi
   done
-printf '%016x\n' "$g" >> /dev/pts/9
 }
 
 ## 関数 ble/color/sgrspec2g str
