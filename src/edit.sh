@@ -4131,14 +4131,8 @@ function ble-edit/exec:gexec/.TRAPINT/reset {
   blehook INT-='ble-edit/exec:gexec/.TRAPINT'
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
-  ((_ble_hook_c_$1++))
-  local -a hooks; eval "hooks=(\"\${_ble_hook_h_$1[@]}\")"
-  local hook ext=0
-  for hook in "${hooks[@]}"; do
-    ble-edit/exec/.setexit # set $?
-    eval "$hook \"\${@:2}\"" || ext=$?
-  done
-  return "$ext"
+  ble-edit/exec/.setexit
+  blehook/invoke "$@"
 }
 
 ## 関数 ble-edit/exec:gexec/.begin
@@ -4238,8 +4232,7 @@ function ble-edit/exec:gexec/.epilogue {
 
   if ((_ble_edit_exec_lastexit)); then
     # SIGERR処理
-    ble-edit/exec/.setexit
-    blehook/invoke ERR
+    ble-edit/exec:gexec/invoke-hook-with-setexit ERR &>/dev/tty
     if [[ $bleopt_exec_errexit_mark == $'\e[91m[ble: exit %d]\e[m' ]]; then
       ble/bin/echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0"
     elif [[ $bleopt_exec_errexit_mark ]]; then

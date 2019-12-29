@@ -15,7 +15,7 @@
   テキストオブジェクト・各種レジスタ・オペレータ・キーボードマクロなどにも対応しています。
   拡張として `vim-surround` も提供しています。
 
-詳細な使い方は[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8)を御覧ください。ここでは簡単な使い方を説明します。
+詳細な使い方・設定方法は[説明書](https://github.com/akinomyoga/ble.sh/wiki/)を御覧ください。ここでは簡単な使い方を説明します。
 
 このスクリプトは `bash-3.0` 以降で利用できますが、速度・機能などの観点から Bash 4.0 以降でお使い頂くことがお薦めです。
 
@@ -248,6 +248,14 @@ ble-color-setface filename_ls_colors        underline
 ble-color-setface auto_complete             fg=238,bg=254
 ble-color-setface menu_filter_fixed         bold
 ble-color-setface menu_filter_input         fg=16,bg=229
+ble-color-setface vbell                     reverse
+ble-color-setface vbell_erase               bg=252
+ble-color-setface vbell_flash               fg=green,reverse
+```
+
+現在の描画設定の一覧は以下のコマンドでも確認できます (`ble-color-setface` を無引数で呼び出す)。
+```console
+$ ble-color-setface
 ```
 
 色コードはシェル関数 `ble-color-show` (`ble.sh` 内で定義) で確認できます。

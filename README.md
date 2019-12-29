@@ -236,6 +236,14 @@ ble-color-setface filename_ls_colors        underline
 ble-color-setface auto_complete             fg=238,bg=254
 ble-color-setface menu_filter_fixed         bold
 ble-color-setface menu_filter_input         fg=16,bg=229
+ble-color-setface vbell                     reverse
+ble-color-setface vbell_erase               bg=252
+ble-color-setface vbell_flash               fg=green,reverse
+```
+
+The current list of faces can be obtained by the following command (`ble-color-setface` without arguments):
+```console
+$ ble-color-setface
 ```
 
 The color codes can be checked in output of the function `ble-color-show` (defined in `ble.sh`):
