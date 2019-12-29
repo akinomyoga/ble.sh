@@ -892,6 +892,36 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2019-12-29
+
+  * color: term_true_colors=auto
+
+    自動判定は難しい。screen-4.99.0 が truecolor on/off
+    のオプションを持っているので実際にユーザが有効にしているかどうかは
+    TERM や DA2 を使っても分からない。結局試しに色を設定して、
+    その色を読み出すという事をしなければ判定できないのだろうか。
+    然し、これも端末によって問い合わせができたりできなかったり
+    (セキュリティ上の都合から)無効になっていたりする気がする。
+
+    以下の優先順位で試すというのが妥当な実装方法の気がする。
+    然し 1 の判定を非同期に行わなければならないので面倒である。
+
+    1. 色を設定して問い合わせる
+
+      http://nanno.dip.jp/softlib/man/rlogin/ctrlcode.html
+      https://qiita.com/kefir_/items/c2bd46728364bdc7470b
+      OSC 10 ; ? ST で前景色RGB問い合わせ、
+      OSC 11 ; ? ST で背景色RGB問い合わせの様である。
+      応答は OSC 10 ; "rgb:rrrr/gggg/bbbb" ST の形式?
+
+    2. DA2 を元に判断する
+      然し https://gist.github.com/XVilka/8346728 のページには
+      各ターミナルの対応 version が書かれていないので使えない。
+      自分で調べ上げるしかないのだろうか。
+
+    3. TERM を元に判断する (*-24bit *-24bits *-truecolor)
+    4. terminfo を元に判断する (setf24, setb24, tc, RGB)
+
 2019-11-23
 
   * complete: comps_flags の b と B が重複している。
@@ -2225,8 +2255,9 @@ bash_tips
   - decode: support `ble-bind -T kspecs timeout` for timeout and `lib/vim-arpeggio.sh` (request by divramod) `#D1174` 272344e
   - complete: use `WORD*` pathname expansion for candidates on failglob with `WORD` `#D1177` c1b0532
   - edit: support `bleopt accept_line_threshold` `#D1178` a3385f6 82a1e0b
-  - complete: support `bleopt complete_allow_reduction` `#D1181` 0000000
-  - edit: support `bleopt exec_errexit_mark` `#D1182`
+  - complete: support `bleopt complete_allow_reduction` `#D1181` 03040b7
+  - edit: support `bleopt exec_errexit_mark` `#D1182` 6adc2df
+  - color: support true colors `#D1184` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3271,6 +3302,218 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-12-29
+
+  * color: true color support [#D1184]
+
+    https://github.com/brujoand/sbp
+
+    256色でもまあ問題はないだろうと思っていたが。
+    よく考えてみたら既存の PS1 の設定の中には true color を使っている物もある。
+    ble.sh の実装では PS1 を ble.sh で再解釈して terminfo で変換して出力するので、
+    PS1 に true color を設定していてもそれがプロンプトに反映されない。
+    つまり ble.sh が 24bit color に対応していないというだけで済まず、
+    24bit color を想定したプロンプトの設定も動かなくなる。
+    対応しなければならない。
+
+    [実装方法]
+
+    | 現在 gflags は何 bit 残っていただろうか。確認する。
+    |
+    | bit 0-8  : bold italic underline revert invisible strike blink
+    | bit 8-16 : 前景色
+    | bit 16-24: 背景色
+    | bit 24,25: 前景色・背景色のon/off
+    |
+    | うーん。bit 26-32 の6bit と 32-64 の 32bit が残っている。
+    | 本当に 24bit x 2 対応をするのか。。
+    | 色の記録に追加で 32bit 必要になる。
+    | 更に 24bit かどうかの判定に 2bit 必要になる。
+    | そうすると残り 4 bit しかなくなる。うーん。
+    | 将来的に fast blink だとか他の物に対応する余裕は全くなくなる。
+    |
+    | a もっと上手に code extension する方法を考える。
+    |   今 8-16,32-48,24 の 25bit の組み合わせで何を表現できるかについて考える。
+    |   現在使用している空間は以下の通りである。
+    |     0000000 ... transparent
+    |     10000XX ... 256色
+    |   加えて以下を true color として使いたい。
+    |     0XXXXXX ... RGB 24bit
+    |       但し黒色 000000 は transparent
+    |       に既に使われているので表現できない。
+    |       代わりに256色16番を使って表現すれば良い。
+    |   実は
+    |     1YYYYXX ... 256色 + 他の属性
+    |   という様にすれば他の属性を保持できない事もない。
+    |   但し、24bit color と共存する事はできない。
+    |
+    |   この方法の問題点は処理が複雑になるという事。
+    |
+    | b 或いは 24bit 本当に必要なのだろうか。。という疑問。
+    |   Web で考えると実のところ #rrggbb でなくて #rgb で足りる様な気もする。
+    |   つまり 12bit で十分なのではないかという可能性。
+    |   だとすれば 8bit 拡張するだけで良いのではないかという。。
+    |
+    | 然し何れの方法を取るとしても ble の内部実装の問題なので、
+    | 実はいつでも好きに切り替える事ができる。何なら bleopt で
+    | 切り替えられる様にしても良い。なので、ここは気楽に実装して問題ない気がする。
+    | 取り敢えず後半の 32bit は使ってしまう事にする。
+
+    結論: gflags の内部表現はいつでも切替可能なので気にせず実装する
+    それに将来別の属性が増えるとも考えにくい (増えるとしたら色空間だろう)。
+
+    [実装]
+
+    * 先ず後半 24bit に値を格納しても問題ない事を確認する
+
+    * done: 後半 24bit に値がある時にそれを出力するコード
+      減色処理と一緒に実装しなければならない。
+
+    * done: gspec を解釈するコード
+
+    うーん。減色するに当たって 6x6x6 cube の階調がどうなっているか
+    意識しなければならない。
+
+    * info: 6x6x6 cube 及び 24 grayscale 階調について。
+
+      | 等間隔で分割するならば 0 51 102 153 204 255 になる。
+      | 一方で Poderosa の場合には 0 95 135 175 215 255 になっている。
+      | うーん。両方実装する? 或いは…。うーん。取り敢えず等間隔を想定して実装する。
+      | 等間隔でない場合に対しては後で考える事にする。
+      | 24 gray scale に関しては 10k + 8 である。
+      | と思ったがこれも何だかやってみると変である。
+      | 元を辿ってみる。Poderosa の mwg.Rosa/Colors.cs の Xterm256Gray24
+      | の表の中から拾った物で、これは 0x08 から始まって 0xEE で終わっている。
+      | 0xEE = 255 - 17 = 238 である。うーん。全然等間隔ではない…。
+      | 
+      | 等間隔で変換するならばどうなるか。
+      | 10*23=230, 11*23=253 うーん。RLogin はどの様な実装になっているか。
+      | RLogin は単に 11k になっている。offset はない。
+      | 結局色々の terminal を調べる事にした。
+      | 
+      | 11k       0..253 RLogin
+      | 10k+8     8..238 Poderosa, xterm, contra, urxvt256c, mintty, mlterm, alacritty
+      | 
+      | 51k        0..255 RLogin
+      | k?55+40k:0 0..255 Poderosa, xterm, contra, urxvt256c, mintty, mlterm, alacritty
+      | 
+      | % 6x6x6 cube の等間隔でない場合に対応する?
+      | % 実はこれは 88colors の 4x4x4 に変換する時にも問題になる気がする。
+      | % →圧倒的に非等間隔の端末が殆どなのでそれに従う事にする。
+      |
+      | % alacritty は grayscale の黒 232 以外は xterm と同じ。
+      | % grayscale の黒 232 は本当に黒である。
+      | % →変だと思って再度試してみたら 8 になった。
+      | %   丁度文字の上をスポイトで抽出していただけの様だ。
+      | %   結局 xterm と完全に同じ
+
+      RLogin 以外は xterm に従っている。
+      Poderosa, xterm, contra, urxvt256c, mintty, mlterm で試した。
+      更に alacritty, termit, lxterminal も試した。
+
+      terminology はなんか変な結果になる。何かの補正をかけているのだろうか。
+      真っ黒が 2:2:2 であり、真っ青 (0,0,5) が 15:15:255 である。
+      (0,0,1) が 4:4:97 である。(0,0,2)=6:6:137 (0,0,3)=9:9:177
+      (0,0,4)=12:12:216 ちょっと規則が掴めない。彩度に制限をかけているのだろうか。
+      gray scale に関しては特に変な事はなく xterm と同じく 8..238 の様だ。
+
+      RLogin は 6x6x6 は 51k で、grayscale は 11k である。単純明快。
+
+    [テスト]
+
+    うーん。取り敢えず一通り対応した様な気がする。本当だろうか?
+    取り敢えず。実行してみる。
+
+    * 減色モードからテストする。
+      x fixed: 構文エラー。算術式の括弧を閉じ忘れていた
+      x fixed: 前景色の代わりに背景色が設定されている。
+        g#setbg-index がないと怒られる。
+        これは背景色用の関数名が g#setfg-index になっていた。
+      x fixed: 構文エラー "g&>>16&0xFF"
+        これは実装後に整理していた時に紛れたエラー。& 消し忘れ。
+      x fixed: うーん。微妙な色を指定しても全部青になってしまう。何故?
+        確認してみるとどうやら g 値への変換は期待通り動いている。
+        然し、sgr に変換する時に駄目になっている気がする。
+        分かった。g=$((ccode>>8&0xFF)) が g=$((ccode>>8&&0xFF))
+        になっていた。
+
+      x resolved: fg=#08d,bg=#f15 を設定したら誤った添字エラーになった。
+        負の添字の配列要素は作れないのだった。
+        どうしたら良いか…。ずらす? うーん。4bit 全体にずらす事にする。
+
+        というか今気づいたが今分断されている bit をまとめても良いのでは。
+        改めて配置について考える事にする。例えば以下の様にする。。
+
+        00-08: attributes
+        08-32: fg
+        32-56: bg
+        57 fg indexed
+        58 bg indexed
+
+        x ok: この方法の問題は intmax_t が 32 bit のシステムで動かないという事。
+          うーん。まあ仕方がない。というか shift 量が 32 を超えている時点で
+          現状の実装でも 32bit の環境では動かない事になる。
+          と思ったが実は 24bit color に触らない様にさえしていれば大丈夫?
+
+          然し、疑問は intmax_t が 32 な環境が果たしてこの世に存在しているのか
+          という事である。或いは bash は 64bit 整数は使っていないのだろうか。
+          https://www.jpcert.or.jp/sc-rules/c-int00-c.html やっぱり 64 bit 整数は
+          少なくとも規格上は必ず存在する事になっていて、従って intmax_t は 64bit
+          以上になるような気がする。但し、全てのシステムが規格に準拠しているとは
+          限らないということには注意しなければならない。
+
+          うーん。取り敢えず intmax_t < 64 なシステムは捨てて良いだろう。
+          捨てるというのが現状で妥当な判断である。
+
+        取り敢えず対応した。動いている。
+
+    * 24bit モードをテストする。
+
+      x fixed: term_true_colors を設定しても変わらないと思ったら、
+        SGR がキャッシュされていたのだった。
+        term_true_colors の変更と共に SGR のキャッシュを削除する様にした。
+        表示されている。OK。
+
+    * sbp を試してみた。
+      x fixed: sbp を試してみた。着色されない。もしかして PS1 の解析ルーチンは別?
+        と思ったが trace でも ble/color/read-sgrspec を使っている筈。
+        何故動かないのか。うーん。どうやら setbg-rgb が動いていない。
+
+        確認した所 rgb の r,g,b が g を被覆していた。
+        rgb から RGB に書き換えたつもりだったが書き換え漏れがあったのだった。直した。
+
+      取り敢えず truecolor support はできたかなという気がする。
+
+    [256色判定]
+
+    * 256色判定はどうするのか?
+      terminfo にそれ専用の項目があったようななかった様な。
+
+      https://gist.github.com/XVilka/8346728 によると
+        "RGB" cap がある場合には setaf, setab を使って設定できるらしい。
+        というか、今までの 256 色指定をしたい時はどうしたら良いのか謎。
+        この仕様は D. Thomas による嫌がらせとしか思えない。
+        https://lists.gnu.org/archive/html/bug-ncurses/2017-02/msg00018.html
+        https://lists.gnu.org/archive/html/bug-ncurses/2013-10/msg00008.html
+        要するに DT の主張は initc で十分の筈だという事。
+        それから ncurses は 16bit 整数で動いているので 24bit 色は無理という事。
+
+      http://git.savannah.gnu.org/cgit/emacs.git/commit/?id=e463e57
+      https://qiita.com/__hage/items/4d8ad65b70e4d6142599 では
+        Emacs の為に "setb24", "setf24" という項目を追加すれば良いという事になっている。
+        TERM に -24bit (38:2:r:g:b) もしくは -24bits (38;2;r;g;b) を付ける話もある。
+
+      http://lists.schmorp.de/pipermail/rxvt-unicode/2016q2/002251.html
+        tmux は "tc" という cap を見る様だ。
+
+    うーん。判定は難しい気がする。
+    結局ユーザが #xxxxxx だとかを使ったらもうその時点で
+    24bit 対応であると想定して良いのではないだろうか。
+    それで変な結果になっても仕方がないという事にする。
+
+    将来的には自動判定を行う様にしたい。
+    現段階では強制的に有効と見做す事にする。
 
 2019-12-28
 

@@ -4278,8 +4278,10 @@ function ble/highlight/layer/buff#operate-gflags {
 
   if [[ $mask == auto ]]; then
     mask=0
-    (((gflags&_ble_color_gflags_ForeColor)&&(mask|=0xFF<<_ble_color_gflags_ShiftFg)))
-    (((gflags&_ble_color_gflags_BackColor)&&(mask|=0xFF<<_ble_color_gflags_ShiftBg)))
+    ((gflags&(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask))) &&
+      ((mask|=_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask))
+    ((gflags&(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask))) &&
+      ((mask|=_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask))
   fi
 
   local i g ret
@@ -4375,9 +4377,7 @@ function ble/highlight/layer:menu_filter/getg {
       ble/color/face2g menu_filter_input; local g0=$g
     fi
     ble/highlight/layer/update/getg "$index"
-    (((g0&_ble_color_gflags_ForeColor)&&(g&=~_ble_color_gflags_MaskFg)))
-    (((g0&_ble_color_gflags_BackColor)&&(g&=~_ble_color_gflags_MaskBg)))
-    ((g|=g0))
+    ble/color/g#append "$g0"
   fi
 }
 

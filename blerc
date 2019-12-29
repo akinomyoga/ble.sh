@@ -325,8 +325,34 @@
 ##-----------------------------------------------------------------------------
 ## Color settings
 
+## The setting "term_index_colors" specifies the number of index colors
+## supported by you terminal.  The value 256 is treated as xterm 256-color
+## palette (16 basic + 6x6x6 color cube + 24 gray scale). The value 88 is
+## treated as xterm 88-color palette (16 basic + 4x4x4 color cube + 8 gray
+## scale).  The value 0 means that the terminal does not support extra colors
+## other than basic colors.
+
+# bleopt term_index_colors=256
+
+
+## The setting "term_true_colors" specifies the format of 24-bit color escape
+## sequeces supported by your terminal.  The value "semicolon" indicates the
+## format "CSI 3 8 ; 2 ; R ; G ; B m".  The value "colon" indicates the format
+## "CSI 3 8 : 2 : R : G : B m".  The other value implies that the terminal does
+## not support 24-bit color sequences.  In this case, ble.sh tries to output
+## indexed color sequences or basic color sequences with properly reduced
+## colors.
+
+# bleopt term_true_colors=semicolon
+
+
+## The setting "filename_ls_colors" can be used to import the filename coloring
+## scheme by the environment variable LS_COLORS.
 
 # bleopt filename_ls_colors="$LS_COLORS"
+
+
+## The following settings specify graphic styles of each faces.
 
 # ble-color-setface region                    fg=white,bg=60
 # ble-color-setface region_insert             fg=blue,bg=252

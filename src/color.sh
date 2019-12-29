@@ -9,12 +9,13 @@ _ble_color_gflags_Revert=0x08
 _ble_color_gflags_Invisible=0x10
 _ble_color_gflags_Strike=0x20
 _ble_color_gflags_Blink=0x40
-_ble_color_gflags_MaskFg=0x0000FF00
-_ble_color_gflags_MaskBg=0x00FF0000
-_ble_color_gflags_ShiftFg=8
-_ble_color_gflags_ShiftBg=16
-_ble_color_gflags_ForeColor=0x1000000
-_ble_color_gflags_BackColor=0x2000000
+
+_ble_color_gflags_FgMask=0x00000000FFFFFF00
+_ble_color_gflags_BgMask=0x00FFFFFF00000000
+_ble_color_gflags_FgIndexed=0x0100000000000000
+_ble_color_gflags_BgIndexed=0x0200000000000000
+
+bleopt/declare -v term_true_colors semicolon
 
 if [[ ! ${bleopt_term_index_colors+set} ]]; then
   if [[ $TERM == xterm* || $TERM == *-256color || $TERM == kterm* ]]; then
@@ -26,6 +27,46 @@ if [[ ! ${bleopt_term_index_colors+set} ]]; then
   fi
 fi
 
+function bleopt/check:term_true_colors {
+  ble/color/g2sgr/.clear-cache
+  return 0
+}
+function bleopt/check:term_index_colors {
+  ble/color/g2sgr/.clear-cache
+  return 0
+}
+function ble/color/initialize-term-colors {
+  local fields
+  ble/string#split fields \; "$_ble_term_DA2R"
+  if [[ $bleopt_term_true_colors == auto ]]; then
+    # truecolor support 自動判定 (暫定実装)
+    local value=
+    if [[ $TERM == *-24bit ]]; then
+      value=colon
+    elif [[ $TERM == *-24bits ]]; then
+      value=semicolon
+    else
+      case ${fields[0]} in
+      (83) # screen (truecolor on にしている必要がある。判定方法は不明)
+        if ((fields[1]>=49900)); then
+          value=semicolon
+        fi ;;
+      (67)
+        if ((fields[1]>=100000)); then
+          : # cygwin terminal
+        else
+          # contra
+          value=colon
+        fi ;;
+      esac
+    fi
+    [[ $value ]] &&
+      bleopt term_true_colors="$value"
+  fi
+}
+blehook DA2R+=ble/color/initialize-term-colors
+
+
 function ble-color-show {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
@@ -33,7 +74,7 @@ function ble-color-show {
   fi
 
   local cols=16
-  local bg bg0 bgN ret gflags=$((_ble_color_gflags_BackColor|_ble_color_gflags_ForeColor))
+  local bg bg0 bgN ret gflags=$((_ble_color_gflags_BgIndexed|_ble_color_gflags_FgIndexed))
   for ((bg0=0;bg0<256;bg0+=cols)); do
     ((bgN=bg0+cols,bgN<256||(bgN=256)))
     for ((bg=bg0;bg<bgN;bg++)); do
@@ -55,8 +96,6 @@ function ble-color-show {
 _ble_color_g2sgr=()
 function ble/color/g2sgr/.impl {
   local -i g=$1
-  local fg=$((g>> 8&0xFF))
-  local bg=$((g>>16&0xFF))
 
   local sgr=0
   ((g&_ble_color_gflags_Bold))      && sgr="$sgr;${_ble_term_sgr_bold:-1}"
@@ -66,22 +105,110 @@ function ble/color/g2sgr/.impl {
   ((g&_ble_color_gflags_Revert))    && sgr="$sgr;${_ble_term_sgr_rev:-7}"
   ((g&_ble_color_gflags_Invisible)) && sgr="$sgr;${_ble_term_sgr_invis:-8}"
   ((g&_ble_color_gflags_Strike))    && sgr="$sgr;${_ble_term_sgr_strike:-9}"
-  if ((g&_ble_color_gflags_ForeColor)); then
+  if ((g&_ble_color_gflags_FgIndexed)); then
+    local fg=$((g>>8&0xFF))
     ble/color/.color2sgrfg "$fg"
     sgr="$sgr;$ret"
+  elif ((g&_ble_color_gflags_FgMask)); then
+    local rgb=$((1<<24|g>>8&0xFFFFFF))
+    ble/color/.color2sgrfg "$rgb"
+    sgr="$sgr;$ret"
   fi
-  if ((g&_ble_color_gflags_BackColor)); then
+  if ((g&_ble_color_gflags_BgIndexed)); then
+    local bg=$((g>>32&0xFF))
     ble/color/.color2sgrbg "$bg"
+    sgr="$sgr;$ret"
+  elif ((g&_ble_color_gflags_BgMask)); then
+    local rgb=$((1<<24|g>>32&0xFFFFFF))
+    ble/color/.color2sgrbg "$rgb"
     sgr="$sgr;$ret"
   fi
 
   ret="[${sgr}m"
   _ble_color_g2sgr[$1]=$ret
 }
+function ble/color/g2sgr/.clear-cache {
+  _ble_color_g2sgr=()
+}
 function ble/color/g2sgr {
   ret=${_ble_color_g2sgr[$1]}
   [[ $ret ]] || ble/color/g2sgr/.impl "$1"
 }
+
+function ble/color/g#setfg-clear {
+  ((g&=~(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask)))
+}
+function ble/color/g#setbg-clear {
+  ((g&=~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)))
+}
+function ble/color/g#setfg-index {
+  local color=$1
+  ((g=g&~_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed|(color&0xFF)<<8)) # index color
+}
+function ble/color/g#setbg-index {
+  local color=$1
+  ((g=g&~_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed|(color&0xFF)<<32)) # index color
+}
+function ble/color/g#setfg-rgb {
+  local R=$1 G=$2 B=$3
+  ((R&=0xFF,G&=0xFF,B&=0xFF))
+  if ((R==0&&G==0&&B==0)); then
+    ble/color/g#setfg-index 16
+  else
+    ((g=g&~(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask)|R<<24|G<<16|B<<8)) # true color
+  fi
+}
+function ble/color/g#setbg-rgb {
+  local R=$1 G=$2 B=$3
+  ((R&=0xFF,G&=0xFF,B&=0xFF))
+  if ((R==0&&G==0&&B==0)); then
+    ble/color/g#setbg-index 16
+  else
+    ((g=g&~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)|R<<48|G<<40|B<<32)) # true color
+  fi
+}
+function ble/color/g#setfg {
+  local color=$1
+  if ((color<0)); then
+    ble/color/g#setfg-clear
+  elif ((color>=0x1000000)); then
+    if ((color==0x1000000)); then
+      ble/color/g#setfg-index 16
+    else
+      ((g=g&~(_ble_color_gflags_FgIndexed|_ble_color_gflags_FgMask)|(color&0xFFFFFF)<<8)) # true color
+    fi
+  else
+    ble/color/g#setfg-index "$color"
+  fi
+}
+function ble/color/g#setbg {
+  local color=$1
+  if ((color<0)); then
+    ble/color/g#setbg-clear
+  elif ((color>=0x1000000)); then
+    if ((color==0x1000000)); then
+      ble/color/g#setbg-index 16
+    else
+      ((g=g&~(_ble_color_gflags_BgIndexed|_ble_color_gflags_BgMask)|(color&0xFFFFFF)<<32)) # true color
+    fi
+  else
+    ble/color/g#setbg-index "$color"
+  fi
+}
+## 関数 ble/color/g#append g2
+##   g に描画属性 g2 を上書きします。
+##   @param[in] g2
+##   @var[in,out] g
+function ble/color/g#append {
+  local g2=$1
+  ((g2&(_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed))) &&
+    ((g&=~(_ble_color_gflags_FgMask|_ble_color_gflags_FgIndexed)))
+  ((g2&(_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed))) &&
+    ((g&=~(_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed)))
+  ((g|=g2))
+}
+
+
 ## 関数 ble/color/gspec2g gspec
 ##   @param[in] gspec
 ##   @var[out] ret
@@ -99,18 +226,10 @@ function ble/color/gspec2g {
     (standout)  ((g|=_ble_color_gflags_Revert|_ble_color_gflags_Bold)) ;;
     (fg=*)
       ble/color/.name2color "${entry:3}"
-      if ((ret<0)); then
-        ((g&=~(_ble_color_gflags_ForeColor|_ble_color_gflags_MaskFg)))
-      else
-        ((g|=ret<<8|_ble_color_gflags_ForeColor))
-      fi ;;
+      ble/color/g#setfg "$ret" ;;
     (bg=*)
       ble/color/.name2color "${entry:3}"
-      if ((ret<0)); then
-        ((g&=~(_ble_color_gflags_BackColor|_ble_color_gflags_MaskBg)))
-      else
-        ((g|=ret<<16|_ble_color_gflags_BackColor))
-      fi ;;
+      ble/color/g#setbg "$ret" ;;
     (none)
       g=0 ;;
     esac
@@ -121,14 +240,22 @@ function ble/color/gspec2g {
 ##   @var[out] ret
 function ble/color/g2gspec {
   local g=$1 gspec=
-  if ((g&_ble_color_gflags_ForeColor)); then
-    local fg=$(((g&_ble_color_gflags_MaskFg)>>_ble_color_gflags_ShiftFg))
+  if ((g&_ble_color_gflags_FgIndexed)); then
+    local fg=$((g>>8&0xFF))
     ble/color/.color2name "$fg"
     gspec=$gspec,fg=$ret
+  elif ((g&_ble_color_gflags_FgMask)); then
+    local rgb=$((1<<24|g>>8&0xFFFFFF))
+    ble/color/.color2name "$rgb"
+    gspec=$gspec,fg=$ret
   fi
-  if ((g&_ble_color_gflags_BackColor)); then
-    local bg=$(((g&_ble_color_gflags_MaskBg)>>_ble_color_gflags_ShiftBg))
+  if ((g&_ble_color_gflags_BgIndexed)); then
+    local bg=$((g>>32&0xFF))
     ble/color/.color2name "$bg"
+    gspec=$gspec,bg=$ret
+  elif ((g&_ble_color_gflags_BgMask)); then
+    local rgb=$((1<<24|g>>32&0xFFFFFF))
+    ble/color/.color2name "$rgb"
     gspec=$gspec,bg=$ret
   fi
   ((g&_ble_color_gflags_Bold))      && gspec=$gspec,bold
@@ -180,6 +307,14 @@ function ble/color/.name2color {
   local colorName=$1
   if [[ ! ${colorName//[0-9]} ]]; then
     ((ret=10#$colorName&255))
+  elif [[ $colorName == '#'* ]]; then
+    if local rex='^#[0-9a-fA-F]{3}$'; [[ $colorName =~ $rex ]]; then
+      let "ret=1<<24|16#${colorName:1:1}*0x11<<16|16#${colorName:2:1}*0x11<<8|16#${colorName:3:1}*0x11"
+    elif rex='^#[0-9a-fA-F]{6}$'; [[ $colorName =~ $rex ]]; then
+      let "ret=1<<24|16#${colorName:1:2}<<16|16#${colorName:3:2}<<8|16#${colorName:5:2}"
+    else
+      ret=-1
+    fi
   else
     case "$colorName" in
     (black)   ret=0 ;;
@@ -207,6 +342,11 @@ function ble/color/.name2color {
   fi
 }
 function ble/color/.color2name {
+  if (($1>=0x1000000)); then
+    ble/util/sprintf ret '#%06x' $(($1&0xFFFFFF))
+    return
+  fi
+
   ((ret=(10#$1&255)))
   case $ret in
   (0)  ret=black   ;;
@@ -229,7 +369,8 @@ function ble/color/.color2name {
   esac
 }
 
-## 関数 ble/color/convert-color88-to-color256
+## 関数 ble/color/convert-color88-to-color256 color
+##   @param[in] color
 ##   @var[out] ret
 function ble/color/convert-color88-to-color256 {
   local color=$1
@@ -246,7 +387,8 @@ function ble/color/convert-color88-to-color256 {
   fi
   ret=$color
 }
-## 関数 ble/color/convert-color256-to-color88
+## 関数 ble/color/convert-color256-to-color88 color
+##   @param[in] color
 ##   @var[out] ret
 function ble/color/convert-color256-to-color88 {
   local color=$1
@@ -263,10 +405,69 @@ function ble/color/convert-color256-to-color88 {
   fi
   ret=$color
 }
+## 関数 ble/color/convert-rgb24-to-color256 R G B
+##   @param[in] R G B
+##     0..255 の階調値
+##   @var[out] ret
+function ble/color/convert-rgb24-to-color256 {
+  local R=$1 G=$2 B=$3
+  if ((R==G&&G==B)); then
+    # xterm 24 grayscale: 10k+8 (0..238)
+    if ((R<=3)); then
+      # 6x6x6 cube (0,0,0)
+      ret=16
+    elif ((R>=247)); then
+      # 6x6x6 cube (5,5,5)
+      ret=231
+    elif ((R>=92&&(R-92)%40<5)); then
+      # 6x6x6 cube (1,1,1)-(4,4,4)
+      ((ret=59+43*(R-92)/40))
+    else
+      local level=$(((R-3)/10))
+      ((ret=232+(level<=23?level:23)))
+    fi
+  else
+    # xterm 6x6x6 cube: k?55+40k:0
+    ((R=R<=47?0:(R<=95?1:(R-35)/40)))
+    ((G=G<=47?0:(G<=95?1:(G-35)/40)))
+    ((B=B<=47?0:(B<=95?1:(B-35)/40)))
+    ((ret=16+36*R+6*G+B))
+  fi
+}
+## 関数 ble/color/convert-rgb24-to-color88 R G B
+##   @param[in] R G B
+##     0..255 の階調値
+##   @var[out] ret
+function ble/color/convert-rgb24-to-color88 {
+  local R=$1 G=$2 B=$3
+  if ((R==G&&G==B)); then
+    # xterm 8 grayscale: 46+25k = 46,71,96,121,146,171,196,221
+    if ((R<=22)); then
+      ret=16 # 4x4x4 cube (0,0,0)=0:0:0
+    elif ((R>=239)); then
+      ret=79 # 4x4x4 cube (3,3,3)=255:255:255
+    elif ((131<=R&&R<=142)); then
+      ret=37 # 4x4x4 cube (1,1,1)=139:139:139
+    elif ((197<=R&&R<=208)); then
+      ret=58 # 4x4x4 cube (2,2,2)=197:197:197
+    else
+      local level=$(((R-34)/25))
+      ((ret=80+(level<=7?level:7)))
+    fi
+  else
+    # xterm 4x4x4 cube: (k?81+58k:0) = 0,139,197,255
+    ((R=R<=69?0:(R<=168?1:(R-52)/58)))
+    ((G=G<=69?0:(G<=168?1:(G-52)/58)))
+    ((B=B<=69?0:(B<=168?1:(B-52)/58)))
+    ((ret=16+16*R+4*G+B))
+  fi
+}
 
 ## 関数 ble/color/.color2sgrfg color
 ## 関数 ble/color/.color2sgrbg color
 ##   @param[in] color
+##     0-255 の値は index color を表します。
+##     1XXXXXX の値は 24bit color を表します。
 ##   @var[out] ret
 function ble/color/.color2sgr-impl {
   local ccode=$1 prefix=$2 # 3 for fg, 4 for bg
@@ -279,12 +480,12 @@ function ble/color/.color2sgr-impl {
       ret=${_ble_term_sgr_af[ccode]}
     fi
   elif ((ccode<256)); then
-    if ((ccode<_ble_term_colors||bleopt_term_index_colors==256)); then
+    if ((_ble_term_colors>=256||bleopt_term_index_colors==256)); then
       ret="${prefix}8;5;$ccode"
-    elif ((bleopt_term_index_colors==88)); then
+    elif ((_ble_term_colors>=88||bleopt_term_index_colors==88)); then
       ble/color/convert-color256-to-color88 "$ccode"
       ret="${prefix}8;5;$ret"
-    elif ((ccode<bleopt_term_index_colors)); then
+    elif ((ccode<_ble_term_colors||ccode<bleopt_term_index_colors)); then
       ret="${prefix}8;5;$ccode"
     elif ((_ble_term_colors>=16||_ble_term_colors==8)); then
       if ((ccode>=16)); then
@@ -319,6 +520,25 @@ function ble/color/.color2sgr-impl {
     else
       ret=${prefix}9
     fi
+  elif ((0x1000000<=ccode&&ccode<0x2000000)); then
+    # 24bit True Colors
+    local R=$((ccode>>16&0xFF)) G=$((ccode>>8&0xFF)) B=$((ccode&0xFF))
+    if [[ $bleopt_term_true_colors == semicolon ]]; then
+      ret="${prefix}8;2;$R;$G;$B"
+    elif [[ $bleopt_term_true_colors == colon ]]; then
+      ret="${prefix}8:2:$R:$G:$B"
+    elif ((_ble_term_colors>=256||bleopt_term_index_colors==256)); then
+      ble/color/convert-rgb24-to-color256 "$R" "$G" "$B"
+      ret="${prefix}8;5;$ret"
+    elif ((_ble_term_colors>=88||bleopt_term_index_colors==88)); then
+      ble/color/convert-rgb24-to-color88 "$R" "$G" "$B"
+      ret="${prefix}8;5;$ret"
+    else
+      ble/color/convert-rgb24-to-color256 "$R" "$G" "$B"
+      ble/color/.color2sgr-impl "$ret" "$prefix"
+    fi
+  else
+    ret=${prefix}9
   fi
 }
 
@@ -378,10 +598,10 @@ function ble/color/read-sgrspec {
       # colors
       if ((30<=arg&&arg<38)); then
         local color=$((arg-30))
-        ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
+        ble/color/g#setfg-index "$color"
       elif ((40<=arg&&arg<48)); then
         local color=$((arg-40))
-        ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
+        ble/color/g#setbg-index "$color"
       elif ((arg==38)); then
         local j=1 color cspace
         ble/color/read-sgrspec/.arg-next -v cspace
@@ -390,7 +610,13 @@ function ble/color/read-sgrspec {
           if [[ :$opts: != *:ansi:* ]] && ((bleopt_term_index_colors==88)); then
             local ret; ble/color/convert-color88-to-color256 "$color"; color=$ret
           fi
-          ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
+          ble/color/g#setfg-index "$color"
+        elif ((cspace==2)); then
+          local R G B
+          ble/color/read-sgrspec/.arg-next -v R
+          ble/color/read-sgrspec/.arg-next -v G
+          ble/color/read-sgrspec/.arg-next -v B
+          ble/color/g#setfg-rgb "$R" "$G" "$B"
         fi
       elif ((arg==48)); then
         local j=1 color cspace
@@ -400,19 +626,26 @@ function ble/color/read-sgrspec {
           if [[ :$opts: != *:ansi:* ]] && ((bleopt_term_index_colors==88)); then
             local ret; ble/color/convert-color88-to-color256 "$color"; color=$ret
           fi
-          ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
+          ble/color/g#setbg-index "$color"
+        elif ((cspace==2)); then
+          local R G B
+          ble/color/read-sgrspec/.arg-next -v R
+          ble/color/read-sgrspec/.arg-next -v G
+          ble/color/read-sgrspec/.arg-next -v B
+          ble/color/g#setbg-rgb "$R" "$G" "$B"
+printf '%016x %s\n' "$g" "color=$R,$G,$B" >> /dev/pts/9
         fi
       elif ((arg==39)); then
-        ((g&=~(_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor)))
+        ble/color/g#setfg-clear
       elif ((arg==49)); then
-        ((g&=~(_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor)))
+        ble/color/g#setbg-clear
       fi
     elif ((90<=arg&&arg<98)); then
       local color=$((arg-90+8))
-      ((g=g&~_ble_color_gflags_MaskFg|_ble_color_gflags_ForeColor|color<<8))
+      ble/color/g#setfg-index "$color"
     elif ((100<=arg&&arg<108)); then
       local color=$((arg-100+8))
-      ((g=g&~_ble_color_gflags_MaskBg|_ble_color_gflags_BackColor|color<<16))
+      ble/color/g#setbg-index "$color"
     elif ((arg==1)); then
       ((g|=_ble_color_gflags_Bold))
     elif ((arg==22)); then
@@ -443,6 +676,7 @@ function ble/color/read-sgrspec {
       ((g&=~_ble_color_gflags_Strike))
     fi
   done
+printf '%016x\n' "$g" >> /dev/pts/9
 }
 
 ## 関数 ble/color/sgrspec2g str
