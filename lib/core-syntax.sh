@@ -1140,10 +1140,11 @@ function ble/syntax:bash/simple-word/evaluate-last-brace-expansion {
 ##     word に対して不完全なブレース展開と引用符を閉じ、ブレース展開した結果を返します。
 ##
 ##   @var[out] simple_flags
-##     引用符 $"..." を閉じた時に simple_flags='$"' を設定します。
-##     引用符 "..." を閉じた時に simple_flags='"' を設定します。
-##     引用符 '...' を閉じた時に simple_flags=\' を設定します。
-##     引用符 $'...' を閉じた時に simple_flags=\$\' を設定します。
+##     引用符 $"..." を閉じた時に simple_flags=I を設定します。
+##     引用符 "..." を閉じた時に simple_flags=D を設定します。
+##     引用符 $'...' を閉じた時に simple_flags=E を設定します。
+##     引用符 '...' を閉じた時に simple_flags=S を設定します。
+##     不完全な末端 \ があった時に simple_flags=B を設定します。
 ##
 ##   @var[out] simple_ibrace=ibrace:jbrace
 ##     ブレース展開の構造を破壊せずに変更できる最初の位置を返します。
