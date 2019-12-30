@@ -914,6 +914,11 @@ bash_tips
       OSC 11 ; ? ST で背景色RGB問い合わせの様である。
       応答は OSC 10 ; "rgb:rrrr/gggg/bbbb" ST の形式?
 
+      よく考えたら現在の実装では ESC-[ (CSI) しか特別扱いしていない。
+      これに対応する為には "ESC ]" (OSC) についても処理する必要がある。
+      これは ble-decode-char/csi/consume の辺りを拡張する必要がある。
+      特に BEL または ST (ESC \) で終端する様に処理を書く事に注意する。
+
     2. DA2 を元に判断する
       然し https://gist.github.com/XVilka/8346728 のページには
       各ターミナルの対応 version が書かれていないので使えない。
@@ -921,13 +926,6 @@ bash_tips
 
     3. TERM を元に判断する (*-24bit *-24bits *-truecolor)
     4. terminfo を元に判断する (setf24, setb24, tc, RGB)
-
-2019-11-23
-
-  * complete: comps_flags の b と B が重複している。
-    nocaseglob の時に動かなくなるという旨がコメントで説明されているのにも
-    関わらずその直上で b と B に別々の意味を割り当てているのである。
-    これは simple-word の時点で重複した定義になっている事に注意する。
 
 2019-10-21
 
@@ -1208,9 +1206,18 @@ bash_tips
     その様に考えるとやはり builtin bind を上書きして設定を読み取る方が現実的である。
     なので、現在の bashrc の冒頭でロードして、末尾で attach するという形式は当面変わらない。
 
-2019-01-20
+    * Note: 2019-12-30 detach 時の復元に関して。
+      現状では bind -X の設定を読み込んでから
+      bind -ps の設定を読み込む様にしている。
+      これで古い bind -x の設定によって bind -ps の設定が上書きされてしまう事はなく、
+      逆に bind -x の設定を bind -ps で上書きした後には ble.sh の復元でも上書きされる。
+      問題が起こるのは bind -x した後にそれを bind -r して、
+      それ以降に何も bind していない場合である。
+      試してみたが何にも bind していないキーは列挙されない。
 
-  * manual: Emacs 編集モード
+    * Note: 2019-12-30 特にこの項目が意図しているのは
+      detach 時の復元ではなくて attach 時に ble.sh keymap に反映させるという話である。
+      一方で bind -Xps の出力は \C-\ の振る舞いが微妙なので色々面倒である。
 
 2018-09-21
 
@@ -1830,6 +1837,8 @@ bash_tips
     - 現状では $(("a")) はエラー着色になっているが実は文法的に有効である。
       同じクォートでも $(('a')) や $((\a)) は文法的に駄目。
 
+    - Bash 5.1 以降では (('a')) がエラーになる様に文法が変わった。
+
 2016-07-15
 
   * isearch: 現在の履歴内の位置を % で表示しているが、
@@ -2358,6 +2367,7 @@ bash_tips
   - global: distinguish exit status 147 and 148 `#D1141` d1a78fb
   - global: follow bash syntactic changes on arithmentic command 16e0f0e
   - decode: check `bind -X` first to store the original bindings `#D1179` 4057ff0
+  - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1185` 0000000
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3302,6 +3312,37 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2019-12-30
+
+  * 2019-11-23 complete: comps_flags の b と B が重複している [#D1185]
+    nocaseglob の時に動かなくなるという旨がコメントで説明されているのにも
+    関わらずその直上で b と B に別々の意味を割り当てているのである。
+    これは simple-word の時点で重複した定義になっている事に注意する。
+
+    うーん。調べたが b が設定されている箇所を見つける事ができない。
+    b はブレース展開の途中にいる時に設定されるそうだ。
+    →分かった。これは core-complete.sh の中で設定していた。
+      simple_ibrace に非自明な値が設定されていた時に b が設定される。
+
+    →ブレース展開の途中にいる時は x を使う事にした
+
+    ? fixed: 所で書き換えている途中で気づいたのだが ble/complete/util/construct-glob-pattern
+      の中で comps_flags に i が含まれていないかテストしている。
+      しかし、調べても i が設定される箇所はないし、何処にも説明もない。
+      I ($"...") を意図しているとは考えづらい。これは何だろうか。
+
+      →これは恐らく :$comp_type: == *:i:* の誤りである。
+      何故この様に二重にチェックしている構造になっているかというと、
+      実は先に construct-ambiguous-regex を実装して、
+      その実装を元にして construct-glob-pattern を実装したからではないかと思われる。
+
+      取り敢えずその様な想定で書き直した。
+      再度確認する。やはり comps_flags に i が入り込む経路は存在しない。
+
+  * 2019-01-20 manual: Emacs 編集モード [#D1185]
+    簡単にページを作った。特に詳しく説明する事もなく
+    キー束縛を列挙するだけに留めたが、それで十分だろう。
 
 2019-12-29
 

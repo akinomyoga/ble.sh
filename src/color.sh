@@ -78,12 +78,12 @@ function ble-color-show {
   for ((bg0=0;bg0<256;bg0+=cols)); do
     ((bgN=bg0+cols,bgN<256||(bgN=256)))
     for ((bg=bg0;bg<bgN;bg++)); do
-      ble/color/g2sgr $((gflags|bg<<16))
+      ble/color/g2sgr $((gflags|bg<<32))
       printf '%s%03d ' "$ret" "$bg"
     done
     printf '%s\n' "$_ble_term_sgr0"
     for ((bg=bg0;bg<bgN;bg++)); do
-      ble/color/g2sgr $((gflags|bg<<16|15<<8))
+      ble/color/g2sgr $((gflags|bg<<32|15<<8))
       printf '%s%03d ' "$ret" "$bg"
     done
     printf '%s\n' "$_ble_term_sgr0"

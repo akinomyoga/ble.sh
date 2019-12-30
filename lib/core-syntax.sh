@@ -1156,6 +1156,7 @@ function ble/syntax:bash/simple-word/evaluate-last-brace-expansion {
 ##     引用符 "..." を閉じた時に simple_flags=D を設定します。
 ##     引用符 $'...' を閉じた時に simple_flags=E を設定します。
 ##     引用符 '...' を閉じた時に simple_flags=S を設定します。
+##     不完全な末端 \ があった時に simple_flags=B を設定します。
 ##
 ##   @var[out] simple_ibrace=ibrace:jbrace
 ##     ブレース展開の構造を破壊せずに変更できる最初の位置を返します。

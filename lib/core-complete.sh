@@ -892,7 +892,7 @@ function ble/complete/check-cancel {
 ##     D クォート ""  の中にいる事を表します。
 ##     I クォート $"" の中にいる事を表します。
 ##     B クォート \   の直後にいる事を表します。
-##     b ブレース展開の中にいる事を表します。
+##     x ブレース展開の中にいる事を表します。
 ##
 ##     Note: shopt -s nocaseglob のため、フラグ文字は
 ##       大文字・小文字でも重複しないように定義する必要がある。
@@ -1025,7 +1025,7 @@ function ble/complete/action:word/initialize {
 }
 function ble/complete/action:word/complete {
   ble/complete/action/util/complete.close-quotation
-  if [[ $comps_flags == *b* ]]; then
+  if [[ $comps_flags == *x* ]]; then
     ble/complete/action/util/complete.addtail ','
   else
     ble/complete/action/util/complete.addtail ' '
@@ -2517,17 +2517,14 @@ function ble/complete/util/construct-ambiguous-regex {
 ##   部分一致に使うグロブを生成します。
 function ble/complete/util/construct-glob-pattern {
   local text=$1
-  if [[ $comps_flags == *i* ]]; then
-    local opt_icase=; [[ :$comp_type: == *:i:* ]] && opt_icase=1
+  if [[ :$comp_type: == *:i:* ]]; then
     local i n=${#text} c
     local -a buff=()
     for ((i=0;i<n;i++)); do
       c=${text:i:1}
       if [[ $c == [a-zA-Z] ]]; then
-        if [[ $opt_icase ]]; then
-          ble/string#toggle-case "$c"
-          c=[$c$ret]
-        fi
+        ble/string#toggle-case "$c"
+        c=[$c$ret]
       else
         ble/string#escape-for-bash-glob "$c"; c=$ret
       fi
@@ -2612,7 +2609,7 @@ function ble/complete/candidates/.pick-nearest-sources {
       if ((${simple_ibrace%:*})); then
         ble/syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
         comps_fixed=${simple_ibrace%:*}:$ret
-        comps_flags=${comps_flags}b
+        comps_flags=${comps_flags}x
       fi
     else
       # Note: failglob により simple-word/eval が失敗した時にここに来る。
@@ -4065,7 +4062,7 @@ function ble/complete/insert-braces {
   local tail; ble/util/assign tail 'ble/complete/insert-braces/.compose "${tails[@]}"'
   local beg=$COMP1 end=$COMP2 insert=$fixed$tail suffix=
 
-  if [[ $comps_flags == *b* ]]; then
+  if [[ $comps_flags == *x* ]]; then
     ble/complete/action/util/complete.addtail ','
   else
     ble/complete/action/util/complete.addtail ' '
