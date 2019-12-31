@@ -892,16 +892,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2020-01-01
-
-  * shopt promptvars
-    この設定が存在している事に気づいていなかった。
-    この設定が unset 状態にある時 PS1 の展開に於いて
-    パラメータ展開、コマンド置換、算術式展開、クォート削除が実行されないそうだ。
-    現在の実装について確認する。クォート削除が実行されないとすると、
-    このクォート削除を想定としたクォートは必要ないという事になる。
-    振る舞いについて確認する必要がある。
-
 2019-12-31
 
   * ble.sh はプロンプトやエイリアスの設定を提供する物ではなくて
@@ -2352,7 +2342,8 @@ bash_tips
   - complete: support `bleopt complete_allow_reduction` `#D1181` 03040b7
   - edit: support `bleopt exec_errexit_mark` `#D1182` 6adc2df
   - color: support true colors `#D1184` bd631ce 5dd6b03
-  - color (`ble-color-setface`): support reference to another face `#D1188` 0000000
+  - color (`ble-color-setface`): support reference to another face `#D1188` 047456d
+  - edit: support `shopt -u promptvars` `#D1189` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2387,7 +2378,7 @@ bash_tips
   - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165` fdb49f3
   - edit: support options `--help` for `read` and `exit` `#D1173` faccc6b
   - color (`ble-color-{set,def}face`): list faces without arguments `#D1180` 50327c3
-  - complete: search completion settings through alias expansion `#D1187` 0000000
+  - complete: search completion settings through alias expansion `#D1187` c472809
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2455,7 +2446,7 @@ bash_tips
   - global: follow bash syntactic changes on arithmentic command 16e0f0e
   - decode: check `bind -X` first to store the original bindings `#D1179` 4057ff0
   - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1186` 550fb14
-  - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 0000000
+  - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 047456d
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3402,6 +3393,18 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-01
+
+  * edit: support "shopt promptvars" [#D1189]
+    この設定が存在している事に気づいていなかった。
+    この設定が unset 状態にある時 PS1 の展開に於いて
+    パラメータ展開、コマンド置換、算術式展開、クォート削除が実行されないそうだ。
+    現在の実装について確認する。クォート削除が実行されないとすると、
+    このクォート削除を想定としたクォートは必要ないという事になる。
+    振る舞いについて確認する必要がある。
+
+    →うーん。やはり試してみた所 $ や ` が \ された形で埋め込まれてしまう。
+    うーん。適当に対応した。promptvars が設定されていない場合には
+    $`"\ の escape は実行しない様に変更した。多分これでちゃんと動いている。
 
   * color: face の定義で ref を設定しても良いのではないか [#D1188]
     算術式なので簡単に実現できる気がするが技術的にはどうだろう。

@@ -261,7 +261,7 @@ function ble-edit/prompt/.load {
 ##     出力先の配列です。
 function ble-edit/prompt/print {
   local text=$1 a b
-  if [[ $text == *['$\"`']* ]]; then
+  if [[ ! $prompt_noesc && $text == *['$\"`']* ]]; then
     a='\' b='\\' text=${text//"$a"/$b}
     a='$' b='\$' text=${text//"$a"/$b}
     a='"' b='\"' text=${text//"$a"/$b}
@@ -617,6 +617,10 @@ function ble-edit/prompt/.instantiate {
   local ps=$1 opts=$2 x0=$3 y0=$4 g0=$5 lc0=$6 lg0=$7 esc0=$8 trace_hash0=$9
   [[ ! $ps ]] && return 0
 
+  # 設定
+  local prompt_noesc=
+  shopt -q promptvars &>/dev/null || prompt_noesc=1
+
   # 1. PS1 に含まれる \c を処理する
   local -a DRAW_BUFF=()
   ble-edit/prompt/process-prompt-string "$ps"
@@ -624,11 +628,15 @@ function ble-edit/prompt/.instantiate {
 
   # 2. PS1 に含まれる \\ や " をエスケープし、
   #   eval して各種シェル展開を実行する。
-  local ret
-  ble-edit/prompt/.escape "$processed"; local escaped=$ret
-  local expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
-  ble-edit/exec/.setexit
-  builtin eval "expanded=\"$escaped\""
+  if [[ ! $prompt_noesc ]]; then
+    local ret
+    ble-edit/prompt/.escape "$processed"; local escaped=$ret
+    local expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
+    ble-edit/exec/.setexit
+    builtin eval "expanded=\"$escaped\""
+  else
+    local expanded=$processed
+  fi
 
   # 3. 端末への出力を構成する
   trace_hash=$COLUMNS:$expanded
