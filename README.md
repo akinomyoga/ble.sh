@@ -25,6 +25,10 @@ This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD li
 >
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
+Note: ble.sh does not provide a specific settings for the prompt, aliases, functions, etc.
+ble.sh provides a more fundamental infrastructure so that users can set up their own settings for prompts, aliases, etc.
+Of course ble.sh can be used in combination with other Bash configurations such as `bash-it` and `oh-my-bash`.
+
 # 1 Usage
 
 ## Generate `ble.sh` from source (version ble-0.4 devel)

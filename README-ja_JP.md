@@ -27,6 +27,10 @@
 >
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
+Note: ble.sh はよくある Bash 設定集のようにプロンプト (`PS1`)、エイリアス、関数を提供するものではありません。
+ble.sh はより低層の基盤を提供するもので、ユーザは自分でプロンプトやエイリアスを設定する必要があります。
+勿論 `bash-it' や `oh-my-bash` の様な他の Bash 設定と一緒に使っていただくことも可能です。
+
 # 1 使い方
 
 ## 最新の git repository のソースから生成して試す (バージョン ble-0.4)
