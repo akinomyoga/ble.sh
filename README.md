@@ -189,8 +189,8 @@ The colors and attributes used in the syntax highlighting are controlled by `ble
 ```bash
 ble-color-setface region                   bg=60,fg=white
 ble-color-setface region_target            bg=153,fg=black
-ble-color-sefface region_match             bg=55,fg=white
-ble-color-sefface region_insert            fg=12,bg=252
+ble-color-setface region_match             bg=55,fg=white
+ble-color-setface region_insert            fg=12,bg=252
 ble-color-setface disabled                 fg=242
 ble-color-setface overwrite_mode           fg=black,bg=51
 ble-color-setface syntax_default           none

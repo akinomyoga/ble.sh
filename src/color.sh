@@ -43,7 +43,7 @@ function ble/color/initialize-term-colors {
     local value=
     if [[ $TERM == *-24bit ]]; then
       value=colon
-    elif [[ $TERM == *-24bits ]]; then
+    elif [[ $TERM == *-24bits || $TERM == *-truecolor || $COLORTERM == *24bit* || $COLORTERM == *truecolor* ]]; then
       value=semicolon
     else
       case ${fields[0]} in
@@ -401,7 +401,7 @@ function ble/color/.name2color {
       ble/color/.name2color/.wrap  "${BASH_REMATCH[1]}" 360; local H=$ret
       ble/color/.name2color/.clamp "${BASH_REMATCH[2]}" 1000; local S=$ret
       ble/color/.name2color/.clamp "${BASH_REMATCH[3]}" 1000; local X=$ret
-      if [[ $colorName = hsl:* ]]; then
+      if [[ $colorName == hsl:* ]]; then
         ble/color/.hsl2color "$H" "$S" "$X" 1000
       else
         ble/color/.hsb2color "$H" "$S" "$X" 1000
@@ -430,7 +430,7 @@ function ble/color/.name2color {
     (white)   ret=15 ;;
 
     (orange)  ret=202 ;;
-    (transparent) ret=-1 ;;
+    (transparent|default) ret=-1 ;;
     (*)       ret=-1 ;;
     esac
   fi

@@ -245,7 +245,7 @@ function ble/debug/print-variables/.append {
   _ble_local_out=$_ble_local_out"$1='${2//$q/$Q}'"
 }
 function ble/debug/print-variables/.append-array {
-  local q=\' Q="''\'" arr=$1 index=0; shift
+  local q=\' Q="'\''" arr=$1 index=0; shift
   local index=0 elem out=$arr'=('
   for elem; do
     ((index++)) && out=$out' '
@@ -412,7 +412,7 @@ function ble/array#last-index {
 ## 関数 ble/array#remove arr index
 function ble/array#remove-at {
   local _ble_local_script='
-    unset "ARR[$2]"
+    unset -v "ARR[$2]"
     ARR=("${ARR[@]}")
   '; builtin eval "${_ble_local_script//ARR/$1}"
 }
@@ -1118,7 +1118,7 @@ function ble/builtin/trap {
       fi
 
       if [[ $command == - ]]; then
-        unset "_ble_builtin_trap_handlers[ret]"
+        unset -v "_ble_builtin_trap_handlers[ret]"
       else
         _ble_builtin_trap_handlers[ret]=$command
       fi

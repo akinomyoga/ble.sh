@@ -1663,19 +1663,19 @@ function ble/complete/source:dir {
 
 function ble/complete/source:rhs { ble/complete/source:file; }
 
-# source:argument (complete -p)
+# progcomp/.compgen
 
-## 関数 ble/complete/source:argument/.compvar-initialize-wordbreaks
+## 関数 ble/complete/progcomp/.compvar-initialize-wordbreaks
 ##   @var[out] wordbreaks
-function ble/complete/source:argument/.compvar-initialize-wordbreaks {
+function ble/complete/progcomp/.compvar-initialize-wordbreaks {
   local ifs=$' \t\n' q=\'\" delim=';&|<>()' glob='[*?' hist='!^{' esc='`$\'
   local escaped=$ifs$q$delim$glob$hist$esc
   wordbreaks=${COMP_WORDBREAKS//[$escaped]} # =:
 }
-## 関数 ble/complete/source:argument/.compvar-perform-wordbreaks word
+## 関数 ble/complete/progcomp/.compvar-perform-wordbreaks word
 ##   @var[in] wordbreaks
 ##   @arr[out] ret
-function ble/complete/source:argument/.compvar-perform-wordbreaks {
+function ble/complete/progcomp/.compvar-perform-wordbreaks {
   local word=$1
   if [[ ! $word ]]; then
     ret=('')
@@ -1698,7 +1698,7 @@ function ble/complete/source:argument/.compvar-perform-wordbreaks {
   ble/array#push ret "$word"
 }
 
-## 関数 ble/complete/source:argument/.compvar-generate-subwords/impl1 word
+## 関数 ble/complete/progcomp/.compvar-generate-subwords/impl1 word
 ##   $wordbreaks で分割してから評価する戦略。
 ##
 ##   @param word
@@ -1708,7 +1708,7 @@ function ble/complete/source:argument/.compvar-perform-wordbreaks {
 ##   @exit
 ##     単純単語として処理できなかった場合に失敗します。
 ##     それ以外の場合は 0 を返します。
-function ble/complete/source:argument/.compvar-generate-subwords/impl1 {
+function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
   local word=$1 ret simple_flags simple_ibrace
   if [[ $point ]]; then
     # point で単語を前半と後半に分割
@@ -1762,7 +1762,7 @@ function ble/complete/source:argument/.compvar-generate-subwords/impl1 {
   fi
   return 0
 }
-## 関数 ble/complete/source:argument/.compvar-generate-subwords/impl1 word
+## 関数 ble/complete/progcomp/.compvar-generate-subwords/impl1 word
 ##   評価してから $wordbreaks で分割する戦略。
 ##
 ##   @param word
@@ -1772,7 +1772,7 @@ function ble/complete/source:argument/.compvar-generate-subwords/impl1 {
 ##   @exit
 ##     単純単語として処理できなかった場合に失敗します。
 ##     それ以外の場合は 0 を返します。
-function ble/complete/source:argument/.compvar-generate-subwords/impl2 {
+function ble/complete/progcomp/.compvar-generate-subwords/impl2 {
   local word=$1
   ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word" || return 1
 
@@ -1786,10 +1786,10 @@ function ble/complete/source:argument/.compvar-generate-subwords/impl2 {
     fi
   fi
 
-  ble/complete/source:argument/.compvar-perform-wordbreaks "$value1"; words=("${ret[@]}")
+  ble/complete/progcomp/.compvar-perform-wordbreaks "$value1"; words=("${ret[@]}")
   return 0
 }
-## 関数 ble/complete/source:argument/.compvar-generate-subwords word1
+## 関数 ble/complete/progcomp/.compvar-generate-subwords word1
 ##   word1 を COMP_WORDBREAKS で分割します。
 ##
 ##   @arr[out] words
@@ -1804,28 +1804,28 @@ function ble/complete/source:argument/.compvar-generate-subwords/impl2 {
 ##   そうでない時には先に COMP_WORDBREAKS で分割して、
 ##   各単語片に対して単純単語 eval を試みる。
 ##
-function ble/complete/source:argument/.compvar-generate-subwords {
+function ble/complete/progcomp/.compvar-generate-subwords {
   local word1=$1 ret simple_flags simple_ibrace
   if [[ ! $word1 ]]; then
     # Note: 空文字列に対して正しい単語とする為に '' とすると git の補完関数が動かなくなる。
     #   仕方がないので空文字列のままで登録する事にする。
     flag_evaluated=1
     words=('')
-  elif ble/complete/source:argument/.compvar-generate-subwords/impl1 "$word1"; then
+  elif ble/complete/progcomp/.compvar-generate-subwords/impl1 "$word1"; then
     # 初めに、先に分割してから評価する戦略を試す。
     flag_evaluated=1
-  elif ble/complete/source:argument/.compvar-generate-subwords/impl2 "$word1"; then
+  elif ble/complete/progcomp/.compvar-generate-subwords/impl2 "$word1"; then
     # 次に、評価してから分割する戦略を試す。
     flag_evaluated=1
   else
-    ble/complete/source:argument/.compvar-perform-wordbreaks "$word1"; words=("${ret[@]}")
+    ble/complete/progcomp/.compvar-perform-wordbreaks "$word1"; words=("${ret[@]}")
   fi
 }
-## 関数 ble/complete/source:argument/.compvar-quote-subword word
+## 関数 ble/complete/progcomp/.compvar-quote-subword word
 ##   @var[in] index flag_evaluated
 ##   @var[out] ret
 ##   @var[in,out] p
-function ble/complete/source:argument/.compvar-quote-subword {
+function ble/complete/progcomp/.compvar-quote-subword {
   local word=$1 to_quote= is_evaluated= is_quoted=
   if [[ $flag_evaluated ]]; then
     to_quote=1
@@ -1865,12 +1865,12 @@ function ble/complete/source:argument/.compvar-quote-subword {
   ret=$word
 }
 
-## 関数 ble/complete/source:argument/.compvar-initialize
+## 関数 ble/complete/progcomp/.compvar-initialize
 ##   プログラム補完で提供される変数を構築します。
 ##   @var[in]  comp_words comp_cword comp_line comp_point
 ##   @var[out] COMP_WORDS COMP_CWORD COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
 ##   @var[out] progcomp_prefix
-function ble/complete/source:argument/.compvar-initialize {
+function ble/complete/progcomp/.compvar-initialize {
   COMP_TYPE=9
   COMP_KEY=${KEYS[${#KEYS[@]}-1]:-9} # KEYS defined in ble-decode/widget/.call-keyseq
 
@@ -1881,7 +1881,7 @@ function ble/complete/source:argument/.compvar-initialize {
   #   (2) シェルの特殊文字以外の COMP_WORDBREAKS に含まれる文字で単語を分割する。
 
   local wordbreaks
-  ble/complete/source:argument/.compvar-initialize-wordbreaks
+  ble/complete/progcomp/.compvar-initialize-wordbreaks
 
   progcomp_prefix=
   COMP_CWORD=
@@ -1899,7 +1899,7 @@ function ble/complete/source:argument/.compvar-initialize {
     ((offset+=${#word1}))
 
     local words flag_evaluated=
-    ble/complete/source:argument/.compvar-generate-subwords "$word1"
+    ble/complete/progcomp/.compvar-generate-subwords "$word1"
 
     local w wq i=0 o=0 p
     for w in "${words[@]}"; do
@@ -1919,7 +1919,7 @@ function ble/complete/source:argument/.compvar-initialize {
       [[ $p ]] && point=
       [[ $point ]] && progcomp_prefix=$progcomp_prefix$w
 
-      ble/complete/source:argument/.compvar-quote-subword "$w"; local wq=$ret
+      ble/complete/progcomp/.compvar-quote-subword "$w"; local wq=$ret
 
       # 単語登録
       if [[ $p ]]; then
@@ -1936,20 +1936,20 @@ function ble/complete/source:argument/.compvar-initialize {
     ((index++))
   done
 }
-function ble/complete/source:argument/.progcomp-helper-prog {
+function ble/complete/progcomp/.compgen-helper-prog {
   if [[ $comp_prog ]]; then
     local COMP_WORDS COMP_CWORD
     local -x COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
-    ble/complete/source:argument/.compvar-initialize
+    ble/complete/progcomp/.compvar-initialize
     local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
     "$comp_prog" "$cmd" "$cur" "$prev" </dev/null
   fi
 }
-function ble/complete/source:argument/.progcomp-helper-func {
+function ble/complete/progcomp/.compgen-helper-func {
   [[ $comp_func ]] || return
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
-  ble/complete/source:argument/.compvar-initialize
+  ble/complete/progcomp/.compvar-initialize
 
   # compopt に介入して -o/+o option を読み取る。
   local fDefault=
@@ -2000,10 +2000,16 @@ function ble/complete/source:argument/.progcomp-helper-func {
   fi
 }
 
-## 関数 ble/complete/source:argument/.progcomp opts
+## 関数 ble/complete/progcomp/.compgen opts
+##
 ##   @param[in] opts
 ##     コロン区切りのオプションリストです。
+##
 ##     initial ... 最初の単語 (コマンド名) の補完に用いる関数を指定します。
+##
+##   @param[in,opt] cmd
+##     プログラム補完規則を検索するのに使う名前を指定します。
+##     省略した場合 ${comp_words[0]} が使われます。
 ##
 ##   @var[out] comp_opts
 ##
@@ -2015,30 +2021,23 @@ function ble/complete/source:argument/.progcomp-helper-func {
 ##
 ##   @var[in] 他色々
 ##   @exit 入力がある時に 148 を返します。
-function ble/complete/source:argument/.progcomp {
-  shopt -q progcomp || return 1
-
+function ble/complete/progcomp/.compgen {
   local opts=$1
 
   local comp_prog= comp_func=
-  local cmd=${comp_words[0]} compcmd= is_default_completion= is_special_completion=
-
+  local compcmd= is_default_completion= is_special_completion=
+  local -a alias_args=()
   if [[ :$opts: == *:initial:* ]]; then
     is_special_completion=1
     compcmd='-I'
+  elif [[ :$opts: == *:default:* ]]; then
+    complete -p -D &>/dev/null || return 1
+    is_special_completion=1
+    is_default_completion=1
+    compcmd='-D'
   else
-    if complete -p "$cmd" &>/dev/null; then
-      compcmd=$cmd
-    elif [[ $cmd == */?* ]] && complete -p "${cmd##*/}" &>/dev/null; then
-      compcmd=${cmd##*/}
-    elif complete -p -D &>/dev/null; then
-      is_special_completion=1
-      is_default_completion=1
-      compcmd='-D'
-    fi
+    compcmd=${comp_words[0]}
   fi
-
-  [[ $compcmd ]] || return 1
 
   local -a compargs compoptions flag_noquote=
   local ret iarg=1
@@ -2082,10 +2081,10 @@ function ble/complete/source:argument/.progcomp {
           ble/array#push compoptions "-$c" "$o" ;;
         (F)
           comp_func=${compargs[iarg++]}
-          ble/array#push compoptions "-$c" ble/complete/source:argument/.progcomp-helper-func ;;
+          ble/array#push compoptions "-$c" ble/complete/progcomp/.compgen-helper-func ;;
         (C)
           comp_prog=${compargs[iarg++]}
-          ble/array#push compoptions "-$c" ble/complete/source:argument/.progcomp-helper-prog ;;
+          ble/array#push compoptions "-$c" ble/complete/progcomp/.compgen-helper-prog ;;
         (*)
           # -D, -I, etc. just discard
         esac
@@ -2108,11 +2107,11 @@ function ble/complete/source:argument/.progcomp {
   ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
 
   # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
-  #   ble/complete/source:argument/.progcomp-helper-func 関数内で補間関数の終了ステータスを確認し、
+  #   ble/complete/progcomp/.compgen-helper-func 関数内で補間関数の終了ステータスを確認し、
   #   もし 124 だった場合には is_default_completion に retry を設定する。
   if [[ $is_default_completion == retry && ! $_ble_complete_retry_guard ]]; then
     local _ble_complete_retry_guard=1
-    ble/complete/source:argument/.progcomp "$@"
+    ble/complete/progcomp/.compgen "$@"
     return
   fi
 
@@ -2139,7 +2138,7 @@ function ble/complete/source:argument/.progcomp {
   #
   #     2019-02-03 実は、現在の実装ではわざわざフィルタする必要はないかもしれない。
   #     以前 compgen に -- "$COMPV" を渡してもフィルタしてくれなかったのは、
-  #     #D0245 cdd38598 で .compgen-helper-func に於いて、
+  #     #D0245 cdd38598 で ble/complete/progcomp/.compgen-helper-func に於いて、
   #     "$comp_func" に引数を渡し忘れていたのが原因と思われる。
   #     これは 1929132b に於いて修正されたが念のためにフィルタを残していた気がする。
   #
@@ -2180,6 +2179,78 @@ function ble/complete/source:argument/.progcomp {
   ((cand_count!=old_cand_count))
 }
 
+## 関数 ble/complete/progcomp/.compline-rewrite-command cmd [args...]
+##   alias 展開等によるコマンド名の変更に対応して、
+##   補完対象のコマンド名を指定の物に書き換えます。
+##
+##   @var[in,out] comp_line comp_words comp_point comp_cword
+##
+function ble/complete/progcomp/.compline-rewrite-command {
+  local ocmd=${comp_words[0]}
+  [[ $1 != "$ocmd" ]] || (($#>=2)) || return
+  local ins="$*"
+  comp_line=$ins${comp_line:${#ocmd}}
+  ((comp_point-=${#ocmd},comp_point<0&&(comp_point=0),comp_point+=${#ins}))
+  comp_words=("$@" "${comp_words[@]:1}")
+  ((comp_cword&&(comp_cword+=$#-1)))
+}
+
+## 関数 ble/complete/progcomp cmd opts
+##   補完指定を検索して対応する補完関数を呼び出します。
+##   @var[in] comp_line comp_words comp_point comp_cword
+function ble/complete/progcomp {
+  local cmd=$1 opts=$2
+
+  # copy compline variables
+  local -a tmp; tmp=("${comp_words[@]}")
+  local comp_words comp_line=$comp_line comp_point=$comp_point comp_cword=$comp_cword
+  comp_words=("${tmp[@]}")
+
+  local -a alias_args=()
+  local checked=" "
+  while :; do
+    if ble/is-function "ble/cmdinfo/complete:$cmd"; then
+      ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
+      "ble/cmdinfo/complete:$cmd" "$opts"
+      return
+    elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
+      ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
+      "ble/cmdinfo/complete:${cmd##*/}" "$opts"
+      return
+    elif complete -p "$cmd" &>/dev/null; then
+      ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
+      ble/complete/progcomp/.compgen "$opts"
+      return
+    elif [[ $cmd == */?* ]] && complete -p "${cmd##*/}" &>/dev/null; then
+      ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
+      ble/complete/progcomp/.compgen "$opts"
+      return
+    elif
+      # bash-completion の loader を呼び出して遅延補完設定をチェックする。
+      ble/function#try __load_completion "${cmd##*/}" &>/dev/null &&
+        complete -p "${cmd##*/}" &>/dev/null
+    then
+      ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
+      ble/complete/progcomp/.compgen "$opts"
+      return
+    fi
+    checked="$checked$cmd "
+
+    local ret
+    ble/util/expand-alias "$cmd"
+    ble/string#split-words ret "$ret"
+    [[ $checked == *" $ret "* ]] && break
+    cmd=$ret
+    ((${#ret[@]}>=2)) &&
+      alias_args=("${ret[@]:1}" "${alias_args[@]}")
+  done
+
+  ble/complete/progcomp/.compgen "default:$opts"
+}
+
+
+# source:argument
+
 ## 関数 ble/complete/source:argument/.generate-user-defined-completion opts
 ##   ユーザ定義の補完を実行します。ble/cmdinfo/complete:コマンド名
 ##   という関数が定義されている場合はそれを使います。
@@ -2192,6 +2263,8 @@ function ble/complete/source:argument/.progcomp {
 ##   @var[in] (variables set by ble/syntax/parse)
 ##
 function ble/complete/source:argument/.generate-user-defined-completion {
+  shopt -q progcomp || return 1
+
   case :$comp_type: in
   (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} COMP2=$((COMP1+1)) ;;
   (*:[mA]:*) local COMPS= COMPV= COMP2=$COMP1 ;;
@@ -2218,16 +2291,9 @@ function ble/complete/source:argument/.generate-user-defined-completion {
 
   local opts=$1
   if [[ :$opts: == *:initial:* ]]; then
-    ble/complete/source:argument/.progcomp "$opts"
+    ble/complete/progcomp/.compgen initial
   else
-    local cmd=${comp_words[0]}
-    if ble/is-function "ble/cmdinfo/complete:$cmd"; then
-      "ble/cmdinfo/complete:$cmd"
-    elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
-      "ble/cmdinfo/complete:${cmd##*/}"
-    else
-      ble/complete/source:argument/.progcomp
-    fi
+    ble/complete/progcomp "${comp_words[0]}"
   fi
 }
 
