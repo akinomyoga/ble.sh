@@ -829,7 +829,6 @@ function ble/color/ansi2g {
 if [[ ! $_ble_faces_count ]]; then # reload #D0875
   _ble_faces_count=0
   _ble_faces=()
-  _ble_faces_sgr=()
 fi
 
 ## 関数 ble/color/setface/.check-argument
@@ -851,8 +850,8 @@ function ble/color/setface/.check-argument {
          '' \
          '  gspec   Comma separated graphic attribute list' \
          '  g       Integer value' \
-         '  face    Face name' \
-         '  iface   Face id' \
+         '  ref     Face name or id (reference)' \
+         '  copy    Face name or id (copy value)' \
          '  sgrspec Parameters to the control function SGR' \
          '  ansi    ANSI Sequences' >&2
   ext=2; [[ $# == 1 && $1 == --help ]] && ext=0
@@ -880,30 +879,54 @@ function ble/color/initialize-faces {
   local _ble_color_faces_initializing=1
   local -a _ble_color_faces_errors=()
 
+  ## 関数 ble/color/face2g face
+  ##   @var[out] ret
   function ble/color/face2g {
-    ((g=_ble_faces[_ble_faces__$1]))
+    ((ret=_ble_faces[_ble_faces__$1]))
   }
+  ## 関数 ble/color/face2sgr face
+  ##   @var[out] ret
   function ble/color/face2sgr {
-    builtin eval "sgr=\"\${_ble_faces_sgr[_ble_faces__$1]}\""
+    ble/color/g2sgr $((_ble_faces[_ble_faces__$1]))
   }
+  ## 関数 ble/color/iface2g iface
+  ##   @var[out] ret
   function ble/color/iface2g {
-    ((g=_ble_faces[$1]))
+    ((ret=_ble_faces[$1]))
   }
+  ## 関数 ble/color/iface2sgr iface
+  ##   @var[out] ret
   function ble/color/iface2sgr {
-    sgr=${_ble_faces_sgr[$1]}
+    ble/color/g2sgr $((_ble_faces[$1]))
   }
 
   ## 関数 ble/color/setface/.spec2g spec
   ##   @var[out] ret
   function ble/color/setface/.spec2g {
-    local spec=$1
+    local spec=$1 value=${spec#*:}
     case $spec in
-    (gspec:*)   ble/color/gspec2g "${spec#*:}" ;;
-    (g:*)       ret=$((${spec#*:})) ;;
-    (face:*)    local g; ble/color/face2g "${spec#*:}" ; ret=$g ;;
-    (iface:*)   local g; ble/color/iface2g "${spec#*:}"; ret=$g ;;
-    (sgrspec:*) ble/color/sgrspec2g "${spec#*:}" ;;
-    (ansi:*)    ble/color/ansi2g "${spec#*:}" ;;
+    (gspec:*)   ble/color/gspec2g "$value" ;;
+    (g:*)       ret=$(($value)) ;;
+    (ref:*)
+      if [[ ! ${value//[0-9]} ]]; then
+        ret=_ble_faces[$((value))]
+      else
+        ret=_ble_faces[_ble_faces__$value]
+      fi ;;
+    (copy:*)
+      if [[ ! ${value//[0-9]} ]]; then
+        ble/color/iface2g "$value"
+      else
+        ble/color/face2g "$value"
+      fi ;;
+    (face:*) # obsolete
+      ble/bin/echo 'ble-color-setface: "iface:*" is obsoleted. Use "copy:*" instead.' >&2
+      ble/color/face2g "$value" ;;
+    (iface:*) # obsolete
+      ble/bin/echo 'ble-color-setface: "iface:*" is obsoleted. Use "copy:*" instead.' >&2
+      ble/color/iface2g "$value" ;;
+    (sgrspec:*) ble/color/sgrspec2g "$value" ;;
+    (ansi:*)    ble/color/ansi2g "$value" ;;
     (*)         ble/color/gspec2g "$spec" ;;
     esac
   }
@@ -913,13 +936,11 @@ function ble/color/initialize-faces {
     (($name)) && return
     (($name=++_ble_faces_count))
     ble/color/setface/.spec2g "$spec"; _ble_faces[$name]=$ret
-    ble/color/g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
   }
   function ble/color/setface {
     local name=_ble_faces__$1 spec=$2 ret
     if [[ ${!name} ]]; then
       ble/color/setface/.spec2g "$spec"; _ble_faces[$name]=$ret
-      ble/color/g2sgr "$ret"; _ble_faces_sgr[$name]=$ret
     else
       local message="ble.sh: the specified face \`$1' is not defined."
       if [[ $_ble_color_faces_initializing ]]; then
@@ -948,16 +969,16 @@ function ble/color/initialize-faces {
 }
 
 function ble/color/list-faces {
-  local key g ret sgr opt_color=
+  local key g ret opt_color=
   [[ -t 1 ]] && opt_color=1
   for key in "${!_ble_faces__@}"; do
     local name=${key#_ble_faces__}
-    ble/color/g2gspec $((_ble_faces[key]))
+    ble/color/g2gspec $((_ble_faces[key])); local gspec=$ret
     if [[ $opt_color ]]; then
       ble/color/iface2sgr $((key))
-      ret=$sgr$ret$_ble_term_sgr0
+      gspec=$ret$gspec$_ble_term_sgr0
     fi
-    printf 'ble-color-setface %s %s\n' "$name" "$ret"
+    printf 'ble-color-setface %s %s\n' "$name" "$gspec"
   done
 }
 
@@ -1224,7 +1245,7 @@ function ble/highlight/layer:region/update {
     # sgr の取得
     local face=region
     ble/function#try ble/highlight/layer:region/mark:"$_ble_edit_mark_active"/get-face
-    ble/color/face2sgr "$face"
+    local ret; ble/color/face2sgr "$face"; sgr=$ret
   fi
   local rlen=${#selection[@]}
 
@@ -1335,7 +1356,7 @@ function ble/highlight/layer:region/getg {
     if [[ $flag_region ]]; then
       local face=region
       ble/function#try ble/highlight/layer:region/mark:"$_ble_edit_mark_active"/get-face
-      ble/color/face2g "$face"
+      local ret; ble/color/face2g "$face"; g=$ret
     fi
   fi
 }
@@ -1349,8 +1370,7 @@ _ble_highlight_layer_disabled_buff=()
 function ble/highlight/layer:disabled/update {
   if [[ $_ble_edit_line_disabled ]]; then
     if ((DMIN>=0)) || [[ ! $_ble_highlight_layer_disabled_prev ]]; then
-      local sgr
-      ble/color/face2sgr disabled
+      local ret; ble/color/face2sgr disabled; local sgr=$ret
       _ble_highlight_layer_disabled_buff=("$sgr""${_ble_highlight_layer_plain_buff[@]}")
     fi
     PREV_BUFF=_ble_highlight_layer_disabled_buff
@@ -1371,7 +1391,7 @@ function ble/highlight/layer:disabled/update {
 
 function ble/highlight/layer:disabled/getg {
   if [[ $_ble_highlight_layer_disabled_prev ]]; then
-    ble/color/face2g disabled
+    local ret; ble/color/face2g disabled; g=$ret
   fi
 }
 
@@ -1411,7 +1431,7 @@ function ble/highlight/layer:overwrite_mode/update {
       # ble/highlight/layer/update/getg "$index"
       # ((g^=_ble_color_gflags_Revert))
       ble/color/face2g overwrite_mode
-      ble/color/g2sgr "$g"
+      ble/color/g2sgr "$ret"
       _ble_highlight_layer_overwrite_mode_buff[index]=$ret${_ble_highlight_layer_plain_buff[index]}
       if ((index+1<${#1})); then
         ble/highlight/layer/update/getg $((index+1))
@@ -1439,7 +1459,7 @@ function ble/highlight/layer:overwrite_mode/getg {
   if ((index>=0&&index==$1)); then
     # ble/highlight/layer/update/getg "$1"
     # ((g^=_ble_color_gflags_Revert))
-    ble/color/face2g overwrite_mode
+    local ret; ble/color/face2g overwrite_mode; g=$ret
   fi
 }
 

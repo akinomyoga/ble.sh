@@ -66,10 +66,10 @@ function bleopt {
     # 着色
     local sgr{0..3}=
     if [[ -t 1 ]]; then
-      local sgr
-      ble/color/face2sgr command_function; sgr1=$sgr
-      ble/color/face2sgr syntax_varname; sgr2=$sgr
-      ble/color/face2sgr syntax_quoted; sgr3=$sgr
+      local ret
+      ble/color/face2sgr command_function; sgr1=$ret
+      ble/color/face2sgr syntax_varname; sgr2=$ret
+      ble/color/face2sgr syntax_quoted; sgr3=$ret
       sgr0=$_ble_term_sgr0
       Q=$q$sgr0"\'"$sgr3$q
     fi
@@ -807,10 +807,10 @@ function blehook/.print {
 
   local sgr{0..3}=
   if [[ -t 1 ]]; then
-    local sgr
-    ble/color/face2sgr command_function; sgr1=$sgr
-    ble/color/face2sgr syntax_varname; sgr2=$sgr
-    ble/color/face2sgr syntax_quoted; sgr3=$sgr
+    local ret
+    ble/color/face2sgr command_function; sgr1=$ret
+    ble/color/face2sgr syntax_varname; sgr2=$ret
+    ble/color/face2sgr syntax_quoted; sgr3=$ret
     sgr0=$_ble_term_sgr0
     Q=$q$sgr0"\'"$sgr3$q
   fi
@@ -2958,7 +2958,7 @@ function ble/term/visible-bell/.clear {
     local x=${_ble_term_visible_bell_prev[3]}
     local y=${_ble_term_visible_bell_prev[4]}
 
-    local sgr; ble/color/face2sgr vbell_erase
+    local ret; ble/color/face2sgr vbell_erase; local sgr=$ret
 
     local -a DRAW_BUFF=()
     ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
@@ -3042,9 +3042,9 @@ function ble/term/visible-bell {
   local sgr0=$_ble_term_sgr0
   local sgr1=${_ble_term_setaf[2]}$_ble_term_rev
   local sgr2=$_ble_term_rev
-  local sgr
-  ble/color/face2sgr vbell_flash; sgr1=$sgr
-  ble/color/face2sgr vbell; sgr2=$sgr
+  local ret
+  ble/color/face2sgr vbell_flash; sgr1=$ret
+  ble/color/face2sgr vbell; sgr2=$ret
 
   ble/term/visible-bell/.erase-previous-visible-bell
   ble/term/visible-bell/.show "$message" "$sgr1" "$x" "$y"

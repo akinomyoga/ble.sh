@@ -1061,7 +1061,7 @@ function ble/complete/action:file/complete {
 }
 function ble/complete/action:file/init-menu-item {
   ble/syntax/highlight/getg-from-filename "$CAND"
-  [[ $g ]] || ble/color/face2g filename_warning
+  [[ $g ]] || { local ret; ble/color/face2g filename_warning; g=$ret; }
 
   if [[ :$comp_type: == *:vstat:* ]]; then
     if [[ -h $CAND ]]; then
@@ -1112,7 +1112,8 @@ function ble/complete/action:tilde/complete {
   ble/complete/action/util/complete.mark-directory
 }
 function ble/complete/action:tilde/init-menu-item {
-  ble/color/face2g filename_directory
+  local ret
+  ble/color/face2g filename_directory; g=$ret
 }
 function ble/complete/action:tilde/get-desc {
   desc='directory (tilde expansion)'
@@ -1181,7 +1182,7 @@ function ble/complete/action:command/complete {
 }
 function ble/complete/action:command/init-menu-item {
   if [[ -d $CAND ]]; then
-    ble/color/face2g filename_directory
+    local ret; ble/color/face2g filename_directory; g=$ret
   else
     # Note: ble/syntax/highlight/cmdtype はキャッシュ機能がついているが、
     #   キーワードに対して呼び出さない前提なのでキーワードを渡すと
@@ -1236,7 +1237,7 @@ function ble/complete/action:variable/complete {
   esac
 }
 function ble/complete/action:variable/init-menu-item {
-  ble/color/face2g syntax_varname
+  local ret; ble/color/face2g syntax_varname; g=$ret
 }
 
 #------------------------------------------------------------------------------
@@ -4400,9 +4401,8 @@ function ble/highlight/layer:menu_filter/update {
 
   local umin=$PREV_UMIN umax=$PREV_UMAX
   if [[ $beg ]]; then
-    local g
-    ble/color/face2g menu_filter_fixed; local gF=$g
-    ble/color/face2g menu_filter_input; local gI=$g
+    ble/color/face2g menu_filter_fixed; local gF=$ret
+    ble/color/face2g menu_filter_input; local gI=$ret
     local mid=$_ble_complete_menu0_end
     ((mid<beg?(mid=beg):(end<mid&&(mid=end))))
 
@@ -4434,10 +4434,11 @@ function ble/highlight/layer:menu_filter/getg {
   local oend=$_ble_highlight_layer_menu_filter_end
   local mid=$_ble_complete_menu0_end
   if [[ $obeg ]] && ((obeg<=index&&index<oend)); then
+    local ret
     if ((index<mid)); then
-      ble/color/face2g menu_filter_fixed; local g0=$g
+      ble/color/face2g menu_filter_fixed; local g0=$ret
     else
-      ble/color/face2g menu_filter_input; local g0=$g
+      ble/color/face2g menu_filter_input; local g0=$ret
     fi
     ble/highlight/layer/update/getg "$index"
     ble/color/g#append "$g0"
@@ -5287,7 +5288,7 @@ function ble/widget/sabbrev-expand {
 function ble/complete/action:sabbrev/initialize { CAND=$value; }
 function ble/complete/action:sabbrev/complete { :; }
 function ble/complete/action:sabbrev/init-menu-item {
-  ble/color/face2g command_alias
+  local ret; ble/color/face2g command_alias; g=$ret
   show=$INSERT
 }
 function ble/complete/action:sabbrev/get-desc {

@@ -369,7 +369,7 @@ function ble/syntax/print-status/ctx#get-text {
   ret=${ret#BLE_}
   if [[ ! $ret ]]; then
     ble/color/face2sgr syntax_error
-    ret="${sgr}CTX$1$_ble_term_sgr0"
+    ret="${ret}CTX$1$_ble_term_sgr0"
   fi
 }
 ## 関数 ble/syntax/print-status/word.get-text index
@@ -538,11 +538,9 @@ function ble/syntax/print-status/.dump-arrays {
   char=()
   line=()
 
-  local sgr
-  ble/color/face2sgr syntax_error
-  local sgr_error=$sgr
-  ble/color/face2sgr syntax_quoted
-  local sgr_quoted=$sgr
+  local ret
+  ble/color/face2sgr syntax_error; local sgr_error=$ret
+  ble/color/face2sgr syntax_quoted; local sgr_quoted=$ret
 
   local i max_tree_width=0
   for ((i=0;i<=iN;i++)); do
@@ -553,7 +551,6 @@ function ble/syntax/print-status/.dump-arrays {
       attr="${attr:${#attr}-2:2} "
     fi
 
-    local ret
     [[ ${_ble_highlight_layer_syntax1_table[i]} ]] && ble/color/g2sgr "${_ble_highlight_layer_syntax1_table[i]}"
     ble/syntax/print-status/.dump-arrays/.append-attr-char "${ret}a${_ble_term_sgr0}"
     [[ ${_ble_highlight_layer_syntax2_table[i]} ]] && ble/color/g2sgr "${_ble_highlight_layer_syntax2_table[i]}"
@@ -5558,7 +5555,7 @@ function ble/syntax/highlight/getg-from-filename {
   ble/syntax/highlight/filetype "$filename"
   if [[ $bleopt_filename_ls_colors ]]; then
     if ble/syntax/highlight/ls_colors "$filename" && [[ $type == g:* ]]; then
-      ble/color/face2g filename_ls_colors
+      local ret; ble/color/face2g filename_ls_colors; g=$ret
       ((g|=${type:2}))
       return
     fi
@@ -5726,7 +5723,7 @@ function ble/highlight/layer:syntax/word/.update-for-filename {
   local g=
   if [[ $bleopt_filename_ls_colors ]]; then
     if ble/syntax/highlight/ls_colors "$value" && [[ $type == g:* ]]; then
-      local g; ble/color/face2g filename_ls_colors
+      local ret; ble/color/face2g filename_ls_colors; g=$ret
       type=g:$((${type:2}|g))
     fi
   fi
@@ -5947,7 +5944,7 @@ function ble/highlight/layer:syntax/update-error-table {
   # set errors
   if ((iN>0)) && [[ ${_ble_syntax_stat[iN]} ]]; then
     # iN==0 の時は実行しない。face 遅延初期化のため(最初は iN==0)。
-    local g; ble/color/face2g syntax_error
+    local ret; ble/color/face2g syntax_error; local g=$ret
 
     # 入れ子が閉じていないエラー
     local -a stat

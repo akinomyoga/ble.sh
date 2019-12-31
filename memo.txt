@@ -892,6 +892,16 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-01-01
+
+  * shopt promptvars
+    この設定が存在している事に気づいていなかった。
+    この設定が unset 状態にある時 PS1 の展開に於いて
+    パラメータ展開、コマンド置換、算術式展開、クォート削除が実行されないそうだ。
+    現在の実装について確認する。クォート削除が実行されないとすると、
+    このクォート削除を想定としたクォートは必要ないという事になる。
+    振る舞いについて確認する必要がある。
+
 2019-12-31
 
   * ble.sh はプロンプトやエイリアスの設定を提供する物ではなくて
@@ -900,29 +910,6 @@ bash_tips
 
     ただ、bash-it や oh-my-bash がそんなに便利で凄いかというと微妙。
     結局プロンプトを提供しているだけなのではないかという気がする。
-
-  * color: face の定義で ref を設定しても良いのではないか。。
-    算術式なので簡単に実現できる気がするが技術的にはどうだろう。
-    →調べてみると face に対応する sgr はキャッシュされている。
-    _ble_faces_sgr という配列に格納されている。
-    然し、この配列を触っている箇所は少ないので
-    実はそんなに問題ではないかもしれない。
-
-    更に実はこのキャッシュは殆ど使われていないのではないか。
-    syntax は ble/syntax/attr2g で直接 g 値を得ている。
-    _ble_faces_sgr を使っているのは iface2sgr 及び face2sgr だけである。
-    調べてみると iface2sgr は ble/color/list-faces しか使っていない。
-    と思ったが face2sgr の方は結構使われている。
-    - core-syntax は ble/syntax/print-status/ctx の中からしか使っていない。
-      debug 用の関数なので速度に関しては実はそんなに気にしなくて良いのでは。
-    - color.sh は ble/highlight/layer:{region,disabled}/update で使っている。
-    - util.sh は bleopt, blehook の現在の状態の表示に使っている。
-      他に ble/term/visible-bell の表示色の決定に使っている。
-    やはり余り速度が重要になりそうな場面では使っていない。
-    実装を g 値 → sgr という様にその場で変換する様に書き換えて問題ない気がする。
-    或いは遅ければ別の枠組みを整えれば良いのである。
-    或いは ref の時だけは空欄にしておいて空欄の時は毎回生成するという仕組みにする?
-    →面倒なので何も考えずに毎回生成で良い気がする。
 
   * fast-syntax-highlighting の機能を確認する
     https://github.com/zdharma/fast-syntax-highlighting
@@ -2364,7 +2351,8 @@ bash_tips
   - edit: support `bleopt accept_line_threshold` `#D1178` a3385f6 82a1e0b
   - complete: support `bleopt complete_allow_reduction` `#D1181` 03040b7
   - edit: support `bleopt exec_errexit_mark` `#D1182` 6adc2df
-  - color: support true colors `#D1184` 0000000
+  - color: support true colors `#D1184` bd631ce 5dd6b03
+  - color (`ble-color-setface`): support reference to another face `#D1188` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2399,6 +2387,7 @@ bash_tips
   - syntax: allow `},fi,done,esac,then,...` after subshell `()` `#D1165` fdb49f3
   - edit: support options `--help` for `read` and `exit` `#D1173` faccc6b
   - color (`ble-color-{set,def}face`): list faces without arguments `#D1180` 50327c3
+  - complete: search completion settings through alias expansion `#D1187` 0000000
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2465,7 +2454,8 @@ bash_tips
   - global: distinguish exit status 147 and 148 `#D1141` d1a78fb
   - global: follow bash syntactic changes on arithmentic command 16e0f0e
   - decode: check `bind -X` first to store the original bindings `#D1179` 4057ff0
-  - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1186` 0000000
+  - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1186` 550fb14
+  - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 0000000
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3410,6 +3400,57 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-01
+
+  * color: face の定義で ref を設定しても良いのではないか [#D1188]
+    算術式なので簡単に実現できる気がするが技術的にはどうだろう。
+    →調べてみると face に対応する sgr はキャッシュされている。
+    _ble_faces_sgr という配列に格納されている。
+    然し、この配列を触っている箇所は少ないので
+    実はそんなに問題ではないかもしれない。
+
+    更に実はこのキャッシュは殆ど使われていないのではないか。
+    syntax は ble/syntax/attr2g で直接 g 値を得ている。
+    _ble_faces_sgr を使っているのは iface2sgr 及び face2sgr だけである。
+    調べてみると iface2sgr は ble/color/list-faces しか使っていない。
+    と思ったが face2sgr の方は結構使われている。
+    - core-syntax は ble/syntax/print-status/ctx の中からしか使っていない。
+      debug 用の関数なので速度に関しては実はそんなに気にしなくて良いのでは。
+    - color.sh は ble/highlight/layer:{region,disabled}/update で使っている。
+    - util.sh は bleopt, blehook の現在の状態の表示に使っている。
+      他に ble/term/visible-bell の表示色の決定に使っている。
+    やはり余り速度が重要になりそうな場面では使っていない。
+    実装を g 値 → sgr という様にその場で変換する様に書き換えて問題ない気がする。
+    或いは遅ければ別の枠組みを整えれば良いのである。
+    或いは ref の時だけは空欄にしておいて空欄の時は毎回生成するという仕組みにする?
+    →面倒なので何も考えずに毎回生成で良い気がする。
+
+    仕様について考える事にする。今までの face:... iface:... の意味を変える?
+    もしくは新しく faceref:... の様な定義方法を使う?
+
+    恐らく使っている人は皆無である。従って問題にはならない。
+    もし使っている人がいたとして循環する様な定義にしていたとしても、
+    Bash 算術式には上限があるので意図的に回避しない限りは無限ループになる事はない。
+
+    従って意味を変える事にする。設定のコピーもできる様にしておく。
+
+    * done: _ble_faces_sgr を使わずにその場で g2sgr を呼び出す様に変更
+
+    * done: ble/color/{i,}face2{g,sgr} の戻り値を g, sgr に格納しているが
+      この仕様は他の類似の関数と異なっている。
+      これを ret を返す様に変更してはどうか。
+      g や sgr に代入する関数は getg や get-sgr 的な
+      関数名であるべきである。
+
+      他に g や sgr を直接に返す仕様の関数は存在しただろうか。
+
+    * done: setface の face:... iface:... の意味を変更する
+      と思ったが ref:... copy:... に変更する事にした。
+      そして face:... iface:... は廃止する事にした。obsolete
+      取り敢えずサポートは続けるが警告を出す。
+
+    * done: wiki に説明は書いた
 
 2019-12-31
 
