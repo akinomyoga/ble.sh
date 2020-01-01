@@ -617,7 +617,7 @@ function ble/syntax/print-status {
   if [[ $1 == -v && $2 ]]; then
     local "${2%%\[*\]}" && ble/util/upvar "$2" "$result"
   else
-    builtin echo "$result"
+    ble/util/print "$result"
   fi
 }
 
@@ -5322,7 +5322,7 @@ function ble/syntax/highlight/cmdtype/.impl {
       unalias "$cmd"
       ble/util/type btype "$cmd"
       ble/syntax/highlight/cmdtype1 "$btype" "$cmd"
-      builtin echo -n "$type")
+      printf %s "$type")
   elif ble/syntax/highlight/cmdtype/.is-job-name "$cmd" "$_0"; then
     # %() { :; } として 関数を定義できるが jobs の方が優先される。
     # (% という名の関数を呼び出す方法はない?)

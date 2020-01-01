@@ -5,17 +5,17 @@ source "$_ble_base/keymap/vi.sh"
 bleopt/declare -v vim_arpeggio_timeoutlen 40
 
 function ble/lib/vim-arpeggio.sh/bind/.usage {
-  ble/bin/echo "usage: ble/lib/vim-arpeggio.sh/bind [-m KEYMAP] -[fxcs@] KEYS COMMAND"
-  ble/bin/echo "  KEYS has the form of {mods}{X}{Y}. {mods} are modifiers of the form"
-  ble/bin/echo "  /([CSMAsH]-)*/ and {X} and {Y} are alphabets which specify simultaneous"
-  ble/bin/echo "  keys."
+  ble/util/print "usage: ble/lib/vim-arpeggio.sh/bind [-m KEYMAP] -[fxcs@] KEYS COMMAND"
+  ble/util/print "  KEYS has the form of {mods}{X}{Y}. {mods} are modifiers of the form"
+  ble/util/print "  /([CSMAsH]-)*/ and {X} and {Y} are alphabets which specify simultaneous"
+  ble/util/print "  keys."
 }
 
 function ble/lib/vim-arpeggio.sh/bind {
   local -a opts=()
   if [[ $1 == -m ]]; then
     if [[ ! $2 ]]; then
-      ble/bin/echo "vim-arpeggio.sh: invalid option argument for \`-m'." >&2
+      ble/util/print "vim-arpeggio.sh: invalid option argument for \`-m'." >&2
       ble/lib/vim-arpeggio.sh/bind/.usage >&2
       return 1
     fi
@@ -28,7 +28,7 @@ function ble/lib/vim-arpeggio.sh/bind {
     ble/lib/vim-arpeggio.sh/bind/.usage
     return 0
   elif [[ $type != -[fxcs@] ]]; then
-    ble/bin/echo "vim-arpeggio.sh: invalid bind type." >&2
+    ble/util/print "vim-arpeggio.sh: invalid bind type." >&2
     ble/lib/vim-arpeggio.sh/bind/.usage >&2
     return 1
   fi
@@ -49,7 +49,7 @@ function ble/lib/vim-arpeggio.sh/bind {
     ble-bind "${opts[@]}" -T "$k1" "$timeout"
     ble-bind "${opts[@]}" -T "$k2" "$timeout"
   else
-    ble/bin/echo "vim-arpeggio.sh: sorry only 2-key bindings are supported now." >&2
+    ble/util/print "vim-arpeggio.sh: sorry only 2-key bindings are supported now." >&2
     ble/lib/vim-arpeggio.sh/bind/.usage >&2
     return 1
   fi

@@ -4,7 +4,7 @@ function ble-test/check-ret {
   local f=$1 in=$2 expected=$3 ret
   "$f" "$in"
   ble/util/assert '[[ $ret == "$expected" ]]' ||
-    ble/bin/echo "fail: command=($f $in) result=($ret) expected=($expected)" >&2
+    ble/util/print "fail: command=($f $in) result=($ret) expected=($expected)" >&2
 }
 
 function test1 {
@@ -13,14 +13,14 @@ function test1 {
   x=0 y=0
   ble/canvas/trace.draw 'hello world this is a flow world' relative
   ble/canvas/flush.draw
-  ble/bin/echo
+  ble/util/print
 
   LINES=1 COLUMNS=20 x=0 y=0
   ble/canvas/trace.draw '12345678901234567890hello' confine
   ble/canvas/flush.draw
 }
 test1
-ble/bin/echo
+ble/util/print
 
 function ble/test:ble/canvas/trace {
   local fields esc=${1#*:}

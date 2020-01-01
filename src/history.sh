@@ -210,7 +210,7 @@ if ((_ble_bash>=40000)); then
           : >| "$history_tmpfile"
           if [[ $opt_async ]]; then
             _ble_history_load_bgpid=$(
-              shopt -u huponexit; ble/history:bash/load/.background-initialize </dev/null &>/dev/null & ble/bin/echo $!)
+              shopt -u huponexit; ble/history:bash/load/.background-initialize </dev/null &>/dev/null & ble/util/print $!)
 
             function ble/history:bash/load/.background-initialize-completed {
               local history_tmpfile=$_ble_base_run/$$.history.load
@@ -486,7 +486,7 @@ if ((_ble_bash>=30100)); then
     if ((modification_count)); then
       ble/bin/mv -f "$TMPBASE.part" "$TMPBASE.sh"
     else
-      ble/bin/echo : >| "$TMPBASE.sh"
+      ble/util/print : >| "$TMPBASE.sh"
     fi
   }
   function ble/history:bash/resolve-multiline/.load {
@@ -530,7 +530,7 @@ if ((_ble_bash>=30100)); then
         : >| "$history_tmpfile"
         if [[ $opt_async ]]; then
           _ble_history_mlfix_bgpid=$(
-            shopt -u huponexit; ble/history:bash/resolve-multiline/.worker </dev/null &>/dev/null & ble/bin/echo $!)
+            shopt -u huponexit; ble/history:bash/resolve-multiline/.worker </dev/null &>/dev/null & ble/util/print $!)
 
           function ble/history:bash/resolve-multiline/.worker-completed {
             local history_tmpfile=$_ble_base_run/$$.history.mlfix.sh
@@ -1180,7 +1180,7 @@ function ble/builtin/history {
       (p) opt_p=1 ;;
       (d)
         if ((!$#)); then
-          ble/bin/echo 'ble/builtin/history: missing option argument for "-d".' >&2
+          ble/util/print 'ble/builtin/history: missing option argument for "-d".' >&2
           flag_error=1
         elif ((i+1<n)); then
           opt_d=${arg:i+1}; i=$n
@@ -1189,7 +1189,7 @@ function ble/builtin/history {
         fi ;;
       ([anwr])
         if [[ $opt_a && $c != $opt_a ]]; then
-          ble/bin/echo 'ble/builtin/history: cannot use more than one of "-anrw".' >&2
+          ble/util/print 'ble/builtin/history: cannot use more than one of "-anrw".' >&2
           flag_error=1
         elif ((i+1<n)); then
           opt_a=$c
@@ -1198,7 +1198,7 @@ function ble/builtin/history {
           opt_a=$c
         fi ;;
       (*)
-        ble/bin/echo 'ble/builtin/history: unknown option "-$c".' >&2
+        ble/util/print 'ble/builtin/history: unknown option "-$c".' >&2
         flag_error=1 ;;
       esac
     done

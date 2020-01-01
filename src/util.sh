@@ -33,14 +33,14 @@ function bleopt {
       elif rex='^[[:alnum:]_]+$'; [[ $spec =~ $rex ]]; then
         type=p var=$spec
       else
-        ble/bin/echo "bleopt: unrecognized argument '$spec'" >&2
+        ble/util/print "bleopt: unrecognized argument '$spec'" >&2
         continue
       fi
 
       var=bleopt_${var#bleopt_}
       if [[ $type == *c* && ! ${!var+set} ]]; then
         error_flag=1
-        ble/bin/echo "bleopt: unknown bleopt option \`${var#bleopt_}'" >&2
+        ble/util/print "bleopt: unknown bleopt option \`${var#bleopt_}'" >&2
         continue
       fi
 
@@ -55,7 +55,7 @@ function bleopt {
         fi
         eval "$var=\"\$value\"" ;;
       (p*) pvars[ip++]=$var ;;
-      (*)  ble/bin/echo "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
+      (*)  ble/util/print "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
       esac
     done
   fi
@@ -101,23 +101,23 @@ bleopt/declare -n input_encoding UTF-8
 
 function bleopt/check:input_encoding {
   if ! ble/is-function "ble/encoding:$value/decode"; then
-    ble/bin/echo "bleopt: Invalid value input_encoding='$value'." \
+    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/decode' is not defined." >&2
     return 1
   elif ! ble/is-function "ble/encoding:$value/b2c"; then
-    ble/bin/echo "bleopt: Invalid value input_encoding='$value'." \
+    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/b2c' is not defined." >&2
     return 1
   elif ! ble/is-function "ble/encoding:$value/c2bc"; then
-    ble/bin/echo "bleopt: Invalid value input_encoding='$value'." \
+    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/c2bc' is not defined." >&2
     return 1
   elif ! ble/is-function "ble/encoding:$value/generate-binder"; then
-    ble/bin/echo "bleopt: Invalid value input_encoding='$value'." \
+    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/generate-binder' is not defined." >&2
     return 1
   elif ! ble/is-function "ble/encoding:$value/is-intermediate"; then
-    ble/bin/echo "bleopt: Invalid value input_encoding='$value'." \
+    ble/util/print "bleopt: Invalid value input_encoding='$value'." \
                  "A function 'ble/encoding:$value/is-intermediate' is not defined." >&2
     return 1
   fi
@@ -235,7 +235,7 @@ function ble/util/restore-arrs {
 _ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
 function ble/debug/.check-leak-variable {
   if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
-    ble/bin/echo "$1=${!1}:${2:*}" >> a.txt
+    ble/util/print "$1=${!1}:${2:*}" >> a.txt
     builtin eval "$1=__t1wJltaP9nmow__"
   fi
 }
@@ -263,7 +263,7 @@ function ble/debug/print-variables {
     local arg=$1; shift
     case $arg in
     (-t) tag=$1; shift ;;
-    (-*) ble/bin/echo "print-variables: unknown option '$arg'" >&2
+    (-*) ble/util/print "print-variables: unknown option '$arg'" >&2
          flags=${flags}e ;;
     (*) ble/array#push _ble_local_vars "$arg" ;;
     esac
@@ -281,7 +281,7 @@ function ble/debug/print-variables {
     fi
     _ble_local_out=$_ble_local_out' '
   done
-  ble/bin/echo "${_ble_local_out%' '}"
+  ble/util/print "${_ble_local_out%' '}"
 }
 #%end
 
@@ -833,7 +833,7 @@ function blehook/.print {
   builtin printf %s "$out"
 }
 function blehook/.print-help {
-  ble/bin/echo 'usage: blehook hook_name+=shell-command'
+  ble/util/print 'usage: blehook hook_name+=shell-command'
 }
 
 function blehook {
@@ -863,13 +863,13 @@ function blehook {
         if [[ ${BASH_REMATCH[2]} == :* ]]; then
           ((_ble_hook_c_$name=0))
         else
-          ble/bin/echo "blehook: hook \"$name\" is not defined." >&2
+          ble/util/print "blehook: hook \"$name\" is not defined." >&2
           flag_error=1
         fi
       fi
       ble/array#push process "$arg"
     else
-      ble/bin/echo "blehook: invalid hook spec \"$arg\"" >&2
+      ble/util/print "blehook: invalid hook spec \"$arg\"" >&2
       flag_error=1
     fi
   done
@@ -950,7 +950,7 @@ function ble/builtin/trap/.read-arguments {
           flags=h$flags
           continue ;;
         (*)
-          ble/bin/echo "ble/builtin/trap: unknown long option \"$arg\"." >&2
+          ble/util/print "ble/builtin/trap: unknown long option \"$arg\"." >&2
           flags=E$flags
           continue ;;
         esac
@@ -962,7 +962,7 @@ function ble/builtin/trap/.read-arguments {
         (l) flags=l$flags ;;
         (p) flags=p$flags ;;
         (*)
-          ble/bin/echo "ble/builtin/trap: unknown option \"-${arg:i:1}\"." >&2
+          ble/util/print "ble/builtin/trap: unknown option \"-${arg:i:1}\"." >&2
           flags=E$flags ;;
         esac
       done
@@ -1091,7 +1091,7 @@ function ble/builtin/trap {
       local spec ret
       for spec in "${sigspecs[@]}"; do
         if ! ble/builtin/trap/.get-sig-index "$spec"; then
-          ble/bin/echo "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
+          ble/util/print "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
           continue
         fi
         ble/array#push indices "$ret"
@@ -1105,7 +1105,7 @@ function ble/builtin/trap {
       if [[ ${_ble_builtin_trap_handlers[index]+set} ]]; then
         local h=${_ble_builtin_trap_handlers[index]}
         local n=${_ble_builtin_trap_signames[index]}
-        ble/bin/echo "trap -- '${h//$Q/$q}' $n"
+        ble/util/print "trap -- '${h//$Q/$q}' $n"
       fi
     done
   else
@@ -1113,7 +1113,7 @@ function ble/builtin/trap {
     local spec ret
     for spec in "${sigspecs[@]}"; do
       if ! ble/builtin/trap/.get-sig-index "$spec"; then
-        ble/bin/echo "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
+        ble/util/print "ble/builtin/trap: invalid signal specification \"$spec\"." >&2
         continue
       fi
 
@@ -1429,7 +1429,7 @@ if ((_ble_bash>=40200)); then
         ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
 
         [[ $__ble_hidden_only && $__ble_i == 0 ]] && continue
-        ble/bin/echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+        ble/util/print "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
       done
       
       [[ ! $__ble_error ]]
@@ -1461,7 +1461,7 @@ else
         [[ $__ble_found ]] || __ble_error= __ble_value= # not found
         [[ $__ble_hidden_only && $__ble_found == 0 ]] && continue
 
-        ble/bin/echo "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
+        ble/util/print "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
       done
       
       [[ ! $__ble_error ]]
@@ -1752,7 +1752,7 @@ function ble/util/buffer.print {
   ble/util/buffer "$*"$'\n'
 }
 function ble/util/buffer.flush {
-  IFS= builtin eval 'ble/bin/echo -n "${_ble_util_buffer[*]-}"'
+  IFS= builtin eval 'ble/util/put "${_ble_util_buffer[*]-}"'
   _ble_util_buffer=()
 }
 function ble/util/buffer.clear {
@@ -2094,7 +2094,7 @@ function ble/util/.read-arguments-for-no-option-command {
       (--) flag_literal=1 ;;
       (--help) flags=h$flags ;;
       (-*)
-        ble/bin/echo "$commandname: unrecognized option '$arg'" >&2
+        ble/util/print "$commandname: unrecognized option '$arg'" >&2
         flags=e$flags ;;
       (*)
         ble/array#push args "$arg" ;;
@@ -2146,8 +2146,8 @@ function ble/util/autoload {
   done
 }
 function ble/util/autoload/.print-usage {
-  ble/bin/echo 'usage: ble-autoload SCRIPTFILE FUNCTION...'
-  ble/bin/echo '  Setup delayed loading of functions defined in the specified script file.'
+  ble/util/print 'usage: ble-autoload SCRIPTFILE FUNCTION...'
+  ble/util/print '  Setup delayed loading of functions defined in the specified script file.'
 } >&2    
 ## 関数 ble/util/autoload/.read-arguments args...
 ##   @var[out] file functions flags
@@ -2162,9 +2162,9 @@ function ble/util/autoload/.read-arguments {
   for arg in "${args[@]}"; do
     if [[ ! $arg ]]; then
       if ((index==0)); then
-        ble/bin/echo 'ble-autoload: the script filename should not be empty.' >&2
+        ble/util/print 'ble-autoload: the script filename should not be empty.' >&2
       else
-        ble/bin/echo 'ble-autoload: function names should not be empty.' >&2
+        ble/util/print 'ble-autoload: function names should not be empty.' >&2
       fi
       flags=e$flags
     fi
@@ -2174,10 +2174,10 @@ function ble/util/autoload/.read-arguments {
   [[ $flags == *h* ]] && return
 
   if ((${#args[*]}==0)); then
-    ble/bin/echo 'ble-autoload: script filename is not specified.' >&2
+    ble/util/print 'ble-autoload: script filename is not specified.' >&2
     flags=e$flags
   elif ((${#args[*]}==1)); then
-    ble/bin/echo 'ble-autoload: function names are not specified.' >&2
+    ble/util/print 'ble-autoload: function names are not specified.' >&2
     flags=e$flags
   fi
 
@@ -2188,7 +2188,7 @@ function ble-autoload {
   local -a functions=()
   ble/util/autoload/.read-arguments "$@"
   if [[ $flags == *[eh]* ]]; then
-    [[ $flags == *e* ]] && builtin echo
+    [[ $flags == *e* ]] && builtin printf '\n'
     ble/util/autoload/.print-usage
     [[ $flags == *e* ]] && return 2
     return 0
@@ -2251,7 +2251,7 @@ function ble/util/import/.read-arguments {
   [[ $flags == *h* ]] && return
 
   if ((!${#args[@]})); then
-    ble/bin/echo 'ble-import: argument is not specified.' >&2
+    ble/util/print 'ble-import: argument is not specified.' >&2
     flags=e$flags
   fi
 
@@ -2261,10 +2261,10 @@ function ble-import {
   local files flags
   ble/util/import/.read-arguments "$@"
   if [[ $flags == *[eh]* ]]; then
-    [[ $flags == *e* ]] && ble/bin/echo
+    [[ $flags == *e* ]] && ble/util/print
     {
-      ble/bin/echo 'usage: ble-import SCRIPT_FILE...'
-      ble/bin/echo '  Search and source script files that have not yet been loaded.'
+      ble/util/print 'usage: ble-import SCRIPT_FILE...'
+      ble/util/print '  Search and source script files that have not yet been loaded.'
     } >&2
     [[ $flags == *e* ]] && return 2
     return 0
@@ -2293,16 +2293,16 @@ function ble/util/stackdump {
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
     message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
   done
-  ble/bin/echo -n "$message" >&2
+  ble/util/put "$message" >&2
 }
 function ble-stackdump {
   local flags args
   ble/util/.read-arguments-for-no-option-command ble-stackdump "$@"
   if [[ $flags == *[eh]* ]]; then
-    [[ $flags == *e* ]] && ble/bin/echo
+    [[ $flags == *e* ]] && ble/util/print
     {
-      ble/bin/echo 'usage: ble-stackdump command [message]'
-      ble/bin/echo '  Print stackdump.'
+      ble/util/print 'usage: ble-stackdump command [message]'
+      ble/util/print '  Print stackdump.'
     } >&2
     [[ $flags == *e* ]] && return 2
     return 0
@@ -2335,15 +2335,15 @@ function ble-assert {
   ble/util/.read-arguments-for-no-option-command ble-assert "$@"
   if [[ $flags != *h* ]]; then
     if ((${#args[@]}==0)); then
-      ble/bin/echo 'ble-assert: command is not specified.' >&2
+      ble/util/print 'ble-assert: command is not specified.' >&2
       flags=e$flags
     fi
   fi
   if [[ $flags == *[eh]* ]]; then
-    [[ $flags == *e* ]] && ble/bin/echo
+    [[ $flags == *e* ]] && ble/util/print
     {
-      ble/bin/echo 'usage: ble-assert command [message]'
-      ble/bin/echo '  Evaluate command and print stackdump on fail.'
+      ble/util/print 'usage: ble-assert command [message]'
+      ble/util/print '  Evaluate command and print stackdump on fail.'
     } >&2
     [[ $flags == *e* ]] && return 2
     return 0
@@ -2855,14 +2855,14 @@ function ble/term/cup {
   BUFF[${#BUFF[@]}]=$esc
 }
 function ble/term/flush {
-  IFS= builtin eval 'ble/bin/echo -n "${BUFF[*]}"'
+  IFS= builtin eval 'ble/util/put "${BUFF[*]}"'
   BUFF=()
 }
 
 # **** vbell/abell ****
 
 function ble/term/audible-bell {
-  ble/bin/echo -n '' 1>&2
+  ble/util/put '' 1>&2
 }
 
 # visible-bell の表示の管理について。
@@ -2927,7 +2927,7 @@ function ble/term/visible-bell/.show {
     ble/canvas/flush.draw
     _ble_term_visible_bell_prev=("$message" "$x0" "$y0" "$x" "$y")
   else
-    ble/bin/echo -n "${_ble_term_visible_bell_show//'%message%'/$message}"
+    ble/util/put "${_ble_term_visible_bell_show//'%message%'/$message}"
     _ble_term_visible_bell_prev=("$message")
   fi
 } >&2
@@ -2948,7 +2948,7 @@ function ble/term/visible-bell/.update {
     ble/canvas/put-cud.draw 1
     ble/canvas/flush.draw
   else
-    ble/bin/echo -n "${_ble_term_visible_bell_show//'%message%'/$sgr$message}"
+    ble/util/put "${_ble_term_visible_bell_show//'%message%'/$sgr$message}"
   fi
 } >&2
 function ble/term/visible-bell/.clear {
@@ -2970,7 +2970,7 @@ function ble/term/visible-bell/.clear {
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
     ble/canvas/flush.draw
   else
-    ble/bin/echo -n "$_ble_term_visible_bell_clear"
+    ble/util/put "$_ble_term_visible_bell_clear"
   fi
   >| "$_ble_term_visible_bell_ftime"
 } >&2
@@ -2993,7 +2993,7 @@ function ble/term/visible-bell/.create-workerfile {
     workerfile=$_ble_base_run/$$.visible-bell.$i
     [[ -s $workerfile ]]
   do ((i++)); done
-  ble/bin/echo 1 >| "$workerfile"
+  ble/util/print 1 >| "$workerfile"
 }
 ## 関数 ble/term/visible-bell/.worker
 ##   @var[in] workerfile
@@ -3005,7 +3005,7 @@ function ble/term/visible-bell/.worker {
 
   if [[ :$opts: == *:persistent:* ]]; then
     local dead_workerfile=$_ble_base_run/$$.visible-bell.Z
-    ble/bin/echo 1 >| "$dead_workerfile"
+    ble/util/print 1 >| "$dead_workerfile"
     return >| "$workerfile"
   fi
 

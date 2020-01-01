@@ -116,7 +116,7 @@ bleopt/declare -n internal_exec_type gexec
 
 function bleopt/check:internal_exec_type {
   if ! ble/is-function "ble-edit/exec:$value/process"; then
-    ble/bin/echo "bleopt: Invalid value internal_exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
+    ble/util/print "bleopt: Invalid value internal_exec_type='$value'. A function 'ble-edit/exec:$value/process' is not defined." >&2
     return 1
   fi
 }
@@ -756,7 +756,7 @@ function ble-edit/info/.construct-content {
     # 現在の高さに入らない時は計測し直す。
     ((y<lines)) || ble-edit/info/.construct-content esc "$content" ;;
   (*)
-    ble/bin/echo "usage: ble-edit/info/.construct-content type text" >&2 ;;
+    ble/util/print "usage: ble-edit/info/.construct-content type text" >&2 ;;
   esac
 }
 
@@ -2083,7 +2083,7 @@ function ble/textarea#restore-state {
     eval "ble/util/restore-vars $prefix \"\${${prefix}_VARNAMES[@]}\""
     eval "ble/util/restore-arrs $prefix \"\${${prefix}_ARRNAMES[@]}\""
   else
-    ble/bin/echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
+    ble/util/print "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
   fi
 }
@@ -2093,7 +2093,7 @@ function ble/textarea#clear-state {
     local vars=${prefix}_VARNAMES arrs=${prefix}_ARRNAMES
     eval "unset -v \"\${$vars[@]/#/$prefix}\" \"\${$arrs[@]/#/$prefix}\" $vars $arrs"
   else
-    ble/bin/echo "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
+    ble/util/print "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
   fi
 }
@@ -2946,7 +2946,7 @@ function ble/widget/exit {
       else
         message='There are remaining jobs. Use "exit" to leave the shell.'
       fi
-      ble/widget/internal-command "ble/bin/echo '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
+      ble/widget/internal-command "ble/util/print '${_ble_term_setaf[12]}[ble: ${message//$q/$Q}]$_ble_term_sgr0'; jobs"
       return
     fi
   elif [[ :$opts: == *:checkjobs:* ]]; then
@@ -4003,7 +4003,7 @@ function ble/builtin/exit/.read-arguments {
     elif local rex='^[-+]?[0-9]+$'; [[ $arg =~ $rex ]]; then
       ble/array#push opt_args "$arg"
     else
-      ble/bin/echo "exit: unrecognized argument '$arg'" >&2
+      ble/util/print "exit: unrecognized argument '$arg'" >&2
       opt_flags=${opt_flags}E
     fi
   done
@@ -4053,7 +4053,7 @@ function ble/builtin/exit {
     done
   fi
 
-  ble/bin/echo "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
+  ble/util/print "${_ble_term_setaf[12]}[ble: exit]$_ble_term_sgr0" >&2
   builtin exit "${opt_args[@]}" &>/dev/null
   builtin exit "${opt_args[@]}" &>/dev/null
   return 1 # exit できなかった場合は 1 らしい
@@ -4102,14 +4102,14 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
     local rex='^\ble-edit/exec:gexec/.'
     if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
-      ble/bin/echo "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 ${FUNCNAME[1]} $1" >&2
+      ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 ${FUNCNAME[1]} $1" >&2
       return 2
     fi
 
     local rex='^(\ble-edit/exec:gexec/\.)'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
-      ble/bin/echo "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 $BASH_COMMAND $1" >&2
+      ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 $BASH_COMMAND $1" >&2
       return 2
     fi
   fi
@@ -4127,7 +4127,7 @@ function ble/builtin/trap:DEBUG {
 }
 
 function ble-edit/exec:gexec/.TRAPINT {
-  ble/bin/echo "$_ble_term_bold^C$_ble_term_sgr0" >&2
+  ble/util/print "$_ble_term_bold^C$_ble_term_sgr0" >&2
   if ((_ble_bash>=40300)); then
     _ble_edit_exec_INT=130
   else
@@ -4242,12 +4242,12 @@ function ble-edit/exec:gexec/.epilogue {
     # SIGERR処理
     ble-edit/exec:gexec/invoke-hook-with-setexit ERR &>/dev/tty
     if [[ $bleopt_exec_errexit_mark == $'\e[91m[ble: exit %d]\e[m' ]]; then
-      ble/bin/echo "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0"
+      ble/util/print "${_ble_term_setaf[9]}[ble: exit $_ble_edit_exec_lastexit]$_ble_term_sgr0"
     elif [[ $bleopt_exec_errexit_mark ]]; then
       local ret
       ble/util/sprintf ret "$bleopt_exec_errexit_mark" "$_ble_edit_exec_lastexit"
       x=0 y=0 g=0 ble/canvas/trace "$ret"
-      ble/bin/echo "$ret"
+      ble/util/print "$ret"
     fi >&3 # Note: >&3 は set -x 対策による呼び出し元のリダイレクトと対応 #D0930
   fi
 }
@@ -4400,8 +4400,8 @@ function ble/edit/hist_expanded/.core {
 }
 function ble-edit/hist_expanded/.expand {
   ble/edit/hist_expanded/.core 2>/dev/null; local ext=$?
-  ((ext)) && ble/bin/echo "$BASH_COMMAND"
-  ble/bin/echo -n :
+  ((ext)) && ble/util/print "$BASH_COMMAND"
+  ble/util/put :
   return "$ext"
 }
 
@@ -4530,7 +4530,7 @@ function ble/widget/edit-and-execute-command {
   ble-edit/content/clear-arg
 
   local file=$_ble_base_run/$$.blesh-fc.bash
-  ble/bin/echo "$_ble_edit_str" >| "$file"
+  ble/util/print "$_ble_edit_str" >| "$file"
   ble/widget/.newline
 
   if ! ${VISUAL:-${EDITOR:-emacs}} "$file"; then
@@ -6482,7 +6482,7 @@ function ble/builtin/read/.read-arguments {
       (--help)
         opt_flags=${opt_flags}H ;;
       (*)
-        ble/bin/echo "read: unrecognized long option '$arg'" >&2
+        ble/util/print "read: unrecognized long option '$arg'" >&2
         opt_flags=${opt_flags}E ;;
       esac
     else
@@ -6494,14 +6494,14 @@ function ble/builtin/read/.read-arguments {
           if (($#)); then
             ble/builtin/read/.process-option -$c "$1"; shift
           else
-            ble/bin/echo "read: missing option argument for '-$c'" >&2
+            ble/util/print "read: missing option argument for '-$c'" >&2
             opt_flags=${opt_flags}E
           fi
           break ;;
         ([adinNptu]*) ble/builtin/read/.process-option -$c "${arg:i+1}"; break ;;
         ([ers]*)      ble/builtin/read/.process-option -$c ;;
         (*)
-          ble/bin/echo "read: unrecognized option '-$c'" >&2
+          ble/util/print "read: unrecognized option '-$c'" >&2
           opt_flags=${opt_flags}E ;;
         esac
       done
@@ -6837,7 +6837,7 @@ function ble/widget/command-help.core {
     return 0
   fi
 
-  ble/bin/echo "ble: help of \`$command' not found" >&2
+  ble/util/print "ble: help of \`$command' not found" >&2
   return 1
 }
 
@@ -7065,7 +7065,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
           fi
 
           if [[ $bleopt_internal_ignoreeof_trap ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
-            ble/bin/echo eof >> "$_ble_edit_io_fname2.proc"
+            ble/util/print eof >> "$_ble_edit_io_fname2.proc"
             kill -USR1 $$
             ble/util/msleep 100 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
           fi
@@ -7115,7 +7115,7 @@ function ble-edit/bind/.check-detach {
   if [[ ! -o emacs && ! -o vi ]]; then
     # 実は set +o emacs などとした時点で eval の評価が中断されるので、これを検知することはできない。
     # 従って、現状ではここに入ってくることはないようである。
-    ble/bin/echo "${_ble_term_setaf[9]}[ble: unsupported]$_ble_term_sgr0 Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
+    ble/util/print "${_ble_term_setaf[9]}[ble: unsupported]$_ble_term_sgr0 Sorry, ble.sh is supported only with some editing mode (set -o emacs/vi)." 1>&2
     ble-detach
   fi
 

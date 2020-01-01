@@ -4,7 +4,7 @@ function ble/test/check-ret {
   local f=$2 expected=$1 ret
   "$f" "${@:3}"
   ble/util/assert '[[ $ret == "$expected" ]]' ||
-    ble/bin/echo "fail: command=($f ${*:3}) result=($ret) expected=($expected)" >&2
+    ble/util/print "fail: command=($f ${*:3}) result=($ret) expected=($expected)" >&2
 }
 
 function ble/test:ble-edit/content/find-logical-eol {

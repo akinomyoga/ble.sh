@@ -222,7 +222,7 @@ IFS=$' \t\n'
 
 if [[ $_ble_base ]]; then
   if ! ble/base/unload-for-reload &>/dev/null; then
-    ble/bin/echo "ble.sh: ble.sh seems to be already loaded." >&2
+    ble/util/print "ble.sh: ble.sh seems to be already loaded." >&2
     return 1
   fi
 fi
@@ -232,7 +232,8 @@ fi
 
 # ble/bin
 
-function ble/bin/echo { builtin echo "$@"; }
+function ble/util/put { builtin printf '%s' "$*"; }
+function ble/util/print { builtin printf '%s\n' "$*"; }
 
 ## 関数 ble/bin/.default-utility-path commands...
 ##   取り敢えず ble/bin/* からコマンドを呼び出せる様にします。
@@ -271,7 +272,7 @@ function ble/.check-environment {
         commandMissing="$commandMissing\`$cmd', "
       fi
     done
-    ble/bin/echo "ble.sh: Insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
+    ble/util/print "ble.sh: Insane environment: The command(s), ${commandMissing}not found. Check your environment variable PATH." >&2
 
     # try to fix PATH
     local default_path=$(command -p getconf PATH 2>/dev/null)
@@ -286,12 +287,12 @@ function ble/.check-environment {
       fi
     fi
 
-    ble/bin/echo "ble.sh: modified PATH=\$PATH${PATH:${#original_path}}" >&2
+    ble/util/print "ble.sh: modified PATH=\$PATH${PATH:${#original_path}}" >&2
   fi
 
 #%if use_gawk
   if ! type gawk &>/dev/null; then
-    ble/bin/echo "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
+    ble/util/print "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
     return 1
   fi
   ble/bin/.default-utility-path gawk
@@ -391,15 +392,15 @@ function ble/base/.create-user-directory {
     # dangling symlinks are silently removed
     [[ ! -e $dir && -h $dir ]] && ble/bin/rm -f "$dir"
     if [[ -e $dir || -h $dir ]]; then
-      ble/bin/echo "ble.sh: cannot create a directory '$dir' since there is already a file." >&2
+      ble/util/print "ble.sh: cannot create a directory '$dir' since there is already a file." >&2
       return 1
     fi
     if ! (umask 077; ble/bin/mkdir -p "$dir"); then
-      ble/bin/echo "ble.sh: failed to create a directory '$dir'." >&2
+      ble/util/print "ble.sh: failed to create a directory '$dir'." >&2
       return 1
     fi
   elif ! [[ -r $dir && -w $dir && -x $dir ]]; then
-    ble/bin/echo "ble.sh: permision of '$tmpdir' is not correct." >&2
+    ble/util/print "ble.sh: permision of '$tmpdir' is not correct." >&2
     return 1
   fi
   eval "$var=\$dir"
@@ -438,7 +439,7 @@ function ble/base/initialize-base-directory {
   [[ -d $_ble_base ]]
 }
 if ! ble/base/initialize-base-directory "${BASH_SOURCE[0]}"; then
-  ble/bin/echo "ble.sh: ble base directory not found!" 1>&2
+  ble/util/print "ble.sh: ble base directory not found!" 1>&2
   return 1
 fi
 
@@ -457,12 +458,12 @@ function ble/base/initialize-runtime-directory/.xdg {
   local runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$UID}
   if [[ ! -d $runtime_dir ]]; then
     [[ $XDG_RUNTIME_DIR ]] &&
-      ble/bin/echo "ble.sh: XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' is not a directory." >&2
+      ble/util/print "ble.sh: XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' is not a directory." >&2
     return 1
   fi
   if ! [[ -r $runtime_dir && -w $runtime_dir && -x $runtime_dir ]]; then
     [[ $XDG_RUNTIME_DIR ]] &&
-      ble/bin/echo "ble.sh: XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' doesn't have a proper permission." >&2
+      ble/util/print "ble.sh: XDG_RUNTIME_DIR='$XDG_RUNTIME_DIR' doesn't have a proper permission." >&2
     return 1
   fi
 
@@ -475,13 +476,13 @@ function ble/base/initialize-runtime-directory/.tmp {
   if [[ ! -d $tmp_dir ]]; then
     [[ ! -e $tmp_dir && -h $tmp_dir ]] && ble/bin/rm -f "$tmp_dir"
     if [[ -e $tmp_dir || -h $tmp_dir ]]; then
-      ble/bin/echo "ble.sh: cannot create a directory '$tmp_dir' since there is already a file." >&2
+      ble/util/print "ble.sh: cannot create a directory '$tmp_dir' since there is already a file." >&2
       return 1
     fi
     ble/bin/mkdir -p "$tmp_dir" || return
     ble/bin/chmod a+rwxt "$tmp_dir" || return
   elif ! [[ -r $tmp_dir && -w $tmp_dir && -x $tmp_dir ]]; then
-    ble/bin/echo "ble.sh: permision of '$tmp_dir' is not correct." >&2
+    ble/util/print "ble.sh: permision of '$tmp_dir' is not correct." >&2
     return 1
   fi
 
@@ -500,7 +501,7 @@ function ble/base/initialize-runtime-directory {
   ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
 }
 if ! ble/base/initialize-runtime-directory; then
-  ble/bin/echo "ble.sh: failed to initialize \$_ble_base_run." 1>&2
+  ble/util/print "ble.sh: failed to initialize \$_ble_base_run." 1>&2
   return 1
 fi
 
@@ -542,12 +543,12 @@ function ble/base/initialize-cache-directory/.xdg {
   local cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}
   if [[ ! -d $cache_dir ]]; then
     [[ $XDG_CACHE_HOME ]] &&
-      ble/bin/echo "ble.sh: XDG_CACHE_HOME='$XDG_CACHE_HOME' is not a directory." >&2
+      ble/util/print "ble.sh: XDG_CACHE_HOME='$XDG_CACHE_HOME' is not a directory." >&2
     return 1
   fi
   if ! [[ -r $cache_dir && -w $cache_dir && -x $cache_dir ]]; then
     [[ $XDG_CACHE_HOME ]] &&
-      ble/bin/echo "ble.sh: XDG_CACHE_HOME='$XDG_CACHE_HOME' doesn't have a proper permission." >&2
+      ble/util/print "ble.sh: XDG_CACHE_HOME='$XDG_CACHE_HOME' doesn't have a proper permission." >&2
     return 1
   fi
 
@@ -572,7 +573,7 @@ function ble/base/initialize-cache-directory {
   ble/base/.create-user-directory _ble_base_cache "$cache_dir/$UID"
 }
 if ! ble/base/initialize-cache-directory; then
-  ble/bin/echo "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
+  ble/util/print "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
   return 1
 fi
 function ble/base/print-usage-for-no-argument-command {
@@ -595,7 +596,7 @@ function ble-update {
     local command
     for command in git make gawk; do
       type "$command" ||
-        ble/bin/echo "ble-update: '$command' command is not available." >&2
+        ble/util/print "ble-update: '$command' command is not available." >&2
     done
     return 1
   fi
@@ -611,7 +612,7 @@ function ble-update {
   fi
 
   if [[ $_ble_base_repository && -d $_ble_base_repository/.git ]]; then
-    ( ble/bin/echo "cd into $_ble_base_repository..." >&2 &&
+    ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
         builtin cd "$_ble_base_repository" &&
         git pull && { ! make -q || builtin exit 6; } && make all &&
         if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
@@ -622,7 +623,7 @@ function ble-update {
     return "$ext"
   fi
 
-  ble/bin/echo 'ble-update: git repository not found' >&2
+  ble/util/print 'ble-update: git repository not found' >&2
   return 1
 }
 #%if measure_load_time
@@ -741,7 +742,7 @@ function ble/base/unload-for-reload {
   if [[ $_ble_attached ]]; then
     _ble_attached=
     ble-detach/impl
-    ble/bin/echo "${_ble_term_setaf[12]}[ble: reload]$_ble_term_sgr0" 1>&2
+    ble/util/print "${_ble_term_setaf[12]}[ble: reload]$_ble_term_sgr0" 1>&2
     _ble_edit_detach_flag=reload
   fi
   ble/base/unload
@@ -807,7 +808,7 @@ function ble/base/process-blesh-arguments {
       if [[ $rcfile && -f $rcfile ]]; then
         _ble_base_rcfile=$rcfile
       else
-        ble/bin/echo "ble.sh ($arg): '$rcfile' is not a regular file." >&2
+        ble/util/print "ble.sh ($arg): '$rcfile' is not a regular file." >&2
         opt_error=1
       fi ;;
     (--keep-rlvars)
@@ -815,7 +816,7 @@ function ble/base/process-blesh-arguments {
     (--debug-bash-output)
       bleopt_internal_suppress_bash_output= ;;
     (*)
-      ble/bin/echo "ble.sh: unrecognized argument '$arg'" >&2
+      ble/util/print "ble.sh: unrecognized argument '$arg'" >&2
       opt_error=1
     esac
   done

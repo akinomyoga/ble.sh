@@ -233,7 +233,7 @@ function ble/syntax-highlight+default {
             unalias "$cmd"
             ble/util/type type "$cmd"
             ble/syntax-highlight+default/type "$type" "$cmd" # -> type
-            builtin echo -n "$type")
+            ble/util/put "$type")
         elif [[ "$type" = keyword && "$cmd" != "$_0" ]]; then
           # keyword (time do if function else elif fi の類) を \ で無効化している場合
           # →file, function, builtin, jobs のどれかになる。以下 3fork+2exec

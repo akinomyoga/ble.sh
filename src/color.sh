@@ -920,10 +920,10 @@ function ble/color/initialize-faces {
         ble/color/face2g "$value"
       fi ;;
     (face:*) # obsolete
-      ble/bin/echo 'ble-color-setface: "iface:*" is obsoleted. Use "copy:*" instead.' >&2
+      ble/util/print 'ble-color-setface: "iface:*" is obsoleted. Use "copy:*" instead.' >&2
       ble/color/face2g "$value" ;;
     (iface:*) # obsolete
-      ble/bin/echo 'ble-color-setface: "iface:*" is obsoleted. Use "copy:*" instead.' >&2
+      ble/util/print 'ble-color-setface: "iface:*" is obsoleted. Use "copy:*" instead.' >&2
       ble/color/iface2g "$value" ;;
     (sgrspec:*) ble/color/sgrspec2g "$value" ;;
     (ansi:*)    ble/color/ansi2g "$value" ;;
@@ -946,7 +946,7 @@ function ble/color/initialize-faces {
       if [[ $_ble_color_faces_initializing ]]; then
         ble/array#push _ble_color_faces_errors "$message"
       else
-        builtin echo "$message" >&2
+        ble/util/print "$message" >&2
       fi
       return 1
     fi
