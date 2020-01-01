@@ -1164,13 +1164,18 @@ function ble/builtin/history/option:s {
   _ble_builtin_history_prevmax=$max
 }
 function ble/builtin/history {
+  local opt_d= flag_error=
+  local opt_c= opt_p= opt_s=
+  local opt_a= flags=
   while [[ $1 == -* ]]; do
     local arg=$1; shift
     [[ $arg == -- ]] && break
 
-    local opt_d= flag_error=
-    local opt_c= opt_p= opt_s=
-    local opt_a=
+    if [[ $arg == --help ]]; then
+      flags=h$flags
+      continue
+    fi
+
     local i n=${#arg}
     for ((i=1;i<n;i++)); do
       local c=${arg:i:1}
@@ -1198,12 +1203,17 @@ function ble/builtin/history {
           opt_a=$c
         fi ;;
       (*)
-        ble/util/print 'ble/builtin/history: unknown option "-$c".' >&2
+        ble/util/print "ble/builtin/history: unknown option \"-$c\"." >&2
         flag_error=1 ;;
       esac
     done
   done
   [[ $flag_error ]] && return 1
+
+  if [[ $flags == *h* ]]; then
+    builtin history --help
+    return
+  fi
 
   # -cdanwr
   local flag_processed=
