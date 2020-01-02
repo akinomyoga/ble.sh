@@ -1122,59 +1122,6 @@ bash_tips
 
 2019-05-27
 
-  * history: 履歴のリアルタイム同期?
-    現在は新しくコマンドを実行した時にだけ同期を行っている。
-    履歴を参照する度に毎回同期を行う様にしたい。
-
-    更新のタイミングに関して。
-    一回の widget の実行の中で読み込みを何度も実行すると、
-    途中で get-index 等の値が勝手に変化したりする事になって混乱の元である。
-    という事を考えると widget 毎に初回の history access の時にだけ更新するのが良い。
-    widget を呼び出す時にローカル変数か何かを設定しておいてそれをクリアする様にする。
-    初回の history アクセスの際にそのローカル変数が空だったら値を設定して更新を行う。
-    更新は、もし履歴が初期化済みだったら増えた分だけ配列に追加するというのを実行する。
-
-    vim の mark 等で現在履歴項目に対して記録してある内容は shift する必要がある。
-    他に現在の履歴項目関連で修正しなければならない物は何があるだろうか。
-    例えば isearch の位置に関しては修正が必要になるのではないか。
-    isearch の範囲に関しても修正が必要になる気がする。
-    これらは以前まとめた history コマンドの対応の項目とも関連してくる。
-    実のところそちらを先に実装してからの方が良いのかもしれない。
-    - history: _ble_edit_history_ind の修正などが必要
-    - ble-edit/undo: hindex の修正などが必要
-
-    同期のタイミングは難しい。
-    例えば履歴を遡っている時に編集中の最新のコマンドはどうなるのか。
-    最新のコマンドは _ble_edit_history_edit[N] に記録されている。
-    この時新しいコマンドを読み取ってしまうと最新のコマンドは上書きされてしまう。
-    vi.sh の mark や undo 等も同様である。
-    最新の内容は新しいコマンドを読み取る前に待避して置かなければならない。
-
-    * 2020-01-02 これに関しては一番下の項目にいる時にだけ同期を実行する事にすれば良いのでは。
-      % 或いは一番下の項目にいて更に下キーを押した時に限り自動ロードを試みる事にする。
-      % →と思ったが現在の編集行の後に新しく履歴が追加されるのが自然なのか、
-      % 或いは現在の編集業の前に新しく履歴が追加されるのが自然なのかは難しい。
-      % その様に考えるとやはりコマンドを実行した時など履歴に登録がなされて
-      % 新しい行がロードされる機会に更新が行われる方が動作として分かりやすい。
-      % →やはり新しい履歴は現在の編集行の前に挿入されるべきである。
-      % そうしないと履歴の順序などが変な事になってしまう。
-
-      逆に一番下の項目から遡ろうとする時に同期を実行するという手?
-      或いは一番下の行に戻ってきた瞬間に同期を実行する。
-      その様にするのが現在の所一番自然な気がする。
-
-    そもそも勝手に読み込みが為されるのが分かりやすいのかどうかというのもある。
-    他の端末で大量にコマンドを実行した時に、
-    現在の編集中のコマンド履歴が遠くなってしまうのは分かりにくくないか。
-    しかし、それはそもそもコマンド履歴の共有をする時の分かりにくさでもある。
-    コマンド履歴の共有を行っているのであれば実は大量のコマンドがあっても
-    それを共有するというのが自然な振る舞いなのではないだろうか。
-
-    [実装]
-
-    取り敢えず一番下の履歴項目への(または、からの)移動の時に
-    履歴の読み込みを試みる方向での実装を考える事にする。
-
   * 次に機能を追加するとしたらマウスなのだろうという気がする。
     fish は未だマウスに対応していない。
     zsh はそういう拡張があるらしいがちゃんと動くのかは知らない。
@@ -2387,7 +2334,7 @@ bash_tips
   - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
   - highlight: support job names by `auto_resume` `#D1065` ce46024
   - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
-  - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f
+  - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f `#D1193` 0000000
   - history: support full multiline history `#D1120` 8cf17f7
     - history: do not synchronize multiline resolution on "history -p" `#D1121` 9e56b7b
     - history.mlfix: suppress errors on Bash 3 `#D1122` 4fe7a0c
@@ -2406,8 +2353,8 @@ bash_tips
   - complete: support `bleopt complete_allow_reduction` `#D1181` 03040b7
   - edit: support `bleopt exec_errexit_mark` `#D1182` 6adc2df
   - color: support true colors `#D1184` bd631ce 5dd6b03
-  - color (`ble-color-setface`): support reference to another face `#D1188` 047456d
-  - edit: support `shopt -u promptvars` `#D1189` 8b3065e
+  - color (`ble-color-setface`): support reference to another face `#D1188` 1885b54
+  - edit: support `shopt -u promptvars` `#D1189` 269ba09
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2443,7 +2390,7 @@ bash_tips
   - edit: support options `--help` for `read` and `exit` `#D1173` faccc6b
   - color (`ble-color-{set,def}face`): list faces without arguments `#D1180` 50327c3
   - complete: search completion settings through alias expansion `#D1187` c472809
-  - history (`ble/builtin/history`): support an option `--help` `#D1192` 0000000
+  - history (`ble/builtin/history`): support an option `--help` `#D1192` d4c26c5
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2511,8 +2458,8 @@ bash_tips
   - global: follow bash syntactic changes on arithmentic command 16e0f0e
   - decode: check `bind -X` first to store the original bindings `#D1179` 4057ff0
   - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1186` 550fb14
-  - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 047456d
-  - global: workaround `shopt -s xpg_echo` `#D1191` 0000000
+  - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 1885b54
+  - global: workaround `shopt -s xpg_echo` `#D1191` e46f9a3
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3457,6 +3404,176 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-02
+
+  * 2019-05-27 history: 履歴のリアルタイム同期? [#D1193]
+    現在は新しくコマンドを実行した時にだけ同期を行っている。
+    履歴を参照する度に毎回同期を行う様にしたい。
+
+    更新のタイミングに関して。
+    一回の widget の実行の中で読み込みを何度も実行すると、
+    途中で get-index 等の値が勝手に変化したりする事になって混乱の元である。
+    という事を考えると widget 毎に初回の history access の時にだけ更新するのが良い。
+    widget を呼び出す時にローカル変数か何かを設定しておいてそれをクリアする様にする。
+    初回の history アクセスの際にそのローカル変数が空だったら値を設定して更新を行う。
+    更新は、もし履歴が初期化済みだったら増えた分だけ配列に追加するというのを実行する。
+
+    vim の mark 等で現在履歴項目に対して記録してある内容は shift する必要がある。
+    他に現在の履歴項目関連で修正しなければならない物は何があるだろうか。
+    例えば isearch の位置に関しては修正が必要になるのではないか。
+    isearch の範囲に関しても修正が必要になる気がする。
+    これらは以前まとめた history コマンドの対応の項目とも関連してくる。
+    実のところそちらを先に実装してからの方が良いのかもしれない。
+    - history: _ble_edit_history_ind の修正などが必要
+    - ble-edit/undo: hindex の修正などが必要
+
+    同期のタイミングは難しい。
+    例えば履歴を遡っている時に編集中の最新のコマンドはどうなるのか。
+    最新のコマンドは _ble_edit_history_edit[N] に記録されている。
+    この時新しいコマンドを読み取ってしまうと最新のコマンドは上書きされてしまう。
+    vi.sh の mark や undo 等も同様である。
+    最新の内容は新しいコマンドを読み取る前に待避して置かなければならない。
+
+    * 2020-01-02 これに関しては一番下の項目にいる時にだけ同期を実行する事にすれば良いのでは。
+      % 或いは一番下の項目にいて更に下キーを押した時に限り自動ロードを試みる事にする。
+      % →と思ったが現在の編集行の後に新しく履歴が追加されるのが自然なのか、
+      % 或いは現在の編集業の前に新しく履歴が追加されるのが自然なのかは難しい。
+      % その様に考えるとやはりコマンドを実行した時など履歴に登録がなされて
+      % 新しい行がロードされる機会に更新が行われる方が動作として分かりやすい。
+      % →やはり新しい履歴は現在の編集行の前に挿入されるべきである。
+      % そうしないと履歴の順序などが変な事になってしまう。
+
+      逆に一番下の項目から遡ろうとする時に同期を実行するという手?
+      或いは一番下の行に戻ってきた瞬間に同期を実行する。
+      その様にするのが現在の所一番自然な気がする。
+
+    そもそも勝手に読み込みが為されるのが分かりやすいのかどうかというのもある。
+    他の端末で大量にコマンドを実行した時に、
+    現在の編集中のコマンド履歴が遠くなってしまうのは分かりにくくないか。
+    しかし、それはそもそもコマンド履歴の共有をする時の分かりにくさでもある。
+    コマンド履歴の共有を行っているのであれば実は大量のコマンドがあっても
+    それを共有するというのが自然な振る舞いなのではないだろうか。
+
+    [実装]
+
+    取り敢えず一番下の履歴項目への(または、からの)移動の時に
+    履歴の読み込みを試みる方向での実装を考える事にする。
+
+    一番下の履歴項目に関連して何か登録してある物があれば
+    それを更新する必要がある。然し、それはコマンド履歴を登録せずに
+    新しい行をロードする時にも同じ事なのではないか。
+    つまり現状の実装で大丈夫ならば一番下の履歴項目に関連して
+    ロードしている限りに於いては問題は起こらないのではないかという気がする。
+
+    * 自動読み込みによってプロンプト (\!) は変更されるか?
+      所で履歴項目の番号がプロンプトに表示されるのだとすれば、
+      それが読み込みの瞬間に変化するというのは見られるのかもしれない。
+      と思って確かめたが履歴項目の番号に展開される backslash はなかった。
+      と思ったが違った \! というのがそれに対応するのだった。
+      然し、途中で履歴項目の番号が変化したとしても prompt の更新は
+        local version=$COLUMNS:$_ble_edit_lineno
+      で判定しているので更新はその場ではかからないのである。
+      →変更されない。これはややこしい。
+        或いは読み込みがあった時には強制的に _ble_edit_lineno
+        を更新しても良いのかもしれないが。うーん。でもそれはそれで変だ。
+        _ble_edit_lineno は独立した意味を持っている。
+      然し実行した後で履歴展開を使用したい場合を考えると、
+      其処に表示されている番号は当然正しい番号であって欲しい。
+
+    取り敢えず現在の実装を確認する事にする。
+    history_share がある時には option:n を呼び出していて、
+    更に ble/builtin/history/.read が呼び出されている。
+    この中で新しい項目の読み込みを行っている。
+    - 更に呼び出している ble/history:bash/resolve-multiline/readfile
+      を確認してみたがこれは違う。bash の history に対する修正を行っているのみである。
+    - ble/builtin/history/.read を確認すると ble/history:bash/load を呼び出していて、
+      これが丁度 background で while case (0)...(6) をやっている関数である。
+      中を確認するとここで mapfile で履歴を読み取ると共に
+      複数行履歴の解決も実行している。
+    何を確認するのだったか。どのように更新されるのかを確認するのだった。
+    更新されるのは _ble_history 及び _ble_history_edit である。
+    従って現在編集中の行が存在する場合には _ble_history_edit の内容は待避する必要がある。
+    確認する事にする。というか undo 履歴などもある筈である。全て shift する必要があるのでは。
+
+    blehook の history_delete, history_clear に対応して
+    逆に history_insert 的な操作を実装する必要がある気がする。
+
+    * undo 情報は何処で clear されているのか?
+      というか空の行で実行した時に undo 履歴が clear されないのでは??
+      と思って確認してみたら clear されていた。どうなっている?
+        空の行を実行すると .newline が呼び出される。
+        中では ble/history/onleave.fire 
+        ble/widget/.newline/clear-content が呼び出されている。
+        - clear-content の方は何も実行していない。
+        - onleave.fire の方は history_onleave を invoke している。
+          然し history_onleave に登録されているのは
+          ble/keymap:vi/mark/history-onleave.hook だけである。
+
+      どうも変だと思って再度確認した所、
+      実は undo 情報は clear されていなかった。
+      空行で実行した後も undo 履歴は残っているのだった。
+      これはこれで妥当な振る舞いの様な気がする。
+
+    取り敢えず謎は解けた。history_insert でも対応する事にするのが良さそう。
+    option:n の読み取りに於いて history_insert が呼び出される様に実装した。
+    取り敢えず history_share で option:n を呼び出す様にする。
+
+    [テスト]
+
+    一応動作はしている様子であるが変な事がある。
+
+    x fixed: 何故かロードが起こると bell が鳴る
+      まあ n 件履歴項目が更新されましたなどと表示できるならばそれはそれで便利かもしれない。
+      どうも option:n の中で発生している気がする。
+
+      調べてみるとどうも ble/widget/.bell が直接 ble-edit/history/goto の中から呼び出されている。
+      あー。これはどうも分かった。option:n の中で更に history/goto が呼び出されている。
+      内部では get-count が未だ更新されていない状態なので変な事になる。
+      と思ったがどの経由で呼び出されているのかが分からない。
+      history.sh では少なくとも直接は呼び出していない。
+
+      うーん。どうも ble-edit/history/history-insert.hook である。
+      blehook/invoke history_insert の前に count を更新するのが良いだろうか。
+      →_ble_history_count を更新してから invoke history_insert する様に変更した。
+
+      x fixed: 同時に二重に呼び出された時の振る舞いについて考えて置かなければならない。
+        ちゃんと関数を呼び出し直す等の対策が必要になるのではないだろうか。
+        →改めて goto を呼び出し直す事にした。
+      x fixed: と思ったら無限ループになってクラッシュした。
+        修正した。読み込みが起こった時にだけ goto (2回目) を呼び出す様にした。
+
+      x fixed: 未だ bell が鳴る。詳細を調べてみる。分かった。そもそも行き先の index の値が変だ。
+        何故この様な結果になるのだろうか。。。
+
+        分かった。ble-edit/history/history-insert.hook の中で履歴項目を移動しているが、
+        実は history.sh の側で既に履歴項目を移動しているのである。
+        うーん。これによる移動をどうやって処理するのが正しいのか。。
+
+        調べると _ble_history_ind は edit.sh 側では一切触っていない。
+        従ってこれの移動に関しては history.sh に任せるべきなのでは。
+        これの移動に伴って edit.sh 側でしておかなければならない処理はあっただろうか。
+        つまり単に移動するだけではなくて goto を呼び出す必要があった理由は何だろうか。
+
+        確かめてみると _ble_history_ind はちゃんと history.sh の側で更新されている。
+        つまり今まで二重更新になっていた。
+        うーん。goto を呼び出す事によって ind, mark が更新されるという事はある様だ。
+        然しそれ以外の事に関しては何もない。そして ind,mark が勝手に更新されるというのも変な話だ。
+        つまり単純に処理をしないというのが自然な実装である。単に hook を削除する事にした。
+
+    x fixed: 何故か PS1 が更新されない。PS1 の更新は試みられないのだったか?
+
+      どうやら内部的にはちゃんと prompt は変化している様子である。
+      単に出力されていない。prompt の更新だけ簡単にできないかと思ったが
+      色々と複雑そうだ。更に、prompt の変化があったかどうかも判定しなければならないが、
+      rps だとか色々ある。仕方がないので invalidate を直接呼び出す事にした。
+
+    x fixed: うーん。検索中にキャンセルして現在編集位置に戻って来た時にロードが起こったりすると面倒。
+      という事を考えると特別な keymap の時にはやはり history_share は off にするべきなのでは。
+
+      keymap を検索して isearch の時には読み込みを抑制する事にした。
+      一方で nsearch や lastarg は history/goto を呼び出す事はないので
+      そもそも history/goto に入ってくる事はないのでチェックしなくて良い。
 
 2020-01-01
 

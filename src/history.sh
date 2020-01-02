@@ -370,9 +370,15 @@ function ble/history:bash/initialize {
   [[ $_ble_history_load_done ]] && return
   ble/history:bash/load "init:$@"; local ext=$?
   ((ext)) && return "$ext"
+
+  local old_count=$_ble_history_count new_count=${#_ble_history[@]}
   _ble_history_load_done=1
-  _ble_history_count=${#_ble_history[@]}
+  _ble_history_count=$new_count
   _ble_history_ind=$_ble_history_count
+
+  # Note: 追加読み込みをした際に対応するデータを shift (history_share)
+  local delta=$((new_count-old_count))
+  ((delta>0)) && blehook/invoke history_insert "$old_count" "$delta"
 }
 
 #------------------------------------------------------------------------------
@@ -746,7 +752,7 @@ function ble/builtin/history/.check-uncontrolled-change {
     _ble_builtin_history_prevmax=$max
   fi
 }
-## 関数 ble/builtin/history/.load-recent-entries delta
+## 関数 ble/builtin/history/.load-recent-entries count
 ##   history の最新 count 件を配列 _ble_history に読み込みます。
 function ble/builtin/history/.load-recent-entries {
   [[ $_ble_decode_bind_state == none ]] && return
@@ -769,9 +775,10 @@ function ble/builtin/history/.load-recent-entries {
 
   ble/history:bash/load append:count=$delta
 
-  local count=${#_ble_history[@]}
-  ((_ble_history_ind==_ble_history_count)) && _ble_history_ind=$count
-  _ble_history_count=$count
+  local ocount=$_ble_history_count ncount=${#_ble_history[@]}
+  ((_ble_history_ind==_ble_history_count)) && _ble_history_ind=$ncount
+  _ble_history_count=$ncount
+  blehook/invoke history_insert "$ocount" "$delta"
 }
 ## 関数 ble/builtin/history/.read file [skip [fetch]]
 function ble/builtin/history/.read {
@@ -896,13 +903,31 @@ function ble/builtin/history/array#delete-hindex {
     for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
   eval -- "${script//ARRAY/$array_name}"
 }
+## 関数 ble/builtin/history/array#insert-range array_name beg len
+function ble/builtin/history/array#insert-range {
+  local array_name=$1 beg=$2 len=$3
+  local script='
+    local -a out=()
+    local i
+    for i in "${!ARRAY[@]}"; do
+      out[i<beg?beg:i+len]=${ARRAY[i]}
+    done
+    ARRAY=()
+    for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
+  eval -- "${script//ARRAY/$array_name}"
+}
 blehook history_delete+=ble/builtin/history/delete.hook
 blehook history_clear+=ble/builtin/history/clear.hook
+blehook history_insert+=ble/builtin/history/insert.hook
 function ble/builtin/history/delete.hook {
   ble/builtin/history/array#delete-hindex _ble_history_dirt "$@"
 }
 function ble/builtin/history/clear.hook {
   _ble_history_dirt=()
+}
+function ble/builtin/history/insert.hook {
+  # Note: _ble_history, _ble_history_edit は別に更新される
+  ble/builtin/history/array#insert-range _ble_history_dirt "$@"
 }
 ## 関数 ble/builtin/history/option:c
 function ble/builtin/history/option:c {

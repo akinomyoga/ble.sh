@@ -2303,14 +2303,19 @@ function ble/keymap:vi/mark/update-mark-history {
     _ble_keymap_vi_mark_hindex=$h
   fi
 }
-blehook history_delete+=ble/keymap:vi/mark/history-delete.hook
 blehook history_clear+=ble/keymap:vi/mark/history-clear.hook
+blehook history_delete+=ble/keymap:vi/mark/history-delete.hook
+blehook history_insert+=ble/keymap:vi/mark/history-insert.hook
+function ble/keymap:vi/mark/history-clear.hook {
+  _ble_keymap_vi_mark_global=()
+  _ble_keymap_vi_mark_history=()
+  _ble_keymap_vi_mark_hindex=
+}
 ## 関数 ble/keymap:vi/mark/history-delete.hook index...
 ##   @param[in] index...
 ##     昇順に並んでいる事と重複がない事を仮定する。
 function ble/keymap:vi/mark/history-delete.hook {
   # update _ble_keymap_vi_mark_global
-  local -a out=()
   for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
     local value=${_ble_keymap_vi_mark_global[imark]}
     local h=${value%%:*} v=${value#*:}
@@ -2327,9 +2332,9 @@ function ble/keymap:vi/mark/history-delete.hook {
         ((shift++))
       fi
     done
-    [[ $shift ]] && out[imark]=$((h-shift)):$v
+    [[ $shift ]] &&
+      _ble_keymap_vi_mark_global[imark]=$((h-shift)):$v
   done
-  _ble_keymap_vi_mark_global=("${out[@]}")
 
   # update _ble_keymap_vi_mark_history
   ble/builtin/history/array#delete-hindex _ble_keymap_vi_mark_history "$@"
@@ -2337,9 +2342,23 @@ function ble/keymap:vi/mark/history-delete.hook {
   # reset _ble_keymap_vi_mark_hindex
   _ble_keymap_vi_mark_hindex=
 }
-function ble/keymap:vi/mark/history-clear.hook {
-  _ble_keymap_vi_mark_global=()
-  _ble_keymap_vi_mark_history=()
+## 関数 ble/keymap:vi/mark/history-insert.hook beg len
+##   @param[in] beg len
+function ble/keymap:vi/mark/history-insert.hook {
+  local beg=$1 len=$2
+
+  # update _ble_keymap_vi_mark_global
+  for imark in "${!_ble_keymap_vi_mark_global[@]}"; do
+    local value=${_ble_keymap_vi_mark_global[imark]}
+
+    local h=${value%%:*} v=${value#*:}
+    ((h>=beg)) && _ble_keymap_vi_mark_global[imark]=$((h+len)):$v
+  done
+
+  # update _ble_keymap_vi_mark_history
+  ble/builtin/history/array#insert-range _ble_keymap_vi_mark_history "$@"
+
+  # reset _ble_keymap_vi_mark_hindex
   _ble_keymap_vi_mark_hindex=
 }
 

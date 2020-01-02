@@ -674,7 +674,7 @@ function ble-edit/prompt/update/.eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble-edit/prompt/update {
-  local version=$COLUMNS:$_ble_edit_lineno
+  local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
   if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
     ble-edit/prompt/.load
     return
@@ -4726,7 +4726,6 @@ function ble/widget/shell-expand-line {
 ##   初期は空文字列でどの履歴項目でもない状態を表す。
 ##
 
-
 _ble_edit_undo=()
 _ble_edit_undo_index=0
 _ble_edit_undo_history=()
@@ -4773,8 +4772,16 @@ function ble-edit/undo/history-delete.hook {
 function ble-edit/undo/history-clear.hook {
   ble-edit/undo/clear-all
 }
+function ble-edit/undo/history-insert.hook {
+  ble/builtin/history/array#insert-range _ble_edit_undo_history "$@"
+  local beg=$1 len=$2
+  [[ $_ble_edit_undo_hindex ]] &&
+    ((_ble_edit_undo_hindex>=beg)) &&
+    ((_ble_edit_undo_hindex+=len))
+}
 blehook history_delete+=ble-edit/undo/history-delete.hook
 blehook history_clear+=ble-edit/undo/history-clear.hook
+blehook history_insert+=ble-edit/undo/history-insert.hook
 
 ## 関数 ble-edit/undo/.get-current-state
 ##   @var[out] str ind
@@ -4975,7 +4982,7 @@ function ble-edit/history/goto {
   ((index0==index1)) && return
 
   if ((index1>histlen)); then
-    index1=histlen
+    index1=$histlen
     ble/widget/.bell
   elif ((index1<0)); then
     index1=0
@@ -4983,6 +4990,22 @@ function ble-edit/history/goto {
   fi
 
   ((index0==index1)) && return
+
+  if [[ $bleopt_history_share  && ! $_ble_history_prefix && $_ble_decode_keymap != isearch ]]; then
+    # Note: isearch の途中の history/goto で履歴情報が書き換わると変な事になるので
+    #   isearch では history_share による読み込みは行わない。
+    #   一方で nsearch や lastarg は過去の履歴項目を参照するが
+    #   ble-edit/history/goto を呼び出す事はない。
+    if ((index0==histlen||index1==histlen)); then
+      ble/builtin/history/option:n
+      local histlen2; ble/history/get-count -v histlen2
+      if ((histlen!=histlen2)); then
+        ble/textarea#invalidate
+        ble-edit/history/goto $((index1==histlen?histlen:index1))
+        return
+      fi
+    fi
+  fi
 
   # store
   ble/history/set-editted-entry "$index0" "$_ble_edit_str"
@@ -5021,22 +5044,7 @@ function ble-edit/history/history-message.hook {
     ble-edit/info/immediate-clear
   fi
 }
-function ble-edit/history/history-delete.hook {
-  [[ $_ble_history_prefix ]] && return
-  local arg index=$_ble_history_ind
-  for arg; do
-    if [[ $arg == ?*-?* ]]; then
-      local beg=${arg%%-*} end=${arg#*-}
-      ((beg<=index&&index<end)) && index=$end
-    else
-      ((index==arg&&index++))
-    fi
-  done
-  ((index!=_ble_history_ind)) &&
-    ble-edit/history/goto "$index"
-}
 blehook history_message+=ble-edit/history/history-message.hook
-blehook history_delete+=ble-edit/history/history-delete.hook
 
 # 
 #------------------------------------------------------------------------------

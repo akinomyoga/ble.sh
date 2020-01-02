@@ -218,6 +218,21 @@ function ble/util/restore-arrs {
 }
 
 #%if !release
+## 関数 ble/debug/setdbg
+function ble/debug/setdbg {
+  ble/bin/rm -f "$_ble_base_run/dbgerr"
+  local ret
+  ble/util/readlink /proc/self/fd/3 3>&1
+  ln -s "$ret" "$_ble_base_run/dbgerr"
+}
+## 関数 ble/debug/print text
+function ble/debug/print {
+  if [[ -e $_ble_base_run/dbgerr ]]; then
+    ble/util/print "$*" > "$_ble_base_run/dbgerr"
+  else
+    ble/util/print "$*" >&2
+  fi
+}
 ## 関数 ble/debug/.check-leak-variable
 ##   [デバグ用] 宣言忘れに依るグローバル変数の汚染位置を特定するための関数。
 ##
@@ -281,7 +296,7 @@ function ble/debug/print-variables {
     fi
     _ble_local_out=$_ble_local_out' '
   done
-  ble/util/print "${_ble_local_out%' '}"
+  ble/debug/print "${_ble_local_out%' '}"
 }
 #%end
 

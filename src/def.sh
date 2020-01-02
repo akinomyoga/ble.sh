@@ -28,6 +28,7 @@ blehook/declare ADDHISTORY
 blehook/declare history_reset_background
 blehook/declare history_onleave
 blehook/declare history_delete
+blehook/declare history_insert
 blehook/declare history_clear
 blehook/declare history_message
 
