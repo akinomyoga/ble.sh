@@ -520,7 +520,7 @@ function ble-update {
     # release version
     local branch=${_ble_base_repository#*:}
     ( ble/bin/mkdir -p "$_ble_base/src" && builtin cd "$_ble_base/src" &&
-        git clone https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
+        git clone --depth 1 https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
         builtin cd ble.sh && make all && make INSDIR="$_ble_base" install ) &&
       ble-reload
     return
