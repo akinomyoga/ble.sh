@@ -2442,6 +2442,8 @@ bash_tips
   - history: fix a bug that garbage `__ble_edt__` is added in front of history entries 61f4bd1
   - decode: remove debug messages for `ble-bind -s` 64a17c3
   - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
+  - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 0000000
+  - decode: recover the terminal states after failing the default keymap initialization `#D1195` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3404,6 +3406,50 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-05
+
+  * decode: "Failed to load the default keymap" で失敗した時に状態復元できていない [#D1195]
+    https://github.com/akinomyoga/ble.sh/issues/33
+    これも上の報告のエラーメッセージの後に変な状態になっている様子から気づいた。
+
+    ? Failed to で失敗した時に stty を復元するべきでは?
+      調べてみると復元している気がする。
+      と思ったが stty/finalize を呼び出していて、ここでは stty -echo にしている。
+      何故だろう? と思って遡って見るがどうも最初に stty/finalize を作成した時 (2015-02-11)
+      からずっと stty -echo だった様である。今と昔では detach の方法が違うので、
+      実はこれについては変更しても良いのではないかという気がする。後で考察する必要がある。
+
+      * done: これについて整理する。stty/finalize は ble/term/finalize から呼び出されている。
+        ble/term/finalize は ble-detach/impl (ble.pp) と ble-attach 失敗時 (ble.pp)
+        ble-decode/detach (decode.sh) 内部で呼び出されている。
+        - ble-attach 失敗時には直前に ble-decode/detach が呼び出されている事が期待できる。
+        - ble-detach/impl の場合にはやはり ble-decode/detach が直前で呼び出されている。
+        - ble-decode/detach が呼び出されるのは上記の二箇所以外に
+          set -o vi|emacs によって編集モードが変わった時の reattach の時である。
+
+        うーん。ble/term/finalize は ble-decode/detach
+        の中で呼び出されるという事にして問題ない気がする。
+        というのも attach の場合には ble/decode/attach で
+        ble/term/initialize を呼び出しているからである。
+
+        無駄な呼び出しを削除した。確認してみると ble/term/{initialize,finalize}
+        共に一箇所だけから呼び出される様になった。前よりもすっきりしたと思う。
+
+      さて、ble/term/finalize 引いては ble/term/stty/finalize も一箇所だけから呼び出される。
+      この時に stty echo でも問題が生じないかについて調べる。
+      取り敢えず問題は発生していない気がする。ble-detach では大丈夫。
+      人為的に Failed to load the default keymap を起こした時も大丈夫。
+
+  * util: macOS での初期化時に bash-3.2 で "usage: sleep seconds" のエラーメッセージが出る [#D1194]
+    https://github.com/akinomyoga/ble.sh/issues/33
+    これは上の報告のエラーメッセージを見ている時に気づいた。
+
+    ? sleep の引数がどうのこうのというエラーが出てもいる。関係は?
+      →これはまた別の問題だった。というか sleep の小数対応判定が完全に間違っていた。
+      coreutils sleep であっても false になってしまっていた。
+      また macOS の場合には sleep は期待した物であると考えて良さそう。
+      なので macOS のチェックと "usage: sleep seconds" が両方表示されたら OK という事にする。
 
 2020-01-02
 

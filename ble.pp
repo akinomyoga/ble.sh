@@ -699,7 +699,7 @@ function ble-attach {
   ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
   if ! ble/decode/attach; then # 53ms
     _ble_attached=
-    ble/term/finalize
+    ble-edit/detach
     return 1
   fi
   _ble_edit_detach_flag= # do not detach or exit
@@ -727,7 +727,6 @@ function ble-detach {
 function ble-detach/impl {
   ble-edit/detach
   ble-decode/detach
-  ble/term/finalize
   READLINE_LINE='' READLINE_POINT=0
 }
 function ble-detach/message {
