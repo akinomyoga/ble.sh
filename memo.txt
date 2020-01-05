@@ -3503,7 +3503,7 @@ bash_tips
       というか空の行で実行した時に undo 履歴が clear されないのでは??
       と思って確認してみたら clear されていた。どうなっている?
         空の行を実行すると .newline が呼び出される。
-        中では ble/history/onleave.fire 
+        中では ble/history/onleave.fire
         ble/widget/.newline/clear-content が呼び出されている。
         - clear-content の方は何も実行していない。
         - onleave.fire の方は history_onleave を invoke している。
@@ -3601,7 +3601,7 @@ bash_tips
     以下の二種類の関数にする事にした。
     ble/util/print (改行を出力する)
     ble/util/put   (改行を出力しない)
-    
+
   * ble.sh はプロンプトやエイリアスの設定を提供する物ではなくて [#D1190]
     基盤の枠組みを提供する物であるという旨を何処かに書いておくと良いかもしれない。
     つまり他の bash-it や oh-my-bash と併用する事もできるのだという事。
