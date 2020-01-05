@@ -389,7 +389,7 @@ function ble/base/initialize-cache-directory/.xdg {
     return 1
   fi
 
-  ble/base/.create-user-directory _ble_base_cache "$cache_dir/blesh"
+  ble/base/.create-user-directory _ble_base_cache "$cache_dir/blesh/0.2"
 }
 function ble/base/initialize-cache-directory {
   ble/base/initialize-cache-directory/.xdg && return
