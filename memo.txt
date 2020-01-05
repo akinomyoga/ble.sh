@@ -3410,6 +3410,21 @@ bash_tips
 
 2020-01-05
 
+  * main: 複数の ble.sh の version を使っている時に cache が混ざるのでは? [#D1197]
+    cache 全般の問題として
+    複数の ble.sh version を混ぜて使っていると駄目なのでは。
+    cache ファイルが ble.sh 本体と比べて新しいかどうかで判定しているが、
+    複数の ble.sh を混ぜて使っているとその関係が反転したりする。
+    従って更新されないという事が普通に起こる気がする。
+
+    これに対応する為には cache ディレクトリ自体に ble.sh version を入れるか、
+    或いは cache ファイルのそれぞれに ble.sh version を入れるかする必要がある。
+    うーん。cache ディレクトリに ble.sh version を入れる事にする。
+    適当に ${BLE_VERSION%%[-+]*} でも加えたら良いのでは。
+    →patch level で形式が変わる可能性は低いし、
+      異なる patch level を複数使い分ける事も考えにくい。
+      major.minor だけで充分の気がする。
+
   * ble-update は shallow clone で良い気がする [#D1196]
     ただ、これを今更変更しても 0.3.0 には反映されないのでは。
     と思ったがこれも fix として投入してしまえば問題ない。
