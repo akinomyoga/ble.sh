@@ -467,7 +467,8 @@ function ble/base/initialize-cache-directory/.xdg {
     return 1
   fi
 
-  ble/base/.create-user-directory _ble_base_cache "$cache_dir/blesh"
+  local ver=${BLE_VERSINFO[0]}.${BLE_VERSINFO[1]}
+  ble/base/.create-user-directory _ble_base_cache "$cache_dir/blesh/$ver"
 }
 function ble/base/initialize-cache-directory {
   ble/base/initialize-cache-directory/.xdg && return
