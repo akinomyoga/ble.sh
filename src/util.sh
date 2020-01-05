@@ -1104,9 +1104,9 @@ function ble/util/msleep/.check-builtin-sleep {
     return 1
   fi
 }
-function ble/util/msleep/.check-coreutils-sleep {
-  local version; ble/util/assign version 'LANG=C ble/bin/sleep --version'
-  [[ $version == 'GNU coreutils' ]]
+function ble/util/msleep/.check-sleep-decimal-support {
+  local version; ble/util/assign version 'LANG=C ble/bin/sleep --version 2>&1'
+  [[ $version == *'GNU coreutils'* || $OSTYPE == darwin* && $version == 'usage: sleep seconds' ]]
 }
 
 _ble_util_msleep_delay=2000 # [usec]
@@ -1195,7 +1195,7 @@ elif ble/bin/.freeze-utility-path usleep; then
     ((v<=0)) && v=0
     ble/bin/usleep "$v" &>/dev/null
   }
-elif ble/util/msleep/.check-coreutils-sleep; then
+elif ble/util/msleep/.check-sleep-decimal-support; then
   function ble/util/msleep/.core { ble/bin/sleep "$1"; }
 fi
 
