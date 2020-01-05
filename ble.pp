@@ -453,6 +453,7 @@ function ble-attach {
   local IFS=$' \t\n'
   ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
   if ! ble-decode-attach; then # 53ms
+    ble-edit/detach
     ble/term/finalize
     return 1
   fi

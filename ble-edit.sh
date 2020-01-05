@@ -7102,7 +7102,6 @@ function ble-edit/bind/.check-detach {
 
     ble-edit-finalize
     ble-decode-detach
-    ble/term/finalize
 
     READLINE_LINE='' READLINE_POINT=0
 

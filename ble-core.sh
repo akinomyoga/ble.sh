@@ -1433,12 +1433,7 @@ function ble/term/stty/enter {
   _ble_term_stty_state=1
 }
 function ble/term/stty/finalize {
-  [[ ! $_ble_term_stty_state ]] && return
-  # detach の場合 -echo を指定する
-  ble/bin/stty -echo -nl icanon \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
-  _ble_term_stty_state=
+  ble/term/stty/leave
 }
 function ble/term/stty/TRAPEXIT {
   # exit の場合は echo
