@@ -2462,6 +2462,7 @@ bash_tips
   - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1186` 550fb14
   - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 1885b54
   - global: workaround `shopt -s xpg_echo` `#D1191` e46f9a3
+  - main (`ble-update`): use shallow clone `#D1196` 0000000
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3408,6 +3409,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-05
+
+  * ble-update は shallow clone で良い気がする [#D1196]
+    ただ、これを今更変更しても 0.3.0 には反映されないのでは。
+    と思ったがこれも fix として投入してしまえば問題ない。
 
   * decode: "Failed to load the default keymap" で失敗した時に状態復元できていない [#D1195]
     https://github.com/akinomyoga/ble.sh/issues/33
