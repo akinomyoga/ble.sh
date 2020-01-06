@@ -135,7 +135,7 @@ function ble/bin/.freeze-utility-path {
 
 # POSIX utilities
 
-_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat wc mv)
+_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty sort awk chmod grep man cat wc mv sh)
 function ble/.check-environment {
   if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
     local cmd commandMissing=

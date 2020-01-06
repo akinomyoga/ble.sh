@@ -123,6 +123,18 @@ else
   function ble/is-array { compgen -A arrayvar -X \!"$1" "$1" &>/dev/null; }
 fi
 
+# Note: BASHPID は Bash-4.0 以上
+if ((_ble_bash>=40000)); then
+  function ble/util/is-running-in-subshell { [[ $$ != $BASHPID ]]; }
+else
+  function ble/util/is-running-in-subshell {
+    ((BASH_SUBSHELL)) && return 0
+    local bashpid= command='echo $PPID'
+    ble/util/assign bashpid 'ble/bin/sh -c "$command"'
+    [[ $$ != $bashpid ]]
+  }
+fi
+
 ## 関数 ble/array#push arr value...
 if ((_ble_bash>=40000)); then
   function ble/array#push {
@@ -1563,7 +1575,7 @@ function ble/term/initialize {
 }
 
 function ble/term/TRAPEXIT {
-  [[ $$ == $BASHPID ]] || return
+  ble/util/is-running-in-subshell && return
   ble/term/stty/TRAPEXIT
   ble/term/leave
   ble/util/buffer.flush >&2
