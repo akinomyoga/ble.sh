@@ -802,7 +802,7 @@ function ble-syntax/parse/nest-equals {
 #%if !release
     ((onest[3]!=0&&onest[3]<=parent_inest)) || { ble-stackdump "invalid nest onest[3]=${onest[3]} parent_inest=$parent_inest text=$text" && return 0; }
 #%end
-    ((onest[3]<0?(parent_inest=onest[3]):(parent_inest-=onest[3])))
+    ((parent_inest=onest[3]<0?onest[3]:(parent_inest-onest[3])))
   done
 }
 
