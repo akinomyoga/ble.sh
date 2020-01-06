@@ -609,6 +609,16 @@ bash_features
   * bash-5.0 以降: EPOCHREALTIME, EPOCHSECONDS
     ref #D0925
 
+  * BASHPID 何と Bash 4.0 以降の機能らしい
+
+    ------------------------------------------------------------------------------
+    This document details the changes between this version, bash-4.0-alpha,
+    and the previous version, bash-3.2-release.
+
+    c.  There is a new variable, $BASHPID, which always returns the process id of
+        the current shell.
+    ------------------------------------------------------------------------------
+
 bash_tips
 
   * swap の仕方
@@ -2445,6 +2455,7 @@ bash_tips
   - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 0000000
   - decode: recover the terminal states after failing the default keymap initialization `#D1195` 0000000
   - edit (`ble/builtin/read`): fix argument analysis with user-provided `IFS` in Bash 3.2 `#D1198` 0000000
+  - global: fix subshell detection in Bash 3.2 `#D1200` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3410,9 +3421,120 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
-2020-01-05
+2020-01-06
 
-  * Bash-3.2 で bash-preexec.sh と一緒に使うと初回コマンド実行時にエラーメッセージ [#D1198]
+  * 今度は Bash 3.2 で ble-reload の後に core-*.sh が読み込まれない問題が発生している [#D1200]
+    bash-3.2: ble/complete/sabbrev/expand: No such file or directory 等と言っている。
+
+    振る舞いを調べると新しく load するとこれらの関数は delayed load の関数に置き換わり、
+    delayed load の関数では最初に自身を unset してから ble/util/import して、
+    その後に再実行するという作戦を取っている。
+    この unset によって関数が削除されてそのまま実行できない状態になるという事だろう。
+
+    そして ble/util/import が再実行できない様になっている。うーん。
+    つまり以前の読み込み済みのマーカーを削除できていない。
+
+    と思ったら bash 3.2 では BASHPID が存在していない?
+
+    どうやってサブシェルかどうかを判定すれば良いだろうか。
+    $SHLVL はサブシェルでは更新されていなかった。
+    $PPID もサブシェルでは更新されていなかった。
+    Linux ならば /proc/self を readlink すれば良い?
+    と思ったが実はこれだと readlink の pid が得られるだけだった。
+
+    検索したら質問があって其処で sh -c 'echo $PPID' というのが紹介されていた。
+    更にその下で紹介されていたのは BASH_SUBSHELL という変数だった。
+    https://unix.stackexchange.com/questions/524506/how-can-i-detect-if-im-in-a-subshell
+
+    調べてみると BASH_SUBSHELL は 3.0 で導入されたが、
+    4.4 未満では echo $BASH_SUBSHELL | cat や <(echo $BASH_SUBSHELL)
+    ではこの値が inc されないという問題があったそうだ。
+    なので現在 subshell にいるかどうかの判定に使うのには信頼性が低い。
+
+    * done: 0.1, 0.2 にも同様の修正を適用する
+
+  * ble-0.3 で ble-reload の hang は直っていない様だ… [#D1199]
+    前に修正した時の物と同じ物だろうか。
+    一応 ble-0.3 にも同じ patch を適用しているが修正しきれていないという事になるか。
+    関連する前の修正はこれである: #D1130 d35682a caa46c2
+    #D1130 の記録を見てみたがよく分からない。余り参考にならなさそう。
+
+    * fixed: 一応 ble/base/unload-for-reload を実行した時の症状は似ているのではないか。
+
+      仕方がないのでこれは一つずつ確かめていく必要がある。
+      先ず処理の流れを確かめる。
+
+      ble/base/unload-for-reload で _ble_edit_detach_flag=reload が設定される。
+      ble-edit/exec:gexec/.end で .check-detach が呼び出されて、
+        更にその中で _ble_edit_detach_flag=reload の時には
+        メッセージが出力されて ble-edit/exec:gexec/.eval-prologue が呼びされる。
+        何故ここで eval-prologue なのだろうか。PS1 等を復元する為?
+      更に .end の中で通常ならば ble/term/enter,
+        ble-edit/bind/.tail が呼びされる所、
+        何も呼び出されずに終了する事になる。
+      .end は最後に実行されるコマンドである。
+
+      さて、この時にどの様な状態になるのかというのが問題である。
+      特に .tail が呼び出されないという事は出力がそのまま端末に繋がった儘という事。
+      それは寧ろ期待している事なのではあるまいか。
+      ble/term/enter が呼び出されないという事は
+      端末の状態も通常のコマンドを実行しているのと同じという事。
+
+      では何故コマンドの入力が効かないのか。
+      というか ble-decode/detach 等はしなくても良いのだろうか。
+      うーん。ble-edit/detach, ble-decode/detach の療法を実行している。
+
+      うーん。どのコマンドを入力しても
+      bash: self-insert: コマンドが見つかりません
+      bash: accept-line: コマンドが見つかりません
+      という状態になってしまっている。これはどういう事なのか。
+      そもそも self-insert, accept-line をコマンドとして実行しようとする文脈が分からない。
+      更にあらゆる入力が self-insert 及び accept-line しか呼び出さない状態になっている。
+      →何と bind -x '"...":self-insert' で復元されている? 様な気がする。変だ。
+
+      less "$_ble_base_run/$$.bind.save" で復元用のスクリプトを見ると全てに -x がついている。
+      うーん。分かった。ble/bin/echo が定義されていないのに ble/bin/echo を使う様に
+      patch が追加されたのがいけなかった。これでエラーが発生して、
+      __BINDP__ というマーカが出力されない事によって復元用の全ての bind が -x になってしまっていた。
+      これについて修正した所 ble/base/unload-for-reload に関しては動く様になった。
+
+    * fixed: 然し、ble-reload で固まってしまう問題に関しては全く直っていない。
+      うーん。どうも bind できていないという気がする。
+      やはりだ。ble.sh を読み込んだ時に ble-decode/bind が呼び出される。
+      ble-reload を呼び出した時に ble-decode/unbind だけが呼び出されて、
+      ble-decode/bind が呼び出されていない。
+
+      実際に ble-0.4 の場合にはちゃんと ble-decode/bind が呼び出されている。
+      この違いは何処から出てくるのだろうか。
+      ble-0.4 で ble-reload で再 attach が呼び出される経路を見ると。
+      どうも最後に描画状態を更新する時にプロンプトの再計算があって、
+      其処で attach される様だ。
+
+      stackdump:
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:17 (ble-stackdump)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:38 (ble/decode/attach)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:10 (ble-attach)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble/base/attach-from-PROMPT_COMMAND)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:13 (ble-edit/prompt/update/.eval-prompt_command)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:46 (ble-edit/prompt/update)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#render)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:15 (ble-edit/bind/.tail)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:7 (ble-edit/exec:gexec/.end)
+
+      素早く入力しても起こる事は変わらない様子だ。
+      では ble-0.3 の場合には何が起こっているのだろうか。
+      というか ble-edit/bind/.tail は呼び出されているのだろうか?
+
+      うーん。そもそも何故 .tail が呼び出されているのかというのが謎である。
+      うーん。ble-0.4 では普通に .check-detach を通過している。
+      調べてみると ble-0.3 の reload でも普通に .check-detach を通過している。
+
+      どうも reload した時にどの戦略を取るのかというのが違っている様子である。
+      うーん。prompt 経由で attach する戦略を既定にしたら動く様になるのだろうか?
+      →動くようになった。既に PROMPT_COMMAND が設定されている場合でも動くだろうか。
+      →動く。OK
+
+  * util: Bash-3.2 で bash-preexec.sh と一緒に使うと初回コマンド実行時にエラーメッセージ [#D1198]
     https://github.com/akinomyoga/ble.sh/issues/33#issuecomment-570949575
 
     $ echo hello
@@ -3457,6 +3579,8 @@ bash_tips
     どうやら hello+=("${@:1}") の形式を使うと駄目な様だ。
     (IFS=\;; function a { printf '(%s)' "${@:1}"; }; a 1 2 3)
     これでも "${@:1}" の形式では引数がくっついてしまう。
+
+2020-01-05
 
   * main: 複数の ble.sh の version を使っている時に cache が混ざるのでは? [#D1197]
     cache 全般の問題として
@@ -3784,6 +3908,7 @@ bash_tips
 
     * done: wiki に説明は書いた
 
+
 2019-12-31
 
   * complete: alias についても展開後のコマンド名を元にして [#D1187]

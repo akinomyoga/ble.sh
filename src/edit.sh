@@ -4009,9 +4009,8 @@ function ble/builtin/exit/.read-arguments {
   done
 }
 function ble/builtin/exit {
-  # Note: BASHPID は Bash-4.0 以上
   local ext=$?
-  if ((_ble_bash>=40000&&BASHPID!=$$)) || [[ $_ble_decode_bind_state == none ]]; then
+  if ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; then
     if (($#)); then
       builtin exit "$@"
     else

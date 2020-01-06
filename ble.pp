@@ -263,7 +263,7 @@ function ble/bin/.freeze-utility-path {
 
 # POSIX utilities
 
-_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep man cat wc mv)
+_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep man cat wc mv sh)
 function ble/.check-environment {
   if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
     local cmd commandMissing=
@@ -749,7 +749,7 @@ function ble/base/unload-for-reload {
   return 0
 }
 function ble/base/unload {
-  [[ $$ == $BASHPID ]] || return
+  ble/util/is-running-in-subshell && return 1
   local IFS=$' \t\n'
   ble/term/stty/TRAPEXIT
   ble/term/leave
