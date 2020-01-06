@@ -2444,6 +2444,7 @@ bash_tips
   - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
   - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 0000000
   - decode: recover the terminal states after failing the default keymap initialization `#D1195` 0000000
+  - edit (`ble/builtin/read`): fix argument analysis with user-provided `IFS` in Bash 3.2 `#D1198` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -2463,6 +2464,7 @@ bash_tips
   - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 1885b54
   - global: workaround `shopt -s xpg_echo` `#D1191` e46f9a3
   - main (`ble-update`): use shallow clone `#D1196` 0000000
+  - main (`$_ble_base_cache`): use different directories for different ble versions `#D1197` 0000000
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3409,6 +3411,52 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-05
+
+  * Bash-3.2 で bash-preexec.sh と一緒に使うと初回コマンド実行時にエラーメッセージ [#D1198]
+    https://github.com/akinomyoga/ble.sh/issues/33#issuecomment-570949575
+
+    $ echo hello
+    bash-3.2: read: ` prompt_command_array': not a valid identifier
+    hello
+
+    prompt_command_array の read に失敗している。
+    うーん。prompt_command_array なる変数は ble.sh では使っていない。
+    調べてみると bash-preexec.sh にその様な変数が存在している様だ。
+    正に以下の行が問題を起こしている事を示唆している。
+    IFS=';' read -ra prompt_command_array <<< "$PROMPT_COMMAND"
+
+    * bash-preexec.sh を一緒にロードするとどうなるかテストする。
+
+      https://github.com/rcaloras/bash-preexec
+      git@github.com:rcaloras/bash-preexec.git
+
+      エラーメッセージが再現した!
+      然しその他のエラーは再現していない。
+      つまりこれは独立した問題なのだろうという気がする。
+
+    症状を見ると bash-3.2 では起こるが bash-5 では起こらない。
+    bash-4.0 でも起こらない。bash-3.1 で起こる。
+    bash-3.0 ではそもそも bash-preexec.sh が文法エラー。
+
+    ble-0.4 でも同様の症状が発生する。
+
+    x 実はそれとは別に trap コマンドの引数の解析が誤っている。
+      というのも invalid signal spec "-" というエラーメッセージが表示される。
+      これについては bash の仕様を改めて調べる必要がある。
+
+    取り敢えず先に ` prompt_command_array' の方を片付ける事にする。
+    うーん。どうも変だ。あー。分かった。これは引数解析のバグだ。
+    と思ったが ble/array#push が悪いという事の気がする。
+    IFS を設定すると動かなくなるという事が確認できた。
+    $ array=(1); ble/array#push array 1 3; declare -p array
+    $ array=(1); IFS=\; ble/array#push array 1 3; declare -p array
+    うーん。然し実装を見てみると eval "$1+=(\"\${@:2}\")" である。
+    これは bash 3.2 のバグである?
+
+    うーん。然し普通に hello+=("$@") を実行しても問題は発生していない。
+    どうやら hello+=("${@:1}") の形式を使うと駄目な様だ。
+    (IFS=\;; function a { printf '(%s)' "${@:1}"; }; a 1 2 3)
+    これでも "${@:1}" の形式では引数がくっついてしまう。
 
   * main: 複数の ble.sh の version を使っている時に cache が混ざるのでは? [#D1197]
     cache 全般の問題として
