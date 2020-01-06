@@ -124,9 +124,16 @@ else
 fi
 
 ## 関数 ble/array#push arr value...
-if ((_ble_bash>=30100)); then
+if ((_ble_bash>=40000)); then
   function ble/array#push {
     builtin eval "$1+=(\"\${@:2}\")"
+  }
+elif ((_ble_bash>=30100)); then
+  function ble/array#push {
+    # Note (workaround Bash 3.1/3.2 bug): #D1198
+    #   何故か a=("${@:2}") は IFS に特別な物が設定されていると
+    #   "${*:2}" と同じ振る舞いになってしまう。
+    IFS=$' \t\n' builtin eval "$1+=(\"\${@:2}\")"
   }
 else
   function ble/array#push {
