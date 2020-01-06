@@ -895,6 +895,18 @@ else
   function ble/util/is-stdin-ready { false; }
 fi
 
+# Note: BASHPID は Bash-4.0 以上
+if ((_ble_bash>=40000)); then
+  function ble/util/is-running-in-subshell { [[ $$ != $BASHPID ]]; }
+else
+  function ble/util/is-running-in-subshell {
+    ((BASH_SUBSHELL)) && return 0
+    local bashpid= command='echo $PPID'
+    ble/util/assign bashpid 'ble/bin/sh -c "$command"'
+    [[ $$ != $bashpid ]]
+  }
+fi
+
 ## 関数 ble/util/openat fdvar redirect
 ##   "exec {fdvar}>foo" に該当する操作を実行します。
 ##   @param[out] fdvar

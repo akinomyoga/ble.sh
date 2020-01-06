@@ -3519,7 +3519,7 @@ function ble-edit/exec/restore-BASH_REMATCH {
 
 function ble/builtin/exit {
   local ext=${1-$?}
-  if ((BASHPID!=$$)) || [[ $_ble_decode_bind_state == none ]]; then
+  if ble/util/is-running-in-subshell || [[ $_ble_decode_bind_state == none ]]; then
     builtin exit "$ext"
     return
   fi
