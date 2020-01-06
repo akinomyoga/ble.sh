@@ -609,7 +609,7 @@ bash_features
   * bash-5.0 以降: EPOCHREALTIME, EPOCHSECONDS
     ref #D0925
 
-  * BASHPID 何と Bash 4.0 以降の機能らしい
+  * BASHPID 何と Bash 4.0 以降の機能らしい ref #D1200
 
     ------------------------------------------------------------------------------
     This document details the changes between this version, bash-4.0-alpha,
@@ -618,6 +618,8 @@ bash_features
     c.  There is a new variable, $BASHPID, which always returns the process id of
         the current shell.
     ------------------------------------------------------------------------------
+
+    と思ったら既にソースコードの一部にも Bash 4.0 以降であるとの注記があった。
 
 bash_tips
 
@@ -2344,7 +2346,7 @@ bash_tips
   - emacs: support kill ring and a widget `yank-pop` `#D1059` 8c9b6e8
   - highlight: support job names by `auto_resume` `#D1065` ce46024
   - decode: add support for `S8C1T` key sequences `#D1083` 9b7939b
-  - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f `#D1193` 0000000
+  - history: support `bleopt history_share` `#D1100` `#D1099` 305b89f `#D1193` 4838a46
   - history: support full multiline history `#D1120` 8cf17f7
     - history: do not synchronize multiline resolution on "history -p" `#D1121` 9e56b7b
     - history.mlfix: suppress errors on Bash 3 `#D1122` 4fe7a0c
@@ -2434,7 +2436,7 @@ bash_tips
   - menu-complete: fix a bug that word is expanded on cancel `#D1097` 001b914
   - highlight: fix a problem that empty arguments are highlighted as errors `#D1116` 64ae8ce
   - sabbrev: fix a bug that menu-filter is not canceled on some sabbrev expansion `#D1118` 30cc31c
-  - main: fix a bug that `source ble.sh --noattach` in `ble.sh` sessions hangs `#D1130` d35682a caa46c2
+  - main: fix a bug that `source ble.sh --noattach` in `ble.sh` sessions hangs `#D1130` d35682a caa46c2 `#D1199`
   - syntax: workaround bashbug 3.1/3.2 that `eval` ending with <kbd>\ + LF</kbd> causes error messages `#D1132` a4b7e00
   - term: workaround `cygwin` console glitches `#D1143` b79c35f `#D1144` ef19d17
   - main: fix a bug that error messages for unsupported shells are not printed `#D1149` 34bd6f8
@@ -2452,10 +2454,11 @@ bash_tips
   - history: fix a bug that garbage `__ble_edt__` is added in front of history entries 61f4bd1
   - decode: remove debug messages for `ble-bind -s` 64a17c3
   - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
-  - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 0000000
-  - decode: recover the terminal states after failing the default keymap initialization `#D1195` 0000000
-  - edit (`ble/builtin/read`): fix argument analysis with user-provided `IFS` in Bash 3.2 `#D1198` 0000000
-  - global: fix subshell detection in Bash 3.2 `#D1200` 0000000
+  - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 6ff4d2b
+  - decode: recover the terminal states after failing the default keymap initialization `#D1195` 846f284
+  - edit (`ble/builtin/read`): fix argument analysis with user-provided `IFS` in Bash 3.2 `#D1198` 7411f06
+  - global: fix subshell detection in Bash 3.2 `#D1200` ca8df8a
+  - syntax: workaround Bash-4.1 arithmetic bug `#D1201` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -2474,8 +2477,8 @@ bash_tips
   - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1186` 550fb14
   - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 1885b54
   - global: workaround `shopt -s xpg_echo` `#D1191` e46f9a3
-  - main (`ble-update`): use shallow clone `#D1196` 0000000
-  - main (`$_ble_base_cache`): use different directories for different ble versions `#D1197` 0000000
+  - main (`ble-update`): use shallow clone `#D1196` 2a20d9c
+  - main (`$_ble_base_cache`): use different directories for different ble versions `#D1197` 55951d1
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3422,6 +3425,273 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-06
+
+  * syntax: 解析状態の異常 in Bash <= 4.1 [#D1201]
+    function a { local IFS=\;; hello+=("${@:1}"); }; a 1 2 3; declare -p hello
+    で hello の直前で C-u すると解析状態のエラーになる。
+    function x { local A=\;; h+=("${@:1}"); } でもなる。
+    function x { h+=("${@:1}"); } でもなる。
+    { h+=("${@:1}"); } でもなる。
+    { h+=("$@"); } でもなる。
+    { h=("$@") でもなる。
+    { h=("$a") でもなる。
+    { h=("$(echo)"); } でもなる。
+
+    Bash 5 では再現しない。Bash 4.2 でも再現しない。
+    Bash 4.1 で再現する。これの対応は調べるのが面倒そうだ。
+    ble_debug=1 で状態の違いを比較する。
+
+    | Bash 4.0
+    | _ble_syntax_attr/tree/nest/stat?
+    | 18 a    000 '{' ++   word=CMDI:0-1>@0/(wattr=d) word="none":0-1 nest=(CMDI w=CMDX:0- n=- t=-:-) stat=(CMDX w=- n=- t=-:-)
+    | 17 a    001 ' '      stat=(CMDX1 w=- n=- t=$1:-)
+    |  7 a    002 'h' |    stat=(CMDX1 w=- n=- t=$1:-)
+    |  8 a    003 '=' |
+    | 12 a    004 '(' ||   nest=(VRHS w=_ble_attr_VAR:2- n=- t=-:$1)
+    |  9 a    005 '"' |||| nest=(VALI w=VALI:5- n='none':4- t=-:-) stat=(VALX w=- n=@4 t=-:-)
+    | 14 a    006 '$' |||| stat=(QUOT w=- n=@5 t=-:-)
+    |  7 a    007 'a' ||||
+    |  9 a    008 '"' ||++ word=VALI:5-9>@8/(wattr=d) word="none":5-9 stat=(QUOT w=- n=@5 t=-:-)
+    | 12 a    009 ')' ++   word=_ble_attr_VAR:@0>2-10>@9/(wattr=d) word="none":4-10>@8 stat=(VALX w=- n=@4 t=$9:-)
+    |  |    s 010 ^@      stat=(CMDXV w=- n=- t=$10:-)
+    |
+    | Bash 4.2
+    | _ble_syntax_attr/tree/nest/stat?
+    | 18 a    000 '{' ++   word=CMDI:0-1>@0/(wattr=d) word="none":0-1 nest=(CMDI w=CMDX:0- n=- t=-:-) stat=(CMDX w=- n=- t=-:-)
+    | 17 a    001 ' '      stat=(CMDX1 w=- n=- t=$1:-)
+    |  7 a    002 'h' |    stat=(CMDX1 w=- n=- t=$1:-)
+    |  8 a    003 '=' |
+    | 12 a    004 '(' ||   nest=(VRHS w=_ble_attr_VAR:2- n=- t=-:$1)
+    |  9 a    005 '"' |||| nest=(VALI w=VALI:5- n='none':4- t=-:-) stat=(VALX w=- n=@4 t=-:-)
+    | 14 a    006 '$' |||| stat=(QUOT w=- n=@5 t=-:-)
+    |  7 a    007 'a' ||||
+    |  9 a    008 '"' ||++ word=VALI:5-9>@8/(wattr=d) word="none":5-9 stat=(QUOT w=- n=@5 t=-:-)
+    | 12 a    009 ')' ++   word=_ble_attr_VAR:@0>2-10>@9/(wattr=d) word="none":4-10>@8 stat=(VALX w=- n=@4 t=$9:-)
+    |  |    s 010 ^@      stat=(CMDXV w=- n=- t=$10:-)
+
+    特に違いは見られない。エラーが起こった後の状態についても確認してみる。
+
+    | Bash 4.0 _ble_syntax_attr/tree/nest/stat?
+    |  7 a  s 000 'h' |    stat=(CMDX w=- n=- t=-:-)
+    |  8 a  s 001 '=' |
+    | 12 a  s 002 '(' ||   nest=(VRHS w=_ble_attr_VAR:0- n=- t=-:-)
+    |  9 a  s 003 '"' |||| nest=(VALI w=VALI:3- n='none':2- t=-:-) stat=(VALX w=- n=@2 t=-:-)
+    | 14 a  s 004 '$' |||| stat=(QUOT w=- n=@3 t=-:-)
+    |  7 a  s 005 'a' ||||
+    |  9 a  s 006 '"' ||++ word=VALI:3-7>@6/(wattr=d) word="none":3-7 stat=(QUOT w=- n=@3 t=-:-)
+    | 12 a  s 007 ')' ++   word=_ble_attr_VAR:@-1>0-8>@7/(wattr=d) word="none":2-8>@6 stat=(VALX w=- n=@2 t=$7:-)
+    |  |    s 008 ^@      stat=(CMDXV w=- n=- t=$8:-)
+    |
+    | Bash 4.2 _ble_syntax_attr/tree/nest/stat?
+    |  7 a  s 000 'h' |    stat=(CMDX w=- n=- t=-:-)
+    |  8 a  s 001 '=' |
+    | 12 a  s 002 '(' ||   nest=(VRHS w=_ble_attr_VAR:0- n=- t=-:-)
+    |  9 a  s 003 '"' |||| nest=(VALI w=VALI:3- n='none':2- t=-:-) stat=(VALX w=- n=@2 t=-:-)
+    | 14 a  s 004 '$' |||| stat=(QUOT w=- n=@3 t=-:-)
+    |  7 a  s 005 'a' ||||
+    |  9 a  s 006 '"' ||++ word=VALI:3-7>@6/(wattr=d) word="none":3-7 stat=(QUOT w=- n=@3 t=-:-)
+    | 12 a  s 007 ')' ++   word=_ble_attr_VAR:0-8>@7/(wattr=d) word="none":2-8>@6 stat=(VALX w=- n=@2 t=$7:-)
+    |  |    s 008 ^@      stat=(CMDXV w=- n=- t=$8:-)
+    |
+    | @@ -6,5 +6,5 @@
+    |  14 a  s 004 '$' |||| stat=(QUOT w=- n=@3 t=-:-)
+    |   7 a  s 005 'a' ||||
+    |   9 a  s 006 '"' ||++ word=VALI:3-7>@6/(wattr=d) word="none":3-7 stat=(QUOT w=- n=@3 t=-:-)
+    | -12 a  s 007 ')' ++   word=_ble_attr_VAR:@-1>0-8>@7/(wattr=d) word="none":2-8>@6 stat=(VALX w=- n=@2 t=$7:-)
+    | +12 a  s 007 ')' ++   word=_ble_attr_VAR:0-8>@7/(wattr=d) word="none":2-8>@6 stat=(VALX w=- n=@2 t=$7:-)
+    |   |    s 008 ^@      stat=(CMDXV w=- n=- t=$8:-)
+
+    確かに違いが現れてはいるが。。うーん。-1 という要素に何か親がいるかの様な取り扱いになっている。
+    更新範囲についても確認しておく事にする。うーん。Bash-4.0 では最初の 4 文字についてだけの更新である。
+    Bash-4.2 では全体に対して更新が実行されている。うーん。再計算範囲は一致しているのだろうか。
+
+    何れにしても Bash-4.2 以上では正しく動いているのだからこれはアルゴリズムの問題というよりは
+    Bash の仕様の問題である筈だから修正はそんなに難しくはないのだと思われる。
+
+    * 再計算範囲 in ble/syntax/parse を出力して確かめる
+      ble/syntax/parse/determine-parse-range の結果は同じ様だ。
+        i1='0' i2='0' j2='2'
+        i1='0' i2='0' j2='2'
+
+    * shift を実行した直後の状態は以下の通り。やはり違いはない様だ。
+
+      | _ble_syntax_stat=(
+      |   '1 -1 -1 -1 -1 -1 none 1'
+      |   '17 -1 -1 -1 0 -1 none 1'
+      |   '17 -1 -1 -1 0 -1 none 1' '' ''
+      |   '23 -1 -1 1 -1 -1 none 1'
+      |   '5 -1 -1 1 -1 -1 none 1' ''
+      |   '5 -1 -1 3 -1 -1 none 1'
+      |   '23 -1 -1 5 0 -1 none 1'
+      |   '13 -1 -1 -1 0 -1 none 1'
+      |   '1 -1 -1 -1 1 -1 none 1'
+      |   '1 -1 -1 -1 2 -1 none 1'
+      |   '43 -1 -1 -1 0 -1 none 1')
+      | _ble_syntax_tree=(
+      |   '2 1 0 -1 d nnone 1 -1 -1 -' '' '' '' '' '' '' ''
+      |   '24 4 0 -1 d nnone 4 -1 -1 -'
+      |   '7 8 0 8 - nnone 6 1 -1 -' '' ''
+      |   '2 1 -1 3 d')
+      | _ble_syntax_nest=(
+      |   '2 0 1 -1 -1 -1 none none' '' '' ''
+      |   '11 2 7 -1 -1 2 none none'
+      |   '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_attr=('118' '17' '7' '8' '12' '9' '14' '7' '9' '12' '12' '1' '119')
+      |
+      | _ble_syntax_stat=(
+      |   '1 -1 -1 -1 -1 -1 none 1'
+      |   '17 -1 -1 -1 0 -1 none 1'
+      |   '17 -1 -1 -1 0 -1 none 1' '' ''
+      |   '23 -1 -1 1 -1 -1 none 1'
+      |   '5 -1 -1 1 -1 -1 none 1' ''
+      |   '5 -1 -1 3 -1 -1 none 1'
+      |   '23 -1 -1 5 0 -1 none 1'
+      |   '13 -1 -1 -1 0 -1 none 1'
+      |   '1 -1 -1 -1 1 -1 none 1'
+      |   '1 -1 -1 -1 2 -1 none 1'
+      |   '43 -1 -1 -1 0 -1 none 1')
+      | _ble_syntax_tree=(
+      |   '2 1 0 -1 d nnone 1 -1 -1 -' '' '' '' '' '' '' ''
+      |   '24 4 0 -1 d nnone 4 -1 -1 -'
+      |   '7 8 0 8 - nnone 6 1 -1 -' '' ''
+      |   '2 1 -1 3 d')
+      | _ble_syntax_nest=(
+      |   '2 0 1 -1 -1 -1 none none' '' '' ''
+      |   '11 2 7 -1 -1 2 none none'
+      |   '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_attr=('118' '17' '7' '8' '12' '9' '14' '7' '9' '12' '12' '1' '119')
+
+    * 中途停止条件についても確認する
+
+      | _tail_syntax_stat[i-i2]='17 -1 -1 -1 0 -1 none 1' _stat='1 -1 -1 -1 -1 -1 none 1'
+      | _tail_syntax_stat[i-i2]='23 -1 -1 1 -1 -1 none 1' _stat='23 -1 -1 1 -1 -1 none 1'
+      | _tail_syntax_stat[i-i2]='5 -1 -1 1 -1 -1 none 1' _stat='5 -1 -1 1 -1 -1 none 1'
+      |
+      | _tail_syntax_stat[i-i2]='17 -1 -1 -1 0 -1 none 1' _stat='1 -1 -1 -1 -1 -1 none 1'
+      | _tail_syntax_stat[i-i2]='23 -1 -1 1 -1 -1 none 1' _stat='23 -1 -1 1 -1 -1 none 1'
+      | _tail_syntax_stat[i-i2]='5 -1 -1 1 -1 -1 none 1' _stat='5 -1 -1 1 -1 -1 none 1'
+      | _tail_syntax_stat[i-i2]='5 -1 -1 3 -1 -1 none 1' _stat='5 -1 -1 3 -1 -1 none 1'
+      | _tail_syntax_stat[i-i2]='23 -1 -1 5 0 -1 none 1' _stat='23 -1 -1 5 0 -1 none 1'
+      | _tail_syntax_stat[i-i2]='13 -1 -1 -1 0 -1 none 1' _stat='13 -1 -1 -1 0 -1 none 1'
+
+    * 分からないのでもっと詳しく。うーん。不思議だ。_tail_syntax_* は一致しているが、
+      ble/syntax/parse/nest-equals の結果が異なっている。
+      という事は比較する瞬間の _ble_syntax_* が異なっているという事だろうか。
+
+      | _tail_syntax_stat=('17 -1 -1 -1 0 -1 none 1' '' '' '23 -1 -1 1 -1 -1 none 1'
+      |   '5 -1 -1 1 -1 -1 none 1' '' '5 -1 -1 3 -1 -1 none 1' '23 -1 -1 5 0 -1 none 1'
+      |   '13 -1 -1 -1 0 -1 none 1' '1 -1 -1 -1 1 -1 none 1' '1 -1 -1 -1 2 -1 none 1'
+      |   '43 -1 -1 -1 0 -1 none 1')
+      | _tail_syntax_tree=('' '' '' '' '' '' '24 4 0 -1 d nnone 4 -1 -1 -'
+      |   '7 8 0 8 - nnone 6 1 -1 -' '' '' '2 1 -1 3 d')
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _tail_syntax_attr=('7' '8' '12' '9' '14' '7' '9' '12' '12' '1' '119')
+      | _tail_syntax_stat[i-i2]='17 -1 -1 -1 0 -1 none 1' _stat='1 -1 -1 -1 -1 -1 none 1'
+      | _tail_syntax_stat[i-i2]='23 -1 -1 1 -1 -1 none 1' _stat='23 -1 -1 1 -1 -1 none 1'
+      | inest='2' ext='1'
+      | _tail_syntax_stat[i-i2]='5 -1 -1 1 -1 -1 none 1' _stat='5 -1 -1 1 -1 -1 none 1'
+      | inest='3' ext='0'
+      |
+      | _tail_syntax_stat=('17 -1 -1 -1 0 -1 none 1' '' '' '23 -1 -1 1 -1 -1 none 1'
+      |   '5 -1 -1 1 -1 -1 none 1' '' '5 -1 -1 3 -1 -1 none 1' '23 -1 -1 5 0 -1 none 1'
+      |   '13 -1 -1 -1 0 -1 none 1' '1 -1 -1 -1 1 -1 none 1' '1 -1 -1 -1 2 -1 none 1'
+      |   '43 -1 -1 -1 0 -1 none 1')
+      | _tail_syntax_tree=('' '' '' '' '' '' '24 4 0 -1 d nnone 4 -1 -1 -'
+      |   '7 8 0 8 - nnone 6 1 -1 -' '' '' '2 1 -1 3 d')
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _tail_syntax_attr=('7' '8' '12' '9' '14' '7' '9' '12' '12' '1' '119')
+      | _tail_syntax_stat[i-i2]='17 -1 -1 -1 0 -1 none 1' _stat='1 -1 -1 -1 -1 -1 none 1'
+      | _tail_syntax_stat[i-i2]='23 -1 -1 1 -1 -1 none 1' _stat='23 -1 -1 1 -1 -1 none 1'
+      | inest='2' ext='1'
+      | _tail_syntax_stat[i-i2]='5 -1 -1 1 -1 -1 none 1' _stat='5 -1 -1 1 -1 -1 none 1'
+      | inest='3' ext='1'
+      | _tail_syntax_stat[i-i2]='5 -1 -1 3 -1 -1 none 1' _stat='5 -1 -1 3 -1 -1 none 1'
+      | inest='3' ext='1'
+      | _tail_syntax_stat[i-i2]='23 -1 -1 5 0 -1 none 1' _stat='23 -1 -1 5 0 -1 none 1'
+      | inest='2' ext='1'
+      | _tail_syntax_stat[i-i2]='13 -1 -1 -1 0 -1 none 1' _stat='13 -1 -1 -1 0 -1 none 1'
+      | inest='-1' ext='0'
+      |
+      | --- a1.txt^I2020-01-06 18:58:23.708919459 +0800
+      | +++ a2.txt^I2020-01-06 18:58:14.185056620 +0800
+      | @@ -10,4 +10,10 @@
+      |          _tail_syntax_stat[i-i2]='23 -1 -1 1 -1 -1 none 1' _stat='23 -1 -1 1 -1 -1 none 1'
+      |          inest='2' ext='1'
+      |          _tail_syntax_stat[i-i2]='5 -1 -1 1 -1 -1 none 1' _stat='5 -1 -1 1 -1 -1 none 1'
+      | -        inest='3' ext='0'
+      | +        inest='3' ext='1'
+      | +        _tail_syntax_stat[i-i2]='5 -1 -1 3 -1 -1 none 1' _stat='5 -1 -1 3 -1 -1 none 1'
+      | +        inest='3' ext='1'
+      | +        _tail_syntax_stat[i-i2]='23 -1 -1 5 0 -1 none 1' _stat='23 -1 -1 5 0 -1 none 1'
+      | +        inest='2' ext='1'
+      | +        _tail_syntax_stat[i-i2]='13 -1 -1 -1 0 -1 none 1' _stat='13 -1 -1 -1 0 -1 none 1'
+      | +        inest='-1' ext='0'
+
+    * ble/syntax/parse/nest-equals を呼び出した時の _ble_syntax_nest, _tail_syntax_nest を比較する
+
+      | inest='2' ext='1'
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '' '' '' '' '' '' '' '')
+      | inest='3' ext='0'
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      |
+      | inest='2' ext='1'
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '' '' '' '' '' '' '' '')
+      | inest='3' ext='1'
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | inest='3' ext='1'
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | inest='2' ext='1'
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | inest='-1' ext='0'
+      | _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      | _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      |
+      | --- a1.txt^I2020-01-06 19:04:07.351970453 +0800
+      | +++ a2.txt^I2020-01-06 19:06:12.204172380 +0800
+      | @@ -1,6 +1,6 @@
+      |  inest='2' ext='1'
+      |  _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      |  _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '' '' '' '' '' '' '' '')
+      | -inest='3' ext='0'
+      | +inest='3' ext='1'
+      |  _tail_syntax_nest=('' '' '11 2 7 -1 -1 2 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+      |  _ble_syntax_nest=('' '' '11 2 7 -1 -1 -1 none none' '24 0 24 1 -1 -1 none none' '' '' '' '' '' '' '')
+
+      うーん。何と状態は完全に同じなのに違う結果を返している?
+
+    * ble/syntax/parse/nest-equals の中の動作について詳しく追う。
+
+      | parent_inest='2' i1='0' i2='0'
+      | parent_inest='2' _onest='11 2 7 -1 -1 2 none none' _nnest='11 2 7 -1 -1 -1 none none'
+      | parent_inest='3' i1='0' i2='0'
+      | parent_inest='3' _onest='24 0 24 1 -1 -1 none none' _nnest='24 0 24 1 -1 -1 none none'
+      | onest=('24' '0' '24' '1' '-1' '-1' 'none' 'none')
+      | parent_inest='0' _onest='' _nnest=''
+      | onest=()
+      |
+      | parent_inest='2' i1='0' i2='0'
+      | parent_inest='2' _onest='11 2 7 -1 -1 2 none none' _nnest='11 2 7 -1 -1 -1 none none'
+      | parent_inest='3' i1='0' i2='0'
+      | parent_inest='3' _onest='24 0 24 1 -1 -1 none none' _nnest='24 0 24 1 -1 -1 none none'
+      | onest=('24' '0' '24' '1' '-1' '-1' 'none' 'none')
+      | parent_inest='2' _onest='11 2 7 -1 -1 2 none none' _nnest='11 2 7 -1 -1 -1 none none'
+      | parent_inest='3' i1='0' i2='0'
+      | parent_inest='3' _onest='24 0 24 1 -1 -1 none none' _nnest='24 0 24 1 -1 -1 none none'
+      | onest=('24' '0' '24' '1' '-1' '-1' 'none' 'none')
+      | parent_inest='2' _onest='11 2 7 -1 -1 2 none none' _nnest='11 2 7 -1 -1 -1 none none'
+      | parent_inest='2' i1='0' i2='0'
+      | parent_inest='2' _onest='11 2 7 -1 -1 2 none none' _nnest='11 2 7 -1 -1 -1 none none'
+      | parent_inest='-1' i1='0' i2='0'
+
+      parent_inest の更新に失敗している様だ。
+
+    とここで分かった。算術式のバグを踏んでいる。修正した。問題は発生しなくなった。
 
   * 今度は Bash 3.2 で ble-reload の後に core-*.sh が読み込まれない問題が発生している [#D1200]
     bash-3.2: ble/complete/sabbrev/expand: No such file or directory 等と言っている。
