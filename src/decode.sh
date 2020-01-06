@@ -2080,7 +2080,7 @@ function ble-decode-bind/.generate-source-to-unbind-default {
       echo '__BINDX__'
       builtin bind -X
     fi
-    ble/bin/echo '__BINDP__'
+    echo '__BINDP__'
     builtin bind -sp
 #%x
   } | LC_ALL=C ble-decode-bind/.generate-source-to-unbind-default/.process
