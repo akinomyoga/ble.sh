@@ -10,9 +10,10 @@ function sub:install {
   mkd "${dst%/*}"
   if [[ $src == *.sh ]]; then
     sed '
-      1i# this script is a part of blesh (https://github.com/akinomyoga/ble.sh) under MIT license
+      1i\
+# this script is a part of blesh (https://github.com/akinomyoga/ble.sh) under MIT license
       /^[[:space:]]*#/d;/^[[:space:]]*$/d
-    ' "$src" > "$dst"
+    ' "$src" > "$dst.part" && mv "$dst.part" "$dst"
   else
     cp "$src" "$dst"
   fi
