@@ -1,7 +1,6 @@
 #!/bin/bash
 #%$> out/ble.sh
 #%[release = 0]
-#%[use_gawk = 0]
 #%[measure_load_time = 0]
 #%[debug_keylogger = 1]
 #%#----------------------------------------------------------------------------
@@ -289,14 +288,6 @@ function ble/.check-environment {
 
     ble/util/print "ble.sh: modified PATH=\$PATH${PATH:${#original_path}}" >&2
   fi
-
-#%if use_gawk
-  if ! type gawk &>/dev/null; then
-    ble/util/print "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
-    return 1
-  fi
-  ble/bin/.default-utility-path gawk
-#%end
 
   # 暫定的な ble/bin/$cmd 設定
   ble/bin/.default-utility-path "${_ble_init_posix_command_list[@]}"
@@ -667,9 +658,6 @@ ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses
 ble/bin/.freeze-utility-path man
 # Solaris: .freeze-utility-path で上書きされた awk を戻す
 ble/bin/awk.use-solaris-xpg4
-#%if use_gawk
-ble/bin/.freeze-utility-path gawk
-#%end
 
 ble/builtin/trap/reserve EXIT
 blehook EXIT+='ble/builtin/trap/invoke EXIT'

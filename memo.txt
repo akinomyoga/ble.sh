@@ -3619,6 +3619,14 @@ bash_tips
 
     調べると普通は /usr/xpg4/bin/awk (nawk) を使うそうな。
 
+    何と。xpg4 awk も他の awk と異なる動作をする。nawk と同じであるかの様に説明されていたが、
+    実際のところ他の nawk とも違う振る舞いをしている様だ。以下の様にすると確かめられる。
+    $ echo "'" | /usr/xpg4/bin/awk -v apos=\' '{APOS=apos "\\" apos apos;gsub(apos,APOS);print}'
+
+    APOS=apos "\\\\" apos apos にすれば良いかと思いきや、
+    そうすると今度は別の gawk,nawk,mawk が期待したのと異なる結果になる。
+    うーん。どの様にしたらまともな動作にする事ができるだろうか。
+
   * color: ble-color-setface の警告メッセージ (reported by @cmplstofB) [#D1206]
     https://github.com/akinomyoga/ble.sh/commit/1885b541dfc200d9a0d2b5e8d6959d132462a008#r36687109
 
