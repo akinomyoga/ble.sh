@@ -9,9 +9,9 @@ ifeq ($(.FEATURES),)
 endif
 
 # check gawk
-GAWK := $(shell which gawk 2>/dev/null)
+GAWK := $(shell which gawk 2>/dev/null || type -p gawk 2>/dev/null)
 ifeq ($(GAWK),)
-  GAWK := $(shell which awk 2>/dev/null)
+  GAWK := $(shell which awk 2>/dev/null || type -p awk 2>/dev/null)
   ifeq ($(GAWK),)
     $(error Sorry, gawk/awk could not be found. Please check your PATH environment variable.)
   endif
