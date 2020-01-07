@@ -3589,6 +3589,36 @@ bash_tips
 
 2020-01-07
 
+  * global: Solaris awk [#D1207]
+
+    % Solaris の awk は ENVIRON が使えない。POSIX には ENVIRON が載っているのにも関わらず。
+    % POSIX "In addition, all environment variables shall be visible via the awk variable ENVIRON."
+    % 最近 POSIX に載ったという事なのだろうか。なるほど、
+    % "Several features have been added based on newer implementations of awk:" のリストに載っている。
+    % これによると -v assignment も新しい機能だそうだ。
+    %
+    % 何れにしても ENVIRON がなくても動くようにしなければならない。
+    %
+    % どの様にして文字列を渡すのが懸命だろうか。
+    % a 一つの方法は -v var=... で渡す方法。
+    %   然し、... の部分をエスケープしなければならない。
+    %   どの文字をエスケープする必要があるだろうか。\ だけ?
+    %   更に -v も新しい機能だそうだ。
+    %   実際に Solaris の awk に対して使ってみるとエラーになる。
+    %
+    % b 或いは "..." の部分に埋め込むしかないのだろうか。
+    %   面倒な事である。
+    %
+    % * !a[$0]++ が使えないので a[$0]++ != 0 としなければならない。
+    % * また BEGIN を二つ以上含む事もできない。
+    %   というか一番最初でなければならない様だ。
+    % * 何と Solaris の awk は user-defined function すら定義できない?
+    % うーん。これはどうしようもない。
+
+    Solaris の awk は絶望的に使えない。関数が使えないのでもうどうしようもない。
+
+    調べると普通は /usr/xpg4/bin/awk (nawk) を使うそうな。
+
   * color: ble-color-setface の警告メッセージ (reported by @cmplstofB) [#D1206]
     https://github.com/akinomyoga/ble.sh/commit/1885b541dfc200d9a0d2b5e8d6959d132462a008#r36687109
 

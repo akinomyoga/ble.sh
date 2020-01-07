@@ -650,6 +650,10 @@ ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses
 #%if use_gawk
 ble/bin/.freeze-utility-path gawk
 #%end
+if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
+  # Solaris の既定の awk は絶望的なので /usr/xpg4/bin/awk (nawk) を使う
+  function ble/bin/awk { /usr/xpg4/bin/awk "$@"; }
+fi
 ble/bin/.freeze-utility-path man
 
 ble/builtin/trap/reserve EXIT
