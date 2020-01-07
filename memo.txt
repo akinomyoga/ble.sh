@@ -2622,7 +2622,7 @@ bash_tips
   - global: fix subshell detection in Bash 3.2 `#D1200` ca8df8a
   - syntax: workaround Bash-4.1 arithmetic bug `#D1201` f248c52
   - Makefile: fix "install" for BSD sed `#D1202` 32c2e1a
-  - term: support "tput" based on termcap `#D1203` `#D1204` 0000000
+  - term: support "tput" based on termcap `#D1203` `#D1204` 161af07
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3587,6 +3587,19 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-07
+
+  * global: FreeBSD, Arch Linux, etc. 対策 [#D1205]
+
+    - make が GNU make とは限らない。
+    - which があるとは限らない
+    - man があるとは限らない
+    - LC_COLLATE を変えようとするとエラーメッセージが出る @ Arch Linux
+      何故かは分からない。
+      →これは分かった。日本語の locale しか生成していなかった。
+      実際に試した環境は LANG=en_US.UTF-8 であったが、
+      実は en_US.UTF-8 の locale が生成されていなかったのである。
+      何れにしてもシステムの設定に少し異常が在るだけで使えなくなるのも不便なので
+      やはり無理やりメッセージは封じ込める事にする。
 
   * [自然解消] 2019-07-02 term: tput が terminfo (ncurses) ではなくて termcap の場合? [#D1204]
     Ref #D1203

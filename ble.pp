@@ -263,7 +263,7 @@ function ble/bin/.freeze-utility-path {
 
 # POSIX utilities
 
-_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep man cat wc mv sh)
+_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep cat wc mv sh)
 function ble/.check-environment {
   if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
     local cmd commandMissing=
@@ -593,12 +593,21 @@ function ble-update {
     return
   fi
 
-  local MAKE=make
-  type gmake &>/dev/null && MAKE=gmake
+  # check make
+  local MAKE=
+  if type gmake &>/dev/null; then
+    MAKE=gmake
+  elif type make &>/dev/null && make --version |& grep -qiF 'GNU Make'; then
+    MAKE=make
+  else
+    ble/util/print "ble-update: GNU Make is not available." >&2
+    return 1
+  fi
 
-  if ! type git gawk "$MAKE" &>/dev/null; then
+  # check git, gawk
+  if ! type git gawk &>/dev/null; then
     local command
-    for command in git "$MAKE" gawk; do
+    for command in git gawk; do
       type "$command" ||
         ble/util/print "ble-update: '$command' command is not available." >&2
     done
@@ -641,6 +650,7 @@ ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses
 #%if use_gawk
 ble/bin/.freeze-utility-path gawk
 #%end
+ble/bin/.freeze-utility-path man
 
 ble/builtin/trap/reserve EXIT
 blehook EXIT+='ble/builtin/trap/invoke EXIT'
