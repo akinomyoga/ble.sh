@@ -1355,7 +1355,8 @@ function ble/complete/source:wordlist {
 
 function ble/complete/source:command/.contract-by-slashes {
   local slashes=${COMPV//[!'/']}
-  ble/bin/awk -F / -v baseNF=${#slashes} '
+  ble/bin/awk -F / '
+    BEGIN { baseNF = '${#slashes}'; }
     function initialize_common() {
       common_NF = NF;
       for (i = 1; i <= NF; i++) common[i] = $i;
@@ -3671,6 +3672,12 @@ function ble/complete/insert-braces/.compose {
     esac
   fi
 
+  local ret
+  ble/string#escape-for-awk-double-quote "$rex_atom"; local ESC_REX_ATOM=$ret
+  ble/string#escape-for-awk-double-quote "$del_close"; local ESC_DEL_CLOSE=$ret
+  ble/string#escape-for-awk-double-quote "$del_open"; local ESC_DEL_OPEN=$ret
+  ble/string#escape-for-awk-double-quote "$quote_type"; local ESC_QUOTE_TYPE=$ret
+  ble/string#escape-for-awk-double-quote "$COMPS"; local ESC_COMPS=$ret
   printf "$printf_format" "$@" | ble/bin/awk '
     function starts_with(str, head) {
       return substr(str, 1, length(head)) == head;
@@ -3678,11 +3685,11 @@ function ble/complete/insert-braces/.compose {
 
     BEGIN {
       RS = '"$RS"';
-      rex_atom = ENVIRON["rex_atom"];
-      del_close = ENVIRON["del_close"];
-      del_open = ENVIRON["del_open"];
-      quote_type = ENVIRON["quote_type"];
-      COMPS = ENVIRON["COMPS"];
+      rex_atom = "'"$ESC_REX_ATOM"'";
+      del_close = "'"$ESC_DEL_CLOSE"'";
+      del_open = "'"$ESC_DEL_CLOSE"'";
+      quote_type = "'"$ESC_QUOTE_TYPE"'";
+      COMPS = "'"$ESC_COMPS"'";
 
       BRACE_OPEN = del_close "{" del_open;
       BRACE_CLOS = del_close "}" del_open;

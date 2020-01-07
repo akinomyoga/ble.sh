@@ -118,16 +118,21 @@ if ((_ble_bash>=40000)); then
       builtin history -n
     fi
     local HISTTIMEFORMAT=__ble_ext__
-    local -x INDEX_FILE=$history_indfile
     local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
+    local ret
+    ble/string#escape-for-awk-double-quote "$history_indfile"; local ESC_INDEX_FILE=$ret
+
 
     local apos=\'
     # 482ms for 37002 entries
-    builtin history $arg_count | ble/bin/awk -v apos="$apos" -v opt_cygwin="$opt_cygwin" '
+    builtin history $arg_count | ble/bin/awk '
       BEGIN {
+        apos = "'$apos'";
+        opt_cygwin = "'$opt_cygwin'";
+
         n = 0;
         hindex = 0;
-        INDEX_FILE = ENVIRON["INDEX_FILE"];
+        INDEX_FILE = "'"$ESC_INDEX_FILE"'";
         printf("") > INDEX_FILE; # create file
         if (opt_cygwin) print "_ble_history=(";
       }
@@ -306,8 +311,8 @@ else
 
     # 285ms for 16437 entries
     local apos="'"
-    builtin history $arg_count | ble/bin/awk -v apos="'" '
-      BEGIN { n = ""; }
+    builtin history $arg_count | ble/bin/awk '
+      BEGIN { apos = "'$apos'"; n = ""; }
 
       # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
       /^ *[0-9]+\*? +(__ble_ext__|\?\?)/ {
@@ -402,16 +407,19 @@ if ((_ble_bash>=30100)); then
   ##     read    ... history -r によるファイルからの読み出し
   ##   @var[in] TMPBASE
   function ble/history:bash/resolve-multiline/.awk {
-    local -x reason=$1
-    local apos=\'
-    ble/bin/awk -v apos="$apos" '
+    local ret reason=$1 apos=\'
+    ble/string#escape-for-awk-double-quote "$reason"; local ESC_REASON=$ret
+    ble/string#escape-for-awk-double-quote "$TMPBASE"; local ESC_TMPBASE=$ret
+    ble/bin/awk '
       BEGIN {
+        apos = "'$apos'";
+        reason = "'"$ESC_REASON"'";
+        TMPBASE = "'"$ESC_TMPBASE"'";
+
         q = apos;
         Q = apos "\\" apos apos;
-        reason = ENVIRON["reason"];
         is_resolve = reason == "resolve";
 
-        TMPBASE = ENVIRON["TMPBASE"];
         filename_source = TMPBASE ".part";
         if (is_resolve)
           print "builtin history -c" > filename_source
@@ -786,10 +794,17 @@ function ble/builtin/history/.load-recent-entries {
 ## 関数 ble/builtin/history/.read file [skip [fetch]]
 function ble/builtin/history/.read {
   local file=$1 skip=${2:-0} fetch=$3
-  local -x histnew=$_ble_base_run/$$.history.new
+  local histnew=$_ble_base_run/$$.history.new
   if [[ -s $file ]]; then
-    local script=$(ble/bin/awk -v skip=$skip '
-      BEGIN { histnew = ENVIRON["histnew"]; count = 0; }
+    local ret
+    ble/string#escape-for-awk-double-quote "$skip"; local ESC_SKIP=$ret
+    ble/string#escape-for-awk-double-quote "$histnew"; local ESC_HISTNEW=$ret
+    local script=$(ble/bin/awk '
+      BEGIN {
+        skip = "'"$ESC_SKIP"'";
+        histnew = "'"$ESC_HISTNEW"'";
+        count = 0;
+      }
       NR <= skip { next; }
       { print $0 >> histnew; count++; }
       END {
@@ -814,8 +829,8 @@ function ble/builtin/history/.read {
 }
 ## 関数 ble/builtin/history/.write file [skip [opts]]
 function ble/builtin/history/.write {
-  local -x file=$1 skip=${2:-0} opts=$3
-  local -x histapp=$_ble_base_run/$$.history.app
+  local file=$1 skip=${2:-0} opts=$3
+  local histapp=$_ble_base_run/$$.history.app
 
   local min; ble/builtin/history/.get-min
   local max; ble/builtin/history/.get-max
@@ -839,9 +854,11 @@ function ble/builtin/history/.write {
       : >| "$file"
     fi
 
+    local ret
+    ble/string#escape-for-awk-double-quote "$file"; local ESC_FILE=$ret
     local apos=\'
     < "$histapp" ble/bin/awk '
-      BEGIN { file = ENVIRON["file"]; mode = 0; }
+      BEGIN { file = "'"$ESC_FILE"'"; mode = 0; }
       function flush_line() {
         if (!mode) return;
         mode = 0;

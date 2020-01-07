@@ -774,6 +774,14 @@ function ble/string#escape-for-bash-specialchars {
     a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
   fi
 }
+function ble/string#escape-for-awk-double-quote {
+  ble/string#escape-characters "$*" '\"'
+  if [[ $ret == *[$'\n\t']* ]]; then
+    local a b
+    a=$'\n' b='\n' ret=${ret//"$a"/$b}
+    a=$'\t' b='\t' ret=${ret//"$a"/$b}
+  fi
+}
 
 ## 関数 ble/string#create-unicode-progress-bar value max width
 ##   @var[out] ret
@@ -1390,8 +1398,10 @@ function ble/util/openat/finalize {
 
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
-    declare -p "$@" | ble/bin/awk -v _ble_bash="$_ble_bash" '
-      BEGIN { decl = ""; }
+    local ret
+    ble/string#escape-for-awk-double-quote "$_ble_bash"; local ESC_BLE_BASH=$ret
+    declare -p "$@" | ble/bin/awk '
+      BEGIN { _ble_bash = "'"$ESC_BLE_BASH"'"; decl = ""; }
       function declflush(_, isArray) {
         if (decl) {
           isArray = (decl ~ /^declare +-[fFgilrtux]*[aA]/);
