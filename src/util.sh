@@ -1083,7 +1083,7 @@ _ble_util_rex_isprint='^[ -~]+'
 ##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。
 function ble/util/isprint+ {
   # LC_COLLATE=C ...  &>/dev/null for cygwin collation
-  LC_COLLATE=C ble/util/isprint+.impl "$@";
+  LC_COLLATE=C ble/util/isprint+.impl "$@"
 } &>/dev/null # Note: suppress LC_COLLATE errors #D1205
 function ble/util/isprint+.impl {
   [[ $1 =~ $_ble_util_rex_isprint ]]

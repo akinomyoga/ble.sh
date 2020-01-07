@@ -75,7 +75,7 @@ function ble/init:term/initialize {
   # IND/RI, CR, LF, FS
   ble/init:term/define-cap.2 _ble_term_ind $'\eD' ind:sf
   ble/init:term/define-cap   _ble_term_ri  $'\eM' ri:sr
-  ble/init:term/define-cap   _ble_term_cr  $'\r'  cr
+  ble/init:term/define-cap   _ble_term_cr  $'\r'  cr:cr
   _ble_term_nl=$'\n'
   ble/init:term/register-varname _ble_term_nl
   _ble_term_IFS=$' \t\n'
@@ -145,7 +145,7 @@ function ble/init:term/initialize {
   ble/init:term/define-cap _ble_term_rc $'\e[u' rc:rc
 
   # Cursors
-  ble/init:term/define-cap _ble_term_Ss '' ss:- 123 # DECSCUSR
+  ble/init:term/define-cap _ble_term_Ss '' Ss:Ss 123 # DECSCUSR
   _ble_term_Ss=${_ble_term_Ss//123/@1}
   ble/init:term/define-cap _ble_term_cvvis $'\e[?25h' cvvis:vs
   ble/init:term/define-cap _ble_term_civis $'\e[?25l' civis:vi
