@@ -21,11 +21,11 @@ function sub:install {
   local dst=$2
   mkd "${dst%/*}"
   if [[ $src == *.sh ]]; then
-    local nl=$'\n' q=\' script='1i# this script is a part of blesh (https://github.com/akinomyoga/ble.sh) under BSD-3-Clause license'
+    local nl=$'\n' q=\' script=$'1i\\\n# this script is a part of blesh (https://github.com/akinomyoga/ble.sh) under BSD-3-Clause license'
     script=$script$nl'/^[[:space:]]*#/d;/^[[:space:]]*$/d'
     [[ $flag_release ]] &&
       script=$script$nl's/^\([[:space:]]*_ble_base_repository=\)'$q'.*'$q'\([[:space:]]*\)$/\1'${q}release:$dist_git_branch$q'/'
-    sed "$script" "$src" > "$dst"
+    sed "$script" "$src" > "$dst.part" && mv "$dst.part" "$dst"
   else
     cp "$src" "$dst"
   fi

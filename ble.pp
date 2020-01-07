@@ -508,9 +508,12 @@ function ble-update {
     return
   fi
 
-  if ! type git make gawk &>/dev/null; then
+  local MAKE=make
+  type gmake &>/dev/null && MAKE=gmake
+
+  if ! type git gawk "$MAKE" &>/dev/null; then
     local command
-    for command in git make gawk; do
+    for command in git "$MAKE" gawk; do
       type "$command" ||
         echo "ble-update: '$command' command is not available." >&2
     done
@@ -522,7 +525,7 @@ function ble-update {
     local branch=${_ble_base_repository#*:}
     ( ble/bin/mkdir -p "$_ble_base/src" && builtin cd "$_ble_base/src" &&
         git clone --depth 1 https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
-        builtin cd ble.sh && make all && make INSDIR="$_ble_base" install ) &&
+        builtin cd ble.sh && "$MAKE" all && "$MAKE" INSDIR="$_ble_base" install ) &&
       ble-reload
     return
   fi
@@ -530,9 +533,9 @@ function ble-update {
   if [[ $_ble_base_repository && -d $_ble_base_repository/.git ]]; then
     ( echo "cd into $_ble_base_repository..." >&2 &&
         builtin cd "$_ble_base_repository" &&
-        git pull && { ! make -q || exit 6; } && make all &&
+        git pull && { ! "$MAKE" -q || builtin exit 6; } && "$MAKE" all &&
         if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
-          make INSDIR="$_ble_base" install
+          "$MAKE" INSDIR="$_ble_base" install
         fi ); local ext=$?
     ((ext==6)) && return
     ((ext==0)) && ble-reload
