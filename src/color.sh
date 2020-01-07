@@ -913,18 +913,15 @@ function ble/color/initialize-faces {
       else
         ret=_ble_faces[_ble_faces__$value]
       fi ;;
-    (copy:*)
+    (copy:*|face:*|iface:*)
+      # `face:*' and `iface:*' are obsoleted forms.
+      [[ $spec == copy:* ]] ||
+        ble/util/print "ble-color-setface: \"${spec%%:*}:*\" is obsoleted. Use \"copy:*\" instead." >&2
       if [[ ! ${value//[0-9]} ]]; then
         ble/color/iface2g "$value"
       else
         ble/color/face2g "$value"
       fi ;;
-    (face:*) # obsolete
-      ble/util/print 'ble-color-setface: "iface:*" is obsoleted. Use "copy:*" instead.' >&2
-      ble/color/face2g "$value" ;;
-    (iface:*) # obsolete
-      ble/util/print 'ble-color-setface: "iface:*" is obsoleted. Use "copy:*" instead.' >&2
-      ble/color/iface2g "$value" ;;
     (sgrspec:*) ble/color/sgrspec2g "$value" ;;
     (ansi:*)    ble/color/ansi2g "$value" ;;
     (*)         ble/color/gspec2g "$spec" ;;

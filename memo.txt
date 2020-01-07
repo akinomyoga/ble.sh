@@ -2523,7 +2523,7 @@ bash_tips
   - complete: support `bleopt complete_allow_reduction` `#D1181` 03040b7
   - edit: support `bleopt exec_errexit_mark` `#D1182` 6adc2df
   - color: support true colors `#D1184` bd631ce 5dd6b03
-  - color (`ble-color-setface`): support reference to another face `#D1188` 1885b54
+  - color (`ble-color-setface`): support reference to another face `#D1188` 1885b54 `#D1206` 0000000
   - edit: support `shopt -u promptvars` `#D1189` 269ba09
 
   Changes
@@ -2561,6 +2561,7 @@ bash_tips
   - color (`ble-color-{set,def}face`): list faces without arguments `#D1180` 50327c3
   - complete: search completion settings through alias expansion `#D1187` c472809
   - history (`ble/builtin/history`): support an option `--help` `#D1192` d4c26c5
+  - global: adjust for FreeBSD and Arch Linux `#D1205` 6ac5b8c
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -3587,6 +3588,11 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-07
+
+  * color: ble-color-setface の警告メッセージ (reported by @cmplstofB) [#D1206]
+    https://github.com/akinomyoga/ble.sh/commit/1885b541dfc200d9a0d2b5e8d6959d132462a008#r36687109
+
+    古い形式 face:*, iface:* を使った時の警告メッセージが間違っていた。
 
   * global: FreeBSD, Arch Linux, etc. 対策 [#D1205]
 
