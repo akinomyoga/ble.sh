@@ -2523,7 +2523,7 @@ bash_tips
   - complete: support `bleopt complete_allow_reduction` `#D1181` 03040b7
   - edit: support `bleopt exec_errexit_mark` `#D1182` 6adc2df
   - color: support true colors `#D1184` bd631ce 5dd6b03
-  - color (`ble-color-setface`): support reference to another face `#D1188` 1885b54 `#D1206` 0000000
+  - color (`ble-color-setface`): support reference to another face `#D1188` 1885b54 `#D1206` 7e31ad3
   - edit: support `shopt -u promptvars` `#D1189` 269ba09
 
   Changes
