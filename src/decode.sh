@@ -2456,23 +2456,25 @@ function ble/decode/attach/.generate-source-to-unbind-default {
     fi
     ble/util/print '__BINDP__'
     builtin bind -sp
-#%x
   } | LC_ALL=C ble/decode/attach/.generate-source-to-unbind-default/.process
 
   # Note: 2>/dev/null は、(1) bind -X のエラーメッセージ、及び、
   # (2) LC_ALL 復元時のエラーメッセージ (外側の値が不正な時) を捨てる為に必要。
 } 2>/dev/null
 function ble/decode/attach/.generate-source-to-unbind-default/.process {
-  ble/bin/${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
-#%end.i
+  local q=\' b=\\ Q="'\''"
+  # Note: Solaris xpg4 awk では gsub の置換後のエスケープシーケンスも処理される
+  [[ $_ble_bin_awk_solaris_xpg4 == yes ]] && Q="'$b$b''"
+  local QUOT_Q=\"${Q//"$b"/$b$b}\"
+  ble/bin/awk -v q="$q" '
     BEGIN {
-      APOS = apos "\\" apos apos;
+      Q = '"$QUOT_Q"';
       mode = 1;
     }
 
     function quote(text) {
-      gsub(apos, APOS, text);
-      return apos text apos;
+      gsub(q, Q, text);
+      return q text q;
     }
 
     function unescape_control_modifier(str, _, i, esc, chr) {
@@ -2531,27 +2533,12 @@ function ble/decode/attach/.generate-source-to-unbind-default/.process {
 
 #%    # ※bash-4.3 では bind -r しても bind -X に残る。
 #%    #   再登録を防ぐ為 ble-decode-bind を明示的に避ける
-#%if use_gawk
-      if (line ~ /\yble-decode\/.hook\y/) next;
-#%else
       if (line ~ /(^|[^[:alnum:]])ble-decode\/.hook($|[^[:alnum:]])/) next;
-#%end
 
 #%    # ※bind -X で得られた物は直接 bind -x に用いる事はできない。
 #%    #   コマンド部分の "" を外して中の escape を外す必要がある。
 #%    #   escape には以下の種類がある: \C-a など \C-? \e \\ \"
 #%    #     \n\r\f\t\v\b\a 等は使われない様だ。
-#%if use_gawk
-      if (match(line, /^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/, captures) > 0) {
-        sequence = captures[1];
-        command = captures[3];
-
-        if (command ~ /\\/)
-          command = unescape(command);
-
-        line = sequence command;
-      }
-#%else
       if (match(line, /^("([^"\\]|\\.)*":) "(([^"\\]|\\.)*)"/) > 0) {
         rlen = RLENGTH;
         match(line, /^"([^"\\]|\\.)*":/);
@@ -2565,7 +2552,6 @@ function ble/decode/attach/.generate-source-to-unbind-default/.process {
 
         line = sequence command;
       }
-#%end
 
       print "builtin bind -x " quote(line) > "/dev/stderr";
     }

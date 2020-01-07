@@ -2561,7 +2561,6 @@ bash_tips
   - color (`ble-color-{set,def}face`): list faces without arguments `#D1180` 50327c3
   - complete: search completion settings through alias expansion `#D1187` c472809
   - history (`ble/builtin/history`): support an option `--help` `#D1192` d4c26c5
-  - global: adjust for FreeBSD and Arch Linux `#D1205` 6ac5b8c
 
   Fixes
   - decode: workaround Poderosa that returns `DSR` instead of `CPR` in reply to `DSR(6)` `#D1018` 8e22c17
@@ -2613,8 +2612,9 @@ bash_tips
   - history: fix a bug that garbage `__ble_edt__` is added in front of history entries 61f4bd1
   - decode: remove debug messages for `ble-bind -s` 64a17c3
   - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
+  - term: fix `Ss` (`DECSCUSR`) 0c773da
 
-  Support macOS and FreeBSD
+  Support macOS / FreeBSD / Arch Linux / Solaris
   - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 6ff4d2b
   - decode: recover the terminal states after failing the default keymap initialization `#D1195` 846f284
   - main (`ble-update`): use shallow clone `#D1196` 2a20d9c
@@ -2624,6 +2624,8 @@ bash_tips
   - syntax: workaround Bash-4.1 arithmetic bug `#D1201` f248c52
   - Makefile: fix "install" for BSD sed `#D1202` 32c2e1a
   - term: support "tput" based on termcap `#D1203` `#D1204` 161af07
+  - global: adjust for FreeBSD and Arch Linux `#D1205` 6ac5b8c
+  - global: workaround Solaris awk `#D1207` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3588,6 +3590,46 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-07
+
+  * global: workaround Solaris awk [#D1207]
+
+    % Solaris の awk は ENVIRON が使えない。POSIX には ENVIRON が載っているのにも関わらず。
+    % POSIX "In addition, all environment variables shall be visible via the awk variable ENVIRON."
+    % 最近 POSIX に載ったという事なのだろうか。なるほど、
+    % "Several features have been added based on newer implementations of awk:" のリストに載っている。
+    % これによると -v assignment も新しい機能だそうだ。
+    %
+    % 何れにしても ENVIRON がなくても動くようにしなければならない。
+    %
+    % どの様にして文字列を渡すのが懸命だろうか。
+    % a 一つの方法は -v var=... で渡す方法。
+    %   然し、... の部分をエスケープしなければならない。
+    %   どの文字をエスケープする必要があるだろうか。\ だけ?
+    %   更に -v も新しい機能だそうだ。
+    %   実際に Solaris の awk に対して使ってみるとエラーになる。
+    %
+    % b 或いは "..." の部分に埋め込むしかないのだろうか。
+    %   面倒な事である。
+    %
+    % * !a[$0]++ が使えないので a[$0]++ != 0 としなければならない。
+    % * また BEGIN を二つ以上含む事もできない。
+    %   というか一番最初でなければならない様だ。
+    % * 何と Solaris の awk は user-defined function すら定義できない?
+    % うーん。これはどうしようもない。
+
+    Solaris の awk は絶望的に使えない。関数が使えないのでもうどうしようもない。
+
+    調べると普通は /usr/xpg4/bin/awk (nawk) を使うそうな。
+
+    何と。xpg4 awk も他の awk と異なる動作をする。nawk と同じであるかの様に説明されていたが、
+    実際のところ他の nawk とも違う振る舞いをしている様だ。以下の様にすると確かめられる。
+    $ echo "'" | /usr/xpg4/bin/awk -v apos=\' '{APOS=apos "\\" apos apos;gsub(apos,APOS);print}'
+
+    APOS=apos "\\\\" apos apos にすれば良いかと思いきや、
+    そうすると今度は別の gawk,nawk,mawk が期待したのと異なる結果になる。
+    うーん。どの様にしたらまともな動作にする事ができるだろうか。
+    取り敢えず動くようにした。問題なく動いている様に見える。
+    後で問題が起こるかもしれないが、取り敢えずこれで良い事にする。
 
   * color: ble-color-setface の警告メッセージ (reported by @cmplstofB) [#D1206]
     https://github.com/akinomyoga/ble.sh/commit/1885b541dfc200d9a0d2b5e8d6959d132462a008#r36687109
