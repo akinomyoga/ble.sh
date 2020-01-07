@@ -904,6 +904,168 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-01-06
+
+  * ble.sh session からログアウトした時の Bash の終了ステータス
+
+    C-d で抜けると 2 や 255 になっている。
+    exit コマンドで抜けた場合は 0 である。この違いは何処から?
+    普通の Bash session から C-d でログアウトした時は 0 である。
+
+2020-01-05
+
+  * Homebrew でインストールしたら動かないという報告
+    https://github.com/akinomyoga/ble.sh/issues/33
+
+    [原因解明]
+
+    変だ。Homebrew には登録していない。
+    取り敢えず返信でどうやって formula を使ったのかという事を質問した。
+    然し、後で調べてみるとどうも GitHub から自動生成する事ができる様だ。
+    何だかよく分からない。
+    →結局 Homebrew で ble.sh を入れたというのは勘違いだった。
+
+    更に keymap/emacs.sh がなかったとしても別のエラーになる。
+    また cache の keymap.emacs の中身を空にした場合でも
+    もっと前のチェックで引っかかるので別のエラーメッセージになる筈だ。
+    - まるで DEFAULT_KEYMAP の上書きに失敗しているかの様だ。
+      取り敢えず DEFAULT_KEYMAP を上書きしなかった場合に同じエラーメッセージになる事を確かめた。
+
+    然し他に手がかりがない。。
+
+    うーん。DEFAULT_KEYMAP を readonly にした場合でも同じ問題が生じる様だ。
+    また上書きエラーのメッセージは表示されない様だ。
+    然し探しても関数を常に readonly にする機能がある訳でもない気がする。
+    本当にこれが勝手に readonly になってしまう事があるだろうか。
+    取り敢えず readonly かどうかは以下のコマンドで確認できる。
+    declare -f +r ble-decode/DEFAULT_KEYMAP
+
+    その他の可能性として何があるだろうか。
+    例えば _ble_decode_emacs_kmap_ が local になっている可能性?
+    関数内部から source をするのは既に試したが問題は起こっていない。
+
+    それよりも後で source して実行すると動くというのも不思議である。
+    bashrc 中で実行すると起こる何らかの不具合だろうか???
+
+    というか彼は何故 bash_profile に設定を書いているのだろうか。
+    それがそもそもの間違いである可能性は?
+    試してみたが bash_profile に書いたとしても
+    全く呼び出されないか或いはちゃんと動くかのどちらかである。
+
+    分からないので取り敢えず返事待ちである。
+
+    ? ok: cache が cache.d になっているのは何故なのだろうか。
+      XDG の判定に失敗しているという事だろうか。
+      →あー。分かった。これは ~/.cache というディレクトリが存在していないという事。
+        なのでこれは飽くまで意図した動作の範囲内である。
+
+    追加の返信が来た。
+
+    * 色々の問題が複雑に絡み合っている気がする。
+      - ble-edit/detach を実行すると ble-decode/... is not found になったそうだ。
+        何でだろう。余り考えにくい事である。 ble-decode なので ble-edit/detach を
+        うち間違えた訳ではない。
+      - 更にもう一度入力したら今度は shell が終了してしまったそうだ。
+        実際に試してみたがエラーは起こらないし、もう一度入力しても何も起こらない。
+        但し、stty の状態は復元しない様子である。
+      - 更にまた別のセッションで実行すると syntax error になったそうで。
+      何が起こっているのか全く分からない。
+
+      取り敢えずこれに関しては最新の ble-0.3 を試してもらって
+      様子を見る事にする。もしかすると治るかもしれない。
+      何れにしても最初のロードではちゃんと動くので何かが変なんだ。
+
+    * 分かった事は _ble_keymap_emacs_kmap_ が配列になっていないという事。
+      何が原因だろうか。nawk による処理で print definition がちゃんと動いていない?
+
+      nawk では ENVIRON が使えないという噂があったので調べてみたが動いている気がする。
+      というかどうやって dump していたのだったか。
+      ble-decode/keymap/dump emacs を使っている。
+      更に内部では ble/util/declare-print-definitions という関数を使っている。
+
+      うーん。nawk に差し替えてもちゃんと動いている。Bash 5 でも Bash 3.2 でも問題ない。
+      $ ble/bin/awk() { /usr/bin/nawk "$@"; }                                                                                                                                                                         ~
+      $ ble/util/declare-print-definitions arr                                                                                                                                                                        ~
+      arr=([0]="1" [1]="3" [2]="4321" [3]="231")
+
+      うーん。何が原因なのだろうか。向こうで実行してもらうという手もある。
+      何れにしても改めて向こうに以下を試してもらう必要がある。
+      $ grep _emacs_ "$_ble_base_cache/keymap.emacs"
+      $ arr=(1 2 3)
+      $ declare -p arr | cat -A
+      $ ble/util/declare-print-definitions arr | cat -A
+      $ cat -A <<< $IFS
+
+      うーん。もしかして IFS が変な値を持っているのが原因という可能性はある?
+
+      取り敢えず _ble_keymap_emacs_kmap_ の出力結果が
+      配列でなくスカラーになっていた時に現象が再現するかについて確認する。
+      →取り敢えず右辺を '...' で囲むと報告されているのと同じ状態になるという事は分かった。
+      やはり ble/util/declare-print-definitions が不味いという事なのだろう。
+
+      ? 或いは busybox awk など更に別の実装を使っている可能性はあるだろうか。
+        nawk, mawk, busybox awk の何れを試しても ble/util/declare-print-definitions
+        はちゃんと動いている様に見える。やはりよく分からない。
+
+    * is-keymap は配列かどうかも含めて検査するべきではないか。
+      と思って実装を確認したがこれはどうやら register されたかどうかの判定。
+      従って関係ないのであった。これはまあ修正しなくても良い。
+
+    + 解決後に bash_profile ではなくて bashrc に書く様にお願いする
+    + 解決後に chsh しないのかという事を尋ねる
+
+  * Homebrew の設定を作成する?
+
+    先ず Linuxbrew (Homebrew for Linux) を ~/opt/linuxbrew に入れた。
+    普通と違う場所に入れようとしたので色々問題が起こって時間を食ってしまった。
+
+    * brew tap について調べてみる事にする。
+
+      % brew tap akinomyoga/ble.sh を実行すると https でダウンロードしようとする。
+      % brew tap akinomyoga/ble.sh git@github.com:akinomyoga/ble.sh.git とすれば良い様だ。
+      % それから brew install を試そうとするがどうやっても動かない。
+      % どれをやってもそんな formula は見つかりませんのエラーになってしまう。
+      % もしくは tap を確認すらしない場合もある。不思議だ。
+      % $ brew install akinomyoga/ble.sh
+      % $ brew install akinomyogable.sh
+      % $ brew install akinomyoga/homebrew-ble.sh
+      % $ brew install homebrew-ble.sh
+      % $ brew install brew-ble.sh
+      %
+      % $ brew tap
+      % を実行してみると。自分が登録した物の他に homebrew/core がある。
+      % homebrew/core は中に formula を沢山入れた repo の筈である。
+      % もしやと思って調べてみる。
+      %
+      % https://qiita.com/wkentaro/items/d4981582e08b134f1e1d
+
+      どうも user/name に対応して github.com:user/homebrew-name を作成して、
+      その中に formula.rb を入れて置くという事になっている様だ。
+      面倒なのでそれよりは直接 core に取り入れてもらった方が楽だ。
+
+    * 自分で formula を作ってみるのを試す
+
+      仕方がないので自分で formula を作ってみるのを試す事にした。
+      $ brew create --set-name blesh
+
+      全て自分で記入しなければならない様だ。適当に formula を作成してみる。
+      sha256 は何の sha256 を記入すれば良いのか分からないのでコメントアウトする。
+      結局分からないので以下を参考にして埋めてみる事にする。
+      https://github.com/10sr/homebrew-pkg/blob/813de30c121e8dea970f11e7c1e63e57d3a6a0ed/Formula/ble-sh.rb_
+      * ビルドは gawk に依存しているので gawk に依存させてみる。
+      * gmake については調べてみた所 macOS ではデフォルトで GNU make だそうなので不要?
+        然し、mac ではデフォルトで make が入っているのだろうか。
+        或いは自分で追加で入れる必要があったりするのだろうか。よく分からない。
+
+      と思ったが何処にも *.rb が作られていない。
+      $ find ~/opt/linuxbrew/ | grep blesh
+      で調べてみたら ~/opt/linuxbrew/Homebrew/Library/Taps/homebrew/homebrew-core/Formula/blesh.rb
+      に新しく blesh.rb が作成されていた。これを使う事にする。
+      試しに $ brew install blesh としてみたら動き出した。
+      gawk を入れるためにその依存関係まで全てダウンロードしてインストールしようとしている。
+
+    ? brew では自分で何処かで入手した formula を使うにはどうすればよいのか?
+
 2019-12-31
 
   * fast-syntax-highlighting の機能を確認する
@@ -1117,10 +1279,6 @@ bash_tips
   * menu: 複数選択を可能にしても良いのではないか
     C-@ で toggle をする等。抜ける時に全てを挿入する?
     然し使いみちがよく分からない。使いたくなったら追加するというので良い気がする。
-
-  * term: tput が terminfo (ncurses) ではなくて termcap の場合?
-    sentaku ではそれに対応している。ble.sh では terminfo ではなかった場合には、
-    既定で ANSI のシーケンスを用いる様になっている。
 
 2019-06-18
 
@@ -2454,11 +2612,17 @@ bash_tips
   - history: fix a bug that garbage `__ble_edt__` is added in front of history entries 61f4bd1
   - decode: remove debug messages for `ble-bind -s` 64a17c3
   - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
+
+  Support macOS and FreeBSD
   - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 6ff4d2b
   - decode: recover the terminal states after failing the default keymap initialization `#D1195` 846f284
+  - main (`ble-update`): use shallow clone `#D1196` 2a20d9c
+  - main (`$_ble_base_cache`): use different directories for different ble versions `#D1197` 55951d1
   - edit (`ble/builtin/read`): fix argument analysis with user-provided `IFS` in Bash 3.2 `#D1198` 7411f06
   - global: fix subshell detection in Bash 3.2 `#D1200` ca8df8a
-  - syntax: workaround Bash-4.1 arithmetic bug `#D1201` 0000000
+  - syntax: workaround Bash-4.1 arithmetic bug `#D1201` f248c52
+  - Makefile: fix "install" for BSD sed `#D1202` 32c2e1a
+  - term: support "tput" based on termcap `#D1203` `#D1204` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -2477,8 +2641,6 @@ bash_tips
   - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1186` 550fb14
   - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 1885b54
   - global: workaround `shopt -s xpg_echo` `#D1191` e46f9a3
-  - main (`ble-update`): use shallow clone `#D1196` 2a20d9c
-  - main (`$_ble_base_cache`): use different directories for different ble versions `#D1197` 55951d1
 
 2019-02-09 (#D0915...#D1015) 949e9a8...df4feaa
 
@@ -3423,6 +3585,26 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-07
+
+  * [自然解消] 2019-07-02 term: tput が terminfo (ncurses) ではなくて termcap の場合? [#D1204]
+    Ref #D1203
+
+    | sentaku ではそれに対応している。ble.sh では terminfo ではなかった場合には、
+    | 既定で ANSI のシーケンスを用いる様になっている。
+
+    これは実際には問題にはならないと思っていたが実際に問題になっていた。
+    terminfo の項目名と似た名前の別の termcap 項目が呼び出されて変な事になっていた。
+
+  * term: FreeBSD に入れてみたら着色が動かない [#D1203]
+    どうやら tput が terminfo ではなくて termcap で動いているのが理由。
+    修正することにした。今は動いている。
+
+  * Makefile: BSD sed では i... と書けないそうだ [#D1202]
+    https://github.com/akinomyoga/ble.sh/issues/33#issuecomment-571234160
+
+    修正しなければならない。修正した。
 
 2020-01-06
 
