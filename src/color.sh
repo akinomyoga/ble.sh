@@ -783,10 +783,10 @@ function ble/highlight/layer:plain/update {
       ch=${text:i:1}
 
       # LC_COLLATE for cygwin collation
-      LC_COLLATE=C ble/highlight/layer:plain/update/.getch &>/dev/null
+      LC_COLLATE=C ble/highlight/layer:plain/update/.getch
 
       _ble_highlight_layer_plain_buff[i]=$ch
-    done
+    done &>/dev/null # Note: suppress LC_COLLATE errors #D1205
   fi
 
   PREV_BUFF=_ble_highlight_layer_plain_buff
