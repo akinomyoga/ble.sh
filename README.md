@@ -87,6 +87,7 @@ If you want to load `ble.sh` by default in interactive sessions of `bash`, add t
 
 ## Update
 
+You need Git (`git`), GNU awk (`gawk`) and GNU make (`make`).
 For `ble-0.3+`, run `ble-update` in the session with `ble.sh` loaded:
 
 ```bash

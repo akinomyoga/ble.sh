@@ -90,6 +90,7 @@ $ cp -r ble-0.3.0 /path/to/blesh
 
 ## アップデートする
 
+Git (`git'), GNU awk (`gawk`), 及び GNU make (`make`) が必要になります。
 `ble-0.3` 以上をお使いの場合は `ble.sh` をロードした状態で `ble-update` を実行して下さい。
 
 ```bash
