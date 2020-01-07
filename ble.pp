@@ -1,7 +1,6 @@
 #!/bin/bash
 #%$> out/ble.sh
 #%[release = 1]
-#%[use_gawk = 0]
 #%[measure_load_time = 0]
 #%[debug_keylogger = 1]
 #%#----------------------------------------------------------------------------
@@ -162,14 +161,6 @@ function ble/.check-environment {
     echo "ble.sh: modified PATH=\$PATH${PATH:${#original_path}}" >&2
   fi
 
-#%if use_gawk
-  if ! type gawk &>/dev/null; then
-    echo "ble.sh: \`gawk' not found. Please install gawk (GNU awk), or check your environment variable PATH." >&2
-    return 1
-  fi
-  ble/bin/.default-utility-path gawk
-#%end
-
   # 暫定的な ble/bin/$cmd 設定
   ble/bin/.default-utility-path "${_ble_init_posix_command_list[@]}"
 
@@ -184,6 +175,21 @@ if [[ $_ble_base ]]; then
   echo "ble.sh: ble.sh seems to be already loaded." >&2
   return 1
 fi
+
+_ble_bin_awk_solaris_xpg4=
+function ble/bin/awk.use-solaris-xpg4 {
+  if [[ ! $_ble_bin_awk_solaris_xpg4 ]]; then
+    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
+      _ble_bin_awk_solaris_xpg4=yes
+    else
+      _ble_bin_awk_solaris_xpg4=no
+    fi
+  fi
+
+  # Solaris の既定の awk は絶望的なので /usr/xpg4/bin/awk (nawk) を使う
+  [[ $_ble_bin_awk_solaris_xpg4 == yes ]] &&
+    function ble/bin/awk { /usr/xpg4/bin/awk "$@"; }
+}
 
 #------------------------------------------------------------------------------
 
@@ -418,14 +424,16 @@ fi
 }
 #%end
 
+# Solaris: src/util の中でちゃんとした awk が必要
+ble/bin/awk.use-solaris-xpg4
+
 ##%x inc.r/@/getopt/
 #%x inc.r/@/core/
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
-#%if use_gawk
-ble/bin/.freeze-utility-path gawk
-#%end
 ble/bin/.freeze-utility-path man
+# Solaris: .freeze-utility-path で上書きされた awk を戻す
+ble/bin/awk.use-solaris-xpg4
 
 #%x inc.r/@/decode/
 #%x inc.r/@/color/

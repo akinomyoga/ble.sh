@@ -101,7 +101,9 @@ function ble-measure {
     fi
         
     local nsec0=$_ble_measure_base
-    awk -v utot=$utot -v nsec0=$nsec0 -v n=$n -v title="$* (x$n)" \
+    local awk=ble/bin/awk
+    type "$awk" &>/dev/null || awk=awk
+    "$awk" -v utot=$utot -v nsec0=$nsec0 -v n=$n -v title="$* (x$n)" \
         ' function genround(x, mod) { return int(x / mod + 0.5) * mod; }
             BEGIN { printf("%12.2f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, 100 / n), title); exit }'
     ((ret=utot/n))
