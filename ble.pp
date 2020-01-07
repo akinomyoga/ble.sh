@@ -321,6 +321,20 @@ function ble/bin/awk-supports-null-record-separator {
   fi
   [[ $_ble_bin_awk_supports_null_RS == yes ]]
 }
+_ble_bin_awk_solaris_xpg4=
+function ble/bin/awk.use-solaris-xpg4 {
+  if [[ ! $_ble_bin_awk_solaris_xpg4 ]]; then
+    if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
+      _ble_bin_awk_solaris_xpg4=yes
+    else
+      _ble_bin_awk_solaris_xpg4=no
+    fi
+  fi
+
+  # Solaris の既定の awk は絶望的なので /usr/xpg4/bin/awk (nawk) を使う
+  [[ $_ble_bin_awk_solaris_xpg4 == yes ]] &&
+    function ble/bin/awk { /usr/xpg4/bin/awk "$@"; }
+}
 
 #------------------------------------------------------------------------------
 _ble_version=0
@@ -643,18 +657,19 @@ function ble-update {
 }
 #%end
 
+# Solaris: src/util の中でちゃんとした awk が必要
+ble/bin/awk.use-solaris-xpg4
+
 #%x inc.r|@|src/def|
 #%x inc.r|@|src/util|
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
+ble/bin/.freeze-utility-path man
+# Solaris: .freeze-utility-path で上書きされた awk を戻す
+ble/bin/awk.use-solaris-xpg4
 #%if use_gawk
 ble/bin/.freeze-utility-path gawk
 #%end
-if [[ $OSTYPE == solaris* ]] && type /usr/xpg4/bin/awk >/dev/null; then
-  # Solaris の既定の awk は絶望的なので /usr/xpg4/bin/awk (nawk) を使う
-  function ble/bin/awk { /usr/xpg4/bin/awk "$@"; }
-fi
-ble/bin/.freeze-utility-path man
 
 ble/builtin/trap/reserve EXIT
 blehook EXIT+='ble/builtin/trap/invoke EXIT'
