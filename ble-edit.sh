@@ -6806,12 +6806,14 @@ function ble/widget/command-help.core {
     LESS="$LESS -r" eval 'declare -f "$command" | '"$pager" && return
   fi
 
-  MANOPT= ble/bin/man "${command##*/}" 2>/dev/null && return
-  # Note: $(man "${command##*/}") と (特に日本語で) 正しい結果が得られない。
-  # if local content=$(MANOPT= ble/bin/man "${command##*/}" 2>&1) && [[ $content ]]; then
-  #   builtin printf '%s\n' "$content" | ble/util/pager
-  #   return
-  # fi
+  if ble/is-function ble/bin/man; then
+    MANOPT= ble/bin/man "${command##*/}" 2>/dev/null && return
+    # Note: $(man "${command##*/}") と (特に日本語で) 正しい結果が得られない。
+    # if local content=$(MANOPT= ble/bin/man "${command##*/}" 2>&1) && [[ $content ]]; then
+    #   builtin printf '%s\n' "$content" | ble/util/pager
+    #   return
+    # fi
+  fi
 
   if local content; content=$("$command" --help 2>&1) && [[ $content ]]; then
     builtin printf '%s\n' "$content" | ble/util/pager
