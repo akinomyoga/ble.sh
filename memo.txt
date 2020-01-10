@@ -2625,7 +2625,8 @@ bash_tips
   - Makefile: fix "install" for BSD sed `#D1202` 32c2e1a
   - term: support "tput" based on termcap `#D1203` `#D1204` 161af07
   - global: adjust for FreeBSD and Arch Linux `#D1205` 6ac5b8c
-  - global: workaround Solaris awk `#D1207` 0000000
+  - global: workaround Solaris awk `#D1207` 74d438d
+  - util: support Haiku `#D1208` 0000000
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3588,6 +3589,26 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-10
+
+  * util: support Haiku (OS) [#D1208]
+
+    Haiku 上で動かしてみると先ず sleep が動かない。
+    mkfifo 等の機能が完全ではないという事の様に見える。
+    Cygwin と同様に /dev/udp/0.0.0.0/80 を使ってみたがそれも駄目だった。
+    通常の sleep コマンドに fallback する事にした。
+    一応 GNU coreutils sleep が入っているので全く動かないという事はない。
+
+    次に stty がエラーメッセージを出力している。lnext はないと言っている。
+    確かに POSIX を見るとサポートされている文字の種類はそんなにない。
+    https://pubs.opengroup.org/onlinepubs/9699919799/utilities/stty.html
+    現在使っているのは kill lnext werase erase intr quit susp である。
+    kill intr erase quit susp はある。lnext, werase はない。
+    仕方がないので初回起動時にチェックする事にする。
+
+    後は cmap で home,end,insert,delete の類の表現を調べるのに使っている
+    tput で terminfo を想定していたが termcap でも大丈夫な様に修正した。
 
 2020-01-07
 

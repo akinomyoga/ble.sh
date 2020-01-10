@@ -105,7 +105,7 @@ function ble/init:cmap/initialize {
   ble-decode-kbd/generate-keycode end
   ble-decode-kbd/generate-keycode next
 
-  local kend; ble/util/assign kend 'tput kend'
+  local kend; ble/util/assign kend 'tput @7 2>/dev/null || tput kend 2>/dev/null'
   if [[ $kend == $'\e[5~' ]]; then
     # vt100
     ble-bind --csi '1~' insert
