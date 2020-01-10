@@ -1218,9 +1218,6 @@ function ble-bind {
 
 # **** stty control ****                                      @decode.bind.stty
 
-## 変数 _ble_stty_stat
-##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
-
 #
 # 改行 (C-m, C-j) の取り扱いについて
 #   入力の C-m が C-j に勝手に変換されない様に -icrnl を指定する必要がある。
@@ -1233,40 +1230,51 @@ function ble-bind {
 #   その場で入力を受信する事ができない。結果として hang した様に見える。
 #   従って、enter で -icanon を設定する事にする。
 #
+
+## 変数 _ble_stty_stat
+##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
+_ble_stty_stat=
+_ble_term_stty_flags_enter=(kill undef erase undef intr undef quit undef susp undef)
+_ble_term_stty_flags_leave=(kill '' erase '' intr '' quit '' susp '')
+function ble/term/stty/.initialize-flags {
+  local stty; ble/util/assign stty 'stty -a'
+  # lnext, werase は POSIX にはないのでチェックする
+  if [[ $stty == *' lnext '* ]]; then
+    ble/util/array-push _ble_term_stty_flags_enter lnext undef
+    ble/util/array-push _ble_term_stty_flags_leave lnext ''
+  fi
+  if [[ $stty == *' werase '* ]]; then
+    ble/util/array-push _ble_term_stty_flags_enter werase undef
+    ble/util/array-push _ble_term_stty_flags_leave werase ''
+  fi
+}
+ble/term/stty/.initialize-flags
+
 function .ble-stty.initialize {
-  stty -ixon -echo -nl -icrnl -icanon \
-    kill   undef  lnext  undef  werase undef  erase  undef \
-    intr   undef  quit   undef  susp   undef
+  command stty -ixon -echo -nl -icrnl -icanon \
+          "${_ble_term_stty_flags_enter[@]}"
   _ble_stty_stat=1
 }
 function .ble-stty.leave {
   [[ ! $_ble_stty_stat ]] && return
   command stty  echo -nl icanon \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
+          "${_ble_term_stty_flags_leave[@]}"
   _ble_stty_stat=
 }
 function .ble-stty.enter {
   [[ $_ble_stty_stat ]] && return
-  stty -echo -nl -icrnl -icanon \
-    kill   undef  lnext  undef  werase undef  erase  undef \
-    intr   undef  quit   undef  susp   undef
+  command stty -echo -nl -icrnl -icanon \
+          "${_ble_term_stty_flags_enter[@]}"
   _ble_stty_stat=1
 }
 function .ble-stty.finalize {
-  [[ ! $_ble_stty_stat ]] && return
-  # detach の場合 -echo を指定する
-  command stty -echo -nl icanon \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
-  _ble_stty_stat=
+  .ble-stty.leave
 }
 function .ble-stty.exit-trap {
   ble/util/is-running-in-subshell && return
   # exit の場合は echo
-  stty echo -nl \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
+  command stty echo -nl \
+          "${_ble_term_stty_flags_leave[@]}"
   rm -f "$_ble_base_tmp/$$".*
 }
 trap .ble-stty.exit-trap EXIT

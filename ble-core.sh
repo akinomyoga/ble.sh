@@ -138,11 +138,14 @@ fi
 
 if ((_ble_bash>=30100)); then
   function ble/util/array-push {
-    builtin eval "$1+=(\"\$2\")"
+    IFS=' ' builtin eval "$1+=(\"\${@:2}\")"
   }
 else
   function ble/util/array-push {
-    builtin eval "$1[\${#$1[@]}]=\"\$2\""
+    while (($#>=2)); do
+      builtin eval "$1[\${#$1[@]}]=\"\$2\""
+      set -- "$1" "${@:3}"
+    done
   }
 fi
 function ble/util/array-reverse {
