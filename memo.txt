@@ -2614,7 +2614,7 @@ bash_tips
   - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
   - term: fix `Ss` (`DECSCUSR`) 0c773da
 
-  Support macOS / FreeBSD / Arch Linux / Solaris
+  Support macOS, FreeBSD, Arch Linux, Solaris, Haiku, Minix
   - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 6ff4d2b
   - decode: recover the terminal states after failing the default keymap initialization `#D1195` 846f284
   - main (`ble-update`): use shallow clone `#D1196` 2a20d9c
@@ -2627,6 +2627,13 @@ bash_tips
   - global: adjust for FreeBSD and Arch Linux `#D1205` 6ac5b8c
   - global: workaround Solaris awk `#D1207` 74d438d
   - util: support Haiku `#D1208` 0000000
+    - ble/util/msleep: do not use `read -t time` for Haiku
+    - ble/term/stty: check available character settings
+    - init-cmap: check termcap settings for <kbd>home</kbd>
+  - util: support Minix `#D1209`
+    - ble/util/msleep: do not use `read -t time -u FD` in Minix
+    - ble-edit/prompt: does not abbreviate IPv4 address for `\h`
+    - Makefile: create directory `dist` for `make dist`
 
   Internal changes
   - complete: isolate menu related codes `#D1029` 43bb074
@@ -3591,6 +3598,18 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-10
+
+  * util: support Minix (OS) [#D1209]
+
+    Minix の上でも msleep の実装が駄目だった。
+    今度は read -u 番号 による指定が使えない雰囲気である。
+
+    また Minix では HOSTNAME が IP Address になっていた。
+    この場合に PS1 の \h が IP アドレスの最初の番号だけを表示する。
+    これは都合が悪いので IPv4 の形式の場合には \h は省略しない事にした。
+
+    他に Minix に ble.sh を持っていく時に make dist しようとしたら
+    エラーが発生したので修正した。
 
   * util: support Haiku (OS) [#D1208]
 
