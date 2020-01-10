@@ -740,7 +740,7 @@ function ble/util/sleep/.check-builtin-sleep {
 
 if ((_ble_bash>=40400)) && ble/util/sleep/.check-builtin-sleep; then
   function ble/util/sleep { builtin sleep "$1"; }
-elif ((_ble_bash>=40000)); then
+elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* ]]; then
   # 遅延初期化
   _ble_util_sleep_fd=
   _ble_util_sleep_tmp=
@@ -1416,10 +1416,6 @@ function ble/term/visible-bell/cancel-erasure {
 
 #---- stty --------------------------------------------------------------------
 
-## 変数 _ble_term_stty_state
-##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
-_ble_term_stty_state=
-
 # 改行 (C-m, C-j) の取り扱いについて
 #   入力の C-m が C-j に勝手に変換されない様に -icrnl を指定する必要がある。
 #   (-nl の設定の中に icrnl が含まれているので、これを取り消さなければならない)
@@ -1431,24 +1427,40 @@ _ble_term_stty_state=
 #   その場で入力を受信する事ができない。結果として hang した様に見える。
 #   従って、enter で -icanon を設定する事にする。
 
+## 変数 _ble_term_stty_state
+##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
+_ble_term_stty_state=
+_ble_term_stty_flags_enter=(kill undef erase undef intr undef quit undef susp undef)
+_ble_term_stty_flags_leave=(kill '' erase '' intr '' quit '' susp '')
+function ble/term/stty/.initialize-flags {
+  local stty; ble/util/assign stty 'stty -a'
+  # lnext, werase は POSIX にはないのでチェックする
+  if [[ $stty == *' lnext '* ]]; then
+    ble/array#push _ble_term_stty_flags_enter lnext undef
+    ble/array#push _ble_term_stty_flags_leave lnext ''
+  fi
+  if [[ $stty == *' werase '* ]]; then
+    ble/array#push _ble_term_stty_flags_enter werase undef
+    ble/array#push _ble_term_stty_flags_leave werase ''
+  fi
+}
+ble/term/stty/.initialize-flags
+
 function ble/term/stty/initialize {
   ble/bin/stty -ixon -echo -nl -icrnl -icanon \
-    kill   undef  lnext  undef  werase undef  erase  undef \
-    intr   undef  quit   undef  susp   undef
+               "${_ble_term_stty_flags_enter[@]}"
   _ble_term_stty_state=1
 }
 function ble/term/stty/leave {
   [[ ! $_ble_term_stty_state ]] && return
-  ble/bin/stty  echo -nl icanon \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
+  ble/bin/stty echo -nl icanon \
+               "${_ble_term_stty_flags_leave[@]}"
   _ble_term_stty_state=
 }
 function ble/term/stty/enter {
   [[ $_ble_term_stty_state ]] && return
   ble/bin/stty -echo -nl -icrnl -icanon \
-    kill   undef  lnext  undef  werase undef  erase  undef \
-    intr   undef  quit   undef  susp   undef
+               "${_ble_term_stty_flags_enter[@]}"
   _ble_term_stty_state=1
 }
 function ble/term/stty/finalize {
@@ -1457,8 +1469,7 @@ function ble/term/stty/finalize {
 function ble/term/stty/TRAPEXIT {
   # exit の場合は echo
   ble/bin/stty echo -nl \
-    kill   ''  lnext  ''  werase ''  erase  '' \
-    intr   ''  quit   ''  susp   ''
+               "${_ble_term_stty_flags_leave[@]}"
 }
 
 
