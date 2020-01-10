@@ -961,8 +961,13 @@ function ble-edit/draw/trace.impl {
 ## called by ble-edit-initialize
 function ble-edit/prompt/initialize {
   # hostname
-  _ble_edit_prompt__string_h=${HOSTNAME%%.*}
   _ble_edit_prompt__string_H=${HOSTNAME}
+  if local rex='^[0-9]+(\.[0-9]){3}$'; [[ $HOSTNAME =~ $rex ]]; then
+    # IPv4 の形式の場合には省略しない
+    _ble_edit_prompt__string_h=$HOSTNAME
+  else
+    _ble_edit_prompt__string_h=${HOSTNAME%%.*}
+  fi
 
   # tty basename
   local tmp; ble/util/assign tmp 'tty 2>/dev/null'

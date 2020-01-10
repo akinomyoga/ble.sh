@@ -740,7 +740,7 @@ function ble/util/sleep/.check-builtin-sleep {
 
 if ((_ble_bash>=40400)) && ble/util/sleep/.check-builtin-sleep; then
   function ble/util/sleep { builtin sleep "$1"; }
-elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* ]]; then
+elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
   # 遅延初期化
   _ble_util_sleep_fd=
   _ble_util_sleep_tmp=

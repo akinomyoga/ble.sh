@@ -26,6 +26,7 @@ function sub:dist {
     local dst="$tmpdir${src#out}"
     sub:install "$src" "$dst"
   done
+  [[ -d dist ]] || mkdir -p dist
   tar caf "dist/$tmpdir.$(date +'%Y%m%d').tar.xz" "$tmpdir" && rm -r "$tmpdir"
 }
 
