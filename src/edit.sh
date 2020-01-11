@@ -2976,8 +2976,8 @@ function ble/widget/exit {
   ble/util/buffer.flush >&2
 
   # Note: ジョブが残っている場合でも強制終了させる為 2 回連続で呼び出す必要がある。
-  builtin exit "$ext" &>/dev/null
-  builtin exit "$ext" &>/dev/null
+  builtin exit 0 &>/dev/null
+  builtin exit 0 &>/dev/null
   return 1
 }
 function ble/widget/delete-forward-char-or-exit {
