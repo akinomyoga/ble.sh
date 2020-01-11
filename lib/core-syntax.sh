@@ -1507,6 +1507,50 @@ function ble/syntax:bash/initialize-vars {
 #------------------------------------------------------------------------------
 # 共通の字句の一致判定
 
+## 関数 ble/syntax/highlight/vartype varname [opts [tail]]
+##   @var[out] ret
+##   @var[out,opt] lookahead
+##     tail が指定された時にのみ設定されます。
+function ble/syntax/highlight/vartype {
+  local name=$1 opts=$2 tail=$3 rex='^-?[0-9]+(#[0-9a-zA-Z@_]*)?$'
+  if [[ ${!name+set} ]]; then
+    local attr; ble/variable#get-attr "$name"
+    if [[ ${!name} && :$opts: == *:expr:* && ! ( ${!name} =~ $rex ) ]]; then
+      ret=$ATTR_VAR_EXPR
+    elif [[ $attr == *x* ]]; then
+      ret=$ATTR_VAR_EXPORT
+    elif [[ $attr == *a* ]]; then
+      ret=$ATTR_VAR_ARRAY
+    elif [[ $attr == *A* ]]; then
+      ret=$ATTR_VAR_HASH
+    elif [[ $attr == *r* ]]; then
+      ret=$ATTR_VAR_READONLY
+    elif [[ $attr == *i* ]]; then
+      ret=$ATTR_VAR_NUMBER
+    elif [[ $attr == *[luc]* ]]; then
+      ret=$ATTR_VAR_TRANSFORM
+    elif [[ ! ${!name} ]]; then
+      ret=$ATTR_VAR_EMPTY
+    else
+      ret=$ATTR_VAR
+    fi
+  else
+    # set -u のチェック
+    if [[ :$opts: == *:readvar:* && $_ble_bash_setu ]]; then
+      if [[ ! $tail ]] || {
+           local rex='^:?[-+?=]'
+           [[ $tail == :* ]] && lookahead=2
+           ! [[ $tail =~ $rex ]]; }
+      then
+        ret=$ATTR_ERR
+        return
+      fi
+    fi
+
+    ret=$ATTR_VAR_UNSET
+  fi
+}
+
 function ble/syntax:bash/check-dollar {
   [[ $tail == '$'* ]] || return 1
 
@@ -1535,11 +1579,15 @@ function ble/syntax:bash/check-dollar {
         [[ $ntype2 == '"${' ]] && ntype='"${'
       fi
 
+      local ret lookahead= tail2=${tail:${#rematch1}+${#rematch2}}
+      ble/syntax/highlight/vartype "$rematch2" readvar "$tail2"; local attr=$ret
+
       ble/syntax/parse/nest-push "$CTX_PARAM" "$ntype"
       ((_ble_syntax_attr[i]=ctx,
         i+=${#rematch1},
-        _ble_syntax_attr[i]=ATTR_VAR,
+        _ble_syntax_attr[i]=attr,
         i+=${#rematch2}))
+      [[ $lookahead ]] && ble/syntax/parse/set-lookahead "$lookahead"
 
       if rex='^\$\{![a-zA-Z_][a-zA-Z_0-9]*[*@]'; [[ $tail =~ $rex ]]; then
         # ${!head<@>} の時は末尾の @* を個別に読み取る。
@@ -1570,8 +1618,9 @@ function ble/syntax:bash/check-dollar {
     ((i+=2))
     return 0
   elif rex='^\$([-*@#?$!0_]|[1-9]|[a-zA-Z_][a-zA-Z_0-9]*)' && [[ $tail =~ $rex ]]; then
+    local ret; ble/syntax/highlight/vartype "${BASH_REMATCH[1]}" readvar
     ((_ble_syntax_attr[i]=CTX_PARAM,
-      _ble_syntax_attr[i+1]=ATTR_VAR,
+      _ble_syntax_attr[i+1]=ret,
       i+=${#BASH_REMATCH}))
     return 0
   else
@@ -2359,7 +2408,15 @@ function ble/syntax:bash/ctx-expr/.count-brace {
 function ble/syntax:bash/ctx-expr {
   # 式の中身
   local rex
-  if rex='^([^'"${_ble_syntax_bash_chars[ctx]}"']|\\.)+' && [[ $tail =~ $rex ]]; then
+  if rex='^[a-zA-Z_][a-zA-Z_0-9]*'; [[ $tail =~ $rex ]]; then
+    local rematch=$BASH_REMATCH
+    local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" readvar:expr
+    ((_ble_syntax_attr[i]=ret,i+=${#rematch}))
+    return 0
+  elif rex='^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then
+    ((_ble_syntax_attr[i]=ATTR_VAR_NUMBER,i+=${#BASH_REMATCH}))
+    return 0
+  elif rex='^([^'"${_ble_syntax_bash_chars[ctx]}"'a-zA-Z_0-9]|\\.)+'; [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ctx,
       i+=${#BASH_REMATCH}))
     return 0
@@ -2668,10 +2725,11 @@ function ble/syntax:bash/check-variable-assignment {
   else
     suffix="$suffix|\["
   fi
-  local rex_assign="^[a-zA-Z_][a-zA-Z_0-9]*($suffix)"
+  local rex_assign="^([a-zA-Z_][a-zA-Z_0-9]*)($suffix)"
   [[ $tail =~ $rex_assign ]] || return 1
   local rematch1=${BASH_REMATCH[1]} # for bash-3.1 ${#arr[n]} bug
-  if [[ $rematch1 == '+' ]]; then
+  local rematch2=${BASH_REMATCH[2]} # for bash-3.1 ${#arr[n]} bug
+  if [[ $rematch2 == '+' ]]; then
     # var+... 曖昧状態
 
     # Note: + の次の文字が = でない時に此処に来るので、
@@ -2682,12 +2740,13 @@ function ble/syntax:bash/check-variable-assignment {
   fi
 
   local variable_assign=
-  if ((ctx==CTX_CMDI||ctx==CTX_ARGVI||ctx==CTX_ARGEI&&${#rematch1})); then
+  if ((ctx==CTX_CMDI||ctx==CTX_ARGVI||ctx==CTX_ARGEI&&${#rematch2})); then
     # 変数代入のときは ctx は先に CTX_VRHS, CTX_ARGVR に変換する
+    local ret; ble/syntax/highlight/vartype "$rematch1"
     ((wtype=ATTR_VAR,
-      _ble_syntax_attr[i]=ATTR_VAR,
+      _ble_syntax_attr[i]=ret,
       i+=${#BASH_REMATCH},
-      ${#rematch1}&&(_ble_syntax_attr[i-${#rematch1}]=CTX_EXPR),
+      ${#rematch2}&&(_ble_syntax_attr[i-${#rematch2}]=CTX_EXPR),
       variable_assign=1,
       ctx=_ble_syntax_bash_command_CtxAssign[ctx]))
   else
@@ -2696,7 +2755,7 @@ function ble/syntax:bash/check-variable-assignment {
       i+=${#BASH_REMATCH}))
   fi
 
-  if [[ $rematch1 == '[' ]]; then
+  if [[ $rematch2 == '[' ]]; then
     # arr[
     if [[ $variable_assign ]]; then
       i=$((i-1)) ble/syntax/parse/nest-push "$CTX_EXPR" 'a['
@@ -2707,7 +2766,7 @@ function ble/syntax:bash/check-variable-assignment {
       # → ble/syntax:bash/check-glob 内で nest-push "$CTX_BRAX" 'a[' し、
       # → ble/syntax:bash/ctx-bracket-expression で抜けた後で = があれば文脈値設定
     fi
-  elif [[ $rematch1 == *'=' ]]; then
+  elif [[ $rematch2 == *'=' ]]; then
     if [[ $variable_assign && ${text:i} == '('* ]]; then
       # var=( var+=(
       # * nest-pop した直後は未だ CTX_VRHS, CTX_ARGVR の続きになっている。
@@ -3331,8 +3390,18 @@ function ble/syntax:bash/ctx-command {
   if ble/syntax:bash/check-variable-assignment; then
     flagConsume=1
   elif local rex='^([^'${_ble_syntax_bash_chars[CTX_ARGI]}']|\\.)+'; [[ $tail =~ $rex ]]; then
-    ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+    local rematch=$BASH_REMATCH
+    local attr=$ctx
+    if ((attr==CTX_FARGI1)); then
+      # for var in ... の var の部分は変数名をチェックして着色
+      if rex='^[a-zA-Z_][a-zA-Z_0-9]*'; ((i==wbegin)) && [[ $rematch =~ $rex ]]; then
+        local ret; ble/syntax/highlight/vartype "$BASH_REMATCH"; attr=$ret
+      else
+        attr=$ATTR_ERR
+      fi
+    fi
+
+    ((_ble_syntax_attr[i]=attr,i+=${#rematch}))
     flagConsume=1
   elif ble/syntax:bash/check-process-subst; then
     flagConsume=1
@@ -5138,6 +5207,15 @@ function ble/syntax/faces-onload-hook {
   ble/color/defface filename_warning          underline,fg=red
   ble/color/defface filename_url              underline,fg=blue
   ble/color/defface filename_ls_colors        underline
+  ble/color/defface varname_unset     fg=124
+  ble/color/defface varname_empty     fg=31
+  ble/color/defface varname_number    fg=64
+  ble/color/defface varname_expr      fg=92,bold
+  ble/color/defface varname_array     fg=orange,bold
+  ble/color/defface varname_hash      fg=70,bold
+  ble/color/defface varname_readonly  fg=200
+  ble/color/defface varname_transform fg=29,bold
+  ble/color/defface varname_export    fg=200,bold
 
   ble/syntax/attr2iface/.define CTX_ARGX     syntax_default
   ble/syntax/attr2iface/.define CTX_ARGX0    syntax_default
@@ -5241,6 +5319,15 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define ATTR_FILE_BLK      filename_block
   ble/syntax/attr2iface/.define ATTR_FILE_CHR      filename_character
   ble/syntax/attr2iface/.define ATTR_FILE_URL      filename_url
+  ble/syntax/attr2iface/.define ATTR_VAR_UNSET     varname_unset
+  ble/syntax/attr2iface/.define ATTR_VAR_EMPTY     varname_empty
+  ble/syntax/attr2iface/.define ATTR_VAR_NUMBER    varname_number
+  ble/syntax/attr2iface/.define ATTR_VAR_EXPR      varname_expr
+  ble/syntax/attr2iface/.define ATTR_VAR_ARRAY     varname_array
+  ble/syntax/attr2iface/.define ATTR_VAR_HASH      varname_hash
+  ble/syntax/attr2iface/.define ATTR_VAR_READONLY  varname_readonly
+  ble/syntax/attr2iface/.define ATTR_VAR_TRANSFORM varname_transform
+  ble/syntax/attr2iface/.define ATTR_VAR_EXPORT    varname_export
 }
 
 blehook color_init_defface+=ble/syntax/faces-onload-hook

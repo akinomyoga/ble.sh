@@ -91,6 +91,7 @@ function ble-measure {
   if [[ ! $_ble_measure_base ]]; then
     _ble_measure_base=0 nsec=0
     # : よりも a=1 の方が速い様だ
+    local a
     ble-measure a=1 &>/dev/null
     _ble_measure_base=$nsec
   fi

@@ -301,8 +301,27 @@ function ble/debug/print-variables {
 #%end
 
 #
-# array and strings
+# variable, array and strings
 #
+
+if ((_ble_bash>=40400)); then
+  function ble/variable#get-attr { attr=${!1@a}; }
+else
+  function ble/variable#get-attr {
+    attr=
+    local ret; ble/util/assign ret "declare -p $1 &>/dev/null"
+    local rex='^declare -([a-zA-Z]*)'
+    [[ $ret =~ $rex ]] && attr=${BASH_REMATCH[1]}
+    return 0
+  }
+fi
+function ble/variable#has-attr {
+  local attr; ble/variable#get-attr "$1"
+  [[ $attr == *[$2]* ]]
+}
+function ble/is-inttype { ble/variable#has-attr i; }
+function ble/is-readonly { ble/variable#has-attr r; }
+function ble/is-transformed { ble/variable#has-attr luc; }
 
 _ble_array_prototype=()
 function ble/array#reserve-prototype {
