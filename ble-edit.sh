@@ -271,10 +271,14 @@ function ble-edit/draw/put {
 }
 function ble-edit/draw/put.il {
   local -i value="${1-1}"
+  ((value>0)) || return 0
   DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_il//'%d'/$value}"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2 # Note #D1214: 最終行対策 cygwin, linux
 }
 function ble-edit/draw/put.dl {
   local -i value="${1-1}"
+  ((value>0)) || return 0
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2 # Note #D1214: 最終行対策 cygwin, linux
   DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_dl//'%d'/$value}"
 }
 function ble-edit/draw/put.cuu {
