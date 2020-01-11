@@ -2621,7 +2621,10 @@ function ble/decode/attach {
     return 1
   fi
 
-  ble/util/buffer $'\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
+  # Note #D1213: linux コンソール (kernel 5.0.0) は "\e[>"
+  #  でエスケープシーケンスを閉じてしまう。5.4.8 は大丈夫。
+  [[ $TERM == linux ]] ||
+    ble/util/buffer $'\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
 }
 
 function ble-decode/detach {

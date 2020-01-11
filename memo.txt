@@ -910,8 +910,6 @@ bash_tips
 
 2020-01-06
 
-  * linux console での振る舞いが怪しい
-
   * ble.sh session からログアウトした時の Bash の終了ステータス
 
     C-d で抜けると 2 や 255 になっている。
@@ -2534,7 +2532,7 @@ bash_tips
   - color (`ble-color-setface`): support reference to another face `#D1188` 1885b54 `#D1206` 7e31ad3
   - edit: support `shopt -u promptvars` `#D1189` 269ba09
   - highlight: highlight variable names and numbers according to its state `#D1210` `#D1211` 93dab7b
-  - highlight: support `${var@op}` (for bash 4.4) `#D1212` 0000000
+  - highlight: support `${var@op}` (for bash 4.4) `#D1212` a85bdb8
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -2623,6 +2621,8 @@ bash_tips
   - decode: remove debug messages for `ble-bind -s` 64a17c3
   - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
   - term: fix `Ss` (`DECSCUSR`) 0c773da
+  - term: workaround linux console <kbd>CSI \></kbd>, <kbd>CSI M</kbd>, <kbd>CSI L</kbd> `#D1213` `#D1214` 0000000
+  - edit: fix exit status of Bash by key binding <kbd>C-d</kbd> `#D1215` 0000000
 
   Support macOS, FreeBSD, Arch Linux, Solaris, Haiku, Minix
   - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 6ff4d2b
@@ -3608,6 +3608,39 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-11
+
+  * 未だ linux console の振る舞いが変だ [#D1214]
+
+    最後の行で DL (CSI M) しても何も起こらない。この振る舞いは普通じゃない。
+    もし ANSI に反していないのだとしても修正しても良いのではないだろうか?
+    (然し、他のプログラム vim や emacs はこれをどの様に取り扱っているのだろうか。)
+
+    % Linux に対する修正を考える場合どの様にしたら良いのだろうか。
+    % 様々な文書に目を通さなければならないらしい。
+    % https://github.com/torvalds/linux/blob/master/Documentation/translations/ja_JP/howto.rst
+    %
+    % そもそも問題の linux console は linux に含まれているのかという所から謎。
+    % https://elixir.bootlin.com/linux/latest/source/include/linux/console.h#L145 これは多分違う。
+    % /dev/console 的な意味でのコンソールである。うーん。clone する?
+    % 実のところどれだけの容量があるのか分からない。実際に clone を試みると712万のファイルがある。
+    % 例によって github の connection は 30KiB/s と低速である。
+    % 1/1000コピーした時点で 4MiB になっている。つまり合計で 4GiB ぐらいある?
+    %
+    % 調べると github は単なるミラーで本家は kernel.org にあるそうだ。
+    % という訳で github は遅いので kernel.org からクローンする事にする。
+    % と思ったら kernel.org は github にも増して遅い。駄目だ。
+
+    うーん。cygwin でも同じ振る舞いになるという事は、まあ許容するしかないのだろうか。
+    後で興味があれば該当部分のコードを確認する事にする。
+
+    * 取り敢えず ble.sh 側で対策を考える。
+      というかこの振る舞いは cygwin コンソールと同じ? #D1147 に記録がある。
+      うーん。最終行に於ける DL は信用できない物なのか。
+
+  * linux console での振る舞いが怪しい [#D1213]
+    調べると arch では発生していない。arch の kernel は 5.4.8-arch-1 である。
+    ubuntu では 5.0.0-37-generic である。うーん。取り敢えず古い kernel の方に合わせて
+    変なシーケンスは送らない様に修正する?
 
   * highlight: ${var@a} 等の変換に対する着色に対応していない (for bash 4.4) [#D1212]
 
