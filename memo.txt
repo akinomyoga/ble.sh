@@ -910,7 +910,7 @@ bash_tips
 
 2020-01-06
 
-  * ${var@a} 等の変換に対する着色に対応していない (for bash 4.4)
+  * linux console での振る舞いが怪しい
 
   * ble.sh session からログアウトした時の Bash の終了ステータス
 
@@ -2533,7 +2533,8 @@ bash_tips
   - color: support true colors `#D1184` bd631ce 5dd6b03
   - color (`ble-color-setface`): support reference to another face `#D1188` 1885b54 `#D1206` 7e31ad3
   - edit: support `shopt -u promptvars` `#D1189` 269ba09
-  - highlight: highlight variable names and numbers according to its state `#D1210` `#D1211` 0000000
+  - highlight: highlight variable names and numbers according to its state `#D1210` `#D1211` 93dab7b
+  - highlight: support `${var@op}` (for bash 4.4) `#D1212` 0000000
 
   Changes
   - edit: erase in page on `SIGWINCH` `#D1016` 7625ebe
@@ -3607,6 +3608,8 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-11
+
+  * highlight: ${var@a} 等の変換に対する着色に対応していない (for bash 4.4) [#D1212]
 
   * highlight: 変数名で配列名・整数・読み取り専用などに応じて色を変えるか? [#D1211]
     →取り敢えず配列・読み取り専用・整数の属性について判定を行う事にした。
