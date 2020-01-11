@@ -2760,6 +2760,10 @@ function ble/term/modifyOtherKeys/.supported {
   # 改造版 Poderosa は通知でウィンドウサイズを毎回変更するので表示が乱れてしまう
   [[ $MWG_LOGINTERM == rosaterm ]] && return 1
 
+  # Note #D1213: linux (kernel 5.0.0) は "\e[>" でエスケープシーケンスを閉じてしまう。
+  #   5.4.8 は大丈夫だがそれでも modifyOtherKeys に対応していない。
+  [[ $TERM == linux ]] && return 1
+
   return 0
 }
 function ble/term/modifyOtherKeys/enter {
