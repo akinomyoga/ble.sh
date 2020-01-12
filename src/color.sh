@@ -983,13 +983,15 @@ function ble/color/list-faces {
 # ble/highlight/layer
 
 _ble_highlight_layer__list=(plain)
-#_ble_highlight_layer__list=(plain RandomColor)
 
+## 関数 ble/highlight/layer/update text opts [DMIN DMAX DMAX0]
+##   @param[in] text opts DMIN DMAX DMAX0
+##   @var[out] HIGHLIGHT_BUFF
+##   @var[out] HIGHLIGHT_UMIN
+##   @var[out] HIGHLIGHT_UMAX
 function ble/highlight/layer/update {
-  local text=$1
-  local -i DMIN=$((BLELINE_RANGE_UPDATE[0]))
-  local -i DMAX=$((BLELINE_RANGE_UPDATE[1]))
-  local -i DMAX0=$((BLELINE_RANGE_UPDATE[2]))
+  local text=$1 iN=${#1} opts=$2
+  local -i DMIN=${3:-0} DMAX=${4:-$iN} DMAX0=${5:-0}
 
   local PREV_BUFF=_ble_highlight_layer_plain_buff
   local PREV_UMIN=-1
@@ -1081,7 +1083,6 @@ function ble/highlight/layer/getg {
 ##
 ##   @param[in]     text
 ##   @var  [in]     DMIN DMAX DMAX0
-##   @var  [in]     BLELINE_RANGE_UPDATE[]
 ##     第一引数 text には現在の編集文字列が指定されます。
 ##     シェル変数 DMIN DMAX DMAX0 には前回の呼出の後の編集文字列の変更位置が指定されます。
 ##     DMIN<0 の時は前回の呼出から text が変わっていない事を表します。
@@ -1091,8 +1092,6 @@ function ble/highlight/layer/getg {
 ##     - aaxxaa から xx を削除して aaaa になった場合、DMIN DMAX DMAX0 はそれぞれ 2 2 4 となります。
 ##     - aaxxaa が aayyyaa となった場合 DMIN DMAX DMAX0 は 2 5 4 となります。
 ##     - aaxxaa が aazzaa となった場合 DMIN DMAX DMAX0 は 2 4 4 となります。
-##     BLELINE_RANGE_UPDATE は DMIN DMAX DMAX0 と等価な情報です。
-##     DMIN DMAX DMAX0 の三つの値を要素とする配列です。
 ##
 ##   @param[in]     player
 ##   @var  [in,out] LAYER_UMIN (unused)
@@ -1124,7 +1123,12 @@ function ble/highlight/layer/getg {
 #------------------------------------------------------------------------------
 # ble/highlight/layer:plain
 
-_ble_highlight_layer_plain_buff=()
+_ble_highlight_layer_plain_VARNAMES=(
+  _ble_highlight_layer_plain_buff)
+function ble/highlight/layer:plain/initialize-vars {
+  _ble_highlight_layer_plain_buff=()
+}
+ble/highlight/layer:plain/initialize-vars
 
 ## 関数 ble/highlight/layer:plain/update/.getch
 ##   @var[in,out] ch
@@ -1201,9 +1205,16 @@ blehook color_init_defface+=ble/color/faces-defface-hook
 ## @var _ble_highlight_layer_region_osgr
 ##   前回の選択範囲の着色を保持します。
 ##
-_ble_highlight_layer_region_buff=()
-_ble_highlight_layer_region_osel=()
-_ble_highlight_layer_region_osgr=
+_ble_highlight_layer_region_VARNAMES=(
+  _ble_highlight_layer_region_buff
+  _ble_highlight_layer_region_osel
+  _ble_highlight_layer_region_osgr)
+function ble/highlight/layer:region/initialize-vars {
+  _ble_highlight_layer_region_buff=()
+  _ble_highlight_layer_region_osel=()
+  _ble_highlight_layer_region_osgr=
+}
+ble/highlight/layer:region/initialize-vars
 
 function ble/highlight/layer:region/.update-dirty-range {
   local a=$1 b=$2 p q
@@ -1361,8 +1372,14 @@ function ble/highlight/layer:region/getg {
 #------------------------------------------------------------------------------
 # ble/highlight/layer:disabled
 
-_ble_highlight_layer_disabled_prev=
-_ble_highlight_layer_disabled_buff=()
+_ble_highlight_layer_disabled_VARNAMES=(
+  _ble_highlight_layer_disabled_prev
+  _ble_highlight_layer_disabled_buff)
+function ble/highlight/layer:disabled/initialize-vars {
+  _ble_highlight_layer_disabled_prev=
+  _ble_highlight_layer_disabled_buff=()
+}
+ble/highlight/layer:disabled/initialize-vars
 
 function ble/highlight/layer:disabled/update {
   if [[ $_ble_edit_line_disabled ]]; then
@@ -1392,8 +1409,15 @@ function ble/highlight/layer:disabled/getg {
   fi
 }
 
-_ble_highlight_layer_overwrite_mode_index=-1
-_ble_highlight_layer_overwrite_mode_buff=()
+_ble_highlight_layer_overwrite_mode_VARNAMES=(
+  _ble_highlight_layer_overwrite_mode_index
+  _ble_highlight_layer_overwrite_mode_buff)
+function ble/highlight/layer:overwrite_mode/initialize-vars {
+  _ble_highlight_layer_overwrite_mode_index=-1
+  _ble_highlight_layer_overwrite_mode_buff=()
+}
+ble/highlight/layer:overwrite_mode/initialize-vars
+
 function ble/highlight/layer:overwrite_mode/update {
   local oindex=$_ble_highlight_layer_overwrite_mode_index
   if ((DMIN>=0)); then
@@ -1463,7 +1487,13 @@ function ble/highlight/layer:overwrite_mode/getg {
 #------------------------------------------------------------------------------
 # ble/highlight/layer:RandomColor (sample)
 
-_ble_highlight_layer_RandomColor_buff=()
+_ble_highlight_layer_RandomColor_VARNAMES=(
+  _ble_highlight_layer_RandomColor_buff)
+function ble/highlight/layer:RandomColor/initialize-vars {
+  _ble_highlight_layer_RandomColor_buff=()
+}
+ble/highlight/layer:RandomColor/initialize-vars
+
 function ble/highlight/layer:RandomColor/update {
   local text=$1 ret i
   _ble_highlight_layer_RandomColor_buff=()

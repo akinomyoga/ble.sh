@@ -1001,7 +1001,7 @@ function ble-edit/content/update-syntax {
     ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
     if ((beg>=0)); then
       ble/dirty-range#clear --prefix=_ble_edit_dirty_syntax_
-      ble/syntax/parse "$_ble_edit_str" "$beg" "$end" "$end0"
+      ble/syntax/parse "$_ble_edit_str" '' "$beg" "$end" "$end0"
     fi
   fi
 }
@@ -1381,9 +1381,13 @@ _ble_textarea_bufferName=
 function ble/textarea#update-text-buffer {
   local iN=${#text}
 
+  local beg end end0
+  ble/dirty-range#load --prefix=_ble_edit_dirty_draw_
+  ble/dirty-range#clear --prefix=_ble_edit_dirty_draw_
+
   # highlight -> HIGHLIGHT_BUFF
   local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
-  ble/highlight/layer/update "$text"
+  ble/highlight/layer/update "$text" '' "$beg" "$end" "$end0"
   ble/urange#update "$HIGHLIGHT_UMIN" "$HIGHLIGHT_UMAX"
 
   # 変更文字の適用
@@ -1770,19 +1774,6 @@ function ble/textarea#render {
       ((rps1_show=1,cols-=rps1_width+1,_ble_term_xenl||cols--))
   fi
 
-  # BLELINE_RANGE_UPDATE → ble/textarea#update-text-buffer 内でこれを見て update を済ませる
-  local -a BLELINE_RANGE_UPDATE
-  BLELINE_RANGE_UPDATE=("$_ble_edit_dirty_draw_beg" "$_ble_edit_dirty_draw_end" "$_ble_edit_dirty_draw_end0")
-  ble/dirty-range#clear --prefix=_ble_edit_dirty_draw_
-#%if !release
-  ble/util/assert '((BLELINE_RANGE_UPDATE[0]<0||(
-        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[1]&&
-        BLELINE_RANGE_UPDATE[0]<=BLELINE_RANGE_UPDATE[2])))' "(${BLELINE_RANGE_UPDATE[*]})"
-#%end
-
-  # local graphic_dbeg graphic_dend graphic_dend0
-  # ble/dirty-range#update --prefix=graphic_d
-
   # 編集内容の構築
   local text=$_ble_edit_str index=$_ble_edit_ind
   local iN=${#text}
@@ -1798,6 +1789,8 @@ function ble/textarea#render {
   ble/urange#clear --prefix=_ble_textmap_
 
   # 着色の更新
+  local DMIN=$_ble_edit_dirty_draw_beg
+  ble-edit/content/update-syntax
   ble/textarea#update-text-buffer # text index -> lc lg
 
   #-------------------
@@ -1854,7 +1847,7 @@ function ble/textarea#render {
       ble/canvas/panel#put.draw "$_ble_textarea_panel" "$ret" "$umaxx" $((umaxy-_ble_textarea_scroll))
     fi
 
-    if ((BLELINE_RANGE_UPDATE[0]>=0)); then
+    if ((DMIN>=0)); then
       local endY=$((endy-_ble_textarea_scroll))
       if ((endY<height)); then
         if [[ :$render_opts: == *:relative:* ]]; then

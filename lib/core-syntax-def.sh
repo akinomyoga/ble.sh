@@ -23,6 +23,21 @@ _ble_syntax_VARNAMES=(
   _ble_syntax_dend)
 _ble_syntax_lang=bash
 
+function ble/syntax/initialize-vars {
+  _ble_syntax_text=
+  _ble_syntax_lang=bash
+  _ble_syntax_stat=()
+  _ble_syntax_nest=()
+  _ble_syntax_tree=()
+  _ble_syntax_attr=()
+
+  _ble_syntax_attr_umin=-1 _ble_syntax_attr_umax=-1
+  _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
+  _ble_syntax_vanishing_word_umin=-1
+  _ble_syntax_vanishing_word_umax=-1
+  _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
+}
+
 #------------------------------------------------------------------------------
 # 公開関数
 
@@ -46,6 +61,7 @@ function ble/syntax:bash/is-complete { true; }
 # 以下の関数に関しては遅延せずにその場で lib/core-syntax.sh をロードする
 ble/util/autoload "$_ble_base/lib/core-syntax.sh" \
              ble/syntax/parse \
+             ble/syntax/highlight \
              ble/syntax/tree-enumerate \
              ble/syntax/tree-enumerate-children \
              ble/syntax/completion-context/generate \

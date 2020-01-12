@@ -4390,28 +4390,31 @@ function ble/syntax/parse/check-end {
   [[ ${_BLE_SYNTAX_FEND[ctx]} ]] && "${_BLE_SYNTAX_FEND[ctx]}"
 }
 
-## 関数 ble/syntax/parse text beg end
+## 関数 ble/syntax/parse text opts [beg end end0]
 ##
 ## @param[in]     text
-##   解析対象の文字列を指定する。
+##   解析対象の文字列を指定します。
+##
+## @param[in]     opts
+##   細かい動作を制御するオプションを指定します。
 ##
 ## @param[in]     beg                text変更範囲 開始点 (既定値 = text先頭)
 ## @param[in]     end                text変更範囲 終了点 (既定値 = text末端)
 ## @param[in]     end0               長さが変わった時用 (既定値 = end)
-##   これらの引数はtextに変更があった場合にその範囲を伝達するのに用いる。
+##   これらの引数はtextに変更があった場合にその範囲を伝達するのに用います。
 ##
 ## @var  [in,out] _ble_syntax_dbeg   解析予定範囲 開始点 (初期値 -1 = 解析予定無し)
 ## @var  [in,out] _ble_syntax_dend   解析予定範囲 終了点 (初期値 -1 = 解析予定無し)
-##   これらの変数はどの部分を解析する必要があるかを記録している。
+##   これらの変数はどの部分を解析する必要があるかを記録します。
 ##   beg end beg2 end2 を用いてtextの変更範囲を指定しても、
-##   その変更範囲に対する解析を即座に完了させる訳ではなく逐次更新していく。
-##   ここには前回の parse 呼出でやり残した解析範囲の情報が格納される。
+##   その変更範囲に対する解析を即座に完了させる訳ではなく逐次更新します。
+##   ここには前回の parse 呼出でやり残した解析範囲の情報が格納されます。
 ##
 ## @var  [in,out] _ble_syntax_stat[] (内部使用) 解析途中状態を記録
 ## @var  [in,out] _ble_syntax_nest[] (内部使用) 入れ子の構造を記録
 ## @var  [in,out] _ble_syntax_attr[] 各文字の属性
 ## @var  [in,out] _ble_syntax_tree[] シェル単語の情報を記録
-##   これらの変数には解析結果が格納される。
+##   これらの変数には解析結果が格納されます。
 ##
 ## @var  [in,out] _ble_syntax_attr_umin
 ## @var  [in,out] _ble_syntax_attr_umax
@@ -4420,12 +4423,12 @@ function ble/syntax/parse/check-end {
 ##   今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
 ##
 function ble/syntax/parse {
-  local text=$1
-  local beg=${2:-0} end=${3:-${#text}}
-  local end0=${4:-$end}
+  local -r text=$1 iN=${#1}
+  local opts=$2
+  local beg=${3:-0} end=${4:-$iN} end0=${5:-0}
   ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
 
-  local -r iN=${#text} shift=$((end-end0))
+  local shift=$((end-end0))
 #%if !release
   if ! ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)); then
     ble/util/stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
@@ -4551,6 +4554,46 @@ function ble/syntax/parse {
   ((${#_ble_syntax_stat[@]}==iN+1)) ||
     ble/util/stackdump "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_array_prototype[@]} should be >= $iN"
 #%end
+}
+
+## 関数 ble/syntax/highlight text [lang]
+##   @param[in] text
+##   @param[in] lang
+##   @var[out] ret
+function ble/syntax/highlight {
+  local text=$1 lang=${2:-bash} cache_prefix=$3
+
+  local -a _ble_highlight_layer__list=(plain syntax)
+  local -a vars=()
+  ble/array#push vars "${_ble_syntax_VARNAMES[@]}"
+  ble/array#push vars "${_ble_highlight_layer_plain_VARNAMES[@]}"
+  ble/array#push vars "${_ble_highlight_layer_syntax_VARNAMES[@]}"
+
+  local "${vars[@]}"
+  if [[ $cache_prefix ]] && ((${cache_prefix}_INITIALIZED++)); then
+    ble/util/restore-vars "$cache_prefix" "${vars[@]}"
+
+    ble/string#common-prefix "$_ble_syntax_text" "$text"
+    local beg=${#ret}
+    ble/string#common-suffix "${_ble_syntax_text:beg}" "${text:beg}"
+    local end=$((${#text}-${#ret})) end0=$((${#_ble_syntax_text}-${#ret}))
+  else
+    ble/syntax/initialize-vars
+    ble/highlight/layer:plain/initialize-vars
+    ble/highlight/layer:syntax/initialize-vars
+    _ble_syntax_lang=$lang
+    local beg=0 end=${#text} end0=0
+  fi
+
+  ble/syntax/parse "$text" '' "$beg" "$end" "$end0"
+
+  local HIGHLIGHT_BUFF HIGHLIGHT_UMIN HIGHLIGHT_UMAX
+  ble/highlight/layer/update "$text" '' "$beg" "$end" "$end0"
+  IFS= builtin eval "ret=\"\${$HIGHLIGHT_BUFF[*]}\""
+
+  [[ $cache_prefix ]] &&
+    ble/util/save-vars "$cache_prefix" "${vars[@]}"
+  return 0
 }
 
 #==============================================================================
@@ -5678,11 +5721,20 @@ function ble/highlight/layer:syntax/fill {
   done
 }
 
-_ble_highlight_layer_syntax_buff=()
-_ble_highlight_layer_syntax1_table=()
-_ble_highlight_layer_syntax2_table=()
-_ble_highlight_layer_syntax3_list=()
-_ble_highlight_layer_syntax3_table=() # errors
+_ble_highlight_layer_syntax_VARNAMES=(
+  _ble_highlight_layer_syntax_buff
+  _ble_highlight_layer_syntax1_table
+  _ble_highlight_layer_syntax2_table
+  _ble_highlight_layer_syntax3_list
+  _ble_highlight_layer_syntax3_table)
+function ble/highlight/layer:syntax/initialize-vars {
+  _ble_highlight_layer_syntax_buff=()
+  _ble_highlight_layer_syntax1_table=()
+  _ble_highlight_layer_syntax2_table=()
+  _ble_highlight_layer_syntax3_list=()
+  _ble_highlight_layer_syntax3_table=() # errors
+}
+ble/highlight/layer:syntax/initialize-vars
 
 function ble/highlight/layer:syntax/update-attribute-table {
   ble/highlight/layer/update/shift _ble_highlight_layer_syntax1_table
@@ -6077,8 +6129,6 @@ function ble/highlight/layer:syntax/update-error-table {
 function ble/highlight/layer:syntax/update {
   local text=$1 player=$2
   local i iN=${#text}
-
-  ble-edit/content/update-syntax
 
   #--------------------------------------------------------
 

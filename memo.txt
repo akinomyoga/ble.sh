@@ -3501,15 +3501,36 @@ bash_tips
 
 2020-01-12
 
-  * util: {save,restore}-arrs は {save,restore}-vars に統合する
+  * util: 構文着色を単体で呼び出せる様にする [#D1218]
+    history の一覧を表示して着色したり、
+    或いは単語内の着色で別の言語を着色する時に必要である。
+
+    * done: 各 layer の initialize-vars を実装する。
+    * change: update-syntax は呼び出し側で管理する事にした。
+    * done: ble/highlight/layer/update の interface を変更する。
+      BLELINE_RANGE_UPDATE は廃止する。というか誰も使っていない。
+      →一箇所使っている箇所があったがそもそも本当に正しかったのかも謎。
+      →と思って適当に umin に書き換えたら動かなくなった。
+        DMIN 変数に内容を保存してそれを使う事にした。
+
+    単体で構文着色を実行する関数を作成する。作成した。
+
+    然しよく考えたら別に現在の複雑な仕組みを使わなければならない言われはない。
+    他の拡張や普通の構文着色の仕組みと同じように正規表現で一括で一致させてしまえば
+    良いのではないだろうか。現在の枠組みを使う事の利点は部分更新に対応できるという事である。
+
+    という事を考えるとやはり部分更新に対応するのが良い気がするのである。
+    だとするとキャッシュを指定できるようにしなければならない。
+
+  * util: {save,restore}-arrs は {save,restore}-vars に統合する [#D1217]
 
     実の所、全て配列であるかの様に取り扱っても問題ないし、
     また ble/is-array の判定は最新の bash では ${parameter@a} を使っているので
     そんなに重くない。毎回 arrs と vars の両方を呼び出すのは不毛なので、
     全て {save,restore}-vars で処理する様にして問題ない。
 
-    * save-arrs, restore-arrs を削除する。
-    * ARRNAMES を VARNAMES に統合する。
+    * done: save-arrs, restore-arrs を削除する。
+    * done: ARRNAMES を VARNAMES に統合する。
 
   * 2020-01-05 Homebrew でインストールしたら動かないという報告 [#D1216]
     https://github.com/akinomyoga/ble.sh/issues/33
