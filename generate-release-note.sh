@@ -1,4 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+fname_changelog=changelog.txt
+
+function read-arguments {
+  while (($#)); do
+    local arg=$1; shift 1
+    case $arg in
+    (--changelog)
+      if (($#)); then
+        fname_changelog=$1; shift
+      else
+        flags=E$flags
+        echo "release-note: missing option argument for '$arg'." >&2
+      fi ;;
+    esac
+  done
+}
+read-arguments "$@"
 
 function process {
   ## @arr commits
@@ -7,44 +25,56 @@ function process {
   ##   そして before は after に対応する master における commit である。
   local -a commits; commits=("$@")
 
+  local commit_pair
   for commit_pair in "${commits[@]}"; do
-    local b=${commit_pair#*:}
-    local a=${commit_pair%:*}
+    local a=${commit_pair%%:*}
+    commit_pair=${commit_pair:${#a}+1}
+    local b=${commit_pair%%:*}
+    local c=${commit_pair#*:}
 
-    local result=$(sed -n "s/$b/$a (master: $b)/p" changelog.txt)
+    local result=
+    [[ $b ]] && result=$(sed -n "s/$b/$a (master: $b)/p" "$fname_changelog")
     if [[ $result ]]; then
       echo "$result"
+    elif [[ $c ]]; then
+      echo "- $c $a (master: ${b:-N/A}) @@@NOT-FOUND@@@"
     else
       echo "@@@not found $a"
     fi
   done
 }
 
-# ble-0.3.0
-#
-# 232767a:30cc31c
-# 244205f:3f1f472
-# 655fbaa:2e6f44c
-# 1bc9934:b29f248
-# 910313e:309b9e4
-# e6ae0be:ab8dad2
-# a235aa4:467b7a4
-# d2aa2d2:1666ec2
-# 8926704:4ce2753
-# 7b15550:d94f691
-# f8bdf9d:376bfe7
-# 45db2ec:b52da28
+function find-commit-pairs {
+  {
+    echo __MODE_HEAD__
+    git log --format=format:'%h%s' --date-order --abbrev-commit "$1"..HEAD; echo
+    echo __MODE_MASTER__
+    git log --format=format:'%h%s' --date-order --abbrev-commit "${2:-master}"; echo
+  } | awk -F '' '
+    /^__MODE_HEAD__$/ {
+      mode = "head";
+      nlist = 0;
+      next;
+    }
+    /^__MODE_MASTER__$/ { mode = "master"; next; }
 
-# ble-0.2.0
-#
-process \
-  6713766:f199215 \
-  b109b46:88a1b0f \
-  73a191d:36b9a8f \
-  ae72dc3:ae176b2 \
-  50fbadf:8e4180c \
-  7109acf:4efe1a9 \
-  637ec53:f20f840 \
-  6f5058d:a46ada0 \
-  6c931fd:9290adb \
-  6ad206a:9892d63
+    mode == "head" {
+      i = nlist++;
+      titles[i] = $2
+      commit_head[i] = $1;
+      title2index[$2] = i;
+    }
+    mode == "master" && (i = title2index[$2]) != "" && commit_master[i] == "" {
+      commit_master[i] = $1;
+    }
+    
+    END {
+      for (i = 0; i < nlist; i++) {
+        print commit_head[i] ":" commit_master[i] ":" titles[i];
+      }
+    }
+  '
+}
+
+IFS=$'\n' eval 'commit_pairs=($(find-commit-pairs "$@"))'
+process "${commit_pairs[@]}"

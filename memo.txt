@@ -2613,8 +2613,8 @@ bash_tips
   - decode: remove debug messages for `ble-bind -s` 64a17c3
   - syntax: fix highlighting of `${!var@}` `#D1176` 161ed80
   - term: fix `Ss` (`DECSCUSR`) 0c773da
-  - term: workaround linux console <kbd>CSI \></kbd>, <kbd>CSI M</kbd>, <kbd>CSI L</kbd> `#D1213` `#D1214` 0000000
-  - edit: fix exit status of Bash by key binding <kbd>C-d</kbd> `#D1215` 0000000
+  - term: workaround linux console <kbd>CSI \></kbd>, <kbd>CSI M</kbd>, <kbd>CSI L</kbd> `#D1213` `#D1214` 0ec6f0c
+  - edit: fix exit status of Bash by key binding <kbd>C-d</kbd> `#D1215` a9756e9
 
   Support macOS, FreeBSD, Arch Linux, Solaris, Haiku, Minix
   - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 6ff4d2b
@@ -3619,27 +3619,42 @@ bash_tips
     もし ANSI に反していないのだとしても修正しても良いのではないだろうか?
     (然し、他のプログラム vim や emacs はこれをどの様に取り扱っているのだろうか。)
 
-    % Linux に対する修正を考える場合どの様にしたら良いのだろうか。
-    % 様々な文書に目を通さなければならないらしい。
-    % https://github.com/torvalds/linux/blob/master/Documentation/translations/ja_JP/howto.rst
-    %
-    % そもそも問題の linux console は linux に含まれているのかという所から謎。
-    % https://elixir.bootlin.com/linux/latest/source/include/linux/console.h#L145 これは多分違う。
-    % /dev/console 的な意味でのコンソールである。うーん。clone する?
-    % 実のところどれだけの容量があるのか分からない。実際に clone を試みると712万のファイルがある。
-    % 例によって github の connection は 30KiB/s と低速である。
-    % 1/1000コピーした時点で 4MiB になっている。つまり合計で 4GiB ぐらいある?
-    %
-    % 調べると github は単なるミラーで本家は kernel.org にあるそうだ。
-    % という訳で github は遅いので kernel.org からクローンする事にする。
-    % と思ったら kernel.org は github にも増して遅い。駄目だ。
+    * Linux console を調べる
+      % Linux に対する修正を考える場合どの様にしたら良いのだろうか。
+      % 様々な文書に目を通さなければならないらしい。
+      % https://github.com/torvalds/linux/blob/master/Documentation/translations/ja_JP/howto.rst
+      %
+      % そもそも問題の linux console は linux に含まれているのかという所から謎。
+      % https://elixir.bootlin.com/linux/latest/source/include/linux/console.h#L145 これは多分違う。
+      % /dev/console 的な意味でのコンソールである。うーん。clone する?
+      % 実のところどれだけの容量があるのか分からない。実際に clone を試みると712万のファイルがある。
+      % 例によって github の connection は 30KiB/s と低速である。
+      % 1/1000コピーした時点で 4MiB になっている。つまり合計で 4GiB ぐらいある?
+      %
+      % 調べると github は単なるミラーで本家は kernel.org にあるそうだ。
+      % という訳で github は遅いので kernel.org からクローンする事にする。
+      % と思ったら kernel.org は github にも増して遅い。駄目だ。
 
-    うーん。cygwin でも同じ振る舞いになるという事は、まあ許容するしかないのだろうか。
-    後で興味があれば該当部分のコードを確認する事にする。
+      うーん。cygwin でも同じ振る舞いになるという事は、まあ許容するしかないのだろうか。
+      後で興味があれば該当部分のコードを確認する事にする。
 
-    * 取り敢えず ble.sh 側で対策を考える。
-      というかこの振る舞いは cygwin コンソールと同じ? #D1147 に記録がある。
-      うーん。最終行に於ける DL は信用できない物なのか。
+      * 後で見たらダウンロードが終わっていた。結局 1.2GiB 程度だった様だ。
+        また時間帯によるのだろうか平均で 52KiB という事だった。
+        20秒で1MiB,1分で3MiB,100分で300MiB,400分で1.2GiBである。約6時間。
+      * grc '\bSGR\b' で検索するとどうやら linux/drivers/tty/vt/vt.c に console の機能がある。
+        * CSI M, L の機能は csi_{M,L} という関数で実装されていて、
+          実際の処理は con_scroll という関数で実行している。この con_scroll が怪しい。
+        * 因みに 2;R;G;B にも対応している様だ (表示できるかどうかは別なのだろうが)。
+          →調べてみると rgb_{fore,back}ground という関数で色相を元にして 16 色コードに変換している。
+
+    取り敢えず ble.sh 側で対策を考える。
+    というかこの振る舞いは cygwin コンソールと同じ? #D1147 に記録がある。
+    うーん。最終行に於ける DL は信用できない物なのか。
+
+    * そもそも最終行の時にだけ注意すれば良いのだろうか?
+      以前 cygwin の console を観察した時には丁度ぴったり
+      下にある行が消える時には必ず動かないという事だった。
+      →今確認した所そういう問題は発生していない様だ。
 
   * linux console での振る舞いが怪しい [#D1213]
     調べると arch では発生していない。arch の kernel は 5.4.8-arch-1 である。

@@ -57,20 +57,20 @@ $ make INSDIR=/path/to/blesh install
 
 `wget` を使う場合:
 ```console
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.0/ble-0.3.0.tar.xz
-$ tar xJf ble-0.3.0.tar.xz
-$ source ble-0.3.0/ble.sh
+$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.1/ble-0.3.1.tar.xz
+$ tar xJf ble-0.3.1.tar.xz
+$ source ble-0.3.1/ble.sh
 ```
 `curl` を使う場合:
 ```console
-$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.0/ble-0.3.0.tar.xz
-$ tar xJf ble-0.3.0.tar.xz
-$ source ble-0.3.0/ble.sh
+$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.1/ble-0.3.1.tar.xz
+$ tar xJf ble-0.3.1.tar.xz
+$ source ble-0.3.1/ble.sh
 ```
 
 指定したディレクトリに `ble.sh` を配置するには単に `ble-0.1.7` ディレクトリをコピーします。
 ```console
-$ cp -r ble-0.3.0 /path/to/blesh
+$ cp -r ble-0.3.1 /path/to/blesh
 ```
 
 ## `.bashrc` に設定する
@@ -204,37 +204,46 @@ bleopt edit_abell=
 構文に従った着色で使用される、各文法要素の色と属性は `ble-color-setface` シェル関数で設定します。
 既定の設定は以下のコードに対応します:
 ```bash
-ble-color-setface region                   bg=60,fg=white
-ble-color-setface region_target            bg=153,fg=black
-ble-color-setface region_match             bg=55,fg=white
-ble-color-setface region_insert            fg=12,bg=252
-ble-color-setface disabled                 fg=242
-ble-color-setface overwrite_mode           fg=black,bg=51
-ble-color-setface syntax_default           none
-ble-color-setface syntax_command           fg=brown
-ble-color-setface syntax_quoted            fg=green
-ble-color-setface syntax_quotation         fg=green,bold
-ble-color-setface syntax_expr              fg=26
-ble-color-setface syntax_error             bg=203,fg=231
-ble-color-setface syntax_varname           fg=202
-ble-color-setface syntax_delimiter         bold
-ble-color-setface syntax_param_expansion   fg=purple
-ble-color-setface syntax_history_expansion bg=94,fg=231
-ble-color-setface syntax_function_name     fg=92,bold
-ble-color-setface syntax_comment           fg=242
-ble-color-setface syntax_glob              fg=198,bold
-ble-color-setface syntax_brace             fg=37,bold
-ble-color-setface syntax_tilde             fg=navy,bold
-ble-color-setface syntax_document          fg=94
-ble-color-setface syntax_document_begin    fg=94,bold
-ble-color-setface command_builtin_dot      fg=red,bold
-ble-color-setface command_builtin          fg=red
-ble-color-setface command_alias            fg=teal
-ble-color-setface command_function         fg=92
-ble-color-setface command_file             fg=green
-ble-color-setface command_keyword          fg=blue
-ble-color-setface command_jobs             fg=red
-ble-color-setface command_directory        fg=26,underline
+# 編集に関連する着色の設定
+ble-color-setface region                    bg=60,fg=white
+ble-color-setface region_target             bg=153,fg=black
+ble-color-setface region_match              bg=55,fg=white
+ble-color-setface region_insert             fg=12,bg=252
+ble-color-setface disabled                  fg=242
+ble-color-setface overwrite_mode            fg=black,bg=51
+ble-color-setface auto_complete             fg=238,bg=254
+ble-color-setface menu_filter_fixed         bold
+ble-color-setface menu_filter_input         fg=16,bg=229
+ble-color-setface vbell                     reverse
+ble-color-setface vbell_erase               bg=252
+ble-color-setface vbell_flash               fg=green,reverse
+
+# 構文着色の設定
+ble-color-setface syntax_default            none
+ble-color-setface syntax_command            fg=brown
+ble-color-setface syntax_quoted             fg=green
+ble-color-setface syntax_quotation          fg=green,bold
+ble-color-setface syntax_expr               fg=26
+ble-color-setface syntax_error              bg=203,fg=231
+ble-color-setface syntax_varname            fg=202
+ble-color-setface syntax_delimiter          bold
+ble-color-setface syntax_param_expansion    fg=purple
+ble-color-setface syntax_history_expansion  bg=94,fg=231
+ble-color-setface syntax_function_name      fg=92,bold
+ble-color-setface syntax_comment            fg=242
+ble-color-setface syntax_glob               fg=198,bold
+ble-color-setface syntax_brace              fg=37,bold
+ble-color-setface syntax_tilde              fg=navy,bold
+ble-color-setface syntax_document           fg=94
+ble-color-setface syntax_document_begin     fg=94,bold
+ble-color-setface command_builtin_dot       fg=red,bold
+ble-color-setface command_builtin           fg=red
+ble-color-setface command_alias             fg=teal
+ble-color-setface command_function          fg=92
+ble-color-setface command_file              fg=green
+ble-color-setface command_keyword           fg=blue
+ble-color-setface command_jobs              fg=red
+ble-color-setface command_directory         fg=26,underline
 ble-color-setface filename_directory        underline,fg=26
 ble-color-setface filename_directory_sticky underline,fg=white,bg=26
 ble-color-setface filename_link             underline,fg=teal
@@ -250,12 +259,15 @@ ble-color-setface filename_block            underline,fg=yellow,bg=black
 ble-color-setface filename_warning          underline,fg=red
 ble-color-setface filename_url              underline,fg=blue
 ble-color-setface filename_ls_colors        underline
-ble-color-setface auto_complete             fg=238,bg=254
-ble-color-setface menu_filter_fixed         bold
-ble-color-setface menu_filter_input         fg=16,bg=229
-ble-color-setface vbell                     reverse
-ble-color-setface vbell_erase               bg=252
-ble-color-setface vbell_flash               fg=green,reverse
+ble-color-setface varname_array             fg=orange,bold
+ble-color-setface varname_empty             fg=31
+ble-color-setface varname_export            fg=200,bold
+ble-color-setface varname_expr              fg=92,bold
+ble-color-setface varname_hash              fg=70,bold
+ble-color-setface varname_number            fg=64
+ble-color-setface varname_readonly          fg=200
+ble-color-setface varname_transform         fg=29,bold
+ble-color-setface varname_unset             fg=124
 ```
 
 現在の描画設定の一覧は以下のコマンドでも確認できます (`ble-color-setface` を無引数で呼び出す)。

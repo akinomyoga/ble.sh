@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function mkd {
   [[ -d $1 ]] || mkdir -p "$1"
@@ -281,6 +281,18 @@ function sub:list-functions {
     local rex_function_name='[^[:space:]()]*'
   fi
   sed -n 's/^[[:space:]]*function \('"$rex_function_name"'\)[[:space:]].*/\1/p' "${files[@]}" | sort -u
+}
+
+function sub:first-defined {
+  local name dir
+  for name; do
+    for dir in ../ble-0.{1..3} ../ble.sh; do
+      (cd "$dir"; grc "$name" &>/dev/null) || continue
+      echo "$name $dir"
+      return
+    done
+  done
+  echo "$name not found"
 }
 
 #------------------------------------------------------------------------------
