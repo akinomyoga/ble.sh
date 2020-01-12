@@ -899,8 +899,7 @@ _ble_edit_VARNAMES=(
   _ble_edit_dirty_syntax_end
   _ble_edit_dirty_syntax_end0
   _ble_edit_dirty_observer
-  _ble_edit_kill_index)
-_ble_edit_ARRNAMES=(
+  _ble_edit_kill_index
   _ble_edit_kill_ring
   _ble_edit_kill_type)
 
@@ -1167,7 +1166,7 @@ function ble/widget/append-arg-or {
   local code=$((KEYS[0]&_ble_decode_MaskChar))
   ((code==0)) && return 1
   local ret; ble/util/c2s "$code"; local ch=$ret
-  if 
+  if
     if [[ $_ble_edit_arg == + ]]; then
       [[ $ch == [-0-9] ]] && _ble_edit_arg=
     elif [[ $_ble_edit_arg == +* ]]; then
@@ -1323,21 +1322,22 @@ function ble-edit/attach/.detach {
 # **** textarea ****                                                  @textarea
 
 _ble_textarea_VARNAMES=(
-  _ble_textarea_bufferName 
-  _ble_textarea_scroll 
-  _ble_textarea_gendx 
-  _ble_textarea_gendy 
-  _ble_textarea_invalidated 
-  _ble_textarea_version 
-  _ble_textarea_caret_state 
-  _ble_textarea_panel)
-_ble_textarea_ARRNAMES=(
-  _ble_textarea_buffer 
-  _ble_textarea_cur 
+  _ble_textarea_buffer
+  _ble_textarea_bufferName
+
+  _ble_textarea_cur
+  _ble_textarea_panel
+  _ble_textarea_scroll
+  _ble_textarea_scroll_new
+  _ble_textarea_gendx
+  _ble_textarea_gendy
+
+  _ble_textarea_invalidated
+  _ble_textarea_version
+  _ble_textarea_caret_state
   _ble_textarea_cache)
 
 _ble_textarea_local_VARNAMES=()
-_ble_textarea_local_ARRNAMES=()
 
 ## 関数 ble/textarea/panel#get-height
 ##   @var[out] height
@@ -2045,11 +2045,9 @@ function ble/textarea#save-state {
 
   # _ble_edit_*
   ble/array#push vars "${_ble_edit_VARNAMES[@]}"
-  ble/array#push arrs "${_ble_edit_ARRNAMES[@]}"
 
   # _ble_textmap_*
   ble/array#push vars "${_ble_textmap_VARNAMES[@]}"
-  ble/array#push arrs "${_ble_textmap_ARRNAMES[@]}"
 
   # _ble_highlight_layer_*
   ble/array#push arrs _ble_highlight_layer__list
@@ -2067,26 +2065,20 @@ function ble/textarea#save-state {
 
   # _ble_textarea_*
   ble/array#push vars "${_ble_textarea_VARNAMES[@]}"
-  ble/array#push arrs "${_ble_textarea_ARRNAMES[@]}"
 
   # _ble_syntax_*
   ble/array#push vars "${_ble_syntax_VARNAMES[@]}"
-  ble/array#push arrs "${_ble_syntax_ARRNAMES[@]}"
 
   # user-defined local variables
   ble/array#push vars "${_ble_textarea_local_VARNAMES[@]}"
-  ble/array#push arrs "${_ble_textarea_local_ARRNAMES[@]}"
 
   eval "${prefix}_VARNAMES=(\"\${vars[@]}\")"
-  eval "${prefix}_ARRNAMES=(\"\${arrs[@]}\")"
   ble/util/save-vars "$prefix" "${vars[@]}"
-  ble/util/save-arrs "$prefix" "${arrs[@]}"
 }
 function ble/textarea#restore-state {
   local prefix=$1
-  if eval "[[ \$prefix && \${${prefix}_VARNAMES+set} && \${${prefix}_ARRNAMES+set} ]]"; then
+  if eval "[[ \$prefix && \${${prefix}_VARNAMES+set} ]]"; then
     eval "ble/util/restore-vars $prefix \"\${${prefix}_VARNAMES[@]}\""
-    eval "ble/util/restore-arrs $prefix \"\${${prefix}_ARRNAMES[@]}\""
   else
     ble/util/print "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
@@ -2095,8 +2087,8 @@ function ble/textarea#restore-state {
 function ble/textarea#clear-state {
   local prefix=$1
   if [[ $prefix ]]; then
-    local vars=${prefix}_VARNAMES arrs=${prefix}_ARRNAMES
-    eval "unset -v \"\${$vars[@]/#/$prefix}\" \"\${$arrs[@]/#/$prefix}\" $vars $arrs"
+    local vars=${prefix}_VARNAMES
+    eval "unset -v \"\${$vars[@]/#/$prefix}\" $vars"
   else
     ble/util/print "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
@@ -4735,11 +4727,10 @@ _ble_edit_undo_index=0
 _ble_edit_undo_history=()
 _ble_edit_undo_hindex=
 ble/array#push _ble_textarea_local_VARNAMES \
-               _ble_edit_undo_index \
-               _ble_edit_undo_hindex
-ble/array#push _ble_textarea_local_ARRNAMES \
                _ble_edit_undo \
-               _ble_edit_undo_history
+               _ble_edit_undo_index \
+               _ble_edit_undo_history \
+               _ble_edit_undo_hindex
 function ble-edit/undo/.check-hindex {
   local hindex; ble/history/get-index -v hindex
   [[ $_ble_edit_undo_hindex == "$hindex" ]] && return 0

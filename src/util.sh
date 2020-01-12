@@ -202,19 +202,23 @@ fi
 
 function ble/util/save-vars {
   local name prefix=$1; shift
-  for name; do eval "$prefix$name=\"\$$name\""; done
-}
-function ble/util/save-arrs {
-  local name prefix=$1; shift
-  for name; do eval "$prefix$name=(\"\${$name[@]}\")"; done
+  for name; do
+    if ble/is-array "$name"; then
+      eval "$prefix$name=(\"\${$name[@]}\")"
+    else
+      eval "$prefix$name=\"\$$name\""
+    fi
+  done
 }
 function ble/util/restore-vars {
   local name prefix=$1; shift
-  for name; do eval "$name=\"\$$prefix$name\""; done
-}
-function ble/util/restore-arrs {
-  local name prefix=$1; shift
-  for name; do eval "$name=(\"\${$prefix$name[@]}\")"; done
+  for name; do
+    if ble/is-array "$prefix$name"; then
+      eval "$name=(\"\${$prefix$name[@]}\")"
+    else
+      eval "$name=\"\$$prefix$name\""
+    fi
+  done
 }
 
 #%if !release

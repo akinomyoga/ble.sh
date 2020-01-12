@@ -9,6 +9,10 @@
 _ble_syntax_VARNAMES=(
   _ble_syntax_text
   _ble_syntax_lang
+  _ble_syntax_stat
+  _ble_syntax_nest
+  _ble_syntax_tree
+  _ble_syntax_attr
   _ble_syntax_attr_umin
   _ble_syntax_attr_umax
   _ble_syntax_word_umin
@@ -17,11 +21,6 @@ _ble_syntax_VARNAMES=(
   _ble_syntax_vanishing_word_umax
   _ble_syntax_dbeg
   _ble_syntax_dend)
-_ble_syntax_ARRNAMES=(
-  _ble_syntax_stat
-  _ble_syntax_nest
-  _ble_syntax_tree
-  _ble_syntax_attr)
 _ble_syntax_lang=bash
 
 #------------------------------------------------------------------------------

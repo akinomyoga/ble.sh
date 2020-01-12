@@ -1193,15 +1193,16 @@ _ble_textmap_VARNAMES=(
   _ble_textmap_begy
   _ble_textmap_endx
   _ble_textmap_endy
+
+  _ble_textmap_pos
+  _ble_textmap_glyph
+  _ble_textmap_ichg
+
   _ble_textmap_dbeg
   _ble_textmap_dend
   _ble_textmap_dend0
   _ble_textmap_umin
   _ble_textmap_umax)
-_ble_textmap_ARRNAMES=(
-  _ble_textmap_pos
-  _ble_textmap_glyph
-  _ble_textmap_ichg)
 
 ## 文字列の配置計算に関する情報
 ##
@@ -1261,12 +1262,10 @@ function ble/textmap#update-dirty-range {
 function ble/textmap#save {
   local name prefix=$1
   ble/util/save-vars "$prefix" "${_ble_textmap_VARNAMES[@]}"
-  ble/util/save-arrs "$prefix" "${_ble_textmap_ARRNAMES[@]}"
 }
 function ble/textmap#restore {
   local name prefix=$1
   ble/util/restore-vars "$prefix" "${_ble_textmap_VARNAMES[@]}"
-  ble/util/restore-arrs "$prefix" "${_ble_textmap_ARRNAMES[@]}"
 }
 
 ## 関数 ble/textmap#update/.wrap

@@ -167,8 +167,7 @@ _ble_keymap_vi_irepeat_count=
 _ble_keymap_vi_irepeat=()
 
 ble/array#push _ble_textarea_local_VARNAMES \
-               _ble_keymap_vi_irepeat_count
-ble/array#push _ble_textarea_local_ARRNAMES \
+               _ble_keymap_vi_irepeat_count \
                _ble_keymap_vi_irepeat
 
 function ble/keymap:vi/imap-repeat/pop {
@@ -2248,13 +2247,12 @@ _ble_keymap_vi_mark_edit_dend=-1
 _ble_keymap_vi_mark_edit_dend0=-1
 ble/array#push _ble_textarea_local_VARNAMES \
                _ble_keymap_vi_mark_hindex \
+               _ble_keymap_vi_mark_local \
+               _ble_keymap_vi_mark_global \
+               _ble_keymap_vi_mark_history \
                _ble_keymap_vi_mark_edit_dbeg \
                _ble_keymap_vi_mark_edit_dend \
                _ble_keymap_vi_mark_edit_dend0
-ble/array#push _ble_textarea_local_ARRNAMES \
-               _ble_keymap_vi_mark_local \
-               _ble_keymap_vi_mark_global \
-               _ble_keymap_vi_mark_history
 
 # mark 番号と用途の対応
 #
