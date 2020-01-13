@@ -4972,7 +4972,8 @@ function ble/widget/auto_complete/insert-on-end {
   fi
 }
 function ble/widget/auto_complete/insert-word {
-  local rex='^['$_ble_term_IFS']*([^'$_ble_term_IFS']+['$_ble_term_IFS']*)?'
+  local breaks=${bleopt_complete_auto_wordbreaks:-$_ble_term_IFS}
+  local rex='^['$breaks']*([^'$breaks']+['$breaks']*)?'
   if [[ $_ble_complete_ac_type == [ch] ]]; then
     local ins=${_ble_edit_str:_ble_edit_ind:_ble_edit_mark-_ble_edit_ind}
     [[ $ins =~ $rex ]]

@@ -288,6 +288,13 @@
 #bleopt complete_auto_delay=100
 
 
+## The setting "complete_auto_wordbreaks" is used as the delimiters for
+## identifying words for M-right (auto-complete/insert-word).  The default
+## value is $' \t\n'.  If the empty value is set, the default value is used.
+
+#bleopt complete_auto_wordbreaks=$' \t\n/'
+
+
 ## When there are user inputs while generating completion candidates, the
 ## candidates generation will be canceled to process the user inputs. The
 ## following setting controls the interval of checking user inputs while
