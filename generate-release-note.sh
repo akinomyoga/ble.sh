@@ -37,9 +37,9 @@ function process {
     if [[ $result ]]; then
       echo "$result"
     elif [[ $c ]]; then
-      echo "- $c $a (master: ${b:-N/A}) @@@NOT-FOUND@@@"
+      echo "- $c $a (master: ${b:-N/A}) ■NOT-FOUND■"
     else
-      echo "@@@not found $a"
+      echo "■not found $a"
     fi
   done
 }
