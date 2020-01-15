@@ -206,7 +206,7 @@ fi
 
 if shopt -q restricted_shell; then
   unset -v _ble_bash
-  buitlin echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
+  builtin echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
   return 1
 fi
 
@@ -405,7 +405,7 @@ function ble/base/.create-user-directory {
       return 1
     fi
   elif ! [[ -r $dir && -w $dir && -x $dir ]]; then
-    ble/util/print "ble.sh: permision of '$tmpdir' is not correct." >&2
+    ble/util/print "ble.sh: permission of '$tmpdir' is not correct." >&2
     return 1
   fi
   eval "$var=\$dir"
@@ -487,7 +487,7 @@ function ble/base/initialize-runtime-directory/.tmp {
     ble/bin/mkdir -p "$tmp_dir" || return
     ble/bin/chmod a+rwxt "$tmp_dir" || return
   elif ! [[ -r $tmp_dir && -w $tmp_dir && -x $tmp_dir ]]; then
-    ble/util/print "ble.sh: permision of '$tmp_dir' is not correct." >&2
+    ble/util/print "ble.sh: permission of '$tmp_dir' is not correct." >&2
     return 1
   fi
 

@@ -2436,7 +2436,7 @@ bash_tips
   - edit: disable `rps1` in secondary textareas `#D1027` b86709a
   - edit: support `$?` in `PROMPT_COMMAND` and `PS1` evaluation `#D1074` 43f2967
   - main: change default attach strategy to `--attach=prompt` `#D1076` 197f752
-  - main: change exit status of `ble-update` when it is already upto date `#D1081` d94f691
+  - main: change exit status of `ble-update` when it is already up to date `#D1081` d94f691
   - progcomp: improve treatment of `COMP_WORDBREAKS` `#D1094` f6740b5 `#D1098` 6c6bae5
   - history: replace builtin `history` `#D1101` 655d73e
     - history: synchronize undo/mark/dirty data with history changes `#D1102` `#D1103` `#D1104` 5367360
@@ -2552,7 +2552,7 @@ bash_tips
   - keymap/vi: deal with textarea local data properly `#D1123` 2ea7cfd
   - edit: remove `ble-edit/exec:exec` `#D1131` 0cb9c6d
   - global: distinguish exit status 147 and 148 `#D1141` d1a78fb
-  - global: follow bash syntactic changes on arithmentic command 16e0f0e
+  - global: follow bash syntactic changes on arithmetic command 16e0f0e
   - decode: check `bind -X` first to store the original bindings `#D1179` 4057ff0
   - complete: resolve collision of flag chars with `shopt -s nocaseglob` `#D1186` 550fb14
   - color: change return variable of `ble/color/{,i}face2{g,sgr}` to `ret` `#D1188` 1885b54
@@ -2633,7 +2633,7 @@ bash_tips
   - reload: fix a bug that `PS1` is lost on reload with `--attach=prompt` `#D0938` 1107ca8
   - main (`--attach=prompt`): workaround rewrite of `PROMPT_COMMAND` `#D0940` 863fd7b
   - vi_nmap (`/`, `?`, `n`, `N`): fix search progress `#D0944` f20f840
-  - complete: fix a problem of slow ambiguous filename matching in nested directries `#D0960` 7b3ee55
+  - complete: fix a problem of slow ambiguous filename matching in nested directories `#D0960` 7b3ee55
   - util: improve performance of `ble/{util/{mapfile,assign-array},string#split-lines}` (<= bash-3.2) `#D0985` ae176b2 `#D0989` 36b9a8f f199215
   - sabbrev: fix a bug that sabbrev is disabled (<= bash-3.2) `#D0985` 840af29
   - util (ble/util/msleep): suppress warnings from `usleep` `#D0984` 8e4180c
@@ -2973,7 +2973,7 @@ bash_tips
   動作変更
   - bind/decode: 孤立 ESC の読み取り方法を変更。<C-q><C-[> で単体 <C-[> が入力されるように修正
   - bind/decode: input_encoding=C の時の孤立 ESC および C-@ の読み取りに対応
-  - complate: 重複して列挙される候補を統合する `#D0606`
+  - complete: 重複して列挙される候補を統合する `#D0606`
   - complete: 厳密一致するディレクトリ名が何故かコマンド候補に現れる問題の修正 `#D0608`
   - edit (command-help): 幾つかの組み込みコマンド・予約語について man bash の正しい位置に移動するように修正 `#D0609`
   - edit (command-help): クォートなどを除去してからコマンドのヘルプを探索するように変更 `#D0610`
@@ -3501,6 +3501,49 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-15
+
+  * codespell [#D1220]
+
+    gawk のメーリングリストに fossil というサイトの人が投稿している。
+
+    | codespell という機能を使って spell ミスを発見しているのだという。
+    | その spell ミスの発見はローカルで動かせないのだろうか、と探してみる。
+    | GitHub で探してみたら以下のプロジェクトが在る。
+    |
+    |   https://github.com/codespell-project/codespell
+    |
+    | この codespell の頁に heads-up (注意喚起) がある。
+    | fossies.org の頁に codespell を使っているのだと書かれている様だ。
+    |   https://github.com/codespell-project/codespell/issues/1315
+    |   https://fossies.org/features.html#codespell
+    |
+    | 其処にコメントしている jschleus というのが Jens つまり fossies の宣伝をしている人。
+    |   https://github.com/jschleus
+    |   https://github.com/letsencrypt/boulder/issues/4633
+    |
+    | 検索すると他にも様々なプロジェクトに対して去年の10月ぐらいから投稿している様だ。
+    |   https://github.com/search?q=codespell+fossies&type=Commits
+    |
+    | この人は他の人の作った物を自分の物であるかの様に人に貢献している。
+
+
+    取り敢えず codespell にかけて見た。
+
+    * brance expansion in memo.txt
+    * print filename and lines for -i 2
+    * 他の候補を入力できる様にする。
+    * 短い単語や大文字の短い単語 (略語) は無視するオプション
+    * -i2 と -i1 の書き換える時の操作が違うので間違える。
+      -i1 でそのまま C-m すると書き換えられる。
+      -i2 でそのまま C-m すると書き換えが起こらない。
+      何も入力せずに C-m した時には書き換えは起こらない様にするべきなのではないか。
+    * -i2 で行が長い時にどの単語か分からない。
+    * 辞書に登録されている "変換" だけにしか対応していない。
+      文字の交換だとかについても全部手で一つ一つ登録されている。
+      自動的に一致度を計算してどうとかそういう仕組ではない様だ。
+      不毛である。
 
 2020-01-13
 
@@ -9581,9 +9624,9 @@ bash_tips
         for (i = 0; i < len; i++) {
           value = arr[i];
           if (value ~ /^(0|-?[1-9][0-9]*)$/) {
-            range_register_number(valu);
+            range_register_number(value);
           } else if (value ~ /^(0+|-?0+[1-9][0-9]*)$/) {
-            range_register_znumber(valu);
+            range_register_znumber(value);
           } else if (value ~ /^[a-zA-Z]$/) {
             r = index(alpha, value);
             range_register_alpha(r);
@@ -9661,7 +9704,7 @@ bash_tips
     |   チェックするだけで十分の筈である。
     |
     | うーん。この様に実装すれば bash の braces にまとめる機能よりも強力に
-    | すっきりと brance expansion にまとめる事ができる。凄い。
+    | すっきりと brace expansion にまとめる事ができる。凄い。
     |
     | 取り敢えず、始めは欲張らずに先頭からの一致について実装を試みるのが良い。
     | うーん。クォートとかはどうしたら良いのだろうか。
@@ -20909,7 +20952,7 @@ bash_tips
 
     よく見たら term.sh の中で呼び出している ble/util/assign はおかしい。直した。
     また第2引数(コマンド)がクォートされていないものは全てクォートする事にした。
-    ble/util/assing 及び ble/util/assign-array の両方を $2 のみ評価する様に修正した。
+    ble/util/assign 及び ble/util/assign-array の両方を $2 のみ評価する様に修正した。
     ble/util/type の実装はこの新しい機能を使うものに切り替えた。問題なく動いている様だ。
 
   * 2018-08-26 complete: 候補一覧でコマンド・ディレクトリ名や変数名の着色 [#D0762]
@@ -29733,7 +29776,7 @@ bash_tips
 
     * テスト項目
 
-      - done: bash buitlin
+      - done: bash builtin
       - done: bash keyword
       - done: bash [[
       - done: alias resolve
@@ -35939,7 +35982,7 @@ bash_tips
       この時、調べなければならない範囲は現在位置より (3-1) = 2 文字手前の位置から、
       現在位置より 3 文字あとまでである。
 
-      うーん。本質は「現在位置より forwad 方向に対しては index-of で、
+      うーん。本質は「現在位置より forward 方向に対しては index-of で、
       現在位置より backward 方向に対しては last-index-of」で検索するということだ。
 
       | del="===" だとする。以下 ^ をカーソルの位置とする。
@@ -36940,7 +36983,7 @@ bash_tips
       効率の面から言って一気に複数文字を挿入するようにした方が良い。
       また、emacs 用の .get-arg を用意する必要があるのでは。
 
-    - 次に overwite する時に表示幅で overwrite するのか、論理列数で overwrite するのかということ。
+    - 次に overwrite する時に表示幅で overwrite するのか、論理列数で overwrite するのかということ。
       これは r gr で異なるので両方に対応しなければならない。
       これは _ble_edit_overwrite_mode=R というのに対応する必要がある。
       先ずはどこで _ble_edit_overwrite_mode が使われているかを調べる。
@@ -41590,11 +41633,11 @@ bash_tips
 
     動作に関して:
       '' に関してはパラメータ展開の親が "" の中であればそのまま "''" という文字列として解釈される。
-      パラメータ展開の親がコマンドの文脈である時は qoute として扱われ、除去の対象となる。
+      パラメータ展開の親がコマンドの文脈である時は quote として扱われ、除去の対象となる。
 
     extquote -s の時 (既定) は、
       パラメータ展開の親が "" の中にあったとしても、
-      $'' や $"" を qoute として解釈し qoute 除去が行われる。
+      $'' や $"" を quote として解釈し quote 除去が行われる。
 
     "" に関しては extquote に関係なく、また、
     パラメータ展開が "" の中にあるか外にあるかに拘わらず
@@ -44415,7 +44458,7 @@ bash_tips
     % その文字の開始位置は前の文字の終了位置から計算する事が出来る。
 
     + bugfix: ascii printable characters の行末で \n を付加した時 ichg に登録していなかった。
-      と思って update/postion を変更しようとしたら新しい事実が発覚した…。
+      と思って update/position を変更しようとしたら新しい事実が発覚した…。
       そもそも xenl の場合、行末に来た文字の末尾には \n を付けて、
       文字を出力した際に必ず次の行頭に進むように調整をしていた。
       しかしながら、ASCII 文字が連なっている場合の最適化として
@@ -44647,7 +44690,7 @@ bash_tips
     これのロード時間は大して変わっていない。
     この部分は基本的にファイルにキャッシュした配列を読み取っているだけである。
     しかしその容量が大きい為にこれだけの時間が掛かっている。
-    CSI Funtion Key が大半を占めているので、これらを特別扱いする様にすれば多少は解消するかも。
+    CSI Function Key が大半を占めているので、これらを特別扱いする様にすれば多少は解消するかも。
 
     .ble-edit.default-key-bindings は前回よりも大幅に増えている。
     これは多少の bindings の追加を行った事もあるが、
@@ -46710,7 +46753,7 @@ bash_tips
   * 履歴展開の対応 [#D0143]
 
     ^string1^string2^ の形式の履歴展開の場合、順に入力しても履歴展開と認識されない。
-    というか :x 等の modifers も順に入力しても履歴展開に含まれない。
+    というか :x 等の modifiers も順に入力しても履歴展開に含まれない。
 
     解析再開点を履歴展開の直前に置いておくか、何らかの単語?として取り扱わないと駄目。
     (「この点までは stat に値を設定しない」という変数を用意して、

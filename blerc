@@ -264,7 +264,7 @@
 
 
 ## If "complete_contract_function_names" has non-empty values, the function
-## name candidates are grouped by prefices of the directory-like form "*/".
+## name candidates are grouped by prefixes of the directory-like form "*/".
 
 #bleopt complete_contract_function_names=1
 
@@ -276,7 +276,7 @@
 #bleopt complete_allow_reduction=1
 
 
-## If "complete_auto_history" has non-empty values, auto-complete searchs
+## If "complete_auto_history" has non-empty values, auto-complete searches
 ## matching command lines from history.
 
 #bleopt complete_auto_history=1
@@ -343,7 +343,7 @@
 
 
 ## The setting "term_true_colors" specifies the format of 24-bit color escape
-## sequeces supported by your terminal.  The value "semicolon" indicates the
+## sequences supported by your terminal.  The value "semicolon" indicates the
 ## format "CSI 3 8 ; 2 ; R ; G ; B m".  The value "colon" indicates the format
 ## "CSI 3 8 : 2 : R : G : B m".  The other value implies that the terminal does
 ## not support 24-bit color sequences.  In this case, ble.sh tries to output
