@@ -1025,8 +1025,8 @@ function ble/builtin/trap/.read-arguments {
     if [[ $flags != *c* ]]; then
       flags=p$flags
     elif ((${#sigspecs[@]}==0)); then
-      command=-
       sigspecs=("$command")
+      command=-
     fi
   fi
 }

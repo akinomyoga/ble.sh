@@ -2370,6 +2370,9 @@ bash_tips
   New features
   - complete: support `bleopt complete_auto_wordbreaks` `#D1219`
 
+  Fix
+  - util (ble/util/trap): fix argument analysis for the form "trap INT" (reported by dylankb) `#D1221`
+
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
   New features
@@ -3501,6 +3504,29 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-17
+
+  * Error `ble/builtin/trap: invalid signal specification "-".` [#D1221]
+    https://github.com/akinomyoga/ble.sh/issues/33#issuecomment-575476866
+
+    | うーん。何故だろう。調べるとこのエラーメッセージを出力するのは、
+    | trap -p で sigspecs に - が含まれていた場合、もしくは、
+    | trap で sigspecs に - が含まれていた場合。
+    | うーん。何れにしても sigspecs に - が混入するのが怪しい。
+    | sigspecs に - が混入する状況で怪しい箇所がある。
+    | この箇所に入る条件は何か hlpE の何れも指定されていなくて、
+    | 更に sigspecs が何も登録されていない場合に、
+    | command を上書きしてそれから…あ、分かった。
+    |
+    | trap INT とすると INT のハンドラが削除されるのだ。
+    | それを実現する為に ble/builtin/trap では、
+    | 1. trap INT を引数として順番に処理すると最初は INT が command として解釈される。
+    | 2. 引数解析の終端で引数がもう終わっているという事が分かったら、
+    |   trap INT を trap - INT であったかの様に書き換える。
+
+    本来の trap は trap INT で INT のハンドラが削除される。
+    ble/builtin/trap でそれに対する対応が壊れていた。修正した。
 
 2020-01-15
 
