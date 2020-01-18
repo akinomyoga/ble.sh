@@ -4289,8 +4289,8 @@ function ble-edit/exec:gexec/process {
 }
 function ble-edit/exec:gexec/restore-state {
   # 構文エラー等で epilogue/end が呼び出されなかった時の為 #D1170
-  [[ $_ble_edit_exec_inside_prologue ]] &&  ble-edit/exec:gexec/.epilogue 3>&2 &>/dev/null
-  [[ $_ble_edit_exec_inside_begin ]] &&  ble-edit/exec:gexec/.end restore
+  [[ $_ble_edit_exec_inside_prologue ]] && ble-edit/exec:gexec/.epilogue 3>&2 &>/dev/null
+  [[ $_ble_edit_exec_inside_begin ]] && ble-edit/exec:gexec/.end restore
 }
 
 # **** accept-line ****                                            @edit.accept
@@ -7095,21 +7095,6 @@ function ble-edit/bind/.exit-TRAPRTMAX {
 ##   @exit detach した場合に 0 を返します。それ以外の場合に 1 を返します。
 ##
 function ble-edit/bind/.check-detach {
-  # Note: #D1130 reload の為に detach して attach しなかった場合
-  if [[ ! $_ble_attached && $_ble_edit_detach_flag == reload ]]; then
-    ble-detach/message \
-      "${_ble_term_setaf[12]}[ble: detached]$_ble_term_sgr0" \
-      "Please run \`stty sane' to recover the correct TTY state."
-
-    if ((_ble_bash>=40000)); then
-      READLINE_LINE='stty sane;' READLINE_POINT=10
-      printf %s "$READLINE_LINE"
-    fi
-
-    ble-edit/exec:"$bleopt_internal_exec_type"/.prologue
-    return 0
-  fi
-
   if [[ ! -o emacs && ! -o vi ]]; then
     # 実は set +o emacs などとした時点で eval の評価が中断されるので、これを検知することはできない。
     # 従って、現状ではここに入ってくることはないようである。
@@ -7122,7 +7107,8 @@ function ble-edit/bind/.check-detach {
     _ble_edit_detach_flag=
     #ble/term/visible-bell ' Bye!! '
 
-    ble-detach/impl
+    local attached=$_ble_attached
+    [[ $attached ]] && ble-detach/impl
 
     if [[ $type == exit ]]; then
       # ※この部分は現在使われていない。
@@ -7145,9 +7131,20 @@ function ble-edit/bind/.check-detach {
       fi
     fi
 
-    ble/base/restore-bash-options
-    ble/base/restore-POSIXLY_CORRECT
-    builtin eval "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
+    if [[ $attached ]]; then
+      # ここで ble-detach/impl した時は調整は最低限でOK
+      ble/base/restore-bash-options
+      ble/base/restore-POSIXLY_CORRECT
+      builtin eval "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
+    else
+      # Note: 既に ble-detach/impl されていた時 (reload 時) は
+      #   epilogue によって detach 後の状態が壊されているので
+      #   改めて prologue を呼び出す必要がある。
+      #   #D1130 #D1199 #D1223
+      ble-edit/exec:"$bleopt_internal_exec_type"/.prologue
+      _ble_edit_exec_inside_prologue=
+    fi
+
     return 0
   else
     # Note: ここに入った時 -o emacs か -o vi のどちらかが成立する。なぜなら、

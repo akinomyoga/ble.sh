@@ -1338,8 +1338,6 @@ bash_tips
     bash-it の場合には bash-it-update だとか bash-it::update だとかだと
     格好が悪いので bash-it update という形の関数名になるというのは分かる。
 
-  * manual: 英語版
-
   * main: --attach=prompt の問題は何だったか
     ref #D0940
 
@@ -3505,9 +3503,153 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-01-18
+
+  * ble-reload の後に固まる (reported by dylankb) [#D1223]
+    https://github.com/akinomyoga/ble.sh/issues/35
+
+    [再現]
+
+    | 再現できない。色々の OS で試してみたが再現しない。
+    |
+    | うーん。或いは Bash 5.0.11 の問題である可能性はあるか?
+    | →確認してみたが Fedora で 5.0.11 でも再現しないし、
+    | また FreeBSD も確認してみた所元から 5.0.11 だった。
+    |
+    | 再現しないと思ったがもしかして。。。--noattach が駄目?
+    | あー。そうだった。うーん。#D1199 で直した筈なのだが。
+    | 確認してみると D1199 で直したのは単純に source ble.sh --noattach
+    | した時の話であって、source ble.sh --noattach && ble-attach
+    | したら固まった。全然直っていなかった。
+
+    $ source ble.sh --noattach && ble-attach で再現する
+
+    [状況]
+
+    | これを直す為にはどうしたら良いのか。
+    | #D1199 でどの様に直したのか確認する必要がある。
+    | 調べると #D1199 の commit がないと思ったら ble-0.3 の問題として
+    | ble-0.3 に修正が入っていた。と言っても対症療法的な物で、
+    | ble-reload に対してしか修正が入っていなかったのだった。
+    | 5bcea69 がその修正である。参考にならない。
+    |
+    | 参考にするべきはこれである #D1130 d35682a caa46c2
+    |
+    | うーん。分かった。
+    | _ble_edit_detach_flag に値が設定されている時、
+    | ble-attach は ble-detach (遅延) をキャンセルする事になるので、
+    | 何もせずに抜けてしまう。これによって attach しているのにしていない、
+    | という様な中途半端な状態になってしまっているのである。
+    | 然し、そもそも _ble_attached になっているのが行けないのでは?
+    | _ble_attached の設計を考え直すべきなのではないかという気がする。
+    |
+    | 今一度 _ble_edit_detach_flag と _ble_attached の意味について考える。
+    | _ble_attached は実際に attach されているかどうかにするべきである。
+    | そして、_ble_edit_detach_flag は複数の値を取りうる。
+    | それぞれの意味について確認する。
+    |
+    | _ble_edit_detach_flag=detach
+    |   これは ble-detach を呼び出した時に設定される。
+    |   もし epilogue でこれが設定されていればその時に detach を実行する。
+    |   或いは ble-attach でキャンセルする事も可能である。
+    |
+    | _ble_edit_detach_flag=reload これは reload 検知時に設定される。
+    |   特に reload 検知前に attach していた時にこれが発生する。
+    |   その場で完全に detach してしまいその後で reload を設定するのである。
+    |   % 後の振る舞いとしては自動的に再 attach する事を示唆する。
+    |   % と思ったが本当だろうか。違う気がする。
+    |   % source した時に --noattach 等を指定していた場合には、
+    |   % やはり勝手に attach しないという事になるのであろう。
+    |   後の振る舞いとしては。現在の bind -x が終了する時に
+    |   detach 状態であるのであればメッセージを表示する、という所だろうか。
+    |
+    |   さて、この時に ble-detach が呼び出された場合にはどうなるのか?
+    |   うーん。_ble_attach が設定されていれば ble-detach を実行する。
+    |   もし _ble_attach が設定されていれば実行の必要はない。
+    |
+    |   うーん。実はこれは detach と等価なのでは?
+    |   と思ったが .prologue を呼び出しているという所が異なる。
+    |   うーん。何だか分からないが色々複雑な状態を復元しなければならないので
+    |   呼び出す必要があるという事だろうか。
+    |
+    |   然し、source ble.sh を実行した時点で色々と状態を調整している。
+    |   そして抜ける瞬間にそれを復元している。しかしながらその状態は
+    |   更にその外側で復元される?? 何だかよく分からない。
+    |
+    |   先ず記録されているのは実行環境であって、
+    |   ble.sh環境は一意であると考えている。
+    |
+    |   attach が発生する場合は以下の様になる。
+    |
+    |     コマンド実行               source ble.sh              attach      epilogue
+    |     [ble.sh]    →[実行環境A]→[ble.sh] → [実行環境B] → [ble.sh] → [ble.sh?]
+    |
+    |   attach が発生しない場合は以下の様になる。
+    |                                                           epilogue    prologue
+    |     [ble.sh]    →[実行環境A]→[ble.sh] → [実行環境B] → [ble.sh] → [実行環境]
+    |
+    |   もしここで prologue を呼び出していないとするとどうなるのだろうか?
+    |   つまり代わりに detach と同じ処理をするとどうなるのかという事。
+    |   うーん。PS1 等が消滅するという事は考えにくいし、何も問題がない気がする。
+    |   そもそも PS1 が消滅していたのは何故だったか。
+    |   恐らく epilogue を重複して呼び出してしまったから?
+    |   epilogue が重複すると ble.sh 環境を実行環境として記録する事になってしまう。
+    |   色々考えるとやはり prologue は必要がない気がする。
+    |
+    |   やっぱり何か不思議だ。detach の時にはほんの少ししか復元をしていない。
+    |   何故問題が起こらないのだろうか? と思ったが分かった気がする。
+    |   どのタイミングで detach を実行したかの違いなんだ。
+    |   reload の時には先に detach してしまうので epilogue で状態が壊される。
+    |   なので再び prologue を呼び出す必要がある。
+    |   detach の時には epilogue の後に detach しているので、
+    |   その時点でちゃんと状態が作られている。なので、簡単で良い。
+    |
+    |   という事は .check-detach に入った時の _ble_attached の状態で場合分けすれば良い。
+
+    _ble_attached の意味を変更して実際に attach/detach しているかの状態を保持する事にした。
+    _ble_edit_detach_flag に関しては reload と detach を区別しない処理に変更した。
+    代わりに、_ble_edit_detach_flag が立っているのに既に detach されている状態と、
+    まだ detach していない状態で場合分けする本来の目的に適う実装方法である。
+
+    [確認]
+
+    取り敢えず修正して動かして振る舞いを確認する。チェックするのは、
+
+    ble-reload
+    ble-detach; ble-attach
+    source "$_ble_base/ble.sh" --noattach
+    source "$_ble_base/ble.sh" --prompt
+    source "$_ble_base/ble.sh" --noattach && ble-attach
+
+    一応問題なく動いている気がする。
+
+    x source "$_ble_base"/ble.sh --noattach してから ble-attach すると変だ。
+
+      普通に ble-detach してから ble-attach する時との違いは何だろうか。
+      やはり状態として変な状態になっている? ちゃんと復元しきれていない?
+      然し attach 直前は別に変な振る舞いは見せていなかった筈。
+
+      ble-attach する時に PS1 の restore に失敗している可能性?
+      うーん。何がおかしいのだろうか。
+
+      というか状態がおかしいというよりは [EOF] のマークが表示されているのが問題。
+      ble-attach した時にプロンプトをその場で描画してしまうかそうでないかの違いは何?
+
+      うーん。やっぱり attach 時に [EOF] が表示されるのは変である。
+      .prologue で何か変な物がしかけられたのが原因だろう。
+
+      分かった。ble-decode/PROLOGUE で
+      ble-edit/exec:gexec/restore-state を呼び出して、
+      ble-edit/exec:gexec/.epilogue が呼び出されている。
+      その時に EOL 補正が入ってしまっているのである。
+      対症療法的ではあるが _ble_edit_exec_inside_prologue= を設定する。
+
+  * 2019-02-09 manual: 英語版 [#D1222]
+    取り敢えず完成した。
+
 2020-01-17
 
-  * Error `ble/builtin/trap: invalid signal specification "-".` [#D1221]
+  * Error `ble/builtin/trap: invalid signal specification "-".` (reported by dylankb) [#D1221]
     https://github.com/akinomyoga/ble.sh/issues/33#issuecomment-575476866
 
     | うーん。何故だろう。調べるとこのエラーメッセージを出力するのは、
