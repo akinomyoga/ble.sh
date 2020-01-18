@@ -790,6 +790,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
   [[ $PROMPT_COMMAND != ble/base/attach-from-PROMPT_COMMAND ]] && local PROMPT_COMMAND
   PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
   ble-edit/prompt/update/.eval-prompt_command
+  blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND
 
   # 既に attach 状態の時は処理はスキップ
   [[ $_ble_base_attach_from_prompt ]] || return 0
@@ -873,8 +874,10 @@ function ble/base/process-blesh-arguments {
   (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
            _ble_base_attach_from_prompt=1
            PROMPT_COMMAND=ble/base/attach-from-PROMPT_COMMAND
-           [[ $_ble_edit_detach_flag == reload ]] &&
-             _ble_edit_detach_flag= ;;
+           if [[ $_ble_edit_detach_flag == reload ]]; then
+             _ble_edit_detach_flag=prompt-attach
+             blehook PRECMD+=ble/base/attach-from-PROMPT_COMMAND
+           fi ;;
   esac
   [[ $flags != *E* ]]
 }

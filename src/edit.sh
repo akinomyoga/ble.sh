@@ -688,9 +688,10 @@ function ble-edit/prompt/update {
   local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
 
   # update PS1
-  if [[ $PROMPT_COMMAND ]]; then
+  if [[ $PROMPT_COMMAND ]] || blehook/has-hook PRECMD; then
     ble-edit/restore-PS1
-    ble-edit/prompt/update/.eval-prompt_command
+    [[ $PROMPT_COMMAND ]] &&
+      ble-edit/prompt/update/.eval-prompt_command
     ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
     ble-edit/adjust-PS1
   fi
@@ -7102,7 +7103,10 @@ function ble-edit/bind/.check-detach {
     ble-detach
   fi
 
-  if [[ $_ble_edit_detach_flag ]]; then
+  # reload & prompt-attach の時は素通り (detach 後の処理は不要)
+  [[ $_ble_edit_detach_flag == prompt-attach ]] && return 1
+
+  if [[ $_ble_edit_detach_flag || ! $_ble_attached ]]; then
     type=$_ble_edit_detach_flag
     _ble_edit_detach_flag=
     #ble/term/visible-bell ' Bye!! '

@@ -954,6 +954,10 @@ function blehook {
 }
 blehook/.compatibility-ble-0.3
 
+function blehook/has-hook {
+  eval "local count=\${#_ble_hook_h_$1[@]}"
+  ((count))
+}
 function blehook/invoke {
   local lastexit=$? FUNCNEST=
   ((_ble_hook_c_$1++))
