@@ -7095,7 +7095,7 @@ function ble-edit/bind/.check-detach {
     ble-detach
   fi
 
-  if [[ $_ble_edit_detach_flag ]]; then
+  if [[ $_ble_edit_detach_flag || ! $_ble_attached ]]; then
     type=$_ble_edit_detach_flag
     _ble_edit_detach_flag=
     #ble/term/visible-bell ' Bye!! '
