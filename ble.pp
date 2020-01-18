@@ -706,7 +706,6 @@ function ble/base/attach-from-PROMPT_COMMAND {
   ble/util/joblist.check
 }
 
-: "${_ble_base_rcfile:=$HOME/.blerc}"
 function ble/base/process-blesh-arguments {
   local opt_attach=attach
   local opt_rcfile=
@@ -736,6 +735,11 @@ function ble/base/process-blesh-arguments {
     esac
   done
 
+  if [[ ! $_ble_base_rcfile ]]; then
+    { _ble_base_rcfile=$HOME/.blerc; [[ -f $rcfile ]]; } ||
+      { _ble_base_rcfile=${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh; [[ -f $rcfile ]]; } ||
+      _ble_base_rcfile=$HOME/.blerc
+  fi
   [[ -s $_ble_base_rcfile ]] && source "$_ble_base_rcfile"
   case $opt_attach in
   (attach) ble-attach ;;
