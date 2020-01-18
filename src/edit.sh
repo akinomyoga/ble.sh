@@ -7134,7 +7134,7 @@ function ble-edit/bind/.check-detach {
       #   epilogue によって detach 後の状態が壊されているので
       #   改めて prologue を呼び出す必要がある。
       #   #D1130 #D1199 #D1223
-       ble-edit/exec:"$bleopt_internal_exec_type"/.eval-prologue
+      ble-edit/exec:"$bleopt_internal_exec_type"/.eval-prologue
     fi
 
     return 0

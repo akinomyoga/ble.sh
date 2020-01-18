@@ -199,18 +199,25 @@ function ble/.check-environment {
 
     # try to fix PATH
     local default_path=$(command -p getconf PATH 2>/dev/null)
-    if [[ $default_path ]]; then
-      local original_path=$PATH
-      export PATH=${PATH}${PATH:+:}${default_path}
-      [[ :$PATH: == *:/usr/bin:* ]] || PATH=$PATH${PATH:+:}/usr/bin
-      [[ :$PATH: == *:/bin:* ]] || PATH=$PATH${PATH:+:}/bin
-      if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
-        PATH=$original_path
-        return 1
-      fi
-    fi
+    [[ $default_path ]] || return 1
 
-    echo "ble.sh: modified PATH=\$PATH${PATH:${#original_path}}" >&2
+    local original_path=$PATH
+    export PATH=${default_path}${PATH:+:}${PATH}
+    [[ :$PATH: == *:/bin:* ]] || PATH=/bin${PATH:+:}$PATH
+    [[ :$PATH: == *:/usr/bin:* ]] || PATH=/usr/bin${PATH:+:}$PATH
+    if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
+      PATH=$original_path
+      return 1
+    fi
+    echo "ble.sh: modified PATH=${PATH::${#PATH}-${#original_path}}:\$PATH" >&2
+  fi
+
+  if [[ ! $USER ]]; then
+    echo "ble.sh: Insane environment: \$USER is empty." >&2
+    if type id &>/dev/null; then
+      export USER=$(id -un)
+      echo "ble.sh: modified USER=$USER" >&2
+    fi
   fi
 
   # 暫定的な ble/bin/$cmd 設定
