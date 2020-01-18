@@ -1023,9 +1023,6 @@ bash_tips
 
     [修正]
 
-    * 取り敢えずユーザー名はもし設定されていなければ設定する。
-      id -un でユーザー名は取得できる筈である。
-
   * Haiku における問題
 
     Haiku で ble-reload 時に変なメッセージが出る。
@@ -2533,12 +2530,13 @@ bash_tips
 
   New features
   - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
-  - main: check `~/.config/blesh/init.sh` `#D1224` 0000000
+  - main: check `~/.config/blesh/init.sh` `#D1224` a82f961
 
   Fix
   - util (ble/builtin/trap): fix argument analysis for the form `trap INT` (reported by dylankb) `#D1221` db8b0c2
   - main: fix an error message on ristricted shells `#D1220` b726225
-  - edit: fix a bug that the shell hangs with `source ble.sh --noattach && ble-attach` (reported by dylankb) `#D1223` 59c1ce4
+  - edit: fix a bug that the shell hangs with `source ble.sh --noattach && ble-attach` (reported by dylankb) `#D1223` 59c1ce4 3031007
+  - main: workaround cygwin uninitialized environment `#D1225` `#D1226`
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -3673,6 +3671,27 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-18
+
+  * cygwin: cygwin console で USER が空になっている [#D1226]
+    取り敢えずユーザー名はもし設定されていなければ設定する。
+    id -un でユーザー名は取得できる筈である。
+
+    これも #D1225 と一緒に対応した。
+
+  * cygwin: cygwin console で "-u指定されたファイルが見つかりません" エラー [#D1225]
+
+    これは 3.0.7 でも発生している。恐らく補完だろう。
+    "-u指定されたファイルが見つかりません" というメッセージが表示される。
+    64bit でも 32bit でも同様に出る。中で更に起動した Bash では再現しない。
+
+    この行が駄目だった。
+    ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
+
+    そして ble/bin/sort を見てみると
+    ble/bin/sort() { '/cygdrive/c/WINDOWS/system32/sort' "$@"; }
+    等という事になっていた。道理で駄目な訳だ。
+    他にも Windows に同盟のコマンドがあるという事がありそう。
+    うーん。面倒なのでもう先頭に追加してしまう事にする。。
 
   * main: .blerc がない時は ~/.config/blesh/... から読み取っても良いのでは [#D1224]
     然しどういう名前が良いだろうか。
