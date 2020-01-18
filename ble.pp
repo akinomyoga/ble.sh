@@ -804,19 +804,23 @@ function ble/base/attach-from-PROMPT_COMMAND {
   ble/util/joblist.check
 }
 
-: "${_ble_base_rcfile:=$HOME/.blerc}"
 function ble/base/process-blesh-arguments {
   local opt_attach=prompt
-  local opt_rcfile=
-  local opt_error=
-  local opts=
+  local flags=
   while (($#)); do
     local arg=$1; shift
     case $arg in
     (--noattach|noattach)
       opt_attach=none ;;
     (--attach=*) opt_attach=${arg#*=} ;;
-    (--attach)   opt_attach=$1; shift ;;
+    (--attach)
+      if (($#)); then
+        opt_attach=$1; shift
+      else
+        opt_attach=attach
+        flags=E$flags
+        ble/util/print "ble.sh ($arg): an option argument is missing." >&2
+      fi ;;
     (--noinputrc)
       _ble_builtin_bind_inputrc_done=noinputrc ;;
     (--rcfile=*|--init-file=*|--rcfile|--init-file)
@@ -829,19 +833,24 @@ function ble/base/process-blesh-arguments {
         _ble_base_rcfile=$rcfile
       else
         ble/util/print "ble.sh ($arg): '$rcfile' is not a regular file." >&2
-        opt_error=1
+        flags=E$flags
       fi ;;
     (--keep-rlvars)
-      opts=V$opts ;;
+      flags=V$flags ;;
     (--debug-bash-output)
       bleopt_internal_suppress_bash_output= ;;
     (*)
       ble/util/print "ble.sh: unrecognized argument '$arg'" >&2
-      opt_error=1
+      flags=E$flags ;;
     esac
   done
 
   # blerc
+  if [[ ! $_ble_base_rcfile ]]; then
+    { _ble_base_rcfile=$HOME/.blerc; [[ -f $rcfile ]]; } ||
+      { _ble_base_rcfile=${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh; [[ -f $rcfile ]]; } ||
+      _ble_base_rcfile=$HOME/.blerc
+  fi
   if [[ -s $_ble_base_rcfile ]]; then
     source "$_ble_base_rcfile"
     blehook/.compatibility-ble-0.3/check
@@ -852,7 +861,7 @@ function ble/base/process-blesh-arguments {
   #   便利だと思われる設定の方向に書き換えてしまう。
   #   多くのユーザは自分で設定しないので ble.sh の便利な機能が off になっている。
   #   一方で設定するユーザは自分で off に設定するぐらいはできるだろう。
-  if [[ $opts != *V* ]]; then
+  if [[ $flags != *V* ]]; then
     ((_ble_bash>=40100)) && builtin bind 'set skip-completed-text on'
     ((_ble_bash>=40300)) && builtin bind 'set colored-stats on'
     ((_ble_bash>=40400)) && builtin bind 'set colored-completion-prefix on'
@@ -867,7 +876,7 @@ function ble/base/process-blesh-arguments {
            [[ $_ble_edit_detach_flag == reload ]] &&
              _ble_edit_detach_flag= ;;
   esac
-  [[ ! $opt_error ]]
+  [[ $flags != *E* ]]
 }
 ble/base/process-blesh-arguments "$@"
 

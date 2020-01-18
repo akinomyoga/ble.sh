@@ -908,6 +908,172 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-01-17
+
+  * ble.sh: cygwin コンソールで実行するとすぐに閉じてしまう。
+    idle の処理を実行している途中に入力があると落ちてしまう様だ。
+
+    cygwin version は 3.1.2 である。前に使っていたのが何かは分からない。
+    ble-detach すると落ちないで使う事ができている。
+    調べたら 3.1 から例の新しい xterm-256color が利用可能になる様だ。
+
+    | どの瞬間に落ちているのか、というのは大量にファイルに書き出してみる
+    | 等すれば分かるだろう。というよりトラブルがある度に色々埋め込んだりするのは
+    | 大変だ。なのでスイッチひとつで verbose に実行結果を出力する事ができる様に
+    | する事は可能だろうか? というかその為に set -x があるのではないか?
+    |
+    | と思ったが。うーん。
+    |
+    | 取り敢えず中で更に bash を立ち上げてみると、
+    | 落ちるのは bash であって console の方ではない様だという事が分かった。
+    |
+    | 全然変更が反映されないので変だと思っていたら
+    | 物凄く馬鹿な事をしていた。hp2019 の ble.sh を書き換えて、
+    | ローカルの方を書き換えていなかった。
+    |
+    | 試している内に分かった事。
+    | 先ず USER 変数が設定されていない。
+    | HOME は設定されている様だ。
+    | 然し手で USER を export して設定しても問題は解消しない。
+    | これはまた別の問題の様である。
+    |
+    | * set -x は結局試してみたが余り役に立たない感じだった。
+    |   ble.sh の側でも /dev/null だとか或いは別の目的で
+    |   リダイレクトをしているので set -x の出力が必ずしも
+    |   画面に出力されるとは限らないのである。
+    |
+    |   それに大量の出力が出すぎて良く分からない。
+    |
+    | * 少しずつ絞っていく。
+    |   どうも ble-decode/.hook の中で起こっている訳ではない様だ。
+    |   idle の中で起こっているのかと思ったがそうでもない。不思議だ。
+    |   どうも Bash の内部で問題が起こっているらしい。
+    |   しかも gdb で調べようと思っても別にクラッシュしている訳ではなく
+    |   普通に Bash が終了している? 不思議だ。
+    |
+    | * bleopt_internal_suppress_bash_output= を設定して起動すると
+    |   勝手に終了する確率は格段に小さくなるがそれでも未だ
+    |   勝手に終了してしまうのである。
+    |
+    |   ble-0.1, 0.2, 0.3 も全部同様の症状である。
+    |   何故だろうか。何が悪いのだろうか。
+    |   或いは何らかの trap? SIGWINCH?
+    |   →shopt -u checkwinsize しても再現する。
+    |
+    |   shopt -u failglob しても再現する。
+    |
+    |   そもそも bash --norc から source しても再現するのである。
+    |   不思議な事である。
+
+    * cygwin 3.1.1 のコンソールで発生する。xterm 等では発生しない。
+      中で起動した screen の中でも発生しない。
+    * Bash が勝手に終了する。Bash のバージョンは 4.4.12。
+      クラッシュではなく通常終了。EXIT trap は呼ばれない。
+    * bind -x の中ではなく別の場所で発生する。
+    * ble-0.1..0.4 の全てで再現する
+    * shopt -u checkwinsize でも再現する
+    * shopt -u failglob でも再現する
+    * bash --norc から始めても再現する
+    * bleopt_internal_suppress_bash_output= すると確率は減るが再現する
+
+    うーん。例えば console に対する ungetc が壊れている?
+    read -t 0 をしない様にすれば解決するだろうか?
+    → function ble/util/is-stdin-ready { false; } で潰しても駄目だった。
+    他の場所ではこの様な危ない事はしていない。うーん。何がいけないのだろうか。
+
+    bash-5.0.11 でも駄目だった。何が行けないのだろうか。
+    bind -x '"\C-t":sleep 1' して C-t を連打したら再現するだろうか?
+    然し再現しなかった。難しい。
+
+    bind '"\C-t":self-insert' としていても止まってしまう。
+    (builtin bind '"\C-t":self-insert')
+    つまり bash_execute_unix_command の次が別の物であっても発生する。
+
+    bash_execute_unix_command の次に
+    再度 bash_execute_unix_command が呼び出されるとしても
+    必ずしも失敗する訳ではない。
+    これが意味する所は前回の bash_execute_unix_command の間に特定の操作をすると、
+    その次の受信で問題が起こるのだという事である。
+
+    怪しいのはやはり exec なのである。
+    exec を呼び出している箇所を確認する。
+
+    ble-edit/bind/stdout.on
+    ble-edit/bind/stdout.off
+    ble-edit/bind/stdout.off (bash-3.0)
+    ble/util/openat
+
+    うーん。ble/util/openat を他で使っているのは msleep だけである。
+
+    suppress_output と以下を組み合わせて問題が起こらない様にしようとしたが再現する。
+    それでも死んでしまう。うーん。更に ble/util/is-stdin-ready も潰したが再現する。
+
+    | ble/util/msleep() {
+    |   local v=$1; ((v<0)) && return
+    |   local frac=$((1000+v)); frac=${frac:${#frac}-3}
+    |   local mant=$((v/1000))
+    |   sleep "$mant.$frac"
+    | }
+    | type ble/util/msleep
+    | ble/util/is-stdin-ready() { false; }
+
+    しかし何れにしても suppress_output が大いに関係していそうなのは確かなのである。
+    うーん。全然駄目なんだ。もし本当に終了しているのだとすればその経路を調べたい。
+    bash のソースを弄らないと分からないという事なんだ。
+
+    [修正]
+
+    * 取り敢えずユーザー名はもし設定されていなければ設定する。
+      id -un でユーザー名は取得できる筈である。
+
+  * Haiku における問題
+
+    Haiku で ble-reload 時に変なメッセージが出る。
+    まあこれは bash-4.4 の問題かもしれない。
+    →CentOSでやると日本語でエラーメッセージが表示されていて、
+    その長さなどが一致している気がするので Haiku のエラーメッセージは
+    やはり bind 回りの Bash のバグだろう。
+
+    また、sleep を呼び出すと Terminal の先頭に一々表示されて面倒である。
+
+  * Minix で無限ループになっている。
+
+    echo と入力しようとすると確率的に無限ループになる。
+    (それでも可也高い確率で無限ループになる。)
+    auto-complete を off にしても発生する。
+    menu-filter を off にしても発生する。
+    という事は着色か或いは。。
+
+    調べてみると暴走しているプロセスは別の Bash だという事が分かった。
+    恐らく子プロセスで暴走している。何が悪いのだろうか。履歴?
+    →履歴はちゃんとロードできている。その後で暴走する。
+    →再度確かめたらやはり子プロセスの暴走としか思えない。
+      と思ったがよく見ると親プロセスの暴走だった。両方で起こる?
+
+    ble-reload の後に固まる問題も
+    もしかしてこれだろうか? と思ったが症状的に独立な問題だろう。
+
+  * 英語圏のニュースサイトに投稿する可能性 (suggestion by dylankb)
+    Hacker News を紹介されたがここが適切なんだろうか?
+
+    reddit に投稿した話がある。
+    https://rcmdnk.com/blog/2014/02/23/computer-bash-zsh/
+
+    単にリンクを貼るというのでも良いけれども。
+    やはり様々な機能を惜しげもなく紹介する
+    長い記事を書くのが良い気がする。
+
+    →返信で自分の作品を投稿する時のルールの頁があった。
+      なるほど。やはりルールがあったのである。危ない所である。
+      https://news.ycombinator.com/showhn.html
+
+      これによると作品の紹介は一度きりしかできないとの事。
+      > The community is comfortable with work that's at an early stage.
+      と書かれているがまさかこれは初期の作品でなければならないという訳でもあるまい。
+      > Blog posts, sign-up pages, and other reading material can't be tried out
+      と書かれているが…。使い方の説明記事の様でも駄目なのだろうか。
+      Blog posts でなければ良い? 或いは README を派手に改造してしまうという手もある。
+
 2020-01-05
 
   * Homebrew の設定を作成する?
@@ -2366,10 +2532,13 @@ bash_tips
 2020-01-12 -- (#D1215... ) c74abc5...
 
   New features
-  - complete: support `bleopt complete_auto_wordbreaks` `#D1219`
+  - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
+  - main: check `~/.config/blesh/init.sh` `#D1224` 0000000
 
   Fix
-  - util (ble/util/trap): fix argument analysis for the form "trap INT" (reported by dylankb) `#D1221`
+  - util (ble/builtin/trap): fix argument analysis for the form `trap INT` (reported by dylankb) `#D1221` db8b0c2
+  - main: fix an error message on ristricted shells `#D1220` b726225
+  - edit: fix a bug that the shell hangs with `source ble.sh --noattach && ble-attach` (reported by dylankb) `#D1223` 59c1ce4
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -2425,7 +2594,7 @@ bash_tips
   - complete: support `bleopt complete_allow_reduction` `#D1181` 03040b7
   - edit: support `bleopt exec_errexit_mark` `#D1182` 6adc2df
   - color: support true colors `#D1184` bd631ce 5dd6b03
-  - color (`ble-color-setface`): support reference to another face `#D1188` 1885b54 `#D1206` 7e31ad3
+  - color (`ble-color-setface`): support reference to another face (reported by cmplstofB) `#D1188` 1885b54 `#D1206` 7e31ad3
   - edit: support `shopt -u promptvars` `#D1189` 269ba09
   - highlight: highlight variable names and numbers according to its state `#D1210` `#D1211` 93dab7b
   - highlight: support `${var@op}` (for bash 4.4) `#D1212` a85bdb8
@@ -2521,11 +2690,11 @@ bash_tips
   - edit: fix exit status of Bash by key binding <kbd>C-d</kbd> `#D1215` a9756e9
 
   Support macOS, FreeBSD, Arch Linux, Solaris, Haiku, Minix
-  - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` 6ff4d2b
-  - decode: recover the terminal states after failing the default keymap initialization `#D1195` 846f284
+  - util: fix the error message "usage: sleep seconds" on macOS bash 3.2 `#D1194` (reported by dylankb) 6ff4d2b
+  - decode: recover the terminal states after failing the default keymap initialization `#D1195` (reported by dylankb) 846f284
   - main (`ble-update`): use shallow clone `#D1196` 2a20d9c
   - main (`$_ble_base_cache`): use different directories for different ble versions `#D1197` 55951d1
-  - edit (`ble/builtin/read`): fix argument analysis with user-provided `IFS` in Bash 3.2 `#D1198` 7411f06
+  - edit (`ble/builtin/read`): fix argument analysis with user-provided `IFS` in Bash 3.2 (reported by dylankb) `#D1198` 7411f06
   - global: fix subshell detection in Bash 3.2 `#D1200` ca8df8a
   - syntax: workaround Bash-4.1 arithmetic bug `#D1201` f248c52
   - Makefile: fix "install" for BSD sed `#D1202` 32c2e1a
@@ -3505,6 +3674,14 @@ bash_tips
 
 2020-01-18
 
+  * main: .blerc がない時は ~/.config/blesh/... から読み取っても良いのでは [#D1224]
+    然しどういう名前が良いだろうか。
+    ~/.config/blesh/blerc なのか、
+    ~/.config/blesh/blerc.sh なのか、
+    ~/.config/blesh/init.sh なのか、
+    或いはもっと別の名前が良いか。
+    取り敢えず init.sh にする事にした。
+
   * ble-reload の後に固まる (reported by dylankb) [#D1223]
     https://github.com/akinomyoga/ble.sh/issues/35
 
@@ -3715,7 +3892,7 @@ bash_tips
 
 2020-01-13
 
-  * util: 自動補完の区切り文字を設定できる様にする [#D1219]
+  * util: 自動補完の区切り文字を設定できる様にする (suggestion by dylankb) [#D1219]
     https://github.com/akinomyoga/ble.sh/issues/33#issuecomment-573528032
 
     / で区切る様にしたいとの事だ。
@@ -4064,7 +4241,7 @@ bash_tips
     取り敢えず動くようにした。問題なく動いている様に見える。
     後で問題が起こるかもしれないが、取り敢えずこれで良い事にする。
 
-  * color: ble-color-setface の警告メッセージ (reported by @cmplstofB) [#D1206]
+  * color: ble-color-setface の警告メッセージ (reported by cmplstofB) [#D1206]
     https://github.com/akinomyoga/ble.sh/commit/1885b541dfc200d9a0d2b5e8d6959d132462a008#r36687109
 
     古い形式 face:*, iface:* を使った時の警告メッセージが間違っていた。
@@ -4095,7 +4272,7 @@ bash_tips
     どうやら tput が terminfo ではなくて termcap で動いているのが理由。
     修正することにした。今は動いている。
 
-  * Makefile: BSD sed では i... と書けないそうだ [#D1202]
+  * Makefile: BSD sed では i... と書けないそうだ (reported by dylankb) [#D1202]
     https://github.com/akinomyoga/ble.sh/issues/33#issuecomment-571234160
 
     修正しなければならない。修正した。
@@ -4480,7 +4657,7 @@ bash_tips
       →動くようになった。既に PROMPT_COMMAND が設定されている場合でも動くだろうか。
       →動く。OK
 
-  * util: Bash-3.2 で bash-preexec.sh と一緒に使うと初回コマンド実行時にエラーメッセージ [#D1198]
+  * util: Bash-3.2 で bash-preexec.sh と一緒に使うと初回コマンド実行時にエラーメッセージ (reported by dylankb) [#D1198]
     https://github.com/akinomyoga/ble.sh/issues/33#issuecomment-570949575
 
     $ echo hello
@@ -4547,7 +4724,7 @@ bash_tips
     ただ、これを今更変更しても 0.3.0 には反映されないのでは。
     と思ったがこれも fix として投入してしまえば問題ない。
 
-  * decode: "Failed to load the default keymap" で失敗した時に状態復元できていない [#D1195]
+  * decode: "Failed to load the default keymap" で失敗した時に状態復元できていない (reported by dylankb) [#D1195]
     https://github.com/akinomyoga/ble.sh/issues/33
     これも上の報告のエラーメッセージの後に変な状態になっている様子から気づいた。
 
@@ -4579,7 +4756,7 @@ bash_tips
       取り敢えず問題は発生していない気がする。ble-detach では大丈夫。
       人為的に Failed to load the default keymap を起こした時も大丈夫。
 
-  * util: macOS での初期化時に bash-3.2 で "usage: sleep seconds" のエラーメッセージが出る [#D1194]
+  * util: macOS での初期化時に bash-3.2 で "usage: sleep seconds" のエラーメッセージが出る (reporeted by dylankb) [#D1194]
     https://github.com/akinomyoga/ble.sh/issues/33
     これは上の報告のエラーメッセージを見ている時に気づいた。
 

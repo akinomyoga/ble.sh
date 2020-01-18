@@ -105,7 +105,7 @@ make INSDIR="$HOME/.local/share/blesh" install
 
 ## User settings `~/.blerc`
 
-User settings can be placed in the init script `~/.blerc`
+User settings can be placed in the init script `~/.blerc` (or `~/.config/blesh/init.sh` if `~/.blerc` is not available)
 whose template is available as the file [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) in the repository.
 The init script is a Bash script which will be sourced during the load of `ble.sh`, so any shell commands can be used in `~/.blerc`.
 If you want to change the default path of the init script, you can add the option `--rcfile INITFILE` to `source ble.sh` as the following example:
