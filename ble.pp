@@ -591,17 +591,16 @@ function ble-attach {
     return
   fi
 
-  [[ $_ble_attached ]] && return
-  _ble_attached=1
-
   # when detach flag is present
   if [[ $_ble_edit_detach_flag ]]; then
     case $_ble_edit_detach_flag in
-    (exit) ;;
+    (exit) return 0 ;;
     (*) _ble_edit_detach_flag= ;; # cancel "detach"
     esac
-    return 0
   fi
+
+  [[ $_ble_attached ]] && return
+  _ble_attached=1
 
   # 特殊シェル設定を待避
   ble/base/adjust-bash-options
@@ -626,7 +625,6 @@ function ble-attach {
     ble-edit/detach
     return 1
   fi
-  _ble_edit_detach_flag= # do not detach or exit
 
   ble-edit/reset-history # 27s for bash-3.0
 
@@ -642,13 +640,15 @@ function ble-detach {
     return
   fi
 
-  [[ $_ble_attached ]] || return
-  _ble_attached=
+  [[ $_ble_attached && ! $_ble_edit_detach_flag ]] || return
 
   # Note: 実際の detach 処理は ble-edit/bind/.check-detach で実行される
   _ble_edit_detach_flag=${1:-detach} # schedule detach
 }
 function ble-detach/impl {
+  [[ $_ble_attached ]] || return
+  _ble_attached=
+
   ble-edit/detach
   ble-decode/detach
   READLINE_LINE='' READLINE_POINT=0
@@ -663,10 +663,10 @@ function ble-detach/message {
 
 function ble/base/unload-for-reload {
   if [[ $_ble_attached ]]; then
-    _ble_attached=
     ble-detach/impl
     echo "${_ble_term_setaf[12]}[ble: reload]$_ble_term_sgr0" 1>&2
-    _ble_edit_detach_flag=reload
+    [[ $_ble_edit_detach_flag ]] ||
+      _ble_edit_detach_flag=reload
   fi
   ble/base/unload
   return 0
