@@ -2673,8 +2673,9 @@ bash_tips
   - util (ble/builtin/trap): fix argument analysis for the form `trap INT` (reported by dylankb) `#D1221` db8b0c2
   - main: fix an error message on ristricted shells `#D1220` b726225
   - edit: fix a bug that the shell hangs with `source ble.sh --noattach && ble-attach` (reported by dylankb) `#D1223` 59c1ce4 3031007
-  - main: workaround cygwin uninitialized environment `#D1225` `#D1226`
-  - edit: fix a bug that the textarea state is not properly saved `#D1227`
+  - main: workaround cygwin uninitialized environment `#D1225` `#D1226` b9278bc
+  - edit: fix a bug that the textarea state is not properly saved (reported by cmplstofB) `#D1227` 06ae2b1
+  - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 0000000
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -3809,6 +3810,11 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-21
+
+  * util: ble/util/{save,restore}-vars に失敗している (reported by cmplstofB) [#D1228]
+    https://github.com/akinomyoga/ble.sh/issues/36#issuecomment-576625143
+
+    何か正規表現を間違えている? と思って確認したらそもそも対応を忘れていた。
 
   * util: ble/util/{save,restore}-vars に失敗している (reported by cmplstofB) [#D1227]
     https://github.com/akinomyoga/ble.sh/issues/36

@@ -2418,7 +2418,7 @@ function ble/syntax:bash/ctx-expr {
     local ret; ble/syntax/highlight/vartype "$BASH_REMATCH" readvar:expr
     ((_ble_syntax_attr[i]=ret,i+=${#rematch}))
     return 0
-  elif rex='^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then
+  elif rex='^0[xX][0-9a-fA-F]*|^[0-9]+(#[0-9a-zA-Z@_]*)?'; [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=ATTR_VAR_NUMBER,i+=${#BASH_REMATCH}))
     return 0
   elif rex='^([^'"${_ble_syntax_bash_chars[ctx]}"'a-zA-Z_0-9]|\\.)+'; [[ $tail =~ $rex ]]; then
