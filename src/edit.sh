@@ -2031,11 +2031,10 @@ function ble/textarea#adjust-for-bash-bind {
 
 function ble/textarea#save-state {
   local prefix=$1
-  local -a vars=() arrs=()
+  local -a vars=()
 
   # _ble_edit_prompt
-  ble/array#push arrs _ble_edit_prompt
-  ble/array#push vars _ble_edit_PS1
+  ble/array#push vars _ble_edit_PS1 _ble_edit_prompt
 
   # _ble_edit_*
   ble/array#push vars "${_ble_edit_VARNAMES[@]}"
@@ -2044,17 +2043,10 @@ function ble/textarea#save-state {
   ble/array#push vars "${_ble_textmap_VARNAMES[@]}"
 
   # _ble_highlight_layer_*
-  ble/array#push arrs _ble_highlight_layer__list
+  ble/array#push vars _ble_highlight_layer__list
   local layer names
   for layer in "${_ble_highlight_layer__list[@]}"; do
-    eval "names=(\"\${!_ble_highlight_layer_$layer@}\")"
-    for name in "${names[@]}"; do
-      if ble/is-array "$name"; then
-        ble/array#push arrs "$name"
-      else
-        ble/array#push vars "$name"
-      fi
-    done
+    eval "ble/array#push vars \"\${!_ble_highlight_layer_$layer@}\""
   done
 
   # _ble_textarea_*
