@@ -827,7 +827,7 @@ function ble/builtin/history/.write {
       builtin history "$delta" >> "$histapp"
       ((_ble_builtin_history_histapp_count+=delta))
     else
-      builtin history "$delta" > "$histapp"
+      builtin history "$delta" >| "$histapp"
       _ble_builtin_history_histapp_count=$delta
     fi
   fi

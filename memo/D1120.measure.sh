@@ -1,9 +1,9 @@
 #!/bin/bash
 
 _initialize() {
-  : > D1119.measure.out
-  echo "builtin history -c" > D1119.measure._read_r
-  echo "builtin history -c" > D1119.measure._read_s
+  : >| D1119.measure.out
+  echo "builtin history -c" >| D1119.measure._read_r
+  echo "builtin history -c" >| D1119.measure._read_s
   local N=$1
   echo "builtin history -r /dev/stdin <<__BLE_EOF__" >> D1119.measure._read_r
   for ((i=0;i<N;i++)); do

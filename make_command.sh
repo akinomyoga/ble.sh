@@ -25,7 +25,7 @@ function sub:install {
     script=$script$nl'/^[[:space:]]*#/d;/^[[:space:]]*$/d'
     [[ $flag_release ]] &&
       script=$script$nl's/^\([[:space:]]*_ble_base_repository=\)'$q'.*'$q'\([[:space:]]*\)$/\1'${q}release:$dist_git_branch$q'/'
-    sed "$script" "$src" > "$dst.part" && mv "$dst.part" "$dst"
+    sed "$script" "$src" >| "$dst.part" && mv "$dst.part" "$dst"
   else
     cp "$src" "$dst"
   fi

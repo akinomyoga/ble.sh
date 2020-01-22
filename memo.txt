@@ -1204,6 +1204,8 @@ bash_tips
 
     "Show HN: "Bash Line Editor" with syntax highlighting, autosuggestions, ... written in pure Bash!"
 
+    "Show HN: Bash Line Editor -- syntax-highlighting, autosuggestions and vim emulation written in pure Bash"
+
     調べるとスタートアップという文字が頻りに見える。
     投稿してみた感想を観察してみるとやはり何かのお誘いがある様である。
     タイトルに文字数制限は在るのだろうか。
@@ -2675,7 +2677,8 @@ bash_tips
   - edit: fix a bug that the shell hangs with `source ble.sh --noattach && ble-attach` (reported by dylankb) `#D1223` 59c1ce4 3031007
   - main: workaround cygwin uninitialized environment `#D1225` `#D1226` b9278bc
   - edit: fix a bug that the textarea state is not properly saved (reported by cmplstofB) `#D1227` 06ae2b1
-  - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 0000000
+  - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 90e4f35
+  - history: fix a bug that history append does not work with "set -C" (reported by cmplstofB) `#D1229`
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -3808,6 +3811,15 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-22
+
+  * history: fix a bug that history append does not work with "set -C" (reported by cmplstofB) [#D1229]
+    https://github.com/akinomyoga/ble.sh/issues/37
+    "bash: /run/user/1000/blesh/NNNN.history.app" というエラーメッセージが出るとの事。
+
+    これは見落とし。他にも類似の物がないか探したが他は古いテスト用のコードしかなかった。
+    またチェックするのも面倒なのでテスト用のコードも全部修正する。
 
 2020-01-21
 

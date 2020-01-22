@@ -40,7 +40,7 @@ function erasedupA {
 
   for((i=0;i<${#hist[@]};i++)); do
     echo "${hist[$i]}"
-  done > bash_history.erasedupA
+  done >| bash_history.erasedupA
 }
 
 # + というか逆順に探索すれば初見の物だけ登録するだけでは?
@@ -66,7 +66,7 @@ function erasedupB {
   echo output... >&2
   for ((i=${#hist2[@]}-1;i>=0;i--)); do
     echo "${hist2[$i]}"
-  done > bash_history.erasedup
+  done >| bash_history.erasedup
 }
 
 erasedupB
