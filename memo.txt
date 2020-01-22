@@ -2678,7 +2678,10 @@ bash_tips
   - main: workaround cygwin uninitialized environment `#D1225` `#D1226` b9278bc
   - edit: fix a bug that the textarea state is not properly saved (reported by cmplstofB) `#D1227` 06ae2b1
   - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 90e4f35
-  - history: fix a bug that history append does not work with "set -C" (reported by cmplstofB) `#D1229`
+  - history: fix a bug that history append does not work with `set -C` (reported by cmplstofB) `#D1229`
+
+  Internal changes
+  - internal: merge subdir `test` into `memo` `#D1230`
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -3813,6 +3816,41 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-22
+
+  * refactor: merge subdir "test" into "memo" [#D1230]
+    test というディレクトリになっているが実際テストでない。
+    これは実装上の実験に使っている。寧ろ memo の下に移動するべきである。
+
+    * test/bash_history.erasedup.sh
+
+      このファイルは実装に関係している筈で、
+      ここよりは memo/ の中にあるべきファイルの気がする。
+      然し、どの項目に対応するファイルだろうか。
+      ファイル名を memo.txt の中で検索してみても見つからない。
+      blame してみて分かったのは、実はこのファイルは一番最初の commit から存在している。
+      つまり本当に最初の最初に追加された物である。
+
+      memo.txt を辿ると本当の最初の commit は
+      恐らく 2013-06-13 の状態から殆ど変えていない。
+      従って 2013-06-13 以前の項目のどれかに対応している。
+      特に議論もないので最初に対応した時に既に試したという事の気がする。
+      #D0016 が恐らく最初に対応した時のメモである。
+
+    * ファイル test-source.sh は何だろう。
+      確認してみるとこれも最初から存在したファイルの様だ。
+      中を覗くとこれは恐らく ble.sh のファイルの位置を特定する方法を模索した時の物。
+      うーん。何処で最初にこの機能を実装したのか。他のファイルを読み取るのに必要。
+      例えば初期のファイルで言えば cmap 等が他のファイルとして用意した物。
+      #D0028 に _ble_term_sc の言及が在るので恐らくこれ以前に既に test-source.sh はあった。
+      然し、直接に対応する項目は記録されていない様に見える。
+
+    結論から言えばこれらのファイルはごくごく
+    最初期のファイルなので対応する項目はないと考えて良い。
+    この時にどの様にファイルに名前をつけるか。
+
+    今後、対応する項目を一切作らずにテストファイルだけ追加するという事はあるだろうか。
+    もしないのであれば、対応する項目のないテストファイルは
+    D0000 にしてしまっても良いかもしれない。
 
   * history: fix a bug that history append does not work with "set -C" (reported by cmplstofB) [#D1229]
     https://github.com/akinomyoga/ble.sh/issues/37

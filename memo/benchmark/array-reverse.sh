@@ -5,8 +5,6 @@ if [[ ! $_ble_bash ]]; then
   return 1
 fi
 
-source benchmark.sh
-
 S=({1..10000})
 
 S1=({1..10})

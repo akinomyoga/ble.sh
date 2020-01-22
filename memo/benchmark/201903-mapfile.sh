@@ -1,6 +1,9 @@
 #!/bin/bash
 
-source benchmark.sh
+if [[ ! $_ble_bash ]]; then
+  echo 'benchmark: Please source from a ble session.' >&2
+  return 1
+fi
 
 _ble_util_assign_base="/dev/shm/$UID.$$.read-stdout.tmp"
 _ble_util_assign_level=0

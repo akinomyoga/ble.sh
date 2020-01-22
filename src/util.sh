@@ -1605,7 +1605,7 @@ fi
 #------------------------------------------------------------------------------
 # ble/util/msleep
 
-#%include ../test/benchmark/benchmark.sh
+#%include benchmark.sh
 
 function ble/util/msleep/.check-builtin-sleep {
   local ret; ble/util/readlink "$BASH"

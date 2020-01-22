@@ -14,9 +14,8 @@ You can freely create an issue using the following links:
 We always welcome following types of pull requests. Any changes will be considered to be provided under the BSD 3-Clause License.
 If you do not know whether your changes would be appropriate for merge, please feel free to create a pull request and let us talk with each other!
 
-- Bug fixes
-- Optimization
-- Typo fixes
+- Better translation to English, typo fixes
+- Fixes, optimization, test cases
 - Feature suggestions
 - New color theme
 - Others
