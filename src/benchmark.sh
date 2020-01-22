@@ -78,8 +78,82 @@ else
 fi
 
 _ble_measure_base= # [nsec]
-_ble_measure_time=1 # 同じ倍率で _ble_measure_time 回計測して最小を取る。
+_ble_measure_base_nestcost=0 # [nsec/10]
+_ble_measure_count=1 # 同じ倍率で _ble_measure_count 回計測して最小を取る。
 _ble_measure_threshold=100000 # 一回の計測が threshold [usec] 以上になるようにする
+
+## 関数 ble-measure/calibrate
+function ble-measure/calibrate.0 { local a; ble-measure a=1; }
+function ble-measure/calibrate.1 { ble-measure/calibrate.0; }
+function ble-measure/calibrate.2 { ble-measure/calibrate.1; }
+function ble-measure/calibrate.3 { ble-measure/calibrate.2; }
+function ble-measure/calibrate.4 { ble-measure/calibrate.3; }
+function ble-measure/calibrate.5 { ble-measure/calibrate.4; }
+function ble-measure/calibrate.6 { ble-measure/calibrate.5; }
+function ble-measure/calibrate.7 { ble-measure/calibrate.6; }
+function ble-measure/calibrate.8 { ble-measure/calibrate.7; }
+function ble-measure/calibrate.9 { ble-measure/calibrate.8; }
+function ble-measure/calibrate.A { ble-measure/calibrate.9; }
+function ble-measure/calibrate.assign2 { local a b; ble-measure 'a=1; b=2'; }
+function ble-measure/calibrate {
+  local ret nsec
+  _ble_measure_base=0
+  _ble_measure_base_nestcost=0
+
+  # nest0: calibrate.0 の ble-measure 内部での ${#FUNCNAME[*]}
+  local nest0=$((${#FUNCNAME[@]}+2))
+  local nestA=$((nest0+10))
+  ble-measure/calibrate.0 &>/dev/null; local x0=$nsec
+  ble-measure/calibrate.A &>/dev/null; local xA=$nsec
+  ble-measure/calibrate.assign2 &>/dev/null; local y0=$nsec
+
+  local nest_cost=$((xA-x0))
+  local nest_base=$((x0-nest_cost*nest0/10))
+  _ble_measure_base=$((nest_base-(y0-x0)))
+  _ble_measure_base_nestcost=$nest_cost
+}
+
+## 関数 ble-measure/.read-arguments args
+##   @var[out] flags
+##   @var[out] command count
+function ble-measure/.read-arguments {
+  while [[ $1 == -* ]]; do
+    local arg=$1; shift
+    case $arg in
+    (--) break ;;
+    (--help) flags=h$flags ;;
+    (--*)
+      ble/util/print "ble-measure: unrecognized option '$arg'."
+      flags=E$flags ;;
+    (-?*)
+      local i c
+      for ((i=1;i<${#arg};i++)); do
+        c=${arg:i:1}
+        case $c in
+        (q) flags=q$flags ;;
+        ([ca])
+          [[ $c == a ]] && flags=a$flags
+          if ((i+1<${#arg})); then
+            count=${arg:i+1}; break
+          elif (($#)); then
+            count=$1; shift
+          else
+            ble/util/print "ble-measure: missing option argument for '-$c'."
+            flags=E$flags
+          fi ;;
+        (*)
+          ble/util/print "ble-measure: unrecognized option '-$c'."
+          flags=E$flags ;;
+        esac
+      done ;;
+    (-)
+      ble/util/print "ble-measure: unrecognized option '$arg'."
+      flags=E$flags ;;
+    esac
+  done
+  command="$*"
+  [[ $flags != *E* ]]
+}
 
 ## 関数 ble-measure command
 ##   command を繰り返し実行する事によりその実行時間を計測します。
@@ -92,8 +166,18 @@ function ble-measure {
     _ble_measure_base=0 nsec=0
     # : よりも a=1 の方が速い様だ
     local a
-    ble-measure a=1 &>/dev/null
-    _ble_measure_base=$nsec
+    ble-measure -qc3 'a=1' 
+    # hp2019 上での評価 (assign=4695 nestcost=619 base=3113)
+    _ble_measure_base=$((nsec*663/1000))
+    _ble_measure_base_nestcost=$((nsec*132/1000))
+  fi
+
+  local flags= command= count=$_ble_measure_count
+  ble-measure/.read-arguments "$@" || return
+  if [[ $flags == *h* ]]; then
+    ble/util/print 'usage: ble-measure [-q|-ac COUNT] command'
+    ble/util/print '  Measure the time of command.'
+    return
   fi
 
   local prev_n= prev_utot=
@@ -102,32 +186,41 @@ function ble-measure {
     [[ $prev_n ]] && ((n/prev_n<=10 && prev_utot*n/prev_n<_ble_measure_threshold*2/5 && n!=50000)) && continue
 
     local utot=0 usec=0
-    printf '%s (x%d)...' "$*" "$n" >&2
-    ble-measure/.time "$*" || return 1
-    printf '\r\e[2K' >&2
+    [[ $flags != *q* ]] && printf '%s (x%d)...' "$command" "$n" >&2
+    ble-measure/.time "$command" || return 1
+    [[ $flags != *q* ]] && printf '\r\e[2K' >&2
 
     prev_n=$n prev_utot=$utot
 
     ((utot >= _ble_measure_threshold)) || continue
 
-    # 繰り返し計測して最小値を採用
-    if [[ $_ble_measure_time ]]; then
-      local min_utot=$utot i
-      for ((i=2;i<=_ble_measure_time;i++)); do
-        printf '%s' "$* (x$n $i/$_ble_measure_time)..." >&2
-        ble-measure/.time "$*" && ((utot<min_utot)) && min_utot=$utot
-        printf '\r\e[2K' >&2
+    # 繰り返し計測して最小値 (-a の時は平均値) を採用
+    if [[ $count ]]; then
+      local min_utot=$utot sum_utot=$utot sum_count=1 i
+      for ((i=2;i<=count;i++)); do
+        [[ $flags != *q* ]] && printf '%s' "$command (x$n $i/$count)..." >&2
+        if ble-measure/.time "$command"; then
+          ((utot<min_utot)) && min_utot=$utot
+          ((sum_utot+=utot,sum_count++))
+        fi
+        [[ $flags != *q* ]] && printf '\r\e[2K' >&2
       done
-      utot=$min_utot
+      if [[ $flags == *a* ]]; then
+        ((utot=sum_utot/sum_count))
+      else
+        utot=$min_utot
+      fi
     fi
-        
-    local nsec0=$_ble_measure_base
-    local reso=$_ble_measure_resolution
-    local awk=ble/bin/awk
-    type "$awk" &>/dev/null || awk=awk
-    "$awk" -v utot=$utot -v nsec0=$nsec0 -v n=$n -v reso=$reso -v title="$* (x$n)" \
-      ' function genround(x, mod) { return int(x / mod + 0.5) * mod; }
-          BEGIN { printf("%12.2f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, reso / 10.0 / n), title); exit }'
+
+    local nsec0=$((_ble_measure_base+_ble_measure_base_nestcost*${#FUNCNAME[*]}/10))
+    if [[ $flags != *q* ]]; then
+      local reso=$_ble_measure_resolution
+      local awk=ble/bin/awk
+      type "$awk" &>/dev/null || awk=awk
+      "$awk" -v utot=$utot -v nsec0=$nsec0 -v n=$n -v reso=$reso -v title="$command (x$n)" \
+             ' function genround(x, mod) { return int(x / mod + 0.5) * mod; }
+          BEGIN { printf("%12.3f usec/eval: %s\n", genround(utot / n - nsec0 / 1000, reso / 10.0 / n), title); exit }'
+    fi
     ((ret=utot/n))
     if ((n>=1000)); then
       ((nsec=utot/(n/1000)))

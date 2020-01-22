@@ -1639,7 +1639,7 @@ function ble/util/msleep {
 _ble_util_msleep_calibrate_count=0
 function ble/util/msleep/.calibrate-loop {
   local _ble_measure_threshold=10000
-  local ret nsec _ble_measure_time=1 v=0
+  local ret nsec _ble_measure_count=1 v=0
   _ble_util_msleep_delay=0 ble-measure 'ble/util/msleep 1'
   local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count
   ((_ble_util_msleep_delay=(count*_ble_util_msleep_delay+delay)/(count+1)))
@@ -1674,7 +1674,7 @@ elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
     }
     function ble/util/msleep/.calibrate-loop {
       local _ble_measure_threshold=10000
-      local ret nsec _ble_measure_time=1 v=0
+      local ret nsec _ble_measure_count=1 v=0
 
       _ble_util_msleep_delay1=0 ble-measure 'ble/util/msleep 1'
       local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count

@@ -3817,6 +3817,38 @@ bash_tips
 
 2020-01-22
 
+  * benchmark: ble-measure の較正 [#D1231]
+    現在の自動較正だと a=1 が負になるなど問題が起こっているので、
+    もっとちゃんと計測する様にする。特に a=1 の評価にかかる時間も考慮する。
+    と思ったのだがどうも計測環境で速度が変化する?
+    よく考えたら a=1 でちゃんと評価できているのであれば
+    a=1 に対してはほぼ 0 になって欲しい。しかし有意に負になっている。
+
+    もしかすると関数内で評価すると時間が違うという事なのだろうか?
+    →なるほど。確かに 100ns ぐらい差がある様に見える。
+    計測が行われている環境を調べると
+
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:7 (ble-stackdump)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (ble-measure)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:2 (ble/util/msleep/.calibrate-loop)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble/util/msleep/calibrate)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:35 (ble/util/idle.do/.call-task)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:4 (ble/util/idle.do)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:16 (ble-edit/bind/.tail)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode/EPILOGUE)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble-decode/.hook)
+
+    という事になっているので、9 段階ぐらい入れ子になっている。
+    この入れ子に対する評価もした方が良いのだろうか?
+    取り敢えず試しに計測してみる事にする。
+
+    真面目に較正する関数を ble-measure/calibrate とした。
+    然しこれには時間がかかる。従って、普通にロードした時は a=1
+    の計測結果を元に最終的な結果を比例で予測する事にした。
+
+    実際には測定のループ回数等色々な要素に影響される気がする。
+    これ以上は追求しない事にする。
+
   * refactor: merge subdir "test" into "memo" [#D1230]
     test というディレクトリになっているが実際テストでない。
     これは実装上の実験に使っている。寧ろ memo の下に移動するべきである。
