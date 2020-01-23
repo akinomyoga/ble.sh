@@ -286,7 +286,7 @@ function ble/widget/vi-command:check-vi-mode {
   #----------------------------------------------------------------------------
 
   # restore
-  _ble_edit_str.reset "$original" edit
+  _ble_edit_str.reset "$original_str" edit
   _ble_edit_ind=$original_ind
   _ble_edit_mark=$original_mark
   _ble_edit_mark_active=$original_mark_active
