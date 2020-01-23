@@ -910,6 +910,37 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-01-23
+
+  * Cygwin でテストが失敗している。
+
+    操作を実行した後のカーソルの位置が一文字ずれている様だ。
+    コマンドラインで実行すると特に変な振る舞いをする事はない様だ。
+
+    ble-0.3.1 でもテストが失敗している。こちらは linux でも再現する。
+    テスト自身のバグである可能性が高い様な予感がしている。
+
+
+  * stackdump
+
+    以下の様な内容。再現しない。編集手順を記録する? 後、その場で ble_debug=1 にする機能が欲しい。
+    echo 1 2 3 4 5 8 9 10 | ( read numbers; set -- $numbers; i=0 i1=0; for n; do if ((n!=i)); then if ((i==i0)); then echo $i0-$i; ; ((i++)); done )
+
+    ble/syntax/tree-enumerate/.initialize/FATAL1
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:26 (ble/util/assert)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:4 (ble/syntax/tree-enumerate/.initialize)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/tree-enumerate)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/parse/shift.method2)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:19 (ble/syntax/parse/shift)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:7 (ble/syntax/parse)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:73 (ble-edit/content/update-syntax)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#render)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:16 (ble-edit/bind/.tail)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode/EPILOGUE)
+
+    取り敢えず f11 で ble_debug を toggle して f12 で編集履歴を出力する様にした @ blerc
+
+
 2020-01-21
 
   * lmorg/murex という新しいシェルの対話環境
@@ -1147,7 +1178,10 @@ bash_tips
     その長さなどが一致している気がするので Haiku のエラーメッセージは
     やはり bind 回りの Bash のバグだろう。
 
-    また、sleep を呼び出すと Terminal の先頭に一々表示されて面倒である。
+    また、sleep を呼び出すと Terminal のタイトルバーに
+    それが一々表示されて面倒である。別の実現方法を考えた方が良い?
+    もし /dev/zero があるならば /dev/zero を読み出そうとするとどうなるか確認してもよい。
+    CPU を食わないのであればそれで行く。
 
   * Minix で無限ループになっている。
 
@@ -1194,17 +1228,57 @@ bash_tips
     一方で "〇〇なんだけど" みたいに書くと "自分も何か貢献できるんではないか" と錯覚して人がたくさん来る。
     そういう仕組になっているんだろうという気がする。
 
-    "Show HN: Bash Line Editor -- syntax highlighting, autosuggestions, etc. in Bash"
+    * reject: "Show HN: Bash Line Editor -- syntax highlighting, autosuggestions, etc. in Bash"
+      これは普通。つまらない
 
-    "Show HN: I am developing a line editor in pure Bash scripts. I'd like to hear your comments!"
+    * "Show HN: I am developing a line editor in pure Bash script. I'd like to hear your comments!"
       これだと面白そうとは思ってくれるかもしれないけれど使ってくれる人は少なそう。
       後 explicit にコメントが欲しい! という事をタイトルに書いても良いのだろうか?
+      眺めてみるとそういう投稿はない。やはり雰囲気が分からないのである。
 
-    "Show HN: I made syntax highlighting, autosuggestions, etc. in Bash"
+    * reject: "Show HN: I made syntax highlighting, autosuggestions, etc. in Bash"
+      これも普通。つまらない
 
-    "Show HN: "Bash Line Editor" with syntax highlighting, autosuggestions, ... written in pure Bash!"
+    * "Show HN: "Bash Line Editor" with syntax highlighting, autosuggestions, ... written in pure Bash!"
+      やはり宣伝っぽい。
 
-    "Show HN: Bash Line Editor -- syntax-highlighting, autosuggestions and vim emulation written in pure Bash"
+    * "Show HN: Bash Line Editor -- syntax-highlighting, autosuggestions and vim emulation written in pure Bash"
+      vim と書くと他のエディタを使っている人やシェルでは別に vim は使わないという人が敬遠してしまわないか?
+      然し話題に乗るという事だけであればその辺りを無視して投稿しても良い気がする。
+
+    * reject: "Show HN: I wrote a line editor (syntax highlighting, autosuggestions, vim amulation, etc.) in pure Bash script"
+    * reject: "Show HN: I wrote a line editor in pure Bash script which provides syntax highlighting, autosuggestions, vim emulation, etc. to Bash"
+    * reject: "Show HN: Bash Line Editor written in pure Bash script for syntax highlighting, autosuggestions, vim emulation..."
+      長い
+    * "Show HN: Bash Line Editor totally written in pure Bash script"
+      案外これぐらいの方が気を引けるのかもしれないと思う。
+    * "Show HN: Bash Line Editor -- a next-generation Bash configuration"
+      或いはこんな感じに煽った感じのタイトルにしても良い。zplug の真似
+      でも技術的に面白いのは pure Bash script であるという事。
+
+      "with syntax highlighting, autosuggestions, vim emulation" 等は書かなくてよい。
+      書かない方が煽りになるのである。本当か? と思ってみんなリンクを開く。
+      そしてどんな機能があるのかとみんな確認する。
+      少なくともこれだけの物があるのだからがっかりする事はないだろう。
+
+      でも落ち着かなければならない。Bash configuration と書くと、
+      従来の PS1 や aliases や functions を包含する物と考えられてしまう。
+      その様に考えると、Bash plugin と書いた方が良いか?
+      或いは、plugin manager として突貫で他の物を取り込める様にするか、
+      或いは README に強調しておくことにするか。
+
+      というか Bash configuration というのが良くない。違う。
+      もっと土台になるものなのである。
+      実のところ "a next-generation Bash Line Editor" なのだ。
+      然し line editor という意味では全然 next-generation ではない。普通だ。
+      つまり Bash の設定にしては next-generation なのであって、
+      line editor として next-generation な訳ではない。
+
+      a next-generation Bash interface/infrastructure/extension/framework
+
+      Framework としての側面も強調してよいのかもしれない。
+      (或いは真面目にライブラリとして独立させても良い。
+      decode 部分に関しては大幅に手を入れる必要があるかもしれない?)
 
     調べるとスタートアップという文字が頻りに見える。
     投稿してみた感想を観察してみるとやはり何かのお誘いがある様である。
@@ -2680,8 +2754,10 @@ bash_tips
   - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 90e4f35
   - history: fix a bug that history append does not work with `set -C` (reported by cmplstofB) `#D1229`
 
-  Internal changes
-  - internal: merge subdir `test` into `memo` `#D1230`
+  Internal changes and fixes
+  - internal: merge subdir `test` into `memo` `#D1230` f0c38b6
+  - ble-measure: improve calibration `DD1231` d3a7a52
+  - vi_test: fix a bug that test fails to restore the original state `#D1232`
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -3814,6 +3890,28 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-01-23
+
+  * vi_test: stackdump [#D1232]
+
+    また別の stackdump。Cygwin で C-\ C-\ を実行するとテストに失敗する。
+    続いて失敗したテストを手で再現しようと思って "qaA hello" まで入力したところで stackdump が出た。
+    再現してくれない→再現した。
+
+    何か編集文字列がある時にテストを実行してその後に発生する。
+    Cygwin 以外でも再現した。つまり、これは Cygwin でテストに失敗するのとは別の理由。
+
+    現在の再現手順は "w C-\ C-\ i SP" である。
+    まず初めにこれが最近の変更と関係していないか確認する。
+    ble-0.4.0 で再現する。ble-0.3.1 はまた別のバグが出ている。
+    これはまたテスト自身のバグだろうという気がする。
+    遡ってみたがだいぶ昔から問題があった様だ。
+    途中でテスト自体の不良などによって追うのが面倒になったので何処で始まったかは気にしない事にする。
+
+    取り敢えずテストのコードを弄って最小化する。
+    と思ったらテストコードで最初の状態を復元している所でミスを見つけた。
+    復元しているのに復元されていなかったので変だったのだ。
 
 2020-01-22
 
