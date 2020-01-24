@@ -1234,8 +1234,10 @@ function ble-bind {
 ## 変数 _ble_stty_stat
 ##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
 _ble_stty_stat=
-_ble_term_stty_flags_enter=(kill undef erase undef intr undef quit undef susp undef)
-_ble_term_stty_flags_leave=(kill '' erase '' intr '' quit '' susp '')
+_ble_term_stty_flags_enter=()
+_ble_term_stty_flags_leave=()
+ble/util/array-push _ble_term_stty_flags_enter kill undef erase undef intr undef quit undef susp undef
+ble/util/array-push _ble_term_stty_flags_leave kill '' erase '' intr '' quit '' susp ''
 function ble/term/stty/.initialize-flags {
   local stty; ble/util/assign stty 'stty -a'
   # lnext, werase は POSIX にはないのでチェックする

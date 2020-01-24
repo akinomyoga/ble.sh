@@ -170,6 +170,14 @@ function ble/util/declare-print-definitions {
           # bash-3.0 の declare -p は改行について誤った出力をする。
           if(_ble_bash<30100)gsub(/\\\n/,"\n",decl);
 
+          if (_ble_bash < 40000) {
+            # #D1238 bash-3.2 以前の declare -p は ^A, ^? を
+            #   ^A^A, ^A^? と出力してしまうので補正する。
+            gsub(/\001\001/, "\001\002", decl);
+            gsub(/\001\177/, "\177", decl);
+            gsub(/\001\002/, "\001", decl);
+          }
+
           # declare 除去
           sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/,"",decl);
           if(isArray){
