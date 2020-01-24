@@ -623,6 +623,8 @@ bash_features
 
     と思ったら既にソースコードの一部にも Bash 4.0 以降であるとの注記があった。
 
+  * command |& command は Bash 4.0 以降なので使えない。
+
 bash_tips
 
   * swap の仕方
@@ -2559,6 +2561,7 @@ bash_tips
   - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 90e4f35
   - history: fix a bug that history append does not work with `set -C` (reported by cmplstofB) `#D1229` 604bb8b
   - decode (`ble/builtin/bind`): fix widget mapping for `default_keymap=safe` `#D1234` 750a9f5
+  - main (ble-update): fix a bug that the check of `make` does not work in Bash 3.2 `#D1236`
 
   Internal changes and fixes
   - internal: merge subdir `test` into `memo` `#D1230` f0c38b6
@@ -3699,6 +3702,11 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-24
+
+  * ble-update: 実は |& は Bash 4.0 の機能だった [#D1236]
+    使わない様に修正した。
+
+    序でなので文法の方も bash version をチェックして処理を切り替える様にした。
 
   * decode (ble/builtin/bind): keyseq を読む時に標準入力を見ているがこれは変 [#D1235]
     #D1233 の問題を再現する過程で bind '"...": ...' を呼び出す事によって、
