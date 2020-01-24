@@ -914,9 +914,9 @@ bash_tips
 
 2020-01-23
 
-  * ble/syntax/parse の遅延が動いていない。
-    update-syntax で is-function でチェックしているが、
-    これだと autoload で定義している物に当たってロードされてしまう。
+  * stty: Bash 3.2 で変なエラーメッセージが出ている
+    /usr/bin/stty: invalid integer argument: `\001\177'
+    /usr/bin/stty: invalid integer argument: `\001\177'
 
   * 前々から発生していたが曖昧補完などを実行すると時々ごみが残る。
     これは何故だろうか。そもそもカーソルよりも右に何か文字列が入るはずがないのに?
@@ -2568,6 +2568,7 @@ bash_tips
   - ble-measure: improve calibration `DD1231` d3a7a52
   - vi_test: fix a bug that test fails to restore the original state `#D1232` 4b882fb
   - decode (ble/builtin/bind): skip checking stdin in parsing the keyseq `#D1235` 0000000
+  - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237`
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -3702,6 +3703,14 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-24
+
+  * ble/syntax/parse の遅延が動いていない [#D1237]
+    update-syntax で is-function でチェックしているが、
+    これだと autoload で定義している物に当たってロードされてしまう。
+
+    これは遅延させると何か問題でも発生したのだったか?
+    以前も同じ事を確認した様な気がしないでもない。
+    それに今でもちゃんと遅延されている様な気もする。
 
   * ble-update: 実は |& は Bash 4.0 の機能だった [#D1236]
     使わない様に修正した。

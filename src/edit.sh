@@ -997,7 +997,7 @@ function ble-edit/content/.update-dirty-range {
 }
 
 function ble-edit/content/update-syntax {
-  if ble/is-function ble/syntax/parse; then
+  if ble/util/import/is-loaded "$_ble_base/lib/core-syntax.sh"; then
     local beg end end0
     ble/dirty-range#load --prefix=_ble_edit_dirty_syntax_
     if ((beg>=0)); then

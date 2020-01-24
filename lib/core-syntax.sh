@@ -6268,3 +6268,5 @@ function ble/highlight/layer:syntax/getg {
 function ble/syntax/import { :; }
 
 ble/function#try ble/textarea#invalidate str
+
+return 0

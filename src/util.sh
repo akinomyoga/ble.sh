@@ -2294,6 +2294,15 @@ function ble/util/import {
       ble/array#push _ble_util_import_guards "$guard"
   fi
 }
+function ble/util/import/is-loaded {
+  local file=$1
+  if [[ $file == /* ]]; then
+    local guard=ble/util/import/guard:$1
+  else
+    local guard=ble/util/import/guard:ble/$1
+  fi
+  ble/is-function "$guard"
+}
 # called by ble/base/unload (ble.pp)
 function ble/util/import/finalize {
   local guard
