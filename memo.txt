@@ -912,6 +912,13 @@ bash_tips
 
 2020-01-23
 
+  * ble/syntax/parse の遅延が動いていない。
+    update-syntax で is-function でチェックしているが、
+    これだと autoload で定義している物に当たってロードされてしまう。
+
+  * 前々から発生していたが曖昧補完などを実行すると時々ごみが残る。
+    これは何故だろうか。そもそもカーソルよりも右に何か文字列が入るはずがないのに?
+
   * Cygwin でテストが失敗している。
 
     操作を実行した後のカーソルの位置が一文字ずれている様だ。
@@ -920,6 +927,9 @@ bash_tips
     ble-0.3.1 でもテストが失敗している。こちらは linux でも再現する。
     テスト自身のバグである可能性が高い様な予感がしている。
 
+    うーん。そもそも何故 linux と結果が異なるのか。
+    Cygwin 特有の処理に問題があるとすればもっと広範に渡って影響が出るのではないか。
+    bash の version の違いかとも思ったが version を合わせても再現する。
 
   * stackdump
 
@@ -939,7 +949,6 @@ bash_tips
       @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode/EPILOGUE)
 
     取り敢えず f11 で ble_debug を toggle して f12 で編集履歴を出力する様にした @ blerc
-
 
 2020-01-21
 
@@ -965,210 +974,6 @@ bash_tips
       メニューの表示形式を上書きできる様にするべきなのではないかという気がする。
 
 2020-01-17
-
-  * ble.sh: cygwin コンソールで実行するとすぐに閉じてしまう。
-    idle の処理を実行している途中に入力があると落ちてしまう様だ。
-
-    cygwin version は 3.1.2 である。前に使っていたのが何かは分からない。
-    ble-detach すると落ちないで使う事ができている。
-    調べたら 3.1 から例の新しい xterm-256color が利用可能になる様だ。
-
-    | どの瞬間に落ちているのか、というのは大量にファイルに書き出してみる
-    | 等すれば分かるだろう。というよりトラブルがある度に色々埋め込んだりするのは
-    | 大変だ。なのでスイッチひとつで verbose に実行結果を出力する事ができる様に
-    | する事は可能だろうか? というかその為に set -x があるのではないか?
-    |
-    | と思ったが。うーん。
-    |
-    | 取り敢えず中で更に bash を立ち上げてみると、
-    | 落ちるのは bash であって console の方ではない様だという事が分かった。
-    |
-    | 全然変更が反映されないので変だと思っていたら
-    | 物凄く馬鹿な事をしていた。hp2019 の ble.sh を書き換えて、
-    | ローカルの方を書き換えていなかった。
-    |
-    | 試している内に分かった事。
-    | 先ず USER 変数が設定されていない。
-    | HOME は設定されている様だ。
-    | 然し手で USER を export して設定しても問題は解消しない。
-    | これはまた別の問題の様である。
-    |
-    | * set -x は結局試してみたが余り役に立たない感じだった。
-    |   ble.sh の側でも /dev/null だとか或いは別の目的で
-    |   リダイレクトをしているので set -x の出力が必ずしも
-    |   画面に出力されるとは限らないのである。
-    |
-    |   それに大量の出力が出すぎて良く分からない。
-    |
-    | * 少しずつ絞っていく。
-    |   どうも ble-decode/.hook の中で起こっている訳ではない様だ。
-    |   idle の中で起こっているのかと思ったがそうでもない。不思議だ。
-    |   どうも Bash の内部で問題が起こっているらしい。
-    |   しかも gdb で調べようと思っても別にクラッシュしている訳ではなく
-    |   普通に Bash が終了している? 不思議だ。
-    |
-    | * bleopt_internal_suppress_bash_output= を設定して起動すると
-    |   勝手に終了する確率は格段に小さくなるがそれでも未だ
-    |   勝手に終了してしまうのである。
-    |
-    |   ble-0.1, 0.2, 0.3 も全部同様の症状である。
-    |   何故だろうか。何が悪いのだろうか。
-    |   或いは何らかの trap? SIGWINCH?
-    |   →shopt -u checkwinsize しても再現する。
-    |
-    |   shopt -u failglob しても再現する。
-    |
-    |   そもそも bash --norc から source しても再現するのである。
-    |   不思議な事である。
-
-    * cygwin 3.1.1 のコンソールで発生する。xterm 等では発生しない。
-      中で起動した screen の中でも発生しない。
-    * Bash が勝手に終了する。Bash のバージョンは 4.4.12。
-      クラッシュではなく通常終了。EXIT trap は呼ばれない。
-    * bind -x の中ではなく別の場所で発生する。
-    * ble-0.1..0.4 の全てで再現する
-    * shopt -u checkwinsize でも再現する
-    * shopt -u failglob でも再現する
-    * bash --norc から始めても再現する
-    * bleopt_internal_suppress_bash_output= すると確率は減るが再現する
-
-    | うーん。例えば console に対する ungetc が壊れている?
-    | read -t 0 をしない様にすれば解決するだろうか?
-    | → function ble/util/is-stdin-ready { false; } で潰しても駄目だった。
-    | 他の場所ではこの様な危ない事はしていない。うーん。何がいけないのだろうか。
-    |
-    | bash-5.0.11 でも駄目だった。何が行けないのだろうか。
-    | bind -x '"\C-t":sleep 1' して C-t を連打したら再現するだろうか?
-    | 然し再現しなかった。難しい。
-    |
-    | bind '"\C-t":self-insert' としていても止まってしまう。
-    | (builtin bind '"\C-t":self-insert')
-    | つまり bash_execute_unix_command の次が別の物であっても発生する。
-    |
-    | bash_execute_unix_command の次に
-    | 再度 bash_execute_unix_command が呼び出されるとしても
-    | 必ずしも失敗する訳ではない。
-    | これが意味する所は前回の bash_execute_unix_command の間に特定の操作をすると、
-    | その次の受信で問題が起こるのだという事である。
-    |
-    | 怪しいのはやはり exec なのである。
-    | exec を呼び出している箇所を確認する。
-    |
-    | ble-edit/bind/stdout.on
-    | ble-edit/bind/stdout.off
-    | ble-edit/bind/stdout.off (bash-3.0)
-    | ble/util/openat
-    |
-    | うーん。ble/util/openat を他で使っているのは msleep だけである。
-    |
-    | suppress_output と以下を組み合わせて問題が起こらない様にしようとしたが再現する。
-    | それでも死んでしまう。うーん。更に ble/util/is-stdin-ready も潰したが再現する。
-    |
-    | | ble/util/msleep() {
-    | |   local v=$1; ((v<0)) && return
-    | |   local frac=$((1000+v)); frac=${frac:${#frac}-3}
-    | |   local mant=$((v/1000))
-    | |   sleep "$mant.$frac"
-    | | }
-    | | type ble/util/msleep
-    | | ble/util/is-stdin-ready() { false; }
-    |
-    | しかし何れにしても suppress_output が大いに関係していそうなのは確かなのである。
-    | うーん。全然駄目なんだ。もし本当に終了しているのだとすればその経路を調べたい。
-    | bash のソースを弄らないと分からないという事なんだ。
-    |
-    | * 結局ソースコードを見る事にした
-    |   bash_execute_unix_command に b をしかけてスタックトレースを見る。
-    |
-    |   #0  bash_execute_unix_command (count=1, key=101) at bashline.c:4183
-    |   #1  0x000000010047ed81 in _rl_dispatch_subseq (key=101, map=0x1004ac3e0 <vi_insertion_keymap>, got_subseq=0) at readline.c:852
-    |   #2  0x000000010047f2e9 in _rl_dispatch (map=<optimized out>, key=<optimized out>) at readline.c:798
-    |   #3  readline_internal_char () at readline.c:632
-    |   #4  0x000000010047fa65 in readline_internal_charloop () at readline.c:659
-    |   #5  readline_internal () at readline.c:671
-    |   #6  readline (prompt=<optimized out>) at readline.c:377
-    |
-    |   readline, readline_internal, readline_internal_charloop, readline_internal_char が怪しい。
-    |   動いている内は readline_internal_charloop の中にいる様だ。読み取りに失敗するとこれを抜ける。
-    |   readline_internal_char の中の終了判定に入っている。
-    |
-    |   先ず if (c == EOF && rl_end) に入る。
-    |   RL_SIG_RECEIVED() は false
-    |   RL_ISSTATE (RL_STATE_TERMPREPPED) は true
-    |   c=-1,_rl_eof_char=-1,lastc=-1,EOF=-1
-    |
-    |   正常に動いている時にはそもそも c == EOF にならない。
-    |   この値は c = rl_read_key (); から来ている。
-    |   うーん。input.c: rl_read_key の中で
-    |   rl_get_char に失敗して rl_getc_function を呼び出している。
-    |   それが -1 を返しているのである。rl_getc_function の中身は rl_getc だった。
-    |   rl_getc の中を見る。遡っていくと
-    |   result = read (fileno (stream), &c, sizeof (unsigned char));
-    |   が 0 になっている。つまり read に失敗しているのである。
-    |   うーん。fileno(stream) は 0 だった。
-    |
-    |   #define DEBUG_RETURN(Tag, value) do { \
-    |     FILE*f=fopen("/dev/tty","w"); \
-    |     fprintf(f,"%s",Tag);fflush(f); \
-    |     fclose(f); \
-    |     return value; \
-    |   }while(0)
-    |
-    |   read -t 0 との関連性についても調べたい。
-    |   確かにこれを封じるとクラッシュしなくなったのだ。
-    |   代わりにコマンド候補の自動列挙で物凄く時間がかかっている。
-    |
-    |   うーん。入力がある時に read -t 0 すると動かなくなるというバグなのか?
-    |   再現しない。更に標準出力の繋ぎ変えも関係している筈。
-    |   (問題は 0 ではなくて 1 や 2 しか変更していないのに影響があるという事)
-
-    * read() が EOF を返すというのが問題の様だ。
-      つまり Bash の埒外である。更に上の枠組みがおかしくなっている。
-    * 取り敢えず Cygwin 3.0.7 では再現しない事を確認した。
-      という事はこれはやはり Cygwin 3.1.2 の一連の PTY バグの内の一つである。
-    * read -t の使用や exec による fd の繋ぎ変えが
-      終了の頻度に寄与している事は確かだが、何れも確率的な物で、
-      もしこれらを使用しないとしてもやはり問題が何れ発生する。
-
-    Cygwin に報告しようと思ったが報告しようにもどうしたら良いか分からない。
-    そもそも再現性がないと全然駄目だ。やはりもう少し調べなければならない。
-
-    strace を試してみる。strace -tt -p PID -o LOGFILE として実行してみる。
-    strace は子プロセスまで調べる様だ。今回の場合にはそれで良いのかもしれない。
-    しかし実際にやってみると 17000 行も出力されてどうしようもない。
-    取り敢えず EOF を受け取る瞬間までで良いから見てみたい所である。
-
-    何処が EOF を受け取った瞬間だろうか。
-    うーん。read で調べてみる。read が 0 を返した時が EOF の時。
-    というかそもそも起こる瞬間の strace だけ取って来て再現できるという保証もない。
-    それよりも前に呼び出された設定によって既に種が仕掛けられている可能性もあるのだ。
-
-    この大量のログを見た所で何の情報が手に入るというのだろうか。
-    結局何も得られない気がする。それよりは ble.sh を弄って
-    minimal な再現プログラムを作る方が妥当である。
-
-    何と別の現象を発見した。
-
-    * blerc に return と書いておくと何もしなくても起動してすぐに終了する。
-      blerc を空にしても同じ現象である。これは rcfile として直接 ble.sh を指定しても、
-      或いは .bashrc 経由で ble.sh を読み込んでも同じである。
-    * ble-attch を呼び出すよりも後で終了する。
-      更に確認した所 ble-attach を抜けた後に終了している。
-      idle 等の操作は ble-attach の中で実行している。
-      実はもう抜けた時には既に EOF を受け取っているのかもしれない。
-      →調べてみると ble-attach を抜けた後に EOF を受け取っている。
-    * ble/util/is-stdin-ready() { false; } は余り影響はない様だ。
-    * 更に blerc return と bleopt_internal_suppress_bash_output= を両方設定すると
-      すぐに exit と表示して終了する。何が起こっているのだろうか。
-
-    取り敢えず bash 5.0.11 を弄って EOF を受け取った瞬間に其処で終了する様にした。
-    strace は 1110 行にまで短くなった。出力を見ると以下の場所で EOF を受け取っている。
-
-    158 7071584 [main] bash 18715 read: read(0, 0xFFFFB797, 1) blocking
-     68 7071652 [main] bash 18715 fhandler_console::read: read(0xFFFFB797,1)
-     40 7071692 [main] bash 18715 read: 0 = read(0, 0xFFFFB797, 0)
-
-    結局分からない。これは後で処理する事にする。
 
   * Haiku における問題
 
@@ -3891,7 +3696,15 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-01-24
+
+  * bleopt_default_keymap=safe で inputrc がエラーになっている [#D1234]
+    これは ble/builtin/bind/rlfunc2widget でちゃんと処理されていないのが原因
+
 2020-01-23
+
+  * 2020-01-17 ble.sh: cygwin コンソールで実行するとすぐに閉じてしまう [#D1233]
+    →これは結局 cygwin のバグだった。bug-report の方で取り扱う。
 
   * vi_test: stackdump [#D1232]
 

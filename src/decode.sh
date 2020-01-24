@@ -3013,19 +3013,27 @@ function ble/builtin/bind/rlfunc2widget {
             rlfunc_dict=_ble_decode_rlfunc2widget_vi_nmap ;;
   esac
 
-  local dict script='
+  if [[ $rlfunc_file ]]; then
+    local dict script='
     ((${#RLFUNC_DICT[@]})) ||
       ble/util/mapfile RLFUNC_DICT < "$rlfunc_file"
     dict=("${RLFUNC_DICT[@]}")'
-  builtin eval -- "${script//RLFUNC_DICT/$rlfunc_dict}"
+    builtin eval -- "${script//RLFUNC_DICT/$rlfunc_dict}"
 
-  local line
-  for line in "${dict[@]}"; do
-    [[ $line == "$rlfunc "* ]] || continue
-    local rl widget; builtin read -r rl widget <<< "$line"
-    ret=ble/widget/$widget
+    local line
+    for line in "${dict[@]}"; do
+      [[ $line == "$rlfunc "* ]] || continue
+      local rl widget; builtin read -r rl widget <<< "$line"
+      ret=ble/widget/$widget
+      return 0
+    done
+  fi
+
+  if ble/is-function ble/widget/"${rlfunc%%[$IFS]*}"; then
+    ret=ble/widget/$rlfunc
     return 0
-  done
+  fi
+
   return 1
 }
 
