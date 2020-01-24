@@ -2581,6 +2581,8 @@ bash_tips
   - history: fix a bug that history append does not work with `set -C` (reported by cmplstofB) `#D1229` 604bb8b
   - decode (`ble/builtin/bind`): fix widget mapping for `default_keymap=safe` `#D1234` 750a9f5
   - main (ble-update): fix a bug that the check of `make` does not work in Bash 3.2 `#D1236` 08ced81
+  - stty: workaround Bash 3.2 bug of array initialization with SOH/DEL `#D1238` defdbd4
+  - syntax: fix a infinite loop for variable assignments and parameter expansions `#D1239` 0000000
 
   Internal changes and fixes
   - internal: merge subdir `test` into `memo` `#D1230` f0c38b6
@@ -3722,6 +3724,23 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-24
+
+  * Bash 3.2 で存在する変数名を入力すると無限ループになる [#D1239]
+    ble-0.3 では発生していない。
+
+    これは予想通り 93dab7b が原因の様である。
+    然し不思議なのは無限ループが発生する要素が何処かにあるのか? という事。
+
+    どうも既に出ていた bash-3.2: _ble_syntax_attr[i-1]: bad array subscript
+    というエラーは実はこれに関連している様である。これが意味する所は。。
+    i=0 になってしまっている?
+
+    一箇所修正した。これで無限ループは直った。
+    然し bad array subscript は依然として出ている。
+    改めて bad array subscript がいつから出る様になったのか確認する。
+    やはり 93dab7b が原因の様である。
+
+    改めて探してみると未だ BASH_REMATCH の書き換えの影響が出そうな部分があった。修正した。
 
   * stty: Bash 3.2 で変なエラーメッセージが出ている [#D1238]
     /usr/bin/stty: invalid integer argument: `\001\177'

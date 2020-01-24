@@ -1618,10 +1618,11 @@ function ble/syntax:bash/check-dollar {
     ((i+=2))
     return 0
   elif rex='^\$([-*@#?$!0_]|[1-9]|[a-zA-Z_][a-zA-Z_0-9]*)' && [[ $tail =~ $rex ]]; then
-    local ret; ble/syntax/highlight/vartype "${BASH_REMATCH[1]}" readvar
+    local rematch=$BASH_REMATCH rematch1=${BASH_REMATCH[1]}
+    local ret; ble/syntax/highlight/vartype "$rematch1" readvar
     ((_ble_syntax_attr[i]=CTX_PARAM,
       _ble_syntax_attr[i+1]=ret,
-      i+=${#BASH_REMATCH}))
+      i+=${#rematch}))
     return 0
   else
     # if dollar doesn't match any patterns it is treated as a normal character
@@ -2732,6 +2733,7 @@ function ble/syntax:bash/check-variable-assignment {
   fi
   local rex_assign="^([a-zA-Z_][a-zA-Z_0-9]*)($suffix)"
   [[ $tail =~ $rex_assign ]] || return 1
+  local rematch=$BASH_REMATCH
   local rematch1=${BASH_REMATCH[1]} # for bash-3.1 ${#arr[n]} bug
   local rematch2=${BASH_REMATCH[2]} # for bash-3.1 ${#arr[n]} bug
   if [[ $rematch2 == '+' ]]; then
@@ -2739,7 +2741,7 @@ function ble/syntax:bash/check-variable-assignment {
 
     # Note: + の次の文字が = でない時に此処に来るので、
     # + の次の文字まで先読みしたことになる。
-    ble/syntax/parse/set-lookahead $((${#BASH_REMATCH}+1))
+    ble/syntax/parse/set-lookahead $((${#rematch}+1))
 
     return 1
   fi
@@ -2750,14 +2752,14 @@ function ble/syntax:bash/check-variable-assignment {
     local ret; ble/syntax/highlight/vartype "$rematch1"
     ((wtype=ATTR_VAR,
       _ble_syntax_attr[i]=ret,
-      i+=${#BASH_REMATCH},
+      i+=${#rematch},
       ${#rematch2}&&(_ble_syntax_attr[i-${#rematch2}]=CTX_EXPR),
       variable_assign=1,
       ctx=_ble_syntax_bash_command_CtxAssign[ctx]))
   else
     # 変数代入以外のときは = が現れて初めて CTX_ARGQ などに変換する
     ((_ble_syntax_attr[i]=ctx,
-      i+=${#BASH_REMATCH}))
+      i+=${#rematch}))
   fi
 
   if [[ $rematch2 == '[' ]]; then
@@ -3408,7 +3410,6 @@ function ble/syntax:bash/ctx-command {
         attr=$ATTR_ERR
       fi
     fi
-
     ((_ble_syntax_attr[i]=attr,i+=${#rematch}))
     flagConsume=1
   elif ble/syntax:bash/check-process-subst; then
