@@ -326,6 +326,10 @@ else
         else
           gsub(apos, apos "\\" apos apos, line);
 
+        # 対策 #D1239 bash-3.2 以前では ^A, ^? が ^A^A, ^A^? に化ける
+        gsub(/\001/, "'$apos'${_ble_term_soh}'$apos'", line);
+        gsub(/\177/, "'$apos'${_ble_term_del}'$apos'", line);
+
         t = t != "" ? t "\n" line : line;
       }
       END {

@@ -583,6 +583,8 @@ bash 配列の宣言に関する仕様・バグと注意点
     - 同じスコープの場合でも unset a してから local -A a すれば大丈夫。
     - グローバルでは起こらない。
 
+  * BUG bash-3.0..3.2: ^? や ^A の値が declare -p で ^A^? や ^A^A に変換されてしまう。
+
 bash_features
 
   * printf -v var %s value
@@ -911,29 +913,6 @@ bash_tips
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
-
-2020-01-24
-
-  * Bash 3.2 ^A, ^? を含む配列に対する対策 [#T0003]
-
-    更に履歴に格納されている値も変化している。
-    history -s で登録されている値は合っている。
-    何処でずれるのだろうか。。。
-
-    よく考えたらこれは可也広範に亘るのではないだろうか。
-    そもそも配列の複製 arr2=("${arr1[@]}") を安全に実行できるのだろうか。
-    これは別項目を立てて対策を考えるべきである。
-
-    どういう操作が安全でどういう操作が駄目なのか。
-    対策する事は可能だろうか。
-
-    * arr2=("${arr1[@]}") これは安全の様だ
-    * arr1=("$del" "$soh") これも安全の様だ
-
-    ble.sh の中で特に問題になりそうなのは何処か。
-
-    * binding のキャッシュ?
-    * vi のマクロの記録?
 
 2020-01-23
 
@@ -2582,7 +2561,7 @@ bash_tips
   - decode (`ble/builtin/bind`): fix widget mapping for `default_keymap=safe` `#D1234` 750a9f5
   - main (ble-update): fix a bug that the check of `make` does not work in Bash 3.2 `#D1236` 08ced81
   - stty: workaround Bash 3.2 bug of array initialization with SOH/DEL `#D1238` defdbd4
-  - syntax: fix a infinite loop for variable assignments and parameter expansions `#D1239` 0000000
+  - syntax: fix a infinite loop for variable assignments and parameter expansions `#D1239` 327661f
 
   Internal changes and fixes
   - internal: merge subdir `test` into `memo` `#D1230` f0c38b6
@@ -3725,6 +3704,51 @@ bash_tips
 
 2020-01-24
 
+  * Bash 3.2 ^A, ^? を含む配列に対する対策 [#D1241]
+
+    更に履歴に格納されている値も変化している。
+    history -s で登録されている値は合っている。
+    何処でずれるのだろうか。。。
+
+    よく考えたらこれは可也広範に亘るのではないだろうか。
+    そもそも配列の複製 arr2=("${arr1[@]}") を安全に実行できるのだろうか。
+    これは別項目を立てて対策を考えるべきである。
+
+    どういう操作が安全でどういう操作が駄目なのか。
+    対策する事は可能だろうか。
+
+    * arr2=("${arr1[@]}") これは安全の様だ
+    * arr1=("$del" "$soh") これも安全の様だ
+
+      取り敢えず _ble_term_del 等に入れれば良い?
+      これで declare-print-definitions に関しては大丈夫な気がする。
+
+    ble.sh の中で特に問題になりそうなのは何処か。
+
+    * history の読み取り。
+      これはスクリプトを構築してそれを eval している。
+      うーん。対策を入れてみたが効いていない気がする。
+      これはまた別の所で問題になっているのだろうか。
+      或いは置換が効いていない?
+      →これは簡単なミスだった。修正したら動く様になった。
+
+    * binding のキャッシュ?
+      →これは declare-print-definitions の方を対策した。
+      恐らく大丈夫だろう。直接 declare -p を呼び出している箇所を全て塞げばOK
+
+    * vi のマクロの記録?
+      これは eval の様な事はしていないので大丈夫の筈。
+
+    他に "eval -- ..." となっている箇所を探してみたが恐らく大丈夫。
+    基本的に直接 ^A や ^? の文字が arr=(...) の形式の中に現れていなければ大丈夫なのだ。
+
+  * BASH_REMATCH は local と宣言してから使うべきなのではないか [#D1240]
+    或いは、local と宣言する事ができない可能性はあるだろうか?
+    これは試してみる価値はある。と思って試してみたら、
+    local と宣言する事ができなかった。エラーが表示される。
+    更に、無視して実行するとグローバルの BASH_REMATCH が書き換えられてしまう。
+    従って、この方向性に基づく BASH_REMATCH 書き換え対策はできない。
+
   * Bash 3.2 で存在する変数名を入力すると無限ループになる [#D1239]
     ble-0.3 では発生していない。
 
@@ -3750,7 +3774,7 @@ bash_tips
     更に調べると declare -p は ^? を勝手に ^A^? に変換するらしい。面倒だ。
     というか配列の要素の中に ^? が含まれている場合、
     これを正しく補正して arr=() の形式にする事ができない。うーん。
-    取り敢えず別項目を立てて処理する事にする #T0003
+    取り敢えず別項目を立てて処理する事にする #D1241
 
   * ble/syntax/parse の遅延が動いていない [#D1237]
     update-syntax で is-function でチェックしているが、
