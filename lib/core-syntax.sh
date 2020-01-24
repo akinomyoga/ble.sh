@@ -2951,7 +2951,10 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
     fi
     ((i+=len))
     return 0
-  elif local rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]' && [[ $tail =~ $rex ]]; then
+  elif local rex='^(&&|\|[|&]?)|^;(;&?|&)|^[;&]'
+       ((_ble_bash<40000)) && rex='^(&&|\|\|?)|^;(;)|^[;&]'
+       [[ $tail =~ $rex ]]
+  then
     # 制御演算子 && || | & ; |& ;; ;;& ;&
 
     if [[ $BASH_REMATCH == ';' ]]; then

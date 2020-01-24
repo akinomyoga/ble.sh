@@ -525,7 +525,7 @@ function ble-update {
   local MAKE=
   if type gmake &>/dev/null; then
     MAKE=gmake
-  elif type make &>/dev/null && make --version |& grep -qiF 'GNU Make'; then
+  elif type make &>/dev/null && make --version 2>&1 | grep -qiF 'GNU Make'; then
     MAKE=make
   else
     echo "ble-update: GNU Make is not available." >&2
