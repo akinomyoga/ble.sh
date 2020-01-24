@@ -1426,6 +1426,14 @@ function ble/util/declare-print-definitions {
           # bash-3.0 の declare -p は改行について誤った出力をする。
           if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
 
+          if (_ble_bash < 40000) {
+            # #D1238 bash-3.2 以前の declare -p は ^A, ^? を
+            #   ^A^A, ^A^? と出力してしまうので補正する。
+            gsub(/\001\001/, "\001\002", decl);
+            gsub(/\001\177/, "\177", decl);
+            gsub(/\001\002/, "\001", decl);
+          }
+
           # declare 除去
           sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/, "", decl);
           if (isArray) {
@@ -3147,9 +3155,14 @@ function ble/term/visible-bell/cancel-erasure {
 
 ## 変数 _ble_term_stty_state
 ##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
+##
+## Note #D1238: arr=(...) の形式を用いると Bash 3.2 では勝手に ^? が ^A^? に化けてしまう
+##   仕方がないので此処では ble/array#push を使って以下の配列を初期化する事にする。
 _ble_term_stty_state=
-_ble_term_stty_flags_enter=(kill undef erase undef intr undef quit undef susp undef)
-_ble_term_stty_flags_leave=(kill '' erase '' intr '' quit '' susp '')
+_ble_term_stty_flags_enter=()
+_ble_term_stty_flags_leave=()
+ble/array#push _ble_term_stty_flags_enter kill undef erase undef intr undef quit undef susp undef
+ble/array#push _ble_term_stty_flags_leave kill '' erase '' intr '' quit '' susp ''
 function ble/term/stty/.initialize-flags {
   local stty; ble/util/assign stty 'stty -a'
   # lnext, werase は POSIX にはないのでチェックする

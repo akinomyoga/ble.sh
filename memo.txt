@@ -912,11 +912,30 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2020-01-23
+2020-01-24
 
-  * stty: Bash 3.2 で変なエラーメッセージが出ている
-    /usr/bin/stty: invalid integer argument: `\001\177'
-    /usr/bin/stty: invalid integer argument: `\001\177'
+  * Bash 3.2 ^A, ^? を含む配列に対する対策 [#T0003]
+
+    更に履歴に格納されている値も変化している。
+    history -s で登録されている値は合っている。
+    何処でずれるのだろうか。。。
+
+    よく考えたらこれは可也広範に亘るのではないだろうか。
+    そもそも配列の複製 arr2=("${arr1[@]}") を安全に実行できるのだろうか。
+    これは別項目を立てて対策を考えるべきである。
+
+    どういう操作が安全でどういう操作が駄目なのか。
+    対策する事は可能だろうか。
+
+    * arr2=("${arr1[@]}") これは安全の様だ
+    * arr1=("$del" "$soh") これも安全の様だ
+
+    ble.sh の中で特に問題になりそうなのは何処か。
+
+    * binding のキャッシュ?
+    * vi のマクロの記録?
+
+2020-01-23
 
   * 前々から発生していたが曖昧補完などを実行すると時々ごみが残る。
     これは何故だろうか。そもそもカーソルよりも右に何か文字列が入るはずがないのに?
@@ -2561,14 +2580,14 @@ bash_tips
   - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 90e4f35
   - history: fix a bug that history append does not work with `set -C` (reported by cmplstofB) `#D1229` 604bb8b
   - decode (`ble/builtin/bind`): fix widget mapping for `default_keymap=safe` `#D1234` 750a9f5
-  - main (ble-update): fix a bug that the check of `make` does not work in Bash 3.2 `#D1236`
+  - main (ble-update): fix a bug that the check of `make` does not work in Bash 3.2 `#D1236` 08ced81
 
   Internal changes and fixes
   - internal: merge subdir `test` into `memo` `#D1230` f0c38b6
   - ble-measure: improve calibration `DD1231` d3a7a52
   - vi_test: fix a bug that test fails to restore the original state `#D1232` 4b882fb
-  - decode (ble/builtin/bind): skip checking stdin in parsing the keyseq `#D1235` 0000000
-  - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237`
+  - decode (ble/builtin/bind): skip checking stdin in parsing the keyseq `#D1235` 5f949e8
+  - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237` bb31b11
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -3703,6 +3722,16 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-01-24
+
+  * stty: Bash 3.2 で変なエラーメッセージが出ている [#D1238]
+    /usr/bin/stty: invalid integer argument: `\001\177'
+    /usr/bin/stty: invalid integer argument: `\001\177'
+
+    調べると ^? $'\x7F' を arr=() の形式で配列に代入すると勝手に ^A^? になる様だ。
+    更に調べると declare -p は ^? を勝手に ^A^? に変換するらしい。面倒だ。
+    というか配列の要素の中に ^? が含まれている場合、
+    これを正しく補正して arr=() の形式にする事ができない。うーん。
+    取り敢えず別項目を立てて処理する事にする #T0003
 
   * ble/syntax/parse の遅延が動いていない [#D1237]
     update-syntax で is-function でチェックしているが、
