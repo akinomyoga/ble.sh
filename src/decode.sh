@@ -772,7 +772,7 @@ function ble-decode-char {
   while
     if ((iloop++%50==0)); then
       ((iloop>50)) && eval -- "$_ble_decode_show_progress_hook"
-      if ble-decode/has-input-for-char && [[ ! $ble_decode_char_sync ]]; then
+      if [[ ! $ble_decode_char_sync ]] && ble-decode/has-input-for-char; then
         ble/array#push _ble_decode_char_buffer "$@"
         return 148
       fi

@@ -2557,12 +2557,14 @@ bash_tips
   - main: workaround cygwin uninitialized environment `#D1225` `#D1226` b9278bc
   - edit: fix a bug that the textarea state is not properly saved (reported by cmplstofB) `#D1227` 06ae2b1
   - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 90e4f35
-  - history: fix a bug that history append does not work with `set -C` (reported by cmplstofB) `#D1229`
+  - history: fix a bug that history append does not work with `set -C` (reported by cmplstofB) `#D1229` 604bb8b
+  - decode (`ble/builtin/bind`): fix widget mapping for `default_keymap=safe` `#D1234` 750a9f5
 
   Internal changes and fixes
   - internal: merge subdir `test` into `memo` `#D1230` f0c38b6
   - ble-measure: improve calibration `DD1231` d3a7a52
-  - vi_test: fix a bug that test fails to restore the original state `#D1232`
+  - vi_test: fix a bug that test fails to restore the original state `#D1232` 4b882fb
+  - decode (ble/builtin/bind): skip checking stdin in parsing the keyseq `#D1235` 0000000
 
 2019-03-21 -- 2020-01-12 (#D1015...#D1215) df4feaa...c74abc5
 
@@ -3698,7 +3700,19 @@ bash_tips
 
 2020-01-24
 
-  * bleopt_default_keymap=safe で inputrc がエラーになっている [#D1234]
+  * decode (ble/builtin/bind): keyseq を読む時に標準入力を見ているがこれは変 [#D1235]
+    #D1233 の問題を再現する過程で bind '"...": ...' を呼び出す事によって、
+    後々の Bash の終了に寄与することが分かった。理由は "..." を解析する為に
+    ble-decode-char を使っていて、その中でユーザの入力がないか確認しているからだった。
+    然し、"..." を解析する時にはユーザの入力を確認する必要はないし、
+    もし仮にユーザの入力があったとしても其処で処理は変わらない筈である。
+
+    と思って確認したら確かにちゃんとユーザの入力の有無に寄らない振る舞いになっていたが、
+    チェックの順序が反転していた (元々は生起確率の低い判定を後に回そうとしていたが、
+    ユーザの入力の有無の確認はコストの高い判定なので先に判定しても変ではない。
+    何より論理的には先に判定するのが自然である。) 修正した。
+
+  * decode: bleopt_default_keymap=safe で inputrc がエラーになっている [#D1234]
     これは ble/builtin/bind/rlfunc2widget でちゃんと処理されていないのが原因
 
 2020-01-23
