@@ -221,7 +221,7 @@ function ble/util/restore-arrs {
 _ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
 function ble/debug/.check-leak-variable {
   if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
-    echo "$1=${!1}:${2:*}" >> a.txt
+    echo "$1=${!1}:${*:2}" >> a.txt
     eval "$1=__t1wJltaP9nmow__"
   fi
 }
@@ -1026,7 +1026,7 @@ if ((_ble_bash>=40200)); then
       for __ble_name; do
         ((__ble_processed_$__ble_name)) && continue
         ((__ble_processed_$__ble_name=1))
-        [[ $_ble_name == __ble_* ]] && continue
+        [[ $__ble_name == __ble_* ]] && continue
 
         declare -g -r "$__ble_name"
 
@@ -1059,7 +1059,7 @@ else
       for __ble_name; do
         ((__ble_processed_$__ble_name)) && continue
         ((__ble_processed_$__ble_name=1))
-        [[ $_ble_name == __ble_* ]] && continue
+        [[ $__ble_name == __ble_* ]] && continue
 
         __ble_value= __ble_found=
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
@@ -1175,7 +1175,6 @@ elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
   if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
     _ble_util_msleep_delay1=10000 # short msleep にかかる時間 [usec]
     _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
-    _ble_util_msleep_calibrated=0
     function ble/util/msleep/.core2 {
       ((v-=_ble_util_msleep_delay2))
       ble/bin/sleep $((v/1000000))
@@ -1841,7 +1840,7 @@ function ble-import {
   if [[ $flags == *[eh]* ]]; then
     [[ $flags == *e* ]] && echo
     {
-      echo 'usage: ble-import SCRIPT_FILE...'
+      echo 'usage: ble-import SCRIPTFILE...'
       echo '  Search and source script files that have not yet been loaded.'
     } >&2
     [[ $flags == *e* ]] && return 2

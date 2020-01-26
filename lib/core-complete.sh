@@ -2525,7 +2525,7 @@ function ble/complete/menu/style:desc/construct-page {
   done
 
   local cand_width=$max_width
-  local desc_x=$((max_width+1)); ((desc_x>cols&&(desc_x=cols)))
+  local desc_x=$((cand_width+1)); ((desc_x>cols&&(desc_x=cols)))
   local desc_prefix=; ((cols-desc_x>30)) && desc_prefix='| '
 
   end=$begin x=0 y=0 esc=
