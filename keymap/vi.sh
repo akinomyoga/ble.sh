@@ -1341,11 +1341,7 @@ function ble/keymap:vi/operator:y {
     yank_content=${_ble_edit_str:beg:end-beg}
   fi
 
-  if [[ $keymap_vi_operator_d ]]; then
-    ble/keymap:vi/register#set-edit "$reg" "$yank_type" "$yank_content" || return 1
-  else
-    ble/keymap:vi/register#set-yank "$reg" "$yank_type" "$yank_content" || return 1
-  fi
+  ble/keymap:vi/register#set-yank "$reg" "$yank_type" "$yank_content" || return 1
   ble/keymap:vi/mark/commit-edit-area "$beg" "$end"
   return 0
 }
@@ -1995,7 +1991,6 @@ function ble/widget/vi-command/linewise-range.impl {
     # Note: qline を用いる場合は必ずしも望みどおり
     #   qline 行目が存在するとは限らないことに注意する。
     if [[ :$opts: == *:require_multiline:* ]]; then
-      local is_single_line=$((bolq==bolp))
       if ((bolq==bolp)); then
         ble/widget/vi-command/bell
         return 1

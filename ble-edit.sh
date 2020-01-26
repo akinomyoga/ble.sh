@@ -193,16 +193,10 @@ function bleopt/check:exec_type {
 #   もしこれらの範囲の文字を幅1以外で表示する端末が有ればそれらのコードを実装し
 #   直す必要がある。その様な変な端末があるとは思えないが。
 
-
-_ble_text_c2w__table=()
-
 ## 関数 ble/util/c2w ccode
 ##   @var[out] ret
 function ble/util/c2w {
-  # ret=${_ble_text_c2w__table[$1]}
-  # [[ $ret ]] && return
   "ble/util/c2w+$bleopt_char_width_mode" "$1"
-  # _ble_text_c2w__table[$1]=$ret
 }
 ## 関数 ble/util/c2w-edit ccode
 ##   編集画面での表示上の文字幅を返します。
@@ -6866,8 +6860,6 @@ function ble/widget/command-help/.type/.resolve-alias {
   while
     [[ $command == "$literal" ]] || break # Note: type=alias
 
-    local old_literal=$literal old_command=$command
-
     local alias_def
     ble/util/assign alias_def "alias $command"
     unalias "$command"
@@ -7187,7 +7179,7 @@ else
     # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
     ((_ble_line_y++,_ble_line_x=0))
     local -a DRAW_BUFF=()
-    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+    ble-form/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
     ble-edit/draw/flush
   }
 fi

@@ -88,7 +88,7 @@ function ble/util/restore-arrs {
 _ble_debug_check_leak_variable='local @var=__t1wJltaP9nmow__'
 function ble/debug/.check-leak-variable {
   if [[ ${!1} != __t1wJltaP9nmow__ ]]; then
-    echo "$1=${!1}:${2:*}" >> a.txt
+    echo "$1=${!1}:${*:2}" >> a.txt
     eval "$1=__t1wJltaP9nmow__"
   fi
 }
@@ -648,7 +648,7 @@ if ((_ble_bash>=40200)); then
       for __ble_name; do
         ((__ble_processed_$__ble_name)) && continue
         ((__ble_processed_$__ble_name=1))
-        [[ $_ble_name == __ble_* ]] && continue
+        [[ $__ble_name == __ble_* ]] && continue
 
         declare -g -r "$__ble_name"
 
@@ -680,7 +680,7 @@ else
       for __ble_name; do
         ((__ble_processed_$__ble_name)) && continue
         ((__ble_processed_$__ble_name=1))
-        [[ $_ble_name == __ble_* ]] && continue
+        [[ $__ble_name == __ble_* ]] && continue
 
         __ble_value= __ble_found=
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
