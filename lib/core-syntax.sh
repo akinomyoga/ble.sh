@@ -3,7 +3,7 @@
 #%m main (
 
 ## 関数 ble/syntax/urange#update prefix p1 p2
-## 関数 ble/syntax/wrange#update prefix p1 p2
+## 関数 ble/syntax/wrange#update prefix p1 [p2]
 ##   @param[in]   prefix
 ##   @param[in]   p1 p2
 ##   @var[in,out] {prefix}umin {prefix}umax
@@ -298,7 +298,7 @@ function ble/syntax/tree-enumerate {
 ##   入れ子構造に従わず或る範囲内に登録されている節を列挙します。
 ## @param[in] beg,end
 ## @param[in] proc 以下の変数を使用する関数を指定します。
-##   @var[in] wtype wlen wbeg wend
+##   @var[in] wtype wlen wbeg wend wattr
 ##   @var[in] node
 ##   @var[in] TE_i TE_nofs
 function ble/syntax/tree-enumerate-in-range {
@@ -311,7 +311,7 @@ function ble/syntax/tree-enumerate-in-range {
     ble/string#split-words node "${_ble_syntax_tree[TE_i-1]}"
     local flagUpdateNode=
     for ((TE_nofs=0;TE_nofs<${#node[@]};TE_nofs+=_ble_syntax_TREE_WIDTH)); do
-      local wtype=${node[TE_nofs]} wlen=${node[TE_nofs+1]}
+      local wtype=${node[TE_nofs]} wlen=${node[TE_nofs+1]} wattr=${node[TE_nofs+4]}
       local wbeg=$((wlen<0?wlen:TE_i-wlen)) wend=$TE_i
       "${@:3}"
     done
@@ -5306,7 +5306,7 @@ function ble/syntax:bash/extract-command-by-noderef {
   local ret node wtype wlen wbeg wend wattr
   ble/string#split-words node "${_ble_syntax_tree[i-1]}"
   wtype=${node[nofs]} wlen=${node[nofs+1]}
-  [[ ! ${wtype//[0-9]} ]] && ((wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)) || return 1
+  [[ ! ${wtype//[0-9]} ]] && ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)) || return 1
   ble/array#push comp_words "${_ble_syntax_text:i-wlen:wlen}"
   [[ $opts == *:treeinfo:* ]] &&
     ble/array#push tree_words "$i:$nofs"
@@ -5865,59 +5865,42 @@ function bleopt/check:filename_ls_colors {
 value=$bleopt_filename_ls_colors bleopt/check:filename_ls_colors
 
 #------------------------------------------------------------------------------
+# ble/syntax/progcolor
 
-# adapter に頼らず直接実装したい
-function ble/highlight/layer:syntax/touch-range {
-  ble/syntax/urange#update '' "$@"
-}
-function ble/highlight/layer:syntax/fill {
-  local _i _arr=$1 _i1=$2 _i2=$3 _v=$4
-  for ((_i=_i1;_i<_i2;_i++)); do
-    eval "$_arr[_i]=\"\$_v\""
-  done
-}
+## 関数 ble/syntax/progcolor/setup-vars i:nofs
+##   @var[out] TE_i TE_nofs node
+##   @var[out] wtype wlen wbeg wend wattr
+_ble_syntax_progcolor_vars=(node TE_i TE_nofs wtype wlen wbeg wend wattr)
+function ble/syntax/progcolor/setup-vars {
+  # TE_i TE_nofs
+  TE_i=${1%%:*} TE_nofs=${1#*:}
+  [[ $1 != *:* ]] && TE_nofs=0
 
-_ble_highlight_layer_syntax_VARNAMES=(
-  _ble_highlight_layer_syntax_buff
-  _ble_highlight_layer_syntax1_table
-  _ble_highlight_layer_syntax2_table
-  _ble_highlight_layer_syntax3_list
-  _ble_highlight_layer_syntax3_table)
-function ble/highlight/layer:syntax/initialize-vars {
-  _ble_highlight_layer_syntax_buff=()
-  _ble_highlight_layer_syntax1_table=()
-  _ble_highlight_layer_syntax2_table=()
-  _ble_highlight_layer_syntax3_list=()
-  _ble_highlight_layer_syntax3_table=() # errors
-}
-ble/highlight/layer:syntax/initialize-vars
+  # node
+  ble/string#split-words node "${_ble_syntax_tree[TE_i-1]}"
 
-function ble/highlight/layer:syntax/update-attribute-table {
-  ble/highlight/layer/update/shift _ble_highlight_layer_syntax1_table
-  if ((_ble_syntax_attr_umin>=0)); then
-    ble/highlight/layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_umax
-
-    local i g=0
-    ((_ble_syntax_attr_umin>0)) &&
-      ((g=_ble_highlight_layer_syntax1_table[_ble_syntax_attr_umin-1]))
-
-    for ((i=_ble_syntax_attr_umin;i<_ble_syntax_attr_umax;i++)); do
-      if ((${_ble_syntax_attr[i]})); then
-        ble/syntax/attr2g "${_ble_syntax_attr[i]}"
-      fi
-      _ble_highlight_layer_syntax1_table[i]=$g
-    done
-
-    _ble_syntax_attr_umin=-1 _ble_syntax_attr_umax=-1
-  fi
+  # wvars
+  wtype=${node[TE_nofs]}
+  wlen=${node[TE_nofs+1]}
+  wattr=${node[TE_nofs+4]}
+  wbeg=$((TE_i-wlen))
+  wend=$TE_i
 }
 
-## 関数 ble/highlight/layer:syntax/word/.update-for-pathname filename
-##   @param[in] filename
-##   @var[out] type
-##   @var[in] wbeg p0 wtype
+## 関数 ble/syntax/progcolor/set-wattr value
+##   @var[in] TE_i TE_nofs node
+function ble/syntax/progcolor/set-wattr {
+  ble/syntax/urange#update color_ "$wbeg" "$wend"
+  ble/syntax/wrange#update _ble_syntax_word_ "$TE_i"
+  node[TE_nofs+4]=$1
+  _ble_syntax_tree[TE_i-1]="${node[*]}"
+}
+
+## 関数 ble/syntax/progcolor/word:default/.update-for-pathname filetype
+##   @param[in] filetype
+##   @var[in] wtype wbeg p0
 ##   @var[in] path spec
-function ble/highlight/layer:syntax/word/.update-for-pathname {
+function ble/syntax/progcolor/word:default/.update-for-pathname {
   local filetype=$1
   local -a wattr_buff=()
   ((wbeg<p0)) && ble/array#push wattr_buff $((p0-wbeg)):d
@@ -5928,8 +5911,7 @@ function ble/highlight/layer:syntax/word/.update-for-pathname {
     for ((ipath=0;ipath<npath-1;ipath++)); do
       local epath=${path[ipath]} espec=${spec[ipath]}
       local p_end=$((p0+${#espec}))
-      local g=d
-      type=
+      local g=d type=
       [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
       [[ $type ]] && ble/syntax/attr2g "$type"
 
@@ -5941,21 +5923,26 @@ function ble/highlight/layer:syntax/word/.update-for-pathname {
     done
   fi
 
-  type=$filetype
-
-  # ディレクトリ名を含まない場合は通常どおりに処理
-  ((${#wattr_buff[@]})) || return 1
-
-  local g; ble/syntax/attr2g "$type"
-  IFS=, eval 'node[TE_nofs+4]="m${wattr_buff[*]},\$:${g:-d}"'
-  _ble_syntax_tree[TE_i-1]="${node[*]}"
+  local wattr=d
+  if ((${#wattr_buff[@]})); then
+    local g; ble/syntax/attr2g "$type"
+    IFS=, eval 'wattr="m${wattr_buff[*]},\$:${g:-d}"'
+  elif [[ $filetype ]]; then
+    local g; ble/syntax/attr2g "$filetype"
+    if ((wbeg<p0)); then
+      wattr=m$((p0-wbeg)):d,\$:$g
+    else
+      wattr=${g:-d}
+    fi
+  fi
+  ble/syntax/progcolor/set-wattr "$wattr"
   return 0
 }
-## 関数 ble/highlight/layer:syntax/word/.update-for-filename value
+## 関数 ble/syntax/progcolor/word:default/.update-for-filename value
 ##   @param[in] value
-##   @var[in] wbeg p0 wtype
+##   @var[in] wtype wbeg p0
 ##   @var[in] path spec
-function ble/highlight/layer:syntax/word/.update-for-filename {
+function ble/syntax/progcolor/word:default/.update-for-filename {
   local value=$1
 
   local type=
@@ -6031,17 +6018,19 @@ function ble/highlight/layer:syntax/word/.update-for-filename {
   [[ $type && ! $g ]] && ble/syntax/attr2g "$type"
 
   if ((${#wattr_buff[@]})); then
-    IFS=, eval 'node[TE_nofs+4]="m${wattr_buff[*]},\$:${g:-d}"'
+    IFS=, eval 'local wattr="m${wattr_buff[*]},\$:${g:-d}"'
   else
-    node[TE_nofs+4]=${g:-d}
+    local wattr=${g:-d}
   fi
-  _ble_syntax_tree[TE_i-1]="${node[*]}"
+  ble/syntax/progcolor/set-wattr "$wattr"
   return 0
 }
-function ble/highlight/layer:syntax/word/.update-attributes/.proc2 {
-  [[ ${node[TE_nofs]} =~ ^[0-9]+$ ]] || return
-  [[ ${node[TE_nofs+4]} == - ]] || return
-  ble/syntax/urange#update color_ "$wbeg" "$wend"
+## 関数 ble/syntax/progcolor/word:default
+##   @var[in] node TE_i TE_nofs
+##   @var[in] wtype wlen wbeg wend wattr
+function ble/syntax/progcolor/word:default {
+  [[ $wtype =~ ^[0-9]+$ ]] || return
+  [[ $wattr == - ]] || return
 
   # @var p0 p1
   #   文字列を切り出す範囲。
@@ -6083,7 +6072,7 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc2 {
     ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
     if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
       # failglob 等の理由で展開に失敗した場合
-      ble/highlight/layer:syntax/word/.update-for-pathname "$ATTR_ERR" && return
+      ble/syntax/progcolor/word:default/.update-for-pathname "$ATTR_ERR" && return
     elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
       # 複数語に展開されたら駄目
       type=$ATTR_ERR
@@ -6092,53 +6081,166 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc2 {
       if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
         ble/syntax/highlight/cmdtype "$value" "$wtxt"
         ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)) &&
-          ble/highlight/layer:syntax/word/.update-for-pathname "$type" && return
+          ble/syntax/progcolor/word:default/.update-for-pathname "$type" && return
       fi
     elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
-      ble/highlight/layer:syntax/word/.update-for-filename "$value" && return
+      ble/syntax/progcolor/word:default/.update-for-filename "$value" && return
     fi
   fi
 
+  local wattr=d
   if [[ $type ]]; then
     local g; ble/syntax/attr2g "$type"
     if ((wbeg<p0)); then
-      node[TE_nofs+4]=m$((p0-wbeg)):d,\$:$g
+      wattr=m$((p0-wbeg)):d,\$:$g
     else
-      node[TE_nofs+4]=${g:-d}
+      wattr=${g:-d}
     fi
-  else
-    node[TE_nofs+4]='d'
   fi
-  _ble_syntax_tree[TE_i-1]="${node[*]}"
+  ble/syntax/progcolor/set-wattr "$wattr"
+  return 0
 }
-#@@1
+
+## 関数 ble/syntax/progcolor/default
+##   @var[in] comp_words comp_cword comp_line comp_point
+##   @var[in] tree_words
+##   @var[in,out] color_umin color_umax
+function ble/syntax/progcolor/default {
+  local i "${_ble_syntax_progcolor_vars[@]}"
+  for ((i=1;i<${#comp_words[@]};i++)); do
+    local ref=${tree_words[i]}
+    [[ $ref ]] || continue
+    ble/syntax/progcolor/setup-vars "$ref"
+    ble/syntax/progcolor/word:default
+  done
+}
+
+## 関数 ble/syntax/progcolor/.compline-rewrite-command command [args...]
+##   @var[in,out] comp_words comp_cword comp_line comp_point
+function ble/syntax/progcolor/.compline-rewrite-command {
+  local ocmd=${comp_words[0]}
+  [[ $1 != "$ocmd" ]] || (($#>=2)) || return
+  local ins="$*"
+  comp_line=$ins${comp_line:${#ocmd}}
+  ((comp_point-=${#ocmd},comp_point<0&&(comp_point=0),comp_point+=${#ins}))
+  comp_words=("$@" "${comp_words[@]:1}")
+  ((comp_cword&&(comp_cword+=$#-1)))
+
+  # update tree_words
+  ble/array#reserve-prototype $#
+  tree_words=("${tree_words[0]}" "${_ble_array_prototype[@]::$#-1}" "${tree_words[@]:1}")
+}
+## 関数 ble/syntax/progcolor
+##   @var[in] comp_words comp_cword comp_line comp_point
+##   @var[in] tree_words
+##   @var[in,out] color_umin color_umax
+function ble/syntax/progcolor {
+  local cmd=$1 opts=$2
+
+  local -a alias_args=()
+  local checked=" " processed=
+  while :; do
+    if ble/is-function "ble/cmdinfo/color:$cmd"; then
+      ble/syntax/progcolor/.compline-rewrite-command "$cmd" "${alias_args[@]}"
+      "ble/cmdinfo/color:$cmd" "$opts"
+      processed=1
+      break
+    elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/color:${cmd##*/}"; then
+      ble/syntax/progcolor/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
+      "ble/cmdinfo/color:${cmd##*/}" "$opts"
+      processed=1
+      break
+    fi
+    checked="$checked$cmd "
+
+    local ret
+    ble/util/expand-alias "$cmd"
+    ble/string#split-words ret "$ret"
+    [[ $checked == *" $ret "* ]] && break
+    cmd=$ret
+    ((${#ret[@]}>=2)) &&
+      alias_args=("${ret[@]:1}" "${alias_args[@]}")
+  done
+  [[ $processed ]] ||
+    ble/syntax/progcolor/default
+
+  # コマンド名に対しては既定の着色を実行
+  if [[ ${tree_words[0]} ]]; then
+    local "${_ble_syntax_progcolor_vars[@]}"
+    ble/syntax/progcolor/setup-vars "${tree_words[0]}"
+    [[ $wattr == - ]] && ble/syntax/progcolor/word:default
+  fi
+}
+
+#------------------------------------------------------------------------------
+# ble/highlight/layer:syntax
+
+# adapter に頼らず直接実装したい
+function ble/highlight/layer:syntax/touch-range {
+  ble/syntax/urange#update '' "$@"
+}
+function ble/highlight/layer:syntax/fill {
+  local _i _arr=$1 _i1=$2 _i2=$3 _v=$4
+  for ((_i=_i1;_i<_i2;_i++)); do
+    eval "$_arr[_i]=\"\$_v\""
+  done
+}
+
+_ble_highlight_layer_syntax_VARNAMES=(
+  _ble_highlight_layer_syntax_buff
+  _ble_highlight_layer_syntax1_table
+  _ble_highlight_layer_syntax2_table
+  _ble_highlight_layer_syntax3_list
+  _ble_highlight_layer_syntax3_table)
+function ble/highlight/layer:syntax/initialize-vars {
+  _ble_highlight_layer_syntax_buff=()
+  _ble_highlight_layer_syntax1_table=()
+  _ble_highlight_layer_syntax2_table=()
+  _ble_highlight_layer_syntax3_list=()
+  _ble_highlight_layer_syntax3_table=() # errors
+}
+ble/highlight/layer:syntax/initialize-vars
+
+function ble/highlight/layer:syntax/update-attribute-table {
+  ble/highlight/layer/update/shift _ble_highlight_layer_syntax1_table
+  if ((_ble_syntax_attr_umin>=0)); then
+    ble/highlight/layer:syntax/touch-range _ble_syntax_attr_umin _ble_syntax_attr_umax
+
+    local i g=0
+    ((_ble_syntax_attr_umin>0)) &&
+      ((g=_ble_highlight_layer_syntax1_table[_ble_syntax_attr_umin-1]))
+
+    for ((i=_ble_syntax_attr_umin;i<_ble_syntax_attr_umax;i++)); do
+      if ((${_ble_syntax_attr[i]})); then
+        ble/syntax/attr2g "${_ble_syntax_attr[i]}"
+      fi
+      _ble_highlight_layer_syntax1_table[i]=$g
+    done
+
+    _ble_syntax_attr_umin=-1 _ble_syntax_attr_umax=-1
+  fi
+}
+
 function ble/highlight/layer:syntax/word/.update-attributes/.proc {
   [[ $wtype =~ ^[0-9]+$ ]] || return
   [[ ${node[TE_nofs+4]} == - ]] || return
 
-  if ((wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
+  if ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
     local comp_line comp_point comp_words comp_cword tree_words
     if ble/syntax:bash/extract-command-by-noderef "$TE_i:$TE_nofs" treeinfo; then
-      # ToDo: もし対応する定義があればそれを使う
-      local noderef node wtype wlen wbeg wend
-      for noderef in "${tree_words[@]}"; do
-        local TE_i=${noderef%%:*} TE_nofs=${noderef#*:}
-        ble/string#split-words node "${_ble_syntax_tree[TE_i-1]}"
-        wtype=${node[TE_nofs]} wlen=${node[TE_nofs+1]}
-        ((wbeg=TE_i-wlen,wend=TE_i))
-        ble/highlight/layer:syntax/word/.update-attributes/.proc2
-      done
+      local cmd=${comp_words[0]}
+      ble/syntax/progcolor "$cmd"
       return
     fi
   fi
 
   # コマンドラインを復元できなければ単一単語の着色
-  ble/highlight/layer:syntax/word/.update-attributes/.proc2
+  ble/syntax/progcolor/word:default
 }
 
 ## 関数 ble/highlight/layer:syntax/word/.update-attributes
 ## @var[in] _ble_syntax_word_umin,_ble_syntax_word_umax
-## @var[in,out] color_umin,color_umax
+## @var[in,out] color_umin color_umax
 function ble/highlight/layer:syntax/word/.update-attributes {
   ((_ble_syntax_word_umin>=0)) || return
   ble/syntax/tree-enumerate-in-range "$_ble_syntax_word_umin" "$_ble_syntax_word_umax" \
