@@ -2473,9 +2473,9 @@ function ble/builtin/bind/.parse-keyname {
   (return|ret) ch=$'\r' ;;
   (space|spc) ch=' ' ;;
   (tab) ch=$'\t' ;;
-  (*) LC_ALL=C eval 'local ch=${value::1}' ;;
+  (*) LC_ALL=C eval 'ch=${value::1}' ;;
   esac
-  ble/util/s2c "$c"; local key=$ret
+  ble/util/s2c "$ch"; local key=$ret
 
   [[ $mflags == *c* ]] && ((key&=0x1F))
   [[ $mflags == *m* ]] && ((key|=0x80))

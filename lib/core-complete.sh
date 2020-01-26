@@ -1553,7 +1553,7 @@ function ble/complete/util/construct-ambiguous-regex {
   local text=$1 fixlen=${2:-1}
   local opt_icase=; [[ :$comp_type: == *:i:* ]] && opt_icase=1
   local -a buff=()
-  local i=0 n=${#text} c=
+  local i=0 n=${#text} ch=
   for ((i=0;i<n;i++)); do
     ((i>=fixlen)) && ble/array#push buff '.*'
     ch=${text:i:1}
