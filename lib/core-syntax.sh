@@ -3006,6 +3006,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
       return 0
     fi
 
+    local ret
     ble/util/expand-alias "$word"; local word_expanded=$ret
 
     local processed=

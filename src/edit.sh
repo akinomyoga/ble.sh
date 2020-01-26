@@ -4578,7 +4578,7 @@ function ble/widget/alias-expand-line.proc {
       ble/widget/alias-expand-line.proc
   elif [[ $wtype && ! ${wtype//[0-9]} ]] && ((wtype==_ble_ctx_CMDI)); then
     local word=${_ble_edit_str:wbegin:wlen}
-    ble/util/expand-alias "$word"
+    local ret; ble/util/expand-alias "$word"
     [[ $word == "$ret" ]] && return
     changed=1
     ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$ret" 1
