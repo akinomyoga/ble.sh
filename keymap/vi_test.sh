@@ -28,7 +28,7 @@ function ble/keymap:vi_test/check {
   local nl=$'\n' NL=$'\e[7m^J\e[m'
   ble-edit/content/reset "$in" edit
   _ble_edit_ind=$i
-  [[ $ima ]] && _ble_edit_imark=$ima
+  [[ $ima ]] && _ble_edit_mark=$ima
   local ret
   ble-decode-kbd "$kspecs"
   local ble_decode=${_ble_keymap_vi_test_ble_decode:-ble-decode-key}

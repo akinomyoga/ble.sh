@@ -1115,7 +1115,6 @@ function ble-decode/keymap/unregister {
 function ble-decode/keymap/.is-valid-keymap {
   builtin eval -- "((\${#_ble_decode_${1}_kmap_[*]}))"
 }
-_ble_decode_keymap_load=
 function ble-decode/keymap/load {
   ble-decode/keymap/is-keymap "$1" && return 0
 

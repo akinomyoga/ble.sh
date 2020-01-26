@@ -613,7 +613,7 @@ function ble/syntax/print-status {
   local resultB
   ble/syntax/print-status/.dump-tree
 
-  local result=$resultA$_ble_term_NL$resultB
+  local result=$resultA$resultB
   if [[ $1 == -v && $2 ]]; then
     local "${2%%\[*\]}" && ble/util/upvar "$2" "$result"
   else

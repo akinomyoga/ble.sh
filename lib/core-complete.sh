@@ -63,7 +63,7 @@ _ble_complete_menu_selected=-1
 
 function ble/complete/menu#check-cancel {
   ((menu_iloop++%menu_interval==0)) &&
-    [[ :$menu_type: != *:sync:* ]] &&
+    [[ :$comp_type: != *:sync:* ]] &&
     ble-decode/has-input
 }
 
@@ -376,7 +376,7 @@ function ble/complete/menu-style:desc/construct-page {
   done
 
   local cand_width=$max_width
-  local desc_x=$((max_width+1)); ((desc_x>cols&&(desc_x=cols)))
+  local desc_x=$((cand_width+1)); ((desc_x>cols&&(desc_x=cols)))
   local desc_prefix=; ((cols-desc_x>30)) && desc_prefix='| '
 
   end=$begin x=0 y=0 esc=
@@ -479,7 +479,6 @@ function ble/complete/menu#construct {
     _ble_complete_menu_icons=()
     _ble_complete_menu_info_data=(ansi $'\e[38;5;242m(no items)\e[m')
     _ble_complete_menu_selected=-1
-    _ble_complete_menu_onselect=$menu_onselect
     return 0
   fi
 

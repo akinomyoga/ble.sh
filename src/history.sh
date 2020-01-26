@@ -573,7 +573,7 @@ if ((_ble_bash>=30100)); then
           ((_ble_history_mlfix_resume++)) ;;
 
       # 80ms history 再構築 (47000項目)
-      (4) _ble_history_mlfix_bgpi=
+      (4) _ble_history_mlfix_bgpid=
           ble/history:bash/resolve-multiline/.load
           [[ $opt_async ]] || blehook/invoke history_message
           ((_ble_history_mlfix_resume++))

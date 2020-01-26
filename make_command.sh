@@ -297,6 +297,23 @@ function sub:first-defined {
 
 #------------------------------------------------------------------------------
 
+function sub:check-words {
+  # sed -E "s/'[^']*'//g;s/(^| )[[:space:]]*#.*/ /g" $(findsrc --exclude={wiki,test,\*.md}) |
+  #   grep -hoE '\$\{?[_a-zA-Z][_a-zA-Z0-9]*\b|\b[_a-zA-Z][-:._/a-zA-Z0-9]*\b' |
+  #   sed -E 's/^\$\{?//g;s.^ble/widget/..;\./.!d;/:/d' |
+  #   sort | uniq -c | sort -n
+  sed -E "s/(^| )[[:space:]]*#.*/ /g" $(findsrc --exclude={memo,wiki,test,\*.md}) |
+    grep -hoE '\b[_a-zA-Z][_a-zA-Z0-9]{3,}\b' |
+    sed -E 's/^bleopt_//' |
+    sort | uniq -c | sort -n | less
+}
+function sub:check-varnames {
+  sed -E "s/(^| )[[:space:]]*#.*/ /g" $(findsrc --exclude={wiki,test,\*.md}) |
+    grep -hoE '\$\{?[_a-zA-Z][_a-zA-Z0-9]*\b|\b[_a-zA-Z][_a-zA-Z0-9]*=' |
+    sed -E 's/^\$\{?(.*)/\1$/g;s/[$=]//' |
+    sort | uniq -c | sort -n | less
+}
+
 if (($#==0)); then
   sub:help
 elif declare -f sub:"$1" &>/dev/null; then

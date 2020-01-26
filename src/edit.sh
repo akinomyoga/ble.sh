@@ -4663,7 +4663,7 @@ function ble/widget/shell-expand-line.proc {
   local word=${_ble_edit_str:wbegin:wlen}
 
   # 配列代入の時は配列要素に対して適用
-  local rex_arr='^[[:alpha:]_][[:alnum:]_]*=+?\('
+  local rex='^[[:alpha:]_][[:alnum:]_]*=+?\('
   if ((wtype==_ble_attr_VAR)) && [[ $word =~ $rex ]]; then
     ble/syntax/tree-enumerate-children ble/widget/shell-expand-line.proc
     return
@@ -5693,7 +5693,7 @@ function ble/widget/isearch/.restore-mark-state {
     local index; ble/history/get-index
     if ((index==_ble_edit_isearch_save[0])); then
       _ble_edit_mark=${_ble_edit_isearch_save[2]}
-      if [[ $old_mark_active != S ]] || ((_ble_edit_index==_ble_edit_isearch_save[1])); then
+      if [[ $old_mark_active != S ]] || ((_ble_edit_ind==_ble_edit_isearch_save[1])); then
         _ble_edit_mark_active=$old_mark_active
       fi
     fi
@@ -6848,8 +6848,6 @@ function ble/widget/command-help/.type/.resolve-alias {
   while
     [[ $command == "$literal" ]] || break # Note: type=alias
 
-    local old_literal=$literal old_command=$command
-
     local alias_def
     ble/util/assign alias_def "alias $command"
     unalias "$command"
@@ -7167,7 +7165,7 @@ else
     # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
     ((_ble_canvas_y++,_ble_canvas_x=0))
     local -a DRAW_BUFF=()
-    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${_ble_textarea_cur[0]}" "${_ble_textarea_cur[1]}"
     ble/canvas/flush.draw
   }
 fi

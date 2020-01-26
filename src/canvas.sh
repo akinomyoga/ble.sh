@@ -58,15 +58,10 @@ function bleopt/check:char_width_mode {
   fi
 }
 
-_ble_util_c2w_table=()
-
 ## 関数 ble/util/c2w ccode
 ##   @var[out] ret
 function ble/util/c2w {
-  # ret=${_ble_util_c2w_table[$1]}
-  # [[ $ret ]] && return
   "ble/util/c2w+$bleopt_char_width_mode" "$1"
-  # _ble_util_c2w_table[$1]=$ret
 }
 ## 関数 ble/util/c2w-edit ccode
 ##   編集画面での表示上の文字幅を返します。
@@ -649,26 +644,6 @@ function ble/canvas/trace/.NEL {
   fi
   ((y++,x=0,lc=32,lg=0))
   return 0
-}
-## 関数 ble/canvas/trace/.SGR/arg_next
-##   @var[in    ] f
-##   @var[in,out] j
-##   @var[   out] arg
-function ble/canvas/trace/.SGR/arg_next {
-  local _var=arg _ret
-  if [[ $1 == -v ]]; then
-    _var=$2
-    shift 2
-  fi
-
-  if ((j<${#f[*]})); then
-    _ret=${f[j++]}
-  else
-    ((i++))
-    _ret=${specs[i]%%:*}
-  fi
-
-  (($_var=_ret))
 }
 ## 関数 ble/canvas/trace/.SGR
 ##   @param[in] param seq
