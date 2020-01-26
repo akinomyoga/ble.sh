@@ -91,16 +91,10 @@
 #   もしこれらの範囲の文字を幅1以外で表示する端末が有ればそれらのコードを実装し
 #   直す必要がある。その様な変な端末があるとは思えないが。
 
-
-declare -a _ble_text_c2w__table=()
-
 ## 関数 .ble-text.c2w ccode
 ##   @var[out] ret
 function .ble-text.c2w {
-  # ret="${_ble_text_c2w__table[$1]}"
-  # [[ $ret ]] && return
   ".ble-text.c2w+$bleopt_char_width_mode" "$1"
-  # _ble_text_c2w__table[$1]="$ret"
 }
 ## 関数 .ble-text.c2w-edit ccode
 ##   編集画面での表示上の文字幅を返します。
@@ -4170,7 +4164,7 @@ else
       # bash-3.*, bash-4.0 では呼出直前に次の行に移動する
       ((_ble_line_y++,_ble_line_x=0))
       local -a DRAW_BUFF=()
-      ble-edit/draw/goto "${_ble_edit_cur[0]}" "${_ble_edit_cur[1]}"
+      ble-edit/draw/goto "${_ble_line_cur[0]}" "${_ble_line_cur[1]}"
       ble-edit/draw/flush
     fi
   }

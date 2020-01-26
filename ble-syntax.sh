@@ -414,7 +414,7 @@ function ble-syntax/print-status {
   local resultB
   ble-syntax/print-status/.dump-tree
 
-  local _result="$resultA$_ble_term_NL$resultB"
+  local _result="$resultA$resultB"
   if [[ $1 == -v && $2 ]]; then
     eval "$2=\"\$_result\""
   else
