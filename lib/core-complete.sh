@@ -2637,6 +2637,7 @@ function ble/complete/menu/clear {
   fi
 }
 ble/array#push _ble_widget_bell_hook ble/complete/menu/clear
+ble/array#push _ble_edit_history_onleave ble/complete/menu/clear
 
 ## 関数 ble/complete/menu/get-footprint
 ##   @var[out] footprint
