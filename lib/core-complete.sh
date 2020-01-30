@@ -3341,6 +3341,7 @@ function ble/complete/menu/clear {
   fi
 }
 blehook widget_bell+=ble/complete/menu/clear
+blehook history_onleave+=ble/complete/menu/clear
 
 ## 関数 ble/complete/menu/get-footprint
 ##   @var[out] footprint
