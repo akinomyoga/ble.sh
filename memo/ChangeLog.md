@@ -7,7 +7,7 @@
 
 - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
 - main: check `~/.config/blesh/init.sh` `#D1224` a82f961
-- progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247`
+- progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247` 0000000
 
 ## Fix
 
@@ -22,6 +22,7 @@
 - main (ble-update): fix a bug that the check of `make` does not work in Bash 3.2 `#D1236` 08ced81
 - global: workaround Bash 3.2 bug of array initialization with <kbd>SOH</kbd>/<kbd>DEL</kbd> `#D1238` defdbd4 `#D1241` 1720ec0
 - syntax: fix a infinite loop for variable assignments and parameter expansions `#D1239` 327661f
+- complete: clear menu on history move `#D1248` 0000000
 
 ## Internal changes and fixes
 
@@ -32,7 +33,7 @@
 - decode (ble/builtin/bind): skip checking stdin in parsing the keyseq `#D1235` 5f949e8
 - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237` bb31b11
 - memo: split `memo.txt` -> `note.txt`, `done.txt` and `ChangeLog.md` `#D1243` 31bc9aa 8b0fe34 419155e
-- global: check isolated identifiers and leak variables `#D1246` 1111111
+- global: check isolated identifiers and leak variables `#D1246` 1111111 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

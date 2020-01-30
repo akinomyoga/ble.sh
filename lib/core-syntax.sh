@@ -5713,6 +5713,8 @@ function ble/syntax/highlight/filetype {
     if [[ -d $file ]]; then
       if [[ -k $file ]]; then
         ((type=ATTR_FILE_STICKY))
+      elif [[ -h ${file%/} ]]; then
+        ((type=ATTR_FILE_LINK))
       else
         ((type=ATTR_FILE_DIR))
       fi
