@@ -3994,6 +3994,7 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f S-C-m       auto_complete/insert
   ble-bind -f C-f         auto_complete/insert-on-end
   ble-bind -f right       auto_complete/insert-on-end
+  ble-bind -f C-e         auto_complete/insert-on-end
   ble-bind -f end         auto_complete/insert-on-end
   ble-bind -f M-f         auto_complete/insert-word
   ble-bind -f M-right     auto_complete/insert-word
