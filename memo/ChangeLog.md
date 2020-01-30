@@ -7,6 +7,7 @@
 
 - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
 - main: check `~/.config/blesh/init.sh` `#D1224` a82f961
+- progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247`
 
 ## Fix
 
@@ -24,12 +25,14 @@
 
 ## Internal changes and fixes
 
+- util: merge `ble/util/{save,restore}-{arrs => vars}` `#D1217` 6acb9a3
 - internal: merge subdir `test` into `memo` `#D1230` f0c38b6
 - ble-measure: improve calibration `DD1231` d3a7a52
 - vi_test: fix a bug that test fails to restore the original state `#D1232` 4b882fb
 - decode (ble/builtin/bind): skip checking stdin in parsing the keyseq `#D1235` 5f949e8
 - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237` bb31b11
-- memo: split `memo.txt` -> `note.txt`, `done.txt` and `ChangeLog.md` `#D1243` 31bc9aa 1228405
+- memo: split `memo.txt` -> `note.txt`, `done.txt` and `ChangeLog.md` `#D1243` 31bc9aa 8b0fe34 419155e
+- global: check isolated identifiers and leak variables `#D1246` 1111111
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
@@ -547,7 +550,7 @@
   - complete: パラメータ展開 `${var}` 直後からの補完が正しく実行できる様に修正 `#D0742`
 
 ## 補完: 動作変更
-  - complete: 補完候補生成直前の `shopt -s force_ignore` を参照して候補を制限する様に変更 `#D0704`
+  - complete: 補完候補生成直前の `shopt -s force_fignore` を参照して候補を制限する様に変更 `#D0704`
   - complete: `FIGNORE` はエスケープされた挿入文字列に対してではなくて、候補文字列に対して判定する様に変更 `#D0704`
   - complete: 関数名補完を `/` で区切られた単位で行う `#D0706` `#D0724` (曖昧一致の時は抑制)
   - complete: パラメータ展開で厳密一致で一意確定の時は他の補完文脈を使うように変更 `#D0740`

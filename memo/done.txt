@@ -510,7 +510,7 @@
 
 2020-01-21
 
-  * util: ble/util/{save,restore}-vars に失敗している (reported by cmplstofB) [#D1228]
+  * util: 16進数リテラルの着色に失敗している (reported by cmplstofB) [#D1228]
     https://github.com/akinomyoga/ble.sh/issues/36#issuecomment-576625143
 
     何か正規表現を間違えている? と思って確認したらそもそも対応を忘れていた。

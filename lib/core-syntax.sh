@@ -5926,7 +5926,7 @@ function ble/syntax/progcolor/word:default/.update-for-pathname {
 
   local wattr=d
   if ((${#wattr_buff[@]})); then
-    local g; ble/syntax/attr2g "$type"
+    local g; ble/syntax/attr2g "$filetype"
     IFS=, eval 'wattr="m${wattr_buff[*]},\$:${g:-d}"'
   elif [[ $filetype ]]; then
     local g; ble/syntax/attr2g "$filetype"
