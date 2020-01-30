@@ -24,6 +24,10 @@
 - syntax: fix a infinite loop for variable assignments and parameter expansions `#D1239` 327661f
 - complete: clear menu on history move `#D1248` 0000000
 
+## Changes
+- highlight: highlight symlink directories as symlinks `#D1249` 0000000
+- auto-complete: bind `insert-on-end` to `C-e` `#D1250` 0000000
+
 ## Internal changes and fixes
 
 - util: merge `ble/util/{save,restore}-{arrs => vars}` `#D1217` 6acb9a3
