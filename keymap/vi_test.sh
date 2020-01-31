@@ -169,7 +169,7 @@ function ble/widget/vi-command:check-vi-mode/macro {
   local _ble_keymap_vi_test_ble_decode=ble-decode-char
   local ble_decode_char_sync=1
   ble/keymap:vi_test/start-section 'qx..q'
-  ble/keymap:vi_test/check A1 '@:@123' 'q a A SP h e l l o C-[ q @ a' '@:123 hello hell@o'
+  ble/keymap:vi_test/check A1 '@:@123' 'q a A SP h e l l o @ESC q @ a' '@:123 hello hell@o'
   ble/keymap:vi_test/show-summary
 }
 

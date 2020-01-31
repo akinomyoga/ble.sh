@@ -262,6 +262,9 @@ function ble-decode-kbd/.initialize {
   ble-decode-kbd/.set-keycode PM   158
   ble-decode-kbd/.set-keycode APC  159
 
+  ble-decode-kbd/.set-keycode @ESC "$_ble_decode_IsolatedESC"
+  ble-decode-kbd/.set-keycode @NUL "$_ble_decode_EscapedNUL"
+
   local ret
   ble-decode-kbd/generate-keycode __batch_char__
   _ble_decode_KCODE_BATCH_CHAR=$ret
@@ -336,7 +339,7 @@ function ble-decode-kbd {
     if [[ $kspec == ? ]]; then
       ble/util/s2c "$kspec" 0
       ((code|=ret))
-    elif [[ $kspec && ! ${kspec//[_0-9a-zA-Z]} ]]; then
+    elif [[ $kspec && ! ${kspec//[@_0-9a-zA-Z]} ]]; then
       ble-decode-kbd/.get-keycode "$kspec"
       [[ $ret ]] || ble-decode-kbd/generate-keycode "$kspec"
       ((code|=ret))
@@ -349,6 +352,8 @@ function ble-decode-kbd {
         ble/util/s2c "$kspec" 1
         ((code|=ret&0x1F))
       fi
+    elif local rex='^U\+([0-9a-fA-F]+)$'; [[ $kspec =~ $rex ]]; then
+      ((code|=0x${BASH_REMATCH[1]}))
     else
       ((code|=_ble_decode_Erro))
     fi
