@@ -4558,8 +4558,8 @@ function ble/widget/insert-comment/.remove-comment {
 
   ret=$out
 }
-function ble/widget/insert-comment {
-  local arg; ble-edit/content/get-arg ''
+function ble/widget/insert-comment/.insert {
+  local arg=$1
   local ret='#'; ble/util/read-rl-variable comment-begin
   local comment_begin=${ret::1}
   local text=
@@ -4569,6 +4569,10 @@ function ble/widget/insert-comment {
     text=$comment_begin${_ble_edit_str//$'\n'/$'\n'"$comment_begin"}
   fi
   ble-edit/content/reset-and-check-dirty "$text"
+}
+function ble/widget/insert-comment {
+  local arg; ble-edit/content/get-arg ''
+  ble/widget/insert-comment/.insert "$arg"
   ble/widget/accept-line
 }
 

@@ -5833,6 +5833,19 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f 'C-l'     'clear-screen'
   ble-bind -f 'C-d'     'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
   ble-bind -f 'auto_complete_enter' auto-complete-enter
+
+  # Note #D1256: Bash vi-command 互換性の為
+  ble-bind -f M-left   'vi-command/backward-vword'
+  ble-bind -f M-right  'vi-command/forward-vword'
+  ble-bind -f C-delete 'vi-rlfunc/kill-word'
+  ble-bind -f '#'      'vi-rlfunc/insert-comment'
+  ble-bind -f '&'      'vi_nmap/@edit tilde-expand'
+
+  # ble-bind -f 'C-u' 'vi-rlfunc/unix-line-discard'
+  # ble-bind -f 'C-q' 'vi-rlfunc/quoted-insert'
+  # ble-bind -f 'C-v' 'vi-rlfunc/quoted-insert'
+  # ble-bind -f 'C-d' 'vi-rlfunc/eof-maybe'
+  # ble-bind -f '_'   'vi-rlfunc/yank-arg'
 }
 
 # vi_nmap.rlfunc.txt 用
@@ -5940,6 +5953,67 @@ function ble/widget/vi-rlfunc/subst {
   else
     ble/widget/vi_nmap/kill-forward-char-and-insert
   fi
+}
+# rl_nmap C-delete
+function ble/widget/vi-rlfunc/kill-word {
+  _ble_keymap_vi_opfunc=d
+  ble/widget/vi-command/forward-vword-end
+}
+# rl_nmap C-u
+function ble/widget/vi-rlfunc/unix-line-discard {
+  _ble_keymap_vi_opfunc=d
+  ble/widget/vi-command/beginning-of-line
+}
+# rl_nmap #
+function ble/widget/vi-rlfunc/insert-comment {
+  local ARG FLAG REG; ble/keymap:vi/get-arg ''
+  ble/keymap:vi/mark/start-edit-area
+  ble/widget/insert-comment/.insert "$ARG"
+  ble/keymap:vi/mark/end-edit-area
+  ble/widget/vi-command/accept-line
+}
+# rl_nmap C-v, C-q
+function ble/widget/vi-rlfunc/quoted-insert.hook {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  ble/keymap:vi/mark/start-edit-area
+  _ble_edit_arg=$ARG ble/widget/self-insert
+  ble/keymap:vi/mark/end-edit-area
+  ble/keymap:vi/repeat/record
+  ble/keymap:vi/adjust-command-mode
+  return 0
+}
+function ble/widget/vi-rlfunc/quoted-insert {
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/vi-rlfunc/quoted-insert.hook
+  return 147
+}
+# rl_nmap C-d
+function ble/widget/vi-rlfunc/eof-maybe {
+  if [[ ! $_ble_edit_str ]]; then
+    ble/widget/exit
+    ble/keymap:vi/adjust-command-mode # ジョブがあるときは終了しないので。
+    return 1
+  elif ble-edit/is-single-complete-line; then
+    ble/widget/vi-command/accept-line
+  else
+    local ARG FLAG REG; ble/keymap:vi/get-arg 1
+    ble/keymap:vi/mark/start-edit-area
+    _ble_edit_ind=${#_ble_edit_str}
+    _ble_edit_arg=$ARG
+    ble/widget/self-insert
+    ble/keymap:vi/mark/end-edit-area
+    ble/keymap:vi/adjust-command-mode
+  fi
+}
+# rl_nmap _
+function ble/widget/vi-rlfunc/yank-arg {
+  ble/widget/vi_nmap/append-mode
+  ble/keymap:vi/imap-repeat/reset
+  local -a KEYS; KEYS=(32)
+  ble/widget/self-insert
+  ble/util/unlocal KEYS
+  ble/widget/insert-last-argument
+  return
 }
 
 # rlfunc: forward-byte, backward-byte

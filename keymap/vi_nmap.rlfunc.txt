@@ -7,7 +7,7 @@ backward-char                     vi-command/backward-char
 backward-delete-char              -
 backward-kill-line                -
 backward-kill-word                -
-backward-word                     -
+backward-word                     vi-command/backward-vword
 beginning-of-history              -
 beginning-of-line                 vi-command/beginning-of-line
 bracketed-paste-begin             vi-command/bracketed-paste
@@ -48,7 +48,7 @@ forward-backward-delete-char      -
 forward-byte                      vi-command/forward-byte
 forward-char                      vi-command/forward-char
 forward-search-history            history-isearch-forward
-forward-word                      -
+forward-word                      vi-command/forward-vword
 glob-complete-word                -
 glob-expand-word                  -
 glob-list-expansions              -
@@ -58,13 +58,13 @@ history-search-backward           -
 history-search-forward            -
 history-substring-search-backward -
 history-substring-search-forward  -
-insert-comment                    -
+insert-comment                    vi-rlfunc/insert-comment
 insert-completions                -
 insert-last-argument              -
 kill-line                         vi_nmap/kill-forward-line
 kill-region                       -
 kill-whole-line                   -
-kill-word                         -
+kill-word                         vi-rlfunc/kill-word
 magic-space                       -
 menu-complete                     -
 menu-complete-backward            -
@@ -86,7 +86,7 @@ possible-variable-completions     complete show_menu:context=variable
 previous-history                  history-prev
 previous-screen-line              -
 print-last-kbd-macro              print-keyboard-macro
-quoted-insert                     -
+quoted-insert                     vi-rlfunc/quoted-insert
 re-read-init-file                 vi_nmap/@adjust re-read-init-file
 redraw-current-line               redraw-line
 reverse-search-history            history-isearch-backward
@@ -101,14 +101,14 @@ shell-kill-word                   -
 skip-csi-sequence                 -
 start-kbd-macro                   start-keyboard-macro
 tab-insert                        -
-tilde-expand                      -
+tilde-expand                      vi_nmap/@edit tilde-expand
 transpose-chars                   transpose-chars
 transpose-words                   -
 tty-status                        -
 undo                              vi_nmap/undo
 universal-argument                -
 unix-filename-rubout              -
-unix-line-discard                 -
+unix-line-discard                 vi-rlfunc/unix-line-discard
 unix-word-rubout                  -
 upcase-word                       vi_nmap/upcase-eword
 vi-append-eol                     vi_nmap/append-mode-at-end-of-line
@@ -138,7 +138,7 @@ vi-complete                       -
 vi-delete                         vi_nmap/kill-forward-char
 vi-delete-to                      vi-rlfunc/delete-to
 vi-editing-mode                   -
-vi-eof-maybe                      -
+vi-eof-maybe                      vi-rlfunc/eof-maybe
 vi-fetch-history                  vi-command/history-end
 vi-first-print                    vi-command/first-non-space
 vi-goto-mark                      vi-command/goto-mark
@@ -158,7 +158,7 @@ vi-set-mark                       vi-command/set-mark
 vi-subst                          vi-rlfunc/subst
 vi-tilde-expand                   -
 vi-unix-word-rubout               -
-vi-yank-arg                       -
+vi-yank-arg                       vi-rlfunc/yank-arg
 vi-yank-pop                       -
 vi-yank-to                        vi-rlfunc/yank-to
 yank                              yank
