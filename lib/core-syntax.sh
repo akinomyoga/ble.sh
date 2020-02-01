@@ -4358,7 +4358,7 @@ _ble_syntax_bash_complete_check_prefix[CTX_VALQ]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_CONDI]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_CONDQ]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_ARGVI]='inside-argument variable:='
-_ble_syntax_bash_complete_check_prefix[CTX_ARGEI]='inside-argument variable:= command file'
+_ble_syntax_bash_complete_check_prefix[CTX_ARGEI]='inside-argument variable:= command:D file'
 function ble/syntax/completion-context/.check-prefix/ctx:inside-argument {
   if ((wlen>=0)); then
     local source
@@ -4430,7 +4430,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
   elif ((ctx==CTX_ARGVX)); then
     source=(variable:=)
   elif ((ctx==CTX_ARGEX)); then
-    source=(variable:= command file)
+    source=(variable:= command:D file)
   else
     source=(file)
   fi
@@ -5386,7 +5386,7 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
       local -a value; value=("${ret[@]}")
     fi
 
-    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
+    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
       # failglob 等の理由で展開に失敗した場合
       type=$ATTR_ERR
     elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
@@ -5399,7 +5399,7 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
       fi
     elif ((wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
       ((type=wtype))
-    elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
+    elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
       ble/syntax/highlight/filetype "$value"
 
       # check values
