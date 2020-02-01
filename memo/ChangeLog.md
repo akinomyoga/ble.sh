@@ -8,7 +8,8 @@
 - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
 - main: check `~/.config/blesh/init.sh` `#D1224` a82f961
 - progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247` 0000000
-- decode/kbd: support U+XXXX, @ESC and @NUL for keynames `#D1251` 0000000
+- decode/kbd: support <kbd>U+XXXX</kbd>, <kbd>@ESC</kbd> and <kbd>@NUL</kbd> for keynames `#D1251` 0000000
+- syntax: support `coproc` `#D1252` 0000000
 
 ## Fix
 

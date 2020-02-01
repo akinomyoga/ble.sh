@@ -2688,6 +2688,7 @@ function ble/syntax:bash/check-tilde-expansion {
 #
 
 _ble_syntax_bash_command_CtxAssign[CTX_CMDI]=$CTX_VRHS
+_ble_syntax_bash_command_CtxAssign[CTX_COARGI]=$CTX_VRHS
 _ble_syntax_bash_command_CtxAssign[CTX_ARGVI]=$CTX_ARGVR
 _ble_syntax_bash_command_CtxAssign[CTX_ARGEI]=$CTX_ARGER
 _ble_syntax_bash_command_CtxAssign[CTX_ARGI]=$CTX_ARGQ
@@ -2696,6 +2697,7 @@ _ble_syntax_bash_command_CtxAssign[CTX_CARGI1]=$CTX_CARGQ1
 _ble_syntax_bash_command_CtxAssign[CTX_VALI]=$CTX_VALQ
 _ble_syntax_bash_command_CtxAssign[CTX_CONDI]=$CTX_CONDQ
 
+# 以下の配列はチルダ展開が有効な文脈を無効な文脈に切り替えるのに使っている。
 _ble_syntax_bash_command_IsAssign[CTX_VRHS]=$CTX_CMDI
 _ble_syntax_bash_command_IsAssign[CTX_ARGVR]=$CTX_ARGVI
 _ble_syntax_bash_command_IsAssign[CTX_ARGER]=$CTX_ARGEI
@@ -2854,6 +2856,8 @@ _BLE_SYNTAX_FCTX[CTX_TARGI1]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_TARGI2]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FEND[CTX_TARGI1]=ble/syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_TARGI2]=ble/syntax:bash/ctx-command/check-word-end
+_BLE_SYNTAX_FCTX[CTX_COARGX]=ble/syntax:bash/ctx-command-compound-expect
+_BLE_SYNTAX_FEND[CTX_COARGI]=ble/syntax:bash/ctx-coproc/check-word-end
 
 ## 関数 ble/syntax:bash/starts-with-delimiter-or-redirect
 ##
@@ -2900,6 +2904,69 @@ function ble/syntax:bash/check-here-document-from {
   ((i++))
   nparam=$rematch1
   return 0
+}
+
+function ble/syntax:bash/ctx-coproc/.is-next-compound {
+  # @var ahead
+  #   現在位置 p の次の文字を参照したかどうか
+  local p=$i ahead=1 tail=${text:i}
+
+  # 空白類は無視
+  if local rex=$'^[ \t]+'; [[ $tail =~ $rex ]]; then
+    ((p+=${#BASH_REMATCH}))
+    ahead=1 tail=${text:p}
+  fi
+
+  local is_compound=
+  if [[ $tail == '('* ]]; then
+    is_compound=1
+  elif rex='^[a-z]+|^\[\[?|^[{}!]'; [[ $tail =~ $rex ]]; then
+    local rematch=$BASH_REMATCH
+
+    ((p+=${#rematch}))
+    [[ $rematch == ['{}!'] || $rematch == '[[' ]]; ahead=$?
+
+    rex='^(\[\[|for|select|case|if|while|until|fi|done|esac|then|elif|else|do|[{}!]|coproc|function)$'
+    if  [[ $rematch =~ $rex ]]; then
+      if rex='^[;|&()'$_ble_term_IFS']|^$|^[<>]\(?' ahead=1; [[ ${text:p} =~ $rex ]]; then
+        local rematch=$BASH_REMATCH
+        ((p+=${#rematch}))
+        [[ $rematch && $rematch != ['<>'] ]]; ahead=$?
+        [[ $rematch != ['<>']'(' ]] && is_compound=1
+      fi
+    fi
+  fi
+
+  # 先読みの設定
+  ble/syntax/parse/set-lookahead $((p+ahead-i))
+  [[ $is_compound ]]
+}
+function ble/syntax:bash/ctx-coproc/check-word-end {
+  ble/util/assert '((ctx==CTX_COARGI))'
+
+  # 単語の中にいない時は抜ける
+  ((wbegin<0)) && return 1
+
+  # 未だ続きがある場合は抜ける
+  ble/syntax:bash/check-word-end/is-delimiter || return 1
+
+  local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
+  local word=${text:wbegin:wlen}
+  local wt=$wtype
+
+  if local rex='^[_a-zA-Z0-9]+$'; [[ $word =~ $rex ]]; then
+    if ble/syntax:bash/ctx-coproc/.is-next-compound; then
+      # Note: [_[:alnum:]]+ は一回の読み取りの筈なので、
+      #   此処で遡って代入しても問題ない筈。
+      ((_ble_syntax_attr[wbegin]=ATTR_VAR))
+      ((ctx=CTX_CMDXC,type=CTX_ARGVI))
+      ble/syntax/parse/word-pop
+      return
+    fi
+  fi
+
+  ((ctx=CTX_CMDI,wtype=CTX_CMDX))
+  ble/syntax:bash/ctx-command/check-word-end
 }
 
 ## 配列 _ble_syntax_bash_command_EndCtx
@@ -3051,6 +3118,13 @@ function ble/syntax:bash/ctx-command/check-word-end {
     ('eval')
       ((ctx=CTX_ARGEX))
       processed=builtin ;;
+    ('coproc')
+      if ble/syntax:bash/ctx-coproc/.is-next-compound; then
+        ((ctx=CTX_CMDXC))
+      else
+        ((ctx=CTX_COARGX))
+      fi
+      processed=keyword ;;
     ('function')
       ((ctx=CTX_ARGX))
       local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex
@@ -3324,6 +3398,7 @@ _ble_syntax_bash_command_BeginCtx[CTX_CARGX1]=$CTX_CARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_CARGX2]=$CTX_CARGI2
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX1]=$CTX_TARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX2]=$CTX_TARGI2
+_ble_syntax_bash_command_BeginCtx[CTX_COARGX]=$CTX_COARGI
 
 #%if !release
 ## 配列 _ble_syntax_bash_command_isARGI[ctx]
@@ -3348,6 +3423,7 @@ _ble_syntax_bash_command_isARGI[CTX_CARGQ1]=1 # value (= の後)
 _ble_syntax_bash_command_isARGI[CTX_CARGI2]=1 # in
 _ble_syntax_bash_command_isARGI[CTX_TARGI1]=1 # -p
 _ble_syntax_bash_command_isARGI[CTX_TARGI2]=1 # --
+_ble_syntax_bash_command_isARGI[CTX_COARGI]=1 # var (coproc の後)
 #%end
 function ble/syntax:bash/ctx-command/.check-word-begin {
   if ((wbegin<0)); then
@@ -3379,7 +3455,7 @@ function ble/syntax:bash/ctx-command/.check-word-begin {
 function ble/syntax:bash/ctx-command {
 #%if !release
   if ble/syntax:bash/starts-with-delimiter-or-redirect; then
-    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_FARGX2||ctx==CTX_FARGX3||
+    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_COARGX||
         ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
         ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_CMDXV)) || ble/util/stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble/util/stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
@@ -3445,7 +3521,7 @@ function ble/syntax:bash/ctx-command {
 }
 
 function ble/syntax:bash/ctx-command-compound-expect {
-  ble/util/assert '((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX2))'
+  ble/util/assert '((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX2||ctx==CTX_COARGX))'
   local _ble_syntax_bash_is_command_form_for=
   if ble/syntax:bash/starts-with-delimiter-or-redirect; then
     # "for var in ... / case arg in" を処理している途中で delimiter が来た場合。
@@ -3468,7 +3544,7 @@ function ble/syntax:bash/ctx-command-compound-expect {
     elif [[ $tail =~ ^$_ble_syntax_bash_RexSpaces ]]; then
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
       return 0
-    else
+    elif ((ctx!=CTX_COARGX)); then
       local i0=$i
       ((ctx=CTX_ARGX))
       ble/syntax:bash/ctx-command/.check-delimiter-or-redirect || ((i++))
@@ -3480,8 +3556,8 @@ function ble/syntax:bash/ctx-command-compound-expect {
   # コメント禁止
   local i0=$i
   if ble/syntax:bash/check-comment; then
-    if ((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1)); then
-      # "for var / select var / case arg" を処理している途中でコメントが来た場合
+    if ((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1||ctx==CTX_COARGX)); then
+      # "for var / select var / case arg / coproc" を処理している途中でコメントが来た場合
       ((_ble_syntax_attr[i0]=ATTR_ERR))
     fi
     return 0
@@ -4683,6 +4759,7 @@ _ble_syntax_bash_complete_check_prefix[CTX_FARGI3]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_FARGQ3]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CARGI1]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CARGQ1]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_COARGI]='inside-argument variable command'
 _ble_syntax_bash_complete_check_prefix[CTX_VALI]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_VALQ]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_CONDI]='inside-argument file'
@@ -4748,6 +4825,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-command {
 _ble_syntax_bash_complete_check_prefix[CTX_ARGX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_CARGX1]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_FARGX3]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_COARGX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_ARGVX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_ARGEX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_VALX]=next-argument
@@ -4757,6 +4835,11 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
   local source
   if ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
     source=(argument)
+  elif ((ctx==CTX_COARGX)); then
+    # Note: variable:w でも variable:= でもなく variable にしているのは、
+    #   coproc の後は変数名が来ても "変数代入 " か "coproc 配列名"
+    #   か分からないので、取り敢えず何も挿入しない様にする為。
+    source=(variable command)
   elif ((ctx==CTX_ARGVX)); then
     source=(variable:=)
   elif ((ctx==CTX_ARGEX)); then
@@ -5077,6 +5160,9 @@ function ble/syntax/completion-context/.check-here {
     elif ((ctx==CTX_TARGX2)); then
       ble/syntax/completion-context/.add command "$index"
       ble/syntax/completion-context/.add wordlist:--:'--' "$index"
+    elif ((ctx==CTX_COARGX)); then
+      ble/syntax/completion-context/.add variable:w "$index"
+      ble/syntax/completion-context/.add command "$index"
     elif ((ctx==CTX_RDRF||ctx==CTX_RDRS)); then
       ble/syntax/completion-context/.add file "$index"
     elif ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR)); then
@@ -5314,14 +5400,16 @@ function ble/syntax:bash/extract-command-by-noderef {
 
   # 兄ノードの追加
   ret=$i:$nofs
-  while ble/syntax/tree#previous-sibling "$ret" wvars; do
+  while
+    { [[ ${wtype//[0-9]} ]] || ((wtype!=CTX_CMDI)); } &&
+      ble/syntax/tree#previous-sibling "$ret" wvars
+  do
     [[ ! ${wtype//[0-9]} ]] || continue
     if ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
       ble/array#push comp_words "${_ble_syntax_text:wbeg:wlen}"
       [[ $opts == *:treeinfo:* ]] &&
         ble/array#push tree_words "$ret"
     fi
-    ((wtype==CTX_CMDI)) && break
   done
   ble/array#reverse comp_words
   [[ $opts == *:treeinfo:* ]] &&
@@ -5492,6 +5580,9 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define CTX_TARGX2   syntax_default
   ble/syntax/attr2iface/.define CTX_TARGI1   syntax_default
   ble/syntax/attr2iface/.define CTX_TARGI2   syntax_default
+
+  ble/syntax/attr2iface/.define CTX_COARGX   syntax_default
+  ble/syntax/attr2iface/.define CTX_COARGI   syntax_command
 
   # here documents
   ble/syntax/attr2iface/.define CTX_RDRH    syntax_document_begin
@@ -6404,7 +6495,7 @@ function ble/highlight/layer:syntax/update-error-table {
     fi
 
     # コマンド欠落・引数の欠落
-    if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2)); then
+    if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2||ctx==CTX_COARGX)); then
       # 終端点の着色
       ble/highlight/layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
     fi
