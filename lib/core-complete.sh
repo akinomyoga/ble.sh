@@ -1454,15 +1454,22 @@ function ble/complete/source:command/gen {
   #     [[ :$comp_type: == *:a:* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   #     compgen -A directory -S / -- "$compv_quoted"
   #
-  local ret
-  ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-  ble/complete/util/eval-pathname-expansion "$ret/"
-  ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
+  if [[ $arg != *D* ]]; then
+    local ret
+    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+    ble/complete/util/eval-pathname-expansion "$ret/"
+    ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
+  fi
 }
+## ble/complete/source:command arg
+##   @param[in] arg
+##     arg に D が含まれている時、
+##     ディレクトリ名の列挙を抑制する事を表します。
 function ble/complete/source:command {
   [[ $comps_flags == *v* ]] || return 1
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  local arg=$1
 
   # Try progcomp by "complete -I"
   if ((_ble_bash>=50000)); then
@@ -1486,7 +1493,7 @@ function ble/complete/source:command {
 
   local cand arr
   local compgen
-  ble/util/assign compgen 'ble/complete/source:command/gen'
+  ble/util/assign compgen 'ble/complete/source:command/gen "$arg"'
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do

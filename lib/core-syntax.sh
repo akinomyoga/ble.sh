@@ -4765,7 +4765,7 @@ _ble_syntax_bash_complete_check_prefix[CTX_VALQ]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_CONDI]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_CONDQ]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_ARGVI]='inside-argument variable:='
-_ble_syntax_bash_complete_check_prefix[CTX_ARGEI]='inside-argument variable:= command file'
+_ble_syntax_bash_complete_check_prefix[CTX_ARGEI]='inside-argument variable:= command:D file'
 function ble/syntax/completion-context/.check-prefix/ctx:inside-argument {
   if ((wlen>=0)); then
     local source
@@ -4843,7 +4843,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
   elif ((ctx==CTX_ARGVX)); then
     source=(variable:=)
   elif ((ctx==CTX_ARGEX)); then
-    source=(variable:= command file)
+    source=(variable:= command:D file)
   else
     source=(file)
   fi
@@ -6150,7 +6150,7 @@ function ble/syntax/progcolor/word:default {
 
     # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
     # コマンド名やリダイレクト先ファイル名等の場合は途中で区切って解釈する等の事はしない。
-    if ((wtype==CTX_ARGI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)); then
+    if ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)); then
       local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt" '' url
       if ((ret)); then
         ((p0+=ret))
@@ -6164,7 +6164,7 @@ function ble/syntax/progcolor/word:default {
     ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
     local ret path spec ext value
     ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
-    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
+    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
       # failglob 等の理由で展開に失敗した場合
       ble/syntax/progcolor/word:default/.update-for-pathname "$ATTR_ERR" && return
     elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
@@ -6177,7 +6177,7 @@ function ble/syntax/progcolor/word:default {
         ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)) &&
           ble/syntax/progcolor/word:default/.update-for-pathname "$type" && return
       fi
-    elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
+    elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
       ble/syntax/progcolor/word:default/.update-for-filename "$value" && return
     fi
   fi
