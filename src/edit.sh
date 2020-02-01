@@ -4639,7 +4639,7 @@ function ble/widget/shell-expand-line.expand-word {
   ret=$word; [[ $ret == '~'* ]] && ret='\'$word
   ble/syntax:bash/simple-word/eval-noglob "$ret"
   if [[ $word != $ret || ${#ret[@]} -ne 1 ]]; then
-    flags=${flags}q
+    [[ $opts == *:quote:* ]] && flags=${flags}q
     return
   fi
 
@@ -4690,7 +4690,13 @@ function ble/widget/shell-expand-line.proc {
   changed=1
   ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$out" 1
 }
+## 関数 ble/widget/shell-expand-line opts
+##   @param[in] opts
+##     コロン区切りのオプションです。
+##     quote 直接実行した時と振る舞いが同じになる様に、
+##           展開結果を適切に quote します。
 function ble/widget/shell-expand-line {
+  local opts=:$1:
   ble-edit/content/clear-arg
   ble/widget/history-expand-line
   ble-edit/content/update-syntax
