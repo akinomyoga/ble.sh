@@ -687,6 +687,8 @@ blehook ERR+='ble/function#try TRAPERR'
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
 
+ble/builtin/bind/read-user-settings
+
 _ble_attached=
 function ble-attach {
   if (($#)); then

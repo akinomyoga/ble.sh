@@ -30,8 +30,9 @@
 ## Changes
 - highlight: highlight symlink directories as symlinks `#D1249` 0000000
 - auto-complete: bind `insert-on-end` to `C-e` `#D1250` 0000000
-- edit (`widget/shell-expand-line`): not quote expanded results by default `#D1255`
+- edit (`widget/shell-expand-line`): not quote expanded results by default `#D1255` 0000000
 - decode: delay bind until keymap initialization `#D1258` 0000000
+- decode: read user settings from `bind -Xsp` `#D1259` 0000000
 
 ## Internal changes and fixes
 

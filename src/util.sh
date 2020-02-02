@@ -3623,48 +3623,46 @@ function ble/util/chars2keyseq {
 ## 関数 ble/util/keyseq2chars keyseq
 ##   @arr[out] ret
 function ble/util/keyseq2chars {
-  local keyseq=$1 chars
-  local rex='^([^\]*)\\([0-7]{1,3}|x{1,2}|(C-(\\M-)?|M-(\\C-)?)*.)'
-  chars=()
+  local keyseq=$1
+  local -a chars=()
+  local mods=
+  local rex='^([^\]+)|^\\([CM]-|[0-7]{1,3}|x{1,2}|.)?'
   while [[ $keyseq =~ $rex ]]; do
     local text=${BASH_REMATCH[1]} esc=${BASH_REMATCH[2]}
     keyseq=${keyseq:${#BASH_REMATCH}}
-    ble/util/s2chars "$text"
-    ble/array#push chars "${ret[@]}"
-
-    local mflags=
-    case $esc in
-    (x?*) ble/array#push chars $((16#${esc#x}));;
-    ([0-7]*) ble/array#push chars $((8#$esc)) ;;
-    (a) ble/array#push chars 7 ;;
-    (b) ble/array#push chars 8 ;;
-    (t) ble/array#push chars 9 ;;
-    (n) ble/array#push chars 10 ;;
-    (v) ble/array#push chars 11 ;;
-    (f) ble/array#push chars 12 ;;
-    (r) ble/array#push chars 13 ;;
-    (e) ble/array#push chars 27 ;;
-    (d) ble/array#push chars 127 ;;
-    ('C-?')    ble/array#push chars 127 ;;
-    ('M-\C-?') ble/array#push chars 255 ;;
-    ('C-'?)    mflags=sc  ;;
-    ('C-\M-'?) mflags=sec ;;
-    ('M-'?)    mflags=sm  ;;
-    ('M-\C-'?) mflags=scm ;;
-    (*)        mflags=s   ;;
-    esac
-
-    if [[ $mflags == *s* ]]; then
-      ble/util/s2c "${esc:${#esc}-1}"; local key=$ret
-      [[ $mflags == *e* ]] && ble/array#push chars 27
-      [[ $mflags == *c* ]] && ((key&=0x1F))
-      [[ $mflags == *m* ]] && ((key|=0x80))
-      ble/array#push chars "$key"
+    if [[ $text ]]; then
+      ble/util/s2chars "$text"
+    else
+      ret=()
+      case $esc in
+      ([CM]-)  mods=$mods${esc::1}; continue ;;
+      (x?*)    ret=$((16#${esc#x})) ;;
+      ([0-7]*) ret=$((8#$esc)) ;;
+      (a) ret=7 ;;
+      (b) ret=8 ;;
+      (t) ret=9 ;;
+      (n) ret=10 ;;
+      (v) ret=11 ;;
+      (f) ret=12 ;;
+      (r) ret=13 ;;
+      (e) ret=27 ;;
+      (d) ret=127 ;;
+      (*) ble/util/s2c "$esc" ;;
+      esac
     fi
+
+    [[ $mods == *C* ]] && ((ret=ret==63?127:(ret&0x1F)))
+    [[ $mods == *M* ]] && ble/array#push chars 27
+    #[[ $mods == *M* ]] && ((ret|=0x80))
+    mods=
+    ble/array#push chars "${ret[@]}"
   done
 
-  ble/util/s2chars "$keyseq"
-  ble/array#push chars "${ret[@]}"
+  if [[ $mods ]]; then
+    [[ $mods == *M* ]] && ble/array#push chars 27
+    ble/array#push chars 0
+  fi
+
   ret=("${chars[@]}")
 }
 

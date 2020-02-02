@@ -2571,8 +2571,8 @@ function ble/decode/attach/.generate-source-to-unbind-default/.process {
 
     mode == 1 && $0 ~ /^"/ {
       # Workaround Bash-5.0 bug (cf #D1078)
-      sub(/^"\\C-\\\\\\"/, "\"\\C-\\\\\"");
-      sub(/^"\\C-\\"/, "\"\\C-\\\\\"");
+      sub(/^"\\C-\\\\\\"/, "\"\\x1c\\x5c\"");
+      sub(/^"\\C-\\\\?"/, "\"\\x1c\"");
 
       output_bindr($0);
 
@@ -2639,7 +2639,7 @@ function ble-decode/unbind {
 
 function ble/decode/initialize {
   ble/decode/cmap/initialize
-  ble/builtin/bind/initialize-inputrc
+  ble/builtin/bind/read-user-settings
 }
 
 ## @var _ble_decode_bind_state
@@ -3286,8 +3286,129 @@ function ble/builtin/bind/initialize-inputrc {
   local inputrc=${INPUTRC:-$HOME/.inputrc}
   [[ -e $inputrc ]] && ble/decode/read-inputrc "$inputrc"
 }
+
+# user 設定の読み込み
+_ble_builtin_bind_user_settings_loaded=
+function ble/builtin/bind/.reconstruct-user-settings {
+  local map q=\'
+  for map in vi-insert vi-command emacs; do
+    local cache=$_ble_base_cache/decode.readline.$_ble_bash.$map.txt
+    if [[ ! -s $cache ]]; then
+      "$BASH" --norc -i -c "bind -m $map -p" | ble/bin/sed '/^#/d;s/"\\M-/"\\e/' > $cache.part &&
+        ble/bin/mv "$cache.part" "$cache" || continue
+    fi
+  
+    echo __CLEAR__
+    echo KEYMAP="$map"
+    echo __BIND0__
+    ble/bin/cat "$cache"
+    if ((_ble_bash>=40300)); then
+      echo __BINDX__
+      builtin bind -m "$map" -X
+    fi
+    echo __BINDS__
+    builtin bind -m "$map" -s
+    echo __BINDP__
+    builtin bind -m "$map" -p
+    echo __PRINT__
+  done | LC_ALL= LC_CTYPE=C awk -v q="$q" -v _ble_bash="$_ble_bash" '
+    function keymap_register(key, val, type) {
+      if (!haskey[key]) {
+        keys[nkey++] = key;
+        haskey[key] = 1;
+      }
+      keymap[key] = val;
+      keymap_type[key] = type;
+    }
+    function keymap_clear(_, i, key) {
+      for(i = 0; i < nkey; i++) {
+        key = keys[i];
+        delete keymap[key];
+        delete keymap_type[key];
+        delete keymap0[key];
+        haskey[key] = 0;
+      }
+      nkey = 0;
+    }
+    function keymap_print(_, i, key, type, value, text, line) {
+      for (i = 0; i < nkey; i++) {
+        key = keys[i];
+        type = keymap_type[key];
+        value = keymap[key];
+        if (type == "" && value == keymap0[key]) continue;
+  
+        text = key ": " value;
+        gsub(/'$q'/, q "\\" q q, text);
+  
+        line = "bind";
+        if (KEYMAP != "") line = line " -m " KEYMAP;
+        if (type == "x") line = line " -x";
+        line = line " " q text q;
+        print line;
+      }
+    }
+  
+    /^__BIND0__$/ { mode = 0; next; }
+    /^__BINDX__$/ { mode = 1; next; }
+    /^__BINDS__$/ { mode = 2; next; }
+    /^__BINDP__$/ { mode = 3; next; }
+    /^__CLEAR__$/ { keymap_clear(); next; }
+    /^__PRINT__$/ { keymap_print(); next; }
+    sub(/^KEYMAP=/, "") { KEYMAP = $0; }
+  
+    /ble-decode\/.hook / { next; }
+
+    function workaround_bashbug(keyseq, _, rex, out, unit) {
+      out = "";
+      while (keyseq != "") {
+        if (mode == 0 || mode == 3) {
+          match(keyseq, /^\\C-\\(\\"$)?|^\\M-|^\\.|^./);
+        } else {
+          #%# bind -X, bind -s には問題はない
+          match(keyseq, /^\\[CM]-|^\\.|^./);
+        }
+        unit = substr(keyseq, 1, RLENGTH);
+        keyseq = substr(keyseq, 1 + RLENGTH);
+
+        if (unit == "\\C-\\") {
+          #%# Bash 3.0--5.0 Bug https://lists.gnu.org/archive/html/bug-bash/2020-01/msg00037.html
+          unit = unit "\\";
+        } else if (unit == "\\M-") {
+          #%# Bash 3.1 以下では ESC は \M- と出力される
+          unit = "\\e";
+        }
+        out = out unit;
+      }
+      return out;
+    }
+  
+    match($0, /^"(\\.|[^"])+": /) {
+      key = substr($0, 1, RLENGTH - 2);
+      val = substr($0, 1 + RLENGTH);
+      if (_ble_bash < 50100)
+        key = workaround_bashbug(key);
+      if (mode) {
+        type = mode == 1 ? "x" : mode == 2 ? "s" : "";
+        keymap_register(key, val, type);
+      } else {
+        keymap0[key] = val;
+      }
+    }
+  '
+}
+function ble/builtin/bind/read-user-settings {
+  if [[ $_ble_decode_bind_state == none ]]; then
+    [[ $_ble_builtin_bind_user_settings_loaded ]] && return
+    _ble_builtin_bind_user_settings_loaded=1
+    bind # inputrc を読ませる
+    local settings
+    ble/util/assign settings ble/builtin/bind/.reconstruct-user-settings
+    eval -- "$settings"
+  fi
+}
+
 function ble/builtin/bind {
-  ble/builtin/bind/initialize-inputrc
+  ble/builtin/bind/read-user-settings
   local flags=
   ble/builtin/bind/.process "$@"
   if [[ $_ble_decode_bind_state == none ]]; then
