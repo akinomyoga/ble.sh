@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されうるので、
-# 先に ble-edit/bind/load-keymap-definition:vi を上書きする必要がある。
-ble/is-function ble-edit/bind/load-keymap-definition:vi && return
-function ble-edit/bind/load-keymap-definition:vi { :; }
+# Note: bind (INITIALIZE_DEFMAP) の中から再帰的に呼び出されうるので、
+# 先に ble-edit/bind/load-editing-mode:vi を上書きする必要がある。
+ble/is-function ble-edit/bind/load-editing-mode:vi && return
+function ble-edit/bind/load-editing-mode:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
 
@@ -5538,7 +5538,6 @@ function ble/widget/vi_omap/switch-to-blockwise {
 }
 
 function ble-decode/keymap:vi_omap/define {
-  local ble_bind_keymap=vi_omap
   ble/keymap:vi/setup-map
 
   ble-bind -f __default__ vi_omap/__default__
@@ -5731,8 +5730,6 @@ function ble/widget/vi_nmap/decrement {
 }
 
 function ble-decode/keymap:vi_nmap/define {
-  local ble_bind_keymap=vi_nmap
-
   ble/keymap:vi/setup-map
 
   ble-bind -f __default__ vi-command/decompose-meta
@@ -7375,7 +7372,6 @@ function ble/widget/vi_xmap/progressive-decrement { ble/widget/vi_xmap/increment
 #--------------------------------------
 
 function ble-decode/keymap:vi_xmap/define {
-  local ble_bind_keymap=vi_xmap
   ble/keymap:vi/setup-map
 
   ble-bind -f __default__ vi-command/decompose-meta
@@ -7435,8 +7431,6 @@ function ble-decode/keymap:vi_xmap/define {
 }
 
 function ble-decode/keymap:vi_smap/define {
-  local ble_bind_keymap=vi_smap
-
   ble-bind -f __default__ vi-command/decompose-meta
 
   ble-bind -f 'ESC' vi_xmap/exit
@@ -7670,8 +7664,6 @@ function ble/widget/vi_imap/delete-backward-indent-or {
 #------------------------------------------------------------------------------
 
 function ble-decode/keymap:vi_imap/define {
-  local ble_bind_keymap=vi_imap
-
   #----------------------------------------------------------------------------
   # common bindings
 
@@ -7933,8 +7925,6 @@ function ble/widget/vi_cmap/__before_widget__ {
 }
 
 function ble-decode/keymap:vi_cmap/define {
-  local ble_bind_keymap=vi_cmap
-
   #----------------------------------------------------------------------------
   # common bindings + modifications
 
@@ -7983,23 +7973,15 @@ function ble-decode/keymap:vi/initialize {
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi..."
 
-  ble-decode/keymap:isearch/define
-  ble-decode/keymap:nsearch/define
-  ble-decode/keymap:vi_imap/define
-  ble-decode/keymap:vi_nmap/define
-  ble-decode/keymap:vi_omap/define
-  ble-decode/keymap:vi_xmap/define
-  ble-decode/keymap:vi_cmap/define
-
   {
-    ble-decode/keymap/dump isearch
-    ble-decode/keymap/dump nsearch
-    ble-decode/keymap/dump vi_imap
-    ble-decode/keymap/dump vi_nmap
-    ble-decode/keymap/dump vi_omap
-    ble-decode/keymap/dump vi_xmap
-    ble-decode/keymap/dump vi_cmap
-  } >| "$fname_keymap_cache"
+    ble-decode/keymap/load isearch dump
+    ble-decode/keymap/load nsearch dump
+    ble-decode/keymap/load vi_imap dump
+    ble-decode/keymap/load vi_nmap dump
+    ble-decode/keymap/load vi_omap dump
+    ble-decode/keymap/load vi_xmap dump
+    ble-decode/keymap/load vi_cmap dump
+  } 3>| "$fname_keymap_cache"
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi... done"
 }

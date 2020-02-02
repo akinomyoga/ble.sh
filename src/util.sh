@@ -1415,6 +1415,12 @@ function ble/util/openat/finalize {
   _ble_util_openat_fdlist=()
 }
 
+function ble/util/print-quoted-command {
+  local out=$1; shift
+  local arg q=\' Q="'\''"
+  for arg; do out="$out $q${arg//$q/$Q}$q"; done
+  ble/util/print "$out"
+}
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
     declare -p "$@" | ble/bin/awk -v _ble_bash="$_ble_bash" '

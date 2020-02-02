@@ -758,8 +758,6 @@ function ble/widget/menu/accept {
 }
 
 function ble-decode/keymap:menu/define {
-  local ble_bind_keymap=menu
-
   # ble-bind -f __defchar__ menu_complete/self-insert
   # ble-bind -f __default__ 'menu_complete/exit-default'
   ble-bind -f __default__ 'bell'
@@ -4579,8 +4577,6 @@ function ble/widget/menu_complete/exit-default {
 }
 
 function ble-decode/keymap:menu_complete/define {
-  local ble_bind_keymap=menu_complete
-
   # ble-bind -f __defchar__ menu_complete/self-insert
   ble-bind -f __default__ 'menu_complete/exit-default'
   ble-bind -f C-m         'menu_complete/accept'
@@ -5043,8 +5039,6 @@ function ble/widget/auto_complete/notify-enter {
   ble/decode/widget/skip-lastwidget
 }
 function ble-decode/keymap:auto_complete/define {
-  local ble_bind_keymap=auto_complete
-
   ble-bind -f __defchar__ auto_complete/self-insert
   ble-bind -f __default__ auto_complete/cancel-default
   ble-bind -f 'C-g'       auto_complete/cancel
@@ -5572,7 +5566,6 @@ function ble/widget/dabbrev/accept-line {
   ble-decode-key 13
 }
 function ble-decode/keymap:dabbrev/define {
-  local ble_bind_keymap=dabbrev
   ble-bind -f __default__ 'dabbrev/exit-default'
   ble-bind -f 'C-g'       'dabbrev/cancel'
   ble-bind -f 'C-x C-g'   'dabbrev/cancel'

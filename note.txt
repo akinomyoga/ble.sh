@@ -953,6 +953,9 @@ bash_tips
   * 前々から発生していたが曖昧補完などを実行すると時々ごみが残る。
     これは何故だろうか。そもそもカーソルよりも右に何か文字列が入るはずがないのに?
 
+    再現させようとしても再現できない。
+    これは実際に起った時に再度確かめる必要があるのである。
+
   * stackdump
 
     以下の様な内容。再現しない。編集手順を記録する? 後、その場で ble_debug=1 にする機能が欲しい。
@@ -971,6 +974,9 @@ bash_tips
       @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode/EPILOGUE)
 
     取り敢えず f11 で ble_debug を toggle して f12 で編集履歴を出力する様にした @ blerc
+    本質的にはそんなに複雑な構造はしていないのだからすぐに再現しそうな気がしたが再現しない。
+    或いは一時的な物で既に直ってしまった可能性もなくはない。
+    echo 1 | ( echo; for n; do if ((n!=i)); then if ((i==i0)); then echo $i0-$i; ; ((i++)); done )
 
 2020-01-21
 
@@ -1603,11 +1609,14 @@ bash_tips
       それから PROMPT_COMMAND を上書きすると使えなくなってしまうからという事。
       ユーザに PROMPT_COMMAND を設定しないように要求するのは面倒である。
 
-  * bind: `bind -XpPS` 等から現在の設定を読み取る?
+  * 2019-02-09 bind: `bind -XpPS` 等から現在の設定を読み取る?
 
     現状で bind -X が信用出来ないので、完全な対応は不可能である。
     その様に考えるとやはり builtin bind を上書きして設定を読み取る方が現実的である。
     なので、現在の bashrc の冒頭でロードして、末尾で attach するという形式は当面変わらない。
+
+    * Note: 2019-12-14 bind -X については bash に修正が入った。
+      https://lists.gnu.org/archive/html/bug-bash/2019-12/msg00053.html
 
     * Note: 2019-12-30 detach 時の復元に関して。
       現状では bind -X の設定を読み込んでから
@@ -1621,6 +1630,56 @@ bash_tips
     * Note: 2019-12-30 特にこの項目が意図しているのは
       detach 時の復元ではなくて attach 時に ble.sh keymap に反映させるという話である。
       一方で bind -Xps の出力は \C-\ の振る舞いが微妙なので色々面倒である。
+
+    2020-02-01 やはり README を読まずにいきなり bashrc の末尾で source して
+    ble.sh が key binding を上書きしている。unbind が設定できるようにするべき、
+    等と言いがかりをつけて来る人が現れた。やはり bind -Xps から設定を読み取れる様にしたい。
+
+    ? Bash \C-\ vs \C-\\ Bug の処理
+      さて、その時に問題になるのが C-\ をどう解釈するのかという事。
+      取り敢えず \C-\M または \M-\C 以外の時は単独で解釈する事にする?
+      否、\C-\\ も特別扱いしなければならない。うーん。
+      →これは ble/builtin/bind の実装の問題なので別に考えるべき事?
+      或いは ble.sh では \C-\\ に対応する事にして、
+      但し、bind の出力は補正して記録する様にする。という事?
+      そもそも補正する事は可能なのだろうか。
+
+    先ず、既定の設定との差分を取りたい。
+    取り敢えず既定の設定は以下の様な感じにして取得できる。
+    bash-$a --norc -i -c 'bind -p' | sed '/^#/d;s/"\\M-/"\\e/'
+    既定の設定との差分はどの様にして取るのが良いか。
+    diff を呼び出してその結果を解析するのは面倒である。
+    それならば awk で複雑になるかもしれないがちゃんと処理する方が良い気がする。
+    →取り敢えず awk を使って検出できる様にはなった。
+      然し、検出した物をどのタイミングで評価すれば良いのか。
+
+    inputrc を読み取る作戦にしていた時はどのようにしていたか。
+    うーん。inputrc の読み取り自体を遅延して、
+    最初に bind を呼び出した時に読み出す様にしていた気がする。
+    →やはりそうなっている。
+
+    ? では何故その場で bind を評価する様にしていたのか。
+
+      | 何故 bind 自体を遅延する様にしていなかったのか。
+      | これには何か理由があった様な気がするが思い出せない。
+      | →inputrc の読み取りに最初に対応したのは #D1038 であった。
+      | inputrc の読み取りのタイミングについて議論があるのは #D1127 である。
+      | ここでの議論によると、bind をした順序によってどちらが上書きされて
+      | どちらが残るのかが変わるので順序は変更できない。
+      | なので、bind を実行する前に inputrc は読み込んでおかなければならない、
+      | という話になっている。
+
+      bind の順序を保持する為に bind 前に inputrc を読んでおく必要があるという話
+
+    それならば全ての bind を遅延させる事にしておけば問題ないという気がする。
+
+    [実装]
+
+    * bind の評価は keymap 初期化迄遅延する様にする #D1258
+
+    * readline 既定の設定をキャッシュする
+    * \C-\, \C-\\ の補正の可能性
+    * vi mode の時は read も vi mode になっているべきではないのか?
 
 2018-09-21
 
@@ -2616,7 +2675,129 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-02-02
+
+  * decode: bind の評価を keymap 初期化迄遅延 [#D1258]
+
+    どの keymap に記録する様にするのが良いのか。
+    1. bind に直接 -m が指定されている時はそれを使う。
+    2. bleopt で keymap が指定されている場合にはそれを使う。
+      inputrc の中ではそれは無視する? うーん。
+      inputrc の中で keymap を指定している時にはそれを使う。
+      或いは bind 経由の時には ble の keymap は無視して、
+      その時の vi/emacs の keymap で処理してしまって問題ない?
+      取り敢えず default_keymap は考えずに実装する。
+      そもそも今迄もその様に実装していたのではなかったのか。
+
+    実装を辿っていくと
+    ble-decode-key/{bind,unbind} 辺りが最終的には呼び出されている。
+    ble/builtin/bind の枠組みよりは更にその上の枠組に於いて、
+    bind の呼び出しを遅延させる方が実装として自然である。
+    その様に修正する事にする。
+
+    現在の実装では ble-decode/DEFAULT_KEYMAP を呼び出した時に
+    keymap も完全にロードしてしまう仕組みになっている。
+    うーん。完全にロードする必要がない時には別の関数を呼び出す?
+
+    * done: ble-decode-key/bind の引数に kmap を指定する様に変更する
+    * done: DEFAULT_KEYMAP は INITIALIZE_DEFMAP に改名した
+
+    うーん。遅延させる様にしようとしたが、
+    これだとあらゆる keymap が遅延されてしまう。
+    どのタイミングで具体的に keymap を生成するのか。
+    遅延させるのは default-keymap だけで良いのではないのか。
+
+    そもそも現在の keymap の初期化順序としてどのような可能性があるのか分からない。
+    ? INITIALIZE_DEFMAP は必ず通過するのか? 調べてみたがそうでもない気がする。
+    以下の様な構成になっている。
+
+      | ble-decode/keymap/load
+      |   <del>ble/util/import "keymap/$1.sh"</del>
+      |   ble-decode/keymap:$1/define
+      |   ble-decode/keymap/register "$1"
+      |
+      | ble-decode/keymap/push
+      |   ble-decode/keymap/load 同上
+      |
+      | ble/builtin/bind/.initialize-kmap
+      |   ble-bind/load-keymap
+      |     ble-decode/keymap/load 同上
+      | ble-bind
+      |   ble-bind/load-keymap
+      |     ble-decode/keymap/load 同上
+      |
+      | ble-edit/bind/load-keymap-definition
+      |   ble-edit/bind/load-keymap-definition:"$name"
+      |   source "$_ble_base/keymap/$name.sh"
+      |   ここでは /define までは必ずしも呼び出さない。呼び出す場合もある。
+
+    * done: ble-decode/keymap:$1/define の中で regiter, onload を呼び出す。
+      と思ったが /define の呼び出し元が限られているのだとすれば、
+      呼び出し元を本当に制限して、呼び出し元の側で必要な処理を実行すれば良い気がする。
+
+      /define の呼び出し元を列挙する。結局本質的に一箇所しか無い様なのでOK
+
+      と思って修正したが、よく考えると各 editing-mode でのキャッシュは
+      onload でユーザの指定した修正を適用する前の物を dump しなければならない。
+      うーん。opts=raw とした時には onload は実行しない様にする?
+      或いは opts=dump とした時に特定の fd に対して raw の定義を出力する?
+      後者を採用する事にした。
+
+    * done: ble-decode/keymap:$1/define に関しては keymap/$1.sh は参照しない。
+      これは本当にそれで良いのだろうか。
+      将来的にはこちらの方を keymap/$1.sh にして、editing mode の方を別名にするべきでは。
+      と思ったが現状で利用していないのでそれで良い。
+      それにその keymap を利用する機能がロードされた時に
+      ble-decode/keymap:$1/define が定義される様に計らうべきである。
+      よって、 ble-decode/keymap/load からは keymap/$1.sh のロードは削除する。
+    * done: ble-edit/bind/load-keymap-definition の中の source は import に置き換える。
+    * done: ble-edit/bind/load-{keymap-definition -> editing-mode}
+    x fixed: 見事に起動しなくなった。駄目だ。うーん。ble-bind が動いていない様だ。
+      →これは簡単なミスだった。修正した。
+    * done: /define の中で自分で ble_bind_keymap 等を設定しなくても良くなった。削除する。
+      削除した。動いている。
+
+    | 結局、以下の様な仕組みになっている様だ。
+    |
+    | 1. 先ず初めに編集モード全体の読み込みを行う
+    |   ble-decode/INITIALIZE_DEFMAP
+    |     ble-edit/bind/load-editing-mode
+    |       ble-decode/keymap:$1/define の存在を保証
+    | 2. 次に必要になった時に各 keymap を初期化する
+
+    * done: ble/builtin/bind/.initialize-kmap, ble-bind/load-keymap の呼び出しを省略する
+      取り敢えずこれらの関数では basemap 名の取得に留める事にした。
+    * ble-decode/INITIALIZE_DEFMAP の呼び出しを削減する。(初期化を遅延する)
+      * done: ble/builtin/read で ble-decode/keymap/push read する前に
+        ble-decode/INITIALIZE_DEFMAP を呼び出していたが無駄な気がするので削除する。
+        これは本当に大丈夫だろうか? keymap/pop した後に固まる可能性は?
+        →やはり keymap/pop した後も _ble_edit_read_accept=1 経由で停止するので、
+        元々設定されていた keymap が使われるという事は起こらない。
+        やはりなくて良い気がする。
+    * ok: ble-decode/INITIALIZE_DEFMAP を適切な名前に変更
+      これは現状のままで良さそうな気がする。
+    * done: .onload で遅延させた設定を読み込む様にした
+
+    * ok: keymap:*/define に対して軒並み autoload しているが
+      % これは今でも必要だろうか。今回の改修で不要になった可能性は?
+      % 元々の動機を調べて不要になったのであれば削除する。
+      →これはやはり ble-bind で変な keymap に誤って登録しない為に、
+      どの様な keymap が存在するかを事前に分かる様にする為に残す事にする。
+
+    [動作確認]
+
+    本当に遅延されているのだろうか? 初期化のタイミングを調べれば良い。
+    x fixed: bind.delay.$keymap の中を覗くと引数が全く保存されていない。
+      これは ble/util/pritn-quoted-command のバグだった。修正した。
+    取り敢えず遅延はされている様である。
+    しかし、widget が見つからないというエラーメッセージが出る。
+    うーん。widget のチェックも遅延させるべきだろうか?
+
 2020-02-01
+
+  * syntax: ((1))a と入力するとエラーメッセージが出る [#D1257]
+    これは恐らく着色のコードが悪い。修正した。
+    coproc 対応の時の抜けだった。
 
   * Bash Readline 束縛との互換性 [#D1256]
     fzf の様な既定の bash の binding を想定する様な枠組みの場合、

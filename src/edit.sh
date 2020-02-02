@@ -2407,8 +2407,6 @@ function ble/widget/yankpop/exit-default {
   ble/decode/widget/redispatch "${KEYS[@]}"
 }
 function ble-decode/keymap:yankpop/define {
-  local ble_bind_keymap=yankpop
-
   ble-decode/keymap:safe/bind-arg yankpop/exit-default
   ble-bind -f __default__ 'yankpop/exit-default'
   ble-bind -f 'C-g'       'yankpop/cancel'
@@ -2587,8 +2585,6 @@ function ble/highlight/layer:region/mark:insert/get-face {
 }
 
 function ble-decode/keymap:lastarg/define {
-  local ble_bind_keymap=lastarg
-
   ble-decode/keymap:safe/bind-arg lastarg/exit-default
 
   ble-bind -f __default__ 'lastarg/exit-default'
@@ -5789,8 +5785,6 @@ function ble/widget/history-isearch-forward {
 }
 
 function ble-decode/keymap:isearch/define {
-  local ble_bind_keymap=isearch
-
   ble-bind -f __defchar__ isearch/self-insert
   ble-bind -f C-r         isearch/backward
   ble-bind -f C-s         isearch/forward
@@ -6107,8 +6101,6 @@ function ble/widget/nsearch/accept-line {
 }
 
 function ble-decode/keymap:nsearch/define {
-  local ble_bind_keymap=nsearch
-
   ble-bind -f __default__ nsearch/exit-default
   ble-bind -f 'C-g'       nsearch/cancel
   ble-bind -f 'C-x C-g'   nsearch/cancel
@@ -6356,7 +6348,6 @@ function ble/widget/safe/__attach__ {
   ble-edit/info/set-default text ''
 }
 function ble-decode/keymap:safe/define {
-  local ble_bind_keymap=safe
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
@@ -6392,7 +6383,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -c 'M-z'      fg
 }
 
-function ble-edit/bind/load-keymap-definition:safe {
+function ble-edit/bind/load-editing-mode:safe {
   ble-decode/keymap/load safe
 }
 
@@ -6423,7 +6414,6 @@ function ble/widget/read/cancel {
 }
 
 function ble-decode/keymap:read/define {
-  local ble_bind_keymap=read
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
@@ -6510,8 +6500,7 @@ function ble/builtin/read/.read-arguments {
 
 function ble/builtin/read/.setup-textarea {
   # 初期化
-  local def_kmap; ble-decode/DEFAULT_KEYMAP -v def_kmap
-  ble-decode/keymap/push read
+  ble-decode/keymap/push read || return 1
 
   [[ $_ble_edit_read_context == external ]] &&
     _ble_canvas_panel_height[0]=0
@@ -6541,6 +6530,7 @@ function ble/builtin/read/.setup-textarea {
   # syntax, highlight
   _ble_syntax_lang=text
   _ble_highlight_layer__list=(plain region overwrite_mode disabled)
+  return 0
 }
 function ble/builtin/read/TRAPWINCH {
   local IFS=$_ble_term_IFS
@@ -6560,7 +6550,7 @@ function ble/builtin/read/.loop {
   shopt -u failglob
 
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
-  ble/builtin/read/.setup-textarea
+  ble/builtin/read/.setup-textarea || return 1
   builtin trap -- ble/builtin/read/TRAPWINCH WINCH
 
   local ret= timeout=
@@ -7309,16 +7299,14 @@ function ble/widget/.EDIT_COMMAND {
 }
 
 ## ble-decode.sh 用の設定
-function ble-decode/DEFAULT_KEYMAP {
+function ble-decode/INITIALIZE_DEFMAP {
   local ret
   bleopt/get:default_keymap; local defmap=$ret
-  if ble-edit/bind/load-keymap-definition "$defmap"; then
+  if ble-edit/bind/load-editing-mode "$defmap"; then
     local base_keymap=$defmap
     [[ $defmap == vi ]] && base_keymap=vi_imap
     builtin eval -- "$2=\$base_keymap"
-    if ble-decode/keymap/is-keymap "$base_keymap" || ble/is-function "ble-decode/keymap:$base_keymap/define"; then
-      return 0
-    fi
+    ble-decode/keymap/is-keymap "$base_keymap" && return 0
   fi
 
   # エラーメッセージ
@@ -7331,24 +7319,24 @@ function ble-decode/DEFAULT_KEYMAP {
   ble/util/buffer.flush >&2
 
   # Fallback keymap "safe"
-  ble-edit/bind/load-keymap-definition safe &&
+  ble-edit/bind/load-editing-mode safe &&
     ble-decode/keymap/load safe &&
     builtin eval -- "$2=safe" &&
     bleopt_default_keymap=safe
 }
 
-function ble-edit/bind/load-keymap-definition {
+function ble-edit/bind/load-editing-mode {
   local name=$1
-  if ble/is-function ble-edit/bind/load-keymap-definition:"$name"; then
-    ble-edit/bind/load-keymap-definition:"$name"
+  if ble/is-function ble-edit/bind/load-editing-mode:"$name"; then
+    ble-edit/bind/load-editing-mode:"$name"
   else
-    source "$_ble_base/keymap/$name.sh"
+    ble/util/import "keymap/$name.sh"
   fi
 }
 function ble-edit/bind/clear-keymap-definition-loader {
-  unset -f ble-edit/bind/load-keymap-definition:safe
-  unset -f ble-edit/bind/load-keymap-definition:emacs
-  unset -f ble-edit/bind/load-keymap-definition:vi
+  unset -f ble-edit/bind/load-editing-mode:safe
+  unset -f ble-edit/bind/load-editing-mode:emacs
+  unset -f ble-edit/bind/load-editing-mode:vi
 }
 
 #------------------------------------------------------------------------------

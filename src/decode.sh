@@ -1094,10 +1094,10 @@ function ble-decode-char/dump {
 ##
 
 ## 変数 _ble_decode_keymap_list := ( ':' kmap )+
-##   存在している kmap の名前の一覧を保持します。
+##   初期化済みの kmap の名前の一覧を保持します。
 ##   既定の kmap (名前無し) は含まれません。
 _ble_decode_keymap_list=
-function ble-decode/keymap/is-keymap {
+function ble-decode/keymap/registered {
   [[ :$_ble_decode_keymap_list: == *:"$1":* ]]
 }
 ## 関数 ble-decode/keymap/.register kmap
@@ -1105,36 +1105,53 @@ function ble-decode/keymap/is-keymap {
 ##     既存の keymap だった時に失敗します。
 ##   @remarks
 ##     この関数は keymap cache から読み出されます。
-function ble-decode/keymap/register {
+function ble-decode/keymap/.register {
   local kmap=$1
   if [[ $kmap && :$_ble_decode_keymap_list: != *:"$kmap":* ]]; then
     _ble_decode_keymap_list=$_ble_decode_keymap_list:$kmap
   fi
 }
-function ble-decode/keymap/unregister {
+function ble-decode/keymap/.unregister {
   _ble_decode_keymap_list=$_ble_decode_keymap_list:
   _ble_decode_keymap_list=${_ble_decode_keymap_list//:"$1":/:}
   _ble_decode_keymap_list=${_ble_decode_keymap_list%:}
 }
-
-function ble-decode/keymap/.is-valid-keymap {
-  builtin eval -- "((\${#_ble_decode_${1}_kmap_[*]}))"
+function ble-decode/keymap/is-keymap {
+  ble-decode/keymap/registered "$1" || ble/is-function "ble-decode/keymap:$1/define"
 }
+
+function ble-decode/keymap/is-empty {
+  ! ble/is-array "_ble_decode_${1}_kmap_" ||
+    builtin eval -- "((\${#_ble_decode_${1}_kmap_[*]}==0))"
+}
+
+function ble-decode/keymap/.onload {
+  local kmap=$1
+  local delay=$_ble_base_run/$$.bind.delay.$kmap
+  if [[ -s $delay ]]; then
+    source "$delay"
+    : >| "$delay"
+  fi
+}
+
 _ble_decode_keymap_load=
 function ble-decode/keymap/load {
-  ble-decode/keymap/is-keymap "$1" && return 0
+  local opts=:$2:
+  ble-decode/keymap/registered "$1" && return 0
 
   local init=ble-decode/keymap:$1/define
+  ble/is-function "$init" || return 1
 
-  # もし関数がなければ keymap/$1.sh から読み込むのを試行する。
-  if ! ble/is-function "$init"; then
-    ble/util/import "keymap/$1.sh" || return 1
-    ble/is-function "$init" || return 1
+  ble-decode/keymap/.register "$1"
+  local ble_bind_keymap=$1
+  if ! "$init" || ble-decode/keymap/is-empty "$1"; then
+    ble-decode/keymap/.unregister "$1"
+    return 1
   fi
 
-  "$init" || return 1
-  ble-decode/keymap/.is-valid-keymap "$1" || return 1
-  ble-decode/keymap/register "$1"
+  [[ $opts == *:dump:* ]] &&
+    ble-decode/keymap/dump "$1" >&3
+  ble-decode/keymap/.onload "$1"
   return 0
 }
 ## 関数 ble-decode/keymap/unload [keymap_name...]
@@ -1150,7 +1167,7 @@ function ble-decode/keymap/unload {
     for array_name in "${array_names[@]}"; do
       unset -v "$array_name"
     done
-    ble-decode/keymap/unregister "$1"
+    ble-decode/keymap/.unregister "$1"
     shift
   done
 }
@@ -1185,8 +1202,9 @@ function ble-decode/keymap/dump {
   if (($#)); then
     local kmap=$1 arrays
     builtin eval "arrays=(\"\${!_ble_decode_${kmap}_kmap_@}\")"
-    ble/util/print "ble-decode/keymap/register $kmap"
+    ble/util/print "ble-decode/keymap/.register $kmap"
     ble/util/declare-print-definitions "${arrays[@]}"
+    ble/util/print "ble-decode/keymap/.onload $kmap"
   else
     local list; ble/string#split-words list "${_ble_decode_keymap_list//:/ }"
     local keymap_name
@@ -1196,14 +1214,26 @@ function ble-decode/keymap/dump {
   fi
 }
 
-## 設定関数 ble-decode/DEFAULT_KEYMAP -v varname
-##   既定の keymap を決定します。
-##   ble-decode.sh 使用コードで上書きして使用します。
-function ble-decode/DEFAULT_KEYMAP {
+## 関数 ble-decode/GET_BASEMAP -v varname
+##   既定の基底 keymap を返します。
+function ble-decode/GET_BASEMAP {
   [[ $1 == -v ]] || return 1
   local ret; bleopt/get:default_keymap
   [[ $ret == vi ]] && ret=vi_imap
   builtin eval "$2=\$ret"
+}
+## 設定関数 ble-decode/INITIALIZE_DEFMAP -v varname
+##   既定の keymap を決定します。
+##   ble-decode.sh 使用コードで上書きして使用します。
+function ble-decode/INITIALIZE_DEFMAP {
+  ble-decode/GET_BASEMAP "$@" &&
+    ble-decode/keymap/load "${!2}" &&
+    return 0
+
+  # fallback
+  ble-decode/keymap/load safe &&
+    builtin eval -- "$2=safe" &&
+    bleopt_default_keymap=safe
 }
 
 ## 設定関数 ble/widget/.SHELL_COMMAND command
@@ -1213,13 +1243,27 @@ function ble/widget/.SHELL_COMMAND { eval "$*"; }
 ##   ble-bind -x で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND { eval "$*"; }
 
-## 関数 ble-decode-key/bind keycodes command
-##   @param[in] keycodes command
-##   @var[in] kmap
+## 関数 ble-decode-key/bind keymap keys command
+##   @param[in] keymap keys command
 function ble-decode-key/bind {
+  if ! ble-decode/keymap/registered "$1"; then
+    ble/util/print-quoted-command "$FUNCNAME" "$@" >> "$_ble_base_run/$$.bind.delay.$1"
+    return
+  fi
+
+  local kmap=$1 keys=$2 cmd=$3
+
+  # Check existence of widget
+  if local widget=${cmd%%[$_ble_term_IFS]*}; ! ble/is-function "$widget"; then
+    local message="ble-bind: Unknown widget \`${widget#'ble/widget/'}'."
+    [[ $command == ble/widget/ble/widget/* ]] &&
+      message="$message Note: The prefix 'ble/widget/' is redundant."
+    ble/util/print "$message" 1>&2
+    return 1
+  fi
+
   local dicthead=_ble_decode_${kmap}_kmap_
-  local -a seq; ble/string#split-words seq "$1"
-  local cmd=$2
+  local -a seq; ble/string#split-words seq "$keys"
 
   local i iN=${#seq[@]} tseq=
   for ((i=0;i<iN;i++)); do
@@ -1244,9 +1288,15 @@ function ble-decode-key/bind {
 }
 
 function ble-decode-key/set-timeout {
+  if ! ble-decode/keymap/registered "$1"; then
+    ble/util/print-quoted-command "$FUNCNAME" "$@" >> "$_ble_base_run/$$.bind.delay.$1"
+    return
+  fi
+
+  local kmap=$1 keys=$2 timeout=$3
   local dicthead=_ble_decode_${kmap}_kmap_
-  local -a seq; ble/string#split-words seq "$1"
-  local timeout=$2; [[ $timeout == - ]] && timeout=
+  local -a seq; ble/string#split-words seq "$keys"
+  [[ $timeout == - ]] && timeout=
 
   local i iN=${#seq[@]}
   local key=${seq[iN-1]}
@@ -1265,9 +1315,16 @@ function ble-decode-key/set-timeout {
   fi
 }
 
+## 関数 ble-decode-key/unbind keymap keys
 function ble-decode-key/unbind {
+  if ! ble-decode/keymap/registered "$1"; then
+    ble/util/print-quoted-command "$FUNCNAME" "$@" >> "$_ble_base_run/$$.bind.delay.$1"
+    return
+  fi
+
+  local kmap=$1 keys=$2
   local dicthead=_ble_decode_${kmap}_kmap_
-  local -a seq; ble/string#split-words seq "$1"
+  local -a seq; ble/string#split-words seq "$keys"
 
   local i iN=${#seq[@]}
   local key=${seq[iN-1]}
@@ -1371,10 +1428,10 @@ _ble_decode_keymap_stack=()
 
 ## 関数 ble-decode/keymap/push kmap
 function ble-decode/keymap/push {
-  if ble-decode/keymap/is-keymap "$1"; then
+  if ble-decode/keymap/registered "$1"; then
     ble/array#push _ble_decode_keymap_stack "$_ble_decode_keymap"
     _ble_decode_keymap=$1
-  elif ble-decode/keymap/load "$1" && ble-decode/keymap/is-keymap "$1"; then
+  elif ble-decode/keymap/load "$1" && ble-decode/keymap/registered "$1"; then
     ble-decode/keymap/push "$1" # 再実行
   else
     ble/util/print "[ble: keymap '$1' not found]" >&2
@@ -2045,11 +2102,11 @@ function ble/widget/.MACRO {
 #------------------------------------------------------------------------------
 # **** ble-bind ****
 
-function ble-bind/load-keymap {
-  local kmap=$1
-  if ! ble-decode/keymap/load "$kmap"; then
-    ble-decode/keymap/unload "$kmap"
-    ble/util/print "ble-bind: the keymap '$kmap' is not defined" >&2
+function ble-bind/.initialize-kmap {
+  [[ $kmap ]] && return
+  ble-decode/GET_BASEMAP -v kmap
+  if ! ble-decode/keymap/is-keymap "$kmap"; then
+    ble/util/print "ble-bind: the default keymap '$kmap' is unknown." >&2
     return 1
   fi
   return 0
@@ -2147,7 +2204,7 @@ function ble-bind/option:dump {
 }
 function ble-bind/option:print {
   local keymap
-  ble-decode/DEFAULT_KEYMAP -v keymap # 初期化を強制する
+  ble-decode/INITIALIZE_DEFMAP -v keymap # 初期化を強制する
   if (($#)); then
     for keymap; do
       ble-decode-key/dump "$keymap"
@@ -2205,7 +2262,8 @@ function ble-bind {
           if (($#<1)); then
             ble/util/print "ble-bind: the option \`-m' requires an argument." >&2
             return 2
-          elif ! ble-bind/load-keymap "$1"; then
+          elif ! ble-decode/keymap/is-keymap "$1"; then
+            ble/util/print "ble-bind: the keymap '$kmap' is unknown." >&2
             return 1
           fi
           kmap=$1
@@ -2230,17 +2288,7 @@ function ble-bind {
             case $c in
             (f)
               # ble/widget/ 関数
-              command=ble/widget/$command
-
-              # check if is function
-              local arr; ble/string#split-words arr "$command"
-              if ! ble/is-function "${arr[0]}"; then
-                local message="ble-bind: Unknown ble widget \`${arr[0]#'ble/widget/'}'."
-                [[ $command == ble/widget/ble/widget/* ]] &&
-                  message="$message Note: The prefix 'ble/widget/' is redundant"
-                ble/util/print "$message" 1>&2
-                return 1
-              fi ;;
+              command=ble/widget/$command ;;
             (x) # 編集用の関数
               local q=\' Q="''\'"
               command="ble/widget/.EDIT_COMMAND '${command//$q/$Q}'" ;;
@@ -2256,11 +2304,11 @@ function ble-bind {
               return 1 ;;
             esac
 
-            [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
-            ble-decode-key/bind "$kbd" "$command"
+            ble-bind/.initialize-kmap || return 1 # -> kmap
+            ble-decode-key/bind "$kmap" "$kbd" "$command"
           else
-            [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
-            ble-decode-key/unbind "$kbd"
+            ble-bind/.initialize-kmap || return 1 # -> kmap
+            ble-decode-key/unbind "$kmap" "$kbd"
           fi
           shift 2 ;;
         (T)
@@ -2270,8 +2318,8 @@ function ble-bind {
             return 2
           fi
 
-          [[ $kmap ]] || ble-decode/DEFAULT_KEYMAP -v kmap
-          ble-decode-key/set-timeout "$kbd" "$2"
+          ble-bind/.initialize-kmap || return 1 # -> kmap
+          ble-decode-key/set-timeout "$kmap" "$kbd" "$2"
           shift 2 ;;
         (L)
           ble-bind/option:list-widgets ;;
@@ -2599,10 +2647,20 @@ function ble/decode/initialize {
 _ble_decode_bind_state=none
 function ble-decode/reset-default-keymap {
   # 現在の ble-decode/keymap の設定
-  ble-decode/DEFAULT_KEYMAP -v _ble_decode_keymap # 0ms
+  ble-decode/INITIALIZE_DEFMAP -v _ble_decode_keymap # 0ms
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
 }
+## 関数 ble/decode/attach
+##   @var[in] _ble_decode_keymap
+##     この関数を呼び出す前に ble-decode/reset-default-keymap を用いて
+##     _ble_decode_keymap が使用可能な状態になっている必要がある。
 function ble/decode/attach {
+  # 失敗すると悲惨なことになるのでチェック
+  if ble-decode/keymap/is-empty "$_ble_decode_keymap"; then
+    ble/util/print "ble.sh: The keymap '$_ble_decode_keymap' is empty." >&2
+    return 1
+  fi
+
   [[ $_ble_decode_bind_state != none ]] && return
   ble/util/save-editing-mode _ble_decode_bind_state
   [[ $_ble_decode_bind_state == none ]] && return 1
@@ -2618,13 +2676,6 @@ function ble/decode/attach {
 
   # ble.sh bind の設置
   ble-decode/bind # 20ms
-
-  # 失敗すると悲惨なことになるので抜ける。
-  if ! ble/is-array "_ble_decode_${_ble_decode_keymap}_kmap_"; then
-    ble/util/print "ble.sh: Failed to load the default keymap. keymap '$_ble_decode_keymap' is not defined." >&2
-    ble-decode/detach
-    return 1
-  fi
 
   # Note #D1213: linux コンソール (kernel 5.0.0) は "\e[>"
   #  でエスケープシーケンスを閉じてしまう。5.4.8 は大丈夫。
@@ -2925,9 +2976,14 @@ function ble/builtin/bind/.initialize-kmap {
   (emacs-meta) kmap=emacs; keys=(27 "${keys[@]}") ;;
   (vi-insert) kmap=vi_imap ;;
   (vi|vi-command|vi-move) kmap=vi_nmap ;;
-  (*) ble-decode/DEFAULT_KEYMAP -v kmap ;;
+  (*) ble-decode/GET_BASEMAP -v kmap ;;
   esac
-  ble-bind/load-keymap "$kmap" || return 1
+
+  if ! ble-decode/keymap/is-keymap "$kmap"; then
+    ble/util/print "ble/builtin/bind: the keymap '$kmap' is unknown." >&2
+    return 1
+  fi
+
   return 0
 }
 ## 関数 ble/builtin/bind/.initialize-keys-and-value
@@ -2986,7 +3042,7 @@ function ble/builtin/bind/option:x {
 
   [[ $value == \"*\" ]] && value=${value:1:${#value}-2}
   local command="ble/widget/.EDIT_COMMAND '${value//$q/$Q}'"
-  ble-decode-key/bind "${keys[*]}" "$command"
+  ble-decode-key/bind "$kmap" "${keys[*]}" "$command"
 }
 ## 関数 ble/builtin/bind/option:r keyseq
 ##   @var[in] opt_keymap
@@ -2999,7 +3055,7 @@ function ble/builtin/bind/option:r {
 
   local kmap
   ble/builtin/bind/.initialize-kmap "$opt_keymap" || return
-  ble-decode-key/unbind "${keys[*]}"
+  ble-decode-key/unbind "$kmap" "${keys[*]}"
 }
 
 _ble_decode_rlfunc2widget_emacs=()
@@ -3048,7 +3104,7 @@ function ble/builtin/bind/option:u {
   local rlfunc=$1
 
   local kmap
-  if ! ble/builtin/bind/.initialize-kmap "$opt_keymap"; then
+  if ! ble/builtin/bind/.initialize-kmap "$opt_keymap" || ! ble-decode/keymap/load "$kmap"; then
     ble/util/print "ble.sh (bind): sorry, failed to initialize keymap:'$opt_keymap'." >&2
     flags=e$flags
     return 1
@@ -3064,7 +3120,7 @@ function ble/builtin/bind/option:u {
   # unbind
   local keys
   for keys in "${unbind_keys_list[@]}"; do
-    ble-decode-key/unbind "$keys"
+    ble-decode-key/unbind "$kmap" "$keys"
   done
 }
 function ble/builtin/bind/option:u/search-recursive {
@@ -3123,20 +3179,17 @@ function ble/builtin/bind/option:- {
     value=${value#\"} value=${value%\"}
     local ret chars; ble/util/keyseq2chars "$value"; chars=("${ret[@]}")
     local command="ble/widget/.MACRO ${chars[*]}"
-    ble-decode-key/bind "${keys[*]}" "$command"
+    ble-decode-key/bind "$kmap" "${keys[*]}" "$command"
   elif [[ $value ]]; then
     if local ret; ble/builtin/bind/rlfunc2widget "$kmap" "$value"; then
       local command=$ret
-      local arr; ble/string#split-words arr "$command"
-      if ble/is-function "${arr[0]}"; then
-        ble-decode-key/bind "${keys[*]}" "$command"
-        return
-      fi
+      ble-decode-key/bind "$kmap" "${keys[*]}" "$command"
+      return 0
+    else
+      ble/util/print "ble.sh (bind): unsupported readline function '${value//$q/$Q}'." >&2
+      flags=e$flags
+      return 1
     fi
-
-    ble/util/print "ble.sh (bind): unsupported readline function '${value//$q/$Q}'." >&2
-    flags=e$flags
-    return 1
   else
     ble/util/print "ble.sh (bind): readline function name is not specified ($arg)." >&2
     return 1

@@ -734,6 +734,7 @@ function ble-attach {
 
   # Note: ble-decode/{initialize,reset-default-keymap} 内で
   #   info を設定する事があるので表示する。
+  ble/textarea#redraw # Note: 初期化中にエラーメッセージがあった時の為に再描画する
   ble-edit/info/default
   ble-edit/bind/.tail
 }
