@@ -64,7 +64,7 @@ _ble_complete_menu_selected=-1
 function ble/complete/menu#check-cancel {
   ((menu_iloop++%menu_interval==0)) &&
     [[ :$menu_type: != *:sync:* ]] &&
-    ble-decode/has-input
+    ble/decode/has-input
 }
 
 function bleopt/check:complete_menu_style {
@@ -847,7 +847,7 @@ function ble/complete/menu#start {
 ##
 
 function ble/complete/check-cancel {
-  [[ :$comp_type: != *:sync:* ]] && ble-decode/has-input
+  [[ :$comp_type: != *:sync:* ]] && ble/decode/has-input
 }
 
 #------------------------------------------------------------------------------

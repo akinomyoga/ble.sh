@@ -713,6 +713,9 @@ function ble-edit/prompt/update {
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
   fi
 }
+function ble-edit/prompt/clear {
+  _ble_edit_prompt[0]=
+}
 
 # 
 #------------------------------------------------------------------------------
@@ -4485,7 +4488,7 @@ function ble/widget/tab-insert {
 }
 function ble-edit/is-single-complete-line {
   ble-edit/content/is-single-line || return 1
-  [[ $_ble_edit_str ]] && ble-decode/has-input &&
+  [[ $_ble_edit_str ]] && ble/decode/has-input &&
     ((0<=bleopt_accept_line_threshold&&bleopt_accept_line_threshold<=_ble_decode_input_count+ble_decode_char_rest)) &&
     return 1
   if shopt -q cmdhist &>/dev/null; then
@@ -7147,8 +7150,8 @@ function ble-edit/bind/.check-detach {
     #   [[ ! -o emacs && ! -o vi ]] のときは ble-detach が呼び出されるのでここには来ない。
     local state=$_ble_decode_bind_state
     if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
-      ble-decode/reset-default-keymap
-      ble-decode/detach
+      ble/decode/reset-default-keymap
+      ble/decode/detach
       ble/decode/attach
     fi
 
@@ -7204,7 +7207,7 @@ fi
 function ble-decode/PROLOGUE {
   ble-edit/exec:gexec/restore-state
   ble-edit/bind/.head
-  ble-decode-bind/uvw
+  ble/decode/bind/adjust-uvw
   ble/term/enter
 }
 
@@ -7215,7 +7218,7 @@ function ble-decode/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    if ble-decode/has-input; then
+    if ble/decode/has-input; then
       ble-edit/bind/.tail-without-draw
       return 0
     fi

@@ -125,9 +125,8 @@ function bleopt/check:input_encoding {
   # Note: ble/encoding:$value/clear は optional な設定である。
 
   if [[ $bleopt_input_encoding != "$value" ]]; then
-    ble-decode/unbind
     bleopt_input_encoding=$value
-    ble-decode/bind
+    ble/decode/rebind
   fi
   return 0
 }
@@ -1741,7 +1740,7 @@ function ble/util/sleep {
 ## 関数 ble/util/conditional-sync command [condition weight opts]
 function ble/util/conditional-sync {
   local command=$1
-  local cancel=${2:-'! ble-decode/has-input'}
+  local cancel=${2:-'! ble/decode/has-input'}
   local weight=$3; ((weight<=0&&(weight=100)))
   local opts=$4
   [[ :$opts: == *:progressive-weight:* ]] &&
@@ -3593,6 +3592,7 @@ function ble/util/c2keyseq {
   (12)  ret='\f' ;;
   (13)  ret='\r' ;;
   (27)  ret='\e' ;;
+  (28)  ret='\x1c' ;; # workaround \C-\, \C-\\
   (92)  ret='\\' ;;
   (127) ret='\d' ;;
   (*)

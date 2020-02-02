@@ -687,7 +687,24 @@ blehook ERR+='ble/function#try TRAPERR'
 #------------------------------------------------------------------------------
 # function .ble-time { echo "$*"; time "$@"; }
 
-ble/builtin/bind/read-user-settings
+# blerc
+_ble_base_rcfile=
+_ble_base_rcfile_initialized=
+function ble/base/load-rcfile {
+  [[ $_ble_base_rcfile_initialized ]] && return
+  _ble_base_rcfile_initialized=1
+
+  # blerc
+  if [[ ! $_ble_base_rcfile ]]; then
+    { _ble_base_rcfile=$HOME/.blerc; [[ -f $rcfile ]]; } ||
+      { _ble_base_rcfile=${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh; [[ -f $rcfile ]]; } ||
+      _ble_base_rcfile=$HOME/.blerc
+  fi
+  if [[ -s $_ble_base_rcfile ]]; then
+    source "$_ble_base_rcfile"
+    blehook/.compatibility-ble-0.3/check
+  fi
+}
 
 _ble_attached=
 function ble-attach {
@@ -725,7 +742,7 @@ function ble-attach {
   # keymap 初期化
   local IFS=$' \t\n'
   ble/decode/initialize # 7ms
-  ble-decode/reset-default-keymap # 264ms (keymap/vi.sh)
+  ble/decode/reset-default-keymap # 264ms (keymap/vi.sh)
   if ! ble/decode/attach; then # 53ms
     _ble_attached=
     ble-edit/detach
@@ -734,9 +751,11 @@ function ble-attach {
 
   ble/history:bash/reset # 27s for bash-3.0
 
+  # Note: 再描画 (初期化中のエラーメッセージ・プロンプト変更等の為)
+  ble/textarea#redraw
+
   # Note: ble-decode/{initialize,reset-default-keymap} 内で
   #   info を設定する事があるので表示する。
-  ble/textarea#redraw # Note: 初期化中にエラーメッセージがあった時の為に再描画する
   ble-edit/info/default
   ble-edit/bind/.tail
 }
@@ -757,7 +776,7 @@ function ble-detach/impl {
   _ble_attached=
 
   ble-edit/detach
-  ble-decode/detach
+  ble/decode/detach
   READLINE_LINE='' READLINE_POINT=0
 }
 function ble-detach/message {
@@ -856,16 +875,7 @@ function ble/base/process-blesh-arguments {
     esac
   done
 
-  # blerc
-  if [[ ! $_ble_base_rcfile ]]; then
-    { _ble_base_rcfile=$HOME/.blerc; [[ -f $rcfile ]]; } ||
-      { _ble_base_rcfile=${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh; [[ -f $rcfile ]]; } ||
-      _ble_base_rcfile=$HOME/.blerc
-  fi
-  if [[ -s $_ble_base_rcfile ]]; then
-    source "$_ble_base_rcfile"
-    blehook/.compatibility-ble-0.3/check
-  fi
+  ble/base/load-rcfile # blerc
 
   # rlvar (#D1148)
   #   勝手だが ble.sh の参照する readline 変数を
