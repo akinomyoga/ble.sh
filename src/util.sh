@@ -827,6 +827,9 @@ function ble/string#create-unicode-progress-bar {
 
   ret=$out
 }
+function ble/util/strlen {
+  LC_ALL= LC_CTYPE=C builtin eval 'ret=${#1}' 2>/dev/null
+}
 
 function ble/path#remove {
   local _ble_local_script='
@@ -1353,7 +1356,7 @@ function ble/util/expand-alias {
 }
 
 if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LC_ALL=C builtin read -t 0; } &>/dev/null
+  function ble/util/is-stdin-ready { IFS= LC_ALL= LC_CTYPE=C builtin read -t 0; } &>/dev/null
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -1631,7 +1634,7 @@ function ble/util/msleep/.check-builtin-sleep {
   fi
 }
 function ble/util/msleep/.check-sleep-decimal-support {
-  local version; ble/util/assign version 'LANG=C ble/bin/sleep --version 2>&1'
+  local version; ble/util/assign version 'LC_ALL=C ble/bin/sleep --version 2>&1'
   [[ $version == *'GNU coreutils'* || $OSTYPE == darwin* && $version == 'usage: sleep seconds' ]]
 }
 
@@ -3008,11 +3011,20 @@ function ble/term/visible-bell/.show {
     fi
 
     local -a DRAW_BUFF=()
-    ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
-    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-    ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
-    ble/canvas/put.draw "$_ble_term_rc"
-    ble/canvas/put-cud.draw 1
+    if [[ $_ble_term_rc ]]; then
+      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
+      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+      ble/canvas/put.draw "$_ble_term_rc"
+      ble/canvas/put-cud.draw 1
+    else
+      ble/util/buffer.flush >&2
+      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
+      ble/canvas/put-hpa.draw $((1+x0))
+      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+      ble/canvas/put-cud.draw 1
+      ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
+    fi
     ble/canvas/flush.draw
     _ble_term_visible_bell_prev=("$message" "$x0" "$y0" "$x" "$y")
   else
@@ -3030,11 +3042,20 @@ function ble/term/visible-bell/.update {
     local y=${_ble_term_visible_bell_prev[4]}
 
     local -a DRAW_BUFF=()
-    ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
-    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-    ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
-    ble/canvas/put.draw "$_ble_term_rc"
-    ble/canvas/put-cud.draw 1
+    if [[ $_ble_term_rc ]]; then
+      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
+      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+      ble/canvas/put.draw "$_ble_term_rc"
+      ble/canvas/put-cud.draw 1
+    else
+      ble/util/buffer.flush >&2
+      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
+      ble/canvas/put-hpa.draw $((1+x0))
+      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+      ble/canvas/put-cud.draw 1
+      ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
+    fi
     ble/canvas/flush.draw
   else
     ble/util/put "${_ble_term_visible_bell_show//'%message%'/$sgr$message}"
@@ -3050,13 +3071,25 @@ function ble/term/visible-bell/.clear {
     local ret; ble/color/face2sgr vbell_erase; local sgr=$ret
 
     local -a DRAW_BUFF=()
-    ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
-    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-    ble/canvas/put.draw "$sgr"
-    ble/canvas/put-spaces.draw "$x"
-    #ble/canvas/put-ech.draw "$x"
-    #ble/canvas/put.draw "$_ble_term_el"
-    ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
+    if [[ $_ble_term_rc ]]; then
+      ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
+      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+      ble/canvas/put.draw "$sgr"
+      ble/canvas/put-spaces.draw "$x"
+      #ble/canvas/put-ech.draw "$x"
+      #ble/canvas/put.draw "$_ble_term_el"
+      ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
+    else
+      : # 親プロセスの _ble_canvas_x が分からないので座標がずれる
+      # ble/util/buffer.flush >&2
+      # ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
+      # ble/canvas/put-hpa.draw $((1+x0))
+      # ble/canvas/put.draw "$sgr"
+      # ble/canvas/put-spaces.draw "$x"
+      # ble/canvas/put.draw "$_ble_term_sgr0"
+      # ble/canvas/put-cud.draw 1
+      # ble/canvas/put-hpa.draw $((1+_ble_canvas_x)) # 親プロセスの _ble_canvas_x?
+    fi
     ble/canvas/flush.draw
   else
     ble/util/put "$_ble_term_visible_bell_clear"
@@ -3185,6 +3218,15 @@ function ble/term/stty/.initialize-flags {
     ble/array#push _ble_term_stty_flags_enter werase undef
     ble/array#push _ble_term_stty_flags_leave werase ''
   fi
+  if [[ $TERM == minix ]]; then
+    if [[ $stty == *' rprnt '* ]]; then
+      ble/array#push _ble_term_stty_flags_enter rprnt undef
+      ble/array#push _ble_term_stty_flags_leave rprnt ''
+    elif [[ $stty == *' reprint '* ]]; then
+      ble/array#push _ble_term_stty_flags_enter reprint undef
+      ble/array#push _ble_term_stty_flags_leave reprint ''
+    fi
+  fi
 }
 ble/term/stty/.initialize-flags
 
@@ -3269,6 +3311,11 @@ function ble/term/bracketed-paste-mode/enter {
 function ble/term/bracketed-paste-mode/leave {
   ble/util/buffer $'\e[?2004l'
 }
+if [[ $TERM == minix ]]; then
+  # Minix console は DECSET も使えない
+  function ble/term/bracketed-paste-mode/enter { :; }
+  function ble/term/bracketed-paste-mode/leave { :; }
+fi
 
 #---- DA2 ---------------------------------------------------------------------
 
@@ -3325,7 +3372,7 @@ function ble/term/modifyOtherKeys/.supported {
 
   # Note #D1213: linux (kernel 5.0.0) は "\e[>" でエスケープシーケンスを閉じてしまう。
   #   5.4.8 は大丈夫だがそれでも modifyOtherKeys に対応していない。
-  [[ $TERM == linux ]] && return 1
+  [[ $TERM == linux || $TERM == minix ]] && return 1
 
   return 0
 }
@@ -3479,7 +3526,7 @@ if ((_ble_bash>=40200)); then
     builtin printf -v ret '\uFFFF'
     ((${#ret}==2))
   }
-  if ble/util/.has-bashbug-printf-uffff; then
+  if ble/util/.has-bashbug-printf-uffff 2>/dev/null; then # #D1262 suppress LC_ALL error messages
     function ble/util/c2s-impl {
       if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_cache_ctype == *.utf-8 || $_ble_util_cache_ctype == *.utf8 ]]; then
         builtin printf -v ret '\\x%02x' $((0xE0|$1>>12&0x0F)) $((0x80|$1>>6&0x3F)) $((0x80|$1&0x3F))

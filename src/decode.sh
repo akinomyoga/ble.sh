@@ -2899,7 +2899,7 @@ function ble/builtin/bind/.parse-keyname {
   (return|ret) ch=$'\r' ;;
   (space|spc) ch=' ' ;;
   (tab) ch=$'\t' ;;
-  (*) LC_ALL=C eval 'ch=${value::1}' ;;
+  (*) LC_ALL= LC_CTYPE=C eval 'ch=${value::1}' 2>/dev/null ;;
   esac
   ble/util/s2c "$ch"; local key=$ret
 
@@ -3338,7 +3338,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
         keymap0[key] = val;
       }
     }
-  '
+  ' 2>/dev/null # suppress LC_ALL error messages
 }
 function ble/builtin/bind/read-user-settings {
   if [[ $_ble_decode_bind_state == none ]]; then

@@ -1010,20 +1010,7 @@ bash_tips
 
 2020-01-17
 
-  * Haiku における問題
-
-    Haiku で ble-reload 時に変なメッセージが出る。
-    まあこれは bash-4.4 の問題かもしれない。
-    →CentOSでやると日本語でエラーメッセージが表示されていて、
-    その長さなどが一致している気がするので Haiku のエラーメッセージは
-    やはり bind 回りの Bash のバグだろう。
-
-    また、sleep を呼び出すと Terminal のタイトルバーに
-    それが一々表示されて面倒である。別の実現方法を考えた方が良い?
-    もし /dev/zero があるならば /dev/zero を読み出そうとするとどうなるか確認してもよい。
-    CPU を食わないのであればそれで行く。
-
-  * Minix で無限ループになっている。
+  * Minix で無限ループになっている?
 
     echo と入力しようとすると確率的に無限ループになる。
     (それでも可也高い確率で無限ループになる。)
@@ -1037,8 +1024,64 @@ bash_tips
     →再度確かめたらやはり子プロセスの暴走としか思えない。
       と思ったがよく見ると親プロセスの暴走だった。両方で起こる?
 
-    ble-reload の後に固まる問題も
-    もしかしてこれだろうか? と思ったが症状的に独立な問題だろう。
+    2020-02-03 新しい ble.sh を実行しているが固まるという現象が再現しない。
+    これは新しい ble.sh のお陰だろうか、それとも偶だろうか。
+    →暫く使っていたが全く再現しないので以前の ble.sh の問題と思って良いだろう。
+
+    と思っていたら実は裏でちゃんと無限ループになっていた。
+    どうも ssh が予期せず切断すると無限ループになる?
+
+    気になるのは暴走していたプロセスは stderr にリアルタイムで
+    データを出力し続けていたという事。
+
+    | -rw-r--r--  1 murase  users  14174140 Feb  3 21:58 5726.stderr
+    | -rw-r--r--  1 murase  users  14324924 Feb  3 21:59 5726.stderr
+    | -rw-r--r--  1 murase  users  14504088 Feb  3 22:01 5726.stderr
+    |
+    | 出力内容は以下の通り 0d 1b 5b 4b の 4B を繰り返し出力している。
+    |   $ < $_ble_base_run/5726.stderr od -t x1
+    |   0000000   0d  1b  5b  4b  0d  1b  5b  4b  0d  1b  5b  4b  0d  1b  5b  4b
+    |   *
+    |   67250220   0d  1b  5b  4b  0d  1b  5b  4b
+    |   67250230
+    |
+    | 0d 1b 5b 4b とは何か? \r\e[K である。CR EL である。うーん。
+    | ble.sh の該当しそうな部分を調べてみる。
+    |
+    | * canvas:344 (negative cup:el)
+    |   ble/canvas/put-cup.draw 1 $((x0+1))
+    |   ble/canvas/put.draw "$_ble_term_el"
+    | * canvas:1928 (negative sgr0:cr:el)
+    |   ble/canvas/panel#goto.draw "$index" "$x" "$y"
+    |   ble/canvas/put.draw "$_ble_term_el"
+    | * edit:1520 (negative sgr0:cr:el)
+    |   ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
+    |   ((new_scroll==0)) &&
+    |     x=$fminx ble/textarea#render/.erase-forward-line.draw # ... を消す
+    | * edit:1680 (negative sgr0:cr:el)
+    |   ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) "$y"
+    |   ble/canvas/put.draw "$_ble_term_el"
+    | * edit:1696 (negative sgr0:cr:el)
+    |   ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${pos[0]}" "${pos[1]}"
+    |   ble/canvas/put.draw "$_ble_term_el"
+    | * edit:3869 (negative cuf:sp:sp:el)
+    |   ble/canvas/put-cuf.draw "$advance"
+    |   ble/canvas/put.draw "  $_ble_term_cr$_ble_term_el"
+    | * edit:7322 (negative cr:el:sgr)
+    |   ble/canvas/put.draw "$_ble_term_cr$_ble_term_el${_ble_term_setaf[9]}"
+    |
+    | うーん。何れも関係なさそうな気がする。
+    | もしかして _ble_term_el2 に CR EL が入っている?→確認したがそうでもない。
+    | 上の中で一番怪しいのは panel#goto.draw だと思ったが、
+    | sgr0 が消滅している理由が分からないし、
+    | 一度 CR を出したら _ble_canvas_x=0 になるのだから、
+    | 何度も CR を出力し続けるのは変だ。
+
+    暴走した bash は何れも console ではなくて pty だった。
+    接続が途中で落ちると無限ループになるのだろうか。
+    hp2019 側及び vmminix 側で nc/sshd を kill -9 しても再現しない。
+
+  * syntax: ${var/#} ${var/%} も特別に着色する。
 
   * 英語圏のニュースサイトに投稿する可能性 (suggestion by dylankb)
     Hacker News を紹介されたがここが適切なんだろうか?
@@ -2609,6 +2652,113 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-02-03
+
+  * 2020-01-17 Minix における問題 [#D1262]
+
+    x resolved: ble-reload の後に固まる問題ももしかしてこれだろうか?
+      と思ったが症状的に独立な問題だろう。
+      →これは別項目で修正した。
+
+    x ok: minix を試していると固まる。と思ったら core.784 として巨大な
+      ファイルができている。1.7GB である。道理で固まる訳である。
+      ファイルシステムが固まるので他のプロセスもブロックされる。
+      検索すると以下の頁が見つかるが余り参考にはならない。
+      https://wiki.minix3.org/doku.php?id=soc:2011:debugger
+
+      而もこれは ble-detach した状態であった。但し CPU は 100% ではなくて
+      50% になっていた。何らかの別の原因で segfault して、
+      その結果として core を dump するのに忙しくて 50% になっていたと
+      考えるのが自然である。
+
+      これは恐らくまた別の問題である。これに関しては気にしない事にする。
+
+    x ok: set: tabcomplete というオプションはありませんというエラーになる。
+      /etc/profile に set -o tabcomplete というのが記述されている。
+      bash にはその様なオプションはない (或いは過去のバージョンにはあったのだろうか)。
+      →これは minix の問題であって ble.sh の問題ではない。
+
+    * TERM=minix support
+      x fixed: 起動時に c という文字が現れる事について。
+      x fixed: コマンドを実行する度に 200404;1 等と表示される。
+        これは明らかに bracketed paste mode と modifyOtherKeys である。
+        どうやら CSI ? h ですら minix は対応していない様だ。
+        取り敢えず対応した。他にも CSI ? を使っている箇所は在る気がする。
+      x fixed: eof 判定が動いていない。xenl cap が誤っている?
+        xenl=0 にしてみても変化はなかった。
+        取り敢えず行末での振る舞いがどうなっているか調べる必要がある。
+        →一応 xenl の様な気がする。今の実装はどうなっているのだったか。
+        →どうやら SC,RC を使っている様だ。SC,RC を使わない実装?
+        →使わない実装に切り替えて見た。多分大丈夫。
+      x fixed: SCOSC,RC が動いていない。tput sc / tput rc は失敗する。
+        \e7\e8 も動かない。恐らく minix にはないのだろう。
+        これの対策は何? 先ず離れた場所に移動しない。
+        一行上か或いは panel 3 を利用する。
+        一行上を利用するのが自然の気がする。
+
+        ? 然し、delay 後のカーソル位置を取得する方法が分からない。
+          特に delay は別プロセスで実行しているので、
+          そのプロセスは fork 時の _ble_canvas_x しか知らない。
+          メッセージを消去するのは諦める?
+          →諦める事にした。
+        - canvas.sh 未ロード時の vbell も rc を使っているが、
+          対応はしない事にする。実際、使われていない気がする。
+          使っているとしても稀なので気にしない事にする。
+      x fixed: delete が ^? になっている。
+        これは tput kD || tput kdch1 を参照して決める事にした。
+      x fixed: C-r が効かない ... reprint undef にしたら直った。
+        これも対策を加えた。
+
+    * locale: 例によって locale を切り替えられないというエラーが出ている。
+      何処から発生しているのだろうか。一つずつ確認していくしかない?
+
+      取り敢えず補完で沢山メッセージが出るので source:argument を塞いで見たが沢山出る。
+      どうも関係ない様だ。そもそも起動した時にエラーメッセージが出る。
+
+      これらは単体で実行しても特に変なメッセージは出ない。
+      done: ble/util/.has-bashbug-printf-uffff
+      done: ble/util/is-stdin-ready
+      done: ble/util/msleep/.check-sleep-decimal-support
+
+      以下の関数は対策が必要な気がする。
+      done: ble/widget/.locate-forward-byte
+      ok: ble/decode/bind/.generate-source-to-unbind-default
+      done: ble/builtin/bind/.parse-keyname
+      done: ble/builtin/bind/.reconstruct-user-settings
+      done: ble/widget/vi-command/nth-byte
+
+      % どうも ble/util/is-stdin-ready が怪しい気がする。
+      % と思って色々変更してみたがどうも関係ない様だ。
+
+      改めて補完の振る舞いを調べるとメニューを表示する時に、
+      メニューの項目と同じ数だけメッセージが表示される様だ。
+      trace が悪いという事だろうか?
+      ble/canvas/trace-tex を手で実行してみたら再現した。
+      こういう関数で再現する事が分かった。
+      どうもローカル変数の始末は 2>/dev/null がなくなってから?
+
+        fun() { local LC_COLLATE=C; } 2>/dev/null
+
+      trace-text を修正したらメッセージは出なくなった。
+
+  * 2020-01-17 Haiku における問題 [#D1261]
+
+    x ok: Haiku で ble-reload 時に変なメッセージが出る。
+      まあこれは bash-4.4 の問題かもしれない。
+      →CentOSでやると日本語でエラーメッセージが表示されていて、
+      その長さなどが一致している気がするので Haiku のエラーメッセージは
+      やはり bind 回りの Bash のバグだろう。
+
+    x ok: また、sleep を呼び出すと Terminal のタイトルバーに
+      それが一々表示されて面倒である。別の実現方法を考えた方が良い?
+      もし /dev/zero があるならば /dev/zero を読み出そうとするとどうなるか確認してもよい。
+      CPU を食わないのであればそれで行く。
+
+      →read -t 1.0 でも同様に Terminal のタイトルが変更される。
+      どうも何のプログラムであってもブロックされていると何か出る様だ。
+      短い read -t 0.01 をループで回しても同じだった。
+      なのでこれはどうしようもない。
 
 2020-02-02
 

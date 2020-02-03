@@ -3064,13 +3064,13 @@ function ble/widget/character-search.hook {
 ##   @param[in] delta
 ##   @var[in,out] index
 function ble/widget/.locate-forward-byte {
-  local delta=$1
+  local delta=$1 ret
   if ((delta==0)); then
     return 0
   elif ((delta>0)); then
     local right=${_ble_edit_str:index:delta}
     local rlen=${#right}
-    LC_ALL=C builtin eval 'local rsz=${#right}'
+    ble/util/strlen "$right"; local rsz=$ret
     if ((delta>=rsz)); then
       ((index+=rlen))
       ((delta==rsz)); return
@@ -3079,7 +3079,7 @@ function ble/widget/.locate-forward-byte {
       while ((delta&&rlen>=2)); do
         local mlen=$((rlen/2))
         local m=${right::mlen}
-        LC_ALL=C builtin eval 'local msz=${#m}'
+        ble/util/strlen "$m"; local msz=$ret
         if ((delta>=msz)); then
           right=${right:mlen}
           ((index+=mlen,
@@ -3099,7 +3099,7 @@ function ble/widget/.locate-forward-byte {
     local left=${_ble_edit_str::index}
     local llen=${#left}
     ((llen>delta)) && left=${left:llen-delta} llen=$delta
-    LC_ALL=C builtin eval 'local lsz=${#left}'
+    ble/util/strlen "$left"; local lsz=$ret
     if ((delta>=lsz)); then
       ((index-=llen))
       ((delta==lsz)); return
@@ -3108,7 +3108,7 @@ function ble/widget/.locate-forward-byte {
       while ((delta&&llen>=2)); do
         local mlen=$((llen/2))
         local m=${left:llen-mlen}
-        LC_ALL=C builtin eval 'local msz=${#m}'
+        ble/util/strlen "$m"; local msz=$ret
         if ((delta>=msz)); then
           left=${left::llen-mlen}
           ((index-=mlen,
@@ -3840,12 +3840,16 @@ function ble-edit/exec/.adjust-eol {
   local eol_mark=${_ble_edit_exec_eol_mark[1]}
   if [[ $eol_mark ]]; then
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_sc"
-    if ((_ble_edit_exec_eol_mark[2]>cols)); then
+    local width=${_ble_edit_exec_eol_mark[2]} limit=$cols
+    [[ $_ble_term_rc ]] || ((limit--))
+    if ((width>limit)); then
       local x=0 y=0 g=0
-      LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$bleopt_prompt_eol_mark" truncate
+      LINES=1 COLUMNS=$limit ble/canvas/trace.draw "$bleopt_prompt_eol_mark" truncate
+      width=$x
     else
       ble/canvas/put.draw "$eol_mark"
     fi
+    [[ $_ble_term_rc ]] || ble/canvas/put-cub.draw "$width"
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
   fi
 

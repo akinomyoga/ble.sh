@@ -137,12 +137,14 @@ function ble/init:term/initialize {
   # DECSC/DECRC or SCOSC/SCORC
   ble/init:term/define-cap _ble_term_sc $'\e[s' sc:sc
   ble/init:term/define-cap _ble_term_rc $'\e[u' rc:rc
+  [[ $TERM == minix ]] && _ble_term_sc= _ble_term_rc=
 
   # Cursors
   ble/init:term/define-cap _ble_term_Ss '' Ss:Ss 123 # DECSCUSR
   _ble_term_Ss=${_ble_term_Ss//123/@1}
   ble/init:term/define-cap _ble_term_cvvis $'\e[?25h' cvvis:vs
   ble/init:term/define-cap _ble_term_civis $'\e[?25l' civis:vi
+  [[ $TERM == minix ]] && _ble_term_cvvis= _ble_term_civis=
   # xterm の terminfo が点滅まで勝手に変更するので消す。
   [[ $_ble_term_cvvis == $'\e[?12;25h' || $_ble_term_cvvis == $'\e[?25;12h' ]] &&
     _ble_term_cvvis=$'\e[?25h'

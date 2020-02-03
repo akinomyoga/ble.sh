@@ -4237,10 +4237,10 @@ function ble/widget/vi-command/nth-byte {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ((ARG--))
   local offset=0 text=$_ble_edit_str len=${#_ble_edit_str}
-  local left nleft
+  local left nleft ret
   while ((ARG>0&&len>1)); do
     left=${text::len/2}
-    LC_ALL=C builtin eval 'nleft=${#left}'
+    ble/util/strlen "$left"; nleft=$ret
     if ((ARG<nleft)); then
       text=$left
       ((len/=2))

@@ -129,6 +129,8 @@ function ble/init:cmap/initialize {
   fi
   ble-bind --csi '7~' home
   ble-bind --csi '8~' end
+  local kdch1; ble/util/assign kdch1 'tput kD 2>/dev/null || tput kdch1 2>/dev/null'
+  [[ $kdch1 == $'\x7F' ]] && ble-bind -k 'DEL' delete
 
   # vt220, xterm, rxvt
   ble-bind --csi '11~' f1

@@ -26,6 +26,7 @@
 - syntax: fix a infinite loop for variable assignments and parameter expansions `#D1239` 327661f
 - complete: clear menu on history move `#D1248` 0000000
 - syntax: fix a bug that arguments of `eval` are not highlighted `#D1254` 0000000
+- term: support `TERM=minix` `#D1262` 0000000
 
 ## Changes
 - highlight: highlight symlink directories as symlinks `#D1249` 0000000
