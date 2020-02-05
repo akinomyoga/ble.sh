@@ -7,9 +7,10 @@
 
 - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
 - main: check `~/.config/blesh/init.sh` `#D1224` a82f961
-- progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247` 0000000
-- decode/kbd: support <kbd>U+XXXX</kbd>, <kbd>@ESC</kbd> and <kbd>@NUL</kbd> for keynames `#D1251` 0000000
-- syntax: support `coproc` `#D1252` 0000000
+- progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247` 154f638
+- decode/kbd: support <kbd>U+XXXX</kbd>, <kbd>@ESC</kbd> and <kbd>@NUL</kbd> for keynames `#D1251` 441117c
+- syntax: support `coproc` `#D1252` 7ff68d2
+- vi/nmap: support readline widgets for <kbd>M-left</kbd>, <kbd>M-right</kbd>, <kbd>C-delete</kbd>, <kbd>#</kbd> and <kbd>&</kbd> `#D1258` 846e0be
 
 ## Fix
 
@@ -24,18 +25,19 @@
 - main (ble-update): fix a bug that the check of `make` does not work in Bash 3.2 `#D1236` 08ced81
 - global: workaround Bash 3.2 bug of array initialization with <kbd>SOH</kbd>/<kbd>DEL</kbd> `#D1238` defdbd4 `#D1241` 1720ec0
 - syntax: fix a infinite loop for variable assignments and parameter expansions `#D1239` 327661f
-- complete: clear menu on history move `#D1248` 0000000
-- syntax: fix a bug that arguments of `eval` are not highlighted `#D1254` 0000000
-- term: support `TERM=minix` `#D1262` 0000000
+- complete: clear menu on history move `#D1248` 06cc7de
+- syntax: fix a bug that arguments of `eval` are not highlighted `#D1254` 5046d14
+- term: support `TERM=minix` `#D1262` ae0b80f
+- decode: fix error message `command=${[key]-}` for mouse input `#D1263` 0000000
 
 ## Changes
-- highlight: highlight symlink directories as symlinks `#D1249` 0000000
-- auto-complete: bind `insert-on-end` to `C-e` `#D1250` 0000000
-- edit (`widget/shell-expand-line`): not quote expanded results by default `#D1255` 0000000
+- highlight: highlight symlink directories as symlinks `#D1249` 25e8a72
+- auto-complete: bind `insert-on-end` to `C-e` `#D1250` 90b45eb
+- edit (`widget/shell-expand-line`): not quote expanded results by default `#D1255` a9b7810
 - decode: refactor
-  - decode: delay bind until keymap initialization `#D1258` 0000000
-  - decode: read user settings from `bind -Xsp` `#D1259` 0000000
-  - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 0000000
+  - decode: delay bind until keymap initialization `#D1258` 0beac33
+  - decode: read user settings from `bind -Xsp` `#D1259` eef14d0
+  - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 5d98210
 
 ## Internal changes and fixes
 
@@ -46,7 +48,7 @@
 - decode (ble/builtin/bind): skip checking stdin in parsing the keyseq `#D1235` 5f949e8
 - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237` bb31b11
 - memo: split `memo.txt` -> `note.txt`, `done.txt` and `ChangeLog.md` `#D1243` 31bc9aa 8b0fe34 419155e
-- global: check isolated identifiers and leak variables `#D1246` 1111111 0000000
+- global: check isolated identifiers and leak variables `#D1246` 19cc99d 2e74b6d
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

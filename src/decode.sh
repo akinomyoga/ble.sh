@@ -1531,6 +1531,7 @@ function ble-decode-key {
 
     # Note: マウス移動はシーケンスの一部と見做さず独立に処理する。
     #   widget が登録されていれば処理しそれ以外は無視。
+    local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
     if (((key&_ble_decode_MaskChar)==_ble_decode_KCODE_MOUSE_MOVE)); then
       builtin eval "local command=\${${dicthead}[key]-}"
       command=${command:2}
@@ -1544,8 +1545,6 @@ function ble-decode-key {
       ble-decode/widget/.call-async-read "$hook $key" "$key"
       continue
     fi
-
-    local dicthead=_ble_decode_${_ble_decode_keymap}_kmap_
 
     builtin eval "local ent=\${$dicthead$_ble_decode_key__seq[key]-}"
 
