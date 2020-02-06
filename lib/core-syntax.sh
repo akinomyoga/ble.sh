@@ -1408,7 +1408,7 @@ function ble/syntax:bash/simple-word/locate-filename {
   while
     if "$eval_word" "$tail"; then
       # Note: #D1168 Cygwin では // で始まるパスの判定は遅いので直接文字列で判定する
-      if [[ $OSTYPE == cygwin && $ret == //* ]]; then
+      if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $ret == //* ]]; then
         [[ $ret == // ]] && break
       else
         [[ -e $ret || -h $ret ]] && break
@@ -5788,7 +5788,7 @@ function ble/syntax/highlight/filetype {
   local file=$1
 
   # Note: #D1168 Cygwin では // で始まるパスはとても遅い
-  if [[ $OSTYPE == cygwin && $file == //* ]]; then
+  if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $file == //* ]]; then
     [[ $file == // ]] && ((type=ATTR_FILE_DIR))
     return
   fi

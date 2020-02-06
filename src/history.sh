@@ -119,7 +119,7 @@ if ((_ble_bash>=40000)); then
     fi
     local HISTTIMEFORMAT=__ble_ext__
     local -x INDEX_FILE=$history_indfile
-    local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
+    local opt_cygwin=; [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]] && opt_cygwin=1
 
     local apos=\'
     # 482ms for 37002 entries
@@ -184,7 +184,7 @@ if ((_ble_bash>=40000)); then
   function ble/history:bash/load {
     local opts=$1
     local opt_async=; [[ :$opts: == *:async:* ]] && opt_async=1
-    local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
+    local opt_cygwin=; [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]] && opt_cygwin=1
 
     local arg_count= arg_offset=0
     if [[ :$opts: == *:append:* ]]; then

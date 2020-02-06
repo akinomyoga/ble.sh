@@ -375,7 +375,7 @@ function ble/util/readlink {
   ret=
   local path=$1
   case "$OSTYPE" in
-  (cygwin|linux-gnu)
+  (cygwin|msys|linux-gnu)
     # 少なくとも cygwin, GNU/Linux では readlink -f が使える
     ble/util/assign ret 'PATH=/bin:/usr/bin readlink -f "$path"' ;;
   (darwin*|*)

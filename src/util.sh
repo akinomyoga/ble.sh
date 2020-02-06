@@ -1559,7 +1559,7 @@ function ble/util/has-glob-pattern {
 
 # Note: Cygwin では // で始まるパスの展開は遅い (#D1168)
 function ble/util/is-cygwin-slow-glob {
-  [[ $OSTYPE == cygwin && $1 == //* && ! -o noglob ]] &&
+  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $1 == //* && ! -o noglob ]] &&
     ble/util/has-glob-pattern "$1"
 }
 
@@ -1670,7 +1670,7 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
   _ble_util_msleep_delay=300
   function ble/util/msleep/.core { builtin sleep "$1"; }
 elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
-  if [[ $OSTYPE == cygwin* ]]; then
+  if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
     _ble_util_msleep_delay1=10000 # short msleep にかかる時間 [usec]
     _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
     function ble/util/msleep/.core2 {
