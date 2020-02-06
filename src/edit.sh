@@ -203,6 +203,16 @@ function ble-edit/prompt/initialize {
     if [[ -e $windir && -w $windir ]]; then
       _ble_edit_prompt__string_root='#'
     fi
+  elif [[ $OSTYPE == msys* ]]; then
+    # msys64/etc/bash.bashrc に倣う
+    if type id getent &>/dev/null; then
+      local id getent
+      ble/util/assign id 'id -G'
+      ble/util/assign getent 'getent -w group S-1-16-12288'
+      ble/string#split getent : "$getent"
+      [[ " $id " == *" ${getent[1]} "* ]] &&
+        _ble_edit_prompt__string_root='#'
+    fi
   fi
 }
 
