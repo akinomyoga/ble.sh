@@ -2657,7 +2657,87 @@ bash_tips
 
 2020-02-06
 
+  * [勘違い] msys2: inputrc の `$if` が正しく解析されていない [#D1268]
+    https://github.com/akinomyoga/ble.sh/issues/40#issuecomment-582941178
+
+    うーん。これはシェルコマンドに変換している筈なので、
+    そんなに問題になる事はない筈。
+    一旦どの様なシェルコマンドに変換されているのか確認する必要がある。
+
+    →これは実はちゃんと処理できていた。勘違いだった。
+    paste-from-clipboard という関数が定義されている特別な状況に対する
+    $if なのかと思ったが、実は MSYS bash は拡張機能として
+    paste-from-clipboard という機能が用意されているのだった。
+
+  * inputrc のコメントが正しく除去されていない [#D1267]
+    https://github.com/akinomyoga/ble.sh/issues/40#issuecomment-582941178
+
+    元々の実装の時にコメントは実は行頭から始まらなければならない
+    という事を確認したのではなかったのか。
+    これについても実際に試して調べる必要がある。
+
+    "\C-t": end-of-line
+    "\C-t": end-of-line # hello   ->comment
+    "\C-t": end-of-line# hello    ->not-comment
+    "\C-t": "end-of-line # hello" ->not-comment
+
+    うーん。ちゃんと quote も考えた上での処理になっている様だ。
+    そして # は単語の先頭でなければならない。
+    更に、bind '...' に指定した時でもちゃんと # をコメントとして認識している。
+    bind -x '"\C-t": echo hello # world' の場合には # world 以降もコマンドの一部になっている。
+    bind '"\C-t": "echo" # world' の場合にはコメントとして取り扱われている。
+    single quote でも実はマクロとして取り扱われ、
+    中にある # はコメントとして取り扱われてしまう事はない。
+    $ bind '"\C-t":'\''echo\'\'' # \'\''world test'\'
+    で試してみた所 echo' # 'world test という文字列が登録できたので、
+    single quote の中でも \' は有効なのだと思われる。
+
+    取り敢えず実装した。未だ見落としがあるかもしれないが取り敢えずこれで良い気がする。
+
+  * ble-0.3 に於ける ble-reload は未だにおかしい [#D1266]
+    https://github.com/akinomyoga/ble.sh/issues/40#issuecomment-582941178
+
+    Ref: #D1223 #D1199 #D1130
+
+    ble-update を ble-0.3.2 に対して実行してみたら
+    PS1 等の環境変数が失われている。というかコマンド実行されている?
+    直した筈の問題が直っていない。
+    取り敢えず一番最初に修正するべきなのはこれの気がする。
+
+    commit d35682a で導入した .prologue 呼び出しを
+    commit 59c1ce4 で別の場所に移動している。
+    これは ble-0.3 ではどの様に適用されているだろうか。
+    ble-0.3 に適用したのは ce93c08 である。
+    別に prologue が消滅する等の事は起こっていない。
+
+    うーん。実際に症状を確認してみると [ble: detached] と表示されている。
+    改めて cygwin で確認してみると再現する。やはり MSYS2 特有の問題ではない。
+    ble-0.4 では再現しないので ble-0.3 特有の問題である。
+    取り敢えず [ble: detached] を手がかりに調べる。
+
+    どうも。ble-reload を --attach=prompt にしたのにも拘らず、
+    check-detach において prompt-attach の時の処理を省略したのが原因の様だ。
+    改めて色々ちゃんと動くか確かめる事にする。
+    * ble-detach
+    * ble-attach
+    * ble-detach && ble-attach
+    * ble-reload
+    * source ble.sh --noattach && ble-attach
+    * source ble.sh --noattach
+    * source ble.sh --attach=prompt
+    * source ble.sh --attach=attach
+
+    一応何れも問題なく動いている様な気がする。
+
+    * ble-reload && PROMPT_COMMAND=
+
+    これは駄目だった。。。どの様にするのが良いだろうか。
+    修正した。PROMPT_COMMAND を再度上書きする方式で良かった。
+    改めて上記のテストも行った。全て大丈夫である。
+
   * msys2: root 権限があるかどうかの判定ができない [#D1265]
+    https://github.com/akinomyoga/ble.sh/issues/40#issuecomment-582941178
+
     cygwin の手法を流用しようとしたら常に root 権限がある事になってしまう。
     調べてみると全てのユーザを msys を起動したユーザと見せかけている。
     然し、実際には異なるので何か書き込もうとすると permission defined で失敗する。
