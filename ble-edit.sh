@@ -786,6 +786,39 @@ function .ble-line-prompt/initialize {
   else
     _ble_cursor_prompt__string_root='$'
   fi
+
+  if [[ $OSTYPE == cygwin* ]]; then
+    local windir=/cygdrive/c/Windows
+    if [[ $WINDIR == [A-Za-z]:\\* ]]; then
+      local bsl='\' sl=/
+      local c=${WINDIR::1} path=${WINDIR:3}
+      if [[ $c == [A-Z] ]]; then
+        if ((_ble_bash>=40000)); then
+          c=${c,?}
+        else
+          local ret
+          .ble-text.s2c "$c" 0
+          .ble-text.c2s $((ret+32))
+          c=$ret
+        fi
+      fi
+      windir=/cygdrive/$c/${path//$bsl/$sl}
+    fi
+
+    if [[ -e $windir && -w $windir ]]; then
+      _ble_cursor_prompt__string_root='#'
+    fi
+  elif [[ $OSTYPE == msys* ]]; then
+    # msys64/etc/bash.bashrc に倣う
+    if ble/bin#has id getent; then
+      local id getent
+      ble/util/assign id 'id -G'
+      ble/util/assign getent 'getent -w group S-1-16-12288'
+      ble/string#split getent : "$getent"
+      [[ " $id " == *" ${getent[1]} "* ]] &&
+        _ble_cursor_prompt__string_root='#'
+    fi
+  fi
 }
 
 ## 変数 _ble_line_prompt

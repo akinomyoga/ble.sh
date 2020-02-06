@@ -42,9 +42,19 @@ fi
 
 # check environment
 
+if ((_ble_bash>=40000)); then
+  function ble/bin#has { type "$@" &>/dev/null; }
+else
+  function ble/bin#has {
+    local cmd
+    for cmd; do type "$cmd" || return 1; done &>/dev/null
+    return 0
+  }
+fi
+
 function ble/.check-environment {
   local posixCommandList='sed date rm mkdir mkfifo sleep stty tput sort awk chmod'
-  if ! type $posixCommandList &>/dev/null; then
+  if ! ble/bin#has $posixCommandList &>/dev/null; then
     local cmd commandMissing=
     for cmd in $posixCommandList; do
       if ! type "$cmd" &>/dev/null; then
