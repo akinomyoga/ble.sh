@@ -2668,6 +2668,11 @@ function ble/builtin/bind/option:u/search-recursive {
 function ble/builtin/bind/option:- {
   local ret; ble/string#trim "$1"; local arg=$ret
 
+  # コメント除去 (quote されていない "空白+#" 以降はコメント)
+  local q=\' ifs=$_ble_term_IFS
+  local rex='^(([^\"'$q$ifs']|"([^\"]|\\.)*"|'$q'([^\'$q']|\\.)*'$q'|\\.|['$ifs']+[^#'$_ifs'])*)['$ifs']+#'
+  [[ $arg =~ $rex ]] && arg=${BASH_REMATCH[1]}
+
   local ifs=$' \t\n'
   if [[ $arg == 'set'["$ifs"]* ]]; then
     [[ $_ble_decode_bind_state != none ]] && builtin bind "$arg"
