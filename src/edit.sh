@@ -7105,6 +7105,15 @@ function ble-edit/bind/.check-detach {
     ble-detach
   fi
 
+  # reload & prompt-attach の時は素通り (detach 後の処理は不要)
+  if [[ $_ble_edit_detach_flag == prompt-attach ]]; then
+    if [[ $PROMPT_COMMAND != ble/base/attach-from-PROMPT_COMMAND ]]; then
+      _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
+      PROMPT_COMMAND=ble/base/attach-from-PROMPT_COMMAND
+    fi
+    return 1
+  fi
+
   if [[ $_ble_edit_detach_flag || ! $_ble_attached ]]; then
     type=$_ble_edit_detach_flag
     _ble_edit_detach_flag=
