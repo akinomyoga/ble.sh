@@ -755,7 +755,7 @@ elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
   function ble/util/sleep {
     function ble/util/sleep { local REPLY=; ! builtin read -u "$_ble_util_sleep_fd" -t "$1"; } &>/dev/null
 
-    if [[ $OSTYPE == cygwin* ]]; then
+    if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
       # Cygwin workaround
 
       ble/util/openat _ble_util_sleep_fd '< <(

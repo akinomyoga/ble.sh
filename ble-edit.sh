@@ -5142,7 +5142,7 @@ if ((_ble_bash>=40000)); then
     fi
     local -x HISTTIMEFORMAT=__ble_ext__
     local -x INDEX_FILE=$history_indfile
-    local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
+    local opt_cygwin=; [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]] && opt_cygwin=1
 
     local apos=\'
     # 482ms for 37002 entries
@@ -5231,7 +5231,7 @@ if ((_ble_bash>=40000)); then
   
     local opt_async=; [[ $1 == async ]] && opt_async=1
     local opt_info=; ((_ble_edit_attached)) && [[ ! $opt_async ]] && opt_info=1
-    local opt_cygwin=; [[ $OSTYPE == cygwin* ]] && opt_cygwin=1
+    local opt_cygwin=; [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]] && opt_cygwin=1
   
     local history_tmpfile=$_ble_base_run/$$.edit-history-load
     local history_indfile=$_ble_base_run/$$.edit-history-load-multiline-index
