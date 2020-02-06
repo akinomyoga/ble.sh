@@ -76,7 +76,7 @@ fi
 function ble/util/readlink {
   local path=$1
   case "$OSTYPE" in
-  (cygwin|linux-gnu)
+  (cygwin|msys|linux-gnu)
     # 少なくとも cygwin, GNU/Linux では readlink -f が使える
     PATH=/bin:/usr/bin readlink -f "$path" ;;
   (darwin*|*)
