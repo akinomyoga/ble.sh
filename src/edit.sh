@@ -713,6 +713,9 @@ function ble-edit/prompt/update {
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
   fi
 }
+function ble-edit/prompt/clear {
+  _ble_edit_prompt[0]=
+}
 
 # 
 #------------------------------------------------------------------------------
@@ -2407,8 +2410,6 @@ function ble/widget/yankpop/exit-default {
   ble/decode/widget/redispatch "${KEYS[@]}"
 }
 function ble-decode/keymap:yankpop/define {
-  local ble_bind_keymap=yankpop
-
   ble-decode/keymap:safe/bind-arg yankpop/exit-default
   ble-bind -f __default__ 'yankpop/exit-default'
   ble-bind -f 'C-g'       'yankpop/cancel'
@@ -2587,8 +2588,6 @@ function ble/highlight/layer:region/mark:insert/get-face {
 }
 
 function ble-decode/keymap:lastarg/define {
-  local ble_bind_keymap=lastarg
-
   ble-decode/keymap:safe/bind-arg lastarg/exit-default
 
   ble-bind -f __default__ 'lastarg/exit-default'
@@ -3065,13 +3064,13 @@ function ble/widget/character-search.hook {
 ##   @param[in] delta
 ##   @var[in,out] index
 function ble/widget/.locate-forward-byte {
-  local delta=$1
+  local delta=$1 ret
   if ((delta==0)); then
     return 0
   elif ((delta>0)); then
     local right=${_ble_edit_str:index:delta}
     local rlen=${#right}
-    LC_ALL=C builtin eval 'local rsz=${#right}'
+    ble/util/strlen "$right"; local rsz=$ret
     if ((delta>=rsz)); then
       ((index+=rlen))
       ((delta==rsz)); return
@@ -3080,7 +3079,7 @@ function ble/widget/.locate-forward-byte {
       while ((delta&&rlen>=2)); do
         local mlen=$((rlen/2))
         local m=${right::mlen}
-        LC_ALL=C builtin eval 'local msz=${#m}'
+        ble/util/strlen "$m"; local msz=$ret
         if ((delta>=msz)); then
           right=${right:mlen}
           ((index+=mlen,
@@ -3100,7 +3099,7 @@ function ble/widget/.locate-forward-byte {
     local left=${_ble_edit_str::index}
     local llen=${#left}
     ((llen>delta)) && left=${left:llen-delta} llen=$delta
-    LC_ALL=C builtin eval 'local lsz=${#left}'
+    ble/util/strlen "$left"; local lsz=$ret
     if ((delta>=lsz)); then
       ((index-=llen))
       ((delta==lsz)); return
@@ -3109,7 +3108,7 @@ function ble/widget/.locate-forward-byte {
       while ((delta&&llen>=2)); do
         local mlen=$((llen/2))
         local m=${left:llen-mlen}
-        LC_ALL=C builtin eval 'local msz=${#m}'
+        ble/util/strlen "$m"; local msz=$ret
         if ((delta>=msz)); then
           left=${left::llen-mlen}
           ((index-=mlen,
@@ -3841,12 +3840,16 @@ function ble-edit/exec/.adjust-eol {
   local eol_mark=${_ble_edit_exec_eol_mark[1]}
   if [[ $eol_mark ]]; then
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_sc"
-    if ((_ble_edit_exec_eol_mark[2]>cols)); then
+    local width=${_ble_edit_exec_eol_mark[2]} limit=$cols
+    [[ $_ble_term_rc ]] || ((limit--))
+    if ((width>limit)); then
       local x=0 y=0 g=0
-      LINES=1 COLUMNS=$cols ble/canvas/trace.draw "$bleopt_prompt_eol_mark" truncate
+      LINES=1 COLUMNS=$limit ble/canvas/trace.draw "$bleopt_prompt_eol_mark" truncate
+      width=$x
     else
       ble/canvas/put.draw "$eol_mark"
     fi
+    [[ $_ble_term_rc ]] || ble/canvas/put-cub.draw "$width"
     ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
   fi
 
@@ -4489,7 +4492,7 @@ function ble/widget/tab-insert {
 }
 function ble-edit/is-single-complete-line {
   ble-edit/content/is-single-line || return 1
-  [[ $_ble_edit_str ]] && ble-decode/has-input &&
+  [[ $_ble_edit_str ]] && ble/decode/has-input &&
     ((0<=bleopt_accept_line_threshold&&bleopt_accept_line_threshold<=_ble_decode_input_count+ble_decode_char_rest)) &&
     return 1
   if shopt -q cmdhist &>/dev/null; then
@@ -4558,8 +4561,8 @@ function ble/widget/insert-comment/.remove-comment {
 
   ret=$out
 }
-function ble/widget/insert-comment {
-  local arg; ble-edit/content/get-arg ''
+function ble/widget/insert-comment/.insert {
+  local arg=$1
   local ret='#'; ble/util/read-rl-variable comment-begin
   local comment_begin=${ret::1}
   local text=
@@ -4569,6 +4572,10 @@ function ble/widget/insert-comment {
     text=$comment_begin${_ble_edit_str//$'\n'/$'\n'"$comment_begin"}
   fi
   ble-edit/content/reset-and-check-dirty "$text"
+}
+function ble/widget/insert-comment {
+  local arg; ble-edit/content/get-arg ''
+  ble/widget/insert-comment/.insert "$arg"
   ble/widget/accept-line
 }
 
@@ -4578,7 +4585,7 @@ function ble/widget/alias-expand-line.proc {
       ble/widget/alias-expand-line.proc
   elif [[ $wtype && ! ${wtype//[0-9]} ]] && ((wtype==_ble_ctx_CMDI)); then
     local word=${_ble_edit_str:wbegin:wlen}
-    ble/util/expand-alias "$word"
+    local ret; ble/util/expand-alias "$word"
     [[ $word == "$ret" ]] && return
     changed=1
     ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$ret" 1
@@ -4639,7 +4646,7 @@ function ble/widget/shell-expand-line.expand-word {
   ret=$word; [[ $ret == '~'* ]] && ret='\'$word
   ble/syntax:bash/simple-word/eval-noglob "$ret"
   if [[ $word != $ret || ${#ret[@]} -ne 1 ]]; then
-    flags=${flags}q
+    [[ $opts == *:quote:* ]] && flags=${flags}q
     return
   fi
 
@@ -4690,7 +4697,13 @@ function ble/widget/shell-expand-line.proc {
   changed=1
   ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$out" 1
 }
+## 関数 ble/widget/shell-expand-line opts
+##   @param[in] opts
+##     コロン区切りのオプションです。
+##     quote 直接実行した時と振る舞いが同じになる様に、
+##           展開結果を適切に quote します。
 function ble/widget/shell-expand-line {
+  local opts=:$1:
   ble-edit/content/clear-arg
   ble/widget/history-expand-line
   ble-edit/content/update-syntax
@@ -5779,8 +5792,6 @@ function ble/widget/history-isearch-forward {
 }
 
 function ble-decode/keymap:isearch/define {
-  local ble_bind_keymap=isearch
-
   ble-bind -f __defchar__ isearch/self-insert
   ble-bind -f C-r         isearch/backward
   ble-bind -f C-s         isearch/forward
@@ -6097,8 +6108,6 @@ function ble/widget/nsearch/accept-line {
 }
 
 function ble-decode/keymap:nsearch/define {
-  local ble_bind_keymap=nsearch
-
   ble-bind -f __default__ nsearch/exit-default
   ble-bind -f 'C-g'       nsearch/cancel
   ble-bind -f 'C-x C-g'   nsearch/cancel
@@ -6346,7 +6355,6 @@ function ble/widget/safe/__attach__ {
   ble-edit/info/set-default text ''
 }
 function ble-decode/keymap:safe/define {
-  local ble_bind_keymap=safe
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
@@ -6382,7 +6390,7 @@ function ble-decode/keymap:safe/define {
   ble-bind -c 'M-z'      fg
 }
 
-function ble-edit/bind/load-keymap-definition:safe {
+function ble-edit/bind/load-editing-mode:safe {
   ble-decode/keymap/load safe
 }
 
@@ -6413,7 +6421,6 @@ function ble/widget/read/cancel {
 }
 
 function ble-decode/keymap:read/define {
-  local ble_bind_keymap=read
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
@@ -6500,8 +6507,7 @@ function ble/builtin/read/.read-arguments {
 
 function ble/builtin/read/.setup-textarea {
   # 初期化
-  local def_kmap; ble-decode/DEFAULT_KEYMAP -v def_kmap
-  ble-decode/keymap/push read
+  ble-decode/keymap/push read || return 1
 
   [[ $_ble_edit_read_context == external ]] &&
     _ble_canvas_panel_height[0]=0
@@ -6531,6 +6537,7 @@ function ble/builtin/read/.setup-textarea {
   # syntax, highlight
   _ble_syntax_lang=text
   _ble_highlight_layer__list=(plain region overwrite_mode disabled)
+  return 0
 }
 function ble/builtin/read/TRAPWINCH {
   local IFS=$_ble_term_IFS
@@ -6550,7 +6557,7 @@ function ble/builtin/read/.loop {
   shopt -u failglob
 
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
-  ble/builtin/read/.setup-textarea
+  ble/builtin/read/.setup-textarea || return 1
   builtin trap -- ble/builtin/read/TRAPWINCH WINCH
 
   local ret= timeout=
@@ -7145,8 +7152,8 @@ function ble-edit/bind/.check-detach {
     #   [[ ! -o emacs && ! -o vi ]] のときは ble-detach が呼び出されるのでここには来ない。
     local state=$_ble_decode_bind_state
     if [[ ( $state == emacs || $state == vi ) && ! -o $state ]]; then
-      ble-decode/reset-default-keymap
-      ble-decode/detach
+      ble/decode/reset-default-keymap
+      ble/decode/detach
       ble/decode/attach
     fi
 
@@ -7202,7 +7209,7 @@ fi
 function ble-decode/PROLOGUE {
   ble-edit/exec:gexec/restore-state
   ble-edit/bind/.head
-  ble-decode-bind/uvw
+  ble/decode/bind/adjust-uvw
   ble/term/enter
 }
 
@@ -7213,7 +7220,7 @@ function ble-decode/EPILOGUE {
     #   大量の文字が入力された時に毎回再描画をすると滅茶苦茶遅い。
     #   次の文字が既に来て居る場合には描画処理をせずに抜ける。
     #   (再描画は次の文字に対する bind 呼出でされる筈。)
-    if ble-decode/has-input; then
+    if ble/decode/has-input; then
       ble-edit/bind/.tail-without-draw
       return 0
     fi
@@ -7297,16 +7304,14 @@ function ble/widget/.EDIT_COMMAND {
 }
 
 ## ble-decode.sh 用の設定
-function ble-decode/DEFAULT_KEYMAP {
+function ble-decode/INITIALIZE_DEFMAP {
   local ret
   bleopt/get:default_keymap; local defmap=$ret
-  if ble-edit/bind/load-keymap-definition "$defmap"; then
+  if ble-edit/bind/load-editing-mode "$defmap"; then
     local base_keymap=$defmap
     [[ $defmap == vi ]] && base_keymap=vi_imap
     builtin eval -- "$2=\$base_keymap"
-    if ble-decode/keymap/is-keymap "$base_keymap" || ble/is-function "ble-decode/keymap:$base_keymap/define"; then
-      return 0
-    fi
+    ble-decode/keymap/is-keymap "$base_keymap" && return 0
   fi
 
   # エラーメッセージ
@@ -7319,24 +7324,24 @@ function ble-decode/DEFAULT_KEYMAP {
   ble/util/buffer.flush >&2
 
   # Fallback keymap "safe"
-  ble-edit/bind/load-keymap-definition safe &&
+  ble-edit/bind/load-editing-mode safe &&
     ble-decode/keymap/load safe &&
     builtin eval -- "$2=safe" &&
     bleopt_default_keymap=safe
 }
 
-function ble-edit/bind/load-keymap-definition {
+function ble-edit/bind/load-editing-mode {
   local name=$1
-  if ble/is-function ble-edit/bind/load-keymap-definition:"$name"; then
-    ble-edit/bind/load-keymap-definition:"$name"
+  if ble/is-function ble-edit/bind/load-editing-mode:"$name"; then
+    ble-edit/bind/load-editing-mode:"$name"
   else
-    source "$_ble_base/keymap/$name.sh"
+    ble/util/import "keymap/$name.sh"
   fi
 }
 function ble-edit/bind/clear-keymap-definition-loader {
-  unset -f ble-edit/bind/load-keymap-definition:safe
-  unset -f ble-edit/bind/load-keymap-definition:emacs
-  unset -f ble-edit/bind/load-keymap-definition:vi
+  unset -f ble-edit/bind/load-editing-mode:safe
+  unset -f ble-edit/bind/load-editing-mode:emacs
+  unset -f ble-edit/bind/load-editing-mode:vi
 }
 
 #------------------------------------------------------------------------------

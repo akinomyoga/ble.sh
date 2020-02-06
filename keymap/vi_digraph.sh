@@ -1,7 +1,5 @@
 #!/bin/bash
 
-function ble-edit/bind/load-keymap-definition:vi_digraph { :; }
-
 _ble_keymap_vi_digraph__hook=
 
 function ble/widget/vi_digraph/.proc {
@@ -30,8 +28,6 @@ function ble/widget/vi_digraph/default {
 }
 
 function ble-decode/keymap:vi_digraph/define {
-  local ble_bind_keymap=vi_digraph
-
   ble-bind -f __defchar__ vi_digraph/defchar
   ble-bind -f __default__ vi_digraph/default
 
@@ -57,10 +53,8 @@ function ble-decode/keymap:vi_digraph/initialize {
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph..."
 
-  ble-decode/keymap:vi_digraph/define
-
   : >| "$fname_keymap_cache"
-  ble-decode/keymap/dump vi_digraph >> "$fname_keymap_cache"
+  ble-decode/keymap/load vi_digraph dump 3>> "$fname_keymap_cache"
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph... done"
 }

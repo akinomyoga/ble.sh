@@ -1,0 +1,3601 @@
+# -*- coding:utf-8 -*-
+
+拡張
+
+  * プログラム補完に於いて、
+    補完関数内で compopt -o filter_by_prefix を指定した場合、
+    生成される候補を接頭辞が一致するものだけに絞り込む。
+
+制限
+
+  * ble.sh を attach しているとき builtin read -e は動かない。
+    代わりに ble.sh が定義したシェル関数 read (組み込みコマンドを上書き)
+    を用いて read -e を呼び出す必要がある。
+
+  * bash-3 C-d について
+
+    今は何とか C-d を処理する事に成功しているが完全ではない。
+
+    1 C-d を押した時に bash が出力するエラーメッセージを使って捕捉している。
+      このエラーメッセージは言語や設定によって異なると思われる。
+      現在は以下のメッセージを調べている。
+      - 'Use "exit" to leave the shell.'
+      - 'ログアウトする為には exit を入力して下さい'
+      - 'シェルから脱出するには "exit" を使用してください。'
+      自分の bash が異なるメッセージを出力する時は
+      それを bleopt_ignoreeof_message に設定する。
+    2 連続で沢山 C-d を押すと "^D" が echo されて表示が乱れるかもしれない。
+      最悪の場合 C-d によって bash プロセスが落ちる可能性もあるかもしれない。
+      (未だ落ちた事はないが)。
+    3 C-d を処理する為に SIGUSR1 を使用している。
+      その為 SIGUSR1 を別の目的で使用する事は出来ない。
+
+  * 文字コードについて
+
+    現在は基本的に UTF-8 を想定している。
+    それ以外の環境のためには少なくとも以下の修正が必要になる。
+
+    - ble.sh 自体を iconv で変換する事。或いは日本語を完全に排除する事。
+
+      現在のところは日本語はコメント中にしか含まれていないはずである。
+      コメントさえ削除すれば何処でも動くようになっていると良い。
+
+    - 使いたい文字コード → unicode のデコーダを自分でかく事:
+      これは "function ble-decode-byte+文字コード" を実装すれば良い。
+
+    - Unicode → 文字のコードが正しく動作する様にする事:
+      これは .ble-text.c2s (ble-core.sh) の辺りを直せばよい。
+      "ble-text-c2b+文字コード"
+      "ble-text-b2c+文字コード"
+      も実装する必要がある。
+
+    - ble/encoding:$bleopt_input_encoding/generate-binder
+
+      現在 "C-@", "ESC" 及び "ESC *" を bind する為に、
+      その符号化形式の非正規な符号に変換している。
+      この変換はシェル関数 ble/encoding:$bleopt_input_encoding/generate-binder
+      において文字符号化方式毎に (UTF-8 前提の設定を上書きする形で) 定義する。
+
+      また bind を記録したキャッシュは $bleopt_input_encoding 毎に保持するが、
+      このキャッシュの更新は bind.sh のタイムスタンプしか見ていない (ble-decode/bind 内)。
+      新しい符号化方式を定義する時には、タイムスタンプを参照するファイル
+      (ble/encoding:$bleopt_input_encoding/generate-binder を定義するファイル) を決める必要がある。
+
+
+    他の文字コードは未だ一回も実装していないので上記以外にも必要な作業が出て来る可能性がある。
+
+    + 2015-11-30 Note: ble-decode.sh (generate-source-to-unbind-default)
+
+      文字コード実装時に問題があるかも。
+
+      現在、bind -sp が出力する中途半端なバイトを解釈する為に、LANG=C で awk を起動している。
+      UTF-8 の場合には複数バイト文字を構成するバイトは ASCII 文字と被らないので問題ないが、
+      Shift_JIS 等の場合には ASCII 文字、特に \ や " を含む可能性がある。
+      この場合には LANG=C にしていると問題が生じる。
+      というか、bind -sp の出力する中途半端な文字と、複数バイト文字の一部を本質的に区別する方法はない様に思われる。
+
+      ただし、救いは、もし ble.sh を plain な bash の上で起動するとすれば
+      日本語で bind -sp に登録がなされていることはないだろうということである。
+      つまり、ユーザが手で (或いは .inputrc に) bind '"日本語":"にほんご"' などとしない限りは問題は生じない。
+
+  * bash-4.0, 4.1 において特殊シェル変数 FUNCNAME をユーザが unset した上で、
+    関数内から ble.sh を source すると ble の使う連想配列がローカルに定義され問題になる。
+
+    - bash-4.0 以降では連想配列を用いるが bash-4.2 未満では、
+      連想配列を明示的にグローバルに配置することができない。
+
+    - FUNCNAME がユーザによって削除されていなければ、
+      この変数を用いて関数内から source されたことを検知できるので、
+      その時には配列実装に fallback する。
+      FUNCNAME が削除されていると fallback に正しく切り替わらずに問題になる。
+
+  * bash-4.3 では C-x は、次の文字が来るまでは受信できない。
+    bash-4.0 - 4.4 の他の version では遅延はないのでこれは bash-4.3 特有の問題である。
+
+  * 構文に従った着色の中には bash の不自然な振る舞いや、
+    複雑な振る舞いのために正確さを諦めた物がある。
+
+    - bash の最初の [@()] の構文解析とパス名展開時の解析の齟齬
+
+      echo [@(echo|[...])]
+
+      恐らく bash は最初の単語の切り出しで @() を一単位として読み取り、
+      ["@(echo|[...])"] の様に読み取る。その上で、改めてパス名展開を適用するが、
+      その時には ["@(echo|[.."]")]" の様に解釈する。
+      つまり、初めの構文解析とパス名展開の適用の間に齟齬がある。
+
+      ble.sh では構文解析に従った解析・着色をすることにしたので、
+      実際のパス名展開の適用結果が着色と異なることがあることに注意する。
+
+    - bash echo {@(,)}
+
+      これについても上と同様のことが起こる。
+      単語の切り出しは {"@(,)"} となり、構文エラーは発生しない。
+      後のブレース展開では {"@(",")"} と解釈されて分割される。
+      単語が分断されてしまうのでパス名展開は起こらない。
+
+    - bash のブレース展開時の ${var:-...}{,} の解析とパラメータ展開時の解析の齟齬
+
+      echo ${var:-{a,b}{a,b}
+
+      恐らく bash は最初にブレース展開を試みる時に、
+      ${} の中については {} の入れ子を数えてスキップする。
+      従って、上のコマンドの時は ${} が終端しないのでブレース展開は試みられない。
+      しかし、パラメータ展開が実施される時には {} の入れ子は考慮に入れられず、
+      最初に現れた "}" で終端するので、${var:-"{a,b"}"{a,b}" という解釈になる。
+
+      [予定]
+      ble.sh ではどの様に着色するか微妙である。
+      理想的には最終的な解釈の ${var:-"{a,b"}"{a,b}" に応じた着色にしたいが、
+      後半の {a,b} の部分が {} の入れ子のアンバランスによって
+      無効化されている事を検出するのは困難である。
+      仕方がないので、ブレース展開の {} の入れ子の勘定はバグとして無視する事にする。
+      つまり、echo ${var:-"{a,b"}{a,b} という解釈で着色する。
+
+    - bash のチルダ展開の時の echo a[]b]=~ の解析と、パス名展開の時の解析
+
+      チルダ展開の時には a["]b"]=~ とはならず a[]"b]="~ という解釈になるので、チルダ展開は起こらない。
+      一方で、パス名展開のときには a["]b"]"=~" という解釈になり、'ab=~' などのファイル名に一致する。
+      ble.sh ではパス名展開の規則の方を優先させる。
+
+    - ble.sh では [[ @({a,b}) ]] のブレース展開が有効であるかの様に着色される。
+
+      実際には、条件コマンドの中ではブレース展開は無効になる。
+      これに正確に対応する為には "条件コマンドの中の extglob"
+      に対応する文脈値を定義する必要があるが、煩雑になるので対応していない。
+
+    - ble.sh では echo [{@(a|b),[abc]}] の内部の extglob や [...] が有効であるかの様に着色される。
+
+      しかし、実際にはブレース展開を実行したとしても [] の内部なので、
+      extglob や [...] は不活性化しているはずである。
+      しかし、これも解析が無意味に複雑になるので対応はしない。
+
+    - ble.sh では echo {~user,~user} の内部のチルダ展開に反応しない。
+
+      bash ではブレース展開された後にチルダ展開が実行されるので有効。
+
+    - ble.sh はブレース展開が含まれる変数代入形式単語でも、
+      ブレース展開より前のチルダ展開は有効である。
+
+      bash では変数代入形式の単語の右辺でチルダ展開が起こる。
+      しかし、ブレース展開が含まれている場合には例外としてチルダ展開が起こらない様だ。
+
+      $ a=~:{a,b}:~:echo      → ブレース展開は起こらず、チルダ展開は起こる。
+      $ echo a=~:{a,b}:~:echo → ブレース展開が起こり、チルダ展開は起こらない
+                                 ble.sh では一つ目のチルダ展開の解析時点では、
+                                 次にブレース展開が来ることを知らないので、
+                                 一つ目の ~ はチルダ展開として着色する。
+
+      規則がよく分からないが、取り敢えず ble.sh ではブレース展開が現れたら、
+      それ以降はチルダ展開が無効になるようにしている。
+      具体的には _ble_syntax_bash_command_IsAssign[ctx] の設定されている文脈は、
+      ブレース展開が現れたときに、変数代入形式前の文脈値に戻すようにしている。
+
+  * 2019-02-04 プログラム補完関数の中で標準入力は使えない。
+    どうしてもユーザからの入力を得たい場合には、
+    現在の補完が自動補完でない事を確認してから /dev/tty から直接取る事。
+
+bash 実装上で注意するべき事
+
+  * 変数の代入は基本的に quote は必要ないが、
+
+    1 チルダで始まる時はチルダ展開を防ぐ為に quote が必要。
+      (変数展開の中にあるチルダは quote しなくても大丈夫)
+
+    2 配列要素を空文字列で連結するときは quote が必要。
+      つまり、IFS= eval 'declare var=${arr[*]}' とすると空白区切りになる。
+      IFS= eval 'declare var="${arr[*]}"' とする必要がある。
+      また IFS が中身のある場合には問題は起こらない。
+
+      - bash-4.3 以降では IFS= eval 'var=${arr[*]}' なら OK
+
+    関係あるか分からないが
+    http://lists.gnu.org/archive/html/bug-bash/2017-04/msg00001.html
+    において以下のような例が紹介されている。これは bash-4.5 で修正されるらしい。
+
+    | bash-4.2$ unset IFS; set ' '; a=$*; printf '<%s>' "$a"
+    | < >
+    | bash-4.3$ unset IFS; set ' '; a=$*; printf '<%s>' "$a"
+    | <>
+
+  * コマンドをつなぐ && と || の優先順位は同じで左結合である
+    但し、算術式や [[ ]] に登場する && と || はC言語と同じ優先順位である。
+
+  * unset の引数は quote しないとパス名展開の対象である。
+    特に配列要素を消す場合には [...] を quote する必要がある。
+
+  * unset -v または unset -f と明示的に指定しないと、
+    意図せず同名の関数または同名の変数を消去してしまう可能性がある。
+    変数を消す場合でも unset -v と明示する必要がある (ref #D0893)。
+
+  * コマンドの単語中のパラメータ展開は "" でクォートする必要がある
+    (ref #D0943)
+
+    特に値として以下の物が含まれている可能性がある時は絶対必要である。
+    先ず始めに IFS に含まれる文字がある場合は意図しない単語分割を抑制する為に "" で囲む。
+    次に、グロブの特殊文字 *?[ が含まれている場合にも注意する。
+    shopt -s extglob の時には @( や !( の並びにも注意する必要がある。
+    更に、'\' が含まれる場合もグロブ特殊文字のクォートに何故か影響を与える様なので注意する。
+    これは例えば shopt -s failglob において、a='\'; echo $a'*' がエラーメッセージを出す事で分かる。
+
+  [complete 仕様について]
+
+  * compgen -f はクォート除去、チルダ展開を実行する
+    理解できないのはクォート除去した後にチルダ展開をするという事。
+    compgen -f "'~/'" としても '~' というディレクトリには決して一致しない。
+    compgen -f "'\~/'" 等とクォートした上に backslash も指定しないと行けない。
+    結局どういう規則なのか分からないので、寧ろ arr=('~/'*) 等の様にするべき。
+
+    Note: ~ だとちゃんと現在のディレクトリ以下のファイルに一致するようだ?
+    Note: compgen -W でも似たような quote 除去・ブレース展開などを行う様だが、
+      それでも理解できる振る舞いになっている。
+    Note: bash --norc で echo \~/ から補完を実際に実行してみると echo ~/... に書き換わってしまう。
+      何処かで quote が消えてしまっている。これはバグと見做すべきであろう。
+
+  * $ complete -F foo -C bar command と登録すると foo, bar の両方が foo bar の順に実行される。
+    $ complete -C bar -F foo command と登録すると bar foo の順に実行される。
+    しかし、complete -p とすると両者とも
+    complete -C 'bar' -F foo
+    と表示され登録順・実行順についての情報を取り出す事ができない。
+
+    →今試すと必ず foo bar の順序でしか呼び出されない。compgen でも同様に見える。
+
+  * $ complete -F hoge1 -F hoge2 command とすると、-F hoge2 だけ有効になる
+    (complete -p による表示もそうだし、実際に実行されるのも hoge2 だけであった)。
+    -F オプションは後からものによって上書きされるという事の様だ。
+
+  * shopt -q は通常の出力はやめてもエラーメッセージは出す。
+    つまり未実装のオプション (compat* や autocd) について
+    shopt -q をするとエラーメッセージが出力されるので
+    結局 &>/dev/null にリダイレクトしなければならない。
+
+  * locale の環境変数 LC_*/LANG を設定する時は &>/dev/null する必要がある。
+
+    元々入っていた値が不正な値である場合、
+    元の値を復元した時にエラーメッセージが意図されず出力される。
+
+    ローカル変数として設定する場合は、
+    - 値の復元はどうやら関数の本体を完全に実行し終わった後に起こる様なので、
+      関数の本体自体を &>/dev/null で囲んでも意味はない。
+    - 関数の中で unset を行っても意味はない。
+    - 関数の中でもとの値を設定しても意味はない。
+      関数が抜ける時に改めて設定される様だ。
+
+    IFS= LC_ALL=C read -t 0 &>/dev/null
+    としても復元時のメッセージは何故か抑制できなかった。
+
+  * Bash 正規表現はシステムの <regex.h> を使用するので環境依存である。
+
+    Linux においては bash 正規表現の POSIX 文字クラス ([[:alpha:]] など) は
+    ロケールによって何にでも一致するので信用できない。
+    例えば GNU/Linux (Fedora 25) では ja_JP.UTF-8 で [[:alpha:]] は漢字・仮名にも一致する。
+
+  * bind 関数の中で set +o emacs などをして編集モードを無効にすると、
+
+    編集関数の実行自体が中断されるようである。
+    具体的には set +o emacs を含む行だけ実行されて、次の行以降は実行されない。
+    set +o emacs が eval に含まれる場合は eval が終わると共に中断される。
+    また関数内に set +o emacs がある場合は、その関数は最後まで実行されるようだ。
+
+    従って set +o emacs が実行されたことを検知して適切な後処理を実行するのは難しい。
+    更にその後で set -o emacs に戻ってくると変な状態になる。
+    bind -p ではちゃんと hook された状態になっているが、
+    実際に操作してみると keymap はリセットされているように見受けられる。
+    この辺りはもう少し詳しく調べてみないと具体的に何が起こっているかはわからない。
+
+    例: 以下の3行のコマンドを実行しようとすると途中で中断され元の状態には戻らなくなる。
+
+    $ set +o emacs
+    > echo hello
+    > set -o emacs
+
+    直接 readline で実行している場合にはこの問題は起こらない。
+
+  * ble.sh では変数の -i は積極的には使用しないことにした ref #D0894
+
+    関数引数に使用する場合は、そもそも -i の機能を使う機会の方が少ないので
+    全ての関数の引数に適用するのは非効率であり、一部の関数の引数にだけ適用するのは
+    関数の仕様として分かりにくくバグの元である。そもそも算術式展開が必要化どうかは
+    呼び出し元が知っていることのはずなので呼び出し元で算術式展開をするべきである。
+
+    関数内で使用する場合についても明示的に算術式展開を実行すれば良い。
+
+  * bind 関数中の set +v は揮発性 ref #D0930 (Bash 3.0--5.0)
+
+    bind 関数中で set +v 等としてもその状態は
+    次の bind 関数の呼び出しの際には元に戻ってしまう。
+    この振る舞いは試した全ての bash version で共通だった。
+
+bashbug: 実装上で注意するべき事・バグ
+
+  * bash-5.0 -- 3.0 (全 version) バグ (ref #D0943)
+
+    $ shopt -s failglob
+    $ a='\'; echo $a'*'
+
+    これで failglob になる。\* に一致するファイルは存在しませんのエラーメッセージ。
+    ファイルとして '*', '\*', '\a', 'a' 等があっても決して一致しない。
+    これを防ぐ為には、パラメータ展開は必ず "" でクォートする様にすれば良い。
+
+  * bash-5.0 -- 3.0 (全 version) バグ
+
+    history -p をコマンド実行中に呼び出すと呼び出す度に履歴項目が減る。
+    これは例えば f1() { history | tail -1; history -p '!!'; history | tail; } として、
+    f1 を実行すると分かる。f1;f1;f1 等とすると一回で3件消える。
+    更に bash-3.0 では bind -x の関数の中であっても history -p を呼び出す度に履歴項目が減る。
+
+  * bash-4.4 -- 4.3 バグ
+
+    \C-@ 関係に bind -x すると正しく動かない
+    bash-4.4 での動作については未だ確認していない。
+    → bash-4.4 でもやはり動かない。
+
+    これは修正した http://lists.gnu.org/archive/html/bug-bash/2018-03/msg00165.html
+
+  * bash-4.4 -- 3.2, etc
+
+    rex="^([^\$]|\\'[^\\']*\\')+\$" && [[ 'i$' =~ $rex ]] && echo hello
+    が一致する。\' の解釈が謎である。単に ' とすれば問題ない。
+
+    rex=$'^([^$]|\\\'.\\\')+$' でも一致する。
+    rex=$'^([^$]|\\\')+$' だと一致しない。
+    \' は何らかのアンカーとして解釈されるという事だろうか。
+    或いは単純に無視されているのか。
+
+  * bash-4.2
+
+    declare -g -r var とした時に、
+    グローバル変数が定義されていなければローカルに新しく変数を作る様だ。
+    bash-4.3 で直っている。
+
+  * bash-4.2 以下
+    bash-4.2 ～ bash-3.0
+
+    \C-x 単体に bind -x して C-x に続けて何か打つと segfault する。
+    $ bind -x '"\C-x":echo' → 続けて C-x a 等と入力
+
+  * bash-4.0 segfault
+
+    以下で segfault を起こすことが分かった。bash-4.1 以降では直っている。
+
+    bash-4.0 -c 'function f1 { COMPREPLY=(alpha); }; compgen -F f1 2>/dev/null'
+
+    但し、ble.sh の使用中に実際に compgen -F を通して segfault になることはなかった。
+    もしかすると何らかの条件が整うと segfault するかもしれないので、
+    念のためここに記録に残しておく。
+
+  * bash-4.0 -- 3.0
+
+    $'' 内に \' を入れていると履歴展開が '' の中で起こる?
+    例えば rex='a'$'\'\'''!a' とすると !a の部分が展開される。
+
+  * bash-3.2, bash-3.1 では source にプロセス置換を渡しても読み取ってくれない。
+    つまり source <( ... ) としても何も起こらない。
+    代わりに eval -- "$( ... )" すると良い。
+
+  * bash-3.2 -- 3.1
+
+    ref #D0857
+    10 以上のファイルディスクリプタで使用されている物に対して
+    リダイレクションで新しい出力先を設定しようとしても失敗する。
+    これは fd>&- として一旦閉じてからリダイレクションすれば良い。
+
+  * bash-3.1 では declare -f funcname の funcname に + 等の文字を含める事ができない。
+    一応 declare -F 等とすれば名前は列挙される様ではある。
+    bash-3.2 未満では declare -f ではなく type -t で関数かどうかの確認を行う。
+
+  * bash-3.1 での bind -r について
+    bind -sp とすると "\M-[C" 等と表示されるがそれに従って bind -r '\M-[C'
+    としても削除する事は出来ない。代わりに bind -r '\e[C' とすれば削除できる。
+
+    eval -- "$(bind -sp | awk '/M-\[/{sub(/:$/,"",$1);gsub(/\\M-/,"\\e");print "bind -r " $1}')"
+
+  * bash-3.1
+    呼出先の関数で、呼出元で定義されているのと同名の配列を作っても、中が空になる。
+    > $ function dbg/test2 { local -a hello=(1 2 3); echo "hello=(${hello[*]})";}
+    > $ function dbg/test1 { local -a hello=(3 2 1); dbg/test2;}
+    > $ dbg/test1
+    > hello=()
+
+    これは bash-3.1-patches/bash31-004 で修正されている様だ。
+
+  * bash-3.1
+
+    - ${#arr[n]} は文字数ではなくバイト数を返す様だ。
+
+    - "${var//%d/123}" は動かない。"${var//'%d'/123}" 等とすればOK。
+
+    - bash-3.0, bash-3.1: local GLOBIGNORE すると、
+      関数を出てもパス名展開の時にその影響が残っている。
+      (直接変数の中身を見ても何もない様に見えるが。)
+      unset GLOBIGNORE などとすると直る。
+
+  * bash-3.0
+
+    - ${#param} は文字数ではなくバイト数を返す、という事になっているらしいが、
+      実際に試してみると文字数になっている (bash-3.0.22)。
+      何処かで patch が当たったのだろうか。まあいいか…。
+
+      (※${param:ofs:len} は 3.0-beta1 以降であれば文字数でカウントされる)
+
+    - declare -p A で改行を含む変数を出力すると改行が消える。
+      例: 一見正しく出力されている様に錯覚するが "\ + 改行" は改行のエスケープではなく、
+        長い文字列リテラルを二行に書く為の記法である。つまり、無視される。
+      $ A=$'\n'; declare -p A
+      | A="\
+      | "
+
+bashbug 算術式周りのバグと注意点
+
+  * bash-3.0 - 4.4.7 算術式:
+
+    条件分岐で実行されない部分でも配列の添字は 0 以上でなければならない。
+    例えば以下はエラーになる @ bash-3.0, 3.1, 3.2, 4.0, 4.2, 4.3
+    ((a=-1,a>=0?b[a]:0))
+
+    もっと調べてみると配列の添字に限らず分岐しない所で式が評価されている様だ:
+
+    + 三項条件式で起こる。true/false branches のどちらでも起こる。&& や || では起こらない。
+
+      $ echo 'x=a=1; ((a=0,0?x:0)); echo $a' | bash      1 (bash-3.0 - 4.3)
+      $ echo 'x=a=1; ((a=0,1?0:x)); echo $a' | bash      1 (bash-3.0 - 4.3)
+      $ echo 'x=a=1; ((a=0,0&&x)); echo $a' | bash       0 (bash-3.0 - 4.3)
+      $ echo 'x=a=1; ((a=0,1||x)); echo $a' | bash       0 (bash-3.0 - 4.3)
+
+      $ echo 'x=a=1; ((a=0,0?b[x]:0)); echo $a' | bash   1
+      $ echo 'x=a=1; ((a=0,0&&b[x])); echo $a' | bash    0 (bash-3.0, 3.1, 4.2+ / bash-3.2, 4.0, 4.1 は別の bug で 1)
+
+    + 括弧で囲めば何も起こらない様だ。
+
+      $ echo 'x=a=1; ((a=0,0?(x):0)); echo $a' | bash    0 (bash-3.0 - 4.3)
+      $ echo 'x=a=1; ((a=0,1?0:(x))); echo $a' | bash    0 (bash-3.0 - 4.3)
+
+      $ echo 'x=a=1; ((a=0,0?(b[x]):0)); echo $a' | bash 0 (bash-3.0, 3.1, 4.2+ / bash-3.2, 4.0, 4.1 は別の bug で 1)
+
+  * bash-4.2 算術式 seg fault
+
+    https://lists.gnu.org/archive/html/bug-bash-gnu/2013-01/msg00036.html
+    https://lists.gnu.org/archive/html/bug-bash-gnu/2013-01/msg00042.html
+    https://lists.gnu.org/archive/html/bug-bash-gnu/2013-01/msg00043.html
+
+    算術式の中で配列要素の参照に関係して特定の式構造になると segfault する。
+    多分、配列要素の読み出しの次の token が整数または代入式の左辺だと落ちる。
+    配列要素を参照したら一旦算術式を閉じるのが良い。
+    $ ((a=b[0],c=0))
+
+    以下でも segmentation fault が起こった。
+    $ (((klen=node[nofs+k])<0||(kbeg=j-klen)>end0))
+    $ (((a=node[1])<2||(b=3)))
+    $ (((a=node[1])||(b=3)))
+    $ (((a=node[1])<2||b)) # OK
+    $ (((a=node[1])||b))   # OK
+    $ (((node[1])||(b=3))) # OK
+    やはり起こる条件が良く分からない。
+    代入式の右辺に配列が来て、
+    その後に代入式の左辺に token があると駄目なのか?
+
+  * bash-4.1, 4.0, 3.2: 算術式分岐内配列参照
+
+    bash-3.2.48 で以下の評価に失敗する。
+    bash-3.1 以下は大丈夫。bash-4.2, bash-4.3 も大丈夫。bash-4.0 は駄目。
+
+    dbg=()
+    ((a=0,b=0,0&&(a=1,x=dbg[0],b=1))) # NG
+    配列添字で値を参照 (代入はOK) すると、その部分以降が必ず実行される。
+    複合代入であっても駄目である。
+
+    bash-4.0 bash-4.1 でも以下の式で必ず _pos[1]++ が実行されていた。
+    ((_eoc[2]&&(_pos[0]=0,_pos[1]++)))
+
+
+    $ ((a=0,b=0,0&&(a=1,x=dbg[0],b=1))); echo $a $b               → 0 1
+    $ expr="a=1,x=dbg[0],b=1"; ((a=0,b=0,0&&expr)); echo $a $b    → 0 1
+    $ expr="a=1,x=dbg[0],b=1"; ((a=0,b=0,0&&(expr))); echo $a $b  → 0 1
+
+  * bash-4.1 以下 (bash-3.0 ～ bash-4.1)
+
+    配列要素に対して修飾付きのパラメータ展開を実行すると、
+    配列添字に指定した算術式が2回評価される。
+    例えば "${arr[i++]#a}" を実行すると i が 2 増える。
+
+  * bash-4.0 他 算術式を使って値を計算する時の注意
+
+    算術式の中に初期化されていない変数…例えば ret 等がある場合、
+    ret の中身に不正な数式的な物が入っていたりコマンド置換が入っていたりすると、
+    文法エラーになったりこれが eval されてしまう。
+    実際に 4.0 では 'あ' という文字列が入っているだけでエラーになる。
+    (より上の version では識別子名と解釈されているからなのかエラーにはならない。
+    しかし、今迄は毎回「あ」等という変数を探していたのだろう。
+
+  * bash-3.1, 3.0
+
+    ?: 演算子の中身は全てカッコで囲まないと構文エラーになる。例えば、
+    $ bash-3.1 -c '((a?(b=123):c?(d=321):1))'
+    bash-3.1: ((: a?(b=123):c?(d=321):1: syntax error in expression (error token is "?(d=321):1")
+
+bash 配列の宣言に関する仕様・バグと注意点
+
+  * arr=(1 2 3) func の形式で配列をシェル関数に渡そうとすると、
+    export arr='(1 2 3)' で渡されてしまう。
+
+  * 既に配列変数になっている物に対して
+    export var=value や typeset -x var=value をしても、
+    呼び出された別コマンドからは環境変数として見えない。
+
+    $ a=(1 2 3)
+    $ (export a=1; bash -c 'declare -p a')
+    bash: 0 行: declare: a: 見つかりません
+
+    新しい変数として導入すれば良い。
+    例えば関数内で新しく local -x var=value とするか、
+    var=value command の形式で呼び出すようにすれば良い。
+
+    $ (a=1 bash -c 'declare -p a')
+    declare -x a="1"
+
+  * BUG bash-4.0, 4.1 (local), bash-3.0 ～ 3.2 (declare)
+
+    a[${#a[*}]=value もしくは ble/array#push a value するとき、
+    その配列を事前に宣言したければ local -a a のように -a を指定する必要がある。
+
+    [問題]
+
+    bash-4.1 以下で関数内で local arr しただけで ${#arr[*]} が 1 になる。
+    その後、要素 #1 を設定しても ${#arr[*]} は 1 のままである。
+    これの所為で以下のコードが破綻する:
+      arr[${#arr[*]}]=...
+    常に要素 #1 にしか代入されない事になる。
+
+    bash-3.2 以下では関数内に限らず declare arr しただけで ${#arr[*]} が 1 になる。
+    但し、要素[1] に設定をすると ${#arr[*]} は 2 に増加する。
+    従って余分な空要素があるものの ble/array#push は失敗しない。
+
+    [解決]
+
+    local -a arr とすれば問題は起きない。
+    ※local arr=() としても問題は起きないがこの記述だと
+      今度は bash-3.0 で文字列 '()' が代入されて問題である。
+
+  * BUG bash-3.0: local a=(...) や declare a=(...) とすると、a="(...)" と同じ事になる。
+    a=() の形式ならば問題ない。
+
+  * BUG bash-3.0: 今まで local -a a=() の形式ならば問題ないと信じてきたが、どうやら
+    local -a a=('1 2') が local -a a=(1 2) と同じ意味になってしまうようだ。
+    a="123 345"; declare -a arr=("$a"); このようにしても駄目だ。
+    a="123 345"; declare -a arr; arr=("$a"); こうする必要がある。
+
+  * 配列要素を連結する時
+
+    動く例:
+      IFS= eval 'value=${arr[*]}'
+      IFS= eval 'value="${arr[*]}"'
+      IFS= eval 'local value="${arr[*]}"'
+
+    動かない例 (間に空白が入ってしまう):
+      IFS= eval 'local value=${arr[*]}'
+
+  * BUG bash-4.0..4.4: ローカルで local -a x; local -A x とすると segfault する。
+    ref http://lists.gnu.org/archive/html/bug-bash/2019-02/msg00047.html, #D0924
+
+    f() { local -a a; local -A a; }; f # これで segfault する
+
+    - 別のスコープで定義された配列を -A とした場合には起こらない。
+    - 同じスコープの場合でも unset a してから local -A a すれば大丈夫。
+    - グローバルでは起こらない。
+
+  * BUG bash-3.0..3.2: ^? や ^A の値が declare -p で ^A^? や ^A^A に変換されてしまう。
+
+bash_features
+
+  * printf -v var %s value
+
+    bash-3.1 以降で使える。
+    bash-4.1 以降で var として配列要素 (arr[123] 等) を指定できる。
+
+  * read -t timeout
+
+    -t オプションの対応は 2.04 である。
+    TMOUT 変数の対応は 2.05b-alpha1 以降である。
+    小数を指定できる様になったのは 4.0-alpha 以降である。
+    `-t 0' で次の文字を読み取り可能かどうかチェックできるのは 4.0 以降である。
+
+  * ${!arr[@]} は bash-3.0 より
+
+  * 連想配列 declare -A は bash-4.0 から
+
+  * グローバル変数に対する属性指定 declare -g は bash-4.2 から
+
+    更に bash-4.3 には declare -gA を二度行うとクラッシュするバグがあったらしい。
+    現在の最新版ではそのような振る舞いは見られない?
+
+  * ${param@a} (attributes) 及び他の transformation は bash-4.4 より
+
+  * bash-5.0 以降: EPOCHREALTIME, EPOCHSECONDS
+    ref #D0925
+
+  * BASHPID 何と Bash 4.0 以降の機能らしい ref #D1200
+
+    ------------------------------------------------------------------------------
+    This document details the changes between this version, bash-4.0-alpha,
+    and the previous version, bash-3.2-release.
+
+    c.  There is a new variable, $BASHPID, which always returns the process id of
+        the current shell.
+    ------------------------------------------------------------------------------
+
+    と思ったら既にソースコードの一部にも Bash 4.0 以降であるとの注記があった。
+
+  * command |& command は Bash 4.0 以降なので使えない。
+
+bash_tips
+
+  * swap の仕方
+    local a=$b b=$a
+    local や declare などは必要である。
+
+  * [[ ]] の中で =~ で設定された BASH_REMATCH は直後の式で参照できる。
+    つまり [[ $text =~ $rex && $BASH_REMATCH == ... ]] の様にできる。
+
+    bash-3.0 から bash-4.4 までで以下のコマンドで確かめた。
+
+    [[ "" =~ ^ ]]; [[ $BASH_REMATCH ]]; [[ a =~ a && $BASH_REMATCH ]]
+
+  * 構文関係でマニュアルに載っていないものが色々ある。
+
+    * }, fi, done, esac の直後に }, fi, done, esac, do, else, elif, then が来る場合はセミコロンは省略できる。
+
+    * for ((expr1; expr2; expr3)) [ ; ] { list; } は比較的有名だが、
+      for name [in name]; { list; }
+      select name [in name]; { list; } も使える様だ。
+
+    * select name [ [ in word ... ] ; ] do ...; done
+      ※in word ... がない場合、do の前のセミコロンは省略可能である。
+
+  * "$(case *) ;; esac)" に対応する可能性があるかと思ったが動きはない
+    ref http://lists.gnu.org/archive/html/bug-bash/2017-11/msg00002.html, #D0928
+
+  * function @() { ...; } は成功するが実際には関数は作られない
+    ref http://lists.gnu.org/archive/html/bug-bash/2017-03/msg00220.html, #D0927
+
+  * declare -c var という隠し属性がある。Capitalize する。Bash 4.0+
+    変数の値の各単語について適用するのではなく本当に最初の文字にしか適用されない。
+    この中途半端な機能の為に恐らくマニュアルに載っていないのだろう。
+
+    ソースコードを確認すると他にも declare -G var という謎機能が存在する。
+    同じ文脈に局所変数があればそれに設定してそれ以外ならば大局変数に設定する。
+    これは丁度他の言語のレキシカルスコープを真似た物という事だろうか。
+
+
+*******************************************************************************
+    Memo
+-------------------------------------------------------------------------------
+
+2019-06-10
+
+  * history -na の動作に就いて [#M0013]
+
+    * どのコマンド以降を新しいものとして取り扱うのか。という事について。
+      特に他の Bash が bash_history に書き込んだ新しいコマンドを読み取った時、
+      次に自分が history -a する時にどの範囲のコマンドを追加するのだろうかという事など。
+
+      まとめると Bash の動作は恐らく以下の様になっている。
+      先ず Bash は2つの変数を使っている。ここでは read_index と write_index と呼ぶ事にする。
+      read_index は history -n で HISTFILE から次に読み出すべきコマンドの行番号を保持する。
+      write_index は history -a で次に HISTFILE に書き込むべき history 内のコマンドの番号を保持する。
+      Bash の起動時には read_index も write_index も同じ値に初期化される。
+      history -n を実行すると read_index は HISTFILE の行数に再設定される。
+      write_index は読み取った行数だけ増加する。
+      history -a を実行すると write_index は history の項目数に再設定される。
+      read_index は書き込んだ行数だけ増加する。
+
+      この動作に従うと history -n; history -a や
+      history -a; history -n を実行すると問題が生じる事になる。
+      書き込み済みのデータ・読み取り済みのデータが混ざった時に正しく範囲を表現できない。
+      この事が理由で巷にある動機の設定では history -a; history -cr を実行しているのである。
+
+    * HISTCONTROL=erasedups
+      試してみたが erasedups が設定されていたとしても history -n で新しく読み取った
+      コマンドと同じ名前のコマンドを削除するとかそういう事は別にしない様である。
+
+2019-02-13
+
+  * keymap: 以下のキーについては既定では同じ動作になる様に設定する事にする [#M0012]
+    ref #D0929, #D0752
+
+    - DEL C-? / BS C-h
+    - NUL C-@ C-SP
+    - RET C-m
+    - TAB C-i
+    - C-_ C-DEL C-BS
+
+2019-01-01
+
+  * vi: inclusive/exclusive motion の実装に関して [#M0011]
+
+    exclusive な motion は exclusive-goto.impl を呼び出す。
+    inclusive な motion は inclusive-goto.impl を呼び出す。
+    何れの場合も範囲を修正の後に exclustive-range.impl に委譲する。
+
+2018-08-31
+
+  * decode: 端末の送信するキーシーケンスについて [#M0010]
+
+    * back (BackSpace)
+      xterm は back に対して BS (C-h) を送る。
+      C-back に対して DEL (C-?) を送る。
+      一方で、mintty, RLogin では back に対して DEL (C-?) を送る。
+      C-back に対して C-_ を送る。
+
+    * modifyOtherKeys(2)
+
+2018-08-05
+
+  * compgen に指定した単語のクォート除去に関して [#M0009]
+
+    参考: #D0714
+
+    生成するコマンドの種類と、バージョンによってクォート除去されたりされなかったりする。
+    以下に、クォート除去されることを期待してクォートしても問題がないかをまとめる。
+
+      compgen -A command   クォート不可
+      compgen -A directory クォート不可 (Bash-4.3 以降でクォート除去されない※1)
+      compgen -A file      クォート不可 (Bash-4.0, 4.1 でクォート除去されない※2)
+      compgen -A function  クォート可
+      compgen -A variable  クォート可
+      compgen -A arrayvar  クォート可
+
+    ※1 バグと思われる。ble をロードしていると何故かクォート除去されている。
+      然し、--norc や ble ロードなしで実行するとクォート除去されない。
+      クォート除去が実行されなくなってしまう条件が分からないのでこれは使わない。
+
+    ※2 バグと思われる。
+
+2017-10-31
+
+  * ble 関数の典型的な終了ステータスについて [#M0008]
+
+    127 適切な widget が見つからなかった
+      (由来: Bash でコマンドが見つからなかった時の値)
+
+    126 widget を呼び出すことができなかった
+      未使用
+
+    125 widget を呼び出したが適切な処理が見つからなかった
+      __defchar__ に登録した widget がこれを返したとき
+      次のハンドラを用いる。具体的には __default__ の呼び出しを試みる。
+
+    147 ble/util/idle の処理に於いて条件待ち状態に入る時や、
+      widget に於いてユーザの入力を待つ為に、
+      自発的に一時中断した時に返す値。
+
+      ユーザの入力を非同期に待つ為に一時停止した
+      vi-mode のオペレータが 148 を返したとき
+      後処理を実行せずにそのまま抜ける (由来: 128+SIGTSTP)
+
+    148 ble/util/idle や isearch や complete に於いて、
+      ユーザ入力を処理する為に一旦現在の処理を中断する時に返す値。
+
+    124 プログラム補完において補完の再実行を要求する
+      (由来: これは Bash の仕様に倣った)
+
+    27 widget の動作がユーザによってキャンセルされた (由来: ESC = 27))
+
+    6 ble-update で更新の必要がなかった時に内部的に使用 (由来: ACK = 6)
+
+2017-10-18
+
+  * ble-decode: widget に関して [#M0007]
+
+    __defchar__ および __default__ に登録された widget が 125 を返した時、
+    その入力に対する適切な処理が見つからなかったことを表します。
+    この時、次のハンドラの探索が行われます。
+    次のハンドラがない場合には対応するものが見つからなかったというエラーになります。
+
+2017-09-24
+
+  * vi-mode 以下は現在のところ対応しない予定である [#M0006]
+
+    * 2017-09-24 vi-mode: % で用いる matchpairs には現在対応しない
+
+    * 2017-09-17 vi-mode (insert mode/newline):
+      インデントを挿入するが何もしなかった時にそれを削除することには対応していない。
+
+      これは実際の所、挿入モードにおける移動と抜ける時の処理において、
+      細工を行えば対応できる。現在の挿入モードの操作の繰り返しの記録の仕組みも使えるが、
+      もっと別の仕組みを用意しても良い気がする。
+
+    * 2017-09-12 vi-mode: タブ文字上にカーソルがある時のカーソルの表示位置
+
+      後、気付いたことはタブ文字に居る時のカーソル位置は、
+      ノーマルモードにいるときはタブ文字の最後の位置である。
+      要するに p で挿入される位置を示しているとも言える。
+      でも全角文字の場合にはちゃんと全角文字の先頭にカーソルが来る。
+      この動作は分かりにくいし更に言うと現状の ble.sh の描画コードでは対応していない。
+      これには取り敢えず対応しないことにする。
+
+    以下は積極的に対応する予定はない。
+    将来的に対応する場合の注意点がある場合も含む。
+
+    * 2017-10-11 M ( ) [[ ]] { } :s :tag
+      これらのコマンドは "ジャンプ" なので、$flag なしで実際にジャンプに成功する場合には
+      set-local-mark 96 をする必要がある。
+
+    * done: 2017-10-09 取り敢えず今の所はスクロール (C-b C-d C-e C-u C-y など) には対応しない
+      →これは #D0886 で対応した。
+
+2017-09-08
+
+  * vi-mode: 以下のリンクで重要そうなコマンドの一覧が見られる [#M0005]
+
+    http://qiita.com/sfuta/items/0de4ead865c15e9e9b68 ?
+    http://qiita.com/sfuta/items/2d646396a6117c8e53e5 g? z?
+    http://qiita.com/sfuta/items/fd78f3ece8861f8142ee C-w? [? ]?
+    http://vim-jp.org/vimdoc-ja/vimindex.html
+    http://vim-jp.org/vimdoc-en/vimindex.html
+
+2015-11-28
+
+  * デモ画像の作り方 [#M0004]
+
+    * ble-0.2 のデモ画像はキャプチャソフトを使った (ref #D0926)
+
+      - Cygwin の mintty を用いた。
+        画面の幅は56列にし文字の大きさは14程度が良い。
+      - キャプチャソフトには LICEcap というソフトウェアを使った。
+      - キー入力を表示するソフトには KeyCastOW を改造した物を用いた
+        https://github.com/akinomyoga/KeyCastOW
+
+      ble-0.1 の時に行った基本的な操作に加えて、
+      ble をダウンロード・展開して試してみるところも含めた。
+
+    * ble-0.1 のデモ画像は ttyrec & seq2gif を用いて作成した
+
+      準備
+      $ # PS1=$'[\e[4;38;5;202mfoo@bar\e[m \\j \\W]\\$ '
+      $ TTYREC=1
+      $ ttyrec demo.tty
+
+      echo hello, world
+      printf hello
+      [[ a == b ]]
+      echo "hello $(echo bash $(echo world))"
+      C-r for
+      echo 'select, copy and paste' コピーする
+      echo insert mode -> overwrite mode
+      ls
+      echo complete ble-TABdTAB histexpand !#:2
+      echo "$HIST[TAB]"
+
+      $ seq2gif -f 0 -b 15 -h 14 --render-interval=10 -p rosa --play-speed=1.5 < demo.tty > demo2.gif
+
+      gif のフォーマット的には 0.01s よりも小さな遅延は設定できない。
+      また、現実のブラウザでは 0.02s (50fps) よりも小さな遅延にすると強制的に 0.10 になってしまう。
+      更に、Safari や Internet Explorer では 0.06 (16.67fps) よりも小さな遅延は 0.10 になってしまう。
+      更に、Windows に附属している viewer では 0.10 よりも小さな遅延は全部 0.10 になってしまう。
+
+      [[Frame Delay Times for Animated GIFs by humpy77 on DeviantArt>http://humpy77.deviantart.com/journal/Frame-Delay-Times-for-Animated-GIFs-214150546]]
+      [[How to match animation rate of gif files accross browsers (Fenrir Developer's Blog)>http://blog.fenrir-inc.com/us/2012/02/theyre-different-how-to-match-the-animation-rate-of-gif-files-accross-browsers.html]]
+      [[Nullsleep | Jeremiah Johnson - Animated GIF Minimum Frame Delay Browser Compatibility Study>http://nullsleep.tumblr.com/post/16524517190/animated-gif-minimum-frame-delay-browser]]
+
+
+2015-08-14
+
+  * [memo] builtin check [#M0003]
+
+    eval "grc --color --exclude=./test '\b(builtin[[:space:]]+)?$command\b' | grep -Ev '\bbuiltin[[:space:]]+$command\b'"
+
+  * [memo] leak variables check [#M0002]
+
+    set | sort | sed -e '/()[[:space:]]*$\|^_\{0,1\}\(BLE\|ble\)/d' -e '/^[[:alnum:]_]\{1,\}=/!d' > a.txt
+
+  * [memo] 解析(ble-syntax/parse)の際の原則 [#M0001]
+
+    データ配列とは _ble_syntax_stat, _ble_syntax_nest, _ble_syntax_tree を指すとする。
+    或る点 p1 から或る点 p2 に解析を進める場合を考える。
+
+    1 この時データ配列に対する変更は p1-p2 (exclusive) の間にだけ行われる。
+      これは解析状態の復元と再開が適切に動作する為に必要である。
+
+    2 解析の過程でデータ配列に格納されている情報は使用しない。
+      これは解析状態の一致チェックの為に必要である。
+      データ配列の内容に依存して動作が代わる場合、
+      解析状態が一致しても解析結果が異なってしまう可能性があり、不整合を生む。
+
+      但し、_ble_syntax_nest については専用の関数を通して 0-p2 の任意の場所を参照しうる。
+      これ(専用の関数を通して得られる情報)については
+      解析状態の一致チェックの対象に含まれているからである。
+      (_ble_syntax_nest の任意の情報を参照して良いという意味ではない。)
+
+    tree-append および nest-pop に対する制限
+
+      tree-append は _ble_syntax_tree[i-1] に格納を行う。
+      従って上記の条件1から p1<=i-1 つまり p1+1 <= i である必要がある。
+      これは少なくとも 1 文字 i を進めてからでないと tree-append を呼び出せないという事である。
+      nest-pop も内部的にそのまま tree-append を呼び出しているので同じ制限がある。
+
+@todo
+*******************************************************************************
+    ToDo
+-------------------------------------------------------------------------------
+
+2020-02-02
+
+  * vi mode の時は read も vi mode になっているべきではないのか?
+    と思ったが vi mode にはコマンド実行等の色々と
+    危ない機能も沢山ついているので、寧ろ cmap を使うべきで、
+    然し、cmap を使うのだとしたらそれは殆ど現状の read の様な物だ。
+
+    これはその内に request があるかもしれない。その時に対応する。
+
+2020-01-26
+
+  * progcolor: 非同期で実行できる様にする可能性?
+    場合によっては重い計算が必要になるかもしれないし、
+    実は非同期で実行しても良いのではないかという事。
+
+  * progcolor: redirect の場合にも対応したい
+    実は補完の時にも redirect をプログラム補完しても良いのでは。
+    但し、補完と着色で違うのは補完は一つの単語について呼び出されるのに対して、
+    着色は一度に複数の単語を着色する事があるという事。
+    補完に関しては引数とリダイレクトを別々に処理すれば良いが、
+    着色の場合には一度に処理できる様にしたい。
+
+  * progcolor: here document にも対応したい。
+    here document に対応するコマンドを抽出する事は可能か?
+    →here document は開始部分に対する参照を確か持っていたのでできる筈。
+
+    実際にユーザは何を提供すれば良いのか。
+    ble/cmdinfo/color:XXX を呼び出す様にするのか。
+    然し、それだとそのコマンドの引数が変更される度に、
+    対応する heredoc を抽出する必要が出てくる。それは面倒だ。
+    或いは、heredoc に変更があった時に着色するだけで良いのでは。
+
+    というか heredoc は単語ではない。でも一つの nest ではある。
+    うーん。然し wrange に登録しているかは謎。
+    その辺りも整理しつつ実装すると良い。
+
+  * progcolor: コマンド自身が書き換えられた時には
+    全ての引数について再度着色の確認が必要になるのではないか。
+
+2020-01-23
+
+  * 前々から発生していたが曖昧補完などを実行すると時々ごみが残る。
+    これは何故だろうか。そもそもカーソルよりも右に何か文字列が入るはずがないのに?
+
+    再現させようとしても再現できない。
+    これは実際に起った時に再度確かめる必要があるのである。
+
+  * stackdump
+
+    以下の様な内容。再現しない。編集手順を記録する? 後、その場で ble_debug=1 にする機能が欲しい。
+    echo 1 2 3 4 5 8 9 10 | ( read numbers; set -- $numbers; i=0 i1=0; for n; do if ((n!=i)); then if ((i==i0)); then echo $i0-$i; ; ((i++)); done )
+
+    ble/syntax/tree-enumerate/.initialize/FATAL1
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:26 (ble/util/assert)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:4 (ble/syntax/tree-enumerate/.initialize)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/tree-enumerate)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/parse/shift.method2)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:19 (ble/syntax/parse/shift)
+      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:7 (ble/syntax/parse)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:73 (ble-edit/content/update-syntax)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#render)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:16 (ble-edit/bind/.tail)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode/EPILOGUE)
+
+    取り敢えず f11 で ble_debug を toggle して f12 で編集履歴を出力する様にした @ blerc
+    本質的にはそんなに複雑な構造はしていないのだからすぐに再現しそうな気がしたが再現しない。
+    或いは一時的な物で既に直ってしまった可能性もなくはない。
+    echo 1 | ( echo; for n; do if ((n!=i)); then if ((i==i0)); then echo $i0-$i; ; ((i++)); done )
+
+2020-01-21
+
+  * lmorg/murex という新しいシェルの対話環境
+
+    https://github.com/lmorg/murex
+
+    このシェルは POSIX 互換でないので微妙。
+    パス名展開をするのに面倒な指定をしなければならない。
+    既存の様々なツールと相性が良いかというと微妙な気がする。
+    しかし fish や PowerShell よりは unix shell よりである。
+
+    一方で対話インターフェイスに関しては色々工夫している。
+    入力していくと一行下に現在入力しているコマンドの説明が表示される。
+    何も入力していない場合は git リポジトリの情報を表示している。
+    (然し、なにか入力するとすぐに消えてしまうので何処まで使いやすいかは分からない)
+    kill まで入力すると補完候補としてプロセス ID を表示してくれる。
+    プロセス ID に対してコマンドラインを説明として表示している。
+
+    * 所で ble.sh ではメニューの形式は事前にユーザの側で指定する事になっている。
+      然し、これは微妙な気がしてきた。というのも説明文があるかどうかの情報は
+      補完生成側が知っている事である。なので、補完候補生成器の側で、
+      メニューの表示形式を上書きできる様にするべきなのではないかという気がする。
+
+2020-01-17
+
+  * Minix で無限ループになっている?
+
+    echo と入力しようとすると確率的に無限ループになる。
+    (それでも可也高い確率で無限ループになる。)
+    auto-complete を off にしても発生する。
+    menu-filter を off にしても発生する。
+    という事は着色か或いは。。
+
+    調べてみると暴走しているプロセスは別の Bash だという事が分かった。
+    恐らく子プロセスで暴走している。何が悪いのだろうか。履歴?
+    →履歴はちゃんとロードできている。その後で暴走する。
+    →再度確かめたらやはり子プロセスの暴走としか思えない。
+      と思ったがよく見ると親プロセスの暴走だった。両方で起こる?
+
+    2020-02-03 新しい ble.sh を実行しているが固まるという現象が再現しない。
+    これは新しい ble.sh のお陰だろうか、それとも偶だろうか。
+    →暫く使っていたが全く再現しないので以前の ble.sh の問題と思って良いだろう。
+
+    と思っていたら実は裏でちゃんと無限ループになっていた。
+    どうも ssh が予期せず切断すると無限ループになる?
+
+    気になるのは暴走していたプロセスは stderr にリアルタイムで
+    データを出力し続けていたという事。
+
+    | -rw-r--r--  1 murase  users  14174140 Feb  3 21:58 5726.stderr
+    | -rw-r--r--  1 murase  users  14324924 Feb  3 21:59 5726.stderr
+    | -rw-r--r--  1 murase  users  14504088 Feb  3 22:01 5726.stderr
+    |
+    | 出力内容は以下の通り 0d 1b 5b 4b の 4B を繰り返し出力している。
+    |   $ < $_ble_base_run/5726.stderr od -t x1
+    |   0000000   0d  1b  5b  4b  0d  1b  5b  4b  0d  1b  5b  4b  0d  1b  5b  4b
+    |   *
+    |   67250220   0d  1b  5b  4b  0d  1b  5b  4b
+    |   67250230
+    |
+    | 0d 1b 5b 4b とは何か? \r\e[K である。CR EL である。うーん。
+    | ble.sh の該当しそうな部分を調べてみる。
+    |
+    | * canvas:344 (negative cup:el)
+    |   ble/canvas/put-cup.draw 1 $((x0+1))
+    |   ble/canvas/put.draw "$_ble_term_el"
+    | * canvas:1928 (negative sgr0:cr:el)
+    |   ble/canvas/panel#goto.draw "$index" "$x" "$y"
+    |   ble/canvas/put.draw "$_ble_term_el"
+    | * edit:1520 (negative sgr0:cr:el)
+    |   ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
+    |   ((new_scroll==0)) &&
+    |     x=$fminx ble/textarea#render/.erase-forward-line.draw # ... を消す
+    | * edit:1680 (negative sgr0:cr:el)
+    |   ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) "$y"
+    |   ble/canvas/put.draw "$_ble_term_el"
+    | * edit:1696 (negative sgr0:cr:el)
+    |   ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${pos[0]}" "${pos[1]}"
+    |   ble/canvas/put.draw "$_ble_term_el"
+    | * edit:3869 (negative cuf:sp:sp:el)
+    |   ble/canvas/put-cuf.draw "$advance"
+    |   ble/canvas/put.draw "  $_ble_term_cr$_ble_term_el"
+    | * edit:7322 (negative cr:el:sgr)
+    |   ble/canvas/put.draw "$_ble_term_cr$_ble_term_el${_ble_term_setaf[9]}"
+    |
+    | うーん。何れも関係なさそうな気がする。
+    | もしかして _ble_term_el2 に CR EL が入っている?→確認したがそうでもない。
+    | 上の中で一番怪しいのは panel#goto.draw だと思ったが、
+    | sgr0 が消滅している理由が分からないし、
+    | 一度 CR を出したら _ble_canvas_x=0 になるのだから、
+    | 何度も CR を出力し続けるのは変だ。
+
+    暴走した bash は何れも console ではなくて pty だった。
+    接続が途中で落ちると無限ループになるのだろうか。
+    hp2019 側及び vmminix 側で nc/sshd を kill -9 しても再現しない。
+
+  * syntax: ${var/#} ${var/%} も特別に着色する。
+
+  * 英語圏のニュースサイトに投稿する可能性 (suggestion by dylankb)
+    Hacker News を紹介されたがここが適切なんだろうか?
+
+    reddit に投稿した話がある。
+    https://rcmdnk.com/blog/2014/02/23/computer-bash-zsh/
+
+    単にリンクを貼るというのでも良いけれども。
+    やはり様々な機能を惜しげもなく紹介する
+    長い記事を書くのが良い気がする。
+
+    →返信で自分の作品を投稿する時のルールの頁があった。
+      なるほど。やはりルールがあったのである。危ない所である。
+      https://news.ycombinator.com/showhn.html
+
+      これによると作品の紹介は一度きりしかできないとの事。
+      > The community is comfortable with work that's at an early stage.
+      と書かれているがまさかこれは初期の作品でなければならないという訳でもあるまい。
+      > Blog posts, sign-up pages, and other reading material can't be tried out
+      と書かれているが…。使い方の説明記事の様でも駄目なのだろうか。
+      Blog posts でなければ良い? 或いは README を派手に改造してしまうという手もある。
+
+    https://news.ycombinator.com/shownew
+    ここを観察していると "Show HN: 作品名 ― 説明" という名前の物が多いが、
+    実は "Show HN: 今〇〇なのを作っているんだけど" というタイトルの物の方が upvote が多い。
+    "作品名 - 説明" だといかにも宣伝という感じで入る余地がない気がする。
+    一方で "〇〇なんだけど" みたいに書くと "自分も何か貢献できるんではないか" と錯覚して人がたくさん来る。
+    そういう仕組になっているんだろうという気がする。
+
+    * reject: "Show HN: Bash Line Editor -- syntax highlighting, autosuggestions, etc. in Bash"
+      これは普通。つまらない
+
+    * "Show HN: I am developing a line editor in pure Bash script. I'd like to hear your comments!"
+      これだと面白そうとは思ってくれるかもしれないけれど使ってくれる人は少なそう。
+      後 explicit にコメントが欲しい! という事をタイトルに書いても良いのだろうか?
+      眺めてみるとそういう投稿はない。やはり雰囲気が分からないのである。
+
+    * reject: "Show HN: I made syntax highlighting, autosuggestions, etc. in Bash"
+      これも普通。つまらない
+
+    * "Show HN: "Bash Line Editor" with syntax highlighting, autosuggestions, ... written in pure Bash!"
+      やはり宣伝っぽい。
+
+    * "Show HN: Bash Line Editor -- syntax-highlighting, autosuggestions and vim emulation written in pure Bash"
+      vim と書くと他のエディタを使っている人やシェルでは別に vim は使わないという人が敬遠してしまわないか?
+      然し話題に乗るという事だけであればその辺りを無視して投稿しても良い気がする。
+
+    * reject: "Show HN: I wrote a line editor (syntax highlighting, autosuggestions, vim amulation, etc.) in pure Bash script"
+    * reject: "Show HN: I wrote a line editor in pure Bash script which provides syntax highlighting, autosuggestions, vim emulation, etc. to Bash"
+    * reject: "Show HN: Bash Line Editor written in pure Bash script for syntax highlighting, autosuggestions, vim emulation..."
+      長い
+    * "Show HN: Bash Line Editor totally written in pure Bash script"
+      案外これぐらいの方が気を引けるのかもしれないと思う。
+    * "Show HN: Bash Line Editor -- a next-generation Bash configuration"
+      或いはこんな感じに煽った感じのタイトルにしても良い。zplug の真似
+      でも技術的に面白いのは pure Bash script であるという事。
+
+      "with syntax highlighting, autosuggestions, vim emulation" 等は書かなくてよい。
+      書かない方が煽りになるのである。本当か? と思ってみんなリンクを開く。
+      そしてどんな機能があるのかとみんな確認する。
+      少なくともこれだけの物があるのだからがっかりする事はないだろう。
+
+      でも落ち着かなければならない。Bash configuration と書くと、
+      従来の PS1 や aliases や functions を包含する物と考えられてしまう。
+      その様に考えると、Bash plugin と書いた方が良いか?
+      或いは、plugin manager として突貫で他の物を取り込める様にするか、
+      或いは README に強調しておくことにするか。
+
+      というか Bash configuration というのが良くない。違う。
+      もっと土台になるものなのである。
+      実のところ "a next-generation Bash Line Editor" なのだ。
+      然し line editor という意味では全然 next-generation ではない。普通だ。
+      つまり Bash の設定にしては next-generation なのであって、
+      line editor として next-generation な訳ではない。
+
+      a next-generation Bash interface/infrastructure/extension/framework
+
+      Framework としての側面も強調してよいのかもしれない。
+      (或いは真面目にライブラリとして独立させても良い。
+      decode 部分に関しては大幅に手を入れる必要があるかもしれない?)
+
+    調べるとスタートアップという文字が頻りに見える。
+    投稿してみた感想を観察してみるとやはり何かのお誘いがある様である。
+    タイトルに文字数制限は在るのだろうか。
+
+2020-01-05
+
+  * Homebrew の設定を作成する?
+
+    先ず Linuxbrew (Homebrew for Linux) を ~/opt/linuxbrew に入れた。
+    普通と違う場所に入れようとしたので色々問題が起こって時間を食ってしまった。
+
+    * brew tap について調べてみる事にする。
+
+      % brew tap akinomyoga/ble.sh を実行すると https でダウンロードしようとする。
+      % brew tap akinomyoga/ble.sh git@github.com:akinomyoga/ble.sh.git とすれば良い様だ。
+      % それから brew install を試そうとするがどうやっても動かない。
+      % どれをやってもそんな formula は見つかりませんのエラーになってしまう。
+      % もしくは tap を確認すらしない場合もある。不思議だ。
+      % $ brew install akinomyoga/ble.sh
+      % $ brew install akinomyogable.sh
+      % $ brew install akinomyoga/homebrew-ble.sh
+      % $ brew install homebrew-ble.sh
+      % $ brew install brew-ble.sh
+      %
+      % $ brew tap
+      % を実行してみると。自分が登録した物の他に homebrew/core がある。
+      % homebrew/core は中に formula を沢山入れた repo の筈である。
+      % もしやと思って調べてみる。
+      %
+      % https://qiita.com/wkentaro/items/d4981582e08b134f1e1d
+
+      どうも user/name に対応して github.com:user/homebrew-name を作成して、
+      その中に formula.rb を入れて置くという事になっている様だ。
+      面倒なのでそれよりは直接 core に取り入れてもらった方が楽だ。
+
+    * 自分で formula を作ってみるのを試す
+
+      仕方がないので自分で formula を作ってみるのを試す事にした。
+      $ brew create --set-name blesh
+
+      全て自分で記入しなければならない様だ。適当に formula を作成してみる。
+      sha256 は何の sha256 を記入すれば良いのか分からないのでコメントアウトする。
+      結局分からないので以下を参考にして埋めてみる事にする。
+      https://github.com/10sr/homebrew-pkg/blob/813de30c121e8dea970f11e7c1e63e57d3a6a0ed/Formula/ble-sh.rb_
+      * ビルドは gawk に依存しているので gawk に依存させてみる。
+      * gmake については調べてみた所 macOS ではデフォルトで GNU make だそうなので不要?
+        然し、mac ではデフォルトで make が入っているのだろうか。
+        或いは自分で追加で入れる必要があったりするのだろうか。よく分からない。
+
+      と思ったが何処にも *.rb が作られていない。
+      $ find ~/opt/linuxbrew/ | grep blesh
+      で調べてみたら ~/opt/linuxbrew/Homebrew/Library/Taps/homebrew/homebrew-core/Formula/blesh.rb
+      に新しく blesh.rb が作成されていた。これを使う事にする。
+      試しに $ brew install blesh としてみたら動き出した。
+      gawk を入れるためにその依存関係まで全てダウンロードしてインストールしようとしている。
+
+    ? brew では自分で何処かで入手した formula を使うにはどうすればよいのか?
+
+    * homebrew-core に登録する為には test を用意しなければならないようだ。
+
+2019-12-31
+
+  * progcolor: 引数の中の着色 (zsh -c '...' の ... の部分)。
+
+    いつか実装しようと思っていたら fast-syntax-highlighting が既に実装している。
+
+    | fast-syntax-highlighting
+    | →引数の中も着色すると思ったら '$(...)' の中も着色を行っている。
+    | 然し、zsh -c '...' に関してはちゃんと zsh や -c を認識して着色している様だ。
+    | 調べてみると awk もちゃんと文法的なチェックを行っている。
+    | (→ うーん gawk --source '...' で文法チェックをできる様だ。)
+    | sed に関しては行っていない。何れにしてもコマンド毎の着色を実現している。
+
+    * コマンド毎の着色設定を指定できる様にした #D1245
+
+    | 次に例えば awk に対応する事を考える?
+    | 或いはそれよりは sh もしくは bash に対応する方が楽?
+    | 色々考えてみたがちゃんと対応するのは可也大変である。
+    | 先ず単語が単純単語でない場合にどの様に実装するか。
+    | 等、色々難しい。既にある文法構造を利用して何とかできる可能性はある。
+    |
+    | awk に対応するとしても awk の様々な実装によってオプションなど異なる。
+    | このオプションが異なっていると異なった着色になって、
+    | ユーザに混乱を齎す。従って対応するとしたら完全に対応している時にだけ有効にする。
+    | 何れにしても面倒である。awk よりは先に bash で対応した方が懸命ではないか。
+    | awk の対応に関しては自分の blerc の中だけに留めておく。
+    | その自分の blerc の中での awk の着色の設定で必要になると
+    | 思われる補助機能をble.sh の方で実装する。
+
+    * awk の着色対応を通じて ble.sh 側で支援の必要な機能を実装する。
+
+    * 単純単語に関して。評価値を求める方法。
+      評価値の各文字が元の単純単語のどの位置に対応するか。
+      或いはその逆? どちらの方が適切だろうか。
+
+      例えば引用符等に関しては対応する文字はないのでそのままの色が良い。
+      従って評価後の文字に対応する評価前の範囲を取得すると良い気がする。
+      然し、逆に評価前の $a が評価後に沢山の文字列になる事もある。
+      その場合には評価後の各文字の色を評価前に割り当てるのは難しい気がする。
+
+    * 対応する物がない文字をそのままの (下の層の) 色にする事は可能だろうか。
+      恐らく getg 等で取得しなければならない。面倒である。
+      或いは ble/highlight/layer:syntax では少し違う様に処理していた気もする。
+
+    * 複雑な単語に関しては文法構造を利用する事も考える。
+
+    * 現在の layer:syntax の枠組みでは一旦着色情報を wattr に格納してから、
+      それを word table に対して適用するという仕組みにしている。
+      この様にする事に何の意味があったのだったか?
+
+      直接 word table に適用した方が早いのではないか?
+      →これは何度も単語着色を求め直すのを省略する為である。
+      つまり、単語着色を決定する部分と実際に適用する部分を分けて、
+      前者をできるだけ省略する様にしている。
+
+      実際に適用する必要がある場合でも前回求めた値を
+      そのまま使えば良い場合があるという事なのである。
+
+  * fast-syntax-highlighting の機能を確認する
+    https://github.com/zdharma/fast-syntax-highlighting
+
+    * コマンド毎の着色。オプションや引数が正しいかのチェックも行う。
+      これは丁度 ble.sh で将来的に対応したいと思っている機能である。
+    * 括弧の対応に応じた着色
+    * gawk --source による文法チェック?
+
+  * theme: 流石に theme を作った方が良い気がしてきた。
+    少なくとも枠組みだけでも作って置くと良い気がする。
+    と思ったが実際に例がないと枠組みの良い設計も分からない。
+    zsh-syntax-highlighting はどうしているのだろうか。
+    zsh-syntax-highlighting theme で検索してみる。
+
+    どうも zsh-syntax-highlighting は theme を提供していない様だ。
+    https://highlightjs.org/static/demo/
+    ここは dark/light の両方を提供している theme があって参考になる。
+    但し、ファイル名着色に使う色は色々調整しなければならないが。。
+
+    fish の theme はあるだろうかと思って探すと。
+    https://github.com/oh-my-fish/oh-my-fish/blob/master/docs/Themes.md
+    どうもシェル業界では theme というのはプロンプトの事を指す様で。
+    然し、fish のブラウザ設定画面ではタブは colors となっている物の、
+    色々な設定の部分には theme という文字も見える。
+    何れにしても theme というのは紛らわしいかもしれない。
+    注意書きを書いておく必要があるかもしれない。
+
+  * TUI 設定画面?
+    fish はユーザフレンドリーを謳っている。
+    ブラウザで設定できるなど (リモートの場合には使えない気がするが)。
+    ble.sh ではブラウザでなくても TUI で設定画面を用意しても良いのかもしれない。
+    マウスサポートまですればブラウザでなくてもOKなのである。
+
+    →fish の web 設定画面を確認してみた。
+      実は theme と prompt が選べるだけだった。
+      他は関数・変数・履歴・束縛・略語展開の一覧が見えるだけで、
+      何も設定することはできないのだった。
+      但し履歴項目の削除はする事ができる。
+      略語展開も実は編集することができた。
+    →theme に関しては配色が選べるだけで、
+      具体的にどの色がどの意味というのは余り考えられていない気がする。
+      適当に順番に割り当てただけなのではなかろうか?
+
+    その様に考えると履歴の着色でも良いのかもしれない等と。
+
+  * complete: 重い補完関数に対する対策
+
+    * 曖昧補完の為に何度も progcomp を呼び出していて非効率的
+      →無駄があると思ったが実際にどういう補完を行っているか調べると
+      様々な補完点を試しているのだった。うーん。
+      自動補完の補完候補がすぐに見つかる場合にはそんなにたくさん呼び出されない。
+      補完交互が見つからない時には自動補完によって何度も補完が実行されて遅くなる。
+
+      もしかすると自動補完を off にしたいという人は時間のかかる
+      補完関数を使っているという事なのかもしれない。
+      よく考えたら peco の類を設定している場合大変に面倒な事になるのでは?
+      自動補完が実行される度に選択メニューが表示されてしまう。
+      そもそも補完に peco を設定している時点で変ではあるが。
+
+      色々な補完点で試すとしても現在の単語を 0 文字または 1 文字しか
+      入力していない場合には、同じ状態で呼び出す事もあるだろうという気がする。
+      その場合の為に compgen の呼び出し結果をキャッシュする利点はあるだろうか。
+      つまり、同じ補完状態で再度呼び出される事を見込めるかどうかが問題になる。
+
+    * 或いは、処理を非同期で呼び出すというのが良いのかもしれない。
+      その場合には計算結果を何処かファイルに書き出す様にしなければならない。
+
+      非同期で呼び出すのは -CF が設定されているときだけで良い。
+      と思ったが -F の中で環境を変更したいという場合にはどうするのだろう。
+      非同期で呼び出すという事にすると環境に対する変更が適用されない。
+      これは bleopt で変更できる様にしても良いのではないだろうか。
+
+  * complete: menu-complete 中の通常文字挿入は
+    絞り込みに戻すのが良いのではないか。
+    というか普通にキャンセルして挿入すれば絞り込みになるのでは?
+    と思ったが menu-complete 状態からは抜ける事になる。
+
+    後、suffix を挿入せずに確定する方法がなくなる。
+    これについては別の操作方法について考えると良さそう。
+    例えばスペースを押すと suffix 挿入を抑制して確定する等。
+
+    →やはりこれは分かりにくいのではないか。
+      fish, zsh の動作を確認してみたが menu-complete 中に
+      新しい文字を入力すると何れも現在の選択肢を確定させた後に
+      続きの文字が入力される様になっている。
+      これらのシェルと異なる振る舞いをするのは良くない。
+
+      だとすると絞り込みをする為には明示的に
+      絞り込みのモードに入るキーを設定するべきなのでは。
+      例えば M-e 等?
+
+      因みに emacs で試してみると M-e, M-a は end/beginning of
+      sentence 的な動作をしている様に見える。
+      なので上書きしてしまっても良い様な気がする。
+      うーん。でも end of line の代わりに使っている人がいるだろうか?
+
+      因みに現在の ble.sh では M-e は何にも紐付いていない。
+      うーん。M-e を勝手に補完の絞り込みモードに割り当てる事にする。
+      絞り込みモードにいる時にはカーソルの動く範囲と編集範囲を制限する。
+      と思ったが vi の様な複雑なモードの場合にそれを実現することは可能か?
+      移動だけならば __after_widget__ で範囲外に出た時に
+      強制的に範囲内に移動させる事が可能であるが、編集まで入ると困難である。
+      編集を禁止しなければならないがそれは難しい。
+
+      だとすると新しいプロンプトで編集させるというのが現実的だろうか。
+
+2019-12-29
+
+  * color: term_true_colors=auto
+
+    自動判定は難しい。screen-4.99.0 が truecolor on/off
+    のオプションを持っているので実際にユーザが有効にしているかどうかは
+    TERM や DA2 を使っても分からない。結局試しに色を設定して、
+    その色を読み出すという事をしなければ判定できないのだろうか。
+    然し、これも端末によって問い合わせができたりできなかったり
+    (セキュリティ上の都合から)無効になっていたりする気がする。
+
+    以下の優先順位で試すというのが妥当な実装方法の気がする。
+    然し 1 の判定を非同期に行わなければならないので面倒である。
+
+    1. 色を設定して問い合わせる
+
+      http://nanno.dip.jp/softlib/man/rlogin/ctrlcode.html
+      https://qiita.com/kefir_/items/c2bd46728364bdc7470b
+      OSC 10 ; ? ST で前景色RGB問い合わせ、
+      OSC 11 ; ? ST で背景色RGB問い合わせの様である。
+      応答は OSC 10 ; "rgb:rrrr/gggg/bbbb" ST の形式?
+
+      よく考えたら現在の実装では ESC-[ (CSI) しか特別扱いしていない。
+      これに対応する為には "ESC ]" (OSC) についても処理する必要がある。
+      これは ble-decode-char/csi/consume の辺りを拡張する必要がある。
+      特に BEL または ST (ESC \) で終端する様に処理を書く事に注意する。
+
+    2. DA2 を元に判断する
+      然し https://gist.github.com/XVilka/8346728 のページには
+      各ターミナルの対応 version が書かれていないので使えない。
+      自分で調べ上げるしかないのだろうか。
+
+    3. TERM を元に判断する (*-24bit *-24bits *-truecolor)
+    4. terminfo を元に判断する (setf24, setb24, tc, RGB)
+
+2019-10-21
+
+  * ずっと起動していると段々と遅くなっていくのは何故か。
+
+    Ubuntu bash-4.3 (song437) で動かしていて気づいた。
+    bash として新しく起動すると速い。
+    ble-update や ble-reload をしたり、
+    ble-detach / ble-attach しても直らない。
+
+    カーソル移動だけでも遅くなって行くので描画が関係しているとは思われない。
+    また、reload しても直らないという事から考えられる事は何か。
+    履歴がどんどん溜まって重くなるという事でもない様な気がする。
+
+    或いは変数のアクセスが遅くなって行くという事なのだろうか。
+    変数に代入するスクリプトを回してみたが特に遅いという事はない様だ。
+    (それにそもそも使用している時間に比例して変数が増えていくという物でもない)
+
+2019-09-24
+
+  * ble.sh で export PATH=aaa:bbb:ccc で最後の部分しか着色されない。
+    それぞれ着色するべきなのではないか。
+
+2019-09-22
+
+  * complete: = を含むファイル名を補完すると = 以前の部分が重複して挿入されてしまう。
+
+    →今確かめてみると再現しない。\= としていても = としていても同じ。
+
+    2019-12-31 ./configure の引数で --prefix= を補完している時に
+    = が \= になったり --prefix= も丸ごと置換されたりなど変な動作をする。
+    一方で、complete -r で progcomp を消してやると変な事は起こらない。
+    これは要するに progcomp の仕様の微妙な違いに起因して変な事が起こっている。
+
+2019-07-16
+
+  * complete: パス名展開で複数語に展開される場合の補完に関して
+    現在の実装ではパス名展開が起こったとしても展開された最初のファイル名を使って補完を実行する。
+    然し、実際には展開された各パス名について補完を実施しても良いのではないだろうか。うーん。
+
+    更に failglob の場合には続きを入力したら一致したかもしれなくても常に展開に失敗してしまう。
+    というか現状でそもそも failglob だった時にそれを検出しているのかどうかすら怪しい。
+    確認する必要があるのである。
+
+    既に COMPV には複数の値が入る仕組みになっていた。
+    それならばと COMPV に入っている値の数だけ source を呼び出せば良いのかと考えたが、
+    実際に試してみると全く同じ候補が何度も生成されるだけに終わってしまった。
+    よく考えたら progcomp では独自に展開を行っていたのではあるまいか。
+    調べてみたらやはりそうである…。これに対応するのは面倒である。
+
+    或いは複数語に展開される場合には先ず始めにその内のどれか一つに絞らせるという可能性もある?
+    然しそれはそれで不便な気もする。
+
+2019-07-09
+
+  * history.mlfix: bash-3.0 で実現する方法?
+    history -s が使えないので複数行の履歴を登録する事が不可能である。
+
+2019-07-02
+
+  * menu: 複数選択を可能にしても良いのではないか
+    C-@ で toggle をする等。抜ける時に全てを挿入する?
+    然し使いみちがよく分からない。使いたくなったら追加するというので良い気がする。
+
+2019-06-18
+
+  * history: interactive な history 編集に対応できたらする
+    つまりメニューを表示して其処で選択したり削除したりする。
+    検索などもできる様にする。遅延で着色をする。
+
+    core-complete に実装されている既存のメニューの枠組みは、
+    menu item を配列に格納する。従って容量を食う。
+    更に重そうである。これは独自に新しく実装した方が良いだろうか。
+
+2019-05-27
+
+  * 次に機能を追加するとしたらマウスなのだろうという気がする。
+    fish は未だマウスに対応していない。
+    zsh はそういう拡張があるらしいがちゃんと動くのかは知らない。
+
+    zsh extension: https://unix.stackexchange.com/questions/444601/any-terminal-shell-with-mouse-support
+    fish suggestion: https://github.com/fish-shell/fish-shell/issues/4918
+    question: https://superuser.com/questions/322367/are-there-any-unix-shells-that-support-mouse-reporting
+
+    マウス対応の問題点はマウスが有効になっていると、
+    従来の端末に対するマウス操作(端末に表示されている内容のコピー・ペーストなど)が使えなくなる事である。
+    端末に表示されている内容まで全て ble.sh の管理下であればそういう事もできたかもしれない。
+
+    部分的なサポートとして何らかのモードに入っている時だけマウスを有効にするというのはあるかもしれない。
+    例えば補完のメニューを出している間だけ、など。然し、それもなかなか分かりにくい気はする。
+    或る特定の範囲だけでマウスを有効にするという制御機能があった様な気がする。
+    それが使えればそれを使ってマウスを有効にするというのが可能になる気がする。
+    何れにしてもこれは考察が必要になるのである。
+
+    2019-07-22 どうも既存の端末では Shift を押しながら操作すると
+    Mouse report ではなくてローカルでの端末上でのマウス操作になる、
+    というのを採用している物が多い、という話を何処かで見かけた。
+    何処で見掛けたかは忘れたし実際にそうなのかの確認はしていないが。
+
+2019-04-29
+
+  * bashbug: #D1078 の bash-5.0 のバグを報告する?
+    一応最新版で確認はしておいた方が良いかもしれない。
+    と思ったが、どうせパッチを作るのであればその時に気づく筈である。
+
+2019-04-21
+
+  * 実は背景色を判定する方法はなくはない様だ。
+    https://qiita.com/kefir_/items/c2bd46728364bdc7470b
+    しかしそうだからと言って暗い背景用に配色を調整する必要があるので、
+    それを実行するまでは対応しても仕方がないかもしれない。
+
+    % というか、調べていたら DECSCNM (SM/RM(?5)) が背景が暗いか明るいかの設定の様だ。
+    % という事は DECRQM して DECRPM を受け取れば普通に背景が明るいか暗いか分かるのでは。
+    % そして Poderosa や screen の側でもそれを設定すれば良かったのではないか…。
+    % と思ったが xterm は明るいか暗いかが反転している。
+    % つまり、DECSCNM は飽くまでその端末の既定の背景と比べて反転しているかどうかしか分からない。
+    % 既定の背景色が明るいか暗いのかの情報は取る事ができない。
+
+    一方で、背景色の問い合わせで返ってくる色が DECSCNM の影響を受けるのか
+    は気にして置かなければならない。
+
+2019-03-23
+
+  * menu: alias select='while myselect $# "$@"' 等として select を上書きできるのでは
+
+    というか現在の ble.sh で select を実行すると悲惨な事になる気がする…。
+    と思ったが select は別に readline は使っていない様子だ。
+    元の bash でも全然行編集できない感じの入力になっている。
+    なので現状で問題が発生しているという訳でもない。
+
+    もし置き換える事ができるのであれば便利かもしれないという程度である。
+
+  * menu: 今後の拡張性
+
+    * 因みにフィルタリング機能は menu-filter を統合・整理する形で実装したい。
+      フィルタリング文字列の入力に関しては isearch や iswitchb の様な、
+      単に文字を入力するか BS で戻るかだけしかできない様なものでも良い事にする。
+
+      フィルタリングに関してはフィルタリングを実行する関数と、
+      フィルタリングを誘発する為の機能を分離して実装する事にする。
+      既存の menu-filter の機能は自動的にフィルタリングを呼び出す。
+      明示的なフィルタリングの場合には keymap にフィルタリングを紐付ける。
+
+    * cdhist では更にリスト編集機能までついている。
+      つまり項目を並び替えたり削除したりと言った事ができる。
+
+      うーん。これをどの様に返すかは微妙かもしれないが、
+      _ble_complete_menu_items にある物を呼び出し元で参照してもらうというので良い気がする。
+      或いは callback でどの様に並び替えたかを返すという手もあるが分かりにくいだろうか。
+      両方という事で良い気がする。使う側で便利そうな方を選んでもらう。
+      どの様に並び替えたかの操作が欲しければ callback を使うし、
+      最終的な結果だけ欲しければ _ble_complete_menu_items を参照してもらう事にする。
+
+    * callback という事で思ったが、実は accept だとか cancel だとかも
+      全て menu_class 経由で定義した方が良いのではないだろうか。
+      一つずつ全て callback を変数に設定していくのは面倒である。
+      更に、並び替えの callback だとかどんどん増やしていくと際限がない。
+
+2019-03-22
+
+  * menu-filter の使い心地が微妙なのはもしかして
+    menu-complete を実行中に絞り込みができないからなのではないか。
+    現在は menu-complete を実行している途中に入力をするとその場で確定してしまう。
+
+    では bash の振る舞いはどうなっているだろうか。
+    確認してみた所、bash の menu-complete はもうその場所に挿入してしまう。
+    そして文字を入力すれば続きに挿入される事になる。
+
+    現在の ble.sh の振る舞いはどうだろうか。
+    その場で入力すると addtail 等の処理をせずにいきなり続きから入力されてしまう。
+    少なくとも addtail ぐらいはするべきなのではないか。
+    また、絞り込みを実行しても良いのではないかという気もする。
+    然し、それでも何か違う様な気がする。
+
+    絞り込みの入力欄と現在選択されている内容というのは別に一致している必要はない。
+
+2019-03-19
+
+  * complete: 実装されていない補完関連の rlvar は以下の通りである。
+    実際に対応するかどうかも含めて考察する必要がある。
+
+    - set completion-map-case off
+    - set disable-completion off
+    - set expand-tilde off
+    - set horizontal-scroll-mode off
+    - set page-completions on
+    - set completion-display-width -1
+    - set completion-prefix-display-length 0
+    - set completion-query-items 100
+
+    うーん。これらの設定は bash の既定値では余り便利ではなかったりする。
+    ble.sh で折角実装してもユーザに使ってもらえないのでは仕方がない。
+    それならば最初から ble.sh の bleopt として提供してしまった方が良いのでは。
+    元々 bash を普通に使っていて設定している人の為に、
+    bash の規定値と異なる値を敢えて選択している時に限り
+    ble.sh でその効果を再現する様にすれば良い。
+
+2019-02-09
+
+  * うーん。git や bash-it の様に ble.sh でも ble コマンドの様な物を提供するべき?
+
+    と思ったが既に何処かには ble という名前のコマンドが存在していて、
+    これらは Bluetooth のサービスの開始・終了などを実行するのに使われている様子である。
+    もしこれらが広範に用いられている物なのだとしたら使いにくい。
+
+    また、ble の名前の由来である zle コマンドの事を考えると、
+    ble widget の様な使い方を想像してしまうのではないかとの問題もある。
+
+    混乱を防ぐためには ble ではなくて ble.sh または blesh の様な名前が良いだろう。
+    しかしそうすると現状の ble-import だとかの機能を呼び出すのに余り適していない気がする。
+    つまり、blesh import ... で ble-import が呼び出されるというのは分かりにくい。
+    或いは現状の ble-import を blesh-import に改名するという手もあるかもしれないが、
+    そういう事を考え始めると全ての関数を ble から blesh に改名したくなる。
+    それは面倒だし、元の zle という名前から離れていくので余りやりたくない。
+
+    実のところ、現状のまま ble-* の方が自動的に補完が効くので嬉しい。
+
+    bash.env は bash.env という名前のコマンドを提供する様である。
+    https://github.com/midwire/bash.env
+    そういう事であれば ble.sh でも ble.sh という名前の関数を提供すれば良い気がする。
+    しかし ble.sh が入力しやすいのかというと微妙ではある。
+
+    bash-it の場合には bash-it-update だとか bash-it::update だとかだと
+    格好が悪いので bash-it update という形の関数名になるというのは分かる。
+
+  * main: --attach=prompt の問題は何だったか
+    ref #D0940
+
+    何か問題があって現在はこれを使っていないが、それは何だったろうか。
+    何処かに記録されていて良い筈なのに何処にも記述がない。
+    対応した時の記録は #D0737 にある。
+    動かしてみた所、ちゃんと動いている様に見える。
+
+    →恐らく、先ず古い ble.sh の version では使えないという事。
+      それから PROMPT_COMMAND を上書きすると使えなくなってしまうからという事。
+      ユーザに PROMPT_COMMAND を設定しないように要求するのは面倒である。
+
+2018-09-21
+
+  * [保留] 2018-09-15 complete: 文脈の変更範囲で end0 だけ負になるバグ (ref `#D0818`)
+  * [保留] 2018-09-11 complete: 端末が操作を受け付けなくなるバグ (ref `#D0817`)
+
+2018-08-16
+
+  * complete: オーバーレイによる実装?
+
+    現在の実装では仮挿入しているが、
+    これによって現在の入力内容でエラー着色するべき所が、
+    補完が実行された後の着色になってしまっていて、
+    補完前の現状でエラーなのかどうなのかが判別できなくなっている。
+
+    やはり仮挿入ではなくて overlay で実装するべきなのではないか。
+    しかし overlay の仕組みを実装するのは面倒である。
+    どの様な仕様にするのが良いのかの吟味から実装まで。
+    しかし、これについては後回しで良いだろう。
+
+    以下に仮入力の4種類の方法について言及がある。
+    https://mattn.kaoriya.net/software/vim/20170905113330.htm
+
+    リンク先は消えている。web archive のリンクを追記 (2018-09-23)。
+    https://web.archive.org/web/20110630165743/https://www.mozilla-japan.org/projects/intl/input-method-spec.html
+
+    * 2018-09-23 自動補完時の着色について
+      cmplstofB さんからも指摘があった。
+      https://github.com/akinomyoga/ble.sh/issues/5
+
+      自動補完の候補文字列は実際に挿入しているので構文着色に影響を与える。
+      "現在の内容" で着色するべきなのではないか、ということ。
+      そうしないと例えば今入力したコマンドが実際に存在するコマンドなのかどうかが分からない。
+
+2018-08-05
+
+  * edit: set blink-matching-paren on に相当する機能
+    対応するならカーソル移動ではなくて着色でやった方が良い。
+
+    | 括弧の対応と region が両方走っていると分かりにくい。
+    | 既に region には複数箇所を highlight する機能がある。
+    | そういう意味で region を使うという手もある。
+    | と思ったが、分かりにくい問題に関しては region の方を上に配置すれば良い。
+    | 複数箇所を highlight する機能は実装を参考にするだけで良い。
+    | 論理的には全く異なる (region は _ble_edit_mark を参照する) し、
+    | それぞれ独立に on/off する事を考えれば別の highlighter にするべき。
+
+    region の複数箇所着色の実装を参考にする可能性も考えつつ、
+    region とは独立な highlighter にしたい。
+    その時は region の一つ下の層に挿入したい。
+
+    また対応する括弧はどの様に検出するのが良いだろうか。
+    やはり文法構造を参照する実装にするしかない様に思われる。
+    しかし、括弧の対応には色々ある。引用符の対応、
+    括弧の対応、if then else などのキーワードの対応、
+    ヒアドキュメントの始まりと終わりの対応である。
+    それらは必ずしも記録されていないし、また、記録されているとしても
+    様々な形式で記録されている。取り敢えず一番簡単な対応として
+    nest に記録されている物を着色するというのが良さそうである。
+
+2018-07-29
+
+  * complete: メモ
+
+    - 生成候補のキャッシュを行うとすれば source 内で実装するべきである #D0705
+
+2018-07-19
+
+  * ble-decode: 'set convert-meta on' 的な操作
+
+    ref #D0699 (LANG=C bash で ble.sh をロードすると全く操作できない)
+
+    ble.sh の内部環境では set convert-meta off にしているが
+    (そうしてないと特殊文字の受信時に無限ループになる)、
+    外部環境で set convert-meta on だった時に、
+    それをエミュレートする様な動作を行っても良い。
+
+    外部環境における set convert-meta の状態は
+    変数 _ble_term_rl_convert_meta_external に記録してある。
+
+  * 現在の `LC_CTYPE` で表現できない文字を入力した時の `self-insert` の振る舞い
+
+    ref #D0699
+
+    self-insert で入力するのは逆符号化したバイト列であるべきでは?
+
+    というのも LC_CTYPE が正しくない場合でもファイルシステムのファイル名などは
+    そのまま謎の文字列として取り扱われるからである。
+    然し逆符号化したバイト列は文字列として正しくないかもしれない。
+    逆符号化したバイト列を更に一バイトずつ現在の LC_CTYPE に変換すると意味がない。
+
+    これは文字列を編集などしようとすると分からない事になりそうなので、
+    取り敢えず現段階では \u???? を出力するという現状の振る舞いを維持する。
+    後で落ち着いてから再考する事にする。
+
+    以下の c2s 使用箇所は一貫している必要がある。
+
+    ble/widget/self-insert 編集文字列の入力
+    ble/widget/vi-command/search-char.impl/core 検索文字列の入力
+    ble/widget/vi_xmap/visual-replace-char.hook 置換に使う文字の入力
+    ble/lib/vim-surround.sh/get-char-from-key 囲み文字の入力 (あらゆる遅延入力)
+
+2018-03-14
+
+  * emacs: C-w を続けて実行すると kill-ring に追記にするべき
+
+2018-02-21
+
+  * vi-mode: nmap (, ), {, }
+
+    カーソルを N 文元に戻す or 先に進める。N 段落元に戻す or 先に進める。
+
+    これは operator:d,c で "- ではなく "1 に記録するという例外の対象であるので、
+    対応したらその例外のリストに登録する必要がある。
+
+2018-02-12
+
+  * [保留] vi-mode: operators 保留項目 [#tmp0002]
+
+    * 領域折り畳み zf には対応しない。
+
+    * gq の formatexpr, formatprg には未対応である。
+
+2018-02-11
+
+  * [保留] keymap/emacs: 連続する delete-backward-char の場合 undo の記録をまとめる可能性?
+
+    現状では一文字ずつ記録しているので一文字ずつ undo される。
+    現在の振る舞いの方が良いのか emacs と同様にまとめた方が良いかは微妙な所である。
+
+2017-11-26
+
+  * highlight: 配列代入の解析の不整合? [tmp0003]
+
+    最初から arr[index まで入力した時の着色と
+    arr[index] まで入力してから一文字削除した時の着色が異なる。
+
+    | _ble_syntax_attr/tree/nest/stat?
+    |  7 aw   000 'a'  stat=(CTX_CMDX w=- n=- t=-:-)
+    |  8 a e  001 '['  nest=(CTX_VRHS w=ATTR_VAR:0- n=- t=-:-)
+    |  8*a    002 'a'  stat=(CTX_EXPR w=- n=@1 t=-:-)
+    |  6*a e  003 'b'
+    |  |    s 004 ^@  stat=(CTX_EXPR w=- n=@1 t=-:-)
+    | \_ 'a[ab'
+    |     \_ '[ab'
+    |
+    | _ble_syntax_attr/tree/nest/stat?
+    |  7 aw   000 'a' |  stat=(CTX_CMDX w=- n=- t=-:-)
+    |  8 aw   001 '[' || nest=(CTX_VRHS w=ATTR_VAR:0- n=- t=-:-)
+    |  8*aw   002 'a' || stat=(CTX_EXPR w=- n=@1 t=-:-)
+    |  |*aw   003 'b' ||
+    |  8*aw   004 ']' ++ word=CTX_CMDI:0-5>@4 word="a[":1-5 stat=(CTX_EXPR w=- n=@1 t=-:-)
+    |  |    s 005 ^@    stat=(CTX_ARGX w=- n=- t=$5:-)
+    | \_ 'a[ab]'
+    |     \_ '[ab]'
+    |
+    | _ble_syntax_attr/tree/nest/stat?
+    |  7 a    000 'a'  stat=(CTX_CMDX w=- n=- t=-:-)
+    |  8 a e  001 '['  nest=(CTX_VRHS w=ATTR_VAR:0- n=- t=-:-)
+    |  8*aw   002 'a'  stat=(CTX_EXPR w=- n=@1 t=-:-)
+    |  6*awe  003 'b'
+    |  |    s 004 ^@  stat=(CTX_EXPR w=- n=@1 t=-:-)
+    | \_ 'a[ab'
+    |     \_ '[ab'
+
+    どうも構文の状態は同じだ。単語の着色が異なる。
+    しかしそもそも何故単語着色が起こっているのだったか。
+    単語着色は CTX_CMDI としての着色が残っているということ。
+    これは単語着色の側の問題であって、解析の問題ではない。
+
+    2019-02-13 "{ echo; } 3>&1" と入力した時にも
+    似たような事になる。"{ echo; } 3" まで入力した時の単語エラー着色が
+    最後まで残ってしまう。#D0930
+
+2017-11-21
+
+  * syntax: for^J で改行にエラーが設置されるが見えない。
+
+    改行のエラーは何らかの方法で見える様にするか、
+    或いは、改行位置にエラーがある様な時は、
+    その前の文字でエラーが発生する様にチェックを行うべき。
+
+    Note: これは端末によっては表示されたりする。端末による。
+    エラー着色はどの様に行われているのか。for の後には FARGX1 に入る。
+
+    これは ble-syntax:bash/ctx-command/.check-delimiter-or-redirect の冒頭部分が怪しい。
+    と思ったが FARGX1 に関してはチェックが入っていないのでやはり関係ないだろうか。
+    うーん。調べるとやはり文法レベルでの着色になっている。
+
+    2019-03-11
+
+    | rps1 で表示している時に EL を空白で代替していると、
+    | 改行の着色が空白に反映される。これでも良いような気がしてきた。
+    | 然し、右側が全て着色されるというのもうるさい。
+    | 最初の1文字だけ着色して SGR(0) するかと思ったが、
+    | そうするとその次にある文字の着色も消えてしまう。
+    |
+    | それの対策のために _ble_textmap_ichg があるのでは。
+    | と思ったが、実装を見てみると違っている様に見える。
+    | _ble_textmap_ichg は着色の調整に使っている事は確かだが、
+    | _ble_textmap_ichg に登録されている文字の着色を計算しているのであって、
+    | _ble_textmap_ichg に登録されている文字の次の文字の着色は計算していない様に見える。
+    | うーん。_ble_textmap_ichg は他の箇所では全く使っていない。
+    |
+    | そうだ。思い出した…。_ble_textmap_ichg に登録されている文字は、
+    | 配置の場所によって中身が変わるので、shift が使えないという事だった。
+    | 特に、中身が変化している場合には文字を取り出して変更を行うのだった。
+    | では以前 ichg に登録されていて、現在位置では ichg に登録されていない文字はどうなるのか。
+    | と思ったら既定の文字形は別の所で決定されている様だ。
+    | ble/highlight/layer:plain/update/.getch である。
+
+    a 右側の1文字だけ着色される様にする?
+
+      x 問題点はコピーペーストした時に必ず余分な空白が入る事である。
+        これは右側の全てを着色させる場合にも同様の問題が生じる。
+
+        また、エラーが有る時にだけ (着色の必要がある時にだけ)
+        右側に空白を入れるという方法もある。
+        しかし、その為にはその位置にエラーが有るのかないのかを
+        外部から取得しなければならない。
+
+        ble/textmap#update は edit.sh だとかの仕組みに依存しない、
+        独立した枠組みにしたいので余り変な機能は取り付けたくない。
+
+      x また実装上の問題点として、rps1 が表示されている時に、
+        _ble_term_ech を使わない場合、2文字目以降の空白文字を SGR(0)
+        でクリアしなければならない事である。この場合、
+        改行の次の文字の SGR を復元する為には…
+
+        _ble_textmap_ichg に次の文字の番号も追加するか、
+        或いは現在の改行文字の SGR 状態を復元する必要がある。
+        しかし textmap の処理をしている間は、
+        未だ着色が完了していないので SGR 状態を取得できない。
+
+        或いは着色部分だけ textmap#update よりも前に持ってきても良いのだが、
+        その様にしたとしても色情報を textmap#update に伝達する手法が必要である。
+        例えば getg なる関数を textmap#update から呼び出してもらう事にするのか。
+        或いは呼び出す関数名も外から指定できる様にするのか。
+
+    b やはり改行の前の1文字を描画時に強制的に着色するという手もあるのではないか。
+      と思ったが…エラー着色だけ特別扱いするというのも変な話である。
+
+    c その様に考えると初めから改行にはエラー着色はしないというのが正しい気がする。
+
+      改めて調べると ble/syntax:bash/ctx-command-compound-expect がエラーを設置している。
+      うーん。for だけの問題では無い様である。他に select, case の時にも同様である。
+
+      ('for'|'select'|'case')
+        [[ ${text:i:1} == $'\n' ]] &&
+          ((_ble_syntax_attr[i-1]=ATTR_ERR))
+        case $word_expanded in
+        ('for')    ((ctx=CTX_FARGX1)) ;;
+        ('select') ((ctx=CTX_SARGX1)) ;;
+        ('case')   ((ctx=CTX_CARGX1)) ;;
+        esac
+        processed=begin ;;
+
+      実際に上記の様にして見たら見える様になった。
+      しかし rps1 が有効になっている時はやはりうるさく感じられる。
+      また端末に依っては rps1 が無効になっていても行全体が赤く着色される。
+      そういう端末 (mintty など) どういう発想なのかはよく分からないが…。
+
+      更に here documents も行末にエラーを設置する。
+      これについても対策したいが、here documents に関しては、
+      nest の終端がない事によるエラー着色である。
+      これは nest の範囲を変更しないと着色を変更できない。
+
+      何だか中途半端な実装の気がしてきたので取り敢えずこの変更はなかった事にする。
+
+    d うーん。右側の内容の消去は実は改行文字を使って行うのではなくて、
+      描画した後に消去するという方法にした方が良いのだろうか。
+      しかし、その様にすると、今度は urange の中にある行末というのを列挙して、
+      それから各行末について位置を計算して実行するという事をしなければならない。
+      textmap さえあれば指定範囲内の行末は二分法によって特定する事が可能である。
+      しかし面倒である事に変わりはない。もっとまともな方法はないのだろうか。
+
+    結局実装の面倒さを考えなければ三種類の仕様が考えられる。
+
+    a 右側に1文字赤く表示する
+    b 行末まで赤く表示する
+    c 行の最後の文字を赤くする
+    d 表示されなくても気にしない
+
+2017-11-09
+
+  * complete: 候補の優先順位? 例えば拡張子でフィルタすると絞りすぎることがある。
+    拡張子の要件を満たすものを先に表示して、満たさないものを後に表示する。
+    満たさないものに関してはサブ候補として、TAB による接頭辞挿入には寄与しない。
+
+    2018-07-28 候補間の優先順位をつける可能性。
+    weak な優先順位は、候補を表示する時の順序。
+    strong な優先順位は、候補絞り込みの際に一番優先順位の高いものが一つしかない場合にはそれに確定する。
+
+2017-11-05
+
+  * vi-mode
+
+    :help 関連の気になること:
+
+    - v_p v_P: Implementation details に書かれている処理の順序は実際は逆
+    - exclusive-linewise: ここの inclusive/linewise になる条件の記述は曖昧だし全く合っていない
+    - star: vim-jp の文書だと WORD と書いてあるが、振る舞いは word (しかも \<\> で囲まれる) に近い
+
+    振る舞いで気になること
+
+    - i<C-o><C-c> とすると普通のノーマルモードに移行したように見えるのに、
+      モード表示は -- (挿入) -- のままである。これは何故だろう。
+      ble.sh ではノーマルモードに完全に移行する。
+
+    - qa<C-c>q とすると ^C が二重に記録される。これは何か?
+      ble.sh では単に ^C は入力された通りに一個だけ記録する。
+
+    - C-v <bracketed paste> では矩形挿入にするべきなのではないか。
+      ble.sh では矩形挿入を行う。
+
+
+2017-11-03
+
+  * vi-mode (registers): 各種特殊レジスタの対応
+
+    http://vim-jp.org/vimdoc-ja/change.html#registers
+
+    - done: "% は現在のファイル名を保持するが、これは $HISTFILE の内容を返す事にした。
+
+    - done: ": は一番最後のコマンドラインの内容である。
+    コマンドラインを入力し途中でキャンセルした場合などには記録されない。
+    空のコマンドラインで確定した時にも記録されない。
+    コマンドが入力された場合は、それが存在しないコマンドであっても記録される。
+    コマンドが実行されている途中では未だ設定されていない。
+    つまり、そのコマンドが実行された後で値が設定される。
+
+    - ". は挿入モードで挿入された文字列を保持する。挿入モードから抜ける時に記録すればよいだろうか。
+    と思ったが説明をよく読んでみるとそういう振る舞いという訳でもなさそうだ。
+    よく分からないので実際に動かして試してみる必要がある。
+
+    - "# は代替ファイル (副ファイル) の名前だそうだが何か良くわからない。
+    C-^ の動作と関係しているそうだ。これは未だ実装しない。
+
+    - "= これは複雑だ
+    - "* "+ "~ これは GUI で選択した範囲を表すものだそうだ。
+
+2017-10-31
+
+  * [保留] vi-mode (_ble_keymap_vi_REX_WORD): Unicode categories?
+
+    Bash の正規表現 (<regex.h> ERE) で対応するのは難しい。
+    また必ずしも Unicode (UTF-8) で実行されるとは限らない。
+    現在は UTF-8 しか対応していないが枠組みとしては
+    別の文字コードにも対応できる余地は残して置きたい。
+
+2017-10-12
+
+  * vi-mode まだ対応していない・考えていないコマンドを列挙する
+
+    意外とそんなに残っていないようなので。
+
+    * nmap: C-^ '括弧 `括弧
+      C-t C-] M Q ZZ ZQ do dp { }
+      [{char} ]{char} z{char} C-w{char}
+      g<C-a> g<C-g> g<C-h> g<C-]> g# g* g$ g&
+      g` g' g+ g, g- g8 g; g< gD gH gN gP gQ gT gV
+      g] ga gd gf gF gh gn gp gq gs gt gw gx g@
+
+  * [保留] vi-mode: xmap <C-]>
+
+    % <C-]> なる物は今見ても存在しない。vivis https://qiita.com/b4b4r07/items/8db0257d2e6f6b19ecb9
+    % 辺りに在ったものかとも思ったが、ない。zsh-vimode-visual を見てもない。
+    % vim で C-] としてもベルが鳴る。何かの間違いで C-[ を C-] と書いてしまっただけなのかもしれない。
+    % と思って改めて vimindex を見ていたら実はあった。
+
+    C-] で "選択した文字のタグ" へジャンプと書かれている。
+    タグとは何だろうと思ったら http://vim-jp.org/vimdoc-ja/tagsrch.html に説明がある。
+    ctags のタグと同じものと思って良さそうだ。因みに :help ... で表示されるのもタグの様だ。
+    またノーマルモードの C-] はカーソル位置の単語を ":ta" で検索と書かれているが、
+    実質 xmap の時と同じことのようだ。
+
+    % これについてはシェルの操作としてどの様な意味を持たせるのかというのは微妙な所である。
+    % 履歴項目のブックマーク的なものとして利用することはできるかもしれない。
+    % しかし、既にコマンドラインに入力されている文字列を元にジャンプをするとなると矢張り微妙だ。
+    % 唯一意味がありそうなのは、指定した単語がコマンドライン上で定義された
+    % シェル関数だった時にそこにジャンプするという物だが…本当に需要があるのかは微妙である。
+    % しかし、シェル関数の定義を確認したいのであれば寧ろ command-help を呼び出せば良い。
+    % シェル関数を修正するという目的ならば使えるかもしれない。
+    % 然し、必ずしもシェル関数をコマンドラインで定義したとは限らないし、
+    % 該当するファイルがあったとしてもそれをコマンドラインで表示する訳にも行かない。
+
+    既に入力した文字列に対応して適切な履歴項目またはコマンドライン中の文字があればそこにジャンプする。
+    例えばシェル関数を定義した履歴項目に跳んだり、変数名から declare に移動するなど。
+    そういう機能でまともそうなのが定義できればそれを実装する。
+
+2017-10-01
+
+  * syntax: case $x in (a b) : ;; esac のパターン "a b" はエラー
+
+    どうやら一個の単語までしか駄目な様子?
+
+    更に case aaa in ((aaa)) echo;; esac 等の様に () の入れ子もエラーになる。
+    shopt -s/-u extglob に拘らずエラーになる。
+    一方で extglob の @() に関しては中で () の入れ子が可能である。
+    つまり、case の中の (...) と extglob @(...) の文脈は異なる。
+
+    他にも違いはある。@(<>) は許されるが、in (<>) は許されない。
+    @(&&) は許されるが in (&&) は許されない。
+    in (a|a|a) は許されるが in (a||a) や in (||) は許されない。
+    in (&), in (|), in (;), in (<), in (>) は何れも駄目。
+    in (a&b), in (a;b), in (a<b), in (a>b) も何れも駄目。
+
+    どうも全然違う文脈の様に思われてきた。
+
+    現在の実装では ble-syntax:bash/ctx-case から CTX_PATN に突入している。
+    (他に CTX_PATN に入っている箇所を探すと、
+    関数の引数の括弧に何か変な物が入っている場合と、
+    コマンドの途中で突然括弧が現れた場合である。
+    これらはエラーに対する復帰としての CTX_PATN なのでそんなに気にしなくて良い)
+
+    どうも振る舞いを観察すると ctx-conditions と ctx-globpat の中間のように思う。
+    単語を設置しなければならないという観点で言うと ctx-conditions に近い。
+    一方で対応している構文の集合という観点で言うと ctx-globpat が幾らか近いように思う。
+
+    2017-11-27 追記
+    どうやら () の中の単語ではチルダ展開も有効のようだ。以下で hello が出力される。
+    case a=~ in (a=/home/murase) echo hello; esac # これは対応済み
+    case a=/home/murase in (a=~) echo hello; esac
+
+2017-09-18
+
+  * vi-mode: operator = [#tmp0001]
+
+    :help = を見ると (設定 equalprog || 内部関数 C-indenting, lisp || 外部コマンド indent) が使われるそうだ。
+    但し、indentexpr が非空白の時、indentexpr が使われる (参照: indent-expression)。
+
+    インデントの規則について調べる。
+    先ず初めに空行 (空白だけの行) を隔てて前の行に括弧がある場合には、
+    それを考慮に入れて初めのインデントが決定される。
+    空行を隔てて前の行がインデントされていればそれを継承する。
+
+    結局空行を隔てた前の行のインデントまたは最後の括弧の位置を継承するということ?
+
+    また括弧の種類は () しか見ていない {} や [] は見ていないようだ。
+    デフォルトが lisp だからだと思われる。
+    これは実のところシェルに適したインデントを実行するようにするべきなのだと思われる。
+    しかしながらシェルのインデントはかなり面倒くさい。
+    特に if, then, else, while, do, done 等については現在の解析では状態を記録していない。
+
+    関連してコマンドが閉じていない時 RET を押すと改行挿入にするという物がある。
+    この機能を実装する為にも現在の入れ子の状態を調べる仕組みが必要になる。
+    RET で改行挿入にする機能のほうが幾らか単純なので、
+    それを先に実装してからこれを実装する方が良い気がする。
+
+  * vi-mode: 関連して [/ 等の実装についても調べたい。
+
+    既に vim-surround.sh で類似の機能について実装したが、
+    [/ についても個別に実装したい所である。
+
+    他にテキストオブジェクトで [{ [} [( [) などと同等の機能も実装している。
+
+    [# [' [( [* [/ [` [D [I [P [p [[ [] [c [d [f [i [m [s [z [{ [<mouse2>
+    ]# ]' ]) ]* ]/ ]` ]D ]I ]P ]p ][ ]] ]c ]d ]f ]i ]m ]s ]z ]} ]<mouse2>
+
+  * vim-surround: ds cs インデント
+
+    surround.vim では改行が絡むとき = によるインデントを実行している。
+    現在 vim-surround.sh ではインデントを実行していない。
+
+    2017-10-09 追記
+
+    yS ySS でもインデントは起こる様である。
+    更に、xmap S でもインデントを行う (xmap gS はインデントは行わない)。
+
+2017-09-17
+
+  * cmplstofB: ビジュアルモード・選択モード?
+
+    関連 #D0672 選択モード対応
+
+    * テキストオブジェクトで範囲を選択し、また範囲を拡大する。
+
+      どうやらテキストオブジェクトの拡大では左右の両端からの拡大を試みるような気がする。
+      決して右端からテキストオブジェクトを拡大するというわけではないようだ。
+
+      というのも変なところから初めて (...) の中に右端を移動して、
+      その上で ib としてもエラーになるからである。或いは短くなる。
+      どうも ib の動作としては左端から外側の ( を見つけて、
+      それに対応する ) を右端に直すようである。
+
+      うーん。これはテキストオブジェクトによって動作が異なるのかもしれない。
+      aw などは明らかに右に向かって拡大を行っている。
+      因みに矩形選択かどうかは気にしないようだ。
+      同じ動作をする。行の右端に行くと次に次の行に普通に移動する。
+
+    2018-02-22 現状の xmap におけるテキストオブジェクトの状況について整理する。
+    - ble/keymap:vi/text-object/word.impl に於いては既に xmap での振る舞いに対応している様子である。
+    - ble/keymap:vi/text-object/quote.impl は明らかに対応していない→対応した #D0670
+    - ble/keymap:vi/text-object/block.impl も対応していない
+    - ble/keymap:vi/text-object/tag.impl も対応していない
+    - ble/keymap:vi/text-object/sentence.impl も対応していない
+    - ble/keymap:vi/text-object/paragraph.impl も対応していない
+
+2017-09-16
+
+  * cmplstofB: vim-surround.sh: ds cs cS yS ySsd ySSd S gS 'C-s' 'C-g s' 'C-g S'
+
+    現在のところ特に要望は出ていないが ds cs あたりは使いたくなるのではないかと思われる。
+    → ds cs に関しては要望が出たので対応した。
+    → cS yS ySs ySS vS vgS にも対応した。
+
+    残っているのは imap <C-s> <C-g>s <C-g>S のみである。
+
+2017-09-15
+
+  * cmplstofB: here string 候補について
+
+    here string 候補にファイル名以外のものがあれば対応する。返信待ち → やはり候補は難しい。
+
+    コマンド名に応じた補完関数の設定を可能にする?
+    例えば python3 に対する here document の場合には、import を補完候補に出すなど。
+
+    2018-10-02 C++ の場合にはこんな感じに clang を呼び出せば良い様だ。
+    clang -cc1 -fsyntax-only -code-completion-at=test2.cpp:7:7 test2.cpp
+    http://d.hatena.ne.jp/ohtorii/20110319/1300514225
+
+    Here document で補完候補を出す為には、
+    Here document の内容 (先頭から現在位置まで) が
+    単純内容 (単純単語に近いがシェルの特殊文字を使える) でなければならない。
+    その為の関数を追加する必要がある。simple-word の実装を真似れば良い。
+
+2017-08-19
+
+  * [保留] cmap/default.sh: "CAN @ ?" 代替?
+
+    "CAN @ ?" は "C-x C-x" と較べて曖昧ということで現在無効にしている。
+    これの代替キーシーケンスを定義しても良いかもしれない。
+    といいつつ現実の端末に存在するものを登録しなければ意味がない。
+    (そういう意味では "CAN @ ?" もこれに対応する現代的な端末が実在するのか怪しいのであるが。)
+
+    思うに s-x だとか H-x だとか A-x を送りたければ CSI 2 7 ; ... ; ... ~ を使えば良い。
+    何故 Emacs が "CAN @ ?" に対応しているのかは謎である。
+
+    →実はこれは isolated esc と同じ方法を用いて区別して受信可能かもしれない。
+    しかし、何れにしても "CAN @ ?" に対応している端末は殆どないので、対応する理由がない。
+    https://superuser.com/questions/407391/super-key-over-ssh によると Konsole がこの形式を使うそうだ。
+
+2017-03-04
+
+  * syntax: bug ヒアドキュメントによる nparam の更新が追いついていない。
+
+    これは何でかというと nparam の計算に stat 保存点を超えた過去の情報を用いているからである。
+    部分更新をしている為に過去の情報が書き換わったとしても
+    stat 保存点で解析状態が一致したと見なされてしまい、
+    其処で解析が中断してしまうのがいけない。
+
+    これを解決する為にはヒアドキュメントの word に相当する部分は
+    一気に解析する様に修正しなければならない。
+    結局 word 部分は最終的には独自の方法で読み取るのが良い様な気がする。
+
+    或いは暫定的に範囲を指定して stat を消去する様な機能があったような…?
+    →昔その様な処理の仕方をしていたような気がするが、いま確認してみるとない。
+    恐らく何か問題が色々生じて結局その方法は使わないという事になった様な気がする。
+    記憶が正しければそれは time ... や function func () だとか func () を解析する時の話だった。
+    結局何れの場合でも一回の解析で行けるところまで解析するという事になった。
+    ヒアドキュメントでもその様に実装するのが一貫している。
+
+  * syntax: ヒアドキュメント 終端 word 着色
+
+    todo: 取り敢えず RDRS 等と同様に完全に入れ子を追跡する様に実装する。
+
+    $() ${} の入れ子も含めた実装が必要になる。
+
+    実は、通常通りに解析してしまって、
+    後の着色で一様な色に塗り潰してしまうという方策で良いのではないか。
+    しかしそれだと tree-enumerate の際に $() の内部で着色が起こる気がする…。
+    % 特に部分更新などをすると確実に内部での着色が発生するのでは…??
+    % →部分更新の時は一番外側の単語についても着色が判定されるから特に
+    % 部分更新仮想で内科に依る違いは発生しないと思われる。
+
+    取り敢えずの実装として通常通りに解析する様に変更した。
+    単に ble-syntax:bash/ctx-heredoc-word から
+    ble-syntax:bash/ctx-redirect に処理を委譲するだけで良かった。
+    ヒアドキュメント特有の処理は ble-syntax:bash/ctx-heredoc-word/check-word-end
+    の方にしかなかったからである。
+    また、同時に CTX_RDRI, CTX_RDRH の単語を上から塗りつぶす様にした。
+    しかし、やはり予想通り $() の内部などの単語の着色は発生してしまっている。
+
+2017-03-02
+
+  * syntax: パラメータ展開・算術式評価内部の quote 除去が為されない状況での _ble_syntax_attr
+
+    以下の項目で対応しきれなかった (対応しないことにした) ものをここにまとめる。
+    cf. #D0375 "2017-03-02 [2016-08-06] syntax: extquote と "${}" の入れ子に関して"
+
+    > - $(()) の中の () のネストに関しては対応していない。
+    >   つまり () が一つでも挟まれば quote 除去が有効であるかのように着色される。
+    >   →これは対応した。
+
+    - $((a['1+1'])) などの添字の quote 除去は有効であるが、現実装では quote の着色はしていない。
+      つまり $(('1+1')) などと同様に quote 除去が為されない物として着色を行っている。
+
+      これに対応する為には $(()) の中でも [] に対応するネストを判定する様にしなければならない。
+      ※一方で [] の中では () に対応するネストの判定はしなくても良い。
+
+    - $(("${hello}")) などの構造では CTX_QUOTE の中で自身が有効かどうかを判定して
+      自身の着色を変更したりするのは面倒なので、普通に (有効であるかの様に) 着色している。
+
+      算術式の場合には quote 除去されないと分かっている時点で文法エラーになるので
+      1文字目をエラーの色にするというので良い気がする。
+      パラメータ展開の内部の場合には quote 除去されないからと言ってエラーにはならない。
+
+    - bash では "${var# ... }" の中の '' は quote 除去される一方で、
+      "${var:- ... }" の中の '' は quote 除去されない。
+      この実装では取り敢えず quote は除去されるという取り扱いである。
+
+      これらについては包括的に振る舞いを調査する必要があるだろう。
+      他にも様々な種類のパラメータ展開があるし、
+      また将来的に各種類のパラメータ展開についての詳細な構文解析にも対応する可能性がある。
+      (特に ${var//a/b} の quote (\?) の取り扱いがややこしいのでこれは視覚的に分かる様にしたほうが良い。)
+
+    - 現状では $(("a")) はエラー着色になっているが実は文法的に有効である。
+      同じクォートでも $(('a')) や $((\a)) は文法的に駄目。
+
+    - Bash 5.1 以降では (('a')) がエラーになる様に文法が変わった。
+
+2016-07-15
+
+  * isearch: 現在の履歴内の位置を % で表示しているが、
+    これは検索の進捗状況の表示の方が分かりやすいのではないか。
+
+  * complete: declare の引数を特別扱いしているがこれも compgen があればそれに従うべきでは。
+    もしくは、何か特別な処理をするとしても compgen を介して特別な処理をするべきではないのか。
+
+    現状の実装だと、declare などの変数を宣言する組み込みコマンドについて、
+    ユーザが complete によって補完の制御を行う事ができない。
+
+2016-07-08
+
+  * prompt: 最終行・先頭行に何か表示する機能があっても良い。
+
+2016-07-07
+
+  * isearch: 正規表現検索?
+
+    →取り敢えず vi-mode で実装した #D0513。incremental ではない。
+
+    正規表現で incremental にすると一度通り越したものに一致する可能性があるので直観的でない。
+    もし incremental にする需要がある場合には再度考える必要がある。
+    因みに、emacs は (分かりにくい動作だが) 現在の位置から続きの検索をする。
+
+  * edit: 置換モード (正規表現・固定文字列・globパターン)?
+
+    その為には置換前・置換後を入力する欄を別に表示する必要がある。
+    入力欄でも様々な binding が使えた方が嬉しい。
+
+2016-06-22
+
+  * prompt-toolkit という物がある様だ。ちょっと観察してみるのも良い。
+
+    基本的には補完候補を勝手に出すという事と、
+    表示の仕方が emacs auto-complete と同様に
+    overlay によって実現されているという事。
+
+    所で overlay で実現するためには複数行で編集を行っている時に、
+    下の行にある内容を記憶しておく必要性が生じる。
+    Emacs の場合には表示している内容を完全に内部に保持しているので問題にならなかった。
+    (a) 現在の実装で実現するためには内容を完全に記憶するか、そうでなければ
+    (b) 複数行で編集を行っている場合には枠の位置・大きさを変更する際に
+    毎回下の方にある行を再描画するかといった事が必要になるだろう。
+
+    Bash では 2 次元配列を実現するのは辛いので
+    結局内容を完全に記憶するというのは余り嬉しくない事だろうか。
+    と思ったが、表示領域の幅 (COLUMNS) さえ把握しているのであれば、
+    実は 1 次元配列の上に terminal の内容を保持してしまっても問題ない気がする。
+    というか枠の大きささえ決まっていれば普通に sub window の様な物も
+    bash で実現する事ができる。今まで余り考えたくないとして避けていたことだが、
+    この方法ならば楽である。
+
+  * GUI Window System を整える? Window を出したり消したりだとかそういう事。
+
+2016-04-05
+
+  * tree-enumerate による skip の実装と解析一時中断の不整合に関して。
+
+    ble-syntax.sh: ble-syntax/parse/shift.impl2 の問題点である。
+
+    現状の方法では、解析一時中断を行った時に shift 対象の高速な列挙が出来なくなる。
+    唯一の現実的な高速化手法は "直前非空白要素の位置" を管理するように変更する事である。
+    これは解析自体の動作とは全く関係なく、_ble_syntax_tree/stat/nest の配列としてのデータ構造を拡張するという事である。
+    解析自体の実装とは直交して実装する事が可能と思われるが、新規情報の管理コストが増えるという問題点が残る。
+
+    →一方で tree-enumerate を使った場合には閉じている単語内部の shift を省略できるなどの利点がある。
+      最終的にはこれらを組み合わせたような shift が必要になるだろうと考えられる。
+      もう少し詳しく考察を行う必要性がある。
+
+2015-12-20
+
+  * complete: 履歴を用いた候補生成? 特に単語について。
+
+    2018-09-23 これは動的略語展開によって部分的には対応された。
+    しかし処理の重さから一度に全ての候補は計算しないし、
+    また文法的な単語ではなくて COMP_WORDBREAKS によって分割された単語である。
+    これを本当に対応しようと思ったら background でプログラムを
+    走らせるなどの事が必要になる気がする。
+
+2015-11-21
+
+  * 公開までに追加であった方が良いかも知れない物
+
+    + 拡張性の提供 (拡張の仕方の説明)
+      + theme の枠組を整える事 (setting files の置き場?)
+        ble-color-list
+      + 文字コード拡張 (Unicode との mapping)
+      + 端末制御コード拡張
+        tput からもっと積極的に読み込むべきなのでは?
+        cmap/default.sh に加えて cmap/tput.sh 的な物も?
+        > minimal.sh, xterm.sh, rosaterm.sh の整理。
+
+    + 簡単なキーボードハンドラのサンプル (テトリスとか? 或いは sentaku 再実装とか)
+
+      サンプルとしては、端末の出力画面に現れる物よりは、
+      画面を altscreen で完全に切り替える物の方が実装しやすいと思われる。
+      それでいて、read -t 0 などを有効に使えるとなるとテトリスなどになるだろうか。
+
+    + マウス対応
+
+    + キーボード入力内容を全部 vbell で表示する方法?
+
+2015-11-06
+
+  * まったく同じ nest 状態になると思われるのに解析中断が起こらない
+
+    ☆これは表面上は何の問題も起きない。多少無駄な処理をするだけである。
+      従ってそんなに対処に緊急を要しない。
+
+      | function ble-syntax/parse/nest-equals {
+      |   local parent_inest="$1"
+      |   while :; do
+      |     ((parent_inest<i1)) && return 0 # 変更していない範囲 または -1
+    -->     ((parent_inest<i2)) && return 1 # 変更によって消えた範囲
+      |
+      | local _onest="${_tail_syntax_nest[parent_inest-i2]}"
+      | local _nnest="${_ble_syntax_nest[parent_inest]}"
+      | [[ $_onest != $_nnest ]] && return 1
+    変更によって消えた領域を指している場合は、
+    既に消えた領域のデータを捨てているので nest の判定を行う事ができない。
+    そんな訳で解析中断はできないと判定されてしまうのである。
+
+    ここで解析中断を出来るようにする為には消えた領域のデータも取って置いて、
+    その上で全く同じ解析結果になったら解析中断を行う、という事になろう。
+    以降の解析の動作に違いがなければ良いのだから
+    過去の nest の状態だけが一致していれば解析中断には充分である。
+    これは別項目として独立させて残す事にする。
+
+    ※問題は解析領域拡大によって i1 が後退する事によって
+      変化の無かった部分についても解析結果が消去されてしまう事にある。
+
+2015-08-20
+
+  * エラー検出・表示の管理について
+
+    現状
+
+    現在エラーは様々な方法で使用者に対して提示している。
+    解析の途中状態で既にエラーと分かる物については
+    _ble_syntax_attr に ATTR_ERR を設定している。
+    これは _ble_highlight_layer_syntax1_table を経由して表示の着色に反映される。
+    もう一つのエラーの種類は入力したコマンドラインの末端で入れ子が閉じていない物である。
+    これは一番最後の文字と対応する入れ子の開始点の色を変更する事によって提示する。
+    この着色は解析点より前に対して行われるので部分更新の対象とする事は難しい。
+    従って _ble_highlight_layer_syntax3_table を介して、毎回全消去・再計算を実行している。
+
+    以下に改善したい箇所について列挙する。
+
+    - この様に複数の方法を用いてエラーを提示しているのは少し醜い。
+      もう少し統一した枠組を作っても良いのではないかという気がする。
+
+    - ATTR_ERR を用いて設定したエラーは、
+      後の処理で追加される単語毎の着色によって上書きされてしまう。
+      つまり、折角エラー通知の為に着色を設定していても使用者に見えない事がある。
+      別の場所にエラーを登録しても良いのではないかという気がする。
+
+    - 各エラー項目に対して何が問題なのか・何のエラーなのかのメッセージを設定したい。
+      これらのメッセージも枠組の中で管理して、カーソルの位置に応じて表示できる様にしたい。
+
+    もう少し現状について調べて実装の方法について考える。
+    先ずエラー情報を記録する為の配列の形式について。
+    既存のエラー着色に使っている配列 _ble_highlight_layer_syntax3_table が気になる。
+    これを拡張する形で実装する事はできないだろうか。。
+    →この配列は部分更新できないような情報を保持するのに使っている。
+      部分更新できない様な着色であっても今回の実装によって
+      よりましな方法に変更できるのではないか、という気もするが、
+      それは今回の実装が終わってから考えれば良い事である。
+      (初めからその様な物にも対応できる様に今回の実装を設計するという事も出来るが
+      複雑になるので、取り敢えずは何も考えずに実装する事を目指す。)
+
+    つまり、_ble_highlight_layer_syntax3_table は non local な着色の為に使うとして残し、
+    それとは別にエラーを管理する為の配列を作成する。
+
+    部分更新の際の効率を考えると _ble_syntax_attr と同様に、
+    編集文字列中の位置を配列のインデックスとする方法が良さそうに思われる。
+    然し一方で、エラーの数はそんなに沢山になるとは考えがたい (sparse) なので、
+    リストにして管理するという方針も考えられる。どちらの方が良いだろうか。
+    リストにしている場合、"エラー設置点 エラー開始点 エラー終了点 メッセージ" というデータ形式になるだろうか。
+    shift や解析中断後の再開に際してはエラー設置点を用いた filtering を行う。
+    % このエラー情報の内容は解析の動作に全く影響を与えないし、
+    % 解析が同じように進めば全く同じエラー情報を生成すると期待できるので、
+    % 解析中断の判断基準に含める必要はないと考えられる。
+    →本当だろうか。エラー開始点・終了点などの情報は解析状態が同じになっても異なる値になりうるのでは?
+      特に、現在 _ble_highlight_layer_syntax3_table で管理している物はその最たる例である。
+      ここで、エラー開始点・終了点が正しく設定される為には次の条件が必要である。
+
+      エラー設置点を p1 とする。ble-syntax/parse の 1 step で i=i1 から
+      i=i2 まで進む (但し i1 <= p1 < i2) 時、エラー開始点 p2, 終了点 p3 は、
+      i1 <= p2 < p3 < i2 を満たす。
+
+      この条件が揃っている時のみに現状の解析中断条件で部分更新安全である。
+      因みに p2, p3 を設置点からの相対位置で記録しておけば shift の操作が必要なくなるのでその様にするべきである。
+
+2015-08-16
+
+  * 入れ子構造を考慮に入れた効率的な単語着色
+
+    現状: 新規生成単語及び消滅単語の範囲 (range1) に関して再度単語の着色を実行する。
+
+    x 但し、着色は "消滅単語の存在していた範囲" 及び "新規生成単語登録位置の範囲"
+      に登録されている単語及びその子孫だけになっている。
+      本来は、range1 に被さっている全ての単語について処理を実行するべきである。
+
+    - 考慮に入れるべき事として、将来的に解析を途中で停止した場合でもそれなりに動くような方法がよい。
+      しかしながら未だ解析を終えていない部分については結局どうしようもないから、
+      解析が完了している部分文字列について木構造を作成して処理する事になるだろう。
+      結局、現在 shift を実行するのに用いているのと同じ事をする事になる。
+      (そしてそれは tree-enumerate/.initialize で実装されているので余り気にする事はない。)
+
+    方法
+
+    a 一つの方法は tree-enumerate を使用して末端から順に単語の範囲をチェックしていく方法である。
+      つまり、現状の shift の実装と同じになっている。
+
+    b もう一つの方法は、先に単語の木構造の情報だけ構築してから、
+      range1 に対応するノードを列挙して構築する方法である。
+      木構造として親ノードの位置・子ノードの配列を保持していれば、
+      指定した範囲に対応するノードの範囲を効率的に計算する事が出来る。
+
+      ただし、木構造の情報の構築自体にどれだけのコストがかかるかについて考える必要がある。
+      木構造は後ろから掘り出すようにして実行する為、
+      更新範囲の beg から文字列の末端 iN 迄を完全に構築し直す必要がある。
+      部分更新するというのが難しいと思われる。
+
+      しかし、部分更新は全くできないのでは等と考えていたが、
+      考えてみると意外と部分更新も出来るのではないかという気になってくる。
+      更新範囲に含まれていないノードの内部構造に関しては実は更新の対象ではない。
+      また、更新範囲より前にあるノードの内部構造についても同様である。
+      但し、親ノードの位置は、更新範囲より前にあるノードであっても更新する必要がある。
+
+    c 或いは、parse の過程でより分かり易い木構造データも同時に構築してしまうという手もある。
+
+      x parse の内部状態を増やせば増やす程、解析中断が難しくなるが
+        最終的に構造を再構築するのであれば結局中断してもしなくても同じかも知れない…?
+        しかしながら木構造を考えずに parse した後、木構造に対する更新を行った方が処理量は少なくなるはずである。
+        というのも木構造を考えながら parse する事にすると、
+        更新の必要のない文法的処理も木構造の構築と同時に実行してしまうからである。
+        それよりは、文法的処理で必要最低限の所を parse で処理して、
+        木構造の構築について必要最低限の所を後の処理で実行する、という形の方が良さそうである。
+
+      o ただ、parse の過程で木構造も一緒に構築するようにした方が、
+        データ同士の依存関係が整理されて良いという側面もある。
+        parse の後で木構造としてどの範囲を更新するべきかを決定するのは面倒でありバグを生む原因にも成る。
+        →parse の後で処理をする際にも何らかの "原則" を決めてその下で実装するなどした方が良いと思う。
+        (逆に言えば上手に原則を決める事さえ出来れば、parse で木構造を構築する事の利点はなくなる。)
+
+
+    入れ子構造の実装後に改善できる箇所
+    - tree-enumerate-in-range 及びその呼出元
+      現在は愚直に範囲内に設置されている単語識別子を
+
+2015-08-15
+
+  * syntax: `function ...' において関数名の部分に使用した履歴展開を解釈する?
+    履歴展開だけを解釈する新しい文脈が必要になると思われる。
+
+    然し乍ら、履歴展開の結果として複数の単語になる場合などを考えると、
+    そもそも一つの単語として読み取って良いのかなど疑問点が残る。
+
+    % 或いは、その場で履歴展開としての妥当性を検証して色をつけてしまうという手もある?
+    % →これだと正しく解釈されない。例えば履歴展開には $ が含まれて良いが関数名には $ が含まれないので、
+    %   先に関数名としての切り出しを実行すると $ の直前で不正に関数名が中断する事になる。
+
+2015-08-14
+
+  * 高速化: ble-syntax/parse: より厳密な shift 範囲の特定・省略?
+
+2015-08-11
+
+  * 今後必要になる大きな書換・再実装は2つある:
+    1 コマンドライン着色の効率的方法の模索
+    > 2 shift の高速化の為の _ble_syntax_word, etc. のデータ構造の変更
+
+2015-02-24
+
+  * layer の仕組みに対する問題提起
+
+    | 現在の実装では各レイヤーは下のレイヤーが提供した文字配列を弄る事によって動作している。
+    | しかし、実の所受け継ぐのは文字配列ではなくて描画属性の配列の方が良いのではないだろうか。
+    |
+    | o 先ず第一に実装の簡便さがある。
+    |
+    | o 次に、更新範囲というのは複数のレイヤーで似たような箇所になりがちなのではないかと思う。
+    |   属性の配列で渡して置いてから一番最後の所で更新範囲に対して切り貼りをして文字配列を構築した方が良いかも知れない。
+    |
+    | x ただ、文字配列にするという事の利点も存在する。
+    |   region 等の様に大域的に色を一時的に変更する様な物の場合、
+    |   文字配列として region の下層にあるレイヤーについて記録を行っておく事は有意である。
+    |   選択が解除された時に再び構築し直すというのは時間が掛かる。
+    |
+    |   但し、その様な動作をする物は限られている様にも思われる。
+    |   殆どの場合には纏まった箇所でコンパクトに更新が行われる。
+    |
+    | x 括弧の対応などの場合、まとめて描画属性から文字列を構築する場合に細かい最適化が出来ない。
+    |
+    |   複数のレイヤーの描画属性の配列からまとめて文字列を生成する場合、
+    |   複数のレイヤーが報告した更新範囲を総合してその範囲で文字列を再生成する事になる。
+    |   しかし、括弧の対応など、実際の変更が小規模に渡るにも拘わらず、
+    |   離れた二点で実施される色付けの場合には、変更の実体に反して範囲が拡大する。
+    |
+    |   今迄の様に文字列を各層で構築する方式の場合には、
+    |   更新を各層の関数の中で自由に行う事ができるので、
+    |   自身の変更の update に関しては最適な方法で更新する事ができる。
+    |
+    |   とはいいつつも更に上のレイヤーに渡す更新範囲はやはり巨大な物になる為、
+    |   上のレイヤーでの合成作業が大域に渡る事は考えておかなければならない。
+    |   実のところ合成作業についてはちゃんと実装していない。
+    |   region に関しては可能な限り最適な方法になる様に実装したが滅茶苦茶複雑になった。
+    |   実際の実装では被覆によって隠される更新などについては考慮に入れなくても良いが、
+    |   複雑になりそうだという事に代わりはない。
+    |   結局、内部的に描画属性の配列を持って更新に望まなければならないという事態になりそうだ。
+    |
+    | 何れにしても現在の実装は、今後拡張していく上で非現実的な感じがする。
+    | ベースを (下層の情報を含まない) 描画属性の配列を上流に渡す方法に変更した方が良いのではと思う。
+    | region 等の実装の際には cache を行う様にする等の工夫をその上で実装する様にしてみたい。
+    |
+    | また、実装が複雑になるが仕様がない。
+    | 取り敢えず現在の所まともに着色を行っている所が syntax だけなので、
+    | これを ble-highlight-layer:syntax に対応する上で考えてみる。
+    |
+    | ble-highlight-layer:syntax の内部で三つの描画属性の配列を用意し、
+    | これらの三つの描画属性の配列を総合する事で文字列を構築する様にしてみた。
+    | 可もなく不可もない感じの実装である。
+    | 少なくとも各層で文字列を構築する様な実装はしたくない。
+    | これぐらいが丁度良い実装の複雑さである様に思う。
+
+    将来的には描画属性の配列で対応できる様にする。
+
+2015-02-23
+
+  * bleopt_suppress_bash_output 制限
+
+    - SIGWINCH (ウィンドウサイズ変更) の時に bash の表示する物になってしまう
+
+  * 描画ちらつき: DCH や ICH 等を用いた効率化?
+
+2015-02-18
+
+  * エラーメッセージの設定を可能にする
+
+2015-02-16
+
+  * syntax: ToDo
+
+    - [[ 条件式の文法。より正確に。特に括弧の入れ子。
+
+      →括弧の入れ子というのはどういう意味であったか?
+      今試してみた所括弧の入れ子などは関係なく ]] が来れば条件コマンドは終了とみなされる様である。
+      例えば $ [[ ( [[ == ]] ) ]] は構文エラーになる。初めの ]] で条件コマンドが終了と解釈される為である。
+
+2013-06-10
+
+  * sword で quote を正しく処理する?
+    これは少なくとも解析器が出来た後に考える。
+
+2013-06-01以前
+
+  * ble-decode
+    + [kbd] terminfo からの読み取り (entry 名は tmux が参考になる)
+    * ble-bind: -s オプションで文字入力の羅列を指定できる様にする (2019-02-10 #D0915 で実装)
+
+  * 説明書
+    + 文字コード decoder の追加方法
+    + keysequence を指定する文字列の文法 (2018-09-23 done)
+    + スタイルを指定する文字列の文法 (2018-09-23 done)
+
+    取り敢えず GitHub の Wiki 上に作る事にした。
+
+
+*******************************************************************************
+    Done (実装ログ)
+-------------------------------------------------------------------------------
+
+2020-02-05
+
+  * decode: fix error message "command=${[key]-}" for mouse input [#D1263]
+    マウスは正式対応していないが contra のテストで有効にして
+    試していたらエラーメッセージが出る。
+    確認してみると、思い切り未初期化の変数を参照している。修正した。
+
+2020-02-03
+
+  * 2020-01-17 Minix における問題 [#D1262]
+
+    x resolved: ble-reload の後に固まる問題ももしかしてこれだろうか?
+      と思ったが症状的に独立な問題だろう。
+      →これは別項目で修正した。
+
+    x ok: minix を試していると固まる。と思ったら core.784 として巨大な
+      ファイルができている。1.7GB である。道理で固まる訳である。
+      ファイルシステムが固まるので他のプロセスもブロックされる。
+      検索すると以下の頁が見つかるが余り参考にはならない。
+      https://wiki.minix3.org/doku.php?id=soc:2011:debugger
+
+      而もこれは ble-detach した状態であった。但し CPU は 100% ではなくて
+      50% になっていた。何らかの別の原因で segfault して、
+      その結果として core を dump するのに忙しくて 50% になっていたと
+      考えるのが自然である。
+
+      これは恐らくまた別の問題である。これに関しては気にしない事にする。
+
+    x ok: set: tabcomplete というオプションはありませんというエラーになる。
+      /etc/profile に set -o tabcomplete というのが記述されている。
+      bash にはその様なオプションはない (或いは過去のバージョンにはあったのだろうか)。
+      →これは minix の問題であって ble.sh の問題ではない。
+
+    * TERM=minix support
+      x fixed: 起動時に c という文字が現れる事について。
+      x fixed: コマンドを実行する度に 200404;1 等と表示される。
+        これは明らかに bracketed paste mode と modifyOtherKeys である。
+        どうやら CSI ? h ですら minix は対応していない様だ。
+        取り敢えず対応した。他にも CSI ? を使っている箇所は在る気がする。
+      x fixed: eof 判定が動いていない。xenl cap が誤っている?
+        xenl=0 にしてみても変化はなかった。
+        取り敢えず行末での振る舞いがどうなっているか調べる必要がある。
+        →一応 xenl の様な気がする。今の実装はどうなっているのだったか。
+        →どうやら SC,RC を使っている様だ。SC,RC を使わない実装?
+        →使わない実装に切り替えて見た。多分大丈夫。
+      x fixed: SCOSC,RC が動いていない。tput sc / tput rc は失敗する。
+        \e7\e8 も動かない。恐らく minix にはないのだろう。
+        これの対策は何? 先ず離れた場所に移動しない。
+        一行上か或いは panel 3 を利用する。
+        一行上を利用するのが自然の気がする。
+
+        ? 然し、delay 後のカーソル位置を取得する方法が分からない。
+          特に delay は別プロセスで実行しているので、
+          そのプロセスは fork 時の _ble_canvas_x しか知らない。
+          メッセージを消去するのは諦める?
+          →諦める事にした。
+        - canvas.sh 未ロード時の vbell も rc を使っているが、
+          対応はしない事にする。実際、使われていない気がする。
+          使っているとしても稀なので気にしない事にする。
+      x fixed: delete が ^? になっている。
+        これは tput kD || tput kdch1 を参照して決める事にした。
+      x fixed: C-r が効かない ... reprint undef にしたら直った。
+        これも対策を加えた。
+
+    * locale: 例によって locale を切り替えられないというエラーが出ている。
+      何処から発生しているのだろうか。一つずつ確認していくしかない?
+
+      取り敢えず補完で沢山メッセージが出るので source:argument を塞いで見たが沢山出る。
+      どうも関係ない様だ。そもそも起動した時にエラーメッセージが出る。
+
+      これらは単体で実行しても特に変なメッセージは出ない。
+      done: ble/util/.has-bashbug-printf-uffff
+      done: ble/util/is-stdin-ready
+      done: ble/util/msleep/.check-sleep-decimal-support
+
+      以下の関数は対策が必要な気がする。
+      done: ble/widget/.locate-forward-byte
+      ok: ble/decode/bind/.generate-source-to-unbind-default
+      done: ble/builtin/bind/.parse-keyname
+      done: ble/builtin/bind/.reconstruct-user-settings
+      done: ble/widget/vi-command/nth-byte
+
+      % どうも ble/util/is-stdin-ready が怪しい気がする。
+      % と思って色々変更してみたがどうも関係ない様だ。
+
+      改めて補完の振る舞いを調べるとメニューを表示する時に、
+      メニューの項目と同じ数だけメッセージが表示される様だ。
+      trace が悪いという事だろうか?
+      ble/canvas/trace-tex を手で実行してみたら再現した。
+      こういう関数で再現する事が分かった。
+      どうもローカル変数の始末は 2>/dev/null がなくなってから?
+
+        fun() { local LC_COLLATE=C; } 2>/dev/null
+
+      trace-text を修正したらメッセージは出なくなった。
+
+  * 2020-01-17 Haiku における問題 [#D1261]
+
+    x ok: Haiku で ble-reload 時に変なメッセージが出る。
+      まあこれは bash-4.4 の問題かもしれない。
+      →CentOSでやると日本語でエラーメッセージが表示されていて、
+      その長さなどが一致している気がするので Haiku のエラーメッセージは
+      やはり bind 回りの Bash のバグだろう。
+
+    x ok: また、sleep を呼び出すと Terminal のタイトルバーに
+      それが一々表示されて面倒である。別の実現方法を考えた方が良い?
+      もし /dev/zero があるならば /dev/zero を読み出そうとするとどうなるか確認してもよい。
+      CPU を食わないのであればそれで行く。
+
+      →read -t 1.0 でも同様に Terminal のタイトルが変更される。
+      どうも何のプログラムであってもブロックされていると何か出る様だ。
+      短い read -t 0.01 をループで回しても同じだった。
+      なのでこれはどうしようもない。
+
+2020-02-02
+
+  * decode: 遅延 bind で正しい key に割り当てられていない [#D1260]
+    これは cmap が初期化されていないのに ble-bind を呼び出したからである。
+    bashrc の中から ble-bind も bind も呼び出される可能性がある事を考えると、
+    cmap/initialize 及び decode/initialize はそれぞれ ble-bind, bind から
+    呼び出す様にしておかなければならない。もしくは初めから呼び出しておく。
+    ble-bind がある度に初期化済みかどうかを確認するのは非効率的だろうか。
+    余り考えない事にする。そもそも ble-bind は重いので気にしない。
+
+    序でに blerc を遅延で読み込む事も考えてみたが、
+    ble.sh による PS1 等を待避した特別な環境で評価すると変な事になるので、
+    やはり今まで通り最初にロードする事にする。
+
+    一連の変更により ble-bind は自動的に遅延される様になったので、
+    eval-after-load により手で遅延させる必要がなくなった。
+    これに伴い wiki の記述も変更して良いのでは→更新した。
+
+  * 2019-02-09 bind: `bind -XpPS` 等から現在の設定を読み取る? [#D1259]
+
+    現状で bind -X が信用出来ないので、完全な対応は不可能である。
+    その様に考えるとやはり builtin bind を上書きして設定を読み取る方が現実的である。
+    なので、現在の bashrc の冒頭でロードして、末尾で attach するという形式は当面変わらない。
+
+    * Note: 2019-12-14 bind -X については bash に修正が入った。
+      https://lists.gnu.org/archive/html/bug-bash/2019-12/msg00053.html
+
+    * Note: 2019-12-30 detach 時の復元に関して。
+      現状では bind -X の設定を読み込んでから
+      bind -ps の設定を読み込む様にしている。
+      これで古い bind -x の設定によって bind -ps の設定が上書きされてしまう事はなく、
+      逆に bind -x の設定を bind -ps で上書きした後には ble.sh の復元でも上書きされる。
+      問題が起こるのは bind -x した後にそれを bind -r して、
+      それ以降に何も bind していない場合である。
+      試してみたが何にも bind していないキーは列挙されない。
+
+    * Note: 2019-12-30 特にこの項目が意図しているのは
+      detach 時の復元ではなくて attach 時に ble.sh keymap に反映させるという話である。
+      一方で bind -Xps の出力は \C-\ の振る舞いが微妙なので色々面倒である。
+
+    2020-02-01 やはり README を読まずにいきなり bashrc の末尾で source して
+    ble.sh が key binding を上書きしている。unbind が設定できるようにするべき、
+    等と言いがかりをつけて来る人が現れた。やはり bind -Xps から設定を読み取れる様にしたい。
+
+    ? Bash \C-\ vs \C-\\ Bug の処理
+      さて、その時に問題になるのが C-\ をどう解釈するのかという事。
+      取り敢えず \C-\M または \M-\C 以外の時は単独で解釈する事にする?
+      否、\C-\\ も特別扱いしなければならない。うーん。
+      →これは ble/builtin/bind の実装の問題なので別に考えるべき事?
+      或いは ble.sh では \C-\\ に対応する事にして、
+      但し、bind の出力は補正して記録する様にする。という事?
+      そもそも補正する事は可能なのだろうか。
+
+    先ず、既定の設定との差分を取りたい。
+    取り敢えず既定の設定は以下の様な感じにして取得できる。
+    bash-$a --norc -i -c 'bind -p' | sed '/^#/d;s/"\\M-/"\\e/'
+    既定の設定との差分はどの様にして取るのが良いか。
+    diff を呼び出してその結果を解析するのは面倒である。
+    それならば awk で複雑になるかもしれないがちゃんと処理する方が良い気がする。
+    →取り敢えず awk を使って検出できる様にはなった。
+      然し、検出した物をどのタイミングで評価すれば良いのか。
+
+    inputrc を読み取る作戦にしていた時はどのようにしていたか。
+    うーん。inputrc の読み取り自体を遅延して、
+    最初に bind を呼び出した時に読み出す様にしていた気がする。
+    →やはりそうなっている。
+
+    ? では何故その場で bind を評価する様にしていたのか。
+
+      | 何故 bind 自体を遅延する様にしていなかったのか。
+      | これには何か理由があった様な気がするが思い出せない。
+      | →inputrc の読み取りに最初に対応したのは #D1038 であった。
+      | inputrc の読み取りのタイミングについて議論があるのは #D1127 である。
+      | ここでの議論によると、bind をした順序によってどちらが上書きされて
+      | どちらが残るのかが変わるので順序は変更できない。
+      | なので、bind を実行する前に inputrc は読み込んでおかなければならない、
+      | という話になっている。
+
+      bind の順序を保持する為に bind 前に inputrc を読んでおく必要があるという話
+
+    それならば全ての bind を遅延させる事にしておけば問題ないという気がする。
+
+    [実装]
+
+    * done: bind の評価は keymap 初期化迄遅延する様にする #D1258
+    * done: readline 既定の設定をキャッシュする
+      これは簡単。
+    * done: ユーザ設定を読んでそれを反映させる。
+      これも実装した。特に問題なく動いている気がする。
+
+    * done: \C-\, \C-\\ の補正の可能性
+      https://lists.gnu.org/archive/html/bug-bash/2020-01/msg00037.html
+      そもそも ble/builtin/bind ではどの様に解釈していたのだったか?
+      と思って確認してみると ble/util/keyseq2chars で解釈している。
+
+      ble/util/keyseq2chars の解釈は微妙に間違っている気がするので、
+      新しい Bash-5.1 の解釈に合わせて更新することにした。
+      取り敢えず動いている様である。
+
+      更に、bind の出力結果をこの形式に合うように補正する事を考える。
+      どの様に補正するか? 取り敢えず \C-\ の次に \ が来て文字列が終わっている場合は OK
+      それ以外の場合には \C-\ は C-\\ に修正するべきなのである。
+      →修正するコードを書いた。
+
+    取り敢えず動いている。良いのではないだろうか。
+    但し、bind -X は Bash 4.3 以降でしか使えないので、
+    Bash-4.3 以降でしか "何処でも source ble.sh できる" とは書けない。
+
+  * decode: bind の評価を keymap 初期化迄遅延 [#D1258]
+
+    どの keymap に記録する様にするのが良いのか。
+    1. bind に直接 -m が指定されている時はそれを使う。
+    2. bleopt で keymap が指定されている場合にはそれを使う。
+      inputrc の中ではそれは無視する? うーん。
+      inputrc の中で keymap を指定している時にはそれを使う。
+      或いは bind 経由の時には ble の keymap は無視して、
+      その時の vi/emacs の keymap で処理してしまって問題ない?
+      取り敢えず default_keymap は考えずに実装する。
+      そもそも今迄もその様に実装していたのではなかったのか。
+
+    実装を辿っていくと
+    ble-decode-key/{bind,unbind} 辺りが最終的には呼び出されている。
+    ble/builtin/bind の枠組みよりは更にその上の枠組に於いて、
+    bind の呼び出しを遅延させる方が実装として自然である。
+    その様に修正する事にする。
+
+    現在の実装では ble-decode/DEFAULT_KEYMAP を呼び出した時に
+    keymap も完全にロードしてしまう仕組みになっている。
+    うーん。完全にロードする必要がない時には別の関数を呼び出す?
+
+    * done: ble-decode-key/bind の引数に kmap を指定する様に変更する
+    * done: DEFAULT_KEYMAP は INITIALIZE_DEFMAP に改名した
+
+    うーん。遅延させる様にしようとしたが、
+    これだとあらゆる keymap が遅延されてしまう。
+    どのタイミングで具体的に keymap を生成するのか。
+    遅延させるのは default-keymap だけで良いのではないのか。
+
+    そもそも現在の keymap の初期化順序としてどのような可能性があるのか分からない。
+    ? INITIALIZE_DEFMAP は必ず通過するのか? 調べてみたがそうでもない気がする。
+    以下の様な構成になっている。
+
+      | ble-decode/keymap/load
+      |   <del>ble/util/import "keymap/$1.sh"</del>
+      |   ble-decode/keymap:$1/define
+      |   ble-decode/keymap/register "$1"
+      |
+      | ble-decode/keymap/push
+      |   ble-decode/keymap/load 同上
+      |
+      | ble/builtin/bind/.initialize-kmap
+      |   ble-bind/load-keymap
+      |     ble-decode/keymap/load 同上
+      | ble-bind
+      |   ble-bind/load-keymap
+      |     ble-decode/keymap/load 同上
+      |
+      | ble-edit/bind/load-keymap-definition
+      |   ble-edit/bind/load-keymap-definition:"$name"
+      |   source "$_ble_base/keymap/$name.sh"
+      |   ここでは /define までは必ずしも呼び出さない。呼び出す場合もある。
+
+    * done: ble-decode/keymap:$1/define の中で regiter, onload を呼び出す。
+      と思ったが /define の呼び出し元が限られているのだとすれば、
+      呼び出し元を本当に制限して、呼び出し元の側で必要な処理を実行すれば良い気がする。
+
+      /define の呼び出し元を列挙する。結局本質的に一箇所しか無い様なのでOK
+
+      と思って修正したが、よく考えると各 editing-mode でのキャッシュは
+      onload でユーザの指定した修正を適用する前の物を dump しなければならない。
+      うーん。opts=raw とした時には onload は実行しない様にする?
+      或いは opts=dump とした時に特定の fd に対して raw の定義を出力する?
+      後者を採用する事にした。
+
+    * done: ble-decode/keymap:$1/define に関しては keymap/$1.sh は参照しない。
+      これは本当にそれで良いのだろうか。
+      将来的にはこちらの方を keymap/$1.sh にして、editing mode の方を別名にするべきでは。
+      と思ったが現状で利用していないのでそれで良い。
+      それにその keymap を利用する機能がロードされた時に
+      ble-decode/keymap:$1/define が定義される様に計らうべきである。
+      よって、 ble-decode/keymap/load からは keymap/$1.sh のロードは削除する。
+    * done: ble-edit/bind/load-keymap-definition の中の source は import に置き換える。
+    * done: ble-edit/bind/load-{keymap-definition -> editing-mode}
+    x fixed: 見事に起動しなくなった。駄目だ。うーん。ble-bind が動いていない様だ。
+      →これは簡単なミスだった。修正した。
+    * done: /define の中で自分で ble_bind_keymap 等を設定しなくても良くなった。削除する。
+      削除した。動いている。
+
+    | 結局、以下の様な仕組みになっている様だ。
+    |
+    | 1. 先ず初めに編集モード全体の読み込みを行う
+    |   ble-decode/INITIALIZE_DEFMAP
+    |     ble-edit/bind/load-editing-mode
+    |       ble-decode/keymap:$1/define の存在を保証
+    | 2. 次に必要になった時に各 keymap を初期化する
+
+    * done: ble/builtin/bind/.initialize-kmap, ble-bind/load-keymap の呼び出しを省略する
+      取り敢えずこれらの関数では basemap 名の取得に留める事にした。
+    * ble-decode/INITIALIZE_DEFMAP の呼び出しを削減する。(初期化を遅延する)
+      * done: ble/builtin/read で ble-decode/keymap/push read する前に
+        ble-decode/INITIALIZE_DEFMAP を呼び出していたが無駄な気がするので削除する。
+        これは本当に大丈夫だろうか? keymap/pop した後に固まる可能性は?
+        →やはり keymap/pop した後も _ble_edit_read_accept=1 経由で停止するので、
+        元々設定されていた keymap が使われるという事は起こらない。
+        やはりなくて良い気がする。
+    * ok: ble-decode/INITIALIZE_DEFMAP を適切な名前に変更
+      これは現状のままで良さそうな気がする。
+    * done: .onload で遅延させた設定を読み込む様にした
+
+    * ok: keymap:*/define に対して軒並み autoload しているが
+      % これは今でも必要だろうか。今回の改修で不要になった可能性は?
+      % 元々の動機を調べて不要になったのであれば削除する。
+      →これはやはり ble-bind で変な keymap に誤って登録しない為に、
+      どの様な keymap が存在するかを事前に分かる様にする為に残す事にする。
+
+    [動作確認]
+
+    本当に遅延されているのだろうか? 初期化のタイミングを調べれば良い。
+    x fixed: bind.delay.$keymap の中を覗くと引数が全く保存されていない。
+      これは ble/util/pritn-quoted-command のバグだった。修正した。
+    取り敢えず遅延はされている様である。
+    しかし、widget が見つからないというエラーメッセージが出る。
+    うーん。widget のチェックも遅延させるべきだろうか?
+
+2020-02-01
+
+  * syntax: ((1))a と入力するとエラーメッセージが出る [#D1257]
+    これは恐らく着色のコードが悪い。修正した。
+    coproc 対応の時の抜けだった。
+
+  * Bash Readline 束縛との互換性 [#D1256]
+    fzf の様な既定の bash の binding を想定する様な枠組みの場合、
+    ble.sh 側の binding が少しでも違うと動かなくなる。
+    その意味でちゃんと何れの機能もそれなりに同じ振る舞いをする様になっているか?
+
+    * emacs mode に関しては全ての widget に対応している。
+      binding に関しては完全に一致させているか確認していないが、
+      だいたい大丈夫だろうという気がする。問題が出てから対処すれば良い。
+
+    * vi に関しては未だ対応していない機能が幾らかある。
+      しかしこれらは default の binding を持つものだろうか?
+
+      vi-back-to-indent
+      vi-complete
+      vi-eof-maybe
+      vi-overstrike
+      vi-overstrike-delete
+      vi-tilde-expand
+      vi-yank-arg
+      vi-yank-pop
+
+    確認する必要がある。
+
+    * vi_nmap:
+      * done: backward-word (C-left, M-left) forward-word
+        実はこれらに関しては既に登録されている。
+        vi-command/forward-vword (C-left)
+        更に M-left, M-right にも対応する?
+        特に vi_nmap ならば M- を設定しても問題ない気がする。
+        然し本当に問題ないだろうか。
+
+        isolated ESC 関係の判定は ble-decode/uses-isolated-esc で行っている。
+        中を確認すると vi の時には問答無用で isolated ESC は ESC として処理される。
+        M- 束縛があっても M- 修飾にはならない様である。
+        なので M-... を束縛しても問題は起こらない。
+
+        然し、一方で他に何も M- が束縛されていない状態でこれを束縛するのは
+        統一性にかけるのではないかとも思う。そもそも vi-command には他に
+        M- は登録されていなかったのだろうか。或いは積極的に登録されている?
+        →調べてみた所他には登録されていない。M-left, M-right だけが登録されている。
+
+        もう一つの問題として実際に CSI 1 ; 3 D や CSI 1 : 3 C を送る端末があるのか、という事。
+        もしそのような端末が存在しないのであればわざわざここで対応する必要もないのではとも思う。
+        然し、世の中には絶対はない。設定して問題ないのであれば設定しておいて問題もなかろう。
+        という訳で設定する事にした。
+
+      * done: kill-word (C-delete)
+        これに関しては新しく widget を作成する必要がある気がする。
+        作成した vi-rlfunc/kill-word
+
+      * done: insert-comment (#)
+        うーん。これに関してはどの様に対応するのが良いか。
+        これは編集行に対する編集を伴う。
+        その様なコマンドの実装例があるとやりやすい。
+
+        確認すると replace-char, undo ぐらいである。
+        中を見ると両方とも
+        ble/keymap:vi/mark/{start,end}-edit-area を使っている。
+
+        ble/keymap:vi/repeat/record はどのように呼び出せばよいのか?
+        と思ったが insert-comment は実行を伴うので . で繰り返せるというのは変である。
+        なのでこれは完全に無視して問題ない。
+
+      * done: quoted-insert (C-q, C-v: batting している)
+        これは仕方がない。無視する。
+        唯、widget は準備しても良いのかもしれない。
+
+        うーん。これはどうやって実装したら良いのだろうか。
+        →丁度 vi-command/replce-char と quoted-insert を組み合わせれば良い。
+
+      * done: unix-line-discard (C-u: batting)
+        これは現状では vi_nmap/backward-line-scroll になっている。
+        難しい。unix-line-discard の方がシェルとしては自然な気がする。
+        backward-line-scroll を実際に使っている人がどれだけいるのか?
+        特にシェルでは複数行の操作をする事は余りない。
+        という事を考えると unix-line-discard にした方が良い?
+        然し、unix-line-discard が破壊的操作であると考えると現状の方が安全である。
+        うーん。これも保留という事にする。
+
+        但し、明示的に unix-line-discard を bind した時に対応できるようにはするべき。
+
+      * done: vi-eof-maybe (C-d: batting)
+        これは現在 bind されている機能とは違う物だろうか。
+        →振る舞いを調べてみると vi-eof-maybe は現在のコマンドを実行する様だ。
+        もし空の場合には終了する。
+        →新しく widget だけ実装した。
+
+      * done: vi-tilde-expand (&)
+        これは新しく実装しようとしたが @edit tilde-expand で良い気がする。
+
+      * vi-yank-arg (_)
+        うーん。これの対応は面倒である。
+        →readline の振る舞いを調べた所、一旦 insert-mode に入ってから
+        挿入を行う様である。という事であれば対応はそんなに大変ではない。
+        引数は認識していない気がする。
+
+        うーん。D と似たような感じに実装すれば良い?
+        と思ったけれども違う。
+        面倒なので append-mode を呼び出して self-insert, insert-last-argument
+        を順番に呼び出すという安直な実装にした。多分これで大丈夫なのではないか。
+        と思ったが irepeat による記録が行われていない…。うーん。
+
+        然し、insert-last-argument の様な複雑なモードの後も
+        imap repeat が有効というのも変な気がするので、
+        いっその事 imap repeat はキャンセルする事にする。
+
+        取り敢えず動いている様な気がするのでもう気にしない。
+
+    * ok: vi_imap に関しては対応できていない物はない気がする。
+
+    * ok: bash の s, S vi-subst は一体何?
+      →これは s と S を共通の rlfunc から呼び出せる様にしたというだけの物だった。
+      現状のままで振る舞いとしては一致しているので気にしなくて問題ない。
+
+  * fzf が動かないという問題の報告 (reported by jpninanjohn) [#D1255]
+    https://github.com/akinomyoga/ble.sh/issues/38
+    これは fzf が shell-expand-line & history-expand を使っている為に起こった問題である。
+    彼は README を読んでいない。
+
+    ? 然し、何故 history-expand を実行する必要があるのだろうか。
+      最初から展開結果の文字列を出力しては駄目だったのだろうか。
+      末尾の改行の為? →試してみて分かった。shell-expand-line だと勝手に改行が削除される。
+
+      然し、試した結果 "`command`" ならば改行がちゃんと保持される様である。
+      確かに echo `...` で生成すると単語分割の対象になって、
+      改行の類は効果としては空白と同じなので自然である。
+      * 然し、だからと言って fzf に "`__fzf_history__`" を提案したとすると、
+        今度は ble.sh の側で明示的に quote された状態になってしまって動かない。
+        従って、fzf に "`...`" の形式を提供しても意味がない。
+
+    * ble.sh の振る舞いを Bash の振る舞いに近づけるとしても。
+      echo "echo hello" が echo echo hello に展開されたり、
+      或いは "`...`" がコマンドの実行結果その物になったり、
+      色々と振る舞いが異なるのである。
+
+      近づけるというよりは破壊的に変更しなければならない気がする。
+      然し、元々の機能が echo "echo hello" を echo echo hello
+      に変換してしまうぐらい潔い物なのだとしたら、
+      逆にそれに合わせても良いのかもしれない等とも考える。
+
+    bash の振る舞いに合わせる事を考える。
+    更に fzf の他の binding もちゃんと動くか確認する。
+
+    * done: shell-expand-line の振る舞いを bash と同様の物に修正する事にした。
+      その前に bash の振る舞いについて再度確認しておく。
+
+      * 展開結果に含まれる quote は一切処理されない。
+        ~$ function ff2 { echo '"echo hello"'; }
+        ~$ echo `ff2`
+        -> echo "echo hello"
+
+      うーん。quote を実行している一行をコメントアウトしただけで
+      bash と同じ振る舞いになった様な気がする。
+      shell-expand-line に引数として quote を与えなければ、
+      bash と同じ振る舞いになる様に変更した。
+
+    o fzf の動作確認
+      その他の binging (C-t, M-c) も試してみたがこれらは問題なく動いている。
+      これでよしという事にする。
+
+  * syntax: eval の引数のファイル名が着色されていない [#D1254]
+    というか、eval の引数はコマンドとして解釈しつつ着色したい気がする。
+    一方で。'...' としてコマンドを記述できる事を考えると、
+    awk '...' や sh -c '...' で考えているのと同様に着色したい気もする。
+
+    取り敢えずの所は引数として着色するのが妥当なのではないか?
+    →確認してみると単語の種類は ARGEI になっている。
+      補完はコマンド名になっている。
+      着色はされていない。
+
+    % 分かった気がする。コマンドとして補完されているのは、
+    % 恐らくコマンドラインの一番最初の単語になっているから。
+    % eval a=() echo としていたので a=() の手前でコマンドラインが途切れている。
+    % →と思って確認してみたが eval echo g++ としても全てコマンドとして補完される。
+
+    実装を確認すると CTX_ARGEI に variable:= command file が割り当てられていた。
+
+    x fixed: CTX_ARGEI の補完でディレクトリ名が a/ と a になっていて
+      絞り込みが出来ていない。コマンドの場合にもディレクトリ名には / を入れずに、
+      suffix に / を指定するべきでは。と思ったが、その場合にはコマンド名と
+      ディレクトリ名が重複していた場合に問題にならないか。
+
+      更に言うと、異なる種類の見た目が同じ候補があった場合に
+      どちらの action を採用するのかという問題が残る。
+      結局、補完対象の文字列を合わせたとしても問題は解決しない。
+
+      そもそもコマンド名でもファイル名でもどちらでも良い、
+      という文脈が不自然なのである。どちらか限定できる様にならないか?
+
+      →結局この文脈ではコマンド名の生成時にディレクトリを列挙しない様に修正した。
+      source:command で引数を受け取る様にして、
+      D が含まれている時にはディレクトリ名列挙を抑制する。
+
+    さて、補完はこれで余り気にしなくて良い気がする。
+    問題の着色が為されていない問題について。何故着色が為されていないのだろうか。
+    コマンドの抽出はちゃんとできているだろうか?
+    →分かった。肝心の progcolor/word:default で CTX_ARGEI を見るのを忘れていた。修正した。
+
+  * OK: syntax: eval a=() echo helo=() の構文エラーを検出できていない [#D1253]
+    →と思ったが、これは eval の時点で構文エラーになっているのではなくて、
+    eval から呼び出されたコマンドの評価の場面で構文エラーになっているのではないか。
+    実際に以下を試してみたら何もエラーは発生しなかった。
+    $ bash -n -c 'eval a=() echo c=()'
+
+  * syntax: 何と coproc に対応していない [#D1252]
+
+    普通のコマンドと同様に処理しておけば取り敢えず問題ないと思っていたが、
+    実際にやってみるとエラー着色になってしまっている。
+    そもそも coproc のコマンド部分には特別なコマンドも指定できる。
+
+    | 然し、coproc はどうやって [COPROC] の部分を変数名かコマンド名か判断しているのだろうか。
+    | 試しに coproc hello echo としたら、hello がコマンド名と認識された。
+    | というか coproc COPROC echo -e hello としても COPROC がコマンド名として解釈された。
+    |
+    | coproc var ((...))
+    | coproc var { ... }
+    | coproc var do
+    |
+    | どうも関数と同じ構文の様な気がする。つまり、後に複合コマンドを期待する。
+    | もし複合コマンドが来なかったら通常のコマンドとして処理する。
+    |
+    | 1. coproc の後に普通のC単語以外の単語が来たらコマンドだと思う。後は通常処理。
+    |   C単語が来たら取り敢えず変数の可能性を考える。
+    | 2. C単語の後に複合コマンド (キーワード) が来たら受け付ける。
+    |   (coproc var と複合コマンドの間には改行も入れられない様だ)
+    |   それ以外の場合にはC単語をコマンドという事にして、新しい単語は普通の引数という事にする。
+
+    [文法まとめ]
+
+    a coproc の次の単語がキーワードなら、複合コマンドとして取り扱われる。
+      因みに then, coproc, fi, ! 等の複合コマンドの開始でないキーワードでも、
+      取り敢えず複合コマンドとして解釈をしようとし、後の文法エラーになる。
+      但し、time は例外である。ここではキーワードとして扱われない。
+      キーワードとして扱われる物を列挙する。
+      - ( ((
+      - { } ! [[
+      - if then elif fi, while until do done, for select case esac
+      - coproc, function
+    b それ以外で、次の単語がC単語でない時は、通常のコマンドとして取り扱われる。
+    c それ以外の時、次の単語はC単語である。更にその次の単語 word2 を調べる。
+      c1 word2 がキーワードなら、word1 は変数名として取り扱い、
+        word2 は複合コマンドとして取り扱われる。
+      c2 それ以外の時は、word1 は通常コマンドとして取り扱われる。
+
+    | どの様に実装するのが良いだろうか。
+    |
+    | a coproc が来たら取り敢えず特別な文脈にする。
+    |   最初の単語の読み終時に単純な単語かどうかの判定を行い、
+    |   もし単純な単語であるならば前方に先読みを実施する。
+    |   [[:space:]]*(複合コマンド) の形式をしていたら、
+    |   最初の単語は変数名であったと見做して着色・単語設定する。
+    |   それ以外の場合にはコマンドとして着色・単語設定する。
+    |
+    | b 実は coproc を受け取った時点で先読みを実施してしまっても良いのでは?
+    |   先読みを実施する時に何か問題が起こるだろうか。
+    |
+    |   % o 寧ろ無闇に文脈値を増やすよりは良いのではないだろうか。
+    |   %   と思ったが、文脈値は結局増やさなければならない気がする。
+    |   %   "変数名の後に複合コマンドを期待する文脈"
+    |   %   というのを新しく追加しなければならない。
+    |
+    |   文脈値をどうせ増やすのであれば、a の方針で良い気がする。
+    |
+    | →a の方針で実装する。
+
+    実装した。動いている。
+
+    x fixed: progcolor が中途半端にしか動いていない?
+      coproc hello world から単語を削除して coproc hello に
+      すると progcolor ではない単語着色になっている。
+      (単語着色がされていないという訳ではない。)
+
+      どの様なコマンド抽出になっているのかを確認する必要がある。
+      確認した所、以下の様になっていた。coproc が親コマンドになっている。
+      うーん。自身が CTX_CMDI の時には親を抽出しない様にすれば良い?
+      comp_cword='1' comp_line='coproc hello' comp_point='12' comp_words=('coproc' 'hello')
+
+      確認した。自身が CTX_CMDI であっても兄を探索する様になっていた。修正した。
+
+2020-01-31
+
+  * 2020-01-23 Cygwin でテスト vi_test が失敗している [#D1251]
+
+    | 操作を実行した後のカーソルの位置が一文字ずれている様だ。
+    | コマンドラインで実行すると特に変な振る舞いをする事はない様だ。
+    |
+    | ble-0.3.1 でもテストが失敗している。こちらは linux でも再現する。
+    | テスト自身のバグである可能性が高い様な予感がしている。
+    |
+    | うーん。そもそも何故 linux と結果が異なるのか。
+    | Cygwin 特有の処理に問題があるとすればもっと広範に渡って影響が出るのではないか。
+    | bash の version の違いかとも思ったが version を合わせても再現する。
+    |
+    | 実際に再生されている内容を確認してみると変な事になっている。
+    | 65 32 104 101 108 108 111 0 0 0 0 0 0
+    | C-[ と入力した物が 0 0 0 0 0 0 に変換されている。どういう事か?
+    | 記録されているレジスタの中身は "A helloM-xM-^DM-^@M-^@M-^AM-^[" である。
+    |
+    | どうもレジスタの値に変換する時点で変な事になっている様だ。
+    | 記録されたキー列は 65 32 104 101 108 108 111 67108955 であるが、
+    | それを文字列に変換した結果が $'A hello\370\204\200\200\201\233' になっている。
+    | これは変だ。ble/decode/charlog#encode の実装を確認してみると
+    | 唯単に文字コードから文字列に変換しているだけ。linux で動いているという事は、
+    | キー列の時点で修飾が外れているのか、或いは文字にエンコードしても
+    | 巨大なコードポイントを持つ UTF-8 文字として取り扱われているのか。
+    | →linux で動いているのを確認してみた所、ちゃんと一つの文字として扱われている。
+    | →更に文字列に変換した結果も同じになっている。
+    |
+    | →うーん。記録された register の値を出力する時に表示が異なる。
+    | 本質的にはバイナリとしての中身は同じであるのにも拘らず (本当か?)。
+    | OSについている UTF-8 復号器が真面目に不正な文字を除去するか、
+    | 或いは素朴な UTF-8 復号をそのまま用いるかの違いという事だろうか。
+    | ? UTF-8 6byte 表現の各バイトを更に UTF-8 符号化している可能性?
+    |   →バイト数を確認してみた所 13 であり、これは 'A hello' (7) + 6 に
+    |   なっているので 6 byte 表現は 6byte 表現のままである。
+    | ? そもそもこの記録された文字列の文字数はどう数えられている?
+    |   →13になった。つまり、UTF-8 の不正な表現は1文字ではなくて、
+    |   6文字と数えられているという事になる。うーん。
+    |
+    | つまり。。ここで考えなければならないのは、
+    | charlog#encode, decode で巨大な数を保存・復元できる様にする事。
+    | 特に復元の際に UTF-8 5,6バイト表現としての復元を試みる?
+    |
+    | (但し、bash 3.2 ではうまく変換できていない様にも見える)
+    |
+    | * そもそも何故 linux と cygwin で振る舞いが変わっているのか。
+    |   これは bash の実装の問題なのかもっと下の枠組みの問題なのか。
+    |
+    | * 巨大な文字コードを無理やり文字に変換することの是非
+    |   現在は UTF-8 を仮定しているから動いているが、
+    |   例えば LANG=C の場合にはそもそも 256 以上のコードを表現できない。
+    |   ESC seq に頼るしか無いのではないか。
+    |
+    |   これを実装した時にはどの考えていたのだったか。
+    |   blame で確認する。commit は 06698a4f である。#D1026 に議論がある。
+    |   うーん。大して考えていない様な気がする。
+    |   他の文字コードに対応する時には、その文字コードで割当てられていない
+    |   文字を用いて特別に処理するしかない。
+
+    取り敢えず状況を整理する。
+    * 修飾したキーを記録する為に巨大な数を UTF-8 encode している。
+      結果として UTF-8 としては本来不正である様な表現に変換される。
+    * Linux ではその文字の長さは 1 になるが Cygwin では 6 になる。
+    * 復号する時に一文字ずつ復号するのでその時に
+      Cygwin では元の文字が分解されてしまう。不正なバイトなので 0 になる。
+
+    | 確認する。
+    |
+    |   linux$ ble/util/c2s 67108955; echo "${#ret}:$ret" | cat -A
+    |   1:M-|M-^DM-^@M-^@M-^AM-^[$
+    |   cygwin bash-4.4$ ble/util/c2s 67108955; echo "${#ret}:$ret" | cat -A
+    |   6:M-xM-^DM-^@M-^@M-^AM-^[$
+    |   cygwin bash-5.0$ ble/util/c2s 67108955; echo "${#ret}:$ret" | cat -A
+    |   6:M-xM-^DM-^@M-^@M-^AM-^[$
+    |
+    | と思って出力された内容を見ると何だか変だ。
+    | 最初の文字が M-x になっている。Linux では M-l である。
+    |
+    | 調べてみると printf \Uxxxxxxxx が駄目の様だ。
+    | 以下のコマンドが linux と cygwin で異なる結果になる。
+    | cat が勝手に変換している可能性も考えたが od -tx1 で見るとやはり違う。
+    | $ printf '\U0400005b\n' | cat -A
+    |
+    | つまり、これは復号の問題ではなくて key -> s 符号化の問題?
+    | 何故 cygwin と linux で振る舞いが変わるのかというと実際に使っている実装が異なるから?
+    | printf の実装を確認してみると u32cconv という関数を呼び出している。
+    |
+    | うーん。u32cconv の実装を見ると早速変な所がある。
+    | 取り敢えず wchar_t が 4B の環境では wctomb を使っている。
+    | 2B の環境では surrogate pair に変換してから wcstombs にしている。
+    | もし wcstombs がちゃんと surrogate pair に対応しているのであれば問題は起こらない。
+    | さて、今回の場合はそもそも値が Unicode の範囲外である為、
+    | この wcstombs も呼び出される事はない (そもそも surrogate pair で表せない)。
+    |
+    | さて結局 u32toutf8 という関数の返す結果が壊れているという事が分かった。
+    | うーん。この最後の if の 1B 目が間違っている気がする? f8 ではなくて fc では。
+    | そしてこれは最近報告に上がっていた物である気がする。
+    | これだ https://lists.gnu.org/archive/html/bug-bash/2019-11/msg00042.html
+    | そして patch の中身を見ると自分が思ったのと完全に同じ修正だった…。
+    |
+    | * 影響を受ける bash のバージョンは?
+    |   さて、Bash のバグだと分かった所で。どうやって対処するべきか。
+    |   因みにこのバグはいつからあるものだろうか。先ずそもそも printf が \U....
+    |   に対応したのは bash 4.2 からで、最初から間違っていた様だ。
+    |   → Bash 4.2 -- 5.0 の全て。
+    |
+    | * 果たして復号の方は問題ないのか確認が必要である。
+    |   →駄目だった。
+    |   $ ret=$'\xfc\x84\x80\x80\x81\x9b'; echo "${#ret}:$ret" | cat -A
+    |   1:... linux
+    |   6:... cygwin
+    |
+    |   $ ret=$'\xfc\x84\x80\x80\x81\x9b'; ble/util/s2c "$ret"; echo $ret
+    |   67108955 linux
+    |   0 cygwin
+    |
+    |   linux で動いている物が cygwin では動かない。
+    |
+    |   $ ret=$'\xfc\x84\x80\x80\x81\x9b'; printf %d "'$ret"
+    |   67108955 linux
+    |   0 cygwin
+    |
+    |   切り出しだけの問題かと思いきや、' を指定した場合でも駄目の様だ。
+    |
+    |   この printf %d 'c の実装を確認する。整数引数を読み取る時に、
+    |   getintmax という関数を呼び出している。その中で ' を確認できたら、
+    |   asciicode() という関数の結果を返している。
+    |   というか ' の代わりに " でも良い様だ…。知らなかった。
+    |
+    |   うーん。asciicode の中を確認すると mbtowc という関数を呼び出していて、
+    |   この関数が -1 を返している。つまり不正な UTF-8 である事を検出している。
+    |   これは bash の側に無理やり変更を押し込む訳にも行かない。
+    |   かと言って cygwin の mbtowc の実装事態に変更を押し込むのも変である。
+    |   (linux では mbtowc が恐らく変な UTF-8 でもそれなりに解釈するのだろう)
+
+    改めて整理する。
+    * key値から文字列に変換する時、以下で報告されているバグによって誤った形式になる
+      https://lists.gnu.org/archive/html/bug-bash/2019-11/msg00042.html
+    * それとは別に Cygwin の mbtowc は範囲外 UTF-8 に対してエラーを検出する。
+      恐らく Linux の mbtowc は範囲外 UTF-8 でも旧規格の通りに復号するのだろう。
+
+    | そもそも現在の実装は UTF-8 を前提としている。
+    | UTF-8 に依存しない実装に変換するべきなのではないか。
+    | 文字列として埋め込む事ができるのは "文字" と制御文字だけである。
+    |
+    | 以前の実装ではエスケープシーケンスを用いていたが問題として長くなり過ぎる。
+    | →今あらためて確認した所カーソルキーはエスケープシーケンスに変換されている。
+    | 他にも様々な入力を試してみたが何れもちゃんとエスケープシーケンスになっている。
+    | C-[ だけがエスケープシーケンスになっていないのであった。調べる。
+    | vi.sh の側で加工しているのだろうか、と思ったがそうではなかった。
+    | decode を通過する文字をそのまま記録している様だ。
+    | ble-decode-char の中を通過する文字をそのまま計測している様だ。
+    |
+    | つまり更に上の ble-decode-byte が C-[ を処理している。
+    | ble-decode-byte は各符号化方式で実装していて特に ESC について意識している訳ではない。
+    | とすれば最終的には init-bind に行き着く? うーん。然し中を確認すると U+07FF を送信している様に見える。
+    |
+    | 何処で C-[ になるのか分からない。と思ったら分かった…。
+    | これはテストが悪いのだった。
+    |
+    | _ble_keymap_vi_test_ble_decode=ble-decode-char で評価関数を ble-decode-char にしながら
+    | C-[ という修飾キーを指定したのが悪かった。
+    | これにより本来文字として受信しない筈の文字を受信させてテストを実行していたのだった。
+
+    結論としては
+    * vi_test が悪かった。テストのデコーダに ble-decode-char を指定しているのに
+      テストの入力に key C-[ を指定していたのがいけなかった。
+    * charlog#encode, decode は key の符号化・復号はそもそも想定していなかった。
+      なので Unicode 範囲外の文字に対して対策はしなくて良い。
+
+    kspec に IsolatedESC を指定できる様にする。
+    或いは U+07FF の様な形式で文字を指定できる様にする。
+    →@ESC @NUL U+xxxx の形式に対応した。
+
+    x fixed: Linux 上でマクロが動かなくなった。と思ったら ble-decode-kbd の
+      中のチェックで keyname は _alnum で構成されていなければならないというチェックが入っていた。
+      _alnum に加えて @ も keyname を構成する文字として許す事にした。
+    x fixed: U+07FF が動かない。と思ったら正規表現の誤りだった。修正した。
+
+    テストが全て通る様になった。OK
+
+2020-01-30
+
+  * auto-complete: C-e でも補完確定にするべきなのでは? [#D1250]
+    追加した。
+
+  * highlight: pathname に含まれるディレクトリのシンボリックリンク [#D1249]
+    ディレクトリとしての着色になっているが、シンボリックリンクの時には
+    そうなる様に着色した方が親切である。
+    →実装を見て気づいたが実は普通のディレクトリ名の判定の時点で
+    シンボリックリンクのディレクトリ名であっても末尾に / がついていると、
+    通常のディレクトリであるかの様に着色されていた。
+    末尾に / がついている場合には [[ -h dir ]] は失敗するのだ。
+
+    末尾に / がついていてもそれがシンボリックリンクかどうかを判定する様にした。
+    実装した。確認した。
+
+  * 履歴の上下で menu-filter が保持されている。これは変だ [#D1248]
+    動作上の問題はないが設計として何だか変である。
+
+    調べると menu-filter は menu がアクティブの時にしか有効にならない。
+    更に、履歴を移動すると menu は消える筈だ。なので menu-filter は働かない筈。
+    と思ったら、履歴を移動した時に menu が消えるのは menu-filter が消しているのだった。
+    従って履歴を移動しても前の内容と一貫している場合には menu は消えない。
+    履歴を移動した時に menu を消すようにして良い気がする。
+
+    history_onleave に登録すれば良い。登録した。動作確認した。OK
+
+2020-01-26
+
+  * progcolor: / を含むコマンド着色が変だ [#D1247]
+    パスを指定して呼び出すコマンドが全てディレクトリであるかの様に着色されている。
+    / を含む関数名の場合には問題は起こっていない。
+    最近の変更によって問題が起こる様になった→これは簡単だった。修正した。
+
+  * global: 一箇所でしか使われていない識別子 [#D1246]
+    一箇所でしか使われていない識別子は怪しい。
+    ./make_command.sh check-words でそういう物を検索できる様にした。
+    怪しい物を幾つか直した。結構バグが沢山ある様だという事。
+    他に ./make_command.sh check-varnames も作った。
+
+    * ret が leak している。alias 展開関連の様である。
+    * 他に ch が漏れている。
+      これの修正は簡単だった。すぐに見つかった。
+      然し更に見ていると ble/builtin/bind/.parse-keyname で
+      致命的に間違えている事を発見した。C-SPC や DEL や Rubout
+      等が全く解釈できていなかった。修正した。
+    * dist が漏れているがこれは mshex bashrc m/g だろう。
+      →と思ったが dist という変数は使われていなかった。
+      更に ble.sh の中も検索してみたが dist という変数は使われていない。
+      問題のセッションで history | grep してみたがやはり見つからない。
+      不思議な事だ。ble.sh のセッションでも確認するとやはり dist に値が入っている。
+      →declare の出力を検索して分かった。mshex/cdhist/cd だった。
+      直した。然し今まで気づいていなかった事が不思議である。
+
+  * progcolor: コマンド毎の着色の設定を可能にする [#D1245]
+
+    コマンド毎に引数の着色を実行するには。
+    % * コマンド毎の着色を行う関数の名前について。
+    %   現在 ble/cmdinfo/{help,complete}:command が使われている。
+    %   ble/cmdinfo/highlight:command を使う事にする。
+    % * と思ったが標準入力だとかヒアドキュメントだとかについての設定は?
+    %   これは別の関数を用意するか或いは引数の振りをして渡すか。
+    %   別の関数を用意するのが自然に思われる。
+    →#D0581 の考察を確認した所 color, color-stdin が提案されている。
+      #D0581 の名前を採用する事にする。
+
+    現在着色を計算しているのは
+    ble/highlight/layer:syntax/word/.update-attributes という関数である。
+    この関数は木構造を使って色を決定している。
+    単語毎に着色を計算しているので現在の実装ではコマンドが分からない。
+    各単語毎にコマンドを抽出するのは如何にも非効率である。
+    それとは別にやはり一回の highlight:command の呼び出しで全て着色したい。
+
+    [仕様]
+
+    * done: ble/cmdinfo/color:command を用いる。
+    * done: comp_line 等一連の変数を提供する
+    * comp_dirty 的な配列に各単語の着色を更新する必要があるかどうかを格納する。
+      着色を更新したら comp_dirty に更新した事を表す値を書き込む。
+      →comp_flags 的な変数に "d" という文字を入れる事にする。
+      →これは現状では wattr に - が設定されているかどうかで判定している。
+        実際に今迄の実装でもその様にしていた気がする。
+        もし上書きするのであれば敢えて set-wattr を呼び出せば良い。
+
+    [実装]
+
+    問題が複雑化してきたので複数に分けて実装する事にする。
+
+    * done: cmdinfo/color が存在している場合にはそれを呼び出す。
+      cmdinfo/color の中で使いやすい様に関数名は変更する。
+      また変数名も被らない様にする必要がある。
+      うーん。特に i である。
+      →これは取り敢えず TE_i TE_nofs という変数名を使う様に書き換えた。
+
+    * done: 先ずコマンド毎に着色する様に修正する #D1242
+
+    * done: コマンド名を使って着色設定を探索する。
+      これは core-complete.sh の設定を参考にすれば良い。
+      →着色設定を呼び出す所まで実装した。
+
+      x fixed: コマンド名だけの時にカスタム着色が動いていない気がする。
+        これは extract-command-by-noderef 関数が
+        CTX_CMDI に対して動作していなかったのが原因だった。修正した。
+      x fixed: 引数を入力して行くと着色が消えてしまう。
+        これは umin,umax の範囲内にある属性は全て消去されるのが原因。
+        その後で _ble_syntax_word_{umin,umax} の範囲内の単語が再着色される
+        予定になっている。つまり、この範囲の外の単語について着色をすると
+        その着色は全て消去されてしまうという事になる。
+        →_ble_syntax_word_{umin,umax} も更新する様に変更した。
+
+
+  * progcolor: proghl の名前を考える → progcolor に変更 [#D1244]
+
+    proghl は余りにも分かりにくい。
+    * proghilite, proghighlight 長い。
+    * highlight (ble/syntax/highlight)
+      単なる highlight は既に色々な所で使っている。
+    * proglite, proglight, proglit
+      何の事だか分からない。分かりにくい。
+    * proghili もっと何が言いたいか分からない。
+    * philite, philight: 変だ。
+      何か既存の単語で良さそうな意味があって
+      似た響きの物があれば使っても良いのかもしれない。
+    * progcolor, progcol
+      実の所、色だけではない。装飾も含まれる。
+      然し、既存の枠組みで既に color という名前は使っている。
+
+    後、これらに共通するのは単語単位の着色であるという事が
+    名前に現れていない。prog があれば補完と同様に単語単位に
+    動くという事が連想されるかもしれないというぐらい。
+
+    * wordlite, wordcolor, wordgraphics, wordg
+    * proggraph, progg, progface, wordface
+      実際に設定するのは g 値であって実は face ではないのだ。
+
+    うーん。この中では progcolor, proglight,
+    wordface だろうか。或いは proglite。
+    →progcolor or proglite
+    うーん。余り奇を衒わずに progcolor で行くのが良い気がする。

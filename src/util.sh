@@ -125,9 +125,8 @@ function bleopt/check:input_encoding {
   # Note: ble/encoding:$value/clear は optional な設定である。
 
   if [[ $bleopt_input_encoding != "$value" ]]; then
-    ble-decode/unbind
     bleopt_input_encoding=$value
-    ble-decode/bind
+    ble/decode/rebind
   fi
   return 0
 }
@@ -828,6 +827,9 @@ function ble/string#create-unicode-progress-bar {
 
   ret=$out
 }
+function ble/util/strlen {
+  LC_ALL= LC_CTYPE=C builtin eval 'ret=${#1}' 2>/dev/null
+}
 
 function ble/path#remove {
   local _ble_local_script='
@@ -1354,7 +1356,7 @@ function ble/util/expand-alias {
 }
 
 if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LC_ALL=C builtin read -t 0; } &>/dev/null
+  function ble/util/is-stdin-ready { IFS= LC_ALL= LC_CTYPE=C builtin read -t 0; } &>/dev/null
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -1415,6 +1417,12 @@ function ble/util/openat/finalize {
   _ble_util_openat_fdlist=()
 }
 
+function ble/util/print-quoted-command {
+  local out=$1; shift
+  local arg q=\' Q="'\''"
+  for arg; do out="$out $q${arg//$q/$Q}$q"; done
+  ble/util/print "$out"
+}
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
     declare -p "$@" | ble/bin/awk -v _ble_bash="$_ble_bash" '
@@ -1626,7 +1634,7 @@ function ble/util/msleep/.check-builtin-sleep {
   fi
 }
 function ble/util/msleep/.check-sleep-decimal-support {
-  local version; ble/util/assign version 'LANG=C ble/bin/sleep --version 2>&1'
+  local version; ble/util/assign version 'LC_ALL=C ble/bin/sleep --version 2>&1'
   [[ $version == *'GNU coreutils'* || $OSTYPE == darwin* && $version == 'usage: sleep seconds' ]]
 }
 
@@ -1734,7 +1742,7 @@ function ble/util/sleep {
 ## 関数 ble/util/conditional-sync command [condition weight opts]
 function ble/util/conditional-sync {
   local command=$1
-  local cancel=${2:-'! ble-decode/has-input'}
+  local cancel=${2:-'! ble/decode/has-input'}
   local weight=$3; ((weight<=0&&(weight=100)))
   local opts=$4
   [[ :$opts: == *:progressive-weight:* ]] &&
@@ -3002,11 +3010,20 @@ function ble/term/visible-bell/.show {
     fi
 
     local -a DRAW_BUFF=()
-    ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
-    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-    ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
-    ble/canvas/put.draw "$_ble_term_rc"
-    ble/canvas/put-cud.draw 1
+    if [[ $_ble_term_rc ]]; then
+      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
+      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+      ble/canvas/put.draw "$_ble_term_rc"
+      ble/canvas/put-cud.draw 1
+    else
+      ble/util/buffer.flush >&2
+      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
+      ble/canvas/put-hpa.draw $((1+x0))
+      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+      ble/canvas/put-cud.draw 1
+      ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
+    fi
     ble/canvas/flush.draw
     _ble_term_visible_bell_prev=("$message" "$x0" "$y0" "$x" "$y")
   else
@@ -3024,11 +3041,20 @@ function ble/term/visible-bell/.update {
     local y=${_ble_term_visible_bell_prev[4]}
 
     local -a DRAW_BUFF=()
-    ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
-    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-    ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
-    ble/canvas/put.draw "$_ble_term_rc"
-    ble/canvas/put-cud.draw 1
+    if [[ $_ble_term_rc ]]; then
+      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
+      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+      ble/canvas/put.draw "$_ble_term_rc"
+      ble/canvas/put-cud.draw 1
+    else
+      ble/util/buffer.flush >&2
+      ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
+      ble/canvas/put-hpa.draw $((1+x0))
+      ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
+      ble/canvas/put-cud.draw 1
+      ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
+    fi
     ble/canvas/flush.draw
   else
     ble/util/put "${_ble_term_visible_bell_show//'%message%'/$sgr$message}"
@@ -3044,13 +3070,25 @@ function ble/term/visible-bell/.clear {
     local ret; ble/color/face2sgr vbell_erase; local sgr=$ret
 
     local -a DRAW_BUFF=()
-    ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
-    ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
-    ble/canvas/put.draw "$sgr"
-    ble/canvas/put-spaces.draw "$x"
-    #ble/canvas/put-ech.draw "$x"
-    #ble/canvas/put.draw "$_ble_term_el"
-    ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
+    if [[ $_ble_term_rc ]]; then
+      ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
+      ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
+      ble/canvas/put.draw "$sgr"
+      ble/canvas/put-spaces.draw "$x"
+      #ble/canvas/put-ech.draw "$x"
+      #ble/canvas/put.draw "$_ble_term_el"
+      ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
+    else
+      : # 親プロセスの _ble_canvas_x が分からないので座標がずれる
+      # ble/util/buffer.flush >&2
+      # ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
+      # ble/canvas/put-hpa.draw $((1+x0))
+      # ble/canvas/put.draw "$sgr"
+      # ble/canvas/put-spaces.draw "$x"
+      # ble/canvas/put.draw "$_ble_term_sgr0"
+      # ble/canvas/put-cud.draw 1
+      # ble/canvas/put-hpa.draw $((1+_ble_canvas_x)) # 親プロセスの _ble_canvas_x?
+    fi
     ble/canvas/flush.draw
   else
     ble/util/put "$_ble_term_visible_bell_clear"
@@ -3179,6 +3217,15 @@ function ble/term/stty/.initialize-flags {
     ble/array#push _ble_term_stty_flags_enter werase undef
     ble/array#push _ble_term_stty_flags_leave werase ''
   fi
+  if [[ $TERM == minix ]]; then
+    if [[ $stty == *' rprnt '* ]]; then
+      ble/array#push _ble_term_stty_flags_enter rprnt undef
+      ble/array#push _ble_term_stty_flags_leave rprnt ''
+    elif [[ $stty == *' reprint '* ]]; then
+      ble/array#push _ble_term_stty_flags_enter reprint undef
+      ble/array#push _ble_term_stty_flags_leave reprint ''
+    fi
+  fi
 }
 ble/term/stty/.initialize-flags
 
@@ -3263,6 +3310,11 @@ function ble/term/bracketed-paste-mode/enter {
 function ble/term/bracketed-paste-mode/leave {
   ble/util/buffer $'\e[?2004l'
 }
+if [[ $TERM == minix ]]; then
+  # Minix console は DECSET も使えない
+  function ble/term/bracketed-paste-mode/enter { :; }
+  function ble/term/bracketed-paste-mode/leave { :; }
+fi
 
 #---- DA2 ---------------------------------------------------------------------
 
@@ -3319,7 +3371,7 @@ function ble/term/modifyOtherKeys/.supported {
 
   # Note #D1213: linux (kernel 5.0.0) は "\e[>" でエスケープシーケンスを閉じてしまう。
   #   5.4.8 は大丈夫だがそれでも modifyOtherKeys に対応していない。
-  [[ $TERM == linux ]] && return 1
+  [[ $TERM == linux || $TERM == minix ]] && return 1
 
   return 0
 }
@@ -3473,7 +3525,7 @@ if ((_ble_bash>=40200)); then
     builtin printf -v ret '\uFFFF'
     ((${#ret}==2))
   }
-  if ble/util/.has-bashbug-printf-uffff; then
+  if ble/util/.has-bashbug-printf-uffff 2>/dev/null; then # #D1262 suppress LC_ALL error messages
     function ble/util/c2s-impl {
       if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_cache_ctype == *.utf-8 || $_ble_util_cache_ctype == *.utf8 ]]; then
         builtin printf -v ret '\\x%02x' $((0xE0|$1>>12&0x0F)) $((0x80|$1>>6&0x3F)) $((0x80|$1&0x3F))
@@ -3586,6 +3638,7 @@ function ble/util/c2keyseq {
   (12)  ret='\f' ;;
   (13)  ret='\r' ;;
   (27)  ret='\e' ;;
+  (28)  ret='\x1c' ;; # workaround \C-\, \C-\\
   (92)  ret='\\' ;;
   (127) ret='\d' ;;
   (*)
@@ -3616,48 +3669,46 @@ function ble/util/chars2keyseq {
 ## 関数 ble/util/keyseq2chars keyseq
 ##   @arr[out] ret
 function ble/util/keyseq2chars {
-  local keyseq=$1 chars
-  local rex='^([^\]*)\\([0-7]{1,3}|x{1,2}|(C-(\\M-)?|M-(\\C-)?)*.)'
-  chars=()
+  local keyseq=$1
+  local -a chars=()
+  local mods=
+  local rex='^([^\]+)|^\\([CM]-|[0-7]{1,3}|x{1,2}|.)?'
   while [[ $keyseq =~ $rex ]]; do
     local text=${BASH_REMATCH[1]} esc=${BASH_REMATCH[2]}
     keyseq=${keyseq:${#BASH_REMATCH}}
-    ble/util/s2chars "$text"
-    ble/array#push chars "${ret[@]}"
-
-    local mflags=
-    case $esc in
-    (x?*) ble/array#push chars $((16#${esc#x}));;
-    ([0-7]*) ble/array#push chars $((8#$esc)) ;;
-    (a) ble/array#push chars 7 ;;
-    (b) ble/array#push chars 8 ;;
-    (t) ble/array#push chars 9 ;;
-    (n) ble/array#push chars 10 ;;
-    (v) ble/array#push chars 11 ;;
-    (f) ble/array#push chars 12 ;;
-    (r) ble/array#push chars 13 ;;
-    (e) ble/array#push chars 27 ;;
-    (d) ble/array#push chars 127 ;;
-    ('C-?')    ble/array#push chars 127 ;;
-    ('M-\C-?') ble/array#push chars 255 ;;
-    ('C-'?)    mflags=sc  ;;
-    ('C-\M-'?) mflags=sec ;;
-    ('M-'?)    mflags=sm  ;;
-    ('M-\C-'?) mflags=scm ;;
-    (*)        mflags=s   ;;
-    esac
-
-    if [[ $mflags == *s* ]]; then
-      ble/util/s2c "${esc:${#esc}-1}"; local key=$ret
-      [[ $mflags == *e* ]] && ble/array#push chars 27
-      [[ $mflags == *c* ]] && ((key&=0x1F))
-      [[ $mflags == *m* ]] && ((key|=0x80))
-      ble/array#push chars "$key"
+    if [[ $text ]]; then
+      ble/util/s2chars "$text"
+    else
+      ret=()
+      case $esc in
+      ([CM]-)  mods=$mods${esc::1}; continue ;;
+      (x?*)    ret=$((16#${esc#x})) ;;
+      ([0-7]*) ret=$((8#$esc)) ;;
+      (a) ret=7 ;;
+      (b) ret=8 ;;
+      (t) ret=9 ;;
+      (n) ret=10 ;;
+      (v) ret=11 ;;
+      (f) ret=12 ;;
+      (r) ret=13 ;;
+      (e) ret=27 ;;
+      (d) ret=127 ;;
+      (*) ble/util/s2c "$esc" ;;
+      esac
     fi
+
+    [[ $mods == *C* ]] && ((ret=ret==63?127:(ret&0x1F)))
+    [[ $mods == *M* ]] && ble/array#push chars 27
+    #[[ $mods == *M* ]] && ((ret|=0x80))
+    mods=
+    ble/array#push chars "${ret[@]}"
   done
 
-  ble/util/s2chars "$keyseq"
-  ble/array#push chars "${ret[@]}"
+  if [[ $mods ]]; then
+    [[ $mods == *M* ]] && ble/array#push chars 27
+    ble/array#push chars 0
+  fi
+
   ret=("${chars[@]}")
 }
 

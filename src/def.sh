@@ -46,6 +46,10 @@ blehook/declare keymap_load
 blehook/declare keymap_vi_load
 blehook/declare keymap_emacs_load
 
+# core-syntax.sh
+
+blehook/declare syntax_load
+
 # core-complete.sh
 
 blehook/declare complete_load

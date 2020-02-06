@@ -1016,11 +1016,11 @@ function ble/canvas/trace/.impl {
 function ble/canvas/trace.draw {
   # cygwin では LC_COLLATE=C にしないと
   # 正規表現の range expression が期待通りに動かない。
-  LC_COLLATE=C ble/canvas/trace/.impl "$@"
+  LC_ALL= LC_COLLATE=C ble/canvas/trace/.impl "$@"
 } &>/dev/null # Note: suppress LC_COLLATE errors #D1205
 function ble/canvas/trace {
   local -a DRAW_BUFF=()
-  LC_COLLATE=C ble/canvas/trace/.impl "$@"
+  LC_ALL= LC_COLLATE=C ble/canvas/trace/.impl "$@"
   ble/canvas/sflush.draw # -> ret
 } &>/dev/null # Note: suppress LC_COLLATE errors #D1205
 
@@ -1111,8 +1111,8 @@ function ble/canvas/trace-text/.put-nl-if-eol {
 ##   @var[out] ret
 ##   @exit
 ##     指定した範囲に文字列が収まった時に成功します。
-function ble/canvas/trace-text {
-  local out= LC_ALL= LC_COLLATE=C glob='*[! -~]*'
+function ble/canvas/trace-text/.impl {
+  local out= glob='*[! -~]*'
   local opts=$2 flag_overflow=
   [[ :$opts: == *:external-sgr:* ]] ||
     local sgr0=$_ble_term_sgr0 sgr1=$_ble_term_rev
@@ -1156,7 +1156,11 @@ function ble/canvas/trace-text {
   # 収まったかどうか
   ((y>=lines)) && flag_overflow=1
   [[ ! $flag_overflow ]]
-} &>/dev/null # Note: suppress LC_COLLATE errors #D1205
+}
+function ble/canvas/trace-text {
+  # Note: suppress LC_COLLATE errors #D1205 #D1262
+  LC_ALL= LC_COLLATE=C ble/canvas/trace-text/.impl "$@" 2>/dev/null
+}
 
 #------------------------------------------------------------------------------
 # ble/textmap

@@ -3,7 +3,7 @@
 #%m main (
 
 ## 関数 ble/syntax/urange#update prefix p1 p2
-## 関数 ble/syntax/wrange#update prefix p1 p2
+## 関数 ble/syntax/wrange#update prefix p1 [p2]
 ##   @param[in]   prefix
 ##   @param[in]   p1 p2
 ##   @var[in,out] {prefix}umin {prefix}umax
@@ -163,20 +163,20 @@ _ble_syntax_TREE_WIDTH=5
 ##   @var[in]  iN
 ##     文字列の長さ、つまり現在の解析終端位置を指定します。
 ##
-##   @var[out] root
+##   @var[out] TE_root
 ##     ${_ble_syntax_tree[iN-1]} を調整して返します。
 ##     閉じていない範囲 (word, nest) を終端位置で閉じたときの値を計算します。
 ##
-##   @var[out] i
+##   @var[out] TE_i
 ##     一番最後の範囲の終端位置を返します。
 ##     解析情報がない場合は -1 を返します。
 ##
-##   @var[out] nofs
+##   @var[out] TE_nofs
 ##     0 に初期化します。
 ##
 function ble/syntax/tree-enumerate/.initialize {
   if [[ ! ${_ble_syntax_stat[iN]} ]]; then
-    root= i=-1 nofs=0
+    TE_root= TE_i=-1 TE_nofs=0
     return
   fi
 
@@ -189,12 +189,12 @@ function ble/syntax/tree-enumerate/.initialize {
   local tclen=${stat[4]}
   local tplen=${stat[5]}
 
-  root=
-  ((iN>0)) && root=${_ble_syntax_tree[iN-1]}
+  TE_root=
+  ((iN>0)) && TE_root=${_ble_syntax_tree[iN-1]}
 
   while
     if ((wlen>=0)); then
-      root="$wtype $wlen $tclen $tplen -- $root"
+      TE_root="$wtype $wlen $tclen $tplen -- $TE_root"
       tclen=0
     fi
     ((inest>=0))
@@ -207,7 +207,7 @@ function ble/syntax/tree-enumerate/.initialize {
     tplen=${nest[4]}
     ((tplen>=0&&(tplen+=olen)))
 
-    root="${nest[7]} $olen $tclen $tplen -- $root"
+    TE_root="${nest[7]} $olen $tclen $tplen -- $TE_root"
 
     wtype=${nest[2]} wlen=${nest[1]} nlen=${nest[3]} tclen=0 tplen=${nest[5]}
     ((wlen>=0&&(wlen+=olen),
@@ -218,50 +218,50 @@ function ble/syntax/tree-enumerate/.initialize {
     ble/util/assert '((nlen<0||nlen>olen))' "$FUNCNAME/FATAL2" || break
   done
 
-  if [[ $root ]]; then
-    ((i=iN))
+  if [[ $TE_root ]]; then
+    ((TE_i=iN))
   else
-    ((i=tclen>=0?iN-tclen:tclen))
+    ((TE_i=tclen>=0?iN-tclen:tclen))
   fi
-  ((nofs=0))
+  ((TE_nofs=0))
 }
 
 ## 関数 ble/syntax/tree-enumerate/.impl command...
 ##   @param[in] command...
 ##     各ノードについて呼び出すコマンドを指定します。
 ##   @var[in] iN
-##   @var[in] root,i,nofs
+##   @var[in] TE_root,TE_i,TE_nofs
 function ble/syntax/tree-enumerate/.impl {
   local islast=1
-  while ((i>0)); do
+  while ((TE_i>0)); do
     local -a node
-    if ((i<iN)); then
-      ble/string#split-words node "${_ble_syntax_tree[i-1]}"
+    if ((TE_i<iN)); then
+      ble/string#split-words node "${_ble_syntax_tree[TE_i-1]}"
     else
-      ble/string#split-words node "${root:-${_ble_syntax_tree[iN-1]}}"
+      ble/string#split-words node "${TE_root:-${_ble_syntax_tree[iN-1]}}"
     fi
 
-    ble/util/assert '((nofs<${#node[@]}))' "$FUNCNAME(i=$i,iN=$iN,nofs=$nofs,node=${node[*]},command=$@)/FATAL1" || break
+    ble/util/assert '((TE_nofs<${#node[@]}))' "$FUNCNAME(i=$TE_i,iN=$iN,TE_nofs=$TE_nofs,node=${node[*]},command=$@)/FATAL1" || break
 
-    local wtype=${node[nofs]} wlen=${node[nofs+1]} tclen=${node[nofs+2]} tplen=${node[nofs+3]} attr=${node[nofs+4]}
-    local wbegin=$((wlen<0?wlen:i-wlen))
-    local tchild=$((tclen<0?tclen:i-tclen))
-    local tprev=$((tplen<0?tplen:i-tplen))
+    local wtype=${node[TE_nofs]} wlen=${node[TE_nofs+1]} tclen=${node[TE_nofs+2]} tplen=${node[TE_nofs+3]} attr=${node[TE_nofs+4]}
+    local wbegin=$((wlen<0?wlen:TE_i-wlen))
+    local tchild=$((tclen<0?tclen:TE_i-tclen))
+    local tprev=$((tplen<0?tplen:TE_i-tplen))
     "$@"
 
-    ble/util/assert '((tprev<i))' "$FUNCNAME/FATAL2" || break
+    ble/util/assert '((tprev<TE_i))' "$FUNCNAME/FATAL2" || break
 
-    ((i=tprev,nofs=0,islast=0))
+    ((TE_i=tprev,TE_nofs=0,islast=0))
   done
 }
 
 ## @var[in] iN
-## @var[in] root,i,nofs
+## @var[in] TE_root,TE_i,TE_nofs
 ## @var[in] tchild
 function ble/syntax/tree-enumerate-children {
-  ((0<tchild&&tchild<=i)) || return
-  local nofs=$((i==tchild?nofs+_ble_syntax_TREE_WIDTH:0))
-  local i=$tchild
+  ((0<tchild&&tchild<=TE_i)) || return
+  local TE_nofs=$((TE_i==tchild?TE_nofs+_ble_syntax_TREE_WIDTH:0))
+  local TE_i=$tchild
   ble/syntax/tree-enumerate/.impl "$@"
 }
 function ble/syntax/tree-enumerate-break () ((tprev=-1))
@@ -275,6 +275,7 @@ function ble/syntax/tree-enumerate-break () ((tprev=-1))
 ##   呼び出すコマンドを指定します。
 ##
 ##   コマンドは以下のシェル変数を入力・出力とします。
+##   @var[in]     TE_i TE_nofs
 ##   @var[in]     wtype wbegin wlen attr tchild
 ##   @var[in,out] tprev
 ##     列挙を中断する時は ble/syntax/tree-enumerate-break
@@ -287,7 +288,7 @@ function ble/syntax/tree-enumerate-break () ((tprev=-1))
 ##   解析の起点を指定します。_ble_syntax_stat が設定されている必要があります。
 ##   指定を省略した場合は _ble_syntax_stat の末尾が使用されます。
 function ble/syntax/tree-enumerate {
-  local root i nofs
+  local TE_root TE_i TE_nofs
   [[ ${iN:+set} ]] || local iN=${#_ble_syntax_text}
   ble/syntax/tree-enumerate/.initialize
   ble/syntax/tree-enumerate/.impl "$@"
@@ -297,25 +298,23 @@ function ble/syntax/tree-enumerate {
 ##   入れ子構造に従わず或る範囲内に登録されている節を列挙します。
 ## @param[in] beg,end
 ## @param[in] proc 以下の変数を使用する関数を指定します。
-##   @var[in]     wtype,wlen,wbeg,wend
-##   @var[in,out] node,flagUpdateNode
-##   @var[in]     nofs
+##   @var[in] wtype wlen wbeg wend wattr
+##   @var[in] node
+##   @var[in] TE_i TE_nofs
 function ble/syntax/tree-enumerate-in-range {
   local beg=$1 end=$2
   local proc=$3
   local -a node
-  local i nofs
-  for ((i=end;i>=beg;i--)); do
-    ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]] || continue
-    ble/string#split-words node "${_ble_syntax_tree[i-1]}"
+  local TE_i TE_nofs
+  for ((TE_i=end;TE_i>=beg;TE_i--)); do
+    ((TE_i>0)) && [[ ${_ble_syntax_tree[TE_i-1]} ]] || continue
+    ble/string#split-words node "${_ble_syntax_tree[TE_i-1]}"
     local flagUpdateNode=
-    for ((nofs=0;nofs<${#node[@]};nofs+=_ble_syntax_TREE_WIDTH)); do
-      local wtype=${node[nofs]} wlen=${node[nofs+1]}
-      local wbeg=$((wlen<0?wlen:i-wlen)) wend=$i
+    for ((TE_nofs=0;TE_nofs<${#node[@]};TE_nofs+=_ble_syntax_TREE_WIDTH)); do
+      local wtype=${node[TE_nofs]} wlen=${node[TE_nofs+1]} wattr=${node[TE_nofs+4]}
+      local wbeg=$((wlen<0?wlen:TE_i-wlen)) wend=$TE_i
       "${@:3}"
     done
-
-    [[ $flagUpdateNode ]] && _ble_syntax_tree[i-1]="${node[*]}"
   done
 }
 
@@ -2689,6 +2688,7 @@ function ble/syntax:bash/check-tilde-expansion {
 #
 
 _ble_syntax_bash_command_CtxAssign[CTX_CMDI]=$CTX_VRHS
+_ble_syntax_bash_command_CtxAssign[CTX_COARGI]=$CTX_VRHS
 _ble_syntax_bash_command_CtxAssign[CTX_ARGVI]=$CTX_ARGVR
 _ble_syntax_bash_command_CtxAssign[CTX_ARGEI]=$CTX_ARGER
 _ble_syntax_bash_command_CtxAssign[CTX_ARGI]=$CTX_ARGQ
@@ -2697,6 +2697,7 @@ _ble_syntax_bash_command_CtxAssign[CTX_CARGI1]=$CTX_CARGQ1
 _ble_syntax_bash_command_CtxAssign[CTX_VALI]=$CTX_VALQ
 _ble_syntax_bash_command_CtxAssign[CTX_CONDI]=$CTX_CONDQ
 
+# 以下の配列はチルダ展開が有効な文脈を無効な文脈に切り替えるのに使っている。
 _ble_syntax_bash_command_IsAssign[CTX_VRHS]=$CTX_CMDI
 _ble_syntax_bash_command_IsAssign[CTX_ARGVR]=$CTX_ARGVI
 _ble_syntax_bash_command_IsAssign[CTX_ARGER]=$CTX_ARGEI
@@ -2855,6 +2856,8 @@ _BLE_SYNTAX_FCTX[CTX_TARGI1]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FCTX[CTX_TARGI2]=ble/syntax:bash/ctx-command
 _BLE_SYNTAX_FEND[CTX_TARGI1]=ble/syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FEND[CTX_TARGI2]=ble/syntax:bash/ctx-command/check-word-end
+_BLE_SYNTAX_FCTX[CTX_COARGX]=ble/syntax:bash/ctx-command-compound-expect
+_BLE_SYNTAX_FEND[CTX_COARGI]=ble/syntax:bash/ctx-coproc/check-word-end
 
 ## 関数 ble/syntax:bash/starts-with-delimiter-or-redirect
 ##
@@ -2901,6 +2904,69 @@ function ble/syntax:bash/check-here-document-from {
   ((i++))
   nparam=$rematch1
   return 0
+}
+
+function ble/syntax:bash/ctx-coproc/.is-next-compound {
+  # @var ahead
+  #   現在位置 p の次の文字を参照したかどうか
+  local p=$i ahead=1 tail=${text:i}
+
+  # 空白類は無視
+  if local rex=$'^[ \t]+'; [[ $tail =~ $rex ]]; then
+    ((p+=${#BASH_REMATCH}))
+    ahead=1 tail=${text:p}
+  fi
+
+  local is_compound=
+  if [[ $tail == '('* ]]; then
+    is_compound=1
+  elif rex='^[a-z]+|^\[\[?|^[{}!]'; [[ $tail =~ $rex ]]; then
+    local rematch=$BASH_REMATCH
+
+    ((p+=${#rematch}))
+    [[ $rematch == ['{}!'] || $rematch == '[[' ]]; ahead=$?
+
+    rex='^(\[\[|for|select|case|if|while|until|fi|done|esac|then|elif|else|do|[{}!]|coproc|function)$'
+    if  [[ $rematch =~ $rex ]]; then
+      if rex='^[;|&()'$_ble_term_IFS']|^$|^[<>]\(?' ahead=1; [[ ${text:p} =~ $rex ]]; then
+        local rematch=$BASH_REMATCH
+        ((p+=${#rematch}))
+        [[ $rematch && $rematch != ['<>'] ]]; ahead=$?
+        [[ $rematch != ['<>']'(' ]] && is_compound=1
+      fi
+    fi
+  fi
+
+  # 先読みの設定
+  ble/syntax/parse/set-lookahead $((p+ahead-i))
+  [[ $is_compound ]]
+}
+function ble/syntax:bash/ctx-coproc/check-word-end {
+  ble/util/assert '((ctx==CTX_COARGI))'
+
+  # 単語の中にいない時は抜ける
+  ((wbegin<0)) && return 1
+
+  # 未だ続きがある場合は抜ける
+  ble/syntax:bash/check-word-end/is-delimiter || return 1
+
+  local wbeg=$wbegin wlen=$((i-wbegin)) wend=$i
+  local word=${text:wbegin:wlen}
+  local wt=$wtype
+
+  if local rex='^[_a-zA-Z0-9]+$'; [[ $word =~ $rex ]]; then
+    if ble/syntax:bash/ctx-coproc/.is-next-compound; then
+      # Note: [_[:alnum:]]+ は一回の読み取りの筈なので、
+      #   此処で遡って代入しても問題ない筈。
+      ((_ble_syntax_attr[wbegin]=ATTR_VAR))
+      ((ctx=CTX_CMDXC,type=CTX_ARGVI))
+      ble/syntax/parse/word-pop
+      return
+    fi
+  fi
+
+  ((ctx=CTX_CMDI,wtype=CTX_CMDX))
+  ble/syntax:bash/ctx-command/check-word-end
 }
 
 ## 配列 _ble_syntax_bash_command_EndCtx
@@ -3007,6 +3073,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
       return 0
     fi
 
+    local ret
     ble/util/expand-alias "$word"; local word_expanded=$ret
 
     local processed=
@@ -3051,6 +3118,13 @@ function ble/syntax:bash/ctx-command/check-word-end {
     ('eval')
       ((ctx=CTX_ARGEX))
       processed=builtin ;;
+    ('coproc')
+      if ble/syntax:bash/ctx-coproc/.is-next-compound; then
+        ((ctx=CTX_CMDXC))
+      else
+        ((ctx=CTX_COARGX))
+      fi
+      processed=keyword ;;
     ('function')
       ((ctx=CTX_ARGX))
       local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex
@@ -3324,6 +3398,7 @@ _ble_syntax_bash_command_BeginCtx[CTX_CARGX1]=$CTX_CARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_CARGX2]=$CTX_CARGI2
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX1]=$CTX_TARGI1
 _ble_syntax_bash_command_BeginCtx[CTX_TARGX2]=$CTX_TARGI2
+_ble_syntax_bash_command_BeginCtx[CTX_COARGX]=$CTX_COARGI
 
 #%if !release
 ## 配列 _ble_syntax_bash_command_isARGI[ctx]
@@ -3348,6 +3423,7 @@ _ble_syntax_bash_command_isARGI[CTX_CARGQ1]=1 # value (= の後)
 _ble_syntax_bash_command_isARGI[CTX_CARGI2]=1 # in
 _ble_syntax_bash_command_isARGI[CTX_TARGI1]=1 # -p
 _ble_syntax_bash_command_isARGI[CTX_TARGI2]=1 # --
+_ble_syntax_bash_command_isARGI[CTX_COARGI]=1 # var (coproc の後)
 #%end
 function ble/syntax:bash/ctx-command/.check-word-begin {
   if ((wbegin<0)); then
@@ -3379,7 +3455,7 @@ function ble/syntax:bash/ctx-command/.check-word-begin {
 function ble/syntax:bash/ctx-command {
 #%if !release
   if ble/syntax:bash/starts-with-delimiter-or-redirect; then
-    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_FARGX2||ctx==CTX_FARGX3||
+    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_COARGX||
         ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
         ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_CMDXV)) || ble/util/stackdump "invalid ctx=$ctx @ i=$i"
     ((wbegin<0&&wtype<0)) || ble/util/stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
@@ -3445,7 +3521,7 @@ function ble/syntax:bash/ctx-command {
 }
 
 function ble/syntax:bash/ctx-command-compound-expect {
-  ble/util/assert '((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX2))'
+  ble/util/assert '((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX2||ctx==CTX_COARGX))'
   local _ble_syntax_bash_is_command_form_for=
   if ble/syntax:bash/starts-with-delimiter-or-redirect; then
     # "for var in ... / case arg in" を処理している途中で delimiter が来た場合。
@@ -3468,7 +3544,7 @@ function ble/syntax:bash/ctx-command-compound-expect {
     elif [[ $tail =~ ^$_ble_syntax_bash_RexSpaces ]]; then
       ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
       return 0
-    else
+    elif ((ctx!=CTX_COARGX)); then
       local i0=$i
       ((ctx=CTX_ARGX))
       ble/syntax:bash/ctx-command/.check-delimiter-or-redirect || ((i++))
@@ -3480,8 +3556,8 @@ function ble/syntax:bash/ctx-command-compound-expect {
   # コメント禁止
   local i0=$i
   if ble/syntax:bash/check-comment; then
-    if ((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1)); then
-      # "for var / select var / case arg" を処理している途中でコメントが来た場合
+    if ((ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_CARGX1||ctx==CTX_COARGX)); then
+      # "for var / select var / case arg / coproc" を処理している途中でコメントが来た場合
       ((_ble_syntax_attr[i0]=ATTR_ERR))
     fi
     return 0
@@ -4271,10 +4347,10 @@ function ble/syntax/parse/shift.impl2/.shift-until {
 
 ## 関数 ble/syntax/parse/shift.impl2/.proc1
 ##
-## @var[in] i
+## @var[in] TE_i
 ##   tree-enumerate によって設定される変数です。
 ##   現在処理している単語の終端境界を表します。
-##   単語の情報は _ble_syntax_tree[i-1] に格納されています。
+##   単語の情報は _ble_syntax_tree[TE_i-1] に格納されています。
 ##
 ## @var[in,out] _shift2_j  何処まで処理したかを格納します。
 ##
@@ -4284,13 +4360,13 @@ function ble/syntax/parse/shift.impl2/.shift-until {
 ##
 function ble/syntax/parse/shift.impl2/.proc1 {
   local j=$_shift2_j
-  if ((i<j2)); then
+  if ((TE_i<j2)); then
     ((tprev=-1)) # 中断
     return
   fi
 
-  ble/syntax/parse/shift.impl2/.shift-until $((i+1))
-  ble/syntax/parse/shift.tree "$nofs"
+  ble/syntax/parse/shift.impl2/.shift-until $((TE_i+1))
+  ble/syntax/parse/shift.tree "$TE_nofs"
   ((_shift2_j=j))
 
   if ((tprev>end0&&wbegin>end0)); then
@@ -4683,12 +4759,13 @@ _ble_syntax_bash_complete_check_prefix[CTX_FARGI3]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_FARGQ3]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CARGI1]='inside-argument argument'
 _ble_syntax_bash_complete_check_prefix[CTX_CARGQ1]='inside-argument argument'
+_ble_syntax_bash_complete_check_prefix[CTX_COARGI]='inside-argument variable command'
 _ble_syntax_bash_complete_check_prefix[CTX_VALI]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_VALQ]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_CONDI]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_CONDQ]='inside-argument file'
 _ble_syntax_bash_complete_check_prefix[CTX_ARGVI]='inside-argument variable:='
-_ble_syntax_bash_complete_check_prefix[CTX_ARGEI]='inside-argument variable:= command file'
+_ble_syntax_bash_complete_check_prefix[CTX_ARGEI]='inside-argument variable:= command:D file'
 function ble/syntax/completion-context/.check-prefix/ctx:inside-argument {
   if ((wlen>=0)); then
     local source
@@ -4748,6 +4825,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-command {
 _ble_syntax_bash_complete_check_prefix[CTX_ARGX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_CARGX1]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_FARGX3]=next-argument
+_ble_syntax_bash_complete_check_prefix[CTX_COARGX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_ARGVX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_ARGEX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_VALX]=next-argument
@@ -4757,10 +4835,15 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
   local source
   if ((ctx==CTX_ARGX||ctx==CTX_CARGX1||ctx==CTX_FARGX3)); then
     source=(argument)
+  elif ((ctx==CTX_COARGX)); then
+    # Note: variable:w でも variable:= でもなく variable にしているのは、
+    #   coproc の後は変数名が来ても "変数代入 " か "coproc 配列名"
+    #   か分からないので、取り敢えず何も挿入しない様にする為。
+    source=(variable command)
   elif ((ctx==CTX_ARGVX)); then
     source=(variable:=)
   elif ((ctx==CTX_ARGEX)); then
-    source=(variable:= command file)
+    source=(variable:= command:D file)
   else
     source=(file)
   fi
@@ -5077,6 +5160,9 @@ function ble/syntax/completion-context/.check-here {
     elif ((ctx==CTX_TARGX2)); then
       ble/syntax/completion-context/.add command "$index"
       ble/syntax/completion-context/.add wordlist:--:'--' "$index"
+    elif ((ctx==CTX_COARGX)); then
+      ble/syntax/completion-context/.add variable:w "$index"
+      ble/syntax/completion-context/.add command "$index"
     elif ((ctx==CTX_RDRF||ctx==CTX_RDRS)); then
       ble/syntax/completion-context/.add file "$index"
     elif ((ctx==CTX_VRHS||ctx==CTX_ARGVR||ctx==CTX_ARGER||ctx==CTX_VALR)); then
@@ -5096,16 +5182,18 @@ function ble/syntax/completion-context/generate {
   ble/syntax/completion-context/.check-here
 }
 
+#------------------------------------------------------------------------------
+# extract-command
+
 ## 関数 ble/syntax:bash/extract-command/.register-word
 ## @var[in,out] comp_words, comp_line, comp_point, comp_cword
-## @var[in]     _ble_syntax_text, pos
-## @var[in]     wbegin, wlen
+## @var[in]     TE_i TE_nofs wbegin wlen
 function ble/syntax:bash/extract-command/.register-word {
   local wtxt=${_ble_syntax_text:wbegin:wlen}
-  if [[ ! $comp_cword ]] && ((wbegin<=pos)); then
-    if ((pos<=wbegin+wlen)); then
+  if [[ ! $comp_cword ]] && ((wbegin<=EC_pos)); then
+    if ((EC_pos<=wbegin+wlen)); then
       comp_cword=${#comp_words[@]}
-      comp_point=$((${#comp_line}+wbegin+wlen-pos))
+      comp_point=$((${#comp_line}+wbegin+wlen-EC_pos))
       comp_line="$wtxt$comp_line"
       ble/array#push comp_words "$wtxt"
     else
@@ -5118,17 +5206,19 @@ function ble/syntax:bash/extract-command/.register-word {
     comp_line="$wtxt$comp_line"
     ble/array#push comp_words "$wtxt"
   fi
+  [[ $EC_opts == *:treeinfo:* ]] &&
+    ble/array#push tree_words "$TE_i:$TE_nofs"
 }
 
 function ble/syntax:bash/extract-command/.construct-proc {
   if [[ $wtype =~ ^[0-9]+$ ]]; then
     if ((wtype==CTX_CMDI)); then
-      if ((pos<wbegin)); then
+      if ((EC_pos<wbegin)); then
         comp_line= comp_point= comp_cword= comp_words=()
       else
         ble/syntax:bash/extract-command/.register-word
         ble/syntax/tree-enumerate-break
-        extract_command_found=1
+        EC_found=1
         return
       fi
     elif ((wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
@@ -5152,46 +5242,197 @@ function ble/syntax:bash/extract-command/.construct {
   ble/array#reverse comp_words
   ((comp_cword=${#comp_words[@]}-1-comp_cword,
     comp_point=${#comp_line}-comp_point))
+  [[ $EC_opts == *:treeinfo:* ]] &&
+    ble/array#reverse tree_words
 }
 
 ## (tree-enumerate-proc) ble/syntax:bash/extract-command/.scan
 function ble/syntax:bash/extract-command/.scan {
-  ((pos<wbegin)) && return
+  ((EC_pos<wbegin)) && return
 
-  if ((wbegin+wlen<pos)); then
+  if ((wbegin+wlen<EC_pos)); then
     ble/syntax/tree-enumerate-break
   else
-    local extract_has_word=
+    local EC_has_word=
     ble/syntax/tree-enumerate-children \
       ble/syntax:bash/extract-command/.scan
-    local has_word=$extract_has_word
-    ble/util/unlocal extract_has_word
+    local has_word=$EC_has_word
+    ble/util/unlocal EC_has_word
 
-    if [[ $has_word && ! $extract_command_found ]]; then
+    if [[ $has_word && ! $EC_found ]]; then
       ble/syntax:bash/extract-command/.construct nested
       ble/syntax/tree-enumerate-break
     fi
   fi
 
-  if [[ $wtype =~ ^[0-9]+$ && ! $extract_has_word ]]; then
-    extract_has_word=$wtype
+  if [[ $wtype =~ ^[0-9]+$ && ! $EC_has_word ]]; then
+    EC_has_word=$wtype
     return
   fi
 }
 
-## 関数 ble/syntax:bash/extract-command index
-## @var[out] comp_cword comp_words comp_line comp_point
+## 関数 ble/syntax:bash/extract-command index [opts]
+##   @param[in] index
+##   @param[in] opts
+##     treeinfo
+##       コマンドを構成する各単語の構文木の情報を取得します。
+##       以下の配列に結果を格納します。
+##       @arr[out] tree_words
+##
+##   @var[out] comp_cword comp_words comp_line comp_point
 function ble/syntax:bash/extract-command {
-  local pos=$1
-  local extract_command_found=
+  local EC_pos=$1 EC_opts=:$2:
+  local EC_found=
 
-  local extract_has_word=
+  local EC_has_word=
   ble/syntax/tree-enumerate \
     ble/syntax:bash/extract-command/.scan
-  if [[ ! $extract_command_found && $extract_has_word ]]; then
+  if [[ ! $EC_found && $EC_has_word ]]; then
     ble/syntax:bash/extract-command/.construct
   fi
-  [[ $extract_command_found ]]
+  [[ $EC_found ]]
+}
+
+#------------------------------------------------------------------------------
+# extract-command-by-noderef
+
+## 関数 ble/syntax/tree#previous-sibling i[:nofs] [opts]
+## 関数 ble/syntax/tree#next-sibling     i[:nofs] [opts]
+##   指定した位置の単語について、前または次の兄弟ノードを取得します。
+##
+##   @param[in] i:nofs
+##
+##   @param[in] opts
+##     コロン区切りのオプションです。
+##
+##     wvars が指定されている時、以下の変数に見つかった単語の情報を格納します。
+##     @var[out] wtype wlen wbeg wend wattr
+##
+##   @var[out] ret=i:nofs
+##
+function ble/syntax/tree#previous-sibling {
+  local i0=${1%%:*} nofs0=0 opts=:$2:
+  [[ $1 == *:* ]] && nofs0=${1#*:}
+
+  local node
+  ble/string#split-words node "${_ble_syntax_tree[i0-1]}"
+  local tplen=${node[nofs0+3]}
+  ((tplen>=0)) || return
+
+  local i=$((i0-tplen)) nofs=0
+  ret=$i:$nofs
+  if [[ $opts == *:wvars:* ]]; then
+    ble/string#split-words node "${_ble_syntax_tree[i-1]}"
+    wtype=${node[nofs]}
+    wlen=${node[nofs+1]}
+    ((wbeg=i-wlen,wend=i))
+    wattr=${node[nofs+4]}
+  fi
+  return 0
+}
+function ble/syntax/tree#next-sibling {
+  local i0=${1%%:*} nofs0=0 opts=:$2:
+  [[ $1 == *:* ]] && nofs0=${1#*:}
+
+  # 自分が末尾にいるので弟はない
+  ((nofs0)) && return 1
+
+  local iN=${#_ble_syntax_text} i nofs node
+  for ((i=i0+1;i<=iN;i++)); do
+    [[ ${_ble_syntax_tree[i-1]} ]] || continue
+    ble/string#split-words node "${_ble_syntax_tree[i-1]}"
+    nofs=${#node[@]}
+    while (((nofs-=_ble_syntax_TREE_WIDTH)>=0)); do
+      # node = (wtype wlen tclen tplen wattr)+
+      if ((i0==i-node[nofs+2])); then
+        # 親が見つかったので弟はいない
+        return 1
+      elif ((i0==i-node[nofs+3])); then
+        # これが弟
+        ret=$i:$nofs
+        if [[ $opts == *:wvars:* ]]; then
+          wtype=${node[nofs]}
+          wlen=${node[nofs+1]}
+          ((wbeg=i-wlen,wend=i))
+          wattr=${node[nofs+4]}
+        fi
+        return 0
+      fi
+    done
+  done
+  return 1
+}
+
+## 関数 ble/syntax:bash/extract-command-by-noderef i[:nofs] [opts]
+##   @param[in] i:nofs
+##     単語を指定します。
+##
+##   @param[in] opts
+##     コロン区切りのオプションです。
+##
+##     treeinfo が指定された時は以下の配列に各単語の位置を
+##     "i:nofs" の形式で格納します。
+##     @var[out] tree_words
+##
+##   @var[out] comp_words comp_line comp_cword comp_point
+##     再構築したコマンド情報を格納します。
+##     カーソル位置は指定した単語の末尾にあると仮定します。
+##
+function ble/syntax:bash/extract-command-by-noderef {
+  local i=${1%%:*} nofs=0 opts=:$2:
+  [[ $1 == *:* ]] && nofs=${1#*:}
+
+  # initialize output
+  comp_words=()
+  tree_words=()
+  comp_line=
+  comp_cword=0
+  comp_point=0
+
+  # 自ノードの追加
+  local ret node wtype wlen wbeg wend wattr
+  ble/string#split-words node "${_ble_syntax_tree[i-1]}"
+  wtype=${node[nofs]} wlen=${node[nofs+1]}
+  [[ ! ${wtype//[0-9]} ]] && ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)) || return 1
+  ble/array#push comp_words "${_ble_syntax_text:i-wlen:wlen}"
+  [[ $opts == *:treeinfo:* ]] &&
+    ble/array#push tree_words "$i:$nofs"
+
+  # 兄ノードの追加
+  ret=$i:$nofs
+  while
+    { [[ ${wtype//[0-9]} ]] || ((wtype!=CTX_CMDI)); } &&
+      ble/syntax/tree#previous-sibling "$ret" wvars
+  do
+    [[ ! ${wtype//[0-9]} ]] || continue
+    if ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
+      ble/array#push comp_words "${_ble_syntax_text:wbeg:wlen}"
+      [[ $opts == *:treeinfo:* ]] &&
+        ble/array#push tree_words "$ret"
+    fi
+  done
+  ble/array#reverse comp_words
+  [[ $opts == *:treeinfo:* ]] &&
+    ble/array#reverse tree_words
+
+  # 現在位置 (comp_cword, comp_point)
+  ((comp_cword=${#comp_words[@]}-1))
+
+  # 弟ノードの探索
+  ret=$i:$nofs
+  while ble/syntax/tree#next-sibling "$ret" wvars; do
+    [[ ! ${wtype//[0-9]} ]] || continue
+    ((wtype==CTX_CMDI)) && break
+    if ((wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
+      ble/array#push comp_words "${_ble_syntax_text:wbeg:wlen}"
+      [[ $opts == *:treeinfo:* ]] &&
+        ble/array#push tree_words "$ret"
+    fi
+  done
+
+  comp_line="${comp_words[*]}"
+  local tmp="${comp_words[*]::comp_cword+1}"
+  comp_point=${#tmp}
 }
 
 #==============================================================================
@@ -5339,6 +5580,9 @@ function ble/syntax/faces-onload-hook {
   ble/syntax/attr2iface/.define CTX_TARGX2   syntax_default
   ble/syntax/attr2iface/.define CTX_TARGI1   syntax_default
   ble/syntax/attr2iface/.define CTX_TARGI2   syntax_default
+
+  ble/syntax/attr2iface/.define CTX_COARGX   syntax_default
+  ble/syntax/attr2iface/.define CTX_COARGI   syntax_command
 
   # here documents
   ble/syntax/attr2iface/.define CTX_RDRH    syntax_document_begin
@@ -5560,6 +5804,8 @@ function ble/syntax/highlight/filetype {
     if [[ -d $file ]]; then
       if [[ -k $file ]]; then
         ((type=ATTR_FILE_STICKY))
+      elif [[ -h ${file%/} ]]; then
+        ((type=ATTR_FILE_LINK))
       else
         ((type=ATTR_FILE_DIR))
       fi
@@ -5713,6 +5959,315 @@ function bleopt/check:filename_ls_colors {
 value=$bleopt_filename_ls_colors bleopt/check:filename_ls_colors
 
 #------------------------------------------------------------------------------
+# ble/syntax/progcolor
+
+## 関数 ble/syntax/progcolor/setup-vars i:nofs
+##   @var[out] TE_i TE_nofs node
+##   @var[out] wtype wlen wbeg wend wattr
+_ble_syntax_progcolor_vars=(node TE_i TE_nofs wtype wlen wbeg wend wattr)
+function ble/syntax/progcolor/setup-vars {
+  # TE_i TE_nofs
+  TE_i=${1%%:*} TE_nofs=${1#*:}
+  [[ $1 != *:* ]] && TE_nofs=0
+
+  # node
+  ble/string#split-words node "${_ble_syntax_tree[TE_i-1]}"
+
+  # wvars
+  wtype=${node[TE_nofs]}
+  wlen=${node[TE_nofs+1]}
+  wattr=${node[TE_nofs+4]}
+  wbeg=$((TE_i-wlen))
+  wend=$TE_i
+}
+
+## 関数 ble/syntax/progcolor/set-wattr value
+##   @var[in] TE_i TE_nofs node
+function ble/syntax/progcolor/set-wattr {
+  ble/syntax/urange#update color_ "$wbeg" "$wend"
+  ble/syntax/wrange#update _ble_syntax_word_ "$TE_i"
+  node[TE_nofs+4]=$1
+  _ble_syntax_tree[TE_i-1]="${node[*]}"
+}
+
+## 関数 ble/syntax/progcolor/word:default/.update-for-pathname filetype
+##   @param[in] filetype
+##   @var[in] wtype wbeg p0
+##   @var[in] path spec
+function ble/syntax/progcolor/word:default/.update-for-pathname {
+  local filetype=$1
+  local -a wattr_buff=()
+  ((wbeg<p0)) && ble/array#push wattr_buff $((p0-wbeg)):d
+
+  local npath=${#path[@]}
+  if ((npath>1)); then
+    local ipath p=$p0
+    for ((ipath=0;ipath<npath-1;ipath++)); do
+      local epath=${path[ipath]} espec=${spec[ipath]}
+      local p_end=$((p0+${#espec}))
+      local g=d type=
+      [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
+      [[ $type ]] && ble/syntax/attr2g "$type"
+
+      # コマンド名の時は下線は引かない様にする
+      ((wtype==CTX_CMDI&&(g&=~_ble_color_gflags_Underline)))
+
+      ble/array#push wattr_buff $((p_end-p)):$g
+      p=$p_end
+    done
+  fi
+
+  local wattr=d
+  if ((${#wattr_buff[@]})); then
+    local g; ble/syntax/attr2g "$filetype"
+    IFS=, eval 'wattr="m${wattr_buff[*]},\$:${g:-d}"'
+  elif [[ $filetype ]]; then
+    local g; ble/syntax/attr2g "$filetype"
+    if ((wbeg<p0)); then
+      wattr=m$((p0-wbeg)):d,\$:$g
+    else
+      wattr=${g:-d}
+    fi
+  fi
+  ble/syntax/progcolor/set-wattr "$wattr"
+  return 0
+}
+## 関数 ble/syntax/progcolor/word:default/.update-for-filename value
+##   @param[in] value
+##   @var[in] wtype wbeg p0
+##   @var[in] path spec
+function ble/syntax/progcolor/word:default/.update-for-filename {
+  local value=$1
+
+  local type=
+  ble/syntax/highlight/filetype "$value"; local filetype=$type
+
+  local -a wattr_buff=()
+  ((wbeg<p0)) &&
+    ble/array#push wattr_buff $((p0-wbeg)):d
+
+  if ((filetype!=ATTR_FILE_URL)); then
+    local npath=${#path[@]}
+    if ((npath>1)); then
+      local ipath p=$p0
+      for ((ipath=0;ipath<npath-1;ipath++)); do
+        local epath=${path[ipath]} espec=${spec[ipath]}
+        local p_end=$((p0+${#espec}))
+        local g=d type=
+        [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
+        [[ $type ]] && ble/syntax/attr2g "$type"
+        ble/array#push wattr_buff $((p_end-p)):$g
+        p=$p_end
+      done
+    fi
+  fi
+
+  type=$filetype
+
+  # check values
+  if ((wtype==CTX_RDRF)); then
+    if ((type==ATTR_FILE_DIR)); then
+      # ディレクトリにリダイレクトはできない
+      type=$ATTR_ERR
+    elif ((_ble_syntax_TREE_WIDTH<=TE_nofs)); then
+      # noclobber の時は既存ファイルを > または <> で上書きできない
+      #
+      # 仮定: _ble_syntax_word に於いてリダイレクトとファイルは同じ位置で終了すると想定する。
+      #   この時、リダイレクトの情報の次にファイル名の情報が格納されている筈で、
+      #   リダイレクトの情報は node[TE_nofs-_ble_syntax_TREE_WIDTH] に入っていると考えられる。
+      #
+      local redirect_ntype=${node[TE_nofs-_ble_syntax_TREE_WIDTH]:1}
+      if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>|' ) ]]; then
+        if [[ -e $value || -h $value ]]; then
+          if [[ -d $value || ! -w $value ]]; then
+            # ディレクトリまたは書き込み権限がない
+            type=$ATTR_ERR
+          elif [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' ) && -f $value ]]; then
+            if [[ -o noclobber ]]; then
+              # 上書き禁止
+              type=$ATTR_ERR
+            else
+              # 上書き注意
+              type=$ATTR_FILE_WARN
+            fi
+          fi
+        elif [[ $value == */* && ! -w ${value%/*}/ || $value != */* && ! -w ./ ]]; then
+          # ディレクトリに書き込み権限がない
+          type=$ATTR_ERR
+        fi
+      elif [[ $redirect_ntype == '<' && ! -r $value ]]; then
+        # ファイルがないまたは読み取り権限がない
+        type=$ATTR_ERR
+      fi
+    fi
+  fi
+
+  local g=
+  if [[ $bleopt_filename_ls_colors ]]; then
+    if ble/syntax/highlight/ls_colors "$value" && [[ $type == g:* ]]; then
+      local ret; ble/color/face2g filename_ls_colors; g=$ret
+      type=g:$((${type:2}|g))
+    fi
+  fi
+  [[ $type && ! $g ]] && ble/syntax/attr2g "$type"
+
+  if ((${#wattr_buff[@]})); then
+    IFS=, eval 'local wattr="m${wattr_buff[*]},\$:${g:-d}"'
+  else
+    local wattr=${g:-d}
+  fi
+  ble/syntax/progcolor/set-wattr "$wattr"
+  return 0
+}
+## 関数 ble/syntax/progcolor/word:default
+##   @var[in] node TE_i TE_nofs
+##   @var[in] wtype wlen wbeg wend wattr
+function ble/syntax/progcolor/word:default {
+  [[ $wtype =~ ^[0-9]+$ ]] || return
+  [[ $wattr == - ]] || return
+
+  # @var p0 p1
+  #   文字列を切り出す範囲。
+  local p0=$wbeg p1=$((wbeg+wlen))
+  if ((wtype==ATTR_VAR||wtype==CTX_VALI)); then
+    # 変数代入の場合は右辺だけ切り出す。
+    #   Note: arr=(a=a*b a[1]=a*b) などはパス名展開の対象ではない。
+    #     これは変数代入の形式として認識されているからである。
+    #     以下では element-assignment を指定することで、
+    #     配列要素についても変数代入の形式を抽出する様にしている。
+    local ret
+    ble/syntax:bash/find-rhs "$wtype" "$wbeg" "$wlen" element-assignment && p0=$ret
+  fi
+
+  local type=
+  if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
+    # ヒアドキュメントのキーワード指定部分は、
+    # 展開・コマンド置換などに従った解析が行われるが、
+    # 実行は一切起こらないので一色で塗りつぶす。
+    ((type=wtype))
+  elif local wtxt=${text:p0:p1-p0}; ble/syntax:bash/simple-word/is-simple "$wtxt"; then
+    local path_opts=after-sep
+
+    # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
+    # コマンド名やリダイレクト先ファイル名等の場合は途中で区切って解釈する等の事はしない。
+    if ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)); then
+      local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt" '' url
+      if ((ret)); then
+        ((p0+=ret))
+        wtxt=${wtxt:ret}
+
+        # チルダ展開の抑制
+        [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
+      fi
+    fi
+
+    ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
+    local ret path spec ext value
+    ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
+    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
+      # failglob 等の理由で展開に失敗した場合
+      ble/syntax/progcolor/word:default/.update-for-pathname "$ATTR_ERR" && return
+    elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
+      # 複数語に展開されたら駄目
+      type=$ATTR_ERR
+    elif ((wtype==CTX_CMDI)); then
+      local attr=${_ble_syntax_attr[wbeg]}
+      if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
+        ble/syntax/highlight/cmdtype "$value" "$wtxt"
+        ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)) &&
+          ble/syntax/progcolor/word:default/.update-for-pathname "$type" && return
+      fi
+    elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
+      ble/syntax/progcolor/word:default/.update-for-filename "$value" && return
+    fi
+  fi
+
+  local wattr=d
+  if [[ $type ]]; then
+    local g; ble/syntax/attr2g "$type"
+    if ((wbeg<p0)); then
+      wattr=m$((p0-wbeg)):d,\$:$g
+    else
+      wattr=${g:-d}
+    fi
+  fi
+  ble/syntax/progcolor/set-wattr "$wattr"
+  return 0
+}
+
+## 関数 ble/syntax/progcolor/default
+##   @var[in] comp_words comp_cword comp_line comp_point
+##   @var[in] tree_words
+##   @var[in,out] color_umin color_umax
+function ble/syntax/progcolor/default {
+  local i "${_ble_syntax_progcolor_vars[@]}"
+  for ((i=1;i<${#comp_words[@]};i++)); do
+    local ref=${tree_words[i]}
+    [[ $ref ]] || continue
+    ble/syntax/progcolor/setup-vars "$ref"
+    ble/syntax/progcolor/word:default
+  done
+}
+
+## 関数 ble/syntax/progcolor/.compline-rewrite-command command [args...]
+##   @var[in,out] comp_words comp_cword comp_line comp_point
+function ble/syntax/progcolor/.compline-rewrite-command {
+  local ocmd=${comp_words[0]}
+  [[ $1 != "$ocmd" ]] || (($#>=2)) || return
+  local ins="$*"
+  comp_line=$ins${comp_line:${#ocmd}}
+  ((comp_point-=${#ocmd},comp_point<0&&(comp_point=0),comp_point+=${#ins}))
+  comp_words=("$@" "${comp_words[@]:1}")
+  ((comp_cword&&(comp_cword+=$#-1)))
+
+  # update tree_words
+  ble/array#reserve-prototype $#
+  tree_words=("${tree_words[0]}" "${_ble_array_prototype[@]::$#-1}" "${tree_words[@]:1}")
+}
+## 関数 ble/syntax/progcolor
+##   @var[in] comp_words comp_cword comp_line comp_point
+##   @var[in] tree_words
+##   @var[in,out] color_umin color_umax
+function ble/syntax/progcolor {
+  local cmd=$1 opts=$2
+
+  local -a alias_args=()
+  local checked=" " processed=
+  while :; do
+    if ble/is-function "ble/cmdinfo/color:$cmd"; then
+      ble/syntax/progcolor/.compline-rewrite-command "$cmd" "${alias_args[@]}"
+      "ble/cmdinfo/color:$cmd" "$opts"
+      processed=1
+      break
+    elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/color:${cmd##*/}"; then
+      ble/syntax/progcolor/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
+      "ble/cmdinfo/color:${cmd##*/}" "$opts"
+      processed=1
+      break
+    fi
+    checked="$checked$cmd "
+
+    local ret
+    ble/util/expand-alias "$cmd"
+    ble/string#split-words ret "$ret"
+    [[ $checked == *" $ret "* ]] && break
+    cmd=$ret
+    ((${#ret[@]}>=2)) &&
+      alias_args=("${ret[@]:1}" "${alias_args[@]}")
+  done
+  [[ $processed ]] ||
+    ble/syntax/progcolor/default
+
+  # コマンド名に対しては既定の着色を実行
+  if [[ ${tree_words[0]} ]]; then
+    local "${_ble_syntax_progcolor_vars[@]}"
+    ble/syntax/progcolor/setup-vars "${tree_words[0]}"
+    [[ $wattr == - ]] && ble/syntax/progcolor/word:default
+  fi
+}
+
+#------------------------------------------------------------------------------
+# ble/highlight/layer:syntax
 
 # adapter に頼らず直接実装したい
 function ble/highlight/layer:syntax/touch-range {
@@ -5760,211 +6315,28 @@ function ble/highlight/layer:syntax/update-attribute-table {
   fi
 }
 
-## 関数 ble/highlight/layer:syntax/word/.update-for-pathname filename
-##   @param[in] filename
-##   @var[out] type
-##   @var[in] wbeg p0 wtype
-##   @var[in] path spec
-function ble/highlight/layer:syntax/word/.update-for-pathname {
-  local filetype=$1
-  local -a wattr_buff=()
-  ((wbeg<p0)) && ble/array#push wattr_buff $((p0-wbeg)):d
-
-  local npath=${#path[@]}
-  if ((npath>1)); then
-    local ipath p=$p0
-    for ((ipath=0;ipath<npath-1;ipath++)); do
-      local epath=${path[ipath]} espec=${spec[ipath]}
-      local p_end=$((p0+${#espec}))
-      local g=d
-      type=
-      [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
-      [[ $type ]] && ble/syntax/attr2g "$type"
-
-      # コマンド名の時は下線は引かない様にする
-      ((wtype==CTX_CMDI&&(g&=~_ble_color_gflags_Underline)))
-
-      ble/array#push wattr_buff $((p_end-p)):$g
-      p=$p_end
-    done
-  fi
-
-  type=$filetype
-
-  # ディレクトリ名を含まない場合は通常どおりに処理
-  ((${#wattr_buff[@]})) || return 1
-
-  local g; ble/syntax/attr2g "$type"
-  IFS=, eval 'node[nofs+4]="m${wattr_buff[*]},\$:${g:-d}"'
-  flagUpdateNode=1
-}
-## 関数 ble/highlight/layer:syntax/word/.update-for-filename value
-##   @param[in] value
-##   @var[in] wbeg p0 wtype
-##   @var[in] path spec
-function ble/highlight/layer:syntax/word/.update-for-filename {
-  local value=$1
-
-  local type=
-  ble/syntax/highlight/filetype "$value"; local filetype=$type
-
-  local -a wattr_buff=()
-  ((wbeg<p0)) &&
-    ble/array#push wattr_buff $((p0-wbeg)):d
-
-  if ((filetype!=ATTR_FILE_URL)); then
-    local npath=${#path[@]}
-    if ((npath>1)); then
-      local ipath p=$p0
-      for ((ipath=0;ipath<npath-1;ipath++)); do
-        local epath=${path[ipath]} espec=${spec[ipath]}
-        local p_end=$((p0+${#espec}))
-        local g=d type=
-        [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
-        [[ $type ]] && ble/syntax/attr2g "$type"
-        ble/array#push wattr_buff $((p_end-p)):$g
-        p=$p_end
-      done
-    fi
-  fi
-
-  type=$filetype
-
-  # check values
-  if ((wtype==CTX_RDRF)); then
-    if ((type==ATTR_FILE_DIR)); then
-      # ディレクトリにリダイレクトはできない
-      type=$ATTR_ERR
-    elif ((_ble_syntax_TREE_WIDTH<=nofs)); then
-      # noclobber の時は既存ファイルを > または <> で上書きできない
-      #
-      # 仮定: _ble_syntax_word に於いてリダイレクトとファイルは同じ位置で終了すると想定する。
-      #   この時、リダイレクトの情報の次にファイル名の情報が格納されている筈で、
-      #   リダイレクトの情報は node[nofs-_ble_syntax_TREE_WIDTH] に入っていると考えられる。
-      #
-      local redirect_ntype=${node[nofs-_ble_syntax_TREE_WIDTH]:1}
-      if [[ ( $redirect_ntype == *'>' || $redirect_ntype == '>|' ) ]]; then
-        if [[ -e $value || -h $value ]]; then
-          if [[ -d $value || ! -w $value ]]; then
-            # ディレクトリまたは書き込み権限がない
-            type=$ATTR_ERR
-          elif [[ ( $redirect_ntype == [\<\&]'>' || $redirect_ntype == '>' ) && -f $value ]]; then
-            if [[ -o noclobber ]]; then
-              # 上書き禁止
-              type=$ATTR_ERR
-            else
-              # 上書き注意
-              type=$ATTR_FILE_WARN
-            fi
-          fi
-        elif [[ $value == */* && ! -w ${value%/*}/ || $value != */* && ! -w ./ ]]; then
-          # ディレクトリに書き込み権限がない
-          type=$ATTR_ERR
-        fi
-      elif [[ $redirect_ntype == '<' && ! -r $value ]]; then
-        # ファイルがないまたは読み取り権限がない
-        type=$ATTR_ERR
-      fi
-    fi
-  fi
-
-  local g=
-  if [[ $bleopt_filename_ls_colors ]]; then
-    if ble/syntax/highlight/ls_colors "$value" && [[ $type == g:* ]]; then
-      local ret; ble/color/face2g filename_ls_colors; g=$ret
-      type=g:$((${type:2}|g))
-    fi
-  fi
-  [[ $type && ! $g ]] && ble/syntax/attr2g "$type"
-
-  if ((${#wattr_buff[@]})); then
-    IFS=, eval 'node[nofs+4]="m${wattr_buff[*]},\$:${g:-d}"'
-  else
-    node[nofs+4]=${g:-d}
-  fi
-  flagUpdateNode=1
-  return 0
-}
 function ble/highlight/layer:syntax/word/.update-attributes/.proc {
-  [[ ${node[nofs]} =~ ^[0-9]+$ ]] || return
-  [[ ${node[nofs+4]} == - ]] || return
-  ble/syntax/urange#update color_ "$wbeg" "$wend"
+  [[ $wtype =~ ^[0-9]+$ ]] || return
+  [[ ${node[TE_nofs+4]} == - ]] || return
 
-  # @var p0 p1
-  #   文字列を切り出す範囲。
-  local p0=$wbeg p1=$((wbeg+wlen))
-  if ((wtype==ATTR_VAR||wtype==CTX_VALI)); then
-    # 変数代入の場合は右辺だけ切り出す。
-    #   Note: arr=(a=a*b a[1]=a*b) などはパス名展開の対象ではない。
-    #     これは変数代入の形式として認識されているからである。
-    #     以下では element-assignment を指定することで、
-    #     配列要素についても変数代入の形式を抽出する様にしている。
-    local ret
-    ble/syntax:bash/find-rhs "$wtype" "$wbeg" "$wlen" element-assignment && p0=$ret
-  fi
-
-  local type=
-  if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
-    # ヒアドキュメントのキーワード指定部分は、
-    # 展開・コマンド置換などに従った解析が行われるが、
-    # 実行は一切起こらないので一色で塗りつぶす。
-    ((type=wtype))
-  elif local wtxt=${text:p0:p1-p0}; ble/syntax:bash/simple-word/is-simple "$wtxt"; then
-    local path_opts=after-sep
-
-    # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
-    # コマンド名やリダイレクト先ファイル名等の場合は途中で区切って解釈する等の事はしない。
-    if ((wtype==CTX_ARGI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)); then
-      local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt" '' url
-      if ((ret)); then
-        ((p0+=ret))
-        wtxt=${wtxt:ret}
-
-        # チルダ展開の抑制
-        [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
-      fi
-    fi
-
-    ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
-    local ret path spec ext value
-    ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
-    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
-      # failglob 等の理由で展開に失敗した場合
-      ble/highlight/layer:syntax/word/.update-for-pathname "$ATTR_ERR" && return
-    elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
-      # 複数語に展開されたら駄目
-      type=$ATTR_ERR
-    elif ((wtype==CTX_CMDI)); then
-      local attr=${_ble_syntax_attr[wbeg]}
-      if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
-        ble/syntax/highlight/cmdtype "$value" "$wtxt"
-        ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)) &&
-          ble/highlight/layer:syntax/word/.update-for-pathname "$type" && return
-      fi
-    elif ((wtype==CTX_ARGI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
-      ble/highlight/layer:syntax/word/.update-for-filename "$value" && return
+  if ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
+    local comp_line comp_point comp_words comp_cword tree_words
+    if ble/syntax:bash/extract-command-by-noderef "$TE_i:$TE_nofs" treeinfo; then
+      local cmd=${comp_words[0]}
+      ble/syntax/progcolor "$cmd"
+      return
     fi
   fi
 
-  if [[ $type ]]; then
-    local g; ble/syntax/attr2g "$type"
-    if ((wbeg<p0)); then
-      node[nofs+4]=m$((p0-wbeg)):d,\$:$g
-    else
-      node[nofs+4]=${g:-d}
-    fi
-  else
-    node[nofs+4]='d'
-  fi
-  flagUpdateNode=1
+  # コマンドラインを復元できなければ単一単語の着色
+  ble/syntax/progcolor/word:default
 }
 
 ## 関数 ble/highlight/layer:syntax/word/.update-attributes
 ## @var[in] _ble_syntax_word_umin,_ble_syntax_word_umax
-## @var[in,out] color_umin,color_umax
+## @var[in,out] color_umin color_umax
 function ble/highlight/layer:syntax/word/.update-attributes {
   ((_ble_syntax_word_umin>=0)) || return
-
   ble/syntax/tree-enumerate-in-range "$_ble_syntax_word_umin" "$_ble_syntax_word_umax" \
     ble/highlight/layer:syntax/word/.update-attributes/.proc
 }
@@ -5999,7 +6371,7 @@ function ble/highlight/layer:syntax/word/.apply-attribute {
 
 function ble/highlight/layer:syntax/word/.proc-childnode {
   if [[ $wtype =~ ^[0-9]+$ ]]; then
-    local wbeg=$wbegin wend=$i
+    local wbeg=$wbegin wend=$TE_i
     ble/highlight/layer:syntax/word/.apply-attribute "$wbeg" "$wend" "$attr"
   fi
 
@@ -6023,14 +6395,14 @@ function ble/highlight/layer:syntax/update-word-table {
 
   # (3) 色配列に登録
   ble/highlight/layer:syntax/word/.apply-attribute 0 "$iN" d # clear word color
-  local i
-  for ((i=_ble_syntax_word_umax;i>=_ble_syntax_word_umin;)); do
-    if ((i>0)) && [[ ${_ble_syntax_tree[i-1]} ]]; then
+  local TE_i
+  for ((TE_i=_ble_syntax_word_umax;TE_i>=_ble_syntax_word_umin;)); do
+    if ((TE_i>0)) && [[ ${_ble_syntax_tree[TE_i-1]} ]]; then
       local -a node
-      ble/string#split-words node "${_ble_syntax_tree[i-1]}"
+      ble/string#split-words node "${_ble_syntax_tree[TE_i-1]}"
 
       local wlen=${node[1]}
-      local wbeg=$((i-wlen)) wend=$i
+      local wbeg=$((TE_i-wlen)) wend=$TE_i
 
       if [[ ${node[0]} =~ ^[0-9]+$ ]]; then
         local attr=${node[4]}
@@ -6039,14 +6411,14 @@ function ble/highlight/layer:syntax/update-word-table {
 
       local tclen=${node[2]}
       if ((tclen>=0)); then
-        local tchild=$((i-tclen))
-        local tree= nofs=0 proc_children=ble/highlight/layer:syntax/word/.proc-childnode
+        local tchild=$((TE_i-tclen))
+        local tree= TE_nofs=0 proc_children=ble/highlight/layer:syntax/word/.proc-childnode
         ble/syntax/tree-enumerate-children "$proc_children"
       fi
 
-      ((i=wbeg))
+      ((TE_i=wbeg))
     else
-      ((i--))
+      ((TE_i--))
     fi
   done
   ((color_umin>=0)) && ble/highlight/layer:syntax/touch-range "$color_umin" "$color_umax"
@@ -6123,7 +6495,7 @@ function ble/highlight/layer:syntax/update-error-table {
     fi
 
     # コマンド欠落・引数の欠落
-    if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2)); then
+    if ((ctx==CTX_CMDX1||ctx==CTX_CMDXC||ctx==CTX_FARGX1||ctx==CTX_SARGX1||ctx==CTX_FARGX2||ctx==CTX_CARGX1||ctx==CTX_CARGX2||ctx==CTX_COARGX)); then
       # 終端点の着色
       ble/highlight/layer:syntax/update-error-table/set $((iN-1)) "$iN" "$g"
     fi
@@ -6268,6 +6640,7 @@ function ble/highlight/layer:syntax/getg {
 
 function ble/syntax/import { :; }
 
+blehook/invoke syntax_load
 ble/function#try ble/textarea#invalidate str
 
 return 0

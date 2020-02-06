@@ -64,7 +64,7 @@ _ble_complete_menu_selected=-1
 function ble/complete/menu#check-cancel {
   ((menu_iloop++%menu_interval==0)) &&
     [[ :$comp_type: != *:sync:* ]] &&
-    ble-decode/has-input
+    ble/decode/has-input
 }
 
 function bleopt/check:complete_menu_style {
@@ -757,8 +757,6 @@ function ble/widget/menu/accept {
 }
 
 function ble-decode/keymap:menu/define {
-  local ble_bind_keymap=menu
-
   # ble-bind -f __defchar__ menu_complete/self-insert
   # ble-bind -f __default__ 'menu_complete/exit-default'
   ble-bind -f __default__ 'bell'
@@ -848,7 +846,7 @@ function ble/complete/menu#start {
 ##
 
 function ble/complete/check-cancel {
-  [[ :$comp_type: != *:sync:* ]] && ble-decode/has-input
+  [[ :$comp_type: != *:sync:* ]] && ble/decode/has-input
 }
 
 #------------------------------------------------------------------------------
@@ -1453,15 +1451,22 @@ function ble/complete/source:command/gen {
   #     [[ :$comp_type: == *:a:* ]] && local COMPS=${COMPS::1} COMPV=${COMPV::1}
   #     compgen -A directory -S / -- "$compv_quoted"
   #
-  local ret
-  ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-  ble/complete/util/eval-pathname-expansion "$ret/"
-  ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
+  if [[ $arg != *D* ]]; then
+    local ret
+    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+    ble/complete/util/eval-pathname-expansion "$ret/"
+    ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
+  fi
 }
+## ble/complete/source:command arg
+##   @param[in] arg
+##     arg に D が含まれている時、
+##     ディレクトリ名の列挙を抑制する事を表します。
 function ble/complete/source:command {
   [[ $comps_flags == *v* ]] || return 1
   [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion && return 1
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  local arg=$1
 
   # Try progcomp by "complete -I"
   if ((_ble_bash>=50000)); then
@@ -1485,7 +1490,7 @@ function ble/complete/source:command {
 
   local cand arr
   local compgen
-  ble/util/assign compgen 'ble/complete/source:command/gen'
+  ble/util/assign compgen 'ble/complete/source:command/gen "$arg"'
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
   for cand in "${arr[@]}"; do
@@ -2563,7 +2568,7 @@ function ble/complete/util/construct-ambiguous-regex {
   local text=$1 fixlen=${2:-1}
   local opt_icase=; [[ :$comp_type: == *:i:* ]] && opt_icase=1
   local -a buff=()
-  local i=0 n=${#text} c=
+  local i=0 n=${#text} ch=
   for ((i=0;i<n;i++)); do
     ((i>=fixlen)) && ble/array#push buff '.*'
     ch=${text:i:1}
@@ -3340,6 +3345,7 @@ function ble/complete/menu/clear {
   fi
 }
 blehook widget_bell+=ble/complete/menu/clear
+blehook history_onleave+=ble/complete/menu/clear
 
 ## 関数 ble/complete/menu/get-footprint
 ##   @var[out] footprint
@@ -4570,8 +4576,6 @@ function ble/widget/menu_complete/exit-default {
 }
 
 function ble-decode/keymap:menu_complete/define {
-  local ble_bind_keymap=menu_complete
-
   # ble-bind -f __defchar__ menu_complete/self-insert
   ble-bind -f __default__ 'menu_complete/exit-default'
   ble-bind -f C-m         'menu_complete/accept'
@@ -5034,8 +5038,6 @@ function ble/widget/auto_complete/notify-enter {
   ble/decode/widget/skip-lastwidget
 }
 function ble-decode/keymap:auto_complete/define {
-  local ble_bind_keymap=auto_complete
-
   ble-bind -f __defchar__ auto_complete/self-insert
   ble-bind -f __default__ auto_complete/cancel-default
   ble-bind -f 'C-g'       auto_complete/cancel
@@ -5045,6 +5047,7 @@ function ble-decode/keymap:auto_complete/define {
   ble-bind -f S-C-m       auto_complete/insert
   ble-bind -f C-f         auto_complete/insert-on-end
   ble-bind -f right       auto_complete/insert-on-end
+  ble-bind -f C-e         auto_complete/insert-on-end
   ble-bind -f end         auto_complete/insert-on-end
   ble-bind -f M-f         auto_complete/insert-word
   ble-bind -f M-right     auto_complete/insert-word
@@ -5562,7 +5565,6 @@ function ble/widget/dabbrev/accept-line {
   ble-decode-key 13
 }
 function ble-decode/keymap:dabbrev/define {
-  local ble_bind_keymap=dabbrev
   ble-bind -f __default__ 'dabbrev/exit-default'
   ble-bind -f 'C-g'       'dabbrev/cancel'
   ble-bind -f 'C-x C-g'   'dabbrev/cancel'

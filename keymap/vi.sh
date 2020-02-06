@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Note: bind (DEFAULT_KEYMAP) の中から再帰的に呼び出されうるので、
-# 先に ble-edit/bind/load-keymap-definition:vi を上書きする必要がある。
-ble/is-function ble-edit/bind/load-keymap-definition:vi && return
-function ble-edit/bind/load-keymap-definition:vi { :; }
+# Note: bind (INITIALIZE_DEFMAP) の中から再帰的に呼び出されうるので、
+# 先に ble-edit/bind/load-editing-mode:vi を上書きする必要がある。
+ble/is-function ble-edit/bind/load-editing-mode:vi && return
+function ble-edit/bind/load-editing-mode:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
 
@@ -4232,10 +4232,10 @@ function ble/widget/vi-command/nth-byte {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ((ARG--))
   local offset=0 text=$_ble_edit_str len=${#_ble_edit_str}
-  local left nleft
+  local left nleft ret
   while ((ARG>0&&len>1)); do
     left=${text::len/2}
-    LC_ALL=C builtin eval 'nleft=${#left}'
+    ble/util/strlen "$left"; nleft=$ret
     if ((ARG<nleft)); then
       text=$left
       ((len/=2))
@@ -5533,7 +5533,6 @@ function ble/widget/vi_omap/switch-to-blockwise {
 }
 
 function ble-decode/keymap:vi_omap/define {
-  local ble_bind_keymap=vi_omap
   ble/keymap:vi/setup-map
 
   ble-bind -f __default__ vi_omap/__default__
@@ -5726,8 +5725,6 @@ function ble/widget/vi_nmap/decrement {
 }
 
 function ble-decode/keymap:vi_nmap/define {
-  local ble_bind_keymap=vi_nmap
-
   ble/keymap:vi/setup-map
 
   ble-bind -f __default__ vi-command/decompose-meta
@@ -5828,6 +5825,19 @@ function ble-decode/keymap:vi_nmap/define {
   ble-bind -f 'C-l'     'clear-screen'
   ble-bind -f 'C-d'     'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
   ble-bind -f 'auto_complete_enter' auto-complete-enter
+
+  # Note #D1256: Bash vi-command 互換性の為
+  ble-bind -f M-left   'vi-command/backward-vword'
+  ble-bind -f M-right  'vi-command/forward-vword'
+  ble-bind -f C-delete 'vi-rlfunc/kill-word'
+  ble-bind -f '#'      'vi-rlfunc/insert-comment'
+  ble-bind -f '&'      'vi_nmap/@edit tilde-expand'
+
+  # ble-bind -f 'C-u' 'vi-rlfunc/unix-line-discard'
+  # ble-bind -f 'C-q' 'vi-rlfunc/quoted-insert'
+  # ble-bind -f 'C-v' 'vi-rlfunc/quoted-insert'
+  # ble-bind -f 'C-d' 'vi-rlfunc/eof-maybe'
+  # ble-bind -f '_'   'vi-rlfunc/yank-arg'
 }
 
 # vi_nmap.rlfunc.txt 用
@@ -5935,6 +5945,67 @@ function ble/widget/vi-rlfunc/subst {
   else
     ble/widget/vi_nmap/kill-forward-char-and-insert
   fi
+}
+# rl_nmap C-delete
+function ble/widget/vi-rlfunc/kill-word {
+  _ble_keymap_vi_opfunc=d
+  ble/widget/vi-command/forward-vword-end
+}
+# rl_nmap C-u
+function ble/widget/vi-rlfunc/unix-line-discard {
+  _ble_keymap_vi_opfunc=d
+  ble/widget/vi-command/beginning-of-line
+}
+# rl_nmap #
+function ble/widget/vi-rlfunc/insert-comment {
+  local ARG FLAG REG; ble/keymap:vi/get-arg ''
+  ble/keymap:vi/mark/start-edit-area
+  ble/widget/insert-comment/.insert "$ARG"
+  ble/keymap:vi/mark/end-edit-area
+  ble/widget/vi-command/accept-line
+}
+# rl_nmap C-v, C-q
+function ble/widget/vi-rlfunc/quoted-insert.hook {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  ble/keymap:vi/mark/start-edit-area
+  _ble_edit_arg=$ARG ble/widget/self-insert
+  ble/keymap:vi/mark/end-edit-area
+  ble/keymap:vi/repeat/record
+  ble/keymap:vi/adjust-command-mode
+  return 0
+}
+function ble/widget/vi-rlfunc/quoted-insert {
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/vi-rlfunc/quoted-insert.hook
+  return 147
+}
+# rl_nmap C-d
+function ble/widget/vi-rlfunc/eof-maybe {
+  if [[ ! $_ble_edit_str ]]; then
+    ble/widget/exit
+    ble/keymap:vi/adjust-command-mode # ジョブがあるときは終了しないので。
+    return 1
+  elif ble-edit/is-single-complete-line; then
+    ble/widget/vi-command/accept-line
+  else
+    local ARG FLAG REG; ble/keymap:vi/get-arg 1
+    ble/keymap:vi/mark/start-edit-area
+    _ble_edit_ind=${#_ble_edit_str}
+    _ble_edit_arg=$ARG
+    ble/widget/self-insert
+    ble/keymap:vi/mark/end-edit-area
+    ble/keymap:vi/adjust-command-mode
+  fi
+}
+# rl_nmap _
+function ble/widget/vi-rlfunc/yank-arg {
+  ble/widget/vi_nmap/append-mode
+  ble/keymap:vi/imap-repeat/reset
+  local -a KEYS; KEYS=(32)
+  ble/widget/self-insert
+  ble/util/unlocal KEYS
+  ble/widget/insert-last-argument
+  return
 }
 
 # rlfunc: forward-byte, backward-byte
@@ -7296,7 +7367,6 @@ function ble/widget/vi_xmap/progressive-decrement { ble/widget/vi_xmap/increment
 #--------------------------------------
 
 function ble-decode/keymap:vi_xmap/define {
-  local ble_bind_keymap=vi_xmap
   ble/keymap:vi/setup-map
 
   ble-bind -f __default__ vi-command/decompose-meta
@@ -7356,8 +7426,6 @@ function ble-decode/keymap:vi_xmap/define {
 }
 
 function ble-decode/keymap:vi_smap/define {
-  local ble_bind_keymap=vi_smap
-
   ble-bind -f __default__ vi-command/decompose-meta
 
   ble-bind -f 'ESC' vi_xmap/exit
@@ -7591,8 +7659,6 @@ function ble/widget/vi_imap/delete-backward-indent-or {
 #------------------------------------------------------------------------------
 
 function ble-decode/keymap:vi_imap/define {
-  local ble_bind_keymap=vi_imap
-
   #----------------------------------------------------------------------------
   # common bindings
 
@@ -7854,8 +7920,6 @@ function ble/widget/vi_cmap/__before_widget__ {
 }
 
 function ble-decode/keymap:vi_cmap/define {
-  local ble_bind_keymap=vi_cmap
-
   #----------------------------------------------------------------------------
   # common bindings + modifications
 
@@ -7904,23 +7968,15 @@ function ble-decode/keymap:vi/initialize {
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi..."
 
-  ble-decode/keymap:isearch/define
-  ble-decode/keymap:nsearch/define
-  ble-decode/keymap:vi_imap/define
-  ble-decode/keymap:vi_nmap/define
-  ble-decode/keymap:vi_omap/define
-  ble-decode/keymap:vi_xmap/define
-  ble-decode/keymap:vi_cmap/define
-
   {
-    ble-decode/keymap/dump isearch
-    ble-decode/keymap/dump nsearch
-    ble-decode/keymap/dump vi_imap
-    ble-decode/keymap/dump vi_nmap
-    ble-decode/keymap/dump vi_omap
-    ble-decode/keymap/dump vi_xmap
-    ble-decode/keymap/dump vi_cmap
-  } >| "$fname_keymap_cache"
+    ble-decode/keymap/load isearch dump
+    ble-decode/keymap/load nsearch dump
+    ble-decode/keymap/load vi_imap dump
+    ble-decode/keymap/load vi_nmap dump
+    ble-decode/keymap/load vi_omap dump
+    ble-decode/keymap/load vi_xmap dump
+    ble-decode/keymap/load vi_cmap dump
+  } 3>| "$fname_keymap_cache"
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi... done"
 }

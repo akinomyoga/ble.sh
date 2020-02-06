@@ -100,6 +100,10 @@ CTX_ARGEX       69
 CTX_ARGEI       70
 CTX_ARGER       71
 
+# coproc var
+CTX_COARGX      74
+CTX_COARGI      75
+
 #------------------------------------------------------------------------------
 # syntax highlight の為の属性
 

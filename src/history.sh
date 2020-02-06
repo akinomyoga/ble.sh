@@ -1576,7 +1576,7 @@ function ble/history/isearch-backward-blockwise {
       [[ $index ]] && return 0
 
       ((i-=block))
-      if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble-decode/has-input; then
+      if ((has_stop_check&&isearch_time%NSTPCHK==0)) && ble/decode/has-input; then
         index=$i
         return 148
       elif ((has_progress&&isearch_time%NPROGRESS==0)); then
@@ -1624,7 +1624,7 @@ function ble/history/forward-isearch.impl {
 #%define search_loop
       for ((;expr_cond;expr_incr)); do
         ((isearch_time++,has_stop_check&&isearch_time%100==0)) &&
-          ble-decode/has-input && return 148
+          ble/decode/has-input && return 148
         @ && return 0
         ((has_progress&&isearch_time%1000==0)) &&
           "$isearch_progress_callback" "$index"

@@ -19,6 +19,10 @@
 #   DCS  PU1  PU2  STS  CCH  MW   SPA  EPA
 #   SOS  SGCI SCI  CSI  ST   OSC  PM   APC
 #
+# 特殊文字 (内部使用)
+#
+#   @ESC @NUL
+#
 # 特殊キーバインディング
 #
 #   __batch_char__
@@ -42,6 +46,7 @@
 # 2019-04-15 __error__ を追加したので keycode の再生成が必要。
 # 2019-05-04 実験的に mouse, mouse_move を追加した。
 # 2019-05-06 ble-update 関連でバグがあったのを潰したので更新。
+# 2020-01-31 @ESC, @NUL を追加した。
 
 function ble/init:cmap/bind-single-csi {
   ble-bind -k "ESC [ $1" "$2"
@@ -124,6 +129,8 @@ function ble/init:cmap/initialize {
   fi
   ble-bind --csi '7~' home
   ble-bind --csi '8~' end
+  local kdch1; ble/util/assign kdch1 'tput kD 2>/dev/null || tput kdch1 2>/dev/null'
+  [[ $kdch1 == $'\x7F' ]] && ble-bind -k 'DEL' delete
 
   # vt220, xterm, rxvt
   ble-bind --csi '11~' f1

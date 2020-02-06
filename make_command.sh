@@ -126,7 +126,7 @@ function sub:check/builtin {
 
 function sub:check/a.txt {
   echo "--- $FUNCNAME ---"
-  grc --color --exclude=./test --exclude=./make_command.sh 'a\.txt|/dev/(pts/|pty)[0-9]*' |
+  grc --color --exclude=./test --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 
@@ -158,7 +158,7 @@ function sub:check/assign {
 function sub:check/memo-numbering {
   echo "--- $FUNCNAME ---"
 
-  grep -ao '\[#D....\]' memo.txt | awk '
+  grep -ao '\[#D....\]' note.txt memo/done.txt | awk '
     function report_error(message) {
       printf("memo-numbering: \x1b[1;31m%s\x1b[m\n", message) > "/dev/stderr";
     }
@@ -189,7 +189,7 @@ function sub:check/memo-numbering {
       }
     }
   '
-  sed -n '0,/^[[:space:]]\{1,\}Done/d;/  \* .*\[#D....\]$/d;/^  \* /p' memo.txt
+  cat note.txt memo/done.txt | sed -n '0,/^[[:space:]]\{1,\}Done/d;/  \* .*\[#D....\]$/d;/^  \* /p'
 }
 
 # 誤って ((${#arr[@]})) を ((${arr[@]})) などと書いてしまうミス。

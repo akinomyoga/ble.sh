@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # include guard
-ble/is-function ble-edit/bind/load-keymap-definition:emacs && return
-function ble-edit/bind/load-keymap-definition:emacs { :; }
+ble/is-function ble-edit/bind/load-editing-mode:emacs && return
+function ble-edit/bind/load-editing-mode:emacs { :; }
 
 # 2015-12-09 keymap cache should be updated due to the refactoring.
 # 2019-01-18 keymap cache should be updated for recent changes
@@ -122,8 +122,6 @@ function ble/widget/emacs/bracketed-paste.proc {
 #------------------------------------------------------------------------------
 
 function ble-decode/keymap:emacs/define {
-  local ble_bind_keymap=emacs
-
   #----------------------------------------------------------------------------
   # common bindings + modifications
 
@@ -200,15 +198,11 @@ function ble-decode/keymap:emacs/initialize {
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs..."
 
-  ble-decode/keymap:isearch/define
-  ble-decode/keymap:nsearch/define
-  ble-decode/keymap:emacs/define
-
   {
-    ble-decode/keymap/dump isearch
-    ble-decode/keymap/dump nsearch
-    ble-decode/keymap/dump emacs
-  } >| "$fname_keymap_cache"
+    ble-decode/keymap/load isearch dump
+    ble-decode/keymap/load nsearch dump
+    ble-decode/keymap/load emacs   dump
+  } 3>| "$fname_keymap_cache"
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs... done"
 }

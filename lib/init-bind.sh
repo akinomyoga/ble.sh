@@ -122,7 +122,7 @@ function ble/init:bind/generate-binder {
   #   保険として 128-255 を先に bind してから 0-127 を bind する。
   local i
   for i in {128..255} {0..127}; do
-    local ret; ble-decode-bind/c2dqs "$i"
+    local ret; ble/decode/c2dqs "$i"
 
     # *
     if ((i==0)); then
@@ -179,7 +179,7 @@ function ble/init:bind/generate-binder {
           #   受信した後で CSI を ESC [ に戻す。
           #   CSI = \u009B = utf8{\xC2\x9B} = utf8{\302\233}
           # printf 'bind %q' '"\e[":"\302\233"'               >> "$fbind1"
-          # ble/util/print "ble-bind -f 'CSI' '.ble-decode-char 27 91'" >> "$fbind1"
+          # ble/util/print "ble-bind -f 'CSI' '.CHARS 27 91'" >> "$fbind1"
 
           # ENCODING: \xC0\x9B is 2-byte code of ESC (UTF-8依存)
           ble/init:bind/bind-s '"\e[":"\xC0\x9B["'
@@ -194,7 +194,7 @@ function ble/init:bind/generate-binder {
         # ESC ESC for bash-4.1
         ble/init:bind/bind-s '"\e\e":"\e[^"'
         ble/util/print "ble-bind -k 'ESC [ ^' __esc__"                >> "$fbind1"
-        ble/util/print "ble-bind -f __esc__ '.ble-decode-char 27 27'" >> "$fbind1"
+        ble/util/print "ble-bind -f __esc__ '.CHARS 27 27'" >> "$fbind1"
         ble/init:bind/bind-r '\e\e'
       fi
     fi
