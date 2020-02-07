@@ -3119,12 +3119,14 @@ function ble/syntax:bash/ctx-command/check-word-end {
       ((ctx=CTX_ARGEX))
       processed=builtin ;;
     ('coproc')
-      if ble/syntax:bash/ctx-coproc/.is-next-compound; then
-        ((ctx=CTX_CMDXC))
-      else
-        ((ctx=CTX_COARGX))
-      fi
-      processed=keyword ;;
+      if ((_ble_bash>=40000)); then
+        if ble/syntax:bash/ctx-coproc/.is-next-compound; then
+          ((ctx=CTX_CMDXC))
+        else
+          ((ctx=CTX_COARGX))
+        fi
+        processed=keyword
+      fi ;;
     ('function')
       ((ctx=CTX_ARGX))
       local isfuncsymx=$'\t\n'' "$&'\''();<>\`|' rex_space=$'[ \t]' rex

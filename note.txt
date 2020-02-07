@@ -2670,6 +2670,44 @@ bash_tips
 
 2020-02-07
 
+  * MSYS 1.0 を使ってみたら全然動かない [#D1272]
+
+    * msys の version 判定は uname -r を実行すれば良い。
+      というか _ble_term_CR が空かどうかで判定できる気がする。
+
+    * MSYS1.0 に至っては _ble_term_CR=$'\r' ですら効かない様だ。
+      仕方がないので _ble_term_cr=$'\e[G' で代用すれば良い。
+
+    ? check $_ble_base_cache/cygwin.term
+      cygwin.term を確認してみると cr, ich, dch, ech, Ss が空欄になっている。
+      重要なのは cr だけである。それなのに _ble_term_cr=$'\e[G' しても未だ変だ。
+      他に実装されてはいるが振る舞いが変な制御機能があるという事なのだろう。
+      例えば RI や IND が実装されていないという事だろうか。
+
+    ? yes: これは cygwin console か?
+      というより TERM を cygwin にしているがこれは本当に cygwin console か?
+      実は cygwin pseudo console の気がする。と思ったが実際に実行してみると
+      256色対応もちゃんとできていないのでこれは pseudo console ではない。
+      やはり cygwin console なのである。
+      pcon に切り替える機能は実装されていないだろうから当然である。
+      丁度 cygwin-3.0.7 と同様に特別な事をしていなければ cygwin console なのである。
+
+    * fixed: _ble_term_xenl と _ble_term_ind を修正したら何となく動く様になった。
+
+    ? ok: xenl が効いていない?
+      % しかしよく見てみると _ble_term_xenl=1 にすると無条件に eol mark が表示される。
+      % _ble_term_xenl=0 にすると無条件に eol mark が表示されない。
+      % と思ったがこれは勘違いである。echo hello として eol mark が表示されないと勘違いした。
+
+    * fixed: getent が無いというエラーメッセージが出る。
+      →検査している気になっていたが実は bash 3.1 では、
+      type a b c の中で一つでも存在していれば成功するという事なのか?
+      →どうもその様である。つまり ble.pp にあるコードは修正する必要がある。
+      調べた所 Bash 4.0 以上で全てのコマンドが見つかった時に真になる様だ。
+      修正した。
+
+    * fixed: よく考えたら構文解析で bash version をチェックするのを忘れていた。
+
   * MSYS2 では paste-from-clipboard という readline 関数が追加されている様だ? [#D1271]
     確認するとやはり paste-from-clipboard は cygwin 版の bash にはない。
     何れにしても新しく対応する事にする。これは /dev/clipboard を見れば良い。
@@ -2730,13 +2768,13 @@ bash_tips
 
     declare -p の振る舞いについて確認しておく。
 
-      bash-3.1 declare -- a="\$"  bash-3.1 declare -a a='([0]="\$")'  ")'h-3.1 declare -a a='([0]="    
-      bash-3.2 declare -- a="\$"  bash-3.2 declare -a a='([0]="\$")'  ")'h-3.2 declare -a a='([0]="    
-      bash-4.0 declare -- a="\$"  bash-4.0 declare -a a='([0]="\$")'  ")'h-4.0 declare -a a='([0]="    
-      bash-4.2 declare -- a="\$"  bash-4.2 declare -a a='([0]="\$")'  ")'h-4.2 declare -a a='([0]="    
-      bash-3.0 declare -- a="\$"  bash-3.0 declare -a a='([0]="\$")'  ")'h-3.0 declare -a a='([0]="    
-      bash-4.1 declare -- a="\$"  bash-4.1 declare -a a='([0]="\$")'  ")'h-4.1 declare -a a='([0]="    
-      bash-4.3 declare -- a="\$"  bash-4.3 declare -a a='([0]="\$")'  ")'h-4.3 declare -a a='([0]="    
+      bash-3.1 declare -- a="\$"  bash-3.1 declare -a a='([0]="\$")'  ")'h-3.1 declare -a a='([0]="
+      bash-3.2 declare -- a="\$"  bash-3.2 declare -a a='([0]="\$")'  ")'h-3.2 declare -a a='([0]="
+      bash-4.0 declare -- a="\$"  bash-4.0 declare -a a='([0]="\$")'  ")'h-4.0 declare -a a='([0]="
+      bash-4.2 declare -- a="\$"  bash-4.2 declare -a a='([0]="\$")'  ")'h-4.2 declare -a a='([0]="
+      bash-3.0 declare -- a="\$"  bash-3.0 declare -a a='([0]="\$")'  ")'h-3.0 declare -a a='([0]="
+      bash-4.1 declare -- a="\$"  bash-4.1 declare -a a='([0]="\$")'  ")'h-4.1 declare -a a='([0]="
+      bash-4.3 declare -- a="\$"  bash-4.3 declare -a a='([0]="\$")'  ")'h-4.3 declare -a a='([0]="
       bash-4.4 declare -- a="\$"  bash-4.4 declare -a a=([0]="\$")    bash-4.4 declare -a a=([0]=$'\r')
       bash-5.0 declare -- a="\$"  bash-5.0 declare -a a=([0]="\$")    bash-5.0 declare -a a=([0]=$'\r')
 

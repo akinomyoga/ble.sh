@@ -260,11 +260,21 @@ function ble/bin/.freeze-utility-path {
   ((!fail))
 }
 
+if ((_ble_bash>=40000)); then
+  function ble/bin#has { type "$@" &>/dev/null; }
+else
+  function ble/bin#has {
+    local cmd
+    for cmd; do type "$cmd" || return 1; done &>/dev/null
+    return 0
+  }
+fi
+
 # POSIX utilities
 
 _ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep cat wc mv sh)
 function ble/.check-environment {
-  if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
+  if ! ble/bin#has "${_ble_init_posix_command_list[@]}"; then
     local cmd commandMissing=
     for cmd in "${_ble_init_posix_command_list[@]}"; do
       if ! type "$cmd" &>/dev/null; then
@@ -281,11 +291,11 @@ function ble/.check-environment {
     export PATH=${default_path}${PATH:+:}${PATH}
     [[ :$PATH: == *:/bin:* ]] || PATH=/bin${PATH:+:}$PATH
     [[ :$PATH: == *:/usr/bin:* ]] || PATH=/usr/bin${PATH:+:}$PATH
-    if ! type "${_ble_init_posix_command_list[@]}" &>/dev/null; then
+    if ! ble/bin#has "${_ble_init_posix_command_list[@]}"; then
       PATH=$original_path
       return 1
     fi
-    ble/util/print "ble.sh: modified PATH=${PATH::${#PATH}-${#original_path}}:\$PATH" >&2
+    ble/util/print "ble.sh: modified PATH=${PATH::${#PATH}-${#original_path}}\$PATH" >&2
   fi
 
   if [[ ! $USER ]]; then
@@ -617,10 +627,10 @@ function ble-update {
   fi
 
   # check git, gawk
-  if ! type git gawk &>/dev/null; then
+  if ! ble/bin#has git gawk; then
     local command
     for command in git gawk; do
-      type "$command" ||
+      type "$command" &>/dev/null ||
         ble/util/print "ble-update: '$command' command is not available." >&2
     done
     return 1

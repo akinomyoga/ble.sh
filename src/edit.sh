@@ -223,7 +223,7 @@ function ble-edit/prompt/initialize {
     fi
   elif [[ $OSTYPE == msys* ]]; then
     # msys64/etc/bash.bashrc に倣う
-    if type id getent &>/dev/null; then
+    if ble/bin#has id getent; then
       local id getent
       ble/util/assign id 'id -G'
       ble/util/assign getent 'getent -w group S-1-16-12288'
@@ -7058,46 +7058,50 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     ble/builtin/trap/reserve USR1
     builtin trap -- 'ble-edit/bind/stdout/TRAPUSR1' USR1
 
-    ble/bin/rm -f "$_ble_edit_io_fname2.pipe"
-    ble/bin/mkfifo "$_ble_edit_io_fname2.pipe"
-    {
-      {
-        function ble-edit/stdout/check-ignoreeof-message {
-          local line=$1
+    function ble-edit/stdout/check-ignoreeof-message {
+      local line=$1
 
-          [[ $line == *$bleopt_internal_ignoreeof_trap* ||
-               $line == *'Use "exit" to leave the shell.'* ||
-               $line == *'ログアウトする為には exit を入力して下さい'* ||
-               $line == *'シェルから脱出するには "exit" を使用してください。'* ||
-               $line == *'シェルから脱出するのに "exit" を使いなさい.'* ||
-               $line == *'Gebruik Kaart na Los Tronk'* ]] && return 0
+      # 様々の Bash のバージョンで使われているメッセージと照合する。
+      [[ $line == *$bleopt_internal_ignoreeof_trap* ||
+           $line == *'Use "exit" to leave the shell.'* ||
+           $line == *'ログアウトする為には exit を入力して下さい'* ||
+           $line == *'シェルから脱出するには "exit" を使用してください。'* ||
+           $line == *'シェルから脱出するのに "exit" を使いなさい.'* ||
+           $line == *'Gebruik Kaart na Los Tronk'* ]] && return 0
 
-          # lib/core-edit.ignoreeof-messages.txt の中身をキャッシュする様にする?
-          [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/lib/core-edit.ignoreeof-messages.txt
-        }
+      # lib/core-edit.ignoreeof-messages.txt の中身をキャッシュする様にする?
+      [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/lib/core-edit.ignoreeof-messages.txt
+    }
 
-        while IFS= builtin read -r line; do
-          SPACE=$' \n\t'
-          if [[ $line == *[^$SPACE]* ]]; then
-            builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
-          fi
+    function ble-edit/stdout/check-ignoreeof-loop {
+      local line opts=:$1:
+      while IFS= builtin read -r line; do
+        if [[ $line == *[^$_ble_term_IFS]* ]]; then
+          builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
+        fi
 
-          if [[ $bleopt_internal_ignoreeof_trap ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
-            ble/util/print eof >> "$_ble_edit_io_fname2.proc"
-            kill -USR1 $$
-            ble/util/msleep 100 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
-          fi
-        done < "$_ble_edit_io_fname2.pipe"
-      } &>/dev/null & disown
+        if [[ $bleopt_internal_ignoreeof_trap ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
+          ble/util/print eof >> "$_ble_edit_io_fname2.proc"
+          kill -USR1 $$
+          ble/util/msleep 100 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
+        fi
+      done
     } &>/dev/null
 
-    ble/util/openat _ble_edit_fd_stderr_pipe '> "$_ble_edit_io_fname2.pipe"'
+    ble/bin/rm -f "$_ble_edit_io_fname2.pipe"
+    if ble/bin/mkfifo "$_ble_edit_io_fname2.pipe" 2>/dev/null; then
+      {
+        ble-edit/stdout/check-ignoreeof-loop fifo < "$_ble_edit_io_fname2.pipe" & disown
+      } &>/dev/null
 
-    function ble-edit/bind/stdout.off {
-      ble/util/buffer.flush >&2
-      ble-edit/bind/stdout/check-stderr
-      exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_fd_stderr_pipe
-    }
+      ble/util/openat _ble_edit_fd_stderr_pipe '> "$_ble_edit_io_fname2.pipe"'
+
+      function ble-edit/bind/stdout.off {
+        ble/util/buffer.flush >&2
+        ble-edit/bind/stdout/check-stderr
+        exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_fd_stderr_pipe
+      }
+    fi
   fi
 fi
 

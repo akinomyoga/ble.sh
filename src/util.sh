@@ -2890,6 +2890,7 @@ bleopt/declare -v vbell_duration 2000
 bleopt/declare -n vbell_align left
 
 _ble_term_cygwin=
+[[ $TERM == cygwin ]] && _ble_term_cygwin=1
 function ble/term:cygwin/initialize.hook {
   local rex='^67;[0-9]{3,};0$'
   [[ $_ble_term_DA2R =~ $rex ]] || return 0
