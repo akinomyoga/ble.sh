@@ -161,11 +161,14 @@ function ble/util/array-reverse {
 
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
-    declare -p "$@" | awk -v _ble_bash="$_ble_bash" '
-      BEGIN{decl="";}
-      function declflush( isArray){
-        if(decl){
-          isArray=(decl~/declare +-[fFgilrtux]*[aA]/);
+    declare -p "$@" | awk -v _ble_bash="$_ble_bash" -v OSTYPE="$OSTYPE" '
+      BEGIN {
+        decl = "";
+        flag_escape_cr = OSTYPE == "msys";
+      }
+      function declflush(_, isArray){
+        if (decl) {
+          isArray = (decl ~ /declare +-[fFgilrtux]*[aA]/);
 
           # bash-3.0 の declare -p は改行について誤った出力をする。
           if(_ble_bash<30100)gsub(/\\\n/,"\n",decl);
@@ -173,10 +176,11 @@ function ble/util/declare-print-definitions {
           if (_ble_bash < 40000) {
             # #D1238 bash-3.2 以前の declare -p は ^A, ^? を
             #   ^A^A, ^A^? と出力してしまうので補正する。
-            gsub(/\001\001/, "\001\002", decl);
-            gsub(/\001\177/, "\177", decl);
-            gsub(/\001\002/, "\001", decl);
+            gsub(/\001\001/, "${_ble_term_SOH}", decl);
+            gsub(/\001\177/, "${_ble_term_DEL}", decl);
           }
+          if (flag_escape_cr)
+            gsub(/\015/, "${_ble_term_CR}", decl);
 
           # declare 除去
           sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/,"",decl);
@@ -402,6 +406,13 @@ function bleopt {
 : ${bleopt_vbell_duration=2000}
 
 function .ble-term.initialize {
+  _ble_term_nl=$'\n'
+  _ble_term_FS=$'\034'
+  _ble_term_SOH=$'\001'
+  _ble_term_DEL=$'\177'
+  _ble_term_IFS=$' \t\n'
+  _ble_term_CR=$'\r'
+
   if [[ $_ble_base/term.sh -nt $_ble_base/cache/$TERM.term ]]; then
     source "$_ble_base/term.sh"
   else

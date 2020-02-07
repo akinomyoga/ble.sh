@@ -3346,11 +3346,18 @@ function .ble-edit/history/generate-source-to-load-history {
       else
         gsub(apos,apos "\\" apos apos,line);
 
-      t=t!=""?t "\n" line:line;
+      # 対策 #D1239: bash-3.2 以前では ^A, ^? が ^A^A, ^A^? に化ける
+      gsub(/\001/, "'$apos'${_ble_term_SOH}'$apos'", line);
+      gsub(/\177/, "'$apos'${_ble_term_DEL}'$apos'", line);
+
+      # 対策 #D1270: MSYS2 で ^M を代入すると消える
+      gsub(/\015/, "'$apos'${_ble_term_CR}'$apos'", line);
+
+      t = t != "" ? t "\n" line : line;
     }
-    END{
-      if(n!=""){
-        n="";
+    END {
+      if (n != "") {
+        n = "";
         print "  " apos t apos;
       }
 
