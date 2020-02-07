@@ -1,0 +1,133 @@
+From 679f9db5a6d70784bd7ee3a1d947ab10f71623b6 Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Tue, 4 Feb 2020 19:01:57 +0800
+Subject: [PATCH] bash-5.0.11: check printf \uXXXX
+
+---
+ builtins/printf.def | 14 ++++++++------
+ lib/sh/unicode.c    | 12 ++++++++----
+ 2 files changed, 16 insertions(+), 10 deletions(-)
+
+diff --git a/builtins/printf.def b/builtins/printf.def
+index bc6ef57..164d80c 100644
+--- a/builtins/printf.def
++++ b/builtins/printf.def
+@@ -414,7 +414,7 @@ printf_builtin (list)
+ 	  modstart = fmt;
+ 	  while (*fmt && strchr (LENMODS, *fmt))
+ 	    fmt++;
+-	    
++
+ 	  if (*fmt == 0)
+ 	    {
+ 	      builtin_error (_("`%s': missing format character"), start);
+@@ -814,7 +814,7 @@ printstr (fmt, string, len, fieldwidth, precision)
+ 
+   return (ferror (stdout) ? -1 : 0);
+ }
+-  
++
+ /* Convert STRING by expanding the escape sequences specified by the
+    POSIX standard for printf's `%b' format string.  If SAWC is non-null,
+    perform the processing appropriate for %b arguments.  In particular,
+@@ -913,7 +913,7 @@ tescape (estart, cp, lenp, sawc)
+ 	  }
+ 	break;
+ #endif
+-	
++
+       case '\\':	/* \\ -> \ */
+ 	*cp = c;
+ 	break;
+@@ -996,7 +996,7 @@ bexpand (string, len, sawc, lenp)
+ 	*r++ = mbch[mbind];
+ #else
+       *r++ = c;
+-#endif      
++#endif
+     }
+ 
+   *r = '\0';
+@@ -1070,7 +1070,7 @@ vbprintf (format, va_alist)
+   if  (strlen (vbuf) != vblen)
+     internal_error  ("printf:vbprintf: vblen (%d) != strlen (vbuf) (%d)", vblen, (int)strlen (vbuf));
+ #endif
+-  
++
+   return (blen);
+ }
+ 
+@@ -1198,7 +1198,7 @@ getuintmax ()
+ 
+   errno = 0;
+   ret = strtoumax (garglist->word->word, &ep, 0);
+-  
++
+   if (*ep)
+     {
+       sh_invalidnum (garglist->word->word);
+@@ -1262,12 +1262,14 @@ asciicode ()
+   slen = strlen (garglist->word->word+1);
+   wc = 0;
+   mblength = mbtowc (&wc, garglist->word->word+1, slen);
++//printf("MBLENGTH=%d;wc=%d\n",(int)mblength,(int)wc);
+   if (mblength > 0)
+     ch = wc;		/* XXX */
+   else
+ #endif
+     ch = (unsigned char)garglist->word->word[1];
+ 
++//if(mblength==-1)printf("MBLENGTH=%d;wc=%d;ch=%d\n",(int)mblength,(int)wc,(int)ch);
+   garglist = garglist->next;
+   return (ch);
+ }
+diff --git a/lib/sh/unicode.c b/lib/sh/unicode.c
+index fe13c4a..79f8aeb 100644
+--- a/lib/sh/unicode.c
++++ b/lib/sh/unicode.c
+@@ -132,7 +132,7 @@ u32tochar (x, s)
+       s[3] = x & 0xFF;
+     }
+   s[l] = '\0';
+-  return l;  
++  return l;
+ }
+ 
+ int
+@@ -291,18 +291,22 @@ u32cconv (c, s)
+     }
+ 
+   /* NL_LANGINFO and locale_charset used when setting locale_utf8locale */
+-  
++
+   /* If we have a UTF-8 locale, convert to UTF-8 and return converted value. */
++{FILE* f = fopen("/dev/tty","w");
+   n = u32toutf8 (c, s);
++fprintf(f,"C%x,N%d\n\n",c,n);
++fclose(f);
+   if (utf8locale)
+     return n;
++}
+ 
+   /* If the conversion is not supported, even the ASCII requested above, we
+      bail now.  Currently we return the UTF-8 conversion.  We could return
+      u32tocesc(). */
+   if (localconv == (iconv_t)-1)
+     return n;
+-    
++
+   optr = obuf;
+   obytesleft = sizeof (obuf);
+   iptr = s;
+@@ -312,7 +316,7 @@ u32cconv (c, s)
+ 
+   if (iconv (localconv, (ICONV_CONST char **)&iptr, &sn, &optr, &obytesleft) == (size_t)-1)
+     {
+-      /* You get ISO C99 escape sequences if iconv fails */      
++      /* You get ISO C99 escape sequences if iconv fails */
+       n = u32tocesc (c, s);
+       return n;
+     }
+-- 
+2.21.0
+
