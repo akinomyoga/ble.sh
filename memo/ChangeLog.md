@@ -7,10 +7,13 @@
 
 - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
 - main: check `~/.config/blesh/init.sh` `#D1224` a82f961
-- progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247` 154f638
+- progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247` 154f638 `#D1269` fa0036c
 - decode/kbd: support <kbd>U+XXXX</kbd>, <kbd>@ESC</kbd> and <kbd>@NUL</kbd> for keynames `#D1251` 441117c
 - syntax: support `coproc` `#D1252` 7ff68d2
 - vi/nmap: support readline widgets for <kbd>M-left</kbd>, <kbd>M-right</kbd>, <kbd>C-delete</kbd>, <kbd>#</kbd> and <kbd>&</kbd> `#D1258` 846e0be
+- main: support MSYS (motivated by SUCHMOKUO's report) `#D1264` 0000000
+  - edit: support `\$` in `PS1` for MSYS2 `#D1265` 0000000
+  - msys2: work around MSYS2 Bash bug of missing <kbd>CR</kbd> `#D1270` 0000000
 
 ## Fix
 
@@ -29,6 +32,8 @@
 - syntax: fix a bug that arguments of `eval` are not highlighted `#D1254` 5046d14
 - term: support `TERM=minix` `#D1262` ae0b80f
 - decode: fix error message `command=${[key]-}` for mouse input `#D1263` 0000000
+- [ble-0.3] reload: fix a bug that the state is broken by `ble-reload` `#D1266` f2f30d1
+- decode (`ble/builtin/bind`): remove comment from bind argument `#D1267` 0000000
 
 ## Changes
 - highlight: highlight symlink directories as symlinks `#D1249` 25e8a72

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 2020-02-07 #D12MSYS2 の CR 対策のため更新の必要あり
+
 function ble/init:term/tput { return 1; }
 if ble/bin/.freeze-utility-path tput; then
   _ble_term_hasput=1

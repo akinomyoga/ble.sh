@@ -16,17 +16,17 @@ ble/util/declare-print-definitions arr1 arr2 | cat -A
 echo
 
 echo '# Check arr1=(1 "$del" "$soh")'
-_ble_term_del=
-_ble_term_soh=
-arr1=(1 "$_ble_term_del" "$_ble_term_soh")
+_ble_term_DEL=
+_ble_term_SOH=
+arr1=(1 "$_ble_term_DEL" "$_ble_term_SOH")
 ble/util/declare-print-definitions arr1 | cat -A
 echo
 
 echo '# Check arr1=(2 $del $soh)'
-_ble_term_del=
-_ble_term_soh=
-arr1=(2 $_ble_term_del $_ble_term_soh)
-arr2=(2 ''$_ble_term_del'' ''$_ble_term_soh'')
+_ble_term_DEL=
+_ble_term_SOH=
+arr1=(2 $_ble_term_DEL $_ble_term_SOH)
+arr2=(2 ''$_ble_term_DEL'' ''$_ble_term_SOH'')
 ble/util/declare-print-definitions arr1 arr2 | cat -A
 echo
 

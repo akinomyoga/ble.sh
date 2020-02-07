@@ -918,6 +918,19 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-02-06
+
+  * proghl の中で行った fix を ble-0.3 にも適用しなければならない。
+
+  * mintty で modifyOtherKeys を有効にしているので
+    quoted-insert で C-t 等の基本的なキーですら修飾されている。
+    つまり、制御文字を入力する事ができない。
+
+    然し、本当に modifyOtherKeys を入力したい場合や、
+    或いは、本当に端末が送ってくる内容を知りたい場合もある。
+    その場合には勝手にキー入力をいい感じに翻訳されると困る。
+    C-q と C-v で二種類あるのだから片方に別の物を割り当てるという手もある。
+
 2020-02-02
 
   * vi mode の時は read も vi mode になっているべきではないのか?
@@ -2654,6 +2667,92 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-02-07
+
+  * msys2: 端末の座標計算が時々おかしい。 [#D1270]
+    https://github.com/akinomyoga/ble.sh/issues/40#issuecomment-582941178
+
+    DA2R を見ると mintty 30000 の気がする。
+    実際に Options... を開いてみると mintty 3.1.0 is available
+    という感じの内容が表示される。
+
+    或いは何か msys の terminfo か tput が壊れているという事だろうか。
+    うーん。これについてもちゃんと調べる必要がある。
+    取り敢えず cygwin の term cache と比較してみる?
+
+    → xterm-256color.term (Cygwin) と xterm.term (MSYS2) を比較してみたが、
+    着色と DECSCUSR しか違いは見られなかった。これらは配置には関係ない。
+    従って、やはり MSYS2 の mintty の振る舞いが変なのだという気がする。
+    もしそうだとしたらどの様にして変な振る舞いの原因を特定するのか。
+    そしてどの様にして workaround をすれば良いのか。
+    結構面倒な問題である。そもそも他の端末で異常は発生していない。
+    もし純粋に mintty のバグであるのであれば、これは ble.sh で対処しなくても良い。
+
+    これは CR が効いていないという事? 或いは stty の状態が変?
+    以下は stty -a の diff である。微妙な違いはあるが関係ない気がする。
+    実際に cygwin を msys 側に合わせてみたが問題は再現しない。
+    | --- stty -a (cygwin)^I2020-02-07 07:21:43.088892300 +0800
+    | +++ stty -a (msys)^I2020-02-07 07:21:47.549238700 +0800
+    | @@ -4,7 +4,7 @@
+    |  werase = ^W; lnext = ^V; discard = ^O; min = 1; time = 0;
+    |  -parenb -parodd cs8 -hupcl -cstopb cread -clocal -crtscts
+    |  -ignbrk brkint -ignpar -parmrk -inpck -istrip -inlcr -igncr icrnl -ixon -ixoff
+    | --iuclc ixany imaxbel iutf8
+    | +-iuclc -ixany imaxbel -iutf8
+    |  opost -olcuc -ocrnl onlcr -onocr -onlret -ofill -ofdel nl0 cr0 tab0 bs0 vt0 ff0
+    |  isig icanon iexten echo echoe echok -echonl -noflsh -tostop echoctl echoke
+    |  -flusho
+    次に CR の振る舞いを確認する。特に問題なく動いている様に見える。
+    何と ${#_ble_term_cr} を出力してみたら中身が空である。。
+
+    分かった。_ble_term_cr='^M' を実行すると中身が空になる。
+    _ble_term_cr=$'\r' だと大丈夫。
+    その他の駄目なパターンはあるだろうか。
+    変数に入っている _ble_term_cr の場合は大丈夫の様だ。
+
+    うーん。これの対策方法は不明である。
+    a 一つの方法は _ble_term_cr で CR を使わないという方法。
+      別の制御機能 (hpa) 等を用いて _ble_term_cr を模倣する。
+      これの問題は本当に CR が欲しい所で _ble_term_cr を使っている箇所がないかという事。
+      確認してみた所そういう場所はないようである。
+    b もう一つの方法は _ble_term_cr=$'\r' という形式で記録するという事。
+      うーん。前者の方が楽だが、こちらの方が妥当の気がする。
+      declare-print-definitions を修正する?
+      修正したほうが良い気がする。もし MSYS2 でこれが一般に問題になるのであれば、
+      その他の場所で記録した CR も消滅するという事である。
+      という事であれば declare-print-definition 等で根本から修正する必要がある。
+
+    declare -p の振る舞いについて確認しておく。
+
+      bash-3.1 declare -- a="\$"  bash-3.1 declare -a a='([0]="\$")'  ")'h-3.1 declare -a a='([0]="    
+      bash-3.2 declare -- a="\$"  bash-3.2 declare -a a='([0]="\$")'  ")'h-3.2 declare -a a='([0]="    
+      bash-4.0 declare -- a="\$"  bash-4.0 declare -a a='([0]="\$")'  ")'h-4.0 declare -a a='([0]="    
+      bash-4.2 declare -- a="\$"  bash-4.2 declare -a a='([0]="\$")'  ")'h-4.2 declare -a a='([0]="    
+      bash-3.0 declare -- a="\$"  bash-3.0 declare -a a='([0]="\$")'  ")'h-3.0 declare -a a='([0]="    
+      bash-4.1 declare -- a="\$"  bash-4.1 declare -a a='([0]="\$")'  ")'h-4.1 declare -a a='([0]="    
+      bash-4.3 declare -- a="\$"  bash-4.3 declare -a a='([0]="\$")'  ")'h-4.3 declare -a a='([0]="    
+      bash-4.4 declare -- a="\$"  bash-4.4 declare -a a=([0]="\$")    bash-4.4 declare -a a=([0]=$'\r')
+      bash-5.0 declare -- a="\$"  bash-5.0 declare -a a=([0]="\$")    bash-5.0 declare -a a=([0]=$'\r')
+
+      どうも declare -p は一貫して ".." に囲んで出力する様だ。
+      但し、Bash 4.4, 5.0 で制御文字が含まれている場合を除く。
+      Bash 4.4, 5.0 の場合にはそもそも ^M が含まれないという事だから、
+      ^M が含まれる場合には "" の中にあると仮定して良いだろう。
+      従って ^M を $_ble_term_CR に変換する。
+      _ble_term_CR は本体の方で直接 $'\r' を代入すれば良いだろう。
+
+      固定文字列とそうでない物は大文字と小文字で区別する事にする。
+      * _ble_term_{soh,del,fs} も変更する?
+      * 然しそうすると _ble_term_nl も変更しなければならず面倒だ。
+        取り敢えず _ble_term_nl は出力に使っているから変更は保留。
+        他は特殊用途でしか使っていないのである。
+
+    取り敢えず動いている気がする。これで良い。
+    ble-0.3 に移植した。動いている。OK
+
+  * ble-decode/has-input [#D1269]
+    →これはマージのミスだった。修正した。
 
 2020-02-06
 

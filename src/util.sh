@@ -1425,8 +1425,13 @@ function ble/util/print-quoted-command {
 }
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
-    declare -p "$@" | ble/bin/awk -v _ble_bash="$_ble_bash" '
-      BEGIN { decl = ""; }
+    declare -p "$@" | ble/bin/awk -v _ble_bash="$_ble_bash" -v OSTYPE="$OSTYPE" '
+      BEGIN {
+        decl = "";
+
+        # 対策 #D1270: MSYS2 で ^M を代入すると消える
+        flag_escape_cr = OSTYPE == "msys";
+      }
       function declflush(_, isArray) {
         if (decl) {
           isArray = (decl ~ /^declare +-[fFgilrtux]*[aA]/);
@@ -1437,9 +1442,11 @@ function ble/util/declare-print-definitions {
           if (_ble_bash < 40000) {
             # #D1238 bash-3.2 以前の declare -p は ^A, ^? を
             #   ^A^A, ^A^? と出力してしまうので補正する。
-            gsub(/\001\001/, "${_ble_term_soh}", decl);
-            gsub(/\001\177/, "${_ble_term_del}", decl);
+            gsub(/\001\001/, "${_ble_term_SOH}", decl);
+            gsub(/\001\177/, "${_ble_term_DEL}", decl);
           }
+          if (flag_escape_cr)
+            gsub(/\015/, "${_ble_term_CR}", decl);
 
           # declare 除去
           sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/, "", decl);
@@ -2915,10 +2922,11 @@ function ble/term:cygwin/initialize.hook {
 function ble/term/.initialize {
   # Constants (init-term.sh に失敗すると大変なので此処に書く)
   _ble_term_nl=$'\n'
-  _ble_term_fs=$'\034'
-  _ble_term_soh=$'\001'
-  _ble_term_del=$'\177'
+  _ble_term_FS=$'\034'
+  _ble_term_SOH=$'\001'
+  _ble_term_DEL=$'\177'
   _ble_term_IFS=$' \t\n'
+  _ble_term_CR=$'\r'
 
   if [[ $_ble_base/lib/init-term.sh -nt $_ble_base_cache/$TERM.term ]]; then
     source "$_ble_base/lib/init-term.sh"
