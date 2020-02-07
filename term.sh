@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 2020-02-07 #D12MSYS2 の CR 対策のため更新の必要あり
+
 function ble/term.sh/tput { return 1; }
 if ble/bin/.freeze-utility-path tput; then
   _ble_term_hasput=1
@@ -65,10 +67,6 @@ function ble/term.sh/initialize {
   ble/term.sh/define-cap.2 _ble_term_ind $'\eD' ind:sf
   ble/term.sh/define-cap   _ble_term_ri  $'\eM' ri:sr
   ble/term.sh/define-cap   _ble_term_cr  $''  cr:cr
-  _ble_term_nl=$'\n'
-  ble/term.sh/register-varname _ble_term_nl
-  _ble_term_fs=$'\034'
-  ble/term.sh/register-varname _ble_term_fs
 
   # CUU/CUD/CUF/CUB
   ble/term.sh/define-cap _ble_term_cuu $'\e[%dA' cuu:UP 123

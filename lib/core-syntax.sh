@@ -465,7 +465,7 @@ function ble-syntax/print-status/nest.get-text {
     if [[ $nparam == none ]]; then
       nparam=
     else
-      nparam=" nparam=${nparam//$_ble_term_fs/$'\e[7m^\\\e[m'}"
+      nparam=" nparam=${nparam//$_ble_term_FS/$'\e[7m^\\\e[m'}"
     fi
 
     nest=" nest=($nctx w=$nword n=$nnest t=$nchild:$nprev$nparam)"
@@ -520,7 +520,7 @@ function ble-syntax/print-status/stat.get-text {
     if [[ $snparam == none ]]; then
       snparam=
     else
-      snparam=" nparam=${snparam//"$_ble_term_fs"/$'\e[7m^\\\e[m'}"
+      snparam=" nparam=${snparam//"$_ble_term_FS"/$'\e[7m^\\\e[m'}"
     fi
 
     local stat_lookahead=
@@ -2341,7 +2341,7 @@ function ble-syntax:bash/check-word-end/is-delimiter {
 function ble-syntax:bash/check-here-document-from {
   local spaces=$1
   [[ $nparam && $spaces == *$'\n'* ]] || return 1
-  local rex="$_ble_term_fs@([RI][QH][^$_ble_term_fs]*)(.*$)" && [[ $nparam =~ $rex ]] || return 1
+  local rex="$_ble_term_FS@([RI][QH][^$_ble_term_FS]*)(.*$)" && [[ $nparam =~ $rex ]] || return 1
 
   # ヒアドキュメントの開始
   local rematch1=${BASH_REMATCH[1]}
@@ -3265,7 +3265,7 @@ function ble-syntax:bash/ctx-heredoc-word/initialize {
   ble/util/sprintf _ble_syntax_bash_heredoc_EscHT '\\%03o' "$ret"
   ble/util/s2c $'\n'
   ble/util/sprintf _ble_syntax_bash_heredoc_EscLF '\\%03o' "$ret"
-  ble/util/s2c "$_ble_term_fs"
+  ble/util/s2c "$_ble_term_FS"
   ble/util/sprintf _ble_syntax_bash_heredoc_EscFS '\\%03o' "$ret"
 }
 ble-syntax:bash/ctx-heredoc-word/initialize
@@ -3319,8 +3319,8 @@ function ble-syntax:bash/ctx-heredoc-word/remove-quotes {
 ##   @var[out] escaped
 function ble-syntax:bash/ctx-heredoc-word/escape-delimiter {
   local ret=$1
-  if [[ $ret == *[\\\'$_ble_syntax_bash_IFS$_ble_term_fs]* ]]; then
-    local a b fs=$_ble_term_fs
+  if [[ $ret == *[\\\'$_ble_syntax_bash_IFS$_ble_term_FS]* ]]; then
+    local a b fs=$_ble_term_FS
     a=\\   ; b="\\$a"; ret="${ret//"$a"/$b}"
     a=\'   ; b="\\$a"; ret="${ret//"$a"/$b}"
     a=' '  ; b="$_ble_syntax_bash_heredoc_EscSP"; ret="${ret//"$a"/$b}"
@@ -3367,7 +3367,7 @@ function ble-syntax:bash/ctx-heredoc-word/check-word-end {
   fi
 
   local escaped; ble-syntax:bash/ctx-heredoc-word/escape-delimiter "$delimiter"
-  nparam=$nparam$_ble_term_fs@$I$Q$escaped
+  nparam=$nparam$_ble_term_FS@$I$Q$escaped
   return 0
 }
 function ble-syntax:bash/ctx-heredoc-word {
@@ -3876,7 +3876,7 @@ function ble-syntax:bash/is-complete {
 
     # (3) ヒアドキュメントの待ちがある時
     local nparam=${stat[6]}; [[ $nparam == none ]] && nparam=
-    local rex="$_ble_term_fs@([RI][QH][^$_ble_term_fs]*)(.*$)"
+    local rex="$_ble_term_FS@([RI][QH][^$_ble_term_FS]*)(.*$)"
     [[ $nparam =~ $rex ]] && return 1
 
     # (4) 完結している文脈値の時以外
