@@ -2670,6 +2670,11 @@ bash_tips
 
 2020-02-07
 
+  * MSYS2 では paste-from-clipboard という readline 関数が追加されている様だ? [#D1271]
+    確認するとやはり paste-from-clipboard は cygwin 版の bash にはない。
+    何れにしても新しく対応する事にする。これは /dev/clipboard を見れば良い。
+    →実装した。動作確認した。動いている。OK
+
   * msys2: 端末の座標計算が時々おかしい。 [#D1270]
     https://github.com/akinomyoga/ble.sh/issues/40#issuecomment-582941178
 

@@ -2476,6 +2476,18 @@ function ble/widget/.insert-string {
   ))
   _ble_edit_mark_active=
 }
+if [[ -c /dev/clipboard ]]; then
+  function ble/widget/paste-from-clipboard {
+    local clipboard
+    if ! ble/util/readfile clipboard /dev/clipboard; then
+      ble/widget/.bell
+      return 1
+    fi
+
+    ble/widget/insert-string "$clipboard"
+    return
+  }
+fi
 
 ## 関数 ble/widget/insert-arg.impl beg end index delta nth
 ##   @param[in] beg end

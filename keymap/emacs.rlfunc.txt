@@ -165,3 +165,4 @@ yank                              yank
 yank-last-arg                     insert-last-argument
 yank-nth-arg                      insert-nth-argument
 yank-pop                          yank-pop
+paste-from-clipboard              paste-from-clipboard
