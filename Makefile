@@ -52,10 +52,11 @@ $(OUTDIR)/keymap/%.txt: keymap/%.txt | $(OUTDIR)/keymap
 outdirs += $(OUTDIR)/lib
 outfiles += $(OUTDIR)/lib/init-term.sh
 outfiles += $(OUTDIR)/lib/init-bind.sh
+outfiles += $(OUTDIR)/lib/init-cmap.sh
+outfiles += $(OUTDIR)/lib/init-msys1.sh
 outfiles += $(OUTDIR)/lib/core-complete.sh
 outfiles += $(OUTDIR)/lib/core-syntax.sh
 outfiles += $(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
-outfiles += $(OUTDIR)/lib/init-cmap.sh
 outfiles += $(OUTDIR)/lib/vim-surround.sh
 outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib

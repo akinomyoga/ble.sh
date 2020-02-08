@@ -15,6 +15,8 @@
   - edit: support `\$` in `PS1` for MSYS2 `#D1265` 0000000
   - msys2: work around MSYS2 Bash bug of missing <kbd>CR</kbd> `#D1270` 0000000
   - cygwin, msys2: support widget `paste-from-clipboard` `#D1271` 0000000
+  - msys1: support MSYS1 `#D1272`
+  - msys1: work around missing named pipes in MSYS1 `#D1273`
 
 ## Fix
 

@@ -817,7 +817,7 @@ function ble/base/unload {
   ble/util/import/finalize
   ble-decode/keymap/unload
   ble-edit/bind/clear-keymap-definition-loader
-  ble/bin/rm -f "$_ble_base_run/$$".*
+  ble/bin/rm -f "$_ble_base_run/$$".* 2>/dev/null
   return 0
 }
 blehook EXIT+=ble/base/unload

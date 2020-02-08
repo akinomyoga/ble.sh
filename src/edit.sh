@@ -6994,7 +6994,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   }
   function ble-edit/bind/stdout.off {
     ble/util/buffer.flush >&2
-    ble-edit/bind/stdout/check-stderr
+    ble-edit/io/check-stderr
     exec 1>>$_ble_edit_io_fname1 2>>$_ble_edit_io_fname2
   }
   function ble-edit/bind/stdout.finalize {
@@ -7003,9 +7003,9 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     [[ -f $_ble_edit_io_fname2 ]] && ble/bin/rm -f "$_ble_edit_io_fname2"
   }
 
-  ## 関数 ble-edit/bind/stdout/check-stderr
+  ## 関数 ble-edit/io/check-stderr
   ##   bash が stderr にエラーを出力したかチェックし表示する。
-  function ble-edit/bind/stdout/check-stderr {
+  function ble-edit/io/check-stderr {
     local file=${1:-$_ble_edit_io_fname2}
 
     # if the visible bell function is already defined.
@@ -7019,7 +7019,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。
-          if [[ $line == 'bash: '* || $line == "${BASH##*/}: "* ]]; then
+          if [[ $line == 'bash: '* || $line == "${BASH##*/}: "* || $line == "ble.sh ("*"): "* ]]; then
             message="$message${message:+; }$line"
           fi
         done < "$file"
@@ -7034,7 +7034,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   #   IGNOREEOF を設定しておくと C-d を押した時に
   #   stderr に bash が文句を吐くのでそれを捕まえて C-d が押されたと見做す。
   if ((_ble_bash<40000)); then
-    function ble-edit/bind/stdout/TRAPUSR1 {
+    function ble-edit/io/TRAPUSR1 {
       [[ $_ble_term_state == internal ]] || return
 
       local FUNCNEST=
@@ -7056,13 +7056,13 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       ble/builtin/trap/invoke USR1
     }
     ble/builtin/trap/reserve USR1
-    builtin trap -- 'ble-edit/bind/stdout/TRAPUSR1' USR1
+    builtin trap -- 'ble-edit/io/TRAPUSR1' USR1
 
-    function ble-edit/stdout/check-ignoreeof-message {
+    function ble-edit/io/check-ignoreeof-message {
       local line=$1
 
       # 様々の Bash のバージョンで使われているメッセージと照合する。
-      [[ $line == *$bleopt_internal_ignoreeof_trap* ||
+      [[ ( $bleopt_internal_ignoreeof_trap && $line == *$bleopt_internal_ignoreeof_trap* ) ||
            $line == *'Use "exit" to leave the shell.'* ||
            $line == *'ログアウトする為には exit を入力して下さい'* ||
            $line == *'シェルから脱出するには "exit" を使用してください。'* ||
@@ -7073,14 +7073,14 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/lib/core-edit.ignoreeof-messages.txt
     }
 
-    function ble-edit/stdout/check-ignoreeof-loop {
+    function ble-edit/io/check-ignoreeof-loop {
       local line opts=:$1:
       while IFS= builtin read -r line; do
         if [[ $line == *[^$_ble_term_IFS]* ]]; then
           builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
         fi
 
-        if [[ $bleopt_internal_ignoreeof_trap ]] && ble-edit/stdout/check-ignoreeof-message "$line"; then
+        if ble-edit/io/check-ignoreeof-message "$line"; then
           ble/util/print eof >> "$_ble_edit_io_fname2.proc"
           kill -USR1 $$
           ble/util/msleep 100 # 連続で送ると bash が落ちるかも (落ちた事はないが念の為)
@@ -7091,15 +7091,27 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     ble/bin/rm -f "$_ble_edit_io_fname2.pipe"
     if ble/bin/mkfifo "$_ble_edit_io_fname2.pipe" 2>/dev/null; then
       {
-        ble-edit/stdout/check-ignoreeof-loop fifo < "$_ble_edit_io_fname2.pipe" & disown
+        ble-edit/io/check-ignoreeof-loop fifo < "$_ble_edit_io_fname2.pipe" & disown
       } &>/dev/null
 
-      ble/util/openat _ble_edit_fd_stderr_pipe '> "$_ble_edit_io_fname2.pipe"'
+      ble/util/openat _ble_edit_io_fd2 '> "$_ble_edit_io_fname2.pipe"'
 
       function ble-edit/bind/stdout.off {
         ble/util/buffer.flush >&2
-        ble-edit/bind/stdout/check-stderr
-        exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_fd_stderr_pipe
+        ble-edit/io/check-stderr
+        exec 1>>$_ble_edit_io_fname1 2>&$_ble_edit_io_fd2
+      }
+    elif . "$_ble_base/lib/init-msys1.sh"; ble-edit/io:msys1/start-background; then
+      function ble-edit/bind/stdout.off {
+        ble/util/buffer.flush >&2
+        ble-edit/io/check-stderr
+
+        # Note: 一気に入力すると permission denied のエラーメッセージが出る。
+        #   メッセージを抑制するには先に >/dev/null してから別の exec で繋がな
+        #   ければならない。同じ exec でリダイレクトしようとするとメッセージ本
+        #   体は表示されないが、エラーメッセージの改行だけは出力されてしなう。
+        exec 1>>$_ble_edit_io_fname1 2>/dev/null
+        exec 2>>$_ble_edit_io_fname2.buff
       }
     fi
   fi
