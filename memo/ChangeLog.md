@@ -8,38 +8,30 @@
 - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
 - main: check `~/.config/blesh/init.sh` `#D1224` a82f961
 - progcolor: support programmable highlighting `#D1218` 0770234 `#D1244` 9cb3583 `#D1245` 8e8a296 `#D1247` 154f638 `#D1269` fa0036c
-- decode/kbd: support <kbd>U+XXXX</kbd>, <kbd>@ESC</kbd> and <kbd>@NUL</kbd> for keynames `#D1251` 441117c
+- decode/kbd: support <kbd>U+XXXX</kbd>, <kbd>@ESC</kbd> and <kbd>@NUL</kbd> for keynames `#D1251` 441117c ef23ad1
 - syntax: support `coproc` `#D1252` 7ff68d2
 - vi/nmap: support readline widgets for <kbd>M-left</kbd>, <kbd>M-right</kbd>, <kbd>C-delete</kbd>, <kbd>#</kbd> and <kbd>&</kbd> `#D1258` 846e0be
-- main: support MSYS (motivated by SUCHMOKUO's report) `#D1264` 0000000
-  - edit: support `\$` in `PS1` for MSYS2 `#D1265` 0000000
-  - msys2: work around MSYS2 Bash bug of missing <kbd>CR</kbd> `#D1270` 0000000
-  - cygwin, msys2: support widget `paste-from-clipboard` `#D1271` 0000000
-  - msys1: support MSYS1 `#D1272`
-  - msys1: work around missing named pipes in MSYS1 `#D1273`
-- complete: add `compopt -o quote/default` for `fzf` `#D1275`
+- complete: add `compopt -o quote/default` for `fzf` `#D1275` 58e1be4
 
 ## Fix
 
 - util (ble/builtin/trap): fix argument analysis for the form `trap INT` (reported by dylankb) `#D1221` db8b0c2
 - main: fix an error message on ristricted shells `#D1220` b726225
 - edit: fix a bug that the shell hangs with `source ble.sh --noattach && ble-attach` (reported by dylankb) `#D1223` 59c1ce4 3031007
-- main: workaround cygwin uninitialized environment `#D1225` `#D1226` b9278bc
 - edit: fix a bug that the textarea state is not properly saved (reported by cmplstofB) `#D1227` 06ae2b1
 - syntax: support hexadecimal literals for arithmetic expression (reported by cmplstofB) `#D1228` 90e4f35
 - history: fix a bug that history append does not work with `set -C` (reported by cmplstofB) `#D1229` 604bb8b
 - decode (`ble/builtin/bind`): fix widget mapping for `default_keymap=safe` `#D1234` 750a9f5
 - main (ble-update): fix a bug that the check of `make` does not work in Bash 3.2 `#D1236` 08ced81
-- global: workaround Bash 3.2 bug of array initialization with <kbd>SOH</kbd>/<kbd>DEL</kbd> `#D1238` defdbd4 `#D1241` 1720ec0
 - syntax: fix a infinite loop for variable assignments and parameter expansions `#D1239` 327661f
 - complete: clear menu on history move `#D1248` 06cc7de
 - syntax: fix a bug that arguments of `eval` are not highlighted `#D1254` 5046d14
-- term: support `TERM=minix` `#D1262` ae0b80f
-- decode: fix error message `command=${[key]-}` for mouse input `#D1263` 0000000
+- decode: fix error message `command=${[key]-}` for mouse input `#D1263` 09bb274
 - [ble-0.3] reload: fix a bug that the state is broken by `ble-reload` `#D1266` f2f30d1
-- decode (`ble/builtin/bind`): remove comment from bind argument `#D1267` 0000000
+- decode (`ble/builtin/bind`): remove comment from bind argument `#D1267` 880bb2c
 
 ## Changes
+
 - highlight: highlight symlink directories as symlinks `#D1249` 25e8a72
 - auto-complete: bind `insert-on-end` to `C-e` `#D1250` 90b45eb
 - edit (`widget/shell-expand-line`): not quote expanded results by default `#D1255` a9b7810
@@ -47,6 +39,19 @@
   - decode: delay bind until keymap initialization `#D1258` 0beac33
   - decode: read user settings from `bind -Xsp` `#D1259` eef14d0
   - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 5d98210
+- edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 0000000
+
+## Compatibility
+
+- main: work around cygwin uninitialized environment `#D1225` `#D1226` b9278bc
+- global: work around Bash 3.2 bug of array initialization with <kbd>SOH</kbd>/<kbd>DEL</kbd> `#D1238` defdbd4 `#D1241` 1720ec0
+- term: support `TERM=minix` `#D1262` ae0b80f
+- msys2: support2 MSYS (motivated by SUCHMOKUO's report) `#D1264` 47e2863
+  - edit: support `\$` in `PS1` for MSYS2 `#D1265` f6f8956
+  - msys2: work around MSYS2 Bash bug of missing <kbd>CR</kbd> `#D1270` 71f3498
+  - cygwin, msys2: support widget `paste-from-clipboard` `#D1271` cd26c65
+- msys1: support MSYS1 `#D1272` 630d659
+  - msys1: work around missing named pipes in MSYS1 `#D1273` 6f6c2e5
 
 ## Internal changes and fixes
 
@@ -58,7 +63,7 @@
 - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237` bb31b11
 - memo: split `memo.txt` -> `note.txt`, `done.txt` and `ChangeLog.md` `#D1243` 31bc9aa 8b0fe34 419155e
 - global: check isolated identifiers and leak variables `#D1246` 19cc99d 2e74b6d
-- util: add `ble/function#{advice,push,pop}` to patch functions `#D1275`
+- util: add `ble/function#{advice,push,pop}` to patch functions `#D1275` fbe531a
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

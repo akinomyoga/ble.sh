@@ -647,7 +647,8 @@ function ble-edit/prompt/.instantiate {
     local ret
     ble-edit/prompt/.escape "$processed"; local escaped=$ret
     local expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
-    ble-edit/exec/.setexit
+    local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
+    ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
     builtin eval "expanded=\"$escaped\""
   else
     local expanded=$processed
@@ -670,7 +671,8 @@ function ble-edit/prompt/.instantiate {
 
 function ble-edit/prompt/update/.eval-prompt_command {
   # return 等と記述されていた時対策として関数内評価。
-  ble-edit/exec/.setexit
+  local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
+  ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   eval "$PROMPT_COMMAND"
 }
 ## 関数 ble-edit/prompt/update
@@ -3834,6 +3836,7 @@ function ble/widget/transpose-XWORDs { ble/widget/transpose-words.impl XWORD; }
 _ble_edit_exec_lines=()
 _ble_edit_exec_lastexit=0
 _ble_edit_exec_lastarg=$BASH
+_ble_edit_exec_BASH_COMMAND=$BASH
 function ble-edit/exec/register {
   local BASH_COMMAND=$1
   ble/array#push _ble_edit_exec_lines "$1"
@@ -4146,7 +4149,8 @@ function ble-edit/exec:gexec/.TRAPINT/reset {
   blehook INT-='ble-edit/exec:gexec/.TRAPINT'
 }
 function ble-edit/exec:gexec/invoke-hook-with-setexit {
-  ble-edit/exec/.setexit
+  local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
+  ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   blehook/invoke "$@"
 }
 
@@ -4200,6 +4204,7 @@ function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_inside_prologue=1
   local IFS=$' \t\n'
   BASH_COMMAND=$1
+  _ble_edit_exec_BASH_COMMAND=$1
   ble-edit/restore-PS1
   ble-edit/restore-IGNOREEOF
   unset -v HISTCMD; ble/history/get-count -v HISTCMD

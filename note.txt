@@ -2694,7 +2694,11 @@ bash_tips
 
 2020-02-09
 
-  * complete: fzf complete cd が動かない [#D1275]
+  * edit: PS1, PROMPT_COMMAND, PRECMD に於いて BASH_COMMAND, _ を復元 [#D1276]
+    cygwin 問題報告の例を作る上で BASH_COMMAND を用いる use case が
+    ある事に気付いたが、これが ble.sh では動かない。修正した。
+
+  * complete: fzf complete cd が動かない (reported by dylankb) [#D1275]
     https://github.com/akinomyoga/ble.sh/issues/41
     fzf が動かないという話。これは既に解決済みの話。彼は古い version を使っている。
     然し、二つ目の項目に関しては前の修正とは関係ない。
