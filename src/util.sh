@@ -1290,6 +1290,12 @@ fi
 # functions
 #
 
+## 関数 ble/is-function function
+##   関数 function が存在するかどうかを検査します。
+##
+##   @param[in] function
+##     存在を検査する関数の名前を指定します。
+##
 if ((_ble_bash>=30200)); then
   function ble/is-function {
     builtin declare -F "$1" &>/dev/null
@@ -1303,11 +1309,140 @@ else
     [[ $type == function ]]
   }
 fi
+
+## 関数 ble/function#try function args...
+##   関数 function が存在している時に限り関数を呼び出します。
+##
+##   @param[in] function
+##     存在を検査して実行する関数の名前を指定します。
+##   @param[in] args
+##     関数に渡す引数を指定します。
+##   @exit 関数が呼び出された場合はその終了ステータスを返します。
+##     関数が存在しなかった場合は 127 を返します。
+##
 function ble/function#try {
   local lastexit=$?
   ble/is-function "$1" || return 127
   ble/util/setexit "$lastexit"
   "$@"
+}
+
+## 関数 ble/function#advice type function proc
+##   既存の関数の振る舞いを変更します。
+##
+##   @param[in] type
+##     before を指定した時、処理 proc を関数 function の前に挿入します。
+##     after を指定した時、処理 proc を関数 function の後に挿入します。
+##     around を指定した時、関数 function の呼び出し前後に処理 proc を行います。
+##     around proc の中では本来の関数を呼び出す為に ble/function#advice/do
+##     を実行する必要があります。
+##
+##   @fn ble/function#advice/do
+##     around proc の中から呼び出せる関数です。
+##     本来の関数を呼び出します。
+##
+##   @arr[in,out] ADVICE_WORDS
+##     proc の中から参照できる変数です。
+##     関数の呼び出しに使うコマンドを提供します。
+##     例えば元の関数呼び出しが function arg1 arg2 だった場合、
+##     ADVICE_WORDS=(function arg1 arg2) が設定されます。
+##     before/around に於いて本来の関数の呼び出し前にこの配列を書き換える事で
+##     呼び出す関数または関数の引数を変更する事ができます。
+##
+##   @arr[in.out] ADVICE_EXIT
+##     proc の中から参照できる変数です。
+##     after/around に於いて関数実行後の戻り値を参照または
+##     変更するのに使います。
+##
+function ble/function#advice/do {
+  ble/function#advice/original:"${ADVICE_WORDS[@]}"
+  ADVICE_EXIT=$?
+}
+function ble/function#advice/.proc {
+  local ADVICE_WORDS ADVICE_EXIT=127
+  ADVICE_WORDS=("$@")
+  ble/function#try "ble/function#advice/before:$1"
+  if ble/is-function "ble/function#advice/around:$1"; then
+    "ble/function#advice/around:$1"
+  else
+    ble/function#advice/do
+  fi
+  ble/function#try "ble/function#advice/after:$1"
+  return "$ADVICE_EXIT"
+}
+function ble/function#advice {
+  local type=$1 name=$2 proc=$3
+  if ! ble/is-function "$name"; then
+    ble/util/print "ble/function#advice: $name is not a function." >&2
+    return 1
+  fi
+
+  local def; ble/util/assign def 'declare -f "$name"'
+  case $type in
+  (remove)
+    if [[ $def == *'ble/function#advice/.proc'* ]]; then
+      ble/util/assign def 'declare -f "ble/function#advice/original:$name"'
+      [[ $def ]] && eval "${def#*:}"
+    fi
+    unset -f ble/function#advice/{before,after,around,original}:"$name" 2>/dev/null
+    return 0 ;;
+  (before|after|around)
+    if [[ $def != *'ble/function#advice/.proc'* ]]; then
+      eval "ble/function#advice/original:$def"
+      eval "function $name { ble/function#advice/.proc \"\${FUNCNAME#*:}\" \"\$@\"; }"
+    fi
+
+    local q=\' Q="'\''"
+    eval "ble/function#advice/$type:$name() { eval '${proc//$q/$Q}'; }"
+    return 0 ;;
+  (*)
+    ble/util/print "ble/function#advice unknown advice type '$type'" >&2
+    return 2 ;;
+  esac
+}
+
+## 関数 ble/function#push name [proc]
+## 関数 ble/function#pop name
+##   関数定義を保存・復元する関数です。
+##
+function ble/function#push {
+  local name=$1 proc=$2
+  if ble/is-function "$name"; then
+    local index=0
+    while ble/is-function "ble/function#push/$index:$name"; do
+      ((index++))
+    done
+
+    local def; ble/util/assign def 'declare -f "$name"'
+    eval "ble/function#push/$index:$def"
+  fi
+
+  if [[ $proc ]]; then
+    local q=\' Q="'\''"
+    eval "function $name { eval '${proc//$q/$Q}'; }"
+  fi
+  return 0
+}
+function ble/function#pop {
+  local name=$1 proc=$2
+  if ! ble/is-function "$name"; then
+    ble/util/print "ble/function#push: $name is not a function." >&2
+    return 1
+  fi
+
+  local index=-1
+  while ble/is-function "ble/function#push/$((index+1)):$name"; do
+    ((index++))
+  done
+
+  if ((index<0)); then
+    unset -f "$name"
+  else
+    local def; ble/util/assign def 'declare -f "ble/function#push/$index:$name"'
+    eval "${def#*:}"
+    unset -f "ble/function#push/$index:$name"
+  fi
+  return 0
 }
 
 #
