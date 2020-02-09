@@ -2692,6 +2692,12 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-02-10
+
+  * complete: BSD sed が bind -p の解析で misencoded char のエラーを出す (reported by dylankb) [#D1277]
+    https://github.com/akinomyoga/ble.sh/issues/41#issuecomment-583892006
+    これは最近追加したコードが悪いのに違いない。分かった。修正した。
+
 2020-02-09
 
   * edit: PS1, PROMPT_COMMAND, PRECMD に於いて BASH_COMMAND, _ を復元 [#D1276]

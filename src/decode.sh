@@ -3240,7 +3240,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
   for map in vi-insert vi-command emacs; do
     local cache=$_ble_base_cache/decode.readline.$_ble_bash.$map.txt
     if [[ ! -s $cache ]]; then
-      "$BASH" --norc -i -c "bind -m $map -p" | ble/bin/sed '/^#/d;s/"\\M-/"\\e/' > $cache.part &&
+      "$BASH" --norc -i -c "bind -m $map -p" | LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' > $cache.part &&
         ble/bin/mv "$cache.part" "$cache" || continue
     fi
   
