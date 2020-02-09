@@ -1950,55 +1950,55 @@ function ble/complete/progcomp/.compgen-helper-prog {
     "$comp_prog" "$cmd" "$cur" "$prev" </dev/null
   fi
 }
+# compopt に介入して -o/+o option を読み取る。
+function ble/complete/progcomp/compopt {
+  # Note: Bash補完以外から builtin compopt を呼び出しても
+  #  エラーになるので呼び出さない事にした (2019-02-05)
+  #builtin compopt "$@" 2>/dev/null; local ext=$?
+  local ext=0
+
+  local -a ospec
+  while (($#)); do
+    local arg=$1; shift
+    case "$arg" in
+    (-*)
+      local ic c
+      for ((ic=1;ic<${#arg};ic++)); do
+        c=${arg:ic:1}
+        case "$c" in
+        (o)    ospec[${#ospec[@]}]="-$1"; shift ;;
+        ([DE]) fDefault=1; break 2 ;;
+        (*)    ((ext==0&&(ext=1))) ;;
+        esac
+      done ;;
+    (+o) ospec[${#ospec[@]}]="+$1"; shift ;;
+    (*)
+      # 特定のコマンドに対する compopt 指定
+      return "$ext" ;;
+    esac
+  done
+
+  local s
+  for s in "${ospec[@]}"; do
+    case "$s" in
+    (-*) comp_opts=${comp_opts//:"${s:1}":/:}${s:1}: ;;
+    (+*) comp_opts=${comp_opts//:"${s:1}":/:} ;;
+    esac
+  done
+
+  return "$ext"
+}
 function ble/complete/progcomp/.compgen-helper-func {
   [[ $comp_func ]] || return
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
   ble/complete/progcomp/.compvar-initialize
 
-  # compopt に介入して -o/+o option を読み取る。
   local fDefault=
-  function compopt {
-    # Note: Bash補完以外から builtin compopt を呼び出しても
-    #  エラーになるので呼び出さない事にした (2019-02-05)
-    #builtin compopt "$@" 2>/dev/null; local ext=$?
-    local ext=0
-
-    local -a ospec
-    while (($#)); do
-      local arg=$1; shift
-      case "$arg" in
-      (-*)
-        local ic c
-        for ((ic=1;ic<${#arg};ic++)); do
-          c=${arg:ic:1}
-          case "$c" in
-          (o)    ospec[${#ospec[@]}]="-$1"; shift ;;
-          ([DE]) fDefault=1; break 2 ;;
-          (*)    ((ext==0&&(ext=1))) ;;
-          esac
-        done ;;
-      (+o) ospec[${#ospec[@]}]="+$1"; shift ;;
-      (*)
-        # 特定のコマンドに対する compopt 指定
-        return "$ext" ;;
-      esac
-    done
-
-    local s
-    for s in "${ospec[@]}"; do
-      case "$s" in
-      (-*) comp_opts=${comp_opts//:"${s:1}":/:}${s:1}: ;;
-      (+*) comp_opts=${comp_opts//:"${s:1}":/:} ;;
-      esac
-    done
-
-    return "$ext"
-  }
-
   local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
-  eval '"$comp_func" "$cmd" "$cur" "$prev"' </dev/null; local ret=$?
-  unset -f compopt
+  ble/function#push compopt 'ble/complete/progcomp/compopt "$@"'
+  eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null; local ret=$?
+  ble/function#pop compopt
 
   if [[ $is_default_completion && $ret == 124 ]]; then
     is_default_completion=retry
@@ -2104,7 +2104,7 @@ function ble/complete/progcomp/.compgen {
   # Note: 一旦 compgen だけで ble/util/assign するのは、compgen をサブシェルではなく元のシェルで評価する為である。
   #   補完関数が遅延読込になっている場合などに、読み込まれた補完関数が次回から使える様にする為に必要である。
   local compgen compgen_compv=$COMPV
-  if [[ ! $flag_noquote ]]; then
+  if [[ ! $flag_noquote && :$comp_opts: != *:noquote:* ]]; then
     local q="'" Q="'\''"
     compgen_compv="'${compgen_compv//$q/$Q}'"
   fi
@@ -2211,25 +2211,26 @@ function ble/complete/progcomp {
   local comp_words comp_line=$comp_line comp_point=$comp_point comp_cword=$comp_cword
   comp_words=("${tmp[@]}")
 
+  local old_cand_count=$cand_count
   local -a alias_args=()
   local checked=" "
   while :; do
     if ble/is-function "ble/cmdinfo/complete:$cmd"; then
       ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
       "ble/cmdinfo/complete:$cmd" "$opts"
-      return
+      break
     elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       "ble/cmdinfo/complete:${cmd##*/}" "$opts"
-      return
+      break
     elif complete -p "$cmd" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      return
+      break
     elif [[ $cmd == */?* ]] && complete -p "${cmd##*/}" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      return
+      break
     elif
       # bash-completion の loader を呼び出して遅延補完設定をチェックする。
       ble/function#try __load_completion "${cmd##*/}" &>/dev/null &&
@@ -2237,20 +2238,26 @@ function ble/complete/progcomp {
     then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      return
+      break
     fi
     checked="$checked$cmd "
 
     local ret
     ble/util/expand-alias "$cmd"
     ble/string#split-words ret "$ret"
-    [[ $checked == *" $ret "* ]] && break
+    if [[ $checked == *" $ret "* ]]; then
+      comp_opts=$comp_opts:default
+      break
+    fi
     cmd=$ret
     ((${#ret[@]}>=2)) &&
       alias_args=("${ret[@]:1}" "${alias_args[@]}")
   done
 
-  ble/complete/progcomp/.compgen "default:$opts"
+  ((cand_count!=old_cand_count)) &&
+    [[ :$comp_opts: == *:default:* ]] &&
+    ble/complete/progcomp/.compgen "default:$opts"
+  return 0
 }
 
 
@@ -3706,7 +3713,7 @@ function ble/complete/insert-braces/.compose {
             str = substr(str, RLENGTH + 1);
             atom = atom chr;
             if (chr == BRACE_OPEN)
-              level++; 
+              level++;
             else if (chr == BRACE_CLOS && --level==0)
               break;
           }
@@ -3786,9 +3793,9 @@ function ble/complete/insert-braces/.compose {
           dict[value] = 1;
         }
       }
-      
+
       len = 0;
-      
+
       for (i = 0; i < ikey; i++) {
         while (dict[value = keys[i]]--) {
           if (value ~ /^([a-zA-Z])$/) {
@@ -3803,7 +3810,7 @@ function ble/complete/insert-braces/.compose {
               dict[end = tmp]--;
               e++;
             }
-        
+
             if (e == b) {
               arr[len++] = beg;
             } else if (e == b + 1) {
@@ -3812,26 +3819,26 @@ function ble/complete/insert-braces/.compose {
             } else {
               arr[len++] = del_close "{" beg ".." end "}" del_open;
             }
-          
+
           } else if (value ~ /^(0+|-?0*[1-9][0-9]*)$/) {
             beg = end = value;
             b = e = zpad_a2i(value);
             wmax = wmin = length(value);
-          
+
             # range extension for normal numbers
             if (value ~ /^(0|-?[1-9][0-9]*)$/) {
               while (dict[b - 1]) dict[--b]--;
               while (dict[e + 1]) dict[++e]--;
-          
+
               tmp = length(beg = "" b);
               if (tmp < wmin) wmin = tmp;
               else if (tmp > wmax) wmax = tmp;
-          
+
               tmp = length(end = "" e);
               if (tmp < wmin) wmin = tmp;
               else if (tmp > wmax) wmax = tmp;
             }
-          
+
             # try range extension for zpad numbers
             if (wmax == wmin) {
               while (length(tmp = zpad(b - 1, wmin)) == wmin && dict[tmp]) { dict[tmp]--; --b; }
@@ -3839,7 +3846,7 @@ function ble/complete/insert-braces/.compose {
               beg = zpad(b, wmin);
               end = zpad(e, wmin);
             }
-          
+
             if (e == b) {
               arr[len++] = beg;
             } else if (e == b + 1) {
@@ -3851,7 +3858,7 @@ function ble/complete/insert-braces/.compose {
             } else {
               arr[len++] = del_close "{" beg ".." end "}" del_open;
             }
-          
+
           } else {
             arr[len++] = value;
           }
@@ -4808,7 +4815,7 @@ function ble/complete/auto-complete/.check-context {
 ##     sync   ユーザ入力があっても処理を中断しない事を指定します。
 function ble/complete/auto-complete.impl {
   local opts=$1
-  local comp_type=
+  local comp_type=auto
   [[ :$opts: == *:sync:* ]] && comp_type=${comp_type}:sync
 
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind

@@ -926,9 +926,25 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2020-02-06
+2020-02-10
 
-  * proghl の中で行った fix を ble-0.3 にも適用しなければならない。
+  * ble/util/stackdump は >&1 に出力するべきなのでは
+    使う側が目的に応じて出力を変更するべき。
+    後 ble/util/stackdump を直接使っている箇所を ble-assert
+    もしくは ble/util/assert に置き換えられないか。
+
+  * fzf completion を試していた時に auto-complete で ^? が self-insert される状態になった
+    これは何かのバグだろうか。
+
+    fzf で最初の候補を選択した直後に auto-complete 状態になるが、
+    その時に backspace を押すと ^? が self-insert される。何故?
+    その他の場合にはそういう事にはならない。
+
+    →これも auto-complete では fzf を起動しない事にしたので、
+    余り気にしなくても良いのかもしれない。しかし、
+    何故こういう事になってしまうのかについては調べる必要がある?
+
+2020-02-06
 
   * mintty で modifyOtherKeys を有効にしているので
     quoted-insert で C-t 等の基本的なキーですら修飾されている。
@@ -2676,7 +2692,188 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-02-09
+
+  * complete: fzf complete cd が動かない [#D1275]
+    https://github.com/akinomyoga/ble.sh/issues/41
+    fzf が動かないという話。これは既に解決済みの話。彼は古い version を使っている。
+    然し、二つ目の項目に関しては前の修正とは関係ない。
+    先ず再現を試みたがそもそも fzf の振る舞いを再現する事ができない。
+
+    [原因]
+
+    少なくとも cd の補完に関しては ble/cmdinfo/complete:cd で処理しているので、
+    fzf が幾ら設定を追加しようとも関係ない筈だ。そして ble/cmdinfo/complete:cd
+    が報告されたエラーを出力している筈である。しかし、そうだとしても、
+
+      -bash: cd: too many arguments
+      [ble: exit 1]
+
+    というのはどういう事であろうか。まるで cd ** でコマンドを実行したかの様である。
+    というか [ble: exit 1] と表示されるという事は実際に
+    cd ** でコマンドを実行したということであろう。
+    fzf をロードしていると同じ事が起こるのだろうか?
+
+    少し fzf だけをロードして試してみる事にする。
+    先ず cd **TAB とするとちゃんと fzf が起動する。そして置き換わる。
+    また cd ** で直接実行すると報告されたのと同じエラーメッセージが出る。
+    恐らく dylankb は TAB で fzf を起動してそのまま一番最初の物で確定する癖になっているのだ。
+    その想定で、先ず fzf がちゃんと起動する様に修正する必要がある。
+
+    取り敢えず ble/cmdinfo/complete:cd を取り除く。
+    それから fzf が呼び出されているかの確認を行う。
+
+    分かった。二種類の問題がある。
+
+    x ble/cmdinfo/complete:cd
+      これは unset するしかない。
+
+    x < /dev/null にしているという事。
+      うーん。< /dev/null に関しては
+      ユーザの側で </dev/tty を開く様にお願いすれば良い。
+      (しかし、こういう微妙な仕様の違いでひっかかるのは注意を要する。)
+      →これも /dev/tty に繋ぐようにして試してみたが直らない。
+
+    x '**' を ble.sh が独自に最初の単語に展開している事
+      と思ったがそうでもない。
+      fzf にはちゃんと '**' という文字列が渡っている。
+      どうした理由かは分からないが。
+
+    x 分かった。原因は COMP_WORDS である。
+
+      これの解決方法は。どの様にして COMP_WORDS を調整するか。
+
+    [解決方法]
+
+    a ユーザに comopt を指定してもらう。指定がある場合に振る舞いの変更を行う。
+      complete の設定に予め含めるというのはできない。非標準のオプションだから。
+
+      "" 等の quote の事も考えると pathname expansion だけ実行しない
+      という様にするのか、或いは展開そのものを全くしないという事にするのか。
+      中途半端に展開しても今度は '**' と指定した時に困るのだから、
+      展開そのものを全く実行しないという様にするのが自然である。
+
+      その為には _fzf_dir_completion という関数を上書きしなければならない。
+      % 然し、_fzf_dir_completion 側の実装と合わせなければならない。
+      % そう言えば以前デバグの為に関数に処理を付け加える advice 云々という関数を定義した様な気がする。
+      % しかし今簡単に探してみると見つからない。
+      % そもそもどういう関数名だったかなど。うーん。 '"function' で探して見つからないので、
+      % その関数は恐らく全然別の所で定義した物の気がする。
+      % →分かった。song526 の ble.sh の中に measure.sh という commit していないスクリプトがあった。
+      %   中を覗いてみたが advice の様な汎用性を持たせた実装にはなっていなかった。
+
+      何れにしても新しく関数を追加する必要があるという事なのである。
+
+      →結局他にも問題が沢山あるという事が分かった。
+      オプションを指定するだけで解決できる様な問題ではない。
+
+    b 或いは ble/cmdinfo/complete:cd を上書きしてもらう?
+      こちらの方が手軽である。然し comp_reply を読む必要がある。
+      と思ったが、nospace だとか色々のオプションをどの様に処理するのか?
+      これまでの方法だと compgen が色々何とかしてくれた。
+
+      function ble/cmdinfo/complete:cd {
+        local COMP_LINE=$comp_line
+        local -a COMP_WORDS=("${comp_words[@]}")
+        local COMP_CWORD=$comp_cword
+        local COMP_POINT=$comp_point
+        local -a COMP_REPLY=()
+        _fzf_dir_completion "${comp_words[0]}" "${comp_words[comp_cword]}" "${comp_words[comp_cword-1]}" >/dev/pts/7
+        compopt() { echo "compopt $*"; }
+        comp_opts+=:nospace:
+        local cand
+        for cand in "${COMPREPLY[@]}"; do
+          ble/complete/cand/yield word "$cand" ""
+        done
+        ble/textarea#invalidate
+        return 0
+      }
+
+      うーん。結構長い関数になってしまう。
+
+      実際にこれを動かして試してみると無限ループになっている。何故?
+      未だ再現していない。うーん。再現しない。何だったのだろうか。
+
+      x fixed: 更にもう一つの問題点は fzf が表示を書き換えてしまっているので、
+        表示が乱れてしまっているという事。これは invalidate を呼び出せば良い。
+        実際に試してみて解決する事を確かめた。
+
+      x もう一つの問題点はこれが interactive な補完を呼び出すという事。
+        現状の実装では auto_complete も同じ枠組みを使っているので、
+        auto_complete によって fzf が呼び出されてしまってこれは面倒。
+
+      更に色々試してみた結果 compopt の処理もしなければならないし、
+      色々面倒である。結局やはり ble.sh の progcomp 経由で実行した方が良い気がする。
+
+    c 結局 fzf の側の関数を動的に書き換えて振る舞いを変更する事にした。
+
+    * 一旦適当に reply しておく。
+
+      % ## 3. ble.sh closes stdin/stdout while `fzf` is used
+      %
+      % Sometimes a user-provided completer consumes or flushes stdin
+      % unintentionally. But this causes the problem for
+      % auto-complete. Because auto-complete is performed in the
+      % background, the user inputs will be lost if the background
+      % user-provided completer flushes stdin. For this reason, ble.sh
+      % by default closes the standard streams of user-provided
+      % completers. If user-provided completers really want to do
+      % something with stdin/stdout, the completer need to open
+      % `/dev/tty` for itself. But `fzf` does not do that.
+
+      調べながら書いていたら時間を食ってしまった。
+      後、上の内容は結局本当か分からない。
+      実際に fzf のソースを見てみると /dev/tty を開いている箇所がある。
+      従って、試している時に発生した hang はこれとは関係ないのかもしれない。
+
+      →実際に試してみたらやはり fzf は /dev/tty を開かずに実行しようとして、
+      それで hang してしまっている。やはり /dev/tty の対策はしなければならない。
+
+    [実装]
+
+    取り敢えずおおまかな実装をしてから細かい振る舞いの調整を行えば良い。
+    以下の二つを上書きすれば良い気がする。
+
+      __fzf_generic_path_completion
+      _fzf_complete
+      追加: _fzf_complete_kill
+
+    * 無限ループになっている原因は分かった。auto-complete である。
+      auto-complete の中では fzf を起動しない様にした所、動いている。
+
+    * 今度の問題は ble.sh が勝手に変換結果をフィルタしてしまうという事。
+      ** のまま変化しない。
+      うーん。候補の生成まではちゃんとできている。
+      しかし再度の候補生成が試みられてそれで何も生成されずに終わっている。
+
+      →あー。何が起こっているのか分かった。補完がキャンセルされている。
+      何故かと言うと fzf が DSR(5) を要求してその返答が届いているから。
+      ble.sh は補完の計算中にユーザ入力が来たと思って補完処理を中断する。
+      これによって何も起こらないという事が発生している。
+
+    * ESC [ 0 n が not found というエラーメッセージが出ている。
+      % bind していても処理されないという事。
+      % というか bind '"\e[0n":...' はどのレベルで処理されるのだろう?
+      % →確認してみた所、以下の様に登録されていた。うーん。
+      % ble-bind -m 'vi_imap' -f 'M-[ 0 n' 'redraw-line'
+      %
+      % これはどうしたら良いか。blesh では認識できない
+      % escape sequences は無視する様にしている。
+      % それは terminal が不意に何か変な response をした時に
+      % ユーザの入力と勘違いして変な振る舞いをしないようにする為。
+      % なのでこの設計を変更するつもりはない。
+      %
+      % ならば正しい設定は一体何か?
+      % 結局これを正しいシーケンスとして登録する事である。
+      % ble-bind -k 'ESC [ 0 n' DSR
+
+      うーん。結局 fzf の DSR(5) による hack を封じる事にしたので
+      これの対策はしなくても良いのである。
+
 2020-02-08
+
+  * proghl の中で行った fix を ble-0.3 にも適用しなければならない [#D1274]
+    続いて patch を適用していく必要がある。適用した。
 
   * msys1: C-d の受信について [#D1273]
 
@@ -2926,7 +3123,7 @@ bash_tips
       % unlink に失敗している。unlink せずに真面目に rename する事にしてみたが、
       % それも失敗した。どういう事だろうか。開いていると rename できないのか、
       % 或いは tmp に作成しているから rename できないのか。。色々試す必要がある。
-      % 
+      %
       % HOME に作ったファイルは rename で移動できる。
       % tmp の下の $_ble_base_run に作ったファイルも rename で移動できる。
       % うーん。変だファイルを開きっぱなしにしていてもちゃんと移動できる。
@@ -3169,8 +3366,8 @@ bash_tips
 
     cygwin の手法を流用しようとしたら常に root 権限がある事になってしまう。
     調べてみると全てのユーザを msys を起動したユーザと見せかけている。
-    然し、実際には異なるので何か書き込もうとすると permission defined で失敗する。
-    というかウィンドウズの標準のコマンドで管理者権限が在るかどうか
+    然し、実際には異なるので何か書き込もうとすると permission denied で失敗する。
+    というか Windows の標準のコマンドで管理者権限が在るかどうか
     判定できる物はないのだろうか。
 
     或いは EUID もしくは UID を見たら分かったりするだろうか。

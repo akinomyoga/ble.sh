@@ -17,6 +17,7 @@
   - cygwin, msys2: support widget `paste-from-clipboard` `#D1271` 0000000
   - msys1: support MSYS1 `#D1272`
   - msys1: work around missing named pipes in MSYS1 `#D1273`
+- complete: add `compopt -o quote/default` for `fzf` `#D1275`
 
 ## Fix
 
@@ -57,6 +58,7 @@
 - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237` bb31b11
 - memo: split `memo.txt` -> `note.txt`, `done.txt` and `ChangeLog.md` `#D1243` 31bc9aa 8b0fe34 419155e
 - global: check isolated identifiers and leak variables `#D1246` 19cc99d 2e74b6d
+- util: add `ble/function#{advice,push,pop}` to patch functions `#D1275`
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
