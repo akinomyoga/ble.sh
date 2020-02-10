@@ -2519,7 +2519,7 @@ function ble/util/stackdump {
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
     message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
   done
-  ble/util/put "$message" >&2
+  ble/util/put "$message"
 }
 function ble-stackdump {
   local flags args
@@ -2550,7 +2550,7 @@ function ble/util/assert {
   local _ble_util_stackdump_title='assertion failure'
   if ! builtin eval -- "$expr"; then
     shift
-    ble/util/stackdump "$expr$_ble_term_nl$message"
+    ble/util/stackdump "$expr$_ble_term_nl$message" >&2
     return 1
   else
     return 0

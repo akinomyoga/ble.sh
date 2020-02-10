@@ -948,16 +948,18 @@ function ble-edit/content/replace {
   #   replace を実行する前の値とする。この関数の呼び出し元では、
   #   _ble_edit_ind の更新はこの関数の呼び出しより後で行う様にする必要がある。
   # Note: このバグは恐らく #D0411 で解決したが暫く様子見する。
-  if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
-    ble/util/stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins"
-    _ble_edit_dirty_syntax_beg=0
-    _ble_edit_dirty_syntax_end=${#_ble_edit_str}
-    _ble_edit_dirty_syntax_end0=0
-    local olen=$((${#_ble_edit_str}-${#ins}+end-beg))
-    ((olen<0&&(olen=0),
-      _ble_edit_ind>olen&&(_ble_edit_ind=olen),
-      _ble_edit_mark>olen&&(_ble_edit_mark=olen)))
-  fi
+  ble/util/assert \
+    '((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str}))' \
+    "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; beg=$beg, end=$end, ins(${#ins})=$ins" ||
+    {
+      _ble_edit_dirty_syntax_beg=0
+      _ble_edit_dirty_syntax_end=${#_ble_edit_str}
+      _ble_edit_dirty_syntax_end0=0
+      local olen=$((${#_ble_edit_str}-${#ins}+end-beg))
+      ((olen<0&&(olen=0),
+        _ble_edit_ind>olen&&(_ble_edit_ind=olen),
+        _ble_edit_mark>olen&&(_ble_edit_mark=olen)))
+    }
 #%end
 }
 function ble-edit/content/reset {
@@ -966,12 +968,14 @@ function ble-edit/content/reset {
   _ble_edit_str=$str
   ble-edit/content/.update-dirty-range "$beg" "$end" "$end0" "$reason"
 #%if !release
-  if ! ((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str})); then
-    ble/util/stackdump "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str"
-    _ble_edit_dirty_syntax_beg=0
-    _ble_edit_dirty_syntax_end=${#_ble_edit_str}
-    _ble_edit_dirty_syntax_end0=0
-  fi
+  ble/util/assert \
+    '((0<=_ble_edit_dirty_syntax_beg&&_ble_edit_dirty_syntax_end<=${#_ble_edit_str}))' \
+    "0 <= beg=$_ble_edit_dirty_syntax_beg <= end=$_ble_edit_dirty_syntax_end <= len=${#_ble_edit_str}; str(${#str})=$str" ||
+    {
+      _ble_edit_dirty_syntax_beg=0
+      _ble_edit_dirty_syntax_end=${#_ble_edit_str}
+      _ble_edit_dirty_syntax_end0=0
+    }
 #%end
 }
 function ble-edit/content/reset-and-check-dirty {

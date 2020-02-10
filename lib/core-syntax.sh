@@ -653,7 +653,7 @@ function ble/syntax/parse/set-lookahead {
 ## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
 function ble/syntax/parse/tree-append {
 #%if !release
-  [[ $debug_p1 ]] && { ((i-1>=debug_p1)) || ble/util/stackdump "Wrong call of tree-append: Condition violation (p1=$debug_p1 i=$i iN=$iN)."; }
+  [[ $debug_p1 ]] && ble/util/assert '((i-1>=debug_p1))' "Wrong call of tree-append: Condition violation (p1=$debug_p1 i=$i iN=$iN)."
 #%end
   local type=$1
   local beg=$2 end=$i
@@ -797,7 +797,9 @@ function ble/syntax/parse/nest-equals {
 
     local -a onest; ble/string#split-words onest "$_onest"
 #%if !release
-    ((onest[3]!=0&&onest[3]<=parent_inest)) || { ble/util/stackdump "invalid nest onest[3]=${onest[3]} parent_inest=$parent_inest text=$text" && return 0; }
+    ble/util/assert \
+      '((onest[3]!=0&&onest[3]<=parent_inest))' \
+      "invalid nest onest[3]=${onest[3]} parent_inest=$parent_inest text=$text" || return 0
 #%end
     ((parent_inest=onest[3]<0?onest[3]:(parent_inest-onest[3])))
   done
@@ -817,7 +819,7 @@ function ble/syntax/parse/touch-updated-attr {
 }
 function ble/syntax/parse/touch-updated-word {
 #%if !release
-  (($1>0)) || ble/util/stackdump "invalid word position $1"
+  ble/util/assert "(($1>0))" "invalid word position $1"
 #%end
   (((_ble_syntax_word_umin<0||_ble_syntax_word_umin>$1)&&(
       _ble_syntax_word_umin=$1)))
@@ -2445,7 +2447,7 @@ function ble/syntax:bash/ctx-expr {
       #       = '"${' # "${var:offset:length}"
       ble/syntax:bash/ctx-expr/.count-brace && return
     else
-      ble/util/stackdump "unexpected ntype=$ntype for arithmetic expression"
+      ble/util/assert 'false' "unexpected ntype=$ntype for arithmetic expression"
     fi
 
     # 入れ子処理されなかった文字は通常文字として処理
@@ -3434,10 +3436,8 @@ function ble/syntax:bash/ctx-command/.check-word-begin {
       wtype=octx,
       ctx=_ble_syntax_bash_command_BeginCtx[ctx]))
 #%if !release
-    if ((ctx==0)); then
+    ble/util/assert '((ctx!=0))' "invalid ctx=$octx at the beginning of words" ||
       ((ctx=wtype=CTX_ARGI))
-      ble/util/stackdump "invalid ctx=$octx at the beginning of words"
-    fi
 #%end
 
     # Note: ここで設定される wtype は最終的に ctx-command/check-word-end で
@@ -3448,7 +3448,7 @@ function ble/syntax:bash/ctx-command/.check-word-begin {
   fi
 
 #%if !release
-  ((_ble_syntax_bash_command_isARGI[ctx])) || ble/util/stackdump "invalid ctx=$ctx in words"
+  ble/util/assert '((_ble_syntax_bash_command_isARGI[ctx]))' "invalid ctx=$ctx in words"
 #%end
   return 0
 }
@@ -3457,10 +3457,11 @@ function ble/syntax:bash/ctx-command/.check-word-begin {
 function ble/syntax:bash/ctx-command {
 #%if !release
   if ble/syntax:bash/starts-with-delimiter-or-redirect; then
-    ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_COARGX||
-        ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
-        ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_CMDXV)) || ble/util/stackdump "invalid ctx=$ctx @ i=$i"
-    ((wbegin<0&&wtype<0)) || ble/util/stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
+    ble/util/assert '
+      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_FARGX2||ctx==CTX_FARGX3||ctx==CTX_COARGX||
+          ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
+          ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_CMDXV))'  "invalid ctx=$ctx @ i=$i"
+    ble/util/assert '((wbegin<0&&wtype<0))' "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
     ble/syntax:bash/ctx-command/.check-delimiter-or-redirect; return
   fi
 #%else
@@ -3657,8 +3658,8 @@ function ble/syntax:bash/ctx-values {
   # コマンド・引数部分
   if ble/syntax:bash/starts-with-delimiter; then
 #%if !release
-    ((ctx==CTX_VALX)) || ble/util/stackdump "invalid ctx=$ctx @ i=$i"
-    ((wbegin<0&&wtype<0)) || ble/util/stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
+    ble/util/assert '((ctx==CTX_VALX))' "invalid ctx=$ctx @ i=$i"
+    ble/util/assert '((wbegin<0&&wtype<0))' "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
 
     if [[ $tail =~ ^$_ble_syntax_bash_RexIFSs ]]; then
@@ -3759,8 +3760,8 @@ function ble/syntax:bash/ctx-conditions {
   # コマンド・引数部分
   if ble/syntax:bash/starts-with-delimiter; then
 #%if !release
-    ((ctx==CTX_CONDX)) || ble/util/stackdump "invalid ctx=$ctx @ i=$i"
-    ((wbegin<0&&wtype<0)) || ble/util/stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
+    ble/util/assert '((ctx==CTX_CONDX))' "invalid ctx=$ctx @ i=$i"
+    ble/util/assert '((wbegin<0&&wtype<0))' "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
 
     if [[ $tail =~ ^$_ble_syntax_bash_RexIFSs ]]; then
@@ -3849,7 +3850,7 @@ function ble/syntax:bash/ctx-redirect/check-word-end {
 #%if !release
   # ここで終端の必要のある ctx (CMDI や ARGI などの単語中の文脈) になる事は無い。
   # 何故なら push した時は CMDX か ARGX の文脈にいたはずだから。
-  ((!_ble_syntax_bash_command_isARGI[ctx])) || ble/util/stackdump "invalid ctx=$ctx in words"
+  ble/util/assert '((!_ble_syntax_bash_command_isARGI[ctx]))' "invalid ctx=$ctx in words"
 #%end
   return 0
 }
@@ -4464,7 +4465,7 @@ function ble/syntax/parse/determine-parse-range {
   fi
 
 #%if !release
-  ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble/util/stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
+  ble/util/assert '((0<=i1&&i1<=beg&&end<=i2&&i2<=iN))' "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
 #%end
 }
 
@@ -4512,10 +4513,10 @@ function ble/syntax/parse {
 
   local shift=$((end-end0))
 #%if !release
-  if ! ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)); then
-    ble/util/stackdump "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)"
+  ble/util/assert \
+    '((0<=beg&&beg<=end&&end<=iN&&beg<=end0))' \
+    "X1 0 <= beg:$beg <= end:$end <= iN:$iN, beg:$beg <= end0:$end0 (shift=$shift text=$text)" ||
     ((beg=0,end=iN))
-  fi
 #%else
   ((0<=beg&&beg<=end&&end<=iN&&beg<=end0)) || ((beg=0,end=iN))
 #%end
@@ -4633,8 +4634,9 @@ function ble/syntax/parse {
   fi
 
 #%if !release
-  ((${#_ble_syntax_stat[@]}==iN+1)) ||
-    ble/util/stackdump "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_array_prototype[@]} should be >= $iN"
+  ble/util/assert \
+    '((${#_ble_syntax_stat[@]}==iN+1))' \
+    "unexpected array length #arr=${#_ble_syntax_stat[@]} (expected to be $iN), #proto=${#_ble_array_prototype[@]} should be >= $iN"
 #%end
 }
 

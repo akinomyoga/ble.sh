@@ -928,11 +928,6 @@ bash_tips
 
 2020-02-10
 
-  * ble/util/stackdump は >&1 に出力するべきなのでは
-    使う側が目的に応じて出力を変更するべき。
-    後 ble/util/stackdump を直接使っている箇所を ble-assert
-    もしくは ble/util/assert に置き換えられないか。
-
   * fzf completion を試していた時に auto-complete で ^? が self-insert される状態になった
     これは何かのバグだろうか。
 
@@ -2694,9 +2689,25 @@ bash_tips
 
 2020-02-10
 
-  * complete: BSD sed が bind -p の解析で misencoded char のエラーを出す (reported by dylankb) [#D1277]
+  * ble/util/stackdump は >&1 に出力するべきなのでは [#D1279]
+    使う側が目的に応じて出力を変更するべき。
+    後 ble/util/stackdump を直接使っている箇所を ble-assert
+    もしくは ble/util/assert に置き換えられないか。
+    →ble/util/assert で書き直した。
+
+  * [棄却] edit: 既定で bind している fg は builtin fg の方が良い? [#D1278]
+    或いは fg のままの方が良い?
+    もしユーザが fg を上書きしているのだとすればそれなりに機能を追加している
+    という事の気がするので fg の儘の方が良いのではないかという気がする。
+
+  * complete: BSD sed? が bind -p の解析で misencoded char のエラーを出す (reported by dylankb) [#D1277]
     https://github.com/akinomyoga/ble.sh/issues/41#issuecomment-583892006
     これは最近追加したコードが悪いのに違いない。分かった。修正した。
+
+    →実際に FreeBSD 試してみた所エラーメッセージはでていない。
+    つまり、これは BSD sed ではない? どの sed がエラーメッセージを出しているのだろう。
+    然し、検索するとどの頁も macOS の sed は BSD sed だと言っている。
+    BSD sed にも色々亜種が有って FreeBSD の物と macOS の物では振る舞いが違うという事なのか?
 
 2020-02-09
 

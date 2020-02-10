@@ -11,7 +11,7 @@
 - decode/kbd: support <kbd>U+XXXX</kbd>, <kbd>@ESC</kbd> and <kbd>@NUL</kbd> for keynames `#D1251` 441117c ef23ad1
 - syntax: support `coproc` `#D1252` 7ff68d2
 - vi/nmap: support readline widgets for <kbd>M-left</kbd>, <kbd>M-right</kbd>, <kbd>C-delete</kbd>, <kbd>#</kbd> and <kbd>&</kbd> `#D1258` 846e0be
-- complete: add `compopt -o quote/default` for `fzf` `#D1275` 58e1be4
+- complete: add `compopt -o quote/default` for `fzf` (motivated by dylankb) `#D1275` 58e1be4
 
 ## Fix
 
@@ -39,6 +39,7 @@
   - decode: delay bind until keymap initialization `#D1258` 0beac33
   - decode: read user settings from `bind -Xsp` `#D1259` eef14d0
   - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 5d98210
+  - decode: fix error messages of BSD `sed` rejecting unencoded bytes from `bind -p` (reported by dylankb) `#D1277` 0000000
 - edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 0000000
 
 ## Compatibility
@@ -46,7 +47,7 @@
 - main: work around cygwin uninitialized environment `#D1225` `#D1226` b9278bc
 - global: work around Bash 3.2 bug of array initialization with <kbd>SOH</kbd>/<kbd>DEL</kbd> `#D1238` defdbd4 `#D1241` 1720ec0
 - term: support `TERM=minix` `#D1262` ae0b80f
-- msys2: support2 MSYS (motivated by SUCHMOKUO's report) `#D1264` 47e2863
+- msys2: support2 MSYS (motivated by SUCHMOKUO) `#D1264` 47e2863
   - edit: support `\$` in `PS1` for MSYS2 `#D1265` f6f8956
   - msys2: work around MSYS2 Bash bug of missing <kbd>CR</kbd> `#D1270` 71f3498
   - cygwin, msys2: support widget `paste-from-clipboard` `#D1271` cd26c65
@@ -63,7 +64,8 @@
 - syntax: delay load of `ble/syntax/parse` for syntax highlighting `#D1237` bb31b11
 - memo: split `memo.txt` -> `note.txt`, `done.txt` and `ChangeLog.md` `#D1243` 31bc9aa 8b0fe34 419155e
 - global: check isolated identifiers and leak variables `#D1246` 19cc99d 2e74b6d
-- util: add `ble/function#{advice,push,pop}` to patch functions `#D1275` fbe531a
+- util: add `ble/function#{advice,push,pop}` to patch functions (motivated by dylankb) `#D1275` fbe531a
+- util (`ble/util/stackdump`): output to `stdout` instead of `stderr` `#D1279` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
