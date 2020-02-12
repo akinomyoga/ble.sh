@@ -1098,7 +1098,7 @@ function ble-bind/option:csi {
 }
 
 function ble-bind/option:list-functions {
-  declare -f | command sed -n -r 's/^ble-edit\+([[:alpha:]][^[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
+  declare -f | command sed -n 's/^ble-edit+\([[:alpha:]][^[:space:]();&|]\{1,\}\)[[:space:]]*()[[:space:]]*$/\1/p'
 }
 
 function ble-bind {
