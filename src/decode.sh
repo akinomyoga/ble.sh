@@ -921,7 +921,7 @@ function ble-decode-char/.process-modifier {
 
 ## 関数 ble-decode-char/.send-modified-key key
 ##   指定されたキーを修飾して ble-decode-key に渡します。
-##   key = 0..31 は C-@ C-a ... C-z C-[ C-\ C-] C-^ C-_ に変換されます。
+##   key = 0..31,127 は C-@ C-a ... C-z C-[ C-\ C-] C-^ C-_ C-? に変換されます。
 ##   ESC は次に来る文字を meta 修飾します。
 ##   _ble_decode_IsolatedESC は meta にならずに ESC として渡されます。
 ##   @param[in] key
@@ -932,6 +932,8 @@ function ble-decode-char/.send-modified-key {
 
   if ((0<=key&&key<32)); then
     ((key|=(key==0||key>26?64:96)|_ble_decode_Ctrl))
+  elif ((key==127)); then # C-?
+    ((key=63|_ble_decode_Ctrl))
   fi
 
   if (($1==27)); then
@@ -3239,25 +3241,26 @@ function ble/builtin/bind/.reconstruct-user-settings {
   local map q=\'
   for map in vi-insert vi-command emacs; do
     local cache=$_ble_base_cache/decode.readline.$_ble_bash.$map.txt
-    if [[ ! -s $cache ]]; then
-      "$BASH" --norc -i -c "bind -m $map -p" | LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' > $cache.part &&
+    if ! [[ -s $cache && $cache -nt $_ble_base/ble.sh ]]; then
+      INPUTRC=/dev/null "$BASH" --noprofile --norc -i -c "builtin bind -m $map -p" |
+        LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' > $cache.part &&
         ble/bin/mv "$cache.part" "$cache" || continue
     fi
   
-    echo __CLEAR__
-    echo KEYMAP="$map"
-    echo __BIND0__
+    ble/util/print __CLEAR__
+    ble/util/print KEYMAP="$map"
+    ble/util/print __BIND0__
     ble/bin/cat "$cache"
     if ((_ble_bash>=40300)); then
-      echo __BINDX__
+      ble/util/print __BINDX__
       builtin bind -m "$map" -X
     fi
-    echo __BINDS__
+    ble/util/print __BINDS__
     builtin bind -m "$map" -s
-    echo __BINDP__
+    ble/util/print __BINDP__
     builtin bind -m "$map" -p
-    echo __PRINT__
-  done | LC_ALL= LC_CTYPE=C awk -v q="$q" -v _ble_bash="$_ble_bash" '
+    ble/util/print __PRINT__
+  done | LC_ALL= LC_CTYPE=C /ble/bin/awk -v q="$q" -v _ble_bash="$_ble_bash" '
     function keymap_register(key, val, type) {
       if (!haskey[key]) {
         keys[nkey++] = key;

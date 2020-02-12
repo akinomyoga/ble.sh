@@ -2211,26 +2211,25 @@ function ble/complete/progcomp {
   local comp_words comp_line=$comp_line comp_point=$comp_point comp_cword=$comp_cword
   comp_words=("${tmp[@]}")
 
-  local old_cand_count=$cand_count
   local -a alias_args=()
   local checked=" "
   while :; do
     if ble/is-function "ble/cmdinfo/complete:$cmd"; then
       ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
       "ble/cmdinfo/complete:$cmd" "$opts"
-      break
+      return
     elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       "ble/cmdinfo/complete:${cmd##*/}" "$opts"
-      break
+      return
     elif complete -p "$cmd" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      break
+      return
     elif [[ $cmd == */?* ]] && complete -p "${cmd##*/}" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      break
+      return
     elif
       # bash-completion の loader を呼び出して遅延補完設定をチェックする。
       ble/function#try __load_completion "${cmd##*/}" &>/dev/null &&
@@ -2238,26 +2237,20 @@ function ble/complete/progcomp {
     then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      break
+      return
     fi
     checked="$checked$cmd "
 
     local ret
     ble/util/expand-alias "$cmd"
     ble/string#split-words ret "$ret"
-    if [[ $checked == *" $ret "* ]]; then
-      comp_opts=$comp_opts:default
-      break
-    fi
+    [[ $checked == *" $ret "* ]] && break
     cmd=$ret
     ((${#ret[@]}>=2)) &&
       alias_args=("${ret[@]:1}" "${alias_args[@]}")
   done
 
-  ((cand_count!=old_cand_count)) &&
-    [[ :$comp_opts: == *:default:* ]] &&
-    ble/complete/progcomp/.compgen "default:$opts"
-  return 0
+  ble/complete/progcomp/.compgen "default:$opts"
 }
 
 
@@ -4932,10 +4925,9 @@ function ble/widget/auto_complete/self-insert {
       [[ ! $_ble_complete_ac_word ]] && ble/widget/auto_complete/cancel
       processed=1
     fi
-  elif [[ $_ble_complete_ac_type == [ra] && $ins != [{,}] ]]; then
+  elif [[ $_ble_complete_ac_type == [rmaA] && $ins != [{,}] ]]; then
     if local ret simple_flags simple_ibrace; ble/syntax:bash/simple-word/reconstruct-incomplete-word "$comps_new"; then
-      ble/syntax:bash/simple-word/eval "$ret"; local compv_new=$ret
-      if [[ $_ble_complete_ac_type == [rmaA] ]]; then
+      if ble/syntax:bash/simple-word/eval "$ret" && local compv_new=$ret; then
         # r: 遡って書き換わる時
         #   挿入しても展開後に一致する時、そのまま挿入。
         #   元から展開後に一致していない場合もあるが、その場合は一旦候補を消してやり直し。

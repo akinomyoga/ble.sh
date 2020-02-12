@@ -926,19 +926,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2020-02-10
-
-  * fzf completion を試していた時に auto-complete で ^? が self-insert される状態になった
-    これは何かのバグだろうか。
-
-    fzf で最初の候補を選択した直後に auto-complete 状態になるが、
-    その時に backspace を押すと ^? が self-insert される。何故?
-    その他の場合にはそういう事にはならない。
-
-    →これも auto-complete では fzf を起動しない事にしたので、
-    余り気にしなくても良いのかもしれない。しかし、
-    何故こういう事になってしまうのかについては調べる必要がある?
-
 2020-02-06
 
   * mintty で modifyOtherKeys を有効にしているので
@@ -2687,9 +2674,156 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-02-12
+
+  * complete: auto_complete で failglob の時 ^? が直接挿入される問題 [#D1281]
+    及び fzf で auto-complete の時に complete -D を使うと
+    fzf の設定が bash-completion で上書きされてしまう問題。
+
+    fzf completion を試していた時に auto-complete で ^? が self-insert される状態になった
+    これは何かのバグだろうか。
+
+    fzf で最初の候補を選択した直後に auto-complete 状態になるが、
+    その時に backspace を押すと ^? が self-insert される。何故?
+    その他の場合にはそういう事にはならない。
+
+    →これも auto-complete では fzf を起動しない事にしたので、
+    余り気にしなくても良いのかもしれない。しかし、
+    何故こういう事になってしまうのかについては調べる必要がある?
+
+    そもそも self-insert されるというのが不思議である。
+    →これは vi_imap/__default__ であろう。
+      問題は何故元々の C-? が働かずに __default__ が呼び出されているのかという事。
+      然し、C-? が bind されていない map があったろうか。。
+
+    というかどの様に再現したら良いのか。。改めて設定を変えて試す必要がある。
+    駄目だ再現できない。最近の変更で変わったとは思えない。
+    最近の変更はコメントの編集と reconstruct-user-settings だけである。
+    或いは reconstruct-user-settings で bind が上書きされた可能性もなくはないが、
+    そうだとしたら ^? が挿入されるという振る舞いにはならない筈。
+
+    再現した。vim ** <TAB> で再現した。と思ったら再現しなくなった。
+
+    * fixed: 然し一度 vim ** で fzf を実行して確定すると以降は二度と fzf が起動しなくなる。
+      補完設定を確認してみると _filedir_xspec に置き換わっている。
+      fzf が内部で dynamic loading を実行しているのが原因だろう。
+      然し、これは ble.sh なしでも再現するのではないか?
+      →試してみたが ble.sh なしでも勝手に置き換わるという事は無い様だ。
+
+      そもそも ble.sh の上で vim ** が動いていない。
+      メニューは出るがその後で置換が発生していない。
+      詳しく何が起こっているのか確認する必要がある。
+
+      最初に fzf の completer はロードされている。
+      誰かが上書きしている。
+      ble.sh による __load_completion の呼び出しは行われていない。
+      fzf が自身で書き換えている可能性も見たがそうでもない。
+      外側で書き換わってしまっている。
+
+      complete を hook して調べる必要がある。
+      うーん。_python_argcomplete_global というのが勝手にロードしている。
+      そして _python_argcomplete_global は complete -p -D に登録されている。
+      そもそもの話、何故 complete -p -D が呼び出されているのかという話でもある。
+      あー。分かった。auto-complete で default にフォールバックしているからだ。。
+      これの work around はどうすれば良いか。
+
+      元々意図した事は default の fzf でない補完設定を実行するという事。
+      然し、fzf でない補完設定の -D は complete を呼び出してしまう。
+      或いは fzf に既定の補完を呼び出させるのが良いのではないだろうか。
+
+      うーん。取り敢えず -o default を指定するのではなくて別の方法で
+      default の呼び出しを抑止してみる事にした。然し駄目だ。何故だろう。
+      と思ったら -o default を fzf が指定しているのだった。
+      -o default が指定された時には complete -D
+      を呼び出すのではなくて組み込みの補完を呼び出さなければならない。
+      というか実は初めからそのような実装になっていた。
+      従って前回の変更で付け加えた機能は不要だったのである。
+      削除した。この問題は発生しなくなった。
+
+    * ^? が挿入される問題は未だ解決していない気がする。
+      然し再現できない。再現の条件が良くわからない。
+
+      auto-complete が表示されているという事は auto-complete の中にいると仮定して良い?
+      この時に ^? を受信するとどうなるかというと auto-complete を一旦抜けて外で
+      処理を行ってその後でまた auto-complete に入る。もしくは auto-complete の中にいる儘で
+      ^? を挿入する。
+
+      ble/widget/auto_complete/self-insert の実装を見ると 0x7F が直接入って来た場合には
+      そのまま挿入される事になる。恐らく __defchar__ もその様になっているのだろうと想像される。
+      然し、何処で 0x7F が発生するのだろうか。
+      ble/widget/vi_imap/__default__ が変換している?
+      そしてそれを auto-complete が受け取っている可能性?
+
+      再現する気配がないので昔の状態に戻して改めて再現を試みる。
+    
+      $ touch a\*\*b
+      $ vim a**
+    
+      この状態で \C-i\C-g\C-? とすると再現する。
+      もう一回試した。やはり再現する。
+      うーん。最新の commit にすると再現しなくなる。
+    
+      この変な状態を調べる。
+      取り敢えず self-insert に stackdump をしかける。
+      →どうやら self-insert は引っ掛かっていない様だ。
+        という事は auto_complete/self-insert に引っ掛かっている?
+      引っ掛かっていた。stackdump の引数の機能が欲しい。cherry-pick する事にする。
+      →git checkout 1f14571 src/util.sh で取り出した。
+    
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble/widget/auto_complete/self-insert )
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:46 (ble-decode/widget/.call-keyseq )
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:58 (ble-decode-key/.invoke-partial-match 127)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:45 (ble-decode-key 127)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:79 (ble-decode-char/.send-modified-key 127)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:51 (ble-decode-char 127)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:45 (ble/encoding:UTF-8/decode 127)
+      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble-decode/.hook 127)
+    
+      どうも 127 がそのまま変換されずに到達している様だ。
+      よく考えてみれば確かに 127 は DEL として取り扱っているので、
+      そのまま変換されずに到達するというのは今迄の意図した取り扱いである気がしてきた。
+      * 他の keymap で問題が起こらなかったのは DEL が明示的に bind されている為。
+      * auto-complete でも問題が起こらなかったのは ^? で始まる補完候補がなかった為。
+        然し、何故か今回の判定では ^? が続きにあるという勘違いをしてそのまま挿入してしまう。
+    
+      具体的にどういう事になっているのか調べる。と思ったら…。成る程。
+
+      comp_filter_type='head' compv_new='' _ble_complete_ac_cand='.git'
+
+      failglob になって、その結果として compv_new='' になって、
+      空文字列が入力されている状態という事になって、
+      結果として何でも受け入れてしまうという状態になっているという事。
+
+      [修正]
+
+      対処方法としては (1) done: 先ず DEL を直接送信する設計は止める事にする。
+      (2) done: 展開に失敗したら素直に諦める。
+      DEL に対する bind は改めて確認してみたが特に問題になりそうにはない。
+
 2020-02-10
 
-  * ble/util/stackdump は >&1 に出力するべきなのでは [#D1279]
+  * [bash-completion] failglob: 以下のエラーメッセージが補完で出る [#D1280]
+    "[murase@hp2019 0 bin]$ ln -s ~/.mwgbash: 一致しません: \~/.mwg"
+
+    →これはbash-completion の問題だった。
+    そもそも bash-completion は failglob に対応できていない。
+
+    | 何故? そもそもグロブパターンですらないのに
+    | →調べたらエラーが出た。うーん。
+    | どうも \ が含まれているだけでパターンとして取り扱われる様だ。
+    |   value='\~/.mwg'
+    |   echo $value
+    |
+    | 何処でこのエラーメッセージが発生しているのだろうか。
+    | と思ったら再現しなくなった。うーん。これは fzf の方のバグだろうか。
+    | →再現した。ln コマンドで再現する。ln _fzf_path_completion である。
+    |
+    | 辿って行くと _longopt (bash-completion) がエラーを発生させている。
+    | _longopt に対して bash-completion は ln ~/.mwg -s という引数を渡している。
+    | うーん。ble.sh なしで bash-completion を使った時にも failglob で同じエラーが発生する。
+    | つまり、これは bash-completion の問題である。
+
+  * util: ble/util/stackdump は >&1 に出力するべきなのでは [#D1279]
     使う側が目的に応じて出力を変更するべき。
     後 ble/util/stackdump を直接使っている箇所を ble-assert
     もしくは ble/util/assert に置き換えられないか。

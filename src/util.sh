@@ -1349,7 +1349,7 @@ function ble/function#try {
 ##     before/around に於いて本来の関数の呼び出し前にこの配列を書き換える事で
 ##     呼び出す関数または関数の引数を変更する事ができます。
 ##
-##   @arr[in.out] ADVICE_EXIT
+##   @var[in.out] ADVICE_EXIT
 ##     proc の中から参照できる変数です。
 ##     after/around に於いて関数実行後の戻り値を参照または
 ##     変更するのに使います。
@@ -1373,8 +1373,13 @@ function ble/function#advice/.proc {
 function ble/function#advice {
   local type=$1 name=$2 proc=$3
   if ! ble/is-function "$name"; then
-    ble/util/print "ble/function#advice: $name is not a function." >&2
-    return 1
+    local t=; ble/util/assign t 'type -t "$name"'
+    case $t in
+    (builtin|file) eval "$name() { command $name \"\$@\"; }" ;;
+    (*)
+      ble/util/print "ble/function#advice: $name is not a function." >&2
+      return 1 ;;
+    esac
   fi
 
   local def; ble/util/assign def 'declare -f "$name"'
@@ -1443,6 +1448,22 @@ function ble/function#pop {
     unset -f "ble/function#push/$index:$name"
   fi
   return 0
+}
+function ble/function#push/call-top {
+  local func=${FUNCNAME[1]}
+  if ! ble/is-function "$func"; then
+    ble/util/print "ble/function#push/do-top: This function should be called from a function" >&2
+    return 1
+  fi
+  local index=0
+  if [[ $func == ble/function#push/?*:?* ]]; then
+    index=${func#*/*/}; index=${index%%:*}
+    func=${func#*:}
+  else
+    while ble/is-function "ble/function#push/$index:$func"; do ((index++)); done
+  fi
+  ((index)) || return 0
+  "ble/function#push/$((index-1)):$func" "$@"
 }
 
 #
@@ -2516,8 +2537,16 @@ function ble/util/stackdump {
   local message=$1
   local i nl=$'\n'
   local message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
+  local iarg=$BASH_ARGC args= extdebug=
+  shopt -q extdebug 2>/dev/null && extdebug=1
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
-    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
+    if [[ $extdebug ]]; then
+      args=("${BASH_ARGV[@]:iarg:BASH_ARGC[i]}")
+      ble/array#reverse args
+      args=" ${args[*]}"
+      ((iarg+=BASH_ARGC[i]))
+    fi
+    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]}$args)$nl"
   done
   ble/util/put "$message"
 }
