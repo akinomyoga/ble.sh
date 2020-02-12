@@ -1340,7 +1340,7 @@ function ble-bind/option:csi {
 }
 
 function ble-bind/option:list-functions {
-  declare -f | ble/bin/sed -n -r 's/^ble\/widget\/([[:alpha:]][^.[:space:]();&|]+)[[:space:]]*\(\)[[:space:]]*$/\1/p'
+  declare -f | ble/bin/sed -n 's/^ble\/widget\/\([[:alpha:]][^.[:space:]();&|]\{1,\}\)[[:space:]]*()[[:space:]]*$/\1/p'
 }
 
 function ble-bind {
