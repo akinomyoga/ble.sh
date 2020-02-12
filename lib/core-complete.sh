@@ -5634,5 +5634,5 @@ function ble/cmdinfo/complete:pushd {
 }
 
 blehook/invoke complete_load
-
+blehook complete_load=
 return 0

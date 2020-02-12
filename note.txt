@@ -2676,6 +2676,9 @@ bash_tips
 
 2020-02-12
 
+  * ble-sabbrev は complete 経由でなくても呼び出せる様に改良する [#D1282]
+    対応した。
+
   * complete: auto_complete で failglob の時 ^? が直接挿入される問題 [#D1281]
     及び fzf で auto-complete の時に complete -D を使うと
     fzf の設定が bash-completion で上書きされてしまう問題。

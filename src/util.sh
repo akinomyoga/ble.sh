@@ -797,6 +797,12 @@ function ble/string#escape-for-bash-specialchars {
   fi
 }
 
+function ble/string#quote-command {
+  ret=$1; shift
+  local arg q=\' Q="'\''"
+  for arg; do ret="$ret $q${arg//$q/$Q}$q"; done
+}
+
 ## 関数 ble/string#create-unicode-progress-bar value max width
 ##   @var[out] ret
 function ble/string#create-unicode-progress-bar {
@@ -1574,10 +1580,8 @@ function ble/util/openat/finalize {
 }
 
 function ble/util/print-quoted-command {
-  local out=$1; shift
-  local arg q=\' Q="'\''"
-  for arg; do out="$out $q${arg//$q/$Q}$q"; done
-  ble/util/print "$out"
+  local ret; ble/string#quote-command "$@"
+  ble/util/print "$ret"
 }
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then

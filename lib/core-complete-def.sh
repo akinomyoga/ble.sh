@@ -10,8 +10,12 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
              ble/widget/menu-complete \
              ble/widget/auto-complete-enter \
              ble/widget/sabbrev-expand \
-             ble/widget/dabbrev-expand \
-             ble-sabbrev
+             ble/widget/dabbrev-expand
+
+function ble-sabbrev {
+  local ret; ble/string#quote-command "$FUNCNAME" "$@"
+  blehook/eval-after-load complete "$ret"
+}
 
 if ! declare -p _ble_complete_sabbrev &>/dev/null; then # reload #D0875
   if ((_ble_bash>=40200)); then
