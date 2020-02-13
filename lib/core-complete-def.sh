@@ -6,11 +6,11 @@ ble/function#try ble/util/idle.push 'ble/util/import "$_ble_base/lib/core-comple
 # 公開関数と公開関数
 
 ble/util/autoload "$_ble_base/lib/core-complete.sh" \
-             ble/widget/complete \
-             ble/widget/menu-complete \
-             ble/widget/auto-complete-enter \
-             ble/widget/sabbrev-expand \
-             ble/widget/dabbrev-expand
+                  ble/widget/complete \
+                  ble/widget/menu-complete \
+                  ble/widget/auto-complete-enter \
+                  ble/widget/sabbrev-expand \
+                  ble/widget/dabbrev-expand
 
 function ble-sabbrev {
   local ret; ble/string#quote-command "$FUNCNAME" "$@"

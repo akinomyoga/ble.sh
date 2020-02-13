@@ -2382,8 +2382,8 @@ function ble/util/autoload {
   for funcname; do
     builtin eval "function $funcname {
       unset -f $funcname
-      ble/util/import '${file//$q/$Q}'
-      $funcname \"\$@\"
+      ble-import '${file//$q/$Q}' &&
+        $funcname \"\$@\"
     }"
   done
 }
@@ -2449,40 +2449,31 @@ function ble-autoload {
 ##     それ以外の場合には $_ble_base:$_ble_base/local:$_ble_base/share から検索します。
 ##
 _ble_util_import_guards=()
-function ble/util/import {
-  local file=$1
-  if [[ $file == /* ]]; then
-    local guard=ble/util/import/guard:$1
-    ble/is-function "$guard" && return 0
-    if [[ -f $file ]]; then
-      source "$file"
+function ble/util/import/search {
+  ret=$1
+  if [[ $ret != /* ]]; then
+    if [[ -f $_ble_base/$ret ]]; then
+      ret=$_ble_base/$ret
+    elif [[ $ret != *.sh && -f $_ble_base/$ret.sh ]]; then
+      ret=$_ble_base/$ret.sh
+    elif [[ -f $_ble_base/local/$ret ]]; then
+      ret=$_ble_base/local/$ret
+    elif [[ $ret != *.sh && -f $_ble_base/local/$ret.sh ]]; then
+      ret=$_ble_base/local/$ret.sh
+    elif [[ -f $_ble_base/share/$ret ]]; then
+      ret=$_ble_base/share/$ret
+    elif [[ $ret != *.sh && -f $_ble_base/share/$ret.sh ]]; then
+      ret=$_ble_base/share/$ret.sh
     else
       return 1
-    fi && eval "function $guard { :; }" &&
-      ble/array#push _ble_util_import_guards "$guard"
-  else
-    local guard=ble/util/import/guard:ble/$1
-    ble/is-function "$guard" && return 0
-    if [[ -f $_ble_base/$file ]]; then
-      source "$_ble_base/$file"
-    elif [[ -f $_ble_base/local/$file ]]; then
-      source "$_ble_base/local/$file"
-    elif [[ -f $_ble_base/share/$file ]]; then
-      source "$_ble_base/share/$file"
-    else
-      return 1
-    fi && eval "function $guard { :; }" &&
-      ble/array#push _ble_util_import_guards "$guard"
+    fi
   fi
+  [[ -e $ret && ! -d $ret ]]
 }
 function ble/util/import/is-loaded {
-  local file=$1
-  if [[ $file == /* ]]; then
-    local guard=ble/util/import/guard:$1
-  else
-    local guard=ble/util/import/guard:ble/$1
-  fi
-  ble/is-function "$guard"
+  local ret
+  ble/util/import/search "$1" &&
+    ble/is-function "ble/util/import/guard:$ret"
 }
 # called by ble/base/unload (ble.pp)
 function ble/util/import/finalize {
@@ -2495,36 +2486,82 @@ function ble/util/import/finalize {
 ##   @var[out] files flags
 function ble/util/import/.read-arguments {
   flags= files=()
+  while (($#)); do
+    local arg=$1; shift
+    if [[ $flags != *-* ]]; then
+      case $arg in
+      (--)
+        flags=-$flags
+        continue ;;
+      (--*)
+        case $arg in
+        (--delay) flags=d$flags ;;
+        (--help) flags=h$flags ;;
+        (*)
+          echo "ble-import: unrecognized option '$arg'" >&2
+          flags=E$flags ;;
+        esac
+        continue ;;
+      (-?*)
+        local i c
+        for ((i=1;i<${#arg};i++)); do
+          c=${arg:i:1}
+          case $c in
+          (d) flags=$c$flags ;;
+          (*)
+            echo "ble-import: unrecognized option '-$c'" >&2
+            flags=E$flags ;;
+          esac
+        done
+        continue ;;
+      esac
+    fi
 
-  local args
-  ble/util/.read-arguments-for-no-option-command ble-import "$@"
-
-  [[ $flags == *h* ]] && return
-
-  if ((!${#args[@]})); then
-    ble/util/print 'ble-import: argument is not specified.' >&2
-    flags=e$flags
-  fi
-
-  files=("${args[@]}")
+    local ret
+    if ! ble/util/import/search "$arg"; then
+      echo "ble-import: file '$arg' not found" >&2
+      flags=E$flags
+      continue
+    fi; local file=$ret
+    ble/array#push files "$file"
+  done
+}
+function ble/util/import {
+  local file ext=0
+  for file; do
+    local guard=ble/util/import/guard:$file
+    ble/is-function "$guard" && return 0
+    [[ -e $file ]] || return 1
+    source "$file" &&
+      eval "function $guard { :; }" &&
+      ble/array#push _ble_util_import_guards "$guard" || ext=$?
+  done
+  return "$ext"
 }
 function ble-import {
   local files flags
   ble/util/import/.read-arguments "$@"
-  if [[ $flags == *[eh]* ]]; then
-    [[ $flags == *e* ]] && ble/util/print
+  if [[ $flags == *[Eh]* ]]; then
+    [[ $flags == *E* ]] && ble/util/print
     {
-      ble/util/print 'usage: ble-import SCRIPTFILE...'
+      ble/util/print 'usage: ble-import [-d] SCRIPTFILE...'
       ble/util/print '  Search and source script files that have not yet been loaded.'
     } >&2
-    [[ $flags == *e* ]] && return 2
+    [[ $flags == *E* ]] && return 2
     return 0
+  elif ((!${#files[@]})); then
+    ble/util/print 'ble-import: argument is not specified.' >&2
+    return 2
   fi
 
-  local file
-  for file in "${files[@]}"; do
-    ble/util/import "$file"
-  done
+  if [[ $flags == *d* ]] && ble/is-function ble/util/idle.push; then
+    local ret
+    ble/string#quote-command ble-import "${files[@]}"
+    ble/util/idle.push "$ret"
+    return
+  fi
+
+  ble/util/import "${files[@]}"
 }
 
 ## 関数 ble-stackdump [message]
@@ -2544,11 +2581,13 @@ function ble/util/stackdump {
   local iarg=$BASH_ARGC args= extdebug=
   shopt -q extdebug 2>/dev/null && extdebug=1
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
-    if [[ $extdebug ]]; then
+    if [[ $extdebug ]] && ((BASH_ARGC[i])); then
       args=("${BASH_ARGV[@]:iarg:BASH_ARGC[i]}")
       ble/array#reverse args
       args=" ${args[*]}"
       ((iarg+=BASH_ARGC[i]))
+    else
+      args=
     fi
     message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]}$args)$nl"
   done

@@ -7382,7 +7382,7 @@ function ble-edit/bind/load-editing-mode {
   if ble/is-function ble-edit/bind/load-editing-mode:"$name"; then
     ble-edit/bind/load-editing-mode:"$name"
   else
-    ble/util/import "keymap/$name.sh"
+    ble/util/import "$_ble_base/keymap/$name.sh"
   fi
 }
 function ble-edit/bind/clear-keymap-definition-loader {

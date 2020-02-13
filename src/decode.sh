@@ -77,6 +77,9 @@ function ble/decode/uses-isolated-esc {
 ## オプション decode_abort_char
 bleopt/declare -n decode_abort_char 28
 
+## オプション decode_macro_limit
+bleopt/declare -n decode_macro_limit 1024
+
 # **** key names ****
 
 _ble_decode_Meta=0x08000000
@@ -773,6 +776,7 @@ function ble-decode-char {
   local iloop=0
   local ble_decode_char_total=$#
   local ble_decode_char_rest=$#
+  local ble_decode_char_char=
   # Note: ループ中で set -- ... を使っている。
   while
     if ((iloop++%50==0)); then
@@ -791,6 +795,7 @@ function ble-decode-char {
     (($#))
   do
     local char=$1; shift
+    ble_decode_char_char=$char # 補正前 char (_ble_decode_Macr 判定の為)
     ble_decode_char_rest=$#
 #%if debug_keylogger
     ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_chars "$char"
@@ -832,7 +837,7 @@ function ble-decode-char {
         local reach rest
         reach=($_ble_decode_char2_reach)
         rest=${_ble_decode_char2_seq:reach[1]}
-        rest=(${rest//_/ } $char)
+        rest=(${rest//_/ } $ble_decode_char_char)
 
         _ble_decode_char2_reach=
         _ble_decode_char2_seq=
@@ -2090,7 +2095,19 @@ function ble/decode/keylog#decode-chars {
 
 ## 関数 ble/widget/.MACRO char...
 ##   bind '"keyseq":"macro"' の束縛に使用する。
+_ble_decode_macro_count=0
 function ble/widget/.MACRO {
+  # マクロ無限再帰検出
+  if ((ble_decode_char_char&_ble_decode_Macr)); then
+    if ((_ble_decode_macro_count++>=bleopt_decode_macro_limit)); then
+      ((_ble_decode_macro_count==bleopt_decode_macro_limit+1)) &&
+        ble/term/visible-bell "Macro invokation is cancelled by decode_macro_limit"
+      return 1
+    fi
+  else
+    _ble_decode_macro_count=0
+  fi
+
   local -a chars=()
   local char
   for char; do

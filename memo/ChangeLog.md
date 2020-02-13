@@ -12,6 +12,7 @@
 - syntax: support `coproc` `#D1252` 7ff68d2
 - vi/nmap: support readline widgets for <kbd>M-left</kbd>, <kbd>M-right</kbd>, <kbd>C-delete</kbd>, <kbd>#</kbd> and <kbd>&</kbd> `#D1258` 846e0be
 - complete: add `compopt -o quote/default` for `fzf` (motivated by dylankb) `#D1275` 58e1be4
+- util (`ble-import`): support an option `-d` (`--delay`) `#D1285` 0000000
 
 ## Fix
 
@@ -29,6 +30,8 @@
 - decode: fix error message `command=${[key]-}` for mouse input `#D1263` 09bb274
 - [ble-0.3] reload: fix a bug that the state is broken by `ble-reload` `#D1266` f2f30d1
 - decode (`ble/builtin/bind`): remove comment from bind argument `#D1267` 880bb2c
+- decode: use `BRE` instead of `ERE` for `POSIX sed` (reported by dylankb) `#D1283` 2184739
+- decode: fix strange behaviors after `fzf` (convert <kbd>DEL</kbd> to <kbd>C-?</kbd>) `#D1281` 744c8e8
 
 ## Changes
 
@@ -39,8 +42,8 @@
   - decode: delay bind until keymap initialization `#D1258` 0beac33
   - decode: read user settings from `bind -Xsp` `#D1259` eef14d0
   - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 5d98210
-  - decode: fix error messages of BSD `sed` rejecting unencoded bytes from `bind -p` (reported by dylankb) `#D1277` 0000000
-- edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 0000000
+  - decode: fix error messages of BSD `sed` rejecting unencoded bytes from `bind -p` (reported by dylankb) `#D1277` 0cc9160
+- edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 7db48dc
 
 ## Compatibility
 
@@ -65,7 +68,8 @@
 - memo: split `memo.txt` -> `note.txt`, `done.txt` and `ChangeLog.md` `#D1243` 31bc9aa 8b0fe34 419155e
 - global: check isolated identifiers and leak variables `#D1246` 19cc99d 2e74b6d
 - util: add `ble/function#{advice,push,pop}` to patch functions (motivated by dylankb) `#D1275` fbe531a
-- util (`ble/util/stackdump`): output to `stdout` instead of `stderr` `#D1279` 0000000
+- util (`ble/util/stackdump`): output to `stdout` instead of `stderr` `#D1279` 9d3c50d
+- complete (`ble-sabbrev`): delay initialization `#D1282` dfc4f66
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

@@ -86,9 +86,7 @@ ble/util/autoload "$_ble_base/lib/core-syntax.sh" \
 function ble/syntax/import {
   ble/util/import "$_ble_base/lib/core-syntax.sh"
 }
-
-ble/function#try ble/util/idle.push ble/syntax/import ||
-  ble/syntax/import
+ble-import -d lib/core-syntax
 
 #------------------------------------------------------------------------------
 # グローバル変数の定義 (関数内からではできないのでここで先に定義)
