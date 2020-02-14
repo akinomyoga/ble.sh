@@ -2209,7 +2209,7 @@ function ble/syntax:bash/ctx-param {
     return 0
   fi
 
-  local rex='##?|%%?|:?[-?=+]|:|//?'
+  local rex='##?|%%?|:?[-?=+]|:|/[/#%]?'
   ((_ble_bash>=40000)) && rex=$rex'|,,?|\^\^?'
   ((_ble_bash>=40400)) && rex=$rex'|@[QEPAa]?'
   rex='^('$rex')'

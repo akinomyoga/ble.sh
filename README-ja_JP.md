@@ -127,7 +127,7 @@ make INSDIR="$HOME/.local/share/blesh" install
 
 ここでは `~/.blerc` に記述する基本的な設定を幾つか紹介します。
 他の様々な設定に関してはテンプレート [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) を参照して下さい。
-完全な説明に関しては[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8)を参照して下さい。
+完全な説明に関しては[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E7%9B%AE%E6%AC%A1)を参照して下さい。
 
 ## Vim モード
 

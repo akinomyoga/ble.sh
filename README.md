@@ -124,6 +124,7 @@ If you want to change the default path of the init script, you can add the optio
 
 Here some of the settings for `~/.blerc` are picked up.
 For more settings please check the template [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc).
+For detailed explanations please refer to [Manual](https://github.com/akinomyoga/ble.sh/wiki).
 
 ## Vim mode
 
