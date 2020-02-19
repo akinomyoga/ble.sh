@@ -4158,6 +4158,33 @@ function ble-edit/exec:gexec/invoke-hook-with-setexit {
   blehook/invoke "$@"
 }
 
+# ble-edit/exec:gexec/TERM
+#
+# Note #D1287: Bash は途中で TERM が変更されると勝手に TERM 固有のキー
+#   を bind してしまう。これにより ble.sh がキーを読み取れなくなってし
+#   まう。ここでは bash による bind を検出して rebind を実行する。因み
+#   に再読み込みを強制すると其処でコマンド実行が失敗する可能性があるの
+#   でble/term/enter の後で rebind するべき。
+_ble_edit_exec_TERM=
+function ble-edit/exec:gexec/TERM/is-dirty {
+  [[ $TERM != "$_ble_edit_exec_TERM" ]] && return 0
+  local bindp
+  ble/util/assign bindp 'builtin bind -p'
+  [[ $bindp != "$_ble_decode_bind_bindp" ]]
+}
+function ble-edit/exec:gexec/TERM/leave {
+  _ble_edit_exec_TERM=$TERM
+}
+function ble-edit/exec:gexec/TERM/enter {
+  if ble-edit/exec:gexec/TERM/is-dirty; then
+    # Note: ble/decode/rebind ではなく元の binding の記録・復元も含めてやり直す。
+    ble-edit/info/immediate-show text 'ble: TERM has changed. rebinding...'
+    ble/decode/detach
+    ble/decode/attach
+    ble-edit/info/immediate-clear
+  fi
+}
+
 ## 関数 ble-edit/exec:gexec/.begin
 ## 関数 ble-edit/exec:gexec/.end
 ##   端末や入出力などの設定をコマンド実行用に調整します。
@@ -4177,6 +4204,7 @@ function ble-edit/exec:gexec/.begin {
   local IFS=$' \t\n'
   _ble_decode_bind_hook=
   _ble_edit_exec_PWD=$PWD
+  ble-edit/exec:gexec/TERM/leave
   ble/term/leave
   ble/util/buffer.flush >&2
   ble-edit/bind/stdout.on
@@ -4200,6 +4228,7 @@ function ble-edit/exec:gexec/.end {
   ble/util/joblist.flush >&2
   ble-edit/bind/.check-detach && return 0
   ble/term/enter
+  ble-edit/exec:gexec/TERM/enter
   [[ $1 == restore ]] && return # Note: 前回の呼出で .end に失敗した時 #D1170
   ble-edit/bind/.tail # flush will be called here
 }

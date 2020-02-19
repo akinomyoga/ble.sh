@@ -2674,9 +2674,112 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-02-19
+
+  * 2020-02-14 時々 bind が壊れる現象があって何かと思っていたら [#D1287]
+    TERM を変更すると Bash は inputrc を再読込するらしい。
+    TERM=xterm infocmp 等とするだけで壊れるのである。
+
+    これを検出する方法はあるだろうか。或いは阻止する方法。
+    厄介なのは変更してまた元に戻しても壊れるという事。
+
+    a reject: 或いは typeset -r TERM してしまうという手は?
+      →そうすると全く変更できなくなるので駄目。
+
+    b reject: 或いは拾えなかった時に rebind する?
+      と思ったが拾えないのだから検出できない。
+
+    c reject: INPUTRC=/dev/null に設定する?
+      と思ったが問題が発生するのはユーザ環境なので、
+      ユーザ環境で一時的に INPUTRC を復元している時に問題が起こる。
+      INPUTRC を上書きした状態でユーザ環境に戻すと、
+      今度はユーザが bash 等を起動した時に inputrc が読み込まれなくなってしまう。
+
+      →気付いたのはこれは inputrc とは関係ないという事。
+      inputrc 読み込みを阻止しても readline 自体の初期化によって
+      terminfo を元にして bind が実行される。
+
+    d 実行が完了する度に全 bind を実行する手
+      然し、全 bind の時には unbind もしなければならない。
+      inputrc が編集された場合には前回の unbind スクリプトは使えない。
+      すると unbind を自動的に生成しなければならない?
+
+    e 或いは、実行が完了する度に builtin bind -ps をチェックする手
+
+      a 後者は bind -s の出力結果が ble.sh 自身の物なのか判定が必要。
+        結局完全に対応する為には awk を起動するなどする必要がある。
+      b 或いは前回の呼び出しと状態を比較するというので十分の気がする。
+      c bind -p だけチェック。
+        確認した所 inputrc と関係なく書き換えられる様である。
+        そして beginning-of-line 等が必ず書き換わる様に見えるので、
+        取り敢えず bind -p だけチェックすれば十分だろうか。
+        そして # 以外で始まる行が含まれていれば検出したとする。
+        単に builtin bind -p | grep -v ^# でも良いのかもしれない。
+
+    | またチェックするのと全 bind を実行するのとどちらの方が重いのかという話。
+    |
+    |   以下を実行すると 1.6ms である。Cygwin では 33ms
+    |   $ check1() { ble/util/assign hello 'builtin bind -sp'; [[ $hello == "$value2" ]]; }
+    |   $ ble-measure check1
+    |
+    |   以下は 2.86ms (Cygwin 77.5ms) だった。
+    |   $ ble-measure 'builtin bind -p | grep -v ^#'
+    |
+    |   以下は 4.5ms である。Cygwin では 31ms
+    |   $ ble-measure ble/decode/rebind
+    |
+    |   以下は 19.2ms である。Cygwin では 247ms
+    |   $ ble-measure 'ble/decode/detach; ble/decode/attach'
+    |   変な設定に shadow されない為にはこちらを実行する必要がある。
+    |
+    |   % Cygwin は何れにしても遅い様だ。ファイルに書き込むからだろうか。
+    |   % どうも ble/util/assign の中で出力する内容の量に比例して時間がかかっている。
+    |   % 取り敢えず Cygwin の事は考えなくて良いという事にする。
+    |   %
+    |   % うーん。今 ble/decode/bind/unbind の実装を確認して気付いたが、
+    |   % 実は昔にキャッシュした結果を使って unbind している。
+    |   % つまり、キャッシュした時から変化があったりすると unbind できない。
+    |   % 指示通りに設定していれば bashrc の先頭で実行するので
+    |   % ユーザの設定に左右される可能性は低いが、
+    |   % inputrc の設定には左右されてしまう。
+    |   %
+    |   % と思ったが何か変だ。このキャッシュしている内容は
+    |   % ble.sh による binding の設定・削除である。
+    |   % 元々の binding の復元・削除ではない。
+    |   % 確認するべきなのは
+    |   % ble/decode/detach と ble/decode/attach なのだった。
+    |
+    | コマンド実行の時間と比べれば 4.5ms や 31ms は短いので
+    | そんなには気にならない様にも思う。或いはもっと別のタイミングで再チェックを行う?
+    | と思ったが、コマンドの実行以外にもっと疎らなチェックのタイミングはない気がする。
+    | もしコマンドの実行でチェックしないとその後の編集の何れかのタイミングで再度
+    | binding を実行しなければならないので面倒である。
+    |
+    | ? TERM を書き換えると勝手に初期化される振る舞いは妥当なのだろうか。
+    |   例えばユーザが明示的に home になにか割り当てていた時に、
+    |   TERM が書き換わる度にそれが上書きされてしまうという事にならないのか。
+    |   と思って振る舞いを確認した所、既にその binding が存在している場合には、
+    |   勝手に上書きしてしまう等の事は発生しない様だ。
+    |   ちゃんとできている。
+    |
+    |   prefix の \e や O を単体で取り出したい等という変な事をしない限りは
+    |   これでちゃんと動く様になっているのである。うーん。これには文句はつけづらい。
+
+    コマンドを実行する度に bind をチェックするのが一番速い。
+    対応としては bind -p の出力を記録して比較する。
+    特に Cygwin で遅いが stty が 55ms なのでそれに比べれば小さい。
+    bind -p だけならば 21ms で比較できている。
+
+    取り敢えず実装する。
+
+    * ok: 初回はコマンドを実行する前に記録するべきの気がする。
+      →これは decode/bind/bind の側で記録する事にした。
+    * done: TERM を記録しておいてそれが変更したらチェックしなくても再読み込みを実施する。
+    * ok: 動作確認
+
 2020-02-12
 
-  * 2020-01-17 syntax: ${var/#} ${var/%} も特別に着色する。 [#D1286]
+  * 2020-01-17 syntax: ${var/#} ${var/%} も特別に着色する [#D1286]
 
   * decode: ble-import -d (--delay) [#D1285]
     * ble-import の guard は常に絶対パスで行う様に変更した。
@@ -2784,21 +2887,21 @@ bash_tips
       そしてそれを auto-complete が受け取っている可能性?
 
       再現する気配がないので昔の状態に戻して改めて再現を試みる。
-    
+
       $ touch a\*\*b
       $ vim a**
-    
+
       この状態で \C-i\C-g\C-? とすると再現する。
       もう一回試した。やはり再現する。
       うーん。最新の commit にすると再現しなくなる。
-    
+
       この変な状態を調べる。
       取り敢えず self-insert に stackdump をしかける。
       →どうやら self-insert は引っ掛かっていない様だ。
         という事は auto_complete/self-insert に引っ掛かっている?
       引っ掛かっていた。stackdump の引数の機能が欲しい。cherry-pick する事にする。
       →git checkout 1f14571 src/util.sh で取り出した。
-    
+
       @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble/widget/auto_complete/self-insert )
       @ /home/murase/.mwg/src/ble.sh/out/ble.sh:46 (ble-decode/widget/.call-keyseq )
       @ /home/murase/.mwg/src/ble.sh/out/ble.sh:58 (ble-decode-key/.invoke-partial-match 127)
@@ -2807,14 +2910,14 @@ bash_tips
       @ /home/murase/.mwg/src/ble.sh/out/ble.sh:51 (ble-decode-char 127)
       @ /home/murase/.mwg/src/ble.sh/out/ble.sh:45 (ble/encoding:UTF-8/decode 127)
       @ /home/murase/.mwg/src/ble.sh/out/ble.sh:1 (ble-decode/.hook 127)
-    
+
       どうも 127 がそのまま変換されずに到達している様だ。
       よく考えてみれば確かに 127 は DEL として取り扱っているので、
       そのまま変換されずに到達するというのは今迄の意図した取り扱いである気がしてきた。
       * 他の keymap で問題が起こらなかったのは DEL が明示的に bind されている為。
       * auto-complete でも問題が起こらなかったのは ^? で始まる補完候補がなかった為。
         然し、何故か今回の判定では ^? が続きにあるという勘違いをしてそのまま挿入してしまう。
-    
+
       具体的にどういう事になっているのか調べる。と思ったら…。成る程。
 
       comp_filter_type='head' compv_new='' _ble_complete_ac_cand='.git'

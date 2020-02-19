@@ -586,7 +586,7 @@ function ble-decode-char/csi/.modify-key {
 function ble-decode-char/csi/.decode {
   local char=$1 rex key
   if ((char==126)); then # ~
-    if rex='^27;([1-9][0-9]*);?([1-9][0-9]*)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
+    if rex='^>?27;([1-9][0-9]*);?([1-9][0-9]*)$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # xterm "CSI 2 7 ; <mod> ; <char> ~" sequences
       local key=$((BASH_REMATCH[2]&_ble_decode_MaskChar))
       ble-decode-char/csi/.modify-key "${BASH_REMATCH[1]}"
@@ -594,7 +594,7 @@ function ble-decode-char/csi/.decode {
       return
     fi
 
-    if rex='^([1-9][0-9]*)(;([1-9][0-9]*))?$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
+    if rex='^>?([1-9][0-9]*)(;([1-9][0-9]*))?$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       # "CSI <key> ; <mod> ~" sequences
       key=${_ble_decode_csimap_tilde[BASH_REMATCH[1]]}
       if [[ $key ]]; then
@@ -684,7 +684,7 @@ function ble-decode-char/csi/.decode {
   # pc-style "CSI 1; <mod> A" sequences
   key=${_ble_decode_csimap_alpha[char]}
   if [[ $key ]]; then
-    if rex='^(1?|1;([1-9][0-9]*))$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
+    if rex='^(1?|>?1;([1-9][0-9]*))$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       ble-decode-char/csi/.modify-key "${BASH_REMATCH[2]}"
       csistat=$key
       return
@@ -2436,6 +2436,7 @@ function ble/decode/bind/.generate-source-to-unbind-default/.process {
 ## @var _ble_decode_bind_state
 ##   none, emacs, vi
 _ble_decode_bind_state=none
+_ble_decode_bind_bindp=
 _ble_decode_bind_encoding=
 
 function ble/decode/bind/bind {
@@ -2457,6 +2458,7 @@ function ble/decode/bind/bind {
 
   source "$file"
   _ble_decode_bind__uvwflag=
+  ble/util/assign _ble_decode_bind_bindp 'builtin bind -p' # TERM 変更検出用
 }
 function ble/decode/bind/unbind {
   ble/function#try ble/encoding:"$bleopt_input_encoding"/clear
@@ -3433,6 +3435,7 @@ function ble/decode/attach {
   #  でエスケープシーケンスを閉じてしまう。5.4.8 は大丈夫。
   [[ $TERM == linux ]] ||
     ble/util/buffer $'\e[>c' # DA2 要求 (ble-decode-char/csi/.decode で受信)
+  return 0
 }
 
 function ble/decode/detach {

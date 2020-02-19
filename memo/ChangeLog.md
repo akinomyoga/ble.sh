@@ -12,7 +12,8 @@
 - syntax: support `coproc` `#D1252` 7ff68d2
 - vi/nmap: support readline widgets for <kbd>M-left</kbd>, <kbd>M-right</kbd>, <kbd>C-delete</kbd>, <kbd>#</kbd> and <kbd>&</kbd> `#D1258` 846e0be
 - complete: add `compopt -o quote/default` for `fzf` (motivated by dylankb) `#D1275` 58e1be4
-- util (`ble-import`): support an option `-d` (`--delay`) `#D1285` 0000000
+- util (`ble-import`): support an option `-d` (`--delay`) `#D1285` 9673e4e
+- syntax: support parameter expansion of the form `${var/#pat}`, `${var/%pat}` `#D1286` e2f4809
 
 ## Fix
 
@@ -32,6 +33,7 @@
 - decode (`ble/builtin/bind`): remove comment from bind argument `#D1267` 880bb2c
 - decode: use `BRE` instead of `ERE` for `POSIX sed` (reported by dylankb) `#D1283` 2184739
 - decode: fix strange behaviors after `fzf` (convert <kbd>DEL</kbd> to <kbd>C-?</kbd>) `#D1281` 744c8e8
+- edit: work around Bash rebinding on `TERM` change `#D1287` d817548
 
 ## Changes
 
