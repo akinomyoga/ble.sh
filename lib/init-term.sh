@@ -2,13 +2,27 @@
 
 # 2020-02-07 #D12MSYS2 の CR 対策のため更新の必要あり
 
+_ble_term_tput=
 function ble/init:term/tput { return 1; }
 if ble/bin/.freeze-utility-path tput; then
-  _ble_term_hasput=1
-  if ble/bin/tput cuu 1 &>/dev/null; then
-    function ble/init:term/tput { ble/bin/tput "${1%%:*}" "${@:2}" 2>/dev/null; }
-  elif ble/bin/tput UP 1 &>/dev/null; then
-    function ble/init:term/tput { ble/bin/tput "${1#*:}" "${@:2}" 2>/dev/null; }
+  ble/bin/tput cuu 1 &>/dev/null && _ble_term_tput=${_ble_term_tput}i
+  ble/bin/tput UP  1 &>/dev/null && _ble_term_tput=${_ble_term_tput}c
+  if [[ $_ble_term_tput ]]; then
+    function ble/init:term/tput {
+      local type=$_ble_term_tput
+      if [[ $1 == -c ]]; then # termcap 優先
+        shift
+        [[ $type == ic ]] && type=c
+      fi
+
+      if [[ $type != c ]]; then
+        # terminfo entry
+        ble/bin/tput "${1%%:*}" "${@:2}" 2>/dev/null
+      else
+        # termcap entry
+        ble/bin/tput "${1#*:}" "${@:2}" 2>/dev/null
+      fi
+    }
   fi
 fi
 
@@ -61,14 +75,14 @@ function ble/init:term/initialize {
 
   # xenl (end of line behavior)
   _ble_term_xenl=1
-  [[ $_ble_term_hasput ]] &&
+  [[ $_ble_term_tput ]] &&
     ! ble/init:term/tput xenl:xn &>/dev/null &&
     _ble_term_xenl=0
   ble/init:term/register-varname _ble_term_xenl
 
   # tab width
   _ble_term_it=8
-  if [[ $_ble_term_hasput ]]; then
+  if [[ $_ble_term_tput ]]; then
     ble/util/assign _ble_term_it 'ble/init:term/tput it:it'
     _ble_term_it=${_ble_term_it:-8}
   fi
@@ -117,7 +131,7 @@ function ble/init:term/initialize {
 
   # IL/DL
   ble/init:term/define-cap _ble_term_il $'\e[%dL' il:AL 123
-  ble/init:term/define-cap _ble_term_dl $'\e[%dM' dl:DL 123
+  ble/init:term/define-cap _ble_term_dl $'\e[%dM' -c dl:DL 123
   _ble_term_il=${_ble_term_il//123/%d}
   _ble_term_dl=${_ble_term_dl//123/%d}
 
@@ -132,7 +146,7 @@ function ble/init:term/initialize {
   ble/init:term/register-varname _ble_term_el2
 
   # ED
-  ble/init:term/define-cap _ble_term_ed  $'\e[J' ed:cd
+  ble/init:term/define-cap _ble_term_ed  $'\e[J' -c ed:cd
 
   # ICH/DCH/ECH
   #   Note: 必ずしも対応しているか分からないので terminfo に載っている時のみ使う。

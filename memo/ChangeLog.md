@@ -34,6 +34,7 @@
 - decode: use `BRE` instead of `ERE` for `POSIX sed` (reported by dylankb) `#D1283` 2184739
 - decode: fix strange behaviors after `fzf` (convert <kbd>DEL</kbd> to <kbd>C-?</kbd>) `#D1281` 744c8e8
 - edit: work around Bash rebinding on `TERM` change `#D1287` ac7ab55
+- term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` 0000000
 
 ## Changes
 
@@ -58,6 +59,7 @@
   - cygwin, msys2: support widget `paste-from-clipboard` `#D1271` cd26c65
 - msys1: support MSYS1 `#D1272` 630d659
   - msys1: work around missing named pipes in MSYS1 `#D1273` 6f6c2e5
+- term: support contra `SPD` `#D1288` 1e65f2c
 
 ## Internal changes and fixes
 

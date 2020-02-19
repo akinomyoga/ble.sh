@@ -2676,6 +2676,23 @@ bash_tips
 
 2020-02-19
 
+
+  * term: menu が正しく消去されないとの事 (reported by killermoehre) [#D1289]
+    https://github.com/akinomyoga/ble.sh/issues/42
+
+    これは terminfo と termcap で同じ名前の項目 dl があった所為だった。
+    二文字の terminfo で termcap と異なる物は注意して調べた方が良い。
+
+    ri: OK, el: OK, il: OK, ed: 駄目, dl: 駄目
+    一方で ed, dl に対応する termcap 側の cd 及び DL は曖昧ではない。
+    これらに関しては terminfo/termcap 両方対応している環境では
+    cd, DL を確認する事にする。
+
+    % もし ed, dl で terminfo 側を優先させる環境があったとすれば
+    % それはそれで問題になる気がするが仕方がない。
+    % と思ったが、DL 及び cd を使っている限りは問題が発生しないので、
+    % これでちゃんと解決できている。OK
+
   * term: support contra SPD [#D1288]
     contra で SPD(3) 等を実行してもカーソル移動が破壊しない為に
     terminfo cache の書き換え。CU[UDFB] の代わりに [HV]P[RB] を使う。
