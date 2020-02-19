@@ -33,7 +33,7 @@
 - decode (`ble/builtin/bind`): remove comment from bind argument `#D1267` 880bb2c
 - decode: use `BRE` instead of `ERE` for `POSIX sed` (reported by dylankb) `#D1283` 2184739
 - decode: fix strange behaviors after `fzf` (convert <kbd>DEL</kbd> to <kbd>C-?</kbd>) `#D1281` 744c8e8
-- edit: work around Bash rebinding on `TERM` change `#D1287` d817548
+- edit: work around Bash rebinding on `TERM` change `#D1287` ac7ab55
 
 ## Changes
 

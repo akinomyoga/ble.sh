@@ -2676,6 +2676,10 @@ bash_tips
 
 2020-02-19
 
+  * term: support contra SPD [#D1288]
+    contra で SPD(3) 等を実行してもカーソル移動が破壊しない為に
+    terminfo cache の書き換え。CU[UDFB] の代わりに [HV]P[RB] を使う。
+
   * 2020-02-14 時々 bind が壊れる現象があって何かと思っていたら [#D1287]
     TERM を変更すると Bash は inputrc を再読込するらしい。
     TERM=xterm infocmp 等とするだけで壊れるのである。

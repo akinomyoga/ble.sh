@@ -3127,6 +3127,19 @@ function ble/term:cygwin/initialize.hook {
   }
 }
 
+function ble/term/DA2R.hook {
+  [[ $TERM == cygwin ]] &&
+    ble/term:cygwin/initialize.hook
+
+  # contra
+  if [[ $_ble_term_DA2R == '99;'* ]]; then
+    _ble_term_cuu=$'\e[%dk'
+    _ble_term_cud=$'\e[%de'
+    _ble_term_cuf=$'\e[%da'
+    _ble_term_cub=$'\e[%dj'
+    _ble_term_cup=$'\e[%l;%cf'
+  fi
+}
 function ble/term/.initialize {
   # Constants (init-term.sh に失敗すると大変なので此処に書く)
   _ble_term_nl=$'\n'
@@ -3143,10 +3156,7 @@ function ble/term/.initialize {
   fi
 
   ble/string#reserve-prototype "$_ble_term_it"
-
-  if [[ $TERM == cygwin ]]; then
-    blehook DA2R+=ble/term:cygwin/initialize.hook
-  fi
+  blehook DA2R+=ble/term/DA2R.hook
 }
 ble/term/.initialize
 
