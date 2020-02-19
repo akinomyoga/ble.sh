@@ -2798,6 +2798,14 @@ bash_tips
     * done: TERM を記録しておいてそれが変更したらチェックしなくても再読み込みを実施する。
     * ok: 動作確認
 
+    追記: ble-reload の時に変なメッセージが出る様になったと思ったら
+    これが原因だった。bind している状態の時に限り rebind を実行する様に変更した。
+
+    # エラーメッセージは emacs mode ではないのに keymap 'emacs' is empty となっていて、
+    # これは source ble.sh した時に default keymap が emacs に取り敢えずなって、
+    # 本来は attach の時に正しいものに決定されるはずが、attach の前に ble/decode/attach
+    # を呼び出してしまってエラーになっていたという事である。
+
 2020-02-12
 
   * 2020-01-17 syntax: ${var/#} ${var/%} も特別に着色する [#D1286]

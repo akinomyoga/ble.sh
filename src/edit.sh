@@ -4176,7 +4176,7 @@ function ble-edit/exec:gexec/TERM/leave {
   _ble_edit_exec_TERM=$TERM
 }
 function ble-edit/exec:gexec/TERM/enter {
-  if ble-edit/exec:gexec/TERM/is-dirty; then
+  if [[ $_ble_decode_bind_state != none ]] && ble-edit/exec:gexec/TERM/is-dirty; then
     # Note: ble/decode/rebind ではなく元の binding の記録・復元も含めてやり直す。
     ble-edit/info/immediate-show text 'ble: TERM has changed. rebinding...'
     ble/decode/detach
