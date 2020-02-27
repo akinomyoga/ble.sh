@@ -2674,8 +2674,23 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
-2020-02-19
+2020-02-27
 
+  * complete: clear menu on discard-line (suggested by animecyc) [#D1290]
+    https://github.com/akinomyoga/ble.sh/issues/44
+    これは意図した振る舞いである、と書こうとしたが振る舞いが変である。
+    ソースコードを見ると history.onleave 経由で menu/clear 呼び出される筈である。
+    実際に確かめてみると呼び出されてはいるが既に menu が非アクティブになっている。
+    最初からアクティブになっていない可能性? と思ったがちゃんとアクティブになる
+    コードパスを通過している。
+
+    と思ったら edit.sh 側に active を解除するコードがある。
+    というより正に .newline の中で明示的に clear している。
+    確認するとこれが追加されたのは aae8b264 である。
+    これは menu-filter 着色を解除して最後に行内容を表示する為の処置である。
+    insert-newline を呼び出す時に内部で再描画を行うので。
+
+2020-02-19
 
   * term: menu が正しく消去されないとの事 (reported by killermoehre) [#D1289]
     https://github.com/akinomyoga/ble.sh/issues/42

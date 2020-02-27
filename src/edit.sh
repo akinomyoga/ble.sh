@@ -4416,18 +4416,18 @@ function ble/widget/.newline/clear-content {
 ##     コロン区切りのオプションです。
 ##     keep-info
 ##       info を隠さずに表示したままにします。
+##       (但し menu-complete は必ずクリアします。)
 function ble/widget/.newline {
   local opts=$1
   _ble_edit_mark_active=
 
   # (for lib/core-complete.sh layer:menu_filter)
   if [[ $_ble_complete_menu_active ]]; then
-    _ble_complete_menu_active=
     [[ $_ble_highlight_layer_menu_filter_beg ]] &&
       ble/textarea#invalidate str # (#D0995)
   fi
 
-  ble/widget/.insert-newline "$opts"
+  _ble_complete_menu_active= ble/widget/.insert-newline "$opts"
   ((LINENO=++_ble_edit_LINENO))
 
   ble/history/onleave.fire
