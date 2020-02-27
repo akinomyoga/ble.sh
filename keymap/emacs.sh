@@ -99,9 +99,19 @@ function ble/widget/emacs/__after_widget__ {
   ble/keymap:emacs/update-mode-name
 }
 
+# quoted-insert
+function ble/widget/emacs/quoted-insert-char {
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/emacs/quoted-insert-char.hook
+  return 147
+}
+function ble/widget/emacs/quoted-insert-char.hook {
+  ble/widget/quoted-insert-char.hook
+  ble/keymap:emacs/update-mode-name
+}
 function ble/widget/emacs/quoted-insert {
   _ble_edit_mark_active=
-  _ble_decode_char__hook=ble/widget/emacs/quoted-insert.hook
+  _ble_decode_key__hook=ble/widget/emacs/quoted-insert.hook
   return 147
 }
 function ble/widget/emacs/quoted-insert.hook {

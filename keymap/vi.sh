@@ -5965,10 +5965,24 @@ function ble/widget/vi-rlfunc/insert-comment {
   ble/widget/vi-command/accept-line
 }
 # rl_nmap C-v, C-q
+function ble/widget/vi-rlfunc/quoted-insert-char.hook {
+  local ARG FLAG REG; ble/keymap:vi/get-arg 1
+  ble/keymap:vi/mark/start-edit-area
+  _ble_edit_arg=$ARG ble/widget/quoted-insert-char.hook
+  ble/keymap:vi/mark/end-edit-area
+  ble/keymap:vi/repeat/record
+  ble/keymap:vi/adjust-command-mode
+  return 0
+}
+function ble/widget/vi-rlfunc/quoted-insert-char {
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/vi-rlfunc/quoted-insert-char.hook
+  return 147
+}
 function ble/widget/vi-rlfunc/quoted-insert.hook {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/keymap:vi/mark/start-edit-area
-  _ble_edit_arg=$ARG ble/widget/self-insert
+  _ble_edit_arg=$ARG ble/widget/quoted-insert.hook
   ble/keymap:vi/mark/end-edit-area
   ble/keymap:vi/repeat/record
   ble/keymap:vi/adjust-command-mode
@@ -5976,7 +5990,7 @@ function ble/widget/vi-rlfunc/quoted-insert.hook {
 }
 function ble/widget/vi-rlfunc/quoted-insert {
   _ble_edit_mark_active=
-  _ble_decode_char__hook=ble/widget/vi-rlfunc/quoted-insert.hook
+  _ble_decode_key__hook=ble/widget/vi-rlfunc/quoted-insert.hook
   return 147
 }
 # rl_nmap C-d
@@ -7559,14 +7573,23 @@ function ble/widget/vi_imap/delete-backward-word {
 }
 
 # imap C-q, C-v
+function ble/widget/vi_imap/quoted-insert-char {
+  ble/keymap:vi/imap-repeat/pop
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/vi_imap/quoted-insert-char.hook
+  return 147
+}
+function ble/widget/vi_imap/quoted-insert-char.hook {
+  ble/keymap:vi/imap/invoke-widget ble/widget/self-insert "$1"
+}
 function ble/widget/vi_imap/quoted-insert {
   ble/keymap:vi/imap-repeat/pop
   _ble_edit_mark_active=
-  _ble_decode_char__hook=ble/widget/vi_imap/quoted-insert.hook
+  _ble_decode_key__hook=ble/widget/vi_imap/quoted-insert.hook
   return 147
 }
 function ble/widget/vi_imap/quoted-insert.hook {
-  ble/keymap:vi/imap/invoke-widget ble/widget/self-insert "$1"
+  ble/keymap:vi/imap/invoke-widget ble/widget/quoted-insert.hook "$1"
 }
 
 # bracketed paste mode

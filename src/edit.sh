@@ -2742,14 +2742,33 @@ function ble/widget/batch-insert {
   fi
 }
 
-
 # quoted insert
-function ble/widget/quoted-insert.hook {
+function ble/widget/quoted-insert-char.hook {
   ble/widget/self-insert
+}
+function ble/widget/quoted-insert-char {
+  _ble_edit_mark_active=
+  _ble_decode_char__hook=ble/widget/quoted-insert-char.hook
+  return 147
+}
+function ble/widget/quoted-insert.hook {
+  local flag=$((KEYS[0]&_ble_decode_MaskFlag))
+  local char=$((KEYS[0]&_ble_decode_MaskChar))
+  if ((flag==0&&char<_ble_decode_FunctionKeyBase)); then
+    ble/widget/self-insert
+  elif ((flag==_ble_decode_Ctrl&&(char==63||91<=char&&char<=122)&&(char&0x1F)!=0)); then
+    # C-x (C-@ 以外) は変換して制御文字を挿入する。
+    ((char=char==63?127:char&0x1F))
+    local -a KEYS; KEYS=("$char")
+    ble/widget/self-insert
+  else
+    local -a KEYS; KEYS=("${CHARS[@]}")
+    ble/widget/batch-insert
+  fi
 }
 function ble/widget/quoted-insert {
   _ble_edit_mark_active=
-  _ble_decode_char__hook=ble/widget/quoted-insert.hook
+  _ble_decode_key__hook=ble/widget/quoted-insert.hook
   return 147
 }
 
@@ -3883,7 +3902,7 @@ function ble-edit/exec/.adjust-eol {
   fi
 
   local advance=$((_ble_term_xenl?cols-2:cols-3))
-  if [[ $_ble_term_cygwin ]]; then
+  if [[ $_ble_term_TERM ]]; then
     # Note (#D1144): Cygwin console では何故か行き先が
     #   丁度 cols+1 列目になる様な CUF は一文字も動かない。
     #   cols列目またはcols+2列目以降は大丈夫である。

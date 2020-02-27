@@ -2498,7 +2498,7 @@ function ble/util/import/.read-arguments {
         (--delay) flags=d$flags ;;
         (--help) flags=h$flags ;;
         (*)
-          echo "ble-import: unrecognized option '$arg'" >&2
+          ble/util/print "ble-import: unrecognized option '$arg'" >&2
           flags=E$flags ;;
         esac
         continue ;;
@@ -2509,7 +2509,7 @@ function ble/util/import/.read-arguments {
           case $c in
           (d) flags=$c$flags ;;
           (*)
-            echo "ble-import: unrecognized option '-$c'" >&2
+            ble/util/print "ble-import: unrecognized option '-$c'" >&2
             flags=E$flags ;;
           esac
         done
@@ -2519,7 +2519,7 @@ function ble/util/import/.read-arguments {
 
     local ret
     if ! ble/util/import/search "$arg"; then
-      echo "ble-import: file '$arg' not found" >&2
+      ble/util/print "ble-import: file '$arg' not found" >&2
       flags=E$flags
       continue
     fi; local file=$ret
@@ -3096,14 +3096,7 @@ bleopt/declare -v vbell_default_message ' Wuff, -- Wuff!! '
 bleopt/declare -v vbell_duration 2000
 bleopt/declare -n vbell_align left
 
-_ble_term_cygwin=
-[[ $TERM == cygwin ]] && _ble_term_cygwin=1
 function ble/term:cygwin/initialize.hook {
-  local rex='^67;[0-9]{3,};0$'
-  [[ $_ble_term_DA2R =~ $rex ]] || return 0
-
-  _ble_term_cygwin=1
-
   # RIの修正
   # Note: Cygwin console では何故か RI (ESC M) が
   #   1行スクロールアップとして実装されている。
@@ -3128,17 +3121,16 @@ function ble/term:cygwin/initialize.hook {
 }
 
 function ble/term/DA2R.hook {
-  [[ $TERM == cygwin ]] &&
-    ble/term:cygwin/initialize.hook
-
-  # contra
-  if [[ $_ble_term_DA2R == '99;'* ]]; then
+  case $_ble_term_TERM in
+  (contra)
     _ble_term_cuu=$'\e[%dk'
     _ble_term_cud=$'\e[%de'
     _ble_term_cuf=$'\e[%da'
     _ble_term_cub=$'\e[%dj'
-    _ble_term_cup=$'\e[%l;%cf'
-  fi
+    _ble_term_cup=$'\e[%l;%cf' ;;
+  (cygwin)
+    ble/term:cygwin/initialize.hook ;;
+  esac
 }
 function ble/term/.initialize {
   # Constants (init-term.sh に失敗すると大変なので此処に書く)
@@ -3546,8 +3538,30 @@ fi
 
 _ble_term_DA1R=
 _ble_term_DA2R=
+_ble_term_TERM=
 function ble/term/DA1/notify { _ble_term_DA1R=$1; blehook/invoke DA1R; }
-function ble/term/DA2/notify { _ble_term_DA2R=$1; blehook/invoke DA2R; }
+function ble/term/DA2/notify {
+  _ble_term_DA2R=$1
+  local da2r; ble/string#split da2r ';' "$_ble_term_DA2R"
+  case $_ble_term_DA2R in
+  ('1;'*)
+    if ((da2r[1]>=2000)); then
+      _ble_term_TERM=vte
+    fi ;;
+  ('99;'*)
+    _ble_term_TERM=contra ;;
+  ('65;'*)
+    if ((da2r[1]>=100)); then
+      _ble_term_TERM=RLogin
+    fi ;;
+  ('67;'*)
+    local rex='^67;[0-9]{3,};0$'
+    if [[ $TERM == cygwin && $_ble_term_DA2R =~ $rex ]]; then
+      _ble_term_TERM=cygwin
+    fi ;;
+  esac
+  blehook/invoke DA2R
+}
 
 #---- DSR(6) ------------------------------------------------------------------
 # CPR (CURSOR POSITION REPORT)
@@ -3577,6 +3591,18 @@ bleopt/declare -v term_modifyOtherKeys_internal auto
 _ble_term_modifyOtherKeys_current=
 function ble/term/modifyOtherKeys/.update {
   [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] && return
+
+  # Note: RLogin では modifyStringKeys (\e[>5m) も指定しないと駄目。
+  #   また、RLogin は modifyStringKeys にすると S-数字 を
+  #   記号に翻訳してくれないので注意。
+  if [[ $_ble_term_TERM == RLogin ]]; then
+    case $1 in
+    (0) ble/util/buffer $'\e[>5;0m' ;;
+    (1) ble/util/buffer $'\e[>5;1m' ;;
+    (2) ble/util/buffer $'\e[>5;1m\e[>5;2m' ;;
+    esac
+  fi
+
   # Note: 対応していない端末が SGR と勘違いしても
   #  大丈夫な様に SGR を最後にクリアしておく。
   # Note: \e[>4;2m の時は、対応していない端末のため
@@ -3586,11 +3612,12 @@ function ble/term/modifyOtherKeys/.update {
   (1) ble/util/buffer $'\e[>4;1m\e[m' ;;
   (2) ble/util/buffer $'\e[>4;1m\e[>4;2m\e[m' ;;
   esac
+
   _ble_term_modifyOtherKeys_current=$1
 }
 function ble/term/modifyOtherKeys/.supported {
   # libvte は SGR(>4) を直接画面に表示してしまう
-  [[ $_ble_term_DA2R == '1;'* ]] && return 1
+  [[ $_ble_term_TERM == vte ]] && return 1
 
   # 改造版 Poderosa は通知でウィンドウサイズを毎回変更するので表示が乱れてしまう
   [[ $MWG_LOGINTERM == rosaterm ]] && return 1

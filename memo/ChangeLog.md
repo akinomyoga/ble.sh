@@ -14,7 +14,7 @@
 - complete: add `compopt -o quote/default` for `fzf` (motivated by dylankb) `#D1275` 58e1be4
 - util (`ble-import`): support an option `-d` (`--delay`) `#D1285` 9673e4e
 - syntax: support parameter expansion of the form `${var/#pat}`, `${var/%pat}` `#D1286` e2f4809
-
+ 
 ## Fix
 
 - util (ble/builtin/trap): fix argument analysis for the form `trap INT` (reported by dylankb) `#D1221` db8b0c2
@@ -35,7 +35,7 @@
 - decode: fix strange behaviors after `fzf` (convert <kbd>DEL</kbd> to <kbd>C-?</kbd>) `#D1281` 744c8e8
 - edit: work around Bash rebinding on `TERM` change `#D1287` ac7ab55 7a99bf3
 - term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef
-- complete: clear menu on discard-line (reported by animecyc) `#D1290` 0000000
+- complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3
 
 ## Changes
 
@@ -48,6 +48,7 @@
   - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 5d98210
   - decode: fix error messages of BSD `sed` rejecting unencoded bytes from `bind -p` (reported by dylankb) `#D1277` 0cc9160
 - edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 7db48dc
+- edit (quoted-insert): insert literal key sequence `#D1291` 0000000
 
 ## Compatibility
 

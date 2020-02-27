@@ -564,8 +564,12 @@ function ble-decode-char/csi/.modify-key {
   if ((mod>=0)); then
     # Note: xterm, mintty では modifyOtherKeys で通常文字に対するシフトは
     #   文字自体もそれに応じて変化させ、更に修飾フラグも設定する。
+    # Note: RLogin は修飾がある場合は常に英大文字に統一する。
     if ((33<=key&&key<_ble_decode_FunctionKeyBase)); then
-      if ((mod==0x01)); then
+      if (((mod&0x01)&&0x31<=key&&key<=0x39)) && [[ $_ble_term_TERM == RLogin ]]; then
+        # RLogin は数字に対する S- 修飾の解決はしてくれない。
+        ((key-=16,mod&=~0x01))
+      elif ((mod==0x01)); then
         # S- だけの時には単に S- を外す
         mod=0
       elif ((65<=key&&key<=90)); then
@@ -760,11 +764,13 @@ _ble_decode_char__hook=
 _ble_decode_cmap_=()
 
 # _ble_decode_char__seq が設定されている時は、
-# 必ず _ble_decode_char2_reach も設定されている様にする。
+# 必ず _ble_decode_char2_reach_key も設定されている様にする。
 _ble_decode_char2_seq=
-_ble_decode_char2_reach=
+_ble_decode_char2_reach_key=
+_ble_decode_char2_reach_seq=
 _ble_decode_char2_modifier=
 _ble_decode_char2_modkcode=
+_ble_decode_char2_modseq=
 function ble-decode-char {
   # 入れ子の ble-decode-char 呼び出しによる入力は後で実行。
   if [[ $ble_decode_char_nest && ! $ble_decode_char_sync ]]; then
@@ -778,6 +784,8 @@ function ble-decode-char {
   local ble_decode_char_rest=$#
   local ble_decode_char_char=
   # Note: ループ中で set -- ... を使っている。
+
+  local char ent
   while
     if ((iloop++%50==0)); then
       ((iloop>50)) && eval -- "$_ble_decode_show_progress_hook"
@@ -794,7 +802,7 @@ function ble-decode-char {
     fi
     (($#))
   do
-    local char=$1; shift
+    char=$1; shift
     ble_decode_char_char=$char # 補正前 char (_ble_decode_Macr 判定の為)
     ble_decode_char_rest=$#
 #%if debug_keylogger
@@ -829,41 +837,45 @@ function ble-decode-char {
       continue
     fi
 
-    local ent
-    ble-decode-char/.getent
+    ble-decode-char/.getent # -> ent
     if [[ ! $ent ]]; then
       # シーケンスが登録されていない時
-      if [[ $_ble_decode_char2_reach ]]; then
-        local reach rest
-        reach=($_ble_decode_char2_reach)
-        rest=${_ble_decode_char2_seq:reach[1]}
+      if [[ $_ble_decode_char2_reach_key ]]; then
+        local key=$_ble_decode_char2_reach_key
+        local seq=$_ble_decode_char2_reach_seq
+        local rest=${_ble_decode_char2_seq:${#seq}}
         rest=(${rest//_/ } $ble_decode_char_char)
 
-        _ble_decode_char2_reach=
         _ble_decode_char2_seq=
+        _ble_decode_char2_reach_key=
+        _ble_decode_char2_reach_seq=
         ble-decode-char/csi/clear
 
-        ble-decode-char/.send-modified-key "${reach[0]}"
+        ble-decode-char/.send-modified-key "$key" "$seq"
         ((ble_decode_char_total+=${#rest[@]}))
         set -- "${rest[@]}" "$@"
       else
-        ble-decode-char/.send-modified-key "$char"
+        ble-decode-char/.send-modified-key "$char" "_$char"
       fi
     elif [[ $ent == *_ ]]; then
       # /\d*_/ (_ は続き (1つ以上の有効なシーケンス) がある事を示す)
       _ble_decode_char2_seq=${_ble_decode_char2_seq}_$char
       if [[ ${ent%_} ]]; then
-        _ble_decode_char2_reach="${ent%_} ${#_ble_decode_char2_seq}"
-      elif [[ ! $_ble_decode_char2_reach ]]; then
+        _ble_decode_char2_reach_key=${ent%_}
+        _ble_decode_char2_reach_seq=$_ble_decode_char2_seq
+      elif [[ ! $_ble_decode_char2_reach_key ]]; then
         # 1文字目
-        _ble_decode_char2_reach="$char ${#_ble_decode_char2_seq}"
+        _ble_decode_char2_reach_key=$char
+        _ble_decode_char2_reach_seq=$_ble_decode_char2_seq
       fi
     else
       # /\d+/  (続きのシーケンスはなく ent で確定である事を示す)
+      local seq=${_ble_decode_char2_seq}_$char
       _ble_decode_char2_seq=
-      _ble_decode_char2_reach=
+      _ble_decode_char2_reach_key=
+      _ble_decode_char2_reach_seq=
       ble-decode-char/csi/clear
-      ble-decode-char/.send-modified-key "$ent"
+      ble-decode-char/.send-modified-key "$ent" "$seq"
     fi
   done
   return 0
@@ -920,19 +932,23 @@ function ble-decode-char/.process-modifier {
     # 重複があったという情報はここで消える。
     ((_ble_decode_char2_modkcode=key|mflag,
       _ble_decode_char2_modifier=mflag1|mflag))
+    _ble_decode_char2_modseq=${_ble_decode_char2_modseq}$2
     return 0
   fi
 }
 
-## 関数 ble-decode-char/.send-modified-key key
+## 関数 ble-decode-char/.send-modified-key key seq
 ##   指定されたキーを修飾して ble-decode-key に渡します。
 ##   key = 0..31,127 は C-@ C-a ... C-z C-[ C-\ C-] C-^ C-_ C-? に変換されます。
 ##   ESC は次に来る文字を meta 修飾します。
 ##   _ble_decode_IsolatedESC は meta にならずに ESC として渡されます。
 ##   @param[in] key
 ##     処理対象のキーコードを指定します。
+##   @param[in] seq
+##     指定したキーを表現する文字シーケンスを指定します。
+##     /(_文字コード)+/ の形式の文字コードの列です。
 function ble-decode-char/.send-modified-key {
-  local key=$1
+  local key=$1 seq=$2
   ((key==_ble_decode_KCODE_IGNORE)) && return
 
   if ((0<=key&&key<32)); then
@@ -942,41 +958,46 @@ function ble-decode-char/.send-modified-key {
   fi
 
   if (($1==27)); then
-    ble-decode-char/.process-modifier "$_ble_decode_Meta" && return
+    ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return
   elif (($1==_ble_decode_IsolatedESC)); then
     ((key=(_ble_decode_Ctrl|91)))
     if ! ble/decode/uses-isolated-esc; then
-      ble-decode-char/.process-modifier "$_ble_decode_Meta" && return
+      ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return
     fi
   elif ((_ble_decode_KCODE_SHIFT<=$1&&$1<=_ble_decode_KCODE_HYPER)); then
     case "$1" in
     ($_ble_decode_KCODE_SHIFT)
-      ble-decode-char/.process-modifier "$_ble_decode_Shft" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Shft" "$seq" && return ;;
     ($_ble_decode_KCODE_CONTROL)
-      ble-decode-char/.process-modifier "$_ble_decode_Ctrl" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Ctrl" "$seq" && return ;;
     ($_ble_decode_KCODE_ALTER)
-      ble-decode-char/.process-modifier "$_ble_decode_Altr" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Altr" "$seq" && return ;;
     ($_ble_decode_KCODE_META)
-      ble-decode-char/.process-modifier "$_ble_decode_Meta" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return ;;
     ($_ble_decode_KCODE_SUPER)
-      ble-decode-char/.process-modifier "$_ble_decode_Supr" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Supr" "$seq" && return ;;
     ($_ble_decode_KCODE_HYPER)
-      ble-decode-char/.process-modifier "$_ble_decode_Hypr" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Hypr" "$seq" && return ;;
     esac
   fi
 
   if [[ $_ble_decode_char2_modifier ]]; then
     local mflag=$_ble_decode_char2_modifier
     local mcode=$_ble_decode_char2_modkcode
+    local mseq=$_ble_decode_char2_modseq
     _ble_decode_char2_modifier=
     _ble_decode_char2_modkcode=
+    _ble_decode_char2_modseq=
     if ((key&mflag)); then
+      CHARS=(${mseq//_/ })
       ble-decode-key "$mcode"
     else
+      seq=$mseq$seq
       ((key|=mflag))
     fi
   fi
 
+  CHARS=(${seq//_/ })
   ble-decode-key "$key"
 }
 
@@ -2252,7 +2273,8 @@ function ble/decode/cmap/decode-chars {
   local _ble_decode_csi_mode=0
   local _ble_decode_csi_args=
   local _ble_decode_char2_seq=
-  local _ble_decode_char2_reach=
+  local _ble_decode_char2_reach_key=
+  local _ble_decode_char2_reach_seq=
   local _ble_decode_char2_modifier=
   local _ble_decode_char2_modkcode=
 
