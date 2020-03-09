@@ -14,7 +14,7 @@
 - complete: add `compopt -o quote/default` for `fzf` (motivated by dylankb) `#D1275` 58e1be4
 - util (`ble-import`): support an option `-d` (`--delay`) `#D1285` 9673e4e
 - syntax: support parameter expansion of the form `${var/#pat}`, `${var/%pat}` `#D1286` e2f4809
- 
+
 ## Fix
 
 - util (ble/builtin/trap): fix argument analysis for the form `trap INT` (reported by dylankb) `#D1221` db8b0c2
@@ -36,6 +36,7 @@
 - edit: work around Bash rebinding on `TERM` change `#D1287` ac7ab55 7a99bf3
 - term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef
 - complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3
+- vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292`
 
 ## Changes
 

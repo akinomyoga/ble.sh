@@ -2423,7 +2423,7 @@ function ble/util/autoload/.read-arguments {
     flags=e$flags
   fi
 
-  file=${args[0]} functions=("${#args[@]:1}")
+  file=${args[0]} functions=("${args[@]:1}")
 }
 function ble-autoload {
   local file flags
