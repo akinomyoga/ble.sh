@@ -3298,7 +3298,7 @@ function ble/widget/vi-command/nth-column {
   else
     [[ $_ble_decode_key__kmap != vi_[xs]map ]] &&
       ble-edit/content/nonbol-eolp "$eol" && ((eol--))
-    ((index=bol+ARG-1,index>eol?(index=eol)))
+    ((index=bol+ARG-1,index>eol&&(index=eol)))
   fi
 
   ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" 1
