@@ -467,6 +467,81 @@ function ble-decode/.hook/erase-progress {
   fi
 }
 
+## 関数 ble-decode/.check-abort byte
+##   bleopt_decode_abort_char による decode abort を検出します。
+##
+##   @remarks modifyOtherKeys も考慮に入れると実は C-x の形式のキーは
+##   "CSI 27;5; code ~" や "CSI code ;5u" の形式で送られてくる。
+##   _ble_decode_input_buffer に記録されている受信済みバイトも検査して
+##   これらのシーケンスを構成していないか確認する必要がある。
+##
+function ble-decode/.check-abort {
+  if (($1==bleopt_decode_abort_char)); then
+    local nbytes=${#_ble_decode_input_buffer[@]}
+    local nchars=${#_ble_decode_char_buffer[@]}
+    ((nbytes||nchars)); return
+  fi
+
+  (($1==0x7e||$1==0x75)) || return 1
+
+  local i=$((${#_ble_decode_input_buffer[@]}-1))
+  local n
+  ((n=bleopt_decode_abort_char,
+    n+=(1<=n&&n<=26?96:64)))
+
+  if (($1==0x7e)); then
+    # Check "CSI >? 27 ; 5 ; XXX ~"
+
+    # Check code
+    for ((;n;n/=10)); do
+      ((i>=0&&_ble_decode_input_buffer[i--]==n%10+48)) || return 1
+    done
+
+    # Check "27;5;"
+    ((i>=4)) || return 1
+    ((_ble_decode_input_buffer[i--]==59)) || return 1
+    ((_ble_decode_input_buffer[i--]==53)) || return 1
+    ((_ble_decode_input_buffer[i--]==59)) || return 1
+    ((_ble_decode_input_buffer[i--]==55)) || return 1
+    ((_ble_decode_input_buffer[i--]==50)) || return 1
+
+  elif (($1==0x75)); then
+    # Check "CSI >? XXX ; 5 u"
+
+    # Check ";5"
+    ((i>=1)) || return 1
+    ((_ble_decode_input_buffer[i--]==53)) || return 1
+    ((_ble_decode_input_buffer[i--]==59)) || return 1
+
+    # Check code
+    for ((;n;n/=10)); do
+      ((i>=0&&_ble_decode_input_buffer[i--]==n%10+48)) || return 1
+    done
+  fi
+
+  # Skip ">"
+  ((i>=0&&_ble_decode_input_buffer[i]==62&&i--))
+
+  # Check CSI ("\e[", "\xC0\x9B[" or "\xC2\x9B")
+  # ENCODING: UTF-8 (\xC0\x9B)
+  ((i>=0)) || return 1
+  if ((_ble_decode_input_buffer[i]==0x5B)); then
+    if ((i>=1&&_ble_decode_input_buffer[i-1]==0x1B)); then
+      ((i-=2))
+    elif ((i>=2&&_ble_decode_input_buffer[i-1]==0x9B&&_ble_decode_input_buffer[i-2]==0xC0)); then
+      ((i-=3))
+    else
+      return 1
+    fi
+  elif ((_ble_decode_input_buffer[i]==0x9B)); then
+    ((--i>=0&&_ble_decode_input_buffer[i--]==0xC2)) || return 1
+  else
+    return 1
+  fi
+  (((i>=0||${#_ble_decode_char_buffer[@]}))); return
+  return 0
+}
+
 function ble-decode/.hook {
   if ble/util/is-stdin-ready; then
     ble/array#push _ble_decode_input_buffer "$@"
@@ -481,17 +556,14 @@ function ble-decode/.hook {
   ble-decode/PROLOGUE
 
   # abort #D0998
-  if (($1==bleopt_decode_abort_char)); then
-    local nbytes=${#_ble_decode_input_buffer[@]}
-    local nchars=${#_ble_decode_char_buffer[@]}
-    if ((nbytes||nchars)); then
-      _ble_decode_input_buffer=()
-      _ble_decode_char_buffer=()
-      ble/term/visible-bell "Abort by 'bleopt decode_abort_char=$bleopt_decode_abort_char'"
-      shift
-      # 何れにしても EPILOGUE を実行する必要があるので下に流れる。
-      # ble/term/visible-bell を表示する為には PROLOGUE の後でなければならない事にも注意する。
-    fi
+  if ble-decode/.check-abort "$1"; then
+    _ble_decode_char__hook=
+    _ble_decode_input_buffer=()
+    _ble_decode_char_buffer=()
+    ble/term/visible-bell "Abort by 'bleopt decode_abort_char=$bleopt_decode_abort_char'"
+    shift
+    # 何れにしても EPILOGUE を実行する必要があるので下に流れる。
+    # ble/term/visible-bell を表示する為には PROLOGUE の後でなければならない事にも注意する。
   fi
 
   local chars

@@ -50,6 +50,7 @@
   - decode: fix error messages of BSD `sed` rejecting unencoded bytes from `bind -p` (reported by dylankb) `#D1277` 0cc9160
 - edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 7db48dc
 - edit (quoted-insert): insert literal key sequence `#D1291` 0000000
+- decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` 0000000
 
 ## Compatibility
 
