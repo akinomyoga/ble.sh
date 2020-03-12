@@ -2867,10 +2867,12 @@ function ble/widget/bracketed-paste.hook {
 
   # check terminator
   local is_end= chars=
-  if chars=${_ble_edit_bracketed_paste%:27:91:50:48:49:126} # ESC [ 2 0 1 ~
-     [[ $chars != "$_ble_edit_bracketed_paste" ]]; then is_end=1
-  elif chars=${_ble_edit_bracketed_paste%:155:50:48:49:126} # CSI 2 0 1 ~
+  if [[ $1 == 126 && $_ble_edit_bracketed_paste == *:50:48:49:126 ]]; then
+    if chars=${_ble_edit_bracketed_paste%:27:91:50:48:49:126} # ESC [ 2 0 1 ~
        [[ $chars != "$_ble_edit_bracketed_paste" ]]; then is_end=1
+    elif chars=${_ble_edit_bracketed_paste%:155:50:48:49:126} # CSI 2 0 1 ~
+         [[ $chars != "$_ble_edit_bracketed_paste" ]]; then is_end=1
+    fi
   fi
 
   if [[ ! $is_end ]]; then

@@ -204,14 +204,6 @@ function ble/keymap:vi/imap/invoke-widget {
   ble/keymap:vi/imap-repeat/push
   builtin eval -- "$WIDGET"
 }
-function ble/keymap:vi/imap/invoke-widget-charwise {
-  local WIDGET=$1; shift
-  local -a KEYS=()
-  for KEYS; do
-    ble/keymap:vi/imap-repeat/push
-    builtin eval -- "$WIDGET"
-  done
-}
 
 ## 配列 _ble_keymap_vi_imap_white_list
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
@@ -7612,7 +7604,10 @@ function ble/widget/vi_imap/bracketed-paste {
   return 147
 }
 function ble/widget/vi_imap/bracketed-paste.proc {
-  ble/keymap:vi/imap/invoke-widget-charwise ble/widget/self-insert "$@"
+  local WIDGET=ble/widget/batch-insert
+  local -a KEYS; KEYS=("$@")
+  ble/keymap:vi/imap-repeat/push
+  builtin eval -- "$WIDGET"
 }
 
 _ble_keymap_vi_brackated_paste_mark_active=

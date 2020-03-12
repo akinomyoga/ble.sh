@@ -3,9 +3,7 @@
 
 2020-01-12 -- (#D1215... ) c74abc5...
 
-- edit: support `bleopt editor line_limit_{type,length} history_limit_length` `#D1295` 0000000
-- complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 0000000
-- edit (edit-and-execute): disable highlighting of old command line content `#D1295` 0000000
+- edit: improve performance of bracketed-paste `#D1296` 0000000
 
 ## New features
 
@@ -18,6 +16,7 @@
 - complete: add `compopt -o quote/default` for `fzf` (motivated by dylankb) `#D1275` 58e1be4
 - util (`ble-import`): support an option `-d` (`--delay`) `#D1285` 9673e4e
 - syntax: support parameter expansion of the form `${var/#pat}`, `${var/%pat}` `#D1286` e2f4809
+- edit: support `bleopt editor line_limit_{type,length} history_limit_length` `#D1295` 2f9a000
 
 ## Fix
 
@@ -41,6 +40,7 @@
 - term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef
 - complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3
 - vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292` da6cc47
+- complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 2f9a000
 
 ## Changes
 
@@ -55,6 +55,7 @@
 - edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 7db48dc
 - edit (quoted-insert): insert literal key sequence `#D1291` 420c933
 - decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` ad98416
+- edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
 
 ## Compatibility
 
@@ -82,7 +83,7 @@
 - util: add `ble/function#{advice,push,pop}` to patch functions (motivated by dylankb) `#D1275` fbe531a
 - util (`ble/util/stackdump`): output to `stdout` instead of `stderr` `#D1279` 9d3c50d
 - complete (`ble-sabbrev`): delay initialization `#D1282` dfc4f66
-- test: update `lib/test-{core => util}.sh` (reported by andychu) `#1294` 0000000
+- test: update `lib/test-{core => util}.sh` (reported by andychu) `#D1294` e835b0d
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
