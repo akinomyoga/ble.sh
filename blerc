@@ -28,9 +28,16 @@
 #bleopt input_encoding=UTF-8
 
 
-## The following setting specifies the pager used by ble.sh.
+## The following setting specifies the pager used by ble.sh.  This is used to
+## show the help of commands (f1).
 
 #bleopt pager=less
+
+## The following setting specifies the editor used by ble.sh.  This is used for
+## the widget edit-and-execute (C-x C-e) and editor for a large amount of
+## command line texts.  Possible values are e.g. "vim", "emacs -nw" or "nano".
+
+#bleopt editor=vim
 
 
 ## The following settings sets the behavior of visible bells (vbell).
@@ -142,15 +149,46 @@
 #bleopt history_share=
 
 
-## The following setting controls the behavior of the widget "accept-single-"
-## line-or-newline" in the single-line editing mode. The value is a subject of
-## arithmetic evaluation. When it evaluates to negative integers, the line is
-## always accepted. When it evaluates to 0, it enters the multiline editing
-## mode when there is any unprocessed user inputs, or otherwise the line is
-## accepted. When it evaluates to a positive integer "n", it enters the
-## multiline editing mode when there is more than "n"unprocessed user inputs.
+## The following setting controls the behavior of the widget
+## "accept-single-line-or-newline" in the single-line editing mode. The value
+## is a subject of arithmetic evaluation. When it evaluates to negative
+## integers, the line is always accepted. When it evaluates to 0, it enters the
+## multiline editing mode when there is any unprocessed user inputs, or
+## otherwise the line is accepted. When it evaluates to a positive integer "n",
+## it enters the multiline editing mode when there is more than "n"unprocessed
+## user inputs.
 
 #bleopt accept_line_threshold=5
+
+
+## The following option controls the behavior when the number of characters
+## exceeds the capacity specified by `line_limit_length`.  The value `none`
+## means that the number of characters will not be checked.  The value
+## `discard` means that the characters cannot be inserted when the number of
+## characters exceeds the capacity.  The value `truncate` means that the
+## command line is truncated from its end to fit into the capacity.  The value
+## `editor` menas that the widget `edit-and-execute` will be invoked to open an
+## editor to edit the command line contents.
+
+#bleopt line_limit_type=none
+
+
+## The following option specifies the capacity of the command line in the
+## number of characters.  The number 0 or negative numbers means the unlimited
+## capacity.
+
+#bleopt line_limit_length=10000
+
+
+## The following option specifies the maximal number of characters
+## which can be appended into the history.  When this option has a
+## positive value, commands with the length longer than the value is
+## not appended to the history.  When this option has a non-positive
+## value, commands are always appended to the history regardless of
+## their length.
+
+#bleopt history_limit_length=10000
+
 
 ##-----------------------------------------------------------------------------
 ## Terminal state control

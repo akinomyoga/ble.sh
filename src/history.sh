@@ -1,5 +1,10 @@
 #!/bin/bash
 
+## オプション history_limit_length
+##   履歴に登録するコマンドの最大文字数を指定します。
+##   この値を超える長さのコマンドは履歴に登録されません。
+bleopt/declare -v history_limit_length 10000
+
 #==============================================================================
 # ble/history:bash                                                @history.bash
 
@@ -1406,6 +1411,8 @@ function ble/history/.add-command-history {
 
 function ble/history/add {
   local command=$1
+  ((bleopt_history_limit_length>0&&${#command}>bleopt_history_limit_length)) && return 1
+
   if [[ $_ble_history_prefix ]]; then
     local code='
       # PREFIX_history_edit を未編集状態に戻す

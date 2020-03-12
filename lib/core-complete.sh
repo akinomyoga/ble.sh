@@ -760,6 +760,7 @@ function ble-decode/keymap:menu/define {
   # ble-bind -f __defchar__ menu_complete/self-insert
   # ble-bind -f __default__ 'menu_complete/exit-default'
   ble-bind -f __default__ 'bell'
+  ble-bind -f __line_limit__ nop
   ble-bind -f C-m         'menu/accept'
   ble-bind -f RET         'menu/accept'
   ble-bind -f C-g         'menu/cancel'
@@ -3332,7 +3333,7 @@ function ble/complete/menu-complete.class/onselect {
     ble/complete/cand/unpack "${_ble_complete_menu_items[nsel]}"
     insert=$INSERT
   fi
-  ble-edit/content/replace "$_ble_complete_menu0_beg" "$_ble_edit_ind" "$insert"
+  ble-edit/content/replace-limited "$_ble_complete_menu0_beg" "$_ble_edit_ind" "$insert"
   ((_ble_edit_ind=_ble_complete_menu0_beg+${#insert}))
 }
 
@@ -4578,6 +4579,7 @@ function ble/widget/menu_complete/exit-default {
 function ble-decode/keymap:menu_complete/define {
   # ble-bind -f __defchar__ menu_complete/self-insert
   ble-bind -f __default__ 'menu_complete/exit-default'
+  ble-bind -f __line_limit__ nop
   ble-bind -f C-m         'menu_complete/accept'
   ble-bind -f RET         'menu_complete/accept'
   ble-bind -f C-g         'menu_complete/cancel'
@@ -4716,6 +4718,14 @@ function ble/complete/auto-complete/.setup-auto-complete-mode {
   ble-decode/keymap/push auto_complete
   ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
 }
+## 関数 ble/complete/auto-complete/.insert ins
+##   @param[in] ins
+##   @var[in,out] _ble_edit_ind _ble_edit_mark
+function ble/complete/auto-complete/.insert {
+  local insert=$1
+  ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$insert" nobell
+  ((_ble_edit_mark=_ble_edit_ind+${#insert}))
+}
 
 ## 関数 ble/complete/auto-complete/.check-history opts
 ##   @param[in] opts
@@ -4732,11 +4742,8 @@ function ble/complete/auto-complete/.check-history {
   local COMP1=0 COMPS=$_ble_edit_str
   [[ $word == "$COMPS" ]] && return 1
   local insert=$word suffix=
-
   local type=h
-  local ins=${insert:${#COMPS}}
-  ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
-  ((_ble_edit_mark=_ble_edit_ind+${#ins}))
+  ble/complete/auto-complete/.insert "${insert:${#COMPS}}"
 
   # vars: type COMP1 cand word insert suffix
   ble/complete/auto-complete/.setup-auto-complete-mode
@@ -4783,9 +4790,7 @@ function ble/complete/auto-complete/.check-context {
     [[ ${comp_text:COMP1} == "$word"* ]] && return 1
 
     type=c
-    local ins=${insert:${#COMPS}}
-    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
-    ((_ble_edit_mark=_ble_edit_ind+${#ins}))
+    ble/complete/auto-complete/.insert "${insert:${#COMPS}}"
   else
     case :$comp_type: in
     (*:a:*) type=a ;;
@@ -4793,8 +4798,7 @@ function ble/complete/auto-complete/.check-context {
     (*:A:*) type=A ;;
     (*)   type=r ;;
     esac
-    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" " [$insert] "
-    ((_ble_edit_mark=_ble_edit_ind+4+${#insert}))
+    ble/complete/auto-complete/.insert " [$insert] "
   fi
 
   # vars: type COMP1 cand word insert suffix
@@ -4944,8 +4948,8 @@ function ble/widget/auto_complete/self-insert {
         local comps_fixed= comps_filter_pattern
         ble/complete/candidates/filter:"$comp_filter_type"/init "$compv_new"
         if ble/complete/candidates/filter:"$comp_filter_type"/test "$_ble_complete_ac_cand"; then
-          ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
-          ((_ble_edit_ind+=${#ins},_ble_edit_mark+=${#ins}))
+          local insert; ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+          ((_ble_edit_ind+=${#insert},_ble_edit_mark+=${#insert}))
           [[ $_ble_complete_ac_cand == "$compv_new" ]] &&
             ble/widget/auto_complete/cancel
           processed=1
@@ -4999,7 +5003,7 @@ function ble/widget/auto_complete/insert-word {
       blehook/invoke complete_insert
       return 0
     fi
-  elif [[ $_ble_complete_ac_type == [ra] ]]; then
+  elif [[ $_ble_complete_ac_type == [ramA] ]]; then
     local ins=$_ble_complete_ac_insert
     [[ $ins =~ $rex ]]
     if [[ $BASH_REMATCH == "$ins" ]]; then
@@ -5012,6 +5016,7 @@ function ble/widget/auto_complete/insert-word {
       #   <C>hll<I> [hello world] <M> → <C>hello <I>world<M>
       #   (<C> = comp1, <I> = _ble_edit_ind, <M> = _ble_edit_mark)
       _ble_complete_ac_type=c
+      # Note: 内容としては短くなるので replace-limited は使わなくて良い。
       ble-edit/content/replace "$_ble_complete_ac_comp1" "$_ble_edit_mark" "$_ble_complete_ac_insert"
       ((_ble_edit_ind=_ble_complete_ac_comp1+${#ins},
         _ble_edit_mark=_ble_complete_ac_comp1+${#_ble_complete_ac_insert}))
@@ -5039,6 +5044,7 @@ function ble/widget/auto_complete/notify-enter {
 function ble-decode/keymap:auto_complete/define {
   ble-bind -f __defchar__ auto_complete/self-insert
   ble-bind -f __default__ auto_complete/cancel-default
+  ble-bind -f __line_limit__ nop
   ble-bind -f 'C-g'       auto_complete/cancel
   ble-bind -f 'C-x C-g'   auto_complete/cancel
   ble-bind -f 'C-M-g'     auto_complete/cancel
@@ -5479,8 +5485,8 @@ function ble/complete/dabbrev/.search.fib {
 
   local rec=$_ble_complete_dabbrev_index,$_ble_complete_dabbrev_pos,$_ble_edit_ind,$_ble_edit_mark
   ble/array#push _ble_complete_dabbrev_stack "$rec:$_ble_edit_str"
-  ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" "$dabbrev_match"
-  ((_ble_edit_ind=_ble_edit_mark+${#dabbrev_match}))
+  local insert; ble-edit/content/replace-limited "$_ble_edit_mark" "$_ble_edit_ind" "$dabbrev_match"
+  ((_ble_edit_ind=_ble_edit_mark+${#insert}))
 
   ((index>_ble_complete_dabbrev_index)) &&
     ble/widget/.bell # 周回
@@ -5565,6 +5571,7 @@ function ble/widget/dabbrev/accept-line {
 }
 function ble-decode/keymap:dabbrev/define {
   ble-bind -f __default__ 'dabbrev/exit-default'
+  ble-bind -f __line_limit__ nop
   ble-bind -f 'C-g'       'dabbrev/cancel'
   ble-bind -f 'C-x C-g'   'dabbrev/cancel'
   ble-bind -f 'C-M-g'     'dabbrev/cancel'

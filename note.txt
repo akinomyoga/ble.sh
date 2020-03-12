@@ -926,6 +926,48 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-03-11
+
+  * __line_limit__ の実装の制限
+
+    1 replace-limited を直接呼び出している箇所については確認したが、
+      replace-limited が .replace-range を通して呼び出している時、
+      外側で ind, mark を設定していると計算がずれて範囲外になる可能性がある。
+      特に vi で .replace-range を多用しているが面倒なので細かくチェックしていない。
+
+    2 範囲超過している時にコマンドラインが短縮されていない場合
+      (これは isearch の途中などで起こりうる)
+      複数のキーから為るキーシーケンスが間に入る __line_limit__
+      によって無効化される。
+
+      これの対処方法として mouse_move と同様に特別に
+      __line_limit__ を keyseq に属さないキーとして取り扱う方法がある。
+      然し、現在ではチェックが非効率になるので対応していない。
+      或いは keyseq に属さない keycode の範囲を定義して、
+      その範囲で判定できる様にするのが良い気がする。
+      (その様なキーは実は沢山ある)
+
+  * menu-filter を off にすると変な事になる
+
+    menu-filter が無効の時は 1. menu filter 着色はしない。
+    menu から候補を拾う機能は off にしておくべき?
+    或いは、前回の menu を表示した時からカーソル位置が変化していない時にのみ使う。
+    これは後で対応しなければならない。
+
+  * fish の autosuggestions はファイルが存在しない履歴項目はスキップする (suggested by cole-h)
+    https://oilshell.zulipchat.com/#narrow/stream/121540-oil-discuss/topic/autosuggestions
+
+    うーん。どうやら fish は履歴を保存する時にその時に使った有効なパスも一緒に記録する様だ。
+    Bash はそれを記録しない。という事は ble.sh が代わりに記録する等の工夫をする必要がある。
+    然し、ble.sh が代わりに記録するという事になると履歴の一貫性を保つ為に工夫が必要になる。
+    或いは、ble.sh の履歴を本体として bash の history は全部それを元に再構築する?
+    その様にするしかない気がする。
+
+    或いは cmdinfo:color の実装が完全であれば、わざわざ履歴を見て
+    ファイルパスかどうかを判定しなくても、それが有効な履歴かどうかを判定する事が
+    可能になる。特に cd に関しては簡単に判定する事ができる筈である。
+    という事を考えるとわざわざ実装する必要はないのかもしれないとも思う。
+
 2020-02-02
 
   * vi mode の時は read も vi mode になっているべきではないのか?
@@ -2668,6 +2710,174 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-03-12
+
+  * 大量のテキストを貼り付けた時の動作 (suggested by dylankb) [#D1295]
+    https://github.com/akinomyoga/ble.sh/issues/45
+
+    * 幾つか確認をしたが結局 C-x C-e を自動で呼び出す様に変更する事になる気がする。
+      edit-and-execute をそのまま呼び出してしまって良いのだろうか。。
+      然し、よく考えると edit-and-execute を実行するとしても、
+      受信したバイト列を使って内容を編集してその後でエディタを起動する必要があるのでは。
+
+      或いはそれ自体を別のプログラムで実行するという可能性?
+      例えば awk の方が多少高速に実行できるかもしれない。
+      と思ったがどうだろう。微妙である。
+
+      何れにしても batch-insert に介入を行う。
+      →と思ったが batch-insert で全て処理されると保証できるのか?
+      batch-insert よりも後のユーザ入力が失われてしまう事になる。
+      それらも全て処理した上でエディタを起動しなければならない。
+
+      うーん。取り敢えず batch_insert_limit という設定名は変える。
+      挿入操作の所々で batch_insert_limit の制限をチェックする事にする。
+      →取り敢えず暫定的に edit_capacity, edit_overflow としている。
+
+    x fixed: insert-word が曖昧候補に対して動作していない。
+      確認してみたがどうも曖昧の種類を a から amA に拡張した時に
+      変更を忘れていたという事の気がする。
+      恐らく意図的に mA に対しては実行しないという事ではないと思われる。
+      実際に self-insert に於いてはちゃんと ramA に対してテストしている。
+      insert-word でも ramA に対して適用する様に書き換えた。
+
+    * done: 取り敢えず discard については実装したと思う。
+    * done: rename replace-limited
+    * done: replace-limited と adjust 云々はくっつける。
+
+    x fixed: edit-and-execute ではコマンドを灰色にして表示するべき。
+      或いはコマンドを表示しない様に隠すべき。
+      取り敢えず灰色にして表示する方向。
+
+    * done: edit_overflow=truncate も実装したい。
+      それから edit_overflow=editor も実装したい。
+      然し、このチェックは一体何処で実行すれば良いだろうか。
+      というか edit-and-execute は編集内容を表示したのだったか。
+
+      先ず初めは truncate を実装する事にする。
+      何処でチェックを入れるべきだろうか。
+      batch-insert の直後でチェックする?
+      然し、それだと通常の操作で truncate した時に適用されない。
+
+      全ての入力の後に処理するのは非効率的だ。
+      なので描画のタイミングの直前ぐらいでチェックするのが良い気がする。
+
+    * done: 処理が重くなるのを防ぐ為には batch-insert
+      でも適宜 truncate するのが良い。
+      →その様にした。
+
+    o ok: truncate をテストする必要がある。
+      truncate は何となく動いている気がする。
+
+    x fixed: discard に関しては挿入できる所までは挿入する筈なのに
+      限界に達する時には何も挿入されないという事態になっている。
+      何故だろうか。.replace-range が動いていない気がする。
+      → inslimit を使って制限する所を iend-ibeg で制限していた。
+      元々 inslimit を inslimit = max(inslimit, iend-ibeg) と書こうとして、
+      そのまま次の操作と融合して変な記述になっていた。修正した。
+
+    * done: 次に実装するのは editor である。
+      簡単に実装した。これで本当に動くのだろうか。
+
+    * ok: editor をテストする
+      取り敢えず動いている気がする。
+      コマンドラインに何も表示しないのは寂しいので
+      コメントで範囲を超過したというメッセージを残す事にした。
+
+    * done: 設定変数 editor を追加する
+      blerc / wiki.ja / wiki.en
+
+    * done: 設定変数 x 2
+    * done: 設定変数 x 2 in wiki ja
+    * done: 設定変数 x 2 in blerc
+    * done: 設定変数 x 2 in wiki en
+
+    * done: 後、履歴に巨大なデータが残るのも困る。
+      history_limit_length という設定変数も追加したい。
+      実装した。説明も追加した。
+
+    * done: エディタの起動に失敗した場合はどうなるのか。
+      truncate した方が良いのではないか?
+      →その様に実装した。
+
+    * done: truncate 等する時に特殊モードを抜ける。
+      truncate する時にも mark や ind などがずれるので
+      auto_complete や nsearch 等の様々なモードで変な事が起こりそうである。
+      それを避ける為には特別のキーを発行してそれで truncate を処理するという手もある?
+      例えば content_truncate もしくは content_editor 等の様に。
+      →或いは truncate が起こったら truncate を実行してから
+        content_truncate または content_editor を呼出して通知するという事にする。
+
+      これは後で実装する事にする。
+      →実装する。実装した。動いている。
+      と思ったが何か変な気がする。
+
+      isearch の途中にこれが発生したら何が起こるのか。
+      うーん。isearch が強制終了する? それだけなら良いが、
+      isearch の途中で editor が起動するというのは変である。
+      editor が起動する条件を変更するべきなのではないか。
+      というか edit-and-execute だって、vi_nmap では違う振る舞いをするべきなのでは。
+      色々考えると、line limit というキーではなくて "キャンセル" 的なキーを実装して、
+      更に元のモードによっては edit-and-execute は実行しないという様にする必要があるのでは。
+
+      % と思ったが、その場でそれを実行することはできるのだろうか。
+      % つまり queue に溜まっているキー入力に先立って処理する事は可能だろうか。
+      % あと描画のタイミングで処理するというのも変である。
+      % と思ったが decode.sh の中に直接チェックを書き込むのも変だし、
+      % EPILOGUE 辺りに書き加えるのが正しい気がする。
+      % →実装を確認してみたが ble-decode-key を呼び出せば
+      %   その場で実行する様になっている。
+      %   つまりこれに関しては気にしなくても良い。
+
+      改めて keymap を観察する。うーん。read 等でも
+      edit-and-execute が発生すると困る。
+      色々考えるにこの edit-and-execute の呼び出しは、
+      寧ろ keymap の上で実行するべきの気がする。
+
+      safe, emacs, read, vi_imap, vi_cmap, vi_nmap で対応した。
+      isearch, nsearch, lastarg, yankpop では握り潰すのが良い気がする。
+      vi_smap, vi_xmap, vi_omap, vi_digraph では何も処理しない (エラー)。
+      menu menu_complete auto_complete dabbrev でも握り潰す。
+      取り敢えず全ての keymap に対して処理は書いた。
+
+      結構書き換えてしまったので改めてテストする必要がある。
+
+    o vi_imap, emacs では動いた。
+    x fixed: read で動いていない。何故?
+      と思ったが EPILOGUE を呼び出していないので当然といえば当然。追加した。
+    x fixed: 今度は syntax で assertion が火を吹いている。何故。
+      _ble_edit_str を直接編集すると起こる種類の問題である。
+      然しその様な事はしていない様に見える。
+      →と思ったら _ble_edit_str に直接代入していた。修正した。
+    x fixed: vi operator が全く動かなくなっている何故?
+      つい直前までは動いている。という事はまた何かを破壊した?
+      不思議だ。何も破壊していない気がする。
+      →これは vi_omap の __default__ が line_limit を受信して、
+      それによって omap を抜けているのが問題だった。
+      __line_limit__ は無視する事にした。
+    x fixed: vi_nmap では一応動いているが truncate の時に
+      vi_imap に落ちるのは分かりにくい。
+      edit-and-execute を実際に行う場所で vi_imap に落ちる様に変更した。
+    x fixed: 2文字以上の組み合わせの keyseq が使えなくなっている。
+      これは全然駄目だ。その様に考えると __line_limit__ は、
+      mouse と同様に keyseq には関与するべきではないのでは。
+      と思ったが、処理が重くなるのも嫌なので長さの検査をしてから
+      __line_limit__ を呼び出す方が良い気がしてきた。
+      →その様に変更した。
+    o ok: 取り敢えず read, vi_nmap は確認した。
+    x fixed: vi_cmap で表示が変になっている。うーん。
+      これはどうしたら良いのか。
+      →分かった。 .newline していたのが行けない。修正した。
+    x fixed: vi_digraph では無視する様にしないといけない気がする。
+      (実際に呼び出される事があるのかどうかは不明だが)
+
+    今の所、emacs, vi_[inc]map, read は動作確認した。
+    isearch, vi_omap でも問題ないことを確認した。
+    safe は emacs と本質的に同じなので気にしなくて良い。
+    vi_digraph にも対応した。vi_[sx]map はまあ大丈夫だろう。
+    握りつぶしている物に関しては基本的に問題ない筈。
+
+    * done: 既定値は editor で良いのだろうか…。
+      いきなり editor が起動すると混乱の元なのではないか。
+      或いは none の方が良いのでは? うーん。取り敢えず none にする。
 
   * test: test-core.sh がエラーを吐いている (reported by andychu) [#D1294]
     https://oilshell.zulipchat.com/#narrow/stream/121540-oil-discuss/topic/.23257.20typing.20past.20the.20last.20column.20(interactive.20features)

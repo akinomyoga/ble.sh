@@ -3,6 +3,10 @@
 
 2020-01-12 -- (#D1215... ) c74abc5...
 
+- edit: support `bleopt editor line_limit_{type,length} history_limit_length` `#D1295` 0000000
+- complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 0000000
+- edit (edit-and-execute): disable highlighting of old command line content `#D1295` 0000000
+
 ## New features
 
 - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31

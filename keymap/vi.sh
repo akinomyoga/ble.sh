@@ -5536,6 +5536,7 @@ function ble-decode/keymap:vi_omap/define {
   ble/keymap:vi/setup-map
 
   ble-bind -f __default__ vi_omap/__default__
+  ble-bind -f __line_limit__ nop
   ble-bind -f 'ESC' vi_omap/cancel
   ble-bind -f 'C-[' vi_omap/cancel
   ble-bind -f 'C-c' vi_omap/cancel
@@ -5723,11 +5724,21 @@ function ble/widget/vi_nmap/decrement {
   local ARG FLAG REG; ble/keymap:vi/get-arg 1
   ble/widget/vi_nmap/increment.impl $((-ARG))
 }
+function ble/widget/vi_nmap/__line_limit__.edit {
+  ble/keymap:vi/clear-arg
+  ble/widget/vi_nmap/.insert-mode
+  ble/keymap:vi/repeat/clear-insert
+  ble/widget/edit-and-execute-command.impl "$1"
+}
+function ble/widget/vi_nmap/__line_limit__ {
+  ble/widget/__line_limit__ vi_nmap/__line_limit__.edit
+}
 
 function ble-decode/keymap:vi_nmap/define {
   ble/keymap:vi/setup-map
 
-  ble-bind -f __default__ vi-command/decompose-meta
+  ble-bind -f __default__    vi-command/decompose-meta
+  ble-bind -f __line_limit__ vi_nmap/__line_limit__
   ble-bind -f 'ESC' vi-command/bell
   ble-bind -f 'C-[' vi-command/bell
   ble-bind -f 'C-c' vi-command/cancel
@@ -7754,6 +7765,7 @@ function ble-decode/keymap:vi_imap/define {
   ble-bind -f __attach__        vi_imap/__attach__
   ble-bind -f __default__       vi_imap/__default__
   ble-bind -f __before_widget__ vi_imap/__before_widget__
+  ble-bind -f __line_limit__    __line_limit__
 
   ble-bind -f 'ESC' 'vi_imap/normal-mode'
   ble-bind -f 'C-[' 'vi_imap/normal-mode'
@@ -7942,6 +7954,17 @@ function ble/widget/vi_cmap/__before_widget__ {
   fi
 }
 
+function ble/widget/vi_cmap/__line_limit__.edit {
+  local content=$1
+  ble/widget/edit-and-execute-command.edit "$content" no-newline; local ext=$?
+  ((ext==127)) && return "$ext"
+  ble-edit/content/reset "$ret"
+  ble/widget/vi_cmap/accept
+}
+function ble/widget/vi_cmap/__line_limit__ {
+  ble/widget/__line_limit__ vi_cmap/__line_limit__.edit
+}
+
 function ble-decode/keymap:vi_cmap/define {
   #----------------------------------------------------------------------------
   # common bindings + modifications
@@ -7954,6 +7977,7 @@ function ble-decode/keymap:vi_cmap/define {
   #----------------------------------------------------------------------------
 
   ble-bind -f __before_widget__ vi_cmap/__before_widget__
+  ble-bind -f __line_limit__    vi_cmap/__line_limit__
 
   # accept/cancel
   ble-bind -f 'ESC'     vi_cmap/cancel

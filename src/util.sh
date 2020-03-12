@@ -146,6 +146,9 @@ bleopt/declare -n openat_base 30
 ## オプション pager
 bleopt/declare -v pager ''
 
+## オプション editor
+bleopt/declare -v editor ''
+
 shopt -s checkwinsize
 
 #------------------------------------------------------------------------------

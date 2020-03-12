@@ -30,6 +30,7 @@ function ble/widget/vi_digraph/default {
 function ble-decode/keymap:vi_digraph/define {
   ble-bind -f __defchar__ vi_digraph/defchar
   ble-bind -f __default__ vi_digraph/default
+  ble-bind -f __line_limit__ nop
 
   local lines; ble/util/mapfile lines < "$_ble_base/keymap/vi_digraph.txt"
 

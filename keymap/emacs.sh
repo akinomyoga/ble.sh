@@ -153,6 +153,7 @@ function ble-decode/keymap:emacs/define {
   ble-bind -f __attach__        safe/__attach__
   ble-bind -f __before_widget__ emacs/__before_widget__
   ble-bind -f __after_widget__  emacs/__after_widget__
+  ble-bind -f __line_limit__    __line_limit__
 
   # accept/cancel
   ble-bind -f 'C-c'      discard-line

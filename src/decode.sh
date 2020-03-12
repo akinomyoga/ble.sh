@@ -304,11 +304,19 @@ function ble-decode-kbd/.initialize {
   ble-decode-kbd/generate-keycode __error__
   _ble_decode_KCODE_ERROR=$ret
 
+  # Note: line_limit による制限超過時のイベント
+  ble-decode-kbd/generate-keycode __line_limit__
+  _ble_decode_KCODE_LINE_LIMIT=$ret
+
   # Note: 暫定的な対応なので後で変更するかもしれない
   ble-decode-kbd/generate-keycode mouse
   _ble_decode_KCODE_MOUSE=$ret
   ble-decode-kbd/generate-keycode mouse_move
   _ble_decode_KCODE_MOUSE_MOVE=$ret
+
+  # Note: 以下は改めてそれぞれのファイルで参照される
+  #   コードを固定する為にここで定義しておく。
+  ble-decode-kbd/generate-keycode auto_complete_enter
 
   # Note: ここに新しく kcode を追加した時には init-cmap.sh に何か変更をして、
   # cmap 及び keymap が更新される様にする必要がある。emacs.sh, vi.sh については

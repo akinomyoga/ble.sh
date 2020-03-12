@@ -164,6 +164,15 @@ bleopt/declare -v accept_line_threshold 5
 ##   この変数が空の時、終了ステータスは表示しません。
 bleopt/declare -v exec_errexit_mark $'\e[91m[ble: exit %d]\e[m'
 
+## オプション line_limit_length
+##   一括挿入時のコマンドライン文字数の上限を指定します。
+##   0以下の値は文字数に制限を与えない事を示します。
+bleopt/declare -v line_limit_length 10000
+
+## オプション line_limit_type
+##   一括挿入で文字数を超過した時の動作を指定します。
+bleopt/declare -v line_limit_type none
+
 # 
 #------------------------------------------------------------------------------
 # **** prompt ****                                                    @line.ps1
@@ -990,6 +999,64 @@ function ble-edit/content/reset-and-check-dirty {
 
   _ble_edit_str=$str
   ble-edit/content/.update-dirty-range "$dmin" "$dmax" "$dmax0" "$reason"
+}
+## 関数 ble-edit/content/replace-limited beg end insert opts
+##   bleopt_line_limit_type の制限をかけて挿入を行います。
+##   実際に挿入された文字列は insert に格納されます。
+##
+##   @param[in] beg end insert
+##   @param[in] opts
+##     nobell ... 何も挿入・削除がない時に bell を鳴らしません。
+##
+##   @var[out] insert
+##
+function ble-edit/content/replace-limited {
+  insert=$3
+  if [[ $bleopt_line_limit_type == discard ]]; then
+    local ibeg=$1 iend=$2 opts=:$4:
+    local limit=$((bleopt_line_limit_length))
+    if ((limit)); then
+      local inslimit=$((limit-${#_ble_edit_str}+(iend-ibeg)))
+      ((inslimit<iend-ibeg&&(inslimit=iend-ibeg)))
+      ((${#insert}>inslimit)) && insert=${insert::inslimit}
+      if [[ ! $insert ]] && ((ibeg==iend)); then
+        [[ $opts == *:nobell:* ]] ||
+          ble/widget/.bell "ble: reached line_limit_length=$limit"
+        return 1
+      fi
+    fi
+  fi
+  ble-edit/content/replace "$1" "$2" "$insert"
+}
+function ble-edit/content/check-limit {
+  local opts=:${1:-truncate:editor}:
+  if [[ $opts == *:${bleopt_line_limit_type:-none}:* ]]; then
+    local limit=$((bleopt_line_limit_length))
+    if ((limit>0&&${#_ble_edit_str}>limit)); then
+      local ble_edit_line_limit=$limit
+      ble-decode-key "$_ble_decode_KCODE_LINE_LIMIT"
+    fi
+  fi
+}
+function ble/widget/__line_limit__ {
+  local editor=ble/widget/${1:-edit-and-execute-command.impl}
+  local limit=$ble_edit_line_limit
+  case ${bleopt_line_limit_type:-none} in
+  (editor)
+    local content=$_ble_edit_str
+    ble-edit/content/reset "# reached line_limit_length=$limit"
+    _ble_edit_ind=0 _ble_edit_mark=0
+    "$editor" "$content"
+    (($?==127)) &&
+      ble-edit/content/reset "${content::limit}"
+    return 1 ;;
+  (truncate|*)
+    ble-edit/content/replace "$limit" "${#_ble_edit_str}" ''
+    ((_ble_edit_ind>limit&&(_ble_edit_ind=limit)))
+    ((_ble_edit_mark>limit&&(_ble_edit_mark=limit)))
+    return 1 ;;
+  esac
+  return 0
 }
 
 _ble_edit_dirty_draw_beg=-1
@@ -2284,13 +2351,11 @@ function ble/widget/.copy-range {
 function ble/widget/.replace-range {
   local p0 p1 len
   ble/widget/.process-range-argument "${@:1:2}" || (($4)) || return 1
-  local str=$3 strlen=${#3}
-
-  ble-edit/content/replace "$p0" "$p1" "$str"
-  local delta
-  ((delta=strlen-len)) &&
+  local insert; ble-edit/content/replace-limited "$p0" "$p1" "$3"
+  local inslen=${#insert} delta
+  ((delta=inslen-len)) &&
     ((_ble_edit_ind>p1?(_ble_edit_ind+=delta):
-      _ble_edit_ind>=p0&&(_ble_edit_ind=p0+strlen),
+      _ble_edit_ind>=p0&&(_ble_edit_ind=p0+inslen),
       _ble_edit_mark>p1?(_ble_edit_mark+=delta):
       _ble_edit_mark>p0&&(_ble_edit_mark=p0)))
   return 0
@@ -2372,7 +2437,7 @@ function ble/widget/yank {
   local insert=${_ble_edit_kill_ring[index]}
   _ble_edit_yank_index=$index
   if [[ $insert ]]; then
-    ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$insert"
+    ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$insert"
     ((_ble_edit_mark=_ble_edit_ind,
       _ble_edit_ind+=${#insert}))
     _ble_edit_mark_active=
@@ -2386,7 +2451,7 @@ function ble/edit/yankpop.impl {
   ((_ble_edit_yank_index=(_ble_edit_yank_index+arg)%nkill,
     _ble_edit_yank_index=(_ble_edit_yank_index+nkill)%nkill))
   local insert=${_ble_edit_kill_ring[_ble_edit_yank_index]}
-  ble-edit/content/replace "$_ble_edit_mark" "$_ble_edit_ind" "$insert"
+  ble-edit/content/replace-limited "$_ble_edit_mark" "$_ble_edit_ind" "$insert"
   ((_ble_edit_ind=_ble_edit_mark+${#insert}))
 }
 function ble/widget/yank-pop {
@@ -2428,6 +2493,7 @@ function ble/widget/yankpop/exit-default {
 function ble-decode/keymap:yankpop/define {
   ble-decode/keymap:safe/bind-arg yankpop/exit-default
   ble-bind -f __default__ 'yankpop/exit-default'
+  ble-bind -f __line_limit__ nop
   ble-bind -f 'C-g'       'yankpop/cancel'
   ble-bind -f 'C-x C-g'   'yankpop/cancel'
   ble-bind -f 'C-M-g'     'yankpop/cancel'
@@ -2471,11 +2537,11 @@ function ble/widget/insert-string {
   ble/widget/.insert-string "$content"
 }
 function ble/widget/.insert-string {
-  local ins="$*"
-  [[ $ins ]] || return
+  local insert="$*"
+  [[ $insert ]] || return
 
-  local dx=${#ins}
-  ble-edit/content/replace "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
+  ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$insert"
+  local dx=${#insert}
   ((
     _ble_edit_mark>_ble_edit_ind&&(_ble_edit_mark+=dx),
     _ble_edit_ind+=dx
@@ -2557,8 +2623,8 @@ function ble/widget/insert-arg.impl {
   builtin eval -- "$decl"
 
   if [[ $hit ]]; then
-    ble-edit/content/replace "$beg" "$end" "$lastarg"
-    ((_ble_edit_mark=beg,_ble_edit_ind=beg+${#lastarg}))
+    local insert; ble-edit/content/replace-limited "$beg" "$end" "$lastarg"
+    ((_ble_edit_mark=beg,_ble_edit_ind=beg+${#insert}))
     return 0
   else
     ble/widget/.bell
@@ -2619,6 +2685,7 @@ function ble-decode/keymap:lastarg/define {
   ble-decode/keymap:safe/bind-arg lastarg/exit-default
 
   ble-bind -f __default__ 'lastarg/exit-default'
+  ble-bind -f __line_limit__ nop
   ble-bind -f 'C-g'       'lastarg/cancel'
   ble-bind -f 'C-x C-g'   'lastarg/cancel'
   ble-bind -f 'C-M-g'     'lastarg/cancel'
@@ -2703,13 +2770,14 @@ function ble/widget/self-insert {
     fi
   fi
 
-  ble-edit/content/replace "$ibeg" "$iend" "$ins"
-  ((_ble_edit_ind+=${#ins},
+  # コマンドライン文字数制限
+  local insert; ble-edit/content/replace-limited "$ibeg" "$iend" "$ins"
+  ((_ble_edit_ind+=${#insert},
     _ble_edit_mark>ibeg&&(
       _ble_edit_mark<iend?(
         _ble_edit_mark=_ble_edit_ind
       ):(
-        _ble_edit_mark+=${#ins}-(iend-ibeg)))))
+        _ble_edit_mark+=${#insert}-(iend-ibeg)))))
   _ble_edit_mark_active=
   return 0
 }
@@ -2717,29 +2785,41 @@ function ble/widget/self-insert {
 function ble/widget/batch-insert {
   local -a chars; chars=("${KEYS[@]}")
 
+  local -a KEYS=()
+  local index=0 N=${#chars[@]}
   if [[ $_ble_edit_overwrite_mode ]]; then
-    local -a KEYS=(0)
-    local char
-    for char in "${chars[@]}"; do
-      KEYS=$char ble/widget/self-insert
-    done
-
-  else
-    local index=0 N=${#chars[@]}
-    while ((index<N)) && [[ $_ble_edit_arg || $_ble_edit_mark_active ]]; do
+    while ((index<N&&_ble_edit_ind<${#_ble_edit_str})); do
       KEYS=${chars[index]} ble/widget/self-insert
       ((index++))
     done
+    ((index<N)) || return 0
+  fi
 
-    if ((index<N)); then
-      local ret ins=
-      while ((index<N)); do
-        ble/util/c2s "${chars[index]}"; ins=$ins$ret
-        ((index++))
-      done
-      ble/widget/insert-string "$ins"
+  # コマンドライン文字数制限
+  if [[ $bleopt_line_limit_type == discard ]]; then
+    local limit=$((bleopt_line_limit_length))
+    if ((limit&&${#_ble_edit_str}+N-index>=limit)); then
+      chars=("${chars[@]::limit-${#_ble_edit_str}}")
+      N=${#chars[@]}
+      ((index<N)) || { ble/widget/.bell; return 1; }
     fi
   fi
+
+  while ((index<N)) && [[ $_ble_edit_arg || $_ble_edit_mark_active ]]; do
+    KEYS=${chars[index]} ble/widget/self-insert
+    ((index++))
+  done
+
+  if ((index<N)); then
+    local ret ins=
+    while ((index<N)); do
+      ble/util/c2s "${chars[index]}"; ins=$ins$ret
+      ((index++))
+    done
+    ble/widget/insert-string "$ins"
+  fi
+
+  ble-edit/content/check-limit truncate
 }
 
 # quoted insert
@@ -4590,19 +4670,41 @@ function ble/widget/accept-single-line-or {
 function ble/widget/accept-single-line-or-newline {
   ble/widget/accept-single-line-or newline
 }
-function ble/widget/edit-and-execute-command {
-  ble-edit/content/clear-arg
+## 関数 ble/widget/edit-and-execute-command.edit content opts
+##   @var[in] content
+##   @var[in] opts
+##   @var[out] ret
+function ble/widget/edit-and-execute-command.edit {
+  local content=$1 opts=:$2:
 
   local file=$_ble_base_run/$$.blesh-fc.bash
-  ble/util/print "$_ble_edit_str" >| "$file"
-  ble/widget/.newline
+  ble/util/print "$content" >| "$file"
 
-  if ! ${VISUAL:-${EDITOR:-emacs}} "$file"; then
-    ble/widget/.bell
-    return 1
+  [[ $opts == *:no-newline:* ]] ||
+    _ble_edit_line_disabled=1 ble/widget/.newline
+
+  local fallback=vi
+  if type emacs &>/dev/null; then
+    fallback='emacs -nw'
+  elif type vim &>/dev/null; then
+    fallback=vim
+  elif type nano &>/dev/null; then
+    fallback=nano
   fi
 
-  local BASH_COMMAND; ble/util/readfile BASH_COMMAND "$file"
+  if ! ${bleopt_editor:-${VISUAL:-${EDITOR:-$fallback}}} "$file"; then
+    ble/widget/.bell
+    return 127
+  fi
+
+  ble/util/readfile ret "$file"
+  return 0
+}
+function ble/widget/edit-and-execute-command.impl {
+  local ret
+  ble/widget/edit-and-execute-command.edit "$1"
+  local BASH_COMMAND=$ret
+
   BASH_COMMAND=${BASH_COMMAND%$'\n'}
   if [[ ! ${BASH_COMMAND//["$IFS"]} ]]; then
     ble/widget/.bell
@@ -4614,6 +4716,10 @@ function ble/widget/edit-and-execute-command {
   ((++_ble_edit_CMD))
   ble/history/add "$BASH_COMMAND"
   ble-edit/exec/register "$BASH_COMMAND"
+}
+function ble/widget/edit-and-execute-command {
+  ble-edit/content/clear-arg
+  ble/widget/edit-and-execute-command.impl "$_ble_edit_str"
 }
 
 function ble/widget/insert-comment/.remove-comment {
@@ -5180,8 +5286,9 @@ function ble/widget/history-expand-backward-line {
 
   local ret
   ble/string#common-prefix "$prevline" "$hist_expanded"; local dmin=${#ret}
-  ble-edit/content/replace "$dmin" "$_ble_edit_ind" "${hist_expanded:dmin}"
-  _ble_edit_ind=${#hist_expanded}
+
+  local insert; ble-edit/content/replace-limited "$dmin" "$_ble_edit_ind" "${hist_expanded:dmin}"
+  ((_ble_edit_ind=dmin+${#insert}))
   _ble_edit_mark=0
   _ble_edit_mark_active=
   return 0
@@ -5872,6 +5979,8 @@ function ble/widget/history-isearch-forward {
 
 function ble-decode/keymap:isearch/define {
   ble-bind -f __defchar__ isearch/self-insert
+  ble-bind -f __line_limit__ nop
+
   ble-bind -f C-r         isearch/backward
   ble-bind -f C-s         isearch/forward
   ble-bind -f 'C-?'       isearch/prev
@@ -6188,6 +6297,8 @@ function ble/widget/nsearch/accept-line {
 
 function ble-decode/keymap:nsearch/define {
   ble-bind -f __default__ nsearch/exit-default
+  ble-bind -f __line_limit__ nop
+
   ble-bind -f 'C-g'       nsearch/cancel
   ble-bind -f 'C-x C-g'   nsearch/cancel
   ble-bind -f 'C-M-g'     nsearch/cancel
@@ -6444,7 +6555,8 @@ function ble-decode/keymap:safe/define {
   ble-bind -f 'SP'       magic-space
   ble-bind -f 'M-^'      history-expand-line
 
-  ble-bind -f __attach__ safe/__attach__
+  ble-bind -f __attach__     safe/__attach__
+  ble-bind -f __line_limit__ __line_limit__
 
   ble-bind -f 'C-c'      discard-line
   ble-bind -f 'C-j'      accept-line
@@ -6499,11 +6611,24 @@ function ble/widget/read/cancel {
   _ble_edit_read_accept=2
 }
 
+function ble/widget/read/__line_limit__.edit {
+  local content=$1
+  ble/widget/edit-and-execute-command.edit "$content" no-newline; local ext=$?
+  ((ext==127)) && return "$ext"
+  ble-edit/content/reset "$ret"
+  ble/widget/read/accept
+}
+function ble/widget/read/__line_limit__ {
+  ble/widget/__line_limit__ read/__line_limit__.edit
+}
+
 function ble-decode/keymap:read/define {
   local ble_bind_nometa=
   ble-decode/keymap:safe/bind-common
   ble-decode/keymap:safe/bind-history
   # ble-decode/keymap:safe/bind-complete
+
+  ble-bind -f __line_limit__ read/__line_limit__
 
   ble-bind -f 'C-c' read/cancel
   ble-bind -f 'C-\' read/cancel
@@ -6710,6 +6835,7 @@ function ble/builtin/read/.loop {
 
     # render
     ble/util/is-stdin-ready && continue
+    ble-edit/content/check-limit
     ble-decode/.hook/erase-progress
     ble-edit/info/reveal
     ble/textarea#render
@@ -7320,6 +7446,8 @@ function ble-decode/EPILOGUE {
       return 0
     fi
   fi
+
+  ble-edit/content/check-limit
 
   # _ble_decode_bind_hook で bind/tail される。
   "ble-edit/exec:$bleopt_internal_exec_type/process" && return 0

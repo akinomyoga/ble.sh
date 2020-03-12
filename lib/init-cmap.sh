@@ -47,6 +47,7 @@
 # 2019-05-04 実験的に mouse, mouse_move を追加した。
 # 2019-05-06 ble-update 関連でバグがあったのを潰したので更新。
 # 2020-01-31 @ESC, @NUL を追加した。
+# 2020-03-12 __line_limit__ を追加
 
 function ble/init:cmap/bind-single-csi {
   ble-bind -k "ESC [ $1" "$2"
