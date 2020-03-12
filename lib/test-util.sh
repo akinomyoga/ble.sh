@@ -2,7 +2,7 @@
 
 function ble-test/check-ret {
   local f=$1 in=$2 expected=$3 ret
-  "$f" "$in"
+  "$f" "$in" "${@:4}"
   ble/util/assert '[[ $ret == "$expected" ]]' ||
     ble/util/print "fail: command=($f $in) result=($ret) expected=($expected)" >&2
 }
@@ -24,7 +24,9 @@ function ble-test:ble/string#escape {
   ble-test/check-ret ble/string#escape-for-sed-regex '\.[*?+|^$(){}/' '\\\.\[\*?+|\^\$(){}\/'
   ble-test/check-ret ble/string#escape-for-awk-regex '\.[*?+|^$(){}/' '\\\.\[\*\?\+\|\^\$\(\)\{\}\/'
   ble-test/check-ret ble/string#escape-for-extended-regex '\.[*?+|^$(){}/' '\\\.\[\*\?\+\|\^\$\(\)\{\}/'
-  ble-test/check-ret ble/string#escape-for-bash-specialchars '[hello] (world) {this,is} <test>' '\[hello\]\ \(world\)\ \{this,is}\ \<test\>'
+  ble-test/check-ret ble/string#escape-for-bash-specialchars '[hello] (world) {this,is} <test>' '\[hello\]\ \(world\)\ {this,is}\ \<test\>'
+  ble-test/check-ret ble/string#escape-for-bash-specialchars '[hello] (world) {this,is} <test>' '\[hello\]\ \(world\)\ \{this\,is\}\ \<test\>' b
+  ble-test/check-ret ble/string#escape-for-bash-specialchars 'a=b:c:d' 'a\=b\:c\:d' c
 }
 
 ble-test:ble/string#escape

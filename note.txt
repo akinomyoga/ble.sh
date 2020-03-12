@@ -2669,6 +2669,14 @@ bash_tips
 
 2020-03-12
 
+  * test: test-core.sh がエラーを吐いている (reported by andychu) [#D1294]
+    https://oilshell.zulipchat.com/#narrow/stream/121540-oil-discuss/topic/.23257.20typing.20past.20the.20last.20column.20(interactive.20features)
+
+    調べたら ble/string#escape-for-bash-specialchars の仕様変更による物である。
+    3番目の引数に flags を受け取る様になって、そこに b を指定した時にだけ
+    brace の quote を行うという様に変更されている。反映した。
+    更に言うと test-core.sh という名前も古い。test-util.sh でなければならない。
+
   * decode: modifyOtherKeys の時の abort [#D1293]
     C-\ で abort するという話を書いたが。
     よく考えてみると modifyOtherKeys にしている時には動かないのでは。

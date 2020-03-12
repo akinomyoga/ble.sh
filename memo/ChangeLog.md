@@ -36,7 +36,7 @@
 - edit: work around Bash rebinding on `TERM` change `#D1287` ac7ab55 7a99bf3
 - term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef
 - complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3
-- vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292`
+- vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292` da6cc47
 
 ## Changes
 
@@ -49,8 +49,8 @@
   - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 5d98210
   - decode: fix error messages of BSD `sed` rejecting unencoded bytes from `bind -p` (reported by dylankb) `#D1277` 0cc9160
 - edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 7db48dc
-- edit (quoted-insert): insert literal key sequence `#D1291` 0000000
-- decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` 0000000
+- edit (quoted-insert): insert literal key sequence `#D1291` 420c933
+- decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` ad98416
 
 ## Compatibility
 
@@ -78,6 +78,7 @@
 - util: add `ble/function#{advice,push,pop}` to patch functions (motivated by dylankb) `#D1275` fbe531a
 - util (`ble/util/stackdump`): output to `stdout` instead of `stderr` `#D1279` 9d3c50d
 - complete (`ble-sabbrev`): delay initialization `#D1282` dfc4f66
+- test: update `lib/test-{core => util}.sh` (reported by andychu) `#1294` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
