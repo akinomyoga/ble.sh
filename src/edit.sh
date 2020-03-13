@@ -2782,6 +2782,12 @@ function ble/widget/self-insert {
   return 0
 }
 
+function ble/widget/batch-insert.progress {
+  ((index%257==0&&N>=2000)) || return
+  local ble_batch_insert_index=$index
+  local ble_batch_insert_count=$N
+  eval -- "$_ble_decode_show_progress_hook"
+}
 function ble/widget/batch-insert {
   local -a chars; chars=("${KEYS[@]}")
 
@@ -2808,6 +2814,7 @@ function ble/widget/batch-insert {
   while ((index<N)) && [[ $_ble_edit_arg || $_ble_edit_mark_active ]]; do
     KEYS=${chars[index]} ble/widget/self-insert
     ((index++))
+    ble/widget/batch-insert.progress
   done
 
   if ((index<N)); then
@@ -2815,6 +2822,7 @@ function ble/widget/batch-insert {
     while ((index<N)); do
       ble/util/c2s "${chars[index]}"; ins=$ins$ret
       ((index++))
+      ble/widget/batch-insert.progress
     done
     ble/widget/insert-string "$ins"
   fi
@@ -2852,34 +2860,42 @@ function ble/widget/quoted-insert {
   return 147
 }
 
-_ble_edit_bracketed_paste=
+_ble_edit_bracketed_paste=()
 _ble_edit_bracketed_paste_proc=
+_ble_edit_bracketed_paste_count=0
 function ble/widget/bracketed-paste {
   ble-edit/content/clear-arg
   _ble_edit_mark_active=
   _ble_edit_bracketed_paste=()
+  _ble_edit_bracketed_paste_count=0
   _ble_edit_bracketed_paste_proc=ble/widget/bracketed-paste.proc
   _ble_decode_char__hook=ble/widget/bracketed-paste.hook
   return 147
 }
 function ble/widget/bracketed-paste.hook {
-  _ble_edit_bracketed_paste=$_ble_edit_bracketed_paste:$1
+  _ble_edit_bracketed_paste[_ble_edit_bracketed_paste_count++]=$1
+  ((_ble_edit_bracketed_paste_count%1000==0)) &&
+    IFS=: eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")' # contract
+  _ble_decode_char__hook=ble/widget/bracketed-paste.hook
+  (($1==126)) || return 147
 
   # check terminator
   local is_end= chars=
-  if [[ $1 == 126 && $_ble_edit_bracketed_paste == *:50:48:49:126 ]]; then
-    if chars=${_ble_edit_bracketed_paste%:27:91:50:48:49:126} # ESC [ 2 0 1 ~
-       [[ $chars != "$_ble_edit_bracketed_paste" ]]; then is_end=1
-    elif chars=${_ble_edit_bracketed_paste%:155:50:48:49:126} # CSI 2 0 1 ~
-         [[ $chars != "$_ble_edit_bracketed_paste" ]]; then is_end=1
+  if ((_ble_edit_bracketed_paste_count>=5)); then
+    IFS=: eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")'
+    chars=:$_ble_edit_bracketed_paste
+    if [[ $chars == *:50:48:49:126 ]]; then
+      if [[ $chars == *:27:91:50:48:49:126 ]]; then # ESC [ 2 0 1 ~
+        chars=${chars%:27:91:50:48:49:126} is_end=1
+      elif [[ $chars == *:155:50:48:49:126 ]]; then # CSI 2 0 1 ~
+        chars=${chars%:155:50:48:49:126} is_end=1
+      fi
     fi
   fi
 
-  if [[ ! $is_end ]]; then
-    _ble_decode_char__hook=ble/widget/bracketed-paste.hook
-    return 147
-  fi
+  [[ $is_end ]] || return 147
 
+  _ble_decode_char__hook=
   chars=$chars:
   chars=${chars//:13:10:/:10:} # CR LF -> LF
   chars=${chars//:13:/:10:} # CR -> LF
@@ -4694,7 +4710,11 @@ function ble/widget/edit-and-execute-command.edit {
     fallback=nano
   fi
 
-  if ! ${bleopt_editor:-${VISUAL:-${EDITOR:-$fallback}}} "$file"; then
+  ble/term/leave
+  ${bleopt_editor:-${VISUAL:-${EDITOR:-$fallback}}} "$file"; local ext=$?
+  ble/term/enter
+
+  if ((ext)); then
     ble/widget/.bell
     return 127
   fi

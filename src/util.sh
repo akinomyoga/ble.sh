@@ -805,31 +805,75 @@ function ble/string#quote-command {
   for arg; do ret="$ret $q${arg//$q/$Q}$q"; done
 }
 
-## 関数 ble/string#create-unicode-progress-bar value max width
+## 関数 ble/string#create-unicode-progress-bar/.block value
+##   @var[out] ret
+function ble/string#create-unicode-progress-bar/.block {
+  local block=$1
+  if ((block<=0)); then
+    ble/util/c2w $((0x2588))
+    ble/string#repeat ' ' "$ret"
+  elif ((block>=8)); then
+    ble/util/c2s $((0x2588))
+    ((${#ret}==1)) || ret='*' # LC_CTYPE が非対応の文字の時
+  else
+    ble/util/c2s $((0x2590-block))
+    if ((${#ret}!=1)); then
+      # LC_CTYPE が非対応の文字の時
+      ble/util/c2w $((0x2588))
+      ble/string#repeat ' ' $((ret-1))
+      ret=$block$ret
+    fi
+  fi
+}
+
+## 関数 ble/string#create-unicode-progress-bar value max width opts
+##   @param[in] opts
+##     unlimited ... 上限が不明である事を示します。
 ##   @var[out] ret
 function ble/string#create-unicode-progress-bar {
-  local value=$1 max=$2 width=$3
+  local value=$1 max=$2 width=$3 opts=:$4:
+
+  local opt_unlimited=
+  if [[ $opts == *:unlimited:* ]]; then
+    opt_unlimited=1
+    ((value%=max,width--))
+  fi
+
   local progress=$((value*8*width/max))
   local progress_fraction=$((progress%8)) progress_integral=$((progress/8))
 
   local out=
   if ((progress_integral)); then
-    ble/util/c2s $((0x2588))
-    ((${#ret}==1)) || ret='*' # LC_CTYPE が非対応の文字の時
+    if [[ $opt_unlimited ]]; then
+      # unlimited の時は左は空白
+      ble/string#create-unicode-progress-bar/.block 0
+    else
+      ble/string#create-unicode-progress-bar/.block 8
+    fi
     ble/string#repeat "$ret" "$progress_integral"
     out=$ret
   fi
 
   if ((progress_fraction)); then
-    ble/util/c2s $((0x2590-progress_fraction))
-    ((${#ret}==1)) || ret=$progress_fraction # LC_CTYPE が非対応の文字の時
+    if [[ $opt_unlimited ]]; then
+      # unlimited の時は2升を使って位置を表す
+      ble/string#create-unicode-progress-bar/.block "$progress_fraction"
+      out=$out$'\e[7m'$ret$'\e[27m'
+    fi
+
+    ble/string#create-unicode-progress-bar/.block "$progress_fraction"
     out=$out$ret
     ((progress_integral++))
+  else
+    if [[ $opt_unlimited ]]; then
+      ble/string#create-unicode-progress-bar/.block 8
+      out=$out$ret
+    fi
   fi
 
   if ((progress_integral<width)); then
-    ble/util/c2w $((0x2588))
-    ble/string#repeat ' ' $((ret*(width-progress_integral)))
+    ble/string#create-unicode-progress-bar/.block 0
+    ble/string#repeat "$ret" $((width-progress_integral))
     out=$out$ret
   fi
 

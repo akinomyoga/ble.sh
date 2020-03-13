@@ -438,7 +438,20 @@ function ble-decode/.hook/show-progress {
     return
   fi
 
-  if ((_ble_decode_input_count)); then
+  local progress_opts= opt_percentage=1
+  if [[ $ble_batch_insert_count ]]; then
+    local total=$ble_batch_insert_count
+    local value=$ble_batch_insert_index
+    local label='constructing text...'
+    local sgr=$'\e[1;38;5;204;48;5;253m'
+  elif ((${#_ble_decode_input_buffer[@]})); then
+    local total=10000
+    local value=$((${#_ble_decode_input_buffer[@]}%10000))
+    local label="${#_ble_decode_input_buffer[@]} bytes received..."
+    local sgr=$'\e[1;38;5;135;48;5;253m'
+    progress_opts=unlimited
+    opt_percentage=
+  elif ((_ble_decode_input_count)); then
     local total=${#chars[@]}
     local value=$((total-_ble_decode_input_count-1))
     local label='decoding input...'
@@ -452,13 +465,16 @@ function ble-decode/.hook/show-progress {
     return
   fi
 
-  local mill=$((value*1000/total))
-  local cent=${mill::${#mill}-1} frac=${mill:${#mill}-1}
-  local text="(${cent:-0}.$frac% $label)"
+  if [[ $opt_percentage ]]; then
+    local mill=$((value*1000/total))
+    local cent=${mill::${#mill}-1} frac=${mill:${#mill}-1}
+    label="${cent:-0}.$frac% $label"
+  fi
 
+  local text="($label)"
   if ble/util/is-unicode-output; then
     local ret
-    ble/string#create-unicode-progress-bar "$value" "$total" 10
+    ble/string#create-unicode-progress-bar "$value" "$total" 10 "$progress_opts"
     text=$sgr$ret$'\e[m '$text
   fi
 
@@ -553,6 +569,15 @@ function ble-decode/.check-abort {
 function ble-decode/.hook {
   if ble/util/is-stdin-ready; then
     ble/array#push _ble_decode_input_buffer "$@"
+
+    local buflen=${#_ble_decode_input_buffer[@]}
+    if ((buflen%257==0&&buflen>=2000)); then
+      local IFS=$' \t\n'
+      ble-decode/PROLOGUE
+      eval -- "$_ble_decode_show_progress_hook"
+      ble-decode/EPILOGUE
+    fi
+
     return
   fi
 
@@ -865,26 +890,28 @@ function ble-decode-char {
   local ble_decode_char_char=
   # Note: ループ中で set -- ... を使っている。
 
-  local char ent
+  local chars ichar char ent
+  chars=("$@") ichar=0
   while
     if ((iloop++%50==0)); then
       ((iloop>50)) && eval -- "$_ble_decode_show_progress_hook"
       if [[ ! $ble_decode_char_sync ]] && ble/decode/has-input-for-char; then
-        ble/array#push _ble_decode_char_buffer "$@"
+        ble/array#push _ble_decode_char_buffer "${chars[@]:ichar}"
         return 148
       fi
     fi
     # 入れ子の ble-decode-char 呼び出しによる入力。
     if ((${#_ble_decode_char_buffer[@]})); then
       ((ble_decode_char_total+=${#_ble_decode_char_buffer[@]}))
-      set -- "${_ble_decode_char_buffer[@]}" "$@"
+      ((ble_decode_char_rest+=${#_ble_decode_char_buffer[@]}))
+      chars=("${_ble_decode_char_buffer[@]}" "${chars[@]:ichar}") ichar=0
       _ble_decode_char_buffer=()
     fi
-    (($#))
+    ((ble_decode_char_rest))
   do
-    char=$1; shift
+    char=${chars[ichar]}
     ble_decode_char_char=$char # 補正前 char (_ble_decode_Macr 判定の為)
-    ble_decode_char_rest=$#
+    ((ble_decode_char_rest--,ichar++))
 #%if debug_keylogger
     ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_chars "$char"
 #%end
@@ -933,7 +960,8 @@ function ble-decode-char {
 
         ble-decode-char/.send-modified-key "$key" "$seq"
         ((ble_decode_char_total+=${#rest[@]}))
-        set -- "${rest[@]}" "$@"
+        ((ble_decode_char_rest+=${#rest[@]}))
+        chars=("${rest[@]}" "${chars[@]:ichar}") ichar=0
       else
         ble-decode-char/.send-modified-key "$char" "_$char"
       fi

@@ -167,7 +167,7 @@
 ## `discard` means that the characters cannot be inserted when the number of
 ## characters exceeds the capacity.  The value `truncate` means that the
 ## command line is truncated from its end to fit into the capacity.  The value
-## `editor` menas that the widget `edit-and-execute` will be invoked to open an
+## `editor` means that the widget `edit-and-execute` will be invoked to open an
 ## editor to edit the command line contents.
 
 #bleopt line_limit_type=none
@@ -223,7 +223,7 @@
 ## When the value "east" is specified, the width is 2. When the value "west"
 ## is specified, the width is 1. When "auto" is specified, "east" or "west"
 ## is automatically selected based on interactions with the terminal. When
-## the value "emacs" is specified, the width table (depending on characaters)
+## the value "emacs" is specified, the width table (depending on characters)
 ## used in Emacs is used.
 
 #bleopt char_width_mode=auto
@@ -307,7 +307,7 @@
 #bleopt complete_contract_function_names=1
 
 
-## Defaultly, ble.sh does not allow rewriting the existing text if non-unique
+## By default, ble.sh does not allow rewriting the existing text if non-unique
 ## candidates does not contain the existing text.  If this setting has
 ## non-empty values, ble.sh rewrites the existing text.
 

@@ -3,8 +3,6 @@
 
 2020-01-12 -- (#D1215... ) c74abc5...
 
-- edit: improve performance of bracketed-paste `#D1296` 0000000
-
 ## New features
 
 - complete: support `bleopt complete_auto_wordbreaks` (suggestion by dylankb) `#D1219` c294e31
@@ -84,6 +82,8 @@
 - util (`ble/util/stackdump`): output to `stdout` instead of `stderr` `#D1279` 9d3c50d
 - complete (`ble-sabbrev`): delay initialization `#D1282` dfc4f66
 - test: update `lib/test-{core => util}.sh` (reported by andychu) `#D1294` e835b0d
+- edit: improve performance of bracketed-paste `#D1296` 0a45596
+- decode: improve performance of `ble-decode-char` `#D1297` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
