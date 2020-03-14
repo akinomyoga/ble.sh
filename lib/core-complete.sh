@@ -4201,7 +4201,7 @@ function ble/widget/complete {
   if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
           :$opts: != *:context=*:* && ${#_ble_complete_menu_icons[@]} -gt 0 ]]
   then
-    if [[ $_ble_complete_menu_filter_enabled ]] || {
+    if [[ $_ble_complete_menu_filter_enabled && $bleopt_complete_menu_filter ]] || {
          ble/complete/menu-filter; local ext=$?
          ((ext==148)) && return 148
          ((ext==0)); }; then
@@ -4394,7 +4394,7 @@ function ble/highlight/layer:menu_filter/update {
 
   # determine range
   local beg= end= ret
-  if [[ $_ble_complete_menu_active && ${#_ble_complete_menu_icons[@]} -gt 0 ]]; then
+  if [[ $bleopt_complete_menu_filter && $_ble_complete_menu_active && ${#_ble_complete_menu_icons[@]} -gt 0 ]]; then
     ble/complete/menu-filter/.get-filter-target && local str=$ret &&
       ble/complete/menu/get-active-range "$str" "$_ble_edit_ind" &&
       [[ ${str:beg:end-beg} != "${_ble_complete_menu0_comp[2]}" ]] || beg= end=

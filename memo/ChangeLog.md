@@ -39,6 +39,7 @@
 - complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3
 - vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292` da6cc47
 - complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 2f9a000
+- complete: fix a bug that menu-filter is only partially turned off by `complete_menu_filter` `#D1298` 0000000
 
 ## Changes
 
@@ -83,7 +84,7 @@
 - complete (`ble-sabbrev`): delay initialization `#D1282` dfc4f66
 - test: update `lib/test-{core => util}.sh` (reported by andychu) `#D1294` e835b0d
 - edit: improve performance of bracketed-paste `#D1296` 0a45596
-- decode: improve performance of `ble-decode-char` `#D1297` 0000000
+- decode: improve performance of `ble-decode-char` `#D1297` 0d9d867
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

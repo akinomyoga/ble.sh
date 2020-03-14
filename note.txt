@@ -635,6 +635,12 @@ bash_features
 
   * command |& command は Bash 4.0 以降なので使えない。
 
+  * Bash-5.0 では POSIX に倣ってパラメータ展開結果に \ が含まれる場合に
+    グロブパターンと見做す様に変更されたが、
+    これにより問題が起こり POSIX が記述に誤りがあることを認めて修正した。
+    結局 Bash-5.1 で 4.4 と同じ動作に戻すつもりらしい。
+    https://lists.gnu.org/archive/html/bug-bash/2020-03/msg00051.html
+
 bash_tips
 
   * swap の仕方
@@ -987,7 +993,7 @@ bash_tips
       外側で ind, mark を設定していると計算がずれて範囲外になる可能性がある。
       特に vi で .replace-range を多用しているが面倒なので細かくチェックしていない。
 
-    2 範囲超過している時にコマンドラインが短縮されていない場合
+    2 容量超過でもコマンドラインが短縮されていない場合
       (これは isearch の途中などで起こりうる)
       複数のキーから為るキーシーケンスが間に入る __line_limit__
       によって無効化される。
@@ -998,13 +1004,6 @@ bash_tips
       或いは keyseq に属さない keycode の範囲を定義して、
       その範囲で判定できる様にするのが良い気がする。
       (その様なキーは実は沢山ある)
-
-  * menu-filter を off にすると変な事になる
-
-    menu-filter が無効の時は 1. menu filter 着色はしない。
-    menu から候補を拾う機能は off にしておくべき?
-    或いは、前回の menu を表示した時からカーソル位置が変化していない時にのみ使う。
-    これは後で対応しなければならない。
 
   * fish の autosuggestions はファイルが存在しない履歴項目はスキップする (suggested by cole-h)
     https://oilshell.zulipchat.com/#narrow/stream/121540-oil-discuss/topic/autosuggestions
@@ -2760,6 +2759,21 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-03-14
+
+  * complete: menu-filter を off にすると変な事になる [#D1298]
+    https://oilshell.zulipchat.com/#narrow/stream/121540-oil-discuss/topic/.23257.20typing.20past.20the.20last.20column.20(interactive.20features)
+
+    menu-filter が無効の時は 1. menu filter 着色はしない。
+    2. menu から候補を拾う機能は off にしておくべき?
+    或いは、前回の menu を表示した時からカーソル位置が変化していない時にのみ使う。
+    これは後で対応しなければならない。
+
+    というより menu から候補を拾う時に menu-filter を実行すれば良いのではないか。
+    と思っていざ修正しようとしたら既にそういう実装になっていた。
+    但し、menu-filter が有効になっているかの判定が足りていなかったのだ。
+    2行修正(complete_menu_filter の判定追加)しただけで治ってしまった。
 
 2020-03-13
 
