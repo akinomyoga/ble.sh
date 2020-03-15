@@ -662,6 +662,8 @@ function ev2_funcall(dDict, dName, funcname, aDict, aName, _a, _i, _c, _result, 
     _result = slice(_a[0], _a[1], _a[2]);
   } else if (funcname == "length") {
     _result = length(_a[0]);
+  } else if (funcname == "getenv") {
+    _result = ENVIRON[_a[0]];
   } else {
     print_error("mwg_pp.eval", "unknown function " funcname);
     _result = 0;
@@ -671,6 +673,10 @@ function ev2_funcall(dDict, dName, funcname, aDict, aName, _a, _i, _c, _result, 
   dDict[dName, "t"] = SE_VALU;
   dDict[dName, "T"] = _resultT;
   dDict[dName, "M"] = MOD_NUL;
+}
+
+function ev2_unsigned(value) {
+  return value >= 0 ? value : value + 0x100000000;
 }
 
 function ev2_apply(stk, iPre, iVal, _pT, _pW, _lhs, _rhs, _lhsT, _rhsT, _result, _i, _a, _b, _c) {
@@ -705,9 +711,9 @@ function ev2_apply(stk, iPre, iVal, _pT, _pW, _lhs, _rhs, _lhsT, _rhsT, _result,
     else if (_pW == "<=") _result = _lhs <= _rhs;
     else if (_pW == "<") _result = _lhs < _rhs;
     else if (_pW == ">") _result = _lhs > _rhs;
-    else if (_pW == "|") _result = or(_lhs, _rhs);
-    else if (_pW == "^") _result = xor(_lhs, _rhs);
-    else if (_pW == "&") _result = and(_lhs, _rhs);
+    else if (_pW == "|") _result = or(ev2_unsigned(_lhs), ev2_unsigned(_rhs));
+    else if (_pW == "^") _result = xor(ev2_unsigned(_lhs), ev2_unsigned(_rhs));
+    else if (_pW == "&") _result = and(ev2_unsigned(_lhs), ev2_unsigned(_rhs));
     else if (_pW == "||") _result = ev1scan_cast_bool(_lhs) || ev1scan_cast_bool(_rhs); # not lazy evaluation
     else if (_pW == "&&") _result = ev1scan_cast_bool(_lhs) && ev1scan_cast_bool(_rhs); # not lazy evaluation
     else if (_pW ~ /[-+*/%|^&]?=/) {
@@ -721,9 +727,9 @@ function ev2_apply(stk, iPre, iVal, _pT, _pW, _lhs, _rhs, _lhsT, _rhsT, _result,
         else if (_pW == "*=") _result = _lhs * _rhs;
         else if (_pW == "/=") _result = _lhs / _rhs;
         else if (_pW == "%=") _result = _lhs % _rhs;
-        else if (_pW == "|=") _result = or(_lhs, _rhs);
-        else if (_pW == "^=") _result = xor(_lhs, _rhs);
-        else if (_pW == "&=") _result = and(_lhs, _rhs);
+        else if (_pW == "|=") _result = or(ev2_unsigned(_lhs), ev2_unsigned(_rhs));
+        else if (_pW == "^=") _result = xor(ev2_unsigned(_lhs), ev2_unsigned(_rhs));
+        else if (_pW == "&=") _result = and(ev2_unsigned(_lhs), ev2_unsigned(_rhs));
 
         stk[iPre] = _result;
         stk[iPre, "t"] = SE_VALU;
