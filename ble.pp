@@ -1,9 +1,14 @@
 #!/bin/bash
-#%$> out/ble.sh
 #%[release = 0]
 #%[measure_load_time = 0]
 #%[debug_keylogger = 1]
 #%[leakvar = ""]
+#%[target = getenv("blesh_target")]
+#%if target == "osh"
+#%%$> out/ble.osh
+#%else
+#%%$> out/ble.sh
+#%end
 #%#----------------------------------------------------------------------------
 #%if measure_load_time
 _ble_init_measure_prev=
@@ -203,6 +208,27 @@ time {
 #------------------------------------------------------------------------------
 # check shell
 
+#%if target == "osh"
+if [ -z "$OIL_VERSION" ]; then
+  if [ "$0" == osh ]; then
+    echo "ble.sh: Oil with a version under 0.8.pre3 is not supported." >&3
+  else
+    echo "ble.sh: This shell is not Oil. Please use this script with Oil." >&3
+  fi
+  return 1 2>/dev/null || exit 1
+fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
+
+function ble/base/check-oil-version {
+  local rex='^([0-9]+)\.([0-9]+)\.(pre)?([0-9]+)'
+  [[ $OIL_VERSION =~ $rex ]]
+  _ble_bash_oil=$((BASH_REMATCH[1]*10000+BASH_REMATCH[2]*100+BASH_REMATCH[4]))
+}
+{
+  _ble_bash_oil=803
+  ble/base/check-oil-version
+} &>/dev/null # set -x 対策 #D0930
+
+#%else
 if [ -z "${BASH_VERSION-}" ]; then
   echo "ble.sh: This shell is not Bash. Please use this script with Bash." >&3
   unset _ble_init_exit
@@ -216,6 +242,7 @@ if [ -z "${BASH_VERSINFO-}" ] || [ "${BASH_VERSINFO-0}" -lt 3 ]; then
   unset -v _ble_init_exit _ble_init_command _ble_init_version
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
+#%end
 
 if [[ ! $_ble_init_command ]]; then
   # We here check the cases where we do not want a line editor.  We first check
@@ -259,7 +286,13 @@ if [[ ! $_ble_init_command ]]; then
 fi 3>&2 4<&0 5>&1 &>/dev/null # set -x 対策 #D0930
 
 {
+#%if target == "osh"
+  # Pretend to be bash-5.0
+  _ble_bash=50000
+  BASH_VERSINFO=(0 22 0 0 release python)
+#%else
   _ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
+#%end
 
   ## @var _ble_bash_POSIXLY_CORRECT_adjusted
   ##   現在 POSIXLY_CORRECT 状態を待避した状態かどうかを保持します。
@@ -993,7 +1026,11 @@ _ble_base_arguments_rcfile=
 ##   @var[out] _ble_base_arguments_rcfile
 function ble/base/read-blesh-arguments {
   local opts=
+#%if target == "osh"
+  local opt_attach=none
+#%else
   local opt_attach=prompt
+#%end
   local opt_inputrc=auto
 
   builtin unset -v _ble_init_command # 再解析
@@ -1137,7 +1174,12 @@ fi
 # Initialize version information
 
 _ble_bash_loaded_in_function=0
+#%if target == "osh"
+# OSH_TODO: How to test this?
+false && _ble_bash_loaded_in_function=1
+#%else
 local _ble_local_test 2>/dev/null && _ble_bash_loaded_in_function=1
+#%end
 
 _ble_version=0
 BLE_VERSION=$_ble_init_version
@@ -1977,7 +2019,11 @@ function ble/base/initialize-cache-directory/.xdg {
     return 1
   fi
 
+#%if target == "osh"
+  local ver=${BLE_VERSINFO[0]}.${BLE_VERSINFO[1]}+osh
+#%else
   local ver=${BLE_VERSINFO[0]}.${BLE_VERSINFO[1]}
+#%end
   ble/base/.create-user-directory _ble_base_cache "$cache_dir/blesh/$ver"
 }
 function ble/base/initialize-cache-directory {
@@ -1996,7 +2042,12 @@ function ble/base/initialize-cache-directory {
       ln -s "$cache_dir/$UID" "$old_cache_dir"
     fi
   fi
-  ble/base/.create-user-directory _ble_base_cache "$cache_dir/$UID"
+#%if target == "osh"
+  local ver=${BLE_VERSINFO[0]}.${BLE_VERSINFO[1]}+osh
+#%else
+  local ver=${BLE_VERSINFO[0]}.${BLE_VERSINFO[1]}
+#%end
+  ble/base/.create-user-directory _ble_base_cache "$cache_dir/$UID/$ver"
 }
 function ble/base/migrate-cache-directory/.move {
   local old=$1 new=$2
@@ -3124,7 +3175,11 @@ function ble/base/sub:test {
     ble/test/log "MACHTYPE: $MACHTYPE"
     ble/test/log "BLE_VERSION: $BLE_VERSION"
   fi
+#%if target == "osh"
+  ble/test/log "OIL_VERSION: $OIL_VERSION"
+#%else
   ble/test/log "BASH_VERSION: $BASH_VERSION"
+#%end
   local line='locale:' var ret
   for var in LANG "${!LC_@}"; do
     ble/string#quote-word "${!var}"

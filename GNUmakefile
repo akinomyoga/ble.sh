@@ -91,6 +91,19 @@ src/canvas.GraphemeClusterBreak.sh:
 #   DEPENDENCIES_PHONY option for mwg_pp in older Makefile
 ble-form.sh:
 
+outfiles+=$(OUTDIR)/ble.osh
+-include $(OUTDIR)/ble.osh.dep
+$(OUTDIR)/ble.osh: ble.pp GNUmakefile | $(OUTDIR)
+	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$@.dep DEPENDENCIES_TARGET=$@ \
+	  blesh_target=osh \
+          FULLVER=$(FULLVER) \
+	  BLE_GIT_COMMIT_ID="$(BLE_GIT_COMMIT_ID)" \
+	  BLE_GIT_BRANCH="$(BLE_GIT_BRANCH)" \
+	  BUILD_GIT_VERSION="$(shell LANG=C git --version)" \
+	  BUILD_MAKE_VERSION="$(shell LANG=C $(MAKE) --version | head -1)" \
+	  BUILD_GAWK_VERSION="$(GAWK_VERSION)" \
+	  $(MWGPP) $< >/dev/null
+
 #------------------------------------------------------------------------------
 # lib
 

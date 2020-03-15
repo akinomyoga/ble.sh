@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # 2020-02-07 #D12MSYS2 の CR 対策のため更新の必要あり
+# 2020-03-22 oilshell/oil#671 更新
 
 _ble_term_tput=
 function ble/init:term/tput { return 1; }

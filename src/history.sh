@@ -931,6 +931,16 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   }
   function ble/builtin/history/.add-rskip {
     local file=$1 ret
+    # Note on \$file Trick: It turned out to be confusing to other people,
+    #   but the quote \$ in the following line is correct and needed.  As
+    #   POSIX specified, shell expansions in arithmetic contexts are
+    #   performed before the string is passed to the arithmetic evaluator.
+    #   If one wants to pass an arbitrary uncontrolled string for the
+    #   associative array key stored in a variable, the shell expansion
+    #   should not occur before the arithmetic evaluator parses the
+    #   arithmetic syntax tree, so quote is needed.  Instead the shell
+    #   expansion will be performed on the array subscript expansion when the
+    #   array element is referenced.
     # Note: 当初 ((dict[\$file]+=$2)) の形式を使っていたが、これは
     #   shopt -s assoc_expand_once の場合に動作しない事が判明したので、
     #   一旦、別の変数で計算してから代入する事にする。
