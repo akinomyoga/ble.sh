@@ -1521,7 +1521,7 @@ function ble/textarea#update-text-buffer {
           ret=32
         else
           lcs=${_ble_textmap_glyph[index]}
-          ble/util/s2c "$lcs" 0
+          ble/util/s2c "$lcs"
         fi
 
         # 次が改行の時は空白にする
@@ -1530,7 +1530,7 @@ function ble/textarea#update-text-buffer {
       else
         # 前の文字
         lcs=${_ble_textmap_glyph[index-1]}
-        ble/util/s2c "$lcs" $((${#lcs}-1))
+        ble/util/s2c "${lcs:${#lcs}-1}"
         local g; ble/highlight/layer/getg $((index-1)); lg=$g
         ((lc=ret))
       fi
@@ -2752,7 +2752,7 @@ function ble/widget/self-insert {
       local iN=${#_ble_edit_str}
       for ((removed_width=0;removed_width<w&&iend<iN;iend++)); do
         local c1 w1
-        ble/util/s2c "$_ble_edit_str" "$iend"; c1=$ret
+        ble/util/s2c "${_ble_edit_str:iend:1}"; c1=$ret
         [[ $c1 == 0 || $c1 == 10 || $c1 == 9 ]] && break
         ble/util/c2w-edit "$c1"; w1=$ret
         ((removed_width+=w1))
@@ -2783,7 +2783,7 @@ function ble/widget/self-insert {
 }
 
 function ble/widget/batch-insert.progress {
-  ((index%257==0&&N>=2000)) || return
+  ((index%${1:-257}==0&&N>=2000)) || return
   local ble_batch_insert_index=$index
   local ble_batch_insert_count=$N
   eval -- "$_ble_decode_show_progress_hook"
@@ -2818,12 +2818,13 @@ function ble/widget/batch-insert {
   done
 
   if ((index<N)); then
-    local ret ins=
-    while ((index<N)); do
-      ble/util/c2s "${chars[index]}"; ins=$ins$ret
-      ((index++))
-      ble/widget/batch-insert.progress
+    # NUL を unset してから一括で変換する
+    local index0=$index ret ins
+    for ((;index<N;index++)); do
+      ((chars[index])) || unset -v 'chars[index]'
+      ble/widget/batch-insert.progress 2357
     done
+    ble/util/chars2s "${chars[@]:index0}"; ins=$ret
     ble/widget/insert-string "$ins"
   fi
 
@@ -2872,14 +2873,7 @@ function ble/widget/bracketed-paste {
   _ble_decode_char__hook=ble/widget/bracketed-paste.hook
   return 147
 }
-function ble/widget/bracketed-paste.hook {
-  _ble_edit_bracketed_paste[_ble_edit_bracketed_paste_count++]=$1
-  ((_ble_edit_bracketed_paste_count%1000==0)) &&
-    IFS=: eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")' # contract
-  _ble_decode_char__hook=ble/widget/bracketed-paste.hook
-  (($1==126)) || return 147
-
-  # check terminator
+function ble/widget/bracketed-paste.hook/check-end {
   local is_end= chars=
   if ((_ble_edit_bracketed_paste_count>=5)); then
     IFS=: eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")'
@@ -2893,17 +2887,37 @@ function ble/widget/bracketed-paste.hook {
     fi
   fi
 
-  [[ $is_end ]] || return 147
+  [[ $is_end ]] || return 1
 
   _ble_decode_char__hook=
   chars=$chars:
   chars=${chars//:13:10:/:10:} # CR LF -> LF
   chars=${chars//:13:/:10:} # CR -> LF
-  chars=(${chars//:/' '})
+  ble/string#split chars : "$chars"
 
   local proc=$_ble_edit_bracketed_paste_proc
   _ble_edit_bracketed_paste_proc=
   [[ $proc ]] && builtin eval -- "$proc \"\${chars[@]}\""
+  return 0
+}
+function ble/widget/bracketed-paste.hook {
+  ((_ble_edit_bracketed_paste_count%1000==0)) &&
+    IFS=: eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")' # contract
+
+  _ble_edit_bracketed_paste[_ble_edit_bracketed_paste_count++]=$1
+  (($1==126)) && ble/widget/bracketed-paste.hook/check-terminate && return
+
+  # ble-decode-char にある次の文字を取り出してできるだけここで処理する。
+  if ((!_ble_debug_keylog_enabled)) && [[ ! $_ble_decode_keylog_chars_enabled ]]; then
+    local char
+    while ble/decode/char-hook/next-char; do
+      _ble_edit_bracketed_paste[_ble_edit_bracketed_paste_count++]=$char
+      ((char==126)) && ble/widget/bracketed-paste.hook/check-end && return
+    done
+  fi
+
+  _ble_decode_char__hook=ble/widget/bracketed-paste.hook
+  return 147
 }
 function ble/widget/bracketed-paste.proc {
   local -a KEYS; KEYS=("$@")
@@ -2961,7 +2975,7 @@ function ble/widget/.delete-backward-char {
       else
         local w=0 ret i
         for ((i=0;i<a;i++)); do
-          ble/util/s2c "$_ble_edit_str" $((_ble_edit_ind-a+i))
+          ble/util/s2c "${_ble_edit_str:_ble_edit_ind-a+i:1}"
           ble/util/c2w-edit "$ret"
           ((w+=ret))
         done

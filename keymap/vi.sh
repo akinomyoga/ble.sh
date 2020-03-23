@@ -1656,7 +1656,7 @@ function ble/keymap:vi/string#measure-width {
       ((s+=${#BASH_REMATCH},
         i+=${#BASH_REMATCH}))
     else
-      ble/util/s2c "$text" "$i"
+      ble/util/s2c "${text:i:1}"
       ble/util/c2w-edit "$ret"
       ((s+=ret,i++))
     fi

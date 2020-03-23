@@ -1143,7 +1143,7 @@ function ble/highlight/layer:plain/update/.getch {
       ch='^?'
     else
       local ret
-      ble/util/s2c "$ch" 0
+      ble/util/s2c "$ch"
       ble/util/c2s $((ret+64))
       ch="^$ret"
     fi

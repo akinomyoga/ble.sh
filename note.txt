@@ -932,6 +932,35 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-03-22
+
+  * bash-5 で heredoc を failglob で使うと駄目
+    変数に含まれる \ がパス名展開を誘起してそれにより失敗する。
+
+  * bash-3.0 が malloc array.c botched というエラーが出てクラッシュした。
+    これは bash のバグである。そして古いバグなので治りそうにない。
+    更に言うと再現性もあるのかどうか微妙である。
+
+  * oilshell で色々説明を行った。
+    それらの説明へのリンクを作成して後で纏めるのが良い気がする。
+    これは後で実行する。
+
+  * decode: 大量の貼り付けの高速化4 (report by dylankb)
+
+    現状の ble.sh の枠組みの中では大幅に改善した。
+    然し、やはり decode を自前でやっている。
+    そもそも decode の結果を整数の列にする時点で遅い。
+
+    bracketed paste だと分かった時点で、
+    stdin から文字列として読み取って、
+    文字列としてそのまま挿入する等の事が可能な筈なのではないか。
+    そうすれば無駄な処理をする事なく即座にエディタを起動できる。
+
+    現在の nonblocking-read の実装に
+    bracketed paste を検出する機能をつけて
+    bracketed paste の処理中にはそれを使って
+    良い感じに実行すれば良いのだろうか。
+
 2020-03-11
 
   * oilshell に Travis でテストを自動化せよと。
@@ -2756,6 +2785,325 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-03-24
+
+  * decode: 大量の貼り付けの高速化3 (report by dylankb) [#D1300]
+
+    * うーん。ble/util/c2s が遅いのだと考えて高速化してみた。
+      大分高速化した気がする。然し、緑が 99% になってから、
+      赤色が表示されるまでの時間は変化していない。
+
+      | # A. NUL を unset してから実行
+      | local index0=$index ret ins
+      | for ((;index<N;index++)); do
+      |   ((chars[index])) || unset -v 'chars[index]'
+      |   ble/widget/batch-insert.progress 2357
+      | done
+      | ble/util/chars2s "${chars[@]:index0}"; ins=$ret
+      |
+      | # B. 連続する非零のコード毎に変換を実行
+      | local p q=$index ret ins=
+      | for ((p=q;q<N;q++)); do
+      |   if ((!chars[q])); then
+      |     if ((p<q)); then
+      |       ble/util/chars2s "${chars[@]:p:q-p}"; ins=$ins$ret
+      |     fi
+      |     ((p=q+1))
+      |   fi
+      |   ble/widget/batch-insert.progress
+      | done
+      |
+      | # C. 一文字ずつ変換
+      | local ret ins=
+      | while ((index<N)); do
+      |   ble/util/c2s "${chars[index]}"; ins=$ins$ret
+      |   ((index++))
+      |   ble/widget/batch-insert.progress
+      | done
+
+    * decode phase も実は簡略化できる筈。
+      receive + decode を read & printf ' に変換するのである。
+      と思ったが本当だろうか。整数に変換する必要があるが、
+      それを高速に実行する事は可能だろうか。
+
+    もうひとつ気になるのは screen 越しだと
+    bracketed paste mode が有効になっていない気がする。
+    或いは bracketed paste の終了がちゃんと受信されていない?
+    まあ、これに関しては別に考える事にすれば良い気がする。
+
+    * そうすると processing input... の部分が気になる。
+      うーん。これは _ble_decode_char__hook を使ってループを回しているのが悪い。
+      というか bracketed paste に関しては decode の側で特別に取り扱ってしまって良いのでは?
+      但し、それによってどれだけ高速化するのかについては疑問が残るが…。
+
+      見ていて気付いたが progress bar は 50 文字毎に表示している。
+      53kB に入力に対しては 1000 回update する事になる。
+      これが実はボトルネックなのでは。。と思って確かめてみた。
+      50 から 200 にしたら 10s だったのが 6s に縮んだ。
+      計算するに 5s 弱が実質の計算時間だったという事。
+      逆に言えば 5s よりも早くはならない。
+
+      さて、decode の側で key の解釈の時に一括で処理する事を考えてみたが、
+      よく考えてみたら現在は _ble_decode_char__hook に介入しているので、
+      key の解釈よりも前の段階での介入である。つまり、key の解釈で
+      一括処理する様に変更しても対して意味がないのである。
+
+      _ble_decode_char__hook で本質的に関係する部分だけ抜き出すと。
+
+      * ((_ble_debug_keylog_enabled)) の時は一括処理を諦める。
+      * [[ $_ble_decode_keylog_chars_enabled ]] のときも諦める。
+      * 次の文字が _ble_decode_Erro の時には処理しない。
+
+      これらの元でループ構造は以下の様に単純化される。
+
+      | while
+      |   ((ble_decode_char_rest))
+      | do
+      |   char=${chars[ichar]}
+      |   ((ble_decode_char_rest--,ichar++))
+      |
+      |   ((char&=~_ble_decode_Macr))
+      |
+      |   # decode error character
+      |   # if ((char&_ble_decode_Erro))
+      |
+      |   if [[ $_ble_decode_char__hook ]]; then
+      |     ((char==_ble_decode_IsolatedESC)) && char=27 # isolated ESC -> ESC
+      |     char を処理する
+      |   fi
+      | done
+
+      うーん。decode.sh の側で "次の文字を読む" という操作を提供しても良い気がしてきた。
+      その様に実装した。大分高速になった気がする。
+
+    * さて、緑から赤に移る時の沈黙は何だろうか。
+      引数を大量に渡すのに時間がかかっているという事だろうか。
+      と思ったらそうではないようだ。
+
+      文字列の置換処理に時間がかかっている?
+
+      X:1584874227.928681
+      Y:1584874227.929155
+      Z:1584874227.936170
+      W:1584874227.942291
+      N:1584874231.373286
+
+      と思ったら違う。この処理に時間がかかっている: chars=(${chars//:/' '})
+      もしかしてパス名展開が試みられているという事だろうか。
+      3秒もかかっている。ble/string#split を使ったら 0.03 にまで短縮した。
+
+      X:1584874420.330993
+      Y:1584874420.367348
+
+    * 残っているのは byte を読み取る部分…。
+      UTF-8 safe な byte を読み取ったらその次の瞬間に一気に読み取って良いのではないか。
+      然し、UTF-8 safe な byte かどうかの判定で余計に時間がかかってはいけないし、
+      よく考えたら日本語主体の文章の場合には UTF-8 safe な値はなかなか期待できない。
+      一応改行は大丈夫だが改行のない文章が大量にやってきた場合はどうするのか。
+
+      或いは、LC_CTYPE=C にして一気に読み取ってしまえば良いのかもしれない。
+      decode に関しても余り深く考えずに一気に実行する?
+      うーん。システムのエンコーディングと受信のエンコーディングが一致している
+      時に限るが、そのまま組み立ててしまって良いのではないか。
+
+      うーん。取り敢えず実験的に実装してみる事を考える事にする。
+
+      受信をする時に問題になるのは NUL を含む文字列は受信できないという事。
+      中途半端なバイトが含まれる時に ${str::x} の様な処理ができないという事。
+      mapfile には timeout がないので read に頼るしかない。
+
+    * decode は結構時間がかかっている。
+      というか今思ったが現在の decode の処理は改善できる気がする。
+
+      先ず初めに現在の変換時間を計測する。約12.7s
+      X:1584885577.441244
+      Y:1584885590.163676
+
+      約12.2s 先ず配列に代入してから ble-decode-char を呼び出しているのを、
+      直接一つずつ ble-decode-char を呼び出す様に変更してみる。殆ど違いはない。
+      X:1584885521.873851
+      Y:1584885534.093266
+
+      約11.8s 算術式の不要な空白を全て潰してしまうとどうなるか。
+      これも微妙に短くはなるが本質的な違いではない様に思われる。
+      X:1584885811.187881
+      Y:1584885822.967141
+
+      約11.0s byte<0x80 だけ特別扱いしたらこう。
+      X:1584886104.316627
+      Y:1584886115.267994
+      | ((byte&=0xFF))
+      | ((mode)) && (((byte&0xC0)!=0x80&&(cha0=_ble_decode_Erro|code,mode=0)))
+      | if ((byte<0x80)); then
+      |   char=$byte
+      | else
+      |   ((byte<0xF0?(byte<0xC0?(byte<0x80?(char=byte):(
+      |     mode==0?(char=_ble_decode_Erro|byte):(code=code<<6|byte&0x3F,--mode==0&&(char=code)))
+      |     ):(byte<0xE0?(code=byte&0x1F,mode=1):(code=byte&0x0F,mode=2))):(byte<0xFC?(byte<0xF8?(
+      |     code=byte&0x07,mode=3):(code=byte&0x03,mode=4)):(byte<0xFE?(code=byte&0x01,mode=5):(
+      |     char=_ble_decode_Erro|byte)))))
+      | fi
+
+      約11.0s テーブルに入れて見たが速度は変わらない。
+      よく考えてみたら byte<0x80 だけ特別扱いするのと対して変わらない。
+      X:1584886995.051122
+      Y:1584887006.049388
+      | ((byte&=0xFF))
+      | ((mode)) && (((byte&0xC0)!=0x80&&(cha0=_ble_decode_Erro|code,mode=0)))
+      | ((_ble_encoding_utf8_decode_table[byte]))
+
+      約11.0s 完全にテーブルに入れてみても対して変わらない。
+      X:1584887425.167250
+      Y:1584887436.189649
+      | function ble/encoding:UTF-8/decode {
+      |   local code=$_ble_encoding_utf8_decode_code
+      |   local mode=$_ble_encoding_utf8_decode_mode
+      |   local byte=$1
+      |   local cha0= char=
+      |   local stray='cha0=_ble_decode_Erro|code,mode=0'
+      |   ((_ble_encoding_utf8_decode_table[$1&0xFF]))
+      |   _ble_encoding_utf8_decode_code=$code
+      |   _ble_encoding_utf8_decode_mode=$mode
+      |   [[ $cha0 ]] && ble-decode-char "$cha0"
+      |   [[ $char ]] && ble-decode-char "$char"
+      | }
+
+      約10.9s うーん。変数名を少し短くしてみたら微妙に改善した。
+      X:1584887850.303309
+      Y:1584887861.235152
+
+      約9.9s decode を複数の引数を受け取るように変更したら改善した。
+      X:1584915662.010331
+      Y:1584915671.917756
+
+      約4.2s 何と ble/array#push を A[i++]= に書き換えたら物凄く高速になった。
+      結局全体で 5s ぐらいしかかかっていない。40s からの劇的な改善である。
+      X:1584916592.860743
+      Y:1584916597.017316
+
+      大分改善した。取り敢えずはスクリプト上での
+      decoder はこれで良しとする。
+
+    * もっと巨大なデータを受信した時に外部プログラムを起動して
+      decode する可能性?
+
+      awk を使うか。或いは od を使って上手にできないか。
+      或いは、printf $'' してから "${str::}" で読み取る手法?
+      これは UTF-8 依存になるので、UTF-8 の側で処理する?
+
+      というか現在の実装だって UTF-8 の側で処理して良い気がする。
+
+      例えばこう。
+      ble/util/printf ret '\x%02x' "$@"
+      eval "ret=\$'$ret'"
+
+      * 問題は 0 をどうするのかという事。
+        0 は 0 に翻訳するという事で良い。
+
+        →0の処理方法について確認しようとしたら微妙。
+          \xC0\x80 にしたら実は表現できるかもしれないと考えたが、
+          実際にやってみると二文字に分割されて解釈されている。
+          文字数のカウントも2文字になっている。
+
+        これが意味する所は、bind 経由で受信した 2B 表現も、
+        bash の中で直接にバイトに変換すると破壊されてしまうという事。
+        C0,C1 はその意味で特別に処理しなければならないのである。
+
+      * そもそも本当に高速になるのか?
+        これは実験してみないと分からない。
+        実際に実装してみたが 5.2s である。
+        寧ろ遅くなっている気がする。
+        X:1584923880.134245
+        Y:1584923885.336910
+
+        うーん。何だか振る舞いが変である。
+        わかった。修正した。変数 M を上書きしていた。
+
+        改めて計測する。やはり 5.2s である。
+        X:1584937548.825580
+        Y:1584937554.059262
+
+        その場で printf -v するようにした。
+        % 5.7s, 5.6s である。計測ミスだった。
+        % X:1584937775.759084
+        % Y:1584937781.359048
+        % X:1584937714.687243
+        % Y:1584937720.327925
+        約4.6s になった。高速化している。
+        X:1584937868.273119
+        Y:1584937872.934848
+
+        元々の s2c の場合の速度を見ると 5.22s だった。
+        printf の中で index 指定をするのを避けたら 4.85s になった。
+        ${s:k:1} ではなく ${s:k} を渡すと 5.17s に遅くなる。
+        長い文字列を渡しているのが遅い原因だろうか。
+        %d を '%d' に quote したら 4.86s である。誤差の範囲内。
+
+      さて、元の実装の速度が 4.1s であったから、
+      これは寧ろ遅くなっている。
+      printf -v で数値を取り出すのは自前で計算するよりも遅いという事。
+
+      そもそも何故この実装を考えたのかというと、
+      文字コードを抽出する事を想定していなかったから。
+      そのまま文字列を構築してそれをファイルに出力するという想定だった。
+
+      取り敢えず実装は此処に残して置く事にする。
+
+      | function ble/encoding:UTF-8/decode2 {
+      |   local C=$_ble_encoding_utf8_decode_code
+      |   local M=$_ble_encoding_utf8_decode_mode
+      |   local S='e=_ble_decode_Erro|C,M=0'
+      |
+      |   local -a B; B=("$@")
+      |   local -a A=()
+      |   local a=0 e= c=
+      |
+      |   local -a stop=(); stop[0]=1 stop[192]=1 stop[193]=1
+      |   local i N=$#
+      |   for ((i=0;i<N;)); do
+      |     while ((i<N)) && ((stop[B[i]]||M)); do
+      |       e= c=
+      |       ((_ble_encoding_utf8_decode_table[B[i]&255]))
+      |       [[ $e ]] && A[a++]=$e
+      |       [[ $c ]] && A[a++]=$c
+      |       ((i++))
+      |     done
+      |
+      |     ((i<N)) || break
+      |
+      |     j=$i
+      |     while ((j<N)) && [[ ! ${stop[B[j]]} ]]; do ((j++)); done
+      |
+      |     local ret
+      |     ble/util/sprintf ret '\\x%02x' "${B[@]:i:j-i}"
+      |     eval "local s=\$'$ret'"
+      |     if [[ $s ]]; then
+      |       local k K=${#s}
+      |       for ((k=0;k<K;k++)); do
+      |         ble/util/s2c "${s:k:1}"
+      |         A[a++]=$ret
+      |       done
+      |     fi
+      |     i=$j
+      |   done
+      |   _ble_encoding_utf8_decode_code=$C
+      |   _ble_encoding_utf8_decode_mode=$M
+      |   ((a)) && ble-decode-char "${A[@]}"
+      | }
+
+    * done: s2c の実装を見直す。
+
+    * done: うーん。bind で -s を経由して受信している時には、
+      read を直接実行すると変な事になるのではないか。
+      つまり、read を実行するのは通常文字の直後である必要があるのでは。
+      取り敢えず、-s 経由で受信される可能性のある文字について init-bind で確認する必要あり。
+      -s 経由の受信で一番最後の文字以外の文字については read-nonblock を実行してはならない。
+
+      取り敢えず対応した。また今後の変更の為に init-bind.sh に説明を書いた。
+      本当は init-bind.sh の側で変数などを提供するのが良いのかもしれないが、
+      面倒だし、今後マクロが追加される事があるのかも不明なので取り敢えず放置する。
+      本当は他の人が将来的に編集する可能性なども考えると良くないのかもしれないが。
 
 2020-03-14
 

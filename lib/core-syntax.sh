@@ -328,7 +328,7 @@ function ble/syntax/print-status/.graph {
     return
   else
     local ret
-    ble/util/s2c "$char" 0
+    ble/util/s2c "$char"
     local code=$ret
     if ((code<32)); then
       ble/util/c2s $((code+64))

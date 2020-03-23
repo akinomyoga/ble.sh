@@ -348,7 +348,7 @@ function ble-decode-kbd {
     done
 
     if [[ $kspec == ? ]]; then
-      ble/util/s2c "$kspec" 0
+      ble/util/s2c "$kspec"
       ((code|=ret))
     elif [[ $kspec && ! ${kspec//[@_0-9a-zA-Z]} ]]; then
       ble-decode-kbd/.get-keycode "$kspec"
@@ -360,7 +360,7 @@ function ble-decode-kbd {
       elif [[ $kspec == '^`' ]]; then
         ((code|=0x20))
       else
-        ble/util/s2c "$kspec" 1
+        ble/util/s2c "${kspec:1}"
         ((code|=ret&0x1F))
       fi
     elif local rex='^U\+([0-9a-fA-F]+)$'; [[ $kspec =~ $rex ]]; then
@@ -422,8 +422,8 @@ function ble-decode-unkbd {
 function ble-decode/PROLOGUE { :; }
 function ble-decode/EPILOGUE { :; }
 
-_ble_decode_input_count=0
 _ble_decode_input_buffer=()
+_ble_decode_input_count=0
 _ble_decode_input_original_info=()
 
 _ble_decode_show_progress_hook=ble-decode/.hook/show-progress
@@ -566,16 +566,59 @@ function ble-decode/.check-abort {
   return 0
 }
 
+function ble/decode/nonblocking-read {
+  local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
+  local LC_CTYPE=C
+  local -a data=()
+  local line buff ext
+  while ((loop--)); do
+    builtin read -t "$timeout" -r -d '' buff; ext=$?
+    [[ $buff ]] && line=$line$buff
+    if ((ext==0)); then
+      ble/array#push data "$line"
+      line=
+    elif ((ext>128)); then
+      # timeout
+      ((--ntimeout)) || break
+      [[ $buff ]] || break
+    else
+      break
+    fi
+  done
+
+  ble/string#split-words ret "$({
+    ((${#data[@]})) && printf '%s\0' "${data[@]}"
+    [[ $line ]] && printf '%s' "$line"
+  } | ble/bin/od -A n -t u1 -v)"
+}
+
 function ble-decode/.hook {
   if ble/util/is-stdin-ready; then
     ble/array#push _ble_decode_input_buffer "$@"
 
     local buflen=${#_ble_decode_input_buffer[@]}
     if ((buflen%257==0&&buflen>=2000)); then
+      # その場で標準入力を読み切る
       local IFS=$' \t\n'
       ble-decode/PROLOGUE
-      eval -- "$_ble_decode_show_progress_hook"
+      local char=${_ble_decode_input_buffer[buflen-1]}
+      if ((char==0xC0||char==0xDF)); then
+        # Note: これらの文字は bind -s マクロの非終端文字。
+        # 現在マクロの処理中である可能性があるので標準入力から
+        # 読み取るとバイトの順序が変わる可能性がある。
+        # 従って読み取りは行わない。
+        eval -- "$_ble_decode_show_progress_hook"
+      else
+        while ble/util/is-stdin-ready; do
+          eval -- "$_ble_decode_show_progress_hook"
+          local ret; ble/decode/nonblocking-read 0.05 1 200
+          ble/array#push _ble_decode_input_buffer "${ret[@]}"
+        done
+      fi
       ble-decode/EPILOGUE
+
+      ble/array#pop _ble_decode_input_buffer
+      ble-decode/.hook "$ret"
     fi
 
     return
@@ -605,13 +648,18 @@ function ble-decode/.hook {
   _ble_decode_input_count=${#chars[@]}
 
   if ((_ble_decode_input_count>=200)); then
-    local c
-    for c in "${chars[@]}"; do
-      ((--_ble_decode_input_count%100==0)) && eval -- "$_ble_decode_show_progress_hook"
+    local decode=ble/encoding:$bleopt_input_encoding/decode
+    local i N=${#chars[@]}
+    local B=$((N/100))
+    ((B<100)) && B=100 || ((B>1000)) && B=1000
+    for ((i=0;i<N;i+=B)); do
+      ((_ble_decode_input_count=N-i-B))
+      ((_ble_decode_input_count<0)) && _ble_decode_input_count=0
+      eval -- "$_ble_decode_show_progress_hook"
 #%if debug_keylogger
-      ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_bytes "$c"
+      ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_bytes "${chars[@]:i:B}"
 #%end
-      "ble/encoding:$bleopt_input_encoding/decode" "$c"
+      "$decode" "${chars[@]:i:B}"
     done
   else
     local c
@@ -986,6 +1034,29 @@ function ble-decode-char {
       ble-decode-char/.send-modified-key "$ent" "$seq"
     fi
   done
+  return 0
+}
+
+## 関数 ble-decode-char/hook/next-char
+##   _ble_decode_char__hook で次の文字を
+##   その場で読み出す時に使います。
+##   これは bracketed paste の高速化の為に使います。
+##   @var[out] char
+##   @var[in,out] iloop ichar chars ble_decode_char_rest
+##
+##   @remarks
+##     この関数を経由して読み取られた文字は keylog に残りません。
+##     正しい動作を期待する為には _ble_debug_keylog_enabled (非零)
+##     及び _ble_decode_keylog_chars_enabled (非空) が設定されて
+##     いない事を確認してから呼び出す必要があります。
+##
+function ble/decode/char-hook/next-char {
+  ((ble_decode_char_rest)) || return 1
+  ((char=chars[ichar]&~_ble_decode_Macr))
+  ((char&_ble_decode_Erro)) && return 1
+  ((iloop%1000==0)) && return 1
+  ((char==_ble_decode_IsolatedESC)) && char=27
+  ((ble_decode_char_rest--,ichar++,iloop++))
   return 0
 }
 
@@ -2045,6 +2116,8 @@ function ble/debug/keylog#end {
   _ble_debug_keylog_chars=()
   _ble_debug_keylog_keys=()
 }
+#%else
+_ble_debug_keylog_enabled=0
 #%end
 
 ## @var _ble_decode_keylog_depth
@@ -2157,7 +2230,7 @@ function ble/decode/charlog#decode {
   local text=$1 n=${#1} i chars
   chars=()
   for ((i=0;i<n;i++)); do
-    ble/util/s2c "$text" "$i"
+    ble/util/s2c "${text:i:1}"
     ((ret==_ble_decode_EscapedNUL)) && ret=0
     ble/array#push chars "$ret"
   done
@@ -2215,7 +2288,7 @@ function ble/decode/keylog#decode-chars {
   local text=$1 n=${#1} i
   local -a chars=()
   for ((i=0;i<n;i++)); do
-    ble/util/s2c "$text" "$i"
+    ble/util/s2c "${text:i:1}"
     ((ret==27)) && ret=$_ble_decode_IsolatedESC
     ble/array#push chars "$ret"
   done
@@ -2671,7 +2744,7 @@ function ble-bind/option:csi {
     cseq=(27 91)
     local ret i iN num="${BASH_REMATCH[1]}\$"
     for ((i=0,iN=${#num};i<iN;i++)); do
-      ble/util/s2c "$num" "$i"
+      ble/util/s2c "${num:i:1}"
       ble/array#push cseq "$ret"
     done
     if [[ $key ]]; then
@@ -2879,7 +2952,7 @@ function ble/decode/read-inputrc/test {
       test "$TERM" "$op" "$rhs" || test "${TERM%%-*}" "$op" "$rhs"
     fi
     return ;;
-  
+
   (version)
     local lhs_major lhs_minor
     if ((_ble_bash<40400)); then
@@ -3395,7 +3468,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
         LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' > $cache.part &&
         ble/bin/mv "$cache.part" "$cache" || continue
     fi
-  
+
     ble/util/print __CLEAR__
     ble/util/print KEYMAP="$map"
     ble/util/print __BIND0__
@@ -3434,10 +3507,10 @@ function ble/builtin/bind/.reconstruct-user-settings {
         type = keymap_type[key];
         value = keymap[key];
         if (type == "" && value == keymap0[key]) continue;
-  
+
         text = key ": " value;
         gsub(/'$q'/, q "\\" q q, text);
-  
+
         line = "bind";
         if (KEYMAP != "") line = line " -m " KEYMAP;
         if (type == "x") line = line " -x";
@@ -3445,7 +3518,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
         print line;
       }
     }
-  
+
     /^__BIND0__$/ { mode = 0; next; }
     /^__BINDX__$/ { mode = 1; next; }
     /^__BINDS__$/ { mode = 2; next; }
@@ -3453,7 +3526,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
     /^__CLEAR__$/ { keymap_clear(); next; }
     /^__PRINT__$/ { keymap_print(); next; }
     sub(/^KEYMAP=/, "") { KEYMAP = $0; }
-  
+
     /ble-decode\/.hook / { next; }
 
     function workaround_bashbug(keyseq, _, rex, out, unit) {
@@ -3479,7 +3552,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
       }
       return out;
     }
-  
+
     match($0, /^"(\\.|[^"])+": /) {
       key = substr($0, 1, RLENGTH - 2);
       val = substr($0, 1 + RLENGTH);
@@ -3611,66 +3684,40 @@ function ble/encoding:UTF-8/generate-binder { :; }
 #   done
 # }
 
-_ble_decode_byte__utf_8__mode=0
-_ble_decode_byte__utf_8__code=0
+_ble_encoding_utf8_decode_mode=0
+_ble_encoding_utf8_decode_code=0
+_ble_encoding_utf8_decode_table=(
+  'M&&S,c='{0..127}
+  'C=C<<6|'{0..63}',--M==0&&(c=C)'
+  'M&&S,C='{0..31}',M=1'
+  'M&&S,C='{0..15}',M=2'
+  'M&&S,C='{0..7}',M=3'
+  'M&&S,C='{0..3}',M=4'
+  'M&&S,C='{0..1}',M=5'
+  'M&&S,c=_ble_decode_Erro|'{254,255}
+)
 function ble/encoding:UTF-8/clear {
-  _ble_decode_byte__utf_8__mode=0
-  _ble_decode_byte__utf_8__code=0
+  _ble_encoding_utf8_decode_mode=0
+  _ble_encoding_utf8_decode_code=0
 }
 function ble/encoding:UTF-8/is-intermediate {
-  ((_ble_decode_byte__utf_8__mode))
+  ((_ble_encoding_utf8_decode_mode))
 }
 function ble/encoding:UTF-8/decode {
-  local code=$_ble_decode_byte__utf_8__code
-  local mode=$_ble_decode_byte__utf_8__mode
-  local byte=$1
-  local cha0= char=
-  ((
-    byte&=0xFF,
-    (mode!=0&&(byte&0xC0)!=0x80)&&(
-      cha0=_ble_decode_Erro|code,mode=0
-    ),
-    byte<0xF0?(
-      byte<0xC0?(
-        byte<0x80?(
-          char=byte
-        ):(
-          mode==0?(
-            char=_ble_decode_Erro|byte
-          ):(
-            code=code<<6|byte&0x3F,
-            --mode==0&&(char=code)
-          )
-        )
-      ):(
-        byte<0xE0?(
-          code=byte&0x1F,mode=1
-        ):(
-          code=byte&0x0F,mode=2
-        )
-      )
-    ):(
-      byte<0xFC?(
-        byte<0xF8?(
-          code=byte&0x07,mode=3
-        ):(
-          code=byte&0x03,mode=4
-        )
-      ):(
-        byte<0xFE?(
-          code=byte&0x01,mode=5
-        ):(
-          char=_ble_decode_Erro|byte
-        )
-      )
-    )
-  ))
-
-  _ble_decode_byte__utf_8__code=$code
-  _ble_decode_byte__utf_8__mode=$mode
-
-  local -a CHARS=($cha0 $char)
-  ((${#CHARS[*]})) && ble-decode-char "${CHARS[@]}"
+  local C=$_ble_encoding_utf8_decode_code
+  local M=$_ble_encoding_utf8_decode_mode
+  local S='e=_ble_decode_Erro|C,M=0'
+  local -a A=()
+  local i=0 b e c
+  for b; do
+    e= c=
+    ((_ble_encoding_utf8_decode_table[b&255]))
+    [[ $e ]] && A[i++]=$e
+    [[ $c ]] && A[i++]=$c
+  done
+  _ble_encoding_utf8_decode_code=$C
+  _ble_encoding_utf8_decode_mode=$M
+  ((i)) && ble-decode-char "${A[@]}"
 }
 
 ## 関数 ble/encoding:UTF-8/c2bc code
@@ -3718,24 +3765,29 @@ function ble/encoding:C/is-intermediate {
   [[ $_ble_encoding_c_csi ]]
 }
 function ble/encoding:C/decode {
-  if [[ $_ble_encoding_c_csi ]]; then
-    _ble_encoding_c_csi=
-    case $1 in
-    (155) ble-decode-char 27 # ESC
-          return ;;
-    (139) ble-decode-char 2047 # isolated ESC
-          return ;;
-    (128) ble-decode-char 0 # C-@
-          return ;;
-    esac
-    ble-decode-char 155
-  fi
+  local -a A=()
+  local i=0 b
+  for b; do
+    if [[ $_ble_encoding_c_csi ]]; then
+      _ble_encoding_c_csi=
+      case $b in
+      (155) A[i++]=27 # ESC
+            continue ;;
+      (139) A[i++]=2047 # isolated ESC
+            continue ;;
+      (128) A[i++]=0 # C-@
+            continue ;;
+      esac
+      A[i++]=155
+    fi
 
-  if (($1==155)); then
-    _ble_encoding_c_csi=1
-  else
-    ble-decode-char "$1"
-  fi
+    if ((b==155)); then
+      _ble_encoding_c_csi=1
+    else
+      A[i++]=$b
+    fi
+  done
+  ((i)) && ble-decode-char "${A[@]}"
 }
 
 ## 関数 ble/encoding:C/c2bc charcode

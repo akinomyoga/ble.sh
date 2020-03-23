@@ -81,7 +81,7 @@ function ble/util/c2w-edit {
 # ## 関数 ble/util/c2w-edit ccode
 # ##   @var[out] ret
 # function ble/util/s2w {
-#   ble/util/s2c "$1" "$2"
+#   ble/util/s2c "${1:$2:1}"
 #   "ble/util/c2w+$bleopt_char_width_mode" "$ret"
 # }
 
@@ -964,12 +964,12 @@ function ble/canvas/trace/.impl {
       ((i+=${#s}))
       if [[ ! $bleopt_internal_suppress_bash_output ]]; then
         local ret
-        ble/util/s2c "$s" $((w-1))
+        ble/util/s2c "${s:w-1:1}"
         lc=$ret lg=$g
       fi
     else
       local ret
-      ble/util/s2c "$tail" 0; local c=$ret
+      ble/util/s2c "${tail::1}"; local c=$ret
       ble/util/c2w "$c"; local w=$ret
       if [[ $opt_nooverflow ]] && ! ((x+w<=cols||y+1<lines&&w<=cols)); then
         w=0 is_overflow=1
@@ -1129,7 +1129,7 @@ function ble/canvas/trace-text/.impl {
         ble/canvas/trace-text/.put-simple "${#span}" "$span"
         ((i+=${#span}))
       else
-        ble/util/s2c "$text" "$i"
+        ble/util/s2c "${text:i:1}"
         local code=$ret w=0
         if ((code<32)); then
           ble/util/c2s $((code+64))
@@ -1359,7 +1359,7 @@ function ble/textmap#update {
       done
     else
       local ret
-      ble/util/s2c "$text" "$i"
+      ble/util/s2c "${text:i:1}"
       local code=$ret
 
       local w=0 cs= changed=0

@@ -3763,7 +3763,7 @@ _ble_util_s2c_table_enabled=
 if ((_ble_bash>=40100)); then
   # - printf "'c" で Unicode が読める (どの LC_CTYPE でも Unicode になる)
   function ble/util/s2c {
-    builtin printf -v ret '%d' "'${1:$2:1}"
+    builtin printf -v ret %d "'$1"
   }
 elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   # - 連想配列にキャッシュできる
@@ -3774,7 +3774,7 @@ elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
       ble/util/.cache/update-locale
 
-    local s=${1:$2:1}
+    local s=${1::1}
     ret=${_ble_util_s2c_table[x$s]}
     [[ $ret ]] && return
 
@@ -3783,7 +3783,7 @@ elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   }
 elif ((_ble_bash>=40000)); then
   function ble/util/s2c {
-    ble/util/sprintf ret %d "'${1:$2:1}"
+    ble/util/sprintf ret %d "'${1::1}"
   }
 else
   # bash-3 では printf %d "'あ" 等としても
@@ -3792,7 +3792,7 @@ else
   # 各バイトを取り出して unicode に変換するかする必要がある。
   # bash-3 では read -n 1 を用いてバイト単位で読み取れる。これを利用する。
   function ble/util/s2c {
-    local s=${1:$2:1}
+    local s=${1::1}
     if [[ $s == [''-''] ]]; then
       ble/util/sprintf ret %d "'$s"
       return
@@ -3810,7 +3810,7 @@ fi
 
 # ble/util/c2s
 
-## 関数 ble/util/c2s-impl char
+## 関数 ble/util/c2s.impl char
 ##   @var[out] ret
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
@@ -3825,7 +3825,7 @@ if ((_ble_bash>=40200)); then
     ((${#ret}==2))
   }
   if ble/util/.has-bashbug-printf-uffff 2>/dev/null; then # #D1262 suppress LC_ALL error messages
-    function ble/util/c2s-impl {
+    function ble/util/c2s.impl {
       if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_cache_ctype == *.utf-8 || $_ble_util_cache_ctype == *.utf8 ]]; then
         builtin printf -v ret '\\x%02x' $((0xE0|$1>>12&0x0F)) $((0x80|$1>>6&0x3F)) $((0x80|$1&0x3F))
       else
@@ -3833,9 +3833,27 @@ if ((_ble_bash>=40200)); then
       fi
       builtin eval "ret=\$'$ret'"
     }
+    function ble/util/chars2s.impl {
+      if [[ $_ble_util_cache_ctype == *.utf-8 || $_ble_util_cache_ctype == *.utf8 ]]; then
+        local -a buff=()
+        local c i=0
+        for c; do
+          ble/util/c2s.cached "$c"
+          buff[i++]=$ret
+          IFS= builtin eval "ret=\"${buff[*]}\""
+        done
+      else
+        builtin printf -v ret '\\U%08x' "$@"
+        builtin eval "ret=\$'$ret'"
+      fi
+    }
   else
-    function ble/util/c2s-impl {
+    function ble/util/c2s.impl {
       builtin printf -v ret '\\U%08x' "$1"
+      builtin eval "ret=\$'$ret'"
+    }
+    function ble/util/chars2s.impl {
+      builtin printf -v ret '\\U%08x' "$@"
       builtin eval "ret=\$'$ret'"
     }
   fi
@@ -3847,7 +3865,7 @@ else
   done
 
   # 動作確認済 3.1, 3.2, 4.0, 4.2, 4.3
-  function ble/util/c2s-impl {
+  function ble/util/c2s.impl {
     if (($1<0x80)); then
       builtin eval "ret=\$'\\x${_ble_text_hexmap[$1]}'"
       return
@@ -3859,6 +3877,15 @@ else
       seq="$seq\\x${_ble_text_hexmap[bytes[i]&0xFF]}"
     done
     builtin eval "ret=\$'$seq'"
+  }
+  function ble/util/chars2s.impl {
+    local -a buff=()
+    local c i=0
+    for c; do
+      ble/util/c2s.cached "$c"
+      buff[i++]=$ret
+      IFS= builtin eval "ret=\"${buff[*]}\""
+    done
   }
 fi
 
@@ -3872,9 +3899,22 @@ function ble/util/c2s {
 
   ret=${_ble_util_c2s_table[$1]-}
   if [[ ! $ret ]]; then
-    ble/util/c2s-impl "$1"
+    ble/util/c2s.impl "$1"
     _ble_util_c2s_table[$1]=$ret
   fi
+}
+function ble/util/c2s.cached {
+  # local check のない版
+  ret=${_ble_util_c2s_table[$1]-}
+  if [[ ! $ret ]]; then
+    ble/util/c2s.impl "$1"
+    _ble_util_c2s_table[$1]=$ret
+  fi
+}
+function ble/util/chars2s {
+  [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+    ble/util/.cache/update-locale
+  ble/util/chars2s.impl "$@"
 }
 
 ## 関数 ble/util/c2bc
@@ -3916,7 +3956,7 @@ function ble/util/s2chars {
   local text=$1 n=${#1} i chars
   chars=()
   for ((i=0;i<n;i++)); do
-    ble/util/s2c "$text" "$i"
+    ble/util/s2c "${text:i:1}"
     ble/array#push chars "$ret"
   done
   ret=("${chars[@]}")

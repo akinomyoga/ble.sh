@@ -5,6 +5,11 @@
 #   $_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
 #   $_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind
 #
+# Note: #D1300 bind -s で束縛するマクロの非終端文字は
+#   decode.sh (ble/decode/nonblocking-read) でチェックする必要がある。
+#   現在の実装では 0xC0 と 0xDF をチェックしている。
+#   (( esc1B != 3 && esc1B1B )) の時には 0x1B も追加でチェックする必要がある。
+#   マクロを追加する時にはそれに応じてチェックを追加する必要がある。
 
 function ble/init:bind/append {
   local xarg="\"$1\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\""
