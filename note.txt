@@ -932,6 +932,36 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-03-24
+
+* ble-bind: Unknown widget `-'. という表示が出る (reported by dylankb)
+  https://github.com/akinomyoga/ble.sh/issues/46
+
+  調べてみると未対応の rlfunc があるとこれが必ず出る様だ。
+  取り敢えず修正する必要がある。未対応です、という表示が出るのが望ましい。
+
+  或いは無害な物に関しては nop を出して無視する。
+  調べたが skip-csi-sequence については nop では駄目である。
+  そもそも bind しては行けない。
+  無害な物に関しては nop に束縛するのではなくて何にも束縛しない。
+
+  * arrow-key-prefix は何かと思って bash のソースを確認したら、
+    次の文字を読み取って ABCD だったらカーソルキーの既定動作に
+    dispatch するという感じの物だった。
+    恐らく SS3 A/B/C/D だとか ESC A/B/C/D だとか、
+    そう言った物に一括で束縛する為の物なのだろうと思われる。
+    これは無視ではなくて未対応とするべき。
+    というより新しく widget を作っても良いのかもしれない。
+
+  * tty-status は ioctl(TIOCSTAT) を呼び出すらしい。
+    これは何かと思って検索したら /* generate status message */
+    /* simulate ^T status message */ 等という説明が見られる。
+    FreeBSD/OpenBSD にはあるが Linux にはない機能の雰囲気である。
+    これは適当に模倣して実装しても良いのかもしれない。
+    これも取り敢えず未対応という事で良いだろう。
+
+  取り敢えずちゃんとエラーメッセージは出るようにした。
+
 2020-03-22
 
   * bash-5 で heredoc を failglob で使うと駄目

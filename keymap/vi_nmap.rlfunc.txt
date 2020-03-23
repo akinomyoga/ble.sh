@@ -98,7 +98,7 @@ shell-backward-word               -
 shell-expand-line                 -
 shell-forward-word                -
 shell-kill-word                   -
-skip-csi-sequence                 -
+skip-csi-sequence                 <IGNORE>
 start-kbd-macro                   start-keyboard-macro
 tab-insert                        -
 tilde-expand                      vi_nmap/@edit tilde-expand

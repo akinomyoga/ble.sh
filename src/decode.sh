@@ -3250,6 +3250,12 @@ function ble/builtin/bind/rlfunc2widget {
     for line in "${dict[@]}"; do
       [[ $line == "$rlfunc "* ]] || continue
       local rl widget; builtin read -r rl widget <<< "$line"
+      if [[ $widget == - ]]; then
+        ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}' for keymap '$kmap'." >&2
+        return 1
+      elif [[ $widget == '<IGNORE>' ]]; then
+        return 2
+      fi
       ret=ble/widget/$widget
       return 0
     done
@@ -3260,6 +3266,7 @@ function ble/builtin/bind/rlfunc2widget {
     return 0
   fi
 
+  ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}'." >&2
   return 1
 }
 
@@ -3351,12 +3358,14 @@ function ble/builtin/bind/option:- {
     local command="ble/widget/.MACRO ${chars[*]}"
     ble-decode-key/bind "$kmap" "${keys[*]}" "$command"
   elif [[ $value ]]; then
-    if local ret; ble/builtin/bind/rlfunc2widget "$kmap" "$value"; then
+    local ret; ble/builtin/bind/rlfunc2widget "$kmap" "$value"; local ext=$?
+    if ((ext==0)); then
       local command=$ret
       ble-decode-key/bind "$kmap" "${keys[*]}" "$command"
       return 0
+    elif ((ext==2)); then
+      return 0
     else
-      ble/util/print "ble.sh (bind): unsupported readline function '${value//$q/$Q}'." >&2
       flags=e$flags
       return 1
     fi

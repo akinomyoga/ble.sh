@@ -98,7 +98,7 @@ shell-backward-word               @nomarked backward-sword
 shell-expand-line                 shell-expand-line
 shell-forward-word                @nomarked forward-sword
 shell-kill-word                   kill-forward-sword
-skip-csi-sequence                 -
+skip-csi-sequence                 <IGNORE>
 start-kbd-macro                   start-keyboard-macro
 tab-insert                        tab-insert
 tilde-expand                      tilde-expand
