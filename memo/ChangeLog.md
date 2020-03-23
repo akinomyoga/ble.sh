@@ -906,10 +906,941 @@
 
 ----
 
+# 2015-03-06..2017-10-09 (Git Commit Log)
+
+## 2017-10-09
+* keymap/vi: support specialized handling of keys for cmap
+  - vi (nmap / ?): treatment of C-h and DEL on input of search targets
+  - vim-surround.sh (nmap ys cs): treatment of > on input of tag names
+
+## 2017-10-07
+* keymap/vi_xmap: add tentative text object implementation
+* lib/vim-surround: accept user input of tag names with the replacement being t, T, <
+* keymap/vi_command: support search / ? n N
+
+## 2017-10-05
+* keymap/vi_command: fix behavior of yy, dd, D, etc. on the last line with count arg
+* keymap/vi_xmap: support x <delete> C D X R Y
+* keymap/vi_xmap: support r s
+* keymap/vi-command: support : and few commands
+* ble-core: fix a bug that conditions for assotiative arrays are inverted
+
+## 2017-10-04
+* [refactor] ble-edit (ble-edit/render -> ble/textarea): support "ble/textarea#{save,restore,clear}-state"
+* [refactor] ble-edit (text/update/positions -> ble/textmap): support any time updates of text positions
+* keymap/vi_command: support _ g0 g<home> g^ g$ g<end> gm go g_ ge gE
+* check: fix "local lines=()" in vi_digraph.sh and update "check"
+* (ble-highlight-layer:region): fix a bug that the "region" face is sometimes applied to intervals between selections
+
+## 2017-10-03
+* keymap/vi (visual mode): support previous selections
+* keymap/vi (nmap p, P for block): convert HTs under inserting points to spaces
+* (ble-decode-key/dump): fix a bug that pathname expansions internally occurred
+* ble-core: add ble/string#split-lines
+* keymap/vi (visual block): improve performance of block extraction
+* keymap/vi_command (linewise operator d): go to the previous line on deleting the last line
+* keymap/vi (operator d c g~ gu gU g?): support block
+* keymap/vi (nmap p, operator y): support block
+
+## 2017-10-02
+* keymap/vi_xmap: support count arg for operators
+* keymap/vi_command: fix a bug that linewise < > operators produce an error
+* keymap/vi_command: perform EOL fix on history traveling with normal mode
+* keymap/vi_xmap: support block selection
+
+## 2017-10-01
+* keymap/vi_xmap: support visual mode swithing
+* keymap/vi: support visual mode
+
+## 2017-09-28
+* ble-edit: add a condition to accept-single-line-or
+* keymap/vi_command: support gj gk
+
+## 2017-09-27
+* ble-edit: restore BASH_REMATCH
+* ble-edit: do not execute pasted multiline texts
+* ble-edit: support scrolling
+* bleopt: implement value checking on assignment
+
+## 2017-09-24
+* ilb/vim-surround.sh: do not refer bleopt "vim_surruond_{char}" for digit replacement char
+* keymap/vi: show configurable string (defaulted to be ~) on the normal mode
+* keymap/vi_command: support % N%
+* keymap/vi_command: support indentation for o O
+* keymap/vi_command: reimplement text object is as
+* keymap/vi (linewise-range.impl): fix a bug that the line ranges are reverted, fix behavior to go to nol
+
+## 2017-09-23
+* keymap/vi_command: support text object ip ap
+* keymap/vi_command: support text object is as
+* keymap/vi_insert: support indentation for C-m, C-h, DEL
+* ble-edit: erase garbage input echo during initialization of ble.sh
+* ble-edit (bleopt char_width=emacs): fix a bug that U+2000 - U+2600 are always treated as width 1
+* keymap/vi: fix a bug that selection is not cleared on entering the normal mode during isearch
+
+## 2017-09-22
+* keymap/vi_command (r, gr): highlight on waiting replacement
+* keymap/vi_command: support text object it at
+
+## 2017-09-20
+* ble-edit/exec: fix handling of $? and $_ and add a workaround for "set -o verbose"
+
+## 2017-09-18
+* lib/vim-surround: support configurable replacements with bleopt vi_surround_45:=tmpl vi_surround_q:=tmpl
+* (bleopt): support the form "var:=value" which skips existence checks of variables
+* lib/vim-surround: support ds cs
+* ble-decode: fix stty settings for command execution
+* keymap/vi_omap: fix mode transition from vi_omap to vi_insert
+* [m] lib/vim-surround: remove redundant codes
+
+## 2017-09-17
+* keymap/vi (text object i[bB]): exclude newlines around the range and transform to linewise
+* [m] keymap/vi (text object i"): behave the same as a" with arg >= 2 specified
+* [m] keymap/vi: rename functions
+* keymap/vi_insert: change the default of C-k to kill-forward-line
+* keymap/vi_command: support digraphs for arg of f, F, t, T, r, gr
+* keymap/vi: support digraph
+* (ble-bind): support "ble-bind -@f kspec command"
+* (ble-decode-kbd): fix a bug that keys "*" and "?" cannot be properly encoded
+
+## 2017-09-16
+* keymap/vi_command (operators): fix a bug that arg is cleared before the use
+* lib/vim-surround: support b B r a C-] C-} as replacements
+* keymap/vi: rename operator flag for < and >
+* (ble/widget/self-insert): explicitly return 0
+* ble-decode (ble-decode-key/.invoke-command): propagate exit status of widgets
+* keymap/vi_omap: decompose M-*
+* add ilb/vim-surround.sh, support operator "ys" and "yss"
+* keymap/vi: add new keymap "vi_omap"
+
+## 2017-09-15
+* keymap/vi_command: support operators < >
+* keymap/vi_command: support g~~ guu gUU g??
+* keymap/vi_command: handle meta flags of input keys
+* keymap/vi_command: support ~
+* keymap/vi_command: fix the text object "aw"
+* keymap/vi_command: rename widgets
+
+## 2017-09-13
+* ble-edit/info: fix cursor position calculations in rendering
+* (ble-form/panel#set-height-and-clear.draw): fix to add lines on an increased height
+* keymap/vi_command: support text objects [ia][][{}()<>bBwW'"`]
+
+## 2017-09-12
+* add ble-form.sh and introduce ble-form/panel
+* ble-edit: rename functions
+* keymap/vi_command: support text object iw
+* ble-edit/info: show default contents at the end of bind
+* ble.pp: fix PATH if standard utilities are not found on load
+* keymap/vi_command: add operators g~ gu gU g?
+* keymap/vi_command: refactor ydc operators
+* ble-decode (ble-bind): fix check of redundant "ble/widget" prefix
+
+## 2017-09-11
+* ble-edit (ble/widget/clear-screen): show info after the clear
+* keymap/vi_command (C-o): fix cusor positions after first-non-space commands
+* keymap/vi: fix the initial position of "-- INSERT --"
+* keymap/vi_command: support C-o
+* ble-core: add string functions
+* keymap/vi_insert: change mode names on "insert"
+* keymap/vi: show current modes in the info area
+* ble-edit: support ble-edit/info/set-default
+* ble-edit: clear info on exit
+* memo.txt: add comments from @B-bar
+* ble-decode: check existence of keymaps
+
+## 2017-09-10
+* keymap/vi_command: fix C D
+* keymap/vi_command: support arg for insert modes
+* ble-decode: fix ble-decode-key and support __before_command__ and __after_command__
+* keymap/vi_command: update bindings and support z{char} clear screens
+
+## 2017-09-09
+* keymap/vi_command: fix R and support gR
+* keymap/vi_command: support f F t T ; ,
+* ble-edit: suppress unnecessary history loads on history-next
+* ble.pp: support loading ble.sh from inside of functions
+* keymap/vi_command: support J gJ o O
+* fix leak variables
+* keymap/vi_command: support r gr
+
+## 2017-09-08
+* keymap/vi_command: fix mode change widgets and support gI
+* keymap/vi_command: support G H L gg
+* keymap/vi_command: fix behavior of [dcy][-+jk]
+* keymap/vi_command: update memo.txt and support K
+* keymap/vi_command (RET, C-m): fix to behave as + if the line contains LF
+* keymap/vi_command: support w W b B e E
+
+## 2017-09-07
+* keymap/vi_command: support s S
+* ble-edit: rename ble-edit/text/getxy -> ble-edit/text/getxy.out
+* keymap/vi_command: support C-h DEL SP
+* (ble/widget/vi-command/{forward,backward}-line): fix
+* keymap/vi_command: return to insert mode on accept-line
+* keymap/vi_command: support |
+* keymap/vi_command: clear arg on mode changes
+* keymap/vi_command: support I
+* keymap/vi_command: support Y D C
+* keymap/vi_command: support x X
+* keymap/vi_command: support p P
+* keymap/vi_command: check unknown flags
+* keymap/vi_command: support A
+* keymap/vi_command: add basic bash operations
+* keymap/vi_command (+ -): travel history
+* keymap/vi_command: support ^ + - $
+* keymap/vi_command: fix behavior of "yh" and "yl"
+* keymap/vi_command: support dd yy cc 0
+* ble-edit: partial revert 35098f0 where necessary ble-edit/history/load calls were removed
+* ble-edit (ble/widget/{for,back}ward-line, etc): fix a bug that the destination cursor pos was based on possible old layout
+* keymap/vi.sh: support hjkl
+* ble-edit: remove redundant ble-edit/history/load calls
+* (ble/widget/.bell): fix exit status
+
+## 2017-09-06
+* check: add check codes for bashbug workarounds
+* (ble-edit/text/get*): check if the cached text positions are up to date
+
+## 2017-09-05
+* keymap/vi: support mode switching
+* (ble/widget/.goto-char): simplify
+* (ble-edit/load-keymap-definition): workaround for bash-3.0
+* (ble-decode-key): accept multiple keys
+* ble-edit: support the value bleopt_default_keymap=vi
+
+## 2017-09-04
+* add keymap/vi.sh and switch keymap on editing mode change
+* ble-decode: split and refactor external settings
+* ble-decode: support bleopt_default_keymap=auto
+
+## 2017-09-03
+* ble.pp: remove the check enforcing "set -o emacs"
+* ble-decode (ble-decode-{attach,detach}): support attached editing modes
+* ble-decode: update spacing of an awk script
+* ble.pp: fix "set -o emacs" checks
+* ble-syntax: fix a bug that here strings are interpreted as here documents
+* complete.sh: suppress error messages on internal compgen calls
+
+## 2017-08-30
+* ble-edit: check editing mode
+
+## 2017-08-19
+* cmap/default.sh: disable modifier keys "CAN @ ?" which is ambiguous with "C-x C-x"
+* ble-edit: support "bleopt delete_selection_mode=1"
+
+## 2017-06-09
+* ble-syntax: workaround for the bash-4.2 arithmetic bug resulting in segfaults
+
+## 2017-05-20
+* ble.pp: guard double ble-attach
+
+## 2017-04-21
+* bind.sh: bash-4.4 workaroud: fix a bug C-x ? is not bound
+
+## 2017-03-17
+* README: update color settings and translate tips
+* README: add a hint on editing multiline commands
+
+## 2017-03-16
+* (ble-color-gspec2g): change to recognize 0 padded color indices as decimal numbers
+* README: bump release 0.1.7
+
+## 2017-03-15
+* README: update heading syntax of GitHub flavored markdown
+
+## 2017-03-13
+* suppress error messages caused by incorrect user LC_*/LANG values
+
+## 2017-03-06
+* complete: fix a bug that backquotes, newlines and tabs in completed words were not escaped
+
+## 2017-03-05
+* ble.pp ($_ble_init_original_IFS): \minor, fix unset
+* ble-core.sh ($ble_util_upvar_setup): add "local ret" declartion
+* (ble-syntax:bash/ctx-heredoc-word): use ctx-redirect to read keyword of here documents
+* ble-color: move deprecated "ble-highlight-layer:adapter" codes to layer/adapter.sh as a sample
+* save/restore IFS to protect ble functions from user's IFS
+* memo.txt: assign numbers of the form "#D????" to old items
+* (ble-syntax:bash): :new: support "select var in ..."
+* (ble-syntax:bash): fix a recent bug that semicolons after "for (())" was not allowed
+* (ble-syntax:bash): :new: support here documents
+
+## 2017-03-04
+* (ble-syntax:bash): fix a bug that semicolons are not allowed after "}", "fi", "done", etc.
+* (ble-syntax:bash): support the construct with the form "for name do ...; done"
+* (ble-syntax:bash): accept "do" immediately after "for (())" without semicolons
+* Makefile: add a prerequisite "install"
+* (ble-edit-attach): output CR before showing prompt
+
+## 2017-03-02
+* (ble-syntax:bash): allow `then, elif, else, do' after `}, etc.'
+* (ble-syntax:bash): improve checks of quotes in parameter expansion and arithmetic expansion
+  - change so that quotes are processed always in the syntax level
+  - introduce new nest-types, ntype='$((' and ntype='$[', for CTX_EXPR (arithmetic expressions)
+  - introduce a new nest-type ntype='NQ(' to support nesting in quote-removal-less contexts
+  - fix so that quotes '...' in parameter expansions such as `${var#text}' are always enabled
+* \clean: format memo.txt and document comments, etc.
+* (ble-syntax:bash): add a work around of a bash-4.2 bug in arithmetic expressions
+
+## 2017-03-01
+* (ble-edit/info/draw-text): change to truncate overflow contents
+* ble-edit: fix bugs that line representation is broken at the last line of terminals
+  - \fix, use IND to ensure size of the edit area
+  - \fix, clear _ble_line_{beg,end}{x,y} on newline
+  - ble-edit.sh: add a function ble-edit/draw/put.ind
+  - ble-edit.sh: add a function ble/widget/.insert-newline
+  - (ble/widget/redraw-line): \clean, 無駄な _ble_line_cur 初期化を削除。ble-edit/render/invalidate を呼び出すだけで充分。
+  - (ble-edit/exec/.adjust-eol): \clean, 無駄な _ble_line_x=0 _ble_line_y=0 を消去。元からそうなっている前提である。
+  - (ble-edit/exec/.adjust-eol): \fix, 直接 stderr に出力していたのを ble/util/buffer に出す様に変更。
+* (ble-syntax:bash): support `} }', etc.
+* (ble-syntax:bash): :new: support `for ((;;)) { ... }'
+* (ble-syntax:bash): support `((echo)>/dev/null)' and `$((echo)>/dev/null)'
+* complete: support completion of "in" keywords for "for var in"/"case arg in"
+* (ble-syntax:bash): :new: support `for var in ...' and `case arg in'
+* (ble-syntax:bash/ctx-command): [refactor] split into functions, use arrays for ctx settings
+* (ble-syntax:bash): fix a bug that redirection accepted comments
+* (ble-highlight-layer:syntax): fix a bug that causes error on a word beginning with #
+  - Note: words beginning with '#' can be formed when `shopt -u interactive_comments'
+* (ble-syntax:bash): fix a bug that beginning of process substitutions splitted words
+
+## 2017-02-28
+* ble-edit: [refact] rename ble/edit/prompt/update/update-cache_wd -> ble-edit/prompt/update/update-cache_wd
+* ble-edit: [refact] rename ble/widget functions
+* ble-edit: [refact] rename ble-edit functions
+* ble-edit: use ble/util/buffer to suppress flicker
+* ble-core: add variable "ble_util_upvar{,_setup}"
+
+## 2017-02-25
+* (ble-syntax/parse/shift): fix a bug that caused duplicated shifts
+* (ble-syntax/print-status/.dump-arrays): add consistency checks
+
+## 2017-02-14
+* ble-syntax.sh: fix a bug that attempts "continue" out side of loop
+
+## 2017-02-13
+* ble-edit (ble/widget/isearch): fix a bug that isearch does not work in bash-4.4
+
+## 2016-12-21
+* ble-edit (exec): default value of the parameter "$_" is "$BASH"
+* ble-edit (exec): support parameter "$_"
+
+## 2016-12-06
+* ble-core (ble/string#split): add a work around for "shopt -s nullglob"
+
+## 2016-11-08
+* Makefile: detect correct path of gawk for mwg_pp.awk
+
+## 2016-11-07
+* ble-core.sh: add a work around of bashbug to accept inputs of hankaku kana
+
+## 2016-09-20
+* (ble/util/sleep in Cygwin): check parent processes of blocking process substitutions
+
+## 2016-09-16
+* README: update
+* (ble/util/upvar): fixed a bug that array elements cannot be exported
+
+## 2016-09-14
+* ble-core: add a function ble/util/upvar
+* _ble_edit_str.replace: improve error correction of _ble_edit_ind and _ble_edit_mark
+
+## 2016-09-11
+* (ble/widget/isearch/cancel): return to the original position, i.e. restore _ble_edit_{ind,mark}
+* (ble-syntax:bash/check-dollar): fixed a bug that isolated dollars generate syntax errors
+* (ble/widget/accept-and-next): fixed a bug that the next line is not loaded on accepting the last histentry
+* ble.sh (ble-edit/history/add): fixed a bug that erasedups is performed even if a new entry is rejected by ignorespace
+* isearch: fixed a bug that words in the current line is not matched incrementally
+
+## 2016-08-24
+* complete.sh: recognize dangling symbolic links in completion and syntax-highlighting
+
+## 2016-08-08
+* term.sh: fixed a bug that xenl cap was always disabled.
+
+## 2016-08-07
+* ble-edit/prompt: improved admin privileges checks on Cygwin
+
+## 2016-08-05
+* (ble-edit/history/add): fixed a bug that history entries are not registered after certain operations.
+* syntax: fixed a bug that causes an fatal error for param expansions with offset in quotes like "${v:1}"
+* (ble/util/sleep): do not use /dev/tcp which generates error messages on Win10 Cygwin.
+
+## 2016-07-16
+* (ble/util/array-push): \refactor, rename, support multiple elements to append.
+  - rename ble/util/array-push -> ble/array#push
+  - rename ble/util/array-reverse -> ble/array#reverse
+
+## 2016-07-15
+* complete: enable completion of variable names in "..." and ${...}.
+* complete.sh: insert '=' after the completion of variable name of assignment.
+  - (ble/widget/complete):
+    completion-context にて source の引数をコロン区切で指定できるように拡張する。
+  - ble-complete/source/variable:
+    引数に応じて確定時に挿入する接尾辞を選択する様に変更する。
+  - ble-syntax.sh (ble-syntax/completion-context):
+    文脈に応じて variable 候補源に引数 '=' を指定して、補完確定時に何を挿入するべきか指定する。
+* complete.sh: fixes and clean up; a new fn ble/string#split.
+  - ble-core.sh: a new function ble/string#split to replace "GLOBIGNORE=* IFS=... eval 'arr=(...)'".
+  - complete.sh: (ble-complete/.fignore/filter): fixed a bug that local variable pat was leaked.
+  - complete.sh: (ble/widget/complete): fixed a bug that "shopt -s force_fignore" was ineffective.
+
+## 2016-07-14
+* (ble/util/sleep): add fallbacks to sleepenh and usleep for bash-3.*.
+* isearch: fixed a bug that a new range overlapped with the current match cannot be matched incrementally.
+* (bleopt): fixed a bug in printing variables.
+
+## 2016-07-09
+* (ble/history/add): work around for bash-3.0 to add history entries to bash command history.
+* (ble/history/add): fixed a bug that command history was always disabled under bash-3.2.
+
+## 2016-07-08
+* ble-syntax.sh, complete.sh (shopt -q autocd): fixed a bug that error messages were output to stderr on completions in bash-3.*.
+* ble-edit (prompt): :new: support shell variable PROMPT_DIRTRIM for PS1 instantiation.
+* ble-edit: Now, the history index \! in PS1 is the index of the editted line.
+  - isearch: also, the position shown while isearch is changed to the history index.
+
+## 2016-07-07
+* README: move language options to the top. add icons of the languages.
+* update README and LICENSE
+* ble-edit.sh (ble-edit/isearch/backward): improve the performance (work around for slow bash arrays).
+
+## 2016-07-06
+* ble-edit.sh (_ble_edit_history_edit): changed to hold the whole editted history data.
+* ble-syntax: glob patterns are not active in variable assignments.
+* ble-edit.sh: 修正: ジョブ状態の変更を標準出力に確実に出力
+  - fixed a bug that job state changes are not output when PS1 contains '\j'.
+  - fixed a bug that the changes are not output immediately.
+* minor fixes in visible-bell and check-stderr.
+  - ble-core.sh (ble-term/visible-bell): fixed a bug in subsecond treatment.
+  - ble-edit.sh (.ble-edit/stdout/check-stderr): fixed a bug that lines without LF were not processed.
+
+* (ble/util/joblist): use ble/util/joblist for internal usage of jobs.
+  - ble-core.sh (ble/util/joblist): bugfix:
+    誤って _ble_util_joblist_jobs を _ble_util_joblist_list として使用している箇所が 4 箇所。
+  - ble-core.sh (ble/util/joblist): bugfix:
+    - (直前のジョブ) や - (一つ前のジョブ) の変化も変化として検知していた。
+    - これはジョブ状態の本質的な変化とは言いがたいので無視する。
+  - ble-core.sh (ble/util/joblist): bugfix: add ble/util/joblist.clear
+    bash 自身によってジョブ状態の変化が報告された後に、
+    二重に状態変化が報告される場合があるので、その様な場合にはキャッシュを消去する。
+  - ble-edit.sh の各 jobs を呼び出すところで、ble/util/joblist を代わりに呼び出す。
+  - ble-syntax.sh, ble-color.sh で jobs を使用してジョブの存在確認している箇所では、
+    先に ble/util/joblist を呼び出してジョブの状態変更を確認してから目的の jobs 呼び出しを行う。
+* ble-core.sh: add a new function ble/util/joblist.
+
+## 2016-07-05
+* ble-core: add option bleopt_stackdump_enabled
+  - bleopt_stackdump_enabled が非零の値に設定されている時にだけ
+    stackdump を出力する様にする。既定では 0 (出力しない) とする。
+
+## 2016-07-04
+* ble-decode.sh (ble-decode-attach): fixed a bug that makes C-{u,v,w,?} ineffective after the second ble-attach.
+  - 2回目以降の ble-attach でも ble-decode-bind/uvw が動作する様に
+    ble-decode-attach で source "～.bind" した直後に _ble_decode_bind__uvwflag をクリアする。
+
+## 2016-06-27
+* ble-core.sh ($_ble_base/cache): move to _ble_base_cache="$_ble_base/cache.d/$UID" for user separation.
+* ble-core.sh ($_ble_base_tmp): change to use /tmp/blesh/$UID if it is available.
+  - 今迄は ble.sh と同じディレクトリに一時ファイルを配置していた。
+    しかし、ble_util_assign.tmp などのファイルは速度を考えれば tmpfs (RAM上) に配置したい。
+    従って、一時ファイルは /tmp の上に配置するように変更する。
+* ble-core.sh: add ble/util/sleep to provide subsecond sleep.
+
+## 2016-06-25
+* ble-edit.sh (_ble_edit_str.replace debug codes): resume from wrong state.
+
+## 2016-06-23
+* ble-core.sh (ble/util/array-reverse): improve performance.
+
+## 2016-06-22
+* ble-edit/isearch: show progress of search.
+
+## 2016-06-19
+* ble-edit/isearch: ble/widget/isearch/prev cancel a task in que, ble/widget/isearch/accept is not effective while a search.
+  - ble/widget/isearch/prev: 現在実行中のタスク (_ble_edit_isearch_que) がある場合には一つずつキャンセルする。
+  - ble/widget/isearch/accept: 現在実行中のタスクがある場合には bell を鳴らすだけで動作をスキップする。
+  - ble-edit/isearch/.goto-match: 一致があった場合には is-stdin-ready でも強制的に描画を実行する。
+* ble-edit/isearch: check is-stdin-ready on history search to suspend.
+
+## 2016-05-21
+* update README.md for v0.1.5
+* ble-edit.sh: bugfix, incorrect _ble_edit_ind caused by the inconsistensy of history/isearch targets.
+  - _ble_edit_history を履歴検索して _ble_edit_history_edit をロードしていた事による _ble_edit_ind 不整合
+    これにより、dirty-range の不整合が生じエラーが発生していた。長年の謎のバグがこれで潰れたと思われる。
+
+## 2016-04-07
+* ble-syntax.sh (ble-syntax/parse/shift.impl2): bugfix 制御構造の欠陥による shift 漏れ。
+
+## 2016-01-24
+* ble-syntax.sh: \debug add debug codes for dirty-range bug
+  - ble-edit.sh: dirty range checks
+  - ble-syntax.sh (ble-syntax/parse): remove readonly flag of `beg' and `end' for dirty-range bug
+
+## 2015-12-30
+* modify README: use -O option for curl; release v0.1.4.
+
+## 2015-12-26
+* (ble-color/faces): preserve orders of addhook-onload, and ble-color-{def,set}face.
+  - ble-color/faces 初期化前に呼び出した ble-color/faces/addhook-onload,
+    ble-color-defface, ble-color-setface を独立に記録していた為、
+    実際に呼び出された順序と異なる順序で処理が実行されてしまっていた。
+    記録を一つの配列 _ble_faces_lazy_loader にまとめ、順序が保存される様にした。
+
+## 2015-12-25
+* (ble-color) \change ble-color-{def,set}face の処理も遅延する。
+* functions/getopt.sh: \add description.
+
+## 2015-12-24
+* (ble-syntax:bash): :new:, support option `-p` for keyword `time`.
+* (ble-syntax:bash): \new, support `a=([key]=value)` and `a+=([key]+=delta)`.
+  * (ble-syntax): \new local variable `parse_suppressNextStat` in ble-syntax/parse.
+  * (ble-syntax:bash): \bugfix, correct resume for `var+`, `arr[...]+` -> `var+=`, `arr[...]+=`.
+  * (ble-syntax:bash): \new, support `a=([key]=value)` and `a+=([key]+=delta)`.
+* (ble-syntax:bash): \new context CTX_CASE.
+* (ble-syntax:bash): \new CTX_COND{X,I}; \change unexpected '(' is treated as extglob '@(' instead of sub-shell '(';
+  * ble-syntax.sh: `CTX_VAL{X,I}` から `CTX_COND{X,I}` を分離。
+  * ble-syntax.sh: コマンド中に現れる '(' を extglob の括弧として取り扱う事にする。
+    今迄は暫定的に sub-shell として取り扱っていたが、
+    エラーが多く出てうるさいのでエラーの少ない extglob 括弧として取り扱う事にする。
+* ble-edit.sh: \bugfix histexpand condition [[ -o histexpand ]] inverted.
+  * \bugfix 履歴展開が効かなくなっていた。
+    条件判定の誤りだった: [[ -o histexpand ]] → [[ ! -o histexpand ]]
+  * \bugfix 履歴展開に失敗した時に : が実行される。
+    履歴展開が失敗すると history -p は標準出力に何も出力しないためであった。
+    失敗した時は echo "$BASH_COMMAND" により手動で出力する。
+* (ble-syntax:bash): \support shopt -s extglob; \bugfix error on {delimiter after redirect,'<' redirect};
+  * extglob 対応: `CTX_GLOB`, `ATTR_GLOB`, `ctx-glob`, `check-glob` 追加。
+  * \bugfix redirect 直後に redirect/delimiter があった時に解析データ書き込み違反。
+  * \cleanup: 共通の正規表現の整理:
+    `$_ble_syntax_bash_rex_spaces`,
+    `$_ble_syntax_bash_rex_IFSs`,
+    `$_ble_syntax_bash_rex_delimiters`.
+  * \bugfix `$_ble_syntax_bash_rex_redirect`: < が抜けていた。
+
+## 2015-12-23
+* (ble-syntax:bash): special treatment of arguments of `declare`.
+  * (ble-syntax:bash): declare, typeset, local, export, alias コマンドの引数を文法的に特別に扱う。特に配列構文 =() を許容する。
+    その為に新しい文脈値 `CTX_ARGVX`, `CTX_ARGVI` を追加する。
+  * (ble-syntax:bash): `CTX_ARGVI` に対する補完候補は変数名。等号 '=' 以降の部分についてはファイル名の補完候補を列挙する。
+  * (ble-syntax:bash): 通常の代入構文における配列構文の動作を変更。
+    今迄は a=(1 2 3)echo などとすると a=(1 2 3) を配列代入と解釈し echo の部分をコマンドと解釈する様にしていた。
+    その為に配列構文の nest-pop 時にすぐに単語を抜けて cxt==CTX_CMDXV になる様に構成していた。
+    しかし、実際の bash の動作を確認してみると、a=(1 2 3)echo は a='(1 2 3)echo' の様に、全体が代入文の右辺と解釈される様である。
+    実際の bash の動作に合わせて、nest-pop 時に特別な動作を特にしない様に変更した。
+
+## 2015-12-21
+* (ble-syntax:bash): 算術式終了条件修正、bash-3.0 で += 無効; (completion-context): a+= 直後の補完候補生成。
+  * ble-syntax.sh (ble-syntax:bash): 算術式の終了条件を修正する。
+    $((...)) ((...)) の中では '(', ')' を数えて終了判定を行う。
+    $[...]、${arr[...]} arr[...]= の中では '[', ']' を数えて終了判定を行う。
+    ${var:...:...} では '}' が来たらすぐに終了する。
+  * ble-syntax.sh (completion-context): a+= の直後でも補完候補生成を行う。
+  * ble-syntax.sh (ble-syntax:bash): disable += under bash-3.1.
+* ble-edit.sh: bugfix failure of catch C-d in bash-3.0.
+
+## 2015-12-20
+* (ble-highlight-layer:syntax): color of special files, permission of files in redirection.
+  - ble-syntax.sh: bugfix of assertion test in ble-syntax/parse/tree-append.
+  - ble-syntax.sh (ble-highlight-layer:syntax): color filenames of block device, character device, pipe, and socket.
+  - ble-syntax.sh (ble-highlight-layer:syntax): redirection: check permissions.
+* (ble-syntax:bash): bugfix, tree-structure corruption on edit of array subscripts in array-element assignment.
+  - ble-syntax.sh: 配列添字の書き換え時に解析木の破壊が起こる。
+    配列添字の終了 ']=' において nest-pop を先頭位置で行っていた。
+    これが為に、過去の解析結果を書き換えている事になっていた為に、
+    shift の際に設置した情報が消滅したりしていた。
+* ble-edit.sh: add support `set +o history`; ble-syntax.sh: check file existence on '<' redirection.
+  - ble-edit.sh: add support `set +o history`
+  - ble-syntax.sh (ble-highlight-layer:syntax): check filename of `<` redirections.
+  - ble-syntax.sh (constants): refact,
+    definition of `local rex_redirect` -> global `_ble_syntax_bash_rex_redirect`.
+    rename `_BLE_SYNTAX_CSPACE` -> `_ble_syntax_bash_cspace`.
+  - ble-edit.sh: refact, rename functions `.ble-edit[./]history[./]*` -> `ble-edit/history/*`.
+* complete: 候補生成箇所の追加・修正、コマンド補完候補としてサブディレクトリも列挙
+  - ble-syntax.sh (complete): bugfix, 単語の間の空白で complete を実行しようとしても候補が生成されなかった。
+  - ble-syntax.sh (complete): generate filenames after `VAR='.
+  - ble-syntax.sh (complete): generate filenames just after the redirection.
+  - complete.sh: コマンドの補完候補として現在のディレクトリのサブディレクトリも列挙する様に修正する。
+    サブディレクトリにある実行属性のファイルを実行したい場合がある為である。
+
+## 2015-12-19
+* complete.sh: support `FIGNORE`, `shopt -s force_fignore`.
+  - Makefile: bugfix, remove `ble-getopt.sh` from the required files to generate ble.sh.
+  - complete.sh: support `FIGNORE` and `shopt -s force_fignore`.
+* functions/*: move unused file ble-getopt.sh to `functions/`. Add new impl of getopt.
+* ble-syntax.sh (ble-syntax:bash): redirections: bugfix '<<<', support '>|', overwrite check of files, etc.
+  - ble-syntax.sh (ble-highlight-layer:syntax): Support `set -o noclobber`; Check overwrites of target files of redirections for '>', '&>', and '<>' redirect.
+  - ble-{core,decode,edit}.sh, bind.sh, term.sh, emacs.sh: change redirection '>' -> '>|' for the case of the noclobber option on.
+  - ble-syntax.sh (ble-syntax:bash): support the redirect using `>|`.
+  - ble-syntax.sh (ble-syntax:bash): bugfix false syntax error of `<<<`.
+  - ble-syntax.sh (ble-syntax:bash): bugfix redundant skip on unexpected termination of redirect by an end of command or another redirection.
+  - ble-syntax.sh (ble-syntax:bash): bugfix, do not allow newline after the redirection introducers.
+* ble.pp, ble-core.sh: Check and modify dependencies on external commands.
+  - ble.pp (ble/.check-environment): Remove tput (POSIX UP option) which is not necessarily required.
+  - ble-core.sh (ble-term/visible-bell): Add a function `ble/util/getmtime` to get modified time of files in a compativble way.
+  - ble-edit.sh (ble/widget/command-help): Select available pager from any of $PAGER, less, more, and cat.
+* ble-syntax.sh: syntax: quotations in words in parameter expansion (shopt -u extquote, etc.).
+  - ble-syntax.sh: support single quotation in parameter expansion.
+  - ble-syntax.sh: support shopt -u extquote.
+* clean up & minor behavior change: Check bash opts --{posix,noediting,restricted}, Unset mark on accept-line.
+  * bug fix
+    - ble-syntax.sh (ble-syntax:bash/extract-command/.construct-proc): remove a debug code which prints the message "clear words".
+  * minor behavior change
+    - ble-edit.sh (ble/widget/accept-line): redraw without mark.
+    - ble.pp (startup check): do not load ble.sh for bash --posix, --noediting, or --restricted.
+  * clean up
+    - ble-decode.sh (ble-decode-byte:bind/EPILOGUE): use ble/util/is-stdin-ready instead of the direct use of `read`.
+    - ble-core.sh (ble/util/is-stdin-ready): use LANG instead of LC_ALL.
+    - ble-edit.sh, ble-syntax.sh: use [[ -o histexpand ]] rather than [[ $- == *H* ]].
+    - ble-syntax.sh (test): remove unused functions `.ble-shopt-extglob-push`, and `.ble-shopt-extglob-pop` for test.
+    - ble-edit.sh: remove old complete functions:
+      - .ble-edit-comp.initialize-vars
+      - .ble-edit-comp.common-part
+      - .ble-edit-comp.complete-filename
+      - ble/widget/complete
+      - ble/widget/complete-F
+    - ble-syntax.sh, complete.sh: no need of redirection for `shopt -q optname`.
+
+## 2015-12-09
+* Refactoring ble-edit.sh/ble-line-prompt.
+  * .ble-line-prompt -> ble-edit/prompt.
+  * `_ble_cursor_prompt`, `_ble_line_prompt` -> `_ble_edit_prompt`.
+* Refactoring ble-core.sh, ble-color.sh, cmap/xterm.sh.
+  * ble-core.sh: .ble-text.* -> ble/util/*.
+  * ble-color.sh: .ble-color.* -> ble-color/.*.
+  * cmap/xterm.sh: .ble-bind.function-key.* -> ble-bind/cmap:xterm/*.
+* Refactoring ble-decode.sh.
+  * ble-core.sh: .ble-term.{visible,audible}-bell -> ble-term/{visible,audible}-bell.
+  * ble-decode.sh: .ble-stty.* -> ble-stty/*.
+  * ble-decode.sh: .ble-decode-* -> 適切な名称に変更。
+* Refactoring and clean up.
+  * ble-edit.sh, etc: 'ble-edit+' -> 'ble/widget/.
+  * 'ble-edit.sh: ble-edit/exec 関数名整理。
+  * ble-decode.sh: ble-decode-byte 関数名整理、ble-edit 依存性分離。
+  * README-ja_JP.md: 日本語説明修正。
+  * README.md: 英語修正。
+  * ble-syntax.sh: コードコメント @fn -> 関数 に統一。
+
+## 2015-12-06
+* ble-core.sh: Add function ble/util/cat to replace /bin/cat.
+  - ble-core.sh: 関数 ble/util/cat。command cat の単純な呼出と同じ機能を builtin read で実装。
+  - ble-decode.sh (ble-bind --help): 外部コマンドの cat を呼び出していたが、bash の組込コマンドで実現できるので置き換え。
+  - README.md: gmake/make について説明を追加。
+* Update README-ja_JP.md
+* ble-bind: New option `-L, --list-functions`, ble-color.sh bugfix initialization of faces:region,disabled,overwrite_mode.
+  - ble-color.sh: bugfix, 色初期化 (region disabled overwrite_mode) 遅延ロードに登録していなかった。
+  - ble-decode.sh (ble-bind): New option `-L, --list-functions` to list edit functions.
+
+## 2015-12-03
+* Changed default value of bleopt_char_width_mode from `emacs` to `east`.
+* Update README-ja_JP.md.
+* Add README-ja_JP.md. 日本語の説明。
+* optimization: lazy init of faces (ble-{syntax,color}.sh), removal of temporary files (ble-core.sh).
+  * ble-syntax.sh, ble-core.sh: lazy initialization of `_ble_faces_*`.
+  * minor: modify messgese: initialization message, the header of the script ble.sh.
+  * ble.pp: Add pp switch `measure_load_time` to identify the initialization bottle neck.
+  * ble-core.sh (`_ble_base_tmp.wipe`): optimization, use parameter expansion instead of regex captures.
+* Support here string, shopt -q progcomp; Bugfix ble-syntax/parse/nest-equals.
+  * ble-syntax.sh: support here string.
+  * ble.htm: comment out outdated descriptions.
+  * ble-syntax.sh (ble-syntax/parse/nest-equals): bugfix, 前回の bugfix で onest[3]<0 の場合を考えていなかった。
+  * complete.sh: shopt -q progcomp によるプログラム補完の有効・無効の切り替え。
+* update version numbers.
+* ble-syntax.sh (ble-syntax/parse/nest-equals): fatal bugfix, misjudge on nest equality test causing nest structure corruption.
+  * Note: _ble_syntax_nest の要素に含まれている nest 開始位置は相対位置で記録されているにも拘わらず、絶対位置の変数に直接代入していた事が原因であった。
+  * 他 ble-syntax.sh, ble-color.sh: compatibility fix., fgrep to command grep -F.
+* README.md: correct download links.
+* `*.sh`: Add `command` for external command execution.
+* (ble-edit/stderr for bash-3.0): Add ignoreeof-message.txt for C-d message i18n.
+* `*.sh`: New marker `__ENCODING__` for 文字コード依存部分
+
+## 2015-11-30
+* complete.sh (ble-complete/source/argument): minor bugfix, default behavior using comp_opts exported by func .../.compgen.
+  * 他 ble.pp: check chmod.
+* Makefile: a phony target `dist`.
+* memo.txt: todo 整理.
+* complete.sh: bugfix, completion doesn't work on an argument without complete -D spec.
+* ble-edit.sh (ble-edit+isearch/next): bugfix, didn't match locally on self-insert of forward isearch.
+* ble-decode.sh (generate-source-to-unbind-default): bugfix, need of LANG=C.
+  * LANG=C を設定しないと bind -sp の出力に変なバイトが含まれている為に解釈に失敗する。
+    (utf-8 の様な ASCII 文字を含まない様な文字コード体系の場合にはこれで問題ないが。
+    memo.txt に Note(2015-11-30) として追加する。)
+* Update README.md
+* ble-edit.sh: remove dependency on GNU awk.
+  * ble.pp: 念の為 gawk に戻す事ができる様に use_gawk (PP変数) を用意する。
+  * ble.pp (ble/.check-environment): check awk.
+  * ble-core.sh (ble/util/array-reverse):(awk scripts):
+    + uninitialized variable `decl` を初期化する。
+    + locale dependent な /[a-z]/ の類を POSIX 括弧 (/[[:alpha:]]/, /[[:alnum:]]/) に置き換え。
+  * ble-edit.sh (.ble-edit/history/generate-source-to-load-history):(awk scripts): uninitialized variable `n`.
+  * ble-decode.sh (.ble-decode-bind/generate-source-to-unbind-default):(awk scripts):
+    + 引数名と大域変数が被らない様にする。
+    + gawk 特有の機能 (/\y/, match 第三引数) を使わない。
+    + bugfix, gsub の対象の変数が指定されていない箇所があった。
+  * それぞれ gawk --lint 及び nawk でも動作を確認した。
+
+## 2015-11-29
+* ble-edit/isearch: 現在のコマンド内も検索対象に。
+  * 旧来の履歴項目検索機能を改名:
+    - ble-edit+isearch/forward -> ble-edit+isearch/history-forward,
+    - ble-edit+isearch/backward -> ble-edit+isearch/history-backward,
+    - ble-edit+isearch/self-insert -> ble-edit+isearch/history-self-insert.
+  * 検索履歴 (_ble_edit_isearch_arr) に一致範囲も記録する様に変更
+  * 現在の位置からコマンド内を検索する関数を追加・旧関数を置換:
+    - ble-edit+isearch/forward,
+    - ble-edit+isearch/backward,
+    - ble-edit+isearch/self-insert.
+* ble-edit.sh (+isearch/next): 一致範囲を囲む。
+  * ble-edit.sh (+isearch/next), set region to matched range.
+  * ble-edit.sh: pattern matching using [[ text == pattern ]] instead of case statement.
+  * ble-color.sh (ble-syntax-layer:region/update): bugfix, PREV_UMIN/PREV_UMAX out of range due to the shift failure of omin/omax.
+* ble-core.sh: full support for bleopt_input_encoding=C
+  * ble-core.sh: Add functions: ble-text-b2c+C, and ble-text-c2b+C.
+  * ble-core.sh (.ble-text.c2bc): rename .ble-text.c2bc -> ble-text-c2bc.
+  * .gitignore: 古い物を整理。/wiki 追加。
+
+## 2015-11-28
+* Update README.md
+* ble-decode.sh, ble-edit.sh: support `bind -xf`.
+  * ble-core.sh: Add functions ble/string#common-{prefix,suffix}.
+  * ble-decode.sh, ble-edit.sh: support `bind -xf COMMAND`.
+  * ble-edit.sh:714: ^M が直接埋め込まれていると GitHub が改行位置を勘違いする様なので $'\r' に修正する。
+  * complete.sh: embedded sed scripts, POSIX compliance.
+* ble-color.sh: Add a function ble-color-show.
+* README.md: Add animation gif.
+* README.md: settings for syntax highlighting.
+* README.md: Add some description of settings.
+
+## 2015-11-27
+* Create LICENSE.md
+* Update README.md
+
+## 2015-11-24
+* ble-edit.sh (+magic-space): bugfix, 現在のカーソル位置よりも前の部分に対して履歴展開する。
+* complete.sh: behavior of source/argument, compopt -o/+o, bugfix.
+  - complete.sh (ble-complete/source/argument): complete -o ..., compopt -o option +o option の読み取り。
+  - complete.sh (ble-complete/util/escape-regexchars): bugfix.
+  - complete.sh: Add action/plain, action/argument, action/argument-nospace.
+  - complete.sh: Add source/dir.
+  - complete.sh (ble-complete/source/argument): support -o nospace, -o dirnames.
+* complete.sh (ble-complete/source/argument): bugfixes.
+  * ble-complete/source/argument/.compgen-helper-prog: Export `COMP_LINE` `COMP_POINT` `COMP_KEY` `COMP_TYPE`
+  * ble-complete/source/argument/.compgen-helper-{prog,func}: Pass arguments `command`, `cur`, and `prev` for program/function.
+  * ble-complete/source/argument: Fix option -F, -C interruption failure.
+  * ble-complete/source/argument: Fix -F <-> -C miss arrangement.
+  * ble-complete/source/argument: Correct IFS when compgen is called.
+  * ble-complete/source/argument: `return 1` if no candidates are generated.
+  * ble-complete/source/argument: Evaluate `compgen` in the original shell (i.e., not in a sub-shell).
+  * ble-complete/source/argument: Filter and modify candidates generated by `compgen` using `sed`.
+
+## 2015-11-23
+* ble-edit.sh (ble-decode): show the message to run "stty sane" after "ble-detach".
+* ble-syntax (ble-syntax:bash/extract-command): bugfix, 出力用の変数が local 指定になっていたのを削除。
+  - 他: complete.sh: compgen -F prog -C cmd の際に compgen が警告を出すので compgen 2>/dev/null とする。
+* complete.sh: complete -p による補完の基本実装。
+  * ble-core.sh: Create function ble/util/array-reverse.
+  * ble-decode.sh (.ble-decode-keys, .ble-decode-key/invoke-command): bash-3.0 workaround, local -a keys=(), local -a KEYS=() を2行に分ける。
+  * ble-syntax.sh: complete 用の整備。
+    * 関数追加 ble-syntax/tree-enumerate-break: "((tprev=-1))" は意図が分かりにくいので。
+    * 関数追加 ble-syntax:bash/extract-command:
+    * ble-syntax/tree-enumerate: シェル変数 iN の既定値を _ble_syntax_text の末端に。
+    * ble-syntax/completion-context: CTX_VALI, CTX_VALX に対応。
+    * ble-syntax/completion-context: 一部の補完文脈を file から argument に変更。
+  * complete.sh: complete -p 設定に基づく補完。
+    * ble-complete/source/argument: 追加
+    
+## 2015-11-22
+* ble-syntax.sh: bash 文法関連の関数名整理。
+  * ble-decode.sh (ble-bind): error message に . を追加。古いコメントを削除。
+  * ble-syntax.sh (ble-syntax/parse/{check,ctx}-*): bash 文法特有の関数の名称を整理。
+
+## 2015-11-21
+* cmap/cmap+*.sh: Update for current ble-decode.sh.
+* ble-edit.sh (ble-edit+magic-space): Add edit function magic-space.
+
+## 2015-11-19
+* Support of PROMPT_COMMAND, and function bleopt.
+  * ble-edit.sh: easy support of PROMT_COMMAND.
+  * ble-core.sh: bleopt 関数追加。
+  * ble-decode.sh (.ble-decode-initialize-cmap): POSIX sed BRE does not support the quantifiers: \+, \?.
+* ble-syntax.sh: 履歴展開をより正確に。
+  * histchars に応じた履歴展開の解析
+  * extglob が設定されている時は !( は履歴展開と解釈しない
+  * 文字列 "～" 中の履歴展開は " の直前で終わる
+* ble-core.sh: workaround for bash-3.0 regex in _ble_base_tmp.wipe.
+
+## 2015-11-17
+* `ext/mwg_pp.awk`: Include mwg_pp.awk in ext; Makefile (listf): renamed to list-functions and modified.
+* ble-syntax.sh (ble-syntax/parse/nest-equals): bugfix (operater associativity), incorrect break of loops.
+
+## 2015-11-09
+* ble-core.sh (_ble_base_tmp.wipe): bugfix, correct iteration of old tmp files.
+
+## 2015-11-08
+* complete.sh: ユーザ入力があった時の候補列挙の中断に対応 (bash-4.0 以降); ble-syntax.sh: コメント判定の修正。
+  * ble-core.sh (ble/util/is-stdin-ready): 関数追加。標準入力に未処理の文字が残っているかどうかを判定。ユーザの入力が待ち状態になっているかどうかを判定する為の物。
+  * ble-syntax.sh (ble-syntax/parse/check-comment): コマンドライン解析時 shopt -u interactive_comments の時にはコメントは無効とする。
+  * ble-syntax.sh (ble-syntax/parse/check-comment): bugfix コメント開始判定(単語頭)。単語開始の判定が単語頭ではなく「単語頭または単語内部の解析開始点の位置」という事になっていた。
+  * complete.sh (ble-complete/source/command/gen, ble-edit+complete): コマンド候補の列挙・一致判定には時間が掛かるので ble/util/is-stdin-ready を用いて中断の判定を実行する。
+
+## 2015-11-07
+* Update README.md
+* ble.pp: check environment for required commands, ble-edit.sh: 'M-\'.
+  * ble.pp: check required commands.
+  * ble-core.sh: remove dependencies on `touch' command.
+  * ble-edit.sh, keymap/emacs.sh: Add edit function: delete-horizontal-space ('M-\').
+
+## 2015-11-06
+* ble-syntax.sh: cleanup debug codes.
+* ble-syntax.sh (ble-syntax/parse/shift.nest): bugfix, parse error by shift failure of _ble_syntax_nest.
+
+## 2015-11-25
+* Create README.md
+
+## 2015-08-25
+* m, bugfixes.
+  * PS1 の '!' の処理、
+  * PS1 の \w の処理、
+  * (bash-3.0) history '!1' &>/dev/null によるチェックでエラーメッセージが漏れていた。
+* bugfix, specify explicit collation order for regs and globs.
+  * Character ranges in regular expressions and glob patterns are dependent on collation order.
+  * To obtain the desired results for ascii characters, `local LC_COLLATE=C' should be explicitly specified.
+
+## 2015-08-24
+* ble-edit.sh (.ble-edit.history-add): bugfix, handling of HISTCONTROL.
+
+## 2015-08-19
+* bin/ble-edit.sh: bugfix for bash-3.0, history -s が正しく動作しないので修正。
+
+## 2015-08-18
+* bugfix and cleanups.
+  * ble-core.sh (ble-assert): bugfix, correct return value.
+  * ble-edit.sh, ble-synta.sh: bash-3.0 bugfix, `local arr=(...)' form cannot be used in bash-3.0.
+  * ble-edit.sh (hist_expanded.initialize): renamed to `ble-edit/hist_expanded.initialize'.
+
+## 2015-08-16
+* 消滅単語に対する色解除の対策(暫定)。
+  * ble-syntax.sh (ble-syntax/parse): 消滅単語の範囲集計。
+  * ble-syntax.sh: 範囲更新・並進の整理。関数 ble/util/[uw]range#{update,shift} の追加。
+* 表示系統 bug fixes.
+  * ble-edit.sh (ble-edit/dirty-range/update): bugfix, endA0 の読み出しに誤り、変数名 delta/del に誤り。
+  * ble-syntax.sh (ble-highlight-layer:syntax/update-attribute-table): bugfix in umin/umax update, umax の更新に使う変数名を誤っていた。
+* 組込コマンド上書き対策。ble-syntax shift bufgix for bash-4.2 算術式。
+  * ble-syntax.sh (bash-4.2): bugfix, ble-syntax/parse/shift.{tree1,nest} の算術式で bash-4.2 をクラッシュされる形式の物が見付かった。
+  * ble-core.sh: ble/util/set 関数を追加。
+  * ble-edit.sh: builtin 上書きを防ぐ為に unset -f builtin を実行 (builtin, unset 両方上書きされると駄目だが)。
+  * ble-edit.sh: return/break/continue も上書きを禁止する。
+  * ble-*.sh: test の代わりに [[ ]] を使用。
+* 貼付時の再描画抑制 (read -t 0 による判定)。\x80-\x9F を M-^? で表示。
+  * ble-edit.sh: 編集文字列内の \x80-\x9F の表示を M-^? に。表示が乱れていた。
+  * ble-edit.sh (ble-decode-byte:bind): 次の文字が来ている時に再描画を抑制。
+  * ble-edit.sh: exec/gexec 周りの関数名を整理。
+  * ble-edit.sh: 関数削除 .ble-edit-isearch.create-visible-text
+
+## 2015-08-14
+* 構文 function ... に対応、履歴展開 bugfix.
+  * ble/src: .srcoption 追加。
+  * ble-syntax.sh: defface 関数の色の変更。
+  * ble-syntax.sh: 構文 `function ...` に対応。
+  * ble-syntax.sh: `function ...`, `hoge ()` の直後に来るコマンドを compound-commands に制限。
+  * ble-edit.sh: bugfix, set +H の時も履歴展開が有効になっていた。history -p は set +H と関係なく展開を行う。
+  * ble-edit.sh: bugfix, 関数 echo を定義するとコマンドがそれ以上実行できなくなる。echo/printf を builtin を介して呼び出す様に変更。
+* ble/util/assign cleanup, ble/util/type add, .ble-line-prompt/update bugfix.
+  * ble-core.sh (ble/util/assign): cleanup, ble/util/sprintf, ble/util/type, ble/util/isfunction でも仕様,
+  * ble-core.sh: ble/util/type 追加。$(type -t) はこれを用いて処理する様に変更,
+  * ble-edit.sh (.ble-line-prompt/update): bugfix, 地の文の '$' や '`' が escape されてしまい展開されない.
+* ble-edit.sh: プロンプト更新最適化。
+* ble-core.sh (ble/util/assign): $(...) 高速化用関数。
+* shift 高速化、入れ子構造を考慮に入れた単語着色に対応。
+  * ble-syntax.sh (ble-syntax/parse/shift): 入れ子構造を考慮に入れた shift,
+  * ble-syntax.sh (_ble_syntax_tree): 単語毎の着色情報をデータ配列内に保持するように変更,
+  * ble-syntax.sh (ble-highlight-layer:syntax/update-word-table): 入れ子構造を考慮に入れた着色.
+* leak variables: g cs
+* cleanup, leak variables 処置.
+* ble-syntax.sh: 終端していない節も列挙対象に含める。他整理。
+  * ble-syntax.sh (ble-syntax/print-status): prints unterminated nodes.
+  * ble-syntax.sh: add new functions ble-syntax/tree-enumerate, ble-syntax/tree-enumerate-children.
+  * ble-syntax.sh: rename shell variable: _ble_syntax_word -> _ble_syntax_tree.
+  * ble-syntax.sh: cleanup.
+
+## 2015-08-13
+* ble-syntax.sh: clenup, print-status/dump-tree.
+* ble-sytanx.sh (_ble_syntax_stat): 解析状態に tchild, tprev (兄・子へのoffset情報) を追加。
+* ble-sytanx.sh (_ble_syntax_word): 形式変更。兄・子へのoffset情報はその場で計算する暫定方式。
+
+## 2015-08-12
+* memo.txt: _ble_syntax_word 形式変更の計画, ble-syntax.sh: clean up
+
+## 2015-08-11
+* ble-syntax.sh (`_ble_syntax_nest[]`): 形式変更 → "ctx wlen wtype nlen type"
+* ble-syntax.sh (`_ble_syntax_stat[]`): 形式の変更 → "ctx wlen wtype nlen"
+* ble-syntax.sh (`_ble_syntax_word[i]`): 要素の形式を wtype wbegin から wtype wlen に変更
+* ble-edit.sh (.ble-line-info.draw): 制御文字も入れられる様に,
+* ble-syntax.sh (ble-syntax/print-status): Added,
+* ble.pp: 二重起動対策,
+* ble-edit.sh: history load.
+
+## 2015-08-08
+* ble-syntex.sh (ble-syntax/completion-context/check-prefix): completion at redirect filenames.
+
+## 2015-07-10
+* memo.txt: Added todos.
+
+## 2015-06-15
+* modified complete.sh
+
+## 2015-03-22
+* ble-decode.sh: bugfix, bash-4.1 でも ESC [ を翻訳しないと駄目
+* ble-decode.sh: bugfix, bash-4.1 でも ESC * に登録しないと駄目
+* ble-core.sh, etc.: 一時ファイルを tmp/$UID に置く事にする。
+
+## 2015-03-12
+* ble-syntax.sh (ble-syntax/parse): stat の設定されていない箇所に word があり、shift されていなかった。
+
+## 2015-03-08
+* ble-edit.sh (ble-edit/draw/trace): bugfix, LC_COLLATE を設定して正規表現を使用する様に修正。
+* bashbug related bugfix: 幾つかの bugfix, 全て bash のバグが関係していた…。
+  - `<bug>` bash-4.1 以下でカーソルの表示位置がずれている。
+  - `<bug>` bash-4.2, 4.0, 3.2, 不完全な編集内容に対してエラーが出る
+  - `<bug>` bash-4.0, 4.1 でプロンプトが表示されない
+  - `<bug>` bash-4.1 以下でプロンプトの色が着かない
+* ble-decode.sh (.ble-decode-char): control/alter/meta/shift/super/hyper prefix が、
+  その場で自身に適用されて出力されていた。
+* ble-core.sh (ble/util/declare-print-definitions): 連想配列に対応
+* ble-decode.sh, 他: オプション名 ble_opt を bleopt に統一
+* ble-decode.sh: .ble-decode-char 再実装
+  - 修飾機能を send-modified-key (旧 sendkey-mod) に合流
+  - C-x @ S 等、ESC 以外の修飾にも対応
+  - .ble-decode-char/csi/* による CSI sequence の解釈
+  - 新実装に対応する様に cmap/default.sh を書き直し
+
+## 2015-03-06
+* ble-decode.sh (stty): -icanon の設定。
+* ble-edit.sh (PS1): bugfix, job count, 時刻その他の更新。
+* ble-edit.sh (.ble-line-text/update/postion)
+  - bugfix: ascii printable characters の行末で \n を付加した時 ichg に登録していなかった。
+  - bugfix: _ble_util_string_prototype の長さ指定に 0 を指定していた
+  - bugfix, 行末付近での tab の取り扱い
+  - 制御文字も追い出しの対象に。
+  - xenl の時、行末で必ず \n を追加する (追い出しの場合なども含め)。
+  - 追い出しがあった場合にそれを記録する。
+* ble-edit.sh (.ble-line-text/getxy.cur): カーソル位置を取得する為の getxy を新規作成。
+* ble-edit.sh (ble-edit/draw/trace): 描画属性
+  - term.sh: 描画属性について terminfo から読み取る様に。
+  - ble-color.sh: 描画属性の点滅、不可視、イタリック、打ち消し線に対応。
+  - ble-color.sh: sgr 構築で term.sh の結果を利用する様に変更。
+  - ble-edit.sh (.ble-line-prompt): ble-color-g2sgr で端末に依存しない PS1 を書ける様に変更。
+* ble-decode.sh (ble-decode-kbd): bugfix, 複数キーがある場合に正しく処理できていなかった
+* overwrite-mode に対応
+* ble-syntax.sh, ble-color.sh: layer:syntax による色付けを face を介した物に変更。
+* ble-decode.sh, ble-edit.sh: 条件コマンドの統一。test や [ 等を [[ に統一。
+
+----
+
 <!---------------------------------------------------------------------------->
 # Old ChangeLog
 
 ## 2015-03-03
+
   * ble-edit.sh, ble-edit.color: discard-line の際に着色
   * ble-edit.sh, ble-core.sh, etc: echo を builtin echo に。
   * ble-edit.sh: bugfix, 複数行で上に行けない
