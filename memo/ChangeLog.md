@@ -15,6 +15,7 @@
 - util (`ble-import`): support an option `-d` (`--delay`) `#D1285` 9673e4e
 - syntax: support parameter expansion of the form `${var/#pat}`, `${var/%pat}` `#D1286` e2f4809
 - edit: support `bleopt editor line_limit_{type,length} history_limit_length` `#D1295` 2f9a000
+- edit: support widgets `{vi,emacs}-editing-mode` `#D1301` 0000000
 
 ## Fix
 
@@ -39,7 +40,8 @@
 - complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3
 - vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292` da6cc47
 - complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 2f9a000
-- complete: fix a bug that menu-filter is only partially turned off by `complete_menu_filter` `#D1298` 0000000
+- complete: fix a bug that menu-filter is only partially turned off by `complete_menu_filter` `#D1298` b3654e2
+- decode: fix error messages for unsupported readline functions `#D1301` 91bdb64
 
 ## Changes
 
@@ -83,8 +85,9 @@
 - util (`ble/util/stackdump`): output to `stdout` instead of `stderr` `#D1279` 9d3c50d
 - complete (`ble-sabbrev`): delay initialization `#D1282` dfc4f66
 - test: update `lib/test-{core => util}.sh` (reported by andychu) `#D1294` e835b0d
-- edit: improve performance of bracketed-paste `#D1296` 0a45596
+- edit: improve performance of bracketed-paste `#D1296` 0a45596 `#D1300` 3f33dab
 - decode: improve performance of `ble-decode-char` `#D1297` 0d9d867
+- ext: update `mwg_pp.awk` (for branch osh) 978ea32
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

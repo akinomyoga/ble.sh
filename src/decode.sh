@@ -22,7 +22,12 @@ bleopt/declare -n default_keymap auto
 
 function bleopt/check:default_keymap {
   case $value in
-  (auto|emacs|vi|safe) ;;
+  (auto|emacs|vi|safe)
+    if [[ $_ble_decode_bind_state != none ]]; then
+      bleopt_default_keymap=$value
+      ble/decode/reset-default-keymap
+    fi
+    return 0 ;;
   (*)
     ble/util/print "bleopt: Invalid value default_keymap='value'. The value should be one of \`auto', \`emacs', \`vi'." >&2
     return 1 ;;
@@ -3613,6 +3618,7 @@ function ble/decode/initialize {
 function ble/decode/reset-default-keymap {
   # 現在の ble-decode/keymap の設定
   ble-decode/INITIALIZE_DEFMAP -v _ble_decode_keymap # 0ms
+  _ble_decode_keymap_stack=()
   ble-decode/widget/.invoke-hook "$_ble_decode_KCODE_ATTACH" # 7ms for vi-mode
 }
 

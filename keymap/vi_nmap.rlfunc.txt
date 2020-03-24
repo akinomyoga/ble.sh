@@ -39,7 +39,7 @@ dump-macros                       vi_nmap/@adjust readline-dump-macros
 dump-variables                    vi_nmap/@adjust readline-dump-variables
 dynamic-complete-history          -
 edit-and-execute-command          vi-command/edit-and-execute-line
-emacs-editing-mode                -
+emacs-editing-mode                emacs-editing-mode
 end-kbd-macro                     end-keyboard-macro
 end-of-history                    -
 end-of-line                       vi-command/forward-eol

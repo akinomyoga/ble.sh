@@ -6628,6 +6628,27 @@ ble/util/autoload "keymap/vi.sh" \
 ble/util/autoload "keymap/vi_digraph.sh" \
                   ble-decode/keymap:vi_digraph/define
 
+function ble/widget/.change-editing-mode {
+  [[ $_ble_decode_bind_state == none ]] && return
+  local mode=$1
+  if [[ $bleopt_default_keymap == auto ]]; then
+    if [[ ! -o $mode ]]; then
+      set -o "$mode"
+      ble/decode/reset-default-keymap
+      ble/decode/detach
+      ble/decode/attach
+    fi
+  else
+    bleopt default_keymap="$mode"
+  fi
+}
+function ble/widget/emacs-editing-mode {
+  ble/widget/.change-editing-mode emacs
+}
+function ble/widget/vi-editing-mode {
+  ble/widget/.change-editing-mode vi
+}
+
 # 
 #------------------------------------------------------------------------------
 # **** ble/builtin/read ****                                         @edit.read

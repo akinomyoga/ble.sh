@@ -128,7 +128,7 @@ vi-complete                       -
 vi-delete                         -
 vi-delete-to                      -
 vi-eWord                          -
-vi-editing-mode                   -
+vi-editing-mode                   vi-editing-mode
 vi-end-bigword                    -
 vi-end-word                       -
 vi-eof-maybe                      -

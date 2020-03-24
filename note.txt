@@ -932,36 +932,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2020-03-24
-
-* ble-bind: Unknown widget `-'. という表示が出る (reported by dylankb)
-  https://github.com/akinomyoga/ble.sh/issues/46
-
-  調べてみると未対応の rlfunc があるとこれが必ず出る様だ。
-  取り敢えず修正する必要がある。未対応です、という表示が出るのが望ましい。
-
-  或いは無害な物に関しては nop を出して無視する。
-  調べたが skip-csi-sequence については nop では駄目である。
-  そもそも bind しては行けない。
-  無害な物に関しては nop に束縛するのではなくて何にも束縛しない。
-
-  * arrow-key-prefix は何かと思って bash のソースを確認したら、
-    次の文字を読み取って ABCD だったらカーソルキーの既定動作に
-    dispatch するという感じの物だった。
-    恐らく SS3 A/B/C/D だとか ESC A/B/C/D だとか、
-    そう言った物に一括で束縛する為の物なのだろうと思われる。
-    これは無視ではなくて未対応とするべき。
-    というより新しく widget を作っても良いのかもしれない。
-
-  * tty-status は ioctl(TIOCSTAT) を呼び出すらしい。
-    これは何かと思って検索したら /* generate status message */
-    /* simulate ^T status message */ 等という説明が見られる。
-    FreeBSD/OpenBSD にはあるが Linux にはない機能の雰囲気である。
-    これは適当に模倣して実装しても良いのかもしれない。
-    これも取り敢えず未対応という事で良いだろう。
-
-  取り敢えずちゃんとエラーメッセージは出るようにした。
-
 2020-03-22
 
   * bash-5 で heredoc を failglob で使うと駄目
@@ -2817,6 +2787,68 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-03-24
+
+  * ble-bind: Unknown widget `-'. という表示が出る (reported by dylankb) [#D1301]
+    https://github.com/akinomyoga/ble.sh/issues/46
+
+    調べてみると未対応の rlfunc があるとこれが必ず出る様だ。
+    取り敢えず修正する必要がある。未対応です、という表示が出るのが望ましい。
+
+    或いは無害な物に関しては nop を出して無視する。
+    調べたが skip-csi-sequence については nop では駄目である。
+    そもそも bind しては行けない。
+    無害な物に関しては nop に束縛するのではなくて何にも束縛しない。
+
+    * arrow-key-prefix は何かと思って bash のソースを確認したら、
+      次の文字を読み取って ABCD だったらカーソルキーの既定動作に
+      dispatch するという感じの物だった。
+      恐らく SS3 A/B/C/D だとか ESC A/B/C/D だとか、
+      そう言った物に一括で束縛する為の物なのだろうと思われる。
+      これは無視ではなくて未対応とするべき。
+      というより新しく widget を作っても良いのかもしれない。
+
+    * tty-status は ioctl(TIOCSTAT) を呼び出すらしい。
+      これは何かと思って検索したら /* generate status message */
+      /* simulate ^T status message */ 等という説明が見られる。
+      FreeBSD/OpenBSD にはあるが Linux にはない機能の雰囲気である。
+      これは適当に模倣して実装しても良いのかもしれない。
+      これも取り敢えず未対応という事で良いだろう。
+
+    取り敢えずちゃんとエラーメッセージは出るようにした。
+    次の報告が来た。恐らく emacs-editing-mode と vi-editing-mode
+    を bind しようとしている /etc/profiles.d/? があるという事だろう。
+    勝手に変な設定をしようとするものがあるのも考えようだが、
+    然し、bash 互換を考える上では避けようがないという事なのだろう。
+    何処かには ble.sh の様に bash の細かい動作に依存する設定があるはずで、
+    つまり ble.sh の上で他の ble.sh 実装が動くかどうかというレベルの話になる。
+    少しでも穴があれば動かなくなるという事なのである。
+
+    emacs-editing-mode / vi-editing-mode の動作について確認する。
+    bash で試してみた所によるとこれらは set -o emacs / set -o vi
+    の設定まで変更する様である。ble.sh ではどの様に対応するべきか。
+    set -o emacs を変更せずに実行するか。或いは、実際に set -o emacs
+    を実行する事によって対処するか。もし set -o emacs を使って実装すると
+    したら実は結構簡単な気がする。然し、default_keymap=emacs 等としていた
+    場合には set -o vi をしても振る舞いに変化がないという事になってしまう。
+    そういう意味では default_keymap も一緒に弄ってしまうというのが手なのだろうか。
+
+    取り敢えず、ble.sh edit.sh で set -o が変化した時にどう振る舞っているか確認する。
+    確認した所、set -o emacs/vi が変わった場合には単に ble.sh が動作の基準としている
+    keymap を切り替えるだけであって、その上で何が動いているかに関しては関知していない雰囲気だ。
+
+    * bleopt default_keymap=... を設定した時に reset-default-keymap を実行する様にする。
+      現在だとこれを実行してもその場では keymap は変化しない様である。
+      →対応した。何事もなく動作している。意外と呆気ない事だ。
+    * set -o emacs/vi をどの様に実行するか。
+      確認したが .check-detach は gexec の後に呼び出されている。
+      つまり、set -o emacs/vi をコマンドとして実行するか、
+      或いは、.check-detach で行っているのと同様の操作をその場で実行するか。
+      後者で実装するのが自然である。
+
+      うーん。単純に set -o ... してから以下を実行すれば良いだけ?
+      ble/decode/reset-default-keymap
+      ble/decode/detach
+      ble/decode/attach
 
   * decode: 大量の貼り付けの高速化3 (report by dylankb) [#D1300]
 
