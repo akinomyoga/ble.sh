@@ -165,23 +165,23 @@ function ble/util/setexit { return "$1"; }
 ##
 ##     function MyFunction {
 ##       eval "$_ble_util_upvar_setup"
-##     
+##
 ##       ret=... # 処理を行い、変数 ret に結果を格納するコード
 ##               # (途中で return などすると正しく動かない事に注意)
-##     
+##
 ##       eval "$_ble_util_upvar"
 ##     }
 ##
 ##   既定の格納先変数を別の名前 (以下の例では arg) にする場合は次の様にする。
 ##
 ##     function MyFunction {
-##       eval "${_ble_util_upvar_setup//ret/arg}" 
-##     
+##       eval "${_ble_util_upvar_setup//ret/arg}"
+##
 ##       arg=... # 処理を行い、変数 arg に結果を格納するコード
-##     
+##
 ##       eval "${_ble_util_upvar//ret/arg}"
 ##     }
-##   
+##
 _ble_util_upvar_setup='local var=ret ret; [[ $1 == -v ]] && var=$2 && shift 2'
 _ble_util_upvar='local "${var%%\[*\]}" && ble/util/upvar "$var" "$ret"'
 if ((_ble_bash>=50000)); then
@@ -353,6 +353,11 @@ if ((_ble_bash>=40400)); then
 else
   function ble/is-array { compgen -A arrayvar -X \!"$1" "$1" &>/dev/null; }
 fi
+
+## 関数 ble/array#set arr value...
+##   配列に値を設定します。
+##   Bash 4.4 で arr2=("${arr1[@]}") が遅い問題を回避する為の関数です。
+function ble/array#set { builtin eval "$1=(\"\${@:2}\")"; }
 
 ## 関数 ble/array#push arr value...
 if ((_ble_bash>=40000)); then
@@ -1720,7 +1725,7 @@ if ((_ble_bash>=40200)); then
         [[ $__ble_hidden_only && $__ble_i == 0 ]] && continue
         ble/util/print "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
       done
-      
+
       [[ ! $__ble_error ]]
     ) 2>/dev/null
   }
@@ -1752,7 +1757,7 @@ else
 
         ble/util/print "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
       done
-      
+
       [[ ! $__ble_error ]]
     ) 2>/dev/null
   }
@@ -2436,7 +2441,7 @@ function ble/util/autoload {
 function ble/util/autoload/.print-usage {
   ble/util/print 'usage: ble-autoload SCRIPTFILE FUNCTION...'
   ble/util/print '  Setup delayed loading of functions defined in the specified script file.'
-} >&2    
+} >&2
 ## 関数 ble/util/autoload/.read-arguments args...
 ##   @var[out] file functions flags
 function ble/util/autoload/.read-arguments {
@@ -3246,7 +3251,7 @@ function ble/term/visible-bell/.initialize {
   ble/term/cup 0 0
   ble/term/put "$_ble_term_el%message%$_ble_term_sgr0$_ble_term_rc${_ble_term_cud//'%d'/1}"
   IFS= builtin eval '_ble_term_visible_bell_show="${BUFF[*]}"'
-  
+
   BUFF=()
   ble/term/put "$_ble_term_sc$_ble_term_sgr0"
   ble/term/cup 0 0
@@ -3840,8 +3845,8 @@ if ((_ble_bash>=40200)); then
         for c; do
           ble/util/c2s.cached "$c"
           buff[i++]=$ret
-          IFS= builtin eval "ret=\"${buff[*]}\""
         done
+        IFS= builtin eval "ret=\"${buff[*]}\""
       else
         builtin printf -v ret '\\U%08x' "$@"
         builtin eval "ret=\$'$ret'"
@@ -3878,14 +3883,23 @@ else
     done
     builtin eval "ret=\$'$seq'"
   }
-  function ble/util/chars2s.impl {
-    local -a buff=()
-    local c i=0
+
+  function ble/util/chars2s.loop {
     for c; do
       ble/util/c2s.cached "$c"
       buff[i++]=$ret
-      IFS= builtin eval "ret=\"${buff[*]}\""
     done
+  }
+  function ble/util/chars2s.impl {
+    # Note: 大量の引数を抱えた関数からの関数呼び出しは重いので
+    # B=160 毎に小分けにして関数を呼び出す事にする。
+    local -a buff=()
+    local c i=0 b N=$# B=160
+    for ((b=0;b+B<N;b+=B)); do
+      ble/util/chars2s.loop "${@:b+1:B}"
+    done
+    ble/util/chars2s.loop "${@:b+1:N-b}"
+    IFS= builtin eval 'ret="${buff[*]}"'
   }
 fi
 
@@ -3904,7 +3918,7 @@ function ble/util/c2s {
   fi
 }
 function ble/util/c2s.cached {
-  # local check のない版
+  # locale check のない版
   ret=${_ble_util_c2s_table[$1]-}
   if [[ ! $ret ]]; then
     ble/util/c2s.impl "$1"

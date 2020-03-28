@@ -571,31 +571,57 @@ function ble-decode/.check-abort {
   return 0
 }
 
-function ble/decode/nonblocking-read {
-  local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
-  local LC_CTYPE=C
-  local -a data=()
-  local line buff ext
-  while ((loop--)); do
-    builtin read -t "$timeout" -r -d '' buff; ext=$?
-    [[ $buff ]] && line=$line$buff
-    if ((ext==0)); then
-      ble/array#push data "$line"
-      line=
-    elif ((ext>128)); then
-      # timeout
-      ((--ntimeout)) || break
-      [[ $buff ]] || break
-    else
-      break
-    fi
-  done
+if ((_ble_bash>=40400)); then
+  function ble/decode/nonblocking-read {
+    local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
+    local LC_CTYPE=C TMOUT= IFS=
+    local -a data=()
+    local line buff ext
+    while ((loop--)); do
+      builtin read -t "$timeout" -r -d '' buff; ext=$?
+      [[ $buff ]] && line=$line$buff
+      if ((ext==0)); then
+        ble/array#push data "$line"
+        line=
+      elif ((ext>128)); then
+        # timeout
+        ((--ntimeout)) || break
+        [[ $buff ]] || break
+      else
+        break
+      fi
+    done
 
-  ble/string#split-words ret "$({
-    ((${#data[@]})) && printf '%s\0' "${data[@]}"
-    [[ $line ]] && printf '%s' "$line"
-  } | ble/bin/od -A n -t u1 -v)"
-}
+    ble/util/assign ret '{
+      ((${#data[@]})) && printf %s\\0 "${data[@]}"
+      [[ $line ]] && printf %s "$line"
+    } | ble/bin/od -A n -t u1 -v'
+    ble/string#split-words ret "$ret"
+  }
+elif ((_ble_bash>=40000)); then
+  function ble/decode/nonblocking-read {
+    local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
+    local LC_CTYPE=C TMOUT= IFS=
+    local -a data=()
+    local line buff
+    while ((loop--)); do
+      builtin read -t 0 || break
+      builtin read -r -d '' -n 1 buff || break
+      if [[ $buff ]]; then
+        line=$line$buff
+      else
+        ble/array#push data "$line"
+        line=
+      fi
+    done
+
+    ble/util/assign ret '{
+      ((${#data[@]})) && printf %s\\0 "${data[@]}"
+      [[ $line ]] && printf %s "$line"
+    } | ble/bin/od -A n -t u1 -v'
+    ble/string#split-words ret "$ret"
+  }
+fi
 
 function ble-decode/.hook {
   if ble/util/is-stdin-ready; then
@@ -607,7 +633,7 @@ function ble-decode/.hook {
       local IFS=$' \t\n'
       ble-decode/PROLOGUE
       local char=${_ble_decode_input_buffer[buflen-1]}
-      if ((char==0xC0||char==0xDF)); then
+      if ((_ble_bash<40000||char==0xC0||char==0xDF)); then
         # Note: これらの文字は bind -s マクロの非終端文字。
         # 現在マクロの処理中である可能性があるので標準入力から
         # 読み取るとバイトの順序が変わる可能性がある。
@@ -616,7 +642,7 @@ function ble-decode/.hook {
       else
         while ble/util/is-stdin-ready; do
           eval -- "$_ble_decode_show_progress_hook"
-          local ret; ble/decode/nonblocking-read 0.05 1 200
+          local ret; ble/decode/nonblocking-read 0.02 1 527
           ble/array#push _ble_decode_input_buffer "${ret[@]}"
         done
       fi
@@ -648,7 +674,8 @@ function ble-decode/.hook {
   fi
 
   local chars
-  chars=("${_ble_decode_input_buffer[@]}" "$@")
+  # Note: Bash-4.4 で遅いので ble/array#set 経由で設定する
+  ble/array#set chars "${_ble_decode_input_buffer[@]}" "$@"
   _ble_decode_input_buffer=()
   _ble_decode_input_count=${#chars[@]}
 
@@ -957,7 +984,8 @@ function ble-decode-char {
     if ((${#_ble_decode_char_buffer[@]})); then
       ((ble_decode_char_total+=${#_ble_decode_char_buffer[@]}))
       ((ble_decode_char_rest+=${#_ble_decode_char_buffer[@]}))
-      chars=("${_ble_decode_char_buffer[@]}" "${chars[@]:ichar}") ichar=0
+      ble/array#set chars "${_ble_decode_char_buffer[@]}" "${chars[@]:ichar}"
+      ichar=0
       _ble_decode_char_buffer=()
     fi
     ((ble_decode_char_rest))
@@ -3702,14 +3730,14 @@ function ble/encoding:UTF-8/generate-binder { :; }
 _ble_encoding_utf8_decode_mode=0
 _ble_encoding_utf8_decode_code=0
 _ble_encoding_utf8_decode_table=(
-  'M&&S,c='{0..127}
-  'C=C<<6|'{0..63}',--M==0&&(c=C)'
-  'M&&S,C='{0..31}',M=1'
-  'M&&S,C='{0..15}',M=2'
-  'M&&S,C='{0..7}',M=3'
-  'M&&S,C='{0..3}',M=4'
-  'M&&S,C='{0..1}',M=5'
-  'M&&S,c=_ble_decode_Erro|'{254,255}
+  'M&&E,A[i++]='{0..127}
+  'C=C<<6|'{0..63}',--M==0&&(A[i++]=C)'
+  'M&&E,C='{0..31}',M=1'
+  'M&&E,C='{0..15}',M=2'
+  'M&&E,C='{0..7}',M=3'
+  'M&&E,C='{0..3}',M=4'
+  'M&&E,C='{0..1}',M=5'
+  'M&&E,A[i++]=_ble_decode_Erro|'{254,255}
 )
 function ble/encoding:UTF-8/clear {
   _ble_encoding_utf8_decode_mode=0
@@ -3721,14 +3749,11 @@ function ble/encoding:UTF-8/is-intermediate {
 function ble/encoding:UTF-8/decode {
   local C=$_ble_encoding_utf8_decode_code
   local M=$_ble_encoding_utf8_decode_mode
-  local S='e=_ble_decode_Erro|C,M=0'
+  local E='M=0,A[i++]=_ble_decode_Erro|C'
   local -a A=()
-  local i=0 b e c
+  local i=0 b
   for b; do
-    e= c=
     ((_ble_encoding_utf8_decode_table[b&255]))
-    [[ $e ]] && A[i++]=$e
-    [[ $c ]] && A[i++]=$c
   done
   _ble_encoding_utf8_decode_code=$C
   _ble_encoding_utf8_decode_mode=$M
