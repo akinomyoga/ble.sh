@@ -3846,7 +3846,7 @@ if ((_ble_bash>=40200)); then
           ble/util/c2s.cached "$c"
           buff[i++]=$ret
         done
-        IFS= builtin eval "ret=\"${buff[*]}\""
+        IFS= builtin eval 'ret="${buff[*]}"'
       else
         builtin printf -v ret '\\U%08x' "$@"
         builtin eval "ret=\$'$ret'"
