@@ -1014,17 +1014,17 @@ _ble_syntax_bash_simple_rex_letter=
 _ble_syntax_bash_simple_rex_quote=
 _ble_syntax_bash_simple_rex_param=
 function ble-syntax:bash/simple-word/update {
-  local quot="'"
-  local rex_squot='"[^"]*"|\$"([^"\]|\\.)*"'; rex_squot="${rex_squot//\"/$quot}"
-  local rex_dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)*"'
-  local rex_param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
-  local rex_param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
-  local rex_letter='[^'${_ble_syntax_bashc_simple}']'
-  _ble_syntax_bash_simple_rex_element='(\\.|'$rex_squot'|'$rex_dquot'|'$rex_param1'|'$rex_param2'|'$rex_letter')'
+  local q="'"
+  local letter='\[[!^]|[^'${_ble_syntax_bashc_simple}']'
+  local param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
+  local param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
+  local squot='"[^"]*"|\$"([^"\]|\\.)*"'; squot="${squot//\"/$q}"
+  local dquot='\$?"([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)*"'
+  _ble_syntax_bash_simple_rex_element='(\\.|'$squot'|'$dquot'|'$param1'|'$param2'|'$letter')'
   _ble_syntax_bash_simple_rex_word='^'$_ble_syntax_bash_simple_rex_element'+$'
-  _ble_syntax_bash_simple_rex_letter=$rex_letter
-  _ble_syntax_bash_simple_rex_quote='\\.|'$rex_squot'|'$rex_dquot
-  _ble_syntax_bash_simple_rex_param=$rex_param1'|'$rex_param2
+  _ble_syntax_bash_simple_rex_letter=$letter
+  _ble_syntax_bash_simple_rex_quote='\\.|'$squot'|'$dquot
+  _ble_syntax_bash_simple_rex_param=$param1'|'$param2
 }
 ble-syntax:bash/simple-word/update
 
