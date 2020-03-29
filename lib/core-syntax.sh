@@ -1027,7 +1027,7 @@ _ble_syntax_bash_simple_rex_incomplete_word2=
 function ble/syntax:bash/simple-word/update {
   local q="'"
 
-  local letter='[^'${_ble_syntax_bashc_simple}']'
+  local letter='\[[!^]|[^'${_ble_syntax_bashc_simple}']'
   local param1='\$([-*@#?$!0_]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)'
   local param2='\$\{(#?[-*@#?$!0]|[#!]?([1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*))\}' # ${!!} ${!$} はエラーになる。履歴展開の所為?
   local param=$param1'|'$param2

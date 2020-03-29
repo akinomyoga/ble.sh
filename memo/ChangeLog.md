@@ -16,6 +16,7 @@
 - syntax: support parameter expansion of the form `${var/#pat}`, `${var/%pat}` `#D1286` e2f4809
 - edit: support `bleopt editor line_limit_{type,length} history_limit_length` `#D1295` 2f9a000
 - edit: support widgets `{vi,emacs}-editing-mode` `#D1301` 0c6c76e
+- syntax: allow unquoted `[!` and `[^` in `simple-word` (reported by cmplstofB) `#D1303` 0000000
 
 ## Fix
 
@@ -85,7 +86,7 @@
 - util (`ble/util/stackdump`): output to `stdout` instead of `stderr` `#D1279` 9d3c50d
 - complete (`ble-sabbrev`): delay initialization `#D1282` dfc4f66
 - test: update `lib/test-{core => util}.sh` (reported by andychu) `#D1294` e835b0d
-- edit: improve performance of bracketed-paste `#D1296` 0a45596 `#D1300` 3f33dab `#D1302` 5ee06c8
+- edit: improve performance of bracketed-paste `#D1296` 0a45596 `#D1300` 3f33dab `#D1302` 5ee06c8 10ad274
 - decode: improve performance of `ble-decode-char` `#D1297` 0d9d867
 - ext: update `mwg_pp.awk` (for branch osh) 978ea32
 
