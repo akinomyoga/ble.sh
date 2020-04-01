@@ -45,6 +45,7 @@
 - decode: fix error messages for unsupported readline functions `#D1301` 91bdb64
 - global: work around `shopt -s assoc_expand_once` `#D1305` 31908e1
 - global: work around `TMOUT` for `builtin read` `#D1306` 0000000
+- syntax: fix failglob errors of heredocs of the form `<<$(echo A)` `#D1308` 0000000
 
 ## Changes
 
