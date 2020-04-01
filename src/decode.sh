@@ -3036,7 +3036,7 @@ function ble/decode/read-inputrc {
 
   local -a script=()
   local ret line= iline=0
-  while builtin read -r line || [[ $line ]]; do
+  while TMOUT= builtin read -r line || [[ $line ]]; do
     ((++iline))
     ble/string#trim "$line"; line=$ret
     [[ ! $line || $line == '#'* ]] && continue
@@ -3282,7 +3282,7 @@ function ble/builtin/bind/rlfunc2widget {
     local line
     for line in "${dict[@]}"; do
       [[ $line == "$rlfunc "* ]] || continue
-      local rl widget; builtin read -r rl widget <<< "$line"
+      local rl widget; TMOUT= builtin read -r rl widget <<< "$line"
       if [[ $widget == - ]]; then
         ble/util/print "ble.sh (bind): unsupported readline function '${rlfunc//$q/$Q}' for keymap '$kmap'." >&2
         return 1
@@ -3613,7 +3613,7 @@ function ble/builtin/bind/read-user-settings {
   if [[ $_ble_decode_bind_state == none ]]; then
     [[ $_ble_builtin_bind_user_settings_loaded ]] && return
     _ble_builtin_bind_user_settings_loaded=1
-    bind # inputrc を読ませる
+    builtin bind # inputrc を読ませる
     local settings
     ble/util/assign settings ble/builtin/bind/.reconstruct-user-settings
     eval -- "$settings"

@@ -6866,7 +6866,7 @@ function ble/builtin/read/.loop {
     fi
 
     # read 1 character
-    IFS= builtin read -r -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
+    TMOUT= IFS= builtin read -r -d '' -n 1 $timeout_option char "${opts_in[@]}"; local ext=$?
     if ((ext==142)); then
       # timeout
       _ble_edit_read_accept=142
@@ -6929,6 +6929,11 @@ function ble/builtin/read/.impl {
   local -a opts=() vars=() opts_in=()
   # opt_flags ... E: error, H: help (--help), r: readline (-e)
   local opt_flags= opt_prompt= opt_default= opt_timeout= opt_fd=0
+
+  # シェル変数 TMOUT
+  local rex1='^[0-9]+(\.[0-9]*)?$|^\.[0-9]+$' rex2='^[0.]+$'
+  [[ $TMOUT =~ $rex1 && ! ( $TMOUT =~ $rex2 ) ]] && opt_timeout=$TMOUT
+
   ble/builtin/read/.read-arguments "$@"
   if [[ $opt_flags == *[HE]* ]]; then
     [[ $opt_flags == *H* ]] &&
@@ -7255,7 +7260,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if [[ -f $file && -s $file ]]; then
         local message= line
-        while IFS= builtin read -r line || [[ $line ]]; do
+        while TMOUT= IFS= builtin read -r line || [[ $line ]]; do
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。
@@ -7315,7 +7320,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
 
     function ble-edit/io/check-ignoreeof-loop {
       local line opts=:$1:
-      while IFS= builtin read -r line; do
+      while TMOUT= IFS= builtin read -r line; do
         if [[ $line == *[^$_ble_term_IFS]* ]]; then
           builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
         fi

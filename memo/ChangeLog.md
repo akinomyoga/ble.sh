@@ -43,6 +43,8 @@
 - complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 2f9a000
 - complete: fix a bug that menu-filter is only partially turned off by `complete_menu_filter` `#D1298` b3654e2
 - decode: fix error messages for unsupported readline functions `#D1301` 91bdb64
+- global: work around `shopt -s assoc_expand_once` `#D1305` 31908e1
+- global: work around `TMOUT` for `builtin read` `#D1306` 0000000
 
 ## Changes
 

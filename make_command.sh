@@ -134,7 +134,7 @@ function sub:check/bash300bug {
   echo "--- $FUNCNAME ---"
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
-  grc 'local [a-zA-Z_]+=\(' --exclude=./test --exclude=./make_command.sh
+  grc 'local [a-zA-Z_]+=\(' --exclude=./test --exclude=./make_command.sh --exclude=ChangeLog.md
 
   # bash-3.0 では local -a arr=("$hello") とすると
   # クォートしているにも拘らず $hello の中身が単語分割されてしまう。
@@ -145,7 +145,7 @@ function sub:check/bash301bug-array-element-length {
   echo "--- $FUNCNAME ---"
   # bash-3.1 で ${#arr[index]} を用いると、
   # 日本語の文字数が変になる。
-  grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude=test | grep -Ev '^([^#]*[[:space:]])?#'
+  grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} | grep -Ev '^([^#]*[[:space:]])?#'
 }
 
 function sub:check/assign {
