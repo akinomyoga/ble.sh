@@ -3736,7 +3736,7 @@ function ble/syntax:bash/is-complete {
 
   local stat=${_ble_syntax_stat[iN]}
   if [[ $stat ]]; then
-    stat=($stat)
+    ble/string#split-words stat "$stat"
 
     # (2) 入れ子が閉じていない時
     local nlen=${stat[3]}; ((nlen>=0)) && return 1
