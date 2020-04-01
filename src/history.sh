@@ -703,7 +703,12 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
     }
     function ble/builtin/history/.add-rskip {
       local file=$1
-      ((_ble_builtin_history_rskip_dict[\$file]+=$2))
+      # Note: 当初 ((dict[\$file]+=$2)) の形式を使っていたが、これは
+      #   shopt -s assoc_expand_once の場合に動作しない事が判明したので、
+      #   一旦、別の変数で計算してから代入する事にする。
+      local value=${_ble_builtin_history_rskip_dict[$file]}
+      ((value+=$2))
+      _ble_builtin_history_rskip_dict[$file]=$value
     }
   else
     _ble_builtin_history_rskip_path=()

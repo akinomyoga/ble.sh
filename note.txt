@@ -2814,6 +2814,48 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-04-01
+
+  * history: shopt -s assoc_expand_once という設定は丁度 extra subscript expansions [#D1305]
+    を off にする為の設定の様である。然し、これは連想配列に対してしか有効でない様だ。
+    以下の例では、連想配列にした途端に添字展開が行われなくなる例。
+
+    $ shopt -s assoc_expand_once
+    $ expr='x[$(echo hello >/dev/tty)]'
+    $ ((expr))
+    hello
+    $ declare -A x
+    $ ((expr))
+    $
+
+    うーん。これを考えると実は連想配列の添字について再度確認しなければならないのでは。
+
+    $ shopt -s assoc_expand_once
+    $ declare -A A
+    $ key=123; A[$key]=1234
+    $ declare -p A
+    declare -A A=([123]="1234" )
+    $ echo ${A[$key]}
+    1234
+    $ A["x$key"]=321
+    $ declare -p A
+    declare -A A=([x123]="321" )
+
+    まとめると、A[...]=... 及び ${A[...]} は影響を受けない。
+    算術式の中の配列添字の展開は影響を受ける。
+    history.sh の [\$file] は shopt を変更して対応するか、
+    或いは shopt の設定に依存しない形に書き換える必要がある。
+    これは書き換える方向で調整する事にする。
+
+  * util: OK: shopt -u expand_aliases という設定がある事に気付いた [#D1304]
+    現在の ble.sh ではこの設定に関係なく alias を展開している気がする。
+    と思って確かめてみたが最初に type で種類をチェックしている。
+    どうやら -u expand_aliases の時には type で見つからない様なので、
+    現在の実装でちゃんと expand_aliases に応じた振る舞いになっている。
+    以下の二つともその様な実装になっている。
+    - ble/util/expand-alias
+    - ble/widget/command-help/.type
+
 2020-03-29
 
   * syntax: [!...] が履歴展開文字を含む為に単純単語ではなくなっている (reported by cmplstofB) [#D1303]
