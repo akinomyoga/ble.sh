@@ -105,7 +105,7 @@ ble/test ble/util/setexit 255 exit=255
            stdout=g:1+@g
 )
 
-# ble/util/upvar, ble/util/uparr
+# ble/util/upvar, ble/util/uparr (Freddy Vulto's trick)
 
 (
   function f1 {
@@ -160,6 +160,111 @@ ble/test ble/util/setexit 255 exit=255
            stdout='name=one x= y=A count=1 data=(Q)' \
            stdout='name=1 x=2 y=3 count=4 data=(aa bb cc dd)' \
            stdout='name=one x= y=A count=1 data=(Q)'
+)
+
+# ble/variable#get-attr
+
+(
+  declare v=1
+  declare -i i=1
+  declare -u u=a
+  declare -l l=B
+  declare -c c=c
+  export x=2
+  readonly r=3
+  declare -a a=()
+  declare -A A=()
+  declare -n n=r
+
+  ble/test 'ble/variable#get-attr v; ret=$attr' ret=
+  ble/test 'ble/variable#get-attr i; ret=$attr' ret=i
+  ble/test 'ble/variable#get-attr x; ret=$attr' ret=x
+  ble/test 'ble/variable#get-attr r; ret=$attr' ret=r
+  ble/test 'ble/variable#get-attr a; ret=$attr' ret=a
+  if ((_ble_bash>=40000)); then
+    ble/test 'ble/variable#get-attr u; ret=$attr' ret=u
+    ble/test 'ble/variable#get-attr l; ret=$attr' ret=l
+    ble/test 'ble/variable#get-attr c; ret=$attr' ret=c
+    ble/test 'ble/variable#get-attr A; ret=$attr' ret=A
+  fi
+  # ((_ble_bash>=40300)) &&
+  #   ble/test 'ble/variable#get-attr n; ret=$attr' ret=n
+
+  ble/test 'ble/variable#has-attr i i'
+  ble/test 'ble/variable#has-attr x x'
+  ble/test 'ble/variable#has-attr r r'
+  ble/test 'ble/variable#has-attr a a'
+  ble/test 'ble/variable#has-attr v i' exit=1
+  ble/test 'ble/variable#has-attr v x' exit=1
+  ble/test 'ble/variable#has-attr v r' exit=1
+  ble/test 'ble/variable#has-attr v a' exit=1
+  if ((_ble_bash>=40000)); then
+    ble/test 'ble/variable#has-attr u u'
+    ble/test 'ble/variable#has-attr l l'
+    ble/test 'ble/variable#has-attr c c'
+    ble/test 'ble/variable#has-attr A A'
+    ble/test 'ble/variable#has-attr v u' exit=1
+    ble/test 'ble/variable#has-attr v l' exit=1
+    ble/test 'ble/variable#has-attr v c' exit=1
+    ble/test 'ble/variable#has-attr v A' exit=1
+  fi
+  # if ((_ble_bash>=40300)); then
+  #   ble/test 'ble/variable#has-attr n n'
+  #   ble/test 'ble/variable#has-attr v n' exit=1
+  # fi
+
+  ble/test 'ble/is-inttype i'
+  ble/test 'ble/is-inttype v' exit=1
+  ble/test 'ble/is-readonly r'
+  ble/test 'ble/is-readonly v' exit=1
+  if ((_ble_bash>=40000)); then
+    ble/test 'ble/is-transformed u'
+    ble/test 'ble/is-transformed l'
+    ble/test 'ble/is-transformed c'
+    ble/test 'ble/is-transformed v' exit=1
+  fi
+)
+
+# _ble_array_prototype
+(
+  _ble_array_prototype=()
+  ble/test 'echo ${#_ble_array_prototype[@]}' stdout=0
+  ble/array#reserve-prototype 10
+  ble/test 'echo ${#_ble_array_prototype[@]}' stdout=10
+  ble/test 'x=("${_ble_array_prototype[@]::10}"); echo ${#x[@]}' stdout=10
+  ble/array#reserve-prototype 3
+  ble/test 'echo ${#_ble_array_prototype[@]}' stdout=10
+  ble/test 'x=("${_ble_array_prototype[@]::3}"); echo ${#x[@]}' stdout=3
+)
+
+# ble/is-array
+(
+  declare -a a=()
+  declare b=
+  ble/test 'ble/is-array a'
+  ble/test 'ble/is-array b' exit=1
+  ble/test 'ble/is-array c' exit=1
+)
+
+# ble/array#set
+(
+  ble/test 'ble/array#set a; echo "${#a[@]}:(${a[*]})"' stdout='0:()'
+  ble/test 'ble/array#set a Q; echo "${#a[@]}:(${a[*]})"' stdout='1:(Q)'
+  ble/test 'ble/array#set a 1 2 3; echo "${#a[@]}:(${a[*]})"' stdout='3:(1 2 3)'
+  ble/test 'ble/array#set a; echo "${#a[@]}:(${a[*]})"' stdout='0:()'
+)
+
+# ble/array#push
+(
+  declare -a a=()
+  ble/array#push a
+  ble/test 'echo "${#a[@]}:(${a[*]})"' stdout='0:()'
+  ble/array#push a A
+  ble/test 'echo "${#a[@]}:(${a[*]})"' stdout='1:(A)'
+  ble/array#push a B C
+  ble/test 'echo "${#a[@]}:(${a[*]})"' stdout='3:(A B C)'
+  ble/array#push a
+  ble/test 'echo "${#a[@]}:(${a[*]})"' stdout='3:(A B C)'
 )
 
 #------------------------------------------------------------------------------

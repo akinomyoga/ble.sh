@@ -57,7 +57,7 @@ function ble/test {
   [[ $qret && $ret != "$_ret" ]] && eret=1
 
   if [[ $estdout$eret$eexit ]]; then
-    ble/util/print $'\e[1mCOMMAND\e[m: '"${args[*]} ($caller_source:$caller_lineno)" >&2
+    ble/util/print $'\e[1m'"$caller_source:$caller_lineno: ${args[*]}"$'\e[m' >&2
     if [[ $eexit ]]; then
       ble/util/print $'\e[91mFAIL\e[m: exit'
       ble/test/diff "$_exit" "$exit"

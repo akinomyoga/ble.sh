@@ -49,6 +49,7 @@
 - decode (`ble-bind`): fix an error message `#D1311` c868b6d
 - util (`bleopt`): fix a bug that a new setting is not defined with `name:=` (test-util) `#D1312` c757b92
 - util (`ble/util/{save,restore}-vars`): fix a bug that `name` and `prefix` cannot be saved/restored (test-util) 0000000
+- util: fix `ble/is-{inttype,readonly,transformed}` (test-util) 0000000
 
 ## Changes
 

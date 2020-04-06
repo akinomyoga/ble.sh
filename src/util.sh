@@ -326,9 +326,9 @@ function ble/variable#has-attr {
   local attr; ble/variable#get-attr "$1"
   [[ $attr == *[$2]* ]]
 }
-function ble/is-inttype { ble/variable#has-attr i; }
-function ble/is-readonly { ble/variable#has-attr r; }
-function ble/is-transformed { ble/variable#has-attr luc; }
+function ble/is-inttype { ble/variable#has-attr "$1" i; }
+function ble/is-readonly { ble/variable#has-attr "$1" r; }
+function ble/is-transformed { ble/variable#has-attr "$1" luc; }
 
 _ble_array_prototype=()
 function ble/array#reserve-prototype {
