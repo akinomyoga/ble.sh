@@ -351,7 +351,7 @@ function ble/array#reserve-prototype {
 if ((_ble_bash>=40400)); then
   function ble/is-array { [[ ${!1@a} == *a* ]]; }
 else
-  function ble/is-array { compgen -A arrayvar -X \!"$1" "$1" &>/dev/null; }
+  function ble/is-array { builtin compgen -A arrayvar -X \!"$1" "$1" &>/dev/null; }
 fi
 
 ## 関数 ble/array#set arr value...

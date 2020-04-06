@@ -1422,15 +1422,15 @@ function ble/complete/source:command/gen.1 {
   if [[ ! $COMPV ]]; then
     shopt -q no_empty_cmd_completion && return
     ble/util/conditional-sync \
-      'compgen -c -- "$COMPV"' \
+      'builtin compgen -c -- "$COMPV"' \
       '! ble/complete/check-cancel' 128 progressive-weight
   else
-    compgen -c -- "$COMPV"
+    builtin compgen -c -- "$COMPV"
   fi
   if [[ $COMPV == */* ]]; then
     local q="'" Q="'\''"
     local compv_quoted="'${COMPV//$q/$Q}'"
-    compgen -A function -- "$compv_quoted"
+    builtin compgen -A function -- "$compv_quoted"
   fi
 }
 
@@ -1619,7 +1619,7 @@ function ble/complete/source:file/.impl {
   #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0714 #M0009)
   #
   #     local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
-  #     local candidates; ble/util/assign-array candidates 'compgen -A file -- "$compv_quoted"'
+  #     local candidates; ble/util/assign-array candidates 'builtin compgen -A file -- "$compv_quoted"'
 
   local -a candidates=()
   local action=file
@@ -1628,7 +1628,7 @@ function ble/complete/source:file/.impl {
   if local rex='^~[^/'\''"$`\!:]*$'; [[ $COMPS =~ $rex ]]; then
     local pattern=${COMPS#\~}
     [[ :$comp_type: == *:[amA]:* ]] && pattern=
-    ble/util/assign-array candidates 'compgen -P \~ -u -- "$pattern"'
+    ble/util/assign-array candidates 'builtin compgen -P \~ -u -- "$pattern"'
     ((${#candidates[@]})) && action=tilde
   fi
 
@@ -2037,7 +2037,7 @@ function ble/complete/progcomp/.compgen {
     is_special_completion=1
     compcmd='-I'
   elif [[ :$opts: == *:default:* ]]; then
-    complete -p -D &>/dev/null || return 1
+    builtin complete -p -D &>/dev/null || return 1
     is_special_completion=1
     is_default_completion=1
     compcmd='-D'
@@ -2048,9 +2048,9 @@ function ble/complete/progcomp/.compgen {
   local -a compargs compoptions flag_noquote=
   local ret iarg=1
   if [[ $is_special_completion ]]; then
-    ble/util/assign ret 'complete -p "$compcmd" 2>/dev/null'
+    ble/util/assign ret 'builtin complete -p "$compcmd" 2>/dev/null'
   else
-    ble/util/assign ret 'complete -p -- "$compcmd" 2>/dev/null'
+    ble/util/assign ret 'builtin complete -p -- "$compcmd" 2>/dev/null'
   fi
   ble/string#split-words compargs "$ret"
   while ((iarg<${#compargs[@]})); do
@@ -2110,7 +2110,7 @@ function ble/complete/progcomp/.compgen {
     compgen_compv="'${compgen_compv//$q/$Q}'"
   fi
   local progcomp_prefix=
-  ble/util/assign compgen 'compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
+  ble/util/assign compgen 'builtin compgen "${compoptions[@]}" -- "$compgen_compv" 2>/dev/null'
 
   # Note: complete -D 補完仕様に従った補完関数が 124 を返したとき再度始めから補完を行う。
   #   ble/complete/progcomp/.compgen-helper-func 関数内で補間関数の終了ステータスを確認し、
@@ -2223,18 +2223,18 @@ function ble/complete/progcomp {
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       "ble/cmdinfo/complete:${cmd##*/}" "$opts"
       return
-    elif complete -p "$cmd" &>/dev/null; then
+    elif builtin complete -p "$cmd" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return
-    elif [[ $cmd == */?* ]] && complete -p "${cmd##*/}" &>/dev/null; then
+    elif [[ $cmd == */?* ]] && builtin complete -p "${cmd##*/}" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
       return
     elif
       # bash-completion の loader を呼び出して遅延補完設定をチェックする。
       ble/function#try __load_completion "${cmd##*/}" &>/dev/null &&
-        complete -p "${cmd##*/}" &>/dev/null
+        builtin complete -p "${cmd##*/}" &>/dev/null
     then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
@@ -2375,7 +2375,7 @@ function ble/complete/source/compgen {
   local q="'" Q="'\''"
   local compv_quoted="'${COMPV//$q/$Q}'"
   local arr
-  ble/util/assign-array arr 'compgen -A "$compgen_action" -- "$compv_quoted"'
+  ble/util/assign-array arr 'builtin compgen -A "$compgen_action" -- "$compv_quoted"'
 
   # 既に完全一致している場合は、より前の起点から補完させるために省略
   [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return

@@ -56,6 +56,7 @@ outfiles += $(OUTDIR)/lib/init-cmap.sh
 outfiles += $(OUTDIR)/lib/init-msys1.sh
 outfiles += $(OUTDIR)/lib/core-complete.sh
 outfiles += $(OUTDIR)/lib/core-syntax.sh
+outfiles += $(OUTDIR)/lib/core-test.sh
 outfiles += $(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
 outfiles += $(OUTDIR)/lib/vim-surround.sh
 outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
