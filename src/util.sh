@@ -66,6 +66,7 @@ function bleopt {
       if [[ ${!var+set} ]]; then
         builtin printf '%s\n' "bleopt ${var#bleopt_}='${!var//$q/$Q}'"
       else
+        error_flag=1
         builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
       fi
     done
