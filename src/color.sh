@@ -95,7 +95,7 @@ function ble-color-show {
 ##   @var[out] ret
 _ble_color_g2sgr=()
 function ble/color/g2sgr/.impl {
-  local -i g=$1
+  local g=$(($1))
 
   local sgr=0
   ((g&_ble_color_gflags_Bold))      && sgr="$sgr;${_ble_term_sgr_bold:-1}"
@@ -991,7 +991,7 @@ _ble_highlight_layer__list=(plain)
 ##   @var[out] HIGHLIGHT_UMAX
 function ble/highlight/layer/update {
   local text=$1 iN=${#1} opts=$2
-  local -i DMIN=${3:-0} DMAX=${4:-$iN} DMAX0=${5:-0}
+  local DMIN=${3:-0} DMAX=${4:-$iN} DMAX0=${5:-0}
 
   local PREV_BUFF=_ble_highlight_layer_plain_buff
   local PREV_UMIN=-1

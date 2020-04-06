@@ -44,8 +44,8 @@
 - complete: fix a bug that menu-filter is only partially turned off by `complete_menu_filter` `#D1298` b3654e2
 - decode: fix error messages for unsupported readline functions `#D1301` 91bdb64
 - global: work around `shopt -s assoc_expand_once` `#D1305` 31908e1
-- global: work around `TMOUT` for `builtin read` `#D1306` 0000000
-- syntax: fix failglob errors of heredocs of the form `<<$(echo A)` `#D1308` 0000000
+- global: work around `TMOUT` for `builtin read` `#D1306` 1c22a9d
+- syntax: fix failglob errors of heredocs of the form `<<$(echo A)` `#D1308` 3212fd2
 
 ## Changes
 
@@ -92,6 +92,9 @@
 - edit: improve performance of bracketed-paste `#D1296` 0a45596 `#D1300` 3f33dab `#D1302` 5ee06c8 10ad274
 - decode: improve performance of `ble-decode-char` `#D1297` 0d9d867
 - ext: update `mwg_pp.awk` (for branch osh) 978ea32
+- test: add `lib/core-test.sh` `#D1309` 68f8077
+- global: do not use `local -i` `#D1310` 0000000
+
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
