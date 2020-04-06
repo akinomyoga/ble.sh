@@ -954,7 +954,7 @@ function ble/color/initialize-faces {
 
   if ((${#_ble_color_faces_errors[@]})); then
     if ((_ble_edit_attached)) && [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
-      IFS=$'\n' eval 'local message="${_ble_color_faces_errors[@]}"'
+      IFS=$'\n' builtin eval 'local message="${_ble_color_faces_errors[@]}"'
       ble/widget/print "$message"
     else
       printf '%s\n' "${_ble_color_faces_errors[@]}" >&2

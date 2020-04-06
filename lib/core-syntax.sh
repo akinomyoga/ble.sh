@@ -756,10 +756,10 @@ function ble/syntax/parse/nest-type {
   local _var=ntype
   [[ $1 == -v ]] && _var=$2
   if ((inest<0)); then
-    eval "$_var="
+    builtin eval "$_var="
     return 1
   else
-    eval "$_var=\"\${_ble_syntax_nest[inest]##* }\""
+    builtin eval "$_var=\"\${_ble_syntax_nest[inest]##* }\""
   fi
 }
 ## 関数 ble/syntax/parse/nest-ctx
@@ -888,13 +888,13 @@ _ble_syntax_bash_chars=()
 _ble_syntax_bashc_seed=
 
 function ble/syntax:bash/cclass/update/reorder {
-  eval "local a=\"\${$1}\""
+  builtin eval "local a=\"\${$1}\""
 
   # Bracket expression として安全な順に並び替える
   [[ $a == *']'* ]] && a="]${a//]}"
   [[ $a == *'-'* ]] && a="${a//-}-"
 
-  eval "$1=\$a"
+  builtin eval "$1=\$a"
 }
 
 ## 関数 ble/syntax:bash/cclass/update
@@ -2660,7 +2660,7 @@ function ble/syntax:bash/check-tilde-expansion {
     local str=${BASH_REMATCH[1]}
 
     local path attr=$ctx
-    eval "path=$str"
+    builtin eval "path=$str"
     if [[ ! ${BASH_REMATCH[2]} && $path != "$str" ]]; then
       ((attr=ATTR_TILDE))
 
@@ -3946,13 +3946,13 @@ function ble/syntax:bash/ctx-heredoc-word/remove-quotes {
       fi
     elif [[ $rematch == \' ]]; then
       if rex="^('[^']*)'?"; [[ $text =~ $rex ]]; then
-        eval "result=\$result${BASH_REMATCH[1]}'"
+        builtin eval "result=\$result${BASH_REMATCH[1]}'"
         text=${text:${#BASH_REMATCH}}
         continue
       fi
     elif [[ $rematch == \$\' ]]; then
       if rex='^(\$'\''([^\'\'']|\\.)*)('\''|\\?$)'; [[ $text =~ $rex ]]; then
-        eval "result=\$result${BASH_REMATCH[1]}'"
+        builtin eval "result=\$result${BASH_REMATCH[1]}'"
         text=${text:${#BASH_REMATCH}}
         continue
       fi
@@ -3985,7 +3985,7 @@ function ble/syntax:bash/ctx-heredoc-word/escape-delimiter {
   escaped=$ret
 }
 function ble/syntax:bash/ctx-heredoc-word/unescape-delimiter {
-  eval "delimiter=\$'$1'"
+  builtin eval "delimiter=\$'$1'"
 }
 
 ## 文脈値 CTX_RDRH
@@ -4121,7 +4121,7 @@ function ble/syntax:bash/is-complete {
 
   # 構文 if..fi, etc が閉じているか?
   local attrs ret
-  IFS= eval 'attrs="::${_ble_syntax_attr[*]/%/::}"'
+  IFS= builtin eval 'attrs="::${_ble_syntax_attr[*]/%/::}"'
   ble/string#count-string "$attrs" ":$ATTR_KEYWORD_BEGIN:"; local nbeg=$ret
   ble/string#count-string "$attrs" ":$ATTR_KEYWORD_END:"; local nend=$ret
   ((nbeg>nend)) && return 1
@@ -4603,7 +4603,7 @@ function ble/syntax/parse {
     ble/syntax/parse/check-end
   done
 #%if !release
-  unset -v debug_p1
+  builtin unset -v debug_p1
 #%end
 
   ble/syntax/vanishing-word/register _tail_syntax_tree $((-i2)) $((i2+1)) "$i" 0 "$i"
@@ -5706,7 +5706,7 @@ function ble/syntax/highlight/cmdtype/.impl {
     # alias を \ で無効化している場合は
     # unalias して再度 check (2fork)
     type=$(
-      unalias "$cmd"
+      builtin unalias "$cmd"
       ble/util/type btype "$cmd"
       ble/syntax/highlight/cmdtype1 "$btype" "$cmd"
       printf %s "$type")
@@ -6024,7 +6024,7 @@ function ble/syntax/progcolor/word:default/.update-for-pathname {
   local wattr=d
   if ((${#wattr_buff[@]})); then
     local g; ble/syntax/attr2g "$filetype"
-    IFS=, eval 'wattr="m${wattr_buff[*]},\$:${g:-d}"'
+    IFS=, builtin eval 'wattr="m${wattr_buff[*]},\$:${g:-d}"'
   elif [[ $filetype ]]; then
     local g; ble/syntax/attr2g "$filetype"
     if ((wbeg<p0)); then
@@ -6116,7 +6116,7 @@ function ble/syntax/progcolor/word:default/.update-for-filename {
   [[ $type && ! $g ]] && ble/syntax/attr2g "$type"
 
   if ((${#wattr_buff[@]})); then
-    IFS=, eval 'local wattr="m${wattr_buff[*]},\$:${g:-d}"'
+    IFS=, builtin eval 'local wattr="m${wattr_buff[*]},\$:${g:-d}"'
   else
     local wattr=${g:-d}
   fi
@@ -6280,7 +6280,7 @@ function ble/highlight/layer:syntax/touch-range {
 function ble/highlight/layer:syntax/fill {
   local _i _arr=$1 _i1=$2 _i2=$3 _v=$4
   for ((_i=_i1;_i<_i2;_i++)); do
-    eval "$_arr[_i]=\"\$_v\""
+    builtin eval "$_arr[_i]=\"\$_v\""
   done
 }
 

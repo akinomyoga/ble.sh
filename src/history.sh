@@ -275,7 +275,7 @@ if ((_ble_bash>=40000)); then
           for i in "${indices_to_fix[@]}"; do
             ((i+=arg_offset))
             [[ ${_ble_history[i]} =~ $rex ]] &&
-              eval "_ble_history[i]=${_ble_history[i]:8}"
+              builtin eval "_ble_history[i]=${_ble_history[i]:8}"
           done
           ((_ble_history_load_resume++)) ;;
 
@@ -286,7 +286,7 @@ if ((_ble_bash>=40000)); then
           for i in "${indices_to_fix[@]}"; do
             ((i+=arg_offset))
             [[ ${_ble_history_edit[i]} =~ $rex ]] &&
-              eval "_ble_history_edit[i]=${_ble_history_edit[i]:8}"
+              builtin eval "_ble_history_edit[i]=${_ble_history_edit[i]:8}"
           done
 
           [[ $opt_async ]] || blehook/invoke history_message
@@ -503,7 +503,7 @@ if ((_ble_bash>=30100)); then
     local HISTTIMEFORMAT=__ble_ext__ 
     local -x TMPBASE=$_ble_base_run/$$.history.mlfix
     local multiline_count=0 modification_count=0
-    eval -- "$(builtin history | ble/history:bash/resolve-multiline/.awk resolve 2>/dev/null)"
+    builtin eval -- "$(builtin history | ble/history:bash/resolve-multiline/.awk resolve 2>/dev/null)"
     if ((modification_count)); then
       ble/bin/mv -f "$TMPBASE.part" "$TMPBASE.sh"
     else
@@ -814,7 +814,7 @@ function ble/builtin/history/.read {
         print "((_ble_builtin_history_histnew_count+=" count "))";
       }
     ' "$file")
-    eval -- "$script"
+    builtin eval -- "$script"
   else
     ble/builtin/history/.set-rskip "$file" 0
   fi
@@ -921,7 +921,7 @@ function ble/builtin/history/array#delete-hindex {
     done
     ARRAY=()
     for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
-  eval -- "${script//ARRAY/$array_name}"
+  builtin eval -- "${script//ARRAY/$array_name}"
 }
 ## 関数 ble/builtin/history/array#insert-range array_name beg len
 function ble/builtin/history/array#insert-range {
@@ -934,7 +934,7 @@ function ble/builtin/history/array#insert-range {
     done
     ARRAY=()
     for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
-  eval -- "${script//ARRAY/$array_name}"
+  builtin eval -- "${script//ARRAY/$array_name}"
 }
 blehook history_delete+=ble/builtin/history/delete.hook
 blehook history_clear+=ble/builtin/history/clear.hook
@@ -1149,8 +1149,8 @@ function ble/builtin/history/option:s {
         local i N=${#_ble_history[@]}
         for ((i=0;i<N-1;i++)); do
           if [[ ${_ble_history[i]} == "$cmd" ]]; then
-            unset -v '_ble_history[i]'
-            unset -v '_ble_history_edit[i]'
+            builtin unset -v '_ble_history[i]'
+            builtin unset -v '_ble_history_edit[i]'
             ble/array#push delete_indices "$i"
             ((i<_ble_builtin_history_wskip&&shift_wskip++))
             ((i<HISTINDEX_NEXT&&shift_histindex_next++))
@@ -1335,7 +1335,7 @@ function ble/history/get-count {
   [[ $1 == -v ]] && { _var=$2; shift 2; }
 
   if [[ $_ble_history_prefix ]]; then
-    eval "_ret=\${#${_ble_history_prefix}_history[@]}"
+    builtin eval "_ret=\${#${_ble_history_prefix}_history[@]}"
   else
     ble/history:bash/update-count
     _ret=$_ble_history_count
@@ -1362,13 +1362,13 @@ function ble/history/get-entry {
   ble/history/initialize
   local __var=entry
   [[ $1 == -v ]] && { __var=$2; shift 2; }
-  eval "$__var=\${${_ble_history_prefix:-_ble}_history[\$1]}"
+  builtin eval "$__var=\${${_ble_history_prefix:-_ble}_history[\$1]}"
 }
 function ble/history/get-editted-entry {
   ble/history/initialize
   local __var=entry
   [[ $1 == -v ]] && { __var=$2; shift 2; }
-  eval "$__var=\${${_ble_history_prefix:-_ble}_history_edit[\$1]}"
+  builtin eval "$__var=\${${_ble_history_prefix:-_ble}_history_edit[\$1]}"
 }
 ## 関数 ble/history/set-editted-entry index str
 function ble/history/set-editted-entry {
@@ -1380,7 +1380,7 @@ function ble/history/set-editted-entry {
       PREFIX_history_edit[index]=$str
       PREFIX_history_dirt[index]=1
     fi'
-  eval "${code//PREFIX/${_ble_history_prefix:-_ble}}"
+  builtin eval -- "${code//PREFIX/${_ble_history_prefix:-_ble}}"
 }
 
 # @var[in,out] HISTINDEX_NEXT
@@ -1431,7 +1431,7 @@ function ble/history/add {
       PREFIX_history[topIndex]=$command
       PREFIX_history_edit[topIndex]=$command
       PREFIX_history_ind=$((topIndex+1))'
-    eval "${code//PREFIX/$_ble_history_prefix}"
+    builtin eval -- "${code//PREFIX/$_ble_history_prefix}"
   else
     blehook/invoke ADDHISTORY "$command" &&
       ble/history/.add-command-history "$command"
@@ -1534,7 +1534,7 @@ function ble/history/isearch-backward-blockwise {
   ble/history/initialize
   if [[ $_ble_history_prefix ]]; then
     local -a _ble_history_edit
-    eval "_ble_history_edit=(\"\${${_ble_history_prefix}_history_edit[@]}\")"
+    builtin eval "_ble_history_edit=(\"\${${_ble_history_prefix}_history_edit[@]}\")"
   fi
 
   local NSTPCHK=1000 # 十分高速なのでこれぐらい大きくてOK
@@ -1571,7 +1571,7 @@ function ble/history/isearch-backward-blockwise {
       (tail)      for ((j=i-block;++j<=i;)); do
                     [[ ${_ble_history_edit[j]} == *"$needle" ]] && index=$j
                   done ;;
-      (condition) eval "function ble-edit/isearch/.search-block.proc {
+      (condition) builtin eval "function ble-edit/isearch/.search-block.proc {
                     local LINE INDEX
                     for ((j=i-block;++j<=i;)); do
                       LINE=\${_ble_history_edit[j]} INDEX=\$j
@@ -1615,7 +1615,7 @@ function ble/history/forward-isearch.impl {
   ble/history/initialize
   if [[ $_ble_history_prefix ]]; then
     local -a _ble_history_edit
-    eval "_ble_history_edit=(\"\${${_ble_history_prefix}_history_edit[@]}\")"
+    builtin eval "_ble_history_edit=(\"\${${_ble_history_prefix}_history_edit[@]}\")"
   fi
 
   while :; do
@@ -1653,7 +1653,7 @@ function ble/history/forward-isearch.impl {
     (tail)
 #%expand search_loop.r/@/[[ ${_ble_history_edit[index]} == *"$needle" ]]/
     (condition)
-#%expand search_loop.r/@/LINE=${_ble_history_edit[index]} INDEX=$index eval "$needle"/
+#%expand search_loop.r/@/LINE=${_ble_history_edit[index]} INDEX=$index builtin eval -- "$needle"/
     (predicate)
 #%expand search_loop.r/@/"$needle" "${_ble_history_edit[index]}" "$index"/
     (*)

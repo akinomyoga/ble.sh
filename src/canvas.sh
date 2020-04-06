@@ -22,7 +22,7 @@ function bleopt/check:tab_width {
 ## ble/arithmetic/sum integer...
 ##   @var[out] ret
 function ble/arithmetic/sum {
-  IFS=+ eval 'let "ret=$*+0"'
+  IFS=+ builtin eval 'let "ret=$*+0"'
 }
 
 #------------------------------------------------------------------------------
@@ -627,7 +627,7 @@ function ble/canvas/trace/.ps1rc {
     scosc=(${trace_brack[lastIndex]})
     ((x=scosc[0]))
     ((y=scosc[1]))
-    unset -v "trace_brack[$lastIndex]"
+    builtin unset -v "trace_brack[$lastIndex]"
   fi
 }
 function ble/canvas/trace/.NEL {

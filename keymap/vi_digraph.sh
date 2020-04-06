@@ -7,7 +7,7 @@ function ble/widget/vi_digraph/.proc {
   local hook=${_ble_keymap_vi_digraph__hook:-ble-decode-key}
   _ble_keymap_vi_digraph__hook=
   ble-decode/keymap/pop
-  eval "$hook $code"
+  builtin eval -- "$hook $code"
 }
 
 function ble/widget/vi_digraph/defchar {

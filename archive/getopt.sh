@@ -5,7 +5,7 @@
 ## function myfunc {
 ##   local flagVersion= flagHelp= flagEnd=
 ##
-##   eval "$ble_getopt_prologue"
+##   builtin eval -- "$ble_getopt_prologue"
 ##   ble/getopt.init myfunc "$@"
 ##   while ble/getopt.next; do
 ##     case "$OPTION" in

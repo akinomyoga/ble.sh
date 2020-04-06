@@ -53,7 +53,7 @@ echo prologue >&2
     case $_ble_init_arg in
     (--version)
       _ble_init_exit=1
-      builtin echo "ble.sh -- Bash Line Editor (ble-$_ble_init_version)" ;;
+      echo "ble.sh -- Bash Line Editor (ble-$_ble_init_version)" ;;
     (--help)
       _ble_init_exit=1
       printf '%s\n' \
@@ -150,7 +150,7 @@ _ble_base_restore_FUNCNEST='
 
 {
   _ble_bash_funcnest_adjusted=
-  builtin eval "$_ble_base_adjust_FUNCNEST"
+  builtin eval -- "$_ble_base_adjust_FUNCNEST"
   _ble_bash_options_adjusted=
   ble/base/adjust-bash-options
 } &>/dev/null # set -x 対策 #D0930
@@ -172,7 +172,7 @@ function ble/base/workaround-POSIXLY_CORRECT {
 }
 function ble/base/unset-POSIXLY_CORRECT {
   if [[ ${POSIXLY_CORRECT+set} ]]; then
-    unset -v POSIXLY_CORRECT
+    builtin unset -v POSIXLY_CORRECT
     ble/base/workaround-POSIXLY_CORRECT
   fi
 }
@@ -181,7 +181,7 @@ function ble/base/adjust-POSIXLY_CORRECT {
   _ble_edit_POSIXLY_CORRECT_adjusted=1
   _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
   _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
-  unset -v POSIXLY_CORRECT
+  builtin unset -v POSIXLY_CORRECT
 
   # ユーザが触ったかもしれないので何れにしても workaround を呼び出す。
   ble/base/workaround-POSIXLY_CORRECT
@@ -199,19 +199,19 @@ ble/base/adjust-POSIXLY_CORRECT
 
 builtin bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
-  unset -v _ble_bash
+  builtin unset -v _ble_bash
   builtin echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
   return 1
 fi
 
 if shopt -q restricted_shell; then
-  unset -v _ble_bash
+  builtin unset -v _ble_bash
   builtin echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
   return 1
 fi
 
 if [[ ${BASH_EXECUTION_STRING+set} ]]; then
-  unset -v _ble_bash
+  builtin unset -v _ble_bash
   # builtin echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&2
   return 1 2>/dev/null || builtin exit 1
 fi
@@ -239,7 +239,7 @@ function ble/util/print { builtin printf '%s\n' "$*"; }
 function ble/bin/.default-utility-path {
   local cmd
   for cmd; do
-    eval "function ble/bin/$cmd { command $cmd \"\$@\"; }"
+    builtin eval "function ble/bin/$cmd { command $cmd \"\$@\"; }"
   done
 }
 ## 関数 ble/bin/.freeze-utility-path commands...
@@ -252,7 +252,7 @@ function ble/bin/.freeze-utility-path {
   local cmd path q=\' Q="'\''" fail=
   for cmd; do
     if ble/util/assign path "builtin type -P -- $cmd 2>/dev/null" && [[ $path ]]; then
-      eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
+      builtin eval "function ble/bin/$cmd { '${path//$q/$Q}' \"\$@\"; }"
     else
       fail=1
     fi
@@ -375,7 +375,7 @@ _ble_bash_loaded_in_function=0
 
 # will be overwritten by ble-core.sh
 function ble/util/assign {
-  builtin eval "$1=\$(builtin eval \"\${@:2}\")"
+  builtin eval "$1=\$(builtin eval -- \"\${@:2}\")"
 }
 
 # readlink -f (taken from akinomyoga/mshex.git)
@@ -425,7 +425,7 @@ function ble/base/.create-user-directory {
     ble/util/print "ble.sh: permission of '$tmpdir' is not correct." >&2
     return 1
   fi
-  eval "$var=\$dir"
+  builtin eval "$var=\$dir"
 }
 
 ##
@@ -735,7 +735,7 @@ function ble-attach {
   _ble_attached=1
 
   # 特殊シェル設定を待避
-  builtin eval "$_ble_base_adjust_FUNCNEST"
+  builtin eval -- "$_ble_base_adjust_FUNCNEST"
   ble/base/adjust-bash-options
   ble/base/adjust-POSIXLY_CORRECT
 
@@ -914,17 +914,17 @@ function ble/base/process-blesh-arguments {
 ble/base/process-blesh-arguments "$@"
 
 # 一時グローバル変数消去
-unset -v _ble_init_version
-unset -v _ble_init_arg
-unset -v _ble_init_exit
+builtin unset -v _ble_init_version
+builtin unset -v _ble_init_arg
+builtin unset -v _ble_init_exit
 
 # 状態復元
 IFS=$_ble_init_original_IFS
-unset -v _ble_init_original_IFS
+builtin unset -v _ble_init_original_IFS
 if [[ ! $_ble_attached ]]; then
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
-  builtin eval "$_ble_base_restore_FUNCNEST"
+  builtin eval -- "$_ble_base_restore_FUNCNEST"
 fi &>/dev/null # set -x 対策 #D0930
 
 #%if measure_load_time

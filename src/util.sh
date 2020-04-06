@@ -53,7 +53,7 @@ function bleopt {
             continue
           fi
         fi
-        eval "$var=\"\$value\"" ;;
+        builtin eval "$var=\"\$value\"" ;;
       (p*) pvars[ip++]=$var ;;
       (*)  ble/util/print "bleopt: unknown type '$type' of the argument \`$spec'" >&2 ;;
       esac
@@ -89,9 +89,9 @@ function bleopt {
 function bleopt/declare {
   local type=$1 name=bleopt_$2 default_value=$3
   if [[ $type == -n ]]; then
-    eval ": \"\${$name:=\$default_value}\""
+    builtin eval ": \"\${$name:=\$default_value}\""
   else
-    eval ": \"\${$name=\$default_value}\""
+    builtin eval ": \"\${$name=\$default_value}\""
   fi
   return 0
 }
@@ -206,9 +206,9 @@ function ble/util/save-vars {
   local name prefix=$1; shift
   for name; do
     if ble/is-array "$name"; then
-      eval "$prefix$name=(\"\${$name[@]}\")"
+      builtin eval "$prefix$name=(\"\${$name[@]}\")"
     else
-      eval "$prefix$name=\"\$$name\""
+      builtin eval "$prefix$name=\"\$$name\""
     fi
   done
 }
@@ -216,9 +216,9 @@ function ble/util/restore-vars {
   local name prefix=$1; shift
   for name; do
     if ble/is-array "$prefix$name"; then
-      eval "$name=(\"\${$prefix$name[@]}\")"
+      builtin eval "$name=(\"\${$prefix$name[@]}\")"
     else
-      eval "$name=\"\$$prefix$name\""
+      builtin eval "$name=\"\$$prefix$name\""
     fi
   done
 }
@@ -374,7 +374,7 @@ elif ((_ble_bash>=30100)); then
 else
   function ble/array#push {
     while (($#>=2)); do
-      builtin eval "$1[\${#$1[@]}]=\"\$2\""
+      builtin eval -- "$1[\${#$1[@]}]=\"\$2\""
       set -- "$1" "${@:3}"
     done
   }
@@ -382,10 +382,10 @@ fi
 ## 関数 ble/array#pop arr
 ##   @var[out] ret
 function ble/array#pop {
-  eval "local i$1=\$((\${#$1[@]}-1))"
+  builtin eval "local i$1=\$((\${#$1[@]}-1))"
   if ((i$1>=0)); then
-    eval "ret=\${$1[i$1]}"
-    unset -v "$1[i$1]"
+    builtin eval "ret=\${$1[i$1]}"
+    builtin unset -v "$1[i$1]"
   else
     ret=
   fi
@@ -415,7 +415,7 @@ function ble/array#insert-after {
       [[ $eARR == "$2" ]] && aARR=iARR && break
     done
     [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
-  '; builtin eval "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#insert-before arr needle elements...
 function ble/array#insert-before {
@@ -426,7 +426,7 @@ function ble/array#insert-before {
       ((iARR++))
     done
     [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
-  '; builtin eval "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#remove arr element
 function ble/array#remove {
@@ -436,7 +436,7 @@ function ble/array#remove {
       [[ $eARR != "$2" ]] && ble/array#push "aARR" "$eARR"
     done
     ARR=("${aARR[@]}")
-  '; builtin eval "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#index arr needle
 ##   @var[out] ret
@@ -448,7 +448,7 @@ function ble/array#index {
       ((iARR++))
     done
     ret=-1; return 1
-  '; builtin eval "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#last-index arr needle
 ##   @var[out] ret
@@ -459,14 +459,14 @@ function ble/array#last-index {
       [[ ${ARR[iARR]} == "$2" ]] && { ret=$iARR; return 0; }
     done
     ret=-1; return 1
-  '; builtin eval "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
 ## 関数 ble/array#remove arr index
 function ble/array#remove-at {
   local _ble_local_script='
-    unset -v "ARR[$2]"
+    builtin unset -v "ARR[$2]"
     ARR=("${ARR[@]}")
-  '; builtin eval "${_ble_local_script//ARR/$1}"
+  '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
 
 _ble_string_prototype='        '
@@ -613,7 +613,7 @@ function ble/string#count-string {
 function ble/string#index-of {
   local haystack=$1 needle=$2 count=${3:-1}
   ble/string#repeat '*"$needle"' "$count"; local pattern=$ret
-  eval "local transformed=\${haystack#$pattern}"
+  builtin eval "local transformed=\${haystack#$pattern}"
   ((ret=${#haystack}-${#transformed}-${#needle},
     ret<0&&(ret=-1),ret>=0))
 }
@@ -627,7 +627,7 @@ function ble/string#index-of {
 function ble/string#last-index-of {
   local haystack=$1 needle=$2 count=${3:-1}
   ble/string#repeat '"$needle"*' "$count"; local pattern=$ret
-  eval "local transformed=\${haystack%$pattern}"
+  builtin eval "local transformed=\${haystack%$pattern}"
   if [[ $transformed == "$haystack" ]]; then
     ret=-1
   else
@@ -657,7 +657,7 @@ function ble/string#toggle-case {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret="${buff[*]-}"'
+  IFS= builtin eval 'ret="${buff[*]-}"'
 }
 ## 関数 ble/string#tolower text...
 ## 関数 ble/string#toupper text...
@@ -677,7 +677,7 @@ else
       fi
       ble/array#push buff "$ch"
     done
-    IFS= eval 'ret="${buff[*]-}"'
+    IFS= builtin eval 'ret="${buff[*]-}"'
   }
   function ble/string#toupper {
     local text="$*"
@@ -690,7 +690,7 @@ else
       fi
       ble/array#push buff "$ch"
     done
-    IFS= eval 'ret="${buff[*]-}"'
+    IFS= builtin eval 'ret="${buff[*]-}"'
   }
 fi
 
@@ -893,14 +893,14 @@ function ble/path#remove {
     opts=:$opts:
     opts=${opts//:"$2":/:}
     opts=${opts#:} opts=${opts%:}'
-  builtin eval "${_ble_local_script//opts/$1}"
+  builtin eval -- "${_ble_local_script//opts/$1}"
 }
 function ble/path#remove-glob {
   local _ble_local_script='
     opts=:$opts:
     opts=${opts//:$2:/:}
     opts=${opts#:} opts=${opts%:}'
-  builtin eval "${_ble_local_script//opts/$1}"
+  builtin eval -- "${_ble_local_script//opts/$1}"
 }
 
 #------------------------------------------------------------------------------
@@ -932,7 +932,7 @@ function blehook/.print {
   local hookname
   for hookname; do
     ble/is-array "$hookname" || continue
-    eval -- "${code//NAME/${hookname#_ble_hook_h_}}"
+    builtin eval -- "${code//NAME/${hookname#_ble_hook_h_}}"
   done
   builtin printf %s "$out"
 }
@@ -963,7 +963,7 @@ function blehook {
       ble/array#push print "_ble_hook_h_$arg"
     elif [[ $arg =~ $rex2 ]]; then
       local name=${BASH_REMATCH[1]}
-      if eval "[[ ! \${_ble_hook_c_$name+set} ]]"; then
+      if builtin eval "[[ ! \${_ble_hook_c_$name+set} ]]"; then
         if [[ ${BASH_REMATCH[2]} == :* ]]; then
           ((_ble_hook_c_$name=0))
         else
@@ -1005,7 +1005,7 @@ function blehook {
         ext=1
       fi
     else
-      [[ $type != *+= ]] && eval "_ble_hook_h_$name=()"
+      [[ $type != *+= ]] && builtin eval "_ble_hook_h_$name=()"
       [[ $value ]] && ble/array#push "_ble_hook_h_$name" "$value"
     fi
   done
@@ -1014,13 +1014,13 @@ function blehook {
 blehook/.compatibility-ble-0.3
 
 function blehook/has-hook {
-  eval "local count=\${#_ble_hook_h_$1[@]}"
+  builtin eval "local count=\${#_ble_hook_h_$1[@]}"
   ((count))
 }
 function blehook/invoke {
   local lastexit=$? FUNCNEST=
   ((_ble_hook_c_$1++))
-  local -a hooks; eval "hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
+  local -a hooks; builtin eval "hooks=(\"\${_ble_hook_h_$1[@]}\")"; shift
   local hook ext=0
   for hook in "${hooks[@]}"; do
     if type "$hook" &>/dev/null; then
@@ -1028,7 +1028,7 @@ function blehook/invoke {
       "$hook" "$@" 2>&3
     else
       ble/util/setexit "$lastexit"
-      eval "$hook" 2>&3
+      builtin eval -- "$hook" 2>&3
     fi || ext=$?
   done
   return "$ext"
@@ -1036,7 +1036,7 @@ function blehook/invoke {
 function blehook/eval-after-load {
   local hook_name=${1}_load value=$2
   if ((_ble_hook_c_$hook_name)); then
-    eval "$value"
+    builtin eval -- "$value"
   else
     blehook "$hook_name+=$value"
   fi
@@ -1175,7 +1175,7 @@ function ble/builtin/trap/invoke {
   ble/builtin/trap/.initialize
   ble/builtin/trap/.get-sig-index "$1" || return 1
   ble/util/setexit "$lastexit"
-  eval "${_ble_builtin_trap_handlers[ret]}" 2>&3
+  builtin eval -- "${_ble_builtin_trap_handlers[ret]}" 2>&3
 } 3>&2 2>/dev/null # set -x 対策 #D0930
 function ble/builtin/trap {
   local flags command sigspecs
@@ -1226,7 +1226,7 @@ function ble/builtin/trap {
       fi
 
       if [[ $command == - ]]; then
-        unset -v "_ble_builtin_trap_handlers[ret]"
+        builtin unset -v "_ble_builtin_trap_handlers[ret]"
       else
         _ble_builtin_trap_handlers[ret]=$command
       fi
@@ -1261,7 +1261,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/readfile { # 155ms for man bash
     local __buffer
     mapfile __buffer < "$2"
-    IFS= eval "$1"'="${__buffer[*]-}"'
+    IFS= builtin eval "$1=\"\${__buffer[*]-}\""
   }
   function ble/util/mapfile {
     mapfile -t "$1"
@@ -1295,21 +1295,21 @@ if ((_ble_bash>=40000)); then
   # mapfile の方が read より高速
   function ble/util/assign {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval "$2" >| "$_ble_local_tmp"
+    builtin eval -- "$2" >| "$_ble_local_tmp"
     local _ble_local_ret=$? _ble_local_arr=
     ((_ble_util_assign_level--))
     mapfile -t _ble_local_arr < "$_ble_local_tmp"
-    IFS=$'\n' eval "$1=\"\${_ble_local_arr[*]}\""
+    IFS=$'\n' builtin eval "$1=\"\${_ble_local_arr[*]}\""
     return "$_ble_local_ret"
   }
 else
   function ble/util/assign {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval "$2" >| "$_ble_local_tmp"
+    builtin eval -- "$2" >| "$_ble_local_tmp"
     local _ble_local_ret=$?
     ((_ble_util_assign_level--))
     TMOUT= IFS= builtin read -r -d '' "$1" < "$_ble_local_tmp"
-    eval "$1=\${$1%$'\n'}"
+    builtin eval "$1=\${$1%$'\n'}"
     return "$_ble_local_ret"
   }
 fi
@@ -1327,7 +1327,7 @@ fi
 if ((_ble_bash>=40000)); then
   function ble/util/assign-array {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval "$2" >| "$_ble_local_tmp"
+    builtin eval -- "$2" >| "$_ble_local_tmp"
     local _ble_local_ret=$?
     ((_ble_util_assign_level--))
     mapfile -t "$1" < "$_ble_local_tmp"
@@ -1336,7 +1336,7 @@ if ((_ble_bash>=40000)); then
 else
   function ble/util/assign-array {
     local _ble_local_tmp=$_ble_util_assign_base.$((_ble_util_assign_level++))
-    builtin eval "$2" >| "$_ble_local_tmp"
+    builtin eval -- "$2" >| "$_ble_local_tmp"
     local _ble_local_ret=$?
     ((_ble_util_assign_level--))
     ble/util/mapfile "$1" < "$_ble_local_tmp"
@@ -1356,7 +1356,7 @@ fi
 ##
 if ((_ble_bash>=30200)); then
   function ble/is-function {
-    builtin declare -F "$1" &>/dev/null
+    declare -F "$1" &>/dev/null
   }
 else
   # bash-3.1 has bug in declare -f.
@@ -1433,7 +1433,7 @@ function ble/function#advice {
   if ! ble/is-function "$name"; then
     local t=; ble/util/assign t 'type -t "$name"'
     case $t in
-    (builtin|file) eval "$name() { command $name \"\$@\"; }" ;;
+    (builtin|file) builtin eval "function $name { command $name \"\$@\"; }" ;;
     (*)
       ble/util/print "ble/function#advice: $name is not a function." >&2
       return 1 ;;
@@ -1445,18 +1445,18 @@ function ble/function#advice {
   (remove)
     if [[ $def == *'ble/function#advice/.proc'* ]]; then
       ble/util/assign def 'declare -f "ble/function#advice/original:$name"'
-      [[ $def ]] && eval "${def#*:}"
+      [[ $def ]] && builtin eval -- "${def#*:}"
     fi
-    unset -f ble/function#advice/{before,after,around,original}:"$name" 2>/dev/null
+    builtin unset -f ble/function#advice/{before,after,around,original}:"$name" 2>/dev/null
     return 0 ;;
   (before|after|around)
     if [[ $def != *'ble/function#advice/.proc'* ]]; then
-      eval "ble/function#advice/original:$def"
-      eval "function $name { ble/function#advice/.proc \"\${FUNCNAME#*:}\" \"\$@\"; }"
+      builtin eval "ble/function#advice/original:$def"
+      builtin eval "function $name { ble/function#advice/.proc \"\${FUNCNAME#*:}\" \"\$@\"; }"
     fi
 
     local q=\' Q="'\''"
-    eval "ble/function#advice/$type:$name() { eval '${proc//$q/$Q}'; }"
+    builtin eval "ble/function#advice/$type:$name() { builtin eval '${proc//$q/$Q}'; }"
     return 0 ;;
   (*)
     ble/util/print "ble/function#advice unknown advice type '$type'" >&2
@@ -1477,12 +1477,12 @@ function ble/function#push {
     done
 
     local def; ble/util/assign def 'declare -f "$name"'
-    eval "ble/function#push/$index:$def"
+    builtin eval "ble/function#push/$index:$def"
   fi
 
   if [[ $proc ]]; then
     local q=\' Q="'\''"
-    eval "function $name { eval '${proc//$q/$Q}'; }"
+    builtin eval "function $name { builtin eval '${proc//$q/$Q}'; }"
   fi
   return 0
 }
@@ -1499,11 +1499,11 @@ function ble/function#pop {
   done
 
   if ((index<0)); then
-    unset -f "$name"
+    builtin unset -f "$name"
   else
     local def; ble/util/assign def 'declare -f "ble/function#push/$index:$name"'
-    eval "${def#*:}"
-    unset -f "ble/function#push/$index:$name"
+    builtin eval -- "${def#*:}"
+    builtin unset -f "ble/function#push/$index:$name"
   fi
   return 0
 }
@@ -1565,7 +1565,7 @@ function ble/util/expand-alias {
   local type; ble/util/type type "$ret"
   if [[ $type == alias ]]; then
     local data; ble/util/assign data 'LANG=C alias "$ret"' &>/dev/null
-    [[ $data == 'alias '*=* ]] && eval "ret=${data#alias *=}"
+    [[ $data == 'alias '*=* ]] && builtin eval "ret=${data#alias *=}"
   fi
 }
 
@@ -1718,7 +1718,7 @@ if ((_ble_bash>=40200)); then
 
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
           __ble_value=${!__ble_name}
-          unset -v "$__ble_name" || break
+          builtin unset -v "$__ble_name" || break
         done 2>/dev/null
 
         ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
@@ -1750,7 +1750,7 @@ else
         __ble_value= __ble_found=
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
           [[ ${!__ble_name+set} ]] && __ble_value=${!__ble_name} __ble_found=$__ble_i
-          unset -v "$__ble_name" 2>/dev/null
+          builtin unset -v "$__ble_name" 2>/dev/null
         done
 
         [[ $__ble_found ]] || __ble_error= __ble_value= # not found
@@ -1767,10 +1767,10 @@ fi
 function ble/util/has-glob-pattern {
   local dummy=$_ble_base_run/$$.dummy ret
   if shopt -q failglob &>/dev/null; then
-    eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
+    builtin eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
   else
     shopt -s failglob
-    eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
+    builtin eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
     shopt -u failglob
   fi
   ((ext!=0)); return
@@ -1801,7 +1801,7 @@ function ble/util/eval-pathname-expansion {
 
   # Note: eval で囲んでおかないと failglob 失敗時に続きが実行されない
   # Note: failglob で失敗した時のエラーメッセージは殺す
-  eval "ret=($1)" 2>/dev/null
+  builtin eval "ret=($1)" 2>/dev/null
 }
 
 
@@ -1967,14 +1967,14 @@ function ble/util/conditional-sync {
   [[ :$opts: == *:progressive-weight:* ]] &&
     local weight_max=$weight weight=1
   (
-    eval "$command" & local pid=$!
+    builtin eval -- "$command" & local pid=$!
     while
       ble/util/msleep "$weight"
       [[ :$opts: == *:progressive-weight:* ]] &&
         ((weight<<=1,weight>weight_max&&(weight=weight_max)))
       builtin kill -0 "$pid" &>/dev/null
     do
-      if ! eval "$cancel"; then
+      if ! builtin eval -- "$cancel"; then
         builtin kill "$pid" &>/dev/null
         return 148
       fi
@@ -2010,11 +2010,11 @@ function ble/util/get-pager {
     fi
   fi
 
-  eval "$1"'=${bleopt_pager:-${PAGER:-$_ble_util_less_fallback}}'
+  builtin eval "$1=\${bleopt_pager:-\${PAGER:-\$_ble_util_less_fallback}}"
 }
 function ble/util/pager {
   local pager; ble/util/get-pager pager
-  eval "$pager \"\$@\""
+  builtin eval -- "$pager \"\$@\""
 }
 
 ## 関数 ble/util/getmtime filename
@@ -2256,7 +2256,7 @@ function ble/util/joblist.split {
   local line ijob= rex_ijob='^\[([0-9]+)\]'
   for line; do
     [[ $line =~ $rex_ijob ]] && ijob=${BASH_REMATCH[1]}
-    [[ $ijob ]] && eval "$arr[ijob]=\${$arr[ijob]}\${$arr[ijob]:+\$_ble_term_nl}\$line"
+    [[ $ijob ]] && builtin eval "$arr[ijob]=\${$arr[ijob]}\${$arr[ijob]:+\$_ble_term_nl}\$line"
   done
 }
 
@@ -2368,9 +2368,9 @@ function ble/util/read-rl-variable {
 ## 関数 ble/util/invoke-hook array
 ##   array に登録されているコマンドを実行します。
 function ble/util/invoke-hook {
-  local -a hooks; eval "hooks=(\"\${$1[@]}\")"
+  local -a hooks; builtin eval "hooks=(\"\${$1[@]}\")"
   local hook ext=0
-  for hook in "${hooks[@]}"; do eval "$hook \"\${@:2}\"" || ext=$?; done
+  for hook in "${hooks[@]}"; do builtin eval -- "$hook \"\${@:2}\"" || ext=$?; done
   return "$ext"
 }
 
@@ -2433,7 +2433,7 @@ function ble/util/autoload {
   local q=\' Q="'\''" funcname
   for funcname; do
     builtin eval "function $funcname {
-      unset -f $funcname
+      builtin unset -f $funcname
       ble-import '${file//$q/$Q}' &&
         $funcname \"\$@\"
     }"
@@ -2531,7 +2531,7 @@ function ble/util/import/is-loaded {
 function ble/util/import/finalize {
   local guard
   for guard in "${_ble_util_import_guards[@]}"; do
-    unset -f "$guard"
+    builtin unset -f "$guard"
   done
 }
 ## 関数 ble/util/import/.read-arguments args...
@@ -2585,7 +2585,7 @@ function ble/util/import {
     ble/is-function "$guard" && return 0
     [[ -e $file ]] || return 1
     source "$file" &&
-      eval "function $guard { :; }" &&
+      builtin eval "function $guard { :; }" &&
       ble/array#push _ble_util_import_guards "$guard" || ext=$?
   done
   return "$ext"
@@ -2914,8 +2914,8 @@ if ((_ble_bash>=40000)); then
         (F) [[ -s ${_idle_status:1} ]] && _idle_to_process=1 ;;
         (E) [[ -e ${_idle_status:1} ]] && _idle_to_process=1 ;;
         (P) ! builtin kill -0 ${_idle_status:1} &>/dev/null && _idle_to_process=1 ;;
-        (C) eval -- "${_idle_status:1}" && _idle_to_process=1 ;;
-        (*) unset -v '_ble_util_idle_task[_idle_key]'
+        (C) builtin eval -- "${_idle_status:1}" && _idle_to_process=1 ;;
+        (*) builtin unset -v '_ble_util_idle_task[_idle_key]'
         esac
 
         if [[ $_idle_to_process ]]; then
@@ -2946,7 +2946,7 @@ if ((_ble_bash>=40000)); then
     local _command=$1
     local ble_util_idle_status=
     local ble_util_idle_elapsed=$((_ble_util_idle_sclock-_idle_start))
-    builtin eval "$_command"; local ext=$?
+    builtin eval -- "$_command"; local ext=$?
     if ((ext==148)); then
       _ble_util_idle_task[_idle_key]=R$_ble_util_idle_SEP$_command
     elif [[ $ble_util_idle_status ]]; then
@@ -2967,7 +2967,7 @@ if ((_ble_bash>=40000)); then
         _idle_waiting=1
       fi
     else
-      unset -v '_ble_util_idle_task[_idle_key]'
+      builtin unset -v '_ble_util_idle_task[_idle_key]'
     fi
     return "$ext"
   }
@@ -3367,7 +3367,7 @@ function ble/term/visible-bell/.clear {
 } >&2
 function ble/term/visible-bell/.erase-previous-visible-bell {
   local -a workers=()
-  eval 'workers=("$_ble_base_run/$$.visible-bell."*)' &>/dev/null # failglob 対策
+  builtin eval 'workers=("$_ble_base_run/$$.visible-bell."*)' &>/dev/null # failglob 対策
 
   local workerfile
   for workerfile in "${workers[@]}"; do

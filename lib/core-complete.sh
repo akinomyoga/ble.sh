@@ -1003,7 +1003,7 @@ function ble/complete/action/inherit-from {
   for member in initialize complete getg get-desc; do
     srcfunc=ble/complete/action:$src/$member
     dstfunc=ble/complete/action:$dst/$member
-    ble/is-function "$srcfunc" && eval "function $dstfunc { $srcfunc; }"
+    ble/is-function "$srcfunc" && builtin eval "function $dstfunc { $srcfunc; }"
   done
 }
 
@@ -1273,7 +1273,7 @@ function ble/complete/cand/unpack {
   local pack=$1
   ACTION=${pack%%:*} pack=${pack#*:}
   local text=${pack#*:}
-  IFS=, eval 'pack=(${pack%%:*})'
+  IFS=, builtin eval 'pack=(${pack%%:*})'
   CAND=${text::pack[0]}
   INSERT=${text:pack[0]:pack[1]}
   DATA=${text:pack[0]+pack[1]}
@@ -1545,7 +1545,7 @@ function ble/complete/util/eval-pathname-expansion {
     fi
   fi
 
-  IFS= GLOBIGNORE= eval 'ret=(); ret=($pattern)' 2>/dev/null
+  IFS= GLOBIGNORE= builtin eval 'ret=(); ret=($pattern)' 2>/dev/null
 
   ble/util/invoke-hook dtor
 }
@@ -1998,7 +1998,7 @@ function ble/complete/progcomp/.compgen-helper-func {
   local fDefault=
   local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
   ble/function#push compopt 'ble/complete/progcomp/compopt "$@"'
-  eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null; local ret=$?
+  builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null; local ret=$?
   ble/function#pop compopt
 
   if [[ $is_default_completion && $ret == 124 ]]; then
@@ -2284,14 +2284,14 @@ function ble/complete/source:argument/.generate-user-defined-completion {
     # @var point 単語内のカーソルの位置
     # @var comp1 単語内の補完開始点
     local forward_words=
-    ((comp_cword)) && IFS=' ' eval 'forward_words="${comp_words[*]::comp_cword} "'
+    ((comp_cword)) && IFS=' ' builtin eval 'forward_words="${comp_words[*]::comp_cword} "'
     local point=$((comp_point-${#forward_words}))
     local comp1=$((point-(COMP2-COMP1)))
     ((comp1>0))
   then
     local w=${comp_words[comp_cword]}
     comp_words=("${comp_words[@]::comp_cword}" "${w::comp1}" "${w:comp1}" "${comp_words[@]:comp_cword+1}")
-    IFS=' ' eval 'comp_line="${comp_words[*]}"'
+    IFS=' ' builtin eval 'comp_line="${comp_words[*]}"'
     ((comp_cword++,comp_point++))
   fi
 
@@ -2583,7 +2583,7 @@ function ble/complete/util/construct-ambiguous-regex {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret="${buff[*]}"'
+  IFS= builtin eval 'ret="${buff[*]}"'
 }
 ## 関数 ble/complete/util/construct-glob-pattern text
 ##   部分一致に使うグロブを生成します。
@@ -2602,7 +2602,7 @@ function ble/complete/util/construct-glob-pattern {
       fi
       ble/array#push buff "$c"
     done
-    IFS= eval 'ret="${buff[*]}"'
+    IFS= builtin eval 'ret="${buff[*]}"'
   else
     ble/string#escape-for-bash-glob "$1"
   fi
@@ -2743,7 +2743,7 @@ function ble/complete/candidates/.filter-by-command {
   local -a prop=() cand=() word=() show=() data=()
   for ((i=0;i<cand_count;i++)); do
     ((i%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
-    eval "$command" || continue
+    builtin eval -- "$command" || continue
     cand[j]=${cand_cand[i]}
     word[j]=${cand_word[i]}
     data[j]=${cand_pack[i]}
@@ -4359,7 +4359,7 @@ function ble/highlight/layer/buff#operate-gflags {
     ble/highlight/layer/update/getg "$i"
     ((g=g&~mask|gflags))
     ble/color/g2sgr "$g"
-    builtin eval "$BUFF[$i]=\$ret\${_ble_highlight_layer_plain_buff[$i]}"
+    builtin eval -- "$BUFF[$i]=\$ret\${_ble_highlight_layer_plain_buff[$i]}"
   done
 }
 ## 関数 ble/highlight/layer/buff#set-explicit-sgr name index
@@ -5258,7 +5258,7 @@ function ble/complete/sabbrev/expand {
     #   COMPREPLY に候補を追加してもらうか、
     #   或いは手動で ble/complete/cand/yield 等を呼び出してもらう。
     local -a COMPREPLY=()
-    eval "$value"
+    builtin eval -- "$value"
     for cand in "${COMPREPLY[@]}"; do
       ble/complete/cand/yield word "$cand" ""
     done
@@ -5443,7 +5443,7 @@ function ble/complete/dabbrev/.search.fib {
     #   には格納されている) も検索の対象とするため。
     ((--start>=0)) || ble/history/get-count -v start
   else
-    local start index pos; eval "$fib_suspend"
+    local start index pos; builtin eval -- "$fib_suspend"
     fib_suspend=
   fi
 

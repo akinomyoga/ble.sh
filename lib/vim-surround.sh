@@ -124,7 +124,7 @@ function ble/lib/vim-surround.sh/async-inputtarget.hook {
   else
     [[ $c == \' ]] && c="'\''"
     [[ $mode == space ]] && c=' '$c
-    eval "$hook '$c'"
+    builtin eval -- "$hook '$c'"
   fi
 }
 function ble/lib/vim-surround.sh/async-inputtarget {

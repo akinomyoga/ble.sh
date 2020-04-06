@@ -73,7 +73,7 @@ function ble/test/check-ret {
 }
 
 function ble/test:ble/array#pop {
-  local arr; eval "arr=($1)"
+  local arr; builtin eval "arr=($1)"
   ble/array#pop arr
   ret="$ret:(${arr[*]}):${#arr[*]}"
 }

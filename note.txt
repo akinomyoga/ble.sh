@@ -2859,6 +2859,72 @@ bash_tips
 
 2020-04-06
 
+  * global: builtin declare は oil が対応しないと言っている [#D1313]
+    そもそも ble.sh でも declare の上書きは削除しているので、
+    ここで builtin を指定する必要はない気がする。
+    何より他の declare -p だとか local では builtin は指定していない。
+
+    削除している物についての無駄な builtin は消す事にする。
+    使われている箇所を確認すると以下の通り。
+
+    | $ grc --exclude=\*.md -Wg,--color=none -o 'builtin [[:alpha:]]+' |
+    |     grep --color=none -Eo 'builtin [[:alpha:]]+' |
+    |     sort | uniq -c | sort -rn
+    | 179 builtin eval
+    |  65 builtin history
+    |  42 builtin bind
+    |  28 builtin read
+    |  28 builtin printf
+    |  23 builtin trap
+    |  13 builtin exit
+    |  10 builtin unset
+    |  10 builtin echo
+    |   8 builtin kill
+    |   8 builtin compgen
+    |   6 builtin complete
+    |   3 builtin cd
+    |   2 builtin unalias
+    |   2 builtin type
+    |   2 builtin sleep
+    |   2 builtin mapfile
+    |   2 builtin compopt
+    |   1 builtin return
+
+    この内で unset によって上書きをキャンセルしているのは以下の3種類だけである。
+    eval, unset, unalias
+
+    % * eval: うーん。eval は 179 箇所で builtin eval している。
+    %   然し、eval に関してはユーザが勝手に削除すると悲惨な事になると予想されるので、
+    %   まあ、取り敢えずそのままにしておく事にするのが良い気がする。
+    %   →と思って確認した所 builtin なしで eval している箇所も沢山ある。
+    %     数えたら 149 箇所である。これは取り敢えず後で修正する。
+    %
+    % * ok: builtin unset に関しては調べると unlocal で使っている。
+    %   これは確かに関数などに置き換えられていると意図した様に動かない可能性が高いので、
+    %   明示的に builtin unset を指定する事にする。Note を追記しておいた。
+    %
+    %   →やはり全て builtin を記述する事にしたので Note は削除した。
+    %   # Note #D1313: unset は上書きできない様にしているので基本的にはbuiltin をつけな
+    %   #   くて良いが、unlocal に用いる時だけはローカル変数のスコープの兼ね合いから明
+    %   #   示的に builtin unset として置きたい。
+    %
+    % * unalias については上書き削除の目的だけでしか builtin unalias はない。
+    %   そのままで良いという事にする?
+    %   うーん。或いは全て builtin で呼び出す事にしようか。
+
+    readonly だけ抜けているのは妙なのでこれも上書きをキャンセルする事にする。
+    export, alias, unalias についてはそのままという事にする。
+
+    * done: builtin をつけるかつけないかの一貫性は保って置きたい。
+      やはり eval/unset/unalias はすべて builtin をつける事にした。
+      eval についてはつけ終わった。unset についても終わった。
+      unalias は少ししか無い。
+
+    * done: builtin eval の後に -- を付ける必要のある箇所について確認する。
+
+    * done: unset を自分で定義して readonly にしてしまえば良いのでは?
+      →試しにその様にしてみる事にした。
+
   * util (bleopt): 未定義の設定が name:= で定義されない [#D1312]
     値が同じであると判定されて代入がスキップされていた。修正した。
 

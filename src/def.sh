@@ -2,8 +2,8 @@
 
 function blehook/declare {
   local name=$1
-  eval "_ble_hook_h_$name=()"
-  eval "_ble_hook_c_$name=0"
+  builtin eval "_ble_hook_h_$name=()"
+  builtin eval "_ble_hook_c_$name=0"
 }
 
 # ble.pp

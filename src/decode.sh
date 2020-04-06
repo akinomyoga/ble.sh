@@ -638,10 +638,10 @@ function ble-decode/.hook {
         # 現在マクロの処理中である可能性があるので標準入力から
         # 読み取るとバイトの順序が変わる可能性がある。
         # 従って読み取りは行わない。
-        eval -- "$_ble_decode_show_progress_hook"
+        builtin eval -- "$_ble_decode_show_progress_hook"
       else
         while ble/util/is-stdin-ready; do
-          eval -- "$_ble_decode_show_progress_hook"
+          builtin eval -- "$_ble_decode_show_progress_hook"
           local ret; ble/decode/nonblocking-read 0.02 1 527
           ble/array#push _ble_decode_input_buffer "${ret[@]}"
         done
@@ -687,7 +687,7 @@ function ble-decode/.hook {
     for ((i=0;i<N;i+=B)); do
       ((_ble_decode_input_count=N-i-B))
       ((_ble_decode_input_count<0)) && _ble_decode_input_count=0
-      eval -- "$_ble_decode_show_progress_hook"
+      builtin eval -- "$_ble_decode_show_progress_hook"
 #%if debug_keylogger
       ((_ble_debug_keylog_enabled)) && ble/array#push _ble_debug_keylog_bytes "${chars[@]:i:B}"
 #%end
@@ -704,7 +704,7 @@ function ble-decode/.hook {
     done
   fi
 
-  eval -- "$_ble_decode_erase_progress_hook"
+  builtin eval -- "$_ble_decode_erase_progress_hook"
   ble-decode/EPILOGUE
 }
 
@@ -974,7 +974,7 @@ function ble-decode-char {
   chars=("$@") ichar=0
   while
     if ((iloop++%50==0)); then
-      ((iloop>50)) && eval -- "$_ble_decode_show_progress_hook"
+      ((iloop>50)) && builtin eval -- "$_ble_decode_show_progress_hook"
       if [[ ! $ble_decode_char_sync ]] && ble/decode/has-input-for-char; then
         ble/array#push _ble_decode_char_buffer "${chars[@]:ichar}"
         return 148
@@ -1271,7 +1271,7 @@ function ble-decode-char/unbind {
       fi
     fi
 
-    unset -v "_ble_decode_cmap_$tseq[char]"
+    builtin unset -v "_ble_decode_cmap_$tseq[char]"
     builtin eval "((\${#_ble_decode_cmap_$tseq[@]}!=0))" && break
 
     [[ $tseq ]]
@@ -1403,7 +1403,7 @@ function ble-decode/keymap/unload {
     local array_names array_name
     builtin eval -- "array_names=(\"\${!_ble_decode_${1}_kmap_@}\")"
     for array_name in "${array_names[@]}"; do
-      unset -v "$array_name"
+      builtin unset -v "$array_name"
     done
     ble-decode/keymap/.unregister "$1"
     shift
@@ -1431,7 +1431,7 @@ if [[ $_ble_decode_kmaps ]]; then
     for keymap_name in "${list[@]}"; do
       ble-decode/keymap/unload "$keymap_name"
     done
-    unset -v _ble_decode_kmaps
+    builtin unset -v _ble_decode_kmaps
   }
   ble-decode/keymap/cleanup-old-keymaps
 fi
@@ -1476,10 +1476,10 @@ function ble-decode/INITIALIZE_DEFMAP {
 
 ## 設定関数 ble/widget/.SHELL_COMMAND command
 ##   ble-bind -c で登録されたコマンドを処理します。
-function ble/widget/.SHELL_COMMAND { eval "$*"; }
+function ble/widget/.SHELL_COMMAND { builtin eval -- "$*"; }
 ## 設定関数 ble/widget/.EDIT_COMMAND command
 ##   ble-bind -x で登録されたコマンドを処理します。
-function ble/widget/.EDIT_COMMAND { eval "$*"; }
+function ble/widget/.EDIT_COMMAND { builtin eval -- "$*"; }
 
 ## 関数 ble-decode-key/bind keymap keys command
 ##   @param[in] keymap keys command
@@ -1594,7 +1594,7 @@ function ble-decode-key/unbind {
       fi
     fi
 
-    unset -v "$dicthead$tseq[key]"
+    builtin unset -v "$dicthead$tseq[key]"
     builtin eval "((\${#$dicthead$tseq[@]}!=0))" && break
 
     [[ $tseq ]]
@@ -1682,7 +1682,7 @@ function ble-decode/keymap/pop {
   local last=$((count-1))
   ble/util/assert '((last>=0))' || return
   _ble_decode_keymap=${_ble_decode_keymap_stack[last]}
-  unset -v '_ble_decode_keymap_stack[last]'
+  builtin unset -v '_ble_decode_keymap_stack[last]'
 }
 
 
@@ -1704,7 +1704,7 @@ _ble_decode_key_batch=()
 
 function ble-decode-key/batch/flush {
   ((${#_ble_decode_key_batch[@]})) || return
-  eval "local command=\${${dicthead}[_ble_decode_KCODE_BATCH_CHAR]-}"
+  builtin eval "local command=\${${dicthead}[_ble_decode_KCODE_BATCH_CHAR]-}"
   command=${command:2}
   if [[ $command ]]; then
     local chars; chars=("${_ble_decode_key_batch[@]}")
@@ -1909,7 +1909,7 @@ function ble-decode-key/.invoke-partial-match {
     # 既定の文字ハンドラ
     local key=$1
     if ble-decode-key/ischar "$key"; then
-      if ble/decode/has-input && eval "[[ \${${dicthead}[_ble_decode_KCODE_BATCH_CHAR]-} ]]"; then
+      if ble/decode/has-input && builtin eval "[[ \${${dicthead}[_ble_decode_KCODE_BATCH_CHAR]-} ]]"; then
         ble/array#push _ble_decode_key_batch "$key"
         return 0
       fi
@@ -2256,7 +2256,7 @@ function ble/decode/charlog#encode {
     ble/util/c2s "$char"
     ble/array#push buff "$ret"
   done
-  IFS= eval 'ret="${buff[*]}"'
+  IFS= builtin eval 'ret="${buff[*]}"'
 }
 ## 関数 ble/decode/charlog#decode text
 function ble/decode/charlog#decode {
@@ -2314,7 +2314,7 @@ function ble/decode/keylog#encode {
       (key&_ble_decode_Meta)&&(mod+=0x20)))
     ble/array#push buff "${csi}27;$mod;$c~"
   done
-  IFS= eval 'ret="${buff[*]-}"'
+  IFS= builtin eval 'ret="${buff[*]-}"'
 }
 ## 関数 ble/decode/keylog#decode-chars text
 function ble/decode/keylog#decode-chars {
@@ -2434,7 +2434,7 @@ function ble/decode/cmap/.generate-binder-template {
 
 function ble/decode/cmap/.emit-bindx {
   local ap="'" eap="'\\''"
-  ble/util/print "builtin bind -x '\"${1//$ap/$eap}\":ble-decode/.hook $2; builtin eval \"\$_ble_decode_bind_hook\"'"
+  ble/util/print "builtin bind -x '\"${1//$ap/$eap}\":ble-decode/.hook $2; builtin eval -- \"\$_ble_decode_bind_hook\"'"
 }
 function ble/decode/cmap/.emit-bindr {
   ble/util/print "builtin bind -r \"$1\""
@@ -2531,10 +2531,10 @@ function ble/decode/bind/adjust-uvw {
 
   # 何故か stty 設定直後には bind できない物たち
   # Note: bind 'set bind-tty-special-chars on' の時に以下が必要である (#D1092)
-  builtin bind -x '"":ble-decode/.hook 21; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode/.hook 22; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode/.hook 23; builtin eval "$_ble_decode_bind_hook"'
-  builtin bind -x '"":ble-decode/.hook 127; builtin eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode/.hook 21; builtin eval -- "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode/.hook 22; builtin eval -- "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode/.hook 23; builtin eval -- "$_ble_decode_bind_hook"'
+  builtin bind -x '"":ble-decode/.hook 127; builtin eval -- "$_ble_decode_bind_hook"'
 }
 
 # **** POSIXLY_CORRECT workaround ****
@@ -2542,14 +2542,14 @@ function ble/decode/bind/adjust-uvw {
 # ble.pp の関数を上書き
 #
 # Note: bash で set -o vi の時、
-#   unset -v POSIXLY_CORRECT や local POSIXLY_CORRECT が設定されると、
+#   builtin unset -v POSIXLY_CORRECT や local POSIXLY_CORRECT が設定されると、
 #   C-i の既定の動作の切り替えに伴って C-i の束縛が消滅する。
 #   ユーザが POSIXLY_CORRECT を触った時や自分で触った時に、
 #   改めて束縛し直す必要がある。
 #
 function ble/base/workaround-POSIXLY_CORRECT {
   [[ $_ble_decode_bind_state == none ]] && return
-  builtin bind -x '"\C-i":ble-decode/.hook 9; builtin eval "$_ble_decode_bind_hook"'
+  builtin bind -x '"\C-i":ble-decode/.hook 9; builtin eval -- "$_ble_decode_bind_hook"'
 }
 
 # **** ble-decode-bind ****                                   @decode.bind.main
@@ -3062,8 +3062,8 @@ function ble/decode/read-inputrc {
     fi
   done < "$file"
 
-  IFS=$'\n' eval 'script="${script[*]}"'
-  builtin eval "$script"
+  IFS=$'\n' builtin eval 'script="${script[*]}"'
+  builtin eval -- "$script"
 }
 
 #------------------------------------------------------------------------------
@@ -3153,7 +3153,7 @@ function ble/builtin/bind/.parse-keyname {
   (return|ret) ch=$'\r' ;;
   (space|spc) ch=' ' ;;
   (tab) ch=$'\t' ;;
-  (*) LC_ALL= LC_CTYPE=C eval 'ch=${value::1}' 2>/dev/null ;;
+  (*) LC_ALL= LC_CTYPE=C builtin eval 'ch=${value::1}' 2>/dev/null ;;
   esac
   ble/util/s2c "$ch"; local key=$ret
 
@@ -3616,7 +3616,7 @@ function ble/builtin/bind/read-user-settings {
     builtin bind # inputrc を読ませる
     local settings
     ble/util/assign settings ble/builtin/bind/.reconstruct-user-settings
-    eval -- "$settings"
+    builtin eval -- "$settings"
   fi
 }
 

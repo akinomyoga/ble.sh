@@ -47,7 +47,7 @@
 - global: work around `TMOUT` for `builtin read` `#D1306` 1c22a9d
 - syntax: fix failglob errors of heredocs of the form `<<$(echo A)` `#D1308` 3212fd2
 - decode (`ble-bind`): fix an error message `#D1311` c868b6d
-- util (`bleopt`): fix a bug that a new setting is not defined with `name:=` `#D1312` 0000000
+- util (`bleopt`): fix a bug that a new setting is not defined with `name:=` `#D1312` c757b92
 
 ## Changes
 
@@ -95,8 +95,8 @@
 - decode: improve performance of `ble-decode-char` `#D1297` 0d9d867
 - ext: update `mwg_pp.awk` (for branch osh) 978ea32
 - test: add `lib/core-test.sh` `#D1309` 68f8077
-- global: do not use `local -i` `#D1310` 0000000
-
+- global: do not use `local -i` `#D1310` f9f0f9b
+- global: normalize calls of builtins `#D1313` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

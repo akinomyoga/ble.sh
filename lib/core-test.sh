@@ -66,6 +66,6 @@ function ble/test {
       ble/util/print $'\e[91mFAIL\e[m: ret'
       ble/test/diff "$_ret" "$ret"
     fi
-    echo
+    ble/util/print
   fi
 }

@@ -682,7 +682,7 @@ function ble-edit/prompt/update/.eval-prompt_command {
   # return 等と記述されていた時対策として関数内評価。
   local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  eval "$PROMPT_COMMAND"
+  builtin eval -- "$PROMPT_COMMAND"
 }
 ## 関数 ble-edit/prompt/update
 ##   _ble_edit_PS1 からプロンプトを構築します。
@@ -1320,10 +1320,10 @@ function ble-edit/adjust-IGNOREEOF {
   if [[ ${IGNOREEOF+set} ]]; then
     _ble_edit_IGNOREEOF=$IGNOREEOF
   else
-    unset -v _ble_edit_IGNOREEOF
+    builtin unset -v _ble_edit_IGNOREEOF
   fi
   if ((_ble_bash>=40000)); then
-    unset -v IGNOREEOF
+    builtin unset -v IGNOREEOF
   else
     IGNOREEOF=9999
   fi
@@ -1335,7 +1335,7 @@ function ble-edit/restore-IGNOREEOF {
   if [[ ${_ble_edit_IGNOREEOF+set} ]]; then
     IGNOREEOF=$_ble_edit_IGNOREEOF
   else
-    unset -v IGNOREEOF
+    builtin unset -v IGNOREEOF
   fi
 }
 ## 関数 ble-edit/eval-IGNOREEOF
@@ -1383,7 +1383,7 @@ function ble-edit/attach/.attach {
   if [[ ! ${_ble_edit_LINENO+set} ]]; then
     _ble_edit_LINENO="${BASH_LINENO[*]: -1}"
     ((_ble_edit_LINENO<0)) && _ble_edit_LINENO=0
-    unset -v LINENO; LINENO=$_ble_edit_LINENO
+    builtin unset -v LINENO; LINENO=$_ble_edit_LINENO
     _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
@@ -2132,7 +2132,7 @@ function ble/textarea#save-state {
   ble/array#push vars _ble_highlight_layer__list
   local layer names
   for layer in "${_ble_highlight_layer__list[@]}"; do
-    eval "ble/array#push vars \"\${!_ble_highlight_layer_$layer@}\""
+    builtin eval "ble/array#push vars \"\${!_ble_highlight_layer_$layer@}\""
   done
 
   # _ble_textarea_*
@@ -2144,13 +2144,13 @@ function ble/textarea#save-state {
   # user-defined local variables
   ble/array#push vars "${_ble_textarea_local_VARNAMES[@]}"
 
-  eval "${prefix}_VARNAMES=(\"\${vars[@]}\")"
+  builtin eval -- "${prefix}_VARNAMES=(\"\${vars[@]}\")"
   ble/util/save-vars "$prefix" "${vars[@]}"
 }
 function ble/textarea#restore-state {
   local prefix=$1
-  if eval "[[ \$prefix && \${${prefix}_VARNAMES+set} ]]"; then
-    eval "ble/util/restore-vars $prefix \"\${${prefix}_VARNAMES[@]}\""
+  if builtin eval "[[ \$prefix && \${${prefix}_VARNAMES+set} ]]"; then
+    builtin eval "ble/util/restore-vars $prefix \"\${${prefix}_VARNAMES[@]}\""
   else
     ble/util/print "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
@@ -2160,7 +2160,7 @@ function ble/textarea#clear-state {
   local prefix=$1
   if [[ $prefix ]]; then
     local vars=${prefix}_VARNAMES
-    eval "unset -v \"\${$vars[@]/#/$prefix}\" $vars"
+    builtin eval "builtin unset -v \"\${$vars[@]/#/$prefix}\" $vars"
   else
     ble/util/print "ble/textarea#restore-state: unknown prefix '$prefix'." >&2
     return 1
@@ -2786,7 +2786,7 @@ function ble/widget/batch-insert.progress {
   ((index%${1:-257}==0&&N>=2000)) || return
   local ble_batch_insert_index=$index
   local ble_batch_insert_count=$N
-  eval -- "$_ble_decode_show_progress_hook"
+  builtin eval -- "$_ble_decode_show_progress_hook"
 }
 function ble/widget/batch-insert {
   local -a chars; chars=("${KEYS[@]}")
@@ -2821,7 +2821,7 @@ function ble/widget/batch-insert {
     # NUL を unset してから一括で変換する
     local index0=$index ret ins
     for ((;index<N;index++)); do
-      ((chars[index])) || unset -v 'chars[index]'
+      ((chars[index])) || builtin unset -v 'chars[index]'
       ble/widget/batch-insert.progress 2357
     done
     ble/util/chars2s "${chars[@]:index0}"; ins=$ret
@@ -2876,7 +2876,7 @@ function ble/widget/bracketed-paste {
 function ble/widget/bracketed-paste.hook/check-end {
   local is_end= chars=
   if ((_ble_edit_bracketed_paste_count>=5)); then
-    IFS=: eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")'
+    IFS=: builtin eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")'
     chars=:$_ble_edit_bracketed_paste
     if [[ $chars == *:50:48:49:126 ]]; then
       if [[ $chars == *:27:91:50:48:49:126 ]]; then # ESC [ 2 0 1 ~
@@ -2902,7 +2902,7 @@ function ble/widget/bracketed-paste.hook/check-end {
 }
 function ble/widget/bracketed-paste.hook {
   ((_ble_edit_bracketed_paste_count%1000==0)) &&
-    IFS=: eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")' # contract
+    IFS=: builtin eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")' # contract
 
   _ble_edit_bracketed_paste[_ble_edit_bracketed_paste_count++]=$1
   (($1==126)) && ble/widget/bracketed-paste.hook/check-terminate && return
@@ -4032,10 +4032,10 @@ function ble-edit/exec/.adjust-eol {
 
 function ble-edit/exec/.reset-builtins-1 {
   # Note: 何故か local POSIXLY_CORRECT の効果が
-  #   unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
+  #   builtin unset -v POSIXLY_CORRECT しても残存するので関数に入れる。
   local POSIXLY_CORRECT=y
   local -a builtins1; builtins1=(builtin unset enable unalias)
-  local -a builtins2; builtins2=(return break continue declare typeset local eval)
+  local -a builtins2; builtins2=(return break continue declare local typeset readonly eval)
   local -a keywords1; keywords1=(if then elif else case esac while until for select do done '{' '}' '[[' function)
   builtin unset -f "${builtins1[@]}"
   builtin unset -f "${builtins2[@]}"
@@ -4045,14 +4045,18 @@ function ble-edit/exec/.reset-builtins-1 {
 function ble-edit/exec/.reset-builtins-2 {
   # Workaround (bash-3.0 - 4.3) #D0722
   #
-  #   unset -v POSIXLY_CORRECT でないと unset -f : できないが、
+  #   builtin unset -v POSIXLY_CORRECT でないと unset -f : できないが、
   #   bash-3.0 -- 4.3 のバグで、local POSIXLY_CORRECT の時、
-  #   unset -v POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
+  #   builtin unset -v POSIXLY_CORRECT しても POSIXLY_CORRECT が有効であると判断されるので、
   #   "unset -f :" (非POSIX関数名) は別関数で adjust-POSIXLY_CORRECT の後で実行することにする。
   #
   builtin unset -f :
   builtin unalias :
 }
+{
+  function unset { builtin unset "$@"; }
+  readonly -f unset
+} 2>/dev/null
 
 _ble_edit_exec_BASH_REMATCH=()
 _ble_edit_exec_BASH_REMATCH_rex=none
@@ -4108,7 +4112,7 @@ function ble-edit/exec/save-BASH_REMATCH {
       else
         ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
         rex=$rex')'
-        unset -v 'rparens[r]'
+        builtin unset -v 'rparens[r]'
       fi
     done
 
@@ -4129,7 +4133,7 @@ function ble-edit/exec/save-BASH_REMATCH {
     local end=${rparens[r]}
     ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
     rex=$rex')'
-    unset -v 'rparens[r]'
+    builtin unset -v 'rparens[r]'
   done
 
   ble-edit/exec/save-BASH_REMATCH/increase $((${#text}-i))
@@ -4371,21 +4375,21 @@ function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_BASH_COMMAND=$1
   ble-edit/restore-PS1
   ble-edit/restore-IGNOREEOF
-  unset -v HISTCMD; ble/history/get-count -v HISTCMD
+  builtin unset -v HISTCMD; ble/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$BASH_COMMAND" &>/dev/tty
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
-  builtin eval "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
+  builtin eval -- "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
   _ble_edit_exec_TRAPDEBUG_enabled=1
   return "$_ble_edit_exec_lastexit" # set $?
 } 31>&1 32>&2 &>/dev/null # set -x 対策 #D0930
 function ble-edit/exec:gexec/.save-last-arg {
   _ble_edit_exec_lastarg=$_ _ble_edit_exec_lastexit=$?
   _ble_edit_exec_TRAPDEBUG_enabled=
-  eval "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
+  builtin eval -- "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
   ble/base/adjust-bash-options
   return "$_ble_edit_exec_lastexit"
 }
@@ -4393,7 +4397,7 @@ function ble-edit/exec:gexec/.epilogue {
   _ble_edit_exec_lastexit=$? # lastexit
   _ble_edit_exec_TRAPDEBUG_enabled=
   _ble_edit_exec_inside_prologue=
-  eval "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
+  builtin eval -- "$_ble_base_adjust_FUNCNEST" # 他の関数呼び出しよりも先
   ble-edit/exec/.reset-builtins-1
   if ((_ble_edit_exec_lastexit==0)); then
     _ble_edit_exec_lastexit=$_ble_edit_exec_INT
@@ -5651,7 +5655,7 @@ function ble-edit/isearch/.push-isearch-array {
   # [... A | B] -> A と来た時 (A を _ble_edit_isearch_arr から削除) [... | A] になる。
   local ilast=$((${#_ble_edit_isearch_arr[@]}-1))
   if ((ilast>=0)) && [[ ${_ble_edit_isearch_arr[ilast]} == "$ind:"[-+]":$hash" ]]; then
-    unset -v "_ble_edit_isearch_arr[$ilast]"
+    builtin unset -v "_ble_edit_isearch_arr[$ilast]"
     return
   fi
 
@@ -5753,7 +5757,7 @@ function ble-edit/isearch/.next-history.fib {
   if [[ $fib_suspend ]]; then
     # resume the previous search
     local needle=${fib_suspend#*:} isAdd=
-    local index start; eval "${fib_suspend%%:*}"
+    local index start; builtin eval -- "${fib_suspend%%:*}"
     fib_suspend=
   else
     # initialize new search
@@ -5863,7 +5867,7 @@ function ble-edit/isearch/prev {
 
   local ilast=$((sz-1))
   local top=${_ble_edit_isearch_arr[ilast]}
-  unset -v '_ble_edit_isearch_arr[ilast]'
+  builtin unset -v '_ble_edit_isearch_arr[ilast]'
 
   local ind dir beg end
   ind=${top%%:*}; top=${top#*:}
@@ -6143,7 +6147,7 @@ function ble-edit/nsearch/.search.fib {
   local index start opt_resume=
   if [[ $fib_suspend ]]; then
     opt_resume=1
-    eval "$fib_suspend"
+    builtin eval -- "$fib_suspend"
     fib_suspend=
   else
     local index=$_ble_edit_nsearch_index
@@ -7067,7 +7071,7 @@ function ble/widget/command-help/.locate-in-man-bash {
   rex='\b$'; [[ $command =~ $rex ]] && rex_ext=$rex_ext'\b'
   rex='^\b'; [[ $command =~ $rex ]] && rex_ext="($rex_esc|\b)$rex_ext"
   local manpager="$pager -r +'/$rex_ext$cr$((iline-1))g'"
-  eval "$manpager" <<< "$man_content" # 1 fork
+  builtin eval -- "$manpager" <<< "$man_content" # 1 fork
 }
 ## 関数 ble/widget/command-help.core
 ##   @var[in] type
@@ -7085,7 +7089,7 @@ function ble/widget/command-help.core {
     local pager=ble/util/pager
     type -t source-highlight &>/dev/null &&
       pager='source-highlight -s sh -f esc | '$pager
-    LESS="$LESS -r" eval 'declare -f "$command" | '"$pager" && return
+    LESS="$LESS -r" builtin eval 'declare -f "$command" | '"$pager" && return
   fi
 
   if ble/is-function ble/bin/man; then
@@ -7124,8 +7128,8 @@ function ble/widget/command-help/.type/.resolve-alias {
 
     local alias_def
     ble/util/assign alias_def "alias $command"
-    unalias "$command"
-    eval "alias_def=${alias_def#*=}" # remove quote
+    builtin unalias "$command"
+    builtin eval "alias_def=${alias_def#*=}" # remove quote
     literal=${alias_def%%[$' \t\n']*} command= type=
     ble/syntax:bash/simple-word/is-simple "$literal" || break # Note: type=
     local ret; ble/syntax:bash/simple-word/eval "$literal"; command=$ret
@@ -7147,7 +7151,7 @@ function ble/widget/command-help/.type/.resolve-alias {
     # これらの時、直前の成功した command 名で非エイリアス名を探す。
     literal=$last_literal
     command=$last_command
-    unalias "$command" &>/dev/null
+    builtin unalias "$command" &>/dev/null
     ble/util/type type "$command"
   fi
 
@@ -7169,7 +7173,7 @@ function ble/widget/command-help/.type {
 
   # alias の時はサブシェルで解決
   if [[ $type == alias ]]; then
-    eval "$(ble/widget/command-help/.type/.resolve-alias "$literal" "$command")"
+    builtin eval -- "$(ble/widget/command-help/.type/.resolve-alias "$literal" "$command")"
   fi
 
   if [[ $type == keyword && $command != "$literal" ]]; then
@@ -7294,7 +7298,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
           (eof)
             # C-d
             ble-decode/.hook 4
-            builtin eval "$_ble_decode_bind_hook" ;;
+            builtin eval -- "$_ble_decode_bind_hook" ;;
           esac
         done
       fi
@@ -7419,7 +7423,7 @@ function ble-edit/bind/.check-detach {
       # ここで ble-detach/impl した時は調整は最低限でOK
       ble/base/restore-bash-options
       ble/base/restore-POSIXLY_CORRECT
-      builtin eval "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
+      builtin eval -- "$_ble_base_restore_FUNCNEST" # これ以降関数は呼び出せない
     else
       # Note: 既に ble-detach/impl されていた時 (reload 時) は
       #   epilogue によって detach 後の状態が壊されているので
@@ -7534,7 +7538,7 @@ function ble/widget/internal-command {
   [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
-  eval "$BASH_COMMAND"
+  builtin eval -- "$BASH_COMMAND"
 }
 function ble/widget/external-command {
   ble-edit/content/clear-arg
@@ -7550,7 +7554,7 @@ function ble/widget/external-command {
   ble/canvas/bflush.draw
   ble/term/leave
   ble/util/buffer.flush >&2
-  eval "$BASH_COMMAND"; local ext=$?
+  builtin eval -- "$BASH_COMMAND"; local ext=$?
   ble/term/enter
   return "$ext"
 }
@@ -7580,7 +7584,7 @@ function ble/widget/.EDIT_COMMAND {
   local READLINE_POINT=$_ble_edit_ind
   ble/widget/.hide-current-line
   ble/util/buffer.flush >&2
-  eval "$command" || return 1
+  builtin eval -- "$command" || return 1
   ble-edit/content/clear-arg
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
@@ -7624,9 +7628,9 @@ function ble-edit/bind/load-editing-mode {
   fi
 }
 function ble-edit/bind/clear-keymap-definition-loader {
-  unset -f ble-edit/bind/load-editing-mode:safe
-  unset -f ble-edit/bind/load-editing-mode:emacs
-  unset -f ble-edit/bind/load-editing-mode:vi
+  builtin unset -f ble-edit/bind/load-editing-mode:safe
+  builtin unset -f ble-edit/bind/load-editing-mode:emacs
+  builtin unset -f ble-edit/bind/load-editing-mode:vi
 }
 
 #------------------------------------------------------------------------------

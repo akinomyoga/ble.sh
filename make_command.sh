@@ -81,6 +81,10 @@ function ble/array#push {
   done
 }
 
+function sub:check/grc-source {
+  local -a options=(--color --exclude=./{test,memo,ext,wiki} --exclude=\*.{md,awk} --exclude=./make_command.sh)
+  grc "${options[@]}" "$@"
+}
 function sub:check/list-command {
   local -a options=(--color --exclude=./{test,memo,ext,wiki} --exclude=\*.{md,awk})
 
@@ -205,6 +209,14 @@ function sub:check/unset-variable {
   sub:check/list-command unset --exclude-this |
     grep -Ev "unset$esc[[:space:]]$esc-[vf]|$rex_grep_head[[:space:]]*#"
 }
+function sub:check/eval-literal {
+  echo "--- $FUNCNAME ---"
+  local esc='(\[[ -?]*[@-~])*'
+  sub:check/grc-source 'builtin eval "\$' |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zeval "(\$[[:alnum:]_]+)+(\[[^]["'\''\$`]+\])?\+?=Zd
+      g'
+}
 
 function sub:check {
   if ! type grc >/dev/null; then
@@ -219,25 +231,65 @@ function sub:check {
 
   #sub:check/builtin 'history'
   sub:check/builtin 'echo' --exclude=./keymap/vi_test.sh --exclude=./ble.pp |
-    sed -E 'h;s/'"$esc"'//g;\Z\bstty[[:space:]]+echoZd;g'
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z\bstty[[:space:]]+echoZd
+      \Zecho \$PPIDZd
+      g'
   #sub:check/builtin '(compopt|type|printf)'
-  sub:check/builtin 'bind'
-  sub:check/builtin 'read'
+  sub:check/builtin 'bind' |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zinvalid bind typeZd
+      \Zline = "bind"Zd
+      g'
+  sub:check/builtin 'read' |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \ZDo not read Zd
+      \Zfailed to read Zd
+      g'
   sub:check/builtin 'exit' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zble.pp.*return 1 2>/dev/null || exit 1Zd
       \Z^[-[:space:][:alnum:]_./:=$#*]+('\''[^'\'']*|"[^"()`]*|([[:space:]]|^)#.*)\bexit\bZd
       \Z\(exit\) ;;Zd
       \Zprint NR; exit;Zd;g'
+  sub:check/builtin 'eval' |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Z\('\''eval'\''\)Zd
+      \Zbuiltins2=\(.* eval\)Zd
+      \Z\^eval --Zd
+      \Zt = "eval -- \$"Zd
+      \Zprint "eval -- \$'\''Zd
+      \Zcmd '\''eval -- %q'\''Zd
+      g'
+  sub:check/builtin 'unset' |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zunset _ble_init_(version|arg|exit)\bZd
+      \Zreadonly -f unsetZd
+      g'
+  sub:check/builtin 'unalias' |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zbuiltins1=\(.* unalias\)Zd
+      g'
+
   #sub:check/assign
-  sub:check/builtin trap
+  sub:check/builtin trap |
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zble/util/print "trap -- '\''\$\{h//\$Q/\$q}'\'' \$nZd
+      \Zline = "bind"Zd
+      g'
 
   sub:check/a.txt
   sub:check/bash300bug
   sub:check/bash301bug-array-element-length
   sub:check/array-count-in-arithmetic-expression
   sub:check/unset-variable |
-    grep -Ev "unset$esc ${esc}_ble_init_|\bbuiltins1\b"
+    sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
+      \Zunset _ble_init_(version|arg|exit)\bZd
+      \Zbuiltins1=\(.* unset .*\)Zd
+      \Zfunction unsetZd
+      \Zreadonly -f unsetZd
+      g'
+  sub:check/eval-literal
 
   sub:check/memo-numbering
 }

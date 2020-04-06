@@ -91,7 +91,7 @@ function ble/keymap:vi/string#encode-rot13 {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret="${buff[*]-}"'
+  IFS= builtin eval 'ret="${buff[*]-}"'
 }
 
 #------------------------------------------------------------------------------
@@ -172,7 +172,7 @@ ble/array#push _ble_textarea_local_VARNAMES \
 
 function ble/keymap:vi/imap-repeat/pop {
   local top_index=$((${#_ble_keymap_vi_irepeat[*]}-1))
-  ((top_index>=0)) && unset -v '_ble_keymap_vi_irepeat[top_index]'
+  ((top_index>=0)) && builtin unset -v '_ble_keymap_vi_irepeat[top_index]'
 }
 function ble/keymap:vi/imap-repeat/push {
   ble/array#push _ble_keymap_vi_irepeat "${KEYS[*]-}:$WIDGET"
@@ -408,7 +408,7 @@ function ble/widget/vi_imap/normal-mode.impl {
   # finalize insert mode
   ble/keymap:vi/mark/set-local-mark 94 "$_ble_edit_ind" # `^
   ble/keymap:vi/mark/end-edit-area
-  [[ :$opts: == *:InsertLeave:* ]] && eval "$_ble_keymap_vi_insert_leave"
+  [[ :$opts: == *:InsertLeave:* ]] && builtin eval -- "$_ble_keymap_vi_insert_leave"
 
   # setup normal mode
   _ble_edit_mark_active=
@@ -1311,7 +1311,7 @@ function ble/keymap:vi/operator:d {
     done
 
     # yank
-    IFS=$'\n' eval 'local yank_content="${atext[*]-}"'
+    IFS=$'\n' builtin eval 'local yank_content="${atext[*]-}"'
     local yank_type=B:"${afill[*]-}"
     ble/keymap:vi/register#set-edit "$reg" "$yank_type" "$yank_content" || return 1
 
@@ -1400,7 +1400,7 @@ function ble/keymap:vi/operator:y {
       ble/array#push atext "$stext"
     done
 
-    IFS=$'\n' eval 'local yank_content="${atext[*]-}"'
+    IFS=$'\n' builtin eval 'local yank_content="${atext[*]-}"'
     yank_type=B:"${afill[*]-}"
   else
     yank_type=
@@ -1507,7 +1507,7 @@ function ble/keymap:vi/string#increase-indent {
     ble/array#push arr2 "$indent$line"
   done
 
-  IFS=$'\n' eval 'ret="${arr2[*]-}"'
+  IFS=$'\n' builtin eval 'ret="${arr2[*]-}"'
 }
 ## 関数 ble/keymap:vi/operator:indent.impl/increase-block-indent width
 ##   @param[in] width
@@ -1882,7 +1882,7 @@ function ble/keymap:vi/operator:filter/.hook {
 
   local old=${_ble_edit_str:beg:end-beg} new
   old=${old%$'\n'}
-  if ! ble/util/assign new 'eval "$command" <<< "$old" 2>/dev/null'; then
+  if ! ble/util/assign new 'builtin eval -- "$command" <<< "$old" 2>/dev/null'; then
     ble/widget/vi-command/bell
     return 1
   fi
@@ -2206,7 +2206,7 @@ function ble/keymap:vi/async-read-char.hook {
     ble-decode/keymap/push vi_digraph
     _ble_keymap_vi_digraph__hook="$command"
   else
-    eval "$command $key"
+    builtin eval -- "$command $key"
   fi
 }
 
@@ -5596,7 +5596,7 @@ function ble/widget/vi-command/cancel {
     local joblist; ble/util/joblist
     if ((${#joblist[*]})); then
       ble/array#push joblist $'Type  \e[35m:q!\e[m  and press \e[35m<Enter>\e[m to abandon all \e[31mjobs\e[m and exit Bash'
-      IFS=$'\n' eval 'ble-edit/info/show ansi "${joblist[*]}"'
+      IFS=$'\n' builtin eval 'ble-edit/info/show ansi "${joblist[*]}"'
     else
       ble-edit/info/show ansi $'Type  \e[35m:q\e[m  and press \e[35m<Enter>\e[m to exit Bash'
     fi
@@ -7945,7 +7945,7 @@ function ble/widget/vi_cmap/cancel {
 
 function ble/widget/vi_cmap/__before_widget__ {
   if [[ $_ble_keymap_vi_cmap_before_command ]]; then
-    eval "$_ble_keymap_vi_cmap_before_command"
+    builtin eval -- "$_ble_keymap_vi_cmap_before_command"
   fi
 }
 

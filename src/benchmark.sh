@@ -1,7 +1,7 @@
 #!/bin/bash
 
 function ble-measure/.loop {
-  eval "function _target { $2; }"
+  builtin eval "function _target { $2; }"
   local _i _n=$1
   for ((_i=0;_i<_n;_i++)); do
     _target
@@ -34,7 +34,7 @@ if [[ $ZSH_VERSION ]]; then
         usec=utot/n))
       return 0
     else
-      echo "ble-measure: failed to read the result of \`time': $result." >&2
+      builtin echo "ble-measure: failed to read the result of \`time': $result." >&2
       utot=0 usec=0
       return 1
     fi

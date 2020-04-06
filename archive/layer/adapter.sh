@@ -230,7 +230,7 @@ function ble/syntax-highlight+default {
           # alias を \ で無効化している場合
           # → unalias して再度 check (2fork)
           type=$(
-            unalias "$cmd"
+            builtin unalias "$cmd"
             ble/util/type type "$cmd"
             ble/syntax-highlight+default/type "$type" "$cmd" # -> type
             ble/util/put "$type")
