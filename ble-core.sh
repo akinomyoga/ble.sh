@@ -1309,7 +1309,7 @@ function bleopt {
 
       case "$type" in
       (a*)
-        [[ ${!var} == "$value" ]] && continue
+        [[ ${!var+set} && ${!var} == "$value" ]] && continue
         if ble/util/isfunction bleopt/check:"${var#bleopt_}"; then
           if ! bleopt/check:"${var#bleopt_}"; then
             error_flag=1
