@@ -204,22 +204,22 @@ else
 fi
 
 function ble/util/save-vars {
-  local name prefix=$1; shift
-  for name; do
-    if ble/is-array "$name"; then
-      builtin eval "$prefix$name=(\"\${$name[@]}\")"
+  local __name __prefix=$1; shift
+  for __name; do
+    if ble/is-array "$__name"; then
+      builtin eval "$__prefix$__name=(\"\${$__name[@]}\")"
     else
-      builtin eval "$prefix$name=\"\$$name\""
+      builtin eval "$__prefix$__name=\"\$$__name\""
     fi
   done
 }
 function ble/util/restore-vars {
-  local name prefix=$1; shift
-  for name; do
-    if ble/is-array "$prefix$name"; then
-      builtin eval "$name=(\"\${$prefix$name[@]}\")"
+  local __name __prefix=$1; shift
+  for __name; do
+    if ble/is-array "$__prefix$__name"; then
+      builtin eval "$__name=(\"\${$__prefix$__name[@]}\")"
     else
-      builtin eval "$name=\"\$$prefix$name\""
+      builtin eval "$__name=\"\$$__prefix$__name\""
     fi
   done
 }

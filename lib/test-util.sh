@@ -58,6 +58,110 @@ ble/test ble/util/setexit 9   exit=9
 ble/test ble/util/setexit 128 exit=128
 ble/test ble/util/setexit 255 exit=255
 
+# ble/unlocal
+
+(
+  a=1
+  function f1 {
+    echo g:$a
+    local a=2
+    echo l:$a
+    ble/util/unlocal a
+    echo g:$a
+    a=3
+  }
+  ble/test 'f1; echo g:$a' \
+           stdout=g:1 \
+           stdout=l:2 \
+           stdout=g:1 \
+           stdout=g:3
+
+  function f2 {
+    echo f1:$a@f2
+    local a=3
+    echo f2:$a@f2
+    ble/util/unlocal a
+    echo f1:$a@f2
+    a=$a+
+  }
+  function f1 {
+    echo g:$a@f1
+    local a=2
+    echo f1:$a@f1
+    f2
+    echo f1:$a@f1
+    ble/util/unlocal a
+    echo g:$a@f1
+    a=$a+
+  }
+  ble/test 'a=1; f1; echo g:$a@g' \
+           stdout=g:1@f1 \
+           stdout=f1:2@f1 \
+           stdout=f1:2@f2 \
+           stdout=f2:3@f2 \
+           stdout=f1:2@f2 \
+           stdout=f1:2+@f1 \
+           stdout=g:1@f1 \
+           stdout=g:1+@g
+)
+
+# ble/util/upvar, ble/util/uparr
+
+(
+  function f1 {
+    local a=1 b=2
+    local result=$((a+b))
+    local "$1" && ble/util/upvar "$1" "$result"
+  }
+  ble/test 'f1 x; ret=$x' ret=3
+  ble/test 'f1 a; ret=$a' ret=3
+  ble/test 'f1 result; ret=$result' ret=3
+
+  function f2 {
+    local a=1
+    local -a b=(2)
+    local -a result=($((a+b[0])) y z)
+    local "$1" && ble/util/uparr "$1" "${result[@]}"
+  }
+  ble/test 'f2 x; ret="(${x[*]})"' ret='(3 y z)'
+  ble/test 'f2 a; ret="(${a[*]})"' ret='(3 y z)'
+  ble/test 'f2 b; ret="(${b[*]})"' ret='(3 y z)'
+  ble/test 'f2 result; ret="(${result[*]})"' ret='(3 y z)'
+)
+
+# ble/util/save-vars, restore-vars
+
+(
+  VARNAMES=(name x y count data)
+
+  function print-status {
+    echo "name=$name x=$x y=$y count=$count data=(${data[*]})"
+  }
+
+  function f1 {
+    local "${VARNAMES[@]}"
+
+    name=1 x=2 y=3 count=4 data=(aa bb cc dd)
+    print-status
+    ble/util/save-vars save1_ "${VARNAMES[@]}"
+
+    name=one x= y=A count=1 data=(Q)
+    print-status
+    ble/util/save-vars save2_ "${VARNAMES[@]}"
+
+    ble/util/restore-vars save1_ "${VARNAMES[@]}"
+    print-status
+
+    ble/util/restore-vars save2_ "${VARNAMES[@]}"
+    print-status
+  }
+  ble/test f1 \
+           stdout='name=1 x=2 y=3 count=4 data=(aa bb cc dd)' \
+           stdout='name=one x= y=A count=1 data=(Q)' \
+           stdout='name=1 x=2 y=3 count=4 data=(aa bb cc dd)' \
+           stdout='name=one x= y=A count=1 data=(Q)'
+)
+
 #------------------------------------------------------------------------------
 
 ## 関数 ble/test/check-ret

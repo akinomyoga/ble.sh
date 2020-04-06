@@ -47,7 +47,8 @@
 - global: work around `TMOUT` for `builtin read` `#D1306` 1c22a9d
 - syntax: fix failglob errors of heredocs of the form `<<$(echo A)` `#D1308` 3212fd2
 - decode (`ble-bind`): fix an error message `#D1311` c868b6d
-- util (`bleopt`): fix a bug that a new setting is not defined with `name:=` `#D1312` c757b92
+- util (`bleopt`): fix a bug that a new setting is not defined with `name:=` (test-util) `#D1312` c757b92
+- util (`ble/util/{save,restore}-vars`): fix a bug that `name` and `prefix` cannot be saved/restored (test-util) 0000000
 
 ## Changes
 
@@ -63,7 +64,7 @@
 - edit (quoted-insert): insert literal key sequence `#D1291` 420c933
 - decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` ad98416
 - edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
-- util (`bleopt`): fail when a specified bleopt variable does not exist (test-util)
+- util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 0000000
 
 ## Compatibility
 
