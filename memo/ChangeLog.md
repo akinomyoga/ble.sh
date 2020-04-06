@@ -46,6 +46,7 @@
 - global: work around `shopt -s assoc_expand_once` `#D1305` 31908e1
 - global: work around `TMOUT` for `builtin read` `#D1306` 1c22a9d
 - syntax: fix failglob errors of heredocs of the form `<<$(echo A)` `#D1308` 3212fd2
+- decode (`ble-bind`): fix an error message `#D1311` 0000000
 
 ## Changes
 

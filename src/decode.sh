@@ -2871,7 +2871,7 @@ function ble-bind {
             ble/util/print "ble-bind: the option \`-m' requires an argument." >&2
             return 2
           elif ! ble-decode/keymap/is-keymap "$1"; then
-            ble/util/print "ble-bind: the keymap '$kmap' is unknown." >&2
+            ble/util/print "ble-bind: the keymap '$1' is unknown." >&2
             return 1
           fi
           kmap=$1
