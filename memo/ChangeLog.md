@@ -63,6 +63,7 @@
 - edit (quoted-insert): insert literal key sequence `#D1291` 420c933
 - decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` ad98416
 - edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
+- util (`bleopt`): fail when a specified bleopt variable does not exist (test-util)
 
 ## Compatibility
 

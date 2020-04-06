@@ -9,7 +9,7 @@ ble/util/import "$_ble_base/lib/core-test.sh"
   ble/test 'bleopt a=1' \
            exit=1
   ble/test 'bleopt a' \
-           stdout=
+           stdout= exit=1
   ble/test 'bleopt a:=2'
   ble/test 'bleopt a' \
            stdout="bleopt a='2'"

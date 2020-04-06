@@ -23,7 +23,11 @@ function ble/test/.read-arguments {
     local arg=$1; shift
     case $arg in
     (stdout=*)
-      qstdout=1 _stdout=${arg#*=} ;;
+      if [[ ! $qstdout ]]; then
+        qstdout=1 _stdout=${arg#*=}
+      else
+        _stdout=$_stdout$'\n'${arg#*=}
+      fi ;;
     (ret=*)
       qret=1 _ret=${arg#*=} ;;
     (exit=*)
