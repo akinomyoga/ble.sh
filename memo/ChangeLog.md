@@ -37,8 +37,8 @@
 - decode: use `BRE` instead of `ERE` for `POSIX sed` (reported by dylankb) `#D1283` 2184739
 - decode: fix strange behaviors after `fzf` (convert <kbd>DEL</kbd> to <kbd>C-?</kbd>) `#D1281` 744c8e8
 - edit: work around Bash rebinding on `TERM` change `#D1287` ac7ab55 7a99bf3
-- term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef
-- complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3
+- term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef 
+- complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3 `#D1315` 0000000
 - vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292` da6cc47
 - complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 2f9a000
 - complete: fix a bug that menu-filter is only partially turned off by `complete_menu_filter` `#D1298` b3654e2

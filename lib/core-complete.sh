@@ -537,7 +537,7 @@ function ble/complete/menu#show {
   ble-edit/info/immediate-show "${_ble_complete_menu_info_data[@]}"
 }
 function ble/complete/menu#clear {
-  ble-edit/info/immediate-clear
+  ble-edit/info/clear
 }
 
 
