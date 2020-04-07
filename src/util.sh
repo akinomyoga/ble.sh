@@ -890,17 +890,19 @@ function ble/util/strlen {
 }
 
 function ble/path#remove {
+  [[ $2 ]] || return
   local _ble_local_script='
-    opts=:$opts:
-    opts=${opts//:"$2":/:}
-    opts=${opts#:} opts=${opts%:}'
+    opts=:${opts//:/::}:
+    opts=${opts//:"$2":}
+    opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
   builtin eval -- "${_ble_local_script//opts/$1}"
 }
 function ble/path#remove-glob {
+  [[ $2 ]] || return
   local _ble_local_script='
-    opts=:$opts:
-    opts=${opts//:$2:/:}
-    opts=${opts#:} opts=${opts%:}'
+    opts=:${opts//:/::}:
+    opts=${opts//:$2:}
+    opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
   builtin eval -- "${_ble_local_script//opts/$1}"
 }
 
