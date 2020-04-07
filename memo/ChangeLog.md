@@ -48,9 +48,10 @@
 - syntax: fix failglob errors of heredocs of the form `<<$(echo A)` `#D1308` 3212fd2
 - decode (`ble-bind`): fix an error message `#D1311` c868b6d
 - util (`bleopt`): fix a bug that a new setting is not defined with `name:=` (test-util) `#D1312` c757b92
-- util (`ble/util/{save,restore}-vars`): fix a bug that `name` and `prefix` cannot be saved/restored (test-util) 0000000
-- util: fix `ble/is-{inttype,readonly,transformed}` (test-util) 0000000
-- util (`ble/path#remove{,-glob}`): fix corner cases (test-util) 0000000
+- util (`ble/util/{save,restore}-vars`): fix a bug that `name` and `prefix` cannot be saved/restored (test-util) 5f2480c
+- util: fix `ble/is-{inttype,readonly,transformed}` (test-util) 485e1ac
+- util (`ble/path#remove{,-glob}`): fix corner cases (test-util) ccbc9f8
+- history: fix a problem that the history is doubled by `history -a` in `bashrc` `#D1314` 0000000
 
 ## Changes
 
@@ -66,7 +67,7 @@
 - edit (quoted-insert): insert literal key sequence `#D1291` 420c933
 - decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` ad98416
 - edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
-- util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 0000000
+- util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 5966f22
 
 ## Compatibility
 
@@ -100,7 +101,7 @@
 - ext: update `mwg_pp.awk` (for branch osh) 978ea32
 - test: add `lib/core-test.sh` `#D1309` 68f8077
 - global: do not use `local -i` `#D1310` f9f0f9b
-- global: normalize calls of builtins `#D1313` 0000000
+- global: normalize calls of builtins `#D1313` b3b06f7
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

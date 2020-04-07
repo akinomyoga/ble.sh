@@ -736,20 +736,30 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   fi
 fi
 
+## 関数 ble/builtin/history/.initialize opts
+##   @param[in] opts
+##     skip0 ... 履歴が一件も読み込まれていない時はスキップします。
 function ble/builtin/history/.initialize {
   [[ $_ble_builtin_history_initialized ]] && return
+  local line; ble/util/assign line 'builtin history 1'
+  [[ ! $line && :$1: == *:skip0:* ]] && return 1
   _ble_builtin_history_initialized=1
 
   local histnew=$_ble_base_run/$$.history.new
   : >| "$histnew"
 
-  # Note: #D1126 ble.sh ロード前に追加された履歴項目があれば保存する。
-  local histini=$_ble_base_run/$$.history.ini
-  local histapp=$_ble_base_run/$$.history.app
-  builtin history -a "$histini"
-  if [[ -s $histini ]]; then
-    ble/bin/sed 's/^/ 0 __ble_edit__/' "$histini" >> "$histapp"
-    : >| "$histini"
+  if [[ $line ]]; then
+    # Note: #D1126 ble.sh ロード前に追加された履歴項目があれば保存する。
+    local histini=$_ble_base_run/$$.history.ini
+    local histapp=$_ble_base_run/$$.history.app
+    builtin history -a "$histini"
+    if [[ -s $histini ]]; then
+      ble/bin/sed 's/^/ 0 __ble_ext__/' "$histini" >> "$histapp"
+      : >| "$histini"
+    fi
+  else
+    # 履歴が読み込まれていなければ強制的に読み込む
+    ble/builtin/history/option:r
   fi
 
   local histfile=${HISTFILE:-$HOME/.bash_history}
@@ -761,6 +771,7 @@ function ble/builtin/history/.initialize {
   _ble_builtin_history_wskip=$max
   _ble_builtin_history_prevmax=$max
   ble/builtin/history/.set-rskip "$histfile" "$rskip"
+  return 0
 }
 ## 関数 ble/builtin/history/.check-uncontrolled-change
 ##   ble/builtin/history の管理外で履歴が読み込まれた時、
@@ -951,7 +962,7 @@ function ble/builtin/history/insert.hook {
 }
 ## 関数 ble/builtin/history/option:c
 function ble/builtin/history/option:c {
-  ble/builtin/history/.initialize
+  ble/builtin/history/.initialize skip0 || return
   builtin history -c
   _ble_builtin_history_wskip=0
   _ble_builtin_history_prevmax=0
@@ -971,7 +982,7 @@ function ble/builtin/history/option:c {
 }
 ## 関数 ble/builtin/history/option:d index
 function ble/builtin/history/option:d {
-  ble/builtin/history/.initialize
+  ble/builtin/history/.initialize skip0 || return
   local rex='^(-?[0-9]+)-(-?[0-9]+)$'
   if [[ $1 =~ $rex ]]; then
     local beg=${BASH_REMATCH[1]} end=${BASH_REMATCH[2]}
@@ -1023,9 +1034,9 @@ function ble/builtin/history/option:d {
 }
 ## 関数 ble/builtin/history/option:a [filename]
 function ble/builtin/history/option:a {
+  ble/builtin/history/.initialize skip0 || return
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local filename=${1:-$histfile}
-  ble/builtin/history/.initialize
   ble/builtin/history/.check-uncontrolled-change
   local rskip; ble/builtin/history/.get-rskip "$filename"
   ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append:fetch
@@ -1050,9 +1061,9 @@ function ble/builtin/history/option:n {
 }
 ## 関数 ble/builtin/history/option:w [filename]
 function ble/builtin/history/option:w {
+  ble/builtin/history/.initialize skip0 || return
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local filename=${1:-$histfile}
-  ble/builtin/history/.initialize
   local rskip; ble/builtin/history/.get-rskip "$filename"
   [[ -r $filename ]] && ble/builtin/history/.read "$filename" "$rskip" fetch
   ble/builtin/history/.write "$filename" 0
@@ -1107,6 +1118,7 @@ function ble/builtin/history/option:p {
 }
 ## 関数 ble/builtin/history/option:s
 function ble/builtin/history/option:s {
+  ble/builtin/history/.initialize
   if [[ $_ble_decode_bind_state == none ]]; then
     builtin history -s -- "$@"
     return
@@ -1121,7 +1133,6 @@ function ble/builtin/history/option:s {
     done
   fi
 
-  ble/builtin/history/.initialize
   local histfile=
   if [[ $_ble_history_load_done ]]; then
     if [[ $HISTCONTROL ]]; then
