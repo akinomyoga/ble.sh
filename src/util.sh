@@ -1317,7 +1317,7 @@ else
   }
 fi
 ## 関数 ble/util/assign-array arr command args...
-##   mapfile -t arr <(command ...) の高速な代替です。
+##   mapfile -t arr < <(command ...) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
 ##
 ##   @param[in] arr
@@ -1485,7 +1485,7 @@ function ble/function#push {
 
   if [[ $proc ]]; then
     local q=\' Q="'\''"
-    builtin eval "function $name { builtin eval '${proc//$q/$Q}'; }"
+    builtin eval "function $name { builtin eval -- '${proc//$q/$Q}'; }"
   fi
   return 0
 }
@@ -1513,7 +1513,7 @@ function ble/function#pop {
 function ble/function#push/call-top {
   local func=${FUNCNAME[1]}
   if ! ble/is-function "$func"; then
-    ble/util/print "ble/function#push/do-top: This function should be called from a function" >&2
+    ble/util/print "ble/function#push/call-top: This function should be called from a function" >&2
     return 1
   fi
   local index=0
@@ -1579,18 +1579,29 @@ else
 fi
 
 # Note: BASHPID は Bash-4.0 以上
+
 if ((_ble_bash>=40000)); then
+  function ble/util/getpid { :; }
   function ble/util/is-running-in-subshell { [[ $$ != $BASHPID ]]; }
 else
+  ## 関数 ble/util/getpid
+  ##   @var[out] BASHPID
+  function ble/util/getpid {
+    local command='echo $PPID'
+    ble/util/assign BASHPID 'ble/bin/sh -c "$command"'
+  }
   function ble/util/is-running-in-subshell {
     ((BASH_SUBSHELL)) && return 0
-    local bashpid= command='echo $PPID'
-    ble/util/assign bashpid 'ble/bin/sh -c "$command"'
-    [[ $$ != $bashpid ]]
+    local BASHPID; ble/util/getpid
+    [[ $$ != $BASHPID ]]
   }
 fi
 
-## 関数 ble/util/openat fdvar redirect
+## 関数 ble/fd#is-open fd
+##   指定したファイルディスクリプタが開いているかどうか判定します。
+function ble/fd#is-open { : >&"$1"; } 2>/dev/null
+
+## 関数 ble/fd#alloc fdvar redirect
 ##   "exec {fdvar}>foo" に該当する操作を実行します。
 ##   @param[out] fdvar
 ##     指定した変数に使用されたファイルディスクリプタを代入します。
@@ -1598,27 +1609,28 @@ fi
 ##     リダイレクトを指定します。
 _ble_util_openat_fdlist=()
 if ((_ble_bash>=40100)); then
-  function ble/util/openat {
+  function ble/fd#alloc {
     builtin eval "exec {$1}$2"; local _ble_local_ret=$?
     ble/array#push _ble_util_openat_fdlist "${!1}"
     return "$_ble_local_ret"
   }
 else
   _ble_util_openat_nextfd=$bleopt_openat_base
-  function ble/util/openat/.nextfd {
-    if ((30100<=_ble_bash&&_ble_bash<30200)); then
-      # Bash 3.1 では exec fd>&- で明示的に閉じても駄目。
-      # 開いた後に読み取りプロセスで読み取りに失敗する。
-      # なので開いていない fd を /dev か /proc で調べる。#D0992
-      while [[ -e /dev/fd/$_ble_util_openat_nextfd || -e /proc/self/fd/$_ble_util_openat_nextfd ]]; do
-        ((_ble_util_openat_nextfd++))
-      done
-    fi
+  function ble/fd#alloc/.nextfd {
+    # Note: Bash 3.1 では exec fd>&- で明示的に閉じても駄目。
+    #   開いた後に読み取りプロセスで読み取りに失敗する。
+    #   なので開いていない fd を探す必要がある。#D0992
+    # Note: 指定された fd が開いているかどうかを
+    #   可搬に高速に判定する方法を見つけたので
+    #   常に開いていない fd を探索する。#D131
+    while ble/fd#is-open "$_ble_util_openat_nextfd"; do
+      ((_ble_util_openat_nextfd++))
+    done
     (($1=_ble_util_openat_nextfd++))
   }
-  function ble/util/openat {
+  function ble/fd#alloc {
     local _fdvar=$1 _redirect=$2
-    ble/util/openat/.nextfd "$1"
+    ble/fd#alloc/.nextfd "$1"
     # Note: Bash 3.2/3.1 のバグを避けるため、
     #   >&- を用いて一旦明示的に閉じる必要がある #D0857
     builtin eval "exec ${!1}>&- ${!1}$2"; local _ble_local_ret=$?
@@ -1626,12 +1638,21 @@ else
     return "$_ble_local_ret"
   }
 fi
-function ble/util/openat/finalize {
+function ble/fd#finalize {
   local fd
   for fd in "${_ble_util_openat_fdlist[@]}"; do
     builtin eval "exec $fd>&-"
   done
   _ble_util_openat_fdlist=()
+}
+## 関数 ble/fd#close fd
+##   指定した fd を閉じます。
+function ble/fd#close {
+  set -- $(($1))
+  (($1>=3)) || return 1
+  builtin eval "exec $1>&-"
+  ble/array#remove _ble_util_openat_fdlist "$1"
+  return 0
 }
 
 function ble/util/print-quoted-command {
@@ -1928,7 +1949,7 @@ elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
       [[ -e $_ble_util_msleep_tmp ]] && ble/bin/rm -rf "$_ble_util_msleep_tmp"
       ble/bin/mkfifo "$_ble_util_msleep_tmp"
     fi
-    ble/util/openat _ble_util_msleep_fd "<> $_ble_util_msleep_tmp"
+    ble/fd#alloc _ble_util_msleep_fd "<> $_ble_util_msleep_tmp"
 
     function ble/util/msleep {
       local v=$((1000*$1-_ble_util_msleep_delay))
@@ -4098,7 +4119,7 @@ function ble/encoding:UTF-8/c2b {
           code<0x200000?3:(
             code<0x4000000?4:5))))))
   if ((n==0)); then
-    bytes=(code)
+    bytes=("$code")
   else
     bytes=()
     for ((i=n;i;i--)); do

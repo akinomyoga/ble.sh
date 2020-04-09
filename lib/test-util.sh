@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 435
+ble/test/start-section 'util' 616
 
 # bleopt
 
@@ -697,7 +697,7 @@ ble/test ble/util/setexit 255 exit=255
            ret='a\=b\:c\:d'
 )
 
-# ble/string#quote-command
+# ble/string#quote-command, ble/util/print-quoted-command
 (
   ble/test 'ble/string#quote-command' ret=
   ble/test 'ble/string#quote-command echo' ret='echo'
@@ -706,6 +706,14 @@ ble/test ble/util/setexit 255 exit=255
   ble/test 'ble/string#quote-command echo "'\''test'\''"' ret="echo ''\''test'\'''"
   ble/test 'ble/string#quote-command echo "" "" ""' ret="echo '' '' ''"
   ble/test 'ble/string#quote-command echo a{1..4}' ret="echo 'a1' 'a2' 'a3' 'a4'"
+
+  ble/test 'ble/util/print-quoted-command' stdout=
+  ble/test 'ble/util/print-quoted-command echo' stdout='echo'
+  ble/test 'ble/util/print-quoted-command echo hello world' stdout="echo 'hello' 'world'"
+  ble/test 'ble/util/print-quoted-command echo "hello world"' stdout="echo 'hello world'"
+  ble/test 'ble/util/print-quoted-command echo "'\''test'\''"' stdout="echo ''\''test'\'''"
+  ble/test 'ble/util/print-quoted-command echo "" "" ""' stdout="echo '' '' ''"
+  ble/test 'ble/util/print-quoted-command echo a{1..4}' stdout="echo 'a1' 'a2' 'a3' 'a4'"
 )
 
 # ble/string#create-unicode-progress-bar
@@ -794,5 +802,399 @@ ble/test ble/util/setexit 255 exit=255
   ble/test code:'ret=stdX:usrZ:stdY; ble/path#remove-glob ret "std[a-zX-Z]"' ret=usrZ
   ble/test code:'ret=usrZ:stdX:stdY; ble/path#remove-glob ret "std[a-zX-Z]"' ret=usrZ
 )
+
+
+# blehook
+(
+  # declare hook
+  blehook/declare FOO
+  ble/test 'blehook FOO' stdout='blehook FOO='
+  ble/test 'blehook/has-hook FOO' exit=1
+
+  # add/remove hook
+  blehook FOO+='echo hello'
+  ble/test 'blehook FOO' \
+           stdout="blehook FOO+='echo hello'"
+  ble/test 'blehook/has-hook FOO'
+  blehook FOO+='echo world'
+  ble/test 'blehook FOO' \
+           stdout="blehook FOO+='echo hello'" \
+           stdout="blehook FOO+='echo world'"
+  ble/test 'blehook/has-hook FOO'
+  blehook FOO-='echo hello'
+  ble/test 'blehook FOO' \
+           stdout="blehook FOO+='echo world'"
+  ble/test 'blehook/has-hook FOO'
+  blehook FOO-='echo world'
+  ble/test 'blehook FOO' \
+           stdout='blehook FOO='
+  ble/test 'blehook/has-hook FOO' exit=1
+
+  # reset hook
+  blehook FOO+='echo hello'
+  blehook FOO+='echo world'
+  blehook FOO='echo empty'
+  ble/test 'blehook FOO' \
+           stdout="blehook FOO+='echo empty'"
+  ble/test 'blehook/has-hook FOO'
+
+  # clear hook
+  blehook FOO+='echo hello'
+  blehook FOO+='echo world'
+  blehook FOO=
+  ble/test 'blehook FOO' \
+           stdout='blehook FOO='
+  ble/test 'blehook/has-hook FOO' exit=1
+
+  # invoke hook
+  blehook FOO+='echo hello'
+  blehook FOO+='echo empty'
+  blehook FOO+='echo world'
+  ble/test 'blehook/invoke FOO' \
+           stdout=hello \
+           stdout=empty \
+           stdout=world
+  blehook FOO='echo A$?'
+  blehook FOO+='echo B$?'
+  blehook FOO+='echo C$?'
+  ble/test 'ble/util/setexit 123; blehook/invoke FOO' \
+           stdout=A123 \
+           stdout=B123 \
+           stdout=C123
+
+  # eval-after-load
+  blehook/declare bar_load
+  blehook bar_load='echo bar_load'
+  ble/test 'blehook/eval-after-load bar "echo yes"' stdout=
+  ble/test 'blehook/invoke bar_load' \
+           stdout=bar_load \
+           stdout=yes
+  ble/test 'blehook/eval-after-load bar "echo next"' stdout=next
+)
+
+# ble/builtin/trap
+(
+  # 0 / EXIT (special trap)
+  ble/builtin/trap 'echo TRAPEXIT' 0
+  ble/test 'ble/builtin/trap/invoke 0' stdout=TRAPEXIT
+  ble/test 'ble/builtin/trap/invoke EXIT' stdout=TRAPEXIT
+  ble/builtin/trap 0
+  ble/test 'ble/builtin/trap/invoke 0' stdout=
+
+  ble/builtin/trap 'echo TRAPEXIT' EXIT
+  ble/test 'ble/builtin/trap/invoke 0' stdout=TRAPEXIT
+  ble/test 'ble/builtin/trap/invoke EXIT' stdout=TRAPEXIT
+  ble/builtin/trap EXIT
+  ble/test 'ble/builtin/trap/invoke 0' stdout=
+
+  # 1 / HUP / SIGHUP (signal trap)
+  ble/builtin/trap 'echo TRAPHUP' 1
+  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP
+  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP
+  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP
+  ble/builtin/trap 1
+  ble/test 'ble/builtin/trap/invoke 1' stdout=
+
+  ble/builtin/trap 'echo TRAPHUP' HUP
+  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP
+  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP
+  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP
+  ble/builtin/trap HUP
+  ble/test 'ble/builtin/trap/invoke HUP' stdout=
+
+  ble/builtin/trap 'echo TRAPHUP' SIGHUP
+  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP
+  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP
+  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP
+  ble/builtin/trap SIGHUP
+  ble/test 'ble/builtin/trap/invoke HUP' stdout=
+
+  # 9999 / CUSTOM (custom trap)
+  ble/builtin/trap/.register 9999 CUSTOM
+  ble/builtin/trap/reserve CUSTOM
+  ble/builtin/trap 'echo custom trap' CUSTOM
+  ble/test 'ble/builtin/trap/invoke CUSTOM' stdout='custom trap'
+  function ble/builtin/trap:CUSTOM { echo "__set_handler__ ($2) $1"; }
+  ble/test 'ble/builtin/trap "echo hello world" CUSTOM' \
+           stdout='__set_handler__ (CUSTOM) echo hello world'
+  ble/test 'ble/builtin/trap/invoke CUSTOM' stdout='hello world'
+)
+
+# ble/util/{readfile,mapfile,assign,assign-array}
+(
+  # readfile
+  ble/test 'ble/util/readfile ret <(echo hello)' \
+           ret=hello$'\n'
+  ble/test 'ble/util/readfile ret <(echo hello; echo world)' \
+           ret=hello$'\n'world$'\n'
+  ble/test 'ble/util/readfile ret <(echo hello; echo -n world)' \
+           ret=hello$'\n'world
+  ble/test 'ble/util/readfile ret <(:)' ret=
+
+  # mapfile
+  function status { echo "${#a[*]}:(${a[*]})"; }
+  ble/test "ble/util/mapfile a < <(echo hello); status" stdout='1:(hello)'
+  ble/test "ble/util/mapfile a < <(echo -n hello); status" stdout='1:(hello)'
+  ble/test "ble/util/mapfile a < <(echo hello; echo world); status" stdout='2:(hello world)'
+  ble/test "ble/util/mapfile a < <(echo hello; echo -n world); status" stdout='2:(hello world)'
+  ble/test "ble/util/mapfile a < <(printf '%s\n' h{1..4}); status" stdout='4:(h1 h2 h3 h4)'
+  ble/test "ble/util/mapfile a < <(:); status" stdout='0:()'
+  ble/test "ble/util/mapfile a < <(echo); status" stdout='1:()'
+  ble/test "ble/util/mapfile a < <(echo;echo); status" stdout='2:( )'
+  ble/test "ble/util/mapfile a < <(echo a;echo;echo b); status" stdout='3:(a  b)'
+
+  # assign
+  nl=$'\n'
+  ble/test 'ble/util/assign ret ""' ret=
+  ble/test 'ble/util/assign ret ":"' ret=
+  ble/test 'ble/util/assign ret "echo"' ret=
+  ble/test 'ble/util/assign ret "echo hello"' ret=hello
+  ble/test 'ble/util/assign ret "seq 5"' ret="1${nl}2${nl}3${nl}4${nl}5"
+  function f1 { echo stdout; echo stderr >&2; }
+  function nested-assign {
+    ble/util/assign err 'ble/util/assign out f1 2>&1'
+    echo "out=$out err=$err"
+  }
+  ble/test nested-assign stdout='out=stdout err=stderr'
+
+  # assign-array
+  ble/test 'ble/util/assign-array a :; status' stdout='0:()'
+  ble/test 'ble/util/assign-array a echo; status' stdout='1:()'
+  ble/test 'ble/util/assign-array a "echo hello"; status' stdout='1:(hello)'
+  ble/test 'ble/util/assign-array a "seq 5"; status' stdout='5:(1 2 3 4 5)'
+  ble/test 'ble/util/assign-array a "echo; echo; echo"; status' stdout='3:(  )'
+  ble/test 'ble/util/assign-array a "echo 1; echo; echo 2"; status' stdout='3:(1  2)'
+)
+
+# ble/is-function
+(
+  var=variable
+  alias ali=fun
+  function fun { echo yes "$*"; }
+  function ble/fun { echo yes "$*"; return 99; }
+  function ble/fun:type { echo yes "$*"; return 100; }
+  function ble/fun#meth { echo yes "$*"; return 101; }
+
+  ble/test 'ble/is-function' exit=1
+  ble/test 'ble/is-function ""' exit=1
+
+  ble/test 'ble/is-function fun'
+  ble/test 'ble/is-function ble/fun'
+  ble/test 'ble/is-function ble/fun:type'
+  ble/test 'ble/is-function ble/fun#meth'
+
+  ble/test 'ble/is-function fun1' exit=1
+  ble/test 'ble/is-function ble/fun1' exit=1
+  ble/test 'ble/is-function ble/fun1:type' exit=1
+  ble/test 'ble/is-function ble/fun1#meth' exit=1
+
+  ble/test 'ble/is-function ali' exit=1
+  ble/test 'ble/is-function var' exit=1
+  ble/test 'ble/is-function compgen' exit=1
+  ble/test 'ble/is-function declare' exit=1
+  ble/test 'ble/is-function mkfifo' exit=1
+
+  function compgen { :; }
+  function declare { :; }
+  function mkfifo { :; }
+  ble/test 'ble/is-function compgen'
+  ble/test 'ble/is-function declare'
+  ble/test 'ble/is-function mkfifo'
+
+  # ble/function#try
+  ble/test 'ble/function#try fun 1 2 3' stdout='yes 1 2 3'
+  ble/test 'ble/function#try ble/fun 1 2 3' stdout='yes 1 2 3' exit=99
+  ble/test 'ble/function#try ble/fun:type 1 2 3' stdout='yes 1 2 3' exit=100
+  ble/test 'ble/function#try ble/fun#meth 1 2 3' stdout='yes 1 2 3' exit=101
+  ble/test 'ble/function#try fun1 1 2 3' stdout= exit=127
+  ble/test 'ble/function#try ble/fun1 1 2 3' stdout= exit=127
+  ble/test 'ble/function#try ble/fun1:type 1 2 3' stdout= exit=127
+  ble/test 'ble/function#try ble/fun1#meth 1 2 3' stdout= exit=127
+)
+
+# ble/function#advice
+(
+  function f1 { echo original $*; }
+
+  ble/test f1 stdout='original'
+  ble/function#advice before f1 'echo pre'
+  ble/test f1 stdout={pre,original}
+  ble/function#advice after f1 'echo post'
+  ble/test f1 stdout={pre,original,post}
+  ble/function#advice before f1 'echo A'
+  ble/test f1 stdout={A,original,post}
+  ble/function#advice after f1 'echo B'
+  ble/test f1 stdout={A,original,B}
+  ble/function#advice around f1 'echo [; ble/function#advice/do; echo ]'
+  ble/test f1 stdout={A,[,original,],B}
+
+  ble/function#advice around f1 '
+    ADVICE_WORDS[1]=quick
+    echo [; ble/function#advice/do; echo ]
+    ADVICE_EXIT=99'
+  ble/test f1 stdout={A,[,'original quick',],B} exit=99
+  
+  ble/function#advice remove f1
+  ble/test f1 stdout='original' exit=0
+  ble/test 'f1 1' stdout='original 1' exit=0
+)
+
+# ble/function#{push,pop}
+(
+  ble/test 'echo 1 2 3' stdout='1 2 3'
+  ble/test 'ble/is-function echo' exit=1
+  ble/function#push echo 'builtin echo "[$*]"'
+  ble/test 'ble/is-function echo'
+  ble/test 'echo 1 2 3' stdout='[1 2 3]'
+  ble/function#push echo 'builtin echo "($*)"'
+  ble/test 'echo 1 2 3' stdout='(1 2 3)'
+  ble/function#push echo 'builtin echo A; ble/function#push/call-top "$@"; builtin echo Z'
+  ble/test 'echo 1 2 3' stdout={A,'(1 2 3)',Z}
+  ble/function#push echo 'builtin echo [; ble/function#push/call-top "$@"; builtin echo ]'
+  ble/test 'echo 1 2 3' stdout={[,A,'(1 2 3)',Z,]}
+
+  ble/test 'ble/function#pop echo'
+  ble/test 'echo 1 2 3' stdout={A,'(1 2 3)',Z}
+  ble/function#pop echo
+  ble/test 'echo 1 2 3' stdout='(1 2 3)'
+  ble/function#pop echo
+  ble/test 'echo 1 2 3' stdout='[1 2 3]'
+  ble/test 'ble/is-function echo'
+  ble/test 'ble/function#pop echo'
+  ble/test 'ble/is-function echo' exit=1
+  ble/test 'echo 1 2 3' stdout='1 2 3'
+  ble/test 'ble/function#pop echo' exit=1
+  ble/test 'echo 1 2 3' stdout='1 2 3'
+)
+
+# ble/util/set
+(
+  ble/test 'ble/util/set ret hello' ret='hello'
+  ble/test 'ble/util/set ret "hello world"' ret='hello world'
+  ble/test 'ble/util/set ret ""' ret=''
+  ble/test 'ble/util/set ret " "' ret=' '
+  ble/test 'ble/util/set ret " a"' ret=' a'
+  ble/test 'ble/util/set ret "a "' ret='a '
+  ble/test 'ble/util/set ret $'\''\n'\''' ret=$'\n'
+  ble/test 'ble/util/set ret A$'\''\n'\''' ret=A$'\n'
+  ble/test 'ble/util/set ret A$'\''\n'\''B' ret=A$'\n'B
+)
+
+# ble/util/sprintf
+(
+  ble/test 'ble/util/sprintf ret "[%s]" 1 2 3' ret='[1][2][3]'
+  ble/test 'ble/util/sprintf ret "[%5s]" 1' ret='[    1]'
+  ble/test 'ble/util/sprintf ret "[%.2s]" 12345' ret='[12]'
+  ble/test 'ble/util/sprintf ret "[%d,%d]" 1 3' ret='[1,3]'
+  ble/test 'ble/util/sprintf ret "[%x]" 27' ret='[1b]'
+  ble/test 'ble/util/sprintf ret "[%#.2g]" 27' ret='[27.]'
+  ble/test 'ble/util/sprintf ret "[%#.2f]" 27' ret='[27.00]'
+)
+
+# ble/util/type
+(
+  alias aaa=fun
+  function fun { :; }
+  function ble/fun { :; }
+  function ble/fun:type { :; }
+  function ble/fun#meth { :; }
+
+  ble/test 'ble/util/type ret aaa' ret=alias
+  ble/test 'ble/util/type ret fun' ret=function
+  ble/test 'ble/util/type ret alias' ret=builtin
+  ble/test 'ble/util/type ret mkfifo' ret=file
+  ble/test 'ble/util/type ret for' ret=keyword
+  ble/test 'ble/util/type ret ble/fun' ret=function
+  ble/test 'ble/util/type ret ble/fun:type' ret=function
+  ble/test 'ble/util/type ret ble/fun#meth' ret=function
+
+  ble/test 'ble/util/type ret fun1' ret=
+  ble/test 'ble/util/type ret ble/fun1' ret=
+  ble/test 'ble/util/type ret ble/fun1:type' ret=
+  ble/test 'ble/util/type ret ble/fun1#meth' ret=
+)
+
+# ble/util/expand-alias
+(
+  # Note: 複数段階の展開は実行しない
+  alias aaa1='aaa2 world'
+  ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
+  alias aaa2='aaa3 hello'
+  ble/test 'ble/util/expand-alias aaa2' ret='aaa3 hello'
+  ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
+  alias aaa3='aaa4'
+  ble/test 'ble/util/expand-alias aaa3' ret='aaa4'
+  ble/test 'ble/util/expand-alias aaa2' ret='aaa3 hello'
+  ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
+  alias aaa4='echo'
+  ble/test 'ble/util/expand-alias aaa4' ret='echo'
+  ble/test 'ble/util/expand-alias aaa3' ret='aaa4'
+  ble/test 'ble/util/expand-alias aaa2' ret='aaa3 hello'
+  ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
+)
+
+# ble/util/is-stdin-ready
+(
+  ble/test 'echo 1 | { sleep 0.01; ble/util/is-stdin-ready; }'
+  ble/test 'sleep 0.01 | ble/util/is-stdin-ready' exit=1
+  ble/test 'ble/util/is-stdin-ready <<< a'
+  ble/test 'ble/util/is-stdin-ready <<< ""'
+
+  # EOF は成功してしまう? これは意図しない振る舞いである。
+  # しかし bash 自体が終了するので関係ないのかもしれない。
+  ble/test ': | { sleep 0.01; ble/util/is-stdin-ready; }'
+  ble/test 'ble/util/is-stdin-ready < /dev/null'
+)
+
+# ble/util/is-running-in-subshell
+ble/test ble/util/is-running-in-subshell exit=1
+( ble/test ble/util/is-running-in-subshell )
+
+# ble/util/getpid
+(
+  dummy=modification_to_environment.1
+  ble/util/getpid
+  ble/test '[[ $BASHPID != $$ ]]'
+  ble/test "[[ \$BASHPID == \$(sh -c 'echo \$PPID') ]]"
+  pid1=$BASHPID
+  (
+    dummy=modification_to_environment.2
+    ble/util/getpid
+    ble/test '[[ $BASHPID != $$ && $BASHPID != $pid1 ]]'
+    ble/test "[[ \$BASHPID == \$(sh -c 'echo \$PPID') ]]"
+  )
+)
+
+# ble/fd#is-open
+(
+  ble/test 'ble/fd#is-open 1'
+  ble/test 'ble/fd#is-open 2'
+  exec 9>&-
+  ble/test 'ble/fd#is-open 9' exit=1
+  exec 9>/dev/null
+  ble/test 'ble/fd#is-open 9'
+  exec 9>&-
+  ble/test 'ble/fd#is-open 9' exit=1
+)
+
+# ble/fd#alloc
+# ble/fd#close
+(
+  ble/test/chdir
+  ble/fd#alloc fd '> a.txt'
+  echo hello >&$fd
+  echo world >&$fd
+  ble/test 'ble/fd#close fd; echo test >&$fd' exit=1
+  ble/test 'cat a.txt' stdout={hello,world}
+  ble/test/rmdir
+)
+
+# ble/util/declare-print-definitions
+# ble/util/print-global-definitions
+# ble/util/has-glob-pattern
+# ble/util/is-cygwin-slow-glob
+# ble/util/eval-pathname-expansion
+# ble/util/isprint+
+# ble/util/strftime
 
 ble/test/end-section

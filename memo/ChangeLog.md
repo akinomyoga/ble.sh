@@ -38,7 +38,7 @@
 - decode: fix strange behaviors after `fzf` (convert <kbd>DEL</kbd> to <kbd>C-?</kbd>) `#D1281` 744c8e8
 - edit: work around Bash rebinding on `TERM` change `#D1287` ac7ab55 7a99bf3
 - term: work around terminfo/termcap entry collisions in `tput` (reported by killermoehre) `#D1289` f8c54ef 
-- complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3 `#D1315` 0000000
+- complete: clear menu on discard-line (reported by animecyc) `#D1290` fb794b3 `#D1315` 99880ef
 - vi (vi-command/nth-column): fix a bug in arithmetic expansion (reported by andychu) `#D1292` da6cc47
 - complete: fix a bug that insert-word does not for with ambiguous candidates `#D1295` 2f9a000
 - complete: fix a bug that menu-filter is only partially turned off by `complete_menu_filter` `#D1298` b3654e2
@@ -51,7 +51,7 @@
 - util (`ble/util/{save,restore}-vars`): fix a bug that `name` and `prefix` cannot be saved/restored (test-util) 5f2480c
 - util: fix `ble/is-{inttype,readonly,transformed}` (test-util) 485e1ac
 - util (`ble/path#remove{,-glob}`): fix corner cases (test-util) ccbc9f8
-- history: fix a problem that the history is doubled by `history -a` in `bashrc` `#D1314` 0000000
+- history: fix a problem that the history is doubled by `history -a` in `bashrc` `#D1314` 34821fe
 
 ## Changes
 
@@ -102,6 +102,9 @@
 - test: add `lib/core-test.sh` `#D1309` 68f8077
 - global: do not use `local -i` `#D1310` f9f0f9b
 - global: normalize calls of builtins `#D1313` b3b06f7
+- test: refactor test `#D1316` `#D1317` 0000000
+- util (`ble/util/openat`): change to open unused fds `#D1318` 0000000
+- util: rename `ble/{util/openat => fd#alloc}` `#D1319` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

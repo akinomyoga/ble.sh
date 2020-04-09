@@ -1,34 +1,69 @@
 # -*- mode: sh; mode: sh-bash -*-
 
+function ble/test/getdir {
+  dir=$_ble_base_run/$$.test
+  [[ -d $dir ]] || ble/bin/mkdir -p "$dir"
+}
+
+_ble_test_dir=
+function ble/test/chdir {
+  local dir
+  ble/test/getdir
+  ble/util/getpid
+  _ble_test_dir=$dir/$BASHPID.d
+  [[ -d $_ble_test_dir ]] ||
+    ble/bin/mkdir -p "$_ble_test_dir"
+  cd "$_ble_test_dir"
+}
+function ble/test/rmdir {
+  [[ -d $_ble_test_dir ]] &&
+    ble/bin/rm -rf "$_ble_test_dir"
+  return 0
+}
+
 if ble/bin/.freeze-utility-path colored; then
-  function ble/test/diff {
-    local tmp=$_ble_base_run/$$.test.diff.$BASHPID
-    ble/util/print "$1" > "$tmp.expect"
-    ble/util/print "$2" > "$tmp.result"
-    ble/bin/colored diff -u "$tmp.expect" "$tmp.result"
-    > "$tmp.expect" > "$tmp.result"
+  function ble/test/diff.impl {
+    ble/bin/colored diff -u "$@"
   }
 else
-  function ble/test/diff {
-    local tmp=$_ble_base_run/$$.test.diff.$BASHPID
-    ble/util/print "$1" > "$tmp.expect"
-    ble/util/print "$2" > "$tmp.result"
-    diff -u "$tmp.expect" "$tmp.result"
-    > "$tmp.expect" > "$tmp.result"
+  function ble/test/diff.impl {
+    diff -u "$@"
   }
 fi
+function ble/test/diff {
+  local dir
+  ble/test/getdir
+  ble/util/getpid
+  local f1=$BASHPID.$1.expect
+  local f2=$BASHPID.$1.result
+  (
+    cd "$dir"
+    ble/util/print "$2" > "$f1"
+    ble/util/print "$3" > "$f2"
+    ble/test/diff.impl "$f1" "$f2"
+    > "$f1" > "$f2"
+  )
+}
 
 _ble_test_section_fd=
+_ble_test_section_file=
 _ble_test_section_title=section
 _ble_test_section_count=0
 function ble/test/start-section {
+  [[ $_ble_test_section_fd ]] && ble/test/end-section
   _ble_test_section_title=$1
   _ble_test_section_count=$2
-  local tmp=$_ble_base_run/$$.test
-  ble/util/openat _ble_test_section_fd '> "$tmp"'
+  local dir
+  ble/test/getdir
+  ble/util/getpid
+  _ble_test_section_file=$dir/$BASHPID
+  ble/fd#alloc _ble_test_section_fd '> "$_ble_test_section_file"'
 }
 function ble/test/end-section {
-  local tmp=$_ble_base_run/$$.test
+  [[ $_ble_test_section_fd ]] || return
+  ble/fd#close _ble_test_section_fd
+  _ble_test_section_fd=
+
   local ntest npass count=$_ble_test_section_count
 
   local ntest nfail npass
@@ -39,7 +74,7 @@ function ble/test/end-section {
       /^fail /{fail++}
       /^pass /{pass++}
       END{print "ntest="test" nfail="fail" npass="pass;}
-    ' "$tmp")
+    ' "$_ble_test_section_file")
 
   local sgr=$'\e[32m' sgr0=$'\e[m'
   ((npass==ntest)) || sgr=$'\e[31m'
@@ -61,20 +96,24 @@ function ble/test/section#report {
 }
 
 function ble/test/.read-arguments {
+  local _stdout _stderr _exit _ret
   local -a buff=()
   while (($#)); do
     local arg=$1; shift
     case $arg in
+    ('#'*)
+      local ret; ble/string#trim "${arg#'#'}"
+      title=$ret ;;
     (stdout[:=]*)
-      if [[ ! $qstdout ]]; then
-        qstdout=1 _stdout=${arg#*[:=]}
-      else
-        _stdout=$_stdout$'\n'${arg#*[:=]}
-      fi ;;
+      [[ ${_stdout+set} ]] && _stdout=$_stdout$'\n'
+      _stdout=$_stdout${arg#*[:=]} ;;
+    (stderr[:=]*)
+      [[ ${_stderr+set} ]] && _stderr=$_stderr$'\n'
+      _stderr=$_stderr${arg#*[:=]} ;;
     (ret[:=]*)
-      qret=1 _ret=${arg#*[:=]} ;;
+      _ret=${arg#*[:=]} ;;
     (exit[:=]*)
-      qexit=1 _exit=${arg#*[:=]} ;;
+      _exit=${arg#*[:=]} ;;
     (code[:=]*)
       ((${#buff[@]})) && ble/array#push buff $'\n'
       ble/array#push buff "${arg#*[:=]}" ;;
@@ -83,46 +122,59 @@ function ble/test/.read-arguments {
       ble/array#push buff "$arg" ;;
     esac
   done
+
+  [[ ${_stdout+set} ]] && item_expect[0]=$_stdout
+  [[ ${_stderr+set} ]] && item_expect[1]=$_stderr
+  [[ ${_exit+set}   ]] && item_expect[2]=$_exit
+  [[ ${_ret+set}    ]] && item_expect[3]=$_ret
+
+  # 何もチェックが指定されなかった時は終了ステータスをチェックする
+  ((${#item_expect[@]})) || item_expect[2]=0
+
   IFS= builtin eval 'code="${buff[*]}"'
 }
 function ble/test {
+  local -a item_name=(stdout stderr exit ret)
+
+  local code title
+  local -a item_expect=()
+  ble/test/.read-arguments "$@"
+
   local caller_lineno=${BASH_LINENO[0]}
   local caller_source=${BASH_SOURCE[1]}
-  ble/test/section#incr "$caller_source:$caller"
+  title="$caller_source:$caller_lineno${title+ ($title)}"
+  ble/test/section#incr "$title"
 
-  local code
-  local qstdout= qret= qexit=
-  local _stdout= _ret= _exit=
-  ble/test/.read-arguments "$@"
-  local stdout= ret= exit=
-  ble/util/assign stdout "$code" 2>/dev/null; exit=$?
+  # run
+  ble/util/assign stderr '
+    ble/util/assign stdout "$code" 2>&1'; exit=$?
+  local -a item_result=()
+  item_result[0]=$stdout
+  item_result[1]=$stderr
+  item_result[2]=$exit
+  item_result[3]=$ret
 
-  # 何もチェックが指定されなかった時は終了ステータス
-  [[ ! $qstdout$qret$qexit ]] && qexit=1 _exit=0
+  local i flag_error=
+  for i in "${!item_expect[@]}"; do
+    [[ ${item_result[i]} == "${item_expect[i]}" ]] && continue
 
-  local estdout= eret= eexit=
-  [[ $qexit && $exit != "$_exit" ]] && eexit=1
-  [[ $qstdout && $stdout != "$_stdout" ]] && estdout=1
-  [[ $qret && $ret != "$_ret" ]] && eret=1
-
-  if [[ $estdout$eret$eexit ]]; then
-    ble/util/print $'\e[1m'"$caller_source:$caller_lineno"$'\e[m: \e[91m'"$code"$'\e[m' >&2
-    if [[ $eexit ]]; then
-      ble/util/print $'\e[91mFAIL: exit\e[m'
-      ble/test/diff "$_exit" "$exit"
+    if [[ ! $flag_error ]]; then
+      flag_error=1
+      ble/util/print $'\e[1m'"$title"$'\e[m: \e[91m'"$code"$'\e[m'
     fi
-    if [[ $estdout ]]; then
-      ble/util/print $'\e[91mFAIL: stdout\e[m'
-      ble/test/diff "$_stdout" "$stdout"
-    fi
-    if [[ $eret ]]; then
-      ble/util/print $'\e[91mFAIL: ret\e[m'
-      ble/test/diff "$_ret" "$ret"
+
+    ble/test/diff "${item_name[i]}" "${item_expect[i]}" "${item_result[i]}"
+  done
+  if [[ $flag_error ]]; then
+    if [[ ! ${item_expect[1]+set} && $stderr ]]; then
+      ble/util/print "<STDERR>"
+      ble/util/print "$stderr"
+      ble/util/print "</STDERR>"
     fi
     ble/util/print
   fi
 
-  [[ ! $estdout$eret$eexit ]]
-  ble/test/section#report "$caller_source:$caller"
+  [[ ! $flag_error ]]
+  ble/test/section#report "$title"
   return 0
 }

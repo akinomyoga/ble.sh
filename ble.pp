@@ -539,7 +539,7 @@ function ble/base/clean-up-runtime-directory {
       removed=("${removed[@]}" "$_ble_base_run/$pid."*)
     fi
   done
-  ((${#removed[@]})) && ble/bin/rm -f "${removed[@]}"
+  ((${#removed[@]})) && ble/bin/rm -rf "${removed[@]}"
 }
 
 # initialization time = 9ms (for 70 files)
@@ -813,11 +813,11 @@ function ble/base/unload {
   ble/term/stty/TRAPEXIT
   ble/term/leave
   ble/util/buffer.flush >&2
-  ble/util/openat/finalize
+  ble/fd#finalize
   ble/util/import/finalize
   ble-decode/keymap/unload
   ble-edit/bind/clear-keymap-definition-loader
-  ble/bin/rm -f "$_ble_base_run/$$".* 2>/dev/null
+  ble/bin/rm -rf "$_ble_base_run/$$".* 2>/dev/null
   return 0
 }
 blehook EXIT+=ble/base/unload

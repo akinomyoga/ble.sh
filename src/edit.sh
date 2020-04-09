@@ -7233,8 +7233,8 @@ function ble-edit/bind/stdout.finalize { :;}
 if [[ $bleopt_internal_suppress_bash_output ]]; then
   _ble_edit_io_stdout=
   _ble_edit_io_stderr=
-  ble/util/openat _ble_edit_io_stdout '>&1'
-  ble/util/openat _ble_edit_io_stderr '>&2'
+  ble/fd#alloc _ble_edit_io_stdout '>&1'
+  ble/fd#alloc _ble_edit_io_stderr '>&2'
   _ble_edit_io_fname1=$_ble_base_run/$$.stdout
   _ble_edit_io_fname2=$_ble_base_run/$$.stderr
 
@@ -7343,7 +7343,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
         ble-edit/io/check-ignoreeof-loop fifo < "$_ble_edit_io_fname2.pipe" & disown
       } &>/dev/null
 
-      ble/util/openat _ble_edit_io_fd2 '> "$_ble_edit_io_fname2.pipe"'
+      ble/fd#alloc _ble_edit_io_fd2 '> "$_ble_edit_io_fname2.pipe"'
 
       function ble-edit/bind/stdout.off {
         ble/util/buffer.flush >&2
