@@ -218,6 +218,8 @@ if [ -z "$OIL_VERSION" ]; then
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
+function let { local __expr; for __expr; do eval "(($__expr))"; done; }
+
 function ble/base/check-oil-version {
   local rex='^([0-9]+)\.([0-9]+)\.(pre)?([0-9]+)'
   [[ $OIL_VERSION =~ $rex ]]
