@@ -16,7 +16,7 @@
 - syntax: support parameter expansion of the form `${var/#pat}`, `${var/%pat}` `#D1286` e2f4809
 - edit: support `bleopt editor line_limit_{type,length} history_limit_length` `#D1295` 2f9a000
 - edit: support widgets `{vi,emacs}-editing-mode` `#D1301` 0c6c76e
-- syntax: allow unquoted `[!` and `[^` in `simple-word` (reported by cmplstofB) `#D1303` 0000000
+- syntax: allow unquoted `[!` and `[^` in `simple-word` (reported by cmplstofB) `#D1303` 1efe833
 
 ## Fix
 
@@ -52,6 +52,13 @@
 - util: fix `ble/is-{inttype,readonly,transformed}` (test-util) 485e1ac
 - util (`ble/path#remove{,-glob}`): fix corner cases (test-util) ccbc9f8
 - history: fix a problem that the history is doubled by `history -a` in `bashrc` `#D1314` 34821fe
+- decode: work around Bash-4.1 bug that locale not applied with `LC_CTYPE=C eval command` b2c7d1c
+- util (`ble/variable#get-attr`): fix a bug that attributes are not obtained in Bash <= 4.3 b2c7d1c
+- decode: work around Bash-3.1 bug of `declare -f` rejecting special characters in function names b2c7d1c
+- edit (`ble/widget/bracketed-paste`): fix error messages on `paste_end` in older version of Bash b2c7d1c
+- decode: work around Bash-4.1 arithmetic bug of array subscripts evaluated in discarded branches `#D1320` 0000000
+- util (`ble/variable#get-attr`): fix an error message with special variable names such as `?` and `*` `#D1321` 0000000
+- complete: follow Bash-5.1 change of arithmetic literal `10#` `#D1322` 0000000
 
 ## Changes
 
@@ -102,9 +109,9 @@
 - test: add `lib/core-test.sh` `#D1309` 68f8077
 - global: do not use `local -i` `#D1310` f9f0f9b
 - global: normalize calls of builtins `#D1313` b3b06f7
-- test: refactor test `#D1316` `#D1317` 0000000
-- util (`ble/util/openat`): change to open unused fds `#D1318` 0000000
-- util: rename `ble/{util/openat => fd#alloc}` `#D1319` 0000000
+- test: refactor test `#D1316` `#D1317` 6c2f863
+- util (`ble/util/openat`): change to open unused fds `#D1318` 6c2f863
+- util: rename `ble/{util/openat => fd#alloc}` `#D1319` 6c2f863
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

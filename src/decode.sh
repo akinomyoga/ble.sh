@@ -523,7 +523,7 @@ function ble-decode/.check-abort {
 
     # Check code
     for ((;n;n/=10)); do
-      ((i>=0&&_ble_decode_input_buffer[i--]==n%10+48)) || return 1
+      ((i>=0)) && ((_ble_decode_input_buffer[i--]==n%10+48)) || return 1
     done
 
     # Check "27;5;"
@@ -544,12 +544,12 @@ function ble-decode/.check-abort {
 
     # Check code
     for ((;n;n/=10)); do
-      ((i>=0&&_ble_decode_input_buffer[i--]==n%10+48)) || return 1
+      ((i>=0)) && ((_ble_decode_input_buffer[i--]==n%10+48)) || return 1
     done
   fi
 
   # Skip ">"
-  ((i>=0&&_ble_decode_input_buffer[i]==62&&i--))
+  ((i>=0)) && ((_ble_decode_input_buffer[i]==62&&i--))
 
   # Check CSI ("\e[", "\xC0\x9B[" or "\xC2\x9B")
   # ENCODING: UTF-8 (\xC0\x9B)
@@ -563,7 +563,7 @@ function ble-decode/.check-abort {
       return 1
     fi
   elif ((_ble_decode_input_buffer[i]==0x9B)); then
-    ((--i>=0&&_ble_decode_input_buffer[i--]==0xC2)) || return 1
+    ((--i>=0)) && ((_ble_decode_input_buffer[i--]==0xC2)) || return 1
   else
     return 1
   fi

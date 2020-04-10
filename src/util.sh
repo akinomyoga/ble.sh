@@ -311,14 +311,18 @@ function ble/debug/print-variables {
 # variable, array and strings
 #
 
+## 関数 ble/variable#get-attr varname
+##   指定した変数の属性を取得します。
+##   @var[out] attr
 if ((_ble_bash>=40400)); then
   function ble/variable#get-attr { attr=${!1@a}; }
 else
   function ble/variable#get-attr {
     attr=
-    local ret; ble/util/assign ret "declare -p $1 2>/dev/null"
+    local __tmp=$1
+    ble/util/assign __tmp 'declare -p "$__tmp" 2>/dev/null'
     local rex='^declare -([a-zA-Z]*)'
-    [[ $ret =~ $rex ]] && attr=${BASH_REMATCH[1]}
+    [[ $__tmp =~ $rex ]] && attr=${BASH_REMATCH[1]}
     return 0
   }
 fi

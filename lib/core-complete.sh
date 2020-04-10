@@ -4317,7 +4317,7 @@ function ble/complete/menu-filter {
     ble/syntax:bash/simple-word/is-never-word "$input" && return 1
     return 0
   fi
-  [[ $simple_ibrace ]] && ((${simple_ibrace%%:*}>10#${_ble_complete_menu0_comp[6]%%:*})) && return 1 # 別のブレース展開要素に入った時
+  [[ $simple_ibrace ]] && ((${simple_ibrace%%:*}>10#0${_ble_complete_menu0_comp[6]%%:*})) && return 1 # 別のブレース展開要素に入った時
   ble/syntax:bash/simple-word/eval "$ret"
   local COMPV=$ret
 
