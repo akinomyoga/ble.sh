@@ -3713,7 +3713,7 @@ function ble/widget/vi-command/nth-byte {
   local left nleft
   while ((ARG>0&&len>1)); do
     left=${text::len/2}
-    LC_ALL=C builtin eval 'nleft=${#left}'
+    ble/util/strlen "$left"; nleft=$ret
     if ((ARG<nleft)); then
       text=$left
       ((len/=2))

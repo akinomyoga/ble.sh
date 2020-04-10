@@ -6823,7 +6823,8 @@ function ble/widget/command-help.core {
     local pager=ble/util/pager
     type -t source-highlight &>/dev/null &&
       pager='source-highlight -s sh -f esc | '$pager
-    LESS="$LESS -r" eval 'declare -f "$command" | '"$pager" && return
+    local def; ble/function#getdef "$command"
+    LESS="$LESS -r" builtin eval -- "$pager" <<< "$def" && return
   fi
 
   if ble/is-function ble/bin/man; then
