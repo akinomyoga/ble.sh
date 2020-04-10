@@ -1264,7 +1264,7 @@ function ble/builtin/history {
       esac
     done
   done
-  [[ $flag_error ]] && return 1
+  [[ $flag_error ]] && return 2
 
   if [[ $flags == *h* ]]; then
     builtin history --help

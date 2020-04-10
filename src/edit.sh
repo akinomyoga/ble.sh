@@ -4174,7 +4174,7 @@ function ble/builtin/exit {
   ble/builtin/exit/.read-arguments "$@"
   if [[ $opt_flags == *[EH]* ]]; then
     [[ $opt_flags == *H* ]] && builtin exit --help
-    [[ $opt_flags != *E* ]]; return
+    return 2
   fi
   ((${#opt_args[@]})) || ble/array#push opt_args "$ext"
 
@@ -6942,7 +6942,7 @@ function ble/builtin/read/.impl {
   if [[ $opt_flags == *[HE]* ]]; then
     [[ $opt_flags == *H* ]] &&
       builtin read --help
-    [[ $opt_flags != *E* ]]; return
+    return 2
   fi
 
   if ! [[ $opt_flags == *r* && -t $opt_fd ]]; then

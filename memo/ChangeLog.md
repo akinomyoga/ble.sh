@@ -56,9 +56,9 @@
 - util (`ble/variable#get-attr`): fix a bug that attributes are not obtained in Bash <= 4.3 b2c7d1c
 - decode: work around Bash-3.1 bug of `declare -f` rejecting special characters in function names b2c7d1c
 - edit (`ble/widget/bracketed-paste`): fix error messages on `paste_end` in older version of Bash b2c7d1c
-- decode: work around Bash-4.1 arithmetic bug of array subscripts evaluated in discarded branches `#D1320` 0000000
-- util (`ble/variable#get-attr`): fix an error message with special variable names such as `?` and `*` `#D1321` 0000000
-- complete: follow Bash-5.1 change of arithmetic literal `10#` `#D1322` 0000000
+- decode: work around Bash-4.1 arithmetic bug of array subscripts evaluated in discarded branches `#D1320` 557b774
+- util (`ble/variable#get-attr`): fix an error message with special variable names such as `?` and `*` `#D1321` 557b774
+- complete: follow Bash-5.1 change of arithmetic literal `10#` `#D1322` 557b774
 
 ## Changes
 
@@ -75,6 +75,7 @@
 - decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` ad98416
 - edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
 - util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 5966f22
+- builtin: let redefined builtins return 2 for `--help` `#D1323` 0000000
 
 ## Compatibility
 

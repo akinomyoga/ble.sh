@@ -3427,6 +3427,7 @@ function ble/builtin/bind/.process {
           #   https://lists.gnu.org/archive/html/bug-bash/2019-02/msg00033.html
           [[ $_ble_decode_bind_state != none ]] &&
             (builtin bind --help)
+          flags=h$flags
         fi
         continue ;;
       (--*)
@@ -3627,7 +3628,7 @@ function ble/builtin/bind {
   if [[ $_ble_decode_bind_state == none ]]; then
     builtin bind "$@"
   else
-    [[ $flags != *e* ]]
+    [[ $flags != *[eh]* ]]
   fi
 }
 function bind { ble/builtin/bind "$@"; }

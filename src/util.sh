@@ -1206,8 +1206,7 @@ function ble/builtin/trap {
 
   if [[ $flags == *h* ]]; then
     builtin trap --help
-    [[ $flags == *E* ]] && return 2
-    return 0
+    return 2
   elif [[ $flags == *E* ]]; then
     return 2
   elif [[ $flags == *l* ]]; then

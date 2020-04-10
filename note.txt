@@ -1024,9 +1024,6 @@ bash_tips
     https://github.com/mgalgs/fuzzy_bash_completion
     https://github.com/brujoand/sbp
 
-  * decode: bind --help の終了ステータスは 2 の様だ。
-    その他の buitlin も全て --help に対しては 2 で終了する様だ。
-
 2020-04-02
 
   * highlight: hello! () { echo; } として hello! としても関数名着色にならない
@@ -2869,6 +2866,16 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-04-11
+
+  * decode: bind --help の終了ステータスは 2 の様だ [#D1323]
+    その他の buitlin も全て --help に対しては 2 で終了する様だ。
+
+    exit unset bind read history trap を上書きしている。
+    その内で正しく 2 を返しているのは unset, history のみである。
+    確認した所、何れも本来の builtin は 2 を返している。
+    bind exit read trap は修正する必要がある。
 
 2020-04-10
 
