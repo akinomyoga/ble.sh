@@ -97,6 +97,7 @@ function ble/test/section#report {
 
 function ble/test/.read-arguments {
   local _stdout _stderr _exit _ret
+  local qstdout qstderr qexit qret
   local -a buff=()
   while (($#)); do
     local arg=$1; shift
@@ -105,14 +106,18 @@ function ble/test/.read-arguments {
       local ret; ble/string#trim "${arg#'#'}"
       title=$ret ;;
     (stdout[:=]*)
-      [[ ${_stdout+set} ]] && _stdout=$_stdout$'\n'
+      [[ $qstdout ]] && _stdout=$_stdout$'\n'
+      qstdout=1
       _stdout=$_stdout${arg#*[:=]} ;;
     (stderr[:=]*)
-      [[ ${_stderr+set} ]] && _stderr=$_stderr$'\n'
+      [[ $qstderr ]] && _stderr=$_stderr$'\n'
+      qstderr=1
       _stderr=$_stderr${arg#*[:=]} ;;
     (ret[:=]*)
+      qret=1
       _ret=${arg#*[:=]} ;;
     (exit[:=]*)
+      qexit=1
       _exit=${arg#*[:=]} ;;
     (code[:=]*)
       ((${#buff[@]})) && ble/array#push buff $'\n'
@@ -123,10 +128,10 @@ function ble/test/.read-arguments {
     esac
   done
 
-  [[ ${_stdout+set} ]] && item_expect[0]=$_stdout
-  [[ ${_stderr+set} ]] && item_expect[1]=$_stderr
-  [[ ${_exit+set}   ]] && item_expect[2]=$_exit
-  [[ ${_ret+set}    ]] && item_expect[3]=$_ret
+  [[ $qstdout ]] && item_expect[0]=$_stdout
+  [[ $qstderr ]] && item_expect[1]=$_stderr
+  [[ $qexit   ]] && item_expect[2]=$_exit
+  [[ $qret    ]] && item_expect[3]=$_ret
 
   # 何もチェックが指定されなかった時は終了ステータスをチェックする
   ((${#item_expect[@]})) || item_expect[2]=0

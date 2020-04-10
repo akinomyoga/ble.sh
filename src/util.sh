@@ -316,7 +316,7 @@ if ((_ble_bash>=40400)); then
 else
   function ble/variable#get-attr {
     attr=
-    local ret; ble/util/assign ret "declare -p $1 &>/dev/null"
+    local ret; ble/util/assign ret "declare -p $1 2>/dev/null"
     local rex='^declare -([a-zA-Z]*)'
     [[ $ret =~ $rex ]] && attr=${BASH_REMATCH[1]}
     return 0
@@ -885,9 +885,25 @@ function ble/string#create-unicode-progress-bar {
 
   ret=$out
 }
-function ble/util/strlen {
-  LC_ALL= LC_CTYPE=C builtin eval 'ret=${#1}' 2>/dev/null
-}
+if ((_ble_bash>=40200)); then
+  function ble/util/strlen {
+    LC_ALL= LC_CTYPE=C builtin eval 'ret=${#1}' 2>/dev/null
+  }
+  function ble/util/substr {
+    LC_ALL= LC_CTYPE=C builtin eval 'ret=${1:$2:$3}' 2>/dev/null
+  }
+else
+  # Note: Bash-4.1 以下では "変数代入 コマンド" の形式だと
+  #   locale がその場で適用されないバグがあるようだ。
+  function ble/util/strlen {
+    local LC_ALL= LC_CTYPE=C
+    ret=${#1}
+  } 2>/dev/null
+  function ble/util/substr {
+    local LC_ALL= LC_CTYPE=C
+    ret=${1:$2:$3}
+  } 2>/dev/null
+fi
 
 function ble/path#remove {
   [[ $2 ]] || return
@@ -1371,6 +1387,21 @@ else
   }
 fi
 
+## 関数 ble/function#getdef function
+##   @var[out] def
+if ((_ble_bash>=30200)); then
+  function ble/function#getdef {
+    local name=$1
+    ble/util/assign def 'declare -f "$name"'
+  }
+else
+  function ble/function#getdef {
+    local name=$1
+    ble/util/assign def 'type "$name"'
+    def=${def#*$'\n'}
+  }
+fi
+
 ## 関数 ble/function#try function args...
 ##   関数 function が存在している時に限り関数を呼び出します。
 ##
@@ -1434,7 +1465,7 @@ function ble/function#advice/.proc {
 function ble/function#advice {
   local type=$1 name=$2 proc=$3
   if ! ble/is-function "$name"; then
-    local t=; ble/util/assign t 'type -t "$name"'
+    local t=; ble/util/type t "$name"
     case $t in
     (builtin|file) builtin eval "function $name { command $name \"\$@\"; }" ;;
     (*)
@@ -1443,11 +1474,11 @@ function ble/function#advice {
     esac
   fi
 
-  local def; ble/util/assign def 'declare -f "$name"'
+  local def; ble/function#getdef "$name"
   case $type in
   (remove)
     if [[ $def == *'ble/function#advice/.proc'* ]]; then
-      ble/util/assign def 'declare -f "ble/function#advice/original:$name"'
+      ble/function#getdef "ble/function#advice/original:$name"
       [[ $def ]] && builtin eval -- "${def#*:}"
     fi
     builtin unset -f ble/function#advice/{before,after,around,original}:"$name" 2>/dev/null
@@ -1479,7 +1510,7 @@ function ble/function#push {
       ((index++))
     done
 
-    local def; ble/util/assign def 'declare -f "$name"'
+    local def; ble/function#getdef "$name"
     builtin eval "ble/function#push/$index:$def"
   fi
 
@@ -1504,7 +1535,7 @@ function ble/function#pop {
   if ((index<0)); then
     builtin unset -f "$name"
   else
-    local def; ble/util/assign def 'declare -f "ble/function#push/$index:$name"'
+    local def; ble/function#getdef "ble/function#push/$index:$name"
     builtin eval -- "${def#*:}"
     builtin unset -f "ble/function#push/$index:$name"
   fi

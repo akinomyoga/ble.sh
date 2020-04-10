@@ -2905,7 +2905,7 @@ function ble/widget/bracketed-paste.hook {
     IFS=: builtin eval '_ble_edit_bracketed_paste=("${_ble_edit_bracketed_paste[*]}")' # contract
 
   _ble_edit_bracketed_paste[_ble_edit_bracketed_paste_count++]=$1
-  (($1==126)) && ble/widget/bracketed-paste.hook/check-terminate && return
+  (($1==126)) && ble/widget/bracketed-paste.hook/check-end && return
 
   # ble-decode-char にある次の文字を取り出してできるだけここで処理する。
   if ((!_ble_debug_keylog_enabled)) && [[ ! $_ble_decode_keylog_chars_enabled ]]; then
@@ -7089,7 +7089,8 @@ function ble/widget/command-help.core {
     local pager=ble/util/pager
     type -t source-highlight &>/dev/null &&
       pager='source-highlight -s sh -f esc | '$pager
-    LESS="$LESS -r" builtin eval 'declare -f "$command" | '"$pager" && return
+    local def; ble/function#getdef "$command"
+    LESS="$LESS -r" builtin eval -- "$pager" <<< "$def" && return
   fi
 
   if ble/is-function ble/bin/man; then

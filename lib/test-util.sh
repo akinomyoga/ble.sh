@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 616
+ble/test/start-section 'util' 648
 
 # bleopt
 
@@ -497,7 +497,7 @@ ble/test ble/util/setexit 255 exit=255
 
 # ble/string#split
 (
-  function status { echo "${#a[@]}:(${a[*]})"; }
+  function status { echo "${#a[@]}:(""${a[*]}"")"; }
   nl=$'\n'
   ble/test 'ble/string#split a , ""  ; status' stdout='1:()'
   ble/test 'ble/string#split a , "1"  ; status' stdout='1:(1)'
@@ -528,7 +528,7 @@ ble/test ble/util/setexit 255 exit=255
 
 # ble/string#split-lines
 (
-  function status { echo "${#a[@]}:(${a[*]})"; }
+  function status { echo "${#a[@]}:(""${a[*]}"")"; }
   nl=$'\n' ht=$'\t'
   ble/test 'ble/string#split-lines a ""  ; status' stdout='1:()'
   ble/test 'ble/string#split-lines a "1"  ; status' stdout='1:(1)'
@@ -762,6 +762,43 @@ ble/test ble/util/setexit 255 exit=255
   ble/test 'ble/util/strlen aαあ' ret=6
 )
 
+# ble/util/substr
+(
+  ble/test 'ble/util/substr' ret=
+  ble/test 'ble/util/substr ""' ret=
+  ble/test 'ble/util/substr a' ret=
+  ble/test 'ble/util/substr "" 0' ret=
+  ble/test 'ble/util/substr "" 1' ret=
+  ble/test 'ble/util/substr a 0' ret=
+  ble/test 'ble/util/substr a 1' ret=
+  ble/test 'ble/util/substr a 2' ret=
+  ble/test 'ble/util/substr "" 0 0' ret=
+  ble/test 'ble/util/substr "" 0 1' ret=
+  ble/test 'ble/util/substr "" 1 1' ret=
+  ble/test 'ble/util/substr a 0 0' ret=
+  ble/test 'ble/util/substr a 1 0' ret=
+  ble/test 'ble/util/substr a 0 1' ret=a
+  ble/test 'ble/util/substr a 1 1' ret=
+  ble/test 'ble/util/substr abc 1 0' ret=
+  ble/test 'ble/util/substr abc 1 1' ret=b
+  ble/test 'ble/util/substr abc 1 2' ret=bc
+  ble/test 'ble/util/substr abc 0 0' ret=
+  ble/test 'ble/util/substr abc 0 1' ret=a
+  ble/test 'ble/util/substr abc 0 3' ret=abc
+  ble/test 'ble/util/substr abc 0 4' ret=abc
+  ble/test 'ble/util/substr abc 3 0' ret=
+  ble/test 'ble/util/substr abc 3 1' ret=
+  ble/test 'ble/util/substr abc 4 0' ret=
+  ble/test 'ble/util/substr abc 4 1' ret=
+
+  ble/test 'ble/util/substr あいう 0 3' ret=あ
+  ble/test 'ble/util/substr あいう 3 6' ret=いう
+  ble/test 'ble/util/substr あいう 0 1' ret=$'\xe3'
+  ble/test 'ble/util/substr あいう 1 2' ret=$'\x81\x82'
+  ble/test 'ble/util/substr あいう 1 4' ret=$'\x81\x82\xe3\x81'
+  ble/test 'ble/util/substr あいう 7 5' ret=$'\x81\x86'
+)
+
 # ble/path#remove{,-glob}
 (
   for cmd in ble/path#{remove,remove-glob}; do
@@ -875,37 +912,37 @@ ble/test ble/util/setexit 255 exit=255
 # ble/builtin/trap
 (
   # 0 / EXIT (special trap)
-  ble/builtin/trap 'echo TRAPEXIT' 0
-  ble/test 'ble/builtin/trap/invoke 0' stdout=TRAPEXIT
-  ble/test 'ble/builtin/trap/invoke EXIT' stdout=TRAPEXIT
+  ble/builtin/trap 'echo TRAPEXIT1' 0
+  ble/test 'ble/builtin/trap/invoke 0' stdout=TRAPEXIT1
+  ble/test 'ble/builtin/trap/invoke EXIT' stdout=TRAPEXIT1
   ble/builtin/trap 0
   ble/test 'ble/builtin/trap/invoke 0' stdout=
 
-  ble/builtin/trap 'echo TRAPEXIT' EXIT
-  ble/test 'ble/builtin/trap/invoke 0' stdout=TRAPEXIT
-  ble/test 'ble/builtin/trap/invoke EXIT' stdout=TRAPEXIT
+  ble/builtin/trap 'echo TRAPEXIT2' EXIT
+  ble/test 'ble/builtin/trap/invoke 0' stdout=TRAPEXIT2
+  ble/test 'ble/builtin/trap/invoke EXIT' stdout=TRAPEXIT2
   ble/builtin/trap EXIT
   ble/test 'ble/builtin/trap/invoke 0' stdout=
 
   # 1 / HUP / SIGHUP (signal trap)
-  ble/builtin/trap 'echo TRAPHUP' 1
-  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP
-  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP
-  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP
+  ble/builtin/trap 'echo TRAPHUP1' 1
+  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP1
+  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP1
+  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP1
   ble/builtin/trap 1
   ble/test 'ble/builtin/trap/invoke 1' stdout=
 
-  ble/builtin/trap 'echo TRAPHUP' HUP
-  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP
-  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP
-  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP
+  ble/builtin/trap 'echo TRAPHUP2' HUP
+  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP2
+  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP2
+  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP2
   ble/builtin/trap HUP
   ble/test 'ble/builtin/trap/invoke HUP' stdout=
 
-  ble/builtin/trap 'echo TRAPHUP' SIGHUP
-  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP
-  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP
-  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP
+  ble/builtin/trap 'echo TRAPHUP3' SIGHUP
+  ble/test 'ble/builtin/trap/invoke 1' stdout=TRAPHUP3
+  ble/test 'ble/builtin/trap/invoke HUP' stdout=TRAPHUP3
+  ble/test 'ble/builtin/trap/invoke SIGHUP' stdout=TRAPHUP3
   ble/builtin/trap SIGHUP
   ble/test 'ble/builtin/trap/invoke HUP' stdout=
 
@@ -932,12 +969,12 @@ ble/test ble/util/setexit 255 exit=255
   ble/test 'ble/util/readfile ret <(:)' ret=
 
   # mapfile
-  function status { echo "${#a[*]}:(${a[*]})"; }
+  function status { echo "${#a[*]}:(""${a[*]}"")"; }
   ble/test "ble/util/mapfile a < <(echo hello); status" stdout='1:(hello)'
   ble/test "ble/util/mapfile a < <(echo -n hello); status" stdout='1:(hello)'
   ble/test "ble/util/mapfile a < <(echo hello; echo world); status" stdout='2:(hello world)'
   ble/test "ble/util/mapfile a < <(echo hello; echo -n world); status" stdout='2:(hello world)'
-  ble/test "ble/util/mapfile a < <(printf '%s\n' h{1..4}); status" stdout='4:(h1 h2 h3 h4)'
+  ble/test "ble/util/mapfile a < <(printf '%s\n' h1 h2 h3 h4); status" stdout='4:(h1 h2 h3 h4)'
   ble/test "ble/util/mapfile a < <(:); status" stdout='0:()'
   ble/test "ble/util/mapfile a < <(echo); status" stdout='1:()'
   ble/test "ble/util/mapfile a < <(echo;echo); status" stdout='2:( )'
@@ -1134,17 +1171,19 @@ ble/test ble/util/setexit 255 exit=255
 )
 
 # ble/util/is-stdin-ready
-(
-  ble/test 'echo 1 | { sleep 0.01; ble/util/is-stdin-ready; }'
-  ble/test 'sleep 0.01 | ble/util/is-stdin-ready' exit=1
-  ble/test 'ble/util/is-stdin-ready <<< a'
-  ble/test 'ble/util/is-stdin-ready <<< ""'
+if ((_ble_bash>=40000)); then
+  (
+    ble/test 'echo 1 | { sleep 0.01; ble/util/is-stdin-ready; }'
+    ble/test 'sleep 0.01 | ble/util/is-stdin-ready' exit=1
+    ble/test 'ble/util/is-stdin-ready <<< a'
+    ble/test 'ble/util/is-stdin-ready <<< ""'
 
-  # EOF は成功してしまう? これは意図しない振る舞いである。
-  # しかし bash 自体が終了するので関係ないのかもしれない。
-  ble/test ': | { sleep 0.01; ble/util/is-stdin-ready; }'
-  ble/test 'ble/util/is-stdin-ready < /dev/null'
-)
+    # EOF は成功してしまう? これは意図しない振る舞いである。
+    # しかし bash 自体が終了するので関係ないのかもしれない。
+    ble/test ': | { sleep 0.01; ble/util/is-stdin-ready; }'
+    ble/test 'ble/util/is-stdin-ready < /dev/null'
+  )
+fi
 
 # ble/util/is-running-in-subshell
 ble/test ble/util/is-running-in-subshell exit=1
@@ -1152,17 +1191,26 @@ ble/test ble/util/is-running-in-subshell exit=1
 
 # ble/util/getpid
 (
+  ble/test/chdir
+  function getpid {
+    sh -c 'echo -n $PPID' > a.txt
+    ble/util/readfile ppid a.txt
+  }
+
   dummy=modification_to_environment.1
   ble/util/getpid
   ble/test '[[ $BASHPID != $$ ]]'
-  ble/test "[[ \$BASHPID == \$(sh -c 'echo \$PPID') ]]"
+  getpid
+  ble/test '[[ $BASHPID == $ppid ]]'
   pid1=$BASHPID
   (
     dummy=modification_to_environment.2
     ble/util/getpid
     ble/test '[[ $BASHPID != $$ && $BASHPID != $pid1 ]]'
-    ble/test "[[ \$BASHPID == \$(sh -c 'echo \$PPID') ]]"
+    getpid
+    ble/test '[[ $BASHPID == $ppid ]]'
   )
+  ble/test/rmdir
 )
 
 # ble/fd#is-open
@@ -1184,8 +1232,11 @@ ble/test ble/util/is-running-in-subshell exit=1
   ble/fd#alloc fd '> a.txt'
   echo hello >&$fd
   echo world >&$fd
-  ble/test 'ble/fd#close fd; echo test >&$fd' exit=1
-  ble/test 'cat a.txt' stdout={hello,world}
+  if ((_ble_bash/100!=301)); then
+    # bash-3.1 はバグがあって一度開いた fd を閉じれない。
+    ble/test 'ble/fd#close fd; echo test >&$fd' exit=1
+    ble/test 'cat a.txt' stdout={hello,world}
+  fi
   ble/test/rmdir
 )
 
