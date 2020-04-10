@@ -2473,7 +2473,7 @@ function ble/builtin/bind/.parse-keyname {
   (return|ret) ch=$'\r' ;;
   (space|spc) ch=' ' ;;
   (tab) ch=$'\t' ;;
-  (*) LC_ALL=C eval 'ch=${value::1}' ;;
+  (*) ble/util/substr "$value" 0 1; ch=$ret ;;
   esac
   ble/util/s2c "$ch"; local key=$ret
 

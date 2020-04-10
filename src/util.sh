@@ -716,6 +716,24 @@ function ble/string#create-unicode-progress-bar {
   ret=$out
 }
 
+if ((_ble_bash>=40200)); then
+  function ble/util/strlen {
+    LC_ALL= LC_CTYPE=C builtin eval 'ret=${#1}' 2>/dev/null
+  }
+  function ble/util/substr {
+    LC_ALL= LC_CTYPE=C builtin eval 'ret=${1:$2:$3}' 2>/dev/null
+  }
+else
+  function ble/util/strlen {
+    local LC_ALL= LC_CTYPE=C
+    ret=${#1}
+  } 2>/dev/null
+  function ble/util/substr {
+    local LC_ALL= LC_CTYPE=C
+    ret=${1:$2:$3}
+  } 2>/dev/null
+fi
+
 function ble/path#remove {
   [[ $2 ]] || return
   local _ble_local_script='
@@ -852,6 +870,22 @@ else
     [[ $type == function ]]
   }
 fi
+
+## 関数 ble/function#getdef function
+##   @var[out] def
+if ((_ble_bash>=30200)); then
+  function ble/function#getdef {
+    local name=$1
+    ble/util/assign def 'declare -f "$name"'
+  }
+else
+  function ble/function#getdef {
+    local name=$1
+    ble/util/assign def 'type "$name"'
+    def=${def#*$'\n'}
+  }
+fi
+
 function ble/function#try {
   ble/is-function "$1" || return 127
   "$@"
