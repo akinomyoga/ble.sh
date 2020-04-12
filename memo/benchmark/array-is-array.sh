@@ -73,3 +73,58 @@ if ((_ble_bash>=40400)); then
   ble-measure 'ble/is-array5 arr2' # 23.30 usec/eval
   ble-measure 'ble/is-array5 arr'  # 23.10 usec/eval
 fi
+
+#------------------------------------------------------------------------------
+# 5 declare -p の結果を参照する?
+
+arr3=({1..1000})
+function ble/is-array6 {
+  local __name=$1 __def
+  ble/util/assign __def 'declare -p "$name" 2>/dev/null'
+  local rex='^declare -[b-zA-Z]*a'
+  [[ $__def =~ $rex ]]
+}
+ble-measure 'ble/is-array6 arr1' # 24.80 usec/eval
+ble-measure 'ble/is-array6 arr2' # 23.30 usec/eval
+ble-measure 'ble/is-array6 arr3' # 23.10 usec/eval
+
+# 2020-04-12 の計測結果 @ chatoyancy bash-5.0
+#   この結果を見ると実は declare -p をしてしまった方が
+#   compgen に頼るよりも高速な様である。
+#   Cygwin では余り違いが見られないが、Cygwin ならば
+#   恐らく bash-4.4 以降に保たれているので
+#   ${var@a} を使う事ができるのでそれほど気にしなくても良い?
+#
+#   481.398 usec/eval: ble/is-array4 arr1 (x500)
+#   479.936 usec/eval: ble/is-array4 arr2 (x500)
+#   479.532 usec/eval: ble/is-array4 arr (x500)
+#     4.422 usec/eval: ble/is-array5 arr1 (x20000)
+#     4.038 usec/eval: ble/is-array5 arr2 (x20000)
+#     4.023 usec/eval: ble/is-array5 arr (x20000)
+#   164.238 usec/eval: ble/is-array6 arr1 (x1000)
+#   165.432 usec/eval: ble/is-array6 arr2 (x1000)
+#   165.417 usec/eval: ble/is-array6 arr3 (x1000)
+#
+# chatoyancy bash-4.3
+#   389.800 usec/eval: ble/is-array4 arr1 (x500)
+#   387.800 usec/eval: ble/is-array4 arr2 (x500)
+#   389.800 usec/eval: ble/is-array4 arr (x500)
+#   203.800 usec/eval: ble/is-array6 arr1 (x500)
+#   201.800 usec/eval: ble/is-array6 arr2 (x500)
+#   201.800 usec/eval: ble/is-array6 arr3 (x500)
+#
+# chatoyancy bash-3.2
+#   401.200 usec/eval: ble/is-array4 arr1 (x500)
+#   401.200 usec/eval: ble/is-array4 arr2 (x500)
+#   401.200 usec/eval: ble/is-array4 arr (x500)
+#   213.200 usec/eval: ble/is-array6 arr1 (x500)
+#   211.200 usec/eval: ble/is-array6 arr2 (x500)
+#   211.200 usec/eval: ble/is-array6 arr3 (x500)
+#
+# letsnote2019 bash-4.4
+#   1478.000 usec/eval: ble/is-array4 arr1 (x100)
+#   1408.000 usec/eval: ble/is-array4 arr2 (x100)
+#   1518.000 usec/eval: ble/is-array4 arr (x100)
+#   1448.000 usec/eval: ble/is-array6 arr1 (x100)
+#   1468.000 usec/eval: ble/is-array6 arr2 (x100)
+#   1478.000 usec/eval: ble/is-array6 arr3 (x100)

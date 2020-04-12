@@ -316,23 +316,31 @@ function ble/debug/print-variables {
 ##   @var[out] attr
 if ((_ble_bash>=40400)); then
   function ble/variable#get-attr { attr=${!1@a}; }
+  function ble/variable#has-attr { [[ ${!1@a} == *["$2"]* ]]; }
 else
   function ble/variable#get-attr {
     attr=
-    local __tmp=$1
-    ble/util/assign __tmp 'declare -p "$__tmp" 2>/dev/null'
+    local __ble_tmp=$1
+    ble/util/assign __ble_tmp 'declare -p "$__ble_tmp" 2>/dev/null'
     local rex='^declare -([a-zA-Z]*)'
-    [[ $__tmp =~ $rex ]] && attr=${BASH_REMATCH[1]}
+    [[ $__ble_tmp =~ $rex ]] && attr=${BASH_REMATCH[1]}
     return 0
   }
+  function ble/variable#has-attr {
+    local __ble_tmp=$1
+    ble/util/assign __ble_tmp 'declare -p "$__ble_tmp" 2>/dev/null'
+    local rex='^declare -([a-zA-Z]*)'
+    [[ $__ble_tmp =~ $rex && ${BASH_REMATCH[1]} == *["$2"]* ]]
+  }
 fi
-function ble/variable#has-attr {
-  local attr; ble/variable#get-attr "$1"
-  [[ $attr == *[$2]* ]]
-}
 function ble/is-inttype { ble/variable#has-attr "$1" i; }
 function ble/is-readonly { ble/variable#has-attr "$1" r; }
 function ble/is-transformed { ble/variable#has-attr "$1" luc; }
+
+function ble/variable#is-global/.test { ! local "$1" 2>/dev/null; }
+function ble/variable#is-global {
+  (readonly "$1"; ble/variable#is-global/.test "$1")
+}
 
 _ble_array_prototype=()
 function ble/array#reserve-prototype {
@@ -355,8 +363,22 @@ function ble/array#reserve-prototype {
 ##     bash-4.2 以下では連想配列は配列とはならない。
 if ((_ble_bash>=40400)); then
   function ble/is-array { [[ ${!1@a} == *a* ]]; }
+  function ble/is-assoc { [[ ${!1@a} == *A* ]]; }
 else
-  function ble/is-array { builtin compgen -A arrayvar -X \!"$1" "$1" &>/dev/null; }
+  function ble/is-array {
+    local "decl$1"
+    ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return
+    local rex='^declare -[b-zA-Z]*a'
+    eval "[[ \$decl$1 =~ \$rex ]]"
+  }
+  function ble/is-assoc {
+    local "decl$1"
+    ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return
+    local rex='^declare -[a-zB-Z]*A'
+    eval "[[ \$decl$1 =~ \$rex ]]"
+  }
+  ((_ble_bash>=40000)) ||
+    function ble/is-assoc { false; }
 fi
 
 ## 関数 ble/array#set arr value...
@@ -1709,9 +1731,15 @@ function ble/util/declare-print-definitions {
           # bash-3.0 の declare -p は改行について誤った出力をする。
           if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
 
-          if (_ble_bash < 40000) {
-            # #D1238 bash-3.2 以前の declare -p は ^A, ^? を
-            #   ^A^A, ^A^? と出力してしまうので補正する。
+          # #D1238 bash-4.3 以前の declare -p は ^A, ^? を
+          #   ^A^A, ^A^? と出力してしまうので補正する。
+          # #D1325 更に Bash-3.0 では "x${_ble_term_DEL}y" とすると
+          #   _ble_term_DEL の中身が消えてしまうので
+          #   "x""${_ble_term_DEL}""y" とする必要がある。
+          if (_ble_bash < 30100) {
+            gsub(/\001\001/, "\"\"${_ble_term_SOH}\"\"", decl);
+            gsub(/\001\177/, "\"\"${_ble_term_DEL}\"\"", decl);
+          } else if (_ble_bash < 40400) {
             gsub(/\001\001/, "${_ble_term_SOH}", decl);
             gsub(/\001\177/, "${_ble_term_DEL}", decl);
           }
@@ -1741,86 +1769,91 @@ function ble/util/declare-print-definitions {
     '
   fi
 }
+
+## 関数 ble/util/print-global-definitions/.save-decl name
+##   @var[out] __ble_decl
+function ble/util/print-global-definitions/.save-decl {
+  local __ble_name=$1
+  if [[ ! ${!__ble_name+set} ]]; then
+    __ble_decl="declare $__ble_name; unset -v $__ble_name"
+  elif ble/variable#has-attr "$__ble_name" aA; then
+    if ((_ble_bash>=40000)); then
+      ble/util/assign __ble_decl "declare -p $__ble_name" 2>/dev/null
+      __ble_decl=${__ble_decl#declare -* }
+    else
+      ble/util/assign __ble_decl "ble/util/declare-print-definitions $__ble_name" 2>/dev/null
+    fi
+    if ble/is-array "$__ble_name"; then
+      __ble_decl="declare -a $__ble_decl"
+    else
+      __ble_decl="declare -A $__ble_decl"
+    fi
+  else
+    __ble_decl=${!__ble_name}
+    __ble_decl="declare $__ble_name='${__ble_decl//$__ble_q//$__ble_Q}'"
+  fi
+}
 ## 関数 ble/util/print-global-definitions varnames...
 ##
 ##   @var[in] varnames
 ##
 ##   指定した変数のグローバル変数としての定義を出力します。
-##   現状では配列変数には対応していません。
 ##
-##   制限: 途中に readonly なローカル変数があるとその変数の値を返す。
-##   しかし、そもそも readonly な変数には問題が多いので ble.sh では使わない。
+##   制限: 途中同名の readonly ローカル変数がある場合は、
+##   グローバル変数の値は取得できないので unset を返す。
+##   そもそも readonly な変数には問題が多いので ble.sh では使わない。
 ##
-##   制限: __ble_* という変数名は内部で使用するので、対応しません。
+##   制限: __ble_* という変数名はこの関数の実装に使用するので、
+##   対応しない。
 ##
-if ((_ble_bash>=40200)); then
-  # 注意: bash-4.2 にはバグがあって、グローバル変数が存在しない時に
-  #   declare -g -r var とすると、ローカルに新しく読み取り専用の var 変数が作られる。
-  #   現在の実装では問題にならない。
-  function ble/util/print-global-definitions {
-    local __ble_hidden_only=
-    [[ $1 == --hidden-only ]] && { __ble_hidden_only=1; shift; }
-    (
-      ((_ble_bash>=50000)) && shopt -u localvar_unset
-      __ble_error=
-      __ble_q="'" __ble_Q="'\''"
-      # 補完で 20 階層も関数呼び出しが重なることはなかろう
-      __ble_MaxLoop=20
+##   Note: bash-4.2 にはバグがあって、グローバル変数が存在しない時に
+##   declare -g -r var とすると、ローカルに新しく読み取り専用の var 変数が作られる。
+##   現在の実装では問題にならない。
+function ble/util/print-global-definitions {
+  local __ble_hidden_only=
+  [[ $1 == --hidden-only ]] && { __ble_hidden_only=1; shift; }
+  (
+    ((_ble_bash>=50000)) && shopt -u localvar_unset
+    __ble_error=
+    __ble_q="'" __ble_Q="'\''"
+    # 補完で 20 階層も関数呼び出しが重なることはなかろう
+    __ble_MaxLoop=20
 
-      for __ble_name; do
-        ((__ble_processed_$__ble_name)) && continue
-        ((__ble_processed_$__ble_name=1))
-        [[ $__ble_name == __ble_* ]] && continue
+    for __ble_name; do
+      [[ ${__ble_name//[0-9a-zA-Z_]} ]] && continue
+      ((__ble_processed_$__ble_name)) && continue
+      ((__ble_processed_$__ble_name=1))
+      [[ $__ble_name == __ble_* ]] && continue
 
+      __ble_decl=
+      if ((_ble_bash>=40200)); then
         declare -g -r "$__ble_name"
-
         for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
-          __ble_value=${!__ble_name}
-          builtin unset -v "$__ble_name" || break
-        done 2>/dev/null
-
-        ((__ble_i==__ble_MaxLoop)) && __ble_error=1 __ble_value= # not found
-
-        [[ $__ble_hidden_only && $__ble_i == 0 ]] && continue
-        ble/util/print "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
-      done
-
-      [[ ! $__ble_error ]]
-    ) 2>/dev/null
-  }
-else
-  # 制限: グローバル変数が定義されずローカル変数が定義されているとき、
-  #   ローカル変数の値が取得されてしまう。
-  function ble/util/print-global-definitions {
-    local __ble_hidden_only=
-    [[ $1 == --hidden-only ]] && { __ble_hidden_only=1; shift; }
-    (
-      ((_ble_bash>=50000)) && shopt -u localvar_unset
-      __ble_error=
-      __ble_q="'" __ble_Q="'\''"
-      __ble_MaxLoop=20
-
-      for __ble_name; do
-        ((__ble_processed_$__ble_name)) && continue
-        ((__ble_processed_$__ble_name=1))
-        [[ $__ble_name == __ble_* ]] && continue
-
-        __ble_value= __ble_found=
-        for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
-          [[ ${!__ble_name+set} ]] && __ble_value=${!__ble_name} __ble_found=$__ble_i
-          builtin unset -v "$__ble_name" 2>/dev/null
+          if ! builtin unset -v "$__ble_name"; then
+            ble/variable#is-global "$__ble_name" &&
+              ble/util/print-global-definitions/.save-decl "$__ble_name"
+            break
+          fi
         done
+      else
+        for ((__ble_i=0;__ble_i<__ble_MaxLoop;__ble_i++)); do
+          if ble/variable#is-global "$__ble_name"; then
+            ble/util/print-global-definitions/.save-decl "$__ble_name"
+            break
+          fi
+          builtin unset -v "$__ble_name" || break
+        done
+      fi
 
-        [[ $__ble_found ]] || __ble_error= __ble_value= # not found
-        [[ $__ble_hidden_only && $__ble_found == 0 ]] && continue
+      [[ $__ble_decl ]] ||
+        __ble_error=1 __ble_decl="declare $__ble_name; unset -v $__ble_name" # not found
+      [[ $__ble_hidden_only && $__ble_i == 0 ]] && continue
+      ble/util/print "$__ble_decl"
+    done
 
-        ble/util/print "declare $__ble_name='${__ble_value//$__ble_q//$__ble_Q}'"
-      done
-
-      [[ ! $__ble_error ]]
-    ) 2>/dev/null
-  }
-fi
+    [[ ! $__ble_error ]]
+  ) 2>/dev/null
+}
 
 function ble/util/has-glob-pattern {
   local dummy=$_ble_base_run/$$.dummy ret

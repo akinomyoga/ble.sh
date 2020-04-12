@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 648
+ble/test/start-section 'util' 695
 
 # bleopt
 
@@ -231,6 +231,30 @@ ble/test ble/util/setexit 255 exit=255
   fi
 )
 
+# ble/variable#is-global
+function is-global/test { ! local "$1" 2>/dev/null; }
+function is-global() (readonly "$1"; is-global/test "$1")
+(
+  v1=1 v2=2
+  function f1 { local v2=22 v3=33; f2; }
+  function f2 {
+    local v4=444
+    ble/test 'is-global v0'
+    ble/test 'is-global v1'
+    ble/test 'is-global v2' exit=1
+    ble/test 'is-global v3' exit=1
+    ble/test 'is-global v4' exit=1
+
+    ble/test 'ble/variable#is-global v0'
+    ble/test 'ble/variable#is-global v1'
+    ble/test 'ble/variable#is-global v2' exit=1
+    ble/test 'ble/variable#is-global v3' exit=1
+    ble/test 'ble/variable#is-global v4' exit=1
+  }
+  f1
+)
+
+
 # _ble_array_prototype
 (
   _ble_array_prototype=()
@@ -243,13 +267,22 @@ ble/test ble/util/setexit 255 exit=255
   ble/test 'x=("${_ble_array_prototype[@]::3}"); echo ${#x[@]}' stdout=3
 )
 
-# ble/is-array
+# ble/is-{array,assoc}
 (
   declare -a a=()
   declare b=
   ble/test 'ble/is-array a'
   ble/test 'ble/is-array b' exit=1
   ble/test 'ble/is-array c' exit=1
+
+  if ((_ble_bash>=40000)); then
+    declare -A A=()
+    ble/test 'ble/is-array A' exit=1
+    ble/test 'ble/is-assoc a' exit=1
+    ble/test 'ble/is-assoc A'
+    ble/test 'ble/is-assoc b' exit=1
+    ble/test 'ble/is-assoc c' exit=1
+  fi
 )
 
 # ble/array#set
@@ -1241,7 +1274,70 @@ ble/test ble/util/is-running-in-subshell exit=1
 )
 
 # ble/util/declare-print-definitions
+(
+  xv1=''
+  xv2a='a' xv2b='ab'
+  xv3a=' ' xv3b='a b'
+  xv4a=$'\n' xv4b=$'a\nb'
+  xv5a=$'\r' xv5b=$'a\rb'
+  xv6a=$'\x01' xv6b=a$'\x01'b
+  xv7a=$'\x02' xv7b=a$'\x02'b
+  xv8a=$'\x7F' xv8b=a$'\x7F'b
+  eval -- "$(
+    for name in v1 v{2..8}{a,b}; do
+      eval "$name=\$x$name"
+    done
+    ble/util/declare-print-definitions vn v1 v{2..8}{a,b} 2>/dev/null)"
+
+  ble/test '[[ ! ${vn+set} ]]'
+  for name in v1 v{2..8}{a,b}; do
+    ble/test "declare -p $name x$name | cat -A >&2; [[ \$$name == \$x$name ]]"
+  done
+
+  function status { echo "${#a[*]}:(""${a[*]}"")"; }
+  xa0=() sa0='0:()'
+  xa1=('') sa1='1:()'
+  for k in {2..8}; do
+    eval "xa$k=(\"\$xv${k}a\" \"\$xv${k}b\")"
+    eval "sa$k=\"2:(\$xv${k}a \$xv${k}b)\""
+  done
+  eval -- "$(
+    for name in a0 a1 a{2..8}; do
+      eval "$name=(\"\${x$name[@]}\")"
+    done
+    ble/util/declare-print-definitions a0 a1 a{2..8} 2>/dev/null)"
+
+  for name in a0 a1 a{2..8}; do
+    stdout_var=s$name
+    ble/test "a=(\"\${$name[@]}\"); status" stdout="${!stdout_var}"
+  done
+)
+
 # ble/util/print-global-definitions
+(
+  function status { builtin eval 'echo "${#'$1'[*]}:(""${'$1'[*]}"")"'; }
+  v1=123 v2=(1 2 3) v3=bbb v4=ccc
+  function f2 {
+    local v3=x v4=y
+    builtin eval -- "$(ble/util/print-global-definitions v{0..4})"
+    ble/test '[[ ! ${v0+set} ]]'
+    ble/test 'status v1' stdout='1:(123)'
+    ble/test 'status v2' stdout='3:(1 2 3)'
+    ble/test 'status v3' stdout='1:(bbb)'
+    ble/test 'status v4' stdout='1:(ccc)'
+  }
+  function f1 {
+    local v0=1 v1=2 v2=3 v4=5
+    f2
+    # 上のスコープには影響を与えない。
+    ble/test 'status v1' stdout='1:(2)'
+    ble/test 'status v2' stdout='1:(3)'
+  }
+  f1
+  #function 
+  #ble/test 'ble/util/print-global-definitions'
+)
+
 # ble/util/has-glob-pattern
 # ble/util/is-cygwin-slow-glob
 # ble/util/eval-pathname-expansion

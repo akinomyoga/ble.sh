@@ -4053,10 +4053,6 @@ function ble-edit/exec/.reset-builtins-2 {
   builtin unset -f :
   builtin unalias :
 }
-{
-  function unset { builtin unset "$@"; }
-  readonly -f unset
-} 2>/dev/null
 
 _ble_edit_exec_BASH_REMATCH=()
 _ble_edit_exec_BASH_REMATCH_rex=none

@@ -181,7 +181,7 @@ function ble-measure {
   fi
 
   local prev_n= prev_utot=
-  local n
+  local -i n
   for n in {1,10,100,1000,10000}\*{1,2,5}; do
     [[ $prev_n ]] && ((n/prev_n<=10 && prev_utot*n/prev_n<_ble_measure_threshold*2/5 && n!=50000)) && continue
 
