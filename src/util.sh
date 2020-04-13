@@ -1855,17 +1855,31 @@ function ble/util/print-global-definitions {
   ) 2>/dev/null
 }
 
+## 関数 ble/util/has-glob-pattern pattern
+##   指定したパターンがグロブパターンを含むかどうかを判定します。
+##
+## Note: Bash 5.0 では変数に \ が含まれている時に echo $var を実行すると
+##   パス名展開と解釈されて failglob, nullglob などが有効になるが、
+##   echo \[a\] の様に明示的に書いている場合にはパス名展開と解釈されない。
+##   この判定では明示的に書いた時にグロブパターンと認識されるかどうかに基づく。
 function ble/util/has-glob-pattern {
-  local dummy=$_ble_base_run/$$.dummy ret
-  if shopt -q failglob &>/dev/null; then
-    builtin eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
-  else
-    shopt -s failglob
-    builtin eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
+  [[ $1 ]] || return 1
+
+  local restore=:
+  if ! shopt -q nullglob 2>/dev/null; then
+    restore="$restore;shopt -u nullglob"
+    shopt -s nullglob
+  fi
+  if shopt -q failglob 2>/dev/null; then
+    restore="$restore;shopt -s failglob"
     shopt -u failglob
   fi
-  ((ext!=0)); return
-}
+
+  local dummy=$_ble_base_run/$$.dummy ret
+  builtin eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
+  builtin eval -- "$restore"
+  [[ ! $ret ]]
+} >/dev/tty
 
 # Note: Cygwin では // で始まるパスの展開は遅い (#D1168)
 function ble/util/is-cygwin-slow-glob {

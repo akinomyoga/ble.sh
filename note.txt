@@ -2863,6 +2863,13 @@ bash_tips
 
 2020-04-12
 
+  * has-glob-pattern の判定がサブシェルの中ではできない。
+    failglob を使って判定しているがサブシェルの中だと
+    eval を用いて評価していたとしてもその場で終了してしまう。
+
+    サブシェルの中でも failglob が発生しない様にする方法はあるのか。
+    例えば nullglob を用いるという手があるのではないか?
+
   * ble/util/print-global-definitions で未定義変数と配列に対応する [#D1325]
 
     ble/util/print-global-definitions で定義されていない変数が

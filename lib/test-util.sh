@@ -1334,11 +1334,31 @@ ble/test ble/util/is-running-in-subshell exit=1
     ble/test 'status v2' stdout='1:(3)'
   }
   f1
-  #function 
-  #ble/test 'ble/util/print-global-definitions'
 )
 
 # ble/util/has-glob-pattern
+(
+  ble/test 'ble/util/has-glob-pattern "a*"'
+  ble/test 'ble/util/has-glob-pattern "a*b"'
+  ble/test 'ble/util/has-glob-pattern "?"'
+  ble/test 'ble/util/has-glob-pattern "a?"'
+  ble/test 'ble/util/has-glob-pattern "a?b"'
+  ble/test 'ble/util/has-glob-pattern "a?b*c"'
+  ble/test 'ble/util/has-glob-pattern "a[a-c]d"'
+  ble/test 'ble/util/has-glob-pattern "a[!a-c]d"'
+  ble/test 'ble/util/has-glob-pattern "\[xyz\]"'
+  ble/test 'ble/util/has-glob-pattern "*.txt"'
+  ble/test 'ble/util/has-glob-pattern "*.*"'
+
+  ble/test 'ble/util/has-glob-pattern ""'    exit=1
+  ble/test 'ble/util/has-glob-pattern "a"'   exit=1
+  ble/test 'ble/util/has-glob-pattern "abc"' exit=1
+  ble/test 'ble/util/has-glob-pattern "/"'   exit=1
+  ble/test 'ble/util/has-glob-pattern "a/c"' exit=1
+  ble/test 'ble/util/has-glob-pattern "a:b"' exit=1
+  ble/test 'ble/util/has-glob-pattern "a=b"' exit=1
+)
+
 # ble/util/is-cygwin-slow-glob
 # ble/util/eval-pathname-expansion
 # ble/util/isprint+
