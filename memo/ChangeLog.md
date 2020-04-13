@@ -1504,7 +1504,7 @@
   - ble-syntax.sh (ble-syntax:bash): bugfix, do not allow newline after the redirection introducers.
 * ble.pp, ble-core.sh: Check and modify dependencies on external commands.
   - ble.pp (ble/.check-environment): Remove tput (POSIX UP option) which is not necessarily required.
-  - ble-core.sh (ble-term/visible-bell): Add a function `ble/util/getmtime` to get modified time of files in a compativble way.
+  - ble-core.sh (ble-term/visible-bell): Add a function `ble/util/getmtime` to get modified time of files in a compatible way.
   - ble-edit.sh (ble/widget/command-help): Select available pager from any of $PAGER, less, more, and cat.
 * ble-syntax.sh: syntax: quotations in words in parameter expansion (shopt -u extquote, etc.).
   - ble-syntax.sh: support single quotation in parameter expansion.
