@@ -1149,7 +1149,8 @@ if ((_ble_bash>=40200)); then
 else
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
-      ble/util/assign "$2" 'ble/bin/date +"$3" $4'
+      local fmt=$3 time=$4
+      ble/util/assign "$2" 'ble/bin/date +"$fmt" $time'
     else
       ble/bin/date +"$1" $2
     fi
@@ -1342,14 +1343,14 @@ function ble/util/pager {
 ##   ミリ秒も取得できる場合には第二フィールドとしてミリ秒を出力します。
 ##   @param[in] filename ファイル名を指定します。
 ##
-if type date &>/dev/null && date -r / +%s &>/dev/null; then
-  function ble/util/getmtime { date -r "$1" +'%s %N' 2>/dev/null; }
-elif type stat &>/dev/null; then
+if ble/bin/.freeze-utility-path date && date -r / +%s &>/dev/null; then
+  function ble/util/getmtime { ble/bin/date -r "$1" +'%s %N' 2>/dev/null; }
+elif ble/bin/.freeze-utility-path stat; then
   # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
-  if stat -c %Y / &>/dev/null; then
-    function ble/util/getmtime { stat -c %Y "$1" 2>/dev/null; }
-  elif stat -f %m / &>/dev/null; then
-    function ble/util/getmtime { stat -f %m "$1" 2>/dev/null; }
+  if ble/bin/stat -c %Y / &>/dev/null; then
+    function ble/util/getmtime { ble/bin/stat -c %Y "$1" 2>/dev/null; }
+  elif ble/bin/stat -f %m / &>/dev/null; then
+    function ble/util/getmtime { ble/bin/stat -f %m "$1" 2>/dev/null; }
   fi
 fi
 # fallback: print current time
