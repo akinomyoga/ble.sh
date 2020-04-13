@@ -1363,5 +1363,19 @@ ble/test ble/util/is-running-in-subshell exit=1
 # ble/util/eval-pathname-expansion
 # ble/util/isprint+
 # ble/util/strftime
+# ble/util/msleep
+# ble/util/sleep
+# ble/util/conditional-sync
+
+# ble/util/cat
+(
+  ble/test ":| ble/util/cat | cat -A"   stdout=
+  ble/test "printf a | ble/util/cat | cat -A"   stdout=a
+  ble/test "printf '\0' | ble/util/cat | cat -A"   stdout=^@
+  ble/test "printf 'hello\nworld\n'| ble/util/cat | cat -A" stdout={hello\$,world\$}
+  ble/test "printf 'hello\nworld'| ble/util/cat | cat -A"   stdout={hello\$,world}
+  ble/test "printf 'hello\0world\0'| ble/util/cat | cat -A" stdout=hello^@world^@
+  ble/test "printf 'hello\0world'| ble/util/cat | cat -A"   stdout=hello^@world
+)
 
 ble/test/end-section

@@ -2089,16 +2089,22 @@ function ble/util/conditional-sync {
 
 #------------------------------------------------------------------------------
 
-## 関数 ble/util/cat
-##   cat の代替。但し、ファイル内に \0 が含まれる場合は駄目。
+## 関数 ble/util/cat [files..]
+##   cat の代替。直接扱えない NUL で区切って読み出す。
+function ble/util/cat/.impl {
+  local content= TMOUT= IFS=
+  while builtin read -r -d '' content; do
+    printf '%s\0' "$content"
+  done
+  [[ $content ]] && printf '%s' "$content"
+}
 function ble/util/cat {
-  local content=
-  if [[ $1 && $1 != - ]]; then
-    TMOUT= IFS= builtin read -r -d '' content < "$1"
+  if (($#)); then
+    local file
+    for file; do ble/util/cat/.impl < "$1"; done
   else
-    TMOUT= IFS= builtin read -r -d '' content
+    ble/util/cat/.impl
   fi
-  printf %s "$content"
 }
 
 _ble_util_less_fallback=
