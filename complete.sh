@@ -186,7 +186,19 @@ function ble-complete/yield-candidate {
 # source/command
 
 function ble-complete/source/command/gen {
-  [[ ! $COMPV ]] && shopt -q no_empty_cmd_completion &>/dev/null && return
+  # Note: cygwin では cyg,x86,i68 等で始まる場合にとても遅い。
+  #   他の環境でも空の補完を実行すると遅くなる可能性がある。
+  local slow_compgen=
+  if [[ ! $COMPV ]]; then
+    slow_compgen=1
+  elif [[ $OSTYPE == cygwin* ]]; then
+    case $COMPV in
+    (?|cy*|x8*|i6*)
+      slow_compgen=1 ;;
+    esac
+  fi
+
+  [[ $slow_compgen ]] && shopt -q no_empty_cmd_completion &>/dev/null && return
   compgen -c -- "$COMPV"
   [[ $COMPV == */* ]] && compgen -A function -- "$COMPV"
   shopt -q autocd &>/dev/null && compgen -d -- "$COMPV"
