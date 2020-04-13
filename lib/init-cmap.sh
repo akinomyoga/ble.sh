@@ -40,6 +40,7 @@
 # この一覧を更新することでキャッシュの更新が起こるようにしている。
 #
 # 2019-05-06 ble-update 関連でバグがあったのを潰したので更新。
+# 2020-04-13 cmap キャッシュ生成のバグ修正に伴う更新。
 
 function ble/init:cmap/bind-keypad-key {
   local Ft=$1 name=$2
