@@ -2452,10 +2452,15 @@ function ble/decode/cmap/initialize {
   else
     ble-edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
     source "$init"
-    ble-bind -D | ble/bin/sed '
-      s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
-      s/^-- //
-      s/["'"'"']//g
+    ble-bind -D | ble/bin/awk '
+      {
+        sub(/^declare +(-[aAfFgiclrtux]+ +)?/, "");
+        sub(/^-- +/, "");
+      }
+      /^_ble_decode_(cmap|csimap|kbd)/ {
+        gsub(/["'\'']/, "");
+        print
+      }
     ' >| "$dump"
   fi
 
