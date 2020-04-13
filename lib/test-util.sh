@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 695
+ble/test/start-section 'util' 722
 
 # bleopt
 
@@ -1346,7 +1346,6 @@ ble/test ble/util/is-running-in-subshell exit=1
   ble/test 'ble/util/has-glob-pattern "a?b*c"'
   ble/test 'ble/util/has-glob-pattern "a[a-c]d"'
   ble/test 'ble/util/has-glob-pattern "a[!a-c]d"'
-  ble/test 'ble/util/has-glob-pattern "\[xyz\]"'
   ble/test 'ble/util/has-glob-pattern "*.txt"'
   ble/test 'ble/util/has-glob-pattern "*.*"'
 
@@ -1357,15 +1356,34 @@ ble/test ble/util/is-running-in-subshell exit=1
   ble/test 'ble/util/has-glob-pattern "a/c"' exit=1
   ble/test 'ble/util/has-glob-pattern "a:b"' exit=1
   ble/test 'ble/util/has-glob-pattern "a=b"' exit=1
+
+  # 以下は文脈によって異なる物。Bash-5.0 では var='\[xyz\]' として
+  # echo $var とするとパス名展開の対象となるが、
+  # それ以外ではパス名展開とは解釈されない。
+  ble/test 'ble/util/has-glob-pattern "\[xyz\]"' exit=1
 )
 
 # ble/util/is-cygwin-slow-glob
 # ble/util/eval-pathname-expansion
 # ble/util/isprint+
 # ble/util/strftime
-# ble/util/msleep
-# ble/util/sleep
+
+# ble/util/{msleep,sleep}
+(
+  ble/test 'ble-measure -q "ble/util/msleep 100"; ((msec=ret/1000,95<=msec&&msec<=105))'
+  ble/test 'ble-measure -q "ble/util/sleep 0.1"; ((msec=ret/1000,95<=msec&&msec<=105))'
+)
+
 # ble/util/conditional-sync
+(
+  time=0
+  ble/function#push ble/util/msleep '((time+=$1));echo $time'
+  ble/test "ble/util/conditional-sync 'sleep 10' '((time<1000))' 100" \
+           stdout={1..10}00
+  ble/test "ble/util/conditional-sync 'sleep 10' '((time<1000))' 100 progressive-weight" \
+           stdout={1,3,7,15,31,63,{1..10}27}
+  ble/function#pop ble/util/msleep
+)
 
 # ble/util/cat
 (

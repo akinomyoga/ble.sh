@@ -19,7 +19,24 @@
 - syntax: allow unquoted `[!` and `[^` in `simple-word` (reported by cmplstofB) `#D1303` 1efe833
 - util (`ble/util/print-global-definitions`): support arrays and unset variables (test-util) 6e85f1c
 - util (`ble/util/cat`): support NUL and multiple files (test-util) d19a9af
-- edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` 0000000
+- edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` e97a858
+
+## Changes
+
+- highlight: highlight symlink directories as symlinks `#D1249` 25e8a72
+- auto-complete: bind `insert-on-end` to `C-e` `#D1250` 90b45eb
+- edit (`widget/shell-expand-line`): not quote expanded results by default `#D1255` a9b7810
+- decode: refactor
+  - decode: delay bind until keymap initialization `#D1258` 0beac33
+  - decode: read user settings from `bind -Xsp` `#D1259` eef14d0
+  - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 5d98210
+  - decode: fix error messages of BSD `sed` rejecting unencoded bytes from `bind -p` (reported by dylankb) `#D1277` 0cc9160
+- edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 7db48dc
+- edit (quoted-insert): insert literal key sequence `#D1291` 420c933
+- decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` ad98416
+- edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
+- util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 5966f22
+- builtin: let redefined builtins return 2 for `--help` `#D1323` 731896c
 
 ## Fix
 
@@ -55,33 +72,8 @@
 - util: fix `ble/is-{inttype,readonly,transformed}` (test-util) 485e1ac
 - util (`ble/path#remove{,-glob}`): fix corner cases (test-util) ccbc9f8
 - history: fix a problem that the history is doubled by `history -a` in `bashrc` `#D1314` 34821fe
-- decode: work around Bash-4.1 bug that locale not applied with `LC_CTYPE=C eval command` b2c7d1c
-- util (`ble/variable#get-attr`): fix a bug that attributes are not obtained in Bash <= 4.3 b2c7d1c
-- decode: work around Bash-3.1 bug of `declare -f` rejecting special characters in function names b2c7d1c
-- edit (`ble/widget/bracketed-paste`): fix error messages on `paste_end` in older version of Bash b2c7d1c
-- decode: work around Bash-4.1 arithmetic bug of array subscripts evaluated in discarded branches `#D1320` 557b774
 - util (`ble/variable#get-attr`): fix an error message with special variable names such as `?` and `*` `#D1321` 557b774
-- complete: follow Bash-5.1 change of arithmetic literal `10#` `#D1322` 557b774
 - util (has-glob-pattern): fix abort in subshells (test-util) `#D1326` dc292a2
-- decode: fix a bug of broken cmap cache found in ble-0.3 `#D1327` 16b56bf
-- util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
-
-## Changes
-
-- highlight: highlight symlink directories as symlinks `#D1249` 25e8a72
-- auto-complete: bind `insert-on-end` to `C-e` `#D1250` 90b45eb
-- edit (`widget/shell-expand-line`): not quote expanded results by default `#D1255` a9b7810
-- decode: refactor
-  - decode: delay bind until keymap initialization `#D1258` 0beac33
-  - decode: read user settings from `bind -Xsp` `#D1259` eef14d0
-  - decode: fix a bug of `ble-bind` with uninitialized cmap `#D1260` 5d98210
-  - decode: fix error messages of BSD `sed` rejecting unencoded bytes from `bind -p` (reported by dylankb) `#D1277` 0cc9160
-- edit: provide proper `$BASH_COMMAND` and `$_` for PS1, PROMPT_COMMAND, PRECMD, etc. `#D1276` 7db48dc
-- edit (quoted-insert): insert literal key sequence `#D1291` 420c933
-- decode: support `decode_abort_char` for `modifyOtherKeys` `#D1293` ad98416
-- edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
-- util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 5966f22
-- builtin: let redefined builtins return 2 for `--help` `#D1323` 0000000
 
 ## Compatibility
 
@@ -95,6 +87,15 @@
 - msys1: support MSYS1 `#D1272` 630d659
   - msys1: work around missing named pipes in MSYS1 `#D1273` 6f6c2e5
 - term: support contra `SPD` `#D1288` 1e65f2c
+- decode: work around Bash-4.1 bug that locale not applied with `LC_CTYPE=C eval command` b2c7d1c
+- util (`ble/variable#get-attr`): fix a bug that attributes are not obtained in Bash <= 4.3 b2c7d1c
+- decode: work around Bash-3.1 bug of `declare -f` rejecting special characters in function names b2c7d1c
+- edit (`ble/widget/bracketed-paste`): fix error messages on `paste_end` in older version of Bash b2c7d1c
+- decode: work around Bash-4.1 arithmetic bug of array subscripts evaluated in discarded branches `#D1320` 557b774
+- complete: follow Bash-5.1 change of arithmetic literal `10#` `#D1322` 557b774
+- decode: fix a bug of broken cmap cache found in ble-0.3 `#D1327` 16b56bf
+- util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
+- complete: work around slow `compgen -c` in Cygwin `#D1329` 0000000
 
 ## Internal changes and fixes
 

@@ -2863,6 +2863,148 @@ bash_tips
 
 2020-04-12
 
+  * util (conditional-sync): サブシェルで実行しているのは何故か [#D1329]
+    テストを書いていて気づいたが check 用のコマンドで親環境を参照・変更する事ができない。
+    考えてみれば同期的なサブシェルなので
+    親環境の変数は変化しないので直接親に取りに行く必要はない。
+    そして cancel-check のコマンドが副作用を持つというのも変である。
+    然し、変更できないというのは不便な気もする。
+
+    * そもそもサブシェルで実行する必要はあったのだろうか。
+      記録を探すと #D1080 である。然し、議論には詳しいことは何も書かれていない。
+      一行 "遅くならないように修正した" としか書かれていない。
+      うーん。特に問題もなかったのではないかという気がしてきた。
+      サブシェルを除いてみる事にする。
+      →特に変化は見られない様である。
+
+      と思ったが分かった気がする。内部で & を使ってコマンドを起動している。
+      直接対話シェルでこれを実行すると jobs の変なメッセージが表示されて邪魔になる。
+      丁度 ble/util/visible-bell で同様にサブシェルの中から & を使ってコマンドを起動している。
+      少し試してみた限りでは conditional-sync では問題は発生していないが、
+      何らかの条件で表示される可能性がある。という事なので現状のままサブシェルで実行する事にする。
+
+    * というか現在の実装でこれが功を奏している様に見えない。
+      相変わらず c と打つと処理に時間がかかっている様な気がする?
+      →実際に試してみると実は conditional-sync が使われていない様だ。
+      実装を確認してみた所、補完文字列が空の時にのみ conditional-sync
+      が使われるということの様である。
+
+      一文字cだけの時でもかなり時間がかかっている。5.8s-6s かかっている。
+      cに対する候補の数はそんなに多くない。279件である。
+      因みに0文字の時には 20s かかっている様だ。
+      2文字 'cd' の時には、0.074sである。
+      総合するに、何か時間のかかるコマンドが存在している?
+      →調べると cy で 4.9s かかっている。
+
+      もっと全体的に調べてみる事にする。
+      function measure-compgen { { time compgen -A command -- "$1" | wc -l >&3; } 2>&1 | head -2; } 3>&1
+
+      a   216 real 0m0.750s  k 105 real 0m0.535s  u 150 real 0m0.614s   4 1 real 0m0.118s
+      b  2270 real 0m0.518s  l 250 real 0m0.929s  v  54 real 0m0.293s   5 1 real 0m0.129s
+      c   297 real 0m5.649s  m 323 real 0m0.853s  w 178 real 0m0.567s   6 1 real 0m0.116s
+      d   252 real 0m0.826s  n  81 real 0m0.292s  x 336 real 0m1.249s   7 1 real 0m0.116s
+      e   108 real 0m0.384s  o  53 real 0m0.299s  y   9 real 0m0.156s   8 1 real 0m0.118s
+      f   178 real 0m0.669s  p 396 real 0m1.173s  z  46 real 0m0.261s   9 1 real 0m0.127s
+      g   291 real 0m1.144s  q  42 real 0m0.260s  0   0 real 0m0.140s
+      h    80 real 0m0.341s  r 155 real 0m0.540s  1  11 real 0m0.114s
+      i   248 real 0m1.071s  s 298 real 0m0.817s  2  11 real 0m0.114s
+      j    18 real 0m0.165s  t 297 real 0m1.039s  3   1 real 0m0.118s
+
+      A  15 real 0m0.165s  K   3 real 0m0.184s  U  10 real 0m0.141s  [   4 real 0m0.141s
+      B  15 real 0m0.143s  L  16 real 0m0.153s  V   6 real 0m0.137s  ]   1 real 0m0.128s
+      C 134 real 0m0.204s  M  41 real 0m0.189s  W  75 real 0m0.256s  {   1 real 0m0.128s
+      D  59 real 0m0.185s  N  23 real 0m0.151s  X  24 real 0m0.186s  }   1 real 0m0.127s
+      E  11 real 0m0.131s  O   8 real 0m0.132s  Y   0 real 0m0.119s
+      F  15 real 0m0.141s  P  34 real 0m0.159s  Z   1 real 0m0.128s
+      G   7 real 0m0.125s  Q   0 real 0m0.137s  !   1 real 0m0.114s
+      H  12 real 0m0.144s  R  40 real 0m0.157s  .   2 real 0m0.166s
+      I  12 real 0m0.137s  S  61 real 0m0.200s  :   1 real 0m0.125s
+      J   0 real 0m0.120s  T  17 real 0m0.156s  @  18 real 0m0.125s
+
+      この結果を見ると 1 文字の時は全般に遅い。
+
+      ca 18 real 0m0.191s ck 2  real 0m0.126s cu 5  real 0m0.140s c4 0 real 0m0.116s
+      cb 0  real 0m0.125s cl 43 real 0m0.203s cv 0  real 0m0.120s c5 0 real 0m0.115s
+      cc 4  real 0m0.138s cm 9  real 0m0.156s cw 2  real 0m0.125s c6 0 real 0m0.122s
+      cd 2  real 0m0.163s cn 0  real 0m0.127s cx 0  real 0m0.115s c7 0 real 0m0.142s
+      ce 23 real 0m0.185s co 61 real 0m0.262s cy 16 real 0m4.925s c8 2 real 0m0.120s
+      cf 2  real 0m0.135s cp 12 real 0m0.145s cz 2  real 0m0.134s c9 2 real 0m0.118s
+      cg 2  real 0m0.126s cq 0  real 0m0.136s c0 0  real 0m0.123s
+      ch 35 real 0m0.285s cr 12 real 0m0.163s c1 0  real 0m0.150s
+      ci 3  real 0m0.143s cs 9  real 0m0.144s c2 0  real 0m0.116s
+      cj 2  real 0m0.119s ct 21 real 0m0.187s c3 0  real 0m0.120s
+
+      ga   7 real 0m0.151s  gk   2 real 0m0.141s  gu   2 real 0m0.160s  g4   0 real 0m0.130s
+      gb   5 real 0m0.139s  gl  18 real 0m0.203s  gv  40 real 0m0.283s  g5   0 real 0m0.120s
+      gc  20 real 0m0.179s  gm   0 real 0m0.144s  gw   0 real 0m0.117s  g6   0 real 0m0.116s
+      gd  22 real 0m0.229s  gn  14 real 0m0.187s  gx   0 real 0m0.130s  g7   1 real 0m0.129s
+      ge  33 real 0m0.218s  go   2 real 0m0.124s  gy   0 real 0m0.137s  g8   0 real 0m0.117s
+      gf   6 real 0m0.145s  gp  14 real 0m0.176s  gz   4 real 0m0.141s  g9   0 real 0m0.132s
+      gg   0 real 0m0.119s  gq   0 real 0m0.141s  g0   0 real 0m0.118s
+      gh   0 real 0m0.147s  gr  30 real 0m0.249s  g1   0 real 0m0.130s
+      gi  14 real 0m0.221s  gs  22 real 0m0.183s  g2   0 real 0m0.113s
+      gj   0 real 0m0.119s  gt  32 real 0m0.278s  g3   0 real 0m0.125s
+
+      ia   0 real 0m0.129s  ik   0 real 0m0.126s  iu   0 real 0m0.130s  i4   0 real 0m0.131s
+      ib  11 real 0m0.154s  il   0 real 0m0.117s  iv   0 real 0m0.117s  i5   0 real 0m0.116s
+      ic  10 real 0m0.153s  im  19 real 0m0.196s  iw   2 real 0m0.116s  i6 126 real 0m0.722s
+      id   5 real 0m0.141s  in  33 real 0m0.225s  ix   0 real 0m0.117s  i7   0 real 0m0.125s
+      ie   5 real 0m0.126s  io   0 real 0m0.129s  iy   0 real 0m0.134s  i8   0 real 0m0.127s
+      if   8 real 0m0.149s  ip  11 real 0m0.156s  iz   0 real 0m0.116s  i9   0 real 0m0.114s
+      ig   1 real 0m0.114s  iq   0 real 0m0.116s  i0   0 real 0m0.128s
+      ih   0 real 0m0.128s  ir   3 real 0m0.121s  i1   0 real 0m0.115s
+      ii   0 real 0m0.118s  is  13 real 0m0.142s  i2   0 real 0m0.117s
+      ij   0 real 0m0.148s  it   0 real 0m0.129s  i3   0 real 0m0.118s
+
+      la  32 real 0m0.198s  lk   2 real 0m0.127s  lu  17 real 0m0.194s  l4   2 real 0m0.138s
+      lb   0 real 0m0.150s  ll   3 real 0m0.129s  lv   0 real 0m0.125s  l5   0 real 0m0.114s
+      lc   4 real 0m0.123s  lm   0 real 0m0.128s  lw  10 real 0m0.131s  l6   0 real 0m0.119s
+      ld   8 real 0m0.149s  ln   4 real 0m0.142s  lx  60 real 0m0.380s  l7   0 real 0m0.115s
+      le  10 real 0m0.146s  lo  22 real 0m0.197s  ly  10 real 0m0.132s  l8   0 real 0m0.126s
+      lf   0 real 0m0.128s  lp   7 real 0m0.140s  lz  22 real 0m0.204s  l9   0 real 0m0.133s
+      lg   0 real 0m0.133s  lq   0 real 0m0.137s  l0   0 real 0m0.123s
+      lh   0 real 0m0.115s  lr   2 real 0m0.129s  l1   0 real 0m0.118s
+      li  16 real 0m0.197s  ls   9 real 0m0.137s  l2   0 real 0m0.124s
+      lj   0 real 0m0.132s  lt   6 real 0m0.126s  l3   2 real 0m0.117s
+
+      pa  21 real 0m0.195s  pk  16 real 0m0.182s  pu  11 real 0m0.160s  p4   0 real 0m0.117s
+      pb   2 real 0m0.138s  pl  11 real 0m0.161s  pv   0 real 0m0.124s  p5   0 real 0m0.119s
+      pc  11 real 0m0.138s  pm   6 real 0m0.144s  pw   4 real 0m0.128s  p6   0 real 0m0.120s
+      pd  62 real 0m0.301s  pn   3 real 0m0.125s  px   0 real 0m0.117s  p7   0 real 0m0.115s
+      pe  28 real 0m0.168s  po  38 real 0m0.194s  py  38 real 0m0.248s  p8   0 real 0m0.115s
+      pf  10 real 0m0.144s  pp   6 real 0m0.131s  pz   0 real 0m0.117s  p9   0 real 0m0.123s
+      pg   4 real 0m0.140s  pq   0 real 0m0.116s  p0   0 real 0m0.130s
+      ph   1 real 0m0.119s  pr  44 real 0m0.227s  p1   2 real 0m0.128s
+      pi  12 real 0m0.185s  ps  43 real 0m0.244s  p2   2 real 0m0.126s
+      pj   0 real 0m0.115s  pt  20 real 0m0.181s  p3   0 real 0m0.129s
+
+      ta  20 real 0m0.188s  tk   2 real 0m0.126s  tu   2 real 0m0.143s  t4   2 real 0m0.135s
+      tb   2 real 0m0.130s  tl   6 real 0m0.137s  tv   0 real 0m0.130s  t5   0 real 0m0.134s
+      tc  23 real 0m0.201s  tm   2 real 0m0.119s  tw   2 real 0m0.125s  t6   0 real 0m0.126s
+      td   5 real 0m0.135s  tn   0 real 0m0.121s  tx   0 real 0m0.115s  t7   0 real 0m0.121s
+      te  92 real 0m0.390s  to   6 real 0m0.151s  ty   7 real 0m0.122s  t8   0 real 0m0.127s
+      tf  12 real 0m0.187s  tp   9 real 0m0.151s  tz   6 real 0m0.147s  t9   0 real 0m0.117s
+      tg   6 real 0m0.136s  tq   0 real 0m0.132s  t0   0 real 0m0.122s
+      th   3 real 0m0.134s  tr  25 real 0m0.194s  t1  22 real 0m0.226s
+      ti  10 real 0m0.146s  ts  14 real 0m0.164s  t2   0 real 0m0.116s
+      tj   0 real 0m0.120s  tt  19 real 0m0.188s  t3   0 real 0m0.115s
+
+      xa   6 real 0m0.143s  xk  14 real 0m0.188s  xu   0 real 0m0.119s  x4   0 real 0m0.136s
+      xb   0 real 0m0.131s  xl  14 real 0m0.163s  xv   4 real 0m0.143s  x5   0 real 0m0.116s
+      xc  23 real 0m0.185s  xm  28 real 0m0.215s  xw  13 real 0m0.141s  x6   0 real 0m0.129s
+      xd  36 real 0m0.239s  xn   0 real 0m0.125s  xx   2 real 0m0.134s  x7   0 real 0m0.115s
+      xe   8 real 0m0.153s  xo   4 real 0m0.141s  xy   0 real 0m0.126s  x8  80 real 0m0.464s
+      xf  14 real 0m0.179s  xp  14 real 0m0.155s  xz  20 real 0m0.198s  x9   0 real 0m0.115s
+      xg   2 real 0m0.141s  xq   0 real 0m0.119s  x0   2 real 0m0.129s
+      xh   4 real 0m0.124s  xr   6 real 0m0.137s  x1   6 real 0m0.144s
+      xi  10 real 0m0.147s  xs  21 real 0m0.186s  x2   0 real 0m0.128s
+      xj   0 real 0m0.118s  xt   4 real 0m0.135s  x3   0 real 0m0.116s
+
+      cy i6 lx te x8 辺りの組み合わせが重い。cy は cygwin だろう。
+      i6 と x8 は i686 と x86 であろう。te は tex で lx は lx の様だ。
+      3文字だと i68 0.7s x86 0.4s cyg 4.9s が重い。
+      4文字だと cygg 0.7s cygc 0.5s cygp,cygf,cygk 0.4s が重い。
+
   * edit: bash-5.1 PROMPT_COMMANDS 及び READLINE_MARK [#D1328]
     bash 5.1 のこれらの機能にはいずれ対応しなければならない。
     簡単に対応できるのでもう対応してしまう事にする。
@@ -2936,41 +3078,41 @@ bash_tips
       | →何と a=1 f として呼び出した時と、a=1; f として
       | 呼び出したときで a の振る舞いが異なる? どうも a=1 f として呼び出すと、
       | f のローカル変数として定義される? いや何だか変である。よく分からない。
-      | 
+      |
       | 以下は全ての bash 3.0..5.0 で declare -x a=1 が表示される。
       | $ bash -c 'f1() { local a; declare -p a; }; a=1 f1'
-      | 
+      |
       | 以下は 4.1 以下では declare -x a= であり、
       | 4.3 では変数が見つからず、他は declare -x a である。
       | $ bash -c 'f1() { local a; declare -p a; }; export a=1; f1'
-      | 
+      |
       | 以下は 4.3 以下では変数が見つからず 4.4 以降では declare a である。
       | $ bash -c 'f1() { local a; unset -v; declare -p a; }; export a=1; f1'
-      | 
+      |
       | 以下を試しても特に振る舞いの違いは見えない。
       | bash -c 'f1(){ local a;unset -v a;declare -p a;};f2(){ local a=1;f1;};f2'
-      | 
+      |
       | では何故テスト環境でだけ上の変数が再び見える様になってしまっているのか。
       | 或いは対話環境では別の振る舞いをするなどの違いが在るのだろうか。試してみる。
       | →対話環境でも振る舞いは同じである。然し ble.sh をロードしていると振る舞いが違う。
-      | 
+      |
       | eval の中で実行すると振る舞いが変わる? →そうではなかった。
       | $ eval 'f1(){ local a;unset -v a;declare -p a;};f2(){ local a=1;f1;};f2'
-      | 
+      |
       | bind -x の中で実行すると振る舞いが変わる? →そうでもなかった。
       | $ text='f1(){ local a;unset -v a;declare -p a;};f2(){ local a=1;f1;};f2'
       | $ bind -x '"\C-t": eval "$text"'
-      | 
+      |
       | shopt の違いが効いているのだろうかと思って確かめてみたが、
       | 違いは failglob と histappend histreedit, hostcomplete しかない。
       | これらは振る舞いには関係ないだろう。
-      | 
+      |
       | NOBLE=1 で起動しても再現しない。其処から source ble.sh すると再現する様になる。
       | 更にその後で ble-detach しても再現したままである。不思議だ。bash-4.4 でも再現する。
       | うーん。何らかの変数が効いているのか或いは、builtin の上書きが関係しているのか、
       | それとも何らかの操作をすると不可逆的に bash の振る舞いが変化してしまうのか。
       | というか一度はテストに通過していた気もする。
-      | 
+      |
       | bash-3.0..5.0 の全てでこの現象が再現している。謎である。
 
       状況をまとめると ble.sh をロードすると current-scope unset が

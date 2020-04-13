@@ -155,8 +155,12 @@ function ble-measure/.read-arguments {
   [[ $flags != *E* ]]
 }
 
-## 関数 ble-measure command
+## 関数 ble-measure [-q|-ac COUNT] command
 ##   command を繰り返し実行する事によりその実行時間を計測します。
+##   -q を指定した時、計測結果を出力しません。
+##   -c COUNT を指定した時 COUNT 回計測して最小値を採用します。
+##   -a COUNT を指定した時 COUNT 回計測して平均値を採用します。
+##
 ##   @var[out] ret
 ##     実行時間を usec 単位で返します。
 ##   @var[out] nsec
