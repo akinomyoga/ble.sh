@@ -1345,6 +1345,7 @@ function ble-bind/option:list-functions {
 
 function ble-bind {
   local kmap=$ble_bind_keymap flags= ret
+  ble-decode-initialize
 
   local arg c
   while (($#)); do
@@ -1580,10 +1581,15 @@ function ble-decode-bind/cmap/initialize {
   else
     echo 'ble.sh: generating "'"$dump"'"...' 1>&2
     source "$init"
-    ble-bind -D | ble/bin/sed '
-      s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
-      s/^-- //
-      s/["'"'"']//g
+    ble-bind -D | ble/bin/awk '
+      {
+        sub(/^declare +(-[aAfFgiclrtux]+ +)?/, "");
+        sub(/^-- +/, "");
+      }
+      /^_ble_decode_(cmap|csimap|kbd)/ {
+        gsub(/["'\'']/, "");
+        print
+      }
     ' >| "$dump"
   fi
 
