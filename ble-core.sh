@@ -128,8 +128,8 @@ if ((_ble_bash>=40200)); then
 else
   function ble/util/strftime {
     if [[ $1 = -v ]]; then
-      local _result="$(date +"$3" $4)"
-      builtin eval "$2=\"\$_result\""
+      local fmt=$3 time=$4
+      ble/util/assign "$2" 'date +"$fmt" $time'
     else
       date +"$1" $2
     fi
