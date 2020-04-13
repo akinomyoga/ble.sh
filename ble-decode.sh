@@ -1399,11 +1399,16 @@ function .ble-decode-initialize-cmap {
     echo '  This is the first time to run ble.sh with TERM='"$TERM." 1>&2
     echo '  Now initializing cmap... ' 1>&2
     source "$init"
-    ble-bind -D | sed '
-      s/^declare \{1,\}\(-[aAfFgilrtux]\{1,\} \{1,\}\)\{0,1\}//
-      s/^-- //
-      s/["'"'"']//g
-    ' > "$dump"
+    ble-bind -D | awk '
+      {
+        sub(/^declare +(-[aAfFgiclrtux]+ +)?/, "");
+        sub(/^-- +/, "");
+      }
+      /^_ble_decode_(cmap|csimap|kbd)/ {
+        gsub(/["'\'']/, "");
+        print
+      }
+    ' >| "$dump"
   fi
 
   if ((_ble_bash>=40300)); then

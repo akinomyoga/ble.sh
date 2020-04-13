@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 2020-04-13 cmap キャッシュ生成のバグ修正に伴う更新。
+
 function ble/cmap/default/bind-keypad-key {
   local Ft="$1" name="$2"
   ble-bind --csi "$Ft" "$name"
