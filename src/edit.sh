@@ -678,11 +678,24 @@ function ble-edit/prompt/.instantiate {
   fi
 }
 
-function ble-edit/prompt/update/.eval-prompt_command {
+function ble-edit/prompt/update/.has-prompt_command {
+  declare -p PROMPT_COMMANDS &>/dev/null || [[ $PROMPT_COMMAND ]]
+}
+function ble-edit/prompt/update/.eval-prompt_command.1 {
   # return 等と記述されていた時対策として関数内評価。
   local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   builtin eval -- "$PROMPT_COMMAND"
+}
+function ble-edit/prompt/update/.eval-prompt_command {
+  if declare -p PROMPT_COMMANDS &>/dev/null; then
+    local PROMPT_COMMAND
+    for PROMPT_COMMAND in "${PROMPT_COMMANDS[@]}"; do
+      ble-edit/prompt/update/.eval-prompt_command.1
+    done
+  elif [[ $PROMPT_COMMAND ]]; then
+    ble-edit/prompt/update/.eval-prompt_command.1
+  fi
 }
 ## 関数 ble-edit/prompt/update
 ##   _ble_edit_PS1 からプロンプトを構築します。
@@ -709,10 +722,9 @@ function ble-edit/prompt/update {
   local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
 
   # update PS1
-  if [[ $PROMPT_COMMAND ]] || blehook/has-hook PRECMD; then
+  if ble-edit/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
     ble-edit/restore-PS1
-    [[ $PROMPT_COMMAND ]] &&
-      ble-edit/prompt/update/.eval-prompt_command
+    ble-edit/prompt/update/.eval-prompt_command
     ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
     ble-edit/adjust-PS1
   fi
@@ -2090,14 +2102,14 @@ function ble/textarea#redraw-cache {
 function ble/textarea#adjust-for-bash-bind {
   ble-edit/adjust-PS1
   if [[ $bleopt_internal_suppress_bash_output ]]; then
-    READLINE_LINE=$'\n' READLINE_POINT=0
+    READLINE_LINE=$'\n' READLINE_POINT=0 READLINE_MARK=0
   else
     # bash が表示するプロンプトを見えなくする
     # (現在のカーソルの左側にある文字を再度上書きさせる)
     local -a DRAW_BUFF=()
     local ret lc=${_ble_textarea_cur[2]} lg=${_ble_textarea_cur[3]}
     ble/util/c2s "$lc"
-    READLINE_LINE=$ret
+    READLINE_LINE=$ret READLINE_MARK=0
     if ((_ble_textarea_cur[0]==0)); then
       READLINE_POINT=0
     else
@@ -7411,7 +7423,7 @@ function ble-edit/bind/.check-detach {
         "Please run \`stty sane' to recover the correct TTY state."
 
       if ((_ble_bash>=40000)); then
-        READLINE_LINE='stty sane;' READLINE_POINT=10
+        READLINE_LINE='stty sane;' READLINE_POINT=10 READLINE_MARK=0
         printf %s "$READLINE_LINE"
       fi
     fi
@@ -7579,6 +7591,7 @@ function ble/widget/.EDIT_COMMAND {
   local command=$1
   local READLINE_LINE=$_ble_edit_str
   local READLINE_POINT=$_ble_edit_ind
+  local READLINE_MARK=$_ble_edit_mark
   ble/widget/.hide-current-line
   ble/util/buffer.flush >&2
   builtin eval -- "$command" || return 1
@@ -7587,6 +7600,7 @@ function ble/widget/.EDIT_COMMAND {
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     ble-edit/content/reset-and-check-dirty "$READLINE_LINE"
   ((_ble_edit_ind=READLINE_POINT))
+  ((_ble_edit_mark=READLINE_MARK))
 }
 
 ## ble-decode.sh 用の設定

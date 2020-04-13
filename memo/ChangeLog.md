@@ -17,6 +17,9 @@
 - edit: support `bleopt editor line_limit_{type,length} history_limit_length` `#D1295` 2f9a000
 - edit: support widgets `{vi,emacs}-editing-mode` `#D1301` 0c6c76e
 - syntax: allow unquoted `[!` and `[^` in `simple-word` (reported by cmplstofB) `#D1303` 1efe833
+- util (`ble/util/print-global-definitions`): support arrays and unset variables (test-util) 6e85f1c
+- util (`ble/util/cat`): support NUL and multiple files (test-util) d19a9af
+- edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` 0000000
 
 ## Fix
 
@@ -59,6 +62,9 @@
 - decode: work around Bash-4.1 arithmetic bug of array subscripts evaluated in discarded branches `#D1320` 557b774
 - util (`ble/variable#get-attr`): fix an error message with special variable names such as `?` and `*` `#D1321` 557b774
 - complete: follow Bash-5.1 change of arithmetic literal `10#` `#D1322` 557b774
+- util (has-glob-pattern): fix abort in subshells (test-util) `#D1326` dc292a2
+- decode: fix a bug of broken cmap cache found in ble-0.3 `#D1327` 16b56bf
+- util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
 
 ## Changes
 
