@@ -1557,8 +1557,19 @@ function ble/syntax:bash/check-dollar {
 
   local rex
   if [[ $tail == '${'* ]]; then
-    # ■中で許される物: 決まったパターン + 数式や文字列に途中で切り替わる事も
-    if rex='^(\$\{[#!]?)([-*@#?$!0]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*)(\[?)' && [[ $tail =~ $rex ]]; then
+    # Note: パラメータ展開の中で許される物:
+    #   決まったパターン + 数式や文字列に途中で切り替わる事も。
+    # Note: 初めに文字数 ${#param} の形式を試す (失敗するとしても lookahead は設定する)。
+    #   その次に ${param...} 及び ${!param...} の形式を試す。
+    #   これにより ${#...} の # が文字数か或いは $# か判定する。
+    local rex1='^(\$\{#)([-*@#?$!0]\}?|[1-9][0-9]*\}?|[a-zA-Z_][a-zA-Z_0-9]*[[}]?)'
+    local rex2='^(\$\{!?)([-*@#?$!0]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*\[?)'
+    if 
+      [[ $tail =~ $rex1 ]] && {
+        [[ ${BASH_REMATCH[2]} == *['[}'] || $BASH_REMATCH == "$tail" ]] ||
+          { ble/syntax/parse/set-lookahead $((${#BASH_REMATCH}+1)); false; } } ||
+        [[ $tail =~ $rex2 ]]
+    then
       # <parameter> = [-*@#?-$!0] | [1-9][0-9]* | <varname> | <varname> [ ... ] | <varname> [ <@> ]
       # <@> = * | @
       # ${<parameter>} ${#<parameter>} ${!<parameter>}
@@ -1570,7 +1581,7 @@ function ble/syntax:bash/check-dollar {
       # for bash-3.1 ${#arr[n]} bug
       local rematch1=${BASH_REMATCH[1]}
       local rematch2=${BASH_REMATCH[2]}
-      local rematch3=${BASH_REMATCH[3]}
+      local varname=${rematch2%['[}']}
 
       local ntype='${'
       if ((ctx==CTX_QUOT)); then
@@ -1580,23 +1591,25 @@ function ble/syntax:bash/check-dollar {
         [[ $ntype2 == '"${' ]] && ntype='"${'
       fi
 
-      local ret lookahead= tail2=${tail:${#rematch1}+${#rematch2}}
-      ble/syntax/highlight/vartype "$rematch2" readvar "$tail2"; local attr=$ret
+      local ret lookahead= tail2=${tail:${#rematch1}+${#varname}}
+      ble/syntax/highlight/vartype "$varname" readvar "$tail2"; local attr=$ret
 
       ble/syntax/parse/nest-push "$CTX_PARAM" "$ntype"
       ((_ble_syntax_attr[i]=ctx,
         i+=${#rematch1},
         _ble_syntax_attr[i]=attr,
-        i+=${#rematch2}))
+        i+=${#varname}))
       [[ $lookahead ]] && ble/syntax/parse/set-lookahead "$lookahead"
 
-      if rex='^\$\{![a-zA-Z_][a-zA-Z_0-9]*[*@]'; [[ $tail =~ $rex ]]; then
-        # ${!head<@>} の時は末尾の @* を個別に読み取る。
-        ((i++,ctx=CTX_PWORDE))
-      elif [[ $rematch3 ]]; then
+      if rex='^\$\{![a-zA-Z_][a-zA-Z_0-9]*[*@]\}?'; [[ $tail =~ $rex ]]; then
+        ble/syntax/parse/set-lookahead 2
+        if [[ $BASH_REMATCH == *'}' ]]; then
+          # ${!head<@>} の時は末尾の @* を個別に読み取る。
+          ((i++,ctx=CTX_PWORDE))
+        fi
+      elif [[ $rematch2 == *'[' ]]; then
         ble/syntax/parse/nest-push "$CTX_EXPR" 'v['
-        ((_ble_syntax_attr[i]=CTX_EXPR,
-          i+=${#rematch3}))
+        ((_ble_syntax_attr[i++]=CTX_EXPR))
       fi
       return 0
     else
@@ -2222,8 +2235,6 @@ function ble/syntax:bash/ctx-param {
       ((ctx=CTX_EXPR,_ble_syntax_attr[i-1]=CTX_EXPR))
     elif [[ $BASH_REMATCH == @* ]]; then
       ((ctx=CTX_PWORDE))
-      [[ $BASH_REMATCH == @ ]] &&
-        ((_ble_syntax_attr[i-1]=ATTR_ERR))
     else
       ((ctx=CTX_PWORD))
     fi
