@@ -75,7 +75,8 @@
 - history: fix a problem that the history is doubled by `history -a` in `bashrc` `#D1314` 34821fe
 - util (`ble/variable#get-attr`): fix an error message with special variable names such as `?` and `*` `#D1321` 557b774
 - util (has-glob-pattern): fix abort in subshells (test-util) `#D1326` dc292a2
-- edit: fix a bug that `set +H` is cancelled on command execution `#D1332` 0000000
+- edit: fix a bug that `set +H` is cancelled on command execution `#D1332` 02bdf4e
+- syntax (`ble/syntax/parse/shift`): fix a bug of shift skip in nested words `#D1333` 0000000
 
 ## Compatibility
 

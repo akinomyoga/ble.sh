@@ -4255,16 +4255,16 @@ function ble/syntax/vanishing-word/register {
 #----------------------------------------------------------
 # shift
 
-## @var[in] j
+## @var[in] shift2_j
 ## @var[in] beg,end,end0,shift
 function ble/syntax/parse/shift.stat {
-  if [[ ${_ble_syntax_stat[j]} ]]; then
-    local -a stat; ble/string#split-words stat "${_ble_syntax_stat[j]}"
+  if [[ ${_ble_syntax_stat[shift2_j]} ]]; then
+    local -a stat; ble/string#split-words stat "${_ble_syntax_stat[shift2_j]}"
 
     local k klen kbeg
-    for k in 1 3 4 5; do
+    for k in 1 3 4 5; do # wlen nlen tclen tplen
       (((klen=stat[k])<0)) && continue
-      ((kbeg=j-klen))
+      ((kbeg=shift2_j-klen))
       if ((kbeg<beg)); then
         ((stat[k]+=shift))
       elif ((kbeg<end0)); then
@@ -4272,24 +4272,24 @@ function ble/syntax/parse/shift.stat {
       fi
     done
 
-    _ble_syntax_stat[j]="${stat[*]}"
+    _ble_syntax_stat[shift2_j]="${stat[*]}"
   fi
 }
 
-## @var[in] node,j,nofs
+## @var[in] node,shift2_j,nofs
 ## @var[in] beg,end,end0,shift
 function ble/syntax/parse/shift.tree/1 {
   local k klen kbeg
-  for k in 1 2 3; do
+  for k in 1 2 3; do # wlen/nlen tclen tplen
     ((klen=node[nofs+k]))
-    ((klen<0||(kbeg=j-klen)>end0)) && continue
+    ((klen<0||(kbeg=shift2_j-klen)>end0)) && continue
     # 長さが変化した時 (k==1)、または構文木の距離変化があった時 (k==2, k==3) にここへ来る。
 
     # (1) 単語の中身が変化した事を記録
     #   node の中身が書き換わった時 (wbegin < end0 の時):
     #   dirty 拡大の代わりに _ble_syntax_word_umax に登録するに留める。
     if [[ $k == 1 && ${node[nofs]} =~ ^[0-9]$ ]]; then
-      ble/syntax/parse/touch-updated-word "$j"
+      ble/syntax/parse/touch-updated-word "$shift2_j"
 
       # 着色情報を clear
       node[nofs+4]='-'
@@ -4304,12 +4304,12 @@ function ble/syntax/parse/shift.tree/1 {
   done
 }
 
-## @var[in] j
+## @var[in] shift2_j
 ## @var[in] beg,end,end0,shift
 function ble/syntax/parse/shift.tree {
-  [[ ${_ble_syntax_tree[j-1]} ]] || return
+  [[ ${_ble_syntax_tree[shift2_j-1]} ]] || return
   local -a node
-  ble/string#split-words node "${_ble_syntax_tree[j-1]}"
+  ble/string#split-words node "${_ble_syntax_tree[shift2_j-1]}"
 
   local nofs
   if [[ $1 ]]; then
@@ -4320,22 +4320,22 @@ function ble/syntax/parse/shift.tree {
     done
   fi
 
-  _ble_syntax_tree[j-1]="${node[*]}"
+  _ble_syntax_tree[shift2_j-1]="${node[*]}"
 }
 
-## @var[in] j
+## @var[in] shift2_j
 ## @var[in] beg,end,end0,shift
 function ble/syntax/parse/shift.nest {
   # stat の先頭以外でも nest-push している
   #   @ ctx-command/check-word-begin の "関数名 ( " にて。
-  if [[ ${_ble_syntax_nest[j]} ]]; then
+  if [[ ${_ble_syntax_nest[shift2_j]} ]]; then
     local -a nest
-    ble/string#split-words nest "${_ble_syntax_nest[j]}"
+    ble/string#split-words nest "${_ble_syntax_nest[shift2_j]}"
 
     local k klen kbeg
     for k in 1 3 4 5; do
       (((klen=nest[k])))
-      ((klen<0||(kbeg=j-klen)<0)) && continue
+      ((klen<0||(kbeg=shift2_j-klen)<0)) && continue
       if ((kbeg<beg)); then
         ((nest[k]+=shift))
       elif ((kbeg<end0)); then
@@ -4343,19 +4343,19 @@ function ble/syntax/parse/shift.nest {
       fi
     done
 
-    _ble_syntax_nest[j]="${nest[*]}"
+    _ble_syntax_nest[shift2_j]="${nest[*]}"
   fi
 }
 
 function ble/syntax/parse/shift.impl2/.shift-until {
   local limit=$1
-  while ((j>=limit)); do
+  while ((shift2_j>=limit)); do
 #%if !release
-    [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
+    [[ $ble_debug ]] && _ble_syntax_stat_shift[shift2_j+shift]=1
 #%end
     ble/syntax/parse/shift.stat
     ble/syntax/parse/shift.nest
-    ((j--))
+    ((shift2_j--))
   done
 }
 
@@ -4366,14 +4366,13 @@ function ble/syntax/parse/shift.impl2/.shift-until {
 ##   現在処理している単語の終端境界を表します。
 ##   単語の情報は _ble_syntax_tree[TE_i-1] に格納されています。
 ##
-## @var[in,out] _shift2_j  何処まで処理したかを格納します。
+## @var[in,out] shift2_j  何処まで処理したかを格納します。
 ##
 ## @var[in]     i1,i2,j2,iN
 ## @var[in]     beg,end,end0,shift
 ##   これらの変数は更に子関数で使用されます。
 ##
 function ble/syntax/parse/shift.impl2/.proc1 {
-  local j=$_shift2_j
   if ((TE_i<j2)); then
     ((tprev=-1)) # 中断
     return
@@ -4381,17 +4380,17 @@ function ble/syntax/parse/shift.impl2/.proc1 {
 
   ble/syntax/parse/shift.impl2/.shift-until $((TE_i+1))
   ble/syntax/parse/shift.tree "$TE_nofs"
-  ((_shift2_j=j))
 
-  if ((tprev>end0&&wbegin>end0)); then
+  if ((tprev>end0&&wbegin>end0)) && [[ ${wtype//[0-9]} ]]; then
     # skip 可能
+    #   単語 (wtype=整数) の時は、nlen が外部に参照を持つ可能性がある。
     #   tprev<=end0 の場合、stat の中の tplen が shift 対象の可能性がある事に注意する。
 #%if !release
-    [[ $ble_debug ]] && _ble_syntax_stat_shift[j+shift]=1
+    [[ $ble_debug ]] && _ble_syntax_stat_shift[shift2_j+shift]=1
 #%end
     ble/syntax/parse/shift.stat
     ble/syntax/parse/shift.nest
-    ((_shift2_j=wbegin)) # skip
+    ((shift2_j=wbegin)) # skip
   elif ((tchild>=0)); then
     ble/syntax/tree-enumerate-children ble/syntax/parse/shift.impl2/.proc1
   fi
@@ -4405,6 +4404,7 @@ function ble/syntax/parse/shift.method1 {
     #   stat[i]   は i in [0,iN]
     #   attr[i]   は i in [0,iN)
     #   tree[i-1] は i in (0,iN]
+    local shift2_j=$j
     ble/syntax/parse/shift.stat
     ((j>0))  && ble/syntax/parse/shift.tree
     ((i<iN)) && ble/syntax/parse/shift.nest
@@ -4417,9 +4417,8 @@ function ble/syntax/parse/shift.method2 {
 #%end
 
   local iN=${#_ble_syntax_text} # tree-enumerate 起点は (古い text の長さ) である
-  local _shift2_j=$iN # proc1 に渡す変数
+  local shift2_j=$iN # proc1 に渡す変数
   ble/syntax/tree-enumerate ble/syntax/parse/shift.impl2/.proc1
-  local j=$_shift2_j
   ble/syntax/parse/shift.impl2/.shift-until "$j2" # 未処理部分
 }
 

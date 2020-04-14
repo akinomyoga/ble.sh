@@ -752,9 +752,65 @@ bash_tips
     Memo
 -------------------------------------------------------------------------------
 
+2020-04-14
+
+  * ${###} 等のパラメータ展開・変数展開について [#M0015]
+
+    Bash のパラメータ展開 #D1330
+
+    <param>
+
+    - 位置パラメータ: 1 2 ...
+    - 特殊パラメータ: * @ # ? - $ ! 0 _
+    - 変数名: /_[[:alpha:]][[:alnum:]]*/ の形式
+    - 配列名[添字]
+      添字はシェル展開の対象で配列の時は算術式の対象
+    - 配列名[@], 配列名[*]
+
+    <modifier>
+
+    - @A 変数の定義
+    - @a 変数の属性
+    - @Q @E @P 値を加工する
+      これらの ops は展開の対象ではない。つまりvar=A として ${xxx@$var} とはできない。
+    - #, ##, %, %%
+    - /, //, /#, /% (クォートとの兼ね合い)
+    - ^ ^^ , ,, ~ ~~
+      Note: ~ については https://qiita.com/t_nakayama0714/items/80b4c94de43643f4be51 に書いてあった。
+    - = + - ? := :+ :- :?
+    - :offset, :offset:length
+
+    * $<param>
+      Note: 配列, 2桁以上の位置パラメータは使えない。
+
+    * ${...} の例外規則
+
+      * ${#<param>}
+        ${#@}, ${#*}, ${#a[@]}, ${#a[*]} は要素の数。
+        それ以外については文字の数。
+
+      * ${!var@} ${!var*}
+
+      * ${!arr[@]} ${!var[*]}
+
+    * ${<param><modifier>}
+    * ${!<param><modifier>}
+
+      * ! で始まる物については ${<param>} を変数名とする。
+
+        Note: <param> は !, $ 以外でなければならない様だ。
+
+        $@ $* ${arr[@]} ${arr[*]} の時には "$*" などを変数名と見做す。
+        つまり、普通に ${!arr[*]##} 等とすると要素が1個の時以外はエラーになる。
+        (arr=(a b c); IFS=; abc=4321; echo "${!arr[*]##}") 等とすると動く。
+        (arr=(a b c); IFS=; abc=4321; echo "${!arr[@]##}") は動かない。
+
+    ★${!#} で最後の引数を取れる。${@:$#} でも行ける。
+      但し、引数がない場合は $0 に展開される事に注意する。
+
 2020-04-07
 
-  * bashrc に於ける history の操作について。
+  * bashrc に於ける history の操作について [#M0014]
     初回の history -nrs の実行時に "未初期化" であれば初期化を行う。
     "未初期化" の判定は履歴がその時に空であるかどうかによる。
 
@@ -1042,6 +1098,9 @@ bash_tips
     * ble.sh --test でテストを実行する?
       interactive session に入らずに色々実行する機能?
 
+      * というより複数の bash version でテストする機能も作りたい気がする。
+        然し、毎回全ての version でテストするのも大変である。
+
     * 他のフレームワークの機能を確認
       * bats
       * oil/test
@@ -1058,6 +1117,9 @@ bash_tips
 
   * read -t や read line の戻り値が変だ
     →今試してみると別に変な事はない。-e が入っていても入っていなくても。
+
+    一応 C-c で read -e を止めた時の終了ステータスは 130 の所が
+    ble.sh の実装では単に 1 になっているという違いはある。
 
   * bash-3.0 が malloc array.c botched というエラーが出てクラッシュした。
     これは bash のバグである。そして古いバグなので治りそうにない。
@@ -1169,28 +1231,6 @@ bash_tips
 
     再現させようとしても再現できない。
     これは実際に起った時に再度確かめる必要があるのである。
-
-  * stackdump
-
-    以下の様な内容。再現しない。編集手順を記録する? 後、その場で ble_debug=1 にする機能が欲しい。
-    echo 1 2 3 4 5 8 9 10 | ( read numbers; set -- $numbers; i=0 i1=0; for n; do if ((n!=i)); then if ((i==i0)); then echo $i0-$i; ; ((i++)); done )
-
-    ble/syntax/tree-enumerate/.initialize/FATAL1
-      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:26 (ble/util/assert)
-      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:4 (ble/syntax/tree-enumerate/.initialize)
-      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/tree-enumerate)
-      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/parse/shift.method2)
-      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:19 (ble/syntax/parse/shift)
-      @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:7 (ble/syntax/parse)
-      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:73 (ble-edit/content/update-syntax)
-      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#render)
-      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:16 (ble-edit/bind/.tail)
-      @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode/EPILOGUE)
-
-    取り敢えず f11 で ble_debug を toggle して f12 で編集履歴を出力する様にした @ blerc
-    本質的にはそんなに複雑な構造はしていないのだからすぐに再現しそうな気がしたが再現しない。
-    或いは一時的な物で既に直ってしまった可能性もなくはない。
-    echo 1 | ( echo; for n; do if ((n!=i)); then if ((i==i0)); then echo $i0-$i; ; ((i++)); done )
 
 2020-01-21
 
@@ -2860,6 +2900,356 @@ bash_tips
 
 2020-04-14
 
+  * 2020-01-23 stackdump [#D1333]
+
+    以下の様な内容。再現しない。編集手順を記録する? 後、その場で ble_debug=1 にする機能が欲しい。
+
+    | echo 1 2 3 4 5 8 9 10 | ( read numbers; set -- $numbers; i=0 i1=0; for n; do if ((n!=i)); then if ((i==i0)); then echo $i0-$i; ; ((i++)); done )
+    |
+    | ble/syntax/tree-enumerate/.initialize/FATAL1
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:26 (ble/util/assert)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:4 (ble/syntax/tree-enumerate/.initialize)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/tree-enumerate)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:6 (ble/syntax/parse/shift.method2)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:19 (ble/syntax/parse/shift)
+    |   @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:7 (ble/syntax/parse)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:73 (ble-edit/content/update-syntax)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:3 (ble/textarea#render)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:16 (ble-edit/bind/.tail)
+    |   @ /home/murase/.mwg/src/ble.sh/out/ble.sh:50 (ble-decode/EPILOGUE)
+    |
+    | 取り敢えず f11 で ble_debug を toggle して f12 で編集履歴を出力する様にした @ blerc
+    | 本質的にはそんなに複雑な構造はしていないのだからすぐに再現しそうな気がしたが再現しない。
+    | 或いは一時的な物で既に直ってしまった可能性もなくはない。
+    | echo 1 | ( echo; for n; do if ((n!=i)); then if ((i==i0)); then echo $i0-$i; ; ((i++)); done )
+
+    [再現] 2020-04-14 再現した。
+
+    | echo {1..9}|(read numbers;set -- $numbers;i=0;i0=0;for n;do if((n!=i));then echo $i0-$i;i=$n;done)
+    |
+    | ble_debug 構造を入手した。然し何処から手をつけたら良いのか分からない。
+    | 取り敢えず diff を取ってみる事にする。本質的な違いは以下の様になる。
+    |
+    | --- D0000.a.expected-1.txt^I2020-04-14 11:57:31.268375794 +0900
+    | +++ D0000.a.error-1.txt^I2020-04-14 12:01:30.567636568 +0900
+    | @@ -86,24 +86,21 @@
+    |  14 a    083 '$' || stat=(ARGX w=- n=@14 t=$82:$11)
+    |   7 a    084 'i' ||
+    |   | a    085 '0' ||
+    | - 4 a    086 '-' || stat=(ARGI w=ARGX:83- n=@14 t=-:$82)
+    | -14 a    087 '$' || stat=(ARGI w=ARGX:83- n=@14 t=-:$82)
+    | + 4 a    086 '-' || stat=(ARGI w=ARGX:83- n=@24 t=-:$82)
+    | +14 a    087 '$' || stat=(ARGI w=ARGX:83- n=@24 t=-:$82)
+    |   7 a    088 'i' |+ word=ARGI:@81>83-89/(wattr=d)
+    | -12 a    089 ';' |  stat=(ARGX w=- n=@14 t=$89:$11)
+    | - 7 a    090 'i' || stat=(CMDX w=- n=@14 t=$89:$11)
+    | +12 a    089 ';' |  stat=(ARGX w=- n=@24 t=$89:$24)
+    | + 7 a    090 'i' || stat=(CMDX w=- n=@24 t=$89:$24)
+    |   8 a    091 '=' ||
+    | -14 a    092 '$' || stat=(VRHS w=_ble_attr_VAR:90- n=@14 t=-:$89)
+    | +14 a    092 '$' || stat=(VRHS w=_ble_attr_VAR:90- n=@24 t=-:$89)
+    |  26 a    093 'n' |+ word=_ble_attr_VAR:@88>90-94/(wattr=m2:d,$:d)
+    | -12 a    094 ';' |  stat=(CMDXV w=- n=@14 t=$94:$11)
+    | -19 a    095 'd' || stat=(CMDX w=- n=@14 t=$94:$11)
+    | +12 a    094 ';' |  stat=(CMDXV w=- n=@24 t=$94:$24)
+    | +19 a    095 'd' || stat=(CMDX w=- n=@24 t=$94:$24)
+    |   | a    096 'o' ||
+    |   | a    097 'n' ||
+    |   | a    098 'e' |+ word=CMDI:@93>95-99/(wattr=d)
+    | -12 a    099 ')' +  word="(":@10>14-100>@98 stat=(CMDXE w=- n=@14 t=$99:$11)
+    | - |    s 100 ^@    stat=(CMDXE w=- n=- t=$100:-)
+    | + 6 a e  099 ')'    stat=(CMDXE w=- n=@24 t=$99:$24)
+    | + |      100 ^@    stat=(CMDXE w=- n=@24 t=$99:$24)
+    |
+    | 確認すると $i0-$i の - の時点で nest の座標がずれている。
+    | どうも read numbers; set -- は関係ない気がする。
+    | 編集履歴を dump する機能はあっただろうか。
+    | この通りに編集したら再現するかどうかを先ず確認する必要がある。
+    |
+    | 13:echo {1..9} |
+    | 16:echo {1..9} | ()
+    | 22:echo {1..9} | (read --)
+    | 21:echo {1..9} | (read -)
+    | 20:echo {1..9} | (read )
+    | 45:echo {1..9} | (read numbers; set -- $numbers;)
+    | 28:echo {1..9} | (read numbers;set -- $numbers;)
+    | 57:echo {1..9} | (read numbers;set -- $numbers;for n;do done)
+    | 54:echo {1..9} | (read numbers;set -- $numbers;for n;do ;done)
+    | 58:echo {1..9} | (read numbers;set -- $numbers;for n;do echo ;done)
+    | 48:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do echo ;done)
+    | 57:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do cho ;done)
+    | 57:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do ho ;done)
+    | 57:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do o ;done)
+    | 57:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do  ;done)
+    | 74:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0));then\;done)
+    | 73:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0));then;done)
+    | 72:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0));the;done)
+    | 71:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0));th;done)
+    | 70:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0));t;done)
+    | 69:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0));;done)
+    | 68:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0));done)
+    | 67:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0);done)
+    | 66:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==0;done)
+    | 65:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==;done)
+    | 69:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==n));;done)
+    | 68:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==n));done)
+    | 67:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==n);done)
+    | 66:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==n;done)
+    | 65:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i==;done)
+    | 64:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i=;done)
+    | 63:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((i;done)
+    | 62:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ((;done)
+    | 61:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if (;done)
+    | 60:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if ;done)
+    | 59:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if;done)
+    | 63:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if(());done)
+    | 65:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if((n==i));done)
+    | 62:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if((n=i));done)
+    | 63:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if((n!=i));done)
+    | 80:echo {1..9} | (read numbers;set -- $numbers;i=0;for n;do if((n!=i));echo $i0-$i;done)
+    | 53:echo {1..9} | (read numbers;set -- $numbers;i=0;i0=0;for n;do if((n!=i));echo $i0-$i;done)
+    | 78:echo {1..9} | (read numbers;set -- $numbers;i=0;i0=0;for n;do if((n!=i));then echo $i0-$i;done)
+    | 94:echo {1..9} | (read numbers;set -- $numbers;i=0;i0=0;for n;do if((n!=i));then echo $i0-$i;i=$n;done)
+    | 56:echo {1..9} | (read numbers;set -- $numbers;i=0;i0=0;for if((n!=i));then echo $i0-$i;i=$n;done)
+    |
+    | 駄目だ。再現しない。微妙な操作の違いですぐに再現しなくなるという事か、
+    | 或いは、より前の履歴編集によって種が仕込まれている必要があるのか、
+    | もっと別の際限条件が存在するのか。文字列の挿入位置にも関係がありそう。
+    | また、paste 等を実行すると incremental な解析にならずに一気に解析するので問題が起こらないという可能性も。
+    |
+    | 直感としては read/set の部分は関係ない気がする。for の辺りが怪しい。
+    | 再現できた。だいぶ短くできた気がする。これは実は最初の :| も関係ないのでは。
+    | 内部で ;; が発生すると起こる問題ではないだろうか。
+    |
+    | 4::|()
+    | 18::|(:;for n;do done)
+    | 15::|(:;for n;do ;done)
+    | 9::|(:;i=0;for n;do ;done)
+    | 34::|(:;i=0;for n;do if((i==0));then\;done)
+    | 33::|(:;i=0;for n;do if((i==0));then;done)
+    | 32::|(:;i=0;for n;do if((i==0));the;done)
+    | 31::|(:;i=0;for n;do if((i==0));th;done)
+    | 30::|(:;i=0;for n;do if((i==0));t;done)
+    | 29::|(:;i=0;for n;do if((i==0));;done)
+    | 28::|(:;i=0;for n;do if((i==0));done)
+    | 27::|(:;i=0;for n;do if((i==0);done)
+    | 26::|(:;i=0;for n;do if((i==0;done)
+    | 25::|(:;i=0;for n;do if((i==;done)
+    | 24::|(:;i=0;for n;do if((i=;done)
+    | 23::|(:;i=0;for n;do if((i;done)
+    | 22::|(:;i=0;for n;do if((;done)
+    | 28::|(:;i=0;for n;do if((n!=i));done)
+    | 41::|(:;i=0;for n;do if((n!=i));echo $i0-$i;done)
+    | 14::|(:;i=0;i0=0;for n;do if((n!=i));echo $i0-$i;done)
+    | 39::|(:;i=0;i0=0;for n;do if((n!=i));then echo $i0-$i;done)
+    | 55::|(:;i=0;i0=0;for n;do if((n!=i));then echo $i0-$i;i=$n;done)
+    |
+    | 短縮した。
+    |
+    | 2:()
+    | 16:(:;for n;do done)
+    | 12:(:;for n;do;done)
+    | 7:(:;i=0;for n;do;done)
+    | 34:(:;i=0;for n;do if((i));echo $i-$j;done)
+    | 11:(:;i=0;i=1;for n;do if((i));echo $i-$j;done)
+    | 33:(:;i=0;i=1;for n;do if((i));then echo $i-$j;done)
+    | 45:(:;i=0;i=1;for n;do if((i));then echo $i-$j;i;done)
+    |
+    | 実は直前の状態まで大丈夫だったのではないか?
+    | と思って試してみたが駄目だった。やはり編集履歴が必要。
+    | 2つ前から始めたら再現した。
+    |
+    | 44:(:;i=0;i=1;for n;do if((i));echo $i-$j;done)
+    | 33:(:;i=0;i=1;for n;do if((i));then echo $i-$j;done)
+    | 45:(:;i=0;i=1;for n;do if((i));then echo $i-$j;i;done)
+    |
+    | 初期状態を少しずつ小さくしてみる。
+    |
+    | (:;for n;do if((i));echo $i-$j;done)  再現する
+    | (:;for n;do if((i));echo;done)        再現しない
+    | (:;for n;do if((i));: $i;done)        再現しない
+    | (:;for n;do if((i));: $i-$j;done)     再現する
+    | (for n;do if((i));: $i-;done)         再現する
+    | (if((i));: $i-;:)                     再現する
+    | (:;$i-;:)                             再現しない
+    | (:;: $i-;:)                           再現する
+    |
+    | 結局以下で発生するという所までは突き止めた。
+    |
+    | 11:(:;: $i-;:)
+    | 8:(:;then : $i-;:)
+    | 14:(:;then : $i-;;:)
+    |
+    | (: $i-;:) でも再現する。更に then でなくても良い様だ。
+    |
+    | 9:(: $i-;:)
+    | 6:(echo : $i-;:)
+    | 13:(echo : $i-;i;:)
+
+    更に (:: $i-;:) から始めても再現する。
+    最初の空白挿入操作で既に変な状態になっていると考えられる。
+
+    10:(:: $i-;:)
+    3:(: : $i-;:)
+    10:(: : $i-;i;:)
+
+    初期状態
+    _ble_syntax_attr/tree/nest/stat?
+    12*a    000 '(' |  nest=(CMDXE w=- n=- t=-:-) stat=(CMDX w=- n=- t=-:-)
+     2*aw   001 ':' || stat=(CMDX1 w=- n=@0 t=-:-)
+     2*aw   002 ':' |+ word=CMDI:1-3/(wattr=216173653992204032) stat=(CMDI w=CMDX1:1- n=@0 t=-:-)
+     3*a    003 ' ' |
+    14*a    004 '$' || stat=(ARGX w=- n=@0 t=$3:-)
+     7*a    005 'i' ||
+     4*a    006 '-' |+ word=ARGI:@2>4-7/(wattr=d) stat=(ARGI w=ARGX:4- n=@0 t=-:$3)
+    12*a    007 ';' |  stat=(ARGX w=- n=@0 t=$7:-)
+     2*aw   008 ':' |+ word=CMDI:@6>8-9/(wattr=72057594037930241) stat=(CMDX w=- n=@0 t=$7:-)
+    12*a    009 ')' +  word="(":0-10>@8 stat=(ARGX w=- n=@0 t=$9:-)
+     |    s 010 ^@    stat=(CMDXE w=- n=- t=$10:-)
+
+
+    空白挿入後の状態 (yが正しい状態でxが異常になった状態)
+    --- D0000.b.y.txt^I2020-04-14 12:58:01.259916873 +0900
+    +++ D0000.b.x.txt^I2020-04-14 12:56:49.470879943 +0900
+    @@ -2,12 +2,12 @@
+     12 a    000 '(' |  nest=(CMDXE w=- n=- t=-:-) stat=(CMDX w=- n=- t=-:-)
+      2 aw   001 ':' |+ word=CMDI:1-2/(wattr=72057594037930241) stat=(CMDX1 w=- n=@0 t=-:-)
+      3 a    002 ' ' |
+    - 4 a    003 ':' |+ word=ARGI:@1>3-4/(wattr=m1:d,$:d) stat=(ARGX w=- n=@0 t=$2:-)
+    - 3 a    004 ' ' |  stat=(ARGX w=- n=@0 t=$4:-)
+    -14 a    005 '$' || stat=(ARGX w=- n=@0 t=$4:-)
+    + 4 a  s 003 ':' |+ word=ARGI:@1>3-4/(wattr=m1:d,$:d) stat=(ARGX w=- n=@0 t=$2:-)
+    + 3 a  s 004 ' ' |  stat=(ARGX w=- n=@0 t=$4:-)
+    +14 a  s 005 '$' || stat=(ARGX w=- n=@0 t=$4:-)
+      7 a    006 'i' ||
+    - 4 a    007 '-' |+ word=ARGI:@3>5-8/(wattr=d) stat=(ARGI w=ARGX:5- n=@0 t=-:$4)
+    -12 a    008 ';' |  stat=(ARGX w=- n=@0 t=$8:-)
+    - 2 aw   009 ':' |+ word=CMDI:@7>9-10/(wattr=72057594037930241) stat=(CMDX w=- n=@0 t=$8:-)
+    -12 a    010 ')' +  word="(":0-11>@9 stat=(ARGX w=- n=@0 t=$10:-)
+    + 4 a    007 '-' |+ word=ARGI:@3>5-8/(wattr=d) stat=(ARGI w=ARGX:5- n=@1 t=-:$4)
+    +12 a  s 008 ';' |  stat=(ARGX w=- n=@0 t=$8:-)
+    + 2 aw s 009 ':' |+ word=CMDI:@7>9-10/(wattr=72057594037930241) stat=(CMDX w=- n=@0 t=$8:-)
+    +12 a  s 010 ')' +  word="(":0-11>@9 stat=(ARGX w=- n=@0 t=$10:-)
+      |    s 011 ^@    stat=(CMDXE w=- n=- t=$11:-)
+
+
+    [原因]
+
+    | 更新範囲を見てみると ": : " の4文字だけなので、
+    | これは shift の失敗によって起こっている不整合である。
+    | では何故 shift に失敗するのか。shift のバグは流石にもうないと思っていたのに。
+    | 而も、shift が起こる条件が良くわからない。他の場合には起こっていなかった筈である。
+    | 不思議なのはその他の nest の shift はちゃんとできているという事。
+    | "-" に設置されている stat の nest だけ shift できていない。
+    |
+    | shift.stat を観察してみた。ここで stat の中にある nlen を更新している。
+    | 然し、何か変である。というか shift を実行する前から既に shift 済みの気がする。
+    | 一体どういう事だろうか。或いは j=7 というのは shift 前のインデックスという事か。
+    | だとすると j=6 に対して shift.stat が呼び出されていないという事になる。
+    | j=7:nlen=7:beg=2:end0=2:shift=1
+    |
+    | →確認してみた所配列の再配置は shift の後だった。つまり j は shift 前の位置である。
+    | そして shift.stat が呼び出されていないという事なのだろうと思われる。
+    | というのも shift.stat は全体に対して実行しているのではなくて、
+    | 必要のありそうな物を tree-enumerate で列挙するという形になっている様だから。
+    |
+    | * shift.method2 の実装に関する記録を探す。
+    |   要するにこの shift.method2 が悪いというのは明らかであるが、
+    |   そもそも何故この様な複雑な事をしているのだったか。
+    |   done.txt を method2 で検索しても見つからない。
+    |   blame を確認すると e74c1163 と書かれている。
+    |   日付は 2016-04-07 になっている。#D0321 に議論が残っている。
+    |   結構複雑な変更だったのだろうか。議論がごちゃごちゃとしていて分からない。
+    |   どうも tplen と tclen に関しては単語内部に対する探索を実行しているが、
+    |   nlen に対しては何らかの仮定の下にスキップを行っている。
+    |   そしてその仮定が崩れているのではないかというのが今回の問題点。
+    |
+    |   また別の shift.impl2 に関する議論は #D0223 にある。
+    |   然し、こちらは単純なバグ修正なので深い事は何も書かれていない。
+    |
+    |   結局見つからない。結局改めて何が行われているかコードを読まなければない。
+    |
+    |   shift として何が必要かについて考える。
+    |   wlen, nlen, tplen, tclen 等は全て相対位置で記録しているので、
+    |   基本的には shift は必要ないはずである。shift が必要になるのは、
+    |   wlen, nlen, tplen, tclen が変更領域に跨っている場合と考えられる。
+    |   shift 対象としては stat / tree / nest の3種類がある。
+    |
+    | shift.stat では stat 内の情報と beg/end0 の情報だけで更新している。
+    | 変更領域を超えた参照についてはそのまま shift して、
+    | 変更領域内部 (inclusive) に対する参照については消滅した物として、
+    | 参照点を変更領域末端まで移動する。
+    | shift.tree も実質同様である。shift.nest も同様であった。
+    |
+    | shift.stat, nest に関しては j2 まで全て呼び出す形になっている?
+    | 但し、変更領域の後の nest の内部にある物に関してはスキップできる。
+    | 何故ならば参照はその中で閉じている筈だから。
+    |
+    | * 或いは最近の TE_nofs に関係する修正でバグが埋め込まれた可能性もあるだろうか?
+    |   TE_nofs etc の様に変数名を書き換えたのは 9cb35832 である。
+    |   試しに 9cb35832~ を checkout して見たが同じ問題が発生している。
+    |   v0.2-master でも発生した。v0.1-master では発生していない気がする。
+    |   どうやら #D0321 の e74c1163 の段階では発生していなかった様である。
+    |
+    |   犯人は分かった 035ad68 この commit で問題が発生する様になっている。
+    |   2017-02-25 の事である。#D0364 が該当する項目である。
+    |   さて、実際に修正した内容を確認すると…。うーん。
+    |   _shift2_j=j の位置を変更しただけである。
+    |   という事は元からあったバグがこれで発現しただけという事なのだろうか。
+
+    但し単語内部の場合には外側の nest に対して参照がある可能性がある。
+    そう考えるとスキップできる tree というのは nest に限られるのでは。
+    →やはりこれが悪い様に思われる。
+
+    取り敢えず、スキップするのは nest の時だけにする事にした。問題は発生しなくなった。
+
+    ? 単語ごとに nest を設置しないのは何故か。
+      というよりそもそも何故 nest を単語の時に更新していなかったのか。
+
+      * nest を辿る事によって文法の解釈を変えたりという事に nest を使っている。
+        然しこれは主に単語の内部での解釈についてなので
+        実は単語ごとに nest を作っても大した影響はないのではないか。
+        →nest-type を呼び出している箇所を確認したが、
+          やはり単語でも nest を作る様にして問題は発生しない様に感じる。
+      * また解析状態一致の判定にも使っている。実は解析状態一致の判定に関しては、
+        寧ろ単語ごとに nest を作った方が都合が良いのかもしれない。
+      * そもそも "単語" という概念と "nest" という概念を独立に管理する必要はあるのだったか。
+        解析状態に wlen と nlen の両方があるがその必要は本当にあったのだろうか。
+      * 解析状態の一致判定に時間がかかる様になるかもしれない。
+        というのも一致を判定する為に毎回 nest 配列の中身を辿る必要が出てくるから。
+        単語に対しても nest を作る様にしてしまうと毎回辿る nest が多くなってしまう。
+
+      始めから再設計するのだとしたら nlen と wlen は統合した気がするが、
+      現在の実装でそうなっている以上は敢えて変える必要もないように感じている。
+      wlen/nlen をくっつけると多少効率が下がるかもしれないし、
+      また解析器の部分を全体的に書き換えなければならなくなる可能性がある。
+      別に其処までしなくても良いという様に感じている。
+
+
+    ? 単語の場合でもその文脈に於ける nest が空であればスキップできるのではないか。
+      * tree 構造に nlen は記録していただろうか。ble_debug で観察すると記録していない気がする。
+        実際に確認したが記録はしていない様だ。単語の場合には wlen を nest の場合には nlen を記録している。
+        つまり、単語の場合に外側の nlen を記録するという事はしていないのである。
+        寧ろ、nlen は stat の側にしか記録していない。
+
+      或いは単語と同じ位置に記録してある stat の中にある nlen を参照するという手もある。
+      然し、単語の終端に必ず stat が設置されているかどうかは非自明である、
+      少なくともそういう要求を意識して実装はしていない。
+      見た感じは一致している様にも見えるが際どい。
+
+      * 然し、よく考えてみればこれでスキップできる様にしたとしても、
+        結局 $() 等の構造の内部では余り意味がない。
+        結局 ${} 等の nest を作る構造単位で飛ばすという処理だけでしか
+        本質的には高速にする事ができない。
+        その様に考えると単語の時にわざわざ nest が空かどうかを判定しても仕方がない気がする。
+        一方で、設計の綺麗さよりも効率を考えるのであれば、やはりトップレベルで沢山コマンドを
+        入力する場合が大半であるから、そう考えると nest をチェックしても良い。
+
+      色々考えると、単語の場合に nest の情報を無理して取得してスキップをするのは
+      現在の実装を考えると余り綺麗ではない上にそんなに効率化する訳でもない気がする。
+      という事から対応しない事にする。
+      スキップはネストの時にだけ行う事とする。
+
   * edit: set +H としても次のコマンドの実行の時には履歴展開が有効になってしまう [#D1332]
     set -H についても記録・復元するべきである。
 
@@ -2930,7 +3320,7 @@ bash_tips
 
     * @ や * の場合は何だか良くわからない。
         ${@}  ... これは位置パラメータ一覧
-        ${!@} ... これは "\$$*" と取り扱われる様だ。
+        ${!@} ... これは "\${$*}" と取り扱われる様だ。
         ${#@} ... これは $# に等価の様である。
                   $# に @Flag がついているのかと思いきや ${#*} でも同様に動く。
                   然し ${#@Q} とすると $# に @Q という動作になる。
