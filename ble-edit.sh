@@ -3023,7 +3023,6 @@ function .ble-edit/exec:gexec/eval-TRAPDEBUG {
 function .ble-edit/exec:gexec/begin {
   _ble_decode_bind_hook=
   .ble-edit/stdout/on
-  set -H
 
   # C-c に対して
   trap '.ble-edit/exec:gexec/eval-TRAPINT' INT
