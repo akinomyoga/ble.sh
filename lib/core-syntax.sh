@@ -3591,7 +3591,7 @@ function ble-syntax/parse/shift.impl2/.proc1 {
   ble-syntax/parse/shift.tree "$nofs"
   ((_shift2_j=j))
 
-  if ((tprev>end0&&wbegin>end0)); then
+  if ((tprev>end0&&wbegin>end0)) && [[ ${wtype//[0-9]} ]]; then
     # skip 可能
     #   tprev<=end0 の場合、stat の中の tplen が shift 対象の可能性がある事に注意する。
 #%if !release
