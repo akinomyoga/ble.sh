@@ -4538,7 +4538,6 @@ function ble-edit/exec:gexec/.begin {
   ble/term/leave
   ble/util/buffer.flush >&2
   ble-edit/bind/stdout.on
-  set -H
 
   # C-c に対して
   trap 'ble-edit/exec:gexec/.eval-TRAPINT' INT
