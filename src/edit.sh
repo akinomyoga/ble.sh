@@ -4351,7 +4351,6 @@ function ble-edit/exec:gexec/.begin {
   ble/term/leave
   ble/util/buffer.flush >&2
   ble-edit/bind/stdout.on
-  set -H
 
   # C-c に対して
   builtin trap -- 'blehook/invoke INT' INT # 何故か改めて実行しないと有効にならない

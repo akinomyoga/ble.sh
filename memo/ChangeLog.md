@@ -20,6 +20,7 @@
 - util (`ble/util/print-global-definitions`): support arrays and unset variables (test-util) 6e85f1c
 - util (`ble/util/cat`): support NUL and multiple files (test-util) d19a9af
 - edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` e97a858
+- syntax: support confusing parameter expansions like `${#@}`, etc. `#D1330` b7b42eb
 
 ## Changes
 
@@ -74,6 +75,7 @@
 - history: fix a problem that the history is doubled by `history -a` in `bashrc` `#D1314` 34821fe
 - util (`ble/variable#get-attr`): fix an error message with special variable names such as `?` and `*` `#D1321` 557b774
 - util (has-glob-pattern): fix abort in subshells (test-util) `#D1326` dc292a2
+- edit: fix a bug that `set +H` is cancelled on command execution `#D1332` 0000000
 
 ## Compatibility
 
@@ -95,7 +97,7 @@
 - complete: follow Bash-5.1 change of arithmetic literal `10#` `#D1322` 557b774
 - decode: fix a bug of broken cmap cache found in ble-0.3 `#D1327` 16b56bf
 - util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
-- complete: work around slow `compgen -c` in Cygwin `#D1329` 0000000
+- complete: work around slow `compgen -c` in Cygwin `#D1329` 5327f5d
 
 ## Internal changes and fixes
 
