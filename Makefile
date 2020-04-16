@@ -22,6 +22,9 @@ endif
 
 MWGPP:=$(GAWK) -f ext/mwg_pp.awk
 
+#------------------------------------------------------------------------------
+# ble.sh
+
 FULLVER:=0.4.0-devel2
 
 OUTDIR:=out
@@ -38,6 +41,9 @@ $(OUTDIR)/ble.sh: ble.pp Makefile | $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ FULLVER=$(FULLVER) \
 	  $(MWGPP) $< >/dev/null
 
+#------------------------------------------------------------------------------
+# keymap
+
 outdirs += $(OUTDIR)/keymap
 outfiles += $(OUTDIR)/keymap/emacs.sh
 outfiles += $(OUTDIR)/keymap/vi.sh $(OUTDIR)/keymap/vi_digraph.sh $(OUTDIR)/keymap/vi_digraph.txt $(OUTDIR)/keymap/vi_test.sh
@@ -48,6 +54,9 @@ $(OUTDIR)/keymap/%.sh: keymap/%.sh | $(OUTDIR)/keymap
 	cp -p $< $@
 $(OUTDIR)/keymap/%.txt: keymap/%.txt | $(OUTDIR)/keymap
 	cp -p $< $@
+
+#------------------------------------------------------------------------------
+# lib
 
 outdirs += $(OUTDIR)/lib
 outfiles += $(OUTDIR)/lib/init-term.sh
@@ -67,9 +76,30 @@ $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib
 $(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh lib/core-syntax-ctx.def | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
 
+#------------------------------------------------------------------------------
+# contrib
+
+.PHONY: update-contrib
+update-contrib:
+	git submodule update --init --recursive
+contrib/.git:
+	git submodule update --init --recursive
+outdirs += $(OUTDIR)/contrib
+contrib-files = $(wildcard contrib/*.bash)
+outfiles += $(contrib-files:contrib/%=$(OUTDIR)/contrib/%)
+$(OUTDIR)/contrib/%.bash: contrib/%.bash | contrib/.git $(OUTDIR)/contrib
+	cp -p $< $@
+
+#------------------------------------------------------------------------------
+# target "all"
+
 $(outdirs):
 	mkdir -p $@
-all: $(outfiles)
+
+all: contrib/.git $(outfiles)
+
+#------------------------------------------------------------------------------
+# target "install"
 
 DATA_HOME := $(XDG_DATA_HOME)
 ifeq ($(DATA_HOME),)

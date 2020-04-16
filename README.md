@@ -37,7 +37,7 @@ To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
 The file `ble.sh` can be generated using the following commands.
 If you have GNU make installed on `gmake`, please use `gmake` instead of `make`.
 ```console
-$ git clone https://github.com/akinomyoga/ble.sh.git
+$ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 $ cd ble.sh
 $ make
 ```
@@ -99,6 +99,7 @@ You can instead download the latest version by `git pull` and install it:
 ```bash
 cd ble.sh   # <-- enter the git repository you already have
 git pull
+git submodule update --recursive --remote
 make
 make INSDIR="$HOME/.local/share/blesh" install
 ```

@@ -39,7 +39,7 @@ ble.sh はより低層の基盤を提供するもので、ユーザは自分で�
 以下のコマンドで生成できます。
 GNU make が `gmake` という名前でインストールされている場合は、`make` の代わりに `gmake` として下さい。
 ```console
-$ git clone https://github.com/akinomyoga/ble.sh.git
+$ git clone --recursive https://github.com/akinomyoga/ble.sh.git
 $ cd ble.sh
 $ make
 ```
@@ -102,6 +102,7 @@ $ ble-update
 ```bash
 cd ble.sh   # ※既に持っている git リポジトリに入る
 git pull
+git submodule update --recursive --remote
 make
 make INSDIR="$HOME/.local/share/blesh" install
 ```

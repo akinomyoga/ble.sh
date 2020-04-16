@@ -369,13 +369,13 @@ else
     local "decl$1"
     ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return 1
     local rex='^declare -[b-zA-Z]*a'
-    eval "[[ \$decl$1 =~ \$rex ]]"
+    builtin eval "[[ \$decl$1 =~ \$rex ]]"
   }
   function ble/is-assoc {
     local "decl$1"
     ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return 1
     local rex='^declare -[a-zB-Z]*A'
-    eval "[[ \$decl$1 =~ \$rex ]]"
+    builtin eval "[[ \$decl$1 =~ \$rex ]]"
   }
   ((_ble_bash>=40000)) ||
     function ble/is-assoc { false; }
@@ -1775,7 +1775,7 @@ function ble/util/declare-print-definitions {
 function ble/util/print-global-definitions/.save-decl {
   local __ble_name=$1
   if [[ ! ${!__ble_name+set} ]]; then
-    __ble_decl="declare $__ble_name; unset -v $__ble_name"
+    __ble_decl="declare $__ble_name; builtin unset -v $__ble_name"
   elif ble/variable#has-attr "$__ble_name" aA; then
     if ((_ble_bash>=40000)); then
       ble/util/assign __ble_decl "declare -p $__ble_name" 2>/dev/null
@@ -1846,7 +1846,7 @@ function ble/util/print-global-definitions {
       fi
 
       [[ $__ble_decl ]] ||
-        __ble_error=1 __ble_decl="declare $__ble_name; unset -v $__ble_name" # not found
+        __ble_error=1 __ble_decl="declare $__ble_name; builtin unset -v $__ble_name" # not found
       [[ $__ble_hidden_only && $__ble_i == 0 ]] && continue
       ble/util/print "$__ble_decl"
     done
@@ -2613,24 +2613,29 @@ function ble-autoload {
 ##     それ以外の場合には $_ble_base:$_ble_base/local:$_ble_base/share から検索します。
 ##
 _ble_util_import_guards=()
+
+## 関数 ble/util/import/search/.check-directory name dir
+##   @var[out] ret
+function ble/util/import/search/.check-directory {
+  local name=$1 dir=$2
+  if [[ -f $dir/$name ]]; then
+    ret=$dir/$name
+  elif [[ $name != *.bash && -f $dir/$name.bash ]]; then
+    ret=$dir/$name.bash
+  elif [[ $name != *.sh && -f $dir/$name.sh ]]; then
+    ret=$dir/$name.sh
+  else
+    return 1
+  fi
+  return 0
+}
 function ble/util/import/search {
   ret=$1
-  if [[ $ret != /* ]]; then
-    if [[ -f $_ble_base/$ret ]]; then
-      ret=$_ble_base/$ret
-    elif [[ $ret != *.sh && -f $_ble_base/$ret.sh ]]; then
-      ret=$_ble_base/$ret.sh
-    elif [[ -f $_ble_base/local/$ret ]]; then
-      ret=$_ble_base/local/$ret
-    elif [[ $ret != *.sh && -f $_ble_base/local/$ret.sh ]]; then
-      ret=$_ble_base/local/$ret.sh
-    elif [[ -f $_ble_base/share/$ret ]]; then
-      ret=$_ble_base/share/$ret
-    elif [[ $ret != *.sh && -f $_ble_base/share/$ret.sh ]]; then
-      ret=$_ble_base/share/$ret.sh
-    else
+  if [[ $ret != /* && $ret != ./* ]]; then
+    ble/util/import/search/.check-directory "$ret" "$_ble_base" ||
+      ble/util/import/search/.check-directory "$ret" "$_ble_base/local" ||
+      ble/util/import/search/.check-directory "$ret" "$_ble_base/share" ||
       return 1
-    fi
   fi
   [[ -e $ret && ! -d $ret ]]
 }

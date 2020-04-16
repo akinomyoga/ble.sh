@@ -640,7 +640,7 @@ function ble-update {
     # release version
     local branch=${_ble_base_repository#*:}
     ( ble/bin/mkdir -p "$_ble_base/src" && builtin cd "$_ble_base/src" &&
-        git clone --depth 1 https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
+        git clone --recursive --depth 1 https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
         builtin cd ble.sh && "$MAKE" all && "$MAKE" INSDIR="$_ble_base" install ) &&
       ble-reload
     return "$?"
@@ -649,7 +649,8 @@ function ble-update {
   if [[ $_ble_base_repository && -d $_ble_base_repository/.git ]]; then
     ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
         builtin cd "$_ble_base_repository" &&
-        git pull && { ! "$MAKE" -q || builtin exit 6; } && "$MAKE" all &&
+        git pull && git submodule update --recursive --remote &&
+        { ! "$MAKE" -q || builtin exit 6; } && "$MAKE" all &&
         if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
           "$MAKE" INSDIR="$_ble_base" install
         fi ); local ext=$?

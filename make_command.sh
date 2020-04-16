@@ -121,7 +121,7 @@ function sub:check/list-command {
 function sub:check/builtin {
   echo "--- $FUNCNAME $1 ---"
   local command=$1 esc='(\[[ -?]*[@-~])*'
-  sub:check/list-command --exclude-this --exclude=generate-release-note.sh "$command" "${@:2}" |
+  sub:check/list-command --exclude-this --exclude={generate-release-note.sh,lib/test-*.sh} "$command" "${@:2}" |
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)=" |
     grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc" |
@@ -130,7 +130,7 @@ function sub:check/builtin {
 
 function sub:check/a.txt {
   echo "--- $FUNCNAME ---"
-  grc --color --exclude=./test --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
+  grc --color --exclude=./test --exclude=./lib/test-*.sh --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 
