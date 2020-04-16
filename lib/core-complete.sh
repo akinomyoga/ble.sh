@@ -25,14 +25,14 @@ function ble/complete/string#common-suffix-prefix {
     local i n=${#lhs}
     for ((i=0;i<n;i++)); do
       ret=${lhs:i}
-      [[ $rhs == "$ret"* ]] && return
+      [[ $rhs == "$ret"* ]] && return 0
     done
     ret=
   else
     local j m=${#rhs}
     for ((j=m;j>0;j--)); do
       ret=${rhs::j}
-      [[ $lhs == *"$ret" ]] && return
+      [[ $lhs == *"$ret" ]] && return 0
     done
     ret=
   fi
@@ -98,7 +98,7 @@ function ble/complete/menu#render-item {
   # use custom renderer
   if ble/is-function "$menu_class"/render-item; then
     "$menu_class"/render-item "$@"
-    return
+    return "$?"
   fi
 
   local item=$1 opts=$2
@@ -513,7 +513,7 @@ function ble/complete/menu#construct {
       fi
     else
       # キャッシュがない時は頁を構築
-      ble/complete/menu-style:"$menu_style"/construct-page "$menu_opts" || return
+      ble/complete/menu-style:"$menu_style"/construct-page "$menu_opts" || return "$?"
       _ble_complete_menu_style_pages[ipage]=$begin,$end,$x,$y:$esc
       ((begin<=scroll&&scroll<end)) && break
     fi
@@ -553,7 +553,7 @@ function ble/complete/menu#select {
   local ncand=${#_ble_complete_menu_items[@]}
   ((0<=osel&&osel<ncand)) || osel=-1
   ((0<=nsel&&nsel<ncand)) || nsel=-1
-  ((osel==nsel)) && return
+  ((osel==nsel)) && return 0
 
   local infox infoy
   ble/canvas/panel#get-origin "$_ble_edit_info_panel" --prefix=info
@@ -670,7 +670,7 @@ function ble/widget/menu/backward {
 function ble/widget/menu/forward-line {
   local offset=$_ble_complete_menu_offset
   local osel=$_ble_complete_menu_selected
-  ((osel>=0)) || return
+  ((osel>=0)) || return 1
   local entry=${_ble_complete_menu_icons[osel-offset]}
   local fields; ble/string#split fields , "${entry%%:*}"
   local ox=${fields[0]} oy=${fields[1]}
@@ -694,7 +694,7 @@ function ble/widget/menu/forward-line {
 function ble/widget/menu/backward-line {
   local offset=$_ble_complete_menu_offset
   local osel=$_ble_complete_menu_selected
-  ((osel>=0)) || return
+  ((osel>=0)) || return 1
   local entry=${_ble_complete_menu_icons[osel-offset]}
   local fields; ble/string#split fields , "${entry%%:*}"
   local ox=${fields[0]} oy=${fields[1]}
@@ -802,7 +802,7 @@ function ble/complete/menu#start {
   local menu_style=linewise
   local menu_items; menu_items=("$@")
   local menu_class=ble/complete/menu.class menu_param=
-  ble/complete/menu#construct sync || return
+  ble/complete/menu#construct sync || return "$?"
   ble/complete/menu#show
   ble/complete/menu#select 0
   ble-decode/keymap/push menu
@@ -972,7 +972,7 @@ function ble/complete/action/util/quote-insert {
         if [[ $COMPS =~ $rex_raw_paramx ]]; then
           local rematch1=${BASH_REMATCH[1]}
           INSERT=$rematch1'${'${COMPS:${#rematch1}+1}'}'$ins
-          return
+          return 0
         else
           ins='""'$ins
         fi ;;
@@ -1123,11 +1123,11 @@ function ble/complete/action:tilde/get-desc {
 #   DATA ... compopt 互換のオプションをコロン区切りで指定します
 #
 function ble/complete/action:progcomp/initialize {
-  [[ $DATA == *:noquote:* ]] && return
+  [[ $DATA == *:noquote:* ]] && return 0
 
   # bash-completion には compopt -o nospace として、
   # 自分でスペースを付加する補完関数がある。この時クォートすると問題。
-  [[ $DATA == *:nospace:* && $CAND == *' ' && ! -f $CAND ]] && return
+  [[ $DATA == *:nospace:* && $CAND == *' ' && ! -f $CAND ]] && return 0
 
   ble/complete/action/util/quote-insert
 }
@@ -1248,7 +1248,7 @@ function ble/complete/action:variable/init-menu-item {
 ##   @var[in] COMP_PREFIX
 function ble/complete/cand/yield {
   local ACTION=$1 CAND=$2 DATA="${*:3}"
-  [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && return
+  [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && return 0
 
   local PREFIX_LEN=0
   [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
@@ -1432,7 +1432,7 @@ function ble/complete/source:command/gen.1 {
   #   従って、compgen -A command には直接 COMPV を渡し、
   #   compgen -A function には compv_quoted を渡す。
   if [[ $slow_compgen ]]; then
-    shopt -q no_empty_cmd_completion && return
+    shopt -q no_empty_cmd_completion && return 0
     ble/util/conditional-sync \
       'builtin compgen -c -- "$COMPV"' \
       '! ble/complete/check-cancel' 128 progressive-weight
@@ -1697,7 +1697,7 @@ function ble/complete/progcomp/.compvar-perform-wordbreaks {
   local word=$1
   if [[ ! $word ]]; then
     ret=('')
-    return
+    return 0
   fi
 
   ret=()
@@ -2002,7 +2002,7 @@ function ble/complete/progcomp/compopt {
   return "$ext"
 }
 function ble/complete/progcomp/.compgen-helper-func {
-  [[ $comp_func ]] || return
+  [[ $comp_func ]] || return 1
   local -a COMP_WORDS
   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
   ble/complete/progcomp/.compvar-initialize
@@ -2130,7 +2130,7 @@ function ble/complete/progcomp/.compgen {
   if [[ $is_default_completion == retry && ! $_ble_complete_retry_guard ]]; then
     local _ble_complete_retry_guard=1
     ble/complete/progcomp/.compgen "$@"
-    return
+    return "$?"
   fi
 
   [[ $compgen ]] || return 1
@@ -2205,7 +2205,7 @@ function ble/complete/progcomp/.compgen {
 ##
 function ble/complete/progcomp/.compline-rewrite-command {
   local ocmd=${comp_words[0]}
-  [[ $1 != "$ocmd" ]] || (($#>=2)) || return
+  [[ $1 != "$ocmd" ]] || (($#>=2)) || return 1
   local ins="$*"
   comp_line=$ins${comp_line:${#ocmd}}
   ((comp_point-=${#ocmd},comp_point<0&&(comp_point=0),comp_point+=${#ins}))
@@ -2230,19 +2230,19 @@ function ble/complete/progcomp {
     if ble/is-function "ble/cmdinfo/complete:$cmd"; then
       ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
       "ble/cmdinfo/complete:$cmd" "$opts"
-      return
+      return "$?"
     elif [[ $cmd == */?* ]] && ble/is-function "ble/cmdinfo/complete:${cmd##*/}"; then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       "ble/cmdinfo/complete:${cmd##*/}" "$opts"
-      return
+      return "$?"
     elif builtin complete -p "$cmd" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      return
+      return "$?"
     elif [[ $cmd == */?* ]] && builtin complete -p "${cmd##*/}" &>/dev/null; then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      return
+      return "$?"
     elif
       # bash-completion の loader を呼び出して遅延補完設定をチェックする。
       ble/function#try __load_completion "${cmd##*/}" &>/dev/null &&
@@ -2250,7 +2250,7 @@ function ble/complete/progcomp {
     then
       ble/complete/progcomp/.compline-rewrite-command "${cmd##*/}" "${alias_args[@]}"
       ble/complete/progcomp/.compgen "$opts"
-      return
+      return "$?"
     fi
     checked="$checked$cmd "
 
@@ -2390,7 +2390,7 @@ function ble/complete/source/compgen {
   ble/util/assign-array arr 'builtin compgen -A "$compgen_action" -- "$compv_quoted"'
 
   # 既に完全一致している場合は、より前の起点から補完させるために省略
-  [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return
+  [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return 0
 
   local cand
   for cand in "${arr[@]}"; do
@@ -2480,29 +2480,29 @@ function ble/complete/context:syntax/generate-sources {
   ((${#sources[@]}))
 }
 function ble/complete/context:filename/generate-sources {
-  ble/complete/context:syntax/generate-sources || return
+  ble/complete/context:syntax/generate-sources || return "$?"
   ble/complete/context/overwrite-sources file
 }
 function ble/complete/context:command/generate-sources {
-  ble/complete/context:syntax/generate-sources || return
+  ble/complete/context:syntax/generate-sources || return "$?"
   ble/complete/context/overwrite-sources command
 }
 function ble/complete/context:variable/generate-sources {
-  ble/complete/context:syntax/generate-sources || return
+  ble/complete/context:syntax/generate-sources || return "$?"
   ble/complete/context/overwrite-sources variable
 }
 function ble/complete/context:username/generate-sources {
-  ble/complete/context:syntax/generate-sources || return
+  ble/complete/context:syntax/generate-sources || return "$?"
   ble/complete/context/overwrite-sources user
 }
 function ble/complete/context:hostname/generate-sources {
-  ble/complete/context:syntax/generate-sources || return
+  ble/complete/context:syntax/generate-sources || return "$?"
   ble/complete/context/overwrite-sources hostname
 }
 
 function ble/complete/context:glob/generate-sources {
   comp_type=$comp_type:raw
-  ble/complete/context:syntax/generate-sources || return
+  ble/complete/context:syntax/generate-sources || return "$?"
   ble/complete/context/overwrite-sources glob
 }
 function ble/complete/source:glob {
@@ -2524,7 +2524,7 @@ function ble/complete/source:glob {
 
 function ble/complete/context:dynamic-history/generate-sources {
   comp_type=$comp_type:raw
-  ble/complete/context:syntax/generate-sources || return
+  ble/complete/context:syntax/generate-sources || return "$?"
   ble/complete/context/overwrite-sources dynamic-history
 }
 function ble/complete/source:dynamic-history {
@@ -2808,10 +2808,10 @@ function ble/complete/candidates/filter:head/match {
     ret=()
   elif [[ $text == "$needle"* ]]; then
     ret=(0 ${#needle})
-    return
+    return 0
   elif [[ $text == "${needle::${#text}}" ]]; then
     ret=(0 ${#text})
-    return
+    return 0
   else
     ret=()
     return 1
@@ -2834,7 +2834,7 @@ function ble/complete/candidates/filter:substr/count-match-chars {
 
   if [[ $value == *"$compv"* ]]; then
     ret=${#compv}
-    return
+    return 0
   fi
   ble/complete/string#common-suffix-prefix "$value" "$compv"
   ret=${#ret}
@@ -2904,7 +2904,7 @@ function ble/complete/candidates/filter:hsubseq/count-match-chars {
   local i n=${#COMPV}
   for ((i=fixlen;i<n;i++)); do
     local a=${value%%"${compv:i:1}"*}
-    [[ $a == "$value" ]] && { ret=$i; return; }
+    [[ $a == "$value" ]] && { ret=$i; return 0; }
     value=${value:${#a}+1}
   done
   ret=$n
@@ -2926,7 +2926,7 @@ function ble/complete/candidates/filter:hsubseq/match {
     else
       ret=()
     fi
-    return
+    return 0
   fi
 
   local pN=${#text} iN=${#needle}
@@ -3042,19 +3042,19 @@ function ble/complete/candidates/generate {
   cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
   cand_pack=() # 候補の詳細データ
 
-  ble/complete/candidates/generate-with-filter head || return
+  ble/complete/candidates/generate-with-filter head || return "$?"
   ((cand_count)) && return 0
 
   if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
     local original_comp_type=$comp_type
     comp_type=${original_comp_type}:m
-    ble/complete/candidates/generate-with-filter substr || return
+    ble/complete/candidates/generate-with-filter substr || return "$?"
     ((cand_count)) && return 0
     comp_type=${original_comp_type}:a
-    ble/complete/candidates/generate-with-filter hsubseq || return
+    ble/complete/candidates/generate-with-filter hsubseq || return "$?"
     ((cand_count)) && return 0
     comp_type=${original_comp_type}:A
-    ble/complete/candidates/generate-with-filter subseq || return
+    ble/complete/candidates/generate-with-filter subseq || return "$?"
     ((cand_count)) && return 0
     comp_type=$original_comp_type
   fi
@@ -3240,7 +3240,7 @@ function ble/complete/menu-complete.class/render-item {
   local filter_target=${CAND:prefix_len}
   if [[ ! $filter_target ]]; then
     ret=
-    return
+    return 0
   fi
 
   # 色の設定・表示内容・前置詞・後置詞を取得
@@ -3356,6 +3356,7 @@ function ble/complete/menu/clear {
     [[ $_ble_highlight_layer_menu_filter_beg ]] &&
       ble/textarea#invalidate str # layer:menu_filter 解除 (#D0995)
   fi
+  return 0
 }
 blehook widget_bell+=ble/complete/menu/clear
 blehook history_onleave+=ble/complete/menu/clear
@@ -3403,7 +3404,7 @@ function ble/complete/menu/show {
   local menu_opts=$opts
   [[ :$comp_type: == *:sync:* ]] && menu_opts=$menu_opts:sync
 
-  ble/complete/menu#construct "$menu_opts" || return
+  ble/complete/menu#construct "$menu_opts" || return "$?"
   ble/complete/menu#show
 
   if [[ :$opts: == *:menu-source:* ]]; then
@@ -3512,7 +3513,7 @@ function ble/complete/generate-candidates-from-opts {
   comp_type=
   local comp_text=$_ble_edit_str comp_index=$_ble_edit_ind
   local sources
-  ble/complete/context:"$context"/generate-sources "$comp_text" "$comp_index" || return 1
+  ble/complete/context:"$context"/generate-sources "$comp_text" "$comp_index" || return "$?"
 
   ble/complete/candidates/generate
 }
@@ -3623,9 +3624,9 @@ function ble/complete/insert-common {
       ble/syntax:bash/simple-word/eval "$ret"
       menu_common_part=$ret
     fi
-    ble/complete/menu/show "$menu_show_opts" || return
+    ble/complete/menu/show "$menu_show_opts" || return "$?"
   elif [[ $insert_flags == *n* ]]; then
-    ble/widget/complete show_menu:regenerate || return
+    ble/widget/complete show_menu:regenerate || return "$?"
   else
     _ble_complete_state=complete
     ble/complete/menu/clear
@@ -3657,7 +3658,7 @@ function ble/complete/insert-all {
 
   _ble_complete_state=complete
   ble/complete/menu/clear
-  return
+  return 0
 }
 
 ## 関数 ble/complete/insert-braces/.compose words...
@@ -3759,7 +3760,7 @@ function ble/complete/insert-braces/.compose {
       }
 
       if (str == del_open)
-        return out
+        return out;
       else
         return out str del_close;
     }
@@ -4080,7 +4081,7 @@ function ble/complete/insert-braces/.compose {
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-braces {
   if ((cand_count==1)); then
-    ble/complete/insert-common; return
+    ble/complete/insert-common; return "$?"
   fi
 
   local comps_len=${#COMPS} loop=0
@@ -4157,7 +4158,7 @@ function ble/complete/insert-braces {
   blehook/invoke complete_insert
   _ble_complete_state=complete
   ble/complete/menu/clear
-  return
+  return 0
 }
 
 _ble_complete_state=
@@ -4194,12 +4195,12 @@ function ble/widget/complete {
   if [[ :$opts: != *:insert_*:* && :$opts: != *:show_menu:* ]]; then
     if [[ :$opts: == *:enter_menu:* ]]; then
       [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]] &&
-        ble/complete/menu-complete/enter "$opts" && return
+        ble/complete/menu-complete/enter "$opts" && return 0
     elif [[ $bleopt_complete_menu_complete ]]; then
       if [[ $_ble_complete_menu_active && :$opts: != *:context=*:* ]]; then
         local footprint; ble/complete/menu/get-footprint
         [[ $footprint == "$_ble_complete_menu_footprint" ]] &&
-          ble/complete/menu-complete/enter && return
+          ble/complete/menu-complete/enter && return 0
       fi
       [[ $WIDGET == "$LASTWIDGET" && $state != complete ]] && opts=$opts:enter_menu
     fi
@@ -4237,30 +4238,30 @@ function ble/widget/complete {
   fi
 
   if [[ :$opts: == *:insert_common:* ]]; then
-    ble/complete/insert-common; return
+    ble/complete/insert-common; return "$?"
 
   elif [[ :$opts: == *:insert_braces:* ]]; then
-    ble/complete/insert-braces; return
+    ble/complete/insert-braces; return "$?"
 
   elif [[ :$opts: == *:insert_all:* ]]; then
-    ble/complete/insert-all; return
+    ble/complete/insert-all; return "$?"
 
   elif [[ :$opts: == *:enter_menu:* ]]; then
     local menu_common_part=$COMPV
-    ble/complete/menu/show "$menu_show_opts" || return
+    ble/complete/menu/show "$menu_show_opts" || return "$?"
     ble/complete/menu-complete/enter "$opts"; local ext=$?
     ((ext==148)) && return 148
     ((ext)) && ble/widget/.bell
-    return
+    return 0
 
   elif [[ :$opts: == *:show_menu:* ]]; then
     local menu_common_part=$COMPV
     ble/complete/menu/show "$menu_show_opts"
-    return # exit status of ble/complete/menu/show
+    return "$?" # exit status of ble/complete/menu/show
 
   fi
 
-  ble/complete/insert-common; return
+  ble/complete/insert-common; return "$?"
 }
 
 function ble/widget/complete-insert {
@@ -4337,18 +4338,19 @@ function ble/complete/menu-filter {
   ble/complete/menu-filter/.filter-candidates
 
   local menu_common_part=$COMPV
-  ble/complete/menu/show filter || return
+  ble/complete/menu/show filter || return "$?"
   _ble_complete_menu_comp=("$beg" "$end" "$input" "$COMPV" "$comp_type")
   return 0
 }
 
 function ble/complete/menu-filter.idle {
   ble/util/idle.wait-user-input
-  [[ $bleopt_complete_menu_filter ]] || return
-  [[ $_ble_complete_menu_active ]] || return
+  [[ $bleopt_complete_menu_filter ]] || return 1
+  [[ $_ble_complete_menu_active ]] || return 1
   ble/complete/menu-filter; local ext=$?
   ((ext==148)) && return 148
   ((ext)) && ble/complete/menu/clear
+  return 0
 }
 
 # ble/highlight/layer:menu_filter
@@ -4356,7 +4358,7 @@ function ble/complete/menu-filter.idle {
 ## 関数 ble/highlight/layer/buff#operate-gflags name beg end mask gflags
 function ble/highlight/layer/buff#operate-gflags {
   local BUFF=$1 beg=$2 end=$3 mask=$4 gflags=$5
-  ((beg<end)) || return
+  ((beg<end)) || return 1
 
   if [[ $mask == auto ]]; then
     mask=0
@@ -4377,7 +4379,7 @@ function ble/highlight/layer/buff#operate-gflags {
 ## 関数 ble/highlight/layer/buff#set-explicit-sgr name index
 function ble/highlight/layer/buff#set-explicit-sgr {
   local BUFF=$1 index=$2
-  builtin eval "((index<\${#$BUFF[@]}))" || return
+  builtin eval "((index<\${#$BUFF[@]}))" || return 1
   local g; ble/highlight/layer/update/getg "$index"
   local ret; ble/color/g2sgr "$g"
   builtin eval "$BUFF[index]=\$ret\${_ble_highlight_layer_plain_buff[index]}"
@@ -4413,9 +4415,9 @@ function ble/highlight/layer:menu_filter/update {
   fi
 
   # 変更のない場合スキップ
-  [[ ! $obeg && ! $beg ]] && return
+  [[ ! $obeg && ! $beg ]] && return 0
   ((PREV_UMIN<0)) && [[ $beg == "$obeg" && $end == "$oend" ]] &&
-    PREV_BUFF=_ble_highlight_layer_menu_filter_buff && return
+    PREV_BUFF=_ble_highlight_layer_menu_filter_buff && return 0
 
   local umin=$PREV_UMIN umax=$PREV_UMAX
   if [[ $beg ]]; then
@@ -4749,7 +4751,7 @@ function ble/complete/auto-complete/.check-history {
 
   local ret
   ((_ble_edit_ind==${#_ble_edit_str})) || return 1
-  ble/complete/auto-complete/"$searcher" "$_ble_edit_str" || return # 0, 1 or 148
+  ble/complete/auto-complete/"$searcher" "$_ble_edit_str" || return "$?" # 0, 1 or 148
   local word=$ret cand=
   local COMP1=0 COMPS=$_ble_edit_str
   [[ $word == "$COMPS" ]] && return 1
@@ -4782,7 +4784,7 @@ function ble/complete/auto-complete/.check-context {
   [[ $COMPV ]] || return 1
   ((ext)) && return "$ext"
 
-  ((cand_count)) || return
+  ((cand_count)) || return 1
 
   local word=${cand_word[0]} cand=${cand_cand[0]}
   [[ $word == "$COMPS" ]] && return 1
@@ -4852,7 +4854,7 @@ function ble/complete/auto-complete.idle {
   # ※特に上書きしなければ常に wait-user-input で抜ける。
   ble/util/idle.wait-user-input
 
-  [[ $bleopt_complete_auto_complete ]] || return
+  [[ $bleopt_complete_auto_complete ]] || return 1
   [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]] || return 0
 
   case $_ble_decode_widget_last in
@@ -4868,7 +4870,7 @@ function ble/complete/auto-complete.idle {
   local rest_delay=$((bleopt_complete_auto_delay-ble_util_idle_elapsed))
   if ((rest_delay>0)); then
     ble/util/idle.sleep "$rest_delay"
-    return
+    return 0
   fi
 
   ble/complete/auto-complete.impl
@@ -4913,6 +4915,7 @@ function ble/widget/auto_complete/insert {
   _ble_complete_ac_suffix=
   ble/complete/menu/clear
   ble-edit/content/clear-arg
+  return 0
 }
 function ble/widget/auto_complete/cancel-default {
   ble/widget/auto_complete/cancel
@@ -4921,7 +4924,7 @@ function ble/widget/auto_complete/cancel-default {
 }
 function ble/widget/auto_complete/self-insert {
   local code=$((KEYS[0]&_ble_decode_MaskChar))
-  ((code==0)) && return
+  ((code==0)) && return 0
 
   local ret
 
@@ -4997,7 +5000,7 @@ function ble/widget/auto_complete/insert-word {
     [[ $ins =~ $rex ]]
     if [[ $BASH_REMATCH == "$ins" ]]; then
       ble/widget/auto_complete/insert
-      return
+      return 0
     else
       local ins=$BASH_REMATCH
 
@@ -5020,7 +5023,7 @@ function ble/widget/auto_complete/insert-word {
     [[ $ins =~ $rex ]]
     if [[ $BASH_REMATCH == "$ins" ]]; then
       ble/widget/auto_complete/insert
-      return
+      return 0
     else
       local ins=$BASH_REMATCH
 
@@ -5214,7 +5217,7 @@ function ble-sabbrev {
              'usage: ble-sabbrev -m key=function' \
              'usage: ble-sabbrev --help' \
              'Register sabbrev expansion.'
-      [[ ! $flag_error ]]; return
+      [[ ! $flag_error ]]; return "$?"
     fi
 
     local spec key type value
@@ -5289,7 +5292,7 @@ function ble/complete/sabbrev/expand {
 
     local bleopt_complete_menu_style=$bleopt_sabbrev_menu_style
     local menu_common_part=
-    ble/complete/menu/show || return
+    ble/complete/menu/show || return "$?"
     [[ :$bleopt_sabbrev_menu_opts: == *:enter_menu:* ]] &&
       ble/complete/menu-complete/enter
     return 147 ;;
@@ -5618,7 +5621,7 @@ function ble/cmdinfo/complete:cd/.impl {
       ((_ble_bash>=40200)) && [[ $COMPV != *e* ]] && ble/complete/cand/yield "$action" "${COMPV}e"
       ((_ble_bash>=40300)) && [[ $COMPV != *@* ]] && ble/complete/cand/yield "$action" "${COMPV}@" ;;
     esac
-    return
+    return 0
   fi
 
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}

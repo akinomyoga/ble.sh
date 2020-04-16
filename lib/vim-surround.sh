@@ -149,13 +149,13 @@ function ble/lib/vim-surround.sh/load-template {
   if [[ ${ins//[0-9]} && ! ${ins//[_0-9a-zA-Z]} ]]; then
     local optname=bleopt_vim_surround_$ins
     template=${!optname}
-    [[ $template ]] && return
+    [[ $template ]] && return 0
   fi
 
   local ret; ble/util/s2c "$ins"
   local optname=bleopt_vim_surround_$ret
   template=${!optname}
-  [[ $template ]] && return
+  [[ $template ]] && return 0
 
   # default
 
@@ -428,7 +428,7 @@ function ble/lib/vim-surround.sh/ysurround.repeat/entry {
   _ble_lib_vim_surround_ys_repeat=("${_ble_keymap_vi_repeat[@]}")
 }
 function ble/lib/vim-surround.sh/ysurround.repeat/record {
-  ble/keymap:vi/repeat/record-special && return
+  ble/keymap:vi/repeat/record-special && return 0
   local type=$1 ins=$2
   _ble_keymap_vi_repeat=("${_ble_lib_vim_surround_ys_repeat[@]}")
   _ble_keymap_vi_repeat_irepeat=()
@@ -752,7 +752,7 @@ function ble/widget/vim-surround.sh/nmap/csurround.hook1 {
   if [[ $del ]] && ble/widget/vim-surround.sh/nmap/csurround.set-delimiter "$del"; then
     _ble_edit_mark_active=vi_csurround
     ble/lib/vim-surround.sh/async-inputtarget-noarg ble/widget/vim-surround.sh/nmap/csurround.hook2
-    return
+    return "$?"
   fi
 
   _ble_lib_vim_surround_cs=()

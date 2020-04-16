@@ -70,7 +70,7 @@ blehook DA2R+=ble/color/initialize-term-colors
 function ble-color-show {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
-    return
+    return "$?"
   fi
 
   local cols=16
@@ -438,7 +438,7 @@ function ble/color/.name2color {
 function ble/color/.color2name {
   if (($1>=0x1000000)); then
     ble/util/sprintf ret '#%06x' $(($1&0xFFFFFF))
-    return
+    return 0
   fi
 
   ((ret=(10#$1&255)))
@@ -930,7 +930,7 @@ function ble/color/initialize-faces {
 
   function ble/color/defface {
     local name=_ble_faces__$1 spec=$2 ret
-    (($name)) && return
+    (($name)) && return 0
     (($name=++_ble_faces_count))
     ble/color/setface/.spec2g "$spec"; _ble_faces[$name]=$ret
   }
@@ -1037,7 +1037,7 @@ function ble/highlight/layer/update/getg {
   local LEVEL=$LEVEL
   while ((--LEVEL>=0)); do
     "ble/highlight/layer:${_ble_highlight_layer__list[LEVEL]}/getg" "$1"
-    [[ $g ]] && return
+    [[ $g ]] && return 0
   done
   g=0
 }
@@ -1133,7 +1133,7 @@ ble/highlight/layer:plain/initialize-vars
 ## 関数 ble/highlight/layer:plain/update/.getch
 ##   @var[in,out] ch
 function ble/highlight/layer:plain/update/.getch {
-  [[ $ch == [' '-'~'] ]] && return
+  [[ $ch == [' '-'~'] ]] && return 0
   if [[ $ch == [-] ]]; then
     if [[ $ch == $'\t' ]]; then
       ch=${_ble_string_prototype::it}
@@ -1218,7 +1218,7 @@ ble/highlight/layer:region/initialize-vars
 
 function ble/highlight/layer:region/.update-dirty-range {
   local a=$1 b=$2 p q
-  ((a==b)) && return
+  ((a==b)) && return 0
   (((a<b?(p=a,q=b):(p=b,q=a)),
     (umin<0||umin>p)&&(umin=p),
     (umax<0||umax<q)&&(umax=q)))
@@ -1346,8 +1346,8 @@ function ble/highlight/layer:region/update {
 function ble/highlight/layer:region/getg {
   if [[ $_ble_edit_mark_active ]]; then
     local index=$1 olen=${#_ble_highlight_layer_region_osel[@]}
-    ((olen)) || return
-    ((_ble_highlight_layer_region_osel[0]<=index&&index<_ble_highlight_layer_region_osel[olen-1])) || return
+    ((olen)) || return 1
+    ((_ble_highlight_layer_region_osel[0]<=index&&index<_ble_highlight_layer_region_osel[olen-1])) || return 1
 
     local flag_region=
     if ((olen>=4)); then

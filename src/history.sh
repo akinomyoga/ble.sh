@@ -55,7 +55,7 @@ function ble/builtin/history/.get-max {
 }
 
 function ble/history:bash/update-count {
-  [[ $_ble_history_count ]] && return
+  [[ $_ble_history_count ]] && return 0
   if [[ $_ble_history_load_done ]]; then
     _ble_history_count=${#_ble_history[@]}
   else
@@ -382,7 +382,7 @@ else
 fi
 
 function ble/history:bash/initialize {
-  [[ $_ble_history_load_done ]] && return
+  [[ $_ble_history_load_done ]] && return 0
   ble/history:bash/load "init:$@"; local ext=$?
   ((ext)) && return "$ext"
 
@@ -595,10 +595,10 @@ if ((_ble_bash>=30100)); then
   }
 
   function ble/history:bash/resolve-multiline {
-    [[ $_ble_history_mlfix_done ]] && return
+    [[ $_ble_history_mlfix_done ]] && return 0
     if [[ $1 == sync ]]; then
-      ((_ble_bash>=40000)) && [[ $BASHPID != $$ ]] && return
-      ble/builtin/history/is-empty && return
+      ((_ble_bash>=40000)) && [[ $BASHPID != $$ ]] && return 0
+      ble/builtin/history/is-empty && return 0
     fi
 
     ble/history:bash/resolve-multiline.impl "$@"; local ext=$?
@@ -623,7 +623,7 @@ fi
 # Note: 複数行コマンドは eval -- $'' の形に変換して
 #   書き込みたいので自前で処理する。
 function ble/history:bash/TRAPEXIT {
-  ble/util/is-running-in-subshell && return
+  ble/util/is-running-in-subshell && return 0
   if shopt -q histappend &>/dev/null; then
     ble/builtin/history -a
   else
@@ -717,7 +717,7 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
       local file=$1
       local n=${#_ble_builtin_history_rskip_path[@]}
       for ((index=0;index<n;index++)); do
-        [[ $file == ${_ble_builtin_history_rskip_path[index]} ]] && return
+        [[ $file == ${_ble_builtin_history_rskip_path[index]} ]] && return 0
       done
       _ble_builtin_history_rskip_path[index]=$file
     }
@@ -740,7 +740,7 @@ fi
 ##   @param[in] opts
 ##     skip0 ... 履歴が一件も読み込まれていない時はスキップします。
 function ble/builtin/history/.initialize {
-  [[ $_ble_builtin_history_initialized ]] && return
+  [[ $_ble_builtin_history_initialized ]] && return 0
   local line; ble/util/assign line 'builtin history 1'
   [[ ! $line && :$1: == *:skip0:* ]] && return 1
   _ble_builtin_history_initialized=1
@@ -786,7 +786,7 @@ function ble/builtin/history/.check-uncontrolled-change {
 ## 関数 ble/builtin/history/.load-recent-entries count
 ##   history の最新 count 件を配列 _ble_history に読み込みます。
 function ble/builtin/history/.load-recent-entries {
-  [[ $_ble_decode_bind_state == none ]] && return
+  [[ $_ble_decode_bind_state == none ]] && return 0
 
   local delta=$1
   ((delta>0)) || return 0
@@ -795,13 +795,13 @@ function ble/builtin/history/.load-recent-entries {
     # history load が完了していなければ読み途中のデータを破棄して戻る
     ble/history:bash/clear-background-load
     _ble_history_count=
-    return
+    return 0
   fi
 
   # 追加項目が大量にある場合には background で完全再初期化する
   if ((_ble_bash>=40000&&delta>=10000)); then
     ble/history:bash/reset
-    return
+    return 0
   fi
 
   ble/history:bash/load append:count=$delta
@@ -962,7 +962,7 @@ function ble/builtin/history/insert.hook {
 }
 ## 関数 ble/builtin/history/option:c
 function ble/builtin/history/option:c {
-  ble/builtin/history/.initialize skip0 || return
+  ble/builtin/history/.initialize skip0 || return "$?"
   builtin history -c
   _ble_builtin_history_wskip=0
   _ble_builtin_history_prevmax=0
@@ -982,7 +982,7 @@ function ble/builtin/history/option:c {
 }
 ## 関数 ble/builtin/history/option:d index
 function ble/builtin/history/option:d {
-  ble/builtin/history/.initialize skip0 || return
+  ble/builtin/history/.initialize skip0 || return "$?"
   local rex='^(-?[0-9]+)-(-?[0-9]+)$'
   if [[ $1 =~ $rex ]]; then
     local beg=${BASH_REMATCH[1]} end=${BASH_REMATCH[2]}
@@ -1034,7 +1034,7 @@ function ble/builtin/history/option:d {
 }
 ## 関数 ble/builtin/history/option:a [filename]
 function ble/builtin/history/option:a {
-  ble/builtin/history/.initialize skip0 || return
+  ble/builtin/history/.initialize skip0 || return "$?"
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local filename=${1:-$histfile}
   ble/builtin/history/.check-uncontrolled-change
@@ -1061,7 +1061,7 @@ function ble/builtin/history/option:n {
 }
 ## 関数 ble/builtin/history/option:w [filename]
 function ble/builtin/history/option:w {
-  ble/builtin/history/.initialize skip0 || return
+  ble/builtin/history/.initialize skip0 || return "$?"
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local filename=${1:-$histfile}
   local rskip; ble/builtin/history/.get-rskip "$filename"
@@ -1121,7 +1121,7 @@ function ble/builtin/history/option:s {
   ble/builtin/history/.initialize
   if [[ $_ble_decode_bind_state == none ]]; then
     builtin history -s -- "$@"
-    return
+    return 0
   fi
 
   local cmd=$1
@@ -1129,7 +1129,7 @@ function ble/builtin/history/option:s {
     local pats pat
     ble/string#split pats : "$HISTIGNORE"
     for pat in "${pats[@]}"; do
-      [[ $cmd == $pat ]] && return
+      [[ $cmd == $pat ]] && return 0
     done
   fi
 
@@ -1147,11 +1147,11 @@ function ble/builtin/history/option:s {
       done
 
       if [[ $ignorespace ]]; then
-        [[ $cmd == [' 	']* ]] && return
+        [[ $cmd == [' 	']* ]] && return 0
       fi
       if [[ $ignoredups ]]; then
         local lastIndex=$((${#_ble_history[@]}-1))
-        ((lastIndex>=0)) && [[ $cmd == "${_ble_history[lastIndex]}" ]] && return
+        ((lastIndex>=0)) && [[ $cmd == "${_ble_history[lastIndex]}" ]] && return 0
       fi
       if [[ $erasedups ]]; then
         local -a delete_indices=()
@@ -1174,7 +1174,7 @@ function ble/builtin/history/option:s {
           ((_ble_builtin_history_wskip-=shift_wskip))
           [[ ${HISTINDEX_NEXT+set} ]] && ((HISTINDEX_NEXT-=shift_histindex_next))
         fi
-        ((N)) && [[ ${_ble_history[N-1]} == "$cmd" ]] && return
+        ((N)) && [[ ${_ble_history[N-1]} == "$cmd" ]] && return 0
       fi
     fi
     local topIndex=${#_ble_history[@]}
@@ -1268,7 +1268,7 @@ function ble/builtin/history {
 
   if [[ $flags == *h* ]]; then
     builtin history --help
-    return
+    return "$?"
   fi
 
   # -cdanwr
@@ -1398,7 +1398,7 @@ function ble/history/set-editted-entry {
 #   used by ble/widget/accept-and-next to get modified next-entry positions
 function ble/history/.add-command-history {
   # 注意: bash-3.2 未満では何故か bind -x の中では常に history off になっている。
-  [[ -o history ]] || ((_ble_bash<30200)) || return
+  [[ -o history ]] || ((_ble_bash<30200)) || return 1
 
   if [[ $_ble_history_load_done ]]; then
     # 登録・不登録に拘わらず取り敢えず初期化

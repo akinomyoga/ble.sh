@@ -38,7 +38,7 @@ function .ble-getopt.next-argument {
   else
     if [[ $type == '?'* ]]; then
       oarg=${type:1}
-      [[ ! $oarg ]] && return
+      [[ ! $oarg ]] && return 0
     else
       ble/util/print "$_getopt_cmd: missing an argument of the option \`${OPTARGS[0]}'." 1>&2
       return 1
@@ -117,7 +117,7 @@ function ble-getopt {
     local o=${_getopt_opt::1}
     _getopt_opt=${_getopt_opt:1}
     .ble-getopt.process-option "$o"
-    return
+    return "$?"
   fi
 
   # oarg が残っていたらエラー
@@ -147,7 +147,7 @@ function ble-getopt {
 
       .ble-getopt.process-option "$o"
       .ble-getopt.check-oarg-processed || return 1
-      return
+      return 0
     else
       # short options
       local f_longname=
@@ -157,7 +157,7 @@ function ble-getopt {
       _getopt_olen=${#_getopt_oarg[@]}
       _getopt_oind=1
       ble-getopt
-      return
+      return "$?"
     fi
   else
     # 通常の引数

@@ -2,7 +2,7 @@
 
 # Note: bind (INITIALIZE_DEFMAP) の中から再帰的に呼び出されうるので、
 # 先に ble-edit/bind/load-editing-mode:vi を上書きする必要がある。
-ble/is-function ble-edit/bind/load-editing-mode:vi && return
+ble/is-function ble-edit/bind/load-editing-mode:vi && return 0
 function ble-edit/bind/load-editing-mode:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
@@ -254,7 +254,7 @@ function ble/widget/vi_imap/complete {
 }
 function ble/keymap:vi/complete/insert.hook {
   [[ $_ble_decode_keymap == vi_imap ||
-       $_ble_decode_keymap == auto_complete ]] || return
+       $_ble_decode_keymap == auto_complete ]] || return 1
 
   local original=${comp_text:insert_beg:insert_end-insert_beg}
   local q="'" Q="'\''"
@@ -349,7 +349,7 @@ function ble/keymap:vi/update-mode-name {
     ble-edit/info/default text ''
     ble/util/buffer "$bleopt_term_vi_cmap"
     ble/term/cursor-state/set-internal "$bleopt_keymap_vi_cmap_cursor"
-    return
+    return 0
   fi
 
   local show= overwrite=
@@ -919,7 +919,7 @@ function ble/widget/vi-command/append-arg {
   # 0
   if [[ $ch == 0 && ! $_ble_edit_arg ]]; then
     ble/widget/vi-command/beginning-of-line
-    return
+    return "$?"
   fi
 
   _ble_edit_arg="$_ble_edit_arg$ch"
@@ -1031,7 +1031,7 @@ function ble/widget/vi_nmap/play-register.hook {
   if ble/keymap:vi/k2c "$key" && local c=$ret; then
     ((65<=c&&c<91)) && ((c+=32)) # A-Z -> a-z
     if ((48<=c&&c<58||97<=c&&c<123)); then # 0-9a-z
-      ble/keymap:vi/register#play "$c" && return
+      ble/keymap:vi/register#play "$c" && return 0
     fi
   fi
   ble/widget/vi-command/bell
@@ -1335,7 +1335,7 @@ function ble/keymap:vi/operator:d {
             local suffix=$BASH_REMATCH
             ((beg-=${#prefix},end+=${#suffix}))
             ble/keymap:vi/operator:d "$beg" "$end" line "$arg" "$reg"
-            return
+            return "$?"
           fi
         fi
       fi
@@ -1833,7 +1833,7 @@ function ble/keymap:vi/operator:filter/.cache-repeat {
   _ble_keymap_vi_filter_repeat=("${_ble_keymap_vi_repeat[@]}")
 }
 function ble/keymap:vi/operator:filter/.record-repeat {
-  ble/keymap:vi/repeat/record-special && return
+  ble/keymap:vi/repeat/record-special && return 0
   local command=$1
   _ble_keymap_vi_repeat=("${_ble_keymap_vi_filter_repeat[@]}")
   _ble_keymap_vi_repeat_irepeat=()
@@ -1848,7 +1848,7 @@ function ble/keymap:vi/operator:filter {
     # nmap . によって繰り返しが要求された時
     local command=${_ble_keymap_vi_repeat[10]}
     ble/keymap:vi/operator:filter/.hook "$command"
-    return
+    return "$?"
   else
     # 通常の呼び出し時
     ble/keymap:vi/operator:filter/.cache-repeat
@@ -1912,7 +1912,7 @@ function ble/keymap:vi/operator:map {
     local opfunc=ble/keymap:vi/operator:$bleopt_keymap_vi_operatorfunc
     if ble/is-function "$opfunc"; then
       "$opfunc" "$@"
-      return
+      return "$?"
     fi
   fi
   return 1
@@ -2011,7 +2011,7 @@ function ble/widget/vi-command/exclusive-goto.impl {
 
       if [[ $is_linewise ]]; then
         ble/widget/vi-command/linewise-goto.impl "$index" "$flag" "$reg"
-        return
+        return "$?"
       fi
     fi
   fi
@@ -2427,7 +2427,7 @@ _ble_keymap_vi_mark_suppress_edit=
 ##   @param[in] beg
 ##   @param[in] end
 function ble/keymap:vi/mark/set-previous-edit-area {
-  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return 0
   local beg=$1 end=$2
   ((beg<end)) && ! ble-edit/content/bolp "$end" && ((end--))
   ble/keymap:vi/mark/set-local-mark 91 "$beg" # `[
@@ -2435,7 +2435,7 @@ function ble/keymap:vi/mark/set-previous-edit-area {
   ble/keymap:vi/undo/add
 }
 function ble/keymap:vi/mark/start-edit-area {
-  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return 0
   ble/dirty-range#clear --prefix=_ble_keymap_vi_mark_edit_d
 }
 function ble/keymap:vi/mark/commit-edit-area {
@@ -2443,7 +2443,7 @@ function ble/keymap:vi/mark/commit-edit-area {
   ble/dirty-range#update --prefix=_ble_keymap_vi_mark_edit_d "$beg" "$end" "$end"
 }
 function ble/keymap:vi/mark/end-edit-area {
-  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return
+  [[ $_ble_keymap_vi_mark_suppress_edit ]] && return 0
   local beg=$_ble_keymap_vi_mark_edit_dbeg
   local end=$_ble_keymap_vi_mark_edit_dend
   ((beg>=0)) && ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
@@ -2538,11 +2538,11 @@ function ble/widget/vi-command/goto-mark.hook {
   if ble/keymap:vi/k2c "$key" && local c=$ret; then
     if ((65<=c&&c<91)); then # A-Z
       ble/widget/vi-command/goto-global-mark.impl "$c" "$opts"
-      return
+      return "$?"
     elif ((_ble_keymap_vi_mark_Offset<=c)); then
       ((c==39)) && c=96 # `' は `` に読み替える
       ble/widget/vi-command/goto-local-mark.impl "$c" "$opts"
-      return
+      return "$?"
     fi
   fi
   ble/keymap:vi/clear-arg
@@ -2849,7 +2849,7 @@ function ble/keymap:vi/get-index-of-relative-line {
   local ind=${1:-$_ble_edit_ind} offset=$2
   if ((offset==0)); then
     index=$ind
-    return
+    return 0
   fi
 
   local count=$((offset<0?-offset:offset))
@@ -2901,10 +2901,10 @@ function ble/keymap:vi/get-index-of-relative-line {
 ##
 function ble/widget/vi-command/relative-line.impl {
   local offset=$1 flag=$2 reg=$3 opts=$4
-  ((offset==0)) && return
+  ((offset==0)) && return 0
   if [[ $flag ]]; then
     ble/widget/vi-command/linewise-goto.impl "$_ble_edit_ind:$offset" "$flag" "$reg" preserve_column:require_multiline
-    return
+    return "$?"
   fi
 
   # 現在履歴項目内で移動できる行数の判定
@@ -2988,7 +2988,7 @@ function ble/widget/vi-command/graphical-relative-line.impl {
 
   if ((offset==0)); then
     ble/widget/vi-command/exclusive-goto.impl "$index" "$flag" "$reg"
-    return
+    return "$?"
   fi
 
   if [[ ! $flag && $_ble_decode_keymap == vi_nmap && :$opts: == *:history:* ]]; then
@@ -3036,7 +3036,7 @@ function ble/widget/vi-command/relative-first-non-space.impl {
       # command: _
       ble/widget/vi-command/linewise-goto.impl "$nolx" "$flag" "$reg" bolx="$bolx":nolx="$nolx"
     fi
-    return
+    return "$?"
   fi
 
   local count=$((arg<0?-arg:arg)) nmove=0
@@ -3207,7 +3207,7 @@ function ble/widget/vi_nmap/scroll.impl {
     _ble_edit_ind=$ret
     ble/keymap:vi/adjust-command-mode
 
-    ((_ble_textmap_endy<height)) && return
+    ((_ble_textmap_endy<height)) && return 0
     local ax ay
     ble/textmap#getxy.cur --prefix=a "$_ble_edit_ind"
     local max_scroll=$((_ble_textmap_endy+1-height))
@@ -3218,7 +3218,7 @@ function ble/widget/vi_nmap/scroll.impl {
       _ble_textarea_scroll_new=$max_scroll
     fi
   else
-    ((_ble_textmap_endy<height)) && return
+    ((_ble_textmap_endy<height)) && return 0
 
     local max_scroll=$((_ble_textmap_endy+1-height))
     ((_ble_textarea_scroll_new+=ARG))
@@ -3690,7 +3690,7 @@ function ble/widget/vi-command/forward-word.impl {
     # Note: cw cW は特別な動作
     #   http://vim-jp.org/vimdoc-ja/change.html#cw
     ble/widget/vi-command/forward-word-end.impl "$arg" "$flag" "$reg" "$rex_word" allow_here
-    return
+    return "$?"
   fi
   local b=$'[ \t]' n=$'\n'
   local rex="^((($rex_word)$n?|$b+$n?|$n)($b+$n)*$b*){0,$arg}" # 単語先頭または空行に止まる
@@ -3835,7 +3835,7 @@ function ble/widget/vi-command/history-beginning {
     _ble_keymap_vi_opfunc=$FLAG
     _ble_keymap_vi_reg=$REG
     ble/widget/vi-command/nth-line
-    return
+    return "$?"
   fi
 
   if ((ARG)); then
@@ -3861,7 +3861,7 @@ function ble/widget/vi-command/history-end {
       _ble_keymap_vi_oparg=
       ble/widget/vi-command/nth-last-line
     fi
-    return
+    return "$?"
   fi
 
   if ((ARG)); then
@@ -4094,7 +4094,7 @@ function ble/widget/vi-command/search-char.impl/core {
 
     ((index=bol+ret,isprev&&index++))
     ble/widget/vi-command/exclusive-goto.impl "$index" "$FLAG" "$REG" nobell
-    return
+    return "$?"
   else
     # forward search
     ble-edit/content/find-logical-eol; local eol=$ret
@@ -4107,7 +4107,7 @@ function ble/widget/vi-command/search-char.impl/core {
 
     ((index=base+ret,isprev&&index--))
     ble/widget/vi-command/inclusive-goto.impl "$index" "$FLAG" "$REG" nobell
-    return
+    return "$?"
   fi
 }
 function ble/widget/vi-command/search-char.impl {
@@ -4168,7 +4168,7 @@ function ble/widget/vi-command/search-matchpair-or {
     _ble_keymap_vi_opfunc=$FLAG
     _ble_keymap_vi_reg=$REG
     ble/widget/"$@"
-    return
+    return "$?"
   fi
 
   local open='({[' close=')}]'
@@ -4370,7 +4370,7 @@ function ble/keymap:vi/text-object/word.extend-backward {
 function ble/keymap:vi/text-object/word.impl {
   local arg=$1 flag=$2 reg=$3 type=$4
   local space=$' \t' nl=$'\n' ifs=$' \t\n'
-  ((arg==0)) && return
+  ((arg==0)) && return 0
 
   local rex_word
   if [[ $type == ?W ]]; then
@@ -5156,7 +5156,7 @@ function ble/widget/vi-command/search.core {
       fi
 
       opt_locate=1 opt_history=0 ble/widget/vi-command/search.core
-      return
+      return "$?"
     fi
   fi
 
@@ -5314,7 +5314,7 @@ function ble/widget/vi-command/search-word.impl {
   else
     local original_ind=$_ble_edit_ind
     _ble_edit_ind=$((end-1))
-    ble/widget/vi-command/search.impl +:history "$needle" && return
+    ble/widget/vi-command/search.impl +:history "$needle" && return 0
     _ble_edit_ind=$original_ind
     return 1
   fi
@@ -5345,7 +5345,7 @@ function ble/widget/vi_xmap/command-help.core {
 
   local selection
   "$get_selection" || return 1
-  ((${#selection[*]}==2)) || return
+  ((${#selection[*]}==2)) || return 1
 
   local comp_cword=0 comp_line=$_ble_edit_str comp_point=$_ble_edit_ind
   local -a comp_words; comp_words=("$cmd")
@@ -5559,7 +5559,7 @@ function ble-decode/keymap:vi_omap/define {
 function ble/widget/vi-command/exit-on-empty-line {
   if [[ $_ble_edit_str ]]; then
     ble/widget/vi_nmap/forward-scroll
-    return
+    return "$?"
   else
     ble/widget/exit
     ble/keymap:vi/adjust-command-mode # ジョブがあるときは終了しないので。
@@ -5613,8 +5613,8 @@ function ble/widget/vi-command/cancel {
 bleopt/declare -v keymap_vi_imap_undo ''
 _ble_keymap_vi_undo_suppress=
 function ble/keymap:vi/undo/add {
-  [[ $_ble_keymap_vi_undo_suppress ]] && return
-  [[ $1 == more && $bleopt_keymap_vi_imap_undo != more ]] && return
+  [[ $_ble_keymap_vi_undo_suppress ]] && return 0
+  [[ $1 == more && $bleopt_keymap_vi_imap_undo != more ]] && return 0
   ble-edit/undo/add
 }
 function ble/widget/vi_nmap/undo {
@@ -6022,7 +6022,7 @@ function ble/widget/vi-rlfunc/yank-arg {
   ble/widget/self-insert
   ble/util/unlocal KEYS
   ble/widget/insert-last-argument
-  return
+  return "$?"
 }
 
 # rlfunc: forward-byte, backward-byte
@@ -6550,7 +6550,7 @@ function ble/keymap:vi/xmap/set-previous-visual-area {
     local sub_ranges sub_x1 sub_x2
     ble/keymap:vi/extract-block
     local nrange=${#sub_ranges[*]}
-    ((nrange)) || return
+    ((nrange)) || return 1
     local beg=${sub_ranges[0]%%:*}
     local sub2_slice1=${sub_ranges[nrange-1]#*:}
     local end=${sub2_slice1%%:*}
@@ -8005,7 +8005,7 @@ function ble-decode/keymap:vi/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.vi
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi.sh &&
           $fname_keymap_cache -nt $_ble_base/lib/init-cmap.sh ]]; then
-    source "$fname_keymap_cache" && return
+    source "$fname_keymap_cache" && return 0
   fi
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi..."

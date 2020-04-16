@@ -76,7 +76,8 @@
 - util (`ble/variable#get-attr`): fix an error message with special variable names such as `?` and `*` `#D1321` 557b774
 - util (has-glob-pattern): fix abort in subshells (test-util) `#D1326` dc292a2
 - edit: fix a bug that `set +H` is cancelled on command execution `#D1332` 02bdf4e
-- syntax (`ble/syntax/parse/shift`): fix a bug of shift skip in nested words `#D1333` 0000000
+- syntax (`ble/syntax/parse/shift`): fix a bug of shift skip in nested words `#D1333` 65fbba0
+- global: work around Bash-4.4 `return` in trap handlers 0000000
 
 ## Compatibility
 
@@ -99,6 +100,7 @@
 - decode: fix a bug of broken cmap cache found in ble-0.3 `#D1327` 16b56bf
 - util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
 - complete: work around slow `compgen -c` in Cygwin `#D1329` 5327f5d
+
 
 ## Internal changes and fixes
 

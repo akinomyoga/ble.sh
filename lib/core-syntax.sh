@@ -15,14 +15,14 @@
 function ble/syntax/urange#update {
   local prefix=$1
   local p1=$2 p2=${3:-$2}
-  ((0<=p1&&p1<p2)) || return
+  ((0<=p1&&p1<p2)) || return 1
   (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
 }
 function ble/syntax/wrange#update {
   local prefix=$1
   local p1=$2 p2=${3:-$2}
-  ((0<=p1&&p1<=p2)) || return
+  ((0<=p1&&p1<=p2)) || return 1
   (((${prefix}umin<0||${prefix}umin>p1)&&(${prefix}umin=p1),
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
 }
@@ -177,7 +177,7 @@ _ble_syntax_TREE_WIDTH=5
 function ble/syntax/tree-enumerate/.initialize {
   if [[ ! ${_ble_syntax_stat[iN]} ]]; then
     TE_root= TE_i=-1 TE_nofs=0
-    return
+    return 0
   fi
 
   local -a stat nest
@@ -259,7 +259,7 @@ function ble/syntax/tree-enumerate/.impl {
 ## @var[in] TE_root,TE_i,TE_nofs
 ## @var[in] tchild
 function ble/syntax/tree-enumerate-children {
-  ((0<tchild&&tchild<=TE_i)) || return
+  ((0<tchild&&tchild<=TE_i)) || return 1
   local TE_nofs=$((TE_i==tchild?TE_nofs+_ble_syntax_TREE_WIDTH:0))
   local TE_i=$tchild
   ble/syntax/tree-enumerate/.impl "$@"
@@ -325,7 +325,7 @@ function ble/syntax/print-status/.graph {
   local char=$1
   if ble/util/isprint+ "$char"; then
     graph="'$char'"
-    return
+    return 0
   else
     local ret
     ble/util/s2c "$char"
@@ -658,7 +658,7 @@ function ble/syntax/parse/tree-append {
   local type=$1
   local beg=$2 end=$i
   local len=$((end-beg))
-  ((len==0)) && return
+  ((len==0)) && return 0
 
   local tchild=$3 tprev=$4
 
@@ -1200,7 +1200,7 @@ function ble/syntax:bash/simple-word/reconstruct-incomplete-word {
     fi
 
     ret=$out
-    return
+    return 0
   fi
 
   return 1
@@ -1243,7 +1243,7 @@ function ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot {
   elif [[ $value == '"'*'"' ]]; then
     value=${value:1:${#value}-2}
   else
-    return
+    return 0
   fi
 
   local rex0='^([^'${_ble_syntax_bash_chars[CTX_QUOT]}']|\\.)+'
@@ -1290,7 +1290,7 @@ function ble/syntax:bash/simple-word/eval/.impl {
       __ble_ret=()
       return 0
     else
-      ble/syntax:bash/simple-word/eval-noglob "$1"; return
+      ble/syntax:bash/simple-word/eval-noglob "$1"; return "$?"
     fi
   fi
 
@@ -1544,7 +1544,7 @@ function ble/syntax/highlight/vartype {
            ! [[ $tail =~ $rex ]]; }
       then
         ret=$ATTR_ERR
-        return
+        return 0
       fi
     fi
 
@@ -1904,7 +1904,7 @@ function ble/syntax:bash/check-history-expansion/.check-modifiers {
     if [[ ${text:i} =~ $rex_substitute ]]; then
       ((i+=${#BASH_REMATCH}))
       ble/syntax:bash/check-history-expansion/.check-modifiers
-      return
+      return 0
     fi
   fi
 
@@ -2084,7 +2084,7 @@ function ble/syntax:bash/ctx-globpat.end {
   if [[ $is_end ]]; then
     ble/syntax/parse/nest-pop
     ble/syntax/parse/check-end
-    return
+    return 0
   fi
 
   return 0
@@ -2203,7 +2203,7 @@ function ble/syntax:bash/ctx-bracket-expression.end {
   if [[ $is_end ]]; then
     ble/syntax/parse/nest-pop
     ble/syntax/parse/check-end
-    return
+    return "$?"
   fi
 
   return 0
@@ -2445,18 +2445,18 @@ function ble/syntax:bash/ctx-expr {
       # ntype = '(('  # ((...))
       #       = '$((' # $((...))
       #       = '('   # 式中の (..)
-      ble/syntax:bash/ctx-expr/.count-paren && return
+      ble/syntax:bash/ctx-expr/.count-paren && return 0
     elif [[ $ntype == *'[' ]]; then
       # ntype = 'a[' # a[...]=
       #       = 'v[' # ${a[...]}
       #       = 'd[' # a=([...]=)
       #       = '$[' # $[...]
       #       = '['  # 式中の [...]
-      ble/syntax:bash/ctx-expr/.count-bracket && return
+      ble/syntax:bash/ctx-expr/.count-bracket && return 0
     elif [[ $ntype == '${' || $ntype == '"${' ]]; then
       # ntype = '${'  # ${var:offset:length}
       #       = '"${' # "${var:offset:length}"
-      ble/syntax:bash/ctx-expr/.count-brace && return
+      ble/syntax:bash/ctx-expr/.count-brace && return 0
     else
       ble/util/assert 'false' "unexpected ntype=$ntype for arithmetic expression"
     fi
@@ -2630,7 +2630,7 @@ function ble/syntax:bash/ctx-brace-expansion.end {
   if ((i==${#text})) || ble/syntax:bash/check-word-end/is-delimiter; then
     ble/syntax/parse/nest-pop
     ble/syntax/parse/check-end
-    return
+    return "$?"
   fi
 
   return 0
@@ -2974,7 +2974,7 @@ function ble/syntax:bash/ctx-coproc/check-word-end {
       ((_ble_syntax_attr[wbegin]=ATTR_VAR))
       ((ctx=CTX_CMDXC,type=CTX_ARGVI))
       ble/syntax/parse/word-pop
-      return
+      return 0
     fi
   fi
 
@@ -3455,7 +3455,7 @@ function ble/syntax:bash/ctx-command/.check-word-begin {
     #   配列 _ble_syntax_bash_command_EndWtype により変換されてから tree に登録される。
     ble/syntax/parse/word-push "$wtype" "$i"
 
-    ((octx!=CTX_ARGX0)); return # return unexpectedWbegin
+    ((octx!=CTX_ARGX0)); return "$?" # return unexpectedWbegin
   fi
 
 #%if !release
@@ -3473,7 +3473,7 @@ function ble/syntax:bash/ctx-command {
           ctx==CTX_CMDX||ctx==CTX_CMDX1||ctx==CTX_CMDXT||ctx==CTX_CMDXC||
           ctx==CTX_CMDXE||ctx==CTX_CMDXD||ctx==CTX_CMDXD0||ctx==CTX_CMDXV))'  "invalid ctx=$ctx @ i=$i"
     ble/util/assert '((wbegin<0&&wtype<0))' "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
-    ble/syntax:bash/ctx-command/.check-delimiter-or-redirect; return
+    ble/syntax:bash/ctx-command/.check-delimiter-or-redirect; return "$?"
   fi
 #%else
   ble/syntax:bash/ctx-command/.check-delimiter-or-redirect && return 0
@@ -3543,7 +3543,7 @@ function ble/syntax:bash/ctx-command-compound-expect {
       # for var in ... の in 以降が省略された形である。
       # ble/syntax:bash/ctx-command で FARGX3 と同様に処理する。
       ble/syntax:bash/ctx-command
-      return
+      return "$?"
     elif ((ctx==CTX_FARGX1)) && [[ $tail == '(('* ]]; then
       # for ((...)) の場合
       # ここで return せずに以降の CTX_CMDX1 用の処理に任せる
@@ -3591,7 +3591,7 @@ function ble/syntax:bash/ctx-command-time-expect {
       return 0
     else
       ((ctx=CTX_CMDXT))
-      ble/syntax:bash/ctx-command/.check-delimiter-or-redirect; return
+      ble/syntax:bash/ctx-command/.check-delimiter-or-redirect; return "$?"
     fi
   fi
 
@@ -4307,7 +4307,7 @@ function ble/syntax/parse/shift.tree/1 {
 ## @var[in] shift2_j
 ## @var[in] beg,end,end0,shift
 function ble/syntax/parse/shift.tree {
-  [[ ${_ble_syntax_tree[shift2_j-1]} ]] || return
+  [[ ${_ble_syntax_tree[shift2_j-1]} ]] || return 1
   local -a node
   ble/string#split-words node "${_ble_syntax_tree[shift2_j-1]}"
 
@@ -4375,7 +4375,7 @@ function ble/syntax/parse/shift.impl2/.shift-until {
 function ble/syntax/parse/shift.impl2/.proc1 {
   if ((TE_i<j2)); then
     ((tprev=-1)) # 中断
-    return
+    return 0
   fi
 
   ble/syntax/parse/shift.impl2/.shift-until $((TE_i+1))
@@ -4519,7 +4519,7 @@ function ble/syntax/parse {
   local -r text=$1 iN=${#1}
   local opts=$2
   local beg=${3:-0} end=${4:-$iN} end0=${5:-0}
-  ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return
+  ((end==beg&&end0==beg&&_ble_syntax_dbeg<0)) && return 0
 
   local shift=$((end-end0))
 #%if !release
@@ -4703,9 +4703,10 @@ function ble/syntax/highlight {
 #   for ((i=$1;i>=0;i--)); do
 #     if [[ ${_ble_syntax_attr[i]} ]]; then
 #       ((attr=_ble_syntax_attr[i]))
-#       return
+#       return 0
 #     fi
 #   done
+#   return 1
 # }
 
 # ## 関数 ble/syntax/getstat index
@@ -4714,9 +4715,10 @@ function ble/syntax/highlight {
 #   for ((i=$1;i>=0;i--)); do
 #     if [[ ${_ble_syntax_stat[i]} ]]; then
 #       ble/string#split-words stat "${_ble_syntax_stat[i]}"
-#       return
+#       return 0
 #     fi
 #   done
+#   return 1
 # }
 
 function ble/syntax/completion-context/.add {
@@ -4947,13 +4949,13 @@ function ble/syntax/completion-context/.check-prefix/ctx:quote {
 function ble/syntax/completion-context/.check-prefix/ctx:quote/.check-container-word {
   # Note: CTX_QUOTE は nest の中にあるので、一旦外側に出て単語を探す。
 
-  local nlen=${stat[3]}; ((nlen>=0)) || return
+  local nlen=${stat[3]}; ((nlen>=0)) || return 1
   local inest=$((nlen<0?nlen:istat-nlen))
 
   local nest; ble/string#split-words nest "${_ble_syntax_nest[inest]}"
-  [[ ${nest[0]} ]] || return
+  [[ ${nest[0]} ]] || return 1
 
-  local wlen2=${nest[1]}; ((wlen2>=0)) || return
+  local wlen2=${nest[1]}; ((wlen2>=0)) || return 1
   local wbeg2=$((wlen2<0?wlen2:inest-wlen2))
 
   if ble/syntax:bash/simple-word/is-simple-or-open-simple "${text:wbeg2:index-wbeg2}"; then
@@ -5017,15 +5019,15 @@ _ble_syntax_bash_complete_check_prefix[CTX_PARAM]=param
 function ble/syntax/completion-context/.check-prefix/ctx:param {
   local tail=${text:istat:index-istat}
   if [[ $tail == : ]]; then
-    return
+    return 0
   elif [[ $tail == '}'* ]]; then
     local nlen=${stat[3]}
     local inest=$((nlen<0?nlen:istat-nlen))
     ((0<=inest&&inest<istat)) &&
       ble/syntax/completion-context/.check-prefix "$inest"
-    return
+    return "$?"
   else
-    return
+    return 1
   fi
 }
 
@@ -5037,10 +5039,10 @@ function ble/syntax/completion-context/.check-prefix/ctx:expr {
   if [[ $tail =~ $rex ]]; then
     local p=$((index-${#BASH_REMATCH}))
     ble/syntax/completion-context/.add variable:a "$p"
-    return
+    return 0
   elif [[ $tail == ']'* ]]; then
     local inest=... ntype
-    local nlen=${stat[3]}; ((nlen>=0)) || return
+    local nlen=${stat[3]}; ((nlen>=0)) || return 1
     local inest=$((istat-nlen))
     ble/syntax/parse/nest-type # ([in] inest; [out] ntype)
 
@@ -5117,10 +5119,10 @@ function ble/syntax/completion-context/.check-prefix {
   local from=${1:-$((index-1))}
 
   local ret
-  ble/syntax/completion-context/.search-last-istat "$from" || return
+  ble/syntax/completion-context/.search-last-istat "$from" || return 1
   local istat=$ret stat
   ble/string#split-words stat "${_ble_syntax_stat[istat]}"
-  [[ ${stat[0]} ]] || return
+  [[ ${stat[0]} ]] || return 1
 
   local ctx=${stat[0]} wlen=${stat[1]}
   local wbeg=$((wlen<0?wlen:istat-wlen))
@@ -5136,7 +5138,7 @@ function ble/syntax/completion-context/.check-prefix {
 ##   @var[in]  index
 ##   @var[out] sources
 function ble/syntax/completion-context/.check-here {
-  ((${#sources[*]})) && return
+  ((${#sources[*]})) && return 0
   local -a stat
   ble/string#split-words stat "${_ble_syntax_stat[index]}"
   if [[ ${stat[0]} ]]; then
@@ -5233,7 +5235,7 @@ function ble/syntax:bash/extract-command/.construct-proc {
         ble/syntax:bash/extract-command/.register-word
         ble/syntax/tree-enumerate-break
         EC_found=1
-        return
+        return 0
       fi
     elif ((wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
       ble/syntax:bash/extract-command/.register-word
@@ -5262,7 +5264,7 @@ function ble/syntax:bash/extract-command/.construct {
 
 ## (tree-enumerate-proc) ble/syntax:bash/extract-command/.scan
 function ble/syntax:bash/extract-command/.scan {
-  ((EC_pos<wbegin)) && return
+  ((EC_pos<wbegin)) && return 0
 
   if ((wbegin+wlen<EC_pos)); then
     ble/syntax/tree-enumerate-break
@@ -5281,7 +5283,7 @@ function ble/syntax:bash/extract-command/.scan {
 
   if [[ $wtype =~ ^[0-9]+$ && ! $EC_has_word ]]; then
     EC_has_word=$wtype
-    return
+    return 0
   fi
 }
 
@@ -5331,7 +5333,7 @@ function ble/syntax/tree#previous-sibling {
   local node
   ble/string#split-words node "${_ble_syntax_tree[i0-1]}"
   local tplen=${node[nofs0+3]}
-  ((tplen>=0)) || return
+  ((tplen>=0)) || return 1
 
   local i=$((i0-tplen)) nofs=0
   ret=$i:$nofs
@@ -5699,9 +5701,9 @@ function ble/syntax/highlight/cmdtype/.is-job-name {
       done
       return 1
     elif [[ $auto_resume == substring ]]; then
-      jobs -- "%?$value" &>/dev/null; return
+      jobs -- "%?$value" &>/dev/null; return "$?"
     else
-      jobs -- "%$value" &>/dev/null; return
+      jobs -- "%$value" &>/dev/null; return "$?"
     fi
   fi
 
@@ -5762,7 +5764,7 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
     fi
 
     type=${_ble_syntax_highlight_filetype[x$_0]}
-    [[ $type ]] && return
+    [[ $type ]] && return 0
 
     ble/syntax/highlight/cmdtype/.impl "$cmd" "$_0"
     _ble_syntax_highlight_filetype["x$_0"]=$type
@@ -5783,7 +5785,7 @@ else
     for ((i=0,iN=${#_ble_syntax_highlight_filetype[@]}/2;i<iN;i++)); do
       if [[ ${_ble_syntax_highlight_filetype[2*i]} == x"$_0" ]]; then
         type=${_ble_syntax_highlight_filetype[2*i+1]}
-        return
+        return 0
       fi
     done
 
@@ -5804,7 +5806,7 @@ function ble/syntax/highlight/filetype {
   # Note: #D1168 Cygwin では // で始まるパスはとても遅い
   if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $file == //* ]]; then
     [[ $file == // ]] && ((type=ATTR_FILE_DIR))
-    return
+    return 0
   fi
 
   type=
@@ -5956,7 +5958,7 @@ function ble/syntax/highlight/getg-from-filename {
     if ble/syntax/highlight/ls_colors "$filename" && [[ $type == g:* ]]; then
       local ret; ble/color/face2g filename_ls_colors; g=$ret
       ((g|=${type:2}))
-      return
+      return 0
     fi
   fi
 
@@ -6137,8 +6139,8 @@ function ble/syntax/progcolor/word:default/.update-for-filename {
 ##   @var[in] node TE_i TE_nofs
 ##   @var[in] wtype wlen wbeg wend wattr
 function ble/syntax/progcolor/word:default {
-  [[ $wtype =~ ^[0-9]+$ ]] || return
-  [[ $wattr == - ]] || return
+  [[ $wtype =~ ^[0-9]+$ ]] || return 1
+  [[ $wattr == - ]] || return 1
 
   # @var p0 p1
   #   文字列を切り出す範囲。
@@ -6180,7 +6182,7 @@ function ble/syntax/progcolor/word:default {
     ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
     if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
       # failglob 等の理由で展開に失敗した場合
-      ble/syntax/progcolor/word:default/.update-for-pathname "$ATTR_ERR" && return
+      ble/syntax/progcolor/word:default/.update-for-pathname "$ATTR_ERR" && return 0
     elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
       # 複数語に展開されたら駄目
       type=$ATTR_ERR
@@ -6189,10 +6191,10 @@ function ble/syntax/progcolor/word:default {
       if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
         ble/syntax/highlight/cmdtype "$value" "$wtxt"
         ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)) &&
-          ble/syntax/progcolor/word:default/.update-for-pathname "$type" && return
+          ble/syntax/progcolor/word:default/.update-for-pathname "$type" && return 0
       fi
     elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
-      ble/syntax/progcolor/word:default/.update-for-filename "$value" && return
+      ble/syntax/progcolor/word:default/.update-for-filename "$value" && return 0
     fi
   fi
 
@@ -6227,7 +6229,7 @@ function ble/syntax/progcolor/default {
 ##   @var[in,out] comp_words comp_cword comp_line comp_point
 function ble/syntax/progcolor/.compline-rewrite-command {
   local ocmd=${comp_words[0]}
-  [[ $1 != "$ocmd" ]] || (($#>=2)) || return
+  [[ $1 != "$ocmd" ]] || (($#>=2)) || return 1
   local ins="$*"
   comp_line=$ins${comp_line:${#ocmd}}
   ((comp_point-=${#ocmd},comp_point<0&&(comp_point=0),comp_point+=${#ins}))
@@ -6330,15 +6332,15 @@ function ble/highlight/layer:syntax/update-attribute-table {
 }
 
 function ble/highlight/layer:syntax/word/.update-attributes/.proc {
-  [[ $wtype =~ ^[0-9]+$ ]] || return
-  [[ ${node[TE_nofs+4]} == - ]] || return
+  [[ $wtype =~ ^[0-9]+$ ]] || return 1
+  [[ ${node[TE_nofs+4]} == - ]] || return 1
 
   if ((wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGVI||wtype==CTX_ARGEI)); then
     local comp_line comp_point comp_words comp_cword tree_words
     if ble/syntax:bash/extract-command-by-noderef "$TE_i:$TE_nofs" treeinfo; then
       local cmd=${comp_words[0]}
       ble/syntax/progcolor "$cmd"
-      return
+      return 0
     fi
   fi
 
@@ -6350,7 +6352,7 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
 ## @var[in] _ble_syntax_word_umin,_ble_syntax_word_umax
 ## @var[in,out] color_umin color_umax
 function ble/highlight/layer:syntax/word/.update-attributes {
-  ((_ble_syntax_word_umin>=0)) || return
+  ((_ble_syntax_word_umin>=0)) || return 1
   ble/syntax/tree-enumerate-in-range "$_ble_syntax_word_umin" "$_ble_syntax_word_umax" \
     ble/highlight/layer:syntax/word/.update-attributes/.proc
 }
@@ -6361,7 +6363,7 @@ function ble/highlight/layer:syntax/word/.apply-attribute {
   local wbeg=$1 wend=$2 wattr=$3
   ((wbeg<color_umin&&(wbeg=color_umin),
     wend>color_umax&&(wend=color_umax),
-    wbeg<wend)) || return
+    wbeg<wend)) || return 1
 
   if [[ $wattr =~ ^[0-9]+$ ]]; then
     ble/highlight/layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$wattr"

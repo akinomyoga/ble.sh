@@ -49,7 +49,7 @@ function ble-decode/keymap:vi_digraph/initialize {
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.sh &&
           $fname_keymap_cache -nt $_ble_base/keymap/vi_digraph.txt ]]; then
     source "$fname_keymap_cache"
-    return
+    return 0
   fi
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi_digraph..."

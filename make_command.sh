@@ -341,10 +341,11 @@ function sub:first-defined {
     for dir in ../ble-0.{1..3} ../ble.sh; do
       (cd "$dir"; grc "$name" &>/dev/null) || continue
       echo "$name $dir"
-      return
+      return 0
     done
   done
   echo "$name not found"
+  return 1
 }
 
 #------------------------------------------------------------------------------

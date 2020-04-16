@@ -99,7 +99,7 @@ function ble/util/c2w/.determine-unambiguous {
   local code=$1
   if ((code<0xA0)); then
     ret=1
-    return
+    return 0
   fi
 
   # 取り敢えず曖昧
@@ -173,7 +173,7 @@ function ble/util/c2w/is-emoji {
     ((_ble_util_c2w_emoji_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
   done
 
-  (((l&1)==0)); return
+  (((l&1)==0)); return "$?"
 }
 
 # ---- char_width_mode ----
@@ -198,11 +198,11 @@ function ble/util/c2w+emacs {
   #   その値を参照していなくても、その分岐に入らなくても関係ない。
   #   なので ret に予め適当な値を設定しておく事にする。
   ret=1
-  ((code<0xA0)) && return
+  ((code<0xA0)) && return 0
 
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
-    return
+    return 0
   fi
 
   ((
@@ -242,7 +242,7 @@ function ble/util/c2w+emacs {
 
   if ((tIndex<_ble_util_c2w_emacs_wranges[0])); then
     ret=1
-    return
+    return 0
   fi
 
   local l=0 u=${#_ble_util_c2w_emacs_wranges[@]} m
@@ -287,17 +287,17 @@ _ble_util_c2w_east_wranges=(
  10045 10046 10102 10112 57344 63744 65533 65534 983040 1048574 1048576 1114110)
 function ble/util/c2w+east {
   ble/util/c2w/.determine-unambiguous "$1"
-  ((ret>=0)) && return
+  ((ret>=0)) && return 0
 
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
-    return
+    return 0
   fi
 
   local code=$1
   if ((code<_ble_util_c2w_east_wranges[0])); then
     ret=1
-    return
+    return 0
   fi
 
   local l=0 u=${#_ble_util_c2w_east_wranges[@]} m
@@ -305,13 +305,14 @@ function ble/util/c2w+east {
     ((_ble_util_c2w_east_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
   done
   ((ret=((l&1)==0)?2:1))
+  return 0
 }
 
 _ble_util_c2w_auto_width=1
 _ble_util_c2w_auto_update_x0=0
 function ble/util/c2w+auto {
   ble/util/c2w/.determine-unambiguous "$1"
-  ((ret>=0)) && return
+  ((ret>=0)) && return 0
 
   if ((_ble_util_c2w_auto_width==1)); then
     ble/util/c2w+west "$1"
@@ -654,7 +655,7 @@ function ble/canvas/trace/.SGR {
   if [[ ! $param ]]; then
     g=0
     ble/canvas/put.draw "$_ble_term_sgr0"
-    return
+    return 0
   fi
 
   # update g
@@ -676,7 +677,7 @@ function ble/canvas/trace/.process-csi-sequence {
     case "$char" in
     (m) # SGR
       ble/canvas/trace/.SGR "$param" "$seq"
-      return ;;
+      return 0 ;;
     ([ABCDEFGIZ\`ade])
       local arg=0
       [[ $param =~ ^[0-9]+$ ]] && arg=$param
@@ -748,7 +749,7 @@ function ble/canvas/trace/.process-csi-sequence {
         fi
       fi
       lc=-1 lg=0
-      return ;;
+      return 0 ;;
     ([Hf])
       # CUP "CSI H"
       # HVP "CSI f"
@@ -761,14 +762,14 @@ function ble/canvas/trace/.process-csi-sequence {
         y1<0&&(y1=0),y1>=lines&&(y1=lines-1)))
       ble/canvas/trace/.goto "$x1" "$y1"
       lc=-1 lg=0
-      return ;;
+      return 0 ;;
     ([su]) # SCOSC SCORC
       if [[ $char == s ]]; then
         ble/canvas/trace/.scosc
       else
         ble/canvas/trace/.scorc
       fi
-      return ;;
+      return 0 ;;
     # ■その他色々?
     # ([JPX@MKL]) # 挿入削除→カーソルの位置は不変 lc?
     # ([hl]) # SM RM DECSM DECRM
@@ -782,14 +783,14 @@ function ble/canvas/trace/.process-esc-sequence {
   case "$char" in
   (7) # DECSC
     ble/canvas/trace/.decsc
-    return ;;
+    return 0 ;;
   (8) # DECRC
     ble/canvas/trace/.decrc
-    return ;;
+    return 0 ;;
   (D) # IND
-    [[ $opt_nooverflow ]] && ((y+1>=lines)) && return
+    [[ $opt_nooverflow ]] && ((y+1>=lines)) && return 0
     if [[ $opt_relative ]]; then
-      ((y+1>=lines)) && return
+      ((y+1>=lines)) && return 0
       ((y++))
       ble/canvas/put-cud.draw 1
     else
@@ -799,11 +800,11 @@ function ble/canvas/trace/.process-esc-sequence {
         ble/canvas/put-hpa.draw $((x+1)) # tput ind が唯の改行の時がある
     fi
     lc=-1 lg=0
-    return ;;
+    return 0 ;;
   (M) # RI
-    [[ $opt_nooverflow ]] && ((y==0)) && return
+    [[ $opt_nooverflow ]] && ((y==0)) && return 0
     if [[ $opt_relative ]]; then
-      ((y==0)) && return
+      ((y==0)) && return 0
       ((y--))
       ble/canvas/put-cuu.draw 1
     else
@@ -811,10 +812,10 @@ function ble/canvas/trace/.process-esc-sequence {
       ble/canvas/put.draw "$_ble_term_ri"
     fi
     lc=-1 lg=0
-    return ;;
+    return 0 ;;
   (E) # NEL
     ble/canvas/trace/.NEL
-    return ;;
+    return 0 ;;
   # (H) # HTS 面倒だから無視。
   # ([KL]) PLD PLU
   #   上付き・下付き文字 (端末における実装は色々)
@@ -1067,7 +1068,7 @@ function ble/canvas/trace-text/.put-atomic {
         out=$out$'\n'
         ((y++,x=0))
       fi
-      return
+      return 0
     fi
     ble/string#reserve-prototype $((cols-x))
     out=$out${_ble_string_prototype::cols-x}
@@ -1088,7 +1089,7 @@ function ble/canvas/trace-text/.put-atomic {
 ##   行末にいる場合次の行へ移動します。
 function ble/canvas/trace-text/.put-nl-if-eol {
   if ((x==cols)); then
-    [[ :$opts: == *:nonewline:* ]] && return
+    [[ :$opts: == *:nonewline:* ]] && return 0
     ((_ble_term_xenl)) && out=$out$'\n'
     ((y++,x=0))
   fi
@@ -1308,7 +1309,7 @@ function ble/textmap#update {
       ((y=pos[1]))
       _ble_textmap_endx=$x
       _ble_textmap_endy=$y
-      return
+      return 0
     elif ((dbeg>0)); then
       # 途中から計算を再開
       local -a pos
@@ -1825,7 +1826,7 @@ function ble/canvas/panel#report-cursor-position {
 
 function ble/canvas/panel#increase-total-height.draw {
   local delta=$1
-  ((delta>0)) || return
+  ((delta>0)) || return 1
 
   local ret
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"; local old_total_height=$ret
@@ -1842,7 +1843,7 @@ function ble/canvas/panel#increase-total-height.draw {
 function ble/canvas/panel#set-height.draw {
   local index=$1 new_height=$2
   local delta=$((new_height-_ble_canvas_panel_height[index]))
-  ((delta)) || return
+  ((delta)) || return 1
 
   local ret
   if ((delta>0)); then
@@ -1871,7 +1872,7 @@ function ble/canvas/panel#increase-height.draw {
 function ble/canvas/panel#set-height-and-clear.draw {
   local index=$1 new_height=$2
   local old_height=${_ble_canvas_panel_height[index]}
-  ((old_height||new_height)) || return
+  ((old_height||new_height)) || return 1
 
   local ret
   ble/canvas/panel#increase-total-height.draw $((new_height-old_height))
@@ -1901,7 +1902,7 @@ function ble/canvas/panel#clear.draw {
 function ble/canvas/panel#clear-after.draw {
   local index=$1 x=$2 y=$3
   local height=${_ble_canvas_panel_height[index]}
-  ((y<height)) || return
+  ((y<height)) || return 1
 
   ble/canvas/panel#goto.draw "$index" "$x" "$y"
   ble/canvas/put.draw "$_ble_term_el"

@@ -367,13 +367,13 @@ if ((_ble_bash>=40400)); then
 else
   function ble/is-array {
     local "decl$1"
-    ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return
+    ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return 1
     local rex='^declare -[b-zA-Z]*a'
     eval "[[ \$decl$1 =~ \$rex ]]"
   }
   function ble/is-assoc {
     local "decl$1"
-    ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return
+    ble/util/assign "decl$1" "declare -p $1" 2>/dev/null || return 1
     local rex='^declare -[a-zB-Z]*A'
     eval "[[ \$decl$1 =~ \$rex ]]"
   }
@@ -523,7 +523,7 @@ function ble/string#common-prefix {
   b=${b::${#a}}
   if [[ $a == "$b" ]]; then
     ret=$a
-    return
+    return 0
   fi
 
   # l <= 解 < u, (${a:u}: 一致しない, ${a:l} 一致する)
@@ -549,7 +549,7 @@ function ble/string#common-suffix {
   b=${b:${#b}-${#a}}
   if [[ $a == "$b" ]]; then
     ret=$a
-    return
+    return 0
   fi
 
   # l < 解 <= u, (${a:l}: 一致しない, ${a:u} 一致する)
@@ -932,7 +932,7 @@ else
 fi
 
 function ble/path#remove {
-  [[ $2 ]] || return
+  [[ $2 ]] || return 1
   local _ble_local_script='
     opts=:${opts//:/::}:
     opts=${opts//:"$2":}
@@ -940,7 +940,7 @@ function ble/path#remove {
   builtin eval -- "${_ble_local_script//opts/$1}"
 }
 function ble/path#remove-glob {
-  [[ $2 ]] || return
+  [[ $2 ]] || return 1
   local _ble_local_script='
     opts=:${opts//:/::}:
     opts=${opts//:$2:}
@@ -1028,7 +1028,7 @@ function blehook {
     else
       blehook/.print-help >&2
     fi
-    [[ ! $flag_error ]]; return
+    [[ ! $flag_error ]]; return "$?"
   fi
 
   if ((${#print[@]}||${#process[@]}+${#print[@]}==0)); then
@@ -1820,7 +1820,7 @@ function ble/util/print-global-definitions {
     __ble_MaxLoop=20
 
     for __ble_name; do
-      [[ ${__ble_name//[0-9a-zA-Z_]} ]] && continue
+      [[ ${__ble_name//[0-9a-zA-Z_]} || $__ble_name == __ble_* ]] && continue
       ((__ble_processed_$__ble_name)) && continue
       ((__ble_processed_$__ble_name=1))
       [[ $__ble_name == __ble_* ]] && continue
@@ -2204,7 +2204,7 @@ function ble/dirty-range#update {
   fi
 
   local begB=$1 endB=$2 endB0=$3
-  ((begB<0)) && return
+  ((begB<0)) && return 1
 
   local begA endA endA0
   ((begA=${_prefix}beg,endA=${_prefix}end,endA0=${_prefix}end0))
@@ -2255,7 +2255,7 @@ function ble/urange#update {
     prefix=${1#*=}; shift
   fi
   local min=$1 max=$2
-  ((0<=min&&min<max)) || return
+  ((0<=min&&min<max)) || return 1
   (((${prefix}umin<0||min<${prefix}umin)&&(${prefix}umin=min),
     (${prefix}umax<0||${prefix}umax<max)&&(${prefix}umax=max)))
 }
@@ -2271,7 +2271,7 @@ function ble/urange#shift {
     prefix=${1#*=}; shift
   fi
   local dbeg=$1 dend=$2 dend0=$3 shift=$4
-  ((dbeg>=0)) || return
+  ((dbeg>=0)) || return 1
   [[ $shift ]] || ((shift=dend-dend0))
   ((${prefix}umin>=0&&(
       dbeg<=${prefix}umin&&(${prefix}umin<=dend0?(${prefix}umin=dend):(${prefix}umin+=shift)),
@@ -2307,7 +2307,7 @@ function ble/util/joblist {
     # 了したジョブがあるとしたら "終了" だとか "Terminated" だとかいう表示にな
     # っているはずだが、その様な表示は二回以上は為されないので必ず変化がある。
     joblist=("${_ble_util_joblist_list[@]}")
-    return
+    return 0
   elif [[ ! $jobs0 ]]; then
     # 前回の呼び出しで存在したジョブが新しい呼び出しで無断で消滅することは恐ら
     # くない。今回の結果が空という事は本来は前回の結果も空のはずであり、だとす
@@ -2316,7 +2316,7 @@ function ble/util/joblist {
     _ble_util_joblist_jobs=
     _ble_util_joblist_list=()
     joblist=()
-    return
+    return 0
   fi
 
   local lines list ijob
@@ -2392,14 +2392,14 @@ function ble/util/joblist.has-events {
 function ble/util/joblist.flush {
   local joblist
   ble/util/joblist
-  ((${#_ble_util_joblist_events[@]})) || return
+  ((${#_ble_util_joblist_events[@]})) || return 1
   printf '%s\n' "${_ble_util_joblist_events[@]}"
   _ble_util_joblist_events=()
 }
 function ble/util/joblist.bflush {
   local joblist out
   ble/util/joblist
-  ((${#_ble_util_joblist_events[@]})) || return
+  ((${#_ble_util_joblist_events[@]})) || return 1
   ble/util/sprintf out '%s\n' "${_ble_util_joblist_events[@]}"
   ble/util/buffer "$out"
   _ble_util_joblist_events=()
@@ -2461,7 +2461,7 @@ function ble/util/test-rl-variable {
     return 1
   elif (($#>=2)); then
     (($2))
-    return
+    return "$?"
   else
     return 2
   fi
@@ -2577,7 +2577,7 @@ function ble/util/autoload/.read-arguments {
     ((index++))
   done
 
-  [[ $flags == *h* ]] && return
+  [[ $flags == *h* ]] && return 0
 
   if ((${#args[*]}==0)); then
     ble/util/print 'ble-autoload: script filename is not specified.' >&2
@@ -2722,7 +2722,7 @@ function ble-import {
     local ret
     ble/string#quote-command ble-import "${files[@]}"
     ble/util/idle.push "$ret"
-    return
+    return 0
   fi
 
   ble/util/import "${files[@]}"
@@ -2738,7 +2738,7 @@ function ble-import {
 ##
 _ble_util_stackdump_title=stackdump
 function ble/util/stackdump {
-  ((bleopt_internal_stackdump_enabled)) || return
+  ((bleopt_internal_stackdump_enabled)) || return 1
   local message=$1
   local i nl=$'\n'
   local message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
@@ -3015,7 +3015,7 @@ if ((_ble_bash>=40000)); then
       local _idle_key
       local _idle_next_time= _idle_next_itime= _idle_running= _idle_waiting=
       for _idle_key in "${!_ble_util_idle_task[@]}"; do
-        ble/util/idle/IS_IDLE || { [[ $_idle_processed ]]; return; }
+        ble/util/idle/IS_IDLE || { [[ $_idle_processed ]]; return "$?"; }
         local _idle_to_process=
         local _idle_status=${_ble_util_idle_task[_idle_key]%%"$_ble_util_idle_SEP"*}
         case ${_idle_status::1} in
@@ -3114,7 +3114,7 @@ if ((_ble_bash>=40000)); then
   ##   @var[in] _idle_waiting
   function ble/util/idle.do/.sleep-until-next {
     ble/util/idle/IS_IDLE || return 148
-    [[ $_idle_running ]] && return
+    [[ $_idle_running ]] && return 0
     local isfirst=1
     while
       local sleep_amount=
@@ -3273,7 +3273,7 @@ function ble/term:cygwin/initialize.hook {
   #   消去する時、何も消去されない…。
   function ble/canvas/put-dl.draw {
     local value=${1-1} i
-    ((value)) || return
+    ((value)) || return 1
     DRAW_BUFF[${#DRAW_BUFF[*]}]=$'\e[2K'
     if ((value>1)); then
       local ret
@@ -3503,13 +3503,13 @@ function ble/term/visible-bell/.create-workerfile {
 function ble/term/visible-bell/.worker {
   # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
   ble/util/msleep 50
-  [[ $workerfile -ot $_ble_term_visible_bell_ftime ]] && return >| "$workerfile"
+  [[ $workerfile -ot $_ble_term_visible_bell_ftime ]] && return 0 >| "$workerfile"
   ble/term/visible-bell/.update "$sgr2"
 
   if [[ :$opts: == *:persistent:* ]]; then
     local dead_workerfile=$_ble_base_run/$$.visible-bell.Z
     ble/util/print 1 >| "$dead_workerfile"
-    return >| "$workerfile"
+    return 0 >| "$workerfile"
   fi
 
   # load time duration settings
@@ -3517,7 +3517,7 @@ function ble/term/visible-bell/.worker {
 
   # wait
   ble/util/msleep "$msec"
-  [[ $workerfile -ot $_ble_term_visible_bell_ftime ]] && return >| "$workerfile"
+  [[ $workerfile -ot $_ble_term_visible_bell_ftime ]] && return 0 >| "$workerfile"
 
   # check and clear
   ble/term/visible-bell/.clear
@@ -3617,13 +3617,13 @@ function ble/term/stty/initialize {
   _ble_term_stty_state=1
 }
 function ble/term/stty/leave {
-  [[ ! $_ble_term_stty_state ]] && return
+  [[ ! $_ble_term_stty_state ]] && return 0
   ble/bin/stty echo -nl icanon \
                "${_ble_term_stty_flags_leave[@]}"
   _ble_term_stty_state=
 }
 function ble/term/stty/enter {
-  [[ $_ble_term_stty_state ]] && return
+  [[ $_ble_term_stty_state ]] && return 0
   ble/bin/stty -echo -nl -icrnl -icanon \
                "${_ble_term_stty_flags_enter[@]}"
   _ble_term_stty_state=1
@@ -3648,7 +3648,7 @@ _ble_term_cursor_hidden_current=unknown
 _ble_term_cursor_hidden_internal=reveal
 function ble/term/cursor-state/.update {
   local state=$(($1))
-  [[ $_ble_term_cursor_current == "$state" ]] && return
+  [[ $_ble_term_cursor_current == "$state" ]] && return 0
 
   ble/util/buffer "${_ble_term_Ss//@1/$state}"
 
@@ -3663,7 +3663,7 @@ function ble/term/cursor-state/set-internal {
 function ble/term/cursor-state/.update-hidden {
   local state=$1
   [[ $state != hidden ]] && state=reveal
-  [[ $_ble_term_cursor_hidden_current == "$state" ]] && return
+  [[ $_ble_term_cursor_hidden_current == "$state" ]] && return 0
 
   if [[ $state == hidden ]]; then
     ble/util/buffer "$_ble_term_civis"
@@ -3754,7 +3754,7 @@ bleopt/declare -v term_modifyOtherKeys_internal auto
 
 _ble_term_modifyOtherKeys_current=
 function ble/term/modifyOtherKeys/.update {
-  [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] && return
+  [[ $1 == "$_ble_term_modifyOtherKeys_current" ]] && return 0
 
   # Note: RLogin では modifyStringKeys (\e[>5m) も指定しないと駄目。
   #   また、RLogin は modifyStringKeys にすると S-数字 を
@@ -3816,7 +3816,7 @@ function ble/term/modifyOtherKeys/leave {
 _ble_term_rl_convert_meta_adjusted=
 _ble_term_rl_convert_meta_external=
 function ble/term/rl-convert-meta/enter {
-  [[ $_ble_term_rl_convert_meta_adjusted ]] && return
+  [[ $_ble_term_rl_convert_meta_adjusted ]] && return 0
   _ble_term_rl_convert_meta_adjusted=1
 
   if ble/util/test-rl-variable convert-meta; then
@@ -3827,7 +3827,7 @@ function ble/term/rl-convert-meta/enter {
   fi
 }
 function ble/term/rl-convert-meta/leave {
-  [[ $_ble_term_rl_convert_meta_adjusted ]] || return
+  [[ $_ble_term_rl_convert_meta_adjusted ]] || return 1
   _ble_term_rl_convert_meta_adjusted=
 
   [[ $_ble_term_rl_convert_meta_external == on ]] &&
@@ -3838,7 +3838,7 @@ function ble/term/rl-convert-meta/leave {
 
 _ble_term_state=external
 function ble/term/enter {
-  [[ $_ble_term_state == internal ]] && return
+  [[ $_ble_term_state == internal ]] && return 0
   ble/term/stty/enter
   ble/term/bracketed-paste-mode/enter
   ble/term/modifyOtherKeys/enter
@@ -3848,7 +3848,7 @@ function ble/term/enter {
   _ble_term_state=internal
 }
 function ble/term/leave {
-  [[ $_ble_term_state == external ]] && return
+  [[ $_ble_term_state == external ]] && return 0
   ble/term/stty/leave
   ble/term/bracketed-paste-mode/leave
   ble/term/modifyOtherKeys/leave
@@ -3894,7 +3894,7 @@ elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
 
     local s=${1::1}
     ret=${_ble_util_s2c_table[x$s]}
-    [[ $ret ]] && return
+    [[ $ret ]] && return 0
 
     ble/util/sprintf ret %d "'$s"
     _ble_util_s2c_table[x$s]=$ret
@@ -3913,7 +3913,7 @@ else
     local s=${1::1}
     if [[ $s == [''-''] ]]; then
       ble/util/sprintf ret %d "'$s"
-      return
+      return 0
     fi
 
     local bytes byte
@@ -3986,7 +3986,7 @@ else
   function ble/util/c2s.impl {
     if (($1<0x80)); then
       builtin eval "ret=\$'\\x${_ble_text_hexmap[$1]}'"
-      return
+      return 0
     fi
 
     local bytes i iN seq=

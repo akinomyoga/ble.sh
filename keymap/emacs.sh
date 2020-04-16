@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # include guard
-ble/is-function ble-edit/bind/load-editing-mode:emacs && return
+ble/is-function ble-edit/bind/load-editing-mode:emacs && return 0
 function ble-edit/bind/load-editing-mode:emacs { :; }
 
 # 2015-12-09 keymap cache should be updated due to the refactoring.
@@ -76,7 +76,7 @@ function ble/keymap:emacs/update-mode-name {
   local opt_multiline=; [[ $_ble_edit_str == *$'\n'* ]] && opt_multiline=1
   local footprint=$opt_multiline:$_ble_edit_arg:$_ble_edit_kbdmacro_record
 
-  [[ $footprint == "$_ble_keymap_emacs_modeline" ]] && return
+  [[ $footprint == "$_ble_keymap_emacs_modeline" ]] && return 0
   _ble_keymap_emacs_modeline=$footprint
 
   local name=
@@ -204,7 +204,7 @@ function ble-decode/keymap:emacs/initialize {
   local fname_keymap_cache=$_ble_base_cache/keymap.emacs
   if [[ $fname_keymap_cache -nt $_ble_base/keymap/emacs.sh &&
           $fname_keymap_cache -nt $_ble_base/lib/init-cmap.sh ]]; then
-    source "$fname_keymap_cache" && return
+    source "$fname_keymap_cache" && return 0
   fi
 
   ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs..."

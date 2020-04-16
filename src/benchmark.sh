@@ -177,11 +177,11 @@ function ble-measure {
   fi
 
   local flags= command= count=$_ble_measure_count
-  ble-measure/.read-arguments "$@" || return
+  ble-measure/.read-arguments "$@" || return "$?"
   if [[ $flags == *h* ]]; then
     ble/util/print 'usage: ble-measure [-q|-ac COUNT] command'
     ble/util/print '  Measure the time of command.'
-    return
+    return 0
   fi
 
   local prev_n= prev_utot=
@@ -232,6 +232,6 @@ function ble-measure {
       ((nsec=utot*1000/n))
     fi
     ((ret-=nsec0/1000,nsec-=nsec0))
-    return
+    return 0
   done
 }

@@ -60,7 +60,7 @@ function ble/test/start-section {
   ble/fd#alloc _ble_test_section_fd '> "$_ble_test_section_file"'
 }
 function ble/test/end-section {
-  [[ $_ble_test_section_fd ]] || return
+  [[ $_ble_test_section_fd ]] || return 1
   ble/fd#close _ble_test_section_fd
   _ble_test_section_fd=
 
@@ -85,12 +85,12 @@ function ble/test/end-section {
 }
 function ble/test/section#incr {
   local title=$1
-  [[ $_ble_test_section_fd ]] || return
+  [[ $_ble_test_section_fd ]] || return 1
   ble/util/print "test $title" >&$_ble_test_section_fd
 }
 function ble/test/section#report {
   local ext=$? title=$1
-  [[ $_ble_test_section_fd ]] || return
+  [[ $_ble_test_section_fd ]] || return 1
   local code=fail; ((ext==0)) && code=pass
   ble/util/print "$code $title" >&$_ble_test_section_fd
 }

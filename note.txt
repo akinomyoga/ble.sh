@@ -334,6 +334,12 @@ bash 実装上で注意するべき事
 
 bashbug: 実装上で注意するべき事・バグ
 
+  * bash-5.0 -- 4.4 (ref #D1334)
+    trap handler が実行中に return を無引数で呼び出すと、
+    無条件に trap handler 起動直前の $? が関数の終了ステータスになる。
+    POSIX に要求されていると書かれているが解釈に難がある。
+    特に trap handler を抜ける時の戻り値だけに影響を与えるのが自然に思われる。
+
   * bash-5.0 -- 3.0 (全 version) バグ (ref #D0943)
 
     $ shopt -s failglob
@@ -1071,6 +1077,13 @@ bash_tips
 *******************************************************************************
     ToDo
 -------------------------------------------------------------------------------
+
+2020-04-15
+
+  * PROMPT_COMMANDS の判定を declare -p で行っているが、
+    これだと "配列として宣言したが unset である" という状況で
+    PROMPT_COMMAND に fallback しないという問題があるのではないか。
+    というより bash ではどの様に振る舞っているか確認する必要がある。
 
 2020-04-09
 
@@ -2897,6 +2910,157 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-04-16
+
+  * resize で hang するとの事 (reported by killermoehre) [#D1334]
+    https://github.com/akinomyoga/ble.sh/issues/48
+
+    PS1 について尋ねたら以下の結果になった。
+
+    > ^A^[]133;D;0^G^B^A^[]0;cXXXXXXX@apfelkuchen:~^G^B^A^[]133;A^G^B$ ^A^[]133;B^G^B
+
+    これは以下の設定に対応する。
+
+    PS1='\[\e]133;D;0\a\]\[\e]0;cXXXXXXX@apfelkuchen:~\a\]\[\e]133;A\a\]$ \[\e]133;B\a\]'
+
+    | Additional questions.
+    |
+    | **Question 3**: Does the problem reproduce with `PROMPT_COMMAND=''`?
+    | For example, please add the line `PROMPT_COMMAND=` before the line of
+    | `ble-attach` in `.bashrc` as follows:
+    |
+    | ```bash
+    | # bashrc
+    |
+    | [[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+    |
+    | # ...
+    |
+    | PROMPT_COMMAND= # <-- This line
+    | ((_ble_bash)) && ble-attach
+    | ```
+    |
+    | **Question 4**: Does the problem reproduce with `source ble.sh` in
+    | interactive sessions? To try this, please follow the following steps:
+    |
+    | 1. Open terminal
+    | 2. Type the following commands
+    |
+    | ```bash
+    | $ bash --norc
+    | $ PS1='\$ '
+    | $ PROMPT_COMMAND=
+    | $ source /path/to/ble.sh
+    | ```
+    |
+    | 3. Resize before input anything
+    |
+    |
+    |  --attach=attach
+    |
+    | $ trap 'ble-stackdump > /dev/tty' USR1
+
+
+    再現できたので原因を解明する。
+    結局、read -r aaa bbb を builtin read -r aaa bbb に変更したら動く様になった。
+    或いは以下の変更で治る。おかしい。これは bash のバグなのではあるまいか。
+
+    | +++ b/src/edit.sh
+    | @@ -6998,8 +6998,8 @@ function ble/builtin/read {
+    |    [[ $__ble_command ]] || return "$__ble_ext"
+    |
+    |    # 局所変数により被覆されないように外側で評価
+    | -  builtin eval -- "$__ble_command"
+    | -  return
+    | +  builtin eval -- "$__ble_command"; local ext=$?
+    | +  return "$ext"
+    |  }
+    |  function read { ble/builtin/read "$@"; }
+
+    return "$ext" の代わりに 'ble/util/setexit "$ext"; return' としても問題が発生する。
+    %または return を完全に削除しても問題が発生する
+    →勘違いだった。return を実行した場合には問題は発生しない。
+    他の version でも発生するのかを確かめてみた。
+
+    [Bash 用最小再現コード]
+
+    Bash のバグの可能性があるので Bash だけで再現できるか試みる。
+
+    | bash-4.4 でも再現する。
+    |
+    | * bash-4.3 だと別のエラーが発生する。
+    |   このエラーは iterm2 を読み込まない場合には発生していない気がする。
+    |
+    |   $ bash-4.3: history: 書き込みエラー: Broken pipe
+    |   bash-4.3: history: 書き込みエラー: Broken pipe
+    |   Segmentation fault (コアダンプ)
+    |
+    |   うーん。これは何だろうか。iterm2 の読み込みと関係がある?
+    |   不思議である。history がどう関係してくるのか謎である。
+    |   一応 __bp_preexec_invoke_exec が history を内部で呼び出している様だが、
+    |   実際にこれが問題の原因なのかどうかについては不明である。
+    |
+    | * bash-4.2 では問題は発生しない。
+    |   bash-4.0 でも問題は発生しない。
+    |
+    | * ok: bash-3.2 だと変なエラーが発生して無限ループする。
+    |   これは precmd の問題の気がする。
+    |
+    |   | bash-3.2: branch.ab: syntax error: invalid arithmetic operator (error token is ".ab")
+    |   | bash-3.2: branch.ab: syntax error: invalid arithmetic operator (error token is ".ab")
+    |   | bash-3.2: branch.ab: syntax error: invalid arithmetic operator (error token is ".ab")
+    |   |
+    |   | stackdump は以下の通り
+    |   | @ iterm2_shell_integration_local.sh:13 (iterm2_print_user_vars)
+    |   | @ iterm2_shell_integration.sh:374 (iterm2_print_state_data)
+    |   | @ iterm2_shell_integration.sh:-8 (__iterm2_precmd)
+    |   | @ iterm2_shell_integration.sh:-471 (__bp_precmd_invoke_cmd)
+    |   | ...
+    |   | @ iterm2_shell_integration_local.sh:13 (iterm2_print_user_vars)
+    |   | @ iterm2_shell_integration.sh:374 (iterm2_print_state_data)
+    |   | @ iterm2_shell_integration.sh:-8 (__iterm2_precmd)
+    |   | @ iterm2_shell_integration.sh:-471 (__bp_precmd_invoke_cmd)
+    |   | @ iterm2_shell_integration.sh:-16230 (__bp_install)
+    |   | @ /home/murase/.local/share/blesh/ble.sh:7 (ble-edit/prompt/update/.eval-prompt_command.1)
+    |   | @ /home/murase/.local/share/blesh/ble.sh:-429 (ble-edit/prompt/update/.eval-prompt_command)
+    |   | @ /home/murase/.local/share/blesh/ble.sh:33 (ble-edit/prompt/update)
+    |   | @ /home/murase/.local/share/blesh/ble.sh:308 (ble/textarea#render)
+    |   | @ /home/murase/.local/share/blesh/ble.sh:14091 (ble/textarea#redraw)
+    |   | @ /home/murase/.local/share/blesh/ble.sh:3 (ble-attach)
+    |   | @ zzz-attach-ble.sh:28 (source)
+    |   | @ .bashrc:0 (source)
+    |
+    |   iterm2_print_user_vars の中を調べると確かに branch.ab という文字列が使われている。
+    |   連想配列は bash 3.2 で存在しないのでそれが原因で問題が起きているのだろう。
+    |   然し、__bp_precmd_invoke_cmd は呼び出されていない。
+    |   よく考えたら bp_precmd は trap DEBUG を使っている。
+    |   つまり、branch.ab によって構文エラーが発生して DEBUG か何かが発生し、
+    |   その結果として無限ループが発生しているという事だろうか。
+    |   まあ、bash3.2 に関しては考えない事にする。
+    |
+    | 取り敢えず最小再現を作成する事にする。
+    | 恐らく WINCH の中では return が思うように動かないという事?
+    |
+    | $ function f1 { false; return; }; function f2 { f1; }
+    | $ trap 'while f1; do echo hello; break; done' WINCH
+
+    再現した。最小化する。
+
+    $ f1() { false; return; }; trap 'f1; echo exit=$?' WINCH
+
+    実は別のシグナルでも問題ないのではないか。
+
+    $ f1() { false; return; }; trap 'f1; echo exit=$?' USR1; kill -USR1 0
+
+    うーん。もしこれが Bash のバグだとしても、Bash 4.4, 5.0 が世の中に現れてしまった以上は、
+    これに対する対策を ble.sh の側で実行する必要がある。もしくは、return を上書きするか…。
+    と思ったが return を関数で上書きすると setexit と同じ意味になってしまって、
+    元々の return の意味を失ってしまうので駄目である。という訳でやはり return を
+    修正しなければならないのであった。
+
+    取り敢えず行末にある return を全て修正していく事にする。
+    修正した。これで恐らく全ての return に明示的に終了ステータスが指定されている。
 
 2020-04-14
 

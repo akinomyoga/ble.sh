@@ -177,7 +177,7 @@ function ble/base/unset-POSIXLY_CORRECT {
   fi
 }
 function ble/base/adjust-POSIXLY_CORRECT {
-  [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]] && return
+  [[ $_ble_edit_POSIXLY_CORRECT_adjusted ]] && return 0
   _ble_edit_POSIXLY_CORRECT_adjusted=1
   _ble_edit_POSIXLY_CORRECT_set=${POSIXLY_CORRECT+set}
   _ble_edit_POSIXLY_CORRECT=$POSIXLY_CORRECT
@@ -187,7 +187,7 @@ function ble/base/adjust-POSIXLY_CORRECT {
   ble/base/workaround-POSIXLY_CORRECT
 }
 function ble/base/restore-POSIXLY_CORRECT {
-  if [[ ! $_ble_edit_POSIXLY_CORRECT_adjusted ]]; then return; fi # Note: set -e の為 || は駄目
+  if [[ ! $_ble_edit_POSIXLY_CORRECT_adjusted ]]; then return 0; fi # Note: set -e の為 || は駄目
   _ble_edit_POSIXLY_CORRECT_adjusted=
   if [[ $_ble_edit_POSIXLY_CORRECT_set ]]; then
     POSIXLY_CORRECT=$_ble_edit_POSIXLY_CORRECT
@@ -475,7 +475,7 @@ fi
 ##   3. $_ble_base/tmp/$UID を使う。
 ##
 function ble/base/initialize-runtime-directory/.xdg {
-  [[ $_ble_base != */out ]] || return
+  [[ $_ble_base != */out ]] || return 1
 
   local runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$UID}
   if [[ ! -d $runtime_dir ]]; then
@@ -492,7 +492,7 @@ function ble/base/initialize-runtime-directory/.xdg {
   ble/base/.create-user-directory _ble_base_run "$runtime_dir/blesh"
 }
 function ble/base/initialize-runtime-directory/.tmp {
-  [[ -r /tmp && -w /tmp && -x /tmp ]] || return
+  [[ -r /tmp && -w /tmp && -x /tmp ]] || return 1
 
   local tmp_dir=/tmp/blesh
   if [[ ! -d $tmp_dir ]]; then
@@ -501,8 +501,8 @@ function ble/base/initialize-runtime-directory/.tmp {
       ble/util/print "ble.sh: cannot create a directory '$tmp_dir' since there is already a file." >&2
       return 1
     fi
-    ble/bin/mkdir -p "$tmp_dir" || return
-    ble/bin/chmod a+rwxt "$tmp_dir" || return
+    ble/bin/mkdir -p "$tmp_dir" || return 1
+    ble/bin/chmod a+rwxt "$tmp_dir" || return 1
   elif ! [[ -r $tmp_dir && -w $tmp_dir && -x $tmp_dir ]]; then
     ble/util/print "ble.sh: permission of '$tmp_dir' is not correct." >&2
     return 1
@@ -511,14 +511,14 @@ function ble/base/initialize-runtime-directory/.tmp {
   ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
 }
 function ble/base/initialize-runtime-directory {
-  ble/base/initialize-runtime-directory/.xdg && return
-  ble/base/initialize-runtime-directory/.tmp && return
+  ble/base/initialize-runtime-directory/.xdg && return 0
+  ble/base/initialize-runtime-directory/.tmp && return 0
 
   # fallback
   local tmp_dir=$_ble_base/tmp
   if [[ ! -d $tmp_dir ]]; then
-    ble/bin/mkdir -p "$tmp_dir" || return
-    ble/bin/chmod a+rwxt "$tmp_dir" || return
+    ble/bin/mkdir -p "$tmp_dir" || return 1
+    ble/bin/chmod a+rwxt "$tmp_dir" || return 1
   fi
   ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
 }
@@ -560,7 +560,7 @@ fi
 ##   2. $_ble_base/cache.d/$UID を使う。
 ##
 function ble/base/initialize-cache-directory/.xdg {
-  [[ $_ble_base != */out ]] || return
+  [[ $_ble_base != */out ]] || return 1
 
   local cache_dir=${XDG_CACHE_HOME:-$HOME/.cache}
   if [[ ! -d $cache_dir ]]; then
@@ -578,13 +578,13 @@ function ble/base/initialize-cache-directory/.xdg {
   ble/base/.create-user-directory _ble_base_cache "$cache_dir/blesh/$ver"
 }
 function ble/base/initialize-cache-directory {
-  ble/base/initialize-cache-directory/.xdg && return
+  ble/base/initialize-cache-directory/.xdg && return 0
 
   # fallback
   local cache_dir=$_ble_base/cache.d
   if [[ ! -d $cache_dir ]]; then
-    ble/bin/mkdir -p "$cache_dir" || return
-    ble/bin/chmod a+rwxt "$cache_dir" || return
+    ble/bin/mkdir -p "$cache_dir" || return 1
+    ble/bin/chmod a+rwxt "$cache_dir" || return 1
 
     # relocate an old cache directory if any
     local old_cache_dir=$_ble_base/cache
@@ -612,7 +612,7 @@ function ble-reload { source "$_ble_base/ble.sh"; }
 function ble-update {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
-    return
+    return "$?"
   fi
 
   # check make
@@ -643,7 +643,7 @@ function ble-update {
         git clone --depth 1 https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
         builtin cd ble.sh && "$MAKE" all && "$MAKE" INSDIR="$_ble_base" install ) &&
       ble-reload
-    return
+    return "$?"
   fi
 
   if [[ $_ble_base_repository && -d $_ble_base_repository/.git ]]; then
@@ -653,7 +653,7 @@ function ble-update {
         if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
           "$MAKE" INSDIR="$_ble_base" install
         fi ); local ext=$?
-    ((ext==6)) && return
+    ((ext==6)) && return 0
     ((ext==0)) && ble-reload
     return "$ext"
   fi
@@ -701,7 +701,7 @@ blehook ERR+='ble/function#try TRAPERR'
 _ble_base_rcfile=
 _ble_base_rcfile_initialized=
 function ble/base/load-rcfile {
-  [[ $_ble_base_rcfile_initialized ]] && return
+  [[ $_ble_base_rcfile_initialized ]] && return 0
   _ble_base_rcfile_initialized=1
 
   # blerc
@@ -720,7 +720,7 @@ _ble_attached=
 function ble-attach {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Attach to ble.sh.' "$@"
-    return
+    return "$?"
   fi
 
   # when detach flag is present
@@ -731,7 +731,7 @@ function ble-attach {
     esac
   fi
 
-  [[ $_ble_attached ]] && return
+  [[ $_ble_attached ]] && return 0
   _ble_attached=1
 
   # 特殊シェル設定を待避
@@ -773,16 +773,16 @@ function ble-attach {
 function ble-detach {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Detach from ble.sh.' "$@"
-    return
+    return "$?"
   fi
 
-  [[ $_ble_attached && ! $_ble_edit_detach_flag ]] || return
+  [[ $_ble_attached && ! $_ble_edit_detach_flag ]] || return 1
 
   # Note: 実際の detach 処理は ble-edit/bind/.check-detach で実行される
   _ble_edit_detach_flag=${1:-detach} # schedule detach
 }
 function ble-detach/impl {
-  [[ $_ble_attached ]] || return
+  [[ $_ble_attached ]] || return 1
   _ble_attached=
 
   ble-edit/detach

@@ -436,11 +436,11 @@ _ble_decode_erase_progress_hook=ble-decode/.hook/erase-progress
 function ble-decode/.hook/show-progress {
   if [[ $_ble_edit_info_scene == store ]]; then
     _ble_decode_input_original_info=("${_ble_edit_info[@]}")
-    return
+    return 0
   elif [[ $_ble_edit_info_scene == default ]]; then
     _ble_decode_input_original_info=()
   elif [[ $_ble_edit_info_scene != decode_input_progress ]]; then
-    return
+    return 0
   fi
 
   local progress_opts= opt_percentage=1
@@ -467,7 +467,7 @@ function ble-decode/.hook/show-progress {
     local label='processing input...'
     local sgr=$'\e[1;38;5;71;48;5;253m'
   else
-    return
+    return 0
   fi
 
   if [[ $opt_percentage ]]; then
@@ -488,7 +488,7 @@ function ble-decode/.hook/show-progress {
   _ble_edit_info_scene=decode_input_progress
 }
 function ble-decode/.hook/erase-progress {
-  [[ $_ble_edit_info_scene == decode_input_progress ]] || return
+  [[ $_ble_edit_info_scene == decode_input_progress ]] || return 1
   if ((${#_ble_decode_input_original_info[@]})); then
     ble-edit/info/show store "${_ble_decode_input_original_info[@]}"
   else
@@ -508,7 +508,7 @@ function ble-decode/.check-abort {
   if (($1==bleopt_decode_abort_char)); then
     local nbytes=${#_ble_decode_input_buffer[@]}
     local nchars=${#_ble_decode_char_buffer[@]}
-    ((nbytes||nchars)); return
+    ((nbytes||nchars)); return "$?"
   fi
 
   (($1==0x7e||$1==0x75)) || return 1
@@ -567,7 +567,7 @@ function ble-decode/.check-abort {
   else
     return 1
   fi
-  (((i>=0||${#_ble_decode_char_buffer[@]}))); return
+  (((i>=0||${#_ble_decode_char_buffer[@]}))); return "$?"
   return 0
 }
 
@@ -652,7 +652,7 @@ function ble-decode/.hook {
       ble-decode/.hook "$ret"
     fi
 
-    return
+    return 0
   fi
 
   # Note: bind -x 内の set +v は揮発性なのでできるだけ先頭で set +v しておく。
@@ -780,7 +780,7 @@ function ble-decode-char/csi/.decode {
       local key=$((BASH_REMATCH[2]&_ble_decode_MaskChar))
       ble-decode-char/csi/.modify-key "${BASH_REMATCH[1]}"
       csistat=$key
-      return
+      return 0
     fi
 
     if rex='^>?([1-9][0-9]*)(;([1-9][0-9]*))?$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
@@ -789,7 +789,7 @@ function ble-decode-char/csi/.decode {
       if [[ $key ]]; then
         ble-decode-char/csi/.modify-key "${BASH_REMATCH[3]}"
         csistat=$key
-        return
+        return 0
       fi
     fi
   elif ((char==117)); then # u
@@ -802,7 +802,7 @@ function ble-decode-char/csi/.decode {
         ble-decode-char/csi/.modify-key "$mods"
         csistat=$key
       fi
-      return
+      return 0
     fi
   elif ((char==94||char==64)); then # ^, @
     if rex='^[1-9][0-9]*$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
@@ -813,7 +813,7 @@ function ble-decode-char/csi/.decode {
           char==64&&(key|=_ble_decode_Shft)))
         ble-decode-char/csi/.modify-key "${BASH_REMATCH[3]}"
         csistat=$key
-        return
+        return 0
       fi
     fi
   elif ((char==99)); then # c
@@ -826,7 +826,7 @@ function ble-decode-char/csi/.decode {
         ble/term/DA2/notify "${_ble_decode_csi_args:1}"
       fi
       csistat=$_ble_decode_KCODE_IGNORE
-      return
+      return 0
     fi
   elif ((char==82||char==110)); then # R or n
     if rex='^([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
@@ -834,7 +834,7 @@ function ble-decode-char/csi/.decode {
       # Note: Poderosa は DSR(Pn;Pn) "CSI Pn ; Pn n" で返す。
       ble/term/CPR/notify $((10#${BASH_REMATCH[1]})) $((10#${BASH_REMATCH[2]}))
       csistat=$_ble_decode_KCODE_IGNORE
-      return
+      return 0
     fi
   elif ((char==77||char==109)); then # M or m
     if rex='^<([0-9]+);([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
@@ -857,7 +857,7 @@ function ble-decode-char/csi/.decode {
       ((button&32)) && key=$_ble_decode_KCODE_MOUSE_MOVE
       ble-decode-char/csi/.modify-key $((button>>2&0x07))
       csistat=$key
-      return
+      return 0
     fi
   elif ((char==116)); then # t
     if rex='^<([0-9]+);([0-9]+)$'; [[ $_ble_decode_csi_args =~ $rex ]]; then
@@ -876,7 +876,7 @@ function ble-decode-char/csi/.decode {
     if rex='^(1?|>?1;([1-9][0-9]*))$' && [[ $_ble_decode_csi_args =~ $rex ]]; then
       ble-decode-char/csi/.modify-key "${BASH_REMATCH[2]}"
       csistat=$key
-      return
+      return 0
     fi
   fi
 
@@ -1161,7 +1161,7 @@ function ble-decode-char/.process-modifier {
 ##     /(_文字コード)+/ の形式の文字コードの列です。
 function ble-decode-char/.send-modified-key {
   local key=$1 seq=$2
-  ((key==_ble_decode_KCODE_IGNORE)) && return
+  ((key==_ble_decode_KCODE_IGNORE)) && return 0
 
   if ((0<=key&&key<32)); then
     ((key|=(key==0||key>26?64:96)|_ble_decode_Ctrl))
@@ -1170,26 +1170,26 @@ function ble-decode-char/.send-modified-key {
   fi
 
   if (($1==27)); then
-    ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return
+    ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return 0
   elif (($1==_ble_decode_IsolatedESC)); then
     ((key=(_ble_decode_Ctrl|91)))
     if ! ble/decode/uses-isolated-esc; then
-      ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return
+      ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return 0
     fi
   elif ((_ble_decode_KCODE_SHIFT<=$1&&$1<=_ble_decode_KCODE_HYPER)); then
     case "$1" in
     ($_ble_decode_KCODE_SHIFT)
-      ble-decode-char/.process-modifier "$_ble_decode_Shft" "$seq" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Shft" "$seq" && return 0 ;;
     ($_ble_decode_KCODE_CONTROL)
-      ble-decode-char/.process-modifier "$_ble_decode_Ctrl" "$seq" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Ctrl" "$seq" && return 0 ;;
     ($_ble_decode_KCODE_ALTER)
-      ble-decode-char/.process-modifier "$_ble_decode_Altr" "$seq" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Altr" "$seq" && return 0 ;;
     ($_ble_decode_KCODE_META)
-      ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Meta" "$seq" && return 0 ;;
     ($_ble_decode_KCODE_SUPER)
-      ble-decode-char/.process-modifier "$_ble_decode_Supr" "$seq" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Supr" "$seq" && return 0 ;;
     ($_ble_decode_KCODE_HYPER)
-      ble-decode-char/.process-modifier "$_ble_decode_Hypr" "$seq" && return ;;
+      ble-decode-char/.process-modifier "$_ble_decode_Hypr" "$seq" && return 0 ;;
     esac
   fi
 
@@ -1486,7 +1486,7 @@ function ble/widget/.EDIT_COMMAND { builtin eval -- "$*"; }
 function ble-decode-key/bind {
   if ! ble-decode/keymap/registered "$1"; then
     ble/util/print-quoted-command "$FUNCNAME" "$@" >> "$_ble_base_run/$$.bind.delay.$1"
-    return
+    return 0
   fi
 
   local kmap=$1 keys=$2 cmd=$3
@@ -1528,7 +1528,7 @@ function ble-decode-key/bind {
 function ble-decode-key/set-timeout {
   if ! ble-decode/keymap/registered "$1"; then
     ble/util/print-quoted-command "$FUNCNAME" "$@" >> "$_ble_base_run/$$.bind.delay.$1"
-    return
+    return 0
   fi
 
   local kmap=$1 keys=$2 timeout=$3
@@ -1557,7 +1557,7 @@ function ble-decode-key/set-timeout {
 function ble-decode-key/unbind {
   if ! ble-decode/keymap/registered "$1"; then
     ble/util/print-quoted-command "$FUNCNAME" "$@" >> "$_ble_base_run/$$.bind.delay.$1"
-    return
+    return 0
   fi
 
   local kmap=$1 keys=$2
@@ -1612,7 +1612,7 @@ function ble-decode-key/dump {
       ble/util/print "# keymap $kmap"
       ble-decode-key/dump "$kmap"
     done
-    return
+    return 0
   fi
 
   local kmap=$1 tseq=$2 nseq=$3
@@ -1680,7 +1680,7 @@ function ble-decode/keymap/push {
 function ble-decode/keymap/pop {
   local count=${#_ble_decode_keymap_stack[@]}
   local last=$((count-1))
-  ble/util/assert '((last>=0))' || return
+  ble/util/assert '((last>=0))' || return 1
   _ble_decode_keymap=${_ble_decode_keymap_stack[last]}
   builtin unset -v '_ble_decode_keymap_stack[last]'
 }
@@ -1703,14 +1703,14 @@ function ble-decode-key/is-intermediate { [[ $_ble_decode_key__seq ]]; }
 _ble_decode_key_batch=()
 
 function ble-decode-key/batch/flush {
-  ((${#_ble_decode_key_batch[@]})) || return
+  ((${#_ble_decode_key_batch[@]})) || return 1
   builtin eval "local command=\${${dicthead}[_ble_decode_KCODE_BATCH_CHAR]-}"
   command=${command:2}
   if [[ $command ]]; then
     local chars; chars=("${_ble_decode_key_batch[@]}")
     _ble_decode_key_batch=()
     ble/decode/widget/call-interactively "$command" "${chars[@]}"; local ext=$?
-    ((ext!=125)) && return
+    ((ext!=125)) && return 0
   fi
 
   ble/decode/widget/call-interactively ble/widget/__batch_char__.default "${chars[@]}"; local ext=$?
@@ -1919,7 +1919,7 @@ function ble-decode-key/.invoke-partial-match {
       if [[ $command ]]; then
         local seq_save=$_ble_decode_key__seq
         ble-decode/widget/.call-keyseq; local ext=$?
-        ((ext!=125)) && return
+        ((ext!=125)) && return 0
         _ble_decode_key__seq=$seq_save # 125 の時はまた元に戻して次の試行を行う
       fi
     fi
@@ -1928,7 +1928,7 @@ function ble-decode-key/.invoke-partial-match {
     builtin eval "local command=\${${dicthead}[_ble_decode_KCODE_DEFAULT]-}"
     command=${command:2}
     ble-decode/widget/.call-keyseq; local ext=$?
-    ((ext!=125)) && return
+    ((ext!=125)) && return 0
 
     return 1
   fi
@@ -2194,7 +2194,7 @@ function ble/decode/keylog#end {
 ##   @var[in] _ble_decode_keylog_keys_enabled
 ##   @arr[in] KEYS
 function ble/decode/keylog#pop {
-  [[ $_ble_decode_keylog_keys_enabled && $_ble_decode_keylog_depth == 1 ]] || return
+  [[ $_ble_decode_keylog_keys_enabled && $_ble_decode_keylog_depth == 1 ]] || return 1
   local new_size=$((${#_ble_decode_keylog_keys[@]}-_ble_decode_keylog_keys_count))
   ((new_size<0)) && new_size=0
   _ble_decode_keylog_keys=("${_ble_decode_keylog_keys[@]::new_size}")
@@ -2220,7 +2220,7 @@ function ble/decode/charlog#end {
 ##   @var[out] ret
 function ble/decode/charlog#end-exclusive {
   ret=()
-  [[ $_ble_decode_keylog_chars_enabled ]] || return
+  [[ $_ble_decode_keylog_chars_enabled ]] || return 1
   local size=$((${#_ble_decode_keylog_chars[@]}-_ble_decode_keylog_chars_count))
   ((size>0)) && ret=("${_ble_decode_keylog_chars[@]::size}")
   _ble_decode_keylog_chars_enabled=
@@ -2442,7 +2442,7 @@ function ble/decode/cmap/.emit-bindr {
 
 _ble_decode_cmap_initialized=
 function ble/decode/cmap/initialize {
-  [[ $_ble_decode_cmap_initialized ]] && return
+  [[ $_ble_decode_cmap_initialized ]] && return 0
   _ble_decode_cmap_initialized=1
 
   local init=$_ble_base/lib/init-cmap.sh
@@ -2531,7 +2531,7 @@ _ble_decode_bind_hook=
 # ref #D0003, #D1092
 _ble_decode_bind__uvwflag=
 function ble/decode/bind/adjust-uvw {
-  [[ $_ble_decode_bind__uvwflag ]] && return
+  [[ $_ble_decode_bind__uvwflag ]] && return 0
   _ble_decode_bind__uvwflag=1
 
   # 何故か stty 設定直後には bind できない物たち
@@ -2553,7 +2553,7 @@ function ble/decode/bind/adjust-uvw {
 #   改めて束縛し直す必要がある。
 #
 function ble/base/workaround-POSIXLY_CORRECT {
-  [[ $_ble_decode_bind_state == none ]] && return
+  [[ $_ble_decode_bind_state == none ]] && return 0
   builtin bind -x '"\C-i":ble-decode/.hook 9; builtin eval -- "$_ble_decode_bind_hook"'
 }
 
@@ -2706,7 +2706,7 @@ function ble/decode/bind/unbind {
   source "$_ble_base_cache/ble-decode-bind.$_ble_bash.$_ble_decode_bind_encoding.unbind"
 }
 function ble/decode/rebind {
-  [[ $_ble_decode_bind_state == none ]] && return
+  [[ $_ble_decode_bind_state == none ]] && return 0
   ble/decode/bind/unbind
   ble/decode/bind/bind
 }
@@ -2715,7 +2715,7 @@ function ble/decode/rebind {
 # ble-bind                                                      @decode.blebind
 
 function ble-bind/.initialize-kmap {
-  [[ $kmap ]] && return
+  [[ $kmap ]] && return 0
   ble-decode/GET_BASEMAP -v kmap
   if ! ble-decode/keymap/is-keymap "$kmap"; then
     ble/util/print "ble-bind: the default keymap '$kmap' is unknown." >&2
@@ -2737,7 +2737,7 @@ ble-bind (-L|--list-widgets)
 EOF
 }
 
-function ble-bind/check-argunment {
+function ble-bind/check-argument {
   if (($3<$2)); then
     if (($2==1)); then
       ble/util/print "ble-bind: the option \`$1' requires an argument." >&2
@@ -2841,7 +2841,7 @@ function ble-bind {
       (help)
         ble-bind/option:help ;;
       (csi)
-        ble-bind/check-argunment --csi 2 "$#" || return
+        ble-bind/check-argument --csi 2 "$#" || return 1
         ble-bind/option:csi "$1" "$2"
         shift 2 ;;
       (list-widgets|list-functions)
@@ -2971,7 +2971,7 @@ function ble/decode/read-inputrc/test {
   (application)
     local ret; ble/string#tolower "$rhs"
     [[ $ret == bash || $ret == blesh ]]
-    return ;;
+    return "$?" ;;
 
   (mode)
     if [[ -o emacs ]]; then
@@ -2981,7 +2981,7 @@ function ble/decode/read-inputrc/test {
     else
       false
     fi
-    return ;;
+    return "$?" ;;
 
   (term)
     if [[ $op == '!=' ]]; then
@@ -2989,7 +2989,7 @@ function ble/decode/read-inputrc/test {
     else
       test "$TERM" "$op" "$rhs" || test "${TERM%%-*}" "$op" "$rhs"
     fi
-    return ;;
+    return "$?" ;;
 
   (version)
     local lhs_major lhs_minor
@@ -3015,12 +3015,12 @@ function ble/decode/read-inputrc/test {
     local rhs_ver=$((rhs_major*10000+rhs_minor))
     [[ $op == '=' ]] && op='=='
     let "$lhs_ver$op$rhs_ver"
-    return ;;
+    return "$?" ;;
 
   (*)
     if local ret; ble/util/read-rl-variable "$lhs"; then
       test "$ret" "$op" "$rhs"
-      return
+      return "$?"
     else
       ble/util/print "ble.sh (bind):\$if: unknown readline variable '${lhs//$q/$Q}'." >&2
       return 1
@@ -3079,6 +3079,7 @@ function ble/builtin/bind/set-keymap {
   local opt_keymap= flags=
   ble/builtin/bind/option:m "$1" &&
     _ble_builtin_bind_keymap=$opt_keymap
+  return 0
 }
 
 ## 関数 ble/builtin/bind/option:m keymap
@@ -3196,7 +3197,7 @@ function ble/builtin/bind/.initialize-keys-and-value {
   keys= value=
 
   local keyseq
-  ble/builtin/bind/.decompose-pair "$spec" || return
+  ble/builtin/bind/.decompose-pair "$spec" || return "$?"
 
   local chars
   if [[ $keyseq == \"*\" ]]; then
@@ -3257,7 +3258,7 @@ function ble/builtin/bind/option:r {
   ble/decode/cmap/decode-chars "${chars[@]}"
 
   local kmap
-  ble/builtin/bind/.initialize-kmap "$opt_keymap" || return
+  ble/builtin/bind/.initialize-kmap "$opt_keymap" || return 1
   ble-decode-key/unbind "$kmap" "${keys[*]}"
 }
 
@@ -3367,14 +3368,14 @@ function ble/builtin/bind/option:- {
       case $variable in
       (keymap)
         ble/builtin/bind/set-keymap "$value"
-        return ;;
+        return 0 ;;
       (editing-mode)
         _ble_builtin_bind_keymap= ;;
       esac
 
       builtin bind "$arg"
     fi
-    return
+    return 0
   fi
 
   local keys value kmap
@@ -3499,7 +3500,7 @@ function ble/builtin/bind/.process {
 # inputrc の読み込み
 _ble_builtin_bind_inputrc_done=
 function ble/builtin/bind/initialize-inputrc {
-  [[ $_ble_builtin_bind_inputrc_done ]] && return
+  [[ $_ble_builtin_bind_inputrc_done ]] && return 0
   _ble_builtin_bind_inputrc_done=1
   local inputrc=${INPUTRC:-$HOME/.inputrc}
   [[ -e $inputrc ]] && ble/decode/read-inputrc "$inputrc"
@@ -3617,7 +3618,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
 }
 function ble/builtin/bind/read-user-settings {
   if [[ $_ble_decode_bind_state == none ]]; then
-    [[ $_ble_builtin_bind_user_settings_loaded ]] && return
+    [[ $_ble_builtin_bind_user_settings_loaded ]] && return 0
     _ble_builtin_bind_user_settings_loaded=1
     builtin bind # inputrc を読ませる
     local settings
@@ -3643,7 +3644,7 @@ function bind { ble/builtin/bind "$@"; }
 
 _ble_decode_initialized=
 function ble/decode/initialize {
-  [[ $_ble_decode_initialized ]] && return
+  [[ $_ble_decode_initialized ]] && return 0
   _ble_decode_initialized=1
   ble/decode/cmap/initialize
   ble/builtin/bind/read-user-settings
@@ -3667,7 +3668,7 @@ function ble/decode/attach {
     return 1
   fi
 
-  [[ $_ble_decode_bind_state != none ]] && return
+  [[ $_ble_decode_bind_state != none ]] && return 0
   ble/util/save-editing-mode _ble_decode_bind_state
   [[ $_ble_decode_bind_state == none ]] && return 1
 
@@ -3691,7 +3692,7 @@ function ble/decode/attach {
 }
 
 function ble/decode/detach {
-  [[ $_ble_decode_bind_state != none ]] || return
+  [[ $_ble_decode_bind_state != none ]] || return 1
 
   local current_editing_mode=
   ble/util/save-editing-mode current_editing_mode
