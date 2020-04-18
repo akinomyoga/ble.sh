@@ -679,7 +679,7 @@ function ble-edit/prompt/.instantiate {
 }
 
 function ble-edit/prompt/update/.has-prompt_command {
-  declare -p PROMPT_COMMANDS &>/dev/null || [[ $PROMPT_COMMAND ]]
+  ((${#PROMPT_COMMANDS[@]})) || [[ $PROMPT_COMMAND ]]
 }
 function ble-edit/prompt/update/.eval-prompt_command.1 {
   # return 等と記述されていた時対策として関数内評価。
@@ -688,7 +688,7 @@ function ble-edit/prompt/update/.eval-prompt_command.1 {
   builtin eval -- "$PROMPT_COMMAND"
 }
 function ble-edit/prompt/update/.eval-prompt_command {
-  if declare -p PROMPT_COMMANDS &>/dev/null; then
+  if ((${#PROMPT_COMMANDS[@]})); then
     local PROMPT_COMMAND
     for PROMPT_COMMAND in "${PROMPT_COMMANDS[@]}"; do
       ble-edit/prompt/update/.eval-prompt_command.1

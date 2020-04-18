@@ -19,7 +19,7 @@
 - syntax: allow unquoted `[!` and `[^` in `simple-word` (reported by cmplstofB) `#D1303` 1efe833
 - util (`ble/util/print-global-definitions`): support arrays and unset variables (test-util) 6e85f1c
 - util (`ble/util/cat`): support NUL and multiple files (test-util) d19a9af
-- edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` e97a858
+- edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` e97a858 `#D1338` 0000000
 - syntax: support confusing parameter expansions like `${#@}`, etc. `#D1330` b7b42eb
 - contrib: add contrib for user settings `#D1335` f290115
 - syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 04da4dd
@@ -80,7 +80,7 @@
 - edit: fix a bug that `set +H` is cancelled on command execution `#D1332` 02bdf4e
 - syntax (`ble/syntax/parse/shift`): fix a bug of shift skip in nested words `#D1333` 65fbba0
 - global: work around Bash-4.4 `return` in trap handlers `#D1334` aa09d15
-- util (`ble-stackdump`): fix a shift of line numbers `#D1337` 0000000
+- util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f
 
 ## Compatibility
 
