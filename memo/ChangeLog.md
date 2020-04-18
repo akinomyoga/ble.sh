@@ -21,6 +21,8 @@
 - util (`ble/util/cat`): support NUL and multiple files (test-util) d19a9af
 - edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` e97a858
 - syntax: support confusing parameter expansions like `${#@}`, etc. `#D1330` b7b42eb
+- contrib: add contrib for user settings `#D1335` f290115
+- syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 0000000
 
 ## Changes
 
@@ -77,7 +79,7 @@
 - util (has-glob-pattern): fix abort in subshells (test-util) `#D1326` dc292a2
 - edit: fix a bug that `set +H` is cancelled on command execution `#D1332` 02bdf4e
 - syntax (`ble/syntax/parse/shift`): fix a bug of shift skip in nested words `#D1333` 65fbba0
-- global: work around Bash-4.4 `return` in trap handlers 0000000
+- global: work around Bash-4.4 `return` in trap handlers `#D1334` aa09d15
 
 ## Compatibility
 

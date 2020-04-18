@@ -2224,7 +2224,11 @@ function ble/syntax:bash/ctx-param {
 
   local rex='##?|%%?|:?[-?=+]|:|/[/#%]?'
   ((_ble_bash>=40000)) && rex=$rex'|,,?|\^\^?'
-  ((_ble_bash>=40400)) && rex=$rex'|@[QEPAa]?'
+  if ((_ble_bash>=50100)); then
+    rex=$rex'|@[QEPAaUuLK]?'
+  elif ((_ble_bash>=40400)); then
+    rex=$rex'|@[QEPAa]?'
+  fi
   rex='^('$rex')'
   if [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=CTX_PARAM,

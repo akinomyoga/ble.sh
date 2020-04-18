@@ -1,4 +1,4 @@
-[Languages: **English** | [日本語](README-ja_JP.md) (Japanese) ]
+[ Languages: **English** | [日本語](README-ja_JP.md) (Japanese) ]
 # ble.sh
 
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts which replaces the default GNU Readline.
@@ -124,7 +124,10 @@ If you want to change the default path of the init script, you can add the optio
 # 2 Basic settings
 
 Here some of the settings for `~/.blerc` are picked up.
-For more settings please check the template [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc).
+You can find useful settings also in [Q\&A](https://github.com/akinomyoga/ble.sh/wiki/Q&A),
+[Recipes](https://github.com/akinomyoga/ble.sh/wiki/Recipes)
+and [`contrib` repository](https://github.com/akinomyoga/blesh-contrib).
+The complete list of setting items can be found in the template [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc).
 For detailed explanations please refer to [Manual](https://github.com/akinomyoga/ble.sh/wiki).
 
 ## Vim mode
