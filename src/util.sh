@@ -1900,13 +1900,14 @@ function ble-import {
 ##     スタック情報の前に表示するタイトルを指定します。
 ##
 _ble_util_stackdump_title=stackdump
+_ble_util_stackdump_start=
 function ble/util/stackdump {
-  ((bleopt_internal_stackdump_enabled)) || return
-  local message=$1
-  local i nl=$'\n'
-  local message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
-  for ((i=1;i<${#FUNCNAME[*]};i++)); do
-    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
+  ((bleopt_internal_stackdump_enabled)) || return 1
+  local message=$1 nl=$'\n'
+  message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
+  local i i0=${_ble_util_stackdump_start:-1} iN=${#FUNCNAME[*]}
+  for ((i=i0;i<iN;i++)); do
+    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i-1]} (${FUNCNAME[i]})$nl"
   done
   builtin echo -n "$message" >&2
 }
@@ -1923,6 +1924,7 @@ function ble-stackdump {
     return 0
   fi
 
+  local _ble_util_stackdump_start=2
   ble/util/stackdump "${args[*]}"
 }
 
