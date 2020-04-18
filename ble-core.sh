@@ -349,7 +349,7 @@ function ble-stackdump {
   local i nl=$'\n'
   local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
-    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
+    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i-1]} (${FUNCNAME[i]})$nl"
   done
   builtin echo -n "$message" >&2
 }
