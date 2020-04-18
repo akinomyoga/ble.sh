@@ -3265,6 +3265,8 @@ function ble-edit/bind/execute-edit-command {
 
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
+  local N=${#_ble_edit_str}
+  ((READLINE_POINT<0?READLINE_POINT=0:(READLINE_POINT>N&&(READLINE_POINT=N))))
   ((READLINE_POINT!=_ble_edit_ind)) &&
     .ble-edit.goto-char "$READLINE_POINT"
 }
