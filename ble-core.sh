@@ -1242,12 +1242,12 @@ function ble-import {
 
 _ble_stackdump_title=stackdump
 function ble-stackdump {
-  ((bleopt_stackdump_enabled)) || return
+  ((bleopt_stackdump_enabled)) || return 1
   # builtin echo "${BASH_SOURCE[1]} (${FUNCNAME[1]}): assertion failure $*" >&2
   local i nl=$'\n'
   local message="$_ble_term_sgr0$_ble_stackdump_title: $*$nl"
   for ((i=1;i<${#FUNCNAME[*]};i++)); do
-    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]})$nl"
+    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i-1]} (${FUNCNAME[i]})$nl"
   done
   builtin echo -n "$message" >&2
 }
