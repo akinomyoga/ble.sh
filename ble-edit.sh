@@ -7271,6 +7271,9 @@ function ble/widget/.EDIT_COMMAND {
   [[ $READLINE_LINE != "$_ble_edit_str" ]] &&
     _ble_edit_str.reset-and-check-dirty "$READLINE_LINE"
   ((_ble_edit_ind=READLINE_POINT))
+
+  local N=${#_ble_edit_str}
+  ((_ble_edit_ind<0?_ble_edit_ind=0:(_ble_edit_ind>N&&(_ble_edit_ind=N))))
 }
 
 ## ble-decode.sh 用の設定
