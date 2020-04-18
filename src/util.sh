@@ -2742,14 +2742,15 @@ function ble-import {
 ##     スタック情報の前に表示するタイトルを指定します。
 ##
 _ble_util_stackdump_title=stackdump
+_ble_util_stackdump_start=
 function ble/util/stackdump {
   ((bleopt_internal_stackdump_enabled)) || return 1
-  local message=$1
-  local i nl=$'\n'
-  local message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
-  local iarg=$BASH_ARGC args= extdebug=
+  local message=$1 nl=$'\n'
+  message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
+  local extdebug=1 iarg=$BASH_ARGC args=
   shopt -q extdebug 2>/dev/null && extdebug=1
-  for ((i=1;i<${#FUNCNAME[*]};i++)); do
+  local i i0=${_ble_util_stackdump_start:-1} iN=${#FUNCNAME[*]}
+  for ((i=i0;i<iN;i++)); do
     if [[ $extdebug ]] && ((BASH_ARGC[i])); then
       args=("${BASH_ARGV[@]:iarg:BASH_ARGC[i]}")
       ble/array#reverse args
@@ -2758,7 +2759,7 @@ function ble/util/stackdump {
     else
       args=
     fi
-    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i]} (${FUNCNAME[i]}$args)$nl"
+    message="$message  @ ${BASH_SOURCE[i]}:${BASH_LINENO[i-1]} (${FUNCNAME[i]}$args)$nl"
   done
   ble/util/put "$message"
 }
@@ -2775,6 +2776,7 @@ function ble-stackdump {
     return 0
   fi
 
+  local _ble_util_stackdump_start=2
   ble/util/stackdump "${args[*]}"
 }
 
