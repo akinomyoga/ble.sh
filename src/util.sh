@@ -3017,7 +3017,11 @@ else
   }
 fi
 
+#%if target == "osh"
+function ble/fd#alloc/.close { local fd=$1; exec {fd}<&-; }
+#%else
 function ble/fd#alloc/.close { builtin eval "exec $1<&-"; } # disable=#D2164
+#%end
 if ((30100<=_ble_bash&&_ble_bash<30200)); then
   function ble/fd#alloc/.close/.upgrade {
     if ! { [[ $_ble_util_fd_null ]] && ((1)) >&"$_ble_util_fd_null"; } 2>/dev/null; then
