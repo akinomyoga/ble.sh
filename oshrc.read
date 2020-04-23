@@ -1,0 +1,33 @@
+#!/usr/bin/env osh
+# -*- mode: sh; mode: sh-bash; -*-
+
+#shopt -s parse_dynamic_arith
+#shopt -s compat_array
+shopt -s eval_unsafe_arith
+HISTFILE=$HOME/.osh_history
+
+source out/ble.osh --norc
+
+# Turn off vbell (vbell outputs job messages in Oil)
+bleopt edit_vbell=
+bleopt decode_error_char_vbell=
+bleopt decode_error_cseq_vbell=
+bleopt decode_error_kseq_vbell=
+
+# WA somehow rps1 is enabled in Oil
+bleopt prompt_rps1=
+
+# minimal initialization
+_ble_decode_bind_state=emacs
+ble/prompt/initialize
+
+# initialize LINES and COLUMNS
+if tput lines &>/dev/null; then
+  LINES=$(tput lines)
+  COLUMNS=$(tput cols)
+fi
+
+PS1='[\e[32m\u@\h\e[m \W]\$ '
+REPLY='(fail)'
+read -ep "$PS1"
+echo "REPLY='$REPLY'"
