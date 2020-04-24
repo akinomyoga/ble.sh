@@ -27,7 +27,10 @@ function ble/util/assign {
 }
 
 if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LANG=C read -t 0; }
+  function ble/util/is-stdin-ready {
+    local IFS= LC_ALL= LC_CTYPE=C
+    read -t 0
+  } 2>/dev/null
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -286,9 +289,9 @@ function ble/string#split {
 # 正規表現は _ble_bash>=30000
 _ble_rex_isprint='^[ -~]+'
 function ble/util/isprint+ {
-  local LC_COLLATE=C # for cygwin collation
+  local LC_ALL= LC_COLLATE=C # for cygwin collation
   [[ $1 =~ $_ble_rex_isprint ]]
-}
+} 2>/dev/null
 
 ## 関数 ble-autoload scriptfile functions...
 ##   関数が定義されたファイルを自動で読み取る設定を行います。
