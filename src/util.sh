@@ -540,6 +540,7 @@ function ble/string#last-index-of {
 _ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
 _ble_util_string_upper_list=ABCDEFGHIJKLMNOPQRSTUVWXYZ
 function ble/string#toggle-case {
+  local LC_ALL= LC_COLLATE=C
   local text=$* ch i
   local -a buff
   for ((i=0;i<${#text};i++)); do
@@ -554,7 +555,7 @@ function ble/string#toggle-case {
     ble/array#push buff "$ch"
   done
   IFS= eval 'ret="${buff[*]-}"'
-}
+} 2>/dev/null
 ## 関数 ble/string#tolower text...
 ## 関数 ble/string#toupper text...
 ##   @var[out] ret
@@ -562,8 +563,8 @@ if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret="${*,,}"; }
   function ble/string#toupper { ret="${*^^}"; }
 else
-  function ble/string#tolower {
-    local text="$*"
+  function ble/string#tolower.impl {
+    local i text="$*"
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
@@ -575,8 +576,8 @@ else
     done
     IFS= eval 'ret="${buff[*]-}"'
   }
-  function ble/string#toupper {
-    local text="$*"
+  function ble/string#toupper.impl {
+    local i text="$*"
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
       ch=${text:i:1}
@@ -588,6 +589,14 @@ else
     done
     IFS= eval 'ret="${buff[*]-}"'
   }
+  function ble/string#tolower {
+    local LC_ALL= LC_COLLATE=C
+    ble/string#tolower.impl "$@"
+  } 2>/dev/null
+  function ble/string#toupper {
+    local LC_ALL= LC_COLLATE=C
+    ble/string#toupper.impl "$@" 2>/dev/null
+  } 2>/dev/null
 fi
 
 ## 関数 ble/string#trim text...
@@ -927,7 +936,13 @@ function ble/util/type {
 }
 
 if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LC_ALL=C builtin read -t 0; } &>/dev/null
+  function ble/util/is-stdin-ready { IFS= LC_ALL= LC_CTYPE=C builtin read -t 0; } &>/dev/null
+elif ((_ble_bash>=40000)); then
+  # #D1341 対策
+  function ble/util/is-stdin-ready {
+    local IFS= LC_ALL= LC_CTYPE=C
+    builtin read -t 0
+  } 2>/dev/null
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -2926,7 +2941,7 @@ elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   declare -A _ble_util_s2c_table
   _ble_util_s2c_table_enabled=1
   function ble/util/s2c {
-    [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+    [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
       ble/util/.cache/update-locale
 
     local s=${1:$2:1}
@@ -2948,9 +2963,15 @@ else
   # bash-3 では read -n 1 を用いてバイト単位で読み取れる。これを利用する。
   function ble/util/s2c {
     local s=${1:$2:1}
-    if [[ $s == [''-''] ]]; then
-      ble/util/sprintf ret %d "'$s"
-      return
+    if [[ $s == [$'\x01'-$'\x7F'] ]]; then
+      if [[ $s == $'\x7F' ]]; then
+        # Note: bash-3.0 では printf %d "'^?" とすると 0 になってしまう。
+        #   printf %d \'^? であれば問題なく 127 になる。
+        ret=127
+      else
+        ble/util/sprintf ret %d "'$s"
+      fi
+      return 0
     fi
 
     local bytes byte
@@ -3009,7 +3030,7 @@ else
     fi
 
     local bytes i iN seq=
-    ble/encoding:UTF-8/c2b "$1"
+    ble/encoding:"$_ble_util_locale_encoding"/c2b "$1"
     for ((i=0,iN=${#bytes[@]};i<iN;i++)); do
       seq="$seq\\x${_ble_text_hexmap[bytes[i]&0xFF]}"
     done
@@ -3022,7 +3043,7 @@ _ble_util_c2s_table=()
 ## 関数 ble/util/c2s char
 ##   @var[out] ret
 function ble/util/c2s {
-  [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+  [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
     ble/util/.cache/update-locale
 
   ret=${_ble_util_c2s_table[$1]-}
@@ -3045,21 +3066,33 @@ function ble/util/c2bc {
 ##
 ##  使い方
 ##
-##    [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+##    [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
 ##      ble/util/.cache/update-locale
 ##
-_ble_util_cache_locale=
-_ble_util_cache_ctype=
+_ble_util_locale_triple=
+_ble_util_locale_ctype=
+_ble_util_locale_encoding=UTF-8
 function ble/util/.cache/update-locale {
-  _ble_util_cache_locale=$LC_ALL:$LC_CTYPE:$LANG
+  _ble_util_locale_triple=$LC_ALL:$LC_CTYPE:$LANG
 
   # clear cache if LC_CTYPE is changed
   local ret; ble/string#tolower "${LC_ALL:-${LC_CTYPE:-$LANG}}"
-  if [[ $_ble_util_cache_ctype != "$ret" ]]; then
-    _ble_util_cache_ctype=$ret
+  if [[ $_ble_util_locale_ctype != "$ret" ]]; then
+    _ble_util_locale_ctype=$ret
     _ble_util_c2s_table=()
     [[ $_ble_util_s2c_table_enabled ]] &&
       _ble_util_s2c_table=()
+
+    _ble_util_locale_encoding=C
+    if local rex='\.([^@]+)'; [[ $_ble_util_locale_ctype =~ $rex ]]; then
+      local enc=${BASH_REMATCH[1]}
+      if [[ $enc == utf-8 || $enc == utf8 ]]; then
+        enc=UTF-8
+      fi
+
+      ble/is-function "ble/encoding:$enc/b2c" &&
+        _ble_util_locale_encoding=$enc
+    fi
   fi
 }
 
@@ -3221,5 +3254,7 @@ function ble/encoding:C/c2b {
 }
 
 function ble/util/is-unicode-output {
-  [[ ${LC_ALL:-${LC_CTYPE:-$LANG}} == *.UTF-8 ]]
+  [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+    ble/util/.cache/update-locale
+  [[ $_ble_util_locale_encoding == UTF-8 ]]
 }
