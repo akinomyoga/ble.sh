@@ -837,10 +837,11 @@ function ble-edit/draw/trace/process-esc-sequence {
 ##     それ以外はカーソル位置の変更は行いません。
 ##
 function ble-edit/draw/trace {
+  local LC_ALL= LC_COLLATE=C
   # cygwin では LC_COLLATE=C にしないと
   # 正規表現の range expression が期待通りに動かない。
-  LC_COLLATE=C ble-edit/draw/trace.impl "$@" &>/dev/null
-}
+  ble-edit/draw/trace.impl "$@"
+} 2>/dev/null
 function ble-edit/draw/trace.impl {
   local text=$1
 

@@ -330,6 +330,7 @@ function ble/string#last-index-of {
 _ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
 _ble_util_string_upper_list=ABCDEFGHIJKLMNOPQRSTUVWXYZ
 function ble/string#toggle-case {
+  local LC_ALL= LC_COLLATE=C
   local text=$*
   local -a buff ch
   for ((i=0;i<${#text};i++)); do
@@ -344,12 +345,13 @@ function ble/string#toggle-case {
     ble/array#push buff "$ch"
   done
   IFS= eval 'ret="${buff[*]-}"'
-}
+} 2>/dev/null
 if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret=${*,,}; }
   function ble/string#toupper { ret=${*^^}; }
 else
   function ble/string#tolower {
+    local LC_ALL= LC_COLLATE=C
     local text=$*
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
@@ -361,8 +363,9 @@ else
       ble/array#push buff "$ch"
     done
     IFS= eval 'ret="${buff[*]-}"'
-  }
+  } 2>/dev/null
   function ble/string#toupper {
+    local LC_ALL= LC_COLLATE=C
     local text=$*
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
@@ -374,7 +377,7 @@ else
       ble/array#push buff "$ch"
     done
     IFS= eval 'ret="${buff[*]-}"'
-  }
+  } 2>/dev/null
 fi
 
 function ble/string#escape-for-sed-regex {
@@ -570,7 +573,10 @@ else
 fi
 
 if ((_ble_bash>=40000)); then
-  function ble/util/is-stdin-ready { IFS= LC_ALL=C builtin read -t 0; } &>/dev/null
+  function ble/util/is-stdin-ready {
+    local IFS= LC_ALL= LC_CTYPE=C
+    builtin read -t 0
+  } 2>/dev/null
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -1666,7 +1672,7 @@ elif ((_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   declare -A _ble_text_s2c_table
   _ble_text_s2c_table_enabled=1
   function ble/util/s2c {
-    [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+    [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
       ble/util/.cache/update-locale
 
     local s=${1:$2:1}
@@ -1718,7 +1724,7 @@ if ((_ble_bash>=40200)); then
   }
   if ble/util/.has-bashbug-printf-uffff; then
     function ble/util/c2s-impl {
-      if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_cache_ctype == *.utf-8 || $_ble_util_cache_ctype == *.utf8 ]]; then
+      if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_locale_encoding == UTF-8 ]]; then
         builtin printf -v ret '\\x%02x' $((0xE0|$1>>12&0x0F)) $((0x80|$1>>6&0x3F)) $((0x80|$1&0x3F))
       else
         builtin printf -v ret '\\U%08x' "$1"
@@ -1746,7 +1752,7 @@ else
     fi
 
     local bytes i iN seq=
-    ble-text-c2b+UTF-8 "$1"
+    "ble-text-c2b+$_ble_util_locale_encoding" "$1"
     for ((i=0,iN=${#bytes[@]};i<iN;i++)); do
       seq="$seq\\x${_ble_text_hexmap[bytes[i]&0xFF]}"
     done
@@ -1757,7 +1763,7 @@ fi
 # どうもキャッシュするのが一番速い様だ
 _ble_text_c2s_table=()
 function ble/util/c2s {
-  [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+  [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
     ble/util/.cache/update-locale
 
   ret=${_ble_text_c2s_table[$1]-}
@@ -1780,21 +1786,33 @@ function ble-text-c2bc {
 ##
 ##  使い方
 ##
-##    [[ $_ble_util_cache_locale != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
+##    [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
 ##      ble/util/.cache/update-locale
 ##
-_ble_util_cache_locale=
-_ble_util_cache_ctype=
+_ble_util_locale_triple=
+_ble_util_locale_ctype=
+_ble_util_locale_encoding=UTF-8
 function ble/util/.cache/update-locale {
-  _ble_util_cache_locale=$LC_ALL:$LC_CTYPE:$LANG
+  _ble_util_locale_triple=$LC_ALL:$LC_CTYPE:$LANG
 
   # clear cache if LC_CTYPE is changed
   local ret; ble/string#tolower "${LC_ALL:-${LC_CTYPE:-$LANG}}"
-  if [[ $_ble_util_cache_ctype != $ret ]]; then
-    _ble_util_cache_ctype=$ret
+  if [[ $_ble_util_locale_ctype != $ret ]]; then
+    _ble_util_locale_ctype=$ret
     _ble_text_c2s_table=()
     [[ $_ble_text_s2c_table_enabled ]] &&
       _ble_text_s2c_table=()
+
+    _ble_util_locale_encoding=C
+    if local rex='\.([^@]+)'; [[ $_ble_util_locale_ctype =~ $rex ]]; then
+      local enc=${BASH_REMATCH[1]}
+      if [[ $enc == utf-8 || $enc == utf8 ]]; then
+        enc=UTF-8
+      fi
+
+      ble/is-function "ble-text-b2c+$enc" &&
+        _ble_util_locale_encoding=$enc
+    fi
   fi
 }
 
