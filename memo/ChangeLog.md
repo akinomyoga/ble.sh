@@ -23,7 +23,7 @@
 - syntax: support confusing parameter expansions like `${#@}`, etc. `#D1330` b7b42eb
 - contrib: add contrib for user settings `#D1335` f290115
 - syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 04da4dd
-- main: add an option `--test` `#D1340` 0000000
+- main: add an option `--test` `#D1340` 1239721
 
 ## Changes
 
@@ -83,6 +83,7 @@
 - global: work around Bash-4.4 `return` in trap handlers `#D1334` aa09d15
 - util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f
 - edit (`ble-bind -x`): check range of `READLINE_{POINT,MARK}` `#D1339` efe1e81
+- util (`ble/string#to{upper,lower}`): work around `LC_COLLATE=en_US.utf8` (test-util) `#D1341` 0000000
 
 ## Compatibility
 
@@ -96,10 +97,10 @@
 - msys1: support MSYS1 `#D1272` 630d659
   - msys1: work around missing named pipes in MSYS1 `#D1273` 6f6c2e5
 - term: support contra `SPD` `#D1288` 1e65f2c
-- decode: work around Bash-4.1 bug that locale not applied with `LC_CTYPE=C eval command` b2c7d1c
-- util (`ble/variable#get-attr`): fix a bug that attributes are not obtained in Bash <= 4.3 b2c7d1c
-- decode: work around Bash-3.1 bug of `declare -f` rejecting special characters in function names b2c7d1c
-- edit (`ble/widget/bracketed-paste`): fix error messages on `paste_end` in older version of Bash b2c7d1c
+- decode: work around Bash-4.1 bug that locale not applied with `LC_CTYPE=C eval command` (test-util) b2c7d1c
+- util (`ble/variable#get-attr`): fix a bug that attributes are not obtained in Bash <= 4.3 (test-util) b2c7d1c
+- decode: work around Bash-3.1 bug of `declare -f` rejecting special characters in function names (test-util) b2c7d1c
+- edit (`ble/widget/bracketed-paste`): fix error messages on `paste_end` in older version of Bash (test-util) b2c7d1c
 - decode: work around Bash-4.1 arithmetic bug of array subscripts evaluated in discarded branches `#D1320` 557b774
 - complete: follow Bash-5.1 change of arithmetic literal `10#` `#D1322` 557b774
 - decode: fix a bug of broken cmap cache found in ble-0.3 `#D1327` 16b56bf

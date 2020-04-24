@@ -574,7 +574,7 @@ function ble-decode/.check-abort {
 if ((_ble_bash>=40400)); then
   function ble/decode/nonblocking-read {
     local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
-    local LC_CTYPE=C TMOUT= IFS=
+    local LC_ALL= LC_CTYPE=C TMOUT= IFS=
     local -a data=()
     local line buff ext
     while ((loop--)); do
@@ -597,11 +597,11 @@ if ((_ble_bash>=40400)); then
       [[ $line ]] && printf %s "$line"
     } | ble/bin/od -A n -t u1 -v'
     ble/string#split-words ret "$ret"
-  }
+  } 2>/dev/null # LC_CTYPE=C
 elif ((_ble_bash>=40000)); then
   function ble/decode/nonblocking-read {
     local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
-    local LC_CTYPE=C TMOUT= IFS=
+    local LC_ALL= LC_CTYPE=C TMOUT= IFS=
     local -a data=()
     local line buff
     while ((loop--)); do
@@ -620,7 +620,7 @@ elif ((_ble_bash>=40000)); then
       [[ $line ]] && printf %s "$line"
     } | ble/bin/od -A n -t u1 -v'
     ble/string#split-words ret "$ret"
-  }
+  } 2>/dev/null # LC_CTYPE=C
 fi
 
 function ble-decode/.hook {

@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 746
+ble/test/start-section 'util' 841
 
 # bleopt
 
@@ -668,6 +668,13 @@ function is-global() (readonly "$1"; is-global/test "$1")
   ble/test 'ble/string#toupper     +aBc' ret=+ABC
   ble/test 'ble/string#capitalize  +aBc' ret=+Abc
   ble/test 'ble/string#capitalize  "hello world"' ret='Hello World'
+
+  LC_ALL=en_US.utf8
+  ble/test 'ble/string#toggle-case +aBc' ret=+AbC
+  ble/test 'ble/string#tolower     +aBc' ret=+abc
+  ble/test 'ble/string#toupper     +aBc' ret=+ABC
+  ble/test 'ble/string#capitalize  +aBc' ret=+Abc
+  ble/test 'ble/string#capitalize  "hello world"' ret='Hello World'
 )
 
 # ble/string#{trim,ltrim,rtrim}
@@ -793,6 +800,11 @@ function is-global() (readonly "$1"; is-global/test "$1")
   ble/test 'ble/util/strlen あいう' ret=9
   ble/test 'ble/util/strlen aα' ret=3
   ble/test 'ble/util/strlen aαあ' ret=6
+
+  LC_ALL=en_US.utf8
+  ble/test 'ble/util/strlen a' ret=1
+  ble/test 'ble/util/strlen α' ret=2
+  ble/test 'ble/util/strlen あ' ret=3
 )
 
 # ble/util/substr
@@ -1572,9 +1584,42 @@ ble/test ble/util/is-running-in-subshell exit=1
 # ble/term/leave
 # ble/term/initialize
 # ble/term/finalize
+
 # ble/util/s2c
 # ble/util/c2s
-# ble/util/c2s.cached
+(
+  ble/test $'ble/util/s2c "\n"' ret=10
+  ble/test 'ble/util/c2s 10' ret=$'\n'
+  ble/test $'ble/util/s2c "\x1b"' ret=27
+  ble/test 'ble/util/c2s 27' ret=$'\x1b'
+  ble/test $'ble/util/s2c "\x1F"' ret=31
+  ble/test 'ble/util/c2s 31' ret=$'\x1F'
+  c=$'\x7F' ble/test 'ble/util/s2c $c' ret=127 # bash-3.0 bug WA
+  ble/test 'ble/util/c2s 127' ret=$'\x7F'
+  ble/test 'ble/util/s2c " "' ret=32
+  ble/test 'ble/util/c2s 32' ret=' '
+  ble/test 'ble/util/s2c a' ret=97
+  ble/test 'ble/util/c2s 97' ret=a
+  ble/test 'ble/util/s2c μ' ret=956
+  ble/test 'ble/util/c2s 956' ret=μ
+  ble/test 'ble/util/s2c あ' ret=12354
+  ble/test 'ble/util/c2s 12354' ret=あ
+
+  ble/test 'ble/util/s2c' ret=0
+  ble/test 'ble/util/s2c abc' ret=97
+  ble/test 'ble/util/s2c μν' ret=956
+  ble/test 'ble/util/s2c あいう' ret=12354
+
+  ble/test 'ble/util/c2s.cached 32' ret=' '
+  ble/test 'ble/util/c2s.cached 97' ret=a
+  ble/test 'ble/util/c2s.cached 956' ret=μ
+  ble/test 'ble/util/c2s.cached 12354' ret=あ
+
+  LANG=C
+  ble/test 'ble/util/c2s 97' ret=a
+  ble/test 'ble/util/c2s 956; [[ $ret != μ ]]'
+  ble/test 'ble/util/c2s 12354; [[ $ret != あ ]]'
+)
 # ble/util/chars2
 # ble/util/c2bc
 # ble/util/s2chars
@@ -1585,6 +1630,28 @@ ble/test ble/util/is-running-in-subshell exit=1
 # ble/encoding:UTF-8/c2b
 # ble/encoding:C/b2c
 # ble/encoding:C/c2b
+
 # ble/util/is-unicode-output
+(
+  clear-locale() { LC_ALL= LANG= LC_CTYPE=; }
+
+  for lang in {C,en_US,ja{_JP,}}.{UTF-8,utf8} ja_JP.{utf8,UTF-8}@cjk{wide,narrow,single}; do
+    clear-locale
+    ble/test "LANG=$lang; ble/util/is-unicode-output"
+    clear-locale
+    ble/test "LANG=C LC_CTYPE=$lang; ble/util/is-unicode-output"
+    clear-locale
+    ble/test "LC_CTYPE=C LANG=C LC_ALL=$lang; ble/util/is-unicode-output"
+  done
+
+  for lang in '' C POSIX UTF-8 utf8 ja_JP.eucJP; do
+    clear-locale
+    ble/test "LANG=$lang; ble/util/is-unicode-output" exit=1
+    clear-locale
+    ble/test "LANG=C LC_CTYPE=$lang; ble/util/is-unicode-output" exit=1
+    clear-locale
+    ble/test "LC_CTYPE=C LANG=C LC_ALL=$lang; ble/util/is-unicode-output" exit=1
+  done
+)
 
 ble/test/end-section

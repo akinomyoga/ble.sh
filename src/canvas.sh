@@ -1017,13 +1017,15 @@ function ble/canvas/trace/.impl {
 function ble/canvas/trace.draw {
   # cygwin では LC_COLLATE=C にしないと
   # 正規表現の range expression が期待通りに動かない。
-  LC_ALL= LC_COLLATE=C ble/canvas/trace/.impl "$@"
-} &>/dev/null # Note: suppress LC_COLLATE errors #D1205
+  local LC_ALL= LC_COLLATE=C
+  ble/canvas/trace/.impl "$@"
+} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205, #D1341
 function ble/canvas/trace {
+  local LC_ALL= LC_COLLATE=C
   local -a DRAW_BUFF=()
-  LC_ALL= LC_COLLATE=C ble/canvas/trace/.impl "$@"
+  ble/canvas/trace/.impl "$@"
   ble/canvas/sflush.draw # -> ret
-} &>/dev/null # Note: suppress LC_COLLATE errors #D1205
+} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205, #D1341
 
 #------------------------------------------------------------------------------
 # ble/canvas/construct-text
@@ -1159,9 +1161,10 @@ function ble/canvas/trace-text/.impl {
   [[ ! $flag_overflow ]]
 }
 function ble/canvas/trace-text {
-  # Note: suppress LC_COLLATE errors #D1205 #D1262
-  LC_ALL= LC_COLLATE=C ble/canvas/trace-text/.impl "$@" 2>/dev/null
-}
+  # Note: suppress LC_COLLATE errors #D1205 #D1262 #1341
+  local LC_ALL= LC_COLLATE=C
+  ble/canvas/trace-text/.impl "$@"
+} 2>/dev/null
 
 #------------------------------------------------------------------------------
 # ble/textmap
