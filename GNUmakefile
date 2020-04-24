@@ -37,7 +37,7 @@ ble-form.sh:
 
 outfiles+=$(OUTDIR)/ble.sh
 -include $(OUTDIR)/ble.dep
-$(OUTDIR)/ble.sh: ble.pp Makefile | $(OUTDIR)
+$(OUTDIR)/ble.sh: ble.pp GNUmakefile | $(OUTDIR)
 	DEPENDENCIES_PHONY=1 DEPENDENCIES_OUTPUT=$(@:%.sh=%.dep) DEPENDENCIES_TARGET=$@ FULLVER=$(FULLVER) \
 	  $(MWGPP) $< >/dev/null
 
@@ -69,6 +69,8 @@ outfiles += $(OUTDIR)/lib/core-test.sh
 outfiles += $(OUTDIR)/lib/core-edit.ignoreeof-messages.txt
 outfiles += $(OUTDIR)/lib/vim-surround.sh
 outfiles += $(OUTDIR)/lib/vim-arpeggio.sh
+outfiles += $(OUTDIR)/lib/test-main.sh
+outfiles += $(OUTDIR)/lib/test-util.sh
 $(OUTDIR)/lib/%.sh: lib/%.sh | $(OUTDIR)/lib
 	cp -p $< $@
 $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib
@@ -96,7 +98,10 @@ $(OUTDIR)/contrib/%.bash: contrib/%.bash | contrib/.git $(OUTDIR)/contrib
 $(outdirs):
 	mkdir -p $@
 
-all: contrib/.git $(outfiles)
+build: contrib/.git $(outfiles)
+.PHONY: build
+
+all: build
 
 #------------------------------------------------------------------------------
 # target "install"
@@ -132,14 +137,16 @@ dist.date:
 	cd .. && tar cavf "$$(date +ble.%Y%m%d.tar.xz)" ./ble $(dist_excludes)
 .PHONY: dist.date
 
-list-functions:
-	awk '/^[[:space:]]*function[[:space:]]+/{sub(/^[[:space:]]*function[[:space:]]+/,"");sub(/[[:space:]]+\{.*$$/,"");print $$0}' out/ble.sh | sort
-.PHONY: list-functions
+#------------------------------------------------------------------------------
 
-ignoreeof-messages:
-	bash make_command.sh ignoreeof-messages
-.PHONY: ignoreeof-messages
+define DeclareMakeCommand
+$1: $2
+	bash make_command.sh $1
+.PHONY: $1
+endef
 
-check:
-	bash make_command.sh check
-.PHONY: check
+$(eval $(call DeclareMakeCommand,ignoreeof-messages,))
+$(eval $(call DeclareMakeCommand,scan,))
+$(eval $(call DeclareMakeCommand,check,build))
+$(eval $(call DeclareMakeCommand,check-all,build))
+$(eval $(call DeclareMakeCommand,list-functions,))

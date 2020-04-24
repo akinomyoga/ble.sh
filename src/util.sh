@@ -2790,9 +2790,10 @@ function ble-stackdump {
 ##
 function ble/util/assert {
   local expr=$1 message=$2
-  local _ble_util_stackdump_title='assertion failure'
   if ! builtin eval -- "$expr"; then
     shift
+    local _ble_util_stackdump_title='assertion failure'
+    local _ble_util_stackdump_start=3
     ble/util/stackdump "$expr$_ble_term_nl$message" >&2
     return 1
   else
@@ -2825,7 +2826,7 @@ function ble-assert {
 # Event loop
 
 ## 関数 ble/util/clock
-##   時間を計測するのに使うことができるミリ秒単位の計量な時計です。
+##   時間を計測するのに使うことができるミリ秒単位の軽量な時計です。
 ##   計測の起点は ble.sh のロード時です。
 ##   @var[out] ret
 _ble_util_clock_base=

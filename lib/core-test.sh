@@ -82,6 +82,7 @@ function ble/test/end-section {
   local ncrash=$((ntest-nfail-npass))
   local nskip=$((count-ntest))
   ble/util/print "[section] $_ble_test_section_title: $sgr$npass/$ntest$sgr0 ($nfail fail, $ncrash crash, $nskip skip)"
+  ((npass==ntest))
 }
 function ble/test/section#incr {
   local title=$1

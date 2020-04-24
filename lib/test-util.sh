@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 724
+ble/test/start-section 'util' 746
 
 # bleopt
 
@@ -1163,6 +1163,7 @@ function is-global() (readonly "$1"; is-global/test "$1")
 
 # ble/util/type
 (
+  shopt -s expand_aliases
   alias aaa=fun
   function fun { :; }
   function ble/fun { :; }
@@ -1186,6 +1187,8 @@ function is-global() (readonly "$1"; is-global/test "$1")
 
 # ble/util/expand-alias
 (
+  shopt -s expand_aliases
+
   # Note: 複数段階の展開は実行しない
   alias aaa1='aaa2 world'
   ble/test 'ble/util/expand-alias aaa1' ret='aaa2 world'
@@ -1395,5 +1398,193 @@ ble/test ble/util/is-running-in-subshell exit=1
   ble/test "printf 'hello\0world\0'| ble/util/cat | cat -A" stdout=hello^@world^@
   ble/test "printf 'hello\0world'| ble/util/cat | cat -A"   stdout=hello^@world
 )
+
+# ble/util/get-pager
+(
+  bleopt_pager=xxx PAGER=yyy
+  ble/test 'ble/util/get-pager ret' ret=xxx
+  bleopt_pager=xxx PAGER=
+  ble/test 'ble/util/get-pager ret' ret=xxx
+  bleopt_pager= PAGER=yyy
+  ble/test 'ble/util/get-pager ret' ret=yyy
+  bleopt_pager= PAGER=
+  ble/test 'ble/util/get-pager ret' ret=less
+)
+
+# ble/util/pager
+(
+  bleopt_pager=cat
+  ble/test 'ble/util/pager <<< hello' stdout=hello
+)
+
+
+# # ble/util/getmtime
+# (
+#   ble/test 'ble/util/getmtime a'
+# )
+
+# ble/util/buffer
+(
+  ble/util/buffer.clear
+  ble/test 'ble/util/buffer.flush' stdout=
+  ble/util/buffer hello
+  ble/util/buffer world
+  ble/test 'ble/util/buffer.flush' stdout=helloworld
+  ble/test 'ble/util/buffer.flush' stdout=
+  ble/util/buffer.print hello
+  ble/util/buffer.print world
+  ble/test 'ble/util/buffer.flush' stdout={hello,world}
+  ble/test 'ble/util/buffer.flush' stdout=
+  ble/util/buffer.print hello
+  ble/util/buffer.print world
+  ble/util/buffer.clear
+  ble/test 'ble/util/buffer.flush' stdout=
+)
+
+# ble/dirty-range#{load,clear,update}
+(
+  # ref #D0229 #D0134
+  ubeg=3 uend=10 uend0=5
+  beg=0 end=5 end0=3
+  ble/dirty-range#load --prefix=u
+  ble/test 'echo "$beg:$end:$end0"' stdout=3:10:5
+
+  ubeg=3 uend=10 uend0=5
+  ble/dirty-range#clear --prefix=u
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=-1:-1:-1
+
+  ble/dirty-range#update --prefix=u 0 5 2
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=0:5:2
+  ble/dirty-range#update --prefix=u 10 10 12
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=0:10:9
+
+  ble/dirty-range#clear --prefix=u
+  ble/dirty-range#update --prefix=u 2 2 3
+  ble/dirty-range#update --prefix=u 2 2 3
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=2:2:4
+
+  # (1) str3 = A0 [A1] A2 |     X      |     C
+  ble/dirty-range#clear --prefix=u
+  ble/dirty-range#update --prefix=u 1 5 3
+  ble/dirty-range#update --prefix=u 7 11 9
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=1:11:7
+
+  # (2) str3 = A0 [A1     | X0]     X1 |     C
+  ble/dirty-range#clear --prefix=u
+  ble/dirty-range#update --prefix=u 1 7 5
+  ble/dirty-range#update --prefix=u 4 15 11
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=1:15:9
+
+  # (3) str3 = A0 [A1     |     X      | C0] C1
+  ble/dirty-range#clear --prefix=u
+  ble/dirty-range#update --prefix=u 1 7 5
+  ble/dirty-range#update --prefix=u 3 4 5
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=1:6:5
+
+  # (4) str3 = A          | X0 [X1] X2 |     C
+  ble/dirty-range#clear --prefix=u
+  ble/dirty-range#update --prefix=u 4 8 6
+  ble/dirty-range#update --prefix=u 2 8 10
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=2:8:8
+
+  # (5) str3 = A          | X0     [X1 | C0] C1
+  ble/dirty-range#clear --prefix=u
+  ble/dirty-range#update --prefix=u 6 12 8
+  ble/dirty-range#update --prefix=u 3 7 8
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=3:11:8
+
+  # (6) str3 = A          |     X      | C0 [C1] C2
+  ble/dirty-range#clear --prefix=u
+  ble/dirty-range#update --prefix=u 10 13 11
+  ble/dirty-range#update --prefix=u 3 7 8
+  ble/test 'echo "$ubeg:$uend:$uend0"' stdout=3:12:11
+)
+
+# ToDo
+# ble/urange#{clear,update}
+# ble/urange#shift
+# ble/util/joblist
+# ble/util/joblist.split
+# ble/util/joblist.check
+# ble/util/joblist.has-events
+# ble/util/joblist.flush
+# ble/util/joblist.bflush
+# ble/util/joblist.clear
+# ble/util/save-editing-mode
+# ble/util/restore-editing-mode
+# ble/util/reset-keymap-of-editing-mode
+# ble/util/test-rl-variable
+# ble/util/read-rl-variable
+# ble/util/invoke-hook
+# ble/util/autoload
+# ble-autoload
+# ble/util/import/search
+# ble/util/import/is-loaded
+# ble/util/import/finalize
+# ble/util/import
+# ble-import
+# ble/util/stackdump
+# ble-stackdump
+# ble/util/assert
+# ble-assert
+# ble/util/clock
+# ble/util/idle.do
+# ble/util/idle/IS_IDLE
+# ble/util/idle.push
+# ble/util/idle.push-background
+# ble/util/idle.sleep
+# ble/util/idle.isleep
+# ble/util/idle.wait-user-input
+# ble/util/idle.wait-file-content
+# ble/util/idle.wait-filename
+# ble/util/idle.wait-condition
+# ble/util/idle.continue
+# ble/util/is-running-in-idle
+# ble/util/fiberchain#initialize
+# ble/util/fiberchain#resume
+# ble/util/fiberchain#push
+# ble/util/fiberchain#clear
+# ble/term/put
+# ble/term/cup
+# ble/term/flush
+# ble/term/audible-bell
+# ble/term/visible-bell
+# ble/term/visible-bell/cancel-erasure
+# ble/term/stty/initialize
+# ble/term/stty/leave
+# ble/term/stty/enter
+# ble/term/stty/finalize
+# ble/term/stty/TRAPEXIT
+# ble/term/cursor-state/hide
+# ble/term/cursor-state/reveal
+# ble/term/bracketed-paste-mode/enter
+# ble/term/bracketed-paste-mode/leave
+# ble/term/DA1/notify
+# ble/term/DA2/notify
+# ble/term/CPR/request.buff
+# ble/term/CPR/request.draw
+# ble/term/CPR/notify
+# ble/term/modifyOtherKeys/enter
+# ble/term/modifyOtherKeys/leave
+# ble/term/rl-convert-meta/enter
+# ble/term/rl-convert-meta/leave
+# ble/term/enter
+# ble/term/leave
+# ble/term/initialize
+# ble/term/finalize
+# ble/util/s2c
+# ble/util/c2s
+# ble/util/c2s.cached
+# ble/util/chars2
+# ble/util/c2bc
+# ble/util/s2chars
+# ble/util/c2keyseq
+# ble/util/chars2keyseq
+# ble/util/keyseq2chars
+# ble/encoding:UTF-8/b2c
+# ble/encoding:UTF-8/c2b
+# ble/encoding:C/b2c
+# ble/encoding:C/c2b
+# ble/util/is-unicode-output
 
 ble/test/end-section

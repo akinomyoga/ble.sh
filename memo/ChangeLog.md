@@ -23,6 +23,7 @@
 - syntax: support confusing parameter expansions like `${#@}`, etc. `#D1330` b7b42eb
 - contrib: add contrib for user settings `#D1335` f290115
 - syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 04da4dd
+- main: add an option `--test` `#D1340` 0000000
 
 ## Changes
 
@@ -81,7 +82,7 @@
 - syntax (`ble/syntax/parse/shift`): fix a bug of shift skip in nested words `#D1333` 65fbba0
 - global: work around Bash-4.4 `return` in trap handlers `#D1334` aa09d15
 - util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f
-- edit (`ble-bind -x`): check range of `READLINE_{POINT,MARK}` `#D1339` 0000000
+- edit (`ble-bind -x`): check range of `READLINE_{POINT,MARK}` `#D1339` efe1e81
 
 ## Compatibility
 

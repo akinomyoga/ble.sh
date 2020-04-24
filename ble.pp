@@ -49,12 +49,13 @@ echo prologue >&2
 {
   #%$ echo "_ble_init_version=$FULLVER+$(git show -s --format=%h)"
   _ble_init_exit=
+  _ble_init_test=
   for _ble_init_arg; do
     case $_ble_init_arg in
-    (--version)
+    --version)
       _ble_init_exit=1
       echo "ble.sh -- Bash Line Editor (ble-$_ble_init_version)" ;;
-    (--help)
+    --help)
       _ble_init_exit=1
       printf '%s\n' \
              "# ble.sh -- Bash Line Editor (ble-$_ble_init_version)" \
@@ -86,12 +87,15 @@ echo prologue >&2
              '  --debug-bash-output' \
              '    Internal settings for debugging' \
              '' ;;
+    --test)
+      _ble_init_test=1 ;;
     esac
   done
   if [ -n "$_ble_init_exit" ]; then
     unset _ble_init_version
     unset _ble_init_arg
     unset _ble_init_exit
+    unset _ble_init_test
     return 1 2>/dev/null || exit 1
   fi
 } 2>/dev/null # set -x 対策 #D0930
@@ -104,12 +108,12 @@ if [ -z "$BASH_VERSION" ]; then
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
-if [ -z "${BASH_VERSINFO[0]}" ] || [ "${BASH_VERSINFO[0]}" -lt 3 ]; then
+if [ -z "$BASH_VERSINFO" ] || [ "$BASH_VERSINFO" -lt 3 ]; then
   echo "ble.sh: Bash with a version under 3.0 is not supported." >&3
   return 1 2>/dev/null || exit 1
 fi 3>&2 >/dev/null 2>&1 # set -x 対策 #D0930
 
-if [[ $- != *i* ]]; then
+if [[ $- != *i* && ! $_ble_init_test ]]; then
   { ((${#BASH_SOURCE[@]})) && [[ ${BASH_SOURCE[${#BASH_SOURCE[@]}-1]} == *bashrc ]]; } ||
     builtin echo "ble.sh: This is not an interactive session." >&3
   return 1 2>/dev/null || builtin exit 1
@@ -127,7 +131,7 @@ function ble/base/adjust-bash-options {
   _ble_bash_nocasematch=
   ((_ble_bash>=30100)) && shopt -q nocasematch &&
     _ble_bash_nocasematch=1 && shopt -u nocasematch
-}
+} 2>/dev/null # set -x 対策 #D0930
 function ble/base/restore-bash-options {
   [[ $_ble_bash_options_adjusted ]] || return 1
   _ble_bash_options_adjusted=
@@ -136,19 +140,20 @@ function ble/base/restore-bash-options {
   [[ $_ble_bash_setx && ! -o xtrace  ]] && set -x
   [[ $_ble_bash_sete && ! -o errexit ]] && set -e
   if [[ $_ble_bash_nocasematch ]]; then shopt -s nocasematch; fi # Note: set -e により && は駄目
-}
-_ble_base_adjust_FUNCNEST='
-  if [[ ! $_ble_bash_funcnest_adjusted ]]; then
-    _ble_bash_funcnest_adjusted=1
-    _ble_bash_funcnest=$FUNCNEST FUNCNEST=
-  fi'
-_ble_base_restore_FUNCNEST='
-  if [[ $_ble_bash_funcnest_adjusted ]]; then
-    _ble_bash_funcnest_adjusted=
-    FUNCNEST=$_ble_bash_funcnest
-  fi'
+} 2>/dev/null # set -x 対策 #D0930
 
 {
+  _ble_base_adjust_FUNCNEST='
+    if [[ ! $_ble_bash_funcnest_adjusted ]]; then
+      _ble_bash_funcnest_adjusted=1
+      _ble_bash_funcnest=$FUNCNEST FUNCNEST=
+    fi 2>/dev/null'
+  _ble_base_restore_FUNCNEST='
+    if [[ $_ble_bash_funcnest_adjusted ]]; then
+      _ble_bash_funcnest_adjusted=
+      FUNCNEST=$_ble_bash_funcnest
+    fi 2>/dev/null'
+
   _ble_bash_funcnest_adjusted=
   builtin eval -- "$_ble_base_adjust_FUNCNEST"
   _ble_bash_options_adjusted=
@@ -198,7 +203,7 @@ function ble/base/restore-POSIXLY_CORRECT {
 ble/base/adjust-POSIXLY_CORRECT
 
 builtin bind &>/dev/null # force to load .inputrc
-if [[ ! -o emacs && ! -o vi ]]; then
+if [[ ! -o emacs && ! -o vi && ! $_ble_init_test ]]; then
   builtin unset -v _ble_bash
   builtin echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
   return 1
@@ -827,14 +832,17 @@ _ble_base_attach_PROMPT_COMMAND=
 _ble_base_attach_from_prompt=
 function ble/base/attach-from-PROMPT_COMMAND {
   # 後続の設定によって PROMPT_COMMAND が置換された場合にはそれを保持する
-  [[ $PROMPT_COMMAND != ble/base/attach-from-PROMPT_COMMAND ]] && local PROMPT_COMMAND
-  PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
-  ble-edit/prompt/update/.eval-prompt_command
-  blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND
+  {
+    [[ $PROMPT_COMMAND != ble/base/attach-from-PROMPT_COMMAND ]] && local PROMPT_COMMAND
+    PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
+    ble-edit/prompt/update/.eval-prompt_command 2>&3
+    blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND
 
-  # 既に attach 状態の時は処理はスキップ
-  [[ $_ble_base_attach_from_prompt ]] || return 0
-  _ble_base_attach_from_prompt=
+    # 既に attach 状態の時は処理はスキップ
+    [[ $_ble_base_attach_from_prompt ]] || return 0
+    _ble_base_attach_from_prompt=
+  } 3>&2 2>/dev/null # set -x 対策 #D0930
+
   ble-attach
 
   # Note: 何故か分からないが PROMPT_COMMAND から ble-attach すると
@@ -912,25 +920,50 @@ function ble/base/process-blesh-arguments {
   esac
   [[ $flags != *E* ]]
 }
-ble/base/process-blesh-arguments "$@"
 
-# 一時グローバル変数消去
-builtin unset -v _ble_init_version
-builtin unset -v _ble_init_arg
-builtin unset -v _ble_init_exit
+function ble/base/initialize/.clean-up {
+  # 一時グローバル変数消去
+  builtin unset -v _ble_init_version
+  builtin unset -v _ble_init_arg
+  builtin unset -v _ble_init_exit
+  builtin unset -v _ble_init_test
 
-# 状態復元
-IFS=$_ble_init_original_IFS
-builtin unset -v _ble_init_original_IFS
-if [[ ! $_ble_attached ]]; then
-  ble/base/restore-bash-options
-  ble/base/restore-POSIXLY_CORRECT
-  builtin eval -- "$_ble_base_restore_FUNCNEST"
-fi &>/dev/null # set -x 対策 #D0930
+  # 状態復元
+  IFS=$_ble_init_original_IFS
+  builtin unset -v _ble_init_original_IFS
+  if [[ ! $_ble_attached ]]; then
+    ble/base/restore-bash-options
+    ble/base/restore-POSIXLY_CORRECT
+    builtin eval -- "$_ble_base_restore_FUNCNEST"
+  fi
+}
+
+function ble/base/test {
+  local error=
+  if ((!_ble_make_command_check_count)); then
+    echo "MACHTYPE: $MACHTYPE"
+    echo "BLE_VERSION: $BLE_VERSION"
+  fi
+  echo "BASH_VERSION: $BASH_VERSION"
+  source "$_ble_base"/lib/test-main.sh || error=1
+  source "$_ble_base"/lib/test-util.sh || error=1
+  [[ ! $error ]]
+}
+
+if [[ $_ble_init_test ]]; then
+  if ! ble/base/test; then
+    ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
+    { return 1 || exit 1; } 2>/dev/null # set -x 対策 #D0930
+  fi
+else
+  ble/base/process-blesh-arguments "$@"
+fi
+
+ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
 
 #%if measure_load_time
 }
 #%end
 
-{ return 0; } &>/dev/null # set -x 対策 #D0930
+{ return 0 || exit 0; } &>/dev/null # set -x 対策 #D0930
 ###############################################################################

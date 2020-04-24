@@ -72,7 +72,7 @@ function sub:help {
 }
 
 #------------------------------------------------------------------------------
-# sub:check
+# sub:scan
 
 function ble/array#push {
   while (($#>=2)); do
@@ -81,11 +81,11 @@ function ble/array#push {
   done
 }
 
-function sub:check/grc-source {
+function sub:scan/grc-source {
   local -a options=(--color --exclude=./{test,memo,ext,wiki} --exclude=\*.{md,awk} --exclude=./make_command.sh)
   grc "${options[@]}" "$@"
 }
-function sub:check/list-command {
+function sub:scan/list-command {
   local -a options=(--color --exclude=./{test,memo,ext,wiki} --exclude=\*.{md,awk})
 
   # read arguments
@@ -118,23 +118,23 @@ function sub:check/list-command {
   grc "${options[@]}" "(^|[^-./\${}=])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)'
 }
 
-function sub:check/builtin {
+function sub:scan/builtin {
   echo "--- $FUNCNAME $1 ---"
   local command=$1 esc='(\[[ -?]*[@-~])*'
-  sub:check/list-command --exclude-this --exclude={generate-release-note.sh,lib/test-*.sh} "$command" "${@:2}" |
+  sub:scan/list-command --exclude-this --exclude={generate-release-note.sh,lib/test-*.sh} "$command" "${@:2}" |
     grep -Ev "$rex_grep_head([[:space:]]*|[[:alnum:][:space:]]*[[:space:]])#|(\b|$esc)(builtin|function)$esc([[:space:]]$esc)+$command(\b|$esc)" |
     grep -Ev "$command(\b|$esc)=" |
     grep -Ev "ble\.sh $esc\($esc$command$esc\)$esc" |
     sed -E 'h;s/'"$esc"'//g;\Z(\.awk|push|load|==) \b'"$command"'\bZd;g' 
 }
 
-function sub:check/a.txt {
+function sub:scan/a.txt {
   echo "--- $FUNCNAME ---"
   grc --color --exclude=./test --exclude=./lib/test-*.sh --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 
-function sub:check/bash300bug {
+function sub:scan/bash300bug {
   echo "--- $FUNCNAME ---"
   # bash-3.0 では local arr=(1 2 3) とすると
   # local arr='(1 2 3)' と解釈されてしまう。
@@ -145,21 +145,21 @@ function sub:check/bash300bug {
   grc 'local -a [[:alnum:]_]+=\([^)]*[\"'\''`]' --exclude=./test --exclude=./make_command.sh
 }
 
-function sub:check/bash301bug-array-element-length {
+function sub:scan/bash301bug-array-element-length {
   echo "--- $FUNCNAME ---"
   # bash-3.1 で ${#arr[index]} を用いると、
   # 日本語の文字数が変になる。
   grc '\$\{#[[:alnum:]]+\[[^@*]' --exclude={test,ChangeLog.md} | grep -Ev '^([^#]*[[:space:]])?#'
 }
 
-function sub:check/assign {
+function sub:scan/assign {
   echo "--- $FUNCNAME ---"
   local command="$1"
   grc --color --exclude=./test --exclude=./memo '\$\([^()]' |
     grep -Ev "$rex_grep_head#|[[:space:]]#"
 }
 
-function sub:check/memo-numbering {
+function sub:scan/memo-numbering {
   echo "--- $FUNCNAME ---"
 
   grep -ao '\[#D....\]' note.txt memo/done.txt | awk '
@@ -197,28 +197,28 @@ function sub:check/memo-numbering {
 }
 
 # 誤って ((${#arr[@]})) を ((${arr[@]})) などと書いてしまうミス。
-function sub:check/array-count-in-arithmetic-expression {
+function sub:scan/array-count-in-arithmetic-expression {
   echo "--- $FUNCNAME ---"
   grc --exclude=./make_command.sh '\(\([^[:space:]]*\$\{[[:alnum:]_]+\[[@*]\]\}'
 }
 
 # unset 変数名 としていると誤って関数が消えることがある。
-function sub:check/unset-variable {
+function sub:scan/unset-variable {
   echo "--- $FUNCNAME ---"
   local esc='(\[[ -?]*[@-~])*'
-  sub:check/list-command unset --exclude-this |
+  sub:scan/list-command unset --exclude-this |
     grep -Ev "unset$esc[[:space:]]$esc-[vf]|$rex_grep_head[[:space:]]*#"
 }
-function sub:check/eval-literal {
+function sub:scan/eval-literal {
   echo "--- $FUNCNAME ---"
   local esc='(\[[ -?]*[@-~])*'
-  sub:check/grc-source 'builtin eval "\$' |
+  sub:scan/grc-source 'builtin eval "\$' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zeval "(\$[[:alnum:]_]+)+(\[[^]["'\''\$`]+\])?\+?=Zd
       g'
 }
 
-function sub:check {
+function sub:scan {
   if ! type grc >/dev/null; then
     echo 'blesh check: grc not found. grc can be found in github.com:akinomyoga/mshex.git/' >&2
     exit
@@ -229,30 +229,30 @@ function sub:check {
 
   # builtin return break continue : eval echo unset は unset しているので大丈夫のはず
 
-  #sub:check/builtin 'history'
-  sub:check/builtin 'echo' --exclude=./keymap/vi_test.sh --exclude=./ble.pp |
+  #sub:scan/builtin 'history'
+  sub:scan/builtin 'echo' --exclude=./keymap/vi_test.sh --exclude=./ble.pp |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\bstty[[:space:]]+echoZd
       \Zecho \$PPIDZd
       g'
-  #sub:check/builtin '(compopt|type|printf)'
-  sub:check/builtin 'bind' |
+  #sub:scan/builtin '(compopt|type|printf)'
+  sub:scan/builtin 'bind' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zinvalid bind typeZd
       \Zline = "bind"Zd
       g'
-  sub:check/builtin 'read' |
+  sub:scan/builtin 'read' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \ZDo not read Zd
       \Zfailed to read Zd
       g'
-  sub:check/builtin 'exit' |
+  sub:scan/builtin 'exit' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zble.pp.*return 1 2>/dev/null || exit 1Zd
       \Z^[-[:space:][:alnum:]_./:=$#*]+('\''[^'\'']*|"[^"()`]*|([[:space:]]|^)#.*)\bexit\bZd
       \Z\(exit\) ;;Zd
       \Zprint NR; exit;Zd;g'
-  sub:check/builtin 'eval' |
+  sub:scan/builtin 'eval' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Z\('\''eval'\''\)Zd
       \Zbuiltins2=\(.* eval\)Zd
@@ -261,37 +261,51 @@ function sub:check {
       \Zprint "eval -- \$'\''Zd
       \Zcmd '\''eval -- %q'\''Zd
       g'
-  sub:check/builtin 'unset' |
+  sub:scan/builtin 'unset' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zunset _ble_init_(version|arg|exit)\bZd
+      \Zunset _ble_init_(version|arg|exit|test)\bZd
       \Zreadonly -f unsetZd
       g'
-  sub:check/builtin 'unalias' |
+  sub:scan/builtin 'unalias' |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zbuiltins1=\(.* unalias\)Zd
       g'
 
-  #sub:check/assign
-  sub:check/builtin trap |
+  #sub:scan/assign
+  sub:scan/builtin trap |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zble/util/print "trap -- '\''\$\{h//\$Q/\$q}'\'' \$nZd
       \Zline = "bind"Zd
       g'
 
-  sub:check/a.txt
-  sub:check/bash300bug
-  sub:check/bash301bug-array-element-length
-  sub:check/array-count-in-arithmetic-expression
-  sub:check/unset-variable |
+  sub:scan/a.txt
+  sub:scan/bash300bug
+  sub:scan/bash301bug-array-element-length
+  sub:scan/array-count-in-arithmetic-expression
+  sub:scan/unset-variable |
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
-      \Zunset _ble_init_(version|arg|exit)\bZd
+      \Zunset _ble_init_(version|arg|exit|test)\bZd
       \Zbuiltins1=\(.* unset .*\)Zd
       \Zfunction unsetZd
       \Zreadonly -f unsetZd
       g'
-  sub:check/eval-literal
+  sub:scan/eval-literal
 
-  sub:check/memo-numbering
+  sub:scan/memo-numbering
+}
+
+#------------------------------------------------------------------------------
+
+function sub:check {
+  bash out/ble.sh --test
+}
+function sub:check-all {
+  local -x _ble_make_command_check_count=0
+  local bash
+  for bash in $(compgen -c -- bash- | grep -E '^bash-[0-9]+\.[0-9]+$' | sort -Vr); do
+    "$bash" out/ble.sh --test || return 1
+    ((_ble_make_command_check_count++))
+  done
 }
 
 #------------------------------------------------------------------------------
@@ -327,6 +341,10 @@ function sub:list-functions {
     fi
   done
 
+  if ((${#files[@]}==0)); then
+    files=($(find out -name \*.sh -o -name \*.bash))
+  fi
+
   if [[ $opt_public ]]; then
     local rex_function_name='[^[:space:]()/]*'
   else
@@ -350,7 +368,7 @@ function sub:first-defined {
 
 #------------------------------------------------------------------------------
 
-function sub:check-words {
+function sub:scan-words {
   # sed -E "s/'[^']*'//g;s/(^| )[[:space:]]*#.*/ /g" $(findsrc --exclude={wiki,test,\*.md}) |
   #   grep -hoE '\$\{?[_a-zA-Z][_a-zA-Z0-9]*\b|\b[_a-zA-Z][-:._/a-zA-Z0-9]*\b' |
   #   sed -E 's/^\$\{?//g;s.^ble/widget/..;\./.!d;/:/d' |
@@ -360,7 +378,7 @@ function sub:check-words {
     sed -E 's/^bleopt_//' |
     sort | uniq -c | sort -n | less
 }
-function sub:check-varnames {
+function sub:scan-varnames {
   sed -E "s/(^| )[[:space:]]*#.*/ /g" $(findsrc --exclude={wiki,test,\*.md}) |
     grep -hoE '\$\{?[_a-zA-Z][_a-zA-Z0-9]*\b|\b[_a-zA-Z][_a-zA-Z0-9]*=' |
     sed -E 's/^\$\{?(.*)/\1$/g;s/[$=]//' |
