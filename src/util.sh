@@ -4276,7 +4276,14 @@ function ble/util/msleep/.use-read-timeout {
 }
 
 _ble_util_msleep_builtin_available=
+#%if target == "osh"
+if [[ ${OIL_VERSION-} ]]; then
+  # OSH_TODO: Temporary implementation
+  function ble/util/msleep/.core { ble/bin/sleep "$1"; }
+elif ((_ble_bash>=40400)) && ble/util/load-standard-builtin sleep; then
+#%else
 if ((_ble_bash>=40400)) && ble/util/load-standard-builtin sleep; then
+#%end
   _ble_util_msleep_builtin_available=1
   _ble_util_msleep_delay=300
   function ble/util/msleep/.core { builtin sleep "$1"; }
