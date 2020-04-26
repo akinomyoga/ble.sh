@@ -41,6 +41,7 @@
 - edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
 - util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 5966f22
 - builtin: let redefined builtins return 2 for `--help` `#D1323` 731896c
+- edit: preserve `PS1` when `internal_suppress_bash_output` is set `#D1344` 0000000
 
 ## Fix
 
