@@ -1824,11 +1824,11 @@ function ble-text-b2c+UTF-8 {
   local bytes b0 n i
   bytes=("$@")
   ret=0
-  ((b0=bytes[0]&0xFF,
-    n=b0>0xF0
+  ((b0=bytes[0]&0xFF))
+  ((n=b0>0xF0
     ?(b0>0xFC?5:(b0>0xF8?4:3))
     :(b0>0xE0?2:(b0>0xC0?1:0)),
-    ret=b0&0x3F>>n))
+    ret=n?b0&0x7F>>n:b0))
   for ((i=1;i<=n;i++)); do
     ((ret=ret<<6|0x3F&bytes[i]))
   done
@@ -1852,7 +1852,7 @@ function ble-text-c2b+UTF-8 {
       ((bytes[i]=0x80|code&0x3F,
         code>>=6))
     done
-    ((bytes[0]=code&0x3F>>n|0xFF80>>n))
+    ((bytes[0]=code&0x3F>>n|0xFF80>>n&0xFF))
   fi
 }
 
