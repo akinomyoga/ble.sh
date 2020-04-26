@@ -2210,6 +2210,20 @@ function ble-edit/content/clear-arg {
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
 
+_ble_edit_PS1_adjusted=
+_ble_edit_PS1='\s-\v\$ '
+function ble-edit/adjust-PS1 {
+  [[ $_ble_edit_PS1_adjusted ]] && return
+  _ble_edit_PS1_adjusted=1
+  _ble_edit_PS1=$PS1
+  [[ $bleopt_suppress_bash_output ]] || PS1=
+}
+function ble-edit/restore-PS1 {
+  [[ $_ble_edit_PS1_adjusted ]] || return
+  _ble_edit_PS1_adjusted=
+  PS1=$_ble_edit_PS1
+}
+
 function ble-edit/attach/TRAPWINCH {
   local IFS=$' \t\n'
   if ((_ble_edit_attached)); then
@@ -2240,14 +2254,13 @@ function ble-edit/attach {
 
   trap ble-edit/attach/TRAPWINCH WINCH
 
-  _ble_edit_PS1=$PS1
-  PS1=
+  ble-edit/adjust-PS1
   [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
 
 function ble-edit/detach {
   ((!_ble_edit_attached)) && return
-  PS1=$_ble_edit_PS1
+  ble-edit/restore-PS1
   [[ $bleopt_exec_type == exec ]] && IFS=$_ble_edit_IFS
   _ble_edit_attached=0
 }
@@ -4557,7 +4570,7 @@ function ble-edit/exec:gexec/.end {
 function ble-edit/exec:gexec/.eval-prologue {
   local IFS=$' \t\n'
   BASH_COMMAND=$1
-  PS1=$_ble_edit_PS1
+  ble-edit/restore-PS1
   unset HISTCMD; ble-edit/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
@@ -4586,8 +4599,7 @@ function ble-edit/exec:gexec/.eval-epilogue {
   trap - DEBUG # DEBUG 削除が何故か効かない
 
   ble/adjust-bash-options
-  _ble_edit_PS1=$PS1
-  PS1=
+  ble-edit/adjust-PS1
   ble-edit/exec/save-BASH_REMATCH
   ble-edit/exec/.adjust-eol
 
