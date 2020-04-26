@@ -1732,6 +1732,20 @@ function ble-edit/dirty-range/update {
 ## 変数 _ble_edit_LINENO
 ## 変数 _ble_edit_CMD
 
+_ble_edit_PS1_adjusted=
+_ble_edit_PS1='\s-\v\$ '
+function ble-edit/adjust-PS1 {
+  [[ $_ble_edit_PS1_adjusted ]] && return
+  _ble_edit_PS1_adjusted=1
+  _ble_edit_PS1=$PS1
+  [[ $bleopt_suppress_bash_output ]] || PS1=
+}
+function ble-edit/restore-PS1 {
+  [[ $_ble_edit_PS1_adjusted ]] || return
+  _ble_edit_PS1_adjusted=
+  PS1=$_ble_edit_PS1
+}
+
 function .ble-edit/edit/attach/TRAPWINCH {
   local IFS=$' \t\n'
   if ((_ble_edit_attached)); then
@@ -1762,13 +1776,12 @@ function .ble-edit/edit/attach {
 
   # if [[ ! ${_ble_edit_PS1+set} ]]; then
   # fi
-  _ble_edit_PS1="$PS1"
-  PS1=
+  ble-edit/adjust-PS1
 }
 
 function .ble-edit/edit/detach {
   ((!_ble_edit_attached)) && return
-  PS1="$_ble_edit_PS1"
+  ble-edit/restore-PS1
   _ble_edit_attached=0
 }
 
@@ -3035,7 +3048,7 @@ function .ble-edit/exec:gexec/end {
 }
 function .ble-edit/exec:gexec/eval-prologue {
   BASH_COMMAND="$1"
-  PS1="$_ble_edit_PS1"
+  ble-edit/restore-PS1
   unset HISTCMD; .ble-edit/history/getcount -v HISTCMD
   _ble_edit_accept_line_INT=0
   .ble-stty.leave
@@ -3055,8 +3068,7 @@ function .ble-edit/exec:gexec/eval-epilogue {
   trap - DEBUG # DEBUG 削除が何故か効かない
 
   .ble-stty.enter
-  _ble_edit_PS1="$PS1"
-  PS1=
+  ble-edit/adjust-PS1
   .ble-edit/exec/adjust-eol
 
   if [ "$_ble_edit_accept_line_lastexit" -ne 0 ]; then
