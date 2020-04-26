@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 841
+ble/test/start-section 'util' 1011
 
 # bleopt
 
@@ -1585,8 +1585,7 @@ ble/test ble/util/is-running-in-subshell exit=1
 # ble/term/initialize
 # ble/term/finalize
 
-# ble/util/s2c
-# ble/util/c2s
+# ble/util/{s2c,c2s}
 (
   ble/test $'ble/util/s2c "\n"' ret=10
   ble/test 'ble/util/c2s 10' ret=$'\n'
@@ -1620,16 +1619,123 @@ ble/test ble/util/is-running-in-subshell exit=1
   ble/test 'ble/util/c2s 956; [[ $ret != μ ]]'
   ble/test 'ble/util/c2s 12354; [[ $ret != あ ]]'
 )
-# ble/util/chars2
+
 # ble/util/c2bc
-# ble/util/s2chars
-# ble/util/c2keyseq
-# ble/util/chars2keyseq
-# ble/util/keyseq2chars
-# ble/encoding:UTF-8/b2c
-# ble/encoding:UTF-8/c2b
-# ble/encoding:C/b2c
-# ble/encoding:C/c2b
+(
+  ble/test 'ble/util/c2bc 97' ret=1
+  ble/test 'ble/util/c2bc 956' ret=2
+  ble/test 'ble/util/c2bc 12354' ret=3
+
+  ble/test 'ble/util/c2bc 0' ret=1
+  ble/test 'ble/util/c2bc 127' ret=1
+  ble/test 'ble/util/c2bc 128' ret=2
+  ble/test 'ble/util/c2bc 2047' ret=2
+  ble/test 'ble/util/c2bc 2048' ret=3
+  ble/test 'ble/util/c2bc 65535' ret=3
+  ble/test 'ble/util/c2bc 65536' ret=4
+)
+
+# ble/util/{chars2s,s2chars}
+(
+  ble/test 'ble/util/s2chars AaBbCc; ret="${ret[*]}"' ret='65 97 66 98 67 99'
+  ble/test 'ble/util/chars2s 65 97 66 98 67 99' ret=AaBbCc
+  ble/test 'ble/util/s2chars あいう; ret="${ret[*]}"' ret='12354 12356 12358'
+  ble/test 'ble/util/chars2s 12354 12356 12358' ret=あいう
+
+  ble/test 'ble/util/s2chars; ret="${ret[*]}"' ret=
+  ble/test 'ble/util/s2chars 0; ret="${ret[*]}"' ret=48
+  ble/test 'ble/util/s2chars a; ret="${ret[*]}"' ret=97
+  ble/test 'ble/util/s2chars μ; ret="${ret[*]}"' ret=956
+  ble/test 'ble/util/s2chars あ; ret="${ret[*]}"' ret=12354
+  ble/test 'ble/util/chars2s' ret=
+  ble/test 'ble/util/chars2s 48' ret=0
+  ble/test 'ble/util/chars2s 97' ret=a
+  ble/test 'ble/util/chars2s 956' ret=μ
+  ble/test 'ble/util/chars2s 12354' ret=あ
+)
+
+# ble/util/{c2keyseq,chars2keyseq,keyseq2chars}
+(
+  check1() {
+    local char=$1 keyseq=$2
+    ble/test "ble/util/c2keyseq $char" ret="$keyseq"
+    ble/test "ble/util/chars2keyseq $char" ret="$keyseq"
+    ble/test "ble/util/keyseq2chars '$keyseq'; ret=\"\${ret[*]}\"" ret="${3:-$char}"
+    ble/test "ble/util/chars2keyseq 98 $char 99" ret="b${keyseq}c"
+    ble/test "ble/util/keyseq2chars 'b${keyseq}c'; ret=\"\${ret[*]}\"" ret="98 ${3:-$char} 99"
+  }
+  check1 '7'   '\a' 
+  check1 '8'   '\b' 
+  check1 '9'   '\t' 
+  check1 '10'  '\n' 
+  check1 '11'  '\v' 
+  check1 '12'  '\f' 
+  check1 '13'  '\r' 
+  check1 '27'  '\e' 
+  check1 '127' '\d'
+  check1 '92'  '\\'   
+  check1 '28'  '\x1c' # workaround bashbug \C-\, \C-\\
+  check1 '156' '\x9c' # workaround bashbug \C-\, \C-\\
+
+  check1 '0'   '\C-@'
+  check1 '1'   '\C-a'
+  check1 '26'  '\C-z'
+  check1 '29'  '\C-]'
+  check1 '30'  '\C-^'
+  check1 '31'  '\C-_'
+  check1 '128' '\M-\C-@' '27 0'
+
+  check1 '64'    '@'
+  check1 '97'    'a'
+  check1 '956'   'μ'
+  check1 '12354' 'あ'
+
+  ble/test ble/util/c2keyseq ret='\C-@'
+  ble/test ble/util/chars2keyseq ret=
+  ble/test ble/util/keyseq2chars ret=
+)
+
+# ble/encoding:UTF-8/{b2c,c2b}
+(
+  function pack { ret="${bytes[*]}"; }
+  ble/test 'ble/encoding:UTF-8/b2c    ' ret=0
+  ble/test 'ble/encoding:UTF-8/b2c  97' ret=97
+  ble/test 'ble/encoding:UTF-8/b2c  97  98  99 99' ret=97
+  ble/test 'ble/encoding:UTF-8/b2c 206 188  99 99' ret=956
+  ble/test 'ble/encoding:UTF-8/b2c 227 129 130 99' ret=12354
+
+  ble/test 'ble/encoding:UTF-8/c2b 97   ; pack' ret=97
+  ble/test 'ble/encoding:UTF-8/c2b 956  ; pack' ret='206 188'
+  ble/test 'ble/encoding:UTF-8/c2b 12354; pack' ret='227 129 130'
+
+  ble/test 'ble/encoding:UTF-8/c2b     ; pack' ret=0
+  ble/test 'ble/encoding:UTF-8/c2b 0   ; pack' ret=0
+  ble/test 'ble/encoding:UTF-8/c2b 127 ; pack' ret=127
+  ble/test 'ble/encoding:UTF-8/c2b 128 ; pack' ret='194 128'
+  ble/test 'ble/encoding:UTF-8/c2b 2047; pack' ret='223 191'
+  ble/test 'ble/encoding:UTF-8/c2b 2048; pack' ret='224 160 128'
+)
+
+# ble/encoding:C/{b2c,c2b}
+(
+  function pack { ret="${bytes[*]}"; }
+  ble/test 'ble/encoding:C/b2c    ' ret=0
+  ble/test 'ble/encoding:C/b2c  97' ret=97
+  ble/test 'ble/encoding:C/b2c  97  98  99 99' ret=97
+  ble/test 'ble/encoding:C/b2c 206 188  99 99' ret=206
+  ble/test 'ble/encoding:C/b2c 227 129 130 99' ret=227
+
+  ble/test 'ble/encoding:C/b2c 97    ' ret=97
+  ble/test 'ble/encoding:C/b2c 956   ' ret=188
+  ble/test 'ble/encoding:C/b2c 12354 ' ret=66
+
+  ble/test 'ble/encoding:C/c2b     ; pack' ret=0
+  ble/test 'ble/encoding:C/c2b 0   ; pack' ret=0
+  ble/test 'ble/encoding:C/c2b 127 ; pack' ret=127
+  ble/test 'ble/encoding:C/c2b 128 ; pack' ret=128
+  ble/test 'ble/encoding:C/c2b 2047; pack' ret=255
+  ble/test 'ble/encoding:C/c2b 2048; pack' ret=0
+)
 
 # ble/util/is-unicode-output
 (

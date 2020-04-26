@@ -4146,12 +4146,13 @@ function ble/util/c2keyseq {
   (12)  ret='\f' ;;
   (13)  ret='\r' ;;
   (27)  ret='\e' ;;
-  (28)  ret='\x1c' ;; # workaround \C-\, \C-\\
   (92)  ret='\\' ;;
   (127) ret='\d' ;;
+  (28)  ret='\x1c' ;; # workaround \C-\, \C-\\
+  (156) ret='\x9c' ;; # workaround \M-\C-\, \M-\C-\\
   (*)
     if ((char<32||128<=char&&char<160)); then
-      local char7=$((char&0xFF))
+      local char7=$((char&0x7F))
       if ((1<=char7&&char7<=26)); then
         ble/util/c2s $((char7+96))
       else
@@ -4180,7 +4181,7 @@ function ble/util/keyseq2chars {
   local keyseq=$1
   local -a chars=()
   local mods=
-  local rex='^([^\]+)|^\\([CM]-|[0-7]{1,3}|x{1,2}|.)?'
+  local rex='^([^\]+)|^\\([CM]-|[0-7]{1,3}|x[0-9a-fA-F]{1,2}|.)?'
   while [[ $keyseq =~ $rex ]]; do
     local text=${BASH_REMATCH[1]} esc=${BASH_REMATCH[2]}
     keyseq=${keyseq:${#BASH_REMATCH}}
@@ -4228,11 +4229,11 @@ function ble/encoding:UTF-8/b2c {
   local bytes b0 n i
   bytes=("$@")
   ret=0
-  ((b0=bytes[0]&0xFF,
-    n=b0>0xF0
+  ((b0=bytes[0]&0xFF))
+  ((n=b0>0xF0
     ?(b0>0xFC?5:(b0>0xF8?4:3))
     :(b0>0xE0?2:(b0>0xC0?1:0)),
-    ret=b0&0x3F>>n))
+    ret=n?b0&0x7F>>n:b0))
   for ((i=1;i<=n;i++)); do
     ((ret=ret<<6|0x3F&bytes[i]))
   done
@@ -4256,7 +4257,7 @@ function ble/encoding:UTF-8/c2b {
       ((bytes[i]=0x80|code&0x3F,
         code>>=6))
     done
-    ((bytes[0]=code&0x3F>>n|0xFF80>>n))
+    ((bytes[0]=code&0x3F>>n|0xFF80>>n&0xFF))
   fi
 }
 
