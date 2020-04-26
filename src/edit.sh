@@ -1111,12 +1111,12 @@ function ble-edit/content/clear-arg {
 ## 変数 _ble_edit_IGNOREEOF
 
 _ble_edit_PS1_adjusted=
-_ble_edit_PS1=
+_ble_edit_PS1='\s-\v\$ '
 function ble-edit/adjust-PS1 {
   [[ $_ble_edit_PS1_adjusted ]] && return
   _ble_edit_PS1_adjusted=1
   _ble_edit_PS1=$PS1
-  PS1=
+  [[ $bleopt_internal_suppress_bash_output ]] || PS1=
 }
 function ble-edit/restore-PS1 {
   [[ $_ble_edit_PS1_adjusted ]] || return
