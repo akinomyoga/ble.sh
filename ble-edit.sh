@@ -1772,7 +1772,7 @@ function .ble-edit/edit/attach {
     _ble_edit_CMD="$_ble_edit_LINENO"
   fi
 
-  trap .ble-edit/edit/attach/TRAPWINCH WINCH
+  ble/builtin/trap/set-readline-signal WINCH .ble-edit/edit/attach/TRAPWINCH
 
   # if [[ ! ${_ble_edit_PS1+set} ]]; then
   # fi
