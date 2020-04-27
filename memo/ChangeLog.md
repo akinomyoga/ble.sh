@@ -41,7 +41,7 @@
 - edit (edit-and-execute): disable highlighting of old command line content `#D1295` 2f9a000
 - util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 5966f22
 - builtin: let redefined builtins return 2 for `--help` `#D1323` 731896c
-- edit: preserve `PS1` when `internal_suppress_bash_output` is set `#D1344` 0000000
+- edit: preserve `PS1` when `internal_suppress_bash_output` is set `#D1344` eba9b92
 
 ## Fix
 
@@ -85,13 +85,14 @@
 - util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f
 - edit (`ble-bind -x`): check range of `READLINE_{POINT,MARK}` `#D1339` efe1e81
 - util (`ble/string#to{upper,lower}`): work around `LC_COLLATE=en_US.utf8` (test-util) `#D1341` e4c5861
-- util (encoding, keyseq): fix miscelleneous encoding bugs (test-util) 0000000
+- util (encoding, keyseq): fix miscelleneous encoding bugs (test-util) 560529c
   - `ble/util/c2keyseq`: work around bash ambiguous keyseq `\M-\C-\\`
   - `ble/util/c2keyseq`: fix a bug that `C1` characters are not properly encoded
   - `ble/util/keyseq2chars`: fix a bug that `\xHH` is not properly processed
   - `ble/encoding:UTF-8/b2c`: work around Bash-4.2 arithmetic crash
   - `ble/encoding:UTF-8/b2c`: fix a bug that `G0` characters lose its seventh bit
   - `ble/encoding:UTF-8/c2b`: fix a bug that the first byte gets redundant bits
+- edit: work around `WINCH` not updating `COLUMNS`/`LINES` after `ble-reload` `#D1345` 0000000
 
 ## Compatibility
 

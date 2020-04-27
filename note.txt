@@ -2943,6 +2943,491 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-04-27
+
+  * SIGWINCH でちゃんとプロンプトの計算が更新されていない [#D1345]
+
+    要約: builtin trap WINCH 後に readline でコマンドを実行しないと、
+      readline が COLUMNS/LINES の更新に使っている handler が設置されない。
+
+    というより、空コマンドで RET を押しても更新されない。
+    そもそもプロンプトのキャッシュで COLUMNS:LINES を参照していなかったのか。
+    →うーん。確認すると COLUMNS が入っている。
+
+    という事はつまりそもそも ble-edit/prompt/update まで到達していない?
+    然し、それも変な気がする。何しろ RET を押しても更新されないのだから。
+    →実は更にその次の部分でのキャッシュにより更新が抑えられている?
+
+    うーん。trace_hash にもちゃんと COLUMNS が記録されている。
+    というか rps1 ですら再計算されていない。という事は、やはり
+    ble-edit/prompt/update にまで到達していないと見るべきか。
+
+    不思議だ。手許で新しく実行してみると症状が再現しない。
+    然し、ble-reload した場合には再現している。
+    何らかの条件で発生したりしなかったりするのだろうか。
+    振る舞いを調べるとやはりそもそも SIGWINCH を受信していない?
+    と思ったがそれも変である。そうだとしたら再描画されていない筈。
+
+    取り敢えず reload では再現するので其処を手がかりに調べていく事にする。
+    →分かった。新しいセッションでも reload すると再現する様になる。
+    然し、cygwin では常に再現する。
+    →分かった。COLUMNS, LINES が更新されていない様だ。
+      それから SIGWINCH もその場では実行されなくなっている。
+      ユーザが何かを入力したタイミングで初めて SIGWINCH が発火する。
+
+    問題は何故最初は動いていたのに reload すると動かなくなるのかという事。
+    何らかの操作が関係しているのだろうか。或いは、二回以上 SIGWINCH すると
+    振る舞いが変わってしまうという事なのだろうか。
+
+    更に stty の状態やリダイレクトの構造も関係してくるのかもしれない。
+    確認したがリダイレクトの構造については変化はない。
+    stty についても stty 自体が悪さをしているという事はないだろう。
+    何かあるとしても特定の stty の時に何かをすると再現するという事だろう。
+
+    →再現した。或いは builtin trap を実行する環境に問題があるのかもしれない。
+      ble-detach して builtin trap して ble-attach しても問題は発生しない。
+      問題が発生している時に ble-detach; ble-attach すると直る。
+
+    今までの振る舞いを整理すると。
+
+    * ble-reload すると問題が発生する様になる。
+    * builtin trap -- ...　WINCH するだけで発生する。
+    * ble-attach; ble-detach すると直る。
+    ? 他の bash version は?
+      bash-4.1 以下では常に問題が発生している。
+      bash-4.2 以降は bash-5.0 と同じ振る舞いである。
+      つまり、この振る舞いは特に最近導入された物ではないし、
+      寧ろ古い bash の方が振る舞いが酷いという事である。
+    ? WINCH 以外の builtin trap でも問題は発生するか?
+      →しない。WINCH を設定したときにだけ振る舞いが変化する。
+
+    問題は何処に在るのか。そしてどの様に避ける事ができるのか。
+    ble-attach; ble-detach で直るのは何故なのか。
+    一旦 readline に戻すと良くなるという事なのか、
+    或いは、何らかの設定 (stty) 等が変更されてしまうという事なのか。
+    然し、stty の問題であれば何か一つでもコマンドを実行すれば
+    変な振る舞いにはならずに元と同じ様になる筈である。
+
+    ? bleopt_internal_suppress_bash_output= bash でも再現するのか。
+      →bleopt_internal_suppress_bash_output= では発生しない。
+      つまり勝手に標準入出力を繋ぎ変えているつけである。
+      これは単純なスクリプトで再現するのは難しそうだし、
+      再現できたとしてもそんな変な事をしているのが悪いという事になる。
+
+      然し、それでは何故普通に attach した時には問題がなくて、
+      biltin trap -- し直した時にだけ問題が発生するのだろうか。
+
+    ? ble-detach; ble-attach をその場で実行したら直るだろうか。
+      (振る舞いを見ると治らない様な気もする。
+      一回通常の状態で bind -x から抜ける必要がある気がする。)
+
+      ble-detach/impl と ble-attach を呼び出せば良いだろうか。
+      →これだと直らない。
+
+      或いは、edit.sh の ble/widget/.change-editing-mode では
+      次の操作を実行している。
+      ble/decode/reset-default-keymap
+      ble/decode/detach
+      ble/decode/attach
+      →これでも直らない (reset-default-keymap は試していないが関係ないだろう)。
+
+    % と思ったら builtin trap しても再現しなくなってしまった。
+    % と思ったら分かった。 WINCH ではなくて USR2 に対して実行していた。
+
+    ? 子bashで問題が発生している状態で終了したら、
+      親bashでも問題が発生したままだろうか。
+      →親bashでは問題は発生していない。
+      つまり、これは tty の状態というよりは
+      やはり bash のプロセスの中で起こっている問題である。
+      bash のプロセスの側で修正されるべき物である。
+
+    ? internal_suppress_bash_outputを一瞬だけ有効にするという手もなくはない?
+
+      追記: 原因は別の所にあったのでこの方法では何も解決しない。
+
+      % 本当に可能だろうか。そしてそれで本当に解決するのか。
+      %
+      % builtin trap で上書きが実行される瞬間、または、
+      % ble-reload が行われた後に対策を実行する必要がある。
+      % そもそも ble-reload はどのタイミングで再ロードを実施しているのか。
+      % 現在の実装だと prompt で再ロードを実行している。
+      %
+      % * 棄却: Bash の PROMPT_COMMAND で ble-attach すれば問題は解決するのでは?
+      %   この prompt command の表示は何処で実行されるのか。
+      %   Bash による物なのか或いは ble.sh 自身による物なのか。
+      %   →確認した所、ble.sh 自身の eval-prompt の中から実行されている。
+      %   --attach=prompt と同様の状態に持っていく事はできないのだろうか。
+      %
+      %   ここでの問題は PROMPT_COMMAND が実際に呼び出されるのかという事。
+      %   →試してみたが bind -x の関数の呼び出しの直後には呼び出されない。
+      %   WINCH の後でも呼び出されない。
+      %   PROMPT_COMMAND から ble-attach するのはできない。
+      %
+      % ここでの問題は其処ではない。suppress_bash_output を無効にするという事。
+      % 一時的に無効にすることは果たして可能だろうか。
+      % 確認してみた所、internal_suppress_bash_output は元々有効なのを
+      % 一時的に無効にするのは可能である様に見える。有効な時にだけ行う初期化がある。
+      % 無効な時には何も初期化はしない。
+      %
+      % と思ったが無効な時の stdout.on stdout.off を上書きしていた。
+      % stdout.on と stdout.off に internal_suppress_bash_output= の時に
+      % 処理を動的に切り替える様にすれば良い様な気がする。
+      %
+      % 然し一時的に切り替えたとして誰が復元するのか。
+      % うーん。それよりは internal_suppress_bash_output=tmpoff 等の様に
+      % 特別な値を設定して、その特別な値の時にだけ対策を実行する?
+      % そして一回特別な処理をしたら後はまた普通の値 (1) に戻す。
+      %
+      % * PS1 の保存・復元方法の変更
+      %
+      %   | ここで問題になる可能性があるのは PS1= にする対処を
+      %   | bash_completion の為に諦めた事である。
+      %   | PS1= に有限の文字列が含まれている為、初期化スクリプトが勘違いする。
+      %   | 実際の所 bash_completion は二度以上初期化しないのでここでは関係ない。
+      %   | 然し、その他のスクリプトで二度以上実行する必要のあるものがあるかもしれない。
+      %   | そして、最初のプロンプトを表示してユーザ待ち状態になっている時に
+      %   | ble-import を実行する可能性は高い。
+      %   |
+      %   | というより、本当に PS1= を諦める必要があったのだろうか、という疑問が残る。
+      %   | PS1= のタイミングを本当に一番最後にしていれば問題は起こらなかったのではないか。
+      %   | →調べると PS1 は殆ど常に待避した状態になっていて
+      %   | コマンドを実行する直前と直後にだけ復元するという事になっている。
+      %   | 実は単に stdout.{on,off} のタイミングで保存・復元すれば良いのでは。
+      %
+      %   もし一時的に internal_suppress_bash_output を無効化するのであれば、
+      %   同時に PS1 の待避の方法も変更する必要がある。現在はユーザコマンドを実行する度に
+      %   PS1 を復元するという方策を取っているが、実は stdout.{on,off} を呼び出す度に
+      %   保存・復元を実行するという形にすれば良い。その場合には _ble_edit_PS1 の代わりに
+      %   PS1 を直接編集する様に変更する必要がある。もしくは PS1 を _ble_edit_PS1 にコピーする。
+      %   read 等を実行する際に一時的に _ble_edit_PS1 を変更しているが、
+      %   これはどうなのだろう。。と思ったが、これは save/restore-vars で復元されるのだった。
+      %   なので実は PS1 を直接上書きする方法でも良い気がして来た。
+
+    原因について調べればもっと良い回避方法が見つかる可能性もある。
+
+    * そもそも RET でコマンドを実行すると一時的に直るのは何故だろうか。
+
+      要約: stty を実行するとその場で COLUMNS/LINES が更新される。
+        WINCH によって更新される訳ではないし、WINCH handler が修正される訳でもない。
+
+      | 特に echo を実行しただけで直るというのは不思議である。
+      | 或いは、もっと早くに COLUMNS が修正されているが、
+      | 単にプロンプトが更新されていないだけ?
+      |
+      | →確認すると確かに echo を実行した直後に初めて COLUMNS が更新されている。
+      | これが意味する所は何だろうか。epilogue/prologue で何かが起こっている?
+      |
+      | →分かった。term/enter,leave を省略すると
+      | コマンドを実行しても COLUMNS が更新されない。
+      | これは stty を実行すると直るという事だろうか。
+      | →その様だ。特に stty sane でも良いので実行すると COLUMNS が更新される。
+      |
+      | 或いは bash で何か操作したら直るかもしれない。
+      | shopt -u checkwinsize; shopt -s checkwinsize を stdout.on に入れてみたが
+      | 特に何も変化はない。COLUMNS も更新されない。
+
+    * bind -x で再現する事は可能だろうか。
+      例えば。trap WINSIZE を実行してから一度でも
+      stdout.on で制御を bash に戻せば状態は元に戻るのである。
+
+      逆に言えば、生の bash でこの状態を再現する為には
+      全ての bind -x に bind しなければならない?
+      と思ったがユーザが特定のキーしか押さないという事にすれば十分再現できる?
+
+      取り敢えず C-t で bash suppress に入って C-y で抜ける様な bashrc を作った。
+      更にここで builtin trap -- WINCH を実行するのである。
+      取り敢えず手許のスクリプトでは問題を再現する事ができた。
+
+      不思議なのはこのスクリプトだと最初から winch を trap していたとしても、
+      suppress している時に WINCH が呼び出されず、COLUMNS も更新されない事。
+      ble.sh の場合には bash-4.2 以降では既定では suppress していても
+      ちゃんと WINCH が更新されているという事なのである。
+
+      ここでの疑問は何故 "bind -x" 外で trap を設定した時に
+      ble.sh でちゃんと動いている様に見えるのかという事である。
+
+    [問題]
+
+    * bash-4.2 以降では reload すると問題が発生する。
+    * bash-4.1 では常に問題が発生している。
+    * Cygwin でも常に問題が発生している。
+
+    bash-4.2 以降の初期状態の様に振る舞わせる事が可能であればそれで良いが、
+    現状の様子を見ると bash-4.1, Cygwin では問題が発生している。
+    従って可能であれば bash-4.1, Cygwin でも常に動くような対策が欲しい。
+
+    a 一つの可能性は毎 bind -x で stty sane を実行するという事。これは
+      重い。或いは空コマンドを実行する場合 (newline) でも stty sane を
+      実行するという事。これもある程度の重さが残ってしまう気がする。
+
+      stty sane 以外の方法で COLUMNS を更新させる事は可能だろうか。
+
+    b 例えば winsize の通知を要求する terminal sequence はあるのだろう
+      か。端末エミュレータ側では termios で端末サイズなど設定してしま
+      うので、端末自体がこれに対応しているという話は効いたことがない。
+      端末ハンドラ経由で要求するしかないのだろうか。簡単な terminal
+      sequence でサイズを要求できないのか。
+
+    c 或いは現在の端末のサイズを変更するシーケンスを送れば強制的に
+      WINCH をその場で発生させる事ができるだろうか。然し、その為には端
+      末のサイズを知っていなければならない。或いは端末のサイズを実質的
+      に変更しないシーケンスを送る事ができたとしても、端末側がサイズが
+      変更なかった場合に termios に設定しないのだとしたら、或いは端末
+      ハンドラが変更チェックを行っていたとしたらこれは効果がない。
+
+    bash のソースを確認すると値の設定を行っているのは恐らく
+    sh_set_lines_and_columns である。そして呼び出し元は lib/sh/winsize と
+    readline である。lib/sh/winsize は get_new_window_size を提供している。
+    get_new_window_size は第一引数に from_sig というのがあるが、
+    これは使われていないし、また、呼び出し元でも 0 しか指定していない。
+    readline 側での呼び出し元は _rl_get_screen_size である。
+    また readline 内部にも sh_set_lines_and_columns の実装がある。
+    lib/readline/shell.c である。でもこれは readline を standalone で
+    コンパイルした時に使われる物ではないかとの疑惑がある。
+
+    [未解決の謎]
+
+    * 何故 bash-4.2 以降 / linux では WINCH を検出できているのか。
+      というかそのまま bash を抜けると親 bash はちゃんと動くので、
+      端末ハンドラの設定ではない。やはり bash 自体が何だか変な事になっている。
+
+    Bash の実装について確認する
+
+    | bash の振る舞いについて調べている。どうも biltin trap で WINCH に登録すると
+    | bash は別のシグナルハンドラを signal で登録し直す様である。
+    | builtin trap -- WINCH していると sig.c sigwinch_sighandler が呼び出されない。
+    | 何も実行していないと呼び出される。他に検索してみたが直接に trap handler を
+    | 設定している箇所は見つからなかった。だとすると普通の siginal の一つとして
+    | signal handler が登録されているという事になる。本当だろうか??
+    | signal 関数の呼び出しを検索してみると readline の他には sig.c しか存在しない。
+    | 結局 set_signal_handler 関数で全て設定しているという事だろうか。
+    |
+    | 実装を見るとどうも sigaction という sycall を使っている。
+    | 直接に signal を使っているという訳ではない様である。
+    | 一応、実際にこの関数が本当に呼び出されているか確認する。
+    | →何と物凄い勢いで呼び出されている。SIGWINCH だけを拾う。
+    | →調べてみると fork する度に呼び出されている様である。
+    |   サブシェルの起動時にも呼び出されている。
+    |   これだと余り参考にならない気がする。
+    |
+    | うーん。0x480040 というアドレスの関数を設定している。
+    | それ以外の関数は設定していない様だ。
+    | そしてこの 0x480040 とは何だろう。
+    | どうやら sigwinch_sighandler の様である。
+    | 然しこれは呼び出されていなかった筈である。
+    |
+    | どうやら trap_handler が登録されてはいるけれども、
+    | サブシェルを起動する時にはそれをキャンセルする為に
+    | sigwinch_sighandler が登録されているということの様である。
+    |
+    | | なのでここで観察するべきは trap_handler の方である気がする。
+    | | 調べてみると変な状態になった後でもちゃんと trap_handler は起動されている。
+    | | という事はその後の処理の流れが変だという事になる。
+    | | trap_handler の中では実はシグナルハンドラは処理しない。
+    | | 単に pending_traps 配列に情報を記録するだけである。
+    | | interrupt_immediately は試した範囲では 0 である。
+    | | すると run_pending_traps の中で何か変な事が起こっている?
+    | |
+    | | run_pending_traps が呼ばれるタイミングを調べようとしたが呼び出されない。。。
+    | | 一度 run_pending_traps が呼び出されれば大量に run_pending_traps が呼び出される。
+    | | 然し、trap -- を実行した後だと何も実行されない。不思議である。
+    | | run_pending_traps の呼び出し元は沢山ある。builtin trap を実行すると
+    | | 何処かの呼び出し元で何かが変化するという事。
+    | |
+    | | run_pending_trapsの振る舞いを調べる必要がある。
+    | | 正常に動作している時に run_pending_traps が一回だけ処理される。
+    | | 呼び出し元は check_signals_and_traps で更に
+    | | 呼び出し元は bash_event_hook である。
+    | | この関数は実は rl_signal_event_hook に対して関数ポインタとして設定される。
+    | | 有効・無効が bashline_{set,reset}_event_hook で切り替えられる様になっている。
+    | |
+    | | 振る舞いを見ると以下の様になっている。
+    | |
+    | |   - trap_handler
+    | |     - bashline_set_event_hook
+    | |     - (interrupt が設定されていないので
+    | |       その場では run_pending_traps は実行しない)
+    | |   - _rl_signal_handler
+    | |     - bashline_reset_event_hook
+    | |     - bash_event_hook
+    | |       - check_signals_and_traps
+    | |         - run_pending_traps
+    | |
+    | | bashline_{set,reset}_event_hook は毎回設定・解除する様である。
+    | | 一方で builtin trap した場合にも bashline_set_event_hook が呼び出されている。
+    | | 2回目以降には呼び出される事は無いようである。
+    | |
+    | | そして、問題が起こっている時にはそもそも
+    | | _rl_signal_handler も呼び出されない様だ。
+    | | RL_CHECK_SIGNALS というマクロの中で呼び出されている。
+    | | そしてこのマクロは色々なところから呼び出されている。
+    | | 取り敢えず一番怪しい signals.c から見る。
+    | | rl_check_signals という関数から呼び出されている。
+    | | 然しこの関数は誰も使っていない様に見える。
+    | | RL_CHECK_SIGNALS マクロ自体に __FILE__, __LINE__ を出力する様に細工を入れた。
+    | | 結果として呼び出し元は input.c:625 である様だ。
+    | |
+    | | _rl_caught_signal と errno == EINTR をチェックしている。
+    | |
+    | | 漸く違いを見つけた。getc で EINTR を受け取った時に、
+    | | 問題が発生していない時には _rl_caught_signal = 28 (WINCH) なのに、
+    | | 問題が起こっている時には _rl_caught_signal = 0 になっている。
+    | | これを強制的に 28 に書き換えたらどうなるだろうか。
+    | | →うーん。一段階深くまで行くようにはなったが結局止まっている。
+    | | bashline_set_event_hook が呼び出されていないからの気がする。
+    | |
+    | | 先に bashline_set_event_hook の呼び出し箇所について確認するのが良い気がする。
+    | | 確認すると trap_handler の中に説明が書かれている。
+    | | EINTR で反応をする事ができる、とその様に書かれている。
+    | | 此処で bashline_set_event_hook を呼び出している。
+    | | その様にする条件は RL_ISSTATE (RL_STATE_SIGHANDLER) だそうである。
+    | | これは何だろうか。
+    | | #define RL_ISSTATE(x) (rl_readline_state & (x)) のように定義されている。
+    | | rl_readline_state の状態が異なるという事なのだろう。
+    | | 実際に rl_readline_state を出力してみると 4800e が 4000e に変化している。
+    | | この 8 というのが丁度 している。
+    | | その様にする条件は RL_STATE_SIGHANDLER なのだろう。
+    | | ではこの RL_STATE_SIGHANDLER というのは何処で設定or解除されるのか?
+    |
+    | ここで問題が2種類ある (1) SIGWINCH までは受信している。
+    | しかし trap handler が何故か実行されない。(2) COLUMNS が更新されない。
+    | それぞれ何故なのだろうか。
+    |
+    | うーん。どうやらやはり rl_sigwinch_handler が呼び出されるか
+    | trap_handler が呼び出されるかの違いらしい?
+    | 両方とも trap_handler が呼び出されている様に見えたが、
+    | 実際には通常時は rl_sigwinch_handler 経由で trap_handler が呼び出されて、
+    | それ以外の場合には rl_sigwinch_handler が呼び出されるという仕組みになっている様だ。
+    |
+    | そして builtin trap を実行すると sigwinch_handler が消滅する。
+    | 何らかのタイミングで再度設置されるというだけの様な気がする。
+    |
+    | うーん。sig.c の set_signal_handler を見る限りでは trap_handler しか設定していない。
+    | 実は他に rl_set_sighandler という関数が存在して其処で rl_sigwinch_handler が設定される様だ。
+    | また、普通の readline 環境で builtin trap -- WINCH を実行するとこの
+    | trap_handler の呼び出しと rl_set_sighandler の呼び出しが両方実行される。
+    |
+    | [set_signal_handler (sig.c)] SIGWINCH trap_handler (25353)
+    | [rl_set_sighandler (signals.c)] SIGWINCH rl_sigwinch_handler (25353)
+    |
+    | $ builtin trap -- 'ble-edit/attach/TRAPWINCH' WINCH; sleep 5
+    | を実行してみて判明したのは rl_set_sighandler は builtin trap に対して発生しているのではなくて、
+    | readline に制御が戻ってきた時に改めて設定する物である様だ。
+    |
+    | うーん。rl_maybe_set_sighandler という関数から呼び出されていて、
+    | この関数自体は普通の readline で毎回コマンドを呼び出す度に呼び出される。
+    | そしてこの関数は rl_set_signals という関数から呼び出される。
+    |
+    | rl_set_signals という関数がコマンドを呼び出す度に呼び出されるという事の様だ。
+    | 然し不思議なのは ble/term/enter, leave を実行すると回復するという事である。何故?
+    | 実は WINCH は呼び出されていないけれども何らかの理由で COLUMNS, LINES が更新されるという事だろう。
+    | →実際に WINCH handler が呼び出されていないという事を確認した。
+
+    今までに分かった Bash の振る舞いについて以下にまとめる。
+
+    1. builtin trap は trap_handler という関数を登録する。
+      これは SIGWINCH に対しても同様である。
+
+    2. readline はユーザがコマンドを実行し終わったタイミングで
+      rl_set_signals - rl_maybe_set_sighandler - rl_set_sighandler(SIGWINCH) として、
+      rl_sigwinch_handler を SIGWINCH に登録し直す。
+      この rl_sigwinch_handler が COLUMNS, LINES を更新してくれるのである。
+      そして元々登録されていた関数も呼び出してくれる。
+
+    然し、ble.sh では bind -x でユーザのコマンドを処理しているので、
+    readline の rl_set_signals が呼び出される機会がない。
+    そうすると壊れたままという事になる。
+
+    # * なので PROMPT_COMMAND で attach したとしても解決はしない。
+    #
+    # * ble-detach してから ble-attach すると問題が解決して見えたのは、
+    #   単に readline としてコマンドを実行したからであった。
+    #   つまり、コマンドであれば何でも良かった。
+    #
+    # * ble/term/enter, leave で解決した様に見えたのも少し違った。
+    #   ble/term/enter, leave を実行すると stty が呼び出されて
+    #   その場で COLUMNS, LINES は修正されるが、
+    #   実はもう一度 winsize を変更するとまた変な状態になる。
+    #   これは一時的に COLUMNS の状態が正しくなるというだけで、
+    #   trap 関連で変な状態になっているというのを修正する事にはなっていない。
+    #
+    # ? ok: suppress をしていないと問題が起こらないのは何故か。
+    #   →問題が起こっていない様に見えたのは勘違いだった。
+    #   今試してみると suppress しない場合でもちゃんと問題が発生している。
+    #
+    # * Cygwin で bash-4.2 以降でも問題が起こっている原因は分からない。
+    #   Cygwin ではまた別のタイミングで rl_set_signals 等を実行しているのかもしれない。
+    #   或いは、単に trap_handler が別の理由で中断しているというだけかもしれない。
+    #   これはまた別の機会に考える事にする。
+    #
+    # ? 保留: bashline_set_event_hook が builtin trap で呼び出されているのは何故か。
+    #   これについては未だ調べていないが、全体について大体分かったし、
+    #   この部分は余り関係無さそうなので今は調べなくて良い。
+
+
+    ここで考えるべき事は何か。
+
+    a rl_set_signals を誘起する別の手法について考える。
+    b builtin trap を二度としない様にする。
+
+    b の方が現実的かもしれない。が、ble-update で違う値になる場合に為る時は
+    もう一度実行せざるを得ない。しかし、そういう事はめったに起きないし、
+    そもそもこの問題はそんなに大きな問題ではない。一時的に表示が乱れる程度なのだ。
+    という事を考えると、取り敢えずは b の方で良い気がする。
+
+    * [棄却] rl_set_signals を誘起させる方法について
+      少し試してみたがうまく行かないので諦める事にする。
+
+      もし a が可能であればそちらの方が良いので少し確認しておく事にする。
+      rl_reset_after_signal という関数が呼び出している。
+      _rl_callback_newline, rl_callback_read_char という関数も特定の条件の元で呼び出している。
+      後は readline 関数が一番最初の最初の初期化で呼び出している。
+      可能性があるとすれば rl_reset_after_signal である。
+
+      →然し、これが呼び出されるのは INT, TSTP, TTIN, TTOU, TERM, HUP, ALRM, QUIT である。
+      例えば INT を上書きして invoke するというのもありなのかもしれない。
+      試しに実装してみる事にする。
+
+      TSTP, TTIN, TTOU, INT, TERM, HUP, QUIT, WINCH は全て再設定の対象の様である。
+      という事は INT を上書きするのも問題が発生するという事。うーん。
+
+      もっと具体的に見る事にする。rl_reset_after_signal は _rl_handle_signal から呼び出される。
+      更にこれは _rl_signal_handler から呼び出される。更に SIGHANDLER_RETURN から呼び出され、
+      これは rl_signal_handler から呼び出される。つまり。rl_signal_handler が設定されている
+      シグナルを使わなければならない。その場で trap すると trap_handler が設定されてしまうので、
+      その様な handler をその場で生成する事はできない。とすれば。うーん。分からない。
+      原理的にはどれか一つに何か無害な物が設定されていれば特に問題は起こらない筈。
+
+      取り敢えず TSTP, TTIN, TTOU は特に何も起こらない様である。
+      これらに特に何も設定されていなかったらそれを使うという事で良いのだろうか。
+      取り敢えず試してみる事にする。
+      →実際に試してみた所全く呼び出されない。どういう事だろう。
+      何か trap に登録していないと駄目という事だろうか。
+
+      # Induce "rl_reset_after_signal" to set up rlhook
+      for sig in TTOU TERM QUIT; do
+        ble/util/assign trap "builtin trap -p $sig" || continue
+        [[ ! $trap ]] || continue
+        kill -"$sig" "$$"
+        return 0
+      done
+
+      うーん。駄目だ。動かない。諦める事にする。
+
+      調べてみると TTOU に確かにハンドラが設定されている気がするが実際には呼び出されない。
+      もっと別の仕組みによってもみ消されているのか、或いは、
+      単に別の場所で handler が上書きされてしまっているのか。
+      どうしたら上書きされているか分かるだろうか。
+      signal を2回呼び出す? 或いはもしそもそも全く呼び出されないのだとすれば。
+      signal SIG_DFL を呼び出して中身を出力して抜ければ良い気もする。
+
+      うーん。やはり呼び出されない。そして TTOU を再設定する時に確認したが、
+      やはり rl_signal_handler が設定されている。別のものは設定されていない。
+      どうも自分で kill を呼び出すと何も起こらない様だ。
+      子プロセスから呼び出しても何も起こらない。
+      別の通信方法を使っているとしても不思議である。
+      時間の無駄なので深追いするのはやめる事にする。
+
 2020-04-26
 
   * bash-completion が有効になっていない→ PS1= の影響だった [#D1344]
@@ -2999,6 +3484,10 @@ bash_tips
       但し PS1 等の変数は多くのスクリプトが使う物という事で空欄にするのはやめる。
 
     取り敢えず a の方針で変更した。
+
+    結局これは外部のスクリプトを ble-import で初期化した時に起こる問題なので
+    影響範囲は少ないだろう。唯一 fzf は ble-import で読み取る設定を紹介しているが、
+    fzf は $- を使って判定していた筈なので影響はないのである。
 
   * OK: preexec の振る舞いについての調査 [#D1343]
     preexec は全てのコマンドの前に実行する物なのか、

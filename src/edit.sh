@@ -1399,7 +1399,7 @@ function ble-edit/attach/.attach {
   fi
 
   ble/builtin/trap/reserve WINCH
-  builtin trap -- ble-edit/attach/TRAPWINCH WINCH
+  ble/builtin/trap/set-readline-signal WINCH ble-edit/attach/TRAPWINCH
 
   ble-edit/adjust-PS1
   ble-edit/adjust-IGNOREEOF
@@ -6827,7 +6827,7 @@ function ble/builtin/read/.loop {
 
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
   ble/builtin/read/.setup-textarea || return 1
-  builtin trap -- ble/builtin/read/TRAPWINCH WINCH
+  ble/builtin/trap/set-readline-signal WINCH ble/builtin/read/TRAPWINCH
 
   local ret= timeout=
   if [[ $opt_timeout ]]; then
