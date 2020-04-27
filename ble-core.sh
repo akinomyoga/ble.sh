@@ -426,6 +426,39 @@ else
   } 2>/dev/null
 fi
 
+## 関数 ble/builtin/trap/set-readline-signal sig handler
+##   ble.sh 内部で使用するハンドラを登録します。
+##
+##   Note #D1345: ble.sh の内部で "builtin trap -- WINCH" 等とすると
+##   readline の処理が行われなくなってしまう (COLUMNS, LINES が更新さ
+##   れない)。
+##
+##   Bash では TSTP, TTIN, TTOU, INT, TERM, HUP, QUIT, WINCH について
+##   は readline が処理を追加している。builtin trap を実行すると、一旦
+##   は trap の設定した trap_handler が設定されるが、"コマンド実行後"
+##   に readline が rl_maybe_set_sighandler という関数を用いて上書きし
+##   てreadline 特有の処理を挿入する。ble.sh は readline の "コマンド
+##   実行"を使わないので、readline による追加処理が消滅する。
+##
+##   対策として、今から登録しようとしている文字列が既に登録されている
+##   物と一致する場合には、builtin trap の呼び出しを省略する。現状では
+##   問題になっているのは WINCH だけなので取り敢えず WINCH だけ対策を
+##   する。
+##
+function ble/builtin/trap/set-readline-signal {
+  local sig=${1#SIG} handler=$2 trap
+  if ble/util/is-running-in-subshell; then
+    builtin trap -- "$handler" "$sig"
+    return
+  fi
+
+  # Skip if already registered
+  ble/util/assign trap "builtin trap -p $sig"
+  local cmd="trap -- '$handler' SIG$sig"
+  [[ $cmd == "$trap" ]] && return 0
+  eval "builtin $cmd"
+}
+
 #
 # miscallaneous utils
 #

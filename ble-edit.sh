@@ -2252,7 +2252,7 @@ function ble-edit/attach {
     _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
-  trap ble-edit/attach/TRAPWINCH WINCH
+  ble/builtin/trap/set-readline-signal WINCH ble-edit/attach/TRAPWINCH
 
   ble-edit/adjust-PS1
   [[ $bleopt_exec_type == exec ]] && _ble_edit_IFS=$IFS
@@ -6593,7 +6593,7 @@ function ble-edit/read/.loop {
 
   local x0=$_ble_line_x y0=$_ble_line_y
   ble-edit/read/.setup-textarea
-  trap -- ble-edit/read/TRAPWINCH WINCH
+  ble/builtin/trap/set-readline-signal WINCH ble-edit/read/TRAPWINCH
 
   if [[ $opt_timeout ]]; then
     local start_time; ble/util/strftime -v start_time %s
