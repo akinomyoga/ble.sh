@@ -5,6 +5,8 @@
 ble/is-function ble-edit/bind/load-editing-mode:vi && return 0
 function ble-edit/bind/load-editing-mode:vi { :; }
 
+# 2020-04-29 force update (rename ble-decode/keymap/.register)
+
 source "$_ble_base/keymap/vi_digraph.sh"
 
 ## オプション keymap_vi_macro_depth

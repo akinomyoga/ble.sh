@@ -1535,7 +1535,7 @@ function ble/function#advice {
   if ! ble/is-function "$name"; then
     local t=; ble/util/type t "$name"
     case $t in
-    (builtin|file) builtin eval "function $name { command $name \"\$@\"; }" ;;
+    (builtin|file) builtin eval "function $name { : ZBe85Oe28nBdg; command $name \"\$@\"; }" ;;
     (*)
       ble/util/print "ble/function#advice: $name is not a function." >&2
       return 1 ;;
@@ -1547,7 +1547,13 @@ function ble/function#advice {
   (remove)
     if [[ $def == *'ble/function#advice/.proc'* ]]; then
       ble/function#getdef "ble/function#advice/original:$name"
-      [[ $def ]] && builtin eval -- "${def#*:}"
+      if [[ $def ]]; then
+        if [[ $def == *ZBe85Oe28nBdg* ]]; then
+          builtin unset -f "$name"
+        else
+          builtin eval -- "${def#*:}"
+        fi
+      fi
     fi
     builtin unset -f ble/function#advice/{before,after,around,original}:"$name" 2>/dev/null
     return 0 ;;

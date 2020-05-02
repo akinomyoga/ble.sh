@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# 2020-04-29 force update (rename ble-decode/keymap/.register)
+
 _ble_keymap_vi_digraph__hook=
 
 function ble/widget/vi_digraph/.proc {
