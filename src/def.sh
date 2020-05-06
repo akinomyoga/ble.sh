@@ -34,6 +34,7 @@ blehook/declare history_message
 
 # edit.sh
 
+blehook/declare WINCH
 blehook/declare CHPWD
 blehook/declare PRECMD
 blehook/declare PREEXEC

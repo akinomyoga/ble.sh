@@ -1382,7 +1382,6 @@ function ble-edit/attach/TRAPWINCH {
       ble-edit/bind/stdout.off
     fi
   fi
-  ble/builtin/trap/invoke WINCH
 }
 
 ## called by ble-edit/attach
@@ -1398,8 +1397,8 @@ function ble-edit/attach/.attach {
     _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
-  ble/builtin/trap/reserve WINCH
-  ble/builtin/trap/set-readline-signal WINCH ble-edit/attach/TRAPWINCH
+  ble/builtin/trap/setup-hook WINCH readline
+  blehook WINCH-+=ble-edit/attach/TRAPWINCH
 
   ble-edit/adjust-PS1
   ble-edit/adjust-IGNOREEOF
@@ -4350,7 +4349,7 @@ function ble-edit/exec:gexec/.begin {
   ble-edit/bind/stdout.on
 
   # C-c に対して
-  builtin trap -- 'blehook/invoke INT' INT # 何故か改めて実行しないと有効にならない
+  ble/builtin/trap/setup-hook INT # 何故か改めて実行しないと有効にならない
   blehook INT+='ble-edit/exec:gexec/.TRAPINT'
   ble-edit/exec:gexec/.TRAPDEBUG/enter
 }
@@ -6827,7 +6826,8 @@ function ble/builtin/read/.loop {
 
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
   ble/builtin/read/.setup-textarea || return 1
-  ble/builtin/trap/set-readline-signal WINCH ble/builtin/read/TRAPWINCH
+  ble/builtin/trap/setup-hook WINCH readline
+  blehook WINCH=ble/builtin/read/TRAPWINCH
 
   local ret= timeout=
   if [[ $opt_timeout ]]; then
@@ -7308,8 +7308,9 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       fi
       ble/builtin/trap/invoke USR1
     }
-    ble/builtin/trap/reserve USR1
-    builtin trap -- 'ble-edit/io/TRAPUSR1' USR1
+    blehook/declare USR1
+    blehook USR1+=ble-edit/io/TRAPUSR1
+    ble/builtin/trap/setup-hook USR1
 
     function ble-edit/io/check-ignoreeof-message {
       local line=$1

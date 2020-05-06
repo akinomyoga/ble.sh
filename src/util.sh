@@ -1005,7 +1005,7 @@ function blehook {
   local -a process=()
   local flag_help= flag_error=
   local rex1='^([a-zA-Z_][a-zA-Z_0-9]*)$'
-  local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?[-+]?=)(.*)$'
+  local rex2='^([a-zA-Z_][a-zA-Z_0-9]*)(:?-?\+?=)(.*)$'
   while (($#)); do
     local arg=$1; shift
     if [[ $arg == -* ]]; then
@@ -1051,18 +1051,18 @@ function blehook {
     local name=${BASH_REMATCH[1]}
     local type=${BASH_REMATCH[2]}
     local value=${BASH_REMATCH[3]}
-    if [[ $type == *-= ]]; then
+    if [[ $type == *-* ]]; then
       local ret
       ble/array#last-index "_ble_hook_h_$name" "$value"
       if ((ret>=0)); then
         ble/array#remove-at "_ble_hook_h_$name" "$ret"
-      else
+      elif [[ ${type#:} == '-=' ]]; then
         ext=1
       fi
-    else
-      [[ $type != *+= ]] && builtin eval "_ble_hook_h_$name=()"
-      [[ $value ]] && ble/array#push "_ble_hook_h_$name" "$value"
     fi
+    [[ ${type#:} == '=' ]] && builtin eval "_ble_hook_h_$name=()"
+    [[ ${type#:} != '-=' && $value ]] &&
+      ble/array#push "_ble_hook_h_$name" "$value"
   done
   return "$ext"
 }
@@ -1296,37 +1296,81 @@ function ble/builtin/trap {
 }
 function trap { ble/builtin/trap "$@"; }
 
-## 関数 ble/builtin/trap/set-readline-signal sig handler
-##   ble.sh 内部で使用するハンドラを登録します。
-##
-##   Note #D1345: ble.sh の内部で "builtin trap -- WINCH" 等とすると
-##   readline の処理が行われなくなってしまう (COLUMNS, LINES が更新さ
-##   れない)。
-##
-##   Bash では TSTP, TTIN, TTOU, INT, TERM, HUP, QUIT, WINCH について
-##   は readline が処理を追加している。builtin trap を実行すると、一旦
-##   は trap の設定した trap_handler が設定されるが、"コマンド実行後"
-##   に readline が rl_maybe_set_sighandler という関数を用いて上書きし
-##   てreadline 特有の処理を挿入する。ble.sh は readline の "コマンド
-##   実行"を使わないので、readline による追加処理が消滅する。
-##
-##   対策として、今から登録しようとしている文字列が既に登録されている
-##   物と一致する場合には、builtin trap の呼び出しを省略する。現状では
-##   問題になっているのは WINCH だけなので取り敢えず WINCH だけ対策を
-##   する。
-##
-function ble/builtin/trap/set-readline-signal {
-  local sig=${1#SIG} handler=$2 trap
-  if ble/util/is-running-in-subshell; then
-    builtin trap -- "$handler" "$sig"
-    return
+function ble/builtin/trap/.invoke {
+  local _ble_trap_count
+  for ((_ble_trap_count=0;_ble_trap_count<1;_ble_trap_count++)); do
+    ble/util/setexit "$_ble_trap_ext"
+    builtin eval -- "$_ble_trap_handler"
+    _ble_trap_done=done
+    return "$_ble_trap_ext"
+  done
+
+  # break/continue 検出
+  if ((_ble_trap_count==0)); then
+    _ble_trap_done=break
+  else
+    _ble_trap_done=continue
+  fi
+  return "$_ble_trap_ext"
+}
+function ble/builtin/trap/.handler {
+  local _ble_trap_ext=$? _ble_trap_sig=$1 _ble_trap_name=$2
+
+  # ble.sh hook
+  ble/util/setexit "$_ble_trap_ext"
+  blehook/invoke "$_ble_trap_name"
+
+  # user hook
+  local _ble_trap_handler=${_ble_builtin_trap_handlers[_ble_trap_sig]}
+  local _ble_trap_done=
+  ble/builtin/trap/.invoke
+  _ble_trap_ext=$?
+  case $_ble_trap_done in
+  (break)
+    _ble_builtin_trap_hook=break ;;
+  (continue)
+    _ble_builtin_trap_hook=continue ;;
+  (done)
+    _ble_builtin_trap_hook="ble/util/setexit $_ble_trap_ext" ;;
+  (*)
+    _ble_builtin_trap_hook="return $_ble_trap_ext" ;;
+  esac
+}
+
+function ble/builtin/trap/setup-hook {
+  local ret opts=:$2:
+  ble/builtin/trap/.initialize
+  ble/builtin/trap/.get-sig-index "$1"
+  local sig=$ret name=${_ble_builtin_trap_signames[ret]}
+  ble/builtin/trap/reserve "$sig"
+
+  local handler="ble/builtin/trap/.handler $sig ${name#SIG}; builtin eval -- \"\$_ble_builtin_trap_hook\""
+  local trap_command="trap -- '$handler' $name"
+  if [[ $opts == *:readline:* ]] && ! ble/util/is-running-in-subshell; then
+    # Note #D1345: ble.sh の内部で "builtin trap -- WINCH" 等とすると
+    # readline の処理が行われなくなってしまう (COLUMNS, LINES が更新さ
+    # れない)。
+    #
+    # Bash では TSTP, TTIN, TTOU, INT, TERM, HUP, QUIT, WINCH について
+    # は readline が処理を追加している。builtin trap を実行すると、一旦
+    # は trap の設定した trap_handler が設定されるが、"コマンド実行後"
+    # に readline が rl_maybe_set_sighandler という関数を用いて上書きし
+    # てreadline 特有の処理を挿入する。ble.sh は readline の "コマンド
+    # 実行"を使わないので、readline による追加処理が消滅する。
+    #
+    # 対策として、今から登録しようとしている文字列が既に登録されている
+    # 物と一致する場合には、builtin trap の呼び出しを省略する。
+    #
+    # - 現状では問題になっているのは WINCH だけなので取り敢えず WINCH
+    #   だけ対策をする。
+    # - INT は bind -x 内だと改めて設定しないと有効にならない(?)様なの
+    #   で既に登録されていても、builtin trap は省略できない。
+    #
+    ble/util/assign trap "builtin trap -p $name"
+    [[ $trap_command == "$trap" ]] && return 0
   fi
 
-  # Skip if already registered
-  ble/util/assign trap "builtin trap -p $sig"
-  local cmd="trap -- '$handler' SIG$sig"
-  [[ $cmd == "$trap" ]] && return 0
-  eval "builtin $cmd"
+  eval "builtin $trap_command"
 }
 
 #------------------------------------------------------------------------------

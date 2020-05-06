@@ -682,13 +682,8 @@ ble/bin/.freeze-utility-path man
 # Solaris: .freeze-utility-path で上書きされた awk を戻す
 ble/bin/awk.use-solaris-xpg4
 
-ble/builtin/trap/reserve EXIT
-blehook EXIT+='ble/builtin/trap/invoke EXIT'
-builtin trap -- 'blehook/invoke EXIT' EXIT
-
-ble/builtin/trap/reserve INT
-blehook INT+='ble/builtin/trap/invoke INT'
-builtin trap -- 'blehook/invoke INT' INT
+ble/builtin/trap/setup-hook EXIT
+ble/builtin/trap/setup-hook INT
 
 blehook ERR+='ble/builtin/trap/invoke ERR'
 blehook ERR+='ble/function#try TRAPERR'
