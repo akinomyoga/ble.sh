@@ -1676,6 +1676,15 @@ function ble/function#push/call-top {
   "ble/function#push/$((index-1)):$func" "$@"
 }
 
+[[ $_ble_util_lambda_count ]] || _ble_util_lambda_count=0
+## 関数 ble/function#lambda var body
+##   無名関数を定義しその実際の名前を変数 var に格納します。
+function ble/function#lambda {
+  local _ble_local_q=\' _ble_local_Q="'\''"
+  ble/util/set "$1" ble/function#lambda/$((_ble_util_lambda_count++))
+  builtin eval -- "function ${!1} { builtin eval -- '${2//$_ble_local_q/$_ble_local_Q}'; }"
+}
+
 #
 # miscallaneous utils
 #

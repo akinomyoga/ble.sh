@@ -95,7 +95,8 @@
   - `ble/encoding:UTF-8/b2c`: fix a bug that `G0` characters lose its seventh bit
   - `ble/encoding:UTF-8/c2b`: fix a bug that the first byte gets redundant bits
 - edit: work around `WINCH` not updating `COLUMNS`/`LINES` after `ble-reload` `#D1345` a190455
-- complete: initialize `bleopt complete_menu_style` options before `complete_load` hook (reported by rux616) `#D1352` 0000000
+- complete: initialize `bleopt complete_menu_style` options before `complete_load` hook (reported by rux616) `#D1352` 8a9a386
+- main: fix problems caused by multiple `source ble.sh` in bashrc `#D1354` 0000000
 
 ## Compatibility
 

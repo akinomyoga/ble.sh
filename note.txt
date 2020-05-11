@@ -1162,30 +1162,6 @@ bash_tips
 
 2020-05-11
 
-  * main: bashrc で source ble.sh を2回実行すると固まる (reported by GavinRay97)
-    https://github.com/akinomyoga/ble.sh/issues/51
-
-    bashrc に設定したら ble-reload というメッセージが表示されて操作できなくなる。
-    ble 0.3.2 で source ble.sh を2回実行すると発生する。
-    ble-0.4 でも ble-attach を手で実行すると発生する。
-
-    また ble-0.4 で同じ事を --attach=prompt で実行すると
-    リダイレクトエラーが沢山発生する。文字列を入力する度に発生する。
-    これはつまり stdout.on, off で問題が発生しているという事だろう。
-    (too many open files とは一体どういう事だろうか。)
-
-    bashrc の中で2回以上 source ble.sh するとエラーが発生する。
-
-    $ bash --rcfile bashrc.1.bash
-    bash: リダイレクトエラー: ファイル記述子を複製できません: Too many open files
-    bash: /dev/null: Too many open files
-    bash: リダイレクトエラー: ファイル記述子を複製できません: Too many open files
-    bash: /dev/null: Too many open files
-    bash: リダイレクトエラー: ファイル記述子を複製できません: Too many open files
-    bash: /dev/null: Too many open files
-    bash: リダイレクトエラー: ファイル記述子を複製できません: Too many open files
-    bash: /dev/null: Too many open files
-
   * util: escape 単語先頭の ~ や # は escape しなくて良いのか。
     ble/string#escape-for-bash-specialchars
 
@@ -3118,6 +3094,268 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-05-11
+
+  * main: bashrc で source ble.sh を2回実行すると固まる (reported by GavinRay97) [#D1354]
+    https://github.com/akinomyoga/ble.sh/issues/51
+
+    bashrc に設定したら ble-reload というメッセージが表示されて操作できなくなる。
+    ble 0.3.2 で source ble.sh を2回実行すると発生する。
+    ble-0.4 でも ble-attach を手で実行すると発生する。
+
+    また ble-0.4 で同じ事を --attach=prompt で実行すると
+    リダイレクトエラーが沢山発生する。文字列を入力する度に発生する。
+    これはつまり stdout.on, off で問題が発生しているという事だろう。
+    (too many open files とは一体どういう事だろうか。)
+
+    bashrc の中で2回以上 source ble.sh するとエラーが発生する。
+
+    $ bash --rcfile bashrc.1.bash
+    bash: リダイレクトエラー: ファイル記述子を複製できません: Too many open files
+    bash: /dev/null: Too many open files
+    bash: リダイレクトエラー: ファイル記述子を複製できません: Too many open files
+    bash: /dev/null: Too many open files
+    bash: リダイレクトエラー: ファイル記述子を複製できません: Too many open files
+    bash: /dev/null: Too many open files
+    bash: リダイレクトエラー: ファイル記述子を複製できません: Too many open files
+    bash: /dev/null: Too many open files
+
+    これはどうも単に stdout.off の状態でロードすると駄目という問題の気がする。
+
+    ? と思ったが --attach=prompt でも問題が起こるという事はそんなに簡単ではない。
+      →ソースコードを確認した所、別に attach しなくても ble.sh を読み込んだ時点で
+      ble/fd#alloc _ble_edit_io_stdout '>&1'
+      ble/fd#alloc _ble_edit_io_stderr '>&2'
+      を使ってリダイレクト先を設定している。
+      というよりこれらは実は明示的に /dev/tty に繋ぐべきなのでは?
+
+      * 取り敢えず修正としては /dev/tty に繋ぐという事。
+      * unload の際に stdout.on を実行するという事。
+        実際に確認してみた所、ちゃんと stdout.on が呼び出される様に実装してある気がする。
+
+      またもう一つ変なのは --attach=prompt を使っているという事は、
+      二回目の ble.sh の時点では未だ stdout.off の状態になっていない筈という事。
+      それでも問題が発生するというのは何か別の事が起こっている?
+      →実際に確認してみた所 1 も 2 も /dev/null に繋がっている。
+      stdout.off の状態になっているという事を意味する?
+
+      何処で stdout.off が呼び出されているのか調べようとしたが、
+      実は stdout.off は呼び出されていない?
+      何らかの別の場所で 1,2 が /dev/null に繋がれている?
+      そもそも本当に 1,2 は /dev/null に繋がっているのだろうか。
+
+      また、ls -la /proc/$$/fd を見た感じだと _ble_edit_io_stdout 等はちゃんと
+      tty に繋がっている。変な物に繋がっているという事はない様である。
+
+    x fixed: PROMPT_COMMAND 無限ループ
+
+      % ? too many open files というエラーメッセージは恐らく間違ったメッセージの気がする。
+      %   →これについては確認してみた所、別に沢山の file descriptors を開いている訳ではない。
+      %   という事はつまりこれは単にエラーメッセージが間違っているだけである。
+
+      うーん。stdout.off で実際に確かめてみた所、
+      実は本当にファイルディスクリプタを使い果たしている様だった。
+      というか PROMPT_COMMAND で無限ループになっているという事の様だ。
+
+      これは一体どの様にして回避したら良いのか。
+      PROMPT_COMMAND が ble/base/attach-from-PROMPT_COMMAND なら
+      _ble_base_attach_PROMPT_COMMAND を上書きしないというのが愚直な対策だが、
+      ユーザが PROMPT_COMMAND="$PROMPT_COMMAND;..." 等と変更していた場合を考えると、
+      コンポ天気な対策になっていない。
+
+      % fixed: 先ず ble/base/attach-from-PROMPT_COMMAND の最初で
+      % _ble_base_attach_from_prompt= を設定して何度も実行されない様にする?
+      % と思ったが違う気がする。_ble_base_attach_from_prompt= は
+      % 何度も attach を実行してしまわない為の物であって、
+      % PROMPT_COMMAND の呼び出しを抑制する為の物ではない。
+      %
+      % 実際に attach しているかどうかに関わらず
+      % PROMPT_COMMAND を入れ子で実行してしまわない為の物である。
+      %
+      % →lambda を使って実装し直したので結局この修正は不要になった。
+
+      * 問題は何処にあるのか。
+
+        更に元々ユーザが設定していたコマンドは何処に退避するのか?
+        現状の設定だと _ble_base_attach_PROMPT_COMMAND= に待避されていた
+        ユーザのコマンドは消滅してしまう。うーん。
+        実は unload する時に復元するべきなのではないだろうか。
+        と思ったが更にユーザが PROMPT_COMMAND を変更していた場合、
+        勝手に復元する訳には行かなくなる。
+
+        二回実行した時に既に退避していたコマンドを実行するのか、
+        或いは完全に削除してしまうのかどうするべきか。
+
+        | そもそも ble.sh を reload する事を許しているのはユーザが source ~/.bashrc
+        | した時に改めて初期化する事を可能にする為。そういう事を考えると、
+        | PROMPT_COMMAND が累積して行くというのは変といえば変な話である。
+        | 本来は bashrc の先頭でクリアしてしまうべきなのではないかという気がする。
+        |
+        | 然し、現実にはわざわざその様にする事はない。
+        | というか重複して実行されても良いのではないだろうか。
+        | その様になってしまうのはユーザが何度も実行するから。
+        | と思ったがユーザが登録する時には PROMPT_COMMAND に既に
+        | 自分の設定した文字列が含まれているかどうかを確認してからという事もある。
+        | そういう事を考えると、やはり何度も実行してしまうのは変な気がする。
+        |
+        | というか同じ問題が普通に reload した時にも起こる。
+        | _ble_base_attach_PROMPT_COMMAND= に指定していた設定が消滅するという事。
+        | これに対してどう処理するのが正しいのか。。
+        |
+        | 本来は ble.sh の設定した PROMPT_COMMAND は一時的な物なので跡形もなく消したい。
+        | 然し、実際にはユーザの別の設定に取り込まれたりするので後で消し去れない事もある。
+        | その時に如何に透明になる事ができるかというのが問題である。
+        |
+        | _ble_base_attach_PROMPT_COMMAND を配列にして上書きする?
+        | 或いは _ble_base_attach_PROMPT_COMMAND に既に値が設定されていた場合には、
+        | それを更に別の変数に退避して、ble/base/attach-from-PROMPT_COMMAND が
+        | 二重に呼び出された時にそれを実行するという事にする?
+        |
+        | うーん。ble/base/attach-from-PROMPT_COMMAND という名前ではなくて、
+        | 適当にラムダ関数として重複の無いようにその場で関数を生成する?
+        | そうすればちゃんとそれに紐付いた関数として呼び出す事ができる。
+        | うーん。それが良い気がしてきた。
+
+      * lambda で実装するのが良い気がしてきた。
+
+        改めて方針について整理する。
+        実際に登録するのはラムダ関数にする。
+        そのラムダ関数から ble/base/attach-from-PROMPT_COMMAND を呼び出す。
+        古い PROMPT_COMMAND は変数に保存するのではなくて、ラムダの本体に埋め込む。
+        また、ラムダを削除する為に、ble/base/attach-from-PROMPT_COMMAND にラムダの関数名を渡す様にする。
+
+        ble/base/attach-from-PROMPT_COMMAND 'old-prompt-command' "$FUNCNAME"
+
+        ble/function#lambda 変数名 'function-body' というインターフェイスにする。
+
+      * ok: lambda を使って実装した時に再帰呼び出しが発生する可能性はあるだろうか。
+        考えてみる。
+
+        一回目の source で PROMPT_COMMAND=lambda/1 になる。
+        元の PROMPT_COMMAND は lambda/1 から呼び出される。
+        二回目の source で PROMPT_COMMAND=lambda/2 になって
+        此処から lambda/1 が呼び出される。
+
+        実際に PROMPT_COMMAND が評価されるとどうなるか。
+
+        | - lambda/2
+        |   - ble/base/attach-from-PROMPT_COMMAND lambda/1 lambda/2
+        |     1 PROMPT_COMMAND=lambda/1
+        |     2 lambda/1
+        |     | - ble/base/attach-from-PROMPT_COMMAND 元々の値 lambda/1
+        |     |   1 PROMPT_COMMAND=元々の値
+        |     |   2 元々の値
+        |     |   3 PRECMD-=lambda/1
+        |     |   4 _ble_base_attach_from_prompt=
+        |     |   5 ble-attach
+        |     3 PRECMD-=lambda/2
+        |     4 [[ $_ble_base_attach_from_prompt ]] || return
+
+        の様になって無限ループは防げる。
+
+        PRECMD が重複して登録されてしまっているのは気になるが、
+        まあ大丈夫だろうという気がする。
+        PROMPT_COMMAND が複数回実行される程度の気がする。うーん。本当だろうか。
+        PRECMD 経由だと何が起こるかというと…。
+        登録した順に呼び出されるという事を考えると変な事になる。
+
+        | - lambda/1
+        |   - ble/base/attach-from-PROMPT_COMMAND 元々の値 lambda/1
+        |     1 local PROMPT_COMMAND=元々の値 (PROMPT_COMMAND (lambda/2) != 元々の値なので local)
+        |     2 元々の値
+        |     3 PRECMD-=lambda/1
+        |     4 _ble_base_attach_from_prompt=
+        |     5 ble-attach
+        | - lambda/2
+        |   - ble/base/attach-from-PROMPT_COMMAND lambda/1 lambda/2
+        |     1 PROMPT_COMMAND=lambda/1
+        |     2 lambda/1
+        |     |   ble/base/attach-from-PROMPT_COMMAND 元々の値 lambda/1
+        |     |   1 PROMPT_COMMAND=元々の値
+        |     |   2 元々の値
+        |     |   3 PRECMD-=lambda/1
+        |     3 PRECMD-=lambda/2
+        |     4 [[ $_ble_base_attach_from_prompt ]] || return
+
+        この様に考えてみると単に "元々の値" が二回実行されるだけである。
+        或る意味これは自然と言えば自然な気もする。
+        ユーザが二回初期化を実行したのだから。
+        そして各 source ble.sh 毎に1回ずつプロンプトの計算が走る。
+        また、最終的には PROMPT_COMMAND も PRECMD も解除される。
+
+        次の場合はユーザが後になって PROMPT_COMMAND を修正した時に何が起こるかという事。
+        これについては PROMPT_COMMAND の復元が行われないというだけで PRECMD は削除される。
+        PROMPT_COMMAND の復元に関しては実は行われなくてもそう大きな問題にはならない気がする。
+        attach も二度は起こらないし単に無駄に関数呼び出しが実行されるだけである。
+
+      * ok: ble.sh が PROMPT_COMMAND を設置した後にユーザが更に何か追加する可能性がある。
+        →これに関しても lambda を使って実装すれば大した問題にはならない。
+
+      x fixed: これで --prompt=attach に対しては動くかと思いきやプロンプトが表示されない。
+        これは /dev/null にリダイレクトしているのが原因である。
+        と思ったがよく見るとちゃんと PROMPT_COMMAND の標準エラーは外に伝わる様になっている。
+        という事はこれが原因ではないという事? ble-attach がそう何度も実行されるとは考えにくい。
+
+        然し、実際のこのリダイレクトを修正したら問題が発生しなくなった。
+        何が起こっているのだろうか。番号を指定してリダイレクトしている事によって
+        何らかのファイルディスクリプタが上書きされてしまっている?
+
+        或いは、2>/dev/null によって ble-attach の内部で実行した恒久的な exec redirection
+        が復元されてしまっているのが原因だろうか。何か違いが生まれるとすればこれしかない。
+        然し、何故これによってその様な症状になるのかというのは謎である。
+
+        →何だか分からないがやはり attach は一番最後に行うべき気もするし、
+        そういう意味でも一番外側で実行するべきである。その様に修正した。
+
+    結局、--attach=prompt の時のファイルディスクリプタの問題と、
+    ble-attach を強制的に実行した時に何も表示されなくなる問題は独立の問題だった。
+    それがはっきりした今改めて状況について整理する。
+
+    * ble-attach を実行したあとで source ble.sh を実行した時に、
+      本来であれば stdout.off が unload で呼び出される筈で、
+      結果として stdout.off, on が破壊されるという事はない筈である。
+
+      という事は起こっている問題は stdout.on, off の問題ではない?
+      或いは stdout.off に失敗している所為でこれが起こっている?
+      まずはこれがどちらなのかを確認する必要がある。
+
+      →確認した。二回目の初期化に於いて stdout.off 状態になっている。
+      ここでの謎は何故 unload で stdout.on が実行されなかったのかという事。
+
+      実際に調べてみるとちゃんと stdout.on は呼び出されていて
+      状態は復元されている。と思ったら分かった。
+      ble/base/unload-for-reload &>/dev/null として呼び出していたので、
+      ble/base/unload-for-reload の実行が終わった後に
+      1,2 が呼び出し前の状態に復元されてしまうのだった。
+
+      そもそもこの &>/dev/null は何の為の物だったろうか。
+      これを削除してしまっても特に問題はないのではないだろうか。
+      或いは set -x 等の状態復元に関係があるだろうか。
+      実は set -x の状態復元は此処では行っていない様に見える。
+      →実際に set -x を実行してみたが特に何か出力されるという事もない様だ。
+
+      念の為この部分の変更を履歴を調べておく。
+
+      | 59995c62 (Koichi Murase 2015-08-11 19:42:02 +0900 226) if [[ $_ble_base ]]; then
+      | fc45be68 (Koichi Murase 2019-01-11 20:38:38 +0900 227)   if ! ble/base/unload-for-reload &>/dev/null; then
+      | fc45be68 (Koichi Murase 2019-01-11 20:38:38 +0900 228)     echo "ble.sh: ble.sh seems to be already loaded." >&2
+      | fc45be68 (Koichi Murase 2019-01-11 20:38:38 +0900 229)     return 1
+      | fc45be68 (Koichi Murase 2019-01-11 20:38:38 +0900 230)   fi
+      | 59995c62 (Koichi Murase 2015-08-11 19:42:02 +0900 231) fi
+      |
+      | 59995c62 (Koichi Murase 2015-08-11 19:42:02 +0900 226) if [[ $_ble_base ]]; then
+      | 59995c62 (Koichi Murase 2015-08-11 19:42:02 +0900 227)   echo "ble.sh: ble.sh seems to be already loaded." >&2
+      | 59995c62 (Koichi Murase 2015-08-11 19:42:02 +0900 228)   return 1
+      | 59995c62 (Koichi Murase 2015-08-11 19:42:02 +0900 229) fi
+      |
+      | commit fc45be6841be364d152cb2228e662ca842bf4fc3
+      | Author: Koichi Murase <myoga.murase@gmail.com>
+      | Date:   Fri Jan 11 20:38:38 2019 +0900
+      |
+      |     main: support "ble-update"
+
+      対応する項目は #D0874 の様である。
+      ちゃんとは読んでいないが特に >/dev/null の処置についての言及はない様である。
+      取り敢えず何も起こっていない様なのでそのままで良い事にする。bash-3.0 でも大丈夫。
 
   * [別要因] menu: bleopt complete_menu_style=dense の座標計算が間違っている? [#D1353]
 

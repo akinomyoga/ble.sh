@@ -225,7 +225,7 @@ _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
 
 if [[ $_ble_base ]]; then
-  if ! ble/base/unload-for-reload &>/dev/null; then
+  if ! ble/base/unload-for-reload; then
     builtin echo "ble.sh: an old version of ble.sh seems to be already loaded." >&2
     return 1
   fi
@@ -823,15 +823,24 @@ function ble/base/unload {
 }
 blehook EXIT+=ble/base/unload
 
-_ble_base_attach_PROMPT_COMMAND=
 _ble_base_attach_from_prompt=
+## 関数 ble/base/attach-from-PROMPT_COMMAND prompt_command lambda
 function ble/base/attach-from-PROMPT_COMMAND {
   # 後続の設定によって PROMPT_COMMAND が置換された場合にはそれを保持する
   {
-    [[ $PROMPT_COMMAND != ble/base/attach-from-PROMPT_COMMAND ]] && local PROMPT_COMMAND
-    PROMPT_COMMAND=$_ble_base_attach_PROMPT_COMMAND
+    local prompt_command=$1 lambda=$2
+
+    [[ $PROMPT_COMMAND != "$lambda" ]] && local PROMPT_COMMAND
+    PROMPT_COMMAND=$prompt_command
+    local ble_base_attach_from_prompt_command=processing
     ble-edit/prompt/update/.eval-prompt_command 2>&3
-    blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND
+    ble/util/unlocal ble_base_attach_from_prompt_command
+    blehook PRECMD-="$lambda"
+
+    # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
+    #   外側で ble-attach を実行する様にする。3>&2 2>/dev/null のリダ
+    #   イレクトにより stdout.off の効果が巻き戻されるのを防ぐ為。
+    [[ $ble_base_attach_from_prompt_command == processing ]] && return
 
     # 既に attach 状態の時は処理はスキップ
     [[ $_ble_base_attach_from_prompt ]] || return 0
@@ -905,13 +914,15 @@ function ble/base/process-blesh-arguments {
   # attach
   case $opt_attach in
   (attach) ble-attach ;;
-  (prompt) _ble_base_attach_PROMPT_COMMAND=$PROMPT_COMMAND
-           _ble_base_attach_from_prompt=1
-           PROMPT_COMMAND=ble/base/attach-from-PROMPT_COMMAND
-           if [[ $_ble_edit_detach_flag == reload ]]; then
-             _ble_edit_detach_flag=prompt-attach
-             blehook PRECMD+=ble/base/attach-from-PROMPT_COMMAND
-           fi ;;
+  (prompt)
+    local q=\' Q="'\''"
+    _ble_base_attach_from_prompt=1
+    ble/function#lambda PROMPT_COMMAND \
+                        "ble/base/attach-from-PROMPT_COMMAND '${PROMPT_COMMAND//$q/$Q}' \"\$FUNCNAME\""
+    if [[ $_ble_edit_detach_flag == reload ]]; then
+      _ble_edit_detach_flag=prompt-attach
+      blehook PRECMD+="$PROMPT_COMMAND"
+    fi ;;
   esac
   [[ $flags != *E* ]]
 }
