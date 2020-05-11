@@ -67,13 +67,6 @@ function ble/complete/menu#check-cancel {
     ble/decode/has-input
 }
 
-function bleopt/check:complete_menu_style {
-  if ! ble/is-function "ble/complete/menu-style:$value/construct-page"; then
-    ble/util/print "bleopt: Invalid value complete_menu_style='$value'. A function 'ble/complete/menu-style:$value/construct' is not defined." >&2
-    return 1
-  fi
-}
-
 ## 関数 ble/complete/menu-style:$menu_style/construct
 ##   候補一覧メニューの表示・配置を計算します。
 ##
@@ -258,7 +251,7 @@ function ble/complete/menu-style:dense/construct-page {
       { x=$x0 y=$y0; break; }; esc1=$ret
 
     if [[ $menu_style == dense-nowrap ]]; then
-      if ((y>y0&&x>0)); then
+      if ((y>y0&&x>0||y>y0+1)); then
         ((++y0>=lines)) && break
         esc=$esc$'\n'
         ((y=y0,x=x0=0))
@@ -273,7 +266,7 @@ function ble/complete/menu-style:dense/construct-page {
 
     # 候補と候補の間の空白
     if ((++index<N)); then
-      if [[ $menu_style == nowrap ]] && ((x==0)); then
+      if [[ $menu_style == dense-nowrap ]] && ((x==0)); then
         : skip
       elif ((x+1<cols)); then
         esc=$esc' '

@@ -54,14 +54,19 @@ bleopt/declare -v complete_allow_reduction ''
 ##
 bleopt/declare -n complete_menu_style align-nowrap
 function bleopt/check:complete_menu_style {
-  if ! ble/is-function "ble/complete/menu-style:$value/construct"; then
-    ble/util/print "bleopt: Invalid value complete_menu_style='$value'." \
-                 "A function 'ble/complete/menu-style:$value/construct' is not defined." >&2
+  if ! ble/is-function "ble/complete/menu-style:$value/construct-page"; then
+    builtin printf '%s\n' \
+            "bleopt: Invalid value complete_menu_style='$value'." \
+            "  A function 'ble/complete/menu-style:$value/construct-page' is not defined." >&2
     return 1
   fi
-
   return 0
 }
+
+ble/util/autoload "$_ble_base/lib/core-complete.sh" \
+                  ble/complete/menu-style:{align,dense}{,-nowrap}/construct-page \
+                  ble/complete/menu-style:linewise/construct-page \
+                  ble/complete/menu-style:desc{,-raw}/construct-page
 
 bleopt/declare -v menu_linewise_prefix ''
 bleopt/declare -n complete_menu_align 20

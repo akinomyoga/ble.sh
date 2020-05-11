@@ -25,7 +25,7 @@
 - syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 04da4dd
 - main: add an option `--test` `#D1340` 1410c72
 - util (`ble/builtin/trap`): support `return` in `INT`/`EXIT`/`WINCH` `#D1347` `#D1348` 3865488
-- history: support timestamp `#D1351` 0000000
+- history: support timestamp (reported by rux616) `#D1351` 4bcbd71
 
 ## Changes
 
@@ -95,6 +95,7 @@
   - `ble/encoding:UTF-8/b2c`: fix a bug that `G0` characters lose its seventh bit
   - `ble/encoding:UTF-8/c2b`: fix a bug that the first byte gets redundant bits
 - edit: work around `WINCH` not updating `COLUMNS`/`LINES` after `ble-reload` `#D1345` a190455
+- complete: initialize `bleopt complete_menu_style` options before `complete_load` hook (reported by rux616) `#D1352` 0000000
 
 ## Compatibility
 
