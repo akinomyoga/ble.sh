@@ -753,8 +753,8 @@ function ble/base/process-blesh-arguments {
   done
 
   if [[ ! $_ble_base_rcfile ]]; then
-    { _ble_base_rcfile=$HOME/.blerc; [[ -f $rcfile ]]; } ||
-      { _ble_base_rcfile=${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh; [[ -f $rcfile ]]; } ||
+    { _ble_base_rcfile=$HOME/.blerc; [[ -f $_ble_base_rcfile ]]; } ||
+      { _ble_base_rcfile=${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh; [[ -f $_ble_base_rcfile ]]; } ||
       _ble_base_rcfile=$HOME/.blerc
   fi
   [[ -s $_ble_base_rcfile ]] && source "$_ble_base_rcfile"
