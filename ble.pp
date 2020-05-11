@@ -241,7 +241,7 @@ if ! ble/.check-environment; then
 fi
 
 if [[ $_ble_base ]]; then
-  if ! ble/base/unload-for-reload &>/dev/null; then
+  if ! ble/base/unload-for-reload; then
     echo "ble.sh: ble.sh seems to be already loaded." >&2
     return 1
   fi
