@@ -707,8 +707,8 @@ function ble/base/load-rcfile {
 
   # blerc
   if [[ ! $_ble_base_rcfile ]]; then
-    { _ble_base_rcfile=$HOME/.blerc; [[ -f $rcfile ]]; } ||
-      { _ble_base_rcfile=${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh; [[ -f $rcfile ]]; } ||
+    { _ble_base_rcfile=$HOME/.blerc; [[ -f $_ble_base_rcfile ]]; } ||
+      { _ble_base_rcfile=${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh; [[ -f $_ble_base_rcfile ]]; } ||
       _ble_base_rcfile=$HOME/.blerc
   fi
   if [[ -s $_ble_base_rcfile ]]; then
