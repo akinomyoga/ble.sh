@@ -258,7 +258,7 @@ function sub:scan {
       \Zbuiltins2=\(.* eval\)Zd
       \Z\^eval --Zd
       \Zt = "eval -- \$"Zd
-      \Zprint "eval -- \$'\''Zd
+      \Ztext = "eval -- \$'\''Zd
       \Zcmd '\''eval -- %q'\''Zd
       g'
   sub:scan/builtin 'unset' |

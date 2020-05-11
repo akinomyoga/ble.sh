@@ -1370,7 +1370,7 @@ function ble/builtin/trap/setup-hook {
     [[ $trap_command == "$trap" ]] && return 0
   fi
 
-  eval "builtin $trap_command"
+  builtin eval "builtin $trap_command"
 }
 
 #------------------------------------------------------------------------------

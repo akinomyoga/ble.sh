@@ -314,6 +314,9 @@ else
     builtin history $arg_count | ble/bin/awk -v apos="'" '
       BEGIN { n = ""; }
 
+      # 何故かタイムスタンプがコマンドとして読み込まれてしまう
+      /^ *[0-9]+\*? +(__ble_ext__|\?\?)#[0-9]/ { next; }
+
       # ※rcfile として読み込むと HISTTIMEFORMAT が ?? に化ける。
       /^ *[0-9]+\*? +(__ble_ext__|\?\?)/ {
         if (n != "") {
@@ -408,15 +411,31 @@ if ((_ble_bash>=30100)); then
   _ble_history_mlfix_bgpid=
 
   ## 関数 ble/history:bash/resolve-multiline/.awk reason
+  ##
   ##   @param[in] reason
   ##     呼び出しの用途を指定する文字列です。
+  ##
   ##     resolve ... 初期化時の history 再構築
+  ##       history コマンドの出力形式で標準入力を解析します。
+  ##       各行は '番号 HISTTIMEFORMATコマンド' の形式をしている。
+  ##
   ##     read    ... history -r によるファイルからの読み出し
+  ##       履歴ファイルの形式で標準入力を解析します。
+  ##       各行は '#%s' または 'コマンド' の形式をしている。
+  ##       ble.sh では先頭行が '#%s' の時の複数行モードには対応しない。
+  ##
   ##   @var[in] TMPBASE
   function ble/history:bash/resolve-multiline/.awk {
+    if ((_ble_bash>=50000)); then
+      local -x epoch=$EPOCHSECONDS
+    elif ((_ble_bash>=40400)); then
+      local -x epoch
+      ble/util/strftime -v epoch %s
+    fi
+
     local -x reason=$1
     local apos=\'
-    ble/bin/awk -v apos="$apos" '
+    ble/bin/awk -v apos="$apos" -v _ble_bash="$_ble_bash" '
       BEGIN {
         q = apos;
         Q = apos "\\" apos apos;
@@ -428,63 +447,135 @@ if ((_ble_bash>=30100)); then
         if (is_resolve)
           print "builtin history -c" > filename_source
 
-        n = 0;
+        entry_nline = 0;
+        entry_text = "";
+        entry_time = "";
+        if (_ble_bash >= 40400)
+          entry_time = ENVIRON["epoch"];
+
+        command_count = 0;
+
         multiline_count = 0;
         modification_count = 0;
         read_section_count = 0;
       }
   
-      function write_scalar(line) {
-        scalar_array[scalar_count++] = line;
+      function write_flush(_, i, filename_section, t, c) {
+        if (command_count == 0) return;
+        if (command_count >= 2 || entry_time) {
+          filename_section = TMPBASE "." read_section_count++ ".part";
+          for (i = 0; i < command_count; i++) {
+            t = command_time[i];
+            c = command_text[i];
+            if (t) print "#" t > filename_section;
+            print c > filename_section;
+          }
+          # Note: HISTTIMEFORMAT を指定するのは bash-4.4 で複数行読み取りを有効にする為。
+          print "HISTTIMEFORMAT=%s builtin history -r " filename_section > filename_source;
+        } else {
+          for (i = 0; i < command_count; i++) {
+            c = command_text[i];
+            gsub(/'$apos'/, Q, c);
+            print "builtin history -s -- " q c q > filename_source;
+          }
+        }
+        command_count = 0;
       }
       function write_complex(value) {
         write_flush();
         print "builtin history -s -- " value > filename_source;
       }
-      function write_flush(_, i, text, filename) {
-        if (scalar_count == 0) return;
-        if (scalar_count >= 2) {
-          filename_section = TMPBASE "." read_section_count++ ".part";
-          for (i = 0; i < scalar_count; i++)
-            print scalar_array[i] > filename_section;
-          print "builtin history -r " filename_section > filename_source;
+
+      function register_command(cmd) {
+        command_time[command_count] = entry_time;
+        command_text[command_count] = cmd;
+        command_count++;
+      }
+
+      function is_escaped_command(cmd) {
+        return cmd ~ /^eval -- \$'$apos'([^'$apos'\\]|\\[\\'$apos'nt])*'$apos'$/;
+      }
+      function unescape_command(cmd) {
+        cmd = substr(cmd, 11, length(cmd) - 11);
+        gsub(/\\\\/, "\q", cmd);
+        gsub(/\\n/, "\n", cmd);
+        gsub(/\\t/, "\t", cmd);
+        gsub(/\\'$apos'/, "'$apos'", cmd);
+        gsub(/\\q/, "\\", cmd);
+        return cmd;
+      }
+      function register_escaped_command(cmd) {
+        multiline_count++;
+        modification_count++;
+        if (_ble_bash >= 40400) {
+          register_command(unescape_command(cmd));
         } else {
-          for (i = 0; i < scalar_count; i++) {
-            text = scalar_array[i];
-            gsub(/'$apos'/, Q, text);
-            print "builtin history -s -- " q text q > filename_source;
-          }
+          write_complex(substr(cmd, 9));
         }
-        scalar_count = 0;
+      }
+
+      function register_multiline_command(cmd) {
+        multiline_count++;
+        if (_ble_bash >= 40040) {
+          register_command(cmd);
+        } else {
+          gsub(/'$apos'/, Q, cmd);
+          write_complex(q cmd q);
+        }
       }
   
-      function flush_line() {
-        if (n < 1) return;
-  
-        if (entry ~ /^eval -- \$'$apos'([^'$apos'\\]|\\.)*'$apos'$/) {
-          multiline_count++;
-          modification_count++;
-          write_complex(substr(entry, 9));
-        } else if (n > 1) {
-          multiline_count++;
-          gsub(/'$apos'/, Q, entry);
-          write_complex(q entry q);
+      function flush_entry() {
+        if (entry_nline < 1) return;
+
+        if (is_escaped_command(entry_text)) {
+          register_escaped_command(entry_text)
+        } else if (entry_nline > 1) {
+          register_multiline_command(entry_text);
         } else {
-          write_scalar(entry);
+          register_command(entry_text);
         }
   
-        n = 0;
-        entry = "";
+        entry_nline = 0;
+        entry_text = "";
+      }
+
+      function save_timestamp(line) {
+        if (is_resolve) {
+          # "history" format
+          if (line ~ /^ *[0-9]+\*? +__ble_time_[0-9]+__/) {
+            sub(/^ *[0-9]+\*? +__ble_time_/, "", line);
+            sub(/__.*$/, "", line);
+            entry_time = line;
+          }
+        } else {
+          # "history -w" format
+          if (line ~ /^#[0-9]/) {
+            sub(/^#/, "", line);
+            sub(/[^0-9].*$/, "", line);
+            entry_time = line;
+          }
+        }
       }
   
       {
-        if (!is_resolve || sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)/, "", $0))
-          flush_line();
-        entry = ++n == 1 ? $0 : entry "\n" $0;
+        if (is_resolve) {
+          save_timestamp($0);
+          if (sub(/^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?)/, "", $0))
+            flush_entry();
+          entry_text = ++entry_nline == 1 ? $0 : entry_text "\n" $0;
+        } else {
+          if ($0 ~ /^#[0-9]/) {
+            save_timestamp($0);
+            next;
+          } else {
+            flush_entry();
+            entry_text = $0;
+          }
+        }
       }
   
       END {
-        flush_line();
+        flush_entry();
         write_flush();
         if (is_resolve)
           print "builtin history -a /dev/null" > filename_source
@@ -500,7 +591,7 @@ if ((_ble_bash>=30100)); then
     for file in "$TMPBASE".*; do : >| "$file"; done
   }
   function ble/history:bash/resolve-multiline/.worker {
-    local HISTTIMEFORMAT=__ble_ext__ 
+    local HISTTIMEFORMAT=__ble_time_%s__
     local -x TMPBASE=$_ble_base_run/$$.history.mlfix
     local multiline_count=0 modification_count=0
     builtin eval -- "$(builtin history | ble/history:bash/resolve-multiline/.awk resolve 2>/dev/null)"
@@ -752,9 +843,9 @@ function ble/builtin/history/.initialize {
     # Note: #D1126 ble.sh ロード前に追加された履歴項目があれば保存する。
     local histini=$_ble_base_run/$$.history.ini
     local histapp=$_ble_base_run/$$.history.app
-    builtin history -a "$histini"
+    HISTTIMEFORMAT=1 builtin history -a "$histini"
     if [[ -s $histini ]]; then
-      ble/bin/sed 's/^/ 0 __ble_ext__/' "$histini" >> "$histapp"
+      ble/bin/sed '/^#\([0-9].*\)/{s//    0  __ble_time_\1__/;N;s/\n//;}' "$histini" >> "$histapp"
       : >| "$histini"
     fi
   else
@@ -844,13 +935,15 @@ function ble/builtin/history/.read {
 function ble/builtin/history/.write {
   local -x file=$1 skip=${2:-0} opts=$3
   local -x histapp=$_ble_base_run/$$.history.app
+  declare -p HISTTIMEFORMAT &>/dev/null
+  local -x flag_timestamp=$(($?==0))
 
   local min; ble/builtin/history/.get-min
   local max; ble/builtin/history/.get-max
   ((skip<min-1&&(skip=min-1)))
   local delta=$((max-skip))
   if ((delta>0)); then
-    local HISTTIMEFORMAT=__ble_ext__
+    local HISTTIMEFORMAT=__ble_time_%s__
     if [[ :$opts: == *:append:* ]]; then
       builtin history "$delta" >> "$histapp"
       ((_ble_builtin_history_histapp_count+=delta))
@@ -869,7 +962,12 @@ function ble/builtin/history/.write {
 
     local apos=\'
     < "$histapp" ble/bin/awk '
-      BEGIN { file = ENVIRON["file"]; mode = 0; }
+      BEGIN {
+        file = ENVIRON["file"];
+        flag_timestamp = ENVIRON["flag_timestamp"];
+        timestamp = "";
+        mode = 0;
+      }
       function flush_line() {
         if (!mode) return;
         mode = 0;
@@ -877,16 +975,30 @@ function ble/builtin/history/.write {
           gsub(/['$apos'\\]/, "\\\\&", text);
           gsub(/\n/, "\\n", text);
           gsub(/\t/, "\\t", text);
-          print "eval -- $'$apos'" text "'$apos'" >> file;
-        } else {
-          print text >> file;
+          text = "eval -- $'$apos'" text "'$apos'"
         }
+
+        if (timestamp != "")
+          print timestamp >> file;
+        print text >> file;
       }
 
-      /^ *[0-9]+\*? +(__ble_ext__|\?\?)?/ {
+      function extract_timestamp(line) {
+        if (!sub(/^ *[0-9]+\*? +__ble_time_/, "", line)) return "";
+        if (!sub(/__.*$/, "", line)) return "";
+        if (!(line ~ /^[0-9]+$/)) return "";
+        return "#" line;
+      }
+
+      /^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?)?/ {
         flush_line();
-        mode = 1; text = "";
-        sub(/^ *[0-9]+\*? +(__ble_ext__|\?\?)?/, "", $0);
+
+        mode = 1;
+        text = "";
+        if (flag_timestamp)
+          timestamp = extract_timestamp($0);
+
+        sub(/^ *[0-9]+\*? +(__ble_time_[0-9]+__|\?\?)?/, "", $0);
       }
       { text = text != "" ? text "\n" $0 : $0; }
       END { flush_line(); }
@@ -1086,7 +1198,8 @@ function ble/builtin/history/option:p {
   #   従って history -p では sync しない事に決めた (#D1121)
   # Note: bash-3 では background load ができないので
   #   最初に history -p が呼び出されるタイミングで初期化する事にする (#D1122)
-  ((_ble_bash>=40000)) || ble/history:bash/resolve-multiline sync
+  ((_ble_bash>=40000)) || ble/builtin/history/is-empty ||
+    ble/history:bash/resolve-multiline sync
 
   # Note: history -p '' によって 履歴項目が減少するかどうかをチェックし、
   #   もし履歴項目が減る状態になっている場合は履歴項目を増やしてから history -p を実行する。
