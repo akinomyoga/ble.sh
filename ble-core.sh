@@ -344,7 +344,7 @@ function ble/string#toggle-case {
     fi
     ble/array#push buff "$ch"
   done
-  IFS= eval 'ret="${buff[*]-}"'
+  IFS= builtin eval 'ret="${buff[*]-}"'
 } 2>/dev/null
 if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret=${*,,}; }
@@ -408,23 +408,14 @@ function ble/string#escape-for-extended-regex {
   fi
 }
 
-if ((_ble_bash>=40200)); then
-  function ble/util/strlen {
-    LC_ALL= LC_CTYPE=C builtin eval 'ret=${#1}' 2>/dev/null
-  }
-  function ble/util/substr {
-    LC_ALL= LC_CTYPE=C builtin eval 'ret=${1:$2:$3}' 2>/dev/null
-  }
-else
-  function ble/util/strlen {
-    local LC_ALL= LC_CTYPE=C
-    ret=${#1}
-  } 2>/dev/null
-  function ble/util/substr {
-    local LC_ALL= LC_CTYPE=C
-    ret=${1:$2:$3}
-  } 2>/dev/null
-fi
+function ble/util/strlen {
+  local LC_ALL= LC_CTYPE=C
+  ret=${#1}
+} 2>/dev/null
+function ble/util/substr {
+  local LC_ALL= LC_CTYPE=C
+  ret=${1:$2:$3}
+} 2>/dev/null
 
 ## 関数 ble/builtin/trap/set-readline-signal sig handler
 ##   ble.sh 内部で使用するハンドラを登録します。
@@ -786,8 +777,9 @@ _ble_rex_isprint='^[ -~]+'
 ##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。
 function ble/util/isprint+ {
   # LC_COLLATE=C ...  &>/dev/null for cygwin collation
-  LC_COLLATE=C ble/util/isprint+.impl "$@" &>/dev/null
-}
+  local LC_ALL= LC_COLLATE=C
+  ble/util/isprint+.impl "$@"
+} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205
 function ble/util/isprint+.impl {
   [[ $1 =~ $_ble_rex_isprint ]]
 }

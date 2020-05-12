@@ -443,7 +443,8 @@ function ble-highlight-layer:plain/update {
       ch=${text:i:1}
 
       # LC_COLLATE for cygwin collation
-      LC_COLLATE=C ble-highlight-layer:plain/update/.getch &>/dev/null
+      local LC_ALL= LC_COLLATE=C
+      ble-highlight-layer:plain/update/.getch &>/dev/null
 
       _ble_highlight_layer_plain_buff[i]=$ch
     done
@@ -451,7 +452,7 @@ function ble-highlight-layer:plain/update {
 
   PREV_BUFF=_ble_highlight_layer_plain_buff
   ((PREV_UMIN=DMIN,PREV_UMAX=DMAX))
-}
+} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205
 
 ## 関数 ble-highlight-layer:plain/getg index
 ##   @var[out] g
