@@ -120,7 +120,6 @@
 - util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
 - complete: work around slow `compgen -c` in Cygwin `#D1329` 5327f5d
 
-
 ## Internal changes and fixes
 
 - util: merge `ble/util/{save,restore}-{arrs => vars}` `#D1217` 6acb9a3

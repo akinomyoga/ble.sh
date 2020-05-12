@@ -2572,13 +2572,14 @@ function ble/decode/bind/.generate-source-to-unbind-default {
     fi
     ble/util/print '__BINDP__'
     builtin bind -sp
-  } | LC_ALL=C ble/decode/bind/.generate-source-to-unbind-default/.process
+  } | ble/decode/bind/.generate-source-to-unbind-default/.process
 
   # Note: 2>/dev/null は、(1) bind -X のエラーメッセージ、及び、
   # (2) LC_ALL 復元時のエラーメッセージ (外側の値が不正な時) を捨てる為に必要。
 } 2>/dev/null
 function ble/decode/bind/.generate-source-to-unbind-default/.process {
-  local q=\' b=\\ Q="'\''"
+  # Note: #D1355 LC_ALL 切り替えに伴うエラーメッセージは呼び出し元で /dev/null に繋いでいる。
+  local LC_ALL=C q=\' b=\\ Q="'\''"
   # Note: Solaris xpg4 awk では gsub の置換後のエスケープシーケンスも処理される
   [[ $_ble_bin_awk_solaris_xpg4 == yes ]] && Q="'$b$b''"
   local QUOT_Q=\"${Q//"$b"/$b$b}\"

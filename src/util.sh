@@ -686,7 +686,7 @@ function ble/string#toggle-case {
     ble/array#push buff "$ch"
   done
   IFS= builtin eval 'ret="${buff[*]-}"'
-}
+} 2>/dev/null
 ## 関数 ble/string#tolower text...
 ## 関数 ble/string#toupper text...
 ##   @var[out] ret
@@ -708,7 +708,6 @@ else
     IFS= builtin eval 'ret="${buff[*]-}"'
   }
   function ble/string#toupper.impl {
-    local LC_ALL= LC_COLLATE=C
     local i text="$*"
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
@@ -921,25 +920,16 @@ function ble/string#create-unicode-progress-bar {
 
   ret=$out
 }
-if ((_ble_bash>=40200)); then
-  function ble/util/strlen {
-    LC_ALL= LC_CTYPE=C builtin eval 'ret=${#1}' 2>/dev/null
-  }
-  function ble/util/substr {
-    LC_ALL= LC_CTYPE=C builtin eval 'ret=${1:$2:$3}' 2>/dev/null
-  }
-else
-  # Note: Bash-4.1 以下では "変数代入 コマンド" の形式だと
-  #   locale がその場で適用されないバグがあるようだ。
-  function ble/util/strlen {
-    local LC_ALL= LC_CTYPE=C
-    ret=${#1}
-  } 2>/dev/null
-  function ble/util/substr {
-    local LC_ALL= LC_CTYPE=C
-    ret=${1:$2:$3}
-  } 2>/dev/null
-fi
+# Note: Bash-4.1 以下では "LC_CTYPE=C 組み込みコマンド" の形式だと
+#   locale がその場で適用されないバグがある。
+function ble/util/strlen {
+  local LC_ALL= LC_CTYPE=C
+  ret=${#1}
+} 2>/dev/null
+function ble/util/substr {
+  local LC_ALL= LC_CTYPE=C
+  ret=${1:$2:$3}
+} 2>/dev/null
 
 function ble/path#remove {
   [[ $2 ]] || return 1
@@ -1730,14 +1720,12 @@ function ble/util/expand-alias {
   fi
 }
 
-if ((_ble_bash>=40100)); then
-  function ble/util/is-stdin-ready { IFS= LC_ALL= LC_CTYPE=C builtin read -t 0; } &>/dev/null
-elif ((_ble_bash>=40000)); then
-  # #D1341 対策
+if ((_ble_bash>=40000)); then
+  # #D1341 対策 変数代入形式だと組み込みコマンドにロケールが適用されない。
   function ble/util/is-stdin-ready {
     local IFS= LC_ALL= LC_CTYPE=C
     builtin read -t 0
-  } 2>/dev/null
+  } &>/dev/null
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -2025,8 +2013,9 @@ _ble_util_rex_isprint='^[ -~]+'
 ##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。
 function ble/util/isprint+ {
   # LC_COLLATE=C ...  &>/dev/null for cygwin collation
-  LC_COLLATE=C ble/util/isprint+.impl "$@"
-} &>/dev/null # Note: suppress LC_COLLATE errors #D1205
+  local LC_ALL= LC_COLLATE=C
+  ble/util/isprint+.impl "$@"
+} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205
 function ble/util/isprint+.impl {
   [[ $1 =~ $_ble_util_rex_isprint ]]
 }

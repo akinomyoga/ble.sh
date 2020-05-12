@@ -5685,6 +5685,8 @@ function ble/syntax/highlight/cmdtype1 {
   esac
 }
 
+# #D1341 #D1355 locale 対策
+function ble/syntax/highlight/cmdtype/.jobs { local LC_ALL=C; jobs; } 2>/dev/null
 function ble/syntax/highlight/cmdtype/.is-job-name {
   ble/util/joblist.check
 
@@ -5697,7 +5699,7 @@ function ble/syntax/highlight/cmdtype/.is-job-name {
   if [[ ${auto_resume+set} && $word != *["$quote"]* ]]; then
     if [[ $auto_resume == exact ]]; then
       local jobs job ret
-      ble/util/assign-array jobs 'LC_ALL=C jobs 2>/dev/null'
+      ble/util/assign-array jobs 'ble/syntax/highlight/cmdtype/.jobs'
       for job in "${jobs[@]}"; do
         ble/string#trim "${job#*' '}"
         ble/string#trim "${ret#*' '}"
