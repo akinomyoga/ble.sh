@@ -324,7 +324,7 @@ _ble_rex_isprint='^[ -~]+'
 function ble/util/isprint+ {
   local LC_ALL= LC_COLLATE=C # for cygwin collation
   [[ $1 =~ $_ble_rex_isprint ]]
-} 2>/dev/null
+} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205
 
 ## 関数 ble-autoload scriptfile functions...
 ##   関数が定義されたファイルを自動で読み取る設定を行います。

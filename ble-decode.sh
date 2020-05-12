@@ -1439,7 +1439,7 @@ function .ble-decode-bind/generate-source-to-unbind-default {
     echo '__BINDP__'
     builtin bind -sp
 #%x
-  } 2>/dev/null | LANG=C ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
+  } 2>/dev/null | LC_ALL=C ${.eval/use_gawk?"gawk":"awk"} -v apos="'" '
 #%end.i
     BEGIN{
       APOS=apos "\\" apos apos;
