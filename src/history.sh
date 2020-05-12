@@ -570,6 +570,7 @@ if ((_ble_bash>=30100)); then
           } else {
             flush_entry();
             entry_text = $0;
+            entry_nline = 1;
           }
         }
       }

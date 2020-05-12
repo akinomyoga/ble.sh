@@ -9,5 +9,6 @@ HISTFILESIZE=
 shopt -s histappend
 source out/ble.sh
 
-bleopt history_lazyload=
+#bleopt history_lazyload=
+bleopt history_share=1
 ble-attach

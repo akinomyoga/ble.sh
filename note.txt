@@ -3105,6 +3105,22 @@ bash_tips
 
 2020-05-12
 
+  * history: "bleopt history_share=1" でエラーメッセージが発生する (reported by rux616) [#D1356]
+    https://github.com/akinomyoga/ble.sh/issues/50#issuecomment-627061087
+
+    これは新しく埋め込んだバグだろう。エラーメッセージを見ると、
+    ble/history:bash/resolve-multiline/readfile であろう。
+    要するに新しい履歴項目がない場合にそもそも TMPBASE.part が作られないという事では?
+    調べると reason=resolve の時には作られるけれども、reason=read の時には作られない。
+
+    然し、ble/history:bash/resolve-multiline/readfile の呼び出し元を確認した時に不思議なのは、
+    ちゃんと呼び出し元ではファイルが空でないという事を確認しているという事。
+    #%s の行しか存在していない時にはこういう事が起こるのかもしれないが、
+    それも何だか変である。実際に何が起こっているのか再現させて調べるしかない。
+
+    →再現させる事ができた。然し、ファイルの中身はちゃんと存在している。awk が悪い?
+    これは単純なミスであった。修正した。
+
   * LC_COLLATE=C で検索すると未だ LC_COLLATE=C func の形式の物が残っている [#D1355]
     これは問題が起こるので避ける様にした筈。調べると
     LC_XXX=C external_cmd の場合には問題は起こらない様子である。
