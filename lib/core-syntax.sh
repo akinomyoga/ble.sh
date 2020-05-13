@@ -4732,12 +4732,18 @@ function ble/syntax/completion-context/.add {
   sources[${#sources[*]}]="$source $comp1"
 }
 
+## 関数 ble/syntax/completion-context/.check/parameter-expansion
+##   @var[in] text istat index ctx
 function ble/syntax/completion-context/.check/parameter-expansion {
   local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$'
   if [[ ${text:istat:index-istat} =~ $rex_paramx ]]; then
     local rematch1=${BASH_REMATCH[1]}
     local source=variable
-    [[ $rematch1 == '${'* ]] && source=variable:b
+    if [[ $rematch1 == '${'* ]]; then
+      source=variable:b # suffix }
+    elif ((ctx==CTX_BRACE1||ctx==CTX_BRACE2)); then
+      source=variable:n # no suffix
+    fi
     ble/syntax/completion-context/.add "$source" $((istat+${#rematch1}))
   fi
 }
@@ -4933,6 +4939,7 @@ _ble_syntax_bash_complete_check_prefix[CTX_TARGI1]=time-argument
 _ble_syntax_bash_complete_check_prefix[CTX_TARGX2]=time-argument
 _ble_syntax_bash_complete_check_prefix[CTX_TARGI2]=time-argument
 function ble/syntax/completion-context/.check-prefix/ctx:time-argument {
+  ble/syntax/completion-context/.check/parameter-expansion
   ble/syntax/completion-context/.add command "$istat"
   if ((ctx==CTX_TARGX1)); then
     local rex='^-p?$'
@@ -4971,6 +4978,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:quote/.check-container-
 ##   redirect の filename 部分を補完する文脈
 _ble_syntax_bash_complete_check_prefix[CTX_RDRF]=redirection
 function ble/syntax/completion-context/.check-prefix/ctx:redirection {
+  ble/syntax/completion-context/.check/parameter-expansion
   local p=$((wlen>=0?wbeg:istat))
   if ble/syntax:bash/simple-word/is-simple-or-open-simple "${text:p:index-p}"; then
     ble/syntax/completion-context/.add file "$p"
@@ -4984,6 +4992,7 @@ _ble_syntax_bash_complete_check_prefix[CTX_ARGVR]=rhs
 _ble_syntax_bash_complete_check_prefix[CTX_ARGER]=rhs
 _ble_syntax_bash_complete_check_prefix[CTX_VALR]=rhs
 function ble/syntax/completion-context/.check-prefix/ctx:rhs {
+  ble/syntax/completion-context/.check/parameter-expansion
   if ((wlen>=0)); then
     local p=$wbeg
     local rex='^[a-zA-Z0-9_]+(\+?=|\[)'
@@ -5064,7 +5073,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:expr {
 }
 
 ## 関数 ble/syntax/completion-context/.check-prefix/ctx:expr
-##   数式中の変数名を補完する文脈
+##   ブレース展開の中での補完
 _ble_syntax_bash_complete_check_prefix[CTX_BRACE1]=brace
 _ble_syntax_bash_complete_check_prefix[CTX_BRACE2]=brace
 function ble/syntax/completion-context/.check-prefix/ctx:brace {
@@ -5094,6 +5103,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:brace {
   local wlen=${stat1[1]}
   local wbeg=$((wlen>=0?istat1-wlen:istat1))
 
+  ble/syntax/completion-context/.check/parameter-expansion
   ble/syntax/completion-context/.add argument "$wbeg"
 }
 

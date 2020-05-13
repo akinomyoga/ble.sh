@@ -1224,7 +1224,7 @@ function ble/complete/action:variable/complete {
     # ${var 等に於いて } を挿入
     ble/complete/action/util/complete.addtail '}' ;;
   (word)       ble/complete/action:word/complete ;;
-  (arithmetic) ;; # do nothing
+  (arithmetic|nosuffix) ;; # do nothing
   esac
 }
 function ble/complete/action:variable/init-menu-item {
@@ -2398,6 +2398,7 @@ function ble/complete/source:variable {
   ('=') data=assignment ;;
   ('b') data=braced ;;
   ('a') data=arithmetic ;;
+  ('n') data=nosuffix ;;
   ('w'|*) data=word ;;
   esac
   ble/complete/source/compgen variable variable "$data"
