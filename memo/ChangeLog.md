@@ -25,7 +25,8 @@
 - syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 04da4dd
 - main: add an option `--test` `#D1340` 1410c72
 - util (`ble/builtin/trap`): support `return` in `INT`/`EXIT`/`WINCH` `#D1347` `#D1348` 3865488
-- history: support timestamp (reported by rux616) `#D1351` 4bcbd71 `#D1356` 000000
+- history: support timestamp (reported by rux616) `#D1351` 4bcbd71 `#D1356` 350bb15
+- edit: support Bash 4.4 `PS0` `#D1357` 0000000
 
 ## Changes
 

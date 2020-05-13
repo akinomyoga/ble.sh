@@ -6,8 +6,8 @@
 
 # edit files
 /COMMIT
-/[a-z].txt
-/[a-z].sh
+/[a-zA-Z].txt
+/[a-zA-Z].sh
 
 # test
 /test

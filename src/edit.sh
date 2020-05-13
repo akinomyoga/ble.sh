@@ -632,9 +632,10 @@ function ble-edit/prompt/.escape {
   done
   ret=$out$nest
 }
-## 関数 ble-edit/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0]
-##   @var[out] val esc x y g lc lg
+## 関数 ble-edit/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0 trace_hash0]
+##   @var[out] val esc x y g lc lg trace_hash
 ##   @var[in,out] x1 x2 y1 y2
+##     opts に measure-bbox を指定した時。
 ##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
 function ble-edit/prompt/.instantiate {
   trace_hash= esc= x=0 y=0 g=0 lc=32 lg=0
@@ -4149,6 +4150,22 @@ function ble-edit/exec/restore-BASH_REMATCH {
   [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
 }
 
+_ble_edit_prompt0=()
+function ble-edit/exec/print-PS0 {
+  if [[ $PS0 ]]; then
+    local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
+    if [[ ${_ble_edit_prompt0[0]} == "$version" ]]; then
+      local esc=${_ble_edit_prompt0[6]}
+    else
+      local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
+      local val esc x y g lc lg trace_hash
+      ble-edit/prompt/.instantiate "$PS0" '' "${_ble_edit_prompt0[@]:1}"
+      _ble_edit_prompt0=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
+    fi
+    ble/util/put "$esc"
+  fi
+}
+
 function ble/builtin/exit/.read-arguments {
   while (($#)); do
     local arg=$1; shift
@@ -4382,6 +4399,7 @@ function ble-edit/exec:gexec/.prologue {
   _ble_edit_exec_INT=0
   ble/util/joblist.clear
   ble-edit/exec:gexec/invoke-hook-with-setexit PREEXEC "$BASH_COMMAND" &>/dev/tty
+  ble-edit/exec/print-PS0 >&31
   ble-edit/exec/restore-BASH_REMATCH
   ble/base/restore-bash-options
   ble/base/restore-POSIXLY_CORRECT
