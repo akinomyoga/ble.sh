@@ -875,7 +875,7 @@ _ble_syntax_bash_IFS=$' \t\n'
 _ble_syntax_bash_RexSpaces=$'[ \t]+'
 _ble_syntax_bash_RexIFSs="[$_ble_syntax_bash_IFS]+"
 _ble_syntax_bash_RexDelimiter="[$_ble_syntax_bash_IFS;|&<>()]"
-_ble_syntax_bash_RexRedirect='((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|>[|&]|<[>&]?|<<[-<]?))[ 	]*'
+_ble_syntax_bash_RexRedirect='((\{[a-zA-Z_][a-zA-Z_0-9]*\}|[0-9]+)?(&?>>?|>[|&]|<[>&]?|<<[-<]?))[ 	]*'
 
 ## @var _ble_syntax_bash_chars[]
 ##   特定の役割を持つ文字の集合。Bracket expression [～] に入れて使う為の物。
