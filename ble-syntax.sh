@@ -1303,7 +1303,7 @@ function ble-syntax:bash/ctx-command {
   local rex
 
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
-  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&))['"$_BLE_SYNTAX_CSPACE"']*'
+  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]*\}|[0-9]+)?(&?>>?|<>?|[<>]&))['"$_BLE_SYNTAX_CSPACE"']*'
   if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||
@@ -1612,7 +1612,7 @@ function ble-syntax:bash/ctx-redirect {
   local rex
 
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
-  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]+\}|[0-9]+)?(&?>>?|<>?|[<>]&))['"$_BLE_SYNTAX_CSPACE"']*'
+  local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]*\}|[0-9]+)?(&?>>?|<>?|[<>]&))['"$_BLE_SYNTAX_CSPACE"']*'
   if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
     ((_ble_syntax_attr[i-1]=ATTR_ERR))
     ble-syntax/parse/nest-pop
