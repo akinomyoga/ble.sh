@@ -4269,17 +4269,17 @@ function ble-edit/exec:gexec/.TRAPDEBUG {
 
     local IFS=$' \t\n'
     local depth=${#FUNCNAME[*]}
-    local rex='^\ble-edit/exec:gexec/.'
-    if ((depth>=2)) && ! [[ ${FUNCNAME[*]:depth-1} =~ $rex ]]; then
+    local rex='^(ble-edit/exec:gexec/\.|\<ble/builtin/trap/\.handler)'
+    if ((depth>=2)) && ! [[ ${FUNCNAME[*]:1} =~ $rex ]]; then
       # 関数内にいるが、ble-edit/exec:gexec/. の中ではない時
       ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 ${FUNCNAME[1]} $1" >&2
       return 2
     fi
 
-    local rex='^(\ble-edit/exec:gexec/\.)'
+    local rex='^ble-edit/exec:gexec/\.'
     if ((depth==1)) && ! [[ $BASH_COMMAND =~ $rex ]]; then
       # 一番外側で、ble-edit/exec:gexec/. 関数ではない時
-      ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 $BASH_COMMAND $1" >&2
+      ble/util/print "${_ble_term_setaf[9]}[ble: SIGINT]$_ble_term_sgr0 $BASH_COMMAND" >&2
       return 2
     fi
   fi

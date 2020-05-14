@@ -413,6 +413,32 @@ function ble/util/readlink {
   esac
 }
 
+_ble_bash_path=
+function ble/bin/.load-builtin {
+  local name=$1 path=$2
+  if [[ ! $_ble_bash_path ]]; then
+    local ret; ble/util/readlink "$BASH"
+    _ble_bash_path=$ret
+  fi
+
+  if [[ ! $path ]]; then
+    local bash_prefix=${ret%/*/*}
+    path=$bash_prefix/lib/bash/$name
+    [[ -s $path ]] || return 1
+  fi
+
+  if (enable -f "$path" "$name") &>/dev/null; then
+    enable -f "$path" "$name"
+    builtin eval -- "function ble/bin/$name { builtin $name \"\$@\"; }"
+    return 0
+  else
+    return 1
+  fi
+}
+# ble/bin/.load-builtin mkdir
+# ble/bin/.load-builtin mkfifo
+# ble/bin/.load-builtin rm
+
 function ble/base/.create-user-directory {
   local var=$1 dir=$2
   if [[ ! -d $dir ]]; then

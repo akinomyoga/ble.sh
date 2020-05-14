@@ -2091,6 +2091,107 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
   _ble_util_msleep_builtin_available=1
   _ble_util_msleep_delay=300
   function ble/util/msleep/.core { builtin sleep "$1"; }
+
+  ## 関数 ble/builtin/sleep/.read-time time
+  ##   @var[out] a1 b1
+  ##     それぞれ整数部と小数部を返します。
+  ##   @var[in,out] flags
+  function ble/builtin/sleep/.read-time {
+    a1=0 b1=0
+    local unit= exp=
+    if local rex='^\+?([0-9]*)\.([0-9]*)([eE][-+]?[0-9]+)?([smhd]?)$'; [[ $1 =~ $rex ]]; then
+      a1=${BASH_REMATCH[1]}
+      b1=${BASH_REMATCH[2]}00000000000000
+      b1=$((10#${b1::14}))
+      exp=${BASH_REMATCH[3]}
+      unit=${BASH_REMATCH[4]}
+    elif rex='^\+?([0-9]+)([eE][-+]?[0-9]+)?([smhd]?)$'; [[ $1 =~ $rex ]]; then
+      a1=${BASH_REMATCH[1]}
+      exp=${BASH_REMATCH[2]}
+      unit=${BASH_REMATCH[3]}
+    else
+      ble/util/print "ble/builtin/sleep: invalid time spec '$1'" >&2
+      flags=E$flags
+      return 2
+    fi
+
+    if [[ $exp ]]; then
+      case $exp in
+      ([eE]-*)
+        ((exp=10#${exp:2}))
+        while ((exp--)); do
+          ((b1=a1%10*frac_scale/10+b1/10,a1/=10))
+        done ;;
+      ([eE]*)
+        exp=${exp:1}
+        ((exp=${exp#+}))
+        while ((exp--)); do
+          ((b1*=10,a1=a1*10+b1/frac_scale,b1%=frac_scale))
+        done ;;
+      esac
+    fi
+
+    local scale=
+    case $unit in
+    (d) ((scale=24*3600)) ;;
+    (h) ((scale=3600)) ;;
+    (m) ((scale=60)) ;;
+    esac
+    if [[ $scale ]]; then
+      ((b1*=scale))
+      ((a1=a1*scale+b1/frac_scale))
+      ((b1%=frac_scale))
+    fi
+    return 0
+  }
+
+  function ble/builtin/sleep {
+    local frac_scale=100000000000000
+    local a=0 b=0 flags=
+    if (($#==0)); then
+      ble/util/print "ble/builtin/sleep: no argument" >&2
+      flags=E$flags
+    fi
+    while (($#)); do
+      case $1 in
+      (--version) flags=v$flags ;;
+      (--help)    flags=h$flags ;;
+      (-*)
+        flags=E$flags
+        ble/util/print "ble/builtin/sleep: unknown option '$1'" >&2 ;;
+      (*)
+        if local a1 b1; ble/builtin/sleep/.read-time "$1"; then
+          ((b+=b1))
+          ((a=a+a1+b/frac_scale))
+          ((b%=frac_scale))
+        fi ;;
+      esac
+      shift
+    done
+    if [[ $flags == *h* ]]; then
+      builtin printf '%s\n' \
+              'usage: sleep NUMBER[SUFFIX]...' \
+              'Pause for the time specified by the sum of the arguments. SUFFIX is one of "s"' \
+              '(seconds), "m" (minutes), "h" (hours) or "d" (days).' \
+              '' \
+              'OPTIONS' \
+              '     --help    Show this help.' \
+              '     --version Show version.'
+    fi
+    if [[ $flags == *v* ]]; then
+      ble/util/print "sleep (ble) $BLE_VERSION"
+    fi
+    if [[ $flags == *E* ]]; then
+      return 2
+    elif [[ $flags == *[vh]* ]]; then
+      return 0
+    else
+      b=00000000000000$b
+      b=${b:${#b}-14}
+      builtin sleep "$a.$b"
+    fi
+  }
+  function sleep { ble/builtin/sleep "$@"; }
 elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
   if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
     _ble_util_msleep_delay1=10000 # short msleep にかかる時間 [usec]
