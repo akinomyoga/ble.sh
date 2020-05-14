@@ -378,7 +378,7 @@ ble/base/initialize-version-information
 _ble_bash_loaded_in_function=0
 [[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
 
-# will be overwritten by ble-core.sh
+# will be overwritten by src/util.sh
 function ble/util/assign {
   builtin eval "$1=\$(builtin eval -- \"\${@:2}\")"
 }
@@ -422,12 +422,15 @@ function ble/base/.create-user-directory {
       ble/util/print "ble.sh: cannot create a directory '$dir' since there is already a file." >&2
       return 1
     fi
-    if ! (umask 077; ble/bin/mkdir -p "$dir"); then
+    if ! (umask 077; ble/bin/mkdir -p "$dir" && [[ -O $dir ]]); then
       ble/util/print "ble.sh: failed to create a directory '$dir'." >&2
       return 1
     fi
   elif ! [[ -r $dir && -w $dir && -x $dir ]]; then
     ble/util/print "ble.sh: permission of '$tmpdir' is not correct." >&2
+    return 1
+  elif [[ ! -O $dir ]]; then
+    ble/util/print "ble.sh: owner of '$tmpdir' is not correct." >&2
     return 1
   fi
   builtin eval "$var=\$dir"
@@ -480,8 +483,6 @@ fi
 ##   3. $_ble_base/tmp/$UID を使う。
 ##
 function ble/base/initialize-runtime-directory/.xdg {
-  [[ $_ble_base != */out ]] || return 1
-
   local runtime_dir=${XDG_RUNTIME_DIR:-/run/user/$UID}
   if [[ ! -d $runtime_dir ]]; then
     [[ $XDG_RUNTIME_DIR ]] &&
@@ -531,6 +532,9 @@ if ! ble/base/initialize-runtime-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_run." 1>&2
   return 1
 fi
+
+# ロード時刻の記録 (ble-update で使う為)
+: >| "$_ble_base_run/$$.load"
 
 function ble/base/clean-up-runtime-directory {
   local file pid mark removed
@@ -624,7 +628,7 @@ function ble-update {
   local MAKE=
   if type gmake &>/dev/null; then
     MAKE=gmake
-  elif type make &>/dev/null && make --version 2>&1 | grep -qiF 'GNU Make'; then
+  elif type make &>/dev/null && make --version 2>&1 | ble/bin/grep -qiF 'GNU Make'; then
     MAKE=make
   else
     ble/util/print "ble-update: GNU Make is not available." >&2
@@ -659,7 +663,10 @@ function ble-update {
         if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
           "$MAKE" INSDIR="$_ble_base" install
         fi ); local ext=$?
-    ((ext==6)) && return 0
+    if ((ext==6)); then
+      [[ $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]] && ble-reload
+      return 0
+    fi
     ((ext==0)) && ble-reload
     return "$ext"
   fi
