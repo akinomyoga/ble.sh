@@ -26,7 +26,7 @@
 - main: add an option `--test` `#D1340` 1410c72
 - util (`ble/builtin/trap`): support `return` in `INT`/`EXIT`/`WINCH` `#D1347` `#D1348` 3865488
 - history: support timestamp (reported by rux616) `#D1351` 4bcbd71 `#D1356` 350bb15
-- edit: support Bash 4.4 `PS0` `#D1357` 0000000
+- edit: support Bash 4.4 `PS0` `#D1357` 23a1ac5
 
 ## Changes
 
@@ -45,6 +45,8 @@
 - util (`bleopt`): fail when a specified bleopt variable does not exist (test-util) 5966f22
 - builtin: let redefined builtins return 2 for `--help` `#D1323` 731896c
 - edit: preserve `PS1` when `internal_suppress_bash_output` is set `#D1344` 6ede0c7
+- complete: complete param expan in additional contexts `#D1358` 3683305
+- main: reload on ble-update when ble.sh is already updated `#D1359` a441d4d
 
 ## Fix
 
@@ -97,7 +99,8 @@
   - `ble/encoding:UTF-8/c2b`: fix a bug that the first byte gets redundant bits
 - edit: work around `WINCH` not updating `COLUMNS`/`LINES` after `ble-reload` `#D1345` a190455
 - complete: initialize `bleopt complete_menu_style` options before `complete_load` hook (reported by rux616) `#D1352` 8a9a386
-- main: fix problems caused by multiple `source ble.sh` in bashrc `#D1354` 0000000
+- main: fix problems caused by multiple `source ble.sh` in bashrc `#D1354` 5476933
+- syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 0000000
 
 ## Compatibility
 
