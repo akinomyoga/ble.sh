@@ -89,7 +89,7 @@
 - global: work around Bash-4.4 `return` in trap handlers `#D1334` aa09d15
 - util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f
 - edit (`ble-bind -x`): check range of `READLINE_{POINT,MARK}` `#D1339` efe1e81
-- util (`ble/string#to{upper,lower}`): work around `LC_COLLATE=en_US.utf8` (test-util) `#D1341` 1f6b44e `#D1355` 4da6103
+- util (`ble/string#to{upper,lower}`): work around `LC_COLLATE=en_US.utf8` (test-util) `#D1341` 1f6b44e `#D1355` 4da6103 0000000
 - util (encoding, keyseq): fix miscelleneous encoding bugs (test-util) 435bd16
   - `ble/util/c2keyseq`: work around bash ambiguous keyseq `\M-\C-\\`
   - `ble/util/c2keyseq`: fix a bug that `C1` characters are not properly encoded

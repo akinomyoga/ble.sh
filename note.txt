@@ -293,7 +293,10 @@ bash 実装上で注意するべき事
 
     * #D1341 更に、bash-4.1 以下では LC_ALL= LC_COLLATE=C func 等の形式にしても
       効果が現れない。local LC_ALL= LC_COLLATE=C としないと効かない様である。
+
       外部コマンドを呼び出す時には問題は起こらない。関数経由でも大丈夫。
+      逆に外部コマンドの時には "LC_ALL=C awk" の形式にする必要がある。
+      もしくは "local -x LC_ALL= LC_COLLATE=C" とする。
 
       ng$ aaa() { echo ${#1}; }; LC_CTYPE=C aaa あいうえお
       ok$ echo あいうえお | LC_CTYPE=C awk '{print length($0)}'
