@@ -496,6 +496,7 @@ function ble/base/initialize-base-directory {
 }
 if ! ble/base/initialize-base-directory "${BASH_SOURCE[0]}"; then
   ble/util/print "ble.sh: ble base directory not found!" 1>&2
+  _ble_bash= BLE_VERSION=
   return 1
 fi
 
@@ -556,6 +557,7 @@ function ble/base/initialize-runtime-directory {
 }
 if ! ble/base/initialize-runtime-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_run." 1>&2
+  _ble_bash= BLE_VERSION=
   return 1
 fi
 
@@ -632,6 +634,7 @@ function ble/base/initialize-cache-directory {
 }
 if ! ble/base/initialize-cache-directory; then
   ble/util/print "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
+  _ble_bash= BLE_VERSION=
   return 1
 fi
 function ble/base/print-usage-for-no-argument-command {
@@ -644,6 +647,7 @@ function ble/base/print-usage-for-no-argument-command {
 }
 function ble-reload { source "$_ble_base/ble.sh"; }
 #%$ pwd=$(pwd) q=\' Q="'\''" bash -c 'echo "_ble_base_repository=$q${pwd//$q/$Q}$q"'
+#%$ echo "_ble_base_branch=$(git rev-parse --abbrev-ref HEAD)"
 function ble-update {
   if (($#)); then
     ble/base/print-usage-for-no-argument-command 'Update and reload ble.sh.' "$@"
@@ -671,33 +675,35 @@ function ble-update {
     return 1
   fi
 
-  if [[ $_ble_base_repository == release:* ]]; then
+  if [[ $_ble_base_repository && $_ble_base_repository != release:* ]]; then
+    if [[ -e $_ble_base_repository/.git ]]; then
+      ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
+          builtin cd "$_ble_base_repository" &&
+          git pull && git submodule update --recursive --remote &&
+          { ! "$MAKE" -q || builtin exit 6; } && "$MAKE" all &&
+          if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
+            "$MAKE" INSDIR="$_ble_base" install
+          fi ); local ext=$?
+      if ((ext==6)); then
+        [[ $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]] && ble-reload
+        return 0
+      fi
+      ((ext==0)) && ble-reload
+      return "$ext"
+    fi
+
+    ble/util/print 'ble-update: git repository not found' >&2
+  fi
+
+  if [[ $_ble_base_branch ]]; then
     # release version
-    local branch=${_ble_base_repository#*:}
+    local branch=$_ble_base_branch
     ( ble/bin/mkdir -p "$_ble_base/src" && builtin cd "$_ble_base/src" &&
         git clone --recursive --depth 1 https://github.com/akinomyoga/ble.sh "$_ble_base/src/ble.sh" -b "$branch" &&
         builtin cd ble.sh && "$MAKE" all && "$MAKE" INSDIR="$_ble_base" install ) &&
       ble-reload
     return "$?"
   fi
-
-  if [[ $_ble_base_repository && -d $_ble_base_repository/.git ]]; then
-    ( ble/util/print "cd into $_ble_base_repository..." >&2 &&
-        builtin cd "$_ble_base_repository" &&
-        git pull && git submodule update --recursive --remote &&
-        { ! "$MAKE" -q || builtin exit 6; } && "$MAKE" all &&
-        if [[ $_ble_base != "$_ble_base_repository"/out ]]; then
-          "$MAKE" INSDIR="$_ble_base" install
-        fi ); local ext=$?
-    if ((ext==6)); then
-      [[ $_ble_base/ble.sh -nt $_ble_base_run/$$.load ]] && ble-reload
-      return 0
-    fi
-    ((ext==0)) && ble-reload
-    return "$ext"
-  fi
-
-  ble/util/print 'ble-update: git repository not found' >&2
   return 1
 }
 #%if measure_load_time

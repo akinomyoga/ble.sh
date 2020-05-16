@@ -1174,6 +1174,15 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-05-16
+
+  * TERM=alacritty で何か変な事が起きるらしい。
+    https://github.com/rux616/init/commit/b03e7ef3dab5171d1f60aa61323ef823401217d5#diff-0af95dc8119f1c458b7a0fd76dfe8042R37-R39
+    調べてみると alacritty:extra/alacritty.info が terminfo らしい。tic -x extra/alacritty.info で入れる。
+    然し、何も問題は起きていない様に見える。256color もちゃんと動いている。ずっと使っていると発生する問題だろうか。
+    これは時間があれば rux616 に何が起こるのか尋ねても良い。
+    所で、いつの間にかに alacritty は jwilm/alacritty から alacritty/alacritty に移動したらしい。
+
 2020-04-25
 
   * starship コマンド実行時間の計測
@@ -3103,6 +3112,10 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2020-05-16
+
+  * 元のリポジトリが消滅している時にも update を可能にする [#D1363]
+    https://github.com/rux616/init/blob/7e1a5d2e0dbaa792f4a0a4830ea2f8b92b433b44/install#L422
+    →その様に修正した。
 
   * util: escape 単語先頭の ~ や # は escape しなくて良いのか [#D1362]
     ble/string#escape-for-bash-specialchars

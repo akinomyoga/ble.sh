@@ -47,6 +47,7 @@
 - edit: preserve `PS1` when `internal_suppress_bash_output` is set `#D1344` 6ede0c7
 - complete: complete param expan in additional contexts `#D1358` 3683305
 - main: reload on ble-update when ble.sh is already updated `#D1359` a441d4d
+- main (`ble-update`): clone github repository if the original repository is not found `#D1363` 0000000
 
 ## Fix
 
