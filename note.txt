@@ -1174,11 +1174,6 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
-2020-05-11
-
-  * util: escape 単語先頭の ~ や # は escape しなくて良いのか。
-    ble/string#escape-for-bash-specialchars
-
 2020-04-25
 
   * starship コマンド実行時間の計測
@@ -3106,6 +3101,98 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-05-16
+
+  * util: escape 単語先頭の ~ や # は escape しなくて良いのか [#D1362]
+    ble/string#escape-for-bash-specialchars
+
+    調べてみると core-complete.sh が使っている。
+
+    * そして試しに touch '#hello' '~hello' で調べてみると正しく escape されない。
+      →これについては修正した。
+      x 単語先頭以外でも \# \~ に修正されてしまう。
+        単語先頭かどうかを判定する事は可能だろうか。
+
+    * fixed: 更に \~hello に至ってはチルダ展開が起こって補完候補にも現れない。
+      '~hello' の場合にはちゃんと候補が列挙される。
+      →どうもこれは bash-completion が悪い様である。
+      然し、'~' の場合にはちゃんと生成できている。何が悪いのだろうか。
+      具体的にどの様な情報が渡されているのか確かめる必要がある。
+
+      調べるとシェル関数の引数である cur prev に渡されている情報が悪い。
+      cur="'~" の時には bash-completion は何も生成できない。
+      cur="\\~" の場合には bash-completion は何故かユーザー名を列挙する。
+      然し、よく考えてみるとそもそも COMP_WORDS の方も対応する様に
+      エスケープしなければならないのではないか。
+      その上で COMP_WORDS に一致する様に cur prev を用意するべきなのではないか。
+      もっと振る舞いを調べると bash-completion は引数と COMP_WORDS の両方の情報を使っている。
+
+      * 先ず COMP_WORDS の値を修正する必要がある。修正した。
+      * 更に、cur prev として渡している値も COMP_WORDS に変更したら動く様になった。
+
+      ? no: 然し、この部分は過去に何らかの議論があってこの様に修正した気がする。
+
+        | 改めてこの部分について調べる必要がある。調べると c8433971 43bb0749 が怪しい。
+        |
+        | 2018-08-05 09:15:39 c8433971
+        | 2019-03-23 21:41:19 43bb0749
+        |
+        | と思ったが、 c8433971 は quote を変更しただけである。更に遡る。
+        |
+        | 2015-11-24 04:05:14 1929132b (complete.sh) ここで導入されている。
+        |
+        | 更にその前のコードはどうなっていたかと言うと、以下の様な具合になっていて、
+        | そもそも COMP_WORDS と comp_words の区別がなかったし、更に関数に引数を渡していなかった。
+        | というより上の commit の僅か 4 時間前の事である。要するに実装してすぐに
+        | cur=${comp_words[comp_cword]} だったという事である。
+        |
+        | | 2015-11-23 23:58:01 cdd38598 (complete.sh)
+        | | function ble-complete/source/argument/.compgen-helper-vars {
+        | |   COMP_WORDS=("${comp_words[@]}")
+        | |   COMP_LINE="$comp_line"
+        | |   COMP_POINT="$comp_point"
+        | |   COMP_CWORD="$comp_cword"
+        | |   COMP_TYPE=9
+        | |   COMP_KEY="${KEYS[${#KEYS[@]}-1]:-9}" # KEYS defined in .ble-decode-key/invoke-command
+        | | }
+        | | function ble-complete/source/argument/.compgen-helper-func {
+        | |   local -a COMP_WORDS
+        | |   local COMP_LINE COMP_POINT COMP_CWORD COMP_TYPE COMP_KEY
+        | |   ble-complete/source/argument/.compgen-helper-vars
+        | |   [[ $comp_func ]] && eval "$comp_func"
+        | | }
+
+        結論: COMP_WORDS ではなくて comp_words を使っているのに特に意味はない。
+        未だ COMP_WORDS と comp_words に区別のなかった一番最初の実装の時からこうだった。
+        従って気兼ねなく変更する事ができる。変更した。
+
+    * ~ は ble.sh が勝手に展開してから bash_completion に渡しているが、
+      ~ の儘にして渡した方が良いのではないだろうか。
+      特に ~ という単独の単語の時にのみ特別扱いとするのである。
+
+      →対応した。候補はちゃんと生成される様になったが、
+      quote されてしまう。\~murase という具合に。これは期待する動作ではない。
+      実際に bash の場合には勝手に quote されるという事はなかった。
+      complete -p echo しても特に -o noquote が指定されている訳でもないし、
+      また、compopt の呼び出しを確認しても compopt -o filenames が呼び出されるだけで
+      compopt -o noquote が呼び出されるわけでもない。
+
+      元の Bash の振る舞いについても確認しておく必要がある。
+      →どうやら元々の Bash は ~ に関しては quote しない様だ。
+      そう思って quote しない様にしてみたら
+      今度は \~hello の様なファイル名で期待通りに動かない。
+      候補としては ~hello が生成されている。
+
+      不思議な事が起きている。bash_completion 経由だとメニューの表示には
+      \ 無しで表示されているのにも拘らず実際に補完される時には \ 付きで挿入される。
+      自分で作った補完関数で試してみるとどちらも COMPREPLY に格納した通りにしかならない。
+      或いは文脈に応じて bash_completion は quote の仕方を変えるという事なのだろうか。
+      →分かった。bash は compopt -o filenames が指定されている時、
+      ローカルファイル名に "~..." が一致する時に限り tilde の quote を実施する。
+
+      →Bash の振る舞いの通りに実装してみたがこれで良いのか分からない。
+      本来はいつでも先頭の ~ は quote するべきの気もするがまあこれで大丈夫だろう。
 
 2020-05-14
 

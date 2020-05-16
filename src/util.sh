@@ -797,7 +797,6 @@ function ble/string#escape-characters {
 ## 関数 ble/string#escape-for-bash-single-quote text...
 ## 関数 ble/string#escape-for-bash-double-quote text...
 ## 関数 ble/string#escape-for-bash-escape-string text...
-## 関数 ble/string#escape-for-bash-specialchars text flags
 ##   @param[in] text...
 ##   @var[out] ret
 function ble/string#escape-for-sed-regex {
@@ -825,6 +824,14 @@ function ble/string#escape-for-bash-double-quote {
 function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$*" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
 }
+## 関数 ble/string#escape-for-bash-specialchars text flags
+##   @param[in] text
+##   @param[in] flags
+##     c 単語中でチルダ展開を誘導する文字をエスケープします。
+##     b ブレース展開の文字もエスケープします。
+##     H 語頭の #, ~ のエスケープをしません。
+##     T 語頭のチルダのエスケープをしません。
+##   @var[out] ret
 function ble/string#escape-for-bash-specialchars {
   local chars='\ ["'\''`$|&;<>()*?!^'
   # Note: = と : は文法的にはエスケープは不要だが
@@ -832,6 +839,8 @@ function ble/string#escape-for-bash-specialchars {
   [[ $2 == *c* ]] && chars=$chars'=:'
   [[ $2 == *b* ]] && chars=$chars'{,}'
   ble/string#escape-characters "$1" "$chars"
+  [[ $2 != *[HT]* && $ret == '~'* ]] && ret=\\$ret
+  [[ $2 != *H* && $ret == '#'* ]] && ret=\\$ret
   if [[ $ret == *[$']\n\t']* ]]; then
     local a b
     a=']'   b=\\$a     ret=${ret//"$a"/$b}

@@ -951,7 +951,16 @@ function ble/complete/action/util/complete.close-quotation {
 
 ## 関数 ble/complete/action/util/quote-insert type
 function ble/complete/action/util/quote-insert {
-  local escape_flags=c; [[ $1 == command ]] && escape_flags=
+  local escape_flags=c
+  if [[ $1 == command ]]; then
+    escape_flags=
+  elif [[ $1 == progcomp ]]; then
+    # #D1362 Bash は "compopt -o filenames" が指定されている時、
+    # '~' で始まる補完候補と同名のファイルがある時にのみチルダをクォートする。
+    [[ $INSERT == '~'* && ! ( $DATA == *:filenames:* && -e $INSERT ) ]] &&
+      escape_flags=T$escape_flags
+  fi
+
   if [[ $comps_flags == *v* && $CAND == "$COMPV"* ]]; then
     local ins=${CAND:${#COMPV}} ret
 
@@ -1122,7 +1131,7 @@ function ble/complete/action:progcomp/initialize {
   # 自分でスペースを付加する補完関数がある。この時クォートすると問題。
   [[ $DATA == *:nospace:* && $CAND == *' ' && ! -f $CAND ]] && return 0
 
-  ble/complete/action/util/quote-insert
+  ble/complete/action/util/quote-insert progcomp
 }
 function ble/complete/action:progcomp/complete {
   if [[ $DATA == *:filenames:* ]]; then
@@ -1806,40 +1815,51 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl2 {
 ##   @arr[out] words
 ##     分割して得られた単語片を格納します。
 ##
-##   @var[in,out] flag_evaluated
+##   @var[in,out] subword_flags
+##     E が含まれる時、単語の展開・分割が実施された事を示す。
+##       全体が単純単語になっている時、先に eval して COMP_WORDBREAKS で分割する。
+##       そうでない時に先に COMP_WORDBREAKS で分割して、
+##       各単語片に対して単純単語 eval を試みる。
+##
+##     Q が含まれている時、後続の処理における展開・クォートを抑制し、
+##       補完間関数に対してそのままの形で単語を渡す事を示す。
+##       これはチルダ ~ に対してユーザ名を補完させるのに使う。
+##
 ##   @var[in,out] point
 ##   @var[in] wordbreaks
 ##
 ## Note: 全体が単純単語になっている時には先に eval して COMP_WORDBREAKS で分割する。
-##   この時 flag_evaluated=1 を設定する。
-##   そうでない時には先に COMP_WORDBREAKS で分割して、
-##   各単語片に対して単純単語 eval を試みる。
+##   この時 subword_flags=E を設定する。
 ##
 function ble/complete/progcomp/.compvar-generate-subwords {
   local word1=$1 ret simple_flags simple_ibrace
   if [[ ! $word1 ]]; then
     # Note: 空文字列に対して正しい単語とする為に '' とすると git の補完関数が動かなくなる。
     #   仕方がないので空文字列のままで登録する事にする。
-    flag_evaluated=1
+    subword_flags=E
     words=('')
+  elif [[ $word1 == '~' ]]; then
+    # #D1362: ~ は展開するとユーザ名を補完できなくので特別にそのまま渡す。
+    subword_flags=Q
+    words=('~')
   elif ble/complete/progcomp/.compvar-generate-subwords/impl1 "$word1"; then
     # 初めに、先に分割してから評価する戦略を試す。
-    flag_evaluated=1
+    subword_flags=E
   elif ble/complete/progcomp/.compvar-generate-subwords/impl2 "$word1"; then
     # 次に、評価してから分割する戦略を試す。
-    flag_evaluated=1
+    subword_flags=E
   else
     ble/complete/progcomp/.compvar-perform-wordbreaks "$word1"; words=("${ret[@]}")
   fi
 }
 ## 関数 ble/complete/progcomp/.compvar-quote-subword word
-##   @var[in] index flag_evaluated
+##   @var[in] index subword_flags
 ##   @var[out] ret
 ##   @var[in,out] p
 function ble/complete/progcomp/.compvar-quote-subword {
   local word=$1 to_quote= is_evaluated= is_quoted=
-  if [[ $flag_evaluated ]]; then
-    to_quote=1
+  if [[ $subword_flags == *[EQ]* ]]; then
+    [[ $subword_flags == *E* ]] && to_quote=1
   elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
     is_evaluated=1
     ble/syntax:bash/simple-word/eval "$ret"; word=$ret
@@ -1849,7 +1869,7 @@ function ble/complete/progcomp/.compvar-quote-subword {
   # コマンド名以外は再クォート
   if [[ $to_quote ]]; then
     local shell_specialchars=']\ ["'\''`$|&;<>()*?{}!^'$'\n\t' q="'" Q="'\''" qq="''"
-    if ((index>0)) && [[ $word == *["$shell_specialchars"]* ]]; then
+    if ((index>0)) && [[ $word == *["$shell_specialchars"]* || $word == [#~]* ]]; then
       is_quoted=1
       word="'${w//$q/$Q}'" word=${word#"$qq"} word=${word%"$qq"}
     fi
@@ -1909,7 +1929,7 @@ function ble/complete/progcomp/.compvar-initialize {
     ((0<=point&&point<=${#word1})) || point=
     ((offset+=${#word1}))
 
-    local words flag_evaluated=
+    local words subword_flags=
     ble/complete/progcomp/.compvar-generate-subwords "$word1"
 
     local w wq i=0 o=0 p
@@ -1952,7 +1972,7 @@ function ble/complete/progcomp/.compgen-helper-prog {
     local COMP_WORDS COMP_CWORD
     local -x COMP_LINE COMP_POINT COMP_TYPE COMP_KEY
     ble/complete/progcomp/.compvar-initialize
-    local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
+    local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
     "$comp_prog" "$cmd" "$cur" "$prev" </dev/null
   fi
 }
@@ -2001,7 +2021,7 @@ function ble/complete/progcomp/.compgen-helper-func {
   ble/complete/progcomp/.compvar-initialize
 
   local fDefault=
-  local cmd=${comp_words[0]} cur=${comp_words[comp_cword]} prev=${comp_words[comp_cword-1]}
+  local cmd=${COMP_WORDS[0]} cur=${COMP_WORDS[COMP_CWORD]} prev=${COMP_WORDS[COMP_CWORD-1]}
   ble/function#push compopt 'ble/complete/progcomp/compopt "$@"'
   builtin eval '"$comp_func" "$cmd" "$cur" "$prev"' < /dev/null; local ret=$?
   ble/function#pop compopt

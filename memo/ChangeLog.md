@@ -101,6 +101,7 @@
 - complete: initialize `bleopt complete_menu_style` options before `complete_load` hook (reported by rux616) `#D1352` 8a9a386
 - main: fix problems caused by multiple `source ble.sh` in bashrc `#D1354` 5476933
 - syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 0000000
+- complete: quote `#` and `~` at the beginning of word `#D1362` 0000000
 
 ## Compatibility
 
