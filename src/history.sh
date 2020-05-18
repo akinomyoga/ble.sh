@@ -497,7 +497,7 @@ if ((_ble_bash>=30100)); then
       }
       function unescape_command(cmd) {
         cmd = substr(cmd, 11, length(cmd) - 11);
-        gsub(/\\\\/, "\q", cmd);
+        gsub(/\\\\/, "\\q", cmd);
         gsub(/\\n/, "\n", cmd);
         gsub(/\\t/, "\t", cmd);
         gsub(/\\'$apos'/, "'$apos'", cmd);

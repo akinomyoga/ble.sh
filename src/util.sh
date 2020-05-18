@@ -2341,7 +2341,7 @@ function ble/util/pager {
 ##   ミリ秒も取得できる場合には第二フィールドとしてミリ秒を出力します。
 ##   @param[in] filename ファイル名を指定します。
 ##
-if ble/bin/.freeze-utility-path date && date -r / +%s &>/dev/null; then
+if ble/bin/date -r / +%s &>/dev/null; then
   function ble/util/getmtime { ble/bin/date -r "$1" +'%s %N' 2>/dev/null; }
 elif ble/bin/.freeze-utility-path stat; then
   # 参考: http://stackoverflow.com/questions/17878684/best-way-to-get-file-modified-time-in-seconds
