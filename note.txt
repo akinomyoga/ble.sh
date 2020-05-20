@@ -1174,6 +1174,17 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-05-20
+
+  * 破壊的変更と後方互換性
+    * keymap_vi_nmap_name は keymap_vi_mode_nmap_string 等に改名するかもしれない。
+      或いはもっと別の名前? やはり keymap_vi_mode_normal で良いだろうか。
+      改名するとしたら complete_stdin_frequency と同様に別名に書き換える様にする。
+      実はオプションの改名について枠組みにしてしまっても良いのかもしれないという気がする。
+
+    * ble{-edit => }/prompt/{print,process-prompt-string,backslash} についても
+      警告を表示する様にする仕組みが必要になる気がする。
+
 2020-05-16
 
   * TERM=alacritty で何か変な事が起きるらしい。
@@ -3121,6 +3132,119 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-05-20
+
+  * プロンプトに vim mode を表示できる様にする (suggested by Dave-Elec) [#D1365]
+    https://github.com/akinomyoga/ble.sh/issues/57
+
+    keymap_vi_nmap_name 以外のモード名の設定。
+
+    [関連情報]
+
+    * readline には以下の変数が存在する。
+      set show-mode-in-prompt on
+      set vi-cmd-mode-string "(cmd)"
+      set vi-ins-mode-string "(ins)"
+
+      ble.sh ではいきなり独立行にこれを表示するので、
+      この設定が使えなくなってもそれ程迄に気にする人はいないだろう。
+
+    * prompt に新しい設定を追加するには。
+      特に \p{name} 的な形式で指定できる様にしたい。
+      p の代わりにもっとましな文字を使いたい。例えば、
+
+      a 正規表現の参照的には \k<name> \k'name' \k{name}
+        \'name' 或いは \'{name} \{name} \"{name}
+
+      b printf %()T 的には、\(name)N 等? でも分かりにくい。
+
+      c zsh prompt は %D{strftime format} に対応している。
+        zsh では以下の特殊文字について既に % が定義されている。
+        %% %# %! %? %_ %^ %/ %~ %. %{..%} %(...)
+        %<...< %>...> %[>...] %[<...]
+
+      d 良く考えたら既に Bash も \D{format} に対応している。
+        この様に考えると \X{...} の形式にするのは確定。
+        \! \# \$ \[ \] は既に使われている。
+        この雰囲気だと \' \" 等は今後も使われる事が無さそうな気がする。
+        \'{name} 等でどうだろうか。取り敢えず \'{name} で対応する事にする。
+
+    [変更]
+
+    * done: ble-edit/prompt/backslash:name は
+      ble/prompt/backslash:name に変更する事にする。
+      Recipe から以前の名前を使っている人がいるかもしれないので、
+      関数が見つからない場合には古い名前を使用する。
+
+    * fixed: 実際に動かしてみて気付いたが \'{name} だと、
+      PS1 を指定する時のエスケープと被ってしまって良くない。
+      別の文字にするか或いは \{name} にする?
+      \{name} は余り使いたくない。やはり \D{name} が存在する以上は
+      それに従うのが自然だろうと思われる。
+
+      アルファベットは今後使われる可能性がある。
+      従ってやはり記号の類が良い気がする。
+      \?{name} は正規表現の名前に似ているが、
+      \? が別の目的で使われないとも限らない。
+      うーん。\:{name} にしようか。lisp 的に \,{name} でも良い?
+      或いはやはりアルファベットを使うか。\q にするのが良い気がしてきた。
+
+      OK 動いている。\q{name} というのも分かりやすい気がしている。
+
+    * done: mode名を表示しない設定を作るのも良い気がしている。
+      bleopt keymap_vi_mode_show=
+      取り敢えず対応した。動作確認をして修正もした。
+
+    * done: 次にモードが変化した時にプロンプトを invalidate することについて考える。
+      これはもう全体を invalidate してしまっても良い気がする。
+      更にそれと同時に prompt のキャッシュも強制的に更新させる必要がある。
+      →実はこれは単に ble/prompt/clear を呼び出せば良いという事だろうか。
+      そんな気がする。取り敢えず動いているという事を確認した。
+
+    * done: readline の設定に対応するべきだろうか?
+
+      取り敢えず振る舞いについて確認する。
+
+      set show-mode-in-prompt on
+      set emacs-mode-string "@"
+      set vi-cmd-mode-string "(cmd)"
+      set vi-ins-mode-string "(ins)"
+
+      bind で設定する時に "\1\2" 等とした場合に、
+      bind -v ではどの様に出力されるのだろうか。
+      →何と直接表示された。つまりこれは ble/prompt/print で追加するべき。
+
+      * モードが変化した時に ble/prompt/notify-readline-mode-change
+        を呼び出して強制的に prompt を再計算させる事にする。
+
+      vi 内部でのモードの変更は update-mode で実行すれば良い。
+      emacs, vi の切り替えに関しては現状の枠組みでは必ず
+      reset-default-keymap 経由で実行される。そしてその際には __attach__ が呼び出される。
+      従って __attach__ でモードをチェックして set show-mode-in-prompt になっていたら
+      prompt を強制更新するという具合にするので良い。
+
+      動作確認を実行する。以下の設定で期待通りに動く事を確認した。OK
+
+      bind 'set show-mode-in-prompt on'
+      ble-bind -m vi_imap -f C-t emacs-editing-mode
+      ble-bind -m emacs   -f C-t vi-editing-mode
+
+    * done: Manual を更新する。新しい bleopt を追記した。
+    * done: vi guide も更新する
+    * done: blerc も更新する。新しい bleopt を追記
+
+    * done: Manual: プロンプト文字列に関する説明
+      プロンプトの改造の仕方の説明
+      これらは rps1 付近に追記すれば良いだろう。
+      或いはプロンプトに関する独立した章を設ける。
+      readline variable の解釈についてもちゃんと書きたい。
+
+    [返答の準備]
+
+    取り敢えずサンプルを提示する?
+    或いは、contrib にサンプルを追加してしまっても良い気がする。
+    →contrib に追加した。
 
 2020-05-18
 

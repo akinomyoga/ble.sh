@@ -330,6 +330,16 @@ bleopt/declare -v keymap_vi_xmap_cursor ''
 bleopt/declare -v keymap_vi_smap_cursor ''
 bleopt/declare -v keymap_vi_cmap_cursor ''
 
+bleopt/declare -v keymap_vi_mode_show 1
+bleopt/declare -v keymap_vi_mode_update_prompt ''
+bleopt/declare -v keymap_vi_mode_name_insert    'INSERT'
+bleopt/declare -v keymap_vi_mode_name_replace   'REPLACE'
+bleopt/declare -v keymap_vi_mode_name_vreplace  'VREPLACE'
+bleopt/declare -v keymap_vi_mode_name_visual    'VISUAL'
+bleopt/declare -v keymap_vi_mode_name_select    'SELECT'
+bleopt/declare -v keymap_vi_mode_name_linewise  'LINE'
+bleopt/declare -v keymap_vi_mode_name_blockwise 'BLOCK'
+
 function ble/keymap:vi/update-mode-name {
   local kmap=$_ble_decode_keymap cursor=
   if [[ $kmap == vi_imap ]]; then
@@ -354,23 +364,32 @@ function ble/keymap:vi/update-mode-name {
     return 0
   fi
 
-  local show= overwrite=
-  if [[ $kmap == vi_imap ]]; then
-    show=1 overwrite=$_ble_edit_overwrite_mode
-  elif [[ $_ble_keymap_vi_single_command && ( $kmap == vi_nmap || $kmap == vi_omap ) ]]; then
-    show=1 overwrite=$_ble_keymap_vi_single_command_overwrite
-  elif [[ $kmap == vi_[xs]map ]]; then
-    show=x overwrite=$_ble_keymap_vi_single_command_overwrite
+  if [[ $bleopt_keymap_vi_mode_update_prompt ]] || ble/util/test-rl-variable show-mode-in-prompt; then
+    ble/prompt/clear
+    ble/textarea#invalidate
   fi
 
-  local name=$bleopt_keymap_vi_nmap_name
+  local name=
+  if [[ $bleopt_keymap_vi_mode_show ]]; then
+    local show= overwrite=
+    if [[ $kmap == vi_imap ]]; then
+      show=1 overwrite=$_ble_edit_overwrite_mode
+    elif [[ $_ble_keymap_vi_single_command && ( $kmap == vi_nmap || $kmap == vi_omap ) ]]; then
+      show=1 overwrite=$_ble_keymap_vi_single_command_overwrite
+    elif [[ $kmap == vi_[xs]map ]]; then
+      show=x overwrite=$_ble_keymap_vi_single_command_overwrite
+    else
+      name=$bleopt_keymap_vi_nmap_name
+    fi
+  fi
+
   if [[ $show ]]; then
     if [[ $overwrite == R ]]; then
-      name='REPLACE'
+      name=$bleopt_keymap_vi_mode_name_replace
     elif [[ $overwrite ]]; then
-      name='VREPLACE'
+      name=$bleopt_keymap_vi_mode_name_vreplace
     else
-      name='INSERT'
+      name=$bleopt_keymap_vi_mode_name_insert
     fi
 
     if [[ $_ble_keymap_vi_single_command ]]; then
@@ -379,12 +398,12 @@ function ble/keymap:vi/update-mode-name {
 
     if [[ $show == x ]]; then
       local mark_type=${_ble_edit_mark_active%+}
-      local visual_name='VISUAL'
-      [[ $kmap == vi_smap ]] && visual_name='SELECT'
+      local visual_name=$bleopt_keymap_vi_mode_name_visual
+      [[ $kmap == vi_smap ]] && visual_name=$bleopt_keymap_vi_mode_name_select
       if [[ $mark_type == vi_line ]]; then
-        visual_name=$visual_name' LINE'
+        visual_name=$visual_name' '$bleopt_keymap_vi_mode_name_linewise
       elif [[ $mark_type == vi_block ]]; then
-        visual_name=$visual_name' BLOCK'
+        visual_name=$visual_name' '$bleopt_keymap_vi_mode_name_blockwise
       fi
 
       if [[ $_ble_keymap_vi_single_command ]]; then
@@ -396,10 +415,11 @@ function ble/keymap:vi/update-mode-name {
 
     name=$'\e[1m-- '$name$' --\e[m'
   fi
+
   if [[ $_ble_keymap_vi_reg_record ]]; then
-    name=$name$' \e[1;31mREC @'$_ble_keymap_vi_reg_record_char$'\e[m'
+    name=$name${name:+' '}$'\e[1;31mREC @'$_ble_keymap_vi_reg_record_char$'\e[m'
   elif [[ $_ble_edit_kbdmacro_record ]]; then
-    name=$name$' \e[1;31mREC\e[m'
+    name=$name${name:+' '}$'\e[1;31mREC\e[m'
   fi
   ble-edit/info/default ansi "$name" # 6ms
 }
@@ -7526,6 +7546,7 @@ function ble-decode/keymap:vi_smap/define {
 # vi_imap
 
 function ble/widget/vi_imap/__attach__ {
+  ble/prompt/notify-readline-mode-change
   ble/keymap:vi/update-mode-name
   return 0
 }

@@ -41,6 +41,10 @@ blehook/declare PREEXEC
 blehook/declare POSTEXEC
 blehook/declare widget_bell
 
+# deprecated function
+function ble-edit/prompt/print { ble/prompt/print "$@"; }
+function ble-edit/prompt/process-prompt-string { ble/prompt/process-prompt-string "$@"; }
+
 # keymap
 
 blehook/declare keymap_load

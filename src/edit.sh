@@ -178,7 +178,7 @@ bleopt/declare -v line_limit_type none
 # **** prompt ****                                                    @line.ps1
 
 ## called by ble-edit/initialize
-function ble-edit/prompt/initialize {
+function ble/prompt/initialize {
   # hostname
   _ble_edit_prompt__string_H=${HOSTNAME}
   if local rex='^[0-9]+(\.[0-9]){3}$'; [[ $HOSTNAME =~ $rex ]]; then
@@ -262,12 +262,12 @@ function ble-edit/prompt/initialize {
 _ble_edit_prompt=("" 0 0 0 32 0 "" "")
 
 
-## 関数 ble-edit/prompt/.load
+## 関数 ble/prompt/.load
 ##   @var[out] x y g
 ##   @var[out] lc lg
 ##   @var[out] ret
 ##     プロンプトを描画するための文字列
-function ble-edit/prompt/.load {
+function ble/prompt/.load {
   x=${_ble_edit_prompt[1]}
   y=${_ble_edit_prompt[2]}
   g=${_ble_edit_prompt[3]}
@@ -276,14 +276,14 @@ function ble-edit/prompt/.load {
   ret=${_ble_edit_prompt[6]}
 }
 
-## 関数 ble-edit/prompt/print text
+## 関数 ble/prompt/print text
 ##   プロンプト構築中に呼び出す関数です。
 ##   指定された文字列を、後の評価に対するエスケープをして出力します。
 ##   @param[in] text
 ##     エスケープされる文字列を指定します。
 ##   @var[out]  DRAW_BUFF[]
 ##     出力先の配列です。
-function ble-edit/prompt/print {
+function ble/prompt/print {
   local text=$1 a b
   if [[ ! $prompt_noesc && $text == *['$\"`']* ]]; then
     a='\' b='\\' text=${text//"$a"/$b}
@@ -294,19 +294,19 @@ function ble-edit/prompt/print {
   ble/canvas/put.draw "$text"
 }
 
-## 関数 ble-edit/prompt/process-prompt-string prompt_string
+## 関数 ble/prompt/process-prompt-string prompt_string
 ##   プロンプト構築中に呼び出す関数です。
 ##   指定した引数を PS1 と同様の形式と解釈して処理します。
 ##   @param[in] prompt_string
 ##   @arr[in,out] DRAW_BUFF
-function ble-edit/prompt/process-prompt-string {
+function ble/prompt/process-prompt-string {
   local ps1=$1
   local i=0 iN=${#ps1}
   local rex_letters='^[^\]+|\\$'
   while ((i<iN)); do
     local tail=${ps1:i}
     if [[ $tail == '\'?* ]]; then
-      ble-edit/prompt/.process-backslash
+      ble/prompt/.process-backslash
     elif [[ $tail =~ $rex_letters ]]; then
       ble/canvas/put.draw "$BASH_REMATCH"
       ((i+=${#BASH_REMATCH}))
@@ -317,15 +317,15 @@ function ble-edit/prompt/process-prompt-string {
     fi
   done
 }
-## 関数 ble-edit/prompt/.process-backslash
+## 関数 ble/prompt/.process-backslash
 ##   @var[in]     tail
 ##   @arr[in.out] DRAW_BUFF
-function ble-edit/prompt/.process-backslash {
+function ble/prompt/.process-backslash {
   ((i+=2))
 
   # \\ の次の文字
-  local c=${tail:1:1} pat='[]#!$\'
-  if [[ ! ${pat##*"$c"*} ]]; then
+  local c=${tail:1:1} pat='][#!$\'
+  if [[ $c == ["$pat"] ]]; then
     case "$c" in
     (\[) ble/canvas/put.draw $'\001' ;; # \[ \] は後処理の為、適当な識別用の文字列を出力する。
     (\]) ble/canvas/put.draw $'\002' ;;
@@ -336,13 +336,17 @@ function ble-edit/prompt/.process-backslash {
       ble/history/get-count -v count
       ble/canvas/put.draw $((count+1)) ;;
     ('$') # # or $
-      ble-edit/prompt/print "$_ble_edit_prompt__string_root" ;;
+      ble/prompt/print "$_ble_edit_prompt__string_root" ;;
     (\\)
       # '\\' は '\' と出力された後に、更に "" 内で評価された時に次の文字をエスケープする。
       # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
       ble/canvas/put.draw '\' ;;
     esac
-  elif ! ble/function#try ble-edit/prompt/backslash:"$c"; then
+  elif ble/is-function ble/prompt/backslash:"$c"; then
+    ble/function#try ble/prompt/backslash:"$c"
+  elif ble/is-function ble/prompt/backslash:"$c"; then # deprecated name
+    ble/function#try ble/prompt/backslash:"$c"
+  else
     # その他の文字はそのまま出力される。
     # - '\"' '\`' はそのまま出力された後に "" 内で評価され '"' '`' となる。
     # - それ以外の場合は '\?' がそのまま出力された後に、"" 内で評価されても変わらず '\?' 等となる。
@@ -350,10 +354,10 @@ function ble-edit/prompt/.process-backslash {
   fi
 }
 
-## 設定関数 ble-edit/prompt/backslash:*
+## 設定関数 ble/prompt/backslash:*
 ##   プロンプト PS1 内で使用するバックスラッシュシーケンスを定義します。
 ##   内部では ble/canvas/put.draw escaped_text もしくは
-##   ble-edit/prompt/print unescaped_text を用いて
+##   ble/prompt/print unescaped_text を用いて
 ##   シーケンスの展開結果を追記します。
 ##
 ##   @exit
@@ -362,76 +366,76 @@ function ble-edit/prompt/.process-backslash {
 ##     シーケンスが処理されなかったと見做され、
 ##     呼び出し元によって \c (c: 文字) が代わりに書き込まれます。
 ##
-function ble-edit/prompt/backslash:0 { # 8進表現
+function ble/prompt/backslash:0 { # 8進表現
   local rex='^\\[0-7]{1,3}'
   if [[ $tail =~ $rex ]]; then
     local seq=${BASH_REMATCH[0]}
     ((i+=${#seq}-2))
     builtin eval "c=\$'$seq'"
   fi
-  ble-edit/prompt/print "$c"
+  ble/prompt/print "$c"
   return 0
 }
-function ble-edit/prompt/backslash:1 { ble-edit/prompt/backslash:0; }
-function ble-edit/prompt/backslash:2 { ble-edit/prompt/backslash:0; }
-function ble-edit/prompt/backslash:3 { ble-edit/prompt/backslash:0; }
-function ble-edit/prompt/backslash:4 { ble-edit/prompt/backslash:0; }
-function ble-edit/prompt/backslash:5 { ble-edit/prompt/backslash:0; }
-function ble-edit/prompt/backslash:6 { ble-edit/prompt/backslash:0; }
-function ble-edit/prompt/backslash:7 { ble-edit/prompt/backslash:0; }
-function ble-edit/prompt/backslash:a { # 0 BEL
+function ble/prompt/backslash:1 { ble/prompt/backslash:0; }
+function ble/prompt/backslash:2 { ble/prompt/backslash:0; }
+function ble/prompt/backslash:3 { ble/prompt/backslash:0; }
+function ble/prompt/backslash:4 { ble/prompt/backslash:0; }
+function ble/prompt/backslash:5 { ble/prompt/backslash:0; }
+function ble/prompt/backslash:6 { ble/prompt/backslash:0; }
+function ble/prompt/backslash:7 { ble/prompt/backslash:0; }
+function ble/prompt/backslash:a { # 0 BEL
   ble/canvas/put.draw ""
   return 0
 }
-function ble-edit/prompt/backslash:d { # ? 日付
+function ble/prompt/backslash:d { # ? 日付
   [[ $cache_d ]] || ble/util/strftime -v cache_d '%a %b %d'
-  ble-edit/prompt/print "$cache_d"
+  ble/prompt/print "$cache_d"
   return 0
 }
-function ble-edit/prompt/backslash:t { # 8 時刻
+function ble/prompt/backslash:t { # 8 時刻
   [[ $cache_t ]] || ble/util/strftime -v cache_t '%H:%M:%S'
-  ble-edit/prompt/print "$cache_t"
+  ble/prompt/print "$cache_t"
   return 0
 }
-function ble-edit/prompt/backslash:A { # 5 時刻
+function ble/prompt/backslash:A { # 5 時刻
   [[ $cache_A ]] || ble/util/strftime -v cache_A '%H:%M'
-  ble-edit/prompt/print "$cache_A"
+  ble/prompt/print "$cache_A"
   return 0
 }
-function ble-edit/prompt/backslash:T { # 8 時刻
+function ble/prompt/backslash:T { # 8 時刻
   [[ $cache_T ]] || ble/util/strftime -v cache_T '%I:%M:%S'
-  ble-edit/prompt/print "$cache_T"
+  ble/prompt/print "$cache_T"
   return 0
 }
-function ble-edit/prompt/backslash:@ { # ? 時刻
+function ble/prompt/backslash:@ { # ? 時刻
   [[ $cache_at ]] || ble/util/strftime -v cache_at '%I:%M %p'
-  ble-edit/prompt/print "$cache_at"
+  ble/prompt/print "$cache_at"
   return 0
 }
-function ble-edit/prompt/backslash:D {
+function ble/prompt/backslash:D {
   local rex='^\\D\{([^{}]*)\}' cache_D
   if [[ $tail =~ $rex ]]; then
     ble/util/strftime -v cache_D "${BASH_REMATCH[1]}"
-    ble-edit/prompt/print "$cache_D"
+    ble/prompt/print "$cache_D"
     ((i+=${#BASH_REMATCH}-2))
   else
-    ble-edit/prompt/print "\\$c"
+    ble/prompt/print "\\$c"
   fi
   return 0
 }
-function ble-edit/prompt/backslash:e {
+function ble/prompt/backslash:e {
   ble/canvas/put.draw $'\e'
   return 0
 }
-function ble-edit/prompt/backslash:h { # = ホスト名
-  ble-edit/prompt/print "$_ble_edit_prompt__string_h"
+function ble/prompt/backslash:h { # = ホスト名
+  ble/prompt/print "$_ble_edit_prompt__string_h"
   return 0
 }
-function ble-edit/prompt/backslash:H { # = ホスト名
-  ble-edit/prompt/print "$_ble_edit_prompt__string_H"
+function ble/prompt/backslash:H { # = ホスト名
+  ble/prompt/print "$_ble_edit_prompt__string_H"
   return 0
 }
-function ble-edit/prompt/backslash:j { #   ジョブの数
+function ble/prompt/backslash:j { #   ジョブの数
   if [[ ! $cache_j ]]; then
     local joblist
     ble/util/joblist
@@ -440,51 +444,72 @@ function ble-edit/prompt/backslash:j { #   ジョブの数
   ble/canvas/put.draw "$cache_j"
   return 0
 }
-function ble-edit/prompt/backslash:l { #   tty basename
-  ble-edit/prompt/print "$_ble_edit_prompt__string_l"
+function ble/prompt/backslash:l { #   tty basename
+  ble/prompt/print "$_ble_edit_prompt__string_l"
   return 0
 }
-function ble-edit/prompt/backslash:n {
+function ble/prompt/backslash:n {
   ble/canvas/put.draw $'\n'
   return 0
 }
-function ble-edit/prompt/backslash:r {
+function ble/prompt/backslash:r {
   ble/canvas/put.draw "$_ble_term_cr"
   return 0
 }
-function ble-edit/prompt/backslash:s { # 4 "bash"
-  ble-edit/prompt/print "$_ble_edit_prompt__string_s"
+function ble/prompt/backslash:s { # 4 "bash"
+  ble/prompt/print "$_ble_edit_prompt__string_s"
   return 0
 }
-function ble-edit/prompt/backslash:u { # = ユーザ名
-  ble-edit/prompt/print "$_ble_edit_prompt__string_u"
+function ble/prompt/backslash:u { # = ユーザ名
+  ble/prompt/print "$_ble_edit_prompt__string_u"
   return 0
 }
-function ble-edit/prompt/backslash:v { # = bash version %d.%d
-  ble-edit/prompt/print "$_ble_edit_prompt__string_v"
+function ble/prompt/backslash:v { # = bash version %d.%d
+  ble/prompt/print "$_ble_edit_prompt__string_v"
   return 0
 }
-function ble-edit/prompt/backslash:V { # = bash version %d.%d.%d
-  ble-edit/prompt/print "$_ble_edit_prompt__string_V"
+function ble/prompt/backslash:V { # = bash version %d.%d.%d
+  ble/prompt/print "$_ble_edit_prompt__string_V"
   return 0
 }
-function ble-edit/prompt/backslash:w { # PWD
-  ble-edit/prompt/.update-working-directory
-  ble-edit/prompt/print "$cache_wd"
+function ble/prompt/backslash:w { # PWD
+  ble/prompt/.update-working-directory
+  ble/prompt/print "$cache_wd"
   return 0
 }
-function ble-edit/prompt/backslash:W { # PWD短縮
+function ble/prompt/backslash:W { # PWD短縮
   if [[ ! ${PWD//'/'} ]]; then
-    ble-edit/prompt/print "$PWD"
+    ble/prompt/print "$PWD"
   else
-    ble-edit/prompt/.update-working-directory
-    ble-edit/prompt/print "${cache_wd##*/}"
+    ble/prompt/.update-working-directory
+    ble/prompt/print "${cache_wd##*/}"
   fi
   return 0
 }
-## 関数 ble-edit/prompt/.update-working-directory
+
+# \q{name} (ble.sh extension)
+function ble/prompt/backslash:q {
+  local rex='^\{([^{}]*)\}'
+  if [[ ${tail:2} =~ $rex ]]; then
+    local rematch=$BASH_REMATCH
+    local word; ble/string#split-words word "${BASH_REMATCH[1]}"
+    if [[ ! $word ]]; then
+      ble/util/print "ble/prompt: invalid sequence \\q$rematch" >&2
+    elif ! ble/is-function ble/prompt/backslash:"$word"; then
+      ble/util/print "ble/propmt: undefined named sequence \\q{$word}" >&2
+    else
+      ble/prompt/backslash:"${word[@]}"
+    fi
+    ((i+=${#rematch}))
+  else
+    ble/prompt/print "\\$c"
+  fi
+  return 0
+}
+
+## 関数 ble/prompt/.update-working-directory
 ##   @var[in,out] cache_wd
-function ble-edit/prompt/.update-working-directory {
+function ble/prompt/.update-working-directory {
   [[ $cache_wd ]] && return 0
 
   if [[ ! ${PWD//'/'} ]]; then
@@ -517,7 +542,7 @@ function ble-edit/prompt/.update-working-directory {
   cache_wd=$head$body
 }
 
-function ble-edit/prompt/.escape/check-double-quotation {
+function ble/prompt/.escape/check-double-quotation {
   if [[ $tail == '"'* ]]; then
     if [[ ! $nest ]]; then
       out=$out'\"'
@@ -526,36 +551,36 @@ function ble-edit/prompt/.escape/check-double-quotation {
       out=$out'"'
       tail=${tail:1}
       nest=\"$nest
-      ble-edit/prompt/.escape/update-rex_skip
+      ble/prompt/.escape/update-rex_skip
     fi
     return 0
   else
     return 1
   fi
 }
-function ble-edit/prompt/.escape/check-command-substitution {
+function ble/prompt/.escape/check-command-substitution {
   if [[ $tail == '$('* ]]; then
     out=$out'$('
     tail=${tail:2}
     nest=')'$nest
-    ble-edit/prompt/.escape/update-rex_skip
+    ble/prompt/.escape/update-rex_skip
     return 0
   else
     return 1
   fi
 }
-function ble-edit/prompt/.escape/check-parameter-expansion {
+function ble/prompt/.escape/check-parameter-expansion {
   if [[ $tail == '${'* ]]; then
     out=$out'${'
     tail=${tail:2}
     nest='}'$nest
-    ble-edit/prompt/.escape/update-rex_skip
+    ble/prompt/.escape/update-rex_skip
     return 0
   else
     return 1
   fi
 }
-function ble-edit/prompt/.escape/check-incomplete-quotation {
+function ble/prompt/.escape/check-incomplete-quotation {
   if [[ $tail == '`'* ]]; then
     local rex='^`([^\`]|\\.)*\\$'
     [[ $tail =~ $rex ]] && tail=$tail'\'
@@ -580,7 +605,7 @@ function ble-edit/prompt/.escape/check-incomplete-quotation {
     return 1
   fi
 }
-function ble-edit/prompt/.escape/update-rex_skip {
+function ble/prompt/.escape/update-rex_skip {
   if [[ $nest == \)* ]]; then
     rex_skip=$rex_skip_paren
   elif [[ $nest == \}* ]]; then
@@ -589,7 +614,7 @@ function ble-edit/prompt/.escape/update-rex_skip {
     rex_skip=$rex_skip_dquot
   fi
 }
-function ble-edit/prompt/.escape {
+function ble/prompt/.escape {
   local tail=$1 out= nest=
 
   # 地の文の " だけをエスケープする。
@@ -602,7 +627,7 @@ function ble-edit/prompt/.escape {
   local rex_skip_dquot='^([^\"$`]|'$rex_bq'|\\.)+'
   local rex_skip_brace='^([^\"$`'$q'}]|'$rex_bq'|'$rex_sq'|\\.)+'
   local rex_skip_paren='^([^\"$`'$q'()]|'$rex_bq'|'$rex_sq'|\\.)+'
-  ble-edit/prompt/.escape/update-rex_skip
+  ble/prompt/.escape/update-rex_skip
 
   while [[ $tail ]]; do
     if [[ $tail =~ $rex_skip ]]; then
@@ -612,18 +637,18 @@ function ble-edit/prompt/.escape {
       out=$out${nest::1}
       tail=${tail:1}
       nest=${nest:1}
-      ble-edit/prompt/.escape/update-rex_skip
+      ble/prompt/.escape/update-rex_skip
     elif [[ $nest == \)* && $tail == \(* ]]; then
       out=$out'('
       tail=${tail:1}
       nest=')'$nest
-    elif ble-edit/prompt/.escape/check-double-quotation; then
+    elif ble/prompt/.escape/check-double-quotation; then
       continue
-    elif ble-edit/prompt/.escape/check-command-substitution; then
+    elif ble/prompt/.escape/check-command-substitution; then
       continue
-    elif ble-edit/prompt/.escape/check-parameter-expansion; then
+    elif ble/prompt/.escape/check-parameter-expansion; then
       continue
-    elif ble-edit/prompt/.escape/check-incomplete-quotation; then
+    elif ble/prompt/.escape/check-incomplete-quotation; then
       continue
     else
       out=$out${tail::1}
@@ -632,12 +657,12 @@ function ble-edit/prompt/.escape {
   done
   ret=$out$nest
 }
-## 関数 ble-edit/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0 trace_hash0]
+## 関数 ble/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0 trace_hash0]
 ##   @var[out] val esc x y g lc lg trace_hash
 ##   @var[in,out] x1 x2 y1 y2
 ##     opts に measure-bbox を指定した時。
 ##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
-function ble-edit/prompt/.instantiate {
+function ble/prompt/.instantiate {
   trace_hash= esc= x=0 y=0 g=0 lc=32 lg=0
   local ps=$1 opts=$2 x0=$3 y0=$4 g0=$5 lc0=$6 lg0=$7 esc0=$8 trace_hash0=$9
   [[ ! $ps ]] && return 0
@@ -648,14 +673,25 @@ function ble-edit/prompt/.instantiate {
 
   # 1. PS1 に含まれる \c を処理する
   local -a DRAW_BUFF=()
-  ble-edit/prompt/process-prompt-string "$ps"
+  if [[ :$opts: == *:show-mode-in-prompt:* ]]; then
+    if ble/util/test-rl-variable show-mode-in-prompt; then
+      local ret=
+      case $_ble_decode_keymap in
+      (vi_imap) ble/util/read-rl-variable vi-ins-mode-string ;;
+      (vi_[noxs]map) ble/util/read-rl-variable vi-cmd-mode-string ;;
+      (emacs) ble/util/read-rl-variable emacs-mode-string ;;
+      esac
+      [[ $ret ]] && ble/prompt/print "$ret"
+    fi
+  fi
+  ble/prompt/process-prompt-string "$ps"
   local processed; ble/canvas/sflush.draw -v processed
 
   # 2. PS1 に含まれる \\ や " をエスケープし、
   #   eval して各種シェル展開を実行する。
   if [[ ! $prompt_noesc ]]; then
     local ret
-    ble-edit/prompt/.escape "$processed"; local escaped=$ret
+    ble/prompt/.escape "$processed"; local escaped=$ret
     local expanded=${trace_hash0#*:} # Note: これは次行が失敗した時の既定値
     local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
     ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
@@ -679,26 +715,26 @@ function ble-edit/prompt/.instantiate {
   fi
 }
 
-function ble-edit/prompt/update/.has-prompt_command {
+function ble/prompt/update/.has-prompt_command {
   ((${#PROMPT_COMMANDS[@]})) || [[ $PROMPT_COMMAND ]]
 }
-function ble-edit/prompt/update/.eval-prompt_command.1 {
+function ble/prompt/update/.eval-prompt_command.1 {
   # return 等と記述されていた時対策として関数内評価。
   local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
   builtin eval -- "$PROMPT_COMMAND"
 }
-function ble-edit/prompt/update/.eval-prompt_command {
+function ble/prompt/update/.eval-prompt_command {
   if ((${#PROMPT_COMMANDS[@]})); then
     local PROMPT_COMMAND
     for PROMPT_COMMAND in "${PROMPT_COMMANDS[@]}"; do
-      ble-edit/prompt/update/.eval-prompt_command.1
+      ble/prompt/update/.eval-prompt_command.1
     done
   elif [[ $PROMPT_COMMAND ]]; then
-    ble-edit/prompt/update/.eval-prompt_command.1
+    ble/prompt/update/.eval-prompt_command.1
   fi
 }
-## 関数 ble-edit/prompt/update
+## 関数 ble/prompt/update
 ##   _ble_edit_PS1 からプロンプトを構築します。
 ##   @var[in]  _ble_edit_PS1
 ##     構築されるプロンプトの内容を指定します。
@@ -713,24 +749,24 @@ function ble-edit/prompt/update/.eval-prompt_command {
 ##     bleopt_internal_suppress_bash_output= の際に、
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
-function ble-edit/prompt/update {
+function ble/prompt/update {
   local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
   if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
-    ble-edit/prompt/.load
+    ble/prompt/.load
     return 0
   fi
 
   local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
 
   # update PS1
-  if ble-edit/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
+  if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
     ble-edit/restore-PS1
-    ble-edit/prompt/update/.eval-prompt_command
+    ble/prompt/update/.eval-prompt_command
     ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
     ble-edit/adjust-PS1
   fi
   local trace_hash esc
-  ble-edit/prompt/.instantiate "$_ble_edit_PS1" '' "${_ble_edit_prompt[@]:1}"
+  ble/prompt/.instantiate "$_ble_edit_PS1" show-mode-in-prompt "${_ble_edit_prompt[@]:1}"
   _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
   ret=$esc
 
@@ -742,13 +778,19 @@ function ble-edit/prompt/update {
     local y1=${_ble_edit_rprompt_bbox[1]}
     local x2=${_ble_edit_rprompt_bbox[2]}
     local y2=${_ble_edit_rprompt_bbox[3]}
-    LINES=$ps1_height ble-edit/prompt/.instantiate "$bleopt_rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
+    LINES=$ps1_height ble/prompt/.instantiate "$bleopt_rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
     _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
   fi
 }
-function ble-edit/prompt/clear {
+function ble/prompt/clear {
   _ble_edit_prompt[0]=
+}
+function ble/prompt/notify-readline-mode-change {
+  if ble/util/test-rl-variable show-mode-in-prompt; then
+    ble/prompt/clear
+    ble/textarea#invalidate
+  fi
 }
 
 # 
@@ -1851,7 +1893,7 @@ function ble/textarea#render {
   # rps1_transient
   local rps1_clear=
   if [[ $rps1_enabled && :$opts: == *:leave:* && $bleopt_rps1_transient ]]; then
-    # Note: ble-edit/prompt/update を実行するよりも前に現在の表示内容を消去する。
+    # Note: ble/prompt/update を実行するよりも前に現在の表示内容を消去する。
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
       rps1_clear=1
@@ -1861,7 +1903,7 @@ function ble/textarea#render {
   fi
 
   local x y g lc lg=0
-  ble-edit/prompt/update # x y lc ret
+  ble/prompt/update # x y lc ret
   local prox=$x proy=$y prolc=$lc esc_prompt=$ret
 
   # rps1
@@ -4159,7 +4201,7 @@ function ble-edit/exec/print-PS0 {
     else
       local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
       local val esc x y g lc lg trace_hash
-      ble-edit/prompt/.instantiate "$PS0" '' "${_ble_edit_prompt0[@]:1}"
+      ble/prompt/.instantiate "$PS0" '' "${_ble_edit_prompt0[@]:1}"
       _ble_edit_prompt0=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
     fi
     ble/util/put "$esc"
@@ -6603,6 +6645,7 @@ function ble-decode/keymap:safe/bind-arg {
 }
 
 function ble/widget/safe/__attach__ {
+  ble/prompt/notify-readline-mode-change
   ble-edit/info/set-default text ''
 }
 function ble-decode/keymap:safe/define {
@@ -7666,7 +7709,7 @@ function ble-edit/bind/clear-keymap-definition-loader {
 # **** entry points ****
 
 function ble-edit/initialize {
-  ble-edit/prompt/initialize
+  ble/prompt/initialize
 }
 function ble-edit/attach {
   ble-edit/attach/.attach

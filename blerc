@@ -472,7 +472,36 @@ function blerc/vim-load-hook {
   # bleopt keymap_vi_macro_depth=64
   # bleopt keymap_vi_nmap_name:=$'\e[1m~\e[m'
 
-  # # keymap settings with Meta modifiers
+
+  ## The setting "keymap_vi_mode_update_prompt" specifies that the
+  ## prompt should be recalculated on the mode change.  When this
+  ## option has a non-empty value, the prompt will be recalculated.
+
+  # bleopt keymap_vi_mode_update_prompt=
+
+
+  ## The option "keymap_vi_mode_show" controls if the mode line is
+  ## shown.  When this option has a non-empty value, the mode line is
+  ## shown.
+
+  # bleopt keymap_vi_mode_show=1
+
+
+  ## The following settings specify the name of modes in the mode
+  ## line.
+
+  # bleopt keymap_vi_mode_name_insert=INSERT
+  # bleopt keymap_vi_mode_name_replace=REPLACE
+  # bleopt keymap_vi_mode_name_vreplace=VREPLACE
+  # bleopt keymap_vi_mode_name_visual=VISUAL
+  # bleopt keymap_vi_mode_name_select=SELECT
+  # bleopt keymap_vi_mode_name_linewise=LINE
+  # bleopt keymap_vi_mode_name_blockwise=BLOCK
+
+
+  ## The following setting setups the keymap settings with Meta
+  ## modifiers
+
   # ble-decode/keymap:vi_imap/define-meta-bindings
 
   ## Cursor settings

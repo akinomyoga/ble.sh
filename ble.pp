@@ -872,7 +872,7 @@ function ble/base/attach-from-PROMPT_COMMAND {
     [[ $PROMPT_COMMAND != "$lambda" ]] && local PROMPT_COMMAND
     PROMPT_COMMAND=$prompt_command
     local ble_base_attach_from_prompt_command=processing
-    ble-edit/prompt/update/.eval-prompt_command 2>&3
+    ble/prompt/update/.eval-prompt_command 2>&3
     ble/util/unlocal ble_base_attach_from_prompt_command
     blehook PRECMD-="$lambda"
 

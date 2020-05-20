@@ -25,8 +25,11 @@
 - syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 04da4dd
 - main: add an option `--test` `#D1340` 1410c72
 - util (`ble/builtin/trap`): support `return` in `INT`/`EXIT`/`WINCH` `#D1347` `#D1348` 3865488
-- history: support timestamp (reported by rux616) `#D1351` 4bcbd71 `#D1356` 350bb15 `#D1364` 0000000
+- history: support timestamp (reported by rux616) `#D1351` 4bcbd71 `#D1356` 350bb15 `#D1364` 1d8adf9
 - edit: support Bash 4.4 `PS0` `#D1357` 23a1ac5
+- vi: support `bleopt keymap_vi_mode_{update_prompt,show,name_*}` `#D1365` 0000000
+- prompt: support prompt sequence `\q{...}` `#D1365` 0000000
+- edit: support `bind 'set show-mode-in-prompt'` `#D1365` 0000000
 
 ## Changes
 
@@ -150,6 +153,7 @@
 - util (`ble/util/openat`): change to open unused fds `#D1318` 6c2f863
 - util: rename `ble/{util/openat => fd#alloc}` `#D1319` 6c2f863
 - util (`ble/function#advice remove`): restore original command 149a640
+- edit: rename `ble-edit/prompt/*` -> `ble/prompt/*` `#D1365` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
