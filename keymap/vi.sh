@@ -311,10 +311,11 @@ ble/array#push _ble_textarea_local_VARNAMES \
                _ble_keymap_vi_single_command \
                _ble_keymap_vi_single_command_overwrite
 
-## オプション keymap_vi_nmap_name
+## オプション keymap_vi_mode_string_nmap
 ##   ノーマルモードの時に表示する文字列を指定します。
 ##   空文字列を指定したときは何も表示しません。
-bleopt/declare -n keymap_vi_nmap_name $'\e[1m~\e[m'
+bleopt/declare -n keymap_vi_mode_string_nmap $'\e[1m~\e[m'
+bleopt/declare -o keymap_vi_nmap_name keymap_vi_mode_string_nmap
 
 bleopt/declare -v term_vi_imap ''
 bleopt/declare -v term_vi_nmap ''
@@ -379,7 +380,7 @@ function ble/keymap:vi/update-mode-name {
     elif [[ $kmap == vi_[xs]map ]]; then
       show=x overwrite=$_ble_keymap_vi_single_command_overwrite
     else
-      name=$bleopt_keymap_vi_nmap_name
+      name=$bleopt_keymap_vi_mode_string_nmap
     fi
   fi
 

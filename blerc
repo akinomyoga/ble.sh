@@ -93,21 +93,40 @@
 #bleopt undo_point=end
 
 
-## The following settings controls forced layout calculations before
-## graphical operations. When a non-empty value is specified, the forced
-## calculations are enabled. When an empty string is set, the operations are
-## switched to logical ones.
+## The following setting controls forced layout calculations before
+## graphical operations. When a non-empty value is specified, the
+## forced calculations are enabled. When an empty string is set, the
+## operations are switched to logical ones.
 
 #bleopt edit_forced_textmap=1
 
 
-## The following settings controls the right prompt. "rps1" specifies the
-## contents of the right prompt in the format of PS1. When "rps1_transient"
-## is set to a non-empty value, the right prompt vanishes when the cursor
-## leaves the current command line.
+## The following settings controls the prompt after the cursor left
+## the command line.  "prompt_ps1_final" contains a prompt string.
+## "prompt_ps1_transient" is a colon-separated list of fields
+## "always", "same-dir" and "trim".  The prompt is replaced by
+## "prompt_ps1_final" if it has a non-empty value.  Otherwise, the
+## prompt is trimmed leaving the last line if "prompt_ps1_transient"
+## has a field "trim".  Otherwise, the prompt vanishes if
+## "prompt_ps1_transient" has a non-empty value.  When
+## "prompt_ps1_transient" contains a field "same-dir", the setting of
+## "prompt_ps1_transient" is effective only when the current working
+## directory did not change since the last command line.
 
-#bleopt rps1='\w'
-#bleopt rps1_transient=''
+#bleopt prompt_ps1_final=
+#bleopt prompt_ps1_transient=trim
+
+
+## The following settings controls the right prompt. "prompt_rps1"
+## specifies the contents of the right prompt in the format of PS1.
+## When the cursor leaves the current command line, the right prompt
+## is replaced by "prompt_rps1_final" if it has a non-empty value, or
+## otherwise, the right prompt vanishes if "prompt_rps1_transient" is
+## set to a non-empty value,
+
+#bleopt prompt_rps1='\w'
+#bleopt prompt_rps1_final=
+#bleopt prompt_rps1_transient=''
 
 
 ## "prompt_eol_mark" specifies the contents of the mark used to indicate the
@@ -470,7 +489,7 @@ function blerc/vim-load-hook {
   ((_ble_bash>=40300)) && builtin bind 'set keyseq-timeout 1'
 
   # bleopt keymap_vi_macro_depth=64
-  # bleopt keymap_vi_nmap_name:=$'\e[1m~\e[m'
+  # bleopt keymap_vi_mode_string_nmap:=$'\e[1m~\e[m'
 
 
   ## The setting "keymap_vi_mode_update_prompt" specifies that the

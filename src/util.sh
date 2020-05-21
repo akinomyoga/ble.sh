@@ -87,13 +87,23 @@ function bleopt {
   [[ ! $error_flag ]]
 }
 
+function bleopt/declare/.handle-obsolete-option {
+  var=bleopt_$2
+  local locate=$'\e[32m'${BASH_SOURCE[3]}:${BASH_LINENO[2]}$'\e[m'
+  ble/util/print "$locate (bleopt): The option '$1' is obsolete. Please use '$2' instead." >&2
+  return 0
+}
 function bleopt/declare {
   local type=$1 name=bleopt_$2 default_value=$3
-  if [[ $type == -n ]]; then
-    builtin eval ": \"\${$name:=\$default_value}\""
-  else
-    builtin eval ": \"\${$name=\$default_value}\""
-  fi
+  case $type in
+  (-o)
+    builtin eval -- "$name='[obsoleted]'"
+    builtin eval -- "function bleopt/check:$2 { bleopt/declare/.handle-obsolete-option $2 $3; }" ;;
+  (-n)
+    builtin eval -- ": \"\${$name:=\$default_value}\"" ;;
+  (*)
+    builtin eval -- ": \"\${$name=\$default_value}\"" ;;
+  esac
   return 0
 }
 

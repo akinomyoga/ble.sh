@@ -1843,8 +1843,12 @@ function ble/canvas/panel#increase-total-height.draw {
   fi
 }
 
+## 関数 ble/canvas/panel#set-height.draw panel height opts
+##   @param[in] opts
+##     shift ... 範囲の先頭で行を追加・削除します。
 function ble/canvas/panel#set-height.draw {
-  local index=$1 new_height=$2
+  local index=$1 new_height=$2 opts=$3
+  ((new_height<0)) && new_height=0
   local delta=$((new_height-_ble_canvas_panel_height[index]))
   ((delta)) || return 1
 
@@ -1853,13 +1857,23 @@ function ble/canvas/panel#set-height.draw {
     # 新しく行を挿入
     ble/canvas/panel#increase-total-height.draw "$delta"
 
-    ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
-    ble/canvas/goto.draw 0 "$ins_offset"
+    if [[ :$opts: == *:shift:* ]]; then # 先頭に挿入
+      ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
+      ble/canvas/goto.draw 0 "$ins_offset"
+    else # 末尾に挿入
+      ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
+      ble/canvas/goto.draw 0 "$ins_offset"
+    fi
     ble/canvas/put-il.draw "$delta"
   else
     # 行を削除
-    ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
-    ble/canvas/goto.draw 0 $((ins_offset+delta))
+    if [[ :$opts: == *:shift:* ]]; then # 先頭を削除
+      ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
+      ble/canvas/goto.draw 0 "$ins_offset"
+    else # 末尾を削除
+      ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
+      ble/canvas/goto.draw 0 $((ins_offset+delta))
+    fi
     ble/canvas/put-dl.draw $((-delta))
   fi
 
@@ -1868,8 +1882,8 @@ function ble/canvas/panel#set-height.draw {
   return 0
 }
 function ble/canvas/panel#increase-height.draw {
-  local index=$1 delta=$2
-  ble/canvas/panel#set-height.draw "$index" $((_ble_canvas_panel_height[index]+delta))
+  local index=$1 delta=$2 opts=$3
+  ble/canvas/panel#set-height.draw "$index" $((_ble_canvas_panel_height[index]+delta)) "$opts"
 }
 
 function ble/canvas/panel#set-height-and-clear.draw {

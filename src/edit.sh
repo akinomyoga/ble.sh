@@ -96,9 +96,15 @@ function ble/edit/use-textmap {
   return 0
 }
 
-## オプション rps1
-bleopt/declare -v rps1 ''
-bleopt/declare -v rps1_transient ''
+## プロンプトオプション
+bleopt/declare -v prompt_ps1_final ''
+bleopt/declare -v prompt_ps1_transient ''
+bleopt/declare -v prompt_rps1 ''
+bleopt/declare -v prompt_rps1_final ''
+bleopt/declare -v prompt_rps1_transient ''
+# obsoleted options
+bleopt/declare -o rps1 prompt_rps1
+bleopt/declare -o rps1_transient prompt_rps1_transient
 
 ## オプション prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
@@ -344,8 +350,8 @@ function ble/prompt/.process-backslash {
     esac
   elif ble/is-function ble/prompt/backslash:"$c"; then
     ble/function#try ble/prompt/backslash:"$c"
-  elif ble/is-function ble/prompt/backslash:"$c"; then # deprecated name
-    ble/function#try ble/prompt/backslash:"$c"
+  elif ble/is-function ble-edit/prompt/backslash:"$c"; then # deprecated name
+    ble/function#try ble-edit/prompt/backslash:"$c"
   else
     # その他の文字はそのまま出力される。
     # - '\"' '\`' はそのまま出力された後に "" 内で評価され '"' '`' となる。
@@ -492,15 +498,17 @@ function ble/prompt/backslash:q {
   local rex='^\{([^{}]*)\}'
   if [[ ${tail:2} =~ $rex ]]; then
     local rematch=$BASH_REMATCH
+    ((i+=${#rematch}))
     local word; ble/string#split-words word "${BASH_REMATCH[1]}"
     if [[ ! $word ]]; then
       ble/util/print "ble/prompt: invalid sequence \\q$rematch" >&2
+      return 2
     elif ! ble/is-function ble/prompt/backslash:"$word"; then
       ble/util/print "ble/propmt: undefined named sequence \\q{$word}" >&2
+      return 2
     else
-      ble/prompt/backslash:"${word[@]}"
+      ble/prompt/backslash:"${word[@]}"; return "$?"
     fi
-    ((i+=${#rematch}))
   else
     ble/prompt/print "\\$c"
   fi
@@ -734,8 +742,14 @@ function ble/prompt/update/.eval-prompt_command {
     ble/prompt/update/.eval-prompt_command.1
   fi
 }
-## 関数 ble/prompt/update
+## 関数 ble/prompt/update opts
 ##   _ble_edit_PS1 からプロンプトを構築します。
+##   @param[in] opts
+##     コロン区切りのオプションのリストです。
+##
+##     leave ... 次行に行く直前の最後の表示である事を示します。
+##               これが指定された時 transient prompt 等の処理を実行します。
+##
 ##   @var[in]  _ble_edit_PS1
 ##     構築されるプロンプトの内容を指定します。
 ##   @var[out] _ble_edit_prompt
@@ -750,8 +764,22 @@ function ble/prompt/update/.eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble/prompt/update {
+  local opts=:$1: force=1 ps1=$_ble_edit_PS1 rps1=$bleopt_prompt_rps1
+  if [[ $opts == *:leave:* ]]; then
+    local ps1f=$bleopt_prompt_ps1_final
+    local rps1f=$bleopt_prompt_rps1_final
+    local ps1t=$bleopt_prompt_ps1_transient
+    [[ :$ps1t: == *:trim:* || :$ps1t: == *:same-dir:* && $PWD != $_ble_edit_line_opwd ]] && ps1t=
+    if [[ $ps1f || $rps1f || $ps1t ]]; then
+      [[ $ps1f || $ps1t ]] && ps1=$ps1f
+      [[ $ps1f ]] && rps1=$rps1f
+      force=1
+      ble/textarea#invalidate
+    fi
+  fi
+
   local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
-  if [[ ${_ble_edit_prompt[0]} == "$version" ]]; then
+  if [[ ! $force && ${_ble_edit_prompt[0]} == "$version" ]]; then
     ble/prompt/.load
     return 0
   fi
@@ -766,19 +794,19 @@ function ble/prompt/update {
     ble-edit/adjust-PS1
   fi
   local trace_hash esc
-  ble/prompt/.instantiate "$_ble_edit_PS1" show-mode-in-prompt "${_ble_edit_prompt[@]:1}"
+  ble/prompt/.instantiate "$ps1" show-mode-in-prompt "${_ble_edit_prompt[@]:1}"
   _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
   ret=$esc
 
   # update edit_rps1
-  if [[ $bleopt_rps1 ]]; then
+  if [[ $bleopt_prompt_rps1 ]]; then
     local ps1_height=$((y+1))
     local trace_hash esc x y g lc lg # Note: これ以降は local の x y g lc lg
     local x1=${_ble_edit_rprompt_bbox[0]}
     local y1=${_ble_edit_rprompt_bbox[1]}
     local x2=${_ble_edit_rprompt_bbox[2]}
     local y2=${_ble_edit_rprompt_bbox[3]}
-    LINES=$ps1_height ble/prompt/.instantiate "$bleopt_rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
+    LINES=$ps1_height ble/prompt/.instantiate "$rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
     _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
   fi
@@ -1850,7 +1878,7 @@ function ble/textarea#focus {
 ##
 ##   @param[in] opts
 ##     leave
-##       bleopt rps1_transient が非空文字列の時、rps1 を消去します。
+##       bleopt prompt_rps1_transient が非空文字列の時、rps1 を消去します。
 ##
 ##   @var _ble_textarea_caret_state := inds ':' mark ':' mark_active ':' line_disabled ':' overwrite_mode
 ##     ble/textarea#render で用いる変数です。
@@ -1888,11 +1916,11 @@ function ble/textarea#render {
   local cols=${COLUMNS-80}
 
   # rps1: _ble_textarea_panel==1 の時だけ有効 #D1027
-  local rps1_enabled=; [[ $bleopt_rps1 ]] && ((_ble_textarea_panel==0)) && rps1_enabled=1
+  local rps1_enabled=; [[ $bleopt_prompt_rps1 ]] && ((_ble_textarea_panel==0)) && rps1_enabled=1
 
   # rps1_transient
   local rps1_clear=
-  if [[ $rps1_enabled && :$opts: == *:leave:* && $bleopt_rps1_transient ]]; then
+  if [[ $rps1_enabled && :$opts: == *:leave:* && ! $bleopt_prompt_rps1_final && $bleopt_prompt_rps1_transient ]]; then
     # Note: ble/prompt/update を実行するよりも前に現在の表示内容を消去する。
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
@@ -1903,7 +1931,7 @@ function ble/textarea#render {
   fi
 
   local x y g lc lg=0
-  ble/prompt/update # x y lc ret
+  ble/prompt/update "$opts" # x y lc ret
   local prox=$x proy=$y prolc=$lc esc_prompt=$ret
 
   # rps1
@@ -4550,16 +4578,34 @@ function ble-edit/exec:gexec/restore-state {
 # **** accept-line ****                                            @edit.accept
 
 : ${_ble_edit_lineno:=0}
+_ble_edit_line_opwd=
+
+## 関数 ble/widget/.insert-newline/trim-prompt
+##   @var[ref] DRAW_BUFF
+function ble/widget/.insert-newline/trim-prompt {
+  local ps1f=$bleopt_prompt_ps1_final
+  local ps1t=$bleopt_prompt_ps1_transient
+  if [[ ! $ps1f && :$ps1t: == *:trim:* ]]; then
+    [[ :$ps1t: == *:same-dir:* && $PWD != $_ble_edit_line_opwd ]] && return
+    local y=${_ble_edit_prompt[2]}
+    if ((y)); then
+      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
+      ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" $((-y)) shift
+      ((_ble_textarea_gendy-=y))
+    fi
+  fi
+}
 function ble/widget/.insert-newline {
   local opts=$1
+  local -a DRAW_BUFF=()
   if [[ :$opts: == *:keep-info:* && $_ble_textarea_panel == 0 ]] &&
        ! ble/util/joblist.has-events
   then
     # 最終状態の描画
     ble/textarea#render leave
+    ble/widget/.insert-newline/trim-prompt
 
     # info を表示したまま行を挿入し、今までの panel 0 の内容を範囲外に破棄
-    local -a DRAW_BUFF=()
     ble/canvas/panel#increase-height.draw "$_ble_textarea_panel" 1
     ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 $((_ble_textarea_gendy+1))
     ble/canvas/bflush.draw
@@ -4567,17 +4613,18 @@ function ble/widget/.insert-newline {
     # 最終状態の描画
     ble-edit/info/hide
     ble/textarea#render leave
+    ble/widget/.insert-newline/trim-prompt
 
     # 新しい描画領域
-    local -a DRAW_BUFF=()
     ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
     ble/canvas/put.draw "$_ble_term_nl"
     ble/canvas/bflush.draw
     ble/util/joblist.bflush
   fi
-
+  
   # 描画領域情報の初期化
   ((_ble_edit_lineno++))
+  _ble_edit_line_opwd=$PWD
   ble/textarea#invalidate
   _ble_canvas_x=0 _ble_canvas_y=0
   _ble_textarea_gendx=0 _ble_textarea_gendy=0

@@ -1177,10 +1177,12 @@ bash_tips
 2020-05-20
 
   * 破壊的変更と後方互換性
-    * keymap_vi_nmap_name は keymap_vi_mode_nmap_string 等に改名するかもしれない。
+    * done: keymap_vi_nmap_name は keymap_vi_mode_nmap_string 等に改名するかもしれない。
       或いはもっと別の名前? やはり keymap_vi_mode_normal で良いだろうか。
       改名するとしたら complete_stdin_frequency と同様に別名に書き換える様にする。
       実はオプションの改名について枠組みにしてしまっても良いのかもしれないという気がする。
+
+    * 勝手に古い設定を書き換える機能を作っても良いかもしれない。
 
     * ble{-edit => }/prompt/{print,process-prompt-string,backslash} についても
       警告を表示する様にする仕組みが必要になる気がする。
@@ -3135,7 +3137,76 @@ bash_tips
 
 2020-05-20
 
-  * プロンプトに vim mode を表示できる様にする (suggested by Dave-Elec) [#D1365]
+  * prompt: transient prompt (suggested by Dave-Elec) [#D1366]
+    https://github.com/akinomyoga/ble.sh/issues/57#issuecomment-631648877
+
+    powerline10k に transient prompt という設定があるそうだ。
+    しかし、README には機能の存在は紹介されているが設定の仕方が書かれていない。
+    https://github.com/romkatv/powerlevel10k#transient-prompt
+    Reddit に使い方が投稿されている。
+    https://www.reddit.com/r/zsh/comments/dsh1g3/new_powerlevel10k_feature_transient_prompt/
+    trim するらしい。使い方が良く分からない。
+
+    AndyChuがプロンプトを書き換えてコマンド開始時刻を表示する話について言及していた。
+    https://github.com/oilshell/oil/issues/719
+    https://redandblack.io/blog/2020/bash-prompt-with-updating-time/
+    https://news.ycombinator.com/item?id=22912226
+
+    zsh の "setopt transient_rprompt" に関しては二値の設定なので余り参考にならない。
+
+    実装に関しては簡単そうである。既に rps1_transient を実装している。
+    単に opts == *:leave:* を見てプロンプトを切り替えれば良い様に見える。
+    trim するのは実は非効率的である気がする。
+    (或いは .newline 等の別のレベルで trim しても良い。)
+    どの様な機能を実装するかについて考察してから実装するのが良い。
+
+    bleopt ps1_transient=same-dir:trim
+    bleopt ps1_transient=
+
+    * これを機にプロンプト設定の名前も整理するのが良い。
+
+      bleopt prompt_ps1_preexec=
+      bleopt prompt_ps1_transient=
+      bleopt prompt_rps1=
+      bleopt prompt_rps1_preexec=
+      bleopt prompt_rps1_transient=
+
+      bash を終了する時にも置き換えるのだとしたら、preexec は変ではないか。
+      と思ったが、プロンプトの再描画は .newline の時に実行されるのであって、
+      Bash を終了する時には置き換えられない。という事を考えるとやはり preexec
+      という名前が適切な気がする。"exit" で抜ける場合にはちゃんと消える。
+      C-d 等、widget 経由で抜ける時には消えない。取り敢えずそれで問題ない気がする。
+
+      transient には same-dir を指定できる様にする。
+      と思ったが preexec との相互作用が変な気もする。
+      "same-dir を指定すると preexec が使われない" という動作である。変である。
+      更に、transient になにか指定しないと ps1_preexec が表示されないというのも変だ。
+
+      思うに ps1_preexec だけで良いのではないか。
+      これが有限の文字列であればそれに置き換える。
+      ps1_transient=trim が設定されていれば更に trim する。
+      それ以外の場合には ps1_preexec も ps1 も表示しない。
+
+      名前については preexec よりも final の方が良い気がしてきた。
+
+    実装
+
+    * done: 取り敢えず prompt_{ps1_{final,preexec},rps1_final} を追加した。
+    * done: 古い設定名も書き換える。
+    * done: 古い設定名に対する警告を表示する。
+
+    * done: trim の対応? → 対応した。
+      然しやはり ps1_transient を指定した時に trim でなければ
+      プロンプトを完全に消すというのは変な気がする。
+      然しだからと言って既定で trim というのは rps1_transient と振る舞いが違う。
+      →やはり対称性を重視して完全にプロンプトを消す事にした。
+
+    x fixed: 動かしてみると keep-info の時に info が消滅している→直した。
+
+    * done: blerc, Manual を更新する。新しい設定の追加と名称変更についての注記。
+      これらについてはちゃんと更新した。
+
+  * prompt: プロンプトに vim mode を表示できる様にする (suggested by Dave-Elec) [#D1365]
     https://github.com/akinomyoga/ble.sh/issues/57
 
     keymap_vi_nmap_name 以外のモード名の設定。

@@ -29,12 +29,7 @@ fi
 # 設定変数
 
 bleopt/declare -n complete_polling_cycle 50
-bleopt_complete_stdin_frequency='[obsoleted]'
-function bleopt/check:complete_stdin_frequency {
-  var=bleopt_complete_polling_cycle
-  ble/util/print 'bleopt: The option "complete_stdin_frequency" is obsoleted. Please use "complete_polling_cycle".' >&2
-  return 0
-}
+bleopt/declare -o complete_stdin_frequency complete_polling_cycle
 
 bleopt/declare -v complete_ambiguous 1
 bleopt/declare -v complete_contract_function_names 1

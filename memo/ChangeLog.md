@@ -27,9 +27,10 @@
 - util (`ble/builtin/trap`): support `return` in `INT`/`EXIT`/`WINCH` `#D1347` `#D1348` 3865488
 - history: support timestamp (reported by rux616) `#D1351` 4bcbd71 `#D1356` 350bb15 `#D1364` 1d8adf9
 - edit: support Bash 4.4 `PS0` `#D1357` 23a1ac5
-- vi: support `bleopt keymap_vi_mode_{update_prompt,show,name_*}` `#D1365` 0000000
-- prompt: support prompt sequence `\q{...}` `#D1365` 0000000
-- edit: support `bind 'set show-mode-in-prompt'` `#D1365` 0000000
+- vi: support `bleopt keymap_vi_mode_{update_prompt,show,name_*}` (suggested by Dave-Elec) `#D1365` 76be6f1
+- prompt: support prompt sequence `\q{...}` `#D1365` 76be6f1
+- edit: support `bind 'set show-mode-in-prompt'` `#D1365` 76be6f1
+- prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 0000000
 
 ## Changes
 
@@ -50,7 +51,7 @@
 - edit: preserve `PS1` when `internal_suppress_bash_output` is set `#D1344` 6ede0c7
 - complete: complete param expan in additional contexts `#D1358` 3683305
 - main: reload on ble-update when ble.sh is already updated `#D1359` a441d4d
-- main (`ble-update`): clone github repository if the original repository is not found `#D1363` 0000000
+- main (`ble-update`): clone github repository if the original repository is not found `#D1363` 6e3b3b5
 
 ## Fix
 
@@ -93,7 +94,7 @@
 - global: work around Bash-4.4 `return` in trap handlers `#D1334` aa09d15
 - util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f
 - edit (`ble-bind -x`): check range of `READLINE_{POINT,MARK}` `#D1339` efe1e81
-- util (`ble/string#to{upper,lower}`): work around `LC_COLLATE=en_US.utf8` (test-util) `#D1341` 1f6b44e `#D1355` 4da6103 0000000
+- util (`ble/string#to{upper,lower}`): work around `LC_COLLATE=en_US.utf8` (test-util) `#D1341` 1f6b44e `#D1355` 4da6103 5f0d49f
 - util (encoding, keyseq): fix miscelleneous encoding bugs (test-util) 435bd16
   - `ble/util/c2keyseq`: work around bash ambiguous keyseq `\M-\C-\\`
   - `ble/util/c2keyseq`: fix a bug that `C1` characters are not properly encoded
@@ -104,8 +105,8 @@
 - edit: work around `WINCH` not updating `COLUMNS`/`LINES` after `ble-reload` `#D1345` a190455
 - complete: initialize `bleopt complete_menu_style` options before `complete_load` hook (reported by rux616) `#D1352` 8a9a386
 - main: fix problems caused by multiple `source ble.sh` in bashrc `#D1354` 5476933
-- syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 0000000
-- complete: quote `#` and `~` at the beginning of word `#D1362` 0000000
+- syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 4760409
+- complete: quote `#` and `~` at the beginning of word `#D1362` f62fe54
 
 ## Compatibility
 
@@ -153,7 +154,7 @@
 - util (`ble/util/openat`): change to open unused fds `#D1318` 6c2f863
 - util: rename `ble/{util/openat => fd#alloc}` `#D1319` 6c2f863
 - util (`ble/function#advice remove`): restore original command 149a640
-- edit: rename `ble-edit/prompt/*` -> `ble/prompt/*` `#D1365` 0000000
+- edit: rename `ble-edit/prompt/*` -> `ble/prompt/*` `#D1365` 76be6f1
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
