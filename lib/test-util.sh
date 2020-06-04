@@ -48,7 +48,7 @@ ble/test/start-section 'util' 1011
   ble/test bleopt d:= e:=
   ble/test bleopt/declare -v d 8
   ble/test bleopt/declare -n e 9
-  ble/test bleopt d stdout="bleopt d=''"
+  ble/test bleopt d stdout="bleopt d="
   ble/test bleopt e stdout="bleopt e='9'"
 )
 

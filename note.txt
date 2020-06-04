@@ -1191,6 +1191,7 @@ bash_tips
 
   * TERM=alacritty で何か変な事が起きるらしい。
     https://github.com/rux616/init/commit/b03e7ef3dab5171d1f60aa61323ef823401217d5#diff-0af95dc8119f1c458b7a0fd76dfe8042R37-R39
+
     調べてみると alacritty:extra/alacritty.info が terminfo らしい。tic -x extra/alacritty.info で入れる。
     然し、何も問題は起きていない様に見える。256color もちゃんと動いている。ずっと使っていると発生する問題だろうか。
     これは時間があれば rux616 に何が起こるのか尋ねても良い。
@@ -1215,6 +1216,27 @@ bash_tips
 
     pipexec という物があるそうだ。と思ったが調べたら C で書かれている。
     https://github.com/flonatel/pipexec
+
+    zsh のテーマである powerlevel10k は実は結構複雑な処理を実装している。
+    ごちゃごちゃとした雑多の設定の寄せ集めではない。
+    ble.sh 程ではないが単にプロンプトと呼べるレベルを超えている。
+    * https://github.com/romkatv/powerlevel10k
+    * https://github.com/Powerlevel9k/powerlevel9k
+      p9k と initial commit が同じなので再実装というよりは fork の気がする。
+
+    https://github.com/aristocratos/bashtop
+    これは最近現れた物で pure bash で色々な UI を実装している。
+    オプション引数はなく設定は直接編集する様になっている。
+    背景が明るい時の配色に対応していない。256色要求。
+
+    * 実用性よりも見た目重視。これはツールの性格による。
+      ble.sh 自体は他のプログラムを呼び出す為の物なので主張は控え目。
+      然し、宣伝の為には見た目を派手にした物も必要なのかもしれない。
+    * 何故か現れたばかりなのに 6.3k も集まっているし、
+      一体何が起こるとこのように話題になるのだろうか。不思議である。
+      HN にも reddit にも対して人気になった物は見られない。
+      何処から広まってどう人気になったのか不明である。
+    * freebsd, aur, debian, fedora/centos にまでパッケージが在る。
 
   * trap: DEBUG trap を用いて DEBUG trap を再現できるか?
     つまり関数呼び出し毎に DEBUG trap が設定されるというのを実装する必要がある。

@@ -19,9 +19,13 @@
 ##
 function bleopt {
   local error_flag=
-  local -a pvars
+  local -a pvars=()
   if (($#==0)); then
-    pvars=("${!bleopt_@}")
+    local var ip=0
+    for var in "${!bleopt_@}"; do
+      ble/is-function "bleopt/obsolete:${var#bleopt_}" && continue
+      pvars[ip++]=$var
+    done
   else
     local spec var type= value= ip=0 rex
     pvars=()
@@ -76,7 +80,16 @@ function bleopt {
 
     for var in "${pvars[@]}"; do
       if [[ ${!var+set} ]]; then
-        builtin printf '%s\n' "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$sgr3'${!var//$q/$Q}'$sgr0"
+        local value chars=$'\a\b\e\f\n\r\t\v'
+        if [[ ${!var} == *["$chars"]* ]]; then
+          local ret; ble/string#escape-for-bash-escape-string "${!var}"
+          value=\$\'$ret\'
+        else
+          value=\'${!var//$q/$Q}\'
+          value=${value%\'\'}
+          value=${value#\'\'}
+        fi
+        builtin printf '%s\n' "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$sgr3$value$sgr0"
       else
         error_flag=1
         builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
@@ -90,15 +103,16 @@ function bleopt {
 function bleopt/declare/.handle-obsolete-option {
   var=bleopt_$2
   local locate=$'\e[32m'${BASH_SOURCE[3]}:${BASH_LINENO[2]}$'\e[m'
-  ble/util/print "$locate (bleopt): The option '$1' is obsolete. Please use '$2' instead." >&2
+  ble/util/print "$locate (bleopt): The option '$1' has been renamed. Please use '$2' instead." >&2
   return 0
 }
 function bleopt/declare {
   local type=$1 name=bleopt_$2 default_value=$3
   case $type in
   (-o)
-    builtin eval -- "$name='[obsoleted]'"
-    builtin eval -- "function bleopt/check:$2 { bleopt/declare/.handle-obsolete-option $2 $3; }" ;;
+    builtin eval -- "$name='[obsolete: renamed to $3]'"
+    builtin eval -- "function bleopt/check:$2 { bleopt/declare/.handle-obsolete-option $2 $3; }"
+    builtin eval -- "function bleopt/obsolete:$2 { :; }" ;;
   (-n)
     builtin eval -- ": \"\${$name:=\$default_value}\"" ;;
   (*)
