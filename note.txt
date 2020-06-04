@@ -669,10 +669,21 @@ bash 配列の宣言に関する仕様・バグと注意点
 
 bash_features
 
-  * printf -v var %s value
+  * time -- について。
+    bash-5.1 以降で time -- command が可能。
+    bash-4.2 以降で time -p -- command が可能。
+    (bash-4.1 以前では time には -- を指定できない)
 
-    bash-3.1 以降で使える。
-    bash-4.1 以降で var として配列要素 (arr[123] 等) を指定できる。
+  * bash-5.0 以降: EPOCHREALTIME, EPOCHSECONDS
+    ref #D0925
+
+  * Bash-5.0 では POSIX に倣ってパラメータ展開結果に \ が含まれる場合に
+    グロブパターンと見做す様に変更されたが、
+    これにより問題が起こり POSIX が記述に誤りがあることを認めて修正した。
+    結局 Bash-5.1 で 4.4 と同じ動作に戻すつもりらしい。
+    https://lists.gnu.org/archive/html/bug-bash/2020-03/msg00051.html
+
+  * ${param@a} (attributes) 及び他の transformation は bash-4.4 より
 
   * read -t timeout
 
@@ -683,20 +694,12 @@ bash_features
     * 4.3 以下では timeout した時に読み取った入力は失われてしまう。
       4.4 以降では timeout するまでに読み取った内容が指定した変数に格納される。
 
-
-  * ${!arr[@]} は bash-3.0 より
-
-  * 連想配列 declare -A は bash-4.0 から
-
   * グローバル変数に対する属性指定 declare -g は bash-4.2 から
 
     更に bash-4.3 には declare -gA を二度行うとクラッシュするバグがあったらしい。
     現在の最新版ではそのような振る舞いは見られない?
 
-  * ${param@a} (attributes) 及び他の transformation は bash-4.4 より
-
-  * bash-5.0 以降: EPOCHREALTIME, EPOCHSECONDS
-    ref #D0925
+  * 連想配列 declare -A は bash-4.0 から
 
   * BASHPID 何と Bash 4.0 以降の機能らしい ref #D1200
 
@@ -712,11 +715,12 @@ bash_features
 
   * command |& command は Bash 4.0 以降なので使えない。
 
-  * Bash-5.0 では POSIX に倣ってパラメータ展開結果に \ が含まれる場合に
-    グロブパターンと見做す様に変更されたが、
-    これにより問題が起こり POSIX が記述に誤りがあることを認めて修正した。
-    結局 Bash-5.1 で 4.4 と同じ動作に戻すつもりらしい。
-    https://lists.gnu.org/archive/html/bug-bash/2020-03/msg00051.html
+  * printf -v var %s value
+
+    bash-3.1 以降で使える。
+    bash-4.1 以降で var として配列要素 (arr[123] 等) を指定できる。
+
+  * ${!arr[@]} は bash-3.0 より
 
 bash_tips
 
@@ -3156,6 +3160,12 @@ bash_tips
 *******************************************************************************
     Done (実装ログ)
 -------------------------------------------------------------------------------
+
+2020-06-04
+
+  * syntax: bash-5.1 では time -- が許される (from Bash-4.1 CHANGES) [#D1367]
+    以前は time -p -- echo は OK だったが、
+    time -- echo は -- がコマンド名と解釈されてしまって駄目だった。
 
 2020-05-20
 

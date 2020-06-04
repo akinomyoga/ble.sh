@@ -3585,6 +3585,21 @@ function ble/syntax:bash/ctx-command-compound-expect {
   ble/syntax:bash/ctx-command
 }
 
+## 関数 ble/syntax:bash/ctx-command-expect/.match-word word
+##   現在位置から始まる単語が指定した単語に一致するかどうかを検査します。
+##   @param[in] word
+##   @var[in] tail i
+function ble/syntax:bash/ctx-command-expect/.match-word {
+  local word=$1 len=${#1}
+  if [[ $tail == "$word"* ]]; then
+    ble/syntax/parse/set-lookahead $((len+1))
+    if ((${#tail}==len)) || i=$((i+len)) ble/syntax:bash/check-word-end/is-delimiter; then
+      return 0
+    fi
+  fi
+  return 1
+}
+
 function ble/syntax:bash/ctx-command-time-expect {
   ble/util/assert '((ctx==CTX_TARGX1||ctx==CTX_TARGX2))'
 
@@ -3600,15 +3615,16 @@ function ble/syntax:bash/ctx-command-time-expect {
   fi
 
   # 期待する単語でない時は CTX_CMDXT に decay
-  local is_time_option=
-  local head=-p; ((ctx==CTX_TARGX2)) && head=--
-  if [[ $tail == "$head"* ]]; then
-    ble/syntax/parse/set-lookahead 3
-    if [[ $tail == "$head" ]] || i=$((i+2)) ble/syntax:bash/check-word-end/is-delimiter; then
-      is_time_option=1
-    fi
+  if ((ctx==CTX_TARGX1)); then
+    # Note: bash-5.1 では "--" が来てもOKなので
+    #   ctx=CTX_TARGX2 として次の if で処理させる。
+    ble/syntax:bash/ctx-command-expect/.match-word '-p' ||
+      ((ctx=_ble_bash>=50100?CTX_TARGX2:CTX_CMDXT))
   fi
-  ((is_time_option||(ctx=CTX_CMDXT)))
+  if ((ctx==CTX_TARGX2)); then
+    ble/syntax:bash/ctx-command-expect/.match-word '--' ||
+      ((ctx=CTX_CMDXT))
+  fi
 
   # 他は同じ
   ble/syntax:bash/ctx-command
@@ -4942,9 +4958,11 @@ function ble/syntax/completion-context/.check-prefix/ctx:time-argument {
   ble/syntax/completion-context/.check/parameter-expansion
   ble/syntax/completion-context/.add command "$istat"
   if ((ctx==CTX_TARGX1)); then
-    local rex='^-p?$'
+    local rex='^-p?$' words='-p'
+    ((_ble_bash>=50100)) &&
+      rex='^-[-p]?$' words='-p':'--'
     [[ ${text:istat:index-istat} =~ $rex ]] &&
-      ble/syntax/completion-context/.add wordlist:--:'-p' "$istat"
+      ble/syntax/completion-context/.add wordlist:--:"$words" "$istat"
   elif ((ctx==CTX_TARGX2)); then
     local rex='^--?$'
     [[ ${text:istat:index-istat} =~ $rex ]] &&
@@ -5185,8 +5203,10 @@ function ble/syntax/completion-context/.check-here {
     elif ((ctx==CTX_FARGX2)); then
       ble/syntax/completion-context/.add wordlist:-rs:'in:do' "$index"
     elif ((ctx==CTX_TARGX1)); then
+      local words='-p'
+      ((_ble_bash>=50100)) && words='-p':'--'
       ble/syntax/completion-context/.add command "$index"
-      ble/syntax/completion-context/.add wordlist:--:'-p' "$index"
+      ble/syntax/completion-context/.add wordlist:--:"$words" "$index"
     elif ((ctx==CTX_TARGX2)); then
       ble/syntax/completion-context/.add command "$index"
       ble/syntax/completion-context/.add wordlist:--:'--' "$index"

@@ -52,6 +52,8 @@
 - complete: complete param expan in additional contexts `#D1358` 3683305
 - main: reload on ble-update when ble.sh is already updated `#D1359` a441d4d
 - main (`ble-update`): clone github repository if the original repository is not found `#D1363` 6e3b3b5
+- util (bleopt): change output format d4b12cd
+- syntax: allow `time -- command` for Bash 5.1 `#D1367` 0000000
 
 ## Fix
 
