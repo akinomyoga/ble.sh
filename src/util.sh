@@ -1855,7 +1855,7 @@ function ble/util/declare-print-definitions {
       }
       function declflush(_, isArray) {
         if (decl) {
-          isArray = (decl ~ /^declare +-[fFgilrtux]*[aA]/);
+          isArray = (decl ~ /^declare +-[ilucnrtxfFgGI]*[aA]/);
 
           # bash-3.0 の declare -p は改行について誤った出力をする。
           if (_ble_bash < 30100) gsub(/\\\n/, "\n", decl);
@@ -1876,7 +1876,7 @@ function ble/util/declare-print-definitions {
             gsub(/\015/, "${_ble_term_CR}", decl);
 
           # declare 除去
-          sub(/^declare +(-[-aAfFgilrtux]+ +)?(-- +)?/, "", decl);
+          sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
           if (isArray) {
             if (decl ~ /^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/) {
               sub(/='\''\(/, "=(", decl);

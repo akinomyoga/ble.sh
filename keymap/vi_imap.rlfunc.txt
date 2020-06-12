@@ -15,6 +15,7 @@ call-last-kbd-macro               call-keyboard-macro
 capitalize-word                   capitalize-eword
 character-search                  character-search-forward
 character-search-backward         character-search-backward
+clear-display                     clear-display
 clear-screen                      clear-screen
 complete                          complete
 complete-command                  complete context=command
@@ -98,6 +99,7 @@ shell-backward-word               @nomarked backward-sword
 shell-expand-line                 shell-expand-line
 shell-forward-word                @nomarked forward-sword
 shell-kill-word                   kill-forward-sword
+shell-transpose-words             transpose-swords
 skip-csi-sequence                 <IGNORE>
 start-kbd-macro                   start-keyboard-macro
 tab-insert                        tab-insert

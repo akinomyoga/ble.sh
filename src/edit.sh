@@ -2280,6 +2280,10 @@ function ble/widget/clear-screen {
   _ble_canvas_x=0 _ble_canvas_y=0
   ble/term/visible-bell/cancel-erasure
 }
+function ble/widget/clear-display {
+  ble/util/buffer $'\e[3J'
+  ble/widget/clear-screen
+}
 function ble/widget/display-shell-version {
   ble-edit/content/clear-arg
   ble/widget/print "GNU bash, version $BASH_VERSION ($MACHTYPE) with ble.sh"
@@ -4133,92 +4137,103 @@ function ble-edit/exec/.reset-builtins-2 {
   builtin unalias :
 }
 
-_ble_edit_exec_BASH_REMATCH=()
-_ble_edit_exec_BASH_REMATCH_rex=none
+if ((_ble_bash>=50100)); then
+  _ble_edit_exec_BASH_REMATCH=()
+  function ble-edit/exec/save-BASH_REMATCH {
+    _ble_edit_exec_BASH_REMATCH=("${BASH_REMATCH[@]}")
+  }
+  function ble-edit/exec/restore-BASH_REMATCH {
+    BASH_REMATCH=("${_ble_edit_exec_BASH_REMATCH[@]}")
+  }
 
-## 関数 ble-edit/exec/save-BASH_REMATCH/increase delta
-##   @param[in] delta
-##   @var[in,out] i rex
-function ble-edit/exec/save-BASH_REMATCH/increase {
-  local delta=$1
-  ((delta)) || return 1
-  ((i+=delta))
-  if ((delta==1)); then
-    rex=$rex.
-  else
-    rex=$rex.{$delta}
-  fi
-}
-function ble-edit/exec/save-BASH_REMATCH/is-updated {
-  local i n=${#_ble_edit_exec_BASH_REMATCH[@]}
-  ((n!=${#BASH_REMATCH[@]})) && return 0
-  for ((i=0;i<n;i++)); do
-    [[ ${_ble_edit_exec_BASH_REMATCH[i]} != "${BASH_REMATCH[i]}" ]] && return 0
-  done
-  return 1
-}
-function ble-edit/exec/save-BASH_REMATCH {
-  ble-edit/exec/save-BASH_REMATCH/is-updated || return 1
+else
+  _ble_edit_exec_BASH_REMATCH=()
+  _ble_edit_exec_BASH_REMATCH_rex=none
 
-  local size=${#BASH_REMATCH[@]}
-  if ((size==0)); then
-    _ble_edit_exec_BASH_REMATCH=()
-    _ble_edit_exec_BASH_REMATCH_rex=none
-    return 0
-  fi
+  ## 関数 ble-edit/exec/save-BASH_REMATCH/increase delta
+  ##   @param[in] delta
+  ##   @var[in,out] i rex
+  function ble-edit/exec/save-BASH_REMATCH/increase {
+    local delta=$1
+    ((delta)) || return 1
+    ((i+=delta))
+    if ((delta==1)); then
+      rex=$rex.
+    else
+      rex=$rex.{$delta}
+    fi
+  }
+  function ble-edit/exec/save-BASH_REMATCH/is-updated {
+    local i n=${#_ble_edit_exec_BASH_REMATCH[@]}
+    ((n!=${#BASH_REMATCH[@]})) && return 0
+    for ((i=0;i<n;i++)); do
+      [[ ${_ble_edit_exec_BASH_REMATCH[i]} != "${BASH_REMATCH[i]}" ]] && return 0
+    done
+    return 1
+  }
+  function ble-edit/exec/save-BASH_REMATCH {
+    ble-edit/exec/save-BASH_REMATCH/is-updated || return 1
 
-  local rex= i=0
-  local text=$BASH_REMATCH sub ret isub
+    local size=${#BASH_REMATCH[@]}
+    if ((size==0)); then
+      _ble_edit_exec_BASH_REMATCH=()
+      _ble_edit_exec_BASH_REMATCH_rex=none
+      return 0
+    fi
 
-  local -a rparens=()
-  local isub rex i=0
-  for ((isub=1;isub<size;isub++)); do
-    local sub=${BASH_REMATCH[isub]}
+    local rex= i=0
+    local text=$BASH_REMATCH sub ret isub
 
-    # 既存の子一致の孫一致になるか確認
-    local r rN=${#rparens[@]}
-    for ((r=rN-1;r>=0;r--)); do
-      local end=${rparens[r]}
-      if ble/string#index-of "${text:i:end-i}" "$sub"; then
+    local -a rparens=()
+    local isub rex i=0
+    for ((isub=1;isub<size;isub++)); do
+      local sub=${BASH_REMATCH[isub]}
+
+      # 既存の子一致の孫一致になるか確認
+      local r rN=${#rparens[@]}
+      for ((r=rN-1;r>=0;r--)); do
+        local end=${rparens[r]}
+        if ble/string#index-of "${text:i:end-i}" "$sub"; then
+          ble-edit/exec/save-BASH_REMATCH/increase "$ret"
+          ble/array#push rparens $((i+${#sub}))
+          rex=$rex'('
+          break
+        else
+          ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
+          rex=$rex')'
+          builtin unset -v 'rparens[r]'
+        fi
+      done
+
+      ((r>=0)) && continue
+
+      # 新しい子一致
+      if ble/string#index-of "${text:i}" "$sub"; then
         ble-edit/exec/save-BASH_REMATCH/increase "$ret"
         ble/array#push rparens $((i+${#sub}))
         rex=$rex'('
-        break
       else
-        ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
-        rex=$rex')'
-        builtin unset -v 'rparens[r]'
+        break # 復元失敗
       fi
     done
 
-    ((r>=0)) && continue
+    local r rN=${#rparens[@]}
+    for ((r=rN-1;r>=0;r--)); do
+      local end=${rparens[r]}
+      ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
+      rex=$rex')'
+      builtin unset -v 'rparens[r]'
+    done
 
-    # 新しい子一致
-    if ble/string#index-of "${text:i}" "$sub"; then
-      ble-edit/exec/save-BASH_REMATCH/increase "$ret"
-      ble/array#push rparens $((i+${#sub}))
-      rex=$rex'('
-    else
-      break # 復元失敗
-    fi
-  done
+    ble-edit/exec/save-BASH_REMATCH/increase $((${#text}-i))
 
-  local r rN=${#rparens[@]}
-  for ((r=rN-1;r>=0;r--)); do
-    local end=${rparens[r]}
-    ble-edit/exec/save-BASH_REMATCH/increase $((end-i))
-    rex=$rex')'
-    builtin unset -v 'rparens[r]'
-  done
-
-  ble-edit/exec/save-BASH_REMATCH/increase $((${#text}-i))
-
-  _ble_edit_exec_BASH_REMATCH=("${BASH_REMATCH[@]}")
-  _ble_edit_exec_BASH_REMATCH_rex=$rex
-}
-function ble-edit/exec/restore-BASH_REMATCH {
-  [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
-}
+    _ble_edit_exec_BASH_REMATCH=("${BASH_REMATCH[@]}")
+    _ble_edit_exec_BASH_REMATCH_rex=$rex
+  }
+  function ble-edit/exec/restore-BASH_REMATCH {
+    [[ $_ble_edit_exec_BASH_REMATCH =~ $_ble_edit_exec_BASH_REMATCH_rex ]]
+  }
+fi
 
 _ble_edit_prompt0=()
 function ble-edit/exec/print-PS0 {

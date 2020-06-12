@@ -2454,7 +2454,7 @@ function ble/decode/cmap/initialize {
     source "$init"
     ble-bind -D | ble/bin/awk '
       {
-        sub(/^declare +(-[aAfFgiclrtux]+ +)?/, "");
+        sub(/^declare +(-[aAilucnrtxfFgGI]+ +)?/, "");
         sub(/^-- +/, "");
       }
       /^_ble_decode_(cmap|csimap|kbd)/ {

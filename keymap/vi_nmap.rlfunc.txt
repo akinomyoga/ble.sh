@@ -15,6 +15,7 @@ call-last-kbd-macro               call-keyboard-macro
 capitalize-word                   vi_nmap/capitalize-eword
 character-search                  vi_nmap/@motion character-search-forward
 character-search-backward         vi_nmap/@motion character-search-backward
+clear-display                     clear-display
 clear-screen                      clear-screen
 complete                          -
 complete-command                  -
@@ -98,6 +99,7 @@ shell-backward-word               -
 shell-expand-line                 -
 shell-forward-word                -
 shell-kill-word                   -
+shell-transpose-words             -
 skip-csi-sequence                 <IGNORE>
 start-kbd-macro                   start-keyboard-macro
 tab-insert                        -

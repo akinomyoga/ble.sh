@@ -366,6 +366,9 @@ function sub:first-defined {
   echo "$name not found"
   return 1
 }
+function sub:first-defined/help {
+  printf '  first-defined KEYWORDS...\n'
+}
 
 #------------------------------------------------------------------------------
 
@@ -384,6 +387,18 @@ function sub:scan-varnames {
     grep -hoE '\$\{?[_a-zA-Z][_a-zA-Z0-9]*\b|\b[_a-zA-Z][_a-zA-Z0-9]*=' |
     sed -E 's/^\$\{?(.*)/\1$/g;s/[$=]//' |
     sort | uniq -c | sort -n | less
+}
+
+#------------------------------------------------------------------------------
+# sub:check-readline-bindable
+
+function sub:check-readline-bindable {
+  join -v1 <(
+    for bash in bash $(compgen -c -- bash-); do
+      [[ $bash == bash-[12]* ]] && continue
+      "$bash" -c 'bind -l' 2>/dev/null
+    done | sort -u
+  ) <(sort keymap/emacs.rlfunc.txt)
 }
 
 if (($#==0)); then
