@@ -5106,6 +5106,12 @@ function ble/util/reset-keymap-of-editing-mode {
   fi
 }
 
+#%if target == "osh"
+function ble/util/rlvar#load { return 0; }
+function ble/util/rlvar#has { return 1; }
+function ble/util/rlvar#test { (($2)); }
+function ble/util/rlvar#read { ret=$2; }
+#%else
 ## @fn ble/util/rlvar#load
 ##   @var[out] _ble_local_rlvars
 function ble/util/rlvar#load {
@@ -5151,6 +5157,7 @@ function ble/util/rlvar#read {
   local rhs=${_ble_local_rlvars#*$'\n'"set $1 "}
   [[ $rhs != "$_ble_local_rlvars" ]] && ret=${rhs%%$'\n'*}
 }
+#%end
 
 ## @fn ble/util/rlvar#bind-bleopt name bleopt [opts]
 function ble/util/rlvar#bind-bleopt {
