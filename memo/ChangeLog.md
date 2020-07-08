@@ -30,7 +30,8 @@
 - vi: support `bleopt keymap_vi_mode_{update_prompt,show,name_*}` (suggested by Dave-Elec) `#D1365` 76be6f1
 - prompt: support prompt sequence `\q{...}` `#D1365` 76be6f1
 - edit: support `bind 'set show-mode-in-prompt'` `#D1365` 76be6f1
-- prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 0000000
+- prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 06381c9
+- edit: support Bash 5.1 widgets `#D1368` e747ee3
 
 ## Changes
 
@@ -53,7 +54,7 @@
 - main: reload on ble-update when ble.sh is already updated `#D1359` a441d4d
 - main (`ble-update`): clone github repository if the original repository is not found `#D1363` 6e3b3b5
 - util (bleopt): change output format d4b12cd
-- syntax: allow `time -- command` for Bash 5.1 `#D1367` 0000000
+- syntax: allow `time -- command` for Bash 5.1 `#D1367` 00d0e93
 
 ## Fix
 
@@ -94,7 +95,7 @@
 - edit: fix a bug that `set +H` is cancelled on command execution `#D1332` 02bdf4e
 - syntax (`ble/syntax/parse/shift`): fix a bug of shift skip in nested words `#D1333` 65fbba0
 - global: work around Bash-4.4 `return` in trap handlers `#D1334` aa09d15
-- util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f
+- util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f 0000000
 - edit (`ble-bind -x`): check range of `READLINE_{POINT,MARK}` `#D1339` efe1e81
 - util (`ble/string#to{upper,lower}`): work around `LC_COLLATE=en_US.utf8` (test-util) `#D1341` 1f6b44e `#D1355` 4da6103 5f0d49f
 - util (encoding, keyseq): fix miscelleneous encoding bugs (test-util) 435bd16

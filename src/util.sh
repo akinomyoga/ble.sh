@@ -2978,7 +2978,7 @@ function ble/util/stackdump {
   ((bleopt_internal_stackdump_enabled)) || return 1
   local message=$1 nl=$'\n'
   message="$_ble_term_sgr0$_ble_util_stackdump_title: $message$nl"
-  local extdebug=1 iarg=$BASH_ARGC args=
+  local extdebug= iarg=$BASH_ARGC args=
   shopt -q extdebug 2>/dev/null && extdebug=1
   local i i0=${_ble_util_stackdump_start:-1} iN=${#FUNCNAME[*]}
   for ((i=i0;i<iN;i++)); do
