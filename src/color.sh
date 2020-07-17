@@ -41,7 +41,7 @@ function ble/color/initialize-term-colors {
   if [[ $bleopt_term_true_colors == auto ]]; then
     # truecolor support 自動判定 (暫定実装)
     local value=
-    if [[ $TERM == *-24bit ]]; then
+    if [[ $TERM == *-24bit || $TERM == *-direct ]]; then
       value=colon
     elif [[ $TERM == *-24bits || $TERM == *-truecolor || $COLORTERM == *24bit* || $COLORTERM == *truecolor* ]]; then
       value=semicolon

@@ -3939,13 +3939,27 @@ fi
 
 #---- DA2 ---------------------------------------------------------------------
 
-_ble_term_DA1R=
-_ble_term_DA2R=
 _ble_term_TERM=
-function ble/term/DA1/notify { _ble_term_DA1R=$1; blehook/invoke DA1R; }
-function ble/term/DA2/notify {
-  _ble_term_DA2R=$1
+function ble/term/DA2/initialize-term {
+  local rex='^[0-9]*(;[0-9]*)*$'; [[ $_ble_term_DA2R =~ $rex ]] || return
   local da2r; ble/string#split da2r ';' "$_ble_term_DA2R"
+
+  # xterm
+  if rex='^xterm(-|$)'; [[ $TERM =~ $rex ]]; then
+    local version=${da2r[1]}
+    if rex='^1;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+      ((version==0||95<=version))
+    elif rex='^0;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+      ((95<=version))
+    elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+      ((280<=version))
+    elif rex='^32;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
+      ((354<=version&&version<2000))
+    else
+      false
+    fi && { _ble_term_TERM=xterm:$version; return; }
+  fi
+
   case $_ble_term_DA2R in
   ('1;'*)
     if ((da2r[1]>=2000)); then
@@ -3963,6 +3977,14 @@ function ble/term/DA2/notify {
       _ble_term_TERM=cygwin
     fi ;;
   esac
+}
+
+_ble_term_DA1R=
+_ble_term_DA2R=
+function ble/term/DA1/notify { _ble_term_DA1R=$1; blehook/invoke DA1R; }
+function ble/term/DA2/notify {
+  _ble_term_DA2R=$1
+  ble/term/DA2/initialize-term
   blehook/invoke DA2R
 }
 
