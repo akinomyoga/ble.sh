@@ -3315,6 +3315,13 @@ bash_tips
 
 2020-07-18
 
+  * TERM=xterm-direct で一部の色が正しく表示されない [#D1370]
+    どうも TERM=xterm-direct の時には 256 色を terminfo から使う事ができない様である。
+    という事を考えると xterm-direct の時には init-term.sh で特別に処理する必要がある?
+    2:r:g:b の形式で 16 色を決め打ちで設定してしまう事も考えたが、
+    それだとユーザが好みで設定した 16 色の色を使わない事になってしまって良くない。
+    やはり、ユーザの設定した 16 色を利用する様にする必要がある気がする。
+
   * color: xterm の最新版の既定の TERM が xterm-direct になっていた [#D1369]
     xterm は 24bit color を direct color という呼ぶ事にした様だ。
 

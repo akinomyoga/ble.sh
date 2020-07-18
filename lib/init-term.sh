@@ -220,20 +220,34 @@ function ble/init:term/initialize {
   for ((i=0;i<16;i++)); do
     local i1=$((i%8)) af= ab=
 
-    # from terminfo
-    if ((i<_ble_term_colors)); then
-      local j1
-      ((j1=(i1==3?6:
-            (i1==6?3:
-             (i1==1?4:
-              (i1==4?1:i1))))))
-      local j=$((i-i1+j1))
+    if [[ $TERM == *-direct ]]; then
+      # Note: direct の時には terminfo 経由では16 色に対応する
+      #   シーケンスを得られない。direct に対応している場合は
+      #   当然 index color にも対応していると期待されるので、
+      #   16 色にはそれを用いる。
+      if ((i<8)); then
+        af=$'\e[3'$i'm'
+        ab=$'\e[4'$i'm'
+      else
+        af=$'\e[38;5;'$i'm'
+        ab=$'\e[48;5;'$i'm'
+      fi
+    else
+      # from terminfo
+      if ((i<_ble_term_colors)); then
+        local j1
+        ((j1=(i1==3?6:
+              (i1==6?3:
+               (i1==1?4:
+                (i1==4?1:i1))))))
+        local j=$((i-i1+j1))
 
-      ble/util/assign af 'ble/init:term/tput setaf:AF "$i" 2>/dev/null'
-      [[ $af ]] || ble/util/assign af 'ble/init:term/tput setf:Sf "$j" 2>/dev/null'
+        ble/util/assign af 'ble/init:term/tput setaf:AF "$i" 2>/dev/null'
+        [[ $af ]] || ble/util/assign af 'ble/init:term/tput setf:Sf "$j" 2>/dev/null'
 
-      ble/util/assign ab 'ble/init:term/tput setab:AB "$i" 2>/dev/null'
-      [[ $ab ]] || ble/util/assign ab 'ble/init:term/tput setb:Sb "$j" 2>/dev/null'
+        ble/util/assign ab 'ble/init:term/tput setab:AB "$i" 2>/dev/null'
+        [[ $ab ]] || ble/util/assign ab 'ble/init:term/tput setb:Sb "$j" 2>/dev/null'
+      fi
     fi
 
     # default value
