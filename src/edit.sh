@@ -265,8 +265,11 @@ function ble/prompt/initialize {
 ##     COLUMNS:ps1esc の形式の文字列です。
 ##     調整前の ps1out を格納します。
 ##     ps1out の計算 (trace) を省略する為に使用します。
+_ble_edit_prompt_dirty=
 _ble_edit_prompt=("" 0 0 0 32 0 "" "")
-
+_ble_edit_rprompt_dirty=
+_ble_edit_rprompt_bbox=()
+_ble_edit_rprompt=()
 
 ## 関数 ble/prompt/.load
 ##   @var[out] x y g
@@ -807,7 +810,8 @@ function ble/prompt/update {
     ble-edit/adjust-PS1
   fi
   local trace_hash esc
-  ble/prompt/.instantiate "$ps1" show-mode-in-prompt "${_ble_edit_prompt[@]:1}"
+  ble/prompt/.instantiate "$ps1" show-mode-in-prompt "${_ble_edit_prompt[@]:1}" &&
+    _ble_edit_prompt_dirty=1
   _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
   ret=$esc
 
@@ -819,7 +823,8 @@ function ble/prompt/update {
     local y1=${_ble_edit_rprompt_bbox[1]}
     local x2=${_ble_edit_rprompt_bbox[2]}
     local y2=${_ble_edit_rprompt_bbox[3]}
-    LINES=$ps1_height ble/prompt/.instantiate "$rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
+    LINES=$ps1_height ble/prompt/.instantiate "$rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}" &&
+      _ble_edit_rprompt_dirty=1
     _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
   fi
@@ -1876,6 +1881,26 @@ function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
   ble/canvas/bflush.draw
 }
 
+## 関数 ble/textarea#render/.show-prompt
+function ble/textarea#render/.show-prompt {
+  local esc=${_ble_edit_prompt[6]}
+  local prox=${_ble_edit_prompt[1]}
+  local proy=${_ble_edit_prompt[2]}
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel"
+  ble/canvas/panel#put.draw "$_ble_textarea_panel" "$esc" "$prox" "$proy"
+  _ble_edit_prompt_dirty=
+}
+## 関数 ble/textarea#render/.show-rprompt
+##   @var[in] cols
+function ble/textarea#render/.show-rprompt {
+  local rps1out=${_ble_edit_rprompt[6]}
+  local rps1x=${_ble_edit_rprompt[1]} rps1y=${_ble_edit_rprompt[2]}
+  # Note: cols は画面右端ではなく textmap の右端
+  ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
+  ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out" $((cols+1+rps1x)) "$rps1y"
+  _ble_edit_rprompt_dirty=
+}
+
 ## 関数 ble/textarea#focus
 ##   プロンプト・編集文字列の現在位置に端末のカーソルを移動します。
 function ble/textarea#focus {
@@ -1936,6 +1961,7 @@ function ble/textarea#render {
   if [[ $rps1_enabled && :$opts: == *:leave:* && ! $bleopt_prompt_rps1_final && $bleopt_prompt_rps1_transient ]]; then
     # Note: ble/prompt/update を実行するよりも前に現在の表示内容を消去する。
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
+    local prox=${_ble_edit_prompt[1]}
     if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
       rps1_clear=1
       ((cols-=rps1_width+1,_ble_term_xenl||cols--))
@@ -1945,12 +1971,12 @@ function ble/textarea#render {
 
   local x y g lc lg=0
   ble/prompt/update "$opts" # x y lc ret
-  local prox=$x proy=$y prolc=$lc esc_prompt=$ret
 
   # rps1
   local rps1_show=
   if [[ $rps1_enabled && ! $rps1_clear ]]; then
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
+    local prox=${_ble_edit_prompt[1]}
     ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)) &&
       ((rps1_show=1,cols-=rps1_width+1,_ble_term_xenl||cols--))
   fi
@@ -2017,6 +2043,12 @@ function ble/textarea#render {
     ble/textarea#render/.perform-scroll "$scroll" # update: umin umax
     _ble_textarea_scroll_new=$_ble_textarea_scroll
 
+    # プロンプトに更新があれば表示
+    [[ $_ble_edit_rprompt_dirty ]] &&
+      ble/textarea#render/.show-rprompt
+    [[ $_ble_edit_prompt_dirty ]] &&
+      ble/textarea#render/.show-prompt
+
     # 編集文字列の一部を描画する場合
     if ((umin<umax)); then
       local uminx uminy umaxx umaxy
@@ -2045,16 +2077,8 @@ function ble/textarea#render {
     ble/canvas/panel#clear.draw "$_ble_textarea_panel"
 
     # プロンプト描画
-    ble/canvas/panel#goto.draw "$_ble_textarea_panel"
-    if [[ $rps1_show ]]; then
-      local rps1out=${_ble_edit_rprompt[6]}
-      local rps1x=${_ble_edit_rprompt[1]} rps1y=${_ble_edit_rprompt[2]}
-      # Note: cols は画面右端ではなく textmap の右端
-      ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
-      ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out" $((cols+1+rps1x)) "$rps1y"
-      ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
-    fi
-    ble/canvas/panel#put.draw "$_ble_textarea_panel" "$esc_prompt" "$prox" "$proy"
+    ble/textarea#render/.show-rprompt
+    ble/textarea#render/.show-prompt
 
     # 全体描画
     _ble_textarea_scroll=$scroll
@@ -2122,6 +2146,7 @@ function ble/textarea#render {
       fi
     fi
 
+    local esc_prompt=${_ble_edit_prompt[6]}
     _ble_textarea_cache=(
       "$esc_prompt$esc_line"
       "${_ble_textarea_cur[@]}"

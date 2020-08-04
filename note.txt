@@ -3330,9 +3330,30 @@ bash_tips
       4行目は idle.do で何らかの処理が走った後である。
       然し、これだけで振る舞いが変化するというのも不思議である。
 
-    分かった。_ble_decode_keymap が原因だった。
-    と思ったが、別に表示が乱れる訳ではない…。
-    もしかすると別の原因かもしれないが取り敢えず直した。
+    * fixed: 分かった。_ble_decode_keymap が原因だった。
+      と思ったが、別に表示が乱れる訳ではない…。
+      もしかすると別の原因かもしれないが取り敢えず直した。
+
+      以下はデバグに使ったコード。
+
+      > #ble-stackdump "$(cat -A <<< "$expanded")" >> a.txt
+      > echo "opts=$opts" >> a.txt
+      > echo "processed: $(cat -A <<< "$processed")" >> a.txt
+      > echo "expanded: $(cat -A <<< "$expanded")" >> a.txt
+      > bind -v | grep -E 'show-mode|mode-string' >> a.txt
+      > echo ---------------------- >> a.txt
+
+    * もう一つの問題がある。auto_complete から抜けて prompt の内容が変化しても、
+      prompt の再描画が実行されていない。prompt の再計算はちゃんとできている。
+      prompt が変化したらそれを検出できる様にしているのではなかったか。
+      prompt の再計算と描画がどの様に呼び出されているか改めて確認する。
+
+      prompt の再描画は _ble_textarea_invalidated が設定されている時にのみ発生する。
+      ここで prompt が変更された時に全体を再描画するか、もしくは
+      部分更新でも特定の条件で prompt の再描画を実施するかという選択肢がある。
+      部分更新でも prompt の再描画を実行するのが良い気がする。
+
+      ble/prompt/.instantiate はプロンプトに変更があったかどうかを終了ステータスで知らせる。
 
 2020-07-18
 
