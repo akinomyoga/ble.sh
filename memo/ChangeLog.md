@@ -30,6 +30,7 @@
 - vi: support `bleopt keymap_vi_mode_{update_prompt,show,name_*}` (suggested by Dave-Elec) `#D1365` 76be6f1
 - prompt: support prompt sequence `\q{...}` `#D1365` 76be6f1
 - edit: support `bind 'set show-mode-in-prompt'` `#D1365` 76be6f1
+  - prompt: fix a bug that mode string is not shown in `auto_complete` and other sub-modes `#D1371` 0000000
 - prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 06381c9
 - edit: support Bash 5.1 widgets `#D1368` e747ee3
 - color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` 0000000

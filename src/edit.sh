@@ -665,6 +665,17 @@ function ble/prompt/.escape {
   done
   ret=$out$nest
 }
+## 関数 ble/prompt/.get-keymap-for-current-mode
+##   @var[out] keymap
+function ble/prompt/.get-keymap-for-current-mode {
+  keymap=$_ble_decode_keymap
+  local index=${#_ble_decode_keymap_stack}
+  while :; do
+    case $keymap in (vi_?map|emacs) return ;; esac
+    ((--index<0)) && break
+    keymap=${_ble_decode_keymap_stack[index]}
+  done
+}
 ## 関数 ble/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0 trace_hash0]
 ##   @var[out] val esc x y g lc lg trace_hash
 ##   @var[in,out] x1 x2 y1 y2
@@ -683,8 +694,10 @@ function ble/prompt/.instantiate {
   local -a DRAW_BUFF=()
   if [[ :$opts: == *:show-mode-in-prompt:* ]]; then
     if ble/util/test-rl-variable show-mode-in-prompt; then
+      local keymap; ble/prompt/.get-keymap-for-current-mode
+
       local ret=
-      case $_ble_decode_keymap in
+      case $keymap in
       (vi_imap) ble/util/read-rl-variable vi-ins-mode-string ;;
       (vi_[noxs]map) ble/util/read-rl-variable vi-cmd-mode-string ;;
       (emacs) ble/util/read-rl-variable emacs-mode-string ;;
