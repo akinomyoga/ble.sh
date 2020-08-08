@@ -30,11 +30,11 @@
 - vi: support `bleopt keymap_vi_mode_{update_prompt,show,name_*}` (suggested by Dave-Elec) `#D1365` 76be6f1
 - prompt: support prompt sequence `\q{...}` `#D1365` 76be6f1
 - edit: support `bind 'set show-mode-in-prompt'` `#D1365` 76be6f1
-  - prompt: fix a bug that mode string is not shown in `auto_complete` and other sub-modes `#D1371` 0000000
-  - prompt: redraw prompts on the prompt content change `#D1371` 0000000
+  - prompt: fix a bug that mode string is not shown in `auto_complete` and other sub-modes (reported by tigger04) `#D1371` f6fc7ff
+  - prompt: redraw prompts on the prompt content change (reported by tigger04) `#D1371` 1954a1e
 - prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 06381c9
 - edit: support Bash 5.1 widgets `#D1368` e747ee3
-- color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` 0000000
+- color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` f7dc477
 
 ## Changes
 
@@ -113,6 +113,7 @@
 - main: fix problems caused by multiple `source ble.sh` in bashrc `#D1354` 5476933
 - syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 4760409
 - complete: quote `#` and `~` at the beginning of word `#D1362` f62fe54
+- decode (`bind`): work around `shopt -s nocasematch` (reported by tigger04) `#D1372` 0000000
 
 ## Compatibility
 

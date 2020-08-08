@@ -3532,7 +3532,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
     ble/util/print __BINDP__
     builtin bind -m "$map" -p
     ble/util/print __PRINT__
-  done | LC_ALL= LC_CTYPE=C /ble/bin/awk -v q="$q" -v _ble_bash="$_ble_bash" '
+  done | LC_ALL= LC_CTYPE=C ble/bin/awk -v q="$q" -v _ble_bash="$_ble_bash" '
     function keymap_register(key, val, type) {
       if (!haskey[key]) {
         keys[nkey++] = key;
@@ -3629,6 +3629,12 @@ function ble/builtin/bind/read-user-settings {
 }
 
 function ble/builtin/bind {
+  local nocasematch=
+  ((_ble_bash>=30100)) &&
+    shopt -q nocasematch &&
+    shopt -u nocasematch &&
+    nocasematch=1
+
   ble/decode/initialize
   local flags=
   ble/builtin/bind/.process "$@"
@@ -3636,7 +3642,11 @@ function ble/builtin/bind {
     builtin bind "$@"
   else
     [[ $flags != *[eh]* ]]
-  fi
+  fi; local ext=$?
+
+  [[ $nocasematch ]] &&
+    shopt -s nocasematch
+  return "$ext"
 }
 function bind { ble/builtin/bind "$@"; }
 
