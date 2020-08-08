@@ -2805,13 +2805,23 @@ function ble/builtin/bind/.process {
   return 0
 }
 function ble/builtin/bind {
+  local nocasematch=
+  ((_ble_bash>=30100)) &&
+    shopt -q nocasematch &&
+    shopt -u nocasematch &&
+    nocasematch=1
+
   local flags=
   ble/builtin/bind/.process "$@"
   if [[ $_ble_decode_bind_state == none ]]; then
     builtin bind "$@"
   else
     [[ $flags != *e* ]]
-  fi
+  fi; local ext=$?
+
+  [[ $nocasematch ]] &&
+    shopt -s nocasematch
+  return "$ext"
 }
 function bind { ble/builtin/bind "$@"; }
 
