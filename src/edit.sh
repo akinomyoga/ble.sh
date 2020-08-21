@@ -780,7 +780,7 @@ function ble/prompt/update/.eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble/prompt/update {
-  local opts=:$1: force=1 ps1=$_ble_edit_PS1 rps1=$bleopt_prompt_rps1
+  local opts=:$1: force= ps1=$_ble_edit_PS1 rps1=$bleopt_prompt_rps1
   if [[ $opts == *:leave:* ]]; then
     local ps1f=$bleopt_prompt_ps1_final
     local rps1f=$bleopt_prompt_rps1_final
