@@ -3313,6 +3313,63 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-08-22
+
+  * 2020-08-05: complete: auto-complete で menu も出してしまう? [#D1373]
+
+    * bleopt complete_auto_menu=DELAY で設定する。
+      ble/complete/auto-complete.idle の中で
+      ble/complete/auto-complete.impl の直後に
+      local delay=$((bleopt_complete_auto_menu))
+      ble/util/idle.push -S"$delay" "show-menu" を呼び出して
+      遅延でメニューを表示させる。
+
+      と思ったがよく考えたら自動補完候補とメニュー補完では候補が異なる。
+      特に履歴項目から自動補完を実行している時。
+      というか自動補完を実行している時は候補一覧を保存していない気がする。
+
+      或いは別に自動補完とメニュー補完の内容が一致していなくても良い気がする。
+      →取り敢えず独立な内容を提示する様にする事にする。
+
+    適当に実装してみたら微妙な事になっている。
+    これらはゆっくり修正すれば良い気がする。
+
+    x fixed: コマンドラインが空でもメニューが表示されてしまう。
+      空白の文字列からは補完が開始しない様にするべきかもしれない。
+      ble/widget/complete に non-empty 的な opt を追加する。
+
+      →今度は二文字以上入力しないと show_menu されない様になってしまった。
+      何故だろうか。とにかくまた後で調べる事にする。
+      →これは以下の問題を解決したら一緒に直った。
+
+    x fixed: menu が表示される場合と表示されない場合がある。
+      auto-complete で self-insert した時に起動しない様になっていた。
+      auto_complete/self-insert の直後でも起動する様に修正した。
+
+    x fixed: 最後のユーザー入力からの経過時間で起動するべきところが、
+      最初の auto-complete からの経過時間で起動している。
+      これは auto-complete と同様の方法で起動するべきではないだろうか。
+
+    x fixed: menu が表示されている状態で一文字でも入力するとメニューが閉じてしまう。
+      これは menu-filter 状態になっていないから?
+      勝手に menu-filter 状態に移行するのも考え物だが…。
+
+      どうやら menu-filter が無効になっている様子だ。
+      _ble_complete_menu_active= になっている。
+      調べてみると一旦は _ble_complete_menu_active=1 になるが、
+      直後に get-active-range に失敗して menu/clear が呼び出される様だ。
+
+      分かった。auto-complete の中から menu に入っている為に、
+      記録される left,right の中身が auto-complete によって
+      一時的に挿入されている物を含む様になっている。
+      menu 表示次の状態記録で keymap が auto_complete の時には、
+      一時的に挿入されている文字列を除去する事にした。
+
+    * todo: complete_auto_menu の説明
+      * done: blerc
+      * done: wiki 英語
+      * done: wiki 日本語
+
 2020-08-06
 
   * fzf の設定でエラーが発生する (reported by @tigger04) [#D1372]

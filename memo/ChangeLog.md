@@ -35,6 +35,7 @@
 - prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 06381c9
 - edit: support Bash 5.1 widgets `#D1368` e747ee3
 - color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` f7dc477
+- complete: support `bleopt complete_auto_menu` `#D1373` 0000000
 
 ## Changes
 

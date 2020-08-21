@@ -352,6 +352,16 @@
 #bleopt complete_auto_wordbreaks=$' \t\n/'
 
 
+## The setting "complete_auto_menu" controls the delay of "auto-menu".
+## When a non-empty string is set, auto-menu is enabled.  The string
+## is evaluated as an arithmetic expression to give the delay in
+## milliseconds.  ble.sh will automatically show the menu of
+## completions after the idle time (for which user input does not
+## arrive) reaches the delay.
+
+#bleopt complete_auto_menu=500
+
+
 ## When there are user inputs while generating completion candidates, the
 ## candidates generation will be canceled to process the user inputs. The
 ## following setting controls the interval of checking user inputs while

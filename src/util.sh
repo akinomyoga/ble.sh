@@ -3394,10 +3394,20 @@ if ((_ble_bash>=40000)); then
     _ble_util_idle_task[i]=$entry
   }
   function ble/util/idle.push {
-    ble/util/idle.push/.impl 0 "R$_ble_util_idle_SEP$*"
+    local status=R nice=0
+    while [[ $1 == -* ]]; do
+      case $1 in
+      (-[SWPFEC]) status=${1:1}$2; shift 2 ;;
+      (-[SWPFECIR]*) status=${1:1}; shift ;;
+      (-n) nice=$2; shift 2 ;;
+      (-n*) nice=${1#-n}; shift ;;
+      (*) break ;;
+      esac
+    done
+    ble/util/idle.push/.impl "$nice" "$status$_ble_util_idle_SEP$*"
   }
   function ble/util/idle.push-background {
-    ble/util/idle.push/.impl 10000 "R$_ble_util_idle_SEP$*"
+    ble/util/idle.push -n 10000 "$@"
   }
   function ble/util/is-running-in-idle {
     [[ ${ble_util_idle_status+set} ]]

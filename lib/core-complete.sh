@@ -2987,7 +2987,7 @@ function ble/complete/candidates/filter:subseq/match {
 }
 
 function ble/complete/candidates/generate-with-filter {
-  local comp_filter_type=$1
+  local comp_filter_type=$1 opts=$2
   local -a remaining_sources nearest_sources
   remaining_sources=("${sources[@]}")
 
@@ -2996,6 +2996,7 @@ function ble/complete/candidates/generate-with-filter {
     nearest_sources=()
     ble/complete/candidates/.pick-nearest-sources
 
+    [[ ! $COMPV && :$opts: == *:no-empty:* ]] && continue
     ble/complete/candidates/filter:"$comp_filter_type"/init "$COMPV" || continue
 
     for src in "${nearest_sources[@]}"; do
@@ -3031,7 +3032,8 @@ function ble/complete/candidates/comp_type#read-rl-variables {
   # ble/util/test-rl-variable colored-completion-prefix 1 && comp_type=${comp_type}:menu-color-match
 }
 
-## 関数 ble/complete/candidates/generate
+## 関数 ble/complete/candidates/generate opts
+##   @param[in] opts
 ##   @var[in] comp_text comp_index
 ##   @arr[in] sources
 ##   @var[out] COMP1 COMP2 COMPS COMPV
@@ -3039,6 +3041,7 @@ function ble/complete/candidates/comp_type#read-rl-variables {
 ##   @var[out] cand_*
 ##   @var[out] comps_filter_pattern
 function ble/complete/candidates/generate {
+  local opts=$1
   local flag_force_fignore=
   local -a _fignore=()
   if [[ $FIGNORE ]]; then
@@ -3056,19 +3059,19 @@ function ble/complete/candidates/generate {
   cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
   cand_pack=() # 候補の詳細データ
 
-  ble/complete/candidates/generate-with-filter head || return "$?"
+  ble/complete/candidates/generate-with-filter head "$opts" || return "$?"
   ((cand_count)) && return 0
 
   if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
     local original_comp_type=$comp_type
     comp_type=${original_comp_type}:m
-    ble/complete/candidates/generate-with-filter substr || return "$?"
+    ble/complete/candidates/generate-with-filter substr "$opts" || return "$?"
     ((cand_count)) && return 0
     comp_type=${original_comp_type}:a
-    ble/complete/candidates/generate-with-filter hsubseq || return "$?"
+    ble/complete/candidates/generate-with-filter hsubseq "$opts" || return "$?"
     ((cand_count)) && return 0
     comp_type=${original_comp_type}:A
-    ble/complete/candidates/generate-with-filter subseq || return "$?"
+    ble/complete/candidates/generate-with-filter subseq "$opts" || return "$?"
     ((cand_count)) && return 0
     comp_type=$original_comp_type
   fi
@@ -3441,12 +3444,15 @@ function ble/complete/menu/show {
     _ble_complete_menu_footprint=$footprint
   elif [[ :$opts: != *:filter:* ]]; then
     local beg=$COMP1 end=$_ble_edit_ind # COMP2 でなく補完挿入後の位置
+    local str=$_ble_edit_str
+    [[ $_ble_decode_keymap == auto_complete ]] &&
+      str=${str::_ble_edit_ind}${str:_ble_edit_mark}
     local footprint; ble/complete/menu/get-footprint
     _ble_complete_menu_active=1
     _ble_complete_menu_style=$menu_style
     _ble_complete_menu0_beg=$beg
     _ble_complete_menu0_end=$end
-    _ble_complete_menu0_str=$_ble_edit_str
+    _ble_complete_menu0_str=$str
     _ble_complete_menu0_comp=("$COMP1" "$COMP2" "$COMPS" "$COMPV" "$comp_type" "$comps_flags" "$comps_fixed")
     _ble_complete_menu0_pack=("${cand_pack[@]}")
     _ble_complete_menu_selected=-1
@@ -3529,7 +3535,7 @@ function ble/complete/generate-candidates-from-opts {
   local sources
   ble/complete/context:"$context"/generate-sources "$comp_text" "$comp_index" || return "$?"
 
-  ble/complete/candidates/generate
+  ble/complete/candidates/generate "$opts"
 }
 
 ## 関数 ble/complete/insert insert_beg insert_end insert suffix
@@ -4176,6 +4182,7 @@ function ble/complete/insert-braces {
 }
 
 _ble_complete_state=
+
 ## 関数 ble/widget/complete opts
 ##   @param[in] opts
 ##     コロン区切りのリストです。
@@ -4196,6 +4203,8 @@ _ble_complete_state=
 ##       候補生成の文脈を指定します。
 ##     backward
 ##       メニュー補完に入る時に最後の候補に移動します。
+##     no-empty
+##       空の COMPV による補完を抑制します。
 ##
 function ble/widget/complete {
   local opts=$1
@@ -4863,7 +4872,7 @@ function ble/complete/auto-complete.impl {
   ble/complete/auto-complete/.check-context
 }
 
-## 背景関数 ble/widget/auto-complete.idle
+## 背景関数 ble/complete/auto-complete.idle
 function ble/complete/auto-complete.idle {
   # ※特に上書きしなければ常に wait-user-input で抜ける。
   ble/util/idle.wait-user-input
@@ -4890,7 +4899,34 @@ function ble/complete/auto-complete.idle {
   ble/complete/auto-complete.impl
 }
 
+## 背景関数 ble/complete/auto-menu.idle
+function ble/complete/auto-menu.idle {
+  ble/util/idle.wait-user-input
+  [[ $_ble_complete_menu_active ]] && return 0
+  ((bleopt_complete_auto_menu>0)) || return 1
+
+  case $_ble_decode_widget_last in
+  (ble/widget/self-insert) ;;
+  (ble/widget/complete) ;;
+  (ble/widget/vi_imap/complete) ;;
+  (ble/widget/auto_complete/self-insert) ;;
+  (*) return 0 ;;
+  esac
+
+  [[ $_ble_edit_str ]] || return 0
+
+  # bleopt_complete_auto_delay だけ経過してから処理
+  local rest_delay=$((bleopt_complete_auto_menu-ble_util_idle_elapsed))
+  if ((rest_delay>0)); then
+    ble/util/idle.sleep "$rest_delay"
+    return 0
+  fi
+
+  ble/widget/complete show_menu:no-empty
+}
+
 ble/function#try ble/util/idle.push-background ble/complete/auto-complete.idle
+ble/function#try ble/util/idle.push-background ble/complete/auto-menu.idle
 
 ## 編集関数 ble/widget/auto-complete-enter
 ##
