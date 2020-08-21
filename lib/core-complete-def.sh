@@ -68,6 +68,7 @@ bleopt/declare -v menu_linewise_prefix ''
 bleopt/declare -n complete_menu_align 20
 bleopt/declare -v complete_menu_complete 1
 bleopt/declare -v complete_menu_filter 1
+bleopt/declare -v complete_menu_maxlines '-1'
 
 ble/util/autoload "$_ble_base/lib/core-complete.sh" \
                   ble/complete/menu#start \

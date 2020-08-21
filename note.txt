@@ -3315,6 +3315,56 @@ bash_tips
 
 2020-08-22
 
+  * complete: menu に高さ制限を加えるオプションを追加する [#D1375]
+
+    menu に高さ制限を加えた方が良いかもしれない。
+    自動的に表示される物で画面がクリアされてしまうのは不便といえば不便である。
+    自動で表示する場合には menu に高さ制限を加えるのも一つの手である。
+    然し、自動でメニューを表示した後に手動のメニューに移行する場合にどのようにするのか。
+    例えば、メニューの項目に入る時に再配置が起こるのは問題がある気がする。
+    然し、だからと言って TAB で表示したメニューと自動で表示したメニューで
+    高さが異なるままメニュー選択に入るのも一貫性がない様な気がする。
+
+    実は、通常の場合でも高さ制限を加えたいという需要はあるかもしれない。
+    ユーザが高さ制限を指定してそれを TAB 補完でも自動メニューの共通の設定とするのが自然。
+
+    どの様に高さを決定しているのかを調べようとしたが、
+    どうも cols lines の変数の初期化が怪しい。
+    複雑になりそうなので先に auto_menu だけでも commit する事にする。
+
+    | - "$menu_class"/render-item
+    |   - ble/complete/menu#render-item
+    |     - ble/complete/menu-style:align/construct/.measure-candidates-in-page
+    |       - "$menu_style"/construct-page
+    |         - ble/complete/menu#construct (init)
+    |     - "$menu_style"/construct-page (done)
+    |     - ble/complete/menu#select (init)
+    |
+    | - "$menu_style"/guess
+    |   - ble/complete/menu#construct (done)
+    |
+    | - [fixed] ble/complete/menu#construct
+    |   これは中で使っている様に見えるが呼び出し元を確認しても設定している様子がない。
+    |   更に、同じ関数内の後で local cols lines として初期化を行っている。
+    |   これは書き換えのミスではないだろうか。
+    |
+    |   少なくとも一つのケースで cols= lines= と空である事を確認した。つまりこれはミスである。
+    |
+    | - [fixed] ble/complete/menu#select (1)
+    |   内部で cols lines を初期化しているがどの関数が使っているのか不明。
+    |   ble/complete/menu/show しか使っていない様に見えるが、
+    |   ble/complete/menu/show は cols lines を外から受け付けたりはしない筈である。
+    |   後で再確認する→やはり ble/complete/menu/show は cols lines を外から受け付けない。
+    |   この初期化は削除する事にする。
+    |
+    | - ble/complete/menu#select (2)
+    |   もう一箇所では cols lines を初期化した後に
+    |   ble/complete/menu#render-item を呼び出している。
+    |   これは必要な初期化である。
+
+    既存の cols lines の仕様については整理した。OK
+    新しく行数を制限する様に実装した。動いている。OK
+
   * prompt: \q{...} で存在しない物を指定した時 [#D1374]
     文字を入力するたびにエラーメッセージが表示される。
     これが意味する所は実はキー入力をする度にプロンプトの計算を

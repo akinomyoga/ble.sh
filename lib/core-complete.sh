@@ -86,6 +86,8 @@ _ble_complete_menu_style_pages=()
 #
 
 ## 関数 ble/complete/menu#render-item item opts
+##   @var[in] cols lines
+##     Note: "$menu_class"/render-item の中で用いる。
 ##   @var[out] x y ret
 function ble/complete/menu#render-item {
   # use custom renderer
@@ -419,6 +421,13 @@ function ble/complete/menu-style:desc-raw/guess {
   ble/complete/menu-style:desc/guess
 }
 
+## 関数 ble/complete/menu#construct/.initialize-size
+##   @var[out] cols lines
+function ble/complete/menu#construct/.initialize-size {
+  ble-edit/info/.initialize-size
+  local maxlines=$((bleopt_complete_menu_maxlines))
+  ((maxlines>0&&lines>maxlines)) && lines=$maxlines
+}
 ## 関数 ble/complete/menu#construct menu_opts
 ##   実装分離の adapter 部分
 ##
@@ -460,6 +469,8 @@ function ble/complete/menu#construct {
   local menu_iloop=0
   local menu_interval=$bleopt_complete_polling_cycle
 
+  local cols lines
+  ble/complete/menu#construct/.initialize-size
   local nitem=${#menu_items[@]}
   local version=$nitem:$lines:$cols
 
@@ -474,9 +485,6 @@ function ble/complete/menu#construct {
     _ble_complete_menu_selected=-1
     return 0
   fi
-
-  local cols lines
-  ble-edit/info/.initialize-size
 
   # 表示したい項目の指定
   local scroll=0 rex=':scroll=([0-9]+):' use_cache=
@@ -555,8 +563,6 @@ function ble/complete/menu#select {
   local visible_beg=$_ble_complete_menu_offset
   local visible_end=$((visible_beg+${#_ble_complete_menu_icons[@]}))
   if ((nsel>=0&&!(visible_beg<=nsel&&nsel<visible_end))); then
-    local cols lines ret
-    ble-edit/info/.initialize-size
     ble/complete/menu/show filter:load-filtered-data:scroll="$nsel"; local ext=$?
     ((ext)) && return "$ext"
 
@@ -606,7 +612,7 @@ function ble/complete/menu#select {
 
     # construct reverted candidate
     local ret cols lines
-    ble-edit/info/.initialize-size
+    ble/complete/menu#construct/.initialize-size
     ble/complete/menu#render-item "$item" selected
 
     if ((y<_ble_canvas_panel_height[_ble_edit_info_panel])); then

@@ -36,6 +36,7 @@
 - edit: support Bash 5.1 widgets `#D1368` e747ee3
 - color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` f7dc477
 - complete: support `bleopt complete_auto_menu` `#D1373` 0000000
+- complete: support `bleopt complete_menu_maxlines` `#D1375` 0000000
 
 ## Changes
 

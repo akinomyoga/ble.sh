@@ -389,6 +389,12 @@
 #bleopt complete_menu_align=20
 
 
+## The following setting specifies the maximal height of the menu.
+## When this value is evaluated to be a positive integer, the maximal
+## line number of the menu is limited to that value.
+
+#bleopt complete_menu_maxlines=10
+
 ## The following setting specifies the prefix for complete_menu_style=linewise.
 ## For example, the candidate number can be shown by setting the value "%d".
 ## ANSI escape sequences can be used.
