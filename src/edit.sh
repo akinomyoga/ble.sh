@@ -691,6 +691,10 @@ function ble-edit/prompt/update {
     LINES=$ps1_height ble-edit/prompt/.instantiate "$bleopt_rps1" confine:relative:measure-bbox "${_ble_edit_rprompt[@]:1}"
     _ble_edit_rprompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
     _ble_edit_rprompt_bbox=("$x1" "$y1" "$x2" "$y2")
+  elif [[ $_ble_edit_rprompt ]]; then
+    # 新しい rps1 が空の場合、前回の rps1 が残っていればクリア
+    _ble_edit_rprompt_bbox=()
+    _ble_edit_rprompt=()
   fi
 }
 
