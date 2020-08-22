@@ -32,7 +32,9 @@
 - edit: support `bind 'set show-mode-in-prompt'` `#D1365` 76be6f1
   - prompt: fix a bug that mode string is not shown in `auto_complete` and other sub-modes (reported by tigger04) `#D1371` f6fc7ff
   - prompt: redraw prompts on the prompt content change (reported by tigger04) `#D1371` 1954a1e
-- prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 06381c9 `#D1374` 0000000
+- prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 06381c9
+  - prompt: fix a bug that prompt are always re-insntiated for every rendering `#D1374` 0000000
+  - prompt: fix a bug that rprompt is not cleared when `bleopt prompt_rps1` is reset `#D1377` 0000000
 - edit: support Bash 5.1 widgets `#D1368` e747ee3
 - color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` f7dc477
 - complete: support `bleopt complete_auto_menu` `#D1373` 0000000

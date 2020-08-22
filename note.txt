@@ -3315,6 +3315,11 @@ bash_tips
 
 2020-08-22
 
+  * prompt: bleopt prompt_rps1= を clear しても内容が残り続けて表示が乱れる [#D1377]
+    prompt_rps1 に別の有限の大きさの文字列を指定した時には問題は起こらない。
+    これは prompt_rps1= の時に rprompt の情報が全く更新されないのが問題だった。
+    クリアすらされなくなってしまう。修正した。
+
   * contrib: prompt-git で適当にキャッシュを行うようにしたい [#D1376]
     ble.sh の側からは cache の更新を管理するために、
     _ble_prompt_update という変数を提供する事にした。
