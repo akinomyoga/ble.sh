@@ -3315,6 +3315,15 @@ bash_tips
 
 2020-08-22
 
+  * contrib: prompt-git で適当にキャッシュを行うようにしたい [#D1376]
+    ble.sh の側からは cache の更新を管理するために、
+    _ble_prompt_update という変数を提供する事にした。
+    contrib/prompt-git でキャッシュする様にした。
+
+    これは mshex で screen の window-title にリポジトリ名を表示するため。
+    取り敢えず mshex にこれを利用して git name を PS1 screen title から
+    表示する様に実装してみた。動いている。
+
   * complete: menu に高さ制限を加えるオプションを追加する [#D1375]
 
     menu に高さ制限を加えた方が良いかもしれない。

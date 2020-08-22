@@ -37,6 +37,7 @@
 - color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` f7dc477
 - complete: support `bleopt complete_auto_menu` `#D1373` 0000000
 - complete: support `bleopt complete_menu_maxlines` `#D1375` 0000000
+- prompt: support `_ble_prompt_update` `#D1376` 0000000
 
 ## Changes
 

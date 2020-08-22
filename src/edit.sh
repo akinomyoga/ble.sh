@@ -183,36 +183,40 @@ bleopt/declare -v line_limit_type none
 #------------------------------------------------------------------------------
 # **** prompt ****                                                    @line.ps1
 
+## @var _ble_prompt_update
+##   ble/prompt/update でのプロンプト更新の度にインクリメントする変数
+_ble_prompt_update=0
+
 ## called by ble-edit/initialize
 function ble/prompt/initialize {
   # hostname
-  _ble_edit_prompt__string_H=${HOSTNAME}
+  _ble_prompt_const_H=${HOSTNAME}
   if local rex='^[0-9]+(\.[0-9]){3}$'; [[ $HOSTNAME =~ $rex ]]; then
     # IPv4 の形式の場合には省略しない
-    _ble_edit_prompt__string_h=$HOSTNAME
+    _ble_prompt_const_h=$HOSTNAME
   else
-    _ble_edit_prompt__string_h=${HOSTNAME%%.*}
+    _ble_prompt_const_h=${HOSTNAME%%.*}
   fi
 
   # tty basename
   local tmp; ble/util/assign tmp 'ble/bin/tty 2>/dev/null'
-  _ble_edit_prompt__string_l=${tmp##*/}
+  _ble_prompt_const_l=${tmp##*/}
 
   # command name
-  _ble_edit_prompt__string_s=${0##*/}
+  _ble_prompt_const_s=${0##*/}
 
   # user
-  _ble_edit_prompt__string_u=${USER}
+  _ble_prompt_const_u=${USER}
 
   # bash versions
-  ble/util/sprintf _ble_edit_prompt__string_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
-  ble/util/sprintf _ble_edit_prompt__string_V '%d.%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" "${BASH_VERSINFO[2]}"
+  ble/util/sprintf _ble_prompt_const_v '%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"
+  ble/util/sprintf _ble_prompt_const_V '%d.%d.%d' "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}" "${BASH_VERSINFO[2]}"
 
   # uid
   if [[ $EUID -eq 0 ]]; then
-    _ble_edit_prompt__string_root='#'
+    _ble_prompt_const_root='#'
   else
-    _ble_edit_prompt__string_root='$'
+    _ble_prompt_const_root='$'
   fi
 
   if [[ $OSTYPE == cygwin* ]]; then
@@ -234,7 +238,7 @@ function ble/prompt/initialize {
     fi
 
     if [[ -e $windir && -w $windir ]]; then
-      _ble_edit_prompt__string_root='#'
+      _ble_prompt_const_root='#'
     fi
   elif [[ $OSTYPE == msys* ]]; then
     # msys64/etc/bash.bashrc に倣う
@@ -244,7 +248,7 @@ function ble/prompt/initialize {
       ble/util/assign getent 'getent -w group S-1-16-12288'
       ble/string#split getent : "$getent"
       [[ " $id " == *" ${getent[1]} "* ]] &&
-        _ble_edit_prompt__string_root='#'
+        _ble_prompt_const_root='#'
     fi
   fi
 }
@@ -345,7 +349,7 @@ function ble/prompt/.process-backslash {
       ble/history/get-count -v count
       ble/canvas/put.draw $((count+1)) ;;
     ('$') # # or $
-      ble/prompt/print "$_ble_edit_prompt__string_root" ;;
+      ble/prompt/print "$_ble_prompt_const_root" ;;
     (\\)
       # '\\' は '\' と出力された後に、更に "" 内で評価された時に次の文字をエスケープする。
       # 例えば '\\$' は一旦 '\$' となり、更に展開されて '$' となる。'\\\\' も同様に '\' になる。
@@ -437,11 +441,11 @@ function ble/prompt/backslash:e {
   return 0
 }
 function ble/prompt/backslash:h { # = ホスト名
-  ble/prompt/print "$_ble_edit_prompt__string_h"
+  ble/prompt/print "$_ble_prompt_const_h"
   return 0
 }
 function ble/prompt/backslash:H { # = ホスト名
-  ble/prompt/print "$_ble_edit_prompt__string_H"
+  ble/prompt/print "$_ble_prompt_const_H"
   return 0
 }
 function ble/prompt/backslash:j { #   ジョブの数
@@ -454,7 +458,7 @@ function ble/prompt/backslash:j { #   ジョブの数
   return 0
 }
 function ble/prompt/backslash:l { #   tty basename
-  ble/prompt/print "$_ble_edit_prompt__string_l"
+  ble/prompt/print "$_ble_prompt_const_l"
   return 0
 }
 function ble/prompt/backslash:n {
@@ -466,19 +470,19 @@ function ble/prompt/backslash:r {
   return 0
 }
 function ble/prompt/backslash:s { # 4 "bash"
-  ble/prompt/print "$_ble_edit_prompt__string_s"
+  ble/prompt/print "$_ble_prompt_const_s"
   return 0
 }
 function ble/prompt/backslash:u { # = ユーザ名
-  ble/prompt/print "$_ble_edit_prompt__string_u"
+  ble/prompt/print "$_ble_prompt_const_u"
   return 0
 }
 function ble/prompt/backslash:v { # = bash version %d.%d
-  ble/prompt/print "$_ble_edit_prompt__string_v"
+  ble/prompt/print "$_ble_prompt_const_v"
   return 0
 }
 function ble/prompt/backslash:V { # = bash version %d.%d.%d
-  ble/prompt/print "$_ble_edit_prompt__string_V"
+  ble/prompt/print "$_ble_prompt_const_V"
   return 0
 }
 function ble/prompt/backslash:w { # PWD
@@ -800,6 +804,7 @@ function ble/prompt/update {
     return 0
   fi
 
+  ((_ble_prompt_update++))
   local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
 
   # update PS1
