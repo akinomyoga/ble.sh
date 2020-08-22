@@ -3315,6 +3315,35 @@ bash_tips
 
 2020-08-22
 
+  * prompt: bleopt prompt_screen_title や prompt_xterm_title 等を用意しても良い [#D1378]
+
+    * done: 自動的に screen/tmux を判定してこれらを有効にする。
+      どちらも異なる TERM を設定している事があるので DA2R によって判定したい。
+
+      https://qiita.com/kefir_/items/0bda5e55f43392420d66 によると tmux の DA2 は
+      0;95;0 という事になっているが実際に確かめてみると 84;0;0 になっている。
+      0:95:0 だと xterm と区別がつかないので無視する事にする。
+
+    * done: ASCII 以外の文字を自動的に # 等に置換する機能も考えられる。
+
+    * done: tsl, fsl で囲む様にする。と思ったが微妙な気がする。
+      tsl, fsl は status line の内容を指定する物で、
+      tmux の terminfo は OSC 0 と同一視しているが、
+      xterm 等他の terminfo は OSC 0 とは考えていない。
+      tmux は確かに OSC 0 の内容をステータスに表示するからそれで正しいのだろう。
+      然し、端末によってはステータスバーが別個にある場合もあり必ずしも
+      tsl/fsl が OSC 0 に対応している訳ではない。
+
+      →新しく独立した設定を作成する事にした。
+
+    結果として
+    - bleopt prompt_xterm_title
+    - bleopt prompt_screen_title
+    - bleopt prompt_status_line
+    の三種類の設定を追加する事になった。
+
+    * done: wiki.en, wiki.ja, blerc
+
   * prompt: bleopt prompt_rps1= を clear しても内容が残り続けて表示が乱れる [#D1377]
     prompt_rps1 に別の有限の大きさの文字列を指定した時には問題は起こらない。
     これは prompt_rps1= の時に rprompt の情報が全く更新されないのが問題だった。

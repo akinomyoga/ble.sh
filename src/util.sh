@@ -3986,7 +3986,13 @@ function ble/term/DA2/initialize-term {
     if [[ $TERM == cygwin && $_ble_term_DA2R =~ $rex ]]; then
       _ble_term_TERM=cygwin
     fi ;;
+  ('83;'*)
+    local rex='^83;[0-9]+;0$'
+    [[ $_ble_term_DA2R =~ $rex ]] && _ble_term_TERM=screen ;;
+  ('84;0;0')
+    _ble_term_TERM=tmux ;;
   esac
+  return 0
 }
 
 _ble_term_DA1R=

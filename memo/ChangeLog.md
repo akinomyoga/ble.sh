@@ -40,6 +40,7 @@
 - complete: support `bleopt complete_auto_menu` `#D1373` 0000000
 - complete: support `bleopt complete_menu_maxlines` `#D1375` 0000000
 - prompt: support `_ble_prompt_update` `#D1376` 0000000
+- prompt: support `bleopt prompt_{xterm_title,screen_title,status_line}` `#D1378` 0000000
 
 ## Changes
 

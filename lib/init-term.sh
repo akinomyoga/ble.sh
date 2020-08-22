@@ -177,6 +177,13 @@ function ble/init:term/initialize {
   [[ $_ble_term_civis == $'\e[?25l'* && $_ble_term_cvvis != *$'\e[?25h'* ]] &&
     _ble_term_cvvis=$_ble_term_cvvis$'\e[?25h'
 
+  # status lines
+  ble/init:term/define-cap _ble_term_tsl '' tsl:ts
+  ble/init:term/define-cap _ble_term_fsl '' fsl:fs
+  ble/init:term/define-cap _ble_term_dsl '' dsl:ds
+  [[ ! $_ble_term_dsl && $_ble_term_fsl ]] &&
+    _ble_term_dsl=$_ble_term_tsl$_ble_term_fsl
+
   # SGR clear
   ble/init:term/define-cap _ble_term_sgr0 $'\e[m' sgr0:me
 

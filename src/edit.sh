@@ -102,6 +102,9 @@ bleopt/declare -v prompt_ps1_transient ''
 bleopt/declare -v prompt_rps1 ''
 bleopt/declare -v prompt_rps1_final ''
 bleopt/declare -v prompt_rps1_transient ''
+bleopt/declare -v prompt_xterm_title  ''
+bleopt/declare -v prompt_screen_title ''
+bleopt/declare -v prompt_status_line  ''
 # obsoleted options
 bleopt/declare -o rps1 prompt_rps1
 bleopt/declare -o rps1_transient prompt_rps1_transient
@@ -274,6 +277,10 @@ _ble_edit_prompt=("" 0 0 0 32 0 "" "")
 _ble_edit_rprompt_dirty=
 _ble_edit_rprompt_bbox=()
 _ble_edit_rprompt=()
+
+_ble_prompt_xterm_title=()
+_ble_prompt_screen_title=()
+_ble_prompt_status_line=()
 
 ## 関数 ble/prompt/.load
 ##   @var[out] x y g
@@ -729,8 +736,11 @@ function ble/prompt/.instantiate {
   fi
 
   # 3. 端末への出力を構成する
-  trace_hash=$COLUMNS:$expanded
-  if [[ $trace_hash != "$trace_hash0" ]]; then
+  if [[ :$opts: == *:no-trace:* ]]; then
+    # Note: "ESC k ... ESC \" 等を対象とするプロンプト文字列は trace 不要
+    x=0 y=0 g=0 lc=32 lg=0
+    esc=$expanded
+  elif trace_hash=$COLUMNS:$expanded; [[ $trace_hash != "$trace_hash0" ]]; then
     x=0 y=0 g=0 lc=32 lg=0
     ble/canvas/trace "$expanded" "$opts:prompt:left-char"; local traced=$ret
     ((lc<0&&(lc=0)))
@@ -741,6 +751,27 @@ function ble/prompt/.instantiate {
     esc=$esc0
     return 2
   fi
+}
+## 関数 ble/prompt/.instantiate-constrol-string name ps
+##   @var[in] version
+##   @var[out] ret
+##
+##   @var[in,out] $name
+##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
+function ble/prompt/.instantiate-control-string {
+  local name=$1 ps=$2
+  ret=
+  local -a prompt_data=()
+  if [[ $ps ]]; then
+    local -a prompt_data; eval "prompt_data=(\"\${$name[@]}\")"
+    local trace_hash esc x y g lc lg
+    LINES=1 ble/prompt/.instantiate "$ps" confine:no-trace "${prompt_data[@]:1}"
+    prompt_data=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
+
+    local LC_ALL= LC_COLLATE=C
+    ret=${esc//[! -~]/'#'}
+  fi 2>/dev/null
+  eval "$name=(\"\${prompt_data[@]}\")"
 }
 
 function ble/prompt/update/.has-prompt_command {
@@ -837,6 +868,34 @@ function ble/prompt/update {
     _ble_edit_rprompt_dirty=1
     _ble_edit_rprompt_bbox=()
     _ble_edit_rprompt=()
+  fi
+
+  # bleopt prompt_xterm_title
+  local ret
+  ble/prompt/.instantiate-control-string _ble_prompt_xterm_title "$bleopt_prompt_xterm_title"
+  [[ $ret ]] && ret=$'\e]0;'$ret$'\a'
+  _ble_prompt_xterm_title[6]=$ret
+
+  # bleopt prompt_screen_title
+  case $_ble_term_TERM in
+  (screen|tmux|contra)
+    local ret
+    ble/prompt/.instantiate-control-string _ble_prompt_screen_title "$bleopt_prompt_screen_title"
+    [[ $ret ]] && ret=$'\ek'$ret$'\e\\'
+    _ble_prompt_screen_title[6]=$ret ;;
+  esac
+
+  # bleopt prompt_status_line
+  if [[ $_ble_term_tsl && $_ble_term_fsl ]]; then
+    local ret
+    ble/prompt/.instantiate-control-string _ble_prompt_status_line "$bleopt_prompt_status_line"
+    if [[ $ret ]]; then
+      ret=$_ble_term_tsl$ret$_ble_term_fsl
+    elif [[ $bleopt_prompt_status_line ]]; then
+      # bleopt_prompt_status_line が設定されているのに結果が空の時、ステータス行をクリアする
+      ret=$_ble_term_dsl
+    fi
+    _ble_prompt_status_line[6]=$ret
   fi
 }
 function ble/prompt/clear {
@@ -1894,6 +1953,9 @@ function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
 ## 関数 ble/textarea#render/.show-prompt
 function ble/textarea#render/.show-prompt {
   local esc=${_ble_edit_prompt[6]}
+  esc=${_ble_prompt_xterm_title[6]}$esc
+  esc=${_ble_prompt_screen_title[6]}$esc
+  esc=${_ble_prompt_status_line[6]}$esc
   local prox=${_ble_edit_prompt[1]}
   local proy=${_ble_edit_prompt[2]}
   ble/canvas/panel#goto.draw "$_ble_textarea_panel"
@@ -1904,7 +1966,8 @@ function ble/textarea#render/.show-prompt {
 ##   @var[in] cols
 function ble/textarea#render/.show-rprompt {
   local rps1out=${_ble_edit_rprompt[6]}
-  local rps1x=${_ble_edit_rprompt[1]} rps1y=${_ble_edit_rprompt[2]}
+  local rps1x=${_ble_edit_rprompt[1]}
+  local rps1y=${_ble_edit_rprompt[2]}
   # Note: cols は画面右端ではなく textmap の右端
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
   ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out" $((cols+1+rps1x)) "$rps1y"
@@ -2156,9 +2219,12 @@ function ble/textarea#render {
       fi
     fi
 
-    local esc_prompt=${_ble_edit_prompt[6]}
+    local esc=${_ble_edit_prompt[6]}
+    esc=${_ble_prompt_xterm_title[6]}$esc
+    esc=${_ble_prompt_screen_title[6]}$esc
+    esc=${_ble_prompt_status_line[6]}$esc
     _ble_textarea_cache=(
-      "$esc_prompt$esc_line"
+      "$esc$esc_line"
       "${_ble_textarea_cur[@]}"
       "$_ble_textarea_gendx" "$_ble_textarea_gendy")
   fi
