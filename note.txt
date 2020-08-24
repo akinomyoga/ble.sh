@@ -3313,6 +3313,26 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-08-25
+
+  * syntax: syntax-highlighting を無効にする機能 (requested by pjmp) [#D1379]
+    https://github.com/akinomyoga/ble.sh/issues/61
+
+    #58 に関連して実装しようかと思っていたが丁度 request が来た。実装する
+
+    * done: 取り敢えず三種類のオプションを実装した。
+    * done: wiki と blerc にも説明を書いた。
+
+    * 完全に着色を消滅させるには以下を実行すれば良い筈だが、
+      自動補完やメニュー補完による一次挿入などが見えなくなるので余り有用性はないだろう。
+
+      $ _ble_term_color=1
+      $ bleopt term_true_colors=none
+
+      これはコメントで書くだけに留める。
+
+    * done: 動作テストも実施した。幾つか修正した。
+
 2020-08-22
 
   * prompt: bleopt prompt_screen_title や prompt_xterm_title 等を用意しても良い [#D1378]

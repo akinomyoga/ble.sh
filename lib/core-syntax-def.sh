@@ -92,6 +92,9 @@ ble-import -d lib/core-syntax
 # グローバル変数の定義 (関数内からではできないのでここで先に定義)
 
 bleopt/declare -v filename_ls_colors ''
+bleopt/declare -v highlight_syntax 1
+bleopt/declare -v highlight_filename 1
+bleopt/declare -v highlight_variable 1
 
 if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   if ((_ble_bash>=40200)); then

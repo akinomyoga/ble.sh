@@ -1513,6 +1513,11 @@ function ble/syntax:bash/initialize-vars {
 ##   @var[out,opt] lookahead
 ##     tail が指定された時にのみ設定されます。
 function ble/syntax/highlight/vartype {
+  if [[ ! $bleopt_highlight_variable ]]; then
+    ret=$ATTR_VAR
+    return 0
+  fi
+
   local name=$1 opts=$2 tail=$3 rex='^-?[0-9]+(#[0-9a-zA-Z@_]*)?$'
   if [[ ${!name+set} ]]; then
     local attr; ble/variable#get-attr "$name"
@@ -6197,7 +6202,9 @@ function ble/syntax/progcolor/word:default {
     # 展開・コマンド置換などに従った解析が行われるが、
     # 実行は一切起こらないので一色で塗りつぶす。
     ((type=wtype))
-  elif local wtxt=${text:p0:p1-p0}; ble/syntax:bash/simple-word/is-simple "$wtxt"; then
+  elif [[ $bleopt_highlight_filename ]] &&
+         local wtxt=${text:p0:p1-p0} && ble/syntax:bash/simple-word/is-simple "$wtxt"
+  then
     local path_opts=after-sep
 
     # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
@@ -6334,6 +6341,7 @@ function ble/highlight/layer:syntax/fill {
 
 _ble_highlight_layer_syntax_VARNAMES=(
   _ble_highlight_layer_syntax_buff
+  _ble_highlight_layer_syntax_active
   _ble_highlight_layer_syntax1_table
   _ble_highlight_layer_syntax2_table
   _ble_highlight_layer_syntax3_list
@@ -6558,11 +6566,27 @@ function ble/highlight/layer:syntax/update {
   local text=$1 player=$2
   local i iN=${#text}
 
-  #--------------------------------------------------------
-
   local umin=-1 umax=-1
   # 少なくともこの範囲は文字が変わっているので再描画する必要がある
   ((DMIN>=0)) && umin=$DMIN umax=$DMAX
+
+  # 今回 layer:syntax が無効の時
+  if [[ ! $bleopt_highlight_syntax ]]; then
+    if [[ $_ble_highlight_layer_syntax_active ]]; then
+      _ble_highlight_layer_syntax_active=
+      PREV_UMIN=0 PREV_UMAX=${#1}
+    fi
+    return
+  fi
+
+  # 前回 layer:syntax が無効だった時
+  if [[ ! $_ble_highlight_layer_syntax_active ]]; then
+    # Request full update
+    _ble_highlight_layer_syntax_active=1
+    umin=0 umax=${#text}
+  fi
+
+  #--------------------------------------------------------
 
 #%if !release
   if [[ $ble_debug ]]; then
@@ -6640,6 +6664,7 @@ function ble/highlight/layer:syntax/update {
 }
 
 function ble/highlight/layer:syntax/getg {
+  [[ ! $bleopt_highlight_syntax ]] && return
   local i=$1
   if [[ ${_ble_highlight_layer_syntax3_table[i]} ]]; then
     g=${_ble_highlight_layer_syntax3_table[i]}
@@ -6647,8 +6672,6 @@ function ble/highlight/layer:syntax/getg {
     g=${_ble_highlight_layer_syntax2_table[i]}
   elif [[ ${_ble_highlight_layer_syntax1_table[i]} ]]; then
     g=${_ble_highlight_layer_syntax1_table[i]}
-  else
-    g=
   fi
 }
 

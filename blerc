@@ -449,6 +449,21 @@
 # bleopt filename_ls_colors="$LS_COLORS"
 
 
+## The following settings controls enable or disable the syntax
+## highlighting.  When the setting "highlight_syntax" has a non-empty
+## value, the syntax highlighting is enabled.  When the setting
+## "highlight_filename" has a non-empty value, the highlighting based
+## on the filename and the command name is enabled during the process
+## of the syntax highlighting.  Similarly, when the setting
+## "highlight_variable" has a non-empty value, the highlighting based
+## on the variable type is enabled.  All of these settings have
+## non-empty values by default.
+
+# bleopt highlight_syntax=
+# bleopt highlight_filename=
+# bleopt highlight_variable=
+
+
 ## The following settings specify graphic styles of each faces.
 
 # ble-color-setface region                    fg=white,bg=60

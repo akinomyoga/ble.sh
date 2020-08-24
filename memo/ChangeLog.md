@@ -33,14 +33,15 @@
   - prompt: fix a bug that mode string is not shown in `auto_complete` and other sub-modes (reported by tigger04) `#D1371` f6fc7ff
   - prompt: redraw prompts on the prompt content change (reported by tigger04) `#D1371` 1954a1e
 - prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 06381c9
-  - prompt: fix a bug that prompt are always re-insntiated for every rendering `#D1374` 0000000
-  - prompt: fix a bug that rprompt is not cleared when `bleopt prompt_rps1` is reset `#D1377` 0000000
+  - prompt: fix a bug that prompt are always re-insntiated for every rendering `#D1374` 0770cda
+  - prompt: fix a bug that rprompt is not cleared when `bleopt prompt_rps1` is reset `#D1377` 1904b1d
 - edit: support Bash 5.1 widgets `#D1368` e747ee3
 - color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` f7dc477
-- complete: support `bleopt complete_auto_menu` `#D1373` 0000000
-- complete: support `bleopt complete_menu_maxlines` `#D1375` 0000000
-- prompt: support `_ble_prompt_update` `#D1376` 0000000
-- prompt: support `bleopt prompt_{xterm_title,screen_title,status_line}` `#D1378` 0000000
+- complete: support `bleopt complete_auto_menu` `#D1373` 77bfabd
+- complete: support `bleopt complete_menu_maxlines` `#D1375` 8e81cd7
+- prompt: support `_ble_prompt_update` `#D1376` 0fa8739
+- prompt: support `bleopt prompt_{xterm_title,screen_title,status_line}` `#D1378` 5c3f6fe
+- syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0000000
 
 ## Changes
 
@@ -119,7 +120,7 @@
 - main: fix problems caused by multiple `source ble.sh` in bashrc `#D1354` 5476933
 - syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 4760409
 - complete: quote `#` and `~` at the beginning of word `#D1362` f62fe54
-- decode (`bind`): work around `shopt -s nocasematch` (reported by tigger04) `#D1372` 0000000
+- decode (`bind`): work around `shopt -s nocasematch` (reported by tigger04) `#D1372` 855cacf
 
 ## Compatibility
 
