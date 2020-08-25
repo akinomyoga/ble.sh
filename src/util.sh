@@ -3025,7 +3025,7 @@ if ((_ble_bash>=40200)); then
   }
   if ble/util/.has-bashbug-printf-uffff; then
     function ble/util/c2s-impl {
-      if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_cache_ctype == *.utf-8 || $_ble_util_cache_ctype == *.utf8 ]]; then
+      if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_locale_encoding == UTF-8 ]]; then
         builtin printf -v ret '\\x%02x' $((0xE0|$1>>12&0x0F)) $((0x80|$1>>6&0x3F)) $((0x80|$1&0x3F))
       else
         builtin printf -v ret '\\U%08x' "$1"
