@@ -32,6 +32,7 @@ echo @.sh >&2
 #
 
 #%if measure_load_time
+echo "ble.sh: $EPOCHREALTIME load start" >&2
 time {
 # load_time (2015-12-03)
 #   core           12ms
@@ -865,21 +866,30 @@ blehook EXIT+=ble/base/unload
 _ble_base_attach_from_prompt=
 ## 関数 ble/base/attach-from-PROMPT_COMMAND prompt_command lambda
 function ble/base/attach-from-PROMPT_COMMAND {
+#%if measure_load_time
+  echo "ble.sh: $EPOCHREALTIME start prompt-attach" >&2
+#%end
   # 後続の設定によって PROMPT_COMMAND が置換された場合にはそれを保持する
   {
-    local prompt_command=$1 lambda=$2
+    if (($#==0)); then
+      ble/array#replace PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
+      blehook PRECMD-=ble/base/attach-from-PROMPT_COMMAND
+    else
+      local prompt_command=$1 lambda=$2
 
-    [[ $PROMPT_COMMAND != "$lambda" ]] && local PROMPT_COMMAND
-    PROMPT_COMMAND=$prompt_command
-    local ble_base_attach_from_prompt_command=processing
-    ble/prompt/update/.eval-prompt_command 2>&3
-    ble/util/unlocal ble_base_attach_from_prompt_command
-    blehook PRECMD-="$lambda"
+      # 待避していた内容を復元・実行
+      [[ $PROMPT_COMMAND != "$lambda" ]] && local PROMPT_COMMAND
+      PROMPT_COMMAND=$prompt_command
+      local ble_base_attach_from_prompt_command=processing
+      ble/prompt/update/.eval-prompt_command 2>&3
+      ble/util/unlocal ble_base_attach_from_prompt_command
+      blehook PRECMD-="$lambda"
 
-    # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
-    #   外側で ble-attach を実行する様にする。3>&2 2>/dev/null のリダ
-    #   イレクトにより stdout.off の効果が巻き戻されるのを防ぐ為。
-    [[ $ble_base_attach_from_prompt_command == processing ]] && return
+      # #D1354: 入れ子の ble/base/attach-from-PROMPT_COMMAND の時は一番
+      #   外側で ble-attach を実行する様にする。3>&2 2>/dev/null のリダ
+      #   イレクトにより stdout.off の効果が巻き戻されるのを防ぐ為。
+      [[ $ble_base_attach_from_prompt_command == processing ]] && return
+    fi
 
     # 既に attach 状態の時は処理はスキップ
     [[ $_ble_base_attach_from_prompt ]] || return 0
@@ -894,6 +904,9 @@ function ble/base/attach-from-PROMPT_COMMAND {
   # これで取り逃がすジョブもあるかもしれないが仕方ない。
   ble/util/joblist.flush &>/dev/null
   ble/util/joblist.check
+#%if measure_load_time
+  echo "ble.sh: $EPOCHREALTIME end prompt-attach" >/dev/tty
+#%end
 }
 
 function ble/base/process-blesh-arguments {
@@ -954,13 +967,22 @@ function ble/base/process-blesh-arguments {
   case $opt_attach in
   (attach) ble-attach ;;
   (prompt)
-    local q=\' Q="'\''"
     _ble_base_attach_from_prompt=1
-    ble/function#lambda PROMPT_COMMAND \
-                        "ble/base/attach-from-PROMPT_COMMAND '${PROMPT_COMMAND//$q/$Q}' \"\$FUNCNAME\""
-    if [[ $_ble_edit_detach_flag == reload ]]; then
-      _ble_edit_detach_flag=prompt-attach
-      blehook PRECMD+="$PROMPT_COMMAND"
+    if ((_ble_bash>=50100)); then
+      ((${#PROMPT_COMMAND[@]})) || PROMPT_COMMAND[0]=
+      ble/array#push PROMPT_COMMAND ble/base/attach-from-PROMPT_COMMAND
+      if [[ $_ble_edit_detach_flag == reload ]]; then
+        _ble_edit_detach_flag=prompt-attach
+        blehook PRECMD+=ble/base/attach-from-PROMPT_COMMAND
+      fi
+    else
+      local q=\' Q="'\''"
+      ble/function#lambda PROMPT_COMMAND \
+                          "ble/base/attach-from-PROMPT_COMMAND '${PROMPT_COMMAND//$q/$Q}' \"\$FUNCNAME\""
+      if [[ $_ble_edit_detach_flag == reload ]]; then
+        _ble_edit_detach_flag=prompt-attach
+        blehook PRECMD+="$PROMPT_COMMAND"
+      fi
     fi ;;
   esac
   [[ $flags != *E* ]]
@@ -1008,6 +1030,7 @@ ble/base/initialize/.clean-up 2>/dev/null # set -x 対策 #D0930
 
 #%if measure_load_time
 }
+echo "ble.sh: $EPOCHREALTIME load end" >&2
 #%end
 
 { return 0 || exit 0; } &>/dev/null # set -x 対策 #D0930

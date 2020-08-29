@@ -20,6 +20,7 @@
 - util (`ble/util/print-global-definitions`): support arrays and unset variables (test-util) 6e85f1c
 - util (`ble/util/cat`): support NUL and multiple files (test-util) d19a9af
 - edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` e97a858 `#D1338` 657bea5
+  - edit, main: support array PROMPT_COMMAND in bash-5.1 `#D1380` 0000000
 - syntax: support confusing parameter expansions like `${#@}`, etc. `#D1330` b7b42eb
 - contrib: add contrib for user settings `#D1335` f290115
 - syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 04da4dd
@@ -169,6 +170,7 @@
 - util: rename `ble/{util/openat => fd#alloc}` `#D1319` 6c2f863
 - util (`ble/function#advice remove`): restore original command 149a640
 - edit: rename `ble-edit/prompt/*` -> `ble/prompt/*` `#D1365` 76be6f1
+- main: use `PROMPT_COMMAND` in bash-5.1 for prompt attach `#D1380` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

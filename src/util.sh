@@ -519,6 +519,27 @@ function ble/array#remove-at {
     ARR=("${ARR[@]}")
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
+## 関数 ble/array#replace arr needle [replacement]
+##   needle に一致する要素を全て replacement に置換します。
+##   replacement が指定されていない時は該当要素を unset します。
+##   @var[in] arr
+##   @var[in] needle
+##   @var[in,opt] replacement
+function ble/array#replace {
+  local _ble_local_script='
+    local iARR=0 extARR=1
+    for iARR in "${!ARR[@]}"; do
+      [[ ${ARR[iARR]} == "$2" ]] || continue
+      extARR=0
+      if (($#>=3)); then
+        ARR[iARR]=$3
+      else
+        builtin unset -v '\''ARR[iARR]'\''
+      fi
+    done
+    return "$extARR"
+  '; builtin eval -- "${_ble_local_script//ARR/$1}"
+}
 
 _ble_string_prototype='        '
 function ble/string#reserve-prototype {

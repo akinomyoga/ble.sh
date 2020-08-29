@@ -775,23 +775,19 @@ function ble/prompt/.instantiate-control-string {
 }
 
 function ble/prompt/update/.has-prompt_command {
-  ((${#PROMPT_COMMANDS[@]})) || [[ $PROMPT_COMMAND ]]
+  [[ ${PROMPT_COMMAND[*]} ]]
 }
 function ble/prompt/update/.eval-prompt_command.1 {
-  # return 等と記述されていた時対策として関数内評価。
+  # Note: return 等と記述されていた時対策として関数内評価する。
   local BASH_COMMAND=$_ble_edit_exec_BASH_COMMAND
   ble-edit/exec/.setexit "$_ble_edit_exec_lastarg"
-  builtin eval -- "$PROMPT_COMMAND"
+  builtin eval -- "$1"
 }
 function ble/prompt/update/.eval-prompt_command {
-  if ((${#PROMPT_COMMANDS[@]})); then
-    local PROMPT_COMMAND
-    for PROMPT_COMMAND in "${PROMPT_COMMANDS[@]}"; do
-      ble/prompt/update/.eval-prompt_command.1
-    done
-  elif [[ $PROMPT_COMMAND ]]; then
-    ble/prompt/update/.eval-prompt_command.1
-  fi
+  local _command
+  for _command in "${PROMPT_COMMAND[@]}"; do
+    ble/prompt/update/.eval-prompt_command.1 "$_command"
+  done
 }
 ## 関数 ble/prompt/update opts
 ##   _ble_edit_PS1 からプロンプトを構築します。
