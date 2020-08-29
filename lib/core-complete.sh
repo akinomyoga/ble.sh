@@ -4211,6 +4211,8 @@ _ble_complete_state=
 ##       メニュー補完に入る時に最後の候補に移動します。
 ##     no-empty
 ##       空の COMPV による補完を抑制します。
+##     no-bell
+##       候補が存在しなかった時のベルを発生させません。
 ##
 function ble/widget/complete {
   local opts=$1
@@ -4260,7 +4262,8 @@ function ble/widget/complete {
     if ((ext==148)); then
       return 148
     elif ((ext!=0||cand_count==0)); then
-      ble/widget/.bell
+      [[ :$opts: != *:no-bell:* ]] &&
+        ble/widget/.bell 'complete: no completions'
       ble-edit/info/clear
       return 1
     fi
@@ -4280,7 +4283,8 @@ function ble/widget/complete {
     ble/complete/menu/show "$menu_show_opts" || return "$?"
     ble/complete/menu-complete/enter "$opts"; local ext=$?
     ((ext==148)) && return 148
-    ((ext)) && ble/widget/.bell
+    ((ext)) && [[ :$opts: != *:no-bell:* ]] &&
+      ble/widget/.bell 'menu-complete: no completions'
     return 0
 
   elif [[ :$opts: == *:show_menu:* ]]; then
@@ -4928,7 +4932,7 @@ function ble/complete/auto-menu.idle {
     return 0
   fi
 
-  ble/widget/complete show_menu:no-empty
+  ble/widget/complete show_menu:no-empty:no-bell
 }
 
 ble/function#try ble/util/idle.push-background ble/complete/auto-complete.idle
