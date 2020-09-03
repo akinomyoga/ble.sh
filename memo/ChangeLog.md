@@ -172,6 +172,7 @@
 - util (`ble/function#advice remove`): restore original command 149a640
 - edit: rename `ble-edit/prompt/*` -> `ble/prompt/*` `#D1365` 76be6f1
 - main: use `PROMPT_COMMAND` in bash-5.1 for prompt attach `#D1380` 0000000
+- main: unset `BLE_VERSION`, `_ble_bash`, etc. on `ble-unload` `#D1382` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
