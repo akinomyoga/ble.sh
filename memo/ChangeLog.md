@@ -20,7 +20,7 @@
 - util (`ble/util/print-global-definitions`): support arrays and unset variables (test-util) 6e85f1c
 - util (`ble/util/cat`): support NUL and multiple files (test-util) d19a9af
 - edit: support Bash 5.1 `READLINE_MARK` and `PROMPT_COMMANDS` `#D1328` e97a858 `#D1338` 657bea5
-  - edit, main: support array PROMPT_COMMAND in bash-5.1 `#D1380` 0000000
+  - edit, main: support array PROMPT_COMMAND in bash-5.1 `#D1380` b852a4f
 - syntax: support confusing parameter expansions like `${#@}`, etc. `#D1330` b7b42eb
 - contrib: add contrib for user settings `#D1335` f290115
 - syntax: support `${var@UuLK}` in Bash 5.1 `#D1336` 04da4dd
@@ -39,11 +39,11 @@
 - edit: support Bash 5.1 widgets `#D1368` e747ee3
 - color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` f7dc477
 - complete: support `bleopt complete_auto_menu` `#D1373` 77bfabd
-  - complete: fix a problem of frequent bells with auto-menu activated `#D1381` 0000000
+  - complete: fix a problem of frequent bells with auto-menu activated `#D1381` 3b1d8ac
 - complete: support `bleopt complete_menu_maxlines` `#D1375` 8e81cd7
 - prompt: support `_ble_prompt_update` `#D1376` 0fa8739
 - prompt: support `bleopt prompt_{xterm_title,screen_title,status_line}` `#D1378` 5c3f6fe
-- syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0000000
+- syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
 
 ## Changes
 
@@ -171,8 +171,9 @@
 - util: rename `ble/{util/openat => fd#alloc}` `#D1319` 6c2f863
 - util (`ble/function#advice remove`): restore original command 149a640
 - edit: rename `ble-edit/prompt/*` -> `ble/prompt/*` `#D1365` 76be6f1
-- main: use `PROMPT_COMMAND` in bash-5.1 for prompt attach `#D1380` 0000000
-- main: unset `BLE_VERSION`, `_ble_bash`, etc. on `ble-unload` `#D1382` 0000000
+- main: use `PROMPT_COMMAND` in bash-5.1 for prompt attach `#D1380` b852a4f
+- main: unset `BLE_VERSION`, `_ble_bash`, etc. on `ble-unload` `#D1382` 6b615b6
+- util: revisit `ble/variable#is-global` implementation `#D1383` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

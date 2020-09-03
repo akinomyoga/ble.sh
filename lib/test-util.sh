@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 1011
+ble/test/start-section 'util' 1016
 
 # bleopt
 
@@ -232,13 +232,18 @@ ble/test ble/util/setexit 255 exit=255
 )
 
 # ble/variable#is-global
-function is-global/test { ! local "$1" 2>/dev/null; }
-function is-global() (readonly "$1"; is-global/test "$1")
+function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
 (
   v1=1 v2=2
-  function f1 { local v2=22 v3=33; f2; }
+  ((_ble_bash>=40200)) &&
+    declare -g v1u v2u
+  function f1 {
+    local v2=22 v3=33
+    local v2u v3u
+    f2
+  }
   function f2 {
-    local v4=444
+    local v4=444 v4u
     ble/test 'is-global v0'
     ble/test 'is-global v1'
     ble/test 'is-global v2' exit=1
@@ -250,6 +255,14 @@ function is-global() (readonly "$1"; is-global/test "$1")
     ble/test 'ble/variable#is-global v2' exit=1
     ble/test 'ble/variable#is-global v3' exit=1
     ble/test 'ble/variable#is-global v4' exit=1
+
+    ble/test 'ble/variable#is-global v0u'
+    if ((_ble_bash>=40200)); then
+      ble/test 'ble/variable#is-global v1u'
+      ble/test 'ble/variable#is-global v2u' exit=1
+    fi
+    ble/test 'ble/variable#is-global v3u' exit=1
+    ble/test 'ble/variable#is-global v4u' exit=1
   }
   f1
 )
