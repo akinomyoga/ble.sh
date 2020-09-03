@@ -71,8 +71,9 @@ function ble/base/adjust-bash-options {
   _ble_bash_setv=; [[ -o verbose ]] && _ble_bash_setv=1 && set +v
   _ble_bash_setu=; [[ -o nounset ]] && _ble_bash_setu=1 && set +u
 
+  # Note: nocasematch は bash-3.0 以上
   _ble_bash_nocasematch=
-  ((_ble_bash>=30100)) && shopt -q nocasematch &&
+  shopt -q nocasematch 2>/dev/null &&
     _ble_bash_nocasematch=1 && shopt -u nocasematch
 }
 function ble/base/restore-bash-options {
@@ -88,8 +89,6 @@ function ble/base/restore-bash-options {
   _ble_bash_options_adjusted=
   ble/base/adjust-bash-options
 } &>/dev/null # set -x 対策 #D0930
-
-_ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
 
 ## @var _ble_edit_POSIXLY_CORRECT_adjusted
 ##   現在 POSIXLY_CORRECT 状態を待避した状態かどうかを保持します。
@@ -133,25 +132,54 @@ ble/base/adjust-POSIXLY_CORRECT
 
 builtin bind &>/dev/null # force to load .inputrc
 if [[ ! -o emacs && ! -o vi ]]; then
-  unset -v _ble_bash
   echo "ble.sh: ble.sh is not intended to be used with the line-editing mode disabled (--noediting)." >&2
   return 1
 fi
 
 if shopt -q restricted_shell; then
-  unset -v _ble_bash
   echo "ble.sh: ble.sh is not intended to be used in restricted shells (--restricted)." >&2
   return 1
 fi
 
 if [[ ${BASH_EXECUTION_STRING+set} ]]; then
-  unset -v _ble_bash
   # echo "ble.sh: ble.sh will not be activated for Bash started with '-c' option." >&2
   return 1 2>/dev/null || builtin exit 1
 fi
 
 _ble_init_original_IFS=$IFS
 IFS=$' \t\n'
+
+#------------------------------------------------------------------------------
+# Initialize version information
+
+_ble_bash=$((BASH_VERSINFO[0]*10000+BASH_VERSINFO[1]*100+BASH_VERSINFO[2]))
+_ble_bash_loaded_in_function=0
+[[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
+
+_ble_version=0
+#%$ echo "BLE_VERSION=$FULLVER+$(git show -s --format=%h)"
+function ble/base/initialize-version-information {
+  local version=$BLE_VERSION
+
+  local hash=
+  if [[ $version == *+* ]]; then
+    hash=${version#*+}
+    version=${version%%+*}
+  fi
+
+  local status=release
+  if [[ $version == *-* ]]; then
+    status=${version#*-}
+    version=${version%%-*}
+  fi
+
+  local major=${version%%.*}; version=${version#*.}
+  local minor=${version%%.*}; version=${version#*.}
+  local patch=${version%%.*}
+  BLE_VERSINFO=("$major" "$minor" "$patch" "$hash" "$status" noarch)
+  ((_ble_version=major*10000+minor*100+patch))
+}
+ble/base/initialize-version-information
 
 #------------------------------------------------------------------------------
 # check environment
@@ -263,31 +291,6 @@ function ble/bin/awk.use-solaris-xpg4 {
 }
 
 #------------------------------------------------------------------------------
-#%$ echo "BLE_VERSION=$FULLVER+$(git show -s --format=%h)"
-function ble/base/initialize-version-information {
-  local version=$BLE_VERSION
-
-  local hash=
-  if [[ $version == *+* ]]; then
-    hash=${version#*+}
-    version=${version%%+*}
-  fi
-
-  local status=release
-  if [[ $version == *-* ]]; then
-    status=${version#*-}
-    version=${version%%-*}
-  fi
-
-  local major=${version%%.*}; version=${version#*.}
-  local minor=${version%%.*}; version=${version#*.}
-  local patch=${version%%.*}
-  BLE_VERSINFO=("$major" "$minor" "$patch" "$hash" "$status" noarch)
-}
-ble/base/initialize-version-information
-
-_ble_bash_loaded_in_function=0
-[[ ${FUNCNAME+set} ]] && _ble_bash_loaded_in_function=1
 
 # will be overwritten by ble-core.sh
 function ble/util/assign {
@@ -378,6 +381,7 @@ function ble/base/initialize-base-directory {
 }
 if ! ble/base/initialize-base-directory "${BASH_SOURCE[0]}"; then
   echo "ble.sh: ble base directory not found!" 1>&2
+  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   return 1
 fi
 
@@ -440,6 +444,7 @@ function ble/base/initialize-runtime-directory {
 }
 if ! ble/base/initialize-runtime-directory; then
   echo "ble.sh: failed to initialize \$_ble_base_run." 1>&2
+  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   return 1
 fi
 
@@ -513,6 +518,7 @@ function ble/base/initialize-cache-directory {
 }
 if ! ble/base/initialize-cache-directory; then
   echo "ble.sh: failed to initialize \$_ble_base_cache." 1>&2
+  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   return 1
 fi
 function ble/base/print-usage-for-no-argument-command {
@@ -691,6 +697,7 @@ function ble/base/unload-for-reload {
 function ble/base/unload {
   ble/util/is-running-in-subshell && return 1
   local IFS=$' \t\n'
+  builtin unset -v _ble_bash BLE_VERSION BLE_VERSINFO
   ble/term/stty/TRAPEXIT
   ble/term/leave
   ble/util/buffer.flush >&2
