@@ -174,6 +174,7 @@
 - main: use `PROMPT_COMMAND` in bash-5.1 for prompt attach `#D1380` b852a4f
 - main: unset `BLE_VERSION`, `_ble_bash`, etc. on `ble-unload` `#D1382` 6b615b6
 - util: revisit `ble/variable#is-global` implementation `#D1383` 0000000
+- cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

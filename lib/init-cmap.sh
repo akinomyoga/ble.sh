@@ -168,7 +168,7 @@ function ble/init:cmap/initialize {
   #   余り利点もないので取り敢えずこの設定では区別しない。
   #
   # Note: ble/init:cmap/bind-keypad-key 第3引数は
-  #   1: ESC ? X, 2: SS3 X, 4: CSI X の和。
+  #   1: SS3 X, 2: ESC ? X, 4: CSI X の和。
   ble/init:cmap/bind-keypad-key 'SP' SP   3 # kpspace
   ble/init:cmap/bind-keypad-key 'A' up    5
   ble/init:cmap/bind-keypad-key 'B' down  5
@@ -202,8 +202,8 @@ function ble/init:cmap/initialize {
   ble/init:cmap/bind-keypad-key 'X' '='   7 # kpeq
 
   # xterm SM(?1004) Focus In/Out の通知
-  ble-bind --csi 'I' focus
-  ble-bind --csi 'O' blur
+  ble/init:cmap/bind-keypad-key 'I' focus 4 # Note: 1 (= SS3) は TAB と重複するので設定しない
+  ble/init:cmap/bind-keypad-key 'O' blur  5
 
   # rxvt
   #   Note: "CSI code @", "CSI code ^" は本体側で特別に処理している。
