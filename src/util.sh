@@ -75,7 +75,6 @@ function bleopt {
       ble/color/face2sgr syntax_varname; sgr2=$ret
       ble/color/face2sgr syntax_quoted; sgr3=$ret
       sgr0=$_ble_term_sgr0
-      Q=$q$sgr0"\'"$sgr3$q
     fi
 
     for var in "${pvars[@]}"; do
@@ -83,13 +82,12 @@ function bleopt {
         local value chars=$'\a\b\e\f\n\r\t\v'
         if [[ ${!var} == *["$chars"]* ]]; then
           local ret; ble/string#escape-for-bash-escape-string "${!var}"
-          value=\$\'$ret\'
+          value=$sgr3\$\'$ret\'$sgr0
         else
-          value=\'${!var//$q/$Q}\'
-          value=${value%\'\'}
-          value=${value#\'\'}
+          local ret; ble/string#quote-word "${!var}" sgrq="$sgr3"
+          value=$ret
         fi
-        builtin printf '%s\n' "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$sgr3$value$sgr0"
+        builtin printf '%s\n' "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$value"
       else
         error_flag=1
         builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
@@ -898,6 +896,29 @@ function ble/string#quote-command {
   ret=$1; shift
   local arg q=\' Q="'\''"
   for arg; do ret="$ret $q${arg//$q/$Q}$q"; done
+}
+function ble/string#quote-word {
+  ret=$1
+
+  local opts=$2 sgrq= sgr0=
+  if [[ $opts ]]; then
+    local rex=':sgrq=([^:]*):'
+    [[ :$opts: =~ $rex ]] &&
+      sgrq=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
+    rex=':sgr0=([^:]*):'
+    [[ :$opts: =~ $rex ]] &&
+      sgr0=${BASH_REMATCH[1]}
+  fi
+
+  local chars=$_ble_term_IFS'"`$\<>()|&;*?[]!^=:{,}#~' q=\'
+  if [[ $ret == *["$chars"]* ]]; then
+    local Q="'$sgr0\'$sgrq'"
+    ret=$sgrq$q${ret//$q/$Q}$q$sgr0
+    ret=${ret#$q$q} ret=${ret%$q$q}
+  elif [[ $ret == *["$q"]* ]]; then
+    local Q="\'"
+    ret=${ret//$q/$Q}
+  fi
 }
 
 ## 関数 ble/string#create-unicode-progress-bar/.block value
@@ -2026,14 +2047,17 @@ function ble/util/has-glob-pattern {
   fi
 
   local dummy=$_ble_base_run/$$.dummy ret
-  builtin eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null; local ext=$?
+  builtin eval "ret=(\"\$dummy\"/${1#/})" 2>/dev/null
   builtin eval -- "$restore"
   [[ ! $ret ]]
 }
 
-# Note: Cygwin では // で始まるパスの展開は遅い (#D1168)
+## 関数 ble/util/is-cygwin-slow-glob word
+##   Cygwin では // で始まるパスの展開は遅い (#D1168) のでその判定を行う。
 function ble/util/is-cygwin-slow-glob {
-  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $1 == //* && ! -o noglob ]] &&
+  # Note: core-complete.sh ではエスケープを行うので
+  #   "'//...'" 等の様な文字列が "$1" に渡される。
+  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && ${1#\'} == //* && ! -o noglob ]] &&
     ble/util/has-glob-pattern "$1"
 }
 

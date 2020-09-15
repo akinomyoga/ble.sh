@@ -992,16 +992,23 @@ function ble/complete/action/util/quote-insert {
     [[ $comps_flags == *B* && $COMPS == *'\' && $ins == '\'* ]] && ins=${ins:1}
 
     INSERT=$COMPS$ins
-  elif [[ $comps_fixed && $CAND == "${comps_fixed#*:}"* ]]; then
-    local comps_fixed_part=${COMPS::${comps_fixed%%:*}}
-    local compv_fixed_part=${comps_fixed#*:}
-    local ins=${CAND:${#compv_fixed_part}}
-    local ret; ble/string#escape-for-bash-specialchars "$ins" "b$escape_flags"
-    INSERT=$comps_fixed_part$ret
-
   else
-    local ret
-    ble/string#escape-for-bash-specialchars "$CAND" "$escape_flags"; INSERT=$ret
+    local ins=$CAND comps_fixed_part= compv_fixed_part=
+    if [[ $comps_fixed && $CAND == "${comps_fixed#*:}"* ]]; then
+      comps_fixed_part=${COMPS::${comps_fixed%%:*}}
+      compv_fixed_part=${comps_fixed#*:}
+      ins=${CAND:${#compv_fixed_part}}
+    fi
+
+    local ret; ble/complete/string#escape-for-completion-context "$ins" "$escape_flags"; ins=$ret
+    case $comps_flags in
+    (*S*) ins=\'$ins ;;
+    (*E*) ins=\$\'$ins ;;
+    (*D*) ins=\"$ins ;;
+    (*I*) ins=\$\"$ins ;;
+    esac
+
+    INSERT=$comps_fixed_part$ins
   fi
 }
 
@@ -1249,6 +1256,39 @@ function ble/complete/action:variable/init-menu-item {
 #------------------------------------------------------------------------------
 # source
 
+## 関数 ble/complete/source/reduce-compv-for-ambiguous-match
+##   曖昧補完の為に擬似的な COMPV と COMPS を生成・設定します。
+##   @var[in,out] COMPS COMPV
+function ble/complete/source/reduce-compv-for-ambiguous-match {
+  [[ :$comp_type: == *:[amA]:* ]] || return 0
+
+  local comps=$COMPS compv=$COMPV
+  local comps_prefix= compv_prefix=
+  if [[ $comps_fixed ]]; then
+    comps_prefix=${comps::${comps_fixed%%:*}}
+    compv_prefix=${comps_fixed#*:}
+    compv=${COMPV:${#compv_prefix}}
+  fi
+
+  case $comps_flags in
+  (*S*) comps_prefix=$comps_prefix\' ;;
+  (*E*) comps_prefix=$comps_prefix\$\' ;;
+  (*D*) comps_prefix=$comps_prefix\" ;;
+  (*I*) comps_prefix=$comps_prefix\$\" ;;
+  esac
+
+  if [[ $compv && :$comp_type: == *:a:* ]]; then
+    compv=${compv::1}
+    ble/complete/string#escape-for-completion-context "$compv"
+    comps=$ret
+  else
+    compv= comps=
+  fi
+
+  COMPV=$compv_prefix$compv
+  COMPS=$comps_prefix$comps
+}
+
 ## 関数 ble/complete/cand/yield ACTION CAND DATA
 ##   @param[in] ACTION
 ##   @param[in] CAND
@@ -1315,13 +1355,10 @@ function ble/complete/cand/unpack {
 #  -W 補完完了時に空白を挿入しない
 #  -s sabbrev 候補も一緒に生成する
 #
-#
 function ble/complete/source:wordlist {
   [[ $comps_flags == *v* ]] || return 1
-  case :$comp_type: in
-  (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
-  (*:[mA]:*) local COMPS= COMPV= ;;
-  esac
+  local COMPS=$COMPS COMPV=$COMPV
+  ble/complete/source/reduce-compv-for-ambiguous-match
   [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
 
   # process options
@@ -1418,10 +1455,8 @@ function ble/complete/source:command/.contract-by-slashes {
 }
 
 function ble/complete/source:command/gen.1 {
-  case :$comp_type: in
-  (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
-  (*:[mA]:*) local COMPS= COMPV= ;;
-  esac
+  local COMPS=$COMPS COMPV=$COMPV
+  ble/complete/source/reduce-compv-for-ambiguous-match
 
   # Note: cygwin では cyg,x86,i68 等で始まる場合にとても遅い。
   #   他の環境でも空の補完を実行すると遅くなる可能性がある。
@@ -1565,7 +1600,7 @@ function ble/complete/util/eval-pathname-expansion {
     fi
   fi
 
-  IFS= GLOBIGNORE= builtin eval 'ret=(); ret=($pattern)' 2>/dev/null
+  IFS= GLOBIGNORE= builtin eval "ret=(); ret=($pattern)" 2>/dev/null
 
   ble/util/invoke-hook dtor
 }
@@ -1589,10 +1624,10 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
   for name in "${names[@]}"; do
     ((i++)) && pattern=$pattern/
     if [[ $name ]]; then
-      ble/string#escape-for-bash-glob "${name::fixlen}"
+      ble/string#quote-word "${name::fixlen}"
       pattern=$pattern$ret*
       for ((j=fixlen;j<${#name};j++)); do
-        ble/string#escape-for-bash-glob "${name:j:1}"
+        ble/string#quote-word "${name:j:1}"
         pattern=$pattern$ret*
       done
     fi
@@ -1610,7 +1645,7 @@ function ble/complete/source:file/.construct-pathname-pattern {
   elif [[ :$comp_type: == *:[mA]:* ]]; then
     ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path" 0; local pattern=$ret
   else
-    ble/string#escape-for-bash-glob "$path"; local pattern=$ret*
+    ble/string#quote-word "$path"; local pattern=$ret*
   fi
   ret=$pattern
 }
@@ -2148,7 +2183,9 @@ function ble/complete/progcomp/.compgen {
   #   もし 124 だった場合には is_default_completion に retry を設定する。
   if [[ $is_default_completion == retry && ! $_ble_complete_retry_guard ]]; then
     local _ble_complete_retry_guard=1
-    ble/complete/progcomp/.compgen "$@"
+    opts=:$opts:
+    opts=${opts//:default:/:}
+    ble/complete/progcomp/.compgen "${opts//:default:/:}"
     return "$?"
   fi
 
@@ -2302,10 +2339,9 @@ function ble/complete/progcomp {
 function ble/complete/source:argument/.generate-user-defined-completion {
   shopt -q progcomp || return 1
 
-  case :$comp_type: in
-  (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} COMP2=$((COMP1+1)) ;;
-  (*:[mA]:*) local COMPS= COMPV= COMP2=$COMP1 ;;
-  esac
+  local COMPS=$COMPS COMPV=$COMPV
+  ble/complete/source/reduce-compv-for-ambiguous-match
+  [[ :$comp_type: == *:[amA]:* ]] && local COMP2=$COMP1
 
   local comp_words comp_line comp_point comp_cword
   ble/syntax:bash/extract-command "$COMP2" || return 1
@@ -2394,10 +2430,8 @@ function ble/complete/source:argument {
 
 function ble/complete/source/compgen {
   [[ $comps_flags == *v* ]] || return 1
-  case :$comp_type: in
-  (*:a:*)    local COMPS=${COMPS::1} COMPV=${COMPV::1} ;;
-  (*:[mA]:*) local COMPS= COMPV= ;;
-  esac
+  local COMPS=$COMPS COMPV=$COMPV
+  ble/complete/source/reduce-compv-for-ambiguous-match
 
   local compgen_action=$1
   local action=$2

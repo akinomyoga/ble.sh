@@ -123,6 +123,9 @@
 - syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 4760409
 - complete: quote `#` and `~` at the beginning of word `#D1362` f62fe54
 - decode (`bind`): work around `shopt -s nocasematch` (reported by tigger04) `#D1372` 855cacf
+- syntax (tree-enumerate): fix unmodified `wtype` of reconstructed words at the end `#D1385` 1111111
+- complete: fix a bug that progcomp retry by 124 caused the default completion again `#D1386` 1111111
+- complete: fix bugs that quotation disappears on ambiguous completion `#D1387` 1111111
 
 ## Compatibility
 

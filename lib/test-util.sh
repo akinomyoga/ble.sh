@@ -14,42 +14,42 @@ ble/test/start-section 'util' 1016
            stdout= exit=1
   ble/test 'bleopt a:=2'
   ble/test 'bleopt a' \
-           stdout="bleopt a='2'"
+           stdout="bleopt a=2"
   ble/test '[[ $bleopt_a == 2 ]]'
   ble/test "bleopt | grep 'bleopt a='" \
-           stdout="bleopt a='2'"
+           stdout="bleopt a=2"
   ble/test 'bleopt a=3'
   ble/test 'bleopt a' \
-           stdout="bleopt a='3'"
+           stdout="bleopt a=3"
 
   # setter
   function bleopt/check:a { value=123; }
   ble/test 'bleopt a=4 && bleopt a'
-  stdout="bleopt a='123'"
+  stdout="bleopt a=123"
   function bleopt/check:a { false; }
   ble/test 'bleopt a=5' \
            exit=1
   ble/test 'bleopt a' \
-           stdout="bleopt a='123'"
+           stdout="bleopt a=123"
 
   # 複数引数
   ble/test bleopt f:=10 g:=11
   ble/test bleopt f g \
-           stdout="bleopt f='10'${_ble_term_nl}bleopt g='11'"
+           stdout="bleopt f=10${_ble_term_nl}bleopt g=11"
   ble/test bleopt f=12 g=13
   ble/test bleopt f g \
-           stdout="bleopt f='12'${_ble_term_nl}bleopt g='13'"
+           stdout="bleopt f=12${_ble_term_nl}bleopt g=13"
 
   # bleopt/declare
   ble/test bleopt/declare -v b 6
-  ble/test bleopt b stdout="bleopt b='6'"
+  ble/test bleopt b stdout="bleopt b=6"
   ble/test bleopt/declare -n c 7
-  ble/test bleopt c stdout="bleopt c='7'"
+  ble/test bleopt c stdout="bleopt c=7"
   ble/test bleopt d:= e:=
   ble/test bleopt/declare -v d 8
   ble/test bleopt/declare -n e 9
   ble/test bleopt d stdout="bleopt d="
-  ble/test bleopt e stdout="bleopt e='9'"
+  ble/test bleopt e stdout="bleopt e=9"
 )
 
 # ble/test
@@ -767,6 +767,14 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test 'ble/util/print-quoted-command echo "'\''test'\''"' stdout="echo ''\''test'\'''"
   ble/test 'ble/util/print-quoted-command echo "" "" ""' stdout="echo '' '' ''"
   ble/test 'ble/util/print-quoted-command echo a{1..4}' stdout="echo 'a1' 'a2' 'a3' 'a4'"
+)
+# ble/string#quote-word
+(
+  ble/test 'ble/string#quote-word' ret=
+  ble/test 'ble/string#quote-word echo' ret='echo'
+  ble/test 'ble/string#quote-word "hello world"' ret="'hello world'"
+  ble/test 'ble/string#quote-word "'\''test'\''"' ret="\'test\'"
+  ble/test 'ble/string#quote-word "a'\''b'\''c"' ret="a\'b\'c"
 )
 
 # ble/string#create-unicode-progress-bar
