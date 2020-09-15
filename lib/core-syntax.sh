@@ -158,6 +158,17 @@ _ble_syntax_TREE_WIDTH=5
 # ble/syntax/tree-enumerate-children proc
 # ble/syntax/tree-enumerate-in-range beg end proc
 
+function ble/syntax/tree-enumerate/.add-root-element {
+  local wtype=$1 wlen=$2 tclen=$3 tplen=$4
+
+  # Note: wtype は単語に格納される時に EndWtype テーブルで変換される。
+  #  ble/syntax:bash/ctx-command/check-word-end の実装を参照の事。
+  [[ ! ${wtype//[0-9]} && ${_ble_syntax_bash_command_EndWtype[wtype]} ]] &&
+    wtype=${_ble_syntax_bash_command_EndWtype[wtype]}
+
+  root="$wtype $wlen $tclen $tplen -- $root"
+}
+
 ## 関数 ble/syntax/tree-enumerate/.initialize
 ##
 ##   @var[in]  iN
@@ -194,7 +205,7 @@ function ble/syntax/tree-enumerate/.initialize {
 
   while
     if ((wlen>=0)); then
-      root="$wtype $wlen $tclen $tplen -- $root"
+      ble/syntax/tree-enumerate/.add-root-element "$wtype" "$wlen" "$tclen" "$tplen"
       tclen=0
     fi
     ((inest>=0))
@@ -207,7 +218,7 @@ function ble/syntax/tree-enumerate/.initialize {
     tplen=${nest[4]}
     ((tplen>=0&&(tplen+=olen)))
 
-    root="${nest[7]} $olen $tclen $tplen -- $root"
+    ble/syntax/tree-enumerate/.add-root-element "${nest[7]}" "$olen" "$tclen" "$tplen"
 
     wtype=${nest[2]} wlen=${nest[1]} nlen=${nest[3]} tclen=0 tplen=${nest[5]}
     ((wlen>=0&&(wlen+=olen),

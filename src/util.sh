@@ -694,6 +694,30 @@ function ble/string#escape-for-bash-specialchars-in-brace {
   fi
 }
 
+function ble/string#quote-word {
+  ret=$1
+
+  local opts=$2 sgrq= sgr0=
+  if [[ $opts ]]; then
+    local rex=':sgrq=([^:]*):'
+    [[ :$opts: =~ $rex ]] &&
+      sgrq=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
+    rex=':sgr0=([^:]*):'
+    [[ :$opts: =~ $rex ]] &&
+      sgr0=${BASH_REMATCH[1]}
+  fi
+
+  local chars=$_ble_term_IFS'"`$\<>()|&;*?[]!^=:{,}#~' q=\'
+  if [[ $ret == *["$chars"]* ]]; then
+    local Q="'$sgr0\'$sgrq'"
+    ret=$sgrq$q${ret//$q/$Q}$q$sgr0
+    ret=${ret#$q$q} ret=${ret%$q$q}
+  elif [[ $ret == *["$q"]* ]]; then
+    local Q="\'"
+    ret=${ret//$q/$Q}
+  fi
+}
+
 ## 関数 ble/string#create-unicode-progress-bar value max width
 ##   @var[out] ret
 function ble/string#create-unicode-progress-bar {
@@ -1151,6 +1175,15 @@ else
     ) 2>/dev/null
   }
 fi
+
+## 関数 ble/util/is-cygwin-slow-glob word
+##   Cygwin では // で始まるパスの展開は遅い (#D1168) のでその判定を行う。
+function ble/util/is-cygwin-slow-glob {
+  # Note: core-complete.sh ではエスケープを行うので
+  #   "'//...'" 等の様な文字列が "$1" に渡される。
+  [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && ${1#\'} == //* && ! -o noglob ]] &&
+    ble/util/has-glob-pattern "$1"
+}
 
 ## 関数 ble/util/eval-pathname-expansion pattern
 ##   @var[out] ret
