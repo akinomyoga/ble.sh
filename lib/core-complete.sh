@@ -1579,6 +1579,11 @@ function ble/complete/util/eval-pathname-expansion {
     ble/array#push dtor 'shopt -u nullglob'
   fi
 
+  if ! shopt -q extglob; then
+    shopt -s extglob
+    ble/array#push dtor 'shopt -u extglob'
+  fi
+
   if [[ :$comp_type: == *:i:* ]]; then
     if ! shopt -q nocaseglob; then
       shopt -s nocaseglob
@@ -1628,6 +1633,10 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
       pattern=$pattern$ret*
       for ((j=fixlen;j<${#name};j++)); do
         ble/string#quote-word "${name:j:1}"
+        if [[ $pattern == *\* ]]; then
+          # * を extglob *([!ch]) に変換 #D1389
+          pattern=$pattern'([!'$ret'])'
+        fi
         pattern=$pattern$ret*
       done
     fi

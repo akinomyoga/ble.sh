@@ -127,6 +127,8 @@
 - syntax (tree-enumerate): fix unmodified `wtype` of reconstructed words at the end `#D1385` 98576c7
 - complete: fix a bug that progcomp retry by 124 caused the default completion again `#D1386` 98576c7
 - complete: fix bugs that quotation disappears on ambiguous completion `#D1387` 98576c7
+- complete: fix superlinear performace of ambiguous matching globpat `#D1389` 0000000
+- complete: fix a bug of duplicated completions of filenames with spaces `#D1390` 98576c7
 
 ## Compatibility
 
