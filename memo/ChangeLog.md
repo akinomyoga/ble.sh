@@ -43,6 +43,7 @@
 - complete: support `bleopt complete_menu_maxlines` `#D1375` 8e81cd7
 - prompt: support `_ble_prompt_update` `#D1376` 0fa8739
 - prompt: support `bleopt prompt_{xterm_title,screen_title,status_line}` `#D1378` 5c3f6fe
+  - prompt: check `TERM` for prompt window titles when `_ble_term_TERM` is unavailable `#D1388` 0000000
 - syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
 
 ## Changes
@@ -123,9 +124,9 @@
 - syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 4760409
 - complete: quote `#` and `~` at the beginning of word `#D1362` f62fe54
 - decode (`bind`): work around `shopt -s nocasematch` (reported by tigger04) `#D1372` 855cacf
-- syntax (tree-enumerate): fix unmodified `wtype` of reconstructed words at the end `#D1385` 1111111
-- complete: fix a bug that progcomp retry by 124 caused the default completion again `#D1386` 1111111
-- complete: fix bugs that quotation disappears on ambiguous completion `#D1387` 1111111
+- syntax (tree-enumerate): fix unmodified `wtype` of reconstructed words at the end `#D1385` 98576c7
+- complete: fix a bug that progcomp retry by 124 caused the default completion again `#D1386` 98576c7
+- complete: fix bugs that quotation disappears on ambiguous completion `#D1387` 98576c7
 
 ## Compatibility
 
@@ -176,8 +177,8 @@
 - edit: rename `ble-edit/prompt/*` -> `ble/prompt/*` `#D1365` 76be6f1
 - main: use `PROMPT_COMMAND` in bash-5.1 for prompt attach `#D1380` b852a4f
 - main: unset `BLE_VERSION`, `_ble_bash`, etc. on `ble-unload` `#D1382` 6b615b6
-- util: revisit `ble/variable#is-global` implementation `#D1383` 0000000
-- cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 0000000
+- util: revisit `ble/variable#is-global` implementation `#D1383` 6b5468f
+- cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 445a5ad
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

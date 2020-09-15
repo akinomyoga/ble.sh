@@ -3557,6 +3557,17 @@ bash_tips
 
 2020-09-15
 
+  * 2020-09-10 最初に起動した時に bleopt prompt_screen_title が反映されていない [#D1388]
+
+    これは分かった。ble.sh は _ble_term_TERM を見て
+    prompt_screen_title を出力するかどうか決めている。然し
+    _ble_term_TERM は DA2 応答があるまでは代入されない。
+    最初は空なのである。
+
+    _ble_term_TERM が空の時には TERM も確認する事にした。
+    流石に screen, screen.* に設定しているのは screen か tmux だけだろう。
+    screen が xterm に設定している場合には判定できないが仕方がない。
+
   * 2020-09-07 complete: メニュー補完で引用符が消える [#D1387]
 
     引用符で囲んでいる状態でメニュー補完すると引用符が消える。何故だろう

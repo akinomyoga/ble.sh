@@ -763,7 +763,7 @@ function ble/prompt/.instantiate-control-string {
   ret=
   local -a prompt_data=()
   if [[ $ps ]]; then
-    local -a prompt_data; eval "prompt_data=(\"\${$name[@]}\")"
+    local -a prompt_data; builtin eval "prompt_data=(\"\${$name[@]}\")"
     local trace_hash esc x y g lc lg
     LINES=1 ble/prompt/.instantiate "$ps" confine:no-trace "${prompt_data[@]:1}"
     prompt_data=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
@@ -771,7 +771,7 @@ function ble/prompt/.instantiate-control-string {
     local LC_ALL= LC_COLLATE=C
     ret=${esc//[! -~]/'#'}
   fi 2>/dev/null
-  eval "$name=(\"\${prompt_data[@]}\")"
+  builtin eval -- "$name=(\"\${prompt_data[@]}\")"
 }
 
 function ble/prompt/update/.has-prompt_command {
@@ -873,8 +873,8 @@ function ble/prompt/update {
   _ble_prompt_xterm_title[6]=$ret
 
   # bleopt prompt_screen_title
-  case $_ble_term_TERM in
-  (screen|tmux|contra)
+  case ${_ble_term_TERM:-$TERM} in
+  (screen|tmux|contra|screen.*|screen-*)
     local ret
     ble/prompt/.instantiate-control-string _ble_prompt_screen_title "$bleopt_prompt_screen_title"
     [[ $ret ]] && ret=$'\ek'$ret$'\e\\'
@@ -4207,7 +4207,7 @@ function ble-edit/exec/.adjust-eol {
   fi
 
   local advance=$((_ble_term_xenl?cols-2:cols-3))
-  if [[ $_ble_term_TERM ]]; then
+  if [[ $_ble_term_TERM == cygwin ]]; then
     # Note (#D1144): Cygwin console では何故か行き先が
     #   丁度 cols+1 列目になる様な CUF は一文字も動かない。
     #   cols列目またはcols+2列目以降は大丈夫である。

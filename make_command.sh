@@ -82,11 +82,11 @@ function ble/array#push {
 }
 
 function sub:scan/grc-source {
-  local -a options=(--color --exclude=./{test,memo,ext,wiki} --exclude=\*.{md,awk} --exclude=./make_command.sh)
+  local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk} --exclude=./make_command.sh)
   grc "${options[@]}" "$@"
 }
 function sub:scan/list-command {
-  local -a options=(--color --exclude=./{test,memo,ext,wiki} --exclude=\*.{md,awk})
+  local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk})
 
   # read arguments
   local flag_exclude_this= flag_error=
@@ -276,6 +276,7 @@ function sub:scan {
     sed -E 'h;s/'"$esc"'//g;s/^[^:]*:[0-9]+:[[:space:]]*//
       \Zble/util/print "trap -- '\''\$\{h//\$Q/\$q}'\'' \$nZd
       \Zline = "bind"Zd
+      \Zlocal trap_command="trap -- Zd
       g'
 
   sub:scan/a.txt
