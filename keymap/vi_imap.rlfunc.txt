@@ -1,5 +1,5 @@
 abort                             bell
-accept-line                       vi_imap/accept-single-line-or vi_imap/newline
+accept-line                       accept-single-line-or-newline
 alias-expand-line                 alias-expand-line
 arrow-key-prefix                  -
 backward-byte                     @nomarked backward-byte

@@ -4836,6 +4836,9 @@ function ble-edit/hist_expanded.update {
 }
 
 function ble/widget/accept-line {
+  ble/decode/widget/keymap-dispatch "$@"
+}
+function ble/widget/default/accept-line {
   ble-edit/content/clear-arg
   local BASH_COMMAND=$_ble_edit_str
 
@@ -4913,6 +4916,9 @@ function ble/widget/accept-and-next {
   fi
 }
 function ble/widget/newline {
+  ble/decode/widget/keymap-dispatch "$@"
+}
+function ble/widget/default/newline {
   local -a KEYS=(10)
   ble/widget/self-insert
 }
@@ -4932,6 +4938,9 @@ function ble-edit/is-single-complete-line {
   return 0
 }
 function ble/widget/accept-single-line-or {
+  ble/decode/widget/keymap-dispatch "$@"
+}
+function ble/widget/default/accept-single-line-or {
   if ble-edit/is-single-complete-line; then
     ble/widget/accept-line
   else

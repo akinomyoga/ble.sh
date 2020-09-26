@@ -2071,6 +2071,18 @@ function ble/decode/widget/skip-lastwidget {
   _ble_decode_widget_last=$LASTWIDGET
 }
 
+## 関数 ble/decode/widget/keymap-dispatch args
+##   関数 ble/widget/NAME の中から呼び出します。
+##   現在の keymap に固有の同名の関数 "ble/widget/KEYMAP/NAME" が
+##   存在する場合にはそれを呼びします。
+##   それ以外の場合には "ble/widget/default/NAME" を呼び出します。
+function ble/decode/widget/keymap-dispatch {
+  local name=${FUNCNAME[1]#ble/widget/}
+  local widget=ble/widget/$_ble_decode_keymap/$name
+  ble/is-function "$widget" || widget=ble/widget/default/$name
+  "$widget" "$@"
+}
+
 #------------------------------------------------------------------------------
 # ble/decode/has-input
 

@@ -613,20 +613,13 @@ function ble/widget/vi_nmap/virtual-replace-mode {
   ble/keymap:vi/repeat/record
   return 0
 }
-function ble/widget/vi-command/accept-line {
+function ble/widget/vi_nmap/accept-line {
   ble/keymap:vi/clear-arg
   ble/widget/vi_nmap/.insert-mode
   ble/keymap:vi/repeat/clear-insert
   [[ $_ble_keymap_vi_reg_record ]] &&
     ble/widget/vi_nmap/record-register
-  ble/widget/accept-line
-}
-function ble/widget/vi-command/accept-single-line-or {
-  if ble-edit/is-single-complete-line; then
-    ble/widget/vi-command/accept-line
-  else
-    ble/widget/"$@"
-  fi
+  ble/widget/default/accept-line
 }
 function ble/widget/vi-command/edit-and-execute-command {
   ble/keymap:vi/clear-arg
@@ -5843,10 +5836,10 @@ function ble-decode/keymap:vi_nmap/define {
   #----------------------------------------------------------------------------
   # bash
 
-  ble-bind -f 'C-j'     'vi-command/accept-line'
-  ble-bind -f 'C-RET'   'vi-command/accept-line'
-  ble-bind -f 'C-m'     'vi-command/accept-single-line-or vi-command/forward-first-non-space'
-  ble-bind -f 'RET'     'vi-command/accept-single-line-or vi-command/forward-first-non-space'
+  ble-bind -f 'C-j'     'accept-line'
+  ble-bind -f 'C-RET'   'accept-line'
+  ble-bind -f 'C-m'     'accept-single-line-or vi-command/forward-first-non-space'
+  ble-bind -f 'RET'     'accept-single-line-or vi-command/forward-first-non-space'
   #ble-bind -f 'C-x C-e' 'vi-command/edit-and-execute-command'
   ble-bind -f 'C-l'     'clear-screen'
   ble-bind -f 'C-d'     'vi-command/exit-on-empty-line' # overwrites vi_nmap/forward-scroll
@@ -5988,7 +5981,7 @@ function ble/widget/vi-rlfunc/insert-comment {
   ble/keymap:vi/mark/start-edit-area
   ble/widget/insert-comment/.insert "$ARG"
   ble/keymap:vi/mark/end-edit-area
-  ble/widget/vi-command/accept-line
+  ble/widget/vi_nmap/accept-line
 }
 # rl_nmap C-v, C-q
 function ble/widget/vi-rlfunc/quoted-insert-char.hook {
@@ -6026,7 +6019,7 @@ function ble/widget/vi-rlfunc/eof-maybe {
     ble/keymap:vi/adjust-command-mode # ジョブがあるときは終了しないので。
     return 1
   elif ble-edit/is-single-complete-line; then
-    ble/widget/vi-command/accept-line
+    ble/widget/vi_nmap/accept-line
   else
     local ARG FLAG REG; ble/keymap:vi/get-arg 1
     ble/keymap:vi/mark/start-edit-area
@@ -7688,7 +7681,7 @@ function ble/widget/vi_imap/newline {
   local ret
   ble-edit/content/find-logical-bol; local bol=$ret
   ble-edit/content/find-non-space "$bol"; local nol=$ret
-  ble/widget/newline
+  ble/widget/default/newline
   ((bol<nol)) && ble/widget/.insert-string "${_ble_edit_str:bol:nol-bol}"
   return 0
 }
@@ -7730,8 +7723,8 @@ function ble-decode/keymap:vi_imap/define {
   # ble-bind -f  'C-c'     'discard-line'
   ble-bind -f 'C-j'      'accept-line'
   ble-bind -f 'C-RET'    'accept-line'
-  ble-bind -f 'C-m'      'vi_imap/accept-single-line-or vi_imap/newline'
-  ble-bind -f 'RET'      'vi_imap/accept-single-line-or vi_imap/newline'
+  ble-bind -f 'C-m'      'accept-single-line-or-newline'
+  ble-bind -f 'RET'      'accept-single-line-or-newline'
   # ble-bind -f  'C-o'     'accept-and-next'
   # ble-bind -f 'M-#'      'insert-comment'
   ble-bind -f 'C-x C-e'  'edit-and-execute-command'

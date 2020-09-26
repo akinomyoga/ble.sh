@@ -1,5 +1,5 @@
 abort                             bell
-accept-line                       vi-command/accept-single-line-or vi-command/forward-first-non-space
+accept-line                       accept-single-line-or vi-command/forward-first-non-space
 alias-expand-line                 vi_nmap/@edit alias-expand-line
 arrow-key-prefix                  -
 backward-byte                     vi-command/backward-byte

@@ -3569,6 +3569,88 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-09-26
+
+  * widget: keymap による自動的な振る舞いの切り替えの仕組みを作る [#D1391]
+
+    うーん。何だか面倒になってきた。そもそも vi_imap の時にだけ振る舞いが変わる
+    物が多過ぎて widget が色々異なるのが面倒である。ble/widget/newline を呼び出すだけで
+    現在の keymap に応じて適切に振る舞いを変更する様に変更したらどうだろうか。
+    edit.sh に全ての実装を書き込むと edit.sh が肥大化してしまうので、
+    動作を自動的に切り替える仕組みを作るというのでも良い。
+
+    と思ったが ble/widget/newline に関してはユーザの好みで振る舞いを変えたい事もあるかもしれない。
+    等と考えると、keymap で固定してしまうのではなくやはり自分で設定できる様にするべきだろうか。
+    うーん。然し、それはオプションで制御できる様にしても良い気がする。
+    或いは、もしユーザが自前で widget を作るのだとしたらそれは備え付けの ble/widget/newline とは
+    関係がないのだから気にしなくても良い。
+
+    というか今その対策をする必要はあるだろうか。
+    うーん。この対策をせずに実装しようとすると、
+    accept-line についても vi_imap 云々という keymap 判定をしなければならなくなる。
+    取り敢えず暫定の実装として accept-line の内部で keymap 判定を実行する様にするか、
+    或いは先に keymap 判定を自動的に実行する仕組みを作って整理してから accept-line
+    に対する対策を実行するか。
+
+    先に ble/widget/newline 等の実装を自動で切り替える仕組みを実装する事にする。
+    対象は newline, accept-single-line-or, accept-line である。
+
+    accept-single-line に関しては vi-command 版もある。
+    vi-command/accept-single-line-or は vi_nmap でしか使われていないが、
+    名称的には vi_[onx]map で使っても問題がない様に設計されている気がする。
+
+    これらにちゃんと対応する為には vi_omap, vi_xmap についても機能を追加するか、
+    或いは vi_nmap しか対応しないか、或いは vi_[onx]map の時には特別に
+    vi_command も一緒に探索する事にするか。取り敢えずは vi_nmap だけの対応で良い
+    気がしてきた。
+
+    * dispatch 先の関数名をどうするか。
+
+      a 取り敢えずの実装としては ble/widget/NAME に対して ble/widget/KEYMAP/NAME
+        を試行する事にした。このルールは既存の緩やかなルールに合致しているので既
+        存のコードを大きく書き換える必要はないだろう。
+
+      b また ble/widget/NAME/.keymap:KEYMAP 等の名称よりはわかりやすい気がする。
+        と思ったが、: が含まれる場合も widget として列挙されない様な気がする。と
+        いう事は ble/widget/NAME/keymap:default でも良い様な気もする。
+
+        うーん。keymap 特有の accept-line を呼び出す時に内部的に accept-line を
+        呼び出したい時にble/widget/accept-line ではなくて
+        ble/widget/default/accept-line を呼び出さなければならないという事を思う
+        と、ble/widget/accept-line/keymap:default の方が良い? と思ったが、何れに
+        しても ble/widget/accept-line/keymap:default と書いて呼び出さなければな
+        らない。ble/widget/accept-line の儘で呼び出せる方法はないのである。なの
+        で、やはり名称は ble/widget/default/accept-line でも変わらない。
+
+      c この観点だと ble/widget/accept-line.default や
+        ble/widget/accept-line.vi_imap 等だったら分かりやすかったかもしれないが、
+        ble/widget/*.* の形式の補助関数は沢山あるのでそれと被ってしまう問題があ
+        る。
+
+      やはり取り敢えずは dispatch 先の関数名は a の方針で行く事にする。
+
+    [変更]
+
+    - done: newline 対応した。
+    - done: accept-single-line-or
+
+      実はこれは今対応する必要はない? というのも accept-line から newline を呼び
+      出した時にもう既に自動的に keymap に対応する関数が呼び出される様になっている。
+      従って特別に実装する必要はないのではないか。
+
+      一方でコードの綺麗さという観点で考えるとやはり此処は統一した枠組みの上で実
+      装したい。うーん。やっぱり accept-single-line-or についても keymap dispatch
+      に対応する事にする。
+
+    - done: accept-line
+      これも既に vi-command/accept-line という物があるので keymap dispatch にする。
+      vi-command/accept-line は vi_nmap/accept-line に名称を変更。
+      実は vi_nmap/accept-single-line-or はこれで不要になる。
+
+    他にも vi_imap/... 等は存在している気がするが、これらは互いに呼び出す等の事
+    をして複雑になっている訳でもないので、追々置き換えていけば問題ない。
+    取り敢えず動いている気がするので気にしない事にする。
+
 2020-09-15
 
   * [解消] 2020-09-07 complete: 空白を含むファイル名の補完候補が増殖する [#D1390]
