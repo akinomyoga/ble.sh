@@ -1508,11 +1508,15 @@ function ble/history/set-editted-entry {
   builtin eval -- "${code//PREFIX/${_ble_history_prefix:-_ble}}"
 }
 
-# @var[in,out] HISTINDEX_NEXT
-#   used by ble/widget/accept-and-next to get modified next-entry positions
+## 関数 ble/history/.add-command-history command
+## @var[in,out] HISTINDEX_NEXT
+##   used by ble/widget/accept-and-next to get modified next-entry positions
 function ble/history/.add-command-history {
   # 注意: bash-3.2 未満では何故か bind -x の中では常に history off になっている。
   [[ -o history ]] || ((_ble_bash<30200)) || return 1
+
+  # Note: mc (midnight commander) が初期化スクリプトを送ってくる #D1392
+  [[ $MC_SID == $$ && $LINENO -le 2 && ( $1 == *PROMPT_COMMAND=* || $1 == *PS1=* ) ]] && return 1
 
   if [[ $_ble_history_load_done ]]; then
     # 登録・不登録に拘わらず取り敢えず初期化

@@ -452,7 +452,13 @@ function ble/canvas/put-move-y.draw {
   local dy=$1
   ((dy)) || return 1
   if ((dy>0)); then
-    ble/canvas/put-cud.draw "$dy"
+    if [[ $MC_SID == $$ ]]; then
+      # Note #D1392: mc (midnight commander) の中だと layout が破壊されるので、
+      #   必ずしも CUD で想定した行だけ移動できると限らない。
+      ble/canvas/put-ind.draw "$dy"
+    else
+      ble/canvas/put-cud.draw "$dy"
+    fi
   else
     ble/canvas/put-cuu.draw $((-dy))
   fi
@@ -1669,6 +1675,13 @@ _ble_canvas_x=0 _ble_canvas_y=0
 ##   プロンプト原点が x=0 y=0 に対応します。
 function ble/canvas/goto.draw {
   local x=$1 y=$2
+
+  # Note #D1392: mc (midnight commander) は
+  #   sgr0 単体でもプロンプトと勘違いするので、
+  #   プロンプト更新もカーソル移動も不要の時は、
+  #   sgr0 も含めて何も出力しない。
+  ((x==_ble_canvas_x&&y==_ble_canvas_y)) && return 0
+
   ble/canvas/put.draw "$_ble_term_sgr0"
 
   ble/canvas/put-move-y.draw $((y-_ble_canvas_y))

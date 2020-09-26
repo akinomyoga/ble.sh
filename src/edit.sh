@@ -847,6 +847,9 @@ function ble/prompt/update {
   _ble_edit_prompt=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
   ret=$esc
 
+  # Note #D1392: mc (midnight commander) の中では補助プロンプトは全て off
+  [[ $MC_SID == $$ ]] && return 0
+
   # update edit_rps1
   if [[ $bleopt_prompt_rps1 ]]; then
     local ps1_height=$((y+1))
@@ -4839,6 +4842,16 @@ function ble/widget/accept-line {
   ble/decode/widget/keymap-dispatch "$@"
 }
 function ble/widget/default/accept-line {
+  # 文法的に不完全の時は改行挿入
+  # Note: mc (midnight commander) が改行を含むコマンドを書き込んでくる #D1392
+  if [[ :$1: == *:syntax:* || $MC_SID == $$ && $LINENO == 0 ]]; then
+    ble-edit/content/update-syntax
+    if ! ble/syntax:bash/is-complete; then
+      ble/widget/newline
+      return "$?"
+    fi
+  fi
+
   ble-edit/content/clear-arg
   local BASH_COMMAND=$_ble_edit_str
 

@@ -151,6 +151,7 @@
 - decode: fix a bug of broken cmap cache found in ble-0.3 `#D1327` 16b56bf
 - util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
 - complete: work around slow `compgen -c` in Cygwin `#D1329` 5327f5d
+- edit: work around problems with `mc` (reported by onelittlehope) `#D1392` 0000000
 
 ## Internal changes and fixes
 
@@ -181,6 +182,7 @@
 - main: unset `BLE_VERSION`, `_ble_bash`, etc. on `ble-unload` `#D1382` 6b615b6
 - util: revisit `ble/variable#is-global` implementation `#D1383` 6b5468f
 - cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 445a5ad
+- edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

@@ -128,6 +128,10 @@ function sub:scan/builtin {
     sed -E 'h;s/'"$esc"'//g;\Z(\.awk|push|load|==) \b'"$command"'\bZd;g' 
 }
 
+function sub:scan/check-todo-mark {
+  echo "--- $FUNCNAME ---"
+  grc --color --exclude=./make_command.sh '@@@'
+}
 function sub:scan/a.txt {
   echo "--- $FUNCNAME ---"
   grc --color --exclude=./test --exclude=./lib/test-*.sh --exclude=./make_command.sh --exclude=\*.md 'a\.txt|/dev/(pts/|pty)[0-9]*' |
@@ -280,6 +284,7 @@ function sub:scan {
       g'
 
   sub:scan/a.txt
+  sub:scan/check-todo-mark
   sub:scan/bash300bug
   sub:scan/bash301bug-array-element-length
   sub:scan/array-count-in-arithmetic-expression
