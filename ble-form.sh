@@ -9,19 +9,21 @@ function ble/arithmetic/sum {
 ##   現在の (描画の為に動き回る) カーソル位置を保持します。
 _ble_line_x=0 _ble_line_y=0
 
-## 関数 ble-form/goto.draw x y
+## 関数 ble-form/goto.draw x y opts
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
 ## @param[in] x y
 ##   移動先のカーソルの座標を指定します。
 ##   プロンプト原点が x=0 y=0 に対応します。
 function ble-form/goto.draw {
   local -i x=$1 y=$2
+  local opts=$3
 
   # Note #D1392: mc (midnight commander) は
   #   sgr0 単体でもプロンプトと勘違いするので、
   #   プロンプト更新もカーソル移動も不要の時は、
   #   sgr0 も含めて何も出力しない。
-  ((x==_ble_line_x&&y==_ble_line_y)) && return 0
+  [[ :$opts: != *:sgr0:* ]] &&
+    ((x==_ble_line_x&&y==_ble_line_y)) && return 0
 
   ble-edit/draw/put "$_ble_term_sgr0"
 
@@ -64,9 +66,9 @@ function ble-form/goto.draw {
 _ble_form_window_height=(1 0)
 
 function ble-form/panel#goto.draw {
-  local index=$1 x=${2-0} y=${3-0} ret
+  local index=$1 x=${2-0} y=${3-0} opts=$4 ret
   ble/arithmetic/sum "${_ble_form_window_height[@]::index}"
-  ble-form/goto.draw "$x" $((ret+y))
+  ble-form/goto.draw "$x" $((ret+y)) "$opts"
 }
 function ble-form/panel#report-cursor-position {
   local index=$1 x=${2-0} y=${3-0} ret
@@ -134,7 +136,7 @@ function ble-form/panel#clear.draw {
   if ((height)); then
     local ret
     ble/arithmetic/sum "${_ble_form_window_height[@]::index}"; local ins_offset=$ret
-    ble-form/goto.draw 0 "$ins_offset"
+    ble-form/goto.draw 0 "$ins_offset" sgr0
     if ((height==1)); then
       ble-edit/draw/put "$_ble_term_el2"
     else
@@ -148,7 +150,7 @@ function ble-form/panel#clear-after.draw {
   local height=${_ble_form_window_height[index]}
   ((y<height)) || return
 
-  ble-form/panel#goto.draw "$index" "$x" "$y"
+  ble-form/panel#goto.draw "$index" "$x" "$y" sgr0
   ble-edit/draw/put "$_ble_term_el"
   local rest_lines=$((height-(y+1)))
   if ((rest_lines)); then
