@@ -4762,6 +4762,16 @@ function ble-edit/hist_expanded.update {
 }
 
 function ble/widget/accept-line {
+  # 文法的に不完全の時は改行挿入
+  # Note: mc (midnight commander) が改行を含むコマンドを書き込んでくる #D1392
+  if [[ :$1: == *:syntax:* || $MC_SID == $$ && $LINENO == 0 ]]; then
+    _ble_edit_str.update-syntax
+    if ! ble-syntax:bash/is-complete; then
+      ble/widget/newline
+      return "$?"
+    fi
+  fi
+
   ble-edit/content/clear-arg
   local BASH_COMMAND=$_ble_edit_str
 

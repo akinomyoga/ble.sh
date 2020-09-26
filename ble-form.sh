@@ -16,12 +16,25 @@ _ble_line_x=0 _ble_line_y=0
 ##   プロンプト原点が x=0 y=0 に対応します。
 function ble-form/goto.draw {
   local -i x=$1 y=$2
+
+  # Note #D1392: mc (midnight commander) は
+  #   sgr0 単体でもプロンプトと勘違いするので、
+  #   プロンプト更新もカーソル移動も不要の時は、
+  #   sgr0 も含めて何も出力しない。
+  ((x==_ble_line_x&&y==_ble_line_y)) && return 0
+
   ble-edit/draw/put "$_ble_term_sgr0"
 
   local -i dy=y-_ble_line_y
   if ((dy!=0)); then
     if ((dy>0)); then
-      ble-edit/draw/put "${_ble_term_cud//'%d'/$dy}"
+      if [[ $MC_SID == $$ ]]; then
+        # Note #D1392: mc (midnight commander) の中だと layout が破壊されるので、
+        #   必ずしも CUD で想定した行だけ移動できると限らない。
+        ble-edit/draw/put.ind "$dy"
+      else
+        ble-edit/draw/put "${_ble_term_cud//'%d'/$dy}"
+      fi
     else
       ble-edit/draw/put "${_ble_term_cuu//'%d'/$((-dy))}"
     fi
