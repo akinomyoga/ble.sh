@@ -1651,19 +1651,20 @@ function ble/textmap#hit {
 ##   現在の (描画の為に動き回る) カーソル位置を保持します。
 _ble_canvas_x=0 _ble_canvas_y=0
 
-## 関数 ble/canvas/goto.draw x y
+## 関数 ble/canvas/goto.draw x y opts
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
 ## @param[in] x y
 ##   移動先のカーソルの座標を指定します。
 ##   プロンプト原点が x=0 y=0 に対応します。
 function ble/canvas/goto.draw {
-  local x=$1 y=$2
+  local x=$1 y=$2 opts=$3
 
   # Note #D1392: mc (midnight commander) は
   #   sgr0 単体でもプロンプトと勘違いするので、
   #   プロンプト更新もカーソル移動も不要の時は、
   #   sgr0 も含めて何も出力しない。
-  ((x==_ble_canvas_x&&y==_ble_canvas_y)) && return 0
+  [[ :$opts: != *:sgr0:* ]] &&
+    ((x==_ble_canvas_x&&y==_ble_canvas_y)) && return 0
 
   ble/canvas/put.draw "$_ble_term_sgr0"
 
@@ -1808,9 +1809,9 @@ function ble/canvas/panel#get-origin {
   ((${prefix}x=0,${prefix}y=ret))
 }
 function ble/canvas/panel#goto.draw {
-  local index=$1 x=${2-0} y=${3-0} ret
+  local index=$1 x=${2-0} y=${3-0} opts=$4 ret
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"
-  ble/canvas/goto.draw "$x" $((ret+y))
+  ble/canvas/goto.draw "$x" $((ret+y)) "$opts"
 }
 ## 関数 ble/canvas/panel#put.draw panel text x y
 function ble/canvas/panel#put.draw {
@@ -1889,7 +1890,7 @@ function ble/canvas/panel#clear.draw {
   if ((height)); then
     local ret
     ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
-    ble/canvas/goto.draw 0 "$ins_offset"
+    ble/canvas/goto.draw 0 "$ins_offset" sgr0
     if ((height==1)); then
       ble/canvas/put.draw "$_ble_term_el2"
     else
@@ -1903,7 +1904,7 @@ function ble/canvas/panel#clear-after.draw {
   local height=${_ble_canvas_panel_height[index]}
   ((y<height)) || return
 
-  ble/canvas/panel#goto.draw "$index" "$x" "$y"
+  ble/canvas/panel#goto.draw "$index" "$x" "$y" sgr0
   ble/canvas/put.draw "$_ble_term_el"
   local rest_lines=$((height-(y+1)))
   if ((rest_lines)); then

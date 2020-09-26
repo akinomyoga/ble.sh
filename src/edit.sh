@@ -1568,7 +1568,7 @@ function ble/textarea#render/.erase-rps1 {
   local -a DRAW_BUFF=()
   local y=0
   for ((y=0;y<rps1_height;y++)); do
-    ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) "$y"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) "$y" sgr0
     ble/canvas/put.draw "$_ble_term_el"
   done
   ble/canvas/bflush.draw
@@ -1584,7 +1584,7 @@ function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
   for line in "${buffer[@]}"; do
     ((index+=${#line}))
     ble/string#split-words pos "${_ble_textmap_pos[index]}"
-    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${pos[0]}" "${pos[1]}"
+    ble/canvas/panel#goto.draw "$_ble_textarea_panel" "${pos[0]}" "${pos[1]}" sgr0
     ble/canvas/put.draw "$_ble_term_el"
     ((index++))
   done
