@@ -1804,19 +1804,21 @@ function .ble-edit/edit/detach {
 
 # 出力のための新しい関数群2
 
-## 関数 ble-edit/draw/goto varname x y
+## 関数 ble-edit/draw/goto varname x y opts
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
 ##   @param [in] x y
 ##     移動先のカーソルの座標を指定します。
 ##     プロンプト原点が x=0 y=0 に対応します。
 function ble-edit/draw/goto {
   local -i x="$1" y="$2"
+  local opts=$3
 
   # Note #D1392: mc (midnight commander) は
   #   sgr0 単体でもプロンプトと勘違いするので、
   #   プロンプト更新もカーソル移動も不要の時は、
   #   sgr0 も含めて何も出力しない。
-  ((x==_ble_line_x&&y==_ble_line_y)) && return 0
+  [[ :$opts: != *:sgr0:* ]] &&
+    ((x==_ble_line_x&&y==_ble_line_y)) && return 0
 
   ble-edit/draw/put "$_ble_term_sgr0"
 
@@ -1851,7 +1853,7 @@ function ble-edit/draw/goto {
 ## 関数 ble-edit/draw/clear-line
 ##   プロンプト原点に移動して、既存のプロンプト表示内容を空白にする制御系列を生成します。
 function ble-edit/draw/clear-line {
-  ble-edit/draw/goto 0 0
+  ble-edit/draw/goto 0 0 sgr0
   if ((_ble_line_endy>0)); then
     local height=$((_ble_line_endy+1))
     ble-edit/draw/put "${_ble_term_dl//'%d'/$height}${_ble_term_il//'%d'/$height}"
@@ -1867,7 +1869,7 @@ function ble-edit/draw/clear-line {
 function ble-edit/draw/clear-line-after {
   local x="$1" y="$2"
 
-  ble-edit/draw/goto "$x" "$y"
+  ble-edit/draw/goto "$x" "$y" sgr0
   if ((_ble_line_endy>y)); then
     local height=$((_ble_line_endy-y))
     ble-edit/draw/put "$_ble_term_ind${_ble_term_dl//'%d'/$height}${_ble_term_il//'%d'/$height}$_ble_term_ri"
