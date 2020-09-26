@@ -1409,16 +1409,16 @@ function ble/textarea#invalidate {
 ## 関数 ble/textarea#render/.erase-forward-line.draw opts
 ##   @var[in] x cols
 function ble/textarea#render/.erase-forward-line.draw {
-  local eraser=$_ble_term_el
+  local eraser=$_ble_term_sgr0$_ble_term_el
   if [[ :$render_opts: == *:relative:* ]]; then
     local width=$((cols-x))
     if ((width==0)); then
       eraser=
     elif [[ $_ble_term_ech ]]; then
-      eraser=${_ble_term_ech//'%d'/$width}
+      eraser=$_ble_term_sgr0${_ble_term_ech//'%d'/$width}
     else
       ble/string#reserve-prototype "$width"
-      eraser=${_ble_string_prototype::width}${_ble_term_cub//'%d'/$width}
+      eraser=$_ble_term_sgr0${_ble_string_prototype::width}${_ble_term_cub//'%d'/$width}
     fi
   fi
   ble/canvas/put.draw "$eraser"
