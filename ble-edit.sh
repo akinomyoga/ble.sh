@@ -2520,7 +2520,7 @@ function ble/textarea#render/.perform-scroll {
       ble/textmap#getxy.out --prefix=fmax "$fmax"
 
       ble-form/panel#goto.draw "$_ble_textarea_panel" "$fminx" $((fminy-new_scroll))
-      ((new_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+      ((new_scroll==0)) && ble-edit/draw/put "$_ble_term_sgr0$_ble_term_el" # ... を消す
       local ret; ble/textarea#slice-text-buffer "$fmin" "$fmax"
       ble-edit/draw/put "$ret"
       ((_ble_line_x=fmaxx,
@@ -2547,7 +2547,7 @@ function ble/textarea#render/.show-scroll-at-first-line {
     ble-form/panel#goto.draw "$_ble_textarea_panel" "$begx" "$begy"
     local scroll_status="(line $((_ble_textarea_scroll+2))) ..."
     scroll_status=${scroll_status::cols-1-begx}
-    ble-edit/draw/put "$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
+    ble-edit/draw/put "$_ble_term_sgr0$_ble_term_el$_ble_term_bold$scroll_status$_ble_term_sgr0"
     ((_ble_line_x+=${#scroll_status}))
   fi
 }
@@ -2696,7 +2696,7 @@ function ble/textarea#render {
       ((gbegy-=_ble_textarea_scroll))
 
       ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
-      ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+      ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_sgr0$_ble_term_el" # ... を消す
       ble/textarea#slice-text-buffer "$gbeg" "$gend"
       ble-edit/draw/put "$ret"
       ble-form/panel#report-cursor-position "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
@@ -2732,7 +2732,7 @@ function ble/textarea#render {
         ((gbegy-=_ble_textarea_scroll))
 
         ble-form/panel#goto.draw "$_ble_textarea_panel" "$gbegx" "$gbegy"
-        ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_el" # ... を消す
+        ((_ble_textarea_scroll==0)) && ble-edit/draw/put "$_ble_term_sgr0$_ble_term_el" # ... を消す
         ble/textarea#slice-text-buffer "$gbeg" "$gend"
         ble-edit/draw/put "$ret"
 
