@@ -275,6 +275,11 @@ function ble-edit/draw/put.dl {
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$_ble_term_el2 # Note #D1214: 最終行対策 cygwin, linux
   DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_dl//'%d'/$value}"
 }
+function ble-edit/draw/put.ind {
+  local -i count=${1-1}
+  local ret; ble/string#repeat "${_ble_term_ind}" "$count"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
+}
 function ble-edit/draw/put.cuu {
   local -i value="${1-1}"
   DRAW_BUFF[${#DRAW_BUFF[*]}]="${_ble_term_cuu//'%d'/$value}"
@@ -1796,12 +1801,25 @@ function .ble-edit/edit/detach {
 ##     プロンプト原点が x=0 y=0 に対応します。
 function ble-edit/draw/goto {
   local -i x="$1" y="$2"
+
+  # Note #D1392: mc (midnight commander) は
+  #   sgr0 単体でもプロンプトと勘違いするので、
+  #   プロンプト更新もカーソル移動も不要の時は、
+  #   sgr0 も含めて何も出力しない。
+  ((x==_ble_line_x&&y==_ble_line_y)) && return 0
+
   ble-edit/draw/put "$_ble_term_sgr0"
 
   local -i dy=y-_ble_line_y
   if ((dy!=0)); then
     if ((dy>0)); then
-      ble-edit/draw/put "${_ble_term_cud//'%d'/$dy}"
+      if [[ $MC_SID == $$ ]]; then
+        # Note #D1392: mc (midnight commander) の中だと layout が破壊されるので、
+        #   必ずしも CUD で想定した行だけ移動できると限らない。
+        ble-edit/draw/put.ind "$dy"
+      else
+        ble-edit/draw/put "${_ble_term_cud//'%d'/$dy}"
+      fi
     else
       ble-edit/draw/put "${_ble_term_cuu//'%d'/$((-dy))}"
     fi

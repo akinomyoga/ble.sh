@@ -256,6 +256,15 @@ function _ble_util_string_prototype.reserve {
     _ble_util_string_prototype="$_ble_util_string_prototype$_ble_util_string_prototype"
   done
 }
+## 関数 ble/string#repeat str count
+##   @param[in] str
+##   @param[in] count
+##   @var[out] ret
+function ble/string#repeat {
+  _ble_util_string_prototype.reserve "$2"
+  ret=${_ble_util_string_prototype::$2}
+  ret="${ret// /$1}"
+}
 
 function ble/string#common-prefix {
   local a="$1" b="$2"
