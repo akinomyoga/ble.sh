@@ -152,6 +152,7 @@
 - util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
 - complete: work around slow `compgen -c` in Cygwin `#D1329` 5327f5d
 - edit: work around problems with `mc` (reported by onelittlehope) `#D1392` e97aa07
+  - highlight: fix a problem that the attribute of the last character is applied till EOL `#D1393` 0000000
 
 ## Internal changes and fixes
 
