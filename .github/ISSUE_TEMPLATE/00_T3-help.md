@@ -1,5 +1,5 @@
 ---
-name: Help
+name: "(English) Help"
 about: Questions on usage
 
 ---

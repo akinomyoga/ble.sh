@@ -1,5 +1,5 @@
 ---
-name: Free style issue
+name: "(English) Free style issue"
 about: Miscellaneous discussion, etc.
 
 ---

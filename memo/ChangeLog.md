@@ -43,7 +43,7 @@
 - complete: support `bleopt complete_menu_maxlines` `#D1375` 8e81cd7
 - prompt: support `_ble_prompt_update` `#D1376` 0fa8739
 - prompt: support `bleopt prompt_{xterm_title,screen_title,status_line}` `#D1378` 5c3f6fe
-  - prompt: check `TERM` for prompt window titles when `_ble_term_TERM` is unavailable `#D1388` 0000000
+  - prompt: check `TERM` for prompt window titles when `_ble_term_TERM` is unavailable `#D1388` 3c88869
 - syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
 
 ## Changes
@@ -127,8 +127,8 @@
 - syntax (tree-enumerate): fix unmodified `wtype` of reconstructed words at the end `#D1385` 98576c7
 - complete: fix a bug that progcomp retry by 124 caused the default completion again `#D1386` 98576c7
 - complete: fix bugs that quotation disappears on ambiguous completion `#D1387` 98576c7
-- complete: fix superlinear performace of ambiguous matching globpat `#D1389` 0000000
 - complete: fix a bug of duplicated completions of filenames with spaces `#D1390` 98576c7
+- complete: fix superlinear performace of ambiguous matching globpat `#D1389` 71afaba
 
 ## Compatibility
 
@@ -151,7 +151,7 @@
 - decode: fix a bug of broken cmap cache found in ble-0.3 `#D1327` 16b56bf
 - util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
 - complete: work around slow `compgen -c` in Cygwin `#D1329` 5327f5d
-- edit: work around problems with `mc` (reported by onelittlehope) `#D1392` 0000000
+- edit: work around problems with `mc` (reported by onelittlehope) `#D1392` e97aa07
 
 ## Internal changes and fixes
 
@@ -182,7 +182,7 @@
 - main: unset `BLE_VERSION`, `_ble_bash`, etc. on `ble-unload` `#D1382` 6b615b6
 - util: revisit `ble/variable#is-global` implementation `#D1383` 6b5468f
 - cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 445a5ad
-- edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 0000000
+- edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 5bed6e6
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
