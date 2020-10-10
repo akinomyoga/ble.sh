@@ -666,6 +666,56 @@ function ble/widget/menu/backward {
   fi
   ble/complete/menu#select "$nsel"
 }
+
+_ble_complete_menu_lastcolumn=
+## 関数 ble/widget/menu/.check-last-column
+##   @var[in,out] ox
+function ble/widget/menu/.check-last-column {
+  if [[ $_ble_complete_menu_lastcolumn ]]; then
+    local lastwidget=${LASTWIDGET%%' '*}
+    if [[ $lastwidget == ble/widget/menu/forward-line ||
+            $lastwidget == ble/widget/menu/backward-line ]]
+    then
+      ox=$_ble_complete_menu_lastcolumn
+      return 0
+    fi
+  fi  
+  _ble_complete_menu_lastcolumn=$ox
+}
+## 関数 ble/widget/menu/.goto-column column
+##   現在行の中で指定した列に対応する要素に移動する。
+##   @param[in] column
+function ble/widget/menu/.goto-column {
+  local column=$1
+  local offset=$_ble_complete_menu_offset
+  local osel=$_ble_complete_menu_selected
+  ((osel>=0)) || return 1
+  local entry=${_ble_complete_menu_icons[osel-offset]}
+  local fields; ble/string#split fields , "${entry%%:*}"
+  local ox=${fields[0]} oy=${fields[1]}
+  local nsel=-1
+  if ((ox<column)); then
+    # forward search within the line
+    nsel=$osel
+    for entry in "${_ble_complete_menu_icons[@]:osel+1-offset}"; do
+      ble/string#split fields , "${entry%%:*}"
+      local x=${fields[0]} y=${fields[1]}
+      ((y==oy&&x<=column)) || break
+      ((nsel++))
+    done
+  elif ((ox>column)); then
+    # backward search within the line
+    local i=$osel
+    while ((--i>=offset)); do
+      entry=${_ble_complete_menu_icons[i-offset]}
+      ble/string#split fields , "${entry%%:*}"
+      local x=${fields[0]} y=${fields[1]}
+      ((y<oy||x<=column&&(nsel=i,1))) && break
+    done
+  fi
+  ((nsel>=0&&nsel!=osel)) &&
+    ble/complete/menu#select "$nsel"
+}
 function ble/widget/menu/forward-line {
   local offset=$_ble_complete_menu_offset
   local osel=$_ble_complete_menu_selected
@@ -673,18 +723,21 @@ function ble/widget/menu/forward-line {
   local entry=${_ble_complete_menu_icons[osel-offset]}
   local fields; ble/string#split fields , "${entry%%:*}"
   local ox=${fields[0]} oy=${fields[1]}
-  local i=$osel nsel=-1
+  ble/widget/menu/.check-last-column
+  local i=$osel nsel=-1 is_next_page=
   for entry in "${_ble_complete_menu_icons[@]:osel+1-offset}"; do
     ble/string#split fields , "${entry%%:*}"
     local x=${fields[0]} y=${fields[1]}
     ((y<=oy||y==oy+1&&x<=ox||nsel<0)) || break
     ((++i,y>oy&&(nsel=i)))
   done
-  ((nsel<0&&(nsel=offset+${#_ble_complete_menu_icons[@]})))
+  ((nsel<0&&(is_next_page=1,nsel=offset+${#_ble_complete_menu_icons[@]})))
 
   local ncand=${#_ble_complete_menu_items[@]}
   if ((0<=nsel&&nsel<ncand)); then
     ble/complete/menu#select "$nsel"
+    ((is_next_page)) &&
+      ble/widget/menu/.goto-column "$ox"
   else
     ble/widget/.bell 'menu: no more candidates'
     return 1
@@ -697,16 +750,19 @@ function ble/widget/menu/backward-line {
   local entry=${_ble_complete_menu_icons[osel-offset]}
   local fields; ble/string#split fields , "${entry%%:*}"
   local ox=${fields[0]} oy=${fields[1]}
-  local i=$((offset-1)) nsel=$((offset-1))
-  for entry in "${_ble_complete_menu_icons[@]::osel-offset}"; do
+  ble/widget/menu/.check-last-column
+  local nsel=$osel
+  while ((--nsel>=offset)); do
+    entry=${_ble_complete_menu_icons[nsel-offset]}
     ble/string#split fields , "${entry%%:*}"
     local x=${fields[0]} y=${fields[1]}
-    ((y<oy-1||y==oy-1&&x<=ox||y<oy&&nsel<0)) || break
-    ((++i,nsel=i))
+    ((y<oy-1||y==oy-1&&x<=ox)) && break
   done
 
   if ((nsel>=0)); then
     ble/complete/menu#select "$nsel"
+    ((nsel<offset)) &&
+      ble/widget/menu/.goto-column "$ox"
   else
     ble/widget/.bell 'menu: no more candidates'
     return 1

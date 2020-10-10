@@ -68,6 +68,7 @@
 - main (`ble-update`): clone github repository if the original repository is not found `#D1363` 6e3b3b5
 - util (bleopt): change output format d4b12cd
 - syntax: allow `time -- command` for Bash 5.1 `#D1367` 00d0e93
+- menu: preserve columns with `{forward,backward}-line` `#D1396` 0000000
 
 ## Fix
 
