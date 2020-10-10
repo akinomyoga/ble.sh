@@ -274,9 +274,10 @@ function ble/prompt/initialize {
 ##     ps1out の計算 (trace) を省略する為に使用します。
 _ble_edit_prompt_dirty=
 _ble_edit_prompt=("" 0 0 0 32 0 "" "")
-_ble_edit_rprompt_dirty=
 _ble_edit_rprompt_bbox=()
 _ble_edit_rprompt=()
+_ble_edit_rprompt_dirty=
+_ble_edit_rprompt_shown=
 
 _ble_prompt_xterm_title=()
 _ble_prompt_screen_title=()
@@ -1918,10 +1919,12 @@ function ble/textarea#render/.show-scroll-at-first-line {
   fi
 }
 
-## 関数 ble/textarea#render/.erase-rps1
+## 関数 ble/textarea#render/.erase-rprompt
 ##   @var[in] cols
 ##     rps1 の幅の分だけ減少させた後の cols を指定します。
-function ble/textarea#render/.erase-rps1 {
+function ble/textarea#render/.erase-rprompt {
+  [[ $_ble_edit_rprompt_shown ]] || return 0
+  _ble_edit_rprompt_shown=
   local rps1_height=${_ble_edit_rprompt_bbox[3]}
   local -a DRAW_BUFF=()
   local y=0
@@ -1947,6 +1950,7 @@ function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
     ((index++))
   done
   ble/canvas/bflush.draw
+  _ble_edit_rprompt_shown=
 }
 
 ## 関数 ble/textarea#render/.show-prompt
@@ -1971,6 +1975,7 @@ function ble/textarea#render/.show-rprompt {
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" $((cols+1)) 0
   ble/canvas/panel#put.draw "$_ble_textarea_panel" "$rps1out" $((cols+1+rps1x)) "$rps1y"
   _ble_edit_rprompt_dirty=
+  _ble_edit_rprompt_shown=1
 }
 
 ## 関数 ble/textarea#focus
@@ -2029,15 +2034,14 @@ function ble/textarea#render {
   local rps1_enabled=; [[ $bleopt_prompt_rps1 ]] && ((_ble_textarea_panel==0)) && rps1_enabled=1
 
   # rps1_transient
-  local rps1_clear=
   if [[ $rps1_enabled && :$opts: == *:leave:* && ! $bleopt_prompt_rps1_final && $bleopt_prompt_rps1_transient ]]; then
     # Note: ble/prompt/update を実行するよりも前に現在の表示内容を消去する。
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     local prox=${_ble_edit_prompt[1]}
     if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
-      rps1_clear=1
+      rps1_enabled=
       ((cols-=rps1_width+1,_ble_term_xenl||cols--))
-      ble/textarea#render/.erase-rps1
+      ble/textarea#render/.erase-rprompt
     fi
   fi
 
@@ -2045,12 +2049,14 @@ function ble/textarea#render {
   ble/prompt/update "$opts" # x y lc ret
 
   # rps1
-  local rps1_show=
-  if [[ $rps1_enabled && ! $rps1_clear ]]; then
+  if [[ $rps1_enabled ]]; then
     local rps1_width=${_ble_edit_rprompt_bbox[2]}
     local prox=${_ble_edit_prompt[1]}
-    ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)) &&
-      ((rps1_show=1,cols-=rps1_width+1,_ble_term_xenl||cols--))
+    if ((rps1_width&&20+rps1_width<cols&&prox+10+rps1_width<cols)); then
+      ((cols-=rps1_width+1,_ble_term_xenl||cols--))
+    else
+      rps1_enabled=
+    fi
   fi
 
   # 編集内容の構築
@@ -2062,7 +2068,7 @@ function ble/textarea#render {
 
   # 配置情報の更新
   local render_opts=
-  [[ $rps1_show ]] && render_opts=relative
+  [[ $rps1_enabled ]] && render_opts=relative
   COLUMNS=$cols ble/textmap#update "$text" "$render_opts"
   ble/urange#update "$_ble_textmap_umin" "$_ble_textmap_umax"
   ble/urange#clear --prefix=_ble_textmap_
@@ -2103,20 +2109,20 @@ function ble/textarea#render {
   #-------------------
   # 出力
 
-  [[ $rps1_clear ]] &&
-    ble/textarea#render/.cleanup-trailing-spaces-after-newline
-
   # 2 表示内容
   local ret esc_line= esc_line_set=
   if [[ ! $_ble_textarea_invalidated ]]; then
     # 部分更新の場合
+
+    [[ ! $rps1_enabled && $_ble_edit_rprompt_shown || $rps1_enabled && $_ble_edit_rprompt_dirty ]] &&
+      ble/textarea#render/.cleanup-trailing-spaces-after-newline
 
     # スクロール
     ble/textarea#render/.perform-scroll "$scroll" # update: umin umax
     _ble_textarea_scroll_new=$_ble_textarea_scroll
 
     # プロンプトに更新があれば表示
-    [[ $_ble_edit_rprompt_dirty ]] &&
+    [[ $rps1_enabled && $_ble_edit_rprompt_dirty ]] &&
       ble/textarea#render/.show-rprompt
     [[ $_ble_edit_prompt_dirty ]] &&
       ble/textarea#render/.show-prompt
@@ -2147,9 +2153,11 @@ function ble/textarea#render {
   else
     # 全体更新
     ble/canvas/panel#clear.draw "$_ble_textarea_panel"
+    _ble_edit_rprompt_shown=
 
     # プロンプト描画
-    ble/textarea#render/.show-rprompt
+    [[ $rps1_enabled ]] &&
+      ble/textarea#render/.show-rprompt
     ble/textarea#render/.show-prompt
 
     # 全体描画

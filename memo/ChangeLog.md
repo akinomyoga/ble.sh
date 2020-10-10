@@ -133,6 +133,8 @@
 - complete: fix bugs that quotation disappears on ambiguous completion `#D1387` 98576c7
 - complete: fix a bug of duplicated completions of filenames with spaces `#D1390` 98576c7
 - complete: fix superlinear performace of ambiguous matching globpat `#D1389` 71afaba
+- prompt: fix extra spaces on line folding before double width character `#D1400` 0000000
+- prompt: fix a bug that lonig rps1 is not correctly turned off `#D1401` 0000000
 
 ## Compatibility
 
