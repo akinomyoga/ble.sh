@@ -633,6 +633,33 @@ function ble/syntax/print-status {
   fi
 }
 
+function ble/syntax/print-layer-buffer.draw {
+  local layer_name=$1
+  local -a keys vals
+  eval "keys=(\"\${!_ble_highlight_layer_${layer_name}_buff[@]}\")"
+  eval "vals=(\"\${_ble_highlight_layer_${layer_name}_buff[@]}\")"
+
+  local ret sgr0=$_ble_term_sgr0
+  ble/color/face2sgr command_builtin; local sgr1=$ret
+  ble/color/face2sgr syntax_varname; local sgr2=$ret
+  ble/color/face2sgr syntax_quoted; local sgr3=$ret
+
+  ble/canvas/put.draw "${sgr1}buffer${sgr0} ${sgr2}$layer_name${sgr0}=("
+  local i count=0
+  for ((i=0;i<${#keys[@]};i++)); do
+    local key=${keys[i]} val=${vals[i]}
+    while ((count++<key)); do
+      ((count==1)) || ble/canvas/put.draw ' '
+      ble/canvas/put.draw $'\e[91munset\e[m'
+    done
+
+    ((count==1)) || ble/canvas/put.draw ' '
+    ble/string#quote-word "$val" quote-empty:sgrq="$sgr3"
+    ble/canvas/put.draw "$ret"
+  done
+  ble/canvas/put.draw ")$_ble_term_nl"
+}
+
 #--------------------------------------
 
 function ble/syntax/parse/generate-stat {
@@ -4389,7 +4416,7 @@ function ble/syntax/parse/shift.impl2/.shift-until {
   local limit=$1
   while ((shift2_j>=limit)); do
 #%if !release
-    [[ $ble_debug ]] && _ble_syntax_stat_shift[shift2_j+shift]=1
+    [[ $bleopt_syntax_debug ]] && _ble_syntax_stat_shift[shift2_j+shift]=1
 #%end
     ble/syntax/parse/shift.stat
     ble/syntax/parse/shift.nest
@@ -4424,7 +4451,7 @@ function ble/syntax/parse/shift.impl2/.proc1 {
     #   単語 (wtype=整数) の時は、nlen が外部に参照を持つ可能性がある。
     #   tprev<=end0 の場合、stat の中の tplen が shift 対象の可能性がある事に注意する。
 #%if !release
-    [[ $ble_debug ]] && _ble_syntax_stat_shift[shift2_j+shift]=1
+    [[ $bleopt_syntax_debug ]] && _ble_syntax_stat_shift[shift2_j+shift]=1
 #%end
     ble/syntax/parse/shift.stat
     ble/syntax/parse/shift.nest
@@ -4451,7 +4478,7 @@ function ble/syntax/parse/shift.method1 {
 
 function ble/syntax/parse/shift.method2 {
 #%if !release
-  [[ $ble_debug ]] && _ble_syntax_stat_shift=()
+  [[ $bleopt_syntax_debug ]] && _ble_syntax_stat_shift=()
 #%end
 
   local iN=${#_ble_syntax_text} # tree-enumerate 起点は (古い text の長さ) である
@@ -6602,7 +6629,7 @@ function ble/highlight/layer:syntax/update {
   #--------------------------------------------------------
 
 #%if !release
-  if [[ $ble_debug ]]; then
+  if [[ $bleopt_syntax_debug ]]; then
     local debug_attr_umin=$_ble_syntax_attr_umin
     local debug_attr_uend=$_ble_syntax_attr_umax
   fi
@@ -6649,11 +6676,18 @@ function ble/highlight/layer:syntax/update {
   PREV_BUFF=_ble_highlight_layer_syntax_buff
 
 #%if !release
-  if [[ $ble_debug ]]; then
+  if [[ $bleopt_syntax_debug ]]; then
     local status buff= nl=$'\n'
     _ble_syntax_attr_umin=$debug_attr_umin _ble_syntax_attr_umax=$debug_attr_uend ble/syntax/print-status -v status
-    ble/util/assign buff 'declare -p _ble_highlight_layer_plain_buff _ble_highlight_layer_syntax_buff | ble/bin/cat -A'; status="$status${buff%$nl}$nl"
-    ble/util/assign buff 'declare -p _ble_highlight_layer_disabled_buff _ble_highlight_layer_region_buff _ble_highlight_layer_overwrite_mode_buff | ble/bin/cat -A'; status="$status${buff%$nl}$nl"
+
+    local -a DRAW_BUFF=()
+    ble/syntax/print-layer-buffer.draw plain
+    ble/syntax/print-layer-buffer.draw syntax
+    ble/syntax/print-layer-buffer.draw disabled
+    ble/syntax/print-layer-buffer.draw region
+    ble/syntax/print-layer-buffer.draw overwrite
+    local ret; ble/canvas/sflush.draw
+    status=$status$ret
     #ble/util/assign buff 'declare -p _ble_textarea_bufferName $_ble_textarea_bufferName | cat -A'; status="$status$buff"
     ble-edit/info/show ansi "$status"
   fi

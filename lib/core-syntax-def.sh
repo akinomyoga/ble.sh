@@ -91,7 +91,10 @@ ble-import -d lib/core-syntax
 #------------------------------------------------------------------------------
 # グローバル変数の定義 (関数内からではできないのでここで先に定義)
 
+bleopt/declare -v syntax_debug ''
+
 bleopt/declare -v filename_ls_colors ''
+
 bleopt/declare -v highlight_syntax 1
 bleopt/declare -v highlight_filename 1
 bleopt/declare -v highlight_variable 1

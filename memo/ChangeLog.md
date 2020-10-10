@@ -70,6 +70,8 @@
 - util (bleopt): change output format d4b12cd
 - syntax: allow `time -- command` for Bash 5.1 `#D1367` 00d0e93
 - menu: preserve columns with `{forward,backward}-line` `#D1396` 0000000
+- syntax: rename `ble_debug` to `bleopt syntax_debug` `#D1398` 0000000
+- syntax: change a style of buffer contents in `bleopt syntax_debug` `#D1399` 0000000
 
 ## Fix
 

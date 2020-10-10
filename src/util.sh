@@ -897,6 +897,7 @@ function ble/string#quote-command {
   local arg q=\' Q="'\''"
   for arg; do ret="$ret $q${arg//$q/$Q}$q"; done
 }
+## 関数 ble/string#quote-word text
 function ble/string#quote-word {
   ret=$1
 
@@ -909,6 +910,19 @@ function ble/string#quote-word {
     [[ :$opts: =~ $rex ]] &&
       sgr0=${BASH_REMATCH[1]}
   fi
+
+  if [[ ! $ret ]]; then
+    [[ :$opts: == *:quote-empty:* ]] &&
+      ret=$sgrq\'\'$sgr0
+    return
+  fi
+
+  local chars=$'\a\b\e\f\n\r\t\v'
+  if [[ $ret == *["$chars"]* ]]; then
+    ble/string#escape-for-bash-escape-string "$ret"
+    ret=$sgrq\$\'$ret\'$sgr0
+    return
+  fi  
 
   local chars=$_ble_term_IFS'"`$\<>()|&;*?[]!^=:{,}#~' q=\'
   if [[ $ret == *["$chars"]* ]]; then

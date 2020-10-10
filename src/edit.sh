@@ -3297,7 +3297,7 @@ function ble/widget/exit {
   #ble/term/visible-bell ' Bye!! ' # 最後に vbell を出すと一時ファイルが残る
   _ble_edit_line_disabled=1 ble/textarea#render
 
-  # Note: ble_debug=1 の時 ble/textarea#render の中で info が設定されるので、
+  # Note: bleopt_syntax_debug=1 の時 ble/textarea#render の中で info が設定されるので、
   #   これは ble/textarea#render より後である必要がある。
   ble-edit/info/hide
 
