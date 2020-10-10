@@ -974,7 +974,7 @@ function ble/canvas/trace/.impl {
             ble/canvas/trace/.NEL
           else
             # 行に入りきらない場合の調整
-            ble/canvas/put.draw "${_ble_string_prototype::x+w-cols}"
+            ble/canvas/put.draw "${_ble_string_prototype::cols-x}"
             ((x=cols))
           fi
           if [[ $opt_measure ]]; then
