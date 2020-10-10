@@ -2375,10 +2375,13 @@ function ble/complete/progcomp {
     fi
     checked="$checked$cmd "
 
+    # progcomp_alias が有効でなければ break
+    ((_ble_bash<50000)) || shopt -q progcomp_alias || break
+
     local ret
     ble/util/expand-alias "$cmd"
     ble/string#split-words ret "$ret"
-    [[ $checked == *" $ret "* ]] && break
+    [[ $checked != *" $ret "* ]] || break
     cmd=$ret
     ((${#ret[@]}>=2)) &&
       alias_args=("${ret[@]:1}" "${alias_args[@]}")
