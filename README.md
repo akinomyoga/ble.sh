@@ -1,7 +1,47 @@
 [ Languages: **English** | [日本語](README-ja_JP.md) (Japanese) ]
-# ble.sh
+<center>
+
+# ble.sh ―Bash Line Editor―
+[ **README** | [Manual](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A71-Introduction) |
+[Q\&A](https://github.com/akinomyoga/ble.sh/wiki/Q&A) |
+[`contrib`](https://github.com/akinomyoga/blesh-contrib) |
+[Recipes](https://github.com/akinomyoga/ble.sh/wiki/Recipes) ]
+</center>
 
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts which replaces the default GNU Readline.
+
+Current devel version is 0.4.
+This script supports Bash 3.0 or higher although we recommend to use `ble.sh` with Bash 4.0 or higher.
+Currently, only `UTF-8` encoding is supported for non-ASCII characters.
+This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD license).
+
+## Quick instructions
+
+Installation requires the commands `git`, `make` (GNU make), and `gawk`.
+For detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-from-tarball) for trial/installation,
+[Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
+
+```bash
+# Quick INSTALL to BASHRC
+
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+make -C ble.sh install PREFIX=~/.local
+echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+
+# Quick TRIAL without installation
+
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+make -C ble.sh
+source ble.sh/out/ble.sh
+
+# PACKAGE (for package maintainers)
+
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
+```
+
+## Features
+
 - **Syntax highlighting**: Highlight command lines input by users as in `fish` and `zsh-syntax-highlighting`.
   Unlike the simple highlighting in `zsh-syntax-highlighting`, `ble.sh` performs syntactic analysis to enable the correct highlighting of complex structures such as nested command substitutions, multiple here documents, etc.
 - **Enhanced completion**:
@@ -15,62 +55,81 @@
   Vim editing mode supports various operators, text objects, registers, keyboard macros, marks, etc.
   It also provides `vim-surround` as an option.
 
-This script supports Bash 3.0 or later although we recommend to use `ble.sh` with Bash 4.0 or later.
-
-Currently, only `UTF-8` encoding is supported for non-ASCII characters.
-
-This script is provided under the [**BSD License**](LICENSE.md) (3-clause BSD license).
-
-> Demo
->
-> ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
-
 Note: ble.sh does not provide a specific settings for the prompt, aliases, functions, etc.
 ble.sh provides a more fundamental infrastructure so that users can set up their own settings for prompts, aliases, etc.
 Of course ble.sh can be used in combination with other Bash configurations such as `bash-it` and `oh-my-bash`.
 
+> Demo (version 0.2)
+>
+> ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
+
 # 1 Usage
 
-## Generate `ble.sh` from source (version ble-0.4 devel)
+## 1.1 Try `ble.sh` generated from source (version ble-0.4 devel)<sup><a id="get-from-source" href="#get-from-source">†</a></sup>
+
+### Generate
 
 To generate `ble.sh`, `gawk` (GNU awk) and `gmake` (GNU make) is required.
 The file `ble.sh` can be generated using the following commands.
 If you have GNU make installed on `gmake`, please use `gmake` instead of `make`.
-```console
-$ git clone --recursive https://github.com/akinomyoga/ble.sh.git
-$ cd ble.sh
-$ make
-```
-A script file `ble.sh` will be generated in the directory `ble.sh/out`. Then, load `ble.sh` using the `source` command:
-```console
-$ source out/ble.sh
-```
-If you want to install `ble.sh` in a specified directory, use the following command (if `INSDIR` is not specified, the default location `${XDG_DATA_HOME:-$HOME/.local/share}/blesh` is used):
-```console
-$ make INSDIR=/path/to/blesh install
+```bash
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+cd ble.sh
+make
 ```
 
-## Or, download `ble.sh` (version ble-0.3 201902)
+A script file `ble.sh` will be generated in the directory `ble.sh/out`.
+
+### Try
+
+Then, you can load `ble.sh` in the Bash session using the `source` command:
+```bash
+source out/ble.sh
+```
+
+### Install
+
+To install `ble.sh` in a specified directory, use `make install`.
+
+```bash
+# INSTALL to ~/.local/share/blesh
+make install
+
+# INSTALL to a specified directory
+make install INSDIR=/path/to/blesh
+
+# PACKAGE (for package maintainers)
+make install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
+```
+
+If either the make variables `DESTDIR` or `PREFIX` is supplied, `ble.sh` will be copied to `$DESTDIR/$PREFIX/share/blesh`.
+Otherwise, if the make variables `INSDIR` is specified, it will be installed directly on `$INSDIR`.
+Otherwise, if the environment variable `$XDG_DATA_HOME` is defined, the install location will be `$XDG_DATA_HOME/blesh`.
+If none of these variables are specified, the default install location is `~/.local/share/blesh`.
+
+To set up `.bashrc` see [Sec. 1.3](#set-up-bashrc).
+
+## 1.2 Or, try `ble.sh` downloaded from GitHub releases (version ble-0.3 201902)<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
 
 With `wget`:
-```console
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.2/ble-0.3.2.tar.xz
-$ tar xJf ble-0.3.2.tar.xz
-$ source ble-0.3.2/ble.sh
+```bash
+wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.2/ble-0.3.2.tar.xz
+tar xJf ble-0.3.2.tar.xz
+source ble-0.3.2/ble.sh
 ```
 With `curl`:
-```console
-$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.2/ble-0.3.2.tar.xz
-$ tar xJf ble-0.3.2.tar.xz
-$ source ble-0.3.2/ble.sh
+```bash
+curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.2/ble-0.3.2.tar.xz
+tar xJf ble-0.3.2.tar.xz
+source ble-0.3.2/ble.sh
 ```
 
 If you want to place `ble.sh` in a specific directory, just copy the directory:
-```console
-$ cp -r ble-0.3.2 /path/to/blesh
+```bash
+cp -r ble-0.3.2 /path/to/blesh
 ```
 
-## Setup `.bashrc`
+## 1.3 Set up `.bashrc`<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
 If you want to load `ble.sh` by default in interactive sessions of `bash`, add the following codes to your `.bashrc` file:
 ```bash
@@ -85,7 +144,24 @@ If you want to load `ble.sh` by default in interactive sessions of `bash`, add t
 ((_ble_bash)) && ble-attach
 ```
 
-## Update
+## 1.4 User settings `~/.blerc`
+
+User settings can be placed in the init script `~/.blerc` (or `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh` if `~/.blerc` is not available)
+whose template is available as the file [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) in the repository.
+The init script is a Bash script which will be sourced during the load of `ble.sh`, so any shell commands can be used in `~/.blerc`.
+If you want to change the default path of the init script, you can add the option `--rcfile INITFILE` to `source ble.sh` as the following example:
+
+```bash
+# in bashrc
+
+# Example 1: ~/.blerc will be used by default
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+
+# Example 2: /path/to/your/blerc will be used
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
+```
+
+## 1.5 Update
 
 You need Git (`git`), GNU awk (`gawk`) and GNU make (`make`).
 For `ble-0.3+`, run `ble-update` in the session with `ble.sh` loaded:
@@ -104,22 +180,14 @@ make
 make INSDIR="$HOME/.local/share/blesh" install
 ```
 
-## User settings `~/.blerc`
+## 1.6 Uninstall
 
-User settings can be placed in the init script `~/.blerc` (or `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh` if `~/.blerc` is not available)
-whose template is available as the file [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) in the repository.
-The init script is a Bash script which will be sourced during the load of `ble.sh`, so any shell commands can be used in `~/.blerc`.
-If you want to change the default path of the init script, you can add the option `--rcfile INITFILE` to `source ble.sh` as the following example:
+Basically you can simply delete the installed directory and the settings that user added.
 
-```bash
-# in bashrc
-
-# Example 1: ~/.blerc will be used by default
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
-
-# Example 2: /path/to/your/blerc will be used
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
-```
+- Remove the added lines in `.bashrc`.
+- Remove `blerc` files (`~/.blerc` or `~/.config/blesh/init.sh`) if any.
+- Remove the installed directory.
+- Remove the temporary directory `/tmp/blesh` if any [ Only needed when your system does not automatically clears `/tmp` ].
 
 # 2 Basic settings
 
@@ -130,11 +198,11 @@ and [`contrib` repository](https://github.com/akinomyoga/blesh-contrib).
 The complete list of setting items can be found in the template [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc).
 For detailed explanations please refer to [Manual](https://github.com/akinomyoga/ble.sh/wiki).
 
-## Vim mode
+## 2.1 Vim mode
 
 For the vi/vim mode, check [the Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
-## Configure `auto-complete`
+## 2.2 Configure `auto-complete`
 
 The feature `auto-complete` is available for Bash 4.0+ and enabled by default.
 If you want to turn off `auto-complete`, please put the following line in your `~/.blerc`.
@@ -156,7 +224,7 @@ bleopt complete_auto_delay=300
 bleopt complete_auto_history=
 ```
 
-## CJK Width
+## 2.3 CJK Width
 
 The option `char_width_mode` controls the width of the Unicode characters with `East_Asian_Width=A` (Ambiguous characters).
 Currently four values `emacs`, `west`, `east`, and `auto` are supported. With the value `emacs`, the default width in emacs is used.
@@ -169,7 +237,7 @@ For example, the value can be changed to `west` as:
 bleopt char_width_mode='west'
 ```
 
-## Input Encoding
+## 2.4 Input Encoding
 
 The option `input_encoding` controls the encoding scheme used in the decode of input. Currently `UTF-8` and `C` are available. With the value `C`, byte values are directly interpreted as character codes. The default value is `UTF-8`. For example, the value can be changed to `C` as:
 
@@ -177,7 +245,7 @@ The option `input_encoding` controls the encoding scheme used in the decode of i
 bleopt input_encoding='C'
 ```
 
-## Bell
+## 2.5 Bell
 
 The options `edit_abell` and `edit_vbell` control the behavior of the edit function `bell`. If `edit_abell` is a non-empty string, audible bell is enabled, i.e. ASCII Control Character `BEL` (0x07) will be written to `stderr`. If `edit_vbell` is a non-empty string, visual bell is enabled. By default, the audible bell is enabled while the visual bell is disabled.
 
@@ -193,7 +261,7 @@ For another instance, the audible bell is disabled as:
 bleopt edit_abell=
 ```
 
-## Highlight Colors
+## 2.6 Highlight Colors
 
 The colors and attributes used in the syntax highlighting are controlled by `ble-color-setface` function. The following code reproduces the default configuration:
 ```bash
@@ -273,7 +341,7 @@ The color codes can be checked in output of the function `ble-color-show` (defin
 $ ble-color-show
 ```
 
-## Key Bindings
+## 2.7 Key Bindings
 
 Key bindings can be controlled with the shell function, `ble-bind`.
 For example, with the following setting, "Hello, world!" will be inserted on typing <kbd>C-x h</kbd>
@@ -305,7 +373,7 @@ $ ble-bind -L
 
 # 3 Tips
 
-## Use multiline mode
+## 3.1 Use multiline mode
 
 When the command line string contains a newline character, `ble.sh` enters the MULTILINE mode.
 
@@ -316,12 +384,12 @@ In the MULTILINE mode, the command can be executed by typing <kbd>C-j</kbd>.
 When the shell option `shopt -s cmdhist` is set (which is the default),
 <kbd>RET</kbd> (<kbd>C-m</kbd>) inserts a newline if the current command line string is syntactically incomplete.
 
-## Use vim editing mode
+## 3.2 Use vim editing mode
 
 If `set -o vi` is specified in `.bashrc` or `set editing-mode vi` is specified in `.inputrc`, the vim mode is enabled.
 For details, please check the [Wiki page](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode).
 
-## Use `auto-complete`
+## 3.3 Use `auto-complete`
 
 The feature `auto-complete` is available in Bash 4.0 or later. `auto-complete` automatically suggests a possible completion on user input.
 The suggested contents can be inserted by typing <kbd>S-RET</kbd>
@@ -329,7 +397,7 @@ The suggested contents can be inserted by typing <kbd>S-RET</kbd>
 If you want to insert only first word of the suggested contents, you can use <kbd>M-right</kbd> or <kbd>M-f</kbd>.
 If you want to accept the suggestion and immediately run the command, you can use <kbd>C-RET</kbd> (if your terminal supports this special key combination).
 
-## Use `sabbrev` (static abbrev expansions)
+## 3.4 Use `sabbrev` (static abbrev expansions)
 
 By registering words to `sabbrev`, the words can be expanded to predefined strings.
 When the cursor is just after a registered word, typing <kbd>SP</kbd> causes `sabbrev` expansion.
@@ -340,6 +408,12 @@ For example, with the following settings, when you type <kbd>SP</kbd> after the 
 ble-sabbrev L='| less'
 ```
 
-# 4 Special thanks
+# 4 Contributors
 
-- @cmplstofB for testing vim-mode and giving me a lot of suggestions
+I received many feedbacks from many people in GitHub Issues/PRs.
+I thank all such people for supporting the project.
+Among them, the following people have made particularly significant contributions.
+
+- [`@cmplstofB`](https://github.com/cmplstofB) helped me implementing vim-mode by testing it and giving me a lot of suggestions.
+- [`@dylankb`](https://github.com/dylankb) reported many issues for fzf-integration, initialization, etc.
+- [`@rux616`](https://github.com/rux616) reported several issues and created a PR for fixing the default path of `.blerc`

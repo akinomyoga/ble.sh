@@ -106,10 +106,18 @@ all: build
 #------------------------------------------------------------------------------
 # target "install"
 
-DATA_HOME := $(XDG_DATA_HOME)
-ifeq ($(DATA_HOME),)
+ifneq ($(filter-out %/,$(DESTDIR)),)
+  DESTDIR := $(DESTDIR)/
+endif
+
+ifneq ($(DESTDIR)$(PREFIX),)
+  DATA_HOME := $(DESTDIR)$(PREFIX)/share
+else ifneq ($(XDG_DATA_HOME),)
+  DATA_HOME := $(XDG_DATA_HOME)
+else
   DATA_HOME := $(HOME)/.local/share
 endif
+
 INSDIR = $(DATA_HOME)/blesh
 install: $(outfiles:$(OUTDIR)/%=$(INSDIR)/%) $(INSDIR)/cache.d $(INSDIR)/tmp
 $(INSDIR)/%: $(OUTDIR)/%

@@ -1,7 +1,47 @@
-[Languages: [English](README.md) (英語) | **日本語**]
-# ble.sh
+[ Languages: [English](README.md) (英語) | **日本語** ]
+<center>
+
+# ble.sh ―Bash Line Editor―
+[ **README** | [説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A71-%E5%9F%BA%E6%9C%AC) |
+[Q\&A](https://github.com/akinomyoga/ble.sh/wiki/%E8%B3%AA%E5%95%8F%E3%81%A8%E5%9B%9E%E7%AD%94) |
+[`contrib`](https://github.com/akinomyoga/blesh-contrib) |
+[逆引き](https://github.com/akinomyoga/ble.sh/wiki/%E9%80%86%E5%BC%95%E3%81%8D%E3%83%AC%E3%82%B7%E3%83%94) ]
+</center>
 
 `ble.sh` (*Bash Line Editor*) はピュア Bash スクリプトで書かれたコマンドラインエディタで、標準の GNU Readline を置き換える形で動作します。
+
+現在の開発バージョンは 0.4 です。
+このスクリプトは `bash-3.0` 以降で利用できますが、速度・機能などの観点から Bash 4.0 以降でお使い頂くことがお薦めです。
+現時点では、文字コードとして `UTF-8` のみの対応です。
+このスクリプトは [**BSD License**](LICENSE.md) (3条項 BSD ライセンス) の下で提供されます。
+
+## 簡単設定
+
+`ble.sH` インストールには `git`, `make` (GNU make), and `gawk` が必要です。
+詳細は、試用またはインストールに関しては [節1.1](#get-from-source) と [節1.2](#get-from-tarball) を、
+`~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
+
+```bash
+# インストール & .bashrc 簡単設定
+
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+make -C ble.sh install PREFIX=~/.local
+echo 'source ~/.local/share/blesh/ble.sh' >> ~/.bashrc
+
+# 簡単お試し (インストールせずにお試しいただけます)
+
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+make -C ble.sh
+source ble.sh/out/ble.sh
+
+# パッケージ作成用コマンド
+
+git clone --recursive https://github.com/akinomyoga/ble.sh.git
+make -C ble.sh install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
+```
+
+## 機能概要
+
 - **構文着色**: `fish` や `zsh-syntax-highlighting` のような文法構造に従った着色を行います。
   `zsh-syntax-highlighting` のような単純な着色ではなく、構文の入れ子構造や複数のヒアドキュメントなども正しく解析して着色します。
 - **補完増強**: 補完を大幅に増強します。
@@ -15,25 +55,19 @@
   テキストオブジェクト・各種レジスタ・オペレータ・キーボードマクロなどにも対応しています。
   拡張として `vim-surround` も提供しています。
 
-詳細な使い方・設定方法は[説明書](https://github.com/akinomyoga/ble.sh/wiki/)を御覧ください。ここでは簡単な使い方を説明します。
-
-このスクリプトは `bash-3.0` 以降で利用できますが、速度・機能などの観点から Bash 4.0 以降でお使い頂くことがお薦めです。
-
-現時点では、文字コードとして `UTF-8` のみの対応です。
-
-このスクリプトは [**BSD License**](LICENSE.md) (3条項 BSD ライセンス) の下で提供されます。
+★`ble.sh` はよくある Bash 設定集のようにプロンプト (`PS1`)、エイリアス、関数を提供するものではありません。
+`ble.sh` はより低層の基盤を提供するもので、ユーザは自分でプロンプトやエイリアスを設定する必要があります。
+勿論 `bash-it' や `oh-my-bash` の様な他の Bash 設定と一緒に使っていただくことも可能です。
 
 > デモ
 >
 > ![ble.sh demo gif](https://github.com/akinomyoga/ble.sh/wiki/images/trial1.gif)
 
-Note: ble.sh はよくある Bash 設定集のようにプロンプト (`PS1`)、エイリアス、関数を提供するものではありません。
-ble.sh はより低層の基盤を提供するもので、ユーザは自分でプロンプトやエイリアスを設定する必要があります。
-勿論 `bash-it' や `oh-my-bash` の様な他の Bash 設定と一緒に使っていただくことも可能です。
-
 # 1 使い方
 
-## 最新の git repository のソースから生成して試す (バージョン ble-0.4)
+## 1.1 最新の git repository のソースから生成して試す (バージョン ble-0.4)<sup><a id="get-from-source" href="#get-from-source">†</a></sup>
+
+### ble.sh 生成
 
 `ble.sh` を生成する為には `gawk` (GNU awk) と `gmake` (GNU make) が必要です。
 以下のコマンドで生成できます。
@@ -44,16 +78,38 @@ $ cd ble.sh
 $ make
 ```
 スクリプトファイル `ble.sh` がサブディレクトリ `ble.sh/out` 内に生成されます。
-`source` コマンドを用いて読み込めます:
+
+### 試用
+
+生成された `ble.sh` は `source` コマンドを用いてお試しいただけます。
+
 ```console
 $ source out/ble.sh
 ```
-指定したディレクトリにインストールするには以下のコマンドを使用します。`INSDIR` の指定を省略したときは既定の場所 `${XDG_DATA_HOME:-$HOME/.local/share}/blesh` にインストールされます。
-```console
-$ make INSDIR=/path/to/blesh install
+
+### インストール
+
+指定したディレクトリにインストールするには `make install` コマンドを使用します。
+
+```bash
+# ~/.local/share/blesh にインストール
+make install
+
+# 指定したディレクトリにインストール
+make install INSDIR=/path/to/blesh
+
+# パッケージ作成用 (パッケージ管理者用)
+make install DESTDIR=/tmp/blesh-package PREFIX=/usr/local
 ```
 
-## `ble.sh` をダウンロードして試す (旧バージョン ble-0.3 201902版)
+Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` は `$DESTDIR/$PREFIX/share/blesh` にコピーされます。
+それ以外で Make 変数 `INSDIR` が指定されている時、直接 `$INSDIR` にインストールされます。
+更にそれ以外で環境変数 `$XDG_DATA_HOME` が指定されている時、`$XDG_DATA_HOME/blesh` にインストールされます。
+以上の変数が何れも指定されていない時の既定のインストール先は `~/.local/share/blesh` です。
+
+`.bashrc` の設定に関しては[節1.3](#set-up-bashrc)を御覧ください。
+
+## 1.2 `ble.sh` をダウンロードして試す (旧バージョン ble-0.3 201902版)<sup><a id="get-from-tarball" href="#get-from-tarball">†</a></sup>
 
 `wget` を使う場合:
 ```console
@@ -73,7 +129,7 @@ $ source ble-0.3.2/ble.sh
 $ cp -r ble-0.3.2 /path/to/blesh
 ```
 
-## `.bashrc` に設定する
+## 1.3 `.bashrc` に設定する<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
 対話シェルで常用する場合には `.bashrc` に設定を行います。以下の様にコードを追加して下さい。
 ```bash
@@ -88,7 +144,24 @@ $ cp -r ble-0.3.2 /path/to/blesh
 ((_ble_bash)) && ble-attach
 ```
 
-## アップデートする
+## 1.4 初期化スクリプト `~/.blerc` について
+
+ユーザー設定は初期化スクリプト `~/.blerc` (またはもし `~/.blerc` が見つからなければ `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh`) に記述します。
+テンプレートとしてリポジトリの [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) というファイルを利用できます。
+初期化スクリプトは `ble.sh` ロード時に自動で読み込まれる Bash スクリプトなので、Bash で使えるコマンドを初期化スクリプトの中で利用できます。
+初期化スクリプトの位置を変更する場合には、`source ble.sh` 時に `--rcfile INITFILE` を指定します。以下に例を挙げます。
+
+```bash
+# in bashrc
+
+# Example 1: ~/.blerc will be used by default
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
+
+# Example 2: /path/to/your/blerc will be used
+[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
+```
+
+## 1.5 アップデート
 
 Git (`git'), GNU awk (`gawk`), 及び GNU make (`make`) が必要になります。
 `ble-0.3` 以上をお使いの場合は `ble.sh` をロードした状態で `ble-update` を実行して下さい。
@@ -107,22 +180,14 @@ make
 make INSDIR="$HOME/.local/share/blesh" install
 ```
 
-## 初期化スクリプト `~/.blerc` について
+## 1.6 アンインストール
 
-ユーザー設定は初期化スクリプト `~/.blerc` (またはもし `~/.blerc` が見つからなければ `${XDG_CONFIG_HOME:-$HOME/.config}/blesh/init.sh`) に記述します。
-テンプレートとしてリポジトリの [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) というファイルを利用できます。
-初期化スクリプトは `ble.sh` ロード時に自動で読み込まれる Bash スクリプトなので、Bash で使えるコマンドを初期化スクリプトの中で利用できます。
-初期化スクリプトの位置を変更する場合には、`source ble.sh` 時に `--rcfile INITFILE` を指定します。以下に例を挙げます。
+基本的に `ble.sh` ディレクトリとユーザの追加した設定を単に削除していただければ問題ありません。
 
-```bash
-# in bashrc
-
-# Example 1: ~/.blerc will be used by default
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach
-
-# Example 2: /path/to/your/blerc will be used
-[[ $- == *i* ]] && source /path/to/blesh/ble.sh --noattach --rcfile /path/to/your/blerc
-```
+- `.bashrc` に追加した行があれば削除します。
+- `blerc` 設定ファイル (`~/.blerc` または `~/.config/blesh/init.sh`) があれば削除します。
+- `ble.sh` をインストールしたディレクトリを削除します。
+- 一時ディレクトリ `/tmp/blesh` が生成されていればそれを削除します。これは `/tmp` の内容が自動的にクリアされないシステムで必要です。
 
 # 2 基本設定
 
@@ -133,12 +198,11 @@ make INSDIR="$HOME/.local/share/blesh" install
 その他の全ての設定項目はテンプレート [`blerc`](https://github.com/akinomyoga/ble.sh/blob/master/blerc) に含まれています。
 詳細な説明に関しては[説明書](https://github.com/akinomyoga/ble.sh/wiki/%E7%9B%AE%E6%AC%A1)を参照して下さい。
 
-
-## Vim モード
+## 2.1 Vim モード
 
 Vim モードについては [Wiki の説明ページ](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
 
-## 自動補完
+## 2.2 自動補完
 
 自動補完は Bash 4.0 以上で利用することができ、既定で有効化されます。
 自動補完機能を無効にするには以下の設定を `~/.blerc` に記述します。
@@ -160,7 +224,7 @@ Bash のコマンド履歴に基づく補完候補を無効にするには以下
 bleopt complete_auto_history=
 ```
 
-## 曖昧文字幅
+## 2.3 曖昧文字幅
 
 設定 `char_width_mode` を用いて、曖昧文字幅を持つ文字 (Unicode 参考特性 `East_Asian_Width` が `A` (Ambiguous) の文字) の幅を制御できます。
 現在は 4 つの選択肢 `emacs`, `west`, `east`, `auto` が用意されています。
@@ -175,7 +239,7 @@ bleopt complete_auto_history=
 bleopt char_width_mode='west'
 ```
 
-## 文字コード
+## 2.4 文字コード
 
 設定 `input_encoding` は入力の文字コードを制御するのに使います。現在 `UTF-8` と `C` のみに対応しています。
 設定値 `C` を指定した場合は、受信したバイト値が直接文字コードであると解釈されます。
@@ -185,7 +249,7 @@ bleopt char_width_mode='west'
 bleopt input_encoding='C'
 ```
 
-## ベル
+## 2.5 ベル
 
 設定 `edit_abell` と設定 `edit_vbell` は、編集関数 `bell` の振る舞いを制御します。
 `edit_abell` が非空白の文字列の場合、音による通知が有効になります (つまり、制御文字の `BEL` (0x07) が `stderr` に出力されます)。
@@ -204,7 +268,7 @@ bleopt edit_vbell=1 vbell_default_message=' BEL ' vbell_duration=3000
 bleopt edit_abell=
 ```
 
-## 着色の設定
+## 2.6 着色の設定
 
 構文に従った着色で使用される、各文法要素の色と属性は `ble-color-setface` シェル関数で設定します。
 既定の設定は以下のコードに対応します:
@@ -285,7 +349,7 @@ $ ble-color-setface
 $ ble-color-show
 ```
 
-## キーバインディング
+## 2.7 キーバインディング
 
 キーバインディングはシェル関数 `ble-bind` を使って変更できます。
 例えば <kbd>C-x h</kbd> を入力した時に "Hello, world!" と挿入させたければ以下のようにします。
@@ -317,7 +381,7 @@ $ ble-bind -L
 
 # 3 ヒント
 
-## 複数行モード
+## 3.1 複数行モード
 
 コマンドラインに改行が含まれている場合、複数行モード (MULTILINE モード) になります。
 
@@ -327,19 +391,19 @@ $ ble-bind -L
 
 `shopt -s cmdhist` が設定されているとき (既定)、もし <kbd>RET</kbd> (<kbd>C-m</kbd>) を押した時にコマンドラインが構文的に閉じていなければ、コマンドの実行ではなく改行の挿入を行います。
 
-## Vim モード
+## 3.2 Vim モード
 
 `.bashrc` に `set -o vi` が設定されているとき、または `.inputrc` に `set editing-mode vi` が設定されているとき、vim モードが有効になります。
 Vim モードの詳細な設定については [Wiki のページ (英語)](https://github.com/akinomyoga/ble.sh/wiki/Vi-(Vim)-editing-mode) を御覧ください。
 
-## 自動補完
+## 3.3 自動補完
 
 Bash 4.0 以降では自動補完が有効になり、予測候補が表示されます。
 候補を確定するには <kbd>S-RET</kbd> を入力します (編集文字列の末尾にいる時は <kbd>right</kbd>, <kbd>C-f</kbd> または <kbd>end</kbd> でも確定できます)。
 表示されている候補の初めの単語だけ部分的に確定する時は <kbd>M-f</kbd> または <kbd>M-right</kbd> を入力します。
 現在の候補で確定しそのままコマンドを実行する場合には <kbd>C-RET</kbd> (※お使いの端末が対応している時) を入力します。
 
-## 静的略語展開
+## 3.4 静的略語展開
 
 特定の単語を静的略語展開に登録することで好きな文字列に展開することができます。
 登録済み単語に一致する単語の直後で <kbd>SP</kbd> を入力した時に静的略語展開が起きます。
@@ -352,5 +416,9 @@ ble-sabbrev L='| less'
 
 # 4 謝辞
 
-- @cmplstofB さまには vi モードの実装のテストをしていただき、またさまざまの提案を頂きました。
+GitHub の Issue/PR を通して多くの方からフィードバックを頂き、皆様に本当に感謝しております。
+特に以下の方には大きな寄与を受けたので言及させていただきます。
 
+- [`@cmplstofB`](https://github.com/cmplstofB) 様には vim モードの実装において初期よりテスト及び様々な提案をしていただきました。
+- [`@dylankb`](https://github.com/dylankb) 様には `fzf` との互換性や `ble.sh` 初期化に関連して様々な問題報告をいただきました。
+- [`@rux616`](https://github.com/rux616) 様には幾つかの問題報告および `.blerc` の既定パス解決のバグ修正をいただきました。
