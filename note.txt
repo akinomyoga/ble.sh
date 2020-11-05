@@ -3561,6 +3561,204 @@ bash_tips
 
 2020-11-06
 
+  * complete: filter を cand/yield の中で実行する枠組みを整える (motivated by timjrd) [#D1404]
+
+    filter:substr に対して source:file がより緩い条件で候補を生成したとしても、
+    後の filter:substr/filter で除外されてしまう。そもそも後で一括して filter す
+    る事自体が物事を複雑にしている。cand/yield で cand_cand その他に登録する時点
+    で filter してしまって良い様な気がする。
+
+    更に、source:file でフィルタを実行しても良いという事を確かめる必要がある。
+
+    先ずその様に書き換えても問題が起こらないかを確認する。
+
+    * 先ず filter でやっている事を確認する。
+
+      filter-by-regex は cand_cand に対してフィルターを実行している。
+      filter-word-by-prefix は cand_word に対してフィルターを実行している。
+      →これは別の filtering で使っている物であって関係ない。
+      cand_cand は補完単語を格納していて、cand_word が実際に挿入される文字列を格納している。
+      filter-by-command はコマンドを指定できる物である。
+      実際に使っているのは filter:substr
+
+    * 問題がある。独自に filter すると filter:substr/match の実装が乖離してしまう。
+      つまり、メニュー選択で太字の着色がなされなくなってしまう。
+      候補ごとにフィルターを記録する様にするとまた面倒になる。
+
+      或いは始めから一致位置を計算して記録する事にする? 然し実際には使われない事
+      の方が多いのでやはり重さを考えると一致位置を一緒に計算するのは避けたい。
+      action に処理を紐付ける事にする? 然し filter の種類の情報も記録しなければならない。
+
+    取り敢えず独自にフィルターを実行するかどうかはさておき、
+    cand/yield の内部でフィルタを実行するという実装にはする。
+    そちらの方が自然だからである。
+
+    * done: comp_filter_type と comp_filter_pattern の宣言されている場所、
+      代入されている場所、使用している箇所を確認する。
+      現状では別々の場所で宣言・代入しているが、
+      両者の取り扱いを統一できればしたい。
+
+      comp_filter_type について先ず調べる。
+
+      宣言 ble/complete/candidates/generate-with-filter
+        ここで宣言したものは以下で使用されている。
+        使用 ble/complete/source:*
+
+        通常の補完の場合にはどうだったかと思ったが、
+        調べてみると head フィルタを使っていたので、
+        ちゃんと ble/complete/candidates/generate-with-filter
+        を経由して呼び出されていた。
+
+        ble/complete/source:* の呼び出し元は他には存在していない。
+
+      宣言 ble/complete/menu-complete.class/render-item
+        ここでの宣言・設定はこの関数の中で閉じている気がする。
+        ややこしいのでこれは単に filter_type 等に変更するのが良い気がする。
+      宣言 ble/widget/auto_complete/self-insert
+        ここでの宣言・設定もこの関数の中で閉じてはいるが、
+        comp_filter_pattern については共有している。
+        対称性を考えるとこのまま comp_filter_type で良い気がする。
+
+      comp_filter_pattern について次に調べる。
+
+      宣言 ble/widget/complete
+      宣言 ble/complete/menu-filter/.filter-candidates
+      宣言 ble/complete/auto-complete/.check-context
+      宣言 ble/widget/auto_complete/self-insert
+      宣言 ble/complete/source:sabbrev
+
+        どうやら兎に角 filter を呼び出している箇所で全て宣言している様である。
+
+      設定 ble/complete/candidates/filter:*/init
+      使用 ble/complete/candidates/filter:*/filter
+      使用 ble/complete/candidates/filter:*/test
+
+        実際の値の設定などに関しては filter 内部で閉じている。
+
+      filter の関数を呼び出している箇所は多岐に渡る。
+
+      ble/widget/complete
+        ble/complete/insert-common
+          ble/complete/candidates/determine-common-prefix
+            ble/complete/cndidates/filter:*/count-match-chars [OK]
+        ble/complete/insert-braces
+          ble/complete/insert-common..
+
+      ble/complete/menu-complete.class/render-item
+        ble/complete/cndidates/filter:*/match [OK]
+
+      ble/complete/menu-filter/.filter-candidates
+        これは内部で宣言・使用する事にした。
+
+      ble/widget/auto_complete/self-insert
+        これも内部で宣言・使用する事にした。
+
+      関数 ble/complete/menu/generate-candidates-from-menu
+
+        ここで comp_filter_pattern の値を復元しようとしているが、実際には空の値
+        を設定している。source の内部でしか使わないからというコメントが書かれて
+        いるが、実際には insert-common の内部でcount-match-chars を使っている。
+        と思ったが、count-match-chars は実は comp_filter_pattern は使っていなかっ
+        た。従って comp_filter_type も comp_filter_pattern も使っていない。代わ
+        りに、自分で filter_type も自分で明示して呼び出す必要がある。
+
+        実は全く使っていないのであればそもそも comp_filter_pattern を設定する必
+        要はないのでは。というより ble/widget/complete の内部で宣言する必要はな
+        いのではないか。
+
+      うーん。ble/complete/candidate/filter:*/init 等の呼び出しを実行する
+      関数を追加してしまう? comp_filter_type はその時に pattern と一緒に宣言する。
+
+        ble/complete/candidates/filter#init head "$COMPS"
+        ble/complete/candidates/filter#apply
+        ble/complete/candidates/filter#test "$cand"
+
+      match, count-match-chars は stateless なので直接呼び出して使う事にする。
+
+    * done: 現在 comp_filter_pattern は ble/widget/complete の内部で宣言しているが、
+      これは実際に filter を使う箇所で宣言するだけで良いのではないか。
+      改めて filter#* が使われている箇所を確認する。
+
+      - ble/complete/candidates/generate-with-filter
+        comp_filter_type, comp_filter_pattern は ble/widget/complete ではなく
+        generate-with-filter の内部で宣言する事にした。
+      - ble/complete/menu-filter/.filter-candidates
+        これは既にその場で宣言している。
+      - ble/widget/auto_complete/self-insert
+        これも既にその場で宣言している。
+      - ble/complete/source:sabbrev
+        これは source の内部なので comp_filter_type,
+        comp_filter_pattern は既に宣言されている。
+
+    次に cand/yield の内部で filter を実行する様に変更する。
+
+    * done: その様に変更した。というより一行追加しただけである。
+      同時に複数の関数が不要になった気がする。
+      大分コードが綺麗になった気がする。
+
+    ? cand/yield で filter するとしても、menu-filter では結局 filter されてしま
+      う。従って menu-filter でも filter 方法を変更する必要があるのではないか。
+
+      或いは substr では候補を何も生成せずに hsubseq まで行ってから substr に相
+      当する候補を生成して、もし何もなければ本来の subseq や hsubseq を生成する
+      という方針も考えられる…。と思ったが、そうすると別の source による結果が
+      存在する時に substr でそちらの候補だけが表示される事になり不自然な結果に
+      なる。
+
+      そもそも曖昧補完の substr で path component 毎に substr にして生成する必
+      要性があるだろうか。考えてみたが余り複雑な事をしてもユーザがついて行けな
+      い。という事を考えると、やはり *dir1/dir2/file* の形式だけを取り敢えず許
+      すというので良いのではないか。或いは何も生成しない。
+
+    % source 側で(既定と異なる) filter するに当たっての現状の問題点は以下の二つ
+    %
+    % * menu-filter で結局通常の filter 動作で除外されてしまうという事
+    % * menu の着色でどのように一致したのかの着色が正しく反映されない事
+    %
+    % * 共通部分の何処までを挿入するかの決定。
+    %
+    %   これは実は各候補毎に決定しているのではなくて共通の設定として決定しているの
+    %   で、単純に source:file に合わせて計算するという事はできない。これは遡った
+    %   書き換えが起こった時に今までの候補生成ができなくなる事を防ぐ為のものなので
+    %   特別な処理はしなくて大丈夫な気がする。しかし source:file の様に足並みを外
+    %   すような物があった場合に本当に正しく動くのかに関しては注意が必要である。
+    %
+    %   そもそも共通部分の挿入によって候補生成が破壊されるのはどのような時だったか。
+    %   うーん。分かった。まず最初に通常の common-prefix を求めているが、曖昧補完
+    %   の場合には必ずしも common-prefix が元々の COMPV の文字を全て含んでいるとは
+    %   限らない。(本来は common-prefix ではなくて common subseq に対応する何かを
+    %   求める必要があるが、展開などを考えると難しいという事か)。
+    %
+    % DATA 経由で特別な動作を実装する?
+    %
+    % * source:file は action:file 及び action:tilde を生成している。
+    %   と思ってよく見てみると action:tilde の場合にはチルダ展開のみしか
+    %   候補生成していないので、実際には action:file を気にすれば良い。
+    %
+    %   一方で source:glob も action:file を生成している。
+    %   source:glob については曖昧補完の時には候補を生成していない。
+    %
+    %   何れにしても action:file に対して DATA を指定している物は存在していないので、
+    %   気にせずに DATA に新しく filter_type 等指定しても良い気がする。
+    %   と思ったら source:argument も file を生成している。
+    %
+    % 自前の filter を実行しているかどうかに関しては、
+    % cand/yield の時点で判定可能なので、内部で処理する?
+    % と思ったが自前でフィルタしていても元のフィルタの振る舞いに準拠している可能性もある。
+    % その場合には自分で処理するのではなくてやはり既定の filter に処理してもらいたい。
+    %
+    % うーん。改めて確認すると construct-pathname-pattern を使用している箇所は複数存在する。
+    %
+    % source:file,directory でファイル名を列挙している箇所 (action:file)。
+    % source:argumet で = の右側のファイルを生成している箇所 (action:file_rhs)。
+    % source:command でディレクトリ名を列挙している箇所 (action:command)。
+
+    うーん。色々考えると substr を source:file に対して特別に実装する必要がある
+    のか疑問である。実のところ同等の候補が subseq, hsubseq で生成されるのだから
+    substr の段階で候補を生成しなくても良い気がする。
+
+    特別な実装はしないという事に決めた。
+
   * syntax: [!...] が常にエラー着色になっている問題 [#D1403]
 
     うーん。これは ble/syntax:bash/simple-word/is-simple が成功しているのに、

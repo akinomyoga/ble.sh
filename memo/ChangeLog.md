@@ -192,6 +192,7 @@
 - util: revisit `ble/variable#is-global` implementation `#D1383` 6b5468f
 - cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 445a5ad
 - edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 5bed6e6
+- complete: perform filter in `ble/complete/cand/yield` `#D1404` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

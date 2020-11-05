@@ -1350,9 +1350,14 @@ function ble/complete/source/reduce-compv-for-ambiguous-match {
 ##   @param[in] CAND
 ##   @param[in] DATA
 ##   @var[in] COMP_PREFIX
+##   @var[in] flag_force_fignore
+##   @var[in] flag_source_filter
 function ble/complete/cand/yield {
   local ACTION=$1 CAND=$2 DATA="${*:3}"
   [[ $flag_force_fignore ]] && ! ble/complete/.fignore/filter "$CAND" && return 0
+
+  [[ $flag_source_filter ]] ||
+    ble/complete/candidates/filter#test "$CAND" || return 0
 
   local PREFIX_LEN=0
   [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
@@ -1582,18 +1587,12 @@ function ble/complete/source:command {
 
   # Try progcomp by "complete -I"
   if ((_ble_bash>=50000)); then
-    # first filter candidates to obtain effective 'cand_count'
-    ble/complete/candidates/filter:"$comp_filter_type"/filter
-    (($?==148)) && return 148
     local old_cand_count=$cand_count
 
     local comp_opts=:
     ble/complete/source:argument/.generate-user-defined-completion initial; local ext=$?
     ((ext==148)) && return "$ext"
     if ((ext==0)); then
-      # check 'cand_count' to see if any valid candidates are generated.
-      ble/complete/candidates/filter:"$comp_filter_type"/filter
-      (($?==148)) && return 148
       ((cand_count>old_cand_count)) && return "$ext"
     fi
   fi
@@ -1605,6 +1604,7 @@ function ble/complete/source:command {
   ble/util/assign compgen 'ble/complete/source:command/gen "$arg"'
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
+
   for cand in "${arr[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
 
@@ -1704,18 +1704,20 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
 ##   @param[in] path
 ##   @var[out] ret
 function ble/complete/source:file/.construct-pathname-pattern {
-  local path=$1
-  if [[ :$comp_type: == *:a:* ]]; then
-    ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path"; local pattern=$ret
-  elif [[ :$comp_type: == *:[mA]:* ]]; then
-    ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path" 0; local pattern=$ret
-  else
-    ble/string#quote-word "$path"; local pattern=$ret*
-  fi
+  local path=$1 pattern
+  case :$comp_type: in
+  esac
+  (*:a:*) ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path"; pattern=$ret ;;
+  (*:A:*) ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path" 0; pattern=$ret ;;
+  (*:m:*) ble/string#quote-word "$path"; pattern=*$ret* ;;
+  (*) ble/string#quote-word "$path"; pattern=$ret*
+  esac
   ret=$pattern
 }
 function ble/complete/source:file/yield-filenames {
   local action=$1; shift
+
+  local flag_source_filter=1
 
   local rex_hidden=
   [[ :$comp_type: != *:match-hidden:* ]] &&
@@ -2451,16 +2453,12 @@ function ble/complete/source:argument {
     (($?==148)) && return 148
   fi
 
-  ble/complete/candidates/filter:"$comp_filter_type"/filter
-  (($?==148)) && return 148
   local old_cand_count=$cand_count
 
   # try complete&compgen
   ble/complete/source:argument/.generate-user-defined-completion; local ext=$?
   ((ext==148)) && return "$ext"
   if ((ext==0)); then
-    ble/complete/candidates/filter:"$comp_filter_type"/filter
-    (($?==148)) && return 148
     ((cand_count>old_cand_count)) && return "$ext"
   fi
 
@@ -2829,50 +2827,17 @@ function ble/complete/candidates/.pick-nearest-sources {
   fi
 }
 
-## 関数 ble/complete/candidates/.filter-by-regex rex_filter
-##   生成された候補 (cand_*) において指定した正規表現に一致する物だけを残します。
-##   @param[in] rex_filter
+## 関数 ble/complete/candidates/.filter-by-command command
+##   生成された候補 (cand_*) に対して指定したコマンドを実行し、
+##   成功した候補のみを残して他を削除します。
+##   @param[in] command
 ##   @var[in,out] cand_count
 ##   @arr[in,out] cand_{prop,cand,word,show,data}
 ##   @exit
 ##     ユーザ入力によって中断された時に 148 を返します。
-function ble/complete/candidates/.filter-by-regex {
-  local rex_filter=$1
-  # todo: 複数の配列に触る非効率な実装だが後で考える
-  local i j=0
-  local -a prop=() cand=() word=() show=() data=()
-  for ((i=0;i<cand_count;i++)); do
-    ((i%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
-    [[ ${cand_cand[i]} =~ $rex_filter ]] || continue
-    cand[j]=${cand_cand[i]}
-    word[j]=${cand_word[i]}
-    data[j]=${cand_pack[i]}
-    ((j++))
-  done
-  cand_count=$j
-  cand_cand=("${cand[@]}")
-  cand_word=("${word[@]}")
-  cand_pack=("${data[@]}")
-}
-function ble/complete/candidates/.filter-word-by-prefix {
-  local prefix=$1
-  local i j=0
-  local -a prop=() cand=() word=() show=() data=()
-  for ((i=0;i<cand_count;i++)); do
-    ((i%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
-    [[ ${cand_word[i]} == "$prefix"* ]] || continue
-    cand[j]=${cand_cand[i]}
-    word[j]=${cand_word[i]}
-    data[j]=${cand_pack[i]}
-    ((j++))
-  done
-  cand_count=$j
-  cand_cand=("${cand[@]}")
-  cand_word=("${word[@]}")
-  cand_pack=("${data[@]}")
-}
 function ble/complete/candidates/.filter-by-command {
   local command=$1
+  # todo: 複数の配列に触る非効率な実装だが後で考える
   local i j=0
   local -a prop=() cand=() word=() show=() data=()
   for ((i=0;i<cand_count;i++)); do
@@ -2888,6 +2853,25 @@ function ble/complete/candidates/.filter-by-command {
   cand_word=("${word[@]}")
   cand_pack=("${data[@]}")
 }
+## 関数 ble/complete/candidates/.filter-by-regex rex_filter
+##   生成された候補 (cand_*) において指定した正規表現に一致する物だけを残します。
+##   @param[in] rex_filter
+##   @var[in,out] cand_count
+##   @arr[in,out] cand_{prop,cand,word,show,data}
+##   @exit
+##     ユーザ入力によって中断された時に 148 を返します。
+function ble/complete/candidates/.filter-by-regex {
+  local rex_filter=$1
+  ble/complete/candidates/.filter-by-command '[[ ${cand_cand[i]} =~ $rex_filter ]]'
+}
+function ble/complete/candidates/.filter-by-glob {
+  local globpat=$1
+  ble/complete/candidates/.filter-by-command '[[ ${cand_cand[i]} == $globpat ]]'
+}
+function ble/complete/candidates/.filter-word-by-prefix {
+  local prefix=$1
+  ble/complete/candidates/.filter-by-command '[[ ${cand_word[i]} == "$prefix"* ]]'
+}
 
 function ble/complete/candidates/.initialize-rex_raw_paramx {
   local element=$_ble_syntax_bash_simple_rex_element
@@ -2895,11 +2879,40 @@ function ble/complete/candidates/.initialize-rex_raw_paramx {
   rex_raw_paramx='^('$element'*('$open_dquot')?)\$[a-zA-Z_][a-zA-Z_0-9]*$'
 }
 
+## 候補フィルタ (candidate filters) は以下の関数を通して実装される。
+##
+##   関数 ble/complete/candidates/filter:FILTER_TYPE/init compv
+##   関数 ble/complete/candidates/filter:FILTER_TYPE/filter
+##   関数 ble/complete/candidates/filter:FILTER_TYPE/test cand
+##     @var[in] comp_filter_type
+##     @var[in,out] comp_filter_pattern
+##
+##   関数 ble/complete/candidates/filter:FILTER_TYPE/match needle text
+##     @param[in] needle text
+##
+##   関数 ble/complete/candidates/filter:FILTER_TYPE/count-match-chars value
+##     @var[in] COMPV
+##
+## 使用するときには以下の関数を通して呼び出す (match, count-match-chars は直接呼び出す)。
+##
+##   関数 ble/complete/candidates/filter#init type compv
+##   関数 ble/complete/candidates/filter#test value
+##     @var[in,out] comp_filter_type
+##     @var[in,out] comp_filter_pattern
+##
+function ble/complete/candidates/filter#init {
+  comp_filter_type=$1
+  comp_filter_pattern=
+  ble/complete/candidates/filter:"$comp_filter_type"/init "$2"
+}
+function ble/complete/candidates/filter#test {
+  ble/complete/candidates/filter:"$comp_filter_type"/test "$1"
+}
+
 function ble/complete/candidates/filter:head/init {
   local ret; ble/complete/util/construct-glob-pattern "$1"
-  comps_filter_pattern=$ret*
+  comp_filter_pattern=$ret*
 }
-function ble/complete/candidates/filter:head/filter { :; }
 function ble/complete/candidates/filter:head/count-match-chars { # unused but for completeness
   local value=$1 compv=$COMPV
   if [[ :$comp_type: == *:i:* ]]; then
@@ -2915,7 +2928,7 @@ function ble/complete/candidates/filter:head/count-match-chars { # unused but fo
     ret=0
   fi
 }
-function ble/complete/candidates/filter:head/test { [[ $1 == $comps_filter_pattern ]]; }
+function ble/complete/candidates/filter:head/test { [[ $1 == $comp_filter_pattern ]]; }
 
 ## 関数 ble/complete/candidates/filter:head/match needle text
 ##   @arr[out] ret
@@ -2942,10 +2955,7 @@ function ble/complete/candidates/filter:head/match {
 
 function ble/complete/candidates/filter:substr/init {
   local ret; ble/complete/util/construct-glob-pattern "$1"
-  comps_filter_pattern=*$ret*
-}
-function ble/complete/candidates/filter:substr/filter {
-  ble/complete/candidates/.filter-by-command '[[ ${cand_cand[i]} == $comps_filter_pattern ]]'
+  comp_filter_pattern=*$ret*
 }
 function ble/complete/candidates/filter:substr/count-match-chars {
   local value=$1 compv=$COMPV
@@ -2961,7 +2971,7 @@ function ble/complete/candidates/filter:substr/count-match-chars {
   ble/complete/string#common-suffix-prefix "$value" "$compv"
   ret=${#ret}
 }
-function ble/complete/candidates/filter:substr/test { [[ $1 == $comps_filter_pattern ]]; }
+function ble/complete/candidates/filter:substr/test { [[ $1 == $comp_filter_pattern ]]; }
 function ble/complete/candidates/filter:substr/match {
   local needle=$1 text=$2
   if [[ :$comp_type: == *:i:* ]]; then
@@ -2996,17 +3006,11 @@ function ble/complete/candidates/filter:hsubseq/.determine-fixlen {
 ##   @param[in] compv
 ##   @param[in,opt] fixlen
 ##   @var[in] comps_fixed
-##   @var[out] comps_filter_pattern
+##   @var[out] comp_filter_pattern
 function ble/complete/candidates/filter:hsubseq/init {
   local fixlen; ble/complete/candidates/filter:hsubseq/.determine-fixlen "$2"
   local ret; ble/complete/util/construct-ambiguous-regex "$1" "$fixlen"
-  comps_filter_pattern=^$ret
-}
-## 関数 ble/complete/candidates/filter:hsubseq/filter
-##   @var[in,out] cand_cand cand_word cand_pack cand_count
-##   @var[in] comps_filter_pattern
-function ble/complete/candidates/filter:hsubseq/filter {
-  ble/complete/candidates/.filter-by-regex "$comps_filter_pattern"
+  comp_filter_pattern=^$ret
 }
 ## 関数 ble/complete/candidates/filter:hsubseq/count-match-chars value [fixlen]
 ##   指定した文字列が COMPV の何処まで一致するかを返します。
@@ -3031,7 +3035,7 @@ function ble/complete/candidates/filter:hsubseq/count-match-chars {
   done
   ret=$n
 }
-function ble/complete/candidates/filter:hsubseq/test { [[ $1 =~ $comps_filter_pattern ]]; }
+function ble/complete/candidates/filter:hsubseq/test { [[ $1 =~ $comp_filter_pattern ]]; }
 function ble/complete/candidates/filter:hsubseq/match {
   local needle=$1 text=$2
   if [[ :$comp_type: == *:i:* ]]; then
@@ -3078,24 +3082,21 @@ function ble/complete/candidates/filter:hsubseq/match {
 ## 関数 ble/complete/candidates/filter:subseq/init compv
 ##   @param[in] compv
 ##   @var[in] comps_fixed
-##   @var[out] comps_filter_pattern
+##   @var[out] comp_filter_pattern
 function ble/complete/candidates/filter:subseq/init {
   [[ $comps_fixed ]] && return 1
   ble/complete/candidates/filter:hsubseq/init "$1" 0
 }
-function ble/complete/candidates/filter:subseq/filter {
-  ble/complete/candidates/filter:hsubseq/filter
-}
 function ble/complete/candidates/filter:subseq/count-match-chars {
   ble/complete/candidates/filter:hsubseq/count-match-chars "$1" 0
 }
-function ble/complete/candidates/filter:subseq/test { [[ $1 =~ $comps_filter_pattern ]]; }
+function ble/complete/candidates/filter:subseq/test { [[ $1 =~ $comp_filter_pattern ]]; }
 function ble/complete/candidates/filter:subseq/match {
   ble/complete/candidates/filter:hsubseq/match "$1" "$2" 0
 }
 
 function ble/complete/candidates/generate-with-filter {
-  local comp_filter_type=$1 opts=$2
+  local filter_type=$1 opts=$2
   local -a remaining_sources nearest_sources
   remaining_sources=("${sources[@]}")
 
@@ -3105,7 +3106,9 @@ function ble/complete/candidates/generate-with-filter {
     ble/complete/candidates/.pick-nearest-sources
 
     [[ ! $COMPV && :$opts: == *:no-empty:* ]] && continue
-    ble/complete/candidates/filter:"$comp_filter_type"/init "$COMPV" || continue
+    local comp_filter_type
+    local comp_filter_pattern
+    ble/complete/candidates/filter#init "$filter_type" "$COMPV" || continue
 
     for src in "${nearest_sources[@]}"; do
       ble/string#split-words asrc "$src"
@@ -3115,9 +3118,6 @@ function ble/complete/candidates/generate-with-filter {
       ble/complete/source:"${source[@]}"
       ble/complete/check-cancel && return 148
     done
-
-    ble/complete/candidates/filter:"$comp_filter_type"/filter
-    (($?==148)) && return 148
 
     [[ $comps_fixed ]] &&
       ble/complete/candidates/.filter-word-by-prefix "${COMPS::${comps_fixed%%:*}}"
@@ -3147,10 +3147,10 @@ function ble/complete/candidates/comp_type#read-rl-variables {
 ##   @var[out] COMP1 COMP2 COMPS COMPV
 ##   @var[out] comp_type comps_flags comps_fixed
 ##   @var[out] cand_*
-##   @var[out] comps_filter_pattern
 function ble/complete/candidates/generate {
   local opts=$1
   local flag_force_fignore=
+  local flag_source_filter=
   local -a _fignore=()
   if [[ $FIGNORE ]]; then
     ble/complete/.fignore/prepare
@@ -3217,7 +3217,6 @@ function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
 ## 関数 ble/complete/candidates/determine-common-prefix
 ##   cand_* を元に common prefix を算出します。
 ##   @var[in] cand_*
-##   @var[in] comps_filter_pattern
 ##   @var[out] ret
 function ble/complete/candidates/determine-common-prefix {
   # 共通部分
@@ -3376,15 +3375,15 @@ function ble/complete/menu-complete.class/render-item {
   # 一致部分の抽出
   local m
   if [[ :$comp_type: == *:menu-color-match:* && $_ble_complete_menu_common_part && $show == *"$filter_target"* ]]; then
-    local comp_filter_type=head
+    local filter_type=head
     case :$comp_type: in
-    (*:m:*) comp_filter_type=substr ;;
-    (*:a:*) comp_filter_type=hsubseq ;;
-    (*:A:*) comp_filter_type=subseq ;;
+    (*:m:*) filter_type=substr ;;
+    (*:a:*) filter_type=hsubseq ;;
+    (*:A:*) filter_type=subseq ;;
     esac
 
     local needle=${_ble_complete_menu_common_part:prefix_len}
-    ble/complete/candidates/filter:"$comp_filter_type"/match "$needle" "$filter_target"; m=("${ret[@]}")
+    ble/complete/candidates/filter:"$filter_type"/match "$needle" "$filter_target"; m=("${ret[@]}")
 
     # 表示文字列の部分文字列で絞り込みが起こっている場合
     if [[ $show != "$filter_target" ]]; then
@@ -3598,7 +3597,7 @@ function ble/complete/menu/get-active-range {
 
 ## 関数 ble/complete/menu/generate-candidates-from-menu
 ##   現在表示されている menu 内容から候補を再抽出します。
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/menu/generate-candidates-from-menu {
   # completion context information
@@ -3609,7 +3608,6 @@ function ble/complete/menu/generate-candidates-from-menu {
   comp_type=${_ble_complete_menu_comp[4]}
   comps_flags=${_ble_complete_menu0_comp[5]}
   comps_fixed=${_ble_complete_menu0_comp[6]}
-  comps_filter_pattern= # これは source が使うだけなので使われない筈…
 
   # remaining candidates
   cand_count=${#_ble_complete_menu_items[@]}
@@ -3629,7 +3627,7 @@ function ble/complete/menu/generate-candidates-from-menu {
 # 補完
 
 ## 関数 ble/complete/generate-candidates-from-opts opts
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/generate-candidates-from-opts {
   local opts=$1
@@ -3701,7 +3699,7 @@ function ble/complete/insert {
 }
 
 ## 関数 ble/complete/insert-common
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-common {
   local ret
@@ -3763,7 +3761,7 @@ function ble/complete/insert-common {
 }
 
 ## 関数 ble/complete/insert-all
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-all {
   local "${_ble_complete_cand_varnames[@]}"
@@ -4205,7 +4203,7 @@ function ble/complete/insert-braces/.compose {
 }
 
 ## 関数 ble/complete/insert-braces
-##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed comps_filter_pattern
+##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-braces {
   if ((cand_count==1)); then
@@ -4341,7 +4339,6 @@ function ble/widget/complete {
 
   local COMP1 COMP2 COMPS COMPV
   local comp_type comps_flags comps_fixed
-  local comps_filter_pattern
   local cand_count=0
   local -a cand_cand cand_word cand_pack
   if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
@@ -4424,7 +4421,6 @@ function ble/complete/menu-filter/.filter-candidates {
 
   local iloop=0 interval=$bleopt_complete_polling_cycle
   local filter_type pack "${_ble_complete_cand_varnames[@]}"
-  local comps_filter_pattern
   for filter_type in head substr hsubseq subseq; do
     ble/path#remove-glob comp_type '[amA]'
     case $filter_type in
@@ -4433,11 +4429,13 @@ function ble/complete/menu-filter/.filter-candidates {
     (subseq)  comp_type=${comp_type}:A ;;
     esac
 
-    ble/function#try ble/complete/candidates/filter:"$filter_type"/init "$COMPV"
+    local comp_filter_type
+    local comp_filter_pattern
+    ble/complete/candidates/filter#init "$filter_type" "$COMPV"
     for pack in "${_ble_complete_menu0_pack[@]}"; do
       ((iloop++%interval==0)) && ble/complete/check-cancel && return 148
       ble/complete/cand/unpack "$pack"
-      ble/complete/candidates/filter:"$filter_type"/test "$CAND" &&
+      ble/complete/candidates/filter#test "$CAND" &&
         ble/array#push cand_pack "$pack"
     done
     ((${#cand_pack[@]}!=0)) && break
@@ -4912,7 +4910,6 @@ function ble/complete/auto-complete/.check-context {
     local bleopt_complete_polling_cycle=25
   local COMP1 COMP2 COMPS COMPV
   local comps_flags comps_fixed
-  local comps_filter_pattern
   local cand_count
   local -a cand_cand cand_word cand_pack
   ble/complete/candidates/generate; local ext=$?
@@ -5115,16 +5112,18 @@ function ble/widget/auto_complete/self-insert {
         # a: 曖昧一致の時
         #   文字を挿入後に展開してそれが曖昧一致する時、そのまま挿入。
 
-        local comp_filter_type=head
+        local filter_type=head
         case $_ble_complete_ac_type in
-        (*m*) comp_filter_type=substr  ;;
-        (*a*) comp_filter_type=hsubseq ;;
-        (*A*) comp_filter_type=subseq  ;;
+        (*m*) filter_type=substr  ;;
+        (*a*) filter_type=hsubseq ;;
+        (*A*) filter_type=subseq  ;;
         esac
 
-        local comps_fixed= comps_filter_pattern
-        ble/complete/candidates/filter:"$comp_filter_type"/init "$compv_new"
-        if ble/complete/candidates/filter:"$comp_filter_type"/test "$_ble_complete_ac_cand"; then
+        local comps_fixed=
+        local comp_filter_type
+        local comp_filter_pattern
+        ble/complete/candidates/filter#init "$filter_type" "$compv_new"
+        if ble/complete/candidates/filter#test "$_ble_complete_ac_cand"; then
           local insert; ble-edit/content/replace-limited "$_ble_edit_ind" "$_ble_edit_ind" "$ins"
           ((_ble_edit_ind+=${#insert},_ble_edit_mark+=${#insert}))
           [[ $_ble_complete_ac_cand == "$compv_new" ]] &&
@@ -5484,10 +5483,15 @@ function ble/complete/source:sabbrev {
   local keys; ble/complete/sabbrev/get-keys
   local key cand
 
-  local comps_fixed= comps_filter_pattern=
-  ble/complete/candidates/filter:"$comp_filter_type"/init "$COMPS"
+  local filter_type=$comp_filter_type
+  local comps_fixed=
+
+  # フィルタリング用設定を COMPS で再初期化
+  local comp_filter_type
+  local comp_filter_pattern
+  ble/complete/candidates/filter#init "$filter_type" "$COMPS"
   for cand in "${keys[@]}"; do
-    ble/complete/candidates/filter:"$comp_filter_type"/test "$cand" || continue
+    ble/complete/candidates/filter#test "$cand" || continue
 
     # filter で除外されない為に cand には評価後の値を入れる必要がある。
     local ret simple_flags simple_ibrace
