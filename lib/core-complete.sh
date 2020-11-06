@@ -1790,6 +1790,9 @@ function ble/complete/source:dir {
 
 function ble/complete/source:rhs { ble/complete/source:file; }
 
+#------------------------------------------------------------------------------
+# progcomp
+
 # progcomp/.compgen
 
 ## 関数 ble/complete/progcomp/.compvar-initialize-wordbreaks
@@ -2347,7 +2350,7 @@ function ble/complete/progcomp {
   comp_words=("${tmp[@]}")
 
   local -a alias_args=()
-  local checked=" "
+  local alias_checked=' '
   while :; do
     if ble/is-function "ble/cmdinfo/complete:$cmd"; then
       ble/complete/progcomp/.compline-rewrite-command "$cmd" "${alias_args[@]}"
@@ -2374,7 +2377,7 @@ function ble/complete/progcomp {
       ble/complete/progcomp/.compgen "$opts"
       return "$?"
     fi
-    checked="$checked$cmd "
+    alias_checked=$alias_checked$cmd' '
 
     # progcomp_alias が有効でなければ break
     ((_ble_bash<50000)) || shopt -q progcomp_alias || break
@@ -2382,7 +2385,7 @@ function ble/complete/progcomp {
     local ret
     ble/util/expand-alias "$cmd"
     ble/string#split-words ret "$ret"
-    [[ $checked != *" $ret "* ]] || break
+    [[ $alias_checked != *" $ret "* ]] || break
     cmd=$ret
     ((${#ret[@]}>=2)) &&
       alias_args=("${ret[@]:1}" "${alias_args[@]}")
@@ -2391,7 +2394,196 @@ function ble/complete/progcomp {
   ble/complete/progcomp/.compgen "default:$opts"
 }
 
+#------------------------------------------------------------------------------
+# mandb
 
+# action:mandb
+#
+#   DATA ... cmd FS menu_suffix FS insert_suffix FS desc
+#
+function ble/complete/action:mandb/initialize {
+  ble/complete/action/util/quote-insert
+}
+function ble/complete/action:mandb/complete {
+  ble/complete/action/util/complete.close-quotation
+  local fields
+  ble/string#split fields "$_ble_term_FS" "$DATA"
+  ble/complete/action/util/complete.addtail "${fields[2]}"
+}
+function ble/complete/action:mandb/init-menu-item {
+  local fields
+  ble/string#split fields "$_ble_term_FS" "$DATA"
+  suffix=${fields[1]}
+}
+function ble/complete/action:mandb/get-desc {
+  local fields
+  ble/string#split fields "$_ble_term_FS" "$DATA"
+  desc=${fields[3]}
+}
+
+function ble/complete/mandb/search-file/.check {
+  local path=$1
+  if [[ $path && -s $path ]]; then
+    ret=$path
+    return 0
+  else
+    return 1
+  fi
+}
+function ble/complete/mandb/search-file {
+  local command=$1
+
+  # Try "man -w" first
+  ble/complete/mandb/search-file/.check "$(ble/bin/man -w "$command" 2>/dev/null)" && return
+
+  local manpath=${MANPATH:-/usr/share/man:/usr/local/share/man:/usr/local/man}
+  ble/string#split manpath : "$manpath"
+  local path
+  for path in "${manpath[@]}"; do
+    ble/complete/mandb/search-file/.check "$path/man1/$man.1.gz" && return
+    ble/complete/mandb/search-file/.check "$path/man1/$man.1" && return
+    ble/complete/mandb/search-file/.check "$path/man1/$man.8.gz" && return
+    ble/complete/mandb/search-file/.check "$path/man1/$man.8" && return
+  done
+  return 1
+}
+
+function ble/complete/mandb/.generate-cache {
+  ble/is-function ble/bin/man &&
+    ble/is-function ble/bin/gzip &&
+    ble/is-function ble/bin/nroff || return 1
+
+  local command=$1
+  local ret
+  ble/complete/mandb/search-file "$command" || return 1
+  local path=$ret
+  if [[ $ret == *.gz ]]; then
+    ble/bin/gzip -cd "$path"
+  else
+    ble/bin/cat "$path"
+  fi |
+    ble/bin/awk '
+      BEGIN {
+        g_key = "";
+        g_desc = "";
+        print ".TH __ble_ignore__ 1 __ble_ignore__ __ble_ignore__";
+        print ".ll 9999"
+      }
+      function flush_topic() {
+        if (g_key == "") return;
+        print "__ble_key__";
+        print ".TP";
+        print g_key;
+        print "";
+        print "__ble_desc__";
+        print "";
+        print g_desc;
+        print "";
+
+        g_key = "";
+        g_desc = "";
+      }
+
+      /^\.TP\y/ { flush_topic(); mode = "key"; next; }
+      /^\.(SS|SH)\y/ { flush_topic(); next; }
+
+      mode == "key" {
+        g_key = $0;
+        g_desc = "";
+        mode = "desc";
+        next;
+      }
+      mode == "desc" {
+        if (g_desc != "") g_desc = g_desc "\n";
+        g_desc = g_desc $0;
+      }
+
+      END { flush_topic(); }
+    ' | ble/bin/nroff -Tutf8 -man | ble/bin/awk '
+      function process_pair(name, desc) {
+        if (!(g_name ~ /^-/)) return;
+
+        # FS (\034) は特殊文字として使用するので除外する。
+        sep = "\034";
+        if (g_name ~ /\034/) return;
+        gsub(/\034/, "\x1b[7m^\\\x1b[27m", desc);
+
+        n = split(name, names, /,[[:space:]]*/);
+        sub(/(\.  |; ).*/, ".", desc);
+        for (i = 1; i <= n; i++) {
+          name = names[i];
+          insert_suffix = " ";
+          menu_suffix = "";
+          if (match(name, /[[ =]/)) {
+            m = substr(name, RSTART, 1);
+            if (m == "=") {
+              insert_suffix = "=";
+            } else if (m == "[") {
+              insert_suffix = "";
+            }
+            menu_suffix = substr(name, RSTART);
+            name = substr(name, 1, RSTART - 1);
+          }
+          printf("%s" sep "%s" sep "%s" sep "%s\n", name, menu_suffix, insert_suffix, desc);
+        }
+      }
+
+      function flush_pair() {
+        if (g_name == "") return;
+        process_pair(g_name, g_desc);
+        g_name = "";
+        g_desc = "";
+      }
+
+      sub(/^[[:space:]]*__ble_key__/, "", $0) {
+        flush_pair();
+        mode = "key";
+      }
+      sub(/^[[:space:]]*__ble_desc__/, "", $0) {
+        mode = "desc";
+      }
+
+      mode == "key" {
+        line = $0;
+        gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
+        gsub(/\x1b[ -/]*[0-~]/, "", line); # ESC seq
+        gsub(/\x0E/, "", line);
+        gsub(/\x0F/, "", line);
+        gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
+        #gsub(/[[:space:]]+/, " ", line);
+        if (line == "") next;
+        if (g_name != "") g_name = g_name " ";
+        g_name = g_name line;
+      }
+
+      mode == "desc" {
+        line = $0;
+        gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
+        if (line == "") {
+          if (g_desc != "") mode = "";
+          next;
+        }
+        if (g_desc != "") g_desc = g_desc " ";
+        g_desc = g_desc line;
+      }
+
+      END { flush_pair(); }
+    ' | sort -k 1
+}
+function ble/complete/mandb/load-cache {
+  local command=${1##*/}
+  local fcache=$_ble_base_cache/man/$command
+  if [[ ! -s $fcache ]]; then
+    [[ -d $_ble_base_cache/man ]] ||
+      ble/bin/mkdir -p "$_ble_base_cache/man"
+    ble/complete/mandb/.generate-cache "$command" > "$fcache" &&
+      [[ -s $fcache ]] ||
+        return 1
+  fi
+  ble/util/mapfile ret < "$fcache"
+}
+
+#------------------------------------------------------------------------------
 # source:argument
 
 ## 関数 ble/complete/source:argument/.generate-user-defined-completion opts
@@ -2439,6 +2631,56 @@ function ble/complete/source:argument/.generate-user-defined-completion {
   fi
 }
 
+function ble/complete/source:argument/.contains-literal-option {
+  local word
+  for word; do
+    ble/syntax:bash/simple-word/is-simple "$word" &&
+      ble/syntax:bash/simple-word/eval "$word" &&
+      [[ $ret == -- ]] &&
+      return 0
+  done
+  return 1
+}
+
+function ble/complete/source:argument/.generate-from-mandb {
+  local COMPS=$COMPS COMPV=$COMPV
+  ble/complete/source/reduce-compv-for-ambiguous-match
+  [[ :$comp_type: == *:[amA]:* ]] && local COMP2=$COMP1
+
+  local comp_words comp_line comp_point comp_cword
+  ble/syntax:bash/extract-command "$COMP2" || return 1
+
+  # 現在の単語よりも前に -- がある場合にはオプションを候補として生成しない。
+  ((comp_cword>=1)) &&
+    ble/complete/source:argument/.contains-literal-option "${comp_words[@]:1:comp_cword-1}" &&
+    return 1
+
+  local old_cand_count=$cand_count
+
+  local cmd=${comp_words[0]}
+  local alias_checked=' '
+  while local ret; ! ble/complete/mandb/load-cache "$cmd"; do
+    alias_checked=$alias_checked$cmd' '
+    ble/util/expand-alias "$cmd"
+    ble/string#split-words ret "$ret"
+    [[ $alias_checked != *" $ret "* ]] || return 1
+    ble/complete/source:argument/.contains-literal-option "${ret[@]:1}" && return 1
+    cmd=$ret
+  done
+
+  local entry
+  for entry in "${ret[@]}"; do
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
+      ble/complete/check-cancel && return 148
+    local CAND=${entry%%$_ble_term_FS*}
+    [[ $CAND == "$COMPV"* ]] &&
+      ble/complete/cand/yield mandb "$CAND" "$entry"
+  done
+
+  ((cand_count>old_cand_count)) &&
+    bleopt complete_menu_style=desc-raw
+}
+
 function ble/complete/source:argument {
   local comp_opts=:
 
@@ -2456,9 +2698,12 @@ function ble/complete/source:argument {
 
   # try complete&compgen
   ble/complete/source:argument/.generate-user-defined-completion; local ext=$?
-  ((ext==148)) && return "$ext"
-  if ((ext==0)); then
-    ((cand_count>old_cand_count)) && return "$ext"
+  ((ext==148||cand_count>old_cand_count)) && return "$ext"
+
+  # "-option" の時は complete options based on mandb
+  if local rex='^-[-_[:alnum:]]*$'; [[ $COMPV =~ $rex ]]; then
+    ble/complete/source:argument/.generate-from-mandb; local ext=$?
+    ((ext==148||cand_count>old_cand_count)) && return "$ext"
   fi
 
   # 候補が見付からない場合 (または曖昧補完で COMPV に / が含まれる場合)
@@ -2467,25 +2712,24 @@ function ble/complete/source:argument {
   else
     # filenames, default, bashdefault
     ble/complete/source:file
-  fi
+  fi; local ext=$?
+  ((ext==148||cand_count>old_cand_count)) && return "$ext"
 
-  if ((cand_count<=old_cand_count)); then
-    if local rex='^/?[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
-      # var=filename --option=filename /I:filename など。
-      local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
-      local COMP_PREFIX=$prefix
-      [[ :$comp_type: != *:[amA]:* && $value =~ ^.+/ ]] &&
-        COMP_PREFIX=$prefix${BASH_REMATCH[0]}
+  if local rex='^/?[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
+    # var=filename --option=filename /I:filename など。
+    local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
+    local COMP_PREFIX=$prefix
+    [[ :$comp_type: != *:[amA]:* && $value =~ ^.+/ ]] &&
+      COMP_PREFIX=$prefix${BASH_REMATCH[0]}
 
-      local ret cand
-      ble/complete/source:file/.construct-pathname-pattern "$value"
-      ble/complete/util/eval-pathname-expansion "$ret"
-      for cand in "${ret[@]}"; do
-        [[ -e $cand || -h $cand ]] || continue
-        [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
-        ble/complete/cand/yield file_rhs "$prefix$cand" "$prefix"
-      done
-    fi
+    local ret cand
+    ble/complete/source:file/.construct-pathname-pattern "$value"
+    ble/complete/util/eval-pathname-expansion "$ret"
+    for cand in "${ret[@]}"; do
+      [[ -e $cand || -h $cand ]] || continue
+      [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
+      ble/complete/cand/yield file_rhs "$prefix$cand" "$prefix"
+    done
   fi
 }
 
@@ -2881,7 +3125,6 @@ function ble/complete/candidates/.initialize-rex_raw_paramx {
 ## 候補フィルタ (candidate filters) は以下の関数を通して実装される。
 ##
 ##   関数 ble/complete/candidates/filter:FILTER_TYPE/init compv
-##   関数 ble/complete/candidates/filter:FILTER_TYPE/filter
 ##   関数 ble/complete/candidates/filter:FILTER_TYPE/test cand
 ##     @var[in] comp_filter_type
 ##     @var[in,out] comp_filter_pattern
@@ -4356,6 +4599,7 @@ function ble/widget/complete {
     fi
   fi
   if ((cand_count==0)); then
+    local bleopt_complete_menu_style=$bleopt_complete_menu_style # source 等に一次変更を認める。
     ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
     if ((ext==148)); then
       return 148

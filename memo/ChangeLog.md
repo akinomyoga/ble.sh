@@ -46,6 +46,7 @@
   - prompt: check `TERM` for prompt window titles when `_ble_term_TERM` is unavailable `#D1388` 3c88869
 - syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
 - complete: support `shopt progcomp_alias` `#D1397` d68afa5
+- complete: generate completions of options based on man pages `#D1405` 0000000
 
 ## Changes
 
