@@ -1094,8 +1094,8 @@ function ble/syntax:bash/simple-word/update {
 
   # @var _ble_syntax_bash_simple_rex_incomplete_word1
   # @var _ble_syntax_bash_simple_rex_incomplete_word2
-  local letter1='[^{'${_ble_syntax_bashc_simple}']'
-  local letter2='[^'${_ble_syntax_bashc_simple}']'
+  local letter1='\[[!^]|[^{'${_ble_syntax_bashc_simple}']'
+  local letter2='\[[!^]|[^'${_ble_syntax_bashc_simple}']'
   _ble_syntax_bash_simple_rex_incomplete_word1='^('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
   _ble_syntax_bash_simple_rex_incomplete_word2='^(('$bquot'|'$squot'|'$dquot'|'$param'|'$letter2')*)(\\|'$open_squot'|'$open_dquot')?$'
 }
@@ -1122,7 +1122,7 @@ function ble/syntax:bash/simple-word/evaluate-last-brace-expansion {
   local squot=$_ble_syntax_bash_simple_rex_squot
   local dquot=$_ble_syntax_bash_simple_rex_dquot
   local param=$_ble_syntax_bash_simple_rex_param
-  local letter='[^{,}'${_ble_syntax_bashc_simple}']'
+  local letter='\[[!^]|[^{,}'${_ble_syntax_bashc_simple}']'
   local symbol='[{,}]'
 
   local rex_range_expansion='^(([-+]?[0-9]+)\.\.\.[-+]?[0-9]+|([a-zA-Z])\.\.[a-zA-Z])(\.\.[-+]?[0-9]+)?$'
@@ -1373,7 +1373,7 @@ function ble/syntax:bash/simple-word/.get-rex_element {
   local bquot=$_ble_syntax_bash_simple_rex_bquot
   local squot=$_ble_syntax_bash_simple_rex_squot
   local dquot=$_ble_syntax_bash_simple_rex_dquot
-  local letter1='[^'$sep$_ble_syntax_bashc_simple']'
+  local letter1='\[[!^]|[^'$sep$_ble_syntax_bashc_simple']'
   rex_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
 }
 ## 関数 ble/syntax:bash/simple-word/evaluate-path-spec path_spec [sep] [opts]

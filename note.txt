@@ -3561,6 +3561,27 @@ bash_tips
 
 2020-11-06
 
+  * syntax: [!...] が常にエラー着色になっている問題 [#D1403]
+
+    うーん。これは ble/syntax:bash/simple-word/is-simple が成功しているのに、
+    ble/syntax:bash/simple-word/evaluate-path-spec が失敗しているのが行けない。
+    正規表現の構築で ! を含めるのを忘れているという事だろうか。
+
+    is-simple で使っている正規表現は以下の通り。
+      local letter='\[[!^]|[^'${_ble_syntax_bashc_simple}']'
+      _ble_syntax_bash_simple_rex_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter')'
+      _ble_syntax_bash_simple_rex_word='^'$_ble_syntax_bash_simple_rex_element'+$'
+
+    evaluate-path-spec で使っている正規表現は以下の通り。
+      local letter1='[^'$sep$_ble_syntax_bashc_simple']'
+      rex_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
+
+      あー。分かった。letter で特別扱いしている物を入れるのを忘れている。
+
+    他にも同様の違いがある物が色々ある。これは #D1303 の cmplstofB さんの報告が
+    あった時の修正で中途半端な修正になっていたのが原因。合わせて関連する letter
+    の正規表現も一括して修正する。
+
   * syntax: glob bracket expression で POSIX [...] に対応していない (reported by alvinseville7cf) [#D1402]
     https://github.com/akinomyoga/ble.sh/issues/66
 

@@ -136,6 +136,7 @@
 - prompt: fix extra spaces on line folding before double width character `#D1400` d84bcd8
 - prompt: fix a bug that lonig rps1 is not correctly turned off `#D1401` d84bcd8
 - syntax (glob bracket expression): fix a bug of unsupported POSIX brackets `#D1402` 0000000
+- syntax (`ble/syntax:bash/simple-word/evaluate-path-spec`): fix a bug of unrecognized `[!...]` and `[^...]` `#D1403` 0000000
 
 ## Compatibility
 
