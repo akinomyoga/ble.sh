@@ -1845,8 +1845,14 @@ function ble/syntax:bash/check-glob {
       ((_ble_syntax_attr[i++]=${force_attr:-CTX_BRAX}))
     elif [[ ${text:i:1} == '[' ]]; then
       # Note: 条件コマンド [[ に変換する為に [[ の連なりは一度に読み取る。
-      ((_ble_syntax_attr[i++]=${force_attr:-CTX_BRAX}))
-      [[ ${text:i:1} == '!'* ]] && ((i++))
+      if [[ ${text:i+1:1} == [:=.] ]]; then
+        # Note: glob bracket expression が POSIX 括弧で始まっている時は
+        # [[ が一まとまりになっていると困るので除外。
+        ble/syntax/parse/set-lookahead 2
+      else
+        ((_ble_syntax_attr[i++]=${force_attr:-CTX_BRAX}))
+        [[ ${text:i:1} == '!'* ]] && ((i++))
+      fi
     fi
 
     return 0
@@ -2157,7 +2163,7 @@ function ble/syntax:bash/ctx-bracket-expression {
     # is-delimiters の時に [... は其処で不完全終端する。
     local chars=${_ble_syntax_bash_chars[CTX_ARGI]//'~'}
   fi
-  chars="]${chars#']'}"
+  chars="][${chars#']'}"
 
   local ntype; ble/syntax/parse/nest-type
   local force_attr=; [[ $ntype == glob_attr=* ]] && force_attr=${ntype#*=}
@@ -2186,6 +2192,13 @@ function ble/syntax:bash/ctx-bracket-expression {
         fi
       fi
     fi
+    return 0
+  elif [[ $tail == '['* ]]; then
+    rex='^\[@([^'$chars']+(@\]?)?)?'
+    rex=${rex//@/:}'|'${rex//@/'\.'}'|'${rex//@/=}'|^\['
+    [[ $tail =~ $rex ]]
+    ((_ble_syntax_attr[i]=${force_attr:-ctx},
+      i+=${#BASH_REMATCH}))
     return 0
   elif rex='^([^'$chars']|\\.)+' && [[ $tail =~ $rex ]]; then
     ((_ble_syntax_attr[i]=${force_attr:-ctx},

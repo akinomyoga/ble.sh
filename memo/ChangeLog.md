@@ -45,7 +45,7 @@
 - prompt: support `bleopt prompt_{xterm_title,screen_title,status_line}` `#D1378` 5c3f6fe
   - prompt: check `TERM` for prompt window titles when `_ble_term_TERM` is unavailable `#D1388` 3c88869
 - syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
-- complete: support `shopt progcomp_alias` `#D1397` 0000000
+- complete: support `shopt progcomp_alias` `#D1397` d68afa5
 
 ## Changes
 
@@ -69,9 +69,9 @@
 - main (`ble-update`): clone github repository if the original repository is not found `#D1363` 6e3b3b5
 - util (bleopt): change output format d4b12cd
 - syntax: allow `time -- command` for Bash 5.1 `#D1367` 00d0e93
-- menu: preserve columns with `{forward,backward}-line` `#D1396` 0000000
-- syntax: rename `ble_debug` to `bleopt syntax_debug` `#D1398` 0000000
-- syntax: change a style of buffer contents in `bleopt syntax_debug` `#D1399` 0000000
+- menu: preserve columns with `{forward,backward}-line` `#D1396` 3d5a341
+- syntax: rename `ble_debug` to `bleopt syntax_debug` `#D1398` 3cda58b
+- syntax: change a style of buffer contents in `bleopt syntax_debug` `#D1399` 3cda58b
 
 ## Fix
 
@@ -133,8 +133,9 @@
 - complete: fix bugs that quotation disappears on ambiguous completion `#D1387` 98576c7
 - complete: fix a bug of duplicated completions of filenames with spaces `#D1390` 98576c7
 - complete: fix superlinear performace of ambiguous matching globpat `#D1389` 71afaba
-- prompt: fix extra spaces on line folding before double width character `#D1400` 0000000
-- prompt: fix a bug that lonig rps1 is not correctly turned off `#D1401` 0000000
+- prompt: fix extra spaces on line folding before double width character `#D1400` d84bcd8
+- prompt: fix a bug that lonig rps1 is not correctly turned off `#D1401` d84bcd8
+- syntax (glob bracket expression): fix a bug of unsupported POSIX brackets `#D1402` 0000000
 
 ## Compatibility
 
@@ -158,7 +159,7 @@
 - util (strftime): fix a bug not working with `-v var` option in Bash <= 4.1 (test-util) f1a2818
 - complete: work around slow `compgen -c` in Cygwin `#D1329` 5327f5d
 - edit: work around problems with `mc` (reported by onelittlehope) `#D1392` e97aa07
-  - highlight: fix a problem that the attribute of the last character is applied till EOL `#D1393` 0000000 `#D1395` 0000000
+  - highlight: fix a problem that the attribute of the last character is applied till EOL `#D1393` 2ddb1ba `#D1395` ef09932
 
 ## Internal changes and fixes
 
