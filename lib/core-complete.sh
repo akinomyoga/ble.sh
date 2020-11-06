@@ -1706,7 +1706,6 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
 function ble/complete/source:file/.construct-pathname-pattern {
   local path=$1 pattern
   case :$comp_type: in
-  esac
   (*:a:*) ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path"; pattern=$ret ;;
   (*:A:*) ble/complete/source:file/.construct-ambiguous-pathname-pattern "$path" 0; pattern=$ret ;;
   (*:m:*) ble/string#quote-word "$path"; pattern=*$ret* ;;
