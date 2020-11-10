@@ -138,9 +138,9 @@ function ble/syntax-highlight+test {
   
         mode=rhs
       elif rex='^[^ 	"'\'']+([ 	]|$)' && [[ $tail =~ $rex ]]; then
-        local cmd="${tail%%[	 ]*}" btype
-        ble/util/type btype "$cmd"
-        case "$btype:$cmd" in
+        local cmd="${tail%%[	 ]*}" cmd_type
+        ble/util/type cmd_type "$cmd"
+        case "$cmd_type:$cmd" in
         builtin:*)
           ble/syntax-highlight/append "$i $((i+${#cmd})) fg=red" ;;
         alias:*)

@@ -1795,8 +1795,7 @@ fi
 ##   @param[in] command
 ##     種類を判定するコマンド名を指定します。
 function ble/util/type {
-  ble/util/assign "$1" 'builtin type -t -- "$3" 2>/dev/null' "$2"
-  builtin eval "$1=\"\${$1%$_ble_term_nl}\""
+  ble/util/assign-array "$1" 'builtin type -a -t -- "$3" 2>/dev/null' "$2"
 }
 ## 関数 ble/util/expand-alias word
 ##   @var[out] ret

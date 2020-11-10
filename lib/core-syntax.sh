@@ -5739,6 +5739,14 @@ blehook color_init_defface+=ble/syntax/faces-onload-hook
 #------------------------------------------------------------------------------
 # ble/syntax/highlight/cmdtype
 
+
+## 関数 ble/syntax/highlight/cmdtype1 command_type command
+##   指定したコマンドに対する属性を決定します。
+##   @param[in] command_type
+##     builtin type -t command の結果を指定します。
+##   @param[in] command
+##     コマンド名です。
+##   @var[out] type
 function ble/syntax/highlight/cmdtype1 {
   type=$1
   local cmd=$2
@@ -5805,16 +5813,16 @@ function ble/syntax/highlight/cmdtype/.is-job-name {
 }
 function ble/syntax/highlight/cmdtype/.impl {
   local cmd=$1 _0=$2
-  local btype; ble/util/type btype "$cmd"
-  ble/syntax/highlight/cmdtype1 "$btype" "$cmd"
+  local cmd_type; ble/util/type cmd_type "$cmd"
+  ble/syntax/highlight/cmdtype1 "$cmd_type" "$cmd"
 
   if [[ $type == "$ATTR_CMD_ALIAS" && $cmd != "$_0" ]]; then
     # alias を \ で無効化している場合は
     # unalias して再度 check (2fork)
     type=$(
       builtin unalias "$cmd"
-      ble/util/type btype "$cmd"
-      ble/syntax/highlight/cmdtype1 "$btype" "$cmd"
+      ble/util/type cmd_type "$cmd"
+      ble/syntax/highlight/cmdtype1 "$cmd_type" "$cmd"
       printf %s "$type")
   elif ble/syntax/highlight/cmdtype/.is-job-name "$cmd" "$_0"; then
     # %() { :; } として 関数を定義できるが jobs の方が優先される。
@@ -5825,16 +5833,8 @@ function ble/syntax/highlight/cmdtype/.impl {
     # Note: 予約語 (keyword) の時は構文解析の時点で着色しているのでコマンドとしての着色は行わない。
     #   関数 ble/syntax/highlight/cmdtype が呼び出されたとすれば、コマンドとしての文脈である。
     #   予約語がコマンドとして取り扱われるのは、クォートされていたか変数代入やリダイレクトの後だった時。
-    #   この時 file, function, builtin, jobs のどれかになる。以下、最悪で 3fork+2exec
-    if ble/is-function "$cmd"; then
-      ((type=ATTR_CMD_FUNCTION))
-    elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
-      ((type=ATTR_CMD_BUILTIN))
-    elif type -P -- "$cmd" &>/dev/null; then
-      ((type=ATTR_CMD_FILE))
-    else
-      ((type=ATTR_ERR))
-    fi
+    #   この時 type -a -t の二番目の候補を用いて種類を決定する #D1406
+    ble/syntax/highlight/cmdtype1 "${cmd_type[1]}" "$cmd"
   fi
 }
 

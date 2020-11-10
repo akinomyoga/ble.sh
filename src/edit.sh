@@ -7446,15 +7446,10 @@ function ble/widget/command-help/.type {
   if [[ $type == keyword && $command != "$literal" ]]; then
     if [[ $command == %* ]] && jobs -- "$command" &>/dev/null; then
       type=jobs
-    elif ble/is-function "$command"; then
-      type=function
-    elif enable -p | ble/bin/grep -q -F -x "enable $cmd" &>/dev/null; then
-      type=builtin
-    elif type -P -- "$cmd" &>/dev/null; then
-      type=file
     else
-      type=
-      return 1
+      # type -a の第二候補を用いる #D1406
+      type=${type[1]}
+      [[ $type ]] || return 1
     fi
   fi
 }
