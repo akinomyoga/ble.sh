@@ -257,7 +257,7 @@ function ble/debug/setdbg {
 ## 関数 ble/debug/print text
 function ble/debug/print {
   if [[ -e $_ble_base_run/dbgerr ]]; then
-    ble/util/print "$*" > "$_ble_base_run/dbgerr"
+    ble/util/print "$*" >> "$_ble_base_run/dbgerr"
   else
     ble/util/print "$*" >&2
   fi

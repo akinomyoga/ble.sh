@@ -3638,6 +3638,65 @@ bash_tips
 
 2020-11-11
 
+  * global: 改めて ble/bin/* の使用について確認する [#D1407]
+
+    core-syntax.sh に関しては #D1406 により完全に ble/bin/* は排除した。
+
+    edit.sh に関しては
+
+    - bash-4.3 以下で ttyname を取得する為に tty を使用している
+    - command-help を表示する為に awk, man を使用している。
+    - removed: suppress_bash_output の終了処理で rm を使用している。
+      実はこれは _ble_base_run の一括の削除に任せれば良いのではないか。
+      →うーん。やっぱりそうだ。$_ble_base_run で削除されるのだから
+      わざわざここで rm を呼び出す必要はない。
+      ファイルの存在・非存在が振る舞いに影響を与える物でもない。
+      一応中身をクリアしておく事にする。
+    - bash-3.2 以下では C-d を捉える為に色々していて、その為に
+      grep, rm, mkfifo を使っている。これは仕方がない。
+
+    ble.pp
+
+    - rm, mkdir, chmod, readlink: ble.sh のディレクトリの初期化・終了処理
+
+    def.sh
+
+    - blehook/.compatibility-ble-0.3/check: cat (ユーザーにメッセージを表示する)
+
+    util.sh
+
+    - ble/util/declare-print-definitions: awk
+      declare -p の出力結果のバグを修正する為に用いている。
+    - ble/util/strftime (bash-4.1 以下): date
+    - ble/util/msleep (bash-4.3 以下): rm, mkfifo, sleep, sleepenh, usleep, etc.
+    - ble/util/getmtime: date, stat (この関数自体使われていない)
+    - ble/term/stty: stty ユーザーコマンドを実行する時の環境の調整
+
+    decode.sh
+
+    - ble/decode/nonblocking-read: od (大量の入力があった時の処理の為)
+    - ble/decode/cmap/initialize: awk (cmap キャッシュ初期化)
+    - ble/decode/bind/.generate-source-to-unbind-default: (初期化)
+    - ble-bind -L: sed
+    - ble/builtin/bind/.reconstruct-user-settings: sed, cat, mv, awk
+
+    benchmark.sh
+
+    - (diagnose) ble-measure: awk (小数の計算)
+
+    history.sh
+
+    - awk, mv, sed, wc
+
+    core-complete.sh
+
+    - (performance) grep, sed, awk, sort
+    - (mandb) man, gzip, nroff, mkdir
+
+    取り敢えず wiki/Note.md にまとめた。
+
+    * 他に > でリダイレクトしている箇所がまた現れていたのでこれを >| に修正する。
+
   * syntax: enable -p | grep で builtin を判定しているのは何故か [#D1406]
 
     core-syntax.sh 及び edit.sh (command-help) で以下の様な判定をしている。

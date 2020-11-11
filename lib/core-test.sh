@@ -38,10 +38,10 @@ function ble/test/diff {
   local f2=$BASHPID.$1.result
   (
     cd "$dir"
-    ble/util/print "$2" > "$f1"
-    ble/util/print "$3" > "$f2"
+    ble/util/print "$2" >| "$f1"
+    ble/util/print "$3" >| "$f2"
     ble/test/diff.impl "$f1" "$f2"
-    > "$f1" > "$f2"
+    >| "$f1" >| "$f2"
   )
 }
 

@@ -202,8 +202,13 @@ function ble/prompt/initialize {
   fi
 
   # tty basename
-  local tmp; ble/util/assign tmp 'ble/bin/tty 2>/dev/null'
-  _ble_prompt_const_l=${tmp##*/}
+  local tmp
+  if ((_ble_bash>=40400)); then
+    tmp='\l' _ble_prompt_const_l=${tmp@P}
+  else
+    ble/util/assign tmp 'ble/bin/tty 2>/dev/null'
+    _ble_prompt_const_l=${tmp##*/}
+  fi
 
   # command name
   _ble_prompt_const_s=${0##*/}
@@ -7361,7 +7366,7 @@ function ble/widget/command-help.core {
 
   if ble/is-function ble/bin/man; then
     MANOPT= ble/bin/man "${command##*/}" 2>/dev/null && return 0
-    # Note: $(man "${command##*/}") と (特に日本語で) 正しい結果が得られない。
+    # Note: $(man "${command##*/}") だと (特に日本語で) 正しい結果が得られない。
     # if local content=$(MANOPT= ble/bin/man "${command##*/}" 2>&1) && [[ $content ]]; then
     #   builtin printf '%s\n' "$content" | ble/util/pager
     #   return 0
@@ -7510,8 +7515,8 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
   }
   function ble-edit/bind/stdout.finalize {
     ble-edit/bind/stdout.on
-    [[ -f $_ble_edit_io_fname1 ]] && ble/bin/rm -f "$_ble_edit_io_fname1"
-    [[ -f $_ble_edit_io_fname2 ]] && ble/bin/rm -f "$_ble_edit_io_fname2"
+    [[ -f $_ble_edit_io_fname1 ]] && : >| "$_ble_edit_io_fname1"
+    [[ -f $_ble_edit_io_fname2 ]] && : >| "$_ble_edit_io_fname2"
   }
 
   ## 関数 ble-edit/io/check-stderr

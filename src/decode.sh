@@ -3527,7 +3527,7 @@ function ble/builtin/bind/.reconstruct-user-settings {
     local cache=$_ble_base_cache/decode.readline.$_ble_bash.$map.txt
     if ! [[ -s $cache && $cache -nt $_ble_base/ble.sh ]]; then
       INPUTRC=/dev/null "$BASH" --noprofile --norc -i -c "builtin bind -m $map -p" |
-        LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' > $cache.part &&
+        LC_ALL= LC_CTYPE=C ble/bin/sed '/^#/d;s/"\\M-/"\\e/' >| $cache.part &&
         ble/bin/mv "$cache.part" "$cache" || continue
     fi
 

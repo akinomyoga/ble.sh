@@ -2568,7 +2568,7 @@ function ble/complete/mandb/.generate-cache {
       }
 
       END { flush_pair(); }
-    ' | sort -k 1
+    ' | ble/bin/sort -k 1
 }
 function ble/complete/mandb/load-cache {
   local command=${1##*/}
@@ -2576,7 +2576,7 @@ function ble/complete/mandb/load-cache {
   if [[ ! -s $fcache ]]; then
     [[ -d $_ble_base_cache/man ]] ||
       ble/bin/mkdir -p "$_ble_base_cache/man"
-    ble/complete/mandb/.generate-cache "$command" > "$fcache" &&
+    ble/complete/mandb/.generate-cache "$command" >| "$fcache" &&
       [[ -s $fcache ]] ||
         return 1
   fi
