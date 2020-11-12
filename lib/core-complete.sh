@@ -1735,6 +1735,8 @@ function ble/complete/source:file/.impl {
   local opts=$1
   [[ $comps_flags == *v* ]] || return 1
   [[ :$comp_type: != *:[amA]:* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  # 入力文字列が空の場合は曖昧補完は本質的に通常の補完と同じなのでスキップ
+  [[ :$comp_type: == *:[amA]:* && ! $COMPV ]] && return 1
 
   #   Note: compgen -A file/directory (以下のコード参照) はバグがあって、
   #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0714 #M0009)
@@ -1757,7 +1759,7 @@ function ble/complete/source:file/.impl {
   if ((!${#candidates[@]})); then
     local ret
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    [[ :$opts: == *:directory:* ]] && ret=$ret/
+    [[ :$opts: == *:directory:* ]] && ret=${ret%/}/
     ble/complete/util/eval-pathname-expansion "$ret"
 
     candidates=()
@@ -2411,6 +2413,8 @@ function ble/complete/action:mandb/complete {
   ble/complete/action/util/complete.addtail "${fields[2]}"
 }
 function ble/complete/action:mandb/init-menu-item {
+  local ret; ble/color/face2g argument_option; g=$ret
+
   local fields
   ble/string#split fields "$_ble_term_FS" "$DATA"
   suffix=${fields[1]}
@@ -2701,7 +2705,7 @@ function ble/complete/source:argument {
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
 
   # "-option" の時は complete options based on mandb
-  if local rex='^-[-_[:alnum:]]*$'; [[ $COMPV =~ $rex ]]; then
+  if local rex='^-[-_a-zA-Z0-9]*$'; [[ $COMPV =~ $rex ]]; then
     ble/complete/source:argument/.generate-from-mandb; local ext=$?
     ((ext==148||cand_count>old_cand_count)) && return "$ext"
   fi
@@ -2715,7 +2719,7 @@ function ble/complete/source:argument {
   fi; local ext=$?
   ((ext==148||cand_count>old_cand_count)) && return "$ext"
 
-  if local rex='^/?[-a-zA-Z_]+[:=]'; [[ $COMPV =~ $rex ]]; then
+  if local rex='^/?[-_a-zA-Z0-9]+[:=]'; [[ $COMPV =~ $rex ]]; then
     # var=filename --option=filename /I:filename など。
     local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
     local COMP_PREFIX=$prefix
@@ -4047,7 +4051,7 @@ function ble/complete/insert-braces/.compose {
   local -x rex_atom='^(\\.|[0-9]+|.)' del_close= del_open= quote_type=
   local -x COMPS=$COMPS
   if [[ :$comp_type: != *:[amAi]:* ]]; then
-    local rex_brace='[,{}]|\{[-[:alnum:]]+\.\.[-[:alnum:]]+\}'
+    local rex_brace='[,{}]|\{[-a-zA-Z0-9]+\.\.[-a-zA-Z0-9]+\}'
     case $comps_flags in
     (*S*)    rex_atom='^('$q'(\\'$q'|'$rex_brace')'$q'|[0-9]+|.)' # '...'
              del_close=\' del_open=\' quote_type=S ;;

@@ -1427,11 +1427,83 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   return 0
 }
 
+## 関数 ble/syntax:bash/simple-word/detect-separated-path word [sep] [opts]
+##   指定した単語が単一のパス名か sep 区切りのパス名刺低下の判定を行います。
+##   @param[in] word
+##   @param[in,opt] sep
+##   @param[in] opts
+##     url
+##     noglob
+##     notilde
+##   @var[out] ret
+##     有効な区切り文字の集合を返します。
+function ble/syntax:bash/simple-word/detect-separated-path {
+  local word=$1 sep=${2:-':'} opts=$3
+  [[ $word ]] || return 1
+
+  local rex_url='^[a-z]+://'
+  [[ :$opts: == *:url:* && $word =~ $rex_url ]] && return 1
+
+  # read eval options
+  local eval_word=ble/syntax:bash/simple-word/eval
+  [[ :$opts: == *:noglob:* ]] && eval_word=ble/syntax:bash/simple-word/eval-noglob
+  local notilde=
+  [[ :$opts: == *:notilde:* ]] && notilde=\'\' # チルダ展開の抑制
+
+  # compose regular expressions
+  local rex_element
+  ble/syntax:bash/simple-word/.get-rex_element /
+  local rex='^'$rex_element'/?|^/'
+
+  local tail=$word head=
+  while [[ $tail =~ $rex ]]; do
+    local rematch=$BASH_REMATCH
+    ble/syntax:bash/simple-word/locate-filename/.exists "$notilde$head$rematch" || break
+    head=$head$rematch
+    tail=${tail:${#rematch}}
+  done
+
+  ret=
+  for ((i=0;i<${#sep};i++)); do
+    local sep1=${sep:i:1}
+    ble/syntax:bash/simple-word/.get-rex_element "$sep1"
+    local rex_nocolon='^('$rex_element')?$'
+    local rex_hascolon='^('$rex_element')?['$sep1']'
+    [[ $head =~ $rex_nocolon && $tail =~ $rex_hascolon ]] && ret=$ret$sep1
+  done
+  [[ $ret ]]
+}
+
+## 関数 ble/syntax:bash/simple-word/locate-filename/.exists word opts
+##   @param[in] word
+##   @param[in] opts
+##   @var[in] eval_word
+##   @var[in] rex_url
+function ble/syntax:bash/simple-word/locate-filename/.exists {
+  local word=$1 ret
+  "$eval_word" "$word" || return 1
+  local path=$ret
+  # Note: #D1168 Cygwin では // で始まるパスの判定は遅いので直接文字列で判定する
+  if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $path == //* ]]; then
+    [[ $path == // ]]
+  else
+    [[ -e $path || -h $path ]]
+  fi || [[ :$opts: == *:url:* && $path =~ $rex_url ]]
+}
 ## 関数 ble/syntax:bash/simple-word/locate-filename word [sep] [opts]
 ##   @param[in] word
 ##   @param[in] sep
 ##   @param[in] opts
+##     exists
+##       存在する有効なファイル名のみを抽出します。
+##     greedy
+##       : を区切りと見做さずに結合したパスが有効であれば、その結合パスを採用します。
 ##     url
+##       [a-z]+:// で始まるパスを無条件に有効なパスと判定します。
+##   @arr[out] ret
+##     偶数個の要素を含みます。偶数 index (0, 2, 4, ...) が範囲の開始で、
+##     奇数 index (1, 3, 5, ...) が範囲の終了です。
+##
 function ble/syntax:bash/simple-word/locate-filename {
   local word=$1 sep=${2:-':='} opts=$3
   ret=0
@@ -1446,23 +1518,45 @@ function ble/syntax:bash/simple-word/locate-filename {
   local rex='^'$rex_element'['$sep']|^['$sep']'
   local rex_url='^[a-z]+://'
 
+  local -a seppos=()
   local tail=$word p=0
-  while
-    if "$eval_word" "$tail"; then
-      # Note: #D1168 Cygwin では // で始まるパスの判定は遅いので直接文字列で判定する
-      if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $ret == //* ]]; then
-        [[ $ret == // ]] && break
-      else
-        [[ -e $ret || -h $ret ]] && break
-      fi
-    fi
-    [[ :$opts: == *:url:* && $ret =~ $rex_url ]] && break
-    [[ $tail =~ $rex ]]
-  do
+  while [[ $tail =~ $rex ]]; do
     ((p+=${#BASH_REMATCH}))
     tail=${tail:${#BASH_REMATCH}}
+    ble/array#push seppos $((p-1))
   done
-  ret=$p
+  ble/syntax:bash/simple-word/is-simple "$tail" &&
+    ble/array#push seppos $((p+${#tail}))
+
+  local -a out=()
+  if [[ :$opts: == *:greedy:* ]]; then
+    local i j
+    for ((i=0;i<${#seppos[@]};i++)); do
+      for ((j=${#seppos[@]}-1;j>=i;j--)); do
+        local f1=0 f2=${seppos[j]}
+        ((i)) && ((f1=seppos[i-1]+1))
+        if ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts"; then
+          ble/array#push out "$f1" "$f2"
+          ((i=j))
+        elif ((i==j)) && [[ :$opts: != *:exists:* ]]; then
+          # ファイルが見つからなかった場合は単一区間を登録
+          ble/array#push out "$f1" "$f2"
+        fi
+      done
+    done
+  else
+    local i
+    for ((i=0;i<${#seppos[@]};i++)); do
+      local f1=0 f2=${seppos[i]}
+      ((i)) && ((f1=seppos[i-1]+1))
+
+      [[ :$opts: != *:exists:* ]] ||
+        ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts" &&
+          ble/array#push out "$f1" "$f2"
+    done
+  fi
+
+  ret=("${out[@]}")
   return 0
 }
 
@@ -3031,7 +3125,7 @@ function ble/syntax:bash/ctx-coproc/check-word-end {
 
   if local rex='^[_a-zA-Z0-9]+$'; [[ $word =~ $rex ]]; then
     if ble/syntax:bash/ctx-coproc/.is-next-compound; then
-      # Note: [_[:alnum:]]+ は一回の読み取りの筈なので、
+      # Note: [_a-zA-Z0-9]+ は一回の読み取りの筈なので、
       #   此処で遡って代入しても問題ない筈。
       ((_ble_syntax_attr[wbegin]=ATTR_VAR))
       ((ctx=CTX_CMDXC,type=CTX_ARGVI))
@@ -5617,6 +5711,7 @@ function ble/syntax/faces-onload-hook {
   ble/color/defface varname_readonly  fg=200
   ble/color/defface varname_transform fg=29,bold
   ble/color/defface varname_export    fg=200,bold
+  ble/color/defface argument_option   fg=teal
 
   ble/syntax/attr2iface/.define CTX_ARGX     syntax_default
   ble/syntax/attr2iface/.define CTX_ARGX0    syntax_default
@@ -6071,10 +6166,15 @@ value=$bleopt_filename_ls_colors bleopt/check:filename_ls_colors
 #------------------------------------------------------------------------------
 # ble/syntax/progcolor
 
+_ble_syntax_progcolor_vars=(
+  node TE_i TE_nofs wtype wlen wbeg wend wattr
+
+  # ble/syntax/progcolor/wattr#*
+  wattr_buff wattr_pos wattr_g)
+
 ## 関数 ble/syntax/progcolor/setup-vars i:nofs
 ##   @var[out] TE_i TE_nofs node
 ##   @var[out] wtype wlen wbeg wend wattr
-_ble_syntax_progcolor_vars=(node TE_i TE_nofs wtype wlen wbeg wend wattr)
 function ble/syntax/progcolor/setup-vars {
   # TE_i TE_nofs
   TE_i=${1%%:*} TE_nofs=${1#*:}
@@ -6100,21 +6200,124 @@ function ble/syntax/progcolor/set-wattr {
   _ble_syntax_tree[TE_i-1]="${node[*]}"
 }
 
-## 関数 ble/syntax/progcolor/word:default/.update-for-pathname filetype
-##   @param[in] filetype
-##   @var[in] wtype wbeg p0
-##   @var[in] path spec
-function ble/syntax/progcolor/word:default/.update-for-pathname {
-  local filetype=$1
-  local -a wattr_buff=()
-  ((wbeg<p0)) && ble/array#push wattr_buff $((p0-wbeg)):d
+## 関数 ble/syntax/progcolor/eval-word [iword]
+##   現在のコマンドの iword 番目の単語を評価した値を返します。
+##   iword を省略した場合には現在着色中の単語が使われます。
+##   単語が評価できない場合にはコマンドは失敗します。
+##
+##   @param[in,opt] iword
+##   @var[in] progcolor_iword
+##     現在処理中の単語の番号を指定します。
+##     iword を省略した時に使われます。
+##   @var[in,out] progcolor_wvals
+##   @var[in,out] progcolor_stats
+##     単語の評価値のキャッシュです。
+##   @var[out] ret
+##
+function ble/syntax/progcolor/eval-word {
+  local iword=${1:-progcolor_iword}
+  if [[ ${progcolor_stats[iword]+set} ]]; then
+    ret=${progcolor_wvals[iword]}
+    return "${progcolor_stats[iword]}"
+  fi
 
-  local npath=${#path[@]}
-  if ((npath>1)); then
-    local ipath p=$p0
+  local wtxt=${comp_words[iword]}
+  local simple_flags simple_ibrace
+  if ! ble/syntax:bash/simple-word/reconstruct-incomplete-word "$wtxt"; then
+    # not simple word
+    ret=
+    progcolor_stats[iword]=2
+    progcolor_wvals[iword]=
+    return 2
+  fi
+
+  if ! ble/syntax:bash/simple-word/eval "$ret"; then
+    # fail glob
+    ret=
+    progcolor_stats[iword]=1
+    progcolor_wvals[iword]=
+    return 1
+  fi
+
+  progcolor_stats[iword]=0
+  progcolor_wvals[iword]=$ret
+  return 0
+}
+
+## 関数 ble/syntax/progcolor/wattr#initialize
+##   @var[out] wattr_buff
+##   @var[out] wattr_pos
+##   @var[out] wattr_g
+function ble/syntax/progcolor/wattr#initialize {
+  wattr_buff=()
+  wattr_pos=$wbeg
+  wattr_g=d
+}
+## 関数 ble/syntax/progcolor/wattr#setg pos g
+##   @param[in] pos
+##   @param[in] g
+##   @var[in,out] wattr_buff
+##   @var[in,out] wattr_pos
+##   @var[in,out] wattr_g
+function ble/syntax/progcolor/wattr#setg {
+  local pos=$1 g=$2
+  local len=$((pos-wattr_pos))
+  ((len>0)) && ble/array#push wattr_buff "$len:$wattr_g"
+  wattr_pos=$pos
+  wattr_g=$g
+}
+function ble/syntax/progcolor/wattr#setattr {
+  local pos=$1 attr=$2 g
+  ble/syntax/attr2g "$attr"
+  ble/syntax/progcolor/wattr#setg "$pos" "$g"
+}
+## 関数 ble/syntax/progcolor/wattr#finalize
+##   @var[in,out] wattr_buff
+##   @var[in,out] wattr_pos
+##   @var[in,out] wattr_g
+function ble/syntax/progcolor/wattr#finalize {
+  local wattr
+  if ((${#wattr_buff[@]})); then
+    local len=$((wend-wattr_pos))
+    ((len>0)) && ble/array#push wattr_buff \$:"$wattr_g"
+    wattr_pos=$wend
+    wattr_g=d
+    IFS=, builtin eval 'wattr="m${wattr_buff[*]}"'
+  else
+    wattr=$wattr_g
+  fi
+  ble/syntax/progcolor/set-wattr "$wattr"
+}
+
+
+## 関数 ble/syntax/progcolor/word:default/.detect-separated-path word
+##   @param[in] word
+##   @var[in] wtype p0
+##   @var[in] _ble_syntax_attr
+##   @var[out] ret
+##     有効な区切り文字の集合を返します。
+function ble/syntax/progcolor/word:default/.detect-separated-path {
+  local word=$1
+  ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)) || return 1
+  
+  local detect_opts=url
+  ((wtype==CTX_RDRS)) && detect_opts=$detect_opts:noglob
+  [[ $word == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && detect_opts=$detect_opts:notilde
+  ble/syntax:bash/simple-word/detect-separated-path "$word" :, "$detect_opts"
+}
+
+## 関数 ble/syntax/progcolor/word:default/.highlight-pathspec g [opts]
+##   @param[in] g
+##   @param[in,opt] opts
+##   @var[in] wtype p0 p1
+##   @var[in] path spec
+function ble/syntax/progcolor/word:default/.highlight-pathspec {
+  local p=$p0 opts=$2
+
+  if [[ :$opts: != *:no-path-color:* ]]; then
+    local ipath npath=${#path[@]}
     for ((ipath=0;ipath<npath-1;ipath++)); do
       local epath=${path[ipath]} espec=${spec[ipath]}
-      local p_end=$((p0+${#espec}))
       local g=d type=
       [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
       [[ $type ]] && ble/syntax/attr2g "$type"
@@ -6122,57 +6325,36 @@ function ble/syntax/progcolor/word:default/.update-for-pathname {
       # コマンド名の時は下線は引かない様にする
       ((wtype==CTX_CMDI&&(g&=~_ble_color_gflags_Underline)))
 
-      ble/array#push wattr_buff $((p_end-p)):$g
-      p=$p_end
+      ble/syntax/progcolor/wattr#setg "$p" "$g"
+      ((p=p0+${#espec}))
     done
   fi
 
-  local wattr=d
-  if ((${#wattr_buff[@]})); then
-    local g; ble/syntax/attr2g "$filetype"
-    IFS=, builtin eval 'wattr="m${wattr_buff[*]},\$:${g:-d}"'
-  elif [[ $filetype ]]; then
-    local g; ble/syntax/attr2g "$filetype"
-    if ((wbeg<p0)); then
-      wattr=m$((p0-wbeg)):d,\$:$g
-    else
-      wattr=${g:-d}
-    fi
-  fi
-  ble/syntax/progcolor/set-wattr "$wattr"
+  ble/syntax/progcolor/wattr#setg "$p" "$1"
+  [[ $1 != d ]] &&
+    ble/syntax/progcolor/wattr#setg "$p1" d
   return 0
 }
-## 関数 ble/syntax/progcolor/word:default/.update-for-filename value
-##   @param[in] value
-##   @var[in] wtype wbeg p0
+
+## 関数 ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr attr
+##   @param[in] attr
+##   @var[in] wtype p0 p1
 ##   @var[in] path spec
-function ble/syntax/progcolor/word:default/.update-for-filename {
+function ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr {
+  local g; ble/syntax/attr2g "$1"
+  ble/syntax/progcolor/word:default/.highlight-pathspec "$g"
+  return 0
+}
+## 関数 ble/syntax/progcolor/word:default/.highlight-pathspec-by-name value
+##   @param[in] value
+##   @var[in] wtype p0 p1
+##   @var[in] path spec
+function ble/syntax/progcolor/word:default/.highlight-pathspec-by-name {
   local value=$1
 
-  local type=
-  ble/syntax/highlight/filetype "$value"; local filetype=$type
-
-  local -a wattr_buff=()
-  ((wbeg<p0)) &&
-    ble/array#push wattr_buff $((p0-wbeg)):d
-
-  if ((filetype!=ATTR_FILE_URL)); then
-    local npath=${#path[@]}
-    if ((npath>1)); then
-      local ipath p=$p0
-      for ((ipath=0;ipath<npath-1;ipath++)); do
-        local epath=${path[ipath]} espec=${spec[ipath]}
-        local p_end=$((p0+${#espec}))
-        local g=d type=
-        [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
-        [[ $type ]] && ble/syntax/attr2g "$type"
-        ble/array#push wattr_buff $((p_end-p)):$g
-        p=$p_end
-      done
-    fi
-  fi
-
-  type=$filetype
+  local highlight_opts=
+  local type=; ble/syntax/highlight/filetype "$value"
+  ((type==ATTR_FILE_URL)) && highlight_opts=no-path-color
 
   # check values
   if ((wtype==CTX_RDRF)); then
@@ -6221,14 +6403,59 @@ function ble/syntax/progcolor/word:default/.update-for-filename {
   fi
   [[ $type && ! $g ]] && ble/syntax/attr2g "$type"
 
-  if ((${#wattr_buff[@]})); then
-    IFS=, builtin eval 'local wattr="m${wattr_buff[*]},\$:${g:-d}"'
-  else
-    local wattr=${g:-d}
-  fi
-  ble/syntax/progcolor/set-wattr "$wattr"
+  ble/syntax/progcolor/word:default/.highlight-pathspec "${g:-d}" "$highlight_opts"
   return 0
 }
+
+## 関数 ble/syntax/progcolor/word:default/.highlight-filename p0:p1
+##   @param[in] p0 p1
+##     ファイル名の (コマンドライン内部における) 範囲を指定します。
+##   @param[in] wtype
+function ble/syntax/progcolor/word:default/.highlight-filename {
+  local p0=${1%%:*} p1=${1#*:}
+  local wtxt=${text:p0:p1-p0}
+
+  local path_opts=after-sep
+  # チルダ展開の文脈でない時には抑制
+  [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
+  ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
+
+  local ret path spec ext value
+  ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
+  if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
+    # failglob 等の理由で展開に失敗した場合
+    ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr "$ATTR_ERR"
+  elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
+    # 複数語に展開されたら駄目
+    ble/syntax/progcolor/wattr#setattr "$p0" "$ATTR_ERR"
+  elif ((wtype==CTX_CMDI)); then
+    local attr=${_ble_syntax_attr[wbeg]}
+    if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
+      local type=; ble/syntax/highlight/cmdtype "$value" "$wtxt"
+      if ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)); then
+        ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr "$type"
+      elif [[ $type ]]; then
+        ble/syntax/progcolor/wattr#setattr "$p0" "$type"
+      fi
+    fi
+  elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS||wtype==CTX_RDRF)); then
+    ble/syntax/progcolor/word:default/.highlight-pathspec-by-name "$value"
+  fi
+}
+
+## 関数 ble/syntax/progcolor/word:default/.is-option-context
+##   @var[in] wtype
+function ble/syntax/progcolor/word:default/.is-option-context {
+  ((wtype==CTX_ARGI||wtype==CTX_ARGEI)) || return 1
+
+  local iword ret
+  for ((iword=1;iword<progcolor_iword;iword++)); do
+    ble/syntax/progcolor/eval-word "$iword"
+    [[ $ret == -- ]] && return 1
+  done
+  return 0
+}
+
 ## 関数 ble/syntax/progcolor/word:default
 ##   @var[in] node TE_i TE_nofs
 ##   @var[in] wtype wlen wbeg wend wattr
@@ -6236,74 +6463,55 @@ function ble/syntax/progcolor/word:default {
   [[ $wtype =~ ^[0-9]+$ ]] || return 1
   [[ $wattr == - ]] || return 1
 
-  # @var p0 p1
-  #   文字列を切り出す範囲。
-  local p0=$wbeg p1=$((wbeg+wlen))
-  if ((wtype==ATTR_VAR||wtype==CTX_VALI)); then
-    # 変数代入の場合は右辺だけ切り出す。
-    #   Note: arr=(a=a*b a[1]=a*b) などはパス名展開の対象ではない。
-    #     これは変数代入の形式として認識されているからである。
-    #     以下では element-assignment を指定することで、
-    #     配列要素についても変数代入の形式を抽出する様にしている。
-    local ret
-    ble/syntax:bash/find-rhs "$wtype" "$wbeg" "$wlen" element-assignment && p0=$ret
-  fi
+  ble/syntax/progcolor/wattr#initialize
 
-  local type=
   if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
     # ヒアドキュメントのキーワード指定部分は、
     # 展開・コマンド置換などに従った解析が行われるが、
     # 実行は一切起こらないので一色で塗りつぶす。
-    ((type=wtype))
-  elif [[ $bleopt_highlight_filename ]] &&
-         local wtxt=${text:p0:p1-p0} && ble/syntax:bash/simple-word/is-simple "$wtxt"
-  then
-    local path_opts=after-sep
+    ble/syntax/progcolor/wattr#setattr "$p0" "$wtype"
 
-    # --prefix=FILENAME 等の形式をしている場合は開始位置をずらす。
-    # コマンド名やリダイレクト先ファイル名等の場合は途中で区切って解釈する等の事はしない。
-    if ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)); then
-      local ret; ble/syntax:bash/simple-word/locate-filename "$wtxt" '' url
-      if ((ret)); then
-        ((p0+=ret))
-        wtxt=${wtxt:ret}
+  else
+    # @var p0 p1
+    #   文字列を切り出す範囲。
+    local p0=$wbeg p1=$wend wtxt=${text:wbeg:wlen}
 
-        # チルダ展開の抑制
-        [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
-      fi
+    # 変数代入
+    if ((wtype==ATTR_VAR||wtype==CTX_VALI)); then
+      # 変数代入の場合は右辺だけ切り出す。
+      #   Note: arr=(a=a*b a[1]=a*b) などはパス名展開の対象ではない。
+      #     これは変数代入の形式として認識されているからである。
+      #     以下では element-assignment を指定することで、
+      #     配列要素についても変数代入の形式を抽出する様にしている。
+      local ret
+      ble/syntax:bash/find-rhs "$wtype" "$wbeg" "$wlen" element-assignment && p0=$ret
+    elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI)) && { local rex='^[_a-zA-Z][_a-zA-Z0-9]*='; [[ $wtxt =~ $rex ]]; }; then
+      # 変数代入形式の通常引数
+      ((p0+=${#BASH_REMATCH}))
+    elif ble/syntax/progcolor/word:default/.is-option-context && { local rex='^(-[-_a-zA-Z0-9]*)=?'; [[ $wtxt =~ $rex ]]; }; then
+      # --prefix= 等のオプション引数
+      local rematch1=${BASH_REMATCH[1]}
+      local ret; ble/color/face2g argument_option
+      ble/syntax/progcolor/wattr#setg "$p0" "$ret"
+      ble/syntax/progcolor/wattr#setg $((p0+${#rematch1})) d
+      ((p0+=${#BASH_REMATCH}))
     fi
 
-    ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
-    local ret path spec ext value
-    ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
-    if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
-      # failglob 等の理由で展開に失敗した場合
-      ble/syntax/progcolor/word:default/.update-for-pathname "$ATTR_ERR" && return 0
-    elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
-      # 複数語に展開されたら駄目
-      type=$ATTR_ERR
-    elif ((wtype==CTX_CMDI)); then
-      local attr=${_ble_syntax_attr[wbeg]}
-      if ((attr!=ATTR_KEYWORD&&attr!=ATTR_KEYWORD_BEGIN&&attr!=ATTR_KEYWORD_END&&attr!=ATTR_KEYWORD_MID&&attr!=ATTR_DEL)); then
-        ble/syntax/highlight/cmdtype "$value" "$wtxt"
-        ((type==ATTR_CMD_FILE||type==ATTR_CMD_FILE||type==ATTR_ERR)) &&
-          ble/syntax/progcolor/word:default/.update-for-pathname "$type" && return 0
+    if ((p0<p1)) && [[ $bleopt_highlight_filename ]]; then
+      local wtxt=${text:p0:p1-p0}
+      if local ret; ble/syntax/progcolor/word:default/.detect-separated-path "$wtxt"; then
+        local sep=$ret ranges i
+        ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" url; ranges=("${ret[@]}")
+        for ((i=0;i<${#ranges[@]};i+=2)); do
+          ble/syntax/progcolor/word:default/.highlight-filename $((p0+ranges[i])):$((p0+ranges[i+1]))
+        done
+      else
+        ble/syntax/progcolor/word:default/.highlight-filename "$p0":"$p1"
       fi
-    elif ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI)); then
-      ble/syntax/progcolor/word:default/.update-for-filename "$value" && return 0
     fi
   fi
 
-  local wattr=d
-  if [[ $type ]]; then
-    local g; ble/syntax/attr2g "$type"
-    if ((wbeg<p0)); then
-      wattr=m$((p0-wbeg)):d,\$:$g
-    else
-      wattr=${g:-d}
-    fi
-  fi
-  ble/syntax/progcolor/set-wattr "$wattr"
+  ble/syntax/progcolor/wattr#finalize
   return 0
 }
 
@@ -6316,6 +6524,7 @@ function ble/syntax/progcolor/default {
   for ((i=1;i<${#comp_words[@]};i++)); do
     local ref=${tree_words[i]}
     [[ $ref ]] || continue
+    local progcolor_iword=$i
     ble/syntax/progcolor/setup-vars "$ref"
     ble/syntax/progcolor/word:default
   done
@@ -6342,6 +6551,9 @@ function ble/syntax/progcolor/.compline-rewrite-command {
 ##   @var[in,out] color_umin color_umax
 function ble/syntax/progcolor {
   local cmd=$1 opts=$2
+
+  local -a progcolor_stats=()
+  local -a progcolor_wvals=()
 
   local -a alias_args=()
   local checked=" " processed=

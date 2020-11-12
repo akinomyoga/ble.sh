@@ -2814,7 +2814,7 @@ function ble-bind/option:csi {
 }
 
 function ble-bind/option:list-widgets {
-  declare -f | ble/bin/sed -n 's/^ble\/widget\/\([[:alpha:]][^.[:space:]();&|]\{1,\}\)[[:space:]]*()[[:space:]]*$/\1/p'
+  declare -f | ble/bin/sed -n 's/^ble\/widget\/\([a-zA-Z][^.[:space:]();&|]\{1,\}\)[[:space:]]*()[[:space:]]*$/\1/p'
 }
 function ble-bind/option:dump {
   if (($#)); then

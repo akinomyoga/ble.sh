@@ -30,11 +30,11 @@ function bleopt {
     local spec var type= value= ip=0 rex
     pvars=()
     for spec; do
-      if rex='^[[:alnum:]_]+:='; [[ $spec =~ $rex ]]; then
+      if rex='^[_a-zA-Z0-9]+:='; [[ $spec =~ $rex ]]; then
         type=a var=${spec%%:=*} value=${spec#*:=}
-      elif rex='^[[:alnum:]_]+='; [[ $spec =~ $rex ]]; then
+      elif rex='^[_a-zA-Z0-9]+='; [[ $spec =~ $rex ]]; then
         type=ac var=${spec%%=*} value=${spec#*=}
-      elif rex='^[[:alnum:]_]+$'; [[ $spec =~ $rex ]]; then
+      elif rex='^[_a-zA-Z0-9]+$'; [[ $spec =~ $rex ]]; then
         type=p var=$spec
       else
         ble/util/print "bleopt: unrecognized argument '$spec'" >&2
@@ -1933,7 +1933,7 @@ function ble/util/declare-print-definitions {
           # declare 除去
           sub(/^declare +(-[-aAilucnrtxfFgGI]+ +)?(-- +)?/, "", decl);
           if (isArray) {
-            if (decl ~ /^([[:alpha:]_][[:alnum:]_]*)='\''\(.*\)'\''$/) {
+            if (decl ~ /^([_a-zA-Z][_a-zA-Z0-9]*)='\''\(.*\)'\''$/) {
               sub(/='\''\(/, "=(", decl);
               sub(/\)'\''$/, ")", decl);
               gsub(/'\'\\\\\'\''/, "'\''", decl);

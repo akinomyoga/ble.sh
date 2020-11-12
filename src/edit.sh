@@ -5165,7 +5165,7 @@ function ble/widget/shell-expand-line.proc {
   local word=${_ble_edit_str:wbegin:wlen}
 
   # 配列代入の時は配列要素に対して適用
-  local rex='^[[:alpha:]_][[:alnum:]_]*=+?\('
+  local rex='^[_a-zA-Z][_a-zA-Z0-9]*=+?\('
   if ((wtype==_ble_attr_VAR)) && [[ $word =~ $rex ]]; then
     ble/syntax/tree-enumerate-children ble/widget/shell-expand-line.proc
     return 0

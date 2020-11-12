@@ -47,6 +47,8 @@
 - syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
 - complete: support `shopt progcomp_alias` `#D1397` d68afa5
 - complete: generate completions of options based on man pages `#D1405` 0000000
+- highlight: support colon separated lists of paths `#D1409`
+- highlight: support options `#D1410` 0000000
 
 ## Changes
 
@@ -195,6 +197,7 @@
 - edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 5bed6e6
 - complete: perform filter in `ble/complete/cand/yield` `#D1404` 0000000
 - syntax, edit: use `type -a -t -- cmd` to get command types hidden by keywords `#D1406` 0000000
+- edit, complete: replace some external commands with Bash builtin `#D1407` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1
