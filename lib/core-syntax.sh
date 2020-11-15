@@ -1529,32 +1529,27 @@ function ble/syntax:bash/simple-word/locate-filename {
     ble/array#push seppos $((p+${#tail}))
 
   local -a out=()
-  if [[ :$opts: == *:greedy:* ]]; then
-    local i j
-    for ((i=0;i<${#seppos[@]};i++)); do
-      for ((j=${#seppos[@]}-1;j>=i;j--)); do
-        local f1=0 f2=${seppos[j]}
-        ((i)) && ((f1=seppos[i-1]+1))
+  for ((i=0;i<${#seppos[@]};i++)); do
+    local j0=$i
+    [[ :$opts: == *:greedy:* ]] && j0=${#seppos[@]}-1
+    for ((j=j0;j>=i;j--)); do
+      local f1=0 f2=${seppos[j]}
+      ((i)) && ((f1=seppos[i-1]+1))
+
+      if ((j>i)); then
+        # もし繋げて存在するファイル名になるのであればそれを採用
         if ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts"; then
           ble/array#push out "$f1" "$f2"
           ((i=j))
-        elif ((i==j)) && [[ :$opts: != *:exists:* ]]; then
-          # ファイルが見つからなかった場合は単一区間を登録
-          ble/array#push out "$f1" "$f2"
         fi
-      done
+      else
+        # ファイルが見つからなかった場合は単一区間を登録
+        [[ :$opts: != *:exists:* ]] ||
+          ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts" &&
+            ble/array#push out "$f1" "$f2"
+      fi
     done
-  else
-    local i
-    for ((i=0;i<${#seppos[@]};i++)); do
-      local f1=0 f2=${seppos[i]}
-      ((i)) && ((f1=seppos[i-1]+1))
-
-      [[ :$opts: != *:exists:* ]] ||
-        ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts" &&
-          ble/array#push out "$f1" "$f2"
-    done
-  fi
+  done
 
   ret=("${out[@]}")
   return 0
@@ -6505,7 +6500,7 @@ function ble/syntax/progcolor/word:default {
         for ((i=0;i<${#ranges[@]};i+=2)); do
           ble/syntax/progcolor/word:default/.highlight-filename $((p0+ranges[i])):$((p0+ranges[i+1]))
         done
-      else
+      elif ble/syntax:bash/simple-word/is-simple "$wtxt"; then
         ble/syntax/progcolor/word:default/.highlight-filename "$p0":"$p1"
       fi
     fi

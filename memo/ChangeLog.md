@@ -48,6 +48,7 @@
 - complete: support `shopt progcomp_alias` `#D1397` d68afa5
 - complete: generate completions of options based on man pages `#D1405` 0000000
 - highlight: support colon separated lists of paths `#D1409`
+  - highlight: fix a bug that non-simple words are always highlighted as `syntax_error` (reported by cmplstofB) `#D1411` 0000000
 - highlight: support options `#D1410` 0000000
 
 ## Changes
