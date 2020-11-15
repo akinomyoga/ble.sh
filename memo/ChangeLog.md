@@ -198,6 +198,7 @@
 - cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 445a5ad
 - edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 5bed6e6
 - complete: perform filter in `ble/complete/cand/yield` `#D1404` 7c6b67b 83fa830
+  - complete: fix a bug that `ble/cmdinfo/complete:cd` candidates are unfiltered (reported by cmplstofB) `#D1413` 0000000
 - syntax, edit: use `type -a -t -- cmd` to get command types hidden by keywords `#D1406` ef2d912
 - edit, complete: replace some external commands with Bash builtin `#D1407` 5386e93
 

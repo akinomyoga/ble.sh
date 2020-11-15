@@ -1316,7 +1316,7 @@ function ble/complete/action:variable/init-menu-item {
 ##   曖昧補完の為に擬似的な COMPV と COMPS を生成・設定します。
 ##   @var[in,out] COMPS COMPV
 function ble/complete/source/reduce-compv-for-ambiguous-match {
-  [[ :$comp_type: == *:[amA]:* ]] || return 0
+  [[ :$comp_type: == *:[maA]:* ]] || return 0
 
   local comps=$COMPS compv=$COMPV
   local comps_prefix= compv_prefix=
@@ -1551,7 +1551,7 @@ function ble/complete/source:command/gen.1 {
 }
 
 function ble/complete/source:command/gen {
-  if [[ :$comp_type: != *:[amA]:* && $bleopt_complete_contract_function_names ]]; then
+  if [[ :$comp_type: != *:[maA]:* && $bleopt_complete_contract_function_names ]]; then
     ble/complete/source:command/gen.1 |
       ble/complete/source:command/.contract-by-slashes
   else
@@ -1734,9 +1734,9 @@ function ble/complete/source:file/yield-filenames {
 function ble/complete/source:file/.impl {
   local opts=$1
   [[ $comps_flags == *v* ]] || return 1
-  [[ :$comp_type: != *:[amA]:* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  [[ :$comp_type: != *:[maA]:* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
   # 入力文字列が空の場合は曖昧補完は本質的に通常の補完と同じなのでスキップ
-  [[ :$comp_type: == *:[amA]:* && ! $COMPV ]] && return 1
+  [[ :$comp_type: == *:[maA]:* && ! $COMPV ]] && return 1
 
   #   Note: compgen -A file/directory (以下のコード参照) はバグがあって、
   #     bash-4.0 と 4.1 でクォート除去が実行されないので使わない (#D0714 #M0009)
@@ -1750,7 +1750,7 @@ function ble/complete/source:file/.impl {
   # tilde expansion
   if local rex='^~[^/'\''"$`\!:]*$'; [[ $COMPS =~ $rex ]]; then
     local pattern=${COMPS#\~}
-    [[ :$comp_type: == *:[amA]:* ]] && pattern=
+    [[ :$comp_type: == *:[maA]:* ]] && pattern=
     ble/util/assign-array candidates 'builtin compgen -P \~ -u -- "$pattern"'
     ((${#candidates[@]})) && action=tilde
   fi
@@ -2603,27 +2603,50 @@ function ble/complete/mandb/load-cache {
 function ble/complete/source:argument/.generate-user-defined-completion {
   shopt -q progcomp || return 1
 
-  local COMPS=$COMPS COMPV=$COMPV
-  ble/complete/source/reduce-compv-for-ambiguous-match
-  [[ :$comp_type: == *:[amA]:* ]] && local COMP2=$COMP1
+  [[ :$comp_type: == *:[maA]:* ]] && local COMP2=$COMP1
 
   local comp_words comp_line comp_point comp_cword
   ble/syntax:bash/extract-command "$COMP2" || return 1
 
+  # @var comp2_in_word 単語内のカーソルの位置
+  # @var comp1_in_word 単語内の補完開始点
+  local forward_words=
+  ((comp_cword)) && IFS=' ' builtin eval 'forward_words="${comp_words[*]::comp_cword} "'
+  local comp2_in_word=$((comp_point-${#forward_words}))
+  local comp1_in_word=$((comp2_in_word-(COMP2-COMP1)))
+
   # 単語の途中に補完開始点がある時、単語を分割する
-  if
-    # @var point 単語内のカーソルの位置
-    # @var comp1 単語内の補完開始点
-    local forward_words=
-    ((comp_cword)) && IFS=' ' builtin eval 'forward_words="${comp_words[*]::comp_cword} "'
-    local point=$((comp_point-${#forward_words}))
-    local comp1=$((point-(COMP2-COMP1)))
-    ((comp1>0))
-  then
+  if ((comp1_in_word>0)); then
     local w=${comp_words[comp_cword]}
-    comp_words=("${comp_words[@]::comp_cword}" "${w::comp1}" "${w:comp1}" "${comp_words[@]:comp_cword+1}")
+    comp_words=("${comp_words[@]::comp_cword}" "${w::comp1_in_word}" "${w:comp1_in_word}" "${comp_words[@]:comp_cword+1}")
     IFS=' ' builtin eval 'comp_line="${comp_words[*]}"'
     ((comp_cword++,comp_point++))
+    ((comp2_in_word=COMP2-COMP1,comp1_in_word=0))
+  fi
+
+  # 曖昧補完の場合は単語の内容を reduce する
+  if [[ $COMPV && :$comp_type: == *:[maA]:* ]]; then
+    local oword=${comp_words[comp_cword]::comp2_in_word} ins
+    local ins=; [[ :$comp_type: == *:a:* ]] && ins=${COMPV::1}
+
+    # escape ins
+    local ret comps_flags= comps_fixed= # referenced in ble/complete/string#escape-for-completion-context
+    if [[ $oword ]]; then
+      # Note: 実は曖昧補完の時は COMP2=$COMP1 としていて、
+      #   更に COMP1 で単語分割しているのでここには入らない筈。
+      local simple_flags simple_ibrace
+      ble/syntax:bash/simple-word/reconstruct-incomplete-word "$oword" || return 1
+      comps_flags=v$simple_flags
+      ((${simple_ibrace%:*})) && comps_fixed=1
+    fi
+    ble/complete/string#escape-for-completion-context "$ins" c; ins=$ret
+    ble/util/unlocal comps_flags comps_fixed
+
+    # rewrite
+    ((comp_point+=${#ins}))
+    comp_words=("${comp_words[@]::comp_cword}" "$oword$ins" "${comp_words[@]:comp_cword+1}")
+    IFS=' ' builtin eval 'comp_line="${comp_words[*]}"'
+    ((comp2_in_word+=${#ins}))
   fi
 
   local opts=$1
@@ -2648,7 +2671,7 @@ function ble/complete/source:argument/.contains-literal-option {
 function ble/complete/source:argument/.generate-from-mandb {
   local COMPS=$COMPS COMPV=$COMPV
   ble/complete/source/reduce-compv-for-ambiguous-match
-  [[ :$comp_type: == *:[amA]:* ]] && local COMP2=$COMP1
+  [[ :$comp_type: == *:[maA]:* ]] && local COMP2=$COMP1
 
   local comp_words comp_line comp_point comp_cword
   ble/syntax:bash/extract-command "$COMP2" || return 1
@@ -2722,7 +2745,7 @@ function ble/complete/source:argument {
     # var=filename --option=filename /I:filename など。
     local prefix=$BASH_REMATCH value=${COMPV:${#BASH_REMATCH}}
     local COMP_PREFIX=$prefix
-    [[ :$comp_type: != *:[amA]:* && $value =~ ^.+/ ]] &&
+    [[ :$comp_type: != *:[maA]:* && $value =~ ^.+/ ]] &&
       COMP_PREFIX=$prefix${BASH_REMATCH[0]}
 
     local ret cand
@@ -2873,7 +2896,7 @@ function ble/complete/context:glob/generate-sources {
 }
 function ble/complete/source:glob {
   [[ $comps_flags == *v* ]] || return 1
-  [[ :$comp_type: == *:[amA]:* ]] && return 1
+  [[ :$comp_type: == *:[maA]:* ]] && return 1
 
   local pattern=$COMPV
   local ret; ble/syntax:bash/simple-word/eval "$pattern"
@@ -2895,7 +2918,7 @@ function ble/complete/context:dynamic-history/generate-sources {
 }
 function ble/complete/source:dynamic-history {
   [[ $comps_flags == *v* ]] || return 1
-  [[ :$comp_type: == *:[amA]:* ]] && return 1
+  [[ :$comp_type: == *:[maA]:* ]] && return 1
   [[ $COMPV ]] || return 1
 
   local wordbreaks; ble/complete/get-wordbreaks
@@ -3512,7 +3535,7 @@ function ble/complete/candidates/determine-common-prefix {
     local common0=$common
     common=$COMPS # 取り敢えず補完挿入をキャンセル
 
-    if [[ :$comp_type: == *:[amAi]:* ]]; then
+    if [[ :$comp_type: == *:[maAi]:* ]]; then
       # 曖昧一致の時は遡って書き換えを起こし得る、
       # 一致する部分までを置換し一致しなかった部分を末尾に追加する。
 
@@ -3972,7 +3995,7 @@ function ble/complete/insert-common {
   if ((cand_count>1)) && [[ $insert_flags == *r* ]]; then
     # 既存部分を置換し、かつ一意確定でない場合は置換しない。
     # 曖昧補完の時は determine-common-prefix 内で調整されるので挿入する。
-    if [[ :$comp_type: != *:[amAi]:* ]]; then
+    if [[ :$comp_type: != *:[maAi]:* ]]; then
       do_insert=
     fi
   elif [[ $insert$suffix == "$COMPS" ]]; then
@@ -4049,7 +4072,7 @@ function ble/complete/insert-braces/.compose {
   local q=\'
   local -x rex_atom='^(\\.|[0-9]+|.)' del_close= del_open= quote_type=
   local -x COMPS=$COMPS
-  if [[ :$comp_type: != *:[amAi]:* ]]; then
+  if [[ :$comp_type: != *:[maAi]:* ]]; then
     local rex_brace='[,{}]|\{[-a-zA-Z0-9]+\.\.[-a-zA-Z0-9]+\}'
     case $comps_flags in
     (*S*)    rex_atom='^('$q'(\\'$q'|'$rex_brace')'$q'|[0-9]+|.)' # '...'
@@ -4668,7 +4691,7 @@ function ble/complete/menu-filter/.filter-candidates {
   local iloop=0 interval=$bleopt_complete_polling_cycle
   local filter_type pack "${_ble_complete_cand_varnames[@]}"
   for filter_type in head substr hsubseq subseq; do
-    ble/path#remove-glob comp_type '[amA]'
+    ble/path#remove-glob comp_type '[maA]'
     case $filter_type in
     (substr)  comp_type=${comp_type}:m ;;
     (hsubseq) comp_type=${comp_type}:a ;;
@@ -5426,7 +5449,7 @@ function ble/widget/auto_complete/insert-word {
       blehook/invoke complete_insert
       return 0
     fi
-  elif [[ $_ble_complete_ac_type == [ramA] ]]; then
+  elif [[ $_ble_complete_ac_type == [rmaA] ]]; then
     local ins=$_ble_complete_ac_insert
     [[ $ins =~ $rex ]]
     if [[ $BASH_REMATCH == "$ins" ]]; then

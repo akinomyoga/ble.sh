@@ -1197,6 +1197,27 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-11-13
+
+  * complete: ebash progcomp と ble.sh progcomp の競合問題
+
+    現在は complete:* の方が builtin complete の設定よりも優
+    先される様になっている。これは ble.sh がロードされていない時は
+    bash-completion を使い、ロードされている時は ble.sh 様に特化した補完設定
+    を使うという状況を考えると自然である。
+
+    然し一方でユーザーが自分の好きな設定を builtin complete で設定してもそれ
+    が反映されないという問題が生じる。やはり builtin complete の方を優先させ
+    るべきだろうか。或いは、complete:cd は既定ではロードしない様にして、
+    contrib か何かに入れてユーザにロードさせる様にするのが良いのではないかと
+    いう気もする。然し、ユーザにロードさせるとしてもコマンドを一つ一つロード
+    するのではなくて、まとめてロードするという状況も考えられる。その場合には、
+    やはり builtin complete と complete:* の競合が起こってしまいどちらを優先
+    させたら良いのか分からなくなる。
+
+    或いは ble.sh に特化した設定も builtin complete 経由で呼び出す様にする?
+    しかしそうすると ble.sh から ble-detach した時に動作しなくなってしまう。
+
 2020-11-11
 
   * syntax: $HOME 等の変数展開があるパスに対して simple-word/eval が重い問題
@@ -3652,6 +3673,46 @@ bash_tips
 
 2020-11-15
 
+  * 2020-11-13 complete: cd の曖昧補完で意図せず遡って書き換わる (reported by cmplstofB) [#D1413]
+    https://github.com/akinomyoga/ble.sh/issues/67
+
+    これは yield で filter する様にした結果である。progcomp は実行する前に
+    compvを reduce する。一方で source:dir は compv が reduce されていないとい
+    う前提の下で、maA フラグに従って候補を生成する。その時に filtering は意図的
+    に offにしている。ここで progcomp の中から source:dir を呼び出すと reduce
+    されたcompv で生成された候補が全て filter なしで登録されてしまう。
+
+    この問題に対する正しい対処法は何だろうか。bash progcomp の枠組みにおける呼
+    び出しでは、曖昧補完には対応していないので現状通り reduce して良い。
+    complete:cd に関しては曖昧補完を認識しているので、勝手に reduce しない様に
+    するべきだろうか。
+
+    * complete:* で個別に曖昧補完に対応する?
+
+      o ble.sh native な補完設定という事であればそれが自然な気がする。
+
+      x 全ての complete:* の実装は曖昧補完に対応する必要がある。ユーザーが補完
+        を実装するのが面倒になってしまう。
+
+        →然し現状ではドキュメントも整備していないし実際に自分で定義しているユー
+          ザもいないから、破壊的変更は気にせずできる。
+
+        →ユーザが真面目に実装していなかった場合には head に対応する候補が毎回
+          生成されるだけなので 2回目以降の呼び出しでは filter されて何も生成さ
+          れない。処理時間が無駄に増えるだけである。ユーザの入力があれば候補生
+          成を停止している様にしているので見た目の動作としては何も問題は発生し
+          ない。
+
+      取り敢えずその様に書き換える事にしたい。この時、reduce はもっと後で実行する必要がある。
+
+      →実装を確認してみた所、実は progcomp は COMPS, COMPV を全く参照していな
+      い? つまり、単純に COMPS, COMPV に対する補正をしない様に変更すればOK?
+
+    色々書き換えた。結局、COMPS, COMPV はそのままにして、comp_* の方を適当に
+    reduce した物に書き換える事にした。これで問題は起こらない筈。元のデータを書
+    き換えていないし、bash progcomp と blesh progcomp で同じ変数を見ているので、
+    両者で曖昧補完に対応した補完実装もできるし、対応していない補完実装もできる。
+
   * complete: 一旦 option の補完を実行すると bleopt complete_menu_style が書き換わる [#D1412]
 
     local bleopt_complete_menu_style として書き換わらない様にしている筈なのに。
@@ -3659,6 +3720,7 @@ bash_tips
      →やはり auto-complete であった。修正した。
 
   * syntax: simple-word でない時にエラー着色になってしまう (reported by cmplstofB) [#D1411]
+    https://github.com/akinomyoga/ble.sh/issues/68
 
     #D1409 の書き換えに伴うバグだろう。
 
