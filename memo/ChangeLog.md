@@ -46,10 +46,11 @@
   - prompt: check `TERM` for prompt window titles when `_ble_term_TERM` is unavailable `#D1388` 3c88869
 - syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
 - complete: support `shopt progcomp_alias` `#D1397` d68afa5
-- complete: generate completions of options based on man pages `#D1405` 0000000
-- highlight: support colon separated lists of paths `#D1409`
-  - highlight: fix a bug that non-simple words are always highlighted as `syntax_error` (reported by cmplstofB) `#D1411` 0000000
-- highlight: support options `#D1410` 0000000
+- complete: generate completions of options based on man pages `#D1405` 8183455
+- complete (mandb): fix a bug that `bleopt complete_menu_style` is globally changed `#D1412` 0000000
+- highlight: support colon separated lists of paths `#D1409` 2f40422
+  - highlight: fix a bug that non-simple words are always highlighted as `syntax_error` (reported by cmplstofB) `#D1411` 46e2ac6
+- highlight: support options `#D1410` 2f40422
 
 ## Changes
 
@@ -139,8 +140,8 @@
 - complete: fix superlinear performace of ambiguous matching globpat `#D1389` 71afaba
 - prompt: fix extra spaces on line folding before double width character `#D1400` d84bcd8
 - prompt: fix a bug that lonig rps1 is not correctly turned off `#D1401` d84bcd8
-- syntax (glob bracket expression): fix a bug of unsupported POSIX brackets `#D1402` 0000000
-- syntax (`ble/syntax:bash/simple-word/evaluate-path-spec`): fix a bug of unrecognized `[!...]` and `[^...]` `#D1403` 0000000
+- syntax (glob bracket expression): fix a bug of unsupported POSIX brackets `#D1402` 6fd9e22
+- syntax (`ble/syntax:bash/simple-word/evaluate-path-spec`): fix a bug of unrecognized `[!...]` and `[^...]` `#D1403` 0b842f5
 
 ## Compatibility
 
@@ -196,9 +197,9 @@
 - util: revisit `ble/variable#is-global` implementation `#D1383` 6b5468f
 - cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 445a5ad
 - edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 5bed6e6
-- complete: perform filter in `ble/complete/cand/yield` `#D1404` 0000000
-- syntax, edit: use `type -a -t -- cmd` to get command types hidden by keywords `#D1406` 0000000
-- edit, complete: replace some external commands with Bash builtin `#D1407` 0000000
+- complete: perform filter in `ble/complete/cand/yield` `#D1404` 7c6b67b 83fa830
+- syntax, edit: use `type -a -t -- cmd` to get command types hidden by keywords `#D1406` ef2d912
+- edit, complete: replace some external commands with Bash builtin `#D1407` 5386e93
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel1

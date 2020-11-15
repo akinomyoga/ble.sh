@@ -3652,6 +3652,12 @@ bash_tips
 
 2020-11-15
 
+  * complete: 一旦 option の補完を実行すると bleopt complete_menu_style が書き換わる [#D1412]
+
+    local bleopt_complete_menu_style として書き換わらない様にしている筈なのに。
+    これは auto_complete 経由で書き換わっている?
+     →やはり auto-complete であった。修正した。
+
   * syntax: simple-word でない時にエラー着色になってしまう (reported by cmplstofB) [#D1411]
 
     #D1409 の書き換えに伴うバグだろう。

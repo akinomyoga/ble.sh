@@ -2465,114 +2465,113 @@ function ble/complete/mandb/.generate-cache {
     ble/bin/gzip -cd "$path"
   else
     ble/bin/cat "$path"
-  fi |
-    ble/bin/awk '
-      BEGIN {
-        g_key = "";
-        g_desc = "";
-        print ".TH __ble_ignore__ 1 __ble_ignore__ __ble_ignore__";
-        print ".ll 9999"
+  fi | ble/bin/awk '
+    BEGIN {
+      g_key = "";
+      g_desc = "";
+      print ".TH __ble_ignore__ 1 __ble_ignore__ __ble_ignore__";
+      print ".ll 9999"
+    }
+    function flush_topic() {
+      if (g_key == "") return;
+      print "__ble_key__";
+      print ".TP";
+      print g_key;
+      print "";
+      print "__ble_desc__";
+      print "";
+      print g_desc;
+      print "";
+
+      g_key = "";
+      g_desc = "";
+    }
+
+    /^\.TP\y/ { flush_topic(); mode = "key"; next; }
+    /^\.(SS|SH)\y/ { flush_topic(); next; }
+
+    mode == "key" {
+      g_key = $0;
+      g_desc = "";
+      mode = "desc";
+      next;
+    }
+    mode == "desc" {
+      if (g_desc != "") g_desc = g_desc "\n";
+      g_desc = g_desc $0;
+    }
+
+    END { flush_topic(); }
+  ' | ble/bin/nroff -Tutf8 -man | ble/bin/awk '
+    function process_pair(name, desc) {
+      if (!(g_name ~ /^-/)) return;
+
+      # FS (\034) は特殊文字として使用するので除外する。
+      sep = "\034";
+      if (g_name ~ /\034/) return;
+      gsub(/\034/, "\x1b[7m^\\\x1b[27m", desc);
+
+      n = split(name, names, /,[[:space:]]*/);
+      sub(/(\.  |; ).*/, ".", desc);
+      for (i = 1; i <= n; i++) {
+        name = names[i];
+        insert_suffix = " ";
+        menu_suffix = "";
+        if (match(name, /[[ =]/)) {
+          m = substr(name, RSTART, 1);
+          if (m == "=") {
+            insert_suffix = "=";
+          } else if (m == "[") {
+            insert_suffix = "";
+          }
+          menu_suffix = substr(name, RSTART);
+          name = substr(name, 1, RSTART - 1);
+        }
+        printf("%s" sep "%s" sep "%s" sep "%s\n", name, menu_suffix, insert_suffix, desc);
       }
-      function flush_topic() {
-        if (g_key == "") return;
-        print "__ble_key__";
-        print ".TP";
-        print g_key;
-        print "";
-        print "__ble_desc__";
-        print "";
-        print g_desc;
-        print "";
+    }
 
-        g_key = "";
-        g_desc = "";
-      }
+    function flush_pair() {
+      if (g_name == "") return;
+      process_pair(g_name, g_desc);
+      g_name = "";
+      g_desc = "";
+    }
 
-      /^\.TP\y/ { flush_topic(); mode = "key"; next; }
-      /^\.(SS|SH)\y/ { flush_topic(); next; }
+    sub(/^[[:space:]]*__ble_key__/, "", $0) {
+      flush_pair();
+      mode = "key";
+    }
+    sub(/^[[:space:]]*__ble_desc__/, "", $0) {
+      mode = "desc";
+    }
 
-      mode == "key" {
-        g_key = $0;
-        g_desc = "";
-        mode = "desc";
+    mode == "key" {
+      line = $0;
+      gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
+      gsub(/\x1b[ -/]*[0-~]/, "", line); # ESC seq
+      gsub(/\x0E/, "", line);
+      gsub(/\x0F/, "", line);
+      gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
+      #gsub(/[[:space:]]+/, " ", line);
+      if (line == "") next;
+      if (g_name != "") g_name = g_name " ";
+      g_name = g_name line;
+    }
+
+    mode == "desc" {
+      line = $0;
+      gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
+      if (line == "") {
+        if (g_desc != "") mode = "";
         next;
       }
-      mode == "desc" {
-        if (g_desc != "") g_desc = g_desc "\n";
-        g_desc = g_desc $0;
-      }
+      if (g_desc != "") g_desc = g_desc " ";
+      g_desc = g_desc line;
+    }
 
-      END { flush_topic(); }
-    ' | ble/bin/nroff -Tutf8 -man | ble/bin/awk '
-      function process_pair(name, desc) {
-        if (!(g_name ~ /^-/)) return;
-
-        # FS (\034) は特殊文字として使用するので除外する。
-        sep = "\034";
-        if (g_name ~ /\034/) return;
-        gsub(/\034/, "\x1b[7m^\\\x1b[27m", desc);
-
-        n = split(name, names, /,[[:space:]]*/);
-        sub(/(\.  |; ).*/, ".", desc);
-        for (i = 1; i <= n; i++) {
-          name = names[i];
-          insert_suffix = " ";
-          menu_suffix = "";
-          if (match(name, /[[ =]/)) {
-            m = substr(name, RSTART, 1);
-            if (m == "=") {
-              insert_suffix = "=";
-            } else if (m == "[") {
-              insert_suffix = "";
-            }
-            menu_suffix = substr(name, RSTART);
-            name = substr(name, 1, RSTART - 1);
-          }
-          printf("%s" sep "%s" sep "%s" sep "%s\n", name, menu_suffix, insert_suffix, desc);
-        }
-      }
-
-      function flush_pair() {
-        if (g_name == "") return;
-        process_pair(g_name, g_desc);
-        g_name = "";
-        g_desc = "";
-      }
-
-      sub(/^[[:space:]]*__ble_key__/, "", $0) {
-        flush_pair();
-        mode = "key";
-      }
-      sub(/^[[:space:]]*__ble_desc__/, "", $0) {
-        mode = "desc";
-      }
-
-      mode == "key" {
-        line = $0;
-        gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
-        gsub(/\x1b[ -/]*[0-~]/, "", line); # ESC seq
-        gsub(/\x0E/, "", line);
-        gsub(/\x0F/, "", line);
-        gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
-        #gsub(/[[:space:]]+/, " ", line);
-        if (line == "") next;
-        if (g_name != "") g_name = g_name " ";
-        g_name = g_name line;
-      }
-
-      mode == "desc" {
-        line = $0;
-        gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
-        if (line == "") {
-          if (g_desc != "") mode = "";
-          next;
-        }
-        if (g_desc != "") g_desc = g_desc " ";
-        g_desc = g_desc line;
-      }
-
-      END { flush_pair(); }
-    ' | ble/bin/sort -k 1
+    END { flush_pair(); }
+  ' | ble/bin/sort -k 1
 }
 function ble/complete/mandb/load-cache {
   local command=${1##*/}
@@ -5153,6 +5152,7 @@ function ble/complete/auto-complete/.check-context {
 
   # ble/complete/candidates/generate 設定
   local bleopt_complete_contract_function_names=
+  local bleopt_complete_menu_style=$bleopt_complete_menu_style # source local settings
   ((bleopt_complete_polling_cycle>25)) &&
     local bleopt_complete_polling_cycle=25
   local COMP1 COMP2 COMPS COMPV
