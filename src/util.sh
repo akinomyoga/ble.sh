@@ -477,15 +477,27 @@ function ble/array#insert-before {
     [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## 関数 ble/array#remove arr element
-function ble/array#remove {
+## 関数 ble/array#filter arr predicate
+function ble/array#filter {
   local _ble_local_script='
     local -a aARR=() eARR
     for eARR in "${ARR[@]}"; do
-      [[ $eARR != "$2" ]] && ble/array#push "aARR" "$eARR"
+      "$2" "$eARR" && ble/array#push "aARR" "$eARR"
     done
     ARR=("${aARR[@]}")
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
+}
+## 関数 ble/array#filter-by-regex arr regex
+function ble/array#filter-by-regex/.predicate { [[ $1 =~ $_ble_local_rex ]]; }
+function ble/array#filter-by-regex {
+  local _ble_local_rex=$2
+  ble/array#filter "$1" ble/array#filter-by-regex/.predicate
+}
+## 関数 ble/array#remove arr element
+function ble/array#remove/.predicate { [[ $1 != "$_ble_local_value" ]]; }
+function ble/array#remove {
+  local _ble_local_value=$2
+  ble/array#filter "$1" ble/array#remove/.predicate
 }
 ## 関数 ble/array#index arr needle
 ##   @var[out] ret
@@ -874,11 +886,13 @@ function ble/string#escape-for-bash-escape-string {
 ##     b ブレース展開の文字もエスケープします。
 ##     H 語頭の #, ~ のエスケープをしません。
 ##     T 語頭のチルダのエスケープをしません。
+##     G グロブ文字をエスケープしません。
 ##   @var[out] ret
 function ble/string#escape-for-bash-specialchars {
-  local chars='\ ["'\''`$|&;<>()*?!^'
+  local chars='\ "'\''`$|&;<>()!^'
   # Note: = と : は文法的にはエスケープは不要だが
   #   補完の際の COMP_WORDBREAKS を避ける為に必要である。
+  [[ $2 != *G* ]] && chars=$chars'*?['
   [[ $2 == *c* ]] && chars=$chars'=:'
   [[ $2 == *b* ]] && chars=$chars'{,}'
   ble/string#escape-characters "$1" "$chars"
@@ -890,6 +904,71 @@ function ble/string#escape-for-bash-specialchars {
     a=$'\n' b="\$'\n'" ret=${ret//"$a"/$b}
     a=$'\t' b=$' \t'   ret=${ret//"$a"/$b}
   fi
+
+  # 上の処理で extglob の ( も quote されてしまうので G の時には戻す。
+  if [[ $2 == *G* ]] && shopt -q extglob; then
+    a='!\(' b='!(' ret=${ret//"$a"/$b}
+    a='@\(' b='@(' ret=${ret//"$a"/$b}
+    a='?\(' b='?(' ret=${ret//"$a"/$b}
+    a='*\(' b='*(' ret=${ret//"$a"/$b}
+    a='+\(' b='+(' ret=${ret//"$a"/$b}
+  fi
+}
+
+## 関数 ble/string#escape-for-display str [opts]
+##   str に含まれる制御文字を ^A などのキャレット表記に置き換えます。
+##
+##   @param[in] str
+##   @param[in] opts
+##     revert
+##       キャレット表記を反転表示します。
+##     sgr1=*
+##       キャレット表記に用いる SGR シーケンスを指定します。
+##       キャレット表記の開始に挿入されます。
+##     sgr0=*
+##       キャレット表記以外の部分に用いる地の SGR シーケンスを指定します。
+##       キャレット表記の終端に挿入されます。
+##
+function ble/string#escape-for-display {
+  local head= tail=$1 opts=$2
+
+  local sgr0= sgr1=
+  local rex_csi=$'\e\\[[ -?]*[@-~]'
+  if [[ :$opts: == *:revert:* ]]; then
+    ble/color/g2sgr "$_ble_color_gflags_Revert"
+    sgr1=$ret sgr0=$_ble_term_sgr0
+  else
+    if local rex=':sgr1=(('$rex_csi'|[^:])*):'; [[ :$opts: =~ $rex ]]; then
+      sgr1=${BASH_REMATCH[1]} sgr0=$_ble_term_sgr0
+    fi
+    if local rex=':sgr0=(('$rex_csi'|[^:])*):'; [[ :$opts: =~ $rex ]]; then
+      sgr0=${BASH_REMATCH[1]}
+    fi
+  fi
+
+  while [[ $tail ]]; do
+    if ble/util/isprint+ "$tail"; then
+      head=$head${BASH_REMATCH}
+      tail=${tail:${#BASH_REMATCH}}
+    else
+      ble/util/s2c "${tail::1}"
+      local code=$ret
+      if ((code<32)); then
+        ble/util/c2s $((code+64))
+        ret=$sgr1^$ret$sgr0
+      elif ((code==127)); then
+        ret=$sgr1^?$sgr0
+      elif ((128<=code&&code<160)); then
+        ble/util/c2s $((code-64))
+        ret=${sgr1}M-^$ret$sgr0
+      else
+        ret=${tail::1}
+      fi
+      head=$head$ret
+      tail=${tail:1}
+    fi
+  done
+  ret=$head
 }
 
 function ble/string#quote-command {
@@ -922,7 +1001,7 @@ function ble/string#quote-word {
     ble/string#escape-for-bash-escape-string "$ret"
     ret=$sgrq\$\'$ret\'$sgr0
     return
-  fi  
+  fi
 
   local chars=$_ble_term_IFS'"`$\<>()|&;*?[]!^=:{,}#~' q=\'
   if [[ $ret == *["$chars"]* ]]; then
@@ -1020,6 +1099,10 @@ function ble/util/substr {
   ret=${1:$2:$3}
 } 2>/dev/null
 
+function ble/path#add {
+  local _ble_local_script='opts=$opts${opts:+:}$2'
+  builtin eval -- "${_ble_local_script//opts/$1}"
+}
 function ble/path#remove {
   [[ $2 ]] || return 1
   local _ble_local_script='
@@ -1036,6 +1119,31 @@ function ble/path#remove-glob {
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
   builtin eval -- "${_ble_local_script//opts/$1}"
 }
+
+if ((_ble_bash>=40000)); then
+  _ble_util_set_declare=(declare -A NAME)
+  function ble/set#add { eval "$1[x\$2]=1"; }
+  function ble/set#remove { builtin unset -v "$1[x\$2]"; }
+  function ble/set#contains { eval "[[ \${$1[x\$2]+set} ]]"; }
+else
+  _ble_util_set_declare=(declare NAME)
+  function ble/set#.escape {
+    _ble_local_value=${_ble_local_value//$_ble_term_FS/$_ble_term_FS$_ble_term_FS}
+    _ble_local_value=${_ble_local_value//:/$_ble_term_FS.}
+  }
+  function ble/set#add {
+    local _ble_local_value=$2; ble/set#.escape
+    ble/path#add "$1" "$_ble_local_value"
+  }
+  function ble/set#remove {
+    local _ble_local_value=$2; ble/set#.escape
+    ble/path#remove "$1" "$_ble_local_value"
+  }
+  function ble/set#contains {
+    local _ble_local_value=$2; ble/set#.escape
+    eval "[[ \$$1 == *:\"\$_ble_local_value\":* ]]"
+  }
+fi
 
 #------------------------------------------------------------------------------
 # blehook

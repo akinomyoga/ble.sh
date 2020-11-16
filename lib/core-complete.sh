@@ -1170,25 +1170,6 @@ function ble/complete/action:file/get-desc {
   desc=${_ble_complete_action_file_desc[type]:-'file (???)'}
 }
 
-# action:tilde
-
-function ble/complete/action:tilde/initialize {
-  # チルダは quote しない
-  CAND=${CAND#\~} ble/complete/action/util/quote-insert
-  INSERT=\~$INSERT
-}
-function ble/complete/action:tilde/complete {
-  ble/complete/action/util/complete.mark-directory
-}
-function ble/complete/action:tilde/init-menu-item {
-  local ret
-  ble/color/face2g filename_directory; g=$ret
-}
-function ble/complete/action:tilde/get-desc {
-  desc='directory (tilde expansion)'
-}
-
-
 # action:progcomp
 #
 #   DATA ... compopt 互換のオプションをコロン区切りで指定します
@@ -1363,13 +1344,29 @@ function ble/complete/cand/yield {
   [[ $CAND == "$COMP_PREFIX"* ]] && PREFIX_LEN=${#COMP_PREFIX}
 
   local INSERT=$CAND
-  ble/complete/action:"$ACTION"/initialize
+  ble/complete/action:"$ACTION"/initialize || return "$?"
 
   local icand
   ((icand=cand_count++))
   cand_cand[icand]=$CAND
   cand_word[icand]=$INSERT
   cand_pack[icand]=$ACTION:${#CAND},${#INSERT},$PREFIX_LEN:$CAND$INSERT$DATA
+}
+
+function ble/complete/cand/yield-filenames {
+  local action=$1; shift
+
+  local rex_hidden=
+  [[ :$comp_type: != *:match-hidden:* ]] &&
+    rex_hidden=${COMPV:+'.{'${#COMPV}'}'}'(^|/)\.[^/]*$'
+
+  local cand
+  for cand; do
+    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
+    [[ $rex_hidden && $cand =~ $rex_hidden ]] && continue
+    [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
+    ble/complete/cand/yield "$action" "$cand"
+  done
 }
 
 _ble_complete_cand_varnames=(ACTION CAND INSERT DATA PREFIX_LEN)
@@ -1713,23 +1710,6 @@ function ble/complete/source:file/.construct-pathname-pattern {
   esac
   ret=$pattern
 }
-function ble/complete/source:file/yield-filenames {
-  local action=$1; shift
-
-  local flag_source_filter=1
-
-  local rex_hidden=
-  [[ :$comp_type: != *:match-hidden:* ]] &&
-    rex_hidden=${COMPV:+'.{'${#COMPV}'}'}'(^|/)\.[^/]*$'
-
-  local cand
-  for cand; do
-    ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
-    [[ $rex_hidden && $cand =~ $rex_hidden ]] && continue
-    [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
-    ble/complete/cand/yield "$action" "$cand"
-  done
-}
 
 function ble/complete/source:file/.impl {
   local opts=$1
@@ -1744,41 +1724,32 @@ function ble/complete/source:file/.impl {
   #     local q="'" Q="'\''"; local compv_quoted="'${COMPV//$q/$Q}'"
   #     local candidates; ble/util/assign-array candidates 'builtin compgen -A file -- "$compv_quoted"'
 
+  ble/complete/source:tilde; local ext=$?
+  ((ext==148||ext==0)) && return "$ext"
+
   local -a candidates=()
-  local action=file
+  local ret
+  ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+  [[ :$opts: == *:directory:* ]] && ret=${ret%/}/
+  ble/complete/util/eval-pathname-expansion "$ret"
 
-  # tilde expansion
-  if local rex='^~[^/'\''"$`\!:]*$'; [[ $COMPS =~ $rex ]]; then
-    local pattern=${COMPS#\~}
-    [[ :$comp_type: == *:[maA]:* ]] && pattern=
-    ble/util/assign-array candidates 'builtin compgen -P \~ -u -- "$pattern"'
-    ((${#candidates[@]})) && action=tilde
+  candidates=()
+  local cand
+  if [[ :$opts: == *:directory:* ]]; then
+    for cand in "${ret[@]}"; do
+      [[ -d $cand ]] || continue
+      [[ $cand == / ]] || cand=${cand%/}
+      ble/array#push candidates "$cand"
+    done
+  else
+    for cand in "${ret[@]}"; do
+      [[ -e $cand || -h $cand ]] || continue
+      ble/array#push candidates "$cand"
+    done
   fi
 
-  # filenames
-  if ((!${#candidates[@]})); then
-    local ret
-    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    [[ :$opts: == *:directory:* ]] && ret=${ret%/}/
-    ble/complete/util/eval-pathname-expansion "$ret"
-
-    candidates=()
-    local cand
-    if [[ :$opts: == *:directory:* ]]; then
-      for cand in "${ret[@]}"; do
-        [[ -d $cand ]] || continue
-        [[ $cand == / ]] || cand=${cand%/}
-        ble/array#push candidates "$cand"
-      done
-    else
-      for cand in "${ret[@]}"; do
-        [[ -e $cand || -h $cand ]] || continue
-        ble/array#push candidates "$cand"
-      done
-    fi
-  fi
-
-  ble/complete/source:file/yield-filenames "$action" "${candidates[@]}"
+  local flag_source_filter=1
+  ble/complete/cand/yield-filenames file "${candidates[@]}"
 }
 
 function ble/complete/source:file {
@@ -1791,6 +1762,80 @@ function ble/complete/source:dir {
 # source:rhs
 
 function ble/complete/source:rhs { ble/complete/source:file; }
+
+#------------------------------------------------------------------------------
+# source:tilde
+
+function ble/complete/action:tilde/initialize {
+  # チルダは quote しない
+  CAND=${CAND#\~} ble/complete/action/util/quote-insert
+  INSERT=\~$INSERT
+
+  # Note: Windows 等でチルダ展開の無効なユーザー名があるのでチェック
+  local rex='^~[^/'\''"$`\!:]*$'; [[ $INSERT =~ $rex ]]
+}
+function ble/complete/action:tilde/complete {
+  ble/complete/action/util/complete.mark-directory
+}
+function ble/complete/action:tilde/init-menu-item {
+  local ret
+  ble/color/face2g filename_directory; g=$ret
+}
+function ble/complete/action:tilde/get-desc {
+  if [[ $CAND == '~+' ]]; then
+    desc='current directory (tilde expansion)'
+  elif [[ $CAND == '~-' ]]; then
+    desc='previous directory (tilde expansion)'
+  elif local rex='^~[0-9]$'; [[ $CAND =~ $rex ]]; then
+    desc='DIRSTACK directory (tilde expansion)'
+  else
+    desc='user directory (tilde expansion)'
+  fi
+}
+
+function ble/complete/source:tilde/.generate {
+  # generate user directories
+  local pattern=${COMPS#\~}
+  [[ :$comp_type: == *:[maA]:* ]] && pattern=
+  builtin compgen -P \~ -u -- "$pattern"
+
+  # generate special tilde expansions
+  printf '%s\n' '~' '~+' '~-'
+  local dirstack_max=$((${#DIRSTACK[@]}-1))
+  ((dirstack_max>=0)) &&
+    eval "printf '%s\n' '~'{0..$dirstack_max}"
+
+}
+
+# tilde expansion
+function ble/complete/source:tilde {
+  local rex='^~[^/'\''"$`\!:]*$'; [[ $COMPS =~ $rex ]] || return 1
+
+  # Generate candidates
+  #   Note: Windows で同じユーザ名が compgen によって
+  #   複数回列挙されるので sort -u を実行する。
+  local compgen candidates
+  ble/util/assign compgen ble/complete/source:tilde/.generate
+  [[ $compgen ]] || return 1
+  ble/util/assign-array candidates 'ble/bin/sort -u <<< "$compgen"'
+
+  # COMPS を用いて自前でフィルタ
+  local flag_source_filter=1
+  if [[ $COMPS == '~'?* ]]; then
+    local filter_type=$comp_filter_type
+    [[ $filter_type == none ]] && filter_type=head
+    local comp_filter_type
+    local comp_filter_pattern
+    ble/complete/candidates/filter#init "$filter_type" "$COMPS"
+    ble/array#filter candidates ble/complete/candidates/filter#test
+  fi
+
+  ((${#candidates[@]})) || return 1
+
+  local old_cand_count=$cand_count
+  ble/complete/cand/yield-filenames tilde "${candidates[@]}"; local ext=$?
+  return $((ext?ext:cand_count==old_cand_count))
+}
 
 #------------------------------------------------------------------------------
 # progcomp
@@ -2624,7 +2669,7 @@ function ble/complete/source:argument/.generate-user-defined-completion {
     ((comp2_in_word=COMP2-COMP1,comp1_in_word=0))
   fi
 
-  # 曖昧補完の場合は単語の内容を reduce する
+  # 曖昧補完の場合は単語の内容を reduce する #D1413
   if [[ $COMPV && :$comp_type: == *:[maA]:* ]]; then
     local oword=${comp_words[comp_cword]::comp2_in_word} ins
     local ins=; [[ :$comp_type: == *:a:* ]] && ins=${COMPV::1}
@@ -2712,11 +2757,12 @@ function ble/complete/source:argument {
 
   ble/complete/source:sabbrev
 
-  if [[ $comps_flags == *f* ]]; then
+  # failglob で展開に失敗した時は * を付加して再度展開を試みる
+  if [[ $comps_flags == *f* && $COMPS != *\* && :$comp_type: != *:[maA]:* ]]; then
     local ret simple_flags simple_ibrace
     ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"
     ble/syntax:bash/simple-word/eval "$ret*" && ((${#ret[*]})) &&
-      ble/complete/source:file/yield-filenames file "${ret[@]}"
+      ble/complete/cand/yield-filenames file "${ret[@]}"
     (($?==148)) && return 148
   fi
 
@@ -3177,6 +3223,11 @@ function ble/complete/candidates/filter#test {
   ble/complete/candidates/filter:"$comp_filter_type"/test "$1"
 }
 
+function ble/complete/candidates/filter:none/init { ble/complete/candidates/filter:head/init "$@"; }
+function ble/complete/candidates/filter:none/test { true; }
+function ble/complete/candidates/filter:none/count-match-chars { ble/complete/candidates/filter:head/count-match-chars "$@"; }
+function ble/complete/candidates/filter:none/match { ble/complete/candidates/filter:head/match "$@"; }
+
 function ble/complete/candidates/filter:head/init {
   local ret; ble/complete/util/construct-glob-pattern "$1"
   comp_filter_pattern=$ret*
@@ -3435,7 +3486,7 @@ function ble/complete/candidates/generate {
   cand_word=() # 挿入文字列 (～ エスケープされた候補文字列)
   cand_pack=() # 候補の詳細データ
 
-  ble/complete/candidates/generate-with-filter head "$opts" || return "$?"
+  ble/complete/candidates/generate-with-filter none "$opts" || return "$?"
   ((cand_count)) && return 0
 
   if [[ $bleopt_complete_ambiguous && $COMPV ]]; then
@@ -3540,8 +3591,8 @@ function ble/complete/candidates/determine-common-prefix {
       # 一致する部分までを置換し一致しなかった部分を末尾に追加する。
 
       local simple_flags simple_ibrace
-      if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
-          ble/syntax:bash/simple-word/eval "$ret"; then
+      if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0"; then
+        local common_reconstructed=$ret
         local value=$ret filter_type=head
         case :$comp_type: in
         (*:m:*) filter_type=substr ;;
@@ -3549,21 +3600,56 @@ function ble/complete/candidates/determine-common-prefix {
         (*:A:*) filter_type=subseq ;;
         esac
 
-        if ble/complete/candidates/filter:"$filter_type"/count-match-chars "$value"; then
+        local is_processed=
+        if ble/syntax:bash/simple-word/eval "$common_reconstructed" &&
+            ble/complete/candidates/filter:"$filter_type"/count-match-chars "$ret"; then
           if [[ $filter_type == head ]] && ((ret<${#COMPV})); then
+            is_processed=1
             # Note: #D1181 ここに来たという事は外部の枠組みで
             #   生成された先頭一致しない候補があるという事。
             #   入力済み文字列が失われてしまう危険性を承知の上と思われるので書き換えを許可する。
-            [[ $bleopt_complete_allow_reduction ]] &&
-              common=$common0
+            [[ $bleopt_complete_allow_reduction ]] && common=$common0
           elif ((ret)); then
+            is_processed=1
             ble/string#escape-for-bash-specialchars "${COMPV:ret}" c
             common=$common0$ret
-          else
-            common=$common0$COMPS
           fi
         fi
+
+        # #D1417 チルダ展開やパス名展開など途中で切ると全く異なる展開になる物について
+        #   より正しく処理する為に、完全解ではないが notilde, noglob でも部分一致を調べる。
+        #
+        #   例えば既に ~nouser と入力して共通一致部分が ~ だった時に
+        #   ~ の何処までが ~nouser に部分一致するか調べる時、チルダ展開が有効だと
+        #   ~ が /home/user に展開されてから部分一致が調べられる為、
+        #   一致が起こらずに "~nouser" の全てが追加で挿入されて "~~nouser" になってしまう。
+        #   なのでチルダ展開・パス名展開を無効にして部分一致を試みる必要がある。
+        if [[ ! $is_processed ]] &&
+             local notilde=\'\' &&
+             ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS" &&
+             ble/syntax:bash/simple-word/eval-noglob "$notilde$ret" &&
+             local compv_notilde=$ret &&
+             ble/syntax:bash/simple-word/eval-noglob "$notilde$common_reconstructed" &&
+             local commonv_notilde=$ret &&
+             COMPV=$compv_notilde ble/complete/candidates/filter:"$filter_type"/count-match-chars "$commonv_notilde"
+        then
+          if [[ $filter_type == head ]] && ((ret<${#COMPV})); then
+            is_processed=1
+            [[ $bleopt_complete_allow_reduction ]] && common=$common0
+          elif ((ret)); then
+            # Note: 今の実装では展開結果に含まれている *?[ は全て glob として取
+            #   り扱う事になっている。つまり 'a*b' が曖昧部分一致した時には元々
+            #   の quote が外れて a*b になってしまうという事。これは現在の実装
+            #   の制限である。
+            is_processed=1
+            ble/string#escape-for-bash-specialchars "${compv_notilde:ret}" TG
+            common=$common0$ret
+          fi
+        fi
+
+        [[ $is_processed ]] || common=$common0$COMPS
       fi
+
     else
       # Note: #D0768 文法的に単純であれば (構造を破壊しなければ) 遡って書き換えが起こることを許す。
       # Note: #D1181 外部の枠組みで生成された先頭一致しない共通部分の時でも書き換えを許す。
@@ -4707,8 +4793,11 @@ function ble/complete/menu-filter/.filter-candidates {
       ble/complete/candidates/filter#test "$CAND" &&
         ble/array#push cand_pack "$pack"
     done
-    ((${#cand_pack[@]}!=0)) && break
+    ((${#cand_pack[@]}!=0)) && return 0
   done
+
+  # 最初に生成した全ての候補 (遡って書き換える候補等)
+  cand_pack=("${_ble_complete_menu0_pack[@]}")
 }
 function ble/complete/menu-filter/.get-filter-target {
   if [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]]; then
@@ -5754,6 +5843,7 @@ function ble/complete/source:sabbrev {
   local key cand
 
   local filter_type=$comp_filter_type
+  [[ $filter_type == none ]] && filter_type=head
   local comps_fixed=
 
   # フィルタリング用設定を COMPS で再初期化
@@ -5768,7 +5858,7 @@ function ble/complete/source:sabbrev {
     ble/syntax:bash/simple-word/reconstruct-incomplete-word "$cand" &&
       ble/syntax:bash/simple-word/eval "$ret" || continue
 
-    local value=$ret
+    local value=$ret flag_source_filter=1
     ble/complete/cand/yield sabbrev "$cand"
   done
 }
@@ -6037,6 +6127,44 @@ function ble-decode/keymap:dabbrev/define {
 #------------------------------------------------------------------------------
 # default cmdinfo/complete
 
+# action:cdpath (action:file を修正)
+
+function ble/complete/action:cdpath/initialize {
+  DATA=$cdpath_basedir
+  ble/complete/action/util/quote-insert
+}
+function ble/complete/action:cdpath/complete {
+  CAND=$DATA$CAND ble/complete/action:file/complete
+}
+function ble/complete/action:cdpath/init-menu-item {
+  ble/color/face2g cmdinfo_cd_cdpath; g=$ret
+  if [[ :$comp_type: == *:vstat:* ]]; then
+    if [[ -h $CAND ]]; then
+      suffix='@'
+    elif [[ -d $CAND ]]; then
+      suffix='/'
+    fi
+  fi
+}
+function ble/complete/action:cdpath/get-desc {
+  local sgr0=$_ble_term_sgr0 sgr1= sgr2=
+  local g ret g1 g2
+  ble/syntax/highlight/getg-from-filename "$DATA$CAND"; local g1=$g
+  [[ $g1 ]] || { ble/color/face2g filename_warning; g1=$ret; }
+  ((g2=g^_ble_color_gflags_Revert))
+  ble/color/g2sgr "$g1"; sgr1=$ret
+  ble/color/g2sgr "$g2"; sgr2=$ret
+  ble/string#escape-for-display "$DATA$CAND" sgr1="$sgr2":sgr0="$sgr1"
+  local filename=$sgr1$ret$sgr0
+
+  CAND=$DATA$CAND ble/complete/action:file/get-desc
+  desc="CDPATH $filename ($desc)"
+}
+
+## 関数 ble/cmdinfo/complete:cd/.impl
+##   @remarks
+##     この実装は ble/complete/source:file/.impl を元にしている。
+##     実装に関する注意点はこの元の実装も参照の事。
 function ble/cmdinfo/complete:cd/.impl {
   local type=$1
   [[ $comps_flags == *v* ]] || return 1
@@ -6060,28 +6188,73 @@ function ble/cmdinfo/complete:cd/.impl {
     return 0
   fi
 
-  [[ $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  [[ :$comp_type: != *:[maA]:* && $COMPV =~ ^.+/ ]] && COMP_PREFIX=${BASH_REMATCH[0]}
+  [[ :$comp_type: == *:[maA]:* && ! $COMPV ]] && return 1
 
-  ble/complete/source:dir
+  if [[ ! $CDPATH ]]; then
+    ble/complete/source:dir
+    return "$?"
+  fi
 
-  if [[ $CDPATH ]]; then
-    local names; ble/string#split names : "$CDPATH"
-    local name
-    for name in "${names[@]}"; do
-      [[ $name ]] || continue
-      name=${name%/}/
+  ble/complete/source:tilde; local ext=$?
+  ((ext==148||ext==0)) && return "$ext"
 
-      local ret cand
-      ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-      ble/complete/util/eval-pathname-expansion "$name/$ret"
-      for cand in "${ret[@]}"; do
-        [[ $cand && -d $cand ]] || continue
-        [[ $cand == / ]] || cand=${cand%/}
-        cand=${cand#"$name"/}
-        [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
-        ble/complete/cand/yield file "$cand"
-      done
+  local is_pwd_visited= is_cdpath_generated=
+  "${_ble_util_set_declare[@]//NAME/visited}"
+
+  # Check CDPATH first
+  local name names; ble/string#split names : "$CDPATH"
+  for name in "${names[@]}"; do
+    [[ $name ]] || continue
+    name=${name%/}/
+
+    # カレントディレクトリが CDPATH に含まれている時は action=file で登録
+    local action=cdpath
+    [[ ${name%/} == . || ${name%/} == "${PWD%/}" ]] &&
+      is_pwd_visited=1 action=file
+
+    local -a candidates=()
+    local ret cand
+    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+    ble/complete/util/eval-pathname-expansion "$name$ret"
+    for cand in "${ret[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
+        ble/complete/check-cancel && return 148
+      [[ $cand && -d $cand ]] || continue
+      [[ $cand == / ]] || cand=${cand%/}
+      cand=${cand#"$name"}
+
+      ble/set#contains visited "$cand" && continue
+      ble/set#add visited "$cand"
+      ble/array#push candidates "$cand"
     done
+    ((${#candidates[@]})) || continue
+
+    local flag_source_filter=1
+    local cdpath_basedir=$name
+    ble/complete/cand/yield-filenames "$action" "${candidates[@]}"
+    [[ $action == cdpath ]] && is_cdpath_generated=1
+  done
+  [[ $is_cdpath_generated ]] &&
+      bleopt complete_menu_style=desc-raw
+
+  # Check PWD next
+  # カレントディレクトリが CDPATH に含まれていなかった時に限り通常の候補生成
+  if [[ ! $is_pwd_visited ]]; then
+    local -a candidates=()
+    local ret cand
+    ble/complete/source:file/.construct-pathname-pattern "$COMPV"
+    ble/complete/util/eval-pathname-expansion "${ret%/}/"
+    for cand in "${ret[@]}"; do
+      ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
+        ble/complete/check-cancel && return 148
+      [[ -d $cand ]] || continue
+      [[ $cand == / ]] || cand=${cand%/}
+      ble/set#contains visited "$cand" && continue
+      ble/array#push candidates "$cand"
+    done
+    local flag_source_filter=1
+    ble/complete/cand/yield-filenames file "${candidates[@]}"
   fi
 }
 function ble/cmdinfo/complete:cd {

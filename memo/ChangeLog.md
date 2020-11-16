@@ -142,6 +142,9 @@
 - prompt: fix a bug that lonig rps1 is not correctly turned off `#D1401` d84bcd8
 - syntax (glob bracket expression): fix a bug of unsupported POSIX brackets `#D1402` 6fd9e22
 - syntax (`ble/syntax:bash/simple-word/evaluate-path-spec`): fix a bug of unrecognized `[!...]` and `[^...]` `#D1403` 0b842f5
+- complete (`cd`): fix duplicate candidates by `CDPATH` (reported by Lennart00 at `oh-my-bash`) `#D1415` 0000000
+- complete (`source:file`): fix a bug that tilde expansion candidates are always filtered out `#D1416` 0000000
+- complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 0000000
 
 ## Compatibility
 
@@ -199,6 +202,7 @@
 - edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 5bed6e6
 - complete: perform filter in `ble/complete/cand/yield` `#D1404` 7c6b67b 83fa830
   - complete: fix a bug that `ble/cmdinfo/complete:cd` candidates are unfiltered (reported by cmplstofB) `#D1413` 0000000
+  - complete: fix unfiltered tilde expansions `#D1414` 0000000
 - syntax, edit: use `type -a -t -- cmd` to get command types hidden by keywords `#D1406` ef2d912
 - edit, complete: replace some external commands with Bash builtin `#D1407` 5386e93
 

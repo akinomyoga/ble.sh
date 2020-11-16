@@ -1199,21 +1199,21 @@ bash_tips
 
 2020-11-13
 
-  * complete: ebash progcomp と ble.sh progcomp の競合問題
+  * complete: bash progcomp と ble.sh progcomp の競合問題
 
-    現在は complete:* の方が builtin complete の設定よりも優
-    先される様になっている。これは ble.sh がロードされていない時は
-    bash-completion を使い、ロードされている時は ble.sh 様に特化した補完設定
-    を使うという状況を考えると自然である。
+    現在は complete:* の方が builtin complete の設定よりも優先される様になって
+    いる。これは ble.sh がロードされていない時はbash-completion を使い、ロード
+    されている時は ble.sh 様に特化した補完設定を使うという状況を考えると自然で
+    ある。
 
-    然し一方でユーザーが自分の好きな設定を builtin complete で設定してもそれ
-    が反映されないという問題が生じる。やはり builtin complete の方を優先させ
-    るべきだろうか。或いは、complete:cd は既定ではロードしない様にして、
-    contrib か何かに入れてユーザにロードさせる様にするのが良いのではないかと
-    いう気もする。然し、ユーザにロードさせるとしてもコマンドを一つ一つロード
-    するのではなくて、まとめてロードするという状況も考えられる。その場合には、
-    やはり builtin complete と complete:* の競合が起こってしまいどちらを優先
-    させたら良いのか分からなくなる。
+    然し一方でユーザーが自分の好きな設定を builtin complete で設定してもそれが
+    反映されないという問題が生じる。やはり builtin complete の方を優先させるべ
+    きだろうか。或いは、complete:cd は既定ではロードしない様にして、contrib か
+    何かに入れてユーザにロードさせる様にするのが良いのではないかという気もする。
+    然し、ユーザにロードさせるとしてもコマンドを一つ一つロードするのではなくて、
+    まとめてロードするという状況も考えられる。その場合には、やはり builtin
+    complete と complete:* の競合が起こってしまいどちらを優先させたら良いのか分
+    からなくなる。
 
     或いは ble.sh に特化した設定も builtin complete 経由で呼び出す様にする?
     しかしそうすると ble.sh から ble-detach した時に動作しなくなってしまう。
@@ -3671,6 +3671,143 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-11-16
+
+  * complete: echo ~ TAB としてメニューを表示した後 [#D1417]
+    存在しないチルダ展開を試みると ~ が重複して挿入されてしまう問題。
+
+    これは何が起こっているのだろうか。
+    メニューを表示していない時には何も起こらない。
+
+    ~x が空の文字列に展開されてその後に文字列が挿入されている可能性?
+    menu 経由の候補に対する曖昧補完かもしれない。
+    然し、~x となっている物は展開されない筈だし何かが変。
+    具体的に何が起こっているのか確かめる必要がある。
+
+    メニューから初期化した cand_cand 及び cand_word は特に変な事にはなっていない。
+    そもそも既存の文字列を保持したまま挿入されるという点が何か変である。
+    ~1234 が ~~1234 になる。1234 が何処から来たのかという事を考えると、
+    これは候補から生成された文字列ではない?
+
+    調べてみると ble/complete/candidates/determine-common-prefix が既に
+    ~~1234 という文字列を返している。
+
+    * 調べていくと count-match-chars が 0 を返してそのまま結合している。
+      何故 ~ を共有しているのに count-match-chars が 0 になる?
+      と思って comp_filter_pattern を確認してみたが何故か空である。
+
+      →単に count-match-chars は comp_filter_pattern を使わないからだった。
+      なので init を実行する必要はない。確認するべきは COMPV でった。
+
+    * それから common0 を展開した結果が /home/murase になってしまっている。
+      うーん。後に何か文字列が続く事によってそこまでの展開結果が変化してしまう、
+      という状況を今まで考慮に入れていなかった。この場合にどの様に取り扱うのかは微妙。
+
+      取り敢えず COMPS で見た時の共通部分は縮約する?
+      或いはチルダに関しては何らかの特別な取り扱いを行う?
+      よく考えたらグロブ展開でも同様の事は起こるのではないか。
+      という事を考えるとチルダに関してだけ特別扱いしても仕方がない。
+
+    結局、既存の文字列 ~1234 と共通部分 ~ を比較したい所が、
+    ~1234 と ~ の比較になってしまっていて、
+    それが展開されて ~1234 と /home/murase の比較になってしまっている。
+
+    うーん。明確な解決方法はない気がするが COMPS を通じて縮約する事にする?
+    或いは * や ~ などを特別扱いして縮約するか…。
+    glob を off にして ~ 展開も off にして見る?
+
+    →取り敢えず noglob, notilde で展開した結果を用いて挿入を行う事にした。
+    得られた結果に含まれる *?[ などの glob は全て glob として quote せずに挿入してしまう。
+    これが意味する所は 'a*b' となっていたとしても、a*b になってしまうという事。
+    これは実装の制限である。
+
+  * complete: source:file の実装で ~+ 等の特別なチルダ展開の候補が列挙されない [#D1416]
+
+    これについては一度考察した様な気もするが忘れた。と思って改めて実装を確認し
+    てみるとチルダ展開による候補生成は ~ 単体でも発生するので、実は ~ だけでも
+    起動する筈である。しかし実際には動いていない。
+
+    x fixed: 動く筈のチルダ展開による候補生成が動いていない。調べてみると
+      yield-filenames の中で消滅している様だ。更に調べると cand/yield の中で消
+      滅している。filter:head/test で除外されている様だ。head は実際には何の制
+      限も行わないという物なので head/test の実装を true に置き換える事にした。
+
+      と思ったがそれで良いのだろうか…。現在の実装だと取り敢えず可能な候補を全
+      て列挙しているので、filter をしない様にすると全て列挙されてしまう。
+
+      一方で filter を実行する様にすると filter 側は $COMPV (/home/user) でフィ
+      ルタしようとしているのに、こちら側は ~user を渡そうとするので常に除去され
+      てしまう。ちゃんと filter する為には COMPS を用いて filter する必要がある。
+      →その様に実装した。OK。動いている。
+
+    ? ok: head/test を true に置き換える事による影響は? 他の箇所で従来から直接
+      filter:head/test を呼び出していた箇所での振る舞いが変化してしまわないか確
+      認する必要がある。
+
+      →やはり filter:head を書き換えるのは止めた。filter:none を新しく追加して
+      最初の候補生成の時にだけ filter:none を指定して、それ以外の filter では
+      既定で head を使用する事にした。
+
+      また、今まで menu-filter は head に一致する物のみを絞り込んでいたが、候補
+      が全て現在入力済み単語に一致しない場合は、最初に生成された候補を全て表示
+      する事にした。遡って書き換わる様な候補を補完器が生成したかもしれないし、
+      もしそうでなくても生成された候補の中から選べる様にするのは一つの手であるから。
+
+      もしかすると候補が全く生成されない時には再度補完器を呼び出す様になってい
+      るかもしれないと思って確認したが、特にそういう事はしていない様だ。よく考
+      えたらその様に実装すると本当に一致しない文字列を入力した時に、文字を入力
+      する度に補完器を呼び出す事になって効率が悪い。なのでその様な実装になって
+      いるとは考えにくい。なので、この可能性は考えなくて良い。(もしそうなってい
+      たら勝手に全候補を返すという様に振る舞いを変える訳には行かなくなる。)
+
+  * complete: CDPATH を設定していると候補が重複して生成される (reported by Lennart00) [#D1415]
+    https://github.com/ohmybash/oh-my-bash/pull/183
+    oh-my-bash の Issue を見ていたら偶然発見した。
+
+    確かにそうだ。そして . を CDPATH に指定する意味があるのかと思ったが、色々試
+    してみると、どうやら CDPATH を指定していると現在のディレクトリよりも CDPATH
+    で見つかったディレクトリの方が優先される。これを防ぐために . を CDPATH に含
+    めるという方法が使える様である。
+
+    後、action:file にして候補を登録しているがこれだとディレクトリが見つからな
+    いのでエラー着色になってしまう。新しい action を定義する事にする。
+
+    * うーん。現在、カレントディレクトリ以下のディレクトリ名については
+      source:dir を通じて列挙しているが、CDPATH で既に見つかった物と同じファイ
+      ル名を持つディレクトリについては yield しない様にする必要がある。
+
+      どの様に処理するべきだろうか。source:dir で何らかの除外条件を外部から指定
+      できる様に書き換えるか、或いは source:dir の実装を真似て自前で実装するか。
+
+      →改めて自前で complete:cd 内部で source:dir と同様の事を実行する事にした。
+      一部の共通処理は source:tilde として括りだす。実装した。動いている気がする。
+
+    動作確認する。
+
+    x fixed: "[[ ${$1[x\$2]+set} ]]: 誤った代入です" というエラーメッセージ。
+      これは ble/set#contains の内部でのクォート忘れ。
+
+    x fixed: cdhist 候補の背景色が濃すぎる気がする→変更した。
+
+    x fixed: 現在のディレクトリ由来のファイル名も cdhist 着色になっている。
+      これはディレクトリ名に付加した / を除去するのを忘れて . と比較していた為。
+
+    x fixed: bleopt complete_menu_style=desc にして見た所 segfault した。無限再帰だろうか
+      →action:cdpath/get-desc を定義する所を action:file/get-desc を上書きしていた。
+      そして、内部では action:file/get-desc を呼び出していた。
+
+    x fixed: やはりg値を合成すると見にくい色になってしまう。
+      ディレクトリの種類に応じた色は desc の方で着色するべきでは。
+
+  * complete (source:file): tilde expansion の補完が filter されずに登録される気がする [#D1414]
+
+    際にコードを調べてみると他にも filter されずに登録されてしまう箇所があった
+    ので一緒に修正した。
+
+    flag_source_filter に対する修正はyield-filenames の中ではなくて、
+    yield-filenames に渡すファイル名を生成している側である呼び出し元で行うべき
+    である。その様に書き換えた。
+
 2020-11-15
 
   * 2020-11-13 complete: cd の曖昧補完で意図せず遡って書き換わる (reported by cmplstofB) [#D1413]
@@ -3712,6 +3849,30 @@ bash_tips
     reduce した物に書き換える事にした。これで問題は起こらない筈。元のデータを書
     き換えていないし、bash progcomp と blesh progcomp で同じ変数を見ているので、
     両者で曖昧補完に対応した補完実装もできるし、対応していない補完実装もできる。
+
+    以下デバグに使った .bashrc の設定
+
+    | # bashrc
+    |
+    | blehook/eval-after-load complete debug1
+    | debug1() {
+    |   ble/cmdinfo/complete:cd() {
+    |     local ret
+    |     ble/complete/source:file/.construct-pathname-pattern "$COMPV"; local pattern=$ret
+    |     ble/debug/print-variables COMPS COMPV pattern
+    |     ble/complete/util/eval-pathname-expansion "$pattern/"
+    |     ble/debug/print-variables ret
+    |     ble/complete/util/eval-pathname-expansion "$pattern"
+    |     ble/debug/print-variables ret
+    |   } >> a.txt 2>&1
+    | }
+    |
+    | comp1() {
+    |   ble/debug/print-variables COMP1 COMP2 comp_type
+    |   ble/debug/print-variables comp_cword comp_words
+    |   ble/debug/print-variables COMP_CWORD COMP_WORDS
+    | } &>/dev/tty
+    | complete -F comp1 comp1
 
   * complete: 一旦 option の補完を実行すると bleopt complete_menu_style が書き換わる [#D1412]
 
