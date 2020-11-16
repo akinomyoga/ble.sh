@@ -1131,7 +1131,7 @@ function ble/canvas/trace-text {
           ble/util/c2s $((code+64))
           ble/canvas/trace-text/.put-atomic 2 "$sgr1^$ret$sgr0"
         elif ((code==127)); then
-          ble/canvas/trace-text/.put-atomic 2 '$sgr1^?$sgr0'
+          ble/canvas/trace-text/.put-atomic 2 "$sgr1^?$sgr0"
         elif ((128<=code&&code<160)); then
           ble/util/c2s $((code-64))
           ble/canvas/trace-text/.put-atomic 4 "${sgr1}M-^$ret$sgr0"

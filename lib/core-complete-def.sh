@@ -83,3 +83,4 @@ ble/util/autoload "$_ble_base/lib/core-complete.sh" \
 
 ble-color-defface menu_complete fg=12,bg=252
 ble-color-defface auto_complete bg=254,fg=238
+ble-color-defface cmdinfo_cd_cdpath fg=26,bg=155
