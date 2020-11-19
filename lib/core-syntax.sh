@@ -1464,6 +1464,7 @@ function ble/syntax:bash/simple-word/detect-separated-path {
   done
 
   ret=
+  local i
   for ((i=0;i<${#sep};i++)); do
     local sep1=${sep:i:1}
     ble/syntax:bash/simple-word/.get-rex_element "$sep1"
@@ -5985,15 +5986,15 @@ fi
 ## 関数 ble/syntax/highlight/filetype filename
 ##   @var[out] type
 function ble/syntax/highlight/filetype {
+  type=
   local file=$1
 
   # Note: #D1168 Cygwin では // で始まるパスはとても遅い
   if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $file == //* ]]; then
     [[ $file == // ]] && ((type=ATTR_FILE_DIR))
-    return 0
+    [[ $type ]]; return "$?"
   fi
 
-  type=
   if [[ -h $file ]]; then
     if [[ -e $file ]]; then
       ((type=ATTR_FILE_LINK))
@@ -6031,6 +6032,7 @@ function ble/syntax/highlight/filetype {
   elif local rex='^https?://[^ ^`"<>\{|}]+$'; [[ $file =~ $rex ]]; then
     ((type=ATTR_FILE_URL))
   fi
+  [[ $type ]]
 }
 
 #------------------------------------------------------------------------------
@@ -6313,9 +6315,16 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec {
     local ipath npath=${#path[@]}
     for ((ipath=0;ipath<npath-1;ipath++)); do
       local epath=${path[ipath]} espec=${spec[ipath]}
-      local g=d type=
-      [[ -d $epath ]] && ble/syntax/highlight/filetype "$epath"
-      [[ $type ]] && ble/syntax/attr2g "$type"
+      local g=d
+
+      if [[ -d $epath ]]; then
+        local type
+        ble/syntax/highlight/filetype "$epath" &&
+          ble/syntax/attr2g "$type"
+      elif ((wtype==CTX_CMDI)); then
+        # コマンド名の時はディレクトリが存在する必要 #D1419
+        ble/syntax/attr2g "$ATTR_ERR"
+      fi
 
       # コマンド名の時は下線は引かない様にする
       ((wtype==CTX_CMDI&&(g&=~_ble_color_gflags_Underline)))

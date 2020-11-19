@@ -1099,8 +1099,12 @@ function ble/util/substr {
   ret=${1:$2:$3}
 } 2>/dev/null
 
-function ble/path#add {
+function ble/path#append {
   local _ble_local_script='opts=$opts${opts:+:}$2'
+  builtin eval -- "${_ble_local_script//opts/$1}"
+}
+function ble/path#prepend {
+  local _ble_local_script='opts=$2${opts:+:}$opts'
   builtin eval -- "${_ble_local_script//opts/$1}"
 }
 function ble/path#remove {
@@ -1119,6 +1123,9 @@ function ble/path#remove-glob {
     opts=${opts//::/:} opts=${opts#:} opts=${opts%:}'
   builtin eval -- "${_ble_local_script//opts/$1}"
 }
+function ble/path#contains {
+  eval "[[ :\${$1}: == *:\"\$2\":* ]]"
+}
 
 if ((_ble_bash>=40000)); then
   _ble_util_set_declare=(declare -A NAME)
@@ -1133,7 +1140,7 @@ else
   }
   function ble/set#add {
     local _ble_local_value=$2; ble/set#.escape
-    ble/path#add "$1" "$_ble_local_value"
+    ble/path#append "$1" "$_ble_local_value"
   }
   function ble/set#remove {
     local _ble_local_value=$2; ble/set#.escape
@@ -1141,7 +1148,7 @@ else
   }
   function ble/set#contains {
     local _ble_local_value=$2; ble/set#.escape
-    eval "[[ \$$1 == *:\"\$_ble_local_value\":* ]]"
+    eval "[[ :\$$1: == *:\"\$_ble_local_value\":* ]]"
   }
 fi
 

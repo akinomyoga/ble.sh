@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 1016
+ble/test/start-section 'util' 1047
 
 # bleopt
 
@@ -906,6 +906,37 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test code:'ret=usrZ:stdX:stdY; ble/path#remove-glob ret "std[a-zX-Z]"' ret=usrZ
 )
 
+# ble/path#{append,prepend,contains}
+(
+  ble/test code:'ret=; ble/path#append ret a' ret=a
+  ble/test code:'ret=a; ble/path#append ret a' ret=a:a
+  ble/test code:'ret=a; ble/path#append ret b' ret=a:b
+  ble/test code:'ret=a:b; ble/path#append ret cd' ret=a:b:cd
+  ble/test code:'ret=; ble/path#prepend ret a' ret=a
+  ble/test code:'ret=a; ble/path#prepend ret a' ret=a:a
+  ble/test code:'ret=a; ble/path#prepend ret b' ret=b:a
+  ble/test code:'ret=a:b; ble/path#prepend ret cd' ret=cd:a:b
+
+  ble/test code:'ret=a:b:c; ble/path#contains ret a'
+  ble/test code:'ret=a:b:c; ble/path#contains ret b'
+  ble/test code:'ret=a:b:c; ble/path#contains ret c'
+  ble/test code:'ret=a:b:c; ! ble/path#contains ret x'
+  ble/test code:'ret=a:b:c; ! ble/path#contains ret aa'
+  ble/test code:'ret=a:b:c; ! ble/path#contains ret bb'
+  ble/test code:'ret=a:b:c; ! ble/path#contains ret cc'
+  ble/test code:'ret=a:b:c; ! ble/path#contains ret "?"'
+  ble/test code:'ret=a:b:c; ! ble/path#contains ret "*"'
+
+  ble/test code:'ret=abc:def; ble/path#contains ret abc'
+  ble/test code:'ret=abc:def; ble/path#contains ret def'
+  ble/test code:'ret=abc:def; ! ble/path#contains ret a'
+  ble/test code:'ret=abc:def; ! ble/path#contains ret ab'
+  ble/test code:'ret=abc:def; ! ble/path#contains ret abcdef'
+  ble/test code:'ret=abc:def; ! ble/path#contains ret "???"'
+  ble/test code:'ret=xyz; ble/path#contains ret xyz'
+  ble/test code:'ret=xyz; ! ble/path#contains ret xyz:xyz'
+  ble/test code:'ret=xyz; ! ble/path#contains ret "???"'
+)
 
 # blehook
 (
@@ -1406,8 +1437,8 @@ ble/test ble/util/is-running-in-subshell exit=1
 
 # ble/util/{msleep,sleep}
 (
-  ble/test 'ble-measure -q "ble/util/msleep 100"; ((msec=ret/1000,95<=msec&&msec<=105))'
-  ble/test 'ble-measure -q "ble/util/sleep 0.1"; ((msec=ret/1000,95<=msec&&msec<=105))'
+  ble/test 'ble-measure -q "ble/util/msleep 100"; echo "$ret usec" >&2; ((msec=ret/1000,95<=msec&&msec<=105))'
+  ble/test 'ble-measure -q "ble/util/sleep 0.1"; echo "$ret usec" >&2; ((msec=ret/1000,95<=msec&&msec<=105))'
 )
 
 # ble/util/conditional-sync

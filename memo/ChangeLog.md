@@ -47,9 +47,11 @@
 - syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
 - complete: support `shopt progcomp_alias` `#D1397` d68afa5
 - complete: generate completions of options based on man pages `#D1405` 8183455
-- complete (mandb): fix a bug that `bleopt complete_menu_style` is globally changed `#D1412` 0000000
+- complete (mandb): fix a bug that `bleopt complete_menu_style` is globally changed `#D1412` b91fd10
 - highlight: support colon separated lists of paths `#D1409` 2f40422
   - highlight: fix a bug that non-simple words are always highlighted as `syntax_error` (reported by cmplstofB) `#D1411` 46e2ac6
+  - highlight: fix a bug that words are sometimes unhighlighted `#D1418` 0000000
+  - highlight: fix a bug that non-existent directories are not highlighted in the command name context `#D1419` 0000000
 - highlight: support options `#D1410` 2f40422
 
 ## Changes
@@ -142,9 +144,9 @@
 - prompt: fix a bug that lonig rps1 is not correctly turned off `#D1401` d84bcd8
 - syntax (glob bracket expression): fix a bug of unsupported POSIX brackets `#D1402` 6fd9e22
 - syntax (`ble/syntax:bash/simple-word/evaluate-path-spec`): fix a bug of unrecognized `[!...]` and `[^...]` `#D1403` 0b842f5
-- complete (`cd`): fix duplicate candidates by `CDPATH` (reported by Lennart00 at `oh-my-bash`) `#D1415` 0000000
-- complete (`source:file`): fix a bug that tilde expansion candidates are always filtered out `#D1416` 0000000
-- complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 0000000
+- complete (`cd`): fix duplicate candidates by `CDPATH` (reported by Lennart00 at `oh-my-bash`) `#D1415` 5777d7f
+- complete (`source:file`): fix a bug that tilde expansion candidates are always filtered out `#D1416` 5777d7f
+- complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 5777d7f
 
 ## Compatibility
 
@@ -201,8 +203,8 @@
 - cmap: recognize <kbd>SS3 O</kbd> as <kbd>blur</kbd> `#D1384` 445a5ad
 - edit (`ble/widget/{accept-line,newline}`): automatically switch widgets by the keymap `#D1391` 5bed6e6
 - complete: perform filter in `ble/complete/cand/yield` `#D1404` 7c6b67b 83fa830
-  - complete: fix a bug that `ble/cmdinfo/complete:cd` candidates are unfiltered (reported by cmplstofB) `#D1413` 0000000
-  - complete: fix unfiltered tilde expansions `#D1414` 0000000
+  - complete: fix a bug that `ble/cmdinfo/complete:cd` candidates are unfiltered (reported by cmplstofB) `#D1413` 5c17a31
+  - complete: fix unfiltered tilde expansions `#D1414` 5777d7f
 - syntax, edit: use `type -a -t -- cmd` to get command types hidden by keywords `#D1406` ef2d912
 - edit, complete: replace some external commands with Bash builtin `#D1407` 5386e93
 
