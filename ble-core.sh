@@ -163,6 +163,14 @@ function ble/array#reverse {
   for e$1; do $1[--i$1]=\"\$e$1\"; done"
 }
 
+function ble/dense-array#fill-range {
+  _ble_util_array_prototype.reserve $(($2-$1))
+  local _ble_script='
+    local -a sARR; sARR=("${_ble_util_array_prototype[@]::$3-$2}")
+    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")'
+  builtin eval -- "${_ble_script//ARR/$1}"
+}
+
 _ble_util_string_prototype='        '
 function _ble_util_string_prototype.reserve {
   local -i n=$1 c
