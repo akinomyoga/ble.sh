@@ -17,7 +17,7 @@
 
 ## 簡単設定
 
-`ble.sH` インストールには `git`, `make` (GNU make), and `gawk` が必要です。
+`ble.sh` インストールには `git`, `make` (GNU make), and `gawk` が必要です。
 詳細は、試用またはインストールに関しては [節1.1](#get-from-source) と [節1.2](#get-from-tarball) を、
 `~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
 

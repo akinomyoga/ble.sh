@@ -52,7 +52,7 @@
   - highlight: fix a bug that non-simple words are always highlighted as `syntax_error` (reported by cmplstofB) `#D1411` 46e2ac6
   - highlight: fix a bug that words are sometimes unhighlighted `#D1418` 0000000
   - highlight: fix a bug that non-existent directories are not highlighted in the command name context `#D1419` 0000000
-- highlight: support options `#D1410` 2f40422
+- highlight: support options `#D1410` 2f40422 `#D1420` 0000000
 
 ## Changes
 

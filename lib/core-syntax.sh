@@ -6450,7 +6450,7 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
 ## 関数 ble/syntax/progcolor/word:default/.is-option-context
 ##   @var[in] wtype
 function ble/syntax/progcolor/word:default/.is-option-context {
-  ((wtype==CTX_ARGI||wtype==CTX_ARGEI)) || return 1
+  ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_ARGVI)) || return 1
 
   local iword ret
   for ((iword=1;iword<progcolor_iword;iword++)); do
