@@ -147,6 +147,7 @@
 - complete (`cd`): fix duplicate candidates by `CDPATH` (reported by Lennart00 at `oh-my-bash`) `#D1415` 5777d7f
 - complete (`source:file`): fix a bug that tilde expansion candidates are always filtered out `#D1416` 5777d7f
 - complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 5777d7f
+- highlight: fix remaininig highlighting of vanishing words `#D1421` 0000000
 
 ## Compatibility
 

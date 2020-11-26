@@ -551,6 +551,14 @@ function ble/array#replace {
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
 
+function ble/dense-array#fill-range {
+  ble/array#reserve-prototype $(($2-$1))
+  local _ble_script='
+    local -a sARR; sARR=("${_ble_array_prototype[@]::$3-$2}")
+    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")'
+  builtin eval -- "${_ble_script//ARR/$1}"
+}
+
 _ble_string_prototype='        '
 function ble/string#reserve-prototype {
   local n=$1 c
