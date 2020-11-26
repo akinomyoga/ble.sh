@@ -4177,10 +4177,13 @@ function ble/syntax/parse {
 #%end
 
   # 解析予定範囲の更新
+  #   @var i1 解析範囲開始
+  #   @var i2 解析必要範囲終端 (此処以降で文脈が一致した時に解析終了)
+  #   @var j2 シフト前の解析終端
   local i1 i2 j2
   ble/syntax/parse/determine-parse-range
 
-  ble/syntax/vanishing-word/register _ble_syntax_tree 0 "$i1" "$j2" 0 "$i1"
+  ble/syntax/vanishing-word/register _ble_syntax_tree 0 "$i1" "$j2" 0 "$i2"
 
   ble/syntax/parse/shift
 
@@ -5509,7 +5512,7 @@ function ble/highlight/layer:syntax/word/.apply-attribute {
     wbeg<wend)) || return
 
   if [[ $wattr =~ ^[0-9]+$ ]]; then
-    ble/highlight/layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$wattr"
+    ble/dense-array#fill-range _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$wattr"
   elif [[ $wattr == m* ]]; then
     local ranges; ble/string#split ranges , "${wattr:1}"
     local i=$wbeg j range
@@ -5524,7 +5527,7 @@ function ble/highlight/layer:syntax/word/.apply-attribute {
       (((i=j)<wend)) || break
     done
   elif [[ $wattr == d ]]; then
-    ble/highlight/layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
+    ble/dense-array#fill-range _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
   fi
 }
 
