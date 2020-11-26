@@ -195,6 +195,14 @@ function ble/util/array-reverse {
   "
 }
 
+function ble/util/array-fill-range {
+  _ble_util_array_prototype.reserve $(($2-$1))
+  local _ble_script='
+    local -a sARR; sARR=("${_ble_util_array_prototype[@]::$3-$2}")
+    ARR=("${ARR[@]::$2}" "${sARR[@]/#/$4}" "${ARR[@]:$3}")'
+  builtin eval -- "${_ble_script//ARR/$1}"
+}
+
 function ble/util/declare-print-definitions {
   if [[ $# -gt 0 ]]; then
     declare -p "$@" | awk -v _ble_bash="$_ble_bash" -v OSTYPE="$OSTYPE" '

@@ -1920,7 +1920,7 @@ function ble-syntax/parse {
   ((0<=i1&&i1<=beg&&end<=i2&&i2<=iN)) || ble-stackdump "X2 0 <= $i1 <= $beg <= $end <= $i2 <= $iN"
 #%end
 
-  ble-syntax/vanishing-word/register _ble_syntax_tree 0 i1 j2 0 i1
+  ble-syntax/vanishing-word/register _ble_syntax_tree 0 "$i1" "$j2" 0 "$i2"
 
   ble-syntax/parse/shift
 
@@ -2602,9 +2602,9 @@ function ble-highlight-layer:syntax/word/.apply-attribute {
     wbeg<wend)) || return
 
   if [[ $attr =~ ^[0-9]+$ ]]; then
-    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$attr"
+    ble/util/array-fill-range _ble_highlight_layer_syntax2_table "$wbeg" "$wend" "$attr"
   else
-    ble-highlight-layer:syntax/fill _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
+    ble/util/array-fill-range _ble_highlight_layer_syntax2_table "$wbeg" "$wend" ''
   fi
 }
 
