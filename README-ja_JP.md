@@ -1,12 +1,12 @@
 [ Languages: [English](README.md) (英語) | **日本語** ]
-<center>
 
-# ble.sh ―Bash Line Editor―
-[ **README** | [説明書](https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A71-%E5%9F%BA%E6%9C%AC) |
-[Q\&A](https://github.com/akinomyoga/ble.sh/wiki/%E8%B3%AA%E5%95%8F%E3%81%A8%E5%9B%9E%E7%AD%94) |
-[`contrib`](https://github.com/akinomyoga/blesh-contrib) |
-[逆引き](https://github.com/akinomyoga/ble.sh/wiki/%E9%80%86%E5%BC%95%E3%81%8D%E3%83%AC%E3%82%B7%E3%83%94) ]
-</center>
+<h1 align="center">ble.sh ―Bash Line Editor―</h1>
+<p align="center">
+[ <b>README</b> | <a href="https://github.com/akinomyoga/ble.sh/wiki/%E8%AA%AC%E6%98%8E%E6%9B%B8-%C2%A71-%E5%9F%BA%E6%9C%AC">説明書</a> |
+<a href="https://github.com/akinomyoga/ble.sh/wiki/%E8%B3%AA%E5%95%8F%E3%81%A8%E5%9B%9E%E7%AD%94">Q&A</a> |
+<a href="https://github.com/akinomyoga/blesh-contrib"><code>contrib</code></a> |
+<a href="https://github.com/akinomyoga/ble.sh/wiki/%E9%80%86%E5%BC%95%E3%81%8D%E3%83%AC%E3%82%B7%E3%83%94">逆引き</a> ]
+</p>
 
 `ble.sh` (*Bash Line Editor*) はピュア Bash スクリプトで書かれたコマンドラインエディタで、標準の GNU Readline を置き換える形で動作します。
 

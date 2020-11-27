@@ -1,12 +1,12 @@
 [ Languages: **English** | [日本語](README-ja_JP.md) (Japanese) ]
-<center>
 
-# ble.sh ―Bash Line Editor―
-[ **README** | [Manual](https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A71-Introduction) |
-[Q\&A](https://github.com/akinomyoga/ble.sh/wiki/Q&A) |
-[`contrib`](https://github.com/akinomyoga/blesh-contrib) |
-[Recipes](https://github.com/akinomyoga/ble.sh/wiki/Recipes) ]
-</center>
+<h1 align="center">ble.sh ―Bash Line Editor―</h1>
+<p align="center">
+[ <b>README</b> | <a href="https://github.com/akinomyoga/ble.sh/wiki/Manual-%C2%A71-Introduction">Manual</a> |
+<a href="https://github.com/akinomyoga/ble.sh/wiki/Q&A">Q&A</a> |
+<a href="https://github.com/akinomyoga/blesh-contrib"><code>contrib</code></a> |
+<a href="https://github.com/akinomyoga/ble.sh/wiki/Recipes">Recipes</a> ]
+</p>
 
 *Bash Line Editor* (`ble.sh`) is a command line editor written in pure Bash scripts which replaces the default GNU Readline.
 

@@ -5780,6 +5780,9 @@ function ble/complete/sabbrev/expand {
     local COMP1=$pos COMP2=$pos COMPS=$key COMPV=
     ble/complete/candidates/comp_type#read-rl-variables
 
+    local flag_force_fignore=
+    local flag_source_filter=1
+
     # construct cand_pack
     local cand_count=0
     local -a cand_cand=() cand_word=() cand_pack=()

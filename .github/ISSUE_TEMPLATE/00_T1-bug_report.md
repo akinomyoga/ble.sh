@@ -1,6 +1,6 @@
 ---
-name: "(English) Bug report"
-about: Create a report to help us improve
+name: "(English) Bugs / Problems"
+about: Create a report to fix problems
 
 ---
 

@@ -50,9 +50,9 @@
 - complete (mandb): fix a bug that `bleopt complete_menu_style` is globally changed `#D1412` b91fd10
 - highlight: support colon separated lists of paths `#D1409` 2f40422
   - highlight: fix a bug that non-simple words are always highlighted as `syntax_error` (reported by cmplstofB) `#D1411` 46e2ac6
-  - highlight: fix a bug that words are sometimes unhighlighted `#D1418` 0000000
-  - highlight: fix a bug that non-existent directories are not highlighted in the command name context `#D1419` 0000000
-- highlight: support options `#D1410` 2f40422 `#D1420` 0000000
+  - highlight: fix a bug that words are sometimes unhighlighted `#D1418` 4395484
+  - highlight: fix a bug that non-existent directories are not highlighted in the command name context `#D1419` 4395484
+- highlight: support options `#D1410` 2f40422 `#D1420` f0df481
 
 ## Changes
 
@@ -147,7 +147,7 @@
 - complete (`cd`): fix duplicate candidates by `CDPATH` (reported by Lennart00 at `oh-my-bash`) `#D1415` 5777d7f
 - complete (`source:file`): fix a bug that tilde expansion candidates are always filtered out `#D1416` 5777d7f
 - complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 5777d7f
-- highlight: fix remaininig highlighting of vanishing words `#D1421` 0000000
+- highlight: fix remaininig highlighting of vanishing words `#D1421` `#D1422` 1066653
 
 ## Compatibility
 
@@ -206,6 +206,7 @@
 - complete: perform filter in `ble/complete/cand/yield` `#D1404` 7c6b67b 83fa830
   - complete: fix a bug that `ble/cmdinfo/complete:cd` candidates are unfiltered (reported by cmplstofB) `#D1413` 5c17a31
   - complete: fix unfiltered tilde expansions `#D1414` 5777d7f
+  - complete: fix candidate filter failure in dynamic sabbrev expansion (reported by darrSonik) `#D1423` 0000000
 - syntax, edit: use `type -a -t -- cmd` to get command types hidden by keywords `#D1406` ef2d912
 - edit, complete: replace some external commands with Bash builtin `#D1407` 5386e93
 
