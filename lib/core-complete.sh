@@ -1632,6 +1632,15 @@ function ble/complete/util/eval-pathname-expansion {
     ble/array#push dtor 'shopt -u nullglob'
   fi
 
+  if ! shopt -q dotglob; then
+    shopt -s dotglob
+    ble/array#push dtor 'shopt -u dotglob'
+  else
+    # GLOBIGNORE に触ると設定が変わるので
+    # dotglob は明示的に保存・復元する。
+    ble/array#push dtor 'shopt -s dotglob'
+  fi
+
   if ! shopt -q extglob; then
     shopt -s extglob
     ble/array#push dtor 'shopt -u extglob'
@@ -1658,8 +1667,15 @@ function ble/complete/util/eval-pathname-expansion {
     fi
   fi
 
-  IFS= GLOBIGNORE= builtin eval "ret=(); ret=($pattern)" 2>/dev/null
+  if [[ $GLOBIGNORE ]]; then
+    local GLOBIGNORE_save=$GLOBIGNORE
+    GLOBIGNORE=
+    ble/array#push dtor 'GLOBIGNORE=$GLOBIGNORE_save'
+  fi
 
+  IFS= builtin eval "ret=(); ret=($pattern)" 2>/dev/null
+
+  ble/array#reverse dtor
   ble/util/invoke-hook dtor
 }
 

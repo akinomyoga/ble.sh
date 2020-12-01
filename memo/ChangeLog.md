@@ -54,7 +54,7 @@
   - highlight: fix a bug that non-existent directories are not highlighted in the command name context `#D1419` 4395484
 - highlight: support options `#D1410` 2f40422
   - highlight: support highlighting of `declare` command options `#D1420` f0df481
-  - highlight: fix unhighlighted tilde expansions `~+` (reported by cmplstofB) `#D1424` 0000000
+  - highlight: fix unhighlighted tilde expansions `~+` (reported by cmplstofB) `#D1424` a32962e
 
 ## Changes
 
@@ -81,6 +81,7 @@
 - menu: preserve columns with `{forward,backward}-line` `#D1396` 3d5a341
 - syntax: rename `ble_debug` to `bleopt syntax_debug` `#D1398` 3cda58b
 - syntax: change a style of buffer contents in `bleopt syntax_debug` `#D1399` 3cda58b
+- complete: change to generate filenames starting from `.` by default `#D1425` 0000000
 
 ## Fix
 
@@ -150,6 +151,7 @@
 - complete (`source:file`): fix a bug that tilde expansion candidates are always filtered out `#D1416` 5777d7f
 - complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 5777d7f
 - highlight: fix remaininig highlighting of vanishing words `#D1421` `#D1422` 1066653
+- complete: fix a problem that the user setting `dotglob` is changed `#D1425` 0000000
 
 ## Compatibility
 
@@ -208,7 +210,7 @@
 - complete: perform filter in `ble/complete/cand/yield` `#D1404` 7c6b67b 83fa830
   - complete: fix a bug that `ble/cmdinfo/complete:cd` candidates are unfiltered (reported by cmplstofB) `#D1413` 5c17a31
   - complete: fix unfiltered tilde expansions `#D1414` 5777d7f
-  - complete: fix candidate filter failure in dynamic sabbrev expansion (reported by darrSonik) `#D1423` 0000000
+  - complete: fix candidate filter failure in dynamic sabbrev expansion (reported by darrSonik) `#D1423` dabc515
 - syntax, edit: use `type -a -t -- cmd` to get command types hidden by keywords `#D1406` ef2d912
 - edit, complete: replace some external commands with Bash builtin `#D1407` 5386e93
 
