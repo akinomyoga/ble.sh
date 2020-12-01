@@ -2130,7 +2130,7 @@ function ble-syntax:bash/check-tilde-expansion {
     local chars="${_ble_syntax_bash_chars[CTX_ARGI]}/:"
     ble-syntax:bash/cclass/update/reorder chars
     local delimiters="$_ble_syntax_bash_IFS;|&()<>"
-    local rex='^(~[^'$chars']*)([^'$delimiters'/:]?)'; [[ $tail =~ $rex ]]
+    local rex='^(~\+|~[^'$chars']*)([^'$delimiters'/:]?)'; [[ $tail =~ $rex ]]
     local str=${BASH_REMATCH[1]}
 
     local path attr=$ctx
@@ -2144,6 +2144,12 @@ function ble-syntax:bash/check-tilde-expansion {
         # このとき、各括弧式は : の直後でキャンセルする。
         ble-assert 'ble/util/unlocal tail; [[ $tail == ":~"* ]]'
         ble-syntax/parse/nest-pop
+      fi
+    else
+      # ~+ で始まってかつ有効なチルダ展開ではない時 ~ まで後退 (#D1424)
+      if [[ $str == '~+' ]]; then
+        ble/syntax/parse/set-lookahead 3
+        str='~'
       fi
     fi
     ((_ble_syntax_attr[i]=attr,i+=${#str}))
