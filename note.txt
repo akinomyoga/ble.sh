@@ -3630,6 +3630,16 @@ bash_tips
 
 2020-12-01
 
+  * prompt: PROMPT_COMMAND で変更した PS1 がその場で反映されない (reported by 3ximus) [#D1426]
+    https://github.com/akinomyoga/ble.sh/issues/72
+
+    確認した。これは書き換えミスである。prompt_ps1_final 等の書き換えの時に、
+    更新の必要性があるかどうかの判定を PROMPT_COMMAND よりも前に持ってきたのが行けない。
+
+    これはどの様に修正したら良いだろうか。PROMPT_COMMAND は更新の必要がある時に
+    のみ実行したい。或いは :leave: の時にも実行するべきだろうか。leave の時に
+    PROMPT_COMMAND は実行しなくても良い気がしてきた。うん。その様に変更する。
+
   * complete: 単語補完で = の右辺の . で始まるファイル名が補完されない  [#D1425]
     https://github.com/akinomyoga/ble.sh/issues/71
 

@@ -817,22 +817,17 @@ function ble/prompt/update/.eval-prompt_command {
 ##     描画開始点の左の文字コードを指定します。
 ##     描画終了点の左の文字コードが分かる場合にそれを返します。
 function ble/prompt/update {
-  local opts=:$1: force= ps1=$_ble_edit_PS1 rps1=$bleopt_prompt_rps1
+  local opts=:$1: is_leave_rewrite=
   if [[ $opts == *:leave:* ]]; then
     local ps1f=$bleopt_prompt_ps1_final
     local rps1f=$bleopt_prompt_rps1_final
     local ps1t=$bleopt_prompt_ps1_transient
     [[ :$ps1t: == *:trim:* || :$ps1t: == *:same-dir:* && $PWD != $_ble_edit_line_opwd ]] && ps1t=
-    if [[ $ps1f || $rps1f || $ps1t ]]; then
-      [[ $ps1f || $ps1t ]] && ps1=$ps1f
-      [[ $ps1f ]] && rps1=$rps1f
-      force=1
-      ble/textarea#invalidate
-    fi
+    [[ $ps1f || $rps1f || $ps1t ]] && is_leave_rewrite=
   fi
 
   local version=$COLUMNS:$_ble_edit_lineno:$_ble_history_count
-  if [[ ! $force && ${_ble_edit_prompt[0]} == "$version" ]]; then
+  if [[ ! $is_leave_rewrite && ${_ble_edit_prompt[0]} == "$version" ]]; then
     ble/prompt/.load
     return 0
   fi
@@ -841,11 +836,18 @@ function ble/prompt/update {
   local cache_d= cache_t= cache_A= cache_T= cache_at= cache_j= cache_wd=
 
   # update PS1
-  if ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; then
+  if [[ ! $is_leave_rewrite ]] && { ble/prompt/update/.has-prompt_command || blehook/has-hook PRECMD; }; then
     ble-edit/restore-PS1
     ble/prompt/update/.eval-prompt_command
     ble-edit/exec:gexec/invoke-hook-with-setexit PRECMD
     ble-edit/adjust-PS1
+  fi
+
+  local ps1=$_ble_edit_PS1 rps1=$bleopt_prompt_rps1
+  if [[ $is_leave_rewrite ]]; then
+    [[ $ps1f || $ps1t ]] && ps1=$ps1f
+    [[ $ps1f ]] && rps1=$rps1f
+    ble/textarea#invalidate
   fi
   local trace_hash esc
   ble/prompt/.instantiate "$ps1" show-mode-in-prompt "${_ble_edit_prompt[@]:1}" &&

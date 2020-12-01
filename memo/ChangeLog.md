@@ -36,6 +36,7 @@
 - prompt: support `bleopt prompt_{{ps1,rps1}{_final,_transient}}` (suggested by Dave-Elec) `#D1366` 06381c9
   - prompt: fix a bug that prompt are always re-insntiated for every rendering `#D1374` 0770cda
   - prompt: fix a bug that rprompt is not cleared when `bleopt prompt_rps1` is reset `#D1377` 1904b1d
+  - prompt: fix a bug that prompts updated by `PROMPT_COMMAND` are not reflected immediately `#D1426` 0000000
 - edit: support Bash 5.1 widgets `#D1368` e747ee3
 - color: support `TERM=*-direct` `#D1369` 0d38897 `#D1370` f7dc477
 - complete: support `bleopt complete_auto_menu` `#D1373` 77bfabd
@@ -81,7 +82,7 @@
 - menu: preserve columns with `{forward,backward}-line` `#D1396` 3d5a341
 - syntax: rename `ble_debug` to `bleopt syntax_debug` `#D1398` 3cda58b
 - syntax: change a style of buffer contents in `bleopt syntax_debug` `#D1399` 3cda58b
-- complete: change to generate filenames starting from `.` by default `#D1425` 0000000
+- complete: change to generate filenames starting from `.` by default `#D1425` 987436d
 
 ## Fix
 
@@ -151,7 +152,7 @@
 - complete (`source:file`): fix a bug that tilde expansion candidates are always filtered out `#D1416` 5777d7f
 - complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 5777d7f
 - highlight: fix remaininig highlighting of vanishing words `#D1421` `#D1422` 1066653
-- complete: fix a problem that the user setting `dotglob` is changed `#D1425` 0000000
+- complete: fix a problem that the user setting `dotglob` is changed `#D1425` 987436d
 
 ## Compatibility
 
