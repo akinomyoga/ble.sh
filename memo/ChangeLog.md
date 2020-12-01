@@ -52,7 +52,9 @@
   - highlight: fix a bug that non-simple words are always highlighted as `syntax_error` (reported by cmplstofB) `#D1411` 46e2ac6
   - highlight: fix a bug that words are sometimes unhighlighted `#D1418` 4395484
   - highlight: fix a bug that non-existent directories are not highlighted in the command name context `#D1419` 4395484
-- highlight: support options `#D1410` 2f40422 `#D1420` f0df481
+- highlight: support options `#D1410` 2f40422
+  - highlight: support highlighting of `declare` command options `#D1420` f0df481
+  - highlight: fix unhighlighted tilde expansions `~+` (reported by cmplstofB) `#D1424` 0000000
 
 ## Changes
 
