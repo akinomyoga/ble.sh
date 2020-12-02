@@ -22,7 +22,7 @@ endif
 
 MWGPP:=$(GAWK) -f ext/mwg_pp.awk
 
-FULLVER:=0.3.2
+FULLVER:=0.3.3
 
 OUTDIR:=out
 
