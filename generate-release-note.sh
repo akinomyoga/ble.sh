@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-fname_changelog=changelog.txt
+fname_changelog=memo/ChangeLog.md
 
 function read-arguments {
   while (($#)); do
@@ -33,7 +33,10 @@ function process {
     local c=${commit_pair#*:}
 
     local result=
-    [[ $b ]] && result=$(sed -n "s/$b/$a (master: $b)/p" "$fname_changelog")
+    [[ $b ]] && result=$(awk '
+        sub(/^##+ +/, "") { heading = "[" $1 "] "; next; }
+        sub(/\y'"$b"'\y/, "'"$a (master: $b)"'") {print heading $0;}
+      ' "$fname_changelog")
     if [[ $result ]]; then
       echo "$result"
     elif [[ $c ]]; then
@@ -41,15 +44,15 @@ function process {
     else
       echo "■not found $a"
     fi
-  done
+  done | tac
 }
 
 function find-commit-pairs {
   {
     echo __MODE_HEAD__
-    git log --format=format:'%h%s' --date-order --abbrev-commit "$1"..HEAD; echo
+    git log --format=format:'%h%s' --date-order --abbrev-commit "$1"; echo
     echo __MODE_MASTER__
-    git log --format=format:'%h%s' --date-order --abbrev-commit "${2:-master}"; echo
+    git log --format=format:'%h%s' --date-order --abbrev-commit master; echo
   } | awk -F '' '
     /^__MODE_HEAD__$/ {
       mode = "head";
@@ -78,3 +81,7 @@ function find-commit-pairs {
 
 IFS=$'\n' eval 'commit_pairs=($(find-commit-pairs "$@"))'
 process "${commit_pairs[@]}"
+
+# 使い方
+# ./generate-release-note.sh v0.3.2..v0.3.3
+#

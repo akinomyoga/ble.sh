@@ -1197,6 +1197,11 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2020-11-30
+
+  * color: face editor の TUI の様な物を作っても良いのかもしれない。
+    というより fish の Web interface の様な物を TUI で提供しても良いのでは。
+
 2020-11-20
 
   * bash: declare -c や ${var~} 等は 5.2 で削除するとしているが本当だろうか
@@ -1221,6 +1226,11 @@ bash_tips
 
     或いは ble.sh に特化した設定も builtin complete 経由で呼び出す様にする?
     しかしそうすると ble.sh から ble-detach した時に動作しなくなってしまう。
+
+    attach/detach の際に設定を保存・復元するという方向性も考えられる。
+
+    complete を上書きして両方の設定を行える様にするという手もある。この場合には
+    attach/detach する時に既に設定した内容を読み取る等の工夫が必要になる?
 
 2020-11-11
 
@@ -1275,6 +1285,15 @@ bash_tips
     ずしも空白で単語が区切られる訳ではない様なので、これに関しては文法解釈のレベ
     ルで修正が必要になる。
 
+    今試すと ; も途中に現れると区切りとして取り扱われてエラーになる。
+
+    * |&;<>() は特別に取り扱う必要があるという事。単体の < と > に関しても正し
+      い演算子の文脈に現れれば大丈夫だが、二項演算子の現れない場所で使うと構文
+      エラーになる。この様な構文エラーまでチェックする必要があるだろうか。或い
+      は演算子の結合まではチェックしない事にするか。
+
+    * 括弧の途中で ]] が現れた場合にもエラーになる。
+
 2020-11-06
 
   * complete/mandb: progcomp で生成したオプションに関してもできれば desc を表示する様にしたい。
@@ -1302,14 +1321,14 @@ bash_tips
 
 2020-11-02
 
-  * source:file において substr を実装する。
+  * done: source:file において substr を実装する。
 
-  * filter を自前で実行する場合には cand/yield 内部での filter は不要。
+  * done: filter を自前で実行する場合には cand/yield 内部での filter は不要。
     これは flag_source_filter=1 を設定して実行する事にした。
 
-  * done: timjrd を README/acknowledgement に追加する。
+  * patch: timjrd を README/acknowledgement に追加する。
 
-  * complete_limit_reached にリークが存在している。
+  * patch: complete_limit_reached にリークが存在している。
     ちゃんと source:* や candidates/generate などのコメントに使う変数を記述して、
     それから auto-complete の中で candidates/generate を呼び出す前に local で宣言する。
 

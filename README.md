@@ -22,7 +22,7 @@ For detailed descriptions, see [Sec 1.1](#get-from-source) and [Sec 1.2](#get-fr
 [Sec 1.3](#set-up-bashrc) for the setup of your `~/.bashrc`.
 
 ```bash
-# Quick INSTALL to BASHRC
+# Quick INSTALL to BASHRC (If this doesn't work, please follow Sec 1.3)
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
@@ -113,25 +113,26 @@ To set up `.bashrc` see [Sec. 1.3](#set-up-bashrc).
 
 With `wget`:
 ```bash
-wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.2/ble-0.3.2.tar.xz
-tar xJf ble-0.3.2.tar.xz
-source ble-0.3.2/ble.sh
+wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
+tar xJf ble-0.3.3.tar.xz
+source ble-0.3.3/ble.sh
 ```
 With `curl`:
 ```bash
-curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.2/ble-0.3.2.tar.xz
-tar xJf ble-0.3.2.tar.xz
-source ble-0.3.2/ble.sh
+curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
+tar xJf ble-0.3.3.tar.xz
+source ble-0.3.3/ble.sh
 ```
 
 If you want to place `ble.sh` in a specific directory, just copy the directory:
 ```bash
-cp -r ble-0.3.2 /path/to/blesh
+cp -r ble-0.3.3 /path/to/blesh
 ```
 
 ## 1.3 Set up `.bashrc`<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
-If you want to load `ble.sh` by default in interactive sessions of `bash`, add the following codes to your `.bashrc` file:
+If you want to load `ble.sh` by default in interactive sessions of `bash`, usually one can just source `ble.sh` in `~/.bashrc`,
+but more reliable way is to add the following codes to your `.bashrc` file:
 ```bash
 # bashrc
 

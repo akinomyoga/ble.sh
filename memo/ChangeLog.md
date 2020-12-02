@@ -1,7 +1,7 @@
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
 
-2020-01-12 -- (#D1215... ) c74abc5...
+2020-01-12 -- 2020-12-02 (`#D1215`...`#D1426`) c74abc5...
 
 ## New features
 
@@ -125,6 +125,7 @@
 - global: work around Bash-4.4 `return` in trap handlers `#D1334` aa09d15
 - util (`ble-stackdump`): fix a shift of line numbers `#D1337` a14b72f d785b64
 - edit (`ble-bind -x`): check range of `READLINE_{POINT,MARK}` `#D1339` efe1e81
+- main: fix a bug that `~/.config/blesh/init.sh` is not detected (GitHub #53 by rux616) 61f9e10
 - util (`ble/string#to{upper,lower}`): work around `LC_COLLATE=en_US.utf8` (test-util) `#D1341` 1f6b44e `#D1355` 4da6103 5f0d49f
 - util (encoding, keyseq): fix miscelleneous encoding bugs (test-util) 435bd16
   - `ble/util/c2keyseq`: work around bash ambiguous keyseq `\M-\C-\\`

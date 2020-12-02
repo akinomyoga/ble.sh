@@ -6168,9 +6168,9 @@ function ble/complete/action:cdpath/init-menu-item {
 function ble/complete/action:cdpath/get-desc {
   local sgr0=$_ble_term_sgr0 sgr1= sgr2=
   local g ret g1 g2
-  ble/syntax/highlight/getg-from-filename "$DATA$CAND"; local g1=$g
+  ble/syntax/highlight/getg-from-filename "$DATA$CAND"; g1=$g
   [[ $g1 ]] || { ble/color/face2g filename_warning; g1=$ret; }
-  ((g2=g^_ble_color_gflags_Revert))
+  ((g2=g1^_ble_color_gflags_Revert))
   ble/color/g2sgr "$g1"; sgr1=$ret
   ble/color/g2sgr "$g2"; sgr2=$ret
   ble/string#escape-for-display "$DATA$CAND" sgr1="$sgr2":sgr0="$sgr1"

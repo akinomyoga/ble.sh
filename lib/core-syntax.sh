@@ -2,6 +2,16 @@
 #%[release = 0]
 #%m main (
 
+function ble/syntax/util/is-directory {
+  local path=$1
+  # Note: #D1168 Cygwin では // で始まるパスの判定は遅い
+  if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $path == //* ]]; then
+    [[ $path == // ]]
+  else
+    [[ -d $path ]]
+  fi
+}
+
 ## 関数 ble/syntax/urange#update prefix p1 p2
 ## 関数 ble/syntax/wrange#update prefix p1 [p2]
 ##   @param[in]   prefix
@@ -5873,7 +5883,7 @@ function ble/syntax/highlight/cmdtype1 {
       ((type=ATTR_ERR))
     fi ;;
   (*)
-    if [[ -d "$cmd" ]] && shopt -q autocd &>/dev/null; then
+    if [[ -d $cmd ]] && shopt -q autocd &>/dev/null; then
       ((type=ATTR_CMD_DIR))
     else
       ((type=ATTR_ERR))
@@ -6326,7 +6336,7 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec {
       local epath=${path[ipath]} espec=${spec[ipath]}
       local g=d
 
-      if [[ -d $epath ]]; then
+      if ble/syntax/util/is-directory "$epath"; then
         local type
         ble/syntax/highlight/filetype "$epath" &&
           ble/syntax/attr2g "$type"

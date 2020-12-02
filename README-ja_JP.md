@@ -22,7 +22,7 @@
 `~/.bashrc` の設定に関しては [節1.3](#set-up-bashrc) を御覧ください。
 
 ```bash
-# インストール & .bashrc 簡単設定
+# インストール & .bashrc 簡単設定 (動かない場合は節1.3を御参照下さい)
 
 git clone --recursive https://github.com/akinomyoga/ble.sh.git
 make -C ble.sh install PREFIX=~/.local
@@ -113,25 +113,27 @@ Make 変数 `DESTDIR` または `PREFIX` が指定されている時、`ble.sh` 
 
 `wget` を使う場合:
 ```console
-$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.2/ble-0.3.2.tar.xz
-$ tar xJf ble-0.3.2.tar.xz
-$ source ble-0.3.2/ble.sh
+$ wget https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
+$ tar xJf ble-0.3.3.tar.xz
+$ source ble-0.3.3/ble.sh
 ```
 `curl` を使う場合:
 ```console
-$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.2/ble-0.3.2.tar.xz
-$ tar xJf ble-0.3.2.tar.xz
-$ source ble-0.3.2/ble.sh
+$ curl -LO https://github.com/akinomyoga/ble.sh/releases/download/v0.3.3/ble-0.3.3.tar.xz
+$ tar xJf ble-0.3.3.tar.xz
+$ source ble-0.3.3/ble.sh
 ```
 
 指定したディレクトリに `ble.sh` を配置するには単に `ble-0.1.7` ディレクトリをコピーします。
 ```console
-$ cp -r ble-0.3.2 /path/to/blesh
+$ cp -r ble-0.3.3 /path/to/blesh
 ```
 
 ## 1.3 `.bashrc` に設定する<sup><a id="set-up-bashrc" href="#set-up-bashrc">†</a></sup>
 
-対話シェルで常用する場合には `.bashrc` に設定を行います。以下の様にコードを追加して下さい。
+対話シェルで常用する場合には `.bashrc` に設定を行います。
+単に `ble.sh` を `source` して頂くだけでも大抵の場合動作しますが、
+より確実に動作させる為には以下の様にコードを記述します。
 ```bash
 # bashrc
 
