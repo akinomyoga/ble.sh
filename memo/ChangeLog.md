@@ -1,7 +1,20 @@
 <!---------------------------------------------------------------------------->
+# ble-0.4.0-devel3
+
+2020-12-02 -- (`#D1427`...) 276baf2...
+
+## New features
+
+## Changes
+
+## Fixes
+
+## Internal changes and fixes
+
+<!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
 
-2020-01-12 -- 2020-12-02 (`#D1215`...`#D1426`) c74abc5...
+2020-01-12 -- 2020-12-02 (`#D1215`...`#D1426`) c74abc5...276baf2
 
 ## New features
 
@@ -48,7 +61,7 @@
 - syntax: support options `bleopt highlight_{syntax,filename,vartype}` to turn off highlighting (requested by pjmp) `#D1379` 0116f8b
 - complete: support `shopt progcomp_alias` `#D1397` d68afa5
 - complete: generate completions of options based on man pages `#D1405` 8183455
-- complete (mandb): fix a bug that `bleopt complete_menu_style` is globally changed `#D1412` b91fd10
+  - complete (mandb): fix a bug that `bleopt complete_menu_style` is globally changed `#D1412` b91fd10
 - highlight: support colon separated lists of paths `#D1409` 2f40422
   - highlight: fix a bug that non-simple words are always highlighted as `syntax_error` (reported by cmplstofB) `#D1411` 46e2ac6
   - highlight: fix a bug that words are sometimes unhighlighted `#D1418` 4395484

@@ -4,6 +4,30 @@ function mkd {
   [[ -d $1 ]] || mkdir -p "$1"
 }
 
+function ble/array#push {
+  while (($#>=2)); do
+    builtin eval "$1[\${#$1[@]}]=\$2"
+    set -- "$1" "${@:3}"
+  done
+}
+
+#------------------------------------------------------------------------------
+
+function sub:help {
+  printf '%s\n' \
+         'usage: make_command.sh SUBCOMMAND args...' \
+         '' 'SUBCOMMAND' ''
+  local sub
+  for sub in $(declare -F | sed -n 's|^declare -[fx]* sub:\([^/]*\)$|\1|p'); do
+    if declare -f sub:"$sub"/help &>/dev/null; then
+      sub:"$sub"/help
+    else
+      printf '  %s\n' "$sub"
+    fi
+  done
+  printf '\n'
+}
+
 function sub:install {
   # read options
   local flag_error= flag_release=
@@ -56,30 +80,25 @@ function sub:ignoreeof-messages {
   ) >| lib/core-edit.ignoreeof-messages.new
 }
 
-function sub:help {
-  printf '%s\n' \
-         'usage: make_command.sh SUBCOMMAND args...' \
-         '' 'SUBCOMMAND' ''
-  local sub
-  for sub in $(declare -F | sed -n 's|^declare -[fx]* sub:\([^/]*\)$|\1|p'); do
-    if declare -f sub:"$sub"/help &>/dev/null; then
-      sub:"$sub"/help
-    else
-      printf '  %s\n' "$sub"
-    fi
+#------------------------------------------------------------------------------
+# sub:check
+# sub:check-all
+
+function sub:check {
+  bash out/ble.sh --test
+}
+function sub:check-all {
+  local -x _ble_make_command_check_count=0
+  local bash rex_version='^bash-([0-9]+)\.([0-9]+)$'
+  for bash in $(compgen -c -- bash- | grep -E '^bash-[0-9]+\.[0-9]+$' | sort -Vr); do
+    [[ $bash =~ $rex_version && ${BASH_REMATCH[1]} -ge 3 ]] || continue
+    "$bash" out/ble.sh --test || return 1
+    ((_ble_make_command_check_count++))
   done
-  printf '\n'
 }
 
 #------------------------------------------------------------------------------
 # sub:scan
-
-function ble/array#push {
-  while (($#>=2)); do
-    builtin eval "$1[\${#$1[@]}]=\$2"
-    set -- "$1" "${@:3}"
-  done
-}
 
 function sub:scan/grc-source {
   local -a options=(--color --exclude=./{test,memo,ext,wiki,contrib,[TD]????.*} --exclude=\*.{md,awk} --exclude=./make_command.sh)
@@ -301,18 +320,95 @@ function sub:scan {
 }
 
 #------------------------------------------------------------------------------
+# sub:release-note
+#
+# 使い方
+# ./make_command.sh release-note v0.3.2..v0.3.3
 
-function sub:check {
-  bash out/ble.sh --test
+function sub:release-note/help {
+  printf '  release-note v0.3.2..v0.3.3 [--changelog CHANGELOG]\n'
 }
-function sub:check-all {
-  local -x _ble_make_command_check_count=0
-  local bash rex_version='^bash-([0-9]+)\.([0-9]+)$'
-  for bash in $(compgen -c -- bash- | grep -E '^bash-[0-9]+\.[0-9]+$' | sort -Vr); do
-    [[ $bash =~ $rex_version && ${BASH_REMATCH[1]} -ge 3 ]] || continue
-    "$bash" out/ble.sh --test || return 1
-    ((_ble_make_command_check_count++))
+
+function sub:release-note/read-arguments {
+  flags=
+  fname_changelog=memo/ChangeLog.md
+  while (($#)); do
+    local arg=$1; shift 1
+    case $arg in
+    (--changelog)
+      if (($#)); then
+        fname_changelog=$1; shift
+      else
+        flags=E$flags
+        echo "release-note: missing option argument for '$arg'." >&2
+      fi ;;
+    esac
   done
+}
+
+function sub:release-note/.find-commit-pairs {
+  {
+    echo __MODE_HEAD__
+    git log --format=format:'%h%s' --date-order --abbrev-commit "$1"; echo
+    echo __MODE_MASTER__
+    git log --format=format:'%h%s' --date-order --abbrev-commit master; echo
+  } | awk -F '' '
+    /^__MODE_HEAD__$/ {
+      mode = "head";
+      nlist = 0;
+      next;
+    }
+    /^__MODE_MASTER__$/ { mode = "master"; next; }
+
+    mode == "head" {
+      i = nlist++;
+      titles[i] = $2
+      commit_head[i] = $1;
+      title2index[$2] = i;
+    }
+    mode == "master" && (i = title2index[$2]) != "" && commit_master[i] == "" {
+      commit_master[i] = $1;
+    }
+    
+    END {
+      for (i = 0; i < nlist; i++) {
+        print commit_head[i] ":" commit_master[i] ":" titles[i];
+      }
+    }
+  '
+}
+
+function sub:release-note {
+  local flags fname_changelog
+  sub:release-note/read-arguments "$@"
+
+  ## @arr commits
+  ##   この配列は after:before の形式の要素を持つ。
+  ##   但し after は前の version から release までに加えられた変更の commit である。
+  ##   そして before は after に対応する master における commit である。
+  local -a commits
+  IFS=$'\n' eval 'commits=($(sub:release-note/.find-commit-pairs "$@"))'
+
+  local commit_pair
+  for commit_pair in "${commits[@]}"; do
+    local a=${commit_pair%%:*}
+    commit_pair=${commit_pair:${#a}+1}
+    local b=${commit_pair%%:*}
+    local c=${commit_pair#*:}
+
+    local result=
+    [[ $b ]] && result=$(awk '
+        sub(/^##+ +/, "") { heading = "[" $0 "] "; next; }
+        sub(/\y'"$b"'\y/, "'"$a (master: $b)"'") {print heading $0;}
+      ' "$fname_changelog")
+    if [[ $result ]]; then
+      echo "$result"
+    elif [[ $c ]]; then
+      echo "- $c $a (master: ${b:-N/A}) ■NOT-FOUND■"
+    else
+      echo "■not found $a"
+    fi
+  done | tac
 }
 
 #------------------------------------------------------------------------------
@@ -406,6 +502,8 @@ function sub:check-readline-bindable {
     done | sort -u
   ) <(sort keymap/emacs.rlfunc.txt)
 }
+
+#------------------------------------------------------------------------------
 
 if (($#==0)); then
   sub:help

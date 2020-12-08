@@ -25,7 +25,7 @@ MWGPP:=$(GAWK) -f ext/mwg_pp.awk
 #------------------------------------------------------------------------------
 # ble.sh
 
-FULLVER:=0.4.0-devel2
+FULLVER:=0.4.0-devel3
 
 OUTDIR:=out
 

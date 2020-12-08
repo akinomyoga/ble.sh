@@ -1,10 +1,8 @@
 # ble-0.3.3
 
-## New
+## New features
 
-- prompt: fix a bug that rprompt is not cleared when `bleopt prompt_rps1` is reset `#D1377` c736bd5 (master: 1904b1d)
 - syntax: allow unquoted `[!` and `[^` in `simple-word` (reported by cmplstofB) `#D1303` 4bf8b86 (master: 1efe833)
-- highlight: fix unhighlighted tilde expansions `~+` (reported by cmplstofB) `#D1424` 1f9abf6 (master: a32962e)
 
 ## Changes
 
@@ -40,6 +38,7 @@
 - main: fix problems caused by multiple `source ble.sh` in bashrc `#D1354` 983e8a9 (master: 5476933)
 - syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` 52de342 (master: 4760409)
 - decode (`bind`): work around `shopt -s nocasematch` (reported by tigger04) `#D1372` b34ad58 (master: 855cacf)
+- prompt: fix a bug that rprompt is not cleared when `bleopt prompt_rps1` is reset `#D1377` c736bd5 (master: 1904b1d)
 - complete: fix a bug of duplicated completions of filenames with spaces `#D1390` 048f17e (master: 98576c7)
 - complete: fix bugs that quotation disappears on ambiguous completion `#D1387` 048f17e (master: 98576c7)
 - complete: fix a bug that progcomp retry by 124 caused the default completion again `#D1386` 048f17e (master: 98576c7)
@@ -50,6 +49,7 @@
 - syntax (glob bracket expression): fix a bug of unsupported POSIX brackets `#D1402` e1eca65 (master: 6fd9e22)
 - syntax (`ble/syntax:bash/simple-word/evaluate-path-spec`): fix a bug of unrecognized `[!...]` and `[^...]` `#D1403` 50fcd03 (master: 0b842f5)
 - highlight: fix remaininig highlighting of vanishing words `#D1421` `#D1422` 0f85719 (master: 1066653)
+- highlight: fix unhighlighted tilde expansions `~+` (reported by cmplstofB) `#D1424` 1f9abf6 (master: a32962e)
 - complete: fix a problem that the user setting `dotglob` is changed `#D1425` e26867d (master: 987436d)
 - complete: fix a problem of redundant unmatched ambiguous part with tilde expansions in the common prefix `#D1417` 20cb6af (master: 5777d7f)
 - complete (`source:file`): fix a bug that tilde expansion candidates are always filtered out `#D1416` 20cb6af (master: 5777d7f)
@@ -82,10 +82,9 @@
 -------------------------------------------------------------------------------
 # ble-0.2.6
 
-## New
+## New features
 
 - syntax: allow unquoted `[!` and `[^` in `simple-word` (reported by cmplstofB) `#D1303` 5cff40f (master: 1efe833)
-- highlight: fix unhighlighted tilde expansions `~+` (reported by cmplstofB) `#D1424` 3f7f044 (master: a32962e)
 
 ## Changes
 
@@ -108,6 +107,7 @@
 - syntax: allow single-character variable name in named redirections `{a}<>` `#D1360` f81734f (master: 4760409)
 - syntax (glob bracket expression): fix a bug of unsupported POSIX brackets `#D1402` b7ea892 (master: 6fd9e22)
 - highlight: fix remaininig highlighting of vanishing words `#D1421` `#D1422` cc5e4d1 (master: 1066653)
+- highlight: fix unhighlighted tilde expansions `~+` (reported by cmplstofB) `#D1424` 3f7f044 (master: a32962e)
 
 ## Compatibility
 
