@@ -9,6 +9,8 @@
 
 ## Fixes
 
+- term: fix a bug that VTE based terminals are not recognized
+
 ## Internal changes and fixes
 
 <!---------------------------------------------------------------------------->

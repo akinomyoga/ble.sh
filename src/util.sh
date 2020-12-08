@@ -4139,7 +4139,8 @@ function ble/term/DA2/initialize-term {
   if rex='^xterm(-|$)'; [[ $TERM =~ $rex ]]; then
     local version=${da2r[1]}
     if rex='^1;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
-      ((version==0||95<=version))
+      # 2000以上は vte
+      ((version==0||95<=version&&version<2000))
     elif rex='^0;[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
       ((95<=version))
     elif rex='^(2|24|1[89]|41|6[145]);[0-9]+;0$'; [[ $_ble_term_DA2R =~ $rex ]]; then
