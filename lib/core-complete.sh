@@ -3230,9 +3230,6 @@ function ble/complete/menu-filter/.filter-candidates {
     done
     ((${#cand_pack[@]}!=0)) && return 0
   done
-
-  # 最初に生成した全ての候補 (遡って書き換える候補等)
-  cand_pack=("${_ble_complete_menu0_pack[@]}")
 }
 function ble/complete/menu-filter/.get-filter-target {
   if [[ $_ble_decode_keymap == emacs || $_ble_decode_keymap == vi_[ic]map ]]; then
