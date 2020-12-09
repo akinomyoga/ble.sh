@@ -3691,9 +3691,20 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-12-10
+
+  * complete/mandb: ^H が大量に挿入される (reported by rlanore) [#D1429]
+    https://github.com/akinomyoga/ble.sh/issues/75
+
+    これは nroff で太字を表現するのに <CHAR>^H<CHAR> を出力する物がある為。
+    なので、単に .\b を削除すれば良い。
+
+    取り敢えず修正してみたが本当に動くか微妙。複数の OS で試す必要があるのではないか。
+
 2020-12-09
 
   * complete: 補完候補が更新されない問題 (reported by 3ximus) [#D1428]
+    https://github.com/akinomyoga/ble.sh/issues/74
 
     これは明らかに menu-filter で候補がなくなった時に、
     元の候補を全て表示する様に変更したのが原因である。

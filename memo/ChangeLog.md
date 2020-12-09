@@ -9,8 +9,9 @@
 
 ## Fixes
 
-- term: fix a bug that VTE based terminals are not recognized `#D1427` ad843b4
-- complete: fix a problem that candidates are not updated after menu-filter (reported by 3ximus) `#D1428` 0000000
+- term: fix a bug that VTE based terminals are not recognized `#D1427` 7e16d9d
+- complete: fix a problem that candidates are not updated after menu-filter (reported by 3ximus) `#D1428` 98fbc1c
+- complete/mandb: fix BS contamination used by nroff to represent bold `#D1429` 0000000
 
 ## Internal changes and fixes
 

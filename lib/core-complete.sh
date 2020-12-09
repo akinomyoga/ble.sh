@@ -2611,8 +2611,10 @@ function ble/complete/mandb/.generate-cache {
       line = $0;
       gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
       gsub(/\x1b[ -/]*[0-~]/, "", line); # ESC seq
-      gsub(/\x0E/, "", line);
-      gsub(/\x0F/, "", line);
+      gsub(/.\x08/, "", line); # CHAR BS
+      gsub(/\x0E/, "", line); # SO
+      gsub(/\x0F/, "", line); # SI
+      gsub(/[\x00-\x1F]/, "", line); # 制御文字は結局全削除
       gsub(/^[[:space:]]*|[[:space:]]*$/, "", line);
       #gsub(/[[:space:]]+/, " ", line);
       if (line == "") next;
@@ -2637,7 +2639,7 @@ function ble/complete/mandb/.generate-cache {
 function ble/complete/mandb/load-cache {
   local command=${1##*/}
   local fcache=$_ble_base_cache/man/$command
-  if [[ ! -s $fcache ]]; then
+  if ! [[ -s $fcache && $fcache -nt $_ble_base/lib/core-complete.sh ]]; then
     [[ -d $_ble_base_cache/man ]] ||
       ble/bin/mkdir -p "$_ble_base_cache/man"
     ble/complete/mandb/.generate-cache "$command" >| "$fcache" &&
