@@ -2614,7 +2614,7 @@ _BLE_SYNTAX_FEND[CTX_TARGI2]=ble/syntax:bash/ctx-command/check-word-end
 function ble/syntax:bash/starts-with-delimiter-or-redirect {
   local delimiters=$_ble_syntax_bash_RexDelimiter
   local redirect=$_ble_syntax_bash_RexRedirect
-  [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect ) && $tail != ['<>']'('* ]]
+  [[ ( $tail =~ ^$delimiters || $wbegin -lt 0 && $tail =~ ^$redirect || $wbegin -lt 0 && $tail == $'\\\n'* ) && $tail != ['<>']'('* ]]
 }
 function ble/syntax:bash/starts-with-delimiter {
   [[ $tail == ["$_ble_syntax_bash_IFS;|&<>()"]* && $tail != ['<>']'('* ]]
@@ -2920,12 +2920,15 @@ _ble_syntax_bash_command_Opt[CTX_CMDXD0]=1
 _ble_syntax_bash_is_command_form_for=
 
 function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
-  if [[ $tail =~ ^$_ble_syntax_bash_RexIFSs ]]; then
-    # 空白
+  if [[ $tail =~ ^$_ble_syntax_bash_RexIFSs || $wbegin -lt 0 && $tail == $'\\\n'* ]]; then
+    # 空白 or \ + 改行
 
-    # 改行がある場合: ヒアドキュメントの確認 / 改行による文脈更新
     local spaces=$BASH_REMATCH
-    if [[ $spaces == *$'\n'* ]]; then
+    if [[ $tail == $'\\\n'* ]]; then
+      # \ + 改行は単純に無視
+      spaces=$'\\\n'
+    elif [[ $spaces == *$'\n'* ]]; then
+      # 改行がある場合: ヒアドキュメントの確認 / 改行による文脈更新
       ble/syntax:bash/check-here-document-from "$spaces" && return 0
       if ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_ARGVX||ctx==CTX_ARGEX||ctx==CTX_CMDXV||ctx==CTX_CMDXT||ctx==CTX_CMDXE)); then
         ((ctx=CTX_CMDX))
