@@ -2505,38 +2505,70 @@ function ble/complete/mandb/search-file {
   ble/string#split manpath : "$manpath"
   local path
   for path in "${manpath[@]}"; do
-    ble/complete/mandb/search-file/.check "$path/man1/$man.1.gz" && return
     ble/complete/mandb/search-file/.check "$path/man1/$man.1" && return
-    ble/complete/mandb/search-file/.check "$path/man1/$man.8.gz" && return
     ble/complete/mandb/search-file/.check "$path/man1/$man.8" && return
+    if ble/is-function ble/bin/gzip; then
+      ble/complete/mandb/search-file/.check "$path/man1/$man.1.gz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$man.8.gz" && return
+    fi
+    if ble/is-function ble/bin/bzcat; then
+      ble/complete/mandb/search-file/.check "$path/man1/$man.1.bz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$man.1.bz2" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$man.8.bz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$man.8.bz2" && return
+    fi
+    if ble/is-function ble/bin/xzcat; then
+      ble/complete/mandb/search-file/.check "$path/man1/$man.1.xz" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$man.8.xz" && return
+    fi
+    if ble/is-function ble/bin/lzcat; then
+      ble/complete/mandb/search-file/.check "$path/man1/$man.1.lzma" && return
+      ble/complete/mandb/search-file/.check "$path/man1/$man.8.lzma" && return
+    fi
   done
   return 1
 }
 
+if ble/is-function ble/bin/nroff; then
+  _ble_complete_mandb_convert_type=man
+  function ble/complete/mandb/convert-mandoc {
+    ble/bin/nroff -Tutf8 -man
+  }
+elif ble/is-function ble/bin/mandoc; then
+  # bsd
+  _ble_complete_mandb_convert_type=mdoc
+  function ble/complete/mandb/convert-mandoc {
+    ble/bin/mandoc -mdoc
+  }
+fi
+
 function ble/complete/mandb/.generate-cache {
   ble/is-function ble/bin/man &&
-    ble/is-function ble/bin/gzip &&
-    ble/is-function ble/bin/nroff || return 1
+    ble/is-function ble/complete/mandb/convert-mandoc || return 1
 
   local command=$1
   local ret
   ble/complete/mandb/search-file "$command" || return 1
   local path=$ret
-  if [[ $ret == *.gz ]]; then
-    ble/bin/gzip -cd "$path"
-  else
-    ble/bin/cat "$path"
-  fi | ble/bin/awk '
+  case $ret in
+  (*.gz)       ble/bin/gzip -cd "$path" ;;
+  (*.bz|*.bz2) ble/bin/bzcat "$path" ;;
+  (*.lzma)     ble/bin/lzcat "$path" ;;
+  (*.xz)       ble/bin/xzcat "$path" ;;
+  (*)          ble/bin/cat "$path" ;;
+  esac | ble/bin/awk -v type="$_ble_complete_mandb_convert_type" '
     BEGIN {
       g_key = "";
       g_desc = "";
-      print ".TH __ble_ignore__ 1 __ble_ignore__ __ble_ignore__";
-      print ".ll 9999"
+      if (type == "man") {
+        print ".TH __ble_ignore__ 1 __ble_ignore__ __ble_ignore__";
+        print ".ll 9999"
+      }
     }
     function flush_topic() {
       if (g_key == "") return;
       print "__ble_key__";
-      print ".TP";
+      if (type == "man") print ".TP";
       print g_key;
       print "";
       print "__ble_desc__";
@@ -2548,8 +2580,14 @@ function ble/complete/mandb/.generate-cache {
       g_desc = "";
     }
 
-    /^\.TP\y/ { flush_topic(); mode = "key"; next; }
-    /^\.(SS|SH)\y/ { flush_topic(); next; }
+    type == "man" && /^\.TP([^_[:alnum:]]|$)/ {
+      flush_topic(); mode = "key"; next;
+    }
+    type == "mdoc" && /^\.It Fl([^_[:alnum:]]|$)/ {
+      flush_topic(); mode = "key";
+      sub(/^\.It Fl/, ".Fl");
+    }
+    /^\.(S[Ss]|S[Hh]|P[Pp])([^_[:alnum:]]|$)/ { flush_topic(); next; }
 
     mode == "key" {
       g_key = $0;
@@ -2563,7 +2601,7 @@ function ble/complete/mandb/.generate-cache {
     }
 
     END { flush_topic(); }
-  ' | ble/bin/nroff -Tutf8 -man | ble/bin/awk '
+  ' | ble/complete/mandb/convert-mandoc | ble/bin/awk '
     function process_pair(name, desc) {
       if (!(g_name ~ /^-/)) return;
 
@@ -2610,7 +2648,7 @@ function ble/complete/mandb/.generate-cache {
     mode == "key" {
       line = $0;
       gsub(/\x1b\[[ -?]*[@-~]/, "", line); # CSI seq
-      gsub(/\x1b[ -/]*[0-~]/, "", line); # ESC seq
+      gsub(/\x1b[ -\/]*[0-~]/, "", line); # ESC seq
       gsub(/.\x08/, "", line); # CHAR BS
       gsub(/\x0E/, "", line); # SO
       gsub(/\x0F/, "", line); # SI

@@ -5,9 +5,11 @@
 
 ## New features
 
+- complete/mandb: support mandb in FreeBSD `#D1432` 0000000
+
 ## Changes
 
-- syntax: exclude <code>\\ + LF</code> at the word beginning from words (motivated by cmplstofB) `#D1431` 0000000
+- syntax: exclude <code>\\ + LF</code> at the word beginning from words (motivated by cmplstofB) `#D1431` 67e62d6
 
 ## Fixes
 

@@ -3702,6 +3702,14 @@ bash_tips
 
 2020-12-10
 
+  * complete/mandb: FreeBSD 上で man 情報の抽出に失敗している [#D1432]
+    対応した。FreeBSD では mandoc というコマンドを使って変換を行っている。
+    nroff と同様に -man 等を指定する事ができる様だが、
+    どうやら FreeBSD は -man ではなくて -mdoc を想定して man pages を書いている様だ。
+    という訳なので -mdoc を前提として抽出をする様に書き換えた。
+
+    ちゃんと nroff を使う版も動いている。OK
+
   * highlight: command \^J-a とした時に -a がコマンドとして着色されない (reported by cmplstofB) [#D1431]
     https://github.com/akinomyoga/ble.sh/issues/76
 
