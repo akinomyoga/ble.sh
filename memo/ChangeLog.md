@@ -7,6 +7,8 @@
 
 ## Changes
 
+- syntax: exclude <code>\\ + LF</code> at the word beginning from words (motivated by cmplstofB) `#D1431` 0000000
+
 ## Fixes
 
 - term: fix a bug that VTE based terminals are not recognized `#D1427` 7e16d9d
