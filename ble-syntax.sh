@@ -1304,7 +1304,7 @@ function ble-syntax:bash/ctx-command {
 
   local rex_delimiters="^[$_BLE_SYNTAX_CSPACE;|&<>()]"
   local rex_redirect='^((\{[a-zA-Z_][a-zA-Z_0-9]*\}|[0-9]+)?(&?>>?|<>?|[<>]&))['"$_BLE_SYNTAX_CSPACE"']*'
-  if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect ) && $tail != ['<>']'('* ]]; then
+  if [[ ( $tail =~ $rex_delimiters || $wbegin -lt 0 && $tail =~ $rex_redirect || $wbegin -lt 0 && $tail == $'\\\n'* ) && $tail != ['<>']'('* ]]; then
 #%if !release
     ((ctx==CTX_ARGX||ctx==CTX_ARGX0||
          ctx==CTX_CMDX||ctx==CTX_CMDXF||
@@ -1312,10 +1312,17 @@ function ble-syntax:bash/ctx-command {
     ((wbegin<0&&wtype<0)) || ble-stackdump "invalid word-context (wtype=$wtype wbegin=$wbegin) on non-word char."
 #%end
 
-    if rex="^[$_BLE_SYNTAX_CSPACE]+" && [[ $tail =~ $rex ]]; then
-      # 空白 (ctx はそのままで素通り)
-      ((_ble_syntax_attr[i]=ctx,i+=${#BASH_REMATCH}))
-      ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_CMDXV)) && [[ ${BASH_REMATCH[0]} =~ $'\n' ]] && ((ctx=CTX_CMDX))
+    if rex="^[$_BLE_SYNTAX_CSPACE]+" && [[ $tail =~ $rex || $wbegin -lt 0 && $tail == $'\\\n'* ]]; then
+      # 空白 or \ + 改行 (ctx はそのままで素通り)
+
+      local spaces=$BASH_REMATCH
+      if [[ $tail == $'\\\n'* ]]; then
+        # \ + 改行は単純に無視
+        spaces=$'\\\n'
+      elif [[ $spaces == *$'\n'* ]]; then
+        ((ctx==CTX_ARGX||ctx==CTX_ARGX0||ctx==CTX_CMDXV)) && ((ctx=CTX_CMDX))
+      fi
+      ((_ble_syntax_attr[i]=ctx,i+=${#spaces}))
       return 0
     elif [[ $tail =~ $rex_redirect ]]; then
       # リダイレクト (& 単体の解釈より優先する)
