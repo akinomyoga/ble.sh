@@ -646,8 +646,8 @@ function ble/syntax/print-status {
 function ble/syntax/print-layer-buffer.draw {
   local layer_name=$1
   local -a keys vals
-  eval "keys=(\"\${!_ble_highlight_layer_${layer_name}_buff[@]}\")"
-  eval "vals=(\"\${_ble_highlight_layer_${layer_name}_buff[@]}\")"
+  builtin eval "keys=(\"\${!_ble_highlight_layer_${layer_name}_buff[@]}\")"
+  builtin eval "vals=(\"\${_ble_highlight_layer_${layer_name}_buff[@]}\")"
 
   local ret sgr0=$_ble_term_sgr0
   ble/color/face2sgr command_builtin; local sgr1=$ret

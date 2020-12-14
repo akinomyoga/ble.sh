@@ -142,7 +142,7 @@ but more reliable way is to add the following codes to your `.bashrc` file:
 # your bashrc settings come here...
 
 # Add this line at the end of .bashrc:
-((_ble_bash)) && ble-attach
+[[ ${BLE_VERSION-} ]] && ble-attach
 ```
 
 ## 1.4 User settings `~/.blerc`

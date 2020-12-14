@@ -143,7 +143,7 @@ $ cp -r ble-0.3.3 /path/to/blesh
 # 間に通常の bashrc の内容を既述します。
 
 # .bashrc の末端近くに以下を追加して下さい。
-((_ble_bash)) && ble-attach
+[[ ${BLE_VERSION-} ]] && ble-attach
 ```
 
 ## 1.4 初期化スクリプト `~/.blerc` について

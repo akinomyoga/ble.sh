@@ -16,7 +16,7 @@
     のみ実行したい。或いは :leave: の時にも実行するべきだろうか。leave の時に
     PROMPT_COMMAND は実行しなくても良い気がしてきた。うん。その様に変更する。
 
-  * complete: 単語補完で = の右辺の . で始まるファイル名が補完されない  [#D1425]
+  * complete: 単語補完で = の右辺の . で始まるファイル名が補完されない (reported by cmplstofB) [#D1425]
     https://github.com/akinomyoga/ble.sh/issues/71
 
     これは試してみた所、a= で補完してから . を入力して絞り込みをすると、最初の

@@ -1021,6 +1021,10 @@ function ble/complete/action/util/quote-insert {
     # '~' で始まる補完候補と同名のファイルがある時にのみチルダをクォートする。
     [[ $INSERT == '~'* && ! ( $DATA == *:filenames:* && -e $INSERT ) ]] &&
       escape_flags=T$escape_flags
+    # #D1434 = 及び : は filenames がついていない限りは quote しない事にする。
+    #    bash-complete が unquoted =, : を生成する可能性があるので。
+    [[ $DATA != *:filenames:* ]] &&
+      escape_flags=${escape_flags//c}
   fi
 
   if [[ $comps_flags == *v* && $CAND == "$COMPV"* ]]; then
@@ -1819,7 +1823,7 @@ function ble/complete/source:tilde/.generate {
   printf '%s\n' '~' '~+' '~-'
   local dirstack_max=$((${#DIRSTACK[@]}-1))
   ((dirstack_max>=0)) &&
-    eval "printf '%s\n' '~'{0..$dirstack_max}"
+    builtin eval "printf '%s\n' '~'{0..$dirstack_max}"
 
 }
 

@@ -1132,14 +1132,14 @@ function ble/path#remove-glob {
   builtin eval -- "${_ble_local_script//opts/$1}"
 }
 function ble/path#contains {
-  eval "[[ :\${$1}: == *:\"\$2\":* ]]"
+  builtin eval "[[ :\${$1}: == *:\"\$2\":* ]]"
 }
 
 if ((_ble_bash>=40000)); then
   _ble_util_set_declare=(declare -A NAME)
-  function ble/set#add { eval "$1[x\$2]=1"; }
+  function ble/set#add { builtin eval "$1[x\$2]=1"; }
   function ble/set#remove { builtin unset -v "$1[x\$2]"; }
-  function ble/set#contains { eval "[[ \${$1[x\$2]+set} ]]"; }
+  function ble/set#contains { builtin eval "[[ \${$1[x\$2]+set} ]]"; }
 else
   _ble_util_set_declare=(declare NAME)
   function ble/set#.escape {
@@ -1156,7 +1156,7 @@ else
   }
   function ble/set#contains {
     local _ble_local_value=$2; ble/set#.escape
-    eval "[[ :\$$1: == *:\"\$_ble_local_value\":* ]]"
+    builtin eval "[[ :\$$1: == *:\"\$_ble_local_value\":* ]]"
   }
 fi
 
