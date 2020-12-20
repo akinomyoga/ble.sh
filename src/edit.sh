@@ -1189,12 +1189,14 @@ function ble-edit/attach/TRAPWINCH {
   if ((_ble_edit_attached)); then
     if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
       _ble_textmap_pos=()
+      ble/util/joblist.check
       ble-edit/bind/stdout.on
       ble-edit/info/hide
       ble/util/buffer "$_ble_term_ed"
       ble-edit/info/reveal
       ble/textarea#redraw
       ble-edit/bind/stdout.off
+      ble/util/joblist.check ignore-volatile-jobs
     fi
   fi
 }
@@ -6611,10 +6613,12 @@ function ble/builtin/read/.setup-textarea {
   _ble_highlight_layer__list=(plain region overwrite_mode disabled)
 }
 function ble/builtin/read/TRAPWINCH {
+  ble/util/joblist.check
   local IFS=$_ble_term_IFS
   _ble_textmap_pos=()
   ble/util/buffer "$_ble_term_ed"
   ble/textarea#redraw
+  ble/util/joblist.check ignore-volatile-jobs
 }
 function ble/builtin/read/.loop {
   set +m # ジョブ管理を無効にする

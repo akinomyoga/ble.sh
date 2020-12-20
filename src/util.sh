@@ -1732,8 +1732,11 @@ function ble/urange#shift {
 }
 
 #------------------------------------------------------------------------------
-## 関数 ble/util/joblist
+## 関数 ble/util/joblist opts
 ##   現在のジョブ一覧を取得すると共に、ジョブ状態の変化を調べる。
+##
+##   @param[in] opts
+##     ignore-volatile-jobs
 ##
 ##   @var[in,out] _ble_util_joblist_events
 ##   @var[out]    joblist                ジョブ一覧を格納する配列
@@ -1750,7 +1753,7 @@ _ble_util_joblist_jobs=
 _ble_util_joblist_list=()
 _ble_util_joblist_events=()
 function ble/util/joblist {
-  local jobs0
+  local opts=$1 jobs0
   ble/util/assign jobs0 'jobs'
   if [[ $jobs0 == "$_ble_util_joblist_jobs" ]]; then
     # 前回の呼び出し結果と同じならば状態変化はないものとして良い。終了・強制終
@@ -1796,14 +1799,16 @@ function ble/util/joblist {
     ble/util/joblist.split _ble_util_joblist_list "${lines[@]}"
 
     # check removed jobs through list -> _ble_util_joblist_list.
-    for ijob in "${!list[@]}"; do
-      local job0=${list[ijob]}
-      if [[ $job0 && ! ${_ble_util_joblist_list[ijob]} ]]; then
-        if [[ $job0 != *'__ble_suppress_joblist__'* ]]; then
-          ble/array#push _ble_util_joblist_events "$job0"
+    if [[ :$opts: != *:ignore-volatile-jobs:* ]]; then
+      for ijob in "${!list[@]}"; do
+        local job0=${list[ijob]}
+        if [[ $job0 && ! ${_ble_util_joblist_list[ijob]} ]]; then
+          if [[ $job0 != *'__ble_suppress_joblist__'* ]]; then
+            ble/array#push _ble_util_joblist_events "$job0"
+          fi
         fi
-      fi
-    done
+      done
+    fi
   else
     for ijob in "${!list[@]}"; do
       [[ ${list[ijob]} ]] &&
@@ -1827,7 +1832,7 @@ function ble/util/joblist.split {
 ##   内部的に jobs を呼び出す直前に、ジョブ状態変化を取り逃がさない為に明示的に呼び出します。
 function ble/util/joblist.check {
   local joblist
-  ble/util/joblist
+  ble/util/joblist "$@"
 }
 ## 関数 ble/util/joblist.has-events
 ##   未出力のジョブ状態変化の記録があるかを確認します。
