@@ -1,0 +1,129 @@
+From 0bcc167a48f4052db23dcb0111b640e46a24a317 Mon Sep 17 00:00:00 2001
+From: Koichi Murase <myoga.murase@gmail.com>
+Date: Sun, 20 Dec 2020 13:18:21 +0900
+Subject: [PATCH] D1435 spike1
+
+---
+ lib/core-syntax.sh |  9 +++++++++
+ src/edit.sh        |  9 +++++++--
+ src/util.sh        | 34 +++++++++++++++++++++++++++++++++-
+ 3 files changed, 49 insertions(+), 3 deletions(-)
+
+diff --git a/lib/core-syntax.sh b/lib/core-syntax.sh
+index bcdffa8..fce7f13 100644
+--- a/lib/core-syntax.sh
++++ b/lib/core-syntax.sh
+@@ -5897,6 +5897,15 @@ function ble/syntax/highlight/cmdtype1 {
+ # #D1341 #D1355 locale 対策
+ function ble/syntax/highlight/cmdtype/.jobs { local LC_ALL=C; jobs; } 2>/dev/null
+ function ble/syntax/highlight/cmdtype/.is-job-name {
++  # #D1435 trap handler の中で動作している時には jobs はサブシェルの中で実行す
++  # る。jobs を直接実行する為にはジョブ変化の情報を失わない為に、直前に
++  # joblist.check でジョブ情報を読んでおかなければならないが、trap handler の中
++  # だと変なジョブ情報が混入してしまう。
++  if [[ $ble_builtin_trap_processing ]] && ! ble/util/is-running-in-subshell; then
++    (ble/syntax/highlight/cmdtype/.is-job-name)
++    return "$?"
++  fi
++
+   ble/util/joblist.check
+ 
+   local value=$1 word=$2
+diff --git a/src/edit.sh b/src/edit.sh
+index ad05923..06f5450 100644
+--- a/src/edit.sh
++++ b/src/edit.sh
+@@ -4413,7 +4413,7 @@ function ble/builtin/exit {
+   ((${#opt_args[@]})) || ble/array#push opt_args "$ext"
+ 
+   local joblist
+-  ble/util/joblist
++  ble/util/joblist force
+   if ((${#joblist[@]})); then
+     local ret
+     while
+@@ -4427,6 +4427,11 @@ function ble/builtin/exit {
+       fi
+       [[ $cancel_reason ]]
+     do
++      # #D1435: trap handler の中だったとしてもサブシェルの中ではなくて直接
++      # jobs を実行する。何れにしても情報を出力するので、ユーザの目には変なジョ
++      # ブが混入するのを防げない。サブシェルの中で実行すると、いつまでも変なジョ
++      # ブ情報が消えず蓄積するので、此処では敢えて trap handler の中でも直接
++      # jobs を実行する。
+       jobs
+       ble/builtin/read -ep "\e[38;5;12m[ble: There are $cancel_reason]\e[m Leave the shell anyway? [yes/No] " ret
+       case $ret in
+@@ -7451,7 +7456,7 @@ function ble/widget/command-help/.type {
+   fi
+ 
+   if [[ $type == keyword && $command != "$literal" ]]; then
+-    if [[ $command == %* ]] && jobs -- "$command" &>/dev/null; then
++    if [[ $command == %* ]] && ble/util/joblist/is-job "$command"; then
+       type=jobs
+     else
+       # type -a の第二候補を用いる #D1406
+diff --git a/src/util.sh b/src/util.sh
+index 91bed57..3641561 100644
+--- a/src/util.sh
++++ b/src/util.sh
+@@ -1519,6 +1519,7 @@ function ble/builtin/trap/.handler {
+   local _ble_trap_ext=$? _ble_trap_sig=$1 _ble_trap_name=$2
+ 
+   # ble.sh hook
++  local ble_builtin_trap_processing=1
+   ble/util/setexit "$_ble_trap_ext"
+   blehook/invoke "$_ble_trap_name"
+ 
+@@ -2694,9 +2695,31 @@ function ble/urange#shift {
+ }
+ 
+ #------------------------------------------------------------------------------
+-## 関数 ble/util/joblist
++
++## 関数 ble/util/joblist/is-job name
++##   指定した文字列が jobs によって認識されるジョブ名かどうかを判定します。
++function ble/util/joblist/is-job {
++  if [[ $ble_builtin_trap_processing ]]; then
++    # #D1435 変なジョブ情報が混入するので trap handler の中では
++    # ジョブ情報は更新しない。サブシェルの中で判定を行う。
++    (jobs -- "$1")
++  else
++    # ジョブ情報が失われない様に先にジョブ情報を確認してから判定を行う。
++    ble/util/joblist.check
++    jobs -- "$1"
++  fi
++} &>/dev/null
++
++## 関数 ble/util/joblist opts
+ ##   現在のジョブ一覧を取得すると共に、ジョブ状態の変化を調べる。
+ ##
++##   @var[in]     opts
++##     force      trap handler の中でもジョブ情報更新を強制する。
++##                trap handler の中だと変なジョブ情報を拾うので、
++##                通常は trap handler の中ではジョブ一覧は更新しない (#D1435)。
++##                然し、exit 等明示的に現在のジョブをチェックする必要がある所では
++##                現在のジョブの確認を強制する必要がある。
++##
+ ##   @var[in,out] _ble_util_joblist_events
+ ##   @var[out]    joblist                ジョブ一覧を格納する配列
+ ##   @var[in,out] _ble_util_joblist_jobs 内部使用
+@@ -2712,6 +2735,15 @@ _ble_util_joblist_jobs=
+ _ble_util_joblist_list=()
+ _ble_util_joblist_events=()
+ function ble/util/joblist {
++  local opts
++  # #D1435 trap handler の中で jobs を実行すると変なジョブも拾ってしまうので、
++  # trap handler の中では joblist の更新は実行しない事にする。単に前回の結果を
++  # そのまま返して終了する。
++  if [[ $ble_builtin_trap_processing && :$opts: != *:force:* ]]; then
++    joblist=("${_ble_util_joblist_list[@]}")
++    return 0
++  fi
++
+   local jobs0
+   ble/util/assign jobs0 'jobs'
+   if [[ $jobs0 == "$_ble_util_joblist_jobs" ]]; then
+-- 
+2.21.3
+

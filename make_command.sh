@@ -319,6 +319,10 @@ function sub:scan {
   sub:scan/memo-numbering
 }
 
+function sub:show-contrib-in-changelog {
+  sed -n 's/.*([^()]* by \([^()]*\)).*/\1/p' ChangeLog.md | sort | uniq -c | sort -rn
+}
+
 #------------------------------------------------------------------------------
 # sub:release-note
 #
