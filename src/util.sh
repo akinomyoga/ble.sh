@@ -363,6 +363,14 @@ function ble/variable#is-global/.test { ! local "$1" 2>/dev/null; }
 function ble/variable#is-global {
   (readonly "$1"; ble/variable#is-global/.test "$1")
 }
+function ble/variable#copy-state {
+  local src=$1 dst=$2
+  if [[ ${!src+set} ]]; then
+    eval "$dst=\${$src}"
+  else
+    unset "$dst"
+  fi
+}
 
 _ble_array_prototype=()
 function ble/array#reserve-prototype {

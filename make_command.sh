@@ -319,8 +319,24 @@ function sub:scan {
   sub:scan/memo-numbering
 }
 
-function sub:show-contrib-in-changelog {
-  sed -n 's/.*([^()]* by \([^()]*\)).*/\1/p' ChangeLog.md | sort | uniq -c | sort -rn
+function sub:show-contrib {
+  local cache_contrib_github=out/contrib-github.txt
+  if [[ ! ( $cache_contrib_github -nt .git/refs/remotes/origin/master ) ]]; then
+    {
+      wget 'https://api.github.com/repos/akinomyoga/ble.sh/issues?state=all&per_page=100&pulls=true' -O -
+      wget 'https://api.github.com/repos/akinomyoga/blesh-contrib/issues?state=all&per_page=100&pulls=true' -O -
+    } |
+      sed -n 's/^[[:space:]]*"login": "\(.*\)",$/\1/p' |
+      sort | uniq -c | sort -rn > "$cache_contrib_github"
+  fi
+
+  echo "Contributions (from ChangeLog.md)"
+  sed -n 's/.*([^()]* by \([^()]*\)).*/\1/p' memo/ChangeLog.md |
+    sort | uniq -c | sort -rn
+  echo
+
+  echo "Contributions (from GitHub Issues/PRs)"
+  cat "$cache_contrib_github"
 }
 
 #------------------------------------------------------------------------------

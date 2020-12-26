@@ -1466,12 +1466,13 @@ function ble-edit/content/push-kill-ring {
 # **** saved variables such as (PS1/LINENO) ****                      @edit.ps1
 #
 # 内部使用変数
-## 変数 _ble_edit_LINENO
-## 変数 _ble_edit_CMD
-## 変数 _ble_edit_PS1
-## 変数 _ble_edit_IFS
-## 変数 _ble_edit_IGNOREEOF_adjusted
-## 変数 _ble_edit_IGNOREEOF
+## @var _ble_edit_LINENO
+## @var _ble_edit_CMD
+## @var _ble_edit_PS1
+## @var _ble_edit_IFS
+## @var _ble_edit_IGNOREEOF_adjusted
+## @var _ble_edit_IGNOREEOF
+## @arr _ble_edit_READLINE
 
 _ble_edit_PS1_adjusted=
 _ble_edit_PS1='\s-\v\$ '
@@ -1514,6 +1515,23 @@ function ble-edit/restore-IGNOREEOF {
     builtin unset -v IGNOREEOF
   fi
 }
+
+_ble_edit_READLINE=()
+function ble-edit/adjust-READLINE {
+  [[ $_ble_edit_READLINE ]] && return 0
+  _ble_edit_READLINE=1
+  ble/variable#copy-state READLINE_LINE  '_ble_edit_READLINE[1]'
+  ble/variable#copy-state READLINE_POINT '_ble_edit_READLINE[2]'
+  ble/variable#copy-state READLINE_MARK  '_ble_edit_READLINE[3]'
+}
+function ble-edit/restore-READLINE {
+  [[ $_ble_edit_READLINE ]] || return 0
+  _ble_edit_READLINE=
+  ble/variable#copy-state '_ble_edit_READLINE[1]' READLINE_LINE
+  ble/variable#copy-state '_ble_edit_READLINE[2]' READLINE_POINT
+  ble/variable#copy-state '_ble_edit_READLINE[3]' READLINE_MARK
+}
+
 ## 関数 ble-edit/eval-IGNOREEOF
 ##   @var[out] ret
 function ble-edit/eval-IGNOREEOF {
@@ -1566,6 +1584,7 @@ function ble-edit/attach/.attach {
   blehook WINCH-+=ble-edit/attach/TRAPWINCH
 
   ble-edit/adjust-PS1
+  ble-edit/adjust-READLINE
   ble-edit/adjust-IGNOREEOF
   [[ $bleopt_internal_exec_type == exec ]] && _ble_edit_IFS=$IFS
 }
@@ -1573,6 +1592,7 @@ function ble-edit/attach/.attach {
 function ble-edit/attach/.detach {
   ((!_ble_edit_attached)) && return 0
   ble-edit/restore-PS1
+  ble-edit/restore-READLINE
   ble-edit/restore-IGNOREEOF
   [[ $bleopt_internal_exec_type == exec ]] && IFS=$_ble_edit_IFS
   _ble_edit_attached=0
@@ -4607,6 +4627,7 @@ function ble-edit/exec:gexec/.prologue {
   BASH_COMMAND=$1
   _ble_edit_exec_BASH_COMMAND=$1
   ble-edit/restore-PS1
+  ble-edit/restore-READLINE
   ble-edit/restore-IGNOREEOF
   builtin unset -v HISTCMD; ble/history/get-count -v HISTCMD
   _ble_edit_exec_INT=0
@@ -4646,6 +4667,7 @@ function ble-edit/exec:gexec/.epilogue {
   ble/base/adjust-POSIXLY_CORRECT
   ble-edit/exec/.reset-builtins-2
   ble-edit/adjust-IGNOREEOF
+  ble-edit/adjust-READLINE
   ble-edit/adjust-PS1
   ble-edit/exec/save-BASH_REMATCH
   ble/util/reset-keymap-of-editing-mode
@@ -7363,7 +7385,8 @@ function ble/widget/command-help.core {
     type -t source-highlight &>/dev/null &&
       pager='source-highlight -s sh -f esc | '$pager
     local def; ble/function#getdef "$command"
-    LESS="$LESS -r" builtin eval -- "$pager" <<< "$def" && return 0
+    local -x LESS="$LESS -r" # Note: Bash のバグで tempenv builtin eval は消滅するので #D1438
+    builtin eval -- "$pager" <<< "$def" && return 0
   fi
 
   if ble/is-function ble/bin/man; then

@@ -1199,6 +1199,22 @@ bash_tips
 
 2020-12-19
 
+  * bug-bash: jobs in trap handlers
+
+    以下を実行して端末を resize すると (true) の偽ジョブ情報が出力される
+
+      trap '(true); jobs' WINCH
+
+    SIGWINCH に限らない。以下を実行して C-c を押しても同様の問題が発生する。
+
+      trap '(true); jobs' INT
+
+    実は直後の bind -x の中で jobs を実行しても同様。
+    一度でもユーザーコマンドを実行すれば偽情報は消える。
+
+      trap '(true)' INT
+      bind -x '"\C-t": jobs'
+
   * Note (#D1435): blehook WINCH を処理している最中に終了したユーザのジョブがあ
     るとその通知が画面に表示されない可能性がある。これは実際に起こりうるのかど
     うか確認していない。
@@ -1220,17 +1236,6 @@ bash_tips
       その quote を復元する方法についてもちゃんと考えなければならない。
 
     或いは simple-word element を一つずつ抽出して処理すれば良いのかもしれない。
-
-2020-12-09
-
-  * READLINE_MARK, etc. の値が残ってしまっている。
-
-    これは ble/textarea#adjust-for-bash-bind によって設定されている値である。
-    コマンドを実行する時に復元・保存する様にするのが良いのではないだろうか。
-
-    * 何故か READLINE_LINE, READLINE_POINT が export されている。
-      と思ったが、これは ble.sh を bind -x の内部で動かしているからであった。
-      READLINE_LINE 及び READLINE_POINT が
 
 2020-11-30
 
@@ -1399,22 +1404,6 @@ bash_tips
   * patch: complete_limit_reached にリークが存在している。
     ちゃんと source:* や candidates/generate などのコメントに使う変数を記述して、
     それから auto-complete の中で candidates/generate を呼び出す前に local で宣言する。
-
-2020-09-27
-
-  * SIGWINCH で job メッセージが出る
-
-    SIGWINCH に対して次の様な job メッセージが表示される様になっている。
-    [1] 終了 [[ -n $_dotfiles_blesh_manual_attach ]] | [[ -n $_dotfiles_blesh_manual_attach ]]
-    これは .bashrc で設定されている関数の一部である。何故?
-
-    調べてみるとそもそも関数ですらなくて、
-    これは ble-attach を呼び出す条件の中に含まれているコマンドだと分かった。
-    つまり SIGWINCH に際して ble-attach 関連の何かが呼び出されて、
-    そして最後に呼び出された ble-attach の呼び出し時のコマンド文字列が何処かに保持されている?
-    もしくは再び .bashrc が source されている可能性もあるがやはりそれは変だ。
-
-    2020-10-10 今試してみると再現しない。
 
 2020-09-07
 
@@ -3715,7 +3704,45 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2020-12-25
+
+  * edit: f1 で関数定義を表示する時に LESS=-r が効いていない [#D1438]
+    これは bash のバグの様である。バグ報告は bug-report でする事にして、
+    ここでは簡単に修正してしまう。
+
+  * edit: 2020-12-09 READLINE_MARK, etc. の値が残ってしまっている [#D1437]
+
+    これは ble/textarea#adjust-for-bash-bind によって設定されている値である。
+    コマンドを実行する時に復元・保存する様にするのが良いのではないだろうか。
+
+    * 何故か READLINE_LINE, READLINE_POINT が export されている。
+      と思ったが、これは ble.sh を bind -x の内部で動かしているからであった。
+      READLINE_LINE 及び READLINE_POINT が
+
+    * 普通の bash で実行するとどうなるのかと思ったが、どうやら自分で設定した
+      READLINE_LINE 及び READILNE_POINT があっても bind -x の実行と共に削除され
+      てしまう様である。
+
+    取り敢えず adjust/restore する様にした。コマンドの実行の間で値が保存される
+    様にした。bind -x が実行されても値がクリアされる事はない。
+
 2020-12-20
+
+  * [解消] 2020-09-27 SIGWINCH で job メッセージが出る [#D1436]
+    2020-12-20 これは #D1435 と同一の問題であろう。直ったと見て良い。
+
+    SIGWINCH に対して次の様な job メッセージが表示される様になっている。
+    [1] 終了 [[ -n $_dotfiles_blesh_manual_attach ]] | [[ -n $_dotfiles_blesh_manual_attach ]]
+    これは .bashrc で設定されている関数の一部である。何故?
+
+    調べてみるとそもそも関数ですらなくて、
+    これは ble-attach を呼び出す条件の中に含まれているコマンドだと分かった。
+    つまり SIGWINCH に際して ble-attach 関連の何かが呼び出されて、
+    そして最後に呼び出された ble-attach の呼び出し時のコマンド文字列が何処かに保持されている?
+    もしくは再び .bashrc が source されている可能性もあるがやはりそれは変だ。
+
+    2020-10-10 今試してみると再現しない。
+
 
   * edit: WINCH 後に偽のジョブ情報が表示される (reported by 3ximus) [#D1435]
     https://github.com/akinomyoga/ble.sh/issues/78
