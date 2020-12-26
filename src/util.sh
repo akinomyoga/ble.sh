@@ -245,6 +245,15 @@ function ble/debug/print-variables {
 # array and strings
 #
 
+function ble/variable#copy-state {
+  local src=$1 dst=$2
+  if [[ ${!src+set} ]]; then
+    eval "$dst=\${$src}"
+  else
+    unset "$dst"
+  fi
+}
+
 _ble_array_prototype=()
 function ble/array#reserve-prototype {
   local n=$1 i
