@@ -6,6 +6,7 @@
 ## New features
 
 - complete/mandb: support mandb in FreeBSD `#D1432` 6c54f79
+- decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0000000
 
 ## Changes
 

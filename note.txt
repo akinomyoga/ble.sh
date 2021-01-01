@@ -3704,6 +3704,17 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-01-01
+
+  * decode (ble-decode-kbd): support various keyseq specifications [#D1439]
+    https://github.com/urbainvaes/fzf-marks/pull/41
+    https://github.com/urbainvaes/fzf-marks/pull/43
+
+    上記で ble.sh 特有の binding を追加してもらったが、ble-bind がユーザーが自
+    由に対応キーを指定できる様に公開されている変数 FZF_MARKS_JUMP の形式に合わ
+    ない為に C-g 決め打ちになってしまっている。ble-bind でも bind と同様の形式
+    で keyseq を指定できる様にしたい。
+
 2020-12-25
 
   * edit: f1 で関数定義を表示する時に LESS=-r が効いていない [#D1438]

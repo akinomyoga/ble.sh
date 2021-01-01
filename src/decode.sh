@@ -330,11 +330,46 @@ function ble-decode-kbd/.initialize {
 
 ble-decode-kbd/.initialize
 
-## 関数 ble-decode-kbd kspecs...
-##   @param[in] kspecs
+## 関数 ble-decode-kbd [TYPE:]VALUE...
+##   @param[in] TYPE VALUE
+##     キー列を指定します。TYPE はキー列の解釈方法を指定します。
+##     TYPE の値に応じて VALUE には以下の物を指定します。TYPE の既定値は kbd です。
+##     kspecs ... kspecs を指定します。
+##     keyseq ... bash bind の keyseq を指定します。
+##     chars  ... 文字コードの整数列を指定します。
+##     key    ... キーコードの整数列を指定します。
+##     raw    ... バイト列を直接文字列として指定します。
+##     
 ##   @var[out] ret
+##     キー列を空白区切りの整数列として返します。
 function ble-decode-kbd {
-  local kspecs; ble/string#split-words kspecs "$*"
+  local spec="$*"
+  case $spec in
+  (keys:*)
+    ret="${spec#*:}"
+    return ;;
+  (chars:*)
+    local chars
+    ble/string#split-words chars "${spec#*:}"
+    ble/decode/cmap/decode-chars "${ret[@]}"
+    ret="${keys[*]}"
+    return ;;
+  (keyseq:*) # i.e. untranslated keyseq
+    local keys
+    ble/util/keyseq2chars "${spec#*:}"
+    ble/decode/cmap/decode-chars "${ret[@]}"
+    ret="${keys[*]}"
+    return ;;
+  (raw:*) # i.e. translated keyseq
+    ble/util/s2chars "${spec#*:}"
+    ble/decode/cmap/decode-chars "${ret[@]}"
+    ret="${keys[*]}"
+    return ;;
+  (kspecs:*)
+    spec=${spec#*:} ;;
+  esac
+
+  local kspecs; ble/string#split-words kspecs "$spec"
   local kspec code codes
   codes=()
   for kspec in "${kspecs[@]}"; do
@@ -2740,12 +2775,21 @@ function ble-bind/.initialize-kmap {
 function ble-bind/option:help {
   ble/util/cat <<EOF
 ble-bind --help
-ble-bind -k cspecs [kspec]
-ble-bind --csi PsFt kspec
-ble-bind [-m keymap] -fxc@s kspecs command
-ble-bind [-m keymap] -T kspecs timeout
+ble-bind -k [TYPE:]cspecs [[TYPE:]kspec]
+ble-bind --csi PsFt [TYPE:]kspec
+ble-bind [-m keymap] -fxc@s [TYPE:]kspecs command
+ble-bind [-m keymap] -T [TYPE:]kspecs timeout
 ble-bind [-m keymap]... (-PD|--print|--dump)
 ble-bind (-L|--list-widgets)
+
+TYPE:SPEC
+  TYPE specifies the format of SPEC. The default is  "kspecs".
+
+  kspecs  ble.sh keyboard spec
+  keys    List of key codes
+  chars   List of character codes in Unicode
+  keyseq  Key sequence in the Readline format
+  raw     Raw byte sequence
 
 EOF
 }
