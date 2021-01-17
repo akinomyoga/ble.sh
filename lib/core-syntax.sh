@@ -2756,7 +2756,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
     local word_expanded=$word
     local type; ble/util/type type "$word"
     if [[ $type == alias ]]; then
-      local data; ble/util/assign data 'LANG=C alias "$word"' &>/dev/null
+      local data; ble/util/assign data 'LC_ALL=C alias "$word"' &>/dev/null
       [[ $data == 'alias '*=* ]] &&
         eval "word_expanded=${data#alias *=}"
     fi
