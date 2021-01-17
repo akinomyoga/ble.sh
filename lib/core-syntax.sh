@@ -5894,8 +5894,9 @@ function ble/syntax/highlight/cmdtype1 {
   esac
 }
 
-# #D1341 #D1355 locale 対策
-function ble/syntax/highlight/cmdtype/.jobs { local LC_ALL=C; jobs; } 2>/dev/null
+# #D1341 #D1355 #D1440 locale 対策
+function ble/syntax/highlight/cmdtype/.jobs { local LC_ALL=C; jobs; }
+ble/function#suppress-stderr ble/syntax/highlight/cmdtype/.jobs
 function ble/syntax/highlight/cmdtype/.is-job-name {
   ble/util/joblist.check
 

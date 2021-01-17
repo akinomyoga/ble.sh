@@ -776,9 +776,11 @@ function ble/prompt/.instantiate-control-string {
 
     local LC_ALL= LC_COLLATE=C
     ret=${esc//[! -~]/'#'}
-  fi 2>/dev/null
+  fi
   builtin eval -- "$name=(\"\${prompt_data[@]}\")"
 }
+# suppress locale error #D1440
+ble/function#suppress-stderr ble/prompt/.instantiate-control-string
 
 function ble/prompt/update/.has-prompt_command {
   [[ ${PROMPT_COMMAND[*]} ]]

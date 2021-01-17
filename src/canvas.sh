@@ -833,6 +833,10 @@ function ble/canvas/trace/.process-esc-sequence {
 function ble/canvas/trace/.impl {
   local text=$1 opts=$2
 
+  # cygwin では LC_COLLATE=C にしないと
+  # 正規表現の range expression が期待通りに動かない。
+  local LC_ALL= LC_COLLATE=C
+
   # Note: 文字符号化方式によっては対応する文字が存在しない可能性がある。
   #   その時は st='\u009C' になるはず。2文字以上のとき変換に失敗したと見做す。
   local ret
@@ -1021,17 +1025,13 @@ function ble/canvas/trace/.impl {
   [[ $opt_measure ]] && ((y2++))
 }
 function ble/canvas/trace.draw {
-  # cygwin では LC_COLLATE=C にしないと
-  # 正規表現の range expression が期待通りに動かない。
-  local LC_ALL= LC_COLLATE=C
-  ble/canvas/trace/.impl "$@"
-} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205, #D1341
+  ble/canvas/trace/.impl "$@" 2>/dev/null # Note: suppress LC_COLLATE errors #D1205 #D1341 #D1440
+}
 function ble/canvas/trace {
-  local LC_ALL= LC_COLLATE=C
   local -a DRAW_BUFF=()
-  ble/canvas/trace/.impl "$@"
+  ble/canvas/trace/.impl "$@" 2>/dev/null # Note: suppress LC_COLLATE errors #D1205 #D1341 #D1440
   ble/canvas/sflush.draw # -> ret
-} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205, #D1341
+}
 
 #------------------------------------------------------------------------------
 # ble/canvas/construct-text
@@ -1120,7 +1120,9 @@ function ble/canvas/trace-text/.put-nl-if-eol {
 ##   @var[out] ret
 ##   @exit
 ##     指定した範囲に文字列が収まった時に成功します。
-function ble/canvas/trace-text/.impl {
+function ble/canvas/trace-text {
+  local LC_ALL= LC_COLLATE=C
+
   local out= glob='*[! -~]*'
   local opts=$2 flag_overflow=
   [[ :$opts: == *:external-sgr:* ]] ||
@@ -1166,11 +1168,8 @@ function ble/canvas/trace-text/.impl {
   ((y>=lines)) && flag_overflow=1
   [[ ! $flag_overflow ]]
 }
-function ble/canvas/trace-text {
-  # Note: suppress LC_COLLATE errors #D1205 #D1262 #1341
-  local LC_ALL= LC_COLLATE=C
-  ble/canvas/trace-text/.impl "$@"
-} 2>/dev/null
+# Note: suppress LC_COLLATE errors #D1205 #D1262 #1341 #D1440
+ble/function#suppress-stderr ble/canvas/trace-text {
 
 #------------------------------------------------------------------------------
 # ble/textmap

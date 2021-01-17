@@ -632,7 +632,9 @@ if ((_ble_bash>=40400)); then
       [[ $line ]] && printf %s "$line"
     } | ble/bin/od -A n -t u1 -v'
     ble/string#split-words ret "$ret"
-  } 2>/dev/null # LC_CTYPE=C
+  }
+  # suppress locale error #D1440
+  ble/function#suppress-stderr ble/decode/nonblocking-read
 elif ((_ble_bash>=40000)); then
   function ble/decode/nonblocking-read {
     local timeout=${1:-0.01} ntimeout=${2:-1} loop=${3:-100}
@@ -655,7 +657,9 @@ elif ((_ble_bash>=40000)); then
       [[ $line ]] && printf %s "$line"
     } | ble/bin/od -A n -t u1 -v'
     ble/string#split-words ret "$ret"
-  } 2>/dev/null # LC_CTYPE=C
+  }
+  # suppress locale error #D1440
+  ble/function#suppress-stderr ble/decode/nonblocking-read
 fi
 
 function ble-decode/.hook {

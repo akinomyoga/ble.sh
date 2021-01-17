@@ -21,6 +21,7 @@
 - complete/mandb: fix BS contamination used by nroff to represent bold (reported by rlnore) `#D1429` b5c875a
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 0000000
+- global: suppress missing locale errors `#D1440` 0000000
 
 ## Internal changes and fixes
 

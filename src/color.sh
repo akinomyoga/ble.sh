@@ -1177,7 +1177,9 @@ function ble/highlight/layer:plain/update {
 
   PREV_BUFF=_ble_highlight_layer_plain_buff
   ((PREV_UMIN=DMIN,PREV_UMAX=DMAX))
-} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205
+}
+# Note: suppress LC_COLLATE errors #D1205 #D1440
+ble/function#suppress-stderr ble/highlight/layer:plain/update
 
 ## 関数 ble/highlight/layer:plain/getg index
 ##   @var[out] g

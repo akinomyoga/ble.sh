@@ -741,7 +741,7 @@ function ble/string#last-index-of {
 ##   @var[out] ret
 _ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
 _ble_util_string_upper_list=ABCDEFGHIJKLMNOPQRSTUVWXYZ
-function ble/string#toggle-case {
+function ble/string#toggle-case.impl {
   local LC_ALL= LC_COLLATE=C
   local text=$* ch i
   local -a buff
@@ -757,7 +757,10 @@ function ble/string#toggle-case {
     ble/array#push buff "$ch"
   done
   IFS= builtin eval 'ret="${buff[*]-}"'
-} 2>/dev/null
+}
+function ble/string#toggle-case {
+  ble/string#toggle-case.impl "$@" 2>/dev/null # suppress locale error #D1440
+}
 ## 関数 ble/string#tolower text...
 ## 関数 ble/string#toupper text...
 ##   @var[out] ret
@@ -766,6 +769,7 @@ if ((_ble_bash>=40000)); then
   function ble/string#toupper { ret="${*^^}"; }
 else
   function ble/string#tolower.impl {
+    local LC_ALL= LC_COLLATE=C
     local i text="$*"
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
@@ -779,6 +783,7 @@ else
     IFS= builtin eval 'ret="${buff[*]-}"'
   }
   function ble/string#toupper.impl {
+    local LC_ALL= LC_COLLATE=C
     local i text="$*"
     local -a buff ch
     for ((i=0;i<${#text};i++)); do
@@ -792,13 +797,11 @@ else
     IFS= builtin eval 'ret="${buff[*]-}"'
   }
   function ble/string#tolower {
-    local LC_ALL= LC_COLLATE=C
-    ble/string#tolower.impl "$@"
-  } 2>/dev/null
+    ble/string#tolower.impl "$@" 2>/dev/null # suppress locale error #D1440
+  }
   function ble/string#toupper {
-    local LC_ALL= LC_COLLATE=C
-    ble/string#toupper.impl "$@" 2>/dev/null
-  } 2>/dev/null
+    ble/string#toupper.impl "$@" 2>/dev/null # suppress locale error #D1440
+  }
 fi
 
 function ble/string#capitalize {
@@ -1106,14 +1109,20 @@ function ble/string#create-unicode-progress-bar {
 }
 # Note: Bash-4.1 以下では "LC_CTYPE=C 組み込みコマンド" の形式だと
 #   locale がその場で適用されないバグがある。
-function ble/util/strlen {
+function ble/util/strlen.impl {
   local LC_ALL= LC_CTYPE=C
   ret=${#1}
-} 2>/dev/null
-function ble/util/substr {
+}
+function ble/util/strlen {
+  ble/util/strlen.impl "$@" 2>/dev/null # suppress locale error #D1440
+}
+function ble/util/substr.impl {
   local LC_ALL= LC_CTYPE=C
   ret=${1:$2:$3}
-} 2>/dev/null
+}
+function ble/util/substr {
+  ble/util/substr.impl "$@" 2>/dev/null # suppress locale error #D1440
+}
 
 function ble/path#append {
   local _ble_local_script='opts=$opts${opts:+:}$2'
@@ -1897,6 +1906,24 @@ function ble/function#lambda {
   builtin eval -- "function ${!1} { builtin eval -- '${2//$_ble_local_q/$_ble_local_Q}'; }"
 }
 
+## 関数 ble/function#suppress-stderr function_name
+##   @param[in] function_name
+function ble/function#suppress-stderr {
+  local name=$1
+  if ! ble/is-function "$name"; then
+    echo "$FUNCNAME: '$name' is not a function name" >&2
+    return 2
+  fi
+
+  local def; ble/function#getdef "$name"
+  builtin eval "ble/function#suppress-stderr:$def"
+  local lambda=ble/function#suppress-stderr:$name
+
+  local q=\' Q="'\''"
+  builtin eval "function $name { $lambda \"\$@\" 2>/dev/null; }"
+  return 0
+}
+
 #
 # miscallaneous utils
 #
@@ -1946,7 +1973,9 @@ if ((_ble_bash>=40000)); then
   function ble/util/is-stdin-ready {
     local IFS= LC_ALL= LC_CTYPE=C
     builtin read -t 0
-  } &>/dev/null
+  }
+  # suppress locale error #D1440
+  ble/function#suppress-stderr ble/util/is-stdin-ready
 else
   function ble/util/is-stdin-ready { false; }
 fi
@@ -2236,13 +2265,11 @@ _ble_util_rex_isprint='^[ -~]+'
 ##
 ##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。
 function ble/util/isprint+ {
-  # LC_COLLATE=C ...  &>/dev/null for cygwin collation
   local LC_ALL= LC_COLLATE=C
-  ble/util/isprint+.impl "$@"
-} 2>/dev/null # Note: suppress LC_COLLATE errors #D1205
-function ble/util/isprint+.impl {
   [[ $1 =~ $_ble_util_rex_isprint ]]
 }
+# suppress locale error #D1440
+ble/function#suppress-stderr ble/util/isprint+
 
 if ((_ble_bash>=40200)); then
   function ble/util/strftime {
@@ -2280,7 +2307,7 @@ function ble/util/msleep/.check-builtin-sleep {
   fi
 }
 function ble/util/msleep/.check-sleep-decimal-support {
-  local version; ble/util/assign version 'LC_ALL=C ble/bin/sleep --version 2>&1'
+  local version; ble/util/assign version 'LC_ALL=C ble/bin/sleep --version 2>&1' 2>/dev/null # suppress locale error #D1440
   [[ $version == *'GNU coreutils'* || $OSTYPE == darwin* && $version == 'usage: sleep seconds' ]]
 }
 
@@ -4422,7 +4449,10 @@ if ((_ble_bash>=40200)); then
     builtin printf -v ret '\uFFFF'
     ((${#ret}==2))
   }
-  if ble/util/.has-bashbug-printf-uffff 2>/dev/null; then # #D1262 suppress LC_ALL error messages
+  # suppress locale error #D1440
+  ble/function#suppress-stderr ble/util/.has-bashbug-printf-uffff
+
+  if ble/util/.has-bashbug-printf-uffff; then
     function ble/util/c2s.impl {
       if ((0xE000<=$1&&$1<=0xFFFF)) && [[ $_ble_util_locale_encoding == UTF-8 ]]; then
         builtin printf -v ret '\\x%02x' $((0xE0|$1>>12&0x0F)) $((0x80|$1>>6&0x3F)) $((0x80|$1&0x3F))
