@@ -335,9 +335,9 @@ ble-decode-kbd/.initialize
 ##     キー列を指定します。TYPE はキー列の解釈方法を指定します。
 ##     TYPE の値に応じて VALUE には以下の物を指定します。TYPE の既定値は kbd です。
 ##     kspecs ... kspecs を指定します。
-##     keyseq ... bash bind の keyseq を指定します。
+##     keys   ... キーコードの整数列を指定します。
 ##     chars  ... 文字コードの整数列を指定します。
-##     key    ... キーコードの整数列を指定します。
+##     keyseq ... bash bind の keyseq を指定します。
 ##     raw    ... バイト列を直接文字列として指定します。
 ##     
 ##   @var[out] ret

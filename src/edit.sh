@@ -3966,7 +3966,7 @@ function ble/widget/word.setup-uword {
   WSEP="${IFS:-$' \t\n'}"; WSET="^$WSEP"
 }
 function ble/widget/word.setup-sword {
-  WSEP=$'|%WSEP%;()<> \t\n'; WSET="^$WSEP"
+  WSEP=$'|&;()<> \t\n'; WSET="^$WSEP"
 }
 function ble/widget/word.setup-fword {
   WSEP="/${IFS:-$' \t\n'}"; WSET="^$WSEP"
