@@ -3586,7 +3586,7 @@ function ble/widget/kill-forward-logical-line {
   else
     local ret; ble-edit/content/find-logical-eol
     # 行末にいるとき無引数で呼び出すと、直後の改行を削除
-    ((ret<${#_ble_edit_ind}&&_ble_edit_ind==ret&&ret++))
+    ((ret<${#_ble_edit_str}&&_ble_edit_ind==ret&&ret++))
   fi
   ble/widget/.kill-range "$_ble_edit_ind" "$ret"
 }
