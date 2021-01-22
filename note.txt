@@ -1200,6 +1200,17 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2021-01-22
+
+  * syntax: 引数が沢山あると cygwin で滅茶苦茶遅い
+
+    これは様々な種類のパス名展開を試そうとするのが原因だろうか。
+    command 名と同様にキャッシュする様にしても良いのではないだろうか。
+    でも少しずつ微妙に異なる引数が沢山ある場合には結局遅い。
+    それよりは着色自体の高速化について考えた方が良いのではないか。
+
+    * chat でも遅くなるかどうかについて確認する。
+
 2021-01-08
 
   * syntax: 算術式の quote が変である
@@ -3718,6 +3729,78 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-01-22
+
+  * edit: C-w で kill-ring への追加を実装するという事 (suggested by 3ximus) [#D1443]
+    https://github.com/akinomyoga/ble.sh/issues/83#issuecomment-764893198
+
+    これについては先ず初めに仕様を確定しなければならない。
+
+    例えば前方を切り取るコマンドの場合には必ず左に挿入する事にする? と思ったが、
+    そうすると C-k を連続で使用した時に、切り取られる行の順序が逆になってしまう。
+
+    ? というよりどの様なコマンドが存在しているだろうか。
+
+      | 調べると C-k, C-u, C-w, M-d, M-h で kill-... を実行している。
+      |
+      | widget 名で言うと
+      | - kill-{forward,backward}-{?word,{graphical-,logical-,}line,text}
+      |   これの対応は簡単。backward に削除する場合には prepend し、
+      |   forward に削除する場合には append すれば良い。
+      | - kill-{?word,{graphical-,logical-,}line}
+      |   これは微妙。emacs でどの様に振る舞っているだろうかと考えたが、
+      |   よく考えてみたらその様に振る舞う物は存在しない気がする。
+      |
+      |   emacs.rlfunc.txt で対応表を見てみたが、kill-line に対応する
+      |   rlfunc kill-whole-line しか振る舞いを確認できる物が存在しない。そして、
+      |   この rlfunc kill-whole-line は kill-line と違って、
+      |   コマンドライン全体を切り取ってしまうのでやはり振る舞いとして異なる。
+      |
+      |   と思ったが、実際に readline で実行してみると kill-whole-line は
+      |   前回の内容に append する様である。取り敢えず ble.sh でもその様に振る舞う事にする。
+      |
+      | - kill-region
+      |   これは前回の内容は完全に忘れるという振る舞いで良い。
+      |
+      | - vi_imap/delete-backward-word
+      |   これは実は kill-ring には何も影響を与えない様だ。取り敢えず無視する事にする。
+      |   readline の vi mode の時には kill するが combine はしない様だ。
+
+      →結論としては、kill-region,kill-region-or 以外の kill-* は全て対象という事。
+      kill-backward-* に関しては prepend で、それ以外については append という事。
+
+    ? ok: append/prepend をした時に元々あった内容を上書きするのか、
+      新しく項目が追加されるのか。
+      →試して見た所、上書きする様である。
+
+    ? done: /.*-range の allow_empty という引数は必要なのだろうか。
+      kill,copy,delete に関しては決して指定される事はない。
+      replace に関しては大体指定されている。
+      指定されていない物は意図的な物かどうか確認する必要がある。
+
+      - ./keymap/vi.sh:3995:    ble/widget/.replace-range "$eol1" "$eol2" "$text"
+      - ./keymap/vi.sh:4016:    ble/widget/.replace-range "$eol1" "$bol2" "$text"
+        上記二つに関しては eol1<eol2 が保証されているのでどちらでも良い。
+      - ./lib/core-complete.sh:5832:    ble/widget/.replace-range "$pos" "$comp_index" "$value"
+      - ./lib/core-complete.sh:5865:      ble/widget/.replace-range "$pos" "$comp_index" "$value"
+      - ./lib/core-complete.sh:5871:    ble/widget/.replace-range "$pos" "$comp_index" ''
+        上記3つに関しても同様に pos<comp_index が保証されている。
+      - ./lib/vim-surround.sh:509:  ble/widget/.replace-range "$beg" "$end" "$content"
+        operator なので幅0になる事は余りない気がするが、例えば編集文字列が空の時?
+        →うーん。その様な場合であっても cs 経由でしかこの operator は呼び出されないので、
+        結局、delimiter を使って範囲を切り出そうとする段階で失敗してしまう。
+        結局、この operator が空文字列に対して呼び出される事はない気がする。
+
+        もし仮に呼び出される事があったとしても、allow_empty を指定する方が自然。
+
+      replace-range については常に allow_empty という事にする。
+      kill,copy,delete については常に not allow_empty という事にする。
+      →書き換えた。
+
+    ? done: copy でも同様に振る舞う必要があるだろうか。
+      →実際に試してみた所、同様に振る舞う様である。。。
+
+    動かしていて気づいたが、C-k で行末の改行を削除できていない…。
+    これは別 commit での bugfix にする事にする。
 
   * edit: support "bleopt edit_line_type" (motivated by 3ximus) [#D1442]
     https://github.com/akinomyoga/ble.sh/issues/83

@@ -1478,7 +1478,68 @@ function ble/widget/universal-arg {
   ble-edit/content/toggle-arg
 }
 
+## 関数 ble-edit/content/prepend-kill-ring string kill_type
+function ble-edit/content/prepend-kill-ring {
+  _ble_edit_kill_index=0
+  local otext=${_ble_edit_kill_ring[0]-} ntext=$1
+  local otype=${_ble_edit_kill_type[0]-} ntype=$2
+  if [[ $otype == L || $ntype == L ]]; then
+    ntext=${ntext%$'\n'}$'\n'
+    otext=${otext%$'\n'}$'\n'
+    _ble_edit_kill_ring[0]=$ntext$otext
+    _ble_edit_kill_type[0]=L
+  elif [[ $otype == B:* ]]; then
+    if [[ $ntype != B:* ]]; then
+      ntext=${ntext%$'\n'}$'\n'
+      local ret; ble/string#count-char "$ntext" $'\n'
+      ble/string#repeat '0 ' "$ret"
+      ntype=B:${ret%' '}
+    fi
+    _ble_edit_kill_ring[0]=$ntext$otext
+    _ble_edit_kill_type[0]="B:${ntype#B:} ${otype#B:}"
+  else
+    _ble_edit_kill_ring[0]=$ntext$otext
+    _ble_edit_kill_type[0]=$otype
+  fi
+}
+## 関数 ble-edit/content/append-kill-ring string kill_type
+function ble-edit/content/append-kill-ring {
+  _ble_edit_kill_index=0
+  local otext=${_ble_edit_kill_ring[0]-} ntext=$1
+  local otype=${_ble_edit_kill_type[0]-} ntype=$2
+  if [[ $otype == L || $ntype == L ]]; then
+    ntext=${ntext%$'\n'}$'\n'
+    otext=${otext%$'\n'}$'\n'
+    _ble_edit_kill_ring[0]=$otext$ntext
+    _ble_edit_kill_type[0]=L
+  elif [[ $otype == B:* ]]; then
+    if [[ $ntype != B:* ]]; then
+      ntext=${ntext%$'\n'}$'\n'
+      local ret; ble/string#count-char "$ntext" $'\n'
+      ble/string#repeat '0 ' "$ret"
+      ntype=B:${ret%' '}
+    fi
+    _ble_edit_kill_ring[0]=$otext$ntext
+    _ble_edit_kill_type[0]="B:${otype#B:} ${ntype#B:}"
+  else
+    _ble_edit_kill_ring[0]=$otext$ntext
+    _ble_edit_kill_type[0]=$otype
+  fi
+}
+
+## 関数 ble-edit/content/push-kill-ring string kill_type opts
 function ble-edit/content/push-kill-ring {
+  if ((${#_ble_edit_kill_ring[@]})) && [[ ${LASTWIDGET#ble/widget/} == kill-* || ${LASTWIDGET#ble/widget/} == copy-* ]]; then
+    local name; ble/string#split-words name "${WIDGET#ble/widget/}"
+    if [[ $name == kill-backward-* || $name == copy-backward-* ]]; then
+      ble-edit/content/prepend-kill-ring "$1" "$2"
+      return "$?"
+    elif [[ $name != kill-region* && $name != copy-region* ]]; then
+      ble-edit/content/append-kill-ring "$1" "$2"
+      return "$?"
+    fi
+  fi
+
   _ble_edit_kill_index=0
   ble/array#unshift _ble_edit_kill_ring "$1"
   ble/array#unshift _ble_edit_kill_type "$2"
@@ -2559,10 +2620,10 @@ function ble/widget/.process-range-argument {
     (len=p1-p0)>0
   ))
 }
-## 関数 ble/widget/.delete-range P0 P1 [allow_empty]
+## 関数 ble/widget/.delete-range P0 P1 [opts]
 function ble/widget/.delete-range {
   local p0 p1 len
-  ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
+  ble/widget/.process-range-argument "${@:1:2}" || return 1
 
   # delete
   if ((len)); then
@@ -2576,10 +2637,10 @@ function ble/widget/.delete-range {
   fi
   return 0
 }
-## 関数 ble/widget/.kill-range P0 P1 [allow_empty [kill_type]]
+## 関数 ble/widget/.kill-range P0 P1 [opts [kill_type]]
 function ble/widget/.kill-range {
   local p0 p1 len
-  ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
+  ble/widget/.process-range-argument "${@:1:2}" || return 1
 
   # copy
   ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4"
@@ -2596,18 +2657,18 @@ function ble/widget/.kill-range {
   fi
   return 0
 }
-## 関数 ble/widget/.copy-range P0 P1 [allow_empty [kill_type]]
+## 関数 ble/widget/.copy-range P0 P1 [opts [kill_type]]
 function ble/widget/.copy-range {
   local p0 p1 len
-  ble/widget/.process-range-argument "${@:1:2}" || (($3)) || return 1
+  ble/widget/.process-range-argument "${@:1:2}" || return 1
 
   # copy
   ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4"
 }
-## 関数 ble/widget/.replace-range P0 P1 string [allow_empty]
+## 関数 ble/widget/.replace-range P0 P1 string
 function ble/widget/.replace-range {
   local p0 p1 len
-  ble/widget/.process-range-argument "${@:1:2}" || (($4)) || return 1
+  ble/widget/.process-range-argument "${@:1:2}"
   local insert; ble-edit/content/replace-limited "$p0" "$p1" "$3"
   local inslen=${#insert} delta
   ((delta=inslen-len)) &&
@@ -2657,7 +2718,8 @@ function ble/widget/kill-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/kill-region
   else
-    "ble/widget/$@"
+    local -a subwidget; subwidget=("$@")
+    ble/decode/widget/call 'ble/widget/${subwidget[@]}' "${KEYS[@]}"
   fi
 }
 ## 関数 ble/widget/copy-region-or widget
@@ -2668,7 +2730,8 @@ function ble/widget/copy-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/copy-region
   else
-    "ble/widget/$@"
+    local -a subwidget; subwidget=("$@")
+    ble/decode/widget/call 'ble/widget/${subwidget[@]}' "${KEYS[@]}"
   fi
 }
 
@@ -4152,7 +4215,7 @@ function ble/widget/transpose-words.impl1 {
   local word1=${_ble_edit_str:b1:e1-b1}
   local word2=${_ble_edit_str:b2:e2-b2}
   local sep=${_ble_edit_str:e1:b2-e1}
-  ble/widget/.replace-range "$b1" "$e2" "$word2$sep$word1" 1
+  ble/widget/.replace-range "$b1" "$e2" "$word2$sep$word1"
   _ble_edit_ind=$e2
 }
 function ble/widget/transpose-words.impl {
@@ -5131,7 +5194,7 @@ function ble/widget/alias-expand-line.proc {
     local ret; ble/util/expand-alias "$word"
     [[ $word == "$ret" ]] && return 0
     changed=1
-    ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$ret" 1
+    ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$ret"
   fi
 }
 function ble/widget/alias-expand-line {
@@ -5153,7 +5216,7 @@ function ble/widget/tilde-expand {
       local word=${_ble_edit_str:i:j-i}
       builtin eval "local path=$word"
       [[ $path != "$word" ]] &&
-        ble/widget/.replace-range "$i" "$j" "$path" 1
+        ble/widget/.replace-range "$i" "$j" "$path"
     fi
     j=$i
   done
@@ -5238,7 +5301,7 @@ function ble/widget/shell-expand-line.proc {
   done
 
   changed=1
-  ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$out" 1
+  ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$out"
 }
 ## 関数 ble/widget/shell-expand-line opts
 ##   @param[in] opts

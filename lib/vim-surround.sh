@@ -361,7 +361,7 @@ function ble/widget/vim-surround.sh/ysurround.core {
 
       ((slpad)) && { ble/string#repeat ' ' "$slpad"; stext=$ret$stext; }
       ((srpad)) && { ble/string#repeat ' ' "$srpad"; stext=$stext$ret; }
-      ble/widget/.replace-range "$smin" "$smax" "$stext" 1
+      ble/widget/.replace-range "$smin" "$smax" "$stext"
     done
 
   else
@@ -391,7 +391,7 @@ function ble/widget/vim-surround.sh/ysurround.core {
     fi
     local text=$ret
 
-    ble/widget/.replace-range "$beg" "$end" "$text" 1
+    ble/widget/.replace-range "$beg" "$end" "$text"
   fi
 
   _ble_edit_ind=$beg

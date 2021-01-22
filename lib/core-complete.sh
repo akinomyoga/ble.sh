@@ -4106,7 +4106,7 @@ function ble/complete/insert {
   fi
 
   local ins=$insert$suffix
-  ble/widget/.replace-range "$insert_beg" "$insert_end" "$ins" 1
+  ble/widget/.replace-range "$insert_beg" "$insert_end" "$ins"
   ((_ble_edit_ind=insert_beg+${#ins},
     _ble_edit_ind>${#_ble_edit_str}&&
       (_ble_edit_ind=${#_ble_edit_str})))

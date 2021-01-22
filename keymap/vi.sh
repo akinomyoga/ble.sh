@@ -1336,7 +1336,7 @@ function ble/keymap:vi/operator:d {
     for rep in "${arep[@]}"; do
       smin=${rep%%:*}; rep=${rep:${#smin}+1}
       smax=${rep%%:*}; rep=${rep:${#smax}+1}
-      ble/widget/.replace-range "$smin" "$smax" "$rep" 1
+      ble/widget/.replace-range "$smin" "$smax" "$rep"
     done
     ((beg+=slpad)) # fix start position
   else
@@ -1357,7 +1357,7 @@ function ble/keymap:vi/operator:d {
       fi
 
       ble/keymap:vi/register#set-edit "$reg" '' "${_ble_edit_str:beg:end-beg}" || return 1
-      ble/widget/.delete-range "$beg" "$end" 0
+      ble/widget/.delete-range "$beg" "$end"
     fi
   fi
   return 0
@@ -1374,7 +1374,7 @@ function ble/keymap:vi/operator:c {
     ble-edit/content/find-non-space "$beg"; local nol=$ret
     ((beg<nol)) && indent=${_ble_edit_str:beg:nol-beg}
 
-    ble/widget/.replace-range "$beg" "$end2" "$indent" 1
+    ble/widget/.replace-range "$beg" "$end2" "$indent"
     ble/widget/vi_nmap/.insert-mode
   elif [[ $context == block ]]; then
     ble/keymap:vi/operator:d "$@" || return 1 # @var beg will be overwritten here
@@ -1435,11 +1435,11 @@ function ble/keymap:vi/operator:tr.impl {
       ble/string#split sub : "${sub_ranges[isub]}"
       local smin=${sub[0]} smax=${sub[1]}
       local ret; "$filter" "${_ble_edit_str:smin:smax-smin}"
-      ble/widget/.replace-range "$smin" "$smax" "$ret" 1
+      ble/widget/.replace-range "$smin" "$smax" "$ret"
     done
   else
     local ret; "$filter" "${_ble_edit_str:beg:end-beg}"
-    ble/widget/.replace-range "$beg" "$end" "$ret" 1
+    ble/widget/.replace-range "$beg" "$end" "$ret"
   fi
   return 0
 }
@@ -1536,7 +1536,7 @@ function ble/keymap:vi/operator:indent.impl/increase-block-indent {
     ble/string#split sub : "${sub_ranges[isub]}"
     smin=${sub[0]} slpad=${sub[2]}
     ble/string#repeat ' ' $((slpad+width))
-    ble/widget/.replace-range "$smin" "$smin" "$ret" 1
+    ble/widget/.replace-range "$smin" "$smin" "$ret"
   done
 }
 ## 関数 ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent width
@@ -1579,7 +1579,7 @@ function ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent {
   local rep
   for rep in "${replaces[@]}"; do
     ble/string#split rep : "$rep"
-    ble/widget/.replace-range "${rep[@]::3}" 1
+    ble/widget/.replace-range "${rep[@]::3}"
   done
 }
 ## 関数 ble/keymap:vi/operator:indent.impl/decrease-logical-block-indent width
@@ -1614,7 +1614,7 @@ function ble/keymap:vi/operator:indent.impl/decrease-logical-block-indent {
 
     local padding=
     ((pad)) && { ble/string#repeat ' ' "$pad"; padding=$ret; }
-    ble/widget/.replace-range "$smin" "$nsp" "$padding" 1
+    ble/widget/.replace-range "$smin" "$nsp" "$padding"
   done
 }
 function ble/keymap:vi/operator:indent.impl {
@@ -1634,7 +1634,7 @@ function ble/keymap:vi/operator:indent.impl {
 
     local ret
     ble/keymap:vi/string#increase-indent "${_ble_edit_str:beg:end-beg}" "$delta"; local content=$ret
-    ble/widget/.replace-range "$beg" "$end" "$content" 1
+    ble/widget/.replace-range "$beg" "$end" "$content"
 
     if [[ $context == char ]]; then
       ble-edit/content/find-non-space "$beg"
@@ -1799,7 +1799,7 @@ function ble/keymap:vi/operator:fold.impl {
 
   local cols=${COLUMNS:-80}; ((cols>80&&(cols=80)))
   ble/keymap:vi/operator:fold/.fold-paragraphwise "$old" "$cols"; local new=$ret
-  ble/widget/.replace-range "$beg" "$end" "$new" 1
+  ble/widget/.replace-range "$beg" "$end" "$new"
 
   # 変換後のカーソル位置を修正。
   if [[ :$opts: == *:preserve_point:* ]]; then
@@ -1903,7 +1903,7 @@ function ble/keymap:vi/operator:filter/.hook {
     return 1
   fi
   new=${new%$'\n'}$'\n'
-  ble/widget/.replace-range "$beg" "$end" "$new" 1
+  ble/widget/.replace-range "$beg" "$end" "$new"
 
   _ble_edit_ind=$beg
   if [[ $context == line ]]; then
@@ -2785,7 +2785,7 @@ function ble/widget/vi_nmap/forward-char-toggle-case {
 
   local index=$((_ble_edit_ind+len))
   local ret; ble/string#toggle-case "${_ble_edit_str:_ble_edit_ind:len}"
-  ble/widget/.replace-range "$_ble_edit_ind" "$index" "$ret" 1
+  ble/widget/.replace-range "$_ble_edit_ind" "$index" "$ret"
   ble/keymap:vi/mark/set-previous-edit-area "$_ble_edit_ind" "$index"
   ble/keymap:vi/repeat/record
   ble/keymap:vi/needs-eol-fix "$index" && ((index--))
@@ -3595,7 +3595,7 @@ function ble/widget/vi_nmap/paste.impl/block {
   local i=${#ins_beg[@]}
   while ((i--)); do
     local ibeg=${ins_beg[i]} iend=${ins_end[i]} text=${ins_text[i]}
-    ble/widget/.replace-range "$ibeg" "$iend" "$text" 1
+    ble/widget/.replace-range "$ibeg" "$iend" "$text"
   done
   ble/keymap:vi/mark/end-edit-area
   ble/keymap:vi/repeat/record
@@ -3631,7 +3631,7 @@ function ble/widget/vi_nmap/paste.impl {
       ((index=ret,dbeg=index,dend=index+${#content}-1))
     fi
 
-    ble/widget/.replace-range "$index" "$index" "$content" 1
+    ble/widget/.replace-range "$index" "$index" "$content"
     _ble_edit_ind=$dbeg
     ble/keymap:vi/mark/set-previous-edit-area "$dbeg" "$dend"
     ble/keymap:vi/repeat/record
@@ -5717,7 +5717,7 @@ function ble/widget/vi_nmap/increment.impl {
     fi
   fi
 
-  ble/widget/.replace-range "$beg" "$end" "$number" 1
+  ble/widget/.replace-range "$beg" "$end" "$number"
   ble/keymap:vi/mark/set-previous-edit-area "$beg" $((beg+${#number}))
   ble/keymap:vi/repeat/record
   _ble_edit_ind=$((beg+${#number}-1))
@@ -6843,7 +6843,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
       ((sfill)) && ins1=${ins1::(width-sfill)/w}
       ((slpad)) && { ble/string#repeat ' ' "$slpad"; ins1=$ret$ins1; }
       ((srpad)) && { ble/string#repeat ' ' "$srpad"; ins1=$ins1$ret; }
-      ble/widget/.replace-range "$smin" "$smax" "$ins1" 1
+      ble/widget/.replace-range "$smin" "$smax" "$ins1"
     done
     local beg=$smin
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
@@ -6862,7 +6862,7 @@ function ble/widget/vi_xmap/visual-replace-char.hook {
 
     local ins=${_ble_edit_str:beg:end-beg}
     ins=${ins//[!$'\n']/"$s"}
-    ble/widget/.replace-range "$beg" "$end" "$ins" 1
+    ble/widget/.replace-range "$beg" "$end" "$ins"
     ble/keymap:vi/needs-eol-fix "$beg" && ((beg--))
     _ble_edit_ind=$beg
     ble/keymap:vi/mark/set-previous-edit-area "$beg" "$end"
@@ -7121,7 +7121,7 @@ function ble/widget/vi_xmap/block-insert-mode.onleave {
   ble/keymap:vi/mark/commit-edit-area "$p1" "$p2"
   while ((i--)); do
     local index=${ins_beg[i]} text=${ins_text[i]}
-    ble/widget/.replace-range "$index" "$index" "$text" 1
+    ble/widget/.replace-range "$index" "$index" "$text"
   done
   ble/keymap:vi/mark/end-edit-area
   # Note: この編集は record-insert 経由で記録されるので
@@ -7375,7 +7375,7 @@ function ble/widget/vi_xmap/increment.impl {
     local smin=${sub%%:*}
     local beg=$((shift+smin+offset))
     local end=$((beg+length))
-    ble/widget/.replace-range "$beg" "$end" "$number" 1
+    ble/widget/.replace-range "$beg" "$end" "$number"
     ((shift+=${#number}-length,
       dmin<0&&(dmin=beg),
       dmax=beg+${#number}))
