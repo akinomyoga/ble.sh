@@ -24,7 +24,8 @@
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
 - edit (sword): fix definition of `sword` (shell words) `#D1441` f923388
-- edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 0000000
+- edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
+- edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 0000000
 
 ## Internal changes and fixes
 
