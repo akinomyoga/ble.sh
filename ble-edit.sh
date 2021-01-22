@@ -3881,7 +3881,7 @@ function ble/widget/.genword-setup-uword {
   WSEP="${IFS:-$' \t\n'}"; WSET="^$WSEP"
 }
 function ble/widget/.genword-setup-sword {
-  WSEP=$'|%WSEP%;()<> \t\n'; WSET="^$WSEP"
+  WSEP=$'|&;()<> \t\n'; WSET="^$WSEP"
 }
 function ble/widget/.genword-setup-fword {
   WSEP="/${IFS:-$' \t\n'}"; WSET="^$WSEP"

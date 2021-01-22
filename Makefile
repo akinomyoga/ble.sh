@@ -3,9 +3,9 @@
 all:
 .PHONY: all install dist
 
-# check GNU Makefile
+# check GNU Make
 ifeq ($(.FEATURES),)
-  $(error Sorry, please use a newer version of gmake (GNU Makefile).)
+  $(error Sorry, please use a newer version of gmake (GNU Make).)
 endif
 
 # check gawk
