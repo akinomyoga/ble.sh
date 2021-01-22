@@ -3719,7 +3719,15 @@ bash_tips
 
 2021-01-22
 
-  * edit (sword): fix definition of sword [#D1441]
+  * edit: support "bleopt edit_line_type" (motivated by 3ximus) [#D1442]
+    https://github.com/akinomyoga/ble.sh/issues/83
+
+    手で一つ一つ logical-line を明示的に指定するよりは、
+    一つのオプションで一括で切り替えられる様にした方が良い。
+    更に、今まで既定で graphical line を使っていたのを、
+    logical line を使う様に変更する事にする。
+
+  * edit (sword): fix definition of sword (motivated by 3ximus) [#D1441]
     https://github.com/akinomyoga/ble.sh/issues/83#issuecomment-764893198
 
     この質問で具体的に各単語がどのような定義になっているのか説明しようとして

@@ -7,6 +7,7 @@
 
 - complete/mandb: support mandb in FreeBSD `#D1432` 6c54f79
 - decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0f01cab
+- edit: support new option `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 0000000
 
 ## Changes
 
@@ -22,7 +23,7 @@
 - edit: work around the wrong job information of Bash in trap handlers (reported by 3ximus) `#D1435` `#D1436` bc4735e
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
-- edit (sword): fix definition of `sword` (shell words) `#D1441` 0000000
+- edit (sword): fix definition of `sword` (shell words) (motivated by 3ximus) `#D1441` 0000000
 
 ## Internal changes and fixes
 

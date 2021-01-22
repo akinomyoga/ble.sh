@@ -63,8 +63,8 @@
 #bleopt edit_vbell=
 
 
-## The following setting turns on the delayed load of history when an
-## non-empty value is set.
+## The following setting turns on the delayed load of history when an non-empty
+## value is set.
 
 #bleopt history_lazyload=1
 
@@ -77,69 +77,76 @@
 
 
 ## The following settings control the indentation. "indent_offset" sets the
-## indent width. "indent_tabs" controls if tabs can be used for indentation
-## or not. If "indent_tabs" is set to 0, tabs will never be used. Otherwise
+## indent width. "indent_tabs" controls if tabs can be used for indentation or
+## not. If "indent_tabs" is set to 0, tabs will never be used. Otherwise
 ## indentation is made with tabs and spaces.
 
 #bleopt indent_offset=4
 #bleopt indent_tabs=1
 
 
-## "undo_point" controls the cursor position after "undo". When "beg" or
-## "end" is specified, the cursor will be moved to the beginning or the end of
-## the dirty section, respectively. When other values are specified, the
-## original cursor position is reproduced.
+## "undo_point" controls the cursor position after "undo". When "beg" or "end"
+## is specified, the cursor will be moved to the beginning or the end of the
+## dirty section, respectively. When other values are specified, the original
+## cursor position is reproduced.
 
 #bleopt undo_point=end
 
 
-## The following setting controls forced layout calculations before
-## graphical operations. When a non-empty value is specified, the
-## forced calculations are enabled. When an empty string is set, the
-## operations are switched to logical ones.
+## The following setting controls forced layout calculations before graphical
+## operations. When a non-empty value is specified, the forced calculations are
+## enabled. When an empty string is set, the operations are switched to logical
+## ones.
 
 #bleopt edit_forced_textmap=1
 
 
-## The following settings controls the prompt after the cursor left
-## the command line.  "prompt_ps1_final" contains a prompt string.
-## "prompt_ps1_transient" is a colon-separated list of fields
-## "always", "same-dir" and "trim".  The prompt is replaced by
-## "prompt_ps1_final" if it has a non-empty value.  Otherwise, the
-## prompt is trimmed leaving the last line if "prompt_ps1_transient"
-## has a field "trim".  Otherwise, the prompt vanishes if
-## "prompt_ps1_transient" has a non-empty value.  When
+## The following option controls the interpretation of lines when going to the
+## beginning or the end of the current line.  When the value `logical` is
+## specified, the logical line is used, i.e., the beginning and the end of the
+## line is determined based on the newline characters in the edited text.  When
+## the value `graphical` is specified, the graphical line is used, i.e., the
+## beginning and the end of the displayed line in the terminal is used.
+
+#bleopt edit_line_type=graphical
+
+
+## The following settings controls the prompt after the cursor left the command
+## line.  "prompt_ps1_final" contains a prompt string.  "prompt_ps1_transient"
+## is a colon-separated list of fields "always", "same-dir" and "trim".  The
+## prompt is replaced by "prompt_ps1_final" if it has a non-empty value.
+## Otherwise, the prompt is trimmed leaving the last line if
+## "prompt_ps1_transient" has a field "trim".  Otherwise, the prompt vanishes
+## if "prompt_ps1_transient" has a non-empty value.  When
 ## "prompt_ps1_transient" contains a field "same-dir", the setting of
-## "prompt_ps1_transient" is effective only when the current working
-## directory did not change since the last command line.
+## "prompt_ps1_transient" is effective only when the current working directory
+## did not change since the last command line.
 
 #bleopt prompt_ps1_final=
 #bleopt prompt_ps1_transient=trim
 
 
-## The following settings controls the right prompt. "prompt_rps1"
-## specifies the contents of the right prompt in the format of PS1.
-## When the cursor leaves the current command line, the right prompt
-## is replaced by "prompt_rps1_final" if it has a non-empty value, or
-## otherwise, the right prompt vanishes if "prompt_rps1_transient" is
-## set to a non-empty value,
+## The following settings controls the right prompt. "prompt_rps1" specifies
+## the contents of the right prompt in the format of PS1.  When the cursor
+## leaves the current command line, the right prompt is replaced by
+## "prompt_rps1_final" if it has a non-empty value, or otherwise, the right
+## prompt vanishes if "prompt_rps1_transient" is set to a non-empty value,
 
 #bleopt prompt_rps1='\w'
 #bleopt prompt_rps1_final=
 #bleopt prompt_rps1_transient=''
 
 
-## The following settings specifies the content of terminal titles and
-## status lines.  "prompt_xterm_title" specifies the terminal title
-## which can be set by "OSC 0 ; ... BEL".  "prompt_screen_title" is
-## effective inside terminal multiplexers such as GNU screen and tmux
-## and specifies the window title of the terminal multiplexer which
-## can be set by "ESC k ... ST".  "prompt_status_line" is only
-## effective when terminfo entries "tsl" and "fsl" (or termcap entries
-## "ts" and "ds") are available, and specifies the content of the
-## status line which can be set by the terminfo entries.  When each
-## setting has non-empty value, the content of corresponding title or
-## status line is replaced just before PS1 is shown.
+## The following settings specifies the content of terminal titles and status
+## lines.  "prompt_xterm_title" specifies the terminal title which can be set
+## by "OSC 0 ; ... BEL".  "prompt_screen_title" is effective inside terminal
+## multiplexers such as GNU screen and tmux and specifies the window title of
+## the terminal multiplexer which can be set by "ESC k ... ST".
+## "prompt_status_line" is only effective when terminfo entries "tsl" and "fsl"
+## (or termcap entries "ts" and "ds") are available, and specifies the content
+## of the status line which can be set by the terminfo entries.  When each
+## setting has non-empty value, the content of corresponding title or status
+## line is replaced just before PS1 is shown.
 
 #bleopt prompt_xterm_title=
 #bleopt prompt_screen_title=
@@ -147,8 +154,8 @@
 
 
 ## "prompt_eol_mark" specifies the contents of the mark used to indicate the
-## command output is not ended with newlines. The value can contain ANSI
-## escape sequences.
+## command output is not ended with newlines. The value can contain ANSI escape
+## sequences.
 
 #bleopt prompt_eol_mark=$'\e[94m[ble: EOF]\e[m'
 
@@ -178,9 +185,9 @@
 
 
 ## The following setting controls the history sharing. If it has non-empty
-## value, the history sharing is enabled. With the history sharing, the
-## command history is shared with the other Bash ble.sh sessions with the
-## history sharing turned on.
+## value, the history sharing is enabled. With the history sharing, the command
+## history is shared with the other Bash ble.sh sessions with the history
+## sharing turned on.
 
 #bleopt history_share=
 
@@ -216,12 +223,11 @@
 #bleopt line_limit_length=10000
 
 
-## The following option specifies the maximal number of characters
-## which can be appended into the history.  When this option has a
-## positive value, commands with the length longer than the value is
-## not appended to the history.  When this option has a non-positive
-## value, commands are always appended to the history regardless of
-## their length.
+## The following option specifies the maximal number of characters which can be
+## appended into the history.  When this option has a positive value, commands
+## with the length longer than the value is not appended to the history.  When
+## this option has a non-positive value, commands are always appended to the
+## history regardless of their length.
 
 #bleopt history_limit_length=10000
 
@@ -283,11 +289,11 @@
 #bleopt default_keymap=auto
 
 
-## The following setting controls the treatment of isolated ESCs.
-## The value "esc" indicates that it should be treated as ESC.
-## The value "meta" indicates that it should be treated as Meta modifier.
-## The value "auto" indicates that the behavior will be switched to an
-## appropriate side of "esc" or "meta" depending on the current keymap.
+## The following setting controls the treatment of isolated ESCs.  The value
+## "esc" indicates that it should be treated as ESC.  The value "meta"
+## indicates that it should be treated as Meta modifier.  The value "auto"
+## indicates that the behavior will be switched to an appropriate side of "esc"
+## or "meta" depending on the current keymap.
 
 #bleopt decode_isolated_esc=esc
 
@@ -301,11 +307,11 @@
 ## The following settings setups the behavior for errors while user input
 ## decoding. "error_char" is the decoding error for the current character
 ## encoding. "error_cseq" indicates the unrecognized CSI sequences.
-## "error_kseq" indicates the unbound key sequences. "abell" and "vbell"
-## turn on/off the audible bells and visible bells on errors. If the variable
-## is empty the bells are turned off, or otherwise turned on. "discard"
-## controls if the chars/sequences will be discarded or processed in later
-## stage. If a non-empty value is given, chars/sequences are discarded.
+## "error_kseq" indicates the unbound key sequences. "abell" and "vbell" turn
+## on/off the audible bells and visible bells on errors. If the variable is
+## empty the bells are turned off, or otherwise turned on. "discard" controls
+## if the chars/sequences will be discarded or processed in later stage. If a
+## non-empty value is given, chars/sequences are discarded.
 
 #bleopt decode_error_char_abell=
 #bleopt decode_error_char_vbell=1
@@ -369,12 +375,11 @@
 #bleopt complete_auto_wordbreaks=$' \t\n/'
 
 
-## The setting "complete_auto_menu" controls the delay of "auto-menu".
-## When a non-empty string is set, auto-menu is enabled.  The string
-## is evaluated as an arithmetic expression to give the delay in
-## milliseconds.  ble.sh will automatically show the menu of
-## completions after the idle time (for which user input does not
-## arrive) reaches the delay.
+## The setting "complete_auto_menu" controls the delay of "auto-menu".  When a
+## non-empty string is set, auto-menu is enabled.  The string is evaluated as
+## an arithmetic expression to give the delay in milliseconds.  ble.sh will
+## automatically show the menu of completions after the idle time (for which
+## user input does not arrive) reaches the delay.
 
 #bleopt complete_auto_menu=500
 
@@ -389,13 +394,13 @@
 
 ## The following setting specifies the style of the menu to show completion
 ## candidates. The value "dense" and "dense-nowrap" shows candidates separated
-## by spaces. "dense-nowrap" is different from "dense" in the behavior that
-## it inserts a new line before the candidates that does not fit into the
+## by spaces. "dense-nowrap" is different from "dense" in the behavior that it
+## inserts a new line before the candidates that does not fit into the
 ## remaining part of the current line. The value "align" and "align-nowrap"
-## aligns the candidates. The value "linewise" shows a candidate per line.
-## The value "desc" and "desc-raw" shows a candidate per line with description
-## for each. "desc-raw" is different from "desc" in the behavior that it
-## interprets ANSI escape sequences in the descriptions.
+## aligns the candidates. The value "linewise" shows a candidate per line.  The
+## value "desc" and "desc-raw" shows a candidate per line with description for
+## each. "desc-raw" is different from "desc" in the behavior that it interprets
+## ANSI escape sequences in the descriptions.
 
 #bleopt complete_menu_style=align-nowrap
 
@@ -406,9 +411,9 @@
 #bleopt complete_menu_align=20
 
 
-## The following setting specifies the maximal height of the menu.
-## When this value is evaluated to be a positive integer, the maximal
-## line number of the menu is limited to that value.
+## The following setting specifies the maximal height of the menu.  When this
+## value is evaluated to be a positive integer, the maximal line number of the
+## menu is limited to that value.
 
 #bleopt complete_menu_maxlines=10
 
@@ -449,15 +454,14 @@
 # bleopt filename_ls_colors="$LS_COLORS"
 
 
-## The following settings controls enable or disable the syntax
-## highlighting.  When the setting "highlight_syntax" has a non-empty
-## value, the syntax highlighting is enabled.  When the setting
-## "highlight_filename" has a non-empty value, the highlighting based
-## on the filename and the command name is enabled during the process
-## of the syntax highlighting.  Similarly, when the setting
-## "highlight_variable" has a non-empty value, the highlighting based
-## on the variable type is enabled.  All of these settings have
-## non-empty values by default.
+## The following settings controls enable or disable the syntax highlighting.
+## When the setting "highlight_syntax" has a non-empty value, the syntax
+## highlighting is enabled.  When the setting "highlight_filename" has a
+## non-empty value, the highlighting based on the filename and the command name
+## is enabled during the process of the syntax highlighting.  Similarly, when
+## the setting "highlight_variable" has a non-empty value, the highlighting
+## based on the variable type is enabled.  All of these settings have non-empty
+## values by default.
 
 # bleopt highlight_syntax=
 # bleopt highlight_filename=
@@ -540,22 +544,20 @@ function blerc/vim-load-hook {
   # bleopt keymap_vi_mode_string_nmap:=$'\e[1m~\e[m'
 
 
-  ## The setting "keymap_vi_mode_update_prompt" specifies that the
-  ## prompt should be recalculated on the mode change.  When this
-  ## option has a non-empty value, the prompt will be recalculated.
+  ## The setting "keymap_vi_mode_update_prompt" specifies that the prompt
+  ## should be recalculated on the mode change.  When this option has a
+  ## non-empty value, the prompt will be recalculated.
 
   # bleopt keymap_vi_mode_update_prompt=
 
 
-  ## The option "keymap_vi_mode_show" controls if the mode line is
-  ## shown.  When this option has a non-empty value, the mode line is
-  ## shown.
+  ## The option "keymap_vi_mode_show" controls if the mode line is shown.  When
+  ## this option has a non-empty value, the mode line is shown.
 
   # bleopt keymap_vi_mode_show=1
 
 
-  ## The following settings specify the name of modes in the mode
-  ## line.
+  ## The following settings specify the name of modes in the mode line.
 
   # bleopt keymap_vi_mode_name_insert=INSERT
   # bleopt keymap_vi_mode_name_replace=REPLACE
@@ -566,8 +568,7 @@ function blerc/vim-load-hook {
   # bleopt keymap_vi_mode_name_blockwise=BLOCK
 
 
-  ## The following setting setups the keymap settings with Meta
-  ## modifiers
+  ## The following setting setups the keymap settings with Meta modifiers
 
   # ble-decode/keymap:vi_imap/define-meta-bindings
 

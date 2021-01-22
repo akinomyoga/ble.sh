@@ -96,6 +96,28 @@ function ble/edit/use-textmap {
   return 0
 }
 
+## オプション edit_line_type
+##   行頭・行末への移動などの操作を行う時の行の解釈を指定します。
+##   "logical" が設定されている時、論理行で解釈します。
+##   つまり編集文字列内の改行文字で区切られた行頭・行末を使用して操作を行います。
+##   "graphical" が設定されている時、表示行で解釈します。
+##   つまり端末内での現在行の行頭・行末を使用して操作を行います。
+bleopt/declare -n edit_line_type logical
+function bleopt/check:edit_line_type {
+  if [[ $value != logical && $value != graphical ]]; then
+    ble/util/print "bleopt edit_line_type: Unexpected value '$value'. 'logical' or 'graphical' is expected." >&2
+    return 1
+  fi
+}
+
+function ble/edit/performs-on-graphical-line {
+  [[ $edit_line_type == graphical ]] || return 1
+  ble/textmap#is-up-to-date && return 0
+  ((bleopt_edit_forced_textmap)) || return 1
+  ble/widget/.update-textmap
+  return 0
+}
+
 ## プロンプトオプション
 bleopt/declare -v prompt_ps1_final ''
 bleopt/declare -v prompt_ps1_transient ''
@@ -3889,7 +3911,7 @@ function ble/widget/backward-graphical-line {
 }
 
 function ble/widget/beginning-of-line {
-  if ble/edit/use-textmap; then
+  if ble/edit/performs-on-graphical-line; then
     ble/widget/beginning-of-graphical-line
   else
     ble/widget/beginning-of-logical-line
@@ -3905,28 +3927,28 @@ function ble/widget/non-space-beginning-of-line {
   return 0
 }
 function ble/widget/end-of-line {
-  if ble/edit/use-textmap; then
+  if ble/edit/performs-on-graphical-line; then
     ble/widget/end-of-graphical-line
   else
     ble/widget/end-of-logical-line
   fi
 }
 function ble/widget/kill-backward-line {
-  if ble/edit/use-textmap; then
+  if ble/edit/performs-on-graphical-line; then
     ble/widget/kill-backward-graphical-line
   else
     ble/widget/kill-backward-logical-line
   fi
 }
 function ble/widget/kill-forward-line {
-  if ble/edit/use-textmap; then
+  if ble/edit/performs-on-graphical-line; then
     ble/widget/kill-forward-graphical-line
   else
     ble/widget/kill-forward-logical-line
   fi
 }
 function ble/widget/kill-line {
-  if ble/edit/use-textmap; then
+  if ble/edit/performs-on-graphical-line; then
     ble/widget/kill-graphical-line
   else
     ble/widget/kill-logical-line
