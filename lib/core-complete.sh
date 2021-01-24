@@ -1308,7 +1308,7 @@ function ble/complete/source/test-limit {
   fi
 
   if [[ $limit && $1 -gt $limit ]]; then
-    complete_limit_reached=1
+    cand_limit_reached=1
     return 1
   else
     return 0
@@ -1428,6 +1428,8 @@ function ble/complete/cand/unpack {
 ##   @var[out] COMP_PREFIX
 ##     ble/complete/cand/yield で参照される一時変数。
 ##
+##   @var[in,out] cand_count cand_cand cand_word cand_pack
+##   @var[in,out] cand_limit_reached
 
 # source:wordlist
 #
@@ -3554,6 +3556,7 @@ function ble/complete/candidates/comp_type#read-rl-variables {
 ##   @var[out] COMP1 COMP2 COMPS COMPV
 ##   @var[out] comp_type comps_flags comps_fixed
 ##   @var[out] cand_*
+##   @var[in,out] cand_limit_reached
 function ble/complete/candidates/generate {
   local opts=$1
   local flag_force_fignore=
@@ -4071,6 +4074,7 @@ function ble/complete/menu/generate-candidates-from-menu {
 ## 関数 ble/complete/generate-candidates-from-opts opts
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
+##   @var[in,out] cand_limit_reached
 function ble/complete/generate-candidates-from-opts {
   local opts=$1
 
@@ -4800,17 +4804,17 @@ function ble/widget/complete {
   fi
   if ((cand_count==0)); then
     local bleopt_complete_menu_style=$bleopt_complete_menu_style # source 等に一次変更を認める。
-    local complete_limit_reached=
+    local cand_limit_reached=
     ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
     if ((ext==148)); then
       return 148
     fi
-    if [[ $complete_limit_reached ]]; then
+    if [[ $cand_limit_reached ]]; then
       [[ :$opts: != *:no-bell:* ]] &&
         ble/widget/.bell 'complete: limit reached'
     fi
     if ((ext!=0||cand_count==0)); then
-      [[ :$opts: != *:no-bell:* && -z $complete_limit_reached ]] &&
+      [[ :$opts: != *:no-bell:* && ! $cand_limit_reached ]] &&
         ble/widget/.bell 'complete: no completions'
       ble-edit/info/clear
       return 1
@@ -5362,6 +5366,7 @@ function ble/complete/auto-complete/.check-context {
   local comps_flags comps_fixed
   local cand_count
   local -a cand_cand cand_word cand_pack
+  local cand_limit_reached=
   ble/complete/candidates/generate; local ext=$?
   [[ $COMPV ]] || return 1
   ((ext)) && return "$ext"
