@@ -3721,6 +3721,22 @@ bash_tips
 
 2021-01-25
 
+  * edit ({kill,copy}-region-or): fix unconditionally combined kills/copies (reported by 3ximus) [#D1447]
+    https://github.com/akinomyoga/ble.sh/issues/83#issuecomment-766831785
+
+    C-w で無限に文字列が追加されてしまうという事を指摘された。
+
+    % 何故だろう。手許で確認した時には動いている様に見えたのに。と思ったが手許で
+    % 試した時は C-k や C-u を使っていたために気づかなかったという事の気がする。
+    % →と思ったら分かった。テストのために自分で ble-bind していたが、
+    %   その時に kill-region-or を使っていなかった。
+
+    kill-region-or または copy-region-or の中で
+    ble/decode/widget/call を用いて widget を呼び出した時に
+    LASTWIDGET が {kill,copy}-region-or に書き換わる為に、
+    無条件に前回のコマンドが切り取りコマンドであったと判定されてしまうのが原因。
+    取り敢えず修正した。ble/decode/widget/* の関数がまた増えてしまったが仕方がない。
+
   * mandb: man のオプションの情報が文字化けしている [#D1446]
 
     % キャッシュが全然使われていない。毎回再生成されている様に見える

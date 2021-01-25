@@ -2083,6 +2083,13 @@ function ble/decode/widget/call {
   _ble_decode_widget_last=$WIDGET
   builtin eval -- "$WIDGET"
 }
+## @fn ble/decode/widget/dispatch widget args...
+function ble/decode/widget/dispatch {
+  local ret; ble/string#quote-command "ble/widget/$@"
+  local WIDGET=$ret
+  _ble_decode_widget_last=$WIDGET
+  builtin eval -- "$WIDGET"
+}
 ## @fn ble/decode/widget/suppress-widget
 ##   __before_widget__ に登録された関数から呼び出します。
 ##   __before_widget__ 内で必要な処理を完了した時に、
@@ -2092,10 +2099,10 @@ function ble/decode/widget/suppress-widget {
   WIDGET=
 }
 
-## @fn ble/decode/widget/redispatch
+## @fn ble/decode/widget/redispatch-by-keys
 ##   @var[in] KEYS
 ##   @var[out] _ble_decode_keylog_depth
-function ble/decode/widget/redispatch {
+function ble/decode/widget/redispatch-by-keys {
   if ((_ble_decode_keylog_depth==1)); then
     # Note: 一旦 pop してから _ble_decode_keylog_depth=0
     #   で ble-decode-key を呼び出す事により再記録させる。

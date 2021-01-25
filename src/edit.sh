@@ -2492,7 +2492,7 @@ function ble/widget/do-lowercase-version {
   local flag=$((KEYS[0]&_ble_decode_MaskFlag)) char=$((KEYS[0]&_ble_decode_MaskChar))
   if ((65<=char&&char<=90)); then
     ble/decode/widget/skip-lastwidget
-    ble/decode/widget/redispatch $((flag|char+32)) "${KEYS[@]:1}"
+    ble/decode/widget/redispatch-by-keys $((flag|char+32)) "${KEYS[@]:1}"
   else
     return 125
   fi
@@ -2592,13 +2592,13 @@ function ble/widget/@marked {
     _ble_edit_mark=$_ble_edit_ind
     _ble_edit_mark_active=S
   fi
-  "ble/widget/$@"
+  ble/decode/widget/dispatch "$@"
 }
 function ble/widget/@nomarked {
   if [[ $_ble_edit_mark_active == S ]]; then
     _ble_edit_mark_active=
   fi
-  "ble/widget/$@"
+  ble/decode/widget/dispatch "$@"
 }
 
 ## @fn ble/widget/.process-range-argument P0 P1; p0 p1 len ?
@@ -2707,7 +2707,7 @@ function ble/widget/delete-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/delete-region
   else
-    "ble/widget/$@"
+    ble/decode/widget/dispatch "$@"
   fi
 }
 ## @widget kill-region-or widget
@@ -2718,8 +2718,7 @@ function ble/widget/kill-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/kill-region
   else
-    local -a subwidget; subwidget=("$@")
-    ble/decode/widget/call 'ble/widget/${subwidget[@]}' "${KEYS[@]}"
+    ble/decode/widget/dispatch "$@"
   fi
 }
 ## @widget copy-region-or widget
@@ -2730,8 +2729,7 @@ function ble/widget/copy-region-or {
   if [[ $_ble_edit_mark_active ]]; then
     ble/widget/copy-region
   else
-    local -a subwidget; subwidget=("$@")
-    ble/decode/widget/call 'ble/widget/${subwidget[@]}' "${KEYS[@]}"
+    ble/decode/widget/dispatch "$@"
   fi
 }
 
@@ -2808,7 +2806,7 @@ function ble/widget/yankpop/cancel {
 function ble/widget/yankpop/exit-default {
   ble/widget/yankpop/exit
   ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
 function ble-decode/keymap:yankpop/define {
   ble-decode/keymap:safe/bind-arg yankpop/exit-default
@@ -2995,7 +2993,7 @@ function ble/widget/lastarg/cancel {
 function ble/widget/lastarg/exit-default {
   ble/widget/lastarg/exit
   ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
 function ble/highlight/layer:region/mark:insert/get-face {
   face=region_insert
@@ -6357,7 +6355,7 @@ function ble/widget/isearch/cancel {
 function ble/widget/isearch/exit-default {
   ble/widget/isearch/exit-with-region
   ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
 function ble/widget/isearch/accept-line {
   if ((${#_ble_util_fiberchain[@]})); then
@@ -6688,7 +6686,7 @@ function ble/widget/nsearch/exit {
 function ble/widget/nsearch/exit-default {
   ble/widget/nsearch/exit
   ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
 function ble/widget/nsearch/cancel {
   if ((${#_ble_util_fiberchain[@]})); then

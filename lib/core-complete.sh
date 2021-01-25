@@ -5183,7 +5183,7 @@ function ble/widget/menu_complete/accept {
 function ble/widget/menu_complete/exit-default {
   ble/widget/menu_complete/exit
   ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
 
 function ble-decode/keymap:menu_complete/define {
@@ -5544,7 +5544,7 @@ function ble/widget/auto_complete/insert {
 function ble/widget/auto_complete/cancel-default {
   ble/widget/auto_complete/cancel
   ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
 function ble/widget/auto_complete/self-insert {
   local code=$((KEYS[0]&_ble_decode_MaskChar))
@@ -5607,7 +5607,7 @@ function ble/widget/auto_complete/self-insert {
   else
     ble/widget/auto_complete/cancel
     ble/decode/widget/skip-lastwidget
-    ble/decode/widget/redispatch "${KEYS[@]}"
+    ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
   fi
 }
 
@@ -6213,7 +6213,7 @@ function ble/widget/dabbrev/exit {
 function ble/widget/dabbrev/exit-default {
   ble/widget/dabbrev/exit
   ble/decode/widget/skip-lastwidget
-  ble/decode/widget/redispatch "${KEYS[@]}"
+  ble/decode/widget/redispatch-by-keys "${KEYS[@]}"
 }
 function ble/widget/dabbrev/accept-line {
   ble/widget/dabbrev/exit

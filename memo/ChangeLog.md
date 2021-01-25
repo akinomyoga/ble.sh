@@ -9,6 +9,8 @@
 - decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0f01cab
 - edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
+- edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
+  - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 0000000
 
 ## Changes
 
@@ -25,7 +27,6 @@
 - edit (command-help): work around the Bash bug that tempenv vanishes with `builtin eval` `#D1438` 8379d4a
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
 - edit (sword): fix definition of `sword` (shell words) `#D1441` f923388
-- edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
 - edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 09cf7f1
 - complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 0000000
 
