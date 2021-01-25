@@ -7,7 +7,8 @@
 
 - complete/mandb: support mandb in FreeBSD `#D1432` 6c54f79
 - decode (`ble-decode-kbd`): support various specifications of key sequences `#D1439` 0f01cab
-- edit: support new option `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
+- edit: support new options `bleopt edit_line_type={logical,graphical}` (motivated by 3ximus) `#D1442` 40ae242
+- complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
 
 ## Changes
 
@@ -25,11 +26,12 @@
 - global: suppress missing locale errors (reported by 3ximus) `#D1440` 4d3c595
 - edit (sword): fix definition of `sword` (shell words) `#D1441` f923388
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
-- edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 0000000
+- edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 09cf7f1
+- complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 0000000
 
 ## Internal changes and fixes
 
-- main: include hostname in local runtime directory `#D1444` 0000000
+- main: include hostname in local runtime directory `#D1444` 6494836
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

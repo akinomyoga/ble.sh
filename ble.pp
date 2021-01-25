@@ -720,7 +720,7 @@ ble/bin/awk.use-solaris-xpg4
 
 ble/bin/.freeze-utility-path "${_ble_init_posix_command_list[@]}" # <- this uses ble/util/assign.
 ble/bin/.freeze-utility-path man
-ble/bin/.freeze-utility-path nroff mandoc gzip bzcat lzcat xzcat # used by core-complete.sh
+ble/bin/.freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by core-complete.sh
 # Solaris: .freeze-utility-path で上書きされた awk を戻す
 ble/bin/awk.use-solaris-xpg4
 

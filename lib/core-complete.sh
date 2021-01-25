@@ -2565,7 +2565,12 @@ function ble/complete/mandb/search-file {
   return 1
 }
 
-if ble/is-function ble/bin/nroff; then
+if ble/is-function ble/bin/groff; then
+  _ble_complete_mandb_convert_type=man
+  function ble/complete/mandb/convert-mandoc {
+    ble/bin/groff -k -Tutf8 -man
+  }
+elif ble/is-function ble/bin/nroff; then
   _ble_complete_mandb_convert_type=man
   function ble/complete/mandb/convert-mandoc {
     ble/bin/nroff -Tutf8 -man

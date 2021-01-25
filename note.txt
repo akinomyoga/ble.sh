@@ -1202,7 +1202,7 @@ bash_tips
 
 2021-01-22
 
-  * syntax: 引数が沢山あると cygwin で滅茶苦茶遅い
+  * highlight: 引数が沢山あると cygwin で滅茶苦茶遅い
 
     これは様々な種類のパス名展開を試そうとするのが原因だろうか。
     command 名と同様にキャッシュする様にしても良いのではないだろうか。
@@ -1210,6 +1210,10 @@ bash_tips
     それよりは着色自体の高速化について考えた方が良いのではないか。
 
     * chat でも遅くなるかどうかについて確認する。
+      やはり微妙に遅い様な気がする。
+
+    何が遅くなっている原因化について確認する必要がある。
+    例えば fork している可能性はあるだろうか。
 
 2021-01-08
 
@@ -1415,19 +1419,6 @@ bash_tips
     同じ意味を持つ複数のオプションを分ける時に、
     分けてから sort するのではなくて sort してから分けるべきではないか。
     同じ意味を持つオプションは連続されて表示されて欲しい。
-
-2020-11-02
-
-  * done: source:file において substr を実装する。
-
-  * done: filter を自前で実行する場合には cand/yield 内部での filter は不要。
-    これは flag_source_filter=1 を設定して実行する事にした。
-
-  * patch: timjrd を README/acknowledgement に追加する。
-
-  * patch: complete_limit_reached にリークが存在している。
-    ちゃんと source:* や candidates/generate などのコメントに使う変数を記述して、
-    それから auto-complete の中で candidates/generate を呼び出す前に local で宣言する。
 
 2020-09-07
 
@@ -3729,6 +3720,35 @@ bash_tips
 -------------------------------------------------------------------------------
 
 2021-01-25
+
+  * mandb: man のオプションの情報が文字化けしている [#D1446]
+
+    % キャッシュが全然使われていない。毎回再生成されている様に見える
+    % と思ったが、これは単に core-complete.sh が更新されたから、
+    % それに応じて更新されているというだけの事だった。
+
+    データを再生成してもやはり同様に文字化けしてしまう。
+
+    調べると nroff は UTF-8 には対応していない様だ。groff は groff -k にて
+    UTF-8 に対応する様だ。更に -k に加えて -Tutf8 も必要だった。
+
+    groff ではなくて nroff の時にはどうするのかという問題は残るが、まあ groff
+    のないシステムでは UTF-8 の man は存在しないと思って良い気がする。なので取
+    り敢えずは気にしない事にする。
+
+  * 2020-11-02 complete: support complete_limit{,_auto} (contributed by timjrd) [#D1445]
+    https://github.com/akinomyoga/ble.sh/issues/64
+    https://github.com/akinomyoga/ble.sh/issues/65
+
+    これは時間はかかったが無事に merge まで行った。
+
+    * done: source:file において substr を実装する。
+    * done: filter を自前で実行する場合には cand/yield 内部での filter は不要。
+      これは flag_source_filter=1 を設定して実行する事にした。
+    * done: timjrd を README/acknowledgement に追加する。
+    * done: complete_limit_reached にリークが存在している。
+      ちゃんと source:* や candidates/generate などのコメントに使う変数を記述して、
+      それから auto-complete の中で candidates/generate を呼び出す前に local で宣言する。
 
   * main: nfs の上に _ble_base_run があると問題になるのでは [#D1444]
     取り敢えずローカルに runtime directory を作る時には $HOSTNAME も含める事にした。
