@@ -1297,6 +1297,24 @@ function ble/complete/action:variable/init-menu-item {
 #------------------------------------------------------------------------------
 # source
 
+## Test whether $1 exceeds $bleopt_complete_limit or
+## $bleopt_complete_limit_auto.
+##
+function ble/complete/source/test-limit {
+  if [[ :$comp_type: == *:auto:* && $bleopt_complete_limit_auto ]]; then
+    local limit=$bleopt_complete_limit_auto
+  else
+    local limit=$bleopt_complete_limit
+  fi
+
+  if [[ $limit && $1 -gt $limit ]]; then
+    cand_limit_reached=1
+    return 1
+  else
+    return 0
+  fi
+}
+
 ## 関数 ble/complete/source/reduce-compv-for-ambiguous-match
 ##   曖昧補完の為に擬似的な COMPV と COMPS を生成・設定します。
 ##   @var[in,out] COMPS COMPV
@@ -1410,6 +1428,8 @@ function ble/complete/cand/unpack {
 ##   @var[out] COMP_PREFIX
 ##     ble/complete/cand/yield で参照される一時変数。
 ##
+##   @var[in,out] cand_count cand_cand cand_word cand_pack
+##   @var[in,out] cand_limit_reached
 
 # source:wordlist
 #
@@ -1573,6 +1593,7 @@ function ble/complete/source:command/gen {
     local ret
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
     ble/complete/util/eval-pathname-expansion "$ret/"
+    ble/complete/source/test-limit ${#ret[@]} || return 1
     ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
   fi
 }
@@ -1605,6 +1626,8 @@ function ble/complete/source:command {
   ble/util/assign compgen 'ble/complete/source:command/gen "$arg"'
   [[ $compgen ]] || return 1
   ble/util/assign-array arr 'ble/bin/sort -u <<< "$compgen"' # 1 fork/exec
+
+  ble/complete/source/test-limit ${#arr[@]} || return 1
 
   for cand in "${arr[@]}"; do
     ((cand_iloop++%bleopt_complete_polling_cycle==0)) && ble/complete/check-cancel && return 148
@@ -1706,7 +1729,7 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
       pattern=$pattern$ret*
       for ((j=fixlen;j<${#name};j++)); do
         ble/string#quote-word "${name:j:1}"
-        if [[ $pattern == *\* ]]; then
+        if [[ $_ble_bash -lt 50000 && $pattern == *\* ]]; then
           # * を extglob *([!ch]) に変換 #D1389
           pattern=$pattern'([!'$ret'])'
         fi
@@ -1752,6 +1775,8 @@ function ble/complete/source:file/.impl {
   ble/complete/source:file/.construct-pathname-pattern "$COMPV"
   [[ :$opts: == *:directory:* ]] && ret=${ret%/}/
   ble/complete/util/eval-pathname-expansion "$ret"
+
+  ble/complete/source/test-limit ${#ret[@]} || return 1
 
   candidates=()
   local cand
@@ -2372,6 +2397,8 @@ function ble/complete/progcomp/.compgen {
     fi
   } 2>/dev/null
 
+  ble/complete/source/test-limit ${#arr[@]} || return 1
+
   local action=progcomp
   [[ $comp_opts == *:filenames:* && $COMPV == */* ]] && COMP_PREFIX=${COMPV%/*}/
 
@@ -2857,6 +2884,7 @@ function ble/complete/source:argument {
     local ret cand
     ble/complete/source:file/.construct-pathname-pattern "$value"
     ble/complete/util/eval-pathname-expansion "$ret"
+    ble/complete/source/test-limit ${#ret[@]} || return 1
     for cand in "${ret[@]}"; do
       [[ -e $cand || -h $cand ]] || continue
       [[ $FIGNORE ]] && ! ble/complete/.fignore/filter "$cand" && continue
@@ -2882,6 +2910,8 @@ function ble/complete/source/compgen {
   local compv_quoted="'${COMPV//$q/$Q}'"
   local arr
   ble/util/assign-array arr 'builtin compgen -A "$compgen_action" -- "$compv_quoted"'
+
+  ble/complete/source/test-limit ${#arr[@]} || return 1
 
   # 既に完全一致している場合は、より前の起点から補完させるために省略
   [[ $1 != '=' && ${#arr[@]} == 1 && $arr == "$COMPV" ]] && return 0
@@ -3526,6 +3556,7 @@ function ble/complete/candidates/comp_type#read-rl-variables {
 ##   @var[out] COMP1 COMP2 COMPS COMPV
 ##   @var[out] comp_type comps_flags comps_fixed
 ##   @var[out] cand_*
+##   @var[in,out] cand_limit_reached
 function ble/complete/candidates/generate {
   local opts=$1
   local flag_force_fignore=
@@ -4043,6 +4074,7 @@ function ble/complete/menu/generate-candidates-from-menu {
 ## 関数 ble/complete/generate-candidates-from-opts opts
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
+##   @var[in,out] cand_limit_reached
 function ble/complete/generate-candidates-from-opts {
   local opts=$1
 
@@ -4772,11 +4804,17 @@ function ble/widget/complete {
   fi
   if ((cand_count==0)); then
     local bleopt_complete_menu_style=$bleopt_complete_menu_style # source 等に一次変更を認める。
+    local cand_limit_reached=
     ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
     if ((ext==148)); then
       return 148
-    elif ((ext!=0||cand_count==0)); then
+    fi
+    if [[ $cand_limit_reached ]]; then
       [[ :$opts: != *:no-bell:* ]] &&
+        ble/widget/.bell 'complete: limit reached'
+    fi
+    if ((ext!=0||cand_count==0)); then
+      [[ :$opts: != *:no-bell:* && ! $cand_limit_reached ]] &&
         ble/widget/.bell 'complete: no completions'
       ble-edit/info/clear
       return 1
@@ -5328,6 +5366,7 @@ function ble/complete/auto-complete/.check-context {
   local comps_flags comps_fixed
   local cand_count
   local -a cand_cand cand_word cand_pack
+  local cand_limit_reached=
   ble/complete/candidates/generate; local ext=$?
   [[ $COMPV ]] || return 1
   ((ext)) && return "$ext"
@@ -6277,6 +6316,7 @@ function ble/cmdinfo/complete:cd/.impl {
     local ret cand
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
     ble/complete/util/eval-pathname-expansion "$name$ret"
+    ble/complete/source/test-limit ${#ret[@]} || return 1
     for cand in "${ret[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
         ble/complete/check-cancel && return 148
@@ -6305,6 +6345,7 @@ function ble/cmdinfo/complete:cd/.impl {
     local ret cand
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
     ble/complete/util/eval-pathname-expansion "${ret%/}/"
+    ble/complete/source/test-limit ${#ret[@]} || return 1
     for cand in "${ret[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
         ble/complete/check-cancel && return 148
