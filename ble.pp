@@ -353,12 +353,12 @@ function ble/base/initialize-runtime-directory {
   ble/base/initialize-runtime-directory/.tmp && return
 
   # fallback
-  local tmp_dir=$_ble_base/tmp
+  local tmp_dir=$_ble_base/run
   if [[ ! -d $tmp_dir ]]; then
     ble/bin/mkdir -p "$tmp_dir" || return
     ble/bin/chmod a+rwxt "$tmp_dir" || return
   fi
-  ble/base/.create-user-directory _ble_base_run "$tmp_dir/$UID"
+  ble/base/.create-user-directory _ble_base_run "$tmp_dir/${USER:-$UID}@$HOSTNAME"
 }
 if ! ble/base/initialize-runtime-directory; then
   echo "ble.sh: failed to initialize \$_ble_base_run." 1>&2
