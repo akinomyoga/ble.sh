@@ -6342,8 +6342,8 @@ function ble-decode/keymap:safe/bind-common {
   ble-decode/keymap:safe/.bind 'C-@'       'set-mark'
   ble-decode/keymap:safe/.bind 'M-SP'      'set-mark'
   ble-decode/keymap:safe/.bind 'C-x C-x'   'exchange-point-and-mark'
-  ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or uword'
-  ble-decode/keymap:safe/.bind 'M-w'       'copy-region-or uword'
+  ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or backward-uword'
+  ble-decode/keymap:safe/.bind 'M-w'       'copy-region-or backward-uword'
   ble-decode/keymap:safe/.bind 'C-y'       'yank'
 
   # spaces
