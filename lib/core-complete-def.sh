@@ -43,7 +43,7 @@ bleopt/declare -v complete_auto_wordbreaks $' \t\n'
 bleopt/declare -v complete_auto_menu ''
 bleopt/declare -v complete_allow_reduction ''
 
-## オプション complete_menu_style
+## @bleopt complete_menu_style
 ##   補完候補のリスト表示のスタイルを指定します。
 ##
 ##   dense

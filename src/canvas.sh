@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## オプション tab_width
+## @bleopt tab_width
 ##   タブの表示幅を指定します。
 ##
 ##   bleopt_tab_width= (既定)
@@ -32,7 +32,7 @@ function ble/arithmetic/sum {
 #   もしこれらの範囲の文字を幅1以外で表示する端末が有ればそれらのコードを実装し
 #   直す必要がある。その様な変な端末があるとは思えないが。
 
-## オプション char_width_mode
+## @bleopt char_width_mode
 ##   文字の表示幅の計算方法を指定します。
 ## bleopt_char_width_mode=east
 ##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 2 とします
@@ -58,12 +58,12 @@ function bleopt/check:char_width_mode {
   fi
 }
 
-## 関数 ble/util/c2w ccode
+## @fn ble/util/c2w ccode
 ##   @var[out] ret
 function ble/util/c2w {
   "ble/util/c2w+$bleopt_char_width_mode" "$1"
 }
-## 関数 ble/util/c2w-edit ccode
+## @fn ble/util/c2w-edit ccode
 ##   編集画面での表示上の文字幅を返します。
 ##   @var[out] ret
 function ble/util/c2w-edit {
@@ -78,7 +78,7 @@ function ble/util/c2w-edit {
     ble/util/c2w "$1"
   fi
 }
-# ## 関数 ble/util/c2w-edit ccode
+# ## @fn ble/util/c2w-edit ccode
 # ##   @var[out] ret
 # function ble/util/s2w {
 #   ble/util/s2c "${1:$2:1}"
@@ -87,13 +87,13 @@ function ble/util/c2w-edit {
 
 # ---- 文字種判定 ----
 
-## 配列 _ble_util_c2w_non_zenkaku
+## @arr _ble_util_c2w_non_zenkaku
 ##   飛び地になっている全角でない文字
 _ble_util_c2w_non_zenkaku=(
   [0x303F]=1 # 半角スペース
   [0x3030]=-2 [0x303d]=-2 [0x3297]=-2 [0x3299]=-2 # 絵文字
 )
-## 関数 ble/util/c2w/.determine-unambiguous
+## @fn ble/util/c2w/.determine-unambiguous
 ##   @var[out] ret
 function ble/util/c2w/.determine-unambiguous {
   local code=$1
@@ -122,7 +122,7 @@ function ble/util/c2w/.determine-unambiguous {
   fi
 }
 
-## 配列 _ble_util_c2w_emoji_wranges
+## @arr _ble_util_c2w_emoji_wranges
 ##
 ##   https://github.com/vim-jp/issues/issues/1086 にある表を
 ##   以下の関数で加工した。
@@ -159,7 +159,7 @@ _ble_util_c2w_emoji_wranges=(
   128752 128753 128755 128761 129296 129339 129340 129343 129344 129350
   129351 129357 129360 129388 129408 129432 129472 129473 129488 129511)
 
-## 関数 ble/util/c2w/is-emoji code
+## @fn ble/util/c2w/is-emoji code
 ##   @param[in] code
 function ble/util/c2w/is-emoji {
   local code=$1
@@ -178,7 +178,7 @@ function ble/util/c2w/is-emoji {
 
 # ---- char_width_mode ----
 
-## 関数 ble/util/c2w+emacs
+## @fn ble/util/c2w+emacs
 ##   emacs-24.2.1 default char-width-table
 ##   @var[out] ret
 _ble_util_c2w_emacs_wranges=(
@@ -253,7 +253,7 @@ function ble/util/c2w+emacs {
   return 0
 }
 
-## 関数 ble/util/c2w+west
+## @fn ble/util/c2w+west
 ##   @var[out] ret
 function ble/util/c2w+west {
   ble/util/c2w/.determine-unambiguous "$1"
@@ -266,7 +266,7 @@ function ble/util/c2w+west {
   fi
 }
 
-## 関数 ble/util/c2w+east
+## @fn ble/util/c2w+east
 ##   @var[out] ret
 _ble_util_c2w_east_wranges=(
  161 162 164 165 167 169 170 171 174 175 176 181 182 187 188 192 198 199 208 209
@@ -471,7 +471,7 @@ function ble/canvas/flush.draw {
   IFS= builtin eval 'ble/util/put "${DRAW_BUFF[*]}"'
   DRAW_BUFF=()
 }
-## 関数 ble/canvas/sflush.draw [-v var]
+## @fn ble/canvas/sflush.draw [-v var]
 ##   @param[in] var
 ##     出力先の変数名を指定します。
 ##   @var[out] !var
@@ -490,8 +490,8 @@ function ble/canvas/bflush.draw {
 # ble/canvas/trace.draw
 # ble/canvas/trace
 
-## 関数 ble/canvas/trace.draw text [opts]
-## 関数 ble/canvas/trace text [opts]
+## @fn ble/canvas/trace.draw text [opts]
+## @fn ble/canvas/trace text [opts]
 ##   制御シーケンスを含む文字列を出力すると共にカーソル位置の移動を計算します。
 ##
 ##   @param[in]   text
@@ -566,7 +566,7 @@ function ble/canvas/bflush.draw {
 ##     それ以外はカーソル位置の変更は行いません。
 ##
 
-## 関数 ble/canvas/trace/.goto x1 y1
+## @fn ble/canvas/trace/.goto x1 y1
 ##   @var[in,out] x y
 ##   Note: lc lg の面倒は呼び出し元で見る。
 function ble/canvas/trace/.goto {
@@ -652,7 +652,7 @@ function ble/canvas/trace/.NEL {
   ((y++,x=0,lc=32,lg=0))
   return 0
 }
-## 関数 ble/canvas/trace/.SGR
+## @fn ble/canvas/trace/.SGR
 ##   @param[in] param seq
 ##   @var[out] DRAW_BUFF
 ##   @var[in,out] g
@@ -1036,7 +1036,7 @@ function ble/canvas/trace {
 #------------------------------------------------------------------------------
 # ble/canvas/construct-text
 
-## 関数 ble/canvas/trace-text/.put-atomic nchar text
+## @fn ble/canvas/trace-text/.put-atomic nchar text
 ##   指定した文字列を out に追加しつつ、現在位置を更新します。
 ##   文字列は幅 1 の文字で構成されていると仮定します。
 ##   @var[in,out] x y out
@@ -1058,7 +1058,7 @@ function ble/canvas/trace-text/.put-simple {
     ble/canvas/trace-text/.put-nl-if-eol
   fi
 }
-## 関数 x y cols out ; ble/canvas/trace-text/.put-atomic ( w char )+ ; x y out
+## @fn x y cols out ; ble/canvas/trace-text/.put-atomic ( w char )+ ; x y out
 ##   指定した文字を out に追加しつつ、現在位置を更新します。
 function ble/canvas/trace-text/.put-atomic {
   local w=$1 c=$2
@@ -1093,7 +1093,7 @@ function ble/canvas/trace-text/.put-atomic {
     done
   fi
 }
-## 関数 x y cols out ; ble/canvas/trace-text/.put-nl-if-eol ; x y out
+## @fn x y cols out ; ble/canvas/trace-text/.put-nl-if-eol ; x y out
 ##   行末にいる場合次の行へ移動します。
 function ble/canvas/trace-text/.put-nl-if-eol {
   if ((x==cols)); then
@@ -1103,7 +1103,7 @@ function ble/canvas/trace-text/.put-nl-if-eol {
   fi
 }
 
-## 関数 ble/canvas/trace-text text opts
+## @fn ble/canvas/trace-text text opts
 ##   指定した文字列を表示する為の制御系列に変換します。
 ##   @param[in] text
 ##   @param[in] opts
@@ -1256,7 +1256,7 @@ function ble/textmap#restore {
   ble/util/restore-vars "$prefix" "${_ble_textmap_VARNAMES[@]}"
 }
 
-## 関数 ble/textmap#update/.wrap
+## @fn ble/textmap#update/.wrap
 ##   @var[in,out] cs x y changed
 function ble/textmap#update/.wrap {
   if [[ :$opts: == *:relative:* ]]; then
@@ -1270,7 +1270,7 @@ function ble/textmap#update/.wrap {
   ((y++,x=0))
 }
 
-## 関数 ble/textmap#update text [opts]
+## @fn ble/textmap#update text [opts]
 ##   @var[in    ] text
 ##   @var[in,out] x y
 ##   @var[in,out] _ble_textmap_*
@@ -1496,7 +1496,7 @@ function ble/textmap#update {
 function ble/textmap#is-up-to-date {
   ((_ble_textmap_dbeg==-1))
 }
-## 関数 ble/textmap#assert-up-to-date
+## @fn ble/textmap#assert-up-to-date
 ##   編集文字列の文字の配置情報が最新であることを確認します。
 ##   以下の変数を参照する場合に事前に呼び出します。
 ##
@@ -1507,7 +1507,7 @@ function ble/textmap#assert-up-to-date {
   ble/util/assert 'ble/textmap#is-up-to-date' 'dirty text positions'
 }
 
-## 関数 ble/textmap#getxy.out index
+## @fn ble/textmap#getxy.out index
 ##   index 番目の文字の出力開始位置を取得します。
 ##
 ##   @var[out] x y
@@ -1531,7 +1531,7 @@ function ble/textmap#getxy.out {
   ((${_prefix}y=_pos[1]))
 }
 
-## 関数 ble/textmap#getxy.cur index
+## @fn ble/textmap#getxy.cur index
 ##   index 番目の文字の表示開始位置を取得します。
 ##
 ##   @var[out] x y
@@ -1562,7 +1562,7 @@ function ble/textmap#getxy.cur {
   ((${_prefix}y=_pos[1]))
 }
 
-## 関数 ble/textmap#get-index-at [-v varname] x y
+## @fn ble/textmap#get-index-at [-v varname] x y
 ##   指定した位置 x y に対応する index を求めます。
 function ble/textmap#get-index-at {
   ble/textmap#assert-up-to-date
@@ -1589,8 +1589,8 @@ function ble/textmap#get-index-at {
   fi
 }
 
-## 関数 ble/textmap#hit/.getxy.out index
-## 関数 ble/textmap#hit/.getxy.cur index
+## @fn ble/textmap#hit/.getxy.out index
+## @fn ble/textmap#hit/.getxy.cur index
 ##   @var[in,out] pos
 function ble/textmap#hit/.getxy.out {
   set -- ${_ble_textmap_pos[$1]}
@@ -1606,7 +1606,7 @@ function ble/textmap#hit/.getxy.cur {
   fi
 }
 
-## 関数 ble/textmap#hit type xh yh [beg [end]]
+## @fn ble/textmap#hit type xh yh [beg [end]]
 ##   指定した座標に対応する境界 index を取得します。
 ##   指定した座標以前の最も近い境界を求めます。
 ##   探索範囲に対応する境界がないときは最初の境界 beg を返します。
@@ -1667,11 +1667,11 @@ function ble/textmap#hit {
 ##   現在の (描画の為に動き回る) カーソル位置を保持します。
 _ble_canvas_x=0 _ble_canvas_y=0
 
-## 関数 ble/canvas/goto.draw x y opts
+## @fn ble/canvas/goto.draw x y opts
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
-## @param[in] x y
-##   移動先のカーソルの座標を指定します。
-##   プロンプト原点が x=0 y=0 に対応します。
+##   @param[in] x y
+##     移動先のカーソルの座標を指定します。
+##     プロンプト原点が x=0 y=0 に対応します。
 function ble/canvas/goto.draw {
   local x=$1 y=$2 opts=$3
 
@@ -1701,10 +1701,10 @@ function ble/canvas/goto.draw {
 #------------------------------------------------------------------------------
 # ble/canvas/panel
 
-## 配列 _ble_canvas_panel_type
+## @arr _ble_canvas_panel_type
 ##   各パネルを管理する関数接頭辞を保持する。
 ##
-## 配列 _ble_canvas_panel_height
+## @arr _ble_canvas_panel_height
 ##   各パネルの高さを保持する。
 ##   現在 panel 0 が textarea で panel 2 が info に対応する。
 ##
@@ -1713,7 +1713,7 @@ function ble/canvas/goto.draw {
 _ble_canvas_panel_type=(ble/textarea/panel ble/textarea/panel ble-edit/info)
 _ble_canvas_panel_height=(1 0 0)
 
-## 関数 ble/canvas/panel/layout/.extract-heights
+## @fn ble/canvas/panel/layout/.extract-heights
 ##   @arr[out] mins maxs
 function ble/canvas/panel/layout/.extract-heights {
   local i n=${#_ble_canvas_panel_type[@]}
@@ -1725,7 +1725,7 @@ function ble/canvas/panel/layout/.extract-heights {
   done
 }
 
-## 関数 ble/canvas/panel/layout/.determine-heights
+## @fn ble/canvas/panel/layout/.determine-heights
 ##   最小高さ mins と希望高さ maxs から実際の高さ heights を決定します。
 ##   @var[in] lines
 ##   @arr[in] mins maxs
@@ -1780,7 +1780,7 @@ function ble/canvas/panel/layout/.determine-heights {
   fi
 }
 
-## 関数 ble/canvas/panel/layout/.get-available-height index
+## @fn ble/canvas/panel/layout/.get-available-height index
 ##   @var[out] ret
 function ble/canvas/panel/layout/.get-available-height {
   local index=$1
@@ -1816,7 +1816,7 @@ function ble/canvas/panel#reallocate-height.draw {
   done
 }
 
-## 関数 ble/canvas/panel#get-origin
+## @fn ble/canvas/panel#get-origin
 ##   @var[out] x y
 function ble/canvas/panel#get-origin {
   local ret index=$1 prefix=
@@ -1829,7 +1829,7 @@ function ble/canvas/panel#goto.draw {
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"
   ble/canvas/goto.draw "$x" $((ret+y)) "$opts"
 }
-## 関数 ble/canvas/panel#put.draw panel text x y
+## @fn ble/canvas/panel#put.draw panel text x y
 function ble/canvas/panel#put.draw {
   ble/canvas/put.draw "$2"
   ble/canvas/panel#report-cursor-position "$1" "$3" "$4"
@@ -1856,7 +1856,7 @@ function ble/canvas/panel#increase-total-height.draw {
   fi
 }
 
-## 関数 ble/canvas/panel#set-height.draw panel height opts
+## @fn ble/canvas/panel#set-height.draw panel height opts
 ##   @param[in] opts
 ##     shift ... 範囲の先頭で行を追加・削除します。
 function ble/canvas/panel#set-height.draw {

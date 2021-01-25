@@ -1,6 +1,6 @@
 #!/bin/bash
 
-## オプション history_limit_length
+## @bleopt history_limit_length
 ##   履歴に登録するコマンドの最大文字数を指定します。
 ##   この値を超える長さのコマンドは履歴に登録されません。
 bleopt/declare -v history_limit_length 10000
@@ -77,7 +77,7 @@ function ble/history:bash/clear-background-load {
   blehook/invoke history_reset_background
 }
 
-## 関数 ble/history:bash/load
+## @fn ble/history:bash/load
 if ((_ble_bash>=40000)); then
   # _ble_bash>=40000 で利用できる以下の機能に依存する
   #   ble/util/is-stdin-ready (via ble/util/idle/IS_IDLE)
@@ -87,7 +87,7 @@ if ((_ble_bash>=40000)); then
   _ble_history_load_bgpid=
 
   # history > tmp
-  ## 関数 ble/history:bash/load/.background-initialize
+  ## @fn ble/history:bash/load/.background-initialize
   ##   @var[in] arg_count
   function ble/history:bash/load/.background-initialize {
     if ble/builtin/history/is-empty; then
@@ -176,7 +176,7 @@ if ((_ble_bash>=40000)); then
     ble/bin/mv -f "$history_tmpfile.part" "$history_tmpfile"
   }
 
-  ## 関数 ble/history:bash/load opts
+  ## @fn ble/history:bash/load opts
   ##   @param[in] opts
   ##     async
   ##       非同期で読み取ります。
@@ -410,7 +410,7 @@ if ((_ble_bash>=30100)); then
   _ble_history_mlfix_resume=0
   _ble_history_mlfix_bgpid=
 
-  ## 関数 ble/history:bash/resolve-multiline/.awk reason
+  ## @fn ble/history:bash/resolve-multiline/.awk reason
   ##
   ##   @param[in] reason
   ##     呼び出しの用途を指定する文字列です。
@@ -585,7 +585,7 @@ if ((_ble_bash>=30100)); then
       }
     '
   }
-  ## 関数 ble/history:bash/resolve-multiline/.cleanup
+  ## @fn ble/history:bash/resolve-multiline/.cleanup
   ##   @var[in] TMPBASE
   function ble/history:bash/resolve-multiline/.cleanup {
     local file
@@ -609,7 +609,7 @@ if ((_ble_bash>=30100)); then
     ble/history:bash/resolve-multiline/.cleanup
   }
 
-  ## 関数 ble/history:bash/resolve-multiline opts
+  ## @fn ble/history:bash/resolve-multiline opts
   ##   @param[in] opts
   ##     async
   ##       非同期で読み取ります。
@@ -771,12 +771,12 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   ##
   ## 以下の関数は各ファイルに関して何処まで読み取ったかを記録します。
   ##
-  ## 関数 ble/builtin/history/.get-rskip file
+  ## @fn ble/builtin/history/.get-rskip file
   ##   @param[in] file
   ##   @var[out] rskip
-  ## 関数 ble/builtin/history/.set-rskip file value
+  ## @fn ble/builtin/history/.set-rskip file value
   ##   @param[in] file
-  ## 関数 ble/builtin/history/.add-rskip file delta
+  ## @fn ble/builtin/history/.add-rskip file delta
   ##   @param[in] file
   ##
   if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
@@ -828,7 +828,7 @@ if [[ ! ${_ble_builtin_history_initialized+set} ]]; then
   fi
 fi
 
-## 関数 ble/builtin/history/.initialize opts
+## @fn ble/builtin/history/.initialize opts
 ##   @param[in] opts
 ##     skip0 ... 履歴が一件も読み込まれていない時はスキップします。
 function ble/builtin/history/.initialize {
@@ -865,7 +865,7 @@ function ble/builtin/history/.initialize {
   ble/builtin/history/.set-rskip "$histfile" "$rskip"
   return 0
 }
-## 関数 ble/builtin/history/.check-uncontrolled-change
+## @fn ble/builtin/history/.check-uncontrolled-change
 ##   ble/builtin/history の管理外で履歴が読み込まれた時、
 ##   それを history -a の対象から除外する為に wskip を更新する。
 function ble/builtin/history/.check-uncontrolled-change {
@@ -875,7 +875,7 @@ function ble/builtin/history/.check-uncontrolled-change {
     _ble_builtin_history_prevmax=$max
   fi
 }
-## 関数 ble/builtin/history/.load-recent-entries count
+## @fn ble/builtin/history/.load-recent-entries count
 ##   history の最新 count 件を配列 _ble_history に読み込みます。
 function ble/builtin/history/.load-recent-entries {
   [[ $_ble_decode_bind_state == none ]] && return 0
@@ -903,7 +903,7 @@ function ble/builtin/history/.load-recent-entries {
   _ble_history_count=$ncount
   blehook/invoke history_insert "$ocount" "$delta"
 }
-## 関数 ble/builtin/history/.read file [skip [fetch]]
+## @fn ble/builtin/history/.read file [skip [fetch]]
 function ble/builtin/history/.read {
   local file=$1 skip=${2:-0} fetch=$3
   local -x histnew=$_ble_base_run/$$.history.new
@@ -932,7 +932,7 @@ function ble/builtin/history/.read {
     _ble_builtin_history_prevmax=$max
   fi
 }
-## 関数 ble/builtin/history/.write file [skip [opts]]
+## @fn ble/builtin/history/.write file [skip [opts]]
 function ble/builtin/history/.write {
   local -x file=$1 skip=${2:-0} opts=$3
   local -x histapp=$_ble_base_run/$$.history.app
@@ -1012,7 +1012,7 @@ function ble/builtin/history/.write {
   _ble_builtin_history_prevmax=$max
 }
 
-## 関数 ble/builtin/history/array#delete-hindex array_name index...
+## @fn ble/builtin/history/array#delete-hindex array_name index...
 ##   @param[in] index
 ##     昇順に並んでいる事と重複がない事を仮定する。
 function ble/builtin/history/array#delete-hindex {
@@ -1047,7 +1047,7 @@ function ble/builtin/history/array#delete-hindex {
     for i in "${!out[@]}"; do ARRAY[i]=${out[i]}; done'
   builtin eval -- "${script//ARRAY/$array_name}"
 }
-## 関数 ble/builtin/history/array#insert-range array_name beg len
+## @fn ble/builtin/history/array#insert-range array_name beg len
 function ble/builtin/history/array#insert-range {
   local array_name=$1 beg=$2 len=$3
   local script='
@@ -1073,7 +1073,7 @@ function ble/builtin/history/insert.hook {
   # Note: _ble_history, _ble_history_edit は別に更新される
   ble/builtin/history/array#insert-range _ble_history_dirt "$@"
 }
-## 関数 ble/builtin/history/option:c
+## @fn ble/builtin/history/option:c
 function ble/builtin/history/option:c {
   ble/builtin/history/.initialize skip0 || return "$?"
   builtin history -c
@@ -1093,7 +1093,7 @@ function ble/builtin/history/option:c {
     blehook/invoke history_clear
   fi
 }
-## 関数 ble/builtin/history/option:d index
+## @fn ble/builtin/history/option:d index
 function ble/builtin/history/option:d {
   ble/builtin/history/.initialize skip0 || return "$?"
   local rex='^(-?[0-9]+)-(-?[0-9]+)$'
@@ -1145,7 +1145,7 @@ function ble/builtin/history/option:d {
   local max; ble/builtin/history/.get-max
   _ble_builtin_history_prevmax=$max
 }
-## 関数 ble/builtin/history/option:a [filename]
+## @fn ble/builtin/history/option:a [filename]
 function ble/builtin/history/option:a {
   ble/builtin/history/.initialize skip0 || return "$?"
   local histfile=${HISTFILE:-$HOME/.bash_history}
@@ -1157,7 +1157,7 @@ function ble/builtin/history/option:a {
   ble/builtin/history/.write "$filename" "$_ble_builtin_history_wskip" append
   builtin history -a /dev/null # Bash 終了時に書き込まない
 }
-## 関数 ble/builtin/history/option:n [filename]
+## @fn ble/builtin/history/option:n [filename]
 function ble/builtin/history/option:n {
   # HISTFILE が更新されていなければスキップ
   local histfile=${HISTFILE:-$HOME/.bash_history}
@@ -1172,7 +1172,7 @@ function ble/builtin/history/option:n {
   local rskip; ble/builtin/history/.get-rskip "$filename"
   ble/builtin/history/.read "$filename" "$rskip"
 }
-## 関数 ble/builtin/history/option:w [filename]
+## @fn ble/builtin/history/option:w [filename]
 function ble/builtin/history/option:w {
   ble/builtin/history/.initialize skip0 || return "$?"
   local histfile=${HISTFILE:-$HOME/.bash_history}
@@ -1182,14 +1182,14 @@ function ble/builtin/history/option:w {
   ble/builtin/history/.write "$filename" 0
   builtin history -a /dev/null # Bash 終了時に書き込まない
 }
-## 関数 ble/builtin/history/option:r [filename]
+## @fn ble/builtin/history/option:r [filename]
 function ble/builtin/history/option:r {
   local histfile=${HISTFILE:-$HOME/.bash_history}
   local filename=${1:-$histfile}
   ble/builtin/history/.initialize
   ble/builtin/history/.read "$filename" 0
 }
-## 関数 ble/builtin/history/option:p
+## @fn ble/builtin/history/option:p
 ##   Workaround for bash-3.0 -- 5.0 bug
 ##   (See memo.txt #D0233, #D0801, #D1091)
 function ble/builtin/history/option:p {
@@ -1230,7 +1230,7 @@ function ble/builtin/history/option:p {
 
   builtin history -p -- "$@"
 }
-## 関数 ble/builtin/history/option:s
+## @fn ble/builtin/history/option:s
 function ble/builtin/history/option:s {
   ble/builtin/history/.initialize
   if [[ $_ble_decode_bind_state == none ]]; then
@@ -1495,7 +1495,7 @@ function ble/history/get-editted-entry {
   [[ $1 == -v ]] && { __var=$2; shift 2; }
   builtin eval "$__var=\${${_ble_history_prefix:-_ble}_history_edit[\$1]}"
 }
-## 関数 ble/history/set-editted-entry index str
+## @fn ble/history/set-editted-entry index str
 function ble/history/set-editted-entry {
   ble/history/initialize
   local index=$1 str=$2
@@ -1508,7 +1508,7 @@ function ble/history/set-editted-entry {
   builtin eval -- "${code//PREFIX/${_ble_history_prefix:-_ble}}"
 }
 
-## 関数 ble/history/.add-command-history command
+## @fn ble/history/.add-command-history command
 ## @var[in,out] HISTINDEX_NEXT
 ##   used by ble/widget/accept-and-next to get modified next-entry positions
 function ble/history/.add-command-history {
@@ -1570,9 +1570,9 @@ function ble/history/add {
 #------------------------------------------------------------------------------
 # ble/history/search                                            @history.search
 
-## 関数 ble/history/isearch-forward opts
-## 関数 ble/history/isearch-backward opts
-## 関数 ble/history/isearch-backward-blockwise opts
+## @fn ble/history/isearch-forward opts
+## @fn ble/history/isearch-backward opts
+## @fn ble/history/isearch-backward-blockwise opts
 ##
 ##   backward-search-history-blockwise does blockwise search
 ##   as a workaround for bash slow array access

@@ -268,7 +268,7 @@ ble/base/initialize-version-information
 function ble/util/put { builtin printf '%s' "$*"; }
 function ble/util/print { builtin printf '%s\n' "$*"; }
 
-## 関数 ble/bin/.default-utility-path commands...
+## @fn ble/bin/.default-utility-path commands...
 ##   取り敢えず ble/bin/* からコマンドを呼び出せる様にします。
 function ble/bin/.default-utility-path {
   local cmd
@@ -276,7 +276,7 @@ function ble/bin/.default-utility-path {
     builtin eval "function ble/bin/$cmd { command $cmd \"\$@\"; }"
   done
 }
-## 関数 ble/bin/.freeze-utility-path commands...
+## @fn ble/bin/.freeze-utility-path commands...
 ##   PATH が破壊された後でも ble が動作を続けられる様に、
 ##   現在の PATH で基本コマンドのパスを固定して ble/bin/* から使える様にする。
 ##
@@ -386,7 +386,7 @@ function ble/util/assign {
 }
 
 # readlink -f (taken from akinomyoga/mshex.git)
-## 関数 ble/util/readlink path
+## @fn ble/util/readlink path
 ##   @var[out] ret
 function ble/util/readlink {
   ret=
@@ -867,7 +867,7 @@ function ble/base/unload {
 blehook EXIT+=ble/base/unload
 
 _ble_base_attach_from_prompt=
-## 関数 ble/base/attach-from-PROMPT_COMMAND prompt_command lambda
+## @fn ble/base/attach-from-PROMPT_COMMAND prompt_command lambda
 function ble/base/attach-from-PROMPT_COMMAND {
 #%if measure_load_time
   echo "ble.sh: $EPOCHREALTIME start prompt-attach" >&2

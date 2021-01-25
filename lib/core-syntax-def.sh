@@ -45,15 +45,15 @@ function ble/syntax/initialize-vars {
 
 # 関数 ble/highlight/layer:syntax/* は import されるまではダミーの実装にする
 
-## 関数 ble/highlight/layer:syntax/update (暫定)
+## @fn ble/highlight/layer:syntax/update (暫定)
 ##   PREV_BUFF, PREV_UMIN, PREV_UMAX を変更せずにそのまま戻れば良い。
 function ble/highlight/layer:syntax/update { true; }
-## 関数 ble/highlight/layer:region/getg (暫定)
+## @fn ble/highlight/layer:region/getg (暫定)
 ##   g を設定せず戻ればそのまま上のレイヤーに問い合わせが行く。
 function ble/highlight/layer:syntax/getg { true; }
 
 
-## 関数 ble/syntax:bash/is-complete
+## @fn ble/syntax:bash/is-complete
 ##   sytax がロードされる迄は常に真値。
 function ble/syntax:bash/is-complete { true; }
 

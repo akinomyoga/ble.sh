@@ -82,7 +82,7 @@ _ble_measure_base_nestcost=0 # [nsec/10]
 _ble_measure_count=1 # 同じ倍率で _ble_measure_count 回計測して最小を取る。
 _ble_measure_threshold=100000 # 一回の計測が threshold [usec] 以上になるようにする
 
-## 関数 ble-measure/calibrate
+## @fn ble-measure/calibrate
 function ble-measure/calibrate.0 { local a; ble-measure a=1; }
 function ble-measure/calibrate.1 { ble-measure/calibrate.0; }
 function ble-measure/calibrate.2 { ble-measure/calibrate.1; }
@@ -113,7 +113,7 @@ function ble-measure/calibrate {
   _ble_measure_base_nestcost=$nest_cost
 }
 
-## 関数 ble-measure/.read-arguments args
+## @fn ble-measure/.read-arguments args
 ##   @var[out] flags
 ##   @var[out] command count
 function ble-measure/.read-arguments {
@@ -155,7 +155,7 @@ function ble-measure/.read-arguments {
   [[ $flags != *E* ]]
 }
 
-## 関数 ble-measure [-q|-ac COUNT] command
+## @fn ble-measure [-q|-ac COUNT] command
 ##   command を繰り返し実行する事によりその実行時間を計測します。
 ##   -q を指定した時、計測結果を出力しません。
 ##   -c COUNT を指定した時 COUNT 回計測して最小値を採用します。

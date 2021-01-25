@@ -26,7 +26,7 @@
 # @bind
 # @bind.bind
 
-## オプション edit_vbell
+## @bleopt edit_vbell
 ##   編集時の visible bell の有効・無効を設定します。
 ## bleopt_edit_vbell=1
 ##   有効です。
@@ -34,7 +34,7 @@
 ##   無効です。
 bleopt/declare -v edit_vbell ''
 
-## オプション edit_abell
+## @bleopt edit_abell
 ##   編集時の audible bell (BEL 文字出力) の有効・無効を設定します。
 ## bleopt_edit_abell=1
 ##   有効です。
@@ -42,7 +42,7 @@ bleopt/declare -v edit_vbell ''
 ##   無効です。
 bleopt/declare -v edit_abell 1
 
-## オプション history_lazyload
+## @bleopt history_lazyload
 ## bleopt_history_lazyload=1
 ##   ble-attach 後、初めて必要になった時に履歴の読込を行います。
 ## bleopt_history_lazyload=
@@ -52,7 +52,7 @@ bleopt/declare -v edit_abell 1
 ## このオプションの値に関係なく ble-attach の時に履歴の読み込みを行います。
 bleopt/declare -v history_lazyload 1
 
-## オプション delete_selection_mode
+## @bleopt delete_selection_mode
 ##   文字挿入時に選択範囲をどうするかについて設定します。
 ## bleopt_delete_selection_mode=1 (既定)
 ##   選択範囲の内容を新しい文字で置き換えます。
@@ -60,17 +60,17 @@ bleopt/declare -v history_lazyload 1
 ##   選択範囲を解除して現在位置に新しい文字を挿入します。
 bleopt/declare -v delete_selection_mode 1
 
-## オプション indent_offset
+## @bleopt indent_offset
 ##   シェルのインデント幅を指定します。既定では 4 です。
 bleopt/declare -n indent_offset 4
 
-## オプション indent_tabs
+## @bleopt indent_tabs
 ##   インデントにタブを使用するかどうかを指定します。
 ##   0 を指定するとインデントに空白だけを用います。
 ##   それ以外の場合はインデントにタブを使用します。
 bleopt/declare -n indent_tabs 1
 
-## オプション undo_point
+## @bleopt undo_point
 ##   undo/redo 実行直後のカーソル位置を設定します。
 ##
 ##   undo_point=beg
@@ -82,7 +82,7 @@ bleopt/declare -n indent_tabs 1
 ##
 bleopt/declare -v undo_point end
 
-## オプション edit_forced_textmap
+## @bleopt edit_forced_textmap
 ##   1 が設定されているとき、矩形選択に先立って配置計算を強制します。
 ##   0 が設定されているとき、配置情報があるときにそれを使い、
 ##   配置情報がないときは論理行・論理列による矩形選択にフォールバックします。
@@ -96,7 +96,7 @@ function ble/edit/use-textmap {
   return 0
 }
 
-## オプション edit_line_type
+## @bleopt edit_line_type
 ##   行頭・行末への移動などの操作を行う時の行の解釈を指定します。
 ##   "logical" が設定されている時、論理行で解釈します。
 ##   つまり編集文字列内の改行文字で区切られた行頭・行末を使用して操作を行います。
@@ -131,10 +131,10 @@ bleopt/declare -v prompt_status_line  ''
 bleopt/declare -o rps1 prompt_rps1
 bleopt/declare -o rps1_transient prompt_rps1_transient
 
-## オプション prompt_eol_mark
+## @bleopt prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
 
-## オプション internal_exec_type (内部使用)
+## @bleopt internal_exec_type (内部使用)
 ##   コマンドの実行の方法を指定します。
 ##
 ##   internal_exec_type=exec [廃止]
@@ -152,7 +152,7 @@ function bleopt/check:internal_exec_type {
   fi
 }
 
-## オプション internal_suppress_bash_output (内部使用)
+## @bleopt internal_suppress_bash_output (内部使用)
 ##   bash 自体の出力を抑制するかどうかを指定します。
 ## bleopt_internal_suppress_bash_output=1
 ##   抑制します。bash のエラーメッセージは visible-bell で表示します。
@@ -162,12 +162,12 @@ function bleopt/check:internal_exec_type {
 ##   bash-3 ではこの設定では C-d を捕捉できません。
 bleopt/declare -v internal_suppress_bash_output 1
 
-## オプション internal_ignoreeof_trap (内部使用)
+## @bleopt internal_ignoreeof_trap (内部使用)
 ##   bash-3.0 の時に使用します。C-d を捕捉するのに用いるメッセージです。
 ##   これは自分の bash の設定に合わせる必要があります。
 bleopt/declare -n internal_ignoreeof_trap 'Use "exit" to leave the shell.'
 
-## オプション allow_exit_with_jobs
+## @bleopt allow_exit_with_jobs
 ##   この変数に空文字列が設定されている時、
 ##   ジョブが残っている時には ble/widget/exit からシェルは終了しません。
 ##   この変数に空文字列以外が設定されている時、
@@ -178,29 +178,29 @@ bleopt/declare -n internal_ignoreeof_trap 'Use "exit" to leave the shell.'
 ##   既定値は空文字列です。
 bleopt/declare -v allow_exit_with_jobs ''
 
-## オプション history_share
+## @bleopt history_share
 ##   この変数に空文字列が設定されている時、履歴を共有します。
 bleopt/declare -v history_share ''
 
 
-## オプション accept_line_threshold
+## @bleopt accept_line_threshold
 ##   編集関数 accept-single-line-or-newline の単一行モードにおける振る舞いを制御します。
 ##   この変数が負の整数の時、常にコマンドを実行します。
 ##   この変数が 0 の時、ユーザの入力がある場合は改行を挿入して複数行モードに入ります。
 ##   正の整数 n の時、未処理のユーザ入力が n 以上の時に改行を挿入して複数行モードに入ります。
 bleopt/declare -v accept_line_threshold 5
 
-## オプション exec_errexit_mark
+## @bleopt exec_errexit_mark
 ##   終了ステータスが非零の時に表示するマークの書式を指定します。
 ##   この変数が空の時、終了ステータスは表示しません。
 bleopt/declare -v exec_errexit_mark $'\e[91m[ble: exit %d]\e[m'
 
-## オプション line_limit_length
+## @bleopt line_limit_length
 ##   一括挿入時のコマンドライン文字数の上限を指定します。
 ##   0以下の値は文字数に制限を与えない事を示します。
 bleopt/declare -v line_limit_length 10000
 
-## オプション line_limit_type
+## @bleopt line_limit_type
 ##   一括挿入で文字数を超過した時の動作を指定します。
 bleopt/declare -v line_limit_type none
 
@@ -283,7 +283,7 @@ function ble/prompt/initialize {
   fi
 }
 
-## 変数 _ble_edit_prompt
+## @var _ble_edit_prompt
 ##   構築した prompt の情報をキャッシュします。
 ##   @var _ble_edit_prompt[0]    version
 ##     prompt 情報を作成した時の _ble_edit_LINENO を表します。
@@ -310,7 +310,7 @@ _ble_prompt_xterm_title=()
 _ble_prompt_screen_title=()
 _ble_prompt_status_line=()
 
-## 関数 ble/prompt/.load
+## @fn ble/prompt/.load
 ##   @var[out] x y g
 ##   @var[out] lc lg
 ##   @var[out] ret
@@ -324,7 +324,7 @@ function ble/prompt/.load {
   ret=${_ble_edit_prompt[6]}
 }
 
-## 関数 ble/prompt/print text
+## @fn ble/prompt/print text
 ##   プロンプト構築中に呼び出す関数です。
 ##   指定された文字列を、後の評価に対するエスケープをして出力します。
 ##   @param[in] text
@@ -342,7 +342,7 @@ function ble/prompt/print {
   ble/canvas/put.draw "$text"
 }
 
-## 関数 ble/prompt/process-prompt-string prompt_string
+## @fn ble/prompt/process-prompt-string prompt_string
 ##   プロンプト構築中に呼び出す関数です。
 ##   指定した引数を PS1 と同様の形式と解釈して処理します。
 ##   @param[in] prompt_string
@@ -365,7 +365,7 @@ function ble/prompt/process-prompt-string {
     fi
   done
 }
-## 関数 ble/prompt/.process-backslash
+## @fn ble/prompt/.process-backslash
 ##   @var[in]     tail
 ##   @arr[in.out] DRAW_BUFF
 function ble/prompt/.process-backslash {
@@ -402,7 +402,7 @@ function ble/prompt/.process-backslash {
   fi
 }
 
-## 設定関数 ble/prompt/backslash:*
+## @fn[custom] ble/prompt/backslash:*
 ##   プロンプト PS1 内で使用するバックスラッシュシーケンスを定義します。
 ##   内部では ble/canvas/put.draw escaped_text もしくは
 ##   ble/prompt/print unescaped_text を用いて
@@ -557,7 +557,7 @@ function ble/prompt/backslash:q {
   return 0
 }
 
-## 関数 ble/prompt/.update-working-directory
+## @fn ble/prompt/.update-working-directory
 ##   @var[in,out] cache_wd
 function ble/prompt/.update-working-directory {
   [[ $cache_wd ]] && return 0
@@ -707,7 +707,7 @@ function ble/prompt/.escape {
   done
   ret=$out$nest
 }
-## 関数 ble/prompt/.get-keymap-for-current-mode
+## @fn ble/prompt/.get-keymap-for-current-mode
 ##   @var[out] keymap
 function ble/prompt/.get-keymap-for-current-mode {
   keymap=$_ble_decode_keymap
@@ -718,7 +718,7 @@ function ble/prompt/.get-keymap-for-current-mode {
     keymap=${_ble_decode_keymap_stack[index]}
   done
 }
-## 関数 ble/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0 trace_hash0]
+## @fn ble/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0 trace_hash0]
 ##   @var[out] val esc x y g lc lg trace_hash
 ##   @var[in,out] x1 x2 y1 y2
 ##     opts に measure-bbox を指定した時。
@@ -780,7 +780,7 @@ function ble/prompt/.instantiate {
     return 2
   fi
 }
-## 関数 ble/prompt/.instantiate-constrol-string name ps
+## @fn ble/prompt/.instantiate-constrol-string name ps
 ##   @var[in] version
 ##   @var[out] ret
 ##
@@ -819,7 +819,7 @@ function ble/prompt/update/.eval-prompt_command {
     ble/prompt/update/.eval-prompt_command.1 "$_command"
   done
 }
-## 関数 ble/prompt/update opts
+## @fn ble/prompt/update opts
 ##   _ble_edit_PS1 からプロンプトを構築します。
 ##   @param[in] opts
 ##     コロン区切りのオプションのリストです。
@@ -943,7 +943,7 @@ function ble/prompt/notify-readline-mode-change {
 #------------------------------------------------------------------------------
 # **** information pane ****                                         @line.info
 
-## 関数 ble-edit/info/.initialize-size
+## @fn ble-edit/info/.initialize-size
 ##   @var[out] cols lines
 function ble-edit/info/.initialize-size {
   local ret
@@ -962,7 +962,7 @@ function ble-edit/info#get-height {
   fi
 }
 
-## 関数 ble-edit/info/.construct-content type text
+## @fn ble-edit/info/.construct-content type text
 ##   @var[out] x y
 ##   @var[out] content
 function ble-edit/info/.construct-content {
@@ -1001,7 +1001,7 @@ function ble-edit/info/.clear-content {
   _ble_edit_info=(0 0 "")
 }
 
-## 関数 ble-edit/info/.render-content x y content
+## @fn ble-edit/info/.render-content x y content
 ##   @param[in] x y content
 function ble-edit/info/.render-content {
   local x=$1 y=$2 content=$3
@@ -1027,7 +1027,7 @@ function ble-edit/info/.render-content {
 _ble_edit_info_default=(0 0 "")
 _ble_edit_info_scene=default
 
-## 関数 ble-edit/info/show type text
+## @fn ble-edit/info/show type text
 ##
 ##   @param[in] type
 ##
@@ -1072,8 +1072,8 @@ function ble-edit/info/clear {
   ble-edit/info/default
 }
 
-## 関数 ble-edit/info/hide
-## 関数 ble-edit/info/reveal
+## @fn ble-edit/info/hide
+## @fn ble-edit/info/reveal
 ##
 ##   これらの関数は .newline 前後に一時的に info の表示を抑制するための関数である。
 ##   この関数の呼び出しの後に flush が入ることを想定して ble/util/buffer.flush は実行しない。
@@ -1200,7 +1200,7 @@ function ble-edit/content/reset-and-check-dirty {
   _ble_edit_str=$str
   ble-edit/content/.update-dirty-range "$dmin" "$dmax" "$dmax0" "$reason"
 }
-## 関数 ble-edit/content/replace-limited beg end insert opts
+## @fn ble-edit/content/replace-limited beg end insert opts
 ##   bleopt_line_limit_type の制限をかけて挿入を行います。
 ##   実際に挿入された文字列は insert に格納されます。
 ##
@@ -1268,7 +1268,7 @@ _ble_edit_dirty_syntax_end=0
 _ble_edit_dirty_syntax_end0=1
 
 _ble_edit_dirty_observer=()
-## 関数 ble-edit/content/.update-dirty-range beg end end0 [reason]
+## @fn ble-edit/content/.update-dirty-range beg end end0 [reason]
 ##  @param[in] beg end end0
 ##    変更範囲を指定します。
 ##  @param[in] reason
@@ -1293,19 +1293,19 @@ function ble-edit/content/update-syntax {
   fi
 }
 
-## 関数 ble-edit/content/bolp
+## @fn ble-edit/content/bolp
 ##   現在カーソルが行頭に位置しているかどうかを判定します。
 function ble-edit/content/eolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos==${#_ble_edit_str})) || [[ ${_ble_edit_str:pos:1} == $'\n' ]]
 }
-## 関数 ble-edit/content/bolp
+## @fn ble-edit/content/bolp
 ##   現在カーソルが行末に位置しているかどうかを判定します。
 function ble-edit/content/bolp {
   local pos=${1:-$_ble_edit_ind}
   ((pos<=0)) || [[ ${_ble_edit_str:pos-1:1} == $'\n' ]]
 }
-## 関数 ble-edit/content/find-logical-eol [index [offset]]
+## @fn ble-edit/content/find-logical-eol [index [offset]]
 ##   _ble_edit_str 内で位置 index から offset 行だけ次の行の終端位置を返します。
 ##
 ##   @var[out] ret
@@ -1338,7 +1338,7 @@ function ble-edit/content/find-logical-eol {
     return 0
   fi
 }
-## 関数 ble-edit/content/find-logical-bol [index [offset]]
+## @fn ble-edit/content/find-logical-bol [index [offset]]
 ##   _ble_edit_str 内で位置 index から offset 行だけ次の行の先頭位置を返します。
 ##
 ##   @var[out] ret
@@ -1369,7 +1369,7 @@ function ble-edit/content/find-logical-bol {
     return 0
   fi
 }
-## 関数 ble-edit/content/find-non-space index
+## @fn ble-edit/content/find-non-space index
 ##   指定した位置以降の最初の非空白文字を探します。
 ##   @param[in] index
 ##   @var[out] ret
@@ -1380,7 +1380,7 @@ function ble-edit/content/find-non-space {
 }
 
 
-## 関数 ble-edit/content/is-single-line
+## @fn ble-edit/content/is-single-line
 function ble-edit/content/is-single-line {
   [[ $_ble_edit_str != *$'\n'* ]]
 }
@@ -1399,7 +1399,7 @@ function ble-edit/content/is-single-line {
 ##     引数の入力が完了した事を示します。
 ##     次に来る数字は引数として解釈しません。
 
-## 関数 ble-edit/content/get-arg
+## @fn ble-edit/content/get-arg
 ##   @var[out] arg
 function ble-edit/content/get-arg {
   local default_value=$1
@@ -1478,7 +1478,7 @@ function ble/widget/universal-arg {
   ble-edit/content/toggle-arg
 }
 
-## 関数 ble-edit/content/prepend-kill-ring string kill_type
+## @fn ble-edit/content/prepend-kill-ring string kill_type
 function ble-edit/content/prepend-kill-ring {
   _ble_edit_kill_index=0
   local otext=${_ble_edit_kill_ring[0]-} ntext=$1
@@ -1502,7 +1502,7 @@ function ble-edit/content/prepend-kill-ring {
     _ble_edit_kill_type[0]=$otype
   fi
 }
-## 関数 ble-edit/content/append-kill-ring string kill_type
+## @fn ble-edit/content/append-kill-ring string kill_type
 function ble-edit/content/append-kill-ring {
   _ble_edit_kill_index=0
   local otext=${_ble_edit_kill_ring[0]-} ntext=$1
@@ -1527,7 +1527,7 @@ function ble-edit/content/append-kill-ring {
   fi
 }
 
-## 関数 ble-edit/content/push-kill-ring string kill_type opts
+## @fn ble-edit/content/push-kill-ring string kill_type opts
 function ble-edit/content/push-kill-ring {
   if ((${#_ble_edit_kill_ring[@]})) && [[ ${LASTWIDGET#ble/widget/} == kill-* || ${LASTWIDGET#ble/widget/} == copy-* ]]; then
     local name; ble/string#split-words name "${WIDGET#ble/widget/}"
@@ -1617,7 +1617,7 @@ function ble-edit/restore-READLINE {
   ble/variable#copy-state '_ble_edit_READLINE[3]' READLINE_MARK
 }
 
-## 関数 ble-edit/eval-IGNOREEOF
+## @fn ble-edit/eval-IGNOREEOF
 ##   @var[out] ret
 function ble-edit/eval-IGNOREEOF {
   local value=
@@ -1706,7 +1706,7 @@ _ble_textarea_VARNAMES=(
 
 _ble_textarea_local_VARNAMES=()
 
-## 関数 ble/textarea/panel#get-height
+## @fn ble/textarea/panel#get-height
 ##   @var[out] height
 function ble/textarea/panel#get-height {
   if [[ $1 == "$_ble_textarea_panel" ]]; then
@@ -1730,7 +1730,7 @@ function ble/textarea/panel#on-height-change {
 _ble_textarea_buffer=()
 _ble_textarea_bufferName=
 
-## 関数 lc lg; ble/textarea#update-text-buffer; cx cy lc lg
+## @fn lc lg; ble/textarea#update-text-buffer; cx cy lc lg
 ##
 ##   @param[in    ] text  編集文字列
 ##   @param[in    ] index カーソルの index
@@ -1817,7 +1817,7 @@ function ble/textarea#update-text-buffer {
     fi
   fi
 }
-## 関数 ble/textarea#slice-text-buffer [beg [end]]
+## @fn ble/textarea#slice-text-buffer [beg [end]]
 ##   @var[out] ret
 function ble/textarea#slice-text-buffer {
   ble/textmap#assert-up-to-date
@@ -1842,7 +1842,7 @@ function ble/textarea#slice-text-buffer {
 # 大域変数
 #
 
-## 配列 _ble_textarea_cur
+## @arr _ble_textarea_cur
 ##     キャレット位置 (ユーザに対して呈示するカーソル) と其処の文字の情報を保持します。
 ##   _ble_textarea_cur[0] x   キャレット描画位置の y 座標を保持します。
 ##   _ble_textarea_cur[1] y   キャレット描画位置の y 座標を保持します。
@@ -1864,7 +1864,7 @@ _ble_textarea_gendy=0
 # 表示関数
 #
 
-## 変数 _ble_textarea_invalidated
+## @var _ble_textarea_invalidated
 ##   完全再描画 (プロンプトも含めた) を要求されたことを記録します。
 ##   完全再描画の要求前に空文字列で、要求後に 1 の値を持ちます。
 _ble_textarea_invalidated=1
@@ -1877,7 +1877,7 @@ function ble/textarea#invalidate {
   fi
 }
 
-## 関数 ble/textarea#render/.erase-forward-line.draw opts
+## @fn ble/textarea#render/.erase-forward-line.draw opts
 ##   @var[in] x cols
 function ble/textarea#render/.erase-forward-line.draw {
   local eraser=$_ble_term_sgr0$_ble_term_el
@@ -1895,7 +1895,7 @@ function ble/textarea#render/.erase-forward-line.draw {
   ble/canvas/put.draw "$eraser"
 }
 
-## 関数 ble/textarea#render/.determine-scroll
+## @fn ble/textarea#render/.determine-scroll
 ##   新しい表示高さとスクロール位置を決定します。
 ##   ble/textarea#render から呼び出されることを想定します。
 ##
@@ -1947,7 +1947,7 @@ function ble/textarea#render/.determine-scroll {
     height=$nline
   fi
 }
-## 関数 ble/textarea#render/.perform-scroll new_scroll
+## @fn ble/textarea#render/.perform-scroll new_scroll
 ##
 ##   @var[out] DRAW_BUFF
 ##     スクロールを実行するシーケンスの出力先です。
@@ -2013,7 +2013,7 @@ function ble/textarea#render/.perform-scroll {
     ble/textarea#render/.show-scroll-at-first-line
   fi
 }
-## 関数 ble/textarea#render/.show-scroll-at-first-line
+## @fn ble/textarea#render/.show-scroll-at-first-line
 ##   スクロール時 "(line 3) ..." などの表示
 ##
 ##   @var[in] _ble_textarea_scroll
@@ -2031,7 +2031,7 @@ function ble/textarea#render/.show-scroll-at-first-line {
   fi
 }
 
-## 関数 ble/textarea#render/.erase-rprompt
+## @fn ble/textarea#render/.erase-rprompt
 ##   @var[in] cols
 ##     rps1 の幅の分だけ減少させた後の cols を指定します。
 function ble/textarea#render/.erase-rprompt {
@@ -2046,7 +2046,7 @@ function ble/textarea#render/.erase-rprompt {
   done
   ble/canvas/bflush.draw
 }
-## 関数 ble/textarea#render/.cleanup-trailing-spaces-after-newline
+## @fn ble/textarea#render/.cleanup-trailing-spaces-after-newline
 ##   rps1_transient の時に、次の行に行く前に行末の無駄な空白を削除します。
 ##   @var[in] text
 ##   @var[in] _ble_textmap_pos
@@ -2065,7 +2065,7 @@ function ble/textarea#render/.cleanup-trailing-spaces-after-newline {
   _ble_edit_rprompt_shown=
 }
 
-## 関数 ble/textarea#render/.show-prompt
+## @fn ble/textarea#render/.show-prompt
 function ble/textarea#render/.show-prompt {
   local esc=${_ble_edit_prompt[6]}
   esc=${_ble_prompt_xterm_title[6]}$esc
@@ -2077,7 +2077,7 @@ function ble/textarea#render/.show-prompt {
   ble/canvas/panel#put.draw "$_ble_textarea_panel" "$esc" "$prox" "$proy"
   _ble_edit_prompt_dirty=
 }
-## 関数 ble/textarea#render/.show-rprompt
+## @fn ble/textarea#render/.show-rprompt
 ##   @var[in] cols
 function ble/textarea#render/.show-rprompt {
   local rps1out=${_ble_edit_rprompt[6]}
@@ -2090,7 +2090,7 @@ function ble/textarea#render/.show-rprompt {
   _ble_edit_rprompt_shown=1
 }
 
-## 関数 ble/textarea#focus
+## @fn ble/textarea#focus
 ##   プロンプト・編集文字列の現在位置に端末のカーソルを移動します。
 function ble/textarea#focus {
   local -a DRAW_BUFF=()
@@ -2098,7 +2098,7 @@ function ble/textarea#focus {
   ble/canvas/bflush.draw
 }
 
-## 関数 ble/textarea#render opts
+## @fn ble/textarea#render opts
 ##   プロンプト・編集文字列の表示更新を ble/util/buffer に対して行う。
 ##   Post-condition: カーソル位置 (x y) = (_ble_textarea_cur[0] _ble_textarea_cur[1]) に移動する
 ##   Post-condition: 編集文字列部分の再描画を実行する
@@ -2353,7 +2353,7 @@ function ble/textarea#redraw {
   ble/textarea#render
 }
 
-## 配列 _ble_textarea_cache
+## @arr _ble_textarea_cache
 ##   現在表示している内容のキャッシュです。
 ##   ble/textarea#render で値が設定されます。
 ##   ble/textarea#redraw-cache はこの情報を元に再描画を行います。
@@ -2387,10 +2387,10 @@ function ble/textarea#redraw-cache {
   fi
 }
 
-## 関数 ble/textarea#adjust-for-bash-bind
+## @fn ble/textarea#adjust-for-bash-bind
 ##   プロンプト・編集文字列の表示位置修正を行う。
 ##
-## @remarks
+##   @remarks
 ##   この関数は bind -x される関数から呼び出される事を想定している。
 ##   通常のコマンドとして実行される関数から呼び出す事は想定していない。
 ##   内部で PS1= 等の設定を行うのでプロンプトの情報が失われる。
@@ -2601,15 +2601,15 @@ function ble/widget/@nomarked {
   "ble/widget/$@"
 }
 
-## 関数 ble/widget/.process-range-argument P0 P1; p0 p1 len ?
-## @param[in]  P0  範囲の端点を指定します。
-## @param[in]  P1  もう一つの範囲の端点を指定します。
-## @param[out] p0  範囲の開始点を返します。
-## @param[out] p1  範囲の終端点を返します。
-## @param[out] len 範囲の長さを返します。
-## @param[out] $?
-##   範囲が有限の長さを持つ場合に正常終了します。
-##   範囲が空の場合に 1 を返します。
+## @fn ble/widget/.process-range-argument P0 P1; p0 p1 len ?
+##   @param[in]  P0  範囲の端点を指定します。
+##   @param[in]  P1  もう一つの範囲の端点を指定します。
+##   @param[out] p0  範囲の開始点を返します。
+##   @param[out] p1  範囲の終端点を返します。
+##   @param[out] len 範囲の長さを返します。
+##   @param[out] $?
+##     範囲が有限の長さを持つ場合に正常終了します。
+##     範囲が空の場合に 1 を返します。
 function ble/widget/.process-range-argument {
   p0=$1 p1=$2 len=${#_ble_edit_str}
   local pt
@@ -2620,7 +2620,7 @@ function ble/widget/.process-range-argument {
     (len=p1-p0)>0
   ))
 }
-## 関数 ble/widget/.delete-range P0 P1 [opts]
+## @fn ble/widget/.delete-range P0 P1 [opts]
 function ble/widget/.delete-range {
   local p0 p1 len
   ble/widget/.process-range-argument "${@:1:2}" || return 1
@@ -2637,7 +2637,7 @@ function ble/widget/.delete-range {
   fi
   return 0
 }
-## 関数 ble/widget/.kill-range P0 P1 [opts [kill_type]]
+## @fn ble/widget/.kill-range P0 P1 [opts [kill_type]]
 function ble/widget/.kill-range {
   local p0 p1 len
   ble/widget/.process-range-argument "${@:1:2}" || return 1
@@ -2657,7 +2657,7 @@ function ble/widget/.kill-range {
   fi
   return 0
 }
-## 関数 ble/widget/.copy-range P0 P1 [opts [kill_type]]
+## @fn ble/widget/.copy-range P0 P1 [opts [kill_type]]
 function ble/widget/.copy-range {
   local p0 p1 len
   ble/widget/.process-range-argument "${@:1:2}" || return 1
@@ -2665,7 +2665,7 @@ function ble/widget/.copy-range {
   # copy
   ble-edit/content/push-kill-ring "${_ble_edit_str:p0:len}" "$4"
 }
-## 関数 ble/widget/.replace-range P0 P1 string
+## @fn ble/widget/.replace-range P0 P1 string
 function ble/widget/.replace-range {
   local p0 p1 len
   ble/widget/.process-range-argument "${@:1:2}"
@@ -2678,28 +2678,28 @@ function ble/widget/.replace-range {
       _ble_edit_mark>p0&&(_ble_edit_mark=p0)))
   return 0
 }
-## 関数 ble/widget/delete-region
+## @widget delete-region
 ##   領域を削除します。
 function ble/widget/delete-region {
   ble-edit/content/clear-arg
   ble/widget/.delete-range "$_ble_edit_mark" "$_ble_edit_ind"
   _ble_edit_mark_active=
 }
-## 関数 ble/widget/kill-region
+## @widget kill-region
 ##   領域を切り取ります。
 function ble/widget/kill-region {
   ble-edit/content/clear-arg
   ble/widget/.kill-range "$_ble_edit_mark" "$_ble_edit_ind"
   _ble_edit_mark_active=
 }
-## 関数 ble/widget/copy-region
+## @widget copy-region
 ##   領域を転写します。
 function ble/widget/copy-region {
   ble-edit/content/clear-arg
   ble/widget/.copy-range "$_ble_edit_mark" "$_ble_edit_ind"
   _ble_edit_mark_active=
 }
-## 関数 ble/widget/delete-region-or widget
+## @widget delete-region-or widget
 ##   mark が active の時に領域を削除します。
 ##   それ以外の時に編集関数 widget を実行します。
 ##   @param[in] widget
@@ -2710,7 +2710,7 @@ function ble/widget/delete-region-or {
     "ble/widget/$@"
   fi
 }
-## 関数 ble/widget/kill-region-or widget
+## @widget kill-region-or widget
 ##   mark が active の時に領域を切り取ります。
 ##   それ以外の時に編集関数 widget を実行します。
 ##   @param[in] widget
@@ -2722,7 +2722,7 @@ function ble/widget/kill-region-or {
     ble/decode/widget/call 'ble/widget/${subwidget[@]}' "${KEYS[@]}"
   fi
 }
-## 関数 ble/widget/copy-region-or widget
+## @widget copy-region-or widget
 ##   mark が active の時に領域を転写します。
 ##   それ以外の時に編集関数 widget を実行します。
 ##   @param[in] widget
@@ -2735,7 +2735,7 @@ function ble/widget/copy-region-or {
   fi
 }
 
-## 編集関数 ble/widget/yank
+## @widget yank
 function ble/widget/yank {
   local arg; ble-edit/content/get-arg 1
 
@@ -2881,7 +2881,7 @@ if [[ -c /dev/clipboard ]]; then
   }
 fi
 
-## 関数 ble/widget/insert-arg.impl beg end index delta nth
+## @fn ble/widget/insert-arg.impl beg end index delta nth
 ##   @param[in] beg end
 ##     置換範囲を指定します。
 ##   @param[in] index
@@ -3013,7 +3013,7 @@ function ble-decode/keymap:lastarg/define {
   ble-bind -f 'M-_'       'lastarg/next'
 }
 
-## 編集関数 self-insert
+## @widget self-insert
 ##   文字を挿入する。
 ##
 ##   @var[in] _ble_edit_arg
@@ -3537,7 +3537,7 @@ function ble/widget/character-search.hook {
   return 0
 }
 
-## 関数 ble/widget/.locate-forward-byte delta
+## @fn ble/widget/.locate-forward-byte delta
 ##   @param[in] delta
 ##   @var[in,out] index
 function ble/widget/.locate-forward-byte {
@@ -3659,7 +3659,7 @@ function ble/widget/end-of-logical-line {
   _ble_edit_ind=$ret
 }
 
-## 編集関数 ble/widget/kill-backward-logical-line
+## @widget kill-backward-logical-line
 ##
 ##   現在の行の行頭まで削除する。
 ##   既に行頭にいる場合には直前の改行を削除する。
@@ -3686,7 +3686,7 @@ function ble/widget/kill-backward-logical-line {
   fi
   ble/widget/.kill-range "$ret" "$_ble_edit_ind"
 }
-## 編集関数 ble/widget/kill-forward-logical-line
+## @widget kill-forward-logical-line
 ##
 ##   現在の行の行末まで削除する。
 ##   既に行末にいる場合は直後の改行を削除する。
@@ -3778,7 +3778,7 @@ function ble/widget/forward-history-line.impl {
   return 0
 }
 
-## 関数 ble/widget/forward-logical-line.impl arg opts
+## @fn ble/widget/forward-logical-line.impl arg opts
 ##
 ##   @param arg
 ##     移動量を表す整数を指定する。
@@ -3853,7 +3853,7 @@ function ble/widget/backward-logical-line {
   ble/widget/forward-logical-line.impl $((-arg)) "$opts"
 }
 
-## 関数 ble/keymap:emacs/find-graphical-eol [index [offset]]
+## @fn ble/keymap:emacs/find-graphical-eol [index [offset]]
 ##   @var[out] ret
 function ble/keymap:emacs/find-graphical-eol {
   local axis=${1:-$_ble_edit_ind} arg=${2:-0}
@@ -3883,7 +3883,7 @@ function ble/widget/end-of-graphical-line {
   _ble_edit_ind=$ret
 }
 
-## 編集関数 ble/widget/kill-backward-graphical-line
+## @widget kill-backward-graphical-line
 ##   現在の行の表示行頭まで削除する。
 ##   既に表示行頭にいる場合には直前の文字を削除する。
 ##   引数 arg を与えたときは arg 行前の表示行末まで削除する。
@@ -3901,7 +3901,7 @@ function ble/widget/kill-backward-graphical-line {
     ble/widget/.kill-range "$ret" "$_ble_edit_ind"
   fi
 }
-## 編集関数 ble/widget/kill-forward-graphical-line
+## @widget kill-forward-graphical-line
 ##   現在の行の表示行末まで削除する。
 ##   既に表示行末 (折り返し時は行の最後の文字の手前) にいる場合は直後の文字を削除する。
 ##   引数 arg を与えたときは arg 行後の表示行頭まで削除する。
@@ -3919,7 +3919,7 @@ function ble/widget/kill-forward-graphical-line {
   fi
   ble/widget/.kill-range "$_ble_edit_ind" "$index"
 }
-## 編集関数 ble/widget/kill-graphical-line
+## @widget kill-graphical-line
 ##   現在の表示行を削除する。
 function ble/widget/kill-graphical-line {
   ble/textmap#is-up-to-date || ble/widget/.update-textmap
@@ -4035,11 +4035,11 @@ function ble/widget/backward-line {
 # 
 # **** word location ****                                            @edit.word
 
-## 関数 ble/widget/word.setup-eword
-## 関数 ble/widget/word.setup-cword
-## 関数 ble/widget/word.setup-uword
-## 関数 ble/widget/word.setup-sword
-## 関数 ble/widget/word.setup-fword
+## @fn ble/widget/word.setup-eword
+## @fn ble/widget/word.setup-cword
+## @fn ble/widget/word.setup-uword
+## @fn ble/widget/word.setup-sword
+## @fn ble/widget/word.setup-fword
 ##   @var[out] WSET WSEP
 function ble/widget/word.setup-eword {
   WSET='a-zA-Z0-9'; WSEP="^$WSET"
@@ -4057,8 +4057,8 @@ function ble/widget/word.setup-fword {
   WSEP="/${IFS:-$' \t\n'}"; WSET="^$WSEP"
 }
 
-## 関数 ble/widget/word.skip-backward set
-## 関数 ble/widget/word.skip-forward set
+## @fn ble/widget/word.skip-backward set
+## @fn ble/widget/word.skip-forward set
 ##   @var[in,out] x
 function ble/widget/word.skip-backward {
   local set=$1 head=${_ble_edit_str::x}
@@ -4071,7 +4071,7 @@ function ble/widget/word.skip-forward {
   ((x+=${#tail},${#tail}))
 }
 
-## 関数 ble/widget/word.locate-backward x arg
+## @fn ble/widget/word.locate-backward x arg
 ##   左側の単語の範囲を特定します。
 ##   @param[in] x arg
 ##   @var[in] WSET WSEP
@@ -4088,7 +4088,7 @@ function ble/widget/word.locate-backward {
   done
   ble/widget/word.skip-backward "$WSET"; a=$x
 }
-## 関数 ble/widget/word.locate-forward x arg
+## @fn ble/widget/word.locate-forward x arg
 ##   右側の単語の範囲を特定します。
 ##   @param[in] x arg
 ##   @var[in] WSET WSEP
@@ -4106,9 +4106,9 @@ function ble/widget/word.locate-forward {
   ble/widget/word.skip-forward "$WSET"; u=$x
 }
 
-## 関数 ble/widget/word.forward-range arg
-## 関数 ble/widget/word.backward-range arg
-## 関数 ble/widget/word.current-range arg
+## @fn ble/widget/word.forward-range arg
+## @fn ble/widget/word.backward-range arg
+## @fn ble/widget/word.current-range arg
 ##   @var[in,out] x y
 function ble/widget/word.forward-range {
   local arg=$1; ((arg)) || arg=1
@@ -4140,7 +4140,7 @@ function ble/widget/word.current-range {
   return 0
 }
 
-## 関数 ble/widget/word.impl type direction operator
+## @fn ble/widget/word.impl type direction operator
 function ble/widget/word.impl {
   local operator=$1 direction=$2 wtype=$3
 
@@ -4225,7 +4225,7 @@ function ble/widget/transpose-words.impl {
   return 1
 }
 
-## 関数 ble/widget/filter-word.impl xword filter
+## @fn ble/widget/filter-word.impl xword filter
 ## keymap: safe vi_nmap
 function ble/widget/filter-word.impl {
   local xword=$1 filter=$2
@@ -4298,7 +4298,7 @@ function ble-edit/exec/.setexit {
   # $? 変数の設定
   return "$_ble_edit_exec_lastexit"
 }
-## 関数 ble-edit/exec/.adjust-eol
+## @fn ble-edit/exec/.adjust-eol
 ##   文末調整を行います。
 _ble_edit_exec_eol_mark=('' '' 0)
 function ble-edit/exec/.adjust-eol {
@@ -4385,7 +4385,7 @@ else
   _ble_edit_exec_BASH_REMATCH=()
   _ble_edit_exec_BASH_REMATCH_rex=none
 
-  ## 関数 ble-edit/exec/save-BASH_REMATCH/increase delta
+  ## @fn ble-edit/exec/save-BASH_REMATCH/increase delta
   ##   @param[in] delta
   ##   @var[in,out] i rex
   function ble-edit/exec/save-BASH_REMATCH/increase {
@@ -4551,14 +4551,14 @@ function ble/builtin/exit {
 
 function exit { ble/builtin/exit "$@"; }
 
-## 関数 _ble_edit_exec_lines= ble-edit/exec:$bleopt_internal_exec_type/process;
+## @fn ble-edit/exec:$bleopt_internal_exec_type/process
 ##   指定したコマンドを実行します。
-## @param[in,out] _ble_edit_exec_lines
-##   実行するコマンドの配列を指定します。実行したコマンドは削除するか空文字列を代入します。
-## @return
-##   戻り値が 0 の場合、終端 (ble-edit/bind/.tail) に対する処理も行われた事を意味します。
-##   つまり、そのまま ble-decode/.hook から抜ける事を期待します。
-##   それ以外の場合には終端処理をしていない事を表します。
+##   @param[in,out] _ble_edit_exec_lines
+##     実行するコマンドの配列を指定します。実行したコマンドは削除するか空文字列を代入します。
+##   @return
+##     戻り値が 0 の場合、終端 (ble-edit/bind/.tail) に対する処理も行われた事を意味します。
+##     つまり、そのまま ble-decode/.hook から抜ける事を期待します。
+##     それ以外の場合には終端処理をしていない事を表します。
 
 #--------------------------------------
 # bleopt_internal_exec_type = gexec
@@ -4661,8 +4661,8 @@ function ble-edit/exec:gexec/TERM/enter {
   fi
 }
 
-## 関数 ble-edit/exec:gexec/.begin
-## 関数 ble-edit/exec:gexec/.end
+## @fn ble-edit/exec:gexec/.begin
+## @fn ble-edit/exec:gexec/.end
 ##   端末や入出力などの設定をコマンド実行用に調整します。
 ##   また DEBUG や INT に対する trap の設定も行います。
 ##   DEBUG の設定の解除はトップレベルでないと実行できないので、
@@ -4832,7 +4832,7 @@ function ble-edit/exec:gexec/restore-state {
 : ${_ble_edit_lineno:=0}
 _ble_edit_line_opwd=
 
-## 関数 ble/widget/.insert-newline/trim-prompt
+## @fn ble/widget/.insert-newline/trim-prompt
 ##   @var[ref] DRAW_BUFF
 function ble/widget/.insert-newline/trim-prompt {
   local ps1f=$bleopt_prompt_ps1_final
@@ -4873,7 +4873,7 @@ function ble/widget/.insert-newline {
     ble/canvas/bflush.draw
     ble/util/joblist.bflush
   fi
-  
+
   # 描画領域情報の初期化
   ((_ble_edit_lineno++))
   _ble_edit_line_opwd=$PWD
@@ -4908,7 +4908,7 @@ function ble/widget/.newline/clear-content {
   _ble_edit_overwrite_mode=
 }
 
-## 関数 ble/widget/.newline opts
+## @fn ble/widget/.newline opts
 ##   @param[in] opts
 ##     コロン区切りのオプションです。
 ##     keep-info
@@ -5087,7 +5087,7 @@ function ble/widget/default/accept-single-line-or {
 function ble/widget/accept-single-line-or-newline {
   ble/widget/accept-single-line-or newline
 }
-## 関数 ble/widget/edit-and-execute-command.edit content opts
+## @fn ble/widget/edit-and-execute-command.edit content opts
 ##   @var[in] content
 ##   @var[in] opts
 ##   @var[out] ret
@@ -5235,7 +5235,7 @@ function ble/widget/shell-expand-line.initialize {
   _ble_edit_shell_expand_ExpandWtype[_ble_ctx_VALI]=1
   _ble_edit_shell_expand_ExpandWtype[_ble_ctx_CONDI]=1
 }
-## 関数 ble/widget/shell-expand-line.expand-word
+## @fn ble/widget/shell-expand-line.expand-word
 ##   @var[in] wtype
 ##   @var[out] ret flags
 function ble/widget/shell-expand-line.expand-word {
@@ -5303,7 +5303,7 @@ function ble/widget/shell-expand-line.proc {
   changed=1
   ble/widget/.replace-range "$wbegin" $((wbegin+wlen)) "$out"
 }
-## 関数 ble/widget/shell-expand-line opts
+## @widget shell-expand-line opts
 ##   @param[in] opts
 ##     コロン区切りのオプションです。
 ##     quote 直接実行した時と振る舞いが同じになる様に、
@@ -5383,7 +5383,7 @@ blehook history_delete+=ble-edit/undo/history-delete.hook
 blehook history_clear+=ble-edit/undo/history-clear.hook
 blehook history_insert+=ble-edit/undo/history-insert.hook
 
-## 関数 ble-edit/undo/.get-current-state
+## @fn ble-edit/undo/.get-current-state
 ##   @var[out] str ind
 function ble-edit/undo/.get-current-state {
   if ((_ble_edit_undo_index==0)); then
@@ -5679,7 +5679,7 @@ function ble/widget/history-end {
   fi
 }
 
-## 編集関数 history-expand-line
+## @widget history-expand-line
 ##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
 function ble/widget/history-expand-line {
   ble-edit/content/clear-arg
@@ -5697,7 +5697,7 @@ function ble/widget/history-and-alias-expand-line {
   ble/widget/history-expand-line
   ble/widget/alias-expand-line
 }
-## 編集関数 history-expand-backward-line
+## @widget history-expand-backward-line
 ##   @exit 展開が行われた時に成功します。それ以外の時に失敗します。
 function ble/widget/history-expand-backward-line {
   ble-edit/content/clear-arg
@@ -5714,7 +5714,7 @@ function ble/widget/history-expand-backward-line {
   _ble_edit_mark_active=
   return 0
 }
-## 編集関数 magic-space
+## @widget magic-space
 ##   履歴展開と静的略語展開を実行してから空白を挿入します。
 function ble/widget/magic-space {
   # keymap/vi.sh
@@ -5745,7 +5745,7 @@ function ble/widget/magic-space {
 
 function ble/highlight/layer:region/mark:search/get-face { face=region_match; }
 
-## 関数 ble-edit/isearch/search needle opts ; beg end
+## @fn ble-edit/isearch/search needle opts ; beg end
 ##   @param[in] needle
 ##
 ##   @param[in] opts
@@ -5899,7 +5899,7 @@ function ble-edit/isearch/search {
   fi
   return 1
 }
-## 関数 ble-edit/isearch/.shift-backward-references
+## @fn ble-edit/isearch/.shift-backward-references
 ##   @var[in,out] needle
 ##     処理する正規表現を指定します。
 ##     後方参照をおきかえた正規表現を返します。
@@ -5923,25 +5923,25 @@ function ble-edit/isearch/.shift-backward-references {
 #------------------------------------------------------------------------------
 # **** incremental search ****                                 @history.isearch
 
-## 変数 _ble_edit_isearch_str
+## @var _ble_edit_isearch_str
 ##   一致した文字列
-## 変数 _ble_edit_isearch_dir
+## @var _ble_edit_isearch_dir
 ##   現在・直前の検索方法
-## 配列 _ble_edit_isearch_arr[]
+## @arr _ble_edit_isearch_arr[]
 ##   インクリメンタル検索の過程を記録する。
 ##   各要素は ind:dir:beg:end:needle の形式をしている。
 ##   ind は履歴項目の番号を表す。dir は履歴検索の方向を表す。
 ##   beg, end はそれぞれ一致開始位置と終了位置を表す。
 ##   丁度 _ble_edit_ind 及び _ble_edit_mark に対応する。
 ##   needle は検索に使用した文字列を表す。
-## 変数 _ble_edit_isearch_old
+## @var _ble_edit_isearch_old
 ##   前回の検索に使用した文字列
 _ble_edit_isearch_str=
 _ble_edit_isearch_dir=-
 _ble_edit_isearch_arr=()
 _ble_edit_isearch_old=
 
-## 関数 ble-edit/isearch/status/append-progress-bar pos count
+## @fn ble-edit/isearch/status/append-progress-bar pos count
 ##   @var[in,out] text
 function ble-edit/isearch/status/append-progress-bar {
   ble/util/is-unicode-output || return 1
@@ -5951,7 +5951,7 @@ function ble-edit/isearch/status/append-progress-bar {
   text=$text$' \e[1;38;5;69;48;5;253m'$ret$'\e[m '
 }
 
-## 関数 ble-edit/isearch/.show-status-with-progress.fib [pos]
+## @fn ble-edit/isearch/.show-status-with-progress.fib [pos]
 ##   @param[in,opt] pos
 ##     検索の途中の時に現在の検索位置を指定します。
 ##     検索の進行状況を表示します。
@@ -5990,7 +5990,7 @@ function ble-edit/isearch/.show-status-with-progress.fib {
   ble-edit/info/show ansi "$text"
 }
 
-## 関数 ble-edit/isearch/.show-status.fib
+## @fn ble-edit/isearch/.show-status.fib
 ##   @var[in] fib_ntask
 function ble-edit/isearch/.show-status.fib {
   ble-edit/isearch/.show-status-with-progress.fib
@@ -6021,7 +6021,7 @@ function ble-edit/isearch/.set-region {
     _ble_edit_mark_active=
   fi
 }
-## 関数 ble-edit/isearch/.push-isearch-array
+## @fn ble-edit/isearch/.push-isearch-array
 ##   現在の isearch の情報を配列 _ble_edit_isearch_arr に待避する。
 ##
 ##   これから登録しようとしている情報が現在のものと同じならば何もしない。
@@ -6053,7 +6053,7 @@ function ble-edit/isearch/.push-isearch-array {
   # [... A | B] -> C と来た時 (B を _ble_edit_isearch_arr に移動) [... A B | C] になる。
   ble/array#push _ble_edit_isearch_arr "$oind:$_ble_edit_isearch_dir:$ohash"
 }
-## 関数 ble-edit/isearch/.goto-match.fib
+## @fn ble-edit/isearch/.goto-match.fib
 ##   @var[in] fib_ntask
 function ble-edit/isearch/.goto-match.fib {
   local ind=$1 beg=$2 end=$3 needle=$4
@@ -6075,7 +6075,7 @@ function ble-edit/isearch/.goto-match.fib {
 
 # ---- isearch fibers ---------------------------------------------------------
 
-## 関数 ble-edit/isearch/.next.fib opts [needle]
+## @fn ble-edit/isearch/.next.fib opts [needle]
 ##   @param[in] opts
 ##     append
 ##     forward
@@ -6109,7 +6109,7 @@ function ble-edit/isearch/.next.fib {
   ble-edit/isearch/.next-history.fib "$opts" "$needle"
 }
 
-## 関数 ble-edit/isearch/.next-history.fib [opts [needle]]
+## @fn ble-edit/isearch/.next-history.fib [opts [needle]]
 ##
 ##   @param[in,opt] opts
 ##     コロン区切りのリストです。
@@ -6372,7 +6372,7 @@ function ble/widget/isearch/exit-delete-forward-char {
   ble/widget/delete-forward-char
 }
 
-## 関数 ble/widget/history-isearch.impl opts
+## @fn ble/widget/history-isearch.impl opts
 function ble/widget/history-isearch.impl {
   local opts=$1
   ble-edit/content/clear-arg
@@ -6448,7 +6448,7 @@ _ble_edit_nsearch_stack=()
 _ble_edit_nsearch_match=
 _ble_edit_nsearch_index=
 
-## 関数 ble-edit/nsearch/.show-status.fib [pos_progress]
+## @fn ble-edit/nsearch/.show-status.fib [pos_progress]
 ##   @var[in] fib_ntask
 function ble-edit/nsearch/.show-status.fib {
   local ll rr
@@ -7358,7 +7358,7 @@ function ble/builtin/read/.impl {
   return "$ext"
 }
 
-## 関数 read [-ers] [-adinNptu arg] [name...]
+## @fn read [-ers] [-adinNptu arg] [name...]
 ##
 ##   ble.sh の所為で builtin read -e が全く動かなくなるので、
 ##   read -e を ble.sh の枠組みで再実装する。
@@ -7381,8 +7381,8 @@ function read { ble/builtin/read "$@"; }
 #------------------------------------------------------------------------------
 # **** command-help ****                                          @command-help
 
-## 設定関数 ble/cmdinfo/help
-## 設定関数 ble/cmdinfo/help:$command
+## @fn[custom] ble/cmdinfo/help
+## @fn[custom] ble/cmdinfo/help:$command
 ##
 ##   ヘルプを表示するシェル関数を定義します。
 ##   ble/widget/command-help から呼び出されます。
@@ -7401,7 +7401,7 @@ function read { ble/builtin/read "$@"; }
 ##     それ以外の時は 0 以外を返します。
 ##
 
-## 関数 ble/widget/command-help/.read-man
+## @fn ble/widget/command-help/.read-man
 ##   @var[out] man_content
 function ble/widget/command-help/.read-man {
   local pager="sh -c 'cat >| \"\$BLETMPFILE\"'" tmp=$_ble_util_assign_base
@@ -7455,7 +7455,7 @@ function ble/widget/command-help/.locate-in-man-bash {
   local manpager="$pager -r +'/$rex_ext$cr$((iline-1))g'"
   builtin eval -- "$manpager" <<< "$man_content" # 1 fork
 }
-## 関数 ble/widget/command-help.core
+## @fn ble/widget/command-help.core
 ##   @var[in] type
 ##   @var[in] command
 ##   @var[in] comp_cword comp_words comp_line comp_point
@@ -7494,7 +7494,7 @@ function ble/widget/command-help.core {
   return 1
 }
 
-## 関数 ble/widget/command-help/type.resolve-alias
+## @fn ble/widget/command-help/type.resolve-alias
 ##   サブシェルで実行してエイリアスを解決する。
 ##   解決のために unalias を使用する為にサブシェルで実行する。
 ##
@@ -7546,7 +7546,7 @@ function ble/widget/command-help/.type/.resolve-alias {
   return 0
 } 2>/dev/null
 
-## 関数 ble/widget/command-help/.type
+## @fn ble/widget/command-help/.type
 ##   @var[out] type command
 function ble/widget/command-help/.type {
   local literal=$1
@@ -7631,7 +7631,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     [[ -f $_ble_edit_io_fname2 ]] && : >| "$_ble_edit_io_fname2"
   }
 
-  ## 関数 ble-edit/io/check-stderr
+  ## @fn ble-edit/io/check-stderr
   ##   bash が stderr にエラーを出力したかチェックし表示する。
   function ble-edit/io/check-stderr {
     local file=${1:-$_ble_edit_io_fname2}
@@ -7755,7 +7755,7 @@ function ble-edit/bind/.exit-TRAPRTMAX {
   builtin exit 0
 }
 
-## 関数 ble-edit/bind/.check-detach
+## @fn ble-edit/bind/.check-detach
 ##
 ##   @exit detach した場合に 0 を返します。それ以外の場合に 1 を返します。
 ##
@@ -7952,11 +7952,11 @@ function ble/widget/execute-command {
   ble-edit/exec/register "$BASH_COMMAND"
 }
 
-## 関数 ble/widget/.SHELL_COMMAND command
+## @fn ble/widget/.SHELL_COMMAND command
 ##   ble-bind -c で登録されたコマンドを処理します。
 function ble/widget/.SHELL_COMMAND { ble/widget/execute-command "$@"; }
 
-## 関数 ble/widget/.EDIT_COMMAND command
+## @fn ble/widget/.EDIT_COMMAND command
 ##   ble-bind -x で登録されたコマンドを処理します。
 function ble/widget/.EDIT_COMMAND {
   local command=$1

@@ -90,7 +90,7 @@ function ble-color-show {
   done
 }
 
-## 関数 ble/color/g2sgr g
+## @fn ble/color/g2sgr g
 ##   @param[in] g
 ##   @var[out] ret
 _ble_color_g2sgr=()
@@ -211,7 +211,7 @@ function ble/color/g#setbg {
     ble/color/g#setbg-index "$color"
   fi
 }
-## 関数 ble/color/g#append g2
+## @fn ble/color/g#append g2
 ##   g に描画属性 g2 を上書きします。
 ##   @param[in] g2
 ##   @var[in,out] g
@@ -225,7 +225,7 @@ function ble/color/g#append {
 }
 
 
-## 関数 ble/color/gspec2g gspec
+## @fn ble/color/gspec2g gspec
 ##   @param[in] gspec
 ##   @var[out] ret
 function ble/color/gspec2g {
@@ -252,7 +252,7 @@ function ble/color/gspec2g {
   done
   ret=$g
 }
-## 関数 ble/color/g2gspec g
+## @fn ble/color/g2gspec g
 ##   @var[out] ret
 function ble/color/g2gspec {
   local g=$1 gspec=
@@ -285,7 +285,7 @@ function ble/color/g2gspec {
   ret=${gspec:-none}
 }
 
-## 関数 ble/color/gspec2sgr gspec
+## @fn ble/color/gspec2sgr gspec
 ##   @param[in] gspec
 ##   @var[out] ret
 function ble/color/gspec2sgr {
@@ -363,7 +363,7 @@ function ble/color/.hsb2color {
   local Min=$((B-Range))
   ble/color/.hxx2color "$H" "$Min" "$Range" "$Unit"
 }
-## 関数 ble/color/.name2color colorName
+## @fn ble/color/.name2color colorName
 ##   @var[out] ret
 function ble/color/.name2color {
   local colorName=$1
@@ -463,7 +463,7 @@ function ble/color/.color2name {
   esac
 }
 
-## 関数 ble/color/convert-color88-to-color256 color
+## @fn ble/color/convert-color88-to-color256 color
 ##   @param[in] color
 ##   @var[out] ret
 function ble/color/convert-color88-to-color256 {
@@ -481,7 +481,7 @@ function ble/color/convert-color88-to-color256 {
   fi
   ret=$color
 }
-## 関数 ble/color/convert-color256-to-color88 color
+## @fn ble/color/convert-color256-to-color88 color
 ##   @param[in] color
 ##   @var[out] ret
 function ble/color/convert-color256-to-color88 {
@@ -499,7 +499,7 @@ function ble/color/convert-color256-to-color88 {
   fi
   ret=$color
 }
-## 関数 ble/color/convert-rgb24-to-color256 R G B
+## @fn ble/color/convert-rgb24-to-color256 R G B
 ##   @param[in] R G B
 ##     0..255 の階調値
 ##   @var[out] ret
@@ -528,7 +528,7 @@ function ble/color/convert-rgb24-to-color256 {
     ((ret=16+36*R+6*G+B))
   fi
 }
-## 関数 ble/color/convert-rgb24-to-color88 R G B
+## @fn ble/color/convert-rgb24-to-color88 R G B
 ##   @param[in] R G B
 ##     0..255 の階調値
 ##   @var[out] ret
@@ -557,8 +557,8 @@ function ble/color/convert-rgb24-to-color88 {
   fi
 }
 
-## 関数 ble/color/.color2sgrfg color
-## 関数 ble/color/.color2sgrbg color
+## @fn ble/color/.color2sgrfg color
+## @fn ble/color/.color2sgrbg color
 ##   @param[in] color
 ##     0-255 の値は index color を表します。
 ##     1XXXXXX の値は 24bit color を表します。
@@ -636,12 +636,12 @@ function ble/color/.color2sgr-impl {
   fi
 }
 
-## 関数 ble/color/.color2sgrfg color_code
+## @fn ble/color/.color2sgrfg color_code
 ##   @var[out] ret
 function ble/color/.color2sgrfg {
   ble/color/.color2sgr-impl "$1" 3
 }
-## 関数 ble/color/.color2sgrbg color_code
+## @fn ble/color/.color2sgrbg color_code
 ##   @var[out] ret
 function ble/color/.color2sgrbg {
   ble/color/.color2sgr-impl "$1" 4
@@ -649,7 +649,7 @@ function ble/color/.color2sgrbg {
 
 #------------------------------------------------------------------------------
 
-## 関数 ble/color/read-sgrspec/.arg-next
+## @fn ble/color/read-sgrspec/.arg-next
 ##   @var[in    ] fields
 ##   @var[in,out] j
 ##   @var[   out] arg
@@ -670,7 +670,7 @@ function ble/color/read-sgrspec/.arg-next {
   (($_var=_ret))
 }
 
-## 関数 ble-color/read-sgrspec sgrspec opts
+## @fn ble-color/read-sgrspec sgrspec opts
 ##   @param[in] sgrspec
 ##   @var[in,out] g
 function ble/color/read-sgrspec {
@@ -799,7 +799,7 @@ function ble/color/read-sgrspec {
   done
 }
 
-## 関数 ble/color/sgrspec2g str
+## @fn ble/color/sgrspec2g str
 ##   SGRに対する引数から描画属性を構築します。
 ##   @var[out] ret
 function ble/color/sgrspec2g {
@@ -808,7 +808,7 @@ function ble/color/sgrspec2g {
   ret=$g
 }
 
-## 関数 ble/color/ansi2g str
+## @fn ble/color/ansi2g str
 ##   ANSI制御シーケンスから描画属性を構築します。
 ##   Note: canvas.sh を読み込んで以降でないと使えません。
 ##   @var[out] ret
@@ -831,7 +831,7 @@ if [[ ! $_ble_faces_count ]]; then # reload #D0875
   _ble_faces=()
 fi
 
-## 関数 ble/color/setface/.check-argument
+## @fn ble/color/setface/.check-argument
 ##   @var[out] ext
 function ble/color/setface/.check-argument {
   local rex='^[a-zA-Z0-9_]+$'
@@ -879,28 +879,28 @@ function ble/color/initialize-faces {
   local _ble_color_faces_initializing=1
   local -a _ble_color_faces_errors=()
 
-  ## 関数 ble/color/face2g face
+  ## @fn ble/color/face2g face
   ##   @var[out] ret
   function ble/color/face2g {
     ((ret=_ble_faces[_ble_faces__$1]))
   }
-  ## 関数 ble/color/face2sgr face
+  ## @fn ble/color/face2sgr face
   ##   @var[out] ret
   function ble/color/face2sgr {
     ble/color/g2sgr $((_ble_faces[_ble_faces__$1]))
   }
-  ## 関数 ble/color/iface2g iface
+  ## @fn ble/color/iface2g iface
   ##   @var[out] ret
   function ble/color/iface2g {
     ((ret=_ble_faces[$1]))
   }
-  ## 関数 ble/color/iface2sgr iface
+  ## @fn ble/color/iface2sgr iface
   ##   @var[out] ret
   function ble/color/iface2sgr {
     ble/color/g2sgr $((_ble_faces[$1]))
   }
 
-  ## 関数 ble/color/setface/.spec2g spec
+  ## @fn ble/color/setface/.spec2g spec
   ##   @var[out] ret
   function ble/color/setface/.spec2g {
     local spec=$1 value=${spec#*:}
@@ -984,7 +984,7 @@ function ble/color/list-faces {
 
 _ble_highlight_layer__list=(plain)
 
-## 関数 ble/highlight/layer/update text opts [DMIN DMAX DMAX0]
+## @fn ble/highlight/layer/update text opts [DMIN DMAX DMAX0]
 ##   @param[in] text opts DMIN DMAX DMAX0
 ##   @var[out] HIGHLIGHT_BUFF
 ##   @var[out] HIGHLIGHT_UMIN
@@ -1042,7 +1042,7 @@ function ble/highlight/layer/update/getg {
   g=0
 }
 
-## 関数 ble/highlight/layer/getg index
+## @fn ble/highlight/layer/getg index
 ##   @param[in] index
 ##   @var[out] g
 function ble/highlight/layer/getg {
@@ -1053,7 +1053,7 @@ function ble/highlight/layer/getg {
 ##   先ず作成するレイヤーの名前を決めます。ここでは <layerName> とします。
 ##   次に、以下の配列変数と二つの関数を用意します。
 ##
-## 配列 _ble_highlight_layer_<layerName>_buff=()
+## @arr _ble_highlight_layer_<layerName>_buff=()
 ##
 ##   グローバルに定義する配列変数です。
 ##   後述の ble/highlight/layer:<layerName>/update が呼ばれた時に更新します。
@@ -1078,7 +1078,7 @@ function ble/highlight/layer/getg {
 ##   通常は _ble_highlight_layer_plain_buff に格納されている値をそのまま使えば良いので、
 ##   これらの "<表示文字>" の詳細について考慮に入れる必要はありません。
 ##
-## 関数 ble/highlight/layer:<layerName>/update text player
+## @fn ble/highlight/layer:<layerName>/update text player
 ##   _ble_highlight_layer_<layerName>_buff の内容を更新します。
 ##
 ##   @param[in]     text
@@ -1112,7 +1112,7 @@ function ble/highlight/layer/getg {
 ##     呼出時に入っている値を再利用する事ができます。
 ##     ble/highlight/layer/update/shift 関数も参照して下さい。
 ##
-## 関数 ble/highlight/layer:<layerName>/getg index
+## @fn ble/highlight/layer:<layerName>/getg index
 ##   指定した index に対応する描画属性の値を g 値で取得します。
 ##   前回の ble/highlight/layer:<layerName>/update の呼出に基づく描画属性です。
 ##   @var[out] g
@@ -1130,7 +1130,7 @@ function ble/highlight/layer:plain/initialize-vars {
 }
 ble/highlight/layer:plain/initialize-vars
 
-## 関数 ble/highlight/layer:plain/update/.getch
+## @fn ble/highlight/layer:plain/update/.getch
 ##   @var[in,out] ch
 function ble/highlight/layer:plain/update/.getch {
   [[ $ch == [' '-'~'] ]] && return 0
@@ -1157,7 +1157,7 @@ function ble/highlight/layer:plain/update/.getch {
   fi
 }
 
-## 関数 ble/highlight/layer:<layerName>/update text pbuff
+## @fn ble/highlight/layer:<layerName>/update text pbuff
 function ble/highlight/layer:plain/update {
   if ((DMIN>=0)); then
     ble/highlight/layer/update/shift _ble_highlight_layer_plain_buff
@@ -1181,7 +1181,7 @@ function ble/highlight/layer:plain/update {
 # Note: suppress LC_COLLATE errors #D1205 #D1440
 ble/function#suppress-stderr ble/highlight/layer:plain/update
 
-## 関数 ble/highlight/layer:plain/getg index
+## @fn ble/highlight/layer:plain/getg index
 ##   @var[out] g
 function ble/highlight/layer:plain/getg {
   g=0

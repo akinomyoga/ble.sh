@@ -83,7 +83,7 @@ bleopt/declare -v vim_surround_omap_bind 1
 #------------------------------------------------------------------------------
 # util
 
-## 関数 ble/lib/vim-surround.sh/get-char-from-key key
+## @fn ble/lib/vim-surround.sh/get-char-from-key key
 ##   @param[in] key
 ##   @var[out] ret
 function ble/lib/vim-surround.sh/get-char-from-key {
@@ -138,7 +138,7 @@ function ble/lib/vim-surround.sh/async-inputtarget-noarg {
 
 _ble_lib_vim_surround_previous_tag=html
 
-## 関数 ble/lib/vim-surround.sh/load-template ins
+## @fn ble/lib/vim-surround.sh/load-template ins
 ##   @param[in] ins
 ##   @var[out] template
 function ble/lib/vim-surround.sh/load-template {
@@ -182,7 +182,7 @@ function ble/lib/vim-surround.sh/load-template {
   esac
 } &>/dev/null
 
-## 関数 ble/lib/vim-surround.sh/surround text ins opts
+## @fn ble/lib/vim-surround.sh/surround text ins opts
 ##   @param[in] text
 ##   @param[in] ins
 ##   @param[in] opts
@@ -268,7 +268,7 @@ _ble_lib_vim_surround_ys_type= # ys | yS | vS | vgS
 _ble_lib_vim_surround_ys_args=()
 _ble_lib_vim_surround_ys_ranges=()
 
-## 関数 ble/highlight/layer:region/mark:vi_surround/get-selection
+## @fn ble/highlight/layer:region/mark:vi_surround/get-selection
 ##   入力待ち状態の時の領域着色を定義します。
 ##   @arr[out] selection
 function ble/highlight/layer:region/mark:vi_surround/get-selection {
@@ -483,7 +483,7 @@ function ble/keymap:vi/operator:ysurround.repeat {
 #     現在、本体で = に対応していないのでこれも未対応である。
 #
 
-## 関数 ble/keymap:vi/operator:surround
+## @fn ble/keymap:vi/operator:surround
 ##   @var[in] surround_content
 ##   @var[in] surround_ins
 ##   @var[in] surround_trim
@@ -514,7 +514,7 @@ function ble/keymap:vi/operator:surround {
 
   return 0
 }
-## 関数 ble/keymap:vi/operator:surround-extract-region
+## @fn ble/keymap:vi/operator:surround-extract-region
 ##   着色の為に範囲を抽出するオペレータ
 ##   @var[out] surround_beg
 ##   @var[out] surround_end
@@ -673,7 +673,7 @@ function ble/widget/vim-surround.sh/nmap/csurround.replace {
 
 #---- repeat ----
 
-## 関数 ble/widget/vim-surround.sh/nmap/csurround.record
+## @fn ble/widget/vim-surround.sh/nmap/csurround.record
 function ble/widget/vim-surround.sh/nmap/csurround.record {
   # Note: ble/keymap:vi/repeat/record の実装に合わせた条件判定。
   [[ $_ble_keymap_vi_mark_suppress_edit ]] && return 0
@@ -723,7 +723,7 @@ function ble/widget/vim-surround.sh/nmap/dsurround.hook {
 
 #---- cs ----
 
-## 関数 ble/highlight/layer:region/mark:vi_surround/get-selection
+## @fn ble/highlight/layer:region/mark:vi_surround/get-selection
 ##   入力待ち状態の時の領域着色を定義します。
 ##   @arr[out] selection
 function ble/highlight/layer:region/mark:vi_csurround/get-selection {
@@ -767,7 +767,7 @@ function ble/widget/vim-surround.sh/nmap/csurround.hook2 {
     ble/widget/vim-surround.sh/nmap/csurround.hook3 "$ins"
   fi
 }
-## 関数 ble/widget/vim-surround.sh/nmap/csurround.hook3 ins [tagName]
+## @fn ble/widget/vim-surround.sh/nmap/csurround.hook3 ins [tagName]
 function ble/widget/vim-surround.sh/nmap/csurround.hook3 {
   local ins=$1 tagName=$2
   _ble_edit_mark_active= # clear mark:vi_csurround

@@ -87,7 +87,7 @@ function ble/highlight/layer:adapter/getg {
 
 #------------------------------------------------------------------------------
 
-## 関数 _ble_region_highlight_table;  ble/syntax-highlight/append triplets ; _ble_region_highlight_table
+## @fn _ble_region_highlight_table;  ble/syntax-highlight/append triplets ; _ble_region_highlight_table
 function ble/syntax-highlight/append {
   while (($#)); do
     local -a triplet

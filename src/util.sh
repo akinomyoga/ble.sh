@@ -4,7 +4,7 @@
 #------------------------------------------------------------------------------
 # ble.sh options
 
-## 関数 bleopt args...
+## @fn bleopt args...
 ##   @params[in] args
 ##     args は以下の内の何れかの形式を持つ。
 ##
@@ -119,7 +119,7 @@ function bleopt/declare {
   return 0
 }
 
-## オプション input_encoding
+## @bleopt input_encoding
 bleopt/declare -n input_encoding UTF-8
 
 function bleopt/check:input_encoding {
@@ -154,22 +154,22 @@ function bleopt/check:input_encoding {
   return 0
 }
 
-## オプション internal_stackdump_enabled
+## @bleopt internal_stackdump_enabled
 ##   エラーが起こった時に関数呼出の構造を標準エラー出力に出力するかどうかを制御する。
 ##   算術式評価によって非零の値になる場合にエラーを出力する。
 ##   それ以外の場合にはエラーを出力しない。
 bleopt/declare -v internal_stackdump_enabled 0
 
-## オプション openat_base
+## @bleopt openat_base
 ##   bash-4.1 未満で exec {var}>foo が使えない時に ble.sh で内部的に fd を割り当てる。
 ##   この時の fd の base を指定する。bleopt_openat_base, bleopt_openat_base+1, ...
 ##   という具合に順番に使用される。既定値は 30 である。
 bleopt/declare -n openat_base 30
 
-## オプション pager
+## @bleopt pager
 bleopt/declare -v pager ''
 
-## オプション editor
+## @bleopt editor
 bleopt/declare -v editor ''
 
 shopt -s checkwinsize
@@ -247,14 +247,14 @@ function ble/util/restore-vars {
 }
 
 #%if !release
-## 関数 ble/debug/setdbg
+## @fn ble/debug/setdbg
 function ble/debug/setdbg {
   ble/bin/rm -f "$_ble_base_run/dbgerr"
   local ret
   ble/util/readlink /proc/self/fd/3 3>&1
   ln -s "$ret" "$_ble_base_run/dbgerr"
 }
-## 関数 ble/debug/print text
+## @fn ble/debug/print text
 function ble/debug/print {
   if [[ -e $_ble_base_run/dbgerr ]]; then
     ble/util/print "$*" >> "$_ble_base_run/dbgerr"
@@ -262,7 +262,7 @@ function ble/debug/print {
     ble/util/print "$*" >&2
   fi
 }
-## 関数 ble/debug/.check-leak-variable
+## @fn ble/debug/.check-leak-variable
 ##   [デバグ用] 宣言忘れに依るグローバル変数の汚染位置を特定するための関数。
 ##
 ##   使い方
@@ -333,7 +333,7 @@ function ble/debug/print-variables {
 # variable, array and strings
 #
 
-## 関数 ble/variable#get-attr varname
+## @fn ble/variable#get-attr varname
 ##   指定した変数の属性を取得します。
 ##   @var[out] attr
 if ((_ble_bash>=40400)); then
@@ -380,7 +380,7 @@ function ble/array#reserve-prototype {
   done
 }
 
-## 関数 ble/is-array arr
+## @fn ble/is-array arr
 ##
 ##   Note: これに関しては様々な実現方法が考えられるが大体余りうまく動かない。
 ##
@@ -411,12 +411,12 @@ else
     function ble/is-assoc { false; }
 fi
 
-## 関数 ble/array#set arr value...
+## @fn ble/array#set arr value...
 ##   配列に値を設定します。
 ##   Bash 4.4 で arr2=("${arr1[@]}") が遅い問題を回避する為の関数です。
 function ble/array#set { builtin eval "$1=(\"\${@:2}\")"; }
 
-## 関数 ble/array#push arr value...
+## @fn ble/array#push arr value...
 if ((_ble_bash>=40000)); then
   function ble/array#push {
     builtin eval "$1+=(\"\${@:2}\")"
@@ -436,7 +436,7 @@ else
     done
   }
 fi
-## 関数 ble/array#pop arr
+## @fn ble/array#pop arr
 ##   @var[out] ret
 function ble/array#pop {
   builtin eval "local i$1=\$((\${#$1[@]}-1))"
@@ -447,11 +447,11 @@ function ble/array#pop {
     ret=
   fi
 }
-## 関数 ble/array#unshift arr value...
+## @fn ble/array#unshift arr value...
 function ble/array#unshift {
   builtin eval "$1=(\"\${@:2}\" \"\${$1[@]}\")"
 }
-## 関数 ble/array#reverse arr
+## @fn ble/array#reverse arr
 function ble/array#reverse {
   builtin eval "
   set -- \"\${$1[@]}\"; $1=()
@@ -459,11 +459,11 @@ function ble/array#reverse {
   for e$1; do $1[--i$1]=\"\$e$1\"; done"
 }
 
-## 関数 ble/array#insert-at arr index elements...
+## @fn ble/array#insert-at arr index elements...
 function ble/array#insert-at {
   builtin eval "$1=(\"\${$1[@]::$2}\" \"\${@:3}\" \"\${$1[@]:$2}\")"
 }
-## 関数 ble/array#insert-after arr needle elements...
+## @fn ble/array#insert-after arr needle elements...
 function ble/array#insert-after {
   local _ble_local_script='
     local iARR=0 eARR aARR=
@@ -474,7 +474,7 @@ function ble/array#insert-after {
     [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## 関数 ble/array#insert-before arr needle elements...
+## @fn ble/array#insert-before arr needle elements...
 function ble/array#insert-before {
   local _ble_local_script='
     local iARR=0 eARR aARR=
@@ -485,7 +485,7 @@ function ble/array#insert-before {
     [[ $aARR ]] && ble/array#insert-at "$1" "$aARR" "${@:3}"
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## 関数 ble/array#filter arr predicate
+## @fn ble/array#filter arr predicate
 function ble/array#filter {
   local _ble_local_script='
     local -a aARR=() eARR
@@ -495,19 +495,19 @@ function ble/array#filter {
     ARR=("${aARR[@]}")
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## 関数 ble/array#filter-by-regex arr regex
+## @fn ble/array#filter-by-regex arr regex
 function ble/array#filter-by-regex/.predicate { [[ $1 =~ $_ble_local_rex ]]; }
 function ble/array#filter-by-regex {
   local _ble_local_rex=$2
   ble/array#filter "$1" ble/array#filter-by-regex/.predicate
 }
-## 関数 ble/array#remove arr element
+## @fn ble/array#remove arr element
 function ble/array#remove/.predicate { [[ $1 != "$_ble_local_value" ]]; }
 function ble/array#remove {
   local _ble_local_value=$2
   ble/array#filter "$1" ble/array#remove/.predicate
 }
-## 関数 ble/array#index arr needle
+## @fn ble/array#index arr needle
 ##   @var[out] ret
 function ble/array#index {
   local _ble_local_script='
@@ -519,7 +519,7 @@ function ble/array#index {
     ret=-1; return 1
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## 関数 ble/array#last-index arr needle
+## @fn ble/array#last-index arr needle
 ##   @var[out] ret
 function ble/array#last-index {
   local _ble_local_script='
@@ -530,14 +530,14 @@ function ble/array#last-index {
     ret=-1; return 1
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## 関数 ble/array#remove arr index
+## @fn ble/array#remove arr index
 function ble/array#remove-at {
   local _ble_local_script='
     builtin unset -v "ARR[$2]"
     ARR=("${ARR[@]}")
   '; builtin eval -- "${_ble_local_script//ARR/$1}"
 }
-## 関数 ble/array#replace arr needle [replacement]
+## @fn ble/array#replace arr needle [replacement]
 ##   needle に一致する要素を全て replacement に置換します。
 ##   replacement が指定されていない時は該当要素を unset します。
 ##   @var[in] arr
@@ -575,7 +575,7 @@ function ble/string#reserve-prototype {
   done
 }
 
-## 関数 ble/string#repeat str count
+## @fn ble/string#repeat str count
 ##   @param[in] str
 ##   @param[in] count
 ##   @var[out] ret
@@ -585,7 +585,7 @@ function ble/string#repeat {
   ret="${ret// /$1}"
 }
 
-## 関数 ble/string#common-prefix a b
+## @fn ble/string#common-prefix a b
 ##   @param[in] a b
 ##   @var[out] ret
 function ble/string#common-prefix {
@@ -611,7 +611,7 @@ function ble/string#common-prefix {
   ret=${a::l}
 }
 
-## 関数 ble/string#common-suffix a b
+## @fn ble/string#common-suffix a b
 ##   @param[in] a b
 ##   @var[out] ret
 function ble/string#common-suffix {
@@ -637,7 +637,7 @@ function ble/string#common-suffix {
   ret=${a:u}
 }
 
-## 関数 ble/string#split arr sep str...
+## @fn ble/string#split arr sep str...
 ##   文字列を分割します。
 ##   空白類を分割に用いた場合は、空要素は削除されます。
 ##
@@ -664,7 +664,7 @@ function ble/string#split-words {
     set +f
   fi
 }
-## 関数 ble/string#split-lines arr text...
+## @fn ble/string#split-lines arr text...
 ##   文字列を行に分割します。空行も省略されません。
 ##
 ##   @param[out] arr  分割した文字列を格納する配列名を指定します。
@@ -680,7 +680,7 @@ else
     ble/util/mapfile "$1" <<< "${*:2}"
   }
 fi
-## 関数 ble/string#count-char text chars
+## @fn ble/string#count-char text chars
 ##   @param[in] text
 ##   @param[in] chars
 ##     検索対象の文字の集合を指定します。
@@ -691,14 +691,14 @@ function ble/string#count-char {
   ret=${#text}
 }
 
-## 関数 ble/string#count-string text string
+## @fn ble/string#count-string text string
 ##   @var[out] ret
 function ble/string#count-string {
   local text=${1//"$2"}
   ((ret=(${#1}-${#text})/${#2}))
 }
 
-## 関数 ble/string#index-of text needle [n]
+## @fn ble/string#index-of text needle [n]
 ##   @param[in] text
 ##   @param[in] needle
 ##   @param[in] n
@@ -716,7 +716,7 @@ function ble/string#index-of {
     ret<0&&(ret=-1),ret>=0))
 }
 
-## 関数 ble/string#last-index-of text needle [n]
+## @fn ble/string#last-index-of text needle [n]
 ##   @param[in] text
 ##   @param[in] needle
 ##   @param[in] n
@@ -734,9 +734,9 @@ function ble/string#last-index-of {
   ((ret>=0))
 }
 
-## 関数 ble/string#toggle-case text...
-## 関数 ble/string#touppwer text...
-## 関数 ble/string#tolower text...
+## @fn ble/string#toggle-case text...
+## @fn ble/string#touppwer text...
+## @fn ble/string#tolower text...
 ##   @param[in] text
 ##   @var[out] ret
 _ble_util_string_lower_list=abcdefghijklmnopqrstuvwxyz
@@ -761,8 +761,8 @@ function ble/string#toggle-case.impl {
 function ble/string#toggle-case {
   ble/string#toggle-case.impl "$@" 2>/dev/null # suppress locale error #D1440
 }
-## 関数 ble/string#tolower text...
-## 関数 ble/string#toupper text...
+## @fn ble/string#tolower text...
+## @fn ble/string#toupper text...
 ##   @var[out] ret
 if ((_ble_bash>=40000)); then
   function ble/string#tolower { ret="${*,,}"; }
@@ -824,7 +824,7 @@ function ble/string#capitalize {
   ret=$out$tail
 }
 
-## 関数 ble/string#trim text...
+## @fn ble/string#trim text...
 ##   @var[out] ret
 function ble/string#trim {
   ret="$*"
@@ -833,14 +833,14 @@ function ble/string#trim {
   local rex=$'[ \t\n]+$'
   [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
 }
-## 関数 ble/string#ltrim text...
+## @fn ble/string#ltrim text...
 ##   @var[out] ret
 function ble/string#ltrim {
   ret="$*"
   local rex=$'^[ \t\n]+'
   [[ $ret =~ $rex ]] && ret=${ret:${#BASH_REMATCH}}
 }
-## 関数 ble/string#rtrim text...
+## @fn ble/string#rtrim text...
 ##   @var[out] ret
 function ble/string#rtrim {
   ret="$*"
@@ -848,7 +848,7 @@ function ble/string#rtrim {
   [[ $ret =~ $rex ]] && ret=${ret::${#ret}-${#BASH_REMATCH}}
 }
 
-## 関数 ble/string#escape-characters text chars1 [chars2]
+## @fn ble/string#escape-characters text chars1 [chars2]
 ##   @param[in]     text
 ##   @param[in]     chars1
 ##   @param[in,opt] chars2
@@ -864,13 +864,13 @@ function ble/string#escape-characters {
   fi
 }
 
-## 関数 ble/string#escape-for-sed-regex text...
-## 関数 ble/string#escape-for-awk-regex text...
-## 関数 ble/string#escape-for-extended-regex text...
-## 関数 ble/string#escape-for-bash-glob text...
-## 関数 ble/string#escape-for-bash-single-quote text...
-## 関数 ble/string#escape-for-bash-double-quote text...
-## 関数 ble/string#escape-for-bash-escape-string text...
+## @fn ble/string#escape-for-sed-regex text...
+## @fn ble/string#escape-for-awk-regex text...
+## @fn ble/string#escape-for-extended-regex text...
+## @fn ble/string#escape-for-bash-glob text...
+## @fn ble/string#escape-for-bash-single-quote text...
+## @fn ble/string#escape-for-bash-double-quote text...
+## @fn ble/string#escape-for-bash-escape-string text...
 ##   @param[in] text...
 ##   @var[out] ret
 function ble/string#escape-for-sed-regex {
@@ -898,7 +898,7 @@ function ble/string#escape-for-bash-double-quote {
 function ble/string#escape-for-bash-escape-string {
   ble/string#escape-characters "$*" $'\\\a\b\e\f\n\r\t\v'\' '\abefnrtv'\'
 }
-## 関数 ble/string#escape-for-bash-specialchars text flags
+## @fn ble/string#escape-for-bash-specialchars text flags
 ##   @param[in] text
 ##   @param[in] flags
 ##     c 単語中でチルダ展開を誘導する文字をエスケープします。
@@ -934,7 +934,7 @@ function ble/string#escape-for-bash-specialchars {
   fi
 }
 
-## 関数 ble/string#escape-for-display str [opts]
+## @fn ble/string#escape-for-display str [opts]
 ##   str に含まれる制御文字を ^A などのキャレット表記に置き換えます。
 ##
 ##   @param[in] str
@@ -995,7 +995,7 @@ function ble/string#quote-command {
   local arg q=\' Q="'\''"
   for arg; do ret="$ret $q${arg//$q/$Q}$q"; done
 }
-## 関数 ble/string#quote-word text
+## @fn ble/string#quote-word text
 function ble/string#quote-word {
   ret=$1
 
@@ -1033,7 +1033,7 @@ function ble/string#quote-word {
   fi
 }
 
-## 関数 ble/string#create-unicode-progress-bar/.block value
+## @fn ble/string#create-unicode-progress-bar/.block value
 ##   @var[out] ret
 function ble/string#create-unicode-progress-bar/.block {
   local block=$1
@@ -1054,7 +1054,7 @@ function ble/string#create-unicode-progress-bar/.block {
   fi
 }
 
-## 関数 ble/string#create-unicode-progress-bar value max width opts
+## @fn ble/string#create-unicode-progress-bar value max width opts
 ##   @param[in] opts
 ##     unlimited ... 上限が不明である事を示します。
 ##   @var[out] ret
@@ -1316,7 +1316,7 @@ function blehook/eval-after-load {
   fi
 }
 
-## 関数 ble/builtin/trap/.read-arguments args...
+## @fn ble/builtin/trap/.read-arguments args...
 ##   @var[out] flags
 function ble/builtin/trap/.read-arguments {
   flags= command= sigspecs=()
@@ -1598,8 +1598,8 @@ function ble/builtin/trap/setup-hook {
 # assign: reading files/streams into variables
 #
 
-## 関数 ble/util/readfile var filename
-## 関数 ble/util/mapfile arr < filename
+## @fn ble/util/readfile var filename
+## @fn ble/util/mapfile arr < filename
 ##   ファイルの内容を変数または配列に読み取ります。
 ##
 ##   @param[in] var
@@ -1632,7 +1632,7 @@ else
   }
 fi
 
-## 関数 ble/util/assign var command
+## @fn ble/util/assign var command
 ##   var=$(command) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
 ##
@@ -1665,7 +1665,7 @@ else
     return "$_ble_local_ret"
   }
 fi
-## 関数 ble/util/assign-array arr command args...
+## @fn ble/util/assign-array arr command args...
 ##   mapfile -t arr < <(command ...) の高速な代替です。
 ##   command はサブシェルではなく現在のシェルで実行されます。
 ##
@@ -1700,7 +1700,7 @@ fi
 # functions
 #
 
-## 関数 ble/is-function function
+## @fn ble/is-function function
 ##   関数 function が存在するかどうかを検査します。
 ##
 ##   @param[in] function
@@ -1720,7 +1720,7 @@ else
   }
 fi
 
-## 関数 ble/function#getdef function
+## @fn ble/function#getdef function
 ##   @var[out] def
 if ((_ble_bash>=30200)); then
   function ble/function#getdef {
@@ -1735,7 +1735,7 @@ else
   }
 fi
 
-## 関数 ble/function#try function args...
+## @fn ble/function#try function args...
 ##   関数 function が存在している時に限り関数を呼び出します。
 ##
 ##   @param[in] function
@@ -1752,7 +1752,7 @@ function ble/function#try {
   "$@"
 }
 
-## 関数 ble/function#advice type function proc
+## @fn ble/function#advice type function proc
 ##   既存の関数の振る舞いを変更します。
 ##
 ##   @param[in] type
@@ -1837,8 +1837,8 @@ function ble/function#advice {
   esac
 }
 
-## 関数 ble/function#push name [proc]
-## 関数 ble/function#pop name
+## @fn ble/function#push name [proc]
+## @fn ble/function#pop name
 ##   関数定義を保存・復元する関数です。
 ##
 function ble/function#push {
@@ -1898,7 +1898,7 @@ function ble/function#push/call-top {
 }
 
 [[ $_ble_util_lambda_count ]] || _ble_util_lambda_count=0
-## 関数 ble/function#lambda var body
+## @fn ble/function#lambda var body
 ##   無名関数を定義しその実際の名前を変数 var に格納します。
 function ble/function#lambda {
   local _ble_local_q=\' _ble_local_Q="'\''"
@@ -1906,7 +1906,7 @@ function ble/function#lambda {
   builtin eval -- "function ${!1} { builtin eval -- '${2//$_ble_local_q/$_ble_local_Q}'; }"
 }
 
-## 関数 ble/function#suppress-stderr function_name
+## @fn ble/function#suppress-stderr function_name
 ##   @param[in] function_name
 function ble/function#suppress-stderr {
   local name=$1
@@ -1949,7 +1949,7 @@ else
   }
 fi
 
-## 関数 ble/util/type varname command
+## @fn ble/util/type varname command
 ##   @param[out] varname
 ##     結果を格納する変数名を指定します。
 ##   @param[in] command
@@ -1957,7 +1957,7 @@ fi
 function ble/util/type {
   ble/util/assign-array "$1" 'builtin type -a -t -- "$3" 2>/dev/null' "$2"
 }
-## 関数 ble/util/expand-alias word
+## @fn ble/util/expand-alias word
 ##   @var[out] ret
 function ble/util/expand-alias {
   ret=$1
@@ -1986,7 +1986,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/getpid { :; }
   function ble/util/is-running-in-subshell { [[ $$ != $BASHPID ]]; }
 else
-  ## 関数 ble/util/getpid
+  ## @fn ble/util/getpid
   ##   @var[out] BASHPID
   function ble/util/getpid {
     local command='echo $PPID'
@@ -1999,11 +1999,11 @@ else
   }
 fi
 
-## 関数 ble/fd#is-open fd
+## @fn ble/fd#is-open fd
 ##   指定したファイルディスクリプタが開いているかどうか判定します。
 function ble/fd#is-open { : >&"$1"; } 2>/dev/null
 
-## 関数 ble/fd#alloc fdvar redirect
+## @fn ble/fd#alloc fdvar redirect
 ##   "exec {fdvar}>foo" に該当する操作を実行します。
 ##   @param[out] fdvar
 ##     指定した変数に使用されたファイルディスクリプタを代入します。
@@ -2047,7 +2047,7 @@ function ble/fd#finalize {
   done
   _ble_util_openat_fdlist=()
 }
-## 関数 ble/fd#close fd
+## @fn ble/fd#close fd
 ##   指定した fd を閉じます。
 function ble/fd#close {
   set -- $(($1))
@@ -2116,7 +2116,7 @@ function ble/util/declare-print-definitions {
   fi
 }
 
-## 関数 ble/util/print-global-definitions/.save-decl name
+## @fn ble/util/print-global-definitions/.save-decl name
 ##   @var[out] __ble_decl
 function ble/util/print-global-definitions/.save-decl {
   local __ble_name=$1
@@ -2139,7 +2139,7 @@ function ble/util/print-global-definitions/.save-decl {
     __ble_decl="declare $__ble_name='${__ble_decl//$__ble_q//$__ble_Q}'"
   fi
 }
-## 関数 ble/util/print-global-definitions varnames...
+## @fn ble/util/print-global-definitions varnames...
 ##
 ##   @var[in] varnames
 ##
@@ -2201,7 +2201,7 @@ function ble/util/print-global-definitions {
   ) 2>/dev/null
 }
 
-## 関数 ble/util/has-glob-pattern pattern
+## @fn ble/util/has-glob-pattern pattern
 ##   指定したパターンがグロブパターンを含むかどうかを判定します。
 ##
 ## Note: Bash 5.0 では変数に \ が含まれている時に echo $var を実行すると
@@ -2227,7 +2227,7 @@ function ble/util/has-glob-pattern {
   [[ ! $ret ]]
 }
 
-## 関数 ble/util/is-cygwin-slow-glob word
+## @fn ble/util/is-cygwin-slow-glob word
 ##   Cygwin では // で始まるパスの展開は遅い (#D1168) のでその判定を行う。
 function ble/util/is-cygwin-slow-glob {
   # Note: core-complete.sh ではエスケープを行うので
@@ -2236,7 +2236,7 @@ function ble/util/is-cygwin-slow-glob {
     ble/util/has-glob-pattern "$1"
 }
 
-## 関数 ble/util/eval-pathname-expansion pattern
+## @fn ble/util/eval-pathname-expansion pattern
 ##   @var[out] ret
 function ble/util/eval-pathname-expansion {
   ret=()
@@ -2261,7 +2261,7 @@ function ble/util/eval-pathname-expansion {
 
 # 正規表現は _ble_bash>=30000
 _ble_util_rex_isprint='^[ -~]+'
-## 関数 ble/util/isprint+ str
+## @fn ble/util/isprint+ str
 ##
 ##   @var[out] BASH_REMATCH ble-exit/text/update/position で使用する。
 function ble/util/isprint+ {
@@ -2343,7 +2343,7 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
   _ble_util_msleep_delay=300
   function ble/util/msleep/.core { builtin sleep "$1"; }
 
-  ## 関数 ble/builtin/sleep/.read-time time
+  ## @fn ble/builtin/sleep/.read-time time
   ##   @var[out] a1 b1
   ##     それぞれ整数部と小数部を返します。
   ##   @var[in,out] flags
@@ -2513,7 +2513,7 @@ function ble/util/sleep {
 #------------------------------------------------------------------------------
 # ble/util/conditional-sync
 
-## 関数 ble/util/conditional-sync command [condition weight opts]
+## @fn ble/util/conditional-sync command [condition weight opts]
 function ble/util/conditional-sync {
   local command=$1
   local cancel=${2:-'! ble/decode/has-input'}
@@ -2539,7 +2539,7 @@ function ble/util/conditional-sync {
 
 #------------------------------------------------------------------------------
 
-## 関数 ble/util/cat [files..]
+## @fn ble/util/cat [files..]
 ##   cat の代替。直接扱えない NUL で区切って読み出す。
 function ble/util/cat/.impl {
   local content= TMOUT= IFS=
@@ -2578,7 +2578,7 @@ function ble/util/pager {
   builtin eval -- "$pager \"\$@\""
 }
 
-## 関数 ble/util/getmtime filename
+## @fn ble/util/getmtime filename
 ##   ファイル filename の mtime を取得し標準出力に出力します。
 ##   ミリ秒も取得できる場合には第二フィールドとしてミリ秒を出力します。
 ##   @param[in] filename ファイル名を指定します。
@@ -2598,7 +2598,7 @@ ble/is-function ble/util/getmtime ||
   function ble/util/getmtime { ble/util/strftime '%s %N'; }
 
 #------------------------------------------------------------------------------
-## 関数 ble/util/buffer text...
+## @fn ble/util/buffer text...
 _ble_util_buffer=()
 function ble/util/buffer {
   _ble_util_buffer[${#_ble_util_buffer[@]}]="$*"
@@ -2639,11 +2639,11 @@ function ble/dirty-range#clear {
     ${_prefix}end0=-1))
 }
 
-## 関数 ble/dirty-range#update [--prefix=PREFIX] beg end end0
-## @param[out] PREFIX
-## @param[in]  beg    変更開始点。beg<0 は変更がない事を表す
-## @param[in]  end    変更終了点。end<0 は変更が末端までである事を表す
-## @param[in]  end0   変更前の end に対応する位置。
+## @fn ble/dirty-range#update [--prefix=PREFIX] beg end end0
+##   @param[out] PREFIX
+##   @param[in]  beg    変更開始点。beg<0 は変更がない事を表す
+##   @param[in]  end    変更終了点。end<0 は変更が末端までである事を表す
+##   @param[in]  end0   変更前の end に対応する位置。
 function ble/dirty-range#update {
   local _prefix=
   if [[ $1 == --prefix=* ]]; then
@@ -2680,7 +2680,7 @@ function ble/dirty-range#update {
   fi
 }
 
-## 関数 ble/urange#clear [--prefix=prefix]
+## @fn ble/urange#clear [--prefix=prefix]
 ##
 ##   @param[in,opt] prefix=
 ##   @var[in,out]   {prefix}umin {prefix}umax
@@ -2692,7 +2692,7 @@ function ble/urange#clear {
   fi
   ((${prefix}umin=-1,${prefix}umax=-1))
 }
-## 関数 ble/urange#update [--prefix=prefix] min max
+## @fn ble/urange#update [--prefix=prefix] min max
 ##
 ##   @param[in,opt] prefix=
 ##   @param[in]     min max
@@ -2708,7 +2708,7 @@ function ble/urange#update {
   (((${prefix}umin<0||min<${prefix}umin)&&(${prefix}umin=min),
     (${prefix}umax<0||${prefix}umax<max)&&(${prefix}umax=max)))
 }
-## 関数 ble/urange#shift [--prefix=prefix] dbeg dend dend0
+## @fn ble/urange#shift [--prefix=prefix] dbeg dend dend0
 ##
 ##   @param[in,opt] prefix=
 ##   @param[in]     dbeg dend dend0
@@ -2731,7 +2731,7 @@ function ble/urange#shift {
 }
 
 #------------------------------------------------------------------------------
-## 関数 ble/util/joblist opts
+## @fn ble/util/joblist opts
 ##   現在のジョブ一覧を取得すると共に、ジョブ状態の変化を調べる。
 ##
 ##   @param[in] opts
@@ -2826,14 +2826,14 @@ function ble/util/joblist.split {
   done
 }
 
-## 関数 ble/util/joblist.check
+## @fn ble/util/joblist.check
 ##   ジョブ状態変化の確認だけ行います。
 ##   内部的に jobs を呼び出す直前に、ジョブ状態変化を取り逃がさない為に明示的に呼び出します。
 function ble/util/joblist.check {
   local joblist
   ble/util/joblist "$@"
 }
-## 関数 ble/util/joblist.has-events
+## @fn ble/util/joblist.has-events
 ##   未出力のジョブ状態変化の記録があるかを確認します。
 function ble/util/joblist.has-events {
   local joblist
@@ -2841,7 +2841,7 @@ function ble/util/joblist.has-events {
   ((${#_ble_util_joblist_events[@]}))
 }
 
-## 関数 ble/util/joblist.flush
+## @fn ble/util/joblist.flush
 ##   ジョブ状態変化の確認とそれまでに検出した変化の出力を行います。
 function ble/util/joblist.flush {
   local joblist
@@ -2859,7 +2859,7 @@ function ble/util/joblist.bflush {
   _ble_util_joblist_events=()
 }
 
-## 関数 ble/util/joblist.clear
+## @fn ble/util/joblist.clear
 ##   bash 自身によってジョブ状態変化が出力される場合には比較用のバッファを clear します。
 function ble/util/joblist.clear {
   _ble_util_joblist_jobs=
@@ -2867,7 +2867,7 @@ function ble/util/joblist.clear {
 }
 
 #------------------------------------------------------------------------------
-## 関数 ble/util/save-editing-mode varname
+## @fn ble/util/save-editing-mode varname
 ##   現在の編集モード (emacs/vi/none) を変数に設定します。
 ##
 ##   @param varname 設定する変数の変数名を指定します。
@@ -2881,7 +2881,7 @@ function ble/util/save-editing-mode {
     builtin eval "$1=none"
   fi
 }
-## 関数 ble/util/restore-editing-mode varname
+## @fn ble/util/restore-editing-mode varname
 ##   編集モードを復元します。
 ##
 ##   @param varname 編集モードを記録した変数の変数名を指定します。
@@ -2894,7 +2894,7 @@ function ble/util/restore-editing-mode {
   esac
 }
 
-## 関数 ble/util/reset-keymap-of-editing-mode
+## @fn ble/util/reset-keymap-of-editing-mode
 ##   既定の keymap に戻す。bind 'set keymap vi-insert' 等で
 ##   既定の keymap 以外になっている事がある。
 ##   set -o emacs/vi を実行すれば既定の keymap に戻る。#D1038
@@ -2906,7 +2906,7 @@ function ble/util/reset-keymap-of-editing-mode {
   fi
 }
 
-## 関数 ble/util/test-rl-variable name [default_exit]
+## @fn ble/util/test-rl-variable name [default_exit]
 function ble/util/test-rl-variable {
   local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
   if [[ $rl_variables == *"set $1 on"* ]]; then
@@ -2920,7 +2920,7 @@ function ble/util/test-rl-variable {
     return 2
   fi
 }
-## 関数 ble/util/read-rl-variable name [default_value]
+## @fn ble/util/read-rl-variable name [default_value]
 function ble/util/read-rl-variable {
   ret=$2
   local rl_variables; ble/util/assign rl_variables 'builtin bind -v'
@@ -2931,7 +2931,7 @@ function ble/util/read-rl-variable {
 #------------------------------------------------------------------------------
 # Functions for modules
 
-## 関数 ble/util/invoke-hook array
+## @fn ble/util/invoke-hook array
 ##   array に登録されているコマンドを実行します。
 function ble/util/invoke-hook {
   local -a hooks; builtin eval "hooks=(\"\${$1[@]}\")"
@@ -2940,7 +2940,7 @@ function ble/util/invoke-hook {
   return "$ext"
 }
 
-## 関数 ble/util/.read-arguments-for-no-option-command commandname args...
+## @fn ble/util/.read-arguments-for-no-option-command commandname args...
 ##   @var[out] flags args
 function ble/util/.read-arguments-for-no-option-command {
   local commandname=$1; shift
@@ -2966,7 +2966,7 @@ function ble/util/.read-arguments-for-no-option-command {
 }
 
 
-## 関数 ble-autoload scriptfile functions...
+## @fn ble-autoload scriptfile functions...
 ##   関数が定義されたファイルを自動で読み取る設定を行います。
 ##   scriptfile には functions の実体を定義します。
 ##   functions に指定した関数が初めて呼び出された時に、
@@ -3009,7 +3009,7 @@ function ble/util/autoload/.print-usage {
   ble/util/print 'usage: ble-autoload SCRIPTFILE FUNCTION...'
   ble/util/print '  Setup delayed loading of functions defined in the specified script file.'
 } >&2
-## 関数 ble/util/autoload/.read-arguments args...
+## @fn ble/util/autoload/.read-arguments args...
 ##   @var[out] file functions flags
 function ble/util/autoload/.read-arguments {
   file= flags= functions=()
@@ -3057,7 +3057,7 @@ function ble-autoload {
   ble/util/autoload "$file" "${functions[@]}"
 }
 
-## 関数 ble-import scriptfile...
+## @fn ble-import scriptfile...
 ##   指定したファイルを検索して source で読み込みます。
 ##   既に import 済みのファイルは読み込みません。
 ##
@@ -3068,7 +3068,7 @@ function ble-autoload {
 ##
 _ble_util_import_guards=()
 
-## 関数 ble/util/import/search/.check-directory name dir
+## @fn ble/util/import/search/.check-directory name dir
 ##   @var[out] ret
 function ble/util/import/search/.check-directory {
   local name=$1 dir=$2
@@ -3105,7 +3105,7 @@ function ble/util/import/finalize {
     builtin unset -f "$guard"
   done
 }
-## 関数 ble/util/import/.read-arguments args...
+## @fn ble/util/import/.read-arguments args...
 ##   @var[out] files flags
 function ble/util/import/.read-arguments {
   flags= files=()
@@ -3187,7 +3187,7 @@ function ble-import {
   ble/util/import "${files[@]}"
 }
 
-## 関数 ble-stackdump [message]
+## @fn ble-stackdump [message]
 ##   現在のコールスタックの状態を出力します。
 ##
 ##   @param[in,opt] message
@@ -3234,7 +3234,7 @@ function ble-stackdump {
   ble/util/stackdump "${args[*]}"
 }
 
-## 関数 ble-assert command [message]
+## @fn ble-assert command [message]
 ##   コマンドを評価し失敗した時にメッセージを表示します。
 ##
 ##   @param[in] command
@@ -3279,7 +3279,7 @@ function ble-assert {
 #------------------------------------------------------------------------------
 # Event loop
 
-## 関数 ble/util/clock
+## @fn ble/util/clock
 ##   時間を計測するのに使うことができるミリ秒単位の軽量な時計です。
 ##   計測の起点は ble.sh のロード時です。
 ##   @var[out] ret
@@ -3336,7 +3336,7 @@ function ble/util/clock/.initialize {
 ble/util/clock/.initialize
 
 if ((_ble_bash>=40000)); then
-  ## 設定関数 ble/util/idle/IS_IDLE { ble/util/is-stdin-ready; }
+  ## @fn[custom] ble/util/idle/IS_IDLE { ble/util/is-stdin-ready; }
   ##   他にするべき処理がない時 (アイドル時) に終了ステータス 0 を返します。
   ##   Note: この設定関数は ble-decode.sh で上書きされます。
   function ble/util/idle/IS_IDLE { ! ble/util/is-stdin-ready; }
@@ -3352,7 +3352,7 @@ if ((_ble_bash>=40000)); then
   function ble/util/idle.clock/.initialize {
     function ble/util/idle.clock/.initialize { :; }
 
-    ## 関数 ble/util/idle.clock
+    ## @fn ble/util/idle.clock
     ##   タスクスケジューリングに使用する時計
     ##   @var[out] ret
     function ble/util/idle.clock/.restart { :; }
@@ -3365,7 +3365,7 @@ if ((_ble_bash>=40000)); then
         ble/util/clock
       }
     else
-      ## 関数 ble/util/idle/.adjusted-clock
+      ## @fn ble/util/idle/.adjusted-clock
       ##   参照時計 (rclock) と sleep 累積時間 (sclock) を元にして、
       ##   参照時計を秒以下に解像度を上げた時計 (aclock) を提供します。
       ##
@@ -3454,7 +3454,7 @@ if ((_ble_bash>=40000)); then
 
   _ble_util_idle_SEP='\'
 
-  ## 関数 ble/util/idle.do
+  ## @fn ble/util/idle.do
   ##   待機状態の処理を開始します。
   ##
   ##   @exit
@@ -3511,7 +3511,7 @@ if ((_ble_bash>=40000)); then
 
     [[ $_idle_processed ]]
   }
-  ## 関数 ble/util/idle.do/.call-task command
+  ## @fn ble/util/idle.do/.call-task command
   ##   @var[in,out] _idle_next_time
   ##   @var[in,out] _idle_next_itime
   ##   @var[in,out] _idle_running
@@ -3545,7 +3545,7 @@ if ((_ble_bash>=40000)); then
     fi
     return "$ext"
   }
-  ## 関数 ble/util/idle/.check-clock status
+  ## @fn ble/util/idle/.check-clock status
   ##   @var[in,out] _idle_next_itime
   ##   @var[in,out] _idle_next_time
   function ble/util/idle/.check-clock {
@@ -3569,7 +3569,7 @@ if ((_ble_bash>=40000)); then
     fi
     return 1
   }
-  ## 関数 ble/util/idle.do/.sleep-until-next
+  ## @fn ble/util/idle.do/.sleep-until-next
   ##   @var[in] _idle_next_time
   ##   @var[in] _idle_next_itime
   ##   @var[in] _idle_running
@@ -3706,7 +3706,7 @@ function ble/util/fiberchain#resume/.core {
 function ble/util/fiberchain#resume {
   ble/util/fiberchain#resume/.core "${_ble_util_fiberchain[@]}"
 }
-## 関数 ble/util/fiberchain#push fiber...
+## @fn ble/util/fiberchain#push fiber...
 ##   @param[in] fiber
 ##     複数指定することができます。
 ##     一つ一つは空白区切りの単語を並べた文字列です。
@@ -3970,7 +3970,7 @@ function ble/term/visible-bell/.create-workerfile {
   do ((i++)); done
   ble/util/print 1 >| "$workerfile"
 }
-## 関数 ble/term/visible-bell/.worker
+## @fn ble/term/visible-bell/.worker
 ##   @var[in] workerfile
 function ble/term/visible-bell/.worker {
   # Note: ble/util/assign は使えない。本体の ble/util/assign と一時ファイルが衝突する可能性がある。
@@ -3997,7 +3997,7 @@ function ble/term/visible-bell/.worker {
   >| "$workerfile"
 }
 
-## 関数 ble/term/visible-bell message [opts]
+## @fn ble/term/visible-bell message [opts]
 function ble/term/visible-bell {
   local cols=${COLUMNS:-80}
   local message=$1 opts=$2
@@ -4050,7 +4050,7 @@ function ble/term/visible-bell/cancel-erasure {
 #   その場で入力を受信する事ができない。結果として hang した様に見える。
 #   従って、enter で -icanon を設定する事にする。
 
-## 変数 _ble_term_stty_state
+## @var _ble_term_stty_state
 ##   現在 stty で制御文字の効果が解除されているかどうかを保持します。
 ##
 ## Note #D1238: arr=(...) の形式を用いると Bash 3.2 では勝手に ^? が ^A^? に化けてしまう
@@ -4375,7 +4375,7 @@ function ble/term/initialize {
 # String manipulations
 
 _ble_util_s2c_table_enabled=
-## 関数 ble/util/s2c text [index]
+## @fn ble/util/s2c text [index]
 ##   @param[in] text
 ##   @param[in,opt] index
 ##   @var[out] ret
@@ -4435,7 +4435,7 @@ fi
 
 # ble/util/c2s
 
-## 関数 ble/util/c2s.impl char
+## @fn ble/util/c2s.impl char
 ##   @var[out] ret
 if ((_ble_bash>=40200)); then
   # $'...' in bash-4.2 supports \uXXXX and \UXXXXXXXX sequences.
@@ -4528,7 +4528,7 @@ fi
 
 # どうもキャッシュするのが一番速い様だ
 _ble_util_c2s_table=()
-## 関数 ble/util/c2s char
+## @fn ble/util/c2s char
 ##   @var[out] ret
 function ble/util/c2s {
   [[ $_ble_util_locale_triple != "$LC_ALL:$LC_CTYPE:$LANG" ]] &&
@@ -4554,7 +4554,7 @@ function ble/util/chars2s {
   ble/util/chars2s.impl "$@"
 }
 
-## 関数 ble/util/c2bc
+## @fn ble/util/c2bc
 ##   gets a byte count of the encoded data of the char
 ##   指定した文字を現在の符号化方式で符号化した時のバイト数を取得します。
 ##   @param[in]  $1 = code
@@ -4563,7 +4563,7 @@ function ble/util/c2bc {
   "ble/encoding:$bleopt_input_encoding/c2bc" "$1"
 }
 
-## 関数 ble/util/.cache/update-locale
+## @fn ble/util/.cache/update-locale
 ##
 ##  使い方
 ##
@@ -4599,7 +4599,7 @@ function ble/util/.cache/update-locale {
 
 #------------------------------------------------------------------------------
 
-## 関数 ble/util/s2chars text
+## @fn ble/util/s2chars text
 ##   @var[out] ret
 function ble/util/s2chars {
   local text=$1 n=${#1} i chars
@@ -4613,7 +4613,7 @@ function ble/util/s2chars {
 
 # bind で使用される keyseq の形式
 
-## 関数 ble/util/c2keyseq char
+## @fn ble/util/c2keyseq char
 ##   @var[out] ret
 function ble/util/c2keyseq {
   local char=$(($1))
@@ -4645,7 +4645,7 @@ function ble/util/c2keyseq {
     fi ;;
   esac
 }
-## 関数 ble/util/chars2keyseq char...
+## @fn ble/util/chars2keyseq char...
 ##   @var[out] ret
 function ble/util/chars2keyseq {
   local char str=
@@ -4655,7 +4655,7 @@ function ble/util/chars2keyseq {
   done
   ret=$str
 }
-## 関数 ble/util/keyseq2chars keyseq
+## @fn ble/util/keyseq2chars keyseq
 ##   @arr[out] ret
 function ble/util/keyseq2chars {
   local keyseq=$1
@@ -4703,7 +4703,7 @@ function ble/util/keyseq2chars {
 
 #------------------------------------------------------------------------------
 
-## 関数 ble/encoding:UTF-8/b2c byte...
+## @fn ble/encoding:UTF-8/b2c byte...
 ##   @var[out] ret
 function ble/encoding:UTF-8/b2c {
   local bytes b0 n i
@@ -4719,7 +4719,7 @@ function ble/encoding:UTF-8/b2c {
   done
 }
 
-## 関数 ble/encoding:UTF-8/c2b char
+## @fn ble/encoding:UTF-8/c2b char
 ##   @arr[out] bytes
 function ble/encoding:UTF-8/c2b {
   local code=$1 n i
@@ -4741,13 +4741,13 @@ function ble/encoding:UTF-8/c2b {
   fi
 }
 
-## 関数 ble/encoding:C/b2c byte
+## @fn ble/encoding:C/b2c byte
 ##   @var[out] ret
 function ble/encoding:C/b2c {
   local byte=$1
   ((ret=byte&0xFF))
 }
-## 関数 ble/encoding:C/c2b char
+## @fn ble/encoding:C/c2b char
 ##   @arr[out] bytes
 function ble/encoding:C/c2b {
   local code=$1

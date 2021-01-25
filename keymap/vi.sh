@@ -9,10 +9,10 @@ function ble-edit/bind/load-editing-mode:vi { :; }
 
 source "$_ble_base/keymap/vi_digraph.sh"
 
-## オプション keymap_vi_macro_depth
+## @bleopt keymap_vi_macro_depth
 bleopt/declare -n keymap_vi_macro_depth 64
 
-## 関数 ble/keymap:vi/k2c key
+## @fn ble/keymap:vi/k2c key
 ##   @var[out] ret
 function ble/keymap:vi/k2c {
   local key=$1
@@ -32,9 +32,9 @@ function ble/keymap:vi/k2c {
 #------------------------------------------------------------------------------
 # utils
 
-## 関数 ble/string#index-of-chars text chars [index]
+## @fn ble/string#index-of-chars text chars [index]
 ##   文字集合に含まれる文字を、文字列中で順方向に探索します。
-## 関数 ble/string#last-index-of-chars text chars [index]
+## @fn ble/string#last-index-of-chars text chars [index]
 ##   文字集合に含まれる文字を、文字列中で逆方向に探索します。
 ##
 ##   @param[in] text
@@ -70,14 +70,14 @@ function ble/string#last-index-of-chars {
   fi
 }
 
-## 関数 ble-edit/content/nonbol-eolp text
+## @fn ble-edit/content/nonbol-eolp text
 ##   @var[out] ret
 function ble-edit/content/nonbol-eolp {
   local pos=${1:-$_ble_edit_ind}
   ! ble-edit/content/bolp "$pos" && ble-edit/content/eolp "$pos"
 }
 
-## 関数 ble/keymap:vi/string#encode-rot13 text...
+## @fn ble/keymap:vi/string#encode-rot13 text...
 ##   @var[out] ret
 function ble/keymap:vi/string#encode-rot13 {
   local text=$*
@@ -154,11 +154,11 @@ function ble/widget/vi_omap/cancel {
 #------------------------------------------------------------------------------
 # repeat
 
-## 変数 _ble_keymap_vi_irepeat_count
+## @var _ble_keymap_vi_irepeat_count
 ##   挿入モードに入る時に指定された引数を記録する。
 _ble_keymap_vi_irepeat_count=
 
-## 配列 _ble_keymap_vi_irepeat
+## @arr _ble_keymap_vi_irepeat
 ##   挿入モードに入るときに指定された引数が 1 より大きい時、
 ##   後で操作を繰り返すために操作内容を記録する配列。
 ##
@@ -207,7 +207,7 @@ function ble/keymap:vi/imap/invoke-widget {
   builtin eval -- "$WIDGET"
 }
 
-## 配列 _ble_keymap_vi_imap_white_list
+## @arr _ble_keymap_vi_imap_white_list
 ##   引数を指定して入った挿入モードを抜けるときの繰り返しで許されるコマンドのリスト
 _ble_keymap_vi_imap_white_list=(
   self-insert
@@ -291,15 +291,15 @@ function ble-decode/keymap:vi_imap/bind-complete {
 #------------------------------------------------------------------------------
 # modes
 
-## 変数 _ble_keymap_vi_insert_overwrite
+## @var _ble_keymap_vi_insert_overwrite
 ##   挿入モードに入った時の上書き文字
 _ble_keymap_vi_insert_overwrite=
 
-## 変数 _ble_keymap_vi_insert_leave
+## @var _ble_keymap_vi_insert_leave
 ##   挿入モードから抜ける時に実行する関数を設定します
 _ble_keymap_vi_insert_leave=
 
-## 変数 _ble_keymap_vi_single_command
+## @var _ble_keymap_vi_single_command
 ##   ノーマルモードにおいて 1 つコマンドを実行したら
 ##   元の挿入モードに戻るモード (C-o) にいるかどうかを表します。
 _ble_keymap_vi_single_command=
@@ -311,7 +311,7 @@ ble/array#push _ble_textarea_local_VARNAMES \
                _ble_keymap_vi_single_command \
                _ble_keymap_vi_single_command_overwrite
 
-## オプション keymap_vi_mode_string_nmap
+## @bleopt keymap_vi_mode_string_nmap
 ##   ノーマルモードの時に表示する文字列を指定します。
 ##   空文字列を指定したときは何も表示しません。
 bleopt/declare -n keymap_vi_mode_string_nmap $'\e[1m~\e[m'
@@ -473,7 +473,7 @@ function ble/widget/vi_imap/single-command-mode {
   return 0
 }
 
-## 関数 ble/keymap:vi/needs-eol-fix
+## @fn ble/keymap:vi/needs-eol-fix
 ##
 ##   Note: この関数を使った後は ble/keymap:vi/adjust-command-mode を呼び出す必要がある。
 ##     そうしないとノーマルモードにおいてありえない位置にカーソルが来ることになる。
@@ -528,7 +528,7 @@ function ble/widget/vi-command/bell {
   return 0
 }
 
-## 関数 ble/widget/vi_nmap/.insert-mode [arg [overwrite [opts]]]
+## @fn ble/widget/vi_nmap/.insert-mode [arg [overwrite [opts]]]
 ##   @param[in] arg
 ##   @param[in] overwrite
 ##   @param[in] opts
@@ -669,14 +669,14 @@ ble/array#push _ble_textarea_local_VARNAMES \
 _ble_keymap_vi_register=()
 _ble_keymap_vi_register_onplay=
 
-## 関数 ble/keymap:vi/clear-arg
+## @fn ble/keymap:vi/clear-arg
 function ble/keymap:vi/clear-arg {
   _ble_edit_arg=
   _ble_keymap_vi_oparg=
   _ble_keymap_vi_opfunc=
   _ble_keymap_vi_reg=
 }
-## 関数 ble/keymap:vi/get-arg [default_value]; ARG FLAG REG
+## @fn ble/keymap:vi/get-arg [default_value]; ARG FLAG REG
 ##
 ## 引数の内容について
 ##   vi_nmap, vi_xmap, vi_smap においては FLAG は空であると仮定して良い。
@@ -696,7 +696,7 @@ function ble/keymap:vi/get-arg {
   fi
   ble/keymap:vi/clear-arg
 }
-## 関数 ble/keymap:vi/register#load reg
+## @fn ble/keymap:vi/register#load reg
 function ble/keymap:vi/register#load {
   local reg=$1
   if [[ $reg ]] && ((reg!=34)); then
@@ -715,7 +715,7 @@ function ble/keymap:vi/register#load {
     fi
   fi
 }
-## 関数 ble/keymap:vi/register#set reg type content
+## @fn ble/keymap:vi/register#set reg type content
 function ble/keymap:vi/register#set {
   local reg=$1 type=$2 content=$3
 
@@ -790,7 +790,7 @@ function ble/keymap:vi/register#set {
   fi
 }
 
-## 関数 ble/keymap:vi/register#set-yank reg type content
+## @fn ble/keymap:vi/register#set-yank reg type content
 ##   レジスタ "0 に文字列を登録します。
 ##
 function ble/keymap:vi/register#set-yank {
@@ -800,7 +800,7 @@ function ble/keymap:vi/register#set-yank {
     ble/keymap:vi/register#set 48 "$type" "$content" # "0
   fi
 }
-## 関数 ble/keymap:vi/register#set-edit reg type content
+## @fn ble/keymap:vi/register#set-edit reg type content
 ##   レジスタ "1 に文字列を登録します。
 ##
 ##   content に改行が含まれる場合、または、特定の WIDGET の時、
@@ -861,7 +861,7 @@ function ble/keymap:vi/register#play {
   ble/widget/.MACRO "${ret[@]}"
   return 0
 }
-## 関数 ble/keymap:vi/register#dump/escape text
+## @fn ble/keymap:vi/register#dump/escape text
 ##   @var[out] ret
 function ble/keymap:vi/register#dump/escape {
   local text=$1
@@ -1154,7 +1154,7 @@ function ble/widget/vi-command/beginning-of-line {
 
 ## オペレータは以下の形式の関数として定義される。
 ##
-## 関数 ble/keymap:vi/operator:名称 a b context [count [reg]]
+## @fn ble/keymap:vi/operator:名称 a b context [count [reg]]
 ##
 ##   @param[in] a b
 ##     範囲の開始点と終了点。終了点は開始点以降にあることが保証される。
@@ -1195,10 +1195,10 @@ function ble/widget/vi-command/beginning-of-line {
 ## - ble/keymap:vi/call-operator-blockwise
 
 
-## 関数 ble/keymap:vi/call-operator op beg end type arg reg
-## 関数 ble/keymap:vi/call-operator-charwise op beg end arg reg
-## 関数 ble/keymap:vi/call-operator-linewise op beg end arg reg
-## 関数 ble/keymap:vi/call-operator-blockwise op beg end arg reg
+## @fn ble/keymap:vi/call-operator op beg end type arg reg
+## @fn ble/keymap:vi/call-operator-charwise op beg end arg reg
+## @fn ble/keymap:vi/call-operator-linewise op beg end arg reg
+## @fn ble/keymap:vi/call-operator-blockwise op beg end arg reg
 ##
 ##   @var[in] ble_keymap_vi_mark_active
 ##     オペレータ作用前の $_ble_edit_mark_active を指定する。
@@ -1456,7 +1456,7 @@ function ble/keymap:vi/operator:rot13 {
   ble/keymap:vi/operator:tr.impl "$1" "$2" "$3" ble/keymap:vi/string#encode-rot13
 }
 
-## 関数 ble/keymap:vi/expand-range-for-linewise-operator
+## @fn ble/keymap:vi/expand-range-for-linewise-operator
 ##   @var[in,out] beg, end
 function ble/keymap:vi/expand-range-for-linewise-operator {
   local ret
@@ -1481,7 +1481,7 @@ function ble/keymap:vi/expand-range-for-linewise-operator {
 #--------------------------------------
 # Indent operators < >
 
-## 関数 ble/keymap:vi/string#increase-indent
+## @fn ble/keymap:vi/string#increase-indent
 ##   @var[out] ret
 function ble/keymap:vi/string#increase-indent {
   local text=$1 delta=$2
@@ -1525,7 +1525,7 @@ function ble/keymap:vi/string#increase-indent {
 
   IFS=$'\n' builtin eval 'ret="${arr2[*]-}"'
 }
-## 関数 ble/keymap:vi/operator:indent.impl/increase-block-indent width
+## @fn ble/keymap:vi/operator:indent.impl/increase-block-indent width
 ##   @param[in] width
 ##   @var[in] sub_ranges
 function ble/keymap:vi/operator:indent.impl/increase-block-indent {
@@ -1539,7 +1539,7 @@ function ble/keymap:vi/operator:indent.impl/increase-block-indent {
     ble/widget/.replace-range "$smin" "$smin" "$ret"
   done
 }
-## 関数 ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent width
+## @fn ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent width
 ##   @param[in] width
 ##   @var[in] sub_ranges
 function ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent {
@@ -1582,7 +1582,7 @@ function ble/keymap:vi/operator:indent.impl/decrease-graphical-block-indent {
     ble/widget/.replace-range "${rep[@]::3}"
   done
 }
-## 関数 ble/keymap:vi/operator:indent.impl/decrease-logical-block-indent width
+## @fn ble/keymap:vi/operator:indent.impl/decrease-logical-block-indent width
 ##   @param[in] width
 ##   @var[in] sub_ranges
 function ble/keymap:vi/operator:indent.impl/decrease-logical-block-indent {
@@ -1655,7 +1655,7 @@ function ble/keymap:vi/operator:indent-right {
 #--------------------------------------
 # Fold operators gq gw
 
-## 関数 ble/keymap:vi/string#measure-width text
+## @fn ble/keymap:vi/string#measure-width text
 ##   指定した文字列の表示上の幅を計測します。
 ##
 ##   @param[in] text
@@ -1679,7 +1679,7 @@ function ble/keymap:vi/string#measure-width {
   done
   ret=$s
 }
-## 関数 ble/keymap:vi/string#fold/.get-interval text x
+## @fn ble/keymap:vi/string#fold/.get-interval text x
 ##   単語間のスペースの表示上の幅を計算します。
 ##
 ##   @param[in] text
@@ -1702,7 +1702,7 @@ function ble/keymap:vi/string#fold/.get-interval {
   done
   ret=$((x-$2))
 }
-## 関数 ble/keymap:vi/string#fold text [cols]
+## @fn ble/keymap:vi/string#fold text [cols]
 ##   @param[in]     text
 ##   @param[in,opt] cols [既定値 ${COLUMNS:-80}]
 ##     折り返す幅を指定します。
@@ -1765,7 +1765,7 @@ function ble/keymap:vi/string#fold {
   done
   ret=$out
 }
-## 関数 ble/keymap:vi/operator:fold/.fold-paragraphwise text [cols]
+## @fn ble/keymap:vi/operator:fold/.fold-paragraphwise text [cols]
 ##   @var[out] ret
 function ble/keymap:vi/operator:fold/.fold-paragraphwise {
   local text=$1
@@ -1940,9 +1940,9 @@ function ble/keymap:vi/operator:map {
 #--------------------------------------
 # Primitive motion
 
-## 関数 ble/widget/vi-command/exclusive-range.impl src dst flag reg nobell
-## 関数 ble/widget/vi-command/exclusive-goto.impl index flag reg nobell
-## 関数 ble/widget/vi-command/inclusive-goto.impl index flag reg nobell
+## @fn ble/widget/vi-command/exclusive-range.impl src dst flag reg nobell
+## @fn ble/widget/vi-command/exclusive-goto.impl index flag reg nobell
+## @fn ble/widget/vi-command/inclusive-goto.impl index flag reg nobell
 ##
 ##   @param[in] src, dst
 ##     移動前の位置と移動先の位置を指定します。
@@ -2045,8 +2045,8 @@ function ble/widget/vi-command/inclusive-goto.impl {
   ble/widget/vi-command/exclusive-range.impl "$_ble_edit_ind" "$index" "$flag" "$reg" "$opts:inclusive"
 }
 
-## 関数 ble/widget/vi-command/linewise-range.impl p q flag reg opts
-## 関数 ble/widget/vi-command/linewise-goto.impl index flag reg opts
+## @fn ble/widget/vi-command/linewise-range.impl p q flag reg opts
+## @fn ble/widget/vi-command/linewise-goto.impl index flag reg opts
 ##
 ##   @param[in] p, q
 ##     開始位置と終了位置を指定します。
@@ -2234,10 +2234,10 @@ function ble/keymap:vi/async-read-char {
 #------------------------------------------------------------------------------
 # marks
 
-## 配列 _ble_keymap_vi_mark_local
+## @arr _ble_keymap_vi_mark_local
 ##   添字は mark の文字コードで指定する。
 ##   各要素は point:bytes の形をしている。
-## 配列 _ble_keymap_vi_mark_global
+## @arr _ble_keymap_vi_mark_global
 ##   添字は mark の文字コードで指定する。
 ##   各要素は hindex:point:bytes の形をしている。
 _ble_keymap_vi_mark_Offset=32
@@ -2269,7 +2269,7 @@ ble/array#push _ble_textarea_local_VARNAMES \
 ble/array#push _ble_edit_dirty_observer ble/keymap:vi/mark/shift-by-dirty-range
 blehook history_onleave+=ble/keymap:vi/mark/history-onleave.hook
 
-## 関数 ble/keymap:vi/mark/history-onleave.hook
+## @fn ble/keymap:vi/mark/history-onleave.hook
 function ble/keymap:vi/mark/history-onleave.hook {
   if [[ $_ble_decode_keymap == vi_[inoxs]map ]]; then
     ble/keymap:vi/mark/set-local-mark 34 "$_ble_edit_ind" # `"
@@ -2312,7 +2312,7 @@ function ble/keymap:vi/mark/history-clear.hook {
   _ble_keymap_vi_mark_history=()
   _ble_keymap_vi_mark_hindex=
 }
-## 関数 ble/keymap:vi/mark/history-delete.hook index...
+## @fn ble/keymap:vi/mark/history-delete.hook index...
 ##   @param[in] index...
 ##     昇順に並んでいる事と重複がない事を仮定する。
 function ble/keymap:vi/mark/history-delete.hook {
@@ -2343,7 +2343,7 @@ function ble/keymap:vi/mark/history-delete.hook {
   # reset _ble_keymap_vi_mark_hindex
   _ble_keymap_vi_mark_hindex=
 }
-## 関数 ble/keymap:vi/mark/history-insert.hook beg len
+## @fn ble/keymap:vi/mark/history-insert.hook beg len
 ##   @param[in] beg len
 function ble/keymap:vi/mark/history-insert.hook {
   local beg=$1 len=$2
@@ -2406,7 +2406,7 @@ function ble/keymap:vi/mark/set-local-mark {
   ble-edit/content/find-logical-bol "$index"; local bol=$ret
   _ble_keymap_vi_mark_local[c]=$bol:$((index-bol))
 }
-## 関数 ble/keymap:vi/mark/get-mark.impl index bytes
+## @fn ble/keymap:vi/mark/get-mark.impl index bytes
 ##   @param[in] index bytes
 ##     記録された行頭の位置と列を指定します。
 ##   @var[out] ret
@@ -2421,7 +2421,7 @@ function ble/keymap:vi/mark/get-mark.impl {
   ret=$index
   return 0
 }
-## 関数 ble/keymap:vi/mark/get-mark.impl c
+## @fn ble/keymap:vi/mark/get-mark.impl c
 ##   @param[in] c
 ##     mark の番号 (文字コード) を指定します。
 ##   @var[out] ret
@@ -2439,7 +2439,7 @@ function ble/keymap:vi/mark/get-local-mark {
 
 # `[ `]
 _ble_keymap_vi_mark_suppress_edit=
-## 関数 ble/keymap:vi/mark/set-previous-edit-area beg end
+## @fn ble/keymap:vi/mark/set-previous-edit-area beg end
 ##   @param[in] beg
 ##   @param[in] end
 function ble/keymap:vi/mark/set-previous-edit-area {
@@ -2569,8 +2569,8 @@ function ble/widget/vi-command/goto-mark.hook {
 #------------------------------------------------------------------------------
 # repeat (nmap .)
 
-## 配列 _ble_keymap_vi_repeat
-## 配列 _ble_keymap_vi_repeat_insert
+## @arr _ble_keymap_vi_repeat
+## @arr _ble_keymap_vi_repeat_insert
 ##
 ##   _ble_keymap_vi_repeat が前回の操作を記録する
 ##   _ble_keymap_vi_repeat_insert は挿入モードにいる時に、
@@ -2591,13 +2591,13 @@ function ble/widget/vi-command/goto-mark.hook {
 ##   ${_ble_keymap_vi_repeat[@]:10}
 ##     各 WIDGET が自由に使える領域
 ##
-## 配列 _ble_keymap_vi_repeat_irepeat
+## @arr _ble_keymap_vi_repeat_irepeat
 ##
 ##   _ble_keymap_vi_repeat の操作によって挿入モードに入るとき、
 ##   そこで行われる挿入操作の列を記録する配列である。
 ##   形式は _ble_keymap_vi_irepeat と同じ。
 ##
-## 変数 _ble_keymap_vi_repeat_invoke
+## @var _ble_keymap_vi_repeat_invoke
 ##   ble/keymap:vi/repeat/invoke を通して呼び出された widget かどうかを保持するローカル変数です。
 ##   この変数が非空白のとき ble/keymap:vi/repeat/invoke 内部での呼び出しであることを表します。
 ##
@@ -2634,7 +2634,7 @@ function ble/keymap:vi/repeat/record {
   ble/keymap:vi/repeat/record-special && return 0
   ble/keymap:vi/repeat/record-normal
 }
-## 関数 ble/keymap:vi/repeat/record-insert
+## @fn ble/keymap:vi/repeat/record-insert
 ##   挿入モードを抜ける時に、挿入モードに入るきっかけになった操作と、
 ##   挿入モードで行われた挿入操作の列を記録します。
 function ble/keymap:vi/repeat/record-insert {
@@ -2650,7 +2650,7 @@ function ble/keymap:vi/repeat/record-insert {
   fi
   ble/keymap:vi/repeat/clear-insert
 }
-## 関数 ble/keymap:vi/repeat/clear-insert
+## @fn ble/keymap:vi/repeat/clear-insert
 ##   挿入モードにおいて white list にないコマンドが実行された時に、
 ##   挿入モードに入るきっかけになった操作を初期化します。
 function ble/keymap:vi/repeat/clear-insert {
@@ -2714,8 +2714,8 @@ function ble/widget/vi_nmap/repeat {
 #------------------------------------------------------------------------------
 # command: [cdy]?[hl]
 
-## 編集関数 vi-command/forward-char [type]
-## 編集関数 vi-command/backward-char [type]
+## @widget vi-command/forward-char [type]
+## @widget vi-command/backward-char [type]
 ##
 ##   @param[in] type
 ##     type=wrap のとき複数行に亘る移動を許します。
@@ -2797,7 +2797,7 @@ function ble/widget/vi_nmap/forward-char-toggle-case {
 #------------------------------------------------------------------------------
 # command: [cdy]?[jk]
 
-## 関数 ble/widget/vi-command/.history-relative-line offset
+## @fn ble/widget/vi-command/.history-relative-line offset
 ##
 ##   @param[in] offset
 ##     移動する相対行数を指定する。負の値は前に移動することを表し、
@@ -2854,7 +2854,7 @@ function ble/widget/vi-command/.history-relative-line {
   return 0
 }
 
-## 関数 ble/keymap:vi/get-index-of-relative-line p offset
+## @fn ble/keymap:vi/get-index-of-relative-line p offset
 ##   列を保持した行移動の先の位置を計算します。
 ##   @param[in,opt] p
 ##     基準となる位置を指定します。空文字列を指定した時は現在位置が使われます。
@@ -2892,9 +2892,9 @@ function ble/keymap:vi/get-index-of-relative-line {
   fi
 }
 
-## 関数 ble/widget/vi-command/relative-line.impl offset flag reg opts
-## 編集関数 vi-command/forward-line  # nmap j
-## 編集関数 vi-command/backward-line # nmap k
+## @fn ble/widget/vi-command/relative-line.impl offset flag reg opts
+## @widget vi-command/forward-line  # nmap j
+## @widget vi-command/backward-line # nmap k
 ##
 ##   j, k による移動の動作について。論理行を移動するとする。
 ##   配置情報があるとき、列は行頭からの相対表示位置 (dx,dy) を保持する。
@@ -2961,9 +2961,9 @@ function ble/widget/vi-command/backward-line {
   ble/widget/vi-command/relative-line.impl $((-ARG)) "$FLAG" "$REG" history
 }
 
-## 関数 ble/widget/vi-command/graphical-relative-line.impl offset flag reg opts
-## 編集関数 vi-command/graphical-forward-line  # nmap gj
-## 編集関数 vi-command/graphical-backward-line # nmap gk
+## @fn ble/widget/vi-command/graphical-relative-line.impl offset flag reg opts
+## @widget vi-command/graphical-forward-line  # nmap gj
+## @widget vi-command/graphical-backward-line # nmap gk
 ##
 ##   @param[in] offset
 ##     移動する相対行数。負の値は上の行へ行くことを表す。正の値は下の行へ行くことを表す。
@@ -3198,7 +3198,7 @@ function ble/widget/vi-command/last-non-space {
 #   C-b, prior, C-f, next
 
 _ble_keymap_vi_previous_scroll=
-## 関数 ble/widget/vi_nmap/scroll.impl opts
+## @fn ble/widget/vi_nmap/scroll.impl opts
 ##   @arg[in] opts
 ##     forward
 ##     backward
@@ -3468,7 +3468,7 @@ function ble/widget/vi_nmap/scroll-or-pagedown-and-redraw {
 #------------------------------------------------------------------------------
 # command: p P
 
-## 関数 ble/widget/vi_nmap/paste.impl/block arg [type]
+## @fn ble/widget/vi_nmap/paste.impl/block arg [type]
 ##
 ##   @param[in] arg
 ##     挿入する各行の繰り返し回数を指定します。
@@ -3928,7 +3928,7 @@ function ble/widget/vi-command/last-eol {
 #------------------------------------------------------------------------------
 # command: r gr
 
-## 関数 ble/widget/vi_nmap/replace-char.impl code [overwrite_mode]
+## @fn ble/widget/vi_nmap/replace-char.impl code [overwrite_mode]
 ##   @param[in] overwrite_mode
 ##     置換する文字の挿入方法を指定します。
 function ble/widget/vi_nmap/replace-char.impl {
@@ -4055,11 +4055,11 @@ function ble/widget/vi_nmap/insert-mode-at-backward-line {
 # command: f F t F
 
 
-## 変数 _ble_keymap_vi_char_search
+## @var _ble_keymap_vi_char_search
 ##   前回の ble/widget/vi-command/search-char.impl/core の検索を記録します。
 _ble_keymap_vi_char_search=
 
-## 関数 ble/widget/vi-command/search-char.impl/core opts key|char
+## @fn ble/widget/vi-command/search-char.impl/core opts key|char
 ##
 ##   @param[in] opts
 ##     以下のフラグ文字から構成される文字列です。
@@ -4167,7 +4167,7 @@ function ble/widget/vi-command/search-char-reverse-repeat {
 #------------------------------------------------------------------------------
 # command: %
 
-## 関数 ble/widget/vi-command/search-matchpair/.search-forward
+## @fn ble/widget/vi-command/search-matchpair/.search-forward
 ##   @var[in] _ble_edit_str, ch1, ch2, index
 ##   @var[out] ret
 function ble/widget/vi-command/search-matchpair/.search-forward {
@@ -4263,18 +4263,18 @@ function ble/widget/vi-command/nth-byte {
 
 _ble_keymap_vi_text_object=
 
-## 関数 ble/keymap:vi/text-object/word.impl      arg flag reg type
-## 関数 ble/keymap:vi/text-object/quote.impl     arg flag reg type
-## 関数 ble/keymap:vi/text-object/block.impl     arg flag reg type
-## 関数 ble/keymap:vi/text-object/tag.impl       arg flag reg type
-## 関数 ble/keymap:vi/text-object/sentence.impl  arg flag reg type
-## 関数 ble/keymap:vi/text-object/paragraph.impl arg flag reg type
+## @fn ble/keymap:vi/text-object/word.impl      arg flag reg type
+## @fn ble/keymap:vi/text-object/quote.impl     arg flag reg type
+## @fn ble/keymap:vi/text-object/block.impl     arg flag reg type
+## @fn ble/keymap:vi/text-object/tag.impl       arg flag reg type
+## @fn ble/keymap:vi/text-object/sentence.impl  arg flag reg type
+## @fn ble/keymap:vi/text-object/paragraph.impl arg flag reg type
 ##
 ##   @exit テキストオブジェクトの処理が完了したときに 0 を返します。
 ##
 
 
-## 関数 ble/keymap:vi/text-object/word.extend-forward
+## @fn ble/keymap:vi/text-object/word.extend-forward
 ##   Note #D0855
 ##   @var[in] type arg
 ##   @var[in] rex_word nl space ifs
@@ -4348,7 +4348,7 @@ function ble/keymap:vi/text-object/word.extend-forward {
 
   return 0
 }
-## 関数 ble/keymap:vi/text-object/word.extend-backward
+## @fn ble/keymap:vi/text-object/word.extend-backward
 ##   Note #D0855
 ##   @var[in,out] beg
 ##   @var[in] type arg
@@ -4434,7 +4434,7 @@ function ble/keymap:vi/text-object/word.impl {
   fi
 }
 
-## 関数 ble/keymap:vi/text-object:quote/.next [index]
+## @fn ble/keymap:vi/text-object:quote/.next [index]
 ##   @var[out] ret
 function ble/keymap:vi/text-object:quote/.next {
   local index=${1:-$((_ble_edit_ind+1))} nl=$'\n'
@@ -4443,7 +4443,7 @@ function ble/keymap:vi/text-object:quote/.next {
   ((ret=index+${#BASH_REMATCH}-1))
   return 0
 }
-## 関数 ble/keymap:vi/text-object:quote/.prev [index]
+## @fn ble/keymap:vi/text-object:quote/.prev [index]
 ##   @var[out] ret
 function ble/keymap:vi/text-object:quote/.prev {
   local index=${1:-_ble_edit_ind} nl=$'\n'
@@ -4491,7 +4491,7 @@ function ble/keymap:vi/text-object/quote.impl {
     return 1
   fi
 }
-## 関数 ble/keymap:vi/text-object:quote/.expand-xmap-range mode
+## @fn ble/keymap:vi/text-object:quote/.expand-xmap-range mode
 ##   @param[in] mode
 ##   @var[in,out] beg
 ##   @var[in,out] end
@@ -4626,7 +4626,7 @@ function ble/keymap:vi/text-object/block.impl {
   fi
 }
 
-## 関数 ble/keymap:vi/text-object:tag/.find-end-tag
+## @fn ble/keymap:vi/text-object:tag/.find-end-tag
 ##   @var[in] beg
 ##   @var[out] end
 function ble/keymap:vi/text-object:tag/.find-end-tag {
@@ -4700,7 +4700,7 @@ function ble/keymap:vi/text-object/tag.impl {
   fi
 }
 
-## 関数 ble/keymap:vi/text-object:sentence/.beg
+## @fn ble/keymap:vi/text-object:sentence/.beg
 ##   @var[out] beg
 ##   @var[out] is_interval
 ##   @var[in] LF, HT
@@ -4739,7 +4739,7 @@ function ble/keymap:vi/text-object:sentence/.beg {
     fi
   fi
 }
-## 関数 ble/keymap:vi/text-object:sentence/.next {
+## @fn ble/keymap:vi/text-object:sentence/.next {
 ##   @var[in,out] end
 ##   @var[in,out] is_interval
 ##   @var[in] LF, HT
@@ -4870,7 +4870,7 @@ function ble/keymap:vi/text-object/paragraph.impl {
   fi
 }
 
-## 関数 ble/keymap:vi/text-object.impl
+## @fn ble/keymap:vi/text-object.impl
 ##
 ##   @exit テキストオブジェクトの処理が完了したときに 0 を返します。
 ##
@@ -5017,7 +5017,7 @@ _ble_keymap_vi_search_history_edit=()
 _ble_keymap_vi_search_history_dirt=()
 _ble_keymap_vi_search_history_ind=0
 
-## オプション keymap_vi_search_match_current
+## @bleopt keymap_vi_search_match_current
 ##   非空の文字列が設定されている時 /, ?, n, N で
 ##   現在のカーソルの下にある単語に一致します。
 ##   既定値は空文字列で vim の振る舞いに倣います。
@@ -5034,7 +5034,7 @@ function ble/keymap:vi/search/clear-matched {
   _ble_keymap_vi_search_matched=
   [[ $_ble_edit_mark_active == vi_search ]] && _ble_edit_mark_active=
 }
-## 関数 ble/keymap:vi/search/invoke-search needle opts
+## @fn ble/keymap:vi/search/invoke-search needle opts
 ##
 ##   @param[in] needle
 ##     検索パターンを表す正規表現を指定する。
@@ -5111,7 +5111,7 @@ function ble/keymap:vi/search/invoke-search {
   return "$ret"
 }
 
-## 関数 ble/widget/vi-command/search.core
+## @fn ble/widget/vi-command/search.core
 ##
 ##   @var[in] needle
 ##   @var[in] opt_backward
@@ -5379,7 +5379,7 @@ function ble/widget/vi_xmap/command-help {
 
 #------------------------------------------------------------------------------
 
-## 関数 ble/keymap:vi/setup-map
+## @fn ble/keymap:vi/setup-map
 ##   @var[in] ble_bind_keymap
 function ble/keymap:vi/setup-map {
   ble-bind -f 0 vi-command/append-arg
@@ -6120,10 +6120,10 @@ function ble/keymap:vi/xmap/switch-type {
 #--------------------------------------
 # xmap/矩形範囲の抽出
 
-## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-graphical-rectangle [index1 [index2]]
-## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-logical-rectangle   [index1 [index2]]
-## 関数 local p0 q0 lx ly rx ry; ble/keymap:vi/get-rectangle [index1 [index2]]
-## 関数 local ret              ; ble/keymap:vi/get-rectangle-height [index1 [index2]]
+## @fn local p0 q0 lx ly rx ry; ble/keymap:vi/get-graphical-rectangle [index1 [index2]]
+## @fn local p0 q0 lx ly rx ry; ble/keymap:vi/get-logical-rectangle   [index1 [index2]]
+## @fn local p0 q0 lx ly rx ry; ble/keymap:vi/get-rectangle [index1 [index2]]
+## @fn local ret              ; ble/keymap:vi/get-rectangle-height [index1 [index2]]
 ##
 ##   @param[in,opt] index1 [=_ble_edit_mark]
 ##   @param[in,opt] index2 [=_ble_edit_ind]
@@ -6168,7 +6168,7 @@ function ble/keymap:vi/get-rectangle {
     ble/keymap:vi/get-logical-rectangle "$@"
   fi
 }
-## 関数 ble/keymap:vi/get-rectangle-height [index1 [index2]]
+## @fn ble/keymap:vi/get-rectangle-height [index1 [index2]]
 ##   @var[out] ret
 function ble/keymap:vi/get-rectangle-height {
   local p0 q0 lx ly rx ry
@@ -6179,12 +6179,12 @@ function ble/keymap:vi/get-rectangle-height {
 }
 
 
-## 関数 ble/keymap:vi/extract-graphical-block-by-geometry bol1 bol2 x1:y1 x2:y2 opts
-## 関数 ble/keymap:vi/extract-logical-block-by-geometry bol1 bol2 c1 c2 opts
+## @fn ble/keymap:vi/extract-graphical-block-by-geometry bol1 bol2 x1:y1 x2:y2 opts
+## @fn ble/keymap:vi/extract-logical-block-by-geometry bol1 bol2 c1 c2 opts
 ##   指定した引数の範囲を元に矩形範囲を抽出します。
-## 関数 ble/keymap:vi/extract-graphical-block [index1 [index2 [opts]]]
-## 関数 ble/keymap:vi/extract-logical-block [index1 [index2 [opts]]]
-## 関数 ble/keymap:vi/extract-block [index1 [index2 [opts]]]
+## @fn ble/keymap:vi/extract-graphical-block [index1 [index2 [opts]]]
+## @fn ble/keymap:vi/extract-logical-block [index1 [index2 [opts]]]
+## @fn ble/keymap:vi/extract-block [index1 [index2 [opts]]]
 ##   現在位置 (_ble_edit_ind) とマーク (_ble_edit_mark) を元に矩形範囲を抽出します。
 ##
 ##   @param[in] bol1 bol2
@@ -6396,9 +6396,9 @@ function ble/keymap:vi/extract-block {
 #--------------------------------------
 # xmap/選択範囲の着色の設定
 
-## 関数 ble/highlight/layer:region/mark:vi_char/get-selection
-## 関数 ble/highlight/layer:region/mark:vi_line/get-selection
-## 関数 ble/highlight/layer:region/mark:vi_block/get-selection
+## @fn ble/highlight/layer:region/mark:vi_char/get-selection
+## @fn ble/highlight/layer:region/mark:vi_line/get-selection
+## @fn ble/highlight/layer:region/mark:vi_block/get-selection
 ##   @arr[out] selection
 function ble/highlight/layer:region/mark:vi_char/get-selection {
   local rmin rmax
@@ -6730,7 +6730,7 @@ function ble/widget/vi_xmap/switch-to-visual-blockwise {
   fi
 }
 
-## オプション keymap_vi_keymodel
+## @bleopt keymap_vi_keymodel
 ##   選択モードにおける移動コマンドの振る舞いを制御します。
 bleopt/declare -v keymap_vi_keymodel ''
 function ble/widget/vi_smap/@nomarked {
@@ -6946,7 +6946,7 @@ function ble/widget/vi_xmap/connect-line {
 #--------------------------------------
 # xmap/矩形挿入モード
 
-## 変数 _ble_keymap_vi_xmap_insert_data
+## @var _ble_keymap_vi_xmap_insert_data
 ##   矩形挿入モードの情報を保持します。
 ##   iline:x1:width:content の形式です。
 ##
@@ -6970,7 +6970,7 @@ function ble/keymap:vi/xmap/update-dirty-range {
     _ble_keymap_vi_xmap_insert_dbeg=$beg
 }
 
-## 関数 ble/widget/vi_xmap/block-insert-mode.impl
+## @fn ble/widget/vi_xmap/block-insert-mode.impl
 ##   @var[in] sub_ranges sub_x1 sub_x2
 function ble/widget/vi_xmap/block-insert-mode.impl {
   local type=$1
@@ -7287,7 +7287,7 @@ function ble/widget/vi_xmap/paste-before {
 #--------------------------------------
 # xmap <C-a>, <C-x>, g<C-a>, g<C-x>
 
-## 関数 ble/widget/vi_xmap/increment.impl opts
+## @fn ble/widget/vi_xmap/increment.impl opts
 ##
 ##   @param[in] opts
 ##     以下の項目をコロンで区切って指定したものです。
@@ -7789,7 +7789,7 @@ function ble-decode/keymap:vi_imap/define {
   # ble-bind -f 'C-k' vi_imap/insert-digraph
 }
 
-## 関数 ble-decode/keymap:vi_imap/define-meta-bindings
+## @fn ble-decode/keymap:vi_imap/define-meta-bindings
 ##   M- で始まるキーバインディングを定義します。
 ##   ユーザから呼び出すための関数です。
 function ble-decode/keymap:vi_imap/define-meta-bindings {

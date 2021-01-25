@@ -12,8 +12,8 @@ function ble/syntax/util/is-directory {
   fi
 }
 
-## 関数 ble/syntax/urange#update prefix p1 p2
-## 関数 ble/syntax/wrange#update prefix p1 [p2]
+## @fn ble/syntax/urange#update prefix p1 p2
+## @fn ble/syntax/wrange#update prefix p1 [p2]
 ##   @param[in]   prefix
 ##   @param[in]   p1 p2
 ##   @var[in,out] {prefix}umin {prefix}umax
@@ -37,8 +37,8 @@ function ble/syntax/wrange#update {
     (${prefix}umax<0||${prefix}umax<p2)&&(${prefix}umax=p2)))
 }
 
-## 関数 ble/syntax/urange#shift prefix
-## 関数 ble/syntax/wrange#shift prefix
+## @fn ble/syntax/urange#shift prefix
+## @fn ble/syntax/wrange#shift prefix
 ##   @param[in]   prefix
 ##   @var[in]     beg end end0 shift
 ##   @var[in,out] {prefix}umin {prefix}umax
@@ -179,7 +179,7 @@ function ble/syntax/tree-enumerate/.add-root-element {
   TE_root="$wtype $wlen $tclen $tplen -- $TE_root"
 }
 
-## 関数 ble/syntax/tree-enumerate/.initialize
+## @fn ble/syntax/tree-enumerate/.initialize
 ##
 ##   @var[in]  iN
 ##     文字列の長さ、つまり現在の解析終端位置を指定します。
@@ -249,7 +249,7 @@ function ble/syntax/tree-enumerate/.initialize {
   ((TE_nofs=0))
 }
 
-## 関数 ble/syntax/tree-enumerate/.impl command...
+## @fn ble/syntax/tree-enumerate/.impl command...
 ##   @param[in] command...
 ##     各ノードについて呼び出すコマンドを指定します。
 ##   @var[in] iN
@@ -289,27 +289,27 @@ function ble/syntax/tree-enumerate-children {
 }
 function ble/syntax/tree-enumerate-break () ((tprev=-1))
 
-## 関数 ble/syntax/tree-enumerate command...
+## @fn ble/syntax/tree-enumerate command...
 ##   現在の解析状態 _ble_syntax_tree に基いて、
 ##   指定したコマンド command... を
 ##   トップレベルの各ノードに対して末尾にあるノードから順に呼び出します。
 ##
-## @param[in] command...
-##   呼び出すコマンドを指定します。
+##   @param[in] command...
+##     呼び出すコマンドを指定します。
 ##
-##   コマンドは以下のシェル変数を入力・出力とします。
-##   @var[in]     TE_i TE_nofs
-##   @var[in]     wtype wbegin wlen attr tchild
-##   @var[in,out] tprev
-##     列挙を中断する時は ble/syntax/tree-enumerate-break
-##     を呼び出す事によって、tprev=-1 を設定します。
+##     コマンドは以下のシェル変数を入力・出力とします。
+##     @var[in]     TE_i TE_nofs
+##     @var[in]     wtype wbegin wlen attr tchild
+##     @var[in,out] tprev
+##       列挙を中断する時は ble/syntax/tree-enumerate-break
+##       を呼び出す事によって、tprev=-1 を設定します。
 ##
-##   内部で ble/syntax/tree-enumerate-children を呼び出すと、
-##   更に入れ子になった単語について処理を実行する事ができます。
+##     内部で ble/syntax/tree-enumerate-children を呼び出すと、
+##     更に入れ子になった単語について処理を実行する事ができます。
 ##
-## @var[in] iN
-##   解析の起点を指定します。_ble_syntax_stat が設定されている必要があります。
-##   指定を省略した場合は _ble_syntax_stat の末尾が使用されます。
+##   @var[in] iN
+##     解析の起点を指定します。_ble_syntax_stat が設定されている必要があります。
+##     指定を省略した場合は _ble_syntax_stat の末尾が使用されます。
 function ble/syntax/tree-enumerate {
   local TE_root TE_i TE_nofs
   [[ ${iN:+set} ]] || local iN=${#_ble_syntax_text}
@@ -317,13 +317,14 @@ function ble/syntax/tree-enumerate {
   ble/syntax/tree-enumerate/.impl "$@"
 }
 
-## 関数 ble/syntax/tree-enumerate-in-range beg end proc
+## @fn ble/syntax/tree-enumerate-in-range beg end proc
 ##   入れ子構造に従わず或る範囲内に登録されている節を列挙します。
-## @param[in] beg,end
-## @param[in] proc 以下の変数を使用する関数を指定します。
-##   @var[in] wtype wlen wbeg wend wattr
-##   @var[in] node
-##   @var[in] TE_i TE_nofs
+##   @param[in] beg,end
+##   @param[in] proc
+##     以下の変数を使用する関数を指定します。
+##     @var[in] wtype wlen wbeg wend wattr
+##     @var[in] node
+##     @var[in] TE_i TE_nofs
 function ble/syntax/tree-enumerate-in-range {
   local beg=$1 end=$2
   local proc=$3
@@ -383,7 +384,7 @@ function ble/syntax/print-status/.dump-arrays/.append-attr-char {
   fi
 }
 
-## 関数 ble/syntax/print-status/ctx#get-text ctx
+## @fn ble/syntax/print-status/ctx#get-text ctx
 ##   @var[out] ret
 function ble/syntax/print-status/ctx#get-text {
   local sgr
@@ -394,7 +395,7 @@ function ble/syntax/print-status/ctx#get-text {
     ret="${ret}CTX$1$_ble_term_sgr0"
   fi
 }
-## 関数 ble/syntax/print-status/word.get-text index
+## @fn ble/syntax/print-status/word.get-text index
 ##   _ble_syntax_tree[index] の内容を文字列にします。
 ##   @param[in] index
 ##   @var[out]  word
@@ -446,7 +447,7 @@ function ble/syntax/print-status/word.get-text {
     word=$out
   fi
 }
-## 関数 ble/syntax/print-status/nest.get-text index
+## @fn ble/syntax/print-status/nest.get-text index
 ##   _ble_syntax_nest[index] の内容を文字列にします。
 ##   @param[in] index
 ##   @var[out]  nest
@@ -495,7 +496,7 @@ function ble/syntax/print-status/nest.get-text {
     nest=" nest=($nctx w=$nword n=$nnest t=$nchild:$nprev$nparam)"
   fi
 }
-## 関数 ble/syntax/print-status/stat.get-text index
+## @fn ble/syntax/print-status/stat.get-text index
 ##   _ble_syntax_stat[index] の内容を文字列にします。
 ##   @param[in] index
 ##   @var[out]  stat
@@ -605,7 +606,7 @@ function ble/syntax/print-status/.dump-arrays {
   done
 }
 
-## 関数 ble/syntax/print-status/.dump-tree/proc1
+## @fn ble/syntax/print-status/.dump-tree/proc1
 ## @var[out] resultB
 ## @var[in]  prefix
 ## @var[in]  nl
@@ -615,7 +616,7 @@ function ble/syntax/print-status/.dump-tree/proc1 {
   resultB="$prefix\_ '${_ble_syntax_text:wbegin:wlen}'$nl$resultB"
 }
 
-## 関数 ble/syntax/print-status/.dump-tree
+## @fn ble/syntax/print-status/.dump-tree
 ## @var[out] resultB
 ## @var[in]  iN
 function ble/syntax/print-status/.dump-tree {
@@ -678,7 +679,7 @@ function ble/syntax/parse/generate-stat {
 }
 
 
-## 関数 ble/syntax/parse/set-lookahead count
+## @fn ble/syntax/parse/set-lookahead count
 ##
 ##   @param[in] count
 ##     現在位置の何文字先まで参照して動作を決定したかを指定します。
@@ -699,7 +700,7 @@ function ble/syntax/parse/set-lookahead {
 
 # 構文木の管理 (_ble_syntax_tree)
 
-## 関数 ble/syntax/parse/tree-append
+## @fn ble/syntax/parse/tree-append
 ## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
 function ble/syntax/parse/tree-append {
 #%if !release
@@ -726,7 +727,7 @@ function ble/syntax/parse/tree-append {
 function ble/syntax/parse/word-push {
   wtype=$1 wbegin=$2 tprev=$tchild tchild=-1
 }
-## 関数 ble/syntax/parse/word-pop
+## @fn ble/syntax/parse/word-pop
 ## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
 # 仮定: 1つ上の level は nest-push による level か top level のどちらかである。
 #   この場合に限って ble/syntax/parse/nest-reset-tprev を用いて、tprev
@@ -753,7 +754,7 @@ function ble/syntax/parse/word-cancel {
 
 # 入れ子構造の管理
 
-## 関数 ble/syntax/parse/nest-push newctx ntype
+## @fn ble/syntax/parse/nest-push newctx ntype
 ##   @param[in]     newctx 新しい ctx を指定します。
 ##   @param[in,opt] ntype  文法要素の種類を指定します。
 ##   @var  [in]     i      現在の位置を指定します。
@@ -773,7 +774,7 @@ function ble/syntax/parse/nest-push {
   ((ctx=$1,inest=i,wbegin=-1,wtype=-1,tprev=tchild,tchild=-1))
   nparam=
 }
-## 関数 ble/syntax/parse/nest-pop
+## @fn ble/syntax/parse/nest-pop
 ## 要件 解析位置を進めてから呼び出す必要があります (要件: i>=p1+1)。
 ##   現在の入れ子を閉じます。現在の入れ子情報を記録して、一つ上の入れ子情報を復元します。
 ##   @var[   out] ctx      上の入れ子階層の ctx を復元します。
@@ -812,7 +813,7 @@ function ble/syntax/parse/nest-type {
     builtin eval "$_var=\"\${_ble_syntax_nest[inest]##* }\""
   fi
 }
-## 関数 ble/syntax/parse/nest-ctx
+## @fn ble/syntax/parse/nest-ctx
 ##   @var[out] nctx
 function ble/syntax/parse/nest-ctx {
   nctx=
@@ -829,7 +830,7 @@ function ble/syntax/parse/nest-reset-tprev {
     ((tprev=tclen<0?tclen:inest-tclen))
   fi
 }
-## 関数 ble/syntax/parse/nest-equals
+## @fn ble/syntax/parse/nest-equals
 ##   現在のネスト状態と前回のネスト状態が一致するか判定します。
 ## @var i1                     更新開始点
 ## @var i2                     更新終了点
@@ -890,7 +891,7 @@ _ble_syntax_bash_ctx_names=(
 #%$ sed 's/[[:space:]]*#.*//;/^$/d' lib/core-syntax-ctx.def | awk '$2 ~ /^[0-9]+$/ {print "  [" $2 "]=" $1;}'
 )
 
-## 関数 ble/syntax/ctx#get-name ctx
+## @fn ble/syntax/ctx#get-name ctx
 ##   @param[in] ctx
 ##   @var[out] ret
 function ble/syntax/ctx#get-name {
@@ -947,7 +948,7 @@ function ble/syntax:bash/cclass/update/reorder {
   builtin eval "$1=\$a"
 }
 
-## 関数 ble/syntax:bash/cclass/update
+## @fn ble/syntax:bash/cclass/update
 ##
 ##   @var[in] _ble_syntax_bash_histc12
 ##   @var[in,out] _ble_syntax_bashc_seed
@@ -1123,7 +1124,7 @@ function ble/syntax:bash/simple-word/is-never-word {
   [[ $1 =~ $rex ]]
 }
 
-## 関数 ble/syntax:bash/simple-word/evaluate-last-brace-expansion simple_word
+## @fn ble/syntax:bash/simple-word/evaluate-last-brace-expansion simple_word
 ##   @param[in] simple_word
 ##   @var[out] ret simple_ibrace
 function ble/syntax:bash/simple-word/evaluate-last-brace-expansion {
@@ -1189,7 +1190,7 @@ function ble/syntax:bash/simple-word/evaluate-last-brace-expansion {
   ret=$out simple_ibrace=$iopen:$((${#out}-no_brace_length))
 }
 
-## 関数 ble/syntax:bash/simple-word/reconstruct-incomplete-word
+## @fn ble/syntax:bash/simple-word/reconstruct-incomplete-word
 ##   word について不完全なブレース展開と不完全な引用符を閉じ、
 ##   更にブレース展開を実行して最後の単語を取得します。
 ##
@@ -1225,7 +1226,7 @@ function ble/syntax:bash/simple-word/reconstruct-incomplete-word {
     word=${word:${#BASH_REMATCH}}
     [[ $word ]] || return 0
   fi
-  
+
   if [[ $word =~ $_ble_syntax_bash_simple_rex_incomplete_word2 ]]; then
     local out=$ret
 
@@ -1256,7 +1257,7 @@ function ble/syntax:bash/simple-word/reconstruct-incomplete-word {
   return 1
 }
 
-## 関数 ble/syntax:bash/simple-word/extract-parameter-names word
+## @fn ble/syntax:bash/simple-word/extract-parameter-names word
 ##   単純単語に含まれるパラメータ展開のパラメータ名を抽出します。
 ##   @var[in] word
 ##   @var[out] ret
@@ -1284,7 +1285,7 @@ function ble/syntax:bash/simple-word/extract-parameter-names {
     [[ $var == [_a-zA-Z]* ]] && ble/array#push ret "$var"
   done
 }
-## 関数 ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot match
+## @fn ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot match
 ##   @var[in,out] ret
 function ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot {
   local value=$1
@@ -1324,7 +1325,7 @@ function ble/syntax:bash/simple-word/eval-noglob/.impl {
   [[ $__ble_unset_f ]] && set +f
   return "$ext"
 }
-## 関数 ble/syntax:bash/simple-word/eval-noglob str
+## @fn ble/syntax:bash/simple-word/eval-noglob str
 ##   @var[out] ret
 function ble/syntax:bash/simple-word/eval-noglob {
   local __ble_ret
@@ -1360,7 +1361,7 @@ function ble/syntax:bash/simple-word/eval/.impl {
   builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
   return "$ext"
 }
-## 関数 ble/syntax:bash/simple-word/eval word
+## @fn ble/syntax:bash/simple-word/eval word
 ##   @param[in] word
 ##   @var[out] ret
 ##   @exit
@@ -1374,7 +1375,7 @@ function ble/syntax:bash/simple-word/eval {
   return "$ext"
 }
 
-## 関数 ble/syntax:bash/simple-word/.get-rex_element sep
+## @fn ble/syntax:bash/simple-word/.get-rex_element sep
 ##   指定した分割文字 (sep) で区切られた単純単語片に一致する正規表現を構築します。
 ##   @var[out] rex_element
 function ble/syntax:bash/simple-word/.get-rex_element {
@@ -1386,7 +1387,7 @@ function ble/syntax:bash/simple-word/.get-rex_element {
   local letter1='\[[!^]|[^'$sep$_ble_syntax_bashc_simple']'
   rex_element='('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
 }
-## 関数 ble/syntax:bash/simple-word/evaluate-path-spec path_spec [sep] [opts]
+## @fn ble/syntax:bash/simple-word/evaluate-path-spec path_spec [sep] [opts]
 ##   @param[in] path_spec
 ##   @param[in,opt] sep (default: '/:=')
 ##   @param[in,opt] opts
@@ -1437,7 +1438,7 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   return 0
 }
 
-## 関数 ble/syntax:bash/simple-word/detect-separated-path word [sep] [opts]
+## @fn ble/syntax:bash/simple-word/detect-separated-path word [sep] [opts]
 ##   指定した単語が単一のパス名か sep 区切りのパス名刺低下の判定を行います。
 ##   @param[in] word
 ##   @param[in,opt] sep
@@ -1485,7 +1486,7 @@ function ble/syntax:bash/simple-word/detect-separated-path {
   [[ $ret ]]
 }
 
-## 関数 ble/syntax:bash/simple-word/locate-filename/.exists word opts
+## @fn ble/syntax:bash/simple-word/locate-filename/.exists word opts
 ##   @param[in] word
 ##   @param[in] opts
 ##   @var[in] eval_word
@@ -1501,7 +1502,7 @@ function ble/syntax:bash/simple-word/locate-filename/.exists {
     [[ -e $path || -h $path ]]
   fi || [[ :$opts: == *:url:* && $path =~ $rex_url ]]
 }
-## 関数 ble/syntax:bash/simple-word/locate-filename word [sep] [opts]
+## @fn ble/syntax:bash/simple-word/locate-filename word [sep] [opts]
 ##   @param[in] word
 ##   @param[in] sep
 ##   @param[in] opts
@@ -1566,7 +1567,7 @@ function ble/syntax:bash/simple-word/locate-filename {
   return 0
 }
 
-## 関数 ble/syntax:bash/simple-word#break-word word sep
+## @fn ble/syntax:bash/simple-word#break-word word sep
 ##   単語を指定した分割子で分割します。評価は行いません。
 ##   progcomp で単語を COMP_WORDBREAKS で分割するのに使います。
 ##   例えば a==b:c\=d に対して ret=(a == b : c=d) という結果を生成します。
@@ -1611,7 +1612,7 @@ function ble/syntax:bash/initialize-ctx {
   ctx=$CTX_CMDX # CTX_CMDX が ble/syntax:bash の最初の文脈
 }
 
-## 関数 ble/syntax:bash/initialize-vars
+## @fn ble/syntax:bash/initialize-vars
 ##   @var[in,out] _ble_syntax_bash_histc12
 ##   @var[in,out] _ble_syntax_bash_histstop
 function ble/syntax:bash/initialize-vars {
@@ -1648,7 +1649,7 @@ function ble/syntax:bash/initialize-vars {
 #------------------------------------------------------------------------------
 # 共通の字句の一致判定
 
-## 関数 ble/syntax/highlight/vartype varname [opts [tail]]
+## @fn ble/syntax/highlight/vartype varname [opts [tail]]
 ##   @var[out] ret
 ##   @var[out,opt] lookahead
 ##     tail が指定された時にのみ設定されます。
@@ -1709,7 +1710,7 @@ function ble/syntax:bash/check-dollar {
     #   これにより ${#...} の # が文字数か或いは $# か判定する。
     local rex1='^(\$\{#)([-*@#?$!0]\}?|[1-9][0-9]*\}?|[a-zA-Z_][a-zA-Z_0-9]*[[}]?)'
     local rex2='^(\$\{!?)([-*@#?$!0]|[1-9][0-9]*|[a-zA-Z_][a-zA-Z_0-9]*\[?)'
-    if 
+    if
       [[ $tail =~ $rex1 ]] && {
         [[ ${BASH_REMATCH[2]} == *['[}'] || $BASH_REMATCH == "$tail" ]] ||
           { ble/syntax/parse/set-lookahead $((${#BASH_REMATCH}+1)); false; } } ||
@@ -2014,7 +2015,7 @@ function ble/syntax:bash/check-history-expansion/.initialize {
 }
 ble/syntax:bash/check-history-expansion/.initialize
 
-## 関数 ble/syntax:bash/check-history-expansion/.initialize-event
+## @fn ble/syntax:bash/check-history-expansion/.initialize-event
 ##   @var[out] rex_event
 function ble/syntax:bash/check-history-expansion/.initialize-event {
   local histc1=${_ble_syntax_bash_histc12::1}
@@ -2027,7 +2028,7 @@ function ble/syntax:bash/check-history-expansion/.initialize-event {
     rex_event=${rex_event//@A/$A}
   fi
 }
-## 関数 ble/syntax:bash/check-history-expansion/.initialize-quicksub
+## @fn ble/syntax:bash/check-history-expansion/.initialize-quicksub
 ##   @var[out] rex_quicksub
 function ble/syntax:bash/check-history-expansion/.initialize-quicksub {
   local histc2=${_ble_syntax_bash_histc12:1:1}
@@ -2066,7 +2067,7 @@ function ble/syntax:bash/check-history-expansion/.check-modifiers {
     ((_ble_syntax_attr[i]=ATTR_ERR,i++))
   fi
 }
-## 関数 ble/syntax:bash/check-history-expansion
+## @fn ble/syntax:bash/check-history-expansion
 ##   @var[in] i tail
 function ble/syntax:bash/check-history-expansion {
   [[ -o histexpand ]] || return 1
@@ -2118,7 +2119,7 @@ function ble/syntax:bash/check-history-expansion {
 
   return 1
 }
-## 関数 ble/syntax:bash/starts-with-histchars
+## @fn ble/syntax:bash/starts-with-histchars
 ##   @var[in] tail
 function ble/syntax:bash/starts-with-histchars {
   [[ $_ble_syntax_bash_histc12 && $tail == ["$_ble_syntax_bash_histc12"]* ]]
@@ -2178,7 +2179,7 @@ function ble/syntax:bash/ctx-case {
 _BLE_SYNTAX_FCTX[CTX_PATN]=ble/syntax:bash/ctx-globpat
 _BLE_SYNTAX_FEND[CTX_PATN]=ble/syntax:bash/ctx-globpat.end
 
-## 関数 ble/syntax:bash/ctx-globpat/get-stop-chars
+## @fn ble/syntax:bash/ctx-globpat/get-stop-chars
 ##   @var[out] chars
 function ble/syntax:bash/ctx-globpat/get-stop-chars {
   chars=${_ble_syntax_bash_chars[CTX_PATN]}
@@ -2478,7 +2479,7 @@ function ble/syntax:bash/ctx-pword-error {
 ##   QUOTE = x ... 内部で quote 除去は無効
 ##
 _BLE_SYNTAX_FCTX[CTX_EXPR]=ble/syntax:bash/ctx-expr
-## 関数 ble/syntax:bash/ctx-expr/.count-paren
+## @fn ble/syntax:bash/ctx-expr/.count-paren
 ##   算術式中の括弧の数 () を数えます。
 ##   @var ntype 現在の算術式の入れ子の種類を指定します。
 ##   @var char  括弧文字を指定します。
@@ -2512,7 +2513,7 @@ function ble/syntax:bash/ctx-expr/.count-paren {
 
   return 1
 }
-## 関数 ble/syntax:bash/ctx-expr/.count-bracket
+## @fn ble/syntax:bash/ctx-expr/.count-bracket
 ##   算術式中の括弧の数 [] を数えます。
 ##   @var ntype 現在の算術式の入れ子の種類を指定します。
 ##   @var char  括弧文字を指定します。
@@ -2571,7 +2572,7 @@ function ble/syntax:bash/ctx-expr/.count-bracket {
 
   return 1
 }
-## 関数 ble/syntax:bash/ctx-expr/.count-brace
+## @fn ble/syntax:bash/ctx-expr/.count-brace
 ##   算術式中に閉じ波括弧 '}' が来たら算術式を抜けます。
 ##   @var ntype 現在の算術式の入れ子の種類を指定します。
 ##   @var char  括弧文字を指定します。
@@ -2889,7 +2890,7 @@ _ble_syntax_bash_command_IsAssign[CTX_VALR]=$CTX_VALI
 _ble_syntax_bash_command_IsAssign[CTX_VALQ]=$CTX_VALI
 _ble_syntax_bash_command_IsAssign[CTX_CONDQ]=$CTX_CONDI
 
-## 関数 ble/syntax:bash/check-variable-assignment
+## @fn ble/syntax:bash/check-variable-assignment
 ## @var[in] tail
 function ble/syntax:bash/check-variable-assignment {
   ((wbegin==i)) || return 1
@@ -3040,7 +3041,7 @@ _BLE_SYNTAX_FEND[CTX_TARGI2]=ble/syntax:bash/ctx-command/check-word-end
 _BLE_SYNTAX_FCTX[CTX_COARGX]=ble/syntax:bash/ctx-command-compound-expect
 _BLE_SYNTAX_FEND[CTX_COARGI]=ble/syntax:bash/ctx-coproc/check-word-end
 
-## 関数 ble/syntax:bash/starts-with-delimiter-or-redirect
+## @fn ble/syntax:bash/starts-with-delimiter-or-redirect
 ##
 ##   空白類、コマンド区切り文字、またはリダイレクトかどうかを判定する。
 ##   単語開始における 1>2 や {fd}>2 もリダイレクトと判定する。
@@ -3068,7 +3069,7 @@ function ble/syntax:bash/check-word-end/is-delimiter {
   return 0
 }
 
-## 関数 ble/syntax:bash/check-here-document-from spaces
+## @fn ble/syntax:bash/check-here-document-from spaces
 ##   @param[in] spaces
 function ble/syntax:bash/check-here-document-from {
   local spaces=$1
@@ -3150,7 +3151,7 @@ function ble/syntax:bash/ctx-coproc/check-word-end {
   ble/syntax:bash/ctx-command/check-word-end
 }
 
-## 配列 _ble_syntax_bash_command_EndCtx
+## @arr _ble_syntax_bash_command_EndCtx
 ##   単語が終了した後の次の文脈値を設定する。
 ##   check-word-end で用いる。
 ##
@@ -3175,7 +3176,7 @@ _ble_syntax_bash_command_EndCtx[CTX_CARGI2]=$CTX_CASE
 _ble_syntax_bash_command_EndCtx[CTX_TARGI1]=$((_ble_bash>=40200?CTX_TARGX2:CTX_CMDXT)) #1
 _ble_syntax_bash_command_EndCtx[CTX_TARGI2]=$CTX_CMDXT
 
-## 配列 _ble_syntax_bash_command_EndWtype[wtype]
+## @arr _ble_syntax_bash_command_EndWtype[wtype]
 ##   実際に tree 登録する wtype を指定します。
 ##   ※解析中の wtype には解析開始時の wtype が入っていることに注意する。
 _ble_syntax_bash_command_EndWtype[CTX_ARGX]=$CTX_ARGI
@@ -3199,7 +3200,7 @@ _ble_syntax_bash_command_EndWtype[CTX_CARGX2]=$CTX_CARGI2 # in
 _ble_syntax_bash_command_EndWtype[CTX_TARGX1]=$CTX_ARGI # -p
 _ble_syntax_bash_command_EndWtype[CTX_TARGX2]=$CTX_ARGI # --
 
-## 配列 _ble_syntax_bash_command_Expect
+## @arr _ble_syntax_bash_command_Expect
 ##
 ##   許容するコマンドの種類を表す正規表現を設定する。
 ##   check-word-end で用いる。
@@ -3220,7 +3221,7 @@ _ble_syntax_bash_command_Expect[CTX_CMDXE]='^(\}|fi|done|esac|then|elif|else|do)
 _ble_syntax_bash_command_Expect[CTX_CMDXD]='^(\{|do)$'
 _ble_syntax_bash_command_Expect[CTX_CMDXD0]='^(\{|do)$'
 
-## 関数 ble/syntax:bash/ctx-command/check-word-end
+## @fn ble/syntax:bash/ctx-command/check-word-end
 ##   @var[in,out] ctx
 ##   @var[in,out] wbegin
 ##   @var[in,out] 他
@@ -3284,7 +3285,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
     ('for')                ((ctx=CTX_FARGX1)); processed=begin ;;
     ('select')             ((ctx=CTX_SARGX1)); processed=begin ;;
     ('case')               ((ctx=CTX_CARGX1)); processed=begin ;;
-    ('{')              
+    ('{')
       ((ctx=CTX_CMDX1))
       if ((wt==CTX_CMDXD||wt==CTX_CMDXD0)); then
         processed=middle # "for ...; {" などの時
@@ -3410,7 +3411,7 @@ function ble/syntax:bash/ctx-command/check-word-end {
   return 0
 }
 
-## 配列 _ble_syntax_bash_command_Opt
+## @arr _ble_syntax_bash_command_Opt
 ##   その場でコマンドが終わっても良いかどうかを設定する。
 ##   .check-delimiter-or-redirect で用いる。
 _ble_syntax_bash_command_Opt=()
@@ -3559,7 +3560,7 @@ function ble/syntax:bash/ctx-command/.check-delimiter-or-redirect {
   return 1
 }
 
-## 関数 ble/syntax:bash/ctx-command/.check-word-begin
+## @fn ble/syntax:bash/ctx-command/.check-word-begin
 ##   単語が未開始の場合に開始します。
 ##   @var[in,out] i,ctx,wtype,wbegin
 ##   @return 引数が来てはならない所に引数が来た時に 1 を返します。
@@ -3587,7 +3588,7 @@ _ble_syntax_bash_command_BeginCtx[CTX_TARGX2]=$CTX_TARGI2
 _ble_syntax_bash_command_BeginCtx[CTX_COARGX]=$CTX_COARGI
 
 #%if !release
-## 配列 _ble_syntax_bash_command_isARGI[ctx]
+## @arr _ble_syntax_bash_command_isARGI[ctx]
 ##
 ##   この配列要素が非空文字列のとき、
 ##   その文脈はシェル単語を解析中に用いられることを表す。
@@ -3752,7 +3753,7 @@ function ble/syntax:bash/ctx-command-compound-expect {
   ble/syntax:bash/ctx-command
 }
 
-## 関数 ble/syntax:bash/ctx-command-expect/.match-word word
+## @fn ble/syntax:bash/ctx-command-expect/.match-word word
 ##   現在位置から始まる単語が指定した単語に一致するかどうかを検査します。
 ##   @param[in] word
 ##   @var[in] tail i
@@ -3819,21 +3820,21 @@ _BLE_SYNTAX_FEND[CTX_VALQ]=ble/syntax:bash/ctx-values/check-word-end
 ##   ble/syntax:bash/ctx-values/enter, leave はこの nparam の持ち越しに使用する。
 ##
 
-## 関数 ble/syntax:bash/ctx-values/enter
+## @fn ble/syntax:bash/ctx-values/enter
 ##   @remarks この関数は ble/syntax:bash/check-variable-assignment から呼ばれる。
 function ble/syntax:bash/ctx-values/enter {
   local outer_nparam=$nparam
   ble/syntax/parse/nest-push "$CTX_VALX"
   nparam=$outer_nparam
 }
-## 関数 ble/syntax:bash/ctx-values/leave
+## @fn ble/syntax:bash/ctx-values/leave
 function ble/syntax:bash/ctx-values/leave {
   local inner_nparam=$nparam
   ble/syntax/parse/nest-pop
   nparam=$inner_nparam
 }
 
-## 関数 ble/syntax:bash/ctx-values/check-word-end
+## @fn ble/syntax:bash/ctx-values/check-word-end
 function ble/syntax:bash/ctx-values/check-word-end {
   # 単語の中にいない時は抜ける
   ((wbegin<0)) && return 1
@@ -3930,7 +3931,7 @@ _BLE_SYNTAX_FEND[CTX_CONDI]=ble/syntax:bash/ctx-conditions/check-word-end
 _BLE_SYNTAX_FCTX[CTX_CONDQ]=ble/syntax:bash/ctx-conditions
 _BLE_SYNTAX_FEND[CTX_CONDQ]=ble/syntax:bash/ctx-conditions/check-word-end
 
-## 関数 ble/syntax:bash/ctx-conditions/check-word-end
+## @fn ble/syntax:bash/ctx-conditions/check-word-end
 function ble/syntax:bash/ctx-conditions/check-word-end {
   # 単語の中にいない時は抜ける
   ((wbegin<0)) && return 1
@@ -4122,7 +4123,7 @@ function ble/syntax:bash/ctx-heredoc-word/initialize {
 }
 ble/syntax:bash/ctx-heredoc-word/initialize
 
-## 関数 ble/syntax:bash/ctx-heredoc-word/remove-quotes word
+## @fn ble/syntax:bash/ctx-heredoc-word/remove-quotes word
 ##   @var[out] delimiter
 function ble/syntax:bash/ctx-heredoc-word/remove-quotes {
   local text=$1 result=
@@ -4167,7 +4168,7 @@ function ble/syntax:bash/ctx-heredoc-word/remove-quotes {
   delimiter=$result$text
 }
 
-## 関数 ble/syntax:bash/ctx-heredoc-word/remove-quotes delimiter
+## @fn ble/syntax:bash/ctx-heredoc-word/remove-quotes delimiter
 ##   @var[out] escaped
 function ble/syntax:bash/ctx-heredoc-word/escape-delimiter {
   local ret=$1
@@ -4327,7 +4328,7 @@ function ble/syntax:bash/is-complete {
   return 0
 }
 
-## 関数 ble/syntax:bash/find-end-of-array-index beg end
+## @fn ble/syntax:bash/find-end-of-array-index beg end
 ##   "配列添字の綴じ括弧 ] の直前の位置" を求めます。
 ##   @param[in] beg
 ##     配列要素の添字指定の開始位置 ("[" の位置) を指定します。
@@ -4546,7 +4547,7 @@ function ble/syntax/parse/shift.impl2/.shift-until {
   done
 }
 
-## 関数 ble/syntax/parse/shift.impl2/.proc1
+## @fn ble/syntax/parse/shift.impl2/.proc1
 ##
 ## @var[in] TE_i
 ##   tree-enumerate によって設定される変数です。
@@ -4631,7 +4632,7 @@ function ble/syntax/parse/shift {
 
 _ble_syntax_dbeg=-1 _ble_syntax_dend=-1
 
-## 関数 ble/syntax/parse/determine-parse-range
+## @fn ble/syntax/parse/determine-parse-range
 ##
 ##   @var[out] i1 i2 j2
 ##
@@ -4670,37 +4671,37 @@ function ble/syntax/parse/check-end {
   [[ ${_BLE_SYNTAX_FEND[ctx]} ]] && "${_BLE_SYNTAX_FEND[ctx]}"
 }
 
-## 関数 ble/syntax/parse text opts [beg end end0]
+## @fn ble/syntax/parse text opts [beg end end0]
 ##
-## @param[in]     text
-##   解析対象の文字列を指定します。
+##   @param[in]     text
+##     解析対象の文字列を指定します。
 ##
-## @param[in]     opts
-##   細かい動作を制御するオプションを指定します。
+##   @param[in]     opts
+##     細かい動作を制御するオプションを指定します。
 ##
-## @param[in]     beg                text変更範囲 開始点 (既定値 = text先頭)
-## @param[in]     end                text変更範囲 終了点 (既定値 = text末端)
-## @param[in]     end0               長さが変わった時用 (既定値 = end)
-##   これらの引数はtextに変更があった場合にその範囲を伝達するのに用います。
+##   @param[in]     beg                text変更範囲 開始点 (既定値 = text先頭)
+##   @param[in]     end                text変更範囲 終了点 (既定値 = text末端)
+##   @param[in]     end0               長さが変わった時用 (既定値 = end)
+##     これらの引数はtextに変更があった場合にその範囲を伝達するのに用います。
 ##
-## @var  [in,out] _ble_syntax_dbeg   解析予定範囲 開始点 (初期値 -1 = 解析予定無し)
-## @var  [in,out] _ble_syntax_dend   解析予定範囲 終了点 (初期値 -1 = 解析予定無し)
-##   これらの変数はどの部分を解析する必要があるかを記録します。
-##   beg end beg2 end2 を用いてtextの変更範囲を指定しても、
-##   その変更範囲に対する解析を即座に完了させる訳ではなく逐次更新します。
-##   ここには前回の parse 呼出でやり残した解析範囲の情報が格納されます。
+##   @var  [in,out] _ble_syntax_dbeg   解析予定範囲 開始点 (初期値 -1 = 解析予定無し)
+##   @var  [in,out] _ble_syntax_dend   解析予定範囲 終了点 (初期値 -1 = 解析予定無し)
+##     これらの変数はどの部分を解析する必要があるかを記録します。
+##     beg end beg2 end2 を用いてtextの変更範囲を指定しても、
+##     その変更範囲に対する解析を即座に完了させる訳ではなく逐次更新します。
+##     ここには前回の parse 呼出でやり残した解析範囲の情報が格納されます。
 ##
-## @var  [in,out] _ble_syntax_stat[] (内部使用) 解析途中状態を記録
-## @var  [in,out] _ble_syntax_nest[] (内部使用) 入れ子の構造を記録
-## @var  [in,out] _ble_syntax_attr[] 各文字の属性
-## @var  [in,out] _ble_syntax_tree[] シェル単語の情報を記録
-##   これらの変数には解析結果が格納されます。
+##   @var  [in,out] _ble_syntax_stat[] (内部使用) 解析途中状態を記録
+##   @var  [in,out] _ble_syntax_nest[] (内部使用) 入れ子の構造を記録
+##   @var  [in,out] _ble_syntax_attr[] 各文字の属性
+##   @var  [in,out] _ble_syntax_tree[] シェル単語の情報を記録
+##     これらの変数には解析結果が格納されます。
 ##
-## @var  [in,out] _ble_syntax_attr_umin
-## @var  [in,out] _ble_syntax_attr_umax
-## @var  [in,out] _ble_syntax_word_umin
-## @var  [in,out] _ble_syntax_word_umax
-##   今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
+##   @var  [in,out] _ble_syntax_attr_umin
+##   @var  [in,out] _ble_syntax_attr_umax
+##   @var  [in,out] _ble_syntax_word_umin
+##   @var  [in,out] _ble_syntax_word_umax
+##     今回の呼出によって文法的な解釈の変更が行われた範囲を更新します。
 ##
 function ble/syntax/parse {
   local -r text=$1 iN=${#1}
@@ -4840,7 +4841,7 @@ function ble/syntax/parse {
 #%end
 }
 
-## 関数 ble/syntax/highlight text [lang]
+## @fn ble/syntax/highlight text [lang]
 ##   @param[in] text
 ##   @param[in] lang
 ##   @var[out] ret
@@ -4886,7 +4887,7 @@ function ble/syntax/highlight {
 #
 #==============================================================================
 
-# ## 関数 ble/syntax/getattr index
+# ## @fn ble/syntax/getattr index
 # function ble/syntax/getattr {
 #   local i
 #   attr=
@@ -4899,7 +4900,7 @@ function ble/syntax/highlight {
 #   return 1
 # }
 
-# ## 関数 ble/syntax/getstat index
+# ## @fn ble/syntax/getstat index
 # function ble/syntax/getstat {
 #   local i
 #   for ((i=$1;i>=0;i--)); do
@@ -4918,7 +4919,7 @@ function ble/syntax/completion-context/.add {
   sources[${#sources[*]}]="$source $comp1"
 }
 
-## 関数 ble/syntax/completion-context/.check/parameter-expansion
+## @fn ble/syntax/completion-context/.check/parameter-expansion
 ##   @var[in] text istat index ctx
 function ble/syntax/completion-context/.check/parameter-expansion {
   local rex_paramx='^(\$(\{[!#]?)?)([a-zA-Z_][a-zA-Z_0-9]*)?$'
@@ -4934,7 +4935,7 @@ function ble/syntax/completion-context/.check/parameter-expansion {
   fi
 }
 
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:*
+## @fn ble/syntax/completion-context/.check-prefix/ctx:*
 ##
 ##   @var[in] text index
 ##     補完対象のコマンドラインと現在のカーソルの位置を指定します。
@@ -4949,7 +4950,7 @@ function ble/syntax/completion-context/.check/parameter-expansion {
 ##   @var[in] rex_param
 ##
 
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:inside-command
+## @fn ble/syntax/completion-context/.check-prefix/ctx:inside-command
 ##   CMDI 系統 (コマンドの続き) の文脈に対する補完文脈の生成
 _ble_syntax_bash_complete_check_prefix[CTX_CMDI]=inside-command
 function ble/syntax/completion-context/.check-prefix/ctx:inside-command {
@@ -4961,7 +4962,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:inside-command {
   fi
   ble/syntax/completion-context/.check/parameter-expansion
 }
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:inside-argument source
+## @fn ble/syntax/completion-context/.check-prefix/ctx:inside-argument source
 ##   ARGI 系統 (引数の続き) の文脈に対する補完文脈の生成
 ##   @param[in] source
 _ble_syntax_bash_complete_check_prefix[CTX_ARGI]='inside-argument argument'
@@ -4995,7 +4996,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:inside-argument {
   ble/syntax/completion-context/.check/parameter-expansion
 }
 
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:next-command
+## @fn ble/syntax/completion-context/.check-prefix/ctx:next-command
 ##   CMDX 系統の文脈に対する補完文脈の生成
 _ble_syntax_bash_complete_check_prefix[CTX_CMDX]=next-command
 _ble_syntax_bash_complete_check_prefix[CTX_CMDX1]=next-command
@@ -5032,7 +5033,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-command {
 
   ble/syntax/completion-context/.check/parameter-expansion
 }
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:next-argument
+## @fn ble/syntax/completion-context/.check-prefix/ctx:next-argument
 ##   ARGX 系統の文脈に対する補完文脈の生成
 _ble_syntax_bash_complete_check_prefix[CTX_ARGX]=next-argument
 _ble_syntax_bash_complete_check_prefix[CTX_CARGX1]=next-argument
@@ -5083,7 +5084,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-argument {
   fi
   ble/syntax/completion-context/.check/parameter-expansion
 }
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:next-compound
+## @fn ble/syntax/completion-context/.check-prefix/ctx:next-compound
 ##   複合コマンドを補完します。
 _ble_syntax_bash_complete_check_prefix[CTX_CMDXC]=next-compound
 function ble/syntax/completion-context/.check-prefix/ctx:next-compound {
@@ -5094,7 +5095,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-compound {
     ble/syntax/completion-context/.add wordlist:-r:'(:{:((:[[' "$istat"
   fi
 }
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:next-identifier source
+## @fn ble/syntax/completion-context/.check-prefix/ctx:next-identifier source
 ##   エスケープやクォートのない単純な単語に補完する文脈。
 ##   @param[in] source
 _ble_syntax_bash_complete_check_prefix[CTX_FARGX1]="next-identifier variable:w" # CTX_FARGX1 → (( でなければ 変数名
@@ -5119,7 +5120,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:next-word {
     ble/syntax/completion-context/.add "$source" "$istat"
   fi
 }
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:time-argument {
+## @fn ble/syntax/completion-context/.check-prefix/ctx:time-argument {
 _ble_syntax_bash_complete_check_prefix[CTX_TARGX1]=time-argument
 _ble_syntax_bash_complete_check_prefix[CTX_TARGI1]=time-argument
 _ble_syntax_bash_complete_check_prefix[CTX_TARGX2]=time-argument
@@ -5139,7 +5140,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:time-argument {
       ble/syntax/completion-context/.add wordlist:--:'--' "$istat"
   fi
 }
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:quote
+## @fn ble/syntax/completion-context/.check-prefix/ctx:quote
 _ble_syntax_bash_complete_check_prefix[CTX_QUOT]=quote
 function ble/syntax/completion-context/.check-prefix/ctx:quote {
   ble/syntax/completion-context/.check/parameter-expansion
@@ -5162,7 +5163,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:quote/.check-container-
   fi
 }
 
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:redirection
+## @fn ble/syntax/completion-context/.check-prefix/ctx:redirection
 ##   redirect の filename 部分を補完する文脈
 _ble_syntax_bash_complete_check_prefix[CTX_RDRF]=redirection
 function ble/syntax/completion-context/.check-prefix/ctx:redirection {
@@ -5173,7 +5174,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:redirection {
   fi
 }
 
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:rhs
+## @fn ble/syntax/completion-context/.check-prefix/ctx:rhs
 ##   VAR=value の value 部分を補完する文脈
 _ble_syntax_bash_complete_check_prefix[CTX_VRHS]=rhs
 _ble_syntax_bash_complete_check_prefix[CTX_ARGVR]=rhs
@@ -5232,7 +5233,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:param {
   fi
 }
 
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:expr
+## @fn ble/syntax/completion-context/.check-prefix/ctx:expr
 ##   数式中の変数名を補完する文脈
 _ble_syntax_bash_complete_check_prefix[CTX_EXPR]=expr
 function ble/syntax/completion-context/.check-prefix/ctx:expr {
@@ -5260,7 +5261,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:expr {
   fi
 }
 
-## 関数 ble/syntax/completion-context/.check-prefix/ctx:expr
+## @fn ble/syntax/completion-context/.check-prefix/ctx:expr
 ##   ブレース展開の中での補完
 _ble_syntax_bash_complete_check_prefix[CTX_BRACE1]=brace
 _ble_syntax_bash_complete_check_prefix[CTX_BRACE2]=brace
@@ -5296,7 +5297,7 @@ function ble/syntax/completion-context/.check-prefix/ctx:brace {
 }
 
 
-## 関数 ble/syntax/completion-context/.search-last-istat index
+## @fn ble/syntax/completion-context/.search-last-istat index
 ##   @param[in] index
 ##   @var[out] ret
 function ble/syntax/completion-context/.search-last-istat {
@@ -5311,7 +5312,7 @@ function ble/syntax/completion-context/.search-last-istat {
   return 1
 }
 
-## 関数 ble/syntax/completion-context/.check-prefix from
+## @fn ble/syntax/completion-context/.check-prefix from
 ##   @param[in,opt] from
 ##   @var[in] text
 ##   @var[in] index
@@ -5334,7 +5335,7 @@ function ble/syntax/completion-context/.check-prefix {
   fi
 }
 
-## 関数 ble/syntax/completion-context/.check-here
+## @fn ble/syntax/completion-context/.check-here
 ##   現在地点を開始点とする補完の可能性を列挙します
 ##   @var[in]  text
 ##   @var[in]  index
@@ -5391,7 +5392,7 @@ function ble/syntax/completion-context/.check-here {
   fi
 }
 
-## 関数 ble/syntax/completion-context/generate
+## @fn ble/syntax/completion-context/generate
 ##   @var[out] sources[]
 function ble/syntax/completion-context/generate {
   local text=$1 index=$2
@@ -5405,7 +5406,7 @@ function ble/syntax/completion-context/generate {
 #------------------------------------------------------------------------------
 # extract-command
 
-## 関数 ble/syntax:bash/extract-command/.register-word
+## @fn ble/syntax:bash/extract-command/.register-word
 ## @var[in,out] comp_words, comp_line, comp_point, comp_cword
 ## @var[in]     TE_i TE_nofs wbegin wlen
 function ble/syntax:bash/extract-command/.register-word {
@@ -5491,7 +5492,7 @@ function ble/syntax:bash/extract-command/.scan {
   fi
 }
 
-## 関数 ble/syntax:bash/extract-command index [opts]
+## @fn ble/syntax:bash/extract-command index [opts]
 ##   @param[in] index
 ##   @param[in] opts
 ##     treeinfo
@@ -5516,8 +5517,8 @@ function ble/syntax:bash/extract-command {
 #------------------------------------------------------------------------------
 # extract-command-by-noderef
 
-## 関数 ble/syntax/tree#previous-sibling i[:nofs] [opts]
-## 関数 ble/syntax/tree#next-sibling     i[:nofs] [opts]
+## @fn ble/syntax/tree#previous-sibling i[:nofs] [opts]
+## @fn ble/syntax/tree#next-sibling     i[:nofs] [opts]
 ##   指定した位置の単語について、前または次の兄弟ノードを取得します。
 ##
 ##   @param[in] i:nofs
@@ -5583,7 +5584,7 @@ function ble/syntax/tree#next-sibling {
   return 1
 }
 
-## 関数 ble/syntax:bash/extract-command-by-noderef i[:nofs] [opts]
+## @fn ble/syntax:bash/extract-command-by-noderef i[:nofs] [opts]
 ##   @param[in] i:nofs
 ##     単語を指定します。
 ##
@@ -5853,7 +5854,7 @@ blehook color_init_defface+=ble/syntax/faces-onload-hook
 # ble/syntax/highlight/cmdtype
 
 
-## 関数 ble/syntax/highlight/cmdtype1 command_type command
+## @fn ble/syntax/highlight/cmdtype1 command_type command
 ##   指定したコマンドに対する属性を決定します。
 ##   @param[in] command_type
 ##     builtin type -t command の結果を指定します。
@@ -5952,7 +5953,7 @@ function ble/syntax/highlight/cmdtype/.impl {
   fi
 }
 
-## 関数 ble/syntax/highlight/cmdtype cmd word
+## @fn ble/syntax/highlight/cmdtype cmd word
 ##   @param[in] cmd
 ##     シェル展開・クォート除去を実行した後の文字列を指定します。
 ##   @param[in] word
@@ -6006,7 +6007,7 @@ fi
 #------------------------------------------------------------------------------
 # ble/syntax/highlight/filetype
 
-## 関数 ble/syntax/highlight/filetype filename
+## @fn ble/syntax/highlight/filetype filename
 ##   @var[out] type
 function ble/syntax/highlight/filetype {
   type=
@@ -6066,9 +6067,9 @@ function ble/syntax/highlight/ls_colors/.clear {
   _ble_syntax_highlight_lscolors_ext=()
 }
 
-## 関数 ble/syntax/highlight/ls_colors/.register-extension key value
+## @fn ble/syntax/highlight/ls_colors/.register-extension key value
 ##   @param[in] key value
-## 関数 ble/syntax/highlight/ls_colors/.read-extension key
+## @fn ble/syntax/highlight/ls_colors/.read-extension key
 ##   @param[in] key
 ##   @var[out] ret
 if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
@@ -6083,7 +6084,7 @@ if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   }
 else
   # 通常配列による実装
-  ## 関数 ble/syntax/highlight/ls_colors/.find-extension key
+  ## @fn ble/syntax/highlight/ls_colors/.find-extension key
   ##   @var[out] ret
   function ble/syntax/highlight/ls_colors/.find-extension {
     local key=$1
@@ -6135,7 +6136,7 @@ function ble/syntax/highlight/ls_colors/.parse {
   done
 }
 
-## 関数 ble/syntax/highlight/ls_colors
+## @fn ble/syntax/highlight/ls_colors
 ##   @var[in,out] type
 function ble/syntax/highlight/ls_colors {
   local file=$1
@@ -6192,7 +6193,7 @@ _ble_syntax_progcolor_vars=(
   # ble/syntax/progcolor/wattr#*
   wattr_buff wattr_pos wattr_g)
 
-## 関数 ble/syntax/progcolor/setup-vars i:nofs
+## @fn ble/syntax/progcolor/setup-vars i:nofs
 ##   @var[out] TE_i TE_nofs node
 ##   @var[out] wtype wlen wbeg wend wattr
 function ble/syntax/progcolor/setup-vars {
@@ -6211,7 +6212,7 @@ function ble/syntax/progcolor/setup-vars {
   wend=$TE_i
 }
 
-## 関数 ble/syntax/progcolor/set-wattr value
+## @fn ble/syntax/progcolor/set-wattr value
 ##   @var[in] TE_i TE_nofs node
 function ble/syntax/progcolor/set-wattr {
   ble/syntax/urange#update color_ "$wbeg" "$wend"
@@ -6220,7 +6221,7 @@ function ble/syntax/progcolor/set-wattr {
   _ble_syntax_tree[TE_i-1]="${node[*]}"
 }
 
-## 関数 ble/syntax/progcolor/eval-word [iword]
+## @fn ble/syntax/progcolor/eval-word [iword]
 ##   現在のコマンドの iword 番目の単語を評価した値を返します。
 ##   iword を省略した場合には現在着色中の単語が使われます。
 ##   単語が評価できない場合にはコマンドは失敗します。
@@ -6264,7 +6265,7 @@ function ble/syntax/progcolor/eval-word {
   return 0
 }
 
-## 関数 ble/syntax/progcolor/wattr#initialize
+## @fn ble/syntax/progcolor/wattr#initialize
 ##   @var[out] wattr_buff
 ##   @var[out] wattr_pos
 ##   @var[out] wattr_g
@@ -6273,7 +6274,7 @@ function ble/syntax/progcolor/wattr#initialize {
   wattr_pos=$wbeg
   wattr_g=d
 }
-## 関数 ble/syntax/progcolor/wattr#setg pos g
+## @fn ble/syntax/progcolor/wattr#setg pos g
 ##   @param[in] pos
 ##   @param[in] g
 ##   @var[in,out] wattr_buff
@@ -6291,7 +6292,7 @@ function ble/syntax/progcolor/wattr#setattr {
   ble/syntax/attr2g "$attr"
   ble/syntax/progcolor/wattr#setg "$pos" "$g"
 }
-## 関数 ble/syntax/progcolor/wattr#finalize
+## @fn ble/syntax/progcolor/wattr#finalize
 ##   @var[in,out] wattr_buff
 ##   @var[in,out] wattr_pos
 ##   @var[in,out] wattr_g
@@ -6310,7 +6311,7 @@ function ble/syntax/progcolor/wattr#finalize {
 }
 
 
-## 関数 ble/syntax/progcolor/word:default/.detect-separated-path word
+## @fn ble/syntax/progcolor/word:default/.detect-separated-path word
 ##   @param[in] word
 ##   @var[in] wtype p0
 ##   @var[in] _ble_syntax_attr
@@ -6319,14 +6320,14 @@ function ble/syntax/progcolor/wattr#finalize {
 function ble/syntax/progcolor/word:default/.detect-separated-path {
   local word=$1
   ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)) || return 1
-  
+
   local detect_opts=url
   ((wtype==CTX_RDRS)) && detect_opts=$detect_opts:noglob
   [[ $word == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && detect_opts=$detect_opts:notilde
   ble/syntax:bash/simple-word/detect-separated-path "$word" :, "$detect_opts"
 }
 
-## 関数 ble/syntax/progcolor/word:default/.highlight-pathspec g [opts]
+## @fn ble/syntax/progcolor/word:default/.highlight-pathspec g [opts]
 ##   @param[in] g
 ##   @param[in,opt] opts
 ##   @var[in] wtype p0 p1
@@ -6363,7 +6364,7 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec {
   return 0
 }
 
-## 関数 ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr attr
+## @fn ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr attr
 ##   @param[in] attr
 ##   @var[in] wtype p0 p1
 ##   @var[in] path spec
@@ -6372,7 +6373,7 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr {
   ble/syntax/progcolor/word:default/.highlight-pathspec "$g"
   return 0
 }
-## 関数 ble/syntax/progcolor/word:default/.highlight-pathspec-by-name value
+## @fn ble/syntax/progcolor/word:default/.highlight-pathspec-by-name value
 ##   @param[in] value
 ##   @var[in] wtype p0 p1
 ##   @var[in] path spec
@@ -6434,7 +6435,7 @@ function ble/syntax/progcolor/word:default/.highlight-pathspec-by-name {
   return 0
 }
 
-## 関数 ble/syntax/progcolor/word:default/.highlight-filename p0:p1
+## @fn ble/syntax/progcolor/word:default/.highlight-filename p0:p1
 ##   @param[in] p0 p1
 ##     ファイル名の (コマンドライン内部における) 範囲を指定します。
 ##   @param[in] wtype
@@ -6470,7 +6471,7 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
   fi
 }
 
-## 関数 ble/syntax/progcolor/word:default/.is-option-context
+## @fn ble/syntax/progcolor/word:default/.is-option-context
 ##   @var[in] wtype
 function ble/syntax/progcolor/word:default/.is-option-context {
   ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_ARGVI)) || return 1
@@ -6483,7 +6484,7 @@ function ble/syntax/progcolor/word:default/.is-option-context {
   return 0
 }
 
-## 関数 ble/syntax/progcolor/word:default
+## @fn ble/syntax/progcolor/word:default
 ##   @var[in] node TE_i TE_nofs
 ##   @var[in] wtype wlen wbeg wend wattr
 function ble/syntax/progcolor/word:default {
@@ -6542,7 +6543,7 @@ function ble/syntax/progcolor/word:default {
   return 0
 }
 
-## 関数 ble/syntax/progcolor/default
+## @fn ble/syntax/progcolor/default
 ##   @var[in] comp_words comp_cword comp_line comp_point
 ##   @var[in] tree_words
 ##   @var[in,out] color_umin color_umax
@@ -6557,7 +6558,7 @@ function ble/syntax/progcolor/default {
   done
 }
 
-## 関数 ble/syntax/progcolor/.compline-rewrite-command command [args...]
+## @fn ble/syntax/progcolor/.compline-rewrite-command command [args...]
 ##   @var[in,out] comp_words comp_cword comp_line comp_point
 function ble/syntax/progcolor/.compline-rewrite-command {
   local ocmd=${comp_words[0]}
@@ -6572,7 +6573,7 @@ function ble/syntax/progcolor/.compline-rewrite-command {
   ble/array#reserve-prototype $#
   tree_words=("${tree_words[0]}" "${_ble_array_prototype[@]::$#-1}" "${tree_words[@]:1}")
 }
-## 関数 ble/syntax/progcolor
+## @fn ble/syntax/progcolor
 ##   @var[in] comp_words comp_cword comp_line comp_point
 ##   @var[in] tree_words
 ##   @var[in,out] color_umin color_umax
@@ -6684,7 +6685,7 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
   ble/syntax/progcolor/word:default
 }
 
-## 関数 ble/highlight/layer:syntax/word/.update-attributes
+## @fn ble/highlight/layer:syntax/word/.update-attributes
 ## @var[in] _ble_syntax_word_umin,_ble_syntax_word_umax
 ## @var[in,out] color_umin color_umax
 function ble/highlight/layer:syntax/word/.update-attributes {
@@ -6693,7 +6694,7 @@ function ble/highlight/layer:syntax/word/.update-attributes {
     ble/highlight/layer:syntax/word/.update-attributes/.proc
 }
 
-## 関数 ble/highlight/layer:syntax/word/.apply-attribute wbeg wend wattr
+## @fn ble/highlight/layer:syntax/word/.apply-attribute wbeg wend wattr
 ##   @param[in] wbeg wend wattr
 function ble/highlight/layer:syntax/word/.apply-attribute {
   local wbeg=$1 wend=$2 wattr=$3

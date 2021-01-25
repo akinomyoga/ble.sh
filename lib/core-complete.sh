@@ -2,7 +2,7 @@
 
 ble/util/import "$_ble_base/lib/core-syntax.sh"
 
-## 関数 ble/complete/string#search-longest-suffix-in needle haystack
+## @fn ble/complete/string#search-longest-suffix-in needle haystack
 ##   @var[out] ret
 function ble/complete/string#search-longest-suffix-in {
   local needle=$1 haystack=$2
@@ -17,7 +17,7 @@ function ble/complete/string#search-longest-suffix-in {
   done
   ret=${needle:l}
 }
-## 関数 ble/complete/string#common-suffix-prefix lhs rhs
+## @fn ble/complete/string#common-suffix-prefix lhs rhs
 ##   @var[out] ret
 function ble/complete/string#common-suffix-prefix {
   local lhs=$1 rhs=$2
@@ -38,7 +38,7 @@ function ble/complete/string#common-suffix-prefix {
   fi
 }
 
-## 関数 ble/complete/get-wordbreaks
+## @fn ble/complete/get-wordbreaks
 ##   @var[out] wordbreaks
 function ble/complete/get-wordbreaks {
   wordbreaks=$_ble_term_IFS$COMP_WORDBREAKS
@@ -67,7 +67,7 @@ function ble/complete/menu#check-cancel {
     ble/decode/has-input
 }
 
-## 関数 ble/complete/menu-style:$menu_style/construct
+## @fn ble/complete/menu-style:$menu_style/construct
 ##   候補一覧メニューの表示・配置を計算します。
 ##
 ##   @var[out] x y esc
@@ -85,7 +85,7 @@ _ble_complete_menu_style_pages=()
 # ble/complete/menu-style:align
 #
 
-## 関数 ble/complete/menu#render-item item opts
+## @fn ble/complete/menu#render-item item opts
 ##   @var[in] cols lines
 ##     Note: "$menu_class"/render-item の中で用いる。
 ##   @var[out] x y ret
@@ -105,7 +105,7 @@ function ble/complete/menu#render-item {
   ret=$sgr0$ret$_ble_term_sgr0
 }
 
-## 関数 ble/complete/menu-style:align/construct/.measure-candidates-in-page
+## @fn ble/complete/menu-style:align/construct/.measure-candidates-in-page
 ##   その頁に入り切る範囲で候補の幅を計測する
 ##   @var[in] begin
 ##     その頁の一番最初に表示する候補を指定します。
@@ -170,7 +170,7 @@ function ble/complete/menu-style:align/construct/.measure-candidates-in-page {
   end=$index
 }
 
-## 関数 ble/complete/menu-style:align/construct-page
+## @fn ble/complete/menu-style:align/construct-page
 ##   @var[in,out] begin end x y esc
 ##   @arr[out] _ble_complete_menu_style_icons
 ##
@@ -239,7 +239,7 @@ function ble/complete/menu-style:align-nowrap/construct-page {
 # ble/complete/menu-style:dense
 #
 
-## 関数 ble/complete/menu-style:dense/construct-page
+## @fn ble/complete/menu-style:dense/construct-page
 ##   @var[in,out] begin end x y esc
 function ble/complete/menu-style:dense/construct-page {
   x=0 y=0 esc=
@@ -282,7 +282,7 @@ function ble/complete/menu-style:dense/construct-page {
   done
   end=$index
 }
-## 関数 ble/complete/menu-style:dense/construct opts
+## @fn ble/complete/menu-style:dense/construct opts
 ##   complete_menu_style=align{,-nowrap} に対して候補を配置します。
 function ble/complete/menu-style:dense-nowrap/construct-page {
   ble/complete/menu-style:dense/construct-page "$@"
@@ -292,7 +292,7 @@ function ble/complete/menu-style:dense-nowrap/construct-page {
 # ble/complete/menu-style:linewise
 #
 
-## 関数 ble/complete/menu-style:linewise/construct-page opts
+## @fn ble/complete/menu-style:linewise/construct-page opts
 ##   @var[in,out] begin end x y esc
 function ble/complete/menu-style:linewise/construct-page {
   local opts=$1 ret
@@ -349,7 +349,7 @@ function ble/complete/menu-style:linewise/guess {
 # ble/complete/menu-style:desc
 #
 
-## 関数 ble/complete/menu-style:desc/construct-page opts
+## @fn ble/complete/menu-style:desc/construct-page opts
 ##   @var[in,out] begin end x y esc
 function ble/complete/menu-style:desc/construct-page {
   local opts=$1 ret
@@ -421,14 +421,14 @@ function ble/complete/menu-style:desc-raw/guess {
   ble/complete/menu-style:desc/guess
 }
 
-## 関数 ble/complete/menu#construct/.initialize-size
+## @fn ble/complete/menu#construct/.initialize-size
 ##   @var[out] cols lines
 function ble/complete/menu#construct/.initialize-size {
   ble-edit/info/.initialize-size
   local maxlines=$((bleopt_complete_menu_maxlines))
   ((maxlines>0&&lines>maxlines)) && lines=$maxlines
 }
-## 関数 ble/complete/menu#construct menu_opts
+## @fn ble/complete/menu#construct menu_opts
 ##   実装分離の adapter 部分
 ##
 ##   @var[in] menu_style
@@ -542,7 +542,7 @@ function ble/complete/menu#clear {
 }
 
 
-## 関数 ble/complete/menu#select index [opts]
+## @fn ble/complete/menu#select index [opts]
 ##   @param[in] opts
 ##     goto-page-top
 ##       指定した項目を含む頁に移動した後に、
@@ -668,7 +668,7 @@ function ble/widget/menu/backward {
 }
 
 _ble_complete_menu_lastcolumn=
-## 関数 ble/widget/menu/.check-last-column
+## @fn ble/widget/menu/.check-last-column
 ##   @var[in,out] ox
 function ble/widget/menu/.check-last-column {
   if [[ $_ble_complete_menu_lastcolumn ]]; then
@@ -679,10 +679,10 @@ function ble/widget/menu/.check-last-column {
       ox=$_ble_complete_menu_lastcolumn
       return 0
     fi
-  fi  
+  fi
   _ble_complete_menu_lastcolumn=$ox
 }
-## 関数 ble/widget/menu/.goto-column column
+## @fn ble/widget/menu/.goto-column column
 ##   現在行の中で指定した列に対応する要素に移動する。
 ##   @param[in] column
 function ble/widget/menu/.goto-column {
@@ -919,7 +919,7 @@ function ble/complete/check-cancel {
 ##
 ## action の実装
 ##
-## 関数 ble/complete/action:$ACTION/initialize
+## @fn ble/complete/action:$ACTION/initialize
 ##   基本的に INSERT を設定すれば良い
 ##   @var[in    ] CAND
 ##   @var[in,out] ACTION
@@ -956,7 +956,7 @@ function ble/complete/check-cancel {
 ##     ibrace はブレース展開の構造を保持するのに必要な COMPS 接頭辞の長さです。
 ##     value は ${COMPS::ibrace} のブレース展開を実行した結果の最後の単語の評価結果です。
 ##
-## 関数 ble/complete/action:$ACTION/complete
+## @fn ble/complete/action:$ACTION/complete
 ##   一意確定時に、挿入文字列・範囲に対する加工を行います。
 ##   例えばディレクトリ名の場合に / を後に付け加える等です。
 ##
@@ -1011,7 +1011,7 @@ function ble/complete/action/util/complete.close-quotation {
   esac
 }
 
-## 関数 ble/complete/action/util/quote-insert type
+## @fn ble/complete/action/util/quote-insert type
 function ble/complete/action/util/quote-insert {
   local escape_flags=c
   if [[ $1 == command ]]; then
@@ -1297,7 +1297,7 @@ function ble/complete/action:variable/init-menu-item {
 #------------------------------------------------------------------------------
 # source
 
-## 関数 ble/complete/source/test-limit value
+## @fn ble/complete/source/test-limit value
 ##   Tests whether "value" exceeds the completion limit
 ##   specified by bleopt complete_limit or complete_limit_auto.
 ##
@@ -1320,7 +1320,7 @@ function ble/complete/source/test-limit {
   fi
 }
 
-## 関数 ble/complete/source/reduce-compv-for-ambiguous-match
+## @fn ble/complete/source/reduce-compv-for-ambiguous-match
 ##   曖昧補完の為に擬似的な COMPV と COMPS を生成・設定します。
 ##   @var[in,out] COMPS COMPV
 function ble/complete/source/reduce-compv-for-ambiguous-match {
@@ -1353,7 +1353,7 @@ function ble/complete/source/reduce-compv-for-ambiguous-match {
   COMPS=$comps_prefix$comps
 }
 
-## 関数 ble/complete/cand/yield ACTION CAND DATA
+## @fn ble/complete/cand/yield ACTION CAND DATA
 ##   @param[in] ACTION
 ##   @param[in] CAND
 ##   @param[in] DATA
@@ -1398,7 +1398,7 @@ function ble/complete/cand/yield-filenames {
 
 _ble_complete_cand_varnames=(ACTION CAND INSERT DATA PREFIX_LEN)
 
-## 関数 ble/complete/cand/unpack data
+## @fn ble/complete/cand/unpack data
 ##   @param[in] data
 ##     ACTION:ncand,ninsert,PREFIX_LEN:$CAND$INSERT$DATA
 ##   @var[out] ACTION CAND INSERT DATA PREFIX_LEN
@@ -1424,7 +1424,7 @@ function ble/complete/cand/unpack {
 ##
 ## source の実装
 ##
-## 関数 ble/complete/source:$name args...
+## @fn ble/complete/source:$name args...
 ##   @param[in] args...
 ##     ble/syntax/completion-context/generate で設定されるユーザ定義の引数。
 ##
@@ -1647,7 +1647,7 @@ function ble/complete/source:command {
 
 # source:file, source:dir
 
-## 関数 ble/complete/util/eval-pathname-expansion pattern
+## @fn ble/complete/util/eval-pathname-expansion pattern
 ##   @var[out] ret
 function ble/complete/util/eval-pathname-expansion {
   local pattern=$1
@@ -1711,7 +1711,7 @@ function ble/complete/util/eval-pathname-expansion {
   ble/util/invoke-hook dtor
 }
 
-## 関数 ble/complete/source:file/.construct-ambiguous-pathname-pattern path
+## @fn ble/complete/source:file/.construct-ambiguous-pathname-pattern path
 ##   指定された path に対応する曖昧一致パターンを生成します。
 ##   例えばalpha/beta/gamma に対して a*/b*/g* でファイル名を生成します。
 ##
@@ -1745,7 +1745,7 @@ function ble/complete/source:file/.construct-ambiguous-pathname-pattern {
   [[ $pattern ]] || pattern="*"
   ret=$pattern
 }
-## 関数 ble/complete/source:file/.construct-pathname-pattern path
+## @fn ble/complete/source:file/.construct-pathname-pattern path
 ##   @param[in] path
 ##   @var[out] ret
 function ble/complete/source:file/.construct-pathname-pattern {
@@ -1892,14 +1892,14 @@ function ble/complete/source:tilde {
 
 # progcomp/.compgen
 
-## 関数 ble/complete/progcomp/.compvar-initialize-wordbreaks
+## @fn ble/complete/progcomp/.compvar-initialize-wordbreaks
 ##   @var[out] wordbreaks
 function ble/complete/progcomp/.compvar-initialize-wordbreaks {
   local ifs=$' \t\n' q=\'\" delim=';&|<>()' glob='[*?' hist='!^{' esc='`$\'
   local escaped=$ifs$q$delim$glob$hist$esc
   wordbreaks=${COMP_WORDBREAKS//[$escaped]} # =:
 }
-## 関数 ble/complete/progcomp/.compvar-perform-wordbreaks word
+## @fn ble/complete/progcomp/.compvar-perform-wordbreaks word
 ##   @var[in] wordbreaks
 ##   @arr[out] ret
 function ble/complete/progcomp/.compvar-perform-wordbreaks {
@@ -1925,7 +1925,7 @@ function ble/complete/progcomp/.compvar-perform-wordbreaks {
   ble/array#push ret "$word"
 }
 
-## 関数 ble/complete/progcomp/.compvar-generate-subwords/impl1 word
+## @fn ble/complete/progcomp/.compvar-generate-subwords/impl1 word
 ##   $wordbreaks で分割してから評価する戦略。
 ##
 ##   @param word
@@ -1989,7 +1989,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
   fi
   return 0
 }
-## 関数 ble/complete/progcomp/.compvar-generate-subwords/impl1 word
+## @fn ble/complete/progcomp/.compvar-generate-subwords/impl1 word
 ##   評価してから $wordbreaks で分割する戦略。
 ##
 ##   @param word
@@ -2016,7 +2016,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl2 {
   ble/complete/progcomp/.compvar-perform-wordbreaks "$value1"; words=("${ret[@]}")
   return 0
 }
-## 関数 ble/complete/progcomp/.compvar-generate-subwords word1
+## @fn ble/complete/progcomp/.compvar-generate-subwords word1
 ##   word1 を COMP_WORDBREAKS で分割します。
 ##
 ##   @arr[out] words
@@ -2059,7 +2059,7 @@ function ble/complete/progcomp/.compvar-generate-subwords {
     ble/complete/progcomp/.compvar-perform-wordbreaks "$word1"; words=("${ret[@]}")
   fi
 }
-## 関数 ble/complete/progcomp/.compvar-quote-subword word
+## @fn ble/complete/progcomp/.compvar-quote-subword word
 ##   @var[in] index subword_flags
 ##   @var[out] ret
 ##   @var[in,out] p
@@ -2103,7 +2103,7 @@ function ble/complete/progcomp/.compvar-quote-subword {
   ret=$word
 }
 
-## 関数 ble/complete/progcomp/.compvar-initialize
+## @fn ble/complete/progcomp/.compvar-initialize
 ##   プログラム補完で提供される変数を構築します。
 ##   @var[in]  comp_words comp_cword comp_line comp_point
 ##   @var[out] COMP_WORDS COMP_CWORD COMP_LINE COMP_POINT COMP_KEY COMP_TYPE
@@ -2238,7 +2238,7 @@ function ble/complete/progcomp/.compgen-helper-func {
   fi
 }
 
-## 関数 ble/complete/progcomp/.compgen opts
+## @fn ble/complete/progcomp/.compgen opts
 ##
 ##   @param[in] opts
 ##     コロン区切りのオプションリストです。
@@ -2421,7 +2421,7 @@ function ble/complete/progcomp/.compgen {
   ((cand_count!=old_cand_count))
 }
 
-## 関数 ble/complete/progcomp/.compline-rewrite-command cmd [args...]
+## @fn ble/complete/progcomp/.compline-rewrite-command cmd [args...]
 ##   alias 展開等によるコマンド名の変更に対応して、
 ##   補完対象のコマンド名を指定の物に書き換えます。
 ##
@@ -2437,7 +2437,7 @@ function ble/complete/progcomp/.compline-rewrite-command {
   ((comp_cword&&(comp_cword+=$#-1)))
 }
 
-## 関数 ble/complete/progcomp cmd opts
+## @fn ble/complete/progcomp cmd opts
 ##   補完指定を検索して対応する補完関数を呼び出します。
 ##   @var[in] comp_line comp_words comp_point comp_cword
 function ble/complete/progcomp {
@@ -2731,7 +2731,7 @@ function ble/complete/mandb/load-cache {
 #------------------------------------------------------------------------------
 # source:argument
 
-## 関数 ble/complete/source:argument/.generate-user-defined-completion opts
+## @fn ble/complete/source:argument/.generate-user-defined-completion opts
 ##   ユーザ定義の補完を実行します。ble/cmdinfo/complete:コマンド名
 ##   という関数が定義されている場合はそれを使います。
 ##   それ以外の場合は complete によって登録されているプログラム補完が使用されます。
@@ -2954,7 +2954,7 @@ function ble/complete/source:hostname {
 #------------------------------------------------------------------------------
 # context
 
-## 関数  ble/complete/complete/determine-context-from-opts opts
+## @fn  ble/complete/complete/determine-context-from-opts opts
 ##   @param[in] opts
 ##   @var[out] context
 function ble/complete/complete/determine-context-from-opts {
@@ -2969,7 +2969,7 @@ function ble/complete/complete/determine-context-from-opts {
     fi
   fi
 }
-## 関数 ble/complete/context/filter-prefix-sources
+## @fn ble/complete/context/filter-prefix-sources
 ##   @var[in] comp_text comp_index
 ##   @var[in,out] sources
 function ble/complete/context/filter-prefix-sources {
@@ -2985,7 +2985,7 @@ function ble/complete/context/filter-prefix-sources {
   sources=("${filtered_sources[@]}")
   ((${#sources[@]}))
 }
-## 関数 ble/complete/context/overwrite-sources source
+## @fn ble/complete/context/overwrite-sources source
 ##   @param[in] source
 ##   @var[in] comp_text comp_index
 ##   @var[in,out] comp_type
@@ -3005,7 +3005,7 @@ function ble/complete/context/overwrite-sources {
   sources=("${new_sources[@]}")
 }
 
-## 関数 ble/complete/context:syntax/generate-sources comp_text comp_index
+## @fn ble/complete/context:syntax/generate-sources comp_text comp_index
 ##   @var[in] comp_text comp_index
 ##   @var[out] sources
 function ble/complete/context:syntax/generate-sources {
@@ -3106,7 +3106,7 @@ function ble/complete/source:dynamic-history {
 ##     local ACTION=${cand_pack[0]%%:*}
 ##
 
-## 関数 ble/complete/util/construct-ambiguous-regex text fixlen
+## @fn ble/complete/util/construct-ambiguous-regex text fixlen
 ##   曖昧一致に使う正規表現を生成します。
 ##   @param[in] text
 ##   @param[in,out] fixlen=1
@@ -3132,7 +3132,7 @@ function ble/complete/util/construct-ambiguous-regex {
   done
   IFS= builtin eval 'ret="${buff[*]}"'
 }
-## 関数 ble/complete/util/construct-glob-pattern text
+## @fn ble/complete/util/construct-glob-pattern text
 ##   部分一致に使うグロブを生成します。
 function ble/complete/util/construct-glob-pattern {
   local text=$1
@@ -3171,7 +3171,7 @@ function ble/complete/.fignore/filter {
   done
 }
 
-## 関数 ble/complete/candidates/.pick-nearest-sources
+## @fn ble/complete/candidates/.pick-nearest-sources
 ##   一番開始点に近い補完源の一覧を求めます。
 ##
 ##   @var[in] comp_index
@@ -3242,7 +3242,7 @@ function ble/complete/candidates/.pick-nearest-sources {
   fi
 }
 
-## 関数 ble/complete/candidates/.filter-by-command command
+## @fn ble/complete/candidates/.filter-by-command command
 ##   生成された候補 (cand_*) に対して指定したコマンドを実行し、
 ##   成功した候補のみを残して他を削除します。
 ##   @param[in] command
@@ -3268,7 +3268,7 @@ function ble/complete/candidates/.filter-by-command {
   cand_word=("${word[@]}")
   cand_pack=("${data[@]}")
 }
-## 関数 ble/complete/candidates/.filter-by-regex rex_filter
+## @fn ble/complete/candidates/.filter-by-regex rex_filter
 ##   生成された候補 (cand_*) において指定した正規表現に一致する物だけを残します。
 ##   @param[in] rex_filter
 ##   @var[in,out] cand_count
@@ -3296,12 +3296,12 @@ function ble/complete/candidates/.initialize-rex_raw_paramx {
 
 ## 候補フィルタ (candidate filters) は以下の関数を通して実装される。
 ##
-##   関数 ble/complete/candidates/filter:FILTER_TYPE/init compv
-##   関数 ble/complete/candidates/filter:FILTER_TYPE/test cand
+##   @fn ble/complete/candidates/filter:FILTER_TYPE/init compv
+##   @fn ble/complete/candidates/filter:FILTER_TYPE/test cand
 ##     @var[in] comp_filter_type
 ##     @var[in,out] comp_filter_pattern
 ##
-##   関数 ble/complete/candidates/filter:FILTER_TYPE/match needle text
+##   @fn ble/complete/candidates/filter:FILTER_TYPE/match needle text
 ##     @param[in] needle text
 ##
 ##   関数 ble/complete/candidates/filter:FILTER_TYPE/count-match-chars value
@@ -3309,8 +3309,8 @@ function ble/complete/candidates/.initialize-rex_raw_paramx {
 ##
 ## 使用するときには以下の関数を通して呼び出す (match, count-match-chars は直接呼び出す)。
 ##
-##   関数 ble/complete/candidates/filter#init type compv
-##   関数 ble/complete/candidates/filter#test value
+##   @fn ble/complete/candidates/filter#init type compv
+##   @fn ble/complete/candidates/filter#test value
 ##     @var[in,out] comp_filter_type
 ##     @var[in,out] comp_filter_pattern
 ##
@@ -3349,7 +3349,7 @@ function ble/complete/candidates/filter:head/count-match-chars { # unused but fo
 }
 function ble/complete/candidates/filter:head/test { [[ $1 == $comp_filter_pattern ]]; }
 
-## 関数 ble/complete/candidates/filter:head/match needle text
+## @fn ble/complete/candidates/filter:head/match needle text
 ##   @arr[out] ret
 function ble/complete/candidates/filter:head/match {
   local needle=$1 text=$2
@@ -3421,7 +3421,7 @@ function ble/complete/candidates/filter:hsubseq/.determine-fixlen {
     [[ $compv_fixed_part ]] && fixlen=${#compv_fixed_part}
   fi
 }
-## 関数 ble/complete/candidates/filter:hsubseq/init compv [fixlen]
+## @fn ble/complete/candidates/filter:hsubseq/init compv [fixlen]
 ##   @param[in] compv
 ##   @param[in,opt] fixlen
 ##   @var[in] comps_fixed
@@ -3431,7 +3431,7 @@ function ble/complete/candidates/filter:hsubseq/init {
   local ret; ble/complete/util/construct-ambiguous-regex "$1" "$fixlen"
   comp_filter_pattern=^$ret
 }
-## 関数 ble/complete/candidates/filter:hsubseq/count-match-chars value [fixlen]
+## @fn ble/complete/candidates/filter:hsubseq/count-match-chars value [fixlen]
 ##   指定した文字列が COMPV の何処まで一致するかを返します。
 ##   @var[out] ret
 function ble/complete/candidates/filter:hsubseq/count-match-chars {
@@ -3498,7 +3498,7 @@ function ble/complete/candidates/filter:hsubseq/match {
   done
 }
 
-## 関数 ble/complete/candidates/filter:subseq/init compv
+## @fn ble/complete/candidates/filter:subseq/init compv
 ##   @param[in] compv
 ##   @var[in] comps_fixed
 ##   @var[out] comp_filter_pattern
@@ -3559,7 +3559,7 @@ function ble/complete/candidates/comp_type#read-rl-variables {
   # ble/util/test-rl-variable colored-completion-prefix 1 && comp_type=${comp_type}:menu-color-match
 }
 
-## 関数 ble/complete/candidates/generate opts
+## @fn ble/complete/candidates/generate opts
 ##   @param[in] opts
 ##   @var[in] comp_text comp_index
 ##   @arr[in] sources
@@ -3607,7 +3607,7 @@ function ble/complete/candidates/generate {
   return 0
 }
 
-## 関数 ble/complete/candidates/determine-common-prefix/.apply-partial-comps
+## @fn ble/complete/candidates/determine-common-prefix/.apply-partial-comps
 ##   @var[in] COMPS
 ##   @var[in] comps_fixed
 ##   @var[in,out] common
@@ -3634,7 +3634,7 @@ function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
   common=$fixed$word1
 }
 
-## 関数 ble/complete/candidates/determine-common-prefix
+## @fn ble/complete/candidates/determine-common-prefix
 ##   cand_* を元に common prefix を算出します。
 ##   @var[in] cand_*
 ##   @var[out] ret
@@ -3783,7 +3783,7 @@ _ble_complete_menu0_comp=()
 _ble_complete_menu0_pack=()
 _ble_complete_menu_comp=()
 
-## 関数 ble/complete/menu-complete.class/render-item pack opts
+## @fn ble/complete/menu-complete.class/render-item pack opts
 ##   @param[in] pack
 ##     cand_pack の要素と同様の形式の文字列です。
 ##   @param[in] opts
@@ -3940,13 +3940,13 @@ function ble/complete/menu/clear {
 blehook widget_bell+=ble/complete/menu/clear
 blehook history_onleave+=ble/complete/menu/clear
 
-## 関数 ble/complete/menu/get-footprint
+## @fn ble/complete/menu/get-footprint
 ##   @var[out] footprint
 function ble/complete/menu/get-footprint {
   footprint=$_ble_edit_ind:$_ble_edit_mark_active:${_ble_edit_mark_active:+$_ble_edit_mark}:$_ble_edit_overwrite_mode:$_ble_edit_str
 }
 
-## 関数 ble/complete/menu/show opts
+## @fn ble/complete/menu/show opts
 ##   @param[in] opts
 ##     filter
 ##     menu-source
@@ -4050,7 +4050,7 @@ function ble/complete/menu/get-active-range {
   fi
 }
 
-## 関数 ble/complete/menu/generate-candidates-from-menu
+## @fn ble/complete/menu/generate-candidates-from-menu
 ##   現在表示されている menu 内容から候補を再抽出します。
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
@@ -4081,7 +4081,7 @@ function ble/complete/menu/generate-candidates-from-menu {
 #==============================================================================
 # 補完
 
-## 関数 ble/complete/generate-candidates-from-opts opts
+## @fn ble/complete/generate-candidates-from-opts opts
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 ##   @var[in,out] cand_limit_reached
@@ -4100,7 +4100,7 @@ function ble/complete/generate-candidates-from-opts {
   ble/complete/candidates/generate "$opts"
 }
 
-## 関数 ble/complete/insert insert_beg insert_end insert suffix
+## @fn ble/complete/insert insert_beg insert_end insert suffix
 function ble/complete/insert {
   local insert_beg=$1 insert_end=$2
   local insert=$3 suffix=$4
@@ -4154,7 +4154,7 @@ function ble/complete/insert {
       (_ble_edit_ind=${#_ble_edit_str})))
 }
 
-## 関数 ble/complete/insert-common
+## @fn ble/complete/insert-common
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-common {
@@ -4216,7 +4216,7 @@ function ble/complete/insert-common {
   return 0
 }
 
-## 関数 ble/complete/insert-all
+## @fn ble/complete/insert-all
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-all {
@@ -4243,7 +4243,7 @@ function ble/complete/insert-all {
   return 0
 }
 
-## 関数 ble/complete/insert-braces/.compose words...
+## @fn ble/complete/insert-braces/.compose words...
 ##   指定した単語をブレース展開に圧縮します。
 ##   @var[in] comp_type
 ##   @stdout
@@ -4658,7 +4658,7 @@ function ble/complete/insert-braces/.compose {
   '
 }
 
-## 関数 ble/complete/insert-braces
+## @fn ble/complete/insert-braces
 ##   @var[out] COMP1 COMP2 COMPS COMPV comp_type comps_flags comps_fixed
 ##   @var[out] cand_count cand_cand cand_word cand_pack
 function ble/complete/insert-braces {
@@ -4745,7 +4745,7 @@ function ble/complete/insert-braces {
 
 _ble_complete_state=
 
-## 関数 ble/widget/complete opts
+## @widget complete opts
 ##   @param[in] opts
 ##     コロン区切りのリストです。
 ##     以下は動作を指定するオプションです。
@@ -4876,7 +4876,7 @@ function ble/widget/menu-complete {
 #------------------------------------------------------------------------------
 # menu-filter
 
-## 関数 ble/complete/menu-filter/.filter-candidates
+## @fn ble/complete/menu-filter/.filter-candidates
 ##   @var[in,out] comp_type
 ##   @var[out] cand_pack
 function ble/complete/menu-filter/.filter-candidates {
@@ -4951,7 +4951,7 @@ function ble/complete/menu-filter.idle {
 
 # ble/highlight/layer:menu_filter
 
-## 関数 ble/highlight/layer/buff#operate-gflags name beg end mask gflags
+## @fn ble/highlight/layer/buff#operate-gflags name beg end mask gflags
 function ble/highlight/layer/buff#operate-gflags {
   local BUFF=$1 beg=$2 end=$3 mask=$4 gflags=$5
   ((beg<end)) || return 1
@@ -4972,7 +4972,7 @@ function ble/highlight/layer/buff#operate-gflags {
     builtin eval -- "$BUFF[$i]=\$ret\${_ble_highlight_layer_plain_buff[$i]}"
   done
 }
-## 関数 ble/highlight/layer/buff#set-explicit-sgr name index
+## @fn ble/highlight/layer/buff#set-explicit-sgr name index
 function ble/highlight/layer/buff#set-explicit-sgr {
   local BUFF=$1 index=$2
   builtin eval "((index<\${#$BUFF[@]}))" || return 1
@@ -5088,7 +5088,7 @@ fi
 
 _ble_complete_menu_original=
 
-## 関数 ble/complete/menu-complete/select index [opts]
+## @fn ble/complete/menu-complete/select index [opts]
 function ble/complete/menu-complete/select {
   ble/complete/menu#select "$@"
 }
@@ -5236,7 +5236,7 @@ _ble_complete_ac_word=
 _ble_complete_ac_insert=
 _ble_complete_ac_suffix=
 
-## 関数 ble/complete/auto-complete/.search-history-light text
+## @fn ble/complete/auto-complete/.search-history-light text
 ##   !string もしくは !?string を用いて履歴の検索を行います
 ##   @param[in] text
 ##   @var[out] ret
@@ -5286,7 +5286,7 @@ function ble/complete/auto-complete/.search-history-light {
 _ble_complete_ac_history_needle=
 _ble_complete_ac_history_index=
 _ble_complete_ac_history_start=
-## 関数 ble/complete/auto-complete/.search-history-heavy text
+## @fn ble/complete/auto-complete/.search-history-heavy text
 ##   @var[out] ret
 function ble/complete/auto-complete/.search-history-heavy {
   local text=$1
@@ -5314,7 +5314,7 @@ function ble/complete/auto-complete/.search-history-heavy {
   return 0
 }
 
-## 関数 ble/complete/auto-complete/.setup-auto-complete-mode
+## @fn ble/complete/auto-complete/.setup-auto-complete-mode
 ##   @var[in] type COMP1 cand word insert suffix
 function ble/complete/auto-complete/.setup-auto-complete-mode {
   _ble_complete_ac_type=$type
@@ -5328,7 +5328,7 @@ function ble/complete/auto-complete/.setup-auto-complete-mode {
   ble-decode/keymap/push auto_complete
   ble-decode-key "$_ble_complete_KCODE_ENTER" # dummy key input to record keyboard macros
 }
-## 関数 ble/complete/auto-complete/.insert ins
+## @fn ble/complete/auto-complete/.insert ins
 ##   @param[in] ins
 ##   @var[in,out] _ble_edit_ind _ble_edit_mark
 function ble/complete/auto-complete/.insert {
@@ -5337,7 +5337,7 @@ function ble/complete/auto-complete/.insert {
   ((_ble_edit_mark=_ble_edit_ind+${#insert}))
 }
 
-## 関数 ble/complete/auto-complete/.check-history opts
+## @fn ble/complete/auto-complete/.check-history opts
 ##   @param[in] opts
 ##   @var[in] comp_type comp_text comp_index
 function ble/complete/auto-complete/.check-history {
@@ -5360,7 +5360,7 @@ function ble/complete/auto-complete/.check-history {
   return 0
 }
 
-## 関数 ble/complete/auto-complete/.check-context
+## @fn ble/complete/auto-complete/.check-context
 ##   @var[in] comp_type comp_text comp_index
 function ble/complete/auto-complete/.check-context {
   local sources
@@ -5417,7 +5417,7 @@ function ble/complete/auto-complete/.check-context {
   return 0
 }
 
-## 関数 ble/complete/auto-complete.impl opts
+## @fn ble/complete/auto-complete.impl opts
 ##   @param[in] opts
 #      コロン区切りのオプションのリストです。
 ##     sync   ユーザ入力があっても処理を中断しない事を指定します。
@@ -5502,7 +5502,7 @@ function ble/complete/auto-menu.idle {
 ble/function#try ble/util/idle.push-background ble/complete/auto-complete.idle
 ble/function#try ble/util/idle.push-background ble/complete/auto-menu.idle
 
-## 編集関数 ble/widget/auto-complete-enter
+## @widget auto-complete-enter
 ##
 ##   Note:
 ##     キーボードマクロで自動補完を明示的に起動する時に用いる編集関数です。
@@ -5720,14 +5720,14 @@ function ble/complete/sabbrev/.print-definition {
   fi
 }
 
-## 関数 ble/complete/sabbrev/register key value
+## @fn ble/complete/sabbrev/register key value
 ##   静的略語展開を登録します。
 ##   @param[in] key value
 ##
-## 関数 ble/complete/sabbrev/list
+## @fn ble/complete/sabbrev/list
 ##   登録されている静的略語展開の一覧を表示します。
 ##
-## 関数 ble/complete/sabbrev/get key
+## @fn ble/complete/sabbrev/get key
 ##   静的略語展開の展開値を取得します。
 ##   @param[in] key
 ##   @var[out] ret
@@ -5829,7 +5829,7 @@ function ble/complete/sabbrev/read-arguments {
   done
 }
 
-## 関数 ble-sabbrev key=value
+## @fn ble-sabbrev key=value
 ##   静的略語展開を登録します。
 function ble-sabbrev {
   if (($#)); then
@@ -6009,7 +6009,7 @@ function ble/complete/dabbrev/erase-status {
   ble-edit/info/default
 }
 
-## 関数 ble/complete/dabbrev/initialize-variables
+## @fn ble/complete/dabbrev/initialize-variables
 function ble/complete/dabbrev/initialize-variables {
   # Note: _ble_term_IFS を前置しているので ! や ^ が先頭に来ない事は保証される
   local wordbreaks; ble/complete/get-wordbreaks
@@ -6041,7 +6041,7 @@ function ble/complete/dabbrev/reset {
   _ble_edit_mark_active=
 }
 
-## 関数 ble/complete/dabbrev/search-in-history-entry line index
+## @fn ble/complete/dabbrev/search-in-history-entry line index
 ##   @param[in] line
 ##     検索対象の内容を指定します。
 ##   @param[in] index
@@ -6270,7 +6270,7 @@ function ble/complete/action:cdpath/get-desc {
   desc="CDPATH $filename ($desc)"
 }
 
-## 関数 ble/cmdinfo/complete:cd/.impl
+## @fn ble/cmdinfo/complete:cd/.impl
 ##   @remarks
 ##     この実装は ble/complete/source:file/.impl を元にしている。
 ##     実装に関する注意点はこの元の実装も参照の事。
