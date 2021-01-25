@@ -3728,6 +3728,12 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-01-25
+
+  * main: nfs の上に _ble_base_run があると問題になるのでは [#D1444]
+    取り敢えずローカルに runtime directory を作る時には $HOSTNAME も含める事にした。
+    XDG_RUNTIME_DIR 及び /tmp を使う場合には host specific であると期待してその儘にする。
+
 2021-01-22
 
   * edit: C-w で kill-ring への追加を実装するという事 (suggested by 3ximus) [#D1443]

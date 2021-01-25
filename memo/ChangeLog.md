@@ -29,6 +29,8 @@
 
 ## Internal changes and fixes
 
+- main: include hostname in local runtime directory `#D1444` 0000000
+
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
 
