@@ -424,3 +424,5 @@ GitHub の Issue/PR を通して多くの方からフィードバックを頂き
 - [`@cmplstofB`](https://github.com/cmplstofB) 様には vim モードの実装において初期よりテスト及び様々な提案をしていただきました。
 - [`@dylankb`](https://github.com/dylankb) 様には `fzf` との互換性や `ble.sh` 初期化に関連して様々な問題報告をいただきました。
 - [`@rux616`](https://github.com/rux616) 様には幾つかの問題報告および `.blerc` の既定パス解決のバグ修正をいただきました。
+- [`@timjrd`](https://github.com/timjrd) 様には補完の枠組みの高速化に関する PR をいただきました。
+- [`@3ximus`](https://github.com/3ximus) 様には広範囲に渡る様々な問題について報告いただきました。

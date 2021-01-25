@@ -418,3 +418,5 @@ Among them, the following people have made particularly significant contribution
 - [`@cmplstofB`](https://github.com/cmplstofB) helped me implementing vim-mode by testing it and giving me a lot of suggestions.
 - [`@dylankb`](https://github.com/dylankb) reported many issues for fzf-integration, initialization, etc.
 - [`@rux616`](https://github.com/rux616) reported several issues and created a PR for fixing the default path of `.blerc`
+- [`@timjrd`](https://github.com/timjrd) suggested and contributed to performance improvements in completion.
+- [`@3ximus`](https://github.com/3ximus) reported many issues for a wide variety of problems.

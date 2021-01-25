@@ -1297,17 +1297,22 @@ function ble/complete/action:variable/init-menu-item {
 #------------------------------------------------------------------------------
 # source
 
-## Test whether $1 exceeds $bleopt_complete_limit or
-## $bleopt_complete_limit_auto.
+## 関数 ble/complete/source/test-limit value
+##   Tests whether "value" exceeds the completion limit
+##   specified by bleopt complete_limit or complete_limit_auto.
+##
+##   @var[in] comp_type
+##   @var[in,out] cand_limit_reached
 ##
 function ble/complete/source/test-limit {
+  local value=$1
   if [[ :$comp_type: == *:auto:* && $bleopt_complete_limit_auto ]]; then
     local limit=$bleopt_complete_limit_auto
   else
     local limit=$bleopt_complete_limit
   fi
 
-  if [[ $limit && $1 -gt $limit ]]; then
+  if [[ $limit && value -gt limit ]]; then
     cand_limit_reached=1
     return 1
   else
@@ -3555,7 +3560,7 @@ function ble/complete/candidates/comp_type#read-rl-variables {
 ##   @arr[in] sources
 ##   @var[out] COMP1 COMP2 COMPS COMPV
 ##   @var[out] comp_type comps_flags comps_fixed
-##   @var[out] cand_*
+##   @var[out] cand_count cand_cand cand_word cand_pack
 ##   @var[in,out] cand_limit_reached
 function ble/complete/candidates/generate {
   local opts=$1
@@ -4787,6 +4792,7 @@ function ble/widget/complete {
   local comp_type comps_flags comps_fixed
   local cand_count=0
   local -a cand_cand cand_word cand_pack
+  local cand_limit_reached=
   if [[ $_ble_complete_menu_active && :$opts: != *:regenerate:* &&
           :$opts: != *:context=*:* && ${#_ble_complete_menu_icons[@]} -gt 0 ]]
   then
@@ -4804,7 +4810,6 @@ function ble/widget/complete {
   fi
   if ((cand_count==0)); then
     local bleopt_complete_menu_style=$bleopt_complete_menu_style # source 等に一次変更を認める。
-    local cand_limit_reached=
     ble/complete/generate-candidates-from-opts "$opts"; local ext=$?
     if ((ext==148)); then
       return 148

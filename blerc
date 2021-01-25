@@ -392,16 +392,12 @@
 #bleopt complete_polling_cycle=50
 
 
-## A hint on the maximum acceptable size of any data structure
-## generated during the completion process, beyond which the
-## completion may be prematurely aborted to avoid excessive processing
-## time.
-##
-## "complete_limit" is used during tab-completion, an empty value
-## disables the size checks.
-##
-## "complete_limit_auto" is used during auto-completion, if its value
-## is empty, "complete_limit" is used instead.
+## A hint on the maximum acceptable size of any data structure generated during
+## the completion process, beyond which the completion may be prematurely
+## aborted to avoid excessive processing time.  "complete_limit" is used for
+## TAB completion.  When its value is empty, the size checks are disabled.
+## "complete_limit_auto" is used for auto-completion.  When its value is empty,
+## the setting "complete_limit" is used instead.
 
 #bleopt complete_limit=500
 #bleopt complete_limit_auto=200
