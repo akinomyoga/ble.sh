@@ -6,6 +6,7 @@ ble/is-function ble-edit/bind/load-keymap-definition:vi && return
 function ble-edit/bind/load-keymap-definition:vi { :; }
 
 # 2019-04-01 keymap cache should be updated for adding __error__
+# 2021-01-25 force update (change mapping of C-w and M-w)
 
 source "$_ble_base/keymap/vi_digraph.sh"
 
