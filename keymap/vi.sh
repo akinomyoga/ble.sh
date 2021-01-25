@@ -6,6 +6,7 @@ ble/is-function ble-edit/bind/load-editing-mode:vi && return 0
 function ble-edit/bind/load-editing-mode:vi { :; }
 
 # 2020-04-29 force update (rename ble-decode/keymap/.register)
+# 2021-01-25 force update (change mapping of C-w and M-w)
 
 source "$_ble_base/keymap/vi_digraph.sh"
 

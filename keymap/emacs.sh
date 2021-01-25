@@ -8,6 +8,7 @@ function ble-edit/bind/load-editing-mode:emacs { :; }
 # 2019-01-18 keymap cache should be updated for recent changes
 # 2019-03-21 keymap cache should be updated for recent changes
 # 2020-04-29 force update (rename ble-decode/keymap/.register)
+# 2021-01-25 force update (change mapping of C-w and M-w)
 
 #------------------------------------------------------------------------------
 

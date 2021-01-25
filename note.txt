@@ -3721,6 +3721,38 @@ bash_tips
 
 2021-01-25
 
+  * edit: change default behavior of "C-w" and "M-w" to operate on backward words (reported by 3ximus) [#D1448]
+
+    ? done: C-w の振る舞いを readline に合わせる?
+
+      後、やはりここまで来ると普通の bash との振る舞いの違いが俄然気になってくる。
+      やはり C-w は kill-uword ではなくて kill-backward-uword であるべきなのではないか。
+      やはり既定で kill-backward-uword にする様に変更する。
+      M-w による copy-backward-word についてはどうするか。
+      どうも readline の copy-backward-word は widget copy-uword と同じ振る舞いの様である。
+      しかし、M-w は元の readline では使われていないし、
+      ble.sh の M-w でどの様に振る舞っても問題はない気がする。
+
+    ? ok: C-w で kill-uword する現在の振る舞いに何か理由があっただろうか。
+      何か理由があって敢えて現在の振る舞いにしている可能性もある。
+
+      bbbd155f src/edit.sh (Koichi Murase     2019-03-22 07:28:24 +0900 6763)   ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or kill-uword'
+      1fc7cbaf ble-edit.sh (Koichi Murase 2017-12-04 20:48:17 +0900 6185)   ble-decode/keymap:safe/.bind 'C-w'       'kill-region-or uword'
+      f18485f0 (Koichi Murase 2017-12-04 14:36:52 +0900 4442)   ble-bind -f 'C-w'       'kill-region-or uword'
+      3aa7fa66 (Koichi Murase 2017-12-03 18:31:00 +0900 4461)   ble-bind -f 'C-w'      'kill-region-or uword'
+      6ca737d2 (Koichi Murase 2015-02-28 12:48:55 +0900  54)   ble-bind -f 'C-w'      'kill-region-or uword'
+      ^c68412b (Koichi Murase 2015-02-09 03:13:19 +0900 3381)   ble-bind -f 'C-w'      'kill-region-or uword'
+
+      どうやら一番最初に commit した時から現在の振る舞いだった様だ。
+      ここから分かる事は現在の振る舞いに根拠はないという事。
+      実装初期に kill-backward-uword がなかったか不完全だった時からこうである可能性がある。
+      なので、振る舞いを現時点で変更しても何の問題もない。
+
+      copy-uword vs copy-backward-uword についても全く同じだった。
+      最初から M-w は copy-uword になっていた。
+
+    これは他の ble versions にも適用した方が良いと思われるので独立した commit にする事にした。
+
   * edit ({kill,copy}-region-or): fix unconditionally combined kills/copies (reported by 3ximus) [#D1447]
     https://github.com/akinomyoga/ble.sh/issues/83#issuecomment-766831785
 
