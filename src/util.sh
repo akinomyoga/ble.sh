@@ -1474,7 +1474,8 @@ function ble/util/msleep/.calibrate-loop {
   local ret nsec _ble_measure_time=1 v=0
   _ble_util_msleep_delay=0 ble-measure 'ble/util/msleep 1'
   local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count
-  ((_ble_util_msleep_delay=(count*_ble_util_msleep_delay+delay)/(count+1)))
+  ((count<=0||delay<_ble_util_msleep_delay)) && _ble_util_msleep_delay=$delay # 最小値
+  # ((_ble_util_msleep_delay=(count*_ble_util_msleep_delay+delay)/(count+1))) # 平均値
 }
 function ble/util/msleep/calibrate {
   ble/util/msleep/.calibrate-loop &>/dev/null
@@ -1488,32 +1489,39 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
   function ble/util/msleep/.core { builtin sleep "$1"; }
 elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
   if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
-    _ble_util_msleep_delay1=10000 # short msleep にかかる時間 [usec]
+    _ble_util_msleep_tmp=/dev/zero
+    ble/util/openat _ble_util_msleep_fd '< "$_ble_util_msleep_tmp"'
+    _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
+
+    _ble_util_msleep_switch=200 # [msec]
+    _ble_util_msleep_delay1=2000 # short msleep にかかる時間 [usec]
     _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
-    function ble/util/msleep/.core2 {
-      ((v-=_ble_util_msleep_delay2))
-      ble/bin/sleep $((v/1000000))
-      ((v%=1000000))
-    }
     function ble/util/msleep {
-      local v=$((1000*$1-_ble_util_msleep_delay1))
-      ((v<=0)) && v=100
-      ((v>1000000+_ble_util_msleep_delay2)) &&
-        ble/util/msleep/.core2
-      ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
-      ! builtin read -t "$v" v < /dev/udp/0.0.0.0/80
+      if (($1<_ble_util_msleep_switch)); then
+        local v=$((1000*$1-_ble_util_msleep_delay1))
+        ((v<=0)) && v=100
+        ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+        builtin eval -- "$_ble_util_msleep_read"
+      else
+        local v=$((1000*$1-_ble_util_msleep_delay2))
+        ((v<=0)) && v=100
+        ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+        ble/bin/sleep "$v"
+      fi
     }
     function ble/util/msleep/.calibrate-loop {
       local _ble_measure_threshold=10000
-      local ret nsec _ble_measure_time=1 v=0
+      local ret nsec _ble_measure_count=1
 
+      _ble_util_msleep_switch=200
       _ble_util_msleep_delay1=0 ble-measure 'ble/util/msleep 1'
       local delay=$((nsec/1000-1000)) count=$_ble_util_msleep_calibrate_count
-      ((_ble_util_msleep_delay1=(count*_ble_util_msleep_delay1+delay)/(count+1)))
+      ((count<=0||delay<_ble_util_msleep_delay1)) && _ble_util_msleep_delay1=$delay # 最小値を選択
 
-      _ble_util_msleep_delay2=0 ble-measure 'ble/util/msleep/.core2'
+      _ble_util_msleep_delay2=0 ble-measure 'ble/bin/sleep 0'
       local delay=$((nsec/1000))
-      ((_ble_util_msleep_delay2=(count*_ble_util_msleep_delay2+delay)/(count+1)))
+      ((count<=0||delay<_ble_util_msleep_delay2)) && _ble_util_msleep_delay2=$delay # 最小値を選択
+      ((_ble_util_msleep_switch=_ble_util_msleep_delay2/1000+10))
     }
   else
     _ble_util_msleep_delay=300
@@ -1523,13 +1531,14 @@ elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
       [[ -e $_ble_util_msleep_tmp ]] && ble/bin/rm -rf "$_ble_util_msleep_tmp"
       ble/bin/mkfifo "$_ble_util_msleep_tmp"
     fi
-    ble/util/openat _ble_util_msleep_fd "<> $_ble_util_msleep_tmp"
+    ble/util/openat _ble_util_msleep_fd '<> "$_ble_util_msleep_tmp"'
+    _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
 
     function ble/util/msleep {
       local v=$((1000*$1-_ble_util_msleep_delay))
       ((v<=0)) && v=100
       ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
-      ! builtin read -u "$_ble_util_msleep_fd" -t "$v" v
+      builtin eval -- "$_ble_util_msleep_read"
     }
   fi
 elif ble/bin/.freeze-utility-path sleepenh; then
