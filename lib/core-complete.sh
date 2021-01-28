@@ -1681,12 +1681,10 @@ function ble/complete/source:command {
 # source:file, source:dir
 
 function ble/complete/util/eval-pathname-expansion/.print-def {
-  local pattern=$1 ret q=\' Q="'\''"
+  local pattern=$1 ret
   IFS= builtin eval "ret=($pattern)" 2>/dev/null
-  ret=("${ret[@]//$q/$Q}")
-  ret=("${ret[@]/%/$q}")
-  ret=("${ret[@]/#/$q}")
-  ble/util/print "ret=(${ret[*]})"
+  ble/string#quote-words "${ret[@]}"
+  ble/util/print "ret=($ret)"
 }
 
 ## @fn ble/complete/util/eval-pathname-expansion pattern

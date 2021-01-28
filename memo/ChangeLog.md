@@ -20,7 +20,7 @@
 - edit: preserve the state of `READLINE_{LINE,POINT,MARK}` `#D1437` 8379d4a
 - edit: change default behavior of <kbd>C-w</kbd> and <kbd>M-w</kbd> to operate on backward words `#D1448` 47a3301
 - syntax (`layer:syntax/word`): perform pathname expansions in background subshells (motivated by 3ximus) `#D1449` 13e7bdd
-- complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` 0000000
+- complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
 
 ## Fixes
 
@@ -40,6 +40,7 @@
 
 - main: include hostname in local runtime directory `#D1444` 6494836
 - global: update the style of document comments ff4c4e7
+- util: add function `ble/string#quote-words` `#D1451` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

@@ -1324,12 +1324,8 @@ function ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot {
 
 function ble/syntax:bash/simple-word/eval/.set-result { __ble_ret=("$@"); }
 function ble/syntax:bash/simple-word/eval/.print-result {
-  local args q=\' Q="'\''"
-  args=("${@//$q/$Q}")
-  args=("${args[@]/%/$q}")
-  args=("${args[@]/#/$q}")
-  ble/util/print "__ble_ret=(${args[*]})"
-
+  local ret; ble/string#quote-words "$@"
+  ble/util/print "__ble_ret=($ret)"
 }
 ## @fn ble/syntax:bash/simple-word/eval/.impl word opts
 ##   @param[in] word

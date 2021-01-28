@@ -3841,6 +3841,9 @@ bash_tips
 
 2021-01-28
 
+  * util,syntax,complete: 配列内容の記録時に @Q を使った print に切り替える [#D1451]
+    大した高速化ではないと思うがコードの整理も兼ねて。
+
   * syntax: auto-complete 内部の pathname-expansion についても conditional-sync を使う (motivated by 3ximus) [#D1450]
     https://github.com/akinomyoga/ble.sh/issues/82 (for auto-complete)
 

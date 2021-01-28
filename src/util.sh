@@ -289,14 +289,8 @@ function ble/debug/print-variables/.append {
   _ble_local_out=$_ble_local_out"$1='${2//$q/$Q}'"
 }
 function ble/debug/print-variables/.append-array {
-  local q=\' Q="'\''" arr=$1 index=0; shift
-  local index=0 elem out=$arr'=('
-  for elem; do
-    ((index++)) && out=$out' '
-    out=$out$q${elem//$q/$Q}$q
-  done
-  out=$out')'
-  _ble_local_out=$_ble_local_out$out
+  local ret; ble/string#quote-words "${@:2}"
+  _ble_local_out=$_ble_local_out"$1=($ret)"
 }
 function ble/debug/print-variables {
   (($#)) || return 0
@@ -990,12 +984,28 @@ function ble/string#escape-for-display {
   ret=$head
 }
 
-function ble/string#quote-command {
-  ret=$1; shift
-  local arg q=\' Q="'\''"
-  for arg; do ret="$ret $q${arg//$q/$Q}$q"; done
-}
-## @fn ble/string#quote-word text
+if ((_ble_bash>=40400)); then
+  function ble/string#quote-words { ret="${*@Q}"; }
+  function ble/string#quote-command {
+    ret=$1; shift
+    ret="$ret ${*@Q}"
+  }
+else
+  function ble/string#quote-words {
+    local q=\' Q="'\''"
+    ret=("${@//$q/$Q}")
+    ret=("${ret[@]/%/$q}")
+    ret="${ret[*]/#/$q}"
+  }
+  function ble/string#quote-command {
+    local q=\' Q="'\''"
+    ret=("${@:2}")
+    ret=("${ret[@]//$q/$Q}")
+    ret=("${ret[@]/%/$q}")
+    ret="$1 ${ret[*]/#/$q}"
+  }
+fi
+## @fn ble/string#quote-word text opts
 function ble/string#quote-word {
   ret=$1
 
