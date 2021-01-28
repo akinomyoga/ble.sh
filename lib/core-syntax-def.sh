@@ -71,7 +71,6 @@ ble/util/autoload "$_ble_base/lib/core-syntax.sh" \
              ble/syntax/highlight/getg-from-filename \
              ble/syntax:bash/extract-command \
              ble/syntax:bash/simple-word/eval \
-             ble/syntax:bash/simple-word/eval-noglob \
              ble/syntax:bash/simple-word/evaluate-path-spec \
              ble/syntax:bash/simple-word/is-never-word \
              ble/syntax:bash/simple-word/is-simple \
@@ -98,6 +97,8 @@ bleopt/declare -v filename_ls_colors ''
 bleopt/declare -v highlight_syntax 1
 bleopt/declare -v highlight_filename 1
 bleopt/declare -v highlight_variable 1
+bleopt/declare -v highlight_timeout_sync 50
+bleopt/declare -v highlight_timeout_async 5000
 
 if ((_ble_bash>=40300||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
   builtin unset -v _ble_syntax_highlight_filetype

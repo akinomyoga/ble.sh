@@ -1702,7 +1702,8 @@ _ble_textarea_VARNAMES=(
   _ble_textarea_invalidated
   _ble_textarea_version
   _ble_textarea_caret_state
-  _ble_textarea_cache)
+  _ble_textarea_cache
+  _ble_textarea_render_defer)
 
 _ble_textarea_local_VARNAMES=()
 
@@ -1739,7 +1740,7 @@ _ble_textarea_bufferName=
 ##   @param[in,out] lc lg
 ##     カーソル左の文字のコードと gflag を返します。
 ##     カーソルが先頭にある場合は、編集文字列開始位置の左(プロンプトの最後の文字)について記述します。
-##   @var  [   out] umin umax
+##   @var  [in,out] umin umax
 ##     umin,umax は再描画の必要な範囲を文字インデックスで返します。
 ##
 ##   @var[in] _ble_textmap_*
@@ -2106,6 +2107,8 @@ function ble/textarea#focus {
 ##   @param[in] opts
 ##     leave
 ##       bleopt prompt_rps1_transient が非空文字列の時、rps1 を消去します。
+##     update
+##       強制的に再描画します。例えば非同期の着色を更新する時に用います。
 ##
 ##   @var _ble_textarea_caret_state := inds ':' mark ':' mark_active ':' line_disabled ':' overwrite_mode
 ##     ble/textarea#render で用いる変数です。
@@ -2127,7 +2130,7 @@ function ble/textarea#render {
     dirty=1
   elif [[ $_ble_textarea_scroll != "$_ble_textarea_scroll_new" ]]; then
     dirty=1
-  elif [[ :$opts: == *:leave:* ]]; then
+  elif [[ :$opts: == *:leave:* || :$opts: == *:update:* ]]; then
     dirty=1
   fi
 
@@ -2480,6 +2483,25 @@ function ble/textarea#clear-state {
     return 1
   fi
 }
+
+# 非同期更新
+
+_ble_textarea_render_defer=
+function ble/textarea#render-defer.idle {
+  ble/util/idle.wait-user-input
+  [[ $_ble_textarea_render_defer ]] || return 0
+
+  local ble_textarea_render_defer_running=1
+  ble/util/buffer.flush >&2
+  _ble_textarea_render_defer=
+  blehook/invoke textarea_render_defer
+  ble/textarea#render update
+
+  [[ $_ble_textarea_render_defer ]] &&
+    ble/util/idle.continue
+  return 0
+}
+ble/function#try ble/util/idle.push-background ble/textarea#render-defer.idle
 
 # 
 #------------------------------------------------------------------------------
@@ -5248,7 +5270,7 @@ function ble/widget/shell-expand-line.expand-word {
 
   # 単語展開
   ret=$word; [[ $ret == '~'* ]] && ret='\'$word
-  ble/syntax:bash/simple-word/eval-noglob "$ret"
+  ble/syntax:bash/simple-word/eval "$ret" noglob
   if [[ $word != $ret || ${#ret[@]} -ne 1 ]]; then
     [[ $opts == *:quote:* ]] && flags=${flags}q
     return 0

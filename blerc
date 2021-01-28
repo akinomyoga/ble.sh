@@ -472,18 +472,34 @@
 # bleopt filename_ls_colors="$LS_COLORS"
 
 
-## The following settings controls enable or disable the syntax highlighting.
-## When the setting "highlight_syntax" has a non-empty value, the syntax
-## highlighting is enabled.  When the setting "highlight_filename" has a
-## non-empty value, the highlighting based on the filename and the command name
-## is enabled during the process of the syntax highlighting.  Similarly, when
-## the setting "highlight_variable" has a non-empty value, the highlighting
-## based on the variable type is enabled.  All of these settings have non-empty
-## values by default.
+## The following settings enable or disable the syntax highlighting.  When the
+## setting "highlight_syntax" has a non-empty value, the syntax highlighting is
+## enabled.  When the setting "highlight_filename" has a non-empty value, the
+## highlighting based on the filename and the command name is enabled during
+## the process of the syntax highlighting.  Similarly, when the setting
+## "highlight_variable" has a non-empty value, the highlighting based on the
+## variable type is enabled.  All of these settings have non-empty values by
+## default.
 
 # bleopt highlight_syntax=
 # bleopt highlight_filename=
 # bleopt highlight_variable=
+
+
+## The following settings control the timeout for the pathname expansions
+## performed in the syntax highlighting.  When the word contains a glob pattern
+## that takes a long time to evaluate the pathname expansion, the syntax
+## highlighting based on the filename is canceled based on the timeouts
+## specified by these settings.  "highlight_timeout_sync" /
+## "highlight_timeout_async" specify the timeout durations in milliseconds to
+## be used for the foreground / background syntax highlighting, respectively.
+## When the timeout occurred in the foreground, the syntax highlighting will be
+## deferred to the background syntax highlighting.  When the timeout occurred
+## in the background, the syntax highlighting for the filename is canceled.
+## When the value is empty, the corresponding timeout is disabled.
+
+# bleopt highlight_timeout_sync=500
+# bleopt highlight_timeout_async=5000
 
 
 ## The following settings specify graphic styles of each faces.

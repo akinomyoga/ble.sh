@@ -1204,6 +1204,58 @@ bash_tips
     ToDo
 -------------------------------------------------------------------------------
 
+2021-01-24
+
+  * syntax/simple-word/eval: キャッシュ機能を付ける
+
+    特に一回の着色 (layer:syntax/update) の中では同じ評価は一回しかしない様に工
+    夫したい。キャッシュは dict に保存したいが二種類の問題がある。
+
+    1. eval の展開結果は配列なのでそれをどうにか再評価可能な形式に変換する必要
+      がある。bash-4.4 以降であれば ${ret[@]@Q} を用いれば良い。古い bash では
+      この形式に合わせて記録を行う。
+
+    2. bash3 では dict がないので工夫が必要
+
+  * progcolor: ble/syntax/progcolor/eval-word を着色を跨いでキャッシュできないか
+
+    特に展開結果を何処かに保存しておきたい。新しい配列を用意するか、或いは hash
+    にして記録するか。
+
+    a hash にして記録すると一度評価した単語を再評価する機会が失われる。ファイル
+      が追加・削除された時に更新されなくなってしまう。
+
+      やはり、単語単位でやはりキャッシュしたい。そうすると shift にも耐えうる仕
+      組みにしたい、という事で新しい配列を用意するか、或いは既存の配列に格納す
+      るという方法になる。
+
+    b 新しい配列を追加する
+
+      また shift 等の操作が増える。面倒である。
+
+    c 既存の配列に要素を追加する
+
+      既存の配列に格納する場合には任意の文字列を含める事ができないので、補助配
+      列にデータを格納する事にしてその添字を既存の配列に入れるという手がある。
+      特に単語に id を振っておけば今後の word に関するデータ拡張にも使う事がで
+      きる。
+
+    →これに関しては ble/syntax:bash/simple-word/eval の側でキャッシュする様に
+    したので、今の所はここでは対応しなくて良い気がする。当初は simple-word/eval
+    では非常に短期のキャッシュしかしない方向を考えていたが、ファイルシステムが
+    そう頻繁に変わる訳でもないので、取り敢えずは行毎にキャッシュを保持する事に
+    した。なので、simple-word/eval のキャッシュは単語よりも寿命が長いので単語毎
+    のキャッシュは今の所は考えない事にする。
+
+    * 但し、やはりファイルシステムの変化に追随したいという事であれば、適当にキャッ
+      シュを更新する必要がある気がする。或いは、globpat を含む様な場合にのみキャッ
+      シュを行うというのでも良い様な気がしている。
+
+    * また、ここでの実装手法は例えばエラーメッセージの記録等の場合にも使えるの
+      ではないだろうか。という気がする。
+
+  * layer:syntax: 展開結果を一つの呼び出しの中でキャッシュしたい。
+
 2021-01-22
 
   * highlight: 引数が沢山あると cygwin で滅茶苦茶遅い
@@ -3788,6 +3840,299 @@ bash_tips
     以前のテーブルは https://github.com/vim-jp/issues/issues/1086 から
     拾ってきた物だったが、これは 2017 年の物だったので報告のあった
     flamingo の絵文字 (2018) は含まれていなかったのだ。
+
+2021-01-28
+
+  * highlight: グロブパターンが含まれるファイル名の着色が遅い (reported by 3ximus) [#D1449]
+    https://github.com/akinomyoga/ble.sh/issues/82
+
+    glob expansion を subshell で実行してユーザー入力があったら timeout させる
+    方針について考察。timeout は必要だろうか。
+
+    * 或いは、もういきなり中断しても良いかもしれない。着色は次の rendering の時
+      に反映させれば良いという発想。然し、その場合には再 rendering を発生させる
+      為にどうにかして部分 invalidate しなければならない。或いは再描画の条件に
+      着色未完の状態を含めても良いのかもしれない。着色の更新に関しては
+      ble/textarea#update-text-buffer を呼び出した時に実行される。実は dirty
+      range の有無に関わらず毎回 layer/update は呼び出される様だ。考えてみれば
+      region の着色等は dirty range に関係なく変化する可能性があるので、この振
+      る舞いも妥当である。
+
+      一般に単語着色に関してはユーザーの入力があったら中断してしまって良いので
+      はないだろうか。background worker の方で処理する事にすれば良い (但し、
+      bash3 だと判定できないので難しい。bash3 に関しては loadable builtin が使
+      えれば自前でそれを使ってしまうという手もある)。
+
+    * キャッシュする可能性。同じ単語が繰り返し使われている場合に処理を短縮する
+      為。これは特殊な場合にしか効果が現れない。余り効果はないのではないかとい
+      う気がする。
+
+    * globpat が含まれる場合にだけ subshell 実行する?
+      globpat があるかどうかに関しては正規表現で判定すれば良い。
+
+      "**" が含まれる場合にだけ subshell 実行するという可能性も考えたが、"*" や
+      "?" だけでも大量のファイル名に展開される可能性もあるので、"*" だけ特別扱
+      いしても仕方がない。
+
+    * reject: ファイル数が多いディレクトリだけで subshell 実行する?
+
+      ディレクトリ移動はそんなに頻繁に行わない筈なのでファイル数をディレクトリ
+      移動をする度に確認すれば良いのではないか。と思ったが引数に
+      dir1/dir2/... と指定する事もできるのでファイル数が多いディレクトリに現在
+      いるかどうかという情報は余り当てにならない。
+
+      "/" が含まれるかどうかを事前に判定する可能性もあるが、変数展開の中に / が
+      含まれる可能性もあるので、完全に判定するのは難しい。
+
+    * そもそも単語が単純な場合には展開の操作すら必要ないのではないか。
+
+      {} も quote も history expan も param も ~ もない場合。
+
+    [実装]
+
+    * done: 取り敢えずユーザーからの入力がある場合には着色を中断する。サブシェ
+      ルの中で実行する。後で着色し直す可能性については取り敢えず考えない。
+
+      取り敢えず実装してみたが、微妙。とにかく入力を続ければ応答が全くないとい
+      う訳ではないが、常に位置文字分だけ遅延している。何故だろうか。一文字だけ
+      次の文字が来ている場合に次の文字が来ているという事を検出できていないとい
+      う事だろうか。うーん。ble/decode/has-input の問題であろう。
+
+    * done: simple-word/eval-noglob を eval ... noglob に書き換える
+
+    * done: 以下の関数の呼び出し元で適切に stop_check を設定する様にする?
+
+      ble/syntax:bash/simple-word/detect-separated-path
+      ble/syntax:bash/simple-word/evaluate-path-spec
+      ble/syntax:bash/simple-word/locate-filename
+
+      特に bash3 で stop_check を行うかどうか。bash3 で stop_check をしたとして
+      も常に is-stdin-ready は false になるので、唯単に今まで通りにブロックされ
+      るだけである。然し、そうであるならば最初から subshell を生成する必要もな
+      い。やはり bash3 では stop_check を省略する様に工夫する必要があるのではな
+      いか。と思ったが、それならば simple-word/eval の側で bash3 では
+      stop_check しないという様にしても良い気がする。
+      →その様にする事にした。
+
+      結局上記の3関数では常に stop_check を指定して、
+      bash3 についての特別な取り扱いは simple-word/eval の側で実装した。
+
+    * done: 以下の関数について 148 を返した時の振る舞いを正しく実装する。
+
+      148 を返した時に現在はエラー着色にしているが、
+      そうではなくて着色せずに抜ける事にする。
+
+      ble/syntax:bash/simple-word/evaluate-path-spec [done]
+        ble/syntax/progcolor/word:default/.highlight-filename [done]
+          ble/syntax/progcolor/word:default [ok]
+      ble/syntax:bash/simple-word/locate-filename/.exists [done]
+        ble/syntax:bash/simple-word/locate-filename [done]
+          ble/syntax/progcolor/word:default [ok]
+        ble/syntax:bash/simple-word/detect-separated-path [done]
+          ble/syntax/progcolor/word:default/.detect-separated-path [done]
+            ble/syntax/progcolor/word:default [ok]
+
+      取り敢えず ble/syntax/progcolor/word:default まで行って抜ければ、
+      単語情報として何か間違った物が登録される事はない。
+
+    x ok: ble/decode/has-input で次の文字が来ている判定しているが、一文字分だけずれ
+      がある様に見える。何が起こっているのか調べる必要がある。
+
+      調べてみると既に次の文字は受信している様である。
+      問題は未だ処理しきっていないのに描画が実施されているという事である。
+      コールスタックを見るとちゃんと EPILOGUE から呼び出されている。
+      つまり、ちゃんと文字を処理してからという事になっている筈である。
+
+      と此処で理由が分かった。入力した文字を表示する為に配色を計算しているのだから、
+      配色を計算している間は未だ文字が描画されないというのは道理である。
+      やはり timeout を入れないと変である。
+
+      conditional-sync に timeout 機能も付ける事にする。
+
+    * done: 着色せずに抜けた場合にはその事を記録に残す (progcolor_dirty)。
+      これは ble/syntax/progcolor/word:default に対して実行すれば良い。
+      或いは idle に bgworker を登録するだけでも良い?
+      と思ったが、それだと沢山の bgworker が生成されてしまう気がする。
+      idle に bgworker を登録するとしても、
+      未着色単語がある事の情報は何処かに記録する必要がある。
+
+      実は未着色範囲を管理した方が自然な実装になる気もする。
+      例えば _ble_syntax_word_async_u{min,max} 等の変数に記録する。
+      bgworker ではこれを _ble_syntax_word_u{min,max} に反映させて
+      その上で着色を実行する…と思ったが shift 等の取り扱いがどうなるのか分からない。
+      _ble_syntax_word_u{min,max} の場合にはどの様にしていただろうか。
+      というより、_ble_syntax_word_u{min,max} が設定されるのはどのタイミングだろうか。
+
+      % うーん。ble/syntax/parse/touch-updated-word で変更している。そしてこれは
+      % ble/syntax/parse の中で呼び出される物である。一方で、ble/syntax/parse は
+      % ble-edit/content/update-syntax から単体で呼び出される事もある。という事を
+      % 考えると、此処で設定された _ble_syntax_word_u{min,max} は処理される事なく
+      % 次の ble/syntax/parse に伝播する可能性があるという事。その時に必要になる
+      % と考えられる shift が実行されていない。
+      %
+      % _ble_syntax_attr_u{min,max} についても同様である。これらもちゃんと shift
+      % する必要がある。
+      %
+      % →と思ったら、ble/syntax/parse/shift の中でちゃんと shift されていた。
+      % _ble_syntax_word_ 及び _ble_syntax_attr_ が接頭辞になっていたのだった。
+
+
+    * done: 着色せずに残っている部分を着色する bgworker を実装する。
+      最後まで完了した時に progcolor_dirty を clear する。
+
+    * done: highlight_timeout_background: bg で着色している時の timeout は長めに取る。
+
+    x fixed: 実際に試してみると相変わらず止まってしまう。CPUがぶんぶん回っている。
+
+      調べてみると eval が stop_check なしで呼び出されている。
+      stackdump してみると以下の様な呼び出しになっている。
+      どうやら simple-word/eval の呼び出し元のチェックに漏れがあった様だ。
+
+      stackdump:
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:27 (ble/syntax:bash/simple-word/eval)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:17 (ble/syntax/progcolor/eval-word)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:5 (ble/syntax/progcolor/word:default/.is-option-context)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:26 (ble/syntax/progcolor/word:default/.impl)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:3 (ble/syntax/progcolor/word:default)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:7 (ble/syntax/progcolor/default)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:31 (ble/syntax/progcolor)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:8 (ble/highlight/layer:syntax/word/.update-attributes/.proc)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:12 (ble/syntax/tree-enumerate-in-range)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:2 (ble/highlight/layer:syntax/word/.update-attributes)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:4 (ble/highlight/layer:syntax/update-word-table)
+        @ /home/murase/.mwg/src/ble.sh/out/lib/core-syntax.sh:32 (ble/highlight/layer:syntax/update)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:12 (ble/highlight/layer/update)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:9 (ble/textarea#update-text-buffer)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:75 (ble/textarea#render)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:2 (ble-edit/bind/.tail)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:17 (ble-decode/EPILOGUE)
+        @ /home/murase/.mwg/src/ble.sh/out/ble.sh:78 (ble-decode/.hook)
+
+      取り敢えずこれについては修正した。
+
+    x ok: 次におかしいのは、既に着色済みの筈単語も改めて毎回着色されている様な気がするという事。
+
+      と思ったらやはり気の所為だろうか。。。今度はちゃんと新しい単語に対しての
+      み処理が行われている様な気がする。と思ったが、どうも word:default 自体は
+      新しい単語に対してのみ呼び出されているが、simple-word/eval は何度も呼び
+      出されているという事の様である。呼び出し履歴を探ると以下の様になっている。
+
+        ble/syntax:bash/simple-word/eval
+        ble/syntax/progcolor/eval-word
+        ble/syntax/progcolor/word:default/.is-option-context
+        ble/syntax/progcolor/word:default/.impl
+        ble/syntax/progcolor/word:default
+        ble/syntax/progcolor/default
+        ble/syntax/progcolor
+        ble/highlight/layer:syntax/word/.update-attributes/.proc
+        ble/syntax/tree-enumerate-in-range
+        ble/highlight/layer:syntax/word/.update-attributes
+        ble/highlight/layer:syntax/update-word-table
+        ble/highlight/layer:syntax/update
+        ble/highlight/layer/update
+        ble/textarea#update-text-buffer
+        ble/textarea#render
+        ble-edit/bind/.tail
+        ble-decode/EPILOGUE
+        ble-decode/.hook
+
+      うーん。分かった。ble/syntax/progcolor/word:default/.is-option-context で
+      全ての引数に対して評価を行っている。ble/syntax/progcolor/eval-word で一応
+      キャッシュはしているが、これは一回の着色の内部でのキャッシュであって、着
+      色を跨いだキャッシュは行っていない。これはまた別の箇所で対策するべきの気がする。
+
+    x fixed: 展開が timeout した時にエラー着色になっている。
+      timeout の時には d で削除する事にしてみたが、
+      d ではなく 0 になってしまって黒で塗潰されている。
+
+      どうやら #setattr は g を設定するのであって、
+      wattr の指定を行える物ではない様だ。
+
+    * reject: 実は pathname expansion に限らずユーザー入力がある時には単語着色
+      は中断して良いのではないだろうか。
+
+      うーん。これは様子見。早く着色が終わる物から順に着色して行かないと、一番
+      遅い着色によって他の着色がブロックされてしまう。なので、軽い物は先に処理
+      するべき。何段階にも分けるのは現実的でないので、現状は重い単語だけ処理を
+      後回しにする事にする。
+
+    x fixed: ble/util/assign の混線に関連して発生していた様々な問題
+
+      x "bash: 予期しないトークン `(' 周辺に構文エラーがあります" というエラー
+        メッセージが出る。何処かにバグが有るという事。background で実行している
+        時に発生している気がする。先ずは再現性。
+
+      x うーん。操作していると突然 hang して暫くして emacs が起動した
+
+        何やら操作していたら "# reached line_limit_length=10000" に抵触して、そ
+        の後に emacs が起動した。2500項目の要素を含んだ "ret=(......) fdsa1
+        aaaa" と言った感じの内容が入力されている。これが意味する所は何
+        か。_ble_edit_str に内容が展開されているのが原因と考えられるが何が起こっ
+        ているのだろうか。
+
+        a ble-decode-char に紛れ込むとは考えにくい。
+
+        b terminal の echo back に引っかかっているとも考えにくい。そもそもその為
+          にはそれ専用の escape sequence で囲まなければならないし、それを出力する
+          ような事が起こるとも思えない。
+
+        c _ble_edit_str を直接編集している箇所もないだろうし、
+
+        d 一つの可能性は ble/util/assign の混線である。然し、そうだとしても
+          ble/util/assign で挿入内容を決定する様な機会があるだろうか。
+
+        TAB は入力していなかったと思う。従って補完が関係している可能性は取り敢
+        えず除外する事にする。
+
+        →あー。分かった。ble/util/assign の混線である。conditional-sync で
+        timeout した時に動かしていたプロセスを kill するのを忘れていた為に、遅
+        延して ble/util/assign の一時ファイルに様々な情報が書き込まれて変な事が
+        起こっていたという事。一つ前の問題もこれに関連して発生していた現象であ
+        ろうと推測される。取り敢えず再びいろいろ試して問題が再現しないか確認す
+        る必要がある。
+
+      x fixed: failglob が発生する様な状況で failglob にならなくなっている。何
+        故だろうか。これは瞬間的に timeout になっている所為で、failglob で失敗
+        するよりも先に timeout 142 を返して、その為に着色が無効化されているのが
+        原因だった。
+
+    * done: glob が有効な場合でも実は最初に noglob で展開を行って、其処に
+      rex='[*?]|\[.*\]|[@+!]\(.*\)' が含まれている時に限り改めて
+      subshell で実行するという形式にしても良いのではないだろうか。
+
+      これに関してはわざわざ noglob で展開を行わなくても、
+      変数代入を実行すれば良いのではないだろうか。
+      builtin eval -- "tmp=$word"
+
+    * done: bash3 では globstar を一時的に off にする事も考える。
+
+      然し、そうするとユーザに対して嘘の情報を提供する事になる。本来は一致する
+      筈なのに failglob して赤色に着色される等の可能性。そういう事を考えるとや
+      はり時間がかかっても良いから着色するか、或いは着色自体を諦めるか。簡単な
+      内容の場合には着色を諦めても良いのではという気がする。
+
+      或いは、** が含まれる場合に限って着色を諦めるという手もある。即座に 142
+      を出力する様にすれば良い。これで OK
+
+    * done: 変数展開の中まで参照して noglob かどうかを判定する前に、
+      先に extract-parameter-names & 変数内容の復元をするべき。
+
+      再び eval の構造を大きく書き換えたが取り敢えずは動作している模様である。
+      取り敢えず conditional-sync を経由した展開も動いている様子だ。OK
+
+    x 別項目: 全く同じ内容で eval を連続して2回試すという事が頻繁に起こっている。
+      これは何だろうか。やはり eval-word による呼び出しと、それから本当の着色用
+      の呼び出しが混ざっているという事だろうか。これに関しては、eval の呼び出し
+      をキャッシュする事で対応できる気がする。
+
+      但し呼び出しをキャッシュすると言っても、bash3 でどの様に対処するべきかは
+      微妙である。やはり汎用の hash 辞書のインターフェイスを準備するべきかもし
+      れない。
+
+      これは調べてみた所、ble/syntax:bash/simple-word/detect-separated-path と
+      ble/syntax:bash/simple-word/evaluate-path-spec の二箇所で発生していれう事
+      の様である。これは eval の内容をキャッシュする様にすれば解決する話である。
+      独立項目で取り扱う事にする。
 
 2021-01-25
 

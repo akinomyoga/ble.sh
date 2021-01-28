@@ -2515,26 +2515,50 @@ function ble/util/sleep {
 # ble/util/conditional-sync
 
 ## @fn ble/util/conditional-sync command [condition weight opts]
+##   @param[in] command
+##   @param[in,opt] condition
+##   @param[in,opt] weight
+##   @param[in,opt] opts
+##     progressive-weight
+##
 function ble/util/conditional-sync {
-  local command=$1
-  local cancel=${2:-'! ble/decode/has-input'}
-  local weight=$3; ((weight<=0&&(weight=100)))
-  local opts=$4
-  [[ :$opts: == *:progressive-weight:* ]] &&
-    local weight_max=$weight weight=1
+  local __command=$1
+  local __cancel=${2:-'! ble/decode/has-input'}
+  local __weight=$3; ((__weight<=0&&(__weight=100)))
+  local __opts=$4
+
+  local __timeout= __rex=':timeout=([^:]+):'
+  [[ :$__opts: =~ $__rex ]] && ((__timeout=BASH_REMATCH[1]))
+
+  [[ :$__opts: == *:progressive-weight:* ]] &&
+    local __weight_max=$__weight __weight=1
+
+  [[ $__timeout ]] && ((__timeout<=0)) && return 142
+  builtin eval -- "$__cancel" || return 148
   (
-    builtin eval -- "$command" & local pid=$!
+    builtin eval -- "$__command" & local __pid=$!
     while
-      ble/util/msleep "$weight"
-      [[ :$opts: == *:progressive-weight:* ]] &&
-        ((weight<<=1,weight>weight_max&&(weight=weight_max)))
-      builtin kill -0 "$pid" &>/dev/null
+      # check timeout
+      if [[ $__timeout ]]; then
+        if ((__timeout<=0)); then
+          builtin kill "$__pid" &>/dev/null
+          return 142
+        fi
+        ((__weight>__timeout)) && __weight=$__timeout
+        ((__timeout-=__weight))
+      fi
+
+      ble/util/msleep "$__weight"
+      [[ :$__opts: == *:progressive-weight:* ]] &&
+        ((__weight<<=1,__weight>__weight_max&&(__weight=__weight_max)))
+      builtin kill -0 "$__pid" &>/dev/null
     do
-      if ! builtin eval -- "$cancel"; then
-        builtin kill "$pid" &>/dev/null
+      if ! builtin eval -- "$__cancel"; then
+        builtin kill "$__pid" &>/dev/null
         return 148
       fi
     done
+    wait "$__pid"
   )
 }
 

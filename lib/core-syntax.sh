@@ -864,18 +864,15 @@ function ble/syntax/parse/nest-equals {
 ##   word については [_ble_syntax_word_umin, _ble_syntax_word_umax] が範囲である。
 _ble_syntax_attr_umin=-1 _ble_syntax_attr_umax=-1
 _ble_syntax_word_umin=-1 _ble_syntax_word_umax=-1
+_ble_syntax_word_defer_umin=-1 _ble_syntax_word_defer_umax=-1
 function ble/syntax/parse/touch-updated-attr {
-  (((_ble_syntax_attr_umin<0||_ble_syntax_attr_umin>$1)&&(
-      _ble_syntax_attr_umin=$1)))
+  ble/syntax/urange#update _ble_syntax_attr_ "$1" $(($1+1))
 }
 function ble/syntax/parse/touch-updated-word {
 #%if !release
   ble/util/assert "(($1>0))" "invalid word position $1"
 #%end
-  (((_ble_syntax_word_umin<0||_ble_syntax_word_umin>$1)&&(
-      _ble_syntax_word_umin=$1)))
-  (((_ble_syntax_word_umax<0||_ble_syntax_word_umax<$1)&&(
-      _ble_syntax_word_umax=$1)))
+  ble/syntax/wrange#update _ble_syntax_word_ "$1"
 }
 
 #==============================================================================
@@ -1075,6 +1072,9 @@ _ble_syntax_bash_simple_rex_open_squot=
 _ble_syntax_bash_simple_rex_incomplete_word1=
 _ble_syntax_bash_simple_rex_incomplete_word2=
 
+_ble_syntax_bash_simple_rex_noglob_word1=
+_ble_syntax_bash_simple_rex_noglob_word2=
+
 function ble/syntax:bash/simple-word/update {
   local q="'"
 
@@ -1109,6 +1109,11 @@ function ble/syntax:bash/simple-word/update {
   local letter2='\[[!^]|[^'${_ble_syntax_bashc_simple}']'
   _ble_syntax_bash_simple_rex_incomplete_word1='^('$bquot'|'$squot'|'$dquot'|'$param'|'$letter1')+'
   _ble_syntax_bash_simple_rex_incomplete_word2='^(('$bquot'|'$squot'|'$dquot'|'$param'|'$letter2')*)(\\|'$open_squot'|'$open_dquot')?$'
+
+  # @var _ble_syntax_bash_simple_rex_noglob_word{1,2}
+  local noglob_letter='[^[?*'${_ble_syntax_bashc_simple}']'
+  _ble_syntax_bash_simple_rex_noglob_word1='^('$bquot'|'$squot'|'$dquot'|'$noglob_letter')+$'
+  _ble_syntax_bash_simple_rex_noglob_word2='^('$bquot'|'$squot'|'$dquot'|'$param'|'$noglob_letter')+$'
 }
 ble/syntax:bash/simple-word/update
 
@@ -1122,6 +1127,15 @@ function ble/syntax:bash/simple-word/is-never-word {
   ble/syntax:bash/simple-word/is-simple-or-open-simple && return 1
   local rex=${_ble_syntax_bash_simple_rex_word%'$'}'[ |&;<>()]|^[ |&;<>()]'
   [[ $1 =~ $rex ]]
+}
+function ble/syntax:bash/simple-word/is-simple-noglob {
+  [[ $1 =~ $_ble_syntax_bash_simple_rex_noglob_word1 ]] && return 0
+  if [[ $1 =~ $_ble_syntax_bash_simple_rex_noglob_word2 ]]; then
+    builtin eval -- "local expanded=$1"
+    local rex='[*?]|\[.+\]|[*?@+!]\(.*\)'
+    [[ $expanded =~ $rex ]] || return 0
+  fi
+  return 1
 }
 
 ## @fn ble/syntax:bash/simple-word/evaluate-last-brace-expansion simple_word
@@ -1309,60 +1323,101 @@ function ble/syntax:bash/simple-word/extract-parameter-names/.process-dquot {
 }
 
 function ble/syntax:bash/simple-word/eval/.set-result { __ble_ret=("$@"); }
-function ble/syntax:bash/simple-word/eval-noglob/.impl {
-  # グローバル変数の復元
-  local -a ret
-  ble/syntax:bash/simple-word/extract-parameter-names "$1"
-  if ((${#ret[@]})); then
-    local __ble_defs
-    ble/util/assign __ble_defs 'ble/util/print-global-definitions --hidden-only "${ret[@]}"'
-    builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
-  fi
+function ble/syntax:bash/simple-word/eval/.print-result {
+  local args q=\' Q="'\''"
+  args=("${@//$q/$Q}")
+  args=("${args[@]/%/$q}")
+  args=("${args[@]/#/$q}")
+  ble/util/print "__ble_ret=(${args[*]})"
 
-  local __ble_unset_f=
-  [[ $- != *f* ]] && { __ble_unset_f=1; set -f; }
-  builtin eval "ble/syntax:bash/simple-word/eval/.set-result $1"; local ext=$?
-  [[ $__ble_unset_f ]] && set +f
-  return "$ext"
 }
-## @fn ble/syntax:bash/simple-word/eval-noglob str
-##   @var[out] ret
-function ble/syntax:bash/simple-word/eval-noglob {
-  local __ble_ret
-  ble/syntax:bash/simple-word/eval-noglob/.impl "$1"
-  ret=("${__ble_ret[@]}")
-}
+## @fn ble/syntax:bash/simple-word/eval/.impl word opts
+##   @param[in] word
+##   @param[in,opt] opts
+##   @var[out] __ble_ret
 function ble/syntax:bash/simple-word/eval/.impl {
-  if ble/util/is-cygwin-slow-glob "$1"; then # Note: #D1168
-    if shopt -q failglob &>/dev/null; then
-      __ble_ret=()
-      return 1
-    elif shopt -q nullglob &>/dev/null; then
-      __ble_ret=()
-      return 0
-    else
-      ble/syntax:bash/simple-word/eval-noglob "$1"; return "$?"
-    fi
-  fi
+  local __ble_word=$1 __ble_opts=$2 __ble_flags=
 
   # グローバル変数の復元
   local -a ret=()
-  ble/syntax:bash/simple-word/extract-parameter-names "$1"
+  ble/syntax:bash/simple-word/extract-parameter-names "$__ble_word"
   if ((${#ret[@]})); then
     local __ble_defs
     ble/util/assign __ble_defs 'ble/util/print-global-definitions --hidden-only "${ret[@]}"'
     builtin eval -- "$__ble_defs" &>/dev/null # 読み取り専用の変数のこともある
+  fi
+
+  # glob パターンを含む可能性がある時の処理 (Note: is-simple-noglob の
+  # 判定で変数を参照するので、グローバル変数の復元よりも後で処理する必
+  # 要がある)
+  if [[ $- != *f* ]] && ! ble/syntax:bash/simple-word/is-simple-noglob "$1"; then
+    if [[ :$__ble_opts: == *:noglob:* ]]; then
+      set -f
+      __ble_flags=f
+    elif ble/util/is-cygwin-slow-glob "$1"; then # Note: #D1168
+      if shopt -q failglob &>/dev/null; then
+        __ble_ret=()
+        return 1
+      elif shopt -q nullglob &>/dev/null; then
+        __ble_ret=()
+        return 0
+      else
+        # noglob で処理する
+        set -f
+        __ble_flags=f
+      fi
+    elif [[ :$__ble_opts: == *:stopcheck:* ]]; then
+      ble/decode/has-input && return 148
+      if ((_ble_bash>=40000)); then
+        __ble_flags=s
+      elif shopt -q globstar &>/dev/null; then
+        # conditional-sync が使えない場合はせめて globstar だけでも撥ねる
+        if builtin eval "[[ $__ble_word == *'**'* ]]"; then
+          [[ :$__ble_opts: == *:timeout=*:* ]] && return 142
+          return 148
+        fi
+      fi
+    fi
   fi
 
   # Note: failglob 時に一致がないと実行されないので予め __ble_ret=() をする。
   #   また、エラーメッセージが生じるので /dev/null に繋ぐ。
   __ble_ret=()
-  builtin eval "ble/syntax:bash/simple-word/eval/.set-result $1" &>/dev/null; local ext=$?
-  builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
+  if [[ $__ble_flags == *s* ]]; then
+    local __ble_sync_command='ble/syntax:bash/simple-word/eval/.print-result $__ble_word'
+    local __ble_sync_opts=progressive-weight
+
+    # determine timeout
+    local __ble_sync_timeout=
+    if local __ble_rex=':timeout=([^:]*):'; [[ :$__ble_opts: =~ $__ble_rex ]]; then
+      __ble_sync_timeout=${BASH_REMATCH[1]}
+    elif [[ :$__ble_opts: == *:timeout-highlight:* ]];  then
+      __ble_sync_timeout=$bleopt_highlight_timeout_sync
+      [[ $ble_textarea_render_defer_running ]] &&
+        __ble_sync_timeout=$bleopt_highlight_timeout_async
+    fi
+    [[ $__ble_sync_timeout ]] &&
+      __ble_sync_opts=$__ble_sync_opts:timeout=$((__ble_sync_timeout))
+
+    local __ble_def
+    ble/util/assign __ble_def 'ble/util/conditional-sync "$__ble_sync_command" "" "" "$__ble_sync_opts"' &>/dev/null; local ext=$?
+    builtin eval -- "$__ble_def"
+  else
+    builtin eval "ble/syntax:bash/simple-word/eval/.set-result $__ble_word" &>/dev/null; local ext=$?
+    builtin eval : # Note: bash 3.1/3.2 eval バグ対策 (#D1132)
+  fi
+
+  [[ $__ble_flags == *f* ]] && set +f
   return "$ext"
 }
-## @fn ble/syntax:bash/simple-word/eval word
+## @fn ble/syntax:bash/simple-word/eval word opts
 ##   @param[in] word
+##   @param[in,opt] opts
+##     stopcheck
+##     timeout-highlight
+##     timeout=NUM
+##       stopcheck を指定している時に有効です。timeout を指定します。
+##
 ##   @var[out] ret
 ##   @exit
 ##     shopt -q failglob の時、パス名展開に失敗すると
@@ -1370,7 +1425,7 @@ function ble/syntax:bash/simple-word/eval/.impl {
 ##
 function ble/syntax:bash/simple-word/eval {
   local __ble_ret
-  ble/syntax:bash/simple-word/eval/.impl "$1"; local ext=$?
+  ble/syntax:bash/simple-word/eval/.impl "$1" "$2"; local ext=$?
   ret=("${__ble_ret[@]}")
   return "$ext"
 }
@@ -1392,6 +1447,9 @@ function ble/syntax:bash/simple-word/.get-rex_element {
 ##   @param[in,opt] sep (default: '/:=')
 ##   @param[in,opt] opts
 ##     noglob notilde after-sep
+##     stopcheck
+##     timeout-highlight
+##     timeout=*
 ##   @arr[out] spec
 ##   @arr[out] path
 ##   @arr[out] ret
@@ -1412,8 +1470,11 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   [[ $word ]] || return 0
 
   # read options
-  local eval_word=ble/syntax:bash/simple-word/eval
-  [[ :$opts: == *:noglob:* ]] && eval_word=ble/syntax:bash/simple-word/eval-noglob
+  local eval_opts= rex_timeout=':(timeout=[^:]*):'
+  [[ :$opts: == *:stopcheck:* ]] && eval_opts=stopcheck
+  [[ :$opts: == *:timeout-highlight:* ]] && eval_opts=$eval_opts:timeout-highlight
+  [[ :$opts: =~ $rex_timeout ]] && eval_opts=$eval_opts:${BASH_REMATCH[1]}
+  [[ :$opts: == *:noglob:* ]] && eval_opts=$eval_opts:noglob
   local notilde=
   [[ :$opts: == *:notilde:* ]] && notilde=\'\' # チルダ展開の抑制
 
@@ -1427,7 +1488,8 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   while [[ $tail =~ $rex ]]; do
     local rematch=$BASH_REMATCH
     s=$s$rematch
-    "$eval_word" "$notilde$s"; ext=$?
+    ble/syntax:bash/simple-word/eval "$notilde$s" "$eval_opts"; ext=$?
+    ((ext==148)) && return "$ext"
     p=$ret
     tail=${tail:${#rematch}}
     ble/array#push spec "$s"
@@ -1446,6 +1508,9 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
 ##     url
 ##     noglob
 ##     notilde
+##     stopcheck
+##     timeout-highlight
+##     timeout=*
 ##   @var[out] ret
 ##     有効な区切り文字の集合を返します。
 function ble/syntax:bash/simple-word/detect-separated-path {
@@ -1456,8 +1521,11 @@ function ble/syntax:bash/simple-word/detect-separated-path {
   [[ :$opts: == *:url:* && $word =~ $rex_url ]] && return 1
 
   # read eval options
-  local eval_word=ble/syntax:bash/simple-word/eval
-  [[ :$opts: == *:noglob:* ]] && eval_word=ble/syntax:bash/simple-word/eval-noglob
+  local eval_opts= rex_timeout=':(timeout=[^:]*):'
+  [[ :$opts: == *:stopcheck:* ]] && eval_opts=stopcheck
+  [[ :$opts: == *:timeout-highlight:* ]] && eval_opts=$eval_opts:timeout-highlight
+  [[ :$opts: =~ $rex_timeout ]] && eval_opts=$eval_opts:${BASH_REMATCH[1]}
+  [[ :$opts: == *:noglob:* ]] && eval_opts=$eval_opts:noglob
   local notilde=
   [[ :$opts: == *:notilde:* ]] && notilde=\'\' # チルダ展開の抑制
 
@@ -1469,7 +1537,9 @@ function ble/syntax:bash/simple-word/detect-separated-path {
   local tail=$word head=
   while [[ $tail =~ $rex ]]; do
     local rematch=$BASH_REMATCH
-    ble/syntax:bash/simple-word/locate-filename/.exists "$notilde$head$rematch" || break
+    ble/syntax:bash/simple-word/locate-filename/.exists "$notilde$head$rematch"; local ext=$?
+    ((ext==148)) && return 148
+    ((ext==0)) || break
     head=$head$rematch
     tail=${tail:${#rematch}}
   done
@@ -1489,11 +1559,11 @@ function ble/syntax:bash/simple-word/detect-separated-path {
 ## @fn ble/syntax:bash/simple-word/locate-filename/.exists word opts
 ##   @param[in] word
 ##   @param[in] opts
-##   @var[in] eval_word
+##   @var[in] eval_opts
 ##   @var[in] rex_url
 function ble/syntax:bash/simple-word/locate-filename/.exists {
   local word=$1 ret
-  "$eval_word" "$word" || return 1
+  ble/syntax:bash/simple-word/eval "$word" "$eval_opts" || return "$?"
   local path=$ret
   # Note: #D1168 Cygwin では // で始まるパスの判定は遅いので直接文字列で判定する
   if [[ ( $OSTYPE == cygwin || $OSTYPE == msys ) && $path == //* ]]; then
@@ -1512,6 +1582,12 @@ function ble/syntax:bash/simple-word/locate-filename/.exists {
 ##       : を区切りと見做さずに結合したパスが有効であれば、その結合パスを採用します。
 ##     url
 ##       [a-z]+:// で始まるパスを無条件に有効なパスと判定します。
+##     stopcheck
+##       時間のかかる可能性のあるパス名展開をユーザ入力により中断します。
+##     timeout-highlight
+##       stopcheck に際して timeout として highlight 用の設定を使用します。
+##     timeout=*
+##       stopcheck に際して timeout を指定します。
 ##   @arr[out] ret
 ##     偶数個の要素を含みます。偶数 index (0, 2, 4, ...) が範囲の開始で、
 ##     奇数 index (1, 3, 5, ...) が範囲の終了です。
@@ -1522,8 +1598,11 @@ function ble/syntax:bash/simple-word/locate-filename {
   [[ $word ]] || return 0
 
   # prepare evaluator
-  local eval_word=ble/syntax:bash/simple-word/eval
-  [[ :$opts: == *:noglob:* ]] && eval_word=ble/syntax:bash/simple-word/eval-noglob
+  local eval_opts= rex_timeout=':(timeout=[^:]*):'
+  [[ :$opts: == *:stopcheck:* ]] && eval_opts=stopcheck
+  [[ :$opts: == *:timeout-highlight:* ]] && eval_opts=$eval_opts:timeout-highlight
+  [[ :$opts: =~ $rex_timeout ]] && eval_opts=$eval_opts:${BASH_REMATCH[1]}
+  [[ :$opts: == *:noglob:* ]] && eval_opts=$eval_opts:noglob
 
   # compose regular expressions
   local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
@@ -1550,15 +1629,19 @@ function ble/syntax:bash/simple-word/locate-filename {
 
       if ((j>i)); then
         # もし繋げて存在するファイル名になるのであればそれを採用
-        if ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts"; then
+        ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts"; local ext=$?
+        ((ext==148)) && return 148
+        if ((ext==0)); then
           ble/array#push out "$f1" "$f2"
           ((i=j))
         fi
       else
         # ファイルが見つからなかった場合は単一区間を登録
-        [[ :$opts: != *:exists:* ]] ||
-          ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts" &&
-            ble/array#push out "$f1" "$f2"
+        if [[ :$opts: != *:exists:* ]] ||
+             { ble/syntax:bash/simple-word/locate-filename/.exists "${word:f1:f2-f1}" "$opts"
+               local ext=$?; ((ext==148)) && return 148; ((ext==0)); }; then
+          ble/array#push out "$f1" "$f2"
+        fi
       fi
     done
   done
@@ -4623,6 +4706,7 @@ function ble/syntax/parse/shift {
     # 更新範囲の shift
     ble/syntax/urange#shift _ble_syntax_attr_
     ble/syntax/wrange#shift _ble_syntax_word_
+    ble/syntax/wrange#shift _ble_syntax_word_defer_
     ble/syntax/urange#shift _ble_syntax_vanishing_word_
   fi
 }
@@ -6221,12 +6305,15 @@ function ble/syntax/progcolor/set-wattr {
   _ble_syntax_tree[TE_i-1]="${node[*]}"
 }
 
-## @fn ble/syntax/progcolor/eval-word [iword]
+## @fn ble/syntax/progcolor/eval-word [iword] [opts]
 ##   現在のコマンドの iword 番目の単語を評価した値を返します。
 ##   iword を省略した場合には現在着色中の単語が使われます。
 ##   単語が評価できない場合にはコマンドは失敗します。
 ##
 ##   @param[in,opt] iword
+##   @param[in,opt] opts
+##     ble/syntax:bash/simple-word/eval に対する opts を指定します。
+##
 ##   @var[in] progcolor_iword
 ##     現在処理中の単語の番号を指定します。
 ##     iword を省略した時に使われます。
@@ -6236,7 +6323,7 @@ function ble/syntax/progcolor/set-wattr {
 ##   @var[out] ret
 ##
 function ble/syntax/progcolor/eval-word {
-  local iword=${1:-progcolor_iword}
+  local iword=${1:-progcolor_iword} opts=$2
   if [[ ${progcolor_stats[iword]+set} ]]; then
     ret=${progcolor_wvals[iword]}
     return "${progcolor_stats[iword]}"
@@ -6252,7 +6339,9 @@ function ble/syntax/progcolor/eval-word {
     return 2
   fi
 
-  if ! ble/syntax:bash/simple-word/eval "$ret"; then
+  ble/syntax:bash/simple-word/eval "$ret" "$opts"; local ext=$?
+  ((ext==148)) && return 148
+  if ((ext!=0)); then
     # fail glob
     ret=
     progcolor_stats[iword]=1
@@ -6321,7 +6410,7 @@ function ble/syntax/progcolor/word:default/.detect-separated-path {
   local word=$1
   ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)) || return 1
 
-  local detect_opts=url
+  local detect_opts=stopcheck:timeout-highlight:url
   ((wtype==CTX_RDRS)) && detect_opts=$detect_opts:noglob
   [[ $word == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && detect_opts=$detect_opts:notilde
   ble/syntax:bash/simple-word/detect-separated-path "$word" :, "$detect_opts"
@@ -6443,14 +6532,23 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
   local p0=${1%%:*} p1=${1#*:}
   local wtxt=${text:p0:p1-p0}
 
-  local path_opts=after-sep
+  local path_opts=stopcheck:timeout-highlight:after-sep
   # チルダ展開の文脈でない時には抑制
   [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
   ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
 
   local ret path spec ext value
   ble/syntax:bash/simple-word/evaluate-path-spec "$wtxt" / "$path_opts"; ext=$? value=("${ret[@]}")
-  if ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
+  ((ext==148)) && return 148
+  if ((ext==142)); then
+    if [[ $ble_textarea_render_defer_running ]]; then
+      # background で timeout した時はこのファイル名の着色は諦める
+      ble/syntax/progcolor/wattr#setg "$p0" d
+    else
+      # foreground で timeout した時は後で background で着色する為に取り敢えず抜ける
+      return 148
+    fi
+  elif ((ext&&(wtype==CTX_CMDI||wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_RDRF||wtype==CTX_RDRS||wtype==CTX_VALI))); then
     # failglob 等の理由で展開に失敗した場合
     ble/syntax/progcolor/word:default/.highlight-pathspec-with-attr "$ATTR_ERR"
   elif (((wtype==CTX_RDRF||wtype==CTX_RDRD)&&${#value[@]}>=2)); then
@@ -6478,7 +6576,7 @@ function ble/syntax/progcolor/word:default/.is-option-context {
 
   local iword ret
   for ((iword=1;iword<progcolor_iword;iword++)); do
-    ble/syntax/progcolor/eval-word "$iword"
+    ble/syntax/progcolor/eval-word "$iword" stopcheck:timeout-highlight
     [[ $ret == -- ]] && return 1
   done
   return 0
@@ -6487,10 +6585,7 @@ function ble/syntax/progcolor/word:default/.is-option-context {
 ## @fn ble/syntax/progcolor/word:default
 ##   @var[in] node TE_i TE_nofs
 ##   @var[in] wtype wlen wbeg wend wattr
-function ble/syntax/progcolor/word:default {
-  [[ $wtype =~ ^[0-9]+$ ]] || return 1
-  [[ $wattr == - ]] || return 1
-
+function ble/syntax/progcolor/word:default/.impl {
   ble/syntax/progcolor/wattr#initialize
 
   if ((wtype==CTX_RDRH||wtype==CTX_RDRI||wtype==ATTR_FUNCDEF||wtype==ATTR_ERR)); then
@@ -6527,20 +6622,35 @@ function ble/syntax/progcolor/word:default {
 
     if ((p0<p1)) && [[ $bleopt_highlight_filename ]]; then
       local wtxt=${text:p0:p1-p0}
-      if local ret; ble/syntax/progcolor/word:default/.detect-separated-path "$wtxt"; then
+      local ret; ble/syntax/progcolor/word:default/.detect-separated-path "$wtxt"; local ext=$?
+      ((ext==148)) && return 148
+      if ((ext==0)); then
         local sep=$ret ranges i
-        ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" url; ranges=("${ret[@]}")
+        ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" stopcheck:timeout-highlight:url
+        (($?==148)) && return 148; ranges=("${ret[@]}")
         for ((i=0;i<${#ranges[@]};i+=2)); do
           ble/syntax/progcolor/word:default/.highlight-filename $((p0+ranges[i])):$((p0+ranges[i+1]))
+          (($?==148)) && return 148
         done
       elif ble/syntax:bash/simple-word/is-simple "$wtxt"; then
         ble/syntax/progcolor/word:default/.highlight-filename "$p0":"$p1"
+        (($?==148)) && return 148
       fi
     fi
   fi
 
   ble/syntax/progcolor/wattr#finalize
   return 0
+}
+function ble/syntax/progcolor/word:default {
+  [[ $wtype =~ ^[0-9]+$ ]] || return 1
+  [[ $wattr == - ]] || return 1
+  ble/syntax/progcolor/word:default/.impl; local ext=$?
+  if ((ext==148)); then
+    _ble_textarea_render_defer=1
+    ble/syntax/wrange#update _ble_syntax_word_defer_ "$wend"
+  fi
+  return "$ext"
 }
 
 ## @fn ble/syntax/progcolor/default
@@ -6573,7 +6683,7 @@ function ble/syntax/progcolor/.compline-rewrite-command {
   ble/array#reserve-prototype $#
   tree_words=("${tree_words[0]}" "${_ble_array_prototype[@]::$#-1}" "${tree_words[@]:1}")
 }
-## @fn ble/syntax/progcolor
+## @fn ble/syntax/progcolor cmd opts
 ##   @var[in] comp_words comp_cword comp_line comp_point
 ##   @var[in] tree_words
 ##   @var[in,out] color_umin color_umax
@@ -6731,7 +6841,7 @@ function ble/highlight/layer:syntax/word/.proc-childnode {
   ((tchild>=0)) && ble/syntax/tree-enumerate-children "$proc_children"
 }
 
-## @var[in,out] _ble_syntax_word_umin,_ble_syntax_word_umax
+## @var[in,out] _ble_syntax_word_umin _ble_syntax_word_umax
 function ble/highlight/layer:syntax/update-word-table {
   # update table2 (単語の削除に関しては後で考える)
   # (1) 単語色の計算
@@ -6953,7 +7063,7 @@ function ble/highlight/layer:syntax/update {
   #     ble/string#split-words word "${_ble_syntax_tree[i-1]}"
   #     local wtxt="${text:i-word[1]:word[1]}" value
   #     if ble/syntax:bash/simple-word/is-simple "$wtxt"; then
-  #       local ret; ble/syntax:bash/simple-word/eval "$wtxt"; value=$ret
+  #       local ret; ble/syntax:bash/simple-word/eval "$wtxt" noglob; value=$ret
   #     else
   #       value="? ($wtxt)"
   #     fi
@@ -6974,6 +7084,13 @@ function ble/highlight/layer:syntax/getg {
     g=${_ble_highlight_layer_syntax1_table[i]}
   fi
 }
+
+function ble/highlight/layer:syntax/textarea_render_defer.hook {
+  ble/syntax/wrange#update _ble_syntax_word_ "$_ble_syntax_word_defer_umin" "$_ble_syntax_word_defer_umax"
+  _ble_syntax_word_defer_umin=-1
+  _ble_syntax_word_defer_umax=-1
+}
+blehook textarea_render_defer+=ble/highlight/layer:syntax/textarea_render_defer.hook
 
 #%#----------------------------------------------------------------------------
 #%# old test samples

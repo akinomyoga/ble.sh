@@ -1962,12 +1962,12 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
   point=0 words=()
 
   # 単語毎に評価 (前半)
-  local evaluator=eval-noglob
-  ((${#ret[@]}==1)) && evaluator=eval
+  local eval_opts=noglob
+  ((${#ret[@]}==1)) && eval_opts=
   ble/syntax:bash/simple-word#break-word "$left"
   local subword
   for subword in "${ret[@]}"; do
-    ble/syntax:bash/simple-word/"$evaluator" "$subword"
+    ble/syntax:bash/simple-word/eval "$subword" "$eval_opts"
     ble/array#push words "$ret"
     ((point+=${#ret}))
   done
@@ -1977,7 +1977,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
     ble/syntax:bash/simple-word#break-word "$right"
     local subword isfirst=1
     for subword in "${ret[@]}"; do
-      ble/syntax:bash/simple-word/eval-noglob "$subword"
+      ble/syntax:bash/simple-word/eval "$subword" noglob
       if [[ $isfirst ]]; then
         isfirst=
         local iword=${#words[@]}; ((iword&&iword--))
@@ -3728,9 +3728,9 @@ function ble/complete/candidates/determine-common-prefix {
         if [[ ! $is_processed ]] &&
              local notilde=\'\' &&
              ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS" &&
-             ble/syntax:bash/simple-word/eval-noglob "$notilde$ret" &&
+             ble/syntax:bash/simple-word/eval "$notilde$ret" noglob &&
              local compv_notilde=$ret &&
-             ble/syntax:bash/simple-word/eval-noglob "$notilde$common_reconstructed" &&
+             ble/syntax:bash/simple-word/eval "$notilde$common_reconstructed" noglob &&
              local commonv_notilde=$ret &&
              COMPV=$compv_notilde ble/complete/candidates/filter:"$filter_type"/count-match-chars "$commonv_notilde"
         then
