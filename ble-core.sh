@@ -823,51 +823,83 @@ function ble/util/sleep/.check-builtin-sleep {
   fi
 }
 
+_ble_util_msleep_delay=2000 # [usec]
+function ble/util/msleep/.core {
+  local sec=${1%%.*}
+  ((10#${1##*.}&&sec++)) # 小数部分は切り上げ
+  ble/bin/sleep "$sec"
+}
+function ble/util/msleep {
+  local v=$((1000*$1-_ble_util_msleep_delay))
+  ((v<=0)) && v=0
+  ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+  ble/util/msleep/.core "$v"
+}
+
 if ((_ble_bash>=40400)) && ble/util/sleep/.check-builtin-sleep; then
-  function ble/util/sleep { builtin sleep "$1"; }
+  _ble_util_msleep_builtin_available=1
+  _ble_util_msleep_delay=300
+  function ble/util/msleep/.core { builtin sleep "$1"; }
 elif ((_ble_bash>=40000)) && [[ $OSTYPE != haiku* && $OSTYPE != minix* ]]; then
-  # 遅延初期化
-  _ble_util_sleep_fd=
-  _ble_util_sleep_tmp=
-  function ble/util/sleep {
-    function ble/util/sleep { local REPLY=; ! builtin read -u "$_ble_util_sleep_fd" -t "$1"; } &>/dev/null
+  if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
+    _ble_util_msleep_tmp=/dev/zero
+    ble/util/openat _ble_util_msleep_fd '< "$_ble_util_msleep_tmp"'
+    _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
 
-    if [[ $OSTYPE == cygwin* || $OSTYPE == msys* ]]; then
-      # Cygwin workaround
-
-      ble/util/openat _ble_util_sleep_fd '< <(
-        [[ $- == *i* ]] && trap -- '' INT QUIT
-        while kill -0 $$; do ble/bin/sleep 300; done &>/dev/null
-      )'
-    else
-      _ble_util_sleep_tmp=$_ble_base_run/$$.ble_util_sleep.pipe
-      if [[ ! -p $_ble_util_sleep_tmp ]]; then
-        [[ -e $_ble_util_sleep_tmp ]] && ble/bin/rm -rf "$_ble_util_sleep_tmp"
-        ble/bin/mkfifo "$_ble_util_sleep_tmp"
-      fi
-      ble/util/openat _ble_util_sleep_fd "<> $_ble_util_sleep_tmp"
-    fi
-
-    ble/util/sleep "$1"
-  }
-elif ble/bin/.freeze-utility-path sleepenh; then
-  function ble/util/sleep { ble/bin/sleepenh "$1" &>/dev/null; }
-elif ble/bin/.freeze-utility-path usleep; then
-  function ble/util/sleep {
-    if [[ $1 == *.* ]]; then
-      local sec=${1%%.*} sub=${1#*.}000000
-      if (($sec)); then
-        ble/bin/usleep "$sec${sub::6}" &>/dev/null
+    _ble_util_msleep_switch=200 # [msec]
+    _ble_util_msleep_delay1=2000 # short msleep にかかる時間 [usec]
+    _ble_util_msleep_delay2=50000 # /bin/sleep 0 にかかる時間 [usec]
+    function ble/util/msleep {
+      if (($1<_ble_util_msleep_switch)); then
+        local v=$((1000*$1-_ble_util_msleep_delay1))
+        ((v<=0)) && v=100
+        ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+        builtin eval -- "$_ble_util_msleep_read"
       else
-        ble/bin/usleep "$((10#${sub::6}))" &>/dev/null
+        local v=$((1000*$1-_ble_util_msleep_delay2))
+        ((v<=0)) && v=100
+        ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+        ble/bin/sleep "$v"
       fi
-    else
-      ble/bin/usleep "${1}000000" &>/dev/null
+    }
+  else
+    _ble_util_msleep_delay=300
+    _ble_util_msleep_fd=
+    _ble_util_msleep_tmp=$_ble_base_run/$$.ble_util_msleep.pipe
+    if [[ ! -p $_ble_util_msleep_tmp ]]; then
+      [[ -e $_ble_util_msleep_tmp ]] && ble/bin/rm -rf "$_ble_util_msleep_tmp"
+      ble/bin/mkfifo "$_ble_util_msleep_tmp"
     fi
+    ble/util/openat _ble_util_msleep_fd '<> "$_ble_util_msleep_tmp"'
+    _ble_util_msleep_read='! builtin read -t "$v" -u "$_ble_util_msleep_fd" v'
+
+    function ble/util/msleep {
+      local v=$((1000*$1-_ble_util_msleep_delay))
+      ((v<=0)) && v=100
+      ble/util/sprintf v '%d.%06d' $((v/1000000)) $((v%1000000))
+      builtin eval -- "$_ble_util_msleep_read"
+    }
+  fi
+elif ble/bin/.freeze-utility-path sleepenh; then
+  function ble/util/msleep/.core { ble/bin/sleepenh "$1" &>/dev/null; }
+elif ble/bin/.freeze-utility-path usleep; then
+  function ble/util/msleep {
+    local v=$((1000*$1-_ble_util_msleep_delay))
+    ((v<=0)) && v=0
+    ble/bin/usleep "$v" &>/dev/null
   }
 else
-  function ble/util/sleep { ble/bin/sleep "$1"; }
+  function ble/util/msleep/.core { ble/bin/sleep "$1"; }
 fi
+
+function ble/util/sleep {
+  local msec=$((${1%%.*}*1000))
+  if [[ $1 == *.* ]]; then
+    frac=${1##*.}000
+    ((msec+=10#0${frac::3}))
+  fi
+  ble/util/msleep "$msec"
+}
 
 ## 関数 ble/util/cat
 ##   cat の代替。但し、ファイル内に \0 が含まれる場合は駄目。
