@@ -410,6 +410,16 @@
 #bleopt complete_limit_auto=200
 
 
+## The following setting controls the timeout for the pathname expansions
+## performed in auto-complete.  When the word contains a glob pattern that
+## takes a long time to evaluate the pathname expansion, auto-complete based on
+## the filename is canceled based on the timeout setting.  The value specifies
+## the timeout duration in milliseconds.  When the value is empty, the
+## timeout is disabled.
+
+# bleopt complete_auto_timeout=5000
+
+
 ## The following setting specifies the style of the menu to show completion
 ## candidates. The value "dense" and "dense-nowrap" shows candidates separated
 ## by spaces. "dense-nowrap" is different from "dense" in the behavior that it

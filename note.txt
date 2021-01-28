@@ -1254,8 +1254,6 @@ bash_tips
     * また、ここでの実装手法は例えばエラーメッセージの記録等の場合にも使えるの
       ではないだろうか。という気がする。
 
-  * layer:syntax: 展開結果を一つの呼び出しの中でキャッシュしたい。
-
 2021-01-22
 
   * highlight: 引数が沢山あると cygwin で滅茶苦茶遅い
@@ -3843,8 +3841,110 @@ bash_tips
 
 2021-01-28
 
+  * syntax: auto-complete 内部の pathname-expansion についても conditional-sync を使う (motivated by 3ximus) [#D1450]
+    https://github.com/akinomyoga/ble.sh/issues/82 (for auto-complete)
+
+    取り敢えず [[ :$comp_type: != *:sync:* ]] の時には stop_check で実行して、
+    それ以外の場合には強制的に実行するという方針で行く。
+
+    ble/complete/util/eval-pathname-expansion に関してはそんなに面倒そうではない。
+    ble/complete/util/eval-pathname-expansion は常にグロブパターンを伴って呼び出されるので場合分けは必要ない。
+    常に conditional-sync を使えば良いのではないかという気がする。
+    うーん。 *:sync:* が含まれる時だけはそのまま展開を実行する。
+    →eval-pathname-expansion については対応した。恐らくこれで良いだろう。
+
+    次に complete の内部から沢山の simple-word/eval を利用している。
+    これらについても一つずつ確認して行く必要がある。
+
+    以下の四つの関数が core-syntax.sh における stop_check を指定して実行するべき関数である。
+    実際に使われているのは前者2つだけの様である。
+
+    - ble/syntax:bash/simple-word/eval
+    - ble/syntax:bash/simple-word/evaluate-path-spec
+    - ble/syntax:bash/simple-word/detect-separated-path
+    - ble/syntax:bash/simple-word/locate-filename
+
+    |   $ grc 'simple-word/(eval|locate|detect)' lib/core-complete.sh
+    | f lib/core-complete.sh:1970:    ble/syntax:bash/simple-word/eval "$subword" "$eval_opts"
+    | f lib/core-complete.sh:1980:      ble/syntax:bash/simple-word/eval "$subword" noglob
+    |   lib/core-complete.sh:2006:  ble/syntax:bash/simple-word/eval "$ret"; local value1=$ret
+    |   lib/core-complete.sh:2011:      ble/syntax:bash/simple-word/eval "$ret"
+    |   lib/core-complete.sh:2072:    ble/syntax:bash/simple-word/eval "$ret"; word=$ret
+    |   lib/core-complete.sh:2093:          ble/syntax:bash/simple-word/eval "$ret"; left=$ret
+    |   lib/core-complete.sh:2806:      ble/syntax:bash/simple-word/eval "$word" &&
+    |   lib/core-complete.sh:2861:    ble/syntax:bash/simple-word/eval "$ret*" && ((${#ret[*]})) &&
+    |   lib/core-complete.sh:3048:  local ret; ble/syntax:bash/simple-word/eval "$pattern"
+    |   lib/core-complete.sh:3050:    ble/syntax:bash/simple-word/eval "$pattern*"
+    |   lib/core-complete.sh:3223:    elif ble/syntax:bash/simple-word/eval "$reconstructed"; then
+    |   lib/core-complete.sh:3229:        ble/syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
+    |   lib/core-complete.sh:3234:      # Note: failglob により simple-word/eval が失敗した時にここに来る。
+    |   lib/core-complete.sh:3624:  ble/syntax:bash/simple-word/evaluate-path-spec "$word0"; spec0=("${spec[@]}") path0=("${path[@]}")
+    |   lib/core-complete.sh:3625:  ble/syntax:bash/simple-word/evaluate-path-spec "$word1"; spec1=("${spec[@]}") path1=("${path[@]}")
+    |   lib/core-complete.sh:3705:        if ble/syntax:bash/simple-word/eval "$common_reconstructed" &&
+    |   lib/core-complete.sh:3731:             ble/syntax:bash/simple-word/eval "$notilde$ret" noglob &&
+    |   lib/core-complete.sh:3733:             ble/syntax:bash/simple-word/eval "$notilde$common_reconstructed" noglob &&
+    |   lib/core-complete.sh:3761:                 ble/syntax:bash/simple-word/eval "$ret" &&
+    |   lib/core-complete.sh:4206:      ble/syntax:bash/simple-word/eval "$ret"
+    |   lib/core-complete.sh:4706:        ble/syntax:bash/simple-word/eval "$ret"
+    |   lib/core-complete.sh:4930:  ble/syntax:bash/simple-word/eval "$ret"
+    |   lib/core-complete.sh:5573:      if ble/syntax:bash/simple-word/eval "$ret" && local compv_new=$ret; then
+    |   lib/core-complete.sh:5968:      ble/syntax:bash/simple-word/eval "$ret" || continue
+
+    - ble/complete/progcomp/.compvar-generate-subwords/impl2
+      この関数は eval を呼び出している。複数の単語に展開される時にそれを全て取得している。
+
+    - ble/complete/source:argument/.contains-literal-option
+      この関数は noglob を指定して変換を試すべきの気がするのでその様に変更する。
+
+    - ble/complete/progcomp/.compvar-quote-subword
+
+    - ble/complete/source:argument
+      failglob で展開に失敗した時に * を付加して再度挑戦するのに使っている。
+    - ble/complete/source:glob
+    - ble/complete/candidates/.pick-nearest-sources
+    - ble/complete/candidates/determine-common-prefix
+    - ble/complete/candidates/determine-common-prefix/.apply-partial-comps
+      ここでは evaluate-path-spec を使っている。
+    - ble/complete/insert-common
+
+    以上は候補生成時に使われる関数群である。
+    全てユーザー入力があったらキャンセルという形で良い気がする。
+    元々 148 を返す仕様の関数になっているので 148 の伝播についても面倒な対応は不要。
+
+    - ble/complete/menu-filter
+      これは .filter-candidates の戻り値を返すのを忘れている気がする。
+      →修正した。
+
+    - ble/widget/auto_complete/self-insert
+      これは微妙。どの様にすればよいだろうか。
+      timeout はまあいらない気がする。
+      ユーザー入力によって interrupt されたらそのまま false を返せば、
+      auto_complete モードから抜けるという動作になる。これで良い。
+
+    - ble/complete/source:sabbrev
+      % 展開した結果が使用されていない。バグが有る気がする。
+      % →と思ったが iniitialize の中で参照されていた。
+
+    [修正]
+
+    * done: 毎回 timeout 等を設定するのは大変なので関数を用意する。
+    * done: simple-word/{eval,evaluate-path-spec} の呼び出しを置き換える。
+
+    x timeout した時に 142 を返すのを 148 に置き換えているが、
+      これだと auto-complete 内部で timeout した時に、
+      後続の idle まで中断してしまうのではないだろうか。
+
+      →これは idle.do の側で修正する事にした。そもそも IS_IDLE で条件を差し替
+      える事ができるようにしているので、呼び出した task の終了ステータスを信用
+      する訳には行かない筈なのだ。
+
+      此処で気になるのは complete における 148 の意味が必ずしもユーザ入力ではな
+      くて、auto-complete における timeout の場合もあるという事になってしまった
+      事だが、これが重大な結果を生み出す様には思われないので、取り敢えずはこれ
+      で良いとする。
+
   * highlight: グロブパターンが含まれるファイル名の着色が遅い (reported by 3ximus) [#D1449]
-    https://github.com/akinomyoga/ble.sh/issues/82
+    https://github.com/akinomyoga/ble.sh/issues/82 (for highlighting)
 
     glob expansion を subshell で実行してユーザー入力があったら timeout させる
     方針について考察。timeout は必要だろうか。

@@ -1320,6 +1320,39 @@ function ble/complete/source/test-limit {
   fi
 }
 
+## @fn ble/complete/source/eval-simple-word
+## @fn ble/complete/source/evaluate-path-spec
+##   補完用の中断設定・timeout設定(auto-complete時のみ)を指定して、
+##   それぞれ simple-word/{eval,evaluate-path-spec} を呼び出します。
+##
+## 注意: 現在の実装では、ユーザー入力による中断 148 及びtimeout による
+## 中断 142 の両方に対してこれらの関数は 148 を返す様に振る舞いを変更
+## している。呼び出し元で両方を区別なく取り扱うのに都合が良い為。
+##
+function ble/complete/source/eval-simple-word {
+  local word=$1 opts=$2
+  if [[ :$comp_type: != *:sync:* && :$opts: != *:noglob:* ]]; then
+    opts=$opts:stopcheck
+    [[ :$comp_type: == *:auto:* && $bleopt_complete_auto_timeout ]] &&
+      opts=$opts:timeout=$((bleopt_complete_auto_timeout))
+  fi
+  ble/syntax:bash/simple-word/eval "$word" "$opts"; local ext=$?
+  ((ext==142)) && return 148
+  return "$ext"
+}
+function ble/complete/source/evaluate-path-spec {
+  local word=$1 sep=$2 opts=$3
+  if [[ :$comp_type: != *:sync:* && :$opts: != *:noglob:* ]]; then
+    opts=$opts:stopcheck
+    [[ :$comp_type: == *:auto:* && $bleopt_complete_auto_timeout ]] &&
+      opts=$opts:timeout=$((bleopt_complete_auto_timeout))
+  fi
+  ble/syntax:bash/simple-word/evaluate-path-spec "$word" "$sep" "$opts"; local ext=$?
+  ((ext==142)) && return 148
+  return "$ext"
+}
+
+
 ## @fn ble/complete/source/reduce-compv-for-ambiguous-match
 ##   曖昧補完の為に擬似的な COMPV と COMPS を生成・設定します。
 ##   @var[in,out] COMPS COMPV
@@ -1597,7 +1630,7 @@ function ble/complete/source:command/gen {
   if [[ $arg != *D* ]]; then
     local ret
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    ble/complete/util/eval-pathname-expansion "$ret/"
+    ble/complete/util/eval-pathname-expansion "$ret/"; (($?==148)) && return 148
     ble/complete/source/test-limit ${#ret[@]} || return 1
     ((${#ret[@]})) && printf '%s\n' "${ret[@]}"
   fi
@@ -1646,6 +1679,15 @@ function ble/complete/source:command {
 }
 
 # source:file, source:dir
+
+function ble/complete/util/eval-pathname-expansion/.print-def {
+  local pattern=$1 ret q=\' Q="'\''"
+  IFS= builtin eval "ret=($pattern)" 2>/dev/null
+  ret=("${ret[@]//$q/$Q}")
+  ret=("${ret[@]/%/$q}")
+  ret=("${ret[@]/#/$q}")
+  ble/util/print "ret=(${ret[*]})"
+}
 
 ## @fn ble/complete/util/eval-pathname-expansion pattern
 ##   @var[out] ret
@@ -1705,7 +1747,19 @@ function ble/complete/util/eval-pathname-expansion {
     ble/array#push dtor 'GLOBIGNORE=$GLOBIGNORE_save'
   fi
 
-  IFS= builtin eval "ret=(); ret=($pattern)" 2>/dev/null
+  ret=()
+  if [[ :$comp_type: == *:sync:* ]]; then
+    IFS= builtin eval "ret=($pattern)" 2>/dev/null
+  else
+    local sync_command='ble/complete/util/eval-pathname-expansion/.print-def "$pattern"'
+    local sync_opts=progressive-weight
+    [[ :$comp_type: == *:auto:* && $bleopt_complete_auto_timeout ]] &&
+      sync_opts=$sync_opts:timeout=$((bleopt_complete_auto_timeout))
+    local def
+    ble/util/assign def 'ble/util/conditional-sync "$sync_command" "" "" "$sync_opts"' &>/dev/null; local ext=$?
+    ((ext==148)) && return 148
+    builtin eval -- "$def"
+  fi
 
   ble/array#reverse dtor
   ble/util/invoke-hook dtor
@@ -1779,8 +1833,7 @@ function ble/complete/source:file/.impl {
   local ret
   ble/complete/source:file/.construct-pathname-pattern "$COMPV"
   [[ :$opts: == *:directory:* ]] && ret=${ret%/}/
-  ble/complete/util/eval-pathname-expansion "$ret"
-
+  ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
   ble/complete/source/test-limit ${#ret[@]} || return 1
 
   candidates=()
@@ -1989,7 +2042,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
   fi
   return 0
 }
-## @fn ble/complete/progcomp/.compvar-generate-subwords/impl1 word
+## @fn ble/complete/progcomp/.compvar-generate-subwords/impl2 word
 ##   評価してから $wordbreaks で分割する戦略。
 ##
 ##   @param word
@@ -2003,12 +2056,12 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl2 {
   local word=$1
   ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word" || return 1
 
-  ble/syntax:bash/simple-word/eval "$ret"; local value1=$ret
+  ble/complete/source/eval-simple-word "$ret"; (($?==148)) && return 148; local value1=$ret
   if [[ $point ]]; then
     if ((point==${#word})); then
       point=${#value1}
     elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "${word::point}"; then
-      ble/syntax:bash/simple-word/eval "$ret"
+      ble/complete/source/eval-simple-word "$ret"; (($?==148)) && return 148
       point=${#ret}
     fi
   fi
@@ -2069,7 +2122,7 @@ function ble/complete/progcomp/.compvar-quote-subword {
     [[ $subword_flags == *E* ]] && to_quote=1
   elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
     is_evaluated=1
-    ble/syntax:bash/simple-word/eval "$ret"; word=$ret
+    ble/complete/source/eval-simple-word "$ret"; (($?==148)) && return 148; word=$ret
     to_quote=1
   fi
 
@@ -2090,7 +2143,7 @@ function ble/complete/progcomp/.compvar-quote-subword {
       local left=${word::p}
       if [[ $is_evaluated ]]; then
         if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$left"; then
-          ble/syntax:bash/simple-word/eval "$ret"; left=$ret
+          ble/complete/source/eval-simple-word "$ret"; (($?==148)) && return 148; left=$ret
         fi
       fi
       if [[ $is_quoted ]]; then
@@ -2803,7 +2856,7 @@ function ble/complete/source:argument/.contains-literal-option {
   local word
   for word; do
     ble/syntax:bash/simple-word/is-simple "$word" &&
-      ble/syntax:bash/simple-word/eval "$word" &&
+      ble/syntax:bash/simple-word/eval "$word" noglob &&
       [[ $ret == -- ]] &&
       return 0
   done
@@ -2858,7 +2911,7 @@ function ble/complete/source:argument {
   if [[ $comps_flags == *f* && $COMPS != *\* && :$comp_type: != *:[maA]:* ]]; then
     local ret simple_flags simple_ibrace
     ble/syntax:bash/simple-word/reconstruct-incomplete-word "$COMPS"
-    ble/syntax:bash/simple-word/eval "$ret*" && ((${#ret[*]})) &&
+    ble/complete/source/eval-simple-word "$ret*" && ((${#ret[*]})) &&
       ble/complete/cand/yield-filenames file "${ret[@]}"
     (($?==148)) && return 148
   fi
@@ -2893,7 +2946,7 @@ function ble/complete/source:argument {
 
     local ret cand
     ble/complete/source:file/.construct-pathname-pattern "$value"
-    ble/complete/util/eval-pathname-expansion "$ret"
+    ble/complete/util/eval-pathname-expansion "$ret"; (($?==148)) && return 148
     ble/complete/source/test-limit ${#ret[@]} || return 1
     for cand in "${ret[@]}"; do
       [[ -e $cand || -h $cand ]] || continue
@@ -3045,9 +3098,9 @@ function ble/complete/source:glob {
   [[ :$comp_type: == *:[maA]:* ]] && return 1
 
   local pattern=$COMPV
-  local ret; ble/syntax:bash/simple-word/eval "$pattern"
+  ble/complete/source/eval-simple-word "$pattern"; (($?==148)) && return 148
   if ((!${#ret[@]})) && [[ $pattern != *'*' ]]; then
-    ble/syntax:bash/simple-word/eval "$pattern*"
+    ble/complete/source/eval-simple-word "$pattern*"; (($?==148)) && return 148
   fi
 
   local cand action=file
@@ -3220,13 +3273,13 @@ function ble/complete/candidates/.pick-nearest-sources {
         comps_flags=$comps_flags${simple_flags}v
         COMPV=$reconstructed
       fi
-    elif ble/syntax:bash/simple-word/eval "$reconstructed"; then
+    elif ble/complete/source/eval-simple-word "$reconstructed"; local ext=$?; ((ext==148)) && return 148; ((ext==0)); then
       # 展開後の値を COMPV に格納する (既定)
       COMPV=("${ret[@]}")
       comps_flags=$comps_flags${simple_flags}v
 
       if ((${simple_ibrace%:*})); then
-        ble/syntax:bash/simple-word/eval "${reconstructed::${simple_ibrace#*:}}"
+        ble/complete/source/eval-simple-word "${reconstructed::${simple_ibrace#*:}}"; (($?==148)) && return 148
         comps_fixed=${simple_ibrace%:*}:$ret
         comps_flags=${comps_flags}x
       fi
@@ -3522,7 +3575,7 @@ function ble/complete/candidates/generate-with-filter {
   local src asrc source
   while ((${#remaining_sources[@]})); do
     nearest_sources=()
-    ble/complete/candidates/.pick-nearest-sources
+    ble/complete/candidates/.pick-nearest-sources; (($?==148)) && return 148
 
     [[ ! $COMPV && :$opts: == *:no-empty:* ]] && continue
     local comp_filter_type
@@ -3621,8 +3674,8 @@ function ble/complete/candidates/determine-common-prefix/.apply-partial-comps {
   fi
 
   local ret spec path spec0 path0 spec1 path1
-  ble/syntax:bash/simple-word/evaluate-path-spec "$word0"; spec0=("${spec[@]}") path0=("${path[@]}")
-  ble/syntax:bash/simple-word/evaluate-path-spec "$word1"; spec1=("${spec[@]}") path1=("${path[@]}")
+  ble/complete/source/evaluate-path-spec "$word0"; (($?==148)) && return 148; spec0=("${spec[@]}") path0=("${path[@]}")
+  ble/complete/source/evaluate-path-spec "$word1"; (($?==148)) && return 148; spec1=("${spec[@]}") path1=("${path[@]}")
   local i=${#path1[@]}
   while ((i--)); do
     if ble/array#last-index path0 "${path1[i]}"; then
@@ -3702,8 +3755,9 @@ function ble/complete/candidates/determine-common-prefix {
         esac
 
         local is_processed=
-        if ble/syntax:bash/simple-word/eval "$common_reconstructed" &&
-            ble/complete/candidates/filter:"$filter_type"/count-match-chars "$ret"; then
+        ble/complete/source/eval-simple-word "$common_reconstructed"; local ext=$?
+        ((ext==148)) && return 148
+        if ((ext==0)) && ble/complete/candidates/filter:"$filter_type"/count-match-chars "$ret"; then
           if [[ $filter_type == head ]] && ((ret<${#COMPV})); then
             is_processed=1
             # Note: #D1181 ここに来たという事は外部の枠組みで
@@ -3755,13 +3809,19 @@ function ble/complete/candidates/determine-common-prefix {
       # Note: #D0768 文法的に単純であれば (構造を破壊しなければ) 遡って書き換えが起こることを許す。
       # Note: #D1181 外部の枠組みで生成された先頭一致しない共通部分の時でも書き換えを許す。
       if ble/syntax:bash/simple-word/is-simple-or-open-simple "$common"; then
-        if [[ $bleopt_complete_allow_reduction ]] ||
-             { local simple_flags simple_ibrace
-               ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
-                 ble/syntax:bash/simple-word/eval "$ret" &&
-                 [[ $ret == "$COMPV"* ]]; }; then
-          common=$common0
+        local flag_reduction=
+        if [[ $bleopt_complete_allow_reduction ]]; then
+          flag_reduction=1
+        else
+          local simple_flags simple_ibrace
+          ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common0" &&
+            ble/complete/source/eval-simple-word "$ret" &&
+            [[ $ret == "$COMPV"* ]] &&
+            flag_reduction=1
+          (($?==148)) && return 148
         fi
+
+        [[ $flag_reduction ]] && common=$common0
       fi
     fi
   fi
@@ -4203,7 +4263,8 @@ function ble/complete/insert-common {
     local menu_common_part=$COMPV
     local ret simple_flags simple_ibrace
     if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$insert"; then
-      ble/syntax:bash/simple-word/eval "$ret"
+      ble/complete/source/eval-simple-word "$ret"
+      (($?==148)) && return 148
       menu_common_part=$ret
     fi
     ble/complete/menu/show "$menu_show_opts" || return "$?"
@@ -4703,7 +4764,8 @@ function ble/complete/insert-braces {
       local ret simple_flags simple_ibrace
       ble/complete/candidates/determine-common-prefix/.apply-partial-comps # var[in,out] common
       if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$common"; then
-        ble/syntax:bash/simple-word/eval "$ret"
+        ble/complete/source/eval-simple-word "$ret"
+        (($?==148)) && return 148
         fixed=$common fixval=$ret
       fi
     }
@@ -4927,11 +4989,11 @@ function ble/complete/menu-filter {
     return 0
   fi
   [[ $simple_ibrace ]] && ((${simple_ibrace%%:*}>10#0${_ble_complete_menu0_comp[6]%%:*})) && return 1 # 別のブレース展開要素に入った時
-  ble/syntax:bash/simple-word/eval "$ret"
+  ble/syntax:bash/simple-word/eval "$ret"; (($?==148)) && return 148
   local COMPV=$ret
 
   local comp_type=${_ble_complete_menu0_comp[4]} cand_pack
-  ble/complete/menu-filter/.filter-candidates
+  ble/complete/menu-filter/.filter-candidates; (($?==148)) && return 148
 
   local menu_common_part=$COMPV
   ble/complete/menu/show filter || return "$?"
@@ -5570,7 +5632,7 @@ function ble/widget/auto_complete/self-insert {
     fi
   elif [[ $_ble_complete_ac_type == [rmaA] && $ins != [{,}] ]]; then
     if local ret simple_flags simple_ibrace; ble/syntax:bash/simple-word/reconstruct-incomplete-word "$comps_new"; then
-      if ble/syntax:bash/simple-word/eval "$ret" && local compv_new=$ret; then
+      if ble/complete/source/eval-simple-word "$ret" && local compv_new=$ret; then
         # r: 遡って書き換わる時
         #   挿入しても展開後に一致する時、そのまま挿入。
         #   元から展開後に一致していない場合もあるが、その場合は一旦候補を消してやり直し。
@@ -5965,9 +6027,10 @@ function ble/complete/source:sabbrev {
     # filter で除外されない為に cand には評価後の値を入れる必要がある。
     local ret simple_flags simple_ibrace
     ble/syntax:bash/simple-word/reconstruct-incomplete-word "$cand" &&
-      ble/syntax:bash/simple-word/eval "$ret" || continue
+      ble/complete/source/eval-simple-word "$ret" || continue
 
-    local value=$ret flag_source_filter=1
+    local value=$ret # referenced in "ble/complete/action:sabbrev/initialize"
+    local flag_source_filter=1
     ble/complete/cand/yield sabbrev "$cand"
   done
 }
@@ -6325,7 +6388,7 @@ function ble/cmdinfo/complete:cd/.impl {
     local -a candidates=()
     local ret cand
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    ble/complete/util/eval-pathname-expansion "$name$ret"
+    ble/complete/util/eval-pathname-expansion "$name$ret"; (($?==148)) && return 148
     ble/complete/source/test-limit ${#ret[@]} || return 1
     for cand in "${ret[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
@@ -6354,7 +6417,7 @@ function ble/cmdinfo/complete:cd/.impl {
     local -a candidates=()
     local ret cand
     ble/complete/source:file/.construct-pathname-pattern "$COMPV"
-    ble/complete/util/eval-pathname-expansion "${ret%/}/"
+    ble/complete/util/eval-pathname-expansion "${ret%/}/"; (($?==148)) && return 148
     ble/complete/source/test-limit ${#ret[@]} || return 1
     for cand in "${ret[@]}"; do
       ((cand_iloop++%bleopt_complete_polling_cycle==0)) &&
