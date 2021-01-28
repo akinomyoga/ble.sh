@@ -33,6 +33,7 @@
 - edit (sword): fix definition of `sword` (shell words) `#D1441` f923388
 - edit (`kill-forward-logical-line`): fix a bug not deleting newline at the end of the line `#D1443` 09cf7f1
 - complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
+- util (`ble/util/msleep`): fix hang in Cygwin by swithing from `/dev/udp/0.0.0.0/80` to `/dev/zero` `#D1452` 0000000
 - global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
   - global: fix declaration of associative arrays for `ble-reload` `#D1471` 3cae6e4
 
@@ -40,7 +41,7 @@
 
 - main: include hostname in local runtime directory `#D1444` 6494836
 - global: update the style of document comments ff4c4e7
-- util: add function `ble/string#quote-words` `#D1451` 0000000
+- util: add function `ble/string#quote-words` `#D1451` f03b87b
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

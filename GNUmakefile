@@ -77,6 +77,12 @@ $(OUTDIR)/lib/%.txt: lib/%.txt | $(OUTDIR)/lib
 	cp -p $< $@
 $(OUTDIR)/lib/core-syntax.sh: lib/core-syntax.sh lib/core-syntax-ctx.def | $(OUTDIR)/lib
 	$(MWGPP) $< > $@
+$(OUTDIR)/lib/init-msys1.sh: lib/init-msys1.sh lib/init-msys1-helper.c | $(OUTDIR)/lib
+	$(MWGPP) $< > $@
+
+#outfiles += $(OUTDIR)/lib/init-msleep.sh
+#$(OUTDIR)/lib/init-msleep.sh: lib/init-msleep.sh lib/init-msleep.c | $(OUTDIR)/lib
+#	$(MWGPP) $< > $@
 
 #------------------------------------------------------------------------------
 # contrib

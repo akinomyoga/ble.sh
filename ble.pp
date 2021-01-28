@@ -306,7 +306,7 @@ fi
 
 # POSIX utilities
 
-_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep cat wc mv sh od)
+_ble_init_posix_command_list=(sed date rm mkdir mkfifo sleep stty tty sort awk chmod grep cat wc mv sh od cp)
 function ble/.check-environment {
   if ! ble/bin#has "${_ble_init_posix_command_list[@]}"; then
     local cmd commandMissing=
@@ -862,6 +862,7 @@ function ble/base/unload {
   ble-decode/keymap/unload
   ble-edit/bind/clear-keymap-definition-loader
   ble/bin/rm -rf "$_ble_base_run/$$".* 2>/dev/null
+  blehook/invoke unload
   return 0
 }
 blehook EXIT+=ble/base/unload

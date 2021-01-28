@@ -11,6 +11,7 @@ function blehook/declare {
 blehook/declare EXIT
 blehook/declare INT
 blehook/declare ERR
+blehook/declare unload
 
 # util.sh
 
