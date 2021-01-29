@@ -360,9 +360,9 @@ function ble/variable#is-global {
 function ble/variable#copy-state {
   local src=$1 dst=$2
   if [[ ${!src+set} ]]; then
-    eval "$dst=\${$src}"
+    builtin eval -- "$dst=\${$src}"
   else
-    unset "$dst"
+    builtin unset -v "$dst"
   fi
 }
 
@@ -988,7 +988,7 @@ if ((_ble_bash>=40400)); then
   function ble/string#quote-words { ret="${*@Q}"; }
   function ble/string#quote-command {
     ret=$1; shift
-    ret="$ret ${*@Q}"
+    (($#)) && ret="$ret ${*@Q}"
   }
 else
   function ble/string#quote-words {
@@ -1164,7 +1164,7 @@ function ble/path#contains {
 
 if ((_ble_bash>=40000)); then
   _ble_util_set_declare=(declare -A NAME)
-  function ble/set#add { builtin eval "$1[x\$2]=1"; }
+  function ble/set#add { builtin eval -- "$1[x\$2]=1"; }
   function ble/set#remove { builtin unset -v "$1[x\$2]"; }
   function ble/set#contains { builtin eval "[[ \${$1[x\$2]+set} ]]"; }
 else
@@ -1185,6 +1185,105 @@ else
     local _ble_local_value=$2; ble/set#.escape
     builtin eval "[[ :\$$1: == *:\"\$_ble_local_value\":* ]]"
   }
+fi
+
+
+#--------------------------------------
+# dict
+
+_ble_util_adict_declare=''
+## @fn ble/dict#.resolve dict key
+function ble/adict#.resolve {
+  # _ble_local_key
+  _ble_local_key=$2
+  _ble_local_key=${_ble_local_key//$_ble_term_FS/$_ble_term_FS$_ble_term_FS}
+  _ble_local_key=${_ble_local_key//:/$_ble_term_FS.}
+
+  local keylist=${1}_keylist; keylist=:${!keylist}
+  local vec=${keylist%%:"$_ble_local_key":*}
+  if [[ $vec != "$keylist" ]]; then
+    vec=${vec//[!:]}
+    _ble_local_index=${#vec}
+  else
+    _ble_local_index=-1
+  fi
+}
+function ble/adict#set {
+  local _ble_local_key _ble_local_index
+  ble/adict#.resolve "$1" "$2"
+  if ((_ble_local_index>=0)); then
+    builtin eval -- "$1[_ble_local_index]=\$3"
+  else
+    local _ble_local_script='
+      local _ble_local_vec=${NAME_keylist//[!:]}
+      NAME[${#_ble_local_vec}]=$3
+      NAME_keylist=$NAME_keylist$_ble_local_key:
+    '
+    builtin eval -- "${_ble_local_script//NAME/$1}"
+  fi
+  return 0
+}
+function ble/adict#get {
+  local _ble_local_key _ble_local_index
+  ble/adict#.resolve "$1" "$2"
+  if ((_ble_local_index>=0)); then
+    builtin eval -- "ret=\${$1[_ble_local_index]}; [[ \${$1[_ble_local_index]+set} ]]"
+  else
+    builtin eval -- ret=
+    return 1
+  fi
+}
+function ble/adict#unset {
+  local _ble_local_key _ble_local_index
+  ble/adict#.resolve "$1" "$2"
+  ((_ble_local_index>=0)) &&
+    builtin eval -- "builtin unset -v $1[_ble_local_index]"
+  return 0
+}
+function ble/adict#has {
+  local _ble_local_key _ble_local_index
+  ble/adict#.resolve "$1" "$2"
+  ((_ble_local_index>=0)) &&
+    builtin eval -- "[[ \${$1[_ble_local_index]+set} ]]"
+}
+function ble/adict#clear {
+  builtin eval -- "${1}_keylist= $1=()"
+}
+
+if ((_ble_bash>=40000)); then
+  _ble_util_dict_declare='declare -A NAME'
+  function ble/dict#set   { builtin eval -- "$1[x\$2]=\$3"; }
+  function ble/dict#get   { builtin eval -- "ret=\${$1[x\$2]}; [[ \${$1[x\$2]+set} ]]"; }
+  function ble/dict#unset { builtin eval -- "builtin unset -v '$1[x\$2]'"; }
+  function ble/dict#has   { builtin eval -- "[[ \${$1[x\$2]+set} ]]"; }
+  function ble/dict#clear { builtin eval -- "$1=()"; }
+else
+  _ble_util_dict_declare='declare NAME NAME_keylist'
+  function ble/dict#set   { ble/adict#set   "$@"; }
+  function ble/dict#get   { ble/adict#get   "$@"; }
+  function ble/dict#unset { ble/adict#unset "$@"; }
+  function ble/dict#has   { ble/adict#has   "$@"; }
+  function ble/dict#clear { ble/adict#clear "$@"; }
+fi
+
+if ((_ble_bash>=40200||_ble_bash>=40000&&!_ble_bash_loaded_in_function)); then
+  if ((_ble_bash>=40200)); then
+    _ble_util_gdict_declare='declare -gA NAME=()'
+  else
+    _ble_util_gdict_declare='declare -A NAME=()'
+  fi
+  function ble/gdict#set   { ble/dict#set   "$@"; }
+  function ble/gdict#get   { ble/dict#get   "$@"; }
+  function ble/gdict#unset { ble/dict#unset "$@"; }
+  function ble/gdict#has   { ble/dict#has   "$@"; }
+  function ble/gdict#clear { ble/dict#clear "$@"; }
+else
+  _ble_util_gdict_declare=
+  function ble/gdict#set   { ble/adict#set   "$@"; }
+  function ble/gdict#get   { ble/adict#get   "$@"; }
+  function ble/gdict#unset { ble/adict#unset "$@"; }
+  function ble/gdict#has   { ble/adict#has   "$@"; }
+  function ble/gdict#clear { ble/adict#clear "$@"; }
 fi
 
 #------------------------------------------------------------------------------
@@ -1922,7 +2021,7 @@ function ble/function#lambda {
 function ble/function#suppress-stderr {
   local name=$1
   if ! ble/is-function "$name"; then
-    echo "$FUNCNAME: '$name' is not a function name" >&2
+    ble/util/print "$FUNCNAME: '$name' is not a function name" >&2
     return 2
   fi
 

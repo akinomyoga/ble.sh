@@ -242,7 +242,7 @@ function sub:scan/list-command {
   [[ $flag_error ]] && return 1
 
   [[ $flag_exclude_this ]] && ble/array#push options --exclude=./make_command.sh
-  grc "${options[@]}" "(^|[^-./\${}=])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)'
+  grc "${options[@]}" "(^|[^-./\${}=#])\b$command"'\b([[:space:]|&;<>()`"'\'']|$)'
 }
 
 function sub:scan/builtin {

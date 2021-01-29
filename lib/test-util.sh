@@ -2,7 +2,7 @@
 
 ble-import lib/core-test
 
-ble/test/start-section 'util' 1047
+ble/test/start-section 'util' 1191
 
 # bleopt
 
@@ -938,6 +938,97 @@ function is-global() (readonly "$1"; ! local "$1" 2>/dev/null)
   ble/test code:'ret=xyz; ! ble/path#contains ret "???"'
 )
 
+# ble/dict#set
+(
+  builtin eval -- "${_ble_util_dict_declare//NAME/dict1}"
+  builtin eval -- "${_ble_util_gdict_declare//NAME/dict2}"
+  builtin eval -- "${_ble_util_adict_declare//NAME/dict3}"
+  index=1
+  for Dict in ble/{,g,a}dict; do
+    dict=dict$((index++))
+
+    ret=unchanged
+    ble/test '! '$Dict'#has '$dict' banana' ret=unchanged
+    ble/test '! '$Dict'#has '$dict' ""' ret=unchanged
+
+    $Dict#set $dict apple red
+    $Dict#set $dict banana yellow
+    $Dict#set $dict orange orange
+    $Dict#set $dict melon green
+  
+    ret=unchanged
+    ble/test $Dict'#has '$dict' banana' ret=unchanged # 先頭
+    ble/test $Dict'#has '$dict' apple'  ret=unchanged # 中
+    ble/test $Dict'#has '$dict' melon'  ret=unchanged # 末尾
+    ble/test '! '$Dict'#has '$dict' pear' ret=unchanged # 存在しない項目
+    ble/test $Dict'#get '$dict' banana' ret=yellow   # 先頭
+    ble/test $Dict'#get '$dict' apple'  ret=red      # 中
+    ble/test $Dict'#get '$dict' melon'  ret=green    # 末尾
+    ble/test '! '$Dict'#get '$dict' pear' ret=         # 存在しない項目
+  
+    # 空白類
+    ble/test '! '$Dict'#has '$dict' ""' # 末尾空要素で引けるか
+    ble/test '! '$Dict'#get '$dict' ""' # 末尾空要素で引けるか
+    $Dict#set $dict '' transparent
+    ble/test $Dict'#has '$dict' ""' # 末尾空要素で引けるか
+    ble/test $Dict'#get '$dict' ""' ret=transparent # 末尾空要素で引けるか
+    $Dict#set $dict 'alpha beta' pink
+    ble/test $Dict'#has '$dict' ""' # 中央空要素で引けるか
+    ble/test $Dict'#has '$dict' "alpha beta"' # 空白を含む見出し
+    ble/test $Dict'#get '$dict' ""' ret=transparent # 中央空要素で引けるか
+    ble/test $Dict'#get '$dict' "alpha beta"' ret=pink # 空白を含む見出し
+    $Dict#set $dict ' apple ' ' red '
+    ble/test $Dict'#has '$dict' " apple "' # 空白で trim されないか
+    ble/test $Dict'#has '$dict' apple' # 既存項目を破壊していないか
+    ble/test $Dict'#get '$dict' " apple "' ret=' red ' # 空白で trim されないか
+    ble/test $Dict'#get '$dict' apple' ret=red # 既存項目を破壊していないか
+  
+    # FS, colon
+    ble/test '! '$Dict'#has '$dict' "${_ble_term_FS}"' # 単一FS
+    ble/test '! '$Dict'#has '$dict' ":"' # 単一コロン
+    ble/test '! '$Dict'#has '$dict' "apple${_ble_term_FS}banana"' # FSを含む見出し
+    ble/test '! '$Dict'#has '$dict' apple:banana' # コロンを含む見出し
+    ble/test '! '$Dict'#get '$dict' "${_ble_term_FS}"' ret= # 単一FS
+    ble/test '! '$Dict'#get '$dict' ":"' ret= # 単一コロン
+    ble/test '! '$Dict'#get '$dict' "apple${_ble_term_FS}banana"' ret= # FSを含む見出し
+    ble/test '! '$Dict'#get '$dict' apple:banana' ret= # コロンを含む見出し
+    $Dict#set $dict "${_ble_term_FS}" Empty
+    $Dict#set $dict ":" Colon
+    $Dict#set $dict "apple${_ble_term_FS}banana" RedYellow
+    $Dict#set $dict "apple:banana" __red_yellow__
+    ble/test $Dict'#has '$dict' "${_ble_term_FS}"' # 単一FS
+    ble/test $Dict'#has '$dict' ":"' # 単一コロン
+    ble/test $Dict'#has '$dict' "apple${_ble_term_FS}banana"' # FSを含む見出し
+    ble/test $Dict'#has '$dict' apple:banana' # コロンを含む見出し
+    ble/test $Dict'#get '$dict' "${_ble_term_FS}"' ret=Empty # 単一FS
+    ble/test $Dict'#get '$dict' ":"' ret=Colon # 単一コロン
+    ble/test $Dict'#get '$dict' "apple${_ble_term_FS}banana"' ret=RedYellow # FSを含む見出し
+    ble/test $Dict'#get '$dict' apple:banana' ret=__red_yellow__ # コロンを含む見出し
+  
+    # unset
+    $Dict#unset $dict banana
+    $Dict#unset $dict apple
+    $Dict#unset $dict melon
+    ble/test '! '$Dict'#has '$dict' banana'
+    ble/test '! '$Dict'#has '$dict' apple'
+    ble/test '! '$Dict'#has '$dict' melon'
+    $Dict#unset $dict ""
+    $Dict#unset $dict "alpha beta"
+    $Dict#unset $dict " apple "
+    ble/test '! '$Dict'#has '$dict' ""' # 中央空要素で引けるか
+    ble/test '! '$Dict'#has '$dict' "alpha beta"' # 空白を含む見出し
+    ble/test '! '$Dict'#has '$dict' " apple "' # 空白で trim されないか
+    $Dict#unset $dict "${_ble_term_FS}"
+    $Dict#unset $dict ":"
+    $Dict#unset $dict "apple${_ble_term_FS}banana"
+    $Dict#unset $dict apple:banana
+    ble/test '! '$Dict'#has '$dict' "${_ble_term_FS}"' # 単一FS
+    ble/test '! '$Dict'#has '$dict' ":"' # 単一コロン
+    ble/test '! '$Dict'#has '$dict' "apple${_ble_term_FS}banana"' # FSを含む見出し
+    ble/test '! '$Dict'#has '$dict' apple:banana' # コロンを含む見出し
+  done
+)
+
 # blehook
 (
   # declare hook
@@ -1436,9 +1527,12 @@ ble/test ble/util/is-running-in-subshell exit=1
 # ble/util/strftime
 
 # ble/util/{msleep,sleep}
+ble/util/msleep/.calibrate-loop &>/dev/null
+ble/util/msleep/.calibrate-loop &>/dev/null
+ble/util/msleep/.calibrate-loop &>/dev/null
 (
-  ble/test 'ble-measure -q "ble/util/msleep 100"; echo "$ret usec" >&2; ((msec=ret/1000,95<=msec&&msec<=105))'
-  ble/test 'ble-measure -q "ble/util/sleep 0.1"; echo "$ret usec" >&2; ((msec=ret/1000,95<=msec&&msec<=105))'
+  ble/test 'ble-measure -q "ble/util/msleep 100"; echo "$ret usec" >&2; ((msec=ret/1000,90<=msec&&msec<=110))'
+  ble/test 'ble-measure -q "ble/util/sleep 0.1"; echo "$ret usec" >&2; ((msec=ret/1000,90<=msec&&msec<=110))'
 )
 
 # ble/util/conditional-sync

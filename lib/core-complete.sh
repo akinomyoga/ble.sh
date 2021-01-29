@@ -1332,7 +1332,7 @@ function ble/complete/source/test-limit {
 function ble/complete/source/eval-simple-word {
   local word=$1 opts=$2
   if [[ :$comp_type: != *:sync:* && :$opts: != *:noglob:* ]]; then
-    opts=$opts:stopcheck
+    opts=$opts:stopcheck:cached
     [[ :$comp_type: == *:auto:* && $bleopt_complete_auto_timeout ]] &&
       opts=$opts:timeout=$((bleopt_complete_auto_timeout))
   fi
@@ -1343,7 +1343,7 @@ function ble/complete/source/eval-simple-word {
 function ble/complete/source/evaluate-path-spec {
   local word=$1 sep=$2 opts=$3
   if [[ :$comp_type: != *:sync:* && :$opts: != *:noglob:* ]]; then
-    opts=$opts:stopcheck
+    opts=$opts:stopcheck:cached
     [[ :$comp_type: == *:auto:* && $bleopt_complete_auto_timeout ]] &&
       opts=$opts:timeout=$((bleopt_complete_auto_timeout))
   fi

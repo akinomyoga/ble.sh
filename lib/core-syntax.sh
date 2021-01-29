@@ -1406,6 +1406,37 @@ function ble/syntax:bash/simple-word/eval/.impl {
   [[ $__ble_flags == *f* ]] && set +f
   return "$ext"
 }
+
+_ble_syntax_bash_simple_eval_hash=
+## @fn ble/syntax:bash/simple-word/eval/.cache-clear
+##   @var[in,out] _ble_syntax_bash_simple_eval
+function ble/syntax:bash/simple-word/eval/.cache-clear {
+  ble/gdict#clear _ble_syntax_bash_simple_eval
+}
+## @fn ble/syntax:bash/simple-word/eval/.cache-update
+##   @var[in,out] _ble_syntax_bash_simple_eval
+##   @var[in,out] _ble_syntax_bash_simple_eval_hash
+function ble/syntax:bash/simple-word/eval/.cache-update {
+  local hash=$-:$BASHOPTS:$_ble_edit_lineno:$_ble_textarea_version:$PWD
+  if [[ $hash != "$_ble_syntax_bash_simple_eval_hash" ]]; then
+    _ble_syntax_bash_simple_eval_hash=$hash
+    ble/syntax:bash/simple-word/eval/.cache-clear
+  fi
+}
+## @fn ble/syntax:bash/simple-word/eval/.save word ext ret...
+##   @var[in,out] _ble_syntax_bash_simple_eval
+function ble/syntax:bash/simple-word/eval/.cache-save {
+  ((ext==148||ext==142)) && return 0
+  local ret; ble/string#quote-words "${@:3}"
+  ble/gdict#set _ble_syntax_bash_simple_eval "$1" "ext=$2 ret=($ret)"
+}
+function ble/syntax:bash/simple-word/eval/.cache-load {
+  ext= ret=
+  ble/gdict#get _ble_syntax_bash_simple_eval "$1" || return 1
+  builtin eval -- "$ret"
+  return 0
+}
+
 ## @fn ble/syntax:bash/simple-word/eval word opts
 ##   @param[in] word
 ##   @param[in,opt] opts
@@ -1413,6 +1444,8 @@ function ble/syntax:bash/simple-word/eval/.impl {
 ##     timeout-highlight
 ##     timeout=NUM
 ##       stopcheck を指定している時に有効です。timeout を指定します。
+##     cached
+##     noglob
 ##
 ##   @var[out] ret
 ##   @exit
@@ -1420,9 +1453,18 @@ function ble/syntax:bash/simple-word/eval/.impl {
 ##     0 以外の終了ステータスを返します。
 ##
 function ble/syntax:bash/simple-word/eval {
+  if [[ :$2: == *:cached:* && :$2: != *:noglob:* ]]; then
+    ble/syntax:bash/simple-word/eval/.cache-update
+    local ext; ble/syntax:bash/simple-word/eval/.cache-load "$1" && return "$ext"
+  fi
+
   local __ble_ret
   ble/syntax:bash/simple-word/eval/.impl "$1" "$2"; local ext=$?
   ret=("${__ble_ret[@]}")
+
+  if [[ :$2: == *:cached:* && :$2: != *:noglob:* ]]; then
+    ble/syntax:bash/simple-word/eval/.cache-save "$1" "$ext" "${ret[@]}"
+  fi
   return "$ext"
 }
 
@@ -1442,10 +1484,13 @@ function ble/syntax:bash/simple-word/.get-rex_element {
 ##   @param[in] path_spec
 ##   @param[in,opt] sep (default: '/:=')
 ##   @param[in,opt] opts
-##     noglob notilde after-sep
+##     noglob
 ##     stopcheck
 ##     timeout-highlight
 ##     timeout=*
+##     cached
+##     notilde
+##     after-sep
 ##   @arr[out] spec
 ##   @arr[out] path
 ##   @arr[out] ret
@@ -1466,12 +1511,7 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
   [[ $word ]] || return 0
 
   # read options
-  local eval_opts= rex_timeout=':(timeout=[^:]*):'
-  [[ :$opts: == *:stopcheck:* ]] && eval_opts=stopcheck
-  [[ :$opts: == *:timeout-highlight:* ]] && eval_opts=$eval_opts:timeout-highlight
-  [[ :$opts: =~ $rex_timeout ]] && eval_opts=$eval_opts:${BASH_REMATCH[1]}
-  [[ :$opts: == *:noglob:* ]] && eval_opts=$eval_opts:noglob
-  local notilde=
+  local eval_opts=$opts notilde=
   [[ :$opts: == *:notilde:* ]] && notilde=\'\' # チルダ展開の抑制
 
   # compose regular expressions
@@ -1501,12 +1541,13 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
 ##   @param[in] word
 ##   @param[in,opt] sep
 ##   @param[in] opts
-##     url
 ##     noglob
-##     notilde
 ##     stopcheck
 ##     timeout-highlight
 ##     timeout=*
+##     cached
+##     url
+##     notilde
 ##   @var[out] ret
 ##     有効な区切り文字の集合を返します。
 function ble/syntax:bash/simple-word/detect-separated-path {
@@ -1517,12 +1558,7 @@ function ble/syntax:bash/simple-word/detect-separated-path {
   [[ :$opts: == *:url:* && $word =~ $rex_url ]] && return 1
 
   # read eval options
-  local eval_opts= rex_timeout=':(timeout=[^:]*):'
-  [[ :$opts: == *:stopcheck:* ]] && eval_opts=stopcheck
-  [[ :$opts: == *:timeout-highlight:* ]] && eval_opts=$eval_opts:timeout-highlight
-  [[ :$opts: =~ $rex_timeout ]] && eval_opts=$eval_opts:${BASH_REMATCH[1]}
-  [[ :$opts: == *:noglob:* ]] && eval_opts=$eval_opts:noglob
-  local notilde=
+  local eval_opts=$opts notilde=
   [[ :$opts: == *:notilde:* ]] && notilde=\'\' # チルダ展開の抑制
 
   # compose regular expressions
@@ -1584,6 +1620,9 @@ function ble/syntax:bash/simple-word/locate-filename/.exists {
 ##       stopcheck に際して timeout として highlight 用の設定を使用します。
 ##     timeout=*
 ##       stopcheck に際して timeout を指定します。
+##     cached
+##       展開内容をキャッシュします。
+##
 ##   @arr[out] ret
 ##     偶数個の要素を含みます。偶数 index (0, 2, 4, ...) が範囲の開始で、
 ##     奇数 index (1, 3, 5, ...) が範囲の終了です。
@@ -1594,11 +1633,7 @@ function ble/syntax:bash/simple-word/locate-filename {
   [[ $word ]] || return 0
 
   # prepare evaluator
-  local eval_opts= rex_timeout=':(timeout=[^:]*):'
-  [[ :$opts: == *:stopcheck:* ]] && eval_opts=stopcheck
-  [[ :$opts: == *:timeout-highlight:* ]] && eval_opts=$eval_opts:timeout-highlight
-  [[ :$opts: =~ $rex_timeout ]] && eval_opts=$eval_opts:${BASH_REMATCH[1]}
-  [[ :$opts: == *:noglob:* ]] && eval_opts=$eval_opts:noglob
+  local eval_opts=$opts
 
   # compose regular expressions
   local rex_element; ble/syntax:bash/simple-word/.get-rex_element "$sep"
@@ -6406,7 +6441,7 @@ function ble/syntax/progcolor/word:default/.detect-separated-path {
   local word=$1
   ((wtype==CTX_ARGI||wtype==CTX_ARGEI||wtype==CTX_VALI||wtype==ATTR_VAR||wtype==CTX_RDRS)) || return 1
 
-  local detect_opts=stopcheck:timeout-highlight:url
+  local detect_opts=stopcheck:timeout-highlight:cached:url
   ((wtype==CTX_RDRS)) && detect_opts=$detect_opts:noglob
   [[ $word == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && detect_opts=$detect_opts:notilde
   ble/syntax:bash/simple-word/detect-separated-path "$word" :, "$detect_opts"
@@ -6528,7 +6563,7 @@ function ble/syntax/progcolor/word:default/.highlight-filename {
   local p0=${1%%:*} p1=${1#*:}
   local wtxt=${text:p0:p1-p0}
 
-  local path_opts=stopcheck:timeout-highlight:after-sep
+  local path_opts=stopcheck:timeout-highlight:cached:after-sep
   # チルダ展開の文脈でない時には抑制
   [[ $wtxt == '~'* ]] && ((_ble_syntax_attr[p0]!=ATTR_TILDE)) && path_opts=$path_opts:notilde
   ((wtype==CTX_RDRS||wtype==ATTR_VAR||wtype==CTX_VALI&&wbeg<p0)) && path_opts=$path_opts:noglob
@@ -6572,7 +6607,7 @@ function ble/syntax/progcolor/word:default/.is-option-context {
 
   local iword ret
   for ((iword=1;iword<progcolor_iword;iword++)); do
-    ble/syntax/progcolor/eval-word "$iword" stopcheck:timeout-highlight
+    ble/syntax/progcolor/eval-word "$iword" stopcheck:timeout-highlight:cached
     [[ $ret == -- ]] && return 1
   done
   return 0
@@ -6622,7 +6657,7 @@ function ble/syntax/progcolor/word:default/.impl {
       ((ext==148)) && return 148
       if ((ext==0)); then
         local sep=$ret ranges i
-        ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" stopcheck:timeout-highlight:url
+        ble/syntax:bash/simple-word/locate-filename "$wtxt" "$sep" stopcheck:timeout-highlight:cached:url
         (($?==148)) && return 148; ranges=("${ret[@]}")
         for ((i=0;i<${#ranges[@]};i+=2)); do
           ble/syntax/progcolor/word:default/.highlight-filename $((p0+ranges[i])):$((p0+ranges[i+1]))
