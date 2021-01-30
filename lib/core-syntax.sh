@@ -699,9 +699,10 @@ function ble-syntax/parse/word-pop {
 function ble-syntax/parse/word-cancel {
   local -a word
   ble/string#split-words word "${_ble_syntax_tree[i-1]}"
-  local tclen=${word[3]}
-  tchild=$((tclen<0?tclen:i-tclen))
-  _ble_syntax_tree[i-1]="${word[*]:BLE_SYNTAX_TREE_WIDTH}"
+  local wlen=${word[1]} tplen=${word[3]}
+  local wbegin=$((i-wlen))
+  tchild=$((tplen<0?tplen:i-tplen))
+  ble/dense-array#fill-range _ble_syntax_tree "$wbegin" "$i" ''
 }
 
 # 入れ子構造の管理
@@ -2479,10 +2480,11 @@ function ble-syntax:bash/ctx-command/check-word-end {
       ((_ble_syntax_attr[wbeg]=ATTR_DEL,
         ctx=CTX_ARGX0))
 
-      # "[[" は一度角括弧式として読み取られるので、その情報を削除する。
-      ble-syntax/parse/word-cancel # 単語 "[[" を削除
-      ble-syntax/parse/word-cancel # 角括弧式の nest を削除
-      _ble_syntax_attr[wbeg+1]= # 角括弧式として着色されているのを消去
+      ble-syntax/parse/word-cancel # 単語 "[[" (とその内部のノード全て) を削除
+      if [[ $word == '[[' ]]; then
+        # "[[" は一度角括弧式として読み取られるので、その情報を削除する。
+        _ble_syntax_attr[wbeg+1]= # 角括弧式として着色されているのを消去
+      fi
 
       i=$wbeg ble-syntax/parse/nest-push "$CTX_CONDX"
 
