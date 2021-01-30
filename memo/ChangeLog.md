@@ -11,6 +11,7 @@
 - complete: support new options `bleopt complete_limit{,_auto}` (contributed by timjrd) `#D1445` b13f114 5504bbc
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 0000000
+- canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` 0000000
 
 ## Changes
 

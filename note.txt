@@ -3719,6 +3719,23 @@ bash_tips
     Done (実装ログ)
 -------------------------------------------------------------------------------
 
+2021-01-30
+
+  * edit: emoji の表を更新する (reported by endorfina) [#D1455]
+    https://github.com/akinomyoga/ble.sh/issues/84
+
+    更新しようと思ったが現在のコードを確認すると色々工夫して高速化している。
+    少し面倒である。取り敢えずデータのダウンロードだけは行う事にする。
+
+    https://unicode.org/Public/emoji/
+
+    色々考えて現在のコードの構造に近い形で再実装した。実は以前の実装に
+    はバグがあった。
+
+    以前のテーブルは https://github.com/vim-jp/issues/issues/1086 から
+    拾ってきた物だったが、これは 2017 年の物だったので報告のあった
+    flamingo の絵文字 (2018) は含まれていなかったのだ。
+
 2021-01-25
 
   * edit: change default behavior of "C-w" and "M-w" to operate on backward words (reported by 3ximus) [#D1448]

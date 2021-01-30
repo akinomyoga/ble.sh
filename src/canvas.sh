@@ -34,17 +34,16 @@ function ble/arithmetic/sum {
 
 ## @bleopt char_width_mode
 ##   文字の表示幅の計算方法を指定します。
-## bleopt_char_width_mode=east
-##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 2 とします
-## bleopt_char_width_mode=west
-##   Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 1 とします
-## bleopt_char_width_mode=auto
-##   east または west を自動判定します。
-## bleopt_char_width_mode=emacs
-##   emacs で用いられている既定の文字幅の設定です
-## 定義 ble/util/c2w+$bleopt_char_width_mode
+##     bleopt_char_width_mode=east
+##       Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 2 とします
+##     bleopt_char_width_mode=west
+##       Unicode East_Asian_Width=A (Ambiguous) の文字幅を全て 1 とします
+##     bleopt_char_width_mode=auto
+##       east または west を自動判定します。
+##     bleopt_char_width_mode=emacs
+##       emacs で用いられている既定の文字幅の設定です
+##     定義 ble/util/c2w+$bleopt_char_width_mode
 bleopt/declare -n char_width_mode auto
-bleopt/declare -n emoji_width 2
 
 function bleopt/check:char_width_mode {
   if ! ble/is-function "ble/util/c2w+$value"; then
@@ -87,9 +86,11 @@ function ble/util/c2w-edit {
 
 # ---- 文字種判定 ----
 
-## @arr _ble_util_c2w_non_zenkaku
-##   飛び地になっている全角でない文字
-_ble_util_c2w_non_zenkaku=(
+## @arr _ble_util_c2w_except
+_ble_util_c2w_zenkaku_min=11904 # 0x2E80
+_ble_util_c2w_zenkaku_max=42192 # 0xA4D0
+_ble_util_c2w_except=(
+  # 0x2E80..0xA4D0 の範囲内で飛び地になっている全角とは限らない文字
   [0x303F]=1 # 半角スペース
   [0x3030]=-2 [0x303d]=-2 [0x3297]=-2 [0x3299]=-2 # 絵文字
 )
@@ -107,7 +108,7 @@ function ble/util/c2w/.determine-unambiguous {
 
   # 以下は全角に確定している範囲
   if ((code<0xFB00)); then
-    ((0x2E80<=code&&code<0xA4D0&&!_ble_util_c2w_non_zenkaku[code]||
+    ((_ble_util_c2w_zenkaku_min<=code&&code<_ble_util_c2w_zenkaku_max&&!_ble_util_c2w_except[code]||
       0xAC00<=code&&code<0xD7A4||
       0xF900<=code||
       0x1100<=code&&code<0x1160||
@@ -122,55 +123,45 @@ function ble/util/c2w/.determine-unambiguous {
   fi
 }
 
-## @arr _ble_util_c2w_emoji_wranges
+## @var _ble_canvas_emoji_expr_maybe
+## @arr _ble_canvas_emoji_database
+## @arr _ble_canvas_emoji_database_????
+## @bleopt emoji_version
 ##
-##   https://github.com/vim-jp/issues/issues/1086 にある表を
-##   以下の関数で加工した。
+##   ファイル src/canvas.emoji.sh は以下のコマンドで生成する。
+##   $ ./make_command.sh update-emoji-database
 ##
-##   function process {
-##     local begin=$1 end=$(($2+1))
-##     printf ' %s %s' "$begin" "$end"
-##   }
-##
-_ble_util_c2w_emoji_wranges=(
-  8252 8253 8265 8266 8482 8483 8505 8506 8596 8602 8617 8619 8986 8988
-  9000 9001 9167 9168 9193 9204 9208 9211 9410 9411 9642 9644 9654 9655
-  9664 9665 9723 9727 9728 9733 9742 9743 9745 9746 9748 9750 9752 9753
-  9757 9758 9760 9761 9762 9764 9766 9767 9770 9771 9774 9776 9784 9787
-  9792 9793 9794 9795 9800 9812 9824 9825 9827 9828 9829 9831 9832 9833
-  9851 9852 9855 9856 9874 9880 9881 9882 9883 9885 9888 9890 9898 9900
-  9904 9906 9917 9919 9924 9926 9928 9929 9934 9936 9937 9938 9939 9941
-  9961 9963 9968 9974 9975 9979 9981 9982 9986 9987 9989 9990 9992 9998
-  9999 10000 10002 10003 10004 10005 10006 10007 10013 10014 10017 10018
-  10024 10025 10035 10037 10052 10053 10055 10056 10060 10061 10062 10063
-  10067 10070 10071 10072 10083 10085 10133 10136 10145 10146 10160 10161
-  10175 10176 10548 10550 11013 11016 11035 11037 11088 11089 11093 11094
-  # 12336 12337 12349 12350 12951 12952 12953 12954 これらは特別に処理する。
-  126980 126981
-  127183 127184 127344 127346 127358 127360 127374 127375 127377 127387
-  127462 127488 127489 127491 127514 127515 127535 127536 127538 127547
-  127568 127570 127744 127778 127780 127892 127894 127896 127897 127900
-  127902 127985 127987 127990 127991 128254 128255 128318 128329 128335
-  128336 128360 128367 128369 128371 128379 128391 128392 128394 128398
-  128400 128401 128405 128407 128420 128422 128424 128425 128433 128435
-  128444 128445 128450 128453 128465 128468 128476 128479 128481 128482
-  128483 128484 128488 128489 128495 128496 128499 128500 128506 128592
-  128640 128710 128715 128723 128736 128742 128745 128746 128747 128749
-  128752 128753 128755 128761 129296 129339 129340 129343 129344 129350
-  129351 129357 129360 129388 129408 129432 129472 129473 129488 129511)
+#%< canvas.emoji.sh
+
+bleopt/declare -n emoji_width 2
+
+function bleopt/check:emoji_version {
+  local rex='^0*([0-9]+)\.0*([0-9]+)$'
+  if ! [[ $value =~ $rex ]]; then
+    ble/util/print "bleopt: Invalid value for emoji_version: '$value'." >&2
+    return 1
+  fi
+
+  local src
+  ble/util/sprintf src _ble_canvas_emoji_database_%04d $((BASH_REMATCH[1]*100+BASH_REMATCH[2]))
+  if ! ble/is-array "$src"; then
+    ble/util/print "bleopt: Unsupported emoji_version '$value'." >&2
+    return 1
+  fi
+
+  builtin eval -- "_ble_canvas_emoji_database=(\"\${$src[@]}\")"
+  return 0
+}
 
 ## @fn ble/util/c2w/is-emoji code
 ##   @param[in] code
 function ble/util/c2w/is-emoji {
   local code=$1
-  ((8252<=code&&code<=0x2b55||0x1f004<code&&code<=0x1f9e6)) || return 1
+  ((_ble_canvas_emoji_expr_maybe)) || return 1
 
-  # 0x3030 - 0x3299
-  ((0x3030<=code&&code<=0x3299&&_ble_util_c2w_non_zenkaku[code]!=-2)) && return 1
-
-  local l=0 u=${#_ble_util_c2w_emoji_wranges[@]} m
+  local l=0 u=${#_ble_canvas_emoji_database[@]} m
   while ((l+1<u)); do
-    ((_ble_util_c2w_emoji_wranges[m=(l+u)/2]<=code?(l=m):(u=m)))
+    ((_ble_canvas_emoji_database[m=(l+u)/2]<=code?(l=m):(u=m)))
   done
 
   (((l&1)==0)); return "$?"
@@ -260,8 +251,10 @@ function ble/util/c2w+west {
   if ((ret<0)); then
     if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
       ((ret=bleopt_emoji_width))
+    elif ((_ble_util_c2w_except[$1]==-2)); then
+      ret=2 # (絵文字の可能性があったため曖昧だった) 全角
     else
-      ((ret=1))
+      ret=1
     fi
   fi
 }
@@ -291,6 +284,9 @@ function ble/util/c2w+east {
 
   if [[ $bleopt_emoji_width ]] && ble/util/c2w/is-emoji "$1"; then
     ((ret=bleopt_emoji_width))
+    return 0
+  elif ((_ble_util_c2w_except[$1]==-2)); then
+    ret=2 # (絵文字の可能性があったため曖昧だった) 全角
     return 0
   fi
 

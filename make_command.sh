@@ -80,6 +80,114 @@ function sub:ignoreeof-messages {
   ) >| lib/core-edit.ignoreeof-messages.new
 }
 
+function sub:update-emoji-database {
+  local unicode_version=$(wget https://unicode.org/Public/emoji/ -O - | grep -Eo 'href="[0-9]+\.[0-9]+/"' a.html | sed 's,^href=",,;s,/"$,,' | tail -n 1)
+  local cache=out/data/unicode-emoji-$unicode_version.txt
+  if [[ ! -s $cache ]]; then
+    mkd out/data
+    wget https://unicode.org/Public/emoji/$unicode_version/emoji-test.txt -O "$cache.part" &&
+      mv "$cache.part" "$cache"
+  fi
+
+  local q=\'
+  local versions=$(gawk 'match($0, / E([0-9]+\.[0-9]+)/, m) > 0 { print m[1]; }' "$cache" | sort -Vu | tr '\n' ' ')
+  gawk -v versions="$versions" '
+    function join(arr, sep, _, r, i, n) {
+      r = "";
+      n = length(arr);
+      for (i = 1; i <= n; i++) {
+        if (i > 1) r = r sep;
+        r = r arr[i];
+      }
+      return r;
+    }
+
+    BEGIN {
+      split(versions, vers);
+      nvers = length(vers);
+    }
+    # 単一絵文字 (sequence でない) のみを登録する。
+    # unqualified 絵文字を含めるかどうかは微妙だが、既存の端末は含めている気がする。
+    #$3 == "fully-qualified" && match($0, / E([0-9]+\.[0-9]+)/, m) > 0 {
+    ($3 == "fully-qualified" || $3 == "unqualified") && match($0, / E([0-9]+\.[0-9]+)/, m) > 0 {
+      char_code = strtonum("0x" $1);
+      char_emoji_version = m[1];
+
+      for (i = nvers; i >= 1; i--) {
+        emoji_version = vers[i];
+        data[emoji_version, char_code]++;
+        data[emoji_version, char_code + 1]++;
+        if (char_emoji_version == emoji_version) break;
+      }
+
+      if (char_code <= 0x2000 || 0x2E80 <= char_code && char_code <= 0xA4D0) {
+        printf("_ble_util_c2w_except[0x%04X]=-2\n", char_code);
+      } else {
+        if (char_code < 0x10000) {
+          if (bmp_min == "" || char_code < bmp_min) bmp_min = char_code;
+          if (bmp_max == "" || char_code > bmp_max) bmp_max = char_code;
+        } else {
+          if (smp_min == "" || char_code < smp_min) smp_min = char_code;
+          if (smp_max == "" || char_code > smp_max) smp_max = char_code;
+        }
+      }
+    }
+
+    function get_database_name(version, _, m) {
+      if (match(version, /^0*([0-9]+)\.0*([0-9]+)$/, m) > 0)
+        return sprintf("_ble_canvas_emoji_database_%04d", m[1] * 100 + m[2]);
+      else
+        return "";
+    }
+
+    function start_emoji_version(version) {
+      if (version == g_emoji_version) return 0;
+      end_emoji_version();
+      g_emoji_version = version;
+      return 1;
+    }
+    function end_emoji_version(_, database_name, _list) {
+      if (g_emoji_version == "") return;
+
+      if ((database_name = get_database_name(g_emoji_version))) {
+        asorti(g_emoji_list, _list, "@ind_num_asc");
+        g_def_wranges[g_emoji_version] = database_name "=(" join(_list, " ") ")";
+      }
+
+      g_emoji_version = "";
+      delete g_emoji_list;
+    }
+    END {
+      printf("_ble_canvas_emoji_expr_maybe='$q'_ble_util_c2w_except[code]==-2||%d<=code&&code<=%d||%d<=code&&code<=%d'$q'\n", bmp_min, bmp_max, smp_min, smp_max);
+      # printf("_ble_canvas_emoji_bmp_min=%-6d # U+%04X\n", bmp_min, bmp_min);
+      # printf("_ble_canvas_emoji_bmp_max=%-6d # U+%04X\n", bmp_max, bmp_max);
+      # printf("_ble_canvas_emoji_smp_min=%-6d # U+%04X\n", smp_min, smp_min);
+      # printf("_ble_canvas_emoji_smp_max=%-6d # U+%04X\n", smp_max, smp_max);
+
+      n = asorti(data, boundaries);
+      emoji_version = "";
+      for (i = 1; i <= n; i++) {
+        if (data[boundaries[i]] % 2 != 1) continue;
+        split(boundaries[i], fields, SUBSEP);
+        code = fields[2];
+
+        start_emoji_version(fields[1]);
+        g_emoji_list[code]++;
+      }
+      end_emoji_version();
+
+      for (i = 1; i <= nvers; i++) {
+        emoji_version = vers[i];
+        if (emoji_version >= 1.0)
+          print g_def_wranges[emoji_version];
+      }
+      latest_version = vers[nvers];
+      print "bleopt/declare -n emoji_version " latest_version;
+      print "_ble_canvas_emoji_database=(\"${" get_database_name(latest_version) "[@]}\")";
+    }
+  ' "$cache" | ifold -w 119 --spaces --no-text-justify --indent=.. > src/canvas.emoji.sh
+}
+
 #------------------------------------------------------------------------------
 # sub:check
 # sub:check-all
