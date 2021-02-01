@@ -1324,8 +1324,8 @@ function ble/builtin/history/option:s {
     fi
     local tmp=$_ble_base_run/$$.history.tmp
     [[ $bleopt_history_share ]] ||
-      builtin printf '%s\n' "$cmd" >> "$histfile"
-    builtin printf '%s\n' "$cmd" >| "$tmp"
+      ble/util/print "$cmd" >> "$histfile"
+    ble/util/print "$cmd" >| "$tmp"
     builtin history -r "$tmp"
   else
     ble/history:bash/clear-background-load

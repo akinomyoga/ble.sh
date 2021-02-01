@@ -5908,11 +5908,9 @@ function ble-sabbrev {
     ble/complete/sabbrev/read-arguments "$@"
     if [[ $flag_help || $flag_error ]]; then
       [[ $flag_error ]] && ble/util/print
-      printf '%s\n' \
-             'usage: ble-sabbrev key=value' \
-             'usage: ble-sabbrev -m key=function' \
-             'usage: ble-sabbrev --help' \
-             'Register sabbrev expansion.'
+      ble/util/print-lines \
+        'usage: ble-sabbrev [key=value|-m key=function|--help]' \
+        '     Register sabbrev expansion.'
       [[ ! $flag_error ]]; return "$?"
     fi
 

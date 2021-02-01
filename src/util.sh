@@ -18,7 +18,7 @@
 ##       変数の設定内容を表示する
 ##
 function bleopt {
-  local error_flag=
+  local flags=
   local -a pvars=()
   if (($#==0)); then
     local var ip=0
@@ -28,7 +28,6 @@ function bleopt {
     done
   else
     local spec var type= value= ip=0 rex
-    pvars=()
     for spec; do
       if rex='^[_a-zA-Z0-9]+:='; [[ $spec =~ $rex ]]; then
         type=a var=${spec%%:=*} value=${spec#*:=}
@@ -36,6 +35,9 @@ function bleopt {
         type=ac var=${spec%%=*} value=${spec#*=}
       elif rex='^[_a-zA-Z0-9]+$'; [[ $spec =~ $rex ]]; then
         type=p var=$spec
+      elif [[ $spec == --help ]]; then
+        flags=H$flags
+        continue
       else
         ble/util/print "bleopt: unrecognized argument '$spec'" >&2
         continue
@@ -43,7 +45,7 @@ function bleopt {
 
       var=bleopt_${var#bleopt_}
       if [[ $type == *c* && ! ${!var+set} ]]; then
-        error_flag=1
+        flags=E$flags
         ble/util/print "bleopt: unknown bleopt option \`${var#bleopt_}'" >&2
         continue
       fi
@@ -53,7 +55,7 @@ function bleopt {
         [[ ${!var+set} && ${!var} == "$value" ]] && continue
         if ble/is-function bleopt/check:"${var#bleopt_}"; then
           if ! bleopt/check:"${var#bleopt_}"; then
-            error_flag=1
+            flags=E$flags
             continue
           fi
         fi
@@ -64,7 +66,20 @@ function bleopt {
     done
   fi
 
-  if ((${#pvars[@]})); then
+  if [[ $flags == *H* ]]; then
+    ble/util/print-lines \
+      'usage: bleopt [NAME|NAME=VALUE|NAME:=VALUE]...' \
+      '    Set ble.sh options. Without arguments, this prints all the settings.' \
+      '' \
+      '  Options:' \
+      '    --help      Print this help.' \
+      '' \
+      '  Arguments:' \
+      '    NAME        Print the value of the option.' \
+      '    NAME=VALUE  Set the value to the option.' \
+      '    NAME:=VALUE Set or create the value to the option.'
+    return 0
+  elif ((${#pvars[@]})); then
     local q="'" Q="'\''" var
 
     # 着色
@@ -87,15 +102,15 @@ function bleopt {
           local ret; ble/string#quote-word "${!var}" sgrq="$sgr3"
           value=$ret
         fi
-        builtin printf '%s\n' "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$value"
+        ble/util/print "${sgr1}bleopt$sgr0 ${sgr2}${var#bleopt_}$sgr0=$value"
       else
-        error_flag=1
-        builtin printf '%s\n' "bleopt: invalid ble option name '${var#bleopt_}'" >&2
+        flags=E$flags
+        ble/util/print "bleopt: invalid ble option name '${var#bleopt_}'" >&2
       fi
     done
   fi
 
-  [[ ! $error_flag ]]
+  [[ $flags != *E* ]]
 }
 
 function bleopt/declare/.handle-obsolete-option {
@@ -1323,10 +1338,22 @@ function blehook/.print {
     ble/is-array "$hookname" || continue
     builtin eval -- "${code//NAME/${hookname#_ble_hook_h_}}"
   done
-  builtin printf %s "$out"
+  ble/util/put "$out"
 }
 function blehook/.print-help {
-  ble/util/print 'usage: blehook hook_name+=shell-command'
+  ble/util/print-lines \
+    'usage: blehook [NAME[[=|+=|-=|-+=]COMMAND]]...' \
+    '    Add or remove hooks. Without arguments, this prints all the existing hooks.' \
+    '' \
+    '  Options:' \
+    '    --help      Print this help.' \
+    '' \
+    '  Arguments:' \
+    '    NAME            Print the corresponding hooks.' \
+    '    NAME=COMMAND    Set hook after removing the existing hooks.' \
+    '    NAME+=COMMAND   Add hook.' \
+    '    NAME-=COMMAND   Remove hook.' \
+    '    NAME-+=COMMAND  Add hook if the command is not registered.'
 }
 
 function blehook {
@@ -2678,14 +2705,14 @@ if ((_ble_bash>=40400)) && ble/util/msleep/.check-builtin-sleep; then
       shift
     done
     if [[ $flags == *h* ]]; then
-      builtin printf '%s\n' \
-              'usage: sleep NUMBER[SUFFIX]...' \
-              'Pause for the time specified by the sum of the arguments. SUFFIX is one of "s"' \
-              '(seconds), "m" (minutes), "h" (hours) or "d" (days).' \
-              '' \
-              'OPTIONS' \
-              '     --help    Show this help.' \
-              '     --version Show version.'
+      ble/util/print-lines \
+        'usage: sleep NUMBER[SUFFIX]...' \
+        'Pause for the time specified by the sum of the arguments. SUFFIX is one of "s"' \
+        '(seconds), "m" (minutes), "h" (hours) or "d" (days).' \
+        '' \
+        'OPTIONS' \
+        '     --help    Show this help.' \
+        '     --version Show version.'
     fi
     if [[ $flags == *v* ]]; then
       ble/util/print "sleep (ble) $BLE_VERSION"

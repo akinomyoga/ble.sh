@@ -844,16 +844,17 @@ function ble/color/setface/.check-argument {
   fi
 
   local name=${FUNCNAME[1]}
-  printf '%s\n' "usage: $name FACE_NAME [TYPE:]SPEC" '' \
-         'TYPE' \
-         '  Specifies the format of SPEC. The following values are available.' \
-         '' \
-         '  gspec   Comma separated graphic attribute list' \
-         '  g       Integer value' \
-         '  ref     Face name or id (reference)' \
-         '  copy    Face name or id (copy value)' \
-         '  sgrspec Parameters to the control function SGR' \
-         '  ansi    ANSI Sequences' >&2
+  ble/util/print-lines \
+    "usage: $name FACE_NAME [TYPE:]SPEC" \
+    '    Set face.' \
+    '' \
+    '  TYPE      Specifies the format of SPEC. The following values are available.' \
+    '    gspec   Comma separated graphic attribute list' \
+    '    g       Integer value' \
+    '    ref     Face name or id (reference)' \
+    '    copy    Face name or id (copy value)' \
+    '    sgrspec Parameters to the control function SGR' \
+    '    ansi    ANSI Sequences' >&2
   ext=2; [[ $# == 1 && $1 == --help ]] && ext=0
   return 1
 }
@@ -966,8 +967,16 @@ function ble/color/initialize-faces {
 }
 
 function ble/color/list-faces {
-  local key g ret opt_color=
-  [[ -t 1 ]] && opt_color=1
+  local opt_color=; [[ -t 1 ]] && opt_color=1
+
+  local ret sgr0= sgr1= sgr2=
+  if [[ $opt_color ]]; then
+    sgr0=$_ble_term_sgr0
+    ble/color/face2sgr command_function; sgr1=$ret
+    ble/color/face2sgr syntax_varname; sgr2=$ret
+  fi
+
+  local key g
   for key in "${!_ble_faces__@}"; do
     local name=${key#_ble_faces__}
     ble/color/g2gspec $((_ble_faces[key])); local gspec=$ret
@@ -975,7 +984,7 @@ function ble/color/list-faces {
       ble/color/iface2sgr $((key))
       gspec=$ret$gspec$_ble_term_sgr0
     fi
-    printf 'ble-color-setface %s %s\n' "$name" "$gspec"
+    printf '%s %s %s\n' "${sgr1}ble-color-setface$sgr0" "$sgr2$name$sgr0" "$gspec"
   done
 }
 

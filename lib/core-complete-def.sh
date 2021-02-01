@@ -57,9 +57,9 @@ bleopt/declare -v complete_allow_reduction ''
 bleopt/declare -n complete_menu_style align-nowrap
 function bleopt/check:complete_menu_style {
   if ! ble/is-function "ble/complete/menu-style:$value/construct-page"; then
-    builtin printf '%s\n' \
-            "bleopt: Invalid value complete_menu_style='$value'." \
-            "  A function 'ble/complete/menu-style:$value/construct-page' is not defined." >&2
+    ble/util/print-lines \
+      "bleopt: Invalid value complete_menu_style='$value'." \
+      "  A function 'ble/complete/menu-style:$value/construct-page' is not defined." >&2
     return 1
   fi
   return 0

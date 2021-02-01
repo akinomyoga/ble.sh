@@ -267,6 +267,7 @@ ble/base/initialize-version-information
 
 function ble/util/put { builtin printf '%s' "$*"; }
 function ble/util/print { builtin printf '%s\n' "$*"; }
+function ble/util/print-lines { builtin printf '%s\n' "$@"; }
 
 ## @fn ble/bin/.default-utility-path commands...
 ##   取り敢えず ble/bin/* からコマンドを呼び出せる様にします。
@@ -641,9 +642,9 @@ if ! ble/base/initialize-cache-directory; then
 fi
 function ble/base/print-usage-for-no-argument-command {
   local name=${FUNCNAME[1]} desc=$1; shift
-  printf '%s\n' \
-         "usage: $name" \
-         "$desc" >&2
+  ble/util/print-lines \
+    "usage: $name" \
+    "$desc" >&2
   [[ $1 != --help ]] && return 2
   return 0
 }

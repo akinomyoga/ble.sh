@@ -179,9 +179,26 @@ function ble-measure {
   local flags= command= count=$_ble_measure_count
   ble-measure/.read-arguments "$@" || return "$?"
   if [[ $flags == *h* ]]; then
-    ble/util/print 'usage: ble-measure [-q|-ac COUNT] command'
-    ble/util/print '  Measure the time of command.'
-    return 0
+    ble/util/print-lines \
+      'usage: ble-measure [-q|-ac COUNT|-TB TIME] [--] COMMAND' \
+      '    Measure the time of command.' \
+      '' \
+      '  Options:' \
+      '    -q        Do not print results to stdout.' \
+      '    -a COUNT  Measure COUNT times and average.' \
+      '    -c COUNT  Measure COUNT times and take maximum.' \
+      '    -T TIME   Set minimal measuring time.' \
+      '    -B BASE   Set base time (overhead of ble-measure).' \
+      '    --        The rest arguments are treated as command.' \
+      '    --help    Print this help.' \
+      '' \
+      '  Arguments:' \
+      '    COMMAND   Command to be executed repeatedly.' \
+      '' \
+      '  Exit status:' \
+      '    Returns 1 for the failure in measuring the time.  Returns 2 after printing' \
+      '    help.  Otherwise, returns 0.'
+    return 2
   fi
 
   local prev_n= prev_utot=

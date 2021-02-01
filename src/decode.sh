@@ -2189,17 +2189,17 @@ function ble/debug/keylog#start {
 function ble/debug/keylog#end {
   {
     ble/util/print '===== bytes ====='
-    printf '%s\n' "${_ble_debug_keylog_bytes[*]}"
+    ble/util/print "${_ble_debug_keylog_bytes[*]}"
     ble/util/print
     ble/util/print '===== chars ====='
     local ret; ble-decode-unkbd "${_ble_debug_keylog_chars[@]}"
     ble/string#split ret ' ' "$ret"
-    printf '%s\n' "${ret[*]}"
+    ble/util/print "${ret[*]}"
     ble/util/print
     ble/util/print '===== keys ====='
     local ret; ble-decode-unkbd "${_ble_debug_keylog_keys[@]}"
     ble/string#split ret ' ' "$ret"
-    printf '%s\n' "${ret[*]}"
+    ble/util/print "${ret[*]}"
     ble/util/print
   } | fold -w 40
 

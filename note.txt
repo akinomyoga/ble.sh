@@ -3813,6 +3813,10 @@ bash_tips
 
 2021-02-03
 
+  * global: help の類の整理 [#D1459]
+    * bleopt: --help に対応していない
+    * blehook: --help が単純すぎる
+
   * canvas: status line を最終行に表示する可能性 (suggested by 0neGuyDev) [#D1458]
     https://github.com/akinomyoga/ble.sh/issues/85
 

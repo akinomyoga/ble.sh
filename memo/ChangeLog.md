@@ -12,7 +12,7 @@
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
-- canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 0000000
+- canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
 
 ## Changes
 
@@ -47,6 +47,7 @@
 - util: add function `ble/string#quote-words` `#D1451` f03b87b
 - syntax (`ble/syntax:bash/simple-word/eval`): cache `#D1453` 6d8311e
 - global: refactor `setup => set up / set-up` `#D1456` c37a9dd
+- global: clean up helps of user functions `#D1459` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

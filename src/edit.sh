@@ -7564,13 +7564,13 @@ function ble/widget/command-help.core {
     MANOPT= ble/bin/man "${command##*/}" 2>/dev/null && return 0
     # Note: $(man "${command##*/}") だと (特に日本語で) 正しい結果が得られない。
     # if local content=$(MANOPT= ble/bin/man "${command##*/}" 2>&1) && [[ $content ]]; then
-    #   builtin printf '%s\n' "$content" | ble/util/pager
+    #   ble/util/print "$content" | ble/util/pager
     #   return 0
     # fi
   fi
 
   if local content; content=$("$command" --help 2>&1) && [[ $content ]]; then
-    builtin printf '%s\n' "$content" | ble/util/pager
+    ble/util/print "$content" | ble/util/pager
     return 0
   fi
 
@@ -7790,7 +7790,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
       local line opts=:$1:
       while TMOUT= IFS= builtin read -r line; do
         if [[ $line == *[^$_ble_term_IFS]* ]]; then
-          builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
+          ble/util/print "$line" >> "$_ble_edit_io_fname2"
         fi
 
         if ble-edit/io/check-ignoreeof-message "$line"; then
@@ -7993,7 +7993,7 @@ function ble/widget/print {
 
   _ble_edit_line_disabled=1 ble/widget/.insert-newline
   ble/util/buffer.flush >&2
-  builtin printf '%s\n' "$message" >&2
+  ble/util/print "$message" >&2
 }
 function ble/widget/internal-command {
   ble-edit/content/clear-arg
