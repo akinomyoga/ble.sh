@@ -21,6 +21,7 @@
 - edit: change default behavior of <kbd>C-w</kbd> and <kbd>M-w</kbd> to operate on backward words `#D1448` 47a3301
 - syntax (`layer:syntax/word`): perform pathname expansions in background subshells (motivated by 3ximus) `#D1449` 13e7bdd
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
+- complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` 0000000
 
 ## Fixes
 
@@ -44,7 +45,7 @@
 - global: update the style of document comments ff4c4e7
 - util: add function `ble/string#quote-words` `#D1451` f03b87b
 - syntax (`ble/syntax:bash/simple-word/eval`): cache `#D1453` 6d8311e
-- global: refactor `setup => set up / set-up` `#D1456` 0000000
+- global: refactor `setup => set up / set-up` `#D1456` c37a9dd
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2

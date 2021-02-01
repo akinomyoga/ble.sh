@@ -417,7 +417,17 @@
 ## the timeout duration in milliseconds.  When the value is empty, the
 ## timeout is disabled.
 
-# bleopt complete_auto_timeout=5000
+# bleopt complete_timeout_auto=5000
+
+
+## The following setting controls the timeout for the pathname expansions to
+## prepare COMP_WORDS and COMP_LINE for progcomp.  When the word contains a
+## glob pattern that takes a long time to evaluate, the pathname expansion is
+## canceled, and a noglob expansion is used to construct COMP_WORDS and
+## COMP_LINE.  The value specifies ## the timeout duration in milliseconds.
+## When the value is empty, the timeout is disabled.
+
+# bleopt complete_timeout_compvar=200
 
 
 ## The following setting specifies the style of the menu to show completion

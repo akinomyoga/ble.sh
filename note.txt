@@ -3813,6 +3813,49 @@ bash_tips
 
 2021-02-01
 
+  * complete: support "bleopt complete_timeout_compvar" (motivated by 3ximus) [#D1457]
+    https://github.com/akinomyoga/ble.sh/issues/82#issuecomment-770390986
+
+    これは progcomp の関数を呼び出す時にパス名展開を実行しているからである。
+    一応、応答がなくなるという事はないが補完に不自然に時間がかかるのは避けたい。
+    progcomp の為に展開する時は noglob で展開する事も考えたが、
+    展開した文字列を quote しているので、noglob で呼び出すと例えば *.txt
+    が '*.txt' 等になってしまって意図しない結果になってしまう。
+
+    どの様にするのが良いのかは不明である。或いは timeout したら '*.txt' にして
+    しまうというのでも良いのかもしれない。
+
+    bleopt complete_timeout_progcomp_glob=200 等の設定にして、timeout したら
+    noglob で呼び出すというので良い気がする。
+
+    retry-noglob-on-timeout という opts を追加する事にする。
+
+    新しい bleopt の変数名は何が良いだろうか。
+
+      complete_timeout_progcomp_glob だと長い。
+      それに似たような変数が沢山あって気になる。
+      そもそも単に timeout としていると何の timeout か分からない。
+
+      ちゃんとした名前にするなら glob_timeout が良いが長い。
+      一単語でこれを表現できないか。fsys_timeout, path_timeout, ...
+      やはり専用の単語は存在しない以上は一単語にするのは難しい。
+      また、似たような設定をまとめるという立場からすると以下の様な
+      変数名で良いのではないかという気もしないでもないが、微妙。
+
+        glob_timeout_progcomp
+        glob_timeout_sync_highilght
+        glob_timeout_async_highilght
+        glob_timeout_auto_complete
+
+      やはり highlight_*, complete_* という名前にしたい。
+
+        highlight_timeout_sync
+        highlight_timeout_async
+        complete_timeout_auto
+        complete_timeout_compvar
+
+    →これは実際に試してみたが改善していない。
+
   * setup を動詞の様に使っている箇所が多くて気になるので修正する [#D1456]
 
     set up に代わる動詞を探しても余り良いのが見つからない。文脈に応じて全く違う

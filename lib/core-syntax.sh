@@ -1425,6 +1425,7 @@ function ble/syntax:bash/simple-word/eval/.cache-update {
   fi
 }
 ## @fn ble/syntax:bash/simple-word/eval/.save word ext ret...
+##   @var[in] ext
 ##   @var[in,out] _ble_syntax_bash_simple_eval
 function ble/syntax:bash/simple-word/eval/.cache-save {
   ((ext==148||ext==142)) && return 0
@@ -1441,12 +1442,17 @@ function ble/syntax:bash/simple-word/eval/.cache-load {
 ## @fn ble/syntax:bash/simple-word/eval word opts
 ##   @param[in] word
 ##   @param[in,opt] opts
+##     noglob
+##
+##     cached
 ##     stopcheck
-##     timeout-highlight
+##
 ##     timeout=NUM
 ##       stopcheck を指定している時に有効です。timeout を指定します。
-##     cached
-##     noglob
+##     timeout-highlight
+##       bleopt highlight_timeout_{sync,async} を参照して timeout します。
+##     retry-noglob-on-timeout
+##       timeout した時に noglob で改めて展開を試行します。
 ##
 ##   @var[out] ret
 ##   @exit
@@ -1465,6 +1471,10 @@ function ble/syntax:bash/simple-word/eval {
 
   if [[ :$2: == *:cached:* && :$2: != *:noglob:* ]]; then
     ble/syntax:bash/simple-word/eval/.cache-save "$1" "$ext" "${ret[@]}"
+  fi
+  if ((ext==142)) && [[ :$2: == *:retry-noglob-on-timeout:* ]]; then
+    ble/syntax:bash/simple-word/eval "$1" "$2:noglob"
+    return "$?"
   fi
   return "$ext"
 }

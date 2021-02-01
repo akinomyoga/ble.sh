@@ -1333,8 +1333,8 @@ function ble/complete/source/eval-simple-word {
   local word=$1 opts=$2
   if [[ :$comp_type: != *:sync:* && :$opts: != *:noglob:* ]]; then
     opts=$opts:stopcheck:cached
-    [[ :$comp_type: == *:auto:* && $bleopt_complete_auto_timeout ]] &&
-      opts=$opts:timeout=$((bleopt_complete_auto_timeout))
+    [[ :$comp_type: == *:auto:* && $bleopt_complete_timeout_auto ]] &&
+      opts=$opts:timeout=$((bleopt_complete_timeout_auto))
   fi
   ble/syntax:bash/simple-word/eval "$word" "$opts"; local ext=$?
   ((ext==142)) && return 148
@@ -1344,8 +1344,8 @@ function ble/complete/source/evaluate-path-spec {
   local word=$1 sep=$2 opts=$3
   if [[ :$comp_type: != *:sync:* && :$opts: != *:noglob:* ]]; then
     opts=$opts:stopcheck:cached
-    [[ :$comp_type: == *:auto:* && $bleopt_complete_auto_timeout ]] &&
-      opts=$opts:timeout=$((bleopt_complete_auto_timeout))
+    [[ :$comp_type: == *:auto:* && $bleopt_complete_timeout_auto ]] &&
+      opts=$opts:timeout=$((bleopt_complete_timeout_auto))
   fi
   ble/syntax:bash/simple-word/evaluate-path-spec "$word" "$sep" "$opts"; local ext=$?
   ((ext==142)) && return 148
@@ -1751,8 +1751,8 @@ function ble/complete/util/eval-pathname-expansion {
   else
     local sync_command='ble/complete/util/eval-pathname-expansion/.print-def "$pattern"'
     local sync_opts=progressive-weight
-    [[ :$comp_type: == *:auto:* && $bleopt_complete_auto_timeout ]] &&
-      sync_opts=$sync_opts:timeout=$((bleopt_complete_auto_timeout))
+    [[ :$comp_type: == *:auto:* && $bleopt_complete_timeout_auto ]] &&
+      sync_opts=$sync_opts:timeout=$((bleopt_complete_timeout_auto))
     local def
     ble/util/assign def 'ble/util/conditional-sync "$sync_command" "" "" "$sync_opts"' &>/dev/null; local ext=$?
     ((ext==148)) && return 148
@@ -1975,6 +1975,16 @@ function ble/complete/progcomp/.compvar-perform-wordbreaks {
   #   その場合には wordbreaks の次に新しい単語を開始していると考える。
   ble/array#push ret "$word"
 }
+function ble/complete/progcomp/.compvar-eval-word {
+  local opts=$2
+  if [[ :$opts: == *:noglob:* ]]; then
+    ble/syntax:bash/simple-word/eval "$1" "$opts"
+  else
+    [[ $bleopt_complete_timeout_compvar ]] &&
+      opts=timeout=$((bleopt_complete_timeout_compvar)):retry-noglob-on-timeout:$opts
+    ble/complete/source/eval-simple-word "$1" "$opts"
+  fi
+}
 
 ## @fn ble/complete/progcomp/.compvar-generate-subwords/impl1 word
 ##   $wordbreaks で分割してから評価する戦略。
@@ -2018,7 +2028,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
   ble/syntax:bash/simple-word#break-word "$left"
   local subword
   for subword in "${ret[@]}"; do
-    ble/syntax:bash/simple-word/eval "$subword" "$eval_opts"
+    ble/complete/progcomp/.compvar-eval-word "$subword" "$eval_opts"
     ble/array#push words "$ret"
     ((point+=${#ret}))
   done
@@ -2028,7 +2038,7 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl1 {
     ble/syntax:bash/simple-word#break-word "$right"
     local subword isfirst=1
     for subword in "${ret[@]}"; do
-      ble/syntax:bash/simple-word/eval "$subword" noglob
+      ble/complete/progcomp/.compvar-eval-word "$subword" noglob
       if [[ $isfirst ]]; then
         isfirst=
         local iword=${#words[@]}; ((iword&&iword--))
@@ -2054,12 +2064,12 @@ function ble/complete/progcomp/.compvar-generate-subwords/impl2 {
   local word=$1
   ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word" || return 1
 
-  ble/complete/source/eval-simple-word "$ret"; (($?==148)) && return 148; local value1=$ret
+  ble/complete/progcomp/.compvar-eval-word "$ret"; (($?==148)) && return 148; local value1=$ret
   if [[ $point ]]; then
     if ((point==${#word})); then
       point=${#value1}
     elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "${word::point}"; then
-      ble/complete/source/eval-simple-word "$ret"; (($?==148)) && return 148
+      ble/complete/progcomp/.compvar-eval-word "$ret"; (($?==148)) && return 148
       point=${#ret}
     fi
   fi
@@ -2120,7 +2130,7 @@ function ble/complete/progcomp/.compvar-quote-subword {
     [[ $subword_flags == *E* ]] && to_quote=1
   elif ble/syntax:bash/simple-word/reconstruct-incomplete-word "$word"; then
     is_evaluated=1
-    ble/complete/source/eval-simple-word "$ret"; (($?==148)) && return 148; word=$ret
+    ble/complete/progcomp/.compvar-eval-word "$ret"; (($?==148)) && return 148; word=$ret
     to_quote=1
   fi
 
@@ -2141,7 +2151,7 @@ function ble/complete/progcomp/.compvar-quote-subword {
       local left=${word::p}
       if [[ $is_evaluated ]]; then
         if ble/syntax:bash/simple-word/reconstruct-incomplete-word "$left"; then
-          ble/complete/source/eval-simple-word "$ret"; (($?==148)) && return 148; left=$ret
+          ble/complete/progcomp/.compvar-eval-word "$ret"; (($?==148)) && return 148; left=$ret
         fi
       fi
       if [[ $is_quoted ]]; then
