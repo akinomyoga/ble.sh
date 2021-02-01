@@ -1665,7 +1665,7 @@ function ble-edit/attach/.attach {
     _ble_edit_CMD=$_ble_edit_LINENO
   fi
 
-  ble/builtin/trap/setup-hook WINCH readline
+  ble/builtin/trap/install-hook WINCH readline
   blehook WINCH-+=ble-edit/attach/TRAPWINCH
 
   ble-edit/adjust-PS1
@@ -4055,43 +4055,43 @@ function ble/widget/backward-line {
 # 
 # **** word location ****                                            @edit.word
 
-## @fn ble/widget/word.setup-eword
-## @fn ble/widget/word.setup-cword
-## @fn ble/widget/word.setup-uword
-## @fn ble/widget/word.setup-sword
-## @fn ble/widget/word.setup-fword
+## @fn ble/edit/word:eword/setup
+## @fn ble/edit/word:cword/setup
+## @fn ble/edit/word:uword/setup
+## @fn ble/edit/word:sword/setup
+## @fn ble/edit/word:fword/setup
 ##   @var[out] WSET WSEP
-function ble/widget/word.setup-eword {
+function ble/edit/word:eword/setup {
   WSET='a-zA-Z0-9'; WSEP="^$WSET"
 }
-function ble/widget/word.setup-cword {
+function ble/edit/word:cword/setup {
   WSET='_a-zA-Z0-9'; WSEP="^$WSET"
 }
-function ble/widget/word.setup-uword {
+function ble/edit/word:uword/setup {
   WSEP="${IFS:-$' \t\n'}"; WSET="^$WSEP"
 }
-function ble/widget/word.setup-sword {
+function ble/edit/word:sword/setup {
   WSEP=$'|&;()<> \t\n'; WSET="^$WSEP"
 }
-function ble/widget/word.setup-fword {
+function ble/edit/word:fword/setup {
   WSEP="/${IFS:-$' \t\n'}"; WSET="^$WSEP"
 }
 
-## @fn ble/widget/word.skip-backward set
-## @fn ble/widget/word.skip-forward set
+## @fn ble/edit/word/skip-backward set
+## @fn ble/edit/word/skip-forward set
 ##   @var[in,out] x
-function ble/widget/word.skip-backward {
+function ble/edit/word/skip-backward {
   local set=$1 head=${_ble_edit_str::x}
   head=${head##*[$set]}
   ((x-=${#head},${#head}))
 }
-function ble/widget/word.skip-forward {
+function ble/edit/word/skip-forward {
   local set=$1 tail=${_ble_edit_str:x}
   tail=${tail%%[$set]*}
   ((x+=${#tail},${#tail}))
 }
 
-## @fn ble/widget/word.locate-backward x arg
+## @fn ble/edit/word/locate-backward x arg
 ##   左側の単語の範囲を特定します。
 ##   @param[in] x arg
 ##   @var[in] WSET WSEP
@@ -4100,15 +4100,15 @@ function ble/widget/word.skip-forward {
 ##   |---|www|---|
 ##   a   b   c   x
 ##
-function ble/widget/word.locate-backward {
+function ble/edit/word/locate-backward {
   local x=${1:-$_ble_edit_ind} arg=${2:-1}
   while ((arg--)); do
-    ble/widget/word.skip-backward "$WSET"; c=$x
-    ble/widget/word.skip-backward "$WSEP"; b=$x
+    ble/edit/word/skip-backward "$WSET"; c=$x
+    ble/edit/word/skip-backward "$WSEP"; b=$x
   done
-  ble/widget/word.skip-backward "$WSET"; a=$x
+  ble/edit/word/skip-backward "$WSET"; a=$x
 }
-## @fn ble/widget/word.locate-forward x arg
+## @fn ble/edit/word/locate-forward x arg
 ##   右側の単語の範囲を特定します。
 ##   @param[in] x arg
 ##   @var[in] WSET WSEP
@@ -4117,44 +4117,44 @@ function ble/widget/word.locate-backward {
 ##   |---|www|---|
 ##   x   s   t   u
 ##
-function ble/widget/word.locate-forward {
+function ble/edit/word/locate-forward {
   local x=${1:-$_ble_edit_ind} arg=${2:-1}
   while ((arg--)); do
-    ble/widget/word.skip-forward "$WSET"; s=$x
-    ble/widget/word.skip-forward "$WSEP"; t=$x
+    ble/edit/word/skip-forward "$WSET"; s=$x
+    ble/edit/word/skip-forward "$WSEP"; t=$x
   done
-  ble/widget/word.skip-forward "$WSET"; u=$x
+  ble/edit/word/skip-forward "$WSET"; u=$x
 }
 
-## @fn ble/widget/word.forward-range arg
-## @fn ble/widget/word.backward-range arg
-## @fn ble/widget/word.current-range arg
+## @fn ble/edit/word/forward-range arg
+## @fn ble/edit/word/backward-range arg
+## @fn ble/edit/word/current-range arg
 ##   @var[in,out] x y
-function ble/widget/word.forward-range {
+function ble/edit/word/forward-range {
   local arg=$1; ((arg)) || arg=1
   if ((arg<0)); then
-    ble/widget/word.backward-range $((-arg))
+    ble/edit/word/backward-range $((-arg))
     return "$?"
   fi
-  local s t u; ble/widget/word.locate-forward "$x" "$arg"; y=$t
+  local s t u; ble/edit/word/locate-forward "$x" "$arg"; y=$t
 }
-function ble/widget/word.backward-range {
+function ble/edit/word/backward-range {
   local arg=$1; ((arg)) || arg=1
   if ((arg<0)); then
-    ble/widget/word.forward-range $((-arg))
+    ble/edit/word/forward-range $((-arg))
     return "$?"
   fi
-  local a b c; ble/widget/word.locate-backward "$x" "$arg"; y=$b
+  local a b c; ble/edit/word/locate-backward "$x" "$arg"; y=$b
 }
-function ble/widget/word.current-range {
+function ble/edit/word/current-range {
   local arg=$1; ((arg)) || arg=1
   if ((arg>0)); then
-    local a b c; ble/widget/word.locate-backward "$x"
-    local s t u; ble/widget/word.locate-forward "$a" "$arg"
+    local a b c; ble/edit/word/locate-backward "$x"
+    local s t u; ble/edit/word/locate-forward "$a" "$arg"
     ((y=a,x<t&&(x=t)))
   elif ((arg<0)); then
-    local s t u; ble/widget/word.locate-forward "$x"
-    local a b c; ble/widget/word.locate-backward "$u" $((-arg))
+    local s t u; ble/edit/word/locate-forward "$x"
+    local a b c; ble/edit/word/locate-backward "$u" $((-arg))
     ((b<x&&(x=b),y=u))
   fi
   return 0
@@ -4165,10 +4165,10 @@ function ble/widget/word.impl {
   local operator=$1 direction=$2 wtype=$3
 
   local arg; ble-edit/content/get-arg 1
-  local WSET WSEP; ble/widget/word.setup-"$wtype"
+  local WSET WSEP; ble/edit/word:"$wtype"/setup
 
   local x=$_ble_edit_ind y=$_ble_edit_ind
-  ble/function#try ble/widget/word."$direction"-range "$arg"
+  ble/function#try ble/edit/word/"$direction"-range "$arg"
   if ((x==y)); then
     ble/widget/.bell
     return 1
@@ -4196,32 +4196,32 @@ function ble/widget/word.impl {
 
 function ble/widget/transpose-words.impl1 {
   local wtype=$1 arg=$2
-  local WSET WSEP; ble/widget/word.setup-"$wtype"
+  local WSET WSEP; ble/edit/word:"$wtype"/setup
   if ((arg==0)); then
     local x=$_ble_edit_ind
-    ble/widget/word.skip-forward "$WSET"
-    ble/widget/word.skip-forward "$WSEP"; local e1=$x
-    ble/widget/word.skip-backward "$WSEP"; local b1=$x
+    ble/edit/word/skip-forward "$WSET"
+    ble/edit/word/skip-forward "$WSEP"; local e1=$x
+    ble/edit/word/skip-backward "$WSEP"; local b1=$x
     local x=$_ble_edit_mark
-    ble/widget/word.skip-forward "$WSET"
-    ble/widget/word.skip-forward "$WSEP"; local e2=$x
-    ble/widget/word.skip-backward "$WSEP"; local b2=$x
+    ble/edit/word/skip-forward "$WSET"
+    ble/edit/word/skip-forward "$WSEP"; local e2=$x
+    ble/edit/word/skip-backward "$WSEP"; local b2=$x
   else
     local x=$_ble_edit_ind
-    ble/widget/word.skip-backward "$WSET"
-    ble/widget/word.skip-backward "$WSEP"; local b1=$x
-    ble/widget/word.skip-forward "$WSEP"; local e1=$x
+    ble/edit/word/skip-backward "$WSET"
+    ble/edit/word/skip-backward "$WSEP"; local b1=$x
+    ble/edit/word/skip-forward "$WSEP"; local e1=$x
     if ((arg>0)); then
       x=$e1
-      ble/widget/word.skip-forward "$WSET"; local b2=$x
-      while ble/widget/word.skip-forward "$WSEP" || return 1; ((--arg>0)); do
-        ble/widget/word.skip-forward "$WSET"
+      ble/edit/word/skip-forward "$WSET"; local b2=$x
+      while ble/edit/word/skip-forward "$WSEP" || return 1; ((--arg>0)); do
+        ble/edit/word/skip-forward "$WSET"
       done; local e2=$x
     else
       x=$b1
-      ble/widget/word.skip-backward "$WSET"; local e2=$x
-      while ble/widget/word.skip-backward "$WSEP" || return 1; ((++arg<0)); do
-        ble/widget/word.skip-backward "$WSET"
+      ble/edit/word/skip-backward "$WSET"; local e2=$x
+      while ble/edit/word/skip-backward "$WSEP" || return 1; ((++arg<0)); do
+        ble/edit/word/skip-backward "$WSET"
       done; local b2=$x
     fi
   fi
@@ -4258,9 +4258,9 @@ function ble/widget/filter-word.impl {
     local arg; ble-edit/content/get-arg 1
   fi
 
-  local WSET WSEP; ble/widget/word.setup-"$xword"
+  local WSET WSEP; ble/edit/word:"$xword"/setup
   local x=$_ble_edit_ind s t u
-  ble/widget/word.locate-forward "$x" "$arg"
+  ble/edit/word/locate-forward "$x" "$arg"
   if ((x==t)); then
     ble/widget/.bell
     [[ $_ble_decode_keymap == vi_nmap ]] &&
@@ -4706,7 +4706,7 @@ function ble-edit/exec:gexec/.begin {
   ble-edit/bind/stdout.on
 
   # C-c に対して
-  ble/builtin/trap/setup-hook INT # 何故か改めて実行しないと有効にならない
+  ble/builtin/trap/install-hook INT # 何故か改めて実行しないと有効にならない
   blehook INT+='ble-edit/exec:gexec/.TRAPINT'
   ble-edit/exec:gexec/.TRAPDEBUG/enter
 }
@@ -7172,7 +7172,7 @@ function ble/builtin/read/.read-arguments {
   done
 }
 
-function ble/builtin/read/.setup-textarea {
+function ble/builtin/read/.set-up-textarea {
   # 初期化
   ble-decode/keymap/push read || return 1
 
@@ -7224,8 +7224,8 @@ function ble/builtin/read/.loop {
   shopt -u failglob
 
   local x0=$_ble_canvas_x y0=$_ble_canvas_y
-  ble/builtin/read/.setup-textarea || return 1
-  ble/builtin/trap/setup-hook WINCH readline
+  ble/builtin/read/.set-up-textarea || return 1
+  ble/builtin/trap/install-hook WINCH readline
   blehook WINCH=ble/builtin/read/TRAPWINCH
 
   local ret= timeout=
@@ -7705,7 +7705,7 @@ if [[ $bleopt_internal_suppress_bash_output ]]; then
     }
     blehook/declare USR1
     blehook USR1+=ble-edit/io/TRAPUSR1
-    ble/builtin/trap/setup-hook USR1
+    ble/builtin/trap/install-hook USR1
 
     function ble-edit/io/check-ignoreeof-message {
       local line=$1

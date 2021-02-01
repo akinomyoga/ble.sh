@@ -724,8 +724,8 @@ ble/bin/.freeze-utility-path groff nroff mandoc gzip bzcat lzcat xzcat # used by
 # Solaris: .freeze-utility-path で上書きされた awk を戻す
 ble/bin/awk.use-solaris-xpg4
 
-ble/builtin/trap/setup-hook EXIT
-ble/builtin/trap/setup-hook INT
+ble/builtin/trap/install-hook EXIT
+ble/builtin/trap/install-hook INT
 
 blehook ERR+='ble/builtin/trap/invoke ERR'
 blehook ERR+='ble/function#try TRAPERR'

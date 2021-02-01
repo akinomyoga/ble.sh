@@ -1668,7 +1668,7 @@ function ble/builtin/trap/.handler {
   esac
 }
 
-function ble/builtin/trap/setup-hook {
+function ble/builtin/trap/install-hook {
   local ret opts=:$2:
   ble/builtin/trap/.initialize
   ble/builtin/trap/.get-sig-index "$1"

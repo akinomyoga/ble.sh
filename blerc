@@ -2,7 +2,7 @@
 
 ## This is a template for "~/.blerc".
 ##
-## To use ble.sh in bash, please setup "~/.bashrc" as follows:
+## To use ble.sh in bash, please set up "~/.bashrc" as follows:
 ##
 ## ```bash
 ## # bashrc
@@ -14,7 +14,7 @@
 ## # Your bashrc contents should come between the two lines.
 ## 
 ## # Please put the following line in the end of .bashrc
-## ((_ble_bash)) && ble-attach
+## [[ ${BLE_VERSION-} ]] && ble-attach
 ## ```
 ##
 
@@ -311,7 +311,7 @@
 #bleopt decode_abort_char=28
 
 
-## The following settings setups the behavior for errors while user input
+## The following settings sets up the behavior for errors while user input
 ## decoding. "error_char" is the decoding error for the current character
 ## encoding. "error_cseq" indicates the unrecognized CSI sequences.
 ## "error_kseq" indicates the unbound key sequences. "abell" and "vbell" turn
@@ -612,7 +612,7 @@ function blerc/vim-load-hook {
   # bleopt keymap_vi_mode_name_blockwise=BLOCK
 
 
-  ## The following setting setups the keymap settings with Meta modifiers
+  ## The following setting sets up the keymap settings with Meta modifiers
 
   # ble-decode/keymap:vi_imap/define-meta-bindings
 

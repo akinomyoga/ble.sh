@@ -434,7 +434,7 @@ function ble/widget/vi_imap/normal-mode.impl {
   ble/keymap:vi/mark/end-edit-area
   [[ :$opts: == *:InsertLeave:* ]] && builtin eval -- "$_ble_keymap_vi_insert_leave"
 
-  # setup normal mode
+  # set up normal mode
   _ble_edit_mark_active=
   _ble_edit_overwrite_mode=
   _ble_keymap_vi_insert_leave=
@@ -5380,9 +5380,9 @@ function ble/widget/vi_xmap/command-help {
 
 #------------------------------------------------------------------------------
 
-## @fn ble/keymap:vi/setup-map
+## @fn ble/keymap:vi/set-up-command-map
 ##   @var[in] ble_bind_keymap
-function ble/keymap:vi/setup-map {
+function ble/keymap:vi/set-up-command-map {
   ble-bind -f 0 vi-command/append-arg
   ble-bind -f 1 vi-command/append-arg
   ble-bind -f 2 vi-command/append-arg
@@ -5542,7 +5542,7 @@ function ble/widget/vi_omap/switch-to-blockwise {
 }
 
 function ble-decode/keymap:vi_omap/define {
-  ble/keymap:vi/setup-map
+  ble/keymap:vi/set-up-command-map
 
   ble-bind -f __default__ vi_omap/__default__
   ble-bind -f __line_limit__ nop
@@ -5744,7 +5744,7 @@ function ble/widget/vi_nmap/__line_limit__ {
 }
 
 function ble-decode/keymap:vi_nmap/define {
-  ble/keymap:vi/setup-map
+  ble/keymap:vi/set-up-command-map
 
   ble-bind -f __default__    vi-command/decompose-meta
   ble-bind -f __line_limit__ vi_nmap/__line_limit__
@@ -7401,7 +7401,7 @@ function ble/widget/vi_xmap/progressive-decrement { ble/widget/vi_xmap/increment
 #--------------------------------------
 
 function ble-decode/keymap:vi_xmap/define {
-  ble/keymap:vi/setup-map
+  ble/keymap:vi/set-up-command-map
 
   ble-bind -f __default__ vi-command/decompose-meta
 

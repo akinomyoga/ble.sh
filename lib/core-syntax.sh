@@ -6310,10 +6310,10 @@ _ble_syntax_progcolor_vars=(
   # ble/syntax/progcolor/wattr#*
   wattr_buff wattr_pos wattr_g)
 
-## @fn ble/syntax/progcolor/setup-vars i:nofs
+## @fn ble/syntax/progcolor/load-word-data i:nofs
 ##   @var[out] TE_i TE_nofs node
 ##   @var[out] wtype wlen wbeg wend wattr
-function ble/syntax/progcolor/setup-vars {
+function ble/syntax/progcolor/load-word-data {
   # TE_i TE_nofs
   TE_i=${1%%:*} TE_nofs=${1#*:}
   [[ $1 != *:* ]] && TE_nofs=0
@@ -6696,7 +6696,7 @@ function ble/syntax/progcolor/default {
     local ref=${tree_words[i]}
     [[ $ref ]] || continue
     local progcolor_iword=$i
-    ble/syntax/progcolor/setup-vars "$ref"
+    ble/syntax/progcolor/load-word-data "$ref"
     ble/syntax/progcolor/word:default
   done
 }
@@ -6756,7 +6756,7 @@ function ble/syntax/progcolor {
   # コマンド名に対しては既定の着色を実行
   if [[ ${tree_words[0]} ]]; then
     local "${_ble_syntax_progcolor_vars[@]}"
-    ble/syntax/progcolor/setup-vars "${tree_words[0]}"
+    ble/syntax/progcolor/load-word-data "${tree_words[0]}"
     [[ $wattr == - ]] && ble/syntax/progcolor/word:default
   fi
 }

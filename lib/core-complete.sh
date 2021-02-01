@@ -3694,7 +3694,7 @@ function ble/complete/candidates/determine-common-prefix {
   local common=${cand_word[0]}
   local clen=${#common}
   if ((cand_count>1)); then
-    # setup ignore case
+    # set up ignore case
     local unset_nocasematch= flag_tolower=
     if [[ :$comp_type: == *:i:* ]]; then
       if ((_ble_bash<30100)); then
@@ -5374,9 +5374,9 @@ function ble/complete/auto-complete/.search-history-heavy {
   return 0
 }
 
-## @fn ble/complete/auto-complete/.setup-auto-complete-mode
+## @fn ble/complete/auto-complete/.enter-auto-complete-mode
 ##   @var[in] type COMP1 cand word insert suffix
-function ble/complete/auto-complete/.setup-auto-complete-mode {
+function ble/complete/auto-complete/.enter-auto-complete-mode {
   _ble_complete_ac_type=$type
   _ble_complete_ac_comp1=$COMP1
   _ble_complete_ac_cand=$cand
@@ -5416,7 +5416,7 @@ function ble/complete/auto-complete/.check-history {
   ble/complete/auto-complete/.insert "${insert:${#COMPS}}"
 
   # vars: type COMP1 cand word insert suffix
-  ble/complete/auto-complete/.setup-auto-complete-mode
+  ble/complete/auto-complete/.enter-auto-complete-mode
   return 0
 }
 
@@ -5473,7 +5473,7 @@ function ble/complete/auto-complete/.check-context {
   fi
 
   # vars: type COMP1 cand word insert suffix
-  ble/complete/auto-complete/.setup-auto-complete-mode
+  ble/complete/auto-complete/.enter-auto-complete-mode
   return 0
 }
 

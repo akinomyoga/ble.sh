@@ -2036,7 +2036,7 @@ function ble-decode/widget/.call-keyseq {
   # for keylog suppress
   local _ble_decode_keylog_depth=$((_ble_decode_keylog_depth+1))
 
-  # setup variables
+  # set up variables
   local WIDGET=$command KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=(${_ble_decode_key__seq//_/ } $key)
   _ble_decode_widget_last=$WIDGET
@@ -2056,7 +2056,7 @@ function ble-decode/widget/.call-async-read {
   # for keylog suppress
   local _ble_decode_keylog_depth=$((_ble_decode_keylog_depth+1))
 
-  # setup variables
+  # set up variables
   local WIDGET=$1 KEYMAP=$_ble_decode_keymap LASTWIDGET=$_ble_decode_widget_last
   local -a KEYS=($2)
   builtin eval -- "$WIDGET"; local ext=$?
@@ -2571,7 +2571,7 @@ function ble/decode/cmap/decode-chars {
   local bleopt_decode_error_cseq_vbell=
   local bleopt_decode_error_cseq_discard=
 
-  # setup hook and run
+  # set up hook and run
   local -a ble_decode_bind_keys=()
   local _ble_decode_key__hook=ble/decode/cmap/decode-chars.hook
   local ble_decode_char_sync=1 # ユーザ入力があっても中断しない
