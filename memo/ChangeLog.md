@@ -12,6 +12,7 @@
 - edit (kill/copy): combine multiple kills and copies (suggested by 3ximus) `#D1443` 66564e1
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
+- canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 0000000
 
 ## Changes
 
@@ -21,7 +22,7 @@
 - edit: change default behavior of <kbd>C-w</kbd> and <kbd>M-w</kbd> to operate on backward words `#D1448` 47a3301
 - syntax (`layer:syntax/word`): perform pathname expansions in background subshells (motivated by 3ximus) `#D1449` 13e7bdd
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
-- complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` 0000000
+- complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 
 ## Fixes
 

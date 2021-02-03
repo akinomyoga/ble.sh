@@ -76,7 +76,7 @@ function ble/init:cmap/initialize {
   #   print = f16 [xterm]
   #   deleteline = A-delete
 
-  ble-edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences..."
+  ble/edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences..."
 
   # pc-style keys
   # # vt52, xterm, rxvt
@@ -255,7 +255,7 @@ function ble/init:cmap/initialize {
   # ble-bind -k "CAN @ m" meta
   # ble-bind -k "CAN @ s" super
 
-  ble-edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences... done"
+  ble/edit/info/immediate-show text "ble/lib/init-cmap.sh: updating key sequences... done"
 }
 
 ble/init:cmap/initialize

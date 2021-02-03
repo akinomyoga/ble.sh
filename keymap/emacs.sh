@@ -94,7 +94,7 @@ function ble/keymap:emacs/update-mode-name {
 
   [[ $name ]] || info=${info#' '}
   name=$name$info
-  ble-edit/info/default ansi "$name"
+  ble/edit/info/default ansi "$name"
 }
 
 function ble/widget/emacs/__after_widget__ {
@@ -209,7 +209,7 @@ function ble-decode/keymap:emacs/initialize {
     source "$fname_keymap_cache" && return 0
   fi
 
-  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs..."
+  ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs..."
 
   {
     ble-decode/keymap/load isearch dump
@@ -217,7 +217,7 @@ function ble-decode/keymap:emacs/initialize {
     ble-decode/keymap/load emacs   dump
   } 3>| "$fname_keymap_cache"
 
-  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs... done"
+  ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.emacs... done"
 }
 
 ble-decode/keymap:emacs/initialize

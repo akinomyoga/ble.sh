@@ -360,7 +360,7 @@ function ble/keymap:vi/update-mode-name {
     ble/util/buffer "$bleopt_term_vi_omap"
     ble/term/cursor-state/set-internal "$bleopt_keymap_vi_omap_cursor"
   elif [[ $kmap == vi_cmap ]]; then
-    ble-edit/info/default text ''
+    ble/edit/info/default text ''
     ble/util/buffer "$bleopt_term_vi_cmap"
     ble/term/cursor-state/set-internal "$bleopt_keymap_vi_cmap_cursor"
     return 0
@@ -423,7 +423,7 @@ function ble/keymap:vi/update-mode-name {
   elif [[ $_ble_edit_kbdmacro_record ]]; then
     name=$name${name:+' '}$'\e[1;31mREC\e[m'
   fi
-  ble-edit/info/default ansi "$name" # 6ms
+  ble/edit/info/default ansi "$name" # 6ms
 }
 
 function ble/widget/vi_imap/normal-mode.impl {
@@ -913,7 +913,7 @@ function ble/keymap:vi/register#dump {
 
     out=$out'"'$k' ('$type') '$content$'\n'
   done
-  ble-edit/info/show ansi "$out"
+  ble/edit/info/show ansi "$out"
   return 0
 }
 function ble/widget/vi-command:reg { ble/keymap:vi/register#dump; }
@@ -4982,7 +4982,7 @@ function ble/widget/vi-command:w {
   local wc
   ble/util/assign wc 'ble/bin/wc "$file"'
   ble/string#split-words wc "$wc"
-  ble-edit/info/show text "\"$file\" ${wc[0]}L, ${wc[2]}C written"
+  ble/edit/info/show text "\"$file\" ${wc[0]}L, ${wc[2]}C written"
   ble/keymap:vi/adjust-command-mode
   return 0
 }
@@ -5158,7 +5158,7 @@ function ble/widget/vi-command/search.core {
     else
       ble/history/isearch-forward regex:progress
     fi; local r=$?
-    ble-edit/info/default
+    ble/edit/info/default
 
     if ((r==0)); then
       local new_index; ble/history/get-index -v new_index
@@ -5598,7 +5598,7 @@ function ble/widget/vi-command/show-line-info {
   local line_ratio=$(((100*iline+nline-1)/nline))%
   local line_stat=$'line \e[34m'$iline$'\e[m / \e[34m'$nline$'\e[m --\e[34m'$line_ratio$'\e[m--'
 
-  ble-edit/info/show ansi "\"$hist_stat\" $line_stat"
+  ble/edit/info/show ansi "\"$hist_stat\" $line_stat"
   ble/keymap:vi/adjust-command-mode
   return 0
 }
@@ -5613,9 +5613,9 @@ function ble/widget/vi-command/cancel {
     local joblist; ble/util/joblist
     if ((${#joblist[*]})); then
       ble/array#push joblist $'Type  \e[35m:q!\e[m  and press \e[35m<Enter>\e[m to abandon all \e[31mjobs\e[m and exit Bash'
-      IFS=$'\n' builtin eval 'ble-edit/info/show ansi "${joblist[*]}"'
+      IFS=$'\n' builtin eval 'ble/edit/info/show ansi "${joblist[*]}"'
     else
-      ble-edit/info/show ansi $'Type  \e[35m:q\e[m  and press \e[35m<Enter>\e[m to exit Bash'
+      ble/edit/info/show ansi $'Type  \e[35m:q\e[m  and press \e[35m<Enter>\e[m to exit Bash'
     fi
   fi
   ble/widget/vi-command/bell
@@ -7894,6 +7894,7 @@ function ble/keymap:vi/async-commandline-mode {
   # 記録
   ble/textarea#render
   ble/textarea#save-state _ble_keymap_vi_cmap
+  ble/util/save-vars _ble_keymap_vi_cmap _ble_canvas_panel_focus
   _ble_keymap_vi_cmap_history_prefix=$_ble_history_prefix
 
   # 初期化
@@ -7902,6 +7903,7 @@ function ble/keymap:vi/async-commandline-mode {
 
   # textarea
   _ble_textarea_panel=1
+  _ble_canvas_panel_focus=1
   ble/textarea#invalidate
 
   # edit/prompt
@@ -7943,6 +7945,7 @@ function ble/widget/vi_cmap/accept {
   # 復元
   ble/textarea#restore-state _ble_keymap_vi_cmap
   ble/textarea#clear-state _ble_keymap_vi_cmap
+  ble/util/restore-vars _ble_keymap_vi_cmap _ble_canvas_panel_focus
   [[ $_ble_edit_overwrite_mode ]] && ble/util/buffer "$_ble_term_civis"
   _ble_history_prefix=$_ble_keymap_vi_cmap_history_prefix
 
@@ -8026,7 +8029,7 @@ function ble-decode/keymap:vi/initialize {
     source "$fname_keymap_cache" && return 0
   fi
 
-  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi..."
+  ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.vi..."
 
   {
     ble-decode/keymap/load isearch dump
@@ -8038,7 +8041,7 @@ function ble-decode/keymap:vi/initialize {
     ble-decode/keymap/load vi_cmap dump
   } 3>| "$fname_keymap_cache"
 
-  ble-edit/info/immediate-show text "ble.sh: updating cache/keymap.vi... done"
+  ble/edit/info/immediate-show text "ble.sh: updating cache/keymap.vi... done"
 }
 
 ble-decode/keymap:vi/initialize

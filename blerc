@@ -111,6 +111,15 @@
 #bleopt edit_line_type=graphical
 
 
+## The following option controls the position of the info pane where completion
+## menu, mode names, and other information are shown.  When the value "top" is
+## specified, the info pane is shown just below the command line.  When the
+## value "bottom" is specified, the info pane is shown at the bottom of the
+## terminal.  The default is "top".
+
+#bleopt info_display=top
+
+
 ## The following settings controls the prompt after the cursor left the command
 ## line.  "prompt_ps1_final" contains a prompt string.  "prompt_ps1_transient"
 ## is a colon-separated list of fields "always", "same-dir" and "trim".  The

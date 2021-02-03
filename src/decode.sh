@@ -519,16 +519,16 @@ function ble-decode/.hook/show-progress {
     text=$sgr$ret$'\e[m '$text
   fi
 
-  ble-edit/info/show ansi "$text"
+  ble/edit/info/show ansi "$text"
 
   _ble_edit_info_scene=decode_input_progress
 }
 function ble-decode/.hook/erase-progress {
   [[ $_ble_edit_info_scene == decode_input_progress ]] || return 1
   if ((${#_ble_decode_input_original_info[@]})); then
-    ble-edit/info/show store "${_ble_decode_input_original_info[@]}"
+    ble/edit/info/show store "${_ble_decode_input_original_info[@]}"
   else
-    ble-edit/info/default
+    ble/edit/info/default
   fi
 }
 
@@ -2509,7 +2509,7 @@ function ble/decode/cmap/initialize {
   if [[ $dump -nt $init ]]; then
     source "$dump"
   else
-    ble-edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
+    ble/edit/info/immediate-show text 'ble.sh: generating "'"$dump"'"...'
     source "$init"
     ble-bind -D | ble/bin/awk '
       {
@@ -2528,11 +2528,11 @@ function ble/decode/cmap/initialize {
     local fbinder=$_ble_base_cache/cmap+default.binder-source
     _ble_decode_bind_fbinder=$fbinder
     if ! [[ $_ble_decode_bind_fbinder -nt $init ]]; then
-      ble-edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... '
+      ble/edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... '
       ble/decode/cmap/.generate-binder-template >| "$fbinder"
       binder=ble/decode/cmap/.emit-bindx source "$fbinder" >| "$fbinder.bind"
       binder=ble/decode/cmap/.emit-bindr source "$fbinder" >| "$fbinder.unbind"
-      ble-edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... done'
+      ble/edit/info/immediate-show text  'ble.sh: initializing multichar sequence binders... done'
     fi
   fi
 }

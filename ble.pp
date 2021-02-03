@@ -809,7 +809,7 @@ function ble-attach {
 
   # Note: ble-decode/{initialize,reset-default-keymap} 内で
   #   info を設定する事があるので表示する。
-  ble-edit/info/default
+  ble/edit/info/default
   ble-edit/bind/.tail
 }
 
@@ -835,7 +835,7 @@ function ble-detach/impl {
 function ble-detach/message {
   ble/util/buffer.flush >&2
   printf '%s\n' "$@" 1>&2
-  ble-edit/info/hide
+  ble/edit/info/hide
   ble/textarea#render
   ble/util/buffer.flush >&2
 }

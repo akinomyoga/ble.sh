@@ -7095,7 +7095,7 @@ function ble/highlight/layer:syntax/update {
     local ret; ble/canvas/sflush.draw
     status=$status$ret
     #ble/util/assign buff 'declare -p _ble_textarea_bufferName $_ble_textarea_bufferName | cat -A'; status="$status$buff"
-    ble-edit/info/show ansi "$status"
+    ble/edit/info/show ansi "$status"
   fi
 #%end
 
@@ -7113,7 +7113,7 @@ function ble/highlight/layer:syntax/update {
   #     ble/array#push words "[$value ${word[*]}]"
   #   fi
   # done
-  # ble-edit/info/show text "${words[*]}"
+  # ble/edit/info/show text "${words[*]}"
 }
 
 function ble/highlight/layer:syntax/getg {

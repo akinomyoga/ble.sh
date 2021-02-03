@@ -319,6 +319,10 @@ function ble/util/c2w+auto {
 }
 function ble/util/c2w+auto/update.buff {
   local opts=$1
+  local -a DRAW_BUFF=()
+  local ret
+  [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
+  ble/canvas/put.draw "$_ble_term_sc"
   if ble/util/is-unicode-output; then
     local achar='▽'
     if [[ :$opts: == *:first-line:* ]]; then
@@ -327,22 +331,20 @@ function ble/util/c2w+auto/update.buff {
       local x0=$((cols-4)); ((x0<0)) && x0=0
       _ble_util_c2w_auto_update_x0=$x0
 
-      local -a DRAW_BUFF=()
-      ble/canvas/put.draw "$_ble_term_sc"
       ble/canvas/put-cup.draw 1 $((x0+1))
       ble/canvas/put.draw "$achar"
       ble/term/CPR/request.draw ble/util/c2w+auto/update.hook
       ble/canvas/put-cup.draw 1 $((x0+1))
       ble/canvas/put.draw "$_ble_term_el"
-      ble/canvas/put.draw "$_ble_term_rc"
-      ble/canvas/bflush.draw
     else
       _ble_util_c2w_auto_update_x0=0
-      ble/util/buffer "$_ble_term_sc$_ble_term_cr$achar"
-      ble/term/CPR/request.buff ble/util/c2w+auto/update.hook
-      ble/util/buffer "$_ble_term_rc"
+      ble/canvas/put.draw "$_ble_term_cr$achar"
+      ble/term/CPR/request.draw ble/util/c2w+auto/update.hook
     fi
   fi
+  ble/canvas/put.draw "$_ble_term_rc"
+  [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
+  ble/canvas/bflush.draw
 }
 function ble/util/c2w+auto/update.hook {
   local l=$1 c=$2
@@ -367,6 +369,11 @@ function ble/canvas/put.draw {
 function ble/canvas/put-ind.draw {
   local count=${1-1}
   local ret; ble/string#repeat "${_ble_term_ind}" "$count"
+  DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
+}
+function ble/canvas/put-ri.draw {
+  local count=${1-1}
+  local ret; ble/string#repeat "${_ble_term_ri}" "$count"
   DRAW_BUFF[${#DRAW_BUFF[*]}]=$ret
 }
 function ble/canvas/put-il.draw {
@@ -597,28 +604,40 @@ function ble/canvas/trace/.process-overflow {
 
 function ble/canvas/trace/.decsc {
   trace_decsc=("$x" "$y" "$g" "$lc" "$lg")
-  ble/canvas/put.draw "$_ble_term_sc"
+  [[ :$opts: == *:noscrc:* ]] ||
+    ble/canvas/put.draw "$_ble_term_sc"
 }
 function ble/canvas/trace/.decrc {
+  local ret; ble/color/g2sgr "${trace_decsc[2]}" # g を明示的に復元。
+  ble/canvas/put.draw "$ret"
+  if [[ :$opts: == *:noscrc:* ]]; then
+    ble/canvas/put-move.draw $((trace_decsc[0]-x)) $((trace_decsc[1]-y))
+  else
+    ble/canvas/put.draw "$_ble_term_rc"
+  fi
   x=${trace_decsc[0]}
   y=${trace_decsc[1]}
   g=${trace_decsc[2]}
   lc=${trace_decsc[3]}
   lg=${trace_decsc[4]}
-  local ret; ble/color/g2sgr "$g" # g を明示的に復元。
-  ble/canvas/put.draw "$ret$_ble_term_rc"
 }
 function ble/canvas/trace/.scosc {
   trace_scosc=("$x" "$y" "$g" "$lc" "$lg")
-  ble/canvas/put.draw "$_ble_term_sc"
+  [[ :$opts: == *:noscrc:* ]] ||
+    ble/canvas/put.draw "$_ble_term_sc"
 }
 function ble/canvas/trace/.scorc {
+  local ret; ble/color/g2sgr "$g" # g は変わらない様に。
+  ble/canvas/put.draw "$ret"
+  if [[ :$opts: == *:noscrc:* ]]; then
+    ble/canvas/put-move.draw $((trace_scosc[0]-x)) $((trace_scosc[1]-y))
+  else
+    ble/canvas/put.draw "$_ble_term_rc"
+  fi
   x=${trace_scosc[0]}
   y=${trace_scosc[1]}
   lc=${trace_scosc[3]}
   lg=${trace_scosc[4]}
-  local ret; ble/color/g2sgr "$g" # g は変わらない様に。
-  ble/canvas/put.draw "$_ble_term_rc$ret"
 }
 function ble/canvas/trace/.ps1sc {
   trace_brack[${#trace_brack[*]}]="$x $y"
@@ -1661,7 +1680,9 @@ function ble/textmap#hit {
 ## @var _ble_canvas_x
 ## @var _ble_canvas_y
 ##   現在の (描画の為に動き回る) カーソル位置を保持します。
-_ble_canvas_x=0 _ble_canvas_y=0
+_ble_canvas_x=0
+_ble_canvas_y=0
+_ble_canvas_excursion=
 
 ## @fn ble/canvas/goto.draw x y opts
 ##   現在位置を指定した座標へ移動する制御系列を生成します。
@@ -1694,10 +1715,27 @@ function ble/canvas/goto.draw {
   _ble_canvas_x=$x _ble_canvas_y=$y
 }
 
+_ble_canvas_excursion_x=
+_ble_canvas_excursion_y=
+function ble/canvas/excursion-start.draw {
+  [[ $_ble_canvas_excursion ]] && return
+  _ble_canvas_excursion=1
+  _ble_canvas_excursion_x=$_ble_canvas_x
+  _ble_canvas_excursion_y=$_ble_canvas_y
+  ble/canvas/put.draw "$_ble_term_sc"
+}
+function ble/canvas/excursion-end.draw {
+  [[ $_ble_canvas_excursion ]] || return
+  _ble_canvas_excursion=
+  ble/canvas/put.draw "$_ble_term_rc"
+  _ble_canvas_x=$_ble_canvas_excursion_x
+  _ble_canvas_y=$_ble_canvas_excursion_y
+}
+
 #------------------------------------------------------------------------------
 # ble/canvas/panel
 
-## @arr _ble_canvas_panel_type
+## @arr _ble_canvas_panel_class
 ##   各パネルを管理する関数接頭辞を保持する。
 ##
 ## @arr _ble_canvas_panel_height
@@ -1706,16 +1744,28 @@ function ble/canvas/goto.draw {
 ##
 ##   開始した瞬間にキー入力をすると画面に echo されてしまうので、
 ##   それを削除するために最初の編集文字列の行数を 1 とする。
-_ble_canvas_panel_type=(ble/textarea/panel ble/textarea/panel ble-edit/info)
+##
+## @var _ble_canvas_panel_focus
+##   現在 focus のあるパネルの番号を保持する。
+##   端末の現在位置はこのパネルの render が設定した位置に置かれる。
+##
+## @var _ble_canvas_panel_vfill
+##   下部に寄せて表示されるパネルの開始番号を保持する。
+##   この変数が空文字列の時は全てのパネルは上部に表示される。
+_ble_canvas_panel_class=()
 _ble_canvas_panel_height=(1 0 0)
+_ble_canvas_panel_focus=
+_ble_canvas_panel_vfill=
+_ble_canvas_panel_bottom= # 現在下部に居るかどうか
+_ble_canvas_panel_tmargin=1 # for visible-bell
 
 ## @fn ble/canvas/panel/layout/.extract-heights
 ##   @arr[out] mins maxs
 function ble/canvas/panel/layout/.extract-heights {
-  local i n=${#_ble_canvas_panel_type[@]}
+  local i n=${#_ble_canvas_panel_class[@]}
   for ((i=0;i<n;i++)); do
     local height
-    "${_ble_canvas_panel_type[i]}#get-height" "$i"
+    "${_ble_canvas_panel_class[i]}#panel::getHeight" "$i"
     mins[i]=${height%:*}
     maxs[i]=${height#*:}
   done
@@ -1727,7 +1777,7 @@ function ble/canvas/panel/layout/.extract-heights {
 ##   @arr[in] mins maxs
 ##   @arr[out] heights
 function ble/canvas/panel/layout/.determine-heights {
-  local i n=${#_ble_canvas_panel_type[@]} ret
+  local i n=${#_ble_canvas_panel_class[@]} ret
   ble/arithmetic/sum "${mins[@]}"; local min=$ret
   ble/arithmetic/sum "${maxs[@]}"; local max=$ret
   if ((max<=lines)); then
@@ -1780,7 +1830,7 @@ function ble/canvas/panel/layout/.determine-heights {
 ##   @var[out] ret
 function ble/canvas/panel/layout/.get-available-height {
   local index=$1
-  local lines=$((${LINES:-25}-1)) # Note: bell の為に一行余裕を入れる
+  local lines=$((${LINES:-25}-_ble_canvas_panel_tmargin))
   local -a mins=() maxs=()
   ble/canvas/panel/layout/.extract-heights
   maxs[index]=${LINES:-25}
@@ -1790,9 +1840,9 @@ function ble/canvas/panel/layout/.get-available-height {
 }
 
 function ble/canvas/panel#reallocate-height.draw {
-  local lines=$((${LINES:-25}-1)) # Note: bell の為に一行余裕を入れる
+  local lines=$((${LINES:-25}-_ble_canvas_panel_tmargin))
 
-  local i n=${#_ble_canvas_panel_type[@]}
+  local i n=${#_ble_canvas_panel_class[@]}
   local -a mins=() maxs=()
   ble/canvas/panel/layout/.extract-heights
 
@@ -1812,6 +1862,89 @@ function ble/canvas/panel#reallocate-height.draw {
   done
 }
 
+function ble/canvas/panel/goto-bottom-dock.draw {
+  if [[ ! $_ble_canvas_panel_bottom ]]; then
+    _ble_canvas_panel_bottom=1
+    ble/canvas/excursion-start.draw
+    ble/canvas/goto.draw 0 $((LINES-1)) # 一番下の行に移動
+    ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"
+    ((_ble_canvas_y=ret-1))
+  fi
+}
+function ble/canvas/panel/goto-top-dock.draw {
+  if [[ $_ble_canvas_panel_bottom ]]; then
+    _ble_canvas_panel_bottom=
+    ble/canvas/excursion-end.draw
+  fi
+}
+function ble/canvas/panel/goto-vfill.draw {
+  ble/canvas/panel/has-bottom-dock || return 1
+  local ret
+  ble/canvas/panel/goto-top-dock.draw
+  ble/arithmetic/sum "${_ble_canvas_panel_height[@]::_ble_canvas_panel_vfill}"
+  ble/canvas/goto.draw 0 "$ret"
+  return 0
+}
+## @fn ble/canvas/panel/save-position opts
+##   @var[out] ret
+function ble/canvas/panel/save-position {
+  ret=$_ble_canvas_x:$_ble_canvas_y:$_ble_canvas_panel_bottom
+  [[ :$2: == *:goto-top-dock:* ]] &&
+    ble/canvas/panel/goto-top-dock.draw
+}
+## @fn ble/canvas/panel/load-position x:y:bottom
+##   ble/canvas/panel/save-position で記録した情報を元に
+##   元の位置に戻ります。
+function ble/canvas/panel/load-position {
+  local -a DRAW_BUFF=()
+  ble/canvas/panel/load-position.draw "$@"
+  ble/canvas/bflush.draw
+}
+function ble/canvas/panel/load-position.draw {
+  local data=$1
+  local x=${data%%:*}; data=${data#*:}
+  local y=${data%%:*}; data=${data#*:}
+  local bottom=$data
+  if [[ $bottom ]]; then
+    ble/canvas/panel/goto-bottom-dock.draw
+  else
+    ble/canvas/panel/goto-top-dock.draw
+  fi
+  ble/canvas/goto.draw "$x" "$y"
+}
+
+function ble/canvas/panel/has-bottom-dock {
+  local ret; ble/canvas/panel/bottom-dock#height
+  ((ret))
+}
+function ble/canvas/panel/bottom-dock#height {
+  ret=0
+  [[ $_ble_canvas_panel_vfill && $_ble_term_rc ]] || return 0
+  ble/arithmetic/sum "${_ble_canvas_panel_height[@]:_ble_canvas_panel_vfill}"
+}
+function ble/canvas/panel/top-dock#height {
+  if [[ $_ble_canvas_panel_vfill && $_ble_term_rc ]]; then
+    ble/arithmetic/sum "${_ble_canvas_panel_height[@]::_ble_canvas_panel_vfill}"
+  else
+    ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"
+  fi
+}
+## @fn ble/canvas/panel/bottom-dock#invalidate
+##   Invalidate all bottom panels (with non-zero height)
+function ble/canvas/panel/bottom-dock#invalidate {
+  [[ $_ble_canvas_panel_vfill && $_ble_term_rc ]] || return 0
+  local index n=${#_ble_canvas_panel_class[@]}
+  for ((index=_ble_canvas_panel_vfill;index<n;index++)); do
+    local panel_class=${_ble_canvas_panel_class[index]}
+    local panel_height=${_ble_canvas_panel_height[index]}
+    ((panel_height)) &&
+      ble/function#try "$panel_class#panel::invalidate" "$index" 0 "$panel_height"
+  done
+}
+function ble/canvas/panel#is-bottom {
+  [[ $_ble_canvas_panel_vfill && $_ble_term_rc ]] && (($1>=_ble_canvas_panel_vfill))
+}
+
 ## @fn ble/canvas/panel#get-origin
 ##   @var[out] x y
 function ble/canvas/panel#get-origin {
@@ -1822,6 +1955,11 @@ function ble/canvas/panel#get-origin {
 }
 function ble/canvas/panel#goto.draw {
   local index=$1 x=${2-0} y=${3-0} opts=$4 ret
+  if ble/canvas/panel#is-bottom "$index"; then
+    ble/canvas/panel/goto-bottom-dock.draw
+  else
+    ble/canvas/panel/goto-top-dock.draw
+  fi
   ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"
   ble/canvas/goto.draw "$x" $((ret+y)) "$opts"
 }
@@ -1841,15 +1979,32 @@ function ble/canvas/panel#increase-total-height.draw {
   ((delta>0)) || return 1
 
   local ret
-  ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"; local old_total_height=$ret
-  # 下に余白を確保
-  if ((old_total_height>0)); then
-    ble/canvas/goto.draw 0 $((old_total_height-1))
-    ble/canvas/put-ind.draw "$delta"; ((_ble_canvas_y+=delta))
-  else
-    ble/canvas/goto.draw 0 0
-    ble/canvas/put-ind.draw $((delta-1)); ((_ble_canvas_y+=delta-1))
+  ble/canvas/panel/top-dock#height; local top_height=$ret
+  ble/canvas/panel/bottom-dock#height; local bottom_height=$ret
+  if ((bottom_height)); then
+    ble/canvas/panel/goto-top-dock.draw
+    if [[ $_ble_term_DECSTBM ]]; then
+      ble/canvas/excursion-start.draw
+      ble/canvas/put.draw $'\e[1;'$((LINES-bottom_height))'r'
+      ble/canvas/excursion-end.draw
+      ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1))
+      ble/canvas/put-ind.draw $((top_height-1+delta-_ble_canvas_y))
+      ((_ble_canvas_y=top_height-1+delta))
+      ble/canvas/excursion-start.draw
+      ble/canvas/put.draw $'\e[;r'
+      ble/canvas/excursion-end.draw
+      return 0
+    else
+      ble/canvas/panel/bottom-dock#invalidate
+    fi
   fi
+
+  local old_height=$((top_height+bottom_height))
+  local new_height=$((old_height+delta))
+  ble/canvas/goto.draw 0 $((top_height==0?0:top_height-1))
+  ble/canvas/put-ind.draw $((new_height-1-_ble_canvas_y)); ((_ble_canvas_y=new_height-1))
+  ble/canvas/panel/goto-vfill.draw &&
+    ble/canvas/put-il.draw "$delta"
 }
 
 ## @fn ble/canvas/panel#set-height.draw panel height opts
@@ -1858,36 +2013,58 @@ function ble/canvas/panel#increase-total-height.draw {
 function ble/canvas/panel#set-height.draw {
   local index=$1 new_height=$2 opts=$3
   ((new_height<0)) && new_height=0
-  local delta=$((new_height-_ble_canvas_panel_height[index]))
-  ((delta)) || return 1
+  local old_height=${_ble_canvas_panel_height[index]}
+  local delta=$((new_height-old_height))
 
-  local ret
-  if ((delta>0)); then
+  if ((delta==0)); then
+    if [[ :$opts: == *:clear:* ]]; then
+      ble/canvas/panel#clear.draw "$index"
+      return $?
+    else
+      return 1
+    fi
+  elif ((delta>0)); then
     # 新しく行を挿入
     ble/canvas/panel#increase-total-height.draw "$delta"
+    ble/canvas/panel/goto-vfill.draw &&
+      ble/canvas/put-dl.draw "$delta"
+    ((_ble_canvas_panel_height[index]=new_height))
 
-    if [[ :$opts: == *:shift:* ]]; then # 先頭に挿入
-      ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
-      ble/canvas/goto.draw 0 "$ins_offset"
-    else # 末尾に挿入
-      ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
-      ble/canvas/goto.draw 0 "$ins_offset"
-    fi
-    ble/canvas/put-il.draw "$delta"
+    case :$opts: in
+    (*:clear:*)
+      ble/canvas/panel#goto.draw "$index"
+      ble/canvas/put-dl.draw "$old_height"
+      ble/canvas/put-il.draw "$new_height" ;;
+    (*:shift:*) # 先頭に行挿入
+      ble/canvas/panel#goto.draw "$index"
+      ble/canvas/put-il.draw "$delta" ;;
+    (*) # 末尾に行挿入
+      ble/canvas/panel#goto.draw "$index" 0 "$old_height"
+      ble/canvas/put-il.draw "$delta" ;;
+    esac
+
   else
-    # 行を削除
-    if [[ :$opts: == *:shift:* ]]; then # 先頭を削除
-      ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
-      ble/canvas/goto.draw 0 "$ins_offset"
-    else # 末尾を削除
-      ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index+1}"; local ins_offset=$ret
-      ble/canvas/goto.draw 0 $((ins_offset+delta))
-    fi
-    ble/canvas/put-dl.draw $((-delta))
-  fi
+    ((delta=-delta))
 
-  ((_ble_canvas_panel_height[index]=new_height))
-  ble/function#try "${_ble_canvas_panel_type[index]}#on-height-change" "$index"
+    case :$opts: in
+    (*:clear:*)
+      ble/canvas/panel#goto.draw "$index"
+      ble/canvas/put-dl.draw "$old_height"
+      ble/canvas/put-il.draw "$new_height" ;;
+    (*:shift:*) # 先頭を削除
+      ble/canvas/panel#goto.draw "$index" 0 0
+      ble/canvas/put-dl.draw "$delta" ;;
+    (*) # 末尾を削除
+      ble/canvas/panel#goto.draw "$index" 0 "$new_height"
+      ble/canvas/put-dl.draw "$delta" ;;
+    esac
+
+    ((_ble_canvas_panel_height[index]=new_height))
+    ble/canvas/panel/goto-vfill.draw &&
+      ble/canvas/put-il.draw "$delta"
+  fi
+  ble/function#try "${_ble_canvas_panel_class[index]}#panel::onHeightChange" "$index"
+
   return 0
 }
 function ble/canvas/panel#increase-height.draw {
@@ -1897,26 +2074,14 @@ function ble/canvas/panel#increase-height.draw {
 
 function ble/canvas/panel#set-height-and-clear.draw {
   local index=$1 new_height=$2
-  local old_height=${_ble_canvas_panel_height[index]}
-  ((old_height||new_height)) || return 1
-
-  local ret
-  ble/canvas/panel#increase-total-height.draw $((new_height-old_height))
-  ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
-  ble/canvas/goto.draw 0 "$ins_offset"
-  ((old_height)) && ble/canvas/put-dl.draw "$old_height"
-  ((new_height)) && ble/canvas/put-il.draw "$new_height"
-
-  ((_ble_canvas_panel_height[index]=new_height))
+  ble/canvas/panel#set-height.draw "$index" "$new_height" clear
 }
 
 function ble/canvas/panel#clear.draw {
   local index=$1
   local height=${_ble_canvas_panel_height[index]}
   if ((height)); then
-    local ret
-    ble/arithmetic/sum "${_ble_canvas_panel_height[@]::index}"; local ins_offset=$ret
-    ble/canvas/goto.draw 0 "$ins_offset" sgr0
+    ble/canvas/panel#goto.draw "$index" 0 0 sgr0
     if ((height==1)); then
       ble/canvas/put.draw "$_ble_term_el2"
     else
@@ -1939,4 +2104,78 @@ function ble/canvas/panel#clear-after.draw {
     ble/canvas/put-il.draw "$rest_lines"
     ble/canvas/put.draw "$_ble_term_ri"
   fi
+}
+
+## @fn ble/canvas/panel/invalidate
+##   Invalidate all panels (with non-zero height)
+function ble/canvas/panel/clear {
+  local -a DRAW_BUFF=()
+  local index n=${#_ble_canvas_panel_class[@]}
+  for ((index=0;index<n;index++)); do
+    local panel_class=${_ble_canvas_panel_class[index]}
+    local panel_height=${_ble_canvas_panel_height[index]}
+    ((panel_height)) || continue
+    ble/canvas/panel#clear.draw "$index"
+    ble/function#try "$panel_class#panel::invalidate" "$index" 0 "$panel_height"
+  done
+  ble/canvas/bflush.draw
+}
+function ble/canvas/panel/invalidate {
+  local index n=${#_ble_canvas_panel_class[@]}
+  for ((index=0;index<n;index++)); do
+    local panel_class=${_ble_canvas_panel_class[index]}
+    local panel_height=${_ble_canvas_panel_height[index]}
+    ((panel_height)) || continue
+    ble/function#try "$panel_class#panel::invalidate" "$index" 0 "$panel_height"
+  done
+}
+function ble/canvas/panel/render {
+  local index n=${#_ble_canvas_panel_class[@]} pos=
+  for ((index=0;index<n;index++)); do
+    local panel_class=${_ble_canvas_panel_class[index]}
+    local panel_height=${_ble_canvas_panel_height[index]}
+    ((panel_height)) || continue
+    ble/function#try "$panel_class#panel::render" "$index" 0 "$panel_height"
+    if [[ $_ble_canvas_panel_focus ]] && ((index==_ble_canvas_panel_focus)); then
+      local ret; ble/canvas/panel/save-position; local pos=$ret
+    fi
+  done
+  [[ $pos ]] && ble/canvas/panel/load-position "$pos"
+  return 0
+}
+## @fn ble/canvas/panel/ensure-terminal-top-line
+##   visible-bell で使う為
+function ble/canvas/panel/ensure-tmargin.draw {
+  local tmargin=$_ble_canvas_panel_tmargin
+  ((tmargin>LINES)) && tmargin=$LINES
+  ((tmargin>0)) || return 0
+
+  local ret
+  ble/canvas/panel/save-position; local pos=$ret
+  ble/canvas/panel/goto-top-dock.draw
+
+  ble/canvas/panel/top-dock#height; local top_height=$ret
+  ble/canvas/panel/bottom-dock#height; local bottom_height=$ret
+  if ((bottom_height)); then
+    if [[ $_ble_term_DECSTBM ]]; then
+      ble/canvas/excursion-start.draw
+      ble/canvas/put.draw $'\e[1;'$((LINES-bottom_height))'r'
+      ble/canvas/excursion-end.draw
+      ble/canvas/goto.draw 0 0
+      ble/canvas/put-ri.draw "$tmargin"
+      ble/canvas/put-cud.draw "$tmargin"
+      ble/canvas/excursion-start.draw
+      ble/canvas/put.draw $'\e[;r'
+      ble/canvas/excursion-end.draw
+      ble/canvas/panel/load-position.draw "$pos"
+      return 0
+    else
+      ble/canvas/panel/bottom-dock#invalidate
+    fi
+  fi
+
+  ble/canvas/goto.draw 0 0
+  ble/canvas/put-ri.draw "$tmargin"
+  ble/canvas/put-cud.draw "$tmargin"
+  ble/canvas/panel/load-position.draw "$pos"
 }

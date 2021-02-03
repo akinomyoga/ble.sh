@@ -443,7 +443,13 @@ function ble/array#pop {
 }
 ## @fn ble/array#unshift arr value...
 function ble/array#unshift {
-  builtin eval "$1=(\"\${@:2}\" \"\${$1[@]}\")"
+  builtin eval -- "$1=(\"\${@:2}\" \"\${$1[@]}\")"
+}
+## @fn ble/array#shift arr count
+function ble/array#shift {
+  # Note: Bash 4.3 以下では ${arr[@]:${2:-1}} が offset='${2'
+  # length='-1' に解釈されるので、先に算術式展開させる。
+  builtin eval -- "$1=(\"\${$1[@]:$((${2:-1}))}\")"
 }
 ## @fn ble/array#reverse arr
 function ble/array#reverse {
@@ -4110,21 +4116,25 @@ function ble/term/visible-bell/.show {
     fi
 
     local -a DRAW_BUFF=()
+    [[ $_ble_attached ]] && ble/canvas/panel/ensure-tmargin.draw
     if [[ $_ble_term_rc ]]; then
+      local ret=
+      [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
       ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
       ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
       ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
       ble/canvas/put.draw "$_ble_term_rc"
       ble/canvas/put-cud.draw 1
+      [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
     else
-      ble/util/buffer.flush >&2
       ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
       ble/canvas/put-hpa.draw $((1+x0))
       ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
       ble/canvas/put-cud.draw 1
       ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
     fi
-    ble/canvas/flush.draw
+    ble/canvas/bflush.draw
+    ble/util/buffer.flush >&2
     _ble_term_visible_bell_prev=("$message" "$x0" "$y0" "$x" "$y")
   else
     ble/util/put "${_ble_term_visible_bell_show//'%message%'/$message}"
@@ -4141,21 +4151,25 @@ function ble/term/visible-bell/.update {
     local y=${_ble_term_visible_bell_prev[4]}
 
     local -a DRAW_BUFF=()
+    [[ $_ble_attached ]] && ble/canvas/panel/ensure-tmargin.draw
     if [[ $_ble_term_rc ]]; then
+      local ret=
+      [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
       ble/canvas/put.draw "$_ble_term_ri$_ble_term_sc$_ble_term_sgr0"
       ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
       ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
       ble/canvas/put.draw "$_ble_term_rc"
       ble/canvas/put-cud.draw 1
+      [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
     else
-      ble/util/buffer.flush >&2
       ble/canvas/put.draw "$_ble_term_ri$_ble_term_sgr0"
       ble/canvas/put-hpa.draw $((1+x0))
       ble/canvas/put.draw "$sgr$message$_ble_term_sgr0"
       ble/canvas/put-cud.draw 1
       ble/canvas/put-hpa.draw $((1+_ble_canvas_x))
     fi
-    ble/canvas/flush.draw
+    ble/canvas/bflush.draw
+    ble/util/buffer.flush >&2
   else
     ble/util/put "${_ble_term_visible_bell_show//'%message%'/$sgr$message}"
   fi
@@ -4171,6 +4185,8 @@ function ble/term/visible-bell/.clear {
 
     local -a DRAW_BUFF=()
     if [[ $_ble_term_rc ]]; then
+      local ret=
+      [[ $_ble_attached ]] && ble/canvas/panel/save-position goto-top-dock
       ble/canvas/put.draw "$_ble_term_sc$_ble_term_sgr0"
       ble/canvas/put-cup.draw $((y0+1)) $((x0+1))
       ble/canvas/put.draw "$sgr"
@@ -4178,6 +4194,7 @@ function ble/term/visible-bell/.clear {
       #ble/canvas/put-ech.draw "$x"
       #ble/canvas/put.draw "$_ble_term_el"
       ble/canvas/put.draw "$_ble_term_sgr0$_ble_term_rc"
+      [[ $_ble_attached ]] && ble/canvas/panel/load-position.draw "$ret"
     else
       : # 親プロセスの _ble_canvas_x が分からないので座標がずれる
       # ble/util/buffer.flush >&2
@@ -4474,23 +4491,38 @@ function ble/term/DA2/notify {
   blehook/invoke DA2R
 }
 
+_ble_term_DECSTBM=
+function ble/term/test-DECSTBM.hook {
+  (($1==2)) && _ble_term_DECSTBM=$'\e[%s;%sr'
+}
+function ble/term/test-DECSTBM {
+  local -a DRAW_BUFF=()
+  ble/canvas/panel/goto-top-dock.draw
+  ble/canvas/put.draw "$_ble_term_sc"$'\e[1;2r'
+  ble/canvas/put-cup.draw 2 1
+  ble/canvas/put-cud.draw 1
+  ble/term/CPR/request.draw ble/term/test-DECSTBM.hook
+  ble/canvas/put.draw $'\e[;r'"$_ble_term_rc"
+  ble/canvas/bflush.draw
+}
+
 #---- DSR(6) ------------------------------------------------------------------
 # CPR (CURSOR POSITION REPORT)
 
-_ble_term_CPR_hook=
+_ble_term_CPR_hook=()
 function ble/term/CPR/request.buff {
-  _ble_term_CPR_hook=$1
+  ble/array#push _ble_term_CPR_hook "$1"
   ble/util/buffer $'\e[6n'
   return 147
 }
 function ble/term/CPR/request.draw {
-  _ble_term_CPR_hook=$1
+  ble/array#push _ble_term_CPR_hook "$1"
   ble/canvas/put.draw $'\e[6n'
   return 147
 }
 function ble/term/CPR/notify {
-  local hook=$_ble_term_CPR_hook
-  _ble_term_CPR_hook=
+  local hook=${_ble_term_CPR_hook[0]}
+  ble/array#shift _ble_term_CPR_hook
   [[ ! $hook ]] || "$hook" "$1" "$2"
 }
 
@@ -4614,6 +4646,7 @@ function ble/term/finalize {
 }
 function ble/term/initialize {
   ble/term/stty/initialize
+  ble/term/test-DECSTBM
   ble/term/enter
 }
 

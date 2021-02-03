@@ -424,7 +424,7 @@ function ble/complete/menu-style:desc-raw/guess {
 ## @fn ble/complete/menu#construct/.initialize-size
 ##   @var[out] cols lines
 function ble/complete/menu#construct/.initialize-size {
-  ble-edit/info/.initialize-size
+  ble/edit/info/.initialize-size
   local maxlines=$((bleopt_complete_menu_maxlines))
   ((maxlines>0&&lines>maxlines)) && lines=$maxlines
 }
@@ -535,10 +535,10 @@ function ble/complete/menu#construct {
 }
 
 function ble/complete/menu#show {
-  ble-edit/info/immediate-show "${_ble_complete_menu_info_data[@]}"
+  ble/edit/info/immediate-show "${_ble_complete_menu_info_data[@]}"
 }
 function ble/complete/menu#clear {
-  ble-edit/info/clear
+  ble/edit/info/clear
 }
 
 
@@ -583,7 +583,7 @@ function ble/complete/menu#select {
   fi
 
   local -a DRAW_BUFF=()
-  local x0=$_ble_canvas_x y0=$_ble_canvas_y
+  local ret; ble/canvas/panel/save-position; local pos0=$ret
   if ((osel>=0)); then
     # 消去
     local entry=${_ble_complete_menu_icons[osel-visible_beg]}
@@ -629,7 +629,7 @@ function ble/complete/menu#select {
     _ble_complete_menu_selected=-1
     value=$_ble_complete_menu_original
   fi
-  ble/canvas/goto.draw "$x0" "$y0"
+  ble/canvas/panel/load-position.draw "$pos0"
   ble/canvas/bflush.draw
 
   ble/function#try "$menu_class"/onselect "$nsel" "$osel"
@@ -4896,7 +4896,7 @@ function ble/widget/complete {
     if ((ext!=0||cand_count==0)); then
       [[ :$opts: != *:no-bell:* && ! $cand_limit_reached ]] &&
         ble/widget/.bell 'complete: no completions'
-      ble-edit/info/clear
+      ble/edit/info/clear
       return 1
     fi
   fi
@@ -6070,14 +6070,14 @@ function ble/complete/dabbrev/.show-status.fib {
 
   ((fib_ntask)) && text="$text *$fib_ntask"
 
-  ble-edit/info/show text "$text"
+  ble/edit/info/show text "$text"
 }
 function ble/complete/dabbrev/show-status {
   local fib_ntask=${#_ble_util_fiberchain[@]}
   ble/complete/dabbrev/.show-status.fib
 }
 function ble/complete/dabbrev/erase-status {
-  ble-edit/info/default
+  ble/edit/info/default
 }
 
 ## @fn ble/complete/dabbrev/initialize-variables

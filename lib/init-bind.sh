@@ -30,7 +30,7 @@ function ble/init:bind/generate-binder {
   local fbind1=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.bind
   local fbind2=$_ble_base_cache/ble-decode-bind.$_ble_bash.$bleopt_input_encoding.unbind
 
-  ble-edit/info/show text "ble.sh: updating binders..."
+  ble/edit/info/show text "ble.sh: updating binders..."
 
   : >| "$fbind1"
   : >| "$fbind2"
@@ -216,7 +216,7 @@ function ble/init:bind/generate-binder {
 
   ble/function#try ble/encoding:"$bleopt_input_encoding"/generate-binder
 
-  ble-edit/info/immediate-show text "ble.sh: updating binders... done"
+  ble/edit/info/immediate-show text "ble.sh: updating binders... done"
 }
 
 ble/init:bind/generate-binder
