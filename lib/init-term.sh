@@ -80,6 +80,13 @@ function ble/init:term/initialize {
     _ble_term_xenl=0
   ble/init:term/register-varname _ble_term_xenl
 
+  # bce (background color erase)
+  _ble_term_bce=0
+  [[ $_ble_term_tput ]] &&
+    ble/init:term/tput bce:ut &>/dev/null &&
+    _ble_term_xenl=1
+  ble/init:term/register-varname _ble_term_bce
+
   # tab width
   _ble_term_it=8
   if [[ $_ble_term_tput ]]; then

@@ -13,6 +13,7 @@
   - edit (`{kill,copy}-region-or`): fix unconditionally combined kills/copies (reported by 3ximus) `#D1447` 1631751
 - canvas: update emoji database and support `bleopt emoji_version` (motivated by endorfina) `#D1454` d1f8c27
 - canvas, edit: support `bleopt info_display` (suggested by 0neGuyDev) `#D1458` 69228fa
+- prompt: support `bleopt prompt_status_{line,align}` and `face prompt_status_line` `#D1462` 0000000
 
 ## Changes
 
@@ -21,9 +22,10 @@
 - edit: preserve the state of `READLINE_{LINE,POINT,MARK}` `#D1437` 8379d4a
 - edit: change default behavior of <kbd>C-w</kbd> and <kbd>M-w</kbd> to operate on backward words `#D1448` 47a3301
 - syntax (`layer:syntax/word`): perform pathname expansions in background subshells (motivated by 3ximus) `#D1449` 13e7bdd
-  - syntax (`simple-word/is-simple-noglob`): suppress error messages on expansions `#D1461` 0000000
+  - syntax (`simple-word/is-simple-noglob`): suppress error messages on expansions `#D1461` a56873f
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
+- prompt: rename `bleopt prompt_{status_line => term_status}` `#D1462` 0000000
 
 ## Fixes
 

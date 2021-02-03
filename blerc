@@ -146,12 +146,12 @@
 #bleopt prompt_rps1_transient=''
 
 
-## The following settings specifies the content of terminal titles and status
+## The following settings specify the content of terminal titles and status
 ## lines.  "prompt_xterm_title" specifies the terminal title which can be set
 ## by "OSC 0 ; ... BEL".  "prompt_screen_title" is effective inside terminal
 ## multiplexers such as GNU screen and tmux and specifies the window title of
 ## the terminal multiplexer which can be set by "ESC k ... ST".
-## "prompt_status_line" is only effective when terminfo entries "tsl" and "fsl"
+## "prompt_term_status" is only effective when terminfo entries "tsl" and "fsl"
 ## (or termcap entries "ts" and "ds") are available, and specifies the content
 ## of the status line which can be set by the terminfo entries.  When each
 ## setting has non-empty value, the content of corresponding title or status
@@ -159,7 +159,16 @@
 
 #bleopt prompt_xterm_title=
 #bleopt prompt_screen_title=
+#bleopt prompt_term_status=
+
+
+## The following settings control the status line.  "prompt_status_line"
+## specifies the content of the status line.  If its value is empty, the status
+## line is not shown.  "prompt_status_align" controls the position of the
+## content in the status line.
+
 #bleopt prompt_status_line=
+#bleopt prompt_status_align=left
 
 
 ## "prompt_eol_mark" specifies the contents of the mark used to indicate the
@@ -545,6 +554,7 @@
 # ble-color-setface vbell                     reverse
 # ble-color-setface vbell_erase               bg=252
 # ble-color-setface vbell_flash               fg=green,reverse
+# ble-color-setface prompt_status_line        fg=231,bg=240
 
 # ble-color-setface syntax_default            none
 # ble-color-setface syntax_command            fg=brown

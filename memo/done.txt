@@ -2656,7 +2656,7 @@
 
 2020-08-06
 
-  * fzf の設定でエラーが発生する (reported by @tigger04) [#D1372]
+  * fzf の設定でエラーが発生する (reported by tigger04) [#D1372]
     https://github.com/akinomyoga/ble.sh/issues/60
 
     bind '"...": fzf-file-widget' の様に -x を
@@ -2761,7 +2761,7 @@
 
 2020-08-04
 
-  * textarea: vi-mode strings がある時の計算がおかしい (reported by @tigger04) [#D1371]
+  * textarea: vi-mode strings がある時の計算がおかしい (reported by tigger04) [#D1371]
     https://github.com/akinomyoga/ble.sh/issues/60
 
     先ず、再現するかどうかを確認する必要がある。
@@ -31395,7 +31395,7 @@
 
 2018-03-15
 
-  * 単語着色の問題 (2017-11-26 reported by @cmplsetofB) [#D0686]
+  * 単語着色の問題 (2017-11-26 reported by cmplstofB) [#D0686]
 
     これについては項目が既にあるかと思ったが今探してみた所なかった。
     恐らく以下の項目が実装途中で放棄されているので、
@@ -33875,7 +33875,7 @@
 
       現状では問題ないが、やはり後々のためにちゃんと安全な方法で split する事にする。直した。
 
-  * edit: history 初期化で先頭行に行く [reported by @cmplstofB] [#D0634]
+  * edit: history 初期化で先頭行に行く (reported by cmplstofB) [#D0634]
 
     > 起動直後に履歴を遡る (というより ^P を押下する) と一番始めの履歴にまで戻ってしまいます。
 
@@ -33885,7 +33885,7 @@
     どうやら history で出力される履歴番号は printf %5d で出力されている為に、
     履歴項目の数が 5 桁より小さい時には先頭にスペースが入るのだ。
 
-  * complete: failglob 時の問題 (3) [reported by @cmplstofB] [#D0633]
+  * complete: failglob 時の問題 (3) (reported by cmplstofB) [#D0633]
 
     > コマンドに glob が含まれている場合などはいいのですが，
     > 存在しないパスを補完しようとすると不具合が発生します。
@@ -34016,7 +34016,7 @@
     - 更に、compgen に内容が含まれていたとしても空行がある場合には、それを除く様に変更した。
     - ble/util/assign-array も調整した。
 
-  * highlight: failglob でエラーメッセージが出る [reported by @cmplstofB] [#D0630]
+  * highlight: failglob でエラーメッセージが出る (reported by cmplstofB) [#D0630]
 
     > コマンドラインで $ l* と入力すると bash: 一致しません: l* という
     > エラーメッセージらしい表示が入力位置の右隣に発生し，続く入力が妨げられます。
@@ -34040,7 +34040,7 @@
 
     - done: あと、パス名展開に失敗したらその単語をエラー着色するようにする。
 
-  * keymap/vi (cmap): C-d で終了してしまうバグ [reported by @cmplstofB] [#D0629]
+  * keymap/vi (cmap): C-d で終了してしまうバグ (reported by cmplstofB) [#D0629]
 
     > たとえコマンドラインに文字があっても終了してしまいます。
 

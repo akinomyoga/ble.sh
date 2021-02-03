@@ -532,6 +532,9 @@ function ble/canvas/bflush.draw {
 ##       ANSI制御シーケンスではなく現在の端末のシーケンスとして
 ##       制御機能SGRを解釈します。
 ##
+##     g0
+##       背景色・既定属性として用いる属性値を指定します。
+##
 ##   @var[in,out] DRAW_BUFF[]
 ##     ble/canvas/trace.draw の出力先の配列です。
 ##   @var[out] ret
@@ -568,6 +571,17 @@ function ble/canvas/bflush.draw {
 ##     DECSC DECRC IND RI NEL はカーソル位置の変更を行います。
 ##     それ以外はカーソル位置の変更は行いません。
 ##
+
+function ble/canvas/trace/.put-sgr.draw {
+  local ret g=$1
+  if ((g==0)); then
+    ble/canvas/put.draw "$opt_sgr0"
+  else
+    ble/color/g#compose "$opt_g0" "$g"
+    ble/color/g2sgr "$g"
+    ble/canvas/put.draw "$ret"
+  fi
+}
 
 ## @fn ble/canvas/trace/.goto x1 y1
 ##   @var[in,out] x y
@@ -608,8 +622,7 @@ function ble/canvas/trace/.decsc {
     ble/canvas/put.draw "$_ble_term_sc"
 }
 function ble/canvas/trace/.decrc {
-  local ret; ble/color/g2sgr "${trace_decsc[2]}" # g を明示的に復元。
-  ble/canvas/put.draw "$ret"
+  ble/canvas/trace/.put-sgr.draw "${trace_decsc[2]}" # g を明示的に復元。
   if [[ :$opts: == *:noscrc:* ]]; then
     ble/canvas/put-move.draw $((trace_decsc[0]-x)) $((trace_decsc[1]-y))
   else
@@ -627,8 +640,7 @@ function ble/canvas/trace/.scosc {
     ble/canvas/put.draw "$_ble_term_sc"
 }
 function ble/canvas/trace/.scorc {
-  local ret; ble/color/g2sgr "$g" # g は変わらない様に。
-  ble/canvas/put.draw "$ret"
+  ble/canvas/trace/.put-sgr.draw "$g" # g は変わらない様に。
   if [[ :$opts: == *:noscrc:* ]]; then
     ble/canvas/put-move.draw $((trace_scosc[0]-x)) $((trace_scosc[1]-y))
   else
@@ -675,7 +687,7 @@ function ble/canvas/trace/.SGR {
   local param=$1 seq=$2 specs i iN
   if [[ ! $param ]]; then
     g=0
-    ble/canvas/put.draw "$_ble_term_sgr0"
+    ble/canvas/put.draw "$opt_sgr0"
     return 0
   fi
 
@@ -686,9 +698,7 @@ function ble/canvas/trace/.SGR {
     ble/color/read-sgrspec "$param" ansi
   fi
 
-  local ret
-  ble/color/g2sgr "$g"
-  ble/canvas/put.draw "$ret"
+  ble/canvas/trace/.put-sgr.draw "$g"
 }
 function ble/canvas/trace/.process-csi-sequence {
   local seq=$1 seq1=${1:2} rex
@@ -854,7 +864,7 @@ function ble/canvas/trace/.impl {
 
   # Note: 文字符号化方式によっては対応する文字が存在しない可能性がある。
   #   その時は st='\u009C' になるはず。2文字以上のとき変換に失敗したと見做す。
-  local ret
+  local ret rex
   ble/util/c2s 156; local st=$ret #  (ST)
   ((${#st}>=2)) && st=
 
@@ -864,6 +874,13 @@ function ble/canvas/trace/.impl {
   local opt_measure=; [[ :$opts: == *:measure-bbox:* ]] && opt_measure=1
   [[ :$opts: != *:left-char:* ]] && local lc=32 lg=0
   local opt_terminfo=; [[ :$opts: == *:terminfo:* ]] && opt_terminfo=1
+
+  local opt_g0= opt_sgr0=$_ble_term_sgr0
+  if rex=':g0=([^:]+):'; [[ :$opts: =~ $rex ]]; then
+    opt_g0=${BASH_REMATCH[1]}
+    ble/color/g2sgr "$opt_g0"; opt_sgr0=$ret
+    ble/canvas/put.draw "$opt_sgr0"
+  fi
 
   # constants
   local cols=${COLUMNS:-80} lines=${LINES:-25}
@@ -1764,8 +1781,8 @@ _ble_canvas_panel_tmargin=1 # for visible-bell
 function ble/canvas/panel/layout/.extract-heights {
   local i n=${#_ble_canvas_panel_class[@]}
   for ((i=0;i<n;i++)); do
-    local height
-    "${_ble_canvas_panel_class[i]}#panel::getHeight" "$i"
+    local height=0:0
+    ble/function#try "${_ble_canvas_panel_class[i]}#panel::getHeight" "$i"
     mins[i]=${height%:*}
     maxs[i]=${height#*:}
   done
@@ -1866,9 +1883,9 @@ function ble/canvas/panel/goto-bottom-dock.draw {
   if [[ ! $_ble_canvas_panel_bottom ]]; then
     _ble_canvas_panel_bottom=1
     ble/canvas/excursion-start.draw
-    ble/canvas/goto.draw 0 $((LINES-1)) # 一番下の行に移動
+    ble/canvas/put-cup.draw "$LINES" 0 # 一番下の行に移動
     ble/arithmetic/sum "${_ble_canvas_panel_height[@]}"
-    ((_ble_canvas_y=ret-1))
+    ((_ble_canvas_x=0,_ble_canvas_y=ret-1))
   fi
 }
 function ble/canvas/panel/goto-top-dock.draw {

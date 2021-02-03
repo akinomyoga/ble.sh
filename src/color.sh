@@ -223,6 +223,10 @@ function ble/color/g#append {
     ((g&=~(_ble_color_gflags_BgMask|_ble_color_gflags_BgIndexed)))
   ((g|=g2))
 }
+function ble/color/g#compose {
+  g=$1; shift
+  local g2; for g2; do ble/color/g#append "$g2"; done
+}
 
 
 ## @fn ble/color/gspec2g gspec

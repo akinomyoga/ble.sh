@@ -288,6 +288,7 @@ ble-color-setface menu_filter_input         fg=16,bg=229
 ble-color-setface vbell                     reverse
 ble-color-setface vbell_erase               bg=252
 ble-color-setface vbell_flash               fg=green,reverse
+ble-color-setface prompt_status_line        fg=231,bg=240
 
 # 構文着色の設定
 ble-color-setface syntax_default            none

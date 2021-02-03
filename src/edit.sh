@@ -127,8 +127,8 @@ bleopt/declare -n info_display top
 function bleopt/check:info_display {
   case $value in
   (top)
-    [[ $_ble_canvas_panel_vfill == '' ]] && return 0
-    _ble_canvas_panel_vfill=
+    [[ $_ble_canvas_panel_vfill == 3 ]] && return 0
+    _ble_canvas_panel_vfill=3
     ble/canvas/panel/clear
     return 0 ;;
   (bottom)
@@ -150,13 +150,26 @@ bleopt/declare -v prompt_rps1_final ''
 bleopt/declare -v prompt_rps1_transient ''
 bleopt/declare -v prompt_xterm_title  ''
 bleopt/declare -v prompt_screen_title ''
-bleopt/declare -v prompt_status_line  ''
+bleopt/declare -v prompt_term_status  ''
 # obsoleted options
 bleopt/declare -o rps1 prompt_rps1
 bleopt/declare -o rps1_transient prompt_rps1_transient
 
 ## @bleopt prompt_eol_mark
 bleopt/declare -v prompt_eol_mark $'\e[94m[ble: EOF]\e[m'
+
+bleopt/declare -v prompt_status_line  ''
+bleopt/declare -n prompt_status_align left
+ble/color/defface prompt_status_line fg=231,bg=240
+
+function bleopt/check:prompt_status_align {
+  case $value in
+  (left|right|center) return 0 ;;
+  (*)
+    ble/util/print "bleopt prompt_status_align: unsupported value: '$value'" >&2
+    return 1 ;;
+  esac
+}
 
 ## @bleopt internal_exec_type (内部使用)
 ##   コマンドの実行の方法を指定します。
@@ -231,7 +244,67 @@ bleopt/declare -v line_limit_type none
 # canvas.sh 設定
 
 _ble_canvas_panel_focus=0
-_ble_canvas_panel_class=(ble/textarea ble/textarea ble/edit/info)
+_ble_canvas_panel_class=(ble/textarea ble/textarea ble/edit/info ble/prompt/status)
+_ble_canvas_panel_vfill=3
+
+_ble_edit_layout=normal
+function ble/edit/enter-command-layout {
+  [[ $_ble_edit_layout == command ]] && return 0
+  _ble_edit_layout=command
+  ble/edit/info/hide
+  ble/prompt/status#collapse
+}
+function ble/edit/leave-command-layout {
+  _ble_edit_layout=normal
+  ble/edit/info/reveal
+}
+
+# 
+#------------------------------------------------------------------------------
+# **** ble/prompt/status ****                                    @prompt.status
+
+_ble_prompt_status_panel=3
+_ble_prompt_status_dirty=
+_ble_prompt_status_data=()
+_ble_prompt_status_bbox=()
+_ble_prompt_status_line=(0 0 '')
+
+function ble/prompt/status#panel::invalidate {
+  _ble_prompt_status_dirty=1
+}
+function ble/prompt/status#panel::render {
+  [[ $_ble_prompt_status_dirty ]] || return 0
+  _ble_prompt_status_dirty=
+
+  local -a DRAW_BUFF=()
+  local esc=${_ble_prompt_status_line[2]}
+  if [[ $esc ]]; then
+    local prox=${_ble_prompt_status_line[0]}
+    local proy=${_ble_prompt_status_line[1]}
+    ble/canvas/panel#goto.draw "$_ble_prompt_status_panel"
+    ble/canvas/panel#put.draw "$_ble_prompt_status_panel" "$esc" "$prox" "$proy"
+  else
+    ble/canvas/panel#clear.draw "$_ble_prompt_status_panel"
+  fi
+  ble/canvas/bflush.draw
+}
+function ble/prompt/status#panel::getHeight {
+  if [[ $_ble_edit_layout == command ]]; then
+    height=0:0
+  elif [[ ${_ble_prompt_status_line[2]} ]]; then
+    height=0:1
+  else
+    height=0:0
+  fi
+}
+function ble/prompt/status#panel::onHeightChange {
+  ble/prompt/status#panel::invalidate
+}
+function ble/prompt/status#collapse {
+  local -a DRAW_BUFF=()
+  ble/canvas/panel#set-height.draw "$_ble_prompt_status_panel" 0
+  ble/canvas/bflush.draw
+}
 
 # 
 #------------------------------------------------------------------------------
@@ -337,7 +410,7 @@ _ble_edit_rprompt_shown=
 
 _ble_prompt_xterm_title=()
 _ble_prompt_screen_title=()
-_ble_prompt_status_line=()
+_ble_prompt_term_status=()
 
 ## @fn ble/prompt/.load
 ##   @var[out] x y g
@@ -747,8 +820,8 @@ function ble/prompt/.get-keymap-for-current-mode {
     keymap=${_ble_decode_keymap_stack[index]}
   done
 }
-## @fn ble/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 val0 esc0 trace_hash0]
-##   @var[out] val esc x y g lc lg trace_hash
+## @fn ble/prompt/.instantiate ps opts [x0 y0 g0 lc0 lg0 esc0 trace_hash0]
+##   @var[out] x y g lc lg esc trace_hash
 ##   @var[in,out] x1 x2 y1 y2
 ##     opts に measure-bbox を指定した時。
 ##   @var[in,out] cache_d cache_t cache_A cache_T cache_at cache_j cache_wd
@@ -912,7 +985,7 @@ function ble/prompt/update {
   [[ $MC_SID == $$ ]] && return 0
 
   # update edit_rps1
-  if [[ $bleopt_prompt_rps1 ]]; then
+  if [[ $rps1 ]]; then
     local ps1_height=$((y+1))
     local trace_hash esc x y g lc lg # Note: これ以降は local の x y g lc lg
     local x1=${_ble_edit_rprompt_bbox[0]}
@@ -930,6 +1003,63 @@ function ble/prompt/update {
     _ble_edit_rprompt=()
   fi
 
+  # bleopt prompt_status_line
+  if [[ $bleopt_prompt_status_line ]]; then
+    ble/color/face2g prompt_status_line; local g0=$ret
+
+    local ps=$bleopt_prompt_status_line
+    local cols=$COLUMNS; ((_ble_term_xenl||cols--))
+    local trace_opts=confine:relative:measure-bbox:noscrc:g0=$g0
+
+    local trace_hash esc x y g lc lg
+    local x1=${_ble_prompt_status_bbox[0]}
+    local y1=${_ble_prompt_status_bbox[1]}
+    local x2=${_ble_prompt_status_bbox[2]}
+    local y2=${_ble_prompt_status_bbox[3]}
+    LINES=1 COLUMNS=$cols ble/prompt/.instantiate "$ps" "$trace_opts" "${_ble_prompt_status_data[@]:1}"
+
+    local x_line=$x y_line=$y esc_line=$esc
+    local -a DRAW_BUFF=()
+
+    # background color
+    if ((g0)); then
+      ble/color/g2sgr "$g0"; local sgr=$ret
+      if ((_ble_term_bce)); then
+        ble/canvas/put.draw "$sgr$_ble_term_el$_ble_term_sgr0"
+      else
+        ble/string#reserve-prototype "$cols"
+        ble/canvas/put.draw "$sgr${_ble_string_prototype::cols}"
+        ble/canvas/put-cub.draw "$cols"
+        ble/canvas/put.draw "$_ble_term_sgr0"
+      fi
+    fi
+
+    # bleopt prompt_status_align
+    local xshift=0
+    case $bleopt_prompt_status_align in
+    (center) ((xshift=cols/2-(x2+x1)/2)) ;;
+    (right)  ((xshift=cols-x2)) ;;
+    esac
+    if ((xshift>0)); then
+      ((x_line+=xshift))
+      ble/canvas/put-cuf.draw "$xshift"
+    fi
+
+    ble/canvas/put.draw "$esc"
+    ble/canvas/sflush.draw -v esc_line
+
+    _ble_prompt_status_dirty=1
+    _ble_prompt_status_data=("$version" "$x" "$y" "$g" "$lc" "$lg" "$esc" "$trace_hash")
+    _ble_prompt_status_bbox=("$x1" "$y1" "$x2" "$y2")
+    _ble_prompt_status_line=("$x_line" "$y_line" "$esc_line")
+  elif [[ $_ble_prompt_status_line ]]; then
+    # 新しく空になった時
+    _ble_prompt_status_dirty=1
+    _ble_prompt_status_data=()
+    _ble_prompt_status_bbox=()
+    _ble_prompt_status_line=()
+  fi
+
   # bleopt prompt_xterm_title
   local ret
   ble/prompt/.instantiate-control-string _ble_prompt_xterm_title "$bleopt_prompt_xterm_title"
@@ -945,17 +1075,17 @@ function ble/prompt/update {
     _ble_prompt_screen_title[6]=$ret ;;
   esac
 
-  # bleopt prompt_status_line
+  # bleopt prompt_term_status
   if [[ $_ble_term_tsl && $_ble_term_fsl ]]; then
     local ret
-    ble/prompt/.instantiate-control-string _ble_prompt_status_line "$bleopt_prompt_status_line"
+    ble/prompt/.instantiate-control-string _ble_prompt_term_status "$bleopt_prompt_term_status"
     if [[ $ret ]]; then
       ret=$_ble_term_tsl$ret$_ble_term_fsl
-    elif [[ $bleopt_prompt_status_line ]]; then
-      # bleopt_prompt_status_line が設定されているのに結果が空の時、ステータス行をクリアする
+    elif [[ $bleopt_prompt_term_status ]]; then
+      # bleopt_prompt_term_status が設定されているのに結果が空の時、ステータス行をクリアする
       ret=$_ble_term_dsl
     fi
-    _ble_prompt_status_line[6]=$ret
+    _ble_prompt_term_status[6]=$ret
   fi
 }
 function ble/prompt/clear {
@@ -1690,9 +1820,9 @@ function ble-edit/attach/TRAPWINCH {
     if [[ ! $_ble_textarea_invalidated && $_ble_term_state == internal ]]; then
       _ble_textmap_pos=()
       ble-edit/bind/stdout.on
-      ble/edit/info/hide
+      ble/edit/enter-command-layout
       ble/util/buffer "$_ble_term_ed"
-      ble/edit/info/reveal
+      ble/edit/leave-command-layout
       ble/canvas/panel/render
       ble-edit/bind/stdout.off
     fi
@@ -2128,7 +2258,7 @@ function ble/textarea#render/.show-prompt {
   local esc=${_ble_edit_prompt[6]}
   esc=${_ble_prompt_xterm_title[6]}$esc
   esc=${_ble_prompt_screen_title[6]}$esc
-  esc=${_ble_prompt_status_line[6]}$esc
+  esc=${_ble_prompt_term_status[6]}$esc
   local prox=${_ble_edit_prompt[1]}
   local proy=${_ble_edit_prompt[2]}
   ble/canvas/panel#goto.draw "$_ble_textarea_panel"
@@ -2401,7 +2531,7 @@ function ble/textarea#render {
     local esc=${_ble_edit_prompt[6]}
     esc=${_ble_prompt_xterm_title[6]}$esc
     esc=${_ble_prompt_screen_title[6]}$esc
-    esc=${_ble_prompt_status_line[6]}$esc
+    esc=${_ble_prompt_term_status[6]}$esc
     _ble_textarea_cache=(
       "$esc$esc_line"
       "${_ble_textarea_cur[@]}"
@@ -2586,7 +2716,7 @@ function ble/widget/redraw-line {
 }
 function ble/widget/clear-screen {
   ble-edit/content/clear-arg
-  ble/edit/info/hide
+  ble/edit/enter-command-layout
   ble/textarea#invalidate
   local -a DRAW_BUFF=()
   ble/canvas/panel/goto-top-dock.draw
@@ -3501,7 +3631,7 @@ function ble/widget/exit {
 
   # Note: bleopt_syntax_debug=1 の時 ble/textarea#render の中で info が設定されるので、
   #   これは ble/textarea#render より後である必要がある。
-  ble/edit/info/hide
+  ble/edit/enter-command-layout
 
   local -a DRAW_BUFF=()
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" "$_ble_textarea_gendx" "$_ble_textarea_gendy"
@@ -4946,7 +5076,7 @@ function ble/widget/.insert-newline {
     ble/canvas/bflush.draw
   else
     # 最終状態の描画
-    ble/edit/info/hide
+    ble/edit/enter-command-layout
     ble/textarea#render leave
     ble/widget/.insert-newline/trim-prompt
 
@@ -4966,7 +5096,7 @@ function ble/widget/.insert-newline {
   _ble_canvas_panel_height[_ble_textarea_panel]=1
 }
 function ble/widget/.hide-current-line {
-  ble/edit/info/hide
+  ble/edit/enter-command-layout
   local -a DRAW_BUFF=()
   ble/canvas/panel#clear.draw "$_ble_textarea_panel"
   ble/canvas/panel#goto.draw "$_ble_textarea_panel" 0 0
@@ -7311,7 +7441,7 @@ function ble/builtin/read/.loop {
     ((timeout<0)) && timeout=
   fi
 
-  ble/edit/info/reveal
+  ble/edit/leave-command-layout
   ble/canvas/panel/render
   ble/util/buffer.flush >&2
 
@@ -7365,7 +7495,7 @@ function ble/builtin/read/.loop {
     ble/util/is-stdin-ready && continue
     ble-edit/content/check-limit
     ble-decode/.hook/erase-progress
-    ble/edit/info/reveal
+    ble/edit/leave-command-layout
     ble/canvas/panel/render
     ble/util/buffer.flush >&2
   done
@@ -7941,7 +8071,7 @@ function ble-edit/bind/.tail-without-draw {
 
 if ((_ble_bash>=40000)); then
   function ble-edit/bind/.tail {
-    ble/edit/info/reveal
+    ble/edit/leave-command-layout
     ble/canvas/panel/render
     ble/util/idle.do && ble/canvas/panel/render
     ble/textarea#adjust-for-bash-bind # bash-4.0+
@@ -7949,7 +8079,7 @@ if ((_ble_bash>=40000)); then
   }
 else
   function ble-edit/bind/.tail {
-    ble/edit/info/reveal
+    ble/edit/leave-command-layout
     ble/canvas/panel/render # bash-3 では READLINE_LINE を設定する方法はないので常に 0 幅
     ble/util/idle.do && ble/canvas/panel/render # bash-4.0+
     ble-edit/bind/stdout.off
@@ -8010,7 +8140,7 @@ function ble/widget/external-command {
   BASH_COMMAND=("$*")
   [[ ${BASH_COMMAND//[$_ble_term_IFS]} ]] || return 1
 
-  ble/edit/info/hide
+  ble/edit/enter-command-layout
   ble/textarea#invalidate
   local -a DRAW_BUFF=()
   ble/canvas/panel#set-height.draw "$_ble_textarea_panel" 0

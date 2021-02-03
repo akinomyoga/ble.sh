@@ -438,13 +438,17 @@ function sub:show-contrib {
       sort | uniq -c | sort -rn > "$cache_contrib_github"
   fi
 
+  echo "Contributions (from GitHub Issues/PRs)"
+  cat "$cache_contrib_github"
+
+  echo "Contributions (from memo.txt)"
+  sed -En 's/^  \* .*\([^()]+ by ([^()]+)\).*/\1/p' memo/done.txt note.txt |
+    sort | uniq -c | sort -rn
+
   echo "Contributions (from ChangeLog.md)"
   sed -n 's/.*([^()]* by \([^()]*\)).*/\1/p' memo/ChangeLog.md |
     sort | uniq -c | sort -rn
   echo
-
-  echo "Contributions (from GitHub Issues/PRs)"
-  cat "$cache_contrib_github"
 }
 
 #------------------------------------------------------------------------------
