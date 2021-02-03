@@ -41,11 +41,16 @@ if [[ $ZSH_VERSION ]]; then
   }
 elif ((BASH_VERSINFO[0]>=5)); then
   _ble_measure_resolution=1 # [usec]
+  function ble-measure/.get-realtime {
+    local LC_ALL= LC_NUMERIC=C
+    time=$EPOCHREALTIME
+  }
   function ble-measure/.time {
     local command="$*"
-    local time1=${EPOCHREALTIME//.}
+    local time
+    ble-measure/.get-realtime 2>/dev/null; local time1=${time//.}
     ble-measure/.loop "$n" "$*" &>/dev/null
-    local time2=${EPOCHREALTIME//.}
+    ble-measure/.get-realtime 2>/dev/null; local time2=${time//.}
     ((utot=time2-time1,usec=utot/n))
     ((utot>0))
   }
@@ -113,12 +118,31 @@ function ble-measure/calibrate {
   _ble_measure_base_nestcost=$nest_cost
 }
 
+## @fn ble-measure/.read-arguments.get-optarg
+##   @var[in,out] args iarg arg i c
+function ble-measure/.read-arguments.get-optarg {
+  if ((i+1<${#arg})); then
+    optarg=${arg:i+1}
+    i=${#arg}
+    return 0
+  elif ((iarg<${#args[@]})); then
+    optarg=${args[iarg++]}
+    return 0
+  else
+    ble/util/print "ble-measure: missing option argument for '-$c'."
+    flags=E$flags
+    return 1
+  fi
+}
+
 ## @fn ble-measure/.read-arguments args
 ##   @var[out] flags
 ##   @var[out] command count
 function ble-measure/.read-arguments {
-  while [[ $1 == -* ]]; do
-    local arg=$1; shift
+  local -a args; args=("$@")
+  local iarg=0 optarg=
+  while [[ ${args[iarg]} == -* ]]; do
+    local arg=${args[iarg++]}
     case $arg in
     (--) break ;;
     (--help) flags=h$flags ;;
@@ -133,14 +157,13 @@ function ble-measure/.read-arguments {
         (q) flags=q$flags ;;
         ([ca])
           [[ $c == a ]] && flags=a$flags
-          if ((i+1<${#arg})); then
-            count=${arg:i+1}; break
-          elif (($#)); then
-            count=$1; shift
-          else
-            ble/util/print "ble-measure: missing option argument for '-$c'."
-            flags=E$flags
-          fi ;;
+          ble-measure/.read-arguments.get-optarg && count=$optarg ;;
+        (T)
+          ble-measure/.read-arguments.get-optarg &&
+            measure_threshold=$optarg ;;
+        (B)
+          ble-measure/.read-arguments.get-optarg &&
+            measure_base=$optarg measure_nestcost= ;;
         (*)
           ble/util/print "ble-measure: unrecognized option '-$c'."
           flags=E$flags ;;
@@ -151,7 +174,7 @@ function ble-measure/.read-arguments {
       flags=E$flags ;;
     esac
   done
-  command="$*"
+  command="${args[*]:iarg}"
   [[ $flags != *E* ]]
 }
 
@@ -177,6 +200,9 @@ function ble-measure {
   fi
 
   local flags= command= count=$_ble_measure_count
+  local measure_threshold=$_ble_measure_threshold
+  local measure_base=$_ble_measure_base
+  local measure_nestcost=$_ble_measure_base_nestcost
   ble-measure/.read-arguments "$@" || return "$?"
   if [[ $flags == *h* ]]; then
     ble/util/print-lines \
@@ -204,7 +230,7 @@ function ble-measure {
   local prev_n= prev_utot=
   local -i n
   for n in {1,10,100,1000,10000}\*{1,2,5}; do
-    [[ $prev_n ]] && ((n/prev_n<=10 && prev_utot*n/prev_n<_ble_measure_threshold*2/5 && n!=50000)) && continue
+    [[ $prev_n ]] && ((n/prev_n<=10 && prev_utot*n/prev_n<measure_threshold*2/5 && n!=50000)) && continue
 
     local utot=0 usec=0
     [[ $flags != *q* ]] && printf '%s (x%d)...' "$command" "$n" >&2
@@ -213,7 +239,7 @@ function ble-measure {
 
     prev_n=$n prev_utot=$utot
 
-    ((utot >= _ble_measure_threshold)) || continue
+    ((utot >= measure_threshold)) || continue
 
     # 繰り返し計測して最小値 (-a の時は平均値) を採用
     if [[ $count ]]; then
@@ -233,7 +259,7 @@ function ble-measure {
       fi
     fi
 
-    local nsec0=$((_ble_measure_base+_ble_measure_base_nestcost*${#FUNCNAME[*]}/10))
+    local nsec0=$((measure_base+measure_nestcost*${#FUNCNAME[*]}/10))
     if [[ $flags != *q* ]]; then
       local reso=$_ble_measure_resolution
       local awk=ble/bin/awk

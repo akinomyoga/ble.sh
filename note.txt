@@ -3813,6 +3813,12 @@ bash_tips
 
 2021-02-03
 
+  * benchmark: EPOCHREALTIME は LC_NUMERIC 依存 (reported by 3ximus) [#D1460]
+
+    報告の画像で出ているエラーが何だろうと思って ble-measure の実装を
+    見たが変な事はない。と思ったが此処で気づいた。EPOCHREALTIME の小数
+    点は locale 依存である。という訳で対策する事にした。
+
   * global: help の類の整理 [#D1459]
     * bleopt: --help に対応していない
     * blehook: --help が単純すぎる

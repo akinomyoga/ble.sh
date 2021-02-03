@@ -37,6 +37,7 @@
 - complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
 - util (`ble/util/msleep`): fix hang in Cygwin by swithing from `/dev/udp/0.0.0.0/80` to `/dev/zero` `#D1452` d4d718a
 - syntax: fix broken AST with `[[` keyword `#D1454` 69658ef
+- benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 0000000
 - global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
   - global: fix declaration of associative arrays for `ble-reload` `#D1471` 3cae6e4
 
@@ -47,7 +48,8 @@
 - util: add function `ble/string#quote-words` `#D1451` f03b87b
 - syntax (`ble/syntax:bash/simple-word/eval`): cache `#D1453` 6d8311e
 - global: refactor `setup => set up / set-up` `#D1456` c37a9dd
-- global: clean up helps of user functions `#D1459` 0000000
+- global: clean up helps of user functions `#D1459` 33c283e
+- benchmark (`ble-measure`): support `-T TIME` and `-B TIME` option `#D1460` 0000000
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
