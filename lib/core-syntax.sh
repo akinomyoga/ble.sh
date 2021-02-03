@@ -1132,7 +1132,7 @@ function ble/syntax:bash/simple-word/is-never-word {
 function ble/syntax:bash/simple-word/is-simple-noglob {
   [[ $1 =~ $_ble_syntax_bash_simple_rex_noglob_word1 ]] && return 0
   if [[ $1 =~ $_ble_syntax_bash_simple_rex_noglob_word2 ]]; then
-    builtin eval -- "local expanded=$1"
+    builtin eval -- "local expanded=$1" 2>/dev/null
     local rex='[*?]|\[.+\]|[*?@+!]\(.*\)'
     [[ $expanded =~ $rex ]] || return 0
   fi

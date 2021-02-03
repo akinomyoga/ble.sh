@@ -3813,6 +3813,15 @@ bash_tips
 
 2021-02-03
 
+  * syntax: echo ${!_} と入力すると誤った代入ですというエラーメッセージが表示される [#D1461]
+    そもそも "${!_}" を実行しようとするとエラーメッセージが出るが、
+    これが着色等の際に発生するのは良くない。何処で発生しているのか確認する必要がある。
+
+    これは新しく追加した ble/syntax:bash/simple-word/is-simple-noglob の中で起
+    こしている展開に対して2>/dev/null を付加すれば良かった。未だ master に push していない
+    修正なので commit を fixup しようかと思ったが、実装ログが面倒な事になるので、
+    下手に fixup するのは止める事にする。
+
   * benchmark: EPOCHREALTIME は LC_NUMERIC 依存 (reported by 3ximus) [#D1460]
 
     報告の画像で出ているエラーが何だろうと思って ble-measure の実装を

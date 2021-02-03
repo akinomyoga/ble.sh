@@ -21,6 +21,7 @@
 - edit: preserve the state of `READLINE_{LINE,POINT,MARK}` `#D1437` 8379d4a
 - edit: change default behavior of <kbd>C-w</kbd> and <kbd>M-w</kbd> to operate on backward words `#D1448` 47a3301
 - syntax (`layer:syntax/word`): perform pathname expansions in background subshells (motivated by 3ximus) `#D1449` 13e7bdd
+  - syntax (`simple-word/is-simple-noglob`): suppress error messages on expansions `#D1461` 0000000
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 
@@ -37,7 +38,7 @@
 - complete (mandb): fix an encoding prpblem of utf8 manuals `#D1446` 7a4a480
 - util (`ble/util/msleep`): fix hang in Cygwin by swithing from `/dev/udp/0.0.0.0/80` to `/dev/zero` `#D1452` d4d718a
 - syntax: fix broken AST with `[[` keyword `#D1454` 69658ef
-- benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 0000000
+- benchmark (`ble-measure`): work around a locale-dependent decimal point of `EPOCHREALTIME` (reported by 3ximus) `#D1460` 1aa471b
 - global:work around bash-4.2 bug of `declare -gA` (reported by 0xC0ncord) `#D1470` 8856a04
   - global: fix declaration of associative arrays for `ble-reload` `#D1471` 3cae6e4
 
@@ -49,7 +50,7 @@
 - syntax (`ble/syntax:bash/simple-word/eval`): cache `#D1453` 6d8311e
 - global: refactor `setup => set up / set-up` `#D1456` c37a9dd
 - global: clean up helps of user functions `#D1459` 33c283e
-- benchmark (`ble-measure`): support `-T TIME` and `-B TIME` option `#D1460` 0000000
+- benchmark (`ble-measure`): support `-T TIME` and `-B TIME` option `#D1460` 1aa471b
 
 <!---------------------------------------------------------------------------->
 # ble-0.4.0-devel2
