@@ -2271,17 +2271,20 @@ _ble_util_clock_base=
 _ble_util_clock_reso=
 _ble_util_clock_type=
 function ble/util/clock/.initialize {
+  local LC_ALL= LC_NUMERIC=C
   if ((_ble_bash>=50000)) && [[ $EPOCHREALTIME == *.???* ]]; then
     # implementation with EPOCHREALTIME
     _ble_util_clock_base=$((10#${EPOCHREALTIME%.*}))
     _ble_util_clock_reso=1
     _ble_util_clock_type=EPOCHREALTIME
     function ble/util/clock {
+      local LC_ALL= LC_NUMERIC=C
       local now=$EPOCHREALTIME
       local integral=$((10#${now%%.*}-_ble_util_clock_base))
       local mantissa=${now#*.}000; mantissa=${mantissa::3}
       ((ret=integral*1000+10#$mantissa))
     }
+    ble/function#suppress-stderr ble/util/clock # locale
   elif [[ -r /proc/uptime ]] && {
          local uptime
          ble/util/readfile uptime /proc/uptime
@@ -2317,7 +2320,7 @@ function ble/util/clock/.initialize {
     }
   fi
 }
-ble/util/clock/.initialize
+ble/util/clock/.initialize 2>/dev/null
 
 if ((_ble_bash>=40000)); then
   ## 設定関数 ble/util/idle/IS_IDLE { ble/util/is-stdin-ready; }

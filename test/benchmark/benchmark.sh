@@ -41,11 +41,16 @@ if [[ $ZSH_VERSION ]]; then
   }
 elif ((BASH_VERSINFO[0]>=5)); then
   _ble_measure_resolution=1 # [usec]
+  function ble-measure/.get-realtime {
+    local LC_ALL= LC_NUMERIC=C
+    time=$EPOCHREALTIME
+  }
   function ble-measure/.time {
     local command="$*"
-    local time1=${EPOCHREALTIME//.}
+    local time
+    ble-measure/.get-realtime 2>/dev/null; local time1=${time//.}
     ble-measure/.loop "$n" "$*" &>/dev/null
-    local time2=${EPOCHREALTIME//.}
+    ble-measure/.get-realtime 2>/dev/null; local time2=${time//.}
     ((utot=time2-time1,usec=utot/n))
     ((utot>0))
   }
