@@ -2774,7 +2774,7 @@ function ble/util/sleep {
 ##
 function ble/util/conditional-sync {
   local __command=$1
-  local __cancel=${2:-'! ble/decode/has-input'}
+  local __continue=${2:-'! ble/decode/has-input'}
   local __weight=$3; ((__weight<=0&&(__weight=100)))
   local __opts=$4
 
@@ -2785,7 +2785,7 @@ function ble/util/conditional-sync {
     local __weight_max=$__weight __weight=1
 
   [[ $__timeout ]] && ((__timeout<=0)) && return 142
-  builtin eval -- "$__cancel" || return 148
+  builtin eval -- "$__continue" || return 148
   (
     builtin eval -- "$__command" & local __pid=$!
     while
@@ -2804,7 +2804,7 @@ function ble/util/conditional-sync {
         ((__weight<<=1,__weight>__weight_max&&(__weight=__weight_max)))
       builtin kill -0 "$__pid" &>/dev/null
     do
-      if ! builtin eval -- "$__cancel"; then
+      if ! builtin eval -- "$__continue"; then
         builtin kill "$__pid" &>/dev/null
         return 148
       fi

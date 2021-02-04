@@ -524,20 +524,23 @@
 # bleopt highlight_variable=
 
 
-## The following settings control the timeout for the pathname expansions
-## performed in the syntax highlighting.  When the word contains a glob pattern
-## that takes a long time to evaluate the pathname expansion, the syntax
-## highlighting based on the filename is canceled based on the timeouts
-## specified by these settings.  "highlight_timeout_sync" /
+## The following settings control the timeout and user-input cancellation of
+## the pathname expansions performed in the syntax highlighting.  When the word
+## contains a glob pattern that takes a long time to evaluate the pathname
+## expansion, the syntax highlighting based on the filename is canceled based
+## on the timeouts specified by these settings.  "highlight_timeout_sync" /
 ## "highlight_timeout_async" specify the timeout durations in milliseconds to
 ## be used for the foreground / background syntax highlighting, respectively.
 ## When the timeout occurred in the foreground, the syntax highlighting will be
 ## deferred to the background syntax highlighting.  When the timeout occurred
 ## in the background, the syntax highlighting for the filename is canceled.
 ## When the value is empty, the corresponding timeout is disabled.
+## "syntax_eval_polling_interval" specifies the maximal interval between the
+## user-input checking.
 
 # bleopt highlight_timeout_sync=500
 # bleopt highlight_timeout_async=5000
+# bleopt syntax_eval_polling_interval=50
 
 
 ## The following settings specify graphic styles of each faces.

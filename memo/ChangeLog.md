@@ -24,6 +24,7 @@
 - syntax (`layer:syntax/word`): perform pathname expansions in background subshells (motivated by 3ximus) `#D1449` 13e7bdd
   - syntax (`simple-word/is-simple-noglob`): suppress error messages on expansions `#D1461` a56873f
   - syntax (`simple-word/eval`): fix unperformed tilde expansions in the background (reported by 3ximus) `#D1463` 6ebec48
+  - syntax (`simple-word/eval`): propagate timeouts in sync highlighting (reported by 3ximus) `#D1465` 0000000
 - complete: perform pathname expansions in subshells (motivated by 3ximus) `#D1450` d511896
 - complete: support `bleopt complete_timeout_compvar` to time out pathname expansions for `COMP_WORDS` / `COMP_LINE` `#D1457` cc2881a
 - prompt: rename `bleopt prompt_{status_line => term_status}` `#D1462` cca1cbc
@@ -51,7 +52,7 @@
 - global: update the style of document comments ff4c4e7
 - util: add function `ble/string#quote-words` `#D1451` f03b87b
 - syntax (`ble/syntax:bash/simple-word/eval`): cache `#D1453` 6d8311e
-  - syntax (`simple-word/eval`): support `opts=single` for a better cache performance (motivated by 3ximus) `#D1464` 0000000
+  - syntax (`simple-word/eval`): support `opts=single` for a better cache performance (motivated by 3ximus) `#D1464` 10caaa4
 - global: refactor `setup => set up / set-up` `#D1456` c37a9dd
 - global: clean up helps of user functions `#D1459` 33c283e
 - benchmark (`ble-measure`): support `-T TIME` and `-B TIME` option `#D1460` 1aa471b

@@ -3813,6 +3813,68 @@ bash_tips
 
 2021-02-04
 
+  * 2021-02-01 highlight: highlight_timeout_sync=0 にしても遅い (reported by 3ximus) [#D1465]
+    https://github.com/akinomyoga/ble.sh/issues/82#issuecomment-770390986
+
+    % OK. Sorry, I actually reproduce this level of delay at my side too, but I
+    % haven't regarded it as *terrible*. That's probably because I know what
+    % `ble.sh` is doing in the background. I felt that it's actually doing a good
+    % job considering how strange things `ble.sh` is doing in the background.
+    %
+    % →と思ったが、bleopt highlight_timeout_sync=0 を実行していなかった。これを
+    % 実行したら自分のところでは特に問題もなく動く様になった。当初は実装のバグか
+    % とも思ったが、一部の host の上でだけ動作しないという事があるだろうか。
+    %
+    % Do you think it is related to `ffmpeg` running in the background? I see in
+    % the `top` pane multiple instances of `ffmpeg` are running, but the load
+    % average is smaller than 2, which means that those `ffmpeg` instances are
+    % waiting for an interrupt in more than half of their running time. If those
+    % `ffmpeg` are encoding some video clips, they may be waiting for disk I/O.
+    %
+    % →と思ったが disk I/O 待ちだと status D になる筈である。画面を見る限りはそ
+    % うなっていない。更に -x11grab というオプションについて調べてみるとこれはス
+    % クリーンキャプチャである。つまり、これらの ffmpeg は単にこの説明を作るため
+    % に起動しているだけで、問題には関係してこない。
+
+    何れにしてもこれは background highlighting におけるユーザー入力による中断速
+    度に関係している。でもどの部分が悪さをしているのか分からない。
+
+    1. 入力検出?
+    2. 生存検出?
+    3. 或いは kill & wait だろうか。
+
+    どうも background highlighting のユーザー入力によるキャンセルの応答が遅い様
+    である。自分の手元では残念ながら再現しない。取り敢えず勘で可能性のある時間
+    のかかりそうな箇所に関連した時間計測を依頼したがぴんと来ない。多分、別の所
+    に原因があるのではないか。
+
+    2021-02-04 追加報告では遅い時もあるしそうでない時もあるそうだ。後、遅いとは
+    言っている割にそれ程遅い訳でもない気がする。単に複数のパス名展開が試みられ
+    るのでそれぞれについてタイムアウトが試みられて遅くなっているというだけなの
+    ではないか。という訳で、取り敢えずの修正として一度 timeout を起こしたら後続
+    の eval も即刻で timeout する様に修正した。
+
+    それから conditional-sync をチェックする頻度も変更する事にする。取り敢えず
+    これで改善するかどうか判断する事にする。
+
+    | 後、timeout は total でカウントするべきなのかもしれない。或いは一つ
+    | timeout したらそれ以降は timeout が必要になる物はもう処理しない様に変更す
+    | る。
+
+    2021-02-05 新しい報告で上記の cumulative timeout & shorter polling interval
+    で改善するという事が確かめられた。問題は現在の cumulative timeout によって
+    本来短時間で着色できる単語が着色されずに残ってしまう可能性について。
+
+    然し、そもそも cumulative timeout で本当に改善しているのかというのは謎であ
+    る。今 highlight_timeout_sync=0 にしている。とすると highlight_timeout_sync
+    が効いていないか、或いは highlight_timeout_async の側での cumulative
+    timeout が効いているか。highlight_timeout_async の側での timeout が効いてい
+    るとすると何故なのか。ユーザー入力がある場合には何れにしても has-input の
+    チェックによってキャンセルされるのではないか。うーん。手元で試してみたが余
+    り違いが分からない。
+
+    * done: syntax_eval_polling_interval について doc を記述する
+
   * 展開済みであっても展開される単語の数に比例して遅い (reported by 3ximus) [#D1464]
     https://github.com/akinomyoga/ble.sh/issues/82#issuecomment-772529714
 

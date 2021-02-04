@@ -1383,21 +1383,20 @@ function ble/syntax:bash/simple-word/eval/.impl {
   if [[ $__ble_flags == *s* ]]; then
     local __ble_sync_command="ble/syntax:bash/simple-word/eval/.print-result $__ble_word"
     local __ble_sync_opts=progressive-weight
+    local __ble_sync_weight=$bleopt_syntax_eval_polling_interval
 
     # determine timeout
-    local __ble_sync_timeout=
-    if local __ble_rex=':timeout=([^:]*):'; [[ :$__ble_opts: =~ $__ble_rex ]]; then
+    local __ble_sync_timeout=$_ble_syntax_bash_simple_eval_timeout
+    if [[ $_ble_syntax_bash_simple_eval_timeout_carry ]]; then
+      __ble_sync_timeout=0
+    elif local __ble_rex=':timeout=([^:]*):'; [[ :$__ble_opts: =~ $__ble_rex ]]; then
       __ble_sync_timeout=${BASH_REMATCH[1]}
-    elif [[ :$__ble_opts: == *:timeout-highlight:* ]];  then
-      __ble_sync_timeout=$bleopt_highlight_timeout_sync
-      [[ $ble_textarea_render_defer_running ]] &&
-        __ble_sync_timeout=$bleopt_highlight_timeout_async
     fi
     [[ $__ble_sync_timeout ]] &&
       __ble_sync_opts=$__ble_sync_opts:timeout=$((__ble_sync_timeout))
 
     local __ble_def
-    ble/util/assign __ble_def 'ble/util/conditional-sync "$__ble_sync_command" "" "" "$__ble_sync_opts"' &>/dev/null; local ext=$?
+    ble/util/assign __ble_def 'ble/util/conditional-sync "$__ble_sync_command" "" "$__ble_sync_weight" "$__ble_sync_opts"' &>/dev/null; local ext=$?
     builtin eval -- "$__ble_def"
   else
     builtin eval "ble/syntax:bash/simple-word/eval/.set-result $__ble_word" &>/dev/null; local ext=$?
@@ -1470,10 +1469,17 @@ function ble/syntax:bash/simple-word/eval/.cache-load {
 ##         ユーザー入力があった場合に中断します。
 ##       timeout=NUM
 ##         stopcheck を指定している時に有効です。timeout を指定します。
-##       timeout-highlight
-##         bleopt highlight_timeout_{sync,async} を参照して timeout します。
 ##       retry-noglob-on-timeout
 ##         timeout した時に noglob で改めて展開を試行します。
+##       timeout-carry
+##         timeout が発生した場合に後続の eval にタイムアウトを伝播します。
+##
+##   @var[in] _ble_syntax_bash_simple_eval_timeout
+##     パス名展開のタイムアウトの既定値を指定します。空文字列が指定さ
+##     れている時、既定でタイムアウトは起こりません。
+##   @var[in,out] _ble_syntax_bash_simple_eval_timeout_carry
+##     この値が設定されている時、パス名展開に対して強制的にタイムアウ
+##     トが起こります。opts に timeout-carry が指定されている時に値が設定されます。
 ##
 ##   @arr[out] ret
 ##     展開結果を返します。複数の単語に評価される場合にはそれを全て返します。
@@ -1481,11 +1487,13 @@ function ble/syntax:bash/simple-word/eval/.cache-load {
 ##   @var[out] count
 ##     opts に count が指定されている時に展開結果の数を返します。
 ##
-##   @var[out] ret
 ##   @exit
-##     shopt -q failglob の時、パス名展開に失敗すると
-##     0 以外の終了ステータスを返します。
+##     ユーザー入力により中断した場合は 148 を返します。timeout を起こ
+##     した場合 142 を返します。例えば failglob など、その他の理由でパ
+##     ス名展開に失敗した時 0 以外の終了ステータスを返します。
 ##
+_ble_syntax_bash_simple_eval_timeout=
+_ble_syntax_bash_simple_eval_timeout_carry=
 function ble/syntax:bash/simple-word/eval {
   [[ :$2: != *:count:* ]] && local count
   if [[ :$2: == *:cached:* && :$2: != *:noglob:* ]]; then
@@ -1501,9 +1509,13 @@ function ble/syntax:bash/simple-word/eval {
   if [[ :$2: == *:cached:* && :$2: != *:noglob:* ]]; then
     ble/syntax:bash/simple-word/eval/.cache-save "$1" "$ext" "${ret[@]}"
   fi
-  if ((ext==142)) && [[ :$2: == *:retry-noglob-on-timeout:* ]]; then
-    ble/syntax:bash/simple-word/eval "$1" "$2:noglob"
-    return "$?"
+  if ((ext==142)); then
+    [[ :$2: == *:timeout-carry:* ]] &&
+      _ble_syntax_bash_simple_eval_timeout_carry=1
+    if [[ :$2: == *:retry-noglob-on-timeout:* ]]; then
+      ble/syntax:bash/simple-word/eval "$1" "$2:noglob"
+      return "$?"
+    fi
   fi
   return "$ext"
 }
@@ -1526,8 +1538,8 @@ function ble/syntax:bash/simple-word/.get-rex_element {
 ##   @param[in,opt] opts
 ##     noglob
 ##     stopcheck
-##     timeout-highlight
 ##     timeout=*
+##     timeout-carry
 ##     cached
 ##     notilde
 ##     after-sep
@@ -1565,7 +1577,7 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
     local rematch=$BASH_REMATCH
     s=$s$rematch
     ble/syntax:bash/simple-word/eval "$notilde$s" "$eval_opts"; ext=$?
-    ((ext==148)) && return "$ext"
+    ((ext==148||ext==142)) && return "$ext"
     p=$ret
     tail=${tail:${#rematch}}
     ble/array#push spec "$s"
@@ -1583,8 +1595,8 @@ function ble/syntax:bash/simple-word/evaluate-path-spec {
 ##   @param[in] opts
 ##     noglob
 ##     stopcheck
-##     timeout-highlight
 ##     timeout=*
+##     timeout-carry
 ##     cached
 ##     url
 ##     notilde
@@ -1656,10 +1668,10 @@ function ble/syntax:bash/simple-word/locate-filename/.exists {
 ##       [a-z]+:// で始まるパスを無条件に有効なパスと判定します。
 ##     stopcheck
 ##       時間のかかる可能性のあるパス名展開をユーザ入力により中断します。
-##     timeout-highlight
-##       stopcheck に際して timeout として highlight 用の設定を使用します。
 ##     timeout=*
 ##       stopcheck に際して timeout を指定します。
+##     timeout-carry
+##       タイムアウトを後続のパス名展開に伝播させます。
 ##     cached
 ##       展開内容をキャッシュします。
 ##
@@ -6873,7 +6885,15 @@ function ble/highlight/layer:syntax/word/.update-attributes/.proc {
 function ble/highlight/layer:syntax/word/.update-attributes {
   ((_ble_syntax_word_umin>=0)) || return 1
 
-  local highlight_eval_opts=stopcheck:timeout-highlight:cached:single
+  # Timeout setting for simple-word/eval
+  if [[ ! $ble_textarea_render_defer_running ]]; then
+    local _ble_syntax_bash_simple_eval_timeout=$bleopt_highlight_timeout_sync
+    local _ble_syntax_bash_simple_eval_timeout_carry=
+    local highlight_eval_opts=cached:single:stopcheck:timeout-carry
+  else
+    local _ble_syntax_bash_simple_eval_timeout=$bleopt_highlight_timeout_async
+    local highlight_eval_opts=cached:single:stopcheck
+  fi
 
   ble/syntax/tree-enumerate-in-range "$_ble_syntax_word_umin" "$_ble_syntax_word_umax" \
     ble/highlight/layer:syntax/word/.update-attributes/.proc
