@@ -6626,9 +6626,11 @@ function ble-edit/read/.loop {
   local _ble_edit_read_result=
   while [[ ! $_ble_edit_read_accept ]]; do
     # read 1 character
-    IFS= builtin read -r -d '' -n 1 ${opt_timeout:+-t "$opt_timeout"} char "${opts_in[@]}"; local ext=$?
-    if ((ext==142)); then
+    TMOUT= IFS= builtin read -r -d '' -n 1 ${opt_timeout:+-t "$opt_timeout"} char "${opts_in[@]}"; local ext=$?
+    if ((ext>142)); then
       # timeout
+      #   Note: #D1467 Cygwin/Linux では read の timeout は 142 だが、これはシステム依存。
+      #   man bash にある様に 128 より大きいかどうかで判定する。
       _ble_edit_read_accept=142
       break
     fi
@@ -7038,7 +7040,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if [[ -f $file && -s $file ]]; then
         local message= line
-        while IFS= builtin read -r line || [[ $line ]]; do
+        while TMOUT= IFS= builtin read -r line || [[ $line ]]; do
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。
@@ -7097,7 +7099,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
           [[ $line == *exit* ]] && ble/bin/grep -q -F "$line" "$_ble_base"/ignoreeof-messages.txt
         }
 
-        while IFS= builtin read -r line; do
+        while TMOUT= IFS= builtin read -r line; do
           SPACE=$' \n\t'
           if [[ $line == *[^$SPACE]* ]]; then
             builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
