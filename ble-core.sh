@@ -22,7 +22,7 @@ _ble_util_read_stdout_tmp="$_ble_base_tmp/$$.read-stdout.tmp"
 function ble/util/assign {
   builtin eval "${@:2}" > "$_ble_util_read_stdout_tmp"
   local _ret="$?"
-  IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
+  TMOUT= IFS= read -r -d '' "$1" < "$_ble_util_read_stdout_tmp"
   return "$_ret"
 }
 
@@ -611,7 +611,7 @@ else
     fi
 
     "ble-text-b2c+$bleopt_input_encoding" $(
-      while IFS= read -r -n 1 byte; do
+      while TMOUT= IFS= read -r -n 1 byte; do
         builtin printf '%d ' "'$byte"
       done <<<$s
     )

@@ -4063,7 +4063,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
       #   /dev/null の様なデバイスではなく、中身があるファイルの場合。
       if [[ -f $file && -s $file ]]; then
         local message= line
-        while IFS= read -r line; do
+        while TMOUT= IFS= builtin read -r line || [[ $line ]]; do
           # * The head of error messages seems to be ${BASH##*/}.
           #   例えば ~/bin/bash-3.1 等から実行していると
           #   "bash-3.1: ～" 等というエラーメッセージになる。
@@ -4105,7 +4105,7 @@ if [[ $bleopt_suppress_bash_output ]]; then
     rm -f "$_ble_edit_io_fname2.pipe"
     mkfifo "$_ble_edit_io_fname2.pipe"
     {
-      while IFS= read -r line; do
+      while TMOUT= IFS= read -r line; do
         SPACE=$' \n\t'
         if [[ $line == *[^$SPACE]* ]]; then
           builtin printf '%s\n' "$line" >> "$_ble_edit_io_fname2"
