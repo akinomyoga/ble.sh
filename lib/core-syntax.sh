@@ -1381,7 +1381,7 @@ function ble/syntax:bash/simple-word/eval/.impl {
   #   また、エラーメッセージが生じるので /dev/null に繋ぐ。
   __ble_ret=()
   if [[ $__ble_flags == *s* ]]; then
-    local __ble_sync_command='ble/syntax:bash/simple-word/eval/.print-result $__ble_word'
+    local __ble_sync_command="ble/syntax:bash/simple-word/eval/.print-result $__ble_word"
     local __ble_sync_opts=progressive-weight
 
     # determine timeout

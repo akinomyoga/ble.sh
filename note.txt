@@ -3811,6 +3811,36 @@ bash_tips
 
     全て 40300 に書き換えた。まあ、これで何も起こらないだろう。
 
+2021-02-04
+
+  * syntax: tilde で始まる単語の着色がされない? (reported by 3ximus) [#D1463]
+    https://github.com/akinomyoga/ble.sh/issues/82#issuecomment-772529714
+
+    と思ったがそうでもない。条件が不明
+
+    % notilde 関連かと思ったが違った。どうも evaluate-path-spec が after-sep の時
+    % に変な振る舞いをしている。spec の抽出に失敗している。
+    %
+    % $ ble/syntax:bash/simple-word/evaluate-path-spec '~/work/idt/**/*.sh' after-sep
+    % $ declare -p spec path
+    % declare -a spec=([0]="~/wo" [1]="~/work/id" [2]="~/work/idt/**/*." [3]="~/work/idt/**/*.sh")
+    % declare -a path=([0]="/home/murase/wo" [1]="/home/murase/work/id" [2]="" [3]="/home/murase/work/idt/agh/src/addon/make_latex_embedfont_css.sh")
+    %
+    % と思ったら単に evaluate-path-spec の使い方を間違っていただけだった。
+    % 正しく sep を指定したら evaluate-path-spec の結果は期待した物になった。
+
+    改めて evaluate-path-spec の中で何が起こっているのか調べたら確かに失敗している。
+
+    wtxt='~/**/*.sh' path_opts='stopcheck:timeout-highlight:cached:after-sep' ext='1'
+    spec=('~/' '~/**/' '~/**/*.sh')
+    path=('/home/murase/' '' '')
+
+    どうも stopcheck の有無で結果が変わる様である。
+    ble/syntax:bash/simple-word/eval '~/**/*.sh' stopcheck; ext=$?; ble/debug/print-variables ext ret
+
+    問題を狭めて行った所、原因が分かった。これは単純なミスである。
+    command="print-result $word" とするべき所を 'print-result $word' にしていた。修正した。
+
 2021-02-03
 
   * edit: status line に対応しても良いのではないか [#D1462]
